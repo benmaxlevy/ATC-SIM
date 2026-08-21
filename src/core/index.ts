@@ -11,7 +11,8 @@
  * types, `INSTRUCTION_TYPES`, and fixtures; session event log (`SessionEvent`,
  * `SessionLog`); aircraft types (`Aircraft`, `Intent`), `createAircraft`,
  * `makeTestAircraft`, `nextAircraftId`; conflict alert lite (`evaluateConflictAlert`,
- * `CA_LATERAL_NM` / `CA_VERTICAL_FT` / `CA_LOOKAHEAD_S`, `datablockAlertTint`).
+ * `CA_LATERAL_NM` / `CA_VERTICAL_FT` / `CA_LOOKAHEAD_S`, `datablockAlertTint`);
+ * nav fix registry (`buildFixRegistry`, `FixRegistry`).
  *
  * Import rule: `@core` depends on nothing in `src/*` except itself.
  */
@@ -54,3 +55,5 @@ export {
 } from "./alerts/conflictAlert";
 export type { AlertTint, AlertTintTrack } from "./alerts/colors";
 export { datablockAlertTint } from "./alerts/colors";
+export type { FixRegistry, FixRegistrySource, RegisteredFix } from "./nav/fixRegistry";
+export { UnknownFixError, buildFixRegistry } from "./nav/fixRegistry";
