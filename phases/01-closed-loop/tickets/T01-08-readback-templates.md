@@ -151,15 +151,15 @@ Tests should be table-driven. Do not call `stepWorld`.
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** `formatCallsignSpeech("DAL123")` lowercased is `delta one two three`.
-- [ ] **AC2 —** `FLY_HEADING 270 SHORTEST` for DAL123 → contains `delta one two three` and `heading two seven zero`, no `turn left/right`.
-- [ ] **AC3 —** `FLY_HEADING 90 LEFT` → includes `turn left heading zero niner zero`.
-- [ ] **AC4 —** `ALTITUDE DESCEND 3000` → `descend and maintain three thousand`.
-- [ ] **AC5 —** Combined heading + descend + speed: one callsign at start, commas, no repeated callsign.
-- [ ] **AC6 —** `SAY_HEADING` uses **current** `headingDeg` from snapshot (e.g. 45 → `zero four five`), not an assigned field.
-- [ ] **AC7 —** `formatRejectReadback({ reason: "AMBIGUOUS_CALLSIGN" })` is `unable, ambiguous callsign`.
-- [ ] **AC8 —** Vitest DOM-free; `npm test` green.
-- [ ] **AC9 — Research:** Templates use `descend and maintain` / digit headings; a file comment cites JO 7110.65 (R01) vs vice tokens (R08).
+- [x] **AC1 —** `formatCallsignSpeech("DAL123")` lowercased is `delta one two three`.
+- [x] **AC2 —** `FLY_HEADING 270 SHORTEST` for DAL123 → contains `delta one two three` and `heading two seven zero`, no `turn left/right`.
+- [x] **AC3 —** `FLY_HEADING 90 LEFT` → includes `turn left heading zero niner zero`.
+- [x] **AC4 —** `ALTITUDE DESCEND 3000` → `descend and maintain three thousand`.
+- [x] **AC5 —** Combined heading + descend + speed: one callsign at start, commas, no repeated callsign.
+- [x] **AC6 —** `SAY_HEADING` uses **current** `headingDeg` from snapshot (e.g. 45 → `zero four five`), not an assigned field.
+- [x] **AC7 —** `formatRejectReadback({ reason: "AMBIGUOUS_CALLSIGN" })` is `unable, ambiguous callsign`.
+- [x] **AC8 —** Vitest DOM-free; `npm test` green.
+- [x] **AC9 — Research:** Templates use `descend and maintain` / digit headings; a file comment cites JO 7110.65 (R01) vs vice tokens (R08).
 
 ## Test plan
 
