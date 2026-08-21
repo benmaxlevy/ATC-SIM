@@ -4,6 +4,8 @@
  * Legal now: KDEM JSON stub (`loadKdem`, `assertScenario`), Scenario types
  * including trainer-authored digital map geometry, and
  * `createWorldFromScenario` (6 explicit arrivals including DAL123 at heading 100).
+ * Bench: `spawnArrivals(world, n)` / `?traffic=30` places n jets on a downwind
+ * arc; default student scenario stays 4–8.
  *
  * Later: extra spawn mix, real CIFP airports (phase 4).
  *
@@ -26,4 +28,5 @@ export type {
 } from "./types";
 export { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN } from "./types";
 export { assertScenario, loadKdem } from "./load";
-export { createWorldFromScenario, spawnArrivals } from "./spawn";
+export { createWorldForSession, createWorldFromScenario, spawnArrivals } from "./spawn";
+export { parseTrafficCount } from "./trafficQuery";

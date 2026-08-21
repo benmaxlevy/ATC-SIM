@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { advanceWorld, createAccumulator } from "@core";
-import { createWorldFromScenario, loadKdem } from "@scenario";
+import { createWorldForSession, loadKdem, parseTrafficCount } from "@scenario";
 import {
   PpiPlaceholderId,
   createScopeView,
@@ -10,7 +10,15 @@ import {
   parseDigitalMap,
 } from "@scope";
 import { NullSpeechPort } from "@speech";
-import { SIM_HUD_ID, Shell, formatSimHud, syncStripCallsignColors } from "@ui";
+import {
+  FPS_DEBUG_ID,
+  SIM_HUD_ID,
+  Shell,
+  formatFpsDebug,
+  formatSimHud,
+  isFpsDebugEnabled,
+  syncStripCallsignColors,
+} from "@ui";
 import { bootSession } from "./app/boot-session";
 import { createApp } from "./app/create-app";
 import "./index.css";
@@ -18,7 +26,7 @@ import "./index.css";
 const kdem = loadKdem();
 const handles = createApp({
   speech: new NullSpeechPort(),
-  world: createWorldFromScenario(kdem),
+  world: createWorldForSession(kdem, parseTrafficCount(window.location.search)),
 });
 bootSession(handles, kdem, Date.now());
 
@@ -42,6 +50,7 @@ createRoot(root).render(
 
 const acc = createAccumulator();
 let lastFrameMs = 0;
+const fpsDebugOn = isFpsDebugEnabled(window.location.search);
 
 function paintCurrentPpi(): void {
   const canvas = document.getElementById(PpiPlaceholderId);
@@ -60,6 +69,12 @@ function onFrame(nowMs: number): void {
   const hud = document.getElementById(SIM_HUD_ID);
   if (hud) {
     hud.textContent = formatSimHud(handles.world);
+  }
+  if (fpsDebugOn && wallDtS > 0) {
+    const fpsHud = document.getElementById(FPS_DEBUG_ID);
+    if (fpsHud) {
+      fpsHud.textContent = formatFpsDebug(handles.world.aircraft.length, 1 / wallDtS);
+    }
   }
   requestAnimationFrame(onFrame);
 }

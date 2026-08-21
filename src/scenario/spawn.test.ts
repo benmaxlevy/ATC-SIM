@@ -1,5 +1,13 @@
 import { expect, test } from "vitest";
-import { assertScenario, createWorldFromScenario, loadKdem } from "@scenario";
+import { createWorld } from "@core";
+import {
+  assertScenario,
+  createWorldForSession,
+  createWorldFromScenario,
+  loadKdem,
+  parseTrafficCount,
+  spawnArrivals,
+} from "@scenario";
 import kdemJson from "./kdem.json";
 
 const SPAWN_X_NM = { min: 10, max: 22 };
@@ -70,6 +78,49 @@ test("loader rejects a fixture with duplicate callsigns (AC7)", () => {
     ),
   };
   expect(() => assertScenario(dup)).toThrow(/duplicate callsign/);
+});
+
+test("T02-12 AC1/AC5 — spawnArrivals(world, 30) spreads unique tracks on a downwind arc", () => {
+  const world = createWorld();
+  spawnArrivals(world, 30);
+  expect(world.aircraft).toHaveLength(30);
+  const callsigns = world.aircraft.map((ac) => ac.callsign);
+  expect(new Set(callsigns).size).toBe(30);
+  for (const callsign of callsigns) {
+    expect(callsign).toBe(callsign.toUpperCase());
+  }
+
+  const xs = world.aircraft.map((ac) => ac.xNm);
+  const ys = world.aircraft.map((ac) => ac.yNm);
+  expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(8);
+  expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(4);
+  for (let i = 0; i < world.aircraft.length; i += 1) {
+    for (let j = i + 1; j < world.aircraft.length; j += 1) {
+      const dx = world.aircraft[i]!.xNm - world.aircraft[j]!.xNm;
+      const dy = world.aircraft[i]!.yNm - world.aircraft[j]!.yNm;
+      expect(Math.hypot(dx, dy), `${callsigns[i]} vs ${callsigns[j]}`).toBeGreaterThan(0.3);
+    }
+  }
+  for (const ac of world.aircraft) {
+    expect(ac.headingDeg).toBe(90);
+    expect(ac.altitudeFt % 100).toBe(0);
+    expect(ac.intent.assignedHeadingDeg).toBe(ac.headingDeg);
+  }
+});
+
+test("T02-12 AC5 — createWorldForSession keeps 6 from JSON unless ?traffic= is set", () => {
+  const scenario = loadKdem();
+  expect(createWorldForSession(scenario, null).aircraft).toHaveLength(6);
+  expect(createWorldForSession(scenario, parseTrafficCount("?traffic=30")).aircraft).toHaveLength(
+    30,
+  );
+  expect(kdemJson.arrivals).toHaveLength(6);
+  expect(parseTrafficCount("")).toBeNull();
+  expect(parseTrafficCount("?debug=fps")).toBeNull();
+  expect(parseTrafficCount("?traffic=30")).toBe(30);
+  expect(parseTrafficCount("?debug=fps&traffic=30")).toBe(30);
+  expect(parseTrafficCount("?traffic=0")).toBeNull();
+  expect(parseTrafficCount("?traffic=abc")).toBeNull();
 });
 
 test("src/core does not import scenario JSON", () => {

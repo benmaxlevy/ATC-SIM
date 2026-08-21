@@ -26,7 +26,8 @@ test("T01-14 playable slice: main wires spawn, null speech, rAF, and resize pain
   }) as Record<string, string>;
   const main = sources["../main.tsx"];
   expect(main).toBeDefined();
-  expect(main).toMatch(/createWorldFromScenario/);
+  expect(main).toMatch(/createWorldForSession/);
+  expect(main).toMatch(/parseTrafficCount/);
   expect(main).toMatch(/NullSpeechPort/);
   expect(main).toMatch(/requestAnimationFrame/);
   expect(main).toMatch(/paintPpi/);

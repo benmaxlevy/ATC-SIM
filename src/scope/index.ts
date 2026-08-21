@@ -57,7 +57,9 @@ export {
   activeRingRadiiNm,
   buildLocalizerFeather,
   buildMapCache,
+  getMapCacheBuildCount,
   parseDigitalMap,
+  resetMapCacheBuildCount,
   reuseOrBuildMapCache,
 } from "./mapLayers";
 export type { DigitalMap, MapCache, MapLayerFlags, NmPoint } from "./mapLayers";

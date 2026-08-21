@@ -36,3 +36,5 @@ export {
   setSimRate,
 } from "./simControls";
 export type { SimControlKey } from "./simControls";
+export { FpsDebug } from "./FpsDebug";
+export { FPS_DEBUG_ID, formatFpsDebug, isFpsDebugEnabled } from "./fpsHud";

@@ -302,10 +302,22 @@ function runwayLabelPoint(
   return { x: screen.x, y: screen.y + 10 };
 }
 
+let mapCacheBuildCount = 0;
+
+/** Spy for T02-12: increments only when Path2D/geo is rebuilt, not on reuse. */
+export function getMapCacheBuildCount(): number {
+  return mapCacheBuildCount;
+}
+
+export function resetMapCacheBuildCount(): void {
+  mapCacheBuildCount = 0;
+}
+
 export function buildMapCache(
   input: MapCacheInput,
   key: string = buildMapCacheKey(input),
 ): MapCache {
+  mapCacheBuildCount += 1;
   const { digitalMap, camera, viewSize, layers, airportEastNm, airportNorthNm } = input;
   const ringRadiiNm = layers.showRings
     ? activeRingRadiiNm(camera.rangeNm, digitalMap.rangeRings)

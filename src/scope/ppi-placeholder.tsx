@@ -1,8 +1,9 @@
-import type { MouseEvent, PointerEvent, WheelEvent } from "react";
+import type { MouseEvent, PointerEvent, ReactNode, WheelEvent } from "react";
 
 export const PpiPlaceholderId = "ppi-placeholder";
 
 export interface PpiPlaceholderProps {
+  children?: ReactNode;
   onCanvasClick?: (event: MouseEvent<HTMLCanvasElement>) => void;
   onCanvasDoubleClick?: (event: MouseEvent<HTMLCanvasElement>) => void;
   onCanvasWheel?: (event: WheelEvent<HTMLCanvasElement>) => void;
@@ -19,6 +20,7 @@ export interface PpiPlaceholderProps {
  * scope-focus H toggles history. Not NAS STARS.
  */
 export function PpiPlaceholder({
+  children,
   onCanvasClick,
   onCanvasDoubleClick,
   onCanvasWheel,
@@ -42,6 +44,7 @@ export function PpiPlaceholder({
         onPointerUp={onCanvasPointerUp}
         onContextMenu={onCanvasContextMenu}
       />
+      {children}
     </div>
   );
 }

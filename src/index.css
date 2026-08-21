@@ -242,3 +242,14 @@ body,
   color: #e8edf5;
   font: inherit;
 }
+
+.fps-debug {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  pointer-events: none;
+  color: #9aa0a6;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}

@@ -44,13 +44,17 @@ FPS HUD: a tiny `FPS 59` in the DCB-lite or corner, **debug-only** (`?debug=fps`
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** A documented way exists to spawn exactly 30 arrivals without changing Command IR.
-- [ ] **AC2 —** Automated: 30-track render runs 60 times in CI without throwing; map cache is not rebuilt 60 times (spy ≤ number of camera changes, default 1).
-- [ ] **AC3 —** Automated: each track’s history length ≤ 5 after long stepWorld.
+- [x] **AC1 —** A documented way exists to spawn exactly 30 arrivals without changing Command IR.
+- [x] **AC2 —** Automated: 30-track render runs 60 times in CI without throwing; map cache is not rebuilt 60 times (spy ≤ number of camera changes, default 1).
+- [x] **AC3 —** Automated: each track’s history length ≤ 5 after long stepWorld.
 - [ ] **AC4 —** **Manual:** on Chrome + integrated GPU, 30 tracks, 5 s sample, p50 ≥ 55 FPS. Record GPU/CPU in the PR or ticket note.
-- [ ] **AC5 —** Default scenario remains 4–8 aircraft; 30 is opt-in.
-- [ ] **AC6 —** No WebGL context created (`getContext('webgl')` unused).
-- [ ] **AC7 — Research:** Bench chrome says **tracks**, not planes/sprites.
+- [x] **AC5 —** Default scenario remains 4–8 aircraft; 30 is opt-in.
+- [x] **AC6 —** No WebGL context created (`getContext('webgl')` unused).
+- [x] **AC7 — Research:** Bench chrome says **tracks**, not planes/sprites.
+
+## Notes
+
+AC4 skip-with-reason: Chrome + integrated GPU p50 sample cannot be run while the human is asleep. Automated CI budget (AC2/AC3) ships and passes. Re-run with `?traffic=30&debug=fps` on the student machine when awake.
 
 ## Test plan
 

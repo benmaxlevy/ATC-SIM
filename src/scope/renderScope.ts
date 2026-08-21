@@ -17,6 +17,10 @@
  * Draw order (phase README): background, rings, coastline, runway, localizer,
  * history, PTL, targets, leader lines, datablocks, selection box. Maps rebuild
  * on range/center/resize/layer toggle, not every rAF.
+ *
+ * Hot path (T02-12): reuse Path2D map cache — do not parse KDEM JSON per frame,
+ * do not rebuild maps 60 times for a static camera, do not fillText per
+ * character, history cap is 5 dots. Canvas2D only (no WebGL).
  */
 
 import type { Aircraft, World } from "@core";
@@ -176,7 +180,6 @@ function drawDatablock(
   targetX: number,
   targetY: number,
   view: ScopeView,
-  color: string,
 ): void {
   const lines = linesForDatablock(ac, trackDatablockMode(view, ac.id), view.modeCVisible);
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, DATABLOCK_LINE_HEIGHT_PX);
@@ -239,8 +242,7 @@ function drawTracks(
       continue;
     }
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
-    const color = trackColor(view, world, ac);
-    drawDatablock(ctx, ac, p.x, p.y, view, color);
+    drawDatablock(ctx, ac, p.x, p.y, view);
   }
 
   for (const ac of world.aircraft) {

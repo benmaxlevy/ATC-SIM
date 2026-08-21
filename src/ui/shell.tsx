@@ -16,6 +16,8 @@ import type { AppHandles } from "../app/create-app";
 import { CommandLine } from "./command-line";
 import { Disclaimer } from "./disclaimer";
 import { FlightStrips } from "./FlightStrips";
+import { FpsDebug } from "./FpsDebug";
+import { isFpsDebugEnabled } from "./fpsHud";
 import { SimControls } from "./sim-controls";
 import { submitCommand } from "./submitCommand";
 
@@ -34,6 +36,8 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   function refreshScopeUi(): void {
     setScopeUiTick((n) => n + 1);
   }
+
+  const fpsDebug = typeof window !== "undefined" && isFpsDebugEnabled(window.location.search);
 
   return (
     <div className="scope-shell" data-scenario={scenario.id} data-speech={app.speech.id}>
@@ -85,7 +89,9 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             panRef.current = null;
           }}
           onCanvasContextMenu={(event) => event.preventDefault()}
-        />
+        >
+          {fpsDebug ? <FpsDebug /> : null}
+        </PpiPlaceholder>
         <FlightStrips
           world={app.world}
           tracks={scopeView.tracks}
