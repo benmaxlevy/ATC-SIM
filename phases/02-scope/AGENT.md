@@ -58,6 +58,19 @@ If a canvas or chat summary disagrees with these files, **these files win**.
 | 12 | T02-12 | `phases/02-scope/tickets/T02-12-30-target-60fps-budget-test.md` |
 | 13 | T02-13 | `phases/02-scope/tickets/T02-13-phase-2-visual-acceptance-script.md` |
 
+**Stop after T02-13** unless the human asked for **TCW polish** (T02-14–21). Those tickets amend DCB-lite / HUD / FDB look. They may update named README rows (palette, datablock lines, DCB). They still must not clone full DCB, WX, PREF, STARS fonts, or OSM.
+
+| Order | ID | File |
+| --- | --- | --- |
+| 14 | T02-14 | `phases/02-scope/tickets/T02-14-video-map-catalog.md` |
+| 15 | T02-15 | `phases/02-scope/tickets/T02-15-trainer-chrome-off-tcw.md` |
+| 16 | T02-16 | `phases/02-scope/tickets/T02-16-dcb-cell-grid.md` |
+| 17 | T02-17 | `phases/02-scope/tickets/T02-17-dcb-maps-range-rr-ldr-brite.md` |
+| 18 | T02-18 | `phases/02-scope/tickets/T02-18-position-symbol-and-history-contrast.md` |
+| 19 | T02-19 | `phases/02-scope/tickets/T02-19-datablock-scratchpad-type-leader-length.md` |
+| 20 | T02-20 | `phases/02-scope/tickets/T02-20-ssa-status-and-on-ppi-lists.md` |
+| 21 | T02-21 | `phases/02-scope/tickets/T02-21-tcw-visual-acceptance.md` |
+
 Each feature ticket **wires its own keys**. T02-09 is the help overlay + routing tests, not the first place keys exist.
 
 ## Definition of done (whole phase)
@@ -68,8 +81,8 @@ Each feature ticket **wires its own keys**. T02-09 is the help overlay + routing
 - F1 help shows the Windows keymap and the line `TRAINER KEYS — NOT CRC`.
 - DCB-lite and strips work with mouse.
 - 30-target budget recorded.
-- Visual acceptance script (T02-13) completed.
-- `npm test` green. Training/entertainment disclaimer still visible.
+- Visual acceptance script (T02-13) completed. Polish gate is T02-21 if those tickets were in scope.
+- `npm test` green. Training/entertainment disclaimer still reachable (banner or F1 / first-run after T02-15).
 
 ## If you are blocked
 

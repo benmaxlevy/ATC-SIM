@@ -2,7 +2,7 @@
 
 ## Swarm (preferred for a long unattended run)
 
-Paste [`SWARM.md`](SWARM.md) into a **new** agent. That agent only orchestrates. Captains spawn ticket workers (max 3). **This swarm config stops after phase 2** (no voice). Leaf prompt: [`SWARM-TICKET-WORKER.md`](SWARM-TICKET-WORKER.md). Captain: [`SWARM-CAPTAIN.md`](SWARM-CAPTAIN.md). Status: [`SWARM-STATUS.md`](SWARM-STATUS.md).
+Paste [`SWARM.md`](SWARM.md) into a **new** agent. That agent only orchestrates. Captains spawn ticket workers (max 3). **Current swarm config is T02-14–21 TCW polish** (STARS-like glass). Phases 0–2 original exit are already done; do not start voice. Leaf prompt: [`SWARM-TICKET-WORKER.md`](SWARM-TICKET-WORKER.md). Captain: [`SWARM-CAPTAIN.md`](SWARM-CAPTAIN.md). Status: [`SWARM-STATUS.md`](SWARM-STATUS.md).
 
 ## Solo one phase
 

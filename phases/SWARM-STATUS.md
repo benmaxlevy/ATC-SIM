@@ -1,5 +1,42 @@
 # Swarm status
 
+## Second swarm started — TCW polish (T02-14–21)
+
+Orchestrator started **2026-08-21**. First-swarm notes below stay. Resume polish; do **not** replay T00-*, T01-*, or T02-01–13.
+
+**Working tree at start:** dirty on `ticket/video-maps-json-catalog` (same SHA as `master`) with polish planning + uncommitted T02-14 `src/`. Orchestrator split them: planning lands on `master` this commit; T02-14 source is parked on `ticket/T02-14-video-map-catalog` for the captain to **land**, not re-implement. Ignore junk branches `list` / `ls`.
+
+## Config (frozen for this run)
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement **T02-14 → T02-21** until the phase 2 README **Phase 2 polish checklist** is green (TCW / STARS-*like* grammar) |
+| Feel | Cheap STARS trainer / vice-like **TCW**, not a web app on a radar. Match *grammar* (dark PPI, green DCB cells, video maps, FDB, SSA). **Do not** pixel-clone a NY STARS screenshot or Raytheon internals |
+| Stop | **Do not start phase 3, 4, or 5.** No `speech-api`, no PTT, no T03-* |
+| Do not redo | T00-*, T01-*, T02-01–T02-13 (already merged) |
+| Max ticket workers in flight | **3** |
+| Merge lock | **Only the phase captain** merges to `master` (`--no-ff`) |
+| Model | **cursor grok 4.6 high only.** Every Task spawn sets `model: "cursor-grok-4.6-high"` |
+| Paid STT/TTS | Forbidden |
+
+## Progress (this run)
+
+| Phase | Status | Notes |
+| --- | --- | --- |
+| 0 Slice | **GREEN** (first swarm) | Do not redo |
+| 1 Closed loop | **GREEN** (first swarm) | Do not redo |
+| 2 Scope original (T02-01–13) | **GREEN** (first swarm) | Confirmed on `master` |
+| 2 Scope polish (T02-14–21) | **IN PROGRESS** | Captain spawned |
+| 3 Voice | **out of scope this run** | |
+| 4 Procedures | **out of scope this run** | |
+| 5 Training | **out of scope this run** | |
+
+## Log (this run)
+
+- 2026-08-21: Second swarm started. T02-01–13 on `master`. Planning tickets T02-14–21 committed to `master`. T02-14 WIP parked on `ticket/T02-14-video-map-catalog`. Spawning phase 2 polish captain (`cursor-grok-4.6-high`).
+
+---
+
 ## FIRST SWARM COMPLETE — stopped before voice
 
 Phases **0 → 1 → 2** are green on `master`. Orchestrator `npm test`: **429 passed, 1 skipped**. No `speech-api/`, no PTT, no T03-* commits. This swarm is done.

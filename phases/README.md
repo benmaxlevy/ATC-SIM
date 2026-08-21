@@ -6,7 +6,7 @@ This folder is the source of truth for build order. Cursor canvases are summarie
 
 **To start work:**
 
-- **Swarm (hours, many subagents):** paste [`phases/SWARM.md`](SWARM.md) into a new agent. This run does **0 → 1 → 2** only (max 3 ticket workers, captains merge).
+- **Swarm (hours, many subagents):** paste [`phases/SWARM.md`](SWARM.md) into a new agent. The first swarm does **0 → 1 → 2** (T02-01–13). Phase 2 **polish** is T02-14–21 in `02-scope/README.md` (separate run).
 - **Solo one phase:** paste that phase’s `AGENT.md` (see [LAUNCH.md](LAUNCH.md)).
 
 Git: always-on project rule `.cursor/rules/ticket-git-workflow.mdc` — one `ticket/Txx-yy-…` branch per ticket, progressive commits, `--no-ff` merge into `master` when the ticket is done. Do not put ticket work on `master` directly.
@@ -23,12 +23,12 @@ Do not start phase N until the previous phase README's **Phase exit** checklist 
 | --- | --- | --- | --- | --- |
 | 0 Slice | [00-slice](00-slice/) | 10 | Repo boots, contracts frozen, KDEM stub, echoing command line | — |
 | 1 Closed loop | [01-closed-loop](01-closed-loop/) | 14 | Type `DAL123 H270`, text readback, aircraft turns | 0 |
-| 2 Scope | [02-scope](02-scope/) | 13 | STARS-like PPI: maps, datablocks, filters, a few keys | 1 |
+| 2 Scope | [02-scope](02-scope/) | 21 | STARS-like PPI: maps, datablocks, filters, a few keys | 1 |
 | 3 Voice | [03-voice](03-voice/) | 14 | PTT → our speech-api → same parser → spoken readback | 1 (2 preferred) |
 | 4 Procedures | [04-procedures](04-procedures/) | 12 | ILS intercept, DEMO ONE STAR, lite CA/MSAW | 2 |
 | 5 Training | [05-training](05-training/) | 12 | Practice score, replay, optional bad readbacks | 3 **and** 4 |
 
-**75 tickets.** Phase 3 may overlap the tail of phase 2 (`SpeechPort` is isolated). Phase 5 must not start until 3 and 4 both exit. Skip `T03-11` (whisper-wasm), `T03-14` (Path C `/parse`), and `T04-11` (wind) unless you want them; none are required to exit their phase. Voice quality path is **our** `speech-api` (HF weights, local inference) — no paid STT/TTS vendors. Parse is one stage list (`parse-pipeline.md`).
+**83 tickets.** Phase 3 may overlap the tail of phase 2 (`SpeechPort` is isolated). Phase 5 must not start until 3 and 4 both exit. Skip `T03-11` (whisper-wasm), `T03-14` (Path C `/parse`), and `T04-11` (wind) unless you want them; none are required to exit their phase. Phase 2 **original** exit is T02-01–13; T02-14–21 are TCW polish (not voice). Voice quality path is **our** `speech-api` (HF weights, local inference) — no paid STT/TTS vendors. Parse is one stage list (`parse-pipeline.md`).
 
 ## Shared contracts
 
@@ -113,6 +113,14 @@ Implement **T01-08 before T01-07** (see that phase `AGENT.md`).
 | T02-11 | Flight strips window |
 | T02-12 | 30-target 60 FPS budget test |
 | T02-13 | Phase 2 visual acceptance script |
+| T02-14 | Video map catalog (per-airport JSON) |
+| T02-15 | Trainer chrome off the TCW |
+| T02-16 | DCB cell grid (visual grammar) |
+| T02-17 | DCB MAPS, RANGE/CNTR, RR, LDR, CHAR SIZE, BRITE |
+| T02-18 | Position symbol and history contrast |
+| T02-19 | Datablock scratchpad, type, leader length |
+| T02-20 | SSA status and on-PPI lists |
+| T02-21 | TCW visual acceptance script |
 
 ### Phase 3 — Voice
 

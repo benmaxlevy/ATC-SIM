@@ -22,7 +22,7 @@ Workspace: `c:\Users\Ben\Documents\ATC-SIM`
 - `phases/_shared/non-goals.md`
 - The parent phase `README.md` frozen decisions
 
-Shared files win. Do not reopen freezes. Do not implement a later phase “while you are here.”
+Shared files win. Do not reopen Command IR / SpeechPort / parser tokens. **TCW polish tickets (T02-14–21)** may amend *named* rows in `phases/02-scope/README.md` when that ticket says so (palette, FDB lines, DCB). Do not implement a later phase “while you are here.” No OSM, no STARS font, no WX mosaic. Scope/DCB never emit Command IR.
 
 ## Git
 

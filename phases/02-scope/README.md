@@ -401,7 +401,37 @@ Implement in this order unless a ticket says it can run in parallel. IDs are sta
 | [T02-10](tickets/T02-10-display-control-bar-lite.md) | Display control bar lite | P1 | M | T02-01, T02-02, T02-06, T02-07 | After 06 |
 | [T02-11](tickets/T02-11-flight-strips-window.md) | Flight strips window | P1 | M | T01-02, T01-11 | After 01, parallel with maps |
 | [T02-12](tickets/T02-12-30-target-60fps-budget-test.md) | 30-target 60fps budget test | P1 | M | T02-02–05 | After 05; before 13 |
-| [T02-13](tickets/T02-13-phase-2-visual-acceptance-script.md) | Phase 2 visual acceptance script | P0 | S | T02-01–12 | Last |
+| [T02-13](tickets/T02-13-phase-2-visual-acceptance-script.md) | Phase 2 visual acceptance script | P0 | S | T02-01–12 | Last of original exit |
+
+### Phase 2 polish (after original exit)
+
+Original T02-01–13 **stay green**. These tickets amend DCB-lite / HUD / FDB *look* so the glass reads as a TCW, not a web trainer. They do **not** clone full DCB, WX, PREF, SHIFT, CSA, CRDA, FMA, STARS fonts, or OSM.
+
+Implement **T02-14 → T02-21**. Do not skip T02-16 to “just add MAPS.”
+
+| ID | Title | Pri | Size | Depends on | Parallel OK? |
+| --- | --- | --- | --- | --- | --- |
+| [T02-14](tickets/T02-14-video-map-catalog.md) | Video map catalog per airport | P0 | M | T02-02 | — |
+| [T02-15](tickets/T02-15-trainer-chrome-off-tcw.md) | Trainer chrome off the TCW | P0 | M | T02-09, T02-10 | After 14 or parallel |
+| [T02-16](tickets/T02-16-dcb-cell-grid.md) | DCB cell grid visual grammar | P0 | L | T02-10, T02-15 | After 15 |
+| [T02-17](tickets/T02-17-dcb-maps-range-rr-ldr-brite.md) | DCB MAPS / RANGE / RR / LDR / CHAR / BRITE | P0 | L | T02-14, T02-16, T02-05, T02-06 | After 16 |
+| [T02-18](tickets/T02-18-position-symbol-and-history-contrast.md) | Position symbol and history contrast | P1 | M | T02-03, T02-08 | Parallel with 15–16 |
+| [T02-19](tickets/T02-19-datablock-scratchpad-type-leader-length.md) | Datablock scratchpad / type / leader length | P1 | M | T02-04, T02-05, T02-18 | After 18 |
+| [T02-20](tickets/T02-20-ssa-status-and-on-ppi-lists.md) | SSA status and on-PPI lists | P1 | L | T02-11, T02-15, T02-06 | After 15 |
+| [T02-21](tickets/T02-21-tcw-visual-acceptance.md) | TCW visual acceptance script | P0 | S | T02-14–20 | Last |
+
+**Polish waves (max 3 in flight):**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-14 | Original phase 2 exit |
+| B | T02-15, T02-18 | A (18 also T02-03/08 — already on master) |
+| C | T02-16 | T02-15 |
+| D | T02-17, T02-19 | C; 17 also T02-14; 19 also T02-18 |
+| E | T02-20 | T02-15 + T02-11 |
+| F | T02-21 | D + E |
+
+## Phase exit checklist
 
 **Key wiring rule:** T02-09 does **not** invent the keymap after the fact. Each feature ticket (01, 05, 06, 07, 08, history in 03, datablock toggle in 04) binds its always-on or scope-focus keys. T02-09 adds the F1 overlay, the exported table, and tests that scope keys never hit the parser.
 
@@ -426,11 +456,26 @@ Do not start phase 3 or 4 until every box is green. Phase 3 *may* overlap the ta
 - [ ] T02-13 manual script signed off: “looks like a terminal radar, not a game map.” skip-with-reason: human asleep; no GPU/visual operator; live Chrome Windows script not watched. Automated tests prove the items above; do not invent a visual pass.
 - [x] `npm test` green. No Command IR type changes.
 
+### Phase 2 polish checklist (T02-14–21)
+
+Do not call the TCW pass done until:
+
+- [ ] Video maps load from `video-maps/<ICAO>/` (T02-14).
+- [ ] No disclaimer banner / tutorial footer on the glass (T02-15).
+- [ ] DCB is a green cell grid, not an HTML toolbar (T02-16).
+- [ ] MAPS / RANGE / RR / LDR / CHAR SIZE / BRITE trainer subset (T02-17).
+- [ ] Position symbol + history contrast (T02-18).
+- [ ] FDB extra line + leader length (T02-19).
+- [ ] SSA on PPI; strips not a labeled right dock (T02-20).
+- [ ] T02-21 manual script: cheap STARS trainer, not a web HUD.
+- [ ] Still no WX mosaic, PREF, SHIFT, CSA, CRDA, FMA, OSM, STARS font.
+
 ## Launching an agent
 
 1. Confirm phase 1 README exit is green.
 2. Paste **[AGENT.md](AGENT.md)** as the whole-phase prompt, **or** paste one ticket and say: implement only this ticket, stop when ACs are checked.
 3. Work T02-01 → T02-13 as in the table. Do not skip T02-12 to “make it pretty.”
+4. After original exit: polish T02-14 → T02-21 (DCB cells, chrome, SSA). Still not a Raytheon clone.
 
 ## Glossary reminders
 

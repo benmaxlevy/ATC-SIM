@@ -46,6 +46,7 @@ Read **R07** DCB, **R06** (feature names to *not* put on the bar: CRDA, weather)
 ## Out of scope
 
 - Full DCB layout clone, collapsible second row, brightness sliders, charsize, overlap with FMA, dragging the bar, dual-monitor.
+- **Follow-ups:** green cell-grid DCB is **T02-16**; MAPS/RR/LDR/CHAR/BRITE is **T02-17**. Do not do those in this ticket.
 
 ## Implementation notes
 
