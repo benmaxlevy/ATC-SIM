@@ -1,5 +1,22 @@
 # Swarm status
 
+## THIRD SWARM COMPLETE — phase 3 voice
+
+Phases **0 → 1 → 2 → 3** are green on `master`. Orchestrator `npm test`: **683 passed, 1 skipped**. `speech-api/` exists; boot default is **http → our speech-api** (`127.0.0.1:8090`). Web Speech is opt-in only. T03-11 and T03-14 were **not** implemented. Path C is off. No paid vendor STT/TTS/LLM. This swarm is done.
+
+**speech-api p50:** not measured. `GET http://127.0.0.1:8090/health` timed out during T03-12. Do not treat as a 1.5 s pass.
+
+**Leftover Chrome / mic (human `npm run dev` + speech-api up):** mic grant/deny; live PTT phrases; radio FX listen; Voice settings switch; ≥ 7 http utterances for p50. Details in captain notes below.
+
+**Remaining work (next paste of `SWARM.md` with config changed):**
+
+| Phase | Folder | What it is |
+| --- | --- | --- |
+| 4 Procedures | `phases/04-procedures/` | ILS intercept, DEMO ONE STAR, lite CA/MSAW |
+| 5 Training | `phases/05-training/` | Practice score, replay, optional bad readbacks |
+
+Do not start those until a new swarm paste. Manual Chrome leftovers stay in the phase 3 captain notes below.
+
 ## Third swarm started — Phase 3 voice (T03-01–10, 12, 13)
 
 Orchestrator started **2026-08-21**. First-swarm and second-swarm (TCW polish) notes below stay. Start phase 3 voice; do **not** replay T00-*, T01-*, T02-01–13, or T02-14–21. Do **not** start phase 4 or 5. Skip **T03-11** and **T03-14**.
@@ -38,6 +55,7 @@ Orchestrator started **2026-08-21**. First-swarm and second-swarm (TCW polish) n
 - 2026-08-21: Third swarm started. T01-* and T02-01–13 on `master`. No `speech-api/`, no T03-* commits. Spawning phase 3 voice captain (`cursor-grok-4.6-high`). Skip T03-11 and T03-14.
 - 2026-08-21: First captain interrupted after Wave C partial. On `master`: T03-01, 02, 03, 04, 05, 06, 13. Boot still `NullSpeechPort`. Remaining: T03-08, 07, 09, 10, 12. Re-spawning captain from this `master`.
 - 2026-08-21: Resume captain: merged T03-08, 07, 09, 10, 12 `--no-ff`. `npm test` / `npm run ci` green. **PHASE EXIT GREEN** with Chrome/mic/speech-api p50 leftover. Did not start phase 4. Did not spawn T03-11 or T03-14.
+- 2026-08-21: Orchestrator `npm test` on `master`: 683 passed, 1 skipped. `speech-api/` present. Boot http default. **THIRD SWARM COMPLETE — phase 3 voice.** Stopped before phase 4/5.
 
 ## Phase 3 voice captain notes (resume)
 
