@@ -1,5 +1,4 @@
 import { expect, test } from "vitest";
-import { readFileSync } from "node:fs";
 import { makeTestAircraft } from "@core";
 import { applyIntent } from "@pilot";
 import {
@@ -141,6 +140,11 @@ test("AC9 — formatters and font say datablock / Mode C, not label; FDB/LDB + o
   expect(DATABLOCK_FONT).toContain("monospace");
   expect(DATABLOCK_FONT_PX).toBe(12);
   expect(SCOPE_FONT_STACK).toContain("IBM Plex Mono");
-  const html = readFileSync(new URL("../../index.html", import.meta.url), "utf8");
+  const htmlSources = import.meta.glob("../../index.html", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  const html = htmlSources["../../index.html"] ?? "";
   expect(html).toMatch(/IBM\+Plex\+Mono/);
 });

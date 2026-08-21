@@ -13,10 +13,7 @@ import {
   stripsFromWorld,
 } from "./flightStripModel";
 
-function sample(
-  callsign: string,
-  extras: Partial<Parameters<typeof createAircraft>[0]> = {},
-) {
+function sample(callsign: string, extras: Partial<Parameters<typeof createAircraft>[0]> = {}) {
   return createAircraft({
     id: extras.id ?? `ac-${callsign.toLowerCase()}`,
     callsign,
