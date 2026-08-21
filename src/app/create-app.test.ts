@@ -4,6 +4,7 @@ import {
   NullSpeechPort,
   createPttCaptureController,
   type AudioClip,
+  type ReadbackPlayer,
   type SpeechPort,
   type Transcript,
 } from "@speech";
@@ -316,6 +317,107 @@ test("T03-08 — PTT-down clears the status line", async () => {
   await handles.voiceLoop.handlePttEvent({ type: "ptt-down" });
   expect(lines).toEqual(["Microphone blocked — allow in browser settings", null]);
   stop();
+  handles.ptt.dispose();
+  handles.voiceLoop.dispose();
+});
+
+function instantPlayer(): ReadbackPlayer {
+  const now = (): number =>
+    typeof performance !== "undefined" && typeof performance.now === "function"
+      ? performance.now()
+      : Date.now();
+  return {
+    playing: false,
+    async warmUp() {},
+    async playPcm(_clip, hooks) {
+      hooks?.onAudioStart?.(now());
+      return { ok: true };
+    },
+    async playBrowser(_text, _voiceId, hooks) {
+      hooks?.onAudioStart?.(now());
+      return { ok: true };
+    },
+    stop() {},
+    setConnectSource() {},
+  };
+}
+
+test("T03-09 — overlay defaults on and setLatencyOverlayVisible hides it", () => {
+  const handles = createApp({ speech: new NullSpeechPort() });
+  expect(handles.getLatencyOverlayVisible()).toBe(true);
+  const seen: boolean[] = [];
+  const stop = handles.subscribeLatencyOverlay((state) => {
+    seen.push(state.visible);
+    expect(state.snapshot.backendId).toBe("null");
+  });
+  handles.setLatencyOverlayVisible(false);
+  expect(handles.getLatencyOverlayVisible()).toBe(false);
+  expect(seen).toEqual([true, false]);
+  stop();
+  handles.ptt.dispose();
+  handles.voiceLoop.dispose();
+});
+
+test("T03-09 — successful utterance logs voice.latency with both wall-clock marks", async () => {
+  const { world } = dalWorld();
+  const handles = createApp({
+    speech: fakePort("turn left heading two seven zero"),
+    world,
+    ptt: createPttCaptureController({ onEvent: () => {}, attachTo: null }),
+    readbackPlayer: instantPlayer(),
+  });
+  const overlays: Array<{ stt: number | null; aud: number | null; n: number }> = [];
+  const stop = handles.subscribeLatencyOverlay((state) => {
+    overlays.push({
+      stt: state.snapshot.lastTranscriptMs,
+      aud: state.snapshot.lastAudioStartMs,
+      n: state.snapshot.sampleCount,
+    });
+  });
+
+  await handles.voiceLoop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  const latency = handles.log.byType("voice.latency");
+  expect(latency).toHaveLength(1);
+  expect(latency[0]?.pttUpToTranscriptMs).toBeGreaterThanOrEqual(0);
+  expect(latency[0]?.pttUpToAudioStartMs).toBeGreaterThanOrEqual(0);
+  expect(latency[0]?.pttUpToAudioStartMs).toBeGreaterThanOrEqual(latency[0]!.pttUpToTranscriptMs!);
+  expect(latency[0]?.backendId).toBe("fake");
+  expect(overlays.at(-1)?.n).toBe(1);
+  expect(overlays.at(-1)?.aud).toBeGreaterThanOrEqual(0);
+  stop();
+  handles.ptt.dispose();
+  handles.voiceLoop.dispose();
+});
+
+test("T03-09 — STT failure logs transcript_ms and null audio-start", async () => {
+  const port: SpeechPort = {
+    id: "http",
+    async transcribe() {
+      throw new Error("radio down");
+    },
+    async synthesize() {
+      return nonEmptyClip();
+    },
+  };
+  const handles = createApp({
+    speech: port,
+    ptt: createPttCaptureController({ onEvent: () => {}, attachTo: null }),
+  });
+
+  await handles.voiceLoop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  const latency = handles.log.byType("voice.latency");
+  expect(latency).toHaveLength(1);
+  expect(latency[0]?.pttUpToTranscriptMs).toBeGreaterThanOrEqual(0);
+  expect(latency[0]?.pttUpToAudioStartMs).toBeNull();
+  expect(latency[0]?.backendId).toBe("http");
   handles.ptt.dispose();
   handles.voiceLoop.dispose();
 });

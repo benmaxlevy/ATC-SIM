@@ -1,8 +1,9 @@
 import type { Command } from "../command/types";
 
 /**
- * Append-only session events for phases 0–1.
- * Extra types (speech, spawn) stay out so phase 1 can switch on a stable union.
+ * Append-only session events.
+ * Phase 1 union is session.started / command.accepted / command.rejected.
+ * T03-09 adds voice.latency (wall-clock PTT metrics; not sim time).
  */
 export type SessionEvent =
   | {
@@ -29,4 +30,14 @@ export type SessionEvent =
       reason: string;
       /** Required when `command` is null (parse miss). */
       sourceText?: string;
+    }
+  | {
+      type: "voice.latency";
+      atSimMs: number;
+      atWallMs: number;
+      /** PTT-up → transcript (wall ms). null if STT never finished. */
+      pttUpToTranscriptMs: number | null;
+      /** PTT-up → first audible readback start. null if TTS never started. */
+      pttUpToAudioStartMs: number | null;
+      backendId: string;
     };

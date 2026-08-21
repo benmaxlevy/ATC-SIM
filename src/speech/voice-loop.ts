@@ -83,6 +83,11 @@ export interface VoiceLoopOptions {
   /** Parse miss after a transcript — log `command.rejected` from the app shell. */
   onParseMiss?: (sourceText: string, error: string) => void | Promise<void>;
   onMetrics?: (metrics: VoiceUtteranceMetrics) => void;
+  /**
+   * Once per PTT-up utterance after STT/TTS have settled (audio-start may still
+   * be null). Overlay may also see live {@link onMetrics} at play-start.
+   */
+  onUtteranceComplete?: (metrics: VoiceUtteranceMetrics) => void;
   /** Injected in tests. Default plays PCM (dry) or browser TTS. */
   readbackPlayer?: ReadbackPlayer;
   /** TTS voice id. Default {@link DEFAULT_READBACK_VOICE_ID}. */
@@ -160,6 +165,7 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly onStatus?: (event: VoiceStatusEvent | null) => void;
   private readonly onParseMiss?: (sourceText: string, error: string) => void | Promise<void>;
   private readonly onMetrics?: (metrics: VoiceUtteranceMetrics) => void;
+  private readonly onUtteranceComplete?: (metrics: VoiceUtteranceMetrics) => void;
   private readonly getVoiceId: () => string;
   private readonly gate = new TransmitGate();
   readonly readbackPlayer: ReadbackPlayer;
@@ -177,6 +183,7 @@ class VoiceLoopImpl implements VoiceLoop {
     this.onStatus = options.onStatus;
     this.onParseMiss = options.onParseMiss;
     this.onMetrics = options.onMetrics;
+    this.onUtteranceComplete = options.onUtteranceComplete;
     this.getVoiceId = options.getVoiceId ?? (() => options.voiceId ?? DEFAULT_READBACK_VOICE_ID);
     this.readbackPlayer = options.readbackPlayer ?? createReadbackPlayer({ now: this.now });
   }
@@ -263,7 +270,7 @@ class VoiceLoopImpl implements VoiceLoop {
   private async onPttUp(result: PttUpResult): Promise<void> {
     if (result.kind === "empty") {
       this.lastMetrics = markPttUp(this.now());
-      this.emitMetrics();
+      this.finishUtteranceMetrics();
       this.syncLock("utterance-failed");
       this.emitStatus({ code: "empty_clip" });
       return;
@@ -284,7 +291,7 @@ class VoiceLoopImpl implements VoiceLoop {
       if (this.gate.locked) {
         this.syncLock("utterance-failed");
       }
-      this.emitMetrics();
+      this.finishUtteranceMetrics();
     }
   }
 
@@ -293,6 +300,7 @@ class VoiceLoopImpl implements VoiceLoop {
     try {
       transcript = await this.finishTranscript(clip);
     } catch (err) {
+      recordTranscriptLatency(metrics, this.now());
       this.emitStatus(statusFromTranscribeError(err));
       return;
     }
@@ -300,6 +308,7 @@ class VoiceLoopImpl implements VoiceLoop {
       return;
     }
     recordTranscriptLatency(metrics, this.now());
+    this.emitMetrics();
 
     if (transcript.confidence < this.confidenceThreshold) {
       this.emitStatus({
@@ -403,6 +412,13 @@ class VoiceLoopImpl implements VoiceLoop {
   private emitMetrics(): void {
     if (this.lastMetrics) {
       this.onMetrics?.(this.lastMetrics);
+    }
+  }
+
+  private finishUtteranceMetrics(): void {
+    this.emitMetrics();
+    if (this.lastMetrics) {
+      this.onUtteranceComplete?.(this.lastMetrics);
     }
   }
 }

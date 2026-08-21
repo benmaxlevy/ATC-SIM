@@ -1,16 +1,21 @@
-import { SessionLog, createWorld, type World } from "@core";
+import { SessionLog, createWorld, type SessionEvent, type World } from "@core";
 import { parseCommand } from "@parse";
 import { handleRadioCommand } from "@pilot";
 import {
+  VoiceLatencyTracker,
   createPttCaptureController,
   createVoiceLoop,
   shouldLogVoiceReject,
   type PttCaptureController,
   type PttCaptureEvent,
+  type ReadbackPlayer,
   type SpeechPort,
   type VoiceLoop,
+  type VoiceSessionSnapshot,
   type VoiceStatusEvent,
+  type VoiceUtteranceMetrics,
 } from "@speech";
+import { LATENCY_OVERLAY_DEFAULT_VISIBLE } from "../ui/latency-overlay";
 import { formatVoiceStatus } from "../ui/voice-status";
 
 export interface AppDeps {
@@ -23,6 +28,13 @@ export interface AppDeps {
   onPttEvent?: (event: PttCaptureEvent) => void;
   /** Injected in tests. Default wires capture → parse → existing pilot. */
   voiceLoop?: VoiceLoop;
+  /** Injected in tests so PTT-up → audio-start can resolve without Web Audio. */
+  readbackPlayer?: ReadbackPlayer;
+}
+
+export interface LatencyOverlayState {
+  visible: boolean;
+  snapshot: VoiceSessionSnapshot;
 }
 
 export interface AppHandles {
@@ -33,6 +45,10 @@ export interface AppHandles {
   voiceLoop: VoiceLoop;
   /** Command-line copy (formatted) or `null` to clear. */
   subscribeVoiceStatus(listener: (status: string | null) => void): () => void;
+  /** Last utterance + session p50. T03-10 persists the visibility toggle. */
+  subscribeLatencyOverlay(listener: (state: LatencyOverlayState) => void): () => void;
+  setLatencyOverlayVisible(visible: boolean): void;
+  getLatencyOverlayVisible(): boolean;
 }
 
 function selectedCallsignFromWorld(world: World): string | null {
@@ -58,6 +74,23 @@ function logVoiceReject(log: SessionLog, world: World, event: VoiceStatusEvent):
   });
 }
 
+function logVoiceLatency(
+  log: SessionLog,
+  world: World,
+  metrics: VoiceUtteranceMetrics,
+  backendId: string,
+): void {
+  const event: SessionEvent = {
+    type: "voice.latency",
+    atSimMs: world.simTimeMs,
+    atWallMs: Date.now(),
+    pttUpToTranscriptMs: metrics.pttUpToTranscriptMs,
+    pttUpToAudioStartMs: metrics.pttUpToAudioStartMs,
+    backendId,
+  };
+  log.append(event);
+}
+
 export function createApp(deps: AppDeps): AppHandles {
   if (!deps.speech) {
     throw new Error("createApp requires deps.speech");
@@ -66,11 +99,30 @@ export function createApp(deps: AppDeps): AppHandles {
   const log = new SessionLog();
   let ptt: PttCaptureController | undefined = deps.ptt;
   const voiceStatusListeners = new Set<(status: string | null) => void>();
+  const latencyListeners = new Set<(state: LatencyOverlayState) => void>();
+  const tracker = new VoiceLatencyTracker(deps.speech.id);
+  let latencyOverlayVisible = LATENCY_OVERLAY_DEFAULT_VISIBLE;
 
   function emitVoiceStatus(status: string | null): void {
     for (const listener of voiceStatusListeners) {
       listener(status);
     }
+  }
+
+  function latencyState(): LatencyOverlayState {
+    return { visible: latencyOverlayVisible, snapshot: tracker.snapshot() };
+  }
+
+  function emitLatency(): void {
+    const state = latencyState();
+    for (const listener of latencyListeners) {
+      listener(state);
+    }
+  }
+
+  function observeMetrics(metrics: VoiceUtteranceMetrics): void {
+    tracker.observe(metrics);
+    emitLatency();
   }
 
   const voiceLoop =
@@ -98,6 +150,12 @@ export function createApp(deps: AppDeps): AppHandles {
         emitVoiceStatus(formatVoiceStatus(event));
         logVoiceReject(log, world, event);
       },
+      onMetrics: observeMetrics,
+      onUtteranceComplete: (metrics) => {
+        observeMetrics(metrics);
+        logVoiceLatency(log, world, metrics, deps.speech.id);
+      },
+      readbackPlayer: deps.readbackPlayer,
     });
 
   ptt =
@@ -121,6 +179,20 @@ export function createApp(deps: AppDeps): AppHandles {
       return () => {
         voiceStatusListeners.delete(listener);
       };
+    },
+    subscribeLatencyOverlay(listener) {
+      latencyListeners.add(listener);
+      listener(latencyState());
+      return () => {
+        latencyListeners.delete(listener);
+      };
+    },
+    setLatencyOverlayVisible(visible) {
+      latencyOverlayVisible = visible;
+      emitLatency();
+    },
+    getLatencyOverlayVisible() {
+      return latencyOverlayVisible;
     },
   };
 }

@@ -45,17 +45,17 @@ Do **not** fail the phase on Web Speech quality or slowness. Overlay may color h
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Given a successful fake-port utterance with play start, then both metrics are finite numbers `>= 0` and `audio_start >= transcript` (allow equal if same tick).
-- [ ] **AC2 —** Given STT failure, then `ptt_up_to_transcript_ms` is still logged and `ptt_up_to_audio_start_ms` is `null`.
-- [ ] **AC3 —** Given an odd-length series of samples, then p50 is the middle value (unit test on the helper).
-- [ ] **AC4 —** Overlay (when enabled) shows last transcript ms, last audio-start ms (or `—`), and p50.
-- [ ] **AC5 —** Automated test exists for the percentile helper and/or metric snapshot (happy path).
+- [x] **AC1 —** Given a successful fake-port utterance with play start, then both metrics are finite numbers `>= 0` and `audio_start >= transcript` (allow equal if same tick).
+- [x] **AC2 —** Given STT failure, then `ptt_up_to_transcript_ms` is still logged and `ptt_up_to_audio_start_ms` is `null`.
+- [x] **AC3 —** Given an odd-length series of samples, then p50 is the middle value (unit test on the helper).
+- [x] **AC4 —** Overlay (when enabled) shows last transcript ms, last audio-start ms (or `—`), and p50.
+- [x] **AC5 —** Automated test exists for the percentile helper and/or metric snapshot (happy path).
 
 ## Test plan
 
-- Unit: p50 `[1,3,2] → 2`; `[1,2,3,4] → 2.5` or `2` — pick inclusive median and document (recommend average of two middle for even, or lower-middle; **document one**).
+- Unit: p50 `[1,3,2] → 2`; `[1,2,3,4] → 2.5` — inclusive median (average of two middle values when even). Documented on `percentile50`.
 - Integration: none.
-- Manual: http PTT; read overlay; confirm event log lines.
+- Manual: http PTT; read overlay; confirm event log lines. **Skip this run:** no Chrome/speech-api in the ticket-worker environment.
 
 ## Suggested files
 

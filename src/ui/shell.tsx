@@ -29,6 +29,7 @@ import { Disclaimer } from "./disclaimer";
 import { FlightStrips, focusPpi } from "./FlightStrips";
 import { FpsDebug } from "./FpsDebug";
 import { isFpsDebugEnabled } from "./fpsHud";
+import { LatencyOverlay } from "./LatencyOverlay";
 import { ScopeCanvas } from "./ScopeCanvas";
 import { ScopeHelpOverlay } from "./ScopeHelpOverlay";
 import { SimControls } from "./sim-controls";
@@ -43,6 +44,16 @@ export interface ShellProps {
 export function Shell({ app, scenario, scopeView }: ShellProps) {
   const [readback, setReadback] = useState("");
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
+  const [latency, setLatency] = useState(() => ({
+    visible: app.getLatencyOverlayVisible(),
+    snapshot: {
+      backendId: app.speech.id,
+      lastTranscriptMs: null as number | null,
+      lastAudioStartMs: null as number | null,
+      p50AudioStartMs: null as number | null,
+      sampleCount: 0,
+    },
+  }));
   const [, setScopeUiTick] = useState(0);
   const panRef = useRef<{ lastX: number; lastY: number } | null>(null);
 
@@ -57,6 +68,10 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
         setReadback("");
       }
     });
+  }, [app]);
+
+  useEffect(() => {
+    return app.subscribeLatencyOverlay(setLatency);
   }, [app]);
 
   useEffect(() => {
@@ -141,6 +156,11 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           }
         >
           {fpsDebug ? <FpsDebug /> : null}
+          <LatencyOverlay
+            snapshot={latency.snapshot}
+            visible={latency.visible}
+            onToggle={(visible) => app.setLatencyOverlayVisible(visible)}
+          />
           <SimControls world={app.world} />
           <Disclaimer />
           <ScopeHelpOverlay open={scopeView.helpOpen} />

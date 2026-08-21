@@ -12,6 +12,7 @@
  * `setSimRate`) do not touch intent.
  *
  * Later: settings. The sim tick must never wait on React render.
+ * Voice latency overlay (T03-09) is HTML, not PPI canvas; T03-10 may persist show/hide.
  *
  * Import rule: `@ui` may import all other `src/*` packages. `@pilot` must not
  * import `@ui`.
@@ -56,3 +57,12 @@ export {
 export type { SimControlKey } from "./simControls";
 export { FpsDebug } from "./FpsDebug";
 export { FPS_DEBUG_ID, formatFpsDebug, isFpsDebugEnabled } from "./fpsHud";
+export { LatencyOverlay } from "./LatencyOverlay";
+export {
+  LATENCY_OVERLAY_DEFAULT_VISIBLE,
+  LATENCY_OVERLAY_ID,
+  formatLatencyMs,
+  formatLatencyOverlay,
+  httpP50Band,
+  latencyOverlayClassName,
+} from "./latency-overlay";

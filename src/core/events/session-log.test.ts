@@ -13,9 +13,9 @@ const emptyInstructionCommand: Command = {
   source: "text",
 };
 
-test("SessionEvent includes only session.started, command.accepted, and command.rejected (AC1)", () => {
+test("SessionEvent includes command events plus voice.latency (T03-09)", () => {
   expectTypeOf<SessionEvent["type"]>().toEqualTypeOf<
-    "session.started" | "command.accepted" | "command.rejected"
+    "session.started" | "command.accepted" | "command.rejected" | "voice.latency"
   >();
 });
 
@@ -147,4 +147,29 @@ test("byType returns only matching events (AC5)", () => {
     "unknown callsign",
   ]);
   expectTypeOf(rejected).toEqualTypeOf<Extract<SessionEvent, { type: "command.rejected" }>[]>();
+});
+
+test("voice.latency appends wall-clock PTT marks (T03-09)", () => {
+  const log = new SessionLog();
+  log.append({
+    type: "voice.latency",
+    atSimMs: 10,
+    atWallMs: 1_000,
+    pttUpToTranscriptMs: 40,
+    pttUpToAudioStartMs: 180,
+    backendId: "http",
+  });
+  log.append({
+    type: "voice.latency",
+    atSimMs: 20,
+    atWallMs: 1_001,
+    pttUpToTranscriptMs: 75,
+    pttUpToAudioStartMs: null,
+    backendId: "http",
+  });
+  const latencies = log.byType("voice.latency");
+  expect(latencies).toHaveLength(2);
+  expect(latencies[0]?.pttUpToAudioStartMs).toBe(180);
+  expect(latencies[1]?.pttUpToAudioStartMs).toBeNull();
+  expect(latencies[1]?.pttUpToTranscriptMs).toBe(75);
 });

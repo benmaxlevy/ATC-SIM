@@ -694,6 +694,96 @@ test("AC5 — audio-start fires once per successful play", async () => {
   expect(loop.lastUtteranceMetrics?.pttUpToAudioStartMs).toBe(180);
 });
 
+test("T03-09 AC1 — successful play has finite transcript and audio-start (audio >= transcript)", async () => {
+  const clock = { ms: 1000 };
+  const port = fakePort("turn left heading two seven zero");
+  const transcribe = port.transcribe.bind(port);
+  port.transcribe = async (clip) => {
+    clock.ms = 1040;
+    return transcribe(clip);
+  };
+  const completed: Array<{
+    pttUpToTranscriptMs: number | null;
+    pttUpToAudioStartMs: number | null;
+  }> = [];
+  const loop = createVoiceLoop({
+    speechPort: port,
+    parseCommand,
+    dispatchCommand: () => ({ accepted: true, readback: ACCEPTED_READBACK }),
+    getSelectedCallsign: () => "DAL123",
+    now: () => clock.ms,
+    readbackPlayer: instantPlayer(() => {
+      clock.ms = 1180;
+      return clock.ms;
+    }).player,
+    onUtteranceComplete: (metrics) => {
+      completed.push({
+        pttUpToTranscriptMs: metrics.pttUpToTranscriptMs,
+        pttUpToAudioStartMs: metrics.pttUpToAudioStartMs,
+      });
+    },
+  });
+
+  clock.ms = 1000;
+  await loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  const transcriptMs = loop.lastUtteranceMetrics?.pttUpToTranscriptMs;
+  const audioMs = loop.lastUtteranceMetrics?.pttUpToAudioStartMs;
+  expect(transcriptMs).toBe(40);
+  expect(audioMs).toBe(180);
+  expect(typeof transcriptMs).toBe("number");
+  expect(typeof audioMs).toBe("number");
+  expect(transcriptMs).toBeGreaterThanOrEqual(0);
+  expect(audioMs).toBeGreaterThanOrEqual(transcriptMs!);
+  // Coordinator marks, not adapter-only Transcript.latencyMs (fakePort default 4).
+  expect(transcriptMs).not.toBe(4);
+  expect(completed.at(-1)).toEqual({ pttUpToTranscriptMs: 40, pttUpToAudioStartMs: 180 });
+});
+
+test("T03-09 AC2 — STT failure still logs transcript_ms; audio-start is null", async () => {
+  const clock = { ms: 2000 };
+  const port: SpeechPort = {
+    id: "http",
+    async transcribe() {
+      clock.ms = 2075;
+      throw new Error("radio down");
+    },
+    async synthesize() {
+      return nonEmptyClip();
+    },
+  };
+  const completed: Array<{
+    pttUpToTranscriptMs: number | null;
+    pttUpToAudioStartMs: number | null;
+  }> = [];
+  const loop = createVoiceLoop({
+    speechPort: port,
+    parseCommand,
+    dispatchCommand: () => {},
+    getSelectedCallsign: () => "DAL123",
+    now: () => clock.ms,
+    onUtteranceComplete: (metrics) => {
+      completed.push({
+        pttUpToTranscriptMs: metrics.pttUpToTranscriptMs,
+        pttUpToAudioStartMs: metrics.pttUpToAudioStartMs,
+      });
+    },
+  });
+
+  clock.ms = 2000;
+  await loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  expect(loop.lastUtteranceMetrics?.pttUpToTranscriptMs).toBe(75);
+  expect(loop.lastUtteranceMetrics?.pttUpToAudioStartMs).toBeNull();
+  expect(completed).toEqual([{ pttUpToTranscriptMs: 75, pttUpToAudioStartMs: null }]);
+});
+
 test("web-speech accepted readback uses playBrowser, not the silence clip", async () => {
   const port: SpeechPort = {
     id: "web-speech",
