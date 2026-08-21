@@ -67,15 +67,15 @@ Parser/`T20L` must still work in radio focus: `T` as datablock toggle is **scope
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Automated: formatter fixtures for same-alt, different-alt, rounding 3250 ft, GS 210.
-- [ ] **AC2 —** Given a visible arrival, full block shows callsign on line 1 and hundreds + GS on line 2, monospace, not proportional.
-- [ ] **AC3 —** When assigned altitude changes via a phase 1 `C`/`D`/`A` command and Mode C has not caught up by ≥100 ft, line 2 includes both altitude fields.
-- [ ] **AC4 —** `T` with PPI focused toggles limited (callsign disappears, one line of hundreds). With command line focused, `T` types into the radio parser (`T20L` still works).
-- [ ] **AC5 —** `M` with PPI focused hides Mode C on full blocks per README; limited unchanged.
-- [ ] **AC6 —** Clicking the datablock text selects that track.
-- [ ] **AC7 —** Crude T01-10 callsign-only labels are gone; no duplicate callsign painted twice.
-- [ ] **AC8 —** No `Command` is emitted when toggling `T` or `M` (spy on parser / event log).
-- [ ] **AC9 — Research:** Formatters and UI say **datablock** / **Mode C**, not label. Module header cites PCG + CRC FDB/LDB and lists omitted fields.
+- [x] **AC1 —** Automated: formatter fixtures for same-alt, different-alt, rounding 3250 ft, GS 210.
+- [x] **AC2 —** Given a visible arrival, full block shows callsign on line 1 and hundreds + GS on line 2, monospace, not proportional.
+- [x] **AC3 —** When assigned altitude changes via a phase 1 `C`/`D`/`A` command and Mode C has not caught up by ≥100 ft, line 2 includes both altitude fields.
+- [x] **AC4 —** `T` with PPI focused toggles limited (callsign disappears, one line of hundreds). With command line focused, `T` types into the radio parser (`T20L` still works).
+- [x] **AC5 —** `M` with PPI focused hides Mode C on full blocks per README; limited unchanged.
+- [x] **AC6 —** Clicking the datablock text selects that track.
+- [x] **AC7 —** Crude T01-10 callsign-only labels are gone; no duplicate callsign painted twice.
+- [x] **AC8 —** No `Command` is emitted when toggling `T` or `M` (spy on parser / event log).
+- [x] **AC9 — Research:** Formatters and UI say **datablock** / **Mode C**, not label. Module header cites PCG + CRC FDB/LDB and lists omitted fields.
 
 ## Test plan
 

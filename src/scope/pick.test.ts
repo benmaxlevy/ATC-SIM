@@ -2,6 +2,8 @@ import { expect, test } from "vitest";
 import { createAircraft, createWorld, setSelectedAircraft, type Intent } from "@core";
 import { DEFAULT_SCOPE_CAMERA, nmToScreen, type ScopeCamera } from "./camera";
 import { HIT_RADIUS_CSS_PX, pickAircraftAt, selectAircraftAt } from "./pick";
+import { createScopeView } from "./scopeView";
+import { syncTrackDisplays } from "./trackDisplay";
 
 const CAM: ScopeCamera = DEFAULT_SCOPE_CAMERA;
 const CSS_W = 800;
@@ -99,6 +101,53 @@ test("AC6 — pick + setSelectedAircraft does not change assigned heading/intent
   expect(dal.headingDeg).toBe(100);
   expect(dal.xNm).toBe(16);
   expect(dal.identUntilSimMs).toBe(0);
+});
+
+test("AC6 — clicking the datablock rectangle selects that track, not a nearby miss", () => {
+  const dal = sample("DAL123", "ac-dal", 0, 0);
+  const world = createWorld({ aircraft: [dal] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const tick = nmToScreen(dal.xNm, dal.yNm, CAM, VIEW);
+  const onBlock = { x: tick.x + 16, y: tick.y - 18 };
+  expect(Math.hypot(onBlock.x - tick.x, onBlock.y - tick.y)).toBeGreaterThan(HIT_RADIUS_CSS_PX);
+
+  const missWithoutBlock = pickAircraftAt(
+    world,
+    onBlock.x,
+    onBlock.y,
+    CAM,
+    CSS_W,
+    CSS_H,
+    HIT_RADIUS_CSS_PX,
+  );
+  expect(missWithoutBlock).toBeNull();
+
+  const hit = pickAircraftAt(
+    world,
+    onBlock.x,
+    onBlock.y,
+    CAM,
+    CSS_W,
+    CSS_H,
+    HIT_RADIUS_CSS_PX,
+    view,
+  );
+  expect(hit).toBe(dal);
+
+  const selected = selectAircraftAt(
+    world,
+    onBlock.x,
+    onBlock.y,
+    CAM,
+    CSS_W,
+    CSS_H,
+    HIT_RADIUS_CSS_PX,
+    view,
+  );
+  expect(selected).toBe(dal);
+  expect(world.selectedAircraftId).toBe("ac-dal");
+  expect(dal.intent.assignedHeadingDeg).toBe(100);
 });
 
 test("AC5 — selectAircraftAt does not import the radio pipeline or write intent", () => {

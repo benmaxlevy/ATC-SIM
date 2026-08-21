@@ -1,10 +1,12 @@
 /**
  * Analog: CRC STARS track display state (docs.virtualnas.net/crc/stars — R07).
- * Trainer delta: per-track history buffer + display-only IDENT flash live here,
- * keyed by aircraft id — never on Aircraft kinematics. Not NAS STARS.
+ * Trainer delta: per-track history buffer, full/limited datablock mode, and
+ * display-only IDENT flash live here, keyed by aircraft id — never on Aircraft
+ * kinematics. Not NAS STARS.
  */
 
 import type { Aircraft, World } from "@core";
+import type { DatablockMode } from "./datablock";
 import { createHistoryBuf, maybeSampleHistory, type HistoryBuf } from "./history";
 
 /** Display IDENT stroke pulse (~2 s sim). Aircraft flag may last longer (phase 1). */
@@ -16,6 +18,8 @@ export interface TrackDisplay {
   identUntilSimMs: number;
   /** Last seen `Aircraft.identUntilSimMs` so a new IDENT retriggers the pulse. */
   lastAircraftIdentDeadlineMs: number;
+  /** Full datablock by default; scope-focus `T` toggles. */
+  datablockMode: DatablockMode;
 }
 
 export function createTrackDisplay(): TrackDisplay {
@@ -23,7 +27,41 @@ export function createTrackDisplay(): TrackDisplay {
     history: createHistoryBuf(),
     identUntilSimMs: 0,
     lastAircraftIdentDeadlineMs: 0,
+    datablockMode: "full",
   };
+}
+
+function ensureTrackDisplay(tracks: Map<string, TrackDisplay>, id: string): TrackDisplay {
+  let td = tracks.get(id);
+  if (!td) {
+    td = createTrackDisplay();
+    tracks.set(id, td);
+  }
+  return td;
+}
+
+function flipDatablockMode(mode: DatablockMode): DatablockMode {
+  return mode === "full" ? "limited" : "full";
+}
+
+/**
+ * Scope-focus `T`: selected track full ↔ limited; no selection → all tracks.
+ * Display state only — never a Command.
+ */
+export function toggleDatablockModeForSelection(
+  tracks: Map<string, TrackDisplay>,
+  world: World,
+): void {
+  const selected = world.selectedAircraftId;
+  if (selected && world.aircraft.some((ac) => ac.id === selected)) {
+    const td = ensureTrackDisplay(tracks, selected);
+    td.datablockMode = flipDatablockMode(td.datablockMode);
+    return;
+  }
+  for (const ac of world.aircraft) {
+    const td = ensureTrackDisplay(tracks, ac.id);
+    td.datablockMode = flipDatablockMode(td.datablockMode);
+  }
 }
 
 export function isIdentFlashing(td: TrackDisplay, simTimeMs: number): boolean {

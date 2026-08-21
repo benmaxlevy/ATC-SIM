@@ -13,6 +13,7 @@ import {
   DEFAULT_RANGE_NM,
   type ScopeCamera,
 } from "./camera";
+import { DEFAULT_DATABLOCK_CELL_PX } from "./fonts";
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
 import type { TrackDisplay } from "./trackDisplay";
 
@@ -30,7 +31,14 @@ export interface ScopeView {
   mapCache: MapCache | null;
   /** Global history dots. CRC analog; default on. F8 / scope-focus H. */
   historyEnabled: boolean;
-  /** Per-track display state (history, IDENT flash). Keyed by aircraft id. */
+  /**
+   * Mode C field on full datablocks. CRC analog `M`; default shown.
+   * Limited datablocks ignore this.
+   */
+  modeCVisible: boolean;
+  /** Last measured `0` cell width for datablock hit-tests. */
+  datablockCellWidthPx: number;
+  /** Per-track display state (history, IDENT flash, datablock). Keyed by aircraft id. */
   tracks: Map<string, TrackDisplay>;
 }
 
@@ -58,6 +66,8 @@ export function createScopeView(
     digitalMap,
     mapCache: null,
     historyEnabled: true,
+    modeCVisible: true,
+    datablockCellWidthPx: DEFAULT_DATABLOCK_CELL_PX,
     tracks: new Map(),
   };
 }
@@ -65,6 +75,11 @@ export function createScopeView(
 /** F8 always-on; H only when scope-focused. Never a Command. */
 export function toggleHistoryEnabled(view: ScopeView): void {
   view.historyEnabled = !view.historyEnabled;
+}
+
+/** Scope-focus `M`: hide/show Mode C on full datablocks. Never a Command. */
+export function toggleModeCVisible(view: ScopeView): void {
+  view.modeCVisible = !view.modeCVisible;
 }
 
 export function recordLastClick(view: ScopeView, eastNm: number, northNm: number): void {

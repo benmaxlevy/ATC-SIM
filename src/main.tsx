@@ -25,7 +25,7 @@ bootSession(handles, kdem, Date.now());
 const scopeView = createScopeView(kdem.arpNm.xNm, kdem.arpNm.yNm, {
   digitalMap: parseDigitalMap(kdem.maps),
 });
-installAlwaysOnScopeKeys(scopeView);
+installAlwaysOnScopeKeys(scopeView, handles.world);
 
 document.title = "ATC-SIM — KDEM";
 

@@ -68,6 +68,8 @@ test("map / localizer / rings flags default on; coastline follows JSON enabled",
   expect(bare.showLocalizer).toBe(true);
   expect(bare.showRings).toBe(true);
   expect(bare.showCoastline).toBe(false);
+  expect(bare.historyEnabled).toBe(true);
+  expect(bare.modeCVisible).toBe(true);
   expect(bare.digitalMap.runway).toBeUndefined();
 
   const withCoast = createScopeView(0, 0, {

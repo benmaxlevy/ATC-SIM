@@ -8,7 +8,6 @@ export const TARGET_SIZE_PX = 6;
 export const TARGET_STROKE_PX = 1;
 export const HEADING_TICK_PX = 8;
 export const HISTORY_DOT_SIZE_PX = 2;
-export const CALLSIGN_FONT_PX = 10;
 
 /** Unowned track until T02-08 / palette.ts. Frozen phase-2 unowned. */
 export const UNOWNED_TRACK_COLOR = "#DDDDDD";

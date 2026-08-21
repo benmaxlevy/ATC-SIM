@@ -27,7 +27,7 @@ export function handlePpiLeftClick(
   const size = viewSize(cssWidth, cssHeight);
   const nm = screenToNm(cssX, cssY, view.camera, size);
   recordLastClick(view, nm.eastNm, nm.northNm);
-  selectAircraftAt(world, cssX, cssY, view.camera, cssWidth, cssHeight);
+  selectAircraftAt(world, cssX, cssY, view.camera, cssWidth, cssHeight, HIT_RADIUS_CSS_PX, view);
 }
 
 /** Double-click empty PPI: center there. Track hits stay as select-only. */
@@ -47,6 +47,7 @@ export function handlePpiDoubleClick(
     cssWidth,
     cssHeight,
     HIT_RADIUS_CSS_PX,
+    view,
   );
   if (hit) {
     return;

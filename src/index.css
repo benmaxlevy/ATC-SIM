@@ -7,7 +7,8 @@ body,
   overflow: hidden;
   background: #07090c;
   color: #d7dde8;
-  font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", monospace;
+  font-family:
+    "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
 }
 
 .scope-shell {

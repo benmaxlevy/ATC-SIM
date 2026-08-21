@@ -7,8 +7,10 @@ import { parseDigitalMap } from "./mapLayers";
 import { PALETTE } from "./palette";
 import { renderScope } from "./renderScope";
 import { createScopeView } from "./scopeView";
-import { CALLSIGN_FONT_PX, SELECTED_ACCENT_COLOR, TARGET_SIZE_PX } from "./targetSymbol";
+import { SELECTED_ACCENT_COLOR, TARGET_SIZE_PX } from "./targetSymbol";
 import { isIdentFlashing } from "./trackDisplay";
+import { DATABLOCK_FONT, DATABLOCK_FONT_PX } from "./fonts";
+import { formatFullDatablock, formatLimitedDatablock, LEADER_LENGTH_PX } from "./datablock";
 
 interface StrokeRect {
   x: number;
@@ -33,11 +35,27 @@ function createMockCtx(): {
   ctx: CanvasRenderingContext2D;
   strokeRects: StrokeRect[];
   fillRects: FillRect[];
-  fillTexts: { text: string; font: string }[];
+  fillTexts: {
+    text: string;
+    font: string;
+    x?: number;
+    y?: number;
+    fillStyle?: string;
+    textAlign?: string;
+    textBaseline?: string;
+  }[];
 } {
   const strokeRects: StrokeRect[] = [];
   const fillRects: FillRect[] = [];
-  const fillTexts: { text: string; font: string }[] = [];
+  const fillTexts: {
+    text: string;
+    font: string;
+    x?: number;
+    y?: number;
+    fillStyle?: string;
+    textAlign?: string;
+    textBaseline?: string;
+  }[] = [];
   const ctx = {
     fillStyle: "",
     strokeStyle: "",
@@ -62,8 +80,24 @@ function createMockCtx(): {
     strokeRect(this: { strokeStyle: string }, x: number, y: number, w: number, h: number) {
       strokeRects.push({ x, y, w, h, strokeStyle: String(this.strokeStyle) });
     },
-    fillText(this: { font: string }, text: string) {
-      fillTexts.push({ text, font: this.font });
+    measureText(text: string) {
+      return { width: Math.max(0, text.length) * 7.2 };
+    },
+    fillText(
+      this: { font: string; fillStyle: string; textAlign: string; textBaseline: string },
+      text: string,
+      x?: number,
+      y?: number,
+    ) {
+      fillTexts.push({
+        text,
+        font: this.font,
+        x,
+        y,
+        fillStyle: String(this.fillStyle),
+        textAlign: this.textAlign,
+        textBaseline: this.textBaseline,
+      });
     },
   };
   return { ctx: ctx as unknown as CanvasRenderingContext2D, strokeRects, fillRects, fillTexts };
@@ -87,8 +121,12 @@ test("AC1 — six spawned arrivals get a 6×6 target at nmToScreen ±2 px", () =
         Math.abs(r.y + TARGET_SIZE_PX / 2 - p.y) <= 2,
     );
     expect(hit, ac.callsign).toBeDefined();
+    const block = formatFullDatablock(ac);
+    const line1 = fillTexts.filter((t) => t.text === ac.callsign && t.font === DATABLOCK_FONT);
+    expect(line1, ac.callsign).toHaveLength(1);
     expect(
-      fillTexts.some((t) => t.text === ac.callsign && t.font.startsWith(`${CALLSIGN_FONT_PX}px`)),
+      fillTexts.some((t) => t.text === block.line2 && t.font === DATABLOCK_FONT),
+      ac.callsign,
     ).toBe(true);
   }
 });
@@ -243,4 +281,82 @@ test("AC5 — toggling showLocalizer off removes the feather and keeps the runwa
   renderScope(ctx, world, view, 800, 800);
   expect(view.mapCache?.localizer).toBeNull();
   expect(view.mapCache?.runway).toEqual(runway);
+});
+
+test("T02-04 AC2 — full datablock is callsign + hundreds/GS in IBM Plex Mono, left/top, unowned fill", () => {
+  const ac = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    altitudeFt: 3000,
+    speedKt: 210,
+    xNm: 0,
+    yNm: 0,
+  });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  const { ctx, fillTexts } = createMockCtx();
+  renderScope(ctx, world, view, 800, 800);
+  const p = nmToScreen(ac.xNm, ac.yNm, view.camera, { widthPx: 800, heightPx: 800 });
+  const line1 = fillTexts.find((t) => t.text === "DAL123" && t.font === DATABLOCK_FONT);
+  const line2 = fillTexts.find((t) => t.text === "030  210" && t.font === DATABLOCK_FONT);
+  expect(line1).toBeDefined();
+  expect(line2).toBeDefined();
+  expect(DATABLOCK_FONT).toContain("IBM Plex Mono");
+  expect(DATABLOCK_FONT).toContain("monospace");
+  expect(DATABLOCK_FONT).toContain(`${DATABLOCK_FONT_PX}px`);
+  expect(DATABLOCK_FONT.toLowerCase()).not.toMatch(/arial|helvetica|sans-serif/);
+  expect(line1!.textAlign).toBe("left");
+  expect(line1!.textBaseline).toBe("top");
+  expect(line1!.fillStyle).toBe(PALETTE.unowned);
+  expect(line1!.x).toBeCloseTo(p.x, 5);
+  expect(line1!.y).toBeCloseTo(p.y - LEADER_LENGTH_PX, 5);
+  expect(line2!.y).toBeCloseTo(p.y - LEADER_LENGTH_PX + DATABLOCK_FONT_PX, 5);
+});
+
+test("T02-04 AC5/AC7 — T limited drops the callsign; no duplicate callsign paint", () => {
+  const ac = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    altitudeFt: 3250,
+    speedKt: 210,
+    xNm: 0,
+    yNm: 0,
+  });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  const full = createMockCtx();
+  renderScope(full.ctx, world, view, 800, 800);
+  expect(full.fillTexts.filter((t) => t.text === "DAL123")).toHaveLength(1);
+  expect(full.fillTexts.some((t) => t.font.startsWith("10px"))).toBe(false);
+
+  view.tracks.get(ac.id)!.datablockMode = "limited";
+  const limited = createMockCtx();
+  renderScope(limited.ctx, world, view, 800, 800);
+  expect(limited.fillTexts.filter((t) => t.text === "DAL123")).toHaveLength(0);
+  expect(limited.fillTexts.some((t) => t.text === formatLimitedDatablock(ac).line1)).toBe(true);
+  expect(limited.fillTexts.some((t) => t.text === "030  210")).toBe(false);
+});
+
+test("T02-04 AC5 — M hides Mode C on full blocks; limited still paints Mode C hundreds", () => {
+  const ac = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    altitudeFt: 3200,
+    speedKt: 210,
+    xNm: 0,
+    yNm: 0,
+  });
+  ac.intent.assignedAltitudeFt = 4000;
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  view.modeCVisible = false;
+  const full = createMockCtx();
+  renderScope(full.ctx, world, view, 800, 800);
+  expect(full.fillTexts.some((t) => t.text === "040  210")).toBe(true);
+  expect(full.fillTexts.some((t) => t.text === "032  040  210")).toBe(false);
+
+  view.tracks.get(ac.id)!.datablockMode = "limited";
+  const limited = createMockCtx();
+  renderScope(limited.ctx, world, view, 800, 800);
+  expect(limited.fillTexts.some((t) => t.text === "032")).toBe(true);
 });

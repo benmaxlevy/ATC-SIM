@@ -4,17 +4,19 @@
  * Legal now: Canvas2D north-up PPI with discrete range 5–60 NM, view center,
  * `nmToScreen` / `screenToNm`, always-on Page/Home/End/F8/wheel, click pick,
  * KDEM digital map (runway, localizer feather, range rings, optional coastline),
- * target square + history dots (F8 / scope-focus H).
+ * target square + history dots (F8 / scope-focus H), full/limited datablocks
+ * (scope-focus T / M; Mode C hundreds + assigned + GS).
  *
- * Later: datablocks, DCB-lite.
+ * Later: leaders, DCB-lite.
  *
  * Import rule: `@scope` may import `@core` and `@scenario`.
  * `@scope` may set `selectedAircraftId`. It must not write intent.
  *
- * Analog: CRC STARS RANGE / CENTER / HISTORY / video maps (docs.virtualnas.net/crc/stars — R07).
+ * Analog: CRC STARS RANGE / CENTER / HISTORY / FDB-LDB / video maps
+ * (docs.virtualnas.net/crc/stars — R07). PCG datablock / Mode C (R02).
  * Trainer delta: PageUp/Down + wheel; no extra CRC presets; middle-drag pan
  * is not CRC. History is 5 s sim / 5 dots, no phosphor. Trainer-authored JSON
- * maps, not OSM / tiles (R12). Not NAS STARS.
+ * maps, not OSM / tiles (R12). IBM Plex Mono, not a STARS face. Not NAS STARS.
  */
 export { PpiPlaceholder, PpiPlaceholderId } from "./ppi-placeholder";
 export type { RangeNm, ScopeCamera, ScopeViewSize } from "./camera";
@@ -41,6 +43,7 @@ export {
   handlePpiPanDelta,
 } from "./ppiPointer";
 export { HIT_RADIUS_CSS_PX, pickAircraftAt, selectAircraftAt } from "./pick";
+export type { DatablockPickView } from "./pick";
 export { PALETTE } from "./palette";
 export type { Palette } from "./palette";
 export {
@@ -60,7 +63,9 @@ export {
   handleScopeWheel,
   installAlwaysOnScopeKeys,
   isAlwaysOnScopeKey,
+  isDatablockToggleKey,
   isHistoryToggleKey,
+  isModeCToggleKey,
   scopeFocusFromDocument,
 } from "./scopeKeys";
 export type { ScopeFocus } from "./scopeKeys";
@@ -71,6 +76,7 @@ export {
   createScopeView,
   recordLastClick,
   toggleHistoryEnabled,
+  toggleModeCVisible,
 } from "./scopeView";
 export type { ScopeView } from "./scopeView";
 export {
@@ -81,7 +87,6 @@ export {
 } from "./history";
 export type { HistoryBuf } from "./history";
 export {
-  CALLSIGN_FONT_PX,
   HEADING_TICK_PX,
   TARGET_SIZE_PX,
   UNOWNED_TRACK_COLOR,
@@ -93,5 +98,25 @@ export {
   createTrackDisplay,
   isIdentFlashing,
   syncTrackDisplays,
+  toggleDatablockModeForSelection,
 } from "./trackDisplay";
 export type { TrackDisplay } from "./trackDisplay";
+export {
+  DEFAULT_LEADER_DIR,
+  LEADER_LENGTH_PX,
+  datablockRect,
+  datablockTopLeft,
+  formatAltitudeHundreds,
+  formatFullDatablock,
+  formatGroundSpeedKt,
+  formatLimitedDatablock,
+  linesForDatablock,
+} from "./datablock";
+export type { DatablockMode, DatablockSource, FullDatablock, LimitedDatablock } from "./datablock";
+export {
+  DATABLOCK_FONT,
+  DATABLOCK_FONT_PX,
+  DATABLOCK_LINE_HEIGHT_PX,
+  DEFAULT_DATABLOCK_CELL_PX,
+  SCOPE_FONT_STACK,
+} from "./fonts";

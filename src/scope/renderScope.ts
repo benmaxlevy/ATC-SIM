@@ -1,23 +1,26 @@
 /**
- * Analog: CRC STARS video map + RANGE / HISTORY PPI (docs.virtualnas.net/crc/stars — R07).
+ * Analog: CRC STARS video map + RANGE / HISTORY / FDB-LDB PPI
+ * (docs.virtualnas.net/crc/stars — R07). PCG datablock / Mode C (R02).
  * Trainer delta: Canvas2D north-up; digital map from KDEM JSON (runway,
  * localizer feather, range rings, optional coastline); circular clip;
  * **target** square + optional **history** dots (5 s sim / 5 dots, no phosphor);
- * temporary 10 px callsign until T02-04. Extra CRC presets omitted.
- * Not OSM / tiles (R12). Not a sprite. Not NAS STARS.
+ * full/limited **datablock** in IBM Plex Mono (not a STARS face); default L8
+ * offset (north, 24 px) until T02-05. Extra CRC presets omitted.
+ * Not OSM / tiles (R12). Not a sprite. Not a label. Not NAS STARS.
  *
  * Draw order (phase README): background, rings, coastline, runway, localizer,
- * history, targets. Maps rebuild on range/center/resize/layer toggle, not every rAF.
+ * history, targets, datablocks. Maps rebuild on range/center/resize/layer
+ * toggle, not every rAF.
  */
 
-import type { World } from "@core";
+import type { Aircraft, World } from "@core";
 import { formatRangeReadout, nmToScreen, rangeCircle, type ScopeViewSize } from "./camera";
+import { datablockTopLeft, linesForDatablock, type DatablockMode } from "./datablock";
+import { DATABLOCK_FONT, DATABLOCK_LINE_HEIGHT_PX, measureDatablockCellWidth } from "./fonts";
 import { reuseOrBuildMapCache, toMapCacheInput, type MapCache } from "./mapLayers";
 import { PALETTE } from "./palette";
 import type { ScopeView } from "./scopeView";
 import {
-  CALLSIGN_FONT_PX,
-  SELECTED_ACCENT_COLOR,
   UNOWNED_TRACK_COLOR,
   drawHistoryDot,
   drawTargetSymbol,
@@ -26,13 +29,9 @@ import {
 } from "./targetSymbol";
 import { isIdentFlashing, syncTrackDisplays } from "./trackDisplay";
 
-const CALLSIGN_OFFSET_X_PX = 8;
-const CALLSIGN_OFFSET_Y_PX = 4;
 const RING_STROKE_PX = 1;
 const RUNWAY_STROKE_PX = 2;
 const MAP_STROKE_PX = 1;
-const SCOPE_MONO =
-  '12px "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace';
 
 export function renderScope(
   ctx: CanvasRenderingContext2D,
@@ -133,11 +132,31 @@ function drawMapLayers(ctx: CanvasRenderingContext2D, cache: MapCache): void {
   }
 
   if (cache.runwayLabel) {
-    ctx.font = SCOPE_MONO;
+    ctx.font = DATABLOCK_FONT;
     ctx.textBaseline = "top";
     ctx.textAlign = "center";
     ctx.fillStyle = PALETTE.map;
     ctx.fillText(cache.runwayLabel.text, cache.runwayLabel.x, cache.runwayLabel.y);
+  }
+}
+
+function trackDatablockMode(view: ScopeView, aircraftId: string): DatablockMode {
+  return view.tracks.get(aircraftId)?.datablockMode ?? "full";
+}
+
+function drawDatablock(
+  ctx: CanvasRenderingContext2D,
+  ac: Aircraft,
+  targetX: number,
+  targetY: number,
+  view: ScopeView,
+): void {
+  const lines = linesForDatablock(ac, trackDatablockMode(view, ac.id), view.modeCVisible);
+  const origin = datablockTopLeft(targetX, targetY);
+  ctx.fillStyle = PALETTE.unowned;
+  ctx.fillText(lines.line1, origin.x, origin.y);
+  if (lines.line2 != null) {
+    ctx.fillText(lines.line2, origin.x, origin.y + DATABLOCK_LINE_HEIGHT_PX);
   }
 }
 
@@ -147,10 +166,6 @@ function drawTracks(
   view: ScopeView,
   size: ScopeViewSize,
 ): void {
-  ctx.font = `${CALLSIGN_FONT_PX}px ui-monospace, "Cascadia Mono", "Segoe UI Mono", monospace`;
-  ctx.textBaseline = "bottom";
-  ctx.textAlign = "left";
-
   const historyColor = historyDotColor(UNOWNED_TRACK_COLOR);
 
   if (view.historyEnabled) {
@@ -172,10 +187,16 @@ function drawTracks(
     const td = view.tracks.get(ac.id);
     const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
     drawTargetSymbol(ctx, p.x, p.y, ac.headingDeg, targetStrokeColor(selected, identActive));
+  }
 
-    // Temporary callsign text — not a datablock (no leader, no Mode C). T02-04 deletes this.
-    ctx.fillStyle = selected ? SELECTED_ACCENT_COLOR : UNOWNED_TRACK_COLOR;
-    ctx.fillText(ac.callsign, p.x + CALLSIGN_OFFSET_X_PX, p.y - CALLSIGN_OFFSET_Y_PX);
+  ctx.font = DATABLOCK_FONT;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  view.datablockCellWidthPx = measureDatablockCellWidth(ctx);
+
+  for (const ac of world.aircraft) {
+    const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
+    drawDatablock(ctx, ac, p.x, p.y, view);
   }
 }
 
@@ -184,7 +205,7 @@ function drawRangeReadout(
   rangeNm: ScopeView["camera"]["rangeNm"],
   cssHeight: number,
 ): void {
-  ctx.font = SCOPE_MONO;
+  ctx.font = DATABLOCK_FONT;
   ctx.textBaseline = "bottom";
   ctx.textAlign = "left";
   ctx.fillStyle = PALETTE.map;

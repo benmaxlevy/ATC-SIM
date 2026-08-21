@@ -7,6 +7,7 @@ import {
   isIdentFlashing,
   noteIdentAccepted,
   syncTrackDisplays,
+  toggleDatablockModeForSelection,
 } from "./trackDisplay";
 
 test("IDENT display flash is on within 1 s and off by 3 s sim", () => {
@@ -59,4 +60,30 @@ test("sync samples from the render path and never writes Aircraft kinematics fie
   expect(ac).not.toHaveProperty("history");
   expect(tracks.get("ac-sync")!.history.eastNm[0]).toBe(x);
   expect(tracks.get("ac-sync")!.history.northNm[0]).toBe(y);
+});
+
+test("new tracks default to a full datablock", () => {
+  const ac = makeTestAircraft({ id: "ac-fdb" });
+  const world = createWorld({ aircraft: [ac] });
+  const tracks = new Map();
+  syncTrackDisplays(tracks, world);
+  expect(tracks.get("ac-fdb")!.datablockMode).toBe("full");
+});
+
+test("T toggles the selected track only; with no selection it toggles all", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const aal = makeTestAircraft({ id: "ac-aal", callsign: "AAL45" });
+  const world = createWorld({ aircraft: [dal, aal] });
+  const tracks = new Map();
+  syncTrackDisplays(tracks, world);
+
+  world.selectedAircraftId = dal.id;
+  toggleDatablockModeForSelection(tracks, world);
+  expect(tracks.get("ac-dal")!.datablockMode).toBe("limited");
+  expect(tracks.get("ac-aal")!.datablockMode).toBe("full");
+
+  world.selectedAircraftId = null;
+  toggleDatablockModeForSelection(tracks, world);
+  expect(tracks.get("ac-dal")!.datablockMode).toBe("full");
+  expect(tracks.get("ac-aal")!.datablockMode).toBe("limited");
 });

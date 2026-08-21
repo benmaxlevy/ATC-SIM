@@ -1,4 +1,7 @@
 import { expect, test, vi } from "vitest";
+import { SessionLog, createWorld, makeTestAircraft } from "@core";
+import { handleRadioText } from "@pilot";
+import { parseRadioText } from "@parse";
 import {
   handleScopeKeyDown,
   handleScopeWheel,
@@ -6,6 +9,7 @@ import {
   type ScopeFocus,
 } from "./scopeKeys";
 import { createScopeView } from "./scopeView";
+import { syncTrackDisplays } from "./trackDisplay";
 
 function keyEvent(key: string) {
   return {
@@ -15,13 +19,16 @@ function keyEvent(key: string) {
   };
 }
 
-test("always-on keys are PageUp, PageDown, Home, End, F8; H is not always-on", () => {
+test("always-on keys are PageUp, PageDown, Home, End, F8; H/T/M are not always-on", () => {
   expect(isAlwaysOnScopeKey("PageUp")).toBe(true);
   expect(isAlwaysOnScopeKey("Home")).toBe(true);
   expect(isAlwaysOnScopeKey("F8")).toBe(true);
   expect(isAlwaysOnScopeKey("R")).toBe(false);
   expect(isAlwaysOnScopeKey("C")).toBe(false);
   expect(isAlwaysOnScopeKey("H")).toBe(false);
+  expect(isAlwaysOnScopeKey("T")).toBe(false);
+  expect(isAlwaysOnScopeKey("M")).toBe(false);
+  expect(isAlwaysOnScopeKey("F7")).toBe(false);
 });
 
 test("AC2 — PageUp five times from 20 NM is 5 NM; center unchanged", () => {
@@ -107,6 +114,8 @@ test("scope key/wheel handlers never import the parser", () => {
     "./history.ts",
     "./trackDisplay.ts",
     "./targetSymbol.ts",
+    "./datablock.ts",
+    "./fonts.ts",
   ]) {
     const src = sources[name];
     expect(src, name).toBeDefined();
@@ -167,4 +176,108 @@ test("AC4 / AC7 — H routing depends on focus === scope | radio; parser spy", (
   }
   expect(buffer).toBe("DAL123 H270");
   expect(view.historyEnabled).toBe(true);
+});
+
+test("AC4 / AC8 — T with PPI focused toggles datablock; radio T20L still parses", () => {
+  const dal = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    altitudeFt: 3000,
+    speedKt: 210,
+  });
+  const aal = makeTestAircraft({ id: "ac-aal", callsign: "AAL45", altitudeFt: 4000, speedKt: 220 });
+  const world = createWorld({ aircraft: [dal, aal] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const log = new SessionLog();
+  const parseSpy = vi.fn();
+
+  function route(key: string, focus: ScopeFocus): void {
+    const event = keyEvent(key);
+    if (handleScopeKeyDown(event, view, focus, world)) {
+      return;
+    }
+    if (key.length === 1) {
+      parseSpy(key);
+    }
+  }
+
+  route("T", "radio");
+  expect(parseSpy).toHaveBeenCalledWith("T");
+  expect(view.tracks.get("ac-dal")!.datablockMode).toBe("full");
+
+  parseSpy.mockClear();
+  const scopeT = keyEvent("T");
+  expect(handleScopeKeyDown(scopeT, view, "scope", world)).toBe(true);
+  expect(scopeT.preventDefault).toHaveBeenCalled();
+  expect(scopeT.stopPropagation).toHaveBeenCalled();
+  expect(view.tracks.get("ac-dal")!.datablockMode).toBe("limited");
+  expect(view.tracks.get("ac-aal")!.datablockMode).toBe("limited");
+  expect(log.byType("command.accepted")).toHaveLength(0);
+  expect(log.byType("command.rejected")).toHaveLength(0);
+
+  world.selectedAircraftId = dal.id;
+  handleScopeKeyDown(keyEvent("T"), view, "scope", world);
+  expect(view.tracks.get("ac-dal")!.datablockMode).toBe("full");
+  expect(view.tracks.get("ac-aal")!.datablockMode).toBe("limited");
+
+  let buffer = "";
+  for (const key of ["T", "2", "0", "L"]) {
+    const event = keyEvent(key);
+    if (!handleScopeKeyDown(event, view, "radio", world) && key.length === 1) {
+      buffer += key;
+    }
+  }
+  expect(buffer).toBe("T20L");
+  const parsed = parseRadioText("T20L");
+  expect(parsed.ok).toBe(true);
+  if (parsed.ok) {
+    expect(parsed.instructions).toEqual([{ type: "TURN_DEGREES", direction: "LEFT", degrees: 20 }]);
+  }
+});
+
+test("AC5 / AC8 — M with PPI focused hides Mode C on full blocks; limited unchanged; no Command", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [dal] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const log = new SessionLog();
+  expect(view.modeCVisible).toBe(true);
+
+  const radioM = keyEvent("M");
+  expect(handleScopeKeyDown(radioM, view, "radio", world)).toBe(false);
+  expect(view.modeCVisible).toBe(true);
+
+  const scopeM = keyEvent("M");
+  expect(handleScopeKeyDown(scopeM, view, "scope", world)).toBe(true);
+  expect(scopeM.preventDefault).toHaveBeenCalled();
+  expect(view.modeCVisible).toBe(false);
+  expect(view.tracks.get("ac-dal")!.datablockMode).toBe("full");
+  expect(log.byType("command.accepted")).toHaveLength(0);
+  expect(log.byType("command.rejected")).toHaveLength(0);
+
+  handleScopeKeyDown(keyEvent("T"), view, "scope", world);
+  expect(view.tracks.get("ac-dal")!.datablockMode).toBe("limited");
+  expect(view.modeCVisible).toBe(false);
+
+  expect(handleScopeKeyDown(keyEvent("F7"), view, "scope", world)).toBe(false);
+});
+
+test("AC8 — scope-focus T/M never call handleRadioText or emit command events", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [dal] });
+  const view = createScopeView();
+  const log = new SessionLog();
+  const radio = vi.fn((text: string) => handleRadioText(world, text, log));
+
+  for (const key of ["T", "M"]) {
+    const event = keyEvent(key);
+    expect(handleScopeKeyDown(event, view, "scope", world)).toBe(true);
+    expect(event.preventDefault).toHaveBeenCalled();
+  }
+  expect(radio).not.toHaveBeenCalled();
+  expect(log.all()).toHaveLength(0);
+
+  radio("DAL123 H270");
+  expect(log.byType("command.accepted")).toHaveLength(1);
 });
