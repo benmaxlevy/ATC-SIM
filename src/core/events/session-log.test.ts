@@ -25,8 +25,9 @@ test("command.rejected requires reason and command (AC2)", () => {
     type: "command.rejected";
     atSimMs: number;
     atWallMs: number;
-    command: Command;
+    command: Command | null;
     reason: string;
+    sourceText?: string;
   }>();
 
   const rejected: Rejected = {
@@ -37,7 +38,23 @@ test("command.rejected requires reason and command (AC2)", () => {
     reason: "empty instruction list",
   };
   expect(rejected.reason).toBe("empty instruction list");
-  expect(rejected.command.instructions).toEqual([]);
+  expect(rejected.command?.instructions).toEqual([]);
+});
+
+test("parse failures may log command.rejected with command null and sourceText (T01-07)", () => {
+  const log = new SessionLog();
+  log.append({
+    type: "command.rejected",
+    atSimMs: 0,
+    atWallMs: 1_000,
+    command: null,
+    reason: "PARSE",
+    sourceText: "not a token",
+  });
+  const rejected = log.byType("command.rejected")[0];
+  expect(rejected?.command).toBeNull();
+  expect(rejected?.reason).toBe("PARSE");
+  expect(rejected?.sourceText).toBe("not a token");
 });
 
 test("appending accepted then rejected preserves insertion order (AC3)", () => {

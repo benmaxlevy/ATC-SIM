@@ -1,22 +1,34 @@
 /**
  * Public API for `@pilot`.
  *
- * Legal now: `applyCommand` (throws until T01-07); readback templates
- * (`formatReadback`, `formatRejectReadback`, `formatCallsignSpeech`);
- * callsign resolution (`resolveCallsign`, `numericTail`).
+ * Legal now: `handleRadioText` (parse → resolve → validate → apply);
+ * `applyCommand` (intent apply for a resolved Command, no parse);
+ * readback templates (`formatReadback`, `formatRejectReadback`,
+ * `formatCallsignSpeech`); callsign resolution (`resolveCallsign`,
+ * `numericTail`); validation (`validateInstructions`).
  *
- * Later: validation, intent apply.
- *
- * Import rule: `@pilot` may import `@core` only.
+ * Import rule: `@pilot` may import `@core` and `@parse` (radio pipeline).
+ * Must not import `@scope` or `@ui`.
  */
 
-import type { Command } from "@core";
+import type { Command, World } from "@core";
+import { applyIntent } from "./applyIntent";
 
+export type { PilotResult } from "./handleRadioText";
+export { handleRadioText } from "./handleRadioText";
 export type { ReadbackAircraft, RejectReason } from "./readback";
 export { formatCallsignSpeech, formatReadback, formatRejectReadback } from "./readback";
 export type { ResolveReason, ResolveResult } from "./resolveCallsign";
 export { numericTail, resolveCallsign } from "./resolveCallsign";
+export type { ValidateReason, ValidateResult } from "./validate";
+export { validateInstructions } from "./validate";
+export { applyIntent, IDENT_FLASH_MS } from "./applyIntent";
 
-export function applyCommand(_world: unknown, _command: Command): never {
-  throw new Error("applyCommand is phase 1");
+/** Apply an already-resolved Command. Radio entry is `handleRadioText`. */
+export function applyCommand(world: World, command: Command): void {
+  const aircraft = world.aircraft.find((ac) => ac.callsign === command.callsign);
+  if (!aircraft) {
+    throw new Error(`applyCommand: no aircraft ${command.callsign}`);
+  }
+  applyIntent(aircraft, command.instructions, world.simTimeMs);
 }

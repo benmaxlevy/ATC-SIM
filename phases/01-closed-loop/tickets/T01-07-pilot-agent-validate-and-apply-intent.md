@@ -78,14 +78,14 @@ Grep guard: no `intent.assigned` writes outside `src/pilot` except tests and `cr
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** `DAL123` present, `handleRadioText(world, "DAL123 H270")` accepted; that aircraft `intent.assignedHeadingDeg === 270`, `turn === "SHORTEST"`; others unchanged; readback matches T01-08 heading template; log has `command.accepted`.
-- [ ] **AC2 —** `SAY_HEADING` / `SAY_ALTITUDE` / `IDENT`: accepted; heading, altitude, speed, assigned intent **identical** after (IDENT may set `identUntilSimMs = simTimeMs + 5000`).
-- [ ] **AC3 —** `APP ILS27`: accepted; `clearedApproachId === "ILS27"`; kinematics intent (hdg/alt/spd) unchanged.
-- [ ] **AC4 —** `C30` while at 8000 ft → rejected `CLIMB_NOT_ABOVE` (or `ALTITUDE`); intent unchanged; `command.rejected`.
-- [ ] **AC5 —** `S400` → rejected speed; `H370` parse or validate reject; empty string → reject; no intent change.
-- [ ] **AC6 —** Ambiguous suffix world (`DAL123` + `AAL123`), text `"123 H270"` → rejected `AMBIGUOUS_CALLSIGN`; **both** assigned headings unchanged.
-- [ ] **AC7 —** `D30` at 8000 → `assignedAltitudeFt === 3000`; `S210` → assigned speed 210; `PH` during a turn (`assigned 90`, current 10) → assigned heading snaps to current 10.
-- [ ] **AC8 —** Vitest in `src/pilot` DOM-free covers AC1–AC7; `npm test` green.
+- [x] **AC1 —** `DAL123` present, `handleRadioText(world, "DAL123 H270")` accepted; that aircraft `intent.assignedHeadingDeg === 270`, `turn === "SHORTEST"`; others unchanged; readback matches T01-08 heading template; log has `command.accepted`.
+- [x] **AC2 —** `SAY_HEADING` / `SAY_ALTITUDE` / `IDENT`: accepted; heading, altitude, speed, assigned intent **identical** after (IDENT may set `identUntilSimMs = simTimeMs + 5000`).
+- [x] **AC3 —** `APP ILS27`: accepted; `clearedApproachId === "ILS27"`; kinematics intent (hdg/alt/spd) unchanged.
+- [x] **AC4 —** `C30` while at 8000 ft → rejected `CLIMB_NOT_ABOVE` (or `ALTITUDE`); intent unchanged; `command.rejected`.
+- [x] **AC5 —** `S400` → rejected speed; `H370` parse or validate reject; empty string → reject; no intent change.
+- [x] **AC6 —** Ambiguous suffix world (`DAL123` + `AAL123`), text `"123 H270"` → rejected `AMBIGUOUS_CALLSIGN`; **both** assigned headings unchanged.
+- [x] **AC7 —** `D30` at 8000 → `assignedAltitudeFt === 3000`; `S210` → assigned speed 210; `PH` during a turn (`assigned 90`, current 10) → assigned heading snaps to current 10.
+- [x] **AC8 —** Vitest in `src/pilot` DOM-free covers AC1–AC7; `npm test` green.
 
 ## Test plan
 

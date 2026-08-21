@@ -21,6 +21,12 @@ export type SessionEvent =
       type: "command.rejected";
       atSimMs: number;
       atWallMs: number;
-      command: Command;
+      /**
+       * Parsed Command when resolve/validate failed. `null` when parse failed
+       * before a Command existed (T01-07); then `sourceText` carries the line.
+       */
+      command: Command | null;
       reason: string;
+      /** Required when `command` is null (parse miss). */
+      sourceText?: string;
     };
