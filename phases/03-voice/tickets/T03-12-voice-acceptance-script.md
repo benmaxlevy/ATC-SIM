@@ -87,4 +87,4 @@ AC1 / AC3 / AC4: `phases/03-voice/ACCEPTANCE.md` — verbatim steps 1–13 mappe
 
 AC2 / AC6: T03-03 fixtures still in default `npm test` (`src/parse/spoken/grammar.test.ts`, `src/parse/parse.test.ts`). This ticket adds `src/speech/voiceAcceptance.test.ts` so the two 7110.65-shaped strings are asserted in the default glob.
 
-AC5 leftover: live http happy-path not run. This worktree probed `127.0.0.1:8090`: TCP LISTEN but `GET /health` timed out (0 bytes). ACCEPTANCE.md records **BLOCKED on http config** for E4/E10 rather than a fake p50. Re-run steps 4–10 when speech-api `/health` returns JSON.
+AC5 leftover: live PTT happy-path (voice `Command` + readback audio) not run — no Chrome/mic operator. Follow-up probe: `GET /health` **200**, `POST /tts` **200** (~1192 ms WAV), `POST /stt` **timed out 90 s**. URLs present so this is **not** BLOCKED on missing http config. p50 table leftover; do not invent 1.5 s. Re-run ACCEPTANCE.md steps 4–10 when Whisper STT answers and a human can key PTT.

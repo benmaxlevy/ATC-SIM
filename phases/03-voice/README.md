@@ -459,13 +459,13 @@ Do not start phase 5 until this is green. Phase 4 does not need this.
 - [x] **E1 —** PTT down/up captures a clip via AudioWorklet; permission denial never kills the sim tick. (Automated T03-01/T03-08. Live Chrome mic grant leftover.)
 - [x] **E2 —** Spoken examples parse to the IR in §4.3 (unit tests, DOM-free).
 - [x] **E3 —** Voice path sets `Command.source === "voice"` and the aircraft turns / changes altitude the same as the equivalent typed command. (Fake-port tests. Live PTT leftover.)
-- [x] **E4 —** `http` adapter transcribes a clip and synthesizes PCM (mocked in CI; real URLs in the manual script). Live speech-api **BLOCKED on http config** — see ACCEPTANCE.md.
+- [x] **E4 —** `http` adapter transcribes a clip and synthesizes PCM (mocked in CI; real URLs in the manual script). Live `/health` + `/tts` ok this run; `/stt` 90 s timeout leftover — see ACCEPTANCE.md.
 - [x] **E5 —** Accepted command plays a readback; PTT during playback is ignored (no barge-in, no queue). (Automated lock tests. Live leftover.)
 - [x] **E6 —** Radio FX graph is in the http/PCM path (bandpass + light noise + compressor). (Unit wiring. Listen leftover.)
 - [x] **E7 —** Low confidence, parse miss, mic deny, and STT failure show status text; no uncaught exception in the tick.
 - [x] **E8 —** Overlay or log shows `ptt_up_to_transcript_ms` and `ptt_up_to_audio_start_ms` every utterance.
 - [x] **E9 —** Settings can switch `null` / `web-speech` / `http` without reload crash.
-- [ ] **E10 —** T03-12 acceptance script executed; **speech-api + http** p50 audio-start recorded. If p50 ≥ 1.5 s on localhost/LAN, document the number and remaining bottleneck — still ship the loop; file a follow-up rather than silently skipping metrics. **Leftover:** `GET /health` timed out; p50 table blank; no invented number.
+- [ ] **E10 —** T03-12 acceptance script executed; **speech-api + http** p50 audio-start recorded. If p50 ≥ 1.5 s on localhost/LAN, document the number and remaining bottleneck — still ship the loop; file a follow-up rather than silently skipping metrics. **Leftover:** p50 table blank; `/health` 200; `/tts` ~1192 ms; `/stt` timed out 90 s; no Chrome n≥7. No invented number.
 - [x] **E11 —** Web Speech may be inaccurate or unsupported; that is **not** an exit failure if http (or a recorded manual http run) worked.
 - [x] **E12 —** `whisper-wasm` absent or incomplete is **not** an exit failure.
 - [x] **E13 —** Typed command line still works (tokens **and** English via Path A); phase 1 tests still pass.

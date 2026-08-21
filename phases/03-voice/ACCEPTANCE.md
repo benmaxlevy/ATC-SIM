@@ -29,13 +29,15 @@ Expect JSON `{ "ok": true, ... }`. You may try `127.0.0.1:8090` if it is up.
 | URLs unset/empty in settings, **or** `/health` fails, times out, or returns non-JSON | Mark live **E4** and **E10** **BLOCKED on http config**. Do not fake p50 numbers. Do not silently skip those rows. CI mocks still cover adapter E4. |
 | `/health` is ok | Continue manual steps 4–10. Fill the p50 table from the latency overlay. Target `< 1500` ms audio-start p50; if ≥ 1500, write the number and suspected bottleneck (STT, TTS, or play resume) and still mark E10 **measured**. |
 
-### This environment (2026-08-21)
+### This environment (2026-08-21, T03-12 follow-up probe)
 
 - Vite defaults still point at `http://127.0.0.1:8090/stt` and `…/tts` (URLs present, not cleared).
-- TCP `127.0.0.1:8090` was **LISTEN**, but `GET /health` timed out (15 s, 0 bytes). Several `CLOSE_WAIT` sockets. Treat speech-api as **not serving**.
-- Live **E4** / **E10**: **BLOCKED on http config**. p50 table left blank. No invented 1.5 s number.
+- `GET /health` returned **200** JSON: `{ "ok": true, "sttModel": "Systran/faster-whisper-base.en", "ttsVoice": "en_US-lessac-medium", "parse": "off" }`. **Not** BLOCKED on missing http config.
+- `POST /tts` `"heading two seven zero"` → **200** RIFF WAV, **1192 ms**, 67628 bytes. This is **not** PTT-up → audio-start p50 (no capture, parse, or play resume).
+- `POST /stt` of that WAV **timed out at 90 s**. Suspected first-load / CPU Whisper, not missing URLs. Leftover — do not treat as a measured p50.
+- Chrome mic / PTT loop / ≥ 7 overlay utterances: **leftover** (no visual operator). No invented 1.5 s number.
 
-Restart or run T03-13 `speech-api` until `/health` returns JSON, then re-run steps 4–10. Do not point HttpSpeechPort at OpenAI, Deepgram, Groq, ElevenLabs, or HF Inference.
+Do not point HttpSpeechPort at OpenAI, Deepgram, Groq, ElevenLabs, or HF Inference.
 
 ---
 
@@ -107,7 +109,7 @@ Each step maps to exit items **E1–E14**.
 | 1 | Click command line. Type `DAL123 L270` (or English `turn left heading two seven zero` with `DAL123` selected). | Readback; `source: "text"`; `parseStage` `typed` for `L270` / `H270`, `spoken_a` for English. |
 | 2 | Click PPI first so the command line is not focused. Hold backtick. | Tab mic indicator; no throw. |
 | 3 | Site settings → Microphone → Block. PTT. Then type `DAL123 H270`. | `Microphone blocked — allow in browser settings`. Typed still turns. |
-| 4–5 | Need live speech-api. If `/health` failed: **BLOCKED on http config**. | Voice `Command`; descend 3000 / heading 270 LEFT. |
+| 4–5 | Need live speech-api **and** Chrome PTT. `/health` was ok this run; STT probe timed out — leftover. | Voice `Command`; descend 3000 / heading 270 LEFT. |
 | 6 | During TTS, PTT again. | `Radio busy — standby`; no second command. |
 | 7 | Voice settings → Confidence `1.0`, one PTT, then reset `0.55`. Or speak garbage. | `Say again`; intent unchanged. |
 | 8 | Voice settings → Radio FX on (default), then off (dry). | http PCM only. `speechSynthesis` is a black box — skip FX listen on web-speech. |
@@ -123,16 +125,16 @@ Each step maps to exit items **E1–E14**.
 
 | Exit | Automated | Manual | This run |
 | --- | --- | --- | --- |
-| **E1** capture + mic deny does not kill tick | PTT controller + create-app | Steps 2–3 | Leftover (needs Chrome + mic) |
-| **E2** §4.3 fixtures | grammar + parseCommand + `voiceAcceptance.test.ts` | Steps 4–5 live | Automated pass. Live phrases **BLOCKED on http config** |
-| **E3** `source === "voice"` + same kinematics | voice-loop fake port | Steps 4–5 | Automated pass. Live **BLOCKED on http config** |
-| **E4** http STT/TTS | mocked `http-speech-port` | Steps 4–5 real URLs | CI mock pass. Live **BLOCKED on http config** |
+| **E1** capture + mic deny does not kill tick | PTT controller + create-app | Steps 2–3 | Automated deny/no-throw. Live Chrome mic leftover |
+| **E2** §4.3 fixtures | grammar + parseCommand + `voiceAcceptance.test.ts` | Steps 4–5 live | Automated pass. Live PTT leftover |
+| **E3** `source === "voice"` + same kinematics | voice-loop fake port | Steps 4–5 | Automated pass. Live PTT leftover |
+| **E4** http STT/TTS | mocked `http-speech-port` | Steps 4–5 real URLs | CI mock pass. Live `/health`+`/tts` ok; `/stt` 90 s timeout leftover |
 | **E5** readback + no barge-in | voice-loop lock tests | Steps 4, 6 | Automated pass. Live leftover |
 | **E6** radio FX graph | radio-graph unit tests | Step 8 listen | Automated wiring pass. Listen leftover |
 | **E7** status, no tick throw | voice-status + voice-loop | Steps 3, 7 | Automated pass. Live leftover |
 | **E8** overlay / log both latencies | metrics + overlay format | Step 9 | Automated pass. Live leftover |
 | **E9** backend switch | factory + settings | Step 10 | Automated pass. Live leftover |
-| **E10** p50 audio-start recorded | — | Step 9, ≥ 7 http | **BLOCKED on http config** (table blank) |
+| **E10** p50 audio-start recorded | — | Step 9, ≥ 7 http | **Leftover** (table blank; no invented p50). http config present |
 | **E11** Web Speech quality | skip | Step 11 | **Skip** (not a fail) |
 | **E12** whisper-wasm | factory maps to `null` | Step 12 | **Skip** (not a fail) |
 | **E13** typed tokens + English Path A | parse + submitCommand | Step 1 | Automated pass. Live leftover |
@@ -146,7 +148,7 @@ Fill from the latency overlay after **≥ 7** good **http** utterances. Leave bl
 
 | Date | Browser | Adapter | n | p50 transcript ms | p50 audio-start ms | Pass / fail notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| 2026-08-21 | — | http | — | — | — | **BLOCKED on http config.** `127.0.0.1:8090` LISTEN but `GET /health` timed out (0 bytes). No live utterances. No invented p50. |
+| 2026-08-21 | — | http | — | — | — | **Leftover.** `/health` 200; `/tts` ~1192 ms WAV; `/stt` timed out 90 s. No Chrome PTT n≥7. No invented p50. |
 
 Target (architecture / speech-port): p50(`ptt_up_to_audio_start_ms`) **< 1500** on localhost/LAN against **our** speech-api. If measured p50 ≥ 1500, keep the number, name STT vs TTS vs play resume, file a follow-up — still ship the loop.
 
@@ -154,7 +156,7 @@ Target (architecture / speech-port): p50(`ptt_up_to_audio_start_ms`) **< 1500** 
 
 ## Checklist for the next operator
 
-- [ ] `npm test` green (grammar fixtures still present).
-- [ ] `GET http://127.0.0.1:8090/health` returns JSON — otherwise **BLOCKED on http config** for E4/E10.
-- [ ] Manual steps 1–13 walked (skips E11/E12 as written).
-- [ ] p50 table filled or explicitly leftover / blocked — never silently empty after a successful http run.
+- [x] `npm test` green (grammar fixtures still present).
+- [x] `GET http://127.0.0.1:8090/health` returns JSON this run (200). Live PTT/STT still leftover.
+- [ ] Manual steps 1–13 walked (skips E11/E12 as written). Chrome mic leftover.
+- [x] p50 table explicitly leftover — never silently empty after a successful http run. No invented 1.5 s.
