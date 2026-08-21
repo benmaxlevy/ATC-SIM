@@ -1,5 +1,19 @@
 # Swarm status
 
+## FIRST SWARM COMPLETE — stopped before voice
+
+Phases **0 → 1 → 2** are green on `master`. Orchestrator `npm test`: **429 passed, 1 skipped**. No `speech-api/`, no PTT, no T03-* commits. This swarm is done.
+
+**Remaining work (next paste of `SWARM.md` with config changed):**
+
+| Phase | Folder | What it is |
+| --- | --- | --- |
+| 3 Voice | `phases/03-voice/` | PTT → our `speech-api` → same parser → spoken readback |
+| 4 Procedures | `phases/04-procedures/` | ILS intercept, DEMO ONE STAR, lite CA/MSAW |
+| 5 Training | `phases/05-training/` | Practice score, replay, optional bad readbacks |
+
+Do not start those until a new swarm paste. Manual Chrome leftovers stay in the phase 2 captain notes below.
+
 ## Run started
 
 Orchestrator started **2026-08-20**. Resume from the first phase that is not green. Do not redo merged tickets.
@@ -38,6 +52,7 @@ Orchestrator started **2026-08-20**. Resume from the first phase that is not gre
 - 2026-08-21: Phase 1 captain: all T01-01 … T01-14 merged `--no-ff` on `master`. Automated exit green. Did not start phase 2.
 - 2026-08-21: Orchestrator `npm test` on `master`: 240/240 passed. Spawning phase 2 captain on **cursor grok 4.6 high**. Human still asleep; no questions.
 - 2026-08-21: Phase 2 captain: all T02-01 … T02-13 merged `--no-ff` on `master`. Automated exit green. Did not start phase 3.
+- 2026-08-21: Orchestrator `npm test` on `master`: 429 passed, 1 skipped. No `speech-api/`. **FIRST SWARM COMPLETE — stopped before voice.**
 
 ## Phase 2 captain notes
 
