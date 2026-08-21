@@ -36,18 +36,18 @@ function requireDal123(world: World): Aircraft {
   return ac;
 }
 
-function issueHeading270(world: World) {
+async function issueHeading270(world: World) {
   const log = new SessionLog();
-  const result = handleRadioText(world, "DAL123 H270", log);
+  const result = await handleRadioText(world, "DAL123 H270", log);
   return { result, log };
 }
 
-test("DAL123 H270 is accepted with assigned 270 SHORTEST and heading readback (AC2)", () => {
+test("DAL123 H270 is accepted with assigned 270 SHORTEST and heading readback (AC2)", async () => {
   const world = spawnKdemWorld();
   const dal = requireDal123(world);
   expect(Math.abs(dal.headingDeg - 100)).toBeLessThanOrEqual(1);
 
-  const { result, log } = issueHeading270(world);
+  const { result, log } = await issueHeading270(world);
 
   expect(result.accepted).toBe(true);
   expect(dal.intent.assignedHeadingDeg).toBe(270);
@@ -66,7 +66,7 @@ test("DAL123 H270 is accepted with assigned 270 SHORTEST and heading readback (A
   );
 });
 
-test("after 2.0 sim seconds heading is ~106 and closer to 270 by ~6 deg (AC3)", () => {
+test("after 2.0 sim seconds heading is ~106 and closer to 270 by ~6 deg (AC3)", async () => {
   const world = spawnKdemWorld();
   const dal = requireDal123(world);
   expect(Math.abs(dal.headingDeg - 100)).toBeLessThanOrEqual(1);
@@ -76,7 +76,7 @@ test("after 2.0 sim seconds heading is ~106 and closer to 270 by ~6 deg (AC3)", 
   const startSpeedKt = dal.speedKt;
   const distBefore = Math.abs(shortestDeltaDeg(startHeading, 270));
 
-  const { result } = issueHeading270(world);
+  const { result } = await issueHeading270(world);
   expect(result.accepted).toBe(true);
 
   for (let i = 0; i < STEPS_FOR_2S; i += 1) {
@@ -93,13 +93,13 @@ test("after 2.0 sim seconds heading is ~106 and closer to 270 by ~6 deg (AC3)", 
   expect(dal.speedKt).toBeCloseTo(startSpeedKt, 1);
 });
 
-test("one SIM_DT_S step after accept starts the turn by ~0.15 deg (AC4)", () => {
+test("one SIM_DT_S step after accept starts the turn by ~0.15 deg (AC4)", async () => {
   const world = spawnKdemWorld();
   const dal = requireDal123(world);
   expect(Math.abs(dal.headingDeg - 100)).toBeLessThanOrEqual(1);
 
   const startHeading = dal.headingDeg;
-  const { result } = issueHeading270(world);
+  const { result } = await issueHeading270(world);
   expect(result.accepted).toBe(true);
   expect(dal.headingDeg).toBe(startHeading);
 

@@ -6,7 +6,7 @@
  * limits, or mutate intent. No World, no DOM.
  */
 
-import type { Instruction, TurnDir } from "@core";
+import type { Instruction, ParseStage, TurnDir } from "@core";
 import {
   formatParseError,
   isCallsignToken,
@@ -22,6 +22,8 @@ export type ParseResult =
       callsignToken: string | null;
       instructions: Instruction[];
       sourceText: string;
+      parseStage?: ParseStage;
+      source?: "text" | "voice";
     }
   | { ok: false; error: string; sourceText: string };
 

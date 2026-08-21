@@ -64,7 +64,7 @@ test("spawned tracks are unowned green FDB; F3 paints only the selected track ow
   expect(tracks.get("ac-aal")!.ownership).toBe("unowned");
 });
 
-test("AC6 — F3 does not emit command.accepted; heading still applies on an owned track", () => {
+test("AC6 — F3 does not emit command.accepted; heading still applies on an owned track", async () => {
   const dal = makeTestAircraft({
     id: "ac-dal",
     callsign: "DAL123",
@@ -82,7 +82,7 @@ test("AC6 — F3 does not emit command.accepted; heading still applies on an own
   expect(log.byType("command.rejected")).toHaveLength(0);
   expect(dal.intent.assignedHeadingDeg).toBe(90);
 
-  const result = handleRadioText(world, "DAL123 H270", log);
+  const result = await handleRadioText(world, "DAL123 H270", log);
   expect(result.accepted).toBe(true);
   expect(dal.intent.assignedHeadingDeg).toBe(270);
   expect(tracks.get(dal.id)!.ownership).toBe("owned");

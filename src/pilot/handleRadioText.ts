@@ -4,11 +4,11 @@
  * Scope never writes intent. Does not run physics.
  *
  * Analog: vice typed tokens (R08) compile to IR; 7110.65 readbacks (R01).
- * Trainer delta: phase 1 is `parseRadioText` only (no Path A/B/C). Not NAS STARS.
+ * Trainer delta: awaits `parseCommand` (typed → Path A → Path B). Not NAS STARS.
  */
 
-import type { Command, Instruction, SessionLog, World } from "@core";
-import { parseRadioText } from "@parse";
+import type { Command, Instruction, ParseStage, SessionLog, World } from "@core";
+import { parseCommand } from "@parse";
 import { applyIntent } from "./applyIntent";
 import { formatReadback, formatRejectReadback } from "./readback";
 import { resolveCallsign } from "./resolveCallsign";
@@ -28,11 +28,19 @@ function nextCommandId(): string {
   return `cmd-${commandSeq}`;
 }
 
+function selectedCallsignFromWorld(world: World): string | null {
+  if (world.selectedAircraftId === null) {
+    return null;
+  }
+  return world.aircraft.find((ac) => ac.id === world.selectedAircraftId)?.callsign ?? null;
+}
+
 function buildCommand(args: {
   callsign: string;
   instructions: Instruction[];
   sourceText: string;
   issuedAtSimMs: number;
+  parseStage?: ParseStage;
 }): Command {
   return {
     id: nextCommandId(),
@@ -41,6 +49,7 @@ function buildCommand(args: {
     instructions: args.instructions,
     sourceText: args.sourceText,
     source: "text",
+    parseStage: args.parseStage,
   };
 }
 
@@ -70,16 +79,21 @@ function logAccepted(log: SessionLog, world: World, atWallMs: number, command: C
 }
 
 /**
- * Parse a typed radio line, resolve the callsign, validate, and on full accept
- * apply intent. Parse failures log `{ sourceText, reason: "PARSE", command: null }`.
+ * Parse a radio line (tokens or 7110.65 English), resolve the callsign, validate,
+ * and on full accept apply intent. Parse failures log
+ * `{ sourceText, reason: "PARSE", command: null }`.
  */
-export function handleRadioText(
+export async function handleRadioText(
   world: World,
   sourceText: string,
   log: SessionLog,
   atWallMs = 0,
-): PilotResult {
-  const parsed = parseRadioText(sourceText);
+): Promise<PilotResult> {
+  const parsed = await parseCommand(sourceText, {
+    source: "text",
+    selectedCallsign: selectedCallsignFromWorld(world),
+    pathC: false,
+  });
   if (!parsed.ok) {
     const reason = "PARSE";
     logRejected(log, world, atWallMs, { command: null, reason, sourceText });
@@ -98,6 +112,7 @@ export function handleRadioText(
       instructions: parsed.instructions,
       sourceText,
       issuedAtSimMs: world.simTimeMs,
+      parseStage: parsed.parseStage,
     });
     logRejected(log, world, atWallMs, { command, reason, sourceText });
     return {
@@ -116,6 +131,7 @@ export function handleRadioText(
       instructions: parsed.instructions,
       sourceText,
       issuedAtSimMs: world.simTimeMs,
+      parseStage: parsed.parseStage,
     });
     logRejected(log, world, atWallMs, { command, reason, sourceText });
     return {
@@ -131,6 +147,7 @@ export function handleRadioText(
     instructions: parsed.instructions,
     sourceText,
     issuedAtSimMs: world.simTimeMs,
+    parseStage: parsed.parseStage,
   });
 
   const validated = validateInstructions(aircraft, command.instructions);

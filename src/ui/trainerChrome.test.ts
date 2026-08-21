@@ -109,17 +109,17 @@ test("AC3 — Pause / 1× / 2× still mutate paused and simRate", () => {
   expect(cssSrc()).toMatch(/\.sim-controls\s*\{[^}]*color:\s*#00ff00/s);
 });
 
-test("AC4 — radio-focus DAL123 H270 still readbacks and turns", () => {
+test("AC4 — radio-focus DAL123 H270 still readbacks and turns", async () => {
   const dal = sample();
   const world = createWorld({ aircraft: [dal] });
-  const result = submitCommand(world, "DAL123 H270", new SessionLog());
+  const result = await submitCommand(world, "DAL123 H270", new SessionLog());
   expect(result.accepted).toBe(true);
   expect(result.readback.toLowerCase()).toContain("heading two seven zero");
   expect(dal.intent.assignedHeadingDeg).toBe(270);
   expect(shellSrc()).toMatch(/submitCommand\(/);
 });
 
-test("AC5 — command strip does not call parseCommand Path A; English still fails", () => {
+test("AC5 — command strip does not call parseCommand; typed English wins at Path A", async () => {
   const commandLine = uiSources["./command-line.tsx"]!;
   const submit = uiSources["./submitCommand.ts"]!;
   expect(commandLine).not.toMatch(/parseCommand/);
@@ -130,11 +130,14 @@ test("AC5 — command strip does not call parseCommand Path A; English still fai
 
   const dal = sample();
   const world = createWorld({ aircraft: [dal] });
-  const before = { ...dal.intent };
-  const result = submitCommand(world, "DAL123 fly heading two seven zero", new SessionLog());
-  expect(result.accepted).toBe(false);
-  expect(result.reason).toBe("PARSE");
-  expect(dal.intent).toEqual(before);
+  const result = await submitCommand(
+    world,
+    "DAL123 fly heading two seven zero",
+    new SessionLog(),
+  );
+  expect(result.accepted).toBe(true);
+  expect(result.command?.parseStage).toBe("spoken_a");
+  expect(dal.intent.assignedHeadingDeg).toBe(270);
 });
 
 test("AC6 — shell analog+delta; no user-facing HUD / zoom / toolbar", () => {

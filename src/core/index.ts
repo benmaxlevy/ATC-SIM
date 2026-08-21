@@ -33,7 +33,7 @@ export {
 } from "./kinematics";
 export type { LatLon, NmEastNorth } from "./geo/coords";
 export { latLonToNm, nmToLatLon, normalizeHeadingDeg } from "./geo/coords";
-export type { Command, Instruction, TurnDir } from "./command/types";
+export type { Command, Instruction, ParseStage, TurnDir } from "./command/types";
 export { INSTRUCTION_TYPES } from "./command/instructions";
 export * from "./command/fixtures";
 export type { SessionEvent } from "./events/types";

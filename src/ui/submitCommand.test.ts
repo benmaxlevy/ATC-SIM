@@ -15,10 +15,10 @@ function sample(callsign: string, extras: Partial<Parameters<typeof createAircra
   });
 }
 
-test("AC1 — DAL123 H270 readback contains heading two seven zero, not the raw token as the only output", () => {
+test("AC1 — DAL123 H270 readback contains heading two seven zero, not the raw token as the only output", async () => {
   const dal = sample("DAL123");
   const world = createWorld({ aircraft: [dal] });
-  const result = submitCommand(world, "DAL123 H270", new SessionLog());
+  const result = await submitCommand(world, "DAL123 H270", new SessionLog());
 
   expect(result.accepted).toBe(true);
   expect(result.readback.toLowerCase()).toContain("heading two seven zero");
@@ -28,20 +28,20 @@ test("AC1 — DAL123 H270 readback contains heading two seven zero, not the raw 
   expect(dal.intent.assignedHeadingDeg).toBe(270);
 });
 
-test("spawned KDEM DAL123 accepts H270 before PPI exists", () => {
+test("spawned KDEM DAL123 accepts H270 before PPI exists", async () => {
   const world = createWorldFromScenario(loadKdem());
-  const result = submitCommand(world, "DAL123 H270", new SessionLog());
+  const result = await submitCommand(world, "DAL123 H270", new SessionLog());
   expect(result.accepted).toBe(true);
   expect(result.readback.toLowerCase()).toContain("heading two seven zero");
   const dal = world.aircraft.find((ac) => ac.callsign === "DAL123");
   expect(dal?.intent.assignedHeadingDeg).toBe(270);
 });
 
-test("AC3 — XYZ H270 is unable; existing aircraft keep prior intent", () => {
+test("AC3 — XYZ H270 is unable; existing aircraft keep prior intent", async () => {
   const dal = sample("DAL123", { headingDeg: 100 });
   const before = { ...dal.intent };
   const world = createWorld({ aircraft: [dal] });
-  const result = submitCommand(world, "XYZ H270", new SessionLog());
+  const result = await submitCommand(world, "XYZ H270", new SessionLog());
 
   expect(result.accepted).toBe(false);
   expect(result.readback.toLowerCase()).toContain("unable");
@@ -49,11 +49,11 @@ test("AC3 — XYZ H270 is unable; existing aircraft keep prior intent", () => {
   expect(dal.intent.assignedHeadingDeg).toBe(100);
 });
 
-test("empty submit matches T01-07 parse reject and does not crash", () => {
+test("empty submit matches T01-07 parse reject and does not crash", async () => {
   const dal = sample("DAL123");
   const before = { ...dal.intent };
   const world = createWorld({ aircraft: [dal] });
-  const result = submitCommand(world, "", new SessionLog());
+  const result = await submitCommand(world, "", new SessionLog());
   expect(result.accepted).toBe(false);
   expect(result.readback.toLowerCase()).toContain("unable");
   expect(dal.intent).toEqual(before);

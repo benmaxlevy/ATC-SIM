@@ -13,7 +13,15 @@ export interface Command {
   /** Raw text after ASR or the typed line, for logs and scoring. */
   sourceText: string;
   source: "text" | "voice";
+  /**
+   * Which parse stage produced `instructions` (phase 3+).
+   * Omit only on pre-phase-3 fixtures.
+   */
+  parseStage?: ParseStage;
 }
+
+/** Compiler that won (`phases/_shared/parse-pipeline.md`). */
+export type ParseStage = "typed" | "spoken_a" | "spoken_b" | "llm_c";
 
 export type TurnDir = "LEFT" | "RIGHT" | "SHORTEST";
 

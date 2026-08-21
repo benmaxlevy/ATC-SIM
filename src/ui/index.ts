@@ -5,8 +5,8 @@
  * first-run disclaimer, on-PPI flight-strip list, command strip, pause / 1× / 2× corner
  * readout). Canvas click selects a track and focuses the PPI (scope keys).
  * DCB clicks call the same `src/scope` functions as the keyboard and
- * never emit Command IR. List click selects the same track and focuses the PPI. Enter runs
- * `submitCommand` → `handleRadioText` and shows the template readback. Text
+ * never emit Command IR. List click selects the same track and focuses the PPI. Enter awaits
+ * `submitCommand` → `handleRadioText` / `parseCommand` and shows the template readback. Text
  * submit bypasses SpeechPort (`Command.source` is `"text"`). Selection is a
  * scope action and does not emit a readback. Session controls (`setPaused` /
  * `setSimRate`) do not touch intent.

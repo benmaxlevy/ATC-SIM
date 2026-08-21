@@ -121,8 +121,9 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             <CommandLine
               readback={readback}
               onSubmit={(input) => {
-                const result = submitCommand(app.world, input, app.log);
-                setReadback(result.readback);
+                void submitCommand(app.world, input, app.log).then((result) => {
+                  setReadback(result.readback);
+                });
               }}
             />
           }

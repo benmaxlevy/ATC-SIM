@@ -67,11 +67,11 @@ test("AC1 — six spawned KDEM arrivals yield six strips with those callsigns", 
   }
 });
 
-test("AC2 — DAL123 C50 updates strip A050 before Mode C moves", () => {
+test("AC2 — DAL123 C50 updates strip A050 before Mode C moves", async () => {
   const dal = sample("DAL123", { altitudeFt: 3000, headingDeg: 270, speedKt: 210 });
   const world = createWorld({ aircraft: [dal] });
   const beforeModeC = dal.altitudeFt;
-  const result = submitCommand(world, "DAL123 C50", new SessionLog());
+  const result = await submitCommand(world, "DAL123 C50", new SessionLog());
   expect(result.accepted).toBe(true);
   expect(dal.intent.assignedAltitudeFt).toBe(5000);
   expect(dal.altitudeFt).toBe(beforeModeC);
@@ -129,10 +129,10 @@ test("empty world yields no strips (empty bay copy is not aircraft list)", () =>
   expect(STRIP_BAY_HEADING.toLowerCase()).not.toContain("aircraft list");
 });
 
-test("typed DAL123 H270 still assigns heading with strips derived from World", () => {
+test("typed DAL123 H270 still assigns heading with strips derived from World", async () => {
   const dal = sample("DAL123", { headingDeg: 100 });
   const world = createWorld({ aircraft: [dal] });
-  const result = submitCommand(world, "DAL123 H270", new SessionLog());
+  const result = await submitCommand(world, "DAL123 H270", new SessionLog());
   expect(result.accepted).toBe(true);
   expect(dal.intent.assignedHeadingDeg).toBe(270);
   expect(stripsFromWorld(world)[0]?.headingField).toBe("H270");

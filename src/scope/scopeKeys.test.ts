@@ -325,7 +325,7 @@ test("AC5 / AC8 — M with PPI focused hides Mode C on full blocks; limited unch
   expect(view.modeCVisible).toBe(false);
 });
 
-test("AC8 — scope-focus T/M never call handleRadioText or emit command events", () => {
+test("AC8 — scope-focus T/M never call handleRadioText or emit command events", async () => {
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
   const world = createWorld({ aircraft: [dal] });
   const view = createScopeView();
@@ -340,7 +340,7 @@ test("AC8 — scope-focus T/M never call handleRadioText or emit command events"
   expect(radio).not.toHaveBeenCalled();
   expect(log.all()).toHaveLength(0);
 
-  radio("DAL123 H270");
+  await radio("DAL123 H270");
   expect(log.byType("command.accepted")).toHaveLength(1);
 });
 
@@ -386,7 +386,7 @@ test("AC4 — no selection + L then 1 switches all tracks to SW", () => {
   expect(view.tracks.get("ac-aal")!.leaderDir).toBe(1);
 });
 
-test("AC5 — radio focus L090 parses FLY_HEADING left 90; leaders unchanged", () => {
+test("AC5 — radio focus L090 parses FLY_HEADING left 90; leaders unchanged", async () => {
   const dal = makeTestAircraft({
     id: "ac-dal",
     callsign: "DAL123",
@@ -414,7 +414,7 @@ test("AC5 — radio focus L090 parses FLY_HEADING left 90; leaders unchanged", (
   if (parsed.ok) {
     expect(parsed.instructions).toEqual([{ type: "FLY_HEADING", headingDeg: 90, turn: "LEFT" }]);
   }
-  const result = handleRadioText(world, "DAL123 L090", log);
+  const result = await handleRadioText(world, "DAL123 L090", log);
   expect(result.accepted).toBe(true);
   expect(log.byType("command.accepted")).toHaveLength(1);
   expect(view.tracks.get("ac-dal")!.leaderDir).toBe(8);
@@ -566,7 +566,7 @@ test("AC6 — max < min on commit leaves filter unchanged; no crash", () => {
   expect(view.filterEntry.phase).toBe("idle");
 });
 
-test("AC7 — altitude filter never emits command.accepted or a readback", () => {
+test("AC7 — altitude filter never emits command.accepted or a readback", async () => {
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
   const world = createWorld({ aircraft: [dal] });
   const view = createScopeView();
@@ -578,7 +578,7 @@ test("AC7 — altitude filter never emits command.accepted or a readback", () =>
   expect(log.all()).toHaveLength(0);
   expect(view.altitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 120 });
 
-  radio("DAL123 H270");
+  await radio("DAL123 H270");
   expect(log.byType("command.accepted")).toHaveLength(1);
   expect(dal.intent.assignedHeadingDeg).toBe(270);
 });
@@ -593,7 +593,7 @@ test("F chord times out at 1.5 s with injected now; leftover digit is not consum
   expect(view.altitudeFilter).toEqual(DEFAULT_ALTITUDE_FILTER);
 });
 
-test("AC6 / AC7 — F3/F4 always-on preventDefault, never emit Command IR, ignore L/F", () => {
+test("AC6 / AC7 — F3/F4 always-on preventDefault, never emit Command IR, ignore L/F", async () => {
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", headingDeg: 90 });
   const aal = makeTestAircraft({ id: "ac-aal", callsign: "AAL45" });
   const world = createWorld({ aircraft: [dal, aal] });
@@ -645,7 +645,7 @@ test("AC6 / AC7 — F3/F4 always-on preventDefault, never emit Command IR, ignor
   expect(buffer).toBe("DAL123 H270");
   const parsed = parseRadioText("DAL123 H270");
   expect(parsed.ok).toBe(true);
-  handleRadioText(world, "DAL123 H270", log);
+  await handleRadioText(world, "DAL123 H270", log);
   expect(dal.intent.assignedHeadingDeg).toBe(270);
   expect(view.tracks.get("ac-dal")!.ownership).toBe("owned");
   expect(log.byType("command.accepted")).toHaveLength(1);

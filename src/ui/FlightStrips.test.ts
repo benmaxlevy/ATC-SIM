@@ -184,10 +184,10 @@ test("T02-08 — list callsign tints with ownership color; help is color-only no
   expect(mains["../main.tsx"]).toMatch(/syncStripCallsignColors\(scopeView\.tracks\)/);
 });
 
-test("AC5 — DAL123 H270 still works; list click does not go through submitCommand", () => {
+test("AC5 — DAL123 H270 still works; list click does not go through submitCommand", async () => {
   const dal = sample("DAL123", { headingDeg: 100 });
   const world = createWorld({ aircraft: [dal] });
-  const result = submitCommand(world, "DAL123 H270", new SessionLog());
+  const result = await submitCommand(world, "DAL123 H270", new SessionLog());
   expect(result.accepted).toBe(true);
   expect(dal.intent.assignedHeadingDeg).toBe(270);
   expect(listHtml(world)).toContain("H270");

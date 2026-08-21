@@ -3,9 +3,9 @@ import { commandFixtures, fixtureFlyHeading } from "./fixtures";
 import { INSTRUCTION_TYPES } from "./instructions";
 import type { Command, Instruction, TurnDir } from "./types";
 
-test("Command has only the six frozen radio fields", () => {
+test("Command has the frozen radio fields plus optional parseStage", () => {
   expectTypeOf<keyof Command>().toEqualTypeOf<
-    "id" | "issuedAtSimMs" | "callsign" | "instructions" | "sourceText" | "source"
+    "id" | "issuedAtSimMs" | "callsign" | "instructions" | "sourceText" | "source" | "parseStage"
   >();
 });
 

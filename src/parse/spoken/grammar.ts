@@ -1,0 +1,408 @@
+/**
+ * Path A: JO 7110.65-shaped English → Instruction[] (R01 climb/descend and
+ * maintain, fly heading, turn left heading). Not ICAO Doc 4444 “climb to” (R10).
+ * Does not construct a Command — parseCommand owns the stage list.
+ *
+ * Bare `heading {ddd}` is Path B salvage, not Path A.
+ */
+
+import type { Instruction, TurnDir } from "@core";
+import type { ParseResult } from "../parseRadioText";
+import { formatParseError, PARSE_ERROR } from "../tokens";
+import {
+  parseAltitudeFt,
+  parseHeadingDeg,
+  parseSpeedKt,
+  parseTurnDegreesValue,
+  singleDigit,
+} from "./numbers";
+import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./telephony";
+
+interface Cursor {
+  tokens: readonly string[];
+  i: number;
+}
+
+function peek(c: Cursor, offset = 0): string | undefined {
+  return c.tokens[c.i + offset];
+}
+
+function take(c: Cursor, word: string): boolean {
+  if (peek(c) === word) {
+    c.i += 1;
+    return true;
+  }
+  return false;
+}
+
+function leftover(c: Cursor): boolean {
+  return c.i < c.tokens.length;
+}
+
+function headingAt(c: Cursor): number | null {
+  const parsed = parseHeadingDeg(c.tokens, c.i);
+  if (!parsed) {
+    return null;
+  }
+  c.i = parsed.next;
+  return parsed.value;
+}
+
+function altitudeAt(c: Cursor): number | null {
+  const parsed = parseAltitudeFt(c.tokens, c.i);
+  if (!parsed) {
+    return null;
+  }
+  c.i = parsed.next;
+  return parsed.value;
+}
+
+function speedAt(c: Cursor): number | null {
+  const parsed = parseSpeedKt(c.tokens, c.i);
+  if (!parsed) {
+    return null;
+  }
+  c.i = parsed.next;
+  return parsed.value;
+}
+
+function skipToAfterClimbDescend(c: Cursor): void {
+  take(c, "to");
+  if (peek(c) === "and" && peek(c, 1) === "maintain") {
+    c.i += 2;
+  }
+}
+
+function tryTurnHeading(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "turn")) {
+    return null;
+  }
+  let turn: TurnDir | null = null;
+  if (take(c, "left")) {
+    turn = "LEFT";
+  } else if (take(c, "right")) {
+    turn = "RIGHT";
+  }
+  if (turn === null || !take(c, "heading")) {
+    c.i = start;
+    return null;
+  }
+  const headingDeg = headingAt(c);
+  if (headingDeg === null) {
+    c.i = start;
+    return null;
+  }
+  return { type: "FLY_HEADING", headingDeg, turn };
+}
+
+function tryTurnDegrees(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "turn")) {
+    return null;
+  }
+  let direction: "LEFT" | "RIGHT" | null = null;
+  if (take(c, "left")) {
+    direction = "LEFT";
+  } else if (take(c, "right")) {
+    direction = "RIGHT";
+  }
+  if (direction === null) {
+    c.i = start;
+    return null;
+  }
+  const deg = parseTurnDegreesValue(c.tokens, c.i);
+  if (!deg || c.tokens[deg.next] !== "degrees") {
+    c.i = start;
+    return null;
+  }
+  c.i = deg.next + 1;
+  return { type: "TURN_DEGREES", direction, degrees: deg.value };
+}
+
+function tryFlyHeading(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "fly") || !take(c, "heading")) {
+    c.i = start;
+    return null;
+  }
+  const headingDeg = headingAt(c);
+  if (headingDeg === null) {
+    c.i = start;
+    return null;
+  }
+  return { type: "FLY_HEADING", headingDeg, turn: "SHORTEST" };
+}
+
+function tryPresentHeading(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "continue") || !take(c, "present") || !take(c, "heading")) {
+    c.i = start;
+    return null;
+  }
+  return { type: "PRESENT_HEADING" };
+}
+
+function tryAltitude(c: Cursor): Instruction | null {
+  const start = c.i;
+  let verb: "CLIMB" | "DESCEND" | "MAINTAIN" | null = null;
+  if (take(c, "descend")) {
+    verb = "DESCEND";
+    skipToAfterClimbDescend(c);
+  } else if (take(c, "climb")) {
+    verb = "CLIMB";
+    skipToAfterClimbDescend(c);
+  } else if (take(c, "maintain")) {
+    verb = "MAINTAIN";
+  } else {
+    return null;
+  }
+  const altitudeFt = altitudeAt(c);
+  if (altitudeFt === null) {
+    c.i = start;
+    return null;
+  }
+  return { type: "ALTITUDE", altitudeFt, verb };
+}
+
+function trySpeed(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "maintain")) {
+    const speedKt = speedAt(c);
+    if (speedKt === null || !take(c, "knots")) {
+      c.i = start;
+      return null;
+    }
+    return { type: "SPEED", speedKt, verb: "MAINTAIN" };
+  }
+  if (take(c, "reduce") || take(c, "slow")) {
+    take(c, "speed");
+    take(c, "to");
+    const speedKt = speedAt(c);
+    if (speedKt === null) {
+      c.i = start;
+      return null;
+    }
+    take(c, "knots");
+    return { type: "SPEED", speedKt, verb: "REDUCE" };
+  }
+  if (take(c, "increase")) {
+    take(c, "speed");
+    take(c, "to");
+    const speedKt = speedAt(c);
+    if (speedKt === null) {
+      c.i = start;
+      return null;
+    }
+    take(c, "knots");
+    return { type: "SPEED", speedKt, verb: "INCREASE" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryDirect(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "proceed") || !take(c, "direct")) {
+    c.i = start;
+    return null;
+  }
+  const fix = parseFixId(c);
+  if (fix === null) {
+    c.i = start;
+    return null;
+  }
+  return { type: "DIRECT", fixId: fix };
+}
+
+function parseFixId(c: Cursor): string | null {
+  const phonetics: string[] = [];
+  while (phonetics.length < 5) {
+    const tok = peek(c);
+    if (tok === undefined || !(tok in PHONETIC_TO_LETTER)) {
+      break;
+    }
+    phonetics.push(PHONETIC_TO_LETTER[tok]!);
+    c.i += 1;
+  }
+  if (phonetics.length >= 2) {
+    return phonetics.join("");
+  }
+  const tok = peek(c);
+  if (tok === undefined || RESERVED_SPOKEN.has(tok)) {
+    return null;
+  }
+  c.i += 1;
+  return tok.toUpperCase();
+}
+
+function tryIdent(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "squawk")) {
+    if (!take(c, "ident")) {
+      c.i = start;
+      return null;
+    }
+    return { type: "IDENT" };
+  }
+  if (take(c, "ident")) {
+    return { type: "IDENT" };
+  }
+  return null;
+}
+
+function trySay(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "say")) {
+    return null;
+  }
+  if (take(c, "heading")) {
+    return { type: "SAY_HEADING" };
+  }
+  if (take(c, "altitude")) {
+    return { type: "SAY_ALTITUDE" };
+  }
+  c.i = start;
+  return null;
+}
+
+function runwayId(c: Cursor): string | null {
+  take(c, "runway");
+  const d1 = singleDigit(peek(c));
+  const d2 = singleDigit(peek(c, 1));
+  if (d1 !== null && d2 !== null) {
+    c.i += 2;
+    const side = runwaySide(peek(c));
+    if (side) {
+      c.i += 1;
+      return `${d1}${d2}${side}`;
+    }
+    return `${d1}${d2}`;
+  }
+  const raw = peek(c);
+  if (raw !== undefined && /^\d{1,2}[lrc]?$/i.test(raw)) {
+    c.i += 1;
+    const match = raw.match(/^(\d{1,2})([lrc])?$/i);
+    if (!match) {
+      return null;
+    }
+    const num = match[1]!.padStart(2, "0");
+    const side = match[2] ? match[2].toUpperCase() : "";
+    return `${num}${side}`;
+  }
+  return null;
+}
+
+function runwaySide(tok: string | undefined): string | null {
+  if (tok === "left" || tok === "lima") {
+    return "L";
+  }
+  if (tok === "right" || tok === "romeo") {
+    return "R";
+  }
+  if (tok === "center" || tok === "centre" || tok === "charlie") {
+    return "C";
+  }
+  return null;
+}
+
+function tryCleared(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "cleared") || !take(c, "ils")) {
+    c.i = start;
+    return null;
+  }
+  const rwy = runwayId(c);
+  if (rwy === null) {
+    c.i = start;
+    return null;
+  }
+  take(c, "approach");
+  const numeric = rwy.replace(/[LRC]$/i, "");
+  const padded = numeric.padStart(2, "0");
+  const side = rwy.slice(numeric.length);
+  return { type: "CLEARED_APPROACH", approachId: `ILS${padded}${side.toUpperCase()}` };
+}
+
+function parseOneInstruction(c: Cursor): Instruction | null {
+  const start = c.i;
+  const expediteBefore = take(c, "expedite");
+  const inst =
+    tryTurnHeading(c) ??
+    tryTurnDegrees(c) ??
+    tryFlyHeading(c) ??
+    tryPresentHeading(c) ??
+    tryAltitude(c) ??
+    trySpeed(c) ??
+    tryDirect(c) ??
+    tryIdent(c) ??
+    trySay(c) ??
+    tryCleared(c);
+  if (!inst) {
+    c.i = start;
+    return null;
+  }
+  if (inst.type === "ALTITUDE") {
+    const expediteAfter = take(c, "expedite");
+    if (expediteBefore || expediteAfter) {
+      return { ...inst, expedite: true };
+    }
+    return inst;
+  }
+  if (expediteBefore) {
+    c.i = start;
+    return null;
+  }
+  return inst;
+}
+
+/**
+ * Path A grammar on an already-normalized spoken string.
+ * `sourceText` is the pre-normalize original (preserved for the Command).
+ */
+export function parseSpokenGrammar(
+  normalized: string,
+  selectedCallsign: string | null | undefined,
+  sourceText: string,
+): ParseResult {
+  const tokens = normalized.split(" ").filter((tok) => tok.length > 0);
+  if (tokens.length === 0) {
+    return { ok: false, error: formatParseError(PARSE_ERROR.EMPTY), sourceText };
+  }
+
+  const c: Cursor = { tokens, i: 0 };
+  const callsignAttempt = parseSpokenCallsign(tokens, 0);
+  if (callsignAttempt.kind === "unknown_telephony") {
+    return {
+      ok: false,
+      error: formatParseError(PARSE_ERROR.UNKNOWN_TELEPHONY, callsignAttempt.word),
+      sourceText,
+    };
+  }
+  let callsignToken: string | null = null;
+  if (callsignAttempt.kind === "ok") {
+    callsignToken = callsignAttempt.callsign;
+    c.i = callsignAttempt.next;
+  } else {
+    callsignToken = selectedCallsign ?? null;
+  }
+
+  const instructions: Instruction[] = [];
+  while (leftover(c)) {
+    if (peek(c) === "and" && peek(c, 1) !== "maintain") {
+      c.i += 1;
+      continue;
+    }
+    const inst = parseOneInstruction(c);
+    if (!inst) {
+      return { ok: false, error: formatParseError(PARSE_ERROR.PARSE_MISS), sourceText };
+    }
+    instructions.push(inst);
+  }
+
+  if (instructions.length === 0) {
+    return { ok: false, error: formatParseError(PARSE_ERROR.PARSE_MISS), sourceText };
+  }
+
+  return { ok: true, callsignToken, instructions, sourceText };
+}

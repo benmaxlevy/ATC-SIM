@@ -61,17 +61,23 @@ function dcbHtml() {
   );
 }
 
-test("AC2 — Command IR stays the phase-1 six fields and 11 instruction types", () => {
+test("AC2 — Command IR stays the frozen fields and 11 instruction types", () => {
   expectTypeOf<keyof Command>().toEqualTypeOf<
-    "id" | "issuedAtSimMs" | "callsign" | "instructions" | "sourceText" | "source"
+    | "id"
+    | "issuedAtSimMs"
+    | "callsign"
+    | "instructions"
+    | "sourceText"
+    | "source"
+    | "parseStage"
   >();
   expect(INSTRUCTION_TYPES).toHaveLength(11);
   expectTypeOf<Instruction["type"]>().toEqualTypeOf<(typeof INSTRUCTION_TYPES)[number]>();
 });
 
-test("AC2 — DAL123 H270 still readbacks heading and assigns 270", () => {
+test("AC2 — DAL123 H270 still readbacks heading and assigns 270", async () => {
   const world = createWorldFromScenario(loadKdem());
-  const result = submitCommand(world, "DAL123 H270", new SessionLog());
+  const result = await submitCommand(world, "DAL123 H270", new SessionLog());
   expect(result.accepted).toBe(true);
   expect(result.command?.instructions[0]).toEqual({
     type: "FLY_HEADING",
@@ -84,7 +90,7 @@ test("AC2 — DAL123 H270 still readbacks heading and assigns 270", () => {
   );
 });
 
-test("AC3 — DCB/scope mutations emit zero Command IR; only radio DAL123 H270 accepts", () => {
+test("AC3 — DCB/scope mutations emit zero Command IR; only radio DAL123 H270 accepts", async () => {
   const bar = uiSources["./DisplayControlBar.tsx"]!;
   const canvas = uiSources["./ScopeCanvas.tsx"]!;
   expect(bar).not.toMatch(/from\s+["']@parse["']/);
@@ -116,7 +122,7 @@ test("AC3 — DCB/scope mutations emit zero Command IR; only radio DAL123 H270 a
   expect(log.byType("command.rejected")).toHaveLength(0);
   expect(dal!.intent.assignedHeadingDeg).not.toBe(270);
 
-  const result = submitCommand(world, "DAL123 H270", log);
+  const result = await submitCommand(world, "DAL123 H270", log);
   expect(result.accepted).toBe(true);
   expect(log.byType("command.accepted")).toHaveLength(1);
   expect(log.byType("command.rejected")).toHaveLength(0);

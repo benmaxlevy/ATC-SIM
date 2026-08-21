@@ -11,6 +11,8 @@ export const PARSE_ERROR = {
   MISSING_NUMBER: "MISSING_NUMBER",
   MISSING_APPROACH_ID: "MISSING_APPROACH_ID",
   BAD_TURN_DEGREES: "BAD_TURN_DEGREES",
+  UNKNOWN_TELEPHONY: "unknown_telephony",
+  PARSE_MISS: "PARSE_MISS",
 } as const;
 
 export type ParseErrorCode = (typeof PARSE_ERROR)[keyof typeof PARSE_ERROR];

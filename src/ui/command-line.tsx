@@ -1,7 +1,7 @@
 /**
  * Analog: vice / CRC command line at the bottom of the TCW (R07, R08).
  * Trainer delta: narrow map-green token strip, not a lime web input block.
- * Tokens only (`DAL123 H270`); Path A spoken English is phase 3. Not NAS STARS.
+ * Submit runs the shared radio pipeline (typed tokens or Path A English). Not NAS STARS.
  */
 
 import { type FormEvent, useState } from "react";
@@ -10,7 +10,7 @@ export const COMMAND_LINE_INPUT_ID = "command-line-input";
 
 export interface CommandLineProps {
   readback: string;
-  onSubmit: (value: string) => void;
+  onSubmit: (value: string) => void | Promise<void>;
 }
 
 /** Return key focus after a PPI click so the next keys are a radio command. */
