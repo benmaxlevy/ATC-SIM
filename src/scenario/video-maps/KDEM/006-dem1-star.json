@@ -1,0 +1,62 @@
+{
+  "id": "DEM1",
+  "name": "DEMO ONE arrival corridors",
+  "note": "Trainer-authored video map (MAPS). Independent of STAR/fix catalog. Coordinates may look like DEM1 but changing a fix does not change this map.",
+  "features": [
+    {
+      "type": "polyline",
+      "closed": false,
+      "pointsNm": [
+        [17.0, 12.0],
+        [16.0, 7.0],
+        [12.0, 4.0],
+        [10.0, 0.0]
+      ]
+    },
+    {
+      "type": "polyline",
+      "closed": false,
+      "pointsNm": [
+        [17.0, -12.0],
+        [16.0, -7.0],
+        [12.0, -4.0],
+        [10.0, 0.0]
+      ]
+    },
+    {
+      "type": "text",
+      "text": "NEMAX",
+      "atNm": [17.4, 12.5]
+    },
+    {
+      "type": "text",
+      "text": "NELBO",
+      "atNm": [16.5, 7.4]
+    },
+    {
+      "type": "text",
+      "text": "NJOIN",
+      "atNm": [12.4, 4.5]
+    },
+    {
+      "type": "text",
+      "text": "SEMAX",
+      "atNm": [17.4, -12.5]
+    },
+    {
+      "type": "text",
+      "text": "SELBO",
+      "atNm": [16.5, -7.5]
+    },
+    {
+      "type": "text",
+      "text": "SJOIN",
+      "atNm": [12.4, -4.6]
+    },
+    {
+      "type": "text",
+      "text": "MERGE",
+      "atNm": [10.0, 0.6]
+    }
+  ]
+}

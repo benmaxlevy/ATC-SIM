@@ -146,7 +146,7 @@ Implement **T01-08 before T01-07** (see that phase `AGENT.md`).
 
 | ID | Title |
 | --- | --- |
-| T04-01 | Procedure JSON + KDEM ILS27 / DEMO ONE |
+| T04-01 | Procedure JSON + KDEM navaids / ILS27 / DEMO ONE |
 | T04-02 | Nav fix lookup |
 | T04-03 | Lateral FMS: direct and fly-by |
 | T04-04 | Descend/climb via and CROSS (patches Command IR) |

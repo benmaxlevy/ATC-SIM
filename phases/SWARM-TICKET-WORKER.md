@@ -19,11 +19,11 @@ Workspace: `c:\Users\Ben\Documents\ATC-SIM`
 - `phases/_shared/architecture.md`
 - `phases/_shared/command-ir.md`
 - `phases/_shared/speech-port.md`
-- `phases/_shared/parse-pipeline.md` (phase 3)
+- `phases/_shared/parse-pipeline.md`
 - `phases/_shared/non-goals.md`
 - The parent phase `README.md` frozen decisions
 
-Shared files win. Do not reopen Command IR / SpeechPort / parser tokens. Do not implement a later phase “while you are here.” **This run is phase 3 voice** unless the ticket id is T02-*. No paid STT/TTS/LLM. Hugging Face Hub = weight download only. Do not implement T03-11 or T03-14 unless that is **your** ticket id. Scope/DCB never emit Command IR. Speech never constructs `Instruction` objects — only `parseCommand` does.
+Shared files win. Do not reopen SpeechPort or rename existing Command IR types. **Phase 4 tickets may add** IR variants (`DESCEND_VIA`, `CROSS`, `GO_AROUND`) — patch `phases/_shared/command-ir.md` in the **same** commits as the TypeScript union when the ticket says so. Do not implement a later phase “while you are here.” **This run is phase 4 procedures** unless the ticket id is T03-* leftover. No paid STT/TTS/LLM. Do not implement T04-11 unless that is **your** ticket id. Do not scrape charts or commit a full CIFP cycle. Scope/DCB never emit Command IR. Pilot owns intent; `stepWorld` owns kinematics; alerts are pure functions.
 
 ## Git
 

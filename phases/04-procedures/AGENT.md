@@ -23,13 +23,13 @@ Workspace: the ATC-SIM repo root.
 
 Do **not** edit other phase folders except: if a ticket adds Command IR variants, you **must** patch `phases/_shared/command-ir.md` in the **same PR** as the TypeScript union (see T04-04, optionally T04-07). Do not rename existing IR types.
 
-Do **not** start phase 5. Do not scrape charts. Do not fetch CIFP at runtime. Do not commit a full FAA CIFP cycle.
+Do **not** start phase 5. Do not scrape charts. Do not fetch CIFP at runtime. Do not commit a full FAA CIFP cycle. Do not implement a live `faa:update` / NASR pull.
 
 ## Product goal
 
 Aircraft fly published geometry; the scope warns.
 
-KDEM remains the default facility. Procedures are JSON. `DIRECT`, `EXPECT_APPROACH`, and `CLEARED_APPROACH` must change intent (phase 1 may have accepted and no-op’d them). STAR: 2–3 fixes, at-or-above, then vectors. ILS 27: intercept loc from a heading, GS after intercept from below, missed stub. CA lite and MSAW lite (yellow then red). CIFP importer is a **dev tool** proven on a frozen fixture. Wind is P1 and not required to exit.
+KDEM remains the default facility. The facility catalog is **ICAO-generic JSON** (`src/scenario/data/kdem/` is the first instance: vors, ndbs, ils, fixes, procedures, empty sids). Do not hardcode `"KDEM"` as the only legal `airportId`. Do not build a live FAA fetch. `DIRECT`, `EXPECT_APPROACH`, and `CLEARED_APPROACH` must change intent (phase 1 may have accepted and no-op’d them). STAR: 2–3 fixes, at-or-above, then vectors. ILS 27: the 7110.65 clearance *heading, maintain (alt) until established, cleared ILS approach runway 27* must parse, read back, and fly (hold alt until loc, then GS from below). CA lite and MSAW lite (yellow then red). CIFP importer is a **dev tool** proven on a frozen fixture. Wind is P1 and not required to exit.
 
 Pilot agent is the only module that turns a `Command` into intent. `stepWorld` is the only module that integrates kinematics. Alerts are pure functions. Scope never talks to the FMS.
 
@@ -64,8 +64,8 @@ T04-08 is required for phase exit (fixture tests, no network). T04-11 is not.
 
 ## Suggested files (create as needed; match phase 0 layout)
 
+- `src/scenario/data/kdem/` — `catalog.json`, `vors.json`, `ndbs.json`, `ils.json`, `fixes.json`, `procedures.json` (committed demo data; T04-01 loads them)
 - `src/scenario/procedures/schema.ts`
-- `src/scenario/data/kdem-procedures.json`
 - `src/scenario/data/kdem-mva.json`
 - `src/core/nav/fixRegistry.ts`
 - `src/core/nav/geometry.ts` (courses, fly-by, loc deviation, GS height)

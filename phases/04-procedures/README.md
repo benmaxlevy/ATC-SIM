@@ -2,7 +2,9 @@
 
 Aircraft fly published geometry. The scope starts warning you.
 
-This is the first phase where a heading is not the only way to move. After phase 4, a controller can put an arrival on a short STAR, take vectors, intercept ILS 27 from a heading, watch the aircraft capture localizer then glidepath, and either hand it to a tower stub or watch a missed-approach climb. Conflict alert and MSAW light up in yellow, then red. None of this is NAS-certified. All of it must be deterministic, testable, and driven by JSON plus Command IR — not by scraped charts.
+This is the first phase where a heading is not the only way to move. After phase 4, a controller can put an arrival on a short STAR, take vectors, and issue a **7110.65 ILS clearance** that the aircraft actually flies: *turn right heading xxx, maintain xxxxx until established, cleared ILS approach runway 27*. The target captures the localizer while holding that altitude, then glidepath from below, then either a tower stub or a missed-approach climb. Conflict alert and MSAW light up in yellow, then red.
+
+KDEM ships as **demo data files**: VORs, NDBs, ILS components, named fixes, STAR, and ILS 27 — not literals inside `stepWorld`. None of this is NAS-certified. All of it must be deterministic, testable, and driven by JSON plus Command IR — not by scraped charts.
 
 **Depends on:** phase 2 exit (STARS-like PPI, maps, datablocks). Phase 3 (voice) is *not* required; every procedure command is typed first. If phase 3 is already present, the same parser tokens work through SpeechPort.
 
@@ -16,9 +18,13 @@ Phases 0–2 prove: the world ticks, a typed vector is read back, the aircraft t
 
 A TRACON trainer without procedures is a heading game. The product fantasy for phase 4 is:
 
-1. An arrival is on a published STAR (two or three fixes, at-or-above altitudes) and then “vectors.”
-2. The controller issues headings to a localizer intercept angle, then **cleared ILS 27**.
-3. The aircraft intercepts the localizer, captures the glidepath from below, and descends on a 3° path.
+1. An arrival is on **DEMO ONE** (north or south transition, alt **and** speed at each fix) and then “vectors.”
+2. The controller vectors to a loc intercept, then the **one** ILS clearance (typed or spoken):
+
+   > turn right heading two four zero, maintain two thousand until established, cleared ILS approach runway two seven
+
+   Typed equivalent: `R240 A20 APP ILS27` (same-line heading + alt + APP sets `untilEstablished`).
+3. The aircraft **turns to that heading**, **holds 2000 until loc capture (established)**, then captures GS from below and descends on a 3° path. Readback uses the same words (callsign once, comma-joined).
 4. Near the marker, either a tower-handoff stub takes the track, or a missed-approach stub climbs out.
 5. Two aircraft too close light **CA**. An aircraft too low for the MVA polygon lights **MSAW**.
 
@@ -40,11 +46,12 @@ If that loop is not fun with a keyboard, CIFP import and wind will not save it. 
 
 ## Goals (when this phase is done)
 
-- KDEM ships a first-class **procedure catalog** JSON: named fixes, one STAR (2–3 legs, at-or-above, then vectors), ILS 27 (localizer, glidepath, missed stub).
+- KDEM ships first-class **demo data files** under `src/scenario/data/kdem/`: VORs, NDBs, ILS loc/GS/DME/markers, named fixes (including STAR/FAF/missed), STAR DEMO ONE, ILS 27. Runtime loads that set. `DCT` resolves **fixes and navaids**.
 - `DIRECT` to a named fix on that catalog actually tracks the fix (fly-by).
 - `EXPECT_APPROACH` and `CLEARED_APPROACH` change intent (expect is arming/scratchpad; cleared starts intercept).
+- **Phraseology = fly-through.** Canonical ILS transmission is heading + *maintain (alt) until established* + *cleared ILS approach runway 27*. Same `Command` (three instructions). Aircraft: fly heading, **hold altitude until established on the localizer**, then GS from below. Bare `APP ILS27` still arms intercept from the current heading and holds the already-assigned altitude until established.
 - Vector-to-intercept: assigned heading until localizer capture, then inbound course.
-- After loc capture, intercept glidepath from below; then follow GS.
+- After loc capture (**established**), intercept glidepath from below; then follow GS. Do not start GS before loc capture.
 - Missed approach stub at DA if not handed to the tower stub.
 - CA lite: pair `< 3 NM` **and** `< 1000 ft` — yellow (predicted), then red (current).
 - MSAW lite: below an MVA / floor polygon JSON; inhibited on GS inside FAF.
@@ -59,13 +66,13 @@ If that loop is not fun with a keyboard, CIFP import and wind will not save it. 
 Do not reopen these in tickets.
 
 1. **KDEM stays the default facility.** Fictional field, mag var 0°, elev 0 ft, one runway 27. Real airports are an importer output, not a replacement of KDEM in v1.
-2. **Procedures are data, not code.** Geometry lives in JSON validated by a schema. Kinematics consume a resolved route, not hard-coded lat/lon in `stepWorld`.
+2. **Procedures and navaids are data, not code.** One **facility catalog** schema (ICAO folder: vors, ndbs, ils, fixes, procedures, sids). KDEM is the first instance under `src/scenario/data/kdem/`. Types use `airportId: string`, not a `"KDEM"` literal. Optional `latDeg`/`lonDeg` on navaids/fixes (runtime still `xNm`/`yNm`; convert at load/import). Empty `sids: []` is required so a **later** FAA CIFP/NASR update script can write the same shape — **do not** build that fetch/script in this phase. Kinematics consume a resolved route, not hard-coded lat/lon in `stepWorld`. T04-01 must **load the committed KDEM files**, not invent a second coordinate set.
 3. **Pilot agent still owns intent.** Scope never calls intercept math. Parser never calls kinematics. Alerts are a pure function of `World` (plus catalog), not of mouse clicks.
 4. **Heading cancels published lateral path.** `FLY_HEADING` / `TURN_DEGREES` / `PRESENT_HEADING` drop STAR legs, DIRECT, and loc intercept/approach. Re-clear the approach to arm intercept again. This is how “vector to intercept” works.
 5. **Cleared approach is the intercept trigger.** `EXPECT_APPROACH` does not capture. `CLEARED_APPROACH` arms intercept from the **current assigned heading** (or present heading if none).
-6. **Glidepath from below only.** Do not dive through GS from above. Until GS capture, honor the assigned altitude (and STAR constraints if on descend-via).
+6. **Glidepath from below only, and only after established on the loc.** Do not dive through GS from above. Do not capture GS before `lateral === LOC`. Until loc capture, honor the assigned altitude (and STAR constraints if on descend-via). After loc capture, still honor assigned until GS intercept from below (typical: hold 2000 until ~6 NM).
 7. **Alerts are lite, not TAMR.** Thresholds are documented constants. No ARV, no CRDA, no weather, no sensor uncertainty. UI must keep the training/entertainment posture — never “MSAW certified.”
-8. **CIFP is a dev tool.** Frozen fixture in `testdata/`. Optional developer-run import of a locally downloaded CIFP cycle. Do not commit a full FAA cycle. Do not scrape Jeppesen/ForeFlight/anything.
+8. **CIFP fixture now; live FAA later.** T04-08 proves the catalog schema on a frozen in-repo fixture (offline). A future ticket (not this swarm) may add `faa:update` to pull official CIFP/NASR into another ICAO folder. Do not commit a full FAA cycle. Do not scrape Jeppesen/ForeFlight. Do not fetch CIFP from the browser. Do not replace KDEM as the default in this phase.
 9. **Coordinate system is whatever phase 0 froze.** Tickets below speak `xNm` (east) and `yNm` (north) in the local tangent plane. Convert lat/lon only at catalog load / importer boundary.
 10. **Units stay glossary-frozen.** NM, feet MSL, knots, degrees `[0, 360)`, sim ms. IAS still treated as TAS until T04-11 adds a wind vector; even then IAS≈TAS, wind only affects *ground* velocity.
 
@@ -73,9 +80,9 @@ Do not reopen these in tickets.
 
 ## Player fantasy (one session)
 
-Spawn: `DAL123` on DEMO ONE, somewhere before ALPHA, 250 kt, above the first at-or-above.
+Spawn: `DAL123` on DEMO ONE **north** transition, before `NEMAX`, 250 kt, at or above 10000.
 
-1. Aircraft flies ALPHA → BRAVO → CHARLIE with at-or-above constraints, then rolls out present heading (**vectors**).
+1. Aircraft flies NEMAX → NELBO → NJOIN → MERGE (alt and speed constraints), then rolls out present heading (**vectors**).
 2. Controller: `DAL123 D40` (descend 4000), then headings to a 30° intercept (`H240` if north of loc).
 3. `DAL123 APP ILS27` → readback “cleared ILS runway two seven.” Target continues the intercept heading.
 4. Localizer comes alive; aircraft turns inbound (270). Datablock / map already showed the feather (phase 2); capture is now *behavior*.
@@ -112,7 +119,7 @@ New code belongs in:
 
 | Folder | Owns |
 | --- | --- |
-| `src/scenario` | Procedure catalog types, KDEM JSON, MVA JSON, schema validation |
+| `src/scenario` | Facility catalog types + KDEM instance (`data/kdem/` vors, ndbs, ils, fixes, procedures, sids), MVA JSON, schema validation |
 | `src/core` | Fix lookup, FMS geometry (direct, fly-by, loc deviation, GS height), wind triangle, CA/MSAW pure functions, `stepWorld` lateral/vertical modes |
 | `src/parse` | `DCT`, `EXP`, `APP` (already), `VIA`, `X` (if IR extended), `GA` (if IR extended) |
 | `src/pilot` | Resolve DIRECT/VIA/APP/EXP/CROSS/GA; reject unknown fixes; apply modes; readbacks |
@@ -143,18 +150,51 @@ Assume airport ref ≈ `(0, 0)`, +x east, +y north, NM.
 | Missed heading / climb | `270°` / `3000 ft` |
 | Missed fix `MISSD` | `(-8, +6)` (west-northwest, stub) |
 
-**STAR DEMO ONE (`DEM1`)** — two or three fixes, then vectors:
+**STAR DEMO ONE (`DEM1`)** — **one** STAR, two transitions (north / south corridors from the RANGE-20 maps), merge at `MERGE`, then **VECTORS**.
 
-| Fix | `(xNm, yNm)` | Constraint |
-| --- | --- | --- |
-| `ALPHA` | `(30, 12)` | at-or-above `9000` |
-| `BRAVO` | `(18, 8)` | at-or-above `6000` |
-| `CHARLIE` | `(12, 4)` | at-or-above `4000` |
-| termination | — | `VECTORS` (present heading, assigned altitude) |
+RANGE 20, rings every 5 NM. Video map `DEM1` (`006-dem1-star.json`, MAPS 6, default on) is an independent corridor drawing. The STAR is `procedures.json` + `fixes.json`. Do **not** generate one from the other.
 
-Optional FAF name on the approach: `FI27` at `(6, 0)`. Threshold as `RW27` at `(0, 0)`. These are DIRECT targets and missed/approach math anchors.
+North transition `N`:
 
-**STAR vertical rule:** while `DESCEND_VIA` (or spawned on the STAR with via armed), the aircraft may descend, but must not go *below* the next unpassed at-or-above until that fix is sequenced. After `CHARLIE`, lateral = vectors; vertical = last assigned or last constraint (document one; prefer **assigned altitude** if the controller has issued one, else last constraint).
+| Fix | `(xNm, yNm)` | Dist | Altitude | Speed |
+| --- | --- | --- | --- | --- |
+| `NEMAX` | `(17, 12)` | ~21 NM | at-or-above 10000 | at-or-below 250 |
+| `NELBO` | `(16, 7)` | ~17 NM | at-or-above 8000 | at-or-below 230 |
+| `NJOIN` | `(12, 4)` | ~13 NM | at-or-above 6000 | at-or-below 210 |
+
+South transition `S` (mirror):
+
+| Fix | `(xNm, yNm)` | Dist | Altitude | Speed |
+| --- | --- | --- | --- | --- |
+| `SEMAX` | `(17, -12)` | ~21 NM | at-or-above 10000 | at-or-below 250 |
+| `SELBO` | `(16, -7)` | ~17 NM | at-or-above 8000 | at-or-below 230 |
+| `SJOIN` | `(12, -4)` | ~13 NM | at-or-above 6000 | at-or-below 210 |
+
+Common route, then vectors:
+
+| Fix | `(xNm, yNm)` | Dist | Altitude | Speed |
+| --- | --- | --- | --- | --- |
+| `MERGE` | `(10, 0)` | 10 NM | **at** 4000 | at-or-below 210 |
+| termination | — | — | **VECTORS** (present heading; assigned or last constraint) | — |
+
+`FI27` `(6, 0)` is the ILS FAF, **not** a STAR fix. After `MERGE` the controller vectors to intercept and issues the ILS clearance (maintain 2000 until established).
+
+**Navaids (same tangent plane; ids are DIRECT targets too):**
+
+| Id | Kind | `(xNm, yNm)` | Radio |
+| --- | --- | --- | --- |
+| `DEM` | VOR/DME | `(0.4, 0.8)` | 113.00 T |
+| `OCT` | VOR/DME | `(38, -10)` | 115.90 L |
+| `DMO` | NDB | `(6.0, 0.15)` | 385 kHz |
+| `IDEM` | LOC | `(-1.85, 0)` | 110.30, course 270 (antenna; GS origin remains threshold) |
+| `IDEMGS` | GS | `(0.18, -0.07)` | 335.0, 3° / TCH 50 (height math uses threshold, not antenna xy) |
+| `IDEMDME` | DME | `(-1.85, 0)` | paired with loc |
+| `OM27` | OM | `(6.2, 0)` | near FAF |
+| `MM27` | MM | `(0.55, 0)` | short final |
+
+**Other committed fixes:** `RW09` `(-1.645, 0)`, `NORMA` `(8, 12)`, `SNARF` `(8, -10)`, `DEMEE` `(20, 0)`, `OCTTA` `(28, -6)`. Encode exactly as `src/scenario/data/kdem/*.json`.
+
+**STAR vertical / speed rule:** while `DESCEND_VIA` (or spawned on the STAR with via armed), do not go *below* the next unpassed **at-or-above** altitude, and do not go *above* the next unpassed **at-or-below** speed (slow to meet it; do not accelerate to a speed restriction). `AT` altitude = be at that altitude by the fix. After `MERGE` / `nav.star.vectors`, lateral = heading; vertical = assigned altitude if the controller has issued one, else last constraint (4000).
 
 **Localizer deviation (signed, degrees):**
 
@@ -205,9 +245,27 @@ type VerticalMode =
 
 `EXPECT_APPROACH` sets `intent.expectedApproachId` only (scratchpad / strip). No lateral change.
 
-`CLEARED_APPROACH` sets `intent.clearedApproachId` and `lateral = INTERCEPT_LOC` using whatever heading they are currently flying.
+`CLEARED_APPROACH` sets `intent.clearedApproachId` and `lateral = INTERCEPT_LOC` using whatever heading they are currently flying (or the heading in the **same** Command). Assigned altitude (including `untilEstablished`) is held until loc capture.
 
 Speed: do **not** auto-configure flaps/gear. Optional documented approach speed cap (e.g. if assigned speed is null, decelerate toward 160 kt inside 10 NM on loc) is **P2 — skip unless a ticket needs it for GS rate sanity**. Prefer leaving assigned speed alone so tests stay linear.
+
+### 7110.65 ILS clearance — phraseology and aircraft must match
+
+Canonical **one** transmission (JO 7110.65 vector to final / ILS):
+
+> “Delta one two three turn right heading two four zero maintain two thousand until established cleared ils approach runway two seven”
+
+| What the controller said | IR (same `Command`, this order) | What the aircraft does |
+| --- | --- | --- |
+| turn right heading 240 | `FLY_HEADING` 240 `RIGHT` | Turn right to 240; **this** is the intercept heading |
+| maintain 2000 until established | `ALTITUDE` `MAINTAIN` 2000 `untilEstablished: true` | Hold 2000 until **established on the localizer** (`nav.loc.captured`). Do not start GS before that |
+| cleared ILS approach runway 27 | `CLEARED_APPROACH` `ILS27` | Arm `INTERCEPT_LOC`; capture loc from that heading; then GS from below (T04-06) |
+
+Path A must also accept `… until established on the localizer …` and `cleared ils runway two seven approach` (existing T03 wording). Readback echoes the clauses (callsign once): `turn right heading two four zero, maintain two thousand until established, cleared i l s runway two seven approach`.
+
+Typed same clearance: `DAL123 R240 A20 APP ILS27`. Same-line heading + altitude + `APP` **sets** `untilEstablished` on the altitude instruction. Split transmissions (`H240` then later `APP ILS27`) still intercept from the **current** heading and hold the **already assigned** altitude until established — the aircraft law is the same; only the readback omits “until established” if the flag was not on that Command.
+
+`EXPECT_APPROACH` still does not capture. A heading after `APP` still cancels the approach (re-clear to intercept again).
 
 ---
 
@@ -215,18 +273,18 @@ Speed: do **not** auto-configure flaps/gear. Optional documented approach speed 
 
 Existing IR (do not rename): `DIRECT`, `EXPECT_APPROACH`, `CLEARED_APPROACH`.
 
-Phase 1 parser table already maps `APP ILS27` → `CLEARED_APPROACH`. Implement fly-through.
+Phase 1 parser table already maps `APP ILS27` → `CLEARED_APPROACH`. Implement fly-through. Phase 4 Path A must parse the **combined ILS clearance** above (T04-05), not only the short `cleared ils runway two seven approach` from phase 3.
 
 **Add these typed tokens** (vice-inspired, not vice-compatible):
 
 | Typed | IR |
 | --- | --- |
-| `DCT ALPHA` or `DCT ALPHA` with callsign | `DIRECT { fixId: "ALPHA" }` |
+| `DCT NEMAX` | `DIRECT { fixId: "NEMAX" }` |
 | `EXP ILS27` | `EXPECT_APPROACH { approachId: "ILS27" }` |
 | `APP ILS27` | `CLEARED_APPROACH { approachId: "ILS27" }` (already specified) |
 | `VIA DEM1` | `DESCEND_VIA { procedureId: "DEM1" }` **new** |
-| `X ALPHA 40` | `CROSS { fixId: "ALPHA", altitudeFt: 4000, restriction: "AT" }` **new, optional but recommended** |
-| `X ALPHA 40A` / `X ALPHA 40B` | same with `AT_OR_ABOVE` / `AT_OR_BELOW` |
+| `X NEMAX 40` | `CROSS { fixId: "NEMAX", altitudeFt: 4000, restriction: "AT" }` **new, optional but recommended** |
+| `X NEMAX 40A` / `X NEMAX 40B` | same with `AT_OR_ABOVE` / `AT_OR_BELOW` |
 | `GA` | `GO_AROUND` **new, optional**; immediate missed if on approach |
 
 `D` remains descend. Do not steal `D` for direct.
@@ -235,11 +293,12 @@ If you add any new `Instruction` variant, **patch `phases/_shared/command-ir.md`
 
 Readbacks (deterministic, FAA digits, callsign once):
 
-- `DIRECT ALPHA` → `{callsign} direct ALPHA`
+- `DIRECT NEMAX` → `{callsign} direct NEMAX`
 - `EXPECT_APPROACH ILS27` → `{callsign} expect ILS runway two seven`
-- `CLEARED_APPROACH ILS27` → `{callsign} cleared ILS runway two seven`
+- `CLEARED_APPROACH ILS27` → `{callsign} cleared i l s runway two seven approach`
+- Combined ILS vector (heading + until-established alt + APP) → join with commas; include **until established** when the altitude instruction has that flag
 - `DESCEND_VIA DEM1` → `{callsign} descend via DEMO ONE`
-- `CROSS ALPHA AT 4000` → `{callsign} cross ALPHA at four thousand`
+- `CROSS NEMAX AT 4000` → `{callsign} cross NEMAX at four thousand`
 - `GO_AROUND` → `{callsign} going around`
 
 Reject (no intent change):
@@ -317,8 +376,8 @@ Not a weather mosaic. Not gusts. Not runway wind components in ATIS (no ATIS).
 1. Runtime catalog = KDEM JSON (first-class, committed, tests freeze on it).
 2. `tools/cifp-import` reads a CIFP-like text file and writes `ProcedureCatalog` JSON.
 3. In-repo `testdata/cifp/frozen-subset.cifp` is a **tiny synthetic fixture** (CIFP/ARINC-424-shaped records) that maps onto DEMO-like fixes/ILS/STAR. Tests assert importer output matches `testdata/cifp/frozen-subset.expected.json`.
-4. README in the tool: how a developer downloads CIFP from the official FAA source, how to run `npm run cifp:import -- --in path --airport KDCA --out src/scenario/data/`, that the cycle is **not** committed, and that redistributability is the developer’s problem.
-5. **Never** scrape charts. **Never** fetch CIFP from the browser at runtime.
+4. Tool README: fixture CLI only in this phase. Mention (do not implement) that a later script should write another ICAO folder in this same schema from official CIFP/NASR. Do not scrape charts; do not commit FAA cycles; KDEM stays default.
+5. **Never** scrape charts. **Never** fetch CIFP from the browser at runtime. **Never** build the live update script in T04-08.
 
 If the real CIFP grammar is too wide: support only the record types needed for *enroute/terminal fixes, ILS, and a STAR with altitude constraints* — document the subset. Unknown records skipped with a count in the CLI log.
 
@@ -376,7 +435,7 @@ Append to the phase 0 log. Suggested names (stable):
 ## Out of scope (this phase)
 
 - Full TAMR, ADS-B fusion error models, weather mosaic, dual-runway CRDA, ARV, FMA.
-- RNAV (RNP) approaches, SIDs, holds, procedure turns, DME arcs, circling.
+- Flying RNAV (RNP), SIDs, holds, procedure turns, DME arcs, circling. **Storing** empty `sids` and extra `approach.type` values in JSON is in scope.
 - Dual ILS, changing runways, LAHSO.
 - Scraping or bundling copyrighted charts; committing a full CIFP cycle.
 - Certified CA/MSAW algorithms, conflict resolution advisories.
@@ -393,7 +452,7 @@ Implement in this order unless a ticket says it can parallel. Do not start a tic
 
 | ID | Title | Pri | Size | Depends on | Blocks |
 | --- | --- | --- | --- | --- | --- |
-| T04-01 | Procedure JSON schema and KDEM ILS27 STAR | P0 | L | none (phase 2 exit) | T04-02, T04-08, T04-10, T04-12 |
+| T04-01 | Procedure JSON + KDEM demo navaids/fixes/ILS27/DEMO ONE | P0 | L | none (phase 2 exit) | T04-02, T04-08, T04-10, T04-12 |
 | T04-02 | Nav fix lookup | P0 | S | T04-01 | T04-03 |
 | T04-03 | Lateral FMS: direct and fly-by | P0 | L | T04-02 | T04-04, T04-05, T04-12 |
 | T04-04 | Descend/climb via and crossing alts | P0 | M | T04-03 | T04-12 |
@@ -416,10 +475,11 @@ T04-11 is **not** required for phase exit. T04-08 **is** required: the importer 
 
 Do not start phase 5 until every box is true.
 
-- [ ] KDEM procedure catalog JSON is committed, schema-validated, and contains DEMO ONE (2–3 at-or-above fixes + vectors) and ILS 27 (loc, GS, missed stub).
+- [ ] KDEM demo data is committed under `src/scenario/data/kdem/` (vors, ndbs, ils, fixes, procedures, **sids**), schema-validated (`airportId: string`, `sids` array), and contains DEMO ONE (N/S transitions + MERGE), ILS 27, DIRECT-able ids `DEM`, `NEMAX`, `FI27`. Video map `DEM1` exists as a separate MAPS file (not generated from the STAR).
+- [ ] Spoken/typed ILS clearance *turn right heading … maintain … until established, cleared ILS approach runway 27* parses to heading + altitude(`untilEstablished`) + `CLEARED_APPROACH`; readback uses those words; aircraft holds altitude until loc capture then GS from below.
 - [ ] `DCT <fix>` sequences a fly-by to a catalog fix; unknown fix rejects.
 - [ ] `EXP ILS27` sets expected approach; does not capture loc.
-- [ ] `APP ILS27` after an intercept heading captures loc, then GS from below; phase 1 no-op is gone.
+- [ ] `APP ILS27` after an intercept heading captures loc, then GS from below; phase 1 no-op is gone. GS does **not** start before loc established.
 - [ ] After last STAR fix, aircraft is on vectors (heading mode).
 - [ ] Descend-via / crossing constraints honor at-or-above (no bust in the unit test).
 - [ ] DA without tower handoff → missed stub (heading + climb). Tower stub → land + despawn.
@@ -427,11 +487,11 @@ Do not start phase 5 until every box is true.
 - [ ] MSAW: below MVA polygon yellow then red; inhibited on GS inside FAF. Automated test.
 - [ ] `tools/cifp-import` converts `testdata/cifp/frozen-subset.cifp` to the catalog schema; test green **without network**.
 - [ ] No chart scraping. No full CIFP cycle in git.
-- [ ] T04-12 manual script passable: STAR → vectors → ILS → handoff or missed, CA or MSAW visible in the same session (spawn a violator or use the script’s second target).
+- [ ] T04-12 manual script passable: STAR → vectors → **full ILS clearance** (heading + maintain until established + cleared ILS 27) → loc then GS → handoff or missed, CA or MSAW visible in the same session (spawn a violator or use the script’s second target).
 - [ ] `npm test` green. Training/entertainment labeling still visible (phase 0).
 - [ ] If IR was extended: `phases/_shared/command-ir.md` updated in the same PR(s) as the types.
 
-**Not required to exit:** T04-11 wind, loc/GS needles, radio audio for alerts, real-airport CIFP import by hand.
+**Not required to exit:** T04-11 wind, loc/GS needles, radio audio for alerts, live FAA/CIFP/NASR download, flying SIDs, loading a second ICAO.
 
 ---
 

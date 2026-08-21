@@ -1,0 +1,55 @@
+{
+  "airportId": "KDEM",
+  "runwayId": "27",
+  "approachId": "ILS27",
+  "components": [
+    {
+      "id": "IDEM",
+      "kind": "LOC",
+      "name": "I-DEM",
+      "freqMhz": 110.3,
+      "courseDeg": 270,
+      "xNm": -1.85,
+      "yNm": 0,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "note": "Localizer antenna beyond departure end of rwy 27 (west of threshold). Course is inbound 270. Do not use antenna position as GS origin — threshold (0,0) is GS origin."
+    },
+    {
+      "id": "IDEMGS",
+      "kind": "GS",
+      "name": "I-DEM GS",
+      "freqMhz": 335.0,
+      "gsAngleDeg": 3.0,
+      "tchFt": 50,
+      "xNm": 0.18,
+      "yNm": -0.07,
+      "note": "Glideslope antenna near threshold 27, south of centerline. GS height uses threshold + TCH + 3°, not this antenna xy."
+    },
+    {
+      "id": "IDEMDME",
+      "kind": "DME",
+      "name": "I-DEM DME",
+      "xNm": -1.85,
+      "yNm": 0,
+      "pairedWith": "IDEM",
+      "note": "Collocated with the localizer. DME distance is not required for v1 intercept math."
+    },
+    {
+      "id": "OM27",
+      "kind": "OM",
+      "name": "ILS 27 outer marker",
+      "xNm": 6.2,
+      "yNm": 0,
+      "note": "Near FAF FI27. Marker passage is not a separate fly-through in v1."
+    },
+    {
+      "id": "MM27",
+      "kind": "MM",
+      "name": "ILS 27 middle marker",
+      "xNm": 0.55,
+      "yNm": 0,
+      "note": "Short final. Not a capture trigger."
+    }
+  ]
+}

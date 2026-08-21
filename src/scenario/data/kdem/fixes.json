@@ -1,0 +1,117 @@
+{
+  "airportId": "KDEM",
+  "fixes": [
+    {
+      "id": "NEMAX",
+      "kind": "INTERSECTION",
+      "xNm": 17,
+      "yNm": 12,
+      "formedBy": "DEM R-055 / OCT R-300 (demo)",
+      "note": "DEMO ONE north entry ~21 NM"
+    },
+    {
+      "id": "NELBO",
+      "kind": "INTERSECTION",
+      "xNm": 16,
+      "yNm": 7,
+      "formedBy": "DEM R-066 (demo)",
+      "note": "North dogleg"
+    },
+    {
+      "id": "NJOIN",
+      "kind": "INTERSECTION",
+      "xNm": 12,
+      "yNm": 4,
+      "formedBy": "DEM R-072 (demo)",
+      "note": "North join toward MERGE"
+    },
+    {
+      "id": "SEMAX",
+      "kind": "INTERSECTION",
+      "xNm": 17,
+      "yNm": -12,
+      "formedBy": "DEM R-125 / OCT R-260 (demo)",
+      "note": "DEMO ONE south entry ~21 NM"
+    },
+    {
+      "id": "SELBO",
+      "kind": "INTERSECTION",
+      "xNm": 16,
+      "yNm": -7,
+      "formedBy": "DEM R-114 (demo)",
+      "note": "South dogleg"
+    },
+    {
+      "id": "SJOIN",
+      "kind": "INTERSECTION",
+      "xNm": 12,
+      "yNm": -4,
+      "formedBy": "DEM R-108 (demo)",
+      "note": "South join toward MERGE"
+    },
+    {
+      "id": "MERGE",
+      "kind": "INTERSECTION",
+      "xNm": 10,
+      "yNm": 0,
+      "note": "DEMO ONE merge / vectors. 10 NM east of threshold 27. DCT MERGE is legal."
+    },
+    {
+      "id": "FI27",
+      "kind": "FAF",
+      "xNm": 6,
+      "yNm": 0,
+      "note": "ILS 27 FAF. GS intercept ~2000 ft"
+    },
+    {
+      "id": "RW27",
+      "kind": "THRESHOLD",
+      "xNm": 0,
+      "yNm": 0,
+      "note": "Runway 27 threshold / GS origin"
+    },
+    {
+      "id": "RW09",
+      "kind": "THRESHOLD",
+      "xNm": -1.645,
+      "yNm": 0,
+      "note": "Opposite threshold (10000 ft rwy). No ILS 09 in v1"
+    },
+    {
+      "id": "MISSD",
+      "kind": "MAPT",
+      "xNm": -8,
+      "yNm": 6,
+      "note": "Missed-approach stub DIRECT target"
+    },
+    {
+      "id": "NORMA",
+      "kind": "WAYPOINT",
+      "xNm": 8,
+      "yNm": 12,
+      "note": "North downwind / vector reference (not on DEM1)"
+    },
+    {
+      "id": "SNARF",
+      "kind": "WAYPOINT",
+      "xNm": 8,
+      "yNm": -10,
+      "note": "South of loc; missed/base reference (not on DEM1)"
+    },
+    {
+      "id": "DEMEE",
+      "kind": "INTERSECTION",
+      "xNm": 20,
+      "yNm": 0,
+      "formedBy": "DEM 090/20 (demo)",
+      "note": "On the extended 27 final, 20 NM. Not a DEM1 fix"
+    },
+    {
+      "id": "OCTTA",
+      "kind": "INTERSECTION",
+      "xNm": 28,
+      "yNm": -6,
+      "formedBy": "OCT R-280 / DEM R-110 (demo)"
+    }
+  ]
+}

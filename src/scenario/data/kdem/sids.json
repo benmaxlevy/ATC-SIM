@@ -1,0 +1,5 @@
+{
+  "airportId": "KDEM",
+  "sids": [],
+  "note": "Departures live here so a later CIFP/NASR import can fill SIDs without a schema break. Phase 4 does not fly SIDs."
+}

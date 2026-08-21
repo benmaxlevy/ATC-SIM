@@ -9,11 +9,11 @@
 
 ## Goal
 
-After localizer capture, the aircraft intercepts the **3° glidepath from below** and descends on it (approach phase). Assigned altitude is honored until GS capture. No autoland flare yet.
+After localizer capture (**established**), the aircraft intercepts the **3° glidepath from below** and descends on it (approach phase). Assigned altitude is honored **until loc established**, then until GS intercept from below. **Do not capture GS before loc.** No autoland flare yet.
 
 ## Context
 
-ILS 27 catalog fields: `gsAngleDeg`, `tchFt`, `fafDistanceNm`, `gsInterceptAltFt`, `daFt`. Typical flow: descend and maintain 2000, intercept loc, capture GS near 6 NM.
+ILS 27 catalog fields: `gsAngleDeg`, `tchFt`, `fafDistanceNm`, `gsInterceptAltFt`, `daFt`. Typical flow matches the ILS clearance: *maintain 2000 until established, cleared ILS 27* → intercept loc at 2000, capture GS near 6 NM. “Until established” is loc capture (T04-05); this ticket is GS **after** that.
 
 Kinematics already climb/descend at ~1500–2000 fpm (phase 1). GS at 160 kt / 3° is ~850 fpm — existing VS is enough; you may cap VS to follow GS rather than slam 2000 fpm through it.
 
@@ -31,7 +31,7 @@ Read **R01** ILS / glidepath / approach clearances (phraseology and when GS is e
 ## Scope
 
 - Pure `gsAltitudeFt(distToThresholdNm, loc params)` matching README: `tchFt + tan(gsAngle) * distNm * 6076.12` (+ field elev).
-- After `lateral === LOC`, evaluate GS capture **from below**.
+- After `lateral === LOC` (**established**), evaluate GS capture **from below**. Never evaluate GS capture in `INTERCEPT_LOC` / `HEADING`.
 - On capture: `vertical = GS`, event `nav.gs.captured`, follow `gsAltitudeFt` at current distance (lead slightly if needed to avoid porpoise).
 - Do not capture from above (`alt > gsAlt + 50` at first opportunity → stay ASSIGNED).
 - Do not climb on GS. If more than 150 ft above GS after capture, drop to ASSIGNED at current assigned (or last assigned 2000) — tested.
@@ -71,9 +71,10 @@ Heading cancel (already T04-05) also clears `vertical` GS → ASSIGNED.
 
 - [ ] **AC1 —** Unit: `gsAltitudeFt(6)` is within 50 ft of `gsInterceptAltFt` (2000) given TCH 50 and 3°.
 - [ ] **AC2 —** Given loc captured, alt 2000, ~8 NM (still below GS), when stepped, then `nav.gs.captured` occurs near 6 NM (±1 NM) and altitude then tracks GS within 150 ft down to 1000 ft.
+- [ ] **AC2c —** Given `INTERCEPT_LOC` (not yet captured), alt 2000, ~8 NM, when stepped 20 s, then `nav.gs.captured` does **not** fire.
 - [ ] **AC3 —** Given loc captured, alt 4000 at 6 NM (above GS), when stepped 30 s, then `vertical` is not `GS` and `nav.gs.captured` does not fire.
 - [ ] **AC4 —** Given GS captured, when `H360` accepted, then GS mode clears and the aircraft does not keep descending on the 3° path solely due to GS (it may still descend to assigned).
-- [ ] **AC5 —** Automated tests for AC1–AC4. DOM-free.
+- [ ] **AC5 —** Automated tests for AC1–AC4 and AC2c. DOM-free.
 
 ## Test plan
 

@@ -45,6 +45,14 @@
       "dcbLabel": "CLASS_B",
       "defaultOn": true,
       "color": "mapDim"
+    },
+    {
+      "id": "DEM1",
+      "file": "006-dem1-star.json",
+      "dcbNumber": 6,
+      "dcbLabel": "DEM1",
+      "defaultOn": true,
+      "color": "map"
     }
   ]
 }

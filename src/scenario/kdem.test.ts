@@ -40,8 +40,9 @@ test("AC1 — loaded KDEM video maps come from video-maps/KDEM", () => {
     "COAST",
     "DWNWND",
     "CLASS_B",
+    "DEM1",
   ]);
-  expect(maps.loadedVideoMaps).toHaveLength(5);
+  expect(maps.loadedVideoMaps).toHaveLength(6);
 });
 
 test("loaded KDEM includes trainer-authored digital map geometry", () => {

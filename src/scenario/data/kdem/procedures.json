@@ -1,0 +1,87 @@
+{
+  "airportId": "KDEM",
+  "note": "DEMO ONE: north and south transitions merge at MERGE, then VECTORS. Video map 006 is a separate MAPS drawing. SIDs are sids.json.",
+  "stars": [
+    {
+      "id": "DEM1",
+      "name": "DEMO ONE",
+      "transitions": [
+        {
+          "id": "N",
+          "name": "NORTH",
+          "legs": [
+            {
+              "fixId": "NEMAX",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 10000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+            },
+            {
+              "fixId": "NELBO",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 8000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 230 }
+            },
+            {
+              "fixId": "NJOIN",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+            }
+          ]
+        },
+        {
+          "id": "S",
+          "name": "SOUTH",
+          "legs": [
+            {
+              "fixId": "SEMAX",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 10000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+            },
+            {
+              "fixId": "SELBO",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 8000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 230 }
+            },
+            {
+              "fixId": "SJOIN",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+            }
+          ]
+        }
+      ],
+      "common": [
+        {
+          "fixId": "MERGE",
+          "altConstraint": { "type": "AT", "altitudeFt": 4000 },
+          "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+        }
+      ],
+      "termination": "VECTORS"
+    }
+  ],
+  "approaches": [
+    {
+      "id": "ILS27",
+      "type": "ILS",
+      "runway": "27",
+      "name": "ILS RWY 27",
+      "locNavaidId": "IDEM",
+      "gsNavaidId": "IDEMGS",
+      "fafFixId": "FI27",
+      "thresholdFixId": "RW27",
+      "courseDeg": 270,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "gsAngleDeg": 3.0,
+      "tchFt": 50,
+      "fafDistanceNm": 6,
+      "gsInterceptAltFt": 2000,
+      "daFt": 200,
+      "missed": {
+        "headingDeg": 270,
+        "climbToFt": 3000,
+        "directFixId": "MISSD"
+      }
+    }
+  ]
+}

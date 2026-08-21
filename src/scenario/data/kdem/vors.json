@@ -1,0 +1,25 @@
+{
+  "airportId": "KDEM",
+  "vors": [
+    {
+      "id": "DEM",
+      "kind": "VORDME",
+      "name": "DEMO",
+      "xNm": 0.4,
+      "yNm": 0.8,
+      "freqMhz": 113.0,
+      "class": "T",
+      "note": "On-field VOR/DME, slightly north of threshold 27. DCT DEM is legal."
+    },
+    {
+      "id": "OCT",
+      "kind": "VORDME",
+      "name": "OCEAN",
+      "xNm": 38.0,
+      "yNm": -10.0,
+      "freqMhz": 115.9,
+      "class": "L",
+      "note": "Coastal VOR east-southeast of KDEM. Cross-fixes / STAR construction only; not a second airport."
+    }
+  ]
+}

@@ -37,6 +37,11 @@ export type Instruction =
       altitudeFt: number;
       verb: "CLIMB" | "DESCEND" | "MAINTAIN";
       expedite?: boolean;
+      /**
+       * Phase 4 ILS: hold this altitude until established on the localizer
+       * (7110.65 “maintain (alt) until established”). Omit before T04-05.
+       */
+      untilEstablished?: boolean;
     }
   | {
       type: "SPEED";
@@ -69,7 +74,8 @@ Suggested v1 tokens (callsign optional if a track is selected):
 | `S210` | `SPEED MAINTAIN 210` |
 | `PH` | `PRESENT_HEADING` |
 | `I` | `IDENT` |
-| `APP ILS27` | `CLEARED_APPROACH` (phase 1 may accept and no-op fly-through) |
+| `APP ILS27` | `CLEARED_APPROACH` (phase 1 may accept and no-op fly-through; phase 4 fly-through) |
+| `R240 A20 APP ILS27` | `FLY_HEADING 240 RIGHT` + `ALTITUDE MAINTAIN 2000 untilEstablished` + `CLEARED_APPROACH ILS27` (phase 4; same-line heading+alt+APP) |
 
 Callsign: full (`DAL123`) or unambiguous suffix (`123`). Ambiguous suffix → reject, no aircraft moves.
 
@@ -92,6 +98,7 @@ Deterministic. Example:
 - `FLY_HEADING 270 SHORTEST` → `{callsign} heading two seven zero`
 - `ALTITUDE DESCEND 3000` → `{callsign} descend and maintain three thousand`
 - Combined: join with comma, callsign once at the start.
+- Phase 4 ILS (7110.65 vector to final): `{callsign} turn right heading two four zero, maintain two thousand until established, cleared i l s runway two seven approach`
 
 Use FAA digit grouping (eleven, twelve, … thousand). Spell callsign as airline telephony if mapped, else char-by-char.
 
@@ -111,7 +118,21 @@ Do **not** implement these before `phases/04-procedures/tickets/T04-04-descend-c
 | { type: "GO_AROUND" } // optional; T04-07
 ```
 
-Until then, `CLEARED_APPROACH` / `EXPECT_APPROACH` / `DIRECT` exist in the union but phase 1 may no-op their kinematics.
+**ILS combined clearance (phase 4 — T04-05 patches Path A + readback in the same PR):** one `Command` with three instructions, in this order:
+
+1. `FLY_HEADING` (turn left/right as spoken)
+2. `ALTITUDE` `MAINTAIN` (or climb/descend and maintain) with `untilEstablished: true`
+3. `CLEARED_APPROACH` `{ approachId: "ILS27" }`
+
+Spoken (Path A must accept both runway wordings):
+
+> turn right heading two four zero maintain two thousand until established cleared ils approach runway two seven
+
+> turn right heading two four zero maintain two thousand until established on the localizer cleared ils runway two seven approach
+
+Aircraft (must match the words): fly the heading, **hold assigned altitude until `nav.loc.captured` (established)**, then intercept GS from below (T04-06). `APP ILS27` alone still arms intercept from the current heading and holds the **already assigned** altitude until established.
+
+Until T04-04/T04-05, `CLEARED_APPROACH` / `EXPECT_APPROACH` / `DIRECT` exist in the union but phase 1 may no-op their kinematics.
 
 ## Events
 

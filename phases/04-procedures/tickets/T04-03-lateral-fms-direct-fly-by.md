@@ -25,7 +25,7 @@ See `phases/_shared/command-ir.md` (DIRECT, validation, readbacks), `phases/_sha
 - STAR lateral (minimum): a helper `advanceStarLeg` / mode `PROCEDURE { starId, toFixIndex }` that fly-bys each STAR fix then, on last fix, emits `nav.star.vectors` and `HEADING` present heading. Spawn-on-STAR can wait for T04-12; expose the helper and unit-test it with a fake aircraft.
 - `FLY_HEADING` / `TURN_DEGREES` / `PRESENT_HEADING` clear `DIRECT` / `PROCEDURE`.
 - Events: `nav.direct.sequenced` with fixId.
-- Tests: from a known point, `DCT ALPHA` reduces distance to ALPHA; unknown fix rejected; heading cancels.
+- Tests: from a known point, `DCT NEMAX` reduces distance to NEMAX; `DCT DEM` tracks the VOR; unknown fix rejected; heading cancels.
 
 ## Out of scope
 
@@ -54,22 +54,22 @@ Parser: `D` is still descend. `DCT` only. Fix token `[A-Z]{2,5}` after uppercase
 
 Pilot remains the only intent mutator. `stepWorld` reads `lateral` and writes position/heading.
 
-Readback: spell fix as letters if not a known word; `ALPHA` can be spoken “ALPHA” as a single word (it is a phonetic letter). Keep it deterministic.
+Readback: spell fix as letters if not a known word. `NEMAX` as `n e m a x` (or keep as a single token). Keep it deterministic.
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Given DAL123 10 NM east of ALPHA, when the parser+pilot accept `DAL123 DCT ALPHA`, then within 1 sim second `lateral.type === "DIRECT"` and `fixId === "ALPHA"`.
-- [ ] **AC2 —** Given that DIRECT, when `stepWorld` runs 5 sim minutes at 1x (or equivalent steps), then distance to ALPHA decreases monotonically until sequenced (allow fly-by cutoff), and `nav.direct.sequenced` fires once.
+- [ ] **AC1 —** Given DAL123 10 NM east of NEMAX, when the parser+pilot accept `DAL123 DCT NEMAX`, then within 1 sim second `lateral.type === "DIRECT"` and `fixId === "NEMAX"`.
+- [ ] **AC2 —** Given that DIRECT, when `stepWorld` runs 5 sim minutes at 1x (or equivalent steps), then distance to NEMAX decreases monotonically until sequenced (allow fly-by cutoff), and `nav.direct.sequenced` fires once.
 - [ ] **AC3 —** Given `DAL123 DCT NOPE`, when issued, then `command.rejected`, no lateral change, readback indicates unknown fix.
-- [ ] **AC4 —** Given an aircraft DIRECT ALPHA, when `H090` is accepted, then lateral is `HEADING` 090 and the aircraft does not keep tracking ALPHA.
-- [ ] **AC5 —** Given DEMO ONE legs, when the PROCEDURE helper is stepped from a point near ALPHA, then ALPHA then BRAVO then CHARLIE sequence via fly-by and the last transition is `HEADING` with `nav.star.vectors`.
+- [ ] **AC4 —** Given an aircraft DIRECT NEMAX, when `H090` is accepted, then lateral is `HEADING` 090 and the aircraft does not keep tracking NEMAX.
+- [ ] **AC5 —** Given DEMO ONE north transition, when the PROCEDURE helper is stepped from a point near NEMAX, then NEMAX → NELBO → NJOIN → MERGE sequence via fly-by and the last transition is `HEADING` with `nav.star.vectors`.
 - [ ] **AC6 —** Automated tests for AC1–AC5 (AC1–AC4 integration or unit with World fixture; AC5 unit). DOM-free.
 
 ## Test plan
 
 - Unit: `courseDeg`, fly-by distance, STAR walker.
 - Integration: parse `DCT` → pilot → `stepWorld` moves toward fix; reject unknown; heading cancels.
-- Manual: optional — click DAL123, type `DCT ALPHA`, watch the target on the PPI.
+- Manual: optional — click DAL123, type `DCT NEMAX`, watch the target on the PPI.
 
 ## Suggested files
 

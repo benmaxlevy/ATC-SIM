@@ -1,11 +1,11 @@
-# ATC-SIM swarm orchestrator — Phase 3 voice
+# ATC-SIM swarm orchestrator — Phase 4 procedures
 
 Paste **this entire file** into a new agent. That agent is the **orchestrator**. It may run for hours. It writes almost no application code.
 
 Workspace: `c:\Users\Ben\Documents\ATC-SIM`  
 Shell: **Windows PowerShell** (not bash). Ticket commits use here-strings, not `cat <<'EOF'`.
 
-This is the **third swarm**. Phases **0 → 1 → 2 (T02-01–13)** are already green on `master`. Do **not** redo them. Do **not** implement T02-14–21 polish in this run. Do **not** start phase 4 or 5.
+This is the **fourth swarm**. Phases **0 → 1 → 2 (T02-01–13)** are already green on `master`. Phase **3 voice** is preferred (same parser tokens work through SpeechPort) but **not required**. Do **not** redo 0–3. Do **not** start phase 5.
 
 ---
 
@@ -13,20 +13,18 @@ This is the **third swarm**. Phases **0 → 1 → 2 (T02-01–13)** are already 
 
 | Key | Value |
 | --- | --- |
-| Goal | Implement **phase 3 voice** until `phases/03-voice/README.md` **Phase exit** is green (E1–E14). PTT → `SpeechPort` → same `parseCommand` as typed → existing pilot → TTS → radio FX |
-| Quality path | **`http` → our `speech-api/`** (HF weights downloaded once, inference on our machine). Target PTT-up → audio-start **p50 < 1.5 s** on localhost/LAN |
-| Skip | **T03-11** (whisper-wasm) and **T03-14** (Path C `/parse`) unless the human later names them. Not required to exit |
-| Include | **T03-04** (Web Speech) as **opt-in prototype** so settings can switch `null` / `web-speech` / `http`. **Never** the default. Quality must **not** fail the phase |
-| Stop | **Do not start phase 4 or 5.** No procedures, scoring, or training-session tickets |
-| Do not redo | T00-*, T01-*, T02-01–T02-13. If STATUS says first swarm complete, **start phase 3**, do not replay 0→2 |
+| Goal | Implement **phase 4 procedures** until `phases/04-procedures/README.md` **Phase exit** is green. Aircraft fly published STAR/ILS geometry; CA and MSAW light yellow then red |
+| Player loop | Spawn on DEMO ONE → vectors → intercept heading → `APP ILS27` → loc then GS from below → tower stub **or** missed at DA |
+| Skip | **T04-11** (constant wind) unless the human later names it. Not required to exit |
+| Include | **T04-08** CIFP subset importer — **required**. Frozen in-repo fixture only; **no network**, no full FAA cycle, no chart scrape |
+| Stop | **Do not start phase 5.** No scoring, replay, imperfect pilots, or second TCP |
+| Do not redo | T00-*, T01-*, T02-*, T03-*. If STATUS says third swarm complete, **start phase 4**, do not replay voice |
 | Max ticket workers in flight | **3** |
 | Merge lock | **Only the phase captain** merges to `master` (`--no-ff`) |
 | Model | **cursor grok 4.6 high only.** Every Task spawn sets `model: "cursor-grok-4.6-high"`. No `composer-2.5-fast`, no omitting `model` |
-| Paid STT/TTS/LLM | **Forbidden.** No OpenAI, Deepgram, Groq, ElevenLabs, HF Inference API/Endpoints, Chrome-as-default, etc. Hub = **weight download only** (T03-13) |
+| Paid STT/TTS/LLM | **Forbidden.** Do not regress speech-api onto vendors. Do not edit phase 3 tickets |
 
-If `phases/SWARM-STATUS.md` already lists phase 3 exit green with T03-* merged, **stop**. Do not redo merged tickets.
-
-Phase 2 **polish** (T02-14–21) is **out of this swarm**. If a local video-map / DCB branch exists, leave it; do not merge it as part of voice. Voice attaches to current `master` (original T02-01–13 is enough; SpeechPort is isolated).
+If `phases/SWARM-STATUS.md` already lists phase 4 exit green with T04-* merged (except skipped 11), **stop**. Do not redo merged tickets.
 
 ---
 
@@ -45,63 +43,64 @@ YOU (orchestrator)
 | **Phase captain** | No | **Yes** | ≤3 ticket workers |
 | **Ticket worker** | Yes, **one ticket** | **No** | Nobody |
 
-Do **not** paste `phases/03-voice/AGENT.md` into one agent. Swarm mode uses **one worker per ticket**.
+Do **not** paste `phases/04-procedures/AGENT.md` into one agent. Swarm mode uses **one worker per ticket**.
 
 Prompts to give children (read the file, then add the line):
 
-- Captain: full `phases/SWARM-CAPTAIN.md` + **`Phase folder: phases/03-voice/`** + **`Tickets: T03-01 … T03-10, T03-12, T03-13 only (waves in SWARM.md). Skip T03-11 and T03-14`** + **`model: cursor-grok-4.6-high` on every worker**
+- Captain: full `phases/SWARM-CAPTAIN.md` + **`Phase folder: phases/04-procedures/`** + **`Tickets: T04-01 … T04-10, T04-12 only (waves in SWARM.md). Skip T04-11`** + **`model: cursor-grok-4.6-high` on every worker**
 - Worker: full `phases/SWARM-TICKET-WORKER.md` + ticket id/path + PowerShell commit here-strings + **this run’s product law** (below)
 
-Workers **must not** end the captain’s turn. Captain **must not** `run_in_background: true` on a worker and then exit. Wait for `READY TO MERGE` / `BLOCKED`. Isolated **git worktrees** for parallel tickets (do not share one working tree). T03-01 / T03-03 / T03-13 in wave A **must** use separate worktrees.
+Workers **must not** end the captain’s turn. Captain **must not** `run_in_background: true` on a worker and then exit. Wait for `READY TO MERGE` / `BLOCKED`. Isolated **git worktrees** for parallel tickets (do not share one working tree). Wave A (T04-01 / T04-09) and wave B (T04-02 / T04-08 / T04-10) **must** use separate worktrees.
 
 ---
 
 ## Product law (every descendant)
 
-CRC/vNAS STARS and vice are **references for feel**. Training/entertainment only. Not a Raytheon clone. Not NAS-certified.
+CRC/vNAS STARS and vice are **references for feel**. Training/entertainment only. Not a Raytheon clone. Not NAS-certified. Alerts are **lite**, never “MSAW certified.”
 
-**Voice loop (this swarm):**
+**Procedures (this swarm):**
 
-- One `parseCommand` for text **and** voice (`phases/_shared/parse-pipeline.md`). Order: **normalize → typed tokenizer → Path A → Path B**. Path C is **off** (T03-14 skipped).
-- `source` is the channel (`"voice"` vs typed). `parseStage` is which compiler won. Speech must **not** construct `Instruction` objects.
-- Typed tokens (`DAL123 H270`) still win at `"typed"`. After T03-03, typed English in the command line is tokenizer miss then Path A.
-- **No barge-in:** ignore PTT while a readback is playing. Do not queue.
-- Default PTT is backtick `` ` ``, configurable. **Do not default Caps Lock.** Ignore PTT when a text field is focused.
-- Failures (mic deny, timeout, low confidence, speech-api down) → status/readback. **Never throw through the sim tick.**
-- Log **PTT-up → transcript** and **PTT-up → audio-start** every utterance.
-- App still boots with `NullSpeechPort`. Missing speech-api → typed commands still work. **Do not** silently fall back to a paid cloud or to Web Speech as default.
+- **KDEM stays the default facility.** Mag var 0°, elev 0 ft, rwy 27. Real airports are importer output, not a v1 replacement.
+- **Procedures and navaids are data, not code.** Load `src/scenario/data/kdem/` (`vors`, `ndbs`, `ils`, `fixes`, `procedures`, `sids`). Catalog types are **ICAO-generic** (`airportId: string`, `sids: []`, optional lat/lon). `DCT` resolves fixes **and** navaids (`DEM`). `stepWorld` consumes a resolved route — no hard-coded lat/lon in the tick. **Do not** build a live FAA/`faa:update` script in this swarm.
+- **Pilot agent still owns intent.** Parser never calls kinematics. Scope never calls intercept math. Alerts are a **pure function** of `World` (+ catalog).
+- **Heading cancels published lateral path.** `FLY_HEADING` / `TURN_DEGREES` / `PRESENT_HEADING` drop STAR, DIRECT, and loc/approach. Re-clear `APP` to arm intercept again.
+- **`EXPECT_APPROACH` does not capture.** `CLEARED_APPROACH` (`APP ILS27`) arms intercept from the **current assigned heading** (or the heading in the same Command).
+- **ILS phraseology = aircraft.** Canonical clearance: *turn right heading xxx, maintain xxxxx until established, cleared ILS approach runway 27*. One `Command`: `FLY_HEADING` + `ALTITUDE` (`untilEstablished`) + `CLEARED_APPROACH`. Typed: `R240 A20 APP ILS27`. Hold assigned altitude until loc capture; **do not** start GS before established. Readback uses those words.
+- **Glidepath from below only, after loc.** Do not dive through GS from above. Do not capture GS in `INTERCEPT_LOC`.
+- Phase 1 may have **accepted and no-op’d** `DIRECT` / `EXP` / `APP`. This phase **implements fly-through**. Do not leave “accepted but nothing happens” as success.
+- New IR variants (`DESCEND_VIA`, `CROSS`, optional `GO_AROUND`): **patch `phases/_shared/command-ir.md` in the same PR** as the TypeScript union. Do **not** rename existing instruction types.
+- `D` remains descend. Direct is **`DCT`**. Do not steal `D`.
+- If phase 3 is present, new tokens work through the **same** `parseCommand`. Do **not** edit `src/speech` unless a ticket names a normalizer token list.
 
-**Do (speech):**
+**Geometry (KDEM JSON; translate if airport ref moved):** rwy 27 inbound 270°, threshold GS origin, loc 18 NM, ±2.5° full scale, GS 3°, TCH 50 ft, FAF 6 NM / ~2000 ft, DA 200 ft, missed heading 270 to 3000, fix `MISSD`. STAR DEMO ONE (`DEM1`): **one** STAR, north `NEMAX→NELBO→NJOIN` and south `SEMAX→SELBO→SJOIN` merge at `MERGE`, then **VECTORS**. Alt + speed on every STAR fix. Video maps (including `DEM1` corridors) are **independent MAPS drawings**, not generated from the STAR. Navaids: `DEM` VOR, `OCT` VOR, `DMO` NDB, I-DEM loc/GS.
 
-- Quality default = `HttpSpeechPort` → **this repo’s** `speech-api/` (`VITE_STT_URL` / `VITE_TTS_URL`, default `http://127.0.0.1:8090/...`).
-- Hugging Face Hub = **one-time weight download** onto disk. Inference on **our** process (CPU/GPU we control).
-- Web Speech = opt-in prototype (browser vendor may transcribe in the cloud). Not default. Inaccuracy is **not** an exit fail.
-- Radio FX (bandpass + light noise + compressor) on **http PCM**. `speechSynthesis` is a black box — no FX on that path.
-- `src/parse` and `src/core` / `src/pilot` stay **DOM-free**. Capture/adapters/graph live in `src/speech` (and UI wiring).
+**Alerts:** CA pair `< 3 NM` **and** `< 1000 ft` — yellow = **predicted** (40 s linear lookahead), red = **now**. MSAW = below MVA polygon; inhibited on loc/GS/landing **inside FAF**. Color priority: `CA alert > MSAW alert > CA caution > MSAW caution > ownership`. No ARV, CRDA, weather, audio required.
+
+**CIFP:** `tools/cifp-import` + frozen fixture only (offline). Same catalog schema as KDEM, including empty `sids`. Runtime default remains KDEM. **Never** scrape charts, fetch CIFP in the browser, commit a full FAA cycle, or ship `faa:update` in this run.
 
 **Do not:**
 
-- Import vendor STT/TTS/LLM SDKs or point `HttpSpeechPort` at OpenAI, Deepgram, Groq, ElevenLabs, HF Inference API, Workers AI, etc.
-- Always-on listen, barge-in, PTT queue, Whisper fine-tune, 500 MB model in the Vite bundle.
-- Change kinematics, Command IR types, or phase 1/2 radio tokens except as a ticket requires for `source` / `parseStage`.
-- Pixel-clone STARS or start phase 4 instruction types.
+- RNAV (RNP), SIDs, holds, procedure turns, DME arcs, circling, dual ILS, LAHSO, autoland flare, tower cab / ground.
+- Full TAMR, weather mosaic, certified CA/MSAW, LLM as FMS.
+- Start phase 5 scoring against the new session events — **emitting** `nav.*` / `alert.*` / `handoff.tower` is enough.
+- Paid vendor speech. Always-on listen.
 
-Research: `phases/_shared/speech-port.md`, `parse-pipeline.md`, `command-ir.md`, `references.md` **R01/R03** (7110.65). Do not use ICAO Doc 4444 as v1 grammar.
+Research: `phases/_shared/references.md` **R01** (vectors/approaches), **R05** (CA/MSAW language), **R11** (CIFP). Frozen numbers: `phases/04-procedures/README.md`.
 
 ---
 
 ## Your loop (orchestrator)
 
 1. `git checkout master` && `git status`. If dirty and it is not yours, **stop**.
-2. Read `phases/SWARM-STATUS.md`. Append a **third swarm started** heading with this config table. Do not delete first-swarm (or polish) notes.
-3. Confirm T01-* and T02-01–13 are on `master` (typed radio + scope). If phase 1 is missing, **BLOCKED**. Phase 2 polish (T02-14–21) is **not** required.
-4. Spawn **one** captain for `phases/03-voice/` with the skip list above. Wait until `PHASE EXIT GREEN` or `BLOCKED`.
-5. If `BLOCKED`: copy the note into STATUS, **stop**, tell the human. Do not start phase 4.
-6. If green: tick phase 3 in STATUS, `npm test` yourself once. Write STATUS **THIRD SWARM COMPLETE — phase 3 voice**. Record speech-api p50 if measured; list leftover Chrome/mic steps; list remaining work (phases 4–5). **Stop.**
+2. Read `phases/SWARM-STATUS.md`. Append a **fourth swarm started** heading with this config table. Do not delete earlier swarm notes.
+3. Confirm T02-01–13 (phase 2 original exit) are on `master`. If phase 2 is missing, **BLOCKED**. Phase 3 missing is **not** blocked — typed commands first. If STATUS still shows an in-flight third swarm, **stop** and tell the human.
+4. Spawn **one** captain for `phases/04-procedures/` with the skip list above. Wait until `PHASE EXIT GREEN` or `BLOCKED`.
+5. If `BLOCKED`: copy the note into STATUS, **stop**, tell the human. Do not start phase 5.
+6. If green: tick phase 4 in STATUS, `npm test` yourself once. Write STATUS **FOURTH SWARM COMPLETE — phase 4 procedures**. List leftover Chrome/script steps (T04-12); list remaining work (phase 5). **Stop.**
 
 Keep STATUS updated after the phase run (not after every ticket — the captain does ticket notes).
 
-Manual UI ACs (mic, PTT, real speech-api): captain/workers do what they can; leftover Chrome steps go in STATUS. Automated `npm test` / `npm run ci` must be green to declare the phase green. Do not invent a 1.5 s p50 pass — **measure or list as leftover**. If p50 ≥ 1.5 s, document the number; still ship the loop (README E10).
+Manual UI ACs (STAR → ILS playtest): captain/workers do what they can; leftover Chrome steps go in STATUS. Automated `npm test` / `npm run ci` must be green. CA/MSAW and CIFP fixture tests must be automated — do not invent a visual pass. T04-11 leftover is expected (skipped).
 
 ---
 
@@ -119,7 +118,7 @@ PowerShell commit:
 
 ```text
 git commit -m @"
-T03-01: message why.
+T04-01: message why.
 
 Second paragraph why.
 "@
@@ -131,48 +130,49 @@ Second paragraph why.
 
 Dependencies on the ticket still win if a wave disagrees.
 
-Phase folder: `phases/03-voice/`  
-Tickets: **T03-01–10, T03-12, T03-13**. **Skip T03-11 and T03-14.**
+Phase folder: `phases/04-procedures/`  
+Tickets: **T04-01–10, T04-12**. **Skip T04-11.**
 
 | Wave | Tickets (≤3) | Wait for |
 | --- | --- | --- |
-| A | T03-01, T03-03, T03-13 | Phase 1 on `master` (first swarm). Three different trees: capture / parser / `speech-api/` |
-| B | T03-02, T03-04, T03-05 | A. 02 needs 01+03; 04 needs 01; 05 needs 01+13 |
-| C | T03-08, T03-06 | B. 08 needs 02; 06 needs 02+05 (PCM). Slot 3 empty — do **not** pull 07 early |
-| D | T03-07, T03-09, T03-10 | C for 07/09 (need 06); 10 needs 05 (04 already in B). Rebase if they touch the same settings/UI files |
-| E | T03-12 | D (and all P0/P1 in this run). Acceptance script + whatever CI can prove |
+| A | T04-01, T04-09 | Phase 2 on `master`. Schema/catalog vs CA lite — different trees |
+| B | T04-02, T04-08, T04-10 | A (need **T04-01**). Lookup vs CIFP tool vs MSAW |
+| C | T04-03 | B (needs T04-02). Size L FMS — **alone** |
+| D | T04-04, T04-05 | C. Via/CROSS ∥ loc intercept. Isolated worktrees; 04 patches `_shared/command-ir.md` |
+| E | T04-06 | D (needs T04-05). GS from below — **alone** |
+| F | T04-07 | E. Missed stub; patch `_shared` in the same PR if adding `GO_AROUND` |
+| G | T04-12 | F **and** T04-04, T04-09, T04-10 already on `master`. Playable scenario + acceptance |
 
-Do **not** skip T03-13 to “just mock STT.” `http` must talk to **our** API. Do **not** skip T03-03 and teach the tokenizer English. Do **not** make Web Speech the default in T03-10.
+Do **not** skip T04-01 and hard-code KDEM lat/lon in `stepWorld`. Do **not** skip T04-08. Do **not** skip T04-03 and jump to ILS. Do **not** capture GS from above. Do **not** start T04-12 before missed + alerts exist.
 
 Ticket files / branches:
 
-- `ticket/T03-01-capture-audioworklet-ptt` ← `phases/03-voice/tickets/T03-01-capture-audioworklet-ptt.md`
-- `ticket/T03-02-transcript-to-parser` ← `phases/03-voice/tickets/T03-02-transcript-to-parser.md`
-- `ticket/T03-03-spoken-phraseology-grammar` ← `phases/03-voice/tickets/T03-03-spoken-phraseology-grammar.md`
-- `ticket/T03-04-web-speech-adapter` ← `phases/03-voice/tickets/T03-04-web-speech-adapter.md`
-- `ticket/T03-05-http-stt-tts-adapter` ← `phases/03-voice/tickets/T03-05-http-stt-tts-adapter.md`
-- `ticket/T03-06-readback-tts-playback` ← `phases/03-voice/tickets/T03-06-readback-tts-playback.md`
-- `ticket/T03-07-radio-fx-graph` ← `phases/03-voice/tickets/T03-07-radio-fx-graph.md`
-- `ticket/T03-08-low-confidence-error-ux` ← `phases/03-voice/tickets/T03-08-low-confidence-error-ux.md`
-- `ticket/T03-09-latency-metrics-overlay` ← `phases/03-voice/tickets/T03-09-latency-metrics-overlay.md`
-- `ticket/T03-10-settings-speech-backend` ← `phases/03-voice/tickets/T03-10-settings-speech-backend.md`
-- `ticket/T03-12-voice-acceptance-script` ← `phases/03-voice/tickets/T03-12-voice-acceptance-script.md`
-- `ticket/T03-13-self-hosted-speech-api` ← `phases/03-voice/tickets/T03-13-self-hosted-speech-api.md`
+- `ticket/T04-01-procedure-json-schema-kdem-ils27-star` ← `phases/04-procedures/tickets/T04-01-procedure-json-schema-kdem-ils27-star.md`
+- `ticket/T04-02-nav-fix-lookup` ← `phases/04-procedures/tickets/T04-02-nav-fix-lookup.md`
+- `ticket/T04-03-lateral-fms-direct-fly-by` ← `phases/04-procedures/tickets/T04-03-lateral-fms-direct-fly-by.md`
+- `ticket/T04-04-descend-climb-via-crossing-alts` ← `phases/04-procedures/tickets/T04-04-descend-climb-via-crossing-alts.md`
+- `ticket/T04-05-vector-to-intercept-localizer` ← `phases/04-procedures/tickets/T04-05-vector-to-intercept-localizer.md`
+- `ticket/T04-06-glidepath-approach-phase` ← `phases/04-procedures/tickets/T04-06-glidepath-approach-phase.md`
+- `ticket/T04-07-missed-approach-stub` ← `phases/04-procedures/tickets/T04-07-missed-approach-stub.md`
+- `ticket/T04-08-cifp-subset-importer` ← `phases/04-procedures/tickets/T04-08-cifp-subset-importer.md`
+- `ticket/T04-09-conflict-alert-lite` ← `phases/04-procedures/tickets/T04-09-conflict-alert-lite.md`
+- `ticket/T04-10-msaw-lite` ← `phases/04-procedures/tickets/T04-10-msaw-lite.md`
+- `ticket/T04-12-phase-4-scenario-vector-ils-tower` ← `phases/04-procedures/tickets/T04-12-phase-4-scenario-vector-ils-tower.md`
 
-**Not this run:** `T03-11-whisper-wasm-spike`, `T03-14-optional-path-c-parse-api`.
+**Not this run:** `T04-11-constant-wind-optional`.
 
-Exit: `phases/03-voice/README.md` **Phase exit** (E1–E14). Typed `DAL123 H270` still works. Path A English works in the command line. `npm test` / `npm run ci` green. T03-12 manual leftovers (mic, real API p50) listed, not faked. E11/E12/E14: Web Speech quality, missing wasm, and Path C off are **not** failures.
+Exit: `phases/04-procedures/README.md` **Phase exit**. Typed `DAL123 H270` still turns (and **cancels** FMS). Combined ILS clearance parses and flies. `DCT` / `EXP` / `APP` / `VIA` fly through. `npm test` / `npm run ci` green. CIFP fixture tests **offline**. T04-12 manual leftovers listed, not faked. Wind absent is **not** a failure.
 
 ---
 
 ## Burden limits
 
-- Orchestrator: no `src/` or `speech-api/` edits except STATUS. No “I’ll just do T03-13 myself.”
+- Orchestrator: no `src/` or `tools/` edits except STATUS. No “I’ll just do T04-03 myself.”
 - Captain: if a worker `BLOCKED` twice on the same ticket, escalate — do not become the implementer.
-- Worker: one ticket, even if Size L (T03-01, T03-03, T03-05, T03-13). No bonus tickets. No T03-11/14 “while you are here.”
+- Worker: one ticket, even if Size L (T04-01, T04-03, T04-05, T04-06). No bonus tickets. No T04-11 “while you are here.” No phase 5 scoring.
 - Do not spawn reviewers unless `npm test` failed after merge (then one **fix** worker on `ticket/Txx-yy-fix`, still one merge lock).
 
-Size L this run: **T03-01, T03-03, T03-05, T03-13**.
+Size L this run: **T04-01, T04-03, T04-05, T04-06**.
 
 ---
 
@@ -180,11 +180,11 @@ Size L this run: **T03-01, T03-03, T03-05, T03-13**.
 
 ```
 PHASE EXIT GREEN
-Phase: 3 Voice (T03-01–10, 12, 13; skipped 11 and 14)
-Merged: T03-01 … (list)
+Phase: 4 Procedures (T04-01–10, 12; skipped 11)
+Merged: T04-01 … (list)
 Tests: npm test / npm run ci exit 0
-Manual leftover: <Chrome / mic / speech-api p50 or none>
-Notes: <http default; Web Speech opt-in; Path C off; radio tokens still work>
+Manual leftover: <T04-12 Chrome script items or none>
+Notes: <KDEM catalog; APP fly-through; CA/MSAW lite; CIFP fixture; no wind>
 ```
 
 or `PHASE EXIT BLOCKED` with reason. Do not return “wave A is running” as done.
@@ -193,6 +193,6 @@ or `PHASE EXIT BLOCKED` with reason. Do not return “wave A is running” as do
 
 ## Done when
 
-Phase 3 exit can be argued green, `npm test` green on `master`, STATUS says **third swarm complete**, `speech-api/` exists and is the **http** default, **no** paid vendor speech, T03-11/14 **not** implemented unless the human asked, and typed + spoken Path A share one parser.
+Phase 4 exit can be argued green, `npm test` green on `master`, STATUS says **fourth swarm complete**, KDEM procedure JSON is the runtime catalog, `APP ILS27` captures loc then GS, CA/MSAW are tested, CIFP importer is fixture-only, **no** chart scrape, T04-11 **not** implemented unless the human asked.
 
-Then stop. Procedures / training wait on a new paste of this file with config changed.
+Then stop. Training / scoring wait on a new paste of this file with config changed.

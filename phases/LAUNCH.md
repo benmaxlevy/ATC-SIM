@@ -2,7 +2,7 @@
 
 ## Swarm (preferred for a long unattended run)
 
-Paste [`SWARM.md`](SWARM.md) into a **new** agent. That agent only orchestrates. Captains spawn ticket workers (max 3). **Current swarm config is phase 3 voice** (T03-01–10, 12, 13; skip 11 and 14). Phases 0–2 original exit are already done; do not start phase 4/5. Quality path is self-hosted `speech-api/`, not paid vendors. Leaf prompt: [`SWARM-TICKET-WORKER.md`](SWARM-TICKET-WORKER.md). Captain: [`SWARM-CAPTAIN.md`](SWARM-CAPTAIN.md). Status: [`SWARM-STATUS.md`](SWARM-STATUS.md).
+Paste [`SWARM.md`](SWARM.md) into a **new** agent. That agent only orchestrates. Captains spawn ticket workers (max 3). **Current swarm config is phase 4 procedures** (T04-01–10, 12; skip T04-11 wind). Phases 0–2 original exit are already done; phase 3 preferred but not required. Do not start phase 5. Leaf prompt: [`SWARM-TICKET-WORKER.md`](SWARM-TICKET-WORKER.md). Captain: [`SWARM-CAPTAIN.md`](SWARM-CAPTAIN.md). Status: [`SWARM-STATUS.md`](SWARM-STATUS.md).
 
 ## Solo one phase
 

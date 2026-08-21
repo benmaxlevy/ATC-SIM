@@ -19,7 +19,7 @@ Training/entertainment label stays.
 
 ## Scope
 
-- Scenario file: spawn DAL123 (or similar) on or before ALPHA, on STAR `DEM1`, descend-via armed, speed 250, alt ≥ 9000. Second aircraft: either a CA partner (converging, co-altitude) **or** a low MSAW victim the script can create with a typed `D10` — document one. Prefer **two arrivals** on related paths so CA is one command away.
+- Scenario file: spawn DAL123 on DEM1 **north** (`transitionId: "N"`), before NEMAX, descend-via armed, speed 250, alt ≥ 10000. Second aircraft: prefer DEM1 **south** at SEMAX (same alt band) so CA is one vector away, **or** a low MSAW victim via typed `D10` — document one.
 - Tower stub: when `lateral` is LOC/GS and along-track `<= 5 NM` (gate documented), show a control (keyboard key on the phase 2 overlay, e.g. documented `F3` was ownership stub — pick a key, e.g. **Shift+H** or a button “HO TWR”). Action: `lateral = LANDING`, `landingCleared = true`, ownership color = tower, event `handoff.tower`. **Not** a readback.
 - LANDING: continue GS to threshold; when along-track `<= 0` and alt `<= 100` (or dist to RW27 `< 0.2 NM`), event `nav.landed`, remove aircraft from World (despawn). Do not start missed (T04-07 AC4).
 - If the controller never hands off: existing missed stub at DA.
@@ -49,7 +49,7 @@ If phase 2 `F3` already toggles ownership color, you may **reuse** it when the g
 - [ ] **AC1 —** Given the phase 4 scenario, when loaded, then ≥1 aircraft is on `DEM1` (`PROCEDURE` or equivalent) with a VIA vertical mode, and ILS27 exists in the catalog.
 - [ ] **AC2 —** Automated: LANDING + GS through threshold → `nav.landed` and aircraft removed; no `nav.missed.started`.
 - [ ] **AC3 —** Automated: GS to DA without LANDING → `nav.missed.started`.
-- [ ] **AC4 —** Manual script (below) completed once by the implementer: STAR → headings → `APP ILS27` → loc then GS visible on Mode C → handoff → despawn **or** no handoff → missed. Second target demonstrates CA yellow/red **or** MSAW yellow/red.
+- [ ] **AC4 —** Manual script (below) completed once by the implementer: STAR → headings as needed → **full ILS clearance** (heading + maintain until established + cleared ILS 27) → loc then GS visible on Mode C → handoff → despawn **or** no handoff → missed. Second target demonstrates CA yellow/red **or** MSAW yellow/red.
 - [ ] **AC5 —** Handoff control does not emit a pilot readback (scope pipeline). `handoff.tower` is on the session log.
 - [ ] **AC6 —** `npm test` green; training/entertainment disclaimer still visible.
 
@@ -60,13 +60,12 @@ If phase 2 `F3` already toggles ownership color, you may **reuse** it when the g
 - Manual: **Phase 4 playable slice**
 
   1. `npm run dev`, load KDEM phase 4 scenario. Confirm disclaimer.
-  2. Identify the STAR arrival. Confirm it does not bust ALPHA AOA (Mode C ≥ 90 until ALPHA).
-  3. After CHARLIE / vectors, descend as needed (`D20` or `D40`), vector to a 30° intercept (e.g. `H240` if north of loc).
-  4. `APP ILS27`. Confirm readback. Confirm turn inbound. Confirm GS (Mode C leaves 2000 ~6 NM).
-  5a. Inside 5 NM, tower stub → aircraft disappears at the field; log has `handoff.tower` and `nav.landed`.
-  5b. (Repeat or second arrival) Do not HO → missed climb 270 / 3000.
-  6. Create or use the second aircraft so CA lights yellow then red, **or** descend someone off-loc below MVA for MSAW.
-  7. No console errors.  Pause/1x/2x still work.
+  2. Identify the STAR arrival on the DEM1 video map. Confirm it does not bust NEMAX (Mode C ≥ 100, speed ≤ 250 until NEMAX).
+  3. After MERGE / vectors, the **one** ILS clearance (typed `R240 A20 APP ILS27` if north of loc, or spoken: *turn right heading two four zero maintain two thousand until established cleared ils approach runway two seven*). Confirm readback includes **until established** and **cleared i l s**. Confirm turn to intercept heading. Confirm Mode C **holds ~2000 until loc**, then GS (Mode C leaves 2000 ~6 NM).
+  4a. Inside 5 NM, tower stub → aircraft disappears at the field; log has `handoff.tower` and `nav.landed`.
+  4b. (Repeat or second arrival) Do not HO → missed climb 270 / 3000.
+  5. Create or use the second aircraft so CA lights yellow then red, **or** descend someone off-loc below MVA for MSAW.
+  6. No console errors.  Pause/1x/2x still work.
 
 ## Suggested files
 

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "airportId": "KDEM",
+  "name": "Demo Field",
+  "magVarDeg": 0,
+  "fieldElevFt": 0,
+  "arp": { "latDeg": 0, "lonDeg": 0 },
+  "originNote": "Local tangent NM: +x east, +y north from ARP. Rwy 27 threshold / GS origin at (0, 0). Mag var 0, field elev 0. A later FAA import writes this same folder shape for a real ICAO (lat/lon on records → xNm/yNm at load). KDEM stays the shipped default.",
+  "files": {
+    "vors": "vors.json",
+    "ndbs": "ndbs.json",
+    "ils": "ils.json",
+    "fixes": "fixes.json",
+    "procedures": "procedures.json",
+    "sids": "sids.json"
+  }
+}

@@ -9,7 +9,7 @@
 
 ## Goal
 
-A developer-run importer converts a **frozen CIFP-like fixture** into the same `ProcedureCatalog` JSON schema as KDEM. Tests pass offline. KDEM JSON remains the runtime default. No chart scraping. No full FAA cycle in git.
+A developer-run importer converts a **frozen CIFP-like fixture** into the same **facility catalog** schema KDEM uses (`airportId: string`, navaids, fixes, stars, approaches, `sids: []`). Tests pass offline. KDEM remains the runtime default. No live FAA download in this ticket (later). No chart scraping. No full FAA cycle in git.
 
 ## Context
 
@@ -21,9 +21,10 @@ Strategy (phase README): KDEM is first-class committed JSON. The importer proves
 
 - CLI: `npm run cifp:import -- --in testdata/cifp/frozen-subset.cifp --out <path>` (or `tsx tools/cifp-import/cli.ts`).
 - Parse a **documented subset** of CIFP / ARINC-424-shaped records enough to emit:
-  - terminal/enroute waypoint fixes (id + lat/lon → xNm/yNm using phase 0 projection, **or** fixture uses already-projected NM in a comment field if you keep the fixture fictional)
+  - terminal/enroute waypoint fixes **and** VOR/NDB records if present (id + lat/lon → xNm/yNm using phase 0 projection, **or** fixture uses already-projected NM in a comment field if you keep the fixture fictional)
   - one STAR with 2–3 legs and altitude constraints
   - one ILS (loc course, GS angle, threshold, DA-ish fields you can map)
+  - Output schema must match KDEM: navaids + fixes + stars + approaches + **`sids` array** (empty OK). `airportId` is a string. Optional `latDeg`/`lonDeg` on points if the fixture has lat/lon.
 - Skip unknown record types; print skip counts.
 - `testdata/cifp/frozen-subset.cifp` — synthetic, small, committed. **Not** a real cycle extract if that would be redistributable-encumbered; invent CIFP-shaped lines that the parser accepts.
 - `testdata/cifp/frozen-subset.expected.json` — catalog snapshot. Test: importer(stdout or file) deep-equals expected (ignore key order).
@@ -32,7 +33,7 @@ Strategy (phase README): KDEM is first-class committed JSON. The importer proves
 
 ## Out of scope
 
-- Runtime download, CDN of CIFP, in-browser parse of 100 MB cycles.
+- Runtime download, CDN of CIFP, in-browser parse of 100 MB cycles, **`faa:update` / NASR fetch** (later ticket).
 - Scraping charts, PDFs, or web procedure pages.
 - Full ARINC 424 (all SID/STAR/IAP encodings, holds, RF legs, procedure turns).
 - Replacing KDEM as the default scenario.
@@ -40,7 +41,7 @@ Strategy (phase README): KDEM is first-class committed JSON. The importer proves
 
 ## Implementation notes
 
-Fixture design: easiest path is records that look like CIFP (fixed-width or comma, documented in the tool README) with **lat/lon of KDEM-like points** near 0°N 0°E so the phase 0 projector yields ALPHA/BRAVO/… within 0.05 NM of `kdem-procedures.json`. If the projector is painful, allow a test-only continuation field `XNM`/`YNM` in the synthetic dialect and document that **real CIFP uses lat/lon only**.
+Fixture design: easiest path is records that look like CIFP (fixed-width or comma, documented in the tool README) with **lat/lon of KDEM-like points** near 0°N 0°E so the phase 0 projector yields NEMAX/MERGE/… within 0.05 NM of `kdem` procedures JSON. If the projector is painful, allow a test-only continuation field `XNM`/`YNM` in the synthetic dialect and document that **real CIFP uses lat/lon only**.
 
 Map STAR altitude qualifiers to `AT` / `AT_OR_ABOVE` / `AT_OR_BELOW`.
 
@@ -53,7 +54,7 @@ Suggested package: no extra dependency if `fs` + line parser suffice. Node CLI i
 ## Acceptance criteria
 
 - [ ] **AC1 —** Given `testdata/cifp/frozen-subset.cifp`, when the parse function runs **with network disabled / no fetch**, then it returns a `ProcedureCatalog` that matches `frozen-subset.expected.json`.
-- [ ] **AC2 —** Expected catalog includes ≥2 STAR legs with at-or-above (or AT) constraints, an ILS-type approach with a loc course, and every `fixId` resolved.
+- [ ] **AC2 —** Expected catalog includes ≥2 STAR legs with at-or-above (or AT) constraints, an ILS-type approach with a loc course, a `sids` array, and every `fixId` resolved.
 - [ ] **AC3 —** Unknown/garbage lines are skipped; importer does not throw on a documented extra record type in the fixture (include one skippable line).
 - [ ] **AC4 —** Tool README states: KDEM remains default; do not scrape charts; do not commit FAA cycles; how to run the CLI on a local file.
 - [ ] **AC5 —** App production bundle does not include `tools/cifp-import` as a runtime dependency of the tick (grep / do not import from `src/`).

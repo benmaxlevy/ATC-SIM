@@ -1,0 +1,14 @@
+{
+  "airportId": "KDEM",
+  "ndbs": [
+    {
+      "id": "DMO",
+      "kind": "NDB",
+      "name": "DEMO",
+      "xNm": 6.0,
+      "yNm": 0.15,
+      "freqKhz": 385,
+      "note": "NDB near ILS 27 FAF / outer marker. DCT DMO is legal."
+    }
+  ]
+}
