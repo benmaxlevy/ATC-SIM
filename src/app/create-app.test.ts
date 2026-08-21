@@ -1,5 +1,5 @@
 import { SessionLog, createWorld } from "@core";
-import { NullSpeechPort } from "@speech";
+import { DEFAULT_PTT_KEY, NullSpeechPort, createPttCaptureController } from "@speech";
 import { expect, test } from "vitest";
 import { createApp, type AppDeps } from "./create-app";
 
@@ -29,10 +29,21 @@ test("T01-14 playable slice: main wires spawn, null speech, rAF, and resize pain
   expect(main).toMatch(/createWorldForSession/);
   expect(main).toMatch(/parseTrafficCount/);
   expect(main).toMatch(/NullSpeechPort/);
+  expect(main).toMatch(/handles\.ptt\.dispose/);
   expect(main).toMatch(/requestAnimationFrame/);
   expect(main).toMatch(/paintPpi/);
   expect(main).toMatch(/addEventListener\("resize"/);
   expect(main).not.toMatch(/from\s+["']@speech["'].*(http|openai|deepgram)/i);
+});
+
+test("createApp constructs PTT capture with the backtick default (T03-01)", () => {
+  const handles = createApp({ speech: new NullSpeechPort() });
+  expect(handles.ptt.pttKey).toBe(DEFAULT_PTT_KEY);
+  const injected = createPttCaptureController({ onEvent: () => {}, attachTo: null });
+  const reused = createApp({ speech: new NullSpeechPort(), ptt: injected });
+  expect(reused.ptt).toBe(injected);
+  injected.dispose();
+  handles.ptt.dispose();
 });
 
 test("createApp defaults to an empty world and keeps a provided World", () => {

@@ -24,6 +24,7 @@ const handles = createApp({
   world: createWorldForSession(kdem, parseTrafficCount(window.location.search)),
 });
 bootSession(handles, kdem, Date.now());
+window.addEventListener("pagehide", () => handles.ptt.dispose());
 
 const scopeView = createScopeView(kdem.arpNm.xNm, kdem.arpNm.yNm, {
   digitalMap: parseDigitalMap(kdem.maps),
