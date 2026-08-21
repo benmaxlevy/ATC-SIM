@@ -10,10 +10,17 @@ export const PATH_C_SCHEMA_VERSION = "command-ir-v0" as const;
 export const DEFAULT_PARSE_URL = "http://127.0.0.1:8090/parse";
 export const DEFAULT_PARSE_TIMEOUT_MS = 15000;
 
+export interface PathCContext {
+  callsigns: string[];
+  selectedCallsign?: string | null;
+}
+
 export interface PathCRequest {
   text: string;
   source: "text" | "voice";
   schemaVersion: typeof PATH_C_SCHEMA_VERSION;
+  /** Live strips + selection. Optional; never n-best or STT confidence. */
+  context?: PathCContext;
 }
 
 export interface PathCSuccess {
@@ -191,6 +198,16 @@ export async function fetchParsePathC(
           text: req.text,
           source: req.source,
           schemaVersion: PATH_C_SCHEMA_VERSION,
+          ...(req.context && (req.context.callsigns.length > 0 || req.context.selectedCallsign)
+            ? {
+                context: {
+                  callsigns: req.context.callsigns,
+                  ...(req.context.selectedCallsign
+                    ? { selectedCallsign: req.context.selectedCallsign }
+                    : {}),
+                },
+              }
+            : {}),
         }),
         signal: controller.signal,
       })

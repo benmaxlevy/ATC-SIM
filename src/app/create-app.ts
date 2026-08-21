@@ -155,6 +155,7 @@ export function createApp(deps: AppDeps): AppHandles {
         return result;
       },
       getSelectedCallsign: () => selectedCallsignFromWorld(world),
+      getOnFrequencyCallsigns: () => world.aircraft.map((ac) => ac.callsign),
       getIssuedAtSimMs: () => world.simTimeMs,
       confidenceThreshold: deps.confidenceThreshold ?? prefs.confidenceThreshold,
       getVoiceId: deps.getVoiceId ?? ((callsign) => voiceIdForCallsign(callsign, prefs.voiceId)),

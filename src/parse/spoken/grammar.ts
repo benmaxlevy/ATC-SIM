@@ -84,6 +84,8 @@ function tryTurnHeading(c: Cursor): Instruction | null {
   } else if (take(c, "right")) {
     turn = "RIGHT";
   }
+  // ASR may insert "to" ("turn left to heading 270"); 7110.65 is TURN LEFT HEADING.
+  take(c, "to");
   if (turn === null || !take(c, "heading")) {
     c.i = start;
     return null;
@@ -136,11 +138,14 @@ function tryFlyHeading(c: Cursor): Instruction | null {
 
 function tryPresentHeading(c: Cursor): Instruction | null {
   const start = c.i;
-  if (!take(c, "continue") || !take(c, "present") || !take(c, "heading")) {
-    c.i = start;
-    return null;
+  // R01: FLY PRESENT HEADING / continue present heading. Maintain is a common hearback.
+  if (take(c, "continue") || take(c, "fly") || take(c, "maintain")) {
+    if (take(c, "present") && take(c, "heading")) {
+      return { type: "PRESENT_HEADING" };
+    }
   }
-  return { type: "PRESENT_HEADING" };
+  c.i = start;
+  return null;
 }
 
 function tryAltitude(c: Cursor): Instruction | null {
@@ -239,13 +244,13 @@ function parseFixId(c: Cursor): string | null {
 function tryIdent(c: Cursor): Instruction | null {
   const start = c.i;
   if (take(c, "squawk")) {
-    if (!take(c, "ident")) {
+    if (!take(c, "ident") && !take(c, "iden")) {
       c.i = start;
       return null;
     }
     return { type: "IDENT" };
   }
-  if (take(c, "ident")) {
+  if (take(c, "ident") || take(c, "iden")) {
     return { type: "IDENT" };
   }
   return null;
@@ -324,9 +329,20 @@ function tryCleared(c: Cursor): Instruction | null {
   return { type: "CLEARED_APPROACH", approachId: `ILS${padded}${side.toUpperCase()}` };
 }
 
+function takeExpedite(c: Cursor): boolean {
+  if (take(c, "expedite")) {
+    return true;
+  }
+  if (peek(c) === "without" && peek(c, 1) === "delay") {
+    c.i += 2;
+    return true;
+  }
+  return false;
+}
+
 function parseOneInstruction(c: Cursor): Instruction | null {
   const start = c.i;
-  const expediteBefore = take(c, "expedite");
+  const expediteBefore = takeExpedite(c);
   const inst =
     tryTurnHeading(c) ??
     tryTurnDegrees(c) ??
@@ -343,7 +359,7 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     return null;
   }
   if (inst.type === "ALTITUDE") {
-    const expediteAfter = take(c, "expedite");
+    const expediteAfter = takeExpedite(c);
     if (expediteBefore || expediteAfter) {
       return { ...inst, expedite: true };
     }
@@ -405,4 +421,28 @@ export function parseSpokenGrammar(
   }
 
   return { ok: true, callsignToken, instructions, sourceText };
+}
+
+/**
+ * JO 7110.65 (R01): TURN LEFT/RIGHT HEADING (degrees) is a vector (`FLY_HEADING`),
+ * not a relative `TURN_DEGREES`. Path C 1.5B models mix these when ASR writes `270`.
+ */
+export function repairHeadingVsTurnDegrees(
+  normalized: string,
+  instructions: Instruction[],
+): Instruction[] {
+  const tokens = new Set(normalized.split(" ").filter((tok) => tok.length > 0));
+  if (!tokens.has("heading") || tokens.has("degrees")) {
+    return instructions;
+  }
+  return instructions.map((inst) => {
+    if (inst.type !== "TURN_DEGREES") {
+      return inst;
+    }
+    const headingDeg = inst.degrees === 360 ? 0 : inst.degrees;
+    if (headingDeg < 0 || headingDeg >= 360) {
+      return inst;
+    }
+    return { type: "FLY_HEADING", headingDeg, turn: inst.direction };
+  });
 }

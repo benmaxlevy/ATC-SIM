@@ -8,6 +8,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 from config import Settings
@@ -24,12 +26,20 @@ class TtsRequest(BaseModel):
     voiceId: str = Field(default="")
 
 
+class ParseContext(BaseModel):
+    """Live-strip grounding for Path C. No n-best, no STT confidence, no kinematics."""
+
+    callsigns: List[str] = Field(default_factory=list)
+    selectedCallsign: Optional[str] = None
+
+
 class ParseRequest(BaseModel):
-    """Path C request. Only these three fields — no n-best, no confidence."""
+    """Path C request. No n-best, no confidence. Optional context is the live roster."""
 
     text: str = ""
     source: str = "voice"
     schemaVersion: str = "command-ir-v0"
+    context: Optional[ParseContext] = None
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -115,7 +125,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 content={"ok": False, "error": "UNAVAILABLE"},
             )
         try:
-            outcome = engine.parse(payload.text, payload.source, payload.schemaVersion)
+            ctx = payload.context.model_dump() if payload.context is not None else None
+            outcome = engine.parse(payload.text, payload.source, payload.schemaVersion, ctx)
         except Exception:
             log.exception("parse failed")
             return JSONResponse(

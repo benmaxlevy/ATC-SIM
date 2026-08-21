@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -63,7 +64,15 @@ Instruction is exactly one of these frozen Command IR v0 types (no other "type")
 Rules:
 - Output JSON only. If you cannot map the text, output {"ok": false, "error": "PARSE_MISS"}.
 - Do not invent types (no CHAT, no conversation). Do not apply intent. Do not write a readback.
-- callsignToken is an ICAO callsign like DAL123, or null if none was spoken.
+- callsignToken is ICAO like DAL123 or SWA203, never the spoken airline name and never null if a callsign was spoken.
+- Map telephony: Delta→DAL, Southwest→SWA, American→AAL, United→UAL, JetBlue→JBU, Alaska→ASA, Frontier→FFT, Spirit→NKS, FedEx→FDX, UPS→UPS.
+- ASR may write "Southwest 203", "heading 270", or "5,000" instead of digit-by-digit / "five thousand". Still SWA203, headingDeg 270, altitudeFt 5000. heading 360 → headingDeg 0.
+- JO 7110.65 vectors: "turn left heading 270" → FLY_HEADING headingDeg 270 turn LEFT. NEVER TURN_DEGREES for a heading assignment.
+- TURN_DEGREES only when they say "degrees" and not "heading": "turn left 20 degrees".
+- fly heading 270 → FLY_HEADING SHORTEST. fly/continue/maintain present heading → PRESENT_HEADING.
+- "without delay" on climb/descend is expedite: true.
+- iden / ident / squawk ident → IDENT.
+- If the user message includes onFrequency, callsignToken MUST be one of those ICAO tokens or null. Map noisy ASR (e.g. "giblet 204") to the listed flight number. Do not copy ASR junk. Do not invent a callsign that is not listed.
 - source is a hint (keyboard tokens vs ASR English), not a second schema.
 """
 
@@ -106,7 +115,68 @@ class ParseOutcome:
 class ParseEngine(Protocol):
     ready: bool
 
-    def parse(self, text: str, source: str, schema_version: str) -> ParseOutcome: ...
+    def parse(
+        self,
+        text: str,
+        source: str,
+        schema_version: str,
+        context: dict[str, Any] | None = None,
+    ) -> ParseOutcome: ...
+
+
+MAX_ROSTER = 64
+_CALLSIGN_RE = re.compile(r"^[A-Z0-9]{2,8}$")
+
+
+def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
+    """Keep live-strip grounding tiny. Drop junk; never n-best or confidence."""
+    if not isinstance(raw, dict):
+        return None
+    callsigns: list[str] = []
+    seen: set[str] = set()
+    for item in raw.get("callsigns") or []:
+        if not isinstance(item, str):
+            continue
+        up = item.strip().upper()
+        if not up or up in seen or _CALLSIGN_RE.match(up) is None:
+            continue
+        seen.add(up)
+        callsigns.append(up)
+        if len(callsigns) >= MAX_ROSTER:
+            break
+    selected_raw = raw.get("selectedCallsign")
+    selected: str | None = None
+    if isinstance(selected_raw, str):
+        up = selected_raw.strip().upper()
+        if up and _CALLSIGN_RE.match(up):
+            selected = up
+    if not callsigns and not selected:
+        return None
+    out: dict[str, Any] = {"callsigns": callsigns}
+    if selected:
+        out["selectedCallsign"] = selected
+    return out
+
+
+def build_parse_user_message(text: str, source: str, context: dict[str, Any] | None = None) -> str:
+    """User turn: transcript plus optional on-frequency roster (live strips, not kinematics)."""
+    lines = [f"schemaVersion={SCHEMA_VERSION}", f"source={source}"]
+    ctx = sanitize_parse_context(context) if context else None
+    if ctx:
+        roster = ctx.get("callsigns") or []
+        if roster:
+            lines.append("onFrequency=" + ",".join(roster))
+            lines.append(
+                "callsignToken MUST be one onFrequency ICAO token or null. "
+                "Match noisy ASR to the listed flight number."
+            )
+        selected = ctx.get("selectedCallsign")
+        if selected:
+            lines.append(f"selected={selected}")
+    lines.append(f"text={text.strip()}")
+    lines.append("Output JSON only.")
+    return "\n".join(lines)
+
 
 
 def _is_finite_number(value: object) -> bool:
@@ -265,8 +335,14 @@ class MockParseEngine:
 
     ready = True
 
-    def parse(self, text: str, source: str, schema_version: str) -> ParseOutcome:
-        del source
+    def parse(
+        self,
+        text: str,
+        source: str,
+        schema_version: str,
+        context: dict[str, Any] | None = None,
+    ) -> ParseOutcome:
+        del source, context
         if schema_version != SCHEMA_VERSION:
             return ParseOutcome(ok=False, error="SCHEMA")
         stripped = text.strip()
@@ -348,15 +424,18 @@ class LlamaParseEngine:
         self._grammar = _load_grammar()
         self.ready = True
 
-    def parse(self, text: str, source: str, schema_version: str) -> ParseOutcome:
+    def parse(
+        self,
+        text: str,
+        source: str,
+        schema_version: str,
+        context: dict[str, Any] | None = None,
+    ) -> ParseOutcome:
         if schema_version != SCHEMA_VERSION:
             return ParseOutcome(ok=False, error="SCHEMA")
         if not text.strip():
             return ParseOutcome(ok=False, error="PARSE_MISS")
-        user = (
-            f"schemaVersion={SCHEMA_VERSION}\nsource={source}\ntext={text.strip()}\n"
-            "Output JSON only."
-        )
+        user = build_parse_user_message(text, source, context)
         kwargs: dict[str, Any] = {
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},

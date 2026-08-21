@@ -33,6 +33,8 @@ test("AC2 — shortest heading 270 has callsign and heading, no turn word", () =
 test("AC3 — left heading 90 includes turn left heading zero niner zero", () => {
   const text = readback([{ type: "FLY_HEADING", headingDeg: 90, turn: "LEFT" }]);
   expect(text).toContain("turn left heading zero niner zero");
+  expect(text).not.toContain("ninety");
+  expect(text).not.toMatch(/\bheading 90\b/);
 });
 
 test("AC4 — descend 3000 is descend and maintain three thousand", () => {

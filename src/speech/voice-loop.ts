@@ -48,6 +48,7 @@ export type ParseCommandFn = (
   opts: {
     source: "text" | "voice";
     selectedCallsign?: string | null;
+    callsigns?: readonly string[];
     pathC?: boolean;
   },
 ) => Promise<VoiceParseResult>;
@@ -71,6 +72,8 @@ export interface VoiceLoopOptions {
   parseCommand: ParseCommandFn;
   dispatchCommand: DispatchCommandFn;
   getSelectedCallsign: () => string | null;
+  /** Live ICAO roster for Path C grounding. Default none. */
+  getOnFrequencyCallsigns?: () => readonly string[];
   getIssuedAtSimMs?: () => number;
   now?: () => number;
   /**
@@ -181,6 +184,7 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly parseCommand: ParseCommandFn;
   private readonly dispatchCommand: DispatchCommandFn;
   private readonly getSelectedCallsign: () => string | null;
+  private readonly getOnFrequencyCallsigns: () => readonly string[];
   private readonly getIssuedAtSimMs: () => number;
   private readonly now: () => number;
   private pathC: boolean;
@@ -198,6 +202,7 @@ class VoiceLoopImpl implements VoiceLoop {
     this.parseCommand = options.parseCommand;
     this.dispatchCommand = options.dispatchCommand;
     this.getSelectedCallsign = options.getSelectedCallsign;
+    this.getOnFrequencyCallsigns = options.getOnFrequencyCallsigns ?? (() => []);
     this.getIssuedAtSimMs = options.getIssuedAtSimMs ?? (() => 0);
     this.now = options.now ?? defaultNow;
     this.pathC = options.pathC ?? false;
@@ -366,6 +371,7 @@ class VoiceLoopImpl implements VoiceLoop {
     const parsed = await this.parseCommand(transcript.text, {
       source: "voice",
       selectedCallsign: this.getSelectedCallsign(),
+      callsigns: this.getOnFrequencyCallsigns(),
       pathC: this.pathC,
     });
     if (this.disposed) {

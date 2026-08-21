@@ -57,6 +57,7 @@ export const RESERVED_SPOKEN: ReadonlySet<string> = new Set([
   "say",
   "cleared",
   "expedite",
+  "iden",
   "heading",
   "present",
   "left",
@@ -101,6 +102,19 @@ function phoneticLetter(tok: string | undefined): string | null {
   return null;
 }
 
+function compactFlightNumber(
+  tok: string | undefined,
+): { value: string; letter: string } | null {
+  if (tok === undefined) {
+    return null;
+  }
+  const match = tok.match(/^(\d{1,4})([a-z])?$/i);
+  if (!match) {
+    return null;
+  }
+  return { value: match[1]!, letter: match[2] ? match[2].toUpperCase() : "" };
+}
+
 function parseFlightNumber(
   tokens: readonly string[],
   i: number,
@@ -115,15 +129,30 @@ function parseFlightNumber(
     digits.push(d);
     j += 1;
   }
-  if (digits.length === 0) {
+  if (digits.length > 0) {
+    const letter = phoneticLetter(tokens[j]);
+    const suffix = letter !== null ? letter : "";
+    if (letter !== null) {
+      j += 1;
+    }
+    return { value: `${digits.join("")}${suffix}`, next: j };
+  }
+
+  // ASR often writes "203" instead of digit-by-digit "two zero three".
+  const compact = compactFlightNumber(tokens[i]);
+  if (compact === null) {
     return null;
   }
-  const letter = phoneticLetter(tokens[j]);
-  const suffix = letter !== null ? letter : "";
-  if (letter !== null) {
-    j += 1;
+  j = i + 1;
+  let suffix = compact.letter;
+  if (suffix === "") {
+    const letter = phoneticLetter(tokens[j]);
+    if (letter !== null) {
+      suffix = letter;
+      j += 1;
+    }
   }
-  return { value: `${digits.join("")}${suffix}`, next: j };
+  return { value: `${compact.value}${suffix}`, next: j };
 }
 
 function matchTelephony(
@@ -189,7 +218,8 @@ function parseNovemberTail(
 
 /**
  * Optional callsign at the start of a spoken utterance.
- * Telephony requires a digit-by-digit flight number (`one two three` → `123`).
+ * Canonical flight number is digit-by-digit (`one two three` → `123`).
+ * Compact ASR digits (`203`) are accepted after telephony (`Southwest 203` → `SWA203`).
  */
 export function parseSpokenCallsign(tokens: readonly string[], i: number): CallsignAttempt {
   const first = tokens[i];
@@ -226,4 +256,87 @@ export function parseSpokenCallsign(tokens: readonly string[], i: number): Calls
   }
 
   return { kind: "none" };
+}
+
+/** ICAO token from the start of a normalized spoken string, or null. */
+export function spokenCallsignToken(normalized: string): string | null {
+  const tokens = normalized.split(" ").filter((tok) => tok.length > 0);
+  const attempt = parseSpokenCallsign(tokens, 0);
+  return attempt.kind === "ok" ? attempt.callsign : null;
+}
+
+const ICAO_PREFIX_FLIGHT = /^([A-Z]{3})(\d{1,4}[A-Z]?)$/;
+
+export function icaoFlightSuffix(callsign: string): string | null {
+  const match = callsign.toUpperCase().match(ICAO_PREFIX_FLIGHT);
+  return match ? match[2]! : null;
+}
+
+/** Flight number spoken at the start (`giblet 204` / `two zero four`). */
+export function spokenFlightNumberHint(normalized: string): string | null {
+  const tokens = normalized.split(" ").filter((tok) => tok.length > 0);
+  if (tokens.length === 0) {
+    return null;
+  }
+  const first = parseFlightNumber(tokens, 0);
+  if (first && (singleDigit(tokens[0]) !== null || compactFlightNumber(tokens[0]))) {
+    return first.value;
+  }
+  const afterCarrier = parseFlightNumber(tokens, 1);
+  return afterCarrier?.value ?? null;
+}
+
+/**
+ * Snap a Path C / ASR token onto the live roster. Unique flight-number suffix
+ * (`204` vs `SWA204`) wins; never invent a callsign that is not on frequency.
+ */
+export function groundCallsignToRoster(
+  token: string | null,
+  normalized: string,
+  roster: readonly string[],
+  selectedCallsign?: string | null,
+): string | null {
+  const list = [...new Set(roster.map((cs) => cs.trim().toUpperCase()).filter((cs) => cs.length > 0))];
+  const selected = selectedCallsign?.trim().toUpperCase() || null;
+
+  function uniqueSuffix(hint: string | null): string | null {
+    if (!hint) {
+      return null;
+    }
+    const hits = list.filter((cs) => icaoFlightSuffix(cs) === hint);
+    if (hits.length === 1) {
+      return hits[0]!;
+    }
+    if (hits.length > 1 && selected && hits.includes(selected)) {
+      return selected;
+    }
+    return null;
+  }
+
+  if (list.length === 0) {
+    return token ? token.toUpperCase() : null;
+  }
+
+  if (token) {
+    const up = token.toUpperCase();
+    if (list.includes(up)) {
+      return up;
+    }
+    const fromToken = uniqueSuffix(icaoFlightSuffix(up));
+    if (fromToken) {
+      return fromToken;
+    }
+  }
+
+  const spoken = spokenCallsignToken(normalized);
+  if (spoken && list.includes(spoken)) {
+    return spoken;
+  }
+
+  const fromHint = uniqueSuffix(spokenFlightNumberHint(normalized));
+  if (fromHint) {
+    return fromHint;
+  }
+
+  return token ? token.toUpperCase() : null;
 }

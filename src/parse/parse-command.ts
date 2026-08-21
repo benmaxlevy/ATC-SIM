@@ -10,22 +10,56 @@
 import type { ParseStage } from "@core";
 import { parseRadioText, type ParseResult } from "./parseRadioText";
 import { formatParseError, PARSE_ERROR } from "./tokens";
-import { parseSpokenGrammar } from "./spoken/grammar";
+import { parseSpokenGrammar, repairHeadingVsTurnDegrees } from "./spoken/grammar";
 import { normalizeSpoken } from "./spoken/normalizer";
+import { groundCallsignToRoster, spokenCallsignToken } from "./spoken/telephony";
 import { rewriteSpokenToTyped } from "./spoken/typed-fuzzy";
 import {
   PATH_C_SCHEMA_VERSION,
   fetchParsePathC,
   type ParsePathCFn,
+  type PathCContext,
 } from "./path-c";
 
 export interface ParseCommandOpts {
   source: "text" | "voice";
   selectedCallsign?: string | null;
+  /** Live ICAO roster for Path C prompt grounding. Parse stays World-free. */
+  callsigns?: readonly string[];
   /** Default false. When true, stage 4 may fetch after a local miss. */
   pathC?: boolean;
   /** Injected fetch. Default POSTs to our speech-api `/parse`. */
   parsePathC?: ParsePathCFn;
+}
+
+const MAX_ROSTER = 64;
+
+function rosterFromOpts(opts: ParseCommandOpts): string[] {
+  const raw = opts.callsigns ?? [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const cs of raw) {
+    const up = cs.trim().toUpperCase();
+    if (!up || seen.has(up)) {
+      continue;
+    }
+    seen.add(up);
+    out.push(up);
+    if (out.length >= MAX_ROSTER) {
+      break;
+    }
+  }
+  return out;
+}
+
+function pathCContext(roster: readonly string[], selected: string | null): PathCContext | undefined {
+  if (roster.length === 0 && !selected) {
+    return undefined;
+  }
+  return {
+    callsigns: [...roster],
+    selectedCallsign: selected,
+  };
 }
 
 function attachCallsign(parsed: ParseResult, selected: string | null): ParseResult {
@@ -64,6 +98,7 @@ export async function parseCommand(
   opts: ParseCommandOpts,
 ): Promise<ParseResult> {
   const selected = opts.selectedCallsign ?? null;
+  const roster = rosterFromOpts(opts);
   const normalized = normalizeSpoken(sourceText);
 
   const typed = attachCallsign(parseRadioText(normalized), selected);
@@ -91,13 +126,21 @@ export async function parseCommand(
         text: sourceText,
         source: opts.source,
         schemaVersion: PATH_C_SCHEMA_VERSION,
+        context: pathCContext(roster, selected),
       });
       if (hit !== null && hit.instructions.length > 0) {
+        const grounded =
+          groundCallsignToRoster(
+            hit.callsignToken ?? spokenCallsignToken(normalized),
+            normalized,
+            roster,
+            selected,
+          ) ?? hit.callsignToken ?? spokenCallsignToken(normalized);
         return okStage(
           {
             ok: true,
-            callsignToken: hit.callsignToken,
-            instructions: hit.instructions,
+            callsignToken: grounded,
+            instructions: repairHeadingVsTurnDegrees(normalized, hit.instructions),
             sourceText,
           },
           sourceText,

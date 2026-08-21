@@ -15,7 +15,7 @@ Paid or metered STT/TTS/LLM APIs, including: OpenAI, Deepgram, AssemblyAI, Groq,
 | `GET` | `/health` | — | `{ "ok": true, "sttModel": "<hub id>", "ttsVoice": "<id>", "parse": "off" \| "ready" }` |
 | `POST` | `/stt` | body `audio/wav` (pcm16le mono, 16 kHz preferred) | `{ "text": string, "confidence": number }` |
 | `POST` | `/tts` | JSON `{ "text", "voiceId" }` | `audio/wav` (mono PCM) |
-| `POST` | `/parse` | JSON `{ "text", "source", "schemaVersion": "command-ir-v0" }` only (no n-best, no confidence) | `{ "ok": true, "callsignToken", "instructions" }` or `{ "ok": false, "error": "UNAVAILABLE" \| "PARSE_MISS" \| "SCHEMA" }` (200 or 503). Never 500-with-stack. |
+| `POST` | `/parse` | JSON `{ "text", "source", "schemaVersion": "command-ir-v0", "context"? }` — no n-best, no confidence. Optional `context: { callsigns, selectedCallsign }` is the live strip roster for prompt grounding. | `{ "ok": true, "callsignToken", "instructions" }` or `{ "ok": false, "error": "UNAVAILABLE" \| "PARSE_MISS" \| "SCHEMA" }` (200 or 503). Never 500-with-stack. |
 
 `confidence`: if faster-whisper has no score, the API returns `1.0`.
 
@@ -49,6 +49,8 @@ pip install -r requirements-parse.txt
 `llama-cpp-python` runs inference **in this process**. Hugging Face Hub is a **one-time weight download**. Do not point `/parse` at OpenAI, Groq, Anthropic, or HF Inference.
 
 Constrained decoding uses `parse_grammar.gbnf` (JSON matching Command IR v0) when llama.cpp accepts it. Prose from the model is a `SCHEMA` miss.
+
+**Roster grounding (not a vector DB):** the sim may send `context.callsigns` (on-frequency ICAO) and `context.selectedCallsign`. Those go in the **user** turn as `onFrequency=` so the static system prompt stays cacheable. The 1.5B model must pick an ICAO from that list (e.g. ASR `giblet 204` → `SWA204`). Do not send kinematics — Path C is not an executor. The browser also snaps a unique flight-number suffix onto the roster when the model still returns `callsignToken: null`.
 
 ## Install (Python 3.11+)
 

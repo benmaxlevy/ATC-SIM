@@ -80,7 +80,29 @@ function groupedNumberToken(tok: string | undefined): number | null {
   return null;
 }
 
-/** Exactly three spoken digits. `three six zero` → 0. Values above 360 are not headings. */
+function compactIntToken(
+  tok: string | undefined,
+  minDigits: number,
+  maxDigits: number,
+): number | null {
+  if (tok === undefined) {
+    return null;
+  }
+  if (!new RegExp(`^\\d{${minDigits},${maxDigits}}$`).test(tok)) {
+    return null;
+  }
+  const n = Number(tok);
+  return Number.isFinite(n) ? n : null;
+}
+
+function normalizeHeadingValue(n: number): number | null {
+  if (n > 360) {
+    return null;
+  }
+  return n === 360 ? 0 : n;
+}
+
+/** Three spoken digits, or ASR compact `270` / `090` / `360` (always three digits). `360` → 0. Spoken readback is always three digits (`090` → zero niner zero, never “ninety”). */
 export function parseHeadingDeg(
   tokens: readonly string[],
   i: number,
@@ -88,17 +110,27 @@ export function parseHeadingDeg(
   const a = singleDigit(tokens[i]);
   const b = singleDigit(tokens[i + 1]);
   const c = singleDigit(tokens[i + 2]);
-  if (a === null || b === null || c === null) {
+  if (a !== null && b !== null && c !== null) {
+    const n = a * 100 + b * 10 + c;
+    const value = normalizeHeadingValue(n);
+    if (value === null) {
+      return null;
+    }
+    return { value, next: i + 3 };
+  }
+
+  const compact = compactIntToken(tokens[i], 3, 3);
+  if (compact === null) {
     return null;
   }
-  const n = a * 100 + b * 10 + c;
-  if (n > 360) {
+  const value = normalizeHeadingValue(compact);
+  if (value === null) {
     return null;
   }
-  return { value: n === 360 ? 0 : n, next: i + 3 };
+  return { value, next: i + 1 };
 }
 
-/** Three spoken digits for IAS. Out-of-range values are left for the pilot. */
+/** Three spoken digits for IAS, or ASR compact `210`. Out-of-range values are left for the pilot. */
 export function parseSpeedKt(
   tokens: readonly string[],
   i: number,
@@ -106,10 +138,14 @@ export function parseSpeedKt(
   const a = singleDigit(tokens[i]);
   const b = singleDigit(tokens[i + 1]);
   const c = singleDigit(tokens[i + 2]);
-  if (a === null || b === null || c === null) {
+  if (a !== null && b !== null && c !== null) {
+    return { value: a * 100 + b * 10 + c, next: i + 3 };
+  }
+  const compact = compactIntToken(tokens[i], 2, 3);
+  if (compact === null) {
     return null;
   }
-  return { value: a * 100 + b * 10 + c, next: i + 3 };
+  return { value: compact, next: i + 1 };
 }
 
 /**
@@ -170,6 +206,20 @@ export function parseAltitudeFt(
       j += 1;
     }
     return { value: parts[0]! * 100, next: j };
+  }
+
+  // ASR compact feet: "5000" or comma-split "5,000" → tokens "5" "000".
+  const digitToks = tokens.slice(i, j);
+  if (
+    digitToks.length > 0 &&
+    digitToks.every((tok) => /^\d+$/.test(tok)) &&
+    tokens[j] !== "knots"
+  ) {
+    const combined = Number(digitToks.join(""));
+    const withFeet = tokens[j] === "feet";
+    if (Number.isFinite(combined) && combined > 0 && (combined >= 1000 || withFeet)) {
+      return { value: combined, next: withFeet ? j + 1 : j };
+    }
   }
 
   return null;

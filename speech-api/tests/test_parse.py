@@ -31,7 +31,7 @@ def _settings(*, parse_model_id: str | None, mock: bool = True) -> Settings:
 
 def test_parse_request_schema_has_no_nbest_or_confidence() -> None:
     fields = set(ParseRequest.model_fields)
-    assert fields == {"text", "source", "schemaVersion"}
+    assert fields == {"text", "source", "schemaVersion", "context"}
     assert "confidence" not in fields
     assert "nbest" not in fields
     assert "nBest" not in fields
@@ -144,3 +144,32 @@ def test_default_parse_model_is_small_instruct_not_7b() -> None:
     assert "7b" not in DEFAULT_PARSE_MODEL_ID.lower()
     assert "q4_k_m" in DEFAULT_PARSE_GGUF_FILE
     assert "Qwen" in DEFAULT_PARSE_MODEL_ID
+
+
+def test_user_message_includes_on_frequency_roster() -> None:
+    from parse_engine import build_parse_user_message, sanitize_parse_context
+
+    assert sanitize_parse_context({"callsigns": ["swa204", "DAL123", "nope!"]}) == {
+        "callsigns": ["SWA204", "DAL123"],
+    }
+    msg = build_parse_user_message(
+        "giblet 204 iden",
+        "voice",
+        {"callsigns": ["DAL123", "SWA204"], "selectedCallsign": "SWA204"},
+    )
+    assert "onFrequency=DAL123,SWA204" in msg
+    assert "selected=SWA204" in msg
+    assert "text=giblet 204 iden" in msg
+    assert "nbest" not in msg
+    assert "confidence" not in msg
+    bare = build_parse_user_message("ident", "voice", None)
+    assert "onFrequency=" not in bare
+    assert "text=ident" in bare
+
+
+def test_system_prompt_distinguishes_heading_vector_from_turn_degrees() -> None:
+    from parse_engine import SYSTEM_PROMPT
+
+    assert "NEVER TURN_DEGREES for a heading assignment" in SYSTEM_PROMPT
+    assert "heading 270" in SYSTEM_PROMPT
+    assert "heading 360" in SYSTEM_PROMPT

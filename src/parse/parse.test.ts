@@ -176,3 +176,39 @@ test("parse-command delegates Path C fetch to path-c (does not call fetch itself
   expect(src).not.toMatch(/\bfetch\s*\(/);
   expect(src).toMatch(/from\s+["']\.\/path-c["']/);
 });
+
+test("ASR transcript Southwest 203 + 5,000 without delay is SWA203 on Path A", async () => {
+  const result = await parseCommand("Southwest 203 descend and maintain 5,000 without delay.", {
+    source: "voice",
+    pathC: false,
+  });
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.parseStage).toBe("spoken_a");
+  expect(result.callsignToken).toBe("SWA203");
+  expect(result.instructions).toEqual([
+    { type: "ALTITUDE", altitudeFt: 5000, verb: "DESCEND", expedite: true },
+  ]);
+});
+
+test("ASR turn left heading 270 stays Path A FLY_HEADING (does not fetch Path C)", async () => {
+  const parsePathC = vi.fn(async () => ({
+    callsignToken: "SWA203",
+    instructions: [{ type: "TURN_DEGREES" as const, direction: "LEFT" as const, degrees: 270 }],
+  }));
+  const result = await parseCommand("Southwest 203 turn left heading 270.", {
+    source: "voice",
+    pathC: true,
+    parsePathC,
+  });
+  expect(parsePathC).not.toHaveBeenCalled();
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.parseStage).toBe("spoken_a");
+  expect(result.callsignToken).toBe("SWA203");
+  expect(result.instructions).toEqual([{ type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" }]);
+});

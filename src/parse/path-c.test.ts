@@ -40,7 +40,7 @@ test("AC6 — path-c source does not call paid LLM hosts", async () => {
   expect(src).toContain("127.0.0.1:8090/parse");
 });
 
-test("request schema is only text, source, schemaVersion", () => {
+test("required parse fields are text, source, schemaVersion; context is optional", () => {
   const keys = Object.keys(REQ).sort();
   expect(keys).toEqual(["schemaVersion", "source", "text"]);
   expect(PATH_C_SCHEMA_VERSION).toBe("command-ir-v0");
@@ -75,6 +75,7 @@ test("AC3 — local miss + pathC true + legal FLY_HEADING is llm_c", async () =>
     text: "pizza the runway",
     source: "voice",
     schemaVersion: PATH_C_SCHEMA_VERSION,
+    context: { callsigns: [], selectedCallsign: "DAL123" },
   });
   expect(result.ok).toBe(true);
   if (!result.ok) {
@@ -179,6 +180,71 @@ test("AC13 — Path B hit does not fetch Path C even when pathC true", async () 
   expect(parsePathC).not.toHaveBeenCalled();
 });
 
+test("Path C null callsign is filled from spoken telephony in the transcript", async () => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: null,
+    instructions: [{ type: "ALTITUDE", altitudeFt: 5000, verb: "DESCEND", expedite: true }],
+  }));
+  const result = await parseCommand("Southwest 203 pizza the runway", {
+    source: "voice",
+    pathC: true,
+    parsePathC,
+  });
+  expect(parsePathC).toHaveBeenCalledTimes(1);
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.parseStage).toBe("llm_c");
+  expect(result.callsignToken).toBe("SWA203");
+});
+
+test("Path C grounds giblet 204 iden onto unique on-frequency SWA204", async () => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: null,
+    instructions: [{ type: "IDENT" }],
+  }));
+  const result = await parseCommand("giblet 204 iden", {
+    source: "voice",
+    pathC: true,
+    callsigns: ["DAL123", "SWA204", "JBU17"],
+    parsePathC,
+  });
+  expect(parsePathC).toHaveBeenCalledWith({
+    text: "giblet 204 iden",
+    source: "voice",
+    schemaVersion: PATH_C_SCHEMA_VERSION,
+    context: { callsigns: ["DAL123", "SWA204", "JBU17"], selectedCallsign: null },
+  });
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.parseStage).toBe("llm_c");
+  expect(result.callsignToken).toBe("SWA204");
+  expect(result.instructions).toEqual([{ type: "IDENT" }]);
+});
+
+test("Path C TURN_DEGREES on a heading assignment is repaired to FLY_HEADING", async () => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: null,
+    instructions: [{ type: "TURN_DEGREES", direction: "LEFT", degrees: 270 }],
+  }));
+  const result = await parseCommand("giblet 204 turn left heading 270", {
+    source: "voice",
+    pathC: true,
+    callsigns: ["SWA204"],
+    parsePathC,
+  });
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.parseStage).toBe("llm_c");
+  expect(result.callsignToken).toBe("SWA204");
+  expect(result.instructions).toEqual([{ type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" }]);
+});
+
 test("schemaCheckPathC accepts legal FLY_HEADING and rejects extra keys", () => {
   expect(schemaCheckPathC(LEGAL_BODY)).toEqual(HEADING);
   expect(
@@ -203,4 +269,22 @@ test("default fetch body has no n-best or confidence", async () => {
   });
   const hit = await fetchParsePathC(REQ, { fetch: fetchSpy });
   expect(hit).toEqual(HEADING);
+});
+
+test("fetch body may include roster context but never n-best or confidence", async () => {
+  const fetchSpy = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    expect(body).not.toHaveProperty("confidence");
+    expect(body).not.toHaveProperty("nbest");
+    expect(body.context).toEqual({ callsigns: ["SWA204"], selectedCallsign: "SWA204" });
+    return new Response(JSON.stringify(LEGAL_BODY), { status: 200 });
+  });
+  await fetchParsePathC(
+    {
+      ...REQ,
+      context: { callsigns: ["SWA204"], selectedCallsign: "SWA204" },
+    },
+    { fetch: fetchSpy },
+  );
+  expect(fetchSpy).toHaveBeenCalledTimes(1);
 });

@@ -207,6 +207,7 @@ test("AC1 — confidence 0.5 parseable heading dispatches and moves the aircraft
   expect(parseSpy).toHaveBeenCalledWith("turn left heading two seven zero", {
     source: "voice",
     selectedCallsign: "DAL123",
+    callsigns: [],
     pathC: false,
   });
   expect(dispatched).toHaveLength(1);
@@ -245,6 +246,7 @@ test("AC2 — garbage at confidence 0.5 still parse_miss with no dispatch (T03-1
   expect(parseSpy).toHaveBeenCalledWith("pizza the runway", {
     source: "voice",
     selectedCallsign: "DAL123",
+    callsigns: [],
     pathC: false,
   });
   expect(dispatched).toEqual([]);

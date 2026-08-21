@@ -27,23 +27,7 @@ Never commit ticket work directly on `master`. Never reuse one branch for two ti
 
 ## Progressive commits
 
-Commit **as you go**, not one dump at the end.
-
-- After a logical slice that typechecks / tests (types, then parser, then UI).
-- After a cluster of ACs you can actually check off.
-- Message: imperative, **why**, include the ticket id.
-
-```text
-git add <files for this slice>
-git commit -m "$(cat <<'EOF'
-T02-04: format full datablocks in hundreds of feet.
-
-Keep Mode C display aligned with STARS/CRC so later leaders can attach.
-EOF
-)"
-```
-
-Do not stage secrets, `.env`, or unrelated files. If a hook rejects the commit, fix it and make a **new** commit (do not `--no-verify`).
+Follow `.cursor/rules/progressive-commits.mdc` for **all** application work (tickets, bugfixes, requested changes). Commit each slice as you go; do not wait for a second ask. Include the ticket id in the message when there is one.
 
 ## Merge into master when the ticket is done
 

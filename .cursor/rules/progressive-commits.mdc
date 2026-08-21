@@ -1,0 +1,32 @@
+---
+description: Commit each logical slice as you go; do not wait for a second ask
+alwaysApply: true
+---
+
+# Progressive commits
+
+This repo **wants commits without the user asking again**. Implementing a ticket, a bugfix, or a requested change **is** the request to commit.
+
+Do **not** one-dump at the end. Do **not** wait for “please commit.”
+
+## When to commit
+
+After each slice that typechecks / tests:
+
+- Parser, then wiring, then API prompt, then UI — not all of those in one commit.
+- A cluster of ACs or one user-visible fix you can describe in a sentence.
+
+Stay on the existing ticket/`fix/` branch. Never commit this work directly on `master`. Do not mix unrelated tickets or drive-by refactors into the slice.
+
+## How
+
+```text
+git add <files for this slice>
+git commit -m "T03-03: accept ASR compact headings as FLY_HEADING.
+
+Path A must win so Path C cannot turn heading 270 into TURN_DEGREES."
+```
+
+Message: imperative subject, **why** in the body, ticket id when there is one. Do not stage secrets, `.env`, `speech-api/.cache`, or untracked QA screenshots.
+
+If a hook rejects the commit, fix it and make a **new** commit (do not `--no-verify`). Do not push unless asked. Do not `--force` on `master`.

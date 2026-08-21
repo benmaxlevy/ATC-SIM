@@ -108,6 +108,7 @@ function rewriteTurn(c: Cursor): string | null {
     return null;
   }
   const dir = left ? "L" : "R";
+  take(c, "to");
   if (take(c, "heading")) {
     const headingDeg = headingAt(c);
     if (headingDeg === null) {
@@ -154,13 +155,10 @@ function rewriteBareHeading(c: Cursor): string | null {
 
 function rewritePresent(c: Cursor): string | null {
   const start = c.i;
-  if (take(c, "continue")) {
-    take(c, "present");
-    if (!take(c, "heading")) {
-      c.i = start;
-      return null;
+  if (take(c, "continue") || take(c, "fly") || take(c, "maintain")) {
+    if (take(c, "present") && take(c, "heading")) {
+      return "PH";
     }
-    return "PH";
   }
   if (take(c, "present") && take(c, "heading")) {
     return "PH";
@@ -239,13 +237,13 @@ function rewriteSpeed(c: Cursor): string | null {
 function rewriteIdent(c: Cursor): string | null {
   const start = c.i;
   if (take(c, "squawk")) {
-    if (!take(c, "ident")) {
+    if (!take(c, "ident") && !take(c, "iden")) {
       c.i = start;
       return null;
     }
     return "I";
   }
-  if (take(c, "ident")) {
+  if (take(c, "ident") || take(c, "iden")) {
     return "I";
   }
   return null;

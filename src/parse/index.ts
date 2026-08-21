@@ -22,4 +22,4 @@ export {
   fetchParsePathC,
   schemaCheckPathC,
 } from "./path-c";
-export type { ParsePathCFn, PathCRequest, PathCSuccess } from "./path-c";
+export type { ParsePathCFn, PathCContext, PathCRequest, PathCSuccess } from "./path-c";

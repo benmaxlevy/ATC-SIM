@@ -42,6 +42,10 @@ function selectedCallsignFromWorld(world: World): string | null {
   return world.aircraft.find((ac) => ac.id === world.selectedAircraftId)?.callsign ?? null;
 }
 
+function callsignsFromWorld(world: World): string[] {
+  return world.aircraft.map((ac) => ac.callsign);
+}
+
 function buildCommand(args: {
   callsign: string;
   instructions: Instruction[];
@@ -102,6 +106,7 @@ export async function handleRadioText(
   const parsed = await parseCommand(sourceText, {
     source,
     selectedCallsign: selectedCallsignFromWorld(world),
+    callsigns: callsignsFromWorld(world),
     pathC: opts?.pathC ?? false,
   });
   if (!parsed.ok) {
