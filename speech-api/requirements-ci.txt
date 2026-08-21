@@ -1,0 +1,6 @@
+# CI / local contract tests without downloading Hub weights.
+fastapi>=0.115,<1
+uvicorn[standard]>=0.32,<1
+python-multipart>=0.0.9
+pytest>=8.0
+httpx>=0.27

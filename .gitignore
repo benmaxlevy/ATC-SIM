@@ -8,3 +8,10 @@ coverage
 .DS_Store
 .tmp-stars-shots
 
+# T03-13: Hub weight cache and Python debris (never commit models)
+speech-api/.cache/
+speech-api/.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+

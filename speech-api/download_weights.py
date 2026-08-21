@@ -1,0 +1,27 @@
+"""Download Hub weights into speech-api/.cache/ (one-time). Inference is local."""
+
+from __future__ import annotations
+
+import logging
+
+from config import Settings
+from engines import build_stt, build_tts
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+
+
+def main() -> None:
+    settings = Settings.load()
+    if settings.mock:
+        raise SystemExit("SPEECH_API_MOCK=1 — nothing to download. Unset it and retry.")
+    settings.apply_hub_cache()
+    print(f"cache: {settings.cache_dir}")
+    print(f"STT:   {settings.stt_model_id}")
+    print(f"TTS:   {settings.tts_voice}")
+    build_stt(settings)
+    build_tts(settings)
+    print("weights are on disk; start the API with: python -m uvicorn app:app --host 127.0.0.1 --port 8090")
+
+
+if __name__ == "__main__":
+    main()
