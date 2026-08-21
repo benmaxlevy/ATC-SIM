@@ -1,0 +1,15 @@
+# T00-09: do not reflow planning docs or ticket checkboxes.
+phases/
+
+dist
+node_modules
+coverage
+package-lock.json
+
+# Constrain format to src, index.html, vite.config.ts, docs, package.json, *.yml
+*.md
+tsconfig.json
+tsconfig.node.json
+eslint.config.js
+.gitignore
+.prettierignore

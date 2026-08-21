@@ -1,9 +1,5 @@
 import { expect, test } from "vitest";
-import {
-  latLonToNm,
-  nmToLatLon,
-  normalizeHeadingDeg,
-} from "@core";
+import { latLonToNm, nmToLatLon, normalizeHeadingDeg } from "@core";
 import type { LatLon, NmEastNorth } from "@core";
 
 const kdem: LatLon = { latDeg: 0, lonDeg: 0 };

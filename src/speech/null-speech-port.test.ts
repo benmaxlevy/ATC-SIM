@@ -17,12 +17,8 @@ test("NullSpeechPort id is null", () => {
 
 test("transcribe rejects with SpeechNotAvailableError", async () => {
   const port = new NullSpeechPort();
-  await expect(port.transcribe(silentClip())).rejects.toBeInstanceOf(
-    SpeechNotAvailableError,
-  );
-  await expect(port.transcribe(silentClip())).rejects.toThrow(
-    "NullSpeechPort cannot transcribe",
-  );
+  await expect(port.transcribe(silentClip())).rejects.toBeInstanceOf(SpeechNotAvailableError);
+  await expect(port.transcribe(silentClip())).rejects.toThrow("NullSpeechPort cannot transcribe");
 });
 
 test("synthesize returns 16 kHz mono PCM16 silence", async () => {

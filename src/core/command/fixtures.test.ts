@@ -5,20 +5,13 @@ import type { Command, Instruction, TurnDir } from "./types";
 
 test("Command has only the six frozen radio fields", () => {
   expectTypeOf<keyof Command>().toEqualTypeOf<
-    | "id"
-    | "issuedAtSimMs"
-    | "callsign"
-    | "instructions"
-    | "sourceText"
-    | "source"
+    "id" | "issuedAtSimMs" | "callsign" | "instructions" | "sourceText" | "source"
   >();
 });
 
 test("INSTRUCTION_TYPES lists exactly the 11 Command IR discriminants", () => {
   expect(INSTRUCTION_TYPES).toHaveLength(11);
-  expectTypeOf<Instruction["type"]>().toEqualTypeOf<
-    (typeof INSTRUCTION_TYPES)[number]
-  >();
+  expectTypeOf<Instruction["type"]>().toEqualTypeOf<(typeof INSTRUCTION_TYPES)[number]>();
 });
 
 test("TurnDir and FLY_HEADING match the frozen heading vector shape", () => {

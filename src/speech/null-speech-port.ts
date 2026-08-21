@@ -10,9 +10,7 @@ export class NullSpeechPort implements SpeechPort {
 
   transcribe(audio: AudioClip): Promise<Transcript> {
     void audio;
-    return Promise.reject(
-      new SpeechNotAvailableError("NullSpeechPort cannot transcribe"),
-    );
+    return Promise.reject(new SpeechNotAvailableError("NullSpeechPort cannot transcribe"));
   }
 
   synthesize(text: string, voiceId: string): Promise<AudioClip> {
