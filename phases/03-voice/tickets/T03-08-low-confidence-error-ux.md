@@ -7,6 +7,8 @@
 **Blocks:** T03-12
 **Launch:** Implement this ticket only. Do not start downstream tickets.
 
+**Superseded (partial):** [T03-15](T03-15-parse-despite-low-stt-confidence.md) removes the voice-loop `confidence < threshold` early return. **AC1** (“do not call parse on low confidence”) is no longer the product rule. Mic / STT / parse-miss / TTS status UX in this ticket still stands.
+
 ## Goal
 
 Mic, STT, confidence, parse, and TTS failures show in the readback/status line (and session log). None of them throw through the sim tick. Low confidence never moves an aircraft.

@@ -58,10 +58,10 @@ SpeechPort.transcribe(clip)                  [T03-05 → speech-api T03-13; opti
     ▼
 Transcript { text, confidence, latencyMs }
     │
-    ├─ confidence < threshold (default 0.55) → status “say again”; stop
+    ├─ empty clip / STT HTTP fail → status; stop (no parse)
     │
     ▼
-parseCommand (same list as the command line) [T03-03; C = T03-14]
+parseCommand (always after STT) [T03-03; C = T03-14; T03-15 drops the confidence gate]
     normalize → typed → Path A → Path B → Path C?
     │
     ▼
@@ -343,7 +343,7 @@ All of these land in the **readback/status line** (and session event log). The s
 | Empty / too-short clip | “No audio” | No change |
 | STT timeout / HTTP 4xx/5xx / network | “Radio failed” / “say again” | No change |
 | `null` port transcribe throw | Caught; “Voice backend unavailable” | No change |
-| `confidence < threshold` (default **0.55**) | “Say again” (low confidence) | No parse, no change |
+| Low STT `confidence` (logged; **T03-15**) | **Not** “Say again” solely for low confidence. Always `parseCommand` after STT. | Unchanged unless parse/pilot miss |
 | Spoken grammar miss (A and B) | “Unable to parse” + keep `sourceText` in log | No change |
 | Pilot reject (ambiguous callsign, bad altitude, …) | Existing phase 1 error readback | No change |
 | TTS failure after accepted command | Intent **already applied**; status “readback audio failed”; still log `t_transcript` | Intent changed (same as a missed radio after the pilot heard you — document this) |
@@ -375,7 +375,8 @@ Minimum:
 
 - Speech backend: `null` | `web-speech` | `http` | `whisper-wasm` (last only if the spike shipped).
 - PTT key bind.
-- Confidence threshold (default 0.55).
+- Confidence threshold slider (default 0.55): **informational / future use after T03-15** — does not gate parse. May hide. Do not restore the T03-08 skip.
+- Path C checkbox **Path C (local /parse)** (T03-14): default **false** until `/health.parse === "ready"`.
 - STT/TTS URLs if `http` (may be env-only; if env-only, settings shows read-only “configured / missing”).
 - TTS `voiceId` string.
 - Latency overlay toggle.
@@ -393,7 +394,7 @@ Phase 0 may have used `src/` folders or packages; stick to that. Suggested files
 
 ```
 src/speech/
-  voice-loop.ts              # coordinator (T03-02)
+  voice-loop.ts              # coordinator (T03-02; T03-15 always parse after STT)
   metrics.ts                 # PTT-up marks (T03-09)
   capture/ptt-controller.ts  # T03-01
   capture/pcm-worklet.ts
@@ -439,7 +440,8 @@ T03-06 Readback TTS playback             P0   needs 02 + (04 or 05; prefer 05 fo
 T03-07 Radio FX graph                    P1   needs 06
 T03-09 Latency metrics overlay           P1   needs 02 + 06
 T03-10 Settings speech backend switch    P1   needs 04 + 05
-T03-14 Optional Path C /parse            P1   needs 03 + 13; MAY DEFER; not on exit path
+T03-15 Parse despite low STT confidence  P1   needs 02 / 08; can land before 14
+T03-14 Optional Path C /parse            P1   needs 03 + 13; size L; not on exit path
 T03-11 Optional whisper-wasm spike       P2   needs 01; MAY DEFER; not on exit path
 T03-12 Phase 3 voice acceptance script   P0   needs all P0/P1 except 11 and 14; speech-api up
 ```
@@ -448,7 +450,7 @@ Recommended solo-agent sequence:
 
 `01 → 03 → 02 → 08 → 13 → 05 → 06 → 07 → 09 → 10 → 12`
 
-(`04` optional / later). Skip `11` and `14` unless explicitly asked. T03-13 still stubs `POST /parse` as UNAVAILABLE.
+(`04` optional / later). Skip `11` unless explicitly asked. **T03-15 then T03-14** when Path C salvage is named. T03-13 still stubs `POST /parse` as UNAVAILABLE until T03-14.
 
 ---
 
@@ -477,7 +479,7 @@ Do not start phase 5 until this is green. Phase 4 does not need this.
 
 - Fine-tuning or training any ASR/TTS model in this repo (`non-goals.md`).
 - Always-on / full-duplex listen; VAD-triggered transmit; hotword.
-- Replacing Path A with a model, or LLM as pilot/chat (`non-goals.md`). Optional Path C is T03-14 and is **not** required to exit.
+- Replacing Path A with a model, or LLM as pilot/chat (`non-goals.md`). Optional Path C is T03-14 (after T03-15) and is **not** required to exit.
 - **Paid / metered third-party STT or TTS** (OpenAI, Deepgram, Groq, ElevenLabs, Google Cloud Speech, HF Inference API/Endpoints, Workers AI, …).
 - Making Web Speech the default or as accurate as speech-api.
 - Queueing PTT clips.
@@ -501,4 +503,4 @@ Do not start phase 5 until this is green. Phase 4 does not need this.
 
 1. Paste [`AGENT.md`](AGENT.md) as the prompt.
 2. Or paste a single `tickets/T03-xx-*.md` and say: implement only this ticket, stop when ACs are checked.
-3. Do not implement T03-11 or T03-14 unless the user asks.
+3. Do not implement T03-11 unless the user asks. Path C is T03-15 (confidence gate) then T03-14 (`/parse`); neither is required to exit.

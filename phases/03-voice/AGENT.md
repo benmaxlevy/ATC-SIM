@@ -31,7 +31,7 @@ If a ticket and `phases/03-voice/README.md` disagree, follow the README and then
 - **http** (`HttpSpeechPort` → **our** `speech-api`) is the quality default. **web-speech** is opt-in prototype (browser vendor cloud — not default). **whisper-wasm** is optional and **must not** be required to exit.
 - **No barge-in:** ignore PTT while a readback is playing (do not queue).
 - PTT default key is backtick `` ` ``, configurable. Do not default Caps Lock.
-- Failures (mic deny, timeout, low confidence) → status/readback line. **Never throw through the sim tick.**
+- Failures (mic deny, timeout, STT HTTP fail) → status/readback line. **Never throw through the sim tick.** Low STT confidence does **not** skip parse (**T03-15**).
 - Log **PTT-up → transcript** and **PTT-up → audio-start**. Target **< 1.5 s** p50 against **localhost speech-api**. **Do not fail the phase on Web Speech quality.**
 - Do not import vendor SDKs. **No paid STT/TTS APIs.** Hugging Face Hub = weight download only (T03-13).
 - No always-on listen, no Whisper fine-tune in this repo, no 500 MB model in the Vite bundle. No paid LLM APIs. Path C only via local `/parse` when T03-14 is implemented.
@@ -51,11 +51,12 @@ Implement only the current ticket. Stop when its acceptance criteria are checked
 9. `tickets/T03-07-radio-fx-graph.md` — P1
 10. `tickets/T03-09-latency-metrics-overlay.md` — P1
 11. `tickets/T03-10-settings-speech-backend.md` — P1
-12. `tickets/T03-11-whisper-wasm-spike.md` — **P2, skip unless asked**
-13. `tickets/T03-14-optional-path-c-parse-api.md` — **P1, skip unless asked** (not required to exit)
-14. `tickets/T03-12-voice-acceptance-script.md` — P0 (script + run what CI can run)
+12. `tickets/T03-15-parse-despite-low-stt-confidence.md` — P1 (before Path C; supersedes T03-08 confidence gate)
+13. `tickets/T03-11-whisper-wasm-spike.md` — **P2, skip unless asked**
+14. `tickets/T03-14-optional-path-c-parse-api.md` — **P1, skip unless asked** (not required to exit; size L)
+15. `tickets/T03-12-voice-acceptance-script.md` — P0 (script + run what CI can run)
 
-Do not implement T03-11 or T03-14 unless the user explicitly asks. Phase exit does not need them.
+Do not implement T03-11 unless the user explicitly asks. Implement T03-15 before T03-14 when Path C salvage is named. Phase exit does not need 11 or 14.
 
 ## Engineering constraints
 
@@ -63,7 +64,7 @@ Do not implement T03-11 or T03-14 unless the user explicitly asks. Phase exit do
 - Match existing folder layout from phase 0. Suggested speech/parse/ui paths are in the phase README §11.
 - Reuse phase 1 `parseCommand` / `applyCommand` (names may differ). Do not duplicate the pilot or kinematics.
 - `AudioClip`: `sampleRate`, `channels: 1`, `pcm16: Int16Array`. Prefer 16 kHz for STT.
-- `Transcript.confidence` below threshold (default **0.55**) → reject before parse.
+- `Transcript.confidence` is logged. **T03-15:** do **not** reject before parse when confidence is below 0.55. Empty clip / STT HTTP fail still reject. Garbage still `parse_miss`.
 - Web Speech cannot consume a PCM clip: optional `beginUtterance` / `endUtterance` on the port is allowed; clip adapters no-op it. Document in code comments.
 - `speechSynthesis` is a black box — no radio FX on that path. http PCM goes through the FX graph.
 - When a text field is focused, do not treat the PTT bind as transmit.
