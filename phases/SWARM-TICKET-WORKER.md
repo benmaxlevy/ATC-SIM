@@ -19,10 +19,11 @@ Workspace: `c:\Users\Ben\Documents\ATC-SIM`
 - `phases/_shared/architecture.md`
 - `phases/_shared/command-ir.md`
 - `phases/_shared/speech-port.md`
+- `phases/_shared/parse-pipeline.md` (phase 3)
 - `phases/_shared/non-goals.md`
 - The parent phase `README.md` frozen decisions
 
-Shared files win. Do not reopen Command IR / SpeechPort / parser tokens. **TCW polish tickets (T02-14–21)** may amend *named* rows in `phases/02-scope/README.md` when that ticket says so (palette, FDB lines, DCB). Do not implement a later phase “while you are here.” No OSM, no STARS font, no WX mosaic. Scope/DCB never emit Command IR.
+Shared files win. Do not reopen Command IR / SpeechPort / parser tokens. Do not implement a later phase “while you are here.” **This run is phase 3 voice** unless the ticket id is T02-*. No paid STT/TTS/LLM. Hugging Face Hub = weight download only. Do not implement T03-11 or T03-14 unless that is **your** ticket id. Scope/DCB never emit Command IR. Speech never constructs `Instruction` objects — only `parseCommand` does.
 
 ## Git
 

@@ -1,5 +1,44 @@
 # Swarm status
 
+## Third swarm started — Phase 3 voice (T03-01–10, 12, 13)
+
+Orchestrator started **2026-08-21**. First-swarm and second-swarm (TCW polish) notes below stay. Start phase 3 voice; do **not** replay T00-*, T01-*, T02-01–13, or T02-14–21. Do **not** start phase 4 or 5. Skip **T03-11** and **T03-14**.
+
+**Working tree at start:** `master` with uncommitted third-swarm planning (`SWARM.md`, captain/worker/LAUNCH) plus leftover untracked `e2e/` QA screenshots and `test-results/` (not this swarm — left uncommitted). Planning lands on `master` this commit so ticket branches fork the voice config.
+
+## Config (frozen for this run)
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement **phase 3 voice** until `phases/03-voice/README.md` **Phase exit** is green (E1–E14). PTT → `SpeechPort` → same `parseCommand` as typed → existing pilot → TTS → radio FX |
+| Quality path | **`http` → our `speech-api/`** (HF weights downloaded once, inference on our machine). Target PTT-up → audio-start **p50 < 1.5 s** on localhost/LAN |
+| Skip | **T03-11** (whisper-wasm) and **T03-14** (Path C `/parse`) unless the human later names them. Not required to exit |
+| Include | **T03-04** (Web Speech) as **opt-in prototype** so settings can switch `null` / `web-speech` / `http`. **Never** the default. Quality must **not** fail the phase |
+| Stop | **Do not start phase 4 or 5.** No procedures, scoring, or training-session tickets |
+| Do not redo | T00-*, T01-*, T02-01–T02-13. If STATUS says first swarm complete, **start phase 3**, do not replay 0→2 |
+| Max ticket workers in flight | **3** |
+| Merge lock | **Only the phase captain** merges to `master` (`--no-ff`) |
+| Model | **cursor grok 4.6 high only.** Every Task spawn sets `model: "cursor-grok-4.6-high"`. No `composer-2.5-fast`, no omitting `model` |
+| Paid STT/TTS/LLM | **Forbidden.** No OpenAI, Deepgram, Groq, ElevenLabs, HF Inference API/Endpoints, Chrome-as-default, etc. Hub = **weight download only** (T03-13) |
+
+## Progress (this run)
+
+| Phase | Status | Notes |
+| --- | --- | --- |
+| 0 Slice | **GREEN** (first swarm) | Do not redo |
+| 1 Closed loop | **GREEN** (first swarm) | Confirmed on `master` (T01-01–14) |
+| 2 Scope original (T02-01–13) | **GREEN** (first swarm) | Confirmed on `master` |
+| 2 Scope polish (T02-14–21) | **GREEN** (second swarm) | Out of this run — do not redo |
+| 3 Voice | **IN PROGRESS** | Captain spawned. Tickets T03-01–10, 12, 13. Skip 11 and 14. |
+| 4 Procedures | **out of scope this run** | |
+| 5 Training | **out of scope this run** | |
+
+## Log (this run)
+
+- 2026-08-21: Third swarm started. T01-* and T02-01–13 on `master`. No `speech-api/`, no T03-* commits. Spawning phase 3 voice captain (`cursor-grok-4.6-high`). Skip T03-11 and T03-14.
+
+---
+
 ## SECOND SWARM COMPLETE — TCW polish; still stopped before voice
 
 Phase 2 polish **T02-14 → T02-21** is green on `master`. Orchestrator `npm test`: **479 passed, 1 skipped**. No `speech-api/`, no PTT, no T03-* commits. Glass grammar is a STARS-like TCW (video maps, DCB cells, SSA), not a website toolbar. This swarm is done.
