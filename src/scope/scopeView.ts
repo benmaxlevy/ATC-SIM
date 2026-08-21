@@ -2,16 +2,18 @@
  * Analog: CRC STARS RANGE / CENTER / HISTORY / PTL / altitude filter
  * (docs.virtualnas.net/crc/stars — R07; FOA STARS display data — R05).
  * Trainer delta: last-click / airport live on this view, not on World. Map /
- * localizer / rings flags are trainer display state (DCB-lite MAP toggles).
- * History is 5 s sim / 5 dots, no phosphor. PTL is a straight 1.0 min
- * predicted track line (F7), default off. Leader direction is L1–L9 (no length
- * menu). Altitude filter default 000–180; `F` is scope-focus only. Not NAS STARS.
+ * localizer / rings flags are trainer display state (DCB MAP / RWY / LOC /
+ * CST / RING cells). History is 5 s sim / 5 dots, no phosphor. PTL is a straight
+ * 1.0 min predicted track line (F7), default off. Leader direction is L1–L9
+ * (no length menu). Altitude filter default 000–180; `F` and the DCB FILTER
+ * cell start the same chord. Not NAS STARS.
  *
  * Scope display state only. Never a Command, readback, or intent.
  */
 
 import {
   DEFAULT_ALTITUDE_FILTER,
+  beginFilterEntry,
   idleFilterEntry,
   type AltitudeFilter,
   type FilterEntry,
@@ -126,7 +128,7 @@ export function toggleHelpOverlay(view: ScopeView): void {
   view.helpOpen = !view.helpOpen;
 }
 
-/** MAP toggles on the DCB-lite. Coastline JSON `enabled: false` is a no-op. */
+/** MAP toggles on the DCB. Coastline JSON `enabled: false` is a no-op. */
 export type MapLayerId = "runway" | "localizer" | "rings" | "coastline";
 
 export function isCoastlineToggleEnabled(view: ScopeView): boolean {
@@ -160,6 +162,21 @@ export function recordLastClick(view: ScopeView, eastNm: number, northNm: number
 export function centerOnAirport(view: ScopeView): void {
   view.camera.centerEastNm = view.airportEastNm;
   view.camera.centerNorthNm = view.airportNorthNm;
+}
+
+const CENTER_EPS_NM = 1e-6;
+
+/** True when the view center is not the airport ref (DCB RANGE `OFF CNTR` row). */
+export function isViewOffAirport(view: ScopeView): boolean {
+  return (
+    Math.abs(view.camera.centerEastNm - view.airportEastNm) > CENTER_EPS_NM ||
+    Math.abs(view.camera.centerNorthNm - view.airportNorthNm) > CENTER_EPS_NM
+  );
+}
+
+/** DCB FILTER click: same chord as scope-focus `F`. Never a Command. */
+export function beginAltitudeFilterChord(view: ScopeView, nowMs: number = Date.now()): void {
+  beginFilterEntry(view.filterEntry, view.altitudeFilter, nowMs);
 }
 
 /** End: last left-click world point, or airport if none this session. */

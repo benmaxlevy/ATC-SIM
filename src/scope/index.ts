@@ -11,8 +11,9 @@
  * (scope-focus `F`, default 000–180), F3/F4 ownership color stub (not NAS),
  * F1 help overlay (`TRAINER KEYS — NOT CRC`), Tab cycle focus, `/` radio focus.
  *
- * DCB-lite (T02-10) is a thin DOM bar above the PPI; it calls these same
- * camera / map / filter / PTL / history functions. Not a full STARS DCB.
+ * DCB (T02-16) is a green cell grid on the PPI glass; it calls these same
+ * camera / map / filter / PTL / history functions. RANGE click cycles presets.
+ * Not a full STARS DCB (no WX / PREF / SHIFT / CSA / CRDA / FMA).
  *
  * Import rule: `@scope` may import `@core` and `@scenario`.
  * `@scope` may set `selectedAircraftId`. It must not write intent.
@@ -36,6 +37,8 @@ export {
   applyPanScreenDelta,
   applyRangeIn,
   applyRangeOut,
+  cycleRange,
+  formatDcbRangeReadout,
   formatRangeReadout,
   stepRange,
   nmToScreen,
@@ -71,9 +74,13 @@ export {
   DEFAULT_ALTITUDE_FILTER,
   FILTER_HUNDREDS_MAX,
   FILTER_HUNDREDS_MIN,
+  beginFilterEntry,
+  cancelFilterEntry,
   clampFilterHundreds,
+  formatFilterBand,
   formatFilterHundreds,
   formatFilterReadout,
+  handleFilterEntryKey,
   inAltitudeFilter,
   parseFilterHundreds,
   tryApplyAltitudeFilter,
@@ -125,7 +132,9 @@ export {
   centerOnLastClick,
   centerOnWorld,
   createScopeView,
+  beginAltitudeFilterChord,
   isCoastlineToggleEnabled,
+  isViewOffAirport,
   recordLastClick,
   toggleHelpOverlay,
   toggleHistoryEnabled,

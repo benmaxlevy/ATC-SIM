@@ -14,6 +14,11 @@ export const PALETTE = {
   unowned: "#B8E0D0",
   owned: "#00FF66",
   selected: "#FFFF00",
+  /**
+   * DCB cell fill (T02-16). Dark green on the glass, not the T02-10 `#111`
+   * toolbar. Pressed cells invert to `map` on `background`.
+   */
+  dcbCell: "#003300",
   uiChrome: "#9AA0A6",
   uiChromeBg: "#111111",
 } as const;

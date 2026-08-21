@@ -1,10 +1,10 @@
 /**
  * Public API for `@ui`.
  *
- * Legal now: Scope shell (DCB-lite, PPI, F1 help overlay with T00-01 disclaimer,
+ * Legal now: Scope shell (DCB cell grid on the PPI, F1 help overlay with T00-01 disclaimer,
  * first-run disclaimer, flight-strip bay, command strip, pause / 1× / 2× corner
  * readout). Canvas click selects a track and focuses the PPI (scope keys).
- * DCB-lite clicks call the same `src/scope` functions as the keyboard and
+ * DCB clicks call the same `src/scope` functions as the keyboard and
  * never emit Command IR. Strip click selects the same track and focuses the PPI. Enter runs
  * `submitCommand` → `handleRadioText` and shows the template readback. Text
  * submit bypasses SpeechPort (`Command.source` is `"text"`). Selection is a
@@ -19,6 +19,8 @@
 export { Shell, Shell as App } from "./shell";
 export { ScopeHelpOverlay } from "./ScopeHelpOverlay";
 export {
+  DCB_FONT_PX,
+  DCB_HEIGHT_PX,
   DCB_LITE_FONT_PX,
   DCB_LITE_HEIGHT_PX,
   DisplayControlBar,

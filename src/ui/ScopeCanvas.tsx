@@ -1,8 +1,9 @@
 /**
- * Analog: CRC STARS display with DCB above the PPI (R07).
- * Trainer delta: DCB-lite is a sibling above the canvas so the drawable PPI
- * (T02-01 camera view size) is the canvas CSS size — already minus bar height.
- * Command strip is a footer in this column (T02-15), not a full-width web input.
+ * Analog: CRC STARS display with DCB cells on the PPI glass (R07).
+ * Trainer delta: equal-height green cells flush to the top of the host; the
+ * canvas below is the drawable PPI (T02-01 view size already minus DCB height
+ * so cells do not cover the north of the range circle). Command strip is a
+ * footer in this column (T02-15), not a full-width web input.
  * Not NAS STARS.
  */
 
@@ -40,8 +41,8 @@ export function ScopeCanvas({
 }: ScopeCanvasProps) {
   return (
     <div className="ppi-column">
-      <DisplayControlBar view={scopeView} onChange={onScopeChange} />
       <PpiPlaceholder
+        header={<DisplayControlBar view={scopeView} onChange={onScopeChange} />}
         onCanvasClick={onCanvasClick}
         onCanvasDoubleClick={onCanvasDoubleClick}
         onCanvasWheel={onCanvasWheel}

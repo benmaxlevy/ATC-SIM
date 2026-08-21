@@ -52,13 +52,13 @@ Single source of truth remains `src/scope` (`stepRange`, `togglePtlOn`, `tryAppl
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** No `<input>` and no `Apply` in the DCB DOM.
-- [ ] **AC2 —** RANGE click cycles 5–60 presets; readout is `RANGE n` (glossary **range**).
-- [ ] **AC3 —** PTL / HIST cells match F7/F8 (existing tests adapted).
-- [ ] **AC4 —** FILTER cell applies the same predicate as the `F` chord; invalid max&lt;min does not apply.
-- [ ] **AC5 —** No `command.accepted` from DCB clicks.
-- [ ] **AC6 —** Manual: cells look like a green DCB grid, not a website toolbar.
-- [ ] **AC7 — Research:** Labels are RANGE/MAPS/FILTER/PTL/HIST, not Zoom/Layers.
+- [x] **AC1 —** No `<input>` and no `Apply` in the DCB DOM.
+- [x] **AC2 —** RANGE click cycles 5–60 presets; readout is `RANGE n` (glossary **range**).
+- [x] **AC3 —** PTL / HIST cells match F7/F8 (existing tests adapted).
+- [x] **AC4 —** FILTER cell applies the same predicate as the `F` chord; invalid max&lt;min does not apply.
+- [x] **AC5 —** No `command.accepted` from DCB clicks.
+- [ ] **AC6 —** Manual: cells look like a green DCB grid, not a website toolbar. skip-with-reason: no Chrome visual operator this run; CSS/DOM tests prove dark-green cells, map-green text, 1 px black gutters, no `<input>` / Apply. Do not invent a visual pass.
+- [x] **AC7 — Research:** Labels are RANGE/MAPS/FILTER/PTL/HIST, not Zoom/Layers.
 
 ## Test plan
 

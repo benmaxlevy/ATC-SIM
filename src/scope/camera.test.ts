@@ -8,6 +8,8 @@ import {
   applyPanScreenDelta,
   applyRangeIn,
   applyRangeOut,
+  cycleRange,
+  formatDcbRangeReadout,
   formatRangeReadout,
   nmToScreen,
   pxPerNm,
@@ -151,6 +153,25 @@ test("AC9 — range readout is RNG n, never zoom", () => {
   expect(formatRangeReadout(20)).toBe("RNG 20");
   expect(formatRangeReadout(5)).toBe("RNG 5");
   expect(formatRangeReadout(20).toLowerCase()).not.toContain("zoom");
+});
+
+test("DCB RANGE readout is RANGE n and cycleRange wraps the same 8 presets", () => {
+  expect(formatDcbRangeReadout(20)).toBe("RANGE 20");
+  expect(formatDcbRangeReadout(5)).toBe("RANGE 5");
+  expect(formatDcbRangeReadout(60)).toBe("RANGE 60");
+  expect(formatDcbRangeReadout(20).toLowerCase()).not.toContain("zoom");
+
+  const camera = cam(20);
+  camera.centerEastNm = 3;
+  camera.centerNorthNm = -2;
+  const walked: number[] = [camera.rangeNm];
+  for (let i = 0; i < RANGE_PRESETS_NM.length; i += 1) {
+    cycleRange(camera);
+    walked.push(camera.rangeNm);
+  }
+  expect(walked).toEqual([20, 30, 40, 50, 60, 5, 10, 15, 20]);
+  expect(camera.centerEastNm).toBe(3);
+  expect(camera.centerNorthNm).toBe(-2);
 });
 
 test("range circle is the inscribed circle; square corners sit outside range", () => {

@@ -1,17 +1,22 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
 // @ts-expect-error tsconfig has no @types/node
 import { readFileSync } from "node:fs";
 import {
   RANGE_PRESETS_NM,
+  beginAltitudeFilterChord,
   centerOnAirport,
   createScopeView,
-  stepRange,
+  cycleRange,
+  formatDcbRangeReadout,
+  handleFilterEntryKey,
   toggleHistoryEnabled,
   toggleMapLayer,
   togglePtlOn,
   tryApplyAltitudeFilterDigits,
 } from "@scope";
-import { DCB_LITE_FONT_PX, DCB_LITE_HEIGHT_PX } from "./DisplayControlBar";
+import { DCB_FONT_PX, DCB_HEIGHT_PX, DisplayControlBar } from "./DisplayControlBar";
 
 const uiSources = import.meta.glob("./*.{ts,tsx}", {
   query: "?raw",
@@ -29,12 +34,6 @@ const mainSources = import.meta.glob("../main.tsx", {
   eager: true,
 }) as Record<string, string>;
 
-const scopeKeySources = import.meta.glob("../scope/scopeKeys.ts", {
-  query: "?raw",
-  import: "default",
-  eager: true,
-}) as Record<string, string>;
-
 function barSrc(): string {
   return uiSources["./DisplayControlBar.tsx"]!;
 }
@@ -43,48 +42,149 @@ function canvasSrc(): string {
   return uiSources["./ScopeCanvas.tsx"]!;
 }
 
-function shellSrc(): string {
-  return uiSources["./shell.tsx"]!;
+function placeholderSrc(): string {
+  return readFileSync(new URL("../scope/ppi-placeholder.tsx", import.meta.url), "utf8");
 }
 
-test("AC1 — RNG ± steps the same 8 presets as PageUp/PageDown; readout is 5…60", () => {
-  const view = createScopeView();
-  const keys = Object.values(scopeKeySources)[0]!;
-  expect(keys).toMatch(/stepRange\(view\.camera,\s*-1\)/);
-  expect(keys).toMatch(/stepRange\(view\.camera,\s*1\)/);
-  expect(barSrc()).toMatch(/stepRange\(view\.camera,\s*-1\)/);
-  expect(barSrc()).toMatch(/stepRange\(view\.camera,\s*1\)/);
-  expect(barSrc()).toMatch(/>\s*RNG\s*</);
-  expect(barSrc()).toMatch(/DCB_RNG_READOUT_ID/);
-  expect(RANGE_PRESETS_NM).toEqual([5, 10, 15, 20, 30, 40, 50, 60]);
+function dcbHtml(view = createScopeView()): string {
+  return renderToStaticMarkup(
+    createElement(DisplayControlBar, { view, onChange: () => undefined }),
+  );
+}
 
-  const seen: number[] = [view.camera.rangeNm];
-  while (view.camera.rangeNm > 5) {
-    stepRange(view.camera, -1);
-    seen.push(view.camera.rangeNm);
-  }
-  expect(seen).toEqual([20, 15, 10, 5]);
-  stepRange(view.camera, -1);
-  expect(view.camera.rangeNm).toBe(5);
-  const up: number[] = [];
-  while (view.camera.rangeNm < 60) {
-    stepRange(view.camera, 1);
-    up.push(view.camera.rangeNm);
-  }
-  expect(up).toEqual([10, 15, 20, 30, 40, 50, 60]);
-  expect(String(view.camera.rangeNm)).toMatch(/^(5|10|15|20|30|40|50|60)$/);
+test("AC1 — no input and no Apply in the DCB DOM", () => {
+  const html = dcbHtml();
+  expect(html).not.toMatch(/<input/i);
+  expect(html).not.toMatch(/Apply/);
+  expect(barSrc()).not.toMatch(/<input/);
+  expect(barSrc()).not.toMatch(/>\s*Apply\s*</);
+  expect(barSrc()).not.toMatch(/type=["']text["']/);
+  expect(cssSrc()).not.toMatch(/\.dcb-lite-fil/);
 });
 
-test("AC2 — MAP toggles RWY LOC RING CST independently; CST disabled when JSON off", () => {
-  expect(barSrc()).toMatch(/toggleMapLayer\(view,\s*"runway"\)/);
-  expect(barSrc()).toMatch(/toggleMapLayer\(view,\s*"localizer"\)/);
-  expect(barSrc()).toMatch(/toggleMapLayer\(view,\s*"rings"\)/);
-  expect(barSrc()).toMatch(/toggleMapLayer\(view,\s*"coastline"\)/);
+test("AC2 — RANGE click cycles 5–60 presets; readout is RANGE n", () => {
+  expect(barSrc()).toMatch(/cycleRange\(view\.camera\)/);
+  expect(barSrc()).toMatch(/formatDcbRangeReadout/);
+  expect(barSrc()).not.toMatch(/>\s*[−+]\s*</);
+  expect(RANGE_PRESETS_NM).toEqual([5, 10, 15, 20, 30, 40, 50, 60]);
+
+  const view = createScopeView();
+  expect(formatDcbRangeReadout(view.camera.rangeNm)).toBe("RANGE 20");
+  const seen: number[] = [view.camera.rangeNm];
+  for (let i = 0; i < RANGE_PRESETS_NM.length; i += 1) {
+    cycleRange(view.camera);
+    seen.push(view.camera.rangeNm);
+  }
+  expect(seen).toEqual([20, 30, 40, 50, 60, 5, 10, 15, 20]);
+  expect(dcbHtml(view)).toContain("RANGE 20");
+});
+
+test("AC3 — PTL and HIST cells match F7/F8", () => {
+  expect(barSrc()).toMatch(/togglePtlOn\(view\)/);
+  expect(barSrc()).toMatch(/toggleHistoryEnabled\(view\)/);
+  expect(barSrc()).toMatch(/>\s*PTL\s*</);
+  expect(barSrc()).toMatch(/>\s*HIST\s*</);
+  const view = createScopeView();
+  expect(view.ptlOn).toBe(false);
+  expect(view.historyEnabled).toBe(true);
+  togglePtlOn(view);
+  toggleHistoryEnabled(view);
+  expect(view.ptlOn).toBe(true);
+  expect(view.historyEnabled).toBe(false);
+  const html = dcbHtml(view);
+  expect(html).toMatch(/data-dcb-ptl=""/);
+  expect(html).toMatch(/aria-pressed="true"/);
+});
+
+test("AC4 — FILTER cell applies the same predicate as the F chord; invalid max<min does not apply", () => {
+  expect(barSrc()).toMatch(/beginAltitudeFilterChord\(view\)/);
+  expect(barSrc()).toMatch(/>\s*FILTER\s*</);
+  expect(barSrc()).not.toMatch(/DCB_FIL_MIN_ID/);
+  const view = createScopeView();
+  beginAltitudeFilterChord(view, 0);
+  expect(view.filterEntry.phase).toBe("min");
+  expect(handleFilterEntryKey(view.filterEntry, view.altitudeFilter, "0", 10)).toBe(true);
+  expect(handleFilterEntryKey(view.filterEntry, view.altitudeFilter, "5", 20)).toBe(true);
+  expect(handleFilterEntryKey(view.filterEntry, view.altitudeFilter, "0", 30)).toBe(true);
+  expect(handleFilterEntryKey(view.filterEntry, view.altitudeFilter, "Enter", 40)).toBe(true);
+  expect(handleFilterEntryKey(view.filterEntry, view.altitudeFilter, "1", 50)).toBe(true);
+  expect(handleFilterEntryKey(view.filterEntry, view.altitudeFilter, "0", 60)).toBe(true);
+  expect(handleFilterEntryKey(view.filterEntry, view.altitudeFilter, "0", 70)).toBe(true);
+  expect(handleFilterEntryKey(view.filterEntry, view.altitudeFilter, "Enter", 80)).toBe(true);
+  expect(view.altitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 100 });
+  expect(tryApplyAltitudeFilterDigits(view.altitudeFilter, "120", "050")).toBe(false);
+  expect(view.altitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 100 });
+  expect(dcbHtml(view)).toContain("050-100");
+});
+
+test("AC5 — no command.accepted from DCB clicks", () => {
+  const bar = barSrc();
+  const canvas = canvasSrc();
+  expect(bar).not.toMatch(/from\s+["']@parse["']/);
+  expect(bar).not.toMatch(/from\s+["']@pilot["']/);
+  expect(bar).not.toMatch(/from\s+["']@core\/command/);
+  expect(bar).not.toMatch(/handleRadioText/);
+  expect(bar).not.toMatch(/submitCommand/);
+  expect(bar).not.toMatch(/parseRadioText/);
+  expect(bar).not.toMatch(/from\s+["']@core["']/);
+  expect(canvas).not.toMatch(/from\s+["']@parse["']/);
+  expect(canvas).not.toMatch(/from\s+["']@pilot["']/);
+  expect(canvas).not.toMatch(/submitCommand/);
+  expect(bar).toMatch(/Never a Command/);
+  expect(mainSources["../main.tsx"]).toMatch(/syncDisplayControlBar\(scopeView\)/);
+});
+
+test("AC7 — Research: labels are RANGE/MAPS/FILTER/PTL/HIST, not Zoom/Layers", () => {
+  const bar = barSrc();
+  const html = dcbHtml();
+  expect(html).toContain("RANGE 20");
+  expect(html).toContain("MAPS");
+  expect(html).toContain("FILTER");
+  expect(html).toContain("PTL");
+  expect(html).toContain("HIST");
+  expect(html).toContain("000-180");
+  expect(bar.toLowerCase()).not.toMatch(/\bzoom\b/);
+  expect(bar.toLowerCase()).not.toMatch(/\blayers\b/);
+  expect(bar.toLowerCase()).not.toMatch(/\bhud\b/);
+  expect(bar).toMatch(/analog: CRC STARS DCB/i);
+  expect(bar).not.toMatch(/FLIGHT STRIPS/);
+  expect(html).not.toMatch(/FLIGHT STRIPS/);
+});
+
+test("cells sit on the PPI glass; canvas below pads the range circle", () => {
+  expect(canvasSrc()).toMatch(/className="ppi-column"/);
+  expect(canvasSrc()).toMatch(/header=\{<DisplayControlBar/);
+  expect(placeholderSrc()).toMatch(/\{header\}/);
+  expect(placeholderSrc().indexOf("{header}")).toBeLessThan(
+    placeholderSrc().indexOf("<canvas"),
+  );
+  expect(DCB_HEIGHT_PX).toBe(36);
+  expect(DCB_FONT_PX).toBe(11);
+
+  const css = cssSrc();
+  expect(css).toMatch(/\.ppi-host\s*\{[^}]*flex-direction:\s*column/s);
+  expect(css).toMatch(/\.dcb\s*\{[^}]*flex:\s*0 0 36px/s);
+  expect(css).toMatch(/\.dcb\s*\{[^}]*gap:\s*1px/s);
+  expect(css).toMatch(/\.dcb\s*\{[^}]*background:\s*#000000/s);
+  expect(css).toMatch(/\.dcb-cell\s*\{[^}]*background:\s*var\(--dcb-cell,\s*#003300\)/s);
+  expect(css).toMatch(/\.dcb-cell\s*\{[^}]*color:\s*var\(--dcb-text,\s*#00aa00\)/s);
+  expect(css).toMatch(/\.dcb-cell\s*\{[^}]*border-radius:\s*0/s);
+  expect(css).toMatch(/\.dcb-cell\s*\{[^}]*box-shadow:\s*none/s);
+  expect(css).toMatch(/\.ppi-canvas\s*\{[^}]*flex:\s*1 1 auto/s);
+  expect(barSrc()).toMatch(/PALETTE\.dcbCell/);
+  expect(barSrc()).toMatch(/PALETTE\.map/);
+  expect(barSrc()).toMatch(/focusPpi/);
+  expect(barSrc()).toMatch(/onMouseDown=\{preventButtonFocus\}/);
+});
+
+test("MAPS keeps temporary RWY/LOC/CST/RING cells; CST disabled when JSON off", () => {
+  expect(barSrc()).toMatch(/toggleMapLayer\(view,\s*layer\)/);
   expect(barSrc()).toMatch(/>\s*RWY\s*</);
   expect(barSrc()).toMatch(/>\s*LOC\s*</);
   expect(barSrc()).toMatch(/>\s*RING\s*</);
   expect(barSrc()).toMatch(/>\s*CST\s*</);
   expect(barSrc()).toMatch(/disabled=\{!coastOn\}/);
+  expect(barSrc()).not.toMatch(/dcbNumber/);
 
   const off = createScopeView(0, 0, {
     digitalMap: {
@@ -124,114 +224,23 @@ test("AC2 — MAP toggles RWY LOC RING CST independently; CST disabled when JSON
   expect(on.showCoastline).toBe(false);
 });
 
-test("AC3 — FIL fields use altitudeFilter apply; invalid max<min does not apply", () => {
-  expect(barSrc()).toMatch(/tryApplyAltitudeFilterDigits/);
-  expect(barSrc()).toMatch(/DCB_FIL_MIN_ID/);
-  expect(barSrc()).toMatch(/DCB_FIL_MAX_ID/);
-  expect(barSrc()).toMatch(/Altitude filter/);
-  const view = createScopeView();
-  expect(tryApplyAltitudeFilterDigits(view.altitudeFilter, "050", "100")).toBe(true);
-  expect(view.altitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 100 });
-  expect(tryApplyAltitudeFilterDigits(view.altitudeFilter, "120", "050")).toBe(false);
-  expect(view.altitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 100 });
-});
-
-test("AC4 — PTL and HIST buttons call the same toggles as F7/F8", () => {
-  expect(barSrc()).toMatch(/togglePtlOn\(view\)/);
-  expect(barSrc()).toMatch(/toggleHistoryEnabled\(view\)/);
-  expect(barSrc()).toMatch(/>\s*PTL\s*</);
-  expect(barSrc()).toMatch(/>\s*HIST\s*</);
-  const view = createScopeView();
-  expect(view.ptlOn).toBe(false);
-  expect(view.historyEnabled).toBe(true);
-  togglePtlOn(view);
-  toggleHistoryEnabled(view);
-  expect(view.ptlOn).toBe(true);
-  expect(view.historyEnabled).toBe(false);
-});
-
-test("AC5 — CTR recenters airport; PPI column puts the bar above the canvas", () => {
+test("CTR recenters airport; RANGE shows OFF CNTR when panned", () => {
   expect(barSrc()).toMatch(/centerOnAirport\(view\)/);
   expect(barSrc()).toMatch(/>\s*CTR\s*</);
-  expect(canvasSrc()).toMatch(/className="ppi-column"/);
-  expect(canvasSrc()).toMatch(/<DisplayControlBar/);
-  expect(canvasSrc()).toMatch(/<PpiPlaceholder/);
-  expect(canvasSrc()).toMatch(/\{children\}/);
-  expect(canvasSrc().indexOf("<DisplayControlBar")).toBeLessThan(
-    canvasSrc().indexOf("<PpiPlaceholder"),
-  );
-  expect(shellSrc()).toMatch(/<ScopeCanvas/);
-  expect(shellSrc()).toMatch(/<FpsDebug/);
-  expect(DCB_LITE_HEIGHT_PX).toBeGreaterThanOrEqual(28);
-  expect(DCB_LITE_HEIGHT_PX).toBeLessThanOrEqual(36);
-  expect(DCB_LITE_FONT_PX).toBe(12);
-
-  const css = cssSrc();
-  expect(css).toMatch(/\.ppi-column\s*\{[^}]*flex-direction:\s*column/s);
-  expect(css).toMatch(/\.dcb-lite\s*\{[^}]*flex:\s*0 0 32px/s);
-  expect(css).toMatch(/\.ppi-host\s*\{[^}]*flex:\s*1 1 auto/s);
-
   const view = createScopeView();
   view.camera.centerEastNm = 4;
   view.camera.centerNorthNm = -3;
+  expect(dcbHtml(view)).toContain("OFF CNTR");
   centerOnAirport(view);
   expect(view.camera.centerEastNm).toBe(view.airportEastNm);
   expect(view.camera.centerNorthNm).toBe(view.airportNorthNm);
+  expect(dcbHtml(view)).not.toContain("OFF CNTR");
 });
 
-test("AC8 — bar clicks never import Command IR, parser, or pilot", () => {
-  const bar = barSrc();
-  const canvas = canvasSrc();
-  expect(bar).not.toMatch(/from\s+["']@parse["']/);
-  expect(bar).not.toMatch(/from\s+["']@pilot["']/);
-  expect(bar).not.toMatch(/from\s+["']@core\/command/);
-  expect(bar).not.toMatch(/handleRadioText/);
-  expect(bar).not.toMatch(/submitCommand/);
-  expect(bar).not.toMatch(/parseRadioText/);
-  expect(bar).not.toMatch(/from\s+["']@core["']/);
-  expect(canvas).not.toMatch(/from\s+["']@parse["']/);
-  expect(canvas).not.toMatch(/from\s+["']@pilot["']/);
-  expect(canvas).not.toMatch(/submitCommand/);
-  expect(bar).toMatch(/Never a Command/);
-  expect(mainSources["../main.tsx"]).toMatch(/syncDisplayControlBar\(scopeView\)/);
-  expect(mainSources["../main.tsx"]).toMatch(/isFpsDebugEnabled/);
-  expect(mainSources["../main.tsx"]).toMatch(/formatFpsDebug/);
-  expect(mainSources["../main.tsx"]).toMatch(/FPS_DEBUG_ID/);
-});
-
-test("AC9 — visible labels are RNG/MAPS/FILTER/PTL/HIST, not Zoom/Layers/HUD", () => {
-  const bar = barSrc();
-  expect(bar).toMatch(/>\s*RNG\s*</);
-  expect(bar).toMatch(/>\s*MAPS\s*</);
-  expect(bar).toMatch(/>\s*FILTER\s*</);
-  expect(bar).toMatch(/>\s*PTL\s*</);
-  expect(bar).toMatch(/>\s*HIST\s*</);
-  expect(bar.toLowerCase()).not.toMatch(/\bzoom\b/);
-  expect(bar.toLowerCase()).not.toMatch(/\blayers\b/);
-  expect(bar.toLowerCase()).not.toMatch(/\bhud\b/);
-  expect(bar).toMatch(/analog: CRC STARS DCB/i);
-  expect(bar).toMatch(/lite subset only/i);
-});
-
-test("bar is a dark terminal strip using the frozen chrome palette", () => {
-  const css = cssSrc();
-  expect(css).toMatch(/\.dcb-lite\s*\{[^}]*background:\s*#111/s);
-  expect(css).toMatch(/\.dcb-lite\s*\{[^}]*color:\s*#9aa0a6/s);
-  expect(css).toMatch(/\.dcb-lite\s*\{[^}]*font-size:\s*12px/s);
-  expect(css).not.toMatch(/\.dcb-lite\s*\{[^}]*box-shadow:/);
-  expect(css).toMatch(/\.dcb-lite-btn\s*\{[^}]*border-radius:\s*0/s);
-  expect(barSrc()).toMatch(/PALETTE\.uiChromeBg/);
-  expect(barSrc()).toMatch(/PALETTE\.uiChrome/);
-  expect(barSrc()).toMatch(/focusPpi/);
-  expect(barSrc()).toMatch(/onMouseDown=\{preventButtonFocus\}/);
-  expect(barSrc()).toMatch(/event\.key === "Enter"/);
-  expect(barSrc()).toMatch(/event\.key === "Escape"/);
-});
-
-test("mouse-only walkthrough mutates the same scope functions as the bar", () => {
+test("mouse-only walkthrough mutates the same scope functions as the cells", () => {
   const view = createScopeView();
-  while (view.camera.rangeNm > 10) {
-    stepRange(view.camera, -1);
+  while (view.camera.rangeNm !== 10) {
+    cycleRange(view.camera);
   }
   toggleMapLayer(view, "rings");
   expect(tryApplyAltitudeFilterDigits(view.altitudeFilter, "050", "100")).toBe(true);

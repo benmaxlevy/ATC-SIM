@@ -4,6 +4,8 @@ export const PpiPlaceholderId = "ppi-placeholder";
 
 export interface PpiPlaceholderProps {
   children?: ReactNode;
+  /** DCB cell grid sits on this glass, above the drawable canvas. */
+  header?: ReactNode;
   onCanvasClick?: (event: MouseEvent<HTMLCanvasElement>) => void;
   onCanvasDoubleClick?: (event: MouseEvent<HTMLCanvasElement>) => void;
   onCanvasWheel?: (event: WheelEvent<HTMLCanvasElement>) => void;
@@ -15,12 +17,15 @@ export interface PpiPlaceholderProps {
 
 /**
  * Analog: CRC STARS display (docs.virtualnas.net/crc/stars — R07).
- * Trainer delta: full-area Canvas2D PPI host below DCB-lite; range/center via
- * keys, wheel, and the lite bar (not CRC). Middle-drag pan (not CRC). Click
- * selects a track and focuses the PPI so scope-focus H toggles history.
+ * Trainer delta: DCB cells are on the PPI glass; the canvas below is the
+ * drawable PPI (T02-01 camera view size already minus DCB height so the
+ * range circle is not under the cells). Range/center via keys, wheel, and
+ * DCB RANGE (not CRC). Middle-drag pan (not CRC). Click selects a track and
+ * focuses the PPI so scope-focus H toggles history.
  * Not NAS STARS.
  */
 export function PpiPlaceholder({
+  header,
   children,
   onCanvasClick,
   onCanvasDoubleClick,
@@ -32,6 +37,7 @@ export function PpiPlaceholder({
 }: PpiPlaceholderProps) {
   return (
     <div className="ppi-host">
+      {header}
       <canvas
         id={PpiPlaceholderId}
         className="ppi-canvas"

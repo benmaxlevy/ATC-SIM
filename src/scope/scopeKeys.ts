@@ -1,7 +1,8 @@
 /**
  * Analog: CRC STARS RANGE / CENTER / HISTORY / FDB-LDB / PTL / L1–L9 **leader** /
  * altitude filter (docs.virtualnas.net/crc/stars — R07; FOA STARS display data — R05).
- * Trainer delta: PageUp/Down + wheel + DCB-lite RNG ± share `stepRange`; Home/End instead of
+ * Trainer delta: PageUp/Down + wheel share `stepRange`; DCB RANGE click uses
+ * `cycleRange` through the same 8 presets. Home/End instead of
  * CENTER-then-click; extra CRC presets 6/8/12/16/24 omitted. F8 always-on
  * history toggle; H only when the PPI is focused (radio H270 stays heading).
  * Scope-focus `T` toggles full ↔ limited datablock; `M` toggles Mode C on full

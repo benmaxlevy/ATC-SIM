@@ -45,7 +45,7 @@ When this phase exits, a controller sitting at Chrome on Windows can:
 3. See **KDEM digital maps**: runway 27, ILS 27 localizer feather, range rings, optional coastline polyline from scenario JSON.
 4. Read a **full datablock** (callsign, altitude, ground speed) tied to the target with an **8-direction leader**.
 5. Toggle **limited datablocks**, **Mode C**, **history dots**, **predicted track line**, and an **altitude filter**.
-6. Use a **documented Windows keyboard subset** (and a mouse DCB-lite) without colliding with typed radio (`L090` remains a left turn to 090 when the command line is focused).
+6. Use a **documented Windows keyboard subset** (and a mouse **DCB cell grid**) without colliding with typed radio (`L090` remains a left turn to 090 when the command line is focused).
 7. **F3-initiate** a track as a color/ownership stub only — no NAS handoff.
 8. Work a **flight-strip** bay that mirrors intent from `World`.
 9. Hold **30 targets at 60 FPS** (measured; see T02-12).
@@ -56,7 +56,7 @@ Lift nothing from `phases/_shared/non-goals.md`. In addition, **do not** build:
 
 | Out | Why |
 | --- | --- |
-| Full STARS DCB (two-row multifunction, MAPBRITE, CHARSIZE, SHIFT, CSA menus) | T02-10 is a lite bar: range, maps, filter, PTL, history. |
+| Full STARS DCB (two-row multifunction, MAPBRITE, CHARSIZE, SHIFT, CSA menus) | T02-16 is a trainer-safe **green cell grid** (RANGE / MAPS / FILTER / PTL / HIST). T02-17 adds MAPS/RR/LDR/BRITE subset. Still not WX / PREF / CRDA / FMA. |
 | CRDA, FMA, ARV, timed approaches | Phase 4+. |
 | Weather mosaic, precipitation, wind barbs | Phase 4+. |
 | Real STARS bitmap font or any licensed NAS typeface | Metric-similar **monospace** only. |
@@ -176,7 +176,8 @@ STARS-like, not a screenshot clone. **No red in phase 2** (alerts are phase 4).
 | Selected accent | `#FFFF00` | Selection box / brighter leader; not “emergency” |
 | History | 40–70% of track color | Dots |
 | PTL | Same as track color | Line |
-| UI chrome | `#9AA0A6` on `#111` | DCB-lite, strips, help — still dark, not game HUD |
+| DCB cells | `#003300` fill, `#00AA00` text, 1 px `#000` gutters | T02-16 cell grid on the glass. Pressed = invert/stipple. Not the T02-10 `#111` toolbar. |
+| UI chrome | `#9AA0A6` on `#111` | strips, help — still dark, not game HUD |
 
 Export as `src/scope/palette.ts`. Do not sprinkle hex literals in draw calls.
 
@@ -295,12 +296,12 @@ Extend the T00-05 KDEM file with a `maps` object. Do not scrape charts. Coastlin
 Think CRT terminal, not moving-map GPS.
 
 - Full-viewport dark shell from T00-10 remains. Disclaimer remains visible (corner or settings; do not delete T00-01).
-- PPI is the large center. DCB-lite is a **thin bar above** the PPI (not covering targets at the top edge — pad the drawable region).
+- PPI is the large center. DCB is a **green cell grid flush to the top of the PPI** (on the glass, not a grey HTML toolbar). Pad the drawable canvas so cells do not cover the north of the range circle.
 - Command line stays **bottom** (phase 1).
 - Flight strips **right dock**, ~220–280 px, scrollable, collapsible.
 - Help overlay is a translucent dark panel listing the keymap; it pauses nothing (sim keeps ticking).
 - No north-up arrow needed (always north-up); a small `N` tick at the top of the range circle is allowed.
-- Range readout: `RNG 20` in the DCB-lite or lower-left of the PPI, monospace, map-green.
+- Range readout: `RANGE n` in the DCB (glossary **range**); optional `RNG 20` lower-left of the PPI, monospace, map-green.
 
 **Draw order (back to front):**
 
@@ -348,7 +349,7 @@ Suggested layout (phase 0 folders; do not invent a second package system):
 | `src/scope/keymap.ts` | Tables + chord state |
 | `src/scope/renderScope.ts` | Draw |
 | `src/scope/scopeKeys.ts` | Event wiring, focus rules |
-| `src/ui/DisplayControlBar.tsx` | DCB-lite |
+| `src/ui/DisplayControlBar.tsx` | DCB cell grid (T02-16) |
 | `src/ui/FlightStrips.tsx` | Strip bay |
 | `src/ui/ScopeHelpOverlay.tsx` | F1 |
 | `src/scenario/kdem.json` | `maps` extension |
@@ -363,7 +364,7 @@ Implementers will be tempted to “just copy CRC.” Freeze this delta in the he
 | --- | --- |
 | RANGE via DCB presets including 6/8/12/16/24 | PageUp/Down + wheel; 8 presets 5–60 |
 | CENTER then click | `Home` / `End` / double-click / middle-drag pan |
-| Full DCB | Lite bar |
+| Full DCB | Green cell grid (T02-16); MAPS/RR/LDR/BRITE in T02-17. Still no WX/PREF |
 | F3 Initiate Track (NAS associate) | F3 color stub |
 | Leader length + direction menus | Direction only, fixed length |
 | Pref sets, brightness, charsize | One font size, one brightness |
@@ -462,7 +463,7 @@ Do not call the TCW pass done until:
 
 - [x] Video maps load from `video-maps/<ICAO>/` (T02-14).
 - [ ] No disclaimer banner / tutorial footer on the glass (T02-15).
-- [ ] DCB is a green cell grid, not an HTML toolbar (T02-16).
+- [x] DCB is a green cell grid, not an HTML toolbar (T02-16).
 - [ ] MAPS / RANGE / RR / LDR / CHAR SIZE / BRITE trainer subset (T02-17).
 - [ ] Position symbol + history contrast (T02-18).
 - [ ] FDB extra line + leader length (T02-19).

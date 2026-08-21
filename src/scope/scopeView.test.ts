@@ -3,10 +3,12 @@ import { createAircraft, createWorld } from "@core";
 import { nmToScreen } from "./camera";
 import { handlePpiDoubleClick, handlePpiLeftClick } from "./ppiPointer";
 import {
+  beginAltitudeFilterChord,
   centerOnAirport,
   centerOnLastClick,
   createScopeView,
   isCoastlineToggleEnabled,
+  isViewOffAirport,
   toggleHistoryEnabled,
   toggleMapLayer,
   togglePtlOn,
@@ -136,6 +138,25 @@ test("PTL and history toggles match F7/F8 (click ≡ key)", () => {
   toggleHistoryEnabled(view);
   expect(view.ptlOn).toBe(false);
   expect(view.historyEnabled).toBe(true);
+});
+
+test("DCB RANGE second row is OFF CNTR iff the view is off the airport", () => {
+  const view = createScopeView();
+  expect(isViewOffAirport(view)).toBe(false);
+  view.camera.centerEastNm = 4;
+  view.camera.centerNorthNm = -1;
+  expect(isViewOffAirport(view)).toBe(true);
+  centerOnAirport(view);
+  expect(isViewOffAirport(view)).toBe(false);
+});
+
+test("DCB FILTER click starts the same F chord as scope-focus F", () => {
+  const view = createScopeView();
+  expect(view.filterEntry.phase).toBe("idle");
+  beginAltitudeFilterChord(view, 1000);
+  expect(view.filterEntry.phase).toBe("min");
+  expect(view.filterEntry.digits).toBe("");
+  expect(view.filterEntry.previous).toEqual({ minHundreds: 0, maxHundreds: 180 });
 });
 
 test("map / localizer / rings flags default on; coastline follows JSON enabled", () => {

@@ -1,8 +1,8 @@
 /**
  * Analog: CRC STARS RANGE / CENTER (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: presets 5–60 NM (CRC also has 6/8/12/16/24); PageUp/Down + wheel
- * and DCB-lite RNG ± call the same `stepRange` (lite bar, not a full DCB RANGE
- * menu). Middle-drag pan is trainer sugar — not CRC.
+ * call `stepRange` (no wrap). DCB RANGE click uses `cycleRange` through the same
+ * 8 presets (wrap 60→5). Middle-drag pan is trainer sugar — not CRC.
  * No zoom-to-cursor (R12 browser-ATC anti-pattern). Not NAS STARS.
  *
  * Range is the radius of the inscribed circle of the drawable PPI
@@ -93,6 +93,11 @@ export function formatRangeReadout(rangeNm: RangeNm): string {
   return `RNG ${rangeNm}`;
 }
 
+/** DCB RANGE cell (T02-16). Glossary **range**, never zoom. */
+export function formatDcbRangeReadout(rangeNm: RangeNm): string {
+  return `RANGE ${rangeNm}`;
+}
+
 function presetIndex(rangeNm: RangeNm): number {
   return RANGE_PRESETS_NM.indexOf(rangeNm);
 }
@@ -120,6 +125,18 @@ export function applyRangeIn(cam: ScopeCamera): void {
 /** Larger NM (PageDown / wheel down / RNG +). No wrap at 60. Does not change center. */
 export function applyRangeOut(cam: ScopeCamera): void {
   stepRange(cam, 1);
+}
+
+/**
+ * DCB RANGE click: next larger preset, wrapping 60→5. Same 8 presets as
+ * PageUp/Down. Does not change center. Not zoom-to-cursor.
+ */
+export function cycleRange(cam: ScopeCamera): void {
+  const i = presetIndex(cam.rangeNm);
+  if (i < 0) {
+    return;
+  }
+  cam.rangeNm = RANGE_PRESETS_NM[(i + 1) % RANGE_PRESETS_NM.length]!;
 }
 
 /**

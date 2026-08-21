@@ -1,36 +1,47 @@
 /**
- * Analog: CRC STARS DCB (docs.virtualnas.net/crc/stars — R07).
- * Trainer delta: lite subset only (RNG / MAPS / FILTER / PTL / HIST / CTR).
- * Not MAPBRITE, CHARSIZE, SHIFT, CSA, CRDA, weather (R06). Not a full DCB.
- * Not NAS STARS.
+ * Analog: CRC STARS DCB cell grid (docs.virtualnas.net/crc/stars — R07).
+ * Trainer delta: green equal-height cells on the glass (RANGE / MAPS / FILTER /
+ * PTL / HIST / CTR). RWY/LOC/CST/RING are temporary cells until T02-17 MAPS
+ * submenu. Pressed = invert/stipple, not a CSS chip. No WX / PREF / SHIFT /
+ * CSA / CRDA / FMA (R06). Not a full DCB. Not NAS STARS.
  *
  * Clicks call the same `src/scope` functions as the keyboard. Never a Command,
  * readback, or intent.
  */
 
-import type { KeyboardEvent, MouseEvent } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import {
   PALETTE,
   SCOPE_FONT_STACK,
+  beginAltitudeFilterChord,
+  cancelFilterEntry,
   centerOnAirport,
-  formatFilterHundreds,
+  cycleRange,
+  formatDcbRangeReadout,
+  formatFilterBand,
   isCoastlineToggleEnabled,
-  stepRange,
+  isViewOffAirport,
   toggleHistoryEnabled,
   toggleMapLayer,
   togglePtlOn,
-  tryApplyAltitudeFilterDigits,
+  type MapLayerId,
   type ScopeView,
 } from "@scope";
 import { focusPpi } from "./FlightStrips";
 
-/** Thin DCB-lite strip. Canvas below is the drawable PPI (T02-01 view size). */
-export const DCB_LITE_HEIGHT_PX = 32;
-export const DCB_LITE_FONT_PX = 12;
-export const DCB_LITE_ID = "dcb-lite";
-export const DCB_RNG_READOUT_ID = "dcb-rng-readout";
-export const DCB_FIL_MIN_ID = "dcb-fil-min";
-export const DCB_FIL_MAX_ID = "dcb-fil-max";
+/** Two rows of mono 11–12 px plus 1 px gutters, flush on the PPI. */
+export const DCB_HEIGHT_PX = 36;
+export const DCB_FONT_PX = 11;
+/** @deprecated T02-10 name; same as DCB_HEIGHT_PX. */
+export const DCB_LITE_HEIGHT_PX = DCB_HEIGHT_PX;
+/** @deprecated T02-10 name; same as DCB_FONT_PX. */
+export const DCB_LITE_FONT_PX = DCB_FONT_PX;
+export const DCB_ID = "dcb";
+export const DCB_LITE_ID = DCB_ID;
+export const DCB_RANGE_READOUT_ID = "dcb-range-readout";
+export const DCB_RANGE_OFFSET_ID = "dcb-range-offset";
+export const DCB_FILTER_BAND_ID = "dcb-filter-band";
+export const DCB_RNG_READOUT_ID = DCB_RANGE_READOUT_ID;
 
 export interface DisplayControlBarProps {
   view: ScopeView;
@@ -41,34 +52,15 @@ function preventButtonFocus(event: MouseEvent<HTMLButtonElement>): void {
   event.preventDefault();
 }
 
-function afterButton(onChange: () => void): void {
+function afterCell(onChange: () => void): void {
   onChange();
   focusPpi();
 }
 
-function filInput(id: string): HTMLInputElement | null {
-  const el = globalThis.document?.getElementById(id);
-  return el instanceof HTMLInputElement ? el : null;
-}
-
-function revertFilFields(view: ScopeView): void {
-  const min = filInput(DCB_FIL_MIN_ID);
-  const max = filInput(DCB_FIL_MAX_ID);
-  if (min) {
-    min.value = formatFilterHundreds(view.altitudeFilter.minHundreds);
+function cancelFilterIfEntering(view: ScopeView): void {
+  if (view.filterEntry.phase !== "idle") {
+    cancelFilterEntry(view.filterEntry, view.altitudeFilter);
   }
-  if (max) {
-    max.value = formatFilterHundreds(view.altitudeFilter.maxHundreds);
-  }
-}
-
-function applyFilFields(view: ScopeView): boolean {
-  const min = filInput(DCB_FIL_MIN_ID);
-  const max = filInput(DCB_FIL_MAX_ID);
-  if (!min || !max) {
-    return false;
-  }
-  return tryApplyAltitudeFilterDigits(view.altitudeFilter, min.value, max.value);
 }
 
 function setPressed(el: Element | null, pressed: boolean): void {
@@ -76,21 +68,27 @@ function setPressed(el: Element | null, pressed: boolean): void {
     return;
   }
   el.setAttribute("aria-pressed", pressed ? "true" : "false");
-  el.classList.toggle("dcb-lite-is-pressed", pressed);
 }
 
 /**
- * Keep RNG / MAP / FILTER / PTL / HIST in sync with keyboard chords.
- * Skip FIL fields while they are focused so typing is not overwritten.
+ * Keep RANGE / MAPS / FILTER / PTL / HIST in sync with keyboard chords.
  */
 export function syncDisplayControlBar(view: ScopeView): void {
   const doc = globalThis.document;
   if (!doc) {
     return;
   }
-  const rng = doc.getElementById(DCB_RNG_READOUT_ID);
-  if (rng) {
-    rng.textContent = String(view.camera.rangeNm);
+  const range = doc.getElementById(DCB_RANGE_READOUT_ID);
+  if (range) {
+    range.textContent = formatDcbRangeReadout(view.camera.rangeNm);
+  }
+  const offset = doc.getElementById(DCB_RANGE_OFFSET_ID);
+  if (offset) {
+    offset.textContent = isViewOffAirport(view) ? "OFF CNTR" : "\u00a0";
+  }
+  const band = doc.getElementById(DCB_FILTER_BAND_ID);
+  if (band) {
+    band.textContent = formatFilterBand(view.altitudeFilter, view.filterEntry);
   }
   setPressed(doc.querySelector('[data-dcb-map="rwy"]'), view.showRunway);
   setPressed(doc.querySelector('[data-dcb-map="loc"]'), view.showLocalizer);
@@ -98,218 +96,190 @@ export function syncDisplayControlBar(view: ScopeView): void {
   setPressed(doc.querySelector('[data-dcb-map="cst"]'), view.showCoastline);
   setPressed(doc.querySelector("[data-dcb-ptl]"), view.ptlOn);
   setPressed(doc.querySelector("[data-dcb-hist]"), view.historyEnabled);
+}
 
-  const active = doc.activeElement;
-  const min = filInput(DCB_FIL_MIN_ID);
-  const max = filInput(DCB_FIL_MAX_ID);
-  if (min && active !== min) {
-    min.value = formatFilterHundreds(view.altitudeFilter.minHundreds);
-  }
-  if (max && active !== max) {
-    max.value = formatFilterHundreds(view.altitudeFilter.maxHundreds);
-  }
+interface DcbCellProps {
+  ariaLabel: string;
+  children: ReactNode;
+  pressed?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  dataDcbMap?: "rwy" | "loc" | "ring" | "cst";
+  dataDcb?: "ptl" | "hist" | "range" | "maps" | "filter" | "ctr";
+}
+
+function DcbCell({
+  ariaLabel,
+  children,
+  pressed,
+  disabled,
+  onClick,
+  dataDcbMap,
+  dataDcb,
+}: DcbCellProps) {
+  return (
+    <button
+      type="button"
+      className="dcb-cell"
+      aria-label={ariaLabel}
+      aria-pressed={pressed}
+      disabled={disabled}
+      data-dcb-map={dataDcbMap}
+      data-dcb-ptl={dataDcb === "ptl" ? "" : undefined}
+      data-dcb-hist={dataDcb === "hist" ? "" : undefined}
+      data-dcb-cell={dataDcb}
+      onMouseDown={preventButtonFocus}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
+function mapClick(view: ScopeView, onChange: () => void, layer: MapLayerId): void {
+  cancelFilterIfEntering(view);
+  toggleMapLayer(view, layer);
+  afterCell(onChange);
 }
 
 export function DisplayControlBar({ view, onChange }: DisplayControlBarProps) {
   const coastOn = isCoastlineToggleEnabled(view);
-
-  function onFilKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
-    if (event.key === "Enter" || event.key === "NumpadEnter") {
-      event.preventDefault();
-      if (applyFilFields(view)) {
-        onChange();
-      }
-      focusPpi();
-      return;
-    }
-    if (event.key === "Escape") {
-      event.preventDefault();
-      revertFilFields(view);
-      focusPpi();
-    }
-  }
+  const offCntr = isViewOffAirport(view);
 
   return (
     <div
-      id={DCB_LITE_ID}
-      className="dcb-lite"
-      role="toolbar"
+      id={DCB_ID}
+      className="dcb"
+      role="group"
       aria-label="Display control bar"
       style={{
-        height: DCB_LITE_HEIGHT_PX,
-        backgroundColor: PALETTE.uiChromeBg,
-        color: PALETTE.uiChrome,
+        height: DCB_HEIGHT_PX,
         fontFamily: SCOPE_FONT_STACK,
-        fontSize: DCB_LITE_FONT_PX,
+        fontSize: DCB_FONT_PX,
+        backgroundColor: PALETTE.background,
+        color: PALETTE.map,
+        ["--dcb-cell" as string]: PALETTE.dcbCell,
+        ["--dcb-text" as string]: PALETTE.map,
+        ["--dcb-gutter" as string]: PALETTE.background,
+        ["--dcb-pressed" as string]: PALETTE.map,
+        ["--dcb-pressed-text" as string]: PALETTE.background,
       }}
     >
-      <span className="dcb-lite-title">DCB</span>
-      <span className="dcb-lite-group" aria-label="Range">
-        <span className="dcb-lite-label">RNG</span>
-        <span id={DCB_RNG_READOUT_ID} className="dcb-lite-readout">
-          {view.camera.rangeNm}
+      <DcbCell
+        ariaLabel="Range"
+        dataDcb="range"
+        onClick={() => {
+          cancelFilterIfEntering(view);
+          cycleRange(view.camera);
+          afterCell(onChange);
+        }}
+      >
+        <span id={DCB_RANGE_READOUT_ID} className="dcb-cell-line">
+          {formatDcbRangeReadout(view.camera.rangeNm)}
         </span>
-        <button
-          type="button"
-          className="dcb-lite-btn"
-          aria-label="Range in"
-          onMouseDown={preventButtonFocus}
-          onClick={() => {
-            stepRange(view.camera, -1);
-            afterButton(onChange);
-          }}
-        >
-          −
-        </button>
-        <button
-          type="button"
-          className="dcb-lite-btn"
-          aria-label="Range out"
-          onMouseDown={preventButtonFocus}
-          onClick={() => {
-            stepRange(view.camera, 1);
-            afterButton(onChange);
-          }}
-        >
-          +
-        </button>
-      </span>
-      <span className="dcb-lite-group" aria-label="Maps">
-        <span className="dcb-lite-label">MAPS</span>
-        <button
-          type="button"
-          className="dcb-lite-btn"
-          data-dcb-map="rwy"
-          aria-label="Runway map"
-          aria-pressed={view.showRunway}
-          onMouseDown={preventButtonFocus}
-          onClick={() => {
-            toggleMapLayer(view, "runway");
-            afterButton(onChange);
-          }}
-        >
-          RWY
-        </button>
-        <button
-          type="button"
-          className="dcb-lite-btn"
-          data-dcb-map="loc"
-          aria-label="Localizer map"
-          aria-pressed={view.showLocalizer}
-          onMouseDown={preventButtonFocus}
-          onClick={() => {
-            toggleMapLayer(view, "localizer");
-            afterButton(onChange);
-          }}
-        >
-          LOC
-        </button>
-        <button
-          type="button"
-          className="dcb-lite-btn"
-          data-dcb-map="ring"
-          aria-label="Range rings"
-          aria-pressed={view.showRings}
-          onMouseDown={preventButtonFocus}
-          onClick={() => {
-            toggleMapLayer(view, "rings");
-            afterButton(onChange);
-          }}
-        >
-          RING
-        </button>
-        <button
-          type="button"
-          className="dcb-lite-btn"
-          data-dcb-map="cst"
-          aria-label="Coastline map"
-          aria-pressed={view.showCoastline}
-          disabled={!coastOn}
-          onMouseDown={preventButtonFocus}
-          onClick={() => {
-            toggleMapLayer(view, "coastline");
-            afterButton(onChange);
-          }}
-        >
-          CST
-        </button>
-      </span>
-      <span className="dcb-lite-group" aria-label="Altitude filter">
-        <span className="dcb-lite-label">FILTER</span>
-        <input
-          id={DCB_FIL_MIN_ID}
-          className="dcb-lite-fil"
-          inputMode="numeric"
-          maxLength={3}
-          aria-label="Altitude filter min hundreds"
-          defaultValue={formatFilterHundreds(view.altitudeFilter.minHundreds)}
-          onKeyDown={onFilKeyDown}
-        />
-        <span className="dcb-lite-fil-sep">–</span>
-        <input
-          id={DCB_FIL_MAX_ID}
-          className="dcb-lite-fil"
-          inputMode="numeric"
-          maxLength={3}
-          aria-label="Altitude filter max hundreds"
-          defaultValue={formatFilterHundreds(view.altitudeFilter.maxHundreds)}
-          onKeyDown={onFilKeyDown}
-        />
-        <button
-          type="button"
-          className="dcb-lite-btn"
-          aria-label="Apply altitude filter"
-          onMouseDown={preventButtonFocus}
-          onClick={() => {
-            if (applyFilFields(view)) {
-              onChange();
-            }
-            focusPpi();
-          }}
-        >
-          Apply
-        </button>
-      </span>
-      <button
-        type="button"
-        className="dcb-lite-btn"
-        data-dcb-ptl=""
-        aria-label="Predicted track line"
-        aria-pressed={view.ptlOn}
-        onMouseDown={preventButtonFocus}
+        <span id={DCB_RANGE_OFFSET_ID} className="dcb-cell-line">
+          {offCntr ? "OFF CNTR" : "\u00a0"}
+        </span>
+      </DcbCell>
+      <DcbCell
+        ariaLabel="Maps"
+        dataDcb="maps"
         onClick={() => {
+          cancelFilterIfEntering(view);
+          afterCell(onChange);
+        }}
+      >
+        <span className="dcb-cell-line">MAPS</span>
+        <span className="dcb-cell-line">{"\u00a0"}</span>
+      </DcbCell>
+      <DcbCell
+        ariaLabel="Runway map"
+        dataDcbMap="rwy"
+        pressed={view.showRunway}
+        onClick={() => mapClick(view, onChange, "runway")}
+      >
+        <span className="dcb-cell-line">RWY</span>
+        <span className="dcb-cell-line">{"\u00a0"}</span>
+      </DcbCell>
+      <DcbCell
+        ariaLabel="Localizer map"
+        dataDcbMap="loc"
+        pressed={view.showLocalizer}
+        onClick={() => mapClick(view, onChange, "localizer")}
+      >
+        <span className="dcb-cell-line">LOC</span>
+        <span className="dcb-cell-line">{"\u00a0"}</span>
+      </DcbCell>
+      <DcbCell
+        ariaLabel="Coastline map"
+        dataDcbMap="cst"
+        pressed={view.showCoastline}
+        disabled={!coastOn}
+        onClick={() => mapClick(view, onChange, "coastline")}
+      >
+        <span className="dcb-cell-line">CST</span>
+        <span className="dcb-cell-line">{"\u00a0"}</span>
+      </DcbCell>
+      <DcbCell
+        ariaLabel="Range rings"
+        dataDcbMap="ring"
+        pressed={view.showRings}
+        onClick={() => mapClick(view, onChange, "rings")}
+      >
+        <span className="dcb-cell-line">RING</span>
+        <span className="dcb-cell-line">{"\u00a0"}</span>
+      </DcbCell>
+      <DcbCell
+        ariaLabel="Altitude filter"
+        dataDcb="filter"
+        onClick={() => {
+          beginAltitudeFilterChord(view);
+          afterCell(onChange);
+        }}
+      >
+        <span className="dcb-cell-line">FILTER</span>
+        <span id={DCB_FILTER_BAND_ID} className="dcb-cell-line">
+          {formatFilterBand(view.altitudeFilter, view.filterEntry)}
+        </span>
+      </DcbCell>
+      <DcbCell
+        ariaLabel="Predicted track line"
+        dataDcb="ptl"
+        pressed={view.ptlOn}
+        onClick={() => {
+          cancelFilterIfEntering(view);
           togglePtlOn(view);
-          afterButton(onChange);
+          afterCell(onChange);
         }}
       >
-        PTL
-      </button>
-      <button
-        type="button"
-        className="dcb-lite-btn"
-        data-dcb-hist=""
-        aria-label="History"
-        aria-pressed={view.historyEnabled}
-        onMouseDown={preventButtonFocus}
+        <span className="dcb-cell-line">PTL</span>
+        <span className="dcb-cell-line">{view.ptlOn ? "ON" : "OFF"}</span>
+      </DcbCell>
+      <DcbCell
+        ariaLabel="History"
+        dataDcb="hist"
+        pressed={view.historyEnabled}
         onClick={() => {
+          cancelFilterIfEntering(view);
           toggleHistoryEnabled(view);
-          afterButton(onChange);
+          afterCell(onChange);
         }}
       >
-        HIST
-      </button>
-      <button
-        type="button"
-        className="dcb-lite-btn"
-        aria-label="Center airport"
-        onMouseDown={preventButtonFocus}
+        <span className="dcb-cell-line">HIST</span>
+        <span className="dcb-cell-line">{view.historyEnabled ? "ON" : "OFF"}</span>
+      </DcbCell>
+      <DcbCell
+        ariaLabel="Center airport"
+        dataDcb="ctr"
         onClick={() => {
+          cancelFilterIfEntering(view);
           centerOnAirport(view);
-          afterButton(onChange);
+          afterCell(onChange);
         }}
       >
-        CTR
-      </button>
+        <span className="dcb-cell-line">CTR</span>
+        <span className="dcb-cell-line">{"\u00a0"}</span>
+      </DcbCell>
     </div>
   );
 }

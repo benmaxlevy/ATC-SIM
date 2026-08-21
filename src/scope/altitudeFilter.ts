@@ -6,9 +6,10 @@
  * Trainer delta: default 000–180 (show everything v1 can fly — not a third
  * “filter off” mode). Scope-focus `F` chord only — never always-on, never a
  * Command / readback. Out of filter: keep **target** + **history**; suppress
- * datablock, leader, and PTL. Strips still list everyone (T02-11). DCB-lite
- * FILTER fields call `tryApplyAltitudeFilter` (same max>=min predicate as the
- * `F` chord). Not an altitude cull or visibility slider. Not NAS STARS.
+ * datablock, leader, and PTL. Strips still list everyone (T02-11). DCB FILTER
+ * cell starts the same `F` chord (`beginFilterEntry`); apply uses
+ * `tryApplyAltitudeFilter` (same max>=min predicate). Not an altitude cull or
+ * visibility slider. Not NAS STARS.
  */
 
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
@@ -126,18 +127,24 @@ function padPartialDigits(digits: string): string {
   return (digits + "___").slice(0, 3);
 }
 
-/**
- * Idle: `FILTER 000-180` (glossary / DCB-lite label).
- * Entry: `FIL 050-___` while typing hundreds.
- */
-export function formatFilterReadout(filter: AltitudeFilter, entry: FilterEntry): string {
+/** Hundreds band only (`000-180` / `050-___`). DCB FILTER second row. */
+export function formatFilterBand(filter: AltitudeFilter, entry: FilterEntry): string {
   if (entry.phase === "idle") {
-    return `FILTER ${formatFilterHundreds(filter.minHundreds)}-${formatFilterHundreds(filter.maxHundreds)}`;
+    return `${formatFilterHundreds(filter.minHundreds)}-${formatFilterHundreds(filter.maxHundreds)}`;
   }
   const min =
     entry.phase === "max" ? formatFilterHundreds(entry.pendingMin) : padPartialDigits(entry.digits);
   const max = entry.phase === "min" ? "___" : padPartialDigits(entry.digits);
-  return `FIL ${min}-${max}`;
+  return `${min}-${max}`;
+}
+
+/**
+ * Idle: `FILTER 000-180` (glossary / DCB label).
+ * Entry: `FIL 050-___` while typing hundreds.
+ */
+export function formatFilterReadout(filter: AltitudeFilter, entry: FilterEntry): string {
+  const band = formatFilterBand(filter, entry);
+  return entry.phase === "idle" ? `FILTER ${band}` : `FIL ${band}`;
 }
 
 export function beginFilterEntry(entry: FilterEntry, filter: AltitudeFilter, nowMs: number): void {

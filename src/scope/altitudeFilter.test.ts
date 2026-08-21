@@ -5,6 +5,7 @@ import {
   cancelFilterEntry,
   clampFilterHundreds,
   expireFilterEntry,
+  formatFilterBand,
   formatFilterReadout,
   handleFilterEntryKey,
   idleFilterEntry,
@@ -123,10 +124,13 @@ test("AC8 — readout is FILTER / FIL, never cull or slider", () => {
   const filter = DEFAULT_ALTITUDE_FILTER;
   const entry = idleFilterEntry(filter);
   expect(formatFilterReadout(filter, entry)).toBe("FILTER 000-180");
+  expect(formatFilterBand(filter, entry)).toBe("000-180");
   beginFilterEntry(entry, filter, 0);
   expect(formatFilterReadout(filter, entry)).toBe("FIL ___-___");
+  expect(formatFilterBand(filter, entry)).toBe("___-___");
   entry.digits = "05";
   expect(formatFilterReadout(filter, entry)).toBe("FIL 05_-___");
+  expect(formatFilterBand(filter, entry)).toBe("05_-___");
   expect(formatFilterReadout(filter, entry).toLowerCase()).not.toContain("cull");
   expect(formatFilterReadout(filter, entry).toLowerCase()).not.toContain("slider");
 });

@@ -2,9 +2,9 @@
  * Analog: CRC/vNAS STARS TCW is a dark PPI with DCB on the glass (R07).
  * Browser ATC anti-pattern is a header banner, tutorial footer, and game HUD (R12).
  * Trainer delta: T00-01 disclaimer is first-run / F1, not a bar over the DCB.
- * Pause / 1× / 2× is a map-green corner readout (not a CRC analog). Command
- * line is a narrow token strip at the bottom of the PPI column. DCB-lite stays
- * above the canvas until T02-16. Not NAS STARS.
+ * Pause / 1× / 2× is a map-green corner readout (not a CRC analog).
+ * DCB is a green cell grid on the PPI glass (T02-16). Command
+ * line is a narrow token strip at the bottom of the PPI column. Not NAS STARS.
  */
 
 import { useEffect, useRef, useState } from "react";
