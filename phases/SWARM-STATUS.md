@@ -29,13 +29,33 @@ Orchestrator started **2026-08-21**. First-swarm and second-swarm (TCW polish) n
 | 1 Closed loop | **GREEN** (first swarm) | Confirmed on `master` (T01-01–14) |
 | 2 Scope original (T02-01–13) | **GREEN** (first swarm) | Confirmed on `master` |
 | 2 Scope polish (T02-14–21) | **GREEN** (second swarm) | Out of this run — do not redo |
-| 3 Voice | **IN PROGRESS** | Captain spawned. Tickets T03-01–10, 12, 13. Skip 11 and 14. |
+| 3 Voice | **GREEN** | Resume captain merged T03-08, 07, 09, 10, 12. Skip 11 and 14. Live http p50 leftover. |
 | 4 Procedures | **out of scope this run** | |
 | 5 Training | **out of scope this run** | |
 
 ## Log (this run)
 
 - 2026-08-21: Third swarm started. T01-* and T02-01–13 on `master`. No `speech-api/`, no T03-* commits. Spawning phase 3 voice captain (`cursor-grok-4.6-high`). Skip T03-11 and T03-14.
+- 2026-08-21: First captain interrupted after Wave C partial. On `master`: T03-01, 02, 03, 04, 05, 06, 13. Boot still `NullSpeechPort`. Remaining: T03-08, 07, 09, 10, 12. Re-spawning captain from this `master`.
+- 2026-08-21: Resume captain: merged T03-08, 07, 09, 10, 12 `--no-ff`. `npm test` / `npm run ci` green. **PHASE EXIT GREEN** with Chrome/mic/speech-api p50 leftover. Did not start phase 4. Did not spawn T03-11 or T03-14.
+
+## Phase 3 voice captain notes (resume)
+
+- **Merged this resume:** T03-08 (already on `master` at spawn; `npm test` 622); T03-07; T03-09 (rebased onto 07); T03-10 (rebased onto 09; export/test conflicts kept both overlay + settings); T03-12; `ticket/T03-ci-fix` (eslint `prefer-const` + Prettier). Isolated worktrees. Workers never merged. Deleted local ticket branches. Ignored junk `list` / `ls`.
+- **Already on master before resume:** T03-01, 02, 03, 04, 05, 06, 13.
+- **Skipped:** T03-11, T03-14.
+- **Tests:** `npm test` **683** passed, **1** skipped. `npm run ci` exit 0.
+- **Boot:** `loadAndResolveSpeechBoot` → **http** when STT/TTS URLs present (defaults `127.0.0.1:8090`). Web Speech opt-in only, never automatic default. Path C off. Radio tokens `DAL123 H270` still typed; English command line is tokenizer miss then Path A (`spoken_a`).
+- **E1–E14:** Automated rows ticked. **E10** unchecked — live p50 **BLOCKED on http config** (`GET http://127.0.0.1:8090/health` timed out, 0 bytes). No invented 1.5 s number. See `phases/03-voice/ACCEPTANCE.md`.
+- **Did not start phase 4 or 5.**
+
+### Manual leftover (human `npm run dev` + healthy speech-api)
+
+- Chrome mic grant / deny (E1).
+- Live http phrases (E3–E5): *Delta one two three descend and maintain three thousand*; *turn left heading two seven zero*.
+- Radio FX listen dry vs graph (E6).
+- Backend switch in settings (E9).
+- ≥ 7 http utterances; fill p50 table (E10). Restart speech-api until `/health` returns JSON.
 
 ---
 
