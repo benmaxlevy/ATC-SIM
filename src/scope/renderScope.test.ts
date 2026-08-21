@@ -1,13 +1,43 @@
 import { expect, test } from "vitest";
-import { SIM_DT_S, createWorld, stepWorld } from "@core";
-import { loadKdem } from "@scenario";
-import { formatRangeReadout } from "./camera";
+import { SIM_DT_S, createWorld, makeTestAircraft, stepWorld } from "@core";
+import { applyIntent } from "@pilot";
+import { createWorldFromScenario, loadKdem } from "@scenario";
+import { formatRangeReadout, nmToScreen } from "./camera";
 import { parseDigitalMap } from "./mapLayers";
 import { PALETTE } from "./palette";
 import { renderScope } from "./renderScope";
 import { createScopeView } from "./scopeView";
+import { CALLSIGN_FONT_PX, SELECTED_ACCENT_COLOR, TARGET_SIZE_PX } from "./targetSymbol";
+import { isIdentFlashing } from "./trackDisplay";
+
+interface StrokeRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  strokeStyle: string;
+}
+
+interface FillRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
 
 function mockCtx(): CanvasRenderingContext2D {
+  return createMockCtx().ctx;
+}
+
+function createMockCtx(): {
+  ctx: CanvasRenderingContext2D;
+  strokeRects: StrokeRect[];
+  fillRects: FillRect[];
+  fillTexts: { text: string; font: string }[];
+} {
+  const strokeRects: StrokeRect[] = [];
+  const fillRects: FillRect[] = [];
+  const fillTexts: { text: string; font: string }[] = [];
   const ctx = {
     fillStyle: "",
     strokeStyle: "",
@@ -15,22 +45,122 @@ function mockCtx(): CanvasRenderingContext2D {
     font: "",
     textBaseline: "alphabetic",
     textAlign: "start",
-    fillRect: () => undefined,
-    save: () => undefined,
-    restore: () => undefined,
-    beginPath: () => undefined,
-    arc: () => undefined,
-    clip: () => undefined,
-    stroke: () => undefined,
-    fill: () => undefined,
-    moveTo: () => undefined,
-    lineTo: () => undefined,
-    closePath: () => undefined,
-    fillText: () => undefined,
-    setTransform: () => undefined,
+    fillRect(this: { fillStyle: string }, x: number, y: number, w: number, h: number) {
+      fillRects.push({ x, y, w, h });
+    },
+    save() {},
+    restore() {},
+    beginPath() {},
+    closePath() {},
+    arc() {},
+    clip() {},
+    stroke() {},
+    fill() {},
+    moveTo() {},
+    lineTo() {},
+    setTransform() {},
+    strokeRect(this: { strokeStyle: string }, x: number, y: number, w: number, h: number) {
+      strokeRects.push({ x, y, w, h, strokeStyle: String(this.strokeStyle) });
+    },
+    fillText(this: { font: string }, text: string) {
+      fillTexts.push({ text, font: this.font });
+    },
   };
-  return ctx as unknown as CanvasRenderingContext2D;
+  return { ctx: ctx as unknown as CanvasRenderingContext2D, strokeRects, fillRects, fillTexts };
 }
+
+test("AC1 — six spawned arrivals get a 6×6 target at nmToScreen ±2 px", () => {
+  const world = createWorldFromScenario(loadKdem());
+  expect(world.aircraft).toHaveLength(6);
+  const view = createScopeView();
+  const { ctx, strokeRects, fillTexts } = createMockCtx();
+  const css = 800;
+  renderScope(ctx, world, view, css, css);
+  const targets = strokeRects.filter((r) => r.w === TARGET_SIZE_PX && r.h === TARGET_SIZE_PX);
+  expect(targets).toHaveLength(6);
+  const size = { widthPx: css, heightPx: css };
+  for (const ac of world.aircraft) {
+    const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
+    const hit = targets.find(
+      (r) =>
+        Math.abs(r.x + TARGET_SIZE_PX / 2 - p.x) <= 2 &&
+        Math.abs(r.y + TARGET_SIZE_PX / 2 - p.y) <= 2,
+    );
+    expect(hit, ac.callsign).toBeDefined();
+    expect(
+      fillTexts.some((t) => t.text === ac.callsign && t.font.startsWith(`${CALLSIGN_FONT_PX}px`)),
+    ).toBe(true);
+  }
+});
+
+test("AC2 — after 30 s eastbound at 1x, history dots sit behind the current position", () => {
+  const ac = makeTestAircraft({
+    id: "ac-east",
+    headingDeg: 90,
+    speedKt: 220,
+    xNm: 0,
+    yNm: 0,
+  });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  const { ctx } = createMockCtx();
+  const steps = Math.round(30 / SIM_DT_S);
+  for (let i = 0; i <= steps; i += 1) {
+    renderScope(ctx, world, view, 800, 800);
+    if (i < steps) {
+      stepWorld(world, SIM_DT_S);
+    }
+  }
+  const td = view.tracks.get(ac.id);
+  expect(td).toBeDefined();
+  expect(td!.history.eastNm.length).toBe(5);
+  expect(td!.history.eastNm[0]).toBeLessThan(ac.xNm);
+  for (const east of td!.history.eastNm) {
+    expect(east).toBeLessThanOrEqual(ac.xNm + 1e-9);
+  }
+  expect(td!.history.northNm.every((n) => Math.abs(n) < 0.05)).toBe(true);
+});
+
+test("AC6 — IDENT stroke is yellow within 1 s and reverts by 3 s with one apply", () => {
+  const ac = makeTestAircraft({ id: "ac-ident-draw", xNm: 0, yNm: 0, headingDeg: 90 });
+  const world = createWorld({ aircraft: [ac], simTimeMs: 0 });
+  const view = createScopeView();
+  applyIntent(ac, [{ type: "IDENT" }], 0);
+  const at1s = createMockCtx();
+  world.simTimeMs = 1000;
+  renderScope(at1s.ctx, world, view, 800, 800);
+  expect(isIdentFlashing(view.tracks.get(ac.id)!, 1000)).toBe(true);
+  const yellow = at1s.strokeRects.filter(
+    (r) => r.w === 6 && r.strokeStyle === SELECTED_ACCENT_COLOR,
+  );
+  expect(yellow.length).toBeGreaterThanOrEqual(1);
+
+  const at3s = createMockCtx();
+  world.simTimeMs = 3000;
+  renderScope(at3s.ctx, world, view, 800, 800);
+  expect(isIdentFlashing(view.tracks.get(ac.id)!, 3000)).toBe(false);
+  const stillYellow = at3s.strokeRects.filter(
+    (r) => r.w === 6 && r.strokeStyle === SELECTED_ACCENT_COLOR,
+  );
+  expect(stillYellow).toHaveLength(0);
+});
+
+test("AC8 — scope comments/UI say target and history, not sprite or trail names", () => {
+  const sources = import.meta.glob("./*.{ts,tsx}", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  expect(formatRangeReadout(20).toLowerCase()).not.toContain("zoom");
+  expect(sources["./ppi-placeholder.tsx"]).toMatch(/aria-label="PPI"/);
+  expect(sources["./history.ts"]).toMatch(/CRC STARS HISTORY/);
+  expect(sources["./targetSymbol.ts"]).toMatch(/target/);
+  expect(sources["./renderScope.ts"]).toMatch(/history/);
+  const uiBits = [sources["./ppi-placeholder.tsx"] ?? "", formatRangeReadout(20)];
+  for (const text of uiBits) {
+    expect(text.toLowerCase()).not.toMatch(/aria-label="[^"]*(sprite|trail)/);
+  }
+});
 
 test("AC9 — user-facing scope strings never contain zoom", () => {
   const sources = import.meta.glob("./*.{ts,tsx}", {

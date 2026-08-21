@@ -2,7 +2,7 @@
  * Public API for `@ui`.
  *
  * Legal now: Scope shell (disclaimer, PPI, command line, pause / 1× / 2×).
- * Canvas click selects a track then focuses the command line. Enter runs
+ * Canvas click selects a track and focuses the PPI (scope keys). Enter runs
  * `submitCommand` → `handleRadioText` and shows the template readback. Text
  * submit bypasses SpeechPort (`Command.source` is `"text"`). Selection is a
  * scope action and does not emit a readback. Session controls (`setPaused` /

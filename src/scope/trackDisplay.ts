@@ -1,0 +1,64 @@
+/**
+ * Analog: CRC STARS track display state (docs.virtualnas.net/crc/stars — R07).
+ * Trainer delta: per-track history buffer + display-only IDENT flash live here,
+ * keyed by aircraft id — never on Aircraft kinematics. Not NAS STARS.
+ */
+
+import type { Aircraft, World } from "@core";
+import { createHistoryBuf, maybeSampleHistory, type HistoryBuf } from "./history";
+
+/** Display IDENT stroke pulse (~2 s sim). Aircraft flag may last longer (phase 1). */
+export const IDENT_DISPLAY_FLASH_MS = 2000;
+
+export interface TrackDisplay {
+  history: HistoryBuf;
+  /** Sim time when the yellow IDENT stroke ends; 0 = inactive. */
+  identUntilSimMs: number;
+  /** Last seen `Aircraft.identUntilSimMs` so a new IDENT retriggers the pulse. */
+  lastAircraftIdentDeadlineMs: number;
+}
+
+export function createTrackDisplay(): TrackDisplay {
+  return {
+    history: createHistoryBuf(),
+    identUntilSimMs: 0,
+    lastAircraftIdentDeadlineMs: 0,
+  };
+}
+
+export function isIdentFlashing(td: TrackDisplay, simTimeMs: number): boolean {
+  return td.identUntilSimMs > simTimeMs;
+}
+
+/**
+ * When the pilot agent accepts IDENT, `Aircraft.identUntilSimMs` jumps forward.
+ * Start a ~2 s display flash. Do not re-validate and do not emit a readback.
+ */
+export function noteIdentAccepted(td: TrackDisplay, ac: Aircraft, simTimeMs: number): void {
+  if (ac.identUntilSimMs > td.lastAircraftIdentDeadlineMs) {
+    td.lastAircraftIdentDeadlineMs = ac.identUntilSimMs;
+    td.identUntilSimMs = simTimeMs + IDENT_DISPLAY_FLASH_MS;
+  }
+}
+
+/**
+ * Display sampler: drop despawned tracks, sample history, arm IDENT flash.
+ * Call from the render path, never from `stepWorld`.
+ */
+export function syncTrackDisplays(tracks: Map<string, TrackDisplay>, world: World): void {
+  const living = new Set(world.aircraft.map((ac) => ac.id));
+  for (const id of [...tracks.keys()]) {
+    if (!living.has(id)) {
+      tracks.delete(id);
+    }
+  }
+  for (const ac of world.aircraft) {
+    let td = tracks.get(ac.id);
+    if (!td) {
+      td = createTrackDisplay();
+      tracks.set(ac.id, td);
+    }
+    maybeSampleHistory(td.history, world.simTimeMs, ac.xNm, ac.yNm);
+    noteIdentAccepted(td, ac, world.simTimeMs);
+  }
+}

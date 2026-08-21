@@ -11,7 +11,7 @@ import {
   type ScopeView,
 } from "@scope";
 import type { AppHandles } from "../app/create-app";
-import { CommandLine, focusCommandLine } from "./command-line";
+import { CommandLine } from "./command-line";
 import { Disclaimer } from "./disclaimer";
 import { SimControls } from "./sim-controls";
 import { submitCommand } from "./submitCommand";
@@ -38,7 +38,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             event.clientY,
             scopeView,
           );
-          focusCommandLine();
+          event.currentTarget.focus();
         }}
         onCanvasDoubleClick={(event) => {
           const rect = event.currentTarget.getBoundingClientRect();

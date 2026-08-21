@@ -1,7 +1,7 @@
 import type { World } from "@core";
-import { createScopeView, type ScopeView } from "./scopeView";
 import { cssPointFromClient, handlePpiLeftClick } from "./ppiPointer";
 import { renderScope } from "./renderScope";
+import type { ScopeView } from "./scopeView";
 
 /**
  * Analog: CRC STARS RANGE / CENTER display (docs.virtualnas.net/crc/stars — R07).
@@ -50,7 +50,7 @@ export function handlePpiCanvasClick(
 export function paintPpi(
   canvas: HTMLCanvasElement,
   world: World,
-  view: ScopeView = createScopeView(),
+  view: ScopeView,
   dpr: number = globalThis.devicePixelRatio || 1,
 ): void {
   const { cssWidth, cssHeight } = fitCanvasToCss(canvas, dpr);

@@ -95,7 +95,7 @@ test("AC7 — shell calls submitCommand; command line clears after submit", () =
   expect(commandLine).toMatch(/setValue\(""\)/);
 });
 
-test("T01-11 — canvas click selects then focuses; it does not submit a radio command", () => {
+test("T01-11 — canvas click selects then focuses the PPI; it does not submit a radio command", () => {
   const sources = import.meta.glob("./*.{ts,tsx}", {
     query: "?raw",
     import: "default",
@@ -104,7 +104,8 @@ test("T01-11 — canvas click selects then focuses; it does not submit a radio c
   const shell = sources["./shell.tsx"];
   expect(shell).toBeDefined();
   expect(shell).toMatch(/handlePpiCanvasClick/);
-  expect(shell).toMatch(/focusCommandLine/);
+  expect(shell).toMatch(/currentTarget\.focus/);
+  expect(shell).not.toMatch(/focusCommandLine/);
   expect(shell).toMatch(/onCanvasClick/);
   const clickHandler = shell!.slice(
     shell!.indexOf("onCanvasClick"),

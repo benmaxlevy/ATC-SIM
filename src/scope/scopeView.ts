@@ -1,8 +1,8 @@
 /**
- * Analog: CRC STARS RANGE / CENTER (docs.virtualnas.net/crc/stars — R07).
+ * Analog: CRC STARS RANGE / CENTER / HISTORY (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: last-click / airport live on this view, not on World. Map /
  * localizer / rings flags are trainer display state (DCB-lite binds later).
- * Not NAS STARS.
+ * History is 5 s sim / 5 dots, no phosphor. Not NAS STARS.
  *
  * Scope display state only. Never a Command, readback, or intent.
  */
@@ -14,6 +14,7 @@ import {
   type ScopeCamera,
 } from "./camera";
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
+import type { TrackDisplay } from "./trackDisplay";
 
 export interface ScopeView {
   camera: ScopeCamera;
@@ -27,6 +28,10 @@ export interface ScopeView {
   showCoastline: boolean;
   digitalMap: DigitalMap;
   mapCache: MapCache | null;
+  /** Global history dots. CRC analog; default on. F8 / scope-focus H. */
+  historyEnabled: boolean;
+  /** Per-track display state (history, IDENT flash). Keyed by aircraft id. */
+  tracks: Map<string, TrackDisplay>;
 }
 
 export function createScopeView(
@@ -52,7 +57,14 @@ export function createScopeView(
     showCoastline,
     digitalMap,
     mapCache: null,
+    historyEnabled: true,
+    tracks: new Map(),
   };
+}
+
+/** F8 always-on; H only when scope-focused. Never a Command. */
+export function toggleHistoryEnabled(view: ScopeView): void {
+  view.historyEnabled = !view.historyEnabled;
 }
 
 export function recordLastClick(view: ScopeView, eastNm: number, northNm: number): void {

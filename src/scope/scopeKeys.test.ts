@@ -1,5 +1,10 @@
 import { expect, test, vi } from "vitest";
-import { handleScopeKeyDown, handleScopeWheel, isAlwaysOnScopeKey } from "./scopeKeys";
+import {
+  handleScopeKeyDown,
+  handleScopeWheel,
+  isAlwaysOnScopeKey,
+  type ScopeFocus,
+} from "./scopeKeys";
 import { createScopeView } from "./scopeView";
 
 function keyEvent(key: string) {
@@ -10,9 +15,10 @@ function keyEvent(key: string) {
   };
 }
 
-test("always-on keys are PageUp, PageDown, Home, End only", () => {
+test("always-on keys are PageUp, PageDown, Home, End, F8; H is not always-on", () => {
   expect(isAlwaysOnScopeKey("PageUp")).toBe(true);
   expect(isAlwaysOnScopeKey("Home")).toBe(true);
+  expect(isAlwaysOnScopeKey("F8")).toBe(true);
   expect(isAlwaysOnScopeKey("R")).toBe(false);
   expect(isAlwaysOnScopeKey("C")).toBe(false);
   expect(isAlwaysOnScopeKey("H")).toBe(false);
@@ -93,7 +99,15 @@ test("scope key/wheel handlers never import the parser", () => {
     import: "default",
     eager: true,
   }) as Record<string, string>;
-  for (const name of ["./scopeKeys.ts", "./ppiPointer.ts", "./scopeView.ts", "./camera.ts"]) {
+  for (const name of [
+    "./scopeKeys.ts",
+    "./ppiPointer.ts",
+    "./scopeView.ts",
+    "./camera.ts",
+    "./history.ts",
+    "./trackDisplay.ts",
+    "./targetSymbol.ts",
+  ]) {
     const src = sources[name];
     expect(src, name).toBeDefined();
     expect(src).not.toMatch(/@parse/);
@@ -102,4 +116,55 @@ test("scope key/wheel handlers never import the parser", () => {
     expect(src).not.toMatch(/submitCommand/);
     expect(src).not.toMatch(/parseCommand/);
   }
+});
+
+test("history defaults on; F8 toggles globally in both foci", () => {
+  const view = createScopeView();
+  expect(view.historyEnabled).toBe(true);
+  const radio = keyEvent("F8");
+  expect(handleScopeKeyDown(radio, view, "radio")).toBe(true);
+  expect(radio.preventDefault).toHaveBeenCalled();
+  expect(view.historyEnabled).toBe(false);
+  expect(handleScopeKeyDown(keyEvent("F8"), view, "scope")).toBe(true);
+  expect(view.historyEnabled).toBe(true);
+});
+
+test("AC4 / AC7 — H routing depends on focus === scope | radio; parser spy", () => {
+  const view = createScopeView();
+  const parseSpy = vi.fn();
+  function route(key: string, focus: ScopeFocus): void {
+    const event = keyEvent(key);
+    if (handleScopeKeyDown(event, view, focus)) {
+      return;
+    }
+    if (key.length === 1) {
+      parseSpy(key);
+    }
+  }
+
+  route("H", "radio");
+  expect(parseSpy).toHaveBeenCalledWith("H");
+  expect(view.historyEnabled).toBe(true);
+
+  parseSpy.mockClear();
+  const scopeH = keyEvent("H");
+  expect(handleScopeKeyDown(scopeH, view, "scope")).toBe(true);
+  expect(scopeH.preventDefault).toHaveBeenCalled();
+  expect(scopeH.stopPropagation).toHaveBeenCalled();
+  expect(view.historyEnabled).toBe(false);
+
+  parseSpy.mockClear();
+  route("H", "scope");
+  expect(parseSpy).not.toHaveBeenCalled();
+  expect(view.historyEnabled).toBe(true);
+
+  let buffer = "DAL123 ";
+  for (const key of ["H", "2", "7", "0"]) {
+    const event = keyEvent(key);
+    if (!handleScopeKeyDown(event, view, "radio") && key.length === 1) {
+      buffer += key;
+    }
+  }
+  expect(buffer).toBe("DAL123 H270");
+  expect(view.historyEnabled).toBe(true);
 });

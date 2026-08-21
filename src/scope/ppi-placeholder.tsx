@@ -15,7 +15,8 @@ export interface PpiPlaceholderProps {
 /**
  * Analog: CRC STARS display (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: full-area Canvas2D PPI host; range/center via keys and wheel,
- * middle-drag pan (not CRC). Click selects a track. Not NAS STARS.
+ * middle-drag pan (not CRC). Click selects a track and focuses the PPI so
+ * scope-focus H toggles history. Not NAS STARS.
  */
 export function PpiPlaceholder({
   onCanvasClick,
@@ -31,6 +32,7 @@ export function PpiPlaceholder({
       <canvas
         id={PpiPlaceholderId}
         className="ppi-canvas"
+        tabIndex={0}
         aria-label="PPI"
         onClick={onCanvasClick}
         onDoubleClick={onCanvasDoubleClick}

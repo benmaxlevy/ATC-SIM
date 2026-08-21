@@ -56,14 +56,14 @@ interface HistoryBuf {
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Given 6 spawned arrivals, when the PPI paints, each has a square symbol at its T00-04 world position via `nmToScreen` (±2 px).
-- [ ] **AC2 —** Given history on and 30 s of sim at 1x, each track shows up to 5 dots **behind** the current position along the flown path, not ahead.
-- [ ] **AC3 —** Automated: after simulated time 0, 5, 10, 15, 20, 25 s of movement, buffer length is 5 and the oldest sample matches the position from t=5 s not t=0 (dropped).
-- [ ] **AC4 —** `F8` toggles history globally. With command line focused, `H` does **not** toggle history and still types into the parser; with PPI focused, `H` toggles history and does not insert `H` into the command line.
-- [ ] **AC5 —** History sampling does not run inside kinematics; `stepWorld` golden tests from phase 1 still pass without display buffers in the aircraft state object (buffers live in `TrackDisplay`).
-- [ ] **AC6 —** IDENT accepted: symbol flashes yellow within 1 s and reverts by 3 s sim without a second readback.
-- [ ] **AC7 —** Automated: unit test that `H` key routing depends on `focus === "scope" | "radio"`.
-- [ ] **AC8 — Research:** Comments/UI say **target** and **history**, not sprite or trail. Header cites CRC history analog.
+- [x] **AC1 —** Given 6 spawned arrivals, when the PPI paints, each has a square symbol at its T00-04 world position via `nmToScreen` (±2 px).
+- [x] **AC2 —** Given history on and 30 s of sim at 1x, each track shows up to 5 dots **behind** the current position along the flown path, not ahead.
+- [x] **AC3 —** Automated: after simulated time 0, 5, 10, 15, 20, 25 s of movement, buffer length is 5 and the oldest sample matches the position from t=5 s not t=0 (dropped).
+- [x] **AC4 —** `F8` toggles history globally. With command line focused, `H` does **not** toggle history and still types into the parser; with PPI focused, `H` toggles history and does not insert `H` into the command line.
+- [x] **AC5 —** History sampling does not run inside kinematics; `stepWorld` golden tests from phase 1 still pass without display buffers in the aircraft state object (buffers live in `TrackDisplay`).
+- [x] **AC6 —** IDENT accepted: symbol flashes yellow within 1 s and reverts by 3 s sim without a second readback.
+- [x] **AC7 —** Automated: unit test that `H` key routing depends on `focus === "scope" | "radio"`.
+- [x] **AC8 — Research:** Comments/UI say **target** and **history**, not sprite or trail. Header cites CRC history analog.
 
 ## Test plan
 
