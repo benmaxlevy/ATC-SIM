@@ -84,9 +84,12 @@ test("T02-08 — strip callsign tints with ownership color; help is color-only n
   expect(ui).toMatch(/tracks\.get\(strip\.aircraftId\)\?\.ownership/);
   expect(ui).toMatch(/syncStripCallsignColors/);
   expect(shell).toMatch(/tracks=\{scopeView\.tracks\}/);
-  expect(shell).toMatch(/HELP_KEYS_POINTER/);
-  expect(shell).toMatch(/INITIATE_TRACK_HELP/);
-  expect(shell).toMatch(/DROP_TRACK_HELP/);
+  expect(shell).not.toMatch(/HELP_KEYS_POINTER/);
+  expect(shell).not.toMatch(/INITIATE_TRACK_HELP/);
+  expect(shell).not.toMatch(/DROP_TRACK_HELP/);
+  const overlay = sources["./ScopeHelpOverlay.tsx"]!;
+  expect(overlay).toMatch(/alwaysOnKeyBindings/);
+  expect(overlay).toMatch(/DISCLAIMER_COPY/);
   expect(shell.toLowerCase()).not.toMatch(/lock-?on/);
   expect(shell.toLowerCase()).not.toMatch(/\bclaim\b/);
   const mains = import.meta.glob("../main.tsx", {

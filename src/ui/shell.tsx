@@ -1,3 +1,12 @@
+/**
+ * Analog: CRC/vNAS STARS TCW is a dark PPI with DCB on the glass (R07).
+ * Browser ATC anti-pattern is a header banner, tutorial footer, and game HUD (R12).
+ * Trainer delta: T00-01 disclaimer is first-run / F1, not a bar over the DCB.
+ * Pause / 1× / 2× is a map-green corner readout (not a CRC analog). Command
+ * line is a narrow token strip at the bottom of the PPI column. DCB-lite stays
+ * above the canvas until T02-16. Not NAS STARS.
+ */
+
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent, WheelEvent } from "react";
 import type { Scenario } from "@scenario";
@@ -7,9 +16,6 @@ import {
   handlePpiDoubleClick,
   handlePpiPanDelta,
   handleScopeWheel,
-  DROP_TRACK_HELP,
-  HELP_KEYS_POINTER,
-  INITIATE_TRACK_HELP,
   installAlwaysOnScopeKeys,
   scopeFocusFromDocument,
   focusRadioCommandLine,
@@ -60,7 +66,6 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
 
   return (
     <div className="scope-shell" data-scenario={scenario.id} data-speech={app.speech.id}>
-      <Disclaimer />
       <div className="scope-work">
         <ScopeCanvas
           scopeView={scopeView}
@@ -110,8 +115,19 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             panRef.current = null;
           }}
           onCanvasContextMenu={(event) => event.preventDefault()}
+          footer={
+            <CommandLine
+              readback={readback}
+              onSubmit={(input) => {
+                const result = submitCommand(app.world, input, app.log);
+                setReadback(result.readback);
+              }}
+            />
+          }
         >
           {fpsDebug ? <FpsDebug /> : null}
+          <SimControls world={app.world} />
+          <Disclaimer />
           <ScopeHelpOverlay open={scopeView.helpOpen} />
         </ScopeCanvas>
         <FlightStrips
@@ -122,17 +138,6 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           onSelectionChange={refreshScopeUi}
         />
       </div>
-      <SimControls world={app.world} />
-      <p className="ownership-help">
-        {HELP_KEYS_POINTER} {INITIATE_TRACK_HELP} {DROP_TRACK_HELP}
-      </p>
-      <CommandLine
-        readback={readback}
-        onSubmit={(input) => {
-          const result = submitCommand(app.world, input, app.log);
-          setReadback(result.readback);
-        }}
-      />
     </div>
   );
 }

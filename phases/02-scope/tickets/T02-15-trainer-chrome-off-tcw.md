@@ -42,18 +42,18 @@ Keep `submitCommand` / `handleRadioText` wiring. CSS: no drop shadows, no rounde
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Cold boot: no disclaimer banner spanning the DCB. Exact T00-01 copy is one click or F1 away.
-- [ ] **AC2 —** Persistent footer has no tutorial sentences. F1 still lists keys (`TRAINER KEYS — NOT CRC`).
-- [ ] **AC3 —** Pause / 1× / 2× still change `world.paused` / `simRate` (existing tests).
-- [ ] **AC4 —** Radio-focus `DAL123 H270` still readbacks and turns (heading-command integration).
-- [ ] **AC5 —** Command strip does not call `parseCommand` Path A; unknown English still fails as today.
-- [ ] **AC6 — Research:** No user-facing “HUD / zoom / toolbar.” Analog+delta comment on the shell.
+- [x] **AC1 —** Cold boot: no disclaimer banner spanning the DCB. Exact T00-01 copy is one click or F1 away.
+- [x] **AC2 —** Persistent footer has no tutorial sentences. F1 still lists keys (`TRAINER KEYS — NOT CRC`).
+- [x] **AC3 —** Pause / 1× / 2× still change `world.paused` / `simRate` (existing tests).
+- [x] **AC4 —** Radio-focus `DAL123 H270` still readbacks and turns (heading-command integration).
+- [x] **AC5 —** Command strip does not call `parseCommand` Path A; unknown English still fails as today.
+- [x] **AC6 — Research:** No user-facing “HUD / zoom / toolbar.” Analog+delta comment on the shell.
 
 ## Test plan
 
 - Unit: disclaimer still exported; sim controls helpers.
 - Integration: heading-command test.
-- Manual: Chrome — glass is PPI + thin bars, not a blog header.
+- Manual: skip-with-reason: no Chrome operator in this leaf worktree; automated tests prove banner/footer/command-strip structure. Do not invent a visual pass.
 
 ## Suggested files
 

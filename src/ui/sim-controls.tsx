@@ -1,13 +1,12 @@
+/**
+ * Analog: CRC/vNAS STARS has no pause / sim-rate strip on the TCW (R07).
+ * Trainer delta: small map-green corner readout for pause / 1× / 2× / clock.
+ * Not a game HUD. Not NAS STARS.
+ */
+
 import { useEffect } from "react";
 import type { World } from "@core";
-import {
-  PLAY_HINT,
-  SIM_HUD_ID,
-  applySimControlKey,
-  formatSimHud,
-  setPaused,
-  setSimRate,
-} from "./simControls";
+import { SIM_HUD_ID, applySimControlKey, formatSimHud, setPaused, setSimRate } from "./simControls";
 
 export interface SimControlsProps {
   world: World;
@@ -43,7 +42,7 @@ export function SimControls({ world }: SimControlsProps) {
   }, [world]);
 
   return (
-    <div className="sim-controls">
+    <div className="sim-controls" aria-label="Sim rate">
       <button
         type="button"
         onMouseDown={(event) => event.preventDefault()}
@@ -67,10 +66,6 @@ export function SimControls({ world }: SimControlsProps) {
       </button>
       <span id={SIM_HUD_ID} className="sim-status">
         {formatSimHud(world)}
-      </span>
-      <span className="play-hint">{PLAY_HINT}</span>
-      <span className="sim-keys">
-        Space pause (off command line) · Pause key always · 1 / 2 rate (off command line)
       </span>
     </div>
   );

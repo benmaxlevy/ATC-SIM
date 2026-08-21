@@ -2,11 +2,13 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
 import { HELP_FOOTER, HELP_GLOSSARY_NOTE, KEY_BINDINGS, RADIO_CONFLICT_WARNING } from "@scope";
+import { DISCLAIMER_COPY } from "./disclaimer-copy";
 import { ScopeHelpOverlay } from "./ScopeHelpOverlay";
 
 test("AC2 — overlay footer is exactly TRAINER KEYS — NOT CRC and lists frozen keys", () => {
   const html = renderToStaticMarkup(createElement(ScopeHelpOverlay, { open: true }));
   expect(html).toContain(HELP_FOOTER);
+  expect(html).toContain(DISCLAIMER_COPY);
   expect(html).toMatch(/PageUp/);
   expect(html).toMatch(/PageDown/);
   expect(html).toMatch(/Home/);
@@ -58,7 +60,7 @@ test("shell mounts the F1 overlay from KEY_BINDINGS and installs always-on keys"
   expect(shell).toMatch(/scopeView\.helpOpen/);
   expect(shell).toMatch(/installAlwaysOnScopeKeys/);
   expect(shell).toMatch(/focusRadioCommandLine/);
-  expect(shell).toMatch(/HELP_KEYS_POINTER/);
+  expect(shell).not.toMatch(/HELP_KEYS_POINTER/);
 });
 
 test("overlay maps KEY_BINDINGS — no duplicated key rows in JSX", () => {

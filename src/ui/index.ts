@@ -1,9 +1,10 @@
 /**
  * Public API for `@ui`.
  *
- * Legal now: Scope shell (disclaimer, DCB-lite, PPI, F1 help overlay, flight-strip bay,
- * command line, pause / 1× / 2×). Canvas click selects a track and focuses the PPI (scope
- * keys). DCB-lite clicks call the same `src/scope` functions as the keyboard and
+ * Legal now: Scope shell (DCB-lite, PPI, F1 help overlay with T00-01 disclaimer,
+ * first-run disclaimer, flight-strip bay, command strip, pause / 1× / 2× corner
+ * readout). Canvas click selects a track and focuses the PPI (scope keys).
+ * DCB-lite clicks call the same `src/scope` functions as the keyboard and
  * never emit Command IR. Strip click selects the same track and focuses the PPI. Enter runs
  * `submitCommand` → `handleRadioText` and shows the template readback. Text
  * submit bypasses SpeechPort (`Command.source` is `"text"`). Selection is a
@@ -31,7 +32,12 @@ export {
   selectTrackFromStrip,
   stripsFromWorld,
 } from "./flightStripModel";
-export { DISCLAIMER_COPY } from "./disclaimer-copy";
+export {
+  DISCLAIMER_COPY,
+  DISCLAIMER_DISMISSED_KEY,
+  dismissDisclaimer,
+  isDisclaimerDismissed,
+} from "./disclaimer-copy";
 export { echoCommandLine, submitCommandLine } from "./echo-command-line";
 export { submitCommand } from "./submitCommand";
 export type { PilotResult } from "./submitCommand";

@@ -1,3 +1,9 @@
+/**
+ * Analog: vice / CRC command line at the bottom of the TCW (R07, R08).
+ * Trainer delta: narrow map-green token strip, not a lime web input block.
+ * Tokens only (`DAL123 H270`); Path A spoken English is phase 3. Not NAS STARS.
+ */
+
 import { type FormEvent, useState } from "react";
 
 export const COMMAND_LINE_INPUT_ID = "command-line-input";
@@ -38,6 +44,7 @@ export function CommandLine({ readback, onSubmit }: CommandLineProps) {
         autoCapitalize="off"
         autoCorrect="off"
         aria-label="Command line"
+        placeholder="DAL123 H270"
         value={value}
         onKeyDown={(event) => {
           if (

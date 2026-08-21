@@ -158,7 +158,7 @@ test("shell mounts Pause, 1×, and 2× buttons that call session helpers", () =>
   expect(controls).toMatch(/setPaused\(world,\s*!world\.paused\)/);
   expect(controls).toMatch(/setSimRate\(world,\s*1\)/);
   expect(controls).toMatch(/setSimRate\(world,\s*2\)/);
-  expect(controls).toMatch(/PLAY_HINT/);
+  expect(controls).not.toMatch(/PLAY_HINT/);
   expect(controls).not.toMatch(/submitCommand/);
   expect(controls).not.toMatch(/handleRadioText/);
   expect(controls).not.toMatch(/from\s+["']@scope["']/);

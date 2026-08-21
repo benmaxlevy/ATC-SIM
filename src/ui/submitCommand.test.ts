@@ -109,22 +109,27 @@ test("T01-11 — canvas click selects then focuses the PPI; it does not submit a
   expect(shell).toMatch(/onCanvasClick/);
   const clickHandler = shell!.slice(
     shell!.indexOf("onCanvasClick"),
-    shell!.indexOf("/>", shell!.indexOf("onCanvasClick")),
+    shell!.indexOf("onCanvasDoubleClick"),
   );
   expect(clickHandler).not.toMatch(/submitCommand/);
   expect(clickHandler).not.toMatch(/setReadback/);
 });
 
-test("AC5 — shell still mounts disclaimer then command line at the bottom", () => {
+test("AC5 — command line stays at the bottom of the PPI column; disclaimer is not a banner sibling", () => {
   const sources = import.meta.glob("./*.{ts,tsx}", {
     query: "?raw",
     import: "default",
     eager: true,
   }) as Record<string, string>;
   const shell = sources["./shell.tsx"]!;
+  const canvas = sources["./ScopeCanvas.tsx"]!;
   const disclaimerIdx = shell.indexOf("<Disclaimer");
   const commandLineIdx = shell.indexOf("<CommandLine");
+  const scopeWorkIdx = shell.indexOf("scope-work");
   expect(disclaimerIdx).toBeGreaterThan(-1);
   expect(commandLineIdx).toBeGreaterThan(-1);
-  expect(disclaimerIdx).toBeLessThan(commandLineIdx);
+  expect(disclaimerIdx).toBeGreaterThan(scopeWorkIdx);
+  expect(commandLineIdx).toBeGreaterThan(shell.indexOf("footer="));
+  expect(canvas).toMatch(/footer\?:/);
+  expect(canvas).toMatch(/\{footer\}/);
 });

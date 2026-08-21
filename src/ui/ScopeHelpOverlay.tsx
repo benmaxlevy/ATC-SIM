@@ -2,7 +2,8 @@
  * Analog: CRC STARS has no F1 help overlay (CRC F1 hold = beaconator — R07).
  * Trainer delta: F1 lists the frozen Windows subset from KEY_BINDINGS. Footer
  * is exactly TRAINER KEYS — NOT CRC. Rows are CRC analog → our key. Sim keeps
- * ticking while open. Not NAS STARS.
+ * ticking while open. T00-01 disclaimer copy is here after T02-15 (not a
+ * banner over the DCB). Not NAS STARS.
  */
 
 import {
@@ -15,6 +16,7 @@ import {
   scopeFocusKeyBindings,
   type KeyBinding,
 } from "@scope";
+import { DISCLAIMER_COPY } from "./disclaimer-copy";
 
 export interface ScopeHelpOverlayProps {
   open: boolean;
@@ -77,6 +79,7 @@ export function ScopeHelpOverlay({ open }: ScopeHelpOverlayProps) {
           bindings={scopeFocusKeyBindings()}
         />
         <HelpTable caption="Mouse (pointer over PPI)" bindings={mouseKeyBindings()} />
+        <p className="scope-help-disclaimer">{DISCLAIMER_COPY}</p>
         <p className="scope-help-footer">{HELP_FOOTER}</p>
       </div>
     </div>
