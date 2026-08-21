@@ -1,16 +1,17 @@
+import type { Aircraft } from "./aircraft";
 import { MAX_PHYSICS_STEPS_PER_FRAME, SIM_DT_S } from "./clock";
 
 export type SimRate = 1 | 2;
 
 /**
  * Single mutable sim snapshot. `stepWorld` is the only function that increments
- * `simTimeMs`. Aircraft stay an empty stub until T01-02.
+ * `simTimeMs`. Tracks are 1:1 with `aircraft` (no sensor error).
  */
 export interface World {
   simTimeMs: number;
   paused: boolean;
   simRate: SimRate;
-  aircraft: unknown[];
+  aircraft: Aircraft[];
   selectedAircraftId: string | null;
 }
 

@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 import {
   createWorld,
   stepWorld,
@@ -7,6 +7,8 @@ import {
   PHYSICS_HZ,
   SIM_DT_S,
   MAX_PHYSICS_STEPS_PER_FRAME,
+  type Aircraft,
+  type World,
 } from "@core";
 
 test("createWorld defaults simTimeMs, paused, and simRate (AC1)", () => {
@@ -16,6 +18,12 @@ test("createWorld defaults simTimeMs, paused, and simRate (AC1)", () => {
   expect(world.simRate).toBe(1);
   expect(world.aircraft).toEqual([]);
   expect(world.selectedAircraftId).toBeNull();
+});
+
+test("World.aircraft is Aircraft[] and createWorld still starts empty (T01-02 AC4)", () => {
+  expectTypeOf<World["aircraft"]>().toEqualTypeOf<Aircraft[]>();
+  const world = createWorld();
+  expect(world.aircraft).toHaveLength(0);
 });
 
 test("createWorld merges partial overrides without sharing aircraft arrays", () => {

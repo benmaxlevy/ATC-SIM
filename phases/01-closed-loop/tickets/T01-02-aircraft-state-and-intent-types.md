@@ -93,12 +93,12 @@ Do not add route arrays, nav modes, or flap state.
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** `Aircraft` and `Intent` compile under `strict` and are exported from `src/core`.
-- [ ] **AC2 —** `createAircraft({ callsign: "dal123", headingDeg: 360, ...})` stores `callsign === "DAL123"` and `headingDeg === 0`, and `intent.assignedHeadingDeg === 0`.
-- [ ] **AC3 —** Fresh aircraft has `intent` matching present heading, altitude, and speed so it is in equilibrium before any command.
-- [ ] **AC4 —** `World.aircraft` is `Aircraft[]`; `createWorld()` still has length 0.
-- [ ] **AC5 —** Automated test: fixture `makeTestAircraft({ callsign: "DAL123" })` is unique-id stable across two calls **only if** ids are passed in; two calls without id get **different** ids.
-- [ ] **AC6 —** No import from `src/scope` or `src/ui` into `src/core`.
+- [x] **AC1 —** `Aircraft` and `Intent` compile under `strict` and are exported from `src/core`.
+- [x] **AC2 —** `createAircraft({ callsign: "dal123", headingDeg: 360, ...})` stores `callsign === "DAL123"` and `headingDeg === 0`, and `intent.assignedHeadingDeg === 0`.
+- [x] **AC3 —** Fresh aircraft has `intent` matching present heading, altitude, and speed so it is in equilibrium before any command.
+- [x] **AC4 —** `World.aircraft` is `Aircraft[]`; `createWorld()` still has length 0.
+- [x] **AC5 —** Automated test: fixture `makeTestAircraft({ callsign: "DAL123" })` is unique-id stable across two calls **only if** ids are passed in; two calls without id get **different** ids.
+- [x] **AC6 —** No import from `src/scope` or `src/ui` into `src/core`.
 
 ## Test plan
 

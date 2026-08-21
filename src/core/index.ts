@@ -7,9 +7,10 @@
  * `SIM_DT_S`, `MAX_PHYSICS_STEPS_PER_FRAME`); geo helpers (`LatLon`,
  * `NmEastNorth`, `latLonToNm`, `nmToLatLon`, `normalizeHeadingDeg`); Command IR
  * types, `INSTRUCTION_TYPES`, and fixtures; session event log (`SessionEvent`,
- * `SessionLog`).
+ * `SessionLog`); aircraft types (`Aircraft`, `Intent`), `createAircraft`,
+ * `makeTestAircraft`, `nextAircraftId`.
  *
- * Later: aircraft types, kinematics (phase 1).
+ * Later: kinematics (phase 1).
  *
  * Import rule: `@core` depends on nothing in `src/*` except itself.
  */
@@ -23,3 +24,5 @@ export { INSTRUCTION_TYPES } from "./command/instructions";
 export * from "./command/fixtures";
 export type { SessionEvent } from "./events/types";
 export { SessionLog } from "./events/session-log";
+export type { Aircraft, AircraftInit, Intent } from "./aircraft";
+export { createAircraft, makeTestAircraft, nextAircraftId } from "./aircraft";
