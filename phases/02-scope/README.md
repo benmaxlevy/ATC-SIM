@@ -481,14 +481,14 @@ Do not start phase 3 or 4 until every box is green. Phase 3 *may* overlap the ta
 Do not call the TCW pass done until:
 
 - [x] Video maps load from `video-maps/<ICAO>/` (T02-14).
-- [ ] No disclaimer banner / tutorial footer on the glass (T02-15).
+- [x] No disclaimer banner / tutorial footer on the glass (T02-15).
 - [x] DCB is a green cell grid, not an HTML toolbar (T02-16).
-- [ ] MAPS / RANGE / RR / LDR / CHAR SIZE / BRITE trainer subset (T02-17).
-- [ ] Position symbol + history contrast (T02-18).
-- [ ] FDB extra line + leader length (T02-19).
-- [ ] SSA on PPI; strips not a labeled right dock (T02-20).
-- [ ] T02-21 manual script: cheap STARS trainer, not a web HUD.
-- [ ] Still no WX mosaic, PREF, SHIFT, CSA, CRDA, FMA, OSM, STARS font.
+- [x] MAPS / RANGE / RR / LDR / CHAR SIZE / BRITE trainer subset (T02-17).
+- [x] Position symbol + history contrast (T02-18).
+- [x] FDB extra line + leader length (T02-19).
+- [x] SSA on PPI; strips not a labeled right dock (T02-20).
+- [ ] T02-21 manual script: cheap STARS trainer, not a web HUD. skip-with-reason: no visual operator; human not watching Chrome. Automated greps/tests prove chrome grammar; do not invent a visual pass.
+- [x] Still no WX mosaic, PREF, SHIFT, CSA, CRDA, FMA, OSM, STARS font.
 
 ## Launching an agent
 
