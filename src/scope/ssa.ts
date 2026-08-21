@@ -7,11 +7,7 @@
  * intent. Not NAS STARS.
  */
 
-import {
-  formatFilterReadout,
-  type AltitudeFilter,
-  type FilterEntry,
-} from "./altitudeFilter";
+import { formatFilterReadout, type AltitudeFilter, type FilterEntry } from "./altitudeFilter";
 import { formatDcbRangeReadout, type RangeNm } from "./camera";
 
 /** Constant altimeter stub. Not a live weather / METAR feed. */

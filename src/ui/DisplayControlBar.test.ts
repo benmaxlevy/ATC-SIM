@@ -166,9 +166,7 @@ test("cells sit on the PPI glass; canvas below pads the range circle", () => {
   expect(canvasSrc()).toMatch(/className="ppi-column"/);
   expect(canvasSrc()).toMatch(/header=\{<DisplayControlBar/);
   expect(placeholderSrc()).toMatch(/\{header\}/);
-  expect(placeholderSrc().indexOf("{header}")).toBeLessThan(
-    placeholderSrc().indexOf("<canvas"),
-  );
+  expect(placeholderSrc().indexOf("{header}")).toBeLessThan(placeholderSrc().indexOf("<canvas"));
   expect(DCB_HEIGHT_PX).toBe(36);
   expect(DCB_FONT_PX).toBe(11);
 

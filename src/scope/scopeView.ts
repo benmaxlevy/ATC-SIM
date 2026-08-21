@@ -34,11 +34,7 @@ import {
   type DcbSubmenu,
   type RrIntervalNm,
 } from "./dcbFunctions";
-import {
-  DEFAULT_CHAR_SIZE_PX,
-  DEFAULT_DATABLOCK_CELL_PX,
-  type CharSizePx,
-} from "./fonts";
+import { DEFAULT_CHAR_SIZE_PX, DEFAULT_DATABLOCK_CELL_PX, type CharSizePx } from "./fonts";
 import type { ScopeChord } from "./keymap";
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
 import { DEFAULT_MAP_BRITE_INDEX, type MapBriteIndex } from "./palette";

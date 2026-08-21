@@ -138,7 +138,8 @@ interface DcbCellProps {
   disabled?: boolean;
   onClick: () => void;
   dataDcbMap?: "rwy" | "loc" | "cst";
-  dataDcb?: "ptl" | "hist" | "range" | "maps" | "filter" | "rr" | "ldr" | "char" | "brite" | "place";
+  dataDcb?:
+    "ptl" | "hist" | "range" | "maps" | "filter" | "rr" | "ldr" | "char" | "brite" | "place";
   dataMapId?: string;
 }
 

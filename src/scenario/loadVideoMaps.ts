@@ -111,11 +111,7 @@ function parseFeature(value: unknown, path: string): VideoMapFeature {
 }
 
 /** Parse one `NNN-slug.json` video map. Catalog `id` must match the file. */
-export function parseVideoMapFile(
-  value: unknown,
-  expectedId: string,
-  path: string,
-): VideoMapFile {
+export function parseVideoMapFile(value: unknown, expectedId: string, path: string): VideoMapFile {
   if (!isRecord(value)) {
     throw new Error(`Video map ${path} must be an object`);
   }

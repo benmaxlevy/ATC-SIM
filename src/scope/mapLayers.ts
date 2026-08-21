@@ -251,7 +251,7 @@ function visibilityKey(
   maps: LoadedVideoMap[],
   visibility: ReadonlyMap<string, boolean> | undefined,
 ): string {
-  return maps.map((map) => (visibility?.get(map.id) ?? map.defaultOn ? "1" : "0")).join("");
+  return maps.map((map) => ((visibility?.get(map.id) ?? map.defaultOn) ? "1" : "0")).join("");
 }
 
 export function buildMapCacheKey(input: MapCacheInput): string {

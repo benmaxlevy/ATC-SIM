@@ -74,12 +74,7 @@ export {
 } from "./mapLayers";
 export type { DigitalMap, MapCache, MapLayerFlags, NmPoint } from "./mapLayers";
 export { renderScope } from "./renderScope";
-export {
-  SSA_ALTIMETER_STUB,
-  SSA_FUSED_STUB,
-  buildSsaLines,
-  formatSsaTime,
-} from "./ssa";
+export { SSA_ALTIMETER_STUB, SSA_FUSED_STUB, buildSsaLines, formatSsaTime } from "./ssa";
 export type { SsaInput } from "./ssa";
 export {
   DEFAULT_ALTITUDE_FILTER,

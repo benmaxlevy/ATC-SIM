@@ -17,7 +17,11 @@ import {
   pointInDatablock,
   type DatablockMode,
 } from "./datablock";
-import { DATABLOCK_LINE_HEIGHT_PX, DEFAULT_DATABLOCK_CELL_PX, datablockLineHeightPx } from "./fonts";
+import {
+  DATABLOCK_LINE_HEIGHT_PX,
+  DEFAULT_DATABLOCK_CELL_PX,
+  datablockLineHeightPx,
+} from "./fonts";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
 
 /** Frozen hit radius in CSS pixels (T01-11). Pixel-space so range presets stay stable. */

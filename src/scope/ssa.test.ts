@@ -1,15 +1,6 @@
 import { expect, test } from "vitest";
-import {
-  DEFAULT_ALTITUDE_FILTER,
-  idleFilterEntry,
-  type AltitudeFilter,
-} from "./altitudeFilter";
-import {
-  SSA_ALTIMETER_STUB,
-  SSA_FUSED_STUB,
-  buildSsaLines,
-  formatSsaTime,
-} from "./ssa";
+import { DEFAULT_ALTITUDE_FILTER, idleFilterEntry, type AltitudeFilter } from "./altitudeFilter";
+import { SSA_ALTIMETER_STUB, SSA_FUSED_STUB, buildSsaLines, formatSsaTime } from "./ssa";
 
 function lines(partial: Partial<Parameters<typeof buildSsaLines>[0]> = {}) {
   const filter = partial.filter ?? DEFAULT_ALTITUDE_FILTER;
@@ -24,13 +15,7 @@ function lines(partial: Partial<Parameters<typeof buildSsaLines>[0]> = {}) {
 
 test("AC1 — SSA block includes FILTER hundreds and RANGE; OFF CNTR only when panned", () => {
   const onAirport = lines({ simTimeMs: 125_000, rangeNm: 20, offCenter: false });
-  expect(onAirport).toEqual([
-    "0002/05",
-    "KDEM 29.92",
-    "FILTER 000-180",
-    "RANGE 20",
-    "OK",
-  ]);
+  expect(onAirport).toEqual(["0002/05", "KDEM 29.92", "FILTER 000-180", "RANGE 20", "OK"]);
   expect(onAirport).not.toContain("OFF CNTR");
 
   const filter: AltitudeFilter = { minHundreds: 50, maxHundreds: 100 };
