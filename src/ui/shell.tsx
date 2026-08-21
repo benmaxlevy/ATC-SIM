@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { Scenario } from "@scenario";
-import { PpiPlaceholder } from "@scope";
+import { PpiPlaceholder, handlePpiCanvasClick } from "@scope";
 import type { AppHandles } from "../app/create-app";
-import { CommandLine } from "./command-line";
+import { CommandLine, focusCommandLine } from "./command-line";
 import { Disclaimer } from "./disclaimer";
 import { submitCommand } from "./submitCommand";
 
@@ -17,7 +17,12 @@ export function Shell({ app, scenario }: ShellProps) {
   return (
     <div className="scope-shell" data-scenario={scenario.id} data-speech={app.speech.id}>
       <Disclaimer />
-      <PpiPlaceholder />
+      <PpiPlaceholder
+        onCanvasClick={(event) => {
+          handlePpiCanvasClick(event.currentTarget, app.world, event.clientX, event.clientY);
+          focusCommandLine();
+        }}
+      />
       <CommandLine
         readback={readback}
         onSubmit={(input) => {

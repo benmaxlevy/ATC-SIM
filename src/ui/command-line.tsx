@@ -1,8 +1,18 @@
 import { type FormEvent, useState } from "react";
 
+export const COMMAND_LINE_INPUT_ID = "command-line-input";
+
 export interface CommandLineProps {
   readback: string;
   onSubmit: (value: string) => void;
+}
+
+/** Return key focus after a PPI click so the next keys are a radio command. */
+export function focusCommandLine(): void {
+  const el = globalThis.document?.getElementById(COMMAND_LINE_INPUT_ID);
+  if (el instanceof HTMLInputElement) {
+    el.focus();
+  }
 }
 
 export function CommandLine({ readback, onSubmit }: CommandLineProps) {
@@ -20,6 +30,7 @@ export function CommandLine({ readback, onSubmit }: CommandLineProps) {
         {readback}
       </div>
       <input
+        id={COMMAND_LINE_INPUT_ID}
         type="text"
         autoFocus
         spellCheck={false}

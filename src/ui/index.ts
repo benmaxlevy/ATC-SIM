@@ -1,9 +1,11 @@
 /**
  * Public API for `@ui`.
  *
- * Legal now: Scope shell (disclaimer, empty PPI, command line). Enter runs
- * `submitCommand` → `handleRadioText` and shows the template readback. Text
- * submit bypasses SpeechPort (`Command.source` is `"text"`).
+ * Legal now: Scope shell (disclaimer, PPI, command line). Canvas click selects
+ * a track then focuses the command line. Enter runs `submitCommand` →
+ * `handleRadioText` and shows the template readback. Text submit bypasses
+ * SpeechPort (`Command.source` is `"text"`). Selection is a scope action and
+ * does not emit a readback.
  *
  * Later: strips, settings. The sim tick must never wait on React render.
  *

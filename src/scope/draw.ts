@@ -11,15 +11,15 @@ const BG = "#050708";
 const RING = "rgba(124, 255, 107, 0.28)";
 const AIRPORT = "rgba(124, 255, 107, 0.9)";
 const TICK = "#c8ffc0";
-const TICK_SELECTED = "#ffffff";
+const TICK_SELECTED = "#ffe14a";
 const CALLSIGN = "#d7ffe0";
 const IDENT_HALO = "rgba(180, 255, 170, 0.55)";
 
 const RING_INTERVAL_NM = 10;
 const AIRPORT_CROSS_PX = 6;
 const TICK_RADIUS_PX = 2.5;
-const SELECTED_TICK_RADIUS_PX = 4;
-const SELECTED_RING_RADIUS_PX = 7;
+const SELECTED_TICK_RADIUS_PX = 4.5;
+const SELECTED_RING_RADIUS_PX = 8;
 const IDENT_HALO_RADIUS_PX = 10;
 const CALLSIGN_OFFSET_X_PX = 8;
 const CALLSIGN_OFFSET_Y_PX = 4;
@@ -110,10 +110,11 @@ function drawTracks(
     }
 
     if (selected) {
+      // Selected tick is yellow vs unselected green so the pick is obvious (T01-11).
       ctx.beginPath();
       ctx.arc(p.x, p.y, SELECTED_RING_RADIUS_PX, 0, Math.PI * 2);
       ctx.strokeStyle = TICK_SELECTED;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 2;
       ctx.stroke();
     }
 

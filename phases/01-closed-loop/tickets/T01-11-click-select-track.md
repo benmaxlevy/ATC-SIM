@@ -61,12 +61,12 @@ Unit-test `pickAircraftAt` with two aircraft far apart and a click on one.
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** `pickAircraftAt` unit test: aircraft at known NM; click its projected pixel selects it; click 40 px away returns null.
+- [x] **AC1 —** `pickAircraftAt` unit test: aircraft at known NM; click its projected pixel selects it; click 40 px away returns null.
 - [ ] **AC2 —** **Manual:** click `DAL123` tick → visual highlight; command line focused.
 - [ ] **AC3 —** **Manual:** with DAL selected, type `H270` Enter → same accept/readback/turn as `DAL123 H270`.
 - [ ] **AC4 —** **Manual:** click empty canvas → highlight gone; `H270` then `unable` (no selection).
-- [ ] **AC5 —** Click does not append a readback by itself (status line unchanged until Enter).
-- [ ] **AC6 —** No intent change on select (unit: heading assigned unchanged after `pick` + `setSelectedAircraft`).
+- [x] **AC5 —** Click does not append a readback by itself (status line unchanged until Enter).
+- [x] **AC6 —** No intent change on select (unit: heading assigned unchanged after `pick` + `setSelectedAircraft`).
 
 ## Test plan
 

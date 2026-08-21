@@ -1,6 +1,7 @@
 import type { World } from "@core";
 import { DEFAULT_CAMERA, type Camera } from "./camera";
 import { drawPpi } from "./draw";
+import { selectAircraftAt } from "./pick";
 
 /**
  * Analog: CRC STARS display (docs.virtualnas.net/crc/stars).
@@ -23,6 +24,23 @@ export function fitCanvasToCss(
     canvas.height = pixelH;
   }
   return { cssWidth, cssHeight };
+}
+
+/**
+ * Canvas click → CSS pixels via `getBoundingClientRect` (not raw offsetX).
+ * Hit-test is 12 CSS px in pixel space. Scope action only: selection, no readback.
+ */
+export function handlePpiCanvasClick(
+  canvas: HTMLCanvasElement,
+  world: World,
+  clientX: number,
+  clientY: number,
+  cam: Camera = DEFAULT_CAMERA,
+): void {
+  const rect = canvas.getBoundingClientRect();
+  const cssX = clientX - rect.left;
+  const cssY = clientY - rect.top;
+  selectAircraftAt(world, cssX, cssY, cam, rect.width, rect.height);
 }
 
 /** Resize to device pixels, scale to CSS pixels, then draw rings / airport / tracks. */

@@ -28,7 +28,8 @@ export function createWorld(partial?: Partial<World>): World {
 
 /**
  * Select a living aircraft by `Aircraft.id`. Unknown ids clear selection
- * (set null) so a missing track cannot stay selected. Click hit-testing is T01-11.
+ * (set null) so a missing track cannot stay selected.
+ * Click hit-testing lives in `@scope` (`pickAircraftAt`).
  */
 export function setSelectedAircraft(world: World, id: string | null): void {
   if (id === null) {

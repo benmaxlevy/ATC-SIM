@@ -95,6 +95,25 @@ test("AC7 — shell calls submitCommand; command line clears after submit", () =
   expect(commandLine).toMatch(/setValue\(""\)/);
 });
 
+test("T01-11 — canvas click selects then focuses; it does not submit a radio command", () => {
+  const sources = import.meta.glob("./*.{ts,tsx}", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  const shell = sources["./shell.tsx"];
+  expect(shell).toBeDefined();
+  expect(shell).toMatch(/handlePpiCanvasClick/);
+  expect(shell).toMatch(/focusCommandLine/);
+  expect(shell).toMatch(/onCanvasClick/);
+  const clickHandler = shell!.slice(
+    shell!.indexOf("onCanvasClick"),
+    shell!.indexOf("/>", shell!.indexOf("onCanvasClick")),
+  );
+  expect(clickHandler).not.toMatch(/submitCommand/);
+  expect(clickHandler).not.toMatch(/setReadback/);
+});
+
 test("AC5 — shell still mounts disclaimer then command line at the bottom", () => {
   const sources = import.meta.glob("./*.{ts,tsx}", {
     query: "?raw",
