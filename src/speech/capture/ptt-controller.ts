@@ -62,7 +62,19 @@ function matchesPttKey(event: PttKeyEvent, pttKey: string): boolean {
   if (pttKey.length === 0) {
     return false;
   }
-  return event.key === pttKey || event.code === pttKey;
+  if (event.key === pttKey || event.code === pttKey) {
+    return true;
+  }
+  // Backtick is often `event.key === "Dead"` (US-International / many EU layouts).
+  if (pttKey === "`" || pttKey === "Backquote") {
+    return event.code === "Backquote" || event.key === "`" || event.key === "Dead";
+  }
+  return false;
+}
+
+/** Keys that cannot be held: Windows fires keyup immediately (dead key / lock). */
+export function pttKeyUsesLatch(pttKey: string): boolean {
+  return pttKey === "`" || pttKey === "Backquote" || pttKey === "CapsLock" || pttKey === "Dead";
 }
 
 function defaultNow(): number {
@@ -132,9 +144,10 @@ function defaultAttachTo(option: PttListenerTarget | null | undefined): PttListe
  * PTT capture: key-down arms the worklet, key-up emits a 16 kHz mono PCM16
  * {@link AudioClip} or empty. Never throws through the sim tick.
  *
- * Keyboard: matches `KeyboardEvent.key` (default "`"). Repeat keydown does not
- * restart capture. Text fields (`input` / `textarea` / contenteditable) are
- * ignored so the command line can type the bind.
+ * Keyboard: default bind is backtick. That key is a **latch** (press to start,
+ * press again to send) because Windows often fires keyup immediately (dead key).
+ * Hold-to-talk still applies to Control / Tab / Z. Repeat keydown does not
+ * restart capture. Text fields are ignored so the command line can type the bind.
  */
 export function createPttCaptureController(options: PttCaptureOptions): PttCaptureController {
   return new PttCaptureControllerImpl(options);
@@ -271,6 +284,11 @@ class PttCaptureControllerImpl implements PttCaptureController {
       this.emit({ type: "ignored-locked" });
       return;
     }
+    if (this.capturing && pttKeyUsesLatch(this.pttKeyValue)) {
+      this.pttHeld = false;
+      this.finishCapture();
+      return;
+    }
     if (this.pttHeld || this.capturing) {
       return;
     }
@@ -316,6 +334,12 @@ class PttCaptureControllerImpl implements PttCaptureController {
       return;
     }
     if (!matchesPttKey(event, this.pttKeyValue)) {
+      return;
+    }
+    // Latch binds (backtick / Caps Lock): keyup is spurious on dead-key layouts.
+    // Ending on keyup is what cut clips to one or two words.
+    if (pttKeyUsesLatch(this.pttKeyValue)) {
+      event.preventDefault();
       return;
     }
 

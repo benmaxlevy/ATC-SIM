@@ -80,7 +80,7 @@ test("default PTT bind is backtick, not Caps Lock", () => {
   controller.dispose();
 });
 
-test("hold and release PTT emits a 16 kHz mono PCM16 clip (AC1)", async () => {
+test("backtick is latch: keyup does not send; second keydown emits the clip", async () => {
   const { controller, events, fake, clock } = setup();
   await controller.handleKeyDown(key());
   expect(events).toEqual([{ type: "ptt-down" }]);
@@ -89,6 +89,10 @@ test("hold and release PTT emits a 16 kHz mono PCM16 clip (AC1)", async () => {
   fake.push(new Float32Array(48000).fill(0.25));
   clock.ms = 1000;
   await controller.handleKeyUp(key());
+  expect(events).toHaveLength(1);
+  expect(fake.armed).toBe(true);
+
+  await controller.handleKeyDown(key());
 
   expect(fake.armed).toBe(false);
   const up = events[1];
@@ -150,11 +154,11 @@ test("onEvent throw is swallowed so the tick would keep running (AC4)", async ()
   controller.dispose();
 });
 
-test("key-down and key-up under 80 ms with no samples is empty (AC5)", async () => {
+test("second backtick under 80 ms with no samples is empty (AC5)", async () => {
   const { controller, events, clock } = setup();
   await controller.handleKeyDown(key());
   clock.ms = EMPTY_CLIP_MS - 1;
-  await controller.handleKeyUp(key());
+  await controller.handleKeyDown(key());
   expect(events).toEqual([{ type: "ptt-down" }, { type: "ptt-up", result: { kind: "empty" } }]);
   controller.dispose();
 });
@@ -216,7 +220,26 @@ test("dispose stops the backend and ignores later keys", async () => {
   expect(events).toEqual([]);
 });
 
-test("releasing PTT before mic start completes does not queue a clip", async () => {
+test("Left Control is still hold-to-talk (keyup sends)", async () => {
+  const { controller, events, fake, clock } = setup();
+  controller.setPttKey("ControlLeft");
+  await controller.handleKeyDown(key({ key: "Control", code: "ControlLeft", ctrlKey: true }));
+  expect(events).toEqual([{ type: "ptt-down" }]);
+  fake.push(new Float32Array(4800).fill(0.1));
+  clock.ms = 200;
+  await controller.handleKeyUp(key({ key: "Control", code: "ControlLeft", ctrlKey: true }));
+  expect(events[1]?.type).toBe("ptt-up");
+  controller.dispose();
+});
+
+test("Dead + Backquote matches the default backtick bind", async () => {
+  const { controller, fake } = setup();
+  await controller.handleKeyDown(key({ key: "Dead", code: "Backquote" }));
+  expect(fake.startCalls).toBe(1);
+  controller.dispose();
+});
+
+test("latch keyup during mic start does not cancel capture", async () => {
   const fake = new FakeCaptureBackend();
   let release: () => void = () => undefined;
   fake.delayStart = new Promise<void>((resolve) => {
@@ -227,8 +250,8 @@ test("releasing PTT before mic start completes does not queue a clip", async () 
   await controller.handleKeyUp(key());
   release();
   await down;
-  expect(events).toEqual([]);
-  expect(fake.armed).toBe(false);
+  expect(events).toEqual([{ type: "ptt-down" }]);
+  expect(fake.armed).toBe(true);
   controller.dispose();
 });
 

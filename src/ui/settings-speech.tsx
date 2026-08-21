@@ -33,7 +33,7 @@ export const DEFAULT_BACKEND_HELP =
   "Default is http (our speech-api at 127.0.0.1:8090) when STT and TTS URLs are set. Web Speech is never auto-selected. Missing URLs use null; typed commands still work.";
 
 export const PTT_BIND_HELP =
-  "Default PTT is backtick. Ignored while a text field is focused. Does not steal F, R, or range keys.";
+  "Backtick is press to talk, press again to send (Windows treats ` as a dead key, so holding it cannot work). Left Control / Z are hold-to-talk. Ignored while a text field is focused. Does not steal F, R, or range keys.";
 
 export const SPEECH_SETTINGS_WAIT = "wait";
 
@@ -46,7 +46,7 @@ export interface PttBindOption {
 
 /** Dropdown only — no F / R / range digits. Default is backtick, not Caps Lock. */
 export const PTT_BIND_OPTIONS: readonly PttBindOption[] = [
-  { value: "`", label: "Backtick ` (default)" },
+  { value: "`", label: "Backtick ` (press, press again to send)" },
   { value: "CapsLock", label: "Caps Lock" },
   { value: "Tab", label: "Tab" },
   { value: "ControlLeft", label: "Left Control" },
