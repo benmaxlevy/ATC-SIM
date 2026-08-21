@@ -1,0 +1,31 @@
+{
+  "id": "KDEM",
+  "name": "Demo Field",
+  "icao": "KDEM",
+  "magVarDeg": 0,
+  "fieldElevFt": 0,
+  "arp": { "latDeg": 0, "lonDeg": 0 },
+  "activeRunwayId": "27",
+  "runways": [
+    {
+      "id": "27",
+      "headingTrueDeg": 270,
+      "headingMagDeg": 270,
+      "lengthFt": 10000,
+      "thresholdLatLon": { "latDeg": 0, "lonDeg": 0 }
+    }
+  ],
+  "approaches": [
+    { "id": "ILS27", "runwayId": "27", "type": "ILS" }
+  ],
+  "fixes": [],
+  "maps": { "videoMaps": [] },
+  "spawns": [
+    {
+      "id": "downwind",
+      "kind": "downwind",
+      "runwayId": "27",
+      "offsetNm": { "xNm": 0, "yNm": 8 }
+    }
+  ]
+}
