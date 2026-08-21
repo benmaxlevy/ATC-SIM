@@ -10,7 +10,8 @@ export const PALETTE = {
   map: "#00AA00",
   /** Range rings. */
   mapDim: "#006600",
-  unowned: "#DDDDDD",
+  /** Pale mint (T02-18). Not webpage grey `#DDDDDD`. Not red. */
+  unowned: "#B8E0D0",
   owned: "#00FF66",
   selected: "#FFFF00",
   uiChrome: "#9AA0A6",

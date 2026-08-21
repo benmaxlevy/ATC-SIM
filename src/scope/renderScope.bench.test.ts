@@ -19,10 +19,10 @@ import { syncTrackDisplays } from "./trackDisplay";
 const BENCH_WIDTH = 1280;
 const BENCH_HEIGHT = 800;
 const FRAME_COUNT = 60;
-/** Loose per-frame beginPath cap: 1 per track symbol + 1 per leader + map/chrome. */
-const BEGIN_PATH_BUDGET = 80;
-/** Two datablock lines per track, not per character, plus range/filter/runway. */
-const FILL_TEXT_BUDGET = 70;
+/** Loose per-frame beginPath cap: diamond + heading tick + leader per track + map/chrome. */
+const BEGIN_PATH_BUDGET = 120;
+/** Two datablock lines plus CSI stub per track, not per character, plus range/filter/runway. */
+const FILL_TEXT_BUDGET = 105;
 
 function createRecordingCtx(): {
   ctx: CanvasRenderingContext2D;

@@ -1,5 +1,5 @@
 ﻿import { expect, test } from "vitest";
-import { SIM_DT_S, createWorld, makeTestAircraft, stepWorld } from "@core";
+import { SessionLog, SIM_DT_S, createWorld, makeTestAircraft, stepWorld } from "@core";
 import { applyIntent } from "@pilot";
 import { createWorldFromScenario, loadKdem } from "@scenario";
 import { formatRangeReadout, nmToScreen } from "./camera";
@@ -15,6 +15,8 @@ import {
   TARGET_SIZE_PX,
   UNOWNED_TRACK_COLOR,
   HISTORY_DOT_SIZE_PX,
+  OWNERSHIP_STUB_FONT,
+  isTargetDiamondPath,
 } from "./targetSymbol";
 import { isIdentFlashing } from "./trackDisplay";
 import { DATABLOCK_FONT, DATABLOCK_FONT_PX } from "./fonts";
@@ -141,24 +143,39 @@ function createMockCtx(): {
   };
 }
 
-test("AC1 — six spawned arrivals get a 6×6 target at nmToScreen ±2 px", () => {
+function findTargetDiamonds(pathStrokes: PathStroke[], cx?: number, cy?: number): PathStroke[] {
+  return pathStrokes.filter((s) => {
+    if (s.points.length < 4) {
+      return false;
+    }
+    if (cx != null && cy != null) {
+      return isTargetDiamondPath(s.points, cx, cy);
+    }
+    const pts = s.points.slice(0, 4);
+    const cx0 = pts.reduce((sum, p) => sum + p.x, 0) / 4;
+    const cy0 = pts.reduce((sum, p) => sum + p.y, 0) / 4;
+    return isTargetDiamondPath(s.points, cx0, cy0, 0.5);
+  });
+}
+
+test("AC1 — six spawned arrivals get an 8 px diamond at nmToScreen ±2 px", () => {
   const world = createWorldFromScenario(loadKdem());
   expect(world.aircraft).toHaveLength(6);
   const view = createScopeView();
-  const { ctx, strokeRects, fillTexts } = createMockCtx();
+  const { ctx, pathStrokes, fillTexts } = createMockCtx();
   const css = 800;
   renderScope(ctx, world, view, css, css);
-  const targets = strokeRects.filter((r) => r.w === TARGET_SIZE_PX && r.h === TARGET_SIZE_PX);
+  const targets = findTargetDiamonds(pathStrokes);
   expect(targets).toHaveLength(6);
+  expect(TARGET_SIZE_PX).toBeGreaterThanOrEqual(6);
+  expect(fillTexts.filter((t) => t.text === "*" && t.font === OWNERSHIP_STUB_FONT)).toHaveLength(6);
   const size = { widthPx: css, heightPx: css };
   for (const ac of world.aircraft) {
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
-    const hit = targets.find(
-      (r) =>
-        Math.abs(r.x + TARGET_SIZE_PX / 2 - p.x) <= 2 &&
-        Math.abs(r.y + TARGET_SIZE_PX / 2 - p.y) <= 2,
-    );
+    const hit = findTargetDiamonds(pathStrokes, p.x, p.y)[0];
     expect(hit, ac.callsign).toBeDefined();
+    const stub = fillTexts.find((t) => t.text === "*" && t.font === OWNERSHIP_STUB_FONT);
+    expect(stub, `${ac.callsign} CSI stub`).toBeDefined();
     const block = formatFullDatablock(ac);
     const line1 = fillTexts.filter((t) => t.text === ac.callsign && t.font === DATABLOCK_FONT);
     expect(line1, ac.callsign).toHaveLength(1);
@@ -206,8 +223,8 @@ test("AC6 — IDENT stroke is yellow within 1 s and reverts by 3 s with one appl
   world.simTimeMs = 1000;
   renderScope(at1s.ctx, world, view, 800, 800);
   expect(isIdentFlashing(view.tracks.get(ac.id)!, 1000)).toBe(true);
-  const yellow = at1s.strokeRects.filter(
-    (r) => r.w === 6 && r.strokeStyle === SELECTED_ACCENT_COLOR,
+  const yellow = findTargetDiamonds(at1s.pathStrokes).filter(
+    (s) => s.strokeStyle === SELECTED_ACCENT_COLOR,
   );
   expect(yellow.length).toBeGreaterThanOrEqual(1);
 
@@ -215,10 +232,28 @@ test("AC6 — IDENT stroke is yellow within 1 s and reverts by 3 s with one appl
   world.simTimeMs = 3000;
   renderScope(at3s.ctx, world, view, 800, 800);
   expect(isIdentFlashing(view.tracks.get(ac.id)!, 3000)).toBe(false);
-  const stillYellow = at3s.strokeRects.filter(
-    (r) => r.w === 6 && r.strokeStyle === SELECTED_ACCENT_COLOR,
+  const stillYellow = findTargetDiamonds(at3s.pathStrokes).filter(
+    (s) => s.strokeStyle === SELECTED_ACCENT_COLOR,
   );
   expect(stillYellow).toHaveLength(0);
+});
+
+test("AC5 — drawing the PPI does not emit Command IR", () => {
+  const ac = makeTestAircraft({ id: "ac-ir", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  const log = new SessionLog();
+  renderScope(createMockCtx().ctx, world, view, 800, 800);
+  expect(log.byType("command.accepted")).toHaveLength(0);
+  expect(log.byType("command.rejected")).toHaveLength(0);
+  const sources = import.meta.glob("./{targetSymbol,history,renderScope,ownership}.ts", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  for (const [path, src] of Object.entries(sources)) {
+    expect(String(src), path).not.toMatch(/handleRadioText|parseCommand|command\.accepted/);
+  }
 });
 
 test("AC8 — scope comments/UI say target and history, not sprite or trail names", () => {
@@ -231,7 +266,10 @@ test("AC8 — scope comments/UI say target and history, not sprite or trail name
   expect(sources["./ppi-placeholder.tsx"]).toMatch(/aria-label="PPI"/);
   expect(sources["./history.ts"]).toMatch(/CRC STARS HISTORY/);
   expect(sources["./targetSymbol.ts"]).toMatch(/target/);
+  expect(sources["./targetSymbol.ts"]).toMatch(/diamond/);
+  expect(sources["./targetSymbol.ts"]).not.toMatch(/airplane sprite/);
   expect(sources["./renderScope.ts"]).toMatch(/history/);
+  expect(sources["./renderScope.ts"]).toMatch(/Not an airplane/);
   const uiBits = [sources["./ppi-placeholder.tsx"] ?? "", formatRangeReadout(20)];
   for (const text of uiBits) {
     expect(text.toLowerCase()).not.toMatch(/aria-label="[^"]*(sprite|trail)/);
@@ -443,9 +481,7 @@ test("AC4 — PTL is off by default; F7 on draws a ~1 min line per unfiltered tr
   renderScope(off.ctx, world, view, css, css);
   expect(view.ptlOn).toBe(false);
   expect(findPtlStroke(off.pathStrokes, ac, view, css)).toBeUndefined();
-  const targetsOff = off.strokeRects.filter(
-    (r) => r.w === TARGET_SIZE_PX && r.h === TARGET_SIZE_PX,
-  );
+  const targetsOff = findTargetDiamonds(off.pathStrokes);
   expect(targetsOff).toHaveLength(1);
 
   view.ptlOn = true;
@@ -455,7 +491,7 @@ test("AC4 — PTL is off by default; F7 on draws a ~1 min line per unfiltered tr
   expect(ptl).toBeDefined();
   expect(ptl!.strokeStyle).toBe(UNOWNED_TRACK_COLOR);
   expect(ptl!.lineWidth).toBe(1);
-  const targetsOn = on.strokeRects.filter((r) => r.w === TARGET_SIZE_PX && r.h === TARGET_SIZE_PX);
+  const targetsOn = findTargetDiamonds(on.pathStrokes);
   expect(targetsOn).toHaveLength(1);
 
   const traffic = createWorldFromScenario(loadKdem());
@@ -484,10 +520,10 @@ test("AC5 — altitude filter suppresses PTL; target symbol remains", () => {
   const view = createScopeView();
   view.ptlOn = true;
   view.altitudeFilter = { minHundreds: 70, maxHundreds: 90 };
-  const { ctx, pathStrokes, strokeRects, fillTexts } = createMockCtx();
+  const { ctx, pathStrokes, fillTexts } = createMockCtx();
   renderScope(ctx, world, view, 800, 800);
   expect(findPtlStroke(pathStrokes, ac, view, 800)).toBeUndefined();
-  const targets = strokeRects.filter((r) => r.w === TARGET_SIZE_PX && r.h === TARGET_SIZE_PX);
+  const targets = findTargetDiamonds(pathStrokes);
   expect(targets).toHaveLength(1);
   expect(fillTexts.some((t) => t.text === "LOW60")).toBe(false);
 });
@@ -516,10 +552,10 @@ test("AC2 — 6000 ft outside 070-090 keeps target+history, loses datablock; 800
   const world = createWorld({ aircraft: [low, inBand], selectedAircraftId: low.id });
   const view = createScopeView();
   view.altitudeFilter = { minHundreds: 70, maxHundreds: 90 };
-  const { ctx, fillTexts, strokeRects, fillRects } = createMockCtx();
+  const { ctx, fillTexts, strokeRects, fillRects, pathStrokes } = createMockCtx();
   renderScope(ctx, world, view, 800, 800);
 
-  const targets = strokeRects.filter((r) => r.w === TARGET_SIZE_PX && r.h === TARGET_SIZE_PX);
+  const targets = findTargetDiamonds(pathStrokes);
   expect(targets).toHaveLength(2);
   const history = fillRects.filter(
     (r) => r.w === HISTORY_DOT_SIZE_PX && r.h === HISTORY_DOT_SIZE_PX,
@@ -635,14 +671,14 @@ test("AC2 / AC7 — L6 leader points east; leader and datablock match target col
   const css = 800;
   renderScope(createMockCtx().ctx, world, view, css, css);
   view.tracks.get(ac.id)!.leaderDir = 6;
-  const { ctx, pathStrokes, fillTexts, strokeRects } = createMockCtx();
+  const { ctx, pathStrokes, fillTexts } = createMockCtx();
   renderScope(ctx, world, view, css, css);
   const p = nmToScreen(ac.xNm, ac.yNm, view.camera, { widthPx: css, heightPx: css });
   const leader = findLeaderStroke(pathStrokes, p.x, p.y, 6);
   expect(leader).toBeDefined();
   expect(leader!.points[1]!.x).toBeGreaterThan(p.x);
   expect(leader!.points[1]!.y).toBeCloseTo(p.y);
-  const target = strokeRects.find((r) => r.w === TARGET_SIZE_PX);
+  const target = findTargetDiamonds(pathStrokes, p.x, p.y)[0];
   expect(target).toBeDefined();
   expect(leader!.strokeStyle).toBe(target!.strokeStyle);
   const line1 = fillTexts.find((t) => t.text === "DAL123" && t.font === DATABLOCK_FONT);
@@ -705,13 +741,14 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
 
   const spawned = createMockCtx();
   renderScope(spawned.ctx, world, view, css, css);
-  const spawnedTargets = spawned.strokeRects.filter(
-    (r) => r.w === TARGET_SIZE_PX && r.h === TARGET_SIZE_PX,
-  );
+  const spawnedTargets = findTargetDiamonds(spawned.pathStrokes);
   expect(spawnedTargets).toHaveLength(2);
   expect(spawnedTargets.every((r) => r.strokeStyle === PALETTE.unowned)).toBe(true);
   expect(spawned.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.unowned);
   expect(spawned.fillTexts.find((t) => t.text === "AAL45")?.fillStyle).toBe(PALETTE.unowned);
+  expect(
+    spawned.fillTexts.filter((t) => t.text === "*" && t.font === OWNERSHIP_STUB_FONT),
+  ).toHaveLength(2);
   expect(spawned.strokeRects.filter((r) => r.w === SELECTION_BOX_PX)).toHaveLength(0);
 
   const noSelF3 = createMockCtx();
@@ -726,23 +763,19 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   renderScope(owned.ctx, world, view, css, css);
   const dalP = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: css, heightPx: css });
   const aalP = nmToScreen(aal.xNm, aal.yNm, view.camera, { widthPx: css, heightPx: css });
-  const dalTarget = owned.strokeRects.find(
-    (r) =>
-      r.w === TARGET_SIZE_PX &&
-      Math.abs(r.x + TARGET_SIZE_PX / 2 - dalP.x) <= 2 &&
-      Math.abs(r.y + TARGET_SIZE_PX / 2 - dalP.y) <= 2,
-  );
-  const aalTarget = owned.strokeRects.find(
-    (r) =>
-      r.w === TARGET_SIZE_PX &&
-      Math.abs(r.x + TARGET_SIZE_PX / 2 - aalP.x) <= 2 &&
-      Math.abs(r.y + TARGET_SIZE_PX / 2 - aalP.y) <= 2,
-  );
+  const dalTarget = findTargetDiamonds(owned.pathStrokes, dalP.x, dalP.y)[0];
+  const aalTarget = findTargetDiamonds(owned.pathStrokes, aalP.x, aalP.y)[0];
   expect(dalTarget?.strokeStyle).toBe(PALETTE.owned);
   expect(aalTarget?.strokeStyle).toBe(PALETTE.unowned);
   expect(owned.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
   expect(owned.fillTexts.find((t) => t.text === "030  210")?.fillStyle).toBe(PALETTE.owned);
   expect(owned.fillTexts.find((t) => t.text === "AAL45")?.fillStyle).toBe(PALETTE.unowned);
+  expect(
+    owned.fillTexts.filter((t) => t.text === "G" && t.font === OWNERSHIP_STUB_FONT),
+  ).toHaveLength(1);
+  expect(
+    owned.fillTexts.filter((t) => t.text === "*" && t.font === OWNERSHIP_STUB_FONT),
+  ).toHaveLength(1);
   const selBoxes = owned.strokeRects.filter(
     (r) => r.w === SELECTION_BOX_PX && r.h === SELECTION_BOX_PX,
   );
@@ -761,13 +794,12 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   const dropped = createMockCtx();
   renderScope(dropped.ctx, world, view, css, css);
   expect(dropped.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.unowned);
-  const droppedTarget = dropped.strokeRects.find(
-    (r) =>
-      r.w === TARGET_SIZE_PX &&
-      Math.abs(r.x + TARGET_SIZE_PX / 2 - dalP.x) <= 2 &&
-      Math.abs(r.y + TARGET_SIZE_PX / 2 - dalP.y) <= 2,
-  );
+  const droppedTarget = findTargetDiamonds(dropped.pathStrokes, dalP.x, dalP.y)[0];
   expect(droppedTarget?.strokeStyle).toBe(PALETTE.unowned);
+  expect(
+    dropped.fillTexts.filter((t) => t.text === "*" && t.font === OWNERSHIP_STUB_FONT),
+  ).toHaveLength(2);
+  expect(dropped.fillTexts.filter((t) => t.text === "G")).toHaveLength(0);
   expect(
     dropped.strokeRects.filter(
       (r) => r.w === SELECTION_BOX_PX && r.strokeStyle === SELECTED_ACCENT_COLOR,

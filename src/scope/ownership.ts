@@ -5,7 +5,7 @@
  * turn white. VATSIMism: auto-associate only if callsign matches the plan —
  * we do not copy that.
  *
- * Trainer delta: F3 is a color stub only (unowned white → owned green). No
+ * Trainer delta: F3 is a color stub only (unowned pale mint → owned green). No
  * NAS associate, no second facility, no beacon pairing. Selection is a
  * yellow box, independent of ownership. F3 is initiate track, not browser
  * find. F4 drop is trainer sugar, not STARS terminate / TERM CNTL. Not NAS
@@ -35,4 +35,13 @@ export function applyDropTrack(_current: TrackOwnership): TrackOwnership {
 
 export function trackPaintColor(ownership: TrackOwnership): string {
   return ownership === "owned" ? PALETTE.owned : PALETTE.unowned;
+}
+
+/**
+ * CSI-like one-char stub in/near the position symbol. Trainer sugar, not a
+ * real NAS CSI field. `*` unowned; `G` after F3. Selected uses the yellow box,
+ * not a third letter. F4 returns `*`.
+ */
+export function ownershipStubChar(ownership: TrackOwnership): "*" | "G" {
+  return ownership === "owned" ? "G" : "*";
 }

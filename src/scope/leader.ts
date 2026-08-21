@@ -39,9 +39,9 @@ export const LEADER_BLOCK_GAP_PX = 2;
 
 /**
  * L5 overlay: datablock top-left relative to symbol center. 4 px east + south
- * so the 6 px symbol stays visible (length 0, no leader stroke).
+ * so the 8 px diamond stays visible (length 0, no leader stroke).
  */
-export const L5_OVERLAY_GAP_PX = 4;
+export const L5_OVERLAY_GAP_PX = 6;
 
 export interface DatablockMetrics {
   widthPx: number;
@@ -79,7 +79,7 @@ export function leaderOffsetPx(dir: LeaderDir): { dx: number; dy: number } {
 }
 
 /**
- * Leader start on the 6×6 symbol edge (not through the fill), or null for L5.
+ * Leader start on the diamond edge (not through the fill), or null for L5.
  */
 export function leaderStartOffsetPx(dir: LeaderDir): { dx: number; dy: number } | null {
   if (dir === 5) {

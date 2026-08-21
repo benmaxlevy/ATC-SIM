@@ -4,15 +4,16 @@
  * (R02). FOA STARS altitude filters (R05).
  * Trainer delta: Canvas2D north-up; digital map from KDEM JSON (runway,
  * localizer feather, range rings, optional coastline); circular clip;
- * **target** square + optional **history** dots (5 s sim / 5 dots, no phosphor);
+ * **target** diamond + optional **history** dots (5 s sim / 5 dots, no phosphor);
  * full/limited **datablock** in IBM Plex Mono (not a STARS face); L1–L9 **leader**
  * (pixel-constant 24 CSS px, no length menu); **predicted track line** (PTL) straight 1.0 min
  * GS along ground track, default off, F7; CRC may offer extra minute
  * presets / turn curves — we do not. Extra CRC presets omitted.
  * **Altitude filter** (FILTER readout): out of band keep target + history,
  * suppress datablock / leader / PTL. F3 initiate-track color stub (unowned
- * white / owned green); selected yellow box independent of ownership.
- * Not OSM / tiles (R12). Not a sprite. Not a label. Not NAS STARS.
+ * pale mint / owned green, CSI-like `*` / `G`); selected yellow box independent
+ * of ownership. Not OSM / tiles (R12). Not a sprite. Not an airplane. Not a
+ * label. Not NAS STARS.
  *
  * Draw order (phase README): background, rings, coastline, runway, localizer,
  * history, PTL, targets, leader lines, datablocks, selection box. Maps rebuild
@@ -33,7 +34,7 @@ import { reuseOrBuildMapCache, toMapCacheInput, type MapCache } from "./mapLayer
 import { PALETTE } from "./palette";
 import { PTL_MINUTES, drawPredictedTrackLine, ptlEndpoint, shouldDrawPtl } from "./ptl";
 import type { ScopeView } from "./scopeView";
-import { trackPaintColor } from "./ownership";
+import { trackPaintColor, type TrackOwnership } from "./ownership";
 import {
   drawHistoryDot,
   drawSelectionBox,
@@ -236,7 +237,9 @@ function drawTracks(
   for (const ac of world.aircraft) {
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
     const color = trackColor(view, world, ac);
-    drawTargetSymbol(ctx, p.x, p.y, ac.headingDeg, color);
+    const td = view.tracks.get(ac.id);
+    const ownership: TrackOwnership = td?.ownership ?? "unowned";
+    drawTargetSymbol(ctx, p.x, p.y, ac.headingDeg, color, ownership);
   }
 
   ctx.font = DATABLOCK_FONT;

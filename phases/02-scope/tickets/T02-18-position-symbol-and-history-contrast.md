@@ -42,17 +42,17 @@ Read **R07** (target / history), **R12** (no sprites).
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Symbol is not a 1–2 px dot; unit test or render test asserts size ≥ 6 px.
-- [ ] **AC2 —** Unowned vs F3-owned letter (or equivalent) differs; F4 returns unowned.
-- [ ] **AC3 —** `PALETTE.unowned` is no longer `#DDDDDD`; README palette table matches.
-- [ ] **AC4 —** History length still 5; dots use track color family (not independent grey).
-- [ ] **AC5 —** IDENT flash still works. No Command IR from drawing.
-- [ ] **AC6 — Research:** target/history comments; no sprite/airplane.
+- [x] **AC1 —** Symbol is not a 1–2 px dot; unit test or render test asserts size ≥ 6 px.
+- [x] **AC2 —** Unowned vs F3-owned letter (or equivalent) differs; F4 returns unowned.
+- [x] **AC3 —** `PALETTE.unowned` is no longer `#DDDDDD`; README palette table matches.
+- [x] **AC4 —** History length still 5; dots use track color family (not independent grey).
+- [x] **AC5 —** IDENT flash still works. No Command IR from drawing.
+- [x] **AC6 — Research:** target/history comments; no sprite/airplane.
 
 ## Test plan
 
 - Unit: symbol metrics, ownership letter, palette hex, history buffer.
-- Manual: contrast on black PPI at 20 NM.
+- Manual: contrast on black PPI at 20 NM. skip-with-reason: swarm leaf; no GPU/visual operator; live Chrome Windows PPI not watched. Automated tests prove size, CSI stub, palette, history family, IDENT, and no Command IR from drawing.
 
 ## Suggested files
 

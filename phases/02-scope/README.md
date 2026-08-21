@@ -171,7 +171,7 @@ STARS-like, not a screenshot clone. **No red in phase 2** (alerts are phase 4).
 | Background | `#000000` | PPI fill |
 | Map | `#00AA00` | Runway, loc feather, coastline |
 | Map dim | `#006600` | Range rings |
-| Unowned track + block | `#DDDDDD` | Default after spawn |
+| Unowned track + block | `#B8E0D0` | Default after spawn (T02-18 pale mint, not webpage grey) |
 | Owned track + block | `#00FF66` | After F3 |
 | Selected accent | `#FFFF00` | Selection box / brighter leader; not “emergency” |
 | History | 40–70% of track color | Dots |

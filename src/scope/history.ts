@@ -1,7 +1,8 @@
 /**
  * Analog: CRC STARS HISTORY (docs.virtualnas.net/crc/stars — R07).
- * Trainer delta: analog CRC history; we sample 5 s sim / 5 dots, no phosphor.
- * Discrete **history** dots, not a trail. Not NAS STARS.
+ * Trainer delta: analog CRC **history**; we sample 5 s sim / 5 dots, no phosphor
+ * fade and no connected snake. Discrete 2–3 px dots in the track color family
+ * (40–70% brightness), not a trail, not an independent grey. Not NAS STARS.
  */
 
 export const HISTORY_SAMPLE_MS = 5000;

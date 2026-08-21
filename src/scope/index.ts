@@ -4,7 +4,7 @@
  * Legal now: Canvas2D north-up PPI with discrete range 5–60 NM, view center,
  * `nmToScreen` / `screenToNm`, always-on Page/Home/End/F7/F8/wheel, click pick,
  * KDEM digital map (runway, localizer feather, range rings, optional coastline),
- * target square + history dots (F8 / scope-focus H), full/limited datablocks
+ * target diamond + history dots (F8 / scope-focus H), full/limited datablocks
  * (scope-focus T / M; Mode C hundreds + assigned + GS), predicted track line
  * (PTL, F7 always-on, default off), L1–L9 **leader** lines (scope-focus `L`
  * then 1–9; pixel-constant 24 CSS px; no length menu), altitude filter
@@ -143,8 +143,10 @@ export {
 export type { HistoryBuf } from "./history";
 export {
   HEADING_TICK_PX,
+  HISTORY_DOT_SIZE_PX,
   OWNED_TRACK_COLOR,
   SELECTION_BOX_PAD_PX,
+  TARGET_SHAPE,
   TARGET_SIZE_PX,
   UNOWNED_TRACK_COLOR,
   drawHistoryDot,
@@ -176,6 +178,7 @@ export {
   NO_SEL_HINT,
   applyDropTrack,
   applyInitiateTrack,
+  ownershipStubChar,
   trackPaintColor,
 } from "./ownership";
 export type { TrackOwnership } from "./ownership";

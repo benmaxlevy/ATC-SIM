@@ -6,6 +6,7 @@ import {
   INITIATE_TRACK_HELP,
   applyDropTrack,
   applyInitiateTrack,
+  ownershipStubChar,
   trackPaintColor,
 } from "./ownership";
 import { PALETTE } from "./palette";
@@ -23,7 +24,14 @@ test("AC1 — ownership reducer: F3 owns, F4 drops, already-owned F3 stays owned
   expect(applyDropTrack("unowned")).toBe("unowned");
 });
 
-test("spawned tracks are unowned white; F3 paints only the selected track owned green", () => {
+test("AC2 — CSI-like stub is * unowned and G after F3; F4 returns *", () => {
+  expect(ownershipStubChar("unowned")).toBe("*");
+  expect(ownershipStubChar("owned")).toBe("G");
+  expect(ownershipStubChar(applyInitiateTrack("unowned"))).toBe("G");
+  expect(ownershipStubChar(applyDropTrack("owned"))).toBe("*");
+});
+
+test("spawned tracks are unowned pale mint; F3 paints only the selected track owned green", () => {
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
   const aal = makeTestAircraft({ id: "ac-aal", callsign: "AAL45" });
   const world = createWorld({ aircraft: [dal, aal] });
@@ -33,7 +41,8 @@ test("spawned tracks are unowned white; F3 paints only the selected track owned 
   expect(tracks.get("ac-aal")!.ownership).toBe("unowned");
   expect(trackPaintColor("unowned")).toBe(PALETTE.unowned);
   expect(trackPaintColor("owned")).toBe(PALETTE.owned);
-  expect(PALETTE.unowned).toBe("#DDDDDD");
+  expect(PALETTE.unowned).toBe("#B8E0D0");
+  expect(PALETTE.unowned.toUpperCase()).not.toBe("#DDDDDD");
   expect(PALETTE.owned).toBe("#00FF66");
 
   const noSel = applyInitiateTrackToSelection(tracks, world);
