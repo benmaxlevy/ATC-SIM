@@ -2,7 +2,7 @@
  * Public API for `@ui`.
  *
  * Legal now: Scope shell (disclaimer, PPI, flight-strip bay, command line,
- * pause / 1× / 2×). Canvas click selects a track and focuses the PPI (scope
+ * pause / 1× / 2×, F1 help overlay). Canvas click selects a track and focuses the PPI (scope
  * keys). Strip click selects the same track and focuses the PPI. Enter runs
  * `submitCommand` → `handleRadioText` and shows the template readback. Text
  * submit bypasses SpeechPort (`Command.source` is `"text"`). Selection is a
@@ -15,6 +15,7 @@
  * import `@ui`.
  */
 export { Shell, Shell as App } from "./shell";
+export { ScopeHelpOverlay } from "./ScopeHelpOverlay";
 export { FlightStrips, focusPpi, syncStripCallsignColors } from "./FlightStrips";
 export {
   STRIP_BAY_EMPTY,

@@ -63,14 +63,20 @@ Chrome: F1 default help — preventDefault on app root.
 ## Acceptance criteria
 
 - [ ] **AC1 —** F1 toggles overlay; second F1 closes; sim aircraft continue to move while open. **Manual** for motion; unit for toggle flag.
-- [ ] **AC2 —** Overlay contains the exact string `TRAINER KEYS — NOT CRC` and lists PageUp/PageDown, Home, End, F3, F4, F7, F8, L1–L9, T, M, F filter, Tab.
-- [ ] **AC3 —** Automated: exported bindings include `focus: "always"` for PageUp and F3, `focus: "scope"` for leader and `T`.
-- [ ] **AC4 —** Automated: radio-focus `L090` (or equivalent event sequence) calls parser, does not change `leaderDir`.
-- [ ] **AC5 —** Automated: scope-focus `L` then `6` changes leader, parser spy call count 0.
-- [ ] **AC6 —** Automated: radio-focus `PageUp` does not add text to the command buffer and does change range.
+- [x] **AC2 —** Overlay contains the exact string `TRAINER KEYS — NOT CRC` and lists PageUp/PageDown, Home, End, F3, F4, F7, F8, L1–L9, T, M, F filter, Tab.
+- [x] **AC3 —** Automated: exported bindings include `focus: "always"` for PageUp and F3, `focus: "scope"` for leader and `T`.
+- [x] **AC4 —** Automated: radio-focus `L090` (or equivalent event sequence) calls parser, does not change `leaderDir`.
+- [x] **AC5 —** Automated: scope-focus `L` then `6` changes leader, parser spy call count 0.
+- [x] **AC6 —** Automated: radio-focus `PageUp` does not add text to the command buffer and does change range.
 - [ ] **AC7 —** F1 does not open Chrome’s browser help. **Manual.**
-- [ ] **AC8 —** Help copy says radio commands stay on the command line and never come from scope keys.
-- [ ] **AC9 — Research:** Overlay uses glossary terms (range, datablock, leader, initiate track) and at least one “CRC analog → our key” row. No pasted CRC-only cheat sheet.
+- [x] **AC8 —** Help copy says radio commands stay on the command line and never come from scope keys.
+- [x] **AC9 — Research:** Overlay uses glossary terms (range, datablock, leader, initiate track) and at least one “CRC analog → our key” row. No pasted CRC-only cheat sheet.
+
+## Notes
+
+AC1 skip-with-reason (Manual motion): unit test proves F1 toggles `helpOpen` without pausing and `stepWorld` still advances; live aircraft motion on the PPI while the overlay is open was not watched (human asleep). Re-check in Chrome at 1080p.
+
+AC7 skip-with-reason: Chrome F1 browser-help UI cannot be verified while the human is asleep. `preventDefault` is asserted on F1 (window capture + command line). Re-check in Chrome that F1 does not open browser help.
 
 ## Test plan
 

@@ -253,3 +253,82 @@ body,
   font-size: 12px;
   letter-spacing: 0.04em;
 }
+
+.scope-help-overlay {
+  position: absolute;
+  inset: 12px;
+  z-index: 6;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.scope-help-panel {
+  pointer-events: auto;
+  user-select: text;
+  max-width: 760px;
+  max-height: 100%;
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 12px 16px 14px;
+  background: rgba(17, 17, 17, 0.94);
+  color: #9aa0a6;
+  border: 1px solid #2a3544;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.scope-help-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9aa0a6;
+}
+
+.scope-help-glossary,
+.scope-help-radio {
+  margin: 0 0 10px;
+}
+
+.scope-help-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 12px;
+}
+
+.scope-help-table caption {
+  caption-side: top;
+  text-align: left;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #00aa00;
+  padding: 0 0 4px;
+}
+
+.scope-help-table th,
+.scope-help-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 3px 8px 3px 0;
+  font-weight: 400;
+}
+
+.scope-help-key {
+  color: #dddddd;
+  white-space: nowrap;
+}
+
+.scope-help-arrow {
+  color: #00aa00;
+  padding-right: 8px;
+}
+
+.scope-help-footer {
+  margin: 8px 0 0;
+  color: #00ff66;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}

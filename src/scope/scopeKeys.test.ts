@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vitest";
-import { SessionLog, createWorld, makeTestAircraft } from "@core";
+import { SessionLog, createWorld, makeTestAircraft, stepWorld } from "@core";
 import { handleRadioText } from "@pilot";
 import { parseRadioText } from "@parse";
 import {
@@ -21,9 +21,10 @@ function keyEvent(key: string) {
   };
 }
 
-test("always-on keys are PageUp, PageDown, Home, End, F3, F4, F7, F8; H/T/M/F/L are not always-on", () => {
+test("always-on keys are PageUp, PageDown, Home, End, F1, F3, F4, F7, F8; H/T/M/F/L/Tab are not camera keys", () => {
   expect(isAlwaysOnScopeKey("PageUp")).toBe(true);
   expect(isAlwaysOnScopeKey("Home")).toBe(true);
+  expect(isAlwaysOnScopeKey("F1")).toBe(true);
   expect(isAlwaysOnScopeKey("F3")).toBe(true);
   expect(isAlwaysOnScopeKey("F4")).toBe(true);
   expect(isAlwaysOnScopeKey("F7")).toBe(true);
@@ -35,6 +36,8 @@ test("always-on keys are PageUp, PageDown, Home, End, F3, F4, F7, F8; H/T/M/F/L 
   expect(isAlwaysOnScopeKey("M")).toBe(false);
   expect(isAlwaysOnScopeKey("F")).toBe(false);
   expect(isAlwaysOnScopeKey("L")).toBe(false);
+  expect(isAlwaysOnScopeKey("Tab")).toBe(false);
+  expect(isAlwaysOnScopeKey("/")).toBe(false);
 });
 
 test("AC2 — PageUp five times from 20 NM is 5 NM; center unchanged", () => {
@@ -164,7 +167,7 @@ test("AC3 / AC4 — PTL defaults off; F7 toggles in both foci and does not inser
   expect(view.ptlOn).toBe(true);
 });
 
-test("AC3 — command line preventDefault includes F7 so radio focus cannot insert a character", () => {
+test("AC3 — command line preventDefault includes F1 and F7 so radio focus cannot insert a character", () => {
   const sources = import.meta.glob("../ui/*.{ts,tsx}", {
     query: "?raw",
     import: "default",
@@ -172,6 +175,7 @@ test("AC3 — command line preventDefault includes F7 so radio focus cannot inse
   }) as Record<string, string>;
   const commandLine = sources["../ui/command-line.tsx"];
   expect(commandLine).toBeDefined();
+  expect(commandLine).toMatch(/event\.key === "F1"/);
   expect(commandLine).toMatch(/event\.key === "F3"/);
   expect(commandLine).toMatch(/event\.key === "F4"/);
   expect(commandLine).toMatch(/event\.key === "F7"/);
@@ -645,4 +649,82 @@ test("AC6 / AC7 — F3/F4 always-on preventDefault, never emit Command IR, ignor
   expect(dal.intent.assignedHeadingDeg).toBe(270);
   expect(view.tracks.get("ac-dal")!.ownership).toBe("owned");
   expect(log.byType("command.accepted")).toHaveLength(1);
+});
+
+test("AC1 — F1 toggles help overlay; second F1 closes; stepWorld still advances", () => {
+  const ac = makeTestAircraft({
+    id: "ac-dal",
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 90,
+    speedKt: 210,
+  });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  expect(view.helpOpen).toBe(false);
+  expect(world.paused).toBe(false);
+
+  const first = keyEvent("F1");
+  expect(handleScopeKeyDown(first, view, "radio", world)).toBe(true);
+  expect(first.preventDefault).toHaveBeenCalled();
+  expect(first.stopPropagation).toHaveBeenCalled();
+  expect(view.helpOpen).toBe(true);
+  expect(world.paused).toBe(false);
+
+  const xBefore = ac.xNm;
+  stepWorld(world, 1);
+  expect(world.paused).toBe(false);
+  expect(world.simTimeMs).toBe(1000);
+  expect(ac.xNm).toBeGreaterThan(xBefore);
+
+  const second = keyEvent("F1");
+  expect(handleScopeKeyDown(second, view, "scope", world)).toBe(true);
+  expect(second.preventDefault).toHaveBeenCalled();
+  expect(view.helpOpen).toBe(false);
+});
+
+test("Tab cycles focus in both foci; does not steal Tab from help overlay", () => {
+  const view = createScopeView();
+  const cycleFocus = vi.fn();
+
+  const radioTab = keyEvent("Tab");
+  expect(handleScopeKeyDown(radioTab, view, "radio", undefined, 0, { cycleFocus })).toBe(true);
+  expect(radioTab.preventDefault).toHaveBeenCalled();
+  expect(radioTab.stopPropagation).toHaveBeenCalled();
+  expect(cycleFocus).toHaveBeenCalledTimes(1);
+
+  const scopeTab = keyEvent("Tab");
+  expect(handleScopeKeyDown(scopeTab, view, "scope", undefined, 0, { cycleFocus })).toBe(true);
+  expect(cycleFocus).toHaveBeenCalledTimes(2);
+
+  const overlayTab = keyEvent("Tab");
+  expect(
+    handleScopeKeyDown(overlayTab, view, "radio", undefined, 0, {
+      cycleFocus,
+      helpOverlayHasFocus: true,
+    }),
+  ).toBe(false);
+  expect(overlayTab.preventDefault).not.toHaveBeenCalled();
+  expect(cycleFocus).toHaveBeenCalledTimes(2);
+});
+
+test("slash focuses radio only when scope-focused and preventDefault", () => {
+  const view = createScopeView();
+  const focusRadio = vi.fn();
+  const parseSpy = vi.fn();
+
+  const scopeSlash = keyEvent("/");
+  expect(handleScopeKeyDown(scopeSlash, view, "scope", undefined, 0, { focusRadio })).toBe(true);
+  expect(scopeSlash.preventDefault).toHaveBeenCalled();
+  expect(scopeSlash.stopPropagation).toHaveBeenCalled();
+  expect(focusRadio).toHaveBeenCalledTimes(1);
+
+  const radioSlash = keyEvent("/");
+  expect(handleScopeKeyDown(radioSlash, view, "radio", undefined, 0, { focusRadio })).toBe(false);
+  expect(radioSlash.preventDefault).not.toHaveBeenCalled();
+  expect(focusRadio).toHaveBeenCalledTimes(1);
+  if (radioSlash.preventDefault.mock.calls.length === 0) {
+    parseSpy("/");
+  }
+  expect(parseSpy).toHaveBeenCalledWith("/");
 });

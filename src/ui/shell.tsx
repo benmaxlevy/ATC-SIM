@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PointerEvent, WheelEvent } from "react";
 import type { Scenario } from "@scenario";
 import {
@@ -10,14 +10,18 @@ import {
   handleScopeWheel,
   DROP_TRACK_HELP,
   INITIATE_TRACK_HELP,
+  installAlwaysOnScopeKeys,
+  scopeFocusFromDocument,
+  focusRadioCommandLine,
   type ScopeView,
 } from "@scope";
 import type { AppHandles } from "../app/create-app";
 import { CommandLine } from "./command-line";
 import { Disclaimer } from "./disclaimer";
-import { FlightStrips } from "./FlightStrips";
+import { FlightStrips, focusPpi } from "./FlightStrips";
 import { FpsDebug } from "./FpsDebug";
 import { isFpsDebugEnabled } from "./fpsHud";
+import { ScopeHelpOverlay } from "./ScopeHelpOverlay";
 import { SimControls } from "./sim-controls";
 import { submitCommand } from "./submitCommand";
 
@@ -36,6 +40,20 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   function refreshScopeUi(): void {
     setScopeUiTick((n) => n + 1);
   }
+
+  useEffect(() => {
+    return installAlwaysOnScopeKeys(scopeView, app.world, {
+      onHandled: () => setScopeUiTick((n) => n + 1),
+      focusRadio: focusRadioCommandLine,
+      cycleFocus() {
+        if (scopeFocusFromDocument(document) === "scope") {
+          focusRadioCommandLine();
+        } else {
+          focusPpi();
+        }
+      },
+    });
+  }, [scopeView, app.world]);
 
   const fpsDebug = typeof window !== "undefined" && isFpsDebugEnabled(window.location.search);
 
@@ -91,6 +109,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           onCanvasContextMenu={(event) => event.preventDefault()}
         >
           {fpsDebug ? <FpsDebug /> : null}
+          <ScopeHelpOverlay open={scopeView.helpOpen} />
         </PpiPlaceholder>
         <FlightStrips
           world={app.world}

@@ -2,13 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { advanceWorld, createAccumulator } from "@core";
 import { createWorldForSession, loadKdem, parseTrafficCount } from "@scenario";
-import {
-  PpiPlaceholderId,
-  createScopeView,
-  installAlwaysOnScopeKeys,
-  paintPpi,
-  parseDigitalMap,
-} from "@scope";
+import { PpiPlaceholderId, createScopeView, paintPpi, parseDigitalMap } from "@scope";
 import { NullSpeechPort } from "@speech";
 import {
   FPS_DEBUG_ID,
@@ -33,7 +27,6 @@ bootSession(handles, kdem, Date.now());
 const scopeView = createScopeView(kdem.arpNm.xNm, kdem.arpNm.yNm, {
   digitalMap: parseDigitalMap(kdem.maps),
 });
-installAlwaysOnScopeKeys(scopeView, handles.world);
 
 document.title = "ATC-SIM — KDEM";
 

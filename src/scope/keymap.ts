@@ -1,11 +1,209 @@
 /**
- * Analog: CRC STARS letter chords — L **leader**, F **altitude filter**
- * (docs.virtualnas.net/crc/stars — R07).
- * Trainer delta: 1.5 s window; leftover digits never go to the parser; no
- * leader-length menu. `F` is scope-focus only — never always-on (radio `F`
- * stays a command-line character). Inject `nowMs` in tests. T02-09 will
- * export the help-overlay table from this module. Not NAS STARS.
+ * Analog: CRC STARS keyboard / DCB (docs.virtualnas.net/crc/stars — R07).
+ * CRC F1 = hold for beacon-code readout; F3 = INIT CNTL initiate track;
+ * L1–L9 = leader direction; DCB RANGE spinner; PTL OWN/ALL; `/` = leader
+ * length. vice (R08) is typed-radio feel, not this map.
+ * Trainer delta: exported Windows subset only — F1 is help, F3 is color
+ * stub, PageUp/Down range presets 5–60 (no CRC 6/8/12/16/24), `/` when
+ * scope-focused focuses the command line (not leader length). 1.5 s L/F
+ * chord window; leftover digits never go to the parser; no leader-length menu. `F` is scope-focus only. Inject `nowMs` in tests. Not NAS STARS.
  */
+
+export type KeyFocus = "always" | "scope";
+
+export interface KeyBinding {
+  id: string;
+  focus: KeyFocus;
+  windowsKeys: string; // e.g. "PageUp" | "L then 1–9"
+  action: string;
+  crcAnalog: string;
+}
+
+/** Help overlay footer — phase README keyboard-feel freeze. */
+export const HELP_FOOTER = "TRAINER KEYS — NOT CRC";
+
+/** Radio vs scope pipeline. Overlay must include this; never a CRC cheat sheet. */
+export const RADIO_CONFLICT_WARNING =
+  "Radio commands stay on the command line and never come from scope keys. L090 is a left turn to heading 090 when the command line is focused.";
+
+/** Glossary terms the overlay must teach (range, datablock, leader, initiate track). */
+export const HELP_GLOSSARY_NOTE =
+  "Trainer names: range, datablock, leader, initiate track. CRC keys are a reference, not a 1:1 spec.";
+
+/**
+ * Frozen Windows subset from phases/02-scope/README.md.
+ * Help overlay renders this array — do not duplicate rows in JSX.
+ */
+export const KEY_BINDINGS: KeyBinding[] = [
+  {
+    id: "range-in",
+    focus: "always",
+    windowsKeys: "PageUp",
+    action: "Range in (smaller NM preset). At 5 NM: no-op, no wrap.",
+    crcAnalog: "DCB RANGE spinner / Ctrl+F10 RANGE",
+  },
+  {
+    id: "range-out",
+    focus: "always",
+    windowsKeys: "PageDown",
+    action: "Range out (larger NM preset). At 60 NM: no-op, no wrap.",
+    crcAnalog: "DCB RANGE spinner / Ctrl+F10 RANGE",
+  },
+  {
+    id: "center-airport",
+    focus: "always",
+    windowsKeys: "Home",
+    action: "Center on airport ref (KDEM ARP).",
+    crcAnalog: "CENTER then click / Ctrl+F1 re-center",
+  },
+  {
+    id: "center-click",
+    focus: "always",
+    windowsKeys: "End",
+    action: "Center on last PPI click (or airport if none this session).",
+    crcAnalog: "CENTER then click",
+  },
+  {
+    id: "help",
+    focus: "always",
+    windowsKeys: "F1",
+    action: "Toggle this help overlay. Not CRC F1. preventDefault so Chrome help does not open.",
+    crcAnalog: "CRC F1 hold = beacon-code readout (beaconator)",
+  },
+  {
+    id: "initiate-track",
+    focus: "always",
+    windowsKeys: "F3",
+    action: "Initiate track stub: selected unowned → owned color only. No NAS associate.",
+    crcAnalog: "F3 INIT CNTL / initiate track (NAS associate)",
+  },
+  {
+    id: "drop-track",
+    focus: "always",
+    windowsKeys: "F4",
+    action: "Drop track stub: selected owned → unowned. Trainer sugar, not NAS terminate.",
+    crcAnalog: "Not CRC terminate / TERM CNTL",
+  },
+  {
+    id: "ptl",
+    focus: "always",
+    windowsKeys: "F7",
+    action: "Toggle predicted track line (PTL) globally.",
+    crcAnalog: "DCB PTL OWN / PTL ALL (CRC F7 is MULTIFUNC)",
+  },
+  {
+    id: "history",
+    focus: "always",
+    windowsKeys: "F8",
+    action: "Toggle history dots globally.",
+    crcAnalog: "DCB history trail length",
+  },
+  {
+    id: "cycle-focus",
+    focus: "always",
+    windowsKeys: "Tab",
+    action: "Cycle focus: command line ↔ PPI. Does not steal Tab from help overlay inputs.",
+    crcAnalog: "Not CRC — trainer radio vs scope focus",
+  },
+  {
+    id: "mouse-range",
+    focus: "always",
+    windowsKeys: "Wheel up / down",
+    action: "Range in / out (same presets as PageUp/PageDown). No zoom-to-cursor.",
+    crcAnalog: "DCB RANGE spinner wheel",
+  },
+  {
+    id: "mouse-pan",
+    focus: "always",
+    windowsKeys: "Middle-button drag",
+    action: "Pan view center (trainer sugar). Not CRC.",
+    crcAnalog: "Not CRC — CRC is CENTER then click",
+  },
+  {
+    id: "mouse-select",
+    focus: "always",
+    windowsKeys: "Left click on target or datablock",
+    action: "Select track.",
+    crcAnalog: "Slew / click target",
+  },
+  {
+    id: "mouse-deselect",
+    focus: "always",
+    windowsKeys: "Left click empty PPI",
+    action: "Deselect.",
+    crcAnalog: "Click empty display",
+  },
+  {
+    id: "mouse-center",
+    focus: "always",
+    windowsKeys: "Double-click empty PPI",
+    action: "Center view on that world point.",
+    crcAnalog: "CENTER then click",
+  },
+  {
+    id: "leader",
+    focus: "scope",
+    windowsKeys: "L then 1–9",
+    action: "Leader direction (L1–L9). Top-row or numpad. Selected track, or all if none selected.",
+    crcAnalog: "CRC L1–L9 leader (we omit the length menu)",
+  },
+  {
+    id: "datablock",
+    focus: "scope",
+    windowsKeys: "T",
+    action: "Full ↔ limited datablock. Selected track, or all if none selected.",
+    crcAnalog: "Tag/untag analog (FDB / LDB)",
+  },
+  {
+    id: "mode-c",
+    focus: "scope",
+    windowsKeys: "M",
+    action: "Mode C field on/off on full datablocks.",
+    crcAnalog: "CRC Mode C field toggle",
+  },
+  {
+    id: "altitude-filter",
+    focus: "scope",
+    windowsKeys: "F then 3-digit min, Enter, 3-digit max, Enter",
+    action: "Altitude filter in Mode C hundreds. Esc cancels.",
+    crcAnalog: "CRC altitude filter",
+  },
+  {
+    id: "history-scope",
+    focus: "scope",
+    windowsKeys: "H",
+    action: "History dots (same as F8) when the PPI is focused.",
+    crcAnalog: "DCB history (always-on duplicate is F8)",
+  },
+  {
+    id: "radio-focus",
+    focus: "scope",
+    windowsKeys: "/",
+    action:
+      "Focus the command line. preventDefault so slash is not inserted. Radio-focused / types as phase 1.",
+    crcAnalog: "CRC / is leader length — we do not bind that",
+  },
+];
+
+export function isMouseBinding(binding: KeyBinding): boolean {
+  return binding.id.startsWith("mouse-");
+}
+
+export function alwaysOnKeyBindings(): KeyBinding[] {
+  return KEY_BINDINGS.filter((b) => b.focus === "always" && !isMouseBinding(b));
+}
+
+export function scopeFocusKeyBindings(): KeyBinding[] {
+  return KEY_BINDINGS.filter((b) => b.focus === "scope");
+}
+
+export function mouseKeyBindings(): KeyBinding[] {
+  return KEY_BINDINGS.filter(isMouseBinding);
+}
+
+export function bindingById(id: string): KeyBinding | undefined {
+  return KEY_BINDINGS.find((b) => b.id === id);
+}
 
 export const SCOPE_CHORD_WINDOW_MS = 1500;
 /** Chord window after L or F (phase README frozen decision 2). */
@@ -85,4 +283,22 @@ export function isLeaderPrefixKey(key: string): boolean {
 /** Scope-focus altitude filter chord. Never always-on. */
 export function isFilterChordKey(key: string): boolean {
   return key === "F" || key === "f";
+}
+
+/** F1 is always-on help. Not CRC F1. */
+export function isHelpToggleKey(key: string): boolean {
+  return key === "F1";
+}
+
+/** Tab cycles command line ↔ PPI. Always-on except help overlay inputs. */
+export function isCycleFocusKey(key: string): boolean {
+  return key === "Tab";
+}
+
+/**
+ * Unmodified slash when scope-focused focuses the command line.
+ * Radio-focused `/` is left to phase 1 (insert or no-op).
+ */
+export function isRadioFocusSlashKey(key: string): boolean {
+  return key === "/";
 }

@@ -66,6 +66,7 @@ test("AC4 — PTL defaults off; history defaults on; altitude filter 000-180", (
   const view = createScopeView();
   expect(view.ptlOn).toBe(false);
   expect(view.historyEnabled).toBe(true);
+  expect(view.helpOpen).toBe(false);
   expect(view.altitudeFilter).toEqual({ minHundreds: 0, maxHundreds: 180 });
   expect(view.filterEntry.phase).toBe("idle");
 });

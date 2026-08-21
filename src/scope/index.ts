@@ -8,7 +8,8 @@
  * (scope-focus T / M; Mode C hundreds + assigned + GS), predicted track line
  * (PTL, F7 always-on, default off), L1–L9 **leader** lines (scope-focus `L`
  * then 1–9; pixel-constant 24 CSS px; no length menu), altitude filter
- * (scope-focus `F`, default 000–180), F3/F4 ownership color stub (not NAS).
+ * (scope-focus `F`, default 000–180), F3/F4 ownership color stub (not NAS),
+ * F1 help overlay (`TRAINER KEYS — NOT CRC`), Tab cycle focus, `/` radio focus.
  *
  * Later: DCB-lite.
  *
@@ -76,18 +77,35 @@ export {
 export type { AltitudeFilter, FilterEntry, FilterEntryPhase } from "./altitudeFilter";
 export {
   CHORD_TIMEOUT_MS,
+  HELP_FOOTER,
+  HELP_GLOSSARY_NOTE,
+  KEY_BINDINGS,
+  RADIO_CONFLICT_WARNING,
   SCOPE_CHORD_WINDOW_MS,
+  alwaysOnKeyBindings,
   beginScopeChord,
+  bindingById,
   digitFromKey,
+  isCycleFocusKey,
   isFilterChordKey,
+  isHelpToggleKey,
+  isMouseBinding,
+  isRadioFocusSlashKey,
   isScopeChordLive,
   leaderDigitFromKey,
+  mouseKeyBindings,
+  scopeFocusKeyBindings,
 } from "./keymap";
-export type { ScopeChord } from "./keymap";
+export type { KeyBinding, KeyFocus, ScopeChord } from "./keymap";
 export {
   ALWAYS_ON_SCOPE_KEYS,
+  HELP_OVERLAY_ID,
+  RADIO_COMMAND_LINE_ID,
+  cycleScopeRadioFocus,
+  focusRadioCommandLine,
   handleScopeKeyDown,
   handleScopeWheel,
+  helpOverlayHasKeyboardFocus,
   installAlwaysOnScopeKeys,
   isAlwaysOnScopeKey,
   isDatablockToggleKey,
@@ -95,13 +113,14 @@ export {
   isModeCToggleKey,
   scopeFocusFromDocument,
 } from "./scopeKeys";
-export type { ScopeFocus } from "./scopeKeys";
+export type { ScopeFocus, ScopeKeyUi } from "./scopeKeys";
 export {
   centerOnAirport,
   centerOnLastClick,
   centerOnWorld,
   createScopeView,
   recordLastClick,
+  toggleHelpOverlay,
   toggleHistoryEnabled,
   toggleModeCVisible,
   togglePtlOn,

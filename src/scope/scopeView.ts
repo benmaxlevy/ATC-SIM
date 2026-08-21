@@ -64,6 +64,11 @@ export interface ScopeView {
   tracks: Map<string, TrackDisplay>;
   /** Scope-focus letter chord (`L` leader; T02-06 `F` filter). Null when idle. */
   pendingChord: ScopeChord | null;
+  /**
+   * F1 help overlay. Display only — never pauses the sim or writes intent.
+   * CRC F1 is beaconator; ours is trainer help.
+   */
+  helpOpen: boolean;
 }
 
 export function createScopeView(
@@ -97,6 +102,7 @@ export function createScopeView(
     filterEntry: idleFilterEntry(DEFAULT_ALTITUDE_FILTER),
     tracks: new Map(),
     pendingChord: null,
+    helpOpen: false,
   };
 }
 
@@ -113,6 +119,11 @@ export function toggleModeCVisible(view: ScopeView): void {
 /** F7 always-on. Never a Command. */
 export function togglePtlOn(view: ScopeView): void {
   view.ptlOn = !view.ptlOn;
+}
+
+/** F1 always-on. Does not pause kinematics. Never a Command. */
+export function toggleHelpOverlay(view: ScopeView): void {
+  view.helpOpen = !view.helpOpen;
 }
 
 export function recordLastClick(view: ScopeView, eastNm: number, northNm: number): void {

@@ -6,7 +6,9 @@
  * history toggle; H only when the PPI is focused (radio H270 stays heading).
  * Scope-focus `T` toggles full ↔ limited datablock; `M` toggles Mode C on full
  * blocks. F7 always-on predicted track line (PTL) toggle — even with the
- * command line focused. Scope-focus `L` then 1–9 is leader direction (no length
+ * command line focused. F1 always-on help overlay (not CRC F1 / beaconator);
+ * Tab cycles radio ↔ PPI; `/` when scope-focused focuses the command line.
+ * Scope-focus `L` then 1–9 is leader direction (no length
  * menu); radio `L090` stays FLY_HEADING left. Scope-focus `F` then hundreds is
  * the altitude filter (never always-on — radio `F` stays a command-line
  * character). Never produce a Command, readback, or intent. Wheel steps
@@ -19,8 +21,11 @@ import { applyRangeIn, applyRangeOut } from "./camera";
 import {
   beginScopeChord,
   isArrowKey,
+  isCycleFocusKey,
   isFilterChordKey,
+  isHelpToggleKey,
   isLeaderPrefixKey,
+  isRadioFocusSlashKey,
   isScopeChordLive,
   leaderDigitFromKey,
 } from "./keymap";
@@ -28,20 +33,42 @@ import { PpiPlaceholderId } from "./ppi-placeholder";
 import {
   centerOnAirport,
   centerOnLastClick,
+  toggleHelpOverlay,
   toggleHistoryEnabled,
   toggleModeCVisible,
   togglePtlOn,
   type ScopeView,
 } from "./scopeView";
-import { setLeaderDirForSelection, toggleDatablockModeForSelection, applyDropTrackToSelection, applyInitiateTrackToSelection } from "./trackDisplay";
+import {
+  setLeaderDirForSelection,
+  toggleDatablockModeForSelection,
+  applyDropTrackToSelection,
+  applyInitiateTrackToSelection,
+} from "./trackDisplay";
 
-export const ALWAYS_ON_SCOPE_KEYS = ["PageUp", "PageDown", "Home", "End", "F3", "F4", "F7", "F8"] as const;
+export const ALWAYS_ON_SCOPE_KEYS = [
+  "PageUp",
+  "PageDown",
+  "Home",
+  "End",
+  "F1",
+  "F3",
+  "F4",
+  "F7",
+  "F8",
+] as const;
+
+/** Command line input id (owned by `@ui`; duplicated so `@scope` does not import `@ui`). */
+export const RADIO_COMMAND_LINE_ID = "command-line-input";
+
+export const HELP_OVERLAY_ID = "scope-help-overlay";
 
 export type ScopeFocus = "scope" | "radio";
 
 export interface ScopeKeyEvent {
   key: string;
   code?: string;
+  target?: EventTarget | null;
   preventDefault(): void;
   stopPropagation(): void;
 }
@@ -49,6 +76,16 @@ export interface ScopeKeyEvent {
 export interface ScopeWheelEvent {
   deltaY: number;
   preventDefault(): void;
+}
+
+/** Optional UI hooks so Tab / `/` can move focus without `@scope` importing `@ui`. */
+export interface ScopeKeyUi {
+  cycleFocus?: () => void;
+  focusRadio?: () => void;
+  /** True when Tab should stay with help overlay inputs / selectable copy. */
+  helpOverlayHasFocus?: boolean;
+  /** React/DOM refresh after display-only mutations (F1 overlay). */
+  onHandled?: () => void;
 }
 
 export function isAlwaysOnScopeKey(key: string): boolean {
@@ -80,6 +117,41 @@ export function scopeFocusFromDocument(doc: { activeElement: Element | null }): 
   return "radio";
 }
 
+export function helpOverlayHasKeyboardFocus(
+  target: EventTarget | null | undefined,
+  doc?: { getElementById(id: string): Element | null },
+): boolean {
+  const root =
+    doc?.getElementById(HELP_OVERLAY_ID) ??
+    (typeof document !== "undefined" ? document.getElementById(HELP_OVERLAY_ID) : null);
+  return root != null && target instanceof Node && root.contains(target);
+}
+
+export function focusRadioCommandLine(
+  doc: { getElementById(id: string): Element | null } = document,
+): void {
+  const el = doc.getElementById(RADIO_COMMAND_LINE_ID);
+  if (typeof HTMLElement !== "undefined" && el instanceof HTMLElement) {
+    el.focus();
+  }
+}
+
+export function cycleScopeRadioFocus(
+  doc: {
+    activeElement: Element | null;
+    getElementById(id: string): Element | null;
+  } = document,
+): void {
+  if (scopeFocusFromDocument(doc) === "scope") {
+    focusRadioCommandLine(doc);
+    return;
+  }
+  const ppi = doc.getElementById(PpiPlaceholderId);
+  if (typeof HTMLElement !== "undefined" && ppi instanceof HTMLElement) {
+    ppi.focus();
+  }
+}
+
 function consume(event: ScopeKeyEvent): void {
   event.preventDefault();
   event.stopPropagation();
@@ -95,14 +167,35 @@ function liveLeaderChord(view: ScopeView, nowMs: number) {
   return view.pendingChord;
 }
 
-/** Mutates camera / history / datablock / PTL / leader / altitude filter. Returns true when consumed. */
+/** Mutates camera / history / datablock / PTL / leader / altitude filter / help. Returns true when consumed. */
 export function handleScopeKeyDown(
   event: ScopeKeyEvent,
   view: ScopeView,
   focus: ScopeFocus = "radio",
   world?: World,
   nowMs: number = Date.now(),
+  ui?: ScopeKeyUi,
 ): boolean {
+  if (isHelpToggleKey(event.key)) {
+    consume(event);
+    toggleHelpOverlay(view);
+    ui?.onHandled?.();
+    return true;
+  }
+  if (isCycleFocusKey(event.key)) {
+    if (ui?.helpOverlayHasFocus || helpOverlayHasKeyboardFocus(event.target)) {
+      return false;
+    }
+    consume(event);
+    if (ui?.cycleFocus) {
+      ui.cycleFocus();
+    } else if (typeof document !== "undefined") {
+      cycleScopeRadioFocus(document);
+    }
+    ui?.onHandled?.();
+    return true;
+  }
+
   if (focus === "scope") {
     if (isFilterChordKey(event.key)) {
       consume(event);
@@ -138,6 +231,16 @@ export function handleScopeKeyDown(
     if (isLeaderPrefixKey(event.key)) {
       consume(event);
       view.pendingChord = beginScopeChord("L", nowMs, "L_");
+      return true;
+    }
+    if (isRadioFocusSlashKey(event.key)) {
+      consume(event);
+      if (ui?.focusRadio) {
+        ui.focusRadio();
+      } else if (typeof document !== "undefined") {
+        focusRadioCommandLine(document);
+      }
+      ui?.onHandled?.();
       return true;
     }
   } else if (view.filterEntry.phase !== "idle") {
@@ -208,7 +311,10 @@ export function handleScopeKeyDown(
     centerOnAirport(view);
     return true;
   }
-  centerOnLastClick(view);
+  if (event.key === "End") {
+    centerOnLastClick(view);
+    return true;
+  }
   return true;
 }
 
@@ -229,10 +335,17 @@ export function handleScopeWheel(event: ScopeWheelEvent, view: ScopeView): boole
   return true;
 }
 
-export function installAlwaysOnScopeKeys(view: ScopeView, world: World): () => void {
+export function installAlwaysOnScopeKeys(
+  view: ScopeView,
+  world: World,
+  ui?: ScopeKeyUi,
+): () => void {
   function onKeyDown(event: KeyboardEvent): void {
     const focus = typeof document !== "undefined" ? scopeFocusFromDocument(document) : "radio";
-    handleScopeKeyDown(event, view, focus, world, Date.now());
+    handleScopeKeyDown(event, view, focus, world, Date.now(), {
+      ...ui,
+      helpOverlayHasFocus: ui?.helpOverlayHasFocus ?? helpOverlayHasKeyboardFocus(event.target),
+    });
   }
   window.addEventListener("keydown", onKeyDown, true);
   return () => window.removeEventListener("keydown", onKeyDown, true);
