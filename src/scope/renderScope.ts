@@ -4,21 +4,22 @@
  * Trainer delta: Canvas2D north-up; digital map from KDEM JSON (runway,
  * localizer feather, range rings, optional coastline); circular clip;
  * **target** square + optional **history** dots (5 s sim / 5 dots, no phosphor);
- * full/limited **datablock** in IBM Plex Mono (not a STARS face); default L8
- * offset (north, 24 px) until T02-05; **predicted track line** (PTL) straight 1.0 min
+ * full/limited **datablock** in IBM Plex Mono (not a STARS face); L1–L9 **leader**
+ * (pixel-constant 24 CSS px, no length menu); **predicted track line** (PTL) straight 1.0 min
  * GS along ground track, default off, F7; CRC may offer extra minute
  * presets / turn curves — we do not. Extra CRC presets omitted.
  * Not OSM / tiles (R12). Not a sprite. Not a label. Not NAS STARS.
  *
  * Draw order (phase README): background, rings, coastline, runway, localizer,
- * history, PTL, targets, datablocks. Maps rebuild on range/center/resize/layer
+ * history, PTL, targets, leader lines, datablocks. Maps rebuild on range/center/resize/layer
  * toggle, not every rAF.
  */
 
 import type { Aircraft, World } from "@core";
 import { formatRangeReadout, nmToScreen, rangeCircle, type ScopeViewSize } from "./camera";
-import { datablockTopLeft, linesForDatablock, type DatablockMode } from "./datablock";
+import { datablockMetrics, linesForDatablock, type DatablockMode } from "./datablock";
 import { DATABLOCK_FONT, DATABLOCK_LINE_HEIGHT_PX, measureDatablockCellWidth } from "./fonts";
+import { datablockTopLeft, DEFAULT_LEADER_DIR, drawLeaderLine, type LeaderDir } from "./leader";
 import { reuseOrBuildMapCache, toMapCacheInput, type MapCache } from "./mapLayers";
 import { PALETTE } from "./palette";
 import { PTL_MINUTES, drawPredictedTrackLine, ptlEndpoint, shouldDrawPtl } from "./ptl";
@@ -72,6 +73,7 @@ export function renderScope(
   ctx.stroke();
 
   drawRangeReadout(ctx, view.camera.rangeNm, cssHeight);
+  drawChordHint(ctx, view, cssHeight);
 }
 
 function tracePolyline(
@@ -147,19 +149,32 @@ function trackDatablockMode(view: ScopeView, aircraftId: string): DatablockMode 
   return view.tracks.get(aircraftId)?.datablockMode ?? "full";
 }
 
+function trackLeaderDir(view: ScopeView, aircraftId: string): LeaderDir {
+  return view.tracks.get(aircraftId)?.leaderDir ?? DEFAULT_LEADER_DIR;
+}
+
+function trackColor(view: ScopeView, world: World, ac: Aircraft): string {
+  const selected = ac.id === world.selectedAircraftId;
+  const td = view.tracks.get(ac.id);
+  const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
+  return targetStrokeColor(selected, identActive);
+}
+
 function drawDatablock(
   ctx: CanvasRenderingContext2D,
   ac: Aircraft,
   targetX: number,
   targetY: number,
   view: ScopeView,
+  color: string,
 ): void {
   const lines = linesForDatablock(ac, trackDatablockMode(view, ac.id), view.modeCVisible);
-  const origin = datablockTopLeft(targetX, targetY);
-  ctx.fillStyle = PALETTE.unowned;
-  ctx.fillText(lines.line1, origin.x, origin.y);
+  const metrics = datablockMetrics(lines, view.datablockCellWidthPx, DATABLOCK_LINE_HEIGHT_PX);
+  const origin = datablockTopLeft(trackLeaderDir(view, ac.id), metrics);
+  ctx.fillStyle = color;
+  ctx.fillText(lines.line1, targetX + origin.x, targetY + origin.y);
   if (lines.line2 != null) {
-    ctx.fillText(lines.line2, origin.x, origin.y + DATABLOCK_LINE_HEIGHT_PX);
+    ctx.fillText(lines.line2, targetX + origin.x, targetY + origin.y + DATABLOCK_LINE_HEIGHT_PX);
   }
 }
 
@@ -190,10 +205,8 @@ function drawTracks(
 
   for (const ac of world.aircraft) {
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
-    const selected = ac.id === world.selectedAircraftId;
-    const td = view.tracks.get(ac.id);
-    const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
-    drawTargetSymbol(ctx, p.x, p.y, ac.headingDeg, targetStrokeColor(selected, identActive));
+    const color = trackColor(view, world, ac);
+    drawTargetSymbol(ctx, p.x, p.y, ac.headingDeg, color);
   }
 
   ctx.font = DATABLOCK_FONT;
@@ -203,7 +216,14 @@ function drawTracks(
 
   for (const ac of world.aircraft) {
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
-    drawDatablock(ctx, ac, p.x, p.y, view);
+    const color = trackColor(view, world, ac);
+    drawLeaderLine(ctx, p.x, p.y, trackLeaderDir(view, ac.id), color);
+  }
+
+  for (const ac of world.aircraft) {
+    const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
+    const color = trackColor(view, world, ac);
+    drawDatablock(ctx, ac, p.x, p.y, view, color);
   }
 }
 
@@ -251,4 +271,16 @@ function drawRangeReadout(
   ctx.textAlign = "left";
   ctx.fillStyle = PALETTE.map;
   ctx.fillText(formatRangeReadout(rangeNm), 8, cssHeight - 8);
+}
+
+function drawChordHint(ctx: CanvasRenderingContext2D, view: ScopeView, cssHeight: number): void {
+  const hint = view.pendingChord?.hint;
+  if (!hint) {
+    return;
+  }
+  ctx.font = DATABLOCK_FONT;
+  ctx.textBaseline = "bottom";
+  ctx.textAlign = "left";
+  ctx.fillStyle = PALETTE.uiChrome;
+  ctx.fillText(hint, 8, cssHeight - 24);
 }

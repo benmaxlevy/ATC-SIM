@@ -11,7 +11,8 @@ import { createScopeView } from "./scopeView";
 import { SELECTED_ACCENT_COLOR, TARGET_SIZE_PX, UNOWNED_TRACK_COLOR } from "./targetSymbol";
 import { isIdentFlashing } from "./trackDisplay";
 import { DATABLOCK_FONT, DATABLOCK_FONT_PX } from "./fonts";
-import { formatFullDatablock, formatLimitedDatablock, LEADER_LENGTH_PX } from "./datablock";
+import { formatFullDatablock, formatLimitedDatablock, datablockMetrics } from "./datablock";
+import { datablockTopLeft, DEFAULT_LEADER_DIR, leaderSegmentPx } from "./leader";
 
 interface StrokeRect {
   x: number;
@@ -338,9 +339,12 @@ test("T02-04 AC2 — full datablock is callsign + hundreds/GS in IBM Plex Mono, 
   expect(line1!.textAlign).toBe("left");
   expect(line1!.textBaseline).toBe("top");
   expect(line1!.fillStyle).toBe(PALETTE.unowned);
-  expect(line1!.x).toBeCloseTo(p.x, 5);
-  expect(line1!.y).toBeCloseTo(p.y - LEADER_LENGTH_PX, 5);
-  expect(line2!.y).toBeCloseTo(p.y - LEADER_LENGTH_PX + DATABLOCK_FONT_PX, 5);
+  const block = formatFullDatablock(ac);
+  const metrics = datablockMetrics(block, 7.2, DATABLOCK_FONT_PX);
+  const origin = datablockTopLeft(DEFAULT_LEADER_DIR, metrics);
+  expect(line1!.x).toBeCloseTo(p.x + origin.x, 5);
+  expect(line1!.y).toBeCloseTo(p.y + origin.y, 5);
+  expect(line2!.y).toBeCloseTo(p.y + origin.y + DATABLOCK_FONT_PX, 5);
 });
 
 test("T02-04 AC5/AC7 — T limited drops the callsign; no duplicate callsign paint", () => {
@@ -491,4 +495,93 @@ test("AC7 — renderScope comments say PTL / predicted track line and cite CRC",
   expect(src).toMatch(/straight 1\.0 min/);
   expect(src).toMatch(/TODO\(T02-06\)/);
   expect(src).toMatch(/ctx\.clip/);
+  expect(src).toMatch(/leader/);
+  expect(src).toMatch(/L1–L9/);
+  expect(src).not.toMatch(/\bstem\b/);
+});
+
+function findLeaderStroke(
+  pathStrokes: PathStroke[],
+  symbolX: number,
+  symbolY: number,
+  dir: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9,
+): PathStroke | undefined {
+  const seg = leaderSegmentPx(dir);
+  if (!seg) {
+    return undefined;
+  }
+  return pathStrokes.find((stroke) => {
+    const a = stroke.points[0];
+    const b = stroke.points[1];
+    if (!a || !b || stroke.points.length !== 2) {
+      return false;
+    }
+    return (
+      Math.abs(a.x - (symbolX + seg.x0)) <= 0.5 &&
+      Math.abs(a.y - (symbolY + seg.y0)) <= 0.5 &&
+      Math.abs(b.x - (symbolX + seg.x1)) <= 0.5 &&
+      Math.abs(b.y - (symbolY + seg.y1)) <= 0.5 &&
+      stroke.lineWidth === 1
+    );
+  });
+}
+
+test("AC2 / AC7 — L6 leader points east; leader and datablock match target color", () => {
+  const ac = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    altitudeFt: 3000,
+    speedKt: 210,
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 0,
+  });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  const css = 800;
+  renderScope(createMockCtx().ctx, world, view, css, css);
+  view.tracks.get(ac.id)!.leaderDir = 6;
+  const { ctx, pathStrokes, fillTexts, strokeRects } = createMockCtx();
+  renderScope(ctx, world, view, css, css);
+  const p = nmToScreen(ac.xNm, ac.yNm, view.camera, { widthPx: css, heightPx: css });
+  const leader = findLeaderStroke(pathStrokes, p.x, p.y, 6);
+  expect(leader).toBeDefined();
+  expect(leader!.points[1]!.x).toBeGreaterThan(p.x);
+  expect(leader!.points[1]!.y).toBeCloseTo(p.y);
+  const target = strokeRects.find((r) => r.w === TARGET_SIZE_PX);
+  expect(target).toBeDefined();
+  expect(leader!.strokeStyle).toBe(target!.strokeStyle);
+  const line1 = fillTexts.find((t) => t.text === "DAL123" && t.font === DATABLOCK_FONT);
+  expect(line1).toBeDefined();
+  expect(line1!.fillStyle).toBe(target!.strokeStyle);
+  expect(line1!.x).toBeGreaterThan(p.x);
+});
+
+test("AC3 — L5 draws no visible leader; block sits off the symbol", () => {
+  const ac = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    altitudeFt: 3000,
+    speedKt: 210,
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 0,
+  });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  const css = 800;
+  renderScope(createMockCtx().ctx, world, view, css, css);
+  view.tracks.get(ac.id)!.leaderDir = 5;
+  const { ctx, pathStrokes, fillTexts } = createMockCtx();
+  renderScope(ctx, world, view, css, css);
+  const p = nmToScreen(ac.xNm, ac.yNm, view.camera, { widthPx: css, heightPx: css });
+  expect(findLeaderStroke(pathStrokes, p.x, p.y, 5)).toBeUndefined();
+  expect(leaderSegmentPx(5)).toBeNull();
+  const line1 = fillTexts.find((t) => t.text === "DAL123" && t.font === DATABLOCK_FONT);
+  expect(line1).toBeDefined();
+  expect(line1!.x).toBeGreaterThan(p.x);
+  expect(line1!.y).toBeGreaterThan(p.y);
+  const half = TARGET_SIZE_PX / 2;
+  expect(line1!.x).toBeGreaterThan(p.x + half);
+  expect(line1!.y).toBeGreaterThan(p.y + half);
 });

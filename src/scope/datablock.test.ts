@@ -6,7 +6,6 @@ import {
   DEFAULT_LEADER_DIR,
   LEADER_LENGTH_PX,
   datablockRect,
-  datablockTopLeft,
   formatAltitudeHundreds,
   formatFullDatablock,
   formatGroundSpeedKt,
@@ -110,12 +109,13 @@ test("AC3 — C/D/A assigned altitude with Mode C lag ≥ 100 ft shows both fiel
 test("default L8 offset is north 24 px; rect contains the text cell", () => {
   expect(DEFAULT_LEADER_DIR).toBe(8);
   expect(LEADER_LENGTH_PX).toBe(24);
-  expect(datablockTopLeft(100, 200)).toEqual({ x: 100, y: 176 });
   const full = datablockRect(100, 200, { line1: "DAL123", line2: "030  210" }, 7.2, 12);
-  expect(full.y).toBe(176);
   expect(full.h).toBe(24);
-  expect(pointInDatablock(110, 180, full)).toBe(true);
+  expect(full.w).toBe(8 * 7.2);
+  const inside = { x: full.x + full.w / 2, y: full.y + full.h / 2 };
+  expect(pointInDatablock(inside.x, inside.y, full)).toBe(true);
   expect(pointInDatablock(100, 200, full)).toBe(false);
+  expect(full.y + full.h).toBeLessThan(200);
   const limited = datablockRect(100, 200, { line1: "033" }, 7.2, 12);
   expect(limited.h).toBe(12);
 });

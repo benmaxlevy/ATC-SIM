@@ -1,13 +1,14 @@
 /**
  * Analog: CRC STARS track display state (docs.virtualnas.net/crc/stars — R07).
- * Trainer delta: per-track history buffer, full/limited datablock mode, and
- * display-only IDENT flash live here, keyed by aircraft id — never on Aircraft
- * kinematics. Not NAS STARS.
+ * Trainer delta: per-track history buffer, full/limited datablock mode,
+ * L1–L9 **leader** direction (no length menu), and display-only IDENT flash
+ * live here, keyed by aircraft id — never on Aircraft kinematics. Not NAS STARS.
  */
 
 import type { Aircraft, World } from "@core";
 import type { DatablockMode } from "./datablock";
 import { createHistoryBuf, maybeSampleHistory, type HistoryBuf } from "./history";
+import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
 
 /** Display IDENT stroke pulse (~2 s sim). Aircraft flag may last longer (phase 1). */
 export const IDENT_DISPLAY_FLASH_MS = 2000;
@@ -20,6 +21,8 @@ export interface TrackDisplay {
   lastAircraftIdentDeadlineMs: number;
   /** Full datablock by default; scope-focus `T` toggles. */
   datablockMode: DatablockMode;
+  /** Numpad compass L1–L9. Default L8 (north). */
+  leaderDir: LeaderDir;
 }
 
 export function createTrackDisplay(): TrackDisplay {
@@ -28,6 +31,7 @@ export function createTrackDisplay(): TrackDisplay {
     identUntilSimMs: 0,
     lastAircraftIdentDeadlineMs: 0,
     datablockMode: "full",
+    leaderDir: DEFAULT_LEADER_DIR,
   };
 }
 
@@ -61,6 +65,27 @@ export function toggleDatablockModeForSelection(
   for (const ac of world.aircraft) {
     const td = ensureTrackDisplay(tracks, ac.id);
     td.datablockMode = flipDatablockMode(td.datablockMode);
+  }
+}
+
+/**
+ * Scope-focus `L` then 1–9: selected track leader direction; no selection → all.
+ * Display state only — never a Command.
+ */
+export function setLeaderDirForSelection(
+  tracks: Map<string, TrackDisplay>,
+  world: World,
+  dir: LeaderDir,
+): void {
+  const selected = world.selectedAircraftId;
+  if (selected && world.aircraft.some((ac) => ac.id === selected)) {
+    const td = ensureTrackDisplay(tracks, selected);
+    td.leaderDir = dir;
+    return;
+  }
+  for (const ac of world.aircraft) {
+    const td = ensureTrackDisplay(tracks, ac.id);
+    td.leaderDir = dir;
   }
 }
 

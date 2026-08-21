@@ -8,6 +8,7 @@ import {
   isAlwaysOnScopeKey,
   type ScopeFocus,
 } from "./scopeKeys";
+import { SCOPE_CHORD_WINDOW_MS } from "./keymap";
 import { createScopeView } from "./scopeView";
 import { syncTrackDisplays } from "./trackDisplay";
 
@@ -117,6 +118,8 @@ test("scope key/wheel handlers never import the parser", () => {
     "./datablock.ts",
     "./fonts.ts",
     "./ptl.ts",
+    "./leader.ts",
+    "./keymap.ts",
     "./renderScope.ts",
   ]) {
     const src = sources[name];
@@ -327,4 +330,137 @@ test("AC8 — scope-focus T/M never call handleRadioText or emit command events"
 
   radio("DAL123 H270");
   expect(log.byType("command.accepted")).toHaveLength(1);
+});
+
+test("AC2 — selected track, scope L then 6, leader points east", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const aal = makeTestAircraft({ id: "ac-aal", callsign: "AAL45" });
+  const world = createWorld({ aircraft: [dal, aal] });
+  world.selectedAircraftId = dal.id;
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const now = 10_000;
+  const l = keyEvent("L");
+  expect(handleScopeKeyDown(l, view, "scope", world, now)).toBe(true);
+  expect(l.preventDefault).toHaveBeenCalled();
+  expect(l.stopPropagation).toHaveBeenCalled();
+  expect(view.pendingChord?.hint).toBe("L_");
+  expect(handleScopeKeyDown(keyEvent("6"), view, "scope", world, now + 200)).toBe(true);
+  expect(view.tracks.get("ac-dal")!.leaderDir).toBe(6);
+  expect(view.tracks.get("ac-aal")!.leaderDir).toBe(8);
+  expect(view.pendingChord).toBeNull();
+});
+
+test("AC3 — L then 5 sets overlay on the selected track", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [dal] });
+  world.selectedAircraftId = dal.id;
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  handleScopeKeyDown(keyEvent("L"), view, "scope", world, 0);
+  handleScopeKeyDown(keyEvent("5"), view, "scope", world, 100);
+  expect(view.tracks.get("ac-dal")!.leaderDir).toBe(5);
+});
+
+test("AC4 — no selection + L then 1 switches all tracks to SW", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const aal = makeTestAircraft({ id: "ac-aal", callsign: "AAL45" });
+  const world = createWorld({ aircraft: [dal, aal] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  handleScopeKeyDown(keyEvent("L"), view, "scope", world, 0);
+  handleScopeKeyDown(keyEvent("1"), view, "scope", world, 50);
+  expect(view.tracks.get("ac-dal")!.leaderDir).toBe(1);
+  expect(view.tracks.get("ac-aal")!.leaderDir).toBe(1);
+});
+
+test("AC5 — radio focus L090 parses FLY_HEADING left 90; leaders unchanged", () => {
+  const dal = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    headingDeg: 180,
+  });
+  const world = createWorld({ aircraft: [dal] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const log = new SessionLog();
+  const parseSpy = vi.fn();
+
+  let buffer = "";
+  for (const key of ["L", "0", "9", "0"]) {
+    const event = keyEvent(key);
+    if (!handleScopeKeyDown(event, view, "radio", world, 0) && key.length === 1) {
+      buffer += key;
+      parseSpy(key);
+    }
+  }
+  expect(buffer).toBe("L090");
+  expect(view.tracks.get("ac-dal")!.leaderDir).toBe(8);
+  expect(view.pendingChord).toBeNull();
+  const parsed = parseRadioText(buffer);
+  expect(parsed.ok).toBe(true);
+  if (parsed.ok) {
+    expect(parsed.instructions).toEqual([{ type: "FLY_HEADING", headingDeg: 90, turn: "LEFT" }]);
+  }
+  const result = handleRadioText(world, "DAL123 L090", log);
+  expect(result.accepted).toBe(true);
+  expect(log.byType("command.accepted")).toHaveLength(1);
+  expect(view.tracks.get("ac-dal")!.leaderDir).toBe(8);
+});
+
+test("AC6 — after L with no digit for 1.5 s, a following 6 is not a leader", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [dal] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  handleScopeKeyDown(keyEvent("L"), view, "scope", world, 0);
+  expect(view.pendingChord?.prefix).toBe("L");
+  const six = keyEvent("6");
+  expect(handleScopeKeyDown(six, view, "scope", world, SCOPE_CHORD_WINDOW_MS + 1)).toBe(false);
+  expect(view.tracks.get("ac-dal")!.leaderDir).toBe(8);
+  expect(view.pendingChord).toBeNull();
+});
+
+test("AC7 — leader chord never emits Command IR events", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [dal] });
+  const view = createScopeView();
+  const log = new SessionLog();
+  const radio = vi.fn((text: string) => handleRadioText(world, text, log));
+  handleScopeKeyDown(keyEvent("L"), view, "scope", world, 0);
+  handleScopeKeyDown(keyEvent("6"), view, "scope", world, 10);
+  expect(radio).not.toHaveBeenCalled();
+  expect(log.all()).toHaveLength(0);
+  expect(view.tracks.get("ac-dal")!.leaderDir).toBe(6);
+});
+
+test("Esc or invalid digit cancels the leader chord without changing dir", () => {
+  const dal = makeTestAircraft({ id: "ac-dal" });
+  const world = createWorld({ aircraft: [dal] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  handleScopeKeyDown(keyEvent("L"), view, "scope", world, 0);
+  expect(handleScopeKeyDown(keyEvent("Escape"), view, "scope", world, 20)).toBe(true);
+  expect(view.pendingChord).toBeNull();
+  expect(view.tracks.get("ac-dal")!.leaderDir).toBe(8);
+
+  handleScopeKeyDown(keyEvent("L"), view, "scope", world, 30);
+  expect(handleScopeKeyDown(keyEvent("0"), view, "scope", world, 40)).toBe(false);
+  expect(view.pendingChord).toBeNull();
+  expect(view.tracks.get("ac-dal")!.leaderDir).toBe(8);
+});
+
+test("numpad ArrowUp during L chord is ignored (NumLock off)", () => {
+  const dal = makeTestAircraft({ id: "ac-dal" });
+  const world = createWorld({ aircraft: [dal] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get("ac-dal")!.leaderDir = 2;
+  handleScopeKeyDown(keyEvent("L"), view, "scope", world, 0);
+  const arrow = { ...keyEvent("ArrowUp"), code: "Numpad8" };
+  expect(handleScopeKeyDown(arrow, view, "scope", world, 10)).toBe(true);
+  expect(view.tracks.get("ac-dal")!.leaderDir).toBe(2);
+  expect(view.pendingChord?.prefix).toBe("L");
+  handleScopeKeyDown(keyEvent("8"), view, "scope", world, 20);
+  expect(view.tracks.get("ac-dal")!.leaderDir).toBe(8);
 });

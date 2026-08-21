@@ -64,14 +64,14 @@ Numpad with NumLock off may emit arrows — **require** digit keys; ignore arrow
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Automated: nine offsets; L8 end is −Y in canvas (north), L6 is +X, L5 is ~0 length.
-- [ ] **AC2 —** Given selected track, scope focus, `L` then `6`, leader points east and the block sits to the east of the symbol.
-- [ ] **AC3 —** `L` then `5`: no visible leader (or ≤ 1 px); block adjacent to symbol without covering it completely.
-- [ ] **AC4 —** No selection + `L` then `1`: **all** tracks switch to SW.
-- [ ] **AC5 —** Radio focus: typing `L090` still parses `FLY_HEADING` left 90; no leader change.
-- [ ] **AC6 —** After `L` with no digit for 1.5 s, no dir change; a following `6` is not consumed as leader.
-- [ ] **AC7 —** Leader + block draw uses the same color as the target; no extra Command IR events.
-- [ ] **AC8 — Research:** Help/code say **leader**, not stem. Comment cites CRC L1–L9 and “no length menu.”
+- [x] **AC1 —** Automated: nine offsets; L8 end is −Y in canvas (north), L6 is +X, L5 is ~0 length.
+- [x] **AC2 —** Given selected track, scope focus, `L` then `6`, leader points east and the block sits to the east of the symbol.
+- [x] **AC3 —** `L` then `5`: no visible leader (or ≤ 1 px); block adjacent to symbol without covering it completely.
+- [x] **AC4 —** No selection + `L` then `1`: **all** tracks switch to SW.
+- [x] **AC5 —** Radio focus: typing `L090` still parses `FLY_HEADING` left 90; no leader change.
+- [x] **AC6 —** After `L` with no digit for 1.5 s, no dir change; a following `6` is not consumed as leader.
+- [x] **AC7 —** Leader + block draw uses the same color as the target; no extra Command IR events.
+- [x] **AC8 — Research:** Help/code say **leader**, not stem. Comment cites CRC L1–L9 and “no length menu.”
 
 ## Test plan
 

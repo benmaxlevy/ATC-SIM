@@ -1,16 +1,26 @@
 /**
- * Analog: CRC STARS RANGE / CENTER / HISTORY / FDB-LDB / PTL (docs.virtualnas.net/crc/stars — R07).
+ * Analog: CRC STARS RANGE / CENTER / HISTORY / FDB-LDB / PTL / L1–L9 **leader**
+ * (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: PageUp/Down + wheel instead of DCB RANGE; Home/End instead of
  * CENTER-then-click; extra CRC presets 6/8/12/16/24 omitted. F8 always-on
  * history toggle; H only when the PPI is focused (radio H270 stays heading).
  * Scope-focus `T` toggles full ↔ limited datablock; `M` toggles Mode C on full
  * blocks. F7 always-on predicted track line (PTL) toggle — even with the
- * command line focused. Never produce a Command, readback, or intent. Wheel
- * steps discrete range presets — no zoom-to-cursor (R12). Not NAS STARS.
+ * command line focused. Scope-focus `L` then 1–9 is leader direction (no length
+ * menu); radio `L090` stays FLY_HEADING left. Never produce a Command, readback,
+ * or intent. Wheel steps discrete range presets — no zoom-to-cursor (R12).
+ * Not NAS STARS.
  */
 
 import type { World } from "@core";
 import { applyRangeIn, applyRangeOut } from "./camera";
+import {
+  beginScopeChord,
+  isArrowKey,
+  isLeaderPrefixKey,
+  isScopeChordLive,
+  leaderDigitFromKey,
+} from "./keymap";
 import { PpiPlaceholderId } from "./ppi-placeholder";
 import {
   centerOnAirport,
@@ -20,7 +30,7 @@ import {
   togglePtlOn,
   type ScopeView,
 } from "./scopeView";
-import { toggleDatablockModeForSelection } from "./trackDisplay";
+import { setLeaderDirForSelection, toggleDatablockModeForSelection } from "./trackDisplay";
 
 export const ALWAYS_ON_SCOPE_KEYS = ["PageUp", "PageDown", "Home", "End", "F7", "F8"] as const;
 
@@ -28,6 +38,7 @@ export type ScopeFocus = "scope" | "radio";
 
 export interface ScopeKeyEvent {
   key: string;
+  code?: string;
   preventDefault(): void;
   stopPropagation(): void;
 }
@@ -66,13 +77,59 @@ export function scopeFocusFromDocument(doc: { activeElement: Element | null }): 
   return "radio";
 }
 
-/** Mutates camera / history / datablock / PTL display. Returns true when consumed. */
+function consume(event: ScopeKeyEvent): void {
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+function liveLeaderChord(view: ScopeView, nowMs: number) {
+  if (!isScopeChordLive(view.pendingChord, nowMs) || view.pendingChord?.prefix !== "L") {
+    if (view.pendingChord && !isScopeChordLive(view.pendingChord, nowMs)) {
+      view.pendingChord = null;
+    }
+    return null;
+  }
+  return view.pendingChord;
+}
+
+/** Mutates camera / history / datablock / PTL / leader display. Returns true when consumed. */
 export function handleScopeKeyDown(
   event: ScopeKeyEvent,
   view: ScopeView,
   focus: ScopeFocus = "radio",
   world?: World,
+  nowMs: number = Date.now(),
 ): boolean {
+  if (focus === "scope") {
+    const chord = liveLeaderChord(view, nowMs);
+    if (chord) {
+      if (event.key === "Escape") {
+        consume(event);
+        view.pendingChord = null;
+        return true;
+      }
+      const digit = leaderDigitFromKey(event.key, event.code);
+      if (digit != null) {
+        consume(event);
+        view.pendingChord = null;
+        if (world) {
+          setLeaderDirForSelection(view.tracks, world, digit);
+        }
+        return true;
+      }
+      if (isArrowKey(event.key)) {
+        consume(event);
+        return true;
+      }
+      view.pendingChord = null;
+    }
+    if (isLeaderPrefixKey(event.key)) {
+      consume(event);
+      view.pendingChord = beginScopeChord("L", nowMs, "L_");
+      return true;
+    }
+  }
+
   if (isHistoryToggleKey(event.key)) {
     if (focus !== "scope") {
       return false;

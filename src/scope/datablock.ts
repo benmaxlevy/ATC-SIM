@@ -6,17 +6,20 @@
  * Trainer delta (v1, not a field-by-field STARS clone): two-line full datablock
  * is callsign + Mode C / assigned altitude / ground speed. Omitted: scratchpad,
  * beacon code, CSI, third line, CHARSIZE. Limited datablock is Mode C hundreds
- * only. Default L8 offset (north, 24 px) until T02-05 draws the leader.
+ * only. Leader geometry (L1–L9) lives in `leader.ts`.
  * Never a label, nametag, or tooltip. Not NAS STARS.
  */
 
 import { DATABLOCK_LINE_HEIGHT_PX, DEFAULT_DATABLOCK_CELL_PX } from "./fonts";
+import {
+  DEFAULT_LEADER_DIR,
+  datablockTopLeft,
+  type DatablockMetrics,
+  type LeaderDir,
+} from "./leader";
 
-/** Numpad 8 = north. Shared with T02-05 leader keypad. */
-export const DEFAULT_LEADER_DIR = 8;
-
-/** Pixel-constant leader length (phase README decision 8). T02-05 owns geometry. */
-export const LEADER_LENGTH_PX = 24;
+export { DEFAULT_LEADER_DIR, LEADER_LENGTH_PX } from "./leader";
+export type { DatablockMetrics, LeaderDir } from "./leader";
 
 const FIELD_GAP = "  ";
 
@@ -126,9 +129,14 @@ export function linesForDatablock(
   return formatFullDatablock(track, { modeCVisible });
 }
 
-/** Default L8: datablock top-left is 24 px north (−Y) of the target. */
-export function datablockTopLeft(targetX: number, targetY: number): { x: number; y: number } {
-  return { x: targetX, y: targetY - LEADER_LENGTH_PX };
+export function datablockMetrics(
+  lines: { line1: string; line2?: string },
+  cellWidthPx: number = DEFAULT_DATABLOCK_CELL_PX,
+  lineHeightPx: number = DATABLOCK_LINE_HEIGHT_PX,
+): DatablockMetrics {
+  const cols = Math.max(lines.line1.length, lines.line2?.length ?? 0, 1);
+  const rows = lines.line2 != null ? 2 : 1;
+  return { widthPx: cols * cellWidthPx, heightPx: rows * lineHeightPx };
 }
 
 export function datablockRect(
@@ -137,15 +145,15 @@ export function datablockRect(
   lines: { line1: string; line2?: string },
   cellWidthPx: number = DEFAULT_DATABLOCK_CELL_PX,
   lineHeightPx: number = DATABLOCK_LINE_HEIGHT_PX,
+  dir: LeaderDir = DEFAULT_LEADER_DIR,
 ): DatablockRect {
-  const origin = datablockTopLeft(targetX, targetY);
-  const cols = Math.max(lines.line1.length, lines.line2?.length ?? 0, 1);
-  const rows = lines.line2 != null ? 2 : 1;
+  const metrics = datablockMetrics(lines, cellWidthPx, lineHeightPx);
+  const origin = datablockTopLeft(dir, metrics);
   return {
-    x: origin.x,
-    y: origin.y,
-    w: cols * cellWidthPx,
-    h: rows * lineHeightPx,
+    x: targetX + origin.x,
+    y: targetY + origin.y,
+    w: metrics.widthPx,
+    h: metrics.heightPx,
   };
 }
 

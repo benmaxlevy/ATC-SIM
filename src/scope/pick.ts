@@ -15,13 +15,14 @@ import {
   pointInDatablock,
   type DatablockMode,
 } from "./datablock";
-import { DEFAULT_DATABLOCK_CELL_PX } from "./fonts";
+import { DATABLOCK_LINE_HEIGHT_PX, DEFAULT_DATABLOCK_CELL_PX } from "./fonts";
+import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
 
 /** Frozen hit radius in CSS pixels (T01-11). Pixel-space so range presets stay stable. */
 export const HIT_RADIUS_CSS_PX = 12;
 
 export interface DatablockPickView {
-  tracks: Map<string, { datablockMode: DatablockMode }>;
+  tracks: Map<string, { datablockMode: DatablockMode; leaderDir?: LeaderDir }>;
   modeCVisible: boolean;
   datablockCellWidthPx: number;
 }
@@ -43,8 +44,9 @@ function pickDatablockAt(
   for (const ac of world.aircraft) {
     const p = nmToScreen(ac.xNm, ac.yNm, cam, size);
     const mode = view.tracks.get(ac.id)?.datablockMode ?? "full";
+    const dir = view.tracks.get(ac.id)?.leaderDir ?? DEFAULT_LEADER_DIR;
     const lines = linesForDatablock(ac, mode, view.modeCVisible);
-    const rect = datablockRect(p.x, p.y, lines, cell);
+    const rect = datablockRect(p.x, p.y, lines, cell, DATABLOCK_LINE_HEIGHT_PX, dir);
     if (!pointInDatablock(cssX, cssY, rect)) {
       continue;
     }

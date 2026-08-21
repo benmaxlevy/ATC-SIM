@@ -8,6 +8,7 @@ import {
   noteIdentAccepted,
   syncTrackDisplays,
   toggleDatablockModeForSelection,
+  setLeaderDirForSelection,
 } from "./trackDisplay";
 
 test("IDENT display flash is on within 1 s and off by 3 s sim", () => {
@@ -68,6 +69,7 @@ test("new tracks default to a full datablock", () => {
   const tracks = new Map();
   syncTrackDisplays(tracks, world);
   expect(tracks.get("ac-fdb")!.datablockMode).toBe("full");
+  expect(tracks.get("ac-fdb")!.leaderDir).toBe(8);
 });
 
 test("T toggles the selected track only; with no selection it toggles all", () => {
@@ -86,4 +88,24 @@ test("T toggles the selected track only; with no selection it toggles all", () =
   toggleDatablockModeForSelection(tracks, world);
   expect(tracks.get("ac-dal")!.datablockMode).toBe("full");
   expect(tracks.get("ac-aal")!.datablockMode).toBe("limited");
+});
+
+test("leader dir applies to the selected track only; with no selection it applies to all", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const aal = makeTestAircraft({ id: "ac-aal", callsign: "AAL45" });
+  const world = createWorld({ aircraft: [dal, aal] });
+  const tracks = new Map();
+  syncTrackDisplays(tracks, world);
+  expect(tracks.get("ac-dal")!.leaderDir).toBe(8);
+  expect(tracks.get("ac-aal")!.leaderDir).toBe(8);
+
+  world.selectedAircraftId = dal.id;
+  setLeaderDirForSelection(tracks, world, 6);
+  expect(tracks.get("ac-dal")!.leaderDir).toBe(6);
+  expect(tracks.get("ac-aal")!.leaderDir).toBe(8);
+
+  world.selectedAircraftId = null;
+  setLeaderDirForSelection(tracks, world, 1);
+  expect(tracks.get("ac-dal")!.leaderDir).toBe(1);
+  expect(tracks.get("ac-aal")!.leaderDir).toBe(1);
 });

@@ -3,7 +3,8 @@
  * Trainer delta: last-click / airport live on this view, not on World. Map /
  * localizer / rings flags are trainer display state (DCB-lite binds later).
  * History is 5 s sim / 5 dots, no phosphor. PTL is a straight 1.0 min
- * predicted track line (F7), default off. Not NAS STARS.
+ * predicted track line (F7), default off. Leader direction is L1–L9 (no length
+ * menu). Not NAS STARS.
  *
  * Scope display state only. Never a Command, readback, or intent.
  */
@@ -15,6 +16,7 @@ import {
   type ScopeCamera,
 } from "./camera";
 import { DEFAULT_DATABLOCK_CELL_PX } from "./fonts";
+import type { ScopeChord } from "./keymap";
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
 import type { TrackDisplay } from "./trackDisplay";
 
@@ -44,8 +46,10 @@ export interface ScopeView {
    * Display only — never a Command, readback, or intent.
    */
   ptlOn: boolean;
-  /** Per-track display state (history, IDENT flash, datablock). Keyed by aircraft id. */
+  /** Per-track display state (history, IDENT flash, datablock, leader). Keyed by aircraft id. */
   tracks: Map<string, TrackDisplay>;
+  /** Scope-focus letter chord (`L` leader; T02-06 `F` filter). Null when idle. */
+  pendingChord: ScopeChord | null;
 }
 
 export function createScopeView(
@@ -76,6 +80,7 @@ export function createScopeView(
     datablockCellWidthPx: DEFAULT_DATABLOCK_CELL_PX,
     ptlOn: false,
     tracks: new Map(),
+    pendingChord: null,
   };
 }
 

@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import { createAircraft, createWorld, setSelectedAircraft, type Intent } from "@core";
 import { DEFAULT_SCOPE_CAMERA, nmToScreen, type ScopeCamera } from "./camera";
+import { datablockRect, linesForDatablock } from "./datablock";
 import { HIT_RADIUS_CSS_PX, pickAircraftAt, selectAircraftAt } from "./pick";
 import { createScopeView } from "./scopeView";
 import { syncTrackDisplays } from "./trackDisplay";
@@ -109,7 +110,9 @@ test("AC6 — clicking the datablock rectangle selects that track, not a nearby 
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
   const tick = nmToScreen(dal.xNm, dal.yNm, CAM, VIEW);
-  const onBlock = { x: tick.x + 16, y: tick.y - 18 };
+  const lines = linesForDatablock(dal, "full", true);
+  const rect = datablockRect(tick.x, tick.y, lines, view.datablockCellWidthPx);
+  const onBlock = { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
   expect(Math.hypot(onBlock.x - tick.x, onBlock.y - tick.y)).toBeGreaterThan(HIT_RADIUS_CSS_PX);
 
   const missWithoutBlock = pickAircraftAt(

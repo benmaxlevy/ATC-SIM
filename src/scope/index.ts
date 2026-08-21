@@ -6,15 +6,16 @@
  * KDEM digital map (runway, localizer feather, range rings, optional coastline),
  * target square + history dots (F8 / scope-focus H), full/limited datablocks
  * (scope-focus T / M; Mode C hundreds + assigned + GS), predicted track line
- * (PTL, F7 always-on, default off).
+ * (PTL, F7 always-on, default off), L1–L9 **leader** lines (scope-focus `L`
+ * then 1–9; pixel-constant 24 CSS px; no length menu).
  *
- * Later: leaders, DCB-lite.
+ * Later: DCB-lite.
  *
  * Import rule: `@scope` may import `@core` and `@scenario`.
  * `@scope` may set `selectedAircraftId`. It must not write intent.
  *
- * Analog: CRC STARS RANGE / CENTER / HISTORY / FDB-LDB / PTL / video maps
- * (docs.virtualnas.net/crc/stars — R07). PCG datablock / Mode C (R02).
+ * Analog: CRC STARS RANGE / CENTER / HISTORY / FDB-LDB / PTL / L1–L9 leader /
+ * video maps (docs.virtualnas.net/crc/stars — R07). PCG datablock / Mode C (R02).
  * Trainer delta: PageUp/Down + wheel; no extra CRC presets; middle-drag pan
  * is not CRC. History is 5 s sim / 5 dots, no phosphor. PTL is straight
  * 1.0 min, default off. Trainer-authored JSON maps, not OSM / tiles (R12).
@@ -108,15 +109,35 @@ export {
   IDENT_DISPLAY_FLASH_MS,
   createTrackDisplay,
   isIdentFlashing,
+  setLeaderDirForSelection,
   syncTrackDisplays,
   toggleDatablockModeForSelection,
 } from "./trackDisplay";
 export type { TrackDisplay } from "./trackDisplay";
 export {
   DEFAULT_LEADER_DIR,
+  L5_OVERLAY_GAP_PX,
+  LEADER_BLOCK_GAP_PX,
   LEADER_LENGTH_PX,
-  datablockRect,
+  LEADER_STROKE_PX,
   datablockTopLeft,
+  drawLeaderLine,
+  isLeaderDir,
+  leaderOffsetPx,
+  leaderSegmentPx,
+} from "./leader";
+export type { DatablockMetrics, LeaderDir } from "./leader";
+export {
+  SCOPE_CHORD_WINDOW_MS,
+  beginScopeChord,
+  digitFromKey,
+  isScopeChordLive,
+  leaderDigitFromKey,
+} from "./keymap";
+export type { ScopeChord } from "./keymap";
+export {
+  datablockMetrics,
+  datablockRect,
   formatAltitudeHundreds,
   formatFullDatablock,
   formatGroundSpeedKt,
