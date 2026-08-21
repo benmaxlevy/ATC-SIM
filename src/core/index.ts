@@ -3,7 +3,8 @@
  *
  * Legal now: `World` stub (`simTimeMs`, `simRate` 1|2, empty `aircraft`);
  * geo helpers (`LatLon`, `NmEastNorth`, `latLonToNm`, `nmToLatLon`,
- * `normalizeHeadingDeg`); Command IR types, `INSTRUCTION_TYPES`, and fixtures.
+ * `normalizeHeadingDeg`); Command IR types, `INSTRUCTION_TYPES`, and fixtures;
+ * session event log (`SessionEvent`, `SessionLog`).
  *
  * Later: sim clock, aircraft, kinematics, `stepWorld` (phase 1).
  *
@@ -15,3 +16,5 @@ export { latLonToNm, nmToLatLon, normalizeHeadingDeg } from "./geo/coords";
 export type { Command, Instruction, TurnDir } from "./command/types";
 export { INSTRUCTION_TYPES } from "./command/instructions";
 export * from "./command/fixtures";
+export type { SessionEvent } from "./events/types";
+export { SessionLog } from "./events/session-log";
