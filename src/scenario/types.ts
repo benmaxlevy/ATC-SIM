@@ -98,6 +98,8 @@ export interface ArrivalSpawn {
   headingDeg: number;
   altitudeFt: number;
   speedKt: number;
+  /** ICAO type stub for FDB line 3. Display-only; omitted types skip line 3. */
+  aircraftType?: string;
 }
 
 /**

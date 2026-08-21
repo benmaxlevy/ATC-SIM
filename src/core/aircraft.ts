@@ -29,6 +29,11 @@ export interface Aircraft {
   intent: Intent;
   /** Sim time when IDENT flash ends; 0 = inactive. */
   identUntilSimMs: number;
+  /**
+   * ICAO type stub for the full datablock line 3 (e.g. B738).
+   * Display-only — kinematics ignore this.
+   */
+  aircraftType?: string;
 }
 
 export interface AircraftInit {
@@ -39,6 +44,8 @@ export interface AircraftInit {
   headingDeg: number;
   altitudeFt: number;
   speedKt: number;
+  /** Optional type stub copied onto Aircraft; does not affect kinematics. */
+  aircraftType?: string;
 }
 
 let aircraftSeq = 0;
@@ -71,6 +78,7 @@ export function createAircraft(init: AircraftInit): Aircraft {
       clearedApproachId: null,
     },
     identUntilSimMs: 0,
+    ...(init.aircraftType ? { aircraftType: init.aircraftType.toUpperCase() } : {}),
   };
 }
 

@@ -7,7 +7,7 @@
  * target diamond + history dots (F8 / scope-focus H), full/limited datablocks
  * (scope-focus T / M; Mode C hundreds + assigned + GS), predicted track line
  * (PTL, F7 always-on, default off), L1–L9 **leader** lines (scope-focus `L`
- * then 1–9; pixel-constant 24 CSS px; no length menu), altitude filter
+ * then 1–9; pixel-constant 36 CSS px; no length menu), altitude filter
  * (scope-focus `F`, default 000–180), F3/F4 ownership color stub (not NAS),
  * F1 help overlay (`TRAINER KEYS — NOT CRC`), Tab cycle focus, `/` radio focus.
  *
@@ -177,6 +177,7 @@ export {
   createTrackDisplay,
   isIdentFlashing,
   setLeaderDirForSelection,
+  setScratchpad,
   syncTrackDisplays,
   toggleDatablockModeForSelection,
 } from "./trackDisplay";
@@ -205,6 +206,7 @@ export {
 } from "./leader";
 export type { DatablockMetrics, LeaderDir } from "./leader";
 export {
+  SCRATCHPAD_MAX_LEN,
   datablockMetrics,
   datablockRect,
   formatAltitudeHundreds,
@@ -212,8 +214,15 @@ export {
   formatGroundSpeedKt,
   formatLimitedDatablock,
   linesForDatablock,
+  sanitizeScratchpad,
 } from "./datablock";
-export type { DatablockMode, DatablockSource, FullDatablock, LimitedDatablock } from "./datablock";
+export type {
+  DatablockLines,
+  DatablockMode,
+  DatablockSource,
+  FullDatablock,
+  LimitedDatablock,
+} from "./datablock";
 export {
   DATABLOCK_FONT,
   DATABLOCK_FONT_PX,

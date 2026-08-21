@@ -50,18 +50,18 @@ Extend `kdem.json` arrivals with optional `aircraftType` (does not affect kinema
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** `formatFullDatablock` tests include type **or** assigned H/A/S on the frozen extra line.
-- [ ] **AC2 —** Limited format is still 3-digit Mode C only.
-- [ ] **AC3 —** Scratchpad round-trip on display state (unit); does not change `Aircraft.intent`.
-- [ ] **AC4 —** Default leader length &gt; 24 px (or documented discrete set); L5 overlay still 0.
-- [ ] **AC5 —** Radio loop `DAL123 H270` unchanged. `npm test` green.
-- [ ] **AC6 — Research:** datablock/scratchpad/Mode C comments; README decision 7 updated.
+- [x] **AC1 —** `formatFullDatablock` tests include type **or** assigned H/A/S on the frozen extra line.
+- [x] **AC2 —** Limited format is still 3-digit Mode C only.
+- [x] **AC3 —** Scratchpad round-trip on display state (unit); does not change `Aircraft.intent`.
+- [x] **AC4 —** Default leader length &gt; 24 px (or documented discrete set); L5 overlay still 0.
+- [x] **AC5 —** Radio loop `DAL123 H270` unchanged. `npm test` green.
+- [x] **AC6 — Research:** datablock/scratchpad/Mode C comments; README decision 7 updated.
 
 ## Test plan
 
 - Unit: formatters, leader px, scratchpad sanitizer (length 4, charset).
 - Integration: heading-command still green.
-- Manual: FDB readable at 20 NM; not overlapping the symbol on L8.
+- Manual: FDB readable at 20 NM; not overlapping the symbol on L8. skip-with-reason: no Chrome operator this session; automated format/paint/leader tests cover layout math. Do not invent a visual pass.
 
 ## Suggested files
 

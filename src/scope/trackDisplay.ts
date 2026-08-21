@@ -2,12 +2,13 @@
  * Analog: CRC STARS track display state (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: per-track history buffer, full/limited datablock mode,
  * L1–L9 **leader** direction (no length menu), ownership color stub (T02-08
- * F3/F4), and display-only IDENT flash live here, keyed by aircraft id —
- * never on Aircraft kinematics. Not NAS STARS.
+ * F3/F4), trainer **scratchpad** (0–4 A–Z0–9, not NAS FP), and display-only
+ * IDENT flash live here, keyed by aircraft id — never on Aircraft kinematics
+ * or intent. Not NAS STARS.
  */
 
 import type { Aircraft, World } from "@core";
-import type { DatablockMode } from "./datablock";
+import { sanitizeScratchpad, type DatablockMode } from "./datablock";
 import { createHistoryBuf, maybeSampleHistory, type HistoryBuf } from "./history";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
 import { applyDropTrack, applyInitiateTrack, NO_SEL_HINT, type TrackOwnership } from "./ownership";
@@ -27,6 +28,11 @@ export interface TrackDisplay {
   leaderDir: LeaderDir;
   /** Spawn unowned (white). F3 → owned (green). F4 → unowned. Color only. */
   ownership: TrackOwnership;
+  /**
+   * Trainer scratchpad on the full datablock (0–4 A–Z0–9). Default empty.
+   * Display state only — never Aircraft.intent / kinematics.
+   */
+  scratchpad: string;
 }
 
 export function createTrackDisplay(): TrackDisplay {
@@ -37,7 +43,17 @@ export function createTrackDisplay(): TrackDisplay {
     datablockMode: "full",
     leaderDir: DEFAULT_LEADER_DIR,
     ownership: "unowned",
+    scratchpad: "",
   };
+}
+
+/**
+ * Set the trainer scratchpad for a track id. Sanitizes to 0–4 A–Z0–9.
+ * Does not create a Command, readback, or intent change.
+ */
+export function setScratchpad(tracks: Map<string, TrackDisplay>, id: string, raw: string): void {
+  const td = ensureTrackDisplay(tracks, id);
+  td.scratchpad = sanitizeScratchpad(raw);
 }
 
 function ensureTrackDisplay(tracks: Map<string, TrackDisplay>, id: string): TrackDisplay {

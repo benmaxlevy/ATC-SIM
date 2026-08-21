@@ -6,10 +6,12 @@ import {
   createTrackDisplay,
   isIdentFlashing,
   noteIdentAccepted,
+  setScratchpad,
   syncTrackDisplays,
   toggleDatablockModeForSelection,
   setLeaderDirForSelection,
 } from "./trackDisplay";
+import { sanitizeScratchpad, SCRATCHPAD_MAX_LEN } from "./datablock";
 
 test("IDENT display flash is on within 1 s and off by 3 s sim", () => {
   const ac = makeTestAircraft({ id: "ac-ident" });
@@ -71,6 +73,34 @@ test("new tracks default to a full datablock", () => {
   expect(tracks.get("ac-fdb")!.datablockMode).toBe("full");
   expect(tracks.get("ac-fdb")!.leaderDir).toBe(8);
   expect(tracks.get("ac-fdb")!.ownership).toBe("unowned");
+  expect(tracks.get("ac-fdb")!.scratchpad).toBe("");
+});
+
+test("AC3 — scratchpad round-trips on display state and does not change Aircraft.intent", () => {
+  const ac = makeTestAircraft({ id: "ac-spad", altitudeFt: 8000, speedKt: 220 });
+  const world = createWorld({ aircraft: [ac] });
+  const tracks = new Map();
+  syncTrackDisplays(tracks, world);
+  const intentSnapshot = { ...ac.intent };
+
+  expect(SCRATCHPAD_MAX_LEN).toBe(4);
+  expect(sanitizeScratchpad("ab12")).toBe("AB12");
+  expect(sanitizeScratchpad("toolong!!")).toBe("TOOL");
+  expect(sanitizeScratchpad("a-b 9")).toBe("AB9");
+  expect(sanitizeScratchpad("")).toBe("");
+
+  setScratchpad(tracks, ac.id, "ab12");
+  expect(tracks.get(ac.id)!.scratchpad).toBe("AB12");
+  setScratchpad(tracks, ac.id, "hold!");
+  expect(tracks.get(ac.id)!.scratchpad).toBe("HOLD");
+  setScratchpad(tracks, ac.id, "");
+  expect(tracks.get(ac.id)!.scratchpad).toBe("");
+
+  expect(ac.intent).toEqual(intentSnapshot);
+  expect(ac.intent.assignedHeadingDeg).toBe(ac.headingDeg);
+  expect(ac.intent.assignedAltitudeFt).toBe(8000);
+  expect(ac.altitudeFt).toBe(8000);
+  expect(ac.speedKt).toBe(220);
 });
 
 test("T toggles the selected track only; with no selection it toggles all", () => {

@@ -6,7 +6,7 @@
  * localizer feather, range rings, optional coastline); circular clip;
  * **target** diamond + optional **history** dots (5 s sim / 5 dots, no phosphor);
  * full/limited **datablock** in IBM Plex Mono (not a STARS face); L1–L9 **leader**
- * (pixel-constant 24 CSS px, no length menu); **predicted track line** (PTL) straight 1.0 min
+ * (pixel-constant 36 CSS px, no length menu); **predicted track line** (PTL) straight 1.0 min
  * GS along ground track, default off, F7; CRC may offer extra minute
  * presets / turn curves — we do not. Extra CRC presets omitted.
  * **Altitude filter** (FILTER readout): out of band keep target + history,
@@ -200,13 +200,26 @@ function drawDatablock(
   targetY: number,
   view: ScopeView,
 ): void {
-  const lines = linesForDatablock(ac, trackDatablockMode(view, ac.id), view.modeCVisible);
+  const scratchpad = view.tracks.get(ac.id)?.scratchpad ?? "";
+  const lines = linesForDatablock(
+    ac,
+    trackDatablockMode(view, ac.id),
+    view.modeCVisible,
+    scratchpad,
+  );
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, DATABLOCK_LINE_HEIGHT_PX);
   const origin = datablockTopLeft(trackLeaderDir(view, ac.id), metrics);
   ctx.fillStyle = trackPaintColor(trackOwnership(view, ac.id));
   ctx.fillText(lines.line1, targetX + origin.x, targetY + origin.y);
   if (lines.line2 != null) {
     ctx.fillText(lines.line2, targetX + origin.x, targetY + origin.y + DATABLOCK_LINE_HEIGHT_PX);
+  }
+  if (lines.line3 != null) {
+    ctx.fillText(
+      lines.line3,
+      targetX + origin.x,
+      targetY + origin.y + 2 * DATABLOCK_LINE_HEIGHT_PX,
+    );
   }
 }
 

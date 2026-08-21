@@ -1,8 +1,8 @@
 /**
  * Analog: CRC STARS L1–L9 **leader** direction (docs.virtualnas.net/crc/stars — R07).
- * Trainer delta: direction only; no leader-length DCB menu. Numpad 5 = overlay.
- * Pixel-constant 24 CSS px (not NM) so length does not explode at 5 NM range.
- * Limited datablocks use the same 24 px length. Always named **leader**.
+ * Trainer delta: direction only; no leader-length DCB menu (T02-17). Numpad 5 = overlay.
+ * Pixel-constant 36 CSS px (T02-19; was 24) so length does not explode at 5 NM range.
+ * Limited datablocks use the same 36 px length. Always named **leader**.
  * Not NAS STARS.
  *
  * Numpad compass (canvas −Y is north):
@@ -29,8 +29,8 @@ export type LeaderDir = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 /** Numpad 8 = north. Default at spawn for every track. */
 export const DEFAULT_LEADER_DIR: LeaderDir = 8;
 
-/** Pixel-constant leader length (phase README decision 8). Not nautical miles. */
-export const LEADER_LENGTH_PX = 24;
+/** Pixel-constant leader length (phase README decision 8, T02-19 36 px). Not nautical miles. */
+export const LEADER_LENGTH_PX = 36;
 
 export const LEADER_STROKE_PX = 1;
 

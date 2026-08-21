@@ -25,6 +25,7 @@ function downwindArcArrival(index: number, count: number): ArrivalSpawn {
     headingDeg: DOWNWIND_HEADING_DEG,
     altitudeFt: 6000 + (index % 9) * 400,
     speedKt: 210 + (index % 5) * 8,
+    aircraftType: "B738",
   };
 }
 
@@ -37,6 +38,7 @@ function spawnArrival(world: World, arrival: ArrivalSpawn): void {
       headingDeg: arrival.headingDeg,
       altitudeFt: arrival.altitudeFt,
       speedKt: arrival.speedKt,
+      aircraftType: arrival.aircraftType,
     }),
   );
 }

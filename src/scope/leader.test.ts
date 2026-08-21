@@ -17,7 +17,8 @@ const METRICS = { widthPx: 57.6, heightPx: 24 };
 
 test("AC1 — nine offsets; L8 is −Y (north), L6 is +X, L5 is ~0 length", () => {
   expect(DEFAULT_LEADER_DIR).toBe(8);
-  expect(LEADER_LENGTH_PX).toBe(24);
+  expect(LEADER_LENGTH_PX).toBe(36);
+  expect(LEADER_LENGTH_PX).toBeGreaterThan(24);
   for (const dir of DIRS) {
     expect(isLeaderDir(dir)).toBe(true);
     const off = leaderOffsetPx(dir);
@@ -42,7 +43,7 @@ test("AC1 — nine offsets; L8 is −Y (north), L6 is +X, L5 is ~0 length", () =
   expect(leaderSegmentPx(5)).toBeNull();
 });
 
-test("compass diagonals keep a 24 px Euclidean leader length", () => {
+test("compass diagonals keep a 36 px Euclidean leader length", () => {
   for (const dir of [1, 3, 7, 9] as LeaderDir[]) {
     const off = leaderOffsetPx(dir);
     expect(Math.hypot(off.dx, off.dy)).toBeCloseTo(LEADER_LENGTH_PX);
@@ -81,6 +82,13 @@ test("L4 right-aligns the datablock west of the leader so text is not crossed", 
   const right = origin.x + METRICS.widthPx;
   expect(right).toBeCloseTo(-LEADER_LENGTH_PX - LEADER_BLOCK_GAP_PX);
   expect(right).toBeLessThan(0);
+});
+
+test("AC4 — L5 overlay length stays 0 when default leader is 36 px", () => {
+  expect(LEADER_LENGTH_PX).toBeGreaterThan(24);
+  expect(leaderSegmentPx(5)).toBeNull();
+  const overlay = leaderOffsetPx(5);
+  expect(Math.hypot(overlay.dx, overlay.dy)).toBeLessThanOrEqual(1);
 });
 
 test("AC8 — module says leader, cites CRC L1–L9, and omits a length menu", () => {

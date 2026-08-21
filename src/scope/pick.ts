@@ -24,7 +24,7 @@ import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
 export const HIT_RADIUS_CSS_PX = 12;
 
 export interface DatablockPickView {
-  tracks: Map<string, { datablockMode: DatablockMode; leaderDir?: LeaderDir }>;
+  tracks: Map<string, { datablockMode: DatablockMode; leaderDir?: LeaderDir; scratchpad?: string }>;
   modeCVisible: boolean;
   datablockCellWidthPx: number;
   /** Out-of-filter tracks have no datablock to hit; the target still picks. */
@@ -50,9 +50,10 @@ function pickDatablockAt(
       continue;
     }
     const p = nmToScreen(ac.xNm, ac.yNm, cam, size);
-    const mode = view.tracks.get(ac.id)?.datablockMode ?? "full";
-    const dir = view.tracks.get(ac.id)?.leaderDir ?? DEFAULT_LEADER_DIR;
-    const lines = linesForDatablock(ac, mode, view.modeCVisible);
+    const td = view.tracks.get(ac.id);
+    const mode = td?.datablockMode ?? "full";
+    const dir = td?.leaderDir ?? DEFAULT_LEADER_DIR;
+    const lines = linesForDatablock(ac, mode, view.modeCVisible, td?.scratchpad ?? "");
     const rect = datablockRect(p.x, p.y, lines, cell, DATABLOCK_LINE_HEIGHT_PX, dir);
     if (!pointInDatablock(cssX, cssY, rect)) {
       continue;

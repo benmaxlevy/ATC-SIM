@@ -227,6 +227,10 @@ function assertArrival(value: unknown, index: number): ArrivalSpawn {
   if (callsign.length === 0) {
     throw new Error(`Scenario arrivals[${index}].callsign must be non-empty`);
   }
+  const aircraftType = parseOptionalAircraftType(
+    value.aircraftType,
+    `arrivals[${index}].aircraftType`,
+  );
   return {
     callsign,
     xNm: assertNumber(value.xNm, `arrivals[${index}].xNm`),
@@ -234,7 +238,23 @@ function assertArrival(value: unknown, index: number): ArrivalSpawn {
     headingDeg: assertNumber(value.headingDeg, `arrivals[${index}].headingDeg`),
     altitudeFt: assertNumber(value.altitudeFt, `arrivals[${index}].altitudeFt`),
     speedKt: assertNumber(value.speedKt, `arrivals[${index}].speedKt`),
+    ...(aircraftType ? { aircraftType } : {}),
   };
+}
+
+/** ICAO type stub for FDB line 3. Optional; 2–4 A–Z0–9. Display-only. */
+function parseOptionalAircraftType(value: unknown, path: string): string | undefined {
+  if (value == null) {
+    return undefined;
+  }
+  if (typeof value !== "string") {
+    throw new Error(`Scenario ${path} must be a string when present`);
+  }
+  const type = value.toUpperCase();
+  if (!/^[A-Z0-9]{2,4}$/.test(type)) {
+    throw new Error(`Scenario ${path} must be 2–4 A–Z0–9 (got ${JSON.stringify(value)})`);
+  }
+  return type;
 }
 
 function assertArrivals(value: unknown): ArrivalSpawn[] {

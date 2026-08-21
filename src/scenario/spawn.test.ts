@@ -33,6 +33,7 @@ test("createWorldFromScenario loads real KDEM JSON and meets AC2–AC5 (AC6)", (
   expect(dal123).toBeDefined();
   expect(dal123!.xNm).toBeGreaterThanOrEqual(10);
   expect(dal123!.headingDeg).toBe(100);
+  expect(dal123!.aircraftType).toBe("B738");
   expect(dal123!.altitudeFt).toBeGreaterThanOrEqual(SPAWN_ALT_FT.min);
   expect(dal123!.altitudeFt).toBeLessThanOrEqual(SPAWN_ALT_FT.max);
   expect(dal123!.speedKt).toBeGreaterThanOrEqual(SPAWN_SPEED_KT.min);
@@ -62,6 +63,7 @@ test("createWorldFromScenario loads real KDEM JSON and meets AC2–AC5 (AC6)", (
     expect(ac.intent.assignedAltitudeFt).toBe(ac.altitudeFt);
     expect(ac.intent.assignedSpeedKt).toBe(ac.speedKt);
     expect(ac.intent.turn).toBe("SHORTEST");
+    expect(ac.aircraftType).toMatch(/^[A-Z0-9]{2,4}$/);
   }
 });
 

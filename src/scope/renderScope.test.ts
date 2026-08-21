@@ -18,7 +18,7 @@ import {
   OWNERSHIP_STUB_FONT,
   isTargetDiamondPath,
 } from "./targetSymbol";
-import { isIdentFlashing } from "./trackDisplay";
+import { isIdentFlashing, setScratchpad } from "./trackDisplay";
 import { DATABLOCK_FONT, DATABLOCK_FONT_PX } from "./fonts";
 import { formatFullDatablock, formatLimitedDatablock, datablockMetrics } from "./datablock";
 import { datablockTopLeft, DEFAULT_LEADER_DIR, leaderSegmentPx } from "./leader";
@@ -181,6 +181,11 @@ test("AC1 — six spawned arrivals get an 8 px diamond at nmToScreen ±2 px", ()
     expect(line1, ac.callsign).toHaveLength(1);
     expect(
       fillTexts.some((t) => t.text === block.line2 && t.font === DATABLOCK_FONT),
+      ac.callsign,
+    ).toBe(true);
+    expect(block.line3, ac.callsign).toBeDefined();
+    expect(
+      fillTexts.some((t) => t.text === block.line3 && t.font === DATABLOCK_FONT),
       ac.callsign,
     ).toBe(true);
   }
@@ -392,6 +397,35 @@ test("T02-04 AC2 — full datablock is callsign + hundreds/GS in IBM Plex Mono, 
   expect(line2!.y).toBeCloseTo(p.y + origin.y + DATABLOCK_FONT_PX, 5);
 });
 
+test("T02-19 — full datablock paints type on line 3 and scratchpad on line 2 tail", () => {
+  const ac = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    altitudeFt: 3000,
+    speedKt: 210,
+    xNm: 0,
+    yNm: 0,
+    aircraftType: "B738",
+  });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  const first = createMockCtx();
+  renderScope(first.ctx, world, view, 800, 800);
+  setScratchpad(view.tracks, ac.id, "abcd");
+  const { ctx, fillTexts } = createMockCtx();
+  renderScope(ctx, world, view, 800, 800);
+  const line2 = fillTexts.find((t) => t.text === "030  210  ABCD" && t.font === DATABLOCK_FONT);
+  const line3 = fillTexts.find((t) => t.text === "B738" && t.font === DATABLOCK_FONT);
+  expect(line2).toBeDefined();
+  expect(line3).toBeDefined();
+  if (!line2 || !line3) {
+    throw new Error("expected FDB line 2 scratchpad tail and line 3 type");
+  }
+  expect(line3.y!).toBeCloseTo(line2.y! + DATABLOCK_FONT_PX, 5);
+  expect(ac.intent.assignedAltitudeFt).toBe(3000);
+  expect(view.tracks.get(ac.id)!.scratchpad).toBe("ABCD");
+});
+
 test("T02-04 AC5/AC7 — T limited drops the callsign; no duplicate callsign paint", () => {
   const ac = makeTestAircraft({
     id: "ac-dal",
@@ -400,6 +434,7 @@ test("T02-04 AC5/AC7 — T limited drops the callsign; no duplicate callsign pai
     speedKt: 210,
     xNm: 0,
     yNm: 0,
+    aircraftType: "B738",
   });
   const world = createWorld({ aircraft: [ac] });
   const view = createScopeView();
@@ -414,6 +449,7 @@ test("T02-04 AC5/AC7 — T limited drops the callsign; no duplicate callsign pai
   expect(limited.fillTexts.filter((t) => t.text === "DAL123")).toHaveLength(0);
   expect(limited.fillTexts.some((t) => t.text === formatLimitedDatablock(ac).line1)).toBe(true);
   expect(limited.fillTexts.some((t) => t.text === "030  210")).toBe(false);
+  expect(limited.fillTexts.some((t) => t.text === "B738")).toBe(false);
 });
 
 test("T02-04 AC5 — M hides Mode C on full blocks; limited still paints Mode C hundreds", () => {

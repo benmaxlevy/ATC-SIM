@@ -192,13 +192,14 @@ Use a **metric-similar monospace**, 11–13 px on a 1080p PPI:
 
 Datablock layout is **character-cell based** (columns of hundreds vs GS). Proportional fonts are a bug.
 
-### 7. Datablock content (v1)
+### 7. Datablock content (v1, amended T02-19)
 
-**Full datablock** (two lines, monospace):
+**Full datablock** (three lines, monospace, character-cell):
 
 ```
 DAL123
 030  210
+B738
 ```
 
 - Line 1: callsign as stored (no telephony here; that’s readback-only).
@@ -208,11 +209,23 @@ DAL123
 ```
 DAL123
 032  030  210
+B738
 ```
 
-Meaning: reported 3200, assigned 3000, GS 210. This is the phase-2 altitude contract — not a full STARS field-by-field clone (no scratchpad, no beacon, no CSI).
+Meaning: reported 3200, assigned 3000, GS 210. This is the phase-2 altitude contract — not a full STARS field-by-field clone (no beacon, no CSI, no NAS FP scratchpad).
+- Optional trainer **scratchpad** (TrackDisplay, 0–4 A–Z0–9, default empty) appends after GS with two spaces when non-empty. Not a host flight-plan / landing-runway assignment:
 
-**Limited datablock** (one line, no callsign):
+```
+DAL123
+030  210  ABCD
+B738
+```
+
+- Line 3 (frozen extra line): aircraft **type** from scenario spawn (ICAO stub, e.g. `B738`). Display-only; does not affect kinematics. Omit line 3 when type is missing. **Not** assigned H/A/S — that would be a fourth field set, not a third line. No 4-line block.
+
+Line 2 columns (two-space gaps, left to right): Mode C hundreds (if `M` shows it) · assigned hundreds (if ≥100 ft off) · GS · scratchpad (if non-empty).
+
+**Limited datablock** (one line, no callsign, no scratchpad, no type):
 
 ```
 032
@@ -220,9 +233,13 @@ Meaning: reported 3200, assigned 3000, GS 210. This is the phase-2 altitude cont
 
 Mode C hundreds only, shorter leader allowed (same direction, half length).
 
-**Mode C toggle (`M`)** hides the reported-altitude field on **full** blocks. If assigned differs, still show assigned + GS. If assigned equals Mode C and Mode C is hidden, show GS only on line 2.
+**Mode C toggle (`M`)** hides the reported-altitude field on **full** blocks. If assigned differs, still show assigned + GS. If assigned equals Mode C and Mode C is hidden, show GS only on line 2. Type on line 3 is unchanged. Scratchpad still tails line 2 when set.
 
-No third line in phase 2.
+`T` / `M` behavior is unchanged (scope-focus only; radio `T20L` still parses).
+
+Default **leader** length is **36 CSS px** (pixel-constant, L8). L5 overlay remains length 0. DCB LDR length menu is T02-17.
+
+Font: IBM Plex Mono or system monospace — not a STARS face.
 
 ### 8. Leader directions (L1–L9 analog)
 
@@ -235,7 +252,7 @@ Numpad compass, **including 5 = overlay**:
 ```
 
 - Default at spawn: **L8** (north). Same for all tracks until changed.
-- Phase 2 leader length is **fixed**: 24 px at the current canvas, **or** 0.35 NM world — pick **pixel-constant** (24 px) so length does not explode at 5 NM range. Document the pick in T02-05.
+- Phase 2 leader length is **fixed**: **36 px** at the current canvas (T02-19; was 24), **or** 0.35 NM world — pick **pixel-constant** (36 px) so length does not explode at 5 NM range. Documented in T02-05 / T02-19. DCB length menu is T02-17.
 - L5: length 0; datablock top-left at the target (with a 4 px gap so the symbol stays visible).
 - Per-track direction stored on display state, not on `Aircraft`.
 - Changing `L`+digit applies to the **selected** track; if none selected, apply to **all**.
@@ -366,7 +383,7 @@ Implementers will be tempted to “just copy CRC.” Freeze this delta in the he
 | CENTER then click | `Home` / `End` / double-click / middle-drag pan |
 | Full DCB | Green cell grid (T02-16); MAPS/RR/LDR/BRITE in T02-17. Still no WX/PREF |
 | F3 Initiate Track (NAS associate) | F3 color stub |
-| Leader length + direction menus | Direction only, fixed length |
+| Leader length + direction menus | Direction only, fixed **36 px** (T02-19); DCB length menu is T02-17 |
 | Pref sets, brightness, charsize | One font size, one brightness |
 | F1 as a STARS function | F1 = help |
 | Radio is a headset | Radio is the phase 1 command line |

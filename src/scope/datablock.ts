@@ -1,12 +1,14 @@
 /**
  * Analog: FAA PCG **datablock** / **Mode C** (R02); CRC STARS FDB / LDB (R07);
  * FOA STARS display data (R05). Altitude on the block is hundreds of feet, not
- * raw feet.
+ * raw feet. CRC analog FDB line 2/3 (scratchpad, type) — trainer fields, not NAS FP.
  *
- * Trainer delta (v1, not a field-by-field STARS clone): two-line full datablock
- * is callsign + Mode C / assigned altitude / ground speed. Omitted: scratchpad,
- * beacon code, CSI, third line, CHARSIZE. Limited datablock is Mode C hundreds
- * only. Leader geometry (L1–L9) lives in `leader.ts`.
+ * Trainer delta (v1, not a field-by-field STARS clone): full datablock is
+ * callsign (line 1), Mode C / assigned / GS + optional scratchpad (line 2),
+ * aircraft type (line 3). Scratchpad is TrackDisplay 0–4 A–Z0–9, not a host
+ * flight-plan / runway assignment. Omitted: beacon code, CSI, CHARSIZE, NAS FP.
+ * Limited datablock is Mode C hundreds only (no scratchpad, no type).
+ * Leader geometry (L1–L9) lives in `leader.ts`.
  * Never a label, nametag, or tooltip. Not NAS STARS.
  */
 
@@ -23,7 +25,21 @@ export type { DatablockMetrics, LeaderDir } from "./leader";
 
 const FIELD_GAP = "  ";
 
+/** Trainer scratchpad cell: analog CRC FDB scratchpad; not NAS FP (R27). */
+export const SCRATCHPAD_MAX_LEN = 4;
+
 export type DatablockMode = "full" | "limited";
+
+/**
+ * Uppercase, drop anything but A–Z0–9, clamp to 4 characters.
+ * Empty is valid (cleared scratchpad).
+ */
+export function sanitizeScratchpad(raw: string): string {
+  return raw
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, SCRATCHPAD_MAX_LEN);
+}
 
 /** Kinematics + intent the formatters read. Aircraft satisfies this. */
 export interface DatablockSource {
@@ -35,16 +51,22 @@ export interface DatablockSource {
   intent: {
     assignedAltitudeFt: number;
   };
+  /** ICAO type stub for FDB line 3 (e.g. B738). Display-only. */
+  aircraftType?: string;
 }
 
 export interface FullDatablockOpts {
   /** Hide the Mode C field on full blocks (`M`). Limited ignores this. */
   modeCVisible?: boolean;
+  /** Trainer scratchpad (sanitized to 0–4 A–Z0–9). Omitted on limited. */
+  scratchpad?: string;
 }
 
 export interface FullDatablock {
   line1: string;
   line2: string;
+  /** Aircraft type (character-cell). Omitted when spawn has no type. */
+  line3?: string;
 }
 
 export interface LimitedDatablock {
@@ -84,9 +106,27 @@ function assignedDiffers(modeCFt: number, assignedFt: number): boolean {
   return Math.abs(assignedFt - modeCFt) >= 100;
 }
 
+function formatAircraftType(type: string | undefined): string | undefined {
+  if (type == null || type.length === 0) {
+    return undefined;
+  }
+  const cell = type
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 4);
+  return cell.length > 0 ? cell : undefined;
+}
+
+function appendScratchpad(line2: string, scratchpad: string | undefined): string {
+  const spad = sanitizeScratchpad(scratchpad ?? "");
+  return spad.length > 0 ? `${line2}${FIELD_GAP}${spad}` : line2;
+}
+
 /**
- * Full datablock: callsign on line 1; Mode C, assigned if ≥100 ft off, GS on line 2.
+ * Full datablock: callsign on line 1; Mode C, assigned if ≥100 ft off, GS on
+ * line 2 (optional scratchpad tail); aircraft type on line 3 when present.
  * `M` hides Mode C only — assigned + GS remain when they differ; GS-only when not.
+ * Frozen extra line is type, not assigned H/A/S. Not a 4-line block.
  */
 export function formatFullDatablock(
   track: DatablockSource,
@@ -108,13 +148,21 @@ export function formatFullDatablock(
   } else {
     line2 = gs;
   }
+  line2 = appendScratchpad(line2, opts.scratchpad);
 
-  return { line1: track.callsign, line2 };
+  const line3 = formatAircraftType(track.aircraftType);
+  return line3 ? { line1: track.callsign, line2, line3 } : { line1: track.callsign, line2 };
 }
 
-/** Limited datablock: Mode C hundreds only. Ignores the global `M` toggle. */
+/** Limited datablock: Mode C hundreds only. Ignores the global `M` toggle, scratchpad, and type. */
 export function formatLimitedDatablock(track: DatablockSource): LimitedDatablock {
   return { line1: formatAltitudeHundreds(track.altitudeFt) };
+}
+
+export interface DatablockLines {
+  line1: string;
+  line2?: string;
+  line3?: string;
 }
 
 /** Resolve full vs limited lines for paint and hit-test. */
@@ -122,27 +170,28 @@ export function linesForDatablock(
   track: DatablockSource,
   mode: DatablockMode = "full",
   modeCVisible = true,
-): { line1: string; line2?: string } {
+  scratchpad = "",
+): DatablockLines {
   if (mode === "limited") {
     return formatLimitedDatablock(track);
   }
-  return formatFullDatablock(track, { modeCVisible });
+  return formatFullDatablock(track, { modeCVisible, scratchpad });
 }
 
 export function datablockMetrics(
-  lines: { line1: string; line2?: string },
+  lines: DatablockLines,
   cellWidthPx: number = DEFAULT_DATABLOCK_CELL_PX,
   lineHeightPx: number = DATABLOCK_LINE_HEIGHT_PX,
 ): DatablockMetrics {
-  const cols = Math.max(lines.line1.length, lines.line2?.length ?? 0, 1);
-  const rows = lines.line2 != null ? 2 : 1;
+  const cols = Math.max(lines.line1.length, lines.line2?.length ?? 0, lines.line3?.length ?? 0, 1);
+  const rows = lines.line3 != null ? 3 : lines.line2 != null ? 2 : 1;
   return { widthPx: cols * cellWidthPx, heightPx: rows * lineHeightPx };
 }
 
 export function datablockRect(
   targetX: number,
   targetY: number,
-  lines: { line1: string; line2?: string },
+  lines: DatablockLines,
   cellWidthPx: number = DEFAULT_DATABLOCK_CELL_PX,
   lineHeightPx: number = DATABLOCK_LINE_HEIGHT_PX,
   dir: LeaderDir = DEFAULT_LEADER_DIR,

@@ -39,7 +39,8 @@
       "yNm": 8,
       "headingDeg": 100,
       "altitudeFt": 8000,
-      "speedKt": 220
+      "speedKt": 220,
+      "aircraftType": "B738"
     },
     {
       "callsign": "AAL45",
@@ -47,7 +48,8 @@
       "yNm": 5,
       "headingDeg": 90,
       "altitudeFt": 7000,
-      "speedKt": 230
+      "speedKt": 230,
+      "aircraftType": "A320"
     },
     {
       "callsign": "UAL200",
@@ -55,7 +57,8 @@
       "yNm": 10,
       "headingDeg": 85,
       "altitudeFt": 9000,
-      "speedKt": 240
+      "speedKt": 240,
+      "aircraftType": "B739"
     },
     {
       "callsign": "SWA88",
@@ -63,7 +66,8 @@
       "yNm": 4,
       "headingDeg": 95,
       "altitudeFt": 6000,
-      "speedKt": 210
+      "speedKt": 210,
+      "aircraftType": "B737"
     },
     {
       "callsign": "JBU17",
@@ -71,7 +75,8 @@
       "yNm": 11,
       "headingDeg": 80,
       "altitudeFt": 10000,
-      "speedKt": 250
+      "speedKt": 250,
+      "aircraftType": "A321"
     },
     {
       "callsign": "NKS310",
@@ -79,7 +84,8 @@
       "yNm": 6,
       "headingDeg": 88,
       "altitudeFt": 8500,
-      "speedKt": 225
+      "speedKt": 225,
+      "aircraftType": "A320"
     }
   ]
 }

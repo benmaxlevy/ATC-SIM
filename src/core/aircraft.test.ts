@@ -60,6 +60,17 @@ test("fresh aircraft intent matches present heading, altitude, and speed (AC3)",
   expect(ac.identUntilSimMs).toBe(0);
 });
 
+test("aircraftType is copied from spawn and does not change kinematics fields", () => {
+  const withType = createAircraft(sampleInit({ aircraftType: "b738" }));
+  const without = createAircraft(sampleInit());
+  expect(withType.aircraftType).toBe("B738");
+  expect(without.aircraftType).toBeUndefined();
+  expect(withType.headingDeg).toBe(without.headingDeg);
+  expect(withType.altitudeFt).toBe(without.altitudeFt);
+  expect(withType.speedKt).toBe(without.speedKt);
+  expect(withType.intent).toEqual(without.intent);
+});
+
 test("makeTestAircraft ids are stable only when passed in (AC5)", () => {
   const withIdA = makeTestAircraft({ callsign: "DAL123", id: "ac-fixed" });
   const withIdB = makeTestAircraft({ callsign: "DAL123", id: "ac-fixed" });
