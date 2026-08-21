@@ -9,14 +9,20 @@ import {
   type PttCaptureController,
   type PttCaptureEvent,
   type ReadbackPlayer,
+  type SpeechApiUrlStatus,
   type SpeechPort,
   type VoiceLoop,
   type VoiceSessionSnapshot,
   type VoiceStatusEvent,
   type VoiceUtteranceMetrics,
 } from "@speech";
-import { LATENCY_OVERLAY_DEFAULT_VISIBLE } from "../ui/latency-overlay";
 import { formatVoiceStatus } from "../ui/voice-status";
+import {
+  createSpeechSettingsController,
+  defaultSpeechPrefs,
+  type SpeechPrefs,
+  type SpeechSettingsController,
+} from "../ui/settings-speech";
 
 export interface AppDeps {
   speech: SpeechPort;
@@ -30,6 +36,11 @@ export interface AppDeps {
   voiceLoop?: VoiceLoop;
   /** Injected in tests so PTT-up → audio-start can resolve without Web Audio. */
   readbackPlayer?: ReadbackPlayer;
+  /** Persisted T03-10 prefs. Boot via `loadAndResolveSpeechBoot`. */
+  speechPrefs?: SpeechPrefs;
+  speechUrls?: SpeechApiUrlStatus;
+  confidenceThreshold?: number;
+  getVoiceId?: () => string;
 }
 
 export interface LatencyOverlayState {
@@ -39,6 +50,8 @@ export interface LatencyOverlayState {
 
 export interface AppHandles {
   speech: SpeechPort;
+  setSpeechPort(port: SpeechPort): boolean;
+  speechSettings: SpeechSettingsController;
   log: SessionLog;
   world: World;
   ptt: PttCaptureController;
@@ -97,11 +110,13 @@ export function createApp(deps: AppDeps): AppHandles {
   }
   const world = deps.world ?? createWorld();
   const log = new SessionLog();
-  let ptt: PttCaptureController | undefined = deps.ptt;
+  let speech = deps.speech;
+  const prefs = deps.speechPrefs ?? defaultSpeechPrefs();
+  let ptt: PttCaptureController | undefined = undefined;
   const voiceStatusListeners = new Set<(status: string | null) => void>();
   const latencyListeners = new Set<(state: LatencyOverlayState) => void>();
   const tracker = new VoiceLatencyTracker(deps.speech.id);
-  let latencyOverlayVisible = LATENCY_OVERLAY_DEFAULT_VISIBLE;
+  let latencyOverlayVisible = prefs.latencyOverlay;
 
   function emitVoiceStatus(status: string | null): void {
     for (const listener of voiceStatusListeners) {
@@ -128,7 +143,7 @@ export function createApp(deps: AppDeps): AppHandles {
   const voiceLoop =
     deps.voiceLoop ??
     createVoiceLoop({
-      speechPort: deps.speech,
+      speechPort: speech,
       parseCommand,
       dispatchCommand: (command) => {
         const result = handleRadioCommand(world, command, log);
@@ -139,6 +154,8 @@ export function createApp(deps: AppDeps): AppHandles {
       },
       getSelectedCallsign: () => selectedCallsignFromWorld(world),
       getIssuedAtSimMs: () => world.simTimeMs,
+      confidenceThreshold: deps.confidenceThreshold ?? prefs.confidenceThreshold,
+      getVoiceId: deps.getVoiceId ?? (() => prefs.voiceId),
       setTransmitLocked: (locked) => {
         ptt?.setTransmitLocked(locked);
       },
@@ -153,7 +170,7 @@ export function createApp(deps: AppDeps): AppHandles {
       onMetrics: observeMetrics,
       onUtteranceComplete: (metrics) => {
         observeMetrics(metrics);
-        logVoiceLatency(log, world, metrics, deps.speech.id);
+        logVoiceLatency(log, world, metrics, speech.id);
       },
       readbackPlayer: deps.readbackPlayer,
     });
@@ -168,11 +185,59 @@ export function createApp(deps: AppDeps): AppHandles {
       attachTo: typeof window !== "undefined" ? window : null,
     });
 
+  const pttController = ptt;
+  pttController.setPttKey(prefs.pttKey);
+  voiceLoop.readbackPlayer.setFxEnabled(prefs.radioFx);
+
+  function setSpeechPort(next: SpeechPort): boolean {
+    const previous = speech;
+    if (!voiceLoop.setSpeechPort(next)) {
+      return false;
+    }
+    speech = next;
+    tracker.setBackendId(next.id);
+    emitLatency();
+    if (previous !== next) {
+      try {
+        previous.dispose?.();
+      } catch {
+        // Teardown must never throw through the sim tick.
+      }
+    }
+    return true;
+  }
+
+  const speechSettings = createSpeechSettingsController({
+    host: {
+      setSpeechPort,
+      setPttKey: (key) => {
+        pttController.setPttKey(key);
+      },
+      setConfidenceThreshold: (value) => {
+        voiceLoop.setConfidenceThreshold(value);
+      },
+      isBusy: () => voiceLoop.busy,
+      setLatencyOverlayVisible: (visible) => {
+        latencyOverlayVisible = visible;
+        emitLatency();
+      },
+      setRadioFx: (enabled) => {
+        voiceLoop.readbackPlayer.setFxEnabled(enabled);
+      },
+    },
+    prefs,
+    urls: deps.speechUrls,
+  });
+
   return {
-    speech: deps.speech,
+    get speech() {
+      return speech;
+    },
+    setSpeechPort,
+    speechSettings,
     log,
     world,
-    ptt,
+    ptt: pttController,
     voiceLoop,
     subscribeVoiceStatus(listener) {
       voiceStatusListeners.add(listener);
@@ -188,8 +253,7 @@ export function createApp(deps: AppDeps): AppHandles {
       };
     },
     setLatencyOverlayVisible(visible) {
-      latencyOverlayVisible = visible;
-      emitLatency();
+      speechSettings.setLatencyOverlay(visible);
     },
     getLatencyOverlayVisible() {
       return latencyOverlayVisible;

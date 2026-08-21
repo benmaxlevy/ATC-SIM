@@ -2,10 +2,11 @@
  * Public API for `@speech`.
  *
  * Legal now: `SpeechPort`, `AudioClip`, `Transcript`, `NullSpeechPort`,
+ * `createSpeechPort` / `pickDefaultBackend` (T03-10), HTTP + Web Speech ports,
  * `SpeechNotAvailableError`, PTT capture (`createPttCaptureController`),
  * voice-loop coordinator (`createVoiceLoop`), PCM playback + radio FX graph.
- * Boot injects `NullSpeechPort` via `createApp`, which wires PTT → transcribe
- * → parseCommand → pilot.
+ * Boot picks `http` when our speech-api URLs are present, else `null`.
+ * `web-speech` is opt-in only.
  *
  * Later: in-tab whisper-wasm (T03-11, skipped this swarm).
  * AudioClip is speech-owned. Do not put vendor SDKs here.
@@ -16,6 +17,17 @@ export type { AudioClip, SpeechPort, Transcript } from "./types";
 export { SpeechNotAvailableError } from "./errors";
 export { NullSpeechPort } from "./null-speech-port";
 export { HttpSpeechPort } from "./ports/http-speech-port";
+export {
+  SPEECH_BACKEND_IDS,
+  createBootSpeechPort,
+  createSpeechPort,
+  httpUrlsConfigured,
+  pickDefaultBackend,
+  readSpeechApiUrls,
+  replaceSpeechPort,
+  resolveSpeechBackend,
+} from "./ports/factory";
+export type { CreateSpeechPortDeps, SpeechApiUrlStatus, SpeechBackendId } from "./ports/factory";
 export { DEFAULT_PTT_KEY, createPttCaptureController } from "./capture/ptt-controller";
 export type {
   CaptureBackend,

@@ -41,7 +41,7 @@ function sample(callsign: string, id = "ac-dal"): Aircraft {
 
 function fakePort(
   text: string,
-  extras: { confidence?: number; latencyMs?: number } = {},
+  extras: { confidence?: number; latencyMs?: number; id?: string } = {},
 ): SpeechPort & {
   transcribeCalls: number;
   lastClip: AudioClip | null;
@@ -50,7 +50,7 @@ function fakePort(
   synthClip: AudioClip;
 } {
   const port = {
-    id: "fake",
+    id: extras.id ?? "fake",
     transcribeCalls: 0,
     lastClip: null as AudioClip | null,
     synthesizeCalls: 0,
@@ -940,5 +940,61 @@ test("T03-08 — PTT-down clears status; PTT during playback is ptt_locked and n
   release();
   await pending;
   ptt.dispose();
+  loop.dispose();
+});
+
+test("T03-10 — setSpeechPort while idle routes the next transcribe to the new id", async () => {
+  const first = fakePort("ignored", { id: "http" });
+  const second = fakePort("turn left heading two seven zero", { id: "web-speech" });
+  const loop = createVoiceLoop({
+    speechPort: first,
+    parseCommand,
+    dispatchCommand: () => {},
+    getSelectedCallsign: () => "DAL123",
+  });
+  expect(loop.setSpeechPort(second)).toBe(true);
+  expect(loop.speechPortId).toBe("web-speech");
+  await loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+  expect(first.transcribeCalls).toBe(0);
+  expect(second.transcribeCalls).toBe(1);
+  loop.dispose();
+});
+
+test("T03-10 — setSpeechPort refuses while transcribe is in flight", async () => {
+  let releaseTranscript!: (transcript: Transcript) => void;
+  const busyPort: SpeechPort = {
+    id: "http",
+    transcribe() {
+      return new Promise((resolve) => {
+        releaseTranscript = resolve;
+      });
+    },
+    async synthesize() {
+      return nonEmptyClip();
+    },
+  };
+  const idlePort = fakePort("turn left heading two seven zero", { id: "null" });
+  const loop = createVoiceLoop({
+    speechPort: busyPort,
+    parseCommand,
+    dispatchCommand: () => {},
+    getSelectedCallsign: () => "DAL123",
+  });
+  const pending = loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+  await Promise.resolve();
+  expect(loop.inFlight).toBe(true);
+  expect(loop.busy).toBe(true);
+  expect(loop.setSpeechPort(idlePort)).toBe(false);
+  expect(loop.speechPortId).toBe("http");
+  releaseTranscript({ text: "turn left heading two seven zero", confidence: 1, latencyMs: 1 });
+  await pending;
+  expect(loop.setSpeechPort(idlePort)).toBe(true);
+  expect(loop.speechPortId).toBe("null");
   loop.dispose();
 });

@@ -32,6 +32,7 @@ import { isFpsDebugEnabled } from "./fpsHud";
 import { LatencyOverlay } from "./LatencyOverlay";
 import { ScopeCanvas } from "./ScopeCanvas";
 import { ScopeHelpOverlay } from "./ScopeHelpOverlay";
+import { SpeechSettingsPanel } from "./settings-speech";
 import { SimControls } from "./sim-controls";
 import { submitCommand } from "./submitCommand";
 
@@ -54,6 +55,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
       sampleCount: 0,
     },
   }));
+  const [speechId, setSpeechId] = useState(app.speech.id);
   const [, setScopeUiTick] = useState(0);
   const panRef = useRef<{ lastX: number; lastY: number } | null>(null);
 
@@ -91,7 +93,13 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   const fpsDebug = typeof window !== "undefined" && isFpsDebugEnabled(window.location.search);
 
   return (
-    <div className="scope-shell" data-scenario={scenario.id} data-speech={app.speech.id}>
+    <div
+      className="scope-shell"
+      data-scenario={scenario.id}
+      data-speech={speechId}
+      data-latency-overlay={app.speechSettings.prefs.latencyOverlay ? "on" : "off"}
+      data-radio-fx={app.speechSettings.prefs.radioFx ? "on" : "off"}
+    >
       <div className="scope-work">
         <ScopeCanvas
           scopeView={scopeView}
@@ -162,6 +170,11 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             onToggle={(visible) => app.setLatencyOverlayVisible(visible)}
           />
           <SimControls world={app.world} />
+          <SpeechSettingsPanel
+            controller={app.speechSettings}
+            speechId={speechId}
+            onChange={() => setSpeechId(app.speech.id)}
+          />
           <Disclaimer />
           <ScopeHelpOverlay open={scopeView.helpOpen} />
           <FlightStrips

@@ -12,6 +12,8 @@ export type { CaptureBackend } from "./capture-backend";
 
 export interface PttKeyEvent {
   key: string;
+  /** `KeyboardEvent.code` so binds like `ControlLeft` / `KeyZ` match. */
+  code?: string;
   repeat?: boolean;
   target?: unknown;
   preventDefault: () => void;
@@ -54,6 +56,13 @@ export interface PttCaptureController {
   dispose(): void;
   handleKeyDown(event: PttKeyEvent): Promise<void>;
   handleKeyUp(event: PttKeyEvent): Promise<void>;
+}
+
+function matchesPttKey(event: PttKeyEvent, pttKey: string): boolean {
+  if (pttKey.length === 0) {
+    return false;
+  }
+  return event.key === pttKey || event.code === pttKey;
 }
 
 function defaultNow(): number {
@@ -226,6 +235,7 @@ class PttCaptureControllerImpl implements PttCaptureController {
     const ke = event as KeyboardEvent;
     return {
       key: typeof ke.key === "string" ? ke.key : "",
+      code: typeof ke.code === "string" ? ke.code : "",
       repeat: Boolean(ke.repeat),
       target: ke.target ?? null,
       preventDefault: () => {
@@ -242,9 +252,11 @@ class PttCaptureControllerImpl implements PttCaptureController {
       return;
     }
     if (event.ctrlKey || event.altKey || event.metaKey) {
-      return;
+      if (this.pttKeyValue !== "Control" && this.pttKeyValue !== "ControlLeft") {
+        return;
+      }
     }
-    if (event.key !== this.pttKeyValue) {
+    if (!matchesPttKey(event, this.pttKeyValue)) {
       return;
     }
     if (this.isTextField(event.target ?? null)) {
@@ -303,7 +315,7 @@ class PttCaptureControllerImpl implements PttCaptureController {
     if (this.disposed) {
       return;
     }
-    if (event.key !== this.pttKeyValue) {
+    if (!matchesPttKey(event, this.pttKeyValue)) {
       return;
     }
 

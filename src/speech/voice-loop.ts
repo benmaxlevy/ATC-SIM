@@ -99,7 +99,16 @@ export interface VoiceLoop {
   handlePttEvent(event: PttCaptureEvent): Promise<void>;
   readonly lastUtteranceMetrics: VoiceUtteranceMetrics | null;
   readonly inFlight: boolean;
+  /** True while capture, transcribe, parse, or playback holds the transmit gate. */
+  readonly busy: boolean;
   readonly readbackPlayer: ReadbackPlayer;
+  readonly speechPortId: string;
+  /**
+   * Swap the adapter when idle. Refuses while `busy` (no mid-transcribe hot-swap).
+   * Caller disposes the previous port after a successful swap.
+   */
+  setSpeechPort(port: SpeechPort): boolean;
+  setConfidenceThreshold(value: number): void;
   dispose(): void;
 }
 
@@ -153,13 +162,13 @@ class VoiceLoopImpl implements VoiceLoop {
   private inFlightValue = false;
   private commandSeq = 0;
   private lastMetrics: VoiceUtteranceMetrics | null = null;
-  private readonly speechPort: LiveSpeechPort;
+  private speechPort: LiveSpeechPort;
   private readonly parseCommand: ParseCommandFn;
   private readonly dispatchCommand: DispatchCommandFn;
   private readonly getSelectedCallsign: () => string | null;
   private readonly getIssuedAtSimMs: () => number;
   private readonly now: () => number;
-  private readonly confidenceThreshold: number;
+  private confidenceThreshold: number;
   private readonly pathC: boolean;
   private readonly setTransmitLocked: (locked: boolean) => void;
   private readonly onStatus?: (event: VoiceStatusEvent | null) => void;
@@ -194,6 +203,29 @@ class VoiceLoopImpl implements VoiceLoop {
 
   get inFlight(): boolean {
     return this.inFlightValue;
+  }
+
+  get busy(): boolean {
+    return this.inFlightValue || this.gate.locked;
+  }
+
+  get speechPortId(): string {
+    return this.speechPort.id;
+  }
+
+  setSpeechPort(port: SpeechPort): boolean {
+    if (this.disposed || this.inFlightValue || this.gate.locked) {
+      return false;
+    }
+    this.speechPort = port;
+    return true;
+  }
+
+  setConfidenceThreshold(value: number): void {
+    if (!Number.isFinite(value)) {
+      return;
+    }
+    this.confidenceThreshold = Math.min(1, Math.max(0, value));
   }
 
   dispose(): void {

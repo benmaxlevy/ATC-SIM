@@ -195,6 +195,18 @@ test("setPttKey switches the bind; Caps Lock is opt-in data not the default", as
   controller.dispose();
 });
 
+test("PTT bind can match KeyboardEvent.code (ControlLeft / KeyZ)", async () => {
+  const { controller, fake } = setup();
+  controller.setPttKey("ControlLeft");
+  await controller.handleKeyDown(key({ key: "Control", code: "ControlLeft", ctrlKey: true }));
+  expect(fake.startCalls).toBe(1);
+  await controller.handleKeyUp(key({ key: "Control", code: "ControlLeft", ctrlKey: true }));
+  controller.setPttKey("KeyZ");
+  await controller.handleKeyDown(key({ key: "z", code: "KeyZ" }));
+  expect(fake.startCalls).toBe(2);
+  controller.dispose();
+});
+
 test("dispose stops the backend and ignores later keys", async () => {
   const { controller, fake, events } = setup();
   controller.dispose();

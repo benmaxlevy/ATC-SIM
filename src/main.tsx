@@ -3,7 +3,6 @@ import { createRoot } from "react-dom/client";
 import { advanceWorld, createAccumulator } from "@core";
 import { createWorldForSession, loadKdem, parseTrafficCount } from "@scenario";
 import { PpiPlaceholderId, createScopeView, paintPpi, parseDigitalMap } from "@scope";
-import { NullSpeechPort } from "@speech";
 import {
   FPS_DEBUG_ID,
   SIM_HUD_ID,
@@ -11,6 +10,7 @@ import {
   formatFpsDebug,
   formatSimHud,
   isFpsDebugEnabled,
+  loadAndResolveSpeechBoot,
   syncDisplayControlBar,
   syncStripCallsignColors,
 } from "@ui";
@@ -19,12 +19,23 @@ import { createApp } from "./app/create-app";
 import "./index.css";
 
 const kdem = loadKdem();
+const speechBoot = loadAndResolveSpeechBoot();
 const handles = createApp({
-  speech: new NullSpeechPort(),
+  speech: speechBoot.port,
+  speechPrefs: speechBoot.prefs,
+  speechUrls: speechBoot.urls,
   world: createWorldForSession(kdem, parseTrafficCount(window.location.search)),
 });
 bootSession(handles, kdem, Date.now());
-window.addEventListener("pagehide", () => handles.ptt.dispose());
+window.addEventListener("pagehide", () => {
+  handles.voiceLoop.dispose();
+  try {
+    handles.speech.dispose?.();
+  } catch {
+    // Teardown must never throw.
+  }
+  handles.ptt.dispose();
+});
 
 const scopeView = createScopeView(kdem.arpNm.xNm, kdem.arpNm.yNm, {
   digitalMap: parseDigitalMap(kdem.maps),

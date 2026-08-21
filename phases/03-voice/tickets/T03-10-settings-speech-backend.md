@@ -50,13 +50,13 @@ Do not hot-swap mid-`transcribe`. Tear down live recognition and do not leak `Me
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Given STT and TTS URLs present (including defaults to `127.0.0.1:8090`), then default backend id is `http`.
-- [ ] **AC2 —** Given URLs explicitly cleared, then default is `null` and the UI shows voice disabled / use typed commands. `web-speech` is opt-in only, never the automatic default.
-- [ ] **AC3 —** Given the user selects another backend while idle, then subsequent `transcribe`/`synthesize` go to the new `id`.
-- [ ] **AC4 —** Given a busy utterance, then backend change is refused or deferred (no overlapping transcribe).
-- [ ] **AC5 —** Changing PTT bind makes the new key arm capture and the old key does not (when not in a text field).
-- [ ] **AC6 —** Automated test exists for the default-backend helper (happy path).
-- [ ] **AC7 —** Settings copy for web-speech warns it may send audio to the browser vendor. No Deepgram/OpenAI signup UI.
+- [x] **AC1 —** Given STT and TTS URLs present (including defaults to `127.0.0.1:8090`), then default backend id is `http`.
+- [x] **AC2 —** Given URLs explicitly cleared, then default is `null` and the UI shows voice disabled / use typed commands. `web-speech` is opt-in only, never the automatic default.
+- [x] **AC3 —** Given the user selects another backend while idle, then subsequent `transcribe`/`synthesize` go to the new `id`.
+- [x] **AC4 —** Given a busy utterance, then backend change is refused or deferred (no overlapping transcribe).
+- [x] **AC5 —** Changing PTT bind makes the new key arm capture and the old key does not (when not in a text field).
+- [x] **AC6 —** Automated test exists for the default-backend helper (happy path).
+- [x] **AC7 —** Settings copy for web-speech warns it may send audio to the browser vendor. No Deepgram/OpenAI signup UI.
 
 ## Test plan
 

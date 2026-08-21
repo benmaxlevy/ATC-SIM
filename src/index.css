@@ -295,6 +295,97 @@ body,
   letter-spacing: 0.04em;
 }
 
+.speech-settings {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 4;
+  font-size: 11px;
+  color: #00ff00;
+  box-shadow: none;
+}
+
+.speech-settings-toggle {
+  border: 0;
+  background: transparent;
+  color: #00ff00;
+  font: inherit;
+  padding: 0 2px;
+  cursor: pointer;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.speech-settings-toggle:hover,
+.speech-settings-toggle:focus-visible {
+  outline: none;
+  color: #ffff00;
+}
+
+.speech-settings-panel {
+  position: absolute;
+  right: 0;
+  bottom: 22px;
+  width: 320px;
+  max-height: 70vh;
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.94);
+  border: 1px solid #003300;
+  border-radius: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.speech-settings-help,
+.speech-settings-warn,
+.speech-settings-hint,
+.speech-settings-error {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.speech-settings-warn,
+.speech-settings-hint {
+  color: #cccc00;
+}
+
+.speech-settings-error {
+  color: #ff6666;
+}
+
+.speech-settings-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.speech-settings-row span:first-child {
+  flex: 0 0 auto;
+}
+
+.speech-settings-row select,
+.speech-settings-row input[type="number"],
+.speech-settings-row input[type="text"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: #000;
+  color: #00ff00;
+  border: 1px solid #003300;
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 4px;
+}
+
+.speech-settings-readonly {
+  color: #00aa00;
+}
+
 .command-line {
   flex: 0 0 22px;
   height: 22px;

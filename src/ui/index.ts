@@ -11,8 +11,9 @@
  * scope action and does not emit a readback. Session controls (`setPaused` /
  * `setSimRate`) do not touch intent.
  *
- * Later: settings. The sim tick must never wait on React render.
+ * Speech settings (T03-10) switch the SpeechPort backend without a reload.
  * Voice latency overlay (T03-09) is HTML, not PPI canvas; T03-10 may persist show/hide.
+ * The sim tick must never wait on React render.
  *
  * Import rule: `@ui` may import all other `src/*` packages. `@pilot` must not
  * import `@ui`.
@@ -66,3 +67,26 @@ export {
   httpP50Band,
   latencyOverlayClassName,
 } from "./latency-overlay";
+export {
+  DEFAULT_BACKEND_HELP,
+  HTTP_URLS_MISSING,
+  PTT_BIND_HELP,
+  PTT_BIND_OPTIONS,
+  SPEECH_PREFS_KEY,
+  SPEECH_SETTINGS_WAIT,
+  VOICE_DISABLED_HINT,
+  WEB_SPEECH_VENDOR_WARNING,
+  SpeechSettingsPanel,
+  createSpeechSettingsController,
+  defaultSpeechPrefs,
+  loadAndResolveSpeechBoot,
+  loadSpeechPrefs,
+  saveSpeechPrefs,
+} from "./settings-speech";
+export type {
+  SpeechBoot,
+  SpeechPrefs,
+  SpeechSettingsController,
+  SpeechSettingsHost,
+  SpeechSettingsPanelProps,
+} from "./settings-speech";

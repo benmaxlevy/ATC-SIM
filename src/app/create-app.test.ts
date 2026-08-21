@@ -8,7 +8,7 @@ import {
   type SpeechPort,
   type Transcript,
 } from "@speech";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { createApp, type AppDeps } from "./create-app";
 
 function nonEmptyClip(): AudioClip {
@@ -62,7 +62,7 @@ test("createApp returns a SessionLog instance (AC6)", () => {
   expect(handles.log).toBeInstanceOf(SessionLog);
 });
 
-test("T01-14 playable slice: main wires spawn, null speech, rAF, and resize paint", () => {
+test("T01-14 playable slice: main wires spawn, speech factory, rAF, and resize paint", () => {
   const sources = import.meta.glob("../main.tsx", {
     query: "?raw",
     import: "default",
@@ -72,12 +72,13 @@ test("T01-14 playable slice: main wires spawn, null speech, rAF, and resize pain
   expect(main).toBeDefined();
   expect(main).toMatch(/createWorldForSession/);
   expect(main).toMatch(/parseTrafficCount/);
-  expect(main).toMatch(/NullSpeechPort/);
+  expect(main).toMatch(/loadAndResolveSpeechBoot/);
   expect(main).toMatch(/handles\.ptt\.dispose/);
   expect(main).toMatch(/requestAnimationFrame/);
   expect(main).toMatch(/paintPpi/);
   expect(main).toMatch(/addEventListener\("resize"/);
   expect(main).not.toMatch(/from\s+["']@speech["'].*(http|openai|deepgram)/i);
+  expect(main).not.toMatch(/openai|deepgram|elevenlabs/i);
 });
 
 test("createApp constructs PTT capture with the backtick default (T03-01)", () => {
@@ -338,7 +339,9 @@ function instantPlayer(): ReadbackPlayer {
       return { ok: true };
     },
     stop() {},
+    fxEnabled: true,
     setConnectSource() {},
+    setFxEnabled() {},
   };
 }
 
@@ -420,4 +423,60 @@ test("T03-09 — STT failure logs transcript_ms and null audio-start", async () 
   expect(latency[0]?.backendId).toBe("http");
   handles.ptt.dispose();
   handles.voiceLoop.dispose();
+});
+
+test("T03-10 — setSpeechPort while idle swaps id and disposes the previous port", () => {
+  const dispose = vi.fn();
+  const first: SpeechPort = {
+    id: "http",
+    async transcribe(): Promise<Transcript> {
+      return { text: "ignored", confidence: 1, latencyMs: 1 };
+    },
+    async synthesize(): Promise<AudioClip> {
+      return nonEmptyClip();
+    },
+    dispose,
+  };
+  const second: SpeechPort = {
+    id: "null",
+    async transcribe(): Promise<Transcript> {
+      return { text: "ignored", confidence: 1, latencyMs: 1 };
+    },
+    async synthesize(): Promise<AudioClip> {
+      return nonEmptyClip();
+    },
+  };
+  const handles = createApp({
+    speech: first,
+    ptt: createPttCaptureController({ onEvent: () => {}, attachTo: null }),
+  });
+  expect(handles.setSpeechPort(second)).toBe(true);
+  expect(handles.speech).toBe(second);
+  expect(handles.voiceLoop.speechPortId).toBe("null");
+  expect(dispose).toHaveBeenCalledOnce();
+  handles.ptt.dispose();
+  handles.voiceLoop.dispose();
+});
+
+test("T03-10 AC5 — settings PTT bind updates the capture controller", () => {
+  const key = "atc-sim.speech.prefs";
+  const previous = globalThis.localStorage?.getItem(key) ?? null;
+  const handles = createApp({
+    speech: new NullSpeechPort(),
+    ptt: createPttCaptureController({ onEvent: () => {}, attachTo: null }),
+  });
+  try {
+    expect(handles.ptt.pttKey).toBe(DEFAULT_PTT_KEY);
+    handles.speechSettings.setPttKey("CapsLock");
+    expect(handles.ptt.pttKey).toBe("CapsLock");
+    expect(handles.speechSettings.prefs.pttKey).toBe("CapsLock");
+  } finally {
+    if (previous === null) {
+      globalThis.localStorage?.removeItem(key);
+    } else {
+      globalThis.localStorage?.setItem(key, previous);
+    }
+    handles.ptt.dispose();
+    handles.voiceLoop.dispose();
+  }
 });
