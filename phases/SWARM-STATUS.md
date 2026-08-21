@@ -19,6 +19,31 @@ Plan: `c:\Users\Ben\.cursor\plans\path_c_llm_salvage_11c4764f.plan.md`
 
 Waves: (0) ticket markdown T03-15 + amend T03-14 → (1) implement T03-15 → (2) implement T03-14.
 
+## FOURTH SWARM COMPLETE — Path C (T03-15, T03-14)
+
+T03-15 and T03-14 are on `master`. Captain `npm test`: **724 passed, 1 skipped**. Confidence gate gone: the voice loop always `parseCommand` after STT (empty clip / STT HTTP fail still reject; garbage still `parse_miss`). Path C is **miss-only** (`parseStage: "llm_c"`), default **off** until `/health.parse === "ready"`. Default named GGUF is `Qwen/Qwen2.5-1.5B-Instruct-GGUF` Q4_K_M (~1–2B, **not** a 7B). No GGUF in git. No paid LLM hosts. Skip **T03-11**. Did **not** start phase 4 or 5. Did not redo T03-01–13.
+
+**Merged (`--no-ff`, captain only):** `ticket/T03-path-c-ticket-docs`; `ticket/T03-15-parse-despite-low-stt-confidence`; `ticket/T03-14-optional-path-c-parse-api`. Workers never merged. Untracked `e2e/` left uncommitted.
+
+**Manual leftover (human):** download Path C weights only if enabling salvage — `pip install -r speech-api/requirements-parse.txt`, set `PARSE_MODEL_ID=Qwen/Qwen2.5-1.5B-Instruct-GGUF`, wait `/health.parse === "ready"`, then check **Path C (local /parse)** in settings. CI uses `SPEECH_API_MOCK=1` (no weight download). Optional live salvage of an A/B miss. Phase 3 Chrome/mic/p50 leftovers from the third swarm still apply.
+
+**Remaining work (next paste of `SWARM.md` with config changed):**
+
+| Phase | Folder | What it is |
+| --- | --- | --- |
+| 4 Procedures | `phases/04-procedures/` | ILS intercept, DEMO ONE STAR, lite CA/MSAW |
+| 5 Training | `phases/05-training/` | Practice score, replay, optional bad readbacks |
+
+Do not start those until a new swarm paste.
+
+## Path C captain notes (fourth swarm)
+
+- **Wave 0:** merged T03-docs — authored T03-15; T03-14 size M→L; AC1–AC8 kept; AC9–AC13 added (1–2B GGUF default, miss-only, settings checkbox, no n-best). `npm test` 704 passed.
+- **Wave 1:** merged T03-15. Removed `transcript.confidence < threshold` early return in `voice-loop.ts`. Parseable heading at 0.5 dispatches; garbage at 0.5 is `parse_miss`. Slider informational. `npm test` 711 passed.
+- **Wave 2:** merged T03-14. `POST /parse` local llama.cpp when `PARSE_MODEL_ID` set; 503/`UNAVAILABLE` when unset; `src/parse/path-c.ts` schema gate; `parseCommand` stage 4 miss-only; settings checkbox default false. Mock mode covers ACs without downloading GGUF. `npm test` 724 passed.
+- **Skipped:** T03-11. No phase 4/5.
+- **Product:** Path C default **off**. LLM does not override typed/A/B. Hub = weight download once. Grep-ban openai.com / api.groq.com / api-inference.huggingface.co.
+
 ## THIRD SWARM COMPLETE — phase 3 voice
 
 Phases **0 → 1 → 2 → 3** are green on `master`. Orchestrator `npm test`: **683 passed, 1 skipped**. `speech-api/` exists; boot default is **http → our speech-api** (`127.0.0.1:8090`). Web Speech is opt-in only. T03-11 and T03-14 were **not** implemented. Path C is off. No paid vendor STT/TTS/LLM. This swarm is done.
