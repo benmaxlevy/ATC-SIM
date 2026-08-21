@@ -43,6 +43,43 @@ body,
   height: 100%;
 }
 
+.sim-controls {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: #0b0e13;
+  border-top: 1px solid #1c2430;
+  font-size: 12px;
+}
+
+.sim-controls button {
+  border: 1px solid #2a3544;
+  background: #121821;
+  color: #e8edf5;
+  font: inherit;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.sim-controls button:hover,
+.sim-controls button:focus-visible {
+  border-color: #7cff6b;
+  outline: none;
+}
+
+.sim-status {
+  color: #7cff6b;
+  letter-spacing: 0.04em;
+}
+
+.sim-keys {
+  color: #8b95a5;
+  font-size: 11px;
+}
+
 .command-line {
   flex: 0 0 auto;
   display: flex;

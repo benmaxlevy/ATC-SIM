@@ -54,7 +54,7 @@ When unpausing, remainder in the accumulator is held (T01-01) so you do not jump
 - [ ] **AC1 —** Pause button sets `world.paused === true`; ticks stop translating within one frame of physics (manual: heading command then pause — aircraft holds heading and position).
 - [ ] **AC2 —** Unpause resumes motion without a large teleport.
 - [ ] **AC3 —** 1× and 2× buttons set `world.simRate` accordingly; HUD shows the rate.
-- [ ] **AC4 —** Unit: `advanceWorld` 60 × (1/60)s at 2× ≈ 2000 ms sim; at pause ≈ 0 ms additional.
+- [x] **AC4 —** Unit: `advanceWorld` 60 × (1/60)s at 2× ≈ 2000 ms sim; at pause ≈ 0 ms additional.
 - [ ] **AC5 —** Typing `DAL123` in the command line is possible: digit keys and letters are not intercepted as rate/pause **while the input is focused** (except a dedicated Pause button/key).
 - [ ] **AC6 —** No readback fired when pausing or changing rate.
 

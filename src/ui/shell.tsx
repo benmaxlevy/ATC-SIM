@@ -4,6 +4,7 @@ import { PpiPlaceholder, handlePpiCanvasClick } from "@scope";
 import type { AppHandles } from "../app/create-app";
 import { CommandLine, focusCommandLine } from "./command-line";
 import { Disclaimer } from "./disclaimer";
+import { SimControls } from "./sim-controls";
 import { submitCommand } from "./submitCommand";
 
 export interface ShellProps {
@@ -23,6 +24,7 @@ export function Shell({ app, scenario }: ShellProps) {
           focusCommandLine();
         }}
       />
+      <SimControls world={app.world} />
       <CommandLine
         readback={readback}
         onSubmit={(input) => {

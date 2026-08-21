@@ -1,11 +1,12 @@
 /**
  * Public API for `@ui`.
  *
- * Legal now: Scope shell (disclaimer, PPI, command line). Canvas click selects
- * a track then focuses the command line. Enter runs `submitCommand` →
- * `handleRadioText` and shows the template readback. Text submit bypasses
- * SpeechPort (`Command.source` is `"text"`). Selection is a scope action and
- * does not emit a readback.
+ * Legal now: Scope shell (disclaimer, PPI, command line, pause / 1× / 2×).
+ * Canvas click selects a track then focuses the command line. Enter runs
+ * `submitCommand` → `handleRadioText` and shows the template readback. Text
+ * submit bypasses SpeechPort (`Command.source` is `"text"`). Selection is a
+ * scope action and does not emit a readback. Session controls (`setPaused` /
+ * `setSimRate`) do not touch intent.
  *
  * Later: strips, settings. The sim tick must never wait on React render.
  *
@@ -17,3 +18,12 @@ export { DISCLAIMER_COPY } from "./disclaimer-copy";
 export { echoCommandLine, submitCommandLine } from "./echo-command-line";
 export { submitCommand } from "./submitCommand";
 export type { PilotResult } from "./submitCommand";
+export {
+  SIM_HUD_ID,
+  applySimControlKey,
+  formatSimHud,
+  formatSimTimeMmSs,
+  setPaused,
+  setSimRate,
+} from "./simControls";
+export type { SimControlKey } from "./simControls";

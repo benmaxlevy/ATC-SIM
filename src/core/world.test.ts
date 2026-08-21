@@ -116,6 +116,21 @@ test("sixty 1/60 s frames at 2x yield about 2000 ms of sim time", () => {
   expect(world.simTimeMs).toBeCloseTo(2000, 0);
 });
 
+test("T01-12 AC4 — 60 × (1/60)s at 2x ≈ 2000 ms; pause then adds ≈ 0 ms", () => {
+  const world = createWorld({ simRate: 2 });
+  const acc = createAccumulator();
+  for (let i = 0; i < 60; i += 1) {
+    advanceWorld(world, 1 / 60, acc);
+  }
+  expect(world.simTimeMs).toBeCloseTo(2000, 0);
+  const afterRun = world.simTimeMs;
+  world.paused = true;
+  for (let i = 0; i < 60; i += 1) {
+    advanceWorld(world, 1 / 60, acc);
+  }
+  expect(world.simTimeMs).toBe(afterRun);
+});
+
 test("a 1 s wall dump caps at 8 steps and holds remainder", () => {
   const world = createWorld();
   const acc = createAccumulator();
