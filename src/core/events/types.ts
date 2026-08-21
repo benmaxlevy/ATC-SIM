@@ -4,6 +4,7 @@ import type { Command } from "../command/types";
  * Append-only session events.
  * Phase 1 union is session.started / command.accepted / command.rejected.
  * T03-09 adds voice.latency (wall-clock PTT metrics; not sim time).
+ * T04-09 adds alert.ca.caution / alert.ca.alert / alert.ca.clear (edges only).
  */
 export type SessionEvent =
   | {
@@ -42,4 +43,31 @@ export type SessionEvent =
       backendId: string;
       /** ASR score when STT returned a transcript (T03-15). Omit/null if none. */
       sttConfidence?: number | null;
+    }
+  | {
+      type: "alert.ca.caution";
+      atSimMs: number;
+      atWallMs: number;
+      callsignA: string;
+      callsignB: string;
+      distNm: number;
+      deltaAltFt: number;
+    }
+  | {
+      type: "alert.ca.alert";
+      atSimMs: number;
+      atWallMs: number;
+      callsignA: string;
+      callsignB: string;
+      distNm: number;
+      deltaAltFt: number;
+    }
+  | {
+      type: "alert.ca.clear";
+      atSimMs: number;
+      atWallMs: number;
+      callsignA: string;
+      callsignB: string;
+      distNm: number;
+      deltaAltFt: number;
     };

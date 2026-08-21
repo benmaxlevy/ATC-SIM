@@ -897,3 +897,66 @@ test("T02-08 — owned PTL stays white, not selection yellow", () => {
   const ptl = findPtlStroke(on.pathStrokes, ac, view, 800);
   expect(ptl?.strokeStyle).toBe(PALETTE.ptl);
 });
+
+test("T04-09 AC5 — scope tints target and datablock from world.alerts, not CA math", () => {
+  const dal = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    altitudeFt: 8000,
+    speedKt: 210,
+    xNm: 0,
+    yNm: 0,
+  });
+  const aal = makeTestAircraft({
+    id: "ac-aal",
+    callsign: "AAL45",
+    altitudeFt: 8000,
+    speedKt: 210,
+    xNm: 8,
+    yNm: 0,
+  });
+  const world = createWorld({ aircraft: [dal, aal] });
+  world.alerts.ca = [
+    {
+      callsignA: "AAL45",
+      callsignB: "DAL123",
+      severity: "caution",
+      distNm: 8,
+      deltaAltFt: 0,
+    },
+  ];
+  const view = createScopeView();
+  const css = 800;
+  const caution = createMockCtx();
+  renderScope(caution.ctx, world, view, css, css);
+  const dalP = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: css, heightPx: css });
+  expect(findTargetDiamonds(caution.pathStrokes, dalP.x, dalP.y)[0]?.strokeStyle).toBe(
+    PALETTE.caution,
+  );
+  expect(caution.fillTexts.find((t) => t.text === "DAL123 CA")?.fillStyle).toBe(PALETTE.caution);
+  expect(caution.fillTexts.find((t) => t.text === "AAL45 CA")?.fillStyle).toBe(PALETTE.caution);
+
+  world.alerts.ca[0]!.severity = "alert";
+  const alert = createMockCtx();
+  renderScope(alert.ctx, world, view, css, css);
+  expect(findTargetDiamonds(alert.pathStrokes, dalP.x, dalP.y)[0]?.strokeStyle).toBe(PALETTE.alert);
+  expect(alert.fillTexts.find((t) => t.text === "DAL123 CA")?.fillStyle).toBe(PALETTE.alert);
+
+  world.alerts.ca = [];
+  const cleared = createMockCtx();
+  renderScope(cleared.ctx, world, view, css, css);
+  expect(findTargetDiamonds(cleared.pathStrokes, dalP.x, dalP.y)[0]?.strokeStyle).toBe(
+    POSITION_SYMBOL_COLOR,
+  );
+  expect(cleared.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.unowned);
+
+  const sources = import.meta.glob("./renderScope.ts", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  const src = sources["./renderScope.ts"]!;
+  expect(src).toMatch(/world\.alerts/);
+  expect(src).not.toMatch(/evaluateConflictAlert/);
+  expect(src).not.toMatch(/STARS CA/);
+});

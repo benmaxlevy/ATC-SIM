@@ -1,5 +1,13 @@
 import type { Aircraft } from "./aircraft";
+import {
+  caPairKey,
+  emptyWorldAlerts,
+  evaluateConflictAlert,
+  type CaAlert,
+  type WorldAlerts,
+} from "./alerts/conflictAlert";
 import { MAX_PHYSICS_STEPS_PER_FRAME, SIM_DT_S } from "./clock";
+import type { SessionLog } from "./events/session-log";
 import { stepAircraft } from "./kinematics";
 
 export type SimRate = 1 | 2;
@@ -26,6 +34,13 @@ export interface World {
     approaches: ReadonlyArray<{ id: string }>;
     sids: ReadonlyArray<{ id: string }>;
   };
+  /** Active CA set. Scope reads this; it must not recompute CA. */
+  alerts: WorldAlerts;
+  /**
+   * Optional session log for CA edge events. The app wires `createApp`'s log.
+   * Tests pass one when they assert `alert.ca.*`.
+   */
+  sessionLog: SessionLog | null;
 }
 
 export function createWorld(partial?: Partial<World>): World {
@@ -36,6 +51,8 @@ export function createWorld(partial?: Partial<World>): World {
     aircraft: partial?.aircraft ?? [],
     selectedAircraftId: partial?.selectedAircraftId ?? null,
     catalog: partial?.catalog,
+    alerts: partial?.alerts ?? emptyWorldAlerts(),
+    sessionLog: partial?.sessionLog ?? null,
   };
 }
 
@@ -53,12 +70,83 @@ export function setSelectedAircraft(world: World, id: string | null): void {
   world.selectedAircraftId = found ? id : null;
 }
 
+function livePairMetrics(
+  world: World,
+  callsignA: string,
+  callsignB: string,
+  fallback: CaAlert,
+): { distNm: number; deltaAltFt: number } {
+  const a = world.aircraft.find((ac) => ac.callsign === callsignA);
+  const b = world.aircraft.find((ac) => ac.callsign === callsignB);
+  if (!a || !b) {
+    return { distNm: fallback.distNm, deltaAltFt: fallback.deltaAltFt };
+  }
+  return {
+    distNm: Math.hypot(a.xNm - b.xNm, a.yNm - b.yNm),
+    deltaAltFt: Math.abs(a.altitudeFt - b.altitudeFt),
+  };
+}
+
+/**
+ * Replace `world.alerts.ca` and append `alert.ca.*` only when a pair's
+ * severity changes (enter / upgrade / downgrade / clear). No per-tick spam.
+ */
+function syncConflictAlerts(world: World, next: CaAlert[]): void {
+  const prev = world.alerts.ca;
+  const prevMap = new Map<string, CaAlert>();
+  for (const alert of prev) {
+    prevMap.set(caPairKey(alert.callsignA, alert.callsignB), alert);
+  }
+  const nextMap = new Map<string, CaAlert>();
+  for (const alert of next) {
+    nextMap.set(caPairKey(alert.callsignA, alert.callsignB), alert);
+  }
+  const log = world.sessionLog;
+  if (log) {
+    const atSimMs = world.simTimeMs;
+    for (const alert of next) {
+      const key = caPairKey(alert.callsignA, alert.callsignB);
+      const was = prevMap.get(key);
+      if (was?.severity === alert.severity) {
+        continue;
+      }
+      log.append({
+        type: alert.severity === "alert" ? "alert.ca.alert" : "alert.ca.caution",
+        atSimMs,
+        atWallMs: 0,
+        callsignA: alert.callsignA,
+        callsignB: alert.callsignB,
+        distNm: alert.distNm,
+        deltaAltFt: alert.deltaAltFt,
+      });
+    }
+    for (const was of prev) {
+      const key = caPairKey(was.callsignA, was.callsignB);
+      if (nextMap.has(key)) {
+        continue;
+      }
+      const live = livePairMetrics(world, was.callsignA, was.callsignB, was);
+      log.append({
+        type: "alert.ca.clear",
+        atSimMs,
+        atWallMs: 0,
+        callsignA: was.callsignA,
+        callsignB: was.callsignB,
+        distNm: live.distNm,
+        deltaAltFt: live.deltaAltFt,
+      });
+    }
+  }
+  world.alerts.ca = next;
+}
+
 /**
  * Advance sim time by `dtS` seconds, then move each aircraft toward intent.
  *
- * Order is frozen: bump `simTimeMs` first, then kinematics. IDENT flash expiry
- * uses the post-bump time. Mutates `world` in place and returns it (single
- * World; no Redux). Does not throw on non-finite `dtS`.
+ * Order is frozen: bump `simTimeMs` first, then kinematics, then CA (pure
+ * function of the post-kinematics `aircraft[]`). IDENT flash expiry uses the
+ * post-bump time. Mutates `world` in place and returns it (single World; no
+ * Redux). Does not throw on non-finite `dtS`.
  * This is the only function that increments `simTimeMs`.
  */
 export function stepWorld(world: World, dtS: number): World {
@@ -72,6 +160,7 @@ export function stepWorld(world: World, dtS: number): World {
       ac.identUntilSimMs = 0;
     }
   }
+  syncConflictAlerts(world, evaluateConflictAlert(world.aircraft));
   return world;
 }
 

@@ -23,6 +23,8 @@ test("TCW palette follows FAA/CRC/vice grammar, not a green CRT game map", () =>
   expect(PALETTE.ssa).toBe("#00FF00");
   expect(PALETTE.dcbText).toBe("#00FF00");
   expect(PALETTE.selected).toBe("#FFFF00");
+  expect(PALETTE.caution).toBe("#FFFF00");
+  expect(PALETTE.alert).toBe("#FF0000");
   expect(PALETTE.owned.toLowerCase()).not.toBe("#ff0000");
   expect(PALETTE.unowned.toLowerCase()).not.toBe("#ff0000");
 });

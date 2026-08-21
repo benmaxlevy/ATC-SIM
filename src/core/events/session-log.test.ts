@@ -13,9 +13,15 @@ const emptyInstructionCommand: Command = {
   source: "text",
 };
 
-test("SessionEvent includes command events plus voice.latency (T03-09)", () => {
+test("SessionEvent includes command events, voice.latency, and CA edges (T04-09)", () => {
   expectTypeOf<SessionEvent["type"]>().toEqualTypeOf<
-    "session.started" | "command.accepted" | "command.rejected" | "voice.latency"
+    | "session.started"
+    | "command.accepted"
+    | "command.rejected"
+    | "voice.latency"
+    | "alert.ca.caution"
+    | "alert.ca.alert"
+    | "alert.ca.clear"
   >();
 });
 

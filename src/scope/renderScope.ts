@@ -14,7 +14,8 @@
  * FDB / owned white FDB, CSI-like `*` / `G`); position symbol stays blue;
  * selected yellow box independent of ownership. CHAR SIZE 11–13 px. BRITE steps
  * gray map strokes only. SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
- * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. Not OSM / tiles (R12). Not a
+ * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. T04-09 CA tints target +
+ * datablock from `world.alerts` (yellow caution, red alert). Not OSM / tiles (R12). Not a
  * sprite. Not an airplane. Not a label. Not NAS STARS.
  *
  * Draw order (phase README): background, rings, coastline, runway, localizer,
@@ -37,7 +38,13 @@ import { PALETTE, mapBriteColors } from "./palette";
 import { PTL_MINUTES, drawPredictedTrackLine, ptlEndpoint, shouldDrawPtl } from "./ptl";
 import { isViewOffAirport, type ScopeView } from "./scopeView";
 import { buildSsaLines } from "./ssa";
-import { trackPaintColor, type TrackOwnership } from "./ownership";
+import { type TrackOwnership } from "./ownership";
+import {
+  alertOrOwnershipColor,
+  alertTintPaintColor,
+  trackAlertTint,
+  withCaDatablockTag,
+} from "./alertPaint";
 import {
   drawHistoryDot,
   drawSelectionBox,
@@ -192,6 +199,11 @@ function trackOwnership(view: ScopeView, aircraftId: string) {
 }
 
 function trackColor(view: ScopeView, world: World, ac: Aircraft): string {
+  const tint = trackAlertTint(world, ac.callsign);
+  const alertColor = alertTintPaintColor(tint);
+  if (alertColor) {
+    return alertColor;
+  }
   const td = view.tracks.get(ac.id);
   const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
   return targetStrokeColor(trackOwnership(view, ac.id), identActive);
@@ -203,18 +215,21 @@ function drawDatablock(
   targetX: number,
   targetY: number,
   view: ScopeView,
+  world: World,
 ): void {
   const scratchpad = view.tracks.get(ac.id)?.scratchpad ?? "";
-  const lines = linesForDatablock(
+  const tint = trackAlertTint(world, ac.callsign);
+  const base = linesForDatablock(
     ac,
     trackDatablockMode(view, ac.id),
     view.modeCVisible,
     scratchpad,
   );
+  const lines = { ...base, line1: withCaDatablockTag(base.line1, tint) };
   const lineH = datablockLineHeightPx(view.charSizePx);
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
   const origin = datablockTopLeft(trackLeaderDir(view, ac.id), metrics);
-  ctx.fillStyle = trackPaintColor(trackOwnership(view, ac.id));
+  ctx.fillStyle = alertOrOwnershipColor(trackOwnership(view, ac.id), tint);
   ctx.fillText(lines.line1, targetX + origin.x, targetY + origin.y);
   if (lines.line2 != null) {
     ctx.fillText(lines.line2, targetX + origin.x, targetY + origin.y + lineH);
@@ -268,7 +283,8 @@ function drawTracks(
       continue;
     }
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
-    const leaderColor = trackPaintColor(trackOwnership(view, ac.id));
+    const tint = trackAlertTint(world, ac.callsign);
+    const leaderColor = alertOrOwnershipColor(trackOwnership(view, ac.id), tint);
     drawLeaderLine(ctx, p.x, p.y, trackLeaderDir(view, ac.id), leaderColor);
   }
 
@@ -277,7 +293,7 @@ function drawTracks(
       continue;
     }
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
-    drawDatablock(ctx, ac, p.x, p.y, view);
+    drawDatablock(ctx, ac, p.x, p.y, view, world);
   }
 
   for (const ac of world.aircraft) {

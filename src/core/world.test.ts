@@ -43,6 +43,15 @@ test("createWorld defaults simTimeMs, paused, and simRate (AC1)", () => {
   expect(world.simRate).toBe(1);
   expect(world.aircraft).toEqual([]);
   expect(world.selectedAircraftId).toBeNull();
+  expect(world.alerts.ca).toEqual([]);
+  expect(world.sessionLog).toBeNull();
+});
+
+test("createWorld does not share the default alerts array", () => {
+  const a = createWorld();
+  const b = createWorld();
+  expect(a.alerts).not.toBe(b.alerts);
+  expect(a.alerts.ca).not.toBe(b.alerts.ca);
 });
 
 test("World.aircraft is Aircraft[] and createWorld still starts empty (T01-02 AC4)", () => {

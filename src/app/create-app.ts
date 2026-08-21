@@ -112,6 +112,7 @@ export function createApp(deps: AppDeps): AppHandles {
   }
   const world = deps.world ?? createWorld();
   const log = new SessionLog();
+  world.sessionLog = log;
   let speech = deps.speech;
   const prefs = deps.speechPrefs ?? defaultSpeechPrefs();
   let ptt: PttCaptureController | undefined = undefined;

@@ -10,6 +10,8 @@
  * then 1–9; pixel-constant 36 CSS px; no length menu), altitude filter
  * (scope-focus `F`, default 000–180), F3/F4 ownership color stub (not NAS),
  * F1 help overlay (`TRAINER KEYS — NOT CRC`), Tab cycle focus, `/` radio focus.
+ * T04-09 CA/MSAW tints (yellow then red) read `world.alerts`; the PPI does not
+ * compute pair distance.
  *
  * DCB (T02-16/T02-17) is a green cell grid on the PPI glass; it calls these same
  * camera / map / filter / PTL / history / MAPS / RR / LDR / CHAR / BRITE
@@ -228,6 +230,12 @@ export {
   trackPaintColor,
 } from "./ownership";
 export type { TrackOwnership } from "./ownership";
+export {
+  alertOrOwnershipColor,
+  alertTintPaintColor,
+  trackAlertTint,
+  withCaDatablockTag,
+} from "./alertPaint";
 export {
   DEFAULT_LEADER_DIR,
   L5_OVERLAY_GAP_PX,

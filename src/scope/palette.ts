@@ -4,13 +4,14 @@
  * + vice STARS monitor (Boston Approach screenshot; not ERAM).
  * Trainer delta: one TCW-like set, not MDM3/MDM4 clones, not a NY screenshot.
  * DCB BRITE steps map strokes only — track / datablock / SSA colors stay here.
- * No red in phase 2 (alerts are phase 4). Not NAS STARS.
+ * Phase 2 reserved yellow/red; phase 4 CA/MSAW uses them. Not NAS STARS.
  *
  * Grammar (do not invert):
  * - Background black; video maps / range rings dim gray
  * - Owned FDB white after F3; unowned / other-TCP FDB green
  * - Search/fusion position symbol blue; history trail blue (not track-tinted)
  * - PTL white; SSA / DCB / lists phosphor green
+ * - Phase 4 CA/MSAW: caution yellow then alert red (lite trainer, not NAS)
  */
 
 export const PALETTE = {
@@ -31,6 +32,13 @@ export const PALETTE = {
   history: "#1E50C8",
   /** PTL / min-sep analog — FAA white. */
   ptl: "#FFFFFF",
+  /**
+   * CA/MSAW caution (yellow). Lite 3 NM / 1000 ft trainer, not NAS parameters.
+   * Do not label “STARS CA.”
+   */
+  caution: "#FFFF00",
+  /** CA/MSAW alert (red). Lite trainer, not NAS-certified. */
+  alert: "#FF0000",
   /** SSA, lists, DCB text — FAA list/preview green. Not map gray. */
   ssa: "#00FF00",
   /**
