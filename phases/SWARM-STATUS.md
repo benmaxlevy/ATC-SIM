@@ -1,5 +1,19 @@
 # Swarm status
 
+## SECOND SWARM COMPLETE — TCW polish; still stopped before voice
+
+Phase 2 polish **T02-14 → T02-21** is green on `master`. Orchestrator `npm test`: **479 passed, 1 skipped**. No `speech-api/`, no PTT, no T03-* commits. Glass grammar is a STARS-like TCW (video maps, DCB cells, SSA), not a website toolbar. This swarm is done.
+
+**Remaining work (next paste of `SWARM.md` with config changed):**
+
+| Phase | Folder | What it is |
+| --- | --- | --- |
+| 3 Voice | `phases/03-voice/` | PTT → our `speech-api` → same parser → spoken readback |
+| 4 Procedures | `phases/04-procedures/` | ILS intercept, DEMO ONE STAR, lite CA/MSAW |
+| 5 Training | `phases/05-training/` | Practice score, replay, optional bad readbacks |
+
+Do not start those until a new swarm paste. Manual Chrome leftovers stay in the phase 2 polish captain notes below.
+
 ## Second swarm started — TCW polish (T02-14–21)
 
 Orchestrator started **2026-08-21**. First-swarm notes below stay. Resume polish; do **not** replay T00-*, T01-*, or T02-01–13.
@@ -26,7 +40,7 @@ Orchestrator started **2026-08-21**. First-swarm notes below stay. Resume polish
 | 0 Slice | **GREEN** (first swarm) | Do not redo |
 | 1 Closed loop | **GREEN** (first swarm) | Do not redo |
 | 2 Scope original (T02-01–13) | **GREEN** (first swarm) | Confirmed on `master` |
-| 2 Scope polish (T02-14–21) | **GREEN** (captain) | T02-14–21 merged `--no-ff`. Orchestrator writes SECOND SWARM COMPLETE. |
+| 2 Scope polish (T02-14–21) | **GREEN** | T02-14–21 merged `--no-ff`. Orchestrator `npm test` 479 passed, 1 skipped. |
 | 3 Voice | **out of scope this run** | |
 | 4 Procedures | **out of scope this run** | |
 | 5 Training | **out of scope this run** | |
@@ -35,6 +49,7 @@ Orchestrator started **2026-08-21**. First-swarm notes below stay. Resume polish
 
 - 2026-08-21: Second swarm started. T02-01–13 on `master`. Planning tickets T02-14–21 committed to `master`. T02-14 WIP parked on `ticket/T02-14-video-map-catalog`. Spawning phase 2 polish captain (`cursor-grok-4.6-high`).
 - 2026-08-21: Phase 2 polish captain: all T02-14 … T02-21 merged `--no-ff` on `master` (plus `ticket/T02-21-ci-fix` for Prettier). Automated polish checklist green. Did not start phase 3. Did not write SECOND SWARM COMPLETE.
+- 2026-08-21: Orchestrator `npm test` on `master`: 479 passed, 1 skipped. No `speech-api/`. **SECOND SWARM COMPLETE — TCW polish; still stopped before voice.**
 
 ## Phase 2 polish captain notes
 
