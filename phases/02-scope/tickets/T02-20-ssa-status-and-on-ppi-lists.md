@@ -47,18 +47,18 @@ Prefer canvas text in `renderScope` for SSA so it pans with nothing (screen-fixe
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** SSA block unit-testable string builder includes FILTER hundreds and RANGE; OFF CNTR only when panned.
-- [ ] **AC2 —** Default layout has no `FLIGHT STRIPS` header on the right (grep or DOM test).
-- [ ] **AC3 —** Clicking a list row selects that callsign (adapt T02-11 tests).
-- [ ] **AC4 —** Filter hides datablocks but list still shows all arrivals.
-- [ ] **AC5 —** `DAL123 H270` still works. No Command IR from SSA.
-- [ ] **AC6 — Research:** SSA/FILTER/range in comments; not HUD/sidebar.
+- [x] **AC1 —** SSA block unit-testable string builder includes FILTER hundreds and RANGE; OFF CNTR only when panned.
+- [x] **AC2 —** Default layout has no `FLIGHT STRIPS` header on the right (grep or DOM test).
+- [x] **AC3 —** Clicking a list row selects that callsign (adapt T02-11 tests).
+- [x] **AC4 —** Filter hides datablocks but list still shows all arrivals.
+- [x] **AC5 —** `DAL123 H270` still works. No Command IR from SSA.
+- [x] **AC6 — Research:** SSA/FILTER/range in comments; not HUD/sidebar.
 
 ## Test plan
 
 - Unit: SSA lines from camera + filter.
-- Integration: strip-model click select.
-- Manual: 20 NM — lists readable, maps still visible.
+- Integration: strip-model click select; filter hides datablocks, list keeps rows.
+- Manual: 20 NM — lists readable, maps still visible. **skip-with-reason:** no Chrome operator this run; automated tests cover SSA strings, default layout, click-select, filter vs list, and `DAL123 H270`. Do not invent a visual pass.
 
 ## Suggested files
 

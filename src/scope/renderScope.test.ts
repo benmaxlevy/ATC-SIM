@@ -9,6 +9,7 @@ import { PTL_MINUTES, ptlEndpoint, shouldDrawPtl } from "./ptl";
 import { renderScope } from "./renderScope";
 import { createScopeView } from "./scopeView";
 import { formatFilterReadout } from "./altitudeFilter";
+import { buildSsaLines, formatSsaTime } from "./ssa";
 import {
   SELECTED_ACCENT_COLOR,
   SELECTION_BOX_PAD_PX,
@@ -625,7 +626,7 @@ test("AC8 — FILTER readout and FOA/CRC altitude filter comments; no cull or sl
   expect(readout).toBe("FILTER 000-180");
   const filterText = painted.fillTexts.find((t) => t.text === readout);
   expect(filterText).toBeDefined();
-  expect(filterText!.fillStyle).toBe(PALETTE.uiChrome);
+  expect(filterText!.fillStyle).toBe(PALETTE.map);
   expect(readout.toLowerCase()).not.toContain("cull");
   expect(readout.toLowerCase()).not.toContain("slider");
 
@@ -645,6 +646,40 @@ test("AC8 — FILTER readout and FOA/CRC altitude filter comments; no cull or sl
   expect(sources["./altitudeFilter.ts"]).toMatch(/R05/);
   expect(sources["./altitudeFilter.ts"]).toMatch(/R07/);
   expect(sources["./renderScope.ts"]).toMatch(/FILTER/);
+  expect(sources["./ssa.ts"]).toMatch(/FILTER/);
+});
+
+test("AC1 — SSA paints FILTER, RANGE, and OFF CNTR only when panned", () => {
+  const world = createWorld({ simTimeMs: 125_000 });
+  const view = createScopeView();
+  const onAirport = createMockCtx();
+  renderScope(onAirport.ctx, world, view, 800, 800);
+  const expected = buildSsaLines({
+    simTimeMs: world.simTimeMs,
+    rangeNm: view.camera.rangeNm,
+    offCenter: false,
+    filter: view.altitudeFilter,
+    filterEntry: view.filterEntry,
+  });
+  expect(expected).toContain("FILTER 000-180");
+  expect(expected).toContain("RANGE 20");
+  expect(expected).not.toContain("OFF CNTR");
+  for (const line of expected) {
+    const painted = onAirport.fillTexts.find((t) => t.text === line);
+    expect(painted, line).toBeDefined();
+    expect(painted!.fillStyle).toBe(PALETTE.map);
+    expect(painted!.x).toBe(8);
+    expect(painted!.textBaseline).toBe("top");
+  }
+  expect(onAirport.fillTexts.some((t) => t.text === formatSsaTime(125_000))).toBe(true);
+  expect(onAirport.fillTexts.some((t) => t.text === "OFF CNTR")).toBe(false);
+
+  view.camera.centerEastNm = 4;
+  const panned = createMockCtx();
+  renderScope(panned.ctx, world, view, 800, 800);
+  expect(panned.fillTexts.some((t) => t.text === "OFF CNTR")).toBe(true);
+  const offCntr = panned.fillTexts.find((t) => t.text === "OFF CNTR");
+  expect(offCntr!.fillStyle).toBe(PALETTE.map);
 });
 
 test("AC7 — renderScope comments say PTL / predicted track line and cite CRC", () => {

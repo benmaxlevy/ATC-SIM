@@ -3,8 +3,10 @@
  * Browser ATC anti-pattern is a header banner, tutorial footer, and game HUD (R12).
  * Trainer delta: T00-01 disclaimer is first-run / F1, not a bar over the DCB.
  * Pause / 1× / 2× is a map-green corner readout (not a CRC analog).
- * DCB is a green cell grid on the PPI glass (T02-16). Command
- * line is a narrow token strip at the bottom of the PPI column. Not NAS STARS.
+ * DCB is a green cell grid on the PPI glass (T02-16). SSA and the
+ * flight-strip list live on the PPI (T02-20), not a labeled right dock.
+ * Command line is a narrow token strip at the bottom of the PPI column.
+ * Not NAS STARS.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -40,7 +42,6 @@ export interface ShellProps {
 
 export function Shell({ app, scenario, scopeView }: ShellProps) {
   const [readback, setReadback] = useState("");
-  const [stripsCollapsed, setStripsCollapsed] = useState(false);
   const [, setScopeUiTick] = useState(0);
   const panRef = useRef<{ lastX: number; lastY: number } | null>(null);
 
@@ -130,14 +131,12 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           <SimControls world={app.world} />
           <Disclaimer />
           <ScopeHelpOverlay open={scopeView.helpOpen} />
+          <FlightStrips
+            world={app.world}
+            tracks={scopeView.tracks}
+            onSelectionChange={refreshScopeUi}
+          />
         </ScopeCanvas>
-        <FlightStrips
-          world={app.world}
-          tracks={scopeView.tracks}
-          collapsed={stripsCollapsed}
-          onToggleCollapsed={() => setStripsCollapsed((wasCollapsed) => !wasCollapsed)}
-          onSelectionChange={refreshScopeUi}
-        />
       </div>
     </div>
   );

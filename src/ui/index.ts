@@ -2,10 +2,10 @@
  * Public API for `@ui`.
  *
  * Legal now: Scope shell (DCB cell grid on the PPI, F1 help overlay with T00-01 disclaimer,
- * first-run disclaimer, flight-strip bay, command strip, pause / 1× / 2× corner
+ * first-run disclaimer, on-PPI flight-strip list, command strip, pause / 1× / 2× corner
  * readout). Canvas click selects a track and focuses the PPI (scope keys).
  * DCB clicks call the same `src/scope` functions as the keyboard and
- * never emit Command IR. Strip click selects the same track and focuses the PPI. Enter runs
+ * never emit Command IR. List click selects the same track and focuses the PPI. Enter runs
  * `submitCommand` → `handleRadioText` and shows the template readback. Text
  * submit bypasses SpeechPort (`Command.source` is `"text"`). Selection is a
  * scope action and does not emit a readback. Session controls (`setPaused` /

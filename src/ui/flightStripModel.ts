@@ -1,8 +1,9 @@
 /**
  * Analog: FAA PCG flight progress strip (R02) / 7110.65 ch. 2 §3 strip posting.
- * vice (R08) has a flight-strip window; CRC STARS (R07) is not a strip-bay spec.
+ * vice (R08) has a flight-strip window; CRC STARS (R07) lists plans on the PPI.
  * Trainer delta: callsign + assigned heading/altitude/speed only — not FDIO,
- * vStrips, ERAM, scratchpad, or sequence numbers. Not NAS STARS.
+ * vStrips, ERAM, scratchpad, or sequence numbers. T02-20 presents this list
+ * on the PPI; this module stays the data model. Not NAS STARS.
  *
  * Strips are a view of World intent. They never emit Command IR.
  */

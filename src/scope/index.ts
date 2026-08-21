@@ -16,6 +16,9 @@
  * functions. RANGE click cycles presets. Not a full STARS DCB (no WX / PREF /
  * SHIFT / CSA / CRDA / FMA).
  *
+ * SSA (T02-20) is a screen-fixed top-left status block (sim time, KDEM 29.92
+ * stub, FILTER, RANGE, OFF CNTR, OK). Never a Command.
+ *
  * Import rule: `@scope` may import `@core` and `@scenario`.
  * `@scope` may set `selectedAircraftId`. It must not write intent.
  *
@@ -71,6 +74,13 @@ export {
 } from "./mapLayers";
 export type { DigitalMap, MapCache, MapLayerFlags, NmPoint } from "./mapLayers";
 export { renderScope } from "./renderScope";
+export {
+  SSA_ALTIMETER_STUB,
+  SSA_FUSED_STUB,
+  buildSsaLines,
+  formatSsaTime,
+} from "./ssa";
+export type { SsaInput } from "./ssa";
 export {
   DEFAULT_ALTITUDE_FILTER,
   FILTER_HUNDREDS_MAX,

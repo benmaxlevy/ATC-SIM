@@ -47,7 +47,7 @@ When this phase exits, a controller sitting at Chrome on Windows can:
 5. Toggle **limited datablocks**, **Mode C**, **history dots**, **predicted track line**, and an **altitude filter**.
 6. Use a **documented Windows keyboard subset** (and a mouse **DCB cell grid**) without colliding with typed radio (`L090` remains a left turn to 090 when the command line is focused).
 7. **F3-initiate** a track as a color/ownership stub only — no NAS handoff.
-8. Work a **flight-strip** bay that mirrors intent from `World`.
+8. Work an **on-PPI flight-strip** list that mirrors intent from `World`.
 9. Hold **30 targets at 60 FPS** (measured; see T02-12).
 
 ## Non-goals (phase 2)
@@ -177,7 +177,7 @@ STARS-like, not a screenshot clone. **No red in phase 2** (alerts are phase 4).
 | History | 40–70% of track color | Dots |
 | PTL | Same as track color | Line |
 | DCB cells | `#003300` fill, `#00AA00` text, 1 px `#000` gutters | T02-16 cell grid on the glass. Pressed = invert/stipple. Not the T02-10 `#111` toolbar. T02-17 MAPS / RANGE / RR / LDR / CHAR SIZE / BRITE / PLACE CNTR. |
-| UI chrome | `#9AA0A6` on `#111` | strips, help — still dark, not game HUD |
+| UI chrome | `#9AA0A6` on `#111` | help overlay — still dark, not game HUD |
 
 Export as `src/scope/palette.ts`. Do not sprinkle hex literals in draw calls.
 
@@ -315,10 +315,11 @@ Think CRT terminal, not moving-map GPS.
 - Full-viewport dark shell from T00-10 remains. Disclaimer remains visible (corner or settings; do not delete T00-01).
 - PPI is the large center. DCB is a **green cell grid flush to the top of the PPI** (on the glass, not a grey HTML toolbar). Cells: RANGE (OFF CNTR when panned), MAPS (catalog `dcbLabel`s), RWY/LOC/CST role shortcuts, RR interval, LDR DIR (L1–L9), CHAR SIZE, BRITE, FILTER, PTL, HIST, PLACE CNTR. Pad the drawable canvas so cells do not cover the north of the range circle.
 - Command line stays **bottom** (phase 1).
-- Flight strips **right dock**, ~220–280 px, scrollable, collapsible.
+- **SSA** top-left on the PPI (map-green mono, screen-fixed): sim time `HHMM/SS`, `KDEM 29.92` stub, `FILTER` hundreds, `RANGE n`, `OFF CNTR` if panned, static `OK` fused stub. Not live METAR / Site-Fused.
+- Flight-strip list **on the PPI** (bottom-left corner, overflow scroll). Click row selects. Altitude filter does not hide rows. Not a labeled right **FLIGHT STRIPS** dock.
 - Help overlay is a translucent dark panel listing the keymap; it pauses nothing (sim keeps ticking).
 - No north-up arrow needed (always north-up); a small `N` tick at the top of the range circle is allowed.
-- Range readout: `RANGE n` in the DCB (glossary **range**); optional `RNG 20` lower-left of the PPI, monospace, map-green.
+- Range readout: `RANGE n` in the DCB and SSA (glossary **range**).
 
 **Draw order (back to front):**
 
@@ -333,7 +334,7 @@ Think CRT terminal, not moving-map GPS.
 9. Leader lines
 10. Datablocks
 11. Selection box
-12. Range readout (if on-canvas)
+12. SSA (screen-fixed)
 13. Help overlay (DOM or canvas last)
 
 ## Architecture (scope module)
@@ -365,9 +366,10 @@ Suggested layout (phase 0 folders; do not invent a second package system):
 | `src/scope/ownership.ts` | F3/F4 state machine |
 | `src/scope/keymap.ts` | Tables + chord state |
 | `src/scope/renderScope.ts` | Draw |
+| `src/scope/ssa.ts` | SSA line builder (screen-fixed status) |
 | `src/scope/scopeKeys.ts` | Event wiring, focus rules |
 | `src/ui/DisplayControlBar.tsx` | DCB cell grid (T02-16) |
-| `src/ui/FlightStrips.tsx` | Strip bay |
+| `src/ui/FlightStrips.tsx` | On-PPI flight-strip list |
 | `src/ui/ScopeHelpOverlay.tsx` | F1 |
 | `src/scenario/kdem.json` | `maps` extension |
 

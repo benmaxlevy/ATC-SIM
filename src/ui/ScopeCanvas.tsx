@@ -3,8 +3,8 @@
  * Trainer delta: equal-height green cells flush to the top of the host; the
  * canvas below is the drawable PPI (T02-01 view size already minus DCB height
  * so cells do not cover the north of the range circle). Command strip is a
- * footer in this column (T02-15), not a full-width web input.
- * Not NAS STARS.
+ * footer in this column (T02-15). The flight-strip list overlays the canvas
+ * (T02-20). Not a full-width web input. Not NAS STARS.
  */
 
 import type { World } from "@core";
@@ -17,7 +17,7 @@ export interface ScopeCanvasProps {
   onScopeChange: () => void;
   world?: World;
   children?: ReactNode;
-  /** Command strip sits under the PPI in this column, not under the strip bay. */
+  /** Command strip sits under the PPI in this column. */
   footer?: ReactNode;
   onCanvasClick?: (event: MouseEvent<HTMLCanvasElement>) => void;
   onCanvasDoubleClick?: (event: MouseEvent<HTMLCanvasElement>) => void;
