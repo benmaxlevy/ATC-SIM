@@ -59,7 +59,11 @@ Files land under `speech-api/.cache/` (gitignored). Later starts reuse the cache
 python download_weights.py
 ```
 
-CPU is the default if CUDA is missing. CPU p50 is slower; the voice-loop target of PTT-up → audio-start **p50 < 1.5 s** is measured against this service on localhost/LAN (T03-12). Prefer a GPU or keep `base.en` (not `small.en` / `medium`) if CPU-only.
+CPU is the default if CUDA is missing **or unusable**. A GPU driver is not enough: CTranslate2 needs the **CUDA 12 runtime** (`cublas64_12.dll` on Windows). If that DLL is missing, STT logs a warning and runs on CPU instead of 500-ing the first `/stt`. Force CPU: `STT_DEVICE=cpu`. TTS uses ONNX Runtime CUDA only when `CUDAExecutionProvider` is actually installed.
+
+CPU p50 is slower; the voice-loop target of PTT-up → audio-start **p50 < 1.5 s** is measured against this service on localhost/LAN (T03-12). Prefer a working CUDA 12 install or keep `base.en` (not `small.en` / `medium`) if CPU-only.
+
+Public Hub models do **not** need `HF_TOKEN`. An unauthenticated Hub warning on first download is expected.
 
 ## Run
 
@@ -87,7 +91,7 @@ docker run --rm -p 127.0.0.1:8090:8090 -v speech-api-cache:/app/.cache atc-speec
 | `PARSE_MODEL_ID` | unset | Reserved for T03-14. Unset → `/health.parse` is `"off"` and `POST /parse` is `UNAVAILABLE` |
 | `SPEECH_API_MOCK` | unset | `1` / `true` — no Hub, fake STT/TTS for CI |
 | `SPEECH_API_CACHE` | `speech-api/.cache` | Weight cache root |
-| `STT_DEVICE` | auto (`cuda` if present else `cpu`) | `cpu` or `cuda` |
+| `STT_DEVICE` | auto (`cuda` only if GPU **and** CUDA 12 cublas load; else `cpu`) | `cpu` or `cuda` |
 | `STT_COMPUTE_TYPE` | `float16` (cuda) / `int8` (cpu) | CTranslate2 compute type |
 | `HF_TOKEN` | unset | Local-only, gated Hub models |
 | `CORS_ORIGINS` | (empty) | Extra allowed origins, comma-separated |

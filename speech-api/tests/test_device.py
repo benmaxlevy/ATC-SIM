@@ -1,0 +1,74 @@
+"""CUDA auto-detect must not pick a GPU when cublas is missing (Windows driver-only)."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from config import Settings
+from engines import (
+    FasterWhisperStt,
+    _pick_stt_device,
+    is_cuda_runtime_error,
+)
+
+
+def _settings(device: str | None = None) -> Settings:
+    return Settings(
+        host="127.0.0.1",
+        port=8090,
+        stt_model_id="Systran/faster-whisper-base.en",
+        tts_voice="en_US-lessac-medium",
+        parse_model_id=None,
+        cache_dir=Path("."),
+        mock=False,
+        hf_token=None,
+        cors_origins=(),
+        stt_device=device,
+        stt_compute_type=None,
+    )
+
+
+def test_cublas_missing_is_cuda_runtime_error() -> None:
+    err = RuntimeError("Library cublas64_12.dll is not found or cannot be loaded")
+    assert is_cuda_runtime_error(err) is True
+    assert is_cuda_runtime_error(ValueError("empty audio body")) is False
+
+
+def test_auto_device_cpu_when_cublas_missing(monkeypatch) -> None:
+    monkeypatch.setattr("engines.ctranslate2_cuda_ready", lambda: False)
+    assert _pick_stt_device(_settings()) == ("cpu", "int8")
+
+
+def test_explicit_cuda_falls_back_when_runtime_unusable(monkeypatch) -> None:
+    monkeypatch.setattr("engines.ctranslate2_cuda_ready", lambda: False)
+    assert _pick_stt_device(_settings("cuda")) == ("cpu", "int8")
+
+
+def test_explicit_cpu(monkeypatch) -> None:
+    monkeypatch.setattr("engines.ctranslate2_cuda_ready", lambda: True)
+    assert _pick_stt_device(_settings("cpu")) == ("cpu", "int8")
+
+
+class _OkModel:
+    def transcribe(self, path, **kwargs):
+        del path, kwargs
+        return iter(()), None
+
+
+def test_whisper_init_falls_back_after_cublas_load_error(monkeypatch) -> None:
+    calls: list[str] = []
+
+    def load(_settings: Settings, device: str, compute_type: str) -> object:
+        del compute_type
+        calls.append(device)
+        if device == "cuda":
+            raise RuntimeError("Library cublas64_12.dll is not found or cannot be loaded")
+        return _OkModel()
+
+    monkeypatch.setattr("engines._pick_stt_device", lambda _s: ("cuda", "float16"))
+    monkeypatch.setattr("engines._load_whisper_model", load)
+    stt = FasterWhisperStt(_settings())
+    assert calls == ["cuda", "cpu"]
+    text, confidence = stt.transcribe(b"RIFF")
+    assert text == ""
+    assert confidence == 1.0

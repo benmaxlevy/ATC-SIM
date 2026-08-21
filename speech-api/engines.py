@@ -42,18 +42,64 @@ class MockTts:
         return tone_wav()
 
 
-def _pick_stt_device(settings: Settings) -> tuple[str, str]:
-    if settings.stt_device:
-        device = settings.stt_device
-    else:
-        device = "cpu"
-        try:
-            import ctranslate2
+def is_cuda_runtime_error(exc: BaseException) -> bool:
+    """True when CTranslate2/ONNX asked for CUDA but the toolkit DLLs are missing."""
+    text = str(exc).lower()
+    return "cublas" in text or "cudnn" in text or "not found or cannot be loaded" in text
 
-            if ctranslate2.get_cuda_device_count() > 0:
-                device = "cuda"
-        except Exception:
-            device = "cpu"
+
+def cublas12_available() -> bool:
+    """CTranslate2 CUDA 12 builds need this lib at *inference*, not just a GPU driver."""
+    import ctypes
+
+    names = ("cublas64_12.dll",) if os.name == "nt" else ("libcublas.so.12", "libcublas.so")
+    for name in names:
+        try:
+            ctypes.WinDLL(name) if os.name == "nt" else ctypes.CDLL(name)
+            return True
+        except OSError:
+            continue
+    return False
+
+
+def ctranslate2_cuda_ready() -> bool:
+    try:
+        import ctranslate2
+
+        if ctranslate2.get_cuda_device_count() <= 0:
+            return False
+    except Exception:
+        return False
+    if not cublas12_available():
+        log.warning(
+            "GPU visible but CUDA 12 cublas is missing (Windows: cublas64_12.dll); STT will use CPU. "
+            "Install the CUDA 12 runtime or set STT_DEVICE=cpu."
+        )
+        return False
+    return True
+
+
+def onnx_cuda_available() -> bool:
+    try:
+        import onnxruntime as ort
+
+        return "CUDAExecutionProvider" in ort.get_available_providers()
+    except Exception:
+        return False
+
+
+def _pick_stt_device(settings: Settings) -> tuple[str, str]:
+    requested = (settings.stt_device or "").strip().lower()
+    if requested == "cpu":
+        device = "cpu"
+    elif requested == "cuda":
+        device = "cuda" if ctranslate2_cuda_ready() else "cpu"
+        if device == "cpu":
+            log.warning("STT_DEVICE=cuda requested but CUDA 12 runtime is not usable; using cpu")
+    elif requested:
+        device = requested
+    else:
+        device = "cuda" if ctranslate2_cuda_ready() else "cpu"
     if settings.stt_compute_type:
         compute = settings.stt_compute_type
     else:
@@ -61,28 +107,44 @@ def _pick_stt_device(settings: Settings) -> tuple[str, str]:
     return device, compute
 
 
+def _load_whisper_model(settings: Settings, device: str, compute_type: str) -> object:
+    from faster_whisper import WhisperModel
+
+    cache = settings.cache_dir / "faster-whisper"
+    cache.mkdir(parents=True, exist_ok=True)
+    log.info(
+        "loading STT model_id=%s device=%s compute=%s cache=%s",
+        settings.stt_model_id,
+        device,
+        compute_type,
+        cache,
+    )
+    return WhisperModel(
+        settings.stt_model_id,
+        device=device,
+        compute_type=compute_type,
+        download_root=str(cache),
+        local_files_only=False,
+        use_auth_token=settings.hf_token,
+    )
+
+
 class FasterWhisperStt:
     def __init__(self, settings: Settings) -> None:
-        from faster_whisper import WhisperModel
-
-        cache = settings.cache_dir / "faster-whisper"
-        cache.mkdir(parents=True, exist_ok=True)
         device, compute_type = _pick_stt_device(settings)
-        log.info(
-            "loading STT model_id=%s device=%s compute=%s cache=%s",
-            settings.stt_model_id,
-            device,
-            compute_type,
-            cache,
-        )
-        self._model = WhisperModel(
-            settings.stt_model_id,
-            device=device,
-            compute_type=compute_type,
-            download_root=str(cache),
-            local_files_only=False,
-            use_auth_token=settings.hf_token,
-        )
+        try:
+            self._model = _load_whisper_model(settings, device, compute_type)
+            if device == "cuda":
+                self._probe_cuda()
+        except Exception as exc:
+            if device != "cuda" or not is_cuda_runtime_error(exc):
+                raise
+            log.warning("CUDA STT failed (%s); falling back to CPU", exc)
+            self._model = _load_whisper_model(settings, "cpu", "int8")
+
+    def _probe_cuda(self) -> None:
+        """Encode once at boot so a missing cublas DLL does not 500 the first PTT."""
+        self.transcribe(tone_wav(duration_s=0.05))
 
     def transcribe(self, wav_bytes: bytes) -> tuple[str, float]:
         fd, path = tempfile.mkstemp(suffix=".wav")
@@ -149,7 +211,8 @@ class PiperTts:
         self._default_voice = settings.tts_voice
         self._cache_dir = settings.cache_dir
         self._token = settings.hf_token
-        self._use_cuda = _pick_stt_device(settings)[0] == "cuda"
+        # ONNX CUDA is independent of CTranslate2. Driver-only machines warn and use CPU.
+        self._use_cuda = onnx_cuda_available()
         self._voices: dict[str, object] = {}
         self._load(self._default_voice)
 
