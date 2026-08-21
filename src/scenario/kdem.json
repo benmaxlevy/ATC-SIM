@@ -17,7 +17,36 @@
   ],
   "approaches": [{ "id": "ILS27", "runwayId": "27", "type": "ILS" }],
   "fixes": [],
-  "maps": { "videoMaps": [] },
+  "maps": {
+    "videoMaps": [],
+    "runway": {
+      "id": "27",
+      "thresholdEastNm": 0,
+      "thresholdNorthNm": 0,
+      "lengthNm": 1.5,
+      "headingTrueDeg": 270,
+      "widthNm": 0.025
+    },
+    "localizer": {
+      "runwayId": "27",
+      "courseTrueDeg": 270,
+      "featherLengthNm": 10,
+      "halfWidthDeg": 2.5
+    },
+    "rangeRings": {
+      "intervalNm": 5,
+      "maxNm": 60
+    },
+    "coastline": {
+      "enabled": true,
+      "note": "Fictional trainer shoreline — not a real coast, not OSM.",
+      "polyline": [
+        [-8.0, 3.0],
+        [-2.0, 1.0],
+        [4.0, 2.5]
+      ]
+    }
+  },
   "spawns": [
     {
       "id": "downwind",

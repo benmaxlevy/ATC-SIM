@@ -61,3 +61,26 @@ test("double-click empty PPI centers there; double-click on a track does not", (
   expect(view.camera.centerEastNm).toBe(beforeEast);
   expect(view.camera.centerNorthNm).toBe(beforeNorth);
 });
+
+test("map / localizer / rings flags default on; coastline follows JSON enabled", () => {
+  const bare = createScopeView();
+  expect(bare.showRunway).toBe(true);
+  expect(bare.showLocalizer).toBe(true);
+  expect(bare.showRings).toBe(true);
+  expect(bare.showCoastline).toBe(false);
+  expect(bare.digitalMap.runway).toBeUndefined();
+
+  const withCoast = createScopeView(0, 0, {
+    digitalMap: {
+      rangeRings: { intervalNm: 5, maxNm: 60 },
+      coastline: {
+        enabled: true,
+        polyline: [
+          [0, 0],
+          [1, 1],
+        ],
+      },
+    },
+  });
+  expect(withCoast.showCoastline).toBe(true);
+});

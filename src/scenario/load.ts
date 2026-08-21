@@ -1,7 +1,20 @@
 import { latLonToNm } from "@core";
 import type { LatLon, NmEastNorth } from "@core";
 import kdemJson from "./kdem.json";
-import type { Approach, ArrivalSpawn, Fix, Runway, Scenario, Spawn, VideoMap } from "./types";
+import type {
+  Approach,
+  ArrivalSpawn,
+  DigitalMapCoastline,
+  DigitalMapLocalizer,
+  DigitalMapRangeRings,
+  DigitalMapRunway,
+  Fix,
+  Runway,
+  Scenario,
+  ScenarioMaps,
+  Spawn,
+  VideoMap,
+} from "./types";
 import { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN } from "./types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -78,6 +91,103 @@ function assertVideoMap(value: unknown, index: number): VideoMap {
     throw new Error(`Scenario maps.videoMaps[${index}] must be an object`);
   }
   return { id: assertString(value.id, `maps.videoMaps[${index}].id`) };
+}
+
+function optionalFiniteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+/**
+ * Digital-map geometry is optional. Missing or malformed runway/loc/coast
+ * must not throw: the scope boots with range rings only (T02-02).
+ */
+function parseMapRunway(value: unknown): DigitalMapRunway | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const id = typeof value.id === "string" ? value.id : undefined;
+  const thresholdEastNm = optionalFiniteNumber(value.thresholdEastNm);
+  const thresholdNorthNm = optionalFiniteNumber(value.thresholdNorthNm);
+  const lengthNm = optionalFiniteNumber(value.lengthNm);
+  const headingTrueDeg = optionalFiniteNumber(value.headingTrueDeg);
+  const widthNm = optionalFiniteNumber(value.widthNm);
+  if (
+    id === undefined ||
+    thresholdEastNm === undefined ||
+    thresholdNorthNm === undefined ||
+    lengthNm === undefined ||
+    headingTrueDeg === undefined ||
+    widthNm === undefined
+  ) {
+    return undefined;
+  }
+  return { id, thresholdEastNm, thresholdNorthNm, lengthNm, headingTrueDeg, widthNm };
+}
+
+function parseMapLocalizer(value: unknown): DigitalMapLocalizer | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const runwayId = typeof value.runwayId === "string" ? value.runwayId : undefined;
+  const courseTrueDeg = optionalFiniteNumber(value.courseTrueDeg);
+  const featherLengthNm = optionalFiniteNumber(value.featherLengthNm);
+  const halfWidthDeg = optionalFiniteNumber(value.halfWidthDeg);
+  if (
+    runwayId === undefined ||
+    courseTrueDeg === undefined ||
+    featherLengthNm === undefined ||
+    halfWidthDeg === undefined
+  ) {
+    return undefined;
+  }
+  return { runwayId, courseTrueDeg, featherLengthNm, halfWidthDeg };
+}
+
+function parseMapRangeRings(value: unknown): DigitalMapRangeRings | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const intervalNm = optionalFiniteNumber(value.intervalNm);
+  const maxNm = optionalFiniteNumber(value.maxNm);
+  if (intervalNm === undefined || maxNm === undefined || intervalNm <= 0 || maxNm <= 0) {
+    return undefined;
+  }
+  return { intervalNm, maxNm };
+}
+
+function parseMapCoastline(value: unknown): DigitalMapCoastline | undefined {
+  if (!isRecord(value) || typeof value.enabled !== "boolean" || !Array.isArray(value.polyline)) {
+    return undefined;
+  }
+  const polyline: [number, number][] = [];
+  for (const pt of value.polyline) {
+    if (!Array.isArray(pt) || pt.length < 2) {
+      continue;
+    }
+    const eastNm = pt[0];
+    const northNm = pt[1];
+    if (typeof eastNm !== "number" || typeof northNm !== "number") {
+      continue;
+    }
+    if (!Number.isFinite(eastNm) || !Number.isFinite(northNm)) {
+      continue;
+    }
+    polyline.push([eastNm, northNm]);
+  }
+  const note = typeof value.note === "string" ? value.note : undefined;
+  return note === undefined
+    ? { enabled: value.enabled, polyline }
+    : { enabled: value.enabled, polyline, note };
+}
+
+function parseScenarioMaps(maps: Record<string, unknown>): ScenarioMaps {
+  return {
+    videoMaps: assertArray(maps.videoMaps, "maps.videoMaps").map(assertVideoMap),
+    runway: parseMapRunway(maps.runway),
+    localizer: parseMapLocalizer(maps.localizer),
+    rangeRings: parseMapRangeRings(maps.rangeRings),
+    coastline: parseMapCoastline(maps.coastline),
+  };
 }
 
 function assertSpawn(value: unknown, index: number): Spawn {
@@ -168,7 +278,7 @@ export function assertScenario(s: unknown): Scenario {
     runways: runwaysRaw.map(assertRunway),
     approaches: assertArray(s.approaches, "approaches").map(assertApproach),
     fixes: assertArray(s.fixes, "fixes").map(assertFix),
-    maps: { videoMaps: assertArray(maps.videoMaps, "maps.videoMaps").map(assertVideoMap) },
+    maps: parseScenarioMaps(maps),
     spawns: assertArray(s.spawns, "spawns").map(assertSpawn),
     arrivals: assertArrivals(s.arrivals),
   };

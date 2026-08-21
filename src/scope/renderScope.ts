@@ -1,130 +1,150 @@
 import type { World } from "@core";
-import {
-  formatRangeReadout,
-  nmToScreen,
-  rangeCircle,
-  type ScopeCamera,
-  type ScopeViewSize,
-} from "./camera";
+import { formatRangeReadout, nmToScreen, rangeCircle, type ScopeViewSize } from "./camera";
+import { reuseOrBuildMapCache, toMapCacheInput, type MapCache } from "./mapLayers";
+import { PALETTE } from "./palette";
+import type { ScopeView } from "./scopeView";
 
 /**
- * Analog: CRC STARS RANGE / CENTER PPI (docs.virtualnas.net/crc/stars — R07).
- * Trainer delta: Canvas2D north-up; circular clip to the range inscribed circle;
- * `RNG n` readout; ticks + temporary callsign text until T02-03/T02-04.
- * Extra CRC presets 6/8/12/16/24 omitted. Not NAS STARS.
+ * Analog: CRC STARS video map + RANGE PPI (docs.virtualnas.net/crc/stars — R07).
+ * Trainer delta: Canvas2D north-up; digital map from KDEM JSON (runway,
+ * localizer feather, range rings, optional coastline); circular clip.
+ * Not OSM / tiles (R12). Extra CRC presets omitted. Not NAS STARS.
  *
- * World draw is clipped to the range circle. Square-canvas corners sit outside
- * range and stay background. Readout is painted after restore so it stays visible.
+ * Draw order (phase README): background, rings, coastline, runway, localizer,
+ * then tracks. Maps rebuild on range/center/resize/layer toggle, not every rAF.
  */
 
-const BG = "#000000";
-const RING = "#006600";
-const RANGE_EDGE = "#00AA00";
-const AIRPORT = "#00AA00";
-const TICK = "#DDDDDD";
-const TICK_SELECTED = "#FFFF00";
-const CALLSIGN = "#DDDDDD";
-const IDENT_HALO = "rgba(180, 255, 170, 0.55)";
-const READOUT = "#00AA00";
-
-const RING_INTERVAL_NM = 10;
-const AIRPORT_CROSS_PX = 6;
 const TICK_RADIUS_PX = 2.5;
 const SELECTED_TICK_RADIUS_PX = 4.5;
 const SELECTED_RING_RADIUS_PX = 8;
 const IDENT_HALO_RADIUS_PX = 10;
 const CALLSIGN_OFFSET_X_PX = 8;
 const CALLSIGN_OFFSET_Y_PX = 4;
+const RING_STROKE_PX = 1;
+const RUNWAY_STROKE_PX = 2;
+const MAP_STROKE_PX = 1;
+const IDENT_HALO = "rgba(180, 255, 170, 0.55)";
+const SCOPE_MONO =
+  '12px "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace';
 
 export function renderScope(
   ctx: CanvasRenderingContext2D,
   world: World,
-  cam: ScopeCamera,
+  view: ScopeView,
   cssWidth: number,
   cssHeight: number,
 ): void {
-  const view: ScopeViewSize = { widthPx: cssWidth, heightPx: cssHeight };
-  ctx.fillStyle = BG;
+  const size: ScopeViewSize = { widthPx: cssWidth, heightPx: cssHeight };
+  ctx.fillStyle = PALETTE.background;
   ctx.fillRect(0, 0, cssWidth, cssHeight);
 
   if (cssWidth <= 0 || cssHeight <= 0) {
     return;
   }
 
-  const circle = rangeCircle(view);
+  const circle = rangeCircle(size);
   ctx.save();
   ctx.beginPath();
   ctx.arc(circle.cx, circle.cy, circle.radiusPx, 0, Math.PI * 2);
   ctx.clip();
 
-  drawRangeRings(ctx, cam, view);
-  drawAirportMark(ctx, cam, view);
-  drawTracks(ctx, world, cam, view);
+  view.mapCache = reuseOrBuildMapCache(view.mapCache, toMapCacheInput(view, size));
+  drawMapLayers(ctx, view.mapCache);
+
+  drawTracks(ctx, world, view, size);
 
   ctx.restore();
 
   ctx.beginPath();
   ctx.arc(circle.cx, circle.cy, circle.radiusPx, 0, Math.PI * 2);
-  ctx.strokeStyle = RANGE_EDGE;
+  ctx.strokeStyle = PALETTE.map;
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  drawRangeReadout(ctx, cam, cssHeight);
+  drawRangeReadout(ctx, view.camera.rangeNm, cssHeight);
 }
 
-function drawRangeRings(
+function tracePolyline(
   ctx: CanvasRenderingContext2D,
-  cam: ScopeCamera,
-  view: ScopeViewSize,
+  pts: { x: number; y: number }[],
+  close: boolean,
 ): void {
-  const origin = nmToScreen(cam.centerEastNm, cam.centerNorthNm, cam, view);
-  const edge = nmToScreen(cam.centerEastNm + RING_INTERVAL_NM, cam.centerNorthNm, cam, view);
-  const pxPerRing = Math.abs(edge.x - origin.x);
-  if (pxPerRing <= 0) {
+  const first = pts[0];
+  if (!first || pts.length < 2) {
     return;
   }
-
-  ctx.strokeStyle = RING;
-  ctx.lineWidth = 1;
-  for (let rNm = RING_INTERVAL_NM; rNm <= cam.rangeNm + 1e-9; rNm += RING_INTERVAL_NM) {
-    ctx.beginPath();
-    ctx.arc(origin.x, origin.y, pxPerRing * (rNm / RING_INTERVAL_NM), 0, Math.PI * 2);
-    ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(first.x, first.y);
+  for (let i = 1; i < pts.length; i += 1) {
+    ctx.lineTo(pts[i]!.x, pts[i]!.y);
+  }
+  if (close) {
+    ctx.closePath();
   }
 }
 
-function drawAirportMark(
-  ctx: CanvasRenderingContext2D,
-  cam: ScopeCamera,
-  view: ScopeViewSize,
-): void {
-  const p = nmToScreen(0, 0, cam, view);
-  ctx.strokeStyle = AIRPORT;
-  ctx.fillStyle = AIRPORT;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(p.x - AIRPORT_CROSS_PX, p.y);
-  ctx.lineTo(p.x + AIRPORT_CROSS_PX, p.y);
-  ctx.moveTo(p.x, p.y - AIRPORT_CROSS_PX);
-  ctx.lineTo(p.x, p.y + AIRPORT_CROSS_PX);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
-  ctx.fill();
+function drawMapLayers(ctx: CanvasRenderingContext2D, cache: MapCache): void {
+  ctx.strokeStyle = PALETTE.mapDim;
+  ctx.lineWidth = RING_STROKE_PX;
+  if (cache.ringsPath) {
+    ctx.stroke(cache.ringsPath);
+  } else {
+    for (const ring of cache.ringCircles) {
+      ctx.beginPath();
+      ctx.arc(ring.x, ring.y, ring.radiusPx, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  ctx.strokeStyle = PALETTE.map;
+  ctx.fillStyle = PALETTE.map;
+  ctx.lineWidth = MAP_STROKE_PX;
+  if (cache.coastlinePath) {
+    ctx.stroke(cache.coastlinePath);
+  } else if (cache.coastline) {
+    tracePolyline(ctx, cache.coastline, false);
+    ctx.stroke();
+  }
+
+  ctx.lineWidth = RUNWAY_STROKE_PX;
+  if (cache.runwayPath) {
+    ctx.fill(cache.runwayPath);
+    ctx.stroke(cache.runwayPath);
+  } else if (cache.runway) {
+    tracePolyline(ctx, cache.runway, true);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  ctx.lineWidth = MAP_STROKE_PX;
+  if (cache.localizerPath) {
+    ctx.stroke(cache.localizerPath);
+  } else if (cache.localizer) {
+    tracePolyline(ctx, cache.localizer, true);
+    ctx.stroke();
+  }
+
+  if (cache.runwayLabel) {
+    ctx.font = SCOPE_MONO;
+    ctx.textBaseline = "top";
+    ctx.textAlign = "center";
+    ctx.fillStyle = PALETTE.map;
+    ctx.fillText(cache.runwayLabel.text, cache.runwayLabel.x, cache.runwayLabel.y);
+  }
 }
 
 function drawTracks(
   ctx: CanvasRenderingContext2D,
   world: World,
-  cam: ScopeCamera,
-  view: ScopeViewSize,
+  view: ScopeView,
+  size: ScopeViewSize,
 ): void {
-  ctx.font = '12px ui-monospace, "Cascadia Mono", "Segoe UI Mono", monospace';
+  ctx.font = SCOPE_MONO;
   ctx.textBaseline = "bottom";
   ctx.textAlign = "left";
 
   for (const ac of world.aircraft) {
-    const p = nmToScreen(ac.xNm, ac.yNm, cam, view);
+    const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
     const selected = ac.id === world.selectedAircraftId;
     const identActive = ac.identUntilSimMs > world.simTimeMs;
 
@@ -139,30 +159,30 @@ function drawTracks(
     if (selected) {
       ctx.beginPath();
       ctx.arc(p.x, p.y, SELECTED_RING_RADIUS_PX, 0, Math.PI * 2);
-      ctx.strokeStyle = TICK_SELECTED;
+      ctx.strokeStyle = PALETTE.selected;
       ctx.lineWidth = 2;
       ctx.stroke();
     }
 
     ctx.beginPath();
     ctx.arc(p.x, p.y, selected ? SELECTED_TICK_RADIUS_PX : TICK_RADIUS_PX, 0, Math.PI * 2);
-    ctx.fillStyle = selected ? TICK_SELECTED : TICK;
+    ctx.fillStyle = selected ? PALETTE.selected : PALETTE.unowned;
     ctx.fill();
 
     // Temporary callsign text — not a datablock (no leader, no Mode C).
-    ctx.fillStyle = selected ? TICK_SELECTED : CALLSIGN;
+    ctx.fillStyle = selected ? PALETTE.selected : PALETTE.unowned;
     ctx.fillText(ac.callsign, p.x + CALLSIGN_OFFSET_X_PX, p.y - CALLSIGN_OFFSET_Y_PX);
   }
 }
 
 function drawRangeReadout(
   ctx: CanvasRenderingContext2D,
-  cam: ScopeCamera,
+  rangeNm: ScopeView["camera"]["rangeNm"],
   cssHeight: number,
 ): void {
-  ctx.font = '12px ui-monospace, "Cascadia Mono", "Segoe UI Mono", monospace';
+  ctx.font = SCOPE_MONO;
   ctx.textBaseline = "bottom";
   ctx.textAlign = "left";
-  ctx.fillStyle = READOUT;
-  ctx.fillText(formatRangeReadout(cam.rangeNm), 8, cssHeight - 8);
+  ctx.fillStyle = PALETTE.map;
+  ctx.fillText(formatRangeReadout(rangeNm), 8, cssHeight - 8);
 }

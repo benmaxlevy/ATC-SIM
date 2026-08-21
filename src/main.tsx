@@ -2,7 +2,13 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { advanceWorld, createAccumulator } from "@core";
 import { createWorldFromScenario, loadKdem } from "@scenario";
-import { PpiPlaceholderId, createScopeView, installAlwaysOnScopeKeys, paintPpi } from "@scope";
+import {
+  PpiPlaceholderId,
+  createScopeView,
+  installAlwaysOnScopeKeys,
+  paintPpi,
+  parseDigitalMap,
+} from "@scope";
 import { NullSpeechPort } from "@speech";
 import { SIM_HUD_ID, Shell, formatSimHud } from "@ui";
 import { bootSession } from "./app/boot-session";
@@ -16,7 +22,9 @@ const handles = createApp({
 });
 bootSession(handles, kdem, Date.now());
 
-const scopeView = createScopeView(kdem.arpNm.xNm, kdem.arpNm.yNm);
+const scopeView = createScopeView(kdem.arpNm.xNm, kdem.arpNm.yNm, {
+  digitalMap: parseDigitalMap(kdem.maps),
+});
 installAlwaysOnScopeKeys(scopeView);
 
 document.title = "ATC-SIM — KDEM";
@@ -38,7 +46,7 @@ let lastFrameMs = 0;
 function paintCurrentPpi(): void {
   const canvas = document.getElementById(PpiPlaceholderId);
   if (canvas instanceof HTMLCanvasElement) {
-    paintPpi(canvas, handles.world, scopeView.camera);
+    paintPpi(canvas, handles.world, scopeView);
   }
 }
 

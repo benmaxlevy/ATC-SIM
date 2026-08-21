@@ -83,13 +83,13 @@ Suggested shape (adapt names to T00-05 style; keep units NM east/north of the fr
 ## Acceptance criteria
 
 - [ ] **AC1 —** Given KDEM at 20 NM centered on airport, when the PPI paints, then a runway aligned ~270° is visible at the center and a localizer feather extends **east** of the field (~10 NM).
-- [ ] **AC2 —** Automated: feather vertices are 10 NM from the defined origin along course ±2.5° (tolerance 0.05 NM).
-- [ ] **AC3 —** Given range 20 NM, rings at 5, 10, 15, 20 NM are drawn about the airport; no 25 NM ring. Given range 5 NM, only the 5 NM ring.
-- [ ] **AC4 —** Given `coastline.enabled: false`, no coastline stroke. Given `true` with ≥2 points, the polyline is visible in map green.
-- [ ] **AC5 —** Toggling `showLocalizer` off removes the feather without affecting the runway.
-- [ ] **AC6 —** Maps do not parse as OSM/geo tiles; draw uses only scenario JSON + camera.
-- [ ] **AC7 —** Automated: `buildMapCache` / draw preparation is not invoked from `stepWorld`. A render-loop test or spy asserts map path rebuild happens on camera change, not on every physics step.
-- [ ] **AC8 — Research:** UI/settings use **map** / **localizer** / **rings**, not “terrain” or “OSM.” Comment cites CRC video maps + trainer-authored JSON.
+- [x] **AC2 —** Automated: feather vertices are 10 NM from the defined origin along course ±2.5° (tolerance 0.05 NM).
+- [x] **AC3 —** Given range 20 NM, rings at 5, 10, 15, 20 NM are drawn about the airport; no 25 NM ring. Given range 5 NM, only the 5 NM ring.
+- [x] **AC4 —** Given `coastline.enabled: false`, no coastline stroke. Given `true` with ≥2 points, the polyline is visible in map green.
+- [x] **AC5 —** Toggling `showLocalizer` off removes the feather without affecting the runway.
+- [x] **AC6 —** Maps do not parse as OSM/geo tiles; draw uses only scenario JSON + camera.
+- [x] **AC7 —** Automated: `buildMapCache` / draw preparation is not invoked from `stepWorld`. A render-loop test or spy asserts map path rebuild happens on camera change, not on every physics step.
+- [x] **AC8 — Research:** UI/settings use **map** / **localizer** / **rings**, not “terrain” or “OSM.” Comment cites CRC video maps + trainer-authored JSON.
 
 ## Test plan
 

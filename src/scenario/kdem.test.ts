@@ -35,6 +35,41 @@ test("loaded KDEM video maps are an empty array (AC5)", () => {
   expect(loadKdem().maps.videoMaps).toEqual([]);
 });
 
+test("loaded KDEM includes trainer-authored digital map geometry", () => {
+  const maps = loadKdem().maps;
+  expect(maps.runway).toMatchObject({
+    id: "27",
+    thresholdEastNm: 0,
+    thresholdNorthNm: 0,
+    lengthNm: 1.5,
+    headingTrueDeg: 270,
+    widthNm: 0.025,
+  });
+  expect(maps.localizer).toMatchObject({
+    runwayId: "27",
+    courseTrueDeg: 270,
+    featherLengthNm: 10,
+    halfWidthDeg: 2.5,
+  });
+  expect(maps.rangeRings).toEqual({ intervalNm: 5, maxNm: 60 });
+  expect(maps.coastline?.enabled).toBe(true);
+  expect(maps.coastline?.polyline.length).toBeGreaterThanOrEqual(2);
+  expect(maps.coastline?.note?.toLowerCase()).toMatch(/fictional/);
+});
+
+test("assertScenario keeps spawning when maps.runway is missing", () => {
+  const restMaps = {
+    videoMaps: [],
+    localizer: kdemJson.maps.localizer,
+    rangeRings: kdemJson.maps.rangeRings,
+    coastline: kdemJson.maps.coastline,
+  };
+  const scenario = assertScenario({ ...kdemJson, maps: restMaps });
+  expect(scenario.maps.runway).toBeUndefined();
+  expect(scenario.maps.videoMaps).toEqual([]);
+  expect(scenario.arrivals).toHaveLength(6);
+});
+
 test("loadKdem arpNm is origin via T00-04 helpers (AC6)", () => {
   const scenario = loadKdem();
   const expected = latLonToNm(scenario.arp, scenario.arp);

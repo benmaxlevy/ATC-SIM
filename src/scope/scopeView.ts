@@ -1,6 +1,8 @@
 /**
  * Analog: CRC STARS RANGE / CENTER (docs.virtualnas.net/crc/stars — R07).
- * Trainer delta: last-click / airport live on this view, not on World. Not NAS STARS.
+ * Trainer delta: last-click / airport live on this view, not on World. Map /
+ * localizer / rings flags are trainer display state (DCB-lite binds later).
+ * Not NAS STARS.
  *
  * Scope display state only. Never a Command, readback, or intent.
  */
@@ -11,6 +13,7 @@ import {
   DEFAULT_RANGE_NM,
   type ScopeCamera,
 } from "./camera";
+import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
 
 export interface ScopeView {
   camera: ScopeCamera;
@@ -18,12 +21,21 @@ export interface ScopeView {
   airportNorthNm: number;
   lastClickEastNm: number | null;
   lastClickNorthNm: number | null;
+  showRunway: boolean;
+  showLocalizer: boolean;
+  showRings: boolean;
+  showCoastline: boolean;
+  digitalMap: DigitalMap;
+  mapCache: MapCache | null;
 }
 
 export function createScopeView(
   airportEastNm: number = AIRPORT_REF_EAST_NM,
   airportNorthNm: number = AIRPORT_REF_NORTH_NM,
+  options?: { digitalMap?: DigitalMap; showCoastline?: boolean },
 ): ScopeView {
+  const digitalMap = options?.digitalMap ?? DEFAULT_DIGITAL_MAP;
+  const showCoastline = options?.showCoastline ?? digitalMap.coastline?.enabled === true;
   return {
     camera: {
       rangeNm: DEFAULT_RANGE_NM,
@@ -34,6 +46,12 @@ export function createScopeView(
     airportNorthNm,
     lastClickEastNm: null,
     lastClickNorthNm: null,
+    showRunway: true,
+    showLocalizer: true,
+    showRings: true,
+    showCoastline,
+    digitalMap,
+    mapCache: null,
   };
 }
 

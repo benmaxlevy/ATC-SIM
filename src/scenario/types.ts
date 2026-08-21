@@ -21,9 +21,52 @@ export interface Fix {
   id: string;
 }
 
-/** Digital / video map polyline stub. Empty at KDEM in phase 0. */
+/** Digital / video map polyline stub. Empty at KDEM; geometry lives on ScenarioMaps. */
 export interface VideoMap {
   id: string;
+}
+
+/** Trainer-drawn runway slab in NM east/north of ARP. Not a GIS polygon. */
+export interface DigitalMapRunway {
+  id: string;
+  thresholdEastNm: number;
+  thresholdNorthNm: number;
+  lengthNm: number;
+  headingTrueDeg: number;
+  widthNm: number;
+}
+
+/** Localizer feather authored in scenario JSON. Inbound course is runway heading. */
+export interface DigitalMapLocalizer {
+  runwayId: string;
+  courseTrueDeg: number;
+  featherLengthNm: number;
+  halfWidthDeg: number;
+}
+
+/** Concentric range rings about airport ref, not the view center. */
+export interface DigitalMapRangeRings {
+  intervalNm: number;
+  maxNm: number;
+}
+
+/**
+ * Optional coastline polyline (NM east, NM north).
+ * Fictional trainer shoreline — not a real coast and not OSM.
+ */
+export interface DigitalMapCoastline {
+  enabled: boolean;
+  polyline: [number, number][];
+  note?: string;
+}
+
+/** KDEM digital / video map. `videoMaps` stays the T00-05 stub list. */
+export interface ScenarioMaps {
+  videoMaps: VideoMap[];
+  runway?: DigitalMapRunway;
+  localizer?: DigitalMapLocalizer;
+  rangeRings?: DigitalMapRangeRings;
+  coastline?: DigitalMapCoastline;
 }
 
 /** Spawn template. Offset is world ENU NM relative to ARP. */
@@ -70,7 +113,7 @@ export interface Scenario {
   runways: Runway[];
   approaches: Approach[];
   fixes: Fix[];
-  maps: { videoMaps: VideoMap[] };
+  maps: ScenarioMaps;
   spawns: Spawn[];
   arrivals: ArrivalSpawn[];
 }
