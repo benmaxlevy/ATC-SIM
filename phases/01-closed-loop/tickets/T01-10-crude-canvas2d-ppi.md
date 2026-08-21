@@ -89,9 +89,9 @@ Pause may still be false always until T01-12; aircraft should already drift east
 - [ ] **AC1 —** `npm run dev`: canvas fills the scope area; background is dark; **range rings** are visible.
 - [ ] **AC2 —** **6** callsigns from the default scenario are visible as text, including `DAL123`, east of center (right half of the screen given north-up and +x east).
 - [ ] **AC3 —** Over a few seconds at 1x, ticks **move** (downwind-ish, generally rightward).
-- [ ] **AC4 —** Projection unit test: airport `(0,0)` maps to canvas center; a point at `xNm = rangeNm`, `yNm = 0` maps near the right edge midpoint (±2 px with a fixed 800×800 fixture).
-- [ ] **AC5 —** Physics: grep the rAF callback — it must not pass frame `dt` into `stepWorld` directly; it uses `advanceWorld` / accumulator.
-- [ ] **AC6 —** No datablock leader lines, no map polylines, no STARS keyboard handler.
+- [x] **AC4 —** Projection unit test: airport `(0,0)` maps to canvas center; a point at `xNm = rangeNm`, `yNm = 0` maps near the right edge midpoint (±2 px with a fixed 800×800 fixture).
+- [x] **AC5 —** Physics: grep the rAF callback — it must not pass frame `dt` into `stepWorld` directly; it uses `advanceWorld` / accumulator.
+- [x] **AC6 —** No datablock leader lines, no map polylines, no STARS keyboard handler.
 - [ ] **AC7 —** **Manual:** no console errors while idling 10 seconds.
 
 ## Test plan

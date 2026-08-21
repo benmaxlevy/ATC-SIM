@@ -1,13 +1,18 @@
 /**
  * Public API for `@scope`.
  *
- * Legal now: `PpiPlaceholderId` and empty `PpiPlaceholder` host (T00-10).
+ * Legal now: Canvas2D north-up PPI (`paintPpi`, `worldToCanvas` / `canvasToWorld`),
+ * and the `ppi-placeholder` canvas host (id kept from T00-10).
  *
- * Later: Canvas PPI, maps, datablocks, scope keys. No Canvas drawing in phase 0.
+ * Later: click pick (T01-11), maps, datablocks, scope keys.
  *
  * Import rule: `@scope` may import `@core` and `@scenario`.
+ * `@scope` may read World (including `selectedAircraftId`) but must not write intent.
  *
  * Analog: CRC STARS display (docs.virtualnas.net/crc/stars).
- * Trainer delta: placeholder DOM id only; no maps, tracks, or datablocks yet. Not NAS STARS.
+ * Trainer delta: ticks + temporary callsign text; no datablocks, leaders, or maps. Not NAS STARS.
  */
 export { PpiPlaceholder, PpiPlaceholderId } from "./ppi-placeholder";
+export type { Camera } from "./camera";
+export { DEFAULT_CAMERA, DEFAULT_RANGE_NM, canvasToWorld, pxPerNm, worldToCanvas } from "./camera";
+export { paintPpi, fitCanvasToCss } from "./ppi";
