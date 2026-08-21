@@ -57,12 +57,12 @@ Vitest include: update `vite.config` / `vitest.config` if `tests/` was not in Ph
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Integration test file exists and is run by `npm test`.
-- [ ] **AC2 —** Given DAL123 heading 100, when `DAL123 H270` is handled, then command is accepted and `intent.assignedHeadingDeg === 270`.
-- [ ] **AC3 —** After 2.0 sim seconds of `stepWorld`, heading is ~106° (distance to 270 has **decreased** by ~6°).
-- [ ] **AC4 —** After a single `SIM_DT_S` step post-command, heading has changed from start (turn starts next step).
-- [ ] **AC5 —** Test file has no `document`, `window`, `HTMLCanvasElement`, or rAF.
-- [ ] **AC6 —** `npm test` green including this file.
+- [x] **AC1 —** Integration test file exists and is run by `npm test`.
+- [x] **AC2 —** Given DAL123 heading 100, when `DAL123 H270` is handled, then command is accepted and `intent.assignedHeadingDeg === 270`.
+- [x] **AC3 —** After 2.0 sim seconds of `stepWorld`, heading is ~106° (distance to 270 has **decreased** by ~6°).
+- [x] **AC4 —** After a single `SIM_DT_S` step post-command, heading has changed from start (turn starts next step).
+- [x] **AC5 —** Test file has no `document`, `window`, `HTMLCanvasElement`, or rAF.
+- [x] **AC6 —** `npm test` green including this file.
 
 ## Test plan
 
