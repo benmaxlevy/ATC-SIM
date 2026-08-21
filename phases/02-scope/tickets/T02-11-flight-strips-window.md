@@ -55,15 +55,15 @@ Strip click must `preventDefault` focus issues: set selection then focus PPI so 
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Given 6 spawned arrivals, 6 strips show the correct callsigns.
-- [ ] **AC2 —** After `DAL123 C50` (climb 5000) is accepted, that strip’s altitude field becomes `A050` even before Mode C arrives.
-- [ ] **AC3 —** Clicking strip `DAL123` selects that track on the PPI (selection box / yellow accent).
-- [ ] **AC4 —** Clicking a PPI target highlights the matching strip.
-- [ ] **AC5 —** Filter hiding a datablock does **not** remove the strip.
-- [ ] **AC6 —** Strips do not emit Command IR when clicked.
+- [x] **AC1 —** Given 6 spawned arrivals, 6 strips show the correct callsigns.
+- [x] **AC2 —** After `DAL123 C50` (climb 5000) is accepted, that strip’s altitude field becomes `A050` even before Mode C arrives.
+- [x] **AC3 —** Clicking strip `DAL123` selects that track on the PPI (selection box / yellow accent).
+- [x] **AC4 —** Clicking a PPI target highlights the matching strip.
+- [x] **AC5 —** Filter hiding a datablock does **not** remove the strip.
+- [x] **AC6 —** Strips do not emit Command IR when clicked.
 - [ ] **AC7 —** Dock can be collapsed and expanded; PPI still renders. **Manual.**
-- [ ] **AC8 —** Sort is stable by callsign while aircraft move (no flicker reorder). Automated if the sort function is extracted.
-- [ ] **AC9 — Research:** Window title or heading is **strips** / **flight strips**, not “aircraft list.” Comment cites PCG strip analog.
+- [x] **AC8 —** Sort is stable by callsign while aircraft move (no flicker reorder). Automated if the sort function is extracted.
+- [x] **AC9 — Research:** Window title or heading is **strips** / **flight strips**, not “aircraft list.” Comment cites PCG strip analog.
 
 ## Test plan
 

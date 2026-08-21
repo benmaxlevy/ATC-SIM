@@ -28,9 +28,18 @@ body,
   border-bottom: 1px solid #1c2430;
 }
 
+.scope-work {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+}
+
 .ppi-host {
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
   margin: 8px;
   position: relative;
   background: #050708;
@@ -43,6 +52,113 @@ body,
   height: 100%;
   cursor: crosshair;
   user-select: none;
+}
+
+.ppi-canvas:focus {
+  outline: none;
+}
+
+.strip-bay {
+  flex: 0 0 240px;
+  width: 240px;
+  min-width: 240px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #0a0a0a;
+  border-left: 1px solid #1c2430;
+  color: #9aa0a6;
+}
+
+.strip-bay-is-collapsed {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+}
+
+.strip-bay-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #1c2430;
+}
+
+.strip-bay-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9aa0a6;
+}
+
+.strip-bay-toggle {
+  border: 1px solid #2a3544;
+  background: #111111;
+  color: #9aa0a6;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.strip-bay-toggle:hover,
+.strip-bay-toggle:focus-visible {
+  border-color: #ffff00;
+  outline: none;
+}
+
+.strip-bay-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.strip-bay-empty {
+  margin: 0;
+  padding: 12px 8px;
+  font-size: 12px;
+  color: #9aa0a6;
+}
+
+.flight-strip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 6px 8px;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-left: 3px solid transparent;
+  color: #dddddd;
+  font-family:
+    "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.flight-strip-selected {
+  border-left-color: #ffff00;
+  outline: 1px solid #ffff00;
+  outline-offset: -1px;
+}
+
+.flight-strip-callsign {
+  /* Unowned white until T02-08 ownership color. */
+  color: #dddddd;
+}
+
+.flight-strip-fields {
+  color: #9aa0a6;
 }
 
 .sim-controls {

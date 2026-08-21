@@ -1,19 +1,27 @@
 /**
  * Public API for `@ui`.
  *
- * Legal now: Scope shell (disclaimer, PPI, command line, pause / 1× / 2×).
- * Canvas click selects a track and focuses the PPI (scope keys). Enter runs
+ * Legal now: Scope shell (disclaimer, PPI, flight-strip bay, command line,
+ * pause / 1× / 2×). Canvas click selects a track and focuses the PPI (scope
+ * keys). Strip click selects the same track and focuses the PPI. Enter runs
  * `submitCommand` → `handleRadioText` and shows the template readback. Text
  * submit bypasses SpeechPort (`Command.source` is `"text"`). Selection is a
  * scope action and does not emit a readback. Session controls (`setPaused` /
  * `setSimRate`) do not touch intent.
  *
- * Later: strips, settings. The sim tick must never wait on React render.
+ * Later: settings. The sim tick must never wait on React render.
  *
  * Import rule: `@ui` may import all other `src/*` packages. `@pilot` must not
  * import `@ui`.
  */
 export { Shell, Shell as App } from "./shell";
+export { FlightStrips, focusPpi } from "./FlightStrips";
+export {
+  STRIP_BAY_EMPTY,
+  STRIP_BAY_HEADING,
+  selectTrackFromStrip,
+  stripsFromWorld,
+} from "./flightStripModel";
 export { DISCLAIMER_COPY } from "./disclaimer-copy";
 export { echoCommandLine, submitCommandLine } from "./echo-command-line";
 export { submitCommand } from "./submitCommand";
