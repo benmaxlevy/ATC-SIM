@@ -217,7 +217,7 @@ Suggested git cadence: one commit per ticket is fine; not required.
 
 Do not start Phase 2 until every box is green.
 
-- [ ] `npm test` green, including DOM-free unit tests for **parser**, **kinematics**, **pilot agent**, and **one integration test** (`T01-13`).
+- [x] `npm test` green, including DOM-free unit tests for **parser**, **kinematics**, **pilot agent**, and **one integration test** (`T01-13`).
 - [ ] `npm run dev` shows the Phase 0 dark shell, disclaimer still visible, command line at the bottom.
 - [ ] **6** aircraft ticks + callsigns visible on a north-up PPI with range rings (no datablocks required).
 - [ ] Typing `DAL123 H270` (Enter) shows a text readback that includes the callsign and heading two seven zero (telephony or spelled — see `T01-08`).

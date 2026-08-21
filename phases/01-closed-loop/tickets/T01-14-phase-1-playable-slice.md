@@ -48,7 +48,7 @@ Suggested last-meter checks:
 
 All **Manual** unless noted.
 
-- [ ] **AC1 — Automated:** `npm test` green; T01-13 ran.
+- [x] **AC1 — Automated:** `npm test` green; T01-13 ran.
 - [ ] **AC2 — Manual:** `npm run dev`, no console errors on load.
 - [ ] **AC3 — Manual:** 6 ticks + callsigns visible, including `DAL123`; range rings visible; north-up (eastbound-ish traffic moves toward the **right**).
 - [ ] **AC4 — Manual:** Type `DAL123 H270`, Enter. Readback text appears (callsign telephony + heading two seven zero).

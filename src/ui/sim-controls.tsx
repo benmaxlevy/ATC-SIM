@@ -1,6 +1,13 @@
 import { useEffect } from "react";
 import type { World } from "@core";
-import { SIM_HUD_ID, applySimControlKey, formatSimHud, setPaused, setSimRate } from "./simControls";
+import {
+  PLAY_HINT,
+  SIM_HUD_ID,
+  applySimControlKey,
+  formatSimHud,
+  setPaused,
+  setSimRate,
+} from "./simControls";
 
 export interface SimControlsProps {
   world: World;
@@ -61,6 +68,7 @@ export function SimControls({ world }: SimControlsProps) {
       <span id={SIM_HUD_ID} className="sim-status">
         {formatSimHud(world)}
       </span>
+      <span className="play-hint">{PLAY_HINT}</span>
       <span className="sim-keys">
         Space pause (off command line) · Pause key always · 1 / 2 rate (off command line)
       </span>

@@ -7,6 +7,9 @@ import type { World } from "@core";
 
 export const SIM_HUD_ID = "sim-hud";
 
+/** Playable-slice one-liner (T01-14). Not a tutorial system. */
+export const PLAY_HINT = "type DAL123 H270 or click then H270";
+
 /** Pause or resume kinematics and sim time. Does not touch accumulator or intent. */
 export function setPaused(world: World, paused: boolean): void {
   world.paused = paused;

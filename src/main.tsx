@@ -32,15 +32,19 @@ createRoot(root).render(
 const acc = createAccumulator();
 let lastFrameMs = 0;
 
+function paintCurrentPpi(): void {
+  const canvas = document.getElementById(PpiPlaceholderId);
+  if (canvas instanceof HTMLCanvasElement) {
+    paintPpi(canvas, handles.world);
+  }
+}
+
 function onFrame(nowMs: number): void {
   const wallDtS = lastFrameMs === 0 ? 0 : Math.max(0, (nowMs - lastFrameMs) / 1000);
   lastFrameMs = nowMs;
   // Physics: wall Δt feeds the accumulator. Never pass this dt into stepWorld.
   advanceWorld(handles.world, wallDtS, acc);
-  const canvas = document.getElementById(PpiPlaceholderId);
-  if (canvas instanceof HTMLCanvasElement) {
-    paintPpi(canvas, handles.world);
-  }
+  paintCurrentPpi();
   const hud = document.getElementById(SIM_HUD_ID);
   if (hud) {
     hud.textContent = formatSimHud(handles.world);
@@ -49,3 +53,5 @@ function onFrame(nowMs: number): void {
 }
 
 requestAnimationFrame(onFrame);
+
+window.addEventListener("resize", paintCurrentPpi);

@@ -1,6 +1,7 @@
 import { expect, expectTypeOf, test } from "vitest";
 import { SessionLog, advanceWorld, createAccumulator, createAircraft, createWorld } from "@core";
 import {
+  PLAY_HINT,
   applySimControlKey,
   formatSimHud,
   formatSimTimeMmSs,
@@ -48,6 +49,10 @@ test("setPaused / setSimRate mutate only paused and simRate (AC1, AC3, AC6)", ()
   expect(world.simRate).toBe(1);
   expect(ac.intent).toEqual(intentBefore);
   expect(log.all()).toHaveLength(0);
+});
+
+test("PLAY_HINT is the playable-slice one-liner (T01-14)", () => {
+  expect(PLAY_HINT).toBe("type DAL123 H270 or click then H270");
 });
 
 test("formatSimHud shows PAUSE or 1x / 2x plus mm:ss", () => {
@@ -153,6 +158,7 @@ test("shell mounts Pause, 1×, and 2× buttons that call session helpers", () =>
   expect(controls).toMatch(/setPaused\(world,\s*!world\.paused\)/);
   expect(controls).toMatch(/setSimRate\(world,\s*1\)/);
   expect(controls).toMatch(/setSimRate\(world,\s*2\)/);
+  expect(controls).toMatch(/PLAY_HINT/);
   expect(controls).not.toMatch(/submitCommand/);
   expect(controls).not.toMatch(/handleRadioText/);
   expect(controls).not.toMatch(/from\s+["']@scope["']/);

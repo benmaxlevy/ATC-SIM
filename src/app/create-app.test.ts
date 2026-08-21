@@ -18,6 +18,22 @@ test("createApp returns a SessionLog instance (AC6)", () => {
   expect(handles.log).toBeInstanceOf(SessionLog);
 });
 
+test("T01-14 playable slice: main wires spawn, null speech, rAF, and resize paint", () => {
+  const sources = import.meta.glob("../main.tsx", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  const main = sources["../main.tsx"];
+  expect(main).toBeDefined();
+  expect(main).toMatch(/createWorldFromScenario/);
+  expect(main).toMatch(/NullSpeechPort/);
+  expect(main).toMatch(/requestAnimationFrame/);
+  expect(main).toMatch(/paintPpi/);
+  expect(main).toMatch(/addEventListener\("resize"/);
+  expect(main).not.toMatch(/from\s+["']@speech["'].*(http|openai|deepgram)/i);
+});
+
 test("createApp defaults to an empty world and keeps a provided World", () => {
   const empty = createApp({ speech: new NullSpeechPort() });
   expect(empty.world.aircraft).toEqual([]);

@@ -19,6 +19,7 @@ export { echoCommandLine, submitCommandLine } from "./echo-command-line";
 export { submitCommand } from "./submitCommand";
 export type { PilotResult } from "./submitCommand";
 export {
+  PLAY_HINT,
   SIM_HUD_ID,
   applySimControlKey,
   formatSimHud,
