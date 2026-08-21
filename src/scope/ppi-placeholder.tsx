@@ -15,9 +15,10 @@ export interface PpiPlaceholderProps {
 
 /**
  * Analog: CRC STARS display (docs.virtualnas.net/crc/stars — R07).
- * Trainer delta: full-area Canvas2D PPI host; range/center via keys and wheel,
- * middle-drag pan (not CRC). Click selects a track and focuses the PPI so
- * scope-focus H toggles history. Not NAS STARS.
+ * Trainer delta: full-area Canvas2D PPI host below DCB-lite; range/center via
+ * keys, wheel, and the lite bar (not CRC). Middle-drag pan (not CRC). Click
+ * selects a track and focuses the PPI so scope-focus H toggles history.
+ * Not NAS STARS.
  */
 export function PpiPlaceholder({
   children,

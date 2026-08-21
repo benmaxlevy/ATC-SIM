@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import type { PointerEvent, WheelEvent } from "react";
 import type { Scenario } from "@scenario";
 import {
-  PpiPlaceholder,
   cssPointFromClient,
   handlePpiCanvasClick,
   handlePpiDoubleClick,
@@ -21,6 +20,7 @@ import { Disclaimer } from "./disclaimer";
 import { FlightStrips, focusPpi } from "./FlightStrips";
 import { FpsDebug } from "./FpsDebug";
 import { isFpsDebugEnabled } from "./fpsHud";
+import { ScopeCanvas } from "./ScopeCanvas";
 import { ScopeHelpOverlay } from "./ScopeHelpOverlay";
 import { SimControls } from "./sim-controls";
 import { submitCommand } from "./submitCommand";
@@ -61,7 +61,9 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
     <div className="scope-shell" data-scenario={scenario.id} data-speech={app.speech.id}>
       <Disclaimer />
       <div className="scope-work">
-        <PpiPlaceholder
+        <ScopeCanvas
+          scopeView={scopeView}
+          onScopeChange={refreshScopeUi}
           onCanvasClick={(event) => {
             handlePpiCanvasClick(
               event.currentTarget,
@@ -110,7 +112,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
         >
           {fpsDebug ? <FpsDebug /> : null}
           <ScopeHelpOverlay open={scopeView.helpOpen} />
-        </PpiPlaceholder>
+        </ScopeCanvas>
         <FlightStrips
           world={app.world}
           tracks={scopeView.tracks}

@@ -55,15 +55,20 @@ If the app is not React yet, vanilla DOM is fine; keep it in `src/ui`.
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** `+` / `−` step through the same 8 presets as PageUp/PageDown; readout shows `5`…`60`.
-- [ ] **AC2 —** MAP toggles hide/show runway, loc, rings, coastline independently (coastline no-op/disabled if JSON off).
-- [ ] **AC3 —** FIL fields apply the same predicate as the `F` chord; invalid max<min does not apply.
-- [ ] **AC4 —** PTL and HIST buttons match `F7`/`F8` state (click on ≡ key toggle).
-- [ ] **AC5 —** CTR (if present) or documented equivalent recenters airport; PPI drawable region is fully below the bar (no targets under the bar at center).
+- [x] **AC1 —** `+` / `−` step through the same 8 presets as PageUp/PageDown; readout shows `5`…`60`.
+- [x] **AC2 —** MAP toggles hide/show runway, loc, rings, coastline independently (coastline no-op/disabled if JSON off).
+- [x] **AC3 —** FIL fields apply the same predicate as the `F` chord; invalid max<min does not apply.
+- [x] **AC4 —** PTL and HIST buttons match `F7`/`F8` state (click on ≡ key toggle).
+- [x] **AC5 —** CTR (if present) or documented equivalent recenters airport; PPI drawable region is fully below the bar (no targets under the bar at center).
 - [ ] **AC6 —** Bar is visually a dark terminal strip, not a colorful game HUD (no neon, no icons-only without text). **Manual.**
 - [ ] **AC7 —** Using only the mouse (no keys), a tester can set range 10, turn rings off, set filter 050–100, enable PTL. **Manual.**
-- [ ] **AC8 —** No Command IR from any bar click.
-- [ ] **AC9 — Research:** Visible labels are RNG/MAPS/FILTER/PTL/HIST (or spelled glossary words), not Zoom/Layers/HUD.
+- [x] **AC8 —** No Command IR from any bar click.
+- [x] **AC9 — Research:** Visible labels are RNG/MAPS/FILTER/PTL/HIST (or spelled glossary words), not Zoom/Layers/HUD.
+
+## Notes
+
+- AC6 / AC7 left unchecked: visual QA and mouse-only walkthrough need a human (skip-with-reason). Automated stand-in covers the same `src/scope` calls (range 10, RING off, FILTER 050–100, PTL on).
+- DCB-lite is a sibling above the PPI canvas (`ppi-column`); camera view size is the canvas CSS size (already minus bar height).
 
 ## Test plan
 

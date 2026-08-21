@@ -1,7 +1,8 @@
 /**
  * Analog: CRC STARS RANGE / CENTER (docs.virtualnas.net/crc/stars — R07).
- * Trainer delta: presets 5–60 NM (CRC also has 6/8/12/16/24); PageUp/Down + wheel,
- * no DCB RANGE menu yet. Middle-drag pan is trainer sugar — not CRC.
+ * Trainer delta: presets 5–60 NM (CRC also has 6/8/12/16/24); PageUp/Down + wheel
+ * and DCB-lite RNG ± call the same `stepRange` (lite bar, not a full DCB RANGE
+ * menu). Middle-drag pan is trainer sugar — not CRC.
  * No zoom-to-cursor (R12 browser-ATC anti-pattern). Not NAS STARS.
  *
  * Range is the radius of the inscribed circle of the drawable PPI
@@ -96,20 +97,29 @@ function presetIndex(rangeNm: RangeNm): number {
   return RANGE_PRESETS_NM.indexOf(rangeNm);
 }
 
-/** Smaller NM (PageUp / wheel up). No wrap at 5. Does not change center. */
-export function applyRangeIn(cam: ScopeCamera): void {
+/**
+ * Step one discrete range preset. `−1` = smaller NM (PageUp / RNG −);
+ * `+1` = larger NM (PageDown / RNG +). No wrap at 5 or 60. Does not change center.
+ */
+export function stepRange(cam: ScopeCamera, delta: number): void {
   const i = presetIndex(cam.rangeNm);
-  if (i > 0) {
-    cam.rangeNm = RANGE_PRESETS_NM[i - 1]!;
+  if (i < 0) {
+    return;
+  }
+  const next = i + delta;
+  if (next >= 0 && next < RANGE_PRESETS_NM.length) {
+    cam.rangeNm = RANGE_PRESETS_NM[next]!;
   }
 }
 
-/** Larger NM (PageDown / wheel down). No wrap at 60. Does not change center. */
+/** Smaller NM (PageUp / wheel up / RNG −). No wrap at 5. Does not change center. */
+export function applyRangeIn(cam: ScopeCamera): void {
+  stepRange(cam, -1);
+}
+
+/** Larger NM (PageDown / wheel down / RNG +). No wrap at 60. Does not change center. */
 export function applyRangeOut(cam: ScopeCamera): void {
-  const i = presetIndex(cam.rangeNm);
-  if (i >= 0 && i < RANGE_PRESETS_NM.length - 1) {
-    cam.rangeNm = RANGE_PRESETS_NM[i + 1]!;
-  }
+  stepRange(cam, 1);
 }
 
 /**

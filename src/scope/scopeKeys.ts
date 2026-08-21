@@ -1,7 +1,7 @@
 /**
  * Analog: CRC STARS RANGE / CENTER / HISTORY / FDB-LDB / PTL / L1–L9 **leader** /
  * altitude filter (docs.virtualnas.net/crc/stars — R07; FOA STARS display data — R05).
- * Trainer delta: PageUp/Down + wheel instead of DCB RANGE; Home/End instead of
+ * Trainer delta: PageUp/Down + wheel + DCB-lite RNG ± share `stepRange`; Home/End instead of
  * CENTER-then-click; extra CRC presets 6/8/12/16/24 omitted. F8 always-on
  * history toggle; H only when the PPI is focused (radio H270 stays heading).
  * Scope-focus `T` toggles full ↔ limited datablock; `M` toggles Mode C on full
@@ -17,7 +17,7 @@
 
 import type { World } from "@core";
 import { beginFilterEntry, cancelFilterEntry, handleFilterEntryKey } from "./altitudeFilter";
-import { applyRangeIn, applyRangeOut } from "./camera";
+import { stepRange } from "./camera";
 import {
   beginScopeChord,
   isArrowKey,
@@ -300,11 +300,11 @@ export function handleScopeKeyDown(
     return true;
   }
   if (event.key === "PageUp") {
-    applyRangeIn(view.camera);
+    stepRange(view.camera, -1);
     return true;
   }
   if (event.key === "PageDown") {
-    applyRangeOut(view.camera);
+    stepRange(view.camera, 1);
     return true;
   }
   if (event.key === "Home") {
@@ -328,9 +328,9 @@ export function handleScopeWheel(event: ScopeWheelEvent, view: ScopeView): boole
   }
   event.preventDefault();
   if (event.deltaY < 0) {
-    applyRangeIn(view.camera);
+    stepRange(view.camera, -1);
   } else {
-    applyRangeOut(view.camera);
+    stepRange(view.camera, 1);
   }
   return true;
 }

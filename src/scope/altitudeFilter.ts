@@ -6,9 +6,9 @@
  * Trainer delta: default 000–180 (show everything v1 can fly — not a third
  * “filter off” mode). Scope-focus `F` chord only — never always-on, never a
  * Command / readback. Out of filter: keep **target** + **history**; suppress
- * datablock, leader, and PTL. Strips still list everyone (T02-11). DCB
- * FILTER widgets are T02-10. Not an altitude cull or visibility slider.
- * Not NAS STARS.
+ * datablock, leader, and PTL. Strips still list everyone (T02-11). DCB-lite
+ * FILTER fields call `tryApplyAltitudeFilter` (same max>=min predicate as the
+ * `F` chord). Not an altitude cull or visibility slider. Not NAS STARS.
  */
 
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
@@ -86,6 +86,42 @@ export function formatFilterHundreds(hundreds: number): string {
   return String(clampFilterHundreds(hundreds)).padStart(3, "0");
 }
 
+/**
+ * Apply min/max hundreds when max >= min. Same predicate as the scope-focus
+ * `F` chord commit. Invalid windows do not mutate `filter`.
+ */
+export function tryApplyAltitudeFilter(
+  filter: AltitudeFilter,
+  minHundreds: number,
+  maxHundreds: number,
+): boolean {
+  if (!Number.isFinite(minHundreds) || !Number.isFinite(maxHundreds)) {
+    return false;
+  }
+  const min = clampFilterHundreds(minHundreds);
+  const max = clampFilterHundreds(maxHundreds);
+  if (max < min) {
+    return false;
+  }
+  filter.minHundreds = min;
+  filter.maxHundreds = max;
+  return true;
+}
+
+/** FIL fields: parse 1–3 digit hundreds, then the same apply predicate. */
+export function tryApplyAltitudeFilterDigits(
+  filter: AltitudeFilter,
+  minDigits: string,
+  maxDigits: string,
+): boolean {
+  const min = parseFilterHundreds(minDigits);
+  const max = parseFilterHundreds(maxDigits);
+  if (min === null || max === null) {
+    return false;
+  }
+  return tryApplyAltitudeFilter(filter, min, max);
+}
+
 function padPartialDigits(digits: string): string {
   return (digits + "___").slice(0, 3);
 }
@@ -152,12 +188,10 @@ function commitFilterField(entry: FilterEntry, filter: AltitudeFilter, nowMs: nu
     entry.lastKeyAtMs = nowMs;
     return;
   }
-  if (parsed < entry.pendingMin) {
+  if (!tryApplyAltitudeFilter(filter, entry.pendingMin, parsed)) {
     cancelFilterEntry(entry, filter);
     return;
   }
-  filter.minHundreds = entry.pendingMin;
-  filter.maxHundreds = parsed;
   const idle = idleFilterEntry(filter);
   entry.phase = idle.phase;
   entry.digits = idle.digits;

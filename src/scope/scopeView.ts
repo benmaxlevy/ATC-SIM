@@ -2,7 +2,7 @@
  * Analog: CRC STARS RANGE / CENTER / HISTORY / PTL / altitude filter
  * (docs.virtualnas.net/crc/stars — R07; FOA STARS display data — R05).
  * Trainer delta: last-click / airport live on this view, not on World. Map /
- * localizer / rings flags are trainer display state (DCB-lite binds later).
+ * localizer / rings flags are trainer display state (DCB-lite MAP toggles).
  * History is 5 s sim / 5 dots, no phosphor. PTL is a straight 1.0 min
  * predicted track line (F7), default off. Leader direction is L1–L9 (no length
  * menu). Altitude filter default 000–180; `F` is scope-focus only. Not NAS STARS.
@@ -124,6 +124,32 @@ export function togglePtlOn(view: ScopeView): void {
 /** F1 always-on. Does not pause kinematics. Never a Command. */
 export function toggleHelpOverlay(view: ScopeView): void {
   view.helpOpen = !view.helpOpen;
+}
+
+/** MAP toggles on the DCB-lite. Coastline JSON `enabled: false` is a no-op. */
+export type MapLayerId = "runway" | "localizer" | "rings" | "coastline";
+
+export function isCoastlineToggleEnabled(view: ScopeView): boolean {
+  return view.digitalMap.coastline?.enabled === true;
+}
+
+export function toggleMapLayer(view: ScopeView, layer: MapLayerId): void {
+  switch (layer) {
+    case "runway":
+      view.showRunway = !view.showRunway;
+      return;
+    case "localizer":
+      view.showLocalizer = !view.showLocalizer;
+      return;
+    case "rings":
+      view.showRings = !view.showRings;
+      return;
+    case "coastline":
+      if (!isCoastlineToggleEnabled(view)) {
+        return;
+      }
+      view.showCoastline = !view.showCoastline;
+  }
 }
 
 export function recordLastClick(view: ScopeView, eastNm: number, northNm: number): void {

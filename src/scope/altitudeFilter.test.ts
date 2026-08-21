@@ -10,6 +10,8 @@ import {
   idleFilterEntry,
   inAltitudeFilter,
   parseFilterHundreds,
+  tryApplyAltitudeFilter,
+  tryApplyAltitudeFilterDigits,
   type AltitudeFilter,
 } from "./altitudeFilter";
 import { CHORD_TIMEOUT_MS } from "./keymap";
@@ -43,6 +45,21 @@ test("parse 1-3 digit hundreds; 50 Enter = 050; clamp 0-180", () => {
   expect(clampFilterHundreds(-3)).toBe(0);
   expect(clampFilterHundreds(200)).toBe(180);
   expect(clampFilterHundreds(Number.NaN)).toBe(0);
+});
+
+test("tryApplyAltitudeFilter is the F-chord predicate: 050-100 applies; max<min does not", () => {
+  const filter = { minHundreds: 0, maxHundreds: 180 };
+  expect(tryApplyAltitudeFilter(filter, 50, 100)).toBe(true);
+  expect(filter).toEqual({ minHundreds: 50, maxHundreds: 100 });
+  expect(tryApplyAltitudeFilter(filter, 120, 50)).toBe(false);
+  expect(filter).toEqual({ minHundreds: 50, maxHundreds: 100 });
+  expect(tryApplyAltitudeFilterDigits(filter, "070", "080")).toBe(true);
+  expect(filter).toEqual({ minHundreds: 70, maxHundreds: 80 });
+  expect(tryApplyAltitudeFilterDigits(filter, "100", "050")).toBe(false);
+  expect(filter).toEqual({ minHundreds: 70, maxHundreds: 80 });
+  expect(tryApplyAltitudeFilterDigits(filter, "", "100")).toBe(false);
+  expect(tryApplyAltitudeFilter(filter, Number.NaN, 80)).toBe(false);
+  expect(filter).toEqual({ minHundreds: 70, maxHundreds: 80 });
 });
 
 test("AC6 — max < min on commit leaves the previous filter; no throw", () => {

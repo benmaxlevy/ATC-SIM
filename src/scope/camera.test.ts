@@ -13,6 +13,7 @@ import {
   pxPerNm,
   rangeCircle,
   screenToNm,
+  stepRange,
   type ScopeCamera,
   type ScopeViewSize,
 } from "./camera";
@@ -92,6 +93,33 @@ test("AC2 — five range-in steps from 20 land on 5 and stay there; center uncha
   expect(camera.centerNorthNm).toBe(-4);
   applyRangeIn(camera);
   expect(camera.rangeNm).toBe(5);
+});
+
+test("stepRange ±1 matches PageUp/PageDown presets and does not wrap", () => {
+  const camera = cam(20);
+  camera.centerEastNm = 2;
+  camera.centerNorthNm = -1;
+  stepRange(camera, -1);
+  expect(camera.rangeNm).toBe(15);
+  stepRange(camera, 1);
+  expect(camera.rangeNm).toBe(20);
+  const walked: number[] = [camera.rangeNm];
+  while (camera.rangeNm > 5) {
+    stepRange(camera, -1);
+    walked.push(camera.rangeNm);
+  }
+  expect(walked).toEqual([20, 15, 10, 5]);
+  stepRange(camera, -1);
+  expect(camera.rangeNm).toBe(5);
+  while (camera.rangeNm < 60) {
+    stepRange(camera, 1);
+  }
+  expect(camera.rangeNm).toBe(60);
+  stepRange(camera, 1);
+  expect(camera.rangeNm).toBe(60);
+  expect(camera.centerEastNm).toBe(2);
+  expect(camera.centerNorthNm).toBe(-1);
+  expect(RANGE_PRESETS_NM).toHaveLength(8);
 });
 
 test("AC3 — range-out from 20 stops at 60; further steps are no-ops; center unchanged", () => {

@@ -11,6 +11,7 @@ import {
   formatFpsDebug,
   formatSimHud,
   isFpsDebugEnabled,
+  syncDisplayControlBar,
   syncStripCallsignColors,
 } from "@ui";
 import { bootSession } from "./app/boot-session";
@@ -51,6 +52,7 @@ function paintCurrentPpi(): void {
     paintPpi(canvas, handles.world, scopeView);
   }
   syncStripCallsignColors(scopeView.tracks);
+  syncDisplayControlBar(scopeView);
 }
 
 function onFrame(nowMs: number): void {

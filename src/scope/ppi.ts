@@ -8,6 +8,8 @@ import type { ScopeView } from "./scopeView";
  * Analog: CRC STARS RANGE / CENTER display (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: Canvas2D north-up PPI; rAF paints only after advanceWorld.
  * Resize recomputes pixels and does not reset center/range unless size is 0.
+ * T02-10 DCB-lite sits above this canvas in the PPI column, so clientHeight is
+ * already the drawable PPI minus bar height (range circle is not under the bar).
  * Not NAS STARS.
  */
 

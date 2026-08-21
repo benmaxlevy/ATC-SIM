@@ -2,7 +2,15 @@ import { expect, test } from "vitest";
 import { createAircraft, createWorld } from "@core";
 import { nmToScreen } from "./camera";
 import { handlePpiDoubleClick, handlePpiLeftClick } from "./ppiPointer";
-import { centerOnAirport, centerOnLastClick, createScopeView } from "./scopeView";
+import {
+  centerOnAirport,
+  centerOnLastClick,
+  createScopeView,
+  isCoastlineToggleEnabled,
+  toggleHistoryEnabled,
+  toggleMapLayer,
+  togglePtlOn,
+} from "./scopeView";
 
 const VIEW = { widthPx: 800, heightPx: 800 };
 
@@ -69,6 +77,65 @@ test("AC4 — PTL defaults off; history defaults on; altitude filter 000-180", (
   expect(view.helpOpen).toBe(false);
   expect(view.altitudeFilter).toEqual({ minHundreds: 0, maxHundreds: 180 });
   expect(view.filterEntry.phase).toBe("idle");
+});
+
+test("toggleMapLayer hides runway, loc, rings, coastline independently; CST no-op if JSON off", () => {
+  const view = createScopeView(0, 0, {
+    digitalMap: {
+      rangeRings: { intervalNm: 5, maxNm: 60 },
+      coastline: {
+        enabled: false,
+        polyline: [
+          [0, 0],
+          [1, 0],
+        ],
+      },
+    },
+  });
+  expect(isCoastlineToggleEnabled(view)).toBe(false);
+  expect(view.showCoastline).toBe(false);
+  toggleMapLayer(view, "coastline");
+  expect(view.showCoastline).toBe(false);
+
+  toggleMapLayer(view, "runway");
+  toggleMapLayer(view, "localizer");
+  toggleMapLayer(view, "rings");
+  expect(view.showRunway).toBe(false);
+  expect(view.showLocalizer).toBe(false);
+  expect(view.showRings).toBe(false);
+  toggleMapLayer(view, "runway");
+  expect(view.showRunway).toBe(true);
+
+  const withCoast = createScopeView(0, 0, {
+    digitalMap: {
+      rangeRings: { intervalNm: 5, maxNm: 60 },
+      coastline: {
+        enabled: true,
+        polyline: [
+          [0, 0],
+          [1, 1],
+        ],
+      },
+    },
+  });
+  expect(isCoastlineToggleEnabled(withCoast)).toBe(true);
+  expect(withCoast.showCoastline).toBe(true);
+  toggleMapLayer(withCoast, "coastline");
+  expect(withCoast.showCoastline).toBe(false);
+});
+
+test("PTL and history toggles match F7/F8 (click ≡ key)", () => {
+  const view = createScopeView();
+  expect(view.ptlOn).toBe(false);
+  expect(view.historyEnabled).toBe(true);
+  togglePtlOn(view);
+  toggleHistoryEnabled(view);
+  expect(view.ptlOn).toBe(true);
+  expect(view.historyEnabled).toBe(false);
+  togglePtlOn(view);
+  toggleHistoryEnabled(view);
+  expect(view.ptlOn).toBe(false);
+  expect(view.historyEnabled).toBe(true);
 });
 
 test("map / localizer / rings flags default on; coastline follows JSON enabled", () => {
