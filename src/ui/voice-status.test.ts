@@ -13,10 +13,11 @@ const EXPECTED: Record<VoiceErrorCode, string> = {
   parse_miss: "Unable to parse",
   tts_failed: "Readback audio failed",
   ptt_locked: "Radio busy — standby",
+  ptt_transmit: "TX",
 };
 
 test("formatVoiceStatus covers every reason code (T03-08)", () => {
-  expect(VOICE_ERROR_CODES).toHaveLength(10);
+  expect(VOICE_ERROR_CODES).toHaveLength(11);
   for (const code of VOICE_ERROR_CODES) {
     expect(formatVoiceStatus({ code })).toBe(EXPECTED[code]);
   }

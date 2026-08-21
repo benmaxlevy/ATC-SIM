@@ -81,7 +81,7 @@ test("T01-14 playable slice: main wires spawn, speech factory, rAF, and resize p
   expect(main).not.toMatch(/openai|deepgram|elevenlabs/i);
 });
 
-test("createApp constructs PTT capture with the backtick default (T03-01)", () => {
+test("createApp constructs PTT capture with the Left Control default (T03-01)", () => {
   const handles = createApp({ speech: new NullSpeechPort() });
   expect(handles.ptt.pttKey).toBe(DEFAULT_PTT_KEY);
   const injected = createPttCaptureController({ onEvent: () => {}, attachTo: null });
@@ -316,7 +316,7 @@ test("T03-08 — PTT-down clears the status line", async () => {
 
   await handles.voiceLoop.handlePttEvent({ type: "permission-denied" });
   await handles.voiceLoop.handlePttEvent({ type: "ptt-down" });
-  expect(lines).toEqual(["Microphone blocked — allow in browser settings", null]);
+  expect(lines).toEqual(["Microphone blocked — allow in browser settings", "TX"]);
   stop();
   handles.ptt.dispose();
   handles.voiceLoop.dispose();

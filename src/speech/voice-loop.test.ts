@@ -922,7 +922,7 @@ test("T03-08 — PTT-down clears status; PTT during playback is ptt_locked and n
   });
 
   await loop.handlePttEvent({ type: "ptt-down" });
-  expect(statusCodes(statuses)).toEqual([null]);
+  expect(statusCodes(statuses)).toEqual(["ptt_transmit"]);
 
   const pending = loop.handlePttEvent({
     type: "ptt-up",
@@ -933,7 +933,7 @@ test("T03-08 — PTT-down clears status; PTT during playback is ptt_locked and n
   await ptt.handleKeyDown(pttKey());
   expect(pttEvents).toEqual([{ type: "ignored-locked" }]);
   expect(backend.startCalls).toBe(0);
-  expect(statusCodes(statuses)).toEqual([null, "ptt_locked"]);
+  expect(statusCodes(statuses)).toEqual(["ptt_transmit", "ptt_locked"]);
 
   release();
   await pending;

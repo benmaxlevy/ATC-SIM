@@ -33,7 +33,7 @@ export const DEFAULT_BACKEND_HELP =
   "Default is http (our speech-api at 127.0.0.1:8090) when STT and TTS URLs are set. Web Speech is never auto-selected. Missing URLs use null; typed commands still work.";
 
 export const PTT_BIND_HELP =
-  "Backtick is press to talk, press again to send (Windows treats ` as a dead key, so holding it cannot work). Left Control / Z are hold-to-talk. Ignored while a text field is focused. Does not steal F, R, or range keys.";
+  "Default PTT is Left Control (hold; works while typing). Or hold the PTT button. Backtick is press/press and is ignored in the command line. Does not steal F, R, or range keys.";
 
 export const SPEECH_SETTINGS_WAIT = "wait";
 
@@ -44,12 +44,12 @@ export interface PttBindOption {
   label: string;
 }
 
-/** Dropdown only — no F / R / range digits. Default is backtick, not Caps Lock. */
+/** Dropdown only — no F / R / range digits. Default is Left Control, not Caps Lock. */
 export const PTT_BIND_OPTIONS: readonly PttBindOption[] = [
-  { value: "`", label: "Backtick ` (press, press again to send)" },
+  { value: "ControlLeft", label: "Left Control (hold, default)" },
+  { value: "Backquote", label: "Backtick ` (press, press again to send)" },
   { value: "CapsLock", label: "Caps Lock" },
   { value: "Tab", label: "Tab" },
-  { value: "ControlLeft", label: "Left Control" },
   { value: "KeyZ", label: "Z" },
 ];
 
@@ -111,8 +111,12 @@ export function loadSpeechPrefs(store?: Storage): SpeechPrefs {
   } catch {
     return defaults;
   }
-  const pttKey =
+  let pttKey =
     typeof saved.pttKey === "string" && saved.pttKey.length > 0 ? saved.pttKey : defaults.pttKey;
+  if (pttKey === "`") {
+    // Pre-ControlLeft default. Explicit backtick is stored as `Backquote`.
+    pttKey = defaults.pttKey;
+  }
   const backendId =
     saved.backendId === "null" || saved.backendId === "web-speech" || saved.backendId === "http"
       ? saved.backendId

@@ -154,6 +154,8 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             <CommandLine
               readback={readback}
               voiceStatus={voiceStatus}
+              onPttPress={() => app.ptt.pressFromPointer()}
+              onPttRelease={() => app.ptt.releaseFromPointer()}
               onSubmit={(input) => {
                 setVoiceStatus(null);
                 void submitCommand(app.world, input, app.log).then((result) => {

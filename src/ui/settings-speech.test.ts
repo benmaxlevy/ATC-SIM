@@ -101,6 +101,12 @@ test("prefs persist in the same atc-sim.* profile storage as phase 0", () => {
   expect(defaultSpeechPrefs().voiceId).toBe("auto");
 });
 
+test("legacy backtick prefs migrate to Left Control", () => {
+  const store = memoryStorage();
+  store.setItem(SPEECH_PREFS_KEY, JSON.stringify({ pttKey: "`" }));
+  expect(loadSpeechPrefs(store).pttKey).toBe("ControlLeft");
+});
+
 test("AC3 — selecting another backend while idle constructs that id", () => {
   const created: string[] = [];
   let current = fakePort("http");
@@ -195,7 +201,7 @@ test("AC5 — setPttKey updates the host bind", () => {
       setConfidenceThreshold: () => {},
     },
   });
-  expect(controller.prefs.pttKey).toBe("`");
+  expect(controller.prefs.pttKey).toBe("ControlLeft");
   controller.setPttKey("CapsLock");
   expect(keys).toEqual(["CapsLock"]);
   expect(controller.prefs.pttKey).toBe("CapsLock");
@@ -203,7 +209,8 @@ test("AC5 — setPttKey updates the host bind", () => {
 
 test("PTT options include backtick + Caps Lock and omit F/R/range keys", () => {
   const values = PTT_BIND_OPTIONS.map((option) => option.value);
-  expect(values[0]).toBe("`");
+  expect(values[0]).toBe("ControlLeft");
+  expect(values).toContain("Backquote");
   expect(values).toContain("CapsLock");
   expect(values).not.toContain("f");
   expect(values).not.toContain("F");

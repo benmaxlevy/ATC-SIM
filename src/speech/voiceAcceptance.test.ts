@@ -120,8 +120,8 @@ test("E12 — whisper-wasm absent maps to null (not a fail)", () => {
   expect(createSpeechPort("whisper-wasm").id).toBe("null");
 });
 
-test("E14 — Path C off does not fetch; PTT default is backtick", async () => {
-  expect(DEFAULT_PTT_KEY).toBe("`");
+test("E14 — Path C off does not fetch; PTT default is Left Control", async () => {
+  expect(DEFAULT_PTT_KEY).toBe("ControlLeft");
   const fetchSpy = vi.fn();
   vi.stubGlobal("fetch", fetchSpy);
   await parseCommand("pizza the runway", { source: "voice", pathC: false });

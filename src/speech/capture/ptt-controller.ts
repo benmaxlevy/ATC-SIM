@@ -5,8 +5,12 @@ import { isEmptyPttCapture } from "./clip-gate";
 import { isTextFieldTarget } from "./ptt-focus";
 import { TARGET_SAMPLE_RATE, resampleToMonoPcm16 } from "./resample";
 
-/** Default PTT bind is backtick (`event.key`). Do not default Caps Lock. */
-export const DEFAULT_PTT_KEY = "`";
+/**
+ * Default PTT is Left Control (`KeyboardEvent.code`). Backtick cannot work
+ * while the command line is focused (T03-01 AC2) and is a dead key on Windows.
+ * Do not default Caps Lock.
+ */
+export const DEFAULT_PTT_KEY = "ControlLeft";
 
 export type { CaptureBackend } from "./capture-backend";
 
@@ -56,6 +60,9 @@ export interface PttCaptureController {
   dispose(): void;
   handleKeyDown(event: PttKeyEvent): Promise<void>;
   handleKeyUp(event: PttKeyEvent): Promise<void>;
+  /** On-screen hold-to-talk. Same capture path as a keyboard hold. */
+  pressFromPointer(): Promise<void>;
+  releaseFromPointer(): void;
 }
 
 function matchesPttKey(event: PttKeyEvent, pttKey: string): boolean {
@@ -75,6 +82,11 @@ function matchesPttKey(event: PttKeyEvent, pttKey: string): boolean {
 /** Keys that cannot be held: Windows fires keyup immediately (dead key / lock). */
 export function pttKeyUsesLatch(pttKey: string): boolean {
   return pttKey === "`" || pttKey === "Backquote" || pttKey === "CapsLock" || pttKey === "Dead";
+}
+
+/** Backtick / Z still type in the command line. Control / Caps / Tab do not. */
+export function pttKeyBlockedInTextField(pttKey: string): boolean {
+  return pttKey === "`" || pttKey === "Backquote" || pttKey === "Dead" || pttKey === "KeyZ";
 }
 
 function defaultNow(): number {
@@ -144,10 +156,10 @@ function defaultAttachTo(option: PttListenerTarget | null | undefined): PttListe
  * PTT capture: key-down arms the worklet, key-up emits a 16 kHz mono PCM16
  * {@link AudioClip} or empty. Never throws through the sim tick.
  *
- * Keyboard: default bind is backtick. That key is a **latch** (press to start,
- * press again to send) because Windows often fires keyup immediately (dead key).
- * Hold-to-talk still applies to Control / Tab / Z. Repeat keydown does not
- * restart capture. Text fields are ignored so the command line can type the bind.
+ * Keyboard: default bind is Left Control (hold). Backtick is a **latch** (press
+ * to start, press again to send) because Windows often fires keyup immediately.
+ * Repeat keydown does not restart capture. Character binds are ignored in text
+ * fields so the command line can type them; Control / Caps Lock / Tab are not.
  */
 export function createPttCaptureController(options: PttCaptureOptions): PttCaptureController {
   return new PttCaptureControllerImpl(options);
@@ -244,6 +256,23 @@ class PttCaptureControllerImpl implements PttCaptureController {
     }
   }
 
+  async pressFromPointer(): Promise<void> {
+    try {
+      await this.onPointerDown();
+    } catch {
+      this.pttHeld = false;
+      this.emit({ type: "capture-error", reason: "unexpected" });
+    }
+  }
+
+  releaseFromPointer(): void {
+    try {
+      this.onPointerUp();
+    } catch {
+      this.emit({ type: "capture-error", reason: "unexpected" });
+    }
+  }
+
   private adaptKeyEvent(event: Event): PttKeyEvent {
     const ke = event as KeyboardEvent;
     return {
@@ -272,7 +301,7 @@ class PttCaptureControllerImpl implements PttCaptureController {
     if (!matchesPttKey(event, this.pttKeyValue)) {
       return;
     }
-    if (this.isTextField(event.target ?? null)) {
+    if (this.isTextField(event.target ?? null) && pttKeyBlockedInTextField(this.pttKeyValue)) {
       return;
     }
 
@@ -280,19 +309,47 @@ class PttCaptureControllerImpl implements PttCaptureController {
     if (event.repeat) {
       return;
     }
-    if (this.transmitLocked) {
-      this.emit({ type: "ignored-locked" });
-      return;
-    }
+    // Unkey latch before the transmit lock: ptt-down locks the radio, and that
+    // lock must not swallow the press that ends the clip.
     if (this.capturing && pttKeyUsesLatch(this.pttKeyValue)) {
       this.pttHeld = false;
       this.finishCapture();
+      return;
+    }
+    if (this.transmitLocked) {
+      this.emit({ type: "ignored-locked" });
       return;
     }
     if (this.pttHeld || this.capturing) {
       return;
     }
 
+    await this.startCapture();
+  }
+
+  private async onPointerDown(): Promise<void> {
+    if (this.disposed || this.pttHeld || this.capturing) {
+      return;
+    }
+    if (this.transmitLocked) {
+      this.emit({ type: "ignored-locked" });
+      return;
+    }
+    await this.startCapture();
+  }
+
+  private onPointerUp(): void {
+    if (this.disposed) {
+      return;
+    }
+    const wasCapturing = this.capturing;
+    this.pttHeld = false;
+    if (wasCapturing) {
+      this.finishCapture();
+    }
+  }
+
+  private async startCapture(): Promise<void> {
     this.pttHeld = true;
     if (!readSecureContext(this.secure)) {
       this.pttHeld = false;

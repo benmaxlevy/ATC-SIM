@@ -14,6 +14,8 @@ export interface CommandLineProps {
   /** Voice error/status copy; wins over `readback` while set. */
   voiceStatus?: string | null;
   onSubmit: (value: string) => void | Promise<void>;
+  onPttPress?: () => void | Promise<void>;
+  onPttRelease?: () => void;
 }
 
 /** Return key focus after a PPI click so the next keys are a radio command. */
@@ -24,13 +26,28 @@ export function focusCommandLine(): void {
   }
 }
 
-export function CommandLine({ readback, voiceStatus = null, onSubmit }: CommandLineProps) {
+export function CommandLine({
+  readback,
+  voiceStatus = null,
+  onSubmit,
+  onPttPress,
+  onPttRelease,
+}: CommandLineProps) {
   const [value, setValue] = useState("");
+  const [pttHeld, setPttHeld] = useState(false);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     onSubmit(value);
     setValue("");
+  }
+
+  function releasePtt(): void {
+    if (!pttHeld) {
+      return;
+    }
+    setPttHeld(false);
+    onPttRelease?.();
   }
 
   return (
@@ -66,6 +83,27 @@ export function CommandLine({ readback, voiceStatus = null, onSubmit }: CommandL
         }}
         onChange={(event) => setValue(event.target.value)}
       />
+      {onPttPress && onPttRelease ? (
+        <button
+          type="button"
+          className="command-ptt"
+          aria-label="Push to talk"
+          aria-pressed={pttHeld}
+          onPointerDown={(event) => {
+            if (event.button !== 0) {
+              return;
+            }
+            event.preventDefault();
+            event.currentTarget.setPointerCapture(event.pointerId);
+            setPttHeld(true);
+            void onPttPress();
+          }}
+          onPointerUp={releasePtt}
+          onPointerCancel={releasePtt}
+        >
+          PTT
+        </button>
+      ) : null}
     </form>
   );
 }

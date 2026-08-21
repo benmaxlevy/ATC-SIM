@@ -434,6 +434,25 @@ body,
   opacity: 1;
 }
 
+.command-ptt {
+  flex: 0 0 40px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid #00ff00;
+  background: #000;
+  color: #00ff00;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.command-ptt[aria-pressed="true"] {
+  background: #003300;
+  color: #7cff6b;
+}
+
 .fps-debug {
   position: absolute;
   top: 40px;

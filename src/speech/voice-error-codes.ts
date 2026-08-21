@@ -14,6 +14,7 @@ export const VOICE_ERROR_CODES = [
   "parse_miss",
   "tts_failed",
   "ptt_locked",
+  "ptt_transmit",
 ] as const;
 
 export type VoiceErrorCode = (typeof VOICE_ERROR_CODES)[number];
@@ -32,5 +33,5 @@ export interface VoiceStatusEvent {
  * Everything else in {@link VOICE_ERROR_CODES} is a reject/no-op path.
  */
 export function shouldLogVoiceReject(code: VoiceErrorCode): boolean {
-  return code !== "tts_failed";
+  return code !== "tts_failed" && code !== "ptt_transmit";
 }

@@ -299,7 +299,7 @@ class VoiceLoopImpl implements VoiceLoop {
       this.emitStatus({ code: "ptt_locked" });
       return;
     }
-    this.emitStatus(null);
+    this.emitStatus({ code: "ptt_transmit" });
     this.syncLock("ptt-down");
     void this.readbackPlayer.warmUp();
     try {

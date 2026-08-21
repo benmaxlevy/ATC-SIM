@@ -32,6 +32,8 @@ export function formatVoiceStatus(event: VoiceStatusEvent): string {
       return "Readback audio failed";
     case "ptt_locked":
       return "Radio busy — standby";
+    case "ptt_transmit":
+      return "TX";
     default: {
       const _exhaustive: never = event.code;
       return _exhaustive;

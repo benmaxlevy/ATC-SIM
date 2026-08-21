@@ -59,6 +59,12 @@ function key(
   };
 }
 
+function backtick(
+  extra: Partial<PttKeyEvent> & { preventDefault?: ReturnType<typeof vi.fn> } = {},
+): PttKeyEvent & { preventDefault: ReturnType<typeof vi.fn> } {
+  return key({ key: "`", code: "Backquote", ctrlKey: false, ...extra });
+}
+
 function setup(backend?: FakeCaptureBackend, now?: { ms: number }) {
   const events: PttCaptureEvent[] = [];
   const clock = now ?? { ms: 0 };
@@ -73,26 +79,23 @@ function setup(backend?: FakeCaptureBackend, now?: { ms: number }) {
   return { controller, events, fake, clock };
 }
 
-test("default PTT bind is backtick, not Caps Lock", () => {
+test("default PTT bind is Left Control, not Caps Lock or backtick", () => {
   const { controller } = setup();
-  expect(controller.pttKey).toBe("`");
+  expect(controller.pttKey).toBe("ControlLeft");
   expect(controller.pttKey).not.toBe("CapsLock");
+  expect(controller.pttKey).not.toBe("`");
   controller.dispose();
 });
 
-test("backtick is latch: keyup does not send; second keydown emits the clip", async () => {
+test("hold Left Control emits a 16 kHz clip on keyup", async () => {
   const { controller, events, fake, clock } = setup();
-  await controller.handleKeyDown(key());
+  await controller.handleKeyDown(key({ key: "Control", code: "ControlLeft", ctrlKey: true }));
   expect(events).toEqual([{ type: "ptt-down" }]);
   expect(fake.armed).toBe(true);
 
   fake.push(new Float32Array(48000).fill(0.25));
   clock.ms = 1000;
-  await controller.handleKeyUp(key());
-  expect(events).toHaveLength(1);
-  expect(fake.armed).toBe(true);
-
-  await controller.handleKeyDown(key());
+  await controller.handleKeyUp(key({ key: "Control", code: "ControlLeft", ctrlKey: true }));
 
   expect(fake.armed).toBe(false);
   const up = events[1];
@@ -107,13 +110,50 @@ test("backtick is latch: keyup does not send; second keydown emits the clip", as
   controller.dispose();
 });
 
-test("focused text input does not start capture (AC2)", async () => {
+test("backtick is latch: keyup does not send; second keydown emits the clip", async () => {
+  const { controller, events, fake, clock } = setup();
+  controller.setPttKey("`");
+  await controller.handleKeyDown(backtick());
+  expect(events).toEqual([{ type: "ptt-down" }]);
+  expect(fake.armed).toBe(true);
+
+  fake.push(new Float32Array(48000).fill(0.25));
+  clock.ms = 1000;
+  await controller.handleKeyUp(backtick());
+  expect(events).toHaveLength(1);
+  expect(fake.armed).toBe(true);
+
+  controller.setTransmitLocked(true);
+  await controller.handleKeyDown(backtick());
+
+  expect(fake.armed).toBe(false);
+  const up = events[1];
+  expect(up?.type).toBe("ptt-up");
+  if (up?.type !== "ptt-up" || up.result.kind !== "clip") {
+    throw new Error("expected clip");
+  }
+  expect(up.result.clip.pcm16.length).toBe(16000);
+  controller.dispose();
+});
+
+test("focused text input does not start capture for backtick (AC2)", async () => {
   const { controller, events, fake } = setup();
-  const down = key({ target: { tagName: "INPUT" } });
+  controller.setPttKey("`");
+  const down = backtick({ target: { tagName: "INPUT" } });
   await controller.handleKeyDown(down);
   expect(fake.startCalls).toBe(0);
   expect(events).toEqual([]);
   expect(down.preventDefault).not.toHaveBeenCalled();
+  controller.dispose();
+});
+
+test("Left Control PTT works while the command line is focused", async () => {
+  const { controller, events, fake } = setup();
+  await controller.handleKeyDown(
+    key({ key: "Control", code: "ControlLeft", ctrlKey: true, target: { tagName: "INPUT" } }),
+  );
+  expect(fake.startCalls).toBe(1);
+  expect(events).toEqual([{ type: "ptt-down" }]);
   controller.dispose();
 });
 
@@ -156,9 +196,10 @@ test("onEvent throw is swallowed so the tick would keep running (AC4)", async ()
 
 test("second backtick under 80 ms with no samples is empty (AC5)", async () => {
   const { controller, events, clock } = setup();
-  await controller.handleKeyDown(key());
+  controller.setPttKey("`");
+  await controller.handleKeyDown(backtick());
   clock.ms = EMPTY_CLIP_MS - 1;
-  await controller.handleKeyDown(key());
+  await controller.handleKeyDown(backtick());
   expect(events).toEqual([{ type: "ptt-down" }, { type: "ptt-up", result: { kind: "empty" } }]);
   controller.dispose();
 });
@@ -232,10 +273,29 @@ test("Left Control is still hold-to-talk (keyup sends)", async () => {
   controller.dispose();
 });
 
-test("Dead + Backquote matches the default backtick bind", async () => {
+test("Dead + Backquote matches a backtick bind", async () => {
   const { controller, fake } = setup();
+  controller.setPttKey("`");
   await controller.handleKeyDown(key({ key: "Dead", code: "Backquote" }));
   expect(fake.startCalls).toBe(1);
+  controller.dispose();
+});
+
+test("hold release before mic start completes does not queue a clip", async () => {
+  const fake = new FakeCaptureBackend();
+  let release: () => void = () => undefined;
+  fake.delayStart = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const { controller, events } = setup(fake);
+  const down = controller.handleKeyDown(
+    key({ key: "Control", code: "ControlLeft", ctrlKey: true }),
+  );
+  await controller.handleKeyUp(key({ key: "Control", code: "ControlLeft", ctrlKey: true }));
+  release();
+  await down;
+  expect(events).toEqual([]);
+  expect(fake.armed).toBe(false);
   controller.dispose();
 });
 
@@ -246,12 +306,24 @@ test("latch keyup during mic start does not cancel capture", async () => {
     release = resolve;
   });
   const { controller, events } = setup(fake);
-  const down = controller.handleKeyDown(key());
-  await controller.handleKeyUp(key());
+  controller.setPttKey("`");
+  const down = controller.handleKeyDown(backtick());
+  await controller.handleKeyUp(backtick());
   release();
   await down;
   expect(events).toEqual([{ type: "ptt-down" }]);
   expect(fake.armed).toBe(true);
+  controller.dispose();
+});
+
+test("on-screen PTT hold emits a clip on pointer up", async () => {
+  const { controller, events, fake, clock } = setup();
+  await controller.pressFromPointer();
+  expect(events).toEqual([{ type: "ptt-down" }]);
+  fake.push(new Float32Array(48000).fill(0.2));
+  clock.ms = 1000;
+  controller.releaseFromPointer();
+  expect(events[1]?.type).toBe("ptt-up");
   controller.dispose();
 });
 
