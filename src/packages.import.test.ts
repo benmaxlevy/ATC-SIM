@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import type { World } from "@core";
+import { INSTRUCTION_TYPES, type World } from "@core";
 import { parseCommand } from "@parse";
 import { applyCommand } from "@pilot";
 import { PpiPlaceholderId } from "@scope";
@@ -15,6 +15,7 @@ test("package barrels import without circular init crash", () => {
   expect(new NullSpeechPort().id).toBe("null");
   expect(SCENARIO_PACKAGE).toBe("scenario");
   expect(App).toBeTypeOf("function");
+  expect(INSTRUCTION_TYPES).toHaveLength(11);
 });
 
 test("World stub has simTimeMs, simRate, and empty aircraft", () => {
