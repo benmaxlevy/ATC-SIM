@@ -900,11 +900,10 @@ test("T03-08 — PTT-down clears status; PTT during playback is ptt_locked and n
   const statuses: Array<VoiceLoopStatus | null> = [];
   const pttEvents: PttCaptureEvent[] = [];
   const backend = new FakeCaptureBackend();
-  let loopHandle: ReturnType<typeof createVoiceLoop> | undefined;
   const ptt = createPttCaptureController({
     onEvent: (event) => {
       pttEvents.push(event);
-      void loopHandle?.handlePttEvent(event);
+      void loop.handlePttEvent(event);
     },
     backend,
     attachTo: null,
@@ -921,7 +920,6 @@ test("T03-08 — PTT-down clears status; PTT during playback is ptt_locked and n
     },
     onStatus: (event) => statuses.push(event),
   });
-  loopHandle = loop;
 
   await loop.handlePttEvent({ type: "ptt-down" });
   expect(statusCodes(statuses)).toEqual([null]);

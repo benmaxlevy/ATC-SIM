@@ -63,13 +63,7 @@ function dcbHtml() {
 
 test("AC2 — Command IR stays the frozen fields and 11 instruction types", () => {
   expectTypeOf<keyof Command>().toEqualTypeOf<
-    | "id"
-    | "issuedAtSimMs"
-    | "callsign"
-    | "instructions"
-    | "sourceText"
-    | "source"
-    | "parseStage"
+    "id" | "issuedAtSimMs" | "callsign" | "instructions" | "sourceText" | "source" | "parseStage"
   >();
   expect(INSTRUCTION_TYPES).toHaveLength(11);
   expectTypeOf<Instruction["type"]>().toEqualTypeOf<(typeof INSTRUCTION_TYPES)[number]>();

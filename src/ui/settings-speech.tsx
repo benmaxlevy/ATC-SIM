@@ -110,7 +110,8 @@ export function loadSpeechPrefs(store?: Storage): SpeechPrefs {
   } catch {
     return defaults;
   }
-  const pttKey = typeof saved.pttKey === "string" && saved.pttKey.length > 0 ? saved.pttKey : defaults.pttKey;
+  const pttKey =
+    typeof saved.pttKey === "string" && saved.pttKey.length > 0 ? saved.pttKey : defaults.pttKey;
   const backendId =
     saved.backendId === "null" || saved.backendId === "web-speech" || saved.backendId === "http"
       ? saved.backendId
@@ -123,8 +124,12 @@ export function loadSpeechPrefs(store?: Storage): SpeechPrefs {
         ? saved.confidenceThreshold
         : defaults.confidenceThreshold,
     ),
-    voiceId: typeof saved.voiceId === "string" && saved.voiceId.trim() !== "" ? saved.voiceId : defaults.voiceId,
-    latencyOverlay: typeof saved.latencyOverlay === "boolean" ? saved.latencyOverlay : defaults.latencyOverlay,
+    voiceId:
+      typeof saved.voiceId === "string" && saved.voiceId.trim() !== ""
+        ? saved.voiceId
+        : defaults.voiceId,
+    latencyOverlay:
+      typeof saved.latencyOverlay === "boolean" ? saved.latencyOverlay : defaults.latencyOverlay,
     radioFx: typeof saved.radioFx === "boolean" ? saved.radioFx : defaults.radioFx,
   };
 }
@@ -212,10 +217,13 @@ export function createSpeechSettingsController(options: {
         rowError = SPEECH_SETTINGS_WAIT;
         return false;
       }
-      if (id === "http" && !httpUrlsConfigured({
-        sttUrl: urls.sttConfigured ? urls.sttUrl : "",
-        ttsUrl: urls.ttsConfigured ? urls.ttsUrl : "",
-      })) {
+      if (
+        id === "http" &&
+        !httpUrlsConfigured({
+          sttUrl: urls.sttConfigured ? urls.sttUrl : "",
+          ttsUrl: urls.ttsConfigured ? urls.ttsUrl : "",
+        })
+      ) {
         rowError = HTTP_URLS_MISSING;
         return false;
       }
@@ -276,11 +284,7 @@ export interface SpeechSettingsPanelProps {
   onChange?: () => void;
 }
 
-export function SpeechSettingsPanel({
-  controller,
-  speechId,
-  onChange,
-}: SpeechSettingsPanelProps) {
+export function SpeechSettingsPanel({ controller, speechId, onChange }: SpeechSettingsPanelProps) {
   const [open, setOpen] = useState(false);
   const [, setTick] = useState(0);
 

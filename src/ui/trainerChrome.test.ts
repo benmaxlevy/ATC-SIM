@@ -130,11 +130,7 @@ test("AC5 — command strip does not call parseCommand; typed English wins at Pa
 
   const dal = sample();
   const world = createWorld({ aircraft: [dal] });
-  const result = await submitCommand(
-    world,
-    "DAL123 fly heading two seven zero",
-    new SessionLog(),
-  );
+  const result = await submitCommand(world, "DAL123 fly heading two seven zero", new SessionLog());
   expect(result.accepted).toBe(true);
   expect(result.command?.parseStage).toBe("spoken_a");
   expect(dal.intent.assignedHeadingDeg).toBe(270);

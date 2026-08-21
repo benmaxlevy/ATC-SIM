@@ -115,10 +115,7 @@ export function resolveSpeechBackend(
   return pickDefaultBackend(urls);
 }
 
-export function createSpeechPort(
-  id: string,
-  deps: CreateSpeechPortDeps = {},
-): SpeechPort {
+export function createSpeechPort(id: string, deps: CreateSpeechPortDeps = {}): SpeechPort {
   if (id === "http") {
     return new HttpSpeechPort(deps.http);
   }
