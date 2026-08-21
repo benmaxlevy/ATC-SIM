@@ -12,6 +12,8 @@
 
 export type BrowserSpeakResult = {
   utterance: SpeechSynthesisUtterance;
+  /** Call after attaching `onstart` / `onend` so those handlers are not missed. */
+  speak: () => void;
 };
 
 function getSpeechSynthesis(): SpeechSynthesis | null {
@@ -22,9 +24,11 @@ function getSpeechSynthesis(): SpeechSynthesis | null {
 }
 
 /**
- * Speak `text` via `speechSynthesis`. Returns the utterance so T03-06 can
- * attach `onstart` / `onend` for PTT lock and audio-start metrics.
+ * Prepare a `speechSynthesis` utterance. Does **not** call `speak()` — the
+ * readback player attaches `onstart` / `onend` first, then {@link BrowserSpeakResult.speak}.
  * Returns `null` when the API is missing (Node / unsupported browsers).
+ *
+ * This path is a black box: T03-07 radio FX must not claim it.
  */
 export function speakBrowser(text: string, voiceId: string): BrowserSpeakResult | null {
   const synth = getSpeechSynthesis();
@@ -40,6 +44,10 @@ export function speakBrowser(text: string, voiceId: string): BrowserSpeakResult 
       utterance.voice = match;
     }
   }
-  synth.speak(utterance);
-  return { utterance };
+  return {
+    utterance,
+    speak: () => {
+      synth.speak(utterance);
+    },
+  };
 }

@@ -49,12 +49,12 @@ If T03-07 is not done, play **dry** (source → destination). T03-07 inserts the
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Given an accepted voice command and a fake port `synthesize` that returns a non-silent clip, when the loop finishes apply, then playback is started (player invoked with that clip).
-- [ ] **AC2 —** Given playback in progress, when PTT-down occurs, then T03-01 lock prevents capture (no second clip / no queue).
-- [ ] **AC3 —** Given playback `ended`, then transmit lock clears and a later PTT can capture.
-- [ ] **AC4 —** Given `synthesize` rejects after accept, then intent remains applied and lock still returns to idle (no stuck PTT).
-- [ ] **AC5 —** An `audio-start` timestamp callback/event fires once per successful play start.
-- [ ] **AC6 —** Automated test exists for the lock/idle state machine and/or pcm16-to-float (happy path). AudioContext may be Manual.
+- [x] **AC1 —** Given an accepted voice command and a fake port `synthesize` that returns a non-silent clip, when the loop finishes apply, then playback is started (player invoked with that clip).
+- [x] **AC2 —** Given playback in progress, when PTT-down occurs, then T03-01 lock prevents capture (no second clip / no queue).
+- [x] **AC3 —** Given playback `ended`, then transmit lock clears and a later PTT can capture.
+- [x] **AC4 —** Given `synthesize` rejects after accept, then intent remains applied and lock still returns to idle (no stuck PTT).
+- [x] **AC5 —** An `audio-start` timestamp callback/event fires once per successful play start.
+- [x] **AC6 —** Automated test exists for the lock/idle state machine and/or pcm16-to-float (happy path). AudioContext may be Manual.
 
 ## Test plan
 

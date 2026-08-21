@@ -1,18 +1,25 @@
 /**
  * Voice-loop coordinator: PTT clip → SpeechPort.transcribe → parseCommand
- * (`source: "voice"`) → injected dispatch (existing pilot apply).
+ * (`source: "voice"`) → injected dispatch (existing pilot apply) → TTS play.
  *
  * Does not construct Instruction objects — only parseCommand does.
  * Never throws through the sim tick. One in-flight transcribe per session.
+ * No barge-in: PTT stays locked until idle (no STT and no playing source).
  */
 
 import type { Command, Instruction, ParseStage } from "@core";
 import type { PttCaptureEvent, PttUpResult } from "./capture/ptt-controller";
-import { markPttUp, recordTranscriptLatency, type VoiceUtteranceMetrics } from "./metrics";
+import { markPttUp, recordAudioStart, recordTranscriptLatency } from "./metrics";
+import type { VoiceUtteranceMetrics } from "./metrics";
+import { createReadbackPlayer, type ReadbackPlayer } from "./playback/readback-player";
+import { TransmitGate, type TransmitGateEvent } from "./playback/transmit-gate";
 import type { AudioClip, SpeechPort, Transcript } from "./types";
 
 /** Below this, do not parse (T03-08 owns the “say again” copy). Overridable for T03-10. */
 export const DEFAULT_CONFIDENCE_THRESHOLD = 0.55;
+
+/** Default Piper voice id for `http` TTS. Settings (T03-10) may override. */
+export const DEFAULT_READBACK_VOICE_ID = "en_US-lessac-medium";
 
 /**
  * Live STT hooks (Web Speech). Clip adapters omit them. Kept local so this
@@ -43,10 +50,23 @@ export type ParseCommandFn = (
   },
 ) => Promise<VoiceParseResult>;
 
-export type DispatchCommandFn = (command: Command) => void | Promise<void>;
+/** Pilot apply result. Speech never builds Instructions; it only reads the readback string. */
+export interface VoiceDispatchResult {
+  accepted?: boolean;
+  readback?: string;
+}
+
+export type DispatchCommandFn = (
+  command: Command,
+) => void | VoiceDispatchResult | Promise<void | VoiceDispatchResult>;
 
 export type VoiceLoopStatus =
-  "empty-clip" | "low-confidence" | "transcribe-failed" | "busy" | "parse-miss";
+  | "empty-clip"
+  | "low-confidence"
+  | "transcribe-failed"
+  | "busy"
+  | "parse-miss"
+  | "readback-audio-failed";
 
 export interface VoiceLoopOptions {
   speechPort: SpeechPort;
@@ -59,19 +79,25 @@ export interface VoiceLoopOptions {
   confidenceThreshold?: number;
   /** Default false until T03-14/settings. */
   pathC?: boolean;
-  /** Combined with no barge-in: lock PTT while transcribe/parse/dispatch run. */
+  /** Combined with no barge-in: lock PTT while transcribe/parse/playback run. */
   setTransmitLocked?: (locked: boolean) => void;
   /** T03-08 status hook. Copy is out of scope here. */
   onStatus?: (reason: VoiceLoopStatus) => void;
   /** Parse miss after a transcript — log `command.rejected` from the app shell. */
   onParseMiss?: (sourceText: string, error: string) => void | Promise<void>;
   onMetrics?: (metrics: VoiceUtteranceMetrics) => void;
+  /** Injected in tests. Default plays PCM (dry) or browser TTS. */
+  readbackPlayer?: ReadbackPlayer;
+  /** TTS voice id. Default {@link DEFAULT_READBACK_VOICE_ID}. */
+  voiceId?: string;
+  getVoiceId?: () => string;
 }
 
 export interface VoiceLoop {
   handlePttEvent(event: PttCaptureEvent): Promise<void>;
   readonly lastUtteranceMetrics: VoiceUtteranceMetrics | null;
   readonly inFlight: boolean;
+  readonly readbackPlayer: ReadbackPlayer;
   dispose(): void;
 }
 
@@ -98,6 +124,17 @@ function commandFromParse(
   };
 }
 
+function acceptedReadback(result: void | VoiceDispatchResult): string | null {
+  if (result === undefined || result === null) {
+    return null;
+  }
+  if (result.accepted !== true) {
+    return null;
+  }
+  const text = result.readback?.trim() ?? "";
+  return text === "" ? null : text;
+}
+
 export function createVoiceLoop(options: VoiceLoopOptions): VoiceLoop {
   return new VoiceLoopImpl(options);
 }
@@ -119,6 +156,9 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly onStatus?: (reason: VoiceLoopStatus) => void;
   private readonly onParseMiss?: (sourceText: string, error: string) => void | Promise<void>;
   private readonly onMetrics?: (metrics: VoiceUtteranceMetrics) => void;
+  private readonly getVoiceId: () => string;
+  private readonly gate = new TransmitGate();
+  readonly readbackPlayer: ReadbackPlayer;
 
   constructor(options: VoiceLoopOptions) {
     this.speechPort = options.speechPort;
@@ -133,6 +173,8 @@ class VoiceLoopImpl implements VoiceLoop {
     this.onStatus = options.onStatus;
     this.onParseMiss = options.onParseMiss;
     this.onMetrics = options.onMetrics;
+    this.getVoiceId = options.getVoiceId ?? (() => options.voiceId ?? DEFAULT_READBACK_VOICE_ID);
+    this.readbackPlayer = options.readbackPlayer ?? createReadbackPlayer({ now: this.now });
   }
 
   get lastUtteranceMetrics(): VoiceUtteranceMetrics | null {
@@ -146,7 +188,8 @@ class VoiceLoopImpl implements VoiceLoop {
   dispose(): void {
     this.disposed = true;
     this.inFlightValue = false;
-    this.setTransmitLocked(false);
+    this.readbackPlayer.stop();
+    this.syncLock("utterance-failed");
   }
 
   async handlePttEvent(event: PttCaptureEvent): Promise<void> {
@@ -154,9 +197,15 @@ class VoiceLoopImpl implements VoiceLoop {
       await this.onPttEvent(event);
     } catch {
       this.inFlightValue = false;
-      this.setTransmitLocked(false);
+      this.readbackPlayer.stop();
+      this.syncLock("utterance-failed");
       this.onStatus?.("transcribe-failed");
     }
+  }
+
+  private syncLock(event: TransmitGateEvent): void {
+    this.gate.apply(event);
+    this.setTransmitLocked(this.gate.locked);
   }
 
   private async onPttEvent(event: PttCaptureEvent): Promise<void> {
@@ -173,9 +222,11 @@ class VoiceLoopImpl implements VoiceLoop {
   }
 
   private onPttDown(): void {
-    if (this.inFlightValue) {
+    if (this.inFlightValue || this.gate.current === "playing") {
       return;
     }
+    this.syncLock("ptt-down");
+    void this.readbackPlayer.warmUp();
     try {
       this.speechPort.beginUtterance?.();
     } catch {
@@ -187,6 +238,7 @@ class VoiceLoopImpl implements VoiceLoop {
     if (result.kind === "empty") {
       this.lastMetrics = markPttUp(this.now());
       this.emitMetrics();
+      this.syncLock("utterance-failed");
       this.onStatus?.("empty-clip");
       return;
     }
@@ -196,14 +248,16 @@ class VoiceLoopImpl implements VoiceLoop {
     }
 
     this.inFlightValue = true;
-    this.setTransmitLocked(true);
+    this.syncLock("working");
     const metrics = markPttUp(this.now());
     this.lastMetrics = metrics;
     try {
       await this.transcribeAndParse(result.clip, metrics);
     } finally {
       this.inFlightValue = false;
-      this.setTransmitLocked(false);
+      if (this.gate.locked) {
+        this.syncLock("utterance-failed");
+      }
       this.emitMetrics();
     }
   }
@@ -246,10 +300,62 @@ class VoiceLoopImpl implements VoiceLoop {
       `voice-cmd-${this.commandSeq}`,
       this.getIssuedAtSimMs(),
     );
+    let dispatchResult: void | VoiceDispatchResult;
     try {
-      await this.dispatchCommand(command);
+      dispatchResult = await this.dispatchCommand(command);
     } catch {
       this.onStatus?.("transcribe-failed");
+      return;
+    }
+    if (this.disposed) {
+      return;
+    }
+    await this.speakAcceptedReadback(dispatchResult, metrics);
+  }
+
+  private async speakAcceptedReadback(
+    dispatchResult: void | VoiceDispatchResult,
+    metrics: VoiceUtteranceMetrics,
+  ): Promise<void> {
+    const readback = acceptedReadback(dispatchResult);
+    if (readback === null) {
+      return;
+    }
+
+    const voiceId = this.getVoiceId();
+    const onAudioStart = (nowMs: number): void => {
+      recordAudioStart(metrics, nowMs);
+      this.lastMetrics = metrics;
+      this.emitMetrics();
+    };
+
+    try {
+      if (this.speechPort.id === "web-speech") {
+        this.syncLock("play-started");
+        const outcome = await this.readbackPlayer.playBrowser(readback, voiceId, { onAudioStart });
+        if (!outcome.ok) {
+          this.onStatus?.("readback-audio-failed");
+        }
+        return;
+      }
+
+      let ttsClip: AudioClip;
+      try {
+        ttsClip = await this.speechPort.synthesize(readback, voiceId);
+      } catch {
+        this.onStatus?.("readback-audio-failed");
+        return;
+      }
+      if (this.disposed) {
+        return;
+      }
+      this.syncLock("play-started");
+      const outcome = await this.readbackPlayer.playPcm(ttsClip, { onAudioStart });
+      if (!outcome.ok) {
+        this.onStatus?.("readback-audio-failed");
+      }
+    } finally {
+      this.syncLock("play-ended");
     }
   }
 

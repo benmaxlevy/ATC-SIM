@@ -27,16 +27,35 @@ export type {
 export { EMPTY_CLIP_MS } from "./capture/clip-gate";
 export { TARGET_SAMPLE_RATE } from "./capture/resample";
 export { isTextFieldTarget } from "./capture/ptt-focus";
-export { DEFAULT_CONFIDENCE_THRESHOLD, createVoiceLoop } from "./voice-loop";
+export {
+  DEFAULT_CONFIDENCE_THRESHOLD,
+  DEFAULT_READBACK_VOICE_ID,
+  createVoiceLoop,
+} from "./voice-loop";
 export type {
   DispatchCommandFn,
   ParseCommandFn,
+  VoiceDispatchResult,
   VoiceLoop,
   VoiceLoopOptions,
   VoiceLoopStatus,
   VoiceParseResult,
 } from "./voice-loop";
-export { markPttUp, recordTranscriptLatency } from "./metrics";
+export { markPttUp, recordAudioStart, recordTranscriptLatency } from "./metrics";
 export type { VoiceUtteranceMetrics } from "./metrics";
 export { WebSpeechPort, speakBrowser } from "./ports/web-speech-port";
+export { pcm16ToFloat32 } from "./playback/pcm16-to-audio-buffer";
+export { TransmitGate } from "./playback/transmit-gate";
+export {
+  PLAYBACK_TAIL_MS,
+  connectPlaybackDry,
+  createReadbackPlayer,
+} from "./playback/readback-player";
+export type {
+  ConnectPlaybackSource,
+  PlayOutcome,
+  ReadbackPlayHooks,
+  ReadbackPlayer,
+  ReadbackPlayerOptions,
+} from "./playback/readback-player";
 export const SPEECH_PACKAGE = "speech";

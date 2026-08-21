@@ -10,6 +10,14 @@ import {
   type ParseCommandFn,
   type VoiceLoopStatus,
 } from "./voice-loop";
+import type { ReadbackPlayer } from "./playback/readback-player";
+import {
+  DEFAULT_PTT_KEY,
+  createPttCaptureController,
+  type CaptureBackend,
+  type PttCaptureEvent,
+  type PttKeyEvent,
+} from "./capture/ptt-controller";
 
 function nonEmptyClip(): AudioClip {
   return {
@@ -34,11 +42,20 @@ function sample(callsign: string, id = "ac-dal"): Aircraft {
 function fakePort(
   text: string,
   extras: { confidence?: number; latencyMs?: number } = {},
-): SpeechPort & { transcribeCalls: number; lastClip: AudioClip | null } {
+): SpeechPort & {
+  transcribeCalls: number;
+  lastClip: AudioClip | null;
+  synthesizeCalls: number;
+  lastSynthesizeText: string | null;
+  synthClip: AudioClip;
+} {
   const port = {
     id: "fake",
     transcribeCalls: 0,
     lastClip: null as AudioClip | null,
+    synthesizeCalls: 0,
+    lastSynthesizeText: null as string | null,
+    synthClip: nonEmptyClip(),
     async transcribe(audio: AudioClip): Promise<Transcript> {
       port.transcribeCalls += 1;
       port.lastClip = audio;
@@ -48,8 +65,10 @@ function fakePort(
         latencyMs: extras.latencyMs ?? 4,
       };
     },
-    async synthesize(): Promise<AudioClip> {
-      return nonEmptyClip();
+    async synthesize(readback: string): Promise<AudioClip> {
+      port.synthesizeCalls += 1;
+      port.lastSynthesizeText = readback;
+      return port.synthClip;
     },
   };
   return port;
@@ -305,4 +324,342 @@ test("beginUtterance is called on ptt-down when the port implements it", async (
 test("voice-loop tests run without a DOM", () => {
   expect(typeof document).toBe("undefined");
   expect(typeof window).toBe("undefined");
+});
+
+const ACCEPTED_READBACK = "delta one two three turn left heading two seven zero";
+
+function holdingPlayer(onStartNow?: () => number): {
+  player: ReadbackPlayer;
+  clips: AudioClip[];
+  browserTexts: string[];
+  release: () => void;
+} {
+  const clips: AudioClip[] = [];
+  const browserTexts: string[] = [];
+  let releasePlay: (() => void) | null = null;
+  let playing = false;
+  const player: ReadbackPlayer = {
+    get playing() {
+      return playing;
+    },
+    async warmUp() {},
+    async playPcm(clip, hooks) {
+      if (playing) {
+        return { ok: false, reason: "overlap" };
+      }
+      clips.push(clip);
+      playing = true;
+      hooks?.onAudioStart?.(onStartNow?.() ?? 0);
+      await new Promise<void>((resolve) => {
+        releasePlay = resolve;
+      });
+      playing = false;
+      return { ok: true };
+    },
+    async playBrowser(text, _voiceId, hooks) {
+      if (playing) {
+        return { ok: false, reason: "overlap" };
+      }
+      browserTexts.push(text);
+      playing = true;
+      hooks?.onAudioStart?.(onStartNow?.() ?? 0);
+      await new Promise<void>((resolve) => {
+        releasePlay = resolve;
+      });
+      playing = false;
+      return { ok: true };
+    },
+    stop() {
+      playing = false;
+      releasePlay?.();
+    },
+    setConnectSource() {},
+  };
+  return {
+    player,
+    clips,
+    browserTexts,
+    release: () => {
+      releasePlay?.();
+    },
+  };
+}
+
+function instantPlayer(onStartNow?: () => number): {
+  player: ReadbackPlayer;
+  clips: AudioClip[];
+  browserTexts: string[];
+} {
+  const clips: AudioClip[] = [];
+  const browserTexts: string[] = [];
+  const player: ReadbackPlayer = {
+    playing: false,
+    async warmUp() {},
+    async playPcm(clip, hooks) {
+      clips.push(clip);
+      hooks?.onAudioStart?.(onStartNow?.() ?? 0);
+      return { ok: true };
+    },
+    async playBrowser(text, _voiceId, hooks) {
+      browserTexts.push(text);
+      hooks?.onAudioStart?.(onStartNow?.() ?? 0);
+      return { ok: true };
+    },
+    stop() {},
+    setConnectSource() {},
+  };
+  return { player, clips, browserTexts };
+}
+
+class FakeCaptureBackend implements CaptureBackend {
+  onAudio: ((samples: Float32Array) => void) | null = null;
+  startCalls = 0;
+  armed = false;
+
+  async ensureStarted(): Promise<{ sampleRate: number }> {
+    this.startCalls += 1;
+    return { sampleRate: 48000 };
+  }
+
+  setArmed(armed: boolean): void {
+    this.armed = armed;
+  }
+
+  dispose(): void {
+    this.onAudio = null;
+  }
+}
+
+function pttKey(): PttKeyEvent & { preventDefault: ReturnType<typeof vi.fn> } {
+  return {
+    key: DEFAULT_PTT_KEY,
+    repeat: false,
+    target: null,
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    preventDefault: vi.fn(),
+  };
+}
+
+async function flushUntil(pred: () => boolean, label: string): Promise<void> {
+  for (let i = 0; i < 200; i += 1) {
+    if (pred()) {
+      return;
+    }
+    await Promise.resolve();
+  }
+  throw new Error(`timed out waiting for ${label}`);
+}
+
+test("AC1 — accepted voice command plays the synthesize clip", async () => {
+  const port = fakePort("turn left heading two seven zero");
+  const synthClip: AudioClip = {
+    sampleRate: 16000,
+    channels: 1,
+    pcm16: Int16Array.from([1, 2, 3, 4]),
+  };
+  port.synthClip = synthClip;
+  const { player, clips } = instantPlayer();
+  const loop = createVoiceLoop({
+    speechPort: port,
+    parseCommand,
+    dispatchCommand: () => ({ accepted: true, readback: ACCEPTED_READBACK }),
+    getSelectedCallsign: () => "DAL123",
+    readbackPlayer: player,
+  });
+
+  await loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  expect(port.synthesizeCalls).toBe(1);
+  expect(port.lastSynthesizeText).toBe(ACCEPTED_READBACK);
+  expect(clips).toEqual([synthClip]);
+});
+
+test("AC2 — PTT-down during playback is ignored and not queued", async () => {
+  const { player, release } = holdingPlayer();
+  const lock = vi.fn();
+  const pttEvents: PttCaptureEvent[] = [];
+  const backend = new FakeCaptureBackend();
+  const ptt = createPttCaptureController({
+    onEvent: (event) => pttEvents.push(event),
+    backend,
+    attachTo: null,
+    isSecureContext: true,
+  });
+  const loop = createVoiceLoop({
+    speechPort: fakePort("turn left heading two seven zero"),
+    parseCommand,
+    dispatchCommand: () => ({ accepted: true, readback: ACCEPTED_READBACK }),
+    getSelectedCallsign: () => "DAL123",
+    readbackPlayer: player,
+    setTransmitLocked: (locked) => {
+      lock(locked);
+      ptt.setTransmitLocked(locked);
+    },
+  });
+
+  const pending = loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+  await flushUntil(() => player.playing, "playback start");
+  expect(lock).toHaveBeenLastCalledWith(true);
+
+  await ptt.handleKeyDown(pttKey());
+  expect(pttEvents).toEqual([{ type: "ignored-locked" }]);
+  expect(backend.startCalls).toBe(0);
+
+  release();
+  await pending;
+  ptt.dispose();
+  loop.dispose();
+});
+
+test("AC3 — lock clears after playback ends so a later PTT can capture", async () => {
+  const { player, release } = holdingPlayer();
+  const lock = vi.fn();
+  const pttEvents: PttCaptureEvent[] = [];
+  const backend = new FakeCaptureBackend();
+  const ptt = createPttCaptureController({
+    onEvent: (event) => pttEvents.push(event),
+    backend,
+    attachTo: null,
+    isSecureContext: true,
+  });
+  const loop = createVoiceLoop({
+    speechPort: fakePort("turn left heading two seven zero"),
+    parseCommand,
+    dispatchCommand: () => ({ accepted: true, readback: ACCEPTED_READBACK }),
+    getSelectedCallsign: () => "DAL123",
+    readbackPlayer: player,
+    setTransmitLocked: (locked) => {
+      lock(locked);
+      ptt.setTransmitLocked(locked);
+    },
+  });
+
+  const pending = loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+  await flushUntil(() => player.playing, "playback start");
+  expect(player.playing).toBe(true);
+
+  release();
+  await pending;
+  expect(lock).toHaveBeenLastCalledWith(false);
+  expect(loop.inFlight).toBe(false);
+
+  await ptt.handleKeyDown(pttKey());
+  expect(pttEvents).toEqual([{ type: "ptt-down" }]);
+  expect(backend.startCalls).toBe(1);
+  expect(backend.armed).toBe(true);
+
+  ptt.dispose();
+  loop.dispose();
+});
+
+test("AC4 — synthesize reject after accept keeps intent and returns lock to idle", async () => {
+  const port: SpeechPort = {
+    id: "fake",
+    async transcribe() {
+      return { text: "turn left heading two seven zero", confidence: 1, latencyMs: 1 };
+    },
+    async synthesize() {
+      throw new Error("tts down");
+    },
+  };
+  const dispatched: Command[] = [];
+  const statuses: VoiceLoopStatus[] = [];
+  const lock = vi.fn();
+  const loop = createVoiceLoop({
+    speechPort: port,
+    parseCommand,
+    dispatchCommand: (command) => {
+      dispatched.push(command);
+      return { accepted: true, readback: ACCEPTED_READBACK };
+    },
+    getSelectedCallsign: () => "DAL123",
+    setTransmitLocked: lock,
+    onStatus: (reason) => statuses.push(reason),
+    readbackPlayer: instantPlayer().player,
+  });
+
+  await loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  expect(dispatched).toHaveLength(1);
+  expect(statuses).toEqual(["readback-audio-failed"]);
+  expect(lock).toHaveBeenLastCalledWith(false);
+  expect(loop.inFlight).toBe(false);
+});
+
+test("AC5 — audio-start fires once per successful play", async () => {
+  const clock = { ms: 1000 };
+  const starts: number[] = [];
+  const inner = instantPlayer(() => clock.ms);
+  const player: ReadbackPlayer = {
+    ...inner.player,
+    async playPcm(clip, hooks) {
+      return inner.player.playPcm(clip, {
+        onAudioStart: (ms) => {
+          starts.push(ms);
+          hooks?.onAudioStart?.(ms);
+        },
+      });
+    },
+  };
+  const loop = createVoiceLoop({
+    speechPort: fakePort("turn left heading two seven zero"),
+    parseCommand,
+    dispatchCommand: () => ({ accepted: true, readback: ACCEPTED_READBACK }),
+    getSelectedCallsign: () => "DAL123",
+    now: () => clock.ms,
+    readbackPlayer: player,
+  });
+
+  clock.ms = 1000;
+  const pending = loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+  clock.ms = 1180;
+  await pending;
+
+  expect(starts).toEqual([1180]);
+  expect(loop.lastUtteranceMetrics?.pttUpToAudioStartMs).toBe(180);
+});
+
+test("web-speech accepted readback uses playBrowser, not the silence clip", async () => {
+  const port: SpeechPort = {
+    id: "web-speech",
+    async transcribe() {
+      return { text: "turn left heading two seven zero", confidence: 1, latencyMs: 1 };
+    },
+    async synthesize() {
+      return { sampleRate: 16000, channels: 1, pcm16: new Int16Array(160) };
+    },
+  };
+  const { player, clips, browserTexts } = instantPlayer();
+  const loop = createVoiceLoop({
+    speechPort: port,
+    parseCommand,
+    dispatchCommand: () => ({ accepted: true, readback: ACCEPTED_READBACK }),
+    getSelectedCallsign: () => "DAL123",
+    readbackPlayer: player,
+  });
+
+  await loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  expect(browserTexts).toEqual([ACCEPTED_READBACK]);
+  expect(clips).toEqual([]);
 });

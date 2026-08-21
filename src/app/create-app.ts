@@ -51,7 +51,7 @@ export function createApp(deps: AppDeps): AppHandles {
       speechPort: deps.speech,
       parseCommand,
       dispatchCommand: (command) => {
-        handleRadioCommand(world, command, log);
+        return handleRadioCommand(world, command, log);
       },
       getSelectedCallsign: () => selectedCallsignFromWorld(world),
       getIssuedAtSimMs: () => world.simTimeMs,
