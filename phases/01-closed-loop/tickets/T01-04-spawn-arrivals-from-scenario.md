@@ -73,13 +73,13 @@ Keep loader in `src/scenario` so `src/core` does not import JSON if Phase 0 alre
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Default KDEM scenario file lists **6** arrivals including `DAL123`.
-- [ ] **AC2 —** `createWorldFromScenario(kdem)` (or equivalent) yields 6 aircraft; `DAL123` has `xNm >= 10`, **`headingDeg === 100`**, altitude in [6000, 10000], speed in [210, 250].
-- [ ] **AC3 —** All default positions are east of origin (`xNm > 0`) and satisfy the spawn box in Scope.
-- [ ] **AC4 —** Callsigns unique; stored uppercase.
-- [ ] **AC5 —** Each spawned aircraft is in equilibrium (intent matches present state) so they fly straight until a command.
-- [ ] **AC6 —** Unit test loads the real default JSON (not a duplicate hardcoded list) and asserts AC1–AC5.
-- [ ] **AC7 —** Loader rejects (throw or `Result` err) a fixture with 3 aircraft or duplicate callsigns — tested with a **test-only** JSON object, not by breaking the default file.
+- [x] **AC1 —** Default KDEM scenario file lists **6** arrivals including `DAL123`.
+- [x] **AC2 —** `createWorldFromScenario(kdem)` (or equivalent) yields 6 aircraft; `DAL123` has `xNm >= 10`, **`headingDeg === 100`**, altitude in [6000, 10000], speed in [210, 250].
+- [x] **AC3 —** All default positions are east of origin (`xNm > 0`) and satisfy the spawn box in Scope.
+- [x] **AC4 —** Callsigns unique; stored uppercase.
+- [x] **AC5 —** Each spawned aircraft is in equilibrium (intent matches present state) so they fly straight until a command.
+- [x] **AC6 —** Unit test loads the real default JSON (not a duplicate hardcoded list) and asserts AC1–AC5.
+- [x] **AC7 —** Loader rejects (throw or `Result` err) a fixture with 3 aircraft or duplicate callsigns — tested with a **test-only** JSON object, not by breaking the default file.
 
 ## Test plan
 

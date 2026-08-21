@@ -25,5 +25,55 @@
       "runwayId": "27",
       "offsetNm": { "xNm": 0, "yNm": 8 }
     }
+  ],
+  "arrivals": [
+    {
+      "callsign": "DAL123",
+      "xNm": 16,
+      "yNm": 8,
+      "headingDeg": 100,
+      "altitudeFt": 8000,
+      "speedKt": 220
+    },
+    {
+      "callsign": "AAL45",
+      "xNm": 12,
+      "yNm": 5,
+      "headingDeg": 90,
+      "altitudeFt": 7000,
+      "speedKt": 230
+    },
+    {
+      "callsign": "UAL200",
+      "xNm": 18,
+      "yNm": 10,
+      "headingDeg": 85,
+      "altitudeFt": 9000,
+      "speedKt": 240
+    },
+    {
+      "callsign": "SWA88",
+      "xNm": 14,
+      "yNm": 4,
+      "headingDeg": 95,
+      "altitudeFt": 6000,
+      "speedKt": 210
+    },
+    {
+      "callsign": "JBU17",
+      "xNm": 20,
+      "yNm": 11,
+      "headingDeg": 80,
+      "altitudeFt": 10000,
+      "speedKt": 250
+    },
+    {
+      "callsign": "NKS310",
+      "xNm": 22,
+      "yNm": 6,
+      "headingDeg": 88,
+      "altitudeFt": 8500,
+      "speedKt": 225
+    }
   ]
 }

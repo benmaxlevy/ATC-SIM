@@ -1,14 +1,17 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { loadKdem } from "@scenario";
+import { createWorldFromScenario, loadKdem } from "@scenario";
 import { NullSpeechPort } from "@speech";
 import { Shell } from "@ui";
 import { bootSession } from "./app/boot-session";
 import { createApp } from "./app/create-app";
 import "./index.css";
 
-const handles = createApp({ speech: new NullSpeechPort() });
 const kdem = loadKdem();
+const handles = createApp({
+  speech: new NullSpeechPort(),
+  world: createWorldFromScenario(kdem),
+});
 bootSession(handles, kdem, Date.now());
 
 document.title = "ATC-SIM — KDEM";

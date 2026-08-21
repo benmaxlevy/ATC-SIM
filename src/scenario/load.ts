@@ -1,7 +1,8 @@
 import { latLonToNm } from "@core";
 import type { LatLon, NmEastNorth } from "@core";
 import kdemJson from "./kdem.json";
-import type { Approach, Fix, Runway, Scenario, Spawn, VideoMap } from "./types";
+import type { Approach, ArrivalSpawn, Fix, Runway, Scenario, Spawn, VideoMap } from "./types";
+import { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN } from "./types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -91,6 +92,42 @@ function assertSpawn(value: unknown, index: number): Spawn {
   };
 }
 
+function assertArrival(value: unknown, index: number): ArrivalSpawn {
+  if (!isRecord(value)) {
+    throw new Error(`Scenario arrivals[${index}] must be an object`);
+  }
+  const callsign = assertString(value.callsign, `arrivals[${index}].callsign`).toUpperCase();
+  if (callsign.length === 0) {
+    throw new Error(`Scenario arrivals[${index}].callsign must be non-empty`);
+  }
+  return {
+    callsign,
+    xNm: assertNumber(value.xNm, `arrivals[${index}].xNm`),
+    yNm: assertNumber(value.yNm, `arrivals[${index}].yNm`),
+    headingDeg: assertNumber(value.headingDeg, `arrivals[${index}].headingDeg`),
+    altitudeFt: assertNumber(value.altitudeFt, `arrivals[${index}].altitudeFt`),
+    speedKt: assertNumber(value.speedKt, `arrivals[${index}].speedKt`),
+  };
+}
+
+function assertArrivals(value: unknown): ArrivalSpawn[] {
+  const raw = assertArray(value, "arrivals");
+  if (raw.length < ARRIVAL_COUNT_MIN || raw.length > ARRIVAL_COUNT_MAX) {
+    throw new Error(
+      `Scenario arrivals must have ${ARRIVAL_COUNT_MIN}-${ARRIVAL_COUNT_MAX} aircraft (got ${raw.length})`,
+    );
+  }
+  const arrivals = raw.map(assertArrival);
+  const seen = new Set<string>();
+  for (const arrival of arrivals) {
+    if (seen.has(arrival.callsign)) {
+      throw new Error(`Scenario arrivals have duplicate callsign ${arrival.callsign}`);
+    }
+    seen.add(arrival.callsign);
+  }
+  return arrivals;
+}
+
 function assertArray(value: unknown, path: string): unknown[] {
   if (!Array.isArray(value)) {
     throw new Error(`Scenario ${path} must be an array`);
@@ -133,6 +170,7 @@ export function assertScenario(s: unknown): Scenario {
     fixes: assertArray(s.fixes, "fixes").map(assertFix),
     maps: { videoMaps: assertArray(maps.videoMaps, "maps.videoMaps").map(assertVideoMap) },
     spawns: assertArray(s.spawns, "spawns").map(assertSpawn),
+    arrivals: assertArrivals(s.arrivals),
   };
 }
 
