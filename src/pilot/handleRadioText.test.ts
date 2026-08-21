@@ -68,6 +68,15 @@ test("AC1 — DAL123 H270 accepted; assigned 270 SHORTEST; others unchanged; hea
   expect(log.byType("command.rejected")).toHaveLength(0);
 });
 
+test("T03-02 AC3 — typed H270 still yields source text", async () => {
+  const dal = sample("DAL123", "ac-dal");
+  const world = createWorld({ aircraft: [dal], selectedAircraftId: "ac-dal" });
+  const result = await handleRadioText(world, "H270", new SessionLog());
+  expect(result.accepted).toBe(true);
+  expect(result.command?.source).toBe("text");
+  expect(result.command?.parseStage).toBe("typed");
+});
+
 test("AC2 — SAY_HEADING / SAY_ALTITUDE / IDENT accepted; kinematics intent unchanged", async () => {
   const dal = sample("DAL123", "ac-dal");
   const world = createWorld({ aircraft: [dal], simTimeMs: 1_000 });

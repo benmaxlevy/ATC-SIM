@@ -21,6 +21,11 @@ export interface PilotResult {
   reason?: string;
 }
 
+export interface HandleRadioOpts {
+  /** Channel. Default `"text"` so typed command-line callers stay valid. */
+  source?: "text" | "voice";
+}
+
 let commandSeq = 0;
 
 function nextCommandId(): string {
@@ -41,6 +46,7 @@ function buildCommand(args: {
   sourceText: string;
   issuedAtSimMs: number;
   parseStage?: ParseStage;
+  source: "text" | "voice";
 }): Command {
   return {
     id: nextCommandId(),
@@ -48,7 +54,7 @@ function buildCommand(args: {
     callsign: args.callsign,
     instructions: args.instructions,
     sourceText: args.sourceText,
-    source: "text",
+    source: args.source,
     parseStage: args.parseStage,
   };
 }
@@ -88,9 +94,11 @@ export async function handleRadioText(
   sourceText: string,
   log: SessionLog,
   atWallMs = 0,
+  opts?: HandleRadioOpts,
 ): Promise<PilotResult> {
+  const source = opts?.source ?? "text";
   const parsed = await parseCommand(sourceText, {
-    source: "text",
+    source,
     selectedCallsign: selectedCallsignFromWorld(world),
     pathC: false,
   });
@@ -104,17 +112,32 @@ export async function handleRadioText(
     };
   }
 
-  const resolved = resolveCallsign({ callsignToken: parsed.callsignToken, world });
+  const command = buildCommand({
+    callsign: parsed.callsignToken ?? "",
+    instructions: parsed.instructions,
+    sourceText: parsed.sourceText,
+    issuedAtSimMs: world.simTimeMs,
+    parseStage: parsed.parseStage,
+    source: parsed.source ?? source,
+  });
+  return handleRadioCommand(world, command, log, atWallMs);
+}
+
+/**
+ * Resolve, validate, and apply a Command that `parseCommand` already produced.
+ * Voice loop (T03-02) dispatches here so speech never constructs Instructions.
+ */
+export function handleRadioCommand(
+  world: World,
+  command: Command,
+  log: SessionLog,
+  atWallMs = 0,
+): PilotResult {
+  const token = command.callsign === "" ? null : command.callsign;
+  const resolved = resolveCallsign({ callsignToken: token, world });
   if (!resolved.ok) {
     const reason = resolved.reason;
-    const command = buildCommand({
-      callsign: parsed.callsignToken ?? "",
-      instructions: parsed.instructions,
-      sourceText,
-      issuedAtSimMs: world.simTimeMs,
-      parseStage: parsed.parseStage,
-    });
-    logRejected(log, world, atWallMs, { command, reason, sourceText });
+    logRejected(log, world, atWallMs, { command, reason, sourceText: command.sourceText });
     return {
       accepted: false,
       readback: formatRejectReadback({ reason }),
@@ -126,47 +149,42 @@ export async function handleRadioText(
   const aircraft = world.aircraft.find((ac) => ac.id === resolved.aircraftId);
   if (!aircraft) {
     const reason = "UNKNOWN_CALLSIGN";
-    const command = buildCommand({
-      callsign: resolved.callsign,
-      instructions: parsed.instructions,
-      sourceText,
-      issuedAtSimMs: world.simTimeMs,
-      parseStage: parsed.parseStage,
-    });
-    logRejected(log, world, atWallMs, { command, reason, sourceText });
+    const missing: Command = { ...command, callsign: resolved.callsign };
+    logRejected(log, world, atWallMs, { command: missing, reason, sourceText: command.sourceText });
     return {
       accepted: false,
       readback: formatRejectReadback({ reason }),
-      command,
+      command: missing,
       reason,
     };
   }
 
-  const command = buildCommand({
+  const resolvedCommand: Command = {
+    ...command,
     callsign: resolved.callsign,
-    instructions: parsed.instructions,
-    sourceText,
-    issuedAtSimMs: world.simTimeMs,
-    parseStage: parsed.parseStage,
-  });
+  };
 
-  const validated = validateInstructions(aircraft, command.instructions);
+  const validated = validateInstructions(aircraft, resolvedCommand.instructions);
   if (!validated.ok) {
-    logRejected(log, world, atWallMs, { command, reason: validated.reason, sourceText });
+    logRejected(log, world, atWallMs, {
+      command: resolvedCommand,
+      reason: validated.reason,
+      sourceText: command.sourceText,
+    });
     return {
       accepted: false,
       readback: formatRejectReadback({ callsign: resolved.callsign, reason: validated.reason }),
-      command,
+      command: resolvedCommand,
       reason: validated.reason,
     };
   }
 
-  applyIntent(aircraft, command.instructions, world.simTimeMs);
+  applyIntent(aircraft, resolvedCommand.instructions, world.simTimeMs);
   const readback = formatReadback({
     callsign: resolved.callsign,
-    instructions: command.instructions,
+    instructions: resolvedCommand.instructions,
     aircraft,
   });
-  logAccepted(log, world, atWallMs, command);
-  return { accepted: true, readback, command };
+  logAccepted(log, world, atWallMs, resolvedCommand);
+  return { accepted: true, readback, command: resolvedCommand };
 }

@@ -2,6 +2,7 @@
  * Public API for `@pilot`.
  *
  * Legal now: `handleRadioText` (parse → resolve → validate → apply);
+ * `handleRadioCommand` (same apply path for a Command already parsed);
  * `applyCommand` (intent apply for a resolved Command, no parse);
  * readback templates (`formatReadback`, `formatRejectReadback`,
  * `formatCallsignSpeech`); callsign resolution (`resolveCallsign`,
@@ -14,8 +15,8 @@
 import type { Command, World } from "@core";
 import { applyIntent } from "./applyIntent";
 
-export type { PilotResult } from "./handleRadioText";
-export { handleRadioText } from "./handleRadioText";
+export type { HandleRadioOpts, PilotResult } from "./handleRadioText";
+export { handleRadioCommand, handleRadioText } from "./handleRadioText";
 export type { ReadbackAircraft, RejectReason } from "./readback";
 export { formatCallsignSpeech, formatReadback, formatRejectReadback } from "./readback";
 export type { ResolveReason, ResolveResult } from "./resolveCallsign";
