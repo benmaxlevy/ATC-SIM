@@ -13,7 +13,7 @@ const emptyInstructionCommand: Command = {
   source: "text",
 };
 
-test("SessionEvent includes command events, voice.latency, and CA edges (T04-09)", () => {
+test("SessionEvent includes command events, voice.latency, CA edges, and MSAW edges", () => {
   expectTypeOf<SessionEvent["type"]>().toEqualTypeOf<
     | "session.started"
     | "command.accepted"
@@ -22,6 +22,9 @@ test("SessionEvent includes command events, voice.latency, and CA edges (T04-09)
     | "alert.ca.caution"
     | "alert.ca.alert"
     | "alert.ca.clear"
+    | "alert.msaw.caution"
+    | "alert.msaw.alert"
+    | "alert.msaw.clear"
   >();
 });
 

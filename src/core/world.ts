@@ -6,6 +6,14 @@ import {
   type CaAlert,
   type WorldAlerts,
 } from "./alerts/conflictAlert";
+import {
+  DEFAULT_MSAW_INHIBIT,
+  evaluateMsaw,
+  msawFloorFt,
+  type MvaChart,
+  type MsawAlert,
+  type MsawInhibitGeom,
+} from "./alerts/msaw";
 import { MAX_PHYSICS_STEPS_PER_FRAME, SIM_DT_S } from "./clock";
 import type { SessionLog } from "./events/session-log";
 import { stepAircraft } from "./kinematics";
@@ -34,11 +42,21 @@ export interface World {
     approaches: ReadonlyArray<{ id: string }>;
     sids: ReadonlyArray<{ id: string }>;
   };
-  /** Active CA set. Scope reads this; it must not recompute CA. */
+  /** Active CA / MSAW sets. Scope reads this; it must not recompute alerts. */
   alerts: WorldAlerts;
   /**
-   * Optional session log for CA edge events. The app wires `createApp`'s log.
-   * Tests pass one when they assert `alert.ca.*`.
+   * Trainer MVA chart. `stepWorld` evaluates MSAW when set; tests may omit it.
+   * Scope never reads this.
+   */
+  mvaChart: MvaChart | null;
+  /**
+   * Threshold + FAF distance for loc/GS/landing inhibit. When `mvaChart` is
+   * set and this is null, KDEM RW27 / 6 NM is used.
+   */
+  msawInhibit: MsawInhibitGeom | null;
+  /**
+   * Optional session log for CA/MSAW edge events. The app wires `createApp`'s log.
+   * Tests pass one when they assert `alert.ca.*` / `alert.msaw.*`.
    */
   sessionLog: SessionLog | null;
 }
@@ -52,6 +70,8 @@ export function createWorld(partial?: Partial<World>): World {
     selectedAircraftId: partial?.selectedAircraftId ?? null,
     catalog: partial?.catalog,
     alerts: partial?.alerts ?? emptyWorldAlerts(),
+    mvaChart: partial?.mvaChart ?? null,
+    msawInhibit: partial?.msawInhibit ?? null,
     sessionLog: partial?.sessionLog ?? null,
   };
 }
@@ -140,12 +160,73 @@ function syncConflictAlerts(world: World, next: CaAlert[]): void {
   world.alerts.ca = next;
 }
 
+function liveMsawMetrics(
+  world: World,
+  callsign: string,
+  fallback: MsawAlert,
+): { altFt: number; floorFt: number } {
+  const ac = world.aircraft.find((item) => item.callsign === callsign);
+  if (!ac || !world.mvaChart) {
+    return { altFt: fallback.altFt, floorFt: fallback.floorFt };
+  }
+  return { altFt: ac.altitudeFt, floorFt: msawFloorFt(ac.xNm, ac.yNm, world.mvaChart) };
+}
+
+/**
+ * Replace `world.alerts.msaw` and append `alert.msaw.*` only when a callsign's
+ * severity changes (enter / upgrade / downgrade / clear). No per-tick spam.
+ */
+function syncMsawAlerts(world: World, next: MsawAlert[]): void {
+  const prev = world.alerts.msaw;
+  const prevMap = new Map<string, MsawAlert>();
+  for (const alert of prev) {
+    prevMap.set(alert.callsign, alert);
+  }
+  const nextMap = new Map<string, MsawAlert>();
+  for (const alert of next) {
+    nextMap.set(alert.callsign, alert);
+  }
+  const log = world.sessionLog;
+  if (log) {
+    const atSimMs = world.simTimeMs;
+    for (const alert of next) {
+      const was = prevMap.get(alert.callsign);
+      if (was?.severity === alert.severity) {
+        continue;
+      }
+      log.append({
+        type: alert.severity === "alert" ? "alert.msaw.alert" : "alert.msaw.caution",
+        atSimMs,
+        atWallMs: 0,
+        callsign: alert.callsign,
+        altFt: alert.altFt,
+        floorFt: alert.floorFt,
+      });
+    }
+    for (const was of prev) {
+      if (nextMap.has(was.callsign)) {
+        continue;
+      }
+      const live = liveMsawMetrics(world, was.callsign, was);
+      log.append({
+        type: "alert.msaw.clear",
+        atSimMs,
+        atWallMs: 0,
+        callsign: was.callsign,
+        altFt: live.altFt,
+        floorFt: live.floorFt,
+      });
+    }
+  }
+  world.alerts.msaw = next;
+}
+
 /**
  * Advance sim time by `dtS` seconds, then move each aircraft toward intent.
  *
- * Order is frozen: bump `simTimeMs` first, then kinematics, then CA (pure
- * function of the post-kinematics `aircraft[]`). IDENT flash expiry uses the
- * post-bump time. Mutates `world` in place and returns it (single World; no
+ * Order is frozen: bump `simTimeMs` first, then kinematics, then CA, then MSAW
+ * (pure functions of the post-kinematics `aircraft[]`). IDENT flash expiry uses
+ * the post-bump time. Mutates `world` in place and returns it (single World; no
  * Redux). Does not throw on non-finite `dtS`.
  * This is the only function that increments `simTimeMs`.
  */
@@ -161,6 +242,14 @@ export function stepWorld(world: World, dtS: number): World {
     }
   }
   syncConflictAlerts(world, evaluateConflictAlert(world.aircraft));
+  if (world.mvaChart) {
+    syncMsawAlerts(
+      world,
+      evaluateMsaw(world.aircraft, world.mvaChart, world.msawInhibit ?? DEFAULT_MSAW_INHIBIT),
+    );
+  } else {
+    syncMsawAlerts(world, []);
+  }
   return world;
 }
 

@@ -14,8 +14,8 @@
  * FDB / owned white FDB, CSI-like `*` / `G`); position symbol stays blue;
  * selected yellow box independent of ownership. CHAR SIZE 11–13 px. BRITE steps
  * gray map strokes only. SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
- * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. T04-09 CA tints target +
- * datablock from `world.alerts` (yellow caution, red alert). Not OSM / tiles (R12). Not a
+ * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. T04-09/T04-10 CA/MSAW tints
+ * target + datablock from `world.alerts` (yellow caution, red alert). Not OSM / tiles (R12). Not a
  * sprite. Not an airplane. Not a label. Not NAS STARS.
  *
  * Draw order (phase README): background, rings, coastline, runway, localizer,

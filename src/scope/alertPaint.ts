@@ -1,18 +1,26 @@
 /**
- * Analog: FOA STARS / 7110.65 conflict alert (CA) color language (R01, R05):
- * yellow caution then red alert. Not a certified CA. Do not label “STARS CA.”
+ * Analog: FOA STARS / 7110.65 CA and MSAW color language (R01, R05): yellow
+ * caution then red alert. Not certified. Do not label “STARS CA” or “MSAW
+ * certified.” UI word is **MSAW**, not GPWS / TAWS.
  *
  * Trainer delta: scope reads `world.alerts` and `datablockAlertTint`. It does
- * not compute pair distance.
+ * not compute pair distance or MVA floors.
  */
 
-import { caSeverityForCallsign, datablockAlertTint, type AlertTint, type World } from "@core";
+import {
+  caSeverityForCallsign,
+  datablockAlertTint,
+  msawSeverityForCallsign,
+  type AlertTint,
+  type World,
+} from "@core";
 import { PALETTE } from "./palette";
 import { trackPaintColor, type TrackOwnership } from "./ownership";
 
 export function trackAlertTint(world: World, callsign: string): AlertTint {
   return datablockAlertTint({
     ca: caSeverityForCallsign(world.alerts.ca, callsign),
+    msaw: msawSeverityForCallsign(world.alerts.msaw, callsign),
   });
 }
 
@@ -34,6 +42,9 @@ export function alertOrOwnershipColor(ownership: TrackOwnership, tint: AlertTint
 export function withCaDatablockTag(line1: string, tint: AlertTint): string {
   if (tint === "ca-alert" || tint === "ca-caution") {
     return `${line1} CA`;
+  }
+  if (tint === "msaw-alert" || tint === "msaw-caution") {
+    return `${line1} MSAW`;
   }
   return line1;
 }

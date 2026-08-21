@@ -958,5 +958,34 @@ test("T04-09 AC5 — scope tints target and datablock from world.alerts, not CA 
   const src = sources["./renderScope.ts"]!;
   expect(src).toMatch(/world\.alerts/);
   expect(src).not.toMatch(/evaluateConflictAlert/);
+  expect(src).not.toMatch(/evaluateMsaw/);
   expect(src).not.toMatch(/STARS CA/);
+});
+
+test("T04-10 — scope tints MSAW from world.alerts, not MVA math", () => {
+  const dal = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    altitudeFt: 1000,
+    speedKt: 210,
+    xNm: 2,
+    yNm: 2,
+  });
+  const world = createWorld({ aircraft: [dal] });
+  world.alerts.msaw = [{ callsign: "DAL123", severity: "caution", altFt: 1400, floorFt: 1500 }];
+  const view = createScopeView();
+  const css = 800;
+  const caution = createMockCtx();
+  renderScope(caution.ctx, world, view, css, css);
+  const dalP = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: css, heightPx: css });
+  expect(findTargetDiamonds(caution.pathStrokes, dalP.x, dalP.y)[0]?.strokeStyle).toBe(
+    PALETTE.caution,
+  );
+  expect(caution.fillTexts.find((t) => t.text === "DAL123 MSAW")?.fillStyle).toBe(PALETTE.caution);
+
+  world.alerts.msaw[0]!.severity = "alert";
+  const alert = createMockCtx();
+  renderScope(alert.ctx, world, view, css, css);
+  expect(findTargetDiamonds(alert.pathStrokes, dalP.x, dalP.y)[0]?.strokeStyle).toBe(PALETTE.alert);
+  expect(alert.fillTexts.find((t) => t.text === "DAL123 MSAW")?.fillStyle).toBe(PALETTE.alert);
 });

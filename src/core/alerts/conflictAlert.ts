@@ -1,5 +1,6 @@
 import type { Aircraft } from "../aircraft";
 import { CLIMB_RATE_FT_PER_MIN } from "../kinematics";
+import type { MsawAlert } from "./msaw";
 
 /**
  * Analog: JO 7110.65 / FOA STARS **conflict alert (CA)** (R01, R05) — pair too
@@ -35,10 +36,12 @@ export interface CaAlert {
 export interface WorldAlerts {
   /** Active CA pairs. Scope reads this; it must not recompute CA. */
   ca: CaAlert[];
+  /** Active MSAW set. Scope reads this; it must not recompute MSAW. */
+  msaw: MsawAlert[];
 }
 
 export function emptyWorldAlerts(): WorldAlerts {
-  return { ca: [] };
+  return { ca: [], msaw: [] };
 }
 
 export function caPairKey(callsignA: string, callsignB: string): string {

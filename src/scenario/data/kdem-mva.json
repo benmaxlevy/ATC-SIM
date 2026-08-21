@@ -1,0 +1,57 @@
+{
+  "airportId": "KDEM",
+  "defaultMinAltitudeFt": 4000,
+  "note": "Trainer MVA polygons; not certified MSAW. Rectangles v1 (even-odd PIP). Inner airport box and the 8–40 NM outer frame do not overlap, so the frozen max-floor rule still yields 1500 ft on the field (inner) and 2500 ft in the frame.",
+  "polygons": [
+    {
+      "id": "inner",
+      "minAltitudeFt": 1500,
+      "verticesNm": [
+        { "xNm": -8, "yNm": -8 },
+        { "xNm": 8, "yNm": -8 },
+        { "xNm": 8, "yNm": 8 },
+        { "xNm": -8, "yNm": 8 }
+      ]
+    },
+    {
+      "id": "outer-north",
+      "minAltitudeFt": 2500,
+      "verticesNm": [
+        { "xNm": -40, "yNm": 8 },
+        { "xNm": 40, "yNm": 8 },
+        { "xNm": 40, "yNm": 40 },
+        { "xNm": -40, "yNm": 40 }
+      ]
+    },
+    {
+      "id": "outer-south",
+      "minAltitudeFt": 2500,
+      "verticesNm": [
+        { "xNm": -40, "yNm": -40 },
+        { "xNm": 40, "yNm": -40 },
+        { "xNm": 40, "yNm": -8 },
+        { "xNm": -40, "yNm": -8 }
+      ]
+    },
+    {
+      "id": "outer-east",
+      "minAltitudeFt": 2500,
+      "verticesNm": [
+        { "xNm": 8, "yNm": -8 },
+        { "xNm": 40, "yNm": -8 },
+        { "xNm": 40, "yNm": 8 },
+        { "xNm": 8, "yNm": 8 }
+      ]
+    },
+    {
+      "id": "outer-west",
+      "minAltitudeFt": 2500,
+      "verticesNm": [
+        { "xNm": -40, "yNm": -8 },
+        { "xNm": -8, "yNm": -8 },
+        { "xNm": -8, "yNm": 8 },
+        { "xNm": -40, "yNm": 8 }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 import type { LatLon, NmEastNorth } from "@core";
+import type { MvaChart } from "./mva/types";
 import type { ProcedureCatalog } from "./procedures/types";
 import type { LoadedVideoMap } from "./videoMapTypes";
 
@@ -124,4 +125,6 @@ export interface Scenario {
   arrivals: ArrivalSpawn[];
   /** Facility navaids / fixes / STAR / approaches. Loaded from `data/<icao>/`. */
   catalog: ProcedureCatalog;
+  /** Trainer MVA polygons. Null when the facility has no `*-mva.json`. */
+  mva: MvaChart | null;
 }

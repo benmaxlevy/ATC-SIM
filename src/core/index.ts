@@ -2,7 +2,8 @@
  * Public API for `@core`.
  *
  * Legal now: `World` (`simTimeMs`, `paused`, `simRate` 1|2, empty `aircraft`,
- * `selectedAircraftId`, optional facility `catalog`, `alerts`, `sessionLog`); `createWorld`; `setSelectedAircraft`; `stepWorld`;
+ * `selectedAircraftId`, optional facility `catalog`, `alerts`, `mvaChart`,
+ * `msawInhibit`, `sessionLog`); `createWorld`; `setSelectedAircraft`; `stepWorld`;
  * `createAccumulator` / `advanceWorld`; clock constants (`PHYSICS_HZ`,
  * `SIM_DT_S`, `MAX_PHYSICS_STEPS_PER_FRAME`); kinematics (`TURN_RATE_DEG_PER_S`,
  * `CLIMB_RATE_FT_PER_MIN`, `ACCEL_KT_PER_S`, `normalizeHeading`,
@@ -12,7 +13,8 @@
  * `SessionLog`); aircraft types (`Aircraft`, `Intent`), `createAircraft`,
  * `makeTestAircraft`, `nextAircraftId`; conflict alert lite (`evaluateConflictAlert`,
  * `CA_LATERAL_NM` / `CA_VERTICAL_FT` / `CA_LOOKAHEAD_S`, `datablockAlertTint`);
- * nav fix registry (`buildFixRegistry`, `FixRegistry`).
+ * nav fix registry (`buildFixRegistry`, `FixRegistry`);
+ * MSAW lite (`evaluateMsaw`, `MSAW_RED_BELOW_FT`, `msawFloorFt`).
  *
  * Import rule: `@core` depends on nothing in `src/*` except itself.
  */
@@ -53,6 +55,25 @@ export {
   emptyWorldAlerts,
   evaluateConflictAlert,
 } from "./alerts/conflictAlert";
+export type {
+  MvaChart,
+  MvaPolygon,
+  MvaVertex,
+  MsawAlert,
+  MsawInhibitGeom,
+  MsawSeverity,
+} from "./alerts/msaw";
+export {
+  DEFAULT_MSAW_INHIBIT,
+  MSAW_FAF_DISTANCE_NM,
+  MSAW_RED_BELOW_FT,
+  evaluateMsaw,
+  isMsawInhibited,
+  msawFloorFt,
+  msawSeverityForAltitude,
+  msawSeverityForCallsign,
+  polygonContains,
+} from "./alerts/msaw";
 export type { AlertTint, AlertTintTrack } from "./alerts/colors";
 export { datablockAlertTint } from "./alerts/colors";
 export type { FixRegistry, FixRegistrySource, RegisteredFix } from "./nav/fixRegistry";

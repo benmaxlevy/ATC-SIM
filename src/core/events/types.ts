@@ -5,6 +5,7 @@ import type { Command } from "../command/types";
  * Phase 1 union is session.started / command.accepted / command.rejected.
  * T03-09 adds voice.latency (wall-clock PTT metrics; not sim time).
  * T04-09 adds alert.ca.caution / alert.ca.alert / alert.ca.clear (edges only).
+ * T04-10 adds alert.msaw.caution / alert.msaw.alert / alert.msaw.clear (edges only).
  */
 export type SessionEvent =
   | {
@@ -70,4 +71,28 @@ export type SessionEvent =
       callsignB: string;
       distNm: number;
       deltaAltFt: number;
+    }
+  | {
+      type: "alert.msaw.caution";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      altFt: number;
+      floorFt: number;
+    }
+  | {
+      type: "alert.msaw.alert";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      altFt: number;
+      floorFt: number;
+    }
+  | {
+      type: "alert.msaw.clear";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      altFt: number;
+      floorFt: number;
     };

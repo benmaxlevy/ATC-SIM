@@ -1,4 +1,10 @@
-import { createAircraft, createWorld, type World } from "@core";
+import {
+  createAircraft,
+  createWorld,
+  MSAW_FAF_DISTANCE_NM,
+  type MsawInhibitGeom,
+  type World,
+} from "@core";
 import type { ArrivalSpawn, Scenario } from "./types";
 
 /** Left downwind for KDEM RWY 27 (true heading 090, north of the field). */
@@ -72,9 +78,30 @@ export function spawnArrivals(world: World, source: number | Scenario): void {
   }
 }
 
+function msawInhibitFromScenario(scenario: Scenario): MsawInhibitGeom | null {
+  if (!scenario.mva) {
+    return null;
+  }
+  const threshold = scenario.catalog.fixes.find((fix) => fix.id === "RW27");
+  const ils = scenario.catalog.approaches.find((approach) => approach.id === "ILS27");
+  return {
+    thresholdXNm: threshold?.xNm ?? 0,
+    thresholdYNm: threshold?.yNm ?? 0,
+    fafDistanceNm: ils?.fafDistanceNm ?? MSAW_FAF_DISTANCE_NM,
+  };
+}
+
+function worldFromScenario(scenario: Scenario): World {
+  return createWorld({
+    catalog: scenario.catalog,
+    mvaChart: scenario.mva,
+    msawInhibit: msawInhibitFromScenario(scenario),
+  });
+}
+
 /** Build a World whose aircraft list comes from scenario JSON, not PPI hardcoding. */
 export function createWorldFromScenario(scenario: Scenario): World {
-  const world = createWorld({ catalog: scenario.catalog });
+  const world = worldFromScenario(scenario);
   spawnArrivals(world, scenario);
   return world;
 }
@@ -87,7 +114,7 @@ export function createWorldForSession(scenario: Scenario, trafficCount: number |
   if (trafficCount === null) {
     return createWorldFromScenario(scenario);
   }
-  const world = createWorld({ catalog: scenario.catalog });
+  const world = worldFromScenario(scenario);
   spawnArrivals(world, trafficCount);
   return world;
 }

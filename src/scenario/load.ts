@@ -17,6 +17,7 @@ import type {
 } from "./types";
 import { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN } from "./types";
 import { loadCatalog } from "./procedures/loadCatalog";
+import { loadMva } from "./mva/load";
 import {
   coastlineFromVideoMaps,
   loadVideoMapSet,
@@ -322,6 +323,7 @@ export function assertScenario(s: unknown): Scenario {
     spawns: assertArray(s.spawns, "spawns").map(assertSpawn),
     arrivals: assertArrivals(s.arrivals),
     catalog,
+    mva: loadMva(icao),
   };
 }
 

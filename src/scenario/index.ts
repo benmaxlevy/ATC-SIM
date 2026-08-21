@@ -4,7 +4,7 @@
  * Legal now: KDEM JSON stub (`loadKdem`, `assertScenario`), Scenario types
  * including trainer-authored MAPS / video-map geometry from `video-maps/<ICAO>/`
  * (Not OSM / tiles), facility procedure catalog (`loadCatalog`, `data/<icao>/`),
- * and `createWorldFromScenario` (6 explicit arrivals including DAL123 at heading
+ * trainer MVA (`loadMva`, `data/<icao>-mva.json`), and `createWorldFromScenario` (6 explicit arrivals including DAL123 at heading
  * 100). Bench: `spawnArrivals(world, n)` / `?traffic=30` places n jets on a
  * downwind arc; default student scenario stays 4–8.
  *
@@ -41,6 +41,9 @@ export { catalogDctIds } from "./procedures/types";
 export { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN } from "./types";
 export { assertScenario, loadKdem } from "./load";
 export { loadCatalog, parseCatalogFiles } from "./procedures/loadCatalog";
+export type { MvaChart, MvaPolygon, MvaVertex, MsawInhibitGeom } from "./mva/types";
+export { parseMvaChart } from "./mva/parse";
+export { loadMva, mvaFileKey } from "./mva/load";
 export { loadVideoMapSet } from "./loadVideoMaps";
 export { createWorldForSession, createWorldFromScenario, spawnArrivals } from "./spawn";
 export { parseTrafficCount } from "./trafficQuery";

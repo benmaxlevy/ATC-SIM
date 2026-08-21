@@ -2,8 +2,7 @@
  * Datablock / target tint priority (phase 4 README):
  * `CA alert > MSAW alert > CA caution > MSAW caution > ownership`.
  *
- * MSAW slots are here so T04-10 can plug in without renaming. This ticket
- * does not evaluate MSAW.
+ * Scope maps this to paint colors; it must not recompute CA or MSAW.
  */
 
 export type AlertTint = "ca-alert" | "msaw-alert" | "ca-caution" | "msaw-caution" | null;

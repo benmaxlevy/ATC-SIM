@@ -4,6 +4,9 @@ import { normalizeHeadingDeg } from "./geo/coords";
 /**
  * Assigned heading / altitude / speed / route. The pilot agent is the only
  * module that may change this from a Command; this module only defines data.
+ *
+ * `lateral` / `vertical` are optional stubs for T04-10 MSAW inhibit.
+ * T04-03/05/06 fill real FMS fly-through; this ticket only reads `type`.
  */
 export interface Intent {
   assignedHeadingDeg: number;
@@ -12,6 +15,17 @@ export interface Intent {
   assignedSpeedKt: number;
   /** Phase 1: parsed but not flown. */
   clearedApproachId: string | null;
+  /**
+   * Lateral mode. MSAW inhibit keys on `LOC` | `LANDING` inside FAF.
+   * `HEADING` | `DIRECT` | `PROCEDURE` | `MISSED` never inhibit.
+   * Omit until T04-03/05 set a real mode (treated as heading).
+   */
+  lateral?: { type: string };
+  /**
+   * Vertical mode. MSAW inhibit keys on `GS` inside FAF.
+   * Omit until T04-06 (treated as assigned altitude).
+   */
+  vertical?: { type: string };
 }
 
 /**
