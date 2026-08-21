@@ -10,14 +10,14 @@
 import type { Command, Instruction, ParseStage } from "@core";
 import type { PttCaptureEvent, PttUpResult } from "./capture/ptt-controller";
 import { SpeechNotAvailableError } from "./errors";
-import { markPttUp, recordAudioStart, recordTranscriptLatency } from "./metrics";
+import { markPttUp, recordAudioStart, recordSttConfidence, recordTranscriptLatency } from "./metrics";
 import type { VoiceUtteranceMetrics } from "./metrics";
 import { createReadbackPlayer, type ReadbackPlayer } from "./playback/readback-player";
 import { TransmitGate, type TransmitGateEvent } from "./playback/transmit-gate";
 import type { AudioClip, SpeechPort, Transcript } from "./types";
 import type { VoiceStatusEvent } from "./voice-error-codes";
 
-/** Below this, do not parse (T03-08 owns the “say again” copy). Overridable for T03-10. */
+/** Named default for the settings slider / logs. T03-15: does not skip parse. */
 export const DEFAULT_CONFIDENCE_THRESHOLD = 0.55;
 
 /** Default Piper voice id for `http` TTS. Settings (T03-10) may override. */
@@ -73,7 +73,10 @@ export interface VoiceLoopOptions {
   getSelectedCallsign: () => string | null;
   getIssuedAtSimMs?: () => number;
   now?: () => number;
-  /** Default {@link DEFAULT_CONFIDENCE_THRESHOLD}. */
+  /**
+   * Informational / future use after T03-15. Does not skip parseCommand.
+   * Default {@link DEFAULT_CONFIDENCE_THRESHOLD} for the settings slider only.
+   */
   confidenceThreshold?: number;
   /** Default false until T03-14/settings. */
   pathC?: boolean;
@@ -109,6 +112,10 @@ export interface VoiceLoop {
    * Caller disposes the previous port after a successful swap.
    */
   setSpeechPort(port: SpeechPort): boolean;
+  /**
+   * Informational / future use (T03-15). Does not skip parseCommand.
+   * Settings persist the slider in prefs; the coordinator never gates on it.
+   */
   setConfidenceThreshold(value: number): void;
   /**
    * Speak an already-accepted pilot readback (typed command line or voice).
@@ -174,7 +181,6 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly getSelectedCallsign: () => string | null;
   private readonly getIssuedAtSimMs: () => number;
   private readonly now: () => number;
-  private confidenceThreshold: number;
   private readonly pathC: boolean;
   private readonly setTransmitLocked: (locked: boolean) => void;
   private readonly onStatus?: (event: VoiceStatusEvent | null) => void;
@@ -192,7 +198,6 @@ class VoiceLoopImpl implements VoiceLoop {
     this.getSelectedCallsign = options.getSelectedCallsign;
     this.getIssuedAtSimMs = options.getIssuedAtSimMs ?? (() => 0);
     this.now = options.now ?? defaultNow;
-    this.confidenceThreshold = options.confidenceThreshold ?? DEFAULT_CONFIDENCE_THRESHOLD;
     this.pathC = options.pathC ?? false;
     this.setTransmitLocked = options.setTransmitLocked ?? (() => {});
     this.onStatus = options.onStatus;
@@ -227,11 +232,8 @@ class VoiceLoopImpl implements VoiceLoop {
     return true;
   }
 
-  setConfidenceThreshold(value: number): void {
-    if (!Number.isFinite(value)) {
-      return;
-    }
-    this.confidenceThreshold = Math.min(1, Math.max(0, value));
+  setConfidenceThreshold(_value: number): void {
+    // Slider persists in settings prefs only. Must not restore the T03-08 parse gate.
   }
 
   async playReadback(readback: string, callsign?: string | null): Promise<void> {
@@ -350,17 +352,11 @@ class VoiceLoopImpl implements VoiceLoop {
       return;
     }
     recordTranscriptLatency(metrics, this.now());
+    recordSttConfidence(metrics, transcript.confidence);
     this.emitMetrics();
 
-    if (transcript.confidence < this.confidenceThreshold) {
-      this.emitStatus({
-        code: "low_confidence",
-        confidence: transcript.confidence,
-        sourceText: transcript.text,
-      });
-      return;
-    }
-
+    // R01 SAY AGAIN is unreadable radio; T03-15 does not skip parse on low ASR confidence.
+    // Trainer delta: Transcript.confidence is an ASR score, not unreadable radio.
     const parsed = await this.parseCommand(transcript.text, {
       source: "voice",
       selectedCallsign: this.getSelectedCallsign(),

@@ -160,9 +160,10 @@ test("AC3 — typed command line H270 is still source text", async () => {
 test("AC4 — NullSpeechPort transcribe throw does not dispatch and does not escape", async () => {
   const dispatched: Command[] = [];
   const statuses: Array<VoiceLoopStatus | null> = [];
+  const parseSpy: ParseCommandFn = vi.fn(parseCommand);
   const loop = createVoiceLoop({
     speechPort: new NullSpeechPort(),
-    parseCommand,
+    parseCommand: parseSpy,
     dispatchCommand: (command) => {
       dispatched.push(command);
     },
@@ -173,19 +174,60 @@ test("AC4 — NullSpeechPort transcribe throw does not dispatch and does not esc
   await expect(
     loop.handlePttEvent({ type: "ptt-up", result: { kind: "clip", clip: nonEmptyClip() } }),
   ).resolves.toBeUndefined();
+  expect(parseSpy).not.toHaveBeenCalled();
   expect(dispatched).toEqual([]);
   expect(statusCodes(statuses)).toEqual(["voice_backend_unavailable"]);
   expect(loop.inFlight).toBe(false);
 });
 
-test("AC1 — confidence 0.5 does not parse or dispatch (T03-08)", async () => {
+test("AC1 — confidence 0.5 parseable heading dispatches and moves the aircraft (T03-15)", async () => {
+  const parseSpy: ParseCommandFn = vi.fn(parseCommand);
+  const dispatched: Command[] = [];
+  const statuses: Array<VoiceLoopStatus | null> = [];
+  const dal = sample("DAL123");
+  const world = createWorld({ aircraft: [dal], selectedAircraftId: dal.id, simTimeMs: 400 });
+  const log = new SessionLog();
+  const loop = createVoiceLoop({
+    speechPort: fakePort("turn left heading two seven zero", { confidence: 0.5 }),
+    parseCommand: parseSpy,
+    dispatchCommand: (command) => {
+      dispatched.push(command);
+      return handleRadioCommand(world, command, log);
+    },
+    getSelectedCallsign: () => "DAL123",
+    onStatus: (reason) => statuses.push(reason),
+  });
+
+  await loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  expect(parseSpy).toHaveBeenCalledTimes(1);
+  expect(parseSpy).toHaveBeenCalledWith("turn left heading two seven zero", {
+    source: "voice",
+    selectedCallsign: "DAL123",
+    pathC: false,
+  });
+  expect(dispatched).toHaveLength(1);
+  expect(dispatched[0]?.source).toBe("voice");
+  expect(dispatched[0]?.instructions).toEqual([
+    { type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" },
+  ]);
+  expect(dal.intent.assignedHeadingDeg).toBe(270);
+  expect(dal.intent.turn).toBe("LEFT");
+  expect(statusCodes(statuses)).not.toContain("low_confidence");
+  expect(loop.lastUtteranceMetrics?.sttConfidence).toBe(0.5);
+});
+
+test("AC2 — garbage at confidence 0.5 still parse_miss with no dispatch (T03-15)", async () => {
   const parseSpy: ParseCommandFn = vi.fn(parseCommand);
   const dispatched: Command[] = [];
   const statuses: Array<VoiceLoopStatus | null> = [];
   const dal = sample("DAL123");
   const intentBefore = { ...dal.intent };
   const loop = createVoiceLoop({
-    speechPort: fakePort("turn left heading two seven zero", { confidence: 0.5 }),
+    speechPort: fakePort("pizza the runway", { confidence: 0.5 }),
     parseCommand: parseSpy,
     dispatchCommand: (command) => {
       dispatched.push(command);
@@ -199,14 +241,20 @@ test("AC1 — confidence 0.5 does not parse or dispatch (T03-08)", async () => {
     result: { kind: "clip", clip: nonEmptyClip() },
   });
 
-  expect(parseSpy).not.toHaveBeenCalled();
+  expect(parseSpy).toHaveBeenCalledTimes(1);
+  expect(parseSpy).toHaveBeenCalledWith("pizza the runway", {
+    source: "voice",
+    selectedCallsign: "DAL123",
+    pathC: false,
+  });
   expect(dispatched).toEqual([]);
-  expect(statusCodes(statuses)).toEqual(["low_confidence"]);
-  expect(statuses[0]).toMatchObject({ code: "low_confidence", confidence: 0.5 });
+  expect(statusCodes(statuses)).toEqual(["parse_miss"]);
+  expect(statuses[0]).toMatchObject({ code: "parse_miss" });
   expect(dal.intent).toEqual(intentBefore);
+  expect(loop.lastUtteranceMetrics?.sttConfidence).toBe(0.5);
 });
 
-test("AC5 — confidence 0.54 does not parse or dispatch", async () => {
+test("AC5 — confidence 0.54 still parses and dispatches (T03-15 supersedes T03-02)", async () => {
   const parseSpy: ParseCommandFn = vi.fn(parseCommand);
   const dispatched: Command[] = [];
   const statuses: Array<VoiceLoopStatus | null> = [];
@@ -225,12 +273,13 @@ test("AC5 — confidence 0.54 does not parse or dispatch", async () => {
     result: { kind: "clip", clip: nonEmptyClip() },
   });
 
-  expect(parseSpy).not.toHaveBeenCalled();
-  expect(dispatched).toEqual([]);
-  expect(statusCodes(statuses)).toEqual(["low_confidence"]);
+  expect(parseSpy).toHaveBeenCalledTimes(1);
+  expect(dispatched).toHaveLength(1);
+  expect(dispatched[0]?.source).toBe("voice");
+  expect(statusCodes(statuses)).not.toContain("low_confidence");
 });
 
-test("confidence 0.55 is not below threshold and still parses", async () => {
+test("confidence 0.55 still parses (threshold is informational)", async () => {
   const parseSpy: ParseCommandFn = vi.fn(parseCommand);
   const dispatched: Command[] = [];
   const loop = createVoiceLoop({
@@ -252,13 +301,52 @@ test("confidence 0.55 is not below threshold and still parses", async () => {
   expect(dispatched[0]?.source).toBe("voice");
 });
 
+test("AC7 — setConfidenceThreshold(1) does not restore a parse skip", async () => {
+  const parseSpy: ParseCommandFn = vi.fn(parseCommand);
+  const dispatched: Command[] = [];
+  const loop = createVoiceLoop({
+    speechPort: fakePort("turn left heading two seven zero", { confidence: 0.5 }),
+    parseCommand: parseSpy,
+    dispatchCommand: (command) => {
+      dispatched.push(command);
+    },
+    getSelectedCallsign: () => "DAL123",
+    confidenceThreshold: 1,
+  });
+  loop.setConfidenceThreshold(1);
+
+  await loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  expect(parseSpy).toHaveBeenCalledTimes(1);
+  expect(dispatched).toHaveLength(1);
+  expect(dispatched[0]?.instructions).toEqual([
+    { type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" },
+  ]);
+});
+
+test("AC5 — voice-loop.ts has no confidence early-return gate (T03-15)", () => {
+  const sources = import.meta.glob("./voice-loop.ts", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  const src = sources["./voice-loop.ts"]!;
+  expect(src).toBeDefined();
+  expect(src).not.toMatch(/if\s*\(\s*transcript\.confidence\s*</);
+  expect(src).toMatch(/R01 SAY AGAIN is unreadable radio/);
+});
+
 test("empty clip does not call transcribe", async () => {
   const port = fakePort("ignored");
+  const parseSpy: ParseCommandFn = vi.fn(parseCommand);
   const dispatched: Command[] = [];
   const statuses: Array<VoiceLoopStatus | null> = [];
   const loop = createVoiceLoop({
     speechPort: port,
-    parseCommand,
+    parseCommand: parseSpy,
     dispatchCommand: (command) => {
       dispatched.push(command);
     },
@@ -268,8 +356,10 @@ test("empty clip does not call transcribe", async () => {
 
   await loop.handlePttEvent({ type: "ptt-up", result: { kind: "empty" } });
   expect(port.transcribeCalls).toBe(0);
+  expect(parseSpy).not.toHaveBeenCalled();
   expect(dispatched).toEqual([]);
   expect(statusCodes(statuses)).toEqual(["empty_clip"]);
+  expect(loop.lastUtteranceMetrics?.sttConfidence).toBeNull();
 });
 
 test("transcribe is not called while another is in flight", async () => {
@@ -822,11 +912,12 @@ test("T03-08 — generic transcribe throw is stt_failed with no dispatch", async
       return nonEmptyClip();
     },
   };
+  const parseSpy: ParseCommandFn = vi.fn(parseCommand);
   const dispatched: Command[] = [];
   const statuses: Array<VoiceLoopStatus | null> = [];
   const loop = createVoiceLoop({
     speechPort: port,
-    parseCommand,
+    parseCommand: parseSpy,
     dispatchCommand: (command) => {
       dispatched.push(command);
     },
@@ -837,6 +928,7 @@ test("T03-08 — generic transcribe throw is stt_failed with no dispatch", async
   await expect(
     loop.handlePttEvent({ type: "ptt-up", result: { kind: "clip", clip: nonEmptyClip() } }),
   ).resolves.toBeUndefined();
+  expect(parseSpy).not.toHaveBeenCalled();
   expect(dispatched).toEqual([]);
   expect(statusCodes(statuses)).toEqual(["stt_failed"]);
 });

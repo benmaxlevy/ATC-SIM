@@ -10,6 +10,7 @@ export const VOICE_ERROR_CODES = [
   "empty_clip",
   "stt_failed",
   "voice_backend_unavailable",
+  /** Unused after T03-15 — ASR score is logged, not a parse skip / “Say again”. */
   "low_confidence",
   "parse_miss",
   "tts_failed",

@@ -69,6 +69,7 @@ export {
   markTranscript,
   percentile50,
   recordAudioStart,
+  recordSttConfidence,
   recordTranscriptLatency,
   snapshot,
 } from "./metrics";

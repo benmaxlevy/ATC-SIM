@@ -149,11 +149,42 @@ test("T03-02 — NullSpeechPort PTT-up does not throw through createApp", async 
   handles.voiceLoop.dispose();
 });
 
-test("T03-08 AC1 — confidence 0.5 does not move the aircraft and logs low_confidence", async () => {
+test("T03-15 AC1 — confidence 0.5 heading moves the aircraft and is not Say again", async () => {
+  const { dal, world } = dalWorld();
+  const handles = createApp({
+    speech: fakePort("turn left heading two seven zero", { confidence: 0.5 }),
+    world,
+    ptt: createPttCaptureController({ onEvent: () => {}, attachTo: null }),
+  });
+  const lines: Array<string | null> = [];
+  const stop = handles.subscribeVoiceStatus((status) => lines.push(status));
+
+  await handles.voiceLoop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  expect(dal.intent.assignedHeadingDeg).toBe(270);
+  expect(dal.intent.turn).toBe("LEFT");
+  const accepted = handles.log.byType("command.accepted");
+  expect(accepted).toHaveLength(1);
+  expect(accepted[0]?.command.source).toBe("voice");
+  expect(accepted[0]?.command.instructions).toEqual([
+    { type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" },
+  ]);
+  expect(handles.log.byType("command.rejected")).toHaveLength(0);
+  expect(lines.some((line) => line !== null && /say again/i.test(line))).toBe(false);
+  expect(handles.log.byType("voice.latency")[0]?.sttConfidence).toBe(0.5);
+  stop();
+  handles.ptt.dispose();
+  handles.voiceLoop.dispose();
+});
+
+test("T03-15 AC2 — garbage at confidence 0.5 is parse_miss and does not move", async () => {
   const { dal, world } = dalWorld();
   const intentBefore = { ...dal.intent };
   const handles = createApp({
-    speech: fakePort("turn left heading two seven zero", { confidence: 0.5 }),
+    speech: fakePort("pizza the runway", { confidence: 0.5 }),
     world,
     ptt: createPttCaptureController({ onEvent: () => {}, attachTo: null }),
   });
@@ -169,10 +200,33 @@ test("T03-08 AC1 — confidence 0.5 does not move the aircraft and logs low_conf
   expect(handles.log.byType("command.accepted")).toHaveLength(0);
   const rejected = handles.log.byType("command.rejected");
   expect(rejected).toHaveLength(1);
-  expect(rejected[0]?.reason).toBe("low_confidence");
-  expect(rejected[0]?.sourceText).toBe("turn left heading two seven zero");
-  expect(lines).toEqual(["Say again (0.50)"]);
+  expect(rejected[0]?.reason).toBe("parse_miss");
+  expect(rejected[0]?.sourceText).toBe("pizza the runway");
+  expect(lines).toEqual(["Unable to parse"]);
+  expect(handles.log.byType("voice.latency")[0]?.sttConfidence).toBe(0.5);
   stop();
+  handles.ptt.dispose();
+  handles.voiceLoop.dispose();
+});
+
+test("T03-15 AC7 — settings confidence 1.0 does not skip a parseable 0.5 heading", async () => {
+  const { dal, world } = dalWorld();
+  const handles = createApp({
+    speech: fakePort("turn left heading two seven zero", { confidence: 0.5 }),
+    world,
+    ptt: createPttCaptureController({ onEvent: () => {}, attachTo: null }),
+  });
+  handles.speechSettings.setConfidenceThreshold(1);
+
+  await handles.voiceLoop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  expect(dal.intent.assignedHeadingDeg).toBe(270);
+  expect(dal.intent.turn).toBe("LEFT");
+  expect(handles.log.byType("command.accepted")).toHaveLength(1);
+  expect(handles.speechSettings.prefs.confidenceThreshold).toBe(1);
   handles.ptt.dispose();
   handles.voiceLoop.dispose();
 });

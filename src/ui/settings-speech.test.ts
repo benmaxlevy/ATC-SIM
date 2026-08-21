@@ -1,6 +1,7 @@
 import { expect, test, vi } from "vitest";
 import { DEFAULT_CONFIDENCE_THRESHOLD, DEFAULT_PTT_KEY, type SpeechPort } from "@speech";
 import {
+  CONFIDENCE_THRESHOLD_HELP,
   DEFAULT_BACKEND_HELP,
   HTTP_URLS_MISSING,
   PTT_BIND_HELP,
@@ -227,6 +228,11 @@ test("AC7 — web-speech copy warns about the browser vendor; no Deepgram/OpenAI
   expect(DEFAULT_BACKEND_HELP).toMatch(/never auto-selected/i);
   expect(PTT_BIND_HELP).toMatch(/backtick/i);
   expect(PTT_BIND_HELP).toMatch(/F, R, or range/i);
+});
+
+test("T03-15 — confidence slider copy is informational and does not skip parse", () => {
+  expect(CONFIDENCE_THRESHOLD_HELP).toMatch(/informational/i);
+  expect(CONFIDENCE_THRESHOLD_HELP).toMatch(/does not skip parse/i);
 });
 
 test("settings UI omits whisper-wasm, Path C, and vendor signup", () => {

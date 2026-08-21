@@ -6,6 +6,7 @@ import {
   markTranscript,
   percentile50,
   recordAudioStart,
+  recordSttConfidence,
   recordTranscriptLatency,
   snapshot,
 } from "./metrics";
@@ -16,6 +17,7 @@ test("markPttUp stores t0 with null latencies until transcript", () => {
     t0: 10,
     pttUpToTranscriptMs: null,
     pttUpToAudioStartMs: null,
+    sttConfidence: null,
   });
   recordTranscriptLatency(metrics, 55);
   expect(metrics.pttUpToTranscriptMs).toBe(45);
@@ -40,6 +42,16 @@ test("AC5 — even-length p50 is the mean of the two middle values", () => {
   expect(percentile50([9])).toBe(9);
 });
 
+test("recordSttConfidence logs ASR score without aliasing on snapshot (T03-15)", () => {
+  const metrics = markPttUp(10);
+  recordSttConfidence(metrics, 0.5);
+  expect(metrics.sttConfidence).toBe(0.5);
+  const copy = snapshot(metrics);
+  expect(copy.sttConfidence).toBe(0.5);
+  metrics.sttConfidence = 0.9;
+  expect(copy.sttConfidence).toBe(0.5);
+});
+
 test("snapshot copies utterance marks without aliasing", () => {
   const metrics = markPttUp(100);
   markTranscript(metrics, 140);
@@ -49,6 +61,7 @@ test("snapshot copies utterance marks without aliasing", () => {
     t0: 100,
     pttUpToTranscriptMs: 40,
     pttUpToAudioStartMs: 80,
+    sttConfidence: null,
   });
   expect(copy.pttUpToAudioStartMs).toBeGreaterThanOrEqual(copy.pttUpToTranscriptMs!);
   metrics.pttUpToTranscriptMs = 0;

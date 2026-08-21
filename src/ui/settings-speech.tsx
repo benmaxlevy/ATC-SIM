@@ -35,6 +35,9 @@ export const DEFAULT_BACKEND_HELP =
 export const PTT_BIND_HELP =
   "Default PTT is Left Control (hold; works while typing). Or hold the PTT button. Backtick is press/press and is ignored in the command line. Does not steal F, R, or range keys.";
 
+export const CONFIDENCE_THRESHOLD_HELP =
+  "Informational / future use. Changing this does not skip parse. Low STT confidence still compiles.";
+
 export const SPEECH_SETTINGS_WAIT = "wait";
 
 export const HTTP_URLS_MISSING = "http needs STT and TTS URLs";
@@ -264,6 +267,7 @@ export function createSpeechSettingsController(options: {
     setConfidenceThreshold(value: number): void {
       const next = clampThreshold(value);
       prefs.confidenceThreshold = next;
+      // T03-15: prefs only. Host setter must not restore a parse skip.
       options.host.setConfidenceThreshold(next);
       persist();
     },
@@ -383,6 +387,7 @@ export function SpeechSettingsPanel({ controller, speechId, onChange }: SpeechSe
               aria-label="Confidence threshold"
             />
           </label>
+          <p className="speech-settings-help">{CONFIDENCE_THRESHOLD_HELP}</p>
           <p className="speech-settings-row speech-settings-readonly">
             <span>STT URL</span>
             <span>{urls.sttConfigured ? "configured" : "missing"}</span>
