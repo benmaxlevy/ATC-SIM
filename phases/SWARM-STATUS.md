@@ -1,5 +1,24 @@
 # Swarm status
 
+## Fourth swarm started — Path C (T03-15 then T03-14)
+
+Orchestrator started **2026-08-21**. Phase 3 voice (third swarm) stays green. This run **names T03-14** (human asked). Do **not** start phase 4 or 5. Do **not** redo T03-01–13. Skip **T03-11**. Untracked `e2e/` left uncommitted.
+
+Plan: `c:\Users\Ben\.cursor\plans\path_c_llm_salvage_11c4764f.plan.md`
+
+| Key | Value |
+| --- | --- |
+| Goal | Drop STT confidence reject (always parse typed/A/B). On miss, optional local Path C `POST /parse` → schema-checked `llm_c`. |
+| LLM trigger | **Parse miss only.** Do not override a successful A/B hit. |
+| Model | **cursor-grok-4.6-high** on captain and every worker. No fast. |
+| Parse model | ~1–2B instruct GGUF in `speech-api` (not 7B). Hub weight download once. No paid LLM APIs. |
+| Path C default | **off** until `/health.parse === "ready"` |
+| Max workers | **3** (this run is sequential: docs → T03-15 → T03-14 because settings/voice-loop overlap) |
+| Merge lock | **Captain only** (`--no-ff`) |
+| Stop | No phase 4/5. No T03-11. No replacing Path A. |
+
+Waves: (0) ticket markdown T03-15 + amend T03-14 → (1) implement T03-15 → (2) implement T03-14.
+
 ## THIRD SWARM COMPLETE — phase 3 voice
 
 Phases **0 → 1 → 2 → 3** are green on `master`. Orchestrator `npm test`: **683 passed, 1 skipped**. `speech-api/` exists; boot default is **http → our speech-api** (`127.0.0.1:8090`). Web Speech is opt-in only. T03-11 and T03-14 were **not** implemented. Path C is off. No paid vendor STT/TTS/LLM. This swarm is done.
