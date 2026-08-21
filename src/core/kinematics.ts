@@ -1,0 +1,98 @@
+import type { Aircraft } from "./aircraft";
+import type { TurnDir } from "./command/types";
+
+/**
+ * Frozen kinematics (phase 1). Rate-one turn, not bank/TAS.
+ * No wind; IAS is treated as TAS (`phases/_shared/glossary.md`).
+ *
+ * PHYSICS_HZ / SIM_DT_S live in `clock.ts` — re-exported so this module is
+ * the kinematics constant surface without duplicating conflicting values.
+ */
+export { PHYSICS_HZ, SIM_DT_S } from "./clock";
+
+export const TURN_RATE_DEG_PER_S = 3;
+export const CLIMB_RATE_FT_PER_MIN = 1800;
+export const ACCEL_KT_PER_S = 1;
+
+export function normalizeHeading(deg: number): number {
+  const d = deg % 360;
+  return d < 0 ? d + 360 : d;
+}
+
+/**
+ * Signed delta in (-180, 180]; + = right / increasing heading.
+ * A 180° difference returns +180; SHORTEST still turns LEFT (see `stepAircraft`).
+ */
+export function shortestDeltaDeg(from: number, to: number): number {
+  const fromN = normalizeHeading(from);
+  const toN = normalizeHeading(to);
+  let d = toN - fromN;
+  if (d > 180) d -= 360;
+  if (d <= -180) d += 360;
+  return d;
+}
+
+/**
+ * Remaining turn in the commanded direction (0–360], and the heading sign
+ * to apply: -1 left (decreasing), +1 right (increasing).
+ * LEFT/RIGHT take that way even when it is the long arc — not shortestDelta.
+ * SHORTEST uses the smaller arc; exactly 180° is LEFT.
+ */
+function remainingTurn(
+  from: number,
+  to: number,
+  turn: TurnDir,
+): { remainingDeg: number; sign: -1 | 0 | 1 } {
+  if (turn === "LEFT") {
+    const remainingDeg = (from - to + 360) % 360;
+    return remainingDeg === 0 ? { remainingDeg: 0, sign: 0 } : { remainingDeg, sign: -1 };
+  }
+  if (turn === "RIGHT") {
+    const remainingDeg = (to - from + 360) % 360;
+    return remainingDeg === 0 ? { remainingDeg: 0, sign: 0 } : { remainingDeg, sign: 1 };
+  }
+  const delta = shortestDeltaDeg(from, to);
+  if (delta === 0) return { remainingDeg: 0, sign: 0 };
+  if (Math.abs(delta) === 180) {
+    return { remainingDeg: 180, sign: -1 };
+  }
+  return {
+    remainingDeg: Math.abs(delta),
+    sign: delta > 0 ? 1 : -1,
+  };
+}
+
+function toward(current: number, assigned: number, maxDelta: number): number {
+  const remaining = assigned - current;
+  if (Math.abs(remaining) <= maxDelta) {
+    return assigned;
+  }
+  return current + Math.sign(remaining) * maxDelta;
+}
+
+/**
+ * Move one aircraft toward its intent for `dtS` sim seconds.
+ * Heading and speed are updated first; position uses those post-update values
+ * (heading 0 = north, +x east, +y north).
+ */
+export function stepAircraft(ac: Aircraft, dtS: number): void {
+  const headingFrom = normalizeHeading(ac.headingDeg);
+  const headingTo = normalizeHeading(ac.intent.assignedHeadingDeg);
+  const { remainingDeg, sign } = remainingTurn(headingFrom, headingTo, ac.intent.turn);
+  const maxTurnDeg = TURN_RATE_DEG_PER_S * dtS;
+  if (remainingDeg <= maxTurnDeg) {
+    ac.headingDeg = headingTo;
+  } else {
+    ac.headingDeg = normalizeHeading(headingFrom + sign * maxTurnDeg);
+  }
+
+  const maxAltFt = (CLIMB_RATE_FT_PER_MIN / 60) * dtS;
+  ac.altitudeFt = toward(ac.altitudeFt, ac.intent.assignedAltitudeFt, maxAltFt);
+
+  const maxSpeedKt = ACCEL_KT_PER_S * dtS;
+  ac.speedKt = Math.max(0, toward(ac.speedKt, ac.intent.assignedSpeedKt, maxSpeedKt));
+
+  const headingRad = (ac.headingDeg * Math.PI) / 180;
+  ac.xNm += ac.speedKt * Math.sin(headingRad) * (dtS / 3600);
+  ac.yNm += ac.speedKt * Math.cos(headingRad) * (dtS / 3600);
+}

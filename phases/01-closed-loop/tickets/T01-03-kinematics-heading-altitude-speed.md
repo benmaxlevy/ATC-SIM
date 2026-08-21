@@ -71,13 +71,13 @@ Straight-and-level regression: default intent (T01-02) ⇒ after 10 sim seconds,
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Level flight: aircraft at heading 90, 8000 ft, 220 kt, intent = present, after 10 sim seconds (200 steps): heading/alt/speed unchanged; `xNm` increased by `220 * 10 / 3600` NM (±0.001); `yNm` unchanged (±0.001).
-- [ ] **AC2 —** Heading SHORTEST: start 000, assigned 090, after **2.0** sim seconds heading is **6.0°** (±0.05). After **30** sim seconds heading is **90** (captured).
-- [ ] **AC3 —** Heading LEFT vs RIGHT: start 000, assigned 270: `LEFT` decreases toward 270 (after 2 s heading ≈ 354); `RIGHT` increases (after 2 s heading ≈ 6). `SHORTEST` from 000 to 270 turns **left** (shorter).
-- [ ] **AC4 —** 180° tie: start 000, assigned 180, `SHORTEST` → after 1 s heading is **357** (left), not 3.
-- [ ] **AC5 —** Altitude: 8000 assigned 6000, after 60 sim seconds altitude decreased by 1800 ft → 6200 (±1 ft). After enough time, snaps to 6000 and stays.
-- [ ] **AC6 —** Speed: 220 assigned 210, after 5 sim seconds speed is 215 (±0.01). After 10 s, 210 and stays.
-- [ ] **AC7 —** Vitest file in `src/core` (DOM-free) covers AC1–AC6 happy paths. `npm test` green.
+- [x] **AC1 —** Level flight: aircraft at heading 90, 8000 ft, 220 kt, intent = present, after 10 sim seconds (200 steps): heading/alt/speed unchanged; `xNm` increased by `220 * 10 / 3600` NM (±0.001); `yNm` unchanged (±0.001).
+- [x] **AC2 —** Heading SHORTEST: start 000, assigned 090, after **2.0** sim seconds heading is **6.0°** (±0.05). After **30** sim seconds heading is **90** (captured).
+- [x] **AC3 —** Heading LEFT vs RIGHT: start 000, assigned 270: `LEFT` decreases toward 270 (after 2 s heading ≈ 354); `RIGHT` increases (after 2 s heading ≈ 6). `SHORTEST` from 000 to 270 turns **left** (shorter).
+- [x] **AC4 —** 180° tie: start 000, assigned 180, `SHORTEST` → after 1 s heading is **357** (left), not 3.
+- [x] **AC5 —** Altitude: 8000 assigned 6000, after 60 sim seconds altitude decreased by 1800 ft → 6200 (±1 ft). After enough time, snaps to 6000 and stays.
+- [x] **AC6 —** Speed: 220 assigned 210, after 5 sim seconds speed is 215 (±0.01). After 10 s, 210 and stays.
+- [x] **AC7 —** Vitest file in `src/core` (DOM-free) covers AC1–AC6 happy paths. `npm test` green.
 
 ## Test plan
 

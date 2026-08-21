@@ -1,5 +1,6 @@
 import type { Aircraft } from "./aircraft";
 import { MAX_PHYSICS_STEPS_PER_FRAME, SIM_DT_S } from "./clock";
+import { stepAircraft } from "./kinematics";
 
 export type SimRate = 1 | 2;
 
@@ -26,13 +27,23 @@ export function createWorld(partial?: Partial<World>): World {
 }
 
 /**
- * Advance sim time by `dtS` seconds. Mutates `world` in place and returns it
- * (single World; no Redux). Does not throw on non-finite `dtS`.
+ * Advance sim time by `dtS` seconds, then move each aircraft toward intent.
+ *
+ * Order is frozen: bump `simTimeMs` first, then kinematics. IDENT flash expiry
+ * uses the post-bump time. Mutates `world` in place and returns it (single
+ * World; no Redux). Does not throw on non-finite `dtS`.
  * This is the only function that increments `simTimeMs`.
  */
 export function stepWorld(world: World, dtS: number): World {
-  if (Number.isFinite(dtS)) {
-    world.simTimeMs += dtS * 1000;
+  if (!Number.isFinite(dtS)) {
+    return world;
+  }
+  world.simTimeMs += dtS * 1000;
+  for (const ac of world.aircraft) {
+    stepAircraft(ac, dtS);
+    if (ac.identUntilSimMs > 0 && world.simTimeMs >= ac.identUntilSimMs) {
+      ac.identUntilSimMs = 0;
+    }
   }
   return world;
 }
