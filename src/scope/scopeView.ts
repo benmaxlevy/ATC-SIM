@@ -60,7 +60,7 @@ export interface ScopeView {
   altitudeFilter: AltitudeFilter;
   /** Scope-focus `F` chord. Idle when not entering hundreds. */
   filterEntry: FilterEntry;
-  /** Per-track display state (history, IDENT flash, datablock, leader). Keyed by aircraft id. */
+  /** Per-track display state (history, IDENT flash, datablock, leader, ownership). Keyed by aircraft id. */
   tracks: Map<string, TrackDisplay>;
   /** Scope-focus letter chord (`L` leader; T02-06 `F` filter). Null when idle. */
   pendingChord: ScopeChord | null;

@@ -10,12 +10,13 @@
  * GS along ground track, default off, F7; CRC may offer extra minute
  * presets / turn curves — we do not. Extra CRC presets omitted.
  * **Altitude filter** (FILTER readout): out of band keep target + history,
- * suppress datablock / leader / PTL. Not OSM / tiles (R12). Not a sprite.
- * Not a label. Not NAS STARS.
+ * suppress datablock / leader / PTL. F3 initiate-track color stub (unowned
+ * white / owned green); selected yellow box independent of ownership.
+ * Not OSM / tiles (R12). Not a sprite. Not a label. Not NAS STARS.
  *
  * Draw order (phase README): background, rings, coastline, runway, localizer,
- * history, PTL, targets, leader lines, datablocks. Maps rebuild on range/center/resize/layer
- * toggle, not every rAF.
+ * history, PTL, targets, leader lines, datablocks, selection box. Maps rebuild
+ * on range/center/resize/layer toggle, not every rAF.
  */
 
 import type { Aircraft, World } from "@core";
@@ -28,9 +29,10 @@ import { reuseOrBuildMapCache, toMapCacheInput, type MapCache } from "./mapLayer
 import { PALETTE } from "./palette";
 import { PTL_MINUTES, drawPredictedTrackLine, ptlEndpoint, shouldDrawPtl } from "./ptl";
 import type { ScopeView } from "./scopeView";
+import { trackPaintColor } from "./ownership";
 import {
-  UNOWNED_TRACK_COLOR,
   drawHistoryDot,
+  drawSelectionBox,
   drawTargetSymbol,
   historyDotColor,
   targetStrokeColor,
@@ -158,11 +160,14 @@ function trackLeaderDir(view: ScopeView, aircraftId: string): LeaderDir {
   return view.tracks.get(aircraftId)?.leaderDir ?? DEFAULT_LEADER_DIR;
 }
 
+function trackOwnership(view: ScopeView, aircraftId: string) {
+  return view.tracks.get(aircraftId)?.ownership ?? "unowned";
+}
+
 function trackColor(view: ScopeView, world: World, ac: Aircraft): string {
-  const selected = ac.id === world.selectedAircraftId;
   const td = view.tracks.get(ac.id);
   const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
-  return targetStrokeColor(selected, identActive);
+  return targetStrokeColor(trackOwnership(view, ac.id), identActive);
 }
 
 function drawDatablock(
@@ -176,7 +181,7 @@ function drawDatablock(
   const lines = linesForDatablock(ac, trackDatablockMode(view, ac.id), view.modeCVisible);
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, DATABLOCK_LINE_HEIGHT_PX);
   const origin = datablockTopLeft(trackLeaderDir(view, ac.id), metrics);
-  ctx.fillStyle = color;
+  ctx.fillStyle = trackPaintColor(trackOwnership(view, ac.id));
   ctx.fillText(lines.line1, targetX + origin.x, targetY + origin.y);
   if (lines.line2 != null) {
     ctx.fillText(lines.line2, targetX + origin.x, targetY + origin.y + DATABLOCK_LINE_HEIGHT_PX);
@@ -189,14 +194,13 @@ function drawTracks(
   view: ScopeView,
   size: ScopeViewSize,
 ): void {
-  const historyColor = historyDotColor(UNOWNED_TRACK_COLOR);
-
   if (view.historyEnabled) {
     for (const ac of world.aircraft) {
       const td = view.tracks.get(ac.id);
       if (!td) {
         continue;
       }
+      const historyColor = historyDotColor(trackPaintColor(td.ownership));
       for (let i = 0; i < td.history.eastNm.length; i += 1) {
         const p = nmToScreen(td.history.eastNm[i]!, td.history.northNm[i]!, view.camera, size);
         drawHistoryDot(ctx, p.x, p.y, historyColor);
@@ -238,6 +242,14 @@ function drawTracks(
     const color = trackColor(view, world, ac);
     drawDatablock(ctx, ac, p.x, p.y, view, color);
   }
+
+  for (const ac of world.aircraft) {
+    if (ac.id !== world.selectedAircraftId) {
+      continue;
+    }
+    const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
+    drawSelectionBox(ctx, p.x, p.y);
+  }
 }
 
 /**
@@ -259,16 +271,16 @@ function drawPredictedTrackLines(
     const end = ptlEndpoint(ac.xNm, ac.yNm, ac.headingDeg, ac.speedKt, PTL_MINUTES);
     const from = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
     const to = nmToScreen(end.eastNm, end.northNm, view.camera, size);
-    const selected = ac.id === world.selectedAircraftId;
     const td = view.tracks.get(ac.id);
     const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
+    const ownership = td?.ownership ?? "unowned";
     drawPredictedTrackLine(
       ctx,
       from.x,
       from.y,
       to.x,
       to.y,
-      targetStrokeColor(selected, identActive),
+      targetStrokeColor(ownership, identActive),
     );
   }
 }

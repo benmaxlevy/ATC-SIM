@@ -2,11 +2,13 @@ import { expect, test } from "vitest";
 import {
   HISTORY_BRIGHTNESS,
   HEADING_TICK_PX,
+  SELECTION_BOX_PAD_PX,
   TARGET_SIZE_PX,
   UNOWNED_TRACK_COLOR,
   headingTickOffset,
   historyDotColor,
   scaleHexColor,
+  selectionBoxRect,
   targetStrokeColor,
 } from "./targetSymbol";
 
@@ -33,10 +35,20 @@ test("history color is 40–70% of unowned track color", () => {
   expect(ch / src).toBeLessThanOrEqual(0.7);
 });
 
-test("IDENT or selected uses yellow stroke; otherwise unowned white", () => {
-  expect(targetStrokeColor(false, false)).toBe("#DDDDDD");
-  expect(targetStrokeColor(true, false)).toBe("#FFFF00");
-  expect(targetStrokeColor(false, true)).toBe("#FFFF00");
+test("IDENT uses yellow stroke; otherwise ownership color (selection is a separate box)", () => {
+  expect(targetStrokeColor("unowned", false)).toBe("#DDDDDD");
+  expect(targetStrokeColor("owned", false)).toBe("#00FF66");
+  expect(targetStrokeColor("owned", true)).toBe("#FFFF00");
+  expect(targetStrokeColor("unowned", true)).toBe("#FFFF00");
+});
+
+test("selection box is 1 px yellow padding around the 6 px target", () => {
+  expect(SELECTION_BOX_PAD_PX).toBe(2);
+  const box = selectionBoxRect(100, 200);
+  expect(box.w).toBe(TARGET_SIZE_PX + 4);
+  expect(box.h).toBe(TARGET_SIZE_PX + 4);
+  expect(box.x).toBe(100 - TARGET_SIZE_PX / 2 - 2);
+  expect(box.y).toBe(200 - TARGET_SIZE_PX / 2 - 2);
 });
 
 test("targetSymbol comments say target, not sprite", () => {

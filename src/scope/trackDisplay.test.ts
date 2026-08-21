@@ -70,6 +70,7 @@ test("new tracks default to a full datablock", () => {
   syncTrackDisplays(tracks, world);
   expect(tracks.get("ac-fdb")!.datablockMode).toBe("full");
   expect(tracks.get("ac-fdb")!.leaderDir).toBe(8);
+  expect(tracks.get("ac-fdb")!.ownership).toBe("unowned");
 });
 
 test("T toggles the selected track only; with no selection it toggles all", () => {

@@ -10,7 +10,7 @@ import {
   parseDigitalMap,
 } from "@scope";
 import { NullSpeechPort } from "@speech";
-import { SIM_HUD_ID, Shell, formatSimHud } from "@ui";
+import { SIM_HUD_ID, Shell, formatSimHud, syncStripCallsignColors } from "@ui";
 import { bootSession } from "./app/boot-session";
 import { createApp } from "./app/create-app";
 import "./index.css";
@@ -48,6 +48,7 @@ function paintCurrentPpi(): void {
   if (canvas instanceof HTMLCanvasElement) {
     paintPpi(canvas, handles.world, scopeView);
   }
+  syncStripCallsignColors(scopeView.tracks);
 }
 
 function onFrame(nowMs: number): void {

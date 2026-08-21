@@ -70,3 +70,28 @@ test("strip click focuses PPI; canvas is focusable", () => {
   expect(ui).toMatch(/el\.focus\(\)/);
   expect(placeholder).toMatch(/tabIndex=\{0\}/);
 });
+
+test("T02-08 — strip callsign tints with ownership color; help is color-only not NAS", () => {
+  const sources = import.meta.glob("./*.{ts,tsx}", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  const ui = sources["./FlightStrips.tsx"]!;
+  const shell = sources["./shell.tsx"]!;
+  expect(ui).toMatch(/trackPaintColor/);
+  expect(ui).toMatch(/data-strip-aircraft-id/);
+  expect(ui).toMatch(/tracks\.get\(strip\.aircraftId\)\?\.ownership/);
+  expect(ui).toMatch(/syncStripCallsignColors/);
+  expect(shell).toMatch(/tracks=\{scopeView\.tracks\}/);
+  expect(shell).toMatch(/INITIATE_TRACK_HELP/);
+  expect(shell).toMatch(/DROP_TRACK_HELP/);
+  expect(shell.toLowerCase()).not.toMatch(/lock-?on/);
+  expect(shell.toLowerCase()).not.toMatch(/\bclaim\b/);
+  const mains = import.meta.glob("../main.tsx", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  expect(mains["../main.tsx"]).toMatch(/syncStripCallsignColors\(scopeView\.tracks\)/);
+});

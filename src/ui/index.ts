@@ -15,7 +15,7 @@
  * import `@ui`.
  */
 export { Shell, Shell as App } from "./shell";
-export { FlightStrips, focusPpi } from "./FlightStrips";
+export { FlightStrips, focusPpi, syncStripCallsignColors } from "./FlightStrips";
 export {
   STRIP_BAY_EMPTY,
   STRIP_BAY_HEADING,

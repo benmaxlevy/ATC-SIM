@@ -1,14 +1,16 @@
 /**
  * Analog: CRC STARS track display state (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: per-track history buffer, full/limited datablock mode,
- * L1–L9 **leader** direction (no length menu), and display-only IDENT flash
- * live here, keyed by aircraft id — never on Aircraft kinematics. Not NAS STARS.
+ * L1–L9 **leader** direction (no length menu), ownership color stub (T02-08
+ * F3/F4), and display-only IDENT flash live here, keyed by aircraft id —
+ * never on Aircraft kinematics. Not NAS STARS.
  */
 
 import type { Aircraft, World } from "@core";
 import type { DatablockMode } from "./datablock";
 import { createHistoryBuf, maybeSampleHistory, type HistoryBuf } from "./history";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
+import { applyDropTrack, applyInitiateTrack, NO_SEL_HINT, type TrackOwnership } from "./ownership";
 
 /** Display IDENT stroke pulse (~2 s sim). Aircraft flag may last longer (phase 1). */
 export const IDENT_DISPLAY_FLASH_MS = 2000;
@@ -23,6 +25,8 @@ export interface TrackDisplay {
   datablockMode: DatablockMode;
   /** Numpad compass L1–L9. Default L8 (north). */
   leaderDir: LeaderDir;
+  /** Spawn unowned (white). F3 → owned (green). F4 → unowned. Color only. */
+  ownership: TrackOwnership;
 }
 
 export function createTrackDisplay(): TrackDisplay {
@@ -32,6 +36,7 @@ export function createTrackDisplay(): TrackDisplay {
     lastAircraftIdentDeadlineMs: 0,
     datablockMode: "full",
     leaderDir: DEFAULT_LEADER_DIR,
+    ownership: "unowned",
   };
 }
 
@@ -42,6 +47,48 @@ function ensureTrackDisplay(tracks: Map<string, TrackDisplay>, id: string): Trac
     tracks.set(id, td);
   }
   return td;
+}
+
+function selectedTrackId(world: World): string | null {
+  const id = world.selectedAircraftId;
+  if (!id || !world.aircraft.some((ac) => ac.id === id)) {
+    return null;
+  }
+  return id;
+}
+
+/**
+ * F3 always-on: selected unowned → owned; already owned stays owned.
+ * No selection: no-op. Display state only — never a Command.
+ */
+export function applyInitiateTrackToSelection(
+  tracks: Map<string, TrackDisplay>,
+  world: World,
+): { applied: boolean; hint: string | null } {
+  const id = selectedTrackId(world);
+  if (!id) {
+    return { applied: false, hint: NO_SEL_HINT };
+  }
+  const td = ensureTrackDisplay(tracks, id);
+  td.ownership = applyInitiateTrack(td.ownership);
+  return { applied: true, hint: null };
+}
+
+/**
+ * F4 always-on: selected owned → unowned. Unowned stays unowned.
+ * Trainer sugar, not CRC terminate. Display state only — never a Command.
+ */
+export function applyDropTrackToSelection(
+  tracks: Map<string, TrackDisplay>,
+  world: World,
+): { applied: boolean; hint: string | null } {
+  const id = selectedTrackId(world);
+  if (!id) {
+    return { applied: false, hint: NO_SEL_HINT };
+  }
+  const td = ensureTrackDisplay(tracks, id);
+  td.ownership = applyDropTrack(td.ownership);
+  return { applied: true, hint: null };
 }
 
 function flipDatablockMode(mode: DatablockMode): DatablockMode {

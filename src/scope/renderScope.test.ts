@@ -11,6 +11,7 @@ import { createScopeView } from "./scopeView";
 import { formatFilterReadout } from "./altitudeFilter";
 import {
   SELECTED_ACCENT_COLOR,
+  SELECTION_BOX_PAD_PX,
   TARGET_SIZE_PX,
   UNOWNED_TRACK_COLOR,
   HISTORY_DOT_SIZE_PX,
@@ -532,11 +533,13 @@ test("AC2 — 6000 ft outside 070-090 keeps target+history, loses datablock; 800
 
   const size = { widthPx: 800, heightPx: 800 };
   const lowPx = nmToScreen(low.xNm, low.yNm, view.camera, size);
+  const boxPx = TARGET_SIZE_PX + SELECTION_BOX_PAD_PX * 2;
   const selected = strokeRects.filter(
     (r) =>
-      r.w === TARGET_SIZE_PX &&
+      r.w === boxPx &&
+      r.h === boxPx &&
       r.strokeStyle === SELECTED_ACCENT_COLOR &&
-      Math.abs(r.x + TARGET_SIZE_PX / 2 - lowPx.x) <= 2,
+      Math.abs(r.x + boxPx / 2 - lowPx.x) <= 2,
   );
   expect(selected.length).toBeGreaterThanOrEqual(1);
 });
@@ -675,4 +678,118 @@ test("AC3 — L5 draws no visible leader; block sits off the symbol", () => {
   const half = TARGET_SIZE_PX / 2;
   expect(line1!.x).toBeGreaterThan(p.x + half);
   expect(line1!.y).toBeGreaterThan(p.y + half);
+});
+
+const SELECTION_BOX_PX = TARGET_SIZE_PX + SELECTION_BOX_PAD_PX * 2;
+
+test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others stay white; F4 drops; yellow box independent", () => {
+  const dal = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    altitudeFt: 3000,
+    speedKt: 210,
+    xNm: 0,
+    yNm: 0,
+  });
+  const aal = makeTestAircraft({
+    id: "ac-aal",
+    callsign: "AAL45",
+    altitudeFt: 4000,
+    speedKt: 220,
+    xNm: 2,
+    yNm: 0,
+  });
+  const world = createWorld({ aircraft: [dal, aal] });
+  const view = createScopeView();
+  const css = 800;
+
+  const spawned = createMockCtx();
+  renderScope(spawned.ctx, world, view, css, css);
+  const spawnedTargets = spawned.strokeRects.filter(
+    (r) => r.w === TARGET_SIZE_PX && r.h === TARGET_SIZE_PX,
+  );
+  expect(spawnedTargets).toHaveLength(2);
+  expect(spawnedTargets.every((r) => r.strokeStyle === PALETTE.unowned)).toBe(true);
+  expect(spawned.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.unowned);
+  expect(spawned.fillTexts.find((t) => t.text === "AAL45")?.fillStyle).toBe(PALETTE.unowned);
+  expect(spawned.strokeRects.filter((r) => r.w === SELECTION_BOX_PX)).toHaveLength(0);
+
+  const noSelF3 = createMockCtx();
+  view.tracks.get(dal.id)!.ownership = "unowned";
+  renderScope(noSelF3.ctx, world, view, css, css);
+  expect(noSelF3.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.unowned);
+  expect(noSelF3.fillTexts.find((t) => t.text === "AAL45")?.fillStyle).toBe(PALETTE.unowned);
+
+  world.selectedAircraftId = dal.id;
+  view.tracks.get(dal.id)!.ownership = "owned";
+  const owned = createMockCtx();
+  renderScope(owned.ctx, world, view, css, css);
+  const dalP = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: css, heightPx: css });
+  const aalP = nmToScreen(aal.xNm, aal.yNm, view.camera, { widthPx: css, heightPx: css });
+  const dalTarget = owned.strokeRects.find(
+    (r) =>
+      r.w === TARGET_SIZE_PX &&
+      Math.abs(r.x + TARGET_SIZE_PX / 2 - dalP.x) <= 2 &&
+      Math.abs(r.y + TARGET_SIZE_PX / 2 - dalP.y) <= 2,
+  );
+  const aalTarget = owned.strokeRects.find(
+    (r) =>
+      r.w === TARGET_SIZE_PX &&
+      Math.abs(r.x + TARGET_SIZE_PX / 2 - aalP.x) <= 2 &&
+      Math.abs(r.y + TARGET_SIZE_PX / 2 - aalP.y) <= 2,
+  );
+  expect(dalTarget?.strokeStyle).toBe(PALETTE.owned);
+  expect(aalTarget?.strokeStyle).toBe(PALETTE.unowned);
+  expect(owned.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
+  expect(owned.fillTexts.find((t) => t.text === "030  210")?.fillStyle).toBe(PALETTE.owned);
+  expect(owned.fillTexts.find((t) => t.text === "AAL45")?.fillStyle).toBe(PALETTE.unowned);
+  const selBoxes = owned.strokeRects.filter(
+    (r) => r.w === SELECTION_BOX_PX && r.h === SELECTION_BOX_PX,
+  );
+  expect(selBoxes).toHaveLength(1);
+  expect(selBoxes[0]?.strokeStyle).toBe(SELECTED_ACCENT_COLOR);
+  const painted = [
+    ...owned.strokeRects.map((r) => r.strokeStyle),
+    ...owned.fillTexts.map((t) => t.fillStyle ?? ""),
+    ...owned.pathStrokes.map((s) => s.strokeStyle),
+  ];
+  expect(painted.some((c) => c.toLowerCase() === "#ff0000" || c.toLowerCase() === "red")).toBe(
+    false,
+  );
+
+  view.tracks.get(dal.id)!.ownership = "unowned";
+  const dropped = createMockCtx();
+  renderScope(dropped.ctx, world, view, css, css);
+  expect(dropped.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.unowned);
+  const droppedTarget = dropped.strokeRects.find(
+    (r) =>
+      r.w === TARGET_SIZE_PX &&
+      Math.abs(r.x + TARGET_SIZE_PX / 2 - dalP.x) <= 2 &&
+      Math.abs(r.y + TARGET_SIZE_PX / 2 - dalP.y) <= 2,
+  );
+  expect(droppedTarget?.strokeStyle).toBe(PALETTE.unowned);
+  expect(
+    dropped.strokeRects.filter(
+      (r) => r.w === SELECTION_BOX_PX && r.strokeStyle === SELECTED_ACCENT_COLOR,
+    ),
+  ).toHaveLength(1);
+});
+
+test("T02-08 — owned PTL uses owned green, not selection yellow", () => {
+  const ac = makeTestAircraft({
+    id: "ac-ptl-own",
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 90,
+    speedKt: 180,
+  });
+  const world = createWorld({ aircraft: [ac], selectedAircraftId: ac.id });
+  const view = createScopeView();
+  view.ptlOn = true;
+  renderScope(createMockCtx().ctx, world, view, 800, 800);
+  view.tracks.get(ac.id)!.ownership = "owned";
+  const on = createMockCtx();
+  renderScope(on.ctx, world, view, 800, 800);
+  const ptl = findPtlStroke(on.pathStrokes, ac, view, 800);
+  expect(ptl?.strokeStyle).toBe(PALETTE.owned);
 });

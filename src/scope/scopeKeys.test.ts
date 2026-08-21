@@ -21,9 +21,11 @@ function keyEvent(key: string) {
   };
 }
 
-test("always-on keys are PageUp, PageDown, Home, End, F7, F8; H/T/M are not always-on", () => {
+test("always-on keys are PageUp, PageDown, Home, End, F3, F4, F7, F8; H/T/M/F/L are not always-on", () => {
   expect(isAlwaysOnScopeKey("PageUp")).toBe(true);
   expect(isAlwaysOnScopeKey("Home")).toBe(true);
+  expect(isAlwaysOnScopeKey("F3")).toBe(true);
+  expect(isAlwaysOnScopeKey("F4")).toBe(true);
   expect(isAlwaysOnScopeKey("F7")).toBe(true);
   expect(isAlwaysOnScopeKey("F8")).toBe(true);
   expect(isAlwaysOnScopeKey("R")).toBe(false);
@@ -32,6 +34,7 @@ test("always-on keys are PageUp, PageDown, Home, End, F7, F8; H/T/M are not alwa
   expect(isAlwaysOnScopeKey("T")).toBe(false);
   expect(isAlwaysOnScopeKey("M")).toBe(false);
   expect(isAlwaysOnScopeKey("F")).toBe(false);
+  expect(isAlwaysOnScopeKey("L")).toBe(false);
 });
 
 test("AC2 — PageUp five times from 20 NM is 5 NM; center unchanged", () => {
@@ -169,6 +172,8 @@ test("AC3 — command line preventDefault includes F7 so radio focus cannot inse
   }) as Record<string, string>;
   const commandLine = sources["../ui/command-line.tsx"];
   expect(commandLine).toBeDefined();
+  expect(commandLine).toMatch(/event\.key === "F3"/);
+  expect(commandLine).toMatch(/event\.key === "F4"/);
   expect(commandLine).toMatch(/event\.key === "F7"/);
   expect(commandLine).toMatch(/event\.preventDefault\(\)/);
 });
@@ -582,4 +587,62 @@ test("F chord times out at 1.5 s with injected now; leftover digit is not consum
   expect(handleScopeKeyDown(late, view, "scope", undefined, CHORD_TIMEOUT_MS)).toBe(false);
   expect(view.filterEntry.phase).toBe("idle");
   expect(view.altitudeFilter).toEqual(DEFAULT_ALTITUDE_FILTER);
+});
+
+test("AC6 / AC7 — F3/F4 always-on preventDefault, never emit Command IR, ignore L/F", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", headingDeg: 90 });
+  const aal = makeTestAircraft({ id: "ac-aal", callsign: "AAL45" });
+  const world = createWorld({ aircraft: [dal, aal] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const log = new SessionLog();
+  const parseSpy = vi.fn();
+
+  const noSel = keyEvent("F3");
+  expect(handleScopeKeyDown(noSel, view, "radio", world)).toBe(true);
+  expect(noSel.preventDefault).toHaveBeenCalled();
+  expect(noSel.stopPropagation).toHaveBeenCalled();
+  expect(view.tracks.get("ac-dal")!.ownership).toBe("unowned");
+  expect(view.tracks.get("ac-aal")!.ownership).toBe("unowned");
+
+  world.selectedAircraftId = dal.id;
+  const f3 = keyEvent("F3");
+  expect(handleScopeKeyDown(f3, view, "radio", world)).toBe(true);
+  expect(f3.preventDefault).toHaveBeenCalled();
+  expect(view.tracks.get("ac-dal")!.ownership).toBe("owned");
+  expect(view.tracks.get("ac-aal")!.ownership).toBe("unowned");
+  expect(dal.intent.assignedHeadingDeg).toBe(90);
+  expect(log.byType("command.accepted")).toHaveLength(0);
+
+  expect(handleScopeKeyDown(keyEvent("F3"), view, "scope", world)).toBe(true);
+  expect(view.tracks.get("ac-dal")!.ownership).toBe("owned");
+
+  const f4 = keyEvent("F4");
+  expect(handleScopeKeyDown(f4, view, "radio", world)).toBe(true);
+  expect(f4.preventDefault).toHaveBeenCalled();
+  expect(view.tracks.get("ac-dal")!.ownership).toBe("unowned");
+
+  for (const key of ["L", "F"]) {
+    const event = keyEvent(key);
+    expect(handleScopeKeyDown(event, view, "radio", world)).toBe(false);
+    expect(event.preventDefault).not.toHaveBeenCalled();
+    parseSpy(key);
+  }
+  expect(parseSpy).toHaveBeenCalledWith("L");
+  expect(parseSpy).toHaveBeenCalledWith("F");
+
+  let buffer = "DAL123 ";
+  for (const key of ["F3", "H", "2", "7", "0"]) {
+    const event = keyEvent(key);
+    if (!handleScopeKeyDown(event, view, "radio", world) && key.length === 1) {
+      buffer += key;
+    }
+  }
+  expect(buffer).toBe("DAL123 H270");
+  const parsed = parseRadioText("DAL123 H270");
+  expect(parsed.ok).toBe(true);
+  handleRadioText(world, "DAL123 H270", log);
+  expect(dal.intent.assignedHeadingDeg).toBe(270);
+  expect(view.tracks.get("ac-dal")!.ownership).toBe("owned");
+  expect(log.byType("command.accepted")).toHaveLength(1);
 });

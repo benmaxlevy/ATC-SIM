@@ -45,6 +45,8 @@ export function CommandLine({ readback, onSubmit }: CommandLineProps) {
             event.key === "PageDown" ||
             event.key === "Home" ||
             event.key === "End" ||
+            event.key === "F3" ||
+            event.key === "F4" ||
             event.key === "F7" ||
             event.key === "F8"
           ) {

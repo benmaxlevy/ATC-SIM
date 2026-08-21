@@ -60,15 +60,15 @@ Do not use red for “drop” or errors.
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Automated: state machine unowned+F3→owned, owned+F3→owned, owned+F4→unowned, unowned+F4→unowned.
-- [ ] **AC2 —** Spawned traffic is white; after select + F3, that track’s symbol **and** datablock are green; others remain white.
-- [ ] **AC3 —** F3 with no selection does not recolor anyone.
-- [ ] **AC4 —** F4 on the owned selected track returns it to white.
-- [ ] **AC5 —** Selected owned track keeps a yellow selection box plus green datablock.
-- [ ] **AC6 —** F3 does not call parser, pilot agent, or `stepWorld` intent writers. Phase 1 heading command still works on an owned track.
+- [x] **AC1 —** Automated: state machine unowned+F3→owned, owned+F3→owned, owned+F4→unowned, unowned+F4→unowned.
+- [x] **AC2 —** Spawned traffic is white; after select + F3, that track’s symbol **and** datablock are green; others remain white.
+- [x] **AC3 —** F3 with no selection does not recolor anyone.
+- [x] **AC4 —** F4 on the owned selected track returns it to white.
+- [x] **AC5 —** Selected owned track keeps a yellow selection box plus green datablock.
+- [x] **AC6 —** F3 does not call parser, pilot agent, or `stepWorld` intent writers. Phase 1 heading command still works on an owned track.
 - [ ] **AC7 —** F3/F4 `preventDefault` so Chrome find-in-page does not open when the trainer has focus. **Manual** for the Chrome find UI.
-- [ ] **AC8 —** No red pixels used for ownership.
-- [ ] **AC9 — Research:** Help text includes initiate-track analog and “color only / not NAS.” No lock-on wording.
+- [x] **AC8 —** No red pixels used for ownership.
+- [x] **AC9 — Research:** Help text includes initiate-track analog and “color only / not NAS.” No lock-on wording.
 
 ## Test plan
 

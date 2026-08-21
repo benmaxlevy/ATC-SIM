@@ -154,7 +154,7 @@ body,
 }
 
 .flight-strip-callsign {
-  /* Unowned white until T02-08 ownership color. */
+  /* Fallback if inline ownership color is missing; F3 sets palette.owned. */
   color: #dddddd;
 }
 
@@ -203,6 +203,15 @@ body,
 
 .play-hint {
   color: #c5ccd8;
+  font-size: 11px;
+}
+
+.ownership-help {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 2px 10px 4px;
+  background: #0b0e13;
+  color: #9aa0a6;
   font-size: 11px;
 }
 

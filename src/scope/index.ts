@@ -8,7 +8,7 @@
  * (scope-focus T / M; Mode C hundreds + assigned + GS), predicted track line
  * (PTL, F7 always-on, default off), L1–L9 **leader** lines (scope-focus `L`
  * then 1–9; pixel-constant 24 CSS px; no length menu), altitude filter
- * (scope-focus `F`, default 000–180).
+ * (scope-focus `F`, default 000–180), F3/F4 ownership color stub (not NAS).
  *
  * Later: DCB-lite.
  *
@@ -114,9 +114,12 @@ export {
 export type { HistoryBuf } from "./history";
 export {
   HEADING_TICK_PX,
+  OWNED_TRACK_COLOR,
+  SELECTION_BOX_PAD_PX,
   TARGET_SIZE_PX,
   UNOWNED_TRACK_COLOR,
   drawHistoryDot,
+  drawSelectionBox,
   drawTargetSymbol,
 } from "./targetSymbol";
 export {
@@ -129,6 +132,8 @@ export {
 } from "./ptl";
 export {
   IDENT_DISPLAY_FLASH_MS,
+  applyDropTrackToSelection,
+  applyInitiateTrackToSelection,
   createTrackDisplay,
   isIdentFlashing,
   setLeaderDirForSelection,
@@ -136,6 +141,15 @@ export {
   toggleDatablockModeForSelection,
 } from "./trackDisplay";
 export type { TrackDisplay } from "./trackDisplay";
+export {
+  DROP_TRACK_HELP,
+  INITIATE_TRACK_HELP,
+  NO_SEL_HINT,
+  applyDropTrack,
+  applyInitiateTrack,
+  trackPaintColor,
+} from "./ownership";
+export type { TrackOwnership } from "./ownership";
 export {
   DEFAULT_LEADER_DIR,
   L5_OVERLAY_GAP_PX,

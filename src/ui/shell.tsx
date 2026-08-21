@@ -8,6 +8,8 @@ import {
   handlePpiDoubleClick,
   handlePpiPanDelta,
   handleScopeWheel,
+  DROP_TRACK_HELP,
+  INITIATE_TRACK_HELP,
   type ScopeView,
 } from "@scope";
 import type { AppHandles } from "../app/create-app";
@@ -86,12 +88,16 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
         />
         <FlightStrips
           world={app.world}
+          tracks={scopeView.tracks}
           collapsed={stripsCollapsed}
           onToggleCollapsed={() => setStripsCollapsed((wasCollapsed) => !wasCollapsed)}
           onSelectionChange={refreshScopeUi}
         />
       </div>
       <SimControls world={app.world} />
+      <p className="ownership-help">
+        {INITIATE_TRACK_HELP} {DROP_TRACK_HELP}
+      </p>
       <CommandLine
         readback={readback}
         onSubmit={(input) => {

@@ -1,6 +1,7 @@
 /**
  * Analog: FAA PCG flight progress strip (R02); vice flight-strip window (R08).
  * Trainer delta: trainer bay of assigned H/A/S — not FDIO/vStrips/ERAM.
+ * Callsign tint follows T02-08 ownership color (unowned white / owned green).
  * Not NAS STARS.
  *
  * Strip clicks select a track (shared World.selectedAircraftId) and focus the
@@ -8,7 +9,7 @@
  */
 
 import type { World } from "@core";
-import { PpiPlaceholderId } from "@scope";
+import { PpiPlaceholderId, trackPaintColor, type TrackDisplay } from "@scope";
 import {
   STRIP_BAY_EMPTY,
   STRIP_BAY_HEADING,
@@ -18,6 +19,7 @@ import {
 
 export interface FlightStripsProps {
   world: World;
+  tracks: Map<string, TrackDisplay>;
   collapsed: boolean;
   onToggleCollapsed: () => void;
   onSelectionChange: () => void;
@@ -31,8 +33,28 @@ export function focusPpi(): void {
   }
 }
 
+/**
+ * Keep callsign tint in sync with F3/F4 when React has not re-rendered
+ * (PPI paints from rAF). Display telemetry only.
+ */
+export function syncStripCallsignColors(tracks: Map<string, TrackDisplay>): void {
+  const doc = globalThis.document;
+  if (!doc) {
+    return;
+  }
+  const nodes = doc.querySelectorAll<HTMLElement>("[data-strip-aircraft-id]");
+  for (const el of nodes) {
+    const id = el.dataset.stripAircraftId;
+    if (!id) {
+      continue;
+    }
+    el.style.color = trackPaintColor(tracks.get(id)?.ownership ?? "unowned");
+  }
+}
+
 export function FlightStrips({
   world,
+  tracks,
   collapsed,
   onToggleCollapsed,
   onSelectionChange,
@@ -75,7 +97,15 @@ export function FlightStrips({
                   focusPpi();
                 }}
               >
-                <span className="flight-strip-callsign">{strip.callsign}</span>
+                <span
+                  className="flight-strip-callsign"
+                  data-strip-aircraft-id={strip.aircraftId}
+                  style={{
+                    color: trackPaintColor(tracks.get(strip.aircraftId)?.ownership ?? "unowned"),
+                  }}
+                >
+                  {strip.callsign}
+                </span>
                 <span className="flight-strip-fields">
                   {`${strip.headingField}  ${strip.altitudeField}  ${strip.speedField}`}
                 </span>

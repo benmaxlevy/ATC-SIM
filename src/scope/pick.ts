@@ -1,7 +1,8 @@
 /**
  * Analog: CRC STARS click-select track (docs.virtualnas.net/crc/stars).
  * Trainer delta: 12 CSS px hit radius around the **target** symbol, plus the
- * **datablock** rectangle (T02-04). No F3 initiate. Not NAS STARS.
+ * **datablock** rectangle (T02-04). F3 initiate is a color stub (T02-08), not
+ * click-to-own. Not NAS STARS.
  *
  * Scope action: sets `selectedAircraftId` only. Never writes intent and never
  * emits a readback — radio still goes through the pilot agent.

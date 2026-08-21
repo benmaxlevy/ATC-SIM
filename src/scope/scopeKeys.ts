@@ -33,9 +33,9 @@ import {
   togglePtlOn,
   type ScopeView,
 } from "./scopeView";
-import { setLeaderDirForSelection, toggleDatablockModeForSelection } from "./trackDisplay";
+import { setLeaderDirForSelection, toggleDatablockModeForSelection, applyDropTrackToSelection, applyInitiateTrackToSelection } from "./trackDisplay";
 
-export const ALWAYS_ON_SCOPE_KEYS = ["PageUp", "PageDown", "Home", "End", "F7", "F8"] as const;
+export const ALWAYS_ON_SCOPE_KEYS = ["PageUp", "PageDown", "Home", "End", "F3", "F4", "F7", "F8"] as const;
 
 export type ScopeFocus = "scope" | "radio";
 
@@ -176,6 +176,18 @@ export function handleScopeKeyDown(
   }
   event.preventDefault();
   event.stopPropagation();
+  if (event.key === "F3") {
+    if (world) {
+      applyInitiateTrackToSelection(view.tracks, world);
+    }
+    return true;
+  }
+  if (event.key === "F4") {
+    if (world) {
+      applyDropTrackToSelection(view.tracks, world);
+    }
+    return true;
+  }
   if (event.key === "F7") {
     togglePtlOn(view);
     return true;
