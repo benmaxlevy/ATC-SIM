@@ -204,11 +204,11 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
         fontFamily: SCOPE_FONT_STACK,
         fontSize: dcbPx,
         backgroundColor: PALETTE.background,
-        color: PALETTE.map,
+        color: PALETTE.ssa,
         ["--dcb-cell" as string]: PALETTE.dcbCell,
-        ["--dcb-text" as string]: PALETTE.map,
+        ["--dcb-text" as string]: PALETTE.dcbText,
         ["--dcb-gutter" as string]: PALETTE.background,
-        ["--dcb-pressed" as string]: PALETTE.map,
+        ["--dcb-pressed" as string]: PALETTE.dcbText,
         ["--dcb-pressed-text" as string]: PALETTE.background,
       }}
     >

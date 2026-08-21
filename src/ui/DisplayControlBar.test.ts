@@ -176,12 +176,12 @@ test("cells sit on the PPI glass; canvas below pads the range circle", () => {
   expect(css).toMatch(/\.dcb\s*\{[^}]*gap:\s*1px/s);
   expect(css).toMatch(/\.dcb\s*\{[^}]*background:\s*#000000/s);
   expect(css).toMatch(/\.dcb-cell\s*\{[^}]*background:\s*var\(--dcb-cell,\s*#003300\)/s);
-  expect(css).toMatch(/\.dcb-cell\s*\{[^}]*color:\s*var\(--dcb-text,\s*#00aa00\)/s);
+  expect(css).toMatch(/\.dcb-cell\s*\{[^}]*color:\s*var\(--dcb-text,\s*#00ff00\)/s);
   expect(css).toMatch(/\.dcb-cell\s*\{[^}]*border-radius:\s*0/s);
   expect(css).toMatch(/\.dcb-cell\s*\{[^}]*box-shadow:\s*none/s);
   expect(css).toMatch(/\.ppi-canvas\s*\{[^}]*flex:\s*1 1 auto/s);
   expect(barSrc()).toMatch(/PALETTE\.dcbCell/);
-  expect(barSrc()).toMatch(/PALETTE\.map/);
+  expect(barSrc()).toMatch(/PALETTE\.dcbText/);
   expect(barSrc()).toMatch(/focusPpi/);
   expect(barSrc()).toMatch(/onMouseDown=\{preventButtonFocus\}/);
 });

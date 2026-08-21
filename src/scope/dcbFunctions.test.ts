@@ -131,8 +131,8 @@ test("AC5 — no STARS .ttf in the app sources", () => {
 test("AC6 — BRITE has ≥2 steps; track/datablock colors unchanged", () => {
   expect(MAP_BRITE_STEPS.length).toBeGreaterThanOrEqual(2);
   expect(mapBriteColors(0).map).not.toBe(mapBriteColors(1).map);
-  expect(PALETTE.unowned).toBe("#B8E0D0");
-  expect(PALETTE.owned).toBe("#00FF66");
+  expect(PALETTE.unowned).toBe("#00FF00");
+  expect(PALETTE.owned).toBe("#FFFFFF");
   expect(PALETTE.selected).toBe("#FFFF00");
   const view = createScopeView();
   expect(view.mapBriteIndex).toBe(1);
@@ -140,8 +140,8 @@ test("AC6 — BRITE has ≥2 steps; track/datablock colors unchanged", () => {
   expect(view.mapBriteIndex).toBe(2);
   cycleMapBrite(view);
   expect(view.mapBriteIndex).toBe(0);
-  expect(PALETTE.unowned).toBe("#B8E0D0");
-  expect(PALETTE.map).toBe("#00AA00");
+  expect(PALETTE.unowned).toBe("#00FF00");
+  expect(PALETTE.map).toBe("#8C8C8C");
 });
 
 test("PLACE CNTR arms; next helper just flips the flag", () => {

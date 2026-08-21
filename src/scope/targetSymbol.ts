@@ -1,16 +1,17 @@
 /**
  * Analog: CRC STARS target / position symbol (docs.virtualnas.net/crc/stars — R07).
+ * FAA 3-9-1: search/fusion symbol blue; history blue; FDB white/green by ownership.
  * Trainer delta: 8×8 CSS px unfilled **diamond** (T02-18; was a 6×6 box in T02-03),
  * north-up (do not rotate with heading), 8 px heading tick along ground track
  * (not a PTL). CSI-like one-char stub (`*` unowned, `G` after F3) is trainer
- * sugar in/near the symbol — not a real NAS CSI. Ownership stroke is pale mint
- * unowned / green owned (T02-08/T02-18); selected is a yellow box, independent
- * of ownership. Not a sprite (R12). Not an airplane. Not NAS STARS.
+ * sugar in/near the symbol — not a real NAS CSI. Diamond stroke is search-target
+ * blue; FDB/leader use ownership white/green. Selected is a yellow box,
+ * independent of ownership. Not a sprite (R12). Not an airplane. Not NAS STARS.
  */
 
 import { SCOPE_FONT_STACK } from "./fonts";
-import { PALETTE } from "./palette";
-import { ownershipStubChar, trackPaintColor, type TrackOwnership } from "./ownership";
+import { PALETTE, historyTrailColor } from "./palette";
+import { ownershipStubChar, type TrackOwnership } from "./ownership";
 
 /** Frozen T02-18 position-symbol shape. Axis-aligned diamond, not heading-rotated. */
 export const TARGET_SHAPE = "diamond" as const;
@@ -27,32 +28,24 @@ export const SELECTION_BOX_PAD_PX = 2;
 export const OWNERSHIP_STUB_FONT_PX = 9;
 export const OWNERSHIP_STUB_FONT = `${OWNERSHIP_STUB_FONT_PX}px ${SCOPE_FONT_STACK}`;
 
-/** Unowned track. Frozen T02-18 pale mint (not webpage grey). */
+/** Unowned FDB / leader. CRC other-TCP green. */
 export const UNOWNED_TRACK_COLOR = PALETTE.unowned;
-/** Owned track after F3. Frozen phase-2 owned green. */
+/** Owned FDB / leader after F3. CRC owned white. */
 export const OWNED_TRACK_COLOR = PALETTE.owned;
 /** Selected accent / IDENT flash. Frozen phase-2 selected yellow. */
 export const SELECTED_ACCENT_COLOR = PALETTE.selected;
-/** History brightness as a fraction of track color (frozen 40–70%). */
-export const HISTORY_BRIGHTNESS = 0.65;
+/** Search/fusion position symbol. FAA (30,120,255). */
+export const POSITION_SYMBOL_COLOR = PALETTE.positionSymbol;
 
-export function scaleHexColor(hex: string, factor: number): string {
-  const n = hex.replace("#", "");
-  const r = Math.round(parseInt(n.slice(0, 2), 16) * factor);
-  const g = Math.round(parseInt(n.slice(2, 4), 16) * factor);
-  const b = Math.round(parseInt(n.slice(4, 6), 16) * factor);
-  return `#${[r, g, b].map((c) => Math.max(0, Math.min(255, c)).toString(16).padStart(2, "0")).join("")}`;
+export function historyDotColor(indexFromOldest: number, count: number): string {
+  return historyTrailColor(indexFromOldest, count);
 }
 
-export function historyDotColor(trackColor: string): string {
-  return scaleHexColor(trackColor, HISTORY_BRIGHTNESS);
-}
-
-export function targetStrokeColor(ownership: TrackOwnership, identFlashing: boolean): string {
+export function targetStrokeColor(_ownership: TrackOwnership, identFlashing: boolean): string {
   if (identFlashing) {
     return SELECTED_ACCENT_COLOR;
   }
-  return trackPaintColor(ownership);
+  return POSITION_SYMBOL_COLOR;
 }
 
 /** North / east / south / west vertices of the axis-aligned diamond. */

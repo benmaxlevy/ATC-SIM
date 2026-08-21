@@ -88,7 +88,7 @@ test("history module comments say target-adjacent CRC history, not a trail name"
   expect(src).toMatch(/CRC STARS HISTORY/);
   expect(src).toMatch(/5 s sim \/ 5 dots/);
   expect(src).toMatch(/\*\*history\*\*/);
-  expect(src).toMatch(/track color family/);
+  expect(src).toMatch(/history-blue/);
   expect(src).not.toMatch(/phosphor bloom/);
   expect(src.toLowerCase()).not.toMatch(/\bsprite\b/);
   expect(src.toLowerCase()).not.toMatch(/\bairplane\b/);

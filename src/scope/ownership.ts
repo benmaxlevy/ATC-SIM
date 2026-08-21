@@ -5,11 +5,11 @@
  * turn white. VATSIMism: auto-associate only if callsign matches the plan —
  * we do not copy that.
  *
- * Trainer delta: F3 is a color stub only (unowned pale mint → owned green). No
- * NAS associate, no second facility, no beacon pairing. Selection is a
- * yellow box, independent of ownership. F3 is initiate track, not browser
- * find. F4 drop is trainer sugar, not STARS terminate / TERM CNTL. Not NAS
- * STARS.
+ * Trainer delta: F3 is a color stub only (unowned green FDB → owned white FDB,
+ * matching CRC INIT CNTL). Position symbol stays search-target blue. No NAS
+ * associate, no second facility, no beacon pairing. Selection is a yellow box,
+ * independent of ownership. F3 is initiate track, not browser find. F4 drop is
+ * trainer sugar, not STARS terminate / TERM CNTL. Not NAS STARS.
  */
 
 import { PALETTE } from "./palette";

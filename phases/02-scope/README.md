@@ -40,7 +40,7 @@ Phase 2 **replaces** that crude PPI in `src/scope`. It must not break the comman
 
 When this phase exits, a controller sitting at Chrome on Windows can:
 
-1. See a **dark, north-up PPI** with a limited palette (black / green maps / white unowned / green owned / yellow selected). Red is reserved for phase 4 alerts.
+1. See a **dark, north-up PPI** with a limited palette (black / dim-gray maps / green unowned FDB / white owned FDB / blue position symbol / yellow selected). Red is reserved for phase 4 alerts.
 2. Set **range 5–60 NM** in discrete presets, **center** on the airport or a clicked point, and pan without “zoom to cursor.”
 3. See **KDEM digital maps**: runway 27, ILS 27 localizer feather, range rings, optional coastline polyline from scenario JSON.
 4. Read a **full datablock** (callsign, altitude, ground speed) tied to the target with an **8-direction leader**.
@@ -169,15 +169,17 @@ STARS-like, not a screenshot clone. **No red in phase 2** (alerts are phase 4).
 | Role | Hex (frozen) | Used for |
 | --- | --- | --- |
 | Background | `#000000` | PPI fill |
-| Map | `#00AA00` | Runway, loc feather, coastline |
-| Map dim | `#006600` | Range rings |
-| Unowned track + block | `#B8E0D0` | Default after spawn (T02-18 pale mint, not webpage grey) |
-| Owned track + block | `#00FF66` | After F3 |
-| Selected accent | `#FFFF00` | Selection box / brighter leader; not “emergency” |
-| History | 40–70% of track color | Dots |
-| PTL | Same as track color | Line |
-| DCB cells | `#003300` fill, `#00AA00` text, 1 px `#000` gutters | T02-16 cell grid on the glass. Pressed = invert/stipple. Not the T02-10 `#111` toolbar. T02-17 MAPS / RANGE / RR / LDR / CHAR SIZE / BRITE / PLACE CNTR. |
-| UI chrome | `#9AA0A6` on `#111` | help overlay — still dark, not game HUD |
+| Map | `#8C8C8C` | Runway, loc feather, coastline (FAA dim gray maps A/B) |
+| Map dim | `#606060` | Range rings (FAA dark gray) |
+| Unowned FDB + leader | `#00FF00` | Default after spawn — CRC other-TCP / unowned green |
+| Owned FDB + leader | `#FFFFFF` | After F3 INIT CNTL — CRC owned white |
+| Position symbol | `#1E78FF` | Search/fusion diamond (FAA 30,120,255). Independent of FDB. |
+| History | `#1E50C8` … `#1E1E5A` | Five FAA history blues, newest brighter. Not track-tinted. |
+| PTL | `#FFFFFF` | Predicted track line (FAA white) |
+| Selected accent | `#FFFF00` | Selection box / IDENT flash; not the FDB color |
+| DCB cells | `#003300` fill, `#00FF00` text, 1 px `#000` gutters | T02-16 cell grid on the glass. Pressed = invert/stipple. Not the T02-10 `#111` toolbar. T02-17 MAPS / RANGE / RR / LDR / CHAR SIZE / BRITE / PLACE CNTR. |
+| SSA / lists | `#00FF00` | Screen-fixed SSA and on-PPI strip list |
+| UI chrome | `#9AA0A6` on `#111` | help overlay chrome — still dark, not game HUD |
 
 Export as `src/scope/palette.ts`. Do not sprinkle hex literals in draw calls.
 
@@ -294,8 +296,8 @@ interface AltitudeFilter {
 type TrackOwnership = "unowned" | "owned";
 ```
 
-- Spawn = `unowned` (white).
-- `F3` with a selection: `unowned` → `owned` (green). Already owned: no-op.
+- Spawn = `unowned` (green FDB; CRC other-TCP analog).
+- `F3` with a selection: `unowned` → `owned` (white FDB). Already owned: no-op.
 - `F4`: `owned` → `unowned`.
 - **Does not** create a flight plan, does not emit Command IR, does not talk to a second position (that stub is phase 5).
 - Selected accent (yellow box) is independent of ownership.
@@ -466,7 +468,7 @@ Do not start phase 3 or 4 until every box is green. Phase 3 *may* overlap the ta
 - [x] Leaders L1–L9 (5 = overlay), 8 compass directions + center.
 - [x] Altitude filter suppresses datablocks outside min/max; symbols remain.
 - [x] PTL 1 min toggle.
-- [x] Unowned white / owned green / selected yellow; F3/F4 stub only.
+- [x] Unowned green FDB / owned white FDB / blue position symbol / selected yellow; F3/F4 stub only.
 - [x] F1 help lists the frozen Windows map; `TRAINER KEYS — NOT CRC`.
 - [x] DCB-lite: range, map layers, filter, PTL, history.
 - [x] Strips show callsign + assigned heading/alt/speed; click selects.

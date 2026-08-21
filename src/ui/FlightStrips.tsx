@@ -3,7 +3,7 @@
  * FAA PCG flight progress strip (R02); vice flight-strip window (R08).
  * Trainer delta: on-PPI list of assigned H/A/S — not a labeled right dock,
  * not FDIO/vStrips/ERAM. Callsign tint follows T02-08 ownership color
- * (unowned pale mint / owned green). Click selects (T01-11). Altitude filter
+ * (unowned green FDB / owned white FDB). Click selects (T01-11). Altitude filter
  * does not remove rows (T02-11). Never a Command. Not NAS STARS.
  *
  * List clicks select a track (shared World.selectedAircraftId) and focus the

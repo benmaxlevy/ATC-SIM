@@ -59,7 +59,14 @@ export {
 } from "./ppiPointer";
 export { HIT_RADIUS_CSS_PX, pickAircraftAt, selectAircraftAt } from "./pick";
 export type { DatablockPickView } from "./pick";
-export { PALETTE, DEFAULT_MAP_BRITE_INDEX, MAP_BRITE_STEPS, mapBriteColors } from "./palette";
+export {
+  HISTORY_TRAIL,
+  PALETTE,
+  DEFAULT_MAP_BRITE_INDEX,
+  MAP_BRITE_STEPS,
+  historyTrailColor,
+  mapBriteColors,
+} from "./palette";
 export type { Palette, MapBriteIndex } from "./palette";
 export {
   DEFAULT_DIGITAL_MAP,
@@ -182,6 +189,7 @@ export {
   HEADING_TICK_PX,
   HISTORY_DOT_SIZE_PX,
   OWNED_TRACK_COLOR,
+  POSITION_SYMBOL_COLOR,
   SELECTION_BOX_PAD_PX,
   TARGET_SHAPE,
   TARGET_SIZE_PX,

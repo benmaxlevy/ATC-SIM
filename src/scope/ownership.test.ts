@@ -31,7 +31,7 @@ test("AC2 — CSI-like stub is * unowned and G after F3; F4 returns *", () => {
   expect(ownershipStubChar(applyDropTrack("owned"))).toBe("*");
 });
 
-test("spawned tracks are unowned pale mint; F3 paints only the selected track owned green", () => {
+test("spawned tracks are unowned green FDB; F3 paints only the selected track owned white", () => {
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
   const aal = makeTestAircraft({ id: "ac-aal", callsign: "AAL45" });
   const world = createWorld({ aircraft: [dal, aal] });
@@ -41,9 +41,9 @@ test("spawned tracks are unowned pale mint; F3 paints only the selected track ow
   expect(tracks.get("ac-aal")!.ownership).toBe("unowned");
   expect(trackPaintColor("unowned")).toBe(PALETTE.unowned);
   expect(trackPaintColor("owned")).toBe(PALETTE.owned);
-  expect(PALETTE.unowned).toBe("#B8E0D0");
+  expect(PALETTE.unowned).toBe("#00FF00");
   expect(PALETTE.unowned.toUpperCase()).not.toBe("#DDDDDD");
-  expect(PALETTE.owned).toBe("#00FF66");
+  expect(PALETTE.owned).toBe("#FFFFFF");
 
   const noSel = applyInitiateTrackToSelection(tracks, world);
   expect(noSel.applied).toBe(false);
@@ -93,7 +93,7 @@ test("AC8 / AC9 — ownership colors are not red; help is initiate-track color-o
   expect(PALETTE.owned.toLowerCase()).not.toBe("#ff0000");
   expect(PALETTE.unowned.toLowerCase()).not.toBe("#ff0000");
   expect(PALETTE.selected.toLowerCase()).not.toBe("#ff0000");
-  expect(trackPaintColor("owned")).toBe("#00FF66");
+  expect(trackPaintColor("owned")).toBe("#FFFFFF");
   expect(INITIATE_TRACK_HELP).toMatch(/initiate track/i);
   expect(INITIATE_TRACK_HELP).toMatch(/color only/i);
   expect(INITIATE_TRACK_HELP).toMatch(/not NAS/i);

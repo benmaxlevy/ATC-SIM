@@ -1,17 +1,14 @@
 import { expect, test } from "vitest";
 import { PALETTE } from "./palette";
 import {
-  HISTORY_BRIGHTNESS,
   HEADING_TICK_PX,
   HISTORY_DOT_SIZE_PX,
   SELECTION_BOX_PAD_PX,
   TARGET_SHAPE,
   TARGET_SIZE_PX,
-  UNOWNED_TRACK_COLOR,
   headingTickOffset,
   historyDotColor,
   isTargetDiamondPath,
-  scaleHexColor,
   selectionBoxRect,
   targetDiamondVertices,
   targetStrokeColor,
@@ -48,26 +45,20 @@ test("AC1 — position symbol is an 8 px diamond, not a 1–2 px dot", () => {
   ).toBe(false);
 });
 
-test("history color is 40–70% of the track color family, not independent grey", () => {
+test("history dots use FAA trail blues, not track-tinted grey", () => {
   expect(HISTORY_DOT_SIZE_PX).toBeGreaterThanOrEqual(2);
   expect(HISTORY_DOT_SIZE_PX).toBeLessThanOrEqual(3);
-  expect(HISTORY_BRIGHTNESS).toBeGreaterThanOrEqual(0.4);
-  expect(HISTORY_BRIGHTNESS).toBeLessThanOrEqual(0.7);
-  expect(historyDotColor(UNOWNED_TRACK_COLOR)).toBe(
-    scaleHexColor(UNOWNED_TRACK_COLOR, HISTORY_BRIGHTNESS),
-  );
-  expect(historyDotColor(PALETTE.owned)).toBe(scaleHexColor(PALETTE.owned, HISTORY_BRIGHTNESS));
-  expect(historyDotColor(UNOWNED_TRACK_COLOR).toLowerCase()).not.toBe("#808080");
-  expect(historyDotColor(UNOWNED_TRACK_COLOR).toLowerCase()).not.toBe("#888888");
-  const ch = parseInt(historyDotColor(UNOWNED_TRACK_COLOR).slice(1, 3), 16);
-  const src = parseInt(UNOWNED_TRACK_COLOR.slice(1, 3), 16);
-  expect(ch / src).toBeGreaterThanOrEqual(0.4);
-  expect(ch / src).toBeLessThanOrEqual(0.7);
+  expect(historyDotColor(0, 5)).toBe("#1E1E5A");
+  expect(historyDotColor(4, 5)).toBe("#1E50C8");
+  expect(historyDotColor(0, 1).toLowerCase()).not.toBe("#808080");
+  expect(historyDotColor(0, 1).toLowerCase()).not.toBe("#888888");
+  expect(historyDotColor(0, 5)).not.toBe(PALETTE.unowned);
+  expect(historyDotColor(0, 5)).not.toBe(PALETTE.owned);
 });
 
-test("IDENT uses yellow stroke; otherwise ownership color (selection is a separate box)", () => {
-  expect(targetStrokeColor("unowned", false)).toBe("#B8E0D0");
-  expect(targetStrokeColor("owned", false)).toBe("#00FF66");
+test("IDENT uses yellow stroke; otherwise search-target blue (FDB color is separate)", () => {
+  expect(targetStrokeColor("unowned", false)).toBe("#1E78FF");
+  expect(targetStrokeColor("owned", false)).toBe("#1E78FF");
   expect(targetStrokeColor("owned", true)).toBe("#FFFF00");
   expect(targetStrokeColor("unowned", true)).toBe("#FFFF00");
 });

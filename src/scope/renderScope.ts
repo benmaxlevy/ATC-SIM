@@ -10,12 +10,12 @@
  * GS along ground track, default off, F7; CRC may offer extra minute
  * presets / turn curves — we do not. Extra CRC presets omitted.
  * **Altitude filter** (FILTER readout in SSA): out of band keep target + history,
- * suppress datablock / leader / PTL. F3 initiate-track color stub (unowned
- * pale mint / owned green, CSI-like `*` / `G`); selected yellow box independent
- * of ownership. CHAR SIZE 11–13 px. BRITE steps map strokes only. SSA is
- * screen-fixed top-left (sim time, KDEM 29.92 stub, FILTER, RANGE, OFF CNTR,
- * OK) — not world-fixed. Not OSM / tiles (R12). Not a sprite. Not an airplane. Not a
- * label. Not NAS STARS.
+ * suppress datablock / leader / PTL. F3 initiate-track color stub (unowned green
+ * FDB / owned white FDB, CSI-like `*` / `G`); position symbol stays blue;
+ * selected yellow box independent of ownership. CHAR SIZE 11–13 px. BRITE steps
+ * gray map strokes only. SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
+ * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. Not OSM / tiles (R12). Not a
+ * sprite. Not an airplane. Not a label. Not NAS STARS.
  *
  * Draw order (phase README): background, rings, coastline, runway, localizer,
  * history, PTL, targets, leader lines, datablocks, selection box, SSA
@@ -236,10 +236,10 @@ function drawTracks(
       if (!td) {
         continue;
       }
-      const historyColor = historyDotColor(trackPaintColor(td.ownership));
-      for (let i = 0; i < td.history.eastNm.length; i += 1) {
+      const n = td.history.eastNm.length;
+      for (let i = 0; i < n; i += 1) {
         const p = nmToScreen(td.history.eastNm[i]!, td.history.northNm[i]!, view.camera, size);
-        drawHistoryDot(ctx, p.x, p.y, historyColor);
+        drawHistoryDot(ctx, p.x, p.y, historyDotColor(i, n));
       }
     }
   }
@@ -268,8 +268,8 @@ function drawTracks(
       continue;
     }
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
-    const color = trackColor(view, world, ac);
-    drawLeaderLine(ctx, p.x, p.y, trackLeaderDir(view, ac.id), color);
+    const leaderColor = trackPaintColor(trackOwnership(view, ac.id));
+    drawLeaderLine(ctx, p.x, p.y, trackLeaderDir(view, ac.id), leaderColor);
   }
 
   for (const ac of world.aircraft) {
@@ -310,14 +310,13 @@ function drawPredictedTrackLines(
     const to = nmToScreen(end.eastNm, end.northNm, view.camera, size);
     const td = view.tracks.get(ac.id);
     const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
-    const ownership = td?.ownership ?? "unowned";
     drawPredictedTrackLine(
       ctx,
       from.x,
       from.y,
       to.x,
       to.y,
-      targetStrokeColor(ownership, identActive),
+      identActive ? PALETTE.selected : PALETTE.ptl,
     );
   }
 }
@@ -326,7 +325,7 @@ const SSA_LEFT_PX = 8;
 const SSA_TOP_PX = 8;
 
 /**
- * Screen-fixed SSA (CRC R07 analog). Map-green mono. Never a Command.
+ * Screen-fixed SSA (CRC R07 analog). Phosphor-green mono. Never a Command.
  * FILTER / RANGE live here so the lower-left stays clear for the on-PPI list.
  */
 function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): number {
@@ -341,7 +340,7 @@ function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): 
   ctx.font = datablockFontCss(view.charSizePx);
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
-  ctx.fillStyle = PALETTE.map;
+  ctx.fillStyle = PALETTE.ssa;
   let y = SSA_TOP_PX;
   for (const line of lines) {
     ctx.fillText(line, SSA_LEFT_PX, y);

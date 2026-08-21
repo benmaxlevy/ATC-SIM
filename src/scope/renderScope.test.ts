@@ -11,10 +11,10 @@ import { createScopeView } from "./scopeView";
 import { formatFilterReadout } from "./altitudeFilter";
 import { buildSsaLines, formatSsaTime } from "./ssa";
 import {
+  POSITION_SYMBOL_COLOR,
   SELECTED_ACCENT_COLOR,
   SELECTION_BOX_PAD_PX,
   TARGET_SIZE_PX,
-  UNOWNED_TRACK_COLOR,
   HISTORY_DOT_SIZE_PX,
   OWNERSHIP_STUB_FONT,
   isTargetDiamondPath,
@@ -313,10 +313,10 @@ test("AC8 — map / localizer / rings wording; no terrain or OSM in settings cop
   expect(sources["./mapLayers.ts"]).toMatch(/video maps/i);
   expect(sources["./mapLayers.ts"]).toMatch(/trainer-authored JSON/i);
   expect(sources["./mapLayers.ts"]).toMatch(/R07/);
-  expect(sources["./palette.ts"]).toMatch(/#00AA00/);
-  expect(sources["./palette.ts"]).toMatch(/#006600/);
-  expect(PALETTE.map).toBe("#00AA00");
-  expect(PALETTE.mapDim).toBe("#006600");
+  expect(sources["./palette.ts"]).toMatch(/#8C8C8C/);
+  expect(sources["./palette.ts"]).toMatch(/#606060/);
+  expect(PALETTE.map).toBe("#8C8C8C");
+  expect(PALETTE.mapDim).toBe("#606060");
   expect(PALETTE.background).toBe("#000000");
 
   const forbiddenUi = [formatRangeReadout(20), sources["./ppi-placeholder.tsx"] ?? ""];
@@ -526,7 +526,7 @@ test("AC4 — PTL is off by default; F7 on draws a ~1 min line per unfiltered tr
   renderScope(on.ctx, world, view, css, css);
   const ptl = findPtlStroke(on.pathStrokes, ac, view, css);
   expect(ptl).toBeDefined();
-  expect(ptl!.strokeStyle).toBe(UNOWNED_TRACK_COLOR);
+  expect(ptl!.strokeStyle).toBe(PALETTE.ptl);
   expect(ptl!.lineWidth).toBe(1);
   const targetsOn = findTargetDiamonds(on.pathStrokes);
   expect(targetsOn).toHaveLength(1);
@@ -626,7 +626,7 @@ test("AC8 — FILTER readout and FOA/CRC altitude filter comments; no cull or sl
   expect(readout).toBe("FILTER 000-180");
   const filterText = painted.fillTexts.find((t) => t.text === readout);
   expect(filterText).toBeDefined();
-  expect(filterText!.fillStyle).toBe(PALETTE.map);
+  expect(filterText!.fillStyle).toBe(PALETTE.ssa);
   expect(readout.toLowerCase()).not.toContain("cull");
   expect(readout.toLowerCase()).not.toContain("slider");
 
@@ -667,7 +667,7 @@ test("AC1 — SSA paints FILTER, RANGE, and OFF CNTR only when panned", () => {
   for (const line of expected) {
     const painted = onAirport.fillTexts.find((t) => t.text === line);
     expect(painted, line).toBeDefined();
-    expect(painted!.fillStyle).toBe(PALETTE.map);
+    expect(painted!.fillStyle).toBe(PALETTE.ssa);
     expect(painted!.x).toBe(8);
     expect(painted!.textBaseline).toBe("top");
   }
@@ -679,7 +679,7 @@ test("AC1 — SSA paints FILTER, RANGE, and OFF CNTR only when panned", () => {
   renderScope(panned.ctx, world, view, 800, 800);
   expect(panned.fillTexts.some((t) => t.text === "OFF CNTR")).toBe(true);
   const offCntr = panned.fillTexts.find((t) => t.text === "OFF CNTR");
-  expect(offCntr!.fillStyle).toBe(PALETTE.map);
+  expect(offCntr!.fillStyle).toBe(PALETTE.ssa);
 });
 
 test("AC7 — renderScope comments say PTL / predicted track line and cite CRC", () => {
@@ -727,7 +727,7 @@ function findLeaderStroke(
   });
 }
 
-test("AC2 / AC7 — L6 leader points east; leader and datablock match target color", () => {
+test("AC2 / AC7 — L6 leader points east; FDB/leader follow ownership, diamond stays search-target blue", () => {
   const ac = makeTestAircraft({
     id: "ac-dal",
     callsign: "DAL123",
@@ -751,10 +751,11 @@ test("AC2 / AC7 — L6 leader points east; leader and datablock match target col
   expect(leader!.points[1]!.y).toBeCloseTo(p.y);
   const target = findTargetDiamonds(pathStrokes, p.x, p.y)[0];
   expect(target).toBeDefined();
-  expect(leader!.strokeStyle).toBe(target!.strokeStyle);
+  expect(target!.strokeStyle).toBe(POSITION_SYMBOL_COLOR);
+  expect(leader!.strokeStyle).toBe(PALETTE.unowned);
   const line1 = fillTexts.find((t) => t.text === "DAL123" && t.font === DATABLOCK_FONT);
   expect(line1).toBeDefined();
-  expect(line1!.fillStyle).toBe(target!.strokeStyle);
+  expect(line1!.fillStyle).toBe(PALETTE.unowned);
   expect(line1!.x).toBeGreaterThan(p.x);
 });
 
@@ -814,7 +815,7 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   renderScope(spawned.ctx, world, view, css, css);
   const spawnedTargets = findTargetDiamonds(spawned.pathStrokes);
   expect(spawnedTargets).toHaveLength(2);
-  expect(spawnedTargets.every((r) => r.strokeStyle === PALETTE.unowned)).toBe(true);
+  expect(spawnedTargets.every((r) => r.strokeStyle === POSITION_SYMBOL_COLOR)).toBe(true);
   expect(spawned.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.unowned);
   expect(spawned.fillTexts.find((t) => t.text === "AAL45")?.fillStyle).toBe(PALETTE.unowned);
   expect(
@@ -836,8 +837,8 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   const aalP = nmToScreen(aal.xNm, aal.yNm, view.camera, { widthPx: css, heightPx: css });
   const dalTarget = findTargetDiamonds(owned.pathStrokes, dalP.x, dalP.y)[0];
   const aalTarget = findTargetDiamonds(owned.pathStrokes, aalP.x, aalP.y)[0];
-  expect(dalTarget?.strokeStyle).toBe(PALETTE.owned);
-  expect(aalTarget?.strokeStyle).toBe(PALETTE.unowned);
+  expect(dalTarget?.strokeStyle).toBe(POSITION_SYMBOL_COLOR);
+  expect(aalTarget?.strokeStyle).toBe(POSITION_SYMBOL_COLOR);
   expect(owned.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
   expect(owned.fillTexts.find((t) => t.text === "030  210")?.fillStyle).toBe(PALETTE.owned);
   expect(owned.fillTexts.find((t) => t.text === "AAL45")?.fillStyle).toBe(PALETTE.unowned);
@@ -866,7 +867,7 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   renderScope(dropped.ctx, world, view, css, css);
   expect(dropped.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.unowned);
   const droppedTarget = findTargetDiamonds(dropped.pathStrokes, dalP.x, dalP.y)[0];
-  expect(droppedTarget?.strokeStyle).toBe(PALETTE.unowned);
+  expect(droppedTarget?.strokeStyle).toBe(POSITION_SYMBOL_COLOR);
   expect(
     dropped.fillTexts.filter((t) => t.text === "*" && t.font === OWNERSHIP_STUB_FONT),
   ).toHaveLength(2);
@@ -878,7 +879,7 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   ).toHaveLength(1);
 });
 
-test("T02-08 — owned PTL uses owned green, not selection yellow", () => {
+test("T02-08 — owned PTL stays white, not selection yellow", () => {
   const ac = makeTestAircraft({
     id: "ac-ptl-own",
     xNm: 0,
@@ -894,5 +895,5 @@ test("T02-08 — owned PTL uses owned green, not selection yellow", () => {
   const on = createMockCtx();
   renderScope(on.ctx, world, view, 800, 800);
   const ptl = findPtlStroke(on.pathStrokes, ac, view, 800);
-  expect(ptl?.strokeStyle).toBe(PALETTE.owned);
+  expect(ptl?.strokeStyle).toBe(PALETTE.ptl);
 });
