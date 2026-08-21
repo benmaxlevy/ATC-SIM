@@ -47,19 +47,10 @@ function assertRunway(value: unknown, index: number): Runway {
   }
   return {
     id: assertString(value.id, `runways[${index}].id`),
-    headingTrueDeg: assertNumber(
-      value.headingTrueDeg,
-      `runways[${index}].headingTrueDeg`,
-    ),
-    headingMagDeg: assertNumber(
-      value.headingMagDeg,
-      `runways[${index}].headingMagDeg`,
-    ),
+    headingTrueDeg: assertNumber(value.headingTrueDeg, `runways[${index}].headingTrueDeg`),
+    headingMagDeg: assertNumber(value.headingMagDeg, `runways[${index}].headingMagDeg`),
     lengthFt: assertNumber(value.lengthFt, `runways[${index}].lengthFt`),
-    thresholdLatLon: assertLatLon(
-      value.thresholdLatLon,
-      `runways[${index}].thresholdLatLon`,
-    ),
+    thresholdLatLon: assertLatLon(value.thresholdLatLon, `runways[${index}].thresholdLatLon`),
   };
 }
 

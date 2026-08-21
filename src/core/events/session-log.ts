@@ -17,9 +17,7 @@ export class SessionLog {
     return this.events.slice();
   }
 
-  byType<T extends SessionEvent["type"]>(
-    type: T,
-  ): Extract<SessionEvent, { type: T }>[] {
+  byType<T extends SessionEvent["type"]>(type: T): Extract<SessionEvent, { type: T }>[] {
     return this.events.filter(
       (event): event is Extract<SessionEvent, { type: T }> => event.type === type,
     );

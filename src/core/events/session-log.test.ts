@@ -124,14 +124,10 @@ test("byType returns only matching events (AC5)", () => {
 
   const rejected = log.byType("command.rejected");
   expect(rejected).toHaveLength(2);
-  expect(rejected.every((event) => event.type === "command.rejected")).toBe(
-    true,
-  );
+  expect(rejected.every((event) => event.type === "command.rejected")).toBe(true);
   expect(rejected.map((event) => event.reason)).toEqual([
     "empty instruction list",
     "unknown callsign",
   ]);
-  expectTypeOf(rejected).toEqualTypeOf<
-    Extract<SessionEvent, { type: "command.rejected" }>[]
-  >();
+  expectTypeOf(rejected).toEqualTypeOf<Extract<SessionEvent, { type: "command.rejected" }>[]>();
 });

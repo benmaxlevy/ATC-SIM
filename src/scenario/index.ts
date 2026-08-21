@@ -8,12 +8,5 @@
  * Import rule: `@scenario` may import `@core` only.
  */
 export const SCENARIO_PACKAGE = "scenario";
-export type {
-  Approach,
-  Fix,
-  Runway,
-  Scenario,
-  Spawn,
-  VideoMap,
-} from "./types";
+export type { Approach, Fix, Runway, Scenario, Spawn, VideoMap } from "./types";
 export { assertScenario, loadKdem } from "./load";

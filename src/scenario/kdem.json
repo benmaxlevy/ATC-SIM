@@ -15,9 +15,7 @@
       "thresholdLatLon": { "latDeg": 0, "lonDeg": 0 }
     }
   ],
-  "approaches": [
-    { "id": "ILS27", "runwayId": "27", "type": "ILS" }
-  ],
+  "approaches": [{ "id": "ILS27", "runwayId": "27", "type": "ILS" }],
   "fixes": [],
   "maps": { "videoMaps": [] },
   "spawns": [
