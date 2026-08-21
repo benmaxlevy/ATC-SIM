@@ -152,6 +152,45 @@ test("E13 — typed DAL123 H270 still assigns heading 270 with source text", asy
   );
 });
 
+test("typed accepted readback uses the same TTS player as PTT", async () => {
+  const world = createWorldFromScenario(loadKdem());
+  const synth = vi.fn(async (): Promise<AudioClip> => {
+    return { sampleRate: 16000, channels: 1, pcm16: new Int16Array(1600) };
+  });
+  const handles = createApp({
+    speech: {
+      id: "fake",
+      async transcribe(): Promise<Transcript> {
+        return { text: "unused", confidence: 1, latencyMs: 1 };
+      },
+      synthesize: synth,
+    },
+    world,
+    ptt: createPttCaptureController({ onEvent: () => {}, attachTo: null }),
+    readbackPlayer: {
+      playing: false,
+      async warmUp() {},
+      async playPcm() {
+        return { ok: true };
+      },
+      async playBrowser() {
+        return { ok: true };
+      },
+      stop() {},
+      fxEnabled: true,
+      setConnectSource() {},
+      setFxEnabled() {},
+    },
+  });
+  const result = await submitCommand(world, "DAL123 H270", new SessionLog());
+  expect(result.accepted).toBe(true);
+  await handles.voiceLoop.playReadback(result.readback);
+  expect(synth).toHaveBeenCalledTimes(1);
+  expect(String(synth.mock.calls[0]?.[0] ?? "").toLowerCase()).toContain("heading two seven zero");
+  handles.ptt.dispose();
+  handles.voiceLoop.dispose();
+});
+
 test("E13 — Path A English in the command line turns left 270", async () => {
   const world = createWorldFromScenario(loadKdem());
   const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;

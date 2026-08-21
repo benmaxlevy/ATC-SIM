@@ -109,6 +109,11 @@ export interface VoiceLoop {
    */
   setSpeechPort(port: SpeechPort): boolean;
   setConfidenceThreshold(value: number): void;
+  /**
+   * Speak an already-accepted pilot readback (typed command line or voice).
+   * Does not parse. Locks PTT for the play. Never throws.
+   */
+  playReadback(readback: string): Promise<void>;
   dispose(): void;
 }
 
@@ -226,6 +231,10 @@ class VoiceLoopImpl implements VoiceLoop {
       return;
     }
     this.confidenceThreshold = Math.min(1, Math.max(0, value));
+  }
+
+  async playReadback(readback: string): Promise<void> {
+    await this.speakReadbackText(readback);
   }
 
   dispose(): void {
@@ -392,9 +401,23 @@ class VoiceLoopImpl implements VoiceLoop {
     if (readback === null) {
       return;
     }
+    await this.speakReadbackText(readback, metrics);
+  }
+
+  private async speakReadbackText(
+    readback: string,
+    metrics?: VoiceUtteranceMetrics,
+  ): Promise<void> {
+    const text = readback.trim();
+    if (this.disposed || text === "") {
+      return;
+    }
 
     const voiceId = this.getVoiceId();
     const onAudioStart = (nowMs: number): void => {
+      if (!metrics) {
+        return;
+      }
       recordAudioStart(metrics, nowMs);
       this.lastMetrics = metrics;
       this.emitMetrics();
@@ -403,7 +426,7 @@ class VoiceLoopImpl implements VoiceLoop {
     try {
       if (this.speechPort.id === "web-speech") {
         this.syncLock("play-started");
-        const outcome = await this.readbackPlayer.playBrowser(readback, voiceId, { onAudioStart });
+        const outcome = await this.readbackPlayer.playBrowser(text, voiceId, { onAudioStart });
         if (!outcome.ok) {
           this.emitStatus({ code: "tts_failed" });
         }
@@ -412,7 +435,7 @@ class VoiceLoopImpl implements VoiceLoop {
 
       let ttsClip: AudioClip;
       try {
-        ttsClip = await this.speechPort.synthesize(readback, voiceId);
+        ttsClip = await this.speechPort.synthesize(text, voiceId);
       } catch {
         this.emitStatus({ code: "tts_failed" });
         return;
@@ -425,6 +448,8 @@ class VoiceLoopImpl implements VoiceLoop {
       if (!outcome.ok) {
         this.emitStatus({ code: "tts_failed" });
       }
+    } catch {
+      this.emitStatus({ code: "tts_failed" });
     } finally {
       this.syncLock("play-ended");
     }

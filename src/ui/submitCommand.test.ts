@@ -87,6 +87,7 @@ test("AC7 — shell calls submitCommand; command line clears after submit", () =
   expect(commandLine).toBeDefined();
   expect(shell).toMatch(/from\s+["']\.\/submitCommand["']/);
   expect(shell).toMatch(/submitCommand\(/);
+  expect(shell).toMatch(/playReadback/);
   expect(shell).not.toMatch(/submitCommandLine/);
   expect(shell).not.toMatch(/\.transcribe\s*\(/);
   expect(shell).not.toMatch(/\.synthesize\s*\(/);

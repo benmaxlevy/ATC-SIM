@@ -1,9 +1,10 @@
 /**
- * Typed command-line submit. Bypasses SpeechPort (`text-only` is not a
- * SpeechPort — `phases/_shared/speech-port.md`). `Command.source` is `"text"`.
+ * Typed command-line submit. Does not call SpeechPort (`text-only` is not a
+ * SpeechPort — STT still bypasses speech). `Command.source` is `"text"`.
+ * The shell plays TTS via `voiceLoop.playReadback` after an accepted result.
  *
  * Analog: vice command line → virtual-pilot readback (R08). Trainer delta:
- * tokens and English share the radio pipeline. No TTS, no physics. Not NAS STARS.
+ * tokens and English share the radio pipeline. No physics. Not NAS STARS.
  */
 
 import type { SessionLog, World } from "@core";

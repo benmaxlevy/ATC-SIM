@@ -996,3 +996,49 @@ test("T03-10 — setSpeechPort refuses while transcribe is in flight", async () 
   expect(loop.speechPortId).toBe("null");
   loop.dispose();
 });
+
+test("playReadback synthesizes accepted typed readbacks without transcribe", async () => {
+  const port = fakePort("ignored");
+  const player = instantPlayer();
+  const loop = createVoiceLoop({
+    speechPort: port,
+    parseCommand,
+    dispatchCommand: () => {},
+    getSelectedCallsign: () => "DAL123",
+    readbackPlayer: player.player,
+  });
+
+  await loop.playReadback("delta one two three heading two seven zero");
+
+  expect(port.transcribeCalls).toBe(0);
+  expect(port.synthesizeCalls).toBe(1);
+  expect(port.lastSynthesizeText).toBe("delta one two three heading two seven zero");
+  expect(player.clips).toHaveLength(1);
+  loop.dispose();
+});
+
+test("playReadback skips empty and does not throw on TTS failure", async () => {
+  const port: SpeechPort = {
+    id: "fake",
+    async transcribe() {
+      return { text: "x", confidence: 1, latencyMs: 1 };
+    },
+    async synthesize() {
+      throw new Error("tts down");
+    },
+  };
+  const statuses: Array<VoiceLoopStatus | null> = [];
+  const loop = createVoiceLoop({
+    speechPort: port,
+    parseCommand,
+    dispatchCommand: () => {},
+    getSelectedCallsign: () => "DAL123",
+    onStatus: (reason) => statuses.push(reason),
+    readbackPlayer: instantPlayer().player,
+  });
+
+  await expect(loop.playReadback("   ")).resolves.toBeUndefined();
+  await expect(loop.playReadback("heading two seven zero")).resolves.toBeUndefined();
+  expect(statusCodes(statuses)).toEqual(["tts_failed"]);
+  loop.dispose();
+});
