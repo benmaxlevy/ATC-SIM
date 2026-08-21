@@ -26,7 +26,7 @@ Orchestrator started **2026-08-21**. First-swarm notes below stay. Resume polish
 | 0 Slice | **GREEN** (first swarm) | Do not redo |
 | 1 Closed loop | **GREEN** (first swarm) | Do not redo |
 | 2 Scope original (T02-01–13) | **GREEN** (first swarm) | Confirmed on `master` |
-| 2 Scope polish (T02-14–21) | **IN PROGRESS** | Captain spawned |
+| 2 Scope polish (T02-14–21) | **GREEN** (captain) | T02-14–21 merged `--no-ff`. Orchestrator writes SECOND SWARM COMPLETE. |
 | 3 Voice | **out of scope this run** | |
 | 4 Procedures | **out of scope this run** | |
 | 5 Training | **out of scope this run** | |
@@ -34,6 +34,25 @@ Orchestrator started **2026-08-21**. First-swarm notes below stay. Resume polish
 ## Log (this run)
 
 - 2026-08-21: Second swarm started. T02-01–13 on `master`. Planning tickets T02-14–21 committed to `master`. T02-14 WIP parked on `ticket/T02-14-video-map-catalog`. Spawning phase 2 polish captain (`cursor-grok-4.6-high`).
+- 2026-08-21: Phase 2 polish captain: all T02-14 … T02-21 merged `--no-ff` on `master` (plus `ticket/T02-21-ci-fix` for Prettier). Automated polish checklist green. Did not start phase 3. Did not write SECOND SWARM COMPLETE.
+
+## Phase 2 polish captain notes
+
+- **Merged:** T02-14 (Wave A; landed parked `e7aa4b5`, did not invent a second catalog); T02-15, T02-18 (B); T02-16 (C; did not skip cell grid); T02-19 then T02-17 (D; 17 rebased after 19 on `renderScope`/`pick`/`README`); T02-20 (E); T02-21 (F) plus `ticket/T02-21-ci-fix` for leftover Prettier. Isolated worktrees; workers never merged. Deleted local ticket branches and stale `ticket/video-maps-json-catalog`. Ignored junk `list` / `ls`.
+- **Tests:** `npm test` and `npm run ci` exit 0. **479** passed, **1** skipped (bench wall-clock when no real canvas). Includes video-map catalog, DCB cell/MAPS routing, heading-command `DAL123 H270`, scope keys never hitting the parser.
+- **Polish checklist:** Automated rows ticked (T02-14–20 grammar, no WX/OSM/STARS font). T02-21 “cheap STARS trainer” manual row **unchecked** skip-with-reason (no Chrome visual operator). Do not invent a visual pass.
+- **Did not start phase 3.** No `speech-api`, no PTT, no T03-*. Radio still tokens (`H270`).
+
+### Manual leftover (human `npm run dev` on Chrome Windows)
+
+- T02-14: denser coast + downwind (not ring-only).
+- T02-15: glass is PPI + thin bars, not a blog header; disclaimer one click / F1.
+- T02-16 AC6: green DCB cell grid, not a website toolbar.
+- T02-17: MAPS toggle extra maps; BRITE dims maps not tracks.
+- T02-18: symbol/history contrast on black PPI at 20 NM.
+- T02-19: FDB extra type line readable at 20 NM; L8 does not cover the symbol.
+- T02-20: SSA + list readable at 20 NM; airport maps still visible.
+- T02-21: script steps 1–10 — cheap STARS trainer / vice-like TCW, not a web HUD. Typed `DAL123 H270` still readbacks and turns.
 
 ---
 
