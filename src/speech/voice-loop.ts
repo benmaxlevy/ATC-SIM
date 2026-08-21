@@ -9,11 +9,13 @@
 
 import type { Command, Instruction, ParseStage } from "@core";
 import type { PttCaptureEvent, PttUpResult } from "./capture/ptt-controller";
+import { SpeechNotAvailableError } from "./errors";
 import { markPttUp, recordAudioStart, recordTranscriptLatency } from "./metrics";
 import type { VoiceUtteranceMetrics } from "./metrics";
 import { createReadbackPlayer, type ReadbackPlayer } from "./playback/readback-player";
 import { TransmitGate, type TransmitGateEvent } from "./playback/transmit-gate";
 import type { AudioClip, SpeechPort, Transcript } from "./types";
+import type { VoiceStatusEvent } from "./voice-error-codes";
 
 /** Below this, do not parse (T03-08 owns the “say again” copy). Overridable for T03-10. */
 export const DEFAULT_CONFIDENCE_THRESHOLD = 0.55;
@@ -60,13 +62,8 @@ export type DispatchCommandFn = (
   command: Command,
 ) => void | VoiceDispatchResult | Promise<void | VoiceDispatchResult>;
 
-export type VoiceLoopStatus =
-  | "empty-clip"
-  | "low-confidence"
-  | "transcribe-failed"
-  | "busy"
-  | "parse-miss"
-  | "readback-audio-failed";
+/** `{ code }` status. Prefer {@link VoiceStatusEvent}; this alias is the loop hook type. */
+export type VoiceLoopStatus = VoiceStatusEvent;
 
 export interface VoiceLoopOptions {
   speechPort: SpeechPort;
@@ -81,8 +78,8 @@ export interface VoiceLoopOptions {
   pathC?: boolean;
   /** Combined with no barge-in: lock PTT while transcribe/parse/playback run. */
   setTransmitLocked?: (locked: boolean) => void;
-  /** T03-08 status hook. Copy is out of scope here. */
-  onStatus?: (reason: VoiceLoopStatus) => void;
+  /** T03-08 `{ code }` hook. `null` clears the line (next PTT-down). Copy is in ui. */
+  onStatus?: (event: VoiceStatusEvent | null) => void;
   /** Parse miss after a transcript — log `command.rejected` from the app shell. */
   onParseMiss?: (sourceText: string, error: string) => void | Promise<void>;
   onMetrics?: (metrics: VoiceUtteranceMetrics) => void;
@@ -135,6 +132,13 @@ function acceptedReadback(result: void | VoiceDispatchResult): string | null {
   return text === "" ? null : text;
 }
 
+function statusFromTranscribeError(err: unknown): VoiceStatusEvent {
+  if (err instanceof SpeechNotAvailableError) {
+    return { code: "voice_backend_unavailable" };
+  }
+  return { code: "stt_failed" };
+}
+
 export function createVoiceLoop(options: VoiceLoopOptions): VoiceLoop {
   return new VoiceLoopImpl(options);
 }
@@ -153,7 +157,7 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly confidenceThreshold: number;
   private readonly pathC: boolean;
   private readonly setTransmitLocked: (locked: boolean) => void;
-  private readonly onStatus?: (reason: VoiceLoopStatus) => void;
+  private readonly onStatus?: (event: VoiceStatusEvent | null) => void;
   private readonly onParseMiss?: (sourceText: string, error: string) => void | Promise<void>;
   private readonly onMetrics?: (metrics: VoiceUtteranceMetrics) => void;
   private readonly getVoiceId: () => string;
@@ -195,17 +199,21 @@ class VoiceLoopImpl implements VoiceLoop {
   async handlePttEvent(event: PttCaptureEvent): Promise<void> {
     try {
       await this.onPttEvent(event);
-    } catch {
+    } catch (err) {
       this.inFlightValue = false;
       this.readbackPlayer.stop();
       this.syncLock("utterance-failed");
-      this.onStatus?.("transcribe-failed");
+      this.emitStatus(statusFromTranscribeError(err));
     }
   }
 
   private syncLock(event: TransmitGateEvent): void {
     this.gate.apply(event);
     this.setTransmitLocked(this.gate.locked);
+  }
+
+  private emitStatus(event: VoiceStatusEvent | null): void {
+    this.onStatus?.(event);
   }
 
   private async onPttEvent(event: PttCaptureEvent): Promise<void> {
@@ -218,19 +226,37 @@ class VoiceLoopImpl implements VoiceLoop {
     }
     if (event.type === "ptt-up") {
       await this.onPttUp(event.result);
+      return;
+    }
+    if (event.type === "permission-denied") {
+      this.emitStatus({ code: "mic_denied" });
+      return;
+    }
+    if (event.type === "capture-error") {
+      this.emitStatus(
+        event.reason === "insecure-context"
+          ? { code: "insecure_context" }
+          : { code: "capture_failed" },
+      );
+      return;
+    }
+    if (event.type === "ignored-locked") {
+      this.emitStatus({ code: "ptt_locked" });
     }
   }
 
   private onPttDown(): void {
     if (this.inFlightValue || this.gate.current === "playing") {
+      this.emitStatus({ code: "ptt_locked" });
       return;
     }
+    this.emitStatus(null);
     this.syncLock("ptt-down");
     void this.readbackPlayer.warmUp();
     try {
       this.speechPort.beginUtterance?.();
-    } catch {
-      this.onStatus?.("transcribe-failed");
+    } catch (err) {
+      this.emitStatus(statusFromTranscribeError(err));
     }
   }
 
@@ -239,11 +265,11 @@ class VoiceLoopImpl implements VoiceLoop {
       this.lastMetrics = markPttUp(this.now());
       this.emitMetrics();
       this.syncLock("utterance-failed");
-      this.onStatus?.("empty-clip");
+      this.emitStatus({ code: "empty_clip" });
       return;
     }
     if (this.inFlightValue) {
-      this.onStatus?.("busy");
+      this.emitStatus({ code: "ptt_locked" });
       return;
     }
 
@@ -266,8 +292,8 @@ class VoiceLoopImpl implements VoiceLoop {
     let transcript: Transcript;
     try {
       transcript = await this.finishTranscript(clip);
-    } catch {
-      this.onStatus?.("transcribe-failed");
+    } catch (err) {
+      this.emitStatus(statusFromTranscribeError(err));
       return;
     }
     if (this.disposed) {
@@ -276,7 +302,11 @@ class VoiceLoopImpl implements VoiceLoop {
     recordTranscriptLatency(metrics, this.now());
 
     if (transcript.confidence < this.confidenceThreshold) {
-      this.onStatus?.("low-confidence");
+      this.emitStatus({
+        code: "low_confidence",
+        confidence: transcript.confidence,
+        sourceText: transcript.text,
+      });
       return;
     }
 
@@ -289,7 +319,7 @@ class VoiceLoopImpl implements VoiceLoop {
       return;
     }
     if (!parsed.ok) {
-      this.onStatus?.("parse-miss");
+      this.emitStatus({ code: "parse_miss", sourceText: parsed.sourceText });
       await this.onParseMiss?.(parsed.sourceText, parsed.error);
       return;
     }
@@ -303,8 +333,8 @@ class VoiceLoopImpl implements VoiceLoop {
     let dispatchResult: void | VoiceDispatchResult;
     try {
       dispatchResult = await this.dispatchCommand(command);
-    } catch {
-      this.onStatus?.("transcribe-failed");
+    } catch (err) {
+      this.emitStatus(statusFromTranscribeError(err));
       return;
     }
     if (this.disposed) {
@@ -334,7 +364,7 @@ class VoiceLoopImpl implements VoiceLoop {
         this.syncLock("play-started");
         const outcome = await this.readbackPlayer.playBrowser(readback, voiceId, { onAudioStart });
         if (!outcome.ok) {
-          this.onStatus?.("readback-audio-failed");
+          this.emitStatus({ code: "tts_failed" });
         }
         return;
       }
@@ -343,7 +373,7 @@ class VoiceLoopImpl implements VoiceLoop {
       try {
         ttsClip = await this.speechPort.synthesize(readback, voiceId);
       } catch {
-        this.onStatus?.("readback-audio-failed");
+        this.emitStatus({ code: "tts_failed" });
         return;
       }
       if (this.disposed) {
@@ -352,7 +382,7 @@ class VoiceLoopImpl implements VoiceLoop {
       this.syncLock("play-started");
       const outcome = await this.readbackPlayer.playPcm(ttsClip, { onAudioStart });
       if (!outcome.ok) {
-        this.onStatus?.("readback-audio-failed");
+        this.emitStatus({ code: "tts_failed" });
       }
     } finally {
       this.syncLock("play-ended");

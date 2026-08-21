@@ -41,6 +41,8 @@ export type {
   VoiceLoopStatus,
   VoiceParseResult,
 } from "./voice-loop";
+export { VOICE_ERROR_CODES, shouldLogVoiceReject } from "./voice-error-codes";
+export type { VoiceErrorCode, VoiceStatusEvent } from "./voice-error-codes";
 export { markPttUp, recordAudioStart, recordTranscriptLatency } from "./metrics";
 export type { VoiceUtteranceMetrics } from "./metrics";
 export { WebSpeechPort, speakBrowser } from "./ports/web-speech-port";

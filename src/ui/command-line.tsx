@@ -5,11 +5,14 @@
  */
 
 import { type FormEvent, useState } from "react";
+import { displayCommandLineStatus } from "./voice-status";
 
 export const COMMAND_LINE_INPUT_ID = "command-line-input";
 
 export interface CommandLineProps {
   readback: string;
+  /** Voice error/status copy; wins over `readback` while set. */
+  voiceStatus?: string | null;
   onSubmit: (value: string) => void | Promise<void>;
 }
 
@@ -21,7 +24,7 @@ export function focusCommandLine(): void {
   }
 }
 
-export function CommandLine({ readback, onSubmit }: CommandLineProps) {
+export function CommandLine({ readback, voiceStatus = null, onSubmit }: CommandLineProps) {
   const [value, setValue] = useState("");
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -33,7 +36,7 @@ export function CommandLine({ readback, onSubmit }: CommandLineProps) {
   return (
     <form className="command-line" onSubmit={handleSubmit}>
       <div className="command-readback" aria-live="polite">
-        {readback}
+        {displayCommandLineStatus(readback, voiceStatus)}
       </div>
       <input
         id={COMMAND_LINE_INPUT_ID}

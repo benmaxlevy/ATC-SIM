@@ -93,6 +93,10 @@ test("AC7 — shell calls submitCommand; command line clears after submit", () =
   expect(shell).not.toMatch(/\bstepWorld\b/);
   expect(commandLine).toMatch(/onSubmit\(value\)/);
   expect(commandLine).toMatch(/setValue\(""\)/);
+  expect(commandLine).toMatch(/voiceStatus/);
+  expect(shell).toMatch(/subscribeVoiceStatus/);
+  expect(shell).toMatch(/voiceStatus=\{voiceStatus\}/);
+  expect(shell).not.toMatch(/\balert\s*\(/);
 });
 
 test("T01-11 — canvas click selects then focuses the PPI; it does not submit a radio command", () => {

@@ -42,12 +42,22 @@ export interface ShellProps {
 
 export function Shell({ app, scenario, scopeView }: ShellProps) {
   const [readback, setReadback] = useState("");
+  const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
   const [, setScopeUiTick] = useState(0);
   const panRef = useRef<{ lastX: number; lastY: number } | null>(null);
 
   function refreshScopeUi(): void {
     setScopeUiTick((n) => n + 1);
   }
+
+  useEffect(() => {
+    return app.subscribeVoiceStatus((status) => {
+      setVoiceStatus(status);
+      if (status === null) {
+        setReadback("");
+      }
+    });
+  }, [app]);
 
   useEffect(() => {
     return installAlwaysOnScopeKeys(scopeView, app.world, {
@@ -120,7 +130,9 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           footer={
             <CommandLine
               readback={readback}
+              voiceStatus={voiceStatus}
               onSubmit={(input) => {
+                setVoiceStatus(null);
                 void submitCommand(app.world, input, app.log).then((result) => {
                   setReadback(result.readback);
                 });

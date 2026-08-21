@@ -4,11 +4,14 @@ import { handleRadioCommand } from "@pilot";
 import {
   createPttCaptureController,
   createVoiceLoop,
+  shouldLogVoiceReject,
   type PttCaptureController,
   type PttCaptureEvent,
   type SpeechPort,
   type VoiceLoop,
+  type VoiceStatusEvent,
 } from "@speech";
+import { formatVoiceStatus } from "../ui/voice-status";
 
 export interface AppDeps {
   speech: SpeechPort;
@@ -28,6 +31,8 @@ export interface AppHandles {
   world: World;
   ptt: PttCaptureController;
   voiceLoop: VoiceLoop;
+  /** Command-line copy (formatted) or `null` to clear. */
+  subscribeVoiceStatus(listener: (status: string | null) => void): () => void;
 }
 
 function selectedCallsignFromWorld(world: World): string | null {
@@ -37,6 +42,22 @@ function selectedCallsignFromWorld(world: World): string | null {
   return world.aircraft.find((ac) => ac.id === world.selectedAircraftId)?.callsign ?? null;
 }
 
+function logVoiceReject(log: SessionLog, world: World, event: VoiceStatusEvent): void {
+  if (!shouldLogVoiceReject(event.code)) {
+    return;
+  }
+  log.append({
+    type: "command.rejected",
+    atSimMs: world.simTimeMs,
+    atWallMs: 0,
+    command: null,
+    reason: event.code,
+    ...(event.sourceText !== undefined && event.sourceText !== ""
+      ? { sourceText: event.sourceText }
+      : {}),
+  });
+}
+
 export function createApp(deps: AppDeps): AppHandles {
   if (!deps.speech) {
     throw new Error("createApp requires deps.speech");
@@ -44,6 +65,13 @@ export function createApp(deps: AppDeps): AppHandles {
   const world = deps.world ?? createWorld();
   const log = new SessionLog();
   let ptt: PttCaptureController | undefined = deps.ptt;
+  const voiceStatusListeners = new Set<(status: string | null) => void>();
+
+  function emitVoiceStatus(status: string | null): void {
+    for (const listener of voiceStatusListeners) {
+      listener(status);
+    }
+  }
 
   const voiceLoop =
     deps.voiceLoop ??
@@ -51,22 +79,24 @@ export function createApp(deps: AppDeps): AppHandles {
       speechPort: deps.speech,
       parseCommand,
       dispatchCommand: (command) => {
-        return handleRadioCommand(world, command, log);
+        const result = handleRadioCommand(world, command, log);
+        if (result.readback) {
+          emitVoiceStatus(result.readback);
+        }
+        return result;
       },
       getSelectedCallsign: () => selectedCallsignFromWorld(world),
       getIssuedAtSimMs: () => world.simTimeMs,
       setTransmitLocked: (locked) => {
         ptt?.setTransmitLocked(locked);
       },
-      onParseMiss: (sourceText) => {
-        log.append({
-          type: "command.rejected",
-          atSimMs: world.simTimeMs,
-          atWallMs: 0,
-          command: null,
-          reason: "PARSE",
-          sourceText,
-        });
+      onStatus: (event) => {
+        if (event === null) {
+          emitVoiceStatus(null);
+          return;
+        }
+        emitVoiceStatus(formatVoiceStatus(event));
+        logVoiceReject(log, world, event);
       },
     });
 
@@ -86,5 +116,11 @@ export function createApp(deps: AppDeps): AppHandles {
     world,
     ptt,
     voiceLoop,
+    subscribeVoiceStatus(listener) {
+      voiceStatusListeners.add(listener);
+      return () => {
+        voiceStatusListeners.delete(listener);
+      };
+    },
   };
 }

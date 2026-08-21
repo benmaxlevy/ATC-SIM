@@ -42,6 +42,7 @@ export {
 } from "./disclaimer-copy";
 export { echoCommandLine, submitCommandLine } from "./echo-command-line";
 export { submitCommand } from "./submitCommand";
+export { displayCommandLineStatus, formatVoiceStatus } from "./voice-status";
 export type { PilotResult } from "./submitCommand";
 export {
   PLAY_HINT,

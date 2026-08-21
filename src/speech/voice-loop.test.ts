@@ -74,6 +74,10 @@ function fakePort(
   return port;
 }
 
+function statusCodes(events: Array<VoiceLoopStatus | null>): Array<VoiceLoopStatus["code"] | null> {
+  return events.map((event) => (event === null ? null : event.code));
+}
+
 test("DEFAULT_CONFIDENCE_THRESHOLD is 0.55", () => {
   expect(DEFAULT_CONFIDENCE_THRESHOLD).toBe(0.55);
 });
@@ -155,7 +159,7 @@ test("AC3 — typed command line H270 is still source text", async () => {
 
 test("AC4 — NullSpeechPort transcribe throw does not dispatch and does not escape", async () => {
   const dispatched: Command[] = [];
-  const statuses: VoiceLoopStatus[] = [];
+  const statuses: Array<VoiceLoopStatus | null> = [];
   const loop = createVoiceLoop({
     speechPort: new NullSpeechPort(),
     parseCommand,
@@ -170,14 +174,42 @@ test("AC4 — NullSpeechPort transcribe throw does not dispatch and does not esc
     loop.handlePttEvent({ type: "ptt-up", result: { kind: "clip", clip: nonEmptyClip() } }),
   ).resolves.toBeUndefined();
   expect(dispatched).toEqual([]);
-  expect(statuses).toEqual(["transcribe-failed"]);
+  expect(statusCodes(statuses)).toEqual(["voice_backend_unavailable"]);
   expect(loop.inFlight).toBe(false);
+});
+
+test("AC1 — confidence 0.5 does not parse or dispatch (T03-08)", async () => {
+  const parseSpy: ParseCommandFn = vi.fn(parseCommand);
+  const dispatched: Command[] = [];
+  const statuses: Array<VoiceLoopStatus | null> = [];
+  const dal = sample("DAL123");
+  const intentBefore = { ...dal.intent };
+  const loop = createVoiceLoop({
+    speechPort: fakePort("turn left heading two seven zero", { confidence: 0.5 }),
+    parseCommand: parseSpy,
+    dispatchCommand: (command) => {
+      dispatched.push(command);
+    },
+    getSelectedCallsign: () => "DAL123",
+    onStatus: (reason) => statuses.push(reason),
+  });
+
+  await loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  expect(parseSpy).not.toHaveBeenCalled();
+  expect(dispatched).toEqual([]);
+  expect(statusCodes(statuses)).toEqual(["low_confidence"]);
+  expect(statuses[0]).toMatchObject({ code: "low_confidence", confidence: 0.5 });
+  expect(dal.intent).toEqual(intentBefore);
 });
 
 test("AC5 — confidence 0.54 does not parse or dispatch", async () => {
   const parseSpy: ParseCommandFn = vi.fn(parseCommand);
   const dispatched: Command[] = [];
-  const statuses: VoiceLoopStatus[] = [];
+  const statuses: Array<VoiceLoopStatus | null> = [];
   const loop = createVoiceLoop({
     speechPort: fakePort("turn left heading two seven zero", { confidence: 0.54 }),
     parseCommand: parseSpy,
@@ -195,13 +227,35 @@ test("AC5 — confidence 0.54 does not parse or dispatch", async () => {
 
   expect(parseSpy).not.toHaveBeenCalled();
   expect(dispatched).toEqual([]);
-  expect(statuses).toEqual(["low-confidence"]);
+  expect(statusCodes(statuses)).toEqual(["low_confidence"]);
+});
+
+test("confidence 0.55 is not below threshold and still parses", async () => {
+  const parseSpy: ParseCommandFn = vi.fn(parseCommand);
+  const dispatched: Command[] = [];
+  const loop = createVoiceLoop({
+    speechPort: fakePort("turn left heading two seven zero", { confidence: 0.55 }),
+    parseCommand: parseSpy,
+    dispatchCommand: (command) => {
+      dispatched.push(command);
+    },
+    getSelectedCallsign: () => "DAL123",
+  });
+
+  await loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  expect(parseSpy).toHaveBeenCalledTimes(1);
+  expect(dispatched).toHaveLength(1);
+  expect(dispatched[0]?.source).toBe("voice");
 });
 
 test("empty clip does not call transcribe", async () => {
   const port = fakePort("ignored");
   const dispatched: Command[] = [];
-  const statuses: VoiceLoopStatus[] = [];
+  const statuses: Array<VoiceLoopStatus | null> = [];
   const loop = createVoiceLoop({
     speechPort: port,
     parseCommand,
@@ -215,7 +269,7 @@ test("empty clip does not call transcribe", async () => {
   await loop.handlePttEvent({ type: "ptt-up", result: { kind: "empty" } });
   expect(port.transcribeCalls).toBe(0);
   expect(dispatched).toEqual([]);
-  expect(statuses).toEqual(["empty-clip"]);
+  expect(statusCodes(statuses)).toEqual(["empty_clip"]);
 });
 
 test("transcribe is not called while another is in flight", async () => {
@@ -234,7 +288,7 @@ test("transcribe is not called while another is in flight", async () => {
     },
   };
   const dispatched: Command[] = [];
-  const statuses: VoiceLoopStatus[] = [];
+  const statuses: Array<VoiceLoopStatus | null> = [];
   const loop = createVoiceLoop({
     speechPort: port,
     parseCommand,
@@ -259,7 +313,7 @@ test("transcribe is not called while another is in flight", async () => {
     result: { kind: "clip", clip: nonEmptyClip() },
   });
   expect(transcribeCalls).toHaveLength(1);
-  expect(statuses).toEqual(["busy"]);
+  expect(statusCodes(statuses)).toEqual(["ptt_locked"]);
 
   release({ text: "turn left heading two seven zero", confidence: 1, latencyMs: 1 });
   await first;
@@ -574,7 +628,7 @@ test("AC4 — synthesize reject after accept keeps intent and returns lock to id
     },
   };
   const dispatched: Command[] = [];
-  const statuses: VoiceLoopStatus[] = [];
+  const statuses: Array<VoiceLoopStatus | null> = [];
   const lock = vi.fn();
   const loop = createVoiceLoop({
     speechPort: port,
@@ -595,7 +649,7 @@ test("AC4 — synthesize reject after accept keeps intent and returns lock to id
   });
 
   expect(dispatched).toHaveLength(1);
-  expect(statuses).toEqual(["readback-audio-failed"]);
+  expect(statusCodes(statuses)).toEqual(["tts_failed"]);
   expect(lock).toHaveBeenLastCalledWith(false);
   expect(loop.inFlight).toBe(false);
 });
@@ -662,4 +716,135 @@ test("web-speech accepted readback uses playBrowser, not the silence clip", asyn
 
   expect(browserTexts).toEqual([ACCEPTED_READBACK]);
   expect(clips).toEqual([]);
+});
+
+test("T03-08 — generic transcribe throw is stt_failed with no dispatch", async () => {
+  const port: SpeechPort = {
+    id: "http",
+    async transcribe() {
+      throw new Error("network");
+    },
+    async synthesize() {
+      return nonEmptyClip();
+    },
+  };
+  const dispatched: Command[] = [];
+  const statuses: Array<VoiceLoopStatus | null> = [];
+  const loop = createVoiceLoop({
+    speechPort: port,
+    parseCommand,
+    dispatchCommand: (command) => {
+      dispatched.push(command);
+    },
+    getSelectedCallsign: () => "DAL123",
+    onStatus: (event) => statuses.push(event),
+  });
+
+  await expect(
+    loop.handlePttEvent({ type: "ptt-up", result: { kind: "clip", clip: nonEmptyClip() } }),
+  ).resolves.toBeUndefined();
+  expect(dispatched).toEqual([]);
+  expect(statusCodes(statuses)).toEqual(["stt_failed"]);
+});
+
+test("T03-08 — spoken parse miss does not dispatch and keeps sourceText", async () => {
+  const dispatched: Command[] = [];
+  const statuses: Array<VoiceLoopStatus | null> = [];
+  const misses: Array<{ sourceText: string; error: string }> = [];
+  const loop = createVoiceLoop({
+    speechPort: fakePort("asdf qwerty please vector"),
+    parseCommand,
+    dispatchCommand: (command) => {
+      dispatched.push(command);
+    },
+    getSelectedCallsign: () => "DAL123",
+    onStatus: (event) => statuses.push(event),
+    onParseMiss: (sourceText, error) => {
+      misses.push({ sourceText, error });
+    },
+  });
+
+  await loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  expect(dispatched).toEqual([]);
+  expect(statusCodes(statuses)).toEqual(["parse_miss"]);
+  expect(statuses[0]?.sourceText).toBe("asdf qwerty please vector");
+  expect(misses).toHaveLength(1);
+  expect(misses[0]?.sourceText).toBe("asdf qwerty please vector");
+});
+
+test("T03-08 — capture events map to mic/context/capture/ptt codes", async () => {
+  const port = fakePort("ignored");
+  const statuses: Array<VoiceLoopStatus | null> = [];
+  const loop = createVoiceLoop({
+    speechPort: port,
+    parseCommand,
+    dispatchCommand: () => {},
+    getSelectedCallsign: () => "DAL123",
+    onStatus: (event) => statuses.push(event),
+  });
+
+  await loop.handlePttEvent({ type: "permission-denied" });
+  await loop.handlePttEvent({ type: "capture-error", reason: "insecure-context" });
+  await loop.handlePttEvent({ type: "capture-error", reason: "worklet-failed" });
+  await loop.handlePttEvent({ type: "ignored-locked" });
+
+  expect(port.transcribeCalls).toBe(0);
+  expect(statusCodes(statuses)).toEqual([
+    "mic_denied",
+    "insecure_context",
+    "capture_failed",
+    "ptt_locked",
+  ]);
+});
+
+test("T03-08 — PTT-down clears status; PTT during playback is ptt_locked and not queued", async () => {
+  const { player, release } = holdingPlayer();
+  const statuses: Array<VoiceLoopStatus | null> = [];
+  const pttEvents: PttCaptureEvent[] = [];
+  const backend = new FakeCaptureBackend();
+  let loopHandle: ReturnType<typeof createVoiceLoop> | undefined;
+  const ptt = createPttCaptureController({
+    onEvent: (event) => {
+      pttEvents.push(event);
+      void loopHandle?.handlePttEvent(event);
+    },
+    backend,
+    attachTo: null,
+    isSecureContext: true,
+  });
+  const loop = createVoiceLoop({
+    speechPort: fakePort("turn left heading two seven zero"),
+    parseCommand,
+    dispatchCommand: () => ({ accepted: true, readback: ACCEPTED_READBACK }),
+    getSelectedCallsign: () => "DAL123",
+    readbackPlayer: player,
+    setTransmitLocked: (locked) => {
+      ptt.setTransmitLocked(locked);
+    },
+    onStatus: (event) => statuses.push(event),
+  });
+  loopHandle = loop;
+
+  await loop.handlePttEvent({ type: "ptt-down" });
+  expect(statusCodes(statuses)).toEqual([null]);
+
+  const pending = loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+  await flushUntil(() => player.playing, "playback start");
+
+  await ptt.handleKeyDown(pttKey());
+  expect(pttEvents).toEqual([{ type: "ignored-locked" }]);
+  expect(backend.startCalls).toBe(0);
+  expect(statusCodes(statuses)).toEqual([null, "ptt_locked"]);
+
+  release();
+  await pending;
+  ptt.dispose();
+  loop.dispose();
 });
