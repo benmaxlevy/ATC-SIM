@@ -53,7 +53,7 @@ body,
   border-top: 1px solid #1c2430;
 }
 
-.command-echo {
+.command-readback {
   min-height: 1.4em;
   padding: 4px 10px;
   font-size: 13px;

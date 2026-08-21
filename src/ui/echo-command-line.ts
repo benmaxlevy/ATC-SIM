@@ -1,4 +1,7 @@
-/** Trim typed command-line text. Does not parse or apply a Command. */
+/**
+ * Trim typed command-line text. Does not parse or apply a Command.
+ * Product submit is `submitCommand` (T01-09); this helper is the Phase 0 echo path.
+ */
 export function echoCommandLine(input: string): string {
   return input.trim();
 }

@@ -1,11 +1,11 @@
 import { type FormEvent, useState } from "react";
 
 export interface CommandLineProps {
-  echo: string;
+  readback: string;
   onSubmit: (value: string) => void;
 }
 
-export function CommandLine({ echo, onSubmit }: CommandLineProps) {
+export function CommandLine({ readback, onSubmit }: CommandLineProps) {
   const [value, setValue] = useState("");
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -16,8 +16,8 @@ export function CommandLine({ echo, onSubmit }: CommandLineProps) {
 
   return (
     <form className="command-line" onSubmit={handleSubmit}>
-      <div className="command-echo" aria-live="polite">
-        {echo}
+      <div className="command-readback" aria-live="polite">
+        {readback}
       </div>
       <input
         type="text"

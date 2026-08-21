@@ -60,13 +60,13 @@ Keep `src/ui` importing `src/pilot`, not the other way around.
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Typing `DAL123 H270` and Enter (with DAL123 in world) shows a readback containing heading two seven zero (case-insensitive) and does **not** show the raw token string as the only output.
-- [ ] **AC2 —** Input field is empty after Enter.
-- [ ] **AC3 —** A bad command (`XYZ H270` or ambiguous fixture if present) shows an `unable` readback; aircraft that existed still have prior intent.
-- [ ] **AC4 —** Network tab / code search: submit path does not call `SpeechPort` methods.
-- [ ] **AC5 —** Phase 0 disclaimer still visible; command line still at the bottom.
+- [x] **AC1 —** Typing `DAL123 H270` and Enter (with DAL123 in world) shows a readback containing heading two seven zero (case-insensitive) and does **not** show the raw token string as the only output.
+- [x] **AC2 —** Input field is empty after Enter.
+- [x] **AC3 —** A bad command (`XYZ H270` or ambiguous fixture if present) shows an `unable` readback; aircraft that existed still have prior intent.
+- [x] **AC4 —** Network tab / code search: submit path does not call `SpeechPort` methods.
+- [x] **AC5 —** Phase 0 disclaimer still visible; command line still at the bottom.
 - [ ] **AC6 —** **Manual:** focus remains in the command line after Enter.
-- [ ] **AC7 —** Automated: a thin UI test **or** a store-level test that the submit function used by the UI calls `handleRadioText` is acceptable if full DOM tests are painful. Prefer Vitest + happy-dom/jsdom **only if Phase 0 already uses it**; otherwise a `submitCommand(world, text)` in `src/ui` that is unit-tested without canvas is enough, and the shell must call that function (grep AC).
+- [x] **AC7 —** Automated: a thin UI test **or** a store-level test that the submit function used by the UI calls `handleRadioText` is acceptable if full DOM tests are painful. Prefer Vitest + happy-dom/jsdom **only if Phase 0 already uses it**; otherwise a `submitCommand(world, text)` in `src/ui` that is unit-tested without canvas is enough, and the shell must call that function (grep AC).
 
 ## Test plan
 
