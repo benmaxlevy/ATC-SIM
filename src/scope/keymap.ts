@@ -22,6 +22,9 @@ export interface KeyBinding {
 /** Help overlay footer — phase README keyboard-feel freeze. */
 export const HELP_FOOTER = "TRAINER KEYS — NOT CRC";
 
+/** One-line in-app pointer (T02-13). Overlay itself is F1; this is how you find it. */
+export const HELP_KEYS_POINTER = "F1 lists keys.";
+
 /** Radio vs scope pipeline. Overlay must include this; never a CRC cheat sheet. */
 export const RADIO_CONFLICT_WARNING =
   "Radio commands stay on the command line and never come from scope keys. L090 is a left turn to heading 090 when the command line is focused.";

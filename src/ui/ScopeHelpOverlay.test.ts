@@ -58,6 +58,7 @@ test("shell mounts the F1 overlay from KEY_BINDINGS and installs always-on keys"
   expect(shell).toMatch(/scopeView\.helpOpen/);
   expect(shell).toMatch(/installAlwaysOnScopeKeys/);
   expect(shell).toMatch(/focusRadioCommandLine/);
+  expect(shell).toMatch(/HELP_KEYS_POINTER/);
 });
 
 test("overlay maps KEY_BINDINGS — no duplicated key rows in JSX", () => {

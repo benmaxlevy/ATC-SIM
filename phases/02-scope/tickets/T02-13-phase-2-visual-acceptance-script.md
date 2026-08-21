@@ -61,11 +61,23 @@ Implementers should tick the ACs in this file (or report them) as they run the s
 - [ ] **AC1 —** Manual: script steps 1–12 all pass on Chrome Windows.
 - [ ] **AC2 —** Manual: step 13 recorded (30-target FPS or skip-with-reason if hardware unavailable; then AC4 from T02-12 must already be signed by someone with an iGPU).
 - [ ] **AC3 —** Manual: step 14 pass (terminal radar, not game map).
-- [ ] **AC4 —** `npm test` green; Command IR types unchanged vs phase 1.
+- [x] **AC4 —** `npm test` green; Command IR types unchanged vs phase 1.
 - [ ] **AC5 —** Scope keys during the script produced **zero** extra readbacks (only radio-focus commands did).
 - [ ] **AC6 —** Disclaimer still visible; app still labeled training/entertainment.
 - [ ] **AC7 —** Phase README exit checklist can be ticked green.
 - [ ] **AC8 — Research:** During the script, no chrome uses zoom / label / sprite / OSM. Grammar matches CRC/vice (dark PPI, FDB, leaders) without pixel-matching.
+
+## Notes
+
+AC4: `npm test` exit 0 (429 passed, 1 skipped). Re-ran `src/parse`, `src/core/kinematics.test.ts`, and `tests/integration/heading-command.test.ts` (49 passed). Command IR: `src/core/command/types.ts` last changed in T00-06; `fixtures.test.ts` still asserts the six frozen `Command` fields and 11 `INSTRUCTION_TYPES`.
+
+Automated proof (do not treat as live Chrome): radio vs scope (`scopeKeys.routing.test.ts`, `scopeKeys.test.ts` — scope keys never `command.accepted` / `parseCommand`; radio-focus `L090` / `DAL123 H270` still parse); palette frozen hex, no red (`ownership.test.ts`, `renderScope.test.ts`); default spawn 6 in 4–8 (`spawn.test.ts`); 30-track CI budget (`renderScope.bench.test.ts`); keymap footer `TRAINER KEYS — NOT CRC` (`keymap.test.ts`, `ScopeHelpOverlay.test.ts`); disclaimer copy + shell mount (`disclaimer-copy.test.ts`, `submitCommand.test.ts`); forbidden chrome words (`DisplayControlBar.test.ts` AC9, `renderScope.test.ts` AC8/AC9).
+
+Disclaimer vs DCB: CSS keeps `.disclaimer` as a flex sibling above `.ppi-column` / `.dcb-lite` (not `position: absolute` over the bar). No layout change. In-app pointer added: `F1 lists keys.`
+
+AC1–AC3 / AC5–AC8 skip-with-reason: human asleep; no GPU/visual operator; live Chrome Windows script steps 1–14 were not watched. Do not invent a visual pass. T02-12 AC4 (Chrome iGPU p50 FPS) is also unsigned skip-with-reason, so AC2 cannot claim a GPU sign-off. Re-run `npm run dev` in Chrome at 1080p (optional `?traffic=30&debug=fps`) when a human is awake.
+
+AC7 leftover: phase README items proven by tests are ticked; **T02-13 manual script sign-off stays unchecked.**
 
 ## Test plan
 

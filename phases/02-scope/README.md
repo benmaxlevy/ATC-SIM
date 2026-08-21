@@ -409,22 +409,22 @@ Implement in this order unless a ticket says it can run in parallel. IDs are sta
 
 Do not start phase 3 or 4 until every box is green. Phase 3 *may* overlap the tail of phase 2 because SpeechPort is isolated — but the **scope** exit below is still required before calling phase 2 done.
 
-- [ ] Range presets 5–60 NM, PageUp/Down + wheel, **no zoom-to-cursor**, `Home` centers airport.
-- [ ] KDEM runway 27, loc feather, rings; coastline optional from JSON.
-- [ ] Target symbol + optional 5-dot / 5 s history.
-- [ ] Full datablock: callsign, Mode C hundreds, assigned if different, GS. Limited + Mode C toggle.
-- [ ] Leaders L1–L9 (5 = overlay), 8 compass directions + center.
-- [ ] Altitude filter suppresses datablocks outside min/max; symbols remain.
-- [ ] PTL 1 min toggle.
-- [ ] Unowned white / owned green / selected yellow; F3/F4 stub only.
-- [ ] F1 help lists the frozen Windows map; `TRAINER KEYS — NOT CRC`.
-- [ ] DCB-lite: range, map layers, filter, PTL, history.
-- [ ] Strips show callsign + assigned heading/alt/speed; click selects.
-- [ ] Scope keys never emit `command.accepted` / readback.
-- [ ] Typed `DAL123 H270` (radio focus) still readbacks and turns (phase 1 exit still holds).
-- [ ] 30-target budget test recorded (T02-12).
-- [ ] T02-13 manual script signed off: “looks like a terminal radar, not a game map.”
-- [ ] `npm test` green. No Command IR type changes.
+- [x] Range presets 5–60 NM, PageUp/Down + wheel, **no zoom-to-cursor**, `Home` centers airport.
+- [x] KDEM runway 27, loc feather, rings; coastline optional from JSON.
+- [x] Target symbol + optional 5-dot / 5 s history.
+- [x] Full datablock: callsign, Mode C hundreds, assigned if different, GS. Limited + Mode C toggle.
+- [x] Leaders L1–L9 (5 = overlay), 8 compass directions + center.
+- [x] Altitude filter suppresses datablocks outside min/max; symbols remain.
+- [x] PTL 1 min toggle.
+- [x] Unowned white / owned green / selected yellow; F3/F4 stub only.
+- [x] F1 help lists the frozen Windows map; `TRAINER KEYS — NOT CRC`.
+- [x] DCB-lite: range, map layers, filter, PTL, history.
+- [x] Strips show callsign + assigned heading/alt/speed; click selects.
+- [x] Scope keys never emit `command.accepted` / readback.
+- [x] Typed `DAL123 H270` (radio focus) still readbacks and turns (phase 1 exit still holds).
+- [x] 30-target budget test recorded (T02-12).
+- [ ] T02-13 manual script signed off: “looks like a terminal radar, not a game map.” skip-with-reason: human asleep; no GPU/visual operator; live Chrome Windows script not watched. Automated tests prove the items above; do not invent a visual pass.
+- [x] `npm test` green. No Command IR type changes.
 
 ## Launching an agent
 

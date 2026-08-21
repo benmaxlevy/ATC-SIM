@@ -8,6 +8,7 @@ import {
   handlePpiPanDelta,
   handleScopeWheel,
   DROP_TRACK_HELP,
+  HELP_KEYS_POINTER,
   INITIATE_TRACK_HELP,
   installAlwaysOnScopeKeys,
   scopeFocusFromDocument,
@@ -123,7 +124,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
       </div>
       <SimControls world={app.world} />
       <p className="ownership-help">
-        {INITIATE_TRACK_HELP} {DROP_TRACK_HELP}
+        {HELP_KEYS_POINTER} {INITIATE_TRACK_HELP} {DROP_TRACK_HELP}
       </p>
       <CommandLine
         readback={readback}

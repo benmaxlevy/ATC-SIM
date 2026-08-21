@@ -84,6 +84,7 @@ test("T02-08 — strip callsign tints with ownership color; help is color-only n
   expect(ui).toMatch(/tracks\.get\(strip\.aircraftId\)\?\.ownership/);
   expect(ui).toMatch(/syncStripCallsignColors/);
   expect(shell).toMatch(/tracks=\{scopeView\.tracks\}/);
+  expect(shell).toMatch(/HELP_KEYS_POINTER/);
   expect(shell).toMatch(/INITIATE_TRACK_HELP/);
   expect(shell).toMatch(/DROP_TRACK_HELP/);
   expect(shell.toLowerCase()).not.toMatch(/lock-?on/);

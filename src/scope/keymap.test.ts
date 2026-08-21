@@ -3,6 +3,7 @@ import {
   CHORD_TIMEOUT_MS,
   HELP_FOOTER,
   HELP_GLOSSARY_NOTE,
+  HELP_KEYS_POINTER,
   KEY_BINDINGS,
   RADIO_CONFLICT_WARNING,
   SCOPE_CHORD_WINDOW_MS,
@@ -153,6 +154,7 @@ test("AC2 — bindings list PageUp/PageDown, Home, End, F3, F4, F7, F8, L1–L9,
 
 test("AC9 — help copy uses glossary terms and at least one CRC analog → our key row", () => {
   expect(HELP_FOOTER).toBe("TRAINER KEYS — NOT CRC");
+  expect(HELP_KEYS_POINTER).toBe("F1 lists keys.");
   expect(HELP_GLOSSARY_NOTE).toMatch(/range/);
   expect(HELP_GLOSSARY_NOTE).toMatch(/datablock/);
   expect(HELP_GLOSSARY_NOTE).toMatch(/leader/);
