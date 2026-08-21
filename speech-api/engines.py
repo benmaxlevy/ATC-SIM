@@ -7,11 +7,14 @@ import logging
 import math
 import os
 import tempfile
+import time
 import wave
 from pathlib import Path
 from typing import Protocol
 
 from config import Settings
+from hub import resolve_hub_file, whisper_weights_source
+from logconfig import configure_logging, elapsed_ms
 from wavutil import tone_wav
 
 log = logging.getLogger("speech-api")
@@ -46,11 +49,17 @@ class MockStt:
         del wav_bytes
         return MOCK_TRANSCRIPT, 1.0
 
+    def describe(self) -> str:
+        return "mock"
+
 
 class MockTts:
     def synthesize(self, text: str, voice_id: str) -> bytes:
         del text, voice_id
         return tone_wav()
+
+    def describe(self) -> str:
+        return "mock"
 
 
 def is_cuda_runtime_error(exc: BaseException) -> bool:
@@ -189,40 +198,93 @@ def _pick_stt_device(settings: Settings) -> tuple[str, str]:
     return device, compute
 
 
-def _load_whisper_model(settings: Settings, device: str, compute_type: str) -> object:
+def _load_whisper_model(
+    settings: Settings,
+    device: str,
+    compute_type: str,
+    *,
+    local_files_only: bool = False,
+) -> object:
     from faster_whisper import WhisperModel
 
+    configure_logging()
     cache = settings.cache_dir / "faster-whisper"
     cache.mkdir(parents=True, exist_ok=True)
-    log.info(
-        "loading STT model_id=%s device=%s compute=%s cache=%s",
-        settings.stt_model_id,
-        device,
-        compute_type,
-        cache,
-    )
     return WhisperModel(
         settings.stt_model_id,
         device=device,
         compute_type=compute_type,
         download_root=str(cache),
-        local_files_only=False,
+        local_files_only=local_files_only,
         use_auth_token=settings.hf_token,
     )
 
 
 class FasterWhisperStt:
     def __init__(self, settings: Settings) -> None:
+        t0 = time.perf_counter()
         device, compute_type = _pick_stt_device(settings)
+        cache = settings.cache_dir / "faster-whisper"
+        cache.mkdir(parents=True, exist_ok=True)
+        weights = whisper_weights_source(cache, settings.stt_model_id)
+        self._model_id = settings.stt_model_id
+        log.info(
+            "STT loading model=%s device=%s compute=%s weights=%s",
+            settings.stt_model_id,
+            device,
+            compute_type,
+            weights,
+        )
+        self._model, device, compute_type, weights = self._load_with_fallback(
+            settings, device, compute_type, weights
+        )
+        self._device = device
+        self._compute = compute_type
+        self._weights = weights
+        self._elapsed_ms = elapsed_ms(t0)
+        log.info(
+            "STT ready model=%s device=%s compute=%s weights=%s elapsed_ms=%s",
+            self._model_id,
+            self._device,
+            self._compute,
+            self._weights,
+            self._elapsed_ms,
+        )
+
+    def _load_with_fallback(
+        self, settings: Settings, device: str, compute_type: str, weights: str
+    ) -> tuple[object, str, str, str]:
+        err = self._assign_model(settings, device, compute_type, weights == "cache")
+        if err is not None and device == "cuda" and is_cuda_runtime_error(err):
+            log.warning("CUDA STT failed (%s); falling back to CPU", err)
+            device, compute_type = "cpu", "int8"
+            err = self._assign_model(settings, device, compute_type, weights == "cache")
+        if err is not None and weights == "cache":
+            log.info("STT cache incomplete; downloading model=%s", settings.stt_model_id)
+            weights = "download"
+            err = self._assign_model(settings, device, compute_type, False)
+        if err is not None:
+            raise err
+        return self._model, device, compute_type, weights
+
+    def _assign_model(
+        self, settings: Settings, device: str, compute_type: str, local_files_only: bool
+    ) -> BaseException | None:
         try:
-            self._model = _load_whisper_model(settings, device, compute_type)
+            self._model = _load_whisper_model(
+                settings, device, compute_type, local_files_only=local_files_only
+            )
             if device == "cuda":
                 self._probe_cuda()
+            return None
         except Exception as exc:
-            if device != "cuda" or not is_cuda_runtime_error(exc):
-                raise
-            log.warning("CUDA STT failed (%s); falling back to CPU", exc)
-            self._model = _load_whisper_model(settings, "cpu", "int8")
+            return exc
+
+    def describe(self) -> str:
+        return (
+            f"{self._model_id} device={self._device} compute={self._compute} "
+            f"weights={self._weights} elapsed_ms={self._elapsed_ms}"
+        )
 
     def _probe_cuda(self) -> None:
         """Encode once at boot so a missing cublas DLL does not 500 the first PTT."""
@@ -275,48 +337,74 @@ def piper_hub_filename(voice_id: str) -> str:
     return f"{lang}/{locale}/{name}/{quality}/{voice_id}.onnx"
 
 
-def ensure_piper_onnx(voice_id: str, cache_dir: Path, token: str | None) -> Path:
+def ensure_piper_onnx(voice_id: str, cache_dir: Path, token: str | None) -> tuple[Path, str]:
     # huggingface_hub copies files from the Hub onto disk. Never call InferenceClient
     # or any metered inference endpoint.
-    from huggingface_hub import hf_hub_download
-
     rel = piper_hub_filename(voice_id)
     hub_cache = cache_dir / "hub"
-    hub_cache.mkdir(parents=True, exist_ok=True)
-    kwargs = {
-        "repo_id": "rhasspy/piper-voices",
-        "cache_dir": str(hub_cache),
-        "token": token,
-    }
-    onnx = hf_hub_download(filename=rel, **kwargs)
-    hf_hub_download(filename=f"{rel}.json", **kwargs)
-    return Path(onnx)
+    onnx, source = resolve_hub_file(
+        repo_id="rhasspy/piper-voices",
+        filename=rel,
+        cache_dir=hub_cache,
+        token=token,
+        purpose=f"TTS {voice_id}",
+    )
+    resolve_hub_file(
+        repo_id="rhasspy/piper-voices",
+        filename=f"{rel}.json",
+        cache_dir=hub_cache,
+        token=token,
+        purpose=f"TTS {voice_id} config",
+    )
+    return onnx, source
 
 
 class PiperTts:
     def __init__(self, settings: Settings) -> None:
+        t0 = time.perf_counter()
         self._default_voice = settings.tts_voice
         self._cache_dir = settings.cache_dir
         self._token = settings.hf_token
         # ONNX CUDA is independent of CTranslate2. Driver-only machines warn and use CPU.
         self._use_cuda = onnx_cuda_available()
+        self._device = "cuda" if self._use_cuda else "cpu"
         self._voices: dict[str, object] = {}
         roster = list(settings.tts_voices)
         if self._default_voice not in roster:
             roster.append(self._default_voice)
+        log.info(
+            "TTS loading voices=%s device=%s default=%s",
+            len(roster),
+            self._device,
+            self._default_voice,
+        )
         for vid in roster:
             try:
                 self._load(vid)
             except Exception:
-                log.warning("skipping TTS voice %s", vid, exc_info=True)
+                log.warning("TTS skip voice=%s", vid, exc_info=True)
         if self._default_voice not in self._voices:
             self._load(self._default_voice)
+        self._elapsed_ms = elapsed_ms(t0)
+        log.info(
+            "TTS ready voices=%s/%s device=%s default=%s elapsed_ms=%s",
+            len(self._voices),
+            len(roster),
+            self._device,
+            self._default_voice,
+            self._elapsed_ms,
+        )
+
+    def describe(self) -> str:
+        return (
+            f"{len(self._voices)} voices device={self._device} "
+            f"default={self._default_voice} elapsed_ms={self._elapsed_ms}"
+        )
 
     def _load(self, voice_id: str) -> None:
         from piper import PiperVoice
 
-        onnx = ensure_piper_onnx(voice_id, self._cache_dir, self._token)
-        log.info("loading TTS voice=%s path=%s cuda=%s", voice_id, onnx, self._use_cuda)
+        onnx, _source = ensure_piper_onnx(voice_id, self._cache_dir, self._token)
         try:
             self._voices[voice_id] = PiperVoice.load(str(onnx), use_cuda=self._use_cuda)
         except TypeError:
@@ -343,13 +431,13 @@ class PiperTts:
 
 def build_stt(settings: Settings) -> SttEngine:
     if settings.mock:
-        log.info("STT mock mode (SPEECH_API_MOCK=1); no Hub download")
+        log.info("STT mock (SPEECH_API_MOCK=1)")
         return MockStt()
     return FasterWhisperStt(settings)
 
 
 def build_tts(settings: Settings) -> TtsEngine:
     if settings.mock:
-        log.info("TTS mock mode (SPEECH_API_MOCK=1); no Hub download")
+        log.info("TTS mock (SPEECH_API_MOCK=1)")
         return MockTts()
     return PiperTts(settings)

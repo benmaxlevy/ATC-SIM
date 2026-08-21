@@ -14,10 +14,11 @@ from pydantic import BaseModel, Field
 
 from config import Settings
 from engines import SttEngine, TtsEngine, build_stt, build_tts
+from logconfig import configure_logging
 from parse_engine import ParseEngine, build_parse
 from wavutil import is_wave
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+configure_logging()
 log = logging.getLogger("speech-api")
 
 
@@ -42,25 +43,42 @@ class ParseRequest(BaseModel):
     context: Optional[ParseContext] = None
 
 
+def _describe(engine: object | None, fallback: str) -> str:
+    if engine is None:
+        return fallback
+    fn = getattr(engine, "describe", None)
+    if callable(fn):
+        try:
+            return str(fn())
+        except Exception:
+            return fallback
+    return fallback
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     cfg = settings or Settings.load()
     cfg.apply_hub_cache()
+    configure_logging()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.settings = cfg
+        log.info("speech-api starting mock=%s", cfg.mock)
         app.state.stt = build_stt(cfg)
         app.state.tts = build_tts(cfg)
         parse_engine = build_parse(cfg)
         app.state.parse = parse_engine
-        parse_status = "ready" if parse_engine is not None and parse_engine.ready else "off"
+        if parse_engine is None:
+            llm_desc = "off"
+        elif parse_engine.ready:
+            llm_desc = _describe(parse_engine, "ready")
+        else:
+            llm_desc = "unavailable"
         log.info(
-            "speech-api ready mock=%s stt=%s tts=%s parse=%s model=%s bind later via HOST/PORT",
-            cfg.mock,
-            cfg.stt_model_id,
-            cfg.tts_voice,
-            parse_status,
-            cfg.parse_model_id,
+            "speech-api ready stt=[%s] tts=[%s] llm=[%s]",
+            _describe(app.state.stt, cfg.stt_model_id),
+            _describe(app.state.tts, cfg.tts_voice),
+            llm_desc,
         )
         yield
 

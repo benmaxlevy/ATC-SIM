@@ -12,7 +12,7 @@ from engines import (
 )
 
 
-def _settings(device: str | None = None) -> Settings:
+def _settings(device: str | None = None, cache_dir: Path | None = None) -> Settings:
     return Settings(
         host="127.0.0.1",
         port=8090,
@@ -20,7 +20,7 @@ def _settings(device: str | None = None) -> Settings:
         tts_voice="en_US-lessac-medium",
         parse_model_id=None,
         parse_gguf_file="qwen2.5-1.5b-instruct-q4_k_m.gguf",
-        cache_dir=Path("."),
+        cache_dir=cache_dir or Path("."),
         mock=False,
         hf_token=None,
         cors_origins=(),
@@ -68,10 +68,10 @@ class _OkModel:
         return iter(()), None
 
 
-def test_whisper_init_falls_back_after_cublas_load_error(monkeypatch) -> None:
+def test_whisper_init_falls_back_after_cublas_load_error(monkeypatch, tmp_path) -> None:
     calls: list[str] = []
 
-    def load(_settings: Settings, device: str, compute_type: str) -> object:
+    def load(_settings: Settings, device: str, compute_type: str, **_kwargs) -> object:
         del compute_type
         calls.append(device)
         if device == "cuda":
@@ -80,8 +80,9 @@ def test_whisper_init_falls_back_after_cublas_load_error(monkeypatch) -> None:
 
     monkeypatch.setattr("engines._pick_stt_device", lambda _s: ("cuda", "float16"))
     monkeypatch.setattr("engines._load_whisper_model", load)
-    stt = FasterWhisperStt(_settings())
+    stt = FasterWhisperStt(_settings(cache_dir=tmp_path))
     assert calls == ["cuda", "cpu"]
+    assert "device=cpu" in stt.describe()
     text, confidence = stt.transcribe(b"RIFF")
     assert text == ""
     assert confidence == 1.0

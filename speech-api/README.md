@@ -38,7 +38,7 @@ PARSE_MODEL_ID=Qwen/Qwen2.5-1.5B-Instruct-GGUF
 PARSE_GGUF_FILE=qwen2.5-1.5b-instruct-q4_k_m.gguf
 ```
 
-Weights ~1.0–1.2 GB; plan **~2 GB RAM**. **CPU OK, slow OK** — salvage only. VRAM not required. Set `PARSE_N_GPU_LAYERS` if you have a working GPU and want layers offloaded.
+Weights ~1.0–1.2 GB; plan **~2 GB RAM**. **CPU OK, slow OK** — salvage only. VRAM not required. CUDA: Path C auto-offloads all layers when `llama-cpp-python` was built with GGML CUDA **and** CUDA 12 `cublas` loads (same DLL path fix as STT). Force CPU: `PARSE_N_GPU_LAYERS=0`. Partial offload: set a positive layer count.
 
 Install the extra runtime only if you enable Path C (mock mode does not need it):
 
@@ -119,7 +119,7 @@ docker run --rm -p 127.0.0.1:8090:8090 -v speech-api-cache:/app/.cache atc-speec
 | `TTS_VOICES` | lessac, amy, ryan, joe, kristin, kusal (medium) | Comma-separated Piper ids preloaded at startup |
 | `PARSE_MODEL_ID` | unset | Hub id or local `.gguf` path. Unset → `/health.parse` is `"off"` and `POST /parse` is `UNAVAILABLE`. Default **named** id: `Qwen/Qwen2.5-1.5B-Instruct-GGUF` (1.5B Q4_K_M, **not** a 7B) |
 | `PARSE_GGUF_FILE` | `qwen2.5-1.5b-instruct-q4_k_m.gguf` | Quant file inside the Hub repo (~2 GB RAM; CPU OK / slow OK) |
-| `PARSE_N_GPU_LAYERS` | `0` | llama.cpp GPU layers. `0` = CPU |
+| `PARSE_N_GPU_LAYERS` | auto (`-1` if CUDA llama works, else `0`) | llama.cpp GPU layers. Unset = all layers on CUDA, CPU otherwise. `0` = CPU. `-1` = all layers |
 | `PARSE_CTX` | `2048` | llama.cpp context |
 | `PARSE_N_THREADS` | (engine default) | llama.cpp CPU threads |
 | `SPEECH_API_MOCK` | unset | `1` / `true` — no Hub, fake STT/TTS for CI |

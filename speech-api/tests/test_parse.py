@@ -173,3 +173,21 @@ def test_system_prompt_distinguishes_heading_vector_from_turn_degrees() -> None:
     assert "NEVER TURN_DEGREES for a heading assignment" in SYSTEM_PROMPT
     assert "heading 270" in SYSTEM_PROMPT
     assert "heading 360" in SYSTEM_PROMPT
+
+
+def test_parse_n_gpu_layers_auto_cuda(monkeypatch) -> None:
+    from parse_engine import _llm_device, _parse_n_gpu_layers
+
+    monkeypatch.delenv("PARSE_N_GPU_LAYERS", raising=False)
+    monkeypatch.setattr("parse_engine._llama_supports_gpu_offload", lambda: True)
+    assert _parse_n_gpu_layers() == -1
+    assert _llm_device(-1) == "cuda"
+
+
+def test_parse_n_gpu_layers_env_zero_forces_cpu(monkeypatch) -> None:
+    from parse_engine import _llm_device, _parse_n_gpu_layers
+
+    monkeypatch.setenv("PARSE_N_GPU_LAYERS", "0")
+    monkeypatch.setattr("parse_engine._llama_supports_gpu_offload", lambda: True)
+    assert _parse_n_gpu_layers() == 0
+    assert _llm_device(0) == "cpu"

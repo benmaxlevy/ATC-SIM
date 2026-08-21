@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from config import DEFAULT_PARSE_GGUF_FILE, DEFAULT_PARSE_MODEL_ID, Settings
+from logconfig import elapsed_ms
 
 log = logging.getLogger("speech-api")
 
@@ -335,6 +336,9 @@ class MockParseEngine:
 
     ready = True
 
+    def describe(self) -> str:
+        return "mock ready"
+
     def parse(
         self,
         text: str,
@@ -358,27 +362,86 @@ class MockParseEngine:
         )
 
 
-def _ensure_gguf(settings: Settings) -> Path:
+def _ensure_gguf(settings: Settings) -> tuple[Path, str]:
     model_id = settings.parse_model_id
     if not model_id:
         raise RuntimeError("PARSE_MODEL_ID unset")
     local = Path(model_id)
     if local.is_file() and local.suffix.lower() == ".gguf":
-        return local
+        return local, "local"
     # huggingface_hub copies the GGUF onto disk once. Never InferenceClient.
-    from huggingface_hub import hf_hub_download
+    from hub import resolve_hub_file
 
     filename = settings.parse_gguf_file or DEFAULT_PARSE_GGUF_FILE
-    cache = settings.cache_dir / "hub"
-    cache.mkdir(parents=True, exist_ok=True)
-    log.info("downloading parse GGUF repo=%s file=%s (one-time Hub copy)", model_id, filename)
-    path = hf_hub_download(
+    path, source = resolve_hub_file(
         repo_id=model_id,
         filename=filename,
-        cache_dir=str(cache),
+        cache_dir=settings.cache_dir / "hub",
         token=settings.hf_token,
+        purpose="LLM",
     )
-    return Path(path)
+    return path, source
+
+
+_LLAMA_LOG_HANDLE = None
+
+
+def _silence_llama_cpp() -> None:
+    """Drop ggml tensor dumps; Python logs below cover load status."""
+    global _LLAMA_LOG_HANDLE
+    if _LLAMA_LOG_HANDLE is not None:
+        return
+    try:
+        from llama_cpp import llama_cpp as _ll
+    except ImportError:
+        return
+
+    def _on_log(level, text, user_data=None):  # noqa: ARG001
+        return None
+
+    try:
+        cb_type = getattr(_ll, "llama_log_callback", None)
+        setter = getattr(_ll, "llama_log_set", None)
+        if cb_type is None or setter is None:
+            return
+        handle = cb_type(_on_log)
+        try:
+            setter(handle, None)
+        except Exception:
+            import ctypes
+
+            setter(handle, ctypes.c_void_p())
+        _LLAMA_LOG_HANDLE = handle
+    except Exception:
+        _LLAMA_LOG_HANDLE = None
+
+
+def _llama_supports_gpu_offload() -> bool:
+    """True when this llama-cpp-python build can offload layers (needs CUDA DLLs on PATH)."""
+    from engines import prepare_windows_cuda_dlls
+
+    prepare_windows_cuda_dlls()
+    try:
+        import llama_cpp
+
+        fn = getattr(llama_cpp, "llama_supports_gpu_offload", None)
+        if not callable(fn):
+            return False
+        return bool(fn())
+    except Exception:
+        return False
+
+
+def _parse_n_gpu_layers() -> int:
+    """Unset PARSE_N_GPU_LAYERS → all layers (-1) if CUDA llama works, else CPU (0)."""
+    raw = os.environ.get("PARSE_N_GPU_LAYERS", "").strip()
+    if raw:
+        return int(raw)
+    return -1 if _llama_supports_gpu_offload() else 0
+
+
+def _llm_device(n_gpu_layers: int) -> str:
+    return "cpu" if n_gpu_layers == 0 else "cuda"
 
 
 def _load_grammar() -> object | None:
@@ -399,12 +462,20 @@ class LlamaParseEngine:
     """Local llama.cpp instruct model. CPU OK, slow OK. Not a 7B default."""
 
     def __init__(self, settings: Settings) -> None:
+        import time
+
+        from engines import prepare_windows_cuda_dlls
         from llama_cpp import Llama
 
-        gguf = _ensure_gguf(settings)
-        n_gpu = int(os.environ.get("PARSE_N_GPU_LAYERS", "0"))
+        prepare_windows_cuda_dlls()
+        _silence_llama_cpp()
+        t0 = time.perf_counter()
+        gguf, weights = _ensure_gguf(settings)
+        n_gpu = _parse_n_gpu_layers()
         n_ctx = int(os.environ.get("PARSE_CTX", "2048"))
         n_threads_raw = os.environ.get("PARSE_N_THREADS", "").strip()
+        n_threads = int(n_threads_raw) if n_threads_raw else None
+        device = _llm_device(n_gpu)
         kwargs: dict[str, Any] = {
             "model_path": str(gguf),
             "n_ctx": n_ctx,
@@ -412,17 +483,47 @@ class LlamaParseEngine:
             "chat_format": "chatml",
             "verbose": False,
         }
-        if n_threads_raw:
-            kwargs["n_threads"] = int(n_threads_raw)
+        if n_threads is not None:
+            kwargs["n_threads"] = n_threads
+        self._model_id = settings.parse_model_id or gguf.name
+        self._n_gpu = n_gpu
+        self._n_ctx = n_ctx
+        self._weights = weights
+        self._device = device
         log.info(
-            "loading parse GGUF path=%s n_gpu_layers=%s n_ctx=%s (CPU OK if n_gpu_layers=0)",
-            gguf,
+            "LLM loading model=%s file=%s weights=%s device=%s n_gpu_layers=%s n_ctx=%s n_threads=%s",
+            self._model_id,
+            gguf.name,
+            weights,
+            device,
             n_gpu,
             n_ctx,
+            n_threads if n_threads is not None else "auto",
         )
         self._llm = Llama(**kwargs)
         self._grammar = _load_grammar()
         self.ready = True
+        self._n_threads = getattr(self._llm, "n_threads", None) or (
+            n_threads if n_threads is not None else "auto"
+        )
+        self._elapsed_ms = elapsed_ms(t0)
+        log.info(
+            "LLM ready model=%s device=%s grammar=%s n_gpu_layers=%s n_ctx=%s n_threads=%s elapsed_ms=%s",
+            self._model_id,
+            device,
+            "on" if self._grammar is not None else "off",
+            n_gpu,
+            n_ctx,
+            self._n_threads,
+            self._elapsed_ms,
+        )
+
+    def describe(self) -> str:
+        return (
+            f"ready {self._model_id} device={self._device} weights={self._weights} "
+            f"n_gpu_layers={self._n_gpu} n_ctx={self._n_ctx} n_threads={self._n_threads} "
+            f"grammar={'on' if self._grammar is not None else 'off'} elapsed_ms={self._elapsed_ms}"
+        )
 
     def parse(
         self,
@@ -465,25 +566,23 @@ class LlamaParseEngine:
 
 def build_parse(settings: Settings) -> ParseEngine | None:
     if not settings.parse_model_id:
+        log.info("LLM off (PARSE_MODEL_ID unset); POST /parse UNAVAILABLE")
         return None
     if settings.mock:
-        log.info(
-            "parse mock mode (SPEECH_API_MOCK=1) model_id=%s; no GGUF download",
-            settings.parse_model_id,
-        )
+        log.info("LLM mock (SPEECH_API_MOCK=1) model_id=%s", settings.parse_model_id)
         return MockParseEngine()
     try:
         return LlamaParseEngine(settings)
     except ImportError:
         log.error(
-            "PARSE_MODEL_ID=%s but llama-cpp-python is not installed. "
+            "LLM unavailable: PARSE_MODEL_ID=%s but llama-cpp-python is not installed. "
             "pip install -r requirements-parse.txt (default model %s / %s). "
-            "/parse stays UNAVAILABLE.",
+            "POST /parse stays UNAVAILABLE.",
             settings.parse_model_id,
             DEFAULT_PARSE_MODEL_ID,
             DEFAULT_PARSE_GGUF_FILE,
         )
         return None
     except Exception:
-        log.exception("failed to load parse model; /parse stays UNAVAILABLE")
+        log.exception("LLM failed to load; POST /parse UNAVAILABLE")
         return None

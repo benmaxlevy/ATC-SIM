@@ -6,8 +6,10 @@ import logging
 
 from config import Settings
 from engines import build_stt, build_tts
+from logconfig import configure_logging
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+configure_logging()
 
 
 def main() -> None:

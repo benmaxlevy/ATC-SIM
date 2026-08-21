@@ -9,7 +9,7 @@ RUN apt-get update \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app.py config.py engines.py wavutil.py download_weights.py parse_engine.py parse_grammar.gbnf ./
+COPY app.py config.py engines.py wavutil.py download_weights.py parse_engine.py parse_grammar.gbnf logconfig.py hub.py ./
 
 ENV HOST=0.0.0.0
 ENV PORT=8090
