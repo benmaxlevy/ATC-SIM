@@ -1,0 +1,14 @@
+---
+description: Self-hosted STT/TTS only — no paid third-party speech APIs
+alwaysApply: true
+---
+
+# Self-hosted speech
+
+STT and TTS run on **our** API (`speech-api/`), loading model **weights** from Hugging Face Hub (or another public weight source) onto **our** machine. The browser calls only that API (or in-tab `whisper-wasm` / `null`).
+
+**Do not** add SDKs, REST calls, or env keys for metered vendors, including: OpenAI, Deepgram, AssemblyAI, Groq, Together, Fireworks, ElevenLabs, Google Cloud Speech, Azure Speech, Amazon Transcribe/Polly, Hugging Face **Inference API / Inference Endpoints** (billed). Hugging Face is allowed as a **one-time weight download**, not as a per-utterance cloud.
+
+Chrome **Web Speech** is not our stack (it may send audio to Google). It is an optional prototype only — never the default quality path, never required to ship.
+
+See `phases/_shared/speech-port.md`.

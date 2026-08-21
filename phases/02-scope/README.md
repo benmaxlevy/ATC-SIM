@@ -1,0 +1,437 @@
+# Phase 2 — Scope
+
+Make the workstation feel like a **terminal radar**, not a game map.
+
+Phase 1 proved the product loop: type a heading, hear/see a readback, aircraft turns on a crude PPI. Phase 2 does **not** add voice, procedures, or scoring. It replaces the crude picture with a STARS-like plan-view scope: dark PPI, digital maps, full/limited datablocks, leader lines, altitude filter, a handful of keyboard commands, a lite display-control strip, and a flight-strip bay.
+
+CRC/vNAS STARS and [vice](https://pharr.org/vice/) are **references for keyboard feel and visual grammar**. Do not clone every key, do not copy proprietary maps or fonts, do not claim NAS compatibility.
+
+## Research (do this before T02-01)
+
+Read `phases/_shared/references.md` end-to-end, then keep **R02, R05, R07, R08, R12** open while implementing.
+
+| Need | Open | Search fallback |
+| --- | --- | --- |
+| Datablock / Mode C / strip English | [PCG](https://www.faa.gov/air_traffic/publications/atpubs/pcg_html/) (R02) | `FAA Pilot Controller Glossary datablock Mode C` |
+| Altitude filter / display data | [FOA STARS](https://www.faa.gov/air_traffic/publications/atpubs/foa_html/chap12_section_6.html) (R05) | `FAA FOA STARS altitude filter` |
+| Keys, FDB/LDB, leaders, DCB, range | [CRC STARS](https://docs.virtualnas.net/crc/stars/) (R07) | `vNAS CRC STARS datablock leader DCB` |
+| Scope + typed-command feel | [vice](https://pharr.org/vice/) (R08) | `vice STARS emulation keyboard` |
+| What not to look like | R12 | browser ATC OSM nametag zoom |
+
+User-facing copy uses glossary words only. Each `src/scope/*` module gets a one-line analog + trainer-delta comment (template in `references.md`).
+
+## Why this phase exists
+
+A typed closed loop on a dotted map is a prototype. Controllers (and anyone who has sat CRC) judge a trainer in the first two seconds of video: Is it north-up and black? Do range rings sit on a runway and a localizer feather? Can I change range and leader direction without thinking? If the answer is “it’s a zoomable game map with callsign labels,” the rest of the sim will not be believed.
+
+This phase is also the **performance envelope**. Architecture’s quality bar is 30 arrivals at 60 FPS on a 2020 laptop with Canvas2D. If datablocks and history dots blow that budget, later weather and alerts will not get a second chance.
+
+## Depends on
+
+Phase 1 exit is green:
+
+- `stepWorld(world, dt)` at 20 Hz; rAF renders only.
+- 4–8 KDEM arrivals, click-to-select, command line, template readbacks.
+- Crude Canvas2D PPI (dots + callsign) from **T01-10** / **T01-11**.
+
+Phase 2 **replaces** that crude PPI in `src/scope`. It must not break the command line or the parser. Radio still lives in Command IR (`phases/_shared/command-ir.md`). Scope keys **never** produce a `Command`, a readback, or an intent change.
+
+## Goals
+
+When this phase exits, a controller sitting at Chrome on Windows can:
+
+1. See a **dark, north-up PPI** with a limited palette (black / green maps / white unowned / green owned / yellow selected). Red is reserved for phase 4 alerts.
+2. Set **range 5–60 NM** in discrete presets, **center** on the airport or a clicked point, and pan without “zoom to cursor.”
+3. See **KDEM digital maps**: runway 27, ILS 27 localizer feather, range rings, optional coastline polyline from scenario JSON.
+4. Read a **full datablock** (callsign, altitude, ground speed) tied to the target with an **8-direction leader**.
+5. Toggle **limited datablocks**, **Mode C**, **history dots**, **predicted track line**, and an **altitude filter**.
+6. Use a **documented Windows keyboard subset** (and a mouse DCB-lite) without colliding with typed radio (`L090` remains a left turn to 090 when the command line is focused).
+7. **F3-initiate** a track as a color/ownership stub only — no NAS handoff.
+8. Work a **flight-strip** bay that mirrors intent from `World`.
+9. Hold **30 targets at 60 FPS** (measured; see T02-12).
+
+## Non-goals (phase 2)
+
+Lift nothing from `phases/_shared/non-goals.md`. In addition, **do not** build:
+
+| Out | Why |
+| --- | --- |
+| Full STARS DCB (two-row multifunction, MAPBRITE, CHARSIZE, SHIFT, CSA menus) | T02-10 is a lite bar: range, maps, filter, PTL, history. |
+| CRDA, FMA, ARV, timed approaches | Phase 4+. |
+| Weather mosaic, precipitation, wind barbs | Phase 4+. |
+| Real STARS bitmap font or any licensed NAS typeface | Metric-similar **monospace** only. |
+| CRC-compatible full keyboard / preference sets | Subset below is frozen; document every difference. |
+| Handoff, point-out, quick-look other facility, scratchpad, beacon code | F3 only recolors ownership. |
+| Auto-deconflict of overlapping datablocks | Known limitation; log if asked. |
+| WebGL phosphor bloom, afterglow trails | Canvas2D. History dots are discrete samples, not a phosphor sim. |
+| Map editor, CIFP maps, real coastlines | KDEM JSON only. |
+| Touch-first mobile layout | Desktop Chrome/Edge. |
+| Any change to Command IR types, parser tokens, or pilot-agent validation | Phase 1 freeze. |
+
+## Frozen decisions (do not reopen)
+
+### 1. Radio vs scope are different pipelines
+
+From `phases/_shared/glossary.md`:
+
+- **Radio commands** (heading, altitude, speed, approach) → parser → Command IR → pilot agent → readback + intent.
+- **Scope commands** (range, center, leader, filter, PTL, F3) → `src/scope` state only. **No readback. No `Command`. No kinematics.**
+
+If a key could be mistaken for a parser token, it is either always-on (non-printable / F-key / Page/Home) or it only fires when the command line is **blurred**.
+
+### 2. Focus model (Windows)
+
+One physical keyboard, two foci.
+
+| Focus | How you get it | What keys do |
+| --- | --- | --- |
+| **Radio** | Click the command line, or `Tab` onto it, or `/` (slash) as a dedicated focus key that does not insert `/` into the buffer | Printable characters parse as phase 1 tokens (`H270`, `L090`, `C30`, …) |
+| **Scope** | Click the PPI or a strip, or `Tab` onto the canvas | Letter chords (`L`+digit, `T`, `M`, `F`, `H`) are scope commands |
+
+**Always-on keys** work in **both** foci. Implementation **must** `preventDefault` + `stopPropagation` so they never type into the command line:
+
+| Action | Windows key | Notes |
+| --- | --- | --- |
+| Range in (smaller NM) | `PageUp` | Previous preset. At 5 NM: no-op, no wrap. |
+| Range out (larger NM) | `PageDown` | Next preset. At 60 NM: no-op, no wrap. |
+| Center on airport ref | `Home` | View center = KDEM airport reference from T00-04 / T00-05. |
+| Center on last PPI click | `End` | If no click yet this session, same as `Home`. |
+| Help overlay | `F1` | **Not** CRC F1. Ours is help. Document that. |
+| Initiate track stub | `F3` | CRC analog: Initiate Track. Color only. |
+| Drop track stub | `F4` | Trainer sugar: owned → unowned. **Not** a NAS terminate. |
+| PTL toggle | `F7` | Global predicted track line. |
+| History toggle | `F8` | Global history dots. |
+| Cycle focus | `Tab` | Command line ↔ PPI. Do not steal Tab from help overlay inputs. |
+
+**Mouse (pointer over PPI), always-on:**
+
+| Action | Gesture | Notes |
+| --- | --- | --- |
+| Range in / out | Wheel up / down | Same presets as PageUp/Down. |
+| Pan | Middle-button drag | Trainer sugar. Updates view-center offset. **Not** CRC. |
+| Select track | Left click on target or datablock | Existing T01-11. Hit-test includes datablock box. |
+| Deselect | Left click empty PPI | |
+| Center here | Double-click empty PPI | Sets view center to that world point. |
+
+**Scope-focus only (command line blurred):**
+
+| Action | Sequence | CRC / vice analog |
+| --- | --- | --- |
+| Leader direction | `L` then `1`–`9` within 1.5 s | L1–L9. Top-row **or** numpad. |
+| Full ↔ limited datablock | `T` | Tag/untag analog. Selected track; if none selected, **all** tracks. |
+| Mode C field on/off | `M` | Hide/show reported altitude on **full** blocks. Assigned + GS remain. |
+| Altitude filter | `F`, then 3-digit min, `Enter`, 3-digit max, `Enter` | Hundreds of feet. `Esc` cancels the chord. |
+| History (duplicate of F8) | `H` | Convenience when scope-focused. |
+
+**Hard conflicts — do not bind these letters as always-on:**
+
+| Letter | Phase 1 radio meaning | Scope uses it only when |
+| --- | --- | --- |
+| `L` | `L090` fly heading left | Scope focus, leader chord |
+| `T` | `T20L` turn degrees | Scope focus, datablock toggle |
+| `C` | `C30` climb | **Never** a scope key. Center is `Home`. |
+| `R` | `R180` right heading | **Never** a scope key. Range is PageUp/Down. |
+| `H` | `H270` heading | Scope focus only (history). Always-on history is `F8`. |
+| `A` / `D` / `S` / `I` | altitude / speed / ident | Never scope keys. |
+
+Chord rule: after `L` or `F`, a 1.5 s timer. Invalid digit or timeout → cancel, no mutation, no error readback (optionally a dim status-line hint: `LEADER?`). **Never** forward leftover digits into the parser.
+
+### 3. Range is a radar preset, not a camera zoom
+
+Frozen presets (nautical miles, inclusive): **5, 10, 15, 20, 30, 40, 50, 60**.
+
+- Default at session start: **20 NM**.
+- Range is the **radius** from the **view center** to the shorter half-dimension of the PPI (the inscribed circle of the drawable canvas). The square canvas shows some corners beyond range; clip map/rings to the circle **or** to the AABB — pick one in T02-01 and test it. Prefer **circular clip** (PPI tradition).
+- Changing range **does not** move the view center. **No zoom-to-cursor.** That is the single biggest “game map” tell.
+- CRC has more presets (6, 8, 12, 16, 24, …). We do not.
+
+### 4. Coordinates and camera
+
+T00-04 froze world coordinates (local tangent NM east/north, or lat/lon + documented origin). The scope camera talks **only** in NM east/north of that origin plus pixels.
+
+```ts
+interface ScopeCamera {
+  rangeNm: 5 | 10 | 15 | 20 | 30 | 40 | 50 | 60;
+  /** World point drawn at PPI center. */
+  centerEastNm: number;
+  centerNorthNm: number;
+}
+```
+
+- North-up. No rotation in v1 (`phases/_shared/glossary.md` PPI).
+- `nmToScreen` / `screenToNm` are pure functions, unit-tested, used by maps, targets, leaders, PTL, click-select.
+- Pan = mutate `centerEastNm` / `centerNorthNm`.
+
+### 5. Palette (limited color)
+
+STARS-like, not a screenshot clone. **No red in phase 2** (alerts are phase 4).
+
+| Role | Hex (frozen) | Used for |
+| --- | --- | --- |
+| Background | `#000000` | PPI fill |
+| Map | `#00AA00` | Runway, loc feather, coastline |
+| Map dim | `#006600` | Range rings |
+| Unowned track + block | `#DDDDDD` | Default after spawn |
+| Owned track + block | `#00FF66` | After F3 |
+| Selected accent | `#FFFF00` | Selection box / brighter leader; not “emergency” |
+| History | 40–70% of track color | Dots |
+| PTL | Same as track color | Line |
+| UI chrome | `#9AA0A6` on `#111` | DCB-lite, strips, help — still dark, not game HUD |
+
+Export as `src/scope/palette.ts`. Do not sprinkle hex literals in draw calls.
+
+### 6. Font
+
+Do **not** bundle or imitate a licensed STARS font.
+
+Use a **metric-similar monospace**, 11–13 px on a 1080p PPI:
+
+- Preferred webfont: **IBM Plex Mono** (SIL OFL, tabular figures) at 12px, or
+- System stack: `"IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace`
+
+Datablock layout is **character-cell based** (columns of hundreds vs GS). Proportional fonts are a bug.
+
+### 7. Datablock content (v1)
+
+**Full datablock** (two lines, monospace):
+
+```
+DAL123
+030  210
+```
+
+- Line 1: callsign as stored (no telephony here; that’s readback-only).
+- Line 2: **Mode C** in hundreds of feet, zero-padded to 3 (`Math.round(altFt / 100)`), then two spaces, then **ground speed** in knots, 3 digits (`210`).
+- If **assigned altitude** differs from Mode C by ≥ 100 ft, insert assigned hundreds between them:
+
+```
+DAL123
+032  030  210
+```
+
+Meaning: reported 3200, assigned 3000, GS 210. This is the phase-2 altitude contract — not a full STARS field-by-field clone (no scratchpad, no beacon, no CSI).
+
+**Limited datablock** (one line, no callsign):
+
+```
+032
+```
+
+Mode C hundreds only, shorter leader allowed (same direction, half length).
+
+**Mode C toggle (`M`)** hides the reported-altitude field on **full** blocks. If assigned differs, still show assigned + GS. If assigned equals Mode C and Mode C is hidden, show GS only on line 2.
+
+No third line in phase 2.
+
+### 8. Leader directions (L1–L9 analog)
+
+Numpad compass, **including 5 = overlay**:
+
+```
+7 NW    8 N    9 NE
+4 W     5 CTR  6 E
+1 SW    2 S    3 SE
+```
+
+- Default at spawn: **L8** (north). Same for all tracks until changed.
+- Phase 2 leader length is **fixed**: 24 px at the current canvas, **or** 0.35 NM world — pick **pixel-constant** (24 px) so length does not explode at 5 NM range. Document the pick in T02-05.
+- L5: length 0; datablock top-left at the target (with a 4 px gap so the symbol stays visible).
+- Per-track direction stored on display state, not on `Aircraft`.
+- Changing `L`+digit applies to the **selected** track; if none selected, apply to **all**.
+
+### 9. Altitude filter
+
+```ts
+interface AltitudeFilter {
+  minHundreds: number; // 0–180
+  maxHundreds: number; // 0–180, >= min
+}
+```
+
+- Default `000–180` (show everything v1 can fly).
+- Compare against **Mode C hundreds**, inclusive.
+- Outside filter: still draw **target symbol + history**; **suppress datablock and leader**. This is STARS-ish “filtered” rather than deleting the blip (deleting blips feels like a bug).
+- PTL: suppress when filtered.
+- Filter does not affect strips (strips always list all aircraft).
+
+### 10. Predicted track line
+
+- Global toggle (F7 / DCB). Default **off**.
+- Length: **1.0 minute** of current GS along **current ground track** (heading true). Phase 2 is a straight line, not a turn curve.
+- Distance NM = `gsKt / 60 * minutes`.
+- Draw from symbol center to endpoint; small cap tick.
+- Per-selected-only PTL is out of scope (global is enough).
+
+### 11. History dots
+
+- Optional, default **on** (radar feel). Toggle F8 / `H` / DCB.
+- Sample position every **5.0 s of sim time** (not wall, not every physics frame).
+- Keep **5** dots (plus current symbol = 6 positions visually).
+- Ring buffer per track; clear on spawn.
+- Dots are 2 px squares, no leaders.
+
+### 12. Ownership color (F3 stub)
+
+```ts
+type TrackOwnership = "unowned" | "owned";
+```
+
+- Spawn = `unowned` (white).
+- `F3` with a selection: `unowned` → `owned` (green). Already owned: no-op.
+- `F4`: `owned` → `unowned`.
+- **Does not** create a flight plan, does not emit Command IR, does not talk to a second position (that stub is phase 5).
+- Selected accent (yellow box) is independent of ownership.
+
+### 13. Canvas2D, one PPI
+
+`src/scope` renders via Canvas2D. No WebGL in this phase. rAF calls `renderScope(ctx, world, scopeView)` after physics. Maps are **static Path2D** (or cached) — rebuild on resize/range/center, not per frame.
+
+### 14. KDEM maps live in scenario JSON
+
+Extend the T00-05 KDEM file with a `maps` object. Do not scrape charts. Coastline is a **fictional** polyline for depth, optional (`enabled: false` still valid).
+
+## Visual specification
+
+Think CRT terminal, not moving-map GPS.
+
+- Full-viewport dark shell from T00-10 remains. Disclaimer remains visible (corner or settings; do not delete T00-01).
+- PPI is the large center. DCB-lite is a **thin bar above** the PPI (not covering targets at the top edge — pad the drawable region).
+- Command line stays **bottom** (phase 1).
+- Flight strips **right dock**, ~220–280 px, scrollable, collapsible.
+- Help overlay is a translucent dark panel listing the keymap; it pauses nothing (sim keeps ticking).
+- No north-up arrow needed (always north-up); a small `N` tick at the top of the range circle is allowed.
+- Range readout: `RNG 20` in the DCB-lite or lower-left of the PPI, monospace, map-green.
+
+**Draw order (back to front):**
+
+1. Background fill
+2. Range rings
+3. Coastline (if enabled)
+4. Runway
+5. Localizer feather
+6. History dots
+7. PTL
+8. Target symbols
+9. Leader lines
+10. Datablocks
+11. Selection box
+12. Range readout (if on-canvas)
+13. Help overlay (DOM or canvas last)
+
+## Architecture (scope module)
+
+```
+World (core) ──read-only──► renderScope
+                    │
+ScopeView state ────┤  camera, layers, filter, PTL, history on/off
+                    │
+DisplayState ───────┤  per-track: ownership, leaderDir, blockMode, history[]
+                    │
+Pointer / keys ─────┘  never writes Aircraft.intent
+```
+
+`src/pilot` remains the only writer of intent from commands. Scope may write **display** fields hung off a `TrackDisplay` map keyed by aircraft id.
+
+Suggested layout (phase 0 folders; do not invent a second package system):
+
+| Path | Owns |
+| --- | --- |
+| `src/scope/palette.ts` | Frozen colors |
+| `src/scope/camera.ts` | Range, center, nm↔px |
+| `src/scope/mapLayers.ts` | Geometry from KDEM JSON |
+| `src/scope/history.ts` | Ring buffer, 5 s sample |
+| `src/scope/datablock.ts` | Format strings |
+| `src/scope/leader.ts` | 9-direction offsets |
+| `src/scope/altitudeFilter.ts` | Predicate |
+| `src/scope/ptl.ts` | Endpoint math |
+| `src/scope/ownership.ts` | F3/F4 state machine |
+| `src/scope/keymap.ts` | Tables + chord state |
+| `src/scope/renderScope.ts` | Draw |
+| `src/scope/scopeKeys.ts` | Event wiring, focus rules |
+| `src/ui/DisplayControlBar.tsx` | DCB-lite |
+| `src/ui/FlightStrips.tsx` | Strip bay |
+| `src/ui/ScopeHelpOverlay.tsx` | F1 |
+| `src/scenario/kdem.json` | `maps` extension |
+
+Core/parse/pilot tests stay **DOM-free**. Scope math (camera, filter, datablock format, PTL, leader offsets, ownership) must be unit-tested **without canvas**. Render/bench may use `OffscreenCanvas` or a jsdom canvas mock; FPS on a real GPU is a **Manual** AC.
+
+## Keyboard feel vs CRC (honest delta)
+
+Implementers will be tempted to “just copy CRC.” Freeze this delta in the help overlay footer: `TRAINER KEYS — NOT CRC`.
+
+| CRC / vNAS (typical) | ATC-SIM phase 2 |
+| --- | --- |
+| RANGE via DCB presets including 6/8/12/16/24 | PageUp/Down + wheel; 8 presets 5–60 |
+| CENTER then click | `Home` / `End` / double-click / middle-drag pan |
+| Full DCB | Lite bar |
+| F3 Initiate Track (NAS associate) | F3 color stub |
+| Leader length + direction menus | Direction only, fixed length |
+| Pref sets, brightness, charsize | One font size, one brightness |
+| F1 as a STARS function | F1 = help |
+| Radio is a headset | Radio is the phase 1 command line |
+
+## Risks
+
+| Risk | Mitigation |
+| --- | --- |
+| Scope `L`/`T`/`H` steal radio tokens | Focus model + always-on only on F-keys/Page/Home; tests that radio focus still parses `L090` |
+| Continuous zoom / zoom-to-cursor sneaks in | T02-01 ACs forbid it |
+| Datablock overlap at 30 tracks | Accept; do not auto-layout |
+| Per-frame map rebuild / string alloc | Cache Path2D; format datablocks only when alt/GS change (or once per render is OK if bench passes) |
+| Font licensing | IBM Plex Mono OFL or system monospace; no STARS dump |
+| “Make it look exactly like CRC” | AGENT.md + this README; visual acceptance script scores *grammar* not pixels |
+| F3 grows into a handoff system | T02-08 out-of-scope list is explicit |
+| 60 FPS fails | T02-12 lands before T02-13; drop PTL/history default if needed **only after measuring** — do not skip datablocks |
+
+## Ticket order
+
+Implement in this order unless a ticket says it can run in parallel. IDs are stable; do not renumber.
+
+| ID | Title | Pri | Size | Depends on | Parallel OK? |
+| --- | --- | --- | --- | --- | --- |
+| [T02-01](tickets/T02-01-scope-camera-range-pan-center.md) | Scope camera range pan center | P0 | M | T01-10 | — |
+| [T02-02](tickets/T02-02-map-layers-runway-loc-rings.md) | Map layers runway loc and rings | P0 | M | T02-01, T00-05 | — |
+| [T02-03](tickets/T02-03-target-symbol-and-history.md) | Target symbol and history | P0 | M | T02-01 | After 01, parallel with 02 |
+| [T02-04](tickets/T02-04-full-and-limited-datablocks.md) | Full and limited datablocks | P0 | L | T02-03 | — |
+| [T02-05](tickets/T02-05-leader-lines.md) | Leader lines | P0 | M | T02-04 | — |
+| [T02-06](tickets/T02-06-altitude-filter.md) | Altitude filter | P0 | M | T02-04 | Parallel with 05, 07 |
+| [T02-07](tickets/T02-07-predicted-track-line.md) | Predicted track line | P1 | S | T02-03 | Parallel with 04–06 |
+| [T02-08](tickets/T02-08-stars-like-color-ownership.md) | STARS-like color ownership | P1 | M | T02-03, T02-04 | After 04 |
+| [T02-09](tickets/T02-09-scope-keyboard-map-help-overlay.md) | Scope keyboard map help overlay | P0 | M | T02-01–08 keys exist | After 08 (keys land *in* feature tickets) |
+| [T02-10](tickets/T02-10-display-control-bar-lite.md) | Display control bar lite | P1 | M | T02-01, T02-02, T02-06, T02-07 | After 06 |
+| [T02-11](tickets/T02-11-flight-strips-window.md) | Flight strips window | P1 | M | T01-02, T01-11 | After 01, parallel with maps |
+| [T02-12](tickets/T02-12-30-target-60fps-budget-test.md) | 30-target 60fps budget test | P1 | M | T02-02–05 | After 05; before 13 |
+| [T02-13](tickets/T02-13-phase-2-visual-acceptance-script.md) | Phase 2 visual acceptance script | P0 | S | T02-01–12 | Last |
+
+**Key wiring rule:** T02-09 does **not** invent the keymap after the fact. Each feature ticket (01, 05, 06, 07, 08, history in 03, datablock toggle in 04) binds its always-on or scope-focus keys. T02-09 adds the F1 overlay, the exported table, and tests that scope keys never hit the parser.
+
+## Phase exit checklist
+
+Do not start phase 3 or 4 until every box is green. Phase 3 *may* overlap the tail of phase 2 because SpeechPort is isolated — but the **scope** exit below is still required before calling phase 2 done.
+
+- [ ] Range presets 5–60 NM, PageUp/Down + wheel, **no zoom-to-cursor**, `Home` centers airport.
+- [ ] KDEM runway 27, loc feather, rings; coastline optional from JSON.
+- [ ] Target symbol + optional 5-dot / 5 s history.
+- [ ] Full datablock: callsign, Mode C hundreds, assigned if different, GS. Limited + Mode C toggle.
+- [ ] Leaders L1–L9 (5 = overlay), 8 compass directions + center.
+- [ ] Altitude filter suppresses datablocks outside min/max; symbols remain.
+- [ ] PTL 1 min toggle.
+- [ ] Unowned white / owned green / selected yellow; F3/F4 stub only.
+- [ ] F1 help lists the frozen Windows map; `TRAINER KEYS — NOT CRC`.
+- [ ] DCB-lite: range, map layers, filter, PTL, history.
+- [ ] Strips show callsign + assigned heading/alt/speed; click selects.
+- [ ] Scope keys never emit `command.accepted` / readback.
+- [ ] Typed `DAL123 H270` (radio focus) still readbacks and turns (phase 1 exit still holds).
+- [ ] 30-target budget test recorded (T02-12).
+- [ ] T02-13 manual script signed off: “looks like a terminal radar, not a game map.”
+- [ ] `npm test` green. No Command IR type changes.
+
+## Launching an agent
+
+1. Confirm phase 1 README exit is green.
+2. Paste **[AGENT.md](AGENT.md)** as the whole-phase prompt, **or** paste one ticket and say: implement only this ticket, stop when ACs are checked.
+3. Work T02-01 → T02-13 as in the table. Do not skip T02-12 to “make it pretty.”
+
+## Glossary reminders
+
+Use `phases/_shared/glossary.md` terms: **scope**, **PPI**, **datablock**, **track**, **CRC keys**. Distances NM, altitudes feet MSL, speed knots. Do not invent “zoom level,” “labels,” or “sprites” in user-facing UI copy — say **range**, **datablock**, **target**. Forbidden/required list: `phases/_shared/references.md`.

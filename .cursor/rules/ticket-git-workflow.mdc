@@ -1,0 +1,72 @@
+---
+description: Per-ticket git branches, progressive commits, merge into master when the ticket is done
+alwaysApply: true
+---
+
+# Ticket git workflow
+
+This repo **does** want commits without the user asking again. Implementing a ticket is the request.
+
+Default branch is **`master`**. Do not push unless the user asks. Do not `--force` on `master`. Do not skip hooks. Do not amend commits you did not just create on this branch.
+
+## One branch per ticket
+
+Before editing application code for a ticket (e.g. `T02-04`):
+
+1. `git status` / `git diff` — do not mix another ticket’s files onto this branch.
+2. If you are not already on the ticket branch, start it from **current `master`**:
+
+```text
+git checkout master
+git checkout -b ticket/T02-04-full-and-limited-datablocks
+```
+
+Branch name: `ticket/<ticket-id>-<short-slug>` from the ticket filename (`T02-04-full-and-limited-datablocks`).
+
+Never commit ticket work directly on `master`. Never reuse one branch for two ticket IDs.
+
+## Progressive commits
+
+Commit **as you go**, not one dump at the end.
+
+- After a logical slice that typechecks / tests (types, then parser, then UI).
+- After a cluster of ACs you can actually check off.
+- Message: imperative, **why**, include the ticket id.
+
+```text
+git add <files for this slice>
+git commit -m "$(cat <<'EOF'
+T02-04: format full datablocks in hundreds of feet.
+
+Keep Mode C display aligned with STARS/CRC so later leaders can attach.
+EOF
+)"
+```
+
+Do not stage secrets, `.env`, or unrelated files. If a hook rejects the commit, fix it and make a **new** commit (do not `--no-verify`).
+
+## Merge into master when the ticket is done
+
+Only when that ticket’s ACs are satisfied (or the user says the ticket is done):
+
+```text
+git checkout master
+git merge --no-ff ticket/T02-04-full-and-limited-datablocks -m "$(cat <<'EOF'
+Merge ticket/T02-04-full-and-limited-datablocks
+
+Full/limited datablocks with Mode C hundreds (T02-04).
+EOF
+)"
+```
+
+`--no-ff` so each ticket stays a merge on `master`. After a clean merge, delete the **local** ticket branch. Do not start the next ticket until `master` has this merge.
+
+If merge conflicts: stop, report them, do not force. If the user is mid-review on the ticket branch, do not merge until they say so.
+
+## Whole-phase agents
+
+Still **one branch per ticket**. Finish → merge to `master` → next ticket from updated `master`.
+
+## Swarm override (`phases/SWARM.md`)
+
+If the session is a **swarm orchestrator or phase captain**: ticket workers **do not merge**. The captain holds the merge lock (`--no-ff` onto `master`, then `npm test`). Workers only return `READY TO MERGE`. Max 3 workers in flight.
