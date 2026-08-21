@@ -22,7 +22,7 @@ Orchestrator started **2026-08-20**. Resume from the first phase that is not gre
 | --- | --- | --- |
 | 0 Slice | **GREEN** | Waves A–F merged T00-01 … T00-10. `npm test` / `npm run ci` exit 0. |
 | 1 Closed loop | **GREEN** | Waves A–I merged T01-01 … T01-14. `npm test` / `npm run ci` exit 0 (240 tests, includes T01-13). |
-| 2 Scope | **in progress** | Captain spawning (cursor grok 4.6 high). Waves A–F per `SWARM.md`. |
+| 2 Scope | **GREEN** | Waves A–F merged T02-01 … T02-13. `npm test` / `npm run ci` exit 0 (429 passed, 1 skipped). Manual Chrome script leftover. |
 | 3 Voice | **out of scope this run** | |
 | 4 Procedures | **out of scope this run** | |
 | 5 Training | **out of scope this run** | |
@@ -37,6 +37,30 @@ Orchestrator started **2026-08-20**. Resume from the first phase that is not gre
 - 2026-08-20: Human asleep until swarm complete. **No questions.** Captains/orchestrator pick safest defaults; manual UI leftovers go in STATUS, do not block automated green.
 - 2026-08-21: Phase 1 captain: all T01-01 … T01-14 merged `--no-ff` on `master`. Automated exit green. Did not start phase 2.
 - 2026-08-21: Orchestrator `npm test` on `master`: 240/240 passed. Spawning phase 2 captain on **cursor grok 4.6 high**. Human still asleep; no questions.
+- 2026-08-21: Phase 2 captain: all T02-01 … T02-13 merged `--no-ff` on `master`. Automated exit green. Did not start phase 3.
+
+## Phase 2 captain notes
+
+- **Merged:** T02-01 (Wave A); T02-02, T02-03, T02-11 (B); T02-04, T02-07 (C); T02-05, T02-06, T02-08 (D); T02-12 then T02-09, T02-10 (E; T02-12 first so 09/10 could keep `?debug=fps`); T02-13 (F) plus `ticket/T02-13-ci-fix` for `tsc` `node:fs`. Isolated worktrees; workers never merged.
+- **Tests:** `npm test` and `npm run ci` exit 0. **429** passed, **1** skipped (bench wall-clock when no real canvas). Includes T02-12 30-track CI budget (`renderScope.bench.test.ts`), keymap routing (scope keys never hit `parseCommand`), heading-command integration (`DAL123 H270`).
+- **T02-12 GPU:** AC4 Chrome+integrated GPU p50 **skip-with-reason** — human asleep; no iGPU sample. Automated AC2/AC3 shipped. Re-run `?traffic=30&debug=fps` when awake.
+- **T02-13:** Live Chrome script steps 1–14 / AC1–AC3 / AC5–AC8 **skip-with-reason** (human asleep). Phase README items proven by tests are ticked; T02-13 “terminal radar” sign-off stays unchecked until a human walks the script.
+- **Did not start phase 3.** No `speech-api`, no PTT, no T03-*.
+
+### Manual leftover (human `npm run dev` on Chrome Windows)
+
+- T02-01: window-resize — range circle stays inscribed.
+- T02-02: PPI visibility at 20 NM; pan-off-airport visual.
+- T02-03: 2× sim-rate history spacing.
+- T02-04: climb through 100 ft assigned/Mode C boundary.
+- T02-05: numpad vs top-row with NumLock on.
+- T02-06: climb through filter max — datablock appears.
+- T02-08: Chrome find-in-page vs F3.
+- T02-09: PPI motion while F1 overlay open; F1 does not open Chrome help.
+- T02-10: dark-strip visual; mouse-only RNG 10 / RING off / FILTER 050–100 / PTL on.
+- T02-11: strip-bay collapse visual.
+- T02-12: 30 tracks, 5 s sample, p50 ≥ 55 FPS on integrated GPU (`?traffic=30&debug=fps`).
+- T02-13: full visual acceptance script (boot dark PPI, not a game map, maps/targets/datablocks/leaders/filter/PTL/ownership/help/strips/radio/`DAL123 H270`).
 
 ## Phase 0 captain notes
 
