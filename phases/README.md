@@ -24,11 +24,11 @@ Do not start phase N until the previous phase README's **Phase exit** checklist 
 | 0 Slice | [00-slice](00-slice/) | 10 | Repo boots, contracts frozen, KDEM stub, echoing command line | — |
 | 1 Closed loop | [01-closed-loop](01-closed-loop/) | 14 | Type `DAL123 H270`, text readback, aircraft turns | 0 |
 | 2 Scope | [02-scope](02-scope/) | 13 | STARS-like PPI: maps, datablocks, filters, a few keys | 1 |
-| 3 Voice | [03-voice](03-voice/) | 13 | PTT → our speech-api → same parser → spoken readback | 1 (2 preferred) |
+| 3 Voice | [03-voice](03-voice/) | 14 | PTT → our speech-api → same parser → spoken readback | 1 (2 preferred) |
 | 4 Procedures | [04-procedures](04-procedures/) | 12 | ILS intercept, DEMO ONE STAR, lite CA/MSAW | 2 |
 | 5 Training | [05-training](05-training/) | 12 | Practice score, replay, optional bad readbacks | 3 **and** 4 |
 
-**74 tickets.** Phase 3 may overlap the tail of phase 2 (`SpeechPort` is isolated). Phase 5 must not start until 3 and 4 both exit. Skip `T03-11` (whisper-wasm) and `T04-11` (wind) unless you want them; neither is required to exit its phase. Voice quality path is **our** `speech-api` (HF weights, local inference) — no paid STT/TTS vendors.
+**75 tickets.** Phase 3 may overlap the tail of phase 2 (`SpeechPort` is isolated). Phase 5 must not start until 3 and 4 both exit. Skip `T03-11` (whisper-wasm), `T03-14` (Path C `/parse`), and `T04-11` (wind) unless you want them; none are required to exit their phase. Voice quality path is **our** `speech-api` (HF weights, local inference) — no paid STT/TTS vendors. Parse is one stage list (`parse-pipeline.md`).
 
 ## Shared contracts
 
@@ -39,6 +39,7 @@ Read before any ticket:
 | [_shared/glossary.md](_shared/glossary.md) | Terms and units (PCG / STARS vocabulary) |
 | [_shared/references.md](_shared/references.md) | 7110.65, CRC/vSTARS, vice, FOA STARS — search before coding |
 | [_shared/architecture.md](_shared/architecture.md) | Browser-first Vite SPA, ENU NM, KDEM, packages |
+| [_shared/parse-pipeline.md](_shared/parse-pipeline.md) | One parse stage list (typed → A → B → C) |
 | [_shared/command-ir.md](_shared/command-ir.md) | Radio command schema (phase 4 may add VIA/CROSS) |
 | [_shared/speech-port.md](_shared/speech-port.md) | ASR/TTS adapter |
 | [_shared/non-goals.md](_shared/non-goals.md) | What not to build |
@@ -130,6 +131,7 @@ Implement **T01-08 before T01-07** (see that phase `AGENT.md`).
 | T03-11 | Optional whisper-wasm spike (P2 — skip) |
 | T03-12 | Phase 3 voice acceptance script |
 | T03-13 | Self-hosted speech-api (HF weights, local inference) |
+| T03-14 | Optional Path C parse on speech-api (P1 — skip) |
 
 ### Phase 4 — Procedures
 

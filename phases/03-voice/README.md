@@ -2,7 +2,7 @@
 
 PTT clip in, spoken command out the same `Command` IR as the typed line, then a synthesized pilot readback through a Web Audio radio chain.
 
-This phase does **not** change kinematics, the pilot validator, or the scope. It adds a capture → `SpeechPort.transcribe` → parser → existing pilot apply → `SpeechPort.synthesize` → radio FX path. Phase 1’s text command line stays the source of truth for “did the airplane do the right thing.” Voice is another front-end onto that loop.
+This phase does **not** change kinematics, the pilot validator, or the scope. It adds PTT → STT → the **shared** `parseCommand` list → existing pilot apply → TTS → radio FX. The command line uses that same list (tokens **and** typed English). Path C is optional and off by default.
 
 **Depends on:** Phase 1 exit (typed command → readback → aircraft turns). Phase 2 (scope) is preferred so PTT and the PPI coexist, but SpeechPort is isolated — this phase may overlap the tail of phase 2.
 
@@ -16,12 +16,12 @@ A controller holds a configurable PTT key, speaks FAA-style phraseology, release
 
 1. The mic clip is captured in-tab (AudioWorklet → PCM16 mono 16 kHz).
 2. The active `SpeechPort` returns a `Transcript`.
-3. A **spoken English grammar** (path A) compiles that text to `Command` with `source: "voice"`.
+3. `await parseCommand` (typed → A → B → optional C) compiles that string to `Command` with `source: "voice"` and a `parseStage`.
 4. The **same** pilot agent as phase 1 validates, emits a readback string, and applies intent.
 5. TTS PCM plays through a Web Audio graph (bandpass + light noise + compressor).
 6. Two wall-clock numbers are logged: **PTT-up → transcript** and **PTT-up → audio-start**.
 
-With the **http → our speech-api** path, PTT-up → audio-start **p50 < 1.5 s** is the quality target (localhost or LAN). **Web Speech is opt-in only** (browser vendor may transcribe in the cloud) and **must not fail the phase**.
+With the **http → our speech-api** path, PTT-up → audio-start **p50 < 1.5 s** is the quality target (localhost or LAN). **Web Speech is opt-in only** (browser vendor may transcribe in the cloud) and **must not fail the phase**. Path C is **not** on this happy path.
 
 ---
 
@@ -29,11 +29,12 @@ With the **http → our speech-api** path, PTT-up → audio-start **p50 < 1.5 s*
 
 | File | Why it matters here |
 | --- | --- |
+| [`../_shared/parse-pipeline.md`](../_shared/parse-pipeline.md) | **One** stage list for text and voice; Path C on `/parse` |
 | [`../_shared/speech-port.md`](../_shared/speech-port.md) | `SpeechPort`, `AudioClip`, `Transcript`; adapter order; client wiring; non-negotiables |
-| [`../_shared/command-ir.md`](../_shared/command-ir.md) | Frozen `Command` / `Instruction`; `source: "text" \| "voice"`; validation stays in the pilot |
+| [`../_shared/command-ir.md`](../_shared/command-ir.md) | Frozen `Command` / `Instruction`; `source` + `parseStage`; validation stays in the pilot |
 | [`../_shared/architecture.md`](../_shared/architecture.md) | `src/speech` owns adapters/capture/graph; parser is DOM-free; 1.5 s p50 target |
-| [`../_shared/glossary.md`](../_shared/glossary.md) | PTT, SpeechPort, Command IR, readback — do not invent synonyms |
-| [`../_shared/non-goals.md`](../_shared/non-goals.md) | No always-on listen, no paid STT/TTS vendors, no LLM executor |
+| [`../_shared/glossary.md`](../_shared/glossary.md) | PTT, SpeechPort, Command IR, parseStage, readback |
+| [`../_shared/non-goals.md`](../_shared/non-goals.md) | No always-on listen, no paid vendors, no LLM executor (Path C salvage only) |
 | [`../_shared/ticket-template.md`](../_shared/ticket-template.md) | Ticket shape |
 
 If a ticket and a shared file disagree, **the shared file wins**. If this README and a ticket disagree, **this README wins** (then fix the ticket).
@@ -60,14 +61,11 @@ Transcript { text, confidence, latencyMs }
     ├─ confidence < threshold (default 0.55) → status “say again”; stop
     │
     ▼
-Spoken normalizer (homophones, ICAO digits, fillers)
+parseCommand (same list as the command line) [T03-03; C = T03-14]
+    normalize → typed → Path A → Path B → Path C?
     │
     ▼
-Path A: spoken grammar → Command IR          [T03-03]   PRIMARY
-    │  (if A fails, optional Path B: fuzzy-map to typed tokens → phase 1 tokenizer)
-    │
-    ▼
-Command { source: "voice", sourceText, callsign, instructions[] }
+Command { source, sourceText, parseStage, callsign, instructions[] }
     │
     ▼
 Existing pilot agent (validate → readback string → intent)
@@ -86,31 +84,24 @@ Latency overlay: t_transcript, t_audio_start [T03-09]
 
 ### 3.1 Same parser as text — what that actually means
 
-The pilot, kinematics, and `Command` type **do not fork**. There is one `parseCommand(input, source)` (or equivalent) in `src/parse`.
+See **`phases/_shared/parse-pipeline.md`**. There is one `parseCommand`. First success wins. `source` is the channel; `parseStage` is the compiler.
 
-- **Typed** input uses the phase 1 tokenizer (`H270`, `D30`, …).
-- **Voice** input uses the spoken grammar (path A) first.
-- Both emit the same `Command`. The only difference the rest of the app is allowed to see is `Command.source` and `Command.sourceText`.
+- **Typed tokens** (`H270`) win at the tokenizer (`parseStage: "typed"`).
+- **English** (PTT **or** typed in the command line) wins at Path A (`spoken_a`).
+- Path B is local salvage (`spoken_b`). Path C is optional `POST /parse` (`llm_c`), default off.
+- Do not teach the tokenizer English. Speech must not construct `Instruction` objects. Path C JSON is schema-checked in `src/parse`.
 
-The parser **must not** import `src/speech`. Speech **must not** construct `Instruction` objects itself — it only hands strings to parse.
+### 3.2 Path A vs B vs C
 
-### 3.2 Path A vs path B (phraseology)
+| | A | B | C |
+| --- | --- | --- | --- |
+| Where | In-tab grammar | In-tab rewrite → tokens | `speech-api` `POST /parse` |
+| When | After typed miss | After A miss | After B miss, if enabled |
+| Grade | canonical `spoken_a` | nonstandard | nonstandard `llm_c` |
 
-After ASR, English radio speech is not vice-style tokens. Two strategies are documented; **tickets implement A as primary**.
+Same list for both channels. Not a second voice loop.
 
-| | Path A — spoken grammar → IR | Path B — fuzzy-map to typed tokens |
-| --- | --- | --- |
-| **Idea** | Parse spoken 7110.65-ish English directly into `Instruction[]` | Rewrite ASR text into phase 1 tokens (`L270`, `D30`) then reuse the typed tokenizer |
-| **Example** | `"turn left heading two seven zero"` → `FLY_HEADING 270 LEFT` | same string → `"L270"` → typed parser |
-| **Callsign** | `"Delta one two three"` → `DAL123` via telephony table | `"Delta one two three"` → `"DAL123 "` prefix then tokens |
-| **Strength** | Multi-instruction utterances; no lossy squeeze through `H`/`D`/`S` shorthand | Reuses battle-tested typed parser; good salvage when A fails on a fragment |
-| **Weakness** | Must own number/callsign grammar | Combined instructions and callsigns get brittle; `D30` cannot express “three thousand five hundred” without extending typed tokens |
-
-**Primary (tickets):** Path A. Path B is a **fallback inside `src/parse`** after A returns a parse miss — not a second voice loop, not a second SpeechPort.
-
-**Do not** teach the typed tokenizer to accept “heading two seven zero” as a first-class typed command. Keep the keyboard language and the radio language as two front-ends.
-
-### 3.3 Light normalizer (runs before A, and before B if A misses)
+### 3.3 Light normalizer (always first)
 
 Deterministic, no ML. Apply in order:
 
@@ -418,6 +409,7 @@ src/parse/
   spoken/numbers.ts
   spoken/telephony.ts
   spoken/typed-fuzzy.ts       # path B
+  path-c.ts                   # T03-14 optional
 src/ui/
   voice-status.ts             # T03-08
   latency-overlay.ts          # T03-09
@@ -447,15 +439,16 @@ T03-06 Readback TTS playback             P0   needs 02 + (04 or 05; prefer 05 fo
 T03-07 Radio FX graph                    P1   needs 06
 T03-09 Latency metrics overlay           P1   needs 02 + 06
 T03-10 Settings speech backend switch    P1   needs 04 + 05
+T03-14 Optional Path C /parse            P1   needs 03 + 13; MAY DEFER; not on exit path
 T03-11 Optional whisper-wasm spike       P2   needs 01; MAY DEFER; not on exit path
-T03-12 Phase 3 voice acceptance script   P0   needs all P0/P1 except 11; speech-api up
+T03-12 Phase 3 voice acceptance script   P0   needs all P0/P1 except 11 and 14; speech-api up
 ```
 
 Recommended solo-agent sequence:
 
 `01 → 03 → 02 → 08 → 13 → 05 → 06 → 07 → 09 → 10 → 12`
 
-(`04` optional / later). Skip `11` unless explicitly asked.
+(`04` optional / later). Skip `11` and `14` unless explicitly asked. T03-13 still stubs `POST /parse` as UNAVAILABLE.
 
 ---
 
@@ -475,8 +468,8 @@ Do not start phase 5 until this is green. Phase 4 does not need this.
 - [ ] **E10 —** T03-12 acceptance script executed; **speech-api + http** p50 audio-start recorded. If p50 ≥ 1.5 s on localhost/LAN, document the number and remaining bottleneck — still ship the loop; file a follow-up rather than silently skipping metrics.
 - [ ] **E11 —** Web Speech may be inaccurate or unsupported; that is **not** an exit failure if http (or a recorded manual http run) worked.
 - [ ] **E12 —** `whisper-wasm` absent or incomplete is **not** an exit failure.
-- [ ] **E13 —** Typed command line still works; phase 1 tests still pass.
-- [ ] **E14 —** No LLM, no always-on listen, no paid vendor STT/TTS (OpenAI/Deepgram/Groq/HF Inference/etc.), inference only on `speech-api` or optional wasm.
+- [ ] **E13 —** Typed command line still works (tokens **and** English via Path A); phase 1 tests still pass.
+- [ ] **E14 —** No always-on listen, no paid vendor STT/TTS/LLM APIs. Path C absent or off is **not** an exit failure. Inference only on `speech-api` or optional wasm.
 
 ---
 
@@ -484,7 +477,7 @@ Do not start phase 5 until this is green. Phase 4 does not need this.
 
 - Fine-tuning or training any ASR/TTS model in this repo (`non-goals.md`).
 - Always-on / full-duplex listen; VAD-triggered transmit; hotword.
-- LLM NLU, “just chat with the pilot,” or replacing the grammar with a model.
+- Replacing Path A with a model, or LLM as pilot/chat (`non-goals.md`). Optional Path C is T03-14 and is **not** required to exit.
 - **Paid / metered third-party STT or TTS** (OpenAI, Deepgram, Groq, ElevenLabs, Google Cloud Speech, HF Inference API/Endpoints, Workers AI, …).
 - Making Web Speech the default or as accurate as speech-api.
 - Queueing PTT clips.
@@ -508,4 +501,4 @@ Do not start phase 5 until this is green. Phase 4 does not need this.
 
 1. Paste [`AGENT.md`](AGENT.md) as the prompt.
 2. Or paste a single `tickets/T03-xx-*.md` and say: implement only this ticket, stop when ACs are checked.
-3. Do not implement T03-11 unless the user asks.
+3. Do not implement T03-11 or T03-14 unless the user asks.

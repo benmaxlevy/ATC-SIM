@@ -22,6 +22,7 @@ Use these terms in tickets, UI, and code. Do not invent synonyms. Definitions fo
 | **Localizer feather** | Approach-course fan on the map. | R07 maps |
 | **Flight strip** | Flight-progress strip analog (callsign + assigned values). | R02 |
 | **Command IR** | Structured radio instruction. Voice and text both compile to this. | `command-ir.md` |
+| **parseStage** | Which compiler won: `typed` \| `spoken_a` \| `spoken_b` \| `llm_c`. | `parse-pipeline.md` |
 | **SpeechPort** | Adapter for ASR in and TTS out. | `speech-port.md` |
 | **Pilot agent** | Validates a command, emits a **readback**, then mutates intent. | R01 readback; trainer |
 | **Intent** | Assigned heading, altitude, speed, route. | — |

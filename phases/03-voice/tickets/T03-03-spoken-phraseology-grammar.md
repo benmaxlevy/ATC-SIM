@@ -3,21 +3,23 @@
 **Phase:** 03 Voice
 **Priority:** P0
 **Size:** L
-**Depends on:** none (needs phase 1 `Command` / `Instruction` types and typed parser to call as Path B fallback)
-**Blocks:** T03-02, T03-12
+**Depends on:** none (needs phase 1 `Command` / `Instruction` types and typed parser)
+**Blocks:** T03-02, T03-12, T03-14
 **Launch:** Implement this ticket only. Do not start downstream tickets.
 
 ## Goal
 
-Spoken ATC English compiles to the frozen `Command` IR. Path **A** (spoken grammar → IR) is primary. Path **B** (fuzzy-map to typed tokens) runs only if A misses. Two JO 7110.65-shaped utterances are required fixtures.
+One `parseCommand` runs the shared stage list (`phases/_shared/parse-pipeline.md`): normalize → typed tokenizer → Path A → Path B. Path C is T03-14 (skip here). Typed English in the command line is a tokenizer miss then A. Two JO 7110.65-shaped utterances are required fixtures.
 
 ## Context
 
-`phases/_shared/command-ir.md` is frozen for phases 0–3. Voice and text both compile to `Command`. Typed tokens (`H270`, `D30`, …) stay the keyboard language.
+`phases/_shared/parse-pipeline.md` is the freeze: **same order for text and voice**. `source` is the channel. `parseStage` is which stage won.
 
-`phases/03-voice/README.md` §3–4 is the spec: light normalizer, path A primary, path B fallback, telephony table, number rules. Read it before coding.
+`phases/_shared/command-ir.md` — add optional `parseStage` on `Command` if missing.
 
-Parser remains **DOM-free** (`phases/_shared/architecture.md`).
+Typed tokens stay the keyboard **language**; do not put English into `parseRadioText`. Path A owns English.
+
+`phases/03-voice/README.md` §3–4: normalizer, Path A phrases, Path B safety. Parser remains **DOM-free**.
 
 ## Research
 
@@ -38,13 +40,18 @@ Read **R01** (climb/descend and maintain, fly heading, turn left heading), **R03
   1. `"Delta one two three descend and maintain three thousand"` → `DAL123` + `ALTITUDE DESCEND 3000`.
   2. `"turn left heading two seven zero"` → `FLY_HEADING 270 LEFT` (callsign from selection in the test).
   3. Combined: `"Delta one two three turn left heading two seven zero descend and maintain three thousand"` → both instructions, one callsign.
-- Path B fallback module: README §4.5 mapping; invoke only when A fails; if B fails, return a structured parse miss (no thrown exception).
-- Integrate into the single `parseCommand` entry: when `source === "voice"`, try A then B; when `source === "text"`, existing tokenizer only (do not run spoken grammar on `H270`).
+- Integrate **`parseCommand`** as `async` wrapping the stage list. Command line submit must `await` it (patch phase 1 handler). Default `pathC: false` — do not fetch.
+- Set `parseStage` on ok results: `typed` | `spoken_a` | `spoken_b`.
+- **Text English:** `source: "text"` + `"turn left heading two seven zero"` + selected callsign → `FLY_HEADING 270 LEFT`, `parseStage: "spoken_a"` (tokenizer miss, then A).
+- **Text tokens:** `H270` still `parseStage: "typed"`; Path A is not required to parse that string as English.
+- Voice uses the **same** list (ASR `H270` may win at typed; English wins at A; B last).
+- Path B module: README §4.5; conservative (no dangling number → `H`/`D`). If B fails, structured miss (no throw).
+- When `source === "text"`, still run A after typed miss (do **not** skip A for text).
 
 ## Out of scope
 
-- SpeechPort, capture, TTS, UI.
-- LLM / fuzzy embeddings / third-party NLU.
+- SpeechPort, capture, TTS (except awaiting parse from the existing command line).
+- Path C / LLM / `POST /parse` (T03-14).
 - Extending `Instruction` with new types.
 - Full 7110.65 coverage (holds, crossing restrictions, “expect ILS”, altimeter, etc.).
 - Grouped flight numbers (`Delta one twenty three`) as a phase-exit requirement (best-effort OK).
@@ -75,15 +82,17 @@ Do not clamp illegal altitudes/speeds here; the pilot rejects them.
 - [ ] **AC1 —** Given `"Delta one two three descend and maintain three thousand"` and `source: "voice"`, then `callsign === "DAL123"` and instructions equal `[{ type: "ALTITUDE", altitudeFt: 3000, verb: "DESCEND" }]` (expedite absent/false).
 - [ ] **AC2 —** Given `"turn left heading two seven zero"` with `selectedCallsign: "DAL123"`, then `FLY_HEADING` `headingDeg === 270` `turn === "LEFT"` and `callsign === "DAL123"`.
 - [ ] **AC3 —** Given the combined utterance in Scope, then two instructions in order (heading, then altitude) and a single callsign `DAL123`.
-- [ ] **AC4 —** Given typed input `H270` with `source: "text"`, then the phase 1 tokenizer still runs and spoken grammar is not required to succeed on that string as English.
-- [ ] **AC5 —** Given A cannot parse but Path B can (`"heading two seven zero"` → `H270` with selected callsign), then a valid `FLY_HEADING` is produced and `source` remains `"voice"`.
+- [ ] **AC4 —** Given typed input `H270` with `source: "text"`, then `parseStage === "typed"` and spoken grammar is not required to succeed on that string as English.
+- [ ] **AC4b —** Given typed `"turn left heading two seven zero"` with `source: "text"` and `selectedCallsign: "DAL123"`, then `FLY_HEADING` 270 `LEFT`, `parseStage === "spoken_a"`.
+- [ ] **AC5 —** Given A cannot parse but Path B can (`"heading two seven zero"` → tokens with selected callsign), then a valid `FLY_HEADING` is produced, `parseStage === "spoken_b"`, and `source` is whatever the caller passed.
 - [ ] **AC6 —** Given nonsense `"pizza the runway"`, then a parse miss (no throw) and no `instructions`.
-- [ ] **AC7 —** Automated tests exist for AC1–AC3 (happy path) plus normalizer homophone heading.
+- [ ] **AC7 —** Automated tests exist for AC1–AC4b (happy path) plus normalizer homophone heading.
 - [ ] **AC8 — Research:** Fixtures match 7110.65-shaped English (`descend and maintain`, `turn left heading`). Comment cites R01; path B is documented as nonstandard salvage.
+- [ ] **AC9 —** `parseCommand(..., { pathC: false })` does not call fetch (or path-c module).
 
 ## Test plan
 
-- Unit: fixtures above; `niner`/`tree`; `heading to two seven zero`; `one one thousand` → 11000; `three six zero` heading → 0; unknown telephony; text path regression (`L090`, `D30` if those tests already exist — do not delete them).
+- Unit: fixtures above; typed English AC4b; `niner`/`tree`; `heading to two seven zero`; `one one thousand` → 11000; `three six zero` heading → 0; unknown telephony; text token regression (`L090`, `D30`).
 - Integration: none (DOM-free).
 - Manual: none.
 
@@ -97,4 +106,4 @@ Do not clamp illegal altitudes/speeds here; the pilot rejects them.
 - `src/parse/spoken/grammar.ts`
 - `src/parse/spoken/grammar.test.ts`
 - `src/parse/spoken/typed-fuzzy.ts`
-- `src/parse/parse-command.ts` (thread voice vs text)
+- `src/parse/parse-command.ts` (ordered stages; `pathC` stub false)

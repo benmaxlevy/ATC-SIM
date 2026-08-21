@@ -47,7 +47,7 @@ If scoring is fuzzy, “AI-judged,” or labeled like a certificate, the product
 
 - A deterministic `scoreSession(events, ctx)` returns a **practice score** 0–100 with component breakdowns. Same log in → same numbers out.
 - Separation uses **T04-09 CA episodes**, not a reimplementation of conflict geometry.
-- Phraseology uses a grammar checker on each `command.accepted` (typed tokens or spoken path A). Path B salvage is **nonstandard**. No LLM.
+- Phraseology uses a grammar checker on each `command.accepted` via **`parseStage`**. Path B and Path C are **nonstandard**. Typed English is canonical `spoken_a`. No LLM grader.
 - Optional P1: extra miles versus published DEMO ONE geometry.
 - Voice: radio-discipline + delay metrics in the debrief; SpeechPort latency is **reported**, not used to punish the controller.
 - Live score panel on the shell, labeled so it cannot be mistaken for certification.

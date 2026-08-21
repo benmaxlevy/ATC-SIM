@@ -23,13 +23,13 @@ Implement **after T01-08** so readbacks are real templates, not placeholders.
 
 ## Scope
 
-- `handleRadioText(world: World, sourceText: string, log: SessionLog): PilotResult` (name may match Phase 0 log type).
+Phase 3 may wrap this with `parseCommand` (async, Path A after tokenizer miss). Keep `handleRadioText` as the pilot entry; T03-03 patches the parse call only.
 - Pipeline:
   1. `parseRadioText`
   2. If parse fail → reject `PARSE`, no aircraft mutation, log `command.rejected`, readback `unable, say again`
   3. `resolveCallsign`
   4. If resolve fail → reject with that reason, no mutation
-  5. Build `Command`: `id` (unique), `issuedAtSimMs: world.simTimeMs`, `callsign`, `instructions`, `sourceText`, `source: "text"`
+  5. Build `Command`: `id` (unique), `issuedAtSimMs: world.simTimeMs`, `callsign`, `instructions`, `sourceText`, `source: "text"` (phase 3 copies `parseStage` too)
   6. Validate instructions against **that** aircraft’s current state
   7. If invalid → `command.rejected` with reason, **no** intent change, error readback
   8. If valid → apply intent, format success readback, `command.accepted` with the `Command`

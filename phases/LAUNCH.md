@@ -26,7 +26,7 @@ Each phase is a self-contained briefing. Do not start phase N until the previous
 | ILS / STAR / alerts | [`04-procedures/AGENT.md`](04-procedures/AGENT.md) |
 | Scoring / replay | [`05-training/AGENT.md`](05-training/AGENT.md) |
 
-Phase 3 AGENT.md skips `T03-11` (whisper-wasm) unless you ask. `T03-04` (Web Speech) is opt-in. Voice STT/TTS is **our** `speech-api` (T03-13), not a paid vendor. Phase 4 wind (`T04-11`) is optional for exit.
+Phase 3 AGENT.md skips `T03-11` (whisper-wasm) and `T03-14` (Path C) unless you ask. `T03-04` (Web Speech) is opt-in. Voice STT/TTS is **our** `speech-api` (T03-13), not a paid vendor. Phase 4 wind (`T04-11`) is optional for exit.
 
 ## Single ticket
 
@@ -49,6 +49,7 @@ Always include (or tell the agent to read):
 - `phases/_shared/references.md` — **especially phase 2 (scope) and any phraseology ticket.** Open the linked 7110.65 / CRC / vice docs or use the Search fallbacks. Use official words (range, datablock, leader, Mode C). Never zoom/nametag/sprite in UI.
 - `phases/_shared/architecture.md`
 - `phases/_shared/command-ir.md`
+- `phases/_shared/parse-pipeline.md`
 - `phases/_shared/speech-port.md`
 - `phases/_shared/non-goals.md`
 - The phase `README.md`

@@ -35,7 +35,7 @@ Phase 0 `T00-10` already has a bottom command line that echoes. Replace the echo
 - Voice, PTT, TTS playback of the readback.
 - STARS preview area / history strip chrome (a single text line is enough; a short scrollback of last **5** readbacks is allowed, not required).
 - Click-to-select (T01-11).
-- Parsing English phraseology.
+- Parsing English phraseology (phase 3 `parseCommand` / Path A after tokenizer miss — T03-03). This ticket is tokens only.
 
 ## Implementation notes
 

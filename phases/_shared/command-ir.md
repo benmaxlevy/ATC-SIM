@@ -4,7 +4,7 @@ Frozen for phases 0–3. Phase 4 may add instruction types; it must not rename t
 
 **Research:** Typed tokens are vice-inspired (**R08** in `references.md`). Spoken forms and readbacks follow FAA JO 7110.65 (**R01**), not ICAO Doc 4444 (**R10**).
 
-Voice and text **compile** to `Command`. The pilot agent is the only module allowed to change aircraft intent from a `Command`. The scope never calls kinematics directly.
+Voice and text **compile** to `Command` through the **same** stage list (`phases/_shared/parse-pipeline.md`). The pilot agent is the only module allowed to change aircraft intent from a `Command`. The scope never calls kinematics directly. `source` is the channel (keyboard vs PTT). `parseStage` is which compiler won.
 
 ## Types
 
@@ -19,6 +19,11 @@ export interface Command {
   /** Raw text after ASR or the typed line, for logs and scoring. */
   sourceText: string;
   source: "text" | "voice";
+  /**
+   * Which parse stage produced `instructions` (phase 3+).
+   * Omit only on pre-phase-3 fixtures.
+   */
+  parseStage?: "typed" | "spoken_a" | "spoken_b" | "llm_c";
 }
 
 export type TurnDir = "LEFT" | "RIGHT" | "SHORTEST";
@@ -47,6 +52,8 @@ export type Instruction =
 ```
 
 ## Parser rules (text, phase 1)
+
+Phase 1 implements **stage 1 only** (`parseRadioText`). Phase 3 `parseCommand` runs normalize → typed → Path A → Path B → optional Path C for **both** channels. Typed English in the command line is a tokenizer miss then Path A (`parseStage: "spoken_a"`, `source: "text"`). Do not teach this token table spoken English.
 
 Typed commands are **vice-inspired, not vice-compatible**. Document every token in phase 1 tickets.
 

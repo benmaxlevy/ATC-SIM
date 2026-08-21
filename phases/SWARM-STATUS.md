@@ -21,7 +21,7 @@ Orchestrator started **2026-08-20**. Resume from the first phase that is not gre
 | Phase | Status | Notes |
 | --- | --- | --- |
 | 0 Slice | **GREEN** | Waves A–F merged T00-01 … T00-10. `npm test` / `npm run ci` exit 0. |
-| 1 Closed loop | not started | |
+| 1 Closed loop | **in progress** | Captain spawning (cursor grok 4.6 high). Waves A–I per `SWARM.md`. |
 | 2 Scope | not started | |
 | 3 Voice | **out of scope this run** | |
 | 4 Procedures | **out of scope this run** | |
@@ -32,6 +32,8 @@ Orchestrator started **2026-08-20**. Resume from the first phase that is not gre
 - 2026-08-20: Orchestrator started. Repo was unborn `master` (planning files untracked). Seeded `master` with `phases/`, `README.md`, `.cursor/rules/` so ticket branches can fork. Spawned phase 0 captain (`phases/00-slice/`).
 - 2026-08-20: Human: **cursor grok 4.6 high only — no fast.** Interrupted phase 0 captain mid Wave D. Further Task spawns used `model: cursor-grok-4.6-high`.
 - 2026-08-20: Phase 0 captain: all T00-01 … T00-10 merged `--no-ff` on `master`. Exit checks green. Did not start phase 1.
+- 2026-08-20: Orchestrator `npm test` on `master`: 41/41 passed.
+- 2026-08-20: Human: commit the uncommitted planning edits on `master`, then spawn phase 1. Orchestrator committing parse-pipeline / `Command.parseStage` / T01+T03+T05 ticket wording (not application code), then spawning phase 1 captain on **cursor grok 4.6 high**.
 
 ## Phase 0 captain notes
 

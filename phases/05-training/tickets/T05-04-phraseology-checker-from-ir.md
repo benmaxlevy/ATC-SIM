@@ -17,7 +17,7 @@ Replace the T05-01 stub with a deterministic **phraseology checker**: each issue
 
 Typed tokens: phase 1 table in `phases/01-closed-loop/README.md` and the shared IR.
 
-Spoken path A (primary) and path B fallback: `phases/03-voice/README.md` §4. Scoring treats path B as **nonstandard**.
+Spoken path A (primary) and path B/C salvage: `phases/_shared/parse-pipeline.md`. Scoring uses **`command.parseStage`**. Path B and Path C are **nonstandard**. Typed English (`source: "text"`, `parseStage: "spoken_a"`) is canonical `spoken_a`.
 
 `phases/_shared/non-goals.md`: LLM is not the command executor **and** not the grader.
 
@@ -36,9 +36,13 @@ Read **R01** (allowed v1 phraseology only), **R08** (typed tokens are canonical 
 - Implement `checkPhraseology(command: Command): PhraseologyVerdict` in `src/train` (may import `@parse` grammar helpers; do not duplicate two grammars if you can call `parseCommand` in a “classify” mode).
 - Wire `scoreSession` to use the real checker on every `command.accepted`.
 - Disallowed **instruction combinations** (independent of source text) listed below.
-- Canonical source text:
-  - `source === "text"`: normalized line matches the vice-inspired token grammar (callsign optional).
-  - `source === "voice"`: normalized `sourceText` parses via **path A only**. If it only parses via path B, `nonstandard` + `grammar: "spoken_b"`.
+- Canonical by **`parseStage`** (`parse-pipeline.md`):
+  - `typed` + `source === "text"` → `canonical` / `typed`
+  - `typed` + `source === "voice"` → `nonstandard` / `tokens_on_voice`
+  - `spoken_a` → `canonical` / `spoken_a` (includes English typed in the command line)
+  - `spoken_b` → `nonstandard` / `spoken_b`
+  - `llm_c` → `nonstandard` / `llm_c`
+  - If `parseStage` missing (old logs): fall back to re-running local typed then A (never call `/parse`).
 - Optional: append `phraseology.checked` to the log when a command is accepted (pilot or a thin wrapper). If you skip emit, scoring still calls the checker at score time (required).
 - Vitest: table-driven cases from Implementation notes. DOM-free.
 
@@ -55,7 +59,7 @@ Read **R01** (allowed v1 phraseology only), **R08** (typed tokens are canonical 
 ```ts
 export type PhraseologyVerdict =
   | { status: "canonical"; grammar: "typed" | "spoken_a" }
-  | { status: "nonstandard"; grammar: "spoken_b" | "unmatched_text"; reasons: string[] }
+  | { status: "nonstandard"; grammar: "spoken_b" | "llm_c" | "tokens_on_voice" | "unmatched_text"; reasons: string[] }
   | { status: "disallowed"; reasons: string[] };
 ```
 
@@ -76,20 +80,21 @@ Count instruction `type`s on the command (after parse, so this is IR-level):
 
 **Allowed:** `FLY_HEADING` + `ALTITUDE` + `SPEED`; `FLY_HEADING` + `CLEARED_APPROACH` (vector to intercept); `IDENT` + any single clearance; `EXPECT_APPROACH` + heading.
 
-### Canonical text
+### Grade from parseStage
 
-Normalize: collapse whitespace, uppercase callsign tokens, uppercase letter commands.
+Prefer `command.parseStage` (do not re-parse unless the field is missing). Never `fetch` `/parse`.
 
-A text command is canonical if `parseCommand(sourceText)` (typed path) yields the same `instructions` (deep equal ignoring unrelated fields) as `command.instructions`. If the user typed extra junk that still parsed, `nonstandard` / `unmatched_text`.
+| parseStage | source | verdict |
+| --- | --- | --- |
+| `typed` | text | canonical / typed |
+| `typed` | voice | nonstandard / tokens_on_voice |
+| `spoken_a` | either | canonical / spoken_a |
+| `spoken_b` | either | nonstandard / spoken_b |
+| `llm_c` | either | nonstandard / llm_c |
 
-### Canonical voice
+### Canonical text (legacy logs without parseStage)
 
-1. Run the phase 3 normalizer on `sourceText`.
-2. If path A produces instructions deep-equal to `command.instructions` → `canonical` / `spoken_a`.
-3. Else if path B would produce them → `nonstandard` / `spoken_b`.
-4. Else `nonstandard` / `unmatched_text` (should be rare on `command.accepted`).
-
-Voice `sourceText` that is clearly typed tokens (`H270`, `D30`) → `nonstandard` reason `tokens_on_voice`.
+Normalize: collapse whitespace, uppercase callsign tokens, uppercase letter commands. Re-run **local** typed then A only.
 
 ### Do not use the network
 
@@ -98,8 +103,10 @@ Checker must run in Vitest node.
 ## Acceptance criteria
 
 - [ ] **AC1 —** Text `DAL123 H270` (or fixture equivalent) → `canonical` / `typed` (Vitest).
+- [ ] **AC1b —** Text English `turn left heading two seven zero` with `parseStage: "spoken_a"` → `canonical` / `spoken_a`.
 - [ ] **AC2 —** Voice sourceText `delta one two three descend and maintain three thousand` (normalized variants allowed) → `canonical` / `spoken_a` when instructions are the matching `ALTITUDE` (Vitest).
 - [ ] **AC3 —** Voice command that only works via path B fallback → `nonstandard` (Vitest; construct by mocking or using a known B-only fragment documented in the test).
+- [ ] **AC3b —** `parseStage: "llm_c"` → `nonstandard` / `llm_c` (Vitest; no network).
 - [ ] **AC4 —** Two `FLY_HEADING` instructions on one `Command` → `disallowed` / `multi_lateral` (Vitest).
 - [ ] **AC5 —** `SAY_ALTITUDE` + `SPEED` → `disallowed` / `say_mixed` (Vitest).
 - [ ] **AC6 —** `scoreSession` on a log with one accepted nonstandard command has phraseology raw 98 and a `phrase_nonstandard` deduction (Vitest).

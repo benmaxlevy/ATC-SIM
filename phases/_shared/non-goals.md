@@ -16,9 +16,9 @@ These are out of scope unless a later ticket explicitly lifts them. Implementing
 
 - Server-authoritative world tick for single player.
 - Running the sim or ATC-tuned Whisper on Cloudflare Workers / "edge functions."
-- LLM as the command executor or aircraft autopilot.
-- Free-form chat with pilots.
-- Microservice split **beyond** the optional local `speech-api/` process. The world tick stays in the browser.
+- LLM as the command executor, aircraft autopilot, phraseology **grader**, or free-form chat with pilots.
+- LLM as the **primary** parser (Path A stays the English grammar). Optional Path C may emit `Instruction` JSON on **our** `speech-api` `POST /parse` after local stages miss; the browser schema-checks; the pilot still validates (`parse-pipeline.md`).
+- Microservice split **beyond** the optional local `speech-api/` process (STT, TTS, and `/parse` live there). The world tick stays in the browser.
 
 ## Voice
 

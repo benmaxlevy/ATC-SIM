@@ -12,28 +12,29 @@ You write **application code** for this phase. You do **not** edit other phase f
 
 1. `phases/_shared/glossary.md`
 2. `phases/_shared/references.md` — **R01/R03** for spoken 7110.65; do not use ICAO Doc 4444 as the v1 grammar (**R10** is contrast only).
-3. `phases/_shared/architecture.md`
-3. `phases/_shared/command-ir.md`
-4. `phases/_shared/speech-port.md`
-5. `phases/_shared/non-goals.md`
-6. `phases/_shared/ticket-template.md`
-7. `phases/03-voice/README.md` — **source of truth for this phase**
-8. The single ticket you are on (see order below)
+3. `phases/_shared/parse-pipeline.md`
+4. `phases/_shared/architecture.md`
+5. `phases/_shared/command-ir.md`
+6. `phases/_shared/speech-port.md`
+7. `phases/_shared/non-goals.md`
+8. `phases/_shared/ticket-template.md`
+9. `phases/03-voice/README.md` — **source of truth for this phase**
+10. The single ticket you are on (see order below)
 
 If a ticket and `phases/03-voice/README.md` disagree, follow the README and then fix the ticket. If the README and `_shared/` disagree, **`_shared/` wins** — do not “fix” shared contracts unless the user explicitly asks.
 
 ## Frozen decisions (do not reopen)
 
 - Speech is a **swappable `SpeechPort`**. Sim/parser/pilot compile and run with `NullSpeechPort`.
-- Voice and text **compile to `Command`**. Parser does not know the source except `Command.source` (`"voice"` | `"text"`).
-- **Path A is primary:** spoken English grammar → IR. Path B (fuzzy-map ASR text to typed tokens like `L270` / `D30`) is fallback only. See README §3–4.
+- Voice and text **compile to `Command` via the same stage list** (`parse-pipeline.md`). `source` is the channel; `parseStage` is which compiler won.
+- **Order:** normalize → typed tokenizer → Path A → Path B → optional Path C. Typed English in the command line is tokenizer miss then A. Path C is T03-14, default off, **not** required to exit.
 - **http** (`HttpSpeechPort` → **our** `speech-api`) is the quality default. **web-speech** is opt-in prototype (browser vendor cloud — not default). **whisper-wasm** is optional and **must not** be required to exit.
 - **No barge-in:** ignore PTT while a readback is playing (do not queue).
 - PTT default key is backtick `` ` ``, configurable. Do not default Caps Lock.
 - Failures (mic deny, timeout, low confidence) → status/readback line. **Never throw through the sim tick.**
 - Log **PTT-up → transcript** and **PTT-up → audio-start**. Target **< 1.5 s** p50 against **localhost speech-api**. **Do not fail the phase on Web Speech quality.**
 - Do not import vendor SDKs. **No paid STT/TTS APIs.** Hugging Face Hub = weight download only (T03-13).
-- No LLM, no always-on listen, no Whisper fine-tune in this repo, no 500 MB model in the Vite bundle.
+- No always-on listen, no Whisper fine-tune in this repo, no 500 MB model in the Vite bundle. No paid LLM APIs. Path C only via local `/parse` when T03-14 is implemented.
 
 ## Ticket order (one at a time)
 
@@ -51,9 +52,10 @@ Implement only the current ticket. Stop when its acceptance criteria are checked
 10. `tickets/T03-09-latency-metrics-overlay.md` — P1
 11. `tickets/T03-10-settings-speech-backend.md` — P1
 12. `tickets/T03-11-whisper-wasm-spike.md` — **P2, skip unless asked**
-13. `tickets/T03-12-voice-acceptance-script.md` — P0 (script + run what CI can run)
+13. `tickets/T03-14-optional-path-c-parse-api.md` — **P1, skip unless asked** (not required to exit)
+14. `tickets/T03-12-voice-acceptance-script.md` — P0 (script + run what CI can run)
 
-Do not implement T03-11 unless the user explicitly asks. Phase exit does not need it.
+Do not implement T03-11 or T03-14 unless the user explicitly asks. Phase exit does not need them.
 
 ## Engineering constraints
 
@@ -65,7 +67,7 @@ Do not implement T03-11 unless the user explicitly asks. Phase exit does not nee
 - Web Speech cannot consume a PCM clip: optional `beginUtterance` / `endUtterance` on the port is allowed; clip adapters no-op it. Document in code comments.
 - `speechSynthesis` is a black box — no radio FX on that path. http PCM goes through the FX graph.
 - When a text field is focused, do not treat the PTT bind as transmit.
-- Keep the typed command line working. Phase 1 tests must still pass.
+- Keep the typed command line working (tokens and, after T03-03, English via Path A). Phase 1 tests must still pass.
 
 ## Stop conditions
 
@@ -75,4 +77,4 @@ Do not implement T03-11 unless the user explicitly asks. Phase exit does not nee
 
 ## Out of scope
 
-Fine-tuning models, always-on listen, LLM NLU, **paid STT/TTS vendors**, barge-in, queueing PTT, phase 2 scope features, phase 4 instruction types, editing `_shared/` or other `phases/NN-*` folders.
+Fine-tuning models, always-on listen, replacing Path A with a model, **paid STT/TTS/LLM vendors**, barge-in, queueing PTT, phase 2 scope features, phase 4 instruction types, editing `_shared/` or other `phases/NN-*` folders.

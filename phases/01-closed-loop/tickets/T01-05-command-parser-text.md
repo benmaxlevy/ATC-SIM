@@ -60,7 +60,7 @@ Read **R08** (vice ATC instruction tables: `H`, `C`/`D`/`A`, `L`/`R` headings).
 - `ParseResult` is `{ ok: true, callsignToken, instructions, sourceText }` or `{ ok: false, error: string, sourceText }`.
 - Parse **fails** (ok false) when: empty line; unknown token; `H`/`L`/`R`/`C`/`D`/`A`/`S`/`T` missing its number; `APP` missing approach id; heading digits parse to a number **> 360** (361+); turn degrees not in `1–360`; leftover junk.
 - Parser **does not** reject altitude 500 ft or speed 400 — that is the pilot agent. Parser **does** require the numeric token to be an integer.
-- Do not implement spoken English (“heading two seven zero”). That is Phase 3.
+- Do not implement spoken English (“heading two seven zero”). That is Phase 3 `parseCommand` Path A (including typed English after a tokenizer miss). This function stays tokens only.
 
 ## Out of scope
 

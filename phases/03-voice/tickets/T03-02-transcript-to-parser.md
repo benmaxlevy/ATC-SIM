@@ -15,7 +15,7 @@ On PTT-up, the active `SpeechPort.transcribe` result is parsed with `source: "vo
 
 `phases/_shared/speech-port.md`: transcript text goes to the **same parser** as the command line. `phases/_shared/command-ir.md`: `Command.source` is `"text" | "voice"`; the parser does not otherwise fork the pilot.
 
-Phase README §3: coordinator lives in speech (or UI shell) but **must not** construct `Instruction` objects. T03-03 supplies path A (and B fallback). This ticket wires capture → port → parse → pilot.
+Phase README §3: coordinator lives in speech (or UI shell) but **must not** construct `Instruction` objects. T03-03 supplies the shared stage list (typed → A → B). This ticket wires capture → port → parse → pilot.
 
 Until T03-04/T03-05 land, use a **test double / injectable** `SpeechPort` (and `NullSpeechPort` in production default). Do not stub a fake parser.
 
@@ -26,8 +26,8 @@ Until T03-04/T03-05 land, use a **test double / injectable** `SpeechPort` (and `
   2. On down: optional `speechPort.beginUtterance?.()`.
   3. On up: if empty clip, stop (T03-08 will own copy); else `await speechPort.transcribe(clip)` (or live `endUtterance` if the port used live STT).
   4. If `transcript.confidence < threshold` (default 0.55), do not parse (hook for T03-08).
-  5. `parseCommand(transcript.text, { source: "voice", selectedCallsign })` — exact API should match phase 1; add `source` if missing.
-  6. On parse success, call the **same** `applyCommand` / pilot entry as the command line.
+  5. `await parseCommand(transcript.text, { source: "voice", selectedCallsign, pathC })` — default `pathC: false` until T03-14/settings. Same entry as the command line.
+  6. On parse success, copy `parseStage` onto the `Command`; call the **same** `applyCommand` / pilot entry as the command line.
 - Set `Command.source` to `"voice"` and `Command.sourceText` to `transcript.text` (raw ASR, not only normalized).
 - Enforce one in-flight `transcribe` per session (`speech-port.md`).
 - Emit/session-log `command.accepted` / `command.rejected` as phase 0/1 already do; include source.
@@ -61,7 +61,7 @@ async function onPttUp(clip: AudioClip, t0: number): Promise<void> {
     const transcript = await port.transcribe(clip);
     // record t_transcript
     if (transcript.confidence < threshold) { /* reject hook */ return; }
-    const command = parseCommand(transcript.text, { source: "voice", selectedCallsign });
+    const command = await parseCommand(transcript.text, { source: "voice", selectedCallsign });
     dispatchCommand(command);
   } catch (err) { /* status hook; never rethrow into tick */ }
   finally { inFlight = false; }

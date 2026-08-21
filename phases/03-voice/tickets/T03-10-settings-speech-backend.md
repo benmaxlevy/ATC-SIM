@@ -27,6 +27,7 @@ Do not hot-swap mid-`transcribe`. Tear down live recognition and do not leak `Me
   - Confidence threshold (number 0–1, default 0.55)
   - Read-only http STT/TTS “configured / missing” if URLs come from env
   - Optional: `voiceId` text field
+  - Optional: Path C checkbox (default off). If T03-14 has not landed, omit or disable the control.
   - Optional: FX on/off, overlay on/off
 - Persist binds/threshold/backend id in whatever pref storage phase 0 used.
 - On backend change: `dispose` old port, construct new, abort Web Speech, `inFlight` must be false (ignore click if busy; status “wait”).

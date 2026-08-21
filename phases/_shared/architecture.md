@@ -1,12 +1,14 @@
 # Architecture (v1)
 
-Browser-first single-player trainer. Optional **self-hosted** `speech-api/` for STT/TTS. No server tick. No paid speech vendors.
+Browser-first single-player trainer. Optional **self-hosted** `speech-api/` for STT/TTS and optional Path C `/parse`. No server tick. No paid speech vendors.
 
 ```
 [PTT / command line]
         │
         ▼
    SpeechPort? ──transcript──► Parser ──► Command IR
+                                 │
+                    typed → A → B → C?  (parse-pipeline.md)
                                             │
                                             ▼
                                       Pilot agent
@@ -31,11 +33,11 @@ Browser-first single-player trainer. Optional **self-hosted** `speech-api/` for 
 | Folder | Owns |
 | --- | --- |
 | `src/core` | Sim clock, aircraft, kinematics, Command IR types |
-| `src/parse` | Text/voice string → `Command` |
+| `src/parse` | String → `Command` (one stage list; Path C fetch injected) |
 | `src/pilot` | Validation, readback templates, intent apply |
 | `src/scope` | Canvas PPI, maps, datablocks, scope keys |
 | `src/speech` | SpeechPort impls, capture, radio graph |
-| `speech-api/` | Local FastAPI (or equivalent): Whisper-family STT + Piper (or equivalent) TTS, Hub weights on disk |
+| `speech-api/` | Local HTTP: Whisper STT + Piper TTS; optional `/parse` (Path C). Hub weights on disk |
 | `src/scenario` | Airport, spawn, maps JSON |
 | `src/ui` | Shell, command line, strips, settings |
 

@@ -14,6 +14,8 @@ Quality STT/TTS is **our** HTTP service (`speech-api/`). It loads open weights (
 
 The browser `HttpSpeechPort` POSTs only to `VITE_STT_URL` / `VITE_TTS_URL` (default `http://127.0.0.1:8090/...`). Those URLs must be **this repo’s API**, not a vendor.
 
+Optional Path C is **`POST /parse` on the same origin** — not a `SpeechPort` method. See `parse-pipeline.md`. Same ban list: no paid LLM APIs.
+
 ## Interface
 
 ```ts

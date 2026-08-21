@@ -4,7 +4,7 @@
 **Priority:** P0
 **Size:** L
 **Depends on:** none (contract only; client is T03-05)
-**Blocks:** T03-05, T03-12
+**Blocks:** T03-05, T03-12, T03-14
 **Launch:** Implement this ticket only. Do not start downstream tickets.
 
 ## Goal
@@ -28,18 +28,19 @@ Do not call `api-inference.huggingface.co` or Inference Endpoints from this serv
 - Add `speech-api/` (Python 3.11+ suggested):
   - `POST /stt` — body `audio/wav` (pcm16le mono, 16 kHz preferred) → JSON `{ "text": string, "confidence": number }`.
   - `POST /tts` — JSON `{ "text": string, "voiceId": string }` → `audio/wav` (mono PCM).
-  - `GET /health` → `{ "ok": true, "sttModel": "<hub id>", "ttsVoice": "<id>" }`.
+  - `GET /health` → `{ "ok": true, "sttModel": "<hub id>", "ttsVoice": "<id>", "parse": "off" | "ready" }`.
+  - `POST /parse` — JSON body `{ "text", "source", "schemaVersion": "command-ir-v0" }`. If `PARSE_MODEL_ID` unset: `{ "ok": false, "error": "UNAVAILABLE" }` (503 allowed). Real inference is **T03-14**.
 - STT: faster-whisper, whisper.cpp, or `transformers` pipeline — **local** `model_id` from Hub, cached under `speech-api/.cache/` (gitignored).
 - TTS: Piper (or equivalent local neural TTS). Same process or a sibling module; still **our** HTTP.
 - CORS: allow Vite origin (`http://localhost:5173` and `127.0.0.1`).
-- README in `speech-api/README.md`: install, first-run weight download, `uvicorn` (or Docker) command, env `STT_MODEL_ID`, `TTS_VOICE`, `HOST`, `PORT`.
+- README in `speech-api/README.md`: install, first-run weight download, `uvicorn` (or Docker) command, env `STT_MODEL_ID`, `TTS_VOICE`, `PARSE_MODEL_ID` (optional, default unset), `HOST`, `PORT`.
 - CI: contract tests with a **tiny fixture WAV** may mock the model; at least one test asserts JSON shape without hitting the Hub. Optional: skip GPU tests in CI.
 
 ## Out of scope
 
 - Fine-tuning. Bundling multi-hundred-MB weights **in git**.
 - Hugging Face Inference API, OpenAI, Deepgram, Groq, ElevenLabs, Workers AI.
-- Changing the Vite sim tick. Browser client (T03-05).
+- Changing the Vite sim tick. Browser client (T03-05). Path C model load (T03-14) — stub `/parse` only.
 - Streaming WebSocket STT (clip POST is enough for PTT).
 
 ## Implementation notes
@@ -52,7 +53,8 @@ Do not log raw audio. Do not require an HF **token** for public models; if a gat
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** `GET /health` returns `ok: true` when the process is up (manual or integration).
+- [ ] **AC1 —** `GET /health` returns `ok: true` when the process is up (manual or integration). Include `parse: "off"` when `PARSE_MODEL_ID` unset.
+- [ ] **AC1b —** `POST /parse` without a parse model returns `UNAVAILABLE` (not an uncaught 500).
 - [ ] **AC2 —** `POST /stt` with a short fixture WAV returns JSON with a `text` string (real model **or** documented mock mode `SPEECH_API_MOCK=1` for CI).
 - [ ] **AC3 —** `POST /tts` returns a non-empty WAV (`audio/wav` or documented pcm16).
 - [ ] **AC4 —** `speech-api/README.md` states weights are Hub **downloads**, inference is local, and lists banned vendor APIs.
