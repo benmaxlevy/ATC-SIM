@@ -21,6 +21,10 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["src/**/*.{test,spec}.?(c|m)[jt]s?(x)", "tests/**/*.{test,spec}.?(c|m)[jt]s?(x)"],
+    include: [
+      "src/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+      "tests/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+      "tools/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+    ],
   },
 });

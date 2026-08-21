@@ -1,0 +1,43 @@
+# Synthetic CIFP subset fixture (T04-08). NOT a real FAA cycle extract.
+# Dialect: comma-separated records with ARINC 424 section codes and packed
+# lat/lon (Nddmmsshh / Edddmmsshh). Real CIFP is fixed-width and uses lat/lon
+# only — there is no XNM/YNM field here.
+#
+# Points are KDEM-like, near 0°N 0°E, so the phase 0 projector yields NEMAX at
+# (17, 12) NM, MERGE at (10, 0), etc. KDEM itself is not in CIFP; the sim still
+# loads src/scenario/data/kdem/.
+#
+# PA  airport    D VHF navaid    DB NDB    PC/EA waypoint
+# PI  localizer  GS glideslope (subset continuation; real CIFP uses PI cont.)
+# PE  STAR       PF approach
+# Unknown types (ER, PD, …) are skipped.
+
+PA,KSYN,Synthetic Field,N00000000,E000000000,0,0
+
+D,DEM,DEMO,VORDME,N00004800,E000002400,113.00,T
+DB,DMO,DEMO,N00000900,E000060000,385
+
+PC,NEMAX,INTERSECTION,N00120000,E000170000
+PC,NELBO,INTERSECTION,N00070000,E000160000
+PC,MERGE,INTERSECTION,N00000000,E000100000
+PC,FI27,FAF,N00000000,E000060000
+PC,RW27,THRESHOLD,N00000000,E000000000
+PC,MISSD,MAPT,N00060000,W000080000
+
+PI,IDEM,I-DEM,N00000000,W000015100,110.3,270,18,2.5
+GS,IDEMGS,I-DEM GS,S00000420,E000001080,335.0,3.0,50
+
+PE,H,KSYN,DEM1,DEMO ONE
+PE,T,DEM1,N,NORTH
+PE,L,DEM1,NEMAX,+,10000,-,250
+PE,L,DEM1,NELBO,+,8000,-,230
+PE,C,DEM1
+PE,L,DEM1,MERGE,@,4000,-,210
+PE,E,DEM1,VECTORS
+
+PF,KSYN,ILS27,ILS,27,ILS RWY 27,IDEM,IDEMGS,FI27,RW27,270,18,2.5,3.0,50,6,2000,200,270,3000,MISSD
+
+# Skippable extra record types (AC3). Not parsed; sids stay [].
+ER,V1,AIRWAY,NEMAX,MERGE
+PD,KSYN,DEM1,DEMO SID
+this is garbage not a record
