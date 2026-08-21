@@ -14,7 +14,17 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@core": ["src/core"],
+      "@parse": ["src/parse"],
+      "@pilot": ["src/pilot"],
+      "@scope": ["src/scope"],
+      "@speech": ["src/speech"],
+      "@scenario": ["src/scenario"],
+      "@ui": ["src/ui"]
+    }
   },
   "include": ["src"]
 }
