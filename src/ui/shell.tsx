@@ -159,7 +159,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
                 void submitCommand(app.world, input, app.log).then((result) => {
                   setReadback(result.readback);
                   if (result.accepted) {
-                    void app.voiceLoop.playReadback(result.readback);
+                    void app.voiceLoop.playReadback(result.readback, result.command?.callsign);
                   }
                 });
               }}

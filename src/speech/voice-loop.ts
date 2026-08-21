@@ -56,6 +56,7 @@ export type ParseCommandFn = (
 export interface VoiceDispatchResult {
   accepted?: boolean;
   readback?: string;
+  command?: { callsign: string };
 }
 
 export type DispatchCommandFn = (
@@ -92,7 +93,7 @@ export interface VoiceLoopOptions {
   readbackPlayer?: ReadbackPlayer;
   /** TTS voice id. Default {@link DEFAULT_READBACK_VOICE_ID}. */
   voiceId?: string;
-  getVoiceId?: () => string;
+  getVoiceId?: (callsign?: string) => string;
 }
 
 export interface VoiceLoop {
@@ -113,7 +114,7 @@ export interface VoiceLoop {
    * Speak an already-accepted pilot readback (typed command line or voice).
    * Does not parse. Locks PTT for the play. Never throws.
    */
-  playReadback(readback: string): Promise<void>;
+  playReadback(readback: string, callsign?: string | null): Promise<void>;
   dispose(): void;
 }
 
@@ -180,7 +181,7 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly onParseMiss?: (sourceText: string, error: string) => void | Promise<void>;
   private readonly onMetrics?: (metrics: VoiceUtteranceMetrics) => void;
   private readonly onUtteranceComplete?: (metrics: VoiceUtteranceMetrics) => void;
-  private readonly getVoiceId: () => string;
+  private readonly getVoiceId: (callsign?: string) => string;
   private readonly gate = new TransmitGate();
   readonly readbackPlayer: ReadbackPlayer;
 
@@ -233,8 +234,8 @@ class VoiceLoopImpl implements VoiceLoop {
     this.confidenceThreshold = Math.min(1, Math.max(0, value));
   }
 
-  async playReadback(readback: string): Promise<void> {
-    await this.speakReadbackText(readback);
+  async playReadback(readback: string, callsign?: string | null): Promise<void> {
+    await this.speakReadbackText(readback, undefined, callsign);
   }
 
   dispose(): void {
@@ -401,19 +402,20 @@ class VoiceLoopImpl implements VoiceLoop {
     if (readback === null) {
       return;
     }
-    await this.speakReadbackText(readback, metrics);
+    await this.speakReadbackText(readback, metrics, dispatchResult?.command?.callsign);
   }
 
   private async speakReadbackText(
     readback: string,
     metrics?: VoiceUtteranceMetrics,
+    callsign?: string | null,
   ): Promise<void> {
     const text = readback.trim();
     if (this.disposed || text === "") {
       return;
     }
 
-    const voiceId = this.getVoiceId();
+    const voiceId = this.getVoiceId(callsign ?? undefined);
     const onAudioStart = (nowMs: number): void => {
       if (!metrics) {
         return;

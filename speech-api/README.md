@@ -50,8 +50,8 @@ pip install -r requirements.txt
 
 The first `uvicorn` start (or `python download_weights.py`) downloads:
 
-- STT: `STT_MODEL_ID` (default `Systran/faster-whisper-base.en`, faster-whisper / CTranslate2)
-- TTS: `TTS_VOICE` (default `en_US-lessac-medium` from `rhasspy/piper-voices`)
+- STT: `STT_MODEL_ID` (default `Systran/faster-whisper-small.en`, faster-whisper / CTranslate2)
+- TTS: `TTS_VOICE` (default `en_US-lessac-medium`) plus a roster of Piper medium voices (`TTS_VOICES`) so each callsign can get a distinct speaker
 
 Files land under `speech-api/.cache/` (gitignored). Later starts reuse the cache. No per-utterance Hub call.
 
@@ -86,8 +86,9 @@ docker run --rm -p 127.0.0.1:8090:8090 -v speech-api-cache:/app/.cache atc-speec
 | --- | --- | --- |
 | `HOST` | `127.0.0.1` | Bind address |
 | `PORT` | `8090` | Bind port |
-| `STT_MODEL_ID` | `Systran/faster-whisper-base.en` | Hub id or faster-whisper alias (`base.en`, `small.en`) |
-| `TTS_VOICE` | `en_US-lessac-medium` | Piper voice id on `rhasspy/piper-voices` |
+| `STT_MODEL_ID` | `Systran/faster-whisper-small.en` | Hub id or faster-whisper alias (`base.en`, `small.en`, `medium.en`) |
+| `TTS_VOICE` | `en_US-lessac-medium` | Fallback Piper voice id on `rhasspy/piper-voices` |
+| `TTS_VOICES` | lessac, amy, ryan, joe, kristin, kusal (medium) | Comma-separated Piper ids preloaded at startup |
 | `PARSE_MODEL_ID` | unset | Reserved for T03-14. Unset → `/health.parse` is `"off"` and `POST /parse` is `UNAVAILABLE` |
 | `SPEECH_API_MOCK` | unset | `1` / `true` — no Hub, fake STT/TTS for CI |
 | `SPEECH_API_CACHE` | `speech-api/.cache` | Weight cache root |

@@ -1017,6 +1017,25 @@ test("playReadback synthesizes accepted typed readbacks without transcribe", asy
   loop.dispose();
 });
 
+test("playReadback passes callsign into getVoiceId", async () => {
+  const seen: Array<string | undefined> = [];
+  const port = fakePort("ignored");
+  const loop = createVoiceLoop({
+    speechPort: port,
+    parseCommand,
+    dispatchCommand: () => {},
+    getSelectedCallsign: () => "DAL123",
+    getVoiceId: (callsign) => {
+      seen.push(callsign);
+      return "en_US-amy-medium";
+    },
+    readbackPlayer: instantPlayer().player,
+  });
+  await loop.playReadback("heading two seven zero", "DAL123");
+  expect(seen).toEqual(["DAL123"]);
+  loop.dispose();
+});
+
 test("playReadback skips empty and does not throw on TTS failure", async () => {
   const port: SpeechPort = {
     id: "fake",

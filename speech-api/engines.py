@@ -20,6 +20,17 @@ log = logging.getLogger("speech-api")
 MOCK_TRANSCRIPT = "delta one two three fly heading two seven zero"
 
 
+def avg_logprob_to_confidence(avg_logprob: float) -> float:
+    """Map Whisper avg_logprob (typically -1.2..0) onto 0–1.
+
+    ``exp(avg_logprob)`` is too harsh against the 0.55 say-again gate
+    (a usable ``-0.7`` becomes 0.50). Linear map: 0 → 1.0, -1.0 → 0.50, -2 → 0.
+    """
+    if not math.isfinite(avg_logprob):
+        return 1.0
+    return max(0.0, min(1.0, 1.0 + avg_logprob / 2.0))
+
+
 class SttEngine(Protocol):
     def transcribe(self, wav_bytes: bytes) -> tuple[str, float]:
         """Return (text, confidence 0–1). Missing engine score → 1.0."""
@@ -152,7 +163,12 @@ class FasterWhisperStt:
         try:
             with open(path, "wb") as handle:
                 handle.write(wav_bytes)
-            segments, _info = self._model.transcribe(path, beam_size=1, language="en")
+            segments, _info = self._model.transcribe(
+                path,
+                beam_size=5,
+                language="en",
+                condition_on_previous_text=False,
+            )
             texts: list[str] = []
             logprobs: list[float] = []
             for seg in segments:
@@ -165,8 +181,8 @@ class FasterWhisperStt:
             text = " ".join(texts)
             if not logprobs:
                 return text, 1.0
-            confidence = math.exp(sum(logprobs) / len(logprobs))
-            return text, max(0.0, min(1.0, confidence))
+            avg = sum(logprobs) / len(logprobs)
+            return text, avg_logprob_to_confidence(avg)
         finally:
             try:
                 os.unlink(path)
@@ -214,7 +230,16 @@ class PiperTts:
         # ONNX CUDA is independent of CTranslate2. Driver-only machines warn and use CPU.
         self._use_cuda = onnx_cuda_available()
         self._voices: dict[str, object] = {}
-        self._load(self._default_voice)
+        roster = list(settings.tts_voices)
+        if self._default_voice not in roster:
+            roster.append(self._default_voice)
+        for vid in roster:
+            try:
+                self._load(vid)
+            except Exception:
+                log.warning("skipping TTS voice %s", vid, exc_info=True)
+        if self._default_voice not in self._voices:
+            self._load(self._default_voice)
 
     def _load(self, voice_id: str) -> None:
         from piper import PiperVoice

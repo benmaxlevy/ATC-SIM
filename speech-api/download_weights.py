@@ -18,6 +18,7 @@ def main() -> None:
     print(f"cache: {settings.cache_dir}")
     print(f"STT:   {settings.stt_model_id}")
     print(f"TTS:   {settings.tts_voice}")
+    print(f"roster:{', '.join(settings.tts_voices)}")
     build_stt(settings)
     build_tts(settings)
     print("weights are on disk; start the API with: python -m uvicorn app:app --host 127.0.0.1 --port 8090")

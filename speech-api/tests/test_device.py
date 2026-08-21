@@ -25,6 +25,7 @@ def _settings(device: str | None = None) -> Settings:
         cors_origins=(),
         stt_device=device,
         stt_compute_type=None,
+        tts_voices=("en_US-lessac-medium",),
     )
 
 

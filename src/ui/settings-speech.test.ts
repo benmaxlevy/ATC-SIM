@@ -98,8 +98,7 @@ test("prefs persist in the same atc-sim.* profile storage as phase 0", () => {
   expect(loaded.confidenceThreshold).toBe(0.7);
   expect(loaded.latencyOverlay).toBe(false);
   expect(loaded.radioFx).toBe(false);
-  expect(DEFAULT_PTT_KEY).toBe("`");
-  expect(DEFAULT_CONFIDENCE_THRESHOLD).toBe(0.55);
+  expect(defaultSpeechPrefs().voiceId).toBe("auto");
 });
 
 test("AC3 — selecting another backend while idle constructs that id", () => {

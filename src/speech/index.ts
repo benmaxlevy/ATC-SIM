@@ -41,6 +41,12 @@ export { EMPTY_CLIP_MS } from "./capture/clip-gate";
 export { TARGET_SAMPLE_RATE } from "./capture/resample";
 export { isTextFieldTarget } from "./capture/ptt-focus";
 export {
+  AUTO_TTS_VOICE_ID,
+  PILOT_VOICE_IDS,
+  isAutoTtsVoice,
+  voiceIdForCallsign,
+} from "./pilot-voices";
+export {
   DEFAULT_CONFIDENCE_THRESHOLD,
   DEFAULT_READBACK_VOICE_ID,
   createVoiceLoop,

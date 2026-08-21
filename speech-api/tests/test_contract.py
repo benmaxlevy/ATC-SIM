@@ -84,3 +84,13 @@ def test_piper_voice_maps_to_hub_path() -> None:
         piper_hub_filename("en_US-lessac-medium")
         == "en/en_US/lessac/medium/en_US-lessac-medium.onnx"
     )
+    assert piper_hub_filename("en_US-amy-medium") == "en/en_US/amy/medium/en_US-amy-medium.onnx"
+
+
+def test_avg_logprob_mapping_clears_say_again_gate() -> None:
+    from engines import avg_logprob_to_confidence
+
+    assert avg_logprob_to_confidence(-0.3) >= 0.55
+    assert avg_logprob_to_confidence(-0.7) >= 0.55
+    assert avg_logprob_to_confidence(-0.9) == pytest.approx(0.55)
+    assert avg_logprob_to_confidence(-1.4) < 0.55

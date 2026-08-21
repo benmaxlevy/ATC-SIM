@@ -9,6 +9,7 @@
 
 import { useState } from "react";
 import {
+  AUTO_TTS_VOICE_ID,
   DEFAULT_CONFIDENCE_THRESHOLD,
   DEFAULT_PTT_KEY,
   DEFAULT_READBACK_VOICE_ID,
@@ -66,7 +67,7 @@ export function defaultSpeechPrefs(): SpeechPrefs {
     backendId: "http",
     pttKey: DEFAULT_PTT_KEY,
     confidenceThreshold: DEFAULT_CONFIDENCE_THRESHOLD,
-    voiceId: DEFAULT_READBACK_VOICE_ID,
+    voiceId: AUTO_TTS_VOICE_ID,
     latencyOverlay: true,
     radioFx: true,
   };
@@ -126,7 +127,9 @@ export function loadSpeechPrefs(store?: Storage): SpeechPrefs {
     ),
     voiceId:
       typeof saved.voiceId === "string" && saved.voiceId.trim() !== ""
-        ? saved.voiceId
+        ? saved.voiceId === DEFAULT_READBACK_VOICE_ID
+          ? AUTO_TTS_VOICE_ID
+          : saved.voiceId
         : defaults.voiceId,
     latencyOverlay:
       typeof saved.latencyOverlay === "boolean" ? saved.latencyOverlay : defaults.latencyOverlay,
@@ -261,7 +264,7 @@ export function createSpeechSettingsController(options: {
       persist();
     },
     setVoiceId(voiceId: string): void {
-      const next = voiceId.trim() === "" ? DEFAULT_READBACK_VOICE_ID : voiceId;
+      const next = voiceId.trim() === "" ? AUTO_TTS_VOICE_ID : voiceId;
       prefs.voiceId = next;
       persist();
     },
@@ -389,6 +392,7 @@ export function SpeechSettingsPanel({ controller, speechId, onChange }: SpeechSe
             <input
               type="text"
               value={prefs.voiceId}
+              placeholder="auto (per callsign)"
               onChange={(event) => {
                 controller.setVoiceId(event.target.value);
                 refresh();

@@ -9,9 +9,18 @@ from pathlib import Path
 API_DIR = Path(__file__).resolve().parent
 DEFAULT_CACHE_DIR = API_DIR / ".cache"
 
-# faster-whisper Hub id (CTranslate2). Alias `base.en` also works.
-DEFAULT_STT_MODEL_ID = "Systran/faster-whisper-base.en"
+# faster-whisper Hub id (CTranslate2). small.en is the quality default (slower than base.en).
+DEFAULT_STT_MODEL_ID = "Systran/faster-whisper-small.en"
 DEFAULT_TTS_VOICE = "en_US-lessac-medium"
+# Distinct Piper medium voices so each callsign can hash to a different speaker.
+DEFAULT_TTS_VOICES = (
+    "en_US-lessac-medium",
+    "en_US-amy-medium",
+    "en_US-ryan-medium",
+    "en_US-joe-medium",
+    "en_US-kristin-medium",
+    "en_US-kusal-medium",
+)
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8090
 
@@ -30,6 +39,14 @@ def _optional_env(name: str) -> str | None:
     return value or None
 
 
+def _tts_voice_roster() -> tuple[str, ...]:
+    extra = os.environ.get("TTS_VOICES", "").strip()
+    if not extra:
+        return DEFAULT_TTS_VOICES
+    voices = tuple(v.strip() for v in extra.split(",") if v.strip())
+    return voices or DEFAULT_TTS_VOICES
+
+
 @dataclass(frozen=True)
 class Settings:
     host: str
@@ -43,6 +60,7 @@ class Settings:
     cors_origins: tuple[str, ...]
     stt_device: str | None
     stt_compute_type: str | None
+    tts_voices: tuple[str, ...]
 
     @property
     def parse_status(self) -> str:
@@ -68,6 +86,7 @@ class Settings:
             cors_origins=tuple(dict.fromkeys(origins)),
             stt_device=_optional_env("STT_DEVICE"),
             stt_compute_type=_optional_env("STT_COMPUTE_TYPE"),
+            tts_voices=_tts_voice_roster(),
         )
 
     def apply_hub_cache(self) -> None:

@@ -184,7 +184,7 @@ test("typed accepted readback uses the same TTS player as PTT", async () => {
   });
   const result = await submitCommand(world, "DAL123 H270", new SessionLog());
   expect(result.accepted).toBe(true);
-  await handles.voiceLoop.playReadback(result.readback);
+  await handles.voiceLoop.playReadback(result.readback, result.command?.callsign);
   expect(synth).toHaveBeenCalledTimes(1);
   expect(String(synth.mock.calls[0]?.[0] ?? "").toLowerCase()).toContain("heading two seven zero");
   handles.ptt.dispose();

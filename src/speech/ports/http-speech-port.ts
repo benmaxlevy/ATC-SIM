@@ -28,7 +28,7 @@ import { isWav, pcm16ToWav, uint8ToArrayBuffer, wavToAudioClip } from "./wav";
 
 export const DEFAULT_STT_URL = "http://127.0.0.1:8090/stt";
 export const DEFAULT_TTS_URL = "http://127.0.0.1:8090/tts";
-export const DEFAULT_TIMEOUT_MS = 8000;
+export const DEFAULT_TIMEOUT_MS = 30000;
 export const DEFAULT_VOICE_ID = "en_US-lessac-medium";
 
 export interface HttpSpeechPortConfig {

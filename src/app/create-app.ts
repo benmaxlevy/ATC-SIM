@@ -15,6 +15,7 @@ import {
   type VoiceSessionSnapshot,
   type VoiceStatusEvent,
   type VoiceUtteranceMetrics,
+  voiceIdForCallsign,
 } from "@speech";
 import { formatVoiceStatus } from "../ui/voice-status";
 import {
@@ -40,7 +41,7 @@ export interface AppDeps {
   speechPrefs?: SpeechPrefs;
   speechUrls?: SpeechApiUrlStatus;
   confidenceThreshold?: number;
-  getVoiceId?: () => string;
+  getVoiceId?: (callsign?: string) => string;
 }
 
 export interface LatencyOverlayState {
@@ -155,7 +156,7 @@ export function createApp(deps: AppDeps): AppHandles {
       getSelectedCallsign: () => selectedCallsignFromWorld(world),
       getIssuedAtSimMs: () => world.simTimeMs,
       confidenceThreshold: deps.confidenceThreshold ?? prefs.confidenceThreshold,
-      getVoiceId: deps.getVoiceId ?? (() => prefs.voiceId),
+      getVoiceId: deps.getVoiceId ?? ((callsign) => voiceIdForCallsign(callsign, prefs.voiceId)),
       setTransmitLocked: (locked) => {
         ptt?.setTransmitLocked(locked);
       },
