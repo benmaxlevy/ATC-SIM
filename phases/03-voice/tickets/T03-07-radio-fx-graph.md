@@ -48,17 +48,17 @@ Phase README §7.2. v1 should sound like a radio, not a calibrated transceiver.
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Given FX enabled and a PCM clip play, then the source is connected through a filter and a compressor before destination (inspectable via a test hook or documented node list).
-- [ ] **AC2 —** Given FX disabled, then playback is dry (no obligatory noise).
-- [ ] **AC3 —** Given `web-speech` browser TTS, then this graph is not required and must not throw if unused.
-- [ ] **AC4 —** Noise is not audible at idle (gain 0 or node stopped) after play ends.
-- [ ] **AC5 —** Automated test exists for factory/bypass (happy path). Listening is Manual.
+- [x] **AC1 —** Given FX enabled and a PCM clip play, then the source is connected through a filter and a compressor before destination (inspectable via a test hook or documented node list).
+- [x] **AC2 —** Given FX disabled, then playback is dry (no obligatory noise).
+- [x] **AC3 —** Given `web-speech` browser TTS, then this graph is not required and must not throw if unused.
+- [x] **AC4 —** Noise is not audible at idle (gain 0 or node stopped) after play ends.
+- [x] **AC5 —** Automated test exists for factory/bypass (happy path). Listening is Manual.
 
 ## Test plan
 
 - Unit: createRadioGraph with a mocked or real AudioContext in Vitest (if AudioContext exists in happy-dom/jsdom, skip gracefully); constants exported; bypass flag.
 - Integration: none.
-- Manual: http TTS dry vs FX — voice thinner, light hiss, no clipping slam. Toggle bypass.
+- Manual: **skipped** (no speakers/Chrome in this swarm worktree). Reason: unit tests cover factory, bypass, idle noise, and T03-06 player wiring. Listening dry vs FX is T03-12 E6.
 
 ## Suggested files
 

@@ -427,7 +427,9 @@ function holdingPlayer(onStartNow?: () => number): {
       playing = false;
       releasePlay?.();
     },
+    fxEnabled: true,
     setConnectSource() {},
+    setFxEnabled() {},
   };
   return {
     player,
@@ -460,7 +462,9 @@ function instantPlayer(onStartNow?: () => number): {
       return { ok: true };
     },
     stop() {},
+    fxEnabled: true,
     setConnectSource() {},
+    setFxEnabled() {},
   };
   return { player, clips, browserTexts };
 }

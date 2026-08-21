@@ -156,3 +156,136 @@ test("playBrowser uses speak() after handlers and does not claim a radio graph",
 test("createReadbackPlayer tests run without a DOM AudioContext", () => {
   expect(typeof AudioContext).toBe("undefined");
 });
+
+class FakeFxGain {
+  gain = { value: 1 };
+  connect = vi.fn((dest: unknown) => dest);
+  disconnect = vi.fn();
+}
+
+class FakeFxBiquad {
+  type: BiquadFilterType = "lowpass";
+  frequency = { value: 350 };
+  Q = { value: 1 };
+  connect = vi.fn((dest: unknown) => dest);
+  disconnect = vi.fn();
+}
+
+class FakeFxCompressor {
+  threshold = { value: -24 };
+  knee = { value: 30 };
+  ratio = { value: 12 };
+  attack = { value: 0.003 };
+  release = { value: 0.25 };
+  connect = vi.fn((dest: unknown) => dest);
+  disconnect = vi.fn();
+}
+
+class FakeFxContext extends FakeContext {
+  sampleRate = 48000;
+  readonly inputs: FakeFxGain[] = [];
+  readonly compressors: FakeFxCompressor[] = [];
+
+  createGain(): GainNode {
+    const node = new FakeFxGain();
+    this.inputs.push(node);
+    return node as unknown as GainNode;
+  }
+
+  createBiquadFilter(): BiquadFilterNode {
+    return new FakeFxBiquad() as unknown as BiquadFilterNode;
+  }
+
+  createDynamicsCompressor(): DynamicsCompressorNode {
+    const node = new FakeFxCompressor();
+    this.compressors.push(node);
+    return node as unknown as DynamicsCompressorNode;
+  }
+}
+
+test("playPcm with FX-capable context routes the source through a filter and compressor (AC1)", async () => {
+  const ctx = new FakeFxContext();
+  const player = createReadbackPlayer({
+    getAudioContext: () => ctx as unknown as AudioContext,
+    delay: async () => {},
+  });
+
+  await expect(player.playPcm(clip([32767, -32768]))).resolves.toEqual({ ok: true });
+
+  expect(ctx.compressors).toHaveLength(1);
+  expect(ctx.sources.length).toBeGreaterThanOrEqual(2);
+  const voice = ctx.sources[0]!;
+  expect(voice.connect).toHaveBeenCalledWith(ctx.inputs[0]);
+  expect(voice.connect).not.toHaveBeenCalledWith(ctx.destination);
+  expect(player.fxEnabled).toBe(true);
+  // AC4: hiss off after play. createGain order: input, voice, noise, mixer, master.
+  expect(ctx.inputs[2]!.gain.value).toBe(0);
+});
+
+test("setFxEnabled(false) plays PCM dry with no obligatory noise (AC2)", async () => {
+  const ctx = new FakeFxContext();
+  const player = createReadbackPlayer({
+    getAudioContext: () => ctx as unknown as AudioContext,
+    delay: async () => {},
+  });
+  player.setFxEnabled(false);
+
+  await expect(player.playPcm(clip([100, -100]))).resolves.toEqual({ ok: true });
+  expect(ctx.sources).toHaveLength(1);
+  expect(ctx.sources[0]!.connect).toHaveBeenCalledWith(ctx.destination);
+  expect(ctx.compressors).toHaveLength(0);
+});
+
+test("silent PCM stays dry so NullSpeechPort does not hiss", async () => {
+  const ctx = new FakeFxContext();
+  const player = createReadbackPlayer({
+    getAudioContext: () => ctx as unknown as AudioContext,
+    delay: async () => {},
+  });
+
+  await expect(
+    player.playPcm({ sampleRate: 16000, channels: 1, pcm16: new Int16Array(8) }),
+  ).resolves.toEqual({ ok: true });
+  expect(ctx.sources).toHaveLength(1);
+  expect(ctx.sources[0]!.connect).toHaveBeenCalledWith(ctx.destination);
+  expect(ctx.compressors).toHaveLength(0);
+});
+
+test("re-enabling FX after a dry play routes the next PCM clip through the graph", async () => {
+  const ctx = new FakeFxContext();
+  const player = createReadbackPlayer({
+    getAudioContext: () => ctx as unknown as AudioContext,
+    delay: async () => {},
+  });
+  player.setFxEnabled(false);
+  await expect(player.playPcm(clip([100]))).resolves.toEqual({ ok: true });
+  expect(ctx.sources[0]!.connect).toHaveBeenCalledWith(ctx.destination);
+
+  player.setFxEnabled(true);
+  await expect(player.playPcm(clip([101]))).resolves.toEqual({ ok: true });
+  const secondVoice = ctx.sources[1]!;
+  expect(secondVoice.connect).toHaveBeenCalledWith(ctx.inputs[0]);
+  expect(secondVoice.connect).not.toHaveBeenCalledWith(ctx.destination);
+});
+
+test("playBrowser still does not require or throw on the radio graph (AC3)", async () => {
+  const utterance = {
+    onstart: null as (() => void) | null,
+    onend: null as (() => void) | null,
+    onerror: null as (() => void) | null,
+  };
+  const player = createReadbackPlayer({
+    delay: async () => {},
+    speakBrowser: () => ({
+      utterance: utterance as unknown as SpeechSynthesisUtterance,
+      speak: () => {
+        utterance.onstart?.();
+        queueMicrotask(() => utterance.onend?.());
+      },
+    }),
+  });
+  player.setFxEnabled(true);
+  await expect(player.playBrowser("heading two seven zero", "voice")).resolves.toEqual({
+    ok: true,
+  });
+});

@@ -3,10 +3,11 @@
  *
  * Legal now: `SpeechPort`, `AudioClip`, `Transcript`, `NullSpeechPort`,
  * `SpeechNotAvailableError`, PTT capture (`createPttCaptureController`),
- * voice-loop coordinator (`createVoiceLoop`). Boot injects `NullSpeechPort`
- * via `createApp`, which wires PTT → transcribe → parseCommand → pilot.
+ * voice-loop coordinator (`createVoiceLoop`), PCM playback + radio FX graph.
+ * Boot injects `NullSpeechPort` via `createApp`, which wires PTT → transcribe
+ * → parseCommand → pilot.
  *
- * Later: HTTP / in-tab / browser-vendor ports, radio graph.
+ * Later: in-tab whisper-wasm (T03-11, skipped this swarm).
  * AudioClip is speech-owned. Do not put vendor SDKs here.
  *
  * Import rule: `@speech` may import `@core` only. `parseCommand` is injected.
@@ -60,4 +61,25 @@ export type {
   ReadbackPlayer,
   ReadbackPlayerOptions,
 } from "./playback/readback-player";
+export {
+  connectPlaybackThroughRadio,
+  createRadioGraph,
+  isSilentClip,
+} from "./playback/radio-graph";
+export type { RadioGraph, RadioGraphNodes } from "./playback/radio-graph";
+export {
+  DEFAULT_RADIO_FX_ENABLED,
+  RADIO_COMPRESSOR_ATTACK_SEC,
+  RADIO_COMPRESSOR_KNEE_DB,
+  RADIO_COMPRESSOR_RATIO,
+  RADIO_COMPRESSOR_RELEASE_SEC,
+  RADIO_COMPRESSOR_THRESHOLD_DB,
+  RADIO_FILTER_Q,
+  RADIO_HIGHPASS_HZ,
+  RADIO_LOWPASS_HZ,
+  RADIO_MASTER_GAIN,
+  RADIO_NOISE_DURATION_SEC,
+  RADIO_NOISE_GAIN,
+  RADIO_VOICE_GAIN,
+} from "./playback/radio-fx-params";
 export const SPEECH_PACKAGE = "speech";

@@ -1,6 +1,6 @@
 /**
- * Readback playback: PCM via AudioBufferSourceNode (dry until T03-07), or
- * speechSynthesis for the opt-in web-speech port (no radio FX on that path).
+ * Readback playback: PCM via AudioBufferSourceNode through the T03-07 radio
+ * graph, or speechSynthesis for the opt-in web-speech port (no radio FX).
  *
  * One readback at a time. PTT lock is owned by the voice-loop / TransmitGate;
  * this player only reports start/end. Tail after `ended` is {@link PLAYBACK_TAIL_MS}
@@ -10,12 +10,20 @@
 import type { AudioClip } from "../types";
 import { speakBrowser, type BrowserSpeakResult } from "../ports/browser-tts";
 import { createAudioBufferFromClip } from "./pcm16-to-audio-buffer";
+import { DEFAULT_RADIO_FX_ENABLED } from "./radio-fx-params";
+import {
+  connectPlaybackThroughRadio,
+  createRadioGraph,
+  isSilentClip,
+  type RadioGraph,
+} from "./radio-graph";
 
 /** Hold PTT lock this long after source `ended` (README §6.3). */
 export const PLAYBACK_TAIL_MS = 50;
 
 /**
- * T03-07 inserts the radio graph here. Default is dry: source → destination.
+ * Playback seam. Default PCM path uses {@link connectPlaybackThroughRadio}.
+ * Tests and debug inject {@link connectPlaybackDry}. Browser TTS never calls this.
  */
 export type ConnectPlaybackSource = (source: AudioNode, destination: AudioDestinationNode) => void;
 
@@ -32,17 +40,23 @@ export interface ReadbackPlayHooks {
 
 export interface ReadbackPlayer {
   readonly playing: boolean;
+  /** T03-10 settings/debug: PCM wet graph vs dry. Browser TTS ignores this. */
+  readonly fxEnabled: boolean;
   /** Resume the shared playback AudioContext (first PTT or first play). */
   warmUp(): Promise<void>;
   playPcm(clip: AudioClip, hooks?: ReadbackPlayHooks): Promise<PlayOutcome>;
   playBrowser(text: string, voiceId: string, hooks?: ReadbackPlayHooks): Promise<PlayOutcome>;
   stop(): void;
   setConnectSource(connect: ConnectPlaybackSource): void;
+  /** Bypass radio FX on the next PCM play. Does not throw if unused. */
+  setFxEnabled(enabled: boolean): void;
 }
 
 export interface ReadbackPlayerOptions {
   getAudioContext?: () => AudioContext | null;
   connectSource?: ConnectPlaybackSource;
+  /** Default {@link DEFAULT_RADIO_FX_ENABLED}. T03-10 may persist this. */
+  fxEnabled?: boolean;
   speakBrowser?: (text: string, voiceId: string) => BrowserSpeakResult | null;
   now?: () => number;
   delay?: (ms: number) => Promise<void>;
@@ -75,7 +89,9 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
   private source: AudioBufferSourceNode | null = null;
   private playingValue = false;
   private generation = 0;
-  private connectSource: ConnectPlaybackSource;
+  private radioGraph: RadioGraph | null = null;
+  private fxEnabledValue: boolean;
+  private customConnect: ConnectPlaybackSource | null;
   private readonly getAudioContext?: () => AudioContext | null;
   private readonly speakFn: (text: string, voiceId: string) => BrowserSpeakResult | null;
   private readonly now: () => number;
@@ -83,7 +99,8 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
 
   constructor(options: ReadbackPlayerOptions) {
     this.getAudioContext = options.getAudioContext;
-    this.connectSource = options.connectSource ?? connectPlaybackDry;
+    this.customConnect = options.connectSource ?? null;
+    this.fxEnabledValue = options.fxEnabled ?? DEFAULT_RADIO_FX_ENABLED;
     this.speakFn = options.speakBrowser ?? speakBrowser;
     this.now = options.now ?? defaultNow;
     this.delay = options.delay ?? defaultDelay;
@@ -93,8 +110,17 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
     return this.playingValue;
   }
 
+  get fxEnabled(): boolean {
+    return this.fxEnabledValue;
+  }
+
   setConnectSource(connect: ConnectPlaybackSource): void {
-    this.connectSource = connect;
+    this.customConnect = connect;
+  }
+
+  setFxEnabled(enabled: boolean): void {
+    this.fxEnabledValue = enabled;
+    this.radioGraph?.setFxEnabled(enabled);
   }
 
   async warmUp(): Promise<void> {
@@ -113,6 +139,7 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
     const source = this.source;
     this.source = null;
     this.playingValue = false;
+    this.radioGraph?.endPlay();
     if (source) {
       try {
         source.stop();
@@ -147,7 +174,7 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       this.source = source;
-      this.connectSource(source, ctx.destination);
+      this.routePcm(source, ctx, clip);
 
       await new Promise<void>((resolve, reject) => {
         source.onended = () => {
@@ -172,6 +199,7 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
     } catch {
       return { ok: false, reason: "error" };
     } finally {
+      this.radioGraph?.endPlay();
       if (this.generation === generation) {
         this.source = null;
         this.playingValue = false;
@@ -228,6 +256,37 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
       if (this.generation === generation) {
         this.playingValue = false;
       }
+    }
+  }
+
+  private routePcm(source: AudioBufferSourceNode, ctx: AudioContext, clip: AudioClip): void {
+    const destination = ctx.destination;
+    if (this.customConnect) {
+      this.customConnect(source, destination);
+      return;
+    }
+    if (!this.fxEnabledValue || isSilentClip(clip)) {
+      connectPlaybackDry(source, destination);
+      return;
+    }
+    const graph = this.ensureGraph(ctx);
+    if (!graph) {
+      connectPlaybackDry(source, destination);
+      return;
+    }
+    connectPlaybackThroughRadio(graph)(source, destination);
+  }
+
+  private ensureGraph(ctx: AudioContext): RadioGraph | null {
+    if (this.radioGraph) {
+      return this.radioGraph;
+    }
+    try {
+      this.radioGraph = createRadioGraph(ctx);
+      this.radioGraph.setFxEnabled(this.fxEnabledValue);
+      return this.radioGraph;
+    } catch {
+      return null;
     }
   }
 
