@@ -14,6 +14,7 @@
 export type { AudioClip, SpeechPort, Transcript } from "./types";
 export { SpeechNotAvailableError } from "./errors";
 export { NullSpeechPort } from "./null-speech-port";
+export { HttpSpeechPort } from "./ports/http-speech-port";
 export { DEFAULT_PTT_KEY, createPttCaptureController } from "./capture/ptt-controller";
 export type {
   CaptureBackend,
