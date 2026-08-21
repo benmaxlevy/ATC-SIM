@@ -1,12 +1,12 @@
 /**
- * Analog: CRC STARS RANGE / CENTER / HISTORY / FDB-LDB (docs.virtualnas.net/crc/stars — R07).
+ * Analog: CRC STARS RANGE / CENTER / HISTORY / FDB-LDB / PTL (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: PageUp/Down + wheel instead of DCB RANGE; Home/End instead of
  * CENTER-then-click; extra CRC presets 6/8/12/16/24 omitted. F8 always-on
  * history toggle; H only when the PPI is focused (radio H270 stays heading).
  * Scope-focus `T` toggles full ↔ limited datablock; `M` toggles Mode C on full
- * blocks. F7 (PTL) is T02-07 — do not bind it here. Never produce a Command,
- * readback, or intent. Wheel steps discrete range presets — no zoom-to-cursor
- * (R12). Not NAS STARS.
+ * blocks. F7 always-on predicted track line (PTL) toggle — even with the
+ * command line focused. Never produce a Command, readback, or intent. Wheel
+ * steps discrete range presets — no zoom-to-cursor (R12). Not NAS STARS.
  */
 
 import type { World } from "@core";
@@ -17,11 +17,12 @@ import {
   centerOnLastClick,
   toggleHistoryEnabled,
   toggleModeCVisible,
+  togglePtlOn,
   type ScopeView,
 } from "./scopeView";
 import { toggleDatablockModeForSelection } from "./trackDisplay";
 
-export const ALWAYS_ON_SCOPE_KEYS = ["PageUp", "PageDown", "Home", "End", "F8"] as const;
+export const ALWAYS_ON_SCOPE_KEYS = ["PageUp", "PageDown", "Home", "End", "F7", "F8"] as const;
 
 export type ScopeFocus = "scope" | "radio";
 
@@ -65,7 +66,7 @@ export function scopeFocusFromDocument(doc: { activeElement: Element | null }): 
   return "radio";
 }
 
-/** Mutates camera / history / datablock display. Returns true when consumed. */
+/** Mutates camera / history / datablock / PTL display. Returns true when consumed. */
 export function handleScopeKeyDown(
   event: ScopeKeyEvent,
   view: ScopeView,
@@ -104,6 +105,10 @@ export function handleScopeKeyDown(
   }
   event.preventDefault();
   event.stopPropagation();
+  if (event.key === "F7") {
+    togglePtlOn(view);
+    return true;
+  }
   if (event.key === "F8") {
     toggleHistoryEnabled(view);
     return true;

@@ -1,13 +1,14 @@
-import { expect, test } from "vitest";
+﻿import { expect, test } from "vitest";
 import { SIM_DT_S, createWorld, makeTestAircraft, stepWorld } from "@core";
 import { applyIntent } from "@pilot";
 import { createWorldFromScenario, loadKdem } from "@scenario";
 import { formatRangeReadout, nmToScreen } from "./camera";
 import { parseDigitalMap } from "./mapLayers";
 import { PALETTE } from "./palette";
+import { PTL_MINUTES, ptlEndpoint, shouldDrawPtl } from "./ptl";
 import { renderScope } from "./renderScope";
 import { createScopeView } from "./scopeView";
-import { SELECTED_ACCENT_COLOR, TARGET_SIZE_PX } from "./targetSymbol";
+import { SELECTED_ACCENT_COLOR, TARGET_SIZE_PX, UNOWNED_TRACK_COLOR } from "./targetSymbol";
 import { isIdentFlashing } from "./trackDisplay";
 import { DATABLOCK_FONT, DATABLOCK_FONT_PX } from "./fonts";
 import { formatFullDatablock, formatLimitedDatablock, LEADER_LENGTH_PX } from "./datablock";
@@ -27,6 +28,12 @@ interface FillRect {
   h: number;
 }
 
+interface PathStroke {
+  points: { x: number; y: number }[];
+  strokeStyle: string;
+  lineWidth: number;
+}
+
 function mockCtx(): CanvasRenderingContext2D {
   return createMockCtx().ctx;
 }
@@ -44,6 +51,7 @@ function createMockCtx(): {
     textAlign?: string;
     textBaseline?: string;
   }[];
+  pathStrokes: PathStroke[];
 } {
   const strokeRects: StrokeRect[] = [];
   const fillRects: FillRect[] = [];
@@ -56,6 +64,8 @@ function createMockCtx(): {
     textAlign?: string;
     textBaseline?: string;
   }[] = [];
+  const pathStrokes: PathStroke[] = [];
+  let currentPath: { x: number; y: number }[] = [];
   const ctx = {
     fillStyle: "",
     strokeStyle: "",
@@ -68,14 +78,28 @@ function createMockCtx(): {
     },
     save() {},
     restore() {},
-    beginPath() {},
+    beginPath() {
+      currentPath = [];
+    },
     closePath() {},
     arc() {},
     clip() {},
-    stroke() {},
+    stroke(this: { strokeStyle: string; lineWidth: number }) {
+      if (currentPath.length >= 2) {
+        pathStrokes.push({
+          points: currentPath.slice(),
+          strokeStyle: String(this.strokeStyle),
+          lineWidth: this.lineWidth,
+        });
+      }
+    },
     fill() {},
-    moveTo() {},
-    lineTo() {},
+    moveTo(x: number, y: number) {
+      currentPath.push({ x, y });
+    },
+    lineTo(x: number, y: number) {
+      currentPath.push({ x, y });
+    },
     setTransform() {},
     strokeRect(this: { strokeStyle: string }, x: number, y: number, w: number, h: number) {
       strokeRects.push({ x, y, w, h, strokeStyle: String(this.strokeStyle) });
@@ -100,7 +124,13 @@ function createMockCtx(): {
       });
     },
   };
-  return { ctx: ctx as unknown as CanvasRenderingContext2D, strokeRects, fillRects, fillTexts };
+  return {
+    ctx: ctx as unknown as CanvasRenderingContext2D,
+    strokeRects,
+    fillRects,
+    fillTexts,
+    pathStrokes,
+  };
 }
 
 test("AC1 — six spawned arrivals get a 6×6 target at nmToScreen ±2 px", () => {
@@ -359,4 +389,106 @@ test("T02-04 AC5 — M hides Mode C on full blocks; limited still paints Mode C 
   const limited = createMockCtx();
   renderScope(limited.ctx, world, view, 800, 800);
   expect(limited.fillTexts.some((t) => t.text === "032")).toBe(true);
+});
+
+function findPtlStroke(
+  pathStrokes: PathStroke[],
+  ac: { xNm: number; yNm: number; headingDeg: number; speedKt: number },
+  view: ReturnType<typeof createScopeView>,
+  css: number,
+): PathStroke | undefined {
+  const size = { widthPx: css, heightPx: css };
+  const end = ptlEndpoint(ac.xNm, ac.yNm, ac.headingDeg, ac.speedKt, PTL_MINUTES);
+  const from = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
+  const to = nmToScreen(end.eastNm, end.northNm, view.camera, size);
+  return pathStrokes.find((stroke) => {
+    const a = stroke.points[0];
+    const b = stroke.points[1];
+    if (!a || !b || stroke.points.length !== 2) {
+      return false;
+    }
+    return (
+      Math.abs(a.x - from.x) <= 1 &&
+      Math.abs(a.y - from.y) <= 1 &&
+      Math.abs(b.x - to.x) <= 1 &&
+      Math.abs(b.y - to.y) <= 1 &&
+      stroke.lineWidth === 1
+    );
+  });
+}
+
+test("AC4 — PTL is off by default; F7 on draws a ~1 min line per unfiltered track", () => {
+  const ac = makeTestAircraft({
+    id: "ac-ptl",
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 90,
+    speedKt: 180,
+  });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  const css = 800;
+  const off = createMockCtx();
+  renderScope(off.ctx, world, view, css, css);
+  expect(view.ptlOn).toBe(false);
+  expect(findPtlStroke(off.pathStrokes, ac, view, css)).toBeUndefined();
+  const targetsOff = off.strokeRects.filter(
+    (r) => r.w === TARGET_SIZE_PX && r.h === TARGET_SIZE_PX,
+  );
+  expect(targetsOff).toHaveLength(1);
+
+  view.ptlOn = true;
+  const on = createMockCtx();
+  renderScope(on.ctx, world, view, css, css);
+  const ptl = findPtlStroke(on.pathStrokes, ac, view, css);
+  expect(ptl).toBeDefined();
+  expect(ptl!.strokeStyle).toBe(UNOWNED_TRACK_COLOR);
+  expect(ptl!.lineWidth).toBe(1);
+  const targetsOn = on.strokeRects.filter((r) => r.w === TARGET_SIZE_PX && r.h === TARGET_SIZE_PX);
+  expect(targetsOn).toHaveLength(1);
+
+  const traffic = createWorldFromScenario(loadKdem());
+  const trafficView = createScopeView();
+  trafficView.ptlOn = true;
+  const allOn = createMockCtx();
+  renderScope(allOn.ctx, traffic, trafficView, css, css);
+  expect(traffic.aircraft.length).toBeGreaterThan(1);
+  for (const track of traffic.aircraft) {
+    expect(findPtlStroke(allOn.pathStrokes, track, trafficView, css), track.callsign).toBeDefined();
+  }
+});
+
+test("AC5 — altitude-filter hook suppresses PTL; target symbol remains", () => {
+  expect(shouldDrawPtl(180, true)).toBe(false);
+  const ac = makeTestAircraft({
+    id: "ac-filter-ptl",
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 90,
+    speedKt: 0,
+  });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  view.ptlOn = true;
+  const { ctx, pathStrokes, strokeRects } = createMockCtx();
+  renderScope(ctx, world, view, 800, 800);
+  expect(findPtlStroke(pathStrokes, { ...ac, speedKt: 180 }, view, 800)).toBeUndefined();
+  const targets = strokeRects.filter((r) => r.w === TARGET_SIZE_PX && r.h === TARGET_SIZE_PX);
+  expect(targets).toHaveLength(1);
+});
+
+test("AC7 — renderScope comments say PTL / predicted track line and cite CRC", () => {
+  const sources = import.meta.glob("./*.{ts,tsx}", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  const src = sources["./renderScope.ts"];
+  expect(src).toBeDefined();
+  expect(src).toMatch(/predicted track line/i);
+  expect(src).toMatch(/\bPTL\b/);
+  expect(src).toMatch(/CRC STARS/);
+  expect(src).toMatch(/straight 1\.0 min/);
+  expect(src).toMatch(/TODO\(T02-06\)/);
+  expect(src).toMatch(/ctx\.clip/);
 });

@@ -2,21 +2,23 @@
  * Public API for `@scope`.
  *
  * Legal now: Canvas2D north-up PPI with discrete range 5–60 NM, view center,
- * `nmToScreen` / `screenToNm`, always-on Page/Home/End/F8/wheel, click pick,
+ * `nmToScreen` / `screenToNm`, always-on Page/Home/End/F7/F8/wheel, click pick,
  * KDEM digital map (runway, localizer feather, range rings, optional coastline),
  * target square + history dots (F8 / scope-focus H), full/limited datablocks
- * (scope-focus T / M; Mode C hundreds + assigned + GS).
+ * (scope-focus T / M; Mode C hundreds + assigned + GS), predicted track line
+ * (PTL, F7 always-on, default off).
  *
  * Later: leaders, DCB-lite.
  *
  * Import rule: `@scope` may import `@core` and `@scenario`.
  * `@scope` may set `selectedAircraftId`. It must not write intent.
  *
- * Analog: CRC STARS RANGE / CENTER / HISTORY / FDB-LDB / video maps
+ * Analog: CRC STARS RANGE / CENTER / HISTORY / FDB-LDB / PTL / video maps
  * (docs.virtualnas.net/crc/stars — R07). PCG datablock / Mode C (R02).
  * Trainer delta: PageUp/Down + wheel; no extra CRC presets; middle-drag pan
- * is not CRC. History is 5 s sim / 5 dots, no phosphor. Trainer-authored JSON
- * maps, not OSM / tiles (R12). IBM Plex Mono, not a STARS face. Not NAS STARS.
+ * is not CRC. History is 5 s sim / 5 dots, no phosphor. PTL is straight
+ * 1.0 min, default off. Trainer-authored JSON maps, not OSM / tiles (R12).
+ * IBM Plex Mono, not a STARS face. Not NAS STARS.
  */
 export { PpiPlaceholder, PpiPlaceholderId } from "./ppi-placeholder";
 export type { RangeNm, ScopeCamera, ScopeViewSize } from "./camera";
@@ -77,6 +79,7 @@ export {
   recordLastClick,
   toggleHistoryEnabled,
   toggleModeCVisible,
+  togglePtlOn,
 } from "./scopeView";
 export type { ScopeView } from "./scopeView";
 export {
@@ -93,6 +96,14 @@ export {
   drawHistoryDot,
   drawTargetSymbol,
 } from "./targetSymbol";
+export {
+  PTL_CAP_TICK_PX,
+  PTL_MINUTES,
+  PTL_STROKE_PX,
+  drawPredictedTrackLine,
+  ptlEndpoint,
+  shouldDrawPtl,
+} from "./ptl";
 export {
   IDENT_DISPLAY_FLASH_MS,
   createTrackDisplay,

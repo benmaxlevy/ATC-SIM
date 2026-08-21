@@ -62,6 +62,12 @@ test("double-click empty PPI centers there; double-click on a track does not", (
   expect(view.camera.centerNorthNm).toBe(beforeNorth);
 });
 
+test("AC4 — PTL defaults off; history defaults on", () => {
+  const view = createScopeView();
+  expect(view.ptlOn).toBe(false);
+  expect(view.historyEnabled).toBe(true);
+});
+
 test("map / localizer / rings flags default on; coastline follows JSON enabled", () => {
   const bare = createScopeView();
   expect(bare.showRunway).toBe(true);

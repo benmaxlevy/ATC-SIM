@@ -55,13 +55,13 @@ Unit-test: at 180 kt, 1 min → 3.0 NM; heading 090 → endpoint east+3, north+0
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Automated: 180 kt / 090° / 1 min → +3 NM east, 0 north.
-- [ ] **AC2 —** Automated: 240 kt / 000° / 1 min → +4 NM north.
-- [ ] **AC3 —** `F7` with command line focused still toggles PTL and does not insert a character.
-- [ ] **AC4 —** Default off: no PTL until toggled. When on, each unfiltered track has a line ~1 min ahead.
-- [ ] **AC5 —** If filter API exists, filtered tracks have no PTL; symbols remain.
-- [ ] **AC6 —** No Command IR / readback.
-- [ ] **AC7 — Research:** UI says **PTL** or **predicted track line**. Comment cites CRC PTL; straight 1 min only.
+- [x] **AC1 —** Automated: 180 kt / 090° / 1 min → +3 NM east, 0 north.
+- [x] **AC2 —** Automated: 240 kt / 000° / 1 min → +4 NM north.
+- [x] **AC3 —** `F7` with command line focused still toggles PTL and does not insert a character.
+- [x] **AC4 —** Default off: no PTL until toggled. When on, each unfiltered track has a line ~1 min ahead.
+- [x] **AC5 —** If filter API exists, filtered tracks have no PTL; symbols remain.
+- [x] **AC6 —** No Command IR / readback.
+- [x] **AC7 — Research:** UI says **PTL** or **predicted track line**. Comment cites CRC PTL; straight 1 min only.
 
 ## Test plan
 

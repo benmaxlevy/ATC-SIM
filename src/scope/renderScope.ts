@@ -1,15 +1,17 @@
 /**
- * Analog: CRC STARS video map + RANGE / HISTORY / FDB-LDB PPI
+ * Analog: CRC STARS video map + RANGE / HISTORY / FDB-LDB / PTL PPI
  * (docs.virtualnas.net/crc/stars — R07). PCG datablock / Mode C (R02).
  * Trainer delta: Canvas2D north-up; digital map from KDEM JSON (runway,
  * localizer feather, range rings, optional coastline); circular clip;
  * **target** square + optional **history** dots (5 s sim / 5 dots, no phosphor);
  * full/limited **datablock** in IBM Plex Mono (not a STARS face); default L8
- * offset (north, 24 px) until T02-05. Extra CRC presets omitted.
+ * offset (north, 24 px) until T02-05; **predicted track line** (PTL) straight 1.0 min
+ * GS along ground track, default off, F7; CRC may offer extra minute
+ * presets / turn curves — we do not. Extra CRC presets omitted.
  * Not OSM / tiles (R12). Not a sprite. Not a label. Not NAS STARS.
  *
  * Draw order (phase README): background, rings, coastline, runway, localizer,
- * history, targets, datablocks. Maps rebuild on range/center/resize/layer
+ * history, PTL, targets, datablocks. Maps rebuild on range/center/resize/layer
  * toggle, not every rAF.
  */
 
@@ -19,6 +21,7 @@ import { datablockTopLeft, linesForDatablock, type DatablockMode } from "./datab
 import { DATABLOCK_FONT, DATABLOCK_LINE_HEIGHT_PX, measureDatablockCellWidth } from "./fonts";
 import { reuseOrBuildMapCache, toMapCacheInput, type MapCache } from "./mapLayers";
 import { PALETTE } from "./palette";
+import { PTL_MINUTES, drawPredictedTrackLine, ptlEndpoint, shouldDrawPtl } from "./ptl";
 import type { ScopeView } from "./scopeView";
 import {
   UNOWNED_TRACK_COLOR,
@@ -181,6 +184,10 @@ function drawTracks(
     }
   }
 
+  if (view.ptlOn) {
+    drawPredictedTrackLines(ctx, world, view, size);
+  }
+
   for (const ac of world.aircraft) {
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
     const selected = ac.id === world.selectedAircraftId;
@@ -197,6 +204,40 @@ function drawTracks(
   for (const ac of world.aircraft) {
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
     drawDatablock(ctx, ac, p.x, p.y, view);
+  }
+}
+
+/**
+ * Straight 1.0 min PTL along ground track. Clipped with the PPI range circle
+ * (ctx.clip above). TODO(T02-06): pass `!inAltitudeFilter(...)` as the
+ * `altitudeFiltered` argument so filtered tracks keep the symbol and lose PTL.
+ */
+function drawPredictedTrackLines(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  view: ScopeView,
+  size: ScopeViewSize,
+): void {
+  for (const ac of world.aircraft) {
+    // TODO(T02-06): altitudeFiltered = !inAltitudeFilter(ac.altitudeFt, view.altitudeFilter)
+    const altitudeFiltered = false;
+    if (!shouldDrawPtl(ac.speedKt, altitudeFiltered)) {
+      continue;
+    }
+    const end = ptlEndpoint(ac.xNm, ac.yNm, ac.headingDeg, ac.speedKt, PTL_MINUTES);
+    const from = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
+    const to = nmToScreen(end.eastNm, end.northNm, view.camera, size);
+    const selected = ac.id === world.selectedAircraftId;
+    const td = view.tracks.get(ac.id);
+    const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
+    drawPredictedTrackLine(
+      ctx,
+      from.x,
+      from.y,
+      to.x,
+      to.y,
+      targetStrokeColor(selected, identActive),
+    );
   }
 }
 

@@ -1,8 +1,9 @@
 /**
- * Analog: CRC STARS RANGE / CENTER / HISTORY (docs.virtualnas.net/crc/stars — R07).
+ * Analog: CRC STARS RANGE / CENTER / HISTORY / PTL (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: last-click / airport live on this view, not on World. Map /
  * localizer / rings flags are trainer display state (DCB-lite binds later).
- * History is 5 s sim / 5 dots, no phosphor. Not NAS STARS.
+ * History is 5 s sim / 5 dots, no phosphor. PTL is a straight 1.0 min
+ * predicted track line (F7), default off. Not NAS STARS.
  *
  * Scope display state only. Never a Command, readback, or intent.
  */
@@ -38,6 +39,11 @@ export interface ScopeView {
   modeCVisible: boolean;
   /** Last measured `0` cell width for datablock hit-tests. */
   datablockCellWidthPx: number;
+  /**
+   * Global predicted track line (PTL). CRC analog; default off. F7 always-on.
+   * Display only — never a Command, readback, or intent.
+   */
+  ptlOn: boolean;
   /** Per-track display state (history, IDENT flash, datablock). Keyed by aircraft id. */
   tracks: Map<string, TrackDisplay>;
 }
@@ -68,6 +74,7 @@ export function createScopeView(
     historyEnabled: true,
     modeCVisible: true,
     datablockCellWidthPx: DEFAULT_DATABLOCK_CELL_PX,
+    ptlOn: false,
     tracks: new Map(),
   };
 }
@@ -80,6 +87,11 @@ export function toggleHistoryEnabled(view: ScopeView): void {
 /** Scope-focus `M`: hide/show Mode C on full datablocks. Never a Command. */
 export function toggleModeCVisible(view: ScopeView): void {
   view.modeCVisible = !view.modeCVisible;
+}
+
+/** F7 always-on. Never a Command. */
+export function togglePtlOn(view: ScopeView): void {
+  view.ptlOn = !view.ptlOn;
 }
 
 export function recordLastClick(view: ScopeView, eastNm: number, northNm: number): void {

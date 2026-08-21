@@ -19,16 +19,16 @@ function keyEvent(key: string) {
   };
 }
 
-test("always-on keys are PageUp, PageDown, Home, End, F8; H/T/M are not always-on", () => {
+test("always-on keys are PageUp, PageDown, Home, End, F7, F8; H/T/M are not always-on", () => {
   expect(isAlwaysOnScopeKey("PageUp")).toBe(true);
   expect(isAlwaysOnScopeKey("Home")).toBe(true);
+  expect(isAlwaysOnScopeKey("F7")).toBe(true);
   expect(isAlwaysOnScopeKey("F8")).toBe(true);
   expect(isAlwaysOnScopeKey("R")).toBe(false);
   expect(isAlwaysOnScopeKey("C")).toBe(false);
   expect(isAlwaysOnScopeKey("H")).toBe(false);
   expect(isAlwaysOnScopeKey("T")).toBe(false);
   expect(isAlwaysOnScopeKey("M")).toBe(false);
-  expect(isAlwaysOnScopeKey("F7")).toBe(false);
 });
 
 test("AC2 — PageUp five times from 20 NM is 5 NM; center unchanged", () => {
@@ -116,6 +116,8 @@ test("scope key/wheel handlers never import the parser", () => {
     "./targetSymbol.ts",
     "./datablock.ts",
     "./fonts.ts",
+    "./ptl.ts",
+    "./renderScope.ts",
   ]) {
     const src = sources[name];
     expect(src, name).toBeDefined();
@@ -125,6 +127,53 @@ test("scope key/wheel handlers never import the parser", () => {
     expect(src).not.toMatch(/submitCommand/);
     expect(src).not.toMatch(/parseCommand/);
   }
+});
+
+test("AC3 / AC4 — PTL defaults off; F7 toggles in both foci and does not insert a character", () => {
+  const view = createScopeView();
+  expect(view.ptlOn).toBe(false);
+  const parseSpy = vi.fn();
+
+  const radio = keyEvent("F7");
+  expect(handleScopeKeyDown(radio, view, "radio")).toBe(true);
+  expect(radio.preventDefault).toHaveBeenCalled();
+  expect(radio.stopPropagation).toHaveBeenCalled();
+  expect(view.ptlOn).toBe(true);
+  expect(parseSpy).not.toHaveBeenCalled();
+
+  expect(handleScopeKeyDown(keyEvent("F7"), view, "scope")).toBe(true);
+  expect(view.ptlOn).toBe(false);
+
+  let buffer = "DAL123 ";
+  for (const key of ["F7", "H", "2", "7", "0"]) {
+    const event = keyEvent(key);
+    if (!handleScopeKeyDown(event, view, "radio") && key.length === 1) {
+      buffer += key;
+    }
+  }
+  expect(buffer).toBe("DAL123 H270");
+  expect(view.ptlOn).toBe(true);
+});
+
+test("AC3 — command line preventDefault includes F7 so radio focus cannot insert a character", () => {
+  const sources = import.meta.glob("../ui/*.{ts,tsx}", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  const commandLine = sources["../ui/command-line.tsx"];
+  expect(commandLine).toBeDefined();
+  expect(commandLine).toMatch(/event\.key === "F7"/);
+  expect(commandLine).toMatch(/event\.preventDefault\(\)/);
+});
+
+test("AC6 — F7 never reaches the parser or Command IR", () => {
+  const view = createScopeView();
+  const parseSpy = vi.fn();
+  const event = keyEvent("F7");
+  expect(handleScopeKeyDown(event, view, "radio")).toBe(true);
+  expect(parseSpy).not.toHaveBeenCalled();
+  expect(view.ptlOn).toBe(true);
 });
 
 test("history defaults on; F8 toggles globally in both foci", () => {
@@ -259,8 +308,6 @@ test("AC5 / AC8 — M with PPI focused hides Mode C on full blocks; limited unch
   handleScopeKeyDown(keyEvent("T"), view, "scope", world);
   expect(view.tracks.get("ac-dal")!.datablockMode).toBe("limited");
   expect(view.modeCVisible).toBe(false);
-
-  expect(handleScopeKeyDown(keyEvent("F7"), view, "scope", world)).toBe(false);
 });
 
 test("AC8 — scope-focus T/M never call handleRadioText or emit command events", () => {
