@@ -7,7 +7,8 @@
  * target square + history dots (F8 / scope-focus H), full/limited datablocks
  * (scope-focus T / M; Mode C hundreds + assigned + GS), predicted track line
  * (PTL, F7 always-on, default off), L1–L9 **leader** lines (scope-focus `L`
- * then 1–9; pixel-constant 24 CSS px; no length menu).
+ * then 1–9; pixel-constant 24 CSS px; no length menu), altitude filter
+ * (scope-focus `F`, default 000–180).
  *
  * Later: DCB-lite.
  *
@@ -15,7 +16,8 @@
  * `@scope` may set `selectedAircraftId`. It must not write intent.
  *
  * Analog: CRC STARS RANGE / CENTER / HISTORY / FDB-LDB / PTL / L1–L9 leader /
- * video maps (docs.virtualnas.net/crc/stars — R07). PCG datablock / Mode C (R02).
+ * altitude filter / video maps (docs.virtualnas.net/crc/stars — R07). PCG datablock / Mode C (R02).
+ * FOA STARS display data / altitude filters (R05).
  * Trainer delta: PageUp/Down + wheel; no extra CRC presets; middle-drag pan
  * is not CRC. History is 5 s sim / 5 dots, no phosphor. PTL is straight
  * 1.0 min, default off. Trainer-authored JSON maps, not OSM / tiles (R12).
@@ -60,6 +62,26 @@ export {
 } from "./mapLayers";
 export type { DigitalMap, MapCache, MapLayerFlags, NmPoint } from "./mapLayers";
 export { renderScope } from "./renderScope";
+export {
+  DEFAULT_ALTITUDE_FILTER,
+  FILTER_HUNDREDS_MAX,
+  FILTER_HUNDREDS_MIN,
+  clampFilterHundreds,
+  formatFilterReadout,
+  inAltitudeFilter,
+  parseFilterHundreds,
+} from "./altitudeFilter";
+export type { AltitudeFilter, FilterEntry, FilterEntryPhase } from "./altitudeFilter";
+export {
+  CHORD_TIMEOUT_MS,
+  SCOPE_CHORD_WINDOW_MS,
+  beginScopeChord,
+  digitFromKey,
+  isFilterChordKey,
+  isScopeChordLive,
+  leaderDigitFromKey,
+} from "./keymap";
+export type { ScopeChord } from "./keymap";
 export {
   ALWAYS_ON_SCOPE_KEYS,
   handleScopeKeyDown,
@@ -127,14 +149,6 @@ export {
   leaderSegmentPx,
 } from "./leader";
 export type { DatablockMetrics, LeaderDir } from "./leader";
-export {
-  SCOPE_CHORD_WINDOW_MS,
-  beginScopeChord,
-  digitFromKey,
-  isScopeChordLive,
-  leaderDigitFromKey,
-} from "./keymap";
-export type { ScopeChord } from "./keymap";
 export {
   datablockMetrics,
   datablockRect,

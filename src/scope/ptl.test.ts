@@ -76,5 +76,5 @@ test("AC7 — comments say PTL / predicted track line and cite CRC; straight 1 m
   expect(src).toMatch(/docs\.virtualnas\.net\/crc\/stars/);
   expect(src).toMatch(/straight 1\.0 min/);
   expect(src).toMatch(/Not a velocity vector, heading line, or zoom/);
-  expect(src).toMatch(/TODO\(T02-06\)/);
+  expect(src).toMatch(/inAltitudeFilter/);
 });

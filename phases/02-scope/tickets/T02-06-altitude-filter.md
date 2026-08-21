@@ -60,14 +60,14 @@ Tests with fake clocks / injected now.
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Automated: 3000 ft in 020–040 true; 1900 ft false; 4000 ft true at 040; 4100 false.
-- [ ] **AC2 —** Given traffic at 6000 and 10000, filter `070-090`: the 6000 ft target keeps a box+history and **loses** datablock/leader; 10000 ft keeps full block.
-- [ ] **AC3 —** Scope focus: `F` `0` `5` `0` Enter `1` `2` `0` Enter sets 5000–12000 ft.
-- [ ] **AC4 —** Radio focus: `F` does not start a filter chord (no binding — if `F` is typed, it sits in the command line as today / unknown token; do not mutate filter).
-- [ ] **AC5 —** `Esc` during entry restores prior min/max.
-- [ ] **AC6 —** max < min on commit: filter unchanged; no crash.
-- [ ] **AC7 —** No `command.accepted` / readback from filter changes.
-- [ ] **AC8 — Research:** Control labeled **altitude filter** / `FILTER`. Comment cites FOA/CRC filter analog.
+- [x] **AC1 —** Automated: 3000 ft in 020–040 true; 1900 ft false; 4000 ft true at 040; 4100 false.
+- [x] **AC2 —** Given traffic at 6000 and 10000, filter `070-090`: the 6000 ft target keeps a box+history and **loses** datablock/leader; 10000 ft keeps full block.
+- [x] **AC3 —** Scope focus: `F` `0` `5` `0` Enter `1` `2` `0` Enter sets 5000–12000 ft.
+- [x] **AC4 —** Radio focus: `F` does not start a filter chord (no binding — if `F` is typed, it sits in the command line as today / unknown token; do not mutate filter).
+- [x] **AC5 —** `Esc` during entry restores prior min/max.
+- [x] **AC6 —** max < min on commit: filter unchanged; no crash.
+- [x] **AC7 —** No `command.accepted` / readback from filter changes.
+- [x] **AC8 — Research:** Control labeled **altitude filter** / `FILTER`. Comment cites FOA/CRC filter analog.
 
 ## Test plan
 

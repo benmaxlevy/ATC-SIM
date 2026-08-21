@@ -1,9 +1,12 @@
 import { expect, test } from "vitest";
 import {
+  CHORD_TIMEOUT_MS,
   SCOPE_CHORD_WINDOW_MS,
   beginScopeChord,
+  chordTimedOut,
   digitFromKey,
   isArrowKey,
+  isFilterChordKey,
   isLeaderPrefixKey,
   isScopeChordLive,
   leaderDigitFromKey,
@@ -50,4 +53,28 @@ test("L / l is the leader prefix", () => {
   expect(isLeaderPrefixKey("L")).toBe(true);
   expect(isLeaderPrefixKey("l")).toBe(true);
   expect(isLeaderPrefixKey("F")).toBe(false);
+});
+
+test("chord timer is 1.5 s; inject now rather than wall clock", () => {
+  expect(CHORD_TIMEOUT_MS).toBe(1500);
+  expect(chordTimedOut(0, 1499)).toBe(false);
+  expect(chordTimedOut(0, 1500)).toBe(true);
+  expect(chordTimedOut(1000, 2500)).toBe(true);
+  expect(chordTimedOut(1000, 2499)).toBe(false);
+});
+
+test("digitFromKey accepts top-row and Numpad n; ignores arrows", () => {
+  expect(digitFromKey("0")).toBe(0);
+  expect(digitFromKey("9")).toBe(9);
+  expect(digitFromKey("Numpad3")).toBe(3);
+  expect(digitFromKey("ArrowUp")).toBeNull();
+  expect(digitFromKey("F")).toBeNull();
+  expect(digitFromKey("Enter")).toBeNull();
+});
+
+test("F is a scope-focus chord key, never always-on F7", () => {
+  expect(isFilterChordKey("F")).toBe(true);
+  expect(isFilterChordKey("f")).toBe(true);
+  expect(isFilterChordKey("F7")).toBe(false);
+  expect(isFilterChordKey("F3")).toBe(false);
 });

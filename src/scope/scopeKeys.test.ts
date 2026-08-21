@@ -8,7 +8,8 @@ import {
   isAlwaysOnScopeKey,
   type ScopeFocus,
 } from "./scopeKeys";
-import { SCOPE_CHORD_WINDOW_MS } from "./keymap";
+import { DEFAULT_ALTITUDE_FILTER, formatFilterReadout } from "./altitudeFilter";
+import { CHORD_TIMEOUT_MS, SCOPE_CHORD_WINDOW_MS } from "./keymap";
 import { createScopeView } from "./scopeView";
 import { syncTrackDisplays } from "./trackDisplay";
 
@@ -30,6 +31,7 @@ test("always-on keys are PageUp, PageDown, Home, End, F7, F8; H/T/M are not alwa
   expect(isAlwaysOnScopeKey("H")).toBe(false);
   expect(isAlwaysOnScopeKey("T")).toBe(false);
   expect(isAlwaysOnScopeKey("M")).toBe(false);
+  expect(isAlwaysOnScopeKey("F")).toBe(false);
 });
 
 test("AC2 — PageUp five times from 20 NM is 5 NM; center unchanged", () => {
@@ -120,6 +122,7 @@ test("scope key/wheel handlers never import the parser", () => {
     "./ptl.ts",
     "./leader.ts",
     "./keymap.ts",
+    "./altitudeFilter.ts",
     "./renderScope.ts",
   ]) {
     const src = sources[name];
@@ -463,4 +466,120 @@ test("numpad ArrowUp during L chord is ignored (NumLock off)", () => {
   expect(view.pendingChord?.prefix).toBe("L");
   handleScopeKeyDown(keyEvent("8"), view, "scope", world, 20);
   expect(view.tracks.get("ac-dal")!.leaderDir).toBe(8);
+});
+
+function typeScopeKeys(
+  view: ReturnType<typeof createScopeView>,
+  keys: string[],
+  startMs = 0,
+): number {
+  let now = startMs;
+  for (const key of keys) {
+    const event = keyEvent(key);
+    handleScopeKeyDown(event, view, "scope", undefined, now);
+    now += 100;
+  }
+  return now;
+}
+
+test("AC3 — scope focus F 050 Enter 120 Enter sets 5000-12000 ft", () => {
+  const view = createScopeView();
+  const log = new SessionLog();
+  typeScopeKeys(view, ["F", "0", "5", "0", "Enter", "1", "2", "0", "Enter"]);
+  expect(view.altitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 120 });
+  expect(view.filterEntry.phase).toBe("idle");
+  expect(formatFilterReadout(view.altitudeFilter, view.filterEntry)).toBe("FILTER 050-120");
+  expect(log.all()).toHaveLength(0);
+});
+
+test("50 Enter pads to 050; Numpad digits work", () => {
+  const view = createScopeView();
+  typeScopeKeys(view, ["F", "5", "0", "Enter", "Numpad1", "Numpad2", "Numpad0", "Enter"]);
+  expect(view.altitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 120 });
+});
+
+test("AC4 — radio focus F does not start a filter chord; F sits in the command line", () => {
+  const view = createScopeView();
+  const parseSpy = vi.fn();
+  const radioF = keyEvent("F");
+  expect(handleScopeKeyDown(radioF, view, "radio", undefined, 0)).toBe(false);
+  expect(radioF.preventDefault).not.toHaveBeenCalled();
+  expect(view.filterEntry.phase).toBe("idle");
+  expect(view.altitudeFilter).toEqual(DEFAULT_ALTITUDE_FILTER);
+
+  let buffer = "";
+  for (const key of ["F", "0", "5", "0"]) {
+    const event = keyEvent(key);
+    if (!handleScopeKeyDown(event, view, "radio", undefined, 10) && key.length === 1) {
+      buffer += key;
+      parseSpy(key);
+    }
+  }
+  expect(buffer).toBe("F050");
+  expect(view.altitudeFilter).toEqual(DEFAULT_ALTITUDE_FILTER);
+  expect(parseSpy).toHaveBeenCalledWith("F");
+});
+
+test("AC4 — radio-focus digits are not stolen after a scope F chord", () => {
+  const view = createScopeView();
+  handleScopeKeyDown(keyEvent("F"), view, "scope", undefined, 0);
+  expect(view.filterEntry.phase).toBe("min");
+  let buffer = "DAL123 ";
+  for (const key of ["H", "2", "7", "0"]) {
+    const event = keyEvent(key);
+    if (!handleScopeKeyDown(event, view, "radio", undefined, 50) && key.length === 1) {
+      buffer += key;
+    }
+  }
+  expect(buffer).toBe("DAL123 H270");
+  const parsed = parseRadioText("DAL123 H270");
+  expect(parsed.ok).toBe(true);
+  expect(view.altitudeFilter).toEqual(DEFAULT_ALTITUDE_FILTER);
+});
+
+test("AC5 — Esc during F entry restores prior min/max", () => {
+  const view = createScopeView();
+  typeScopeKeys(view, ["F", "0", "7", "0", "Enter", "0", "9", "0", "Enter"]);
+  expect(view.altitudeFilter).toEqual({ minHundreds: 70, maxHundreds: 90 });
+  typeScopeKeys(view, ["F", "0", "1", "0", "Enter", "0", "2", "0"], 1000);
+  expect(handleScopeKeyDown(keyEvent("Escape"), view, "scope", undefined, 2000)).toBe(true);
+  expect(view.altitudeFilter).toEqual({ minHundreds: 70, maxHundreds: 90 });
+  expect(view.filterEntry.phase).toBe("idle");
+});
+
+test("AC6 — max < min on commit leaves filter unchanged; no crash", () => {
+  const view = createScopeView();
+  view.altitudeFilter = { minHundreds: 20, maxHundreds: 40 };
+  expect(() =>
+    typeScopeKeys(view, ["F", "1", "2", "0", "Enter", "0", "5", "0", "Enter"]),
+  ).not.toThrow();
+  expect(view.altitudeFilter).toEqual({ minHundreds: 20, maxHundreds: 40 });
+  expect(view.filterEntry.phase).toBe("idle");
+});
+
+test("AC7 — altitude filter never emits command.accepted or a readback", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [dal] });
+  const view = createScopeView();
+  const log = new SessionLog();
+  const radio = vi.fn((text: string) => handleRadioText(world, text, log));
+
+  typeScopeKeys(view, ["F", "0", "5", "0", "Enter", "1", "2", "0", "Enter"]);
+  expect(radio).not.toHaveBeenCalled();
+  expect(log.all()).toHaveLength(0);
+  expect(view.altitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 120 });
+
+  radio("DAL123 H270");
+  expect(log.byType("command.accepted")).toHaveLength(1);
+  expect(dal.intent.assignedHeadingDeg).toBe(270);
+});
+
+test("F chord times out at 1.5 s with injected now; leftover digit is not consumed", () => {
+  const view = createScopeView();
+  expect(handleScopeKeyDown(keyEvent("F"), view, "scope", undefined, 0)).toBe(true);
+  expect(view.filterEntry.phase).toBe("min");
+  const late = keyEvent("5");
+  expect(handleScopeKeyDown(late, view, "scope", undefined, CHORD_TIMEOUT_MS)).toBe(false);
+  expect(view.filterEntry.phase).toBe("idle");
+  expect(view.altitudeFilter).toEqual(DEFAULT_ALTITUDE_FILTER);
 });

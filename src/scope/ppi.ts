@@ -1,4 +1,5 @@
 import type { World } from "@core";
+import { expireFilterEntry } from "./altitudeFilter";
 import { cssPointFromClient, handlePpiLeftClick } from "./ppiPointer";
 import { renderScope } from "./renderScope";
 import type { ScopeView } from "./scopeView";
@@ -62,5 +63,6 @@ export function paintPpi(
     return;
   }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  expireFilterEntry(view.filterEntry, view.altitudeFilter, Date.now());
   renderScope(ctx, world, view, cssWidth, cssHeight);
 }

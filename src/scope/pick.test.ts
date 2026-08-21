@@ -153,6 +153,46 @@ test("AC6 — clicking the datablock rectangle selects that track, not a nearby 
   expect(dal.intent.assignedHeadingDeg).toBe(100);
 });
 
+test("filtered track: datablock rectangle is not pickable; the target still selects", () => {
+  const dal = sample("DAL123", "ac-dal", 0, 0);
+  dal.altitudeFt = 6000;
+  const world = createWorld({ aircraft: [dal] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  view.altitudeFilter = { minHundreds: 70, maxHundreds: 90 };
+  const tick = nmToScreen(dal.xNm, dal.yNm, CAM, VIEW);
+  const onBlock = { x: tick.x + 16, y: tick.y - 18 };
+  expect(Math.hypot(onBlock.x - tick.x, onBlock.y - tick.y)).toBeGreaterThan(HIT_RADIUS_CSS_PX);
+
+  expect(
+    pickAircraftAt(world, onBlock.x, onBlock.y, CAM, CSS_W, CSS_H, HIT_RADIUS_CSS_PX, view),
+  ).toBeNull();
+
+  const onSymbol = pickAircraftAt(
+    world,
+    tick.x,
+    tick.y,
+    CAM,
+    CSS_W,
+    CSS_H,
+    HIT_RADIUS_CSS_PX,
+    view,
+  );
+  expect(onSymbol).toBe(dal);
+  const selected = selectAircraftAt(
+    world,
+    tick.x,
+    tick.y,
+    CAM,
+    CSS_W,
+    CSS_H,
+    HIT_RADIUS_CSS_PX,
+    view,
+  );
+  expect(selected).toBe(dal);
+  expect(world.selectedAircraftId).toBe("ac-dal");
+});
+
 test("AC5 — selectAircraftAt does not import the radio pipeline or write intent", () => {
   const sources = import.meta.glob("./*.{ts,tsx}", {
     query: "?raw",

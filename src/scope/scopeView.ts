@@ -1,14 +1,21 @@
 /**
- * Analog: CRC STARS RANGE / CENTER / HISTORY / PTL (docs.virtualnas.net/crc/stars — R07).
+ * Analog: CRC STARS RANGE / CENTER / HISTORY / PTL / altitude filter
+ * (docs.virtualnas.net/crc/stars — R07; FOA STARS display data — R05).
  * Trainer delta: last-click / airport live on this view, not on World. Map /
  * localizer / rings flags are trainer display state (DCB-lite binds later).
  * History is 5 s sim / 5 dots, no phosphor. PTL is a straight 1.0 min
  * predicted track line (F7), default off. Leader direction is L1–L9 (no length
- * menu). Not NAS STARS.
+ * menu). Altitude filter default 000–180; `F` is scope-focus only. Not NAS STARS.
  *
  * Scope display state only. Never a Command, readback, or intent.
  */
 
+import {
+  DEFAULT_ALTITUDE_FILTER,
+  idleFilterEntry,
+  type AltitudeFilter,
+  type FilterEntry,
+} from "./altitudeFilter";
 import {
   AIRPORT_REF_EAST_NM,
   AIRPORT_REF_NORTH_NM,
@@ -46,6 +53,13 @@ export interface ScopeView {
    * Display only — never a Command, readback, or intent.
    */
   ptlOn: boolean;
+  /**
+   * Altitude filter (Mode C hundreds). FOA/CRC analog; default 000–180.
+   * Scope command only — never a Command, readback, or intent.
+   */
+  altitudeFilter: AltitudeFilter;
+  /** Scope-focus `F` chord. Idle when not entering hundreds. */
+  filterEntry: FilterEntry;
   /** Per-track display state (history, IDENT flash, datablock, leader). Keyed by aircraft id. */
   tracks: Map<string, TrackDisplay>;
   /** Scope-focus letter chord (`L` leader; T02-06 `F` filter). Null when idle. */
@@ -79,6 +93,8 @@ export function createScopeView(
     modeCVisible: true,
     datablockCellWidthPx: DEFAULT_DATABLOCK_CELL_PX,
     ptlOn: false,
+    altitudeFilter: { ...DEFAULT_ALTITUDE_FILTER },
+    filterEntry: idleFilterEntry(DEFAULT_ALTITUDE_FILTER),
     tracks: new Map(),
     pendingChord: null,
   };

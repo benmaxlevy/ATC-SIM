@@ -8,6 +8,7 @@
  */
 
 import { setSelectedAircraft, type Aircraft, type World } from "@core";
+import { inAltitudeFilter, type AltitudeFilter } from "./altitudeFilter";
 import { nmToScreen, type ScopeCamera } from "./camera";
 import {
   datablockRect,
@@ -25,6 +26,8 @@ export interface DatablockPickView {
   tracks: Map<string, { datablockMode: DatablockMode; leaderDir?: LeaderDir }>;
   modeCVisible: boolean;
   datablockCellWidthPx: number;
+  /** Out-of-filter tracks have no datablock to hit; the target still picks. */
+  altitudeFilter: AltitudeFilter;
 }
 
 function pickDatablockAt(
@@ -42,6 +45,9 @@ function pickDatablockAt(
   let nearest: Aircraft | null = null;
   let nearestDist = Infinity;
   for (const ac of world.aircraft) {
+    if (!inAltitudeFilter(ac.altitudeFt, view.altitudeFilter)) {
+      continue;
+    }
     const p = nmToScreen(ac.xNm, ac.yNm, cam, size);
     const mode = view.tracks.get(ac.id)?.datablockMode ?? "full";
     const dir = view.tracks.get(ac.id)?.leaderDir ?? DEFAULT_LEADER_DIR;

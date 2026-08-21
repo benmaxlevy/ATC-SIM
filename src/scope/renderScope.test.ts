@@ -8,7 +8,13 @@ import { PALETTE } from "./palette";
 import { PTL_MINUTES, ptlEndpoint, shouldDrawPtl } from "./ptl";
 import { renderScope } from "./renderScope";
 import { createScopeView } from "./scopeView";
-import { SELECTED_ACCENT_COLOR, TARGET_SIZE_PX, UNOWNED_TRACK_COLOR } from "./targetSymbol";
+import { formatFilterReadout } from "./altitudeFilter";
+import {
+  SELECTED_ACCENT_COLOR,
+  TARGET_SIZE_PX,
+  UNOWNED_TRACK_COLOR,
+  HISTORY_DOT_SIZE_PX,
+} from "./targetSymbol";
 import { isIdentFlashing } from "./trackDisplay";
 import { DATABLOCK_FONT, DATABLOCK_FONT_PX } from "./fonts";
 import { formatFullDatablock, formatLimitedDatablock, datablockMetrics } from "./datablock";
@@ -462,23 +468,108 @@ test("AC4 — PTL is off by default; F7 on draws a ~1 min line per unfiltered tr
   }
 });
 
-test("AC5 — altitude-filter hook suppresses PTL; target symbol remains", () => {
+test("AC5 — altitude filter suppresses PTL; target symbol remains", () => {
   expect(shouldDrawPtl(180, true)).toBe(false);
   const ac = makeTestAircraft({
     id: "ac-filter-ptl",
+    callsign: "LOW60",
     xNm: 0,
     yNm: 0,
     headingDeg: 90,
-    speedKt: 0,
+    speedKt: 180,
+    altitudeFt: 6000,
   });
   const world = createWorld({ aircraft: [ac] });
   const view = createScopeView();
   view.ptlOn = true;
-  const { ctx, pathStrokes, strokeRects } = createMockCtx();
+  view.altitudeFilter = { minHundreds: 70, maxHundreds: 90 };
+  const { ctx, pathStrokes, strokeRects, fillTexts } = createMockCtx();
   renderScope(ctx, world, view, 800, 800);
-  expect(findPtlStroke(pathStrokes, { ...ac, speedKt: 180 }, view, 800)).toBeUndefined();
+  expect(findPtlStroke(pathStrokes, ac, view, 800)).toBeUndefined();
   const targets = strokeRects.filter((r) => r.w === TARGET_SIZE_PX && r.h === TARGET_SIZE_PX);
   expect(targets).toHaveLength(1);
+  expect(fillTexts.some((t) => t.text === "LOW60")).toBe(false);
+});
+
+test("AC2 — 6000 ft outside 070-090 keeps target+history, loses datablock; 8000 ft keeps full block", () => {
+  // Ticket text said 10000 ft keeps the block; 100 hundreds is outside 070-090.
+  // 8000 ft (080) is the in-band Mode C case for this filter.
+  const low = makeTestAircraft({
+    id: "ac-low",
+    callsign: "UAL60",
+    altitudeFt: 6000,
+    speedKt: 210,
+    xNm: -4,
+    yNm: 0,
+    headingDeg: 90,
+  });
+  const inBand = makeTestAircraft({
+    id: "ac-in",
+    callsign: "DAL80",
+    altitudeFt: 8000,
+    speedKt: 220,
+    xNm: 4,
+    yNm: 0,
+    headingDeg: 90,
+  });
+  const world = createWorld({ aircraft: [low, inBand], selectedAircraftId: low.id });
+  const view = createScopeView();
+  view.altitudeFilter = { minHundreds: 70, maxHundreds: 90 };
+  const { ctx, fillTexts, strokeRects, fillRects } = createMockCtx();
+  renderScope(ctx, world, view, 800, 800);
+
+  const targets = strokeRects.filter((r) => r.w === TARGET_SIZE_PX && r.h === TARGET_SIZE_PX);
+  expect(targets).toHaveLength(2);
+  const history = fillRects.filter(
+    (r) => r.w === HISTORY_DOT_SIZE_PX && r.h === HISTORY_DOT_SIZE_PX,
+  );
+  expect(history.length).toBeGreaterThanOrEqual(2);
+
+  expect(fillTexts.some((t) => t.text === "UAL60")).toBe(false);
+  expect(fillTexts.some((t) => t.text === formatFullDatablock(low).line2)).toBe(false);
+  expect(fillTexts.some((t) => t.text === "DAL80")).toBe(true);
+  expect(fillTexts.some((t) => t.text === formatFullDatablock(inBand).line2)).toBe(true);
+
+  const size = { widthPx: 800, heightPx: 800 };
+  const lowPx = nmToScreen(low.xNm, low.yNm, view.camera, size);
+  const selected = strokeRects.filter(
+    (r) =>
+      r.w === TARGET_SIZE_PX &&
+      r.strokeStyle === SELECTED_ACCENT_COLOR &&
+      Math.abs(r.x + TARGET_SIZE_PX / 2 - lowPx.x) <= 2,
+  );
+  expect(selected.length).toBeGreaterThanOrEqual(1);
+});
+
+test("AC8 — FILTER readout and FOA/CRC altitude filter comments; no cull or slider", () => {
+  const world = createWorld();
+  const view = createScopeView();
+  const painted = createMockCtx();
+  renderScope(painted.ctx, world, view, 800, 800);
+  const readout = formatFilterReadout(view.altitudeFilter, view.filterEntry);
+  expect(readout).toBe("FILTER 000-180");
+  const filterText = painted.fillTexts.find((t) => t.text === readout);
+  expect(filterText).toBeDefined();
+  expect(filterText!.fillStyle).toBe(PALETTE.uiChrome);
+  expect(readout.toLowerCase()).not.toContain("cull");
+  expect(readout.toLowerCase()).not.toContain("slider");
+
+  view.filterEntry.phase = "min";
+  view.filterEntry.digits = "050";
+  const entering = createMockCtx();
+  renderScope(entering.ctx, world, view, 800, 800);
+  expect(entering.fillTexts.some((t) => t.text === "FIL 050-___")).toBe(true);
+
+  const sources = import.meta.glob("./*.{ts,tsx}", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  expect(sources["./altitudeFilter.ts"]).toMatch(/FOA/);
+  expect(sources["./altitudeFilter.ts"]).toMatch(/altitude filter/);
+  expect(sources["./altitudeFilter.ts"]).toMatch(/R05/);
+  expect(sources["./altitudeFilter.ts"]).toMatch(/R07/);
+  expect(sources["./renderScope.ts"]).toMatch(/FILTER/);
 });
 
 test("AC7 — renderScope comments say PTL / predicted track line and cite CRC", () => {
@@ -493,7 +584,7 @@ test("AC7 — renderScope comments say PTL / predicted track line and cite CRC",
   expect(src).toMatch(/\bPTL\b/);
   expect(src).toMatch(/CRC STARS/);
   expect(src).toMatch(/straight 1\.0 min/);
-  expect(src).toMatch(/TODO\(T02-06\)/);
+  expect(src).toMatch(/inAltitudeFilter/);
   expect(src).toMatch(/ctx\.clip/);
   expect(src).toMatch(/leader/);
   expect(src).toMatch(/L1–L9/);

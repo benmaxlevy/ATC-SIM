@@ -1,6 +1,7 @@
 /**
- * Analog: CRC STARS video map + RANGE / HISTORY / FDB-LDB / PTL PPI
- * (docs.virtualnas.net/crc/stars — R07). PCG datablock / Mode C (R02).
+ * Analog: CRC STARS video map + RANGE / HISTORY / FDB-LDB / PTL / altitude
+ * filter PPI (docs.virtualnas.net/crc/stars — R07). PCG datablock / Mode C
+ * (R02). FOA STARS altitude filters (R05).
  * Trainer delta: Canvas2D north-up; digital map from KDEM JSON (runway,
  * localizer feather, range rings, optional coastline); circular clip;
  * **target** square + optional **history** dots (5 s sim / 5 dots, no phosphor);
@@ -8,7 +9,9 @@
  * (pixel-constant 24 CSS px, no length menu); **predicted track line** (PTL) straight 1.0 min
  * GS along ground track, default off, F7; CRC may offer extra minute
  * presets / turn curves — we do not. Extra CRC presets omitted.
- * Not OSM / tiles (R12). Not a sprite. Not a label. Not NAS STARS.
+ * **Altitude filter** (FILTER readout): out of band keep target + history,
+ * suppress datablock / leader / PTL. Not OSM / tiles (R12). Not a sprite.
+ * Not a label. Not NAS STARS.
  *
  * Draw order (phase README): background, rings, coastline, runway, localizer,
  * history, PTL, targets, leader lines, datablocks. Maps rebuild on range/center/resize/layer
@@ -16,6 +19,7 @@
  */
 
 import type { Aircraft, World } from "@core";
+import { formatFilterReadout, inAltitudeFilter } from "./altitudeFilter";
 import { formatRangeReadout, nmToScreen, rangeCircle, type ScopeViewSize } from "./camera";
 import { datablockMetrics, linesForDatablock, type DatablockMode } from "./datablock";
 import { DATABLOCK_FONT, DATABLOCK_LINE_HEIGHT_PX, measureDatablockCellWidth } from "./fonts";
@@ -73,6 +77,7 @@ export function renderScope(
   ctx.stroke();
 
   drawRangeReadout(ctx, view.camera.rangeNm, cssHeight);
+  drawFilterReadout(ctx, view, cssHeight);
   drawChordHint(ctx, view, cssHeight);
 }
 
@@ -215,12 +220,20 @@ function drawTracks(
   view.datablockCellWidthPx = measureDatablockCellWidth(ctx);
 
   for (const ac of world.aircraft) {
+    // Outside the altitude filter: keep the target (and history above);
+    // suppress datablock and leader. T02-05 draws the leader behind this same gate.
+    if (!inAltitudeFilter(ac.altitudeFt, view.altitudeFilter)) {
+      continue;
+    }
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
     const color = trackColor(view, world, ac);
     drawLeaderLine(ctx, p.x, p.y, trackLeaderDir(view, ac.id), color);
   }
 
   for (const ac of world.aircraft) {
+    if (!inAltitudeFilter(ac.altitudeFt, view.altitudeFilter)) {
+      continue;
+    }
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
     const color = trackColor(view, world, ac);
     drawDatablock(ctx, ac, p.x, p.y, view, color);
@@ -229,8 +242,8 @@ function drawTracks(
 
 /**
  * Straight 1.0 min PTL along ground track. Clipped with the PPI range circle
- * (ctx.clip above). TODO(T02-06): pass `!inAltitudeFilter(...)` as the
- * `altitudeFiltered` argument so filtered tracks keep the symbol and lose PTL.
+ * (ctx.clip above). Altitude-filtered tracks keep the symbol and lose PTL
+ * (`inAltitudeFilter` / `shouldDrawPtl`).
  */
 function drawPredictedTrackLines(
   ctx: CanvasRenderingContext2D,
@@ -239,8 +252,7 @@ function drawPredictedTrackLines(
   size: ScopeViewSize,
 ): void {
   for (const ac of world.aircraft) {
-    // TODO(T02-06): altitudeFiltered = !inAltitudeFilter(ac.altitudeFt, view.altitudeFilter)
-    const altitudeFiltered = false;
+    const altitudeFiltered = !inAltitudeFilter(ac.altitudeFt, view.altitudeFilter);
     if (!shouldDrawPtl(ac.speedKt, altitudeFiltered)) {
       continue;
     }
@@ -282,5 +294,22 @@ function drawChordHint(ctx: CanvasRenderingContext2D, view: ScopeView, cssHeight
   ctx.textBaseline = "bottom";
   ctx.textAlign = "left";
   ctx.fillStyle = PALETTE.uiChrome;
-  ctx.fillText(hint, 8, cssHeight - 24);
+  ctx.fillText(hint, 8, cssHeight - 8 - 2 * DATABLOCK_LINE_HEIGHT_PX);
+}
+
+/** Altitude filter / FILTER control (FOA R05 / CRC R07 analog). Not a slider. */
+function drawFilterReadout(
+  ctx: CanvasRenderingContext2D,
+  view: ScopeView,
+  cssHeight: number,
+): void {
+  ctx.font = DATABLOCK_FONT;
+  ctx.textBaseline = "bottom";
+  ctx.textAlign = "left";
+  ctx.fillStyle = PALETTE.uiChrome;
+  ctx.fillText(
+    formatFilterReadout(view.altitudeFilter, view.filterEntry),
+    8,
+    cssHeight - 8 - DATABLOCK_LINE_HEIGHT_PX,
+  );
 }

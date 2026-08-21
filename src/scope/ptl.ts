@@ -35,10 +35,8 @@ export function ptlEndpoint(
 /**
  * Whether a track gets a PTL when the global toggle is on.
  * Missing/non-positive GS: do not draw (should not happen in v1).
- *
- * TODO(T02-06): pass the altitude-filter predicate (`inAltitudeFilter`).
- * Filtered tracks keep the target symbol and lose PTL — T02-06 will call
- * this same `shouldDrawPtl` with `altitudeFiltered`.
+ * T02-06: pass `!inAltitudeFilter(modeCFt, filter)` so filtered tracks keep
+ * the target symbol and lose PTL (and datablock / leader).
  */
 export function shouldDrawPtl(gsKt: number, altitudeFiltered = false): boolean {
   if (!Number.isFinite(gsKt) || gsKt <= 0) {
