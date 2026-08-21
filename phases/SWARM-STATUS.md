@@ -1,5 +1,28 @@
 # Swarm status
 
+## Fourth swarm started — Phase 4 procedures
+
+Orchestrator started **2026-08-21**. Phases 0→1→2→3 and Path C (T03-15/14) stay green. This run implements **phase 4 procedures**. Do **not** redo T00–T03. Do **not** start phase 5. Skip **T04-11** (constant wind). Include **T04-08** (CIFP fixture, offline). Untracked `e2e/` left uncommitted.
+
+Human is away. Captains/workers make judgement calls; manual Chrome leftovers go in STATUS. Do not invent a visual pass.
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement **phase 4 procedures** until `phases/04-procedures/README.md` **Phase exit** is green. Aircraft fly published STAR/ILS geometry; CA and MSAW light yellow then red |
+| Player loop | Spawn on DEMO ONE → vectors → intercept heading → `APP ILS27` → loc then GS from below → tower stub **or** missed at DA |
+| Skip | **T04-11** (constant wind) unless the human later names it. Not required to exit |
+| Include | **T04-08** CIFP subset importer — **required**. Frozen in-repo fixture only; **no network**, no full FAA cycle, no chart scrape |
+| Stop | **Do not start phase 5.** No scoring, replay, imperfect pilots, or second TCP |
+| Do not redo | T00-*, T01-*, T02-*, T03-*. Path C fourth swarm is complete. **Start phase 4.** |
+| Max ticket workers in flight | **3** |
+| Merge lock | **Only the phase captain** merges to `master` (`--no-ff`) |
+| Model | **cursor grok 4.6 high only.** Every Task spawn sets `model: "cursor-grok-4.6-high"`. No `composer-2.5-fast`, no omitting `model` |
+| Paid STT/TTS/LLM | **Forbidden.** Do not regress speech-api onto vendors. Do not edit phase 3 tickets |
+
+Waves: A (T04-01 ∥ T04-09) → B (T04-02 ∥ T04-08 ∥ T04-10) → C (T04-03 alone) → D (T04-04 ∥ T04-05) → E (T04-06) → F (T04-07) → G (T04-12). Isolated worktrees for same-wave tickets.
+
+**Working tree at start:** `master` clean except leftover untracked `e2e/` QA screenshots (not this swarm — left uncommitted). KDEM catalog JSON + DEM1 video map already on `master` (`Merge ticket/phase-4-swarm-kdem-catalog`). T04-01 **loads** those files; do not invent a second coordinate set. T02-01–13 confirmed on `master`. Phase 3 voice present; typed commands first; new tokens through the same `parseCommand`.
+
 ## Fourth swarm started — Path C (T03-15 then T03-14)
 
 Orchestrator started **2026-08-21**. Phase 3 voice (third swarm) stays green. This run **names T03-14** (human asked). Do **not** start phase 4 or 5. Do **not** redo T03-01–13. Skip **T03-11**. Untracked `e2e/` left uncommitted.
