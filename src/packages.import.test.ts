@@ -3,7 +3,7 @@ import type { World } from "@core";
 import { parseCommand } from "@parse";
 import { applyCommand } from "@pilot";
 import { PpiPlaceholderId } from "@scope";
-import { SPEECH_PACKAGE } from "@speech";
+import { NullSpeechPort, SPEECH_PACKAGE } from "@speech";
 import { SCENARIO_PACKAGE } from "@scenario";
 import { App } from "@ui";
 
@@ -12,6 +12,7 @@ test("package barrels import without circular init crash", () => {
   expect(applyCommand).toBeTypeOf("function");
   expect(PpiPlaceholderId).toBe("ppi-placeholder");
   expect(SPEECH_PACKAGE).toBe("speech");
+  expect(new NullSpeechPort().id).toBe("null");
   expect(SCENARIO_PACKAGE).toBe("scenario");
   expect(App).toBeTypeOf("function");
 });
