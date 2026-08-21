@@ -59,14 +59,85 @@ def is_cuda_runtime_error(exc: BaseException) -> bool:
     return "cublas" in text or "cudnn" in text or "not found or cannot be loaded" in text
 
 
+_WINDOWS_CUDA_DLLS_PREPARED = False
+
+
+def windows_cuda12_bin_dirs() -> list[Path]:
+    """Directories that contain CUDA 12 cuBLAS (`cublas64_12.dll`).
+
+    Cursor/uvicorn often start with a stale PATH: the toolkit is installed and
+    ``nvcc`` works in a new shell, but this process never got ``CUDA_PATH``.
+    Python 3.8+ also will not load dependent CUDA DLLs from PATH unless
+    ``os.add_dll_directory`` is used.
+    """
+    found: list[Path] = []
+    seen: set[str] = set()
+
+    def add(bin_dir: Path) -> None:
+        try:
+            key = str(bin_dir.resolve())
+        except OSError:
+            key = str(bin_dir)
+        if key in seen:
+            return
+        if (bin_dir / "cublas64_12.dll").is_file():
+            seen.add(key)
+            found.append(bin_dir)
+
+    env = (os.environ.get("CUDA_PATH") or "").strip()
+    if env:
+        add(Path(env) / "bin")
+    if os.name == "nt":
+        toolkit = Path(r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA")
+        if toolkit.is_dir():
+            versions = sorted((p for p in toolkit.iterdir() if p.is_dir()), key=lambda p: p.name, reverse=True)
+            for ver in versions:
+                add(ver / "bin")
+    return found
+
+
+def prepare_windows_cuda_dlls() -> None:
+    """Put CUDA 12 ``bin`` on PATH and the Win32 DLL search path (once)."""
+    global _WINDOWS_CUDA_DLLS_PREPARED
+    if os.name != "nt" or _WINDOWS_CUDA_DLLS_PREPARED:
+        return
+    bins = windows_cuda12_bin_dirs()
+    extra = os.pathsep.join(str(p) for p in bins)
+    if extra:
+        os.environ["PATH"] = extra + os.pathsep + os.environ.get("PATH", "")
+        if not (os.environ.get("CUDA_PATH") or "").strip() and bins:
+            os.environ["CUDA_PATH"] = str(bins[0].parent)
+    add_dir = getattr(os, "add_dll_directory", None)
+    if add_dir is not None:
+        for p in bins:
+            try:
+                add_dir(str(p))
+            except OSError:
+                pass
+    _WINDOWS_CUDA_DLLS_PREPARED = True
+
+
 def cublas12_available() -> bool:
     """CTranslate2 CUDA 12 builds need this lib at *inference*, not just a GPU driver."""
     import ctypes
 
-    names = ("cublas64_12.dll",) if os.name == "nt" else ("libcublas.so.12", "libcublas.so")
-    for name in names:
+    prepare_windows_cuda_dlls()
+    if os.name == "nt":
+        for bin_dir in windows_cuda12_bin_dirs():
+            dll = bin_dir / "cublas64_12.dll"
+            try:
+                ctypes.WinDLL(str(dll))
+                return True
+            except OSError:
+                continue
         try:
-            ctypes.WinDLL(name) if os.name == "nt" else ctypes.CDLL(name)
+            ctypes.WinDLL("cublas64_12.dll")
+            return True
+        except OSError:
+            return False
+    for name in ("libcublas.so.12", "libcublas.so"):
+        try:
+            ctypes.CDLL(name)
             return True
         except OSError:
             continue

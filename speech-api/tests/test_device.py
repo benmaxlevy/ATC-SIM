@@ -30,6 +30,17 @@ def _settings(device: str | None = None) -> Settings:
     )
 
 
+def test_windows_cuda12_bin_dirs_finds_cublas(tmp_path, monkeypatch) -> None:
+    from engines import windows_cuda12_bin_dirs
+
+    root = tmp_path / "CUDA" / "v12.6" / "bin"
+    root.mkdir(parents=True)
+    (root / "cublas64_12.dll").write_bytes(b"")
+    monkeypatch.setenv("CUDA_PATH", str(tmp_path / "CUDA" / "v12.6"))
+    dirs = windows_cuda12_bin_dirs()
+    assert any(p.resolve() == root.resolve() for p in dirs)
+
+
 def test_cublas_missing_is_cuda_runtime_error() -> None:
     err = RuntimeError("Library cublas64_12.dll is not found or cannot be loaded")
     assert is_cuda_runtime_error(err) is True

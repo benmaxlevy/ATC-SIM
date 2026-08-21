@@ -85,7 +85,7 @@ Files land under `speech-api/.cache/` (gitignored). Later starts reuse the cache
 python download_weights.py
 ```
 
-CPU is the default if CUDA is missing **or unusable**. A GPU driver is not enough: CTranslate2 needs the **CUDA 12 runtime** (`cublas64_12.dll` on Windows). If that DLL is missing, STT logs a warning and runs on CPU instead of 500-ing the first `/stt`. Force CPU: `STT_DEVICE=cpu`. TTS uses ONNX Runtime CUDA only when `CUDAExecutionProvider` is actually installed.
+CPU is the default if CUDA is missing **or unusable**. A GPU driver is not enough: CTranslate2 needs the **CUDA 12 runtime** (`cublas64_12.dll` on Windows). The toolkit `bin` folder is added to PATH / `os.add_dll_directory` at startup so a shell where `nvcc` works still feeds Python (Cursor often keeps a stale PATH). If that DLL is still missing, STT logs a warning and runs on CPU instead of 500-ing the first `/stt`. Force CPU: `STT_DEVICE=cpu`. TTS uses ONNX Runtime CUDA only when `CUDAExecutionProvider` is actually installed.
 
 CPU p50 is slower; the voice-loop target of PTT-up → audio-start **p50 < 1.5 s** is measured against this service on localhost/LAN (T03-12). Prefer a working CUDA 12 install or keep `base.en` (not `small.en` / `medium`) if CPU-only.
 
