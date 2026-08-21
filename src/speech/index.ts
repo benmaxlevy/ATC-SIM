@@ -37,4 +37,5 @@ export type {
 } from "./voice-loop";
 export { markPttUp, recordTranscriptLatency } from "./metrics";
 export type { VoiceUtteranceMetrics } from "./metrics";
+export { WebSpeechPort, speakBrowser } from "./ports/web-speech-port";
 export const SPEECH_PACKAGE = "speech";
