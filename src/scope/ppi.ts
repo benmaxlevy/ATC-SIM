@@ -1,11 +1,13 @@
 import type { World } from "@core";
-import { DEFAULT_CAMERA, type Camera } from "./camera";
-import { drawPpi } from "./draw";
-import { selectAircraftAt } from "./pick";
+import { DEFAULT_SCOPE_CAMERA, type ScopeCamera } from "./camera";
+import { cssPointFromClient, handlePpiLeftClick } from "./ppiPointer";
+import { renderScope } from "./renderScope";
+import type { ScopeView } from "./scopeView";
 
 /**
- * Analog: CRC STARS display (docs.virtualnas.net/crc/stars).
+ * Analog: CRC STARS RANGE / CENTER display (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: Canvas2D north-up PPI; rAF paints only after advanceWorld.
+ * Resize recomputes pixels and does not reset center/range unless size is 0.
  * Not NAS STARS.
  */
 
@@ -13,8 +15,11 @@ export function fitCanvasToCss(
   canvas: HTMLCanvasElement,
   dpr: number,
 ): { cssWidth: number; cssHeight: number } {
-  const cssWidth = Math.max(1, canvas.clientWidth);
-  const cssHeight = Math.max(1, canvas.clientHeight);
+  const cssWidth = Math.max(0, canvas.clientWidth);
+  const cssHeight = Math.max(0, canvas.clientHeight);
+  if (cssWidth === 0 || cssHeight === 0) {
+    return { cssWidth, cssHeight };
+  }
   const pixelW = Math.max(1, Math.round(cssWidth * dpr));
   const pixelH = Math.max(1, Math.round(cssHeight * dpr));
   if (canvas.width !== pixelW) {
@@ -35,26 +40,28 @@ export function handlePpiCanvasClick(
   world: World,
   clientX: number,
   clientY: number,
-  cam: Camera = DEFAULT_CAMERA,
+  view: ScopeView,
 ): void {
   const rect = canvas.getBoundingClientRect();
-  const cssX = clientX - rect.left;
-  const cssY = clientY - rect.top;
-  selectAircraftAt(world, cssX, cssY, cam, rect.width, rect.height);
+  const { x, y } = cssPointFromClient(clientX, clientY, rect);
+  handlePpiLeftClick(view, world, x, y, rect.width, rect.height);
 }
 
-/** Resize to device pixels, scale to CSS pixels, then draw rings / airport / tracks. */
+/** Resize to device pixels, scale to CSS pixels, then draw the clipped PPI. */
 export function paintPpi(
   canvas: HTMLCanvasElement,
   world: World,
-  cam: Camera = DEFAULT_CAMERA,
+  cam: ScopeCamera = DEFAULT_SCOPE_CAMERA,
   dpr: number = globalThis.devicePixelRatio || 1,
 ): void {
   const { cssWidth, cssHeight } = fitCanvasToCss(canvas, dpr);
+  if (cssWidth === 0 || cssHeight === 0) {
+    return;
+  }
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     return;
   }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  drawPpi(ctx, world, cam, cssWidth, cssHeight);
+  renderScope(ctx, world, cam, cssWidth, cssHeight);
 }

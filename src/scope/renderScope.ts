@@ -1,19 +1,31 @@
 import type { World } from "@core";
-import { worldToCanvas, type Camera } from "./camera";
+import {
+  formatRangeReadout,
+  nmToScreen,
+  rangeCircle,
+  type ScopeCamera,
+  type ScopeViewSize,
+} from "./camera";
 
 /**
- * Analog: CRC STARS PPI plan view (docs.virtualnas.net/crc/stars).
- * Trainer delta: ticks = dots + temporary callsign text; no datablocks, leaders,
- * maps, or STARS keys. Not NAS STARS.
+ * Analog: CRC STARS RANGE / CENTER PPI (docs.virtualnas.net/crc/stars — R07).
+ * Trainer delta: Canvas2D north-up; circular clip to the range inscribed circle;
+ * `RNG n` readout; ticks + temporary callsign text until T02-03/T02-04.
+ * Extra CRC presets 6/8/12/16/24 omitted. Not NAS STARS.
+ *
+ * World draw is clipped to the range circle. Square-canvas corners sit outside
+ * range and stay background. Readout is painted after restore so it stays visible.
  */
 
-const BG = "#050708";
-const RING = "rgba(124, 255, 107, 0.28)";
-const AIRPORT = "rgba(124, 255, 107, 0.9)";
-const TICK = "#c8ffc0";
-const TICK_SELECTED = "#ffe14a";
-const CALLSIGN = "#d7ffe0";
+const BG = "#000000";
+const RING = "#006600";
+const RANGE_EDGE = "#00AA00";
+const AIRPORT = "#00AA00";
+const TICK = "#DDDDDD";
+const TICK_SELECTED = "#FFFF00";
+const CALLSIGN = "#DDDDDD";
 const IDENT_HALO = "rgba(180, 255, 170, 0.55)";
+const READOUT = "#00AA00";
 
 const RING_INTERVAL_NM = 10;
 const AIRPORT_CROSS_PX = 6;
@@ -24,36 +36,53 @@ const IDENT_HALO_RADIUS_PX = 10;
 const CALLSIGN_OFFSET_X_PX = 8;
 const CALLSIGN_OFFSET_Y_PX = 4;
 
-export function drawPpi(
+export function renderScope(
   ctx: CanvasRenderingContext2D,
   world: World,
-  cam: Camera,
+  cam: ScopeCamera,
   cssWidth: number,
   cssHeight: number,
 ): void {
+  const view: ScopeViewSize = { widthPx: cssWidth, heightPx: cssHeight };
   ctx.fillStyle = BG;
   ctx.fillRect(0, 0, cssWidth, cssHeight);
 
-  drawRangeRings(ctx, cam, cssWidth, cssHeight);
-  drawAirportMark(ctx, cam, cssWidth, cssHeight);
-  drawTracks(ctx, world, cam, cssWidth, cssHeight);
+  if (cssWidth <= 0 || cssHeight <= 0) {
+    return;
+  }
+
+  const circle = rangeCircle(view);
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(circle.cx, circle.cy, circle.radiusPx, 0, Math.PI * 2);
+  ctx.clip();
+
+  drawRangeRings(ctx, cam, view);
+  drawAirportMark(ctx, cam, view);
+  drawTracks(ctx, world, cam, view);
+
+  ctx.restore();
+
+  ctx.beginPath();
+  ctx.arc(circle.cx, circle.cy, circle.radiusPx, 0, Math.PI * 2);
+  ctx.strokeStyle = RANGE_EDGE;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  drawRangeReadout(ctx, cam, cssHeight);
 }
 
 function drawRangeRings(
   ctx: CanvasRenderingContext2D,
-  cam: Camera,
-  cssWidth: number,
-  cssHeight: number,
+  cam: ScopeCamera,
+  view: ScopeViewSize,
 ): void {
-  const origin = worldToCanvas(cam.centerXNm, cam.centerYNm, cam, cssWidth, cssHeight);
-  const edge = worldToCanvas(
-    cam.centerXNm + RING_INTERVAL_NM,
-    cam.centerYNm,
-    cam,
-    cssWidth,
-    cssHeight,
-  );
+  const origin = nmToScreen(cam.centerEastNm, cam.centerNorthNm, cam, view);
+  const edge = nmToScreen(cam.centerEastNm + RING_INTERVAL_NM, cam.centerNorthNm, cam, view);
   const pxPerRing = Math.abs(edge.x - origin.x);
+  if (pxPerRing <= 0) {
+    return;
+  }
 
   ctx.strokeStyle = RING;
   ctx.lineWidth = 1;
@@ -66,11 +95,10 @@ function drawRangeRings(
 
 function drawAirportMark(
   ctx: CanvasRenderingContext2D,
-  cam: Camera,
-  cssWidth: number,
-  cssHeight: number,
+  cam: ScopeCamera,
+  view: ScopeViewSize,
 ): void {
-  const p = worldToCanvas(0, 0, cam, cssWidth, cssHeight);
+  const p = nmToScreen(0, 0, cam, view);
   ctx.strokeStyle = AIRPORT;
   ctx.fillStyle = AIRPORT;
   ctx.lineWidth = 1.5;
@@ -88,16 +116,15 @@ function drawAirportMark(
 function drawTracks(
   ctx: CanvasRenderingContext2D,
   world: World,
-  cam: Camera,
-  cssWidth: number,
-  cssHeight: number,
+  cam: ScopeCamera,
+  view: ScopeViewSize,
 ): void {
   ctx.font = '12px ui-monospace, "Cascadia Mono", "Segoe UI Mono", monospace';
   ctx.textBaseline = "bottom";
   ctx.textAlign = "left";
 
   for (const ac of world.aircraft) {
-    const p = worldToCanvas(ac.xNm, ac.yNm, cam, cssWidth, cssHeight);
+    const p = nmToScreen(ac.xNm, ac.yNm, cam, view);
     const selected = ac.id === world.selectedAircraftId;
     const identActive = ac.identUntilSimMs > world.simTimeMs;
 
@@ -110,7 +137,6 @@ function drawTracks(
     }
 
     if (selected) {
-      // Selected tick is yellow vs unselected green so the pick is obvious (T01-11).
       ctx.beginPath();
       ctx.arc(p.x, p.y, SELECTED_RING_RADIUS_PX, 0, Math.PI * 2);
       ctx.strokeStyle = TICK_SELECTED;
@@ -127,4 +153,16 @@ function drawTracks(
     ctx.fillStyle = selected ? TICK_SELECTED : CALLSIGN;
     ctx.fillText(ac.callsign, p.x + CALLSIGN_OFFSET_X_PX, p.y - CALLSIGN_OFFSET_Y_PX);
   }
+}
+
+function drawRangeReadout(
+  ctx: CanvasRenderingContext2D,
+  cam: ScopeCamera,
+  cssHeight: number,
+): void {
+  ctx.font = '12px ui-monospace, "Cascadia Mono", "Segoe UI Mono", monospace';
+  ctx.textBaseline = "bottom";
+  ctx.textAlign = "left";
+  ctx.fillStyle = READOUT;
+  ctx.fillText(formatRangeReadout(cam.rangeNm), 8, cssHeight - 8);
 }

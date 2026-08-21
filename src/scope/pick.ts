@@ -8,24 +8,25 @@
  */
 
 import { setSelectedAircraft, type Aircraft, type World } from "@core";
-import { worldToCanvas, type Camera } from "./camera";
+import { nmToScreen, type ScopeCamera } from "./camera";
 
-/** Frozen hit radius in CSS pixels (T01-11). Pixel-space so 40 NM range stays stable. */
+/** Frozen hit radius in CSS pixels (T01-11). Pixel-space so range presets stay stable. */
 export const HIT_RADIUS_CSS_PX = 12;
 
 export function pickAircraftAt(
   world: World,
   cssX: number,
   cssY: number,
-  cam: Camera,
+  cam: ScopeCamera,
   cssWidth: number,
   cssHeight: number,
   radiusPx: number,
 ): Aircraft | null {
+  const view = { widthPx: cssWidth, heightPx: cssHeight };
   let nearest: Aircraft | null = null;
   let nearestDist = Infinity;
   for (const ac of world.aircraft) {
-    const p = worldToCanvas(ac.xNm, ac.yNm, cam, cssWidth, cssHeight);
+    const p = nmToScreen(ac.xNm, ac.yNm, cam, view);
     const dist = Math.hypot(p.x - cssX, p.y - cssY);
     if (dist <= radiusPx && dist < nearestDist) {
       nearest = ac;
@@ -43,7 +44,7 @@ export function selectAircraftAt(
   world: World,
   cssX: number,
   cssY: number,
-  cam: Camera,
+  cam: ScopeCamera,
   cssWidth: number,
   cssHeight: number,
   radiusPx: number = HIT_RADIUS_CSS_PX,

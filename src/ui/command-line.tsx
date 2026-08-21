@@ -39,6 +39,16 @@ export function CommandLine({ readback, onSubmit }: CommandLineProps) {
         autoCorrect="off"
         aria-label="Command line"
         value={value}
+        onKeyDown={(event) => {
+          if (
+            event.key === "PageUp" ||
+            event.key === "PageDown" ||
+            event.key === "Home" ||
+            event.key === "End"
+          ) {
+            event.preventDefault();
+          }
+        }}
         onChange={(event) => setValue(event.target.value)}
       />
     </form>

@@ -1,17 +1,31 @@
-import type { MouseEvent } from "react";
+import type { MouseEvent, PointerEvent, WheelEvent } from "react";
 
 export const PpiPlaceholderId = "ppi-placeholder";
 
 export interface PpiPlaceholderProps {
   onCanvasClick?: (event: MouseEvent<HTMLCanvasElement>) => void;
+  onCanvasDoubleClick?: (event: MouseEvent<HTMLCanvasElement>) => void;
+  onCanvasWheel?: (event: WheelEvent<HTMLCanvasElement>) => void;
+  onCanvasPointerDown?: (event: PointerEvent<HTMLCanvasElement>) => void;
+  onCanvasPointerMove?: (event: PointerEvent<HTMLCanvasElement>) => void;
+  onCanvasPointerUp?: (event: PointerEvent<HTMLCanvasElement>) => void;
+  onCanvasContextMenu?: (event: MouseEvent<HTMLCanvasElement>) => void;
 }
 
 /**
- * Analog: CRC STARS display (docs.virtualnas.net/crc/stars).
- * Trainer delta: full-area Canvas2D PPI host; ticks + callsign text, no maps
- * or datablocks. Click on the canvas selects a track. Not NAS STARS.
+ * Analog: CRC STARS display (docs.virtualnas.net/crc/stars — R07).
+ * Trainer delta: full-area Canvas2D PPI host; range/center via keys and wheel,
+ * middle-drag pan (not CRC). Click selects a track. Not NAS STARS.
  */
-export function PpiPlaceholder({ onCanvasClick }: PpiPlaceholderProps) {
+export function PpiPlaceholder({
+  onCanvasClick,
+  onCanvasDoubleClick,
+  onCanvasWheel,
+  onCanvasPointerDown,
+  onCanvasPointerMove,
+  onCanvasPointerUp,
+  onCanvasContextMenu,
+}: PpiPlaceholderProps) {
   return (
     <div className="ppi-host">
       <canvas
@@ -19,6 +33,12 @@ export function PpiPlaceholder({ onCanvasClick }: PpiPlaceholderProps) {
         className="ppi-canvas"
         aria-label="PPI"
         onClick={onCanvasClick}
+        onDoubleClick={onCanvasDoubleClick}
+        onWheel={onCanvasWheel}
+        onPointerDown={onCanvasPointerDown}
+        onPointerMove={onCanvasPointerMove}
+        onPointerUp={onCanvasPointerUp}
+        onContextMenu={onCanvasContextMenu}
       />
     </div>
   );

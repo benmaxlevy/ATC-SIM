@@ -76,15 +76,15 @@ export function screenToNm(
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Given default session, when the PPI paints, then range is 20 NM and the airport ref is at the canvas center (±2 px).
-- [ ] **AC2 —** Given range 20, when `PageUp` (or wheel up) fires five times, then range is 5 NM and center is unchanged. Further `PageUp` leaves range at 5.
-- [ ] **AC3 —** Given range 20, when `PageDown` fires until stop, then range is 60 NM, center unchanged. Further `PageDown` is a no-op.
-- [ ] **AC4 —** Given a click at a world point P not the airport, when `End` fires, then P is at canvas center. When `Home` fires, airport ref is at center.
-- [ ] **AC5 —** Wheel over the PPI with the cursor **not** at center does not move `centerEastNm` / `centerNorthNm` (no zoom-to-cursor).
-- [ ] **AC6 —** Middle-drag moves the view center; releasing and measuring a known world point shows it translated in pixels consistent with `nmToScreen`.
-- [ ] **AC7 —** With the command line focused, `PageUp` / `Home` still change camera and do **not** insert characters into the command buffer.
-- [ ] **AC8 —** Automated: `nmToScreen` ↔ `screenToNm` round-trip unit tests at center, at +5 NM east, and at +5 NM north, for range 5 and 60.
-- [ ] **AC9 — Research:** No user-facing string contains `zoom`. Module comment cites R07 RANGE/CENTER and the extra-preset delta.
+- [x] **AC1 —** Given default session, when the PPI paints, then range is 20 NM and the airport ref is at the canvas center (±2 px).
+- [x] **AC2 —** Given range 20, when `PageUp` (or wheel up) fires five times, then range is 5 NM and center is unchanged. Further `PageUp` leaves range at 5.
+- [x] **AC3 —** Given range 20, when `PageDown` fires until stop, then range is 60 NM, center unchanged. Further `PageDown` is a no-op.
+- [x] **AC4 —** Given a click at a world point P not the airport, when `End` fires, then P is at canvas center. When `Home` fires, airport ref is at center.
+- [x] **AC5 —** Wheel over the PPI with the cursor **not** at center does not move `centerEastNm` / `centerNorthNm` (no zoom-to-cursor).
+- [x] **AC6 —** Middle-drag moves the view center; releasing and measuring a known world point shows it translated in pixels consistent with `nmToScreen`.
+- [x] **AC7 —** With the command line focused, `PageUp` / `Home` still change camera and do **not** insert characters into the command buffer.
+- [x] **AC8 —** Automated: `nmToScreen` ↔ `screenToNm` round-trip unit tests at center, at +5 NM east, and at +5 NM north, for range 5 and 60.
+- [x] **AC9 — Research:** No user-facing string contains `zoom`. Module comment cites R07 RANGE/CENTER and the extra-preset delta.
 
 ## Test plan
 
