@@ -23,6 +23,9 @@ DEFAULT_TTS_VOICES = (
 )
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8090
+# Path C default when PARSE_MODEL_ID is set. ~1–2B instruct GGUF, not a 7B.
+DEFAULT_PARSE_MODEL_ID = "Qwen/Qwen2.5-1.5B-Instruct-GGUF"
+DEFAULT_PARSE_GGUF_FILE = "qwen2.5-1.5b-instruct-q4_k_m.gguf"
 
 VITE_ORIGINS = (
     "http://localhost:5173",
@@ -54,6 +57,7 @@ class Settings:
     stt_model_id: str
     tts_voice: str
     parse_model_id: str | None
+    parse_gguf_file: str
     cache_dir: Path
     mock: bool
     hf_token: str | None
@@ -61,11 +65,6 @@ class Settings:
     stt_device: str | None
     stt_compute_type: str | None
     tts_voices: tuple[str, ...]
-
-    @property
-    def parse_status(self) -> str:
-        # T03-13 never loads a parse model; T03-14 will set "ready" when it does.
-        return "off"
 
     @classmethod
     def load(cls) -> Settings:
@@ -80,6 +79,8 @@ class Settings:
             or DEFAULT_STT_MODEL_ID,
             tts_voice=os.environ.get("TTS_VOICE", DEFAULT_TTS_VOICE).strip() or DEFAULT_TTS_VOICE,
             parse_model_id=_optional_env("PARSE_MODEL_ID"),
+            parse_gguf_file=os.environ.get("PARSE_GGUF_FILE", DEFAULT_PARSE_GGUF_FILE).strip()
+            or DEFAULT_PARSE_GGUF_FILE,
             cache_dir=Path(os.environ.get("SPEECH_API_CACHE", str(DEFAULT_CACHE_DIR))),
             mock=env_flag("SPEECH_API_MOCK"),
             hf_token=_optional_env("HF_TOKEN") or _optional_env("HUGGING_FACE_HUB_TOKEN"),

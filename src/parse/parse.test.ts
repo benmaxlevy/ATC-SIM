@@ -165,7 +165,7 @@ test("spoken parse tests run without a DOM", () => {
   expect(typeof window).toBe("undefined");
 });
 
-test("parse-command source does not import fetch or a path-c module", async () => {
+test("parse-command delegates Path C fetch to path-c (does not call fetch itself)", async () => {
   const sources = import.meta.glob("./*.{ts,tsx}", {
     query: "?raw",
     import: "default",
@@ -174,6 +174,5 @@ test("parse-command source does not import fetch or a path-c module", async () =
   const src = sources["./parse-command.ts"];
   expect(src).toBeDefined();
   expect(src).not.toMatch(/\bfetch\s*\(/);
-  expect(src).not.toMatch(/path-c/);
-  expect(src).not.toMatch(/from\s+["']\.\/path-c["']/);
+  expect(src).toMatch(/from\s+["']\.\/path-c["']/);
 });

@@ -19,6 +19,7 @@ def _settings(device: str | None = None) -> Settings:
         stt_model_id="Systran/faster-whisper-base.en",
         tts_voice="en_US-lessac-medium",
         parse_model_id=None,
+        parse_gguf_file="qwen2.5-1.5b-instruct-q4_k_m.gguf",
         cache_dir=Path("."),
         mock=False,
         hf_token=None,

@@ -226,10 +226,14 @@ export function createApp(deps: AppDeps): AppHandles {
       setRadioFx: (enabled) => {
         voiceLoop.readbackPlayer.setFxEnabled(enabled);
       },
+      setPathC: (enabled) => {
+        voiceLoop.setPathC(enabled);
+      },
     },
     prefs,
     urls: deps.speechUrls,
   });
+  void speechSettings.refreshParseHealth();
 
   return {
     get speech() {

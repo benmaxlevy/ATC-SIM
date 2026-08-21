@@ -75,19 +75,19 @@ Timeout / network / 503 → miss; never throw through the tick. Engine in `speec
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Given `PARSE_MODEL_ID` unset, `POST /parse` returns `ok: false` / `UNAVAILABLE` (or 503) and `/health.parse === "off"`.
-- [ ] **AC2 —** Given `pathC: false`, `parseCommand` never fetches (spy) even on `"pizza the runway"`.
-- [ ] **AC3 —** Given local miss + `pathC: true` + mock `/parse` returning a legal `FLY_HEADING` 270 LEFT and `callsignToken` null, then `parseStage === "llm_c"` and instructions match (selected callsign still applied by resolver/pilot as today).
-- [ ] **AC4 —** Given mock `/parse` with `{ "type": "CHAT" }`, then parse miss, no `Command` dispatch.
-- [ ] **AC5 —** Given fetch throw or 503, then miss, no uncaught exception.
-- [ ] **AC6 —** Repo grep: `speech-api` parse path does not call `openai.com`, `api.groq.com`, `api-inference.huggingface.co`.
-- [ ] **AC7 —** `speech-api/README.md` documents Path C as optional, default off, Hub/local weights, banned vendors.
-- [ ] **AC8 — Research:** README states Path C is salvage after A/B, not 7110.65-complete NLU.
-- [ ] **AC9 —** Default `PARSE_MODEL_ID` is a **1–2B instruct GGUF** (Qwen2.5-1.5B-Instruct Q4_K_M or equivalent). README names that id, ~2 GB RAM, CPU OK/slow OK. Default is **not** a 7B.
-- [ ] **AC10 —** Settings checkbox label is **Path C (local /parse)**. Default **false**. Control stays off / unavailable until `/health.parse === "ready"`. T03-10’s “no Path C in settings” assertion is rewritten here.
-- [ ] **AC11 —** `POST /parse` JSON is only `{ "text", "source", "schemaVersion" }`. No n-best, no confidence field on the request or required response schema.
-- [ ] **AC12 —** Given a `/parse` timeout, then parse miss, no uncaught exception through the tick (same as AC5 network/503).
-- [ ] **AC13 —** Given typed or Path A/B **hit**, `parsePathC` is **not** fetched even when `pathC: true` (miss-only trigger).
+- [x] **AC1 —** Given `PARSE_MODEL_ID` unset, `POST /parse` returns `ok: false` / `UNAVAILABLE` (or 503) and `/health.parse === "off"`.
+- [x] **AC2 —** Given `pathC: false`, `parseCommand` never fetches (spy) even on `"pizza the runway"`.
+- [x] **AC3 —** Given local miss + `pathC: true` + mock `/parse` returning a legal `FLY_HEADING` 270 LEFT and `callsignToken` null, then `parseStage === "llm_c"` and instructions match (selected callsign still applied by resolver/pilot as today).
+- [x] **AC4 —** Given mock `/parse` with `{ "type": "CHAT" }`, then parse miss, no `Command` dispatch.
+- [x] **AC5 —** Given fetch throw or 503, then miss, no uncaught exception.
+- [x] **AC6 —** Repo grep: `speech-api` parse path does not call `openai.com`, `api.groq.com`, `api-inference.huggingface.co`.
+- [x] **AC7 —** `speech-api/README.md` documents Path C as optional, default off, Hub/local weights, banned vendors.
+- [x] **AC8 — Research:** README states Path C is salvage after A/B, not 7110.65-complete NLU.
+- [x] **AC9 —** Default `PARSE_MODEL_ID` is a **1–2B instruct GGUF** (Qwen2.5-1.5B-Instruct Q4_K_M or equivalent). README names that id, ~2 GB RAM, CPU OK/slow OK. Default is **not** a 7B.
+- [x] **AC10 —** Settings checkbox label is **Path C (local /parse)**. Default **false**. Control stays off / unavailable until `/health.parse === "ready"`. T03-10’s “no Path C in settings” assertion is rewritten here.
+- [x] **AC11 —** `POST /parse` JSON is only `{ "text", "source", "schemaVersion" }`. No n-best, no confidence field on the request or required response schema.
+- [x] **AC12 —** Given a `/parse` timeout, then parse miss, no uncaught exception through the tick (same as AC5 network/503).
+- [x] **AC13 —** Given typed or Path A/B **hit**, `parsePathC` is **not** fetched even when `pathC: true` (miss-only trigger).
 
 ## Test plan
 

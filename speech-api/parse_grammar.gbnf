@@ -1,0 +1,35 @@
+# Constrained JSON for POST /parse success (Command IR v0).
+# Used by llama.cpp GBNF. Browser still schema-checks.
+
+root ::= object
+object ::= "{" ws ok-true "," ws callsign-field "," ws instructions-field ws "}"
+ok-true ::= "\"ok\"" ws ":" ws "true"
+callsign-field ::= "\"callsignToken\"" ws ":" ws (string | "null")
+instructions-field ::= "\"instructions\"" ws ":" ws "[" ws instruction (ws "," ws instruction)* ws "]"
+
+instruction ::= fly-heading | turn-degrees | present-heading | altitude | speed | direct | expect-approach | cleared-approach | ident | say-heading | say-altitude
+
+fly-heading ::= "{" ws "\"type\"" ws ":" ws "\"FLY_HEADING\"" ws "," ws "\"headingDeg\"" ws ":" ws number ws "," ws "\"turn\"" ws ":" ws turn-dir ws "}"
+turn-degrees ::= "{" ws "\"type\"" ws ":" ws "\"TURN_DEGREES\"" ws "," ws "\"direction\"" ws ":" ws lr ws "," ws "\"degrees\"" ws ":" ws number ws "}"
+present-heading ::= "{" ws "\"type\"" ws ":" ws "\"PRESENT_HEADING\"" ws "}"
+altitude ::= "{" ws "\"type\"" ws ":" ws "\"ALTITUDE\"" ws "," ws "\"altitudeFt\"" ws ":" ws number ws "," ws "\"verb\"" ws ":" ws alt-verb (ws "," ws "\"expedite\"" ws ":" ws boolean)? ws "}"
+speed ::= "{" ws "\"type\"" ws ":" ws "\"SPEED\"" ws "," ws "\"speedKt\"" ws ":" ws number ws "," ws "\"verb\"" ws ":" ws speed-verb ws "}"
+direct ::= "{" ws "\"type\"" ws ":" ws "\"DIRECT\"" ws "," ws "\"fixId\"" ws ":" ws string ws "}"
+expect-approach ::= "{" ws "\"type\"" ws ":" ws "\"EXPECT_APPROACH\"" ws "," ws "\"approachId\"" ws ":" ws string ws "}"
+cleared-approach ::= "{" ws "\"type\"" ws ":" ws "\"CLEARED_APPROACH\"" ws "," ws "\"approachId\"" ws ":" ws string ws "}"
+ident ::= "{" ws "\"type\"" ws ":" ws "\"IDENT\"" ws "}"
+say-heading ::= "{" ws "\"type\"" ws ":" ws "\"SAY_HEADING\"" ws "}"
+say-altitude ::= "{" ws "\"type\"" ws ":" ws "\"SAY_ALTITUDE\"" ws "}"
+
+turn-dir ::= "\"LEFT\"" | "\"RIGHT\"" | "\"SHORTEST\""
+lr ::= "\"LEFT\"" | "\"RIGHT\""
+alt-verb ::= "\"CLIMB\"" | "\"DESCEND\"" | "\"MAINTAIN\""
+speed-verb ::= "\"MAINTAIN\"" | "\"INCREASE\"" | "\"REDUCE\""
+boolean ::= "true" | "false"
+
+number ::= "-"? [0-9]+ ("." [0-9]+)?
+string ::= "\"" chars "\""
+chars ::= char*
+char ::= [^"\\] | "\\" escape
+escape ::= ["\\/bfnrt] | "u" [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F]
+ws ::= [ \t\n\r]*

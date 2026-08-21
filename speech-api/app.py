@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from config import Settings
 from engines import SttEngine, TtsEngine, build_stt, build_tts
+from parse_engine import ParseEngine, build_parse
 from wavutil import is_wave
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -24,6 +25,8 @@ class TtsRequest(BaseModel):
 
 
 class ParseRequest(BaseModel):
+    """Path C request. Only these three fields — no n-best, no confidence."""
+
     text: str = ""
     source: str = "voice"
     schemaVersion: str = "command-ir-v0"
@@ -38,12 +41,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.settings = cfg
         app.state.stt = build_stt(cfg)
         app.state.tts = build_tts(cfg)
+        parse_engine = build_parse(cfg)
+        app.state.parse = parse_engine
+        parse_status = "ready" if parse_engine is not None and parse_engine.ready else "off"
         log.info(
-            "speech-api ready mock=%s stt=%s tts=%s parse=%s bind later via HOST/PORT",
+            "speech-api ready mock=%s stt=%s tts=%s parse=%s model=%s bind later via HOST/PORT",
             cfg.mock,
             cfg.stt_model_id,
             cfg.tts_voice,
-            cfg.parse_status,
+            parse_status,
+            cfg.parse_model_id,
         )
         yield
 
@@ -57,12 +64,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     @app.get("/health")
-    def health() -> dict:
+    def health(request: Request) -> dict:
+        engine: ParseEngine | None = getattr(request.app.state, "parse", None)
+        parse_status = "ready" if engine is not None and engine.ready else "off"
         return {
             "ok": True,
             "sttModel": cfg.stt_model_id,
             "ttsVoice": cfg.tts_voice,
-            "parse": cfg.parse_status,
+            "parse": parse_status,
         }
 
     @app.post("/stt")
@@ -98,13 +107,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return Response(content=wav, media_type="audio/wav")
 
     @app.post("/parse")
-    def parse(payload: ParseRequest) -> JSONResponse:
-        # Path C inference is T03-14. This ticket only stubs UNAVAILABLE.
-        del payload
-        return JSONResponse(
-            status_code=503,
-            content={"ok": False, "error": "UNAVAILABLE"},
-        )
+    def parse(payload: ParseRequest, request: Request) -> JSONResponse:
+        engine: ParseEngine | None = getattr(request.app.state, "parse", None)
+        if engine is None or not engine.ready:
+            return JSONResponse(
+                status_code=503,
+                content={"ok": False, "error": "UNAVAILABLE"},
+            )
+        try:
+            outcome = engine.parse(payload.text, payload.source, payload.schemaVersion)
+        except Exception:
+            log.exception("parse failed")
+            return JSONResponse(
+                status_code=200,
+                content={"ok": False, "error": "PARSE_MISS"},
+            )
+        return JSONResponse(status_code=outcome.http_status, content=outcome.body())
 
     return app
 

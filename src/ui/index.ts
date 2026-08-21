@@ -69,7 +69,11 @@ export {
 } from "./latency-overlay";
 export {
   DEFAULT_BACKEND_HELP,
+  DEFAULT_HEALTH_URL,
   HTTP_URLS_MISSING,
+  PATH_C_HELP,
+  PATH_C_LABEL,
+  PATH_C_UNAVAILABLE_HELP,
   PTT_BIND_HELP,
   PTT_BIND_OPTIONS,
   SPEECH_PREFS_KEY,
@@ -79,6 +83,7 @@ export {
   SpeechSettingsPanel,
   createSpeechSettingsController,
   defaultSpeechPrefs,
+  healthUrlFromStt,
   loadAndResolveSpeechBoot,
   loadSpeechPrefs,
   saveSpeechPrefs,

@@ -20,6 +20,7 @@ export async function submitCommand(
   world: World,
   text: string,
   log: SessionLog,
+  opts?: { pathC?: boolean },
 ): Promise<PilotResult> {
-  return handleRadioText(world, text, log);
+  return handleRadioText(world, text, log, 0, { source: "text", pathC: opts?.pathC ?? false });
 }

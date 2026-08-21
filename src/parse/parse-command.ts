@@ -1,9 +1,10 @@
 /**
  * Ordered parse stages for text and voice (`phases/_shared/parse-pipeline.md`):
- * normalize → typed tokenizer → Path A → Path B. Path C is T03-14 (off here).
+ * normalize → typed tokenizer → Path A → Path B → optional Path C (`llm_c`).
  *
  * `source` is the channel. `parseStage` is which compiler won.
- * Speech must not construct Instruction objects — only this module + Path A/B do.
+ * Speech must not construct Instruction objects — only this module + Path A/B
+ * and the Path C schema check do.
  */
 
 import type { ParseStage } from "@core";
@@ -12,12 +13,19 @@ import { formatParseError, PARSE_ERROR } from "./tokens";
 import { parseSpokenGrammar } from "./spoken/grammar";
 import { normalizeSpoken } from "./spoken/normalizer";
 import { rewriteSpokenToTyped } from "./spoken/typed-fuzzy";
+import {
+  PATH_C_SCHEMA_VERSION,
+  fetchParsePathC,
+  type ParsePathCFn,
+} from "./path-c";
 
 export interface ParseCommandOpts {
   source: "text" | "voice";
   selectedCallsign?: string | null;
-  /** Default false. T03-14 may fetch when true; this ticket never calls fetch. */
+  /** Default false. When true, stage 4 may fetch after a local miss. */
   pathC?: boolean;
+  /** Injected fetch. Default POSTs to our speech-api `/parse`. */
+  parsePathC?: ParsePathCFn;
 }
 
 function attachCallsign(parsed: ParseResult, selected: string | null): ParseResult {
@@ -49,6 +57,7 @@ function okStage(
 
 /**
  * First complete stage wins. `sourceText` on the result is the pre-normalize original.
+ * Path C runs only after typed/A/B miss. A local hit is never overridden.
  */
 export async function parseCommand(
   sourceText: string,
@@ -75,8 +84,32 @@ export async function parseCommand(
     }
   }
 
-  // Path C stays off. Do not fetch even when pathC is true (T03-14).
-  void opts.pathC;
+  if (opts.pathC) {
+    const run = opts.parsePathC ?? fetchParsePathC;
+    try {
+      const hit = await run({
+        text: sourceText,
+        source: opts.source,
+        schemaVersion: PATH_C_SCHEMA_VERSION,
+      });
+      if (hit !== null && hit.instructions.length > 0) {
+        return okStage(
+          {
+            ok: true,
+            callsignToken: hit.callsignToken,
+            instructions: hit.instructions,
+            sourceText,
+          },
+          sourceText,
+          "llm_c",
+          opts.source,
+          selected,
+        );
+      }
+    } catch {
+      // Timeout / network / injected throw → miss. Never through the tick.
+    }
+  }
 
   const error =
     !spoken.ok && spoken.error.startsWith(PARSE_ERROR.UNKNOWN_TELEPHONY)

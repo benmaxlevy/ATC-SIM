@@ -117,6 +117,8 @@ export interface VoiceLoop {
    * Settings persist the slider in prefs; the coordinator never gates on it.
    */
   setConfidenceThreshold(value: number): void;
+  /** Enable Path C after typed/A/B miss. Default false until /health.parse is ready. */
+  setPathC(enabled: boolean): void;
   /**
    * Speak an already-accepted pilot readback (typed command line or voice).
    * Does not parse. Locks PTT for the play. Never throws.
@@ -181,7 +183,7 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly getSelectedCallsign: () => string | null;
   private readonly getIssuedAtSimMs: () => number;
   private readonly now: () => number;
-  private readonly pathC: boolean;
+  private pathC: boolean;
   private readonly setTransmitLocked: (locked: boolean) => void;
   private readonly onStatus?: (event: VoiceStatusEvent | null) => void;
   private readonly onParseMiss?: (sourceText: string, error: string) => void | Promise<void>;
@@ -234,6 +236,10 @@ class VoiceLoopImpl implements VoiceLoop {
 
   setConfidenceThreshold(_value: number): void {
     // Slider persists in settings prefs only. Must not restore the T03-08 parse gate.
+  }
+
+  setPathC(enabled: boolean): void {
+    this.pathC = enabled;
   }
 
   async playReadback(readback: string, callsign?: string | null): Promise<void> {

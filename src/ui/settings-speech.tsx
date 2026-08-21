@@ -29,6 +29,28 @@ export const WEB_SPEECH_VENDOR_WARNING =
 
 export const VOICE_DISABLED_HINT = "Voice disabled — use typed commands";
 
+export const PATH_C_LABEL = "Path C (local /parse)";
+
+export const PATH_C_HELP =
+  "Optional salvage after typed/A/B miss on our speech-api /parse. Not 7110.65-complete NLU. Off until /health.parse is ready.";
+
+export const PATH_C_UNAVAILABLE_HELP =
+  "Path C unavailable until speech-api /health.parse is ready. Default off.";
+
+export const DEFAULT_HEALTH_URL = "http://127.0.0.1:8090/health";
+
+export function healthUrlFromStt(sttUrl: string): string {
+  try {
+    const parsed = new URL(sttUrl);
+    parsed.pathname = "/health";
+    parsed.search = "";
+    parsed.hash = "";
+    return parsed.toString();
+  } catch {
+    return DEFAULT_HEALTH_URL;
+  }
+}
+
 export const DEFAULT_BACKEND_HELP =
   "Default is http (our speech-api at 127.0.0.1:8090) when STT and TTS URLs are set. Web Speech is never auto-selected. Missing URLs use null; typed commands still work.";
 
@@ -63,6 +85,8 @@ export interface SpeechPrefs {
   voiceId: string;
   latencyOverlay: boolean;
   radioFx: boolean;
+  /** User intent. Effective Path C also requires /health.parse === "ready". */
+  pathC: boolean;
 }
 
 export function defaultSpeechPrefs(): SpeechPrefs {
@@ -73,6 +97,7 @@ export function defaultSpeechPrefs(): SpeechPrefs {
     voiceId: AUTO_TTS_VOICE_ID,
     latencyOverlay: true,
     radioFx: true,
+    pathC: false,
   };
 }
 
@@ -141,6 +166,7 @@ export function loadSpeechPrefs(store?: Storage): SpeechPrefs {
     latencyOverlay:
       typeof saved.latencyOverlay === "boolean" ? saved.latencyOverlay : defaults.latencyOverlay,
     radioFx: typeof saved.radioFx === "boolean" ? saved.radioFx : defaults.radioFx,
+    pathC: saved.pathC === true,
   };
 }
 
@@ -176,6 +202,7 @@ export interface SpeechSettingsHost {
   isBusy: () => boolean;
   setLatencyOverlayVisible?: (visible: boolean) => void;
   setRadioFx?: (enabled: boolean) => void;
+  setPathC?: (enabled: boolean) => void;
 }
 
 export interface SpeechSettingsController {
@@ -188,6 +215,10 @@ export interface SpeechSettingsController {
   setVoiceId(voiceId: string): void;
   setLatencyOverlay(enabled: boolean): void;
   setRadioFx(enabled: boolean): void;
+  setPathC(enabled: boolean): boolean;
+  refreshParseHealth(): Promise<"off" | "ready">;
+  readonly parseReady: boolean;
+  readonly pathCActive: boolean;
 }
 
 export function createSpeechSettingsController(options: {
@@ -197,14 +228,26 @@ export function createSpeechSettingsController(options: {
   env?: { VITE_STT_URL?: unknown; VITE_TTS_URL?: unknown };
   storage?: Storage;
   createPort?: typeof createSpeechPort;
+  parseReady?: boolean;
+  healthUrl?: string;
+  fetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }): SpeechSettingsController {
   const prefs = options.prefs;
   const urls = options.urls ?? readSpeechApiUrls(options.env);
   const createPort = options.createPort ?? createSpeechPort;
+  const healthUrl =
+    options.healthUrl ??
+    (urls.sttConfigured && urls.sttUrl ? healthUrlFromStt(urls.sttUrl) : DEFAULT_HEALTH_URL);
+  const runFetch = options.fetch;
   let rowError: string | null = null;
+  let parseReady = options.parseReady === true;
 
   function persist(): void {
     saveSpeechPrefs(prefs, options.storage);
+  }
+
+  function applyPathCToHost(): void {
+    options.host.setPathC?.(parseReady && prefs.pathC);
   }
 
   return {
@@ -286,6 +329,40 @@ export function createSpeechSettingsController(options: {
       options.host.setRadioFx?.(enabled);
       persist();
     },
+    setPathC(enabled: boolean): boolean {
+      if (enabled && !parseReady) {
+        return false;
+      }
+      prefs.pathC = enabled;
+      applyPathCToHost();
+      persist();
+      return true;
+    },
+    async refreshParseHealth(): Promise<"off" | "ready"> {
+      const fetchFn =
+        runFetch ??
+        (typeof globalThis.fetch === "function" ? globalThis.fetch.bind(globalThis) : null);
+      if (fetchFn === null) {
+        parseReady = false;
+        applyPathCToHost();
+        return "off";
+      }
+      try {
+        const response = await fetchFn(healthUrl, { method: "GET" });
+        const body = (await response.json()) as { parse?: unknown };
+        parseReady = body.parse === "ready";
+      } catch {
+        parseReady = false;
+      }
+      applyPathCToHost();
+      return parseReady ? "ready" : "off";
+    },
+    get parseReady() {
+      return parseReady;
+    },
+    get pathCActive() {
+      return parseReady && prefs.pathC;
+    },
   };
 }
 
@@ -315,7 +392,13 @@ export function SpeechSettingsPanel({ controller, speechId, onChange }: SpeechSe
         type="button"
         className="speech-settings-toggle"
         onMouseDown={(event) => event.preventDefault()}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          const opening = !open;
+          setOpen(opening);
+          if (opening) {
+            void controller.refreshParseHealth().then(() => refresh());
+          }
+        }}
         aria-expanded={open}
         aria-controls="speech-settings-panel"
       >
@@ -433,6 +516,22 @@ export function SpeechSettingsPanel({ controller, speechId, onChange }: SpeechSe
               aria-label="Radio FX"
             />
           </label>
+          <label className="speech-settings-row">
+            <span>{PATH_C_LABEL}</span>
+            <input
+              type="checkbox"
+              checked={controller.parseReady && prefs.pathC}
+              disabled={!controller.parseReady}
+              onChange={(event) => {
+                controller.setPathC(event.target.checked);
+                refresh();
+              }}
+              aria-label={PATH_C_LABEL}
+            />
+          </label>
+          <p className="speech-settings-help">
+            {controller.parseReady ? PATH_C_HELP : PATH_C_UNAVAILABLE_HELP}
+          </p>
         </form>
       ) : null}
     </div>

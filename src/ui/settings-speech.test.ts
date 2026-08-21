@@ -1,11 +1,14 @@
 import { expect, test, vi } from "vitest";
-import { DEFAULT_CONFIDENCE_THRESHOLD, DEFAULT_PTT_KEY, type SpeechPort } from "@speech";
+import { type SpeechPort } from "@speech";
 import {
   CONFIDENCE_THRESHOLD_HELP,
   DEFAULT_BACKEND_HELP,
   HTTP_URLS_MISSING,
   PTT_BIND_HELP,
   PTT_BIND_OPTIONS,
+  PATH_C_HELP,
+  PATH_C_LABEL,
+  PATH_C_UNAVAILABLE_HELP,
   SPEECH_PREFS_KEY,
   SPEECH_SETTINGS_WAIT,
   VOICE_DISABLED_HINT,
@@ -99,7 +102,9 @@ test("prefs persist in the same atc-sim.* profile storage as phase 0", () => {
   expect(loaded.confidenceThreshold).toBe(0.7);
   expect(loaded.latencyOverlay).toBe(false);
   expect(loaded.radioFx).toBe(false);
+  expect(loaded.pathC).toBe(false);
   expect(defaultSpeechPrefs().voiceId).toBe("auto");
+  expect(defaultSpeechPrefs().pathC).toBe(false);
 });
 
 test("legacy backtick prefs migrate to Left Control", () => {
@@ -235,7 +240,7 @@ test("T03-15 — confidence slider copy is informational and does not skip parse
   expect(CONFIDENCE_THRESHOLD_HELP).toMatch(/does not skip parse/i);
 });
 
-test("settings UI omits whisper-wasm, Path C, and vendor signup", () => {
+test("settings UI omits whisper-wasm and vendor signup; Path C checkbox is present", () => {
   const sources = import.meta.glob("./*.{ts,tsx}", {
     query: "?raw",
     import: "default",
@@ -245,7 +250,60 @@ test("settings UI omits whisper-wasm, Path C, and vendor signup", () => {
   expect(src).toMatch(/WEB_SPEECH_VENDOR_WARNING/);
   expect(src).toMatch(/VOICE_DISABLED_HINT/);
   expect(src).not.toMatch(/whisper-wasm/);
-  expect(src).not.toMatch(/pathC|Path C|llm_c/i);
   expect(src).not.toMatch(/deepgram|openai|elevenlabs/i);
   expect(src).not.toMatch(/<option value="whisper/);
+  expect(src).toContain(PATH_C_LABEL);
+  expect(src).toMatch(/disabled=\{!controller\.parseReady\}/);
+});
+
+test("AC10 — Path C default false; disabled until health.parse ready; persist", async () => {
+  expect(PATH_C_LABEL).toBe("Path C (local /parse)");
+  expect(defaultSpeechPrefs().pathC).toBe(false);
+  expect(PATH_C_UNAVAILABLE_HELP).toMatch(/unavailable/i);
+  expect(PATH_C_HELP).toMatch(/salvage/i);
+
+  const hostPathC: boolean[] = [];
+  const store = memoryStorage();
+  const controller = createSpeechSettingsController({
+    prefs: defaultSpeechPrefs(),
+    parseReady: false,
+    storage: store,
+    host: {
+      isBusy: () => false,
+      setSpeechPort: () => true,
+      setPttKey: () => {},
+      setConfidenceThreshold: () => {},
+      setPathC: (enabled) => {
+        hostPathC.push(enabled);
+      },
+    },
+  });
+  expect(controller.parseReady).toBe(false);
+  expect(controller.pathCActive).toBe(false);
+  expect(controller.setPathC(true)).toBe(false);
+  expect(controller.prefs.pathC).toBe(false);
+
+  const readyFetch = vi.fn(async () => new Response(JSON.stringify({ parse: "ready" }), { status: 200 }));
+  const readyController = createSpeechSettingsController({
+    prefs: defaultSpeechPrefs(),
+    parseReady: false,
+    fetch: readyFetch,
+    healthUrl: "http://127.0.0.1:8090/health",
+    storage: store,
+    host: {
+      isBusy: () => false,
+      setSpeechPort: () => true,
+      setPttKey: () => {},
+      setConfidenceThreshold: () => {},
+      setPathC: (enabled) => {
+        hostPathC.push(enabled);
+      },
+    },
+  });
+  expect(await readyController.refreshParseHealth()).toBe("ready");
+  expect(readyController.parseReady).toBe(true);
+  expect(readyController.setPathC(true)).toBe(true);
+  expect(readyController.prefs.pathC).toBe(true);
+  expect(readyController.pathCActive).toBe(true);
+  expect(loadSpeechPrefs(store).pathC).toBe(true);
 });
