@@ -63,12 +63,12 @@ Write the acceptance doc as a checklist a human or agent can run in one sitting 
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** `phases/03-voice/ACCEPTANCE.md` exists and lists steps 1–13 mapped to E1–E14.
-- [ ] **AC2 —** Automated grammar tests for the two required spoken utterances still pass.
-- [ ] **AC3 —** The doc states Web Speech quality is not a fail and whisper-wasm is optional.
-- [ ] **AC4 —** The doc includes a p50 results table (blank OK until filled) for http audio-start.
+- [x] **AC1 —** `phases/03-voice/ACCEPTANCE.md` exists and lists steps 1–13 mapped to E1–E14.
+- [x] **AC2 —** Automated grammar tests for the two required spoken utterances still pass.
+- [x] **AC3 —** The doc states Web Speech quality is not a fail and whisper-wasm is optional.
+- [x] **AC4 —** The doc includes a p50 results table (blank OK until filled) for http audio-start.
 - [ ] **AC5 —** Manual: at least one http happy-path utterance produced voice `Command` + audio (agent or human records pass/fail in the table when they run it). If URLs are absent in this environment, the script says **BLOCKED on http config** rather than silently skipping E4/E10.
-- [ ] **AC6 —** Automated test exists for the grammar happy path (already T03-03; this ticket confirms it is in the default test run).
+- [x] **AC6 —** Automated test exists for the grammar happy path (already T03-03; this ticket confirms it is in the default test run).
 
 ## Test plan
 
@@ -80,3 +80,11 @@ Write the acceptance doc as a checklist a human or agent can run in one sitting 
 
 - `phases/03-voice/ACCEPTANCE.md`
 - (no production app code unless a test glob needs a pointer)
+
+## Notes
+
+AC1 / AC3 / AC4: `phases/03-voice/ACCEPTANCE.md` — verbatim steps 1–13 mapped to E1–E14, skip lines for Web Speech quality and T03-11 whisper-wasm, Path C off is not a fail, blank p50 table.
+
+AC2 / AC6: T03-03 fixtures still in default `npm test` (`src/parse/spoken/grammar.test.ts`, `src/parse/parse.test.ts`). This ticket adds `src/speech/voiceAcceptance.test.ts` so the two 7110.65-shaped strings are asserted in the default glob.
+
+AC5 leftover: live http happy-path not run. This worktree probed `127.0.0.1:8090`: TCP LISTEN but `GET /health` timed out (0 bytes). ACCEPTANCE.md records **BLOCKED on http config** for E4/E10 rather than a fake p50. Re-run steps 4–10 when speech-api `/health` returns JSON.
