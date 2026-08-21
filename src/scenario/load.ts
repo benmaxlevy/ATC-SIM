@@ -16,6 +16,7 @@ import type {
   VideoMap,
 } from "./types";
 import { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN } from "./types";
+import { loadCatalog } from "./procedures/loadCatalog";
 import {
   coastlineFromVideoMaps,
   loadVideoMapSet,
@@ -303,6 +304,8 @@ export function assertScenario(s: unknown): Scenario {
     throw new Error("Scenario maps must be an object");
   }
 
+  const catalog = loadCatalog(icao.toLowerCase());
+
   return {
     id: assertString(s.id, "id"),
     name: assertString(s.name, "name"),
@@ -318,6 +321,7 @@ export function assertScenario(s: unknown): Scenario {
     maps: parseScenarioMaps(maps),
     spawns: assertArray(s.spawns, "spawns").map(assertSpawn),
     arrivals: assertArrivals(s.arrivals),
+    catalog,
   };
 }
 

@@ -1,4 +1,5 @@
 import type { LatLon, NmEastNorth } from "@core";
+import type { ProcedureCatalog } from "./procedures/types";
 import type { LoadedVideoMap } from "./videoMapTypes";
 
 /** One runway. Heading true = magnetic at KDEM (mag var 0). */
@@ -121,4 +122,6 @@ export interface Scenario {
   maps: ScenarioMaps;
   spawns: Spawn[];
   arrivals: ArrivalSpawn[];
+  /** Facility navaids / fixes / STAR / approaches. Loaded from `data/<icao>/`. */
+  catalog: ProcedureCatalog;
 }

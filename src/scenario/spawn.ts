@@ -74,7 +74,7 @@ export function spawnArrivals(world: World, source: number | Scenario): void {
 
 /** Build a World whose aircraft list comes from scenario JSON, not PPI hardcoding. */
 export function createWorldFromScenario(scenario: Scenario): World {
-  const world = createWorld();
+  const world = createWorld({ catalog: scenario.catalog });
   spawnArrivals(world, scenario);
   return world;
 }
@@ -87,7 +87,7 @@ export function createWorldForSession(scenario: Scenario, trafficCount: number |
   if (trafficCount === null) {
     return createWorldFromScenario(scenario);
   }
-  const world = createWorld();
+  const world = createWorld({ catalog: scenario.catalog });
   spawnArrivals(world, trafficCount);
   return world;
 }

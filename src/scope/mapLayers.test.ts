@@ -162,9 +162,20 @@ test("JSON defaulting — missing rangeRings uses 5/60; missing runway warns onc
 test("AC3 — extra default-on polylines (downwind, class B) appear dimmer in the cache", () => {
   const cache = buildMapCache(kdemInput());
   expect(cache.videoStrokes.length).toBeGreaterThanOrEqual(2);
-  expect(cache.videoStrokes.every((stroke) => stroke.color === "mapDim")).toBe(true);
+  const dimStrokes = cache.videoStrokes.filter((stroke) => stroke.color === "mapDim");
+  expect(dimStrokes.length).toBeGreaterThanOrEqual(2);
+  expect(
+    dimStrokes.every((stroke) => stroke.mapId === "DWNWND" || stroke.mapId === "CLASS_B"),
+  ).toBe(true);
+  const dem1Strokes = cache.videoStrokes.filter((stroke) => stroke.mapId === "DEM1");
+  expect(dem1Strokes.length).toBeGreaterThanOrEqual(2);
+  expect(dem1Strokes.every((stroke) => stroke.color === "map")).toBe(true);
   expect(cache.videoLabels.some((label) => label.text === "DW")).toBe(true);
-  expect(cache.videoLabels.every((label) => label.color === "mapDim")).toBe(true);
+  expect(
+    cache.videoLabels
+      .filter((label) => label.text === "DW")
+      .every((label) => label.color === "mapDim"),
+  ).toBe(true);
 });
 
 test("AC6 — map layers use scenario JSON + camera, not OSM/tiles", () => {

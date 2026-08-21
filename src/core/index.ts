@@ -2,7 +2,7 @@
  * Public API for `@core`.
  *
  * Legal now: `World` (`simTimeMs`, `paused`, `simRate` 1|2, empty `aircraft`,
- * `selectedAircraftId`); `createWorld`; `setSelectedAircraft`; `stepWorld`;
+ * `selectedAircraftId`, optional facility `catalog`); `createWorld`; `setSelectedAircraft`; `stepWorld`;
  * `createAccumulator` / `advanceWorld`; clock constants (`PHYSICS_HZ`,
  * `SIM_DT_S`, `MAX_PHYSICS_STEPS_PER_FRAME`); kinematics (`TURN_RATE_DEG_PER_S`,
  * `CLIMB_RATE_FT_PER_MIN`, `ACCEL_KT_PER_S`, `normalizeHeading`,

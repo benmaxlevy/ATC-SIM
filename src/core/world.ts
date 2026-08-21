@@ -14,6 +14,18 @@ export interface World {
   simRate: SimRate;
   aircraft: Aircraft[];
   selectedAircraftId: string | null;
+  /**
+   * Facility catalog when the world was spawned from a scenario.
+   * Full schema is `@scenario` ProcedureCatalog; core only needs ids here.
+   */
+  catalog?: {
+    airportId: string;
+    navaids: ReadonlyArray<{ id: string }>;
+    fixes: ReadonlyArray<{ id: string }>;
+    stars: ReadonlyArray<{ id: string }>;
+    approaches: ReadonlyArray<{ id: string }>;
+    sids: ReadonlyArray<{ id: string }>;
+  };
 }
 
 export function createWorld(partial?: Partial<World>): World {
@@ -23,6 +35,7 @@ export function createWorld(partial?: Partial<World>): World {
     simRate: partial?.simRate ?? 1,
     aircraft: partial?.aircraft ?? [],
     selectedAircraftId: partial?.selectedAircraftId ?? null,
+    catalog: partial?.catalog,
   };
 }
 
