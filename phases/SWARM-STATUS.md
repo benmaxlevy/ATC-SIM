@@ -4,7 +4,7 @@
 
 Phases **0 → 1 → 2 → 3** are green on `master`. Orchestrator `npm test`: **683 passed, 1 skipped**. `speech-api/` exists; boot default is **http → our speech-api** (`127.0.0.1:8090`). Web Speech is opt-in only. T03-11 and T03-14 were **not** implemented. Path C is off. No paid vendor STT/TTS/LLM. This swarm is done.
 
-**speech-api p50:** not measured. `GET http://127.0.0.1:8090/health` timed out during T03-12. Do not treat as a 1.5 s pass.
+**speech-api p50:** not measured (do not invent 1.5 s). Follow-up probe: `GET /health` 200; `POST /tts` ~1192 ms WAV; `POST /stt` timed out at 90 s (likely first-load Whisper). Chrome n≥7 leftover.
 
 **Leftover Chrome / mic (human `npm run dev` + speech-api up):** mic grant/deny; live PTT phrases; radio FX listen; Voice settings switch; ≥ 7 http utterances for p50. Details in captain notes below.
 
@@ -74,6 +74,21 @@ Orchestrator started **2026-08-21**. First-swarm and second-swarm (TCW polish) n
 - Radio FX listen dry vs graph (E6).
 - Backend switch in settings (E9).
 - ≥ 7 http utterances; fill p50 table (E10). Restart speech-api until `/health` returns JSON.
+
+## Phase 3 voice captain notes (full run)
+
+- **Merged:** T03-01, T03-03, T03-13 (Wave A, isolated worktrees); T03-02, T03-04, T03-05 (B); T03-06, T03-08 (C; 08 re-spawned after T03-06 to avoid `voice-loop.ts` conflict); T03-07, T03-09, T03-10 (D, `--no-ff` on `master`); T03-12 plus follow-up probe/CI harness. Skip **T03-11** and **T03-14**. Workers did not merge from this captain’s spawns. Ignored junk `list` / `ls`. Did not start phase 4 or 5.
+- **Tests:** `npm test` **689** passed, **1** skipped. `npm run ci` exit 0 (typecheck, lint, format:check, vitest).
+- **Boot / product:** Quality default **http → our `speech-api/`** (`127.0.0.1:8090`). Web Speech opt-in only. Path C off (`POST /parse` 503). Radio tokens `DAL123 H270` still typed; command-line English is tokenizer miss then Path A. No paid vendor STT/TTS/LLM.
+- **E1–E14:** Automated rows ticked. **E10 leftover** — p50 table blank; `/health` 200; `/tts` ~1192 ms; `/stt` 90 s timeout; no Chrome n≥7. No invented 1.5 s number. See `phases/03-voice/ACCEPTANCE.md`.
+
+### Manual leftover (human `npm run dev` + speech-api up)
+
+- Chrome mic grant / deny; type backtick in the command line (E1).
+- Live phrases (E3–E5): *Delta one two three descend and maintain three thousand*; *turn left heading two seven zero*; mash PTT during readback.
+- Radio FX listen dry vs graph (E6).
+- Voice settings: `null` / `web-speech` / `http` (E9).
+- ≥ 7 http utterances; fill p50 table (E10). First STT may be slow (Whisper load).
 
 ---
 
