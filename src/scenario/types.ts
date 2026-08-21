@@ -1,4 +1,5 @@
 import type { LatLon, NmEastNorth } from "@core";
+import type { LoadedVideoMap } from "./videoMapTypes";
 
 /** One runway. Heading true = magnetic at KDEM (mag var 0). */
 export interface Runway {
@@ -21,7 +22,7 @@ export interface Fix {
   id: string;
 }
 
-/** Digital / video map polyline stub. Empty at KDEM; geometry lives on ScenarioMaps. */
+/** Catalog id for a video map. Geometry lives in `video-maps/<ICAO>/`. */
 export interface VideoMap {
   id: string;
 }
@@ -60,9 +61,11 @@ export interface DigitalMapCoastline {
   note?: string;
 }
 
-/** KDEM digital / video map. `videoMaps` stays the T00-05 stub list. */
+/** KDEM digital / video map. Geometry is `video-maps/<ICAO>/` plus optional inline. */
 export interface ScenarioMaps {
+  videoMapSet?: string;
   videoMaps: VideoMap[];
+  loadedVideoMaps: LoadedVideoMap[];
   runway?: DigitalMapRunway;
   localizer?: DigitalMapLocalizer;
   rangeRings?: DigitalMapRangeRings;

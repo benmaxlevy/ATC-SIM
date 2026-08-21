@@ -45,12 +45,12 @@ Read **R07** (MAPS / video maps), **R12** (no OSM / tiles).
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** `loadKdem().maps.videoMapSet === "KDEM"` and catalog ids include RWY, LOC, COAST plus at least one extra map.
-- [ ] **AC2 —** Runway 27 / ILS 27 feather / coastline still match T02-02 geometry tests (parametric features or equivalent).
-- [ ] **AC3 —** Extra default-on polylines appear in the map cache (unit test, no GPU).
-- [ ] **AC4 —** Missing `video-maps/KJFK/catalog.json` throws.
-- [ ] **AC5 —** `npm test` green. Scope keys still never emit Command IR.
-- [ ] **AC6 — Research:** Comments say video map / MAPS, not tiles; “Not OSM.”
+- [x] **AC1 —** `loadKdem().maps.videoMapSet === "KDEM"` and catalog ids include RWY, LOC, COAST plus at least one extra map.
+- [x] **AC2 —** Runway 27 / ILS 27 feather / coastline still match T02-02 geometry tests (parametric features or equivalent).
+- [x] **AC3 —** Extra default-on polylines appear in the map cache (unit test, no GPU).
+- [x] **AC4 —** Missing `video-maps/KJFK/catalog.json` throws.
+- [x] **AC5 —** `npm test` green. Scope keys still never emit Command IR.
+- [x] **AC6 — Research:** Comments say video map / MAPS, not tiles; “Not OSM.”
 
 ## Test plan
 
@@ -65,3 +65,9 @@ Read **R07** (MAPS / video maps), **R12** (no OSM / tiles).
 - `src/scenario/videoMapTypes.ts`
 - `src/scope/mapLayers.ts`
 - `src/scope/renderScope.ts`
+
+## Notes
+
+Landed parked commit `e7aa4b5` (catalog + per-map JSON under `video-maps/KDEM/`). Same format: `catalog.json` + `NNN-slug.json`. No second catalog.
+
+Manual (`npm run dev` denser coast + downwind): skip-with-reason — no visual operator on this leaf; unit tests prove extra default-on `mapDim` strokes in the cache. Re-check in Chrome when a human is at the glass.

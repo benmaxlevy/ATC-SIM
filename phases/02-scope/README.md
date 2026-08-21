@@ -460,7 +460,7 @@ Do not start phase 3 or 4 until every box is green. Phase 3 *may* overlap the ta
 
 Do not call the TCW pass done until:
 
-- [ ] Video maps load from `video-maps/<ICAO>/` (T02-14).
+- [x] Video maps load from `video-maps/<ICAO>/` (T02-14).
 - [ ] No disclaimer banner / tutorial footer on the glass (T02-15).
 - [ ] DCB is a green cell grid, not an HTML toolbar (T02-16).
 - [ ] MAPS / RANGE / RR / LDR / CHAR SIZE / BRITE trainer subset (T02-17).

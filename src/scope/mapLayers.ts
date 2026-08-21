@@ -1,5 +1,5 @@
 /**
- * Analog: CRC STARS video maps (docs.virtualnas.net/crc/stars — R07).
+ * Analog: CRC STARS MAPS / video maps (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: KDEM trainer-authored JSON only (runway, localizer feather,
  * range rings, optional coastline). Not OSM / tiles (R12). Not NAS STARS.
  *
@@ -12,6 +12,7 @@ import type {
   DigitalMapLocalizer,
   DigitalMapRangeRings,
   DigitalMapRunway,
+  LoadedVideoMap,
   ScenarioMaps,
 } from "@scenario";
 import { nmToScreen, pxPerNm, type ScopeCamera, type ScopeViewSize } from "./camera";
@@ -31,6 +32,7 @@ export interface DigitalMap {
   localizer?: DigitalMapLocalizer;
   rangeRings: DigitalMapRangeRings;
   coastline?: DigitalMapCoastline;
+  loadedVideoMaps?: LoadedVideoMap[];
 }
 
 export interface MapLayerFlags {
@@ -68,6 +70,8 @@ export interface MapCache {
   runway: ScreenPoint[] | null;
   localizer: ScreenPoint[] | null;
   runwayLabel: { text: string; x: number; y: number } | null;
+  videoStrokes: { color: "map" | "mapDim"; closed: boolean; points: ScreenPoint[] }[];
+  videoLabels: { text: string; x: number; y: number; color: "map" | "mapDim" }[];
   ringsPath: Path2D | null;
   coastlinePath: Path2D | null;
   runwayPath: Path2D | null;
@@ -78,6 +82,7 @@ export const DEFAULT_RANGE_RINGS: DigitalMapRangeRings = { intervalNm: 5, maxNm:
 
 export const DEFAULT_DIGITAL_MAP: DigitalMap = {
   rangeRings: DEFAULT_RANGE_RINGS,
+  loadedVideoMaps: [],
 };
 
 export const DEFAULT_MAP_LAYER_FLAGS: MapLayerFlags = {
@@ -99,7 +104,7 @@ export function resetDigitalMapWarnings(): void {
  * Pull map geometry from scenario JSON. Missing runway warns once and still
  * yields range-ring defaults so the tick can boot.
  */
-export function parseDigitalMap(maps: ScenarioMaps): DigitalMap {
+export function parseDigitalMap(maps: Partial<ScenarioMaps>): DigitalMap {
   if (!maps.runway && !missingRunwayWarned) {
     console.warn("Digital map missing runway; drawing range rings only");
     missingRunwayWarned = true;
@@ -109,6 +114,7 @@ export function parseDigitalMap(maps: ScenarioMaps): DigitalMap {
     localizer: maps.localizer,
     rangeRings: maps.rangeRings ?? DEFAULT_RANGE_RINGS,
     coastline: maps.coastline,
+    loadedVideoMaps: maps.loadedVideoMaps ?? [],
   };
 }
 
@@ -313,6 +319,54 @@ export function resetMapCacheBuildCount(): void {
   mapCacheBuildCount = 0;
 }
 
+/** Extra default-on MAPS polylines (no role) — dimmer than runway/loc. Not OSM. */
+function extraVideoStrokes(
+  maps: LoadedVideoMap[],
+  cam: ScopeCamera,
+  view: ScopeViewSize,
+): MapCache["videoStrokes"] {
+  const strokes: MapCache["videoStrokes"] = [];
+  for (const map of maps) {
+    if (map.role !== undefined || !map.defaultOn) {
+      continue;
+    }
+    for (const feature of map.features) {
+      if (feature.type !== "polyline") {
+        continue;
+      }
+      strokes.push({
+        color: map.color,
+        closed: feature.closed,
+        points: feature.pointsNm.map(([eastNm, northNm]) =>
+          project({ eastNm, northNm }, cam, view),
+        ),
+      });
+    }
+  }
+  return strokes;
+}
+
+function extraVideoLabels(
+  maps: LoadedVideoMap[],
+  cam: ScopeCamera,
+  view: ScopeViewSize,
+): MapCache["videoLabels"] {
+  const labels: MapCache["videoLabels"] = [];
+  for (const map of maps) {
+    if (map.role !== undefined || !map.defaultOn) {
+      continue;
+    }
+    for (const feature of map.features) {
+      if (feature.type !== "text") {
+        continue;
+      }
+      const screen = project({ eastNm: feature.atNm[0], northNm: feature.atNm[1] }, cam, view);
+      labels.push({ text: feature.text, x: screen.x, y: screen.y, color: map.color });
+    }
+  }
+  return labels;
+}
+
 export function buildMapCache(
   input: MapCacheInput,
   key: string = buildMapCacheKey(input),
@@ -351,6 +405,9 @@ export function buildMapCache(
     ? coastlineScreenPoints(digitalMap.coastline, camera, viewSize)
     : null;
 
+  const videoStrokes = extraVideoStrokes(digitalMap.loadedVideoMaps ?? [], camera, viewSize);
+  const videoLabels = extraVideoLabels(digitalMap.loadedVideoMaps ?? [], camera, viewSize);
+
   return {
     key,
     ringRadiiNm,
@@ -359,6 +416,8 @@ export function buildMapCache(
     runway,
     localizer,
     runwayLabel,
+    videoStrokes,
+    videoLabels,
     ringsPath: pathFromRings(ringCircles),
     coastlinePath: coastline ? pathFromPolyline(coastline, false) : null,
     runwayPath: runway ? pathFromPolyline(runway, true) : null,

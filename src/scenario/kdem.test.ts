@@ -31,8 +31,17 @@ test("loaded KDEM has a downwind spawn (AC4)", () => {
   expect(spawn?.id).toBe("downwind");
 });
 
-test("loaded KDEM video maps are an empty array (AC5)", () => {
-  expect(loadKdem().maps.videoMaps).toEqual([]);
+test("AC1 — loaded KDEM video maps come from video-maps/KDEM", () => {
+  const maps = loadKdem().maps;
+  expect(maps.videoMapSet).toBe("KDEM");
+  expect(maps.videoMaps.map((item) => item.id)).toEqual([
+    "RWY27",
+    "LOC27",
+    "COAST",
+    "DWNWND",
+    "CLASS_B",
+  ]);
+  expect(maps.loadedVideoMaps).toHaveLength(5);
 });
 
 test("loaded KDEM includes trainer-authored digital map geometry", () => {
@@ -60,9 +69,9 @@ test("loaded KDEM includes trainer-authored digital map geometry", () => {
 test("assertScenario keeps spawning when maps.runway is missing", () => {
   const restMaps = {
     videoMaps: [],
-    localizer: kdemJson.maps.localizer,
-    rangeRings: kdemJson.maps.rangeRings,
-    coastline: kdemJson.maps.coastline,
+    localizer: undefined,
+    rangeRings: { intervalNm: 5, maxNm: 60 },
+    coastline: undefined,
   };
   const scenario = assertScenario({ ...kdemJson, maps: restMaps });
   expect(scenario.maps.runway).toBeUndefined();

@@ -1,0 +1,50 @@
+{
+  "icao": "KDEM",
+  "frame": "arp-enu-nm",
+  "note": "Trainer-authored video maps. Points are NM east/north of KDEM ARP. Not OSM, not NAS STARS.",
+  "maps": [
+    {
+      "id": "RWY27",
+      "file": "001-rwy27.json",
+      "dcbNumber": 1,
+      "dcbLabel": "RWY27",
+      "role": "runway",
+      "defaultOn": true,
+      "color": "map"
+    },
+    {
+      "id": "LOC27",
+      "file": "002-loc27.json",
+      "dcbNumber": 2,
+      "dcbLabel": "LOC27",
+      "role": "localizer",
+      "defaultOn": true,
+      "color": "map"
+    },
+    {
+      "id": "COAST",
+      "file": "003-coast.json",
+      "dcbNumber": 3,
+      "dcbLabel": "COAST",
+      "role": "coastline",
+      "defaultOn": true,
+      "color": "map"
+    },
+    {
+      "id": "DWNWND",
+      "file": "004-downwind.json",
+      "dcbNumber": 4,
+      "dcbLabel": "DWNWND",
+      "defaultOn": true,
+      "color": "mapDim"
+    },
+    {
+      "id": "CLASS_B",
+      "file": "005-class-b.json",
+      "dcbNumber": 5,
+      "dcbLabel": "CLASS_B",
+      "defaultOn": true,
+      "color": "mapDim"
+    }
+  ]
+}

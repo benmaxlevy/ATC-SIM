@@ -16,6 +16,12 @@ import type {
   VideoMap,
 } from "./types";
 import { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN } from "./types";
+import {
+  coastlineFromVideoMaps,
+  loadVideoMapSet,
+  localizerFromVideoMaps,
+  runwayFromVideoMaps,
+} from "./loadVideoMaps";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -181,12 +187,23 @@ function parseMapCoastline(value: unknown): DigitalMapCoastline | undefined {
 }
 
 function parseScenarioMaps(maps: Record<string, unknown>): ScenarioMaps {
+  const videoMapSet =
+    typeof maps.videoMapSet === "string" && maps.videoMapSet.length > 0
+      ? maps.videoMapSet
+      : undefined;
+  const loadedVideoMaps = videoMapSet === undefined ? [] : loadVideoMapSet(videoMapSet);
+  const listed =
+    maps.videoMaps === undefined && videoMapSet !== undefined
+      ? loadedVideoMaps.map((map) => ({ id: map.id }))
+      : assertArray(maps.videoMaps, "maps.videoMaps").map(assertVideoMap);
   return {
-    videoMaps: assertArray(maps.videoMaps, "maps.videoMaps").map(assertVideoMap),
-    runway: parseMapRunway(maps.runway),
-    localizer: parseMapLocalizer(maps.localizer),
+    videoMapSet,
+    videoMaps: listed,
+    loadedVideoMaps,
+    runway: parseMapRunway(maps.runway) ?? runwayFromVideoMaps(loadedVideoMaps),
+    localizer: parseMapLocalizer(maps.localizer) ?? localizerFromVideoMaps(loadedVideoMaps),
     rangeRings: parseMapRangeRings(maps.rangeRings),
-    coastline: parseMapCoastline(maps.coastline),
+    coastline: parseMapCoastline(maps.coastline) ?? coastlineFromVideoMaps(loadedVideoMaps),
   };
 }
 

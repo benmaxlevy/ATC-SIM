@@ -1,0 +1,15 @@
+{
+  "id": "RWY27",
+  "name": "Runway 27",
+  "features": [
+    {
+      "type": "runway",
+      "id": "27",
+      "thresholdNm": [0, 0],
+      "lengthNm": 1.5,
+      "headingTrueDeg": 270,
+      "widthNm": 0.025,
+      "label": "27"
+    }
+  ]
+}

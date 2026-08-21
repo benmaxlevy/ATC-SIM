@@ -119,6 +119,16 @@ function drawMapLayers(ctx: CanvasRenderingContext2D, cache: MapCache): void {
     }
   }
 
+  ctx.lineWidth = MAP_STROKE_PX;
+  for (const stroke of cache.videoStrokes) {
+    ctx.strokeStyle = stroke.color === "mapDim" ? PALETTE.mapDim : PALETTE.map;
+    if (stroke.points.length < 2) {
+      continue;
+    }
+    tracePolyline(ctx, stroke.points, stroke.closed);
+    ctx.stroke();
+  }
+
   ctx.strokeStyle = PALETTE.map;
   ctx.fillStyle = PALETTE.map;
   ctx.lineWidth = MAP_STROKE_PX;
@@ -153,6 +163,14 @@ function drawMapLayers(ctx: CanvasRenderingContext2D, cache: MapCache): void {
     ctx.textAlign = "center";
     ctx.fillStyle = PALETTE.map;
     ctx.fillText(cache.runwayLabel.text, cache.runwayLabel.x, cache.runwayLabel.y);
+  }
+
+  ctx.font = DATABLOCK_FONT;
+  ctx.textBaseline = "bottom";
+  ctx.textAlign = "center";
+  for (const label of cache.videoLabels) {
+    ctx.fillStyle = label.color === "mapDim" ? PALETTE.mapDim : PALETTE.map;
+    ctx.fillText(label.text, label.x, label.y);
   }
 }
 
