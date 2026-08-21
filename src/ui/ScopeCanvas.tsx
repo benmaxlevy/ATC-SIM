@@ -7,6 +7,7 @@
  * Not NAS STARS.
  */
 
+import type { World } from "@core";
 import type { ReactNode, MouseEvent, PointerEvent, WheelEvent } from "react";
 import { PpiPlaceholder, type ScopeView } from "@scope";
 import { DisplayControlBar } from "./DisplayControlBar";
@@ -14,6 +15,7 @@ import { DisplayControlBar } from "./DisplayControlBar";
 export interface ScopeCanvasProps {
   scopeView: ScopeView;
   onScopeChange: () => void;
+  world?: World;
   children?: ReactNode;
   /** Command strip sits under the PPI in this column, not under the strip bay. */
   footer?: ReactNode;
@@ -29,6 +31,7 @@ export interface ScopeCanvasProps {
 export function ScopeCanvas({
   scopeView,
   onScopeChange,
+  world,
   children,
   footer,
   onCanvasClick,
@@ -42,7 +45,7 @@ export function ScopeCanvas({
   return (
     <div className="ppi-column">
       <PpiPlaceholder
-        header={<DisplayControlBar view={scopeView} onChange={onScopeChange} />}
+        header={<DisplayControlBar view={scopeView} world={world} onChange={onScopeChange} />}
         onCanvasClick={onCanvasClick}
         onCanvasDoubleClick={onCanvasDoubleClick}
         onCanvasWheel={onCanvasWheel}

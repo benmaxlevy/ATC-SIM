@@ -96,12 +96,13 @@ body,
   flex: 0 0 36px;
   box-sizing: border-box;
   width: 100%;
+  position: relative;
   display: flex;
   flex-direction: row;
   align-items: stretch;
   gap: 1px;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
   background: #000000;
   color: #00aa00;
   font-size: 11px;
@@ -159,6 +160,20 @@ body,
   opacity: 0.35;
   cursor: default;
   color: var(--dcb-text, #00aa00);
+}
+
+.dcb-submenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 1px;
+  height: 36px;
+  background: #000000;
 }
 
 .ppi-canvas {

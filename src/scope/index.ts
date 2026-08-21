@@ -11,9 +11,10 @@
  * (scope-focus `F`, default 000–180), F3/F4 ownership color stub (not NAS),
  * F1 help overlay (`TRAINER KEYS — NOT CRC`), Tab cycle focus, `/` radio focus.
  *
- * DCB (T02-16) is a green cell grid on the PPI glass; it calls these same
- * camera / map / filter / PTL / history functions. RANGE click cycles presets.
- * Not a full STARS DCB (no WX / PREF / SHIFT / CSA / CRDA / FMA).
+ * DCB (T02-16/T02-17) is a green cell grid on the PPI glass; it calls these same
+ * camera / map / filter / PTL / history / MAPS / RR / LDR / CHAR / BRITE
+ * functions. RANGE click cycles presets. Not a full STARS DCB (no WX / PREF /
+ * SHIFT / CSA / CRDA / FMA).
  *
  * Import rule: `@scope` may import `@core` and `@scenario`.
  * `@scope` may set `selectedAircraftId`. It must not write intent.
@@ -55,8 +56,8 @@ export {
 } from "./ppiPointer";
 export { HIT_RADIUS_CSS_PX, pickAircraftAt, selectAircraftAt } from "./pick";
 export type { DatablockPickView } from "./pick";
-export { PALETTE } from "./palette";
-export type { Palette } from "./palette";
+export { PALETTE, DEFAULT_MAP_BRITE_INDEX, MAP_BRITE_STEPS, mapBriteColors } from "./palette";
+export type { Palette, MapBriteIndex } from "./palette";
 export {
   DEFAULT_DIGITAL_MAP,
   DEFAULT_MAP_LAYER_FLAGS,
@@ -144,6 +145,28 @@ export {
 } from "./scopeView";
 export type { MapLayerId, ScopeView } from "./scopeView";
 export {
+  DCB_LEADER_DIRS,
+  DEFAULT_RR_INTERVAL_NM,
+  RR_INTERVALS_NM,
+  applyDcbLeaderDir,
+  armPlaceCenter,
+  closeDcbSubmenu,
+  cycleCharSize,
+  cycleMapBrite,
+  cycleRrInterval,
+  dcbCatalogMaps,
+  dcbLeaderDirReadout,
+  formatDcbBriteReadout,
+  formatDcbCharReadout,
+  formatDcbMapLabel,
+  formatDcbRrReadout,
+  isVideoMapOn,
+  snapRrInterval,
+  toggleDcbSubmenu,
+  toggleVideoMap,
+} from "./dcbFunctions";
+export type { DcbSubmenu, RrIntervalNm } from "./dcbFunctions";
+export {
   HISTORY_MAX_DOTS,
   HISTORY_SAMPLE_MS,
   createHistoryBuf,
@@ -224,9 +247,14 @@ export type {
   LimitedDatablock,
 } from "./datablock";
 export {
+  CHAR_SIZE_STEPS_PX,
   DATABLOCK_FONT,
   DATABLOCK_FONT_PX,
   DATABLOCK_LINE_HEIGHT_PX,
+  DEFAULT_CHAR_SIZE_PX,
   DEFAULT_DATABLOCK_CELL_PX,
   SCOPE_FONT_STACK,
+  datablockFontCss,
+  datablockLineHeightPx,
 } from "./fonts";
+export type { CharSizePx } from "./fonts";

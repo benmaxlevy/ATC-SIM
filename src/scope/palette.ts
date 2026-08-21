@@ -1,7 +1,8 @@
 /**
  * Analog: CRC STARS limited display colors (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: frozen hex from phases/02-scope/README.md. No red in phase 2
- * (alerts are phase 4). Not NAS STARS.
+ * (alerts are phase 4). DCB BRITE steps map strokes only — track / datablock
+ * colors stay on this palette. Not NAS STARS.
  */
 
 export const PALETTE = {
@@ -24,3 +25,17 @@ export const PALETTE = {
 } as const;
 
 export type Palette = typeof PALETTE;
+
+/** DCB BRITE map-stroke steps (R07 analog). Does not recolor tracks / datablocks. */
+export const MAP_BRITE_STEPS = [
+  { map: "#006600", mapDim: "#003300" },
+  { map: "#00AA00", mapDim: "#006600" },
+  { map: "#00EE00", mapDim: "#00AA00" },
+] as const;
+
+export type MapBriteIndex = 0 | 1 | 2;
+export const DEFAULT_MAP_BRITE_INDEX: MapBriteIndex = 1;
+
+export function mapBriteColors(index: MapBriteIndex): (typeof MAP_BRITE_STEPS)[MapBriteIndex] {
+  return MAP_BRITE_STEPS[index] ?? MAP_BRITE_STEPS[DEFAULT_MAP_BRITE_INDEX];
+}

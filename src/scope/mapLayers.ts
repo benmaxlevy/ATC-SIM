@@ -1,7 +1,8 @@
 /**
- * Analog: CRC STARS MAPS / video maps (docs.virtualnas.net/crc/stars — R07).
+ * Analog: CRC STARS MAPS / video maps / range rings (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: KDEM trainer-authored JSON only (runway, localizer feather,
- * range rings, optional coastline). Not OSM / tiles (R12). Not NAS STARS.
+ * generated range rings at RR 2/5/10 NM about airport ref, optional coastline).
+ * MAPS visibility is per catalog id. Not OSM / tiles (R12). Not NAS STARS.
  *
  * Scope never emits Command IR. Geometry is NM east/north of ARP + camera.
  */
@@ -51,6 +52,9 @@ export interface MapCacheView {
   showCoastline: boolean;
   airportEastNm: number;
   airportNorthNm: number;
+  mapVisibility?: ReadonlyMap<string, boolean>;
+  ringIntervalNm?: number;
+  mapBriteIndex?: number;
 }
 
 export interface MapCacheInput {
@@ -60,6 +64,9 @@ export interface MapCacheInput {
   layers: MapLayerFlags;
   airportEastNm: number;
   airportNorthNm: number;
+  mapVisibility?: ReadonlyMap<string, boolean>;
+  ringIntervalNm: number;
+  mapBriteIndex?: number;
 }
 
 export interface MapCache {
@@ -70,8 +77,13 @@ export interface MapCache {
   runway: ScreenPoint[] | null;
   localizer: ScreenPoint[] | null;
   runwayLabel: { text: string; x: number; y: number } | null;
-  videoStrokes: { color: "map" | "mapDim"; closed: boolean; points: ScreenPoint[] }[];
-  videoLabels: { text: string; x: number; y: number; color: "map" | "mapDim" }[];
+  videoStrokes: {
+    mapId: string;
+    color: "map" | "mapDim";
+    closed: boolean;
+    points: ScreenPoint[];
+  }[];
+  videoLabels: { mapId: string; text: string; x: number; y: number; color: "map" | "mapDim" }[];
   ringsPath: Path2D | null;
   coastlinePath: Path2D | null;
   runwayPath: Path2D | null;
@@ -229,7 +241,17 @@ export function toMapCacheInput(view: MapCacheView, viewSize: ScopeViewSize): Ma
     },
     airportEastNm: view.airportEastNm,
     airportNorthNm: view.airportNorthNm,
+    mapVisibility: view.mapVisibility,
+    ringIntervalNm: view.ringIntervalNm ?? view.digitalMap.rangeRings.intervalNm,
+    mapBriteIndex: view.mapBriteIndex,
   };
+}
+
+function visibilityKey(
+  maps: LoadedVideoMap[],
+  visibility: ReadonlyMap<string, boolean> | undefined,
+): string {
+  return maps.map((map) => (visibility?.get(map.id) ?? map.defaultOn ? "1" : "0")).join("");
 }
 
 export function buildMapCacheKey(input: MapCacheInput): string {
@@ -246,6 +268,9 @@ export function buildMapCacheKey(input: MapCacheInput): string {
     layers.showCoastline ? 1 : 0,
     input.airportEastNm,
     input.airportNorthNm,
+    input.ringIntervalNm,
+    input.mapBriteIndex ?? "",
+    visibilityKey(input.digitalMap.loadedVideoMaps ?? [], input.mapVisibility),
   ].join("|");
 }
 
@@ -319,15 +344,23 @@ export function resetMapCacheBuildCount(): void {
   mapCacheBuildCount = 0;
 }
 
+function isExtraMapOn(
+  map: LoadedVideoMap,
+  visibility: ReadonlyMap<string, boolean> | undefined,
+): boolean {
+  return visibility?.get(map.id) ?? map.defaultOn;
+}
+
 /** Extra default-on MAPS polylines (no role) — dimmer than runway/loc. Not OSM. */
 function extraVideoStrokes(
   maps: LoadedVideoMap[],
   cam: ScopeCamera,
   view: ScopeViewSize,
+  visibility: ReadonlyMap<string, boolean> | undefined,
 ): MapCache["videoStrokes"] {
   const strokes: MapCache["videoStrokes"] = [];
   for (const map of maps) {
-    if (map.role !== undefined || !map.defaultOn) {
+    if (map.role !== undefined || !isExtraMapOn(map, visibility)) {
       continue;
     }
     for (const feature of map.features) {
@@ -335,6 +368,7 @@ function extraVideoStrokes(
         continue;
       }
       strokes.push({
+        mapId: map.id,
         color: map.color,
         closed: feature.closed,
         points: feature.pointsNm.map(([eastNm, northNm]) =>
@@ -350,10 +384,11 @@ function extraVideoLabels(
   maps: LoadedVideoMap[],
   cam: ScopeCamera,
   view: ScopeViewSize,
+  visibility: ReadonlyMap<string, boolean> | undefined,
 ): MapCache["videoLabels"] {
   const labels: MapCache["videoLabels"] = [];
   for (const map of maps) {
-    if (map.role !== undefined || !map.defaultOn) {
+    if (map.role !== undefined || !isExtraMapOn(map, visibility)) {
       continue;
     }
     for (const feature of map.features) {
@@ -361,7 +396,13 @@ function extraVideoLabels(
         continue;
       }
       const screen = project({ eastNm: feature.atNm[0], northNm: feature.atNm[1] }, cam, view);
-      labels.push({ text: feature.text, x: screen.x, y: screen.y, color: map.color });
+      labels.push({
+        mapId: map.id,
+        text: feature.text,
+        x: screen.x,
+        y: screen.y,
+        color: map.color,
+      });
     }
   }
   return labels;
@@ -373,9 +414,11 @@ export function buildMapCache(
 ): MapCache {
   mapCacheBuildCount += 1;
   const { digitalMap, camera, viewSize, layers, airportEastNm, airportNorthNm } = input;
-  const ringRadiiNm = layers.showRings
-    ? activeRingRadiiNm(camera.rangeNm, digitalMap.rangeRings)
-    : [];
+  const rings = {
+    intervalNm: input.ringIntervalNm,
+    maxNm: digitalMap.rangeRings.maxNm,
+  };
+  const ringRadiiNm = layers.showRings ? activeRingRadiiNm(camera.rangeNm, rings) : [];
   const airportScreen = nmToScreen(airportEastNm, airportNorthNm, camera, viewSize);
   const scale = pxPerNm(camera, viewSize);
   const ringCircles = ringRadiiNm.map((radiusNm) => ({
@@ -405,8 +448,18 @@ export function buildMapCache(
     ? coastlineScreenPoints(digitalMap.coastline, camera, viewSize)
     : null;
 
-  const videoStrokes = extraVideoStrokes(digitalMap.loadedVideoMaps ?? [], camera, viewSize);
-  const videoLabels = extraVideoLabels(digitalMap.loadedVideoMaps ?? [], camera, viewSize);
+  const videoStrokes = extraVideoStrokes(
+    digitalMap.loadedVideoMaps ?? [],
+    camera,
+    viewSize,
+    input.mapVisibility,
+  );
+  const videoLabels = extraVideoLabels(
+    digitalMap.loadedVideoMaps ?? [],
+    camera,
+    viewSize,
+    input.mapVisibility,
+  );
 
   return {
     key,

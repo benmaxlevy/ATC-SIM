@@ -17,7 +17,7 @@ import {
   pointInDatablock,
   type DatablockMode,
 } from "./datablock";
-import { DATABLOCK_LINE_HEIGHT_PX, DEFAULT_DATABLOCK_CELL_PX } from "./fonts";
+import { DATABLOCK_LINE_HEIGHT_PX, DEFAULT_DATABLOCK_CELL_PX, datablockLineHeightPx } from "./fonts";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
 
 /** Frozen hit radius in CSS pixels (T01-11). Pixel-space so range presets stay stable. */
@@ -29,6 +29,7 @@ export interface DatablockPickView {
   datablockCellWidthPx: number;
   /** Out-of-filter tracks have no datablock to hit; the target still picks. */
   altitudeFilter: AltitudeFilter;
+  charSizePx?: number;
 }
 
 function pickDatablockAt(
@@ -54,7 +55,8 @@ function pickDatablockAt(
     const mode = td?.datablockMode ?? "full";
     const dir = td?.leaderDir ?? DEFAULT_LEADER_DIR;
     const lines = linesForDatablock(ac, mode, view.modeCVisible, td?.scratchpad ?? "");
-    const rect = datablockRect(p.x, p.y, lines, cell, DATABLOCK_LINE_HEIGHT_PX, dir);
+    const lineH = datablockLineHeightPx(view.charSizePx ?? DATABLOCK_LINE_HEIGHT_PX);
+    const rect = datablockRect(p.x, p.y, lines, cell, lineH, dir);
     if (!pointInDatablock(cssX, cssY, rect)) {
       continue;
     }

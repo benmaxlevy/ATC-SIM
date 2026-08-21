@@ -44,20 +44,20 @@ Store MAPS on/off on `ScopeView` keyed by map id (do not put it on `Aircraft`). 
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** MAPS submenu lists catalog `dcbLabel`s; toggling COAST hides coastline strokes; toggling an extra map hides its polylines.
-- [ ] **AC2 —** RANGE presets unchanged; OFF CNTR appears iff pan offset ≠ airport (unit test on camera).
-- [ ] **AC3 —** RR interval change alters `activeRingRadiiNm` (unit test).
-- [ ] **AC4 —** LDR DCB sets the same leader dirs as L1–L9; radio-focus `L090` still parses.
-- [ ] **AC5 —** CHAR SIZE has ≥2 sizes; font stack still Plex/system mono (grep: no STARS .ttf).
-- [ ] **AC6 —** BRITE has ≥2 steps; track/datablock colors unchanged.
-- [ ] **AC7 —** No Command IR from these cells.
-- [ ] **AC8 — Research:** MAPS/RANGE/leader/range rings in comments; not zoom/layers.
+- [x] **AC1 —** MAPS submenu lists catalog `dcbLabel`s; toggling COAST hides coastline strokes; toggling an extra map hides its polylines.
+- [x] **AC2 —** RANGE presets unchanged; OFF CNTR appears iff pan offset ≠ airport (unit test on camera).
+- [x] **AC3 —** RR interval change alters `activeRingRadiiNm` (unit test).
+- [x] **AC4 —** LDR DCB sets the same leader dirs as L1–L9; radio-focus `L090` still parses.
+- [x] **AC5 —** CHAR SIZE has ≥2 sizes; font stack still Plex/system mono (grep: no STARS .ttf).
+- [x] **AC6 —** BRITE has ≥2 steps; track/datablock colors unchanged.
+- [x] **AC7 —** No Command IR from these cells.
+- [x] **AC8 — Research:** MAPS/RANGE/leader/range rings in comments; not zoom/layers.
 
 ## Test plan
 
 - Unit: map visibility, RR intervals, leader dir from DCB helper.
 - Integration: `scopeKeys.routing.test.ts` still green.
-- Manual: MAPS off/on extra maps; BRITE dimmer maps.
+- Manual: MAPS off/on extra maps; BRITE dimmer maps. skip-with-reason: no Chrome operator in this swarm leaf; unit tests cover visibility / BRITE steps.
 
 ## Suggested files
 

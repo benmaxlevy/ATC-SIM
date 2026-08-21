@@ -30,6 +30,7 @@ function kdemInput(overrides: Partial<MapCacheInput> = {}): MapCacheInput {
     layers: { ...DEFAULT_MAP_LAYER_FLAGS, showCoastline: digitalMap.coastline?.enabled === true },
     airportEastNm: 0,
     airportNorthNm: 0,
+    ringIntervalNm: digitalMap.rangeRings.intervalNm,
     ...overrides,
   };
 }
@@ -44,6 +45,9 @@ function viewFromInput(input: MapCacheInput): MapCacheView {
     showCoastline: input.layers.showCoastline,
     airportEastNm: input.airportEastNm,
     airportNorthNm: input.airportNorthNm,
+    mapVisibility: input.mapVisibility,
+    ringIntervalNm: input.ringIntervalNm,
+    mapBriteIndex: input.mapBriteIndex,
   };
 }
 

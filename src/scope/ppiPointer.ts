@@ -27,6 +27,10 @@ export function handlePpiLeftClick(
   const size = viewSize(cssWidth, cssHeight);
   const nm = screenToNm(cssX, cssY, view.camera, size);
   recordLastClick(view, nm.eastNm, nm.northNm);
+  if (view.placeCenterArmed) {
+    centerOnWorld(view, nm.eastNm, nm.northNm);
+    view.placeCenterArmed = false;
+  }
   selectAircraftAt(world, cssX, cssY, view.camera, cssWidth, cssHeight, HIT_RADIUS_CSS_PX, view);
 }
 

@@ -1,12 +1,15 @@
 /**
- * Analog: CRC STARS RANGE / CENTER / HISTORY / PTL / altitude filter
- * (docs.virtualnas.net/crc/stars — R07; FOA STARS display data — R05).
- * Trainer delta: last-click / airport live on this view, not on World. Map /
- * localizer / rings flags are trainer display state (DCB MAP / RWY / LOC /
- * CST / RING cells). History is 5 s sim / 5 dots, no phosphor. PTL is a straight
- * 1.0 min predicted track line (F7), default off. Leader direction is L1–L9
- * (no length menu). Altitude filter default 000–180; `F` and the DCB FILTER
- * cell start the same chord. Not NAS STARS.
+ * Analog: CRC STARS RANGE / CENTER / HISTORY / PTL / altitude filter / MAPS /
+ * RR / LDR DIR / CHAR SIZE / BRITE (docs.virtualnas.net/crc/stars — R07;
+ * FOA STARS display data — R05).
+ * Trainer delta: last-click / airport live on this view, not on World. MAPS
+ * visibility is keyed by catalog id (RWY/LOC/CST share role flags). RR interval
+ * is 2/5/10 NM about airport ref (not the view center). Leader direction is
+ * L1–L9 (no length menu). CHAR SIZE is 11–13 px Plex/system mono. BRITE steps
+ * map strokes only. History is 5 s sim / 5 dots, no phosphor. PTL is a straight
+ * 1.0 min predicted track line (F7), default off. Altitude filter default
+ * 000–180; `F` and the DCB FILTER cell start the same chord. Discrete range
+ * presets only. Not NAS STARS.
  *
  * Scope display state only. Never a Command, readback, or intent.
  */
@@ -24,9 +27,21 @@ import {
   DEFAULT_RANGE_NM,
   type ScopeCamera,
 } from "./camera";
-import { DEFAULT_DATABLOCK_CELL_PX } from "./fonts";
+import {
+  initialMapVisibility,
+  snapRrInterval,
+  syncRoleMapVisibility,
+  type DcbSubmenu,
+  type RrIntervalNm,
+} from "./dcbFunctions";
+import {
+  DEFAULT_CHAR_SIZE_PX,
+  DEFAULT_DATABLOCK_CELL_PX,
+  type CharSizePx,
+} from "./fonts";
 import type { ScopeChord } from "./keymap";
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
+import { DEFAULT_MAP_BRITE_INDEX, type MapBriteIndex } from "./palette";
 import type { TrackDisplay } from "./trackDisplay";
 
 export interface ScopeView {
@@ -39,6 +54,18 @@ export interface ScopeView {
   showLocalizer: boolean;
   showRings: boolean;
   showCoastline: boolean;
+  /** MAPS on/off keyed by video-map catalog id. Not on Aircraft. */
+  mapVisibility: Map<string, boolean>;
+  /** Frozen RR interval (2 / 5 / 10 NM). Rings stay about airport ref. */
+  ringIntervalNm: RrIntervalNm;
+  /** DCB CHAR SIZE. IBM Plex Mono / system mono only. */
+  charSizePx: CharSizePx;
+  /** DCB BRITE map-stroke step. Does not recolor tracks. */
+  mapBriteIndex: MapBriteIndex;
+  /** PLACE CNTR: next PPI click sets view center. */
+  placeCenterArmed: boolean;
+  /** MAPS / LDR DIR cell submenus on the glass. */
+  dcbSubmenu: DcbSubmenu;
   digitalMap: DigitalMap;
   mapCache: MapCache | null;
   /** Global history dots. CRC analog; default on. F8 / scope-focus H. */
@@ -80,6 +107,8 @@ export function createScopeView(
 ): ScopeView {
   const digitalMap = options?.digitalMap ?? DEFAULT_DIGITAL_MAP;
   const showCoastline = options?.showCoastline ?? digitalMap.coastline?.enabled === true;
+  const showRunway = true;
+  const showLocalizer = true;
   return {
     camera: {
       rangeNm: DEFAULT_RANGE_NM,
@@ -90,10 +119,21 @@ export function createScopeView(
     airportNorthNm,
     lastClickEastNm: null,
     lastClickNorthNm: null,
-    showRunway: true,
-    showLocalizer: true,
+    showRunway,
+    showLocalizer,
     showRings: true,
     showCoastline,
+    mapVisibility: initialMapVisibility(
+      digitalMap.loadedVideoMaps,
+      showRunway,
+      showLocalizer,
+      showCoastline,
+    ),
+    ringIntervalNm: snapRrInterval(digitalMap.rangeRings.intervalNm),
+    charSizePx: DEFAULT_CHAR_SIZE_PX,
+    mapBriteIndex: DEFAULT_MAP_BRITE_INDEX,
+    placeCenterArmed: false,
+    dcbSubmenu: null,
     digitalMap,
     mapCache: null,
     historyEnabled: true,
@@ -139,18 +179,22 @@ export function toggleMapLayer(view: ScopeView, layer: MapLayerId): void {
   switch (layer) {
     case "runway":
       view.showRunway = !view.showRunway;
+      syncRoleMapVisibility(view, "runway", view.showRunway);
       return;
     case "localizer":
       view.showLocalizer = !view.showLocalizer;
+      syncRoleMapVisibility(view, "localizer", view.showLocalizer);
       return;
     case "rings":
       view.showRings = !view.showRings;
+      view.mapCache = null;
       return;
     case "coastline":
       if (!isCoastlineToggleEnabled(view)) {
         return;
       }
       view.showCoastline = !view.showCoastline;
+      syncRoleMapVisibility(view, "coastline", view.showCoastline);
   }
 }
 

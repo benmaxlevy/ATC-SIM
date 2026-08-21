@@ -52,7 +52,7 @@ function paintCurrentPpi(): void {
     paintPpi(canvas, handles.world, scopeView);
   }
   syncStripCallsignColors(scopeView.tracks);
-  syncDisplayControlBar(scopeView);
+  syncDisplayControlBar(scopeView, handles.world);
 }
 
 function onFrame(nowMs: number): void {

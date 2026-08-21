@@ -183,3 +183,15 @@ test("map / localizer / rings flags default on; coastline follows JSON enabled",
   });
   expect(withCoast.showCoastline).toBe(true);
 });
+
+test("PLACE CNTR: next PPI click sets view center and disarms", () => {
+  const world = createWorld();
+  const view = createScopeView();
+  view.placeCenterArmed = true;
+  const p = nmToScreen(5, -3, view.camera, VIEW);
+  handlePpiLeftClick(view, world, p.x, p.y, VIEW.widthPx, VIEW.heightPx);
+  expect(view.camera.centerEastNm).toBeCloseTo(5);
+  expect(view.camera.centerNorthNm).toBeCloseTo(-3);
+  expect(view.placeCenterArmed).toBe(false);
+  expect(isViewOffAirport(view)).toBe(true);
+});

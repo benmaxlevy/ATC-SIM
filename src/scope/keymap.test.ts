@@ -108,6 +108,7 @@ const REQUIRED_BINDING_IDS = [
   "mouse-select",
   "mouse-deselect",
   "mouse-center",
+  "mouse-place-cntr",
   "leader",
   "datablock",
   "mode-c",

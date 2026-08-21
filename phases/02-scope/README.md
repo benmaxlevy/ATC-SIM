@@ -176,7 +176,7 @@ STARS-like, not a screenshot clone. **No red in phase 2** (alerts are phase 4).
 | Selected accent | `#FFFF00` | Selection box / brighter leader; not “emergency” |
 | History | 40–70% of track color | Dots |
 | PTL | Same as track color | Line |
-| DCB cells | `#003300` fill, `#00AA00` text, 1 px `#000` gutters | T02-16 cell grid on the glass. Pressed = invert/stipple. Not the T02-10 `#111` toolbar. |
+| DCB cells | `#003300` fill, `#00AA00` text, 1 px `#000` gutters | T02-16 cell grid on the glass. Pressed = invert/stipple. Not the T02-10 `#111` toolbar. T02-17 MAPS / RANGE / RR / LDR / CHAR SIZE / BRITE / PLACE CNTR. |
 | UI chrome | `#9AA0A6` on `#111` | strips, help — still dark, not game HUD |
 
 Export as `src/scope/palette.ts`. Do not sprinkle hex literals in draw calls.
@@ -185,7 +185,7 @@ Export as `src/scope/palette.ts`. Do not sprinkle hex literals in draw calls.
 
 Do **not** bundle or imitate a licensed STARS font.
 
-Use a **metric-similar monospace**, 11–13 px on a 1080p PPI:
+Use a **metric-similar monospace**, 11–13 px on a 1080p PPI (DCB **CHAR SIZE** cycles these):
 
 - Preferred webfont: **IBM Plex Mono** (SIL OFL, tabular figures) at 12px, or
 - System stack: `"IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace`
@@ -252,7 +252,7 @@ Numpad compass, **including 5 = overlay**:
 ```
 
 - Default at spawn: **L8** (north). Same for all tracks until changed.
-- Phase 2 leader length is **fixed**: **36 px** at the current canvas (T02-19; was 24), **or** 0.35 NM world — pick **pixel-constant** (36 px) so length does not explode at 5 NM range. Documented in T02-05 / T02-19. DCB length menu is T02-17.
+- Phase 2 leader length is **fixed**: **36 px** at the current canvas (T02-19; was 24), **or** 0.35 NM world — pick **pixel-constant** (36 px) so length does not explode at 5 NM range. Documented in T02-05 / T02-19. T02-17 LDR DIR is direction only (no length menu).
 - L5: length 0; datablock top-left at the target (with a 4 px gap so the symbol stays visible).
 - Per-track direction stored on display state, not on `Aircraft`.
 - Changing `L`+digit applies to the **selected** track; if none selected, apply to **all**.
@@ -313,7 +313,7 @@ Extend the T00-05 KDEM file with a `maps` object. Do not scrape charts. Coastlin
 Think CRT terminal, not moving-map GPS.
 
 - Full-viewport dark shell from T00-10 remains. Disclaimer remains visible (corner or settings; do not delete T00-01).
-- PPI is the large center. DCB is a **green cell grid flush to the top of the PPI** (on the glass, not a grey HTML toolbar). Pad the drawable canvas so cells do not cover the north of the range circle.
+- PPI is the large center. DCB is a **green cell grid flush to the top of the PPI** (on the glass, not a grey HTML toolbar). Cells: RANGE (OFF CNTR when panned), MAPS (catalog `dcbLabel`s), RWY/LOC/CST role shortcuts, RR interval, LDR DIR (L1–L9), CHAR SIZE, BRITE, FILTER, PTL, HIST, PLACE CNTR. Pad the drawable canvas so cells do not cover the north of the range circle.
 - Command line stays **bottom** (phase 1).
 - Flight strips **right dock**, ~220–280 px, scrollable, collapsible.
 - Help overlay is a translucent dark panel listing the keymap; it pauses nothing (sim keeps ticking).
@@ -380,11 +380,11 @@ Implementers will be tempted to “just copy CRC.” Freeze this delta in the he
 | CRC / vNAS (typical) | ATC-SIM phase 2 |
 | --- | --- |
 | RANGE via DCB presets including 6/8/12/16/24 | PageUp/Down + wheel; 8 presets 5–60 |
-| CENTER then click | `Home` / `End` / double-click / middle-drag pan |
+| CENTER then click | `Home` / `End` / double-click / DCB PLACE CNTR then PPI click / middle-drag pan |
 | Full DCB | Green cell grid (T02-16); MAPS/RR/LDR/BRITE in T02-17. Still no WX/PREF |
 | F3 Initiate Track (NAS associate) | F3 color stub |
-| Leader length + direction menus | Direction only, fixed **36 px** (T02-19); DCB length menu is T02-17 |
-| Pref sets, brightness, charsize | One font size, one brightness |
+| Leader length + direction menus | Direction L1–L9; fixed **36 px** (T02-19). T02-17 LDR DIR is direction only (no length menu) |
+| Pref sets, brightness, charsize | DCB CHAR SIZE 11–13 px (Plex/system mono) and BRITE map-stroke steps. No PREF sets |
 | F1 as a STARS function | F1 = help |
 | Radio is a headset | Radio is the phase 1 command line |
 

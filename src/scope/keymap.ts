@@ -144,6 +144,14 @@ export const KEY_BINDINGS: KeyBinding[] = [
     crcAnalog: "CENTER then click",
   },
   {
+    id: "mouse-place-cntr",
+    focus: "always",
+    windowsKeys: "DCB PLACE CNTR, then PPI click",
+    action:
+      "Set view center to that world point. Home recenters the airport. End uses last click. No zoom-to-cursor.",
+    crcAnalog: "DCB CENTER then click",
+  },
+  {
     id: "leader",
     focus: "scope",
     windowsKeys: "L then 1–9",

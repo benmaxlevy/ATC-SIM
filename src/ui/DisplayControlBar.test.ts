@@ -11,11 +11,14 @@ import {
   cycleRange,
   formatDcbRangeReadout,
   handleFilterEntryKey,
+  parseDigitalMap,
+  toggleDcbSubmenu,
   toggleHistoryEnabled,
   toggleMapLayer,
   togglePtlOn,
   tryApplyAltitudeFilterDigits,
 } from "@scope";
+import { loadKdem } from "@scenario";
 import { DCB_FONT_PX, DCB_HEIGHT_PX, DisplayControlBar } from "./DisplayControlBar";
 
 const uiSources = import.meta.glob("./*.{ts,tsx}", {
@@ -131,7 +134,7 @@ test("AC5 — no command.accepted from DCB clicks", () => {
   expect(canvas).not.toMatch(/from\s+["']@pilot["']/);
   expect(canvas).not.toMatch(/submitCommand/);
   expect(bar).toMatch(/Never a Command/);
-  expect(mainSources["../main.tsx"]).toMatch(/syncDisplayControlBar\(scopeView\)/);
+  expect(mainSources["../main.tsx"]).toMatch(/syncDisplayControlBar\(scopeView/);
 });
 
 test("AC7 — Research: labels are RANGE/MAPS/FILTER/PTL/HIST, not Zoom/Layers", () => {
@@ -142,11 +145,19 @@ test("AC7 — Research: labels are RANGE/MAPS/FILTER/PTL/HIST, not Zoom/Layers",
   expect(html).toContain("FILTER");
   expect(html).toContain("PTL");
   expect(html).toContain("HIST");
+  expect(html).toContain("RR 5");
+  expect(html).toContain("LDR");
+  expect(html).toContain("CHAR 12");
+  expect(html).toContain("BRITE 2");
+  expect(html).toContain("PLACE");
+  expect(html).toContain("CNTR");
   expect(html).toContain("000-180");
   expect(bar.toLowerCase()).not.toMatch(/\bzoom\b/);
   expect(bar.toLowerCase()).not.toMatch(/\blayers\b/);
   expect(bar.toLowerCase()).not.toMatch(/\bhud\b/);
   expect(bar).toMatch(/analog: CRC STARS DCB/i);
+  expect(bar).toMatch(/range rings/i);
+  expect(bar).toMatch(/leader/i);
   expect(bar).not.toMatch(/FLIGHT STRIPS/);
   expect(html).not.toMatch(/FLIGHT STRIPS/);
 });
@@ -177,14 +188,23 @@ test("cells sit on the PPI glass; canvas below pads the range circle", () => {
   expect(barSrc()).toMatch(/onMouseDown=\{preventButtonFocus\}/);
 });
 
-test("MAPS keeps temporary RWY/LOC/CST/RING cells; CST disabled when JSON off", () => {
+test("MAPS submenu lists catalog dcbLabels; RWY/LOC/CST stay wired; CST disabled when JSON off", () => {
   expect(barSrc()).toMatch(/toggleMapLayer\(view,\s*layer\)/);
+  expect(barSrc()).toMatch(/toggleVideoMap/);
   expect(barSrc()).toMatch(/>\s*RWY\s*</);
   expect(barSrc()).toMatch(/>\s*LOC\s*</);
-  expect(barSrc()).toMatch(/>\s*RING\s*</);
   expect(barSrc()).toMatch(/>\s*CST\s*</);
+  expect(barSrc()).toMatch(/dcbLabel/);
   expect(barSrc()).toMatch(/disabled=\{!coastOn\}/);
-  expect(barSrc()).not.toMatch(/dcbNumber/);
+
+  const view = createScopeView(0, 0, { digitalMap: parseDigitalMap(loadKdem().maps) });
+  toggleDcbSubmenu(view, "maps");
+  const html = dcbHtml(view);
+  expect(html).toContain("RWY27");
+  expect(html).toContain("COAST");
+  expect(html).toContain("DWNWND");
+  expect(html).toContain("CLASS_B");
+  expect(html).toContain('data-dcb-map-id="COAST"');
 
   const off = createScopeView(0, 0, {
     digitalMap: {
@@ -224,9 +244,10 @@ test("MAPS keeps temporary RWY/LOC/CST/RING cells; CST disabled when JSON off", 
   expect(on.showCoastline).toBe(false);
 });
 
-test("CTR recenters airport; RANGE shows OFF CNTR when panned", () => {
-  expect(barSrc()).toMatch(/centerOnAirport\(view\)/);
-  expect(barSrc()).toMatch(/>\s*CTR\s*</);
+test("PLACE CNTR arms; RANGE shows OFF CNTR when panned", () => {
+  expect(barSrc()).toMatch(/armPlaceCenter\(view\)/);
+  expect(barSrc()).toMatch(/>\s*PLACE\s*</);
+  expect(barSrc()).toMatch(/>\s*CNTR\s*</);
   const view = createScopeView();
   view.camera.centerEastNm = 4;
   view.camera.centerNorthNm = -3;
@@ -235,6 +256,15 @@ test("CTR recenters airport; RANGE shows OFF CNTR when panned", () => {
   expect(view.camera.centerEastNm).toBe(view.airportEastNm);
   expect(view.camera.centerNorthNm).toBe(view.airportNorthNm);
   expect(dcbHtml(view)).not.toContain("OFF CNTR");
+});
+
+test("LDR submenu lists L1–L9", () => {
+  const view = createScopeView();
+  toggleDcbSubmenu(view, "ldr");
+  const html = dcbHtml(view);
+  for (const dir of [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
+    expect(html).toContain(`L${dir}`);
+  }
 });
 
 test("mouse-only walkthrough mutates the same scope functions as the cells", () => {

@@ -69,6 +69,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
       <div className="scope-work">
         <ScopeCanvas
           scopeView={scopeView}
+          world={app.world}
           onScopeChange={refreshScopeUi}
           onCanvasClick={(event) => {
             handlePpiCanvasClick(
