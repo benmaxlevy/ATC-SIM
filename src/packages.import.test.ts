@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { INSTRUCTION_TYPES, type World } from "@core";
+import { INSTRUCTION_TYPES, createWorld, type World } from "@core";
 import { parseCommand } from "@parse";
 import { applyCommand } from "@pilot";
 import { PpiPlaceholderId } from "@scope";
@@ -18,19 +18,13 @@ test("package barrels import without circular init crash", () => {
   expect(INSTRUCTION_TYPES).toHaveLength(11);
 });
 
-test("World stub has simTimeMs, simRate, and empty aircraft", () => {
-  const world: World = {
-    simTimeMs: 0,
-    simRate: 1,
-    aircraft: [],
-  };
-  const doubleRate: World = {
-    simTimeMs: 1000,
-    simRate: 2,
-    aircraft: [],
-  };
+test("World has simTimeMs, paused, simRate, and empty aircraft", () => {
+  const world: World = createWorld();
+  const doubleRate: World = createWorld({ simTimeMs: 1000, simRate: 2 });
   expect(world.simTimeMs).toBe(0);
+  expect(world.paused).toBe(false);
   expect(world.simRate).toBe(1);
   expect(world.aircraft).toEqual([]);
+  expect(world.selectedAircraftId).toBeNull();
   expect(doubleRate.simRate).toBe(2);
 });
