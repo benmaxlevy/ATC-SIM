@@ -67,13 +67,13 @@ Tests should construct a `World` with two aircraft via `createAircraft`, not can
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** World with only `DAL123`: token `"DAL123"` and token `"123"` both resolve to that aircraft.
-- [ ] **AC2 —** World with `DAL123` and `AAL123`: token `"123"` → `AMBIGUOUS_CALLSIGN`; `"DAL123"` → DAL only.
-- [ ] **AC3 —** Token `"ZZZ9"` with no such aircraft → `UNKNOWN_CALLSIGN`.
-- [ ] **AC4 —** Token `null`, `selectedAircraftId` = DAL’s id → DAL. Token `null` and selection `null` → `NO_CALLSIGN_OR_SELECTION`.
-- [ ] **AC5 —** Token `"AAL123"` while DAL is selected → AAL (explicit wins).
-- [ ] **AC6 —** Stale `selectedAircraftId` and null token → `SELECTED_NOT_FOUND`.
-- [ ] **AC7 —** Vitest DOM-free; `npm test` green.
+- [x] **AC1 —** World with only `DAL123`: token `"DAL123"` and token `"123"` both resolve to that aircraft.
+- [x] **AC2 —** World with `DAL123` and `AAL123`: token `"123"` → `AMBIGUOUS_CALLSIGN`; `"DAL123"` → DAL only.
+- [x] **AC3 —** Token `"ZZZ9"` with no such aircraft → `UNKNOWN_CALLSIGN`.
+- [x] **AC4 —** Token `null`, `selectedAircraftId` = DAL’s id → DAL. Token `null` and selection `null` → `NO_CALLSIGN_OR_SELECTION`.
+- [x] **AC5 —** Token `"AAL123"` while DAL is selected → AAL (explicit wins).
+- [x] **AC6 —** Stale `selectedAircraftId` and null token → `SELECTED_NOT_FOUND`.
+- [x] **AC7 —** Vitest DOM-free; `npm test` green.
 
 ## Test plan
 

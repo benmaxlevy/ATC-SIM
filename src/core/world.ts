@@ -27,6 +27,19 @@ export function createWorld(partial?: Partial<World>): World {
 }
 
 /**
+ * Select a living aircraft by `Aircraft.id`. Unknown ids clear selection
+ * (set null) so a missing track cannot stay selected. Click hit-testing is T01-11.
+ */
+export function setSelectedAircraft(world: World, id: string | null): void {
+  if (id === null) {
+    world.selectedAircraftId = null;
+    return;
+  }
+  const found = world.aircraft.some((ac) => ac.id === id);
+  world.selectedAircraftId = found ? id : null;
+}
+
+/**
  * Advance sim time by `dtS` seconds, then move each aircraft toward intent.
  *
  * Order is frozen: bump `simTimeMs` first, then kinematics. IDENT flash expiry

@@ -1,6 +1,8 @@
 import { expect, expectTypeOf, test } from "vitest";
 import {
+  createAircraft,
   createWorld,
+  setSelectedAircraft,
   stepWorld,
   createAccumulator,
   advanceWorld,
@@ -10,6 +12,29 @@ import {
   type Aircraft,
   type World,
 } from "@core";
+
+test("setSelectedAircraft selects a living id and sets null when missing", () => {
+  const dal = createAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    xNm: 10,
+    yNm: 5,
+    headingDeg: 100,
+    altitudeFt: 8000,
+    speedKt: 220,
+  });
+  const world = createWorld({ aircraft: [dal] });
+
+  setSelectedAircraft(world, "ac-dal");
+  expect(world.selectedAircraftId).toBe("ac-dal");
+
+  setSelectedAircraft(world, "missing");
+  expect(world.selectedAircraftId).toBeNull();
+
+  setSelectedAircraft(world, "ac-dal");
+  setSelectedAircraft(world, null);
+  expect(world.selectedAircraftId).toBeNull();
+});
 
 test("createWorld defaults simTimeMs, paused, and simRate (AC1)", () => {
   const world = createWorld();

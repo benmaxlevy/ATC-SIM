@@ -2,8 +2,8 @@
  * Public API for `@core`.
  *
  * Legal now: `World` (`simTimeMs`, `paused`, `simRate` 1|2, empty `aircraft`,
- * `selectedAircraftId`); `createWorld`; `stepWorld`; `createAccumulator` /
- * `advanceWorld`; clock constants (`PHYSICS_HZ`,
+ * `selectedAircraftId`); `createWorld`; `setSelectedAircraft`; `stepWorld`;
+ * `createAccumulator` / `advanceWorld`; clock constants (`PHYSICS_HZ`,
  * `SIM_DT_S`, `MAX_PHYSICS_STEPS_PER_FRAME`); kinematics (`TURN_RATE_DEG_PER_S`,
  * `CLIMB_RATE_FT_PER_MIN`, `ACCEL_KT_PER_S`, `normalizeHeading`,
  * `shortestDeltaDeg`, `stepAircraft`); geo helpers (`LatLon`,
@@ -15,7 +15,13 @@
  * Import rule: `@core` depends on nothing in `src/*` except itself.
  */
 export type { World, SimRate, Accumulator } from "./world";
-export { createWorld, stepWorld, createAccumulator, advanceWorld } from "./world";
+export {
+  createWorld,
+  setSelectedAircraft,
+  stepWorld,
+  createAccumulator,
+  advanceWorld,
+} from "./world";
 export { PHYSICS_HZ, SIM_DT_S, MAX_PHYSICS_STEPS_PER_FRAME } from "./clock";
 export {
   TURN_RATE_DEG_PER_S,
