@@ -1,6 +1,7 @@
 /**
  * Analog: vice STARS TG typed ATC tokens (R08). Trainer delta: SH/SA parsed;
- * DIRECT / EXPECT_APPROACH are unknown tokens this phase. Not vice-compatible.
+ * `DCT <FIX>` is DIRECT (D remains descend). EXPECT_APPROACH is unknown this
+ * phase. Not vice-compatible.
  *
  * Stage 1 only (`parse-pipeline.md`). Does not resolve callsigns, validate ATC
  * limits, or mutate intent. No World, no DOM.
@@ -10,6 +11,7 @@ import type { Instruction, ParseStage, TurnDir } from "@core";
 import {
   formatParseError,
   isCallsignToken,
+  isFixIdToken,
   isTurnDirLetter,
   PARSE_ERROR,
   parseUnsignedInt,
@@ -96,6 +98,20 @@ function parseOneInstruction(tokens: string[], index: number): InstructionParse 
     return {
       ok: true,
       instruction: { type: "CLEARED_APPROACH", approachId },
+      nextIndex: index + 2,
+    };
+  }
+  if (token === "DCT") {
+    const fixId = tokens[index + 1];
+    if (fixId === undefined) {
+      return { ok: false, code: PARSE_ERROR.MISSING_FIX_ID };
+    }
+    if (!isFixIdToken(fixId)) {
+      return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: fixId };
+    }
+    return {
+      ok: true,
+      instruction: { type: "DIRECT", fixId },
       nextIndex: index + 2,
     };
   }

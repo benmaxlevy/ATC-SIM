@@ -20,21 +20,32 @@ export function applyIntent(
   }
 }
 
+function setHeadingMode(
+  aircraft: Aircraft,
+  headingDeg: number,
+  turn: Aircraft["intent"]["turn"],
+): void {
+  aircraft.intent.assignedHeadingDeg = headingDeg;
+  aircraft.intent.turn = turn;
+  aircraft.intent.lateral = { type: "HEADING", headingDeg };
+}
+
 function applyOne(aircraft: Aircraft, instruction: Instruction, simTimeMs: number): void {
   switch (instruction.type) {
     case "FLY_HEADING":
-      aircraft.intent.assignedHeadingDeg = instruction.headingDeg;
-      aircraft.intent.turn = instruction.turn;
+      setHeadingMode(aircraft, instruction.headingDeg, instruction.turn);
       return;
     case "TURN_DEGREES": {
       const delta = instruction.direction === "LEFT" ? -instruction.degrees : instruction.degrees;
-      aircraft.intent.assignedHeadingDeg = normalizeHeading(aircraft.headingDeg + delta);
-      aircraft.intent.turn = instruction.direction;
+      setHeadingMode(
+        aircraft,
+        normalizeHeading(aircraft.headingDeg + delta),
+        instruction.direction,
+      );
       return;
     }
     case "PRESENT_HEADING":
-      aircraft.intent.assignedHeadingDeg = aircraft.headingDeg;
-      aircraft.intent.turn = "SHORTEST";
+      setHeadingMode(aircraft, aircraft.headingDeg, "SHORTEST");
       return;
     case "ALTITUDE":
       aircraft.intent.assignedAltitudeFt = instruction.altitudeFt;
@@ -48,9 +59,11 @@ function applyOne(aircraft: Aircraft, instruction: Instruction, simTimeMs: numbe
     case "IDENT":
       aircraft.identUntilSimMs = simTimeMs + IDENT_FLASH_MS;
       return;
+    case "DIRECT":
+      aircraft.intent.lateral = { type: "DIRECT", fixId: instruction.fixId };
+      return;
     case "SAY_HEADING":
     case "SAY_ALTITUDE":
-    case "DIRECT":
     case "EXPECT_APPROACH":
       return;
     default: {

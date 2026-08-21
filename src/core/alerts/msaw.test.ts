@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { makeTestAircraft } from "../aircraft";
+import type { LateralMode, VerticalMode } from "../aircraft";
 import kdemMvaJson from "../../scenario/data/kdem-mva.json";
 import {
   MSAW_FAF_DISTANCE_NM,
@@ -36,6 +37,38 @@ const inhibit: MsawInhibitGeom = {
 const inner = kdem.polygons.find((poly) => poly.id === "inner");
 const outerEast = kdem.polygons.find((poly) => poly.id === "outer-east");
 
+function stubLateral(type: string): LateralMode {
+  switch (type) {
+    case "DIRECT":
+      return { type: "DIRECT", fixId: "NEMAX" };
+    case "PROCEDURE":
+      return { type: "PROCEDURE", starId: "DEM1", toFixIndex: 0, routeFixIds: [] };
+    case "INTERCEPT_LOC":
+      return { type: "INTERCEPT_LOC", approachId: "ILS27" };
+    case "LOC":
+      return { type: "LOC", approachId: "ILS27" };
+    case "MISSED":
+      return { type: "MISSED", approachId: "ILS27" };
+    case "LANDING":
+      return { type: "LANDING", approachId: "ILS27" };
+    default:
+      return { type: "HEADING", headingDeg: 270 };
+  }
+}
+
+function stubVertical(type: string): VerticalMode {
+  switch (type) {
+    case "GS":
+      return { type: "GS", approachId: "ILS27" };
+    case "VIA_STAR":
+      return { type: "VIA_STAR", starId: "DEM1" };
+    case "MISSED_CLIMB":
+      return { type: "MISSED_CLIMB", altitudeFt: 3000 };
+    default:
+      return { type: "ASSIGNED" };
+  }
+}
+
 function aircraftAt(
   overrides: Parameters<typeof makeTestAircraft>[0] & { lateral?: string; vertical?: string },
 ) {
@@ -50,10 +83,10 @@ function aircraftAt(
     ...overrides,
   });
   if (overrides.lateral) {
-    ac.intent.lateral = { type: overrides.lateral };
+    ac.intent.lateral = stubLateral(overrides.lateral);
   }
   if (overrides.vertical) {
-    ac.intent.vertical = { type: overrides.vertical };
+    ac.intent.vertical = stubVertical(overrides.vertical);
   }
   return ac;
 }

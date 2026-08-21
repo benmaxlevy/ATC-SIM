@@ -17,6 +17,9 @@ import {
 import { MAX_PHYSICS_STEPS_PER_FRAME, SIM_DT_S } from "./clock";
 import type { SessionLog } from "./events/session-log";
 import { stepAircraft } from "./kinematics";
+import type { FixRegistry, FixRegistrySource } from "./nav/fixRegistry";
+import { buildFixRegistry } from "./nav/fixRegistry";
+import { applyLateralFms } from "./fms/lateral";
 
 export type SimRate = 1 | 2;
 
@@ -33,15 +36,21 @@ export interface World {
   /**
    * Facility catalog when the world was spawned from a scenario.
    * Full schema is `@scenario` ProcedureCatalog; core only needs ids here.
+   * When navaids/fixes include xNm/yNm, `createWorld` builds `fixRegistry`.
    */
   catalog?: {
     airportId: string;
-    navaids: ReadonlyArray<{ id: string }>;
-    fixes: ReadonlyArray<{ id: string }>;
+    navaids: ReadonlyArray<{ id: string; xNm?: number; yNm?: number; kind?: string }>;
+    fixes: ReadonlyArray<{ id: string; xNm?: number; yNm?: number; kind?: string }>;
     stars: ReadonlyArray<{ id: string }>;
     approaches: ReadonlyArray<{ id: string }>;
     sids: ReadonlyArray<{ id: string }>;
   };
+  /**
+   * O(1) DCT / STAR lookup. Built from `catalog` geometry when present.
+   * `stepWorld` consumes this — no hard-coded lat/lon in the tick.
+   */
+  fixRegistry: FixRegistry | null;
   /** Active CA / MSAW sets. Scope reads this; it must not recompute alerts. */
   alerts: WorldAlerts;
   /**
@@ -61,6 +70,48 @@ export interface World {
   sessionLog: SessionLog | null;
 }
 
+function catalogToFixSource(catalog: NonNullable<World["catalog"]>): FixRegistrySource | null {
+  const navaids: Array<{ id: string; xNm: number; yNm: number; kind: string }> = [];
+  for (const navaid of catalog.navaids) {
+    if (typeof navaid.xNm !== "number" || typeof navaid.yNm !== "number") {
+      return null;
+    }
+    navaids.push({
+      id: navaid.id,
+      xNm: navaid.xNm,
+      yNm: navaid.yNm,
+      kind: navaid.kind ?? "navaid",
+    });
+  }
+  const fixes: Array<{ id: string; xNm: number; yNm: number; kind: string }> = [];
+  for (const fix of catalog.fixes) {
+    if (typeof fix.xNm !== "number" || typeof fix.yNm !== "number") {
+      return null;
+    }
+    fixes.push({
+      id: fix.id,
+      xNm: fix.xNm,
+      yNm: fix.yNm,
+      kind: fix.kind ?? "fix",
+    });
+  }
+  return { navaids, fixes };
+}
+
+function fixRegistryFromPartial(partial?: Partial<World>): FixRegistry | null {
+  if (partial?.fixRegistry !== undefined) {
+    return partial.fixRegistry;
+  }
+  if (!partial?.catalog) {
+    return null;
+  }
+  const source = catalogToFixSource(partial.catalog);
+  if (source === null) {
+    return null;
+  }
+  return buildFixRegistry(source);
+}
+
 export function createWorld(partial?: Partial<World>): World {
   return {
     simTimeMs: partial?.simTimeMs ?? 0,
@@ -69,6 +120,7 @@ export function createWorld(partial?: Partial<World>): World {
     aircraft: partial?.aircraft ?? [],
     selectedAircraftId: partial?.selectedAircraftId ?? null,
     catalog: partial?.catalog,
+    fixRegistry: fixRegistryFromPartial(partial),
     alerts: partial?.alerts ?? emptyWorldAlerts(),
     mvaChart: partial?.mvaChart ?? null,
     msawInhibit: partial?.msawInhibit ?? null,
@@ -224,10 +276,11 @@ function syncMsawAlerts(world: World, next: MsawAlert[]): void {
 /**
  * Advance sim time by `dtS` seconds, then move each aircraft toward intent.
  *
- * Order is frozen: bump `simTimeMs` first, then kinematics, then CA, then MSAW
- * (pure functions of the post-kinematics `aircraft[]`). IDENT flash expiry uses
- * the post-bump time. Mutates `world` in place and returns it (single World; no
- * Redux). Does not throw on non-finite `dtS`.
+ * Order is frozen: bump `simTimeMs` first, then lateral FMS (commanded heading),
+ * then kinematics, then CA, then MSAW (pure functions of the post-kinematics
+ * `aircraft[]`). IDENT flash expiry uses the post-bump time. Mutates `world` in
+ * place and returns it (single World; no Redux). Does not throw on non-finite
+ * `dtS`.
  * This is the only function that increments `simTimeMs`.
  */
 export function stepWorld(world: World, dtS: number): World {
@@ -236,7 +289,12 @@ export function stepWorld(world: World, dtS: number): World {
   }
   world.simTimeMs += dtS * 1000;
   for (const ac of world.aircraft) {
-    stepAircraft(ac, dtS);
+    const commandedHeadingDeg = applyLateralFms(ac, dtS, {
+      registry: world.fixRegistry,
+      log: world.sessionLog,
+      simTimeMs: world.simTimeMs,
+    });
+    stepAircraft(ac, dtS, commandedHeadingDeg);
     if (ac.identUntilSimMs > 0 && world.simTimeMs >= ac.identUntilSimMs) {
       ac.identUntilSimMs = 0;
     }

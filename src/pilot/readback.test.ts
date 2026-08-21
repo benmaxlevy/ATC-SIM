@@ -191,6 +191,7 @@ const rejectTable: [{ callsign?: string; reason: string }, string][] = [
   [{ reason: "EMPTY" }, "unable, say again"],
   [{ callsign: "DAL123", reason: "CLIMB_NOT_ABOVE" }, "delta one two three unable altitude"],
   [{ callsign: "DAL123", reason: "DESCEND_NOT_BELOW" }, "delta one two three unable altitude"],
+  [{ callsign: "DAL123", reason: "UNKNOWN_FIX" }, "delta one two three unable, unknown fix"],
   [{ reason: "PARSE" }, "unable, say again"],
   [{ reason: "HEADING" }, "unable heading"],
 ];

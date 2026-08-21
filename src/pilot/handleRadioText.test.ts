@@ -262,6 +262,7 @@ test("grep guard: no intent.assigned writes outside src/pilot except tests and c
       continue;
     }
     if (path.endsWith("/core/aircraft.ts") || path.endsWith("\\core\\aircraft.ts")) continue;
+    if (path.includes("/core/fms/") || path.includes("\\core\\fms\\")) continue;
     expect(src, path).not.toMatch(assignRe);
   }
 });

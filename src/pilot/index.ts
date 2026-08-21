@@ -21,7 +21,7 @@ export type { ReadbackAircraft, RejectReason } from "./readback";
 export { formatCallsignSpeech, formatReadback, formatRejectReadback } from "./readback";
 export type { ResolveReason, ResolveResult } from "./resolveCallsign";
 export { numericTail, resolveCallsign } from "./resolveCallsign";
-export type { ValidateReason, ValidateResult } from "./validate";
+export type { ValidateReason, ValidateResult, ValidateOpts } from "./validate";
 export { validateInstructions } from "./validate";
 export { applyIntent, IDENT_FLASH_MS } from "./applyIntent";
 

@@ -1,5 +1,12 @@
 import { expect, expectTypeOf, test } from "vitest";
-import { createAircraft, makeTestAircraft, type Aircraft, type Intent, type TurnDir } from "@core";
+import {
+  createAircraft,
+  makeTestAircraft,
+  type Aircraft,
+  type Intent,
+  type LateralMode,
+  type TurnDir,
+} from "@core";
 
 function sampleInit(overrides: Partial<Parameters<typeof createAircraft>[0]> = {}) {
   return {
@@ -24,6 +31,7 @@ test("Aircraft and Intent compile under strict and export from @core (AC1)", () 
   expectTypeOf<Intent>().toHaveProperty("clearedApproachId");
   expectTypeOf<Intent>().toHaveProperty("lateral");
   expectTypeOf<Intent>().toHaveProperty("vertical");
+  expectTypeOf<Intent["lateral"]>().toEqualTypeOf<LateralMode | undefined>();
   expectTypeOf<Aircraft>().toHaveProperty("identUntilSimMs");
 });
 

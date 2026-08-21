@@ -171,7 +171,9 @@ export function handleRadioCommand(
     callsign: resolved.callsign,
   };
 
-  const validated = validateInstructions(aircraft, resolvedCommand.instructions);
+  const validated = validateInstructions(aircraft, resolvedCommand.instructions, {
+    fixRegistry: world.fixRegistry,
+  });
   if (!validated.ok) {
     logRejected(log, world, atWallMs, {
       command: resolvedCommand,

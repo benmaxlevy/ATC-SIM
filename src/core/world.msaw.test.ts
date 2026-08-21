@@ -64,7 +64,7 @@ test("stepWorld integration: heading descent in the inner box cautions then aler
     speedKt: 0,
   });
   dal.intent.assignedAltitudeFt = 1000;
-  dal.intent.lateral = { type: "HEADING" };
+  dal.intent.lateral = { type: "HEADING", headingDeg: 270 };
   const log = new SessionLog();
   const world = createWorld({ aircraft: [dal], sessionLog: log, mvaChart: chart });
 

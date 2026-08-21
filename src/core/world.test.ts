@@ -48,6 +48,7 @@ test("createWorld defaults simTimeMs, paused, and simRate (AC1)", () => {
   expect(world.mvaChart).toBeNull();
   expect(world.msawInhibit).toBeNull();
   expect(world.sessionLog).toBeNull();
+  expect(world.fixRegistry).toBeNull();
 });
 
 test("createWorld does not share the default alerts array", () => {
@@ -62,6 +63,21 @@ test("World.aircraft is Aircraft[] and createWorld still starts empty (T01-02 AC
   expectTypeOf<World["aircraft"]>().toEqualTypeOf<Aircraft[]>();
   const world = createWorld();
   expect(world.aircraft).toHaveLength(0);
+});
+
+test("createWorld builds fixRegistry from catalog xNm/yNm", () => {
+  const world = createWorld({
+    catalog: {
+      airportId: "KDEM",
+      navaids: [{ id: "DEM", xNm: 0.4, yNm: 0.8, kind: "VORDME" }],
+      fixes: [{ id: "NEMAX", xNm: 17, yNm: 12, kind: "INTERSECTION" }],
+      stars: [],
+      approaches: [],
+      sids: [],
+    },
+  });
+  expect(world.fixRegistry?.get("NEMAX")).toMatchObject({ xNm: 17, yNm: 12 });
+  expect(world.fixRegistry?.get("DEM")).toMatchObject({ xNm: 0.4, yNm: 0.8 });
 });
 
 test("createWorld merges partial overrides without sharing aircraft arrays", () => {

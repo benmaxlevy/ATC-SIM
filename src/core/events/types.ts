@@ -6,6 +6,7 @@ import type { Command } from "../command/types";
  * T03-09 adds voice.latency (wall-clock PTT metrics; not sim time).
  * T04-09 adds alert.ca.caution / alert.ca.alert / alert.ca.clear (edges only).
  * T04-10 adds alert.msaw.caution / alert.msaw.alert / alert.msaw.clear (edges only).
+ * T04-03 adds nav.direct.sequenced / nav.star.vectors.
  */
 export type SessionEvent =
   | {
@@ -95,4 +96,18 @@ export type SessionEvent =
       callsign: string;
       altFt: number;
       floorFt: number;
+    }
+  | {
+      type: "nav.direct.sequenced";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      fixId: string;
+    }
+  | {
+      type: "nav.star.vectors";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      starId: string;
     };

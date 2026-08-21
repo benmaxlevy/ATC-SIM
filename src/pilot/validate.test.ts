@@ -110,6 +110,25 @@ test("CLEARED_APPROACH needs a non-empty approachId; SAY and IDENT pass", () => 
   expect(validateInstructions(jet(), [{ type: "IDENT" }]).ok).toBe(true);
 });
 
+test("DIRECT unknown fix is UNKNOWN_FIX; known catalog id passes", () => {
+  const registry = {
+    has: (id: string) => id.toUpperCase() === "NEMAX",
+  } as import("@core").FixRegistry;
+  expect(
+    validateInstructions(jet(), [{ type: "DIRECT", fixId: "NOPE" }], { fixRegistry: registry }),
+  ).toEqual({
+    ok: false,
+    reason: "UNKNOWN_FIX",
+  });
+  expect(
+    validateInstructions(jet(), [{ type: "DIRECT", fixId: "NEMAX" }], { fixRegistry: registry }).ok,
+  ).toBe(true);
+  expect(validateInstructions(jet(), [{ type: "DIRECT", fixId: "NEMAX" }])).toEqual({
+    ok: false,
+    reason: "UNKNOWN_FIX",
+  });
+});
+
 test("one bad instruction rejects the whole list", () => {
   expect(
     validateInstructions(jet({ altitudeFt: 8000 }), [

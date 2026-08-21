@@ -74,11 +74,18 @@ function toward(current: number, assigned: number, maxDelta: number): number {
  * Move one aircraft toward its intent for `dtS` sim seconds.
  * Heading and speed are updated first; position uses those post-update values
  * (heading 0 = north, +x east, +y north).
+ *
+ * When `commandedHeadingDeg` is set (DIRECT / PROCEDURE FMS), fly that heading
+ * by the shortest turn — assigned heading stays the last ATC vector until the
+ * fix sequences.
  */
-export function stepAircraft(ac: Aircraft, dtS: number): void {
+export function stepAircraft(ac: Aircraft, dtS: number, commandedHeadingDeg?: number): void {
   const headingFrom = normalizeHeading(ac.headingDeg);
-  const headingTo = normalizeHeading(ac.intent.assignedHeadingDeg);
-  const { remainingDeg, sign } = remainingTurn(headingFrom, headingTo, ac.intent.turn);
+  const headingTo = normalizeHeading(
+    commandedHeadingDeg !== undefined ? commandedHeadingDeg : ac.intent.assignedHeadingDeg,
+  );
+  const turn = commandedHeadingDeg !== undefined ? "SHORTEST" : ac.intent.turn;
+  const { remainingDeg, sign } = remainingTurn(headingFrom, headingTo, turn);
   const maxTurnDeg = TURN_RATE_DEG_PER_S * dtS;
   if (remainingDeg <= maxTurnDeg) {
     ac.headingDeg = headingTo;

@@ -14,11 +14,12 @@ function jet() {
   });
 }
 
-test("FLY_HEADING sets assigned heading and turn", () => {
+test("FLY_HEADING sets assigned heading and HEADING mode", () => {
   const ac = jet();
   applyIntent(ac, [{ type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" }], 0);
   expect(ac.intent.assignedHeadingDeg).toBe(270);
   expect(ac.intent.turn).toBe("SHORTEST");
+  expect(ac.intent.lateral).toEqual({ type: "HEADING", headingDeg: 270 });
 });
 
 test("TURN_DEGREES turns from present heading, not assigned", () => {
@@ -60,6 +61,15 @@ test("IDENT sets identUntilSimMs and does not change assigned intent", () => {
   applyIntent(ac, [{ type: "IDENT" }], 1000);
   expect(ac.identUntilSimMs).toBe(1000 + IDENT_FLASH_MS);
   expect(ac.intent).toEqual(before);
+});
+
+test("DIRECT sets lateral DIRECT; heading tokens cancel it", () => {
+  const ac = jet();
+  applyIntent(ac, [{ type: "DIRECT", fixId: "NEMAX" }], 0);
+  expect(ac.intent.lateral).toEqual({ type: "DIRECT", fixId: "NEMAX" });
+  applyIntent(ac, [{ type: "FLY_HEADING", headingDeg: 90, turn: "SHORTEST" }], 0);
+  expect(ac.intent.lateral).toEqual({ type: "HEADING", headingDeg: 90 });
+  expect(ac.intent.assignedHeadingDeg).toBe(90);
 });
 
 test("SAY_* and CLEARED_APPROACH leave heading/alt/speed intent alone", () => {

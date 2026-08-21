@@ -2,7 +2,7 @@
  * Public API for `@core`.
  *
  * Legal now: `World` (`simTimeMs`, `paused`, `simRate` 1|2, empty `aircraft`,
- * `selectedAircraftId`, optional facility `catalog`, `alerts`, `mvaChart`,
+ * `selectedAircraftId`, optional facility `catalog`, `fixRegistry`, `alerts`, `mvaChart`,
  * `msawInhibit`, `sessionLog`); `createWorld`; `setSelectedAircraft`; `stepWorld`;
  * `createAccumulator` / `advanceWorld`; clock constants (`PHYSICS_HZ`,
  * `SIM_DT_S`, `MAX_PHYSICS_STEPS_PER_FRAME`); kinematics (`TURN_RATE_DEG_PER_S`,
@@ -14,6 +14,7 @@
  * `makeTestAircraft`, `nextAircraftId`; conflict alert lite (`evaluateConflictAlert`,
  * `CA_LATERAL_NM` / `CA_VERTICAL_FT` / `CA_LOOKAHEAD_S`, `datablockAlertTint`);
  * nav fix registry (`buildFixRegistry`, `FixRegistry`);
+ * nav geometry (`courseDeg`, fly-by radius); lateral FMS (`applyLateralFms`);
  * MSAW lite (`evaluateMsaw`, `MSAW_RED_BELOW_FT`, `msawFloorFt`).
  *
  * Import rule: `@core` depends on nothing in `src/*` except itself.
@@ -42,7 +43,7 @@ export { INSTRUCTION_TYPES } from "./command/instructions";
 export * from "./command/fixtures";
 export type { SessionEvent } from "./events/types";
 export { SessionLog } from "./events/session-log";
-export type { Aircraft, AircraftInit, Intent } from "./aircraft";
+export type { Aircraft, AircraftInit, Intent, LateralMode, VerticalMode } from "./aircraft";
 export { createAircraft, makeTestAircraft, nextAircraftId } from "./aircraft";
 export type { CaAlert, CaSeverity, WorldAlerts } from "./alerts/conflictAlert";
 export {
@@ -78,3 +79,19 @@ export type { AlertTint, AlertTintTrack } from "./alerts/colors";
 export { datablockAlertTint } from "./alerts/colors";
 export type { FixRegistry, FixRegistrySource, RegisteredFix } from "./nav/fixRegistry";
 export { UnknownFixError, buildFixRegistry } from "./nav/fixRegistry";
+export type { NmPoint } from "./nav/geometry";
+export {
+  DIRECT_SEQUENCE_NM,
+  FLYBY_CAP_NM,
+  FLYBY_FLOOR_NM,
+  FLYBY_MIN_TURN_DEG,
+  alongTrackNm,
+  courseChangeDeg,
+  courseDeg,
+  distanceNm,
+  flyByStartNm,
+  flyOverSequenceNm,
+  turnRadiusNm,
+} from "./nav/geometry";
+export type { LateralFmsContext } from "./fms/lateral";
+export { DEMO_ONE_NORTH_FIX_IDS, advanceStarLeg, applyLateralFms } from "./fms/lateral";

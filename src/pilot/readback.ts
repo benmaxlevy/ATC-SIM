@@ -26,7 +26,8 @@ export type RejectReason =
   | "EMPTY"
   | "CLIMB_NOT_ABOVE"
   | "DESCEND_NOT_BELOW"
-  | "PARSE";
+  | "PARSE"
+  | "UNKNOWN_FIX";
 
 const REJECT_FIXED: Record<string, string> = {
   UNKNOWN_CALLSIGN: "unable, unknown callsign",
@@ -42,6 +43,7 @@ const REJECT_AFTER_CALLSIGN: Record<string, string> = {
   SPEED: "unable speed",
   CLIMB_NOT_ABOVE: "unable altitude",
   DESCEND_NOT_BELOW: "unable altitude",
+  UNKNOWN_FIX: "unable, unknown fix",
 };
 
 /** ILS27 → `i l s two seven` (English letter names, runway digits). */

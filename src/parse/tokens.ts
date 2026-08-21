@@ -1,7 +1,8 @@
 /**
  * Analog: vice ATC instruction keyboard tokens (R08, pharr.org/vice).
- * Trainer delta: SH/SA are phase-1 tokens; DIRECT and EXPECT_APPROACH are not.
- * Not vice-compatible. Tokens only — no spoken English (Path A is phase 3).
+ * Trainer delta: SH/SA are phase-1 tokens; `DCT <FIX>` is T04-03 (D stays
+ * descend). EXPECT_APPROACH is not a typed token yet. Not vice-compatible.
+ * Tokens only — no spoken English (Path A is phase 3).
  */
 
 export const PARSE_ERROR = {
@@ -10,6 +11,7 @@ export const PARSE_ERROR = {
   BAD_HEADING: "BAD_HEADING",
   MISSING_NUMBER: "MISSING_NUMBER",
   MISSING_APPROACH_ID: "MISSING_APPROACH_ID",
+  MISSING_FIX_ID: "MISSING_FIX_ID",
   BAD_TURN_DEGREES: "BAD_TURN_DEGREES",
   UNKNOWN_TELEPHONY: "unknown_telephony",
   PARSE_MISS: "PARSE_MISS",
@@ -25,6 +27,8 @@ export const SUFFIX_CALLSIGN = /^[0-9]{1,4}[A-Z]?$/;
 
 const UNSIGNED_INT = /^\d+$/;
 const TURN_DIR_LETTER = /^[LR]$/;
+/** Typed DCT fix: 2–5 letters after uppercase (`NEMAX`, `DEM`). */
+const FIX_ID_TOKEN = /^[A-Z]{2,5}$/;
 
 export function isCallsignToken(token: string): boolean {
   return FULL_CALLSIGN.test(token) || SUFFIX_CALLSIGN.test(token);
@@ -32,6 +36,10 @@ export function isCallsignToken(token: string): boolean {
 
 export function isTurnDirLetter(token: string): token is "L" | "R" {
   return TURN_DIR_LETTER.test(token);
+}
+
+export function isFixIdToken(token: string): boolean {
+  return FIX_ID_TOKEN.test(token);
 }
 
 /** Parser requires an integer token; rejects decimals and non-finite values. */

@@ -114,7 +114,7 @@ export function msawSeverityForAltitude(altFt: number, floorFt: number): MsawSev
 /**
  * Inhibit when `lateral` is LOC | LANDING or `vertical` is GS, **and** planar
  * distance to threshold `<= fafDistanceNm`. HEADING / DIRECT / PROCEDURE /
- * MISSED never inhibit. Missing modes (pre-T04-03/05/06) behave like heading.
+ * MISSED never inhibit. Missing modes behave like heading.
  */
 export function isMsawInhibited(ac: Aircraft, geom: MsawInhibitGeom): boolean {
   const lat = ac.intent.lateral?.type;
