@@ -234,6 +234,8 @@ function guideIntercept(ac: Aircraft, approachId: string, ctx: LateralFmsContext
     });
     return axis.courseDeg;
   }
+  // Hold assigned heading (present heading unless the clearance included a
+  // vector). Do not command loc inbound until capture.
   return ac.intent.assignedHeadingDeg;
 }
 

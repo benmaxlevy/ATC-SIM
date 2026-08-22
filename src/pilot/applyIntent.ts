@@ -21,8 +21,16 @@ export function applyIntent(
   simTimeMs: number,
   opts?: ApplyIntentOpts,
 ): void {
+  let headingAssignedThisCommand = false;
   for (const instruction of instructions) {
-    applyOne(aircraft, instruction, simTimeMs, opts);
+    if (
+      instruction.type === "FLY_HEADING" ||
+      instruction.type === "TURN_DEGREES" ||
+      instruction.type === "PRESENT_HEADING"
+    ) {
+      headingAssignedThisCommand = true;
+    }
+    applyOne(aircraft, instruction, simTimeMs, opts, !headingAssignedThisCommand);
   }
 }
 
@@ -49,14 +57,28 @@ function setHeadingMode(
   aircraft.intent.clearedApproachId = null;
 }
 
-/** Keep LOC if already established on this approach; otherwise arm intercept heading. */
-function armLocIntercept(aircraft: Aircraft, approachId: string): void {
+/**
+ * Keep LOC if already established on this approach; otherwise arm intercept.
+ * Without a heading in this command, snap assigned heading to present heading
+ * so INTERCEPT_LOC does not turn toward a stale STAR/spawn assigned heading
+ * (or the loc inbound) to "find" the loc. A heading in the same command is
+ * the intercept heading (R240 IL ILS27).
+ */
+function armLocIntercept(
+  aircraft: Aircraft,
+  approachId: string,
+  snapToPresentHeading: boolean,
+): void {
   const lateral = aircraft.intent.lateral;
   const alreadyOnThisLoc =
     (lateral?.type === "LOC" || lateral?.type === "INTERCEPT_LOC") &&
     lateral.approachId === approachId;
   if (alreadyOnThisLoc) {
     return;
+  }
+  if (snapToPresentHeading) {
+    aircraft.intent.assignedHeadingDeg = aircraft.headingDeg;
+    aircraft.intent.turn = "SHORTEST";
   }
   aircraft.intent.lateral = { type: "INTERCEPT_LOC", approachId };
 }
@@ -65,7 +87,8 @@ function applyOne(
   aircraft: Aircraft,
   instruction: Instruction,
   simTimeMs: number,
-  opts?: ApplyIntentOpts,
+  opts: ApplyIntentOpts | undefined,
+  snapInterceptToPresent: boolean,
 ): void {
   switch (instruction.type) {
     case "FLY_HEADING":
@@ -91,14 +114,14 @@ function applyOne(
       return;
     case "CLEARED_APPROACH":
       aircraft.intent.clearedApproachId = instruction.approachId;
-      armLocIntercept(aircraft, instruction.approachId);
+      armLocIntercept(aircraft, instruction.approachId, snapInterceptToPresent);
       return;
     case "INTERCEPT_LOCALIZER":
       aircraft.intent.clearedApproachId = null;
       if (aircraft.intent.vertical?.type === "GS") {
         aircraft.intent.vertical = { type: "ASSIGNED" };
       }
-      armLocIntercept(aircraft, instruction.approachId);
+      armLocIntercept(aircraft, instruction.approachId, snapInterceptToPresent);
       return;
     case "EXPECT_APPROACH":
       aircraft.intent.expectedApproachId = instruction.approachId;

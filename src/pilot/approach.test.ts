@@ -89,6 +89,27 @@ test("AC2 — APP ILS27 arms INTERCEPT_LOC from heading 240", async () => {
   expect(dal.headingDeg).toBeCloseTo(240, 0);
 });
 
+test("IL off a stale assigned heading holds present heading until loc", async () => {
+  const { dal, world } = worldWithDal(northOfLoc({ headingDeg: 200, altitudeFt: 4000 }));
+  dal.intent.assignedHeadingDeg = 270;
+  dal.intent.lateral = {
+    type: "PROCEDURE",
+    starId: "DEM1",
+    toFixIndex: 2,
+    routeFixIds: ["NEMAX", "NELBO", "NJOIN", "MERGE"],
+  };
+  const result = await handleRadioText(world, "DAL123 IL ILS27", new SessionLog());
+  expect(result.accepted).toBe(true);
+  expect(dal.intent.assignedHeadingDeg).toBe(200);
+  expect(dal.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "ILS27" });
+  for (let i = 0; i < Math.round(20 / SIM_DT_S); i += 1) {
+    stepWorld(world, SIM_DT_S);
+  }
+  expect(dal.intent.lateral?.type).toBe("INTERCEPT_LOC");
+  expect(dal.headingDeg).toBeCloseTo(200, 0);
+  expect(dal.yNm).toBeGreaterThan(2);
+});
+
 test("AC2b — Path A ILS vector sets untilEstablished, holds 2000, no GS", async () => {
   const spoken =
     "turn right heading two four zero maintain two thousand until established cleared ils approach runway two seven";

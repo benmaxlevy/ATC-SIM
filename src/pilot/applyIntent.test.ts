@@ -130,6 +130,39 @@ test("INTERCEPT_LOCALIZER arms INTERCEPT_LOC without clearing the approach", () 
   expect(ac.intent.vertical?.type === "GS").toBeFalsy();
 });
 
+test("IL without a heading holds present heading, not a stale assigned heading", () => {
+  const ac = jet();
+  ac.headingDeg = 200;
+  ac.intent.assignedHeadingDeg = 270;
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    starId: "DEM1",
+    toFixIndex: 2,
+    routeFixIds: ["NEMAX", "NELBO", "NJOIN", "MERGE"],
+  };
+  applyIntent(ac, [{ type: "INTERCEPT_LOCALIZER", approachId: "ILS27" }], 0);
+  expect(ac.intent.assignedHeadingDeg).toBe(200);
+  expect(ac.intent.turn).toBe("SHORTEST");
+  expect(ac.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "ILS27" });
+});
+
+test("same-command heading is the intercept heading (R240 IL ILS27)", () => {
+  const ac = jet();
+  ac.headingDeg = 90;
+  ac.intent.assignedHeadingDeg = 90;
+  applyIntent(
+    ac,
+    [
+      { type: "FLY_HEADING", headingDeg: 240, turn: "RIGHT" },
+      { type: "INTERCEPT_LOCALIZER", approachId: "ILS27" },
+    ],
+    0,
+  );
+  expect(ac.intent.assignedHeadingDeg).toBe(240);
+  expect(ac.intent.turn).toBe("RIGHT");
+  expect(ac.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "ILS27" });
+});
+
 test("INTERCEPT_LOCALIZER after APP drops GS arming", () => {
   const ac = jet();
   applyIntent(ac, [{ type: "CLEARED_APPROACH", approachId: "ILS27" }], 0);

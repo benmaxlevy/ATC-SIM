@@ -139,7 +139,7 @@ Spoken (Path A must accept both runway wordings):
 
 > turn right heading two four zero maintain two thousand until established on the localizer cleared ils runway two seven approach
 
-Aircraft (must match the words): fly the heading, **hold assigned altitude until `nav.loc.captured` (established)**, then intercept GS from below (T04-06). `APP ILS27` alone still arms intercept from the current heading and holds the **already assigned** altitude until established.
+Aircraft (must match the words): fly the heading, **hold assigned altitude until `nav.loc.captured` (established)**, then intercept GS from below (T04-06). `APP ILS27` / `IL ILS27` alone arms intercept on **present heading** — do not turn inbound to find the loc; join loc inbound only after capture. A heading in the **same** command is the intercept heading (`R240 A20 APP ILS27`). Hold the **already assigned** altitude until established.
 
 T04-03 flies `DIRECT`. T04-05 flies `CLEARED_APPROACH` (loc intercept) and arms `EXPECT_APPROACH` scratchpad. `untilEstablished` is additive on `ALTITUDE` — do not confuse with T04-04 `DESCEND_VIA` / `CROSS`.
 
