@@ -53,7 +53,21 @@ const REJECT_AFTER_CALLSIGN: Record<string, string> = {
   NOT_ON_APPROACH: "unable, not on approach",
 };
 
-/** ILS27 → `i l s runway two seven` (English letter names, runway digits). */
+/** ILS27 → `runway two seven localizer`. */
+function speakRunwayLocalizer(approachId: string): string {
+  const id = approachId.trim().toUpperCase();
+  const match = /^[A-Z]+(\d{1,2})([LCR]?)$/.exec(id);
+  if (!match) {
+    return `${speakAlphanumeric(id)} localizer`;
+  }
+  const [, runway, suffix] = match;
+  const runwaySpeech = speakDigitString(runway);
+  const suffixSpeech = suffix ? suffix.toLowerCase() : "";
+  return ["runway", runwaySpeech, suffixSpeech, "localizer"]
+    .filter((part) => part.length > 0)
+    .join(" ");
+}
+
 function speakApproachNav(approachId: string): string {
   const id = approachId.trim().toUpperCase();
   const match = /^([A-Z]+)(\d{1,2})([LCR]?)$/.exec(id);
@@ -145,6 +159,8 @@ function formatInstructionClause(
       return speakAltitude(aircraft.altitudeFt);
     case "CLEARED_APPROACH":
       return `cleared ${speakApproachNav(instruction.approachId)} approach`;
+    case "INTERCEPT_LOCALIZER":
+      return `intercept the ${speakRunwayLocalizer(instruction.approachId)}`;
     case "EXPECT_APPROACH":
       return `expect ${speakApproachNav(instruction.approachId)}`;
     case "DIRECT":

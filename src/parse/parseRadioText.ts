@@ -1,7 +1,8 @@
 /**
- * Analog: vice STARS TG typed ATC tokens (R08). Trainer delta: SH/SA parsed;
+ * Analog: vice STARS TG typed ATC tokens (R08). Trainer delta: SH/SA parsed.
  * `DCT <FIX>` is DIRECT (D remains descend). `VIA` / `CVIA` / `X` are T04-04.
- * `EXP ILS27` is EXPECT_APPROACH (T04-05). `GA` is GO_AROUND (T04-07).
+ * `EXP ILS27` is EXPECT_APPROACH (T04-05). `IL ILS27` is INTERCEPT_LOCALIZER
+ * (loc only, no GS). `GA` is GO_AROUND (T04-07).
  * Same-line heading + altitude + APP sets untilEstablished. Not vice-compatible.
  *
  * Stage 1 only (`parse-pipeline.md`). Does not resolve callsigns, validate ATC
@@ -109,6 +110,17 @@ function parseOneInstruction(tokens: string[], index: number): InstructionParse 
     return {
       ok: true,
       instruction: { type: "CLEARED_APPROACH", approachId },
+      nextIndex: index + 2,
+    };
+  }
+  if (token === "IL") {
+    const approachId = tokens[index + 1];
+    if (approachId === undefined) {
+      return { ok: false, code: PARSE_ERROR.MISSING_APPROACH_ID };
+    }
+    return {
+      ok: true,
+      instruction: { type: "INTERCEPT_LOCALIZER", approachId },
       nextIndex: index + 2,
     };
   }

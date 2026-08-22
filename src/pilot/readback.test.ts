@@ -181,6 +181,12 @@ test("CLEARED_APPROACH ILS27 spells i l s runway two seven", () => {
   );
 });
 
+test("INTERCEPT_LOCALIZER ILS27 is intercept the runway two seven localizer", () => {
+  expect(readback([{ type: "INTERCEPT_LOCALIZER", approachId: "ILS27" }])).toBe(
+    "delta one two three intercept the runway two seven localizer",
+  );
+});
+
 test("EXPECT_APPROACH ILS27 is expect i l s runway two seven", () => {
   expect(readback([{ type: "EXPECT_APPROACH", approachId: "ILS27" }])).toBe(
     "delta one two three expect i l s runway two seven",

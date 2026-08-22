@@ -4,7 +4,13 @@
  * to H/D without a verb. Ambiguous rewrite → miss.
  */
 
-import { parseAltitudeFt, parseHeadingDeg, parseSpeedKt, parseTurnDegreesValue } from "./numbers";
+import {
+  parseAltitudeFt,
+  parseHeadingDeg,
+  parseSpeedKt,
+  parseTurnDegreesValue,
+  singleDigit,
+} from "./numbers";
 import { parseSpokenCallsign } from "./telephony";
 
 interface Cursor {
@@ -93,8 +99,63 @@ function rewriteOne(c: Cursor): string | null {
     rewriteAltitude(c) ??
     rewriteSpeed(c) ??
     rewriteIdent(c) ??
+    rewriteIntercept(c) ??
     rewriteGoAround(c)
   );
+}
+
+function rewriteIntercept(c: Cursor): string | null {
+  const start = c.i;
+  if (!take(c, "intercept")) {
+    return null;
+  }
+  take(c, "the");
+  const afterThe = c.i;
+  take(c, "runway");
+  const rwyThenLoc = consumeRunwayDigits(c);
+  if (rwyThenLoc && take(c, "localizer")) {
+    return `IL ILS${rwyThenLoc}`;
+  }
+  c.i = afterThe;
+  if (take(c, "localizer")) {
+    take(c, "runway");
+    const locThenRwy = consumeRunwayDigits(c);
+    if (locThenRwy) {
+      return `IL ILS${locThenRwy}`;
+    }
+  }
+  c.i = start;
+  return null;
+}
+
+function consumeRunwayDigits(c: Cursor): string | null {
+  const compact = peek(c);
+  if (compact && /^\d{1,2}[lrc]?$/i.test(compact)) {
+    c.i += 1;
+    const match = compact.match(/^(\d{1,2})([lrc])?$/i);
+    if (!match) {
+      return null;
+    }
+    const num = match[1]!.padStart(2, "0");
+    const side = match[2] ? match[2].toUpperCase() : "";
+    return `${num}${side}`;
+  }
+  const d1 = singleDigit(peek(c));
+  const d2 = singleDigit(peek(c, 1));
+  if (d1 === null || d2 === null) {
+    return null;
+  }
+  c.i += 2;
+  const sideTok = peek(c);
+  if (sideTok === "left" || sideTok === "lima") {
+    c.i += 1;
+    return `${d1}${d2}L`;
+  }
+  if (sideTok === "right" || sideTok === "romeo") {
+    c.i += 1;
+    return `${d1}${d2}R`;
+  }
+  return `${d1}${d2}`;
 }
 
 function rewriteGoAround(c: Cursor): string | null {

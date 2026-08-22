@@ -120,6 +120,27 @@ test("EXPECT_APPROACH sets scratchpad only", () => {
   expect(ac.intent.clearedApproachId).toBeNull();
 });
 
+test("INTERCEPT_LOCALIZER arms INTERCEPT_LOC without clearing the approach", () => {
+  const ac = jet();
+  const assigned = ac.intent.assignedAltitudeFt;
+  applyIntent(ac, [{ type: "INTERCEPT_LOCALIZER", approachId: "ILS27" }], 0);
+  expect(ac.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "ILS27" });
+  expect(ac.intent.clearedApproachId).toBeNull();
+  expect(ac.intent.assignedAltitudeFt).toBe(assigned);
+  expect(ac.intent.vertical?.type === "GS").toBeFalsy();
+});
+
+test("INTERCEPT_LOCALIZER after APP drops GS arming", () => {
+  const ac = jet();
+  applyIntent(ac, [{ type: "CLEARED_APPROACH", approachId: "ILS27" }], 0);
+  ac.intent.lateral = { type: "LOC", approachId: "ILS27" };
+  ac.intent.vertical = { type: "GS", approachId: "ILS27" };
+  applyIntent(ac, [{ type: "INTERCEPT_LOCALIZER", approachId: "ILS27" }], 0);
+  expect(ac.intent.clearedApproachId).toBeNull();
+  expect(ac.intent.vertical).toEqual({ type: "ASSIGNED" });
+  expect(ac.intent.lateral).toEqual({ type: "LOC", approachId: "ILS27" });
+});
+
 test("heading after APP clears intercept so they must APP again", () => {
   const ac = jet();
   applyIntent(ac, [{ type: "CLEARED_APPROACH", approachId: "ILS27" }], 0);

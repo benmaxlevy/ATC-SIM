@@ -140,6 +140,15 @@ test("v1 phrase table: present heading, turn degrees, speed, ident, say, ils", (
     { type: "CLEARED_APPROACH", approachId: "ILS27" },
   ]);
   expectOk("proceed direct kdem", "DAL123", [{ type: "DIRECT", fixId: "KDEM" }]);
+  expectOk("intercept the runway two seven localizer", "DAL123", [
+    { type: "INTERCEPT_LOCALIZER", approachId: "ILS27" },
+  ]);
+  expectOk("intercept runway two seven localizer", "DAL123", [
+    { type: "INTERCEPT_LOCALIZER", approachId: "ILS27" },
+  ]);
+  expectOk("intercept the localizer runway two seven", "DAL123", [
+    { type: "INTERCEPT_LOCALIZER", approachId: "ILS27" },
+  ]);
 });
 
 test("T04-05 Path A — combined ILS vector until established (R01)", () => {

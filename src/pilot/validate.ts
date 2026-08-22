@@ -92,6 +92,14 @@ function validateOne(
         return { ok: false, reason: "UNKNOWN_APPROACH" };
       }
       return { ok: true };
+    case "INTERCEPT_LOCALIZER":
+      if (instruction.approachId.trim() === "") {
+        return { ok: false, reason: "EMPTY" };
+      }
+      if (!approachKnown(instruction.approachId, opts)) {
+        return { ok: false, reason: "UNKNOWN_APPROACH" };
+      }
+      return { ok: true };
     case "EXPECT_APPROACH":
       if (instruction.approachId.trim() === "") {
         return { ok: false, reason: "EMPTY" };

@@ -288,3 +288,57 @@ test("H270 after GS capture still cancels FMS including GS", async () => {
   expect(dal.intent.vertical?.type === "GS").toBeFalsy();
   expect(dal.altitudeFt).toBeCloseTo(2000, 0);
 });
+
+test("IL ILS27 intercepts loc, holds assigned altitude, never captures GS", async () => {
+  const { dal, world, log } = worldWithDal(northOfLoc({ headingDeg: 240, altitudeFt: 4000 }));
+  const spoken = await handleRadioText(
+    world,
+    "DAL123 intercept the runway two seven localizer",
+    log,
+  );
+  expect(spoken.accepted).toBe(true);
+  expect(spoken.readback.toLowerCase()).toContain("intercept the runway two seven localizer");
+  expect(dal.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "ILS27" });
+  expect(dal.intent.clearedApproachId).toBeNull();
+
+  const captured = stepUntil(world, () => dal.intent.lateral?.type === "LOC", 8 * 60 * 1000);
+  expect(captured).toBe(true);
+  expect(log.byType("nav.loc.captured")).toHaveLength(1);
+  for (let i = 0; i < Math.round(20 / SIM_DT_S); i += 1) {
+    stepWorld(world, SIM_DT_S);
+  }
+  expect(dal.intent.lateral?.type).toBe("LOC");
+  expect(dal.intent.vertical?.type === "GS").toBeFalsy();
+  expect(log.byType("nav.gs.captured")).toHaveLength(0);
+  expect(Math.abs(dal.yNm)).toBeLessThan(0.3);
+  expect(Math.abs(((dal.headingDeg - 270 + 540) % 360) - 180)).toBeLessThan(10);
+  expect(dal.altitudeFt).toBeCloseTo(4000, 0);
+});
+
+test("typed IL ILS27 then APP ILS27 allows GS after loc", async () => {
+  const dal = createAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    xNm: 8,
+    yNm: 0,
+    headingDeg: 270,
+    altitudeFt: 2000,
+    speedKt: 220,
+  });
+  const { world, log } = worldWithDal(dal);
+  const intercept = await handleRadioText(world, "DAL123 IL ILS27", log);
+  expect(intercept.accepted).toBe(true);
+  expect(dal.intent.clearedApproachId).toBeNull();
+  stepWorld(world, SIM_DT_S);
+  expect(dal.intent.lateral?.type).toBe("LOC");
+  stepUntil(world, () => false, 20_000);
+  expect(log.byType("nav.gs.captured")).toHaveLength(0);
+  expect(dal.altitudeFt).toBeCloseTo(2000, 0);
+
+  const app = await handleRadioText(world, "DAL123 APP ILS27", new SessionLog());
+  expect(app.accepted).toBe(true);
+  expect(dal.intent.clearedApproachId).toBe("ILS27");
+  expect(dal.intent.lateral?.type).toBe("LOC");
+  const gs = stepUntil(world, () => log.byType("nav.gs.captured").length > 0, 3 * 60 * 1000);
+  expect(gs).toBe(true);
+});

@@ -142,6 +142,23 @@ test("AC3 — above GS at 6 NM / 4000 does not capture", () => {
   expect(dal.altitudeFt).toBeCloseTo(4000, 0);
 });
 
+test("LOC without APP (no clearedApproachId) holds altitude — no GS", () => {
+  const ac = onLoc({ xNm: 6, altitudeFt: 2000 });
+  ac.intent.lateral = { type: "LOC", approachId: "ILS27" };
+  ac.intent.clearedApproachId = null;
+  const log = new SessionLog();
+  const world = createWorld({
+    aircraft: [ac],
+    catalog: kdemCatalog(),
+    sessionLog: log,
+  });
+  stepSeconds(world, 30);
+  expect(log.byType("nav.gs.captured")).toHaveLength(0);
+  expect(ac.intent.vertical?.type === "GS").toBeFalsy();
+  expect(ac.altitudeFt).toBeCloseTo(2000, 0);
+  expect(ac.intent.lateral?.type).toBe("LOC");
+});
+
 test("AC4 — H360 after GS capture clears GS; aircraft does not keep the 3° descent", () => {
   const { dal, world, log } = worldOnLoc(onLoc({ xNm: 8, altitudeFt: 2000 }));
   while (world.simTimeMs < 3 * 60 * 1000 && log.byType("nav.gs.captured").length === 0) {

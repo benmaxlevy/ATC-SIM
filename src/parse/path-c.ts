@@ -137,7 +137,7 @@ export function isLegalInstruction(value: unknown): value is Instruction {
   if (type === "DIRECT") {
     return keysOk(obj, ["type", "fixId"]) && typeof obj.fixId === "string" && obj.fixId.length > 0;
   }
-  if (type === "EXPECT_APPROACH" || type === "CLEARED_APPROACH") {
+  if (type === "EXPECT_APPROACH" || type === "CLEARED_APPROACH" || type === "INTERCEPT_LOCALIZER") {
     return (
       keysOk(obj, ["type", "approachId"]) &&
       typeof obj.approachId === "string" &&

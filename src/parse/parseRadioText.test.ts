@@ -36,6 +36,7 @@ const tokenTable: [string, Instruction][] = [
   ["SH", { type: "SAY_HEADING" }],
   ["SA", { type: "SAY_ALTITUDE" }],
   ["APP ILS27", { type: "CLEARED_APPROACH", approachId: "ILS27" }],
+  ["IL ILS27", { type: "INTERCEPT_LOCALIZER", approachId: "ILS27" }],
   ["GA", { type: "GO_AROUND" }],
 ];
 

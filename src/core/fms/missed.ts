@@ -128,7 +128,7 @@ function shouldStartMissedAtDa(ac: Aircraft, daFt: number): boolean {
     return false;
   }
   const onGs = ac.intent.vertical?.type === "GS";
-  const onLoc = ac.intent.lateral?.type === "LOC";
+  const onLoc = ac.intent.lateral?.type === "LOC" && Boolean(ac.intent.clearedApproachId);
   return onGs || onLoc;
 }
 

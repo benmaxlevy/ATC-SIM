@@ -324,6 +324,13 @@ function runwaySide(tok: string | undefined): string | null {
   return null;
 }
 
+function ilsApproachIdFromRunway(rwy: string): string {
+  const numeric = rwy.replace(/[LRC]$/i, "");
+  const padded = numeric.padStart(2, "0");
+  const side = rwy.slice(numeric.length);
+  return `ILS${padded}${side.toUpperCase()}`;
+}
+
 function tryCleared(c: Cursor): Instruction | null {
   const start = c.i;
   if (!take(c, "cleared") || !take(c, "ils")) {
@@ -338,10 +345,29 @@ function tryCleared(c: Cursor): Instruction | null {
     return null;
   }
   take(c, "approach");
-  const numeric = rwy.replace(/[LRC]$/i, "");
-  const padded = numeric.padStart(2, "0");
-  const side = rwy.slice(numeric.length);
-  return { type: "CLEARED_APPROACH", approachId: `ILS${padded}${side.toUpperCase()}` };
+  return { type: "CLEARED_APPROACH", approachId: ilsApproachIdFromRunway(rwy) };
+}
+
+function tryInterceptLocalizer(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "intercept")) {
+    return null;
+  }
+  take(c, "the");
+  const afterThe = c.i;
+  const rwyThenLoc = runwayId(c);
+  if (rwyThenLoc !== null && take(c, "localizer")) {
+    return { type: "INTERCEPT_LOCALIZER", approachId: ilsApproachIdFromRunway(rwyThenLoc) };
+  }
+  c.i = afterThe;
+  if (take(c, "localizer")) {
+    const locThenRwy = runwayId(c);
+    if (locThenRwy !== null) {
+      return { type: "INTERCEPT_LOCALIZER", approachId: ilsApproachIdFromRunway(locThenRwy) };
+    }
+  }
+  c.i = start;
+  return null;
 }
 
 function takeUntilEstablished(c: Cursor): boolean {
@@ -383,6 +409,7 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     tryIdent(c) ??
     tryGoAround(c) ??
     trySay(c) ??
+    tryInterceptLocalizer(c) ??
     tryCleared(c);
   if (!inst) {
     c.i = start;

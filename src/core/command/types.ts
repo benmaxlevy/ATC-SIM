@@ -49,6 +49,8 @@ export type Instruction =
   | { type: "DIRECT"; fixId: string }
   | { type: "EXPECT_APPROACH"; approachId: string }
   | { type: "CLEARED_APPROACH"; approachId: string }
+  /** Join the loc and track inbound; do not arm GS. APP later clears the approach. */
+  | { type: "INTERCEPT_LOCALIZER"; approachId: string }
   | { type: "IDENT" }
   | { type: "SAY_HEADING" }
   | { type: "SAY_ALTITUDE" }

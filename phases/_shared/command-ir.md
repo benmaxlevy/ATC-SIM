@@ -51,6 +51,7 @@ export type Instruction =
   | { type: "DIRECT"; fixId: string }
   | { type: "EXPECT_APPROACH"; approachId: string }
   | { type: "CLEARED_APPROACH"; approachId: string }
+  | { type: "INTERCEPT_LOCALIZER"; approachId: string }
   | { type: "IDENT" }
   | { type: "SAY_HEADING" }
   | { type: "SAY_ALTITUDE" }
@@ -84,6 +85,7 @@ Suggested v1 tokens (callsign optional if a track is selected):
 | `PH` | `PRESENT_HEADING` |
 | `I` | `IDENT` |
 | `APP ILS27` | `CLEARED_APPROACH` (phase 1 may accept and no-op fly-through; phase 4 fly-through) |
+| `IL ILS27` | `INTERCEPT_LOCALIZER` — join loc, hold assigned altitude, **no GS** until `APP` |
 | `R240 A20 APP ILS27` | `FLY_HEADING 240 RIGHT` + `ALTITUDE MAINTAIN 2000 untilEstablished` + `CLEARED_APPROACH ILS27` (phase 4; same-line heading+alt+APP) |
 | `VIA DEM1` | `DESCEND_VIA { procedureId: "DEM1" }` (`D` stays descend; via is `VIA`) |
 | `CVIA DEM1` | `CLIMB_VIA { procedureId: "DEM1" }` |
@@ -116,13 +118,14 @@ Deterministic. Example:
 - `ALTITUDE DESCEND 3000` → `{callsign} descend and maintain three thousand`
 - Combined: join with comma, callsign once at the start.
 - `GO_AROUND` → `{callsign} going around`
+- `INTERCEPT_LOCALIZER ILS27` → `{callsign} intercept the runway two seven localizer`
 - Phase 4 ILS (7110.65 vector to final): `{callsign} turn right heading two four zero, maintain two thousand until established, cleared i l s runway two seven approach`
 
 Use FAA digit grouping (eleven, twelve, … thousand). Spell callsign as airline telephony if mapped, else char-by-char.
 
 ## Reserved additions (phase 4 only)
 
-`DESCEND_VIA`, `CLIMB_VIA`, and `CROSS` are in the union above (T04-04). `GO_AROUND` is T04-07 (`GA` typed token). Immediate missed path when `clearedApproachId` is set; do not wait for DA.
+`DESCEND_VIA`, `CLIMB_VIA`, and `CROSS` are in the union above (T04-04). `GO_AROUND` is T04-07 (`GA` typed token). Immediate missed path when `clearedApproachId` is set; do not wait for DA. `INTERCEPT_LOCALIZER` (`IL ILS27`; spoken *intercept the runway two seven localizer*) joins the loc and tracks inbound at assigned altitude. It does **not** set `clearedApproachId` and does **not** capture GS. `APP` later arms the approach (GS from below).
 
 **ILS combined clearance (phase 4 — T04-05 patches Path A + readback in the same PR):** one `Command` with three instructions, in this order:
 

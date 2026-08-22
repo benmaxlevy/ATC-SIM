@@ -30,6 +30,7 @@ INSTRUCTION_TYPES = frozenset(
         "DIRECT",
         "EXPECT_APPROACH",
         "CLEARED_APPROACH",
+        "INTERCEPT_LOCALIZER",
         "IDENT",
         "SAY_HEADING",
         "SAY_ALTITUDE",
@@ -63,6 +64,7 @@ Instruction is exactly one of these frozen Command IR v0 types (no other "type")
 - {"type": "DIRECT", "fixId": string}
 - {"type": "EXPECT_APPROACH", "approachId": string}
 - {"type": "CLEARED_APPROACH", "approachId": string}
+- {"type": "INTERCEPT_LOCALIZER", "approachId": string}
 - {"type": "IDENT"}
 - {"type": "SAY_HEADING"}
 - {"type": "SAY_ALTITUDE"}
@@ -83,6 +85,7 @@ Rules:
 - "without delay" on climb/descend is expedite: true.
 - iden / ident / squawk ident → IDENT.
 - go around / going around / GA → GO_AROUND.
+- intercept the runway 27 localizer / IL ILS27 → INTERCEPT_LOCALIZER (loc only, no GS). cleared ILS → CLEARED_APPROACH.
 - If the user message includes onFrequency, callsignToken MUST be one of those ICAO tokens or null. Map noisy ASR (e.g. "giblet 204") to the listed flight number. Do not copy ASR junk. Do not invent a callsign that is not listed.
 - source is a hint (keyboard tokens vs ASR English), not a second schema.
 """
@@ -281,6 +284,14 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         ):
             return None
         return {"type": "CLEARED_APPROACH", "approachId": raw["approachId"]}
+    if instr_type == "INTERCEPT_LOCALIZER":
+        if (
+            not _exact_keys(raw, {"type", "approachId"})
+            or not isinstance(raw["approachId"], str)
+            or not raw["approachId"]
+        ):
+            return None
+        return {"type": "INTERCEPT_LOCALIZER", "approachId": raw["approachId"]}
     if instr_type == "IDENT":
         if not _exact_keys(raw, {"type"}):
             return None

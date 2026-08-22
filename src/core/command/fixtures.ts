@@ -72,6 +72,15 @@ export const fixtureClearedApproach = {
   source: "text",
 } satisfies Command;
 
+export const fixtureInterceptLocalizer = {
+  id: "cmd-intercept-localizer",
+  issuedAtSimMs: 0,
+  callsign: "DAL123",
+  instructions: [{ type: "INTERCEPT_LOCALIZER", approachId: "ILS27" }],
+  sourceText: "DAL123 IL ILS27",
+  source: "text",
+} satisfies Command;
+
 export const fixtureIdent = {
   id: "cmd-ident",
   issuedAtSimMs: 0,
@@ -157,6 +166,7 @@ export const commandFixtures = [
   fixtureDirect,
   fixtureExpectApproach,
   fixtureClearedApproach,
+  fixtureInterceptLocalizer,
   fixtureIdent,
   fixtureSayHeading,
   fixtureSayAltitude,

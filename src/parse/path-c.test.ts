@@ -116,6 +116,7 @@ test("AC4 — CHAT type is a miss, no instructions dispatched", async () => {
     }),
   ).toBe(true);
   expect(isLegalInstruction({ type: "DESCEND_VIA" })).toBe(false);
+  expect(isLegalInstruction({ type: "INTERCEPT_LOCALIZER", approachId: "ILS27" })).toBe(true);
   expect(isLegalInstruction({ type: "GO_AROUND" })).toBe(true);
   expect(isLegalInstruction({ type: "GO_AROUND", extra: true })).toBe(false);
 });

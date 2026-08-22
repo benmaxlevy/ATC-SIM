@@ -116,7 +116,16 @@ test("CLEARED_APPROACH needs a known approachId when catalog is present", () => 
       approachIds: ["ILS27"],
     }).ok,
   ).toBe(true);
-  expect(validateInstructions(jet(), [{ type: "SAY_HEADING" }]).ok).toBe(true);
+  expect(
+    validateInstructions(jet(), [{ type: "INTERCEPT_LOCALIZER", approachId: "ILS27" }], {
+      approachIds: ["ILS27"],
+    }).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(jet(), [{ type: "INTERCEPT_LOCALIZER", approachId: "ILS99" }], {
+      approachIds: ["ILS27"],
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_APPROACH" });
   expect(validateInstructions(jet(), [{ type: "IDENT" }]).ok).toBe(true);
 });
 

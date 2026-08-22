@@ -49,6 +49,18 @@ function setHeadingMode(
   aircraft.intent.clearedApproachId = null;
 }
 
+/** Keep LOC if already established on this approach; otherwise arm intercept heading. */
+function armLocIntercept(aircraft: Aircraft, approachId: string): void {
+  const lateral = aircraft.intent.lateral;
+  const alreadyOnThisLoc =
+    (lateral?.type === "LOC" || lateral?.type === "INTERCEPT_LOC") &&
+    lateral.approachId === approachId;
+  if (alreadyOnThisLoc) {
+    return;
+  }
+  aircraft.intent.lateral = { type: "INTERCEPT_LOC", approachId };
+}
+
 function applyOne(
   aircraft: Aircraft,
   instruction: Instruction,
@@ -79,7 +91,14 @@ function applyOne(
       return;
     case "CLEARED_APPROACH":
       aircraft.intent.clearedApproachId = instruction.approachId;
-      aircraft.intent.lateral = { type: "INTERCEPT_LOC", approachId: instruction.approachId };
+      armLocIntercept(aircraft, instruction.approachId);
+      return;
+    case "INTERCEPT_LOCALIZER":
+      aircraft.intent.clearedApproachId = null;
+      if (aircraft.intent.vertical?.type === "GS") {
+        aircraft.intent.vertical = { type: "ASSIGNED" };
+      }
+      armLocIntercept(aircraft, instruction.approachId);
       return;
     case "EXPECT_APPROACH":
       aircraft.intent.expectedApproachId = instruction.approachId;
