@@ -89,7 +89,7 @@ test("AC2 — APP ILS27 arms INTERCEPT_LOC from heading 240", async () => {
   expect(dal.headingDeg).toBeCloseTo(240, 0);
 });
 
-test("IL off a stale assigned heading holds present heading until loc", async () => {
+test("IL off a STAR keeps the procedure until loc capture", async () => {
   const { dal, world } = worldWithDal(northOfLoc({ headingDeg: 200, altitudeFt: 4000 }));
   dal.intent.assignedHeadingDeg = 270;
   dal.intent.lateral = {
@@ -100,14 +100,42 @@ test("IL off a stale assigned heading holds present heading until loc", async ()
   };
   const result = await handleRadioText(world, "DAL123 IL ILS27", new SessionLog());
   expect(result.accepted).toBe(true);
-  expect(dal.intent.assignedHeadingDeg).toBe(200);
-  expect(dal.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "ILS27" });
+  expect(dal.intent.locInterceptApproachId).toBe("ILS27");
+  expect(dal.intent.lateral?.type).toBe("PROCEDURE");
   for (let i = 0; i < Math.round(20 / SIM_DT_S); i += 1) {
     stepWorld(world, SIM_DT_S);
   }
-  expect(dal.intent.lateral?.type).toBe("INTERCEPT_LOC");
-  expect(dal.headingDeg).toBeCloseTo(200, 0);
+  expect(dal.intent.lateral?.type === "LOC").toBe(false);
+  expect(Math.abs(((dal.headingDeg - 270 + 540) % 360) - 180)).toBeGreaterThan(20);
   expect(dal.yNm).toBeGreaterThan(2);
+});
+
+test("DCT MERGE then IL ILS27 continues to MERGE and intercepts when able", async () => {
+  const { dal, world, log } = worldWithDal(northOfLoc({ headingDeg: 240, altitudeFt: 4000 }));
+  world.sessionLog = log;
+  const direct = await handleRadioText(world, "DAL123 DCT MERGE", log);
+  expect(direct.accepted).toBe(true);
+  const intercept = await handleRadioText(world, "DAL123 IL ILS27", log);
+  expect(intercept.accepted).toBe(true);
+  expect(dal.intent.lateral).toEqual({ type: "DIRECT", fixId: "MERGE" });
+  expect(dal.intent.locInterceptApproachId).toBe("ILS27");
+
+  for (let i = 0; i < Math.round(20 / SIM_DT_S); i += 1) {
+    stepWorld(world, SIM_DT_S);
+  }
+  expect(dal.intent.lateral).toEqual({ type: "DIRECT", fixId: "MERGE" });
+  expect(dal.headingDeg).not.toBeCloseTo(270, 0);
+  expect(dal.yNm).toBeGreaterThan(2);
+
+  const captured = stepUntil(world, () => dal.intent.lateral?.type === "LOC", 8 * 60 * 1000);
+  expect(captured).toBe(true);
+  expect(log.byType("nav.loc.captured")).toHaveLength(1);
+  for (let i = 0; i < Math.round(20 / SIM_DT_S); i += 1) {
+    stepWorld(world, SIM_DT_S);
+  }
+  expect(dal.intent.lateral?.type).toBe("LOC");
+  expect(Math.abs(dal.yNm)).toBeLessThan(0.3);
+  expect(Math.abs(((dal.headingDeg - 270 + 540) % 360) - 180)).toBeLessThan(10);
 });
 
 test("AC2b — Path A ILS vector sets untilEstablished, holds 2000, no GS", async () => {

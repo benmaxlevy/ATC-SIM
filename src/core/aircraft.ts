@@ -56,6 +56,11 @@ export interface Intent {
   /** Armed ILS id after CLEARED_APPROACH; heading instructions clear this. */
   clearedApproachId: string | null;
   /**
+   * Loc intercept armed by `IL` / `APP`. Capture may fire while still
+   * `DIRECT` / `PROCEDURE` / `HEADING`. Heading instructions clear this.
+   */
+  locInterceptApproachId: string | null;
+  /**
    * Tower stub (T04-12) may set this so DA does not start missed.
    * Default omitted/false. Honor `lateral === LANDING` the same way.
    */
@@ -129,6 +134,7 @@ export function createAircraft(init: AircraftInit): Aircraft {
       assignedSpeedKt: init.speedKt,
       expectedApproachId: null,
       clearedApproachId: null,
+      locInterceptApproachId: null,
     },
     identUntilSimMs: 0,
     ...(init.aircraftType ? { aircraftType: init.aircraftType.toUpperCase() } : {}),

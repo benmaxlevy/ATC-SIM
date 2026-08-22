@@ -81,6 +81,8 @@ export function locDeviation(pos: NmPoint, axis: LocAxis): LocDeviation {
  * Capture when all of:
  * 1. `0.5 NM < alongTrack < lengthNm` (in front of threshold, inside loc)
  * 2. intercept heading within 45° of inbound **or** already `|δ| < 0.5°`
+ *    (omit the 45° gate when `requireInterceptHeading` is false — DIRECT/STAR
+ *    join when able)
  * 3. `|δ| < 0.5°` **or** `|crossTrack| < 0.15 NM`
  *
  * Never capture behind the threshold (along-track ≤ 0).
@@ -89,12 +91,19 @@ export function locShouldCapture(args: {
   deviation: LocDeviation;
   headingDeg: number;
   axis: LocAxis;
+  /**
+   * Heading intercepts require course within 45° of inbound (unless already
+   * `|δ| < 0.5°`). DIRECT / STAR "when able" joins when on the loc even if the
+   * path heading is steeper than 45°.
+   */
+  requireInterceptHeading?: boolean;
 }): boolean {
   const { alongTrackNm, crossTrackNm, deviationDeg } = args.deviation;
   if (!(alongTrackNm > LOC_ALONG_MIN_NM && alongTrackNm < args.axis.lengthNm)) {
     return false;
   }
   const headingOk =
+    args.requireInterceptHeading === false ||
     courseChangeDeg(args.headingDeg, args.axis.courseDeg) <= LOC_INTERCEPT_HEADING_MAX_DEG ||
     Math.abs(deviationDeg) < LOC_CAPTURE_DEV_DEG;
   if (!headingOk) {

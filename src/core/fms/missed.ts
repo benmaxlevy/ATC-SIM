@@ -110,6 +110,7 @@ export function beginMissedApproach(
   ac.intent.lateral = { type: "MISSED", approachId };
   ac.intent.vertical = { type: "MISSED_CLIMB", altitudeFt: spec.climbToFt };
   ac.intent.cross = undefined;
+  ac.intent.locInterceptApproachId = null;
   ctx.log?.append({
     type: "nav.missed.started",
     atSimMs: ctx.simTimeMs,

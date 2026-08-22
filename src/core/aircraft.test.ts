@@ -30,6 +30,7 @@ test("Aircraft and Intent compile under strict and export from @core (AC1)", () 
   expectTypeOf<Intent>().toHaveProperty("assignedSpeedKt");
   expectTypeOf<Intent>().toHaveProperty("expectedApproachId");
   expectTypeOf<Intent>().toHaveProperty("clearedApproachId");
+  expectTypeOf<Intent>().toHaveProperty("locInterceptApproachId");
   expectTypeOf<Intent>().toHaveProperty("lateral");
   expectTypeOf<Intent>().toHaveProperty("vertical");
   expectTypeOf<Intent["lateral"]>().toEqualTypeOf<LateralMode | undefined>();
@@ -69,6 +70,7 @@ test("fresh aircraft intent matches present heading, altitude, and speed (AC3)",
   expect(ac.intent.turn).toBe("SHORTEST");
   expect(ac.intent.expectedApproachId).toBeNull();
   expect(ac.intent.clearedApproachId).toBeNull();
+  expect(ac.intent.locInterceptApproachId).toBeNull();
   expect(ac.identUntilSimMs).toBe(0);
 });
 

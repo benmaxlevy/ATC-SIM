@@ -108,6 +108,7 @@ test("SAY_* leave heading/alt/speed intent alone; CLEARED_APPROACH arms INTERCEP
   expect(ac.intent.assignedAltitudeFt).toBe(before.assignedAltitudeFt);
   expect(ac.intent.assignedSpeedKt).toBe(before.assignedSpeedKt);
   expect(ac.intent.clearedApproachId).toBe("ILS27");
+  expect(ac.intent.locInterceptApproachId).toBe("ILS27");
   expect(ac.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "ILS27" });
 });
 
@@ -125,25 +126,49 @@ test("INTERCEPT_LOCALIZER arms INTERCEPT_LOC without clearing the approach", () 
   const assigned = ac.intent.assignedAltitudeFt;
   applyIntent(ac, [{ type: "INTERCEPT_LOCALIZER", approachId: "ILS27" }], 0);
   expect(ac.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "ILS27" });
+  expect(ac.intent.locInterceptApproachId).toBe("ILS27");
   expect(ac.intent.clearedApproachId).toBeNull();
   expect(ac.intent.assignedAltitudeFt).toBe(assigned);
   expect(ac.intent.vertical?.type === "GS").toBeFalsy();
 });
 
-test("IL without a heading holds present heading, not a stale assigned heading", () => {
+test("IL on PROCEDURE keeps the STAR and arms loc capture", () => {
   const ac = jet();
   ac.headingDeg = 200;
   ac.intent.assignedHeadingDeg = 270;
-  ac.intent.lateral = {
-    type: "PROCEDURE",
+  const star = {
+    type: "PROCEDURE" as const,
     starId: "DEM1",
     toFixIndex: 2,
     routeFixIds: ["NEMAX", "NELBO", "NJOIN", "MERGE"],
   };
+  ac.intent.lateral = star;
   applyIntent(ac, [{ type: "INTERCEPT_LOCALIZER", approachId: "ILS27" }], 0);
-  expect(ac.intent.assignedHeadingDeg).toBe(200);
-  expect(ac.intent.turn).toBe("SHORTEST");
-  expect(ac.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "ILS27" });
+  expect(ac.intent.lateral).toEqual(star);
+  expect(ac.intent.locInterceptApproachId).toBe("ILS27");
+  expect(ac.intent.assignedHeadingDeg).toBe(270);
+});
+
+test("IL on DIRECT MERGE keeps the fix and arms loc capture", () => {
+  const ac = jet();
+  ac.intent.lateral = { type: "DIRECT", fixId: "MERGE" };
+  applyIntent(ac, [{ type: "INTERCEPT_LOCALIZER", approachId: "ILS27" }], 0);
+  expect(ac.intent.lateral).toEqual({ type: "DIRECT", fixId: "MERGE" });
+  expect(ac.intent.locInterceptApproachId).toBe("ILS27");
+});
+
+test("same-command DCT MERGE IL ILS27 keeps DIRECT", () => {
+  const ac = jet();
+  applyIntent(
+    ac,
+    [
+      { type: "DIRECT", fixId: "MERGE" },
+      { type: "INTERCEPT_LOCALIZER", approachId: "ILS27" },
+    ],
+    0,
+  );
+  expect(ac.intent.lateral).toEqual({ type: "DIRECT", fixId: "MERGE" });
+  expect(ac.intent.locInterceptApproachId).toBe("ILS27");
 });
 
 test("same-command heading is the intercept heading (R240 IL ILS27)", () => {
@@ -161,6 +186,7 @@ test("same-command heading is the intercept heading (R240 IL ILS27)", () => {
   expect(ac.intent.assignedHeadingDeg).toBe(240);
   expect(ac.intent.turn).toBe("RIGHT");
   expect(ac.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "ILS27" });
+  expect(ac.intent.locInterceptApproachId).toBe("ILS27");
 });
 
 test("INTERCEPT_LOCALIZER after APP drops GS arming", () => {
@@ -180,6 +206,7 @@ test("heading after APP clears intercept so they must APP again", () => {
   applyIntent(ac, [{ type: "FLY_HEADING", headingDeg: 90, turn: "SHORTEST" }], 0);
   expect(ac.intent.lateral).toEqual({ type: "HEADING", headingDeg: 90 });
   expect(ac.intent.clearedApproachId).toBeNull();
+  expect(ac.intent.locInterceptApproachId).toBeNull();
   expect(ac.intent.assignedHeadingDeg).toBe(90);
 });
 

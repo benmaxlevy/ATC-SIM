@@ -19,10 +19,12 @@ import {
   distanceNm,
   flyByStartNm,
   flyOverSequenceNm,
+  type NmPoint,
 } from "../nav/geometry";
 import type { LocAxis } from "../nav/localizer";
 import {
   LOC_BREAKOUT_S,
+  LOC_INTERCEPT_HEADING_MAX_DEG,
   locDeviation,
   locShouldBreakout,
   locShouldCapture,
@@ -49,12 +51,16 @@ export function applyLateralFms(
   dtS: number,
   ctx: LateralFmsContext,
 ): number | undefined {
+  const captured = tryArmedLocCapture(ac, ctx);
+  if (captured !== undefined) {
+    return captured;
+  }
   const lateral = ac.intent.lateral;
   if (!lateral) {
     return undefined;
   }
   if (lateral.type === "INTERCEPT_LOC") {
-    return guideIntercept(ac, lateral.approachId, ctx);
+    return ac.intent.assignedHeadingDeg;
   }
   if (lateral.type === "LOC") {
     return guideLoc(ac, lateral, ctx);
@@ -125,6 +131,9 @@ function guideDirect(
     return ac.intent.assignedHeadingDeg;
   }
   if (shouldSequenceFlyOver(ac, fix, dtS)) {
+    if (holdFixForLocIntercept(ac, fix)) {
+      return courseDeg(ac, fix);
+    }
     emitDirectSequenced(ac, ctx, fix.id);
     sequenceToPresentHeading(ac);
     return ac.headingDeg;
@@ -161,6 +170,9 @@ function guideProcedure(
   if (dist > startNm && dist >= flyOverSequenceNm(ac.speedKt, dtS)) {
     return inbound;
   }
+  if (nextFix === undefined && holdFixForLocIntercept(ac, current)) {
+    return inbound;
+  }
   emitDirectSequenced(ac, ctx, current.id);
   if (nextFix !== undefined && nextId !== undefined) {
     ac.intent.lateral = {
@@ -185,10 +197,23 @@ function shouldSequenceFlyOver(ac: Aircraft, fix: RegisteredFix, dtS: number): b
   return along <= 0 && dist < 2;
 }
 
+/** Stay on DCT/last STAR fix until loc capture (or the fix is behind). */
+function holdFixForLocIntercept(ac: Aircraft, fix: NmPoint): boolean {
+  if (!ac.intent.locInterceptApproachId) {
+    return false;
+  }
+  return alongTrackNm(ac, fix, ac.headingDeg) > 0;
+}
+
 function sequenceToPresentHeading(ac: Aircraft): void {
   const headingDeg = ac.headingDeg;
   ac.intent.assignedHeadingDeg = headingDeg;
   ac.intent.turn = "SHORTEST";
+  const interceptId = ac.intent.locInterceptApproachId;
+  if (interceptId) {
+    ac.intent.lateral = { type: "INTERCEPT_LOC", approachId: interceptId };
+    return;
+  }
   ac.intent.lateral = { type: "HEADING", headingDeg };
 }
 
@@ -216,27 +241,64 @@ function emitStarVectors(ac: Aircraft, ctx: LateralFmsContext, starId: string): 
 
 const locBreakoutSinceMs = new WeakMap<Aircraft, number>();
 
-function guideIntercept(ac: Aircraft, approachId: string, ctx: LateralFmsContext): number {
+function armedLocApproachId(ac: Aircraft): string | null {
+  if (ac.intent.locInterceptApproachId) {
+    return ac.intent.locInterceptApproachId;
+  }
+  const lateral = ac.intent.lateral;
+  if (lateral?.type === "INTERCEPT_LOC") {
+    return lateral.approachId;
+  }
+  return null;
+}
+
+/** Capture when able; otherwise leave DIRECT / PROCEDURE / heading in force. */
+function tryArmedLocCapture(ac: Aircraft, ctx: LateralFmsContext): number | undefined {
+  const approachId = armedLocApproachId(ac);
+  if (!approachId) {
+    return undefined;
+  }
+  const lateralType = ac.intent.lateral?.type;
+  if (lateralType === "LOC" || lateralType === "LANDING" || lateralType === "MISSED") {
+    return undefined;
+  }
   const axis = ctx.locAxisFor?.(approachId);
   if (!axis) {
-    return ac.intent.assignedHeadingDeg;
+    return undefined;
   }
   const deviation = locDeviation({ xNm: ac.xNm, yNm: ac.yNm }, axis);
-  if (locShouldCapture({ deviation, headingDeg: ac.headingDeg, axis })) {
-    locBreakoutSinceMs.delete(ac);
-    ac.intent.lateral = { type: "LOC", approachId };
-    ctx.log?.append({
-      type: "nav.loc.captured",
-      atSimMs: ctx.simTimeMs,
-      atWallMs: 0,
-      callsign: ac.callsign,
-      approachId,
-    });
-    return axis.courseDeg;
+  const onPublishedPath = lateralType === "DIRECT" || lateralType === "PROCEDURE";
+  if (
+    !locShouldCapture({
+      deviation,
+      headingDeg: ac.headingDeg,
+      axis,
+      requireInterceptHeading: !onPublishedPath,
+    })
+  ) {
+    return undefined;
   }
-  // Hold assigned heading (present heading unless the clearance included a
-  // vector). Do not command loc inbound until capture.
-  return ac.intent.assignedHeadingDeg;
+  locBreakoutSinceMs.delete(ac);
+  ac.intent.lateral = { type: "LOC", approachId };
+  ac.intent.locInterceptApproachId = null;
+  // Steep DIRECT/STAR joins would fly through the beam during a rate-one
+  // turn onto inbound; snap heading so loc-guided track starts on course.
+  if (
+    onPublishedPath &&
+    courseChangeDeg(ac.headingDeg, axis.courseDeg) > LOC_INTERCEPT_HEADING_MAX_DEG
+  ) {
+    ac.headingDeg = axis.courseDeg;
+    ac.intent.assignedHeadingDeg = axis.courseDeg;
+    ac.intent.turn = "SHORTEST";
+  }
+  ctx.log?.append({
+    type: "nav.loc.captured",
+    atSimMs: ctx.simTimeMs,
+    atWallMs: 0,
+    callsign: ac.callsign,
+    approachId,
+  });
+  return axis.courseDeg;
 }
 
 function guideLoc(
@@ -260,6 +322,7 @@ function guideLoc(
     if (ctx.simTimeMs - since >= LOC_BREAKOUT_S * 1000) {
       locBreakoutSinceMs.delete(ac);
       ac.intent.lateral = { type: "INTERCEPT_LOC", approachId: lateral.approachId };
+      ac.intent.locInterceptApproachId = lateral.approachId;
       return ac.intent.assignedHeadingDeg;
     }
   } else {
