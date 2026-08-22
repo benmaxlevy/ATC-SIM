@@ -64,7 +64,9 @@ function speakApproachNav(approachId: string): string {
   const kindSpeech = [...kind].map((ch) => ch.toLowerCase()).join(" ");
   const runwaySpeech = speakDigitString(runway);
   const suffixSpeech = suffix ? suffix.toLowerCase() : "";
-  return [kindSpeech, "runway", runwaySpeech, suffixSpeech].filter((part) => part.length > 0).join(" ");
+  return [kindSpeech, "runway", runwaySpeech, suffixSpeech]
+    .filter((part) => part.length > 0)
+    .join(" ");
 }
 
 function formatSpeedClause(instruction: Extract<Instruction, { type: "SPEED" }>): string {

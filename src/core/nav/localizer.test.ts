@@ -30,17 +30,11 @@ test("positive deviation is north of course (KDEM ILS 27)", () => {
 
 test("capture table: on course, too far north, behind threshold, outside 18 NM", () => {
   const onCourse = locDeviation({ xNm: 6, yNm: 0 }, ils27);
-  expect(
-    locShouldCapture({ deviation: onCourse, headingDeg: 270, axis: ils27 }),
-  ).toBe(true);
-  expect(
-    locShouldCapture({ deviation: onCourse, headingDeg: 90, axis: ils27 }),
-  ).toBe(true);
+  expect(locShouldCapture({ deviation: onCourse, headingDeg: 270, axis: ils27 })).toBe(true);
+  expect(locShouldCapture({ deviation: onCourse, headingDeg: 90, axis: ils27 })).toBe(true);
 
   const intercept = locDeviation({ xNm: 12, yNm: 4 }, ils27);
-  expect(
-    locShouldCapture({ deviation: intercept, headingDeg: 240, axis: ils27 }),
-  ).toBe(false);
+  expect(locShouldCapture({ deviation: intercept, headingDeg: 240, axis: ils27 })).toBe(false);
   expect(Math.abs(intercept.crossTrackNm)).toBeGreaterThan(LOC_CAPTURE_CROSS_NM);
 
   const behind = locDeviation({ xNm: -1, yNm: 0 }, ils27);
@@ -83,5 +77,11 @@ test("locAxisForApproach reads catalog course/length and threshold fix", () => {
     registry,
   );
   expect(axis).toEqual(kdemIls27LocAxis());
-  expect(locAxisForApproach("ILS99", { approaches: [{ id: "ILS27", courseDeg: 270, lengthNm: 18 }] }, registry)).toBeUndefined();
+  expect(
+    locAxisForApproach(
+      "ILS99",
+      { approaches: [{ id: "ILS27", courseDeg: 270, lengthNm: 18 }] },
+      registry,
+    ),
+  ).toBeUndefined();
 });

@@ -79,9 +79,7 @@ test("gsParamsForApproach uses catalog fields and KDEM defaults", () => {
       approaches: [{ id: "ILS27", gsAngleDeg: 3, tchFt: 50 }],
     }),
   ).toEqual(kdem);
-  expect(
-    gsParamsForApproach("ILS27", { approaches: [{ id: "ILS27" }] }),
-  ).toEqual(kdem);
+  expect(gsParamsForApproach("ILS27", { approaches: [{ id: "ILS27" }] })).toEqual(kdem);
 });
 
 test("glidepath tests are DOM-free", () => {

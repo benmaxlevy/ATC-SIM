@@ -52,7 +52,10 @@ function rosterFromOpts(opts: ParseCommandOpts): string[] {
   return out;
 }
 
-function pathCContext(roster: readonly string[], selected: string | null): PathCContext | undefined {
+function pathCContext(
+  roster: readonly string[],
+  selected: string | null,
+): PathCContext | undefined {
   if (roster.length === 0 && !selected) {
     return undefined;
   }
@@ -135,7 +138,9 @@ export async function parseCommand(
             normalized,
             roster,
             selected,
-          ) ?? hit.callsignToken ?? spokenCallsignToken(normalized);
+          ) ??
+          hit.callsignToken ??
+          spokenCallsignToken(normalized);
         return okStage(
           {
             ok: true,

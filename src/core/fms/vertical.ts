@@ -247,8 +247,7 @@ function followGsAltitudeFt(
     return currentAltFt;
   }
   const geoVs = Math.abs(gsGeometricVsFpm(gsAngleDeg, groundSpeedKt));
-  const vsFpm =
-    currentAltFt - gsAltFt > 20 ? Math.min(CLIMB_RATE_FT_PER_MIN, geoVs * 1.5) : geoVs;
+  const vsFpm = currentAltFt - gsAltFt > 20 ? Math.min(CLIMB_RATE_FT_PER_MIN, geoVs * 1.5) : geoVs;
   const maxDownFt = (vsFpm / 60) * dtS;
   return Math.max(gsAltFt, currentAltFt - maxDownFt);
 }

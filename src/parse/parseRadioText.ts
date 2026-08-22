@@ -148,9 +148,7 @@ function parseOneInstruction(tokens: string[], index: number): InstructionParse 
     return {
       ok: true,
       instruction:
-        token === "VIA"
-          ? { type: "DESCEND_VIA", procedureId }
-          : { type: "CLIMB_VIA", procedureId },
+        token === "VIA" ? { type: "DESCEND_VIA", procedureId } : { type: "CLIMB_VIA", procedureId },
       nextIndex: index + 2,
     };
   }

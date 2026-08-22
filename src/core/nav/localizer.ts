@@ -100,7 +100,9 @@ export function locShouldCapture(args: {
   if (!headingOk) {
     return false;
   }
-  return Math.abs(deviationDeg) < LOC_CAPTURE_DEV_DEG || Math.abs(crossTrackNm) < LOC_CAPTURE_CROSS_NM;
+  return (
+    Math.abs(deviationDeg) < LOC_CAPTURE_DEV_DEG || Math.abs(crossTrackNm) < LOC_CAPTURE_CROSS_NM
+  );
 }
 
 export function locShouldBreakout(deviationDeg: number): boolean {

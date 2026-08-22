@@ -283,7 +283,9 @@ test("AC10 — Path C default false; disabled until health.parse ready; persist"
   expect(controller.setPathC(true)).toBe(false);
   expect(controller.prefs.pathC).toBe(false);
 
-  const readyFetch = vi.fn(async () => new Response(JSON.stringify({ parse: "ready" }), { status: 200 }));
+  const readyFetch = vi.fn(
+    async () => new Response(JSON.stringify({ parse: "ready" }), { status: 200 }),
+  );
   const readyController = createSpeechSettingsController({
     prefs: defaultSpeechPrefs(),
     parseReady: false,

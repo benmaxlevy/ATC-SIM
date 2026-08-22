@@ -109,9 +109,7 @@ function phoneticLetter(tok: string | undefined): string | null {
   return null;
 }
 
-function compactFlightNumber(
-  tok: string | undefined,
-): { value: string; letter: string } | null {
+function compactFlightNumber(tok: string | undefined): { value: string; letter: string } | null {
   if (tok === undefined) {
     return null;
   }
@@ -303,7 +301,9 @@ export function groundCallsignToRoster(
   roster: readonly string[],
   selectedCallsign?: string | null,
 ): string | null {
-  const list = [...new Set(roster.map((cs) => cs.trim().toUpperCase()).filter((cs) => cs.length > 0))];
+  const list = [
+    ...new Set(roster.map((cs) => cs.trim().toUpperCase()).filter((cs) => cs.length > 0)),
+  ];
   const selected = selectedCallsign?.trim().toUpperCase() || null;
 
   function uniqueSuffix(hint: string | null): string | null {

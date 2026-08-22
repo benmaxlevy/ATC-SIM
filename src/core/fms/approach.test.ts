@@ -53,7 +53,10 @@ function onLoc(args: { xNm: number; altitudeFt: number; headingDeg?: number }): 
   });
 }
 
-function worldOnLoc(ac: Aircraft, lateral: "LOC" | "INTERCEPT_LOC" = "LOC"): {
+function worldOnLoc(
+  ac: Aircraft,
+  lateral: "LOC" | "INTERCEPT_LOC" = "LOC",
+): {
   dal: Aircraft;
   world: World;
   log: SessionLog;

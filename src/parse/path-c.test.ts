@@ -267,9 +267,7 @@ test("schemaCheckPathC accepts legal FLY_HEADING and rejects extra keys", () => 
       instructions: [{ type: "FLY_HEADING", headingDeg: 270, turn: "LEFT", chat: true }],
     }),
   ).toBeNull();
-  expect(
-    schemaCheckPathC({ ok: true, callsignToken: null, instructions: [] }),
-  ).toBeNull();
+  expect(schemaCheckPathC({ ok: true, callsignToken: null, instructions: [] })).toBeNull();
 });
 
 test("default fetch body has no n-best or confidence", async () => {

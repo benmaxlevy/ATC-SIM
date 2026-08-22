@@ -11,12 +11,7 @@ import type { Aircraft } from "../aircraft";
 import type { SessionLog } from "../events/session-log";
 import { locAxisForApproach, locDeviation, type LocAxis } from "../nav/localizer";
 import type { World } from "../world";
-import {
-  isLandingInhibited,
-  isOnMissed,
-  missedApproachId,
-  missedSpecFor,
-} from "./missed";
+import { isLandingInhibited, isOnMissed, missedApproachId, missedSpecFor } from "./missed";
 
 /** Offer HO from this along-track inward (documented gate). */
 export const TOWER_HANDOFF_GATE_NM = 5;

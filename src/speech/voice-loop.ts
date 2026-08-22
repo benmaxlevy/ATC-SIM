@@ -10,7 +10,12 @@
 import type { Command, Instruction, ParseStage } from "@core";
 import type { PttCaptureEvent, PttUpResult } from "./capture/ptt-controller";
 import { SpeechNotAvailableError } from "./errors";
-import { markPttUp, recordAudioStart, recordSttConfidence, recordTranscriptLatency } from "./metrics";
+import {
+  markPttUp,
+  recordAudioStart,
+  recordSttConfidence,
+  recordTranscriptLatency,
+} from "./metrics";
 import type { VoiceUtteranceMetrics } from "./metrics";
 import { createReadbackPlayer, type ReadbackPlayer } from "./playback/readback-player";
 import { TransmitGate, type TransmitGateEvent } from "./playback/transmit-gate";

@@ -77,10 +77,7 @@ function errorCode(source: string): string | undefined {
   return result.error.split(":", 1)[0] ?? result.error;
 }
 
-function expectOk(
-  source: string,
-  instructions: Array<Record<string, unknown>>,
-): void {
+function expectOk(source: string, instructions: Array<Record<string, unknown>>): void {
   const result = parseRadioText(source);
   expect(result.ok).toBe(true);
   if (!result.ok) {

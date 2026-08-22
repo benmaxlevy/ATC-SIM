@@ -1,11 +1,5 @@
 import { expect, test } from "vitest";
-import {
-  SessionLog,
-  SIM_DT_S,
-  createAircraft,
-  createWorld,
-  stepWorld,
-} from "@core";
+import { SessionLog, SIM_DT_S, createAircraft, createWorld, stepWorld } from "@core";
 import type { Instruction } from "@core";
 import { handleRadioText } from "./handleRadioText";
 import { parseCommand } from "@parse";
@@ -146,11 +140,7 @@ test("AC3 — from (12, 4) / 240, loc capture within 8 sim minutes", async () =>
   const result = await handleRadioText(world, "DAL123 APP ILS27", log);
   expect(result.accepted).toBe(true);
 
-  const found = stepUntil(
-    world,
-    () => log.byType("nav.loc.captured").length > 0,
-    8 * 60 * 1000,
-  );
+  const found = stepUntil(world, () => log.byType("nav.loc.captured").length > 0, 8 * 60 * 1000);
   expect(found).toBe(true);
   expect(log.byType("nav.loc.captured")).toHaveLength(1);
   expect(log.byType("nav.loc.captured")[0]?.approachId).toBe("ILS27");
@@ -185,11 +175,7 @@ test("AC4 — H090 after APP cancels loc; no recapture without APP", async () =>
 test("AC4 — H090 after LOC still requires a new APP", async () => {
   const { dal, world, log } = worldWithDal(northOfLoc({ headingDeg: 240, altitudeFt: 4000 }));
   await handleRadioText(world, "DAL123 APP ILS27", log);
-  const captured = stepUntil(
-    world,
-    () => dal.intent.lateral?.type === "LOC",
-    8 * 60 * 1000,
-  );
+  const captured = stepUntil(world, () => dal.intent.lateral?.type === "LOC", 8 * 60 * 1000);
   expect(captured).toBe(true);
 
   await handleRadioText(world, "DAL123 H090", new SessionLog());
@@ -261,11 +247,7 @@ test("AC4 — H360 after GS capture clears GS; no 3° descent from GS", async ()
   });
   const { world, log } = worldWithDal(dal);
   await handleRadioText(world, "DAL123 APP ILS27", log);
-  const found = stepUntil(
-    world,
-    () => log.byType("nav.gs.captured").length > 0,
-    3 * 60 * 1000,
-  );
+  const found = stepUntil(world, () => log.byType("nav.gs.captured").length > 0, 3 * 60 * 1000);
   expect(found).toBe(true);
   expect(dal.intent.vertical?.type).toBe("GS");
   const altAtCapture = dal.altitudeFt;
@@ -306,4 +288,3 @@ test("H270 after GS capture still cancels FMS including GS", async () => {
   expect(dal.intent.vertical?.type === "GS").toBeFalsy();
   expect(dal.altitudeFt).toBeCloseTo(2000, 0);
 });
-

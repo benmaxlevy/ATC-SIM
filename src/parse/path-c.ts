@@ -47,7 +47,11 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function keysOk(obj: object, required: readonly string[], optional: readonly string[] = []): boolean {
+function keysOk(
+  obj: object,
+  required: readonly string[],
+  optional: readonly string[] = [],
+): boolean {
   const allowed = new Set([...required, ...optional]);
   const keys = Object.keys(obj);
   for (const key of required) {
@@ -172,8 +176,7 @@ export function schemaCheckPathC(body: unknown): PathCSuccess | null {
   if (tokenRaw !== null && tokenRaw !== undefined && typeof tokenRaw !== "string") {
     return null;
   }
-  const callsignToken =
-    typeof tokenRaw === "string" && tokenRaw.trim() !== "" ? tokenRaw : null;
+  const callsignToken = typeof tokenRaw === "string" && tokenRaw.trim() !== "" ? tokenRaw : null;
   const list = obj.instructions;
   if (!Array.isArray(list) || list.length === 0) {
     return null;
@@ -188,7 +191,8 @@ export function schemaCheckPathC(body: unknown): PathCSuccess | null {
   return { callsignToken, instructions };
 }
 
-function defaultFetch(): ((input: RequestInfo | URL, init?: RequestInit) => Promise<Response>) | null {
+function defaultFetch():
+  ((input: RequestInfo | URL, init?: RequestInit) => Promise<Response>) | null {
   if (typeof globalThis.fetch === "function") {
     return globalThis.fetch.bind(globalThis);
   }

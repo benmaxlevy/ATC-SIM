@@ -91,7 +91,9 @@ test("ASR compact heading 270/360/090 is FLY_HEADING not TURN_DEGREES (R01)", ()
   const zeroNiner = spoken("turn right heading 090", "DAL123");
   expect(zeroNiner.ok).toBe(true);
   if (zeroNiner.ok) {
-    expect(zeroNiner.instructions).toEqual([{ type: "FLY_HEADING", headingDeg: 90, turn: "RIGHT" }]);
+    expect(zeroNiner.instructions).toEqual([
+      { type: "FLY_HEADING", headingDeg: 90, turn: "RIGHT" },
+    ]);
   }
   expect(spoken("turn right heading 90", "DAL123").ok).toBe(false);
 });
@@ -188,7 +190,9 @@ test("giblet 204 snaps to unique roster suffix SWA204", () => {
   expect(
     groundCallsignToRoster(null, normalizeSpoken("giblet 204 iden"), ["DAL123", "SWA204", "JBU17"]),
   ).toBe("SWA204");
-  expect(groundCallsignToRoster(null, normalizeSpoken("giblet 204 iden"), ["DAL123", "JBU17"])).toBeNull();
+  expect(
+    groundCallsignToRoster(null, normalizeSpoken("giblet 204 iden"), ["DAL123", "JBU17"]),
+  ).toBeNull();
 });
 
 test("digit-by-digit flight number still wins over compact grouping", () => {

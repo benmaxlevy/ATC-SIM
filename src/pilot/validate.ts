@@ -26,9 +26,7 @@ export type ValidateReason =
   | "UNKNOWN_APPROACH"
   | "NOT_ON_APPROACH";
 
-export type ValidateResult =
-  | { ok: true }
-  | { ok: false; reason: ValidateReason; detail?: string };
+export type ValidateResult = { ok: true } | { ok: false; reason: ValidateReason; detail?: string };
 
 export interface ValidateOpts {
   fixRegistry?: FixRegistry | null;

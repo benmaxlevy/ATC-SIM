@@ -121,9 +121,7 @@ export const fixtureCross = {
   id: "cmd-cross",
   issuedAtSimMs: 0,
   callsign: "DAL123",
-  instructions: [
-    { type: "CROSS", fixId: "NEMAX", altitudeFt: 4000, restriction: "AT" },
-  ],
+  instructions: [{ type: "CROSS", fixId: "NEMAX", altitudeFt: 4000, restriction: "AT" }],
   sourceText: "DAL123 X NEMAX 40",
   source: "text",
 } satisfies Command;
