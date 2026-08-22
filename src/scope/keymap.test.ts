@@ -114,6 +114,7 @@ const REQUIRED_BINDING_IDS = [
   "mode-c",
   "altitude-filter",
   "history-scope",
+  "tower-handoff",
   "radio-focus",
 ] as const;
 

@@ -11,6 +11,7 @@ import type { Command } from "../command/types";
  * T04-05 adds nav.loc.captured (INTERCEPT_LOC → LOC).
  * T04-06 adds nav.gs.captured (vertical → GS after loc, from below).
  * T04-07 adds nav.missed.started (DA or GO_AROUND).
+ * T04-12 adds handoff.tower (scope stub) and nav.landed (threshold despawn).
  */
 export type SessionEvent =
   | {
@@ -138,6 +139,20 @@ export type SessionEvent =
     }
   | {
       type: "nav.missed.started";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      approachId: string;
+    }
+  | {
+      type: "handoff.tower";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      approachId: string;
+    }
+  | {
+      type: "nav.landed";
       atSimMs: number;
       atWallMs: number;
       callsign: string;

@@ -1,7 +1,13 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { advanceWorld, createAccumulator } from "@core";
-import { createWorldForSession, loadKdem, parseTrafficCount } from "@scenario";
+import {
+  createWorldForSession,
+  loadKdem,
+  loadKdemIls27,
+  parseScenarioChoice,
+  parseTrafficCount,
+} from "@scenario";
 import { PpiPlaceholderId, createScopeView, paintPpi, parseDigitalMap } from "@scope";
 import {
   FPS_DEBUG_ID,
@@ -18,15 +24,16 @@ import { bootSession } from "./app/boot-session";
 import { createApp } from "./app/create-app";
 import "./index.css";
 
-const kdem = loadKdem();
+const search = window.location.search;
+const scenario = parseScenarioChoice(search) === "kdem-ils27" ? loadKdemIls27() : loadKdem();
 const speechBoot = loadAndResolveSpeechBoot();
 const handles = createApp({
   speech: speechBoot.port,
   speechPrefs: speechBoot.prefs,
   speechUrls: speechBoot.urls,
-  world: createWorldForSession(kdem, parseTrafficCount(window.location.search)),
+  world: createWorldForSession(scenario, parseTrafficCount(search)),
 });
-bootSession(handles, kdem, Date.now());
+bootSession(handles, scenario, Date.now());
 window.addEventListener("pagehide", () => {
   handles.voiceLoop.dispose();
   try {
@@ -37,11 +44,11 @@ window.addEventListener("pagehide", () => {
   handles.ptt.dispose();
 });
 
-const scopeView = createScopeView(kdem.arpNm.xNm, kdem.arpNm.yNm, {
-  digitalMap: parseDigitalMap(kdem.maps),
+const scopeView = createScopeView(scenario.arpNm.xNm, scenario.arpNm.yNm, {
+  digitalMap: parseDigitalMap(scenario.maps),
 });
 
-document.title = "ATC-SIM — KDEM";
+document.title = scenario.id === "kdem-ils27" ? "ATC-SIM — KDEM ILS 27" : "ATC-SIM — KDEM";
 
 const root = document.getElementById("root");
 if (!root) {
@@ -50,7 +57,7 @@ if (!root) {
 
 createRoot(root).render(
   <StrictMode>
-    <Shell app={handles} scenario={kdem} scopeView={scopeView} />
+    <Shell app={handles} scenario={scenario} scopeView={scopeView} />
   </StrictMode>,
 );
 

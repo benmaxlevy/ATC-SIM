@@ -28,6 +28,7 @@ import {
   isLeaderPrefixKey,
   isRadioFocusSlashKey,
   isScopeChordLive,
+  isTowerHandoffKey,
   leaderDigitFromKey,
 } from "./keymap";
 import { PpiPlaceholderId } from "./ppi-placeholder";
@@ -46,6 +47,7 @@ import {
   applyDropTrackToSelection,
   applyInitiateTrackToSelection,
 } from "./trackDisplay";
+import { applyTowerHandoffToSelection } from "./towerHandoff";
 
 export const ALWAYS_ON_SCOPE_KEYS = [
   "PageUp",
@@ -69,6 +71,7 @@ export type ScopeFocus = "scope" | "radio";
 export interface ScopeKeyEvent {
   key: string;
   code?: string;
+  shiftKey?: boolean;
   target?: EventTarget | null;
   preventDefault(): void;
   stopPropagation(): void;
@@ -246,6 +249,15 @@ export function handleScopeKeyDown(
     }
   } else if (view.filterEntry.phase !== "idle") {
     cancelFilterEntry(view.filterEntry, view.altitudeFilter);
+  }
+
+  if (isTowerHandoffKey(event)) {
+    consume(event);
+    if (world) {
+      applyTowerHandoffToSelection(view.tracks, world);
+    }
+    ui?.onHandled?.();
+    return true;
   }
 
   if (isHistoryToggleKey(event.key)) {

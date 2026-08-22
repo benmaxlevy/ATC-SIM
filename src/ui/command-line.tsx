@@ -76,7 +76,8 @@ export function CommandLine({
             event.key === "F3" ||
             event.key === "F4" ||
             event.key === "F7" ||
-            event.key === "F8"
+            event.key === "F8" ||
+            (event.shiftKey && (event.key === "H" || event.key === "h"))
           ) {
             event.preventDefault();
           }

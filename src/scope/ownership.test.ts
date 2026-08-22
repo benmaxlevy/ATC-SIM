@@ -92,6 +92,7 @@ test("AC6 — F3 does not emit command.accepted; heading still applies on an own
 test("AC8 / AC9 — ownership colors are not red; help is initiate-track color-only, not lock-on", () => {
   expect(PALETTE.owned.toLowerCase()).not.toBe("#ff0000");
   expect(PALETTE.unowned.toLowerCase()).not.toBe("#ff0000");
+  expect(PALETTE.tower.toLowerCase()).not.toBe("#ff0000");
   expect(PALETTE.selected.toLowerCase()).not.toBe("#ff0000");
   expect(trackPaintColor("owned")).toBe("#FFFFFF");
   expect(INITIATE_TRACK_HELP).toMatch(/initiate track/i);

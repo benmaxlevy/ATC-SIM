@@ -120,6 +120,7 @@ export {
   isMouseBinding,
   isRadioFocusSlashKey,
   isScopeChordLive,
+  isTowerHandoffKey,
   leaderDigitFromKey,
   mouseKeyBindings,
   scopeFocusKeyBindings,
@@ -224,12 +225,15 @@ export {
   DROP_TRACK_HELP,
   INITIATE_TRACK_HELP,
   NO_SEL_HINT,
+  TOWER_HANDOFF_HELP,
   applyDropTrack,
   applyInitiateTrack,
+  applyTowerOwnership,
   ownershipStubChar,
   trackPaintColor,
 } from "./ownership";
 export type { TrackOwnership } from "./ownership";
+export { applyTowerHandoffToSelection } from "./towerHandoff";
 export {
   alertOrOwnershipColor,
   alertTintPaintColor,

@@ -21,6 +21,7 @@ import type { FixRegistry, FixRegistrySource } from "./nav/fixRegistry";
 import { buildFixRegistry } from "./nav/fixRegistry";
 import { applyLateralFms } from "./fms/lateral";
 import { applyMissedFms } from "./fms/missed";
+import { despawnLandedAircraft } from "./fms/landing";
 import { applyGlidepathFms, applyVerticalFms, type CatalogStar } from "./fms/vertical";
 import { locAxisForApproach } from "./nav/localizer";
 import { gsParamsForApproach } from "./nav/glidepath";
@@ -292,11 +293,11 @@ function syncMsawAlerts(world: World, next: MsawAlert[]): void {
  * Advance sim time by `dtS` seconds, then move each aircraft toward intent.
  *
  * Order is frozen: bump `simTimeMs` first, then missed (DA / level-off DIRECT),
- * then lateral FMS (commanded heading), then GS FMS (after loc only), then
- * kinematics, then CA, then MSAW (pure functions of the post-kinematics
- * `aircraft[]`). IDENT flash expiry uses the post-bump time. Mutates `world` in
- * place and returns it (single World; no Redux). Does not throw on non-finite
- * `dtS`.
+ * then lateral FMS (commanded heading), then GS FMS (after loc / LANDING), then
+ * kinematics, then threshold despawn (T04-12), then CA, then MSAW (pure
+ * functions of the post-kinematics `aircraft[]`). IDENT flash expiry uses the
+ * post-bump time. Mutates `world` in place and returns it (single World; no
+ * Redux). Does not throw on non-finite `dtS`.
  * This is the only function that increments `simTimeMs`.
  */
 export function stepWorld(world: World, dtS: number): World {
@@ -337,6 +338,7 @@ export function stepWorld(world: World, dtS: number): World {
       ac.identUntilSimMs = 0;
     }
   }
+  despawnLandedAircraft(world);
   syncConflictAlerts(world, evaluateConflictAlert(world.aircraft));
   if (world.mvaChart) {
     syncMsawAlerts(

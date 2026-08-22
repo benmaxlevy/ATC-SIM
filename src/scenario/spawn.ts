@@ -2,9 +2,11 @@ import {
   createAircraft,
   createWorld,
   MSAW_FAF_DISTANCE_NM,
+  type Aircraft,
   type MsawInhibitGeom,
   type World,
 } from "@core";
+import type { ProcedureCatalog } from "./procedures/types";
 import type { ArrivalSpawn, Scenario } from "./types";
 
 /** Left downwind for KDEM RWY 27 (true heading 090, north of the field). */
@@ -35,18 +37,56 @@ function downwindArcArrival(index: number, count: number): ArrivalSpawn {
   };
 }
 
-function spawnArrival(world: World, arrival: ArrivalSpawn): void {
-  world.aircraft.push(
-    createAircraft({
-      callsign: arrival.callsign,
-      xNm: arrival.xNm,
-      yNm: arrival.yNm,
-      headingDeg: arrival.headingDeg,
-      altitudeFt: arrival.altitudeFt,
-      speedKt: arrival.speedKt,
-      aircraftType: arrival.aircraftType,
-    }),
-  );
+function spawnArrival(world: World, arrival: ArrivalSpawn, scenario?: Scenario): void {
+  const ac = createAircraft({
+    callsign: arrival.callsign,
+    xNm: arrival.xNm,
+    yNm: arrival.yNm,
+    headingDeg: arrival.headingDeg,
+    altitudeFt: arrival.altitudeFt,
+    speedKt: arrival.speedKt,
+    aircraftType: arrival.aircraftType,
+  });
+  if (scenario) {
+    armStarVia(ac, scenario, arrival);
+  }
+  world.aircraft.push(ac);
+}
+
+/**
+ * Resolve transition legs then common (ids only — xy comes from the catalog).
+ * Spawn positions stay in JSON; this only arms PROCEDURE + VIA.
+ */
+export function starRouteFixIds(
+  catalog: ProcedureCatalog,
+  starId: string,
+  transitionId: string,
+): string[] {
+  const wantStar = starId.trim().toUpperCase();
+  const wantTrans = transitionId.trim().toUpperCase();
+  const star = catalog.stars.find((item) => item.id.trim().toUpperCase() === wantStar);
+  if (!star) {
+    throw new Error(`Unknown STAR ${starId}`);
+  }
+  const transition = star.transitions.find((item) => item.id.trim().toUpperCase() === wantTrans);
+  if (!transition) {
+    throw new Error(`Unknown transition ${transitionId} on ${starId}`);
+  }
+  return [...transition.legs.map((leg) => leg.fixId), ...star.common.map((leg) => leg.fixId)];
+}
+
+function armStarVia(ac: Aircraft, scenario: Scenario, arrival: ArrivalSpawn): void {
+  if (!arrival.starId || !arrival.transitionId) {
+    return;
+  }
+  const routeFixIds = starRouteFixIds(scenario.catalog, arrival.starId, arrival.transitionId);
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    starId: arrival.starId,
+    toFixIndex: 0,
+    routeFixIds,
+  };
+  ac.intent.vertical = { type: "VIA_STAR", starId: arrival.starId, sense: "DESCEND" };
 }
 
 function spawnDownwindArc(world: World, n: number): void {
@@ -74,7 +114,7 @@ export function spawnArrivals(world: World, source: number | Scenario): void {
     return;
   }
   for (const arrival of source.arrivals) {
-    spawnArrival(world, arrival);
+    spawnArrival(world, arrival, source);
   }
 }
 

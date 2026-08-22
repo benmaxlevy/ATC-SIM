@@ -72,6 +72,8 @@ test("T01-14 playable slice: main wires spawn, speech factory, rAF, and resize p
   expect(main).toBeDefined();
   expect(main).toMatch(/createWorldForSession/);
   expect(main).toMatch(/parseTrafficCount/);
+  expect(main).toMatch(/parseScenarioChoice/);
+  expect(main).toMatch(/loadKdemIls27/);
   expect(main).toMatch(/loadAndResolveSpeechBoot/);
   expect(main).toMatch(/handles\.ptt\.dispose/);
   expect(main).toMatch(/requestAnimationFrame/);

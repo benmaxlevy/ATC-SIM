@@ -1,7 +1,8 @@
 /**
  * Public API for `@scenario`.
  *
- * Legal now: KDEM JSON stub (`loadKdem`, `assertScenario`), Scenario types
+ * Legal now: KDEM JSON stub (`loadKdem`, `assertScenario`), phase 4 ILS demo
+ * (`loadKdemIls27`, spawn-on-STAR with VIA), Scenario types
  * including trainer-authored MAPS / video-map geometry from `video-maps/<ICAO>/`
  * (Not OSM / tiles), facility procedure catalog (`loadCatalog`, `data/<icao>/`),
  * trainer MVA (`loadMva`, `data/<icao>-mva.json`), and `createWorldFromScenario` (6 explicit arrivals including DAL123 at heading
@@ -39,11 +40,17 @@ export type {
 } from "./procedures/types";
 export { catalogDctIds } from "./procedures/types";
 export { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN } from "./types";
-export { assertScenario, loadKdem } from "./load";
+export { assertScenario, loadKdem, loadKdemIls27 } from "./load";
 export { loadCatalog, parseCatalogFiles } from "./procedures/loadCatalog";
 export type { MvaChart, MvaPolygon, MvaVertex, MsawInhibitGeom } from "./mva/types";
 export { parseMvaChart } from "./mva/parse";
 export { loadMva, mvaFileKey } from "./mva/load";
 export { loadVideoMapSet } from "./loadVideoMaps";
-export { createWorldForSession, createWorldFromScenario, spawnArrivals } from "./spawn";
-export { parseTrafficCount } from "./trafficQuery";
+export {
+  createWorldForSession,
+  createWorldFromScenario,
+  spawnArrivals,
+  starRouteFixIds,
+} from "./spawn";
+export { parseScenarioChoice, parseTrafficCount } from "./trafficQuery";
+export type { ScenarioChoice } from "./trafficQuery";

@@ -187,6 +187,14 @@ export const KEY_BINDINGS: KeyBinding[] = [
     crcAnalog: "DCB history (always-on duplicate is F8)",
   },
   {
+    id: "tower-handoff",
+    focus: "always",
+    windowsKeys: "Shift+H",
+    action:
+      "Tower handoff stub when the selected track is loc/GS inside 5 NM (still allowed until DA). Sets LANDING and tower color. Not a readback. Not NAS handoff.",
+    crcAnalog: "CRC handoff / HO — we do not initiate/accept a second facility",
+  },
+  {
     id: "radio-focus",
     focus: "scope",
     windowsKeys: "/",
@@ -312,4 +320,12 @@ export function isCycleFocusKey(key: string): boolean {
  */
 export function isRadioFocusSlashKey(key: string): boolean {
   return key === "/";
+}
+
+/**
+ * Always-on tower stub. Shift+H — not scope-focus H (history) and not radio H270.
+ * Analog: CRC handoff. Trainer delta: LANDING + color only. Not a readback.
+ */
+export function isTowerHandoffKey(event: { key: string; shiftKey?: boolean }): boolean {
+  return event.shiftKey === true && (event.key === "H" || event.key === "h");
 }

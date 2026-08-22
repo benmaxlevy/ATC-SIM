@@ -59,6 +59,9 @@ export function applyLateralFms(
   if (lateral.type === "LOC") {
     return guideLoc(ac, lateral, ctx);
   }
+  if (lateral.type === "LANDING") {
+    return guideLanding(ac, lateral, ctx);
+  }
   if (lateral.type === "MISSED") {
     return ac.intent.assignedHeadingDeg;
   }
@@ -260,5 +263,22 @@ function guideLoc(
   } else {
     locBreakoutSinceMs.delete(ac);
   }
+  return axis.courseDeg;
+}
+
+/** LANDING keeps the loc inbound course. No breakout — they are going to land. */
+function guideLanding(
+  ac: Aircraft,
+  lateral: Extract<Aircraft["intent"]["lateral"], { type: "LANDING" }>,
+  ctx: LateralFmsContext,
+): number {
+  if (!lateral) {
+    return ac.intent.assignedHeadingDeg;
+  }
+  const axis = ctx.locAxisFor?.(lateral.approachId);
+  if (!axis) {
+    return ac.intent.assignedHeadingDeg;
+  }
+  locBreakoutSinceMs.delete(ac);
   return axis.courseDeg;
 }

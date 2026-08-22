@@ -1,6 +1,7 @@
 import { latLonToNm } from "@core";
 import type { LatLon, NmEastNorth } from "@core";
 import kdemJson from "./kdem.json";
+import kdemIls27Json from "./kdem-ils27.json";
 import type {
   Approach,
   ArrivalSpawn,
@@ -233,6 +234,7 @@ function assertArrival(value: unknown, index: number): ArrivalSpawn {
     value.aircraftType,
     `arrivals[${index}].aircraftType`,
   );
+  const star = parseOptionalStarSpawn(value, index);
   return {
     callsign,
     xNm: assertNumber(value.xNm, `arrivals[${index}].xNm`),
@@ -241,7 +243,34 @@ function assertArrival(value: unknown, index: number): ArrivalSpawn {
     altitudeFt: assertNumber(value.altitudeFt, `arrivals[${index}].altitudeFt`),
     speedKt: assertNumber(value.speedKt, `arrivals[${index}].speedKt`),
     ...(aircraftType ? { aircraftType } : {}),
+    ...star,
   };
+}
+
+/** STAR + transition for spawn-on-VIA. Both required when either is present. */
+function parseOptionalStarSpawn(
+  value: Record<string, unknown>,
+  index: number,
+): { starId: string; transitionId: string } | Record<string, never> {
+  const hasStar = value.starId != null;
+  const hasTransition = value.transitionId != null;
+  if (!hasStar && !hasTransition) {
+    return {};
+  }
+  if (!hasStar || !hasTransition) {
+    throw new Error(
+      `Scenario arrivals[${index}] must set both starId and transitionId when spawning on a STAR`,
+    );
+  }
+  const starId = assertString(value.starId, `arrivals[${index}].starId`).toUpperCase();
+  const transitionId = assertString(
+    value.transitionId,
+    `arrivals[${index}].transitionId`,
+  ).toUpperCase();
+  if (starId.length === 0 || transitionId.length === 0) {
+    throw new Error(`Scenario arrivals[${index}] starId/transitionId must be non-empty`);
+  }
+  return { starId, transitionId };
 }
 
 /** ICAO type stub for FDB line 3. Optional; 2–4 A–Z0–9. Display-only. */
@@ -259,11 +288,14 @@ function parseOptionalAircraftType(value: unknown, path: string): string | undef
   return type;
 }
 
-function assertArrivals(value: unknown): ArrivalSpawn[] {
+function assertArrivals(
+  value: unknown,
+  bounds: { min: number; max: number } = { min: ARRIVAL_COUNT_MIN, max: ARRIVAL_COUNT_MAX },
+): ArrivalSpawn[] {
   const raw = assertArray(value, "arrivals");
-  if (raw.length < ARRIVAL_COUNT_MIN || raw.length > ARRIVAL_COUNT_MAX) {
+  if (raw.length < bounds.min || raw.length > bounds.max) {
     throw new Error(
-      `Scenario arrivals must have ${ARRIVAL_COUNT_MIN}-${ARRIVAL_COUNT_MAX} aircraft (got ${raw.length})`,
+      `Scenario arrivals must have ${bounds.min}-${bounds.max} aircraft (got ${raw.length})`,
     );
   }
   const arrivals = raw.map(assertArrival);
@@ -284,11 +316,17 @@ function assertArray(value: unknown, path: string): unknown[] {
   return value;
 }
 
+export interface AssertScenarioOptions {
+  /** Default KDEM student pack is 4–8. Phase 4 ILS demo may spawn 1–2. */
+  arrivalCountMin?: number;
+  arrivalCountMax?: number;
+}
+
 /**
  * Runtime-check a scenario JSON object. Does not require `icao === "KDEM"`:
  * `icao` must be a string. Always recomputes `arpNm` via `latLonToNm(arp, arp)`.
  */
-export function assertScenario(s: unknown): Scenario {
+export function assertScenario(s: unknown, options?: AssertScenarioOptions): Scenario {
   if (!isRecord(s)) {
     throw new Error("Scenario must be an object");
   }
@@ -321,7 +359,10 @@ export function assertScenario(s: unknown): Scenario {
     fixes: assertArray(s.fixes, "fixes").map(assertFix),
     maps: parseScenarioMaps(maps),
     spawns: assertArray(s.spawns, "spawns").map(assertSpawn),
-    arrivals: assertArrivals(s.arrivals),
+    arrivals: assertArrivals(s.arrivals, {
+      min: options?.arrivalCountMin ?? ARRIVAL_COUNT_MIN,
+      max: options?.arrivalCountMax ?? ARRIVAL_COUNT_MAX,
+    }),
     catalog,
     mva: loadMva(icao),
   };
@@ -330,4 +371,9 @@ export function assertScenario(s: unknown): Scenario {
 /** Load fictional KDEM (Demo Field) and fill `arpNm` from T00-04 helpers. */
 export function loadKdem(): Scenario {
   return assertScenario(kdemJson);
+}
+
+/** Phase 4 playable slice: DAL123 on DEM1 north + AAL45 on DEM1 south at SEMAX. */
+export function loadKdemIls27(): Scenario {
+  return assertScenario(kdemIls27Json, { arrivalCountMin: 1, arrivalCountMax: ARRIVAL_COUNT_MAX });
 }

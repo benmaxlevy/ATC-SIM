@@ -102,6 +102,13 @@ export interface ArrivalSpawn {
   speedKt: number;
   /** ICAO type stub for FDB line 3. Display-only; omitted types skip line 3. */
   aircraftType?: string;
+  /**
+   * Spawn on this STAR with VIA armed (T04-12). Positions stay in JSON.
+   * Requires `transitionId`.
+   */
+  starId?: string;
+  /** STAR transition (`N` / `S` on DEM1). Required when `starId` is set. */
+  transitionId?: string;
 }
 
 /**

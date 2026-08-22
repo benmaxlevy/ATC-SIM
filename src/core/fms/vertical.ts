@@ -1,7 +1,8 @@
 /**
  * Vertical / speed FMS for descend-via, climb-via, CROSS (T04-04), and GS (T04-06).
  * Pilot sets VIA_STAR / CROSS / heading-cancel; `stepWorld` calls these helpers each tick.
- * Parser never calls kinematics. GS capture is only after `lateral === LOC`.
+ * Parser never calls kinematics. GS capture is only after `lateral === LOC` or
+ * `LANDING` (tower stub keeps the glidepath).
  */
 
 import type { Aircraft, CrossConstraint, VerticalMode } from "../aircraft";
@@ -182,7 +183,7 @@ export function applyGlidepathFms(
   ctx: GlidepathFmsContext,
 ): number | undefined {
   const lateral = ac.intent.lateral;
-  if (lateral?.type !== "LOC") {
+  if (lateral?.type !== "LOC" && lateral?.type !== "LANDING") {
     gsWasBelow.delete(ac);
     if (ac.intent.vertical?.type === "GS") {
       ac.intent.vertical = { type: "ASSIGNED" };

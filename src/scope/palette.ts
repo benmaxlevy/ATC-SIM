@@ -24,6 +24,11 @@ export const PALETTE = {
   unowned: "#00FF00",
   /** Owned datablock after F3 INIT CNTL — CRC/FAA white. */
   owned: "#FFFFFF",
+  /**
+   * Tower-handoff ownership stub (T04-12). Trainer cyan, not CA/MSAW yellow/red.
+   * Not NAS handoff / other-TCP.
+   */
+  tower: "#00DDFF",
   /** Selection box, IDENT flash, unassociated/point-out analog — yellow. */
   selected: "#FFFF00",
   /** Search/fusion position symbol — FAA (30,120,255). Independent of FDB color. */

@@ -17,6 +17,7 @@ test("AC2 — overlay footer is exactly TRAINER KEYS — NOT CRC and lists froze
   expect(html).toMatch(/F4/);
   expect(html).toMatch(/F7/);
   expect(html).toMatch(/F8/);
+  expect(html).toMatch(/Shift\+H/);
   expect(html).toMatch(/L then 1–9/);
   expect(html).toMatch(/>T</);
   expect(html).toMatch(/>M</);

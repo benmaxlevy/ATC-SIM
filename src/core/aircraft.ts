@@ -7,7 +7,7 @@ import { normalizeHeadingDeg } from "./geo/coords";
  * Omit until a command / FMS sequence sets a mode (treated as heading).
  *
  * `PROCEDURE.routeFixIds` is the resolved STAR path (ids only — positions
- * come from `buildFixRegistry`). Spawn-on-STAR is T04-12.
+ * come from `buildFixRegistry`). Spawn-on-STAR with VIA is T04-12.
  */
 export type LateralMode =
   | { type: "HEADING"; headingDeg: number }

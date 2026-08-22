@@ -16,6 +16,7 @@
  * nav fix registry (`buildFixRegistry`, `FixRegistry`);
  * nav geometry (`courseDeg`, fly-by radius, loc deviation, GS height); lateral FMS (`applyLateralFms`);
  * vertical FMS (`targetAltitudeFt`, `applyVerticalFms`); missed stub (`applyMissedFms`);
+ * landing stub (`despawnLandedAircraft`, `acceptTowerHandoff`);
  * MSAW lite (`evaluateMsaw`, `MSAW_RED_BELOW_FT`, `msawFloorFt`).
  *
  * Import rule: `@core` depends on nothing in `src/*` except itself.
@@ -152,6 +153,17 @@ export {
   missedApproachId,
   missedSpecFor,
 } from "./fms/missed";
+export type { LandingFmsContext } from "./fms/landing";
+export {
+  LANDING_ALT_MAX_FT,
+  LANDING_RW_DIST_NM,
+  TOWER_HANDOFF_GATE_NM,
+  TOWER_HANDOFF_INNER_NM,
+  acceptTowerHandoff,
+  despawnLandedAircraft,
+  hasReachedThreshold,
+  isTowerHandoffEligible,
+} from "./fms/landing";
 export type {
   AltConstraint,
   CatalogStar,

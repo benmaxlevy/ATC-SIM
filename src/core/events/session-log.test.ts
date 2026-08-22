@@ -31,6 +31,8 @@ test("SessionEvent includes command events, voice.latency, CA edges, MSAW edges,
     | "nav.loc.captured"
     | "nav.gs.captured"
     | "nav.missed.started"
+    | "handoff.tower"
+    | "nav.landed"
   >();
 });
 

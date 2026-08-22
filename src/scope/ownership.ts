@@ -14,7 +14,7 @@
 
 import { PALETTE } from "./palette";
 
-export type TrackOwnership = "unowned" | "owned";
+export type TrackOwnership = "unowned" | "owned" | "tower";
 
 /** CRC analog: initiate track / INIT CNTL. Color only — not NAS association. */
 export const INITIATE_TRACK_HELP =
@@ -23,7 +23,9 @@ export const INITIATE_TRACK_HELP =
 /** Trainer sugar: owned → unowned. Not STARS terminate. */
 export const DROP_TRACK_HELP = "F4 drop is trainer sugar, not STARS terminate.";
 
-export const NO_SEL_HINT = "NO SEL";
+/** CRC analog: radar handoff. Color + LANDING stub — not NAS initiate/accept. */
+export const TOWER_HANDOFF_HELP =
+  "Shift+H tower handoff stub (loc/GS inside 5 NM, until DA). LANDING + tower color. Not a readback. Not NAS handoff.";
 
 export function applyInitiateTrack(_current: TrackOwnership): TrackOwnership {
   return "owned";
@@ -33,8 +35,20 @@ export function applyDropTrack(_current: TrackOwnership): TrackOwnership {
   return "unowned";
 }
 
+export function applyTowerOwnership(_current: TrackOwnership): TrackOwnership {
+  return "tower";
+}
+
+export const NO_SEL_HINT = "NO SEL";
+
 export function trackPaintColor(ownership: TrackOwnership): string {
-  return ownership === "owned" ? PALETTE.owned : PALETTE.unowned;
+  if (ownership === "owned") {
+    return PALETTE.owned;
+  }
+  if (ownership === "tower") {
+    return PALETTE.tower;
+  }
+  return PALETTE.unowned;
 }
 
 /**
@@ -42,6 +56,12 @@ export function trackPaintColor(ownership: TrackOwnership): string {
  * real NAS CSI field. `*` unowned; `G` after F3. Selected uses the yellow box,
  * not a third letter. F4 returns `*`.
  */
-export function ownershipStubChar(ownership: TrackOwnership): "*" | "G" {
-  return ownership === "owned" ? "G" : "*";
+export function ownershipStubChar(ownership: TrackOwnership): "*" | "G" | "T" {
+  if (ownership === "owned") {
+    return "G";
+  }
+  if (ownership === "tower") {
+    return "T";
+  }
+  return "*";
 }
