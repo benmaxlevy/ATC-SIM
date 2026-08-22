@@ -62,9 +62,11 @@ function worldOnDem1North() {
 
 test("VIA DEM1 is accepted and arms VIA_STAR with DEMO ONE readback", async () => {
   const { dal, world } = worldOnDem1North();
+  const beforeLateral = dal.intent.lateral;
   const result = await handleRadioText(world, "DAL123 VIA DEM1", new SessionLog());
   expect(result.accepted).toBe(true);
   expect(dal.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
+  expect(dal.intent.lateral).toEqual(beforeLateral);
   expect(result.readback.toLowerCase()).toContain("descend via demo one");
 });
 
@@ -187,6 +189,7 @@ test("DCT NELBO with catalog joins DEM1 remaining legs then vectors", async () =
     toFixIndex: 1,
     routeFixIds: [...DEMO_ONE_NORTH_FIX_IDS],
   });
+  expect(dal.intent.vertical?.type === "VIA_STAR").toBe(false);
   const steps = Math.round(600 / SIM_DT_S);
   for (let i = 0; i < steps; i += 1) {
     stepWorld(world, SIM_DT_S);
@@ -211,6 +214,20 @@ test("DCT NELBO VIA DEM1 joins the STAR and arms VIA", async () => {
   expect(dal.intent.lateral?.type).toBe("PROCEDURE");
   expect(dal.intent.lateral).toMatchObject({ starId: "DEM1", toFixIndex: 1 });
   expect(dal.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
+});
+
+test("VIA DEM1 off a heading joins the nearest STAR transition and arms VIA", async () => {
+  const { dal, world } = worldOnDem1North();
+  dal.intent.lateral = { type: "HEADING", headingDeg: 270 };
+  const result = await handleRadioText(world, "DAL123 VIA DEM1", new SessionLog());
+  expect(result.accepted).toBe(true);
+  expect(dal.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
+  expect(dal.intent.lateral).toEqual({
+    type: "PROCEDURE",
+    starId: "DEM1",
+    toFixIndex: 0,
+    routeFixIds: [...DEMO_ONE_NORTH_FIX_IDS],
+  });
 });
 
 test("heading after VIA cancels VIA_STAR", async () => {

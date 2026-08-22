@@ -203,6 +203,7 @@ export function handleRadioCommand(
   applyIntent(aircraft, resolvedCommand.instructions, world.simTimeMs, {
     catalog: world.catalog,
     log,
+    fixXy: world.fixRegistry ? (id) => world.fixRegistry?.get(id) : undefined,
   });
   const procedureNames = Object.fromEntries(
     (world.catalog?.stars ?? []).map((star) => [star.id, star.name ?? star.id]),

@@ -35,5 +35,6 @@ export function applyCommand(world: World, command: Command): void {
   applyIntent(aircraft, command.instructions, world.simTimeMs, {
     catalog: world.catalog,
     log: world.sessionLog,
+    fixXy: world.fixRegistry ? (id) => world.fixRegistry?.get(id) : undefined,
   });
 }

@@ -85,6 +85,7 @@ test("DCT to a STAR fix joins remaining published legs", () => {
     toFixIndex: 1,
     routeFixIds: ["NEMAX", "NELBO", "NJOIN", "MERGE"],
   });
+  expect(ac.intent.vertical?.type === "VIA_STAR").toBe(false);
 });
 
 test("DCT MERGE joins common only; DCT DEM stays DIRECT", () => {
@@ -163,6 +164,7 @@ test("DESCEND_VIA arms VIA_STAR; CROSS attaches a restriction", () => {
   const ac = jet();
   applyIntent(ac, [{ type: "DESCEND_VIA", procedureId: "DEM1" }], 0);
   expect(ac.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
+  expect(ac.intent.lateral?.type === "PROCEDURE").toBe(false);
   applyIntent(ac, [{ type: "CROSS", fixId: "NEMAX", altitudeFt: 4000, restriction: "AT" }], 0);
   expect(ac.intent.cross).toEqual({
     fixId: "NEMAX",
@@ -172,6 +174,40 @@ test("DESCEND_VIA arms VIA_STAR; CROSS attaches a restriction", () => {
   applyIntent(ac, [{ type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" }], 0);
   expect(ac.intent.vertical).toEqual({ type: "ASSIGNED" });
   expect(ac.intent.cross).toBeUndefined();
+});
+
+test("DESCEND_VIA with catalog joins the STAR laterally and arms VIA", () => {
+  const ac = jet();
+  ac.xNm = 27;
+  ac.yNm = 12;
+  applyIntent(ac, [{ type: "DESCEND_VIA", procedureId: "DEM1" }], 0, {
+    catalog: dem1Catalog,
+    fixXy: (id) =>
+      id === "NEMAX" ? { xNm: 17, yNm: 12 } : id === "SEMAX" ? { xNm: 17, yNm: -12 } : undefined,
+  });
+  expect(ac.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
+  expect(ac.intent.lateral).toEqual({
+    type: "PROCEDURE",
+    starId: "DEM1",
+    toFixIndex: 0,
+    routeFixIds: ["NEMAX", "NELBO", "NJOIN", "MERGE"],
+  });
+});
+
+test("CLIMB_VIA on a unique SID joins remaining legs", () => {
+  const ac = jet();
+  applyIntent(ac, [{ type: "CLIMB_VIA", procedureId: "KDEM1" }], 0, {
+    catalog: {
+      sids: [{ id: "KDEM1", legs: [{ fixId: "OCTTA" }, { fixId: "DEMEE" }] }],
+    },
+  });
+  expect(ac.intent.vertical).toEqual({ type: "VIA_STAR", starId: "KDEM1", sense: "CLIMB" });
+  expect(ac.intent.lateral).toEqual({
+    type: "PROCEDURE",
+    starId: "KDEM1",
+    toFixIndex: 0,
+    routeFixIds: ["OCTTA", "DEMEE"],
+  });
 });
 
 test("SAY_* leave heading/alt/speed intent alone; CLEARED_APPROACH arms INTERCEPT_LOC", () => {
