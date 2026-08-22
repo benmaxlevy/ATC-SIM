@@ -59,6 +59,9 @@ export function applyLateralFms(
   if (lateral.type === "LOC") {
     return guideLoc(ac, lateral, ctx);
   }
+  if (lateral.type === "MISSED") {
+    return ac.intent.assignedHeadingDeg;
+  }
   const registry = ctx.registry;
   if (!registry) {
     return undefined;

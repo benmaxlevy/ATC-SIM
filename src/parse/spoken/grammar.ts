@@ -241,6 +241,19 @@ function parseFixId(c: Cursor): string | null {
   return tok.toUpperCase();
 }
 
+function tryGoAround(c: Cursor): Instruction | null {
+  const start = c.i;
+  if ((take(c, "go") || take(c, "going")) && take(c, "around")) {
+    return { type: "GO_AROUND" };
+  }
+  c.i = start;
+  if (take(c, "go-around")) {
+    return { type: "GO_AROUND" };
+  }
+  c.i = start;
+  return null;
+}
+
 function tryIdent(c: Cursor): Instruction | null {
   const start = c.i;
   if (take(c, "squawk")) {
@@ -368,6 +381,7 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     trySpeed(c) ??
     tryDirect(c) ??
     tryIdent(c) ??
+    tryGoAround(c) ??
     trySay(c) ??
     tryCleared(c);
   if (!inst) {

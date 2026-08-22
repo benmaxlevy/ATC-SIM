@@ -96,7 +96,13 @@ export function isLegalInstruction(value: unknown): value is Instruction {
       isFiniteNumber(obj.degrees)
     );
   }
-  if (type === "PRESENT_HEADING" || type === "IDENT" || type === "SAY_HEADING" || type === "SAY_ALTITUDE") {
+  if (
+    type === "PRESENT_HEADING" ||
+    type === "IDENT" ||
+    type === "SAY_HEADING" ||
+    type === "SAY_ALTITUDE" ||
+    type === "GO_AROUND"
+  ) {
     return keysOk(obj, ["type"]);
   }
   if (type === "ALTITUDE") {

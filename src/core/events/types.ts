@@ -10,6 +10,7 @@ import type { Command } from "../command/types";
  * T04-04 adds optional nav.constraint.met.
  * T04-05 adds nav.loc.captured (INTERCEPT_LOC → LOC).
  * T04-06 adds nav.gs.captured (vertical → GS after loc, from below).
+ * T04-07 adds nav.missed.started (DA or GO_AROUND).
  */
 export type SessionEvent =
   | {
@@ -130,6 +131,13 @@ export type SessionEvent =
     }
   | {
       type: "nav.gs.captured";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      approachId: string;
+    }
+  | {
+      type: "nav.missed.started";
       atSimMs: number;
       atWallMs: number;
       callsign: string;

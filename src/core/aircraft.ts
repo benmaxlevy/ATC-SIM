@@ -55,6 +55,11 @@ export interface Intent {
   expectedApproachId: string | null;
   /** Armed ILS id after CLEARED_APPROACH; heading instructions clear this. */
   clearedApproachId: string | null;
+  /**
+   * Tower stub (T04-12) may set this so DA does not start missed.
+   * Default omitted/false. Honor `lateral === LANDING` the same way.
+   */
+  landingCleared?: boolean;
   lateral?: LateralMode;
   vertical?: VerticalMode;
   /** Single CROSS restriction; cleared when the fix sequences. */

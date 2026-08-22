@@ -128,6 +128,15 @@ export const fixtureCross = {
   source: "text",
 } satisfies Command;
 
+export const fixtureGoAround = {
+  id: "cmd-go-around",
+  issuedAtSimMs: 0,
+  callsign: "DAL123",
+  instructions: [{ type: "GO_AROUND" }],
+  sourceText: "DAL123 GA",
+  source: "text",
+} satisfies Command;
+
 /** Combined clearance: heading and altitude on one radio transmission. */
 export const fixtureFlyHeadingAndAltitude = {
   id: "cmd-fly-heading-and-altitude",
@@ -156,5 +165,6 @@ export const commandFixtures = [
   fixtureDescendVia,
   fixtureClimbVia,
   fixtureCross,
+  fixtureGoAround,
   fixtureFlyHeadingAndAltitude,
 ] as const;

@@ -4,19 +4,25 @@
  * Does not run physics; intent takes effect on the next kinematics tick.
  */
 
-import type { Aircraft, Instruction } from "@core";
-import { normalizeHeading } from "@core";
+import type { Aircraft, Instruction, MissedCatalog, SessionLog } from "@core";
+import { beginMissedApproach, missedApproachId, missedSpecFor, normalizeHeading } from "@core";
 
 /** IDENT flash duration (sim ms). PPI may read `identUntilSimMs` later (T01-10). */
 export const IDENT_FLASH_MS = 5000;
+
+export interface ApplyIntentOpts {
+  catalog?: MissedCatalog | null;
+  log?: SessionLog | null;
+}
 
 export function applyIntent(
   aircraft: Aircraft,
   instructions: Instruction[],
   simTimeMs: number,
+  opts?: ApplyIntentOpts,
 ): void {
   for (const instruction of instructions) {
-    applyOne(aircraft, instruction, simTimeMs);
+    applyOne(aircraft, instruction, simTimeMs, opts);
   }
 }
 
@@ -34,7 +40,8 @@ function setHeadingMode(
   aircraft.intent.lateral = { type: "HEADING", headingDeg };
   if (
     aircraft.intent.vertical?.type === "VIA_STAR" ||
-    aircraft.intent.vertical?.type === "GS"
+    aircraft.intent.vertical?.type === "GS" ||
+    aircraft.intent.vertical?.type === "MISSED_CLIMB"
   ) {
     aircraft.intent.vertical = { type: "ASSIGNED" };
   }
@@ -42,7 +49,12 @@ function setHeadingMode(
   aircraft.intent.clearedApproachId = null;
 }
 
-function applyOne(aircraft: Aircraft, instruction: Instruction, simTimeMs: number): void {
+function applyOne(
+  aircraft: Aircraft,
+  instruction: Instruction,
+  simTimeMs: number,
+  opts?: ApplyIntentOpts,
+): void {
   switch (instruction.type) {
     case "FLY_HEADING":
       setHeadingMode(aircraft, instruction.headingDeg, instruction.turn);
@@ -99,6 +111,19 @@ function applyOne(aircraft: Aircraft, instruction: Instruction, simTimeMs: numbe
         restriction: instruction.restriction,
       };
       return;
+    case "GO_AROUND": {
+      const approachId = missedApproachId(aircraft);
+      if (!approachId) {
+        return;
+      }
+      beginMissedApproach(
+        aircraft,
+        missedSpecFor(approachId, opts?.catalog),
+        { log: opts?.log, simTimeMs },
+        approachId,
+      );
+      return;
+    }
     case "SAY_HEADING":
     case "SAY_ALTITUDE":
       return;

@@ -20,6 +20,7 @@ import { stepAircraft } from "./kinematics";
 import type { FixRegistry, FixRegistrySource } from "./nav/fixRegistry";
 import { buildFixRegistry } from "./nav/fixRegistry";
 import { applyLateralFms } from "./fms/lateral";
+import { applyMissedFms } from "./fms/missed";
 import { applyGlidepathFms, applyVerticalFms, type CatalogStar } from "./fms/vertical";
 import { locAxisForApproach } from "./nav/localizer";
 import { gsParamsForApproach } from "./nav/glidepath";
@@ -55,6 +56,8 @@ export interface World {
       thresholdFixId?: string;
       gsAngleDeg?: number;
       tchFt?: number;
+      daFt?: number;
+      missed?: { headingDeg: number; climbToFt: number; directFixId?: string };
     }>;
     sids: ReadonlyArray<{ id: string }>;
   };
@@ -288,8 +291,9 @@ function syncMsawAlerts(world: World, next: MsawAlert[]): void {
 /**
  * Advance sim time by `dtS` seconds, then move each aircraft toward intent.
  *
- * Order is frozen: bump `simTimeMs` first, then lateral FMS (commanded heading),
- * then GS FMS (after loc only), then kinematics, then CA, then MSAW (pure functions of the post-kinematics
+ * Order is frozen: bump `simTimeMs` first, then missed (DA / level-off DIRECT),
+ * then lateral FMS (commanded heading), then GS FMS (after loc only), then
+ * kinematics, then CA, then MSAW (pure functions of the post-kinematics
  * `aircraft[]`). IDENT flash expiry uses the post-bump time. Mutates `world` in
  * place and returns it (single World; no Redux). Does not throw on non-finite
  * `dtS`.
@@ -303,6 +307,11 @@ export function stepWorld(world: World, dtS: number): World {
   for (const ac of world.aircraft) {
     const locAxisFor = (approachId: string) =>
       locAxisForApproach(approachId, world.catalog, world.fixRegistry);
+    applyMissedFms(ac, {
+      catalog: world.catalog,
+      log: world.sessionLog,
+      simTimeMs: world.simTimeMs,
+    });
     const commandedHeadingDeg = applyLateralFms(ac, dtS, {
       registry: world.fixRegistry,
       log: world.sessionLog,

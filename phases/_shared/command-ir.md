@@ -61,7 +61,8 @@ export type Instruction =
       fixId: string;
       altitudeFt: number;
       restriction: "AT" | "AT_OR_ABOVE" | "AT_OR_BELOW";
-    };
+    }
+  | { type: "GO_AROUND" };
 ```
 
 ## Parser rules (text, phase 1)
@@ -88,6 +89,7 @@ Suggested v1 tokens (callsign optional if a track is selected):
 | `CVIA DEM1` | `CLIMB_VIA { procedureId: "DEM1" }` |
 | `X NEMAX 40` | `CROSS { fixId: "NEMAX", altitudeFt: 4000, restriction: "AT" }` (hundreds, same as `C30`) |
 | `X NEMAX 40A` / `X NEMAX 40B` | same with `AT_OR_ABOVE` / `AT_OR_BELOW` |
+| `GA` | `GO_AROUND` (T04-07; immediate missed if `clearedApproachId` is set) |
 
 Callsign: full (`DAL123`) or unambiguous suffix (`123`). Ambiguous suffix → reject, no aircraft moves.
 
@@ -102,6 +104,7 @@ Reject (no intent change, error readback) when:
 - Empty instruction list.
 - Unknown STAR `procedureId` on `DESCEND_VIA` / `CLIMB_VIA`.
 - `CROSS` to an unknown fix, altitude not a multiple of 100 / outside `[1000, 18000]`, or not on course to that fix (`DIRECT` or remaining `PROCEDURE` leg).
+- `GO_AROUND` when `clearedApproachId` is not set (not on an armed/captured approach).
 
 `SAY_*` and `IDENT` do not change intent; they only produce a readback / flash.
 
@@ -112,17 +115,14 @@ Deterministic. Example:
 - `FLY_HEADING 270 SHORTEST` → `{callsign} heading two seven zero`
 - `ALTITUDE DESCEND 3000` → `{callsign} descend and maintain three thousand`
 - Combined: join with comma, callsign once at the start.
+- `GO_AROUND` → `{callsign} going around`
 - Phase 4 ILS (7110.65 vector to final): `{callsign} turn right heading two four zero, maintain two thousand until established, cleared i l s runway two seven approach`
 
 Use FAA digit grouping (eleven, twelve, … thousand). Spell callsign as airline telephony if mapped, else char-by-char.
 
 ## Reserved additions (phase 4 only)
 
-`DESCEND_VIA`, `CLIMB_VIA`, and `CROSS` are in the union above (T04-04). Do **not** implement `GO_AROUND` before `phases/04-procedures/tickets/T04-07-missed-approach-stub.md`.
-
-```ts
-| { type: "GO_AROUND" } // optional; T04-07
-```
+`DESCEND_VIA`, `CLIMB_VIA`, and `CROSS` are in the union above (T04-04). `GO_AROUND` is T04-07 (`GA` typed token). Immediate missed path when `clearedApproachId` is set; do not wait for DA.
 
 **ILS combined clearance (phase 4 — T04-05 patches Path A + readback in the same PR):** one `Command` with three instructions, in this order:
 

@@ -24,6 +24,7 @@ export { numericTail, resolveCallsign } from "./resolveCallsign";
 export type { ValidateReason, ValidateResult, ValidateOpts } from "./validate";
 export { validateInstructions } from "./validate";
 export { applyIntent, IDENT_FLASH_MS } from "./applyIntent";
+export type { ApplyIntentOpts } from "./applyIntent";
 
 /** Apply an already-resolved Command. Radio entry is `handleRadioText`. */
 export function applyCommand(world: World, command: Command): void {
@@ -31,5 +32,8 @@ export function applyCommand(world: World, command: Command): void {
   if (!aircraft) {
     throw new Error(`applyCommand: no aircraft ${command.callsign}`);
   }
-  applyIntent(aircraft, command.instructions, world.simTimeMs);
+  applyIntent(aircraft, command.instructions, world.simTimeMs, {
+    catalog: world.catalog,
+    log: world.sessionLog,
+  });
 }

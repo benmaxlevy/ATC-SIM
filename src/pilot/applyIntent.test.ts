@@ -132,3 +132,25 @@ test("heading after APP clears intercept so they must APP again", () => {
   expect(ac.intent.clearedApproachId).toBeNull();
   expect(ac.intent.assignedHeadingDeg).toBe(90);
 });
+
+test("GO_AROUND starts missed when APP is armed", () => {
+  const ac = jet();
+  ac.intent.clearedApproachId = "ILS27";
+  ac.intent.lateral = { type: "LOC", approachId: "ILS27" };
+  ac.intent.vertical = { type: "GS", approachId: "ILS27" };
+  applyIntent(ac, [{ type: "GO_AROUND" }], 0);
+  expect(ac.intent.lateral).toEqual({ type: "MISSED", approachId: "ILS27" });
+  expect(ac.intent.vertical).toEqual({ type: "MISSED_CLIMB", altitudeFt: 3000 });
+  expect(ac.intent.assignedHeadingDeg).toBe(270);
+  expect(ac.intent.assignedAltitudeFt).toBe(3000);
+});
+
+test("heading after missed climb cancels MISSED lateral to HEADING", () => {
+  const ac = jet();
+  ac.intent.clearedApproachId = "ILS27";
+  applyIntent(ac, [{ type: "GO_AROUND" }], 0);
+  applyIntent(ac, [{ type: "FLY_HEADING", headingDeg: 0, turn: "SHORTEST" }], 0);
+  expect(ac.intent.lateral).toEqual({ type: "HEADING", headingDeg: 0 });
+  expect(ac.intent.vertical).toEqual({ type: "ASSIGNED" });
+  expect(ac.intent.clearedApproachId).toBeNull();
+});

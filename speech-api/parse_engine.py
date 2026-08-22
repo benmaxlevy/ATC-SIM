@@ -36,6 +36,7 @@ INSTRUCTION_TYPES = frozenset(
         "DESCEND_VIA",
         "CLIMB_VIA",
         "CROSS",
+        "GO_AROUND",
     }
 )
 
@@ -68,6 +69,7 @@ Instruction is exactly one of these frozen Command IR v0 types (no other "type")
 - {"type": "DESCEND_VIA", "procedureId": string}
 - {"type": "CLIMB_VIA", "procedureId": string}
 - {"type": "CROSS", "fixId": string, "altitudeFt": number, "restriction": "AT"|"AT_OR_ABOVE"|"AT_OR_BELOW"}
+- {"type": "GO_AROUND"}
 
 Rules:
 - Output JSON only. If you cannot map the text, output {"ok": false, "error": "PARSE_MISS"}.
@@ -80,6 +82,7 @@ Rules:
 - fly heading 270 → FLY_HEADING SHORTEST. fly/continue/maintain present heading → PRESENT_HEADING.
 - "without delay" on climb/descend is expedite: true.
 - iden / ident / squawk ident → IDENT.
+- go around / going around / GA → GO_AROUND.
 - If the user message includes onFrequency, callsignToken MUST be one of those ICAO tokens or null. Map noisy ASR (e.g. "giblet 204") to the listed flight number. Do not copy ASR junk. Do not invent a callsign that is not listed.
 - source is a hint (keyboard tokens vs ASR English), not a second schema.
 """
@@ -290,6 +293,10 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         if not _exact_keys(raw, {"type"}):
             return None
         return {"type": "SAY_ALTITUDE"}
+    if instr_type == "GO_AROUND":
+        if not _exact_keys(raw, {"type"}):
+            return None
+        return {"type": "GO_AROUND"}
     if instr_type == "DESCEND_VIA":
         if (
             not _exact_keys(raw, {"type", "procedureId"})

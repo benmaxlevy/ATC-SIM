@@ -206,6 +206,12 @@ test("Path B rewrite is nonstandard salvage for bare heading", () => {
   expect(rewriteSpokenToTyped(normalizeSpoken("two seven zero"))).toBeNull();
 });
 
+test("go around and going around are GO_AROUND (T04-07)", () => {
+  expectOk("go around", "DAL123", [{ type: "GO_AROUND" }]);
+  expectOk("going around", "DAL123", [{ type: "GO_AROUND" }]);
+  expect(rewriteSpokenToTyped(normalizeSpoken("go around"))).toBe("GA");
+});
+
 function expectOk(text: string, selected: string, instructions: unknown[]): void {
   const result = spoken(text, selected);
   expect(result.ok, text).toBe(true);

@@ -23,7 +23,8 @@ export type ValidateReason =
   | "UNKNOWN_FIX"
   | "UNKNOWN_PROCEDURE"
   | "NOT_ON_COURSE"
-  | "UNKNOWN_APPROACH";
+  | "UNKNOWN_APPROACH"
+  | "NOT_ON_APPROACH";
 
 export type ValidateResult =
   | { ok: true }
@@ -114,6 +115,11 @@ function validateOne(
       return validateVia(instruction.procedureId, opts);
     case "CROSS":
       return validateCross(aircraft, instruction, opts);
+    case "GO_AROUND":
+      if (!aircraft.intent.clearedApproachId) {
+        return { ok: false, reason: "NOT_ON_APPROACH" };
+      }
+      return { ok: true };
     case "PRESENT_HEADING":
     case "IDENT":
     case "SAY_HEADING":

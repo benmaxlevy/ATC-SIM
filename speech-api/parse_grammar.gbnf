@@ -7,7 +7,7 @@ ok-true ::= "\"ok\"" ws ":" ws "true"
 callsign-field ::= "\"callsignToken\"" ws ":" ws (string | "null")
 instructions-field ::= "\"instructions\"" ws ":" ws "[" ws instruction (ws "," ws instruction)* ws "]"
 
-instruction ::= fly-heading | turn-degrees | present-heading | altitude | speed | direct | expect-approach | cleared-approach | ident | say-heading | say-altitude | descend-via | climb-via | cross
+instruction ::= fly-heading | turn-degrees | present-heading | altitude | speed | direct | expect-approach | cleared-approach | ident | say-heading | say-altitude | descend-via | climb-via | cross | go-around
 
 fly-heading ::= "{" ws "\"type\"" ws ":" ws "\"FLY_HEADING\"" ws "," ws "\"headingDeg\"" ws ":" ws number ws "," ws "\"turn\"" ws ":" ws turn-dir ws "}"
 turn-degrees ::= "{" ws "\"type\"" ws ":" ws "\"TURN_DEGREES\"" ws "," ws "\"direction\"" ws ":" ws lr ws "," ws "\"degrees\"" ws ":" ws number ws "}"
@@ -23,6 +23,7 @@ say-altitude ::= "{" ws "\"type\"" ws ":" ws "\"SAY_ALTITUDE\"" ws "}"
 descend-via ::= "{" ws "\"type\"" ws ":" ws "\"DESCEND_VIA\"" ws "," ws "\"procedureId\"" ws ":" ws string ws "}"
 climb-via ::= "{" ws "\"type\"" ws ":" ws "\"CLIMB_VIA\"" ws "," ws "\"procedureId\"" ws ":" ws string ws "}"
 cross ::= "{" ws "\"type\"" ws ":" ws "\"CROSS\"" ws "," ws "\"fixId\"" ws ":" ws string ws "," ws "\"altitudeFt\"" ws ":" ws number ws "," ws "\"restriction\"" ws ":" ws cross-restriction ws "}"
+go-around ::= "{" ws "\"type\"" ws ":" ws "\"GO_AROUND\"" ws "}"
 
 turn-dir ::= "\"LEFT\"" | "\"RIGHT\"" | "\"SHORTEST\""
 lr ::= "\"LEFT\"" | "\"RIGHT\""

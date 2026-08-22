@@ -30,7 +30,8 @@ export type RejectReason =
   | "UNKNOWN_FIX"
   | "UNKNOWN_PROCEDURE"
   | "NOT_ON_COURSE"
-  | "UNKNOWN_APPROACH";
+  | "UNKNOWN_APPROACH"
+  | "NOT_ON_APPROACH";
 
 const REJECT_FIXED: Record<string, string> = {
   UNKNOWN_CALLSIGN: "unable, unknown callsign",
@@ -49,6 +50,7 @@ const REJECT_AFTER_CALLSIGN: Record<string, string> = {
   UNKNOWN_FIX: "unable, unknown fix",
   UNKNOWN_PROCEDURE: "unable, unknown procedure",
   UNKNOWN_APPROACH: "unable, unknown approach",
+  NOT_ON_APPROACH: "unable, not on approach",
 };
 
 /** ILS27 → `i l s runway two seven` (English letter names, runway digits). */
@@ -160,6 +162,8 @@ function formatInstructionClause(
       }
       return `cross ${fix} at ${alt}`;
     }
+    case "GO_AROUND":
+      return "going around";
     default: {
       const _exhaustive: never = instruction;
       return _exhaustive;

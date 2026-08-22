@@ -187,6 +187,10 @@ test("EXPECT_APPROACH ILS27 is expect i l s runway two seven", () => {
   );
 });
 
+test("GO_AROUND is going around", () => {
+  expect(readback([{ type: "GO_AROUND" }])).toBe("delta one two three going around");
+});
+
 test("combined ILS vector includes until established and turn right heading", () => {
   expect(
     readback([
@@ -227,6 +231,7 @@ const rejectTable: [{ callsign?: string; reason: string }, string][] = [
     "delta one two three unable, not on course to nemax",
   ],
   [{ callsign: "DAL123", reason: "UNKNOWN_APPROACH" }, "delta one two three unable, unknown approach"],
+  [{ callsign: "DAL123", reason: "NOT_ON_APPROACH" }, "delta one two three unable, not on approach"],
   [{ reason: "PARSE" }, "unable, say again"],
   [{ reason: "HEADING" }, "unable heading"],
 ];

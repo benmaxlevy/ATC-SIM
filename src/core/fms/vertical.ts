@@ -88,6 +88,9 @@ export function targetAltitudeFt(args: {
   if (args.cross) {
     return args.cross.altitudeFt;
   }
+  if (args.vertical.type === "MISSED_CLIMB") {
+    return args.vertical.altitudeFt;
+  }
   const via = args.vertical.type === "VIA_STAR" && args.onStar;
   if (!via || !args.nextConstraint) {
     return args.assignedFt ?? 0;

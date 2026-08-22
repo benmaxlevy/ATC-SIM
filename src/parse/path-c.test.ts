@@ -116,6 +116,8 @@ test("AC4 — CHAT type is a miss, no instructions dispatched", async () => {
     }),
   ).toBe(true);
   expect(isLegalInstruction({ type: "DESCEND_VIA" })).toBe(false);
+  expect(isLegalInstruction({ type: "GO_AROUND" })).toBe(true);
+  expect(isLegalInstruction({ type: "GO_AROUND", extra: true })).toBe(false);
 });
 
 test("AC5 — fetch throw or 503 is a miss, no uncaught exception", async () => {

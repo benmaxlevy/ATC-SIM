@@ -15,7 +15,7 @@
  * `CA_LATERAL_NM` / `CA_VERTICAL_FT` / `CA_LOOKAHEAD_S`, `datablockAlertTint`);
  * nav fix registry (`buildFixRegistry`, `FixRegistry`);
  * nav geometry (`courseDeg`, fly-by radius, loc deviation, GS height); lateral FMS (`applyLateralFms`);
- * vertical FMS (`targetAltitudeFt`, `applyVerticalFms`);
+ * vertical FMS (`targetAltitudeFt`, `applyVerticalFms`); missed stub (`applyMissedFms`);
  * MSAW lite (`evaluateMsaw`, `MSAW_RED_BELOW_FT`, `msawFloorFt`).
  *
  * Import rule: `@core` depends on nothing in `src/*` except itself.
@@ -139,6 +139,19 @@ export {
 } from "./nav/glidepath";
 export type { LateralFmsContext } from "./fms/lateral";
 export { DEMO_ONE_NORTH_FIX_IDS, advanceStarLeg, applyLateralFms } from "./fms/lateral";
+export type { MissedApproachSpec, MissedCatalog, MissedFmsContext } from "./fms/missed";
+export {
+  DEFAULT_DA_FT,
+  DEFAULT_MISSED_CLIMB_FT,
+  DEFAULT_MISSED_HEADING_DEG,
+  MISSED_LEVEL_TOLERANCE_FT,
+  applyMissedFms,
+  beginMissedApproach,
+  isLandingInhibited,
+  isOnMissed,
+  missedApproachId,
+  missedSpecFor,
+} from "./fms/missed";
 export type {
   AltConstraint,
   CatalogStar,

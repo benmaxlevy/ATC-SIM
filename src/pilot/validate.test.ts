@@ -168,6 +168,16 @@ test("VIA unknown procedure rejects; CROSS not on course rejects", () => {
   ).toBe(true);
 });
 
+test("GO_AROUND rejects unless clearedApproachId is set", () => {
+  const ac = jet();
+  expect(validateInstructions(ac, [{ type: "GO_AROUND" }])).toEqual({
+    ok: false,
+    reason: "NOT_ON_APPROACH",
+  });
+  ac.intent.clearedApproachId = "ILS27";
+  expect(validateInstructions(ac, [{ type: "GO_AROUND" }]).ok).toBe(true);
+});
+
 test("one bad instruction rejects the whole list", () => {
   expect(
     validateInstructions(jet({ altitudeFt: 8000 }), [

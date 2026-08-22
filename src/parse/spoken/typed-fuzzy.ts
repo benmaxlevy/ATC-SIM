@@ -92,8 +92,22 @@ function rewriteOne(c: Cursor): string | null {
     rewritePresent(c) ??
     rewriteAltitude(c) ??
     rewriteSpeed(c) ??
-    rewriteIdent(c)
+    rewriteIdent(c) ??
+    rewriteGoAround(c)
   );
+}
+
+function rewriteGoAround(c: Cursor): string | null {
+  const start = c.i;
+  if ((take(c, "go") || take(c, "going")) && take(c, "around")) {
+    return "GA";
+  }
+  c.i = start;
+  if (take(c, "go-around")) {
+    return "GA";
+  }
+  c.i = start;
+  return null;
 }
 
 function rewriteTurn(c: Cursor): string | null {

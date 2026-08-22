@@ -59,4 +59,5 @@ export type Instruction =
       fixId: string;
       altitudeFt: number;
       restriction: "AT" | "AT_OR_ABOVE" | "AT_OR_BELOW";
-    };
+    }
+  | { type: "GO_AROUND" };
