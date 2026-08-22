@@ -1,5 +1,5 @@
 import { SessionLog, createWorld, type SessionEvent, type World } from "@core";
-import { parseCommand } from "@parse";
+import { parseCommand, proceduresFromCatalog } from "@parse";
 import { handleRadioCommand } from "@pilot";
 import {
   VoiceLatencyTracker,
@@ -157,6 +157,8 @@ export function createApp(deps: AppDeps): AppHandles {
       },
       getSelectedCallsign: () => selectedCallsignFromWorld(world),
       getOnFrequencyCallsigns: () => world.aircraft.map((ac) => ac.callsign),
+      getCatalogFixIds: () => (world.fixRegistry ? [...world.fixRegistry.ids()] : []),
+      getCatalogProcedures: () => proceduresFromCatalog(world.catalog),
       getIssuedAtSimMs: () => world.simTimeMs,
       confidenceThreshold: deps.confidenceThreshold ?? prefs.confidenceThreshold,
       getVoiceId: deps.getVoiceId ?? ((callsign) => voiceIdForCallsign(callsign, prefs.voiceId)),

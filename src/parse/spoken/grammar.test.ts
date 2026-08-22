@@ -9,8 +9,13 @@ import { normalizeSpoken } from "./normalizer";
 import { groundCallsignToRoster } from "./telephony";
 import { rewriteSpokenToTyped } from "./typed-fuzzy";
 
-function spoken(text: string, selected?: string | null) {
-  return parseSpokenGrammar(normalizeSpoken(text), selected ?? null, text);
+function spoken(
+  text: string,
+  selected?: string | null,
+  catalog?: readonly string[],
+  procedures?: ReadonlyArray<{ id: string; name?: string }>,
+) {
+  return parseSpokenGrammar(normalizeSpoken(text), selected ?? null, text, catalog, procedures);
 }
 
 test("AC1 fixture — Delta one two three descend and maintain three thousand (R01)", () => {
@@ -140,6 +145,7 @@ test("v1 phrase table: present heading, turn degrees, speed, ident, say, ils", (
     { type: "CLEARED_APPROACH", approachId: "ILS27" },
   ]);
   expectOk("proceed direct kdem", "DAL123", [{ type: "DIRECT", fixId: "KDEM" }]);
+  expectOk("direct semax", "DAL123", [{ type: "DIRECT", fixId: "SEMAX" }]);
   expectOk("intercept the runway two seven localizer", "DAL123", [
     { type: "INTERCEPT_LOCALIZER", approachId: "ILS27" },
   ]);
@@ -217,6 +223,44 @@ test("Path B rewrite is nonstandard salvage for bare heading", () => {
   expect(rewriteSpokenToTyped(normalizeSpoken("heading two seven zero"))).toBe("H270");
   expect(rewriteSpokenToTyped(normalizeSpoken("heading 270"))).toBe("H270");
   expect(rewriteSpokenToTyped(normalizeSpoken("two seven zero"))).toBeNull();
+});
+
+test("catalog grounding maps ASR C-Max / see max onto SEMAX", () => {
+  const catalog = ["NEMAX", "SEMAX", "MERGE", "FI27"];
+  const hyphen = spoken("proceed direct C-Max", "DAL123", catalog);
+  expect(hyphen.ok).toBe(true);
+  if (hyphen.ok) {
+    expect(hyphen.instructions).toEqual([{ type: "DIRECT", fixId: "SEMAX" }]);
+  }
+  const split = spoken("direct c max", "DAL123", catalog);
+  expect(split.ok).toBe(true);
+  if (split.ok) {
+    expect(split.instructions).toEqual([{ type: "DIRECT", fixId: "SEMAX" }]);
+  }
+  const see = spoken("proceed direct to see max", "DAL123", catalog);
+  expect(see.ok).toBe(true);
+  if (see.ok) {
+    expect(see.instructions).toEqual([{ type: "DIRECT", fixId: "SEMAX" }]);
+  }
+});
+
+test("descend via demo 1 snaps onto catalog DEM1", () => {
+  const procedures = [{ id: "DEM1", name: "DEMO ONE" }];
+  const compact = spoken("descend via demo 1", "DAL123", undefined, procedures);
+  expect(compact.ok).toBe(true);
+  if (compact.ok) {
+    expect(compact.instructions).toEqual([{ type: "DESCEND_VIA", procedureId: "DEM1" }]);
+  }
+  const words = spoken("descend via demo one", "DAL123", undefined, procedures);
+  expect(words.ok).toBe(true);
+  if (words.ok) {
+    expect(words.instructions).toEqual([{ type: "DESCEND_VIA", procedureId: "DEM1" }]);
+  }
+  const viaOnly = spoken("via the demo one arrival", "DAL123", undefined, procedures);
+  expect(viaOnly.ok).toBe(true);
+  if (viaOnly.ok) {
+    expect(viaOnly.instructions).toEqual([{ type: "DESCEND_VIA", procedureId: "DEM1" }]);
+  }
 });
 
 test("go around and going around are GO_AROUND (T04-07)", () => {

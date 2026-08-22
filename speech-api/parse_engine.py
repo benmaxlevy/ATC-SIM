@@ -87,6 +87,8 @@ Rules:
 - go around / going around / GA → GO_AROUND.
 - intercept the runway 27 localizer / IL ILS27 → INTERCEPT_LOCALIZER (loc only, no GS). cleared ILS → CLEARED_APPROACH.
 - If the user message includes onFrequency, callsignToken MUST be one of those ICAO tokens or null. Map noisy ASR (e.g. "giblet 204") to the listed flight number. Do not copy ASR junk. Do not invent a callsign that is not listed.
+- If the user message includes fixes=, DIRECT/CROSS fixId MUST be one of those catalog ids. Map noisy ASR (e.g. "C-Max", "see max") to the listed spelling (SEMAX). Do not invent a fix that is not listed.
+- If the user message includes procedures=, DESCEND_VIA/CLIMB_VIA procedureId MUST be a listed catalog id (DEM1, not DEMO ONE or demo 1). Map spoken STAR names to that id. Do not invent a procedure that is not listed.
 - source is a hint (keyboard tokens vs ASR English), not a second schema.
 """
 
@@ -139,41 +141,90 @@ class ParseEngine(Protocol):
 
 
 MAX_ROSTER = 64
+MAX_FIXES = 64
+MAX_PROCEDURES = 32
 _CALLSIGN_RE = re.compile(r"^[A-Z0-9]{2,8}$")
+_FIX_RE = re.compile(r"^[A-Z]{2,6}[0-9]{0,2}$")
+_PROC_RE = re.compile(r"^[A-Z]{2,8}[0-9]{0,2}$")
 
 
-def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
-    """Keep live-strip grounding tiny. Drop junk; never n-best or confidence."""
-    if not isinstance(raw, dict):
-        return None
-    callsigns: list[str] = []
+def _sanitize_id_list(raw: object, pattern: re.Pattern[str], limit: int) -> list[str]:
+    out: list[str] = []
     seen: set[str] = set()
-    for item in raw.get("callsigns") or []:
+    if not isinstance(raw, list):
+        return out
+    for item in raw:
         if not isinstance(item, str):
             continue
         up = item.strip().upper()
-        if not up or up in seen or _CALLSIGN_RE.match(up) is None:
+        if not up or up in seen or pattern.match(up) is None:
             continue
         seen.add(up)
-        callsigns.append(up)
-        if len(callsigns) >= MAX_ROSTER:
+        out.append(up)
+        if len(out) >= limit:
             break
+    return out
+
+
+def _sanitize_procedures(raw: object) -> list[dict[str, str]]:
+    out: list[dict[str, str]] = []
+    seen: set[str] = set()
+    if not isinstance(raw, list):
+        return out
+    for item in raw:
+        pid = ""
+        name: str | None = None
+        if isinstance(item, str):
+            left, sep, right = item.partition("=")
+            pid = left.strip().upper()
+            if sep:
+                name = right.strip().upper() or None
+        elif isinstance(item, dict):
+            raw_id = item.get("id")
+            if isinstance(raw_id, str):
+                pid = raw_id.strip().upper()
+            raw_name = item.get("name")
+            if isinstance(raw_name, str) and raw_name.strip():
+                name = raw_name.strip().upper()
+        if not pid or pid in seen or _PROC_RE.match(pid) is None:
+            continue
+        seen.add(pid)
+        rec: dict[str, str] = {"id": pid}
+        if name:
+            rec["name"] = name
+        out.append(rec)
+        if len(out) >= MAX_PROCEDURES:
+            break
+    return out
+
+
+def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
+    """Keep live-strip + catalog grounding tiny. Drop junk; never n-best or confidence."""
+    if not isinstance(raw, dict):
+        return None
+    callsigns = _sanitize_id_list(raw.get("callsigns") or [], _CALLSIGN_RE, MAX_ROSTER)
+    fixes = _sanitize_id_list(raw.get("fixes") or [], _FIX_RE, MAX_FIXES)
+    procedures = _sanitize_procedures(raw.get("procedures") or [])
     selected_raw = raw.get("selectedCallsign")
     selected: str | None = None
     if isinstance(selected_raw, str):
         up = selected_raw.strip().upper()
         if up and _CALLSIGN_RE.match(up):
             selected = up
-    if not callsigns and not selected:
+    if not callsigns and not selected and not fixes and not procedures:
         return None
     out: dict[str, Any] = {"callsigns": callsigns}
     if selected:
         out["selectedCallsign"] = selected
+    if fixes:
+        out["fixes"] = fixes
+    if procedures:
+        out["procedures"] = procedures
     return out
 
 
 def build_parse_user_message(text: str, source: str, context: dict[str, Any] | None = None) -> str:
-    """User turn: transcript plus optional on-frequency roster (live strips, not kinematics)."""
+    """User turn: transcript plus optional roster and catalog ids (not kinematics)."""
     lines = [f"schemaVersion={SCHEMA_VERSION}", f"source={source}"]
     ctx = sanitize_parse_context(context) if context else None
     if ctx:
@@ -187,6 +238,28 @@ def build_parse_user_message(text: str, source: str, context: dict[str, Any] | N
         selected = ctx.get("selectedCallsign")
         if selected:
             lines.append(f"selected={selected}")
+        fixes = ctx.get("fixes") or []
+        if fixes:
+            lines.append("fixes=" + ",".join(fixes))
+            lines.append(
+                "DIRECT/CROSS fixId MUST be one listed catalog id. "
+                "Match noisy ASR (C-Max, see max) to that spelling."
+            )
+        procedures = ctx.get("procedures") or []
+        if procedures:
+            bits: list[str] = []
+            for proc in procedures:
+                if not isinstance(proc, dict):
+                    continue
+                pid = str(proc.get("id") or "")
+                pname = str(proc.get("name") or "")
+                bits.append(f"{pid} ({pname})" if pname else pid)
+            if bits:
+                lines.append("procedures=" + ",".join(bits))
+                lines.append(
+                    "DESCEND_VIA/CLIMB_VIA procedureId MUST be a listed catalog id. "
+                    "Map demo one / demo 1 to DEM1."
+                )
     lines.append(f"text={text.strip()}")
     lines.append("Output JSON only.")
     return "\n".join(lines)

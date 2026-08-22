@@ -229,3 +229,45 @@ test("T04-05 — spoken ILS vector is Path A heading + untilEstablished + APP", 
     { type: "CLEARED_APPROACH", approachId: "ILS27" },
   ]);
 });
+
+test("catalog snaps spoken C-Max and typed DCT CMAX onto SEMAX", async () => {
+  const catalog = ["NEMAX", "SEMAX", "MERGE"];
+  const spoken = await parseCommand("proceed direct C-Max", {
+    source: "voice",
+    selectedCallsign: "DAL123",
+    fixes: catalog,
+    pathC: false,
+  });
+  expect(spoken.ok).toBe(true);
+  if (spoken.ok) {
+    expect(spoken.parseStage).toBe("spoken_a");
+    expect(spoken.instructions).toEqual([{ type: "DIRECT", fixId: "SEMAX" }]);
+  }
+
+  const typed = await parseCommand("DCT CMAX", {
+    source: "text",
+    selectedCallsign: "DAL123",
+    fixes: catalog,
+    pathC: false,
+  });
+  expect(typed.ok).toBe(true);
+  if (typed.ok) {
+    expect(typed.parseStage).toBe("typed");
+    expect(typed.instructions).toEqual([{ type: "DIRECT", fixId: "SEMAX" }]);
+  }
+});
+
+test("catalog snaps spoken descend via demo 1 onto DEM1", async () => {
+  const spoken = await parseCommand("Delta 200 descend via demo 1", {
+    source: "voice",
+    selectedCallsign: "DAL200",
+    procedures: [{ id: "DEM1", name: "DEMO ONE" }],
+    pathC: false,
+  });
+  expect(spoken.ok).toBe(true);
+  if (spoken.ok) {
+    expect(spoken.parseStage).toBe("spoken_a");
+    expect(spoken.callsignToken).toBe("DAL200");
+    expect(spoken.instructions).toEqual([{ type: "DESCEND_VIA", procedureId: "DEM1" }]);
+  }
+});

@@ -1,5 +1,5 @@
 import { SpeechPortError } from "../speech-port-error";
-import type { AudioClip, SpeechPort, Transcript } from "../types";
+import type { AudioClip, SpeechPort, Transcript, TranscribeOpts } from "../types";
 import { isWav, pcm16ToWav, uint8ToArrayBuffer, wavToAudioClip } from "./wav";
 
 /**
@@ -49,6 +49,49 @@ export interface HttpSpeechPortConfig {
   authHeaderValue?: string;
   /** Injected in tests. Defaults to global fetch. */
   fetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+}
+
+const FIX_ID = /^[A-Z]{2,6}[0-9]{0,2}$/;
+const MAX_FIX_HEADER = 64;
+
+function headerFixIds(raw: readonly string[] | undefined): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of raw ?? []) {
+    const up = item.trim().toUpperCase();
+    if (!up || seen.has(up) || !FIX_ID.test(up)) {
+      continue;
+    }
+    seen.add(up);
+    out.push(up);
+    if (out.length >= MAX_FIX_HEADER) {
+      break;
+    }
+  }
+  return out;
+}
+
+function headerProcedures(
+  raw: ReadonlyArray<{ id: string; name?: string }> | undefined,
+): string | undefined {
+  if (!raw || raw.length === 0) {
+    return undefined;
+  }
+  const parts: string[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    const id = item.id.trim().toUpperCase();
+    if (!id || seen.has(id) || !/^[A-Z]{2,8}[0-9]{0,2}$/.test(id)) {
+      continue;
+    }
+    seen.add(id);
+    const name = item.name?.trim().replace(/[|=]/g, " ");
+    parts.push(name ? `${id}=${name}` : id);
+    if (parts.length >= 16) {
+      break;
+    }
+  }
+  return parts.length > 0 ? parts.join("|") : undefined;
 }
 
 function optionalEnv(value: unknown): string | undefined {
@@ -111,15 +154,21 @@ export class HttpSpeechPort implements SpeechPort {
     }
   }
 
-  async transcribe(audio: AudioClip): Promise<Transcript> {
+  async transcribe(audio: AudioClip, opts?: TranscribeOpts): Promise<Transcript> {
     if (this.#transcribeInFlight) {
       return Promise.reject(new SpeechPortError("in_flight", "transcribe already in flight"));
     }
     this.#transcribeInFlight = true;
     const wav = pcm16ToWav(audio);
+    const fixIds = headerFixIds(opts?.fixes);
+    const procedureHeader = headerProcedures(opts?.procedures);
     try {
       const { response, latencyMs } = await this.#post(this.sttUrl, {
-        headers: this.#headers({ "Content-Type": "audio/wav" }),
+        headers: this.#headers({
+          "Content-Type": "audio/wav",
+          ...(fixIds.length > 0 ? { "X-ATC-Fixes": fixIds.join(",") } : {}),
+          ...(procedureHeader ? { "X-ATC-Procedures": procedureHeader } : {}),
+        }),
         body: uint8ToArrayBuffer(wav),
         timeoutMs: this.#sttTimeoutMs,
         label: "STT",

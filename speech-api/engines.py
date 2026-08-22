@@ -6,6 +6,7 @@ import io
 import logging
 import math
 import os
+import re
 import tempfile
 import time
 import wave
@@ -22,6 +23,59 @@ log = logging.getLogger("speech-api")
 # Documented mock transcript so CI and curl examples stay stable.
 MOCK_TRANSCRIPT = "delta one two three fly heading two seven zero"
 
+MAX_STT_FIXES = 64
+_STT_FIX_RE = re.compile(r"^[A-Z]{2,6}[0-9]{0,2}$")
+
+
+def sanitize_stt_fixes(header: str | None) -> list[str]:
+    """Catalog ids from `X-ATC-Fixes`. Tiny list; never kinematics or n-best."""
+    if not header or not header.strip():
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for part in header.split(","):
+        up = part.strip().upper()
+        if not up or up in seen or _STT_FIX_RE.match(up) is None:
+            continue
+        seen.add(up)
+        out.append(up)
+        if len(out) >= MAX_STT_FIXES:
+            break
+    return out
+
+
+def whisper_fix_prompt(fixes: list[str], procedures: list[str] | None = None) -> str | None:
+    """Bias Whisper toward catalog spellings (SEMAX not C-Max, DEMO ONE not demo 1)."""
+    parts: list[str] = []
+    if fixes:
+        parts.append("Named ATC fixes: " + " ".join(fixes) + ".")
+    if procedures:
+        parts.append("Procedures: " + " ".join(procedures) + ".")
+    return " ".join(parts) if parts else None
+
+
+def sanitize_stt_procedures(header: str | None) -> list[str]:
+    """Labels from `X-ATC-Procedures` (`DEM1=DEMO ONE|…`) for the Whisper prompt."""
+    if not header or not header.strip():
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for part in header.split("|"):
+        chunk = part.strip()
+        if not chunk:
+            continue
+        pid, _, pname = chunk.partition("=")
+        pid = pid.strip().upper()
+        pname = pname.strip().upper()
+        for label in (pid, pname):
+            if not label or label in seen:
+                continue
+            seen.add(label)
+            out.append(label)
+        if len(out) >= 32:
+            break
+    return out
+
 
 def avg_logprob_to_confidence(avg_logprob: float) -> float:
     """Map Whisper avg_logprob (typically -1.2..0) onto 0–1.
@@ -35,7 +89,12 @@ def avg_logprob_to_confidence(avg_logprob: float) -> float:
 
 
 class SttEngine(Protocol):
-    def transcribe(self, wav_bytes: bytes) -> tuple[str, float]:
+    def transcribe(
+        self,
+        wav_bytes: bytes,
+        fixes: list[str] | None = None,
+        procedures: list[str] | None = None,
+    ) -> tuple[str, float]:
         """Return (text, confidence 0–1). Missing engine score → 1.0."""
 
 
@@ -45,8 +104,10 @@ class TtsEngine(Protocol):
 
 
 class MockStt:
-    def transcribe(self, wav_bytes: bytes) -> tuple[str, float]:
-        del wav_bytes
+    def transcribe(
+        self, wav_bytes: bytes, fixes: list[str] | None = None, procedures: list[str] | None = None
+    ) -> tuple[str, float]:
+        del wav_bytes, fixes, procedures
         return MOCK_TRANSCRIPT, 1.0
 
     def describe(self) -> str:
@@ -290,18 +351,23 @@ class FasterWhisperStt:
         """Encode once at boot so a missing cublas DLL does not 500 the first PTT."""
         self.transcribe(tone_wav(duration_s=0.05))
 
-    def transcribe(self, wav_bytes: bytes) -> tuple[str, float]:
+    def transcribe(
+        self, wav_bytes: bytes, fixes: list[str] | None = None, procedures: list[str] | None = None
+    ) -> tuple[str, float]:
         fd, path = tempfile.mkstemp(suffix=".wav")
         os.close(fd)
         try:
             with open(path, "wb") as handle:
                 handle.write(wav_bytes)
-            segments, _info = self._model.transcribe(
-                path,
-                beam_size=5,
-                language="en",
-                condition_on_previous_text=False,
-            )
+            kwargs: dict[str, object] = {
+                "beam_size": 5,
+                "language": "en",
+                "condition_on_previous_text": False,
+            }
+            prompt = whisper_fix_prompt(fixes or [], procedures)
+            if prompt:
+                kwargs["initial_prompt"] = prompt
+            segments, _info = self._model.transcribe(path, **kwargs)
             texts: list[str] = []
             logprobs: list[float] = []
             for seg in segments:

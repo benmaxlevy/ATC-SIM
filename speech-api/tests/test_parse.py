@@ -152,18 +152,37 @@ def test_user_message_includes_on_frequency_roster() -> None:
     assert sanitize_parse_context({"callsigns": ["swa204", "DAL123", "nope!"]}) == {
         "callsigns": ["SWA204", "DAL123"],
     }
+    assert sanitize_parse_context({"fixes": ["semax", "C-Max", "FI27"]}) == {
+        "callsigns": [],
+        "fixes": ["SEMAX", "FI27"],
+    }
+    assert sanitize_parse_context(
+        {"procedures": [{"id": "dem1", "name": "DEMO ONE"}, "NOPE!"]}
+    ) == {
+        "callsigns": [],
+        "procedures": [{"id": "DEM1", "name": "DEMO ONE"}],
+    }
     msg = build_parse_user_message(
-        "giblet 204 iden",
+        "giblet 204 proceed direct c-max",
         "voice",
-        {"callsigns": ["DAL123", "SWA204"], "selectedCallsign": "SWA204"},
+        {
+            "callsigns": ["DAL123", "SWA204"],
+            "selectedCallsign": "SWA204",
+            "fixes": ["SEMAX", "NEMAX", "MERGE"],
+            "procedures": [{"id": "DEM1", "name": "DEMO ONE"}],
+        },
     )
     assert "onFrequency=DAL123,SWA204" in msg
     assert "selected=SWA204" in msg
-    assert "text=giblet 204 iden" in msg
+    assert "fixes=SEMAX,NEMAX,MERGE" in msg
+    assert "procedures=DEM1 (DEMO ONE)" in msg
+    assert "text=giblet 204 proceed direct c-max" in msg
     assert "nbest" not in msg
     assert "confidence" not in msg
     bare = build_parse_user_message("ident", "voice", None)
     assert "onFrequency=" not in bare
+    assert "fixes=" not in bare
+    assert "procedures=" not in bare
     assert "text=ident" in bare
 
 
@@ -173,6 +192,10 @@ def test_system_prompt_distinguishes_heading_vector_from_turn_degrees() -> None:
     assert "NEVER TURN_DEGREES for a heading assignment" in SYSTEM_PROMPT
     assert "heading 270" in SYSTEM_PROMPT
     assert "heading 360" in SYSTEM_PROMPT
+    assert "fixes=" in SYSTEM_PROMPT
+    assert "C-Max" in SYSTEM_PROMPT
+    assert "procedures=" in SYSTEM_PROMPT
+    assert "DEM1" in SYSTEM_PROMPT
 
 
 def test_parse_n_gpu_layers_auto_cuda(monkeypatch) -> None:

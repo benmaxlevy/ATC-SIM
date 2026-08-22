@@ -54,6 +54,8 @@ export type ParseCommandFn = (
     source: "text" | "voice";
     selectedCallsign?: string | null;
     callsigns?: readonly string[];
+    fixes?: readonly string[];
+    procedures?: ReadonlyArray<{ id: string; name?: string }>;
     pathC?: boolean;
   },
 ) => Promise<VoiceParseResult>;
@@ -79,6 +81,10 @@ export interface VoiceLoopOptions {
   getSelectedCallsign: () => string | null;
   /** Live ICAO roster for Path C grounding. Default none. */
   getOnFrequencyCallsigns?: () => readonly string[];
+  /** Facility catalog ids for STT prompt + Path C fix grounding. Default none. */
+  getCatalogFixIds?: () => readonly string[];
+  /** STAR/SID catalog for STT + Path C procedure grounding. Default none. */
+  getCatalogProcedures?: () => ReadonlyArray<{ id: string; name?: string }>;
   getIssuedAtSimMs?: () => number;
   now?: () => number;
   /**
@@ -190,6 +196,8 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly dispatchCommand: DispatchCommandFn;
   private readonly getSelectedCallsign: () => string | null;
   private readonly getOnFrequencyCallsigns: () => readonly string[];
+  private readonly getCatalogFixIds: () => readonly string[];
+  private readonly getCatalogProcedures: () => ReadonlyArray<{ id: string; name?: string }>;
   private readonly getIssuedAtSimMs: () => number;
   private readonly now: () => number;
   private pathC: boolean;
@@ -208,6 +216,8 @@ class VoiceLoopImpl implements VoiceLoop {
     this.dispatchCommand = options.dispatchCommand;
     this.getSelectedCallsign = options.getSelectedCallsign;
     this.getOnFrequencyCallsigns = options.getOnFrequencyCallsigns ?? (() => []);
+    this.getCatalogFixIds = options.getCatalogFixIds ?? (() => []);
+    this.getCatalogProcedures = options.getCatalogProcedures ?? (() => []);
     this.getIssuedAtSimMs = options.getIssuedAtSimMs ?? (() => 0);
     this.now = options.now ?? defaultNow;
     this.pathC = options.pathC ?? false;
@@ -377,6 +387,8 @@ class VoiceLoopImpl implements VoiceLoop {
       source: "voice",
       selectedCallsign: this.getSelectedCallsign(),
       callsigns: this.getOnFrequencyCallsigns(),
+      fixes: this.getCatalogFixIds(),
+      procedures: this.getCatalogProcedures(),
       pathC: this.pathC,
     });
     if (this.disposed) {
@@ -478,7 +490,10 @@ class VoiceLoopImpl implements VoiceLoop {
         return fromLive;
       }
     }
-    return this.speechPort.transcribe(clip);
+    return this.speechPort.transcribe(clip, {
+      fixes: this.getCatalogFixIds(),
+      procedures: this.getCatalogProcedures(),
+    });
   }
 
   private emitMetrics(): void {

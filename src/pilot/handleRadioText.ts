@@ -8,7 +8,7 @@
  */
 
 import type { Command, Instruction, ParseStage, SessionLog, World } from "@core";
-import { parseCommand } from "@parse";
+import { parseCommand, proceduresFromCatalog } from "@parse";
 import { applyIntent } from "./applyIntent";
 import { formatReadback, formatRejectReadback } from "./readback";
 import { resolveCallsign } from "./resolveCallsign";
@@ -44,6 +44,10 @@ function selectedCallsignFromWorld(world: World): string | null {
 
 function callsignsFromWorld(world: World): string[] {
   return world.aircraft.map((ac) => ac.callsign);
+}
+
+function catalogFixIdsFromWorld(world: World): string[] {
+  return world.fixRegistry ? [...world.fixRegistry.ids()] : [];
 }
 
 function buildCommand(args: {
@@ -107,6 +111,8 @@ export async function handleRadioText(
     source,
     selectedCallsign: selectedCallsignFromWorld(world),
     callsigns: callsignsFromWorld(world),
+    fixes: catalogFixIdsFromWorld(world),
+    procedures: proceduresFromCatalog(world.catalog),
     pathC: opts?.pathC ?? false,
   });
   if (!parsed.ok) {

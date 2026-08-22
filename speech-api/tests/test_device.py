@@ -86,3 +86,39 @@ def test_whisper_init_falls_back_after_cublas_load_error(monkeypatch, tmp_path) 
     text, confidence = stt.transcribe(b"RIFF")
     assert text == ""
     assert confidence == 1.0
+
+
+def test_sanitize_stt_fixes_and_whisper_prompt() -> None:
+    from engines import sanitize_stt_fixes, sanitize_stt_procedures, whisper_fix_prompt
+
+    assert sanitize_stt_fixes("semax, NEMAX, nope!, FI27") == ["SEMAX", "NEMAX", "FI27"]
+    assert sanitize_stt_procedures("DEM1=DEMO ONE|SID2") == ["DEM1", "DEMO ONE", "SID2"]
+    assert whisper_fix_prompt(["SEMAX", "NEMAX"]) == "Named ATC fixes: SEMAX NEMAX."
+    assert whisper_fix_prompt(["SEMAX"], ["DEM1", "DEMO ONE"]) == (
+        "Named ATC fixes: SEMAX. Procedures: DEM1 DEMO ONE."
+    )
+    assert whisper_fix_prompt([]) is None
+
+
+def test_whisper_transcribe_passes_initial_prompt(monkeypatch, tmp_path) -> None:
+    captured: dict[str, object] = {}
+
+    class _PromptModel:
+        def transcribe(self, path, **kwargs):
+            del path
+            captured.clear()
+            captured.update(kwargs)
+            return iter(()), None
+
+    def load(_settings: Settings, device: str, compute_type: str, **_kwargs) -> object:
+        del device, compute_type
+        return _PromptModel()
+
+    monkeypatch.setattr("engines._pick_stt_device", lambda _s: ("cpu", "int8"))
+    monkeypatch.setattr("engines._load_whisper_model", load)
+    stt = FasterWhisperStt(_settings(cache_dir=tmp_path))
+    stt.transcribe(b"RIFF", ["SEMAX", "NEMAX"])
+    assert captured["initial_prompt"] == "Named ATC fixes: SEMAX NEMAX."
+    assert captured["condition_on_previous_text"] is False
+    stt.transcribe(b"RIFF")
+    assert "initial_prompt" not in captured

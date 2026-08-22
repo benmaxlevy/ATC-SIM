@@ -13,9 +13,9 @@ Paid or metered STT/TTS/LLM APIs, including: OpenAI, Deepgram, AssemblyAI, Groq,
 | Method | Path | In | Out |
 | --- | --- | --- | --- |
 | `GET` | `/health` | — | `{ "ok": true, "sttModel": "<hub id>", "ttsVoice": "<id>", "parse": "off" \| "ready" }` |
-| `POST` | `/stt` | body `audio/wav` (pcm16le mono, 16 kHz preferred) | `{ "text": string, "confidence": number }` |
+| `POST` | `/stt` | body `audio/wav` (pcm16le mono, 16 kHz preferred). Optional header `X-ATC-Fixes: SEMAX,NEMAX,…` biases Whisper `initial_prompt` toward catalog spellings. | `{ "text": string, "confidence": number }` |
 | `POST` | `/tts` | JSON `{ "text", "voiceId" }` | `audio/wav` (mono PCM) |
-| `POST` | `/parse` | JSON `{ "text", "source", "schemaVersion": "command-ir-v0", "context"? }` — no n-best, no confidence. Optional `context: { callsigns, selectedCallsign }` is the live strip roster for prompt grounding. | `{ "ok": true, "callsignToken", "instructions" }` or `{ "ok": false, "error": "UNAVAILABLE" \| "PARSE_MISS" \| "SCHEMA" }` (200 or 503). Never 500-with-stack. |
+| `POST` | `/parse` | JSON `{ "text", "source", "schemaVersion": "command-ir-v0", "context"? }` — no n-best, no confidence. Optional `context: { callsigns, selectedCallsign, fixes }` is live-strip + catalog prompt grounding. | `{ "ok": true, "callsignToken", "instructions" }` or `{ "ok": false, "error": "UNAVAILABLE" \| "PARSE_MISS" \| "SCHEMA" }` (200 or 503). Never 500-with-stack. |
 
 `confidence`: if faster-whisper has no score, the API returns `1.0`.
 
@@ -50,7 +50,7 @@ pip install -r requirements-parse.txt
 
 Constrained decoding uses `parse_grammar.gbnf` (JSON matching Command IR v0) when llama.cpp accepts it. Prose from the model is a `SCHEMA` miss.
 
-**Roster grounding (not a vector DB):** the sim may send `context.callsigns` (on-frequency ICAO) and `context.selectedCallsign`. Those go in the **user** turn as `onFrequency=` so the static system prompt stays cacheable. The 1.5B model must pick an ICAO from that list (e.g. ASR `giblet 204` → `SWA204`). Do not send kinematics — Path C is not an executor. The browser also snaps a unique flight-number suffix onto the roster when the model still returns `callsignToken: null`.
+**Roster + catalog grounding (not a vector DB):** the sim may send `context.callsigns` (on-frequency ICAO), `context.selectedCallsign`, and `context.fixes` (facility catalog ids). Those go in the **user** turn as `onFrequency=` / `fixes=` so the static system prompt stays cacheable. The 1.5B model must pick an ICAO from the roster (e.g. ASR `giblet 204` → `SWA204`) and a listed fix spelling (e.g. ASR `C-Max` → `SEMAX`). Do not send kinematics — Path C is not an executor. The browser also snaps a unique flight-number suffix onto the roster, and a unique noisy `fixId` onto the catalog, when the model still returns junk.
 
 ## Install (Python 3.11+)
 

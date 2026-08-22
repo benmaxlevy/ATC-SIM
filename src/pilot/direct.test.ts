@@ -98,6 +98,13 @@ test("AC2 parse+pilot+stepWorld — DCT NEMAX tracks the fix", async () => {
   expect(later).toBeLessThan(start - 0.5);
 });
 
+test("spoken C-Max grounds to catalog SEMAX", async () => {
+  const { dal, world } = worldWithDal();
+  const result = await handleRadioText(world, "DAL123 proceed direct C-Max", new SessionLog());
+  expect(result.accepted).toBe(true);
+  expect(dal.intent.lateral).toEqual({ type: "DIRECT", fixId: "SEMAX" });
+});
+
 test("DCT DEM is a known navaid; D30 is still descend", async () => {
   const { dal, world } = worldWithDal();
   const direct = await handleRadioText(world, "DAL123 DCT DEM", new SessionLog());

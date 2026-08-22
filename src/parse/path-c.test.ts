@@ -239,6 +239,66 @@ test("Path C grounds giblet 204 iden onto unique on-frequency SWA204", async () 
   expect(result.instructions).toEqual([{ type: "IDENT" }]);
 });
 
+test("Path C DIRECT C-Max snaps onto catalog SEMAX and sends fixes=", async () => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: null,
+    instructions: [{ type: "DIRECT", fixId: "C-Max" }],
+  }));
+  const result = await parseCommand("pizza the runway to C-Max", {
+    source: "voice",
+    selectedCallsign: "DAL123",
+    pathC: true,
+    fixes: ["NEMAX", "SEMAX", "MERGE"],
+    parsePathC,
+  });
+  expect(parsePathC).toHaveBeenCalledWith({
+    text: "pizza the runway to C-Max",
+    source: "voice",
+    schemaVersion: PATH_C_SCHEMA_VERSION,
+    context: {
+      callsigns: [],
+      selectedCallsign: "DAL123",
+      fixes: ["NEMAX", "SEMAX", "MERGE"],
+    },
+  });
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.parseStage).toBe("llm_c");
+  expect(result.instructions).toEqual([{ type: "DIRECT", fixId: "SEMAX" }]);
+});
+
+test("Path C DESCEND_VIA DEMO1 snaps onto catalog DEM1", async () => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: "DAL200",
+    instructions: [{ type: "DESCEND_VIA", procedureId: "DEMO1" }],
+  }));
+  const result = await parseCommand("pizza via demo 1", {
+    source: "voice",
+    selectedCallsign: "DAL200",
+    pathC: true,
+    procedures: [{ id: "DEM1", name: "DEMO ONE" }],
+    parsePathC,
+  });
+  expect(parsePathC).toHaveBeenCalledWith({
+    text: "pizza via demo 1",
+    source: "voice",
+    schemaVersion: PATH_C_SCHEMA_VERSION,
+    context: {
+      callsigns: [],
+      selectedCallsign: "DAL200",
+      procedures: [{ id: "DEM1", name: "DEMO ONE" }],
+    },
+  });
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.parseStage).toBe("llm_c");
+  expect(result.instructions).toEqual([{ type: "DESCEND_VIA", procedureId: "DEM1" }]);
+});
+
 test("Path C TURN_DEGREES on a heading assignment is repaired to FLY_HEADING", async () => {
   const parsePathC = vi.fn<ParsePathCFn>(async () => ({
     callsignToken: null,
@@ -283,18 +343,26 @@ test("default fetch body has no n-best or confidence", async () => {
   expect(hit).toEqual(HEADING);
 });
 
-test("fetch body may include roster context but never n-best or confidence", async () => {
+test("fetch body may include roster and catalog fixes but never n-best or confidence", async () => {
   const fetchSpy = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
     expect(body).not.toHaveProperty("confidence");
     expect(body).not.toHaveProperty("nbest");
-    expect(body.context).toEqual({ callsigns: ["SWA204"], selectedCallsign: "SWA204" });
+    expect(body.context).toEqual({
+      callsigns: ["SWA204"],
+      selectedCallsign: "SWA204",
+      fixes: ["SEMAX", "NEMAX"],
+    });
     return new Response(JSON.stringify(LEGAL_BODY), { status: 200 });
   });
   await fetchParsePathC(
     {
       ...REQ,
-      context: { callsigns: ["SWA204"], selectedCallsign: "SWA204" },
+      context: {
+        callsigns: ["SWA204"],
+        selectedCallsign: "SWA204",
+        fixes: ["SEMAX", "NEMAX"],
+      },
     },
     { fetch: fetchSpy },
   );

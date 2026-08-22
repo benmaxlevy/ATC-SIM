@@ -67,8 +67,15 @@ Same origin as STT/TTS (`http://127.0.0.1:8090`). **Not** a SpeechPort. **Not** 
 POST /parse
 Content-Type: application/json
 
-{ "text": string, "source": "text" | "voice", "schemaVersion": "command-ir-v0" }
+{ "text": string, "source": "text" | "voice", "schemaVersion": "command-ir-v0", "context"? }
 ```
+
+Optional `context` is prompt grounding, **not** a vector DB:
+
+- `callsigns` / `selectedCallsign` — live strip roster (`onFrequency=`).
+- `fixes` — facility catalog ids (`fixes=`). ASR often writes `C-Max` for `SEMAX`; the 1.5B model must pick a listed spelling. Do not send kinematics.
+
+The browser also snaps unique noisy `fixId` values onto that catalog after every stage (typed / A / B / C), the same way it snaps flight-number suffixes onto the roster.
 
 Success:
 

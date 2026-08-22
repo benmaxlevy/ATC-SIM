@@ -1,3 +1,13 @@
+export interface TranscribeOpts {
+  /**
+   * Facility catalog ids. HttpSpeechPort sends `X-ATC-Fixes` so Whisper can
+   * spell SEMAX instead of C-Max. Other adapters may ignore this.
+   */
+  fixes?: readonly string[];
+  /** STAR/SID ids + names (`DEM1` / `DEMO ONE`) for Whisper prompt bias. */
+  procedures?: ReadonlyArray<{ id: string; name?: string }>;
+}
+
 export interface SpeechPort {
   readonly id: string;
 
@@ -5,7 +15,7 @@ export interface SpeechPort {
    * Transcribe a complete PTT clip (PCM16 mono 16 kHz recommended).
    * Must not be called while another transcribe() is in flight for the same session.
    */
-  transcribe(audio: AudioClip): Promise<Transcript>;
+  transcribe(audio: AudioClip, opts?: TranscribeOpts): Promise<Transcript>;
 
   /** Synthesize a readback. Return PCM the client will play through Web Audio. */
   synthesize(text: string, voiceId: string): Promise<AudioClip>;

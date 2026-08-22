@@ -13,7 +13,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from config import Settings
-from engines import SttEngine, TtsEngine, build_stt, build_tts
+from engines import SttEngine, TtsEngine, build_stt, build_tts, sanitize_stt_fixes, sanitize_stt_procedures
 from logconfig import configure_logging
 from parse_engine import ParseEngine, build_parse
 from wavutil import is_wave
@@ -28,14 +28,16 @@ class TtsRequest(BaseModel):
 
 
 class ParseContext(BaseModel):
-    """Live-strip grounding for Path C. No n-best, no STT confidence, no kinematics."""
+    """Live-strip + catalog grounding for Path C. No n-best, no STT confidence, no kinematics."""
 
     callsigns: List[str] = Field(default_factory=list)
     selectedCallsign: Optional[str] = None
+    fixes: List[str] = Field(default_factory=list)
+    procedures: List[dict] = Field(default_factory=list)
 
 
 class ParseRequest(BaseModel):
-    """Path C request. No n-best, no confidence. Optional context is the live roster."""
+    """Path C request. No n-best, no confidence. Optional context is roster + catalog ids."""
 
     text: str = ""
     source: str = "voice"
@@ -112,8 +114,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # Do not log raw audio — only byte length.
         log.info("stt request bytes=%s", len(body))
         engine: SttEngine = request.app.state.stt
+        fixes = sanitize_stt_fixes(request.headers.get("x-atc-fixes"))
+        procedures = sanitize_stt_procedures(request.headers.get("x-atc-procedures"))
         try:
-            text, confidence = engine.transcribe(body)
+            text, confidence = engine.transcribe(body, fixes, procedures)
         except Exception:
             log.exception("stt inference failed")
             raise HTTPException(status_code=503, detail="STT_FAILED") from None

@@ -78,6 +78,33 @@ test("AC1 AC6 — happy STT JSON fills Transcript and id is http", async () => {
   expect(transcript.latencyMs).toBeGreaterThanOrEqual(0);
 });
 
+test("STT sends catalog ids as X-ATC-Fixes for Whisper prompt bias", async () => {
+  const fetchMock: TestFetch = async (_url, init) => {
+    const headers = new Headers(init?.headers);
+    expect(headers.get("X-ATC-Fixes")).toBe("SEMAX,NEMAX,MERGE");
+    expect(headers.get("Content-Type")).toBe("audio/wav");
+    return jsonResponse({ text: "proceed direct SEMAX", confidence: 0.9 });
+  };
+  const port = new HttpSpeechPort({ fetch: fetchMock });
+  const transcript = await port.transcribe(smallClip(), {
+    fixes: ["semax", "NEMAX", "MERGE", "nope!"],
+  });
+  expect(transcript.text).toBe("proceed direct SEMAX");
+});
+
+test("STT sends STAR names as X-ATC-Procedures for Whisper prompt bias", async () => {
+  const fetchMock: TestFetch = async (_url, init) => {
+    const headers = new Headers(init?.headers);
+    expect(headers.get("X-ATC-Procedures")).toBe("DEM1=DEMO ONE");
+    return jsonResponse({ text: "descend via DEMO ONE", confidence: 0.9 });
+  };
+  const port = new HttpSpeechPort({ fetch: fetchMock });
+  const transcript = await port.transcribe(smallClip(), {
+    procedures: [{ id: "dem1", name: "DEMO ONE" }],
+  });
+  expect(transcript.text).toBe("descend via DEMO ONE");
+});
+
 test("AC2 — missing confidence defaults to 1.0", async () => {
   const port = new HttpSpeechPort({
     fetch: async () => jsonResponse({ text: "ident" }),

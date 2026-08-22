@@ -16,11 +16,18 @@ import {
   parseTurnDegreesValue,
   singleDigit,
 } from "./numbers";
+import { groundFixToCatalog } from "./fix-ground";
+import {
+  groundProcedureToCatalog,
+  type CatalogProcedure,
+} from "./procedure-ground";
 import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./telephony";
 
 interface Cursor {
   tokens: readonly string[];
   i: number;
+  catalog: readonly string[];
+  procedures: readonly CatalogProcedure[];
 }
 
 function peek(c: Cursor, offset = 0): string | undefined {
@@ -208,10 +215,12 @@ function trySpeed(c: Cursor): Instruction | null {
 
 function tryDirect(c: Cursor): Instruction | null {
   const start = c.i;
-  if (!take(c, "proceed") || !take(c, "direct")) {
+  take(c, "proceed");
+  if (!take(c, "direct")) {
     c.i = start;
     return null;
   }
+  take(c, "to");
   const fix = parseFixId(c);
   if (fix === null) {
     c.i = start;
@@ -220,7 +229,70 @@ function tryDirect(c: Cursor): Instruction | null {
   return { type: "DIRECT", fixId: fix };
 }
 
+const PROCEDURE_TRAILING = new Set(["arrival", "star", "sid", "procedure"]);
+
+function tryVia(c: Cursor): Instruction | null {
+  const start = c.i;
+  const climb = take(c, "climb");
+  if (!climb) {
+    take(c, "descend");
+  }
+  if (!take(c, "via")) {
+    c.i = start;
+    return null;
+  }
+  take(c, "the");
+  const procedureId = parseProcedureId(c);
+  if (procedureId === null) {
+    c.i = start;
+    return null;
+  }
+  if (peek(c) !== undefined && PROCEDURE_TRAILING.has(peek(c)!)) {
+    c.i += 1;
+  }
+  return climb
+    ? { type: "CLIMB_VIA", procedureId }
+    : { type: "DESCEND_VIA", procedureId };
+}
+
+function parseProcedureId(c: Cursor): string | null {
+  if (c.procedures.length > 0) {
+    const remaining = c.tokens.length - c.i;
+    for (let n = Math.min(4, remaining); n >= 1; n -= 1) {
+      const slice = takeNonReserved(c, n);
+      if (slice === null) {
+        continue;
+      }
+      const glued = slice.join(" ");
+      const hit = groundProcedureToCatalog(glued, c.procedures);
+      if (hit) {
+        c.i += n;
+        return hit;
+      }
+    }
+  }
+  const tok = peek(c);
+  if (tok === undefined || RESERVED_SPOKEN.has(tok)) {
+    return null;
+  }
+  c.i += 1;
+  return groundProcedureToCatalog(tok, c.procedures) ?? tok.toUpperCase();
+}
+
+function takeNonReserved(c: Cursor, n: number): string[] | null {
+  const slice: string[] = [];
+  for (let k = 0; k < n; k += 1) {
+    const tok = peek(c, k);
+    if (tok === undefined || RESERVED_SPOKEN.has(tok)) {
+      return null;
+    }
+    slice.push(tok);
+  }
+  return slice;
+}
+
 function parseFixId(c: Cursor): string | null {
+  const phoneticStart = c.i;
   const phonetics: string[] = [];
   while (phonetics.length < 5) {
     const tok = peek(c);
@@ -231,14 +303,33 @@ function parseFixId(c: Cursor): string | null {
     c.i += 1;
   }
   if (phonetics.length >= 2) {
-    return phonetics.join("");
+    const id = phonetics.join("");
+    return groundFixToCatalog(id, c.catalog) ?? id;
   }
+  c.i = phoneticStart;
+
+  if (c.catalog.length > 0) {
+    const remaining = c.tokens.length - c.i;
+    for (let n = Math.min(3, remaining); n >= 1; n -= 1) {
+      const slice = takeNonReserved(c, n);
+      if (slice === null) {
+        continue;
+      }
+      const glued = slice.join("");
+      const hit = groundFixToCatalog(glued, c.catalog);
+      if (hit) {
+        c.i += n;
+        return hit;
+      }
+    }
+  }
+
   const tok = peek(c);
   if (tok === undefined || RESERVED_SPOKEN.has(tok)) {
     return null;
   }
   c.i += 1;
-  return tok.toUpperCase();
+  return groundFixToCatalog(tok, c.catalog) ?? tok.toUpperCase();
 }
 
 function tryGoAround(c: Cursor): Instruction | null {
@@ -404,6 +495,7 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     tryFlyHeading(c) ??
     tryPresentHeading(c) ??
     tryAltitude(c) ??
+    tryVia(c) ??
     trySpeed(c) ??
     tryDirect(c) ??
     tryIdent(c) ??
@@ -445,13 +537,20 @@ export function parseSpokenGrammar(
   normalized: string,
   selectedCallsign: string | null | undefined,
   sourceText: string,
+  catalogFixes?: readonly string[],
+  catalogProcedures?: readonly CatalogProcedure[],
 ): ParseResult {
   const tokens = normalized.split(" ").filter((tok) => tok.length > 0);
   if (tokens.length === 0) {
     return { ok: false, error: formatParseError(PARSE_ERROR.EMPTY), sourceText };
   }
 
-  const c: Cursor = { tokens, i: 0 };
+  const c: Cursor = {
+    tokens,
+    i: 0,
+    catalog: catalogFixes ?? [],
+    procedures: catalogProcedures ?? [],
+  };
   const callsignAttempt = parseSpokenCallsign(tokens, 0);
   if (callsignAttempt.kind === "unknown_telephony") {
     return {

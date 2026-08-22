@@ -13,6 +13,10 @@ export const DEFAULT_PARSE_TIMEOUT_MS = 15000;
 export interface PathCContext {
   callsigns: string[];
   selectedCallsign?: string | null;
+  /** Facility catalog ids. Optional; never kinematics, n-best, or STT confidence. */
+  fixes?: string[];
+  /** STAR/SID ids + published names. Optional. */
+  procedures?: Array<{ id: string; name?: string }>;
 }
 
 export interface PathCRequest {
@@ -229,12 +233,22 @@ export async function fetchParsePathC(
           text: req.text,
           source: req.source,
           schemaVersion: PATH_C_SCHEMA_VERSION,
-          ...(req.context && (req.context.callsigns.length > 0 || req.context.selectedCallsign)
+          ...(req.context &&
+          (req.context.callsigns.length > 0 ||
+            req.context.selectedCallsign ||
+            (req.context.fixes?.length ?? 0) > 0 ||
+            (req.context.procedures?.length ?? 0) > 0)
             ? {
                 context: {
                   callsigns: req.context.callsigns,
                   ...(req.context.selectedCallsign
                     ? { selectedCallsign: req.context.selectedCallsign }
+                    : {}),
+                  ...(req.context.fixes && req.context.fixes.length > 0
+                    ? { fixes: req.context.fixes }
+                    : {}),
+                  ...(req.context.procedures && req.context.procedures.length > 0
+                    ? { procedures: req.context.procedures }
                     : {}),
                 },
               }

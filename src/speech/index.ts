@@ -13,7 +13,7 @@
  *
  * Import rule: `@speech` may import `@core` only. `parseCommand` is injected.
  */
-export type { AudioClip, SpeechPort, Transcript } from "./types";
+export type { AudioClip, SpeechPort, Transcript, TranscribeOpts } from "./types";
 export { SpeechNotAvailableError } from "./errors";
 export { NullSpeechPort } from "./null-speech-port";
 export { HttpSpeechPort } from "./ports/http-speech-port";

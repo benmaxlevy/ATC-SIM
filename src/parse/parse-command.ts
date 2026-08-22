@@ -15,6 +15,15 @@ import { normalizeSpoken } from "./spoken/normalizer";
 import { groundCallsignToRoster, spokenCallsignToken } from "./spoken/telephony";
 import { rewriteSpokenToTyped } from "./spoken/typed-fuzzy";
 import {
+  groundInstructionFixes,
+  sanitizeFixIds,
+} from "./spoken/fix-ground";
+import {
+  groundInstructionProcedures,
+  sanitizeCatalogProcedures,
+  type CatalogProcedure,
+} from "./spoken/procedure-ground";
+import {
   PATH_C_SCHEMA_VERSION,
   fetchParsePathC,
   type ParsePathCFn,
@@ -26,6 +35,16 @@ export interface ParseCommandOpts {
   selectedCallsign?: string | null;
   /** Live ICAO roster for Path C prompt grounding. Parse stays World-free. */
   callsigns?: readonly string[];
+  /**
+   * Facility catalog ids (fixes + navaids) for DIRECT/CROSS snap and Path C
+   * `fixes=` prompt grounding. Not kinematics. Parse stays World-free.
+   */
+  fixes?: readonly string[];
+  /**
+   * STAR/SID catalog for DESCEND_VIA / CLIMB_VIA snap (`demo 1` → `DEM1`)
+   * and Path C `procedures=` grounding.
+   */
+  procedures?: readonly CatalogProcedure[];
   /** Default false. When true, stage 4 may fetch after a local miss. */
   pathC?: boolean;
   /** Injected fetch. Default POSTs to our speech-api `/parse`. */
@@ -55,13 +74,17 @@ function rosterFromOpts(opts: ParseCommandOpts): string[] {
 function pathCContext(
   roster: readonly string[],
   selected: string | null,
+  fixes: readonly string[],
+  procedures: readonly CatalogProcedure[],
 ): PathCContext | undefined {
-  if (roster.length === 0 && !selected) {
+  if (roster.length === 0 && !selected && fixes.length === 0 && procedures.length === 0) {
     return undefined;
   }
   return {
     callsigns: [...roster],
     selectedCallsign: selected,
+    ...(fixes.length > 0 ? { fixes: [...fixes] } : {}),
+    ...(procedures.length > 0 ? { procedures: procedures.map((item) => ({ ...item })) } : {}),
   };
 }
 
@@ -81,11 +104,16 @@ function okStage(
   parseStage: ParseStage,
   source: "text" | "voice",
   selected: string | null,
+  catalog: readonly string[],
+  procedures: readonly CatalogProcedure[],
 ): ParseResult {
   return {
     ok: true,
     callsignToken: parsed.callsignToken ?? selected,
-    instructions: parsed.instructions,
+    instructions: groundInstructionProcedures(
+      groundInstructionFixes(parsed.instructions, catalog),
+      procedures,
+    ),
     sourceText,
     parseStage,
     source,
@@ -102,23 +130,25 @@ export async function parseCommand(
 ): Promise<ParseResult> {
   const selected = opts.selectedCallsign ?? null;
   const roster = rosterFromOpts(opts);
+  const catalog = sanitizeFixIds(opts.fixes);
+  const procedures = sanitizeCatalogProcedures(opts.procedures);
   const normalized = normalizeSpoken(sourceText);
 
   const typed = attachCallsign(parseRadioText(normalized), selected);
   if (typed.ok && typed.instructions.length > 0) {
-    return okStage(typed, sourceText, "typed", opts.source, selected);
+    return okStage(typed, sourceText, "typed", opts.source, selected, catalog, procedures);
   }
 
-  const spoken = parseSpokenGrammar(normalized, selected, sourceText);
+  const spoken = parseSpokenGrammar(normalized, selected, sourceText, catalog, procedures);
   if (spoken.ok) {
-    return okStage(spoken, sourceText, "spoken_a", opts.source, selected);
+    return okStage(spoken, sourceText, "spoken_a", opts.source, selected, catalog, procedures);
   }
 
   const rewritten = rewriteSpokenToTyped(normalized);
   if (rewritten !== null) {
     const pathB = attachCallsign(parseRadioText(rewritten), selected);
     if (pathB.ok && pathB.instructions.length > 0) {
-      return okStage(pathB, sourceText, "spoken_b", opts.source, selected);
+      return okStage(pathB, sourceText, "spoken_b", opts.source, selected, catalog, procedures);
     }
   }
 
@@ -129,7 +159,7 @@ export async function parseCommand(
         text: sourceText,
         source: opts.source,
         schemaVersion: PATH_C_SCHEMA_VERSION,
-        context: pathCContext(roster, selected),
+        context: pathCContext(roster, selected, catalog, procedures),
       });
       if (hit !== null && hit.instructions.length > 0) {
         const grounded =
@@ -152,6 +182,8 @@ export async function parseCommand(
           "llm_c",
           opts.source,
           selected,
+          catalog,
+          procedures,
         );
       }
     } catch {

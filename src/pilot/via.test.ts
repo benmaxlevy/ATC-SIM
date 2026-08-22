@@ -68,6 +68,16 @@ test("VIA DEM1 is accepted and arms VIA_STAR with DEMO ONE readback", async () =
   expect(result.readback.toLowerCase()).toContain("descend via demo one");
 });
 
+test("spoken descend via demo 1 is accepted as DEM1", async () => {
+  const { dal, world } = worldOnDem1North();
+  dal.callsign = "DAL200";
+  const result = await handleRadioText(world, "Delta 200 descend via demo 1", new SessionLog());
+  expect(result.accepted).toBe(true);
+  expect(result.reason).toBeUndefined();
+  expect(dal.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
+  expect(result.readback.toLowerCase()).toContain("descend via demo one");
+});
+
 test("AC5 — VIA NOPE is rejected with no vertical change", async () => {
   const { dal, world } = worldOnDem1North();
   const before = { ...dal.intent };
