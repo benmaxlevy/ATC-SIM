@@ -25,7 +25,7 @@ export type LateralMode =
 
 /**
  * Phase 4 vertical FMS. MSAW inhibit keys on `GS` inside FAF.
- * Omit until T04-06 (treated as assigned altitude).
+ * Omit (treated as assigned altitude) until VIA / GS / missed is armed.
  */
 export type CrossRestriction = "AT" | "AT_OR_ABOVE" | "AT_OR_BELOW";
 

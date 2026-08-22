@@ -230,3 +230,80 @@ test("APP while already on the loc axis captures immediately", async () => {
   expect(log.byType("nav.loc.captured")).toHaveLength(1);
   expect(dal.intent.lateral?.type).toBe("LOC");
 });
+
+test("AC2c — INTERCEPT_LOC at ~8 NM does not fire nav.gs.captured in 20 s", async () => {
+  const dal = createAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    xNm: 8,
+    yNm: 3,
+    headingDeg: 90,
+    altitudeFt: 2000,
+    speedKt: 220,
+  });
+  const { world, log } = worldWithDal(dal);
+  await handleRadioText(world, "DAL123 APP ILS27", log);
+  expect(dal.intent.lateral?.type).toBe("INTERCEPT_LOC");
+  stepUntil(world, () => false, 20_000);
+  expect(log.byType("nav.gs.captured")).toHaveLength(0);
+  expect(dal.intent.vertical?.type === "GS").toBeFalsy();
+});
+
+test("AC4 — H360 after GS capture clears GS; no 3° descent from GS", async () => {
+  const dal = createAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    xNm: 8,
+    yNm: 0,
+    headingDeg: 270,
+    altitudeFt: 2000,
+    speedKt: 220,
+  });
+  const { world, log } = worldWithDal(dal);
+  await handleRadioText(world, "DAL123 APP ILS27", log);
+  const found = stepUntil(
+    world,
+    () => log.byType("nav.gs.captured").length > 0,
+    3 * 60 * 1000,
+  );
+  expect(found).toBe(true);
+  expect(dal.intent.vertical?.type).toBe("GS");
+  const altAtCapture = dal.altitudeFt;
+
+  const cancel = await handleRadioText(world, "DAL123 H360", new SessionLog());
+  expect(cancel.accepted).toBe(true);
+  expect(dal.intent.lateral).toEqual({ type: "HEADING", headingDeg: 0 });
+  expect(dal.intent.vertical).toEqual({ type: "ASSIGNED" });
+  expect(dal.intent.clearedApproachId).toBeNull();
+
+  stepUntil(world, () => false, 20_000);
+  expect(dal.intent.vertical).toEqual({ type: "ASSIGNED" });
+  expect(dal.altitudeFt).toBeGreaterThan(altAtCapture - 80);
+  expect(dal.altitudeFt).toBeCloseTo(2000, 0);
+  expect(log.byType("nav.gs.captured")).toHaveLength(1);
+});
+
+test("H270 after GS capture still cancels FMS including GS", async () => {
+  const dal = createAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    xNm: 8,
+    yNm: 0,
+    headingDeg: 270,
+    altitudeFt: 2000,
+    speedKt: 220,
+  });
+  const { world, log } = worldWithDal(dal);
+  await handleRadioText(world, "DAL123 APP ILS27", log);
+  expect(stepUntil(world, () => log.byType("nav.gs.captured").length > 0, 3 * 60 * 1000)).toBe(
+    true,
+  );
+  const cancel = await handleRadioText(world, "DAL123 H270", new SessionLog());
+  expect(cancel.accepted).toBe(true);
+  expect(dal.intent.lateral).toEqual({ type: "HEADING", headingDeg: 270 });
+  expect(dal.intent.vertical).toEqual({ type: "ASSIGNED" });
+  stepUntil(world, () => false, 20_000);
+  expect(dal.intent.vertical?.type === "GS").toBeFalsy();
+  expect(dal.altitudeFt).toBeCloseTo(2000, 0);
+});
+

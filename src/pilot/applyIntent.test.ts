@@ -72,6 +72,17 @@ test("DIRECT sets lateral DIRECT; heading tokens cancel it", () => {
   expect(ac.intent.assignedHeadingDeg).toBe(90);
 });
 
+test("heading after GS capture clears vertical GS to ASSIGNED", () => {
+  const ac = jet();
+  ac.intent.lateral = { type: "LOC", approachId: "ILS27" };
+  ac.intent.vertical = { type: "GS", approachId: "ILS27" };
+  ac.intent.clearedApproachId = "ILS27";
+  applyIntent(ac, [{ type: "FLY_HEADING", headingDeg: 0, turn: "SHORTEST" }], 0);
+  expect(ac.intent.lateral).toEqual({ type: "HEADING", headingDeg: 0 });
+  expect(ac.intent.vertical).toEqual({ type: "ASSIGNED" });
+  expect(ac.intent.clearedApproachId).toBeNull();
+});
+
 test("DESCEND_VIA arms VIA_STAR; CROSS attaches a restriction", () => {
   const ac = jet();
   applyIntent(ac, [{ type: "DESCEND_VIA", procedureId: "DEM1" }], 0);

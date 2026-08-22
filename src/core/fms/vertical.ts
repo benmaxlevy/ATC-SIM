@@ -1,11 +1,21 @@
 /**
- * Vertical / speed FMS for descend-via, climb-via, and CROSS (T04-04).
- * Pilot sets VIA_STAR / CROSS; `stepWorld` calls these helpers each tick.
- * Parser never calls kinematics. Loc/GS is T04-05/06.
+ * Vertical / speed FMS for descend-via, climb-via, CROSS (T04-04), and GS (T04-06).
+ * Pilot sets VIA_STAR / CROSS / heading-cancel; `stepWorld` calls these helpers each tick.
+ * Parser never calls kinematics. GS capture is only after `lateral === LOC`.
  */
 
 import type { Aircraft, CrossConstraint, VerticalMode } from "../aircraft";
 import type { SessionLog } from "../events/session-log";
+import { CLIMB_RATE_FT_PER_MIN } from "../kinematics";
+import {
+  GS_WAS_BELOW_FT,
+  gsAltitudeFt,
+  gsGeometricVsFpm,
+  gsShouldCapture,
+  gsShouldDropCapture,
+  type GsParams,
+} from "../nav/glidepath";
+import { locDeviation, type LocAxis } from "../nav/localizer";
 
 export type AltConstraint =
   | { type: "AT"; altitudeFt: number }
@@ -39,6 +49,16 @@ export interface VerticalFmsContext {
   log?: SessionLog | null;
   simTimeMs: number;
 }
+
+export interface GlidepathFmsContext {
+  locAxisFor?: (approachId: string) => LocAxis | undefined;
+  gsParamsFor?: (approachId: string) => GsParams | undefined;
+  log?: SessionLog | null;
+  simTimeMs: number;
+}
+
+/** True after a tick with `alt < gsAlt - 20` while established on loc. */
+const gsWasBelow = new WeakMap<Aircraft, boolean>();
 
 export function isOnCourseToFix(ac: Aircraft, fixId: string): boolean {
   const lateral = ac.intent.lateral;
@@ -146,6 +166,87 @@ export function applyVerticalFms(
       onStar,
     }),
   };
+}
+
+/**
+ * GS after loc only (7110.65: do not start GS before established).
+ * Returns a commanded altitude while `vertical === GS`; otherwise undefined
+ * so STAR/assigned vertical FMS stays in charge. Never climbs on GS.
+ */
+export function applyGlidepathFms(
+  ac: Aircraft,
+  dtS: number,
+  ctx: GlidepathFmsContext,
+): number | undefined {
+  const lateral = ac.intent.lateral;
+  if (lateral?.type !== "LOC") {
+    gsWasBelow.delete(ac);
+    if (ac.intent.vertical?.type === "GS") {
+      ac.intent.vertical = { type: "ASSIGNED" };
+    }
+    return undefined;
+  }
+
+  const axis = ctx.locAxisFor?.(lateral.approachId);
+  const params = ctx.gsParamsFor?.(lateral.approachId);
+  if (!axis || !params) {
+    return ac.intent.vertical?.type === "GS" ? ac.altitudeFt : undefined;
+  }
+
+  const alongTrackNm = locDeviation({ xNm: ac.xNm, yNm: ac.yNm }, axis).alongTrackNm;
+  const gsAlt = gsAltitudeFt(alongTrackNm, params);
+
+  if (ac.intent.vertical?.type === "GS") {
+    if (gsShouldDropCapture(ac.altitudeFt, gsAlt)) {
+      gsWasBelow.delete(ac);
+      ac.intent.vertical = { type: "ASSIGNED" };
+      return undefined;
+    }
+    return followGsAltitudeFt(ac.altitudeFt, gsAlt, params.gsAngleDeg, ac.speedKt, dtS);
+  }
+
+  if (ac.altitudeFt < gsAlt - GS_WAS_BELOW_FT) {
+    gsWasBelow.set(ac, true);
+  }
+  if (
+    !gsShouldCapture({
+      alongTrackNm,
+      altFt: ac.altitudeFt,
+      gsAltFt: gsAlt,
+      wasBelow: gsWasBelow.get(ac) === true,
+    })
+  ) {
+    return undefined;
+  }
+
+  gsWasBelow.delete(ac);
+  ac.intent.vertical = { type: "GS", approachId: lateral.approachId };
+  ctx.log?.append({
+    type: "nav.gs.captured",
+    atSimMs: ctx.simTimeMs,
+    atWallMs: 0,
+    callsign: ac.callsign,
+    approachId: lateral.approachId,
+  });
+  return followGsAltitudeFt(ac.altitudeFt, gsAlt, params.gsAngleDeg, ac.speedKt, dtS);
+}
+
+/** Geometric GS rate; extra VS only to recapture from slightly above. Never climb. */
+function followGsAltitudeFt(
+  currentAltFt: number,
+  gsAltFt: number,
+  gsAngleDeg: number,
+  groundSpeedKt: number,
+  dtS: number,
+): number {
+  if (gsAltFt >= currentAltFt) {
+    return currentAltFt;
+  }
+  const geoVs = Math.abs(gsGeometricVsFpm(gsAngleDeg, groundSpeedKt));
+  const vsFpm =
+    currentAltFt - gsAltFt > 20 ? Math.min(CLIMB_RATE_FT_PER_MIN, geoVs * 1.5) : geoVs;
+  const maxDownFt = (vsFpm / 60) * dtS;
+  return Math.max(gsAltFt, currentAltFt - maxDownFt);
 }
 
 /** Call while lateral is still PROCEDURE, before rolling out to heading. */

@@ -9,6 +9,7 @@ import type { Command } from "../command/types";
  * T04-03 adds nav.direct.sequenced / nav.star.vectors.
  * T04-04 adds optional nav.constraint.met.
  * T04-05 adds nav.loc.captured (INTERCEPT_LOC → LOC).
+ * T04-06 adds nav.gs.captured (vertical → GS after loc, from below).
  */
 export type SessionEvent =
   | {
@@ -122,6 +123,13 @@ export type SessionEvent =
     }
   | {
       type: "nav.loc.captured";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      approachId: string;
+    }
+  | {
+      type: "nav.gs.captured";
       atSimMs: number;
       atWallMs: number;
       callsign: string;

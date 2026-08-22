@@ -20,6 +20,10 @@ export function applyIntent(
   }
 }
 
+/**
+ * Analog: 7110.65 vector/heading cancels the published lateral path (STAR, loc, GS).
+ * Trainer delta: FLY_HEADING / TURN_DEGREES / PRESENT_HEADING also drop VIA_STAR and GS to ASSIGNED.
+ */
 function setHeadingMode(
   aircraft: Aircraft,
   headingDeg: number,
@@ -28,7 +32,10 @@ function setHeadingMode(
   aircraft.intent.assignedHeadingDeg = headingDeg;
   aircraft.intent.turn = turn;
   aircraft.intent.lateral = { type: "HEADING", headingDeg };
-  if (aircraft.intent.vertical?.type === "VIA_STAR") {
+  if (
+    aircraft.intent.vertical?.type === "VIA_STAR" ||
+    aircraft.intent.vertical?.type === "GS"
+  ) {
     aircraft.intent.vertical = { type: "ASSIGNED" };
   }
   aircraft.intent.cross = undefined;

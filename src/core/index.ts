@@ -14,7 +14,7 @@
  * `makeTestAircraft`, `nextAircraftId`; conflict alert lite (`evaluateConflictAlert`,
  * `CA_LATERAL_NM` / `CA_VERTICAL_FT` / `CA_LOOKAHEAD_S`, `datablockAlertTint`);
  * nav fix registry (`buildFixRegistry`, `FixRegistry`);
- * nav geometry (`courseDeg`, fly-by radius, loc deviation); lateral FMS (`applyLateralFms`);
+ * nav geometry (`courseDeg`, fly-by radius, loc deviation, GS height); lateral FMS (`applyLateralFms`);
  * vertical FMS (`targetAltitudeFt`, `applyVerticalFms`);
  * MSAW lite (`evaluateMsaw`, `MSAW_RED_BELOW_FT`, `msawFloorFt`).
  *
@@ -118,17 +118,38 @@ export {
   locShouldBreakout,
   locShouldCapture,
 } from "./nav/localizer";
+export type { GsCatalog, GsCatalogApproach, GsParams } from "./nav/glidepath";
+export {
+  FT_PER_NM,
+  GS_CAPTURE_ABOVE_FT,
+  GS_CAPTURE_ALONG_MAX_NM,
+  GS_CAPTURE_ALONG_MIN_NM,
+  GS_CAPTURE_BELOW_FT,
+  GS_DEFAULT_ANGLE_DEG,
+  GS_DEFAULT_FIELD_ELEV_FT,
+  GS_DEFAULT_TCH_FT,
+  GS_DROP_ABOVE_FT,
+  GS_WAS_BELOW_FT,
+  gsAltitudeFt,
+  gsGeometricVsFpm,
+  gsParamsForApproach,
+  gsShouldCapture,
+  gsShouldDropCapture,
+  kdemIls27GsParams,
+} from "./nav/glidepath";
 export type { LateralFmsContext } from "./fms/lateral";
 export { DEMO_ONE_NORTH_FIX_IDS, advanceStarLeg, applyLateralFms } from "./fms/lateral";
 export type {
   AltConstraint,
   CatalogStar,
   CatalogStarLeg,
+  GlidepathFmsContext,
   SpeedConstraint,
   VerticalCatalog,
   VerticalFmsContext,
 } from "./fms/vertical";
 export {
+  applyGlidepathFms,
   applyVerticalFms,
   clearViaOnVectors,
   isOnCourseToFix,

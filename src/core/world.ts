@@ -20,8 +20,9 @@ import { stepAircraft } from "./kinematics";
 import type { FixRegistry, FixRegistrySource } from "./nav/fixRegistry";
 import { buildFixRegistry } from "./nav/fixRegistry";
 import { applyLateralFms } from "./fms/lateral";
-import { applyVerticalFms, type CatalogStar } from "./fms/vertical";
+import { applyGlidepathFms, applyVerticalFms, type CatalogStar } from "./fms/vertical";
 import { locAxisForApproach } from "./nav/localizer";
+import { gsParamsForApproach } from "./nav/glidepath";
 
 export type SimRate = 1 | 2;
 
@@ -45,12 +46,15 @@ export interface World {
     navaids: ReadonlyArray<{ id: string; xNm?: number; yNm?: number; kind?: string }>;
     fixes: ReadonlyArray<{ id: string; xNm?: number; yNm?: number; kind?: string }>;
     stars: ReadonlyArray<CatalogStar>;
+    fieldElevFt?: number;
     approaches: ReadonlyArray<{
       id: string;
       courseDeg?: number;
       lengthNm?: number;
       beamHalfWidthDeg?: number;
       thresholdFixId?: string;
+      gsAngleDeg?: number;
+      tchFt?: number;
     }>;
     sids: ReadonlyArray<{ id: string }>;
   };
@@ -285,7 +289,7 @@ function syncMsawAlerts(world: World, next: MsawAlert[]): void {
  * Advance sim time by `dtS` seconds, then move each aircraft toward intent.
  *
  * Order is frozen: bump `simTimeMs` first, then lateral FMS (commanded heading),
- * then kinematics, then CA, then MSAW (pure functions of the post-kinematics
+ * then GS FMS (after loc only), then kinematics, then CA, then MSAW (pure functions of the post-kinematics
  * `aircraft[]`). IDENT flash expiry uses the post-bump time. Mutates `world` in
  * place and returns it (single World; no Redux). Does not throw on non-finite
  * `dtS`.
@@ -297,15 +301,29 @@ export function stepWorld(world: World, dtS: number): World {
   }
   world.simTimeMs += dtS * 1000;
   for (const ac of world.aircraft) {
+    const locAxisFor = (approachId: string) =>
+      locAxisForApproach(approachId, world.catalog, world.fixRegistry);
     const commandedHeadingDeg = applyLateralFms(ac, dtS, {
       registry: world.fixRegistry,
       log: world.sessionLog,
       simTimeMs: world.simTimeMs,
       catalog: world.catalog,
-      locAxisFor: (approachId) => locAxisForApproach(approachId, world.catalog, world.fixRegistry),
+      locAxisFor,
+    });
+    const gsCommandedFt = applyGlidepathFms(ac, dtS, {
+      locAxisFor,
+      gsParamsFor: (approachId) => gsParamsForApproach(approachId, world.catalog),
+      log: world.sessionLog,
+      simTimeMs: world.simTimeMs,
     });
     const vertical = applyVerticalFms(ac, world.catalog);
-    stepAircraft(ac, dtS, commandedHeadingDeg, vertical.altitudeFt, vertical.speedKt);
+    stepAircraft(
+      ac,
+      dtS,
+      commandedHeadingDeg,
+      gsCommandedFt ?? vertical.altitudeFt,
+      vertical.speedKt,
+    );
     if (ac.identUntilSimMs > 0 && world.simTimeMs >= ac.identUntilSimMs) {
       ac.identUntilSimMs = 0;
     }
