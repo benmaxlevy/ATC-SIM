@@ -8,7 +8,7 @@ import {
   createWorld,
   stepWorld,
 } from "@core";
-import type { FixRegistrySource } from "@core";
+import type { CatalogStar, FixRegistrySource } from "@core";
 import { formatReadback } from "./readback";
 import { handleRadioText } from "./handleRadioText";
 import fixesJson from "../scenario/data/kdem/fixes.json";
@@ -22,6 +22,10 @@ function kdemSource(): FixRegistrySource {
     navaids: [...vorsJson.vors, ...ndbsJson.ndbs, ...ilsJson.components],
     fixes: fixesJson.fixes,
   };
+}
+
+function kdemStars(): readonly CatalogStar[] {
+  return proceduresJson.stars as readonly CatalogStar[];
 }
 
 function worldOnDem1North() {
@@ -48,7 +52,7 @@ function worldOnDem1North() {
       airportId: "KDEM",
       navaids: [],
       fixes: [],
-      stars: proceduresJson.stars,
+      stars: kdemStars(),
       approaches: [],
       sids: [],
     },
@@ -123,7 +127,7 @@ test("AC4 — DCT NEMAX then X NEMAX 40 is at 4000 when sequenced", async () => 
       airportId: "KDEM",
       navaids: [],
       fixes: [],
-      stars: proceduresJson.stars,
+      stars: kdemStars(),
       approaches: [],
       sids: [],
     },

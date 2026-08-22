@@ -214,7 +214,7 @@ test("DESCEND_VIA uses the published STAR name", () => {
   ).toBe("delta one two three descend via demo one");
 });
 
-const rejectTable: [{ callsign?: string; reason: string }, string][] = [
+const rejectTable: [{ callsign?: string; reason: string; detail?: string }, string][] = [
   [{ reason: "UNKNOWN_CALLSIGN" }, "unable, unknown callsign"],
   [{ reason: "AMBIGUOUS_CALLSIGN" }, "unable, ambiguous callsign"],
   [{ reason: "NO_CALLSIGN_OR_SELECTION" }, "unable, no aircraft selected"],
@@ -225,13 +225,22 @@ const rejectTable: [{ callsign?: string; reason: string }, string][] = [
   [{ callsign: "DAL123", reason: "CLIMB_NOT_ABOVE" }, "delta one two three unable altitude"],
   [{ callsign: "DAL123", reason: "DESCEND_NOT_BELOW" }, "delta one two three unable altitude"],
   [{ callsign: "DAL123", reason: "UNKNOWN_FIX" }, "delta one two three unable, unknown fix"],
-  [{ callsign: "DAL123", reason: "UNKNOWN_PROCEDURE" }, "delta one two three unable, unknown procedure"],
+  [
+    { callsign: "DAL123", reason: "UNKNOWN_PROCEDURE" },
+    "delta one two three unable, unknown procedure",
+  ],
   [
     { callsign: "DAL123", reason: "NOT_ON_COURSE", detail: "NEMAX" },
     "delta one two three unable, not on course to nemax",
   ],
-  [{ callsign: "DAL123", reason: "UNKNOWN_APPROACH" }, "delta one two three unable, unknown approach"],
-  [{ callsign: "DAL123", reason: "NOT_ON_APPROACH" }, "delta one two three unable, not on approach"],
+  [
+    { callsign: "DAL123", reason: "UNKNOWN_APPROACH" },
+    "delta one two three unable, unknown approach",
+  ],
+  [
+    { callsign: "DAL123", reason: "NOT_ON_APPROACH" },
+    "delta one two three unable, not on approach",
+  ],
   [{ reason: "PARSE" }, "unable, say again"],
   [{ reason: "HEADING" }, "unable heading"],
 ];
