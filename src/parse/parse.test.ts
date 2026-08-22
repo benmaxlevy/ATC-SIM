@@ -257,6 +257,28 @@ test("catalog snaps spoken C-Max and typed DCT CMAX onto SEMAX", async () => {
   }
 });
 
+test("ASR American201 Direct S Join is Path A DIRECT SJOIN", async () => {
+  const catalog = ["SEMAX", "SJOIN", "NJOIN", "MERGE"];
+  const parsePathC = vi.fn(async () => ({
+    callsignToken: "AAL201",
+    instructions: [{ type: "DIRECT" as const, fixId: "American201" }],
+  }));
+  const result = await parseCommand("American201 Direct S Join", {
+    source: "voice",
+    fixes: catalog,
+    pathC: true,
+    parsePathC,
+  });
+  expect(parsePathC).not.toHaveBeenCalled();
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.parseStage).toBe("spoken_a");
+  expect(result.callsignToken).toBe("AAL201");
+  expect(result.instructions).toEqual([{ type: "DIRECT", fixId: "SJOIN" }]);
+});
+
 test("catalog snaps spoken descend via demo 1 onto DEM1", async () => {
   const spoken = await parseCommand("Delta 200 descend via demo 1", {
     source: "voice",

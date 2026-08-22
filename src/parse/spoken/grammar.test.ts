@@ -193,6 +193,16 @@ test("ASR compact callsign and altitude: Southwest 203 / 5,000 / without delay",
   ]);
 });
 
+test("ASR glued telephony American201 is AAL201", () => {
+  const result = spoken("American201 ident");
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.callsignToken).toBe("AAL201");
+  expect(result.instructions).toEqual([{ type: "IDENT" }]);
+});
+
 test("ASR iden is IDENT", () => {
   const result = spoken("iden", "DAL123");
   expect(result.ok).toBe(true);
@@ -241,6 +251,30 @@ test("catalog grounding maps ASR C-Max / see max onto SEMAX", () => {
   expect(see.ok).toBe(true);
   if (see.ok) {
     expect(see.instructions).toEqual([{ type: "DIRECT", fixId: "SEMAX" }]);
+  }
+});
+
+test("catalog glue uses reserved join: S Join / N Join are SJOIN / NJOIN", () => {
+  const catalog = ["SEMAX", "SJOIN", "NJOIN", "NELBO", "MERGE"];
+  const south = spoken("direct s join", "DAL123", catalog);
+  expect(south.ok).toBe(true);
+  if (south.ok) {
+    expect(south.instructions).toEqual([{ type: "DIRECT", fixId: "SJOIN" }]);
+  }
+  const north = spoken("proceed direct to n join", "DAL123", catalog);
+  expect(north.ok).toBe(true);
+  if (north.ok) {
+    expect(north.instructions).toEqual([{ type: "DIRECT", fixId: "NJOIN" }]);
+  }
+  const thenJoin = spoken("proceed direct s join then join demo one", "DAL123", catalog, [
+    { id: "DEM1", name: "DEMO ONE" },
+  ]);
+  expect(thenJoin.ok).toBe(true);
+  if (thenJoin.ok) {
+    expect(thenJoin.instructions).toEqual([
+      { type: "DIRECT", fixId: "SJOIN" },
+      { type: "JOIN_PROCEDURE", procedureId: "DEM1" },
+    ]);
   }
 });
 

@@ -178,6 +178,37 @@ function matchTelephony(
   return null;
 }
 
+/**
+ * ASR often glues the carrier onto the flight number (`American201`).
+ * Do not split in the normalizer — typed tokens like `H270` must stay intact.
+ */
+function matchGluedTelephony(tok: string | undefined): { icao: string; flight: string } | null {
+  if (!tok) {
+    return null;
+  }
+  const lower = tok.toLowerCase();
+  let best: { icao: string; flight: string; nameLen: number } | null = null;
+  for (const [spoken, icao] of TELEPHONY_ENTRIES) {
+    const name = spoken.replace(/ /g, "");
+    if (name.length < 2 || !lower.startsWith(name)) {
+      continue;
+    }
+    const rest = lower.slice(name.length);
+    const compact = compactFlightNumber(rest);
+    if (!compact) {
+      continue;
+    }
+    const reconstructed = `${compact.value}${compact.letter}`.toLowerCase();
+    if (rest !== reconstructed) {
+      continue;
+    }
+    if (!best || name.length > best.nameLen) {
+      best = { icao, flight: `${compact.value}${compact.letter}`, nameLen: name.length };
+    }
+  }
+  return best ? { icao: best.icao, flight: best.flight } : null;
+}
+
 function parseSpokenIcao(
   tokens: readonly string[],
   i: number,
@@ -229,6 +260,7 @@ function parseNovemberTail(
  * Optional callsign at the start of a spoken utterance.
  * Canonical flight number is digit-by-digit (`one two three` → `123`).
  * Compact ASR digits (`203`) are accepted after telephony (`Southwest 203` → `SWA203`).
+ * Glued ASR (`American201`) is the same mapping without a space.
  */
 export function parseSpokenCallsign(tokens: readonly string[], i: number): CallsignAttempt {
   const first = tokens[i];
@@ -252,6 +284,11 @@ export function parseSpokenCallsign(tokens: readonly string[], i: number): Calls
     if (flight) {
       return { kind: "ok", callsign: `${tel.icao}${flight.value}`, next: flight.next };
     }
+  }
+
+  const glued = matchGluedTelephony(first);
+  if (glued) {
+    return { kind: "ok", callsign: `${glued.icao}${glued.flight}`, next: i + 1 };
   }
 
   const icao = parseSpokenIcao(tokens, i);

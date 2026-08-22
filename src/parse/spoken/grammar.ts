@@ -303,6 +303,19 @@ function takeNonReserved(c: Cursor, n: number): string[] | null {
   return slice;
 }
 
+/** Catalog glue may include reserved words (`s join` → SJOIN). No catalog hit → do not consume. */
+function takePeek(c: Cursor, n: number): string[] | null {
+  const slice: string[] = [];
+  for (let k = 0; k < n; k += 1) {
+    const tok = peek(c, k);
+    if (tok === undefined) {
+      return null;
+    }
+    slice.push(tok);
+  }
+  return slice;
+}
+
 function parseFixId(c: Cursor): string | null {
   const phoneticStart = c.i;
   const phonetics: string[] = [];
@@ -323,7 +336,7 @@ function parseFixId(c: Cursor): string | null {
   if (c.catalog.length > 0) {
     const remaining = c.tokens.length - c.i;
     for (let n = Math.min(3, remaining); n >= 1; n -= 1) {
-      const slice = takeNonReserved(c, n);
+      const slice = takePeek(c, n);
       if (slice === null) {
         continue;
       }
