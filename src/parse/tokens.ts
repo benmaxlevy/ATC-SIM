@@ -1,8 +1,8 @@
 /**
  * Analog: vice ATC instruction keyboard tokens (R08, pharr.org/vice).
  * Trainer delta: SH/SA are phase-1 tokens; `DCT <FIX>` is T04-03 (D stays
- * descend); `VIA` / `CVIA` / `X` are T04-04. EXPECT_APPROACH is not a typed
- * token yet. Not vice-compatible.
+ * descend); `VIA` / `CVIA` / `X` are T04-04. `EXP ILS27` is EXPECT_APPROACH
+ * (T04-05). Not vice-compatible.
  * Tokens only — no spoken English (Path A is phase 3).
  */
 

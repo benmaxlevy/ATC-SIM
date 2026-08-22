@@ -174,6 +174,7 @@ export function handleRadioCommand(
   const validated = validateInstructions(aircraft, resolvedCommand.instructions, {
     fixRegistry: world.fixRegistry,
     catalog: world.catalog,
+    approachIds: world.catalog?.approaches.map((item) => item.id),
   });
   if (!validated.ok) {
     logRejected(log, world, atWallMs, {

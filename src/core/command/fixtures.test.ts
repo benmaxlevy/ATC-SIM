@@ -29,6 +29,17 @@ test("TurnDir and FLY_HEADING match the frozen heading vector shape", () => {
   });
 });
 
+test("ALTITUDE may carry untilEstablished for the 7110.65 ILS clearance", () => {
+  type Altitude = Extract<Instruction, { type: "ALTITUDE" }>;
+  expectTypeOf<Altitude>().toMatchTypeOf<{
+    type: "ALTITUDE";
+    altitudeFt: number;
+    verb: "CLIMB" | "DESCEND" | "MAINTAIN";
+    expedite?: boolean;
+    untilEstablished?: boolean;
+  }>();
+});
+
 test("fixtures cover every Instruction type", () => {
   const fromFixtures = new Set(
     commandFixtures.flatMap((command) =>

@@ -175,9 +175,27 @@ test("SAY_ALTITUDE speaks current altitude without say", () => {
   );
 });
 
-test("CLEARED_APPROACH ILS27 spells i l s two seven", () => {
+test("CLEARED_APPROACH ILS27 spells i l s runway two seven", () => {
   expect(readback([{ type: "CLEARED_APPROACH", approachId: "ILS27" }])).toBe(
-    "delta one two three cleared i l s two seven approach",
+    "delta one two three cleared i l s runway two seven approach",
+  );
+});
+
+test("EXPECT_APPROACH ILS27 is expect i l s runway two seven", () => {
+  expect(readback([{ type: "EXPECT_APPROACH", approachId: "ILS27" }])).toBe(
+    "delta one two three expect i l s runway two seven",
+  );
+});
+
+test("combined ILS vector includes until established and turn right heading", () => {
+  expect(
+    readback([
+      { type: "FLY_HEADING", headingDeg: 240, turn: "RIGHT" },
+      { type: "ALTITUDE", altitudeFt: 2000, verb: "MAINTAIN", untilEstablished: true },
+      { type: "CLEARED_APPROACH", approachId: "ILS27" },
+    ]),
+  ).toBe(
+    "delta one two three turn right heading two four zero, maintain two thousand until established, cleared i l s runway two seven approach",
   );
 });
 
@@ -208,6 +226,7 @@ const rejectTable: [{ callsign?: string; reason: string }, string][] = [
     { callsign: "DAL123", reason: "NOT_ON_COURSE", detail: "NEMAX" },
     "delta one two three unable, not on course to nemax",
   ],
+  [{ callsign: "DAL123", reason: "UNKNOWN_APPROACH" }, "delta one two three unable, unknown approach"],
   [{ reason: "PARSE" }, "unable, say again"],
   [{ reason: "HEADING" }, "unable heading"],
 ];

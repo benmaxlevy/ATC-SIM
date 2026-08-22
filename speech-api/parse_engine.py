@@ -57,7 +57,7 @@ Instruction is exactly one of these frozen Command IR v0 types (no other "type")
 - {"type": "FLY_HEADING", "headingDeg": number, "turn": "LEFT"|"RIGHT"|"SHORTEST"}
 - {"type": "TURN_DEGREES", "direction": "LEFT"|"RIGHT", "degrees": number}
 - {"type": "PRESENT_HEADING"}
-- {"type": "ALTITUDE", "altitudeFt": number, "verb": "CLIMB"|"DESCEND"|"MAINTAIN", "expedite"?: boolean}
+- {"type": "ALTITUDE", "altitudeFt": number, "verb": "CLIMB"|"DESCEND"|"MAINTAIN", "expedite"?: boolean, "untilEstablished"?: boolean}
 - {"type": "SPEED", "speedKt": number, "verb": "MAINTAIN"|"INCREASE"|"REDUCE"}
 - {"type": "DIRECT", "fixId": string}
 - {"type": "EXPECT_APPROACH", "approachId": string}
@@ -234,7 +234,7 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
             return None
         return {"type": "PRESENT_HEADING"}
     if instr_type == "ALTITUDE":
-        if not _exact_keys(raw, {"type", "altitudeFt", "verb"}, {"expedite"}):
+        if not _exact_keys(raw, {"type", "altitudeFt", "verb"}, {"expedite", "untilEstablished"}):
             return None
         if not _is_finite_number(raw["altitudeFt"]) or raw["verb"] not in ALTITUDE_VERBS:
             return None
@@ -247,6 +247,10 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
             if not isinstance(raw["expedite"], bool):
                 return None
             out["expedite"] = raw["expedite"]
+        if "untilEstablished" in raw:
+            if not isinstance(raw["untilEstablished"], bool):
+                return None
+            out["untilEstablished"] = raw["untilEstablished"]
         return out
     if instr_type == "SPEED":
         if not _exact_keys(raw, {"type", "speedKt", "verb"}):

@@ -91,7 +91,7 @@ test("DESCEND_VIA arms VIA_STAR; CROSS attaches a restriction", () => {
   expect(ac.intent.cross).toBeUndefined();
 });
 
-test("SAY_* and CLEARED_APPROACH leave heading/alt/speed intent alone", () => {
+test("SAY_* leave heading/alt/speed intent alone; CLEARED_APPROACH arms INTERCEPT_LOC", () => {
   const ac = jet();
   const before = { ...ac.intent };
   applyIntent(ac, [{ type: "SAY_HEADING" }, { type: "SAY_ALTITUDE" }], 0);
@@ -101,4 +101,23 @@ test("SAY_* and CLEARED_APPROACH leave heading/alt/speed intent alone", () => {
   expect(ac.intent.assignedAltitudeFt).toBe(before.assignedAltitudeFt);
   expect(ac.intent.assignedSpeedKt).toBe(before.assignedSpeedKt);
   expect(ac.intent.clearedApproachId).toBe("ILS27");
+  expect(ac.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "ILS27" });
+});
+
+test("EXPECT_APPROACH sets scratchpad only", () => {
+  const ac = jet();
+  const beforeLateral = ac.intent.lateral;
+  applyIntent(ac, [{ type: "EXPECT_APPROACH", approachId: "ILS27" }], 0);
+  expect(ac.intent.expectedApproachId).toBe("ILS27");
+  expect(ac.intent.lateral).toBe(beforeLateral);
+  expect(ac.intent.clearedApproachId).toBeNull();
+});
+
+test("heading after APP clears intercept so they must APP again", () => {
+  const ac = jet();
+  applyIntent(ac, [{ type: "CLEARED_APPROACH", approachId: "ILS27" }], 0);
+  applyIntent(ac, [{ type: "FLY_HEADING", headingDeg: 90, turn: "SHORTEST" }], 0);
+  expect(ac.intent.lateral).toEqual({ type: "HEADING", headingDeg: 90 });
+  expect(ac.intent.clearedApproachId).toBeNull();
+  expect(ac.intent.assignedHeadingDeg).toBe(90);
 });

@@ -317,6 +317,8 @@ function tryCleared(c: Cursor): Instruction | null {
     c.i = start;
     return null;
   }
+  // 7110.65: "cleared ILS approach runway 27" and "cleared ILS runway 27 approach"
+  take(c, "approach");
   const rwy = runwayId(c);
   if (rwy === null) {
     c.i = start;
@@ -327,6 +329,20 @@ function tryCleared(c: Cursor): Instruction | null {
   const padded = numeric.padStart(2, "0");
   const side = rwy.slice(numeric.length);
   return { type: "CLEARED_APPROACH", approachId: `ILS${padded}${side.toUpperCase()}` };
+}
+
+function takeUntilEstablished(c: Cursor): boolean {
+  const start = c.i;
+  if (!take(c, "until") || !take(c, "established")) {
+    c.i = start;
+    return false;
+  }
+  const locStart = c.i;
+  if (take(c, "on") && take(c, "the") && take(c, "localizer")) {
+    return true;
+  }
+  c.i = locStart;
+  return true;
 }
 
 function takeExpedite(c: Cursor): boolean {
@@ -359,11 +375,19 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     return null;
   }
   if (inst.type === "ALTITUDE") {
+    const untilEstablished = takeUntilEstablished(c);
     const expediteAfter = takeExpedite(c);
+    const extra: { expedite?: boolean; untilEstablished?: boolean } = {};
     if (expediteBefore || expediteAfter) {
-      return { ...inst, expedite: true };
+      extra.expedite = true;
     }
-    return inst;
+    if (untilEstablished) {
+      extra.untilEstablished = true;
+    }
+    if (Object.keys(extra).length === 0) {
+      return inst;
+    }
+    return { ...inst, ...extra };
   }
   if (expediteBefore) {
     c.i = start;

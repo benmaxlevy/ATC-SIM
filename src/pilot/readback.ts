@@ -29,7 +29,8 @@ export type RejectReason =
   | "PARSE"
   | "UNKNOWN_FIX"
   | "UNKNOWN_PROCEDURE"
-  | "NOT_ON_COURSE";
+  | "NOT_ON_COURSE"
+  | "UNKNOWN_APPROACH";
 
 const REJECT_FIXED: Record<string, string> = {
   UNKNOWN_CALLSIGN: "unable, unknown callsign",
@@ -47,10 +48,11 @@ const REJECT_AFTER_CALLSIGN: Record<string, string> = {
   DESCEND_NOT_BELOW: "unable altitude",
   UNKNOWN_FIX: "unable, unknown fix",
   UNKNOWN_PROCEDURE: "unable, unknown procedure",
+  UNKNOWN_APPROACH: "unable, unknown approach",
 };
 
-/** ILS27 → `i l s two seven` (English letter names, runway digits). */
-function speakApproachBody(approachId: string): string {
+/** ILS27 → `i l s runway two seven` (English letter names, runway digits). */
+function speakApproachNav(approachId: string): string {
   const id = approachId.trim().toUpperCase();
   const match = /^([A-Z]+)(\d{1,2})([LCR]?)$/.exec(id);
   if (!match) {
@@ -60,7 +62,7 @@ function speakApproachBody(approachId: string): string {
   const kindSpeech = [...kind].map((ch) => ch.toLowerCase()).join(" ");
   const runwaySpeech = speakDigitString(runway);
   const suffixSpeech = suffix ? suffix.toLowerCase() : "";
-  return [kindSpeech, runwaySpeech, suffixSpeech].filter((part) => part.length > 0).join(" ");
+  return [kindSpeech, "runway", runwaySpeech, suffixSpeech].filter((part) => part.length > 0).join(" ");
 }
 
 function formatSpeedClause(instruction: Extract<Instruction, { type: "SPEED" }>): string {
@@ -81,13 +83,14 @@ function formatSpeedClause(instruction: Extract<Instruction, { type: "SPEED" }>)
 
 function formatAltitudeClause(instruction: Extract<Instruction, { type: "ALTITUDE" }>): string {
   const alt = speakAltitude(instruction.altitudeFt);
+  const until = instruction.untilEstablished ? " until established" : "";
   switch (instruction.verb) {
     case "CLIMB":
-      return `climb and maintain ${alt}`;
+      return `climb and maintain ${alt}${until}`;
     case "DESCEND":
-      return `descend and maintain ${alt}`;
+      return `descend and maintain ${alt}${until}`;
     case "MAINTAIN":
-      return `maintain ${alt}`;
+      return `maintain ${alt}${until}`;
     default: {
       const _exhaustive: never = instruction.verb;
       return _exhaustive;
@@ -137,9 +140,9 @@ function formatInstructionClause(
     case "SAY_ALTITUDE":
       return speakAltitude(aircraft.altitudeFt);
     case "CLEARED_APPROACH":
-      return `cleared ${speakApproachBody(instruction.approachId)} approach`;
+      return `cleared ${speakApproachNav(instruction.approachId)} approach`;
     case "EXPECT_APPROACH":
-      return `expect ${speakApproachBody(instruction.approachId)} approach`;
+      return `expect ${speakApproachNav(instruction.approachId)}`;
     case "DIRECT":
       return `direct ${speakAlphanumeric(instruction.fixId)}`;
     case "DESCEND_VIA":

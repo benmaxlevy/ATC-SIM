@@ -103,7 +103,7 @@ test("AC2 — SAY_HEADING / SAY_ALTITUDE / IDENT accepted; kinematics intent unc
   expect(log.byType("command.accepted")).toHaveLength(3);
 });
 
-test("AC3 — APP ILS27 sets clearedApproachId; heading/alt/speed intent unchanged", async () => {
+test("AC3 — APP ILS27 sets INTERCEPT_LOC; heading/alt/speed intent unchanged", async () => {
   const dal = sample("DAL123", "ac-dal");
   const before = snapshot(dal);
   const world = createWorld({ aircraft: [dal] });
@@ -112,6 +112,7 @@ test("AC3 — APP ILS27 sets clearedApproachId; heading/alt/speed intent unchang
   const result = await handleRadioText(world, "DAL123 APP ILS27", log);
   expect(result.accepted).toBe(true);
   expect(dal.intent.clearedApproachId).toBe("ILS27");
+  expect(dal.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "ILS27" });
   expect(dal.intent.assignedHeadingDeg).toBe(before.intent.assignedHeadingDeg);
   expect(dal.intent.assignedAltitudeFt).toBe(before.intent.assignedAltitudeFt);
   expect(dal.intent.assignedSpeedKt).toBe(before.intent.assignedSpeedKt);

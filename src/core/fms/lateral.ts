@@ -1,9 +1,11 @@
 /**
- * Lateral FMS: DIRECT fly-over and PROCEDURE fly-by (T04-03).
+ * Lateral FMS: DIRECT fly-over, PROCEDURE fly-by (T04-03), loc intercept (T04-05).
  *
  * Command heading = course to the active fix until sequence. Pilot owns Command
- * apply; this module sequences `lateral` when the aircraft reaches the fix.
- * Positions come from `FixRegistry` — no hard-coded lat/lon.
+ * apply; this module sequences `lateral` when the aircraft reaches the fix or
+ * captures the localizer. Positions come from `FixRegistry` / loc axis — no
+ * hard-coded lat/lon. Loc capture uses position vs the loc axis, never heading
+ * as a sensor.
  */
 
 import type { Aircraft, LateralMode } from "../aircraft";
@@ -18,6 +20,13 @@ import {
   flyByStartNm,
   flyOverSequenceNm,
 } from "../nav/geometry";
+import type { LocAxis } from "../nav/localizer";
+import {
+  LOC_BREAKOUT_S,
+  locDeviation,
+  locShouldBreakout,
+  locShouldCapture,
+} from "../nav/localizer";
 import { clearViaOnVectors, onFixSequenced, type VerticalCatalog } from "./vertical";
 
 /** DEMO ONE north transition then MERGE (ids only; xy from the registry). */
@@ -28,6 +37,7 @@ export interface LateralFmsContext {
   log?: SessionLog | null;
   simTimeMs: number;
   catalog?: VerticalCatalog | null;
+  locAxisFor?: (approachId: string) => LocAxis | undefined;
 }
 
 /**
@@ -40,8 +50,17 @@ export function applyLateralFms(
   ctx: LateralFmsContext,
 ): number | undefined {
   const lateral = ac.intent.lateral;
+  if (!lateral) {
+    return undefined;
+  }
+  if (lateral.type === "INTERCEPT_LOC") {
+    return guideIntercept(ac, lateral.approachId, ctx);
+  }
+  if (lateral.type === "LOC") {
+    return guideLoc(ac, lateral, ctx);
+  }
   const registry = ctx.registry;
-  if (!lateral || !registry) {
+  if (!registry) {
     return undefined;
   }
   if (lateral.type === "DIRECT") {
@@ -187,4 +206,56 @@ function emitStarVectors(ac: Aircraft, ctx: LateralFmsContext, starId: string): 
     starId,
   });
   clearViaOnVectors(ac, ctx.catalog);
+}
+
+const locBreakoutSinceMs = new WeakMap<Aircraft, number>();
+
+function guideIntercept(ac: Aircraft, approachId: string, ctx: LateralFmsContext): number {
+  const axis = ctx.locAxisFor?.(approachId);
+  if (!axis) {
+    return ac.intent.assignedHeadingDeg;
+  }
+  const deviation = locDeviation({ xNm: ac.xNm, yNm: ac.yNm }, axis);
+  if (locShouldCapture({ deviation, headingDeg: ac.headingDeg, axis })) {
+    locBreakoutSinceMs.delete(ac);
+    ac.intent.lateral = { type: "LOC", approachId };
+    ctx.log?.append({
+      type: "nav.loc.captured",
+      atSimMs: ctx.simTimeMs,
+      atWallMs: 0,
+      callsign: ac.callsign,
+      approachId,
+    });
+    return axis.courseDeg;
+  }
+  return ac.intent.assignedHeadingDeg;
+}
+
+function guideLoc(
+  ac: Aircraft,
+  lateral: Extract<Aircraft["intent"]["lateral"], { type: "LOC" }>,
+  ctx: LateralFmsContext,
+): number {
+  if (!lateral) {
+    return ac.intent.assignedHeadingDeg;
+  }
+  const axis = ctx.locAxisFor?.(lateral.approachId);
+  if (!axis) {
+    return ac.intent.assignedHeadingDeg;
+  }
+  const deviation = locDeviation({ xNm: ac.xNm, yNm: ac.yNm }, axis);
+  if (locShouldBreakout(deviation.deviationDeg)) {
+    const since = locBreakoutSinceMs.get(ac) ?? ctx.simTimeMs;
+    if (!locBreakoutSinceMs.has(ac)) {
+      locBreakoutSinceMs.set(ac, ctx.simTimeMs);
+    }
+    if (ctx.simTimeMs - since >= LOC_BREAKOUT_S * 1000) {
+      locBreakoutSinceMs.delete(ac);
+      ac.intent.lateral = { type: "INTERCEPT_LOC", approachId: lateral.approachId };
+      return ac.intent.assignedHeadingDeg;
+    }
+  } else {
+    locBreakoutSinceMs.delete(ac);
+  }
+  return axis.courseDeg;
 }

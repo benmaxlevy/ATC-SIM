@@ -212,3 +212,20 @@ test("ASR turn left heading 270 stays Path A FLY_HEADING (does not fetch Path C)
   expect(result.callsignToken).toBe("SWA203");
   expect(result.instructions).toEqual([{ type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" }]);
 });
+
+test("T04-05 — spoken ILS vector is Path A heading + untilEstablished + APP", async () => {
+  const result = await parseCommand(
+    "turn right heading two four zero maintain two thousand until established cleared ils approach runway two seven",
+    { source: "voice", selectedCallsign: "DAL123", pathC: false },
+  );
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.parseStage).toBe("spoken_a");
+  expect(result.instructions).toEqual([
+    { type: "FLY_HEADING", headingDeg: 240, turn: "RIGHT" },
+    { type: "ALTITUDE", altitudeFt: 2000, verb: "MAINTAIN", untilEstablished: true },
+    { type: "CLEARED_APPROACH", approachId: "ILS27" },
+  ]);
+});

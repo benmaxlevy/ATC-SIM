@@ -101,7 +101,7 @@ export function isLegalInstruction(value: unknown): value is Instruction {
   }
   if (type === "ALTITUDE") {
     if (
-      !keysOk(obj, ["type", "altitudeFt", "verb"], ["expedite"]) ||
+      !keysOk(obj, ["type", "altitudeFt", "verb"], ["expedite", "untilEstablished"]) ||
       !isFiniteNumber(obj.altitudeFt) ||
       typeof obj.verb !== "string" ||
       !ALT_VERBS.has(obj.verb)
@@ -109,6 +109,9 @@ export function isLegalInstruction(value: unknown): value is Instruction {
       return false;
     }
     if ("expedite" in obj && typeof obj.expedite !== "boolean") {
+      return false;
+    }
+    if ("untilEstablished" in obj && typeof obj.untilEstablished !== "boolean") {
       return false;
     }
     return true;

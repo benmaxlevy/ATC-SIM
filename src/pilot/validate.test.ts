@@ -98,7 +98,7 @@ test("speed outside [150, 280] is SPEED; edges pass", () => {
   );
 });
 
-test("CLEARED_APPROACH needs a non-empty approachId; SAY and IDENT pass", () => {
+test("CLEARED_APPROACH needs a known approachId when catalog is present", () => {
   expect(validateInstructions(jet(), [{ type: "CLEARED_APPROACH", approachId: "ILS27" }]).ok).toBe(
     true,
   );
@@ -106,6 +106,16 @@ test("CLEARED_APPROACH needs a non-empty approachId; SAY and IDENT pass", () => 
     ok: false,
     reason: "EMPTY",
   });
+  expect(
+    validateInstructions(jet(), [{ type: "CLEARED_APPROACH", approachId: "ILS99" }], {
+      approachIds: ["ILS27"],
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_APPROACH" });
+  expect(
+    validateInstructions(jet(), [{ type: "EXPECT_APPROACH", approachId: "ILS27" }], {
+      approachIds: ["ILS27"],
+    }).ok,
+  ).toBe(true);
   expect(validateInstructions(jet(), [{ type: "SAY_HEADING" }]).ok).toBe(true);
   expect(validateInstructions(jet(), [{ type: "IDENT" }]).ok).toBe(true);
 });

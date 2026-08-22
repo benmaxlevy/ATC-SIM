@@ -22,7 +22,8 @@ export type ValidateReason =
   | "DESCEND_NOT_BELOW"
   | "UNKNOWN_FIX"
   | "UNKNOWN_PROCEDURE"
-  | "NOT_ON_COURSE";
+  | "NOT_ON_COURSE"
+  | "UNKNOWN_APPROACH";
 
 export type ValidateResult =
   | { ok: true }
@@ -31,6 +32,8 @@ export type ValidateResult =
 export interface ValidateOpts {
   fixRegistry?: FixRegistry | null;
   catalog?: VerticalCatalog | null;
+  /** When set (catalog loaded), CLEARED/EXPECT must match an approach id. */
+  approachIds?: readonly string[] | null;
 }
 
 /** Against present kinematics, not would-be assigned values in the same Command. */
@@ -86,6 +89,17 @@ function validateOne(
       if (instruction.approachId.trim() === "") {
         return { ok: false, reason: "EMPTY" };
       }
+      if (!approachKnown(instruction.approachId, opts)) {
+        return { ok: false, reason: "UNKNOWN_APPROACH" };
+      }
+      return { ok: true };
+    case "EXPECT_APPROACH":
+      if (instruction.approachId.trim() === "") {
+        return { ok: false, reason: "EMPTY" };
+      }
+      if (!approachKnown(instruction.approachId, opts)) {
+        return { ok: false, reason: "UNKNOWN_APPROACH" };
+      }
       return { ok: true };
     case "DIRECT":
       if (instruction.fixId.trim() === "") {
@@ -104,7 +118,6 @@ function validateOne(
     case "IDENT":
     case "SAY_HEADING":
     case "SAY_ALTITUDE":
-    case "EXPECT_APPROACH":
       return { ok: true };
     default: {
       const _exhaustive: never = instruction;
@@ -115,6 +128,14 @@ function validateOne(
 
 function headingInRange(headingDeg: number): boolean {
   return Number.isFinite(headingDeg) && headingDeg >= 0 && headingDeg < 360;
+}
+
+function approachKnown(approachId: string, opts?: ValidateOpts): boolean {
+  if (!opts?.approachIds) {
+    return true;
+  }
+  const want = approachId.trim().toUpperCase();
+  return opts.approachIds.some((id) => id.trim().toUpperCase() === want);
 }
 
 function validateAltitude(

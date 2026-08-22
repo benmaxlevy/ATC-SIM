@@ -8,6 +8,7 @@ import type { Command } from "../command/types";
  * T04-10 adds alert.msaw.caution / alert.msaw.alert / alert.msaw.clear (edges only).
  * T04-03 adds nav.direct.sequenced / nav.star.vectors.
  * T04-04 adds optional nav.constraint.met.
+ * T04-05 adds nav.loc.captured (INTERCEPT_LOC → LOC).
  */
 export type SessionEvent =
   | {
@@ -118,4 +119,11 @@ export type SessionEvent =
       atWallMs: number;
       callsign: string;
       fixId: string;
+    }
+  | {
+      type: "nav.loc.captured";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      approachId: string;
     };

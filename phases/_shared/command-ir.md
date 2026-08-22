@@ -138,7 +138,7 @@ Spoken (Path A must accept both runway wordings):
 
 Aircraft (must match the words): fly the heading, **hold assigned altitude until `nav.loc.captured` (established)**, then intercept GS from below (T04-06). `APP ILS27` alone still arms intercept from the current heading and holds the **already assigned** altitude until established.
 
-Until T04-04/T04-05, `CLEARED_APPROACH` / `EXPECT_APPROACH` / `DIRECT` exist in the union but phase 1 may no-op their kinematics.
+T04-03 flies `DIRECT`. T04-05 flies `CLEARED_APPROACH` (loc intercept) and arms `EXPECT_APPROACH` scratchpad. `untilEstablished` is additive on `ALTITUDE` — do not confuse with T04-04 `DESCEND_VIA` / `CROSS`.
 
 ## Events
 

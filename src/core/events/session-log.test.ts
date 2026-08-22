@@ -28,6 +28,7 @@ test("SessionEvent includes command events, voice.latency, CA edges, MSAW edges,
     | "nav.direct.sequenced"
     | "nav.star.vectors"
     | "nav.constraint.met"
+    | "nav.loc.captured"
   >();
 });
 

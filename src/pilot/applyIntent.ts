@@ -32,6 +32,7 @@ function setHeadingMode(
     aircraft.intent.vertical = { type: "ASSIGNED" };
   }
   aircraft.intent.cross = undefined;
+  aircraft.intent.clearedApproachId = null;
 }
 
 function applyOne(aircraft: Aircraft, instruction: Instruction, simTimeMs: number): void {
@@ -59,6 +60,10 @@ function applyOne(aircraft: Aircraft, instruction: Instruction, simTimeMs: numbe
       return;
     case "CLEARED_APPROACH":
       aircraft.intent.clearedApproachId = instruction.approachId;
+      aircraft.intent.lateral = { type: "INTERCEPT_LOC", approachId: instruction.approachId };
+      return;
+    case "EXPECT_APPROACH":
+      aircraft.intent.expectedApproachId = instruction.approachId;
       return;
     case "IDENT":
       aircraft.identUntilSimMs = simTimeMs + IDENT_FLASH_MS;
@@ -89,7 +94,6 @@ function applyOne(aircraft: Aircraft, instruction: Instruction, simTimeMs: numbe
       return;
     case "SAY_HEADING":
     case "SAY_ALTITUDE":
-    case "EXPECT_APPROACH":
       return;
     default: {
       const _exhaustive: never = instruction;

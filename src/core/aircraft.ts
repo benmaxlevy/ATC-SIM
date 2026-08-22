@@ -51,7 +51,9 @@ export interface Intent {
   turn: TurnDir;
   assignedAltitudeFt: number;
   assignedSpeedKt: number;
-  /** Phase 1: parsed but not flown. */
+  /** Scratchpad only — EXPECT_APPROACH does not capture. */
+  expectedApproachId: string | null;
+  /** Armed ILS id after CLEARED_APPROACH; heading instructions clear this. */
   clearedApproachId: string | null;
   lateral?: LateralMode;
   vertical?: VerticalMode;
@@ -120,6 +122,7 @@ export function createAircraft(init: AircraftInit): Aircraft {
       turn: "SHORTEST",
       assignedAltitudeFt: init.altitudeFt,
       assignedSpeedKt: init.speedKt,
+      expectedApproachId: null,
       clearedApproachId: null,
     },
     identUntilSimMs: 0,

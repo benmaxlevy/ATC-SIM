@@ -21,6 +21,7 @@ import type { FixRegistry, FixRegistrySource } from "./nav/fixRegistry";
 import { buildFixRegistry } from "./nav/fixRegistry";
 import { applyLateralFms } from "./fms/lateral";
 import { applyVerticalFms, type CatalogStar } from "./fms/vertical";
+import { locAxisForApproach } from "./nav/localizer";
 
 export type SimRate = 1 | 2;
 
@@ -44,7 +45,13 @@ export interface World {
     navaids: ReadonlyArray<{ id: string; xNm?: number; yNm?: number; kind?: string }>;
     fixes: ReadonlyArray<{ id: string; xNm?: number; yNm?: number; kind?: string }>;
     stars: ReadonlyArray<CatalogStar>;
-    approaches: ReadonlyArray<{ id: string }>;
+    approaches: ReadonlyArray<{
+      id: string;
+      courseDeg?: number;
+      lengthNm?: number;
+      beamHalfWidthDeg?: number;
+      thresholdFixId?: string;
+    }>;
     sids: ReadonlyArray<{ id: string }>;
   };
   /**
@@ -295,6 +302,7 @@ export function stepWorld(world: World, dtS: number): World {
       log: world.sessionLog,
       simTimeMs: world.simTimeMs,
       catalog: world.catalog,
+      locAxisFor: (approachId) => locAxisForApproach(approachId, world.catalog, world.fixRegistry),
     });
     const vertical = applyVerticalFms(ac, world.catalog);
     stepAircraft(ac, dtS, commandedHeadingDeg, vertical.altitudeFt, vertical.speedKt);

@@ -34,6 +34,12 @@ export type Instruction =
       altitudeFt: number;
       verb: "CLIMB" | "DESCEND" | "MAINTAIN";
       expedite?: boolean;
+      /**
+       * Phase 4 ILS: hold this altitude until established on the localizer
+       * (7110.65 “maintain (alt) until established”). Readback flag; kinematics
+       * always hold assigned alt until loc capture once APP is armed.
+       */
+      untilEstablished?: boolean;
     }
   | {
       type: "SPEED";

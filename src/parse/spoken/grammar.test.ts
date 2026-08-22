@@ -134,7 +134,24 @@ test("v1 phrase table: present heading, turn degrees, speed, ident, say, ils", (
   expectOk("cleared ils runway two seven approach", "DAL123", [
     { type: "CLEARED_APPROACH", approachId: "ILS27" },
   ]);
+  expectOk("cleared ils approach runway two seven", "DAL123", [
+    { type: "CLEARED_APPROACH", approachId: "ILS27" },
+  ]);
   expectOk("proceed direct kdem", "DAL123", [{ type: "DIRECT", fixId: "KDEM" }]);
+});
+
+test("T04-05 Path A — combined ILS vector until established (R01)", () => {
+  const canonical =
+    "turn right heading two four zero maintain two thousand until established cleared ils approach runway two seven";
+  const withLoc =
+    "turn right heading two four zero maintain two thousand until established on the localizer cleared ils runway two seven approach";
+  const expected: unknown[] = [
+    { type: "FLY_HEADING", headingDeg: 240, turn: "RIGHT" },
+    { type: "ALTITUDE", altitudeFt: 2000, verb: "MAINTAIN", untilEstablished: true },
+    { type: "CLEARED_APPROACH", approachId: "ILS27" },
+  ];
+  expectOk(canonical, "DAL123", expected);
+  expectOk(withLoc, "DAL123", expected);
 });
 
 test("expedite attaches to climb/descend", () => {

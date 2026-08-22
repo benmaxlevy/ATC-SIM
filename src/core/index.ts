@@ -14,7 +14,7 @@
  * `makeTestAircraft`, `nextAircraftId`; conflict alert lite (`evaluateConflictAlert`,
  * `CA_LATERAL_NM` / `CA_VERTICAL_FT` / `CA_LOOKAHEAD_S`, `datablockAlertTint`);
  * nav fix registry (`buildFixRegistry`, `FixRegistry`);
- * nav geometry (`courseDeg`, fly-by radius); lateral FMS (`applyLateralFms`);
+ * nav geometry (`courseDeg`, fly-by radius, loc deviation); lateral FMS (`applyLateralFms`);
  * vertical FMS (`targetAltitudeFt`, `applyVerticalFms`);
  * MSAW lite (`evaluateMsaw`, `MSAW_RED_BELOW_FT`, `msawFloorFt`).
  *
@@ -102,6 +102,22 @@ export {
   flyOverSequenceNm,
   turnRadiusNm,
 } from "./nav/geometry";
+export type { LocAxis, LocCatalog, LocCatalogApproach, LocDeviation } from "./nav/localizer";
+export {
+  LOC_ALONG_MIN_NM,
+  LOC_BREAKOUT_DEV_DEG,
+  LOC_BREAKOUT_S,
+  LOC_CAPTURE_CROSS_NM,
+  LOC_CAPTURE_DEV_DEG,
+  LOC_DEFAULT_BEAM_HALF_WIDTH_DEG,
+  LOC_DEFAULT_LENGTH_NM,
+  LOC_INTERCEPT_HEADING_MAX_DEG,
+  kdemIls27LocAxis,
+  locAxisForApproach,
+  locDeviation,
+  locShouldBreakout,
+  locShouldCapture,
+} from "./nav/localizer";
 export type { LateralFmsContext } from "./fms/lateral";
 export { DEMO_ONE_NORTH_FIX_IDS, advanceStarLeg, applyLateralFms } from "./fms/lateral";
 export type {

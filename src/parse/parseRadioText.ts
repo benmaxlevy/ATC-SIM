@@ -1,7 +1,8 @@
 /**
  * Analog: vice STARS TG typed ATC tokens (R08). Trainer delta: SH/SA parsed;
  * `DCT <FIX>` is DIRECT (D remains descend). `VIA` / `CVIA` / `X` are T04-04.
- * EXPECT_APPROACH is unknown this phase. Not vice-compatible.
+ * `EXP ILS27` is EXPECT_APPROACH (T04-05). Same-line heading + altitude + APP
+ * sets untilEstablished. Not vice-compatible.
  *
  * Stage 1 only (`parse-pipeline.md`). Does not resolve callsigns, validate ATC
  * limits, or mutate intent. No World, no DOM.
@@ -63,7 +64,12 @@ export function parseRadioText(sourceText: string): ParseResult {
     index = parsed.nextIndex;
   }
 
-  return { ok: true, callsignToken, instructions, sourceText };
+  return {
+    ok: true,
+    callsignToken,
+    instructions: markUntilEstablished(instructions),
+    sourceText,
+  };
 }
 
 function fail(sourceText: string, code: ParseErrorCode, detail?: string): ParseResult {
@@ -100,6 +106,17 @@ function parseOneInstruction(tokens: string[], index: number): InstructionParse 
     return {
       ok: true,
       instruction: { type: "CLEARED_APPROACH", approachId },
+      nextIndex: index + 2,
+    };
+  }
+  if (token === "EXP") {
+    const approachId = tokens[index + 1];
+    if (approachId === undefined) {
+      return { ok: false, code: PARSE_ERROR.MISSING_APPROACH_ID };
+    }
+    return {
+      ok: true,
+      instruction: { type: "EXPECT_APPROACH", approachId },
       nextIndex: index + 2,
     };
   }
@@ -272,4 +289,21 @@ function headingDegFromToken(n: number): number | null {
     return null;
   }
   return n === 360 ? 0 : n;
+}
+
+/**
+ * Typed `R240 A20 APP ILS27` (or H240) is the 7110.65 ILS vector: heading +
+ * maintain until established + cleared approach. Split transmissions do not
+ * set the flag — only same-line heading + altitude + APP.
+ */
+function markUntilEstablished(instructions: Instruction[]): Instruction[] {
+  const hasHeading = instructions.some((item) => item.type === "FLY_HEADING");
+  const hasAltitude = instructions.some((item) => item.type === "ALTITUDE");
+  const hasApp = instructions.some((item) => item.type === "CLEARED_APPROACH");
+  if (!hasHeading || !hasAltitude || !hasApp) {
+    return instructions;
+  }
+  return instructions.map((item) =>
+    item.type === "ALTITUDE" ? { ...item, untilEstablished: true } : item,
+  );
 }
