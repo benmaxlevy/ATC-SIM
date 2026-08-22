@@ -14,10 +14,7 @@ import { parseSpokenGrammar, repairHeadingVsTurnDegrees } from "./spoken/grammar
 import { normalizeSpoken } from "./spoken/normalizer";
 import { groundCallsignToRoster, spokenCallsignToken } from "./spoken/telephony";
 import { rewriteSpokenToTyped } from "./spoken/typed-fuzzy";
-import {
-  groundInstructionFixes,
-  sanitizeFixIds,
-} from "./spoken/fix-ground";
+import { groundInstructionFixes, sanitizeFixIds } from "./spoken/fix-ground";
 import {
   groundInstructionProcedures,
   sanitizeCatalogProcedures,
@@ -41,7 +38,7 @@ export interface ParseCommandOpts {
    */
   fixes?: readonly string[];
   /**
-   * STAR/SID catalog for DESCEND_VIA / CLIMB_VIA snap (`demo 1` → `DEM1`)
+   * STAR/SID catalog for DESCEND_VIA / CLIMB_VIA / JOIN_PROCEDURE snap (`demo 1` → `DEM1`)
    * and Path C `procedures=` grounding.
    */
   procedures?: readonly CatalogProcedure[];

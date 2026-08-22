@@ -244,6 +244,28 @@ test("catalog grounding maps ASR C-Max / see max onto SEMAX", () => {
   }
 });
 
+test("join the demo one arrival is JOIN_PROCEDURE; then-join after direct", () => {
+  const procedures = [{ id: "DEM1", name: "DEMO ONE" }];
+  const joinOnly = spoken("join the demo one arrival", "DAL123", undefined, procedures);
+  expect(joinOnly.ok).toBe(true);
+  if (joinOnly.ok) {
+    expect(joinOnly.instructions).toEqual([{ type: "JOIN_PROCEDURE", procedureId: "DEM1" }]);
+  }
+  const combined = spoken(
+    "proceed direct nelbo then join demo one",
+    "DAL123",
+    ["NELBO"],
+    procedures,
+  );
+  expect(combined.ok).toBe(true);
+  if (combined.ok) {
+    expect(combined.instructions).toEqual([
+      { type: "DIRECT", fixId: "NELBO" },
+      { type: "JOIN_PROCEDURE", procedureId: "DEM1" },
+    ]);
+  }
+});
+
 test("descend via demo 1 snaps onto catalog DEM1", () => {
   const procedures = [{ id: "DEM1", name: "DEMO ONE" }];
   const compact = spoken("descend via demo 1", "DAL123", undefined, procedures);

@@ -157,8 +157,11 @@ test("VIA unknown procedure rejects; CROSS not on course rejects", () => {
     validateInstructions(jet(), [{ type: "DESCEND_VIA", procedureId: "NOPE" }], { catalog }),
   ).toEqual({ ok: false, reason: "UNKNOWN_PROCEDURE" });
   expect(
-    validateInstructions(jet(), [{ type: "DESCEND_VIA", procedureId: "DEM1" }], { catalog }).ok,
+    validateInstructions(jet(), [{ type: "JOIN_PROCEDURE", procedureId: "DEM1" }], { catalog }).ok,
   ).toBe(true);
+  expect(
+    validateInstructions(jet(), [{ type: "JOIN_PROCEDURE", procedureId: "NOPE" }], { catalog }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_PROCEDURE" });
   const ac = jet();
   expect(
     validateInstructions(

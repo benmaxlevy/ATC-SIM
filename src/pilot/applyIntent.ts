@@ -11,7 +11,6 @@ import {
   missedApproachId,
   missedSpecFor,
   normalizeHeading,
-  procedureRouteContainingFix,
 } from "@core";
 
 /** IDENT flash duration (sim ms). PPI may read `identUntilSimMs` later (T01-10). */
@@ -58,44 +57,6 @@ function setHeadingMode(
   aircraft.intent.locInterceptApproachId = null;
 }
 
-function preferProcedureId(aircraft: Aircraft): string | undefined {
-  if (aircraft.intent.lateral?.type === "PROCEDURE") {
-    return aircraft.intent.lateral.starId;
-  }
-  if (aircraft.intent.vertical?.type === "VIA_STAR") {
-    return aircraft.intent.vertical.starId;
-  }
-  return undefined;
-}
-
-/**
- * Analog: “direct [fix], rest of the arrival/departure.”
- * Trainer: DCT to a STAR/SID catalog fix joins remaining legs. A navaid or
- * other fix that is not on a procedure stays lone DIRECT.
- */
-function applyDirect(aircraft: Aircraft, fixId: string, catalog: ApplyIntentOpts["catalog"]): void {
-  const want = fixId.trim().toUpperCase();
-  const current = aircraft.intent.lateral;
-  if (current?.type === "PROCEDURE") {
-    const idx = current.routeFixIds.findIndex((id) => id.trim().toUpperCase() === want);
-    if (idx >= 0) {
-      aircraft.intent.lateral = { ...current, toFixIndex: idx };
-      return;
-    }
-  }
-  const joined = procedureRouteContainingFix(catalog, want, preferProcedureId(aircraft));
-  if (joined) {
-    aircraft.intent.lateral = {
-      type: "PROCEDURE",
-      starId: joined.starId,
-      toFixIndex: joined.toFixIndex,
-      routeFixIds: joined.routeFixIds,
-    };
-    return;
-  }
-  aircraft.intent.lateral = { type: "DIRECT", fixId: want };
-}
-
 function publishedLateralHint(
   aircraft: Aircraft,
 ):
@@ -112,28 +73,21 @@ function publishedLateralHint(
   return null;
 }
 
-function shouldKeepLateralForVia(aircraft: Aircraft): boolean {
+function shouldKeepPublishedLateral(aircraft: Aircraft): boolean {
   const type = aircraft.intent.lateral?.type;
   return type === "LOC" || type === "LANDING" || type === "INTERCEPT_LOC" || type === "MISSED";
 }
 
 /**
  * Analog: descend/climb via is the published path and its constraints.
- * Trainer: arm VIA_STAR and join PROCEDURE when the route is known. DCT join
- * stays lateral-only and must not call this.
+ * JOIN is the same lateral join without VIA_STAR. DCT never calls this.
  */
-function applyVia(
+function joinPublishedLateral(
   aircraft: Aircraft,
   procedureId: string,
-  sense: "DESCEND" | "CLIMB",
   opts?: ApplyIntentOpts,
 ): void {
-  aircraft.intent.vertical = {
-    type: "VIA_STAR",
-    starId: procedureId.trim().toUpperCase(),
-    sense,
-  };
-  if (shouldKeepLateralForVia(aircraft)) {
+  if (shouldKeepPublishedLateral(aircraft)) {
     return;
   }
   const joined = joinNamedProcedure({
@@ -153,6 +107,20 @@ function applyVia(
     toFixIndex: joined.toFixIndex,
     routeFixIds: joined.routeFixIds,
   };
+}
+
+function applyVia(
+  aircraft: Aircraft,
+  procedureId: string,
+  sense: "DESCEND" | "CLIMB",
+  opts?: ApplyIntentOpts,
+): void {
+  aircraft.intent.vertical = {
+    type: "VIA_STAR",
+    starId: procedureId.trim().toUpperCase(),
+    sense,
+  };
+  joinPublishedLateral(aircraft, procedureId, opts);
 }
 
 /**
@@ -222,13 +190,16 @@ function applyOne(
       aircraft.identUntilSimMs = simTimeMs + IDENT_FLASH_MS;
       return;
     case "DIRECT":
-      applyDirect(aircraft, instruction.fixId, opts?.catalog);
+      aircraft.intent.lateral = { type: "DIRECT", fixId: instruction.fixId.trim().toUpperCase() };
       return;
     case "DESCEND_VIA":
       applyVia(aircraft, instruction.procedureId, "DESCEND", opts);
       return;
     case "CLIMB_VIA":
       applyVia(aircraft, instruction.procedureId, "CLIMB", opts);
+      return;
+    case "JOIN_PROCEDURE":
+      joinPublishedLateral(aircraft, instruction.procedureId, opts);
       return;
     case "CROSS":
       aircraft.intent.cross = {

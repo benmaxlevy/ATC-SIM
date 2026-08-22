@@ -76,9 +76,44 @@ test("DIRECT sets lateral DIRECT; heading tokens cancel it", () => {
   expect(ac.intent.assignedHeadingDeg).toBe(90);
 });
 
-test("DCT to a STAR fix joins remaining published legs", () => {
+test("DCT to a STAR fix is lone DIRECT, not a join", () => {
   const ac = jet();
   applyIntent(ac, [{ type: "DIRECT", fixId: "NELBO" }], 0, { catalog: dem1Catalog });
+  expect(ac.intent.lateral).toEqual({ type: "DIRECT", fixId: "NELBO" });
+  expect(ac.intent.vertical?.type === "VIA_STAR").toBe(false);
+});
+
+test("DCT MERGE and DCT DEM are lone DIRECT", () => {
+  const ac = jet();
+  applyIntent(ac, [{ type: "DIRECT", fixId: "MERGE" }], 0, { catalog: dem1Catalog });
+  expect(ac.intent.lateral).toEqual({ type: "DIRECT", fixId: "MERGE" });
+  applyIntent(ac, [{ type: "DIRECT", fixId: "DEM" }], 0, { catalog: dem1Catalog });
+  expect(ac.intent.lateral).toEqual({ type: "DIRECT", fixId: "DEM" });
+});
+
+test("DCT to a later STAR fix leaves the procedure for lone DIRECT", () => {
+  const ac = jet();
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    starId: "DEM1",
+    toFixIndex: 0,
+    routeFixIds: ["NEMAX", "NELBO", "NJOIN", "MERGE"],
+  };
+  applyIntent(ac, [{ type: "DIRECT", fixId: "NJOIN" }], 0, { catalog: dem1Catalog });
+  expect(ac.intent.lateral).toEqual({ type: "DIRECT", fixId: "NJOIN" });
+});
+
+test("DCT then JOIN joins remaining legs without VIA", () => {
+  const ac = jet();
+  applyIntent(
+    ac,
+    [
+      { type: "DIRECT", fixId: "NELBO" },
+      { type: "JOIN_PROCEDURE", procedureId: "DEM1" },
+    ],
+    0,
+    { catalog: dem1Catalog },
+  );
   expect(ac.intent.lateral).toEqual({
     type: "PROCEDURE",
     starId: "DEM1",
@@ -88,37 +123,7 @@ test("DCT to a STAR fix joins remaining published legs", () => {
   expect(ac.intent.vertical?.type === "VIA_STAR").toBe(false);
 });
 
-test("DCT MERGE joins common only; DCT DEM stays DIRECT", () => {
-  const ac = jet();
-  applyIntent(ac, [{ type: "DIRECT", fixId: "MERGE" }], 0, { catalog: dem1Catalog });
-  expect(ac.intent.lateral).toEqual({
-    type: "PROCEDURE",
-    starId: "DEM1",
-    toFixIndex: 0,
-    routeFixIds: ["MERGE"],
-  });
-  applyIntent(ac, [{ type: "DIRECT", fixId: "DEM" }], 0, { catalog: dem1Catalog });
-  expect(ac.intent.lateral).toEqual({ type: "DIRECT", fixId: "DEM" });
-});
-
-test("DCT to a later STAR fix shortcuts the current PROCEDURE", () => {
-  const ac = jet();
-  ac.intent.lateral = {
-    type: "PROCEDURE",
-    starId: "DEM1",
-    toFixIndex: 0,
-    routeFixIds: ["NEMAX", "NELBO", "NJOIN", "MERGE"],
-  };
-  applyIntent(ac, [{ type: "DIRECT", fixId: "NJOIN" }], 0, { catalog: dem1Catalog });
-  expect(ac.intent.lateral).toEqual({
-    type: "PROCEDURE",
-    starId: "DEM1",
-    toFixIndex: 2,
-    routeFixIds: ["NEMAX", "NELBO", "NJOIN", "MERGE"],
-  });
-});
-
-test("VIA then DCT prefers that STAR", () => {
+test("VIA then DCT is DIRECT to that fix; VIA stays armed", () => {
   const ac = jet();
   applyIntent(
     ac,
@@ -130,23 +135,17 @@ test("VIA then DCT prefers that STAR", () => {
     { catalog: dem1Catalog },
   );
   expect(ac.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
-  expect(ac.intent.lateral?.type).toBe("PROCEDURE");
-  expect(ac.intent.lateral).toMatchObject({ starId: "DEM1", toFixIndex: 1 });
+  expect(ac.intent.lateral).toEqual({ type: "DIRECT", fixId: "NELBO" });
 });
 
-test("DCT to a SID fix joins remaining SID legs", () => {
+test("DCT to a SID fix is lone DIRECT", () => {
   const ac = jet();
   applyIntent(ac, [{ type: "DIRECT", fixId: "OCTTA" }], 0, {
     catalog: {
       sids: [{ id: "KDEM1", legs: [{ fixId: "OCTTA" }, { fixId: "DEMEE" }] }],
     },
   });
-  expect(ac.intent.lateral).toEqual({
-    type: "PROCEDURE",
-    starId: "KDEM1",
-    toFixIndex: 0,
-    routeFixIds: ["OCTTA", "DEMEE"],
-  });
+  expect(ac.intent.lateral).toEqual({ type: "DIRECT", fixId: "OCTTA" });
 });
 
 test("heading after GS capture clears vertical GS to ASSIGNED", () => {

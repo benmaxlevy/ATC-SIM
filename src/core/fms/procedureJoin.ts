@@ -1,8 +1,5 @@
 /**
- * Join a STAR/SID at a named fix after DCT, or pick a named procedure for VIA.
- * Analog: DCT is “direct [fix], rest of the arrival” (lateral only).
- * VIA/CVIA is descend/climb via (lateral PROCEDURE + vertical constraints).
- * A navaid or random fix that is not on a STAR/SID stays lone DIRECT.
+ * Join a named STAR/SID (JOIN or VIA). DCT to a procedure fix is not a join.
  */
 
 import type { CatalogStar } from "./vertical";

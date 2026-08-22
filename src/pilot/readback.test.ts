@@ -209,6 +209,17 @@ test("combined ILS vector includes until established and turn right heading", ()
   );
 });
 
+test("JOIN_PROCEDURE uses the published STAR name", () => {
+  expect(
+    formatReadback({
+      callsign: "DAL123",
+      instructions: [{ type: "JOIN_PROCEDURE", procedureId: "DEM1" }],
+      aircraft: snapshot,
+      procedureNames: { DEM1: "DEMO ONE" },
+    }).toLowerCase(),
+  ).toBe("delta one two three join demo one");
+});
+
 test("DESCEND_VIA uses the published STAR name", () => {
   expect(
     formatReadback({

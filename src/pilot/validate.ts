@@ -3,7 +3,13 @@
  * Reject the entire Command if any instruction fails — no partial apply.
  */
 
-import type { Aircraft, FixRegistry, Instruction, VerticalCatalog } from "@core";
+import type {
+  Aircraft,
+  FixRegistry,
+  Instruction,
+  ProcedureJoinCatalog,
+  VerticalCatalog,
+} from "@core";
 import { isOnCourseToFix } from "@core";
 
 export const ALTITUDE_MIN_FT = 1000;
@@ -30,7 +36,7 @@ export type ValidateResult = { ok: true } | { ok: false; reason: ValidateReason;
 
 export interface ValidateOpts {
   fixRegistry?: FixRegistry | null;
-  catalog?: VerticalCatalog | null;
+  catalog?: (VerticalCatalog & ProcedureJoinCatalog) | null;
   /** When set (catalog loaded), CLEARED/EXPECT must match an approach id. */
   approachIds?: readonly string[] | null;
 }
@@ -118,6 +124,7 @@ function validateOne(
       return { ok: true };
     case "DESCEND_VIA":
     case "CLIMB_VIA":
+    case "JOIN_PROCEDURE":
       return validateVia(instruction.procedureId, opts);
     case "CROSS":
       return validateCross(aircraft, instruction, opts);
@@ -171,7 +178,12 @@ function validateVia(procedureId: string, opts?: ValidateOpts): ValidateResult {
   if (procedureId.trim() === "") {
     return { ok: false, reason: "EMPTY" };
   }
-  const known = opts?.catalog?.stars?.some((star) => star.id === procedureId) ?? false;
+  const want = procedureId.trim().toUpperCase();
+  const stars = opts?.catalog?.stars ?? [];
+  const sids = opts?.catalog?.sids ?? [];
+  const known =
+    stars.some((star) => star.id.trim().toUpperCase() === want) ||
+    sids.some((sid) => sid.id.trim().toUpperCase() === want);
   if (!known) {
     return { ok: false, reason: "UNKNOWN_PROCEDURE" };
   }

@@ -132,7 +132,11 @@ export function groundInstructionProcedures(
     return [...instructions];
   }
   return instructions.map((inst) => {
-    if (inst.type !== "DESCEND_VIA" && inst.type !== "CLIMB_VIA") {
+    if (
+      inst.type !== "DESCEND_VIA" &&
+      inst.type !== "CLIMB_VIA" &&
+      inst.type !== "JOIN_PROCEDURE"
+    ) {
       return inst;
     }
     const procedureId = groundProcedureToCatalog(inst.procedureId, catalog) ?? inst.procedureId;
@@ -140,10 +144,12 @@ export function groundInstructionProcedures(
   });
 }
 
-export function proceduresFromCatalog(catalog?: {
-  stars?: ReadonlyArray<{ id: string; name?: string }>;
-  sids?: ReadonlyArray<{ id: string; name?: string }>;
-} | null): CatalogProcedure[] {
+export function proceduresFromCatalog(
+  catalog?: {
+    stars?: ReadonlyArray<{ id: string; name?: string }>;
+    sids?: ReadonlyArray<{ id: string; name?: string }>;
+  } | null,
+): CatalogProcedure[] {
   if (!catalog) {
     return [];
   }

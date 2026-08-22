@@ -9,8 +9,8 @@ test("Command has the frozen radio fields plus optional parseStage", () => {
   >();
 });
 
-test("INSTRUCTION_TYPES lists exactly the 16 Command IR discriminants", () => {
-  expect(INSTRUCTION_TYPES).toHaveLength(16);
+test("INSTRUCTION_TYPES lists exactly the 17 Command IR discriminants", () => {
+  expect(INSTRUCTION_TYPES).toHaveLength(17);
   expectTypeOf<Instruction["type"]>().toEqualTypeOf<(typeof INSTRUCTION_TYPES)[number]>();
 });
 

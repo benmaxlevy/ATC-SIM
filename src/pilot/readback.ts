@@ -165,6 +165,8 @@ function formatInstructionClause(
       return `expect ${speakApproachNav(instruction.approachId)}`;
     case "DIRECT":
       return `direct ${speakAlphanumeric(instruction.fixId)}`;
+    case "JOIN_PROCEDURE":
+      return `join ${procedureSpeech(instruction.procedureId, procedureNames)}`;
     case "DESCEND_VIA":
       return `descend via ${procedureSpeech(instruction.procedureId, procedureNames)}`;
     case "CLIMB_VIA":

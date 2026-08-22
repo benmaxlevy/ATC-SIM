@@ -17,10 +17,7 @@ import {
   singleDigit,
 } from "./numbers";
 import { groundFixToCatalog } from "./fix-ground";
-import {
-  groundProcedureToCatalog,
-  type CatalogProcedure,
-} from "./procedure-ground";
+import { groundProcedureToCatalog, type CatalogProcedure } from "./procedure-ground";
 import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./telephony";
 
 interface Cursor {
@@ -250,9 +247,24 @@ function tryVia(c: Cursor): Instruction | null {
   if (peek(c) !== undefined && PROCEDURE_TRAILING.has(peek(c)!)) {
     c.i += 1;
   }
-  return climb
-    ? { type: "CLIMB_VIA", procedureId }
-    : { type: "DESCEND_VIA", procedureId };
+  return climb ? { type: "CLIMB_VIA", procedureId } : { type: "DESCEND_VIA", procedureId };
+}
+
+function tryJoinProcedure(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "join")) {
+    return null;
+  }
+  take(c, "the");
+  const procedureId = parseProcedureId(c);
+  if (procedureId === null) {
+    c.i = start;
+    return null;
+  }
+  if (peek(c) !== undefined && PROCEDURE_TRAILING.has(peek(c)!)) {
+    c.i += 1;
+  }
+  return { type: "JOIN_PROCEDURE", procedureId };
 }
 
 function parseProcedureId(c: Cursor): string | null {
@@ -496,6 +508,7 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     tryPresentHeading(c) ??
     tryAltitude(c) ??
     tryVia(c) ??
+    tryJoinProcedure(c) ??
     trySpeed(c) ??
     tryDirect(c) ??
     tryIdent(c) ??
@@ -569,7 +582,7 @@ export function parseSpokenGrammar(
 
   const instructions: Instruction[] = [];
   while (leftover(c)) {
-    if (peek(c) === "and" && peek(c, 1) !== "maintain") {
+    if ((peek(c) === "and" && peek(c, 1) !== "maintain") || peek(c) === "then") {
       c.i += 1;
       continue;
     }

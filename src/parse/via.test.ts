@@ -11,6 +11,14 @@ test("AC — DAL123 VIA DEM1 is DESCEND_VIA DEM1", () => {
   expect(result.instructions).toEqual([{ type: "DESCEND_VIA", procedureId: "DEM1" }]);
 });
 
+test("JOIN DEM1 is JOIN_PROCEDURE; DCT NELBO JOIN DEM1 is direct then join", () => {
+  expectOk("DAL123 JOIN DEM1", [{ type: "JOIN_PROCEDURE", procedureId: "DEM1" }]);
+  expectOk("DAL123 DCT NELBO JOIN DEM1", [
+    { type: "DIRECT", fixId: "NELBO" },
+    { type: "JOIN_PROCEDURE", procedureId: "DEM1" },
+  ]);
+});
+
 test("CVIA DEM1 is CLIMB_VIA; mixed case uppercases", () => {
   const result = parseRadioText("cvia dem1");
   expect(result.ok).toBe(true);
@@ -49,6 +57,7 @@ test("X NEMAX 40 / 40A / 40B are CROSS AT / AOA / AOB at 4000 ft", () => {
 test("VIA and X without operands fail; D is not stolen", () => {
   expect(errorCode("VIA")).toBe(PARSE_ERROR.MISSING_PROCEDURE_ID);
   expect(errorCode("CVIA")).toBe(PARSE_ERROR.MISSING_PROCEDURE_ID);
+  expect(errorCode("JOIN")).toBe(PARSE_ERROR.MISSING_PROCEDURE_ID);
   expect(errorCode("VIA *")).toBe(PARSE_ERROR.UNKNOWN_TOKEN);
   expect(errorCode("X")).toBe(PARSE_ERROR.MISSING_FIX_ID);
   expect(errorCode("X NEMAX")).toBe(PARSE_ERROR.MISSING_NUMBER);

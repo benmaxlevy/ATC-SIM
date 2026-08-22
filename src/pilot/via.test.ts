@@ -176,12 +176,31 @@ test("CROSS AT readback is cross NEMAX at four thousand", () => {
   ).toBe("delta one two three cross nemax at four thousand");
 });
 
-test("DCT NELBO with catalog joins DEM1 remaining legs then vectors", async () => {
+test("DCT NELBO is lone DIRECT and sequences to present heading", async () => {
   const { dal, world } = worldOnDem1North();
   dal.intent.lateral = { type: "HEADING", headingDeg: 270 };
   const log = new SessionLog();
   world.sessionLog = log;
   const result = await handleRadioText(world, "DAL123 DCT NELBO", log);
+  expect(result.accepted).toBe(true);
+  expect(dal.intent.lateral).toEqual({ type: "DIRECT", fixId: "NELBO" });
+  expect(dal.intent.vertical?.type === "VIA_STAR").toBe(false);
+  const steps = Math.round(600 / SIM_DT_S);
+  for (let i = 0; i < steps; i += 1) {
+    stepWorld(world, SIM_DT_S);
+    if (log.byType("nav.direct.sequenced").some((event) => event.fixId === "NELBO")) {
+      break;
+    }
+  }
+  expect(log.byType("nav.direct.sequenced").map((event) => event.fixId)).toEqual(["NELBO"]);
+  expect(log.byType("nav.star.vectors")).toHaveLength(0);
+  expect(dal.intent.lateral?.type).toBe("HEADING");
+});
+
+test("DCT NELBO JOIN DEM1 joins remaining legs without VIA", async () => {
+  const { dal, world } = worldOnDem1North();
+  dal.intent.lateral = { type: "HEADING", headingDeg: 270 };
+  const result = await handleRadioText(world, "DAL123 DCT NELBO JOIN DEM1", new SessionLog());
   expect(result.accepted).toBe(true);
   expect(dal.intent.lateral).toEqual({
     type: "PROCEDURE",
@@ -190,20 +209,6 @@ test("DCT NELBO with catalog joins DEM1 remaining legs then vectors", async () =
     routeFixIds: [...DEMO_ONE_NORTH_FIX_IDS],
   });
   expect(dal.intent.vertical?.type === "VIA_STAR").toBe(false);
-  const steps = Math.round(600 / SIM_DT_S);
-  for (let i = 0; i < steps; i += 1) {
-    stepWorld(world, SIM_DT_S);
-    if (log.byType("nav.star.vectors").length > 0) {
-      break;
-    }
-  }
-  expect(log.byType("nav.direct.sequenced").map((event) => event.fixId)).toEqual([
-    "NELBO",
-    "NJOIN",
-    "MERGE",
-  ]);
-  expect(log.byType("nav.star.vectors")).toHaveLength(1);
-  expect(dal.intent.lateral?.type).toBe("HEADING");
 });
 
 test("DCT NELBO VIA DEM1 joins the STAR and arms VIA", async () => {
@@ -214,6 +219,20 @@ test("DCT NELBO VIA DEM1 joins the STAR and arms VIA", async () => {
   expect(dal.intent.lateral?.type).toBe("PROCEDURE");
   expect(dal.intent.lateral).toMatchObject({ starId: "DEM1", toFixIndex: 1 });
   expect(dal.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
+});
+
+test("JOIN DEM1 off a heading joins laterally without VIA", async () => {
+  const { dal, world } = worldOnDem1North();
+  dal.intent.lateral = { type: "HEADING", headingDeg: 270 };
+  const result = await handleRadioText(world, "DAL123 JOIN DEM1", new SessionLog());
+  expect(result.accepted).toBe(true);
+  expect(dal.intent.lateral).toEqual({
+    type: "PROCEDURE",
+    starId: "DEM1",
+    toFixIndex: 0,
+    routeFixIds: [...DEMO_ONE_NORTH_FIX_IDS],
+  });
+  expect(dal.intent.vertical?.type === "VIA_STAR").toBe(false);
 });
 
 test("VIA DEM1 off a heading joins the nearest STAR transition and arms VIA", async () => {

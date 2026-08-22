@@ -126,6 +126,15 @@ export const fixtureClimbVia = {
   source: "text",
 } satisfies Command;
 
+export const fixtureJoinProcedure = {
+  id: "cmd-join-procedure",
+  issuedAtSimMs: 0,
+  callsign: "DAL123",
+  instructions: [{ type: "JOIN_PROCEDURE", procedureId: "DEM1" }],
+  sourceText: "DAL123 JOIN DEM1",
+  source: "text",
+} satisfies Command;
+
 export const fixtureCross = {
   id: "cmd-cross",
   issuedAtSimMs: 0,
@@ -172,6 +181,7 @@ export const commandFixtures = [
   fixtureSayAltitude,
   fixtureDescendVia,
   fixtureClimbVia,
+  fixtureJoinProcedure,
   fixtureCross,
   fixtureGoAround,
   fixtureFlyHeadingAndAltitude,

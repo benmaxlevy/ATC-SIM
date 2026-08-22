@@ -30,17 +30,19 @@ test("spoken demo 1 snaps to catalog DEM1", () => {
   expect(groundProcedureToCatalog("NOPE", catalog)).toBeNull();
 });
 
-test("groundInstructionProcedures snaps DESCEND_VIA only", () => {
+test("groundInstructionProcedures snaps DESCEND_VIA and JOIN_PROCEDURE", () => {
   expect(
     groundInstructionProcedures(
       [
         { type: "DESCEND_VIA", procedureId: "DEMO1" },
+        { type: "JOIN_PROCEDURE", procedureId: "DEMO1" },
         { type: "IDENT" },
       ],
       [DEM1],
     ),
   ).toEqual([
     { type: "DESCEND_VIA", procedureId: "DEM1" },
+    { type: "JOIN_PROCEDURE", procedureId: "DEM1" },
     { type: "IDENT" },
   ]);
 });

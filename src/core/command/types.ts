@@ -56,6 +56,7 @@ export type Instruction =
   | { type: "SAY_ALTITUDE" }
   | { type: "DESCEND_VIA"; procedureId: string }
   | { type: "CLIMB_VIA"; procedureId: string }
+  | { type: "JOIN_PROCEDURE"; procedureId: string }
   | {
       type: "CROSS";
       fixId: string;

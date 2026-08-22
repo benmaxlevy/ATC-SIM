@@ -1,6 +1,6 @@
 /**
  * Analog: vice STARS TG typed ATC tokens (R08). Trainer delta: SH/SA parsed.
- * `DCT <FIX>` is DIRECT (D remains descend). `VIA` / `CVIA` / `X` are T04-04.
+ * `DCT <FIX>` is DIRECT (D remains descend). `VIA` / `CVIA` / `JOIN` / `X` are T04-04.
  * `EXP ILS27` is EXPECT_APPROACH (T04-05). `IL ILS27` is INTERCEPT_LOCALIZER
  * (loc only, no GS). `GA` is GO_AROUND (T04-07).
  * Same-line heading + altitude + APP sets untilEstablished. Not vice-compatible.
@@ -149,7 +149,7 @@ function parseOneInstruction(tokens: string[], index: number): InstructionParse 
       nextIndex: index + 2,
     };
   }
-  if (token === "VIA" || token === "CVIA") {
+  if (token === "VIA" || token === "CVIA" || token === "JOIN") {
     const procedureId = tokens[index + 1];
     if (procedureId === undefined) {
       return { ok: false, code: PARSE_ERROR.MISSING_PROCEDURE_ID };
@@ -157,10 +157,15 @@ function parseOneInstruction(tokens: string[], index: number): InstructionParse 
     if (!isProcedureIdToken(procedureId)) {
       return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: procedureId };
     }
+    const instruction: Instruction =
+      token === "VIA"
+        ? { type: "DESCEND_VIA", procedureId }
+        : token === "CVIA"
+          ? { type: "CLIMB_VIA", procedureId }
+          : { type: "JOIN_PROCEDURE", procedureId };
     return {
       ok: true,
-      instruction:
-        token === "VIA" ? { type: "DESCEND_VIA", procedureId } : { type: "CLIMB_VIA", procedureId },
+      instruction,
       nextIndex: index + 2,
     };
   }

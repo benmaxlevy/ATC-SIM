@@ -148,7 +148,7 @@ export function isLegalInstruction(value: unknown): value is Instruction {
       obj.approachId.length > 0
     );
   }
-  if (type === "DESCEND_VIA" || type === "CLIMB_VIA") {
+  if (type === "DESCEND_VIA" || type === "CLIMB_VIA" || type === "JOIN_PROCEDURE") {
     return (
       keysOk(obj, ["type", "procedureId"]) &&
       typeof obj.procedureId === "string" &&
