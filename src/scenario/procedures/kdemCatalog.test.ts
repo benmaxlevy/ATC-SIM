@@ -109,6 +109,22 @@ test("AC5b — DEM1 video map is default-on polylines/text; STAR parse does not 
   expect(src).not.toMatch(/import\.meta\.glob[^;]*video-maps/);
 });
 
+test("DEM1 MAPS restriction boxes are stacked alt hundreds / speed kt (authored, not STAR-joined)", () => {
+  const maps = loadVideoMapSet("KDEM");
+  const dem1 = maps.find((item) => item.id === "DEM1");
+  expect(dem1).toBeDefined();
+  const texts = dem1!.features.flatMap((feature) =>
+    feature.type === "text" ? [feature.text] : [],
+  );
+  expect(texts).toContain("NEMAX");
+  expect(texts).toContain("MERGE");
+  expect(texts).toContain("------\n100\n250\n------");
+  expect(texts).toContain("------\n80\n230\n------");
+  expect(texts).toContain("------\n60\n210\n------");
+  expect(texts).toContain("------\n40\n210\n------");
+  expect(texts.filter((text) => text.startsWith("------\n"))).toHaveLength(7);
+});
+
 test("scenario boot attaches catalog with airportId KDEM and navaids (AC integration)", () => {
   const scenario = loadKdem();
   expect(scenario.catalog.airportId).toBe("KDEM");

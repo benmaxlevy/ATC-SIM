@@ -180,9 +180,25 @@ function drawMapLayers(ctx: CanvasRenderingContext2D, cache: MapCache, view: Sco
   ctx.font = mapFont;
   ctx.textBaseline = "bottom";
   ctx.textAlign = "center";
+  const mapLineH = datablockLineHeightPx(view.charSizePx);
   for (const label of cache.videoLabels) {
     ctx.fillStyle = label.color === "mapDim" ? brite.mapDim : brite.map;
-    ctx.fillText(label.text, label.x, label.y);
+    drawVideoMapLabel(ctx, label.text, label.x, label.y, mapLineH);
+  }
+}
+
+/** STAR restriction boxes are newline-stacked (`------` / alt / speed / `------`). */
+function drawVideoMapLabel(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  lineH: number,
+): void {
+  const lines = text.split("\n");
+  const last = lines.length - 1;
+  for (let i = 0; i < lines.length; i += 1) {
+    ctx.fillText(lines[i]!, x, y - (last - i) * lineH);
   }
 }
 

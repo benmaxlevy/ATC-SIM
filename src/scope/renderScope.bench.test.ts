@@ -22,8 +22,9 @@ const FRAME_COUNT = 60;
 /** Loose per-frame beginPath cap: diamond + heading tick + leader per track + map/chrome. */
 const BEGIN_PATH_BUDGET = 120;
 /** Two datablock lines plus CSI stub per track, not per character, plus range/filter/runway.
- *  T02-19 adds FDB line 3 (type) → +1 fillText per in-filter track. */
-const FILL_TEXT_BUDGET = 135;
+ *  T02-19 adds FDB line 3 (type) → +1 fillText per in-filter track.
+ *  DEM1 STAR restriction boxes are 4 fillTexts each (7 fixes). */
+const FILL_TEXT_BUDGET = 165;
 
 function createRecordingCtx(): {
   ctx: CanvasRenderingContext2D;

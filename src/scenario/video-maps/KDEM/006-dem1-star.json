@@ -1,7 +1,7 @@
 {
   "id": "DEM1",
   "name": "DEMO ONE arrival corridors",
-  "note": "Trainer-authored video map (MAPS). Independent of STAR/fix catalog. Coordinates may look like DEM1 but changing a fix does not change this map.",
+  "note": "Trainer-authored video map (MAPS). Independent of STAR/fix catalog. Restriction boxes are copied onto the drawing (alt hundreds / speed kt); changing procedures.json does not change this map.",
   "features": [
     {
       "type": "polyline",
@@ -30,8 +30,18 @@
     },
     {
       "type": "text",
+      "text": "------\n100\n250\n------",
+      "atNm": [18.8, 12.5]
+    },
+    {
+      "type": "text",
       "text": "NELBO",
       "atNm": [16.5, 7.4]
+    },
+    {
+      "type": "text",
+      "text": "------\n80\n230\n------",
+      "atNm": [17.9, 7.4]
     },
     {
       "type": "text",
@@ -40,8 +50,18 @@
     },
     {
       "type": "text",
+      "text": "------\n60\n210\n------",
+      "atNm": [13.8, 4.5]
+    },
+    {
+      "type": "text",
       "text": "SEMAX",
       "atNm": [17.4, -12.5]
+    },
+    {
+      "type": "text",
+      "text": "------\n100\n250\n------",
+      "atNm": [18.8, -12.5]
     },
     {
       "type": "text",
@@ -50,13 +70,28 @@
     },
     {
       "type": "text",
+      "text": "------\n80\n230\n------",
+      "atNm": [17.9, -7.5]
+    },
+    {
+      "type": "text",
       "text": "SJOIN",
       "atNm": [12.4, -4.6]
     },
     {
       "type": "text",
+      "text": "------\n60\n210\n------",
+      "atNm": [13.8, -4.6]
+    },
+    {
+      "type": "text",
       "text": "MERGE",
       "atNm": [10.0, 0.6]
+    },
+    {
+      "type": "text",
+      "text": "------\n40\n210\n------",
+      "atNm": [10.0, 1.9]
     }
   ]
 }

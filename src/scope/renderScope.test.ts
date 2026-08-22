@@ -989,3 +989,32 @@ test("T04-10 — scope tints MSAW from world.alerts, not MVA math", () => {
   expect(findTargetDiamonds(alert.pathStrokes, dalP.x, dalP.y)[0]?.strokeStyle).toBe(PALETTE.alert);
   expect(alert.fillTexts.find((t) => t.text === "DAL123 MSAW")?.fillStyle).toBe(PALETTE.alert);
 });
+
+test("video map labels stack newline-separated STAR restriction lines", () => {
+  const view = createScopeView(0, 0, {
+    digitalMap: {
+      rangeRings: { intervalNm: 5, maxNm: 60 },
+      loadedVideoMaps: [
+        {
+          id: "T",
+          file: "t.json",
+          dcbNumber: 1,
+          dcbLabel: "T",
+          defaultOn: true,
+          color: "map",
+          name: "test",
+          features: [{ type: "text", text: "------\n100\n250\n------", atNm: [0, 0] }],
+        },
+      ],
+    },
+  });
+  const { ctx, fillTexts } = createMockCtx();
+  renderScope(ctx, createWorld(), view, 800, 800);
+  expect(fillTexts.some((t) => t.text.includes("\n"))).toBe(false);
+  expect(fillTexts.filter((t) => t.text === "------")).toHaveLength(2);
+  const alt = fillTexts.find((t) => t.text === "100");
+  const spd = fillTexts.find((t) => t.text === "250");
+  expect(alt).toBeDefined();
+  expect(spd).toBeDefined();
+  expect((spd!.y ?? 0) - (alt!.y ?? 0)).toBe(DATABLOCK_FONT_PX);
+});
