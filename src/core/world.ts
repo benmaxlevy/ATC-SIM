@@ -20,6 +20,7 @@ import { stepAircraft } from "./kinematics";
 import type { FixRegistry, FixRegistrySource } from "./nav/fixRegistry";
 import { buildFixRegistry } from "./nav/fixRegistry";
 import { applyLateralFms } from "./fms/lateral";
+import { applyVerticalFms, type CatalogStar } from "./fms/vertical";
 
 export type SimRate = 1 | 2;
 
@@ -42,7 +43,7 @@ export interface World {
     airportId: string;
     navaids: ReadonlyArray<{ id: string; xNm?: number; yNm?: number; kind?: string }>;
     fixes: ReadonlyArray<{ id: string; xNm?: number; yNm?: number; kind?: string }>;
-    stars: ReadonlyArray<{ id: string }>;
+    stars: ReadonlyArray<CatalogStar>;
     approaches: ReadonlyArray<{ id: string }>;
     sids: ReadonlyArray<{ id: string }>;
   };
@@ -293,8 +294,10 @@ export function stepWorld(world: World, dtS: number): World {
       registry: world.fixRegistry,
       log: world.sessionLog,
       simTimeMs: world.simTimeMs,
+      catalog: world.catalog,
     });
-    stepAircraft(ac, dtS, commandedHeadingDeg);
+    const vertical = applyVerticalFms(ac, world.catalog);
+    stepAircraft(ac, dtS, commandedHeadingDeg, vertical.altitudeFt, vertical.speedKt);
     if (ac.identUntilSimMs > 0 && world.simTimeMs >= ac.identUntilSimMs) {
       ac.identUntilSimMs = 0;
     }

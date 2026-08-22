@@ -173,6 +173,7 @@ export function handleRadioCommand(
 
   const validated = validateInstructions(aircraft, resolvedCommand.instructions, {
     fixRegistry: world.fixRegistry,
+    catalog: world.catalog,
   });
   if (!validated.ok) {
     logRejected(log, world, atWallMs, {
@@ -182,17 +183,25 @@ export function handleRadioCommand(
     });
     return {
       accepted: false,
-      readback: formatRejectReadback({ callsign: resolved.callsign, reason: validated.reason }),
+      readback: formatRejectReadback({
+        callsign: resolved.callsign,
+        reason: validated.reason,
+        detail: validated.detail,
+      }),
       command: resolvedCommand,
       reason: validated.reason,
     };
   }
 
   applyIntent(aircraft, resolvedCommand.instructions, world.simTimeMs);
+  const procedureNames = Object.fromEntries(
+    (world.catalog?.stars ?? []).map((star) => [star.id, star.name ?? star.id]),
+  );
   const readback = formatReadback({
     callsign: resolved.callsign,
     instructions: resolvedCommand.instructions,
     aircraft,
+    procedureNames,
   });
   logAccepted(log, world, atWallMs, resolvedCommand);
   return { accepted: true, readback, command: resolvedCommand };

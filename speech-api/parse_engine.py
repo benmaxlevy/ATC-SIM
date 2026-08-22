@@ -33,6 +33,9 @@ INSTRUCTION_TYPES = frozenset(
         "IDENT",
         "SAY_HEADING",
         "SAY_ALTITUDE",
+        "DESCEND_VIA",
+        "CLIMB_VIA",
+        "CROSS",
     }
 )
 
@@ -40,6 +43,7 @@ TURN_DIRS = frozenset({"LEFT", "RIGHT", "SHORTEST"})
 TURN_DEGREES_DIRS = frozenset({"LEFT", "RIGHT"})
 ALTITUDE_VERBS = frozenset({"CLIMB", "DESCEND", "MAINTAIN"})
 SPEED_VERBS = frozenset({"MAINTAIN", "INCREASE", "REDUCE"})
+CROSS_RESTRICTIONS = frozenset({"AT", "AT_OR_ABOVE", "AT_OR_BELOW"})
 
 # Constrained JSON / GBNF target (Command IR v0). Loaded from parse_grammar.gbnf.
 GRAMMAR_PATH = Path(__file__).resolve().parent / "parse_grammar.gbnf"
@@ -61,6 +65,9 @@ Instruction is exactly one of these frozen Command IR v0 types (no other "type")
 - {"type": "IDENT"}
 - {"type": "SAY_HEADING"}
 - {"type": "SAY_ALTITUDE"}
+- {"type": "DESCEND_VIA", "procedureId": string}
+- {"type": "CLIMB_VIA", "procedureId": string}
+- {"type": "CROSS", "fixId": string, "altitudeFt": number, "restriction": "AT"|"AT_OR_ABOVE"|"AT_OR_BELOW"}
 
 Rules:
 - Output JSON only. If you cannot map the text, output {"ok": false, "error": "PARSE_MISS"}.
@@ -279,6 +286,38 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         if not _exact_keys(raw, {"type"}):
             return None
         return {"type": "SAY_ALTITUDE"}
+    if instr_type == "DESCEND_VIA":
+        if (
+            not _exact_keys(raw, {"type", "procedureId"})
+            or not isinstance(raw["procedureId"], str)
+            or not raw["procedureId"]
+        ):
+            return None
+        return {"type": "DESCEND_VIA", "procedureId": raw["procedureId"]}
+    if instr_type == "CLIMB_VIA":
+        if (
+            not _exact_keys(raw, {"type", "procedureId"})
+            or not isinstance(raw["procedureId"], str)
+            or not raw["procedureId"]
+        ):
+            return None
+        return {"type": "CLIMB_VIA", "procedureId": raw["procedureId"]}
+    if instr_type == "CROSS":
+        if not _exact_keys(raw, {"type", "fixId", "altitudeFt", "restriction"}):
+            return None
+        if (
+            not isinstance(raw["fixId"], str)
+            or not raw["fixId"]
+            or not _is_finite_number(raw["altitudeFt"])
+            or raw["restriction"] not in CROSS_RESTRICTIONS
+        ):
+            return None
+        return {
+            "type": "CROSS",
+            "fixId": raw["fixId"],
+            "altitudeFt": _as_number(raw["altitudeFt"]),
+            "restriction": raw["restriction"],
+        }
     return None
 
 

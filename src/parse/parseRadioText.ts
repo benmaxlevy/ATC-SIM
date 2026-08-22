@@ -1,7 +1,7 @@
 /**
  * Analog: vice STARS TG typed ATC tokens (R08). Trainer delta: SH/SA parsed;
- * `DCT <FIX>` is DIRECT (D remains descend). EXPECT_APPROACH is unknown this
- * phase. Not vice-compatible.
+ * `DCT <FIX>` is DIRECT (D remains descend). `VIA` / `CVIA` / `X` are T04-04.
+ * EXPECT_APPROACH is unknown this phase. Not vice-compatible.
  *
  * Stage 1 only (`parse-pipeline.md`). Does not resolve callsigns, validate ATC
  * limits, or mutate intent. No World, no DOM.
@@ -12,8 +12,10 @@ import {
   formatParseError,
   isCallsignToken,
   isFixIdToken,
+  isProcedureIdToken,
   isTurnDirLetter,
   PARSE_ERROR,
+  parseCrossAltitudeToken,
   parseUnsignedInt,
   type ParseErrorCode,
 } from "./tokens";
@@ -113,6 +115,50 @@ function parseOneInstruction(tokens: string[], index: number): InstructionParse 
       ok: true,
       instruction: { type: "DIRECT", fixId },
       nextIndex: index + 2,
+    };
+  }
+  if (token === "VIA" || token === "CVIA") {
+    const procedureId = tokens[index + 1];
+    if (procedureId === undefined) {
+      return { ok: false, code: PARSE_ERROR.MISSING_PROCEDURE_ID };
+    }
+    if (!isProcedureIdToken(procedureId)) {
+      return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: procedureId };
+    }
+    return {
+      ok: true,
+      instruction:
+        token === "VIA"
+          ? { type: "DESCEND_VIA", procedureId }
+          : { type: "CLIMB_VIA", procedureId },
+      nextIndex: index + 2,
+    };
+  }
+  if (token === "X") {
+    const fixId = tokens[index + 1];
+    if (fixId === undefined) {
+      return { ok: false, code: PARSE_ERROR.MISSING_FIX_ID };
+    }
+    if (!isFixIdToken(fixId)) {
+      return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: fixId };
+    }
+    const altToken = tokens[index + 2];
+    if (altToken === undefined) {
+      return { ok: false, code: PARSE_ERROR.MISSING_NUMBER, detail: "X" };
+    }
+    const parsedAlt = parseCrossAltitudeToken(altToken);
+    if (parsedAlt === null) {
+      return { ok: false, code: PARSE_ERROR.MISSING_NUMBER, detail: altToken };
+    }
+    return {
+      ok: true,
+      instruction: {
+        type: "CROSS",
+        fixId,
+        altitudeFt: parsedAlt.altitudeFt,
+        restriction: parsedAlt.restriction,
+      },
+      nextIndex: index + 3,
     };
   }
 

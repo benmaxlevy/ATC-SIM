@@ -105,6 +105,17 @@ test("AC4 — CHAT type is a miss, no instructions dispatched", async () => {
     expect(result.error).toContain(PARSE_ERROR.PARSE_MISS);
   }
   expect(isLegalInstruction({ type: "CHAT" })).toBe(false);
+  expect(isLegalInstruction({ type: "DESCEND_VIA", procedureId: "DEM1" })).toBe(true);
+  expect(isLegalInstruction({ type: "CLIMB_VIA", procedureId: "DEM1" })).toBe(true);
+  expect(
+    isLegalInstruction({
+      type: "CROSS",
+      fixId: "NEMAX",
+      altitudeFt: 4000,
+      restriction: "AT",
+    }),
+  ).toBe(true);
+  expect(isLegalInstruction({ type: "DESCEND_VIA" })).toBe(false);
 });
 
 test("AC5 — fetch throw or 503 is a miss, no uncaught exception", async () => {

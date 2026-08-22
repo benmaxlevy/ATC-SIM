@@ -7,7 +7,7 @@ ok-true ::= "\"ok\"" ws ":" ws "true"
 callsign-field ::= "\"callsignToken\"" ws ":" ws (string | "null")
 instructions-field ::= "\"instructions\"" ws ":" ws "[" ws instruction (ws "," ws instruction)* ws "]"
 
-instruction ::= fly-heading | turn-degrees | present-heading | altitude | speed | direct | expect-approach | cleared-approach | ident | say-heading | say-altitude
+instruction ::= fly-heading | turn-degrees | present-heading | altitude | speed | direct | expect-approach | cleared-approach | ident | say-heading | say-altitude | descend-via | climb-via | cross
 
 fly-heading ::= "{" ws "\"type\"" ws ":" ws "\"FLY_HEADING\"" ws "," ws "\"headingDeg\"" ws ":" ws number ws "," ws "\"turn\"" ws ":" ws turn-dir ws "}"
 turn-degrees ::= "{" ws "\"type\"" ws ":" ws "\"TURN_DEGREES\"" ws "," ws "\"direction\"" ws ":" ws lr ws "," ws "\"degrees\"" ws ":" ws number ws "}"
@@ -20,11 +20,15 @@ cleared-approach ::= "{" ws "\"type\"" ws ":" ws "\"CLEARED_APPROACH\"" ws "," w
 ident ::= "{" ws "\"type\"" ws ":" ws "\"IDENT\"" ws "}"
 say-heading ::= "{" ws "\"type\"" ws ":" ws "\"SAY_HEADING\"" ws "}"
 say-altitude ::= "{" ws "\"type\"" ws ":" ws "\"SAY_ALTITUDE\"" ws "}"
+descend-via ::= "{" ws "\"type\"" ws ":" ws "\"DESCEND_VIA\"" ws "," ws "\"procedureId\"" ws ":" ws string ws "}"
+climb-via ::= "{" ws "\"type\"" ws ":" ws "\"CLIMB_VIA\"" ws "," ws "\"procedureId\"" ws ":" ws string ws "}"
+cross ::= "{" ws "\"type\"" ws ":" ws "\"CROSS\"" ws "," ws "\"fixId\"" ws ":" ws string ws "," ws "\"altitudeFt\"" ws ":" ws number ws "," ws "\"restriction\"" ws ":" ws cross-restriction ws "}"
 
 turn-dir ::= "\"LEFT\"" | "\"RIGHT\"" | "\"SHORTEST\""
 lr ::= "\"LEFT\"" | "\"RIGHT\""
 alt-verb ::= "\"CLIMB\"" | "\"DESCEND\"" | "\"MAINTAIN\""
 speed-verb ::= "\"MAINTAIN\"" | "\"INCREASE\"" | "\"REDUCE\""
+cross-restriction ::= "\"AT\"" | "\"AT_OR_ABOVE\"" | "\"AT_OR_BELOW\""
 boolean ::= "true" | "false"
 
 number ::= "-"? [0-9]+ ("." [0-9]+)?

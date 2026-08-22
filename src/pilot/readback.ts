@@ -27,7 +27,9 @@ export type RejectReason =
   | "CLIMB_NOT_ABOVE"
   | "DESCEND_NOT_BELOW"
   | "PARSE"
-  | "UNKNOWN_FIX";
+  | "UNKNOWN_FIX"
+  | "UNKNOWN_PROCEDURE"
+  | "NOT_ON_COURSE";
 
 const REJECT_FIXED: Record<string, string> = {
   UNKNOWN_CALLSIGN: "unable, unknown callsign",
@@ -44,6 +46,7 @@ const REJECT_AFTER_CALLSIGN: Record<string, string> = {
   CLIMB_NOT_ABOVE: "unable altitude",
   DESCEND_NOT_BELOW: "unable altitude",
   UNKNOWN_FIX: "unable, unknown fix",
+  UNKNOWN_PROCEDURE: "unable, unknown procedure",
 };
 
 /** ILS27 → `i l s two seven` (English letter names, runway digits). */
@@ -108,7 +111,11 @@ function formatHeadingClause(instruction: Extract<Instruction, { type: "FLY_HEAD
   }
 }
 
-function formatInstructionClause(instruction: Instruction, aircraft: ReadbackAircraft): string {
+function formatInstructionClause(
+  instruction: Instruction,
+  aircraft: ReadbackAircraft,
+  procedureNames?: Readonly<Record<string, string>>,
+): string {
   switch (instruction.type) {
     case "FLY_HEADING":
       return formatHeadingClause(instruction);
@@ -135,11 +142,33 @@ function formatInstructionClause(instruction: Instruction, aircraft: ReadbackAir
       return `expect ${speakApproachBody(instruction.approachId)} approach`;
     case "DIRECT":
       return `direct ${speakAlphanumeric(instruction.fixId)}`;
+    case "DESCEND_VIA":
+      return `descend via ${procedureSpeech(instruction.procedureId, procedureNames)}`;
+    case "CLIMB_VIA":
+      return `climb via ${procedureSpeech(instruction.procedureId, procedureNames)}`;
+    case "CROSS": {
+      const alt = speakAltitude(instruction.altitudeFt);
+      const fix = instruction.fixId;
+      if (instruction.restriction === "AT_OR_ABOVE") {
+        return `cross ${fix} at or above ${alt}`;
+      }
+      if (instruction.restriction === "AT_OR_BELOW") {
+        return `cross ${fix} at or below ${alt}`;
+      }
+      return `cross ${fix} at ${alt}`;
+    }
     default: {
       const _exhaustive: never = instruction;
       return _exhaustive;
     }
   }
+}
+
+function procedureSpeech(
+  procedureId: string,
+  procedureNames?: Readonly<Record<string, string>>,
+): string {
+  return procedureNames?.[procedureId] ?? procedureId;
 }
 
 /**
@@ -151,10 +180,11 @@ export function formatReadback(args: {
   callsign: string;
   instructions: Instruction[];
   aircraft: ReadbackAircraft;
+  procedureNames?: Readonly<Record<string, string>>;
 }): string {
   const callsignSpeech = formatCallsignSpeech(args.callsign);
   const clauses = args.instructions.map((instruction) =>
-    formatInstructionClause(instruction, args.aircraft),
+    formatInstructionClause(instruction, args.aircraft, args.procedureNames),
   );
   if (clauses.length === 0) {
     return callsignSpeech;
@@ -164,13 +194,20 @@ export function formatReadback(args: {
 }
 
 /** Error readbacks for rejects. Omit callsign speech when it is unknown. */
-export function formatRejectReadback(args: { callsign?: string; reason: string }): string {
+export function formatRejectReadback(args: {
+  callsign?: string;
+  reason: string;
+  detail?: string;
+}): string {
   const reason = args.reason.trim().toUpperCase();
   const fixed = REJECT_FIXED[reason];
   if (fixed) {
     return fixed;
   }
-  const after = REJECT_AFTER_CALLSIGN[reason] ?? "unable, say again";
+  let after = REJECT_AFTER_CALLSIGN[reason] ?? "unable, say again";
+  if (reason === "NOT_ON_COURSE") {
+    after = args.detail ? `unable, not on course to ${args.detail}` : "unable, not on course";
+  }
   const cs = args.callsign ? formatCallsignSpeech(args.callsign) : "";
   return cs ? `${cs} ${after}` : after;
 }

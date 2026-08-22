@@ -18,6 +18,7 @@ import {
   flyByStartNm,
   flyOverSequenceNm,
 } from "../nav/geometry";
+import { clearViaOnVectors, onFixSequenced, type VerticalCatalog } from "./vertical";
 
 /** DEMO ONE north transition then MERGE (ids only; xy from the registry). */
 export const DEMO_ONE_NORTH_FIX_IDS = ["NEMAX", "NELBO", "NJOIN", "MERGE"] as const;
@@ -26,6 +27,7 @@ export interface LateralFmsContext {
   registry: FixRegistry | null | undefined;
   log?: SessionLog | null;
   simTimeMs: number;
+  catalog?: VerticalCatalog | null;
 }
 
 /**
@@ -64,6 +66,7 @@ export function advanceStarLeg(
     starId?: string;
     log?: SessionLog | null;
     simTimeMs?: number;
+    catalog?: VerticalCatalog | null;
   },
 ): void {
   const routeFixIds = args.routeFixIds ?? DEMO_ONE_NORTH_FIX_IDS;
@@ -80,6 +83,7 @@ export function advanceStarLeg(
     registry: args.registry,
     log: args.log,
     simTimeMs: args.simTimeMs ?? 0,
+    catalog: args.catalog,
   });
   stepAircraft(ac, dtS, heading);
 }
@@ -171,6 +175,7 @@ function emitDirectSequenced(ac: Aircraft, ctx: LateralFmsContext, fixId: string
     callsign: ac.callsign,
     fixId,
   });
+  onFixSequenced(ac, fixId, ctx);
 }
 
 function emitStarVectors(ac: Aircraft, ctx: LateralFmsContext, starId: string): void {
@@ -181,4 +186,5 @@ function emitStarVectors(ac: Aircraft, ctx: LateralFmsContext, starId: string): 
     callsign: ac.callsign,
     starId,
   });
+  clearViaOnVectors(ac, ctx.catalog);
 }

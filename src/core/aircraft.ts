@@ -27,9 +27,17 @@ export type LateralMode =
  * Phase 4 vertical FMS. MSAW inhibit keys on `GS` inside FAF.
  * Omit until T04-06 (treated as assigned altitude).
  */
+export type CrossRestriction = "AT" | "AT_OR_ABOVE" | "AT_OR_BELOW";
+
+export interface CrossConstraint {
+  fixId: string;
+  altitudeFt: number;
+  restriction: CrossRestriction;
+}
+
 export type VerticalMode =
   | { type: "ASSIGNED" }
-  | { type: "VIA_STAR"; starId: string }
+  | { type: "VIA_STAR"; starId: string; sense?: "DESCEND" | "CLIMB" }
   | { type: "GS"; approachId: string }
   | { type: "MISSED_CLIMB"; altitudeFt: number };
 
@@ -47,6 +55,8 @@ export interface Intent {
   clearedApproachId: string | null;
   lateral?: LateralMode;
   vertical?: VerticalMode;
+  /** Single CROSS restriction; cleared when the fix sequences. */
+  cross?: CrossConstraint;
 }
 
 /**

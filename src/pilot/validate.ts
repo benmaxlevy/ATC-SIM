@@ -3,7 +3,8 @@
  * Reject the entire Command if any instruction fails — no partial apply.
  */
 
-import type { Aircraft, FixRegistry, Instruction } from "@core";
+import type { Aircraft, FixRegistry, Instruction, VerticalCatalog } from "@core";
+import { isOnCourseToFix } from "@core";
 
 export const ALTITUDE_MIN_FT = 1000;
 export const ALTITUDE_MAX_FT = 18000;
@@ -19,12 +20,17 @@ export type ValidateReason =
   | "SPEED"
   | "CLIMB_NOT_ABOVE"
   | "DESCEND_NOT_BELOW"
-  | "UNKNOWN_FIX";
+  | "UNKNOWN_FIX"
+  | "UNKNOWN_PROCEDURE"
+  | "NOT_ON_COURSE";
 
-export type ValidateResult = { ok: true } | { ok: false; reason: ValidateReason };
+export type ValidateResult =
+  | { ok: true }
+  | { ok: false; reason: ValidateReason; detail?: string };
 
 export interface ValidateOpts {
   fixRegistry?: FixRegistry | null;
+  catalog?: VerticalCatalog | null;
 }
 
 /** Against present kinematics, not would-be assigned values in the same Command. */
@@ -89,6 +95,11 @@ function validateOne(
         return { ok: false, reason: "UNKNOWN_FIX" };
       }
       return { ok: true };
+    case "DESCEND_VIA":
+    case "CLIMB_VIA":
+      return validateVia(instruction.procedureId, opts);
+    case "CROSS":
+      return validateCross(aircraft, instruction, opts);
     case "PRESENT_HEADING":
     case "IDENT":
     case "SAY_HEADING":
@@ -119,6 +130,38 @@ function validateAltitude(
   }
   if (instruction.verb === "DESCEND" && ft >= aircraft.altitudeFt) {
     return { ok: false, reason: "DESCEND_NOT_BELOW" };
+  }
+  return { ok: true };
+}
+
+function validateVia(procedureId: string, opts?: ValidateOpts): ValidateResult {
+  if (procedureId.trim() === "") {
+    return { ok: false, reason: "EMPTY" };
+  }
+  const known = opts?.catalog?.stars?.some((star) => star.id === procedureId) ?? false;
+  if (!known) {
+    return { ok: false, reason: "UNKNOWN_PROCEDURE" };
+  }
+  return { ok: true };
+}
+
+function validateCross(
+  aircraft: Aircraft,
+  instruction: Extract<Instruction, { type: "CROSS" }>,
+  opts?: ValidateOpts,
+): ValidateResult {
+  if (instruction.fixId.trim() === "") {
+    return { ok: false, reason: "EMPTY" };
+  }
+  const ft = instruction.altitudeFt;
+  if (!Number.isFinite(ft) || ft % 100 !== 0 || ft < ALTITUDE_MIN_FT || ft > ALTITUDE_MAX_FT) {
+    return { ok: false, reason: "ALTITUDE" };
+  }
+  if (!opts?.fixRegistry?.has(instruction.fixId)) {
+    return { ok: false, reason: "UNKNOWN_FIX" };
+  }
+  if (!isOnCourseToFix(aircraft, instruction.fixId)) {
+    return { ok: false, reason: "NOT_ON_COURSE", detail: instruction.fixId };
   }
   return { ok: true };
 }

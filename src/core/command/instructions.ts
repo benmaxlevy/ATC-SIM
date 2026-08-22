@@ -11,4 +11,7 @@ export const INSTRUCTION_TYPES = [
   "IDENT",
   "SAY_HEADING",
   "SAY_ALTITUDE",
+  "DESCEND_VIA",
+  "CLIMB_VIA",
+  "CROSS",
 ] as const;

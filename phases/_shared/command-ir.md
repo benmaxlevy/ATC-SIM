@@ -53,7 +53,15 @@ export type Instruction =
   | { type: "CLEARED_APPROACH"; approachId: string }
   | { type: "IDENT" }
   | { type: "SAY_HEADING" }
-  | { type: "SAY_ALTITUDE" };
+  | { type: "SAY_ALTITUDE" }
+  | { type: "DESCEND_VIA"; procedureId: string }
+  | { type: "CLIMB_VIA"; procedureId: string }
+  | {
+      type: "CROSS";
+      fixId: string;
+      altitudeFt: number;
+      restriction: "AT" | "AT_OR_ABOVE" | "AT_OR_BELOW";
+    };
 ```
 
 ## Parser rules (text, phase 1)
@@ -76,6 +84,10 @@ Suggested v1 tokens (callsign optional if a track is selected):
 | `I` | `IDENT` |
 | `APP ILS27` | `CLEARED_APPROACH` (phase 1 may accept and no-op fly-through; phase 4 fly-through) |
 | `R240 A20 APP ILS27` | `FLY_HEADING 240 RIGHT` + `ALTITUDE MAINTAIN 2000 untilEstablished` + `CLEARED_APPROACH ILS27` (phase 4; same-line heading+alt+APP) |
+| `VIA DEM1` | `DESCEND_VIA { procedureId: "DEM1" }` (`D` stays descend; via is `VIA`) |
+| `CVIA DEM1` | `CLIMB_VIA { procedureId: "DEM1" }` |
+| `X NEMAX 40` | `CROSS { fixId: "NEMAX", altitudeFt: 4000, restriction: "AT" }` (hundreds, same as `C30`) |
+| `X NEMAX 40A` / `X NEMAX 40B` | same with `AT_OR_ABOVE` / `AT_OR_BELOW` |
 
 Callsign: full (`DAL123`) or unambiguous suffix (`123`). Ambiguous suffix → reject, no aircraft moves.
 
@@ -88,6 +100,8 @@ Reject (no intent change, error readback) when:
 - Altitude not a multiple of 100 ft, or outside `[1000, 18000]` for v1.
 - Speed outside `[150, 280]` KIAS for v1 jets (tune per type later).
 - Empty instruction list.
+- Unknown STAR `procedureId` on `DESCEND_VIA` / `CLIMB_VIA`.
+- `CROSS` to an unknown fix, altitude not a multiple of 100 / outside `[1000, 18000]`, or not on course to that fix (`DIRECT` or remaining `PROCEDURE` leg).
 
 `SAY_*` and `IDENT` do not change intent; they only produce a readback / flash.
 
@@ -104,17 +118,9 @@ Use FAA digit grouping (eleven, twelve, … thousand). Spell callsign as airline
 
 ## Reserved additions (phase 4 only)
 
-Do **not** implement these before `phases/04-procedures/tickets/T04-04-descend-climb-via-crossing-alts.md`. That ticket must patch this file in the same PR if it adds types.
+`DESCEND_VIA`, `CLIMB_VIA`, and `CROSS` are in the union above (T04-04). Do **not** implement `GO_AROUND` before `phases/04-procedures/tickets/T04-07-missed-approach-stub.md`.
 
 ```ts
-| { type: "DESCEND_VIA"; procedureId: string }
-| { type: "CLIMB_VIA"; procedureId: string }
-| {
-    type: "CROSS";
-    fixId: string;
-    altitudeFt: number;
-    restriction: "AT" | "AT_OR_ABOVE" | "AT_OR_BELOW";
-  }
 | { type: "GO_AROUND" } // optional; T04-07
 ```
 

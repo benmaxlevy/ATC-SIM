@@ -99,6 +99,35 @@ export const fixtureSayAltitude = {
   source: "text",
 } satisfies Command;
 
+export const fixtureDescendVia = {
+  id: "cmd-descend-via",
+  issuedAtSimMs: 0,
+  callsign: "DAL123",
+  instructions: [{ type: "DESCEND_VIA", procedureId: "DEM1" }],
+  sourceText: "DAL123 VIA DEM1",
+  source: "text",
+} satisfies Command;
+
+export const fixtureClimbVia = {
+  id: "cmd-climb-via",
+  issuedAtSimMs: 0,
+  callsign: "DAL123",
+  instructions: [{ type: "CLIMB_VIA", procedureId: "DEM1" }],
+  sourceText: "DAL123 CVIA DEM1",
+  source: "text",
+} satisfies Command;
+
+export const fixtureCross = {
+  id: "cmd-cross",
+  issuedAtSimMs: 0,
+  callsign: "DAL123",
+  instructions: [
+    { type: "CROSS", fixId: "NEMAX", altitudeFt: 4000, restriction: "AT" },
+  ],
+  sourceText: "DAL123 X NEMAX 40",
+  source: "text",
+} satisfies Command;
+
 /** Combined clearance: heading and altitude on one radio transmission. */
 export const fixtureFlyHeadingAndAltitude = {
   id: "cmd-fly-heading-and-altitude",
@@ -124,5 +153,8 @@ export const commandFixtures = [
   fixtureIdent,
   fixtureSayHeading,
   fixtureSayAltitude,
+  fixtureDescendVia,
+  fixtureClimbVia,
+  fixtureCross,
   fixtureFlyHeadingAndAltitude,
 ] as const;

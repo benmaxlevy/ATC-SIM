@@ -72,6 +72,25 @@ test("DIRECT sets lateral DIRECT; heading tokens cancel it", () => {
   expect(ac.intent.assignedHeadingDeg).toBe(90);
 });
 
+test("DESCEND_VIA arms VIA_STAR; CROSS attaches a restriction", () => {
+  const ac = jet();
+  applyIntent(ac, [{ type: "DESCEND_VIA", procedureId: "DEM1" }], 0);
+  expect(ac.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
+  applyIntent(
+    ac,
+    [{ type: "CROSS", fixId: "NEMAX", altitudeFt: 4000, restriction: "AT" }],
+    0,
+  );
+  expect(ac.intent.cross).toEqual({
+    fixId: "NEMAX",
+    altitudeFt: 4000,
+    restriction: "AT",
+  });
+  applyIntent(ac, [{ type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" }], 0);
+  expect(ac.intent.vertical).toEqual({ type: "ASSIGNED" });
+  expect(ac.intent.cross).toBeUndefined();
+});
+
 test("SAY_* and CLEARED_APPROACH leave heading/alt/speed intent alone", () => {
   const ac = jet();
   const before = { ...ac.intent };

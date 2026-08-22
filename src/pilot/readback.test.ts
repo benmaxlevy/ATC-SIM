@@ -181,6 +181,17 @@ test("CLEARED_APPROACH ILS27 spells i l s two seven", () => {
   );
 });
 
+test("DESCEND_VIA uses the published STAR name", () => {
+  expect(
+    formatReadback({
+      callsign: "DAL123",
+      instructions: [{ type: "DESCEND_VIA", procedureId: "DEM1" }],
+      aircraft: snapshot,
+      procedureNames: { DEM1: "DEMO ONE" },
+    }).toLowerCase(),
+  ).toBe("delta one two three descend via demo one");
+});
+
 const rejectTable: [{ callsign?: string; reason: string }, string][] = [
   [{ reason: "UNKNOWN_CALLSIGN" }, "unable, unknown callsign"],
   [{ reason: "AMBIGUOUS_CALLSIGN" }, "unable, ambiguous callsign"],
@@ -192,6 +203,11 @@ const rejectTable: [{ callsign?: string; reason: string }, string][] = [
   [{ callsign: "DAL123", reason: "CLIMB_NOT_ABOVE" }, "delta one two three unable altitude"],
   [{ callsign: "DAL123", reason: "DESCEND_NOT_BELOW" }, "delta one two three unable altitude"],
   [{ callsign: "DAL123", reason: "UNKNOWN_FIX" }, "delta one two three unable, unknown fix"],
+  [{ callsign: "DAL123", reason: "UNKNOWN_PROCEDURE" }, "delta one two three unable, unknown procedure"],
+  [
+    { callsign: "DAL123", reason: "NOT_ON_COURSE", detail: "NEMAX" },
+    "delta one two three unable, not on course to nemax",
+  ],
   [{ reason: "PARSE" }, "unable, say again"],
   [{ reason: "HEADING" }, "unable heading"],
 ];

@@ -40,6 +40,7 @@ const TURN_DIRS = new Set<TurnDir>(["LEFT", "RIGHT", "SHORTEST"]);
 const LR = new Set(["LEFT", "RIGHT"]);
 const ALT_VERBS = new Set(["CLIMB", "DESCEND", "MAINTAIN"]);
 const SPEED_VERBS = new Set(["MAINTAIN", "INCREASE", "REDUCE"]);
+const CROSS_RESTRICTIONS = new Set(["AT", "AT_OR_ABOVE", "AT_OR_BELOW"]);
 const LEGAL_TYPES = new Set<string>(INSTRUCTION_TYPES);
 
 function isFiniteNumber(value: unknown): value is number {
@@ -128,6 +129,23 @@ export function isLegalInstruction(value: unknown): value is Instruction {
       keysOk(obj, ["type", "approachId"]) &&
       typeof obj.approachId === "string" &&
       obj.approachId.length > 0
+    );
+  }
+  if (type === "DESCEND_VIA" || type === "CLIMB_VIA") {
+    return (
+      keysOk(obj, ["type", "procedureId"]) &&
+      typeof obj.procedureId === "string" &&
+      obj.procedureId.length > 0
+    );
+  }
+  if (type === "CROSS") {
+    return (
+      keysOk(obj, ["type", "fixId", "altitudeFt", "restriction"]) &&
+      typeof obj.fixId === "string" &&
+      obj.fixId.length > 0 &&
+      isFiniteNumber(obj.altitudeFt) &&
+      typeof obj.restriction === "string" &&
+      CROSS_RESTRICTIONS.has(obj.restriction)
     );
   }
   return false;

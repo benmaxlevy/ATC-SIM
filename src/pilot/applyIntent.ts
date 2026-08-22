@@ -28,6 +28,10 @@ function setHeadingMode(
   aircraft.intent.assignedHeadingDeg = headingDeg;
   aircraft.intent.turn = turn;
   aircraft.intent.lateral = { type: "HEADING", headingDeg };
+  if (aircraft.intent.vertical?.type === "VIA_STAR") {
+    aircraft.intent.vertical = { type: "ASSIGNED" };
+  }
+  aircraft.intent.cross = undefined;
 }
 
 function applyOne(aircraft: Aircraft, instruction: Instruction, simTimeMs: number): void {
@@ -61,6 +65,27 @@ function applyOne(aircraft: Aircraft, instruction: Instruction, simTimeMs: numbe
       return;
     case "DIRECT":
       aircraft.intent.lateral = { type: "DIRECT", fixId: instruction.fixId };
+      return;
+    case "DESCEND_VIA":
+      aircraft.intent.vertical = {
+        type: "VIA_STAR",
+        starId: instruction.procedureId,
+        sense: "DESCEND",
+      };
+      return;
+    case "CLIMB_VIA":
+      aircraft.intent.vertical = {
+        type: "VIA_STAR",
+        starId: instruction.procedureId,
+        sense: "CLIMB",
+      };
+      return;
+    case "CROSS":
+      aircraft.intent.cross = {
+        fixId: instruction.fixId,
+        altitudeFt: instruction.altitudeFt,
+        restriction: instruction.restriction,
+      };
       return;
     case "SAY_HEADING":
     case "SAY_ALTITUDE":

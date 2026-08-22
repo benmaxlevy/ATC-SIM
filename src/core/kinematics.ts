@@ -79,7 +79,13 @@ function toward(current: number, assigned: number, maxDelta: number): number {
  * by the shortest turn — assigned heading stays the last ATC vector until the
  * fix sequences.
  */
-export function stepAircraft(ac: Aircraft, dtS: number, commandedHeadingDeg?: number): void {
+export function stepAircraft(
+  ac: Aircraft,
+  dtS: number,
+  commandedHeadingDeg?: number,
+  commandedAltitudeFt?: number,
+  commandedSpeedKt?: number,
+): void {
   const headingFrom = normalizeHeading(ac.headingDeg);
   const headingTo = normalizeHeading(
     commandedHeadingDeg !== undefined ? commandedHeadingDeg : ac.intent.assignedHeadingDeg,
@@ -94,10 +100,12 @@ export function stepAircraft(ac: Aircraft, dtS: number, commandedHeadingDeg?: nu
   }
 
   const maxAltFt = (CLIMB_RATE_FT_PER_MIN / 60) * dtS;
-  ac.altitudeFt = toward(ac.altitudeFt, ac.intent.assignedAltitudeFt, maxAltFt);
+  const altitudeTo = commandedAltitudeFt ?? ac.intent.assignedAltitudeFt;
+  ac.altitudeFt = toward(ac.altitudeFt, altitudeTo, maxAltFt);
 
   const maxSpeedKt = ACCEL_KT_PER_S * dtS;
-  ac.speedKt = Math.max(0, toward(ac.speedKt, ac.intent.assignedSpeedKt, maxSpeedKt));
+  const speedTo = commandedSpeedKt ?? ac.intent.assignedSpeedKt;
+  ac.speedKt = Math.max(0, toward(ac.speedKt, speedTo, maxSpeedKt));
 
   const headingRad = (ac.headingDeg * Math.PI) / 180;
   ac.xNm += ac.speedKt * Math.sin(headingRad) * (dtS / 3600);

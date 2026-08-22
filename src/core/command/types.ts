@@ -45,4 +45,12 @@ export type Instruction =
   | { type: "CLEARED_APPROACH"; approachId: string }
   | { type: "IDENT" }
   | { type: "SAY_HEADING" }
-  | { type: "SAY_ALTITUDE" };
+  | { type: "SAY_ALTITUDE" }
+  | { type: "DESCEND_VIA"; procedureId: string }
+  | { type: "CLIMB_VIA"; procedureId: string }
+  | {
+      type: "CROSS";
+      fixId: string;
+      altitudeFt: number;
+      restriction: "AT" | "AT_OR_ABOVE" | "AT_OR_BELOW";
+    };

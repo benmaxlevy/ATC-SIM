@@ -1,7 +1,8 @@
 /**
  * Analog: vice ATC instruction keyboard tokens (R08, pharr.org/vice).
  * Trainer delta: SH/SA are phase-1 tokens; `DCT <FIX>` is T04-03 (D stays
- * descend). EXPECT_APPROACH is not a typed token yet. Not vice-compatible.
+ * descend); `VIA` / `CVIA` / `X` are T04-04. EXPECT_APPROACH is not a typed
+ * token yet. Not vice-compatible.
  * Tokens only — no spoken English (Path A is phase 3).
  */
 
@@ -12,6 +13,7 @@ export const PARSE_ERROR = {
   MISSING_NUMBER: "MISSING_NUMBER",
   MISSING_APPROACH_ID: "MISSING_APPROACH_ID",
   MISSING_FIX_ID: "MISSING_FIX_ID",
+  MISSING_PROCEDURE_ID: "MISSING_PROCEDURE_ID",
   BAD_TURN_DEGREES: "BAD_TURN_DEGREES",
   UNKNOWN_TELEPHONY: "unknown_telephony",
   PARSE_MISS: "PARSE_MISS",
@@ -29,6 +31,10 @@ const UNSIGNED_INT = /^\d+$/;
 const TURN_DIR_LETTER = /^[LR]$/;
 /** Typed DCT fix: 2–5 letters after uppercase (`NEMAX`, `DEM`). */
 const FIX_ID_TOKEN = /^[A-Z]{2,5}$/;
+/** STAR / SID id: letters plus optional digits (`DEM1`). `D` stays descend. */
+const PROCEDURE_ID_TOKEN = /^[A-Z]{2,8}[0-9]{0,2}$/;
+/** CROSS altitude hundreds with optional A/B suffix (`40`, `40A`, `40B`). */
+const CROSS_ALT_TOKEN = /^(\d+)([AB])?$/;
 
 export function isCallsignToken(token: string): boolean {
   return FULL_CALLSIGN.test(token) || SUFFIX_CALLSIGN.test(token);
@@ -40,6 +46,30 @@ export function isTurnDirLetter(token: string): token is "L" | "R" {
 
 export function isFixIdToken(token: string): boolean {
   return FIX_ID_TOKEN.test(token);
+}
+
+export function isProcedureIdToken(token: string): boolean {
+  return PROCEDURE_ID_TOKEN.test(token);
+}
+
+export type CrossRestriction = "AT" | "AT_OR_ABOVE" | "AT_OR_BELOW";
+
+/** Hundreds of feet, same as `C30`. `40A` / `40B` are AOA / AOB. */
+export function parseCrossAltitudeToken(
+  raw: string,
+): { altitudeFt: number; restriction: CrossRestriction } | null {
+  const match = CROSS_ALT_TOKEN.exec(raw);
+  if (!match) {
+    return null;
+  }
+  const hundreds = parseUnsignedInt(match[1]!);
+  if (hundreds === null) {
+    return null;
+  }
+  const suffix = match[2];
+  const restriction: CrossRestriction =
+    suffix === "A" ? "AT_OR_ABOVE" : suffix === "B" ? "AT_OR_BELOW" : "AT";
+  return { altitudeFt: hundreds * 100, restriction };
 }
 
 /** Parser requires an integer token; rejects decimals and non-finite values. */

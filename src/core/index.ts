@@ -15,6 +15,7 @@
  * `CA_LATERAL_NM` / `CA_VERTICAL_FT` / `CA_LOOKAHEAD_S`, `datablockAlertTint`);
  * nav fix registry (`buildFixRegistry`, `FixRegistry`);
  * nav geometry (`courseDeg`, fly-by radius); lateral FMS (`applyLateralFms`);
+ * vertical FMS (`targetAltitudeFt`, `applyVerticalFms`);
  * MSAW lite (`evaluateMsaw`, `MSAW_RED_BELOW_FT`, `msawFloorFt`).
  *
  * Import rule: `@core` depends on nothing in `src/*` except itself.
@@ -43,7 +44,15 @@ export { INSTRUCTION_TYPES } from "./command/instructions";
 export * from "./command/fixtures";
 export type { SessionEvent } from "./events/types";
 export { SessionLog } from "./events/session-log";
-export type { Aircraft, AircraftInit, Intent, LateralMode, VerticalMode } from "./aircraft";
+export type {
+  Aircraft,
+  AircraftInit,
+  CrossConstraint,
+  CrossRestriction,
+  Intent,
+  LateralMode,
+  VerticalMode,
+} from "./aircraft";
 export { createAircraft, makeTestAircraft, nextAircraftId } from "./aircraft";
 export type { CaAlert, CaSeverity, WorldAlerts } from "./alerts/conflictAlert";
 export {
@@ -95,3 +104,20 @@ export {
 } from "./nav/geometry";
 export type { LateralFmsContext } from "./fms/lateral";
 export { DEMO_ONE_NORTH_FIX_IDS, advanceStarLeg, applyLateralFms } from "./fms/lateral";
+export type {
+  AltConstraint,
+  CatalogStar,
+  CatalogStarLeg,
+  SpeedConstraint,
+  VerticalCatalog,
+  VerticalFmsContext,
+} from "./fms/vertical";
+export {
+  applyVerticalFms,
+  clearViaOnVectors,
+  isOnCourseToFix,
+  nextUnpassedConstraints,
+  onFixSequenced,
+  targetAltitudeFt,
+  targetSpeedKt,
+} from "./fms/vertical";
