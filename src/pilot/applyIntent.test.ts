@@ -1,6 +1,10 @@
 import { expect, test } from "vitest";
 import { createAircraft } from "@core";
+import type { CatalogStar } from "@core";
 import { IDENT_FLASH_MS, applyIntent } from "./applyIntent";
+import proceduresJson from "../scenario/data/kdem/procedures.json";
+
+const dem1Catalog = { stars: proceduresJson.stars as CatalogStar[] };
 
 function jet() {
   return createAircraft({
@@ -70,6 +74,78 @@ test("DIRECT sets lateral DIRECT; heading tokens cancel it", () => {
   applyIntent(ac, [{ type: "FLY_HEADING", headingDeg: 90, turn: "SHORTEST" }], 0);
   expect(ac.intent.lateral).toEqual({ type: "HEADING", headingDeg: 90 });
   expect(ac.intent.assignedHeadingDeg).toBe(90);
+});
+
+test("DCT to a STAR fix joins remaining published legs", () => {
+  const ac = jet();
+  applyIntent(ac, [{ type: "DIRECT", fixId: "NELBO" }], 0, { catalog: dem1Catalog });
+  expect(ac.intent.lateral).toEqual({
+    type: "PROCEDURE",
+    starId: "DEM1",
+    toFixIndex: 1,
+    routeFixIds: ["NEMAX", "NELBO", "NJOIN", "MERGE"],
+  });
+});
+
+test("DCT MERGE joins common only; DCT DEM stays DIRECT", () => {
+  const ac = jet();
+  applyIntent(ac, [{ type: "DIRECT", fixId: "MERGE" }], 0, { catalog: dem1Catalog });
+  expect(ac.intent.lateral).toEqual({
+    type: "PROCEDURE",
+    starId: "DEM1",
+    toFixIndex: 0,
+    routeFixIds: ["MERGE"],
+  });
+  applyIntent(ac, [{ type: "DIRECT", fixId: "DEM" }], 0, { catalog: dem1Catalog });
+  expect(ac.intent.lateral).toEqual({ type: "DIRECT", fixId: "DEM" });
+});
+
+test("DCT to a later STAR fix shortcuts the current PROCEDURE", () => {
+  const ac = jet();
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    starId: "DEM1",
+    toFixIndex: 0,
+    routeFixIds: ["NEMAX", "NELBO", "NJOIN", "MERGE"],
+  };
+  applyIntent(ac, [{ type: "DIRECT", fixId: "NJOIN" }], 0, { catalog: dem1Catalog });
+  expect(ac.intent.lateral).toEqual({
+    type: "PROCEDURE",
+    starId: "DEM1",
+    toFixIndex: 2,
+    routeFixIds: ["NEMAX", "NELBO", "NJOIN", "MERGE"],
+  });
+});
+
+test("VIA then DCT prefers that STAR", () => {
+  const ac = jet();
+  applyIntent(
+    ac,
+    [
+      { type: "DESCEND_VIA", procedureId: "DEM1" },
+      { type: "DIRECT", fixId: "NELBO" },
+    ],
+    0,
+    { catalog: dem1Catalog },
+  );
+  expect(ac.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
+  expect(ac.intent.lateral?.type).toBe("PROCEDURE");
+  expect(ac.intent.lateral).toMatchObject({ starId: "DEM1", toFixIndex: 1 });
+});
+
+test("DCT to a SID fix joins remaining SID legs", () => {
+  const ac = jet();
+  applyIntent(ac, [{ type: "DIRECT", fixId: "OCTTA" }], 0, {
+    catalog: {
+      sids: [{ id: "KDEM1", legs: [{ fixId: "OCTTA" }, { fixId: "DEMEE" }] }],
+    },
+  });
+  expect(ac.intent.lateral).toEqual({
+    type: "PROCEDURE",
+    starId: "KDEM1",
+    toFixIndex: 0,
+    routeFixIds: ["OCTTA", "DEMEE"],
+  });
 });
 
 test("heading after GS capture clears vertical GS to ASSIGNED", () => {

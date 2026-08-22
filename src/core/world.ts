@@ -60,7 +60,7 @@ export interface World {
       daFt?: number;
       missed?: { headingDeg: number; climbToFt: number; directFixId?: string };
     }>;
-    sids: ReadonlyArray<{ id: string }>;
+    sids: ReadonlyArray<{ id: string; legs?: ReadonlyArray<{ fixId: string }> }>;
   };
   /**
    * O(1) DCT / STAR lookup. Built from `catalog` geometry when present.

@@ -141,6 +141,8 @@ Spoken (Path A must accept both runway wordings):
 
 Aircraft (must match the words): fly the heading, **hold assigned altitude until `nav.loc.captured` (established)**, then intercept GS from below (T04-06). `APP ILS27` / `IL ILS27` arms loc capture on the **current lateral path** (heading, DIRECT, or STAR) — do not turn inbound to find the loc; join loc inbound only after capture. `DCT MERGE` then `IL ILS27` continues to MERGE and intercepts when able. A heading in the **same** command is the intercept heading (`R240 A20 APP ILS27`). Hold the **already assigned** altitude until established.
 
+Parser `DCT` is still `{ type: "DIRECT"; fixId }`. Apply-time: if that fix is on a loaded STAR/SID, join remaining published legs (`PROCEDURE` from that fix). A navaid or other catalog id that is not on a procedure stays lone `DIRECT`. Heading still cancels the path.
+
 T04-03 flies `DIRECT`. T04-05 flies `CLEARED_APPROACH` (loc intercept) and arms `EXPECT_APPROACH` scratchpad. `untilEstablished` is additive on `ALTITUDE` — do not confuse with T04-04 `DESCEND_VIA` / `CROSS`.
 
 ## Events

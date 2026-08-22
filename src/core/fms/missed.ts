@@ -36,7 +36,7 @@ export interface MissedCatalogApproach {
 }
 
 export interface MissedCatalog {
-  approaches: ReadonlyArray<MissedCatalogApproach>;
+  approaches?: ReadonlyArray<MissedCatalogApproach>;
 }
 
 export interface MissedFmsContext {
@@ -82,7 +82,7 @@ export function missedSpecFor(
   catalog?: MissedCatalog | null,
 ): MissedApproachSpec {
   const want = approachId.trim().toUpperCase();
-  const approach = catalog?.approaches.find((item) => item.id.trim().toUpperCase() === want);
+  const approach = catalog?.approaches?.find((item) => item.id.trim().toUpperCase() === want);
   return {
     headingDeg: approach?.missed?.headingDeg ?? DEFAULT_MISSED_HEADING_DEG,
     climbToFt: approach?.missed?.climbToFt ?? DEFAULT_MISSED_CLIMB_FT,

@@ -4,14 +4,20 @@
  * Does not run physics; intent takes effect on the next kinematics tick.
  */
 
-import type { Aircraft, Instruction, MissedCatalog, SessionLog } from "@core";
-import { beginMissedApproach, missedApproachId, missedSpecFor, normalizeHeading } from "@core";
+import type { Aircraft, Instruction, MissedCatalog, ProcedureJoinCatalog, SessionLog } from "@core";
+import {
+  beginMissedApproach,
+  missedApproachId,
+  missedSpecFor,
+  normalizeHeading,
+  procedureRouteContainingFix,
+} from "@core";
 
 /** IDENT flash duration (sim ms). PPI may read `identUntilSimMs` later (T01-10). */
 export const IDENT_FLASH_MS = 5000;
 
 export interface ApplyIntentOpts {
-  catalog?: MissedCatalog | null;
+  catalog?: (MissedCatalog & ProcedureJoinCatalog) | null;
   log?: SessionLog | null;
 }
 
@@ -48,6 +54,48 @@ function setHeadingMode(
   aircraft.intent.cross = undefined;
   aircraft.intent.clearedApproachId = null;
   aircraft.intent.locInterceptApproachId = null;
+}
+
+function preferProcedureId(aircraft: Aircraft): string | undefined {
+  if (aircraft.intent.lateral?.type === "PROCEDURE") {
+    return aircraft.intent.lateral.starId;
+  }
+  if (aircraft.intent.vertical?.type === "VIA_STAR") {
+    return aircraft.intent.vertical.starId;
+  }
+  return undefined;
+}
+
+/**
+ * Analog: “direct [fix], rest of the arrival/departure.”
+ * Trainer: DCT to a STAR/SID catalog fix joins remaining legs. A navaid or
+ * other fix that is not on a procedure stays lone DIRECT.
+ */
+function applyDirect(
+  aircraft: Aircraft,
+  fixId: string,
+  catalog: ApplyIntentOpts["catalog"],
+): void {
+  const want = fixId.trim().toUpperCase();
+  const current = aircraft.intent.lateral;
+  if (current?.type === "PROCEDURE") {
+    const idx = current.routeFixIds.findIndex((id) => id.trim().toUpperCase() === want);
+    if (idx >= 0) {
+      aircraft.intent.lateral = { ...current, toFixIndex: idx };
+      return;
+    }
+  }
+  const joined = procedureRouteContainingFix(catalog, want, preferProcedureId(aircraft));
+  if (joined) {
+    aircraft.intent.lateral = {
+      type: "PROCEDURE",
+      starId: joined.starId,
+      toFixIndex: joined.toFixIndex,
+      routeFixIds: joined.routeFixIds,
+    };
+    return;
+  }
+  aircraft.intent.lateral = { type: "DIRECT", fixId: want };
 }
 
 /**
@@ -117,7 +165,7 @@ function applyOne(
       aircraft.identUntilSimMs = simTimeMs + IDENT_FLASH_MS;
       return;
     case "DIRECT":
-      aircraft.intent.lateral = { type: "DIRECT", fixId: instruction.fixId };
+      applyDirect(aircraft, instruction.fixId, opts?.catalog);
       return;
     case "DESCEND_VIA":
       aircraft.intent.vertical = {
