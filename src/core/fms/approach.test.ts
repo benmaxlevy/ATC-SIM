@@ -133,13 +133,35 @@ test("AC2c — INTERCEPT_LOC at ~8 NM does not capture GS in 20 s", () => {
   expect(dal.altitudeFt).toBeCloseTo(2000, 0);
 });
 
-test("AC3 — above GS at 6 NM / 4000 does not capture", () => {
+test("AC3 — above GS at 6 NM / 4000 does not capture in 30 s but descends toward the beam", () => {
   const { dal, world, log } = worldOnLoc(onLoc({ xNm: 6, altitudeFt: 4000 }));
   expect(dal.altitudeFt).toBeGreaterThan(gsAt(dal) + 50);
   stepSeconds(world, 30);
   expect(log.byType("nav.gs.captured")).toHaveLength(0);
   expect(dal.intent.vertical?.type === "GS").toBeFalsy();
-  expect(dal.altitudeFt).toBeCloseTo(4000, 0);
+  expect(dal.altitudeFt).toBeLessThan(4000 - 200);
+  expect(dal.altitudeFt).toBeGreaterThan(gsAt(dal) + 50);
+});
+
+test("APP + loc above GS captures and tracks down toward field elev 0", () => {
+  const { dal, world, log } = worldOnLoc(onLoc({ xNm: 12, altitudeFt: 4000 }));
+  expect(gsParams.fieldElevFt).toBe(0);
+  const found = (() => {
+    const capMs = 5 * 60 * 1000;
+    while (world.simTimeMs < capMs && log.byType("nav.gs.captured").length === 0) {
+      stepWorld(world, SIM_DT_S);
+    }
+    return log.byType("nav.gs.captured").length > 0;
+  })();
+  expect(found).toBe(true);
+  expect(dal.intent.vertical?.type).toBe("GS");
+  while (world.simTimeMs < 10 * 60 * 1000 && dal.altitudeFt > 800) {
+    expect(dal.intent.vertical?.type).toBe("GS");
+    expect(dal.altitudeFt).toBeGreaterThanOrEqual(gsParams.fieldElevFt);
+    stepWorld(world, SIM_DT_S);
+  }
+  expect(dal.altitudeFt).toBeLessThanOrEqual(800);
+  expect(dal.altitudeFt).toBeGreaterThan(200);
 });
 
 test("LOC without APP (no clearedApproachId) holds altitude — no GS", () => {

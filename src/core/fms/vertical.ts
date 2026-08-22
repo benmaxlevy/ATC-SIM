@@ -10,6 +10,8 @@ import type { Aircraft, CrossConstraint, VerticalMode } from "../aircraft";
 import type { SessionLog } from "../events/session-log";
 import { CLIMB_RATE_FT_PER_MIN } from "../kinematics";
 import {
+  GS_CAPTURE_ABOVE_FT,
+  GS_CAPTURE_BELOW_FT,
   GS_WAS_BELOW_FT,
   gsAltitudeFt,
   gsGeometricVsFpm,
@@ -175,8 +177,10 @@ export function applyVerticalFms(
 
 /**
  * GS after loc only (7110.65: do not start GS before established).
- * Returns a commanded altitude while `vertical === GS`; otherwise undefined
- * so STAR/assigned vertical FMS stays in charge. Never climbs on GS.
+ * `APP` / `clearedApproachId` is required. Loc-only `IL` holds assigned altitude.
+ * Once established and cleared: hold if below the GS (it comes down to meet
+ * them), descend onto it if above, then follow to field elevation. Never climb
+ * on GS.
  */
 export function applyGlidepathFms(
   ac: Aircraft,
@@ -199,7 +203,7 @@ export function applyGlidepathFms(
   }
 
   const alongTrackNm = locDeviation({ xNm: ac.xNm, yNm: ac.yNm }, axis).alongTrackNm;
-  const gsAlt = gsAltitudeFt(alongTrackNm, params);
+  const gsAlt = Math.max(params.fieldElevFt, gsAltitudeFt(alongTrackNm, params));
 
   if (!ac.intent.clearedApproachId) {
     if (ac.intent.vertical?.type === "GS") {
@@ -220,27 +224,35 @@ export function applyGlidepathFms(
   if (ac.altitudeFt < gsAlt - GS_WAS_BELOW_FT) {
     gsWasBelow.set(ac, true);
   }
+  const onSlope =
+    ac.altitudeFt >= gsAlt - GS_CAPTURE_BELOW_FT && ac.altitudeFt <= gsAlt + GS_CAPTURE_ABOVE_FT;
   if (
-    !gsShouldCapture({
+    gsShouldCapture({
       alongTrackNm,
       altFt: ac.altitudeFt,
       gsAltFt: gsAlt,
       wasBelow: gsWasBelow.get(ac) === true,
-    })
+    }) ||
+    (onSlope && alongTrackNm > 0)
   ) {
-    return undefined;
+    gsWasBelow.delete(ac);
+    ac.intent.vertical = { type: "GS", approachId: lateral.approachId };
+    ctx.log?.append({
+      type: "nav.gs.captured",
+      atSimMs: ctx.simTimeMs,
+      atWallMs: 0,
+      callsign: ac.callsign,
+      approachId: lateral.approachId,
+    });
+    return followGsAltitudeFt(ac.altitudeFt, gsAlt, params.gsAngleDeg, ac.speedKt, dtS);
   }
 
-  gsWasBelow.delete(ac);
-  ac.intent.vertical = { type: "GS", approachId: lateral.approachId };
-  ctx.log?.append({
-    type: "nav.gs.captured",
-    atSimMs: ctx.simTimeMs,
-    atWallMs: 0,
-    callsign: ac.callsign,
-    approachId: lateral.approachId,
-  });
-  return followGsAltitudeFt(ac.altitudeFt, gsAlt, params.gsAngleDeg, ac.speedKt, dtS);
+  // Established and cleared but still above the beam: descend onto the GS.
+  // Do not climb to meet it (below GS, hold present / assigned until intercept).
+  if (alongTrackNm > 0 && ac.altitudeFt > gsAlt + GS_CAPTURE_ABOVE_FT) {
+    return followGsAltitudeFt(ac.altitudeFt, gsAlt, params.gsAngleDeg, ac.speedKt, dtS);
+  }
+  return undefined;
 }
 
 /** Geometric GS rate; extra VS only to recapture from slightly above. Never climb. */

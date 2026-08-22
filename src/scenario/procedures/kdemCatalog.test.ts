@@ -131,6 +131,7 @@ test("scenario boot attaches catalog with airportId KDEM and navaids (AC integra
   expect(scenario.catalog.navaids.some((item) => item.id === "DEM")).toBe(true);
   const world = createWorldFromScenario(scenario);
   expect(world.catalog?.airportId).toBe("KDEM");
+  expect(world.catalog?.fieldElevFt).toBe(0);
   expect(world.catalog?.navaids.some((item) => item.id === "DEM")).toBe(true);
   expect(world.aircraft).toHaveLength(6);
 });

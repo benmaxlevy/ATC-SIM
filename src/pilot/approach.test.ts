@@ -14,6 +14,8 @@ const ILS27_APPROACH = {
   lengthNm: 18,
   beamHalfWidthDeg: 2.5,
   thresholdFixId: "RW27",
+  gsAngleDeg: 3,
+  tchFt: 50,
 } as const;
 
 function kdemCatalog() {
@@ -24,6 +26,7 @@ function kdemCatalog() {
     stars: [],
     approaches: [ILS27_APPROACH],
     sids: [],
+    fieldElevFt: 0,
   };
 }
 
@@ -200,7 +203,7 @@ test("AC3 — from (12, 4) / 240, loc capture within 8 sim minutes", async () =>
   }
   expect(Math.abs(dal.yNm)).toBeLessThan(0.3);
   expect(Math.abs(((dal.headingDeg - 270 + 540) % 360) - 180)).toBeLessThan(10);
-  expect(dal.altitudeFt).toBeCloseTo(4000, 0);
+  expect(dal.altitudeFt).toBeLessThanOrEqual(4000);
   expect(log.byType("nav.loc.captured")).toHaveLength(1);
 });
 

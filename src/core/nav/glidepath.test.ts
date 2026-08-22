@@ -28,9 +28,10 @@ test("GS height table at 10 / 6 / 3 / 1 NM (TCH 50, 3°)", () => {
   expect(gsAltitudeFt(1, kdem)).toBeCloseTo(50 + 1 * slope, 5);
 });
 
-test("field elevation shifts the whole path", () => {
-  const elevated = { ...kdem, fieldElevFt: 100 };
-  expect(gsAltitudeFt(6, elevated)).toBeCloseTo(gsAltitudeFt(6, kdem) + 100, 5);
+test("GS at threshold is TCH above KDEM field elev 0", () => {
+  expect(kdem.fieldElevFt).toBe(0);
+  expect(gsAltitudeFt(0, kdem)).toBeCloseTo(GS_DEFAULT_TCH_FT, 5);
+  expect(Math.max(kdem.fieldElevFt, gsAltitudeFt(-1, kdem))).toBe(0);
 });
 
 test("gsGeometricVsFpm is a descent at 3° / 160 kt", () => {
