@@ -23,6 +23,13 @@ Waves: A (T04-01 ∥ T04-09) → B (T04-02 ∥ T04-08 ∥ T04-10) → C (T04-03 
 
 **Working tree at start:** `master` clean except leftover untracked `e2e/` QA screenshots (not this swarm — left uncommitted). KDEM catalog JSON + DEM1 video map already on `master` (`Merge ticket/phase-4-swarm-kdem-catalog`). T04-01 **loads** those files; do not invent a second coordinate set. T02-01–13 confirmed on `master`. Phase 3 voice present; typed commands first; new tokens through the same `parseCommand`.
 
+## Phase 4 procedures captain notes
+
+- **Merged (`--no-ff`, captain only):** T04-01, T04-09, T04-02, T04-08, T04-10, T04-03, T04-04, T04-05, T04-06, T04-07, T04-12, plus `ticket/T04-ci-fix` (tsc) and `ticket/T04-ci-format` (Prettier). Isolated worktrees. Workers never merged. Deleted local ticket branches. Ignored junk `list` / `ls`. Skip **T04-11**. Did not start phase 5.
+- **Tests:** `npm test` **927** passed, **1** skipped. `npm run ci` exit 0 (typecheck, lint, format:check, vitest). CIFP fixture tests offline (`tools/cifp-import`).
+- **Product:** KDEM catalog JSON is the runtime catalog. `DCT` fly-by; `VIA`/`CROSS`; `APP ILS27` intercepts loc then GS from below; heading (`DAL123 H270`) cancels FMS; combined ILS `R240 A20 APP ILS27` holds alt until loc; missed at DA or Shift+H tower stub + land; CA lite 3 NM/1000 ft yellow then red; MSAW lite MVA polygons, inhibited on loc/GS/landing inside FAF. No wind. No chart scrape. No full CIFP cycle.
+- **Manual leftover (human `npm run dev`):** T04-12 AC4 Chrome script — load `?scenario=kdem-ils27`; disclaimer; DAL123 on DEM1 north (VIA, ≥10000 / 250, don’t bust NEMAX); vectors then typed `R240 A20 APP ILS27` (readback until established + cleared i l s; hold ~2000 until loc, then GS ~6 NM); inside 5 NM **Shift+H** → `handoff.tower` / despawn `nav.landed`, or skip HO → missed climb 270/3000; AAL45 at SEMAX for CA (or `D10` MSAW); pause/1×/2×; no console errors. Binding on F1. Do not invent a visual pass.
+
 ## Fourth swarm started — Path C (T03-15 then T03-14)
 
 Orchestrator started **2026-08-21**. Phase 3 voice (third swarm) stays green. This run **names T03-14** (human asked). Do **not** start phase 4 or 5. Do **not** redo T03-01–13. Skip **T03-11**. Untracked `e2e/` left uncommitted.
