@@ -1,0 +1,33 @@
+---
+description: New facilities and procedures are data; do not hardcode KDEM/DEM1 in runtime
+alwaysApply: true
+---
+
+# Data-first extensibility
+
+KDEM / DEMO ONE / ILS 27 are the **shipped fixture**, not the type system. A second STAR, SID, approach, or airport of an **existing schema shape** must work from JSON without a new `if`.
+
+## Data, not a branch in FMS
+
+| Add | Touch |
+| --- | --- |
+| STAR/SID/approach/fix/navaid on an existing facility | `src/scenario/data/<icao>/` (and video-maps / scenario spawn JSON if you want it on the scope) |
+| New playable airport | same catalog + scenario + MAPS + MVA folders; **do not** add `loadKdem3()` — register by id / glob like `loadCatalog` |
+| New **behavior** (hold, RNAV fly-by, SID runway transition, non-VECTORS termination) | schema field + generic walker; still no facility id switch |
+
+Runtime walks `catalog.stars` / `sids` / `approaches` / `fixes` **by id**. Parser tokens (`DCT`, `VIA`, `APP`) stay generic. DCT-join, VIA, loc/GS, spawn-on-STAR already do this.
+
+```ts
+// BAD — second STAR or airport needs a code edit
+if (starId === "DEM1") return ["NEMAX", "NELBO", "NJOIN", "MERGE"];
+
+// GOOD — any catalog row
+starRouteFixIds(catalog, starId, transitionId);
+procedureRouteContainingFix(catalog, fixId, preferStarId);
+```
+
+## Allowed KDEM in tests and copy
+
+Tests, F1 examples, and comments may say KDEM. **Do not** put `"KDEM"`, `"DEM1"`, `"ILS27"`, or `DEMO_ONE_NORTH_FIX_IDS` on a live path except as a documented last-resort default when the loaded catalog omits a field (SSA altimeter stub, MSAW RW27 fallback). A second facility must read the scenario/catalog instead of inheriting those stubs.
+
+Ambiguous fixes (same id on two STARs): prefer current `PROCEDURE` / `VIA`, else first catalog hit. Do not special-case DEM1.
