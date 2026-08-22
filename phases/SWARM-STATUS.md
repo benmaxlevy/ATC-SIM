@@ -23,6 +23,22 @@ Waves: A (T04-01 ∥ T04-09) → B (T04-02 ∥ T04-08 ∥ T04-10) → C (T04-03 
 
 **Working tree at start:** `master` clean except leftover untracked `e2e/` QA screenshots (not this swarm — left uncommitted). KDEM catalog JSON + DEM1 video map already on `master` (`Merge ticket/phase-4-swarm-kdem-catalog`). T04-01 **loads** those files; do not invent a second coordinate set. T02-01–13 confirmed on `master`. Phase 3 voice present; typed commands first; new tokens through the same `parseCommand`.
 
+## FOURTH SWARM COMPLETE — phase 4 procedures
+
+T04-01–10 and T04-12 are on `master`. Skip **T04-11** (wind). Captain `npm test` / `npm run ci`: **927 passed, 1 skipped**. Orchestrator `npm test` on `master`: **927 passed, 1 skipped**. KDEM JSON is the runtime catalog. `APP ILS27` captures loc then GS from below. Combined ILS `R240 A20 APP ILS27` holds altitude until established. `DAL123 H270` still turns and **cancels** FMS. CA/MSAW lite are automated. CIFP importer is fixture-only and offline. No chart scrape. No full FAA cycle. No paid vendor speech. Did **not** start phase 5. Did not redo T00–T03.
+
+**Merged (`--no-ff`, captain only):** T04-01, T04-09, T04-02, T04-08, T04-10, T04-03, T04-04, T04-05, T04-06, T04-07, T04-12, `ticket/T04-ci-fix`, `ticket/T04-ci-format`. Workers never merged. Untracked `e2e/` left uncommitted.
+
+**Manual leftover (human `npm run dev`):** T04-12 Chrome script — load `?scenario=kdem-ils27`; disclaimer; DAL123 on DEM1 north (VIA, don’t bust NEMAX); vectors then typed `R240 A20 APP ILS27` (until established + loc then GS); inside 5 NM **Shift+H** → tower handoff / land, or skip HO → missed 270/3000; AAL45 for CA (or `D10` MSAW); pause/1×/2×. Phase 3 Chrome/mic/p50 leftovers still apply. T04-11 leftover is expected (skipped).
+
+**Remaining work (next paste of `SWARM.md` with config changed):**
+
+| Phase | Folder | What it is |
+| --- | --- | --- |
+| 5 Training | `phases/05-training/` | Practice score, replay, optional bad readbacks |
+
+Optional later (not required to have exited 4): T04-11 constant wind. Do not start phase 5 until a new swarm paste.
+
 ## Phase 4 procedures captain notes
 
 - **Merged (`--no-ff`, captain only):** T04-01, T04-09, T04-02, T04-08, T04-10, T04-03, T04-04, T04-05, T04-06, T04-07, T04-12, plus `ticket/T04-ci-fix` (tsc) and `ticket/T04-ci-format` (Prettier). Isolated worktrees. Workers never merged. Deleted local ticket branches. Ignored junk `list` / `ls`. Skip **T04-11**. Did not start phase 5.
