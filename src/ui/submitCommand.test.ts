@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { SessionLog, createAircraft, createWorld } from "@core";
+import { SessionLog, acceptInboundHandoff, createAircraft, createWorld } from "@core";
 import { createWorldFromScenario, loadKdem } from "@scenario";
 import { submitCommand } from "./submitCommand";
 
@@ -28,13 +28,21 @@ test("AC1 — DAL123 H270 readback contains heading two seven zero, not the raw 
   expect(dal.intent.assignedHeadingDeg).toBe(270);
 });
 
-test("spawned KDEM DAL123 accepts H270 before PPI exists", async () => {
+test("spawned KDEM DAL123 rejects H270 until inbound HO is accepted (no PPI)", async () => {
   const world = createWorldFromScenario(loadKdem());
+  const rejected = await submitCommand(world, "DAL123 H270", new SessionLog());
+  expect(rejected.accepted).toBe(false);
+  expect(rejected.reason).toBe("handoff-pending");
+  expect(world.aircraft.find((ac) => ac.callsign === "DAL123")?.intent.assignedHeadingDeg).not.toBe(
+    270,
+  );
+
+  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  acceptInboundHandoff(world, dal.id);
   const result = await submitCommand(world, "DAL123 H270", new SessionLog());
   expect(result.accepted).toBe(true);
   expect(result.readback.toLowerCase()).toContain("heading two seven zero");
-  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123");
-  expect(dal?.intent.assignedHeadingDeg).toBe(270);
+  expect(dal.intent.assignedHeadingDeg).toBe(270);
 });
 
 test("AC3 — XYZ H270 is unable; existing aircraft keep prior intent", async () => {

@@ -3,7 +3,7 @@
  *
  * Legal now: `World` (`simTimeMs`, `paused`, `simRate` 1|2, empty `aircraft`,
  * `selectedAircraftId`, optional facility `catalog`, `fixRegistry`, `alerts`, `mvaChart`,
- * `msawInhibit`, `sessionLog`); `createWorld`; `setSelectedAircraft`; `stepWorld`;
+ * `msawInhibit`, `sessionLog`, `handoffs`); `createWorld`; `setSelectedAircraft`; `stepWorld`;
  * `createAccumulator` / `advanceWorld`; clock constants (`PHYSICS_HZ`,
  * `SIM_DT_S`, `MAX_PHYSICS_STEPS_PER_FRAME`); kinematics (`TURN_RATE_DEG_PER_S`,
  * `CLIMB_RATE_FT_PER_MIN`, `ACCEL_KT_PER_S`, `normalizeHeading`,
@@ -18,7 +18,8 @@
  * vertical FMS (`targetAltitudeFt`, `applyVerticalFms`); missed stub (`applyMissedFms`);
  * landing stub (`despawnLandedAircraft`, `acceptTowerHandoff`);
  * MSAW lite (`evaluateMsaw`, `MSAW_RED_BELOW_FT`, `msawFloorFt`);
- * seeded PRNG (`mulberry32`).
+ * seeded PRNG (`mulberry32`);
+ * inbound handoff (`TrackHandoff`, `isRadioCommandAllowed`, `acceptInboundHandoff`).
  *
  * Import rule: `@core` depends on nothing in `src/*` except itself.
  */
@@ -32,6 +33,18 @@ export {
 } from "./world";
 export { PHYSICS_HZ, SIM_DT_S, MAX_PHYSICS_STEPS_PER_FRAME } from "./clock";
 export { mulberry32 } from "./rng";
+export type { TrackHandoff } from "./handoff";
+export {
+  DEFAULT_INBOUND_SECTOR_ID,
+  HANDOFF_PENDING_REASON,
+  NONE_HANDOFF,
+  acceptInboundHandoff,
+  assertHandoffOwned,
+  handoffFor,
+  isRadioCommandAllowed,
+  offerInboundHandoff,
+  setHandoffNone,
+} from "./handoff";
 export {
   TURN_RATE_DEG_PER_S,
   CLIMB_RATE_FT_PER_MIN,

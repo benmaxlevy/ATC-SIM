@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
-import { SessionLog, createWorld, makeTestAircraft } from "@core";
+import { SessionLog, createWorld, handoffFor, makeTestAircraft } from "@core";
 import { handleRadioText } from "@pilot";
+import { createWorldFromScenario, loadKdem } from "@scenario";
 import {
   DROP_TRACK_HELP,
   INITIATE_TRACK_HELP,
@@ -86,6 +87,28 @@ test("AC6 — F3 does not emit command.accepted; heading still applies on an own
   expect(result.accepted).toBe(true);
   expect(dal.intent.assignedHeadingDeg).toBe(270);
   expect(tracks.get(dal.id)!.ownership).toBe("owned");
+  expect(log.byType("command.accepted")).toHaveLength(1);
+});
+
+test("T04-16 — F3 on pending inbound accepts HO, paints owned, then H270 applies", async () => {
+  const world = createWorldFromScenario(loadKdem(), 1);
+  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  world.selectedAircraftId = dal.id;
+  const tracks = new Map();
+  syncTrackDisplays(tracks, world);
+  expect(handoffFor(world, dal.id).kind).toBe("inbound");
+  expect(tracks.get(dal.id)!.ownership).toBe("unowned");
+
+  applyInitiateTrackToSelection(tracks, world);
+  expect(tracks.get(dal.id)!.ownership).toBe("owned");
+  expect(handoffFor(world, dal.id)).toEqual({ kind: "none" });
+  expect(world.sessionLog?.byType("handoff.inbound.accepted")).toHaveLength(1);
+  expect(world.sessionLog?.byType("command.accepted") ?? []).toHaveLength(0);
+
+  const log = new SessionLog();
+  const result = await handleRadioText(world, "DAL123 H270", log);
+  expect(result.accepted).toBe(true);
+  expect(dal.intent.assignedHeadingDeg).toBe(270);
   expect(log.byType("command.accepted")).toHaveLength(1);
 });
 

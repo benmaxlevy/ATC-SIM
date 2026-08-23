@@ -8,7 +8,7 @@
 import { expect, test, vi } from "vitest";
 import { SessionLog } from "@core";
 import { parseCommand } from "@parse";
-import { createWorldFromScenario, loadKdem } from "@scenario";
+import { createWorldFromScenario, loadKdemIls27 } from "@scenario";
 import {
   DEFAULT_PTT_KEY,
   HttpSpeechPort,
@@ -142,7 +142,7 @@ test("E14 — http adapter source does not call vendor STT/TTS", async () => {
 });
 
 test("E13 — typed DAL123 H270 still assigns heading 270 with source text", async () => {
-  const world = createWorldFromScenario(loadKdem());
+  const world = createWorldFromScenario(loadKdemIls27());
   const result = await submitCommand(world, "DAL123 H270", new SessionLog());
   expect(result.accepted).toBe(true);
   expect(result.command?.source).toBe("text");
@@ -153,7 +153,7 @@ test("E13 — typed DAL123 H270 still assigns heading 270 with source text", asy
 });
 
 test("typed accepted readback uses the same TTS player as PTT", async () => {
-  const world = createWorldFromScenario(loadKdem());
+  const world = createWorldFromScenario(loadKdemIls27());
   const synth = vi.fn(async (): Promise<AudioClip> => {
     return { sampleRate: 16000, channels: 1, pcm16: new Int16Array(1600) };
   });
@@ -193,7 +193,7 @@ test("typed accepted readback uses the same TTS player as PTT", async () => {
 });
 
 test("E13 — Path A English in the command line turns left 270", async () => {
-  const world = createWorldFromScenario(loadKdem());
+  const world = createWorldFromScenario(loadKdemIls27());
   const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
   world.selectedAircraftId = dal.id;
   const result = await submitCommand(world, "turn left heading two seven zero", new SessionLog());
@@ -205,7 +205,7 @@ test("E13 — Path A English in the command line turns left 270", async () => {
 });
 
 test("E3 — fake-port voice loop sets source voice and turns left 270", async () => {
-  const world = createWorldFromScenario(loadKdem());
+  const world = createWorldFromScenario(loadKdemIls27());
   const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
   world.selectedAircraftId = dal.id;
   const handles = createApp({

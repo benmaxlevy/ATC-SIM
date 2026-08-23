@@ -34,6 +34,8 @@ test("SessionEvent includes command events, voice.latency, CA edges, MSAW edges,
     | "handoff.tower"
     | "nav.landed"
     | "radio.checkin"
+    | "handoff.inbound.offered"
+    | "handoff.inbound.accepted"
   >();
 });
 
@@ -65,6 +67,43 @@ test("radio.checkin is a typed pilot-initiated payload (T04-15)", () => {
   expect(events).toHaveLength(1);
   expect(events[0]?.callsign).toBe("DAL123");
   expect(events[0]?.starName).toBe("DEMO ONE");
+});
+
+test("handoff.inbound.offered and accepted are typed spawn/accept payloads (T04-16)", () => {
+  type Offered = Extract<SessionEvent, { type: "handoff.inbound.offered" }>;
+  type Accepted = Extract<SessionEvent, { type: "handoff.inbound.accepted" }>;
+  expectTypeOf<Offered>().toEqualTypeOf<{
+    type: "handoff.inbound.offered";
+    atSimMs: number;
+    atWallMs: number;
+    callsign: string;
+    fromSectorId: string;
+  }>();
+  expectTypeOf<Accepted>().toEqualTypeOf<{
+    type: "handoff.inbound.accepted";
+    atSimMs: number;
+    atWallMs: number;
+    callsign: string;
+    fromSectorId: string;
+  }>();
+
+  const log = new SessionLog();
+  log.append({
+    type: "handoff.inbound.offered",
+    atSimMs: 0,
+    atWallMs: 0,
+    callsign: "DAL123",
+    fromSectorId: "C",
+  });
+  log.append({
+    type: "handoff.inbound.accepted",
+    atSimMs: 1000,
+    atWallMs: 50,
+    callsign: "DAL123",
+    fromSectorId: "C",
+  });
+  expect(log.byType("handoff.inbound.offered")).toHaveLength(1);
+  expect(log.byType("handoff.inbound.accepted")[0]?.fromSectorId).toBe("C");
 });
 
 test("command.rejected requires reason and command (AC2)", () => {

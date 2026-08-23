@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { createWorld } from "@core";
+import { DEFAULT_INBOUND_SECTOR_ID, createWorld, handoffFor } from "@core";
 import {
   STAR_SPAWN_STAGGER_NM,
   assertScenario,
@@ -11,6 +11,7 @@ import {
   parseTrafficCount,
   spawnArrivals,
 } from "@scenario";
+import { PALETTE, syncTrackDisplays } from "@scope";
 import kdemJson from "./kdem.json";
 import kdemDownwindJson from "../../testdata/scenarios/kdem-downwind.json";
 
@@ -296,6 +297,49 @@ test("T02-12 AC5 — createWorldForSession keeps 6 from JSON unless ?traffic= is
   expect(parseTrafficCount("?traffic=abc")).toBeNull();
   expect(parseSpawnSeed("")).toBe(1);
   expect(parseSpawnSeed("?traffic=30")).toBe(1);
+});
+
+test("T04-16 AC1 — default STAR pack spawns inbound HO from C, unowned green FDB", () => {
+  const world = createWorldFromScenario(loadKdem(), 1);
+  expect(world.aircraft).toHaveLength(6);
+  const tracks = new Map();
+  syncTrackDisplays(tracks, world);
+  for (const ac of world.aircraft) {
+    expect(handoffFor(world, ac.id)).toEqual({
+      kind: "inbound",
+      fromSectorId: DEFAULT_INBOUND_SECTOR_ID,
+    });
+    expect(tracks.get(ac.id)!.ownership).toBe("unowned");
+  }
+  expect(PALETTE.owned).toBe("#FFFFFF");
+});
+
+test("T04-16 AC5 — ?traffic=30 downwind replacement has handoff none", () => {
+  const world = createWorldForSession(loadKdem(), 30, 1);
+  expect(world.aircraft).toHaveLength(30);
+  for (const ac of world.aircraft) {
+    expect(handoffFor(world, ac.id)).toEqual({ kind: "none" });
+  }
+  expect(world.sessionLog?.byType("handoff.inbound.offered") ?? []).toHaveLength(0);
+});
+
+test("T04-16 AC4/AC6 — authored ils27 is none; STAR inbound emits one offered each", () => {
+  const authored = createWorldFromScenario(loadKdemIls27());
+  const dal = authored.aircraft.find((ac) => ac.callsign === "DAL123");
+  const aal = authored.aircraft.find((ac) => ac.callsign === "AAL45");
+  expect(dal).toBeDefined();
+  expect(aal).toBeDefined();
+  expect(handoffFor(authored, dal!.id)).toEqual({ kind: "none" });
+  expect(handoffFor(authored, aal!.id)).toEqual({ kind: "none" });
+  expect(authored.sessionLog?.byType("handoff.inbound.offered") ?? []).toHaveLength(0);
+
+  const inbound = createWorldFromScenario(loadKdem(), 1);
+  const offered = inbound.sessionLog?.byType("handoff.inbound.offered") ?? [];
+  expect(offered).toHaveLength(6);
+  expect(new Set(offered.map((event) => event.callsign))).toEqual(
+    new Set(inbound.aircraft.map((ac) => ac.callsign)),
+  );
+  expect(offered.every((event) => event.fromSectorId === "C")).toBe(true);
 });
 
 test("src/core does not import scenario JSON", () => {

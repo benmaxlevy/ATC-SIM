@@ -2,6 +2,9 @@ import {
   createAircraft,
   createWorld,
   MSAW_FAF_DISTANCE_NM,
+  SessionLog,
+  offerInboundHandoff,
+  setHandoffNone,
   type Aircraft,
   type MsawInhibitGeom,
   type World,
@@ -53,6 +56,7 @@ function spawnArrival(world: World, arrival: ArrivalSpawn, scenario?: Scenario):
   if (scenario) {
     armStarVia(ac, scenario, arrival);
   }
+  setHandoffNone(world, ac.id);
   world.aircraft.push(ac);
 }
 
@@ -101,6 +105,7 @@ function spawnStarInbound(world: World, scenario: Scenario, seed: number): void 
     };
     ac.intent.vertical = { type: "VIA_STAR", starId: assigned.starId, sense: "DESCEND" };
     world.aircraft.push(ac);
+    offerInboundHandoff(world, ac);
   }
 }
 
@@ -151,6 +156,7 @@ function worldFromScenario(scenario: Scenario): World {
     catalog: scenario.catalog,
     mvaChart: scenario.mva,
     msawInhibit: msawInhibitFromScenario(scenario),
+    sessionLog: new SessionLog(),
   });
 }
 

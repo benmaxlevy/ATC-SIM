@@ -8,6 +8,7 @@
  */
 
 import type { Command, Instruction, ParseStage, SessionLog, World } from "@core";
+import { assertHandoffOwned, handoffFor } from "@core";
 import { parseCommand, proceduresFromCatalog } from "@parse";
 import { applyIntent } from "./applyIntent";
 import { formatReadback, formatRejectReadback } from "./readback";
@@ -176,6 +177,24 @@ export function handleRadioCommand(
     ...command,
     callsign: resolved.callsign,
   };
+
+  const gate = assertHandoffOwned(handoffFor(world, aircraft.id));
+  if (!gate.ok) {
+    logRejected(log, world, atWallMs, {
+      command: resolvedCommand,
+      reason: gate.reason,
+      sourceText: command.sourceText,
+    });
+    return {
+      accepted: false,
+      readback: formatRejectReadback({
+        callsign: resolved.callsign,
+        reason: gate.reason,
+      }),
+      command: resolvedCommand,
+      reason: gate.reason,
+    };
+  }
 
   const validated = validateInstructions(aircraft, resolvedCommand.instructions, {
     fixRegistry: world.fixRegistry,

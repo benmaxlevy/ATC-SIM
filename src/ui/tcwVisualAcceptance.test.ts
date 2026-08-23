@@ -7,7 +7,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, expectTypeOf, test, vi } from "vitest";
 import { INSTRUCTION_TYPES, SessionLog, type Command, type Instruction } from "@core";
-import { createWorldFromScenario, loadKdem } from "@scenario";
+import { createWorldFromScenario, loadKdem, loadKdemIls27 } from "@scenario";
 import {
   HELP_KEYS_POINTER,
   SCOPE_FONT_STACK,
@@ -70,7 +70,7 @@ test("AC2 — Command IR stays the frozen fields and 16 instruction types", () =
 });
 
 test("AC2 — DAL123 H270 still readbacks heading and assigns 270", async () => {
-  const world = createWorldFromScenario(loadKdem());
+  const world = createWorldFromScenario(loadKdemIls27());
   const result = await submitCommand(world, "DAL123 H270", new SessionLog());
   expect(result.accepted).toBe(true);
   expect(result.command?.instructions[0]).toEqual({

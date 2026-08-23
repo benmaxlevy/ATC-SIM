@@ -144,6 +144,9 @@ export function despawnLandedAircraft(world: World): void {
     return;
   }
   world.aircraft = world.aircraft.filter((ac) => !gone.has(ac.id));
+  for (const id of gone) {
+    world.handoffs.delete(id);
+  }
   if (world.selectedAircraftId && gone.has(world.selectedAircraftId)) {
     world.selectedAircraftId = null;
   }

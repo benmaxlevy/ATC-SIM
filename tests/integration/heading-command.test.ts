@@ -13,6 +13,7 @@ import {
   SIM_DT_S,
   SessionLog,
   TURN_RATE_DEG_PER_S,
+  acceptInboundHandoff,
   shortestDeltaDeg,
   stepWorld,
   type Aircraft,
@@ -111,12 +112,13 @@ test("one SIM_DT_S step after accept starts the turn by ~0.15 deg (AC4)", async 
   expect(dal.headingDeg).toBeCloseTo(startHeading + expectedDelta, 2);
 });
 
-test("T04-14 — DAL123 H270 on the default STAR pack cancels FMS", async () => {
+test("T04-14 — DAL123 H270 on the default STAR pack cancels FMS after HO accept", async () => {
   const world = createWorldFromScenario(loadKdem(), 1);
   const dal = requireDal123(world);
   expect(dal.intent.lateral?.type).toBe("PROCEDURE");
   expect(dal.intent.vertical?.type).toBe("VIA_STAR");
 
+  expect(acceptInboundHandoff(world, dal.id)).toBe(true);
   const { result } = await issueHeading270(world);
   expect(result.accepted).toBe(true);
   expect(dal.intent.assignedHeadingDeg).toBe(270);

@@ -1,4 +1,5 @@
 import type { Aircraft } from "./aircraft";
+import type { TrackHandoff } from "./handoff";
 import {
   caPairKey,
   emptyWorldAlerts,
@@ -84,6 +85,11 @@ export interface World {
    * Tests pass one when they assert `alert.ca.*` / `alert.msaw.*`.
    */
   sessionLog: SessionLog | null;
+  /**
+   * Inbound handoff keyed by aircraft id (T04-16). Missing id is `{ kind: "none" }`.
+   * Radio rejects while `kind === "inbound"`. Not Command IR; not kinematics.
+   */
+  handoffs: Map<string, TrackHandoff>;
 }
 
 function catalogToFixSource(catalog: NonNullable<World["catalog"]>): FixRegistrySource | null {
@@ -141,6 +147,7 @@ export function createWorld(partial?: Partial<World>): World {
     mvaChart: partial?.mvaChart ?? null,
     msawInhibit: partial?.msawInhibit ?? null,
     sessionLog: partial?.sessionLog ?? null,
+    handoffs: partial?.handoffs ?? new Map(),
   };
 }
 

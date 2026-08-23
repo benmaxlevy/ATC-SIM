@@ -8,6 +8,7 @@
  */
 
 import type { Aircraft, World } from "@core";
+import { acceptInboundHandoff } from "@core";
 import { sanitizeScratchpad, type DatablockMode } from "./datablock";
 import { createHistoryBuf, maybeSampleHistory, type HistoryBuf } from "./history";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
@@ -75,7 +76,9 @@ function selectedTrackId(world: World): string | null {
 
 /**
  * F3 always-on: selected unowned → owned; already owned stays owned.
- * No selection: no-op. Display state only — never a Command.
+ * Pending inbound HO: same key takes the track (CRC INIT CNTL analog) via
+ * `acceptInboundHandoff` so radio is no longer gated. No selection: no-op.
+ * Display state only — never a Command.
  */
 export function applyInitiateTrackToSelection(
   tracks: Map<string, TrackDisplay>,
@@ -86,6 +89,7 @@ export function applyInitiateTrackToSelection(
     return { applied: false, hint: NO_SEL_HINT };
   }
   const td = ensureTrackDisplay(tracks, id);
+  acceptInboundHandoff(world, id);
   td.ownership = applyInitiateTrack(td.ownership);
   return { applied: true, hint: null };
 }

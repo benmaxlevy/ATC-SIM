@@ -13,6 +13,8 @@ import type { Command } from "../command/types";
  * T04-07 adds nav.missed.started (DA or GO_AROUND).
  * T04-12 adds handoff.tower (scope stub) and nav.landed (threshold despawn).
  * T04-15 adds radio.checkin (unsolicited STAR descend-via contact).
+ * T04-16 adds handoff.inbound.offered / handoff.inbound.accepted (spawn/accept;
+ * scope action later, not a Command; phase 5 must not score).
  */
 export type SessionEvent =
   | {
@@ -174,4 +176,26 @@ export type SessionEvent =
       starName: string;
       altitudeFt: number;
       text: string;
+    }
+  | {
+      /**
+       * Spawned pending inbound HO. Scope action later; not a Command.
+       * Phase 5 scoring must ignore this.
+       */
+      type: "handoff.inbound.offered";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      fromSectorId: string;
+    }
+  | {
+      /**
+       * Accept inbound HO (F3 take-track / T04-17 click). Not a Command.
+       * Phase 5 scoring must ignore this.
+       */
+      type: "handoff.inbound.accepted";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      fromSectorId: string;
     };

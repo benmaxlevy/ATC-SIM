@@ -118,7 +118,7 @@ export function createApp(deps: AppDeps): AppHandles {
     throw new Error("createApp requires deps.speech");
   }
   const world = deps.world ?? createWorld();
-  const log = new SessionLog();
+  const log = world.sessionLog ?? new SessionLog();
   world.sessionLog = log;
   let speech = deps.speech;
   const prefs = deps.speechPrefs ?? defaultSpeechPrefs();
