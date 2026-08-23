@@ -227,9 +227,9 @@ Research: `phases/_shared/references.md` **R07** CRC STARS accept-handoff / data
 ## Your loop (orchestrator)
 
 1. Update this file first: append the current swarm-start heading/configuration and preserve all earlier swarm history. Commit the planning update before any branch/worktree or agent action.
-2. Read `phases/SWARM-STATUS.md`, then `git checkout master` && `git status`. If dirty and it is not yours, **stop**.
-3. Confirm T04-13–15 are on `master` (fifth swarm complete). If fifth-swarm exit is missing, **BLOCKED**. If STATUS already shows sixth swarm complete, **stop**.
-4. Spawn **one** captain for **T04-16–17 only**. Wait until `PHASE EXIT GREEN` or `BLOCKED`.
+2. Read `phases/SWARM-STATUS.md`, then `git checkout master` && `git status`. If dirty and it is not yours, **stop**. Preserve untracked `e2e/`.
+3. Confirm sixth swarm (T04-16–17) is complete on `master`. If STATUS already shows **seventh** swarm complete, **stop**. Do **not** redo T04-16–17.
+4. Spawn **one** captain for **T02-22–30 only** (waves in **Seventh swarm — roles, product law, waves**). Wait until `PHASE EXIT GREEN` or `BLOCKED`.
 5. If `BLOCKED`: copy the note into STATUS, **stop**. Do not start phase 5. Human is away — do not wait for a question.
 6. If green: run the final required tests yourself, write the swarm-complete STATUS note, list honest manual leftovers and remaining work, and **stop**.
 
@@ -263,38 +263,35 @@ Second paragraph why.
 
 ## Waves (captain must follow)
 
-Dependencies on the ticket still win if a wave disagrees.
+Dependencies on the ticket still win if a wave disagrees. **This run uses the seventh-swarm table** in **Seventh swarm — roles, product law, waves** (T02-22–30). Do not execute the archived T04-16–17 table.
 
-Phase folder: `phases/04-procedures/`  
-Tickets: **T04-16, T04-17**. **Skip T04-01–15 and T04-11.**
+Phase folder: `phases/02-scope/`  
+Tickets: **T02-22–30**. **Skip T02-01–21.** Skip all T03/T04/T05.
 
 | Wave | Tickets (≤3) | Wait for |
 | --- | --- | --- |
-| 0 | merge `fix/star-inbound-spawn-spacing` if absent | Fifth swarm on `master` |
-| A | T04-16 | Wave 0. State + radio gate — **alone** |
-| B | T04-17 | A (need **T04-16**). Click accept + HO cue + check-in hold |
+| A | T02-22 | T02-21 on `master` |
+| B | T02-23 ∥ T02-24 ∥ T02-25 | A. Isolated worktrees |
+| C | T02-26 ∥ T02-27 ∥ T02-28 | B (28 needs **T02-25**) |
+| D | T02-29 | C (23–27 at least; 28 optional) |
+| E | T02-30 | D |
 
-Do **not** draw CA 3 NM circles. Do **not** invert owned color to green. Do **not** put inbound HO on `kdem-ils27` or `?traffic=N`. Do **not** add handoff as Command IR. Do **not** start T05-*.
+Do **not** paint weather. Do **not** use Pointer Lock. Do **not** invert owned color. Do **not** start T05-*. Do **not** reopen T02-01–21.
 
-Ticket files / branches:
+**Not this run:** T04-11. All T05-*. Redo of T02-01–21 or T04-*. CA halo. NAS PREF 32. Continuous zoom.
 
-- `ticket/T04-16-inbound-handoff-state` ← `phases/04-procedures/tickets/T04-16-inbound-handoff-state.md`
-- `ticket/T04-17-accept-handoff-scope` ← `phases/04-procedures/tickets/T04-17-accept-handoff-scope.md`
-
-**Not this run:** `T04-11-constant-wind-optional`. All T05-*. Redo of T04-01–15. CA halo.
-
-Exit: tickets T04-16–17 ACs. Default session pending inbound HO; click accepts to owned white; radio works after accept; check-in after accept; ils27/traffic bench unchanged. `npm test` / `npm run ci` green. Manual leftovers listed, not faked.
+Exit: T02-22–30 ACs. MAIN/AUX SHIFT; RANGE presets via spinner; disabled WX; PREF 1–8; TPA rings; ATPA stub. `npm test` / `npm run ci` green. Manual leftovers listed, not faked.
 
 ---
 
 ## Burden limits
 
-- Orchestrator: no `src/` or `tools/` edits except STATUS. No “I’ll just do T04-16 myself.”
+- Orchestrator: no `src/` or `tools/` edits except STATUS. No “I’ll just do T02-22 myself.”
 - Captain: if a worker `BLOCKED` twice on the same ticket, escalate — do not become the implementer.
-- Worker: one ticket. No bonus tickets. No CA halo “while you are here.” No phase 5 scoring. No rewriting T04-12’s ILS demo into RNG.
+- Worker: one ticket. No bonus tickets. No weather paint “while you are here.” No phase 5 scoring. No reopening T02-01–21.
 - Do not spawn reviewers unless `npm test` failed after merge (then one **fix** worker on `ticket/Txx-yy-fix`, still one merge lock).
 
-Size this run: **T04-16 M, T04-17 M**.
+Size this run: **T02-22 L, T02-25 L, others M/S**. T02-28 is P1 but **in wave C** — implement the stub, do not skip the wave.
 
 ---
 
@@ -302,11 +299,11 @@ Size this run: **T04-16 M, T04-17 M**.
 
 ```
 PHASE EXIT GREEN
-Phase: 4 Procedures addendum (T04-16–17 inbound HO)
-Merged: T04-16, T04-17
+Phase: 2 Scope addendum (T02-22–30 trainer DCB)
+Merged: T02-22 … T02-30
 Tests: npm test / npm run ci exit 0
-Manual leftover: <default STAR spawn + check-in Chrome items or none>
-Notes: <catalog pose; seeded default pack; ils27 deterministic; check-in radio; no phase 5>
+Manual leftover: <Chrome DCB walk or none>
+Notes: <SHIFT/AUX; disabled WX; PREF 1–8; TPA rings; no phase 5>
 ```
 
 or `PHASE EXIT BLOCKED` with reason. Do not return “wave A is running” as done.
@@ -315,7 +312,7 @@ or `PHASE EXIT BLOCKED` with reason. Do not return “wave A is running” as do
 
 ## Done when
 
-T04-16–17 ACs can be argued green, `npm test` green on `master`, STATUS says **sixth swarm complete**, default KDEM session spawns pending inbound HO from `C`, click accepts to owned white, radio works after accept, check-in waits until owned, `kdem-ils27` is still the T04-12 demo, `?traffic=N` is still the downwind arc, **no** CA 3 NM halo, **no** phase 5, T04-11 **not** implemented unless the human asked.
+T02-22–30 ACs can be argued green, `npm test` green on `master`, STATUS says **seventh swarm complete**, MAIN/AUX via SHIFT, RANGE spinner uses discrete presets, WX cells exist and never paint, PREF 1–8 persist, TPA J-rings work, ATPA is a stub, **no** phase 5, T02-01–21 **not** redone.
 
 Then stop. Training / scoring wait on a new paste of this file with config changed.
 
