@@ -1,4 +1,4 @@
-# ATC-SIM swarm orchestrator — Phase 4 post-exit addendum (T04-16–17 inbound HO)
+# ATC-SIM swarm orchestrator — Phase 2 post-exit addendum (T02-22–30 trainer DCB)
 
 Paste **this entire file** into a new agent. That agent is the **orchestrator**. It may run for hours. It writes almost no application code.
 
@@ -9,7 +9,46 @@ Shell: **Windows PowerShell** (not bash). Ticket commits use here-strings, not `
 
 Before checking git, spawning agents, creating worktrees, or editing application code, update this file for the current swarm. Append a new swarm-start heading/configuration; do not overwrite prior swarm history. If the requested swarm configuration is incomplete, ask before making any other swarm move. Then commit the planning/status update before creating ticket branches or worktrees.
 
-This is the **sixth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 3 → 4 (T04-01–10, T04-12) → 4 addendum (T04-13–15)** are already green on `master`. Do **not** redo 0–5th. Do **not** start phase 5 scoring. Skip **T04-11** (wind) unless the human names it.
+This is the **seventh swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–17)** are already green on `master`. Do **not** redo 0–6th. Do **not** start phase 5 scoring. Skip **T04-11** (wind) unless the human names it.
+
+---
+
+## Seventh swarm started — T02-22–30 trainer DCB addendum
+
+Orchestrator planning **2026-08-23**. Human: DCB spec → tickets T02-22–30, then “I’m away — make any calls.” Historical phase 2 exit/polish and sixth swarm (T04-16–17) stay green. This run is **T02-22–30 only**. Not phase 5. Not a redo of T02-01–21.
+
+| Key | Value |
+| --- | --- |
+| Goal | Trainer DCB grows toward CRC STARS **jobs and grammar**: MAIN/AUX via SHIFT, submenu replace, spinners, disabled WX, local PREF 1–8 |
+| Player loop | `npm run dev` → green DCB on glass → SHIFT AUX → RANGE spinner (presets) → MAPS 1–6 → WX cells visible and dead → PREF save/restore after reload |
+| Skip | **T04-11**. All of **T00–T01**, **T02-01–21** (already merged). All of **T03-***, **T04-***, **T05-*** |
+| Include | **T02-22**, **T02-23**, **T02-24**, **T02-25**, **T02-26**, **T02-27**, **T02-28**, **T02-29**, **T02-30** |
+| Stop | **Do not start phase 5.** No scoring, replay, imperfect pilots, or second TCP. Do not reopen T02-01–21 |
+| Do not redo | T00–T04-17. If STATUS says seventh swarm complete, **stop** |
+| Max ticket workers in flight | **3** (wave A = 1; B = 3; C = 3; D = 1; E = 1) |
+| Merge lock | **Only the phase captain** merges to `master` (`--no-ff`) |
+| Model | **cursor grok 4.6 high only.** `model: "cursor-grok-4.6-high"` on every Task spawn |
+| Paid STT/TTS/LLM | **Forbidden** |
+
+**Judgement — WX is chrome only.** WX1–4 (and BRITE WX/WXC/BKC) exist **disabled**. No mosaic, precip, NEXRAD, or weather draw. Human named this freeze.
+
+**Judgement — RANGE stays eight presets.** Spinner arms/steps `5, 10, 15, 20, 30, 40, 50, 60` NM. No continuous zoom, no CRC extra values.
+
+**Judgement — spinner cursor trap is analog, not Pointer Lock.** Arm on click, `setPointerCapture` / clamp-to-cell if cheap, wheel steps, second click or Esc commits. Do **not** require `requestPointerLock` (hostile in a browser trainer, painful to test).
+
+**Judgement — FILTER stays on MAIN.** Altitude filter cell is a trainer delta. SSA FILTER (T02-27) only hides SSA lines.
+
+**Judgement — MAPS 7–30 empty.** KDEM catalog has six maps. Unused numbered slots are disabled. No OSM filler.
+
+**Judgement — PREF is 8 localStorage slots.** Not 32 NAS sets. No `prompt()` / `<input>`. SAVE AS → first empty `PREF n`.
+
+**Judgement — TPA J-rings yes; ATPA stub.** 2/3/5/10 NM circles. ATPA is toggle/disabled with no pairing engine. CA stays T04-09 text — **no** 3 NM CA halo.
+
+**Judgement — VOL / MODE / SITE disabled.** Labels may read `FSL` / `FUSION`. Do not touch OS audio.
+
+**Judgement — leave `e2e/` untracked.** Do not stage QA screenshots.
+
+If `phases/SWARM-STATUS.md` already lists **seventh-swarm** exit green with T02-22–30 merged, **stop**.
 
 ---
 
@@ -83,6 +122,63 @@ Waves unchanged: **A** T04-13 alone → **B** T04-14 ∥ T04-15 (isolated worktr
 
 ---
 
+## Seventh swarm — roles, product law, waves
+
+Phase folder: `phases/02-scope/`  
+Tickets: **T02-22–30**. **Skip T02-01–21** (already on master).
+
+| Wave | Tickets (≤3) | Wait for |
+| --- | --- | --- |
+| A | T02-22 | T02-21 on `master` |
+| B | T02-23 ∥ T02-24 ∥ T02-25 | A. Isolated worktrees |
+| C | T02-26 ∥ T02-27 ∥ T02-28 | B (28 needs **T02-25**) |
+| D | T02-29 | C (23–27 at least; 28 optional) |
+| E | T02-30 | D |
+
+Captain prompt extras: full `phases/SWARM-CAPTAIN.md` + **`Phase folder: phases/02-scope/`** + **`Tickets: T02-22–30 only (waves above). Skip T02-01–21`** + **`model: cursor-grok-4.6-high` on every worker** + frozen judgements in this seventh-swarm section.
+
+Worker extras: full `phases/SWARM-TICKET-WORKER.md` + ticket id/path + this run’s product law.
+
+**Product law (seventh swarm — trainer DCB):**
+
+- Scope/DCB **never** emit Command IR. `DAL123 H270` still turns.
+- Discrete RANGE presets only. No zoom-to-cursor.
+- Disabled WX/VOL/MODE/SITE. No weather paint. No OS volume.
+- MAPS from catalog JSON only. Slots 7–30 disabled if empty.
+- PREF 1–8 in `localStorage`, facility-keyed, versioned. Not a NAS host.
+- TPA = J-rings. ATPA = stub. No CA halo.
+- CHAR SIZE stays Plex/system mono. No STARS `.ttf`.
+- Spinner: arm / wheel / commit. Pointer Lock not required.
+- FILTER (altitude) stays on MAIN. SSA FILTER is visibility.
+- Do not start T05-*. Do not edit phase 3 tickets. Paid speech forbidden.
+
+Ticket files / branches:
+
+- `ticket/T02-22-dcb-menu-model-and-primitives` ← `phases/02-scope/tickets/T02-22-dcb-menu-model-and-primitives.md`
+- `ticket/T02-23-dcb-main-range-cntr-rr-ldr` ← `phases/02-scope/tickets/T02-23-dcb-main-range-cntr-rr-ldr.md`
+- `ticket/T02-24-dcb-maps-wx-disabled` ← `phases/02-scope/tickets/T02-24-dcb-maps-wx-disabled.md`
+- `ticket/T02-25-dcb-aux-history-ptl-dock` ← `phases/02-scope/tickets/T02-25-dcb-aux-history-ptl-dock.md`
+- `ticket/T02-26-dcb-brite-char-size-submenus` ← `phases/02-scope/tickets/T02-26-dcb-brite-char-size-submenus.md`
+- `ticket/T02-27-dcb-ssa-gi-filters` ← `phases/02-scope/tickets/T02-27-dcb-ssa-gi-filters.md`
+- `ticket/T02-28-dcb-tpa-atpa-submenu` ← `phases/02-scope/tickets/T02-28-dcb-tpa-atpa-submenu.md`
+- `ticket/T02-29-dcb-pref-sets` ← `phases/02-scope/tickets/T02-29-dcb-pref-sets.md`
+- `ticket/T02-30-dcb-addendum-visual-acceptance` ← `phases/02-scope/tickets/T02-30-dcb-addendum-visual-acceptance.md`
+
+Captain return:
+
+```
+PHASE EXIT GREEN
+Phase: 2 Scope addendum (T02-22–30 trainer DCB)
+Merged: T02-22 … T02-30
+Tests: npm test / npm run ci exit 0
+Manual leftover: <Chrome DCB walk or none>
+Notes: <SHIFT/AUX; disabled WX; PREF 1–8; TPA rings; no phase 5>
+```
+
+or `PHASE EXIT BLOCKED` with reason.
+
+---
+
 ## Roles (do not collapse them)
 
 ```
@@ -98,14 +194,11 @@ YOU (orchestrator)
 | **Phase captain** | No | **Yes** | ≤3 ticket workers |
 | **Ticket worker** | Yes, **one ticket** | **No** | Nobody |
 
-Do **not** paste `phases/04-procedures/AGENT.md` into one agent. Swarm mode uses **one worker per ticket**.
+Do **not** paste `phases/02-scope/AGENT.md` (or phase 4 AGENT) into one agent. Swarm mode uses **one worker per ticket**.
 
-Prompts to give children (read the file, then add the line):
+**This run (seventh swarm):** captain prompt extras and waves are in **Seventh swarm — roles, product law, waves** above. Do not run T04-16–17 again.
 
-- Captain: full `phases/SWARM-CAPTAIN.md` + **`Phase folder: phases/04-procedures/`** + **`Tickets: T04-16, T04-17 only (waves in SWARM.md). Skip T04-01–15 and T04-11`** + **`model: cursor-grok-4.6-high` on every worker** + **merge `fix/star-inbound-spawn-spacing` first if missing from master**
-- Worker: full `phases/SWARM-TICKET-WORKER.md` + ticket id/path + PowerShell commit here-strings + **this run’s product law** (below)
-
-Workers **must not** end the captain’s turn. Captain **must not** `run_in_background: true` on a worker and then exit. Wait for `READY TO MERGE` / `BLOCKED`. Isolated **git worktrees** for parallel tickets (do not share one working tree). This run is serial (16 then 17).
+Workers **must not** end the captain’s turn. Captain **must not** `run_in_background: true` on a worker and then exit. Wait for `READY TO MERGE` / `BLOCKED`. Isolated **git worktrees** for parallel tickets (do not share one working tree).
 
 ---
 

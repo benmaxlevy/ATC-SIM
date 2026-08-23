@@ -1,5 +1,23 @@
 # Swarm status
 
+## Seventh swarm started — Phase 2 post-exit addendum (T02-22–30 trainer DCB)
+
+Orchestrator planning **2026-08-23**. Human: DCB spec + tickets, then away (“make any calls”). Historical phase 2 exit/polish (T02-01–21) and sixth swarm (T04-16–17) stay green. This run is **T02-22–30 only**. Do **not** redo T00–T04-17. Do **not** start phase 5. Skip **T04-11**.
+
+| Key | Value |
+| --- | --- |
+| Goal | Trainer DCB MAIN/AUX/submenus, spinners, disabled WX, local PREF 1–8 |
+| Player loop | `npm run dev` → SHIFT AUX → RANGE presets via spinner → MAPS 1–6 → dead WX cells → PREF persist |
+| Skip | **T04-11**. **T02-01–21**. **T03-***. **T04-***. **T05-*** |
+| Include | **T02-22–30** |
+| Stop | **Do not start phase 5** |
+| Max ticket workers in flight | **3** |
+| Merge lock | **Only the phase captain** merges to `master` (`--no-ff`) |
+| Model | **cursor grok 4.6 high only.** `model: "cursor-grok-4.6-high"` |
+| Paid STT/TTS/LLM | **Forbidden** |
+
+Waves: A T02-22 → B T02-23∥24∥25 → C T02-26∥27∥28 → D T02-29 → E T02-30. Untracked `e2e/` left uncommitted. Frozen: no Pointer Lock; FILTER stays on MAIN; MAPS 7–30 empty; ATPA stub; WX never paints.
+
 ## Sixth swarm started — Phase 4 post-exit addendum (T04-16–17 inbound HO)
 
 Orchestrator planning **2026-08-23**. Human `/run-swarm`: spawn handoff accept + CA 3 NM circles if analog exists. Historical phase 4 exit and fifth swarm (T04-13–15) stay green. This run is **T04-16, T04-17 only**. Do **not** redo T00–T04-15. Do **not** start phase 5. Skip **T04-11**. **No CA 3 NM halo** (CRC STARS STCA is `CA` text + tone; 3 NM circles are TPA J-rings or ERAM DRI). Owned FDB stays **white** after accept (CRC), not green.
