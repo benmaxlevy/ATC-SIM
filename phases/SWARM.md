@@ -141,16 +141,39 @@ Worker extras: full `phases/SWARM-TICKET-WORKER.md` + ticket id/path + this run�
 
 **Product law (seventh swarm — trainer DCB):**
 
-- Scope/DCB **never** emit Command IR. `DAL123 H270` still turns.
-- Discrete RANGE presets only. No zoom-to-cursor.
-- Disabled WX/VOL/MODE/SITE. No weather paint. No OS volume.
-- MAPS from catalog JSON only. Slots 7–30 disabled if empty.
-- PREF 1–8 in `localStorage`, facility-keyed, versioned. Not a NAS host.
-- TPA = J-rings. ATPA = stub. No CA halo.
-- CHAR SIZE stays Plex/system mono. No STARS `.ttf`.
-- Spinner: arm / wheel / commit. Pointer Lock not required.
-- FILTER (altitude) stays on MAIN. SSA FILTER is visibility.
+- Scope/DCB **never** emit Command IR. `DAL123 H270` still turns. Inbound HO from T04-16–17 stays: unowned green pending from `C`, click/F3 accept → white owned; do not regress that.
+- Discrete RANGE presets only (`5 10 15 20 30 40 50 60`). No zoom-to-cursor. RANGE is a **spinner**, not ± buttons.
+- Disabled WX/VOL/MODE/SITE. No weather paint. No OS volume. WX1–4 exist on MAIN and must be unpressable.
+- MAPS from `video-maps` catalog JSON only. Quick 1–6 + submenu slots 1–30. Unused numbers **disabled**, not OSM filler. CLR ALL / GEO MAPS / CURRENT as T02-24.
+- PREF 1–8 in `localStorage`, ICAO-keyed, versioned. DEFAULT / RESTORE / SAVE / SAVE AS / DELETE. No `prompt()` / `<input>`. Display state only (not world/speech).
+- TPA = selected/owned J-rings at frozen 2/3/5/10 NM. ATPA = stub (no pairing, no cones). CA stays T04-09 **text** — no 3 NM CA halo.
+- CHAR SIZE stays Plex/system mono. No STARS `.ttf`. BRITE multiplies existing palette channels; WX/WXC/BKC disabled.
+- Spinner: arm / wheel / commit / Esc disarm. Pointer Lock **not** required (`setPointerCapture` OK).
+- FILTER (altitude) stays on MAIN. SSA FILTER hides existing SSA lines. GI TEXT is 10 authored facility lines, not METAR HTTP.
+- DCB docks TOP/LEFT/RIGHT/BOTTOM; PPI padding follows the bar. HISTORY spinner 0–5; PTL minutes include 0.5/1/2 (+ optional 4); PTL OWN vs ALL.
 - Do not start T05-*. Do not edit phase 3 tickets. Paid speech forbidden.
+
+**Code home (do not fork a second DCB):**
+
+Existing glass is `src/ui/DisplayControlBar.tsx` + `src/scope/dcbFunctions.ts` + `src/scope/scopeView.ts`. Tickets that say `DisplayControlBar.tsx` mean this component. Add `src/scope/dcbMenu.ts`, `dcbPref.ts`, `tpa.ts` as tickets name them. Reducers stay DOM-free in `src/scope`.
+
+**Wave B/C collision:** T02-23, T02-24, and T02-25 all touch the DCB component. Isolated worktrees, then captain rebases the remaining two onto `master` after each `--no-ff`. Same for T02-26/27/28 vs `DisplayControlBar.tsx`. Do not share one working tree.
+
+**T02-21 greps:** T02-16/21 forbade SHIFT / WX / PREF. **T02-22** allows SHIFT (keep CSA/CRDA/FMA/OSM forbidden). **T02-24** allows disabled WX cells (still forbid mosaic/precip draw). **T02-29** allows PREF submenu. T02-30 confirms the amended grammar; do not re-fail the old freeze.
+
+**Ticket notes (paste into the matching worker):**
+
+| ID | Must |
+| --- | --- |
+| T02-22 | Menu machine first. `DcbMenu` MAIN/AUX/MAPS/BRITE/CHAR_SIZE/PREF/SSA_FILTER/GI_FILTER/TPA_ATPA. SHIFT swaps MAIN↔AUX. Submenu **replaces** the bar. DONE/Esc → MAIN. Cell kinds: action / toggle / spinner / submenu / disabled. VOL disabled. Do not skip this ticket to “just add SHIFT.” |
+| T02-23 | Split PLACE CNTR, OFF CNTR, RR spinner (2/5/10), PLACE RR, RR CNTR, LDR DIR spinner 1–9, LDR length spinner including **0** and **36** (e.g. 0/24/36/48). Ring origin is world NM, not glued to airport. `L090` radio-focus remains a left turn. |
+| T02-24 | Quick maps 1–6; MAPS submenu 1–30; empty slots disabled; WX1–4 disabled; GEO/CURRENT on-PPI lists; CLR ALL. No NEXRAD. |
+| T02-25 | AUX real: HISTORY 0–5, dock four edges, PTL length + OWN + ALL, TPA/ATPA opener (DONE stub OK). F7/F8 still work if cells leave MAIN. |
+| T02-26 | BRITE + CHAR SIZE **submenus**. Wire real channels we already draw. WX/WXC/BKC disabled. |
+| T02-27 | SSA FILTER toggles existing SSA lines only. GI TEXT: `giTextLines[10]` in facility JSON (KDEM ships a few non-empty). No live METAR. Altitude FILTER chord stays on MAIN. |
+| T02-28 | P1 but **in wave C** — implement J-rings + ATPA stub. Do not skip the wave. Do not add CA halos. |
+| T02-29 | 8 slots. Serialize display fields from 22–27 (TPA optional). Corrupt JSON → factory. No world/speech persistence. |
+| T02-30 | **No features.** Grep grammar + `npm test`. Manual Chrome script skip-with-reason if no operator — do not invent a visual pass. |
 
 Ticket files / branches:
 
@@ -206,7 +229,9 @@ Workers **must not** end the captain’s turn. Captain **must not** `run_in_back
 
 CRC/vNAS STARS and vice are **references for feel**. Training/entertainment only. Not a Raytheon clone. Not NAS-certified. Alerts are **lite**, never “MSAW certified.”
 
-**Addendum (sixth swarm — inbound HO):**
+**Addendum (seventh swarm — trainer DCB, this run):** MAIN/AUX via SHIFT; submenus replace the bar; RANGE/RR/LDR spinners; disabled WX/VOL/MODE/SITE; local PREF 1–8; TPA J-rings; ATPA stub. DCB never emits Command IR. Do not paint weather. Do not use Pointer Lock. Do not reopen T02-01–21.
+
+**Still true (sixth swarm — inbound HO):**
 
 - **KDEM stays the default facility.** Mag var 0°, elev 0 ft, rwy 27.
 - **Default STAR pack** (`spawnPolicy: "star-inbound"`): each arrival spawns `handoff.kind === "inbound"` from sector **`C`**, `ownership === "unowned"` (green FDB). Radio that changes intent is **rejected** until accept.
@@ -220,7 +245,7 @@ CRC/vNAS STARS and vice are **references for feel**. Training/entertainment only
 
 **Still true from phase 4 (do not reopen):** ILS from below after loc; heading cancels STAR; CA/MSAW lite (FDB color, no halo); CIFP fixture-only; no chart scrape; STAR entry spawn + check-in phraseology.
 
-Research: `phases/_shared/references.md` **R07** CRC STARS accept-handoff / datablock colors / STCA; **R01** radar handoff. Tickets: `T04-16` / `T04-17`.
+Research: `phases/_shared/references.md` **R07** DCB MAIN/AUX/SHIFT/BRITE/PREF/TPA; still **R07** accept-handoff / datablock colors / STCA and **R01** radar handoff. This run’s tickets: `T02-22` … `T02-30`. HO tickets `T04-16` / `T04-17` are already on `master` — do not redo them.
 
 ---
 
@@ -235,7 +260,7 @@ Research: `phases/_shared/references.md` **R07** CRC STARS accept-handoff / data
 
 Keep STATUS updated after the phase run (not after every ticket — the captain does ticket notes).
 
-Manual UI ACs (default STAR spawn + check-in): captain/workers do what they can; leftover Chrome steps go in STATUS. Automated `npm test` / `npm run ci` must be green. Do not invent a visual pass.
+Manual UI ACs (DCB MAIN/AUX/submenus, disabled WX, PREF persist): captain/workers do what they can; leftover Chrome steps go in STATUS. Automated `npm test` / `npm run ci` must be green. Do not invent a visual pass. T02-30 may skip-with-reason.
 
 ---
 
@@ -253,7 +278,7 @@ PowerShell commit:
 
 ```text
 git commit -m @"
-T04-13: message why.
+T02-22: message why.
 
 Second paragraph why.
 "@
