@@ -7,18 +7,7 @@ import {
   sanitizeFixIds,
 } from "./fix-ground";
 
-const KDEM = [
-  "NEMAX",
-  "SEMAX",
-  "NELBO",
-  "SELBO",
-  "MERGE",
-  "FI27",
-  "RW27",
-  "MISSD",
-  "DEM",
-  "OCT",
-];
+const KDEM = ["NEMAX", "SEMAX", "NELBO", "SELBO", "MERGE", "FI27", "RW27", "MISSD", "DEM", "OCT"];
 
 test("sanitizeFixIds uppercases, drops junk, caps the list", () => {
   expect(sanitizeFixIds(["semax", "SEMAX", "nope!", "FI27", "x"])).toEqual(["SEMAX", "FI27"]);
