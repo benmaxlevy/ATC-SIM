@@ -108,7 +108,7 @@ test("IL off a STAR keeps the procedure until loc capture", async () => {
   for (let i = 0; i < Math.round(20 / SIM_DT_S); i += 1) {
     stepWorld(world, SIM_DT_S);
   }
-  expect(dal.intent.lateral?.type === "LOC").toBe(false);
+  expect(dal.intent.lateral?.type).not.toBe("LOC");
   expect(Math.abs(((dal.headingDeg - 270 + 540) % 360) - 180)).toBeGreaterThan(20);
   expect(dal.yNm).toBeGreaterThan(2);
 });

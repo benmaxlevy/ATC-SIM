@@ -60,7 +60,7 @@ function setHeadingMode(
 function publishedLateralHint(
   aircraft: Aircraft,
 ):
-  | { type: "PROCEDURE"; starId: string; routeFixIds: string[]; toFixIndex: number }
+  | { type: "PROCEDURE"; starId: string; routeFixIds: readonly string[]; toFixIndex: number }
   | { type: "DIRECT"; fixId: string }
   | null {
   const lateral = aircraft.intent.lateral;
