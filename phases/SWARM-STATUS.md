@@ -37,6 +37,12 @@ T04-13, T04-14, and T04-15 are on `master`. Captain `npm test` / `npm run ci`: *
 
 Optional later: T04-11 constant wind. Do not start phase 5 until a new swarm paste. Phase 5 must **ignore** `radio.checkin` (do not score it).
 
+## Orchestrator verify — 2026-08-23 (STAR plane spawning)
+
+Confirmed on `master` `84cfe9c`. `--no-ff` merges: T04-13, T04-14, T04-15, `ticket/T04-ci-fix`, `ticket/T04-ci-format`. Orchestrator `npm test` / `npm run ci`: **1039 passed, 1 skipped**. Default KDEM is `spawnPolicy: "star-inbound"` (seed 1). `kdem-ils27` stays authored DAL123 north / AAL45 south. Check-in golden: `approach, delta one two three, descending via DEMO ONE arrival through one one thousand feet`. Event `radio.checkin`. `?traffic=N` still downwind. T04-11 skipped. Did **not** start phase 5. Untracked `e2e/` left uncommitted.
+
+Unrelated `chore: load speech-api/.env for local Path C.` (`c6b298f`) is on `master` between the CI follow-ups; not a T04-13–15 ticket. Workers never merged. Stopped at the fifth-swarm boundary.
+
 ## Phase 4 addendum captain notes (T04-13–15)
 
 - **Wave A:** merged T04-13 — `listStarSlots` / `outermostStarFix` / `starInboundPose` from catalog first-transition legs. Testdata second STAR `TST1`. No `kdem.json` / `kdem-ils27.json` edits. `npm test` 1004 passed.
