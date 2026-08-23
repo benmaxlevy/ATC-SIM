@@ -2,6 +2,8 @@ import { expect, test } from "vitest";
 import { courseDeg, distanceNm } from "@core";
 import {
   STAR_SPAWN_GATE_OFFSET_NM,
+  STAR_SPAWN_STAGGER_NM,
+  assignStarRoutes,
   listStarSlots,
   loadCatalog,
   outermostStarFix,
@@ -157,4 +159,80 @@ test("AC7/AC8 — helper is catalog-only and cites 7110.65/AIM analog", () => {
   expect(src).not.toMatch(/from ["']@scope["']/);
   expect(src).toMatch(/7110\.65/);
   expect(src).toMatch(/AIM/);
+  expect(src).not.toMatch(/\bMath\.random\b/);
+  expect(src).not.toMatch(/NEMAX/);
+  expect(src).not.toMatch(/SEMAX/);
+  expect(src).toMatch(/Trainer delta/);
+});
+
+test("T04-14 AC8 — three-slot catalog count=3 uses each slot once", () => {
+  const catalog = twoStarCatalog();
+  const assigned = assignStarRoutes({ catalog, count: 3, seed: 1 });
+  expect(assigned.map((row) => ({ starId: row.starId, transitionId: row.transitionId }))).toEqual(
+    listStarSlots(catalog),
+  );
+  expect(assigned.every((row) => row.stackIndex === 0)).toBe(true);
+});
+
+test("T04-14 seed=1 n=6 snapshot: prefix cover then remainder mix", () => {
+  const assigned = assignStarRoutes({ catalog: kdem, count: 6, seed: 1 });
+  expect(assigned).toHaveLength(6);
+  expect(assigned[0]).toMatchObject({ starId: "DEM1", transitionId: "N", stackIndex: 0 });
+  expect(assigned[1]).toMatchObject({ starId: "DEM1", transitionId: "S", stackIndex: 0 });
+  expect(assigned[0]!.pose.toFixIndex).toBe(0);
+  expect(assigned[0]!.pose.altitudeFt).toBe(11000);
+  expect(assigned[0]!.pose.speedKt).toBe(250);
+
+  const again = assignStarRoutes({ catalog: kdem, count: 6, seed: 1 });
+  expect(
+    assigned.map((row) => ({
+      starId: row.starId,
+      transitionId: row.transitionId,
+      stackIndex: row.stackIndex,
+      xNm: row.pose.xNm,
+      yNm: row.pose.yNm,
+    })),
+  ).toEqual(
+    again.map((row) => ({
+      starId: row.starId,
+      transitionId: row.transitionId,
+      stackIndex: row.stackIndex,
+      xNm: row.pose.xNm,
+      yNm: row.pose.yNm,
+    })),
+  );
+
+  const seed2 = assignStarRoutes({ catalog: kdem, count: 6, seed: 2 });
+  const key = (row: (typeof assigned)[number]) =>
+    `${row.starId}/${row.transitionId}/${row.stackIndex}`;
+  expect(assigned.slice(2).map(key).join("|")).not.toBe(seed2.slice(2).map(key).join("|"));
+
+  const bySlot = new Map<string, typeof assigned>();
+  for (const row of assigned) {
+    const id = `${row.starId}/${row.transitionId}`;
+    const list = bySlot.get(id) ?? [];
+    list.push(row);
+    bySlot.set(id, list);
+  }
+  expect([...bySlot.keys()].some((id) => id.endsWith("/S"))).toBe(true);
+  for (const group of bySlot.values()) {
+    group.sort((a, b) => a.stackIndex - b.stackIndex);
+    for (let i = 1; i < group.length; i += 1) {
+      const prev = group[i - 1]!;
+      const next = group[i]!;
+      expect(next.stackIndex - prev.stackIndex).toBe(1);
+      const dx = next.pose.xNm - prev.pose.xNm;
+      const dy = next.pose.yNm - prev.pose.yNm;
+      expect(Math.hypot(dx, dy)).toBeCloseTo(STAR_SPAWN_STAGGER_NM, 2);
+      expect(Math.abs(next.pose.headingDeg - prev.pose.headingDeg)).toBeLessThan(1e-9);
+    }
+  }
+
+  for (let i = 0; i < assigned.length; i += 1) {
+    for (let j = i + 1; j < assigned.length; j += 1) {
+      const dx = assigned[i]!.pose.xNm - assigned[j]!.pose.xNm;
+      const dy = assigned[i]!.pose.yNm - assigned[j]!.pose.yNm;
+      expect(Math.hypot(dx, dy)).toBeGreaterThan(0.3);
+    }
+  }
 });

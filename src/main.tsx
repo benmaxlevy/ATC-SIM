@@ -6,6 +6,7 @@ import {
   loadKdem,
   loadKdemIls27,
   parseScenarioChoice,
+  parseSpawnSeed,
   parseTrafficCount,
 } from "@scenario";
 import { PpiPlaceholderId, createScopeView, paintPpi, parseDigitalMap } from "@scope";
@@ -26,14 +27,15 @@ import "./index.css";
 
 const search = window.location.search;
 const scenario = parseScenarioChoice(search) === "kdem-ils27" ? loadKdemIls27() : loadKdem();
+const spawnSeed = parseSpawnSeed(search);
 const speechBoot = loadAndResolveSpeechBoot();
 const handles = createApp({
   speech: speechBoot.port,
   speechPrefs: speechBoot.prefs,
   speechUrls: speechBoot.urls,
-  world: createWorldForSession(scenario, parseTrafficCount(search)),
+  world: createWorldForSession(scenario, parseTrafficCount(search), spawnSeed),
 });
-bootSession(handles, scenario, Date.now());
+bootSession(handles, scenario, Date.now(), spawnSeed);
 window.addEventListener("pagehide", () => {
   handles.voiceLoop.dispose();
   try {

@@ -5,7 +5,7 @@
  * plus first-leg course, not chart scrape. Not NAS STARS.
  */
 
-import { buildFixRegistry, courseDeg, normalizeHeadingDeg, type NmPoint } from "@core";
+import { buildFixRegistry, courseDeg, mulberry32, normalizeHeadingDeg, type NmPoint } from "@core";
 import type {
   AltConstraint,
   ProcedureCatalog,
@@ -36,6 +36,13 @@ export interface StarInboundPose {
   /** Always 0 — aircraft is inbound to the gate fix. */
   toFixIndex: 0;
   gateFixId: string;
+}
+
+export interface StarRouteAssignment {
+  starId: string;
+  transitionId: string;
+  stackIndex: number;
+  pose: StarInboundPose;
 }
 
 /** Extra NM before the gate so distance(gate) > 0 and heading is defined. */
@@ -166,4 +173,52 @@ export function starInboundPose(
     toFixIndex: 0,
     gateFixId: gateLeg.fixId,
   };
+}
+
+function slotKey(slot: StarSlot): string {
+  return `${slot.starId}\0${slot.transitionId}`;
+}
+
+/**
+ * Analog: JO 7110.65 descend via / AIM Descend Via — spawned traffic already
+ * complies with the published STAR (VIA armed; same as T04-12 spawn-on-VIA).
+ * Trainer delta: pose from catalog first-leg + seed mix over `(starId,
+ * transitionId)` slots. Not random vectors. Not NAS STARS.
+ */
+export function assignStarRoutes(args: {
+  catalog: ProcedureCatalog;
+  count: number;
+  seed: number;
+}): StarRouteAssignment[] {
+  const { catalog, count, seed } = args;
+  if (!Number.isInteger(count) || count < 0) {
+    throw new Error(`assignStarRoutes count must be a non-negative integer (got ${String(count)})`);
+  }
+  const slots = listStarSlots(catalog);
+  if (count > 0 && slots.length === 0) {
+    throw new Error("assignStarRoutes needs at least one STAR transition slot");
+  }
+  const rng = mulberry32(seed >>> 0);
+  const stackNext = new Map<string, number>();
+  const assignments: StarRouteAssignment[] = [];
+  for (let i = 0; i < count; i += 1) {
+    let slot: StarSlot;
+    if (i < slots.length) {
+      slot = slots[i]!;
+    } else {
+      const idx = Math.min(Math.floor(rng() * slots.length), slots.length - 1);
+      slot = slots[idx]!;
+    }
+    const key = slotKey(slot);
+    const stackIndex = stackNext.get(key) ?? 0;
+    stackNext.set(key, stackIndex + 1);
+    const alongTrackOffsetNm = STAR_SPAWN_GATE_OFFSET_NM + stackIndex * STAR_SPAWN_STAGGER_NM;
+    assignments.push({
+      starId: slot.starId,
+      transitionId: slot.transitionId,
+      stackIndex,
+      pose: starInboundPose(catalog, slot.starId, slot.transitionId, alongTrackOffsetNm),
+    });
+  }
+  return assignments;
 }

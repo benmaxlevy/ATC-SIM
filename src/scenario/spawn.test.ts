@@ -5,10 +5,13 @@ import {
   createWorldForSession,
   createWorldFromScenario,
   loadKdem,
+  loadKdemIls27,
+  parseSpawnSeed,
   parseTrafficCount,
   spawnArrivals,
 } from "@scenario";
 import kdemJson from "./kdem.json";
+import kdemDownwindJson from "../../testdata/scenarios/kdem-downwind.json";
 
 const SPAWN_X_NM = { min: 10, max: 22 };
 const SPAWN_Y_NM = { min: 3, max: 12 };
@@ -16,15 +19,176 @@ const SPAWN_HEADING_DEG = { min: 80, max: 100 };
 const SPAWN_ALT_FT = { min: 6000, max: 10000 };
 const SPAWN_SPEED_KT = { min: 210, max: 250 };
 
+function spawnAssignSources(): string {
+  const sources = import.meta.glob("./{spawn,starSpawn,trafficQuery}.ts", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  });
+  return Object.values(sources).map(String).join("\n");
+}
+
 test("default KDEM JSON lists 6 arrivals including DAL123 (AC1)", () => {
   expect(kdemJson.arrivals).toHaveLength(6);
+  expect(kdemJson.spawnPolicy).toBe("star-inbound");
   const callsigns = kdemJson.arrivals.map((a) => a.callsign.toUpperCase());
   expect(callsigns).toContain("DAL123");
   expect(callsigns.filter((c) => c.endsWith("123"))).toEqual(["DAL123"]);
 });
 
-test("createWorldFromScenario loads real KDEM JSON and meets AC2–AC5 (AC6)", () => {
+test("T04-14 AC1 — loadKdem seed 1 arms VIA on catalog STAR slots", () => {
   const scenario = loadKdem();
+  expect(scenario.spawnPolicy).toBe("star-inbound");
+  const world = createWorldFromScenario(scenario, 1);
+  expect(world.aircraft).toHaveLength(6);
+
+  const callsigns = world.aircraft.map((ac) => ac.callsign);
+  expect(new Set(callsigns).size).toBe(6);
+  expect(callsigns).toContain("DAL123");
+  for (const callsign of callsigns) {
+    expect(callsign).toBe(callsign.toUpperCase());
+  }
+
+  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123");
+  expect(dal).toBeDefined();
+  expect(dal!.intent.lateral?.type).toBe("PROCEDURE");
+  if (dal!.intent.lateral?.type === "PROCEDURE") {
+    expect(dal!.intent.lateral.starId).toBe("DEM1");
+    expect(dal!.intent.lateral.toFixIndex).toBe(0);
+    expect(dal!.intent.lateral.routeFixIds[0]).toBeDefined();
+  }
+  expect(dal!.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
+  expect(dal!.altitudeFt).toBeGreaterThanOrEqual(10000);
+  expect(dal!.speedKt).toBeLessThanOrEqual(250);
+  expect(dal!.yNm).toBeGreaterThan(0);
+
+  for (const ac of world.aircraft) {
+    expect(ac.intent.lateral?.type).toBe("PROCEDURE");
+    if (ac.intent.lateral?.type === "PROCEDURE") {
+      expect(ac.intent.lateral.toFixIndex).toBe(0);
+    }
+    expect(ac.intent.vertical?.type).toBe("VIA_STAR");
+    if (ac.intent.vertical?.type === "VIA_STAR") {
+      expect(ac.intent.vertical.sense).toBe("DESCEND");
+    }
+    expect(ac.altitudeFt).toBeGreaterThanOrEqual(10000);
+    expect(ac.speedKt).toBeLessThanOrEqual(250);
+    expect(ac.aircraftType).toMatch(/^[A-Z0-9]{2,4}$/);
+  }
+
+  const src = spawnAssignSources();
+  expect(src).not.toMatch(/"NEMAX"/);
+  expect(src).not.toMatch(/"DEM1"/);
+  expect(src).not.toMatch(/\bMath\.random\b/);
+});
+
+test("T04-14 AC2 — pairwise spacing and south slot used", () => {
+  const scenario = loadKdem();
+  const world = createWorldFromScenario(scenario, 1);
+  expect(world.aircraft.some((ac) => ac.yNm < 0)).toBe(true);
+  for (let i = 0; i < world.aircraft.length; i += 1) {
+    for (let j = i + 1; j < world.aircraft.length; j += 1) {
+      const dx = world.aircraft[i]!.xNm - world.aircraft[j]!.xNm;
+      const dy = world.aircraft[i]!.yNm - world.aircraft[j]!.yNm;
+      expect(Math.hypot(dx, dy)).toBeGreaterThan(0.3);
+    }
+  }
+
+  const byGate = new Map<string, typeof world.aircraft>();
+  for (const ac of world.aircraft) {
+    if (ac.intent.lateral?.type !== "PROCEDURE") {
+      continue;
+    }
+    const gateId = ac.intent.lateral.routeFixIds[0] ?? "";
+    const key = `${ac.intent.lateral.starId}/${gateId}`;
+    const list = byGate.get(key) ?? [];
+    list.push(ac);
+    byGate.set(key, list);
+  }
+  for (const [key, group] of byGate) {
+    const gateId = key.split("/")[1]!;
+    const gate = scenario.catalog.fixes.find((fix) => fix.id === gateId);
+    expect(gate).toBeDefined();
+    const dist = (ac: (typeof group)[number]) => Math.hypot(ac.xNm - gate!.xNm, ac.yNm - gate!.yNm);
+    group.sort((a, b) => dist(a) - dist(b));
+    for (let i = 1; i < group.length; i += 1) {
+      expect(dist(group[i]!) - dist(group[i - 1]!)).toBeCloseTo(2, 1);
+      const heading = group[0]!.headingDeg;
+      expect(Math.abs(group[i]!.headingDeg - heading)).toBeLessThan(1e-9);
+    }
+  }
+});
+
+test("T04-14 AC3 — same seed is bit-stable; seed 2 reshuffles remainder", () => {
+  const a = createWorldFromScenario(loadKdem(), 1);
+  const b = createWorldFromScenario(loadKdem(), 1);
+  const snap = (world: typeof a) =>
+    world.aircraft.map((ac) => ({
+      callsign: ac.callsign,
+      xNm: ac.xNm,
+      yNm: ac.yNm,
+      headingDeg: ac.headingDeg,
+      starId:
+        ac.intent.lateral && ac.intent.lateral.type === "PROCEDURE"
+          ? ac.intent.lateral.starId
+          : null,
+      route0:
+        ac.intent.lateral && ac.intent.lateral.type === "PROCEDURE"
+          ? ac.intent.lateral.routeFixIds[0]
+          : null,
+    }));
+  const sa = snap(a);
+  const sb = snap(b);
+  expect(sa).toHaveLength(6);
+  for (let i = 0; i < sa.length; i += 1) {
+    expect(sa[i]!.callsign).toBe(sb[i]!.callsign);
+    expect(Math.abs(sa[i]!.xNm - sb[i]!.xNm)).toBeLessThan(1e-9);
+    expect(Math.abs(sa[i]!.yNm - sb[i]!.yNm)).toBeLessThan(1e-9);
+    expect(sa[i]!.starId).toBe(sb[i]!.starId);
+    expect(sa[i]!.route0).toBe(sb[i]!.route0);
+  }
+
+  const seed2 = snap(createWorldFromScenario(loadKdem(), 2));
+  expect(
+    seed2
+      .slice(2)
+      .map((row) => row.route0)
+      .join("|"),
+  ).not.toBe(
+    sa
+      .slice(2)
+      .map((row) => row.route0)
+      .join("|"),
+  );
+});
+
+test("T04-14 AC4 — createWorldForSession(kdem, 30) stays on the downwind arc", () => {
+  const world = createWorldForSession(loadKdem(), 30, 1);
+  expect(world.aircraft).toHaveLength(30);
+  const callsigns = world.aircraft.map((ac) => ac.callsign);
+  expect(new Set(callsigns).size).toBe(30);
+  for (const ac of world.aircraft) {
+    expect(ac.headingDeg).toBe(90);
+    expect(ac.intent.lateral?.type === "PROCEDURE").toBe(false);
+  }
+});
+
+test("T04-14 AC5 — ils27 authored pack ignores trafficCount and seed", () => {
+  const world = createWorldForSession(loadKdemIls27(), 30, 99);
+  expect(world.aircraft).toHaveLength(2);
+  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123");
+  const aal = world.aircraft.find((ac) => ac.callsign === "AAL45");
+  expect(dal?.intent.lateral).toMatchObject({ type: "PROCEDURE", starId: "DEM1", toFixIndex: 0 });
+  expect(dal?.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
+  expect(dal?.yNm).toBeGreaterThan(12);
+  expect(aal?.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
+  expect(aal?.yNm).toBe(-12);
+  expect(aal?.xNm).toBe(17);
+});
+
+test("T04-14 AC6 — testdata downwind fixture keeps the T01-04 box", () => {
+  const scenario = assertScenario(kdemDownwindJson);
+  expect(scenario.spawnPolicy).toBe("authored");
   const world = createWorldFromScenario(scenario);
 
   expect(world.aircraft).toHaveLength(6);
@@ -38,6 +202,7 @@ test("createWorldFromScenario loads real KDEM JSON and meets AC2–AC5 (AC6)", (
   expect(dal123!.altitudeFt).toBeLessThanOrEqual(SPAWN_ALT_FT.max);
   expect(dal123!.speedKt).toBeGreaterThanOrEqual(SPAWN_SPEED_KT.min);
   expect(dal123!.speedKt).toBeLessThanOrEqual(SPAWN_SPEED_KT.max);
+  expect(dal123!.intent.lateral?.type === "PROCEDURE").toBe(false);
 
   const callsigns = world.aircraft.map((ac) => ac.callsign);
   expect(new Set(callsigns).size).toBe(callsigns.length);
@@ -82,6 +247,11 @@ test("loader rejects a fixture with duplicate callsigns (AC7)", () => {
   expect(() => assertScenario(dup)).toThrow(/duplicate callsign/);
 });
 
+test("omitted spawnPolicy is authored so ils27 stays bit-stable", () => {
+  expect(loadKdemIls27().spawnPolicy).toBe("authored");
+  expect(assertScenario({ ...kdemJson, spawnPolicy: undefined }).spawnPolicy).toBe("authored");
+});
+
 test("T02-12 AC1/AC5 — spawnArrivals(world, 30) spreads unique tracks on a downwind arc", () => {
   const world = createWorld();
   spawnArrivals(world, 30);
@@ -123,6 +293,8 @@ test("T02-12 AC5 — createWorldForSession keeps 6 from JSON unless ?traffic= is
   expect(parseTrafficCount("?debug=fps&traffic=30")).toBe(30);
   expect(parseTrafficCount("?traffic=0")).toBeNull();
   expect(parseTrafficCount("?traffic=abc")).toBeNull();
+  expect(parseSpawnSeed("")).toBe(1);
+  expect(parseSpawnSeed("?traffic=30")).toBe(1);
 });
 
 test("src/core does not import scenario JSON", () => {

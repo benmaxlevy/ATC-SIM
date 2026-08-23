@@ -19,6 +19,8 @@ export type SessionEvent =
       atSimMs: number;
       atWallMs: number;
       scenarioId: string;
+      /** Spawn mix seed (`?seed=`). T05-07 may record this; no replay player here. */
+      seed: number;
     }
   | {
       type: "command.accepted";

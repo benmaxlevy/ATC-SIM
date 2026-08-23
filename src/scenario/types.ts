@@ -88,10 +88,11 @@ export const ARRIVAL_COUNT_MAX = 8;
 
 /**
  * Explicit arrival aircraft. Count must be 4–8 (default KDEM has 6).
- * Phase 1 KDEM spawn box (enforced in spawn tests, not a schema lib):
- * xNm [+10, +22], yNm [+3, +12], headingDeg [80, 100], altitudeFt [6000, 10000]
- * multiple of 100, speedKt [210, 250]. DAL123 must spawn at heading 100 so
- * H270 / SHORTEST turns right toward the field (not a 180° tie from 090).
+ * Playable default (`spawnPolicy: "star-inbound"`) takes pose from
+ * `assignStarRoutes`, not JSON xy. The T01-04 downwind box (xNm [+10, +22],
+ * yNm [+3, +12], headingDeg [80, 100], altitudeFt [6000, 10000] multiple of
+ * 100, speedKt [210, 250], DAL123 heading 100) lives on
+ * `testdata/scenarios/kdem-downwind.json` (`spawnPolicy: "authored"`).
  */
 export interface ArrivalSpawn {
   callsign: string;
@@ -104,12 +105,15 @@ export interface ArrivalSpawn {
   aircraftType?: string;
   /**
    * Spawn on this STAR with VIA armed (T04-12). Positions stay in JSON.
-   * Requires `transitionId`.
+   * Requires `transitionId`. Ignored when `spawnPolicy` is `star-inbound`.
    */
   starId?: string;
   /** STAR transition (`N` / `S` on DEM1). Required when `starId` is set. */
   transitionId?: string;
 }
+
+/** How arrivals get pose. Omitted JSON → `authored` (ils27 bit-stable). */
+export type SpawnPolicy = "authored" | "star-inbound";
 
 /**
  * Facility scenario: spawn rules, active runway, maps, traffic mix.
@@ -130,6 +134,8 @@ export interface Scenario {
   maps: ScenarioMaps;
   spawns: Spawn[];
   arrivals: ArrivalSpawn[];
+  /** `authored` = JSON xy. `star-inbound` = seeded catalog pose. Default authored. */
+  spawnPolicy: SpawnPolicy;
   /** Facility navaids / fixes / STAR / approaches. Loaded from `data/<icao>/`. */
   catalog: ProcedureCatalog;
   /** Trainer MVA polygons. Null when the facility has no `*-mva.json`. */

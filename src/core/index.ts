@@ -17,7 +17,8 @@
  * nav geometry (`courseDeg`, fly-by radius, loc deviation, GS height); lateral FMS (`applyLateralFms`);
  * vertical FMS (`targetAltitudeFt`, `applyVerticalFms`); missed stub (`applyMissedFms`);
  * landing stub (`despawnLandedAircraft`, `acceptTowerHandoff`);
- * MSAW lite (`evaluateMsaw`, `MSAW_RED_BELOW_FT`, `msawFloorFt`).
+ * MSAW lite (`evaluateMsaw`, `MSAW_RED_BELOW_FT`, `msawFloorFt`);
+ * seeded PRNG (`mulberry32`).
  *
  * Import rule: `@core` depends on nothing in `src/*` except itself.
  */
@@ -30,6 +31,7 @@ export {
   advanceWorld,
 } from "./world";
 export { PHYSICS_HZ, SIM_DT_S, MAX_PHYSICS_STEPS_PER_FRAME } from "./clock";
+export { mulberry32 } from "./rng";
 export {
   TURN_RATE_DEG_PER_S,
   CLIMB_RATE_FT_PER_MIN,

@@ -7,7 +7,8 @@ import {
   type World,
 } from "@core";
 import type { ArrivalSpawn, Scenario } from "./types";
-import { starRouteFixIds } from "./starSpawn";
+import { assignStarRoutes, starRouteFixIds } from "./starSpawn";
+import { DEFAULT_SPAWN_SEED } from "./trafficQuery";
 
 export { starRouteFixIds };
 
@@ -69,6 +70,40 @@ function armStarVia(ac: Aircraft, scenario: Scenario, arrival: ArrivalSpawn): vo
   ac.intent.vertical = { type: "VIA_STAR", starId: arrival.starId, sense: "DESCEND" };
 }
 
+/**
+ * Analog: JO 7110.65 descend via / AIM Descend Via — default pack is already
+ * on the published STAR (pre-armed VIA, same as T04-12 spawn-on-VIA).
+ * Trainer delta: pose from catalog + seeded slot mix; JSON xy is a placeholder.
+ */
+function spawnStarInbound(world: World, scenario: Scenario, seed: number): void {
+  const assignments = assignStarRoutes({
+    catalog: scenario.catalog,
+    count: scenario.arrivals.length,
+    seed,
+  });
+  for (let i = 0; i < scenario.arrivals.length; i += 1) {
+    const arrival = scenario.arrivals[i]!;
+    const assigned = assignments[i]!;
+    const ac = createAircraft({
+      callsign: arrival.callsign,
+      xNm: assigned.pose.xNm,
+      yNm: assigned.pose.yNm,
+      headingDeg: assigned.pose.headingDeg,
+      altitudeFt: assigned.pose.altitudeFt,
+      speedKt: assigned.pose.speedKt,
+      aircraftType: arrival.aircraftType,
+    });
+    ac.intent.lateral = {
+      type: "PROCEDURE",
+      starId: assigned.starId,
+      toFixIndex: 0,
+      routeFixIds: assigned.pose.routeFixIds,
+    };
+    ac.intent.vertical = { type: "VIA_STAR", starId: assigned.starId, sense: "DESCEND" };
+    world.aircraft.push(ac);
+  }
+}
+
 function spawnDownwindArc(world: World, n: number): void {
   if (!Number.isInteger(n) || n < 1) {
     throw new Error(`spawnArrivals count must be a positive integer (got ${String(n)})`);
@@ -82,7 +117,7 @@ function spawnDownwindArc(world: World, n: number): void {
  * Create each arrival with `createAircraft` and push onto `world.aircraft`.
  * Intent defaults to hold-present so they fly straight until a command.
  *
- * `spawnArrivals(world, scenario)` — student JSON (4–8).
+ * `spawnArrivals(world, scenario)` — authored JSON poses (ils27 / downwind fixture).
  * `spawnArrivals(world, n)` — bench helper: `n` jets on a wide downwind arc
  * (`?traffic=30`). Does not change Command IR.
  */
@@ -119,22 +154,37 @@ function worldFromScenario(scenario: Scenario): World {
   });
 }
 
-/** Build a World whose aircraft list comes from scenario JSON, not PPI hardcoding. */
-export function createWorldFromScenario(scenario: Scenario): World {
+/**
+ * Build a World from the scenario. `star-inbound` uses `assignStarRoutes`
+ * (seeded catalog pose). `authored` copies JSON xy (ils27 / T01-04 fixture).
+ */
+export function createWorldFromScenario(
+  scenario: Scenario,
+  seed: number = DEFAULT_SPAWN_SEED,
+): World {
   const world = worldFromScenario(scenario);
-  spawnArrivals(world, scenario);
+  if (scenario.spawnPolicy === "star-inbound") {
+    spawnStarInbound(world, scenario, seed);
+  } else {
+    spawnArrivals(world, scenario);
+  }
   return world;
 }
 
 /**
- * Default student world is 4–8 from JSON. `trafficCount` (from `?traffic=30`)
- * replaces that list with a downwind-arc pack of that size.
+ * Default student world follows `spawnPolicy`. `trafficCount` (`?traffic=30`)
+ * replaces a **star-inbound** list with the downwind-arc FPS bench.
+ * `authored` (ils27) ignores trafficCount and seed for pose.
  */
-export function createWorldForSession(scenario: Scenario, trafficCount: number | null): World {
-  if (trafficCount === null) {
-    return createWorldFromScenario(scenario);
+export function createWorldForSession(
+  scenario: Scenario,
+  trafficCount: number | null,
+  seed: number = DEFAULT_SPAWN_SEED,
+): World {
+  if (scenario.spawnPolicy === "star-inbound" && trafficCount !== null) {
+    const world = worldFromScenario(scenario);
+    spawnArrivals(world, trafficCount);
+    return world;
   }
-  const world = worldFromScenario(scenario);
-  spawnArrivals(world, trafficCount);
-  return world;
+  return createWorldFromScenario(scenario, seed);
 }

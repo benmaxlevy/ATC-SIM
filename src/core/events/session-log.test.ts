@@ -103,6 +103,7 @@ test("mutating all() does not change a subsequent all() (AC4)", () => {
     atSimMs: 0,
     atWallMs: 1_000,
     scenarioId: "kdem",
+    seed: 1,
   });
   log.append({
     type: "command.accepted",
@@ -134,6 +135,7 @@ test("byType returns only matching events (AC5)", () => {
     atSimMs: 0,
     atWallMs: 1_000,
     scenarioId: "kdem",
+    seed: 1,
   });
   log.append({
     type: "command.accepted",

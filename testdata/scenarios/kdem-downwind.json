@@ -1,12 +1,12 @@
 {
-  "id": "KDEM",
-  "name": "Demo Field",
+  "id": "kdem-downwind",
+  "name": "Demo Field — T01-04 downwind fixture",
   "icao": "KDEM",
   "magVarDeg": 0,
   "fieldElevFt": 0,
   "arp": { "latDeg": 0, "lonDeg": 0 },
   "activeRunwayId": "27",
-  "spawnPolicy": "star-inbound",
+  "spawnPolicy": "authored",
   "runways": [
     {
       "id": "27",

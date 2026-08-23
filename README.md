@@ -13,8 +13,9 @@ npm install
 npm run dev
 ```
 
-Default KDEM spawn is **6 arrivals** (student band 4–8). The 30-track Canvas2D budget check is opt-in and does not change Command IR:
+Default KDEM spawn is **6 arrivals** on catalog STAR entries (DEMO ONE north/south, VIA armed). Assignment is seeded (`?seed=`, default **1**). The 30-track Canvas2D budget check is opt-in and does not change Command IR:
 
+- `http://localhost:5173/?seed=2` — same six callsigns, remainder STAR slots reshuffled
 - `http://localhost:5173/?traffic=30` — `spawnArrivals(world, 30)` on a wide downwind arc
 - `http://localhost:5173/?traffic=30&debug=fps` — same, plus a corner `30 TRACKS  FPS nn` readout
 

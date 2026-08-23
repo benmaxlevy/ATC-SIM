@@ -5,9 +5,11 @@
  * (`loadKdemIls27`, spawn-on-STAR with VIA), Scenario types
  * including trainer-authored MAPS / video-map geometry from `video-maps/<ICAO>/`
  * (Not OSM / tiles), facility procedure catalog (`loadCatalog`, `data/<icao>/`),
- * trainer MVA (`loadMva`, `data/<icao>-mva.json`), and `createWorldFromScenario` (6 explicit arrivals including DAL123 at heading
- * 100). Bench: `spawnArrivals(world, n)` / `?traffic=30` places n jets on a
- * downwind arc; default student scenario stays 4–8.
+ * trainer MVA (`loadMva`, `data/<icao>-mva.json`), and `createWorldFromScenario`
+ * (6 STAR-inbound arrivals including DAL123, VIA armed). Bench:
+ * `spawnArrivals(world, n)` / `?traffic=30` places n jets on a
+ * downwind arc; default student scenario stays 4–8. `?seed=` reshuffles STAR
+ * remainder assignment.
  *
  * Later: extra spawn mix, real CIFP airports (phase 4).
  *
@@ -26,6 +28,7 @@ export type {
   Scenario,
   ScenarioMaps,
   Spawn,
+  SpawnPolicy,
   VideoMap,
 } from "./types";
 export type { LoadedVideoMap, VideoMapCatalog, VideoMapFile } from "./videoMapTypes";
@@ -52,14 +55,20 @@ export {
   spawnArrivals,
   starRouteFixIds,
 } from "./spawn";
-export type { OutermostStarFix, StarInboundPose, StarSlot } from "./starSpawn";
+export type { OutermostStarFix, StarInboundPose, StarRouteAssignment, StarSlot } from "./starSpawn";
 export {
   STAR_SPAWN_GATE_OFFSET_NM,
   STAR_SPAWN_STAGGER_NM,
   STAR_SPAWN_VIA_ALT_MARGIN_FT,
+  assignStarRoutes,
   listStarSlots,
   outermostStarFix,
   starInboundPose,
 } from "./starSpawn";
-export { parseScenarioChoice, parseTrafficCount } from "./trafficQuery";
+export {
+  DEFAULT_SPAWN_SEED,
+  parseScenarioChoice,
+  parseSpawnSeed,
+  parseTrafficCount,
+} from "./trafficQuery";
 export type { ScenarioChoice } from "./trafficQuery";

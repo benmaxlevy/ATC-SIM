@@ -14,6 +14,7 @@ import type {
   Scenario,
   ScenarioMaps,
   Spawn,
+  SpawnPolicy,
   VideoMap,
 } from "./types";
 import { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN } from "./types";
@@ -309,6 +310,16 @@ function assertArrivals(
   return arrivals;
 }
 
+function parseSpawnPolicy(value: unknown): SpawnPolicy {
+  if (value == null) {
+    return "authored";
+  }
+  if (value === "authored" || value === "star-inbound") {
+    return value;
+  }
+  throw new Error('Scenario spawnPolicy must be "authored" or "star-inbound"');
+}
+
 function assertArray(value: unknown, path: string): unknown[] {
   if (!Array.isArray(value)) {
     throw new Error(`Scenario ${path} must be an array`);
@@ -363,6 +374,7 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
       min: options?.arrivalCountMin ?? ARRIVAL_COUNT_MIN,
       max: options?.arrivalCountMax ?? ARRIVAL_COUNT_MAX,
     }),
+    spawnPolicy: parseSpawnPolicy(s.spawnPolicy),
     catalog,
     mva: loadMva(icao),
   };

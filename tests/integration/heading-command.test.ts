@@ -5,7 +5,7 @@
  *
  * Analog: vice-inspired typed tokens (R08) compile to IR; 7110.65 heading
  * readback (R01). Trainer delta: SHORTEST from DAL123 heading 100 to 270 is
- * right (T01-04); 090 would be a 180° LEFT tie. Not NAS STARS.
+ * right (T01-04 downwind fixture); 090 would be a 180° LEFT tie. Not NAS STARS.
  */
 
 import { expect, test } from "vitest";
@@ -19,13 +19,14 @@ import {
   type World,
 } from "@core";
 import { handleRadioText } from "@pilot";
-import { createWorldFromScenario, loadKdem } from "@scenario";
+import { assertScenario, createWorldFromScenario, loadKdem } from "@scenario";
+import kdemDownwindJson from "../../testdata/scenarios/kdem-downwind.json";
 
 /** Ticket: `for (i in 0..39) stepWorld` = 2.0 sim seconds at 20 Hz. */
 const STEPS_FOR_2S = 40;
 
-function spawnKdemWorld(): World {
-  return createWorldFromScenario(loadKdem());
+function spawnDownwindWorld(): World {
+  return createWorldFromScenario(assertScenario(kdemDownwindJson));
 }
 
 function requireDal123(world: World): Aircraft {
@@ -43,7 +44,7 @@ async function issueHeading270(world: World) {
 }
 
 test("DAL123 H270 is accepted with assigned 270 SHORTEST and heading readback (AC2)", async () => {
-  const world = spawnKdemWorld();
+  const world = spawnDownwindWorld();
   const dal = requireDal123(world);
   expect(Math.abs(dal.headingDeg - 100)).toBeLessThanOrEqual(1);
 
@@ -67,7 +68,7 @@ test("DAL123 H270 is accepted with assigned 270 SHORTEST and heading readback (A
 });
 
 test("after 2.0 sim seconds heading is ~106 and closer to 270 by ~6 deg (AC3)", async () => {
-  const world = spawnKdemWorld();
+  const world = spawnDownwindWorld();
   const dal = requireDal123(world);
   expect(Math.abs(dal.headingDeg - 100)).toBeLessThanOrEqual(1);
 
@@ -94,7 +95,7 @@ test("after 2.0 sim seconds heading is ~106 and closer to 270 by ~6 deg (AC3)", 
 });
 
 test("one SIM_DT_S step after accept starts the turn by ~0.15 deg (AC4)", async () => {
-  const world = spawnKdemWorld();
+  const world = spawnDownwindWorld();
   const dal = requireDal123(world);
   expect(Math.abs(dal.headingDeg - 100)).toBeLessThanOrEqual(1);
 
@@ -108,4 +109,17 @@ test("one SIM_DT_S step after accept starts the turn by ~0.15 deg (AC4)", async 
   const expectedDelta = TURN_RATE_DEG_PER_S * SIM_DT_S;
   expect(dal.headingDeg).not.toBe(startHeading);
   expect(dal.headingDeg).toBeCloseTo(startHeading + expectedDelta, 2);
+});
+
+test("T04-14 — DAL123 H270 on the default STAR pack cancels FMS", async () => {
+  const world = createWorldFromScenario(loadKdem(), 1);
+  const dal = requireDal123(world);
+  expect(dal.intent.lateral?.type).toBe("PROCEDURE");
+  expect(dal.intent.vertical?.type).toBe("VIA_STAR");
+
+  const { result } = await issueHeading270(world);
+  expect(result.accepted).toBe(true);
+  expect(dal.intent.assignedHeadingDeg).toBe(270);
+  expect(dal.intent.lateral).toEqual({ type: "HEADING", headingDeg: 270 });
+  expect(dal.intent.vertical).toEqual({ type: "ASSIGNED" });
 });
