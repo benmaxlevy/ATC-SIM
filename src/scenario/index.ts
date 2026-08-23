@@ -52,5 +52,14 @@ export {
   spawnArrivals,
   starRouteFixIds,
 } from "./spawn";
+export type { OutermostStarFix, StarInboundPose, StarSlot } from "./starSpawn";
+export {
+  STAR_SPAWN_GATE_OFFSET_NM,
+  STAR_SPAWN_STAGGER_NM,
+  STAR_SPAWN_VIA_ALT_MARGIN_FT,
+  listStarSlots,
+  outermostStarFix,
+  starInboundPose,
+} from "./starSpawn";
 export { parseScenarioChoice, parseTrafficCount } from "./trafficQuery";
 export type { ScenarioChoice } from "./trafficQuery";

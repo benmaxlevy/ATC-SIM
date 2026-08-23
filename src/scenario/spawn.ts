@@ -6,8 +6,10 @@ import {
   type MsawInhibitGeom,
   type World,
 } from "@core";
-import type { ProcedureCatalog } from "./procedures/types";
 import type { ArrivalSpawn, Scenario } from "./types";
+import { starRouteFixIds } from "./starSpawn";
+
+export { starRouteFixIds };
 
 /** Left downwind for KDEM RWY 27 (true heading 090, north of the field). */
 const DOWNWIND_HEADING_DEG = 90;
@@ -51,28 +53,6 @@ function spawnArrival(world: World, arrival: ArrivalSpawn, scenario?: Scenario):
     armStarVia(ac, scenario, arrival);
   }
   world.aircraft.push(ac);
-}
-
-/**
- * Resolve transition legs then common (ids only — xy comes from the catalog).
- * Spawn positions stay in JSON; this only arms PROCEDURE + VIA.
- */
-export function starRouteFixIds(
-  catalog: ProcedureCatalog,
-  starId: string,
-  transitionId: string,
-): string[] {
-  const wantStar = starId.trim().toUpperCase();
-  const wantTrans = transitionId.trim().toUpperCase();
-  const star = catalog.stars.find((item) => item.id.trim().toUpperCase() === wantStar);
-  if (!star) {
-    throw new Error(`Unknown STAR ${starId}`);
-  }
-  const transition = star.transitions.find((item) => item.id.trim().toUpperCase() === wantTrans);
-  if (!transition) {
-    throw new Error(`Unknown transition ${transitionId} on ${starId}`);
-  }
-  return [...transition.legs.map((leg) => leg.fixId), ...star.common.map((leg) => leg.fixId)];
 }
 
 function armStarVia(ac: Aircraft, scenario: Scenario, arrival: ArrivalSpawn): void {

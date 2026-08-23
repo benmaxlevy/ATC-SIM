@@ -1,0 +1,32 @@
+{
+  "stars": [
+    {
+      "id": "TST1",
+      "name": "TEST ONE",
+      "transitions": [
+        {
+          "id": "E",
+          "name": "EAST",
+          "legs": [
+            {
+              "fixId": "OUTER",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 10000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+            },
+            {
+              "fixId": "INNER",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 8000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 230 }
+            }
+          ]
+        }
+      ],
+      "common": [],
+      "termination": "VECTORS"
+    }
+  ],
+  "fixes": [
+    { "id": "OUTER", "kind": "WAYPOINT", "xNm": 30, "yNm": 0 },
+    { "id": "INNER", "kind": "WAYPOINT", "xNm": 20, "yNm": 0 }
+  ]
+}
