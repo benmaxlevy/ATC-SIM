@@ -56,11 +56,11 @@ Lift nothing from `phases/_shared/non-goals.md`. In addition, **do not** build:
 
 | Out | Why |
 | --- | --- |
-| Full STARS DCB (two-row multifunction, MAPBRITE, CHARSIZE, SHIFT, CSA menus) | T02-16 is a trainer-safe **green cell grid** (RANGE / MAPS / FILTER / PTL / HIST). T02-17 adds MAPS/RR/LDR/BRITE subset. Still not WX / PREF / CRDA / FMA. |
+| Full NAS DCB / CRDA / FMA / WX mosaic | T02-16/17 are the historical lite grid. **T02-22–30** lift a trainer main/aux/submenu subset (SHIFT, PREF local, disabled WX). Still not CRDA, FMA, weather paint, or a Raytheon clone. |
 | CRDA, FMA, ARV, timed approaches | Phase 4+. |
 | Weather mosaic, precipitation, wind barbs | Phase 4+. |
 | Real STARS bitmap font or any licensed NAS typeface | Metric-similar **monospace** only. |
-| CRC-compatible full keyboard / preference sets | Subset below is frozen; document every difference. |
+| CRC-compatible full keyboard | Subset below is frozen; document every difference. Local PREF slots are T02-29, not a NAS pref host. |
 | Handoff, point-out, quick-look other facility, scratchpad, beacon code | F3 only recolors ownership. |
 | Auto-deconflict of overlapping datablocks | Known limitation; log if asked. |
 | WebGL phosphor bloom, afterglow trails | Canvas2D. History dots are discrete samples, not a phosphor sim. |
@@ -315,7 +315,7 @@ Extend the T00-05 KDEM file with a `maps` object. Do not scrape charts. Coastlin
 Think CRT terminal, not moving-map GPS.
 
 - Full-viewport dark shell from T00-10 remains. Disclaimer remains visible (corner or settings; do not delete T00-01).
-- PPI is the large center. DCB is a **green cell grid flush to the top of the PPI** (on the glass, not a grey HTML toolbar). Cells: RANGE (OFF CNTR when panned), MAPS (catalog `dcbLabel`s), RWY/LOC/CST role shortcuts, RR interval, LDR DIR (L1–L9), CHAR SIZE, BRITE, FILTER, PTL, HIST, PLACE CNTR. Pad the drawable canvas so cells do not cover the north of the range circle.
+- PPI is the large center. DCB is a **green cell grid on the glass** (not a grey HTML toolbar). Historical T02-16/17 cells stay until T02-22–30: then MAIN/AUX via SHIFT, submenus replace the bar, dock TOP/LEFT/RIGHT/BOTTOM. Altitude **FILTER** stays on MAIN (trainer delta). Pad the drawable PPI so the bar does not cover the range circle.
 - Command line stays **bottom** (phase 1).
 - **SSA** top-left on the PPI (map-green mono, screen-fixed): sim time `HHMM/SS`, `KDEM 29.92` stub, `FILTER` hundreds, `RANGE n`, `OFF CNTR` if panned, static `OK` fused stub. Not live METAR / Site-Fused.
 - Flight-strip list **on the PPI** (bottom-left corner, overflow scroll). Click row selects. Altitude filter does not hide rows. Not a labeled right **FLIGHT STRIPS** dock.
@@ -385,10 +385,10 @@ Implementers will be tempted to “just copy CRC.” Freeze this delta in the he
 | --- | --- |
 | RANGE via DCB presets including 6/8/12/16/24 | PageUp/Down + wheel; 8 presets 5–60 |
 | CENTER then click | `Home` / `End` / double-click / DCB PLACE CNTR then PPI click / middle-drag pan |
-| Full DCB | Green cell grid (T02-16); MAPS/RR/LDR/BRITE in T02-17. Still no WX/PREF |
+| Full DCB | Green cell grid (T02-16); MAPS/RR/LDR/BRITE in T02-17; trainer MAIN/AUX/submenus in T02-22–30. Disabled WX; local PREF 1–8. Not NAS |
 | F3 Initiate Track (NAS associate) | F3 color stub |
 | Leader length + direction menus | Direction L1–L9; fixed **36 px** (T02-19). T02-17 LDR DIR is direction only (no length menu) |
-| Pref sets, brightness, charsize | DCB CHAR SIZE 11–13 px (Plex/system mono) and BRITE map-stroke steps. No PREF sets |
+| Pref sets, brightness, charsize | T02-26 CHAR SIZE per subsystem + BRITE channels (Plex/system mono). T02-29 local PREF 1–8. Not a NAS pref host |
 | F1 as a STARS function | F1 = help |
 | Radio is a headset | Radio is the phase 1 command line |
 
@@ -490,7 +490,52 @@ Do not call the TCW pass done until:
 - [x] FDB extra line + leader length (T02-19).
 - [x] SSA on PPI; strips not a labeled right dock (T02-20).
 - [ ] T02-21 manual script: cheap STARS trainer, not a web HUD. skip-with-reason: no visual operator; human not watching Chrome. Automated greps/tests prove chrome grammar; do not invent a visual pass.
-- [x] Still no WX mosaic, PREF, SHIFT, CSA, CRDA, FMA, OSM, STARS font.
+- [x] Still no WX mosaic, PREF, SHIFT, CSA, CRDA, FMA, OSM, STARS font. *(Historical T02-14–21 freeze. T02-22–30 lift SHIFT / local PREF / disabled WX cells; mosaic / CRDA / FMA / OSM / STARS font stay out.)*
+
+### Post-exit addendum (T02-22–30 trainer DCB)
+
+Historical phase 2 exit (T02-01–13) and polish (T02-14–21) stay green. Do **not** uncheck those boxes. This addendum is new display-chrome work after that exit.
+
+**Plan (within reason):** grow the DCB toward CRC STARS *jobs and grammar* without cloning NAS. Keep discrete range presets (spinner steps them; no continuous zoom). Keep altitude **FILTER** on MAIN (trainer delta — that cell is not SSA FILTER). WX1–4, VOL, MODE, SITE exist as **disabled** cells (hard labels `FSL` / `FUSION` where useful) and never paint weather or touch OS audio. CRDA, FMA, ARV, dual FSL/EFSL, licensed STARS font stay out. TPA is J-rings + mileage; ATPA is a thin toggle/stub, not a pairing engine. PREF is `localStorage`, 8 slots, not 32 NAS sets.
+
+Implement **T02-22 → T02-30**. Do not skip T02-22 to “just add SHIFT.”
+
+| ID | Title | Pri | Size | Depends on | Parallel OK? |
+| --- | --- | --- | --- | --- | --- |
+| [T02-22](tickets/T02-22-dcb-menu-model-and-primitives.md) | DCB menu model, SHIFT, primitives | P0 | L | T02-17, T02-21 | — |
+| [T02-23](tickets/T02-23-dcb-main-range-cntr-rr-ldr.md) | Main RANGE / CNTR / RR / LDR | P0 | M | T02-22 | After 22 |
+| [T02-24](tickets/T02-24-dcb-maps-wx-disabled.md) | MAPS 1–30, quick 1–6, WX disabled | P0 | M | T02-22, T02-14 | After 22; ∥ 23 |
+| [T02-25](tickets/T02-25-dcb-aux-history-ptl-dock.md) | Aux HISTORY / PTL / dock | P0 | L | T02-22 | After 22; ∥ 23, 24 |
+| [T02-26](tickets/T02-26-dcb-brite-char-size-submenus.md) | BRITE + CHAR SIZE submenus | P0 | M | T02-22 | After 22; ∥ 23–25 |
+| [T02-27](tickets/T02-27-dcb-ssa-gi-filters.md) | SSA FILTER + GI TEXT FILTER | P0 | M | T02-22, T02-20 | After 22; ∥ 23–26 |
+| [T02-28](tickets/T02-28-dcb-tpa-atpa-submenu.md) | TPA / ATPA submenu | P1 | M | T02-25 | After 25 |
+| [T02-29](tickets/T02-29-dcb-pref-sets.md) | PREF sets (localStorage) | P0 | M | T02-23–27 | After 23–27 (28 optional) |
+| [T02-30](tickets/T02-30-dcb-addendum-visual-acceptance.md) | DCB addendum visual acceptance | P0 | S | T02-22–29 | Last |
+
+**Addendum waves (max 3 in flight):**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-22 | T02-21 (already on master) |
+| B | T02-23, T02-24, T02-25 | A |
+| C | T02-26, T02-27, T02-28 | B (28 needs 25) |
+| D | T02-29 | C (23–27 at least) |
+| E | T02-30 | D |
+
+### Phase 2 DCB addendum checklist (T02-22–30)
+
+Do not call the DCB addendum done until:
+
+- [ ] Menu model: MAIN ↔ AUX via SHIFT; submenus replace the bar; DONE / Esc return to MAIN.
+- [ ] Spinners arm on click, step on wheel, commit on second click / Esc (RANGE stays discrete 5–60 NM presets).
+- [ ] PLACE CNTR / OFF CNTR and PLACE RR / RR CNTR behave as separate cells.
+- [ ] MAPS 1–30 + quick 1–6; empty slots disabled; WX1–4 visible and unpressable.
+- [ ] Aux: HISTORY count, PTL length / OWN / ALL, DCB TOP/LEFT/RIGHT/BOTTOM; VOL disabled.
+- [ ] BRITE per drawn channel; CHAR SIZE per subsystem; WX/WXC/BKC channels disabled or stored no-op.
+- [ ] SSA FILTER hides existing SSA lines; GI TEXT has 10 toggleable facility lines.
+- [ ] TPA J-rings work; ATPA is a stub/toggle, not a pairing engine.
+- [ ] PREF 1–8 persist/restore display state in `localStorage`.
+- [ ] Still no weather mosaic, CRDA, FMA, OSM, STARS font, Command IR from DCB.
 
 ## Launching an agent
 
@@ -498,6 +543,7 @@ Do not call the TCW pass done until:
 2. Paste **[AGENT.md](AGENT.md)** as the whole-phase prompt, **or** paste one ticket and say: implement only this ticket, stop when ACs are checked.
 3. Work T02-01 → T02-13 as in the table. Do not skip T02-12 to “make it pretty.”
 4. After original exit: polish T02-14 → T02-21 (DCB cells, chrome, SSA). Still not a Raytheon clone.
+5. After polish: DCB addendum T02-22 → T02-30 (main/aux/submenus). Still not CRDA / FMA / weather paint.
 
 ## Glossary reminders
 

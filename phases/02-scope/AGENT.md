@@ -71,6 +71,20 @@ If a canvas or chat summary disagrees with these files, **these files win**.
 | 20 | T02-20 | `phases/02-scope/tickets/T02-20-ssa-status-and-on-ppi-lists.md` |
 | 21 | T02-21 | `phases/02-scope/tickets/T02-21-tcw-visual-acceptance.md` |
 
+**Stop after T02-21** unless the human asked for the **DCB addendum** (T02-22–30). That run lifts a trainer main/aux/submenu subset. Still no weather mosaic, CRDA, FMA, OSM, or STARS font.
+
+| Order | ID | File |
+| --- | --- | --- |
+| 22 | T02-22 | `phases/02-scope/tickets/T02-22-dcb-menu-model-and-primitives.md` |
+| 23 | T02-23 | `phases/02-scope/tickets/T02-23-dcb-main-range-cntr-rr-ldr.md` |
+| 24 | T02-24 | `phases/02-scope/tickets/T02-24-dcb-maps-wx-disabled.md` |
+| 25 | T02-25 | `phases/02-scope/tickets/T02-25-dcb-aux-history-ptl-dock.md` |
+| 26 | T02-26 | `phases/02-scope/tickets/T02-26-dcb-brite-char-size-submenus.md` |
+| 27 | T02-27 | `phases/02-scope/tickets/T02-27-dcb-ssa-gi-filters.md` |
+| 28 | T02-28 | `phases/02-scope/tickets/T02-28-dcb-tpa-atpa-submenu.md` |
+| 29 | T02-29 | `phases/02-scope/tickets/T02-29-dcb-pref-sets.md` |
+| 30 | T02-30 | `phases/02-scope/tickets/T02-30-dcb-addendum-visual-acceptance.md` |
+
 Each feature ticket **wires its own keys**. T02-09 is the help overlay + routing tests, not the first place keys exist.
 
 ## Definition of done (whole phase)
@@ -79,9 +93,9 @@ Each feature ticket **wires its own keys**. T02-09 is the help overlay + routing
 - PPI is black, north-up, circular range, discrete 5–60 NM, center/pan without zoom-to-cursor.
 - Maps, symbols, history, full/limited datablocks, leaders, filter, PTL, ownership colors as specified.
 - F1 help shows the Windows keymap and the line `TRAINER KEYS — NOT CRC`.
-- DCB-lite and strips work with mouse.
+- DCB-lite and strips work with mouse. If T02-22–30 were in scope: MAIN/AUX/submenus, disabled WX, local PREF 1–8.
 - 30-target budget recorded.
-- Visual acceptance script (T02-13) completed. Polish gate is T02-21 if those tickets were in scope.
+- Visual acceptance script (T02-13) completed. Polish gate is T02-21 if those tickets were in scope. DCB addendum gate is T02-30 if those tickets were in scope.
 - `npm test` green. Training/entertainment disclaimer still reachable (banner or F1 / first-run after T02-15).
 
 ## If you are blocked

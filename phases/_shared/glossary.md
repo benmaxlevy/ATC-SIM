@@ -17,7 +17,7 @@ Use these terms in tickets, UI, and code. Do not invent synonyms. Definitions fo
 | **Predicted track line (PTL)** | Straight 1-minute ground-track predictor. Not a turn-radius curve. | R07 |
 | **History** | Discrete position dots vs sim time. Not a phosphor bloom. | R07 |
 | **Initiate track** | STARS/CRC: associate target with a plan. **Our F3:** ownership color stub only. | R07; trainer delta |
-| **DCB** | Display Control Bar. We ship **DCB-lite**. | R07 |
+| **DCB** | Display Control Bar. T02-10/16/17 shipped DCB-lite; T02-22–30 add a trainer main/aux/submenu subset. Still not NAS STARS. | R07 |
 | **Digital / video map** | Sparse facility lines (runway, loc feather, rings). Not OSM. | R04; R07 |
 | **Localizer feather** | Approach-course fan on the map. | R07 maps |
 | **Flight strip** | Flight-progress strip analog (callsign + assigned values). | R02 |

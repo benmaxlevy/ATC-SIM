@@ -9,8 +9,9 @@ These are out of scope unless a later ticket explicitly lifts them. Implementing
 - VATSIM / MSFS / X-Plane live traffic in v1.
 - Tower cab, ASDE-X, ERAM, or oceanic.
 - Multi-facility NAS, ARTCC, or overlapping sectors (phase 5 may *stub* a second position).
-- Weather mosaic, precipitation, wind (until a phase 4 ticket).
-- Full DCB, CRDA, FMA, ARV, preference sets, dual FSL/EFSL.
+- Weather mosaic, precipitation, wind (until a phase 4 ticket). WX DCB cells may exist as **disabled** chrome (T02-24); they must not paint weather.
+- CRDA, FMA, ARV, dual FSL/EFSL.
+- Full NAS DCB / preference host. T02-22–30 lift a **trainer DCB subset** (main/aux/submenus, local PREF slots, disabled WX/VOL/MODE/SITE). Still not a Raytheon clone.
 
 ## Architecture
 

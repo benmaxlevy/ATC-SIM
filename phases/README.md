@@ -7,7 +7,7 @@ This folder is the source of truth for build order. Cursor canvases are summarie
 **To start work:**
 
 - **Swarm (hours, many subagents):** paste [`phases/SWARM.md`](SWARM.md) into a new agent. The first swarm does **0 → 1 → 2** (T02-01–13). Phase 2 **polish** is T02-14–21 in `02-scope/README.md` (separate run).
-- **Solo one phase:** paste that phase’s `AGENT.md` (see [LAUNCH.md](LAUNCH.md)).
+- **Solo one phase:** paste that phase’s `AGENT.md` (see [LAUNCH.md](LAUNCH.md)). Phase 2 **DCB addendum** is T02-22–30 in `02-scope/README.md` (after T02-21).
 
 Git: always-on project rule `.cursor/rules/ticket-git-workflow.mdc` — one `ticket/Txx-yy-…` branch per ticket, progressive commits, `--no-ff` merge into `master` when the ticket is done. Do not put ticket work on `master` directly.
 
@@ -23,12 +23,12 @@ Do not start phase N until the previous phase README's **Phase exit** checklist 
 | --- | --- | --- | --- | --- |
 | 0 Slice | [00-slice](00-slice/) | 10 | Repo boots, contracts frozen, KDEM stub, echoing command line | — |
 | 1 Closed loop | [01-closed-loop](01-closed-loop/) | 14 | Type `DAL123 H270`, text readback, aircraft turns | 0 |
-| 2 Scope | [02-scope](02-scope/) | 21 | STARS-like PPI: maps, datablocks, filters, a few keys | 1 |
+| 2 Scope | [02-scope](02-scope/) | 30 | STARS-like PPI: maps, datablocks, filters, a few keys; post-exit DCB subset | 1 |
 | 3 Voice | [03-voice](03-voice/) | 15 | PTT → our speech-api → same parser → spoken readback | 1 (2 preferred) |
 | 4 Procedures | [04-procedures](04-procedures/) | 17 | ILS intercept, DEMO ONE STAR, lite CA/MSAW; post-exit STAR spawn + check-in + inbound HO | 2 |
 | 5 Training | [05-training](05-training/) | 12 | Practice score, replay, optional bad readbacks | 3 **and** 4 |
 
-**89 tickets.** Phase 3 may overlap the tail of phase 2 (`SpeechPort` is isolated). Phase 5 must not start until 3 and 4 both exit. Skip `T03-11` (whisper-wasm) and `T04-11` (wind) unless you want them; none are required to exit their phase. T04-13–15 are a **post-exit addendum** (STAR entry spawn + check-in); T04-16–17 add inbound handoff accept. They do not un-green the historical T04-01–12 exit.
+**98 tickets.** Phase 3 may overlap the tail of phase 2 (`SpeechPort` is isolated). Phase 5 must not start until 3 and 4 both exit. Skip `T03-11` (whisper-wasm) and `T04-11` (wind) unless you want them; none are required to exit their phase. T02-22–30 are a **post-exit DCB addendum** (trainer main/aux/submenus). T04-13–15 are a **post-exit addendum** (STAR entry spawn + check-in); T04-16–17 add inbound handoff accept. They do not un-green historical phase exits.
 
 ## Shared contracts
 
@@ -121,6 +121,15 @@ Implement **T01-08 before T01-07** (see that phase `AGENT.md`).
 | T02-19 | Datablock scratchpad, type, leader length |
 | T02-20 | SSA status and on-PPI lists |
 | T02-21 | TCW visual acceptance script |
+| T02-22 | DCB menu model, SHIFT, primitives (post-exit) |
+| T02-23 | DCB main RANGE / CNTR / RR / LDR (post-exit) |
+| T02-24 | DCB MAPS 1–30, quick 1–6, WX disabled (post-exit) |
+| T02-25 | DCB aux HISTORY / PTL / dock (post-exit) |
+| T02-26 | DCB BRITE + CHAR SIZE submenus (post-exit) |
+| T02-27 | DCB SSA FILTER + GI TEXT FILTER (post-exit) |
+| T02-28 | DCB TPA / ATPA submenu (post-exit) |
+| T02-29 | DCB PREF sets (post-exit) |
+| T02-30 | DCB addendum visual acceptance (post-exit) |
 
 ### Phase 3 — Voice
 
