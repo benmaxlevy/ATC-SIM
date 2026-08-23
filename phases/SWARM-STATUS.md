@@ -18,7 +18,30 @@ Orchestrator planning **2026-08-23**. Human `/run-swarm`: spawn handoff accept +
 
 Waves: 0 (merge 8 NM spawn stagger branch if needed) → A T04-16 → B T04-17. Untracked `e2e/` QA screenshots are not this swarm — leave uncommitted.
 
-**Not started until captain spawn.**
+## SIXTH SWARM COMPLETE — phase 4 post-exit addendum (T04-16–17 inbound HO)
+
+T04-16 and T04-17 are on `master`. Captain `npm test` / `npm run ci`: **1061 passed, 1 skipped**. Wave 0 merged `fix/star-inbound-spawn-spacing` (8 NM same-STAR stagger). Default STAR pack spawns pending inbound HO from sector `C`, unowned green FDB; radio rejects (`handoff-pending`) until accept. Click/slew (and F3 on pending inbound) accepts → owned **white** FDB (`PALETTE.owned`). Check-in waits until owned. `kdem-ils27` and `?traffic=N` stay `handoff.kind === "none"` (commandable without click). No CA 3 NM halo. Skip **T04-11**. Did **not** start phase 5. Did not redo T04-01–15.
+
+**Merged (`--no-ff`, captain only):** `fix/star-inbound-spawn-spacing`, T04-16, T04-17, plus `ticket/T04-17-fix` (Prettier on T04-17 scope files). Isolated worktrees. Workers never merged. Deleted local ticket branches. Untracked `e2e/` left uncommitted.
+
+**Manual leftover (human `npm run dev`):** default session — green unowned FDBs with HO cue from `C`; click DAL123 → white owned; then `DAL123 H270` turns and **cancels** FMS; radio before click still rejected; check-in after accept only; `?scenario=kdem-ils27` still T04-12 without HO; `?traffic=N` still downwind FPS arc without HO. Do not invent a visual pass.
+
+**Remaining work (next paste of `SWARM.md` with config changed):**
+
+| Phase | Folder | What it is |
+| --- | --- | --- |
+| 5 Training | `phases/05-training/` | Practice score, replay, optional bad readbacks |
+
+Optional later: T04-11 constant wind. Do not start phase 5 until a new swarm paste. Phase 5 must **ignore** `handoff.inbound.offered` / `handoff.inbound.accepted` and `radio.checkin` (do not score).
+
+## Phase 4 addendum captain notes (T04-16–17)
+
+- **Wave 0:** merged `fix/star-inbound-spawn-spacing` — same-STAR inbound trailers 8 NM. `npm test` 1039 passed.
+- **Wave A:** merged T04-16 — STAR-inbound spawn pending HO from `C`; radio gated until `acceptInboundHandoff` / F3-as-accept; ils27 and traffic=N `kind === "none"`. Events `handoff.inbound.offered` / `accepted`. `npm test` 1050 passed.
+- **Wave B:** merged T04-17 — first PPI click on pending inbound accepts+selects; FDB line 1 HO cue; check-in hold until owned; F1 help line. `npm test` 1061 passed.
+- **CI follow-up:** `ticket/T04-17-fix` Prettier on `src/scope/pick.test.ts`, `renderScope.ts`, `renderScope.test.ts`. `npm run ci` exit 0.
+- **Skipped:** T04-11. No CA 3 NM halo. No owned-green invert. No phase 5.
+- **Product:** Pending HO from `C`; owned white; ils27/traffic skip HO; check-in after accept; heading after accept still cancels FMS.
 
 
 ## Fifth swarm started — Phase 4 post-exit addendum (T04-13–15)
