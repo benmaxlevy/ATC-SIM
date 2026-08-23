@@ -62,8 +62,10 @@ Implement one ticket at a time. Check every AC. Do not start a downstream ticket
 13. `tickets/T04-13-star-inbound-geometry.md` (post-exit; helpers only)
 14. `tickets/T04-14-seeded-star-inbound-spawn.md` (after T04-13)
 15. `tickets/T04-15-star-descend-via-checkin.md` (after T04-13; may parallel T04-14)
+16. `tickets/T04-16-inbound-handoff-state.md` (post-exit; spawn pending inbound HO)
+17. `tickets/T04-17-accept-handoff-scope.md` (after T04-16; click accept)
 
-T04-08 is required for historical phase exit (fixture tests, no network). T04-11 is not. T04-13–15 are a post-exit addendum: do not un-green T04-01–12.
+T04-08 is required for historical phase exit (fixture tests, no network). T04-11 is not. T04-13–15 are a post-exit addendum: do not un-green T04-01–12. T04-16–17 are a further addendum (inbound handoff accept). Do not draw CA 3 NM circles (CRC STARS CA is text, not a halo).
 
 ## Suggested files (create as needed; match phase 0 layout)
 

@@ -25,10 +25,10 @@ Do not start phase N until the previous phase README's **Phase exit** checklist 
 | 1 Closed loop | [01-closed-loop](01-closed-loop/) | 14 | Type `DAL123 H270`, text readback, aircraft turns | 0 |
 | 2 Scope | [02-scope](02-scope/) | 21 | STARS-like PPI: maps, datablocks, filters, a few keys | 1 |
 | 3 Voice | [03-voice](03-voice/) | 15 | PTT → our speech-api → same parser → spoken readback | 1 (2 preferred) |
-| 4 Procedures | [04-procedures](04-procedures/) | 15 | ILS intercept, DEMO ONE STAR, lite CA/MSAW; post-exit STAR spawn + check-in | 2 |
+| 4 Procedures | [04-procedures](04-procedures/) | 17 | ILS intercept, DEMO ONE STAR, lite CA/MSAW; post-exit STAR spawn + check-in + inbound HO | 2 |
 | 5 Training | [05-training](05-training/) | 12 | Practice score, replay, optional bad readbacks | 3 **and** 4 |
 
-**87 tickets.** Phase 3 may overlap the tail of phase 2 (`SpeechPort` is isolated). Phase 5 must not start until 3 and 4 both exit. Skip `T03-11` (whisper-wasm) and `T04-11` (wind) unless you want them; none are required to exit their phase. T04-13–15 are a **post-exit addendum** (STAR entry spawn + check-in); they do not un-green the historical T04-01–12 exit. `T03-15` (always parse after STT) then `T03-14` (Path C `/parse`) when Path C salvage is named — not required to exit. Phase 2 **original** exit is T02-01–13; T02-14–21 are TCW polish (not voice). Voice quality path is **our** `speech-api` (HF weights, local inference) — no paid STT/TTS vendors. Parse is one stage list (`parse-pipeline.md`).
+**89 tickets.** Phase 3 may overlap the tail of phase 2 (`SpeechPort` is isolated). Phase 5 must not start until 3 and 4 both exit. Skip `T03-11` (whisper-wasm) and `T04-11` (wind) unless you want them; none are required to exit their phase. T04-13–15 are a **post-exit addendum** (STAR entry spawn + check-in); T04-16–17 add inbound handoff accept. They do not un-green the historical T04-01–12 exit.
 
 ## Shared contracts
 
@@ -161,6 +161,8 @@ Implement **T01-08 before T01-07** (see that phase `AGENT.md`).
 | T04-13 | STAR inbound geometry helpers (post-exit) |
 | T04-14 | Seeded STAR inbound spawn (post-exit) |
 | T04-15 | STAR descend-via check-in (post-exit) |
+| T04-16 | Inbound handoff state (post-exit) |
+| T04-17 | Accept inbound handoff (post-exit) |
 
 ### Phase 5 — Training
 

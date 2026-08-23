@@ -467,6 +467,8 @@ Implement in this order unless a ticket says it can parallel. Do not start a tic
 | T04-13 | STAR inbound geometry helpers | P0 | S | T04-01, T04-02, T04-03 | T04-14, T04-15 |
 | T04-14 | Seeded STAR inbound spawn (default session) | P0 | M | T04-13, T04-04 | none |
 | T04-15 | STAR descend-via check-in | P0 | M | T04-13 | none |
+| T04-16 | Inbound handoff state (spawn pending) | P0 | M | T04-14 | T04-17 |
+| T04-17 | Accept inbound handoff (scope) | P0 | M | T04-16 | none |
 
 **Parallelism:** After T04-01, T04-08 and T04-10 can proceed beside T04-02. T04-09 can start immediately. T04-04 ∥ T04-05 after T04-03. T04-11 can land anytime after kinematics; prefer after T04-05 so loc tests include a wind case if the ticket is pulled.
 
@@ -481,7 +483,15 @@ Historical phase 4 exit (T04-01–10, T04-12) stays green. Do **not** uncheck th
 - Each VIA arrival checks in: `approach, {callsign}, descending via {STAR name} arrival through {altitude} feet`.
 - `kdem-ils27` stays deterministic (DAL123 north / AAL45 south). `?traffic=N` stays the FPS downwind arc. T01-04 downwind box survives as a test fixture.
 
-Wave: **T04-13** alone, then **T04-14 ∥ T04-15**.
+Wave: **T04-13** alone, then **T04-14 ∥ T04-15**. T04-16–17 (inbound HO accept) are a later addendum.
+
+### Post-exit addendum (T04-16–17 inbound handoff)
+
+Default STAR arrivals spawn pending inbound handoff from sector `C` (unowned green FDB). Click/slew accepts (CRC analog); owned FDB is **white**. Radio vectors reject until accept. Check-in waits until owned. `kdem-ils27` / `?traffic=N` stay commandable without HO. **Do not** draw 3 NM CA circles (CRC STARS CA is datablock `CA` + tone, not a halo).
+
+### Post-exit addendum (T04-16–17 inbound handoff)
+
+Default STAR arrivals spawn pending inbound handoff from sector `C` (unowned green FDB). Click/slew accepts (CRC analog); owned FDB is **white**. Radio vectors reject until accept. Check-in waits until owned. `kdem-ils27` / `?traffic=N` stay commandable without HO. **Do not** draw 3 NM CA circles (CRC STARS CA is datablock `CA` + tone, not a halo).
 
 ---
 

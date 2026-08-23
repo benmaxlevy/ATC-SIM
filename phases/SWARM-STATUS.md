@@ -1,5 +1,26 @@
 # Swarm status
 
+## Sixth swarm started — Phase 4 post-exit addendum (T04-16–17 inbound HO)
+
+Orchestrator planning **2026-08-23**. Human `/run-swarm`: spawn handoff accept + CA 3 NM circles if analog exists. Historical phase 4 exit and fifth swarm (T04-13–15) stay green. This run is **T04-16, T04-17 only**. Do **not** redo T00–T04-15. Do **not** start phase 5. Skip **T04-11**. **No CA 3 NM halo** (CRC STARS STCA is `CA` text + tone; 3 NM circles are TPA J-rings or ERAM DRI). Owned FDB stays **white** after accept (CRC), not green.
+
+| Key | Value |
+| --- | --- |
+| Goal | Default STAR arrivals spawn pending inbound HO from `C`. Click/slew accepts → owned white. Radio after accept. Check-in waits until owned |
+| Player loop | `npm run dev` → green unowned + HO cue → click DAL123 → white owned → `DAL123 H270` |
+| Skip | **T04-11**. **T04-01–15**. **T05-***. CA 3 NM circles |
+| Include | **T04-16**, **T04-17** |
+| Stop | **Do not start phase 5** |
+| Max ticket workers in flight | **3** (wave A = 1; wave B = 1) |
+| Merge lock | **Only the phase captain** merges to `master` (`--no-ff`) |
+| Model | **cursor grok 4.6 high only.** `model: "cursor-grok-4.6-high"` |
+| Paid STT/TTS/LLM | **Forbidden** |
+
+Waves: 0 (merge 8 NM spawn stagger branch if needed) → A T04-16 → B T04-17. Untracked `e2e/` QA screenshots are not this swarm — leave uncommitted.
+
+**Not started until captain spawn.**
+
+
 ## Fifth swarm started — Phase 4 post-exit addendum (T04-13–15)
 
 Orchestrator planning **2026-08-23**. Historical phase 4 exit (T04-01–10, T04-12) stays green. This run is **T04-13, T04-14, T04-15 only**. Do **not** redo T00–T04-12. Do **not** start phase 5. Skip **T04-11**.
