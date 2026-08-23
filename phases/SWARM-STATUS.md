@@ -34,6 +34,10 @@ T04-16 and T04-17 are on `master`. Captain `npm test` / `npm run ci`: **1061 pas
 
 Optional later: T04-11 constant wind. Do not start phase 5 until a new swarm paste. Phase 5 must **ignore** `handoff.inbound.offered` / `handoff.inbound.accepted` and `radio.checkin` (do not score).
 
+## Orchestrator verify — 2026-08-23 (inbound HO)
+
+Confirmed on `master` `a4cfd41`. `--no-ff` merges: spawn stagger, T04-16, T04-17, `ticket/T04-17-fix`. Orchestrator `npm test` / `npm run ci`: **1061 passed, 1 skipped**. Default pack pending inbound from `C`; click/F3 accept → owned white; radio gated until then; check-in after accept. ils27 / `?traffic=N` skip HO. **No CA 3 NM halo** (CRC STARS CA is text). Did **not** start phase 5. Untracked `e2e/` left uncommitted. Stopped at the sixth-swarm boundary.
+
 ## Phase 4 addendum captain notes (T04-16–17)
 
 - **Wave 0:** merged `fix/star-inbound-spawn-spacing` — same-STAR inbound trailers 8 NM. `npm test` 1039 passed.
