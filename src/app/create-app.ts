@@ -1,6 +1,6 @@
 import { SessionLog, createWorld, type SessionEvent, type World } from "@core";
 import { parseCommand, proceduresFromCatalog } from "@parse";
-import { handleRadioCommand } from "@pilot";
+import { handleRadioCommand, createCheckInQueue } from "@pilot";
 import {
   VoiceLatencyTracker,
   createPttCaptureController,
@@ -37,6 +37,8 @@ export interface AppDeps {
   voiceLoop?: VoiceLoop;
   /** Injected in tests so PTT-up → audio-start can resolve without Web Audio. */
   readbackPlayer?: ReadbackPlayer;
+  /** Check-in stagger seed. Default 1. Independent of spawn-assignment RNG. */
+  checkInSeed?: number;
   /** Persisted T03-10 prefs. Boot via `loadAndResolveSpeechBoot`. */
   speechPrefs?: SpeechPrefs;
   speechUrls?: SpeechApiUrlStatus;
@@ -57,6 +59,11 @@ export interface AppHandles {
   world: World;
   ptt: PttCaptureController;
   voiceLoop: VoiceLoop;
+  /**
+   * Drain STAR check-ins after physics. Call once per frame after `advanceWorld`.
+   * Does not import SpeechPort into `@core`.
+   */
+  afterPhysicsTick(): void;
   /** Command-line copy (formatted) or `null` to clear. */
   subscribeVoiceStatus(listener: (status: string | null) => void): () => void;
   /** Last utterance + session p50. T03-10 persists the visibility toggle. */
@@ -239,6 +246,22 @@ export function createApp(deps: AppDeps): AppHandles {
   });
   void speechSettings.refreshParseHealth();
 
+  const checkInQueue = createCheckInQueue({ seed: deps.checkInSeed ?? 1 });
+  checkInQueue.scheduleFromWorld(world);
+
+  function afterPhysicsTick(): void {
+    checkInQueue.drain({
+      world,
+      log,
+      radio: {
+        isBusy: () => voiceLoop.busy,
+        play: (text, callsign) => voiceLoop.playReadback(text, callsign),
+      },
+      setStatus: emitVoiceStatus,
+      nowWallMs: () => Date.now(),
+    });
+  }
+
   return {
     get speech() {
       return speech;
@@ -268,5 +291,6 @@ export function createApp(deps: AppDeps): AppHandles {
     getLatencyOverlayVisible() {
       return latencyOverlayVisible;
     },
+    afterPhysicsTick,
   };
 }

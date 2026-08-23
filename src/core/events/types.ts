@@ -12,6 +12,7 @@ import type { Command } from "../command/types";
  * T04-06 adds nav.gs.captured (vertical → GS after loc, from below).
  * T04-07 adds nav.missed.started (DA or GO_AROUND).
  * T04-12 adds handoff.tower (scope stub) and nav.landed (threshold despawn).
+ * T04-15 adds radio.checkin (unsolicited STAR descend-via contact).
  */
 export type SessionEvent =
   | {
@@ -159,4 +160,18 @@ export type SessionEvent =
       atWallMs: number;
       callsign: string;
       approachId: string;
+    }
+  | {
+      /**
+       * Pilot-initiated; not a Command. Phase 5 phraseology scoring must not
+       * treat this as controller input.
+       */
+      type: "radio.checkin";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      starId: string;
+      starName: string;
+      altitudeFt: number;
+      text: string;
     };

@@ -33,7 +33,38 @@ test("SessionEvent includes command events, voice.latency, CA edges, MSAW edges,
     | "nav.missed.started"
     | "handoff.tower"
     | "nav.landed"
+    | "radio.checkin"
   >();
+});
+
+test("radio.checkin is a typed pilot-initiated payload (T04-15)", () => {
+  type CheckIn = Extract<SessionEvent, { type: "radio.checkin" }>;
+  expectTypeOf<CheckIn>().toEqualTypeOf<{
+    type: "radio.checkin";
+    atSimMs: number;
+    atWallMs: number;
+    callsign: string;
+    starId: string;
+    starName: string;
+    altitudeFt: number;
+    text: string;
+  }>();
+
+  const log = new SessionLog();
+  log.append({
+    type: "radio.checkin",
+    atSimMs: 4000,
+    atWallMs: 1_000,
+    callsign: "DAL123",
+    starId: "DEM1",
+    starName: "DEMO ONE",
+    altitudeFt: 11000,
+    text: "approach, delta one two three, descending via DEMO ONE arrival through one one thousand feet",
+  });
+  const events = log.byType("radio.checkin");
+  expect(events).toHaveLength(1);
+  expect(events[0]?.callsign).toBe("DAL123");
+  expect(events[0]?.starName).toBe("DEMO ONE");
 });
 
 test("command.rejected requires reason and command (AC2)", () => {

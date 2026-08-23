@@ -5,7 +5,8 @@
  * `handleRadioCommand` (same apply path for a Command already parsed);
  * `applyCommand` (intent apply for a resolved Command, no parse);
  * readback templates (`formatReadback`, `formatRejectReadback`,
- * `formatCallsignSpeech`); callsign resolution (`resolveCallsign`,
+ * `formatCallsignSpeech`); STAR check-in (`formatCheckIn`);
+ * callsign resolution (`resolveCallsign`,
  * `numericTail`); validation (`validateInstructions`).
  *
  * Import rule: `@pilot` may import `@core` and `@parse` (radio pipeline).
@@ -19,6 +20,16 @@ export type { HandleRadioOpts, PilotResult } from "./handleRadioText";
 export { handleRadioCommand, handleRadioText } from "./handleRadioText";
 export type { ReadbackAircraft, RejectReason } from "./readback";
 export { formatCallsignSpeech, formatReadback, formatRejectReadback } from "./readback";
+export type { FormatCheckInArgs, StarNameCatalog } from "./checkin";
+export { formatCheckIn, isStarViaArrival, starSpokenName } from "./checkin";
+export type { CheckInRadio, DrainCheckInsArgs, ScheduledCheckIn } from "./checkinQueue";
+export {
+  CHECKIN_IDLE_GAP_MS,
+  CHECKIN_STAGGER_MAX_MS,
+  CHECKIN_STAGGER_MIN_MS,
+  CheckInQueue,
+  createCheckInQueue,
+} from "./checkinQueue";
 export type { ResolveReason, ResolveResult } from "./resolveCallsign";
 export { numericTail, resolveCallsign } from "./resolveCallsign";
 export type { ValidateReason, ValidateResult, ValidateOpts } from "./validate";

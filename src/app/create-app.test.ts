@@ -1,4 +1,4 @@
-import { SessionLog, createAircraft, createWorld } from "@core";
+import { SessionLog, SIM_DT_S, createAircraft, createWorld, stepWorld } from "@core";
 import {
   DEFAULT_PTT_KEY,
   NullSpeechPort,
@@ -9,6 +9,8 @@ import {
   type Transcript,
 } from "@speech";
 import { expect, test, vi } from "vitest";
+import { handleRadioText } from "@pilot";
+import { createWorldFromScenario, loadKdemIls27 } from "@scenario";
 import { createApp, type AppDeps } from "./create-app";
 
 function nonEmptyClip(): AudioClip {
@@ -79,6 +81,7 @@ test("T01-14 playable slice: main wires spawn, speech factory, rAF, and resize p
   expect(main).toMatch(/handles\.ptt\.dispose/);
   expect(main).toMatch(/requestAnimationFrame/);
   expect(main).toMatch(/paintPpi/);
+  expect(main).toMatch(/afterPhysicsTick/);
   expect(main).toMatch(/addEventListener\("resize"/);
   expect(main).not.toMatch(/from\s+["']@speech["'].*(http|openai|deepgram)/i);
   expect(main).not.toMatch(/openai|deepgram|elevenlabs/i);
@@ -536,4 +539,161 @@ test("T03-10 AC5 — settings PTT bind updates the capture controller", () => {
     handles.ptt.dispose();
     handles.voiceLoop.dispose();
   }
+});
+
+const CHECKIN_GOLDEN =
+  "approach, delta one two three, descending via DEMO ONE arrival through one one thousand feet";
+
+async function flushMicrotasks(): Promise<void> {
+  for (let i = 0; i < 16; i += 1) {
+    await Promise.resolve();
+  }
+}
+
+function viaDal123() {
+  const dal = createAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    xNm: 18.5,
+    yNm: 13.5,
+    headingDeg: 225,
+    altitudeFt: 11000,
+    speedKt: 250,
+  });
+  dal.intent.lateral = {
+    type: "PROCEDURE",
+    starId: "DEM1",
+    toFixIndex: 0,
+    routeFixIds: ["NEMAX", "NELBO", "NJOIN", "MERGE"],
+  };
+  dal.intent.vertical = { type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" };
+  const world = createWorld({
+    aircraft: [dal],
+    catalog: {
+      airportId: "KDEM",
+      navaids: [],
+      fixes: [],
+      stars: [{ id: "DEM1", name: "DEMO ONE" }],
+      approaches: [],
+      sids: [],
+    },
+  });
+  return { dal, world };
+}
+
+test("T04-15 AC3 — afterPhysicsTick delivers check-in text to the status line", async () => {
+  const { dal, world } = viaDal123();
+  const handles = createApp({
+    speech: new NullSpeechPort(),
+    world,
+    ptt: createPttCaptureController({ onEvent: () => {}, attachTo: null }),
+    readbackPlayer: instantPlayer(),
+  });
+  let status: string | null = null;
+  const stop = handles.subscribeVoiceStatus((line) => {
+    status = line;
+  });
+  while (world.simTimeMs < 9000) {
+    stepWorld(world, SIM_DT_S);
+  }
+  handles.afterPhysicsTick();
+  await flushMicrotasks();
+  const events = handles.log.byType("radio.checkin");
+  expect(events).toHaveLength(1);
+  expect(events[0]?.callsign).toBe("DAL123");
+  expect(events[0]?.starId).toBe("DEM1");
+  expect(events[0]?.starName).toBe("DEMO ONE");
+  expect(events[0]?.altitudeFt).toBe(dal.altitudeFt);
+  expect(events[0]?.text).toBe(CHECKIN_GOLDEN);
+  expect(status).toBe(CHECKIN_GOLDEN);
+  stop();
+  handles.ptt.dispose();
+  handles.voiceLoop.dispose();
+});
+
+test("T04-15 AC4 — H270 before due keeps that arrival silent", async () => {
+  const { world } = viaDal123();
+  const handles = createApp({
+    speech: new NullSpeechPort(),
+    world,
+    ptt: createPttCaptureController({ onEvent: () => {}, attachTo: null }),
+    readbackPlayer: instantPlayer(),
+  });
+  const result = await handleRadioText(world, "DAL123 H270", handles.log);
+  expect(result.accepted).toBe(true);
+  world.simTimeMs = 9000;
+  handles.afterPhysicsTick();
+  await flushMicrotasks();
+  expect(handles.log.byType("radio.checkin")).toHaveLength(0);
+  handles.ptt.dispose();
+  handles.voiceLoop.dispose();
+});
+
+test("T04-15 AC8 — null SpeechPort still logs check-in and does not throw", async () => {
+  const { world } = viaDal123();
+  const handles = createApp({
+    speech: new NullSpeechPort(),
+    world,
+    ptt: createPttCaptureController({ onEvent: () => {}, attachTo: null }),
+    readbackPlayer: instantPlayer(),
+  });
+  world.simTimeMs = 9000;
+  expect(() => handles.afterPhysicsTick()).not.toThrow();
+  await flushMicrotasks();
+  expect(handles.log.byType("radio.checkin")).toHaveLength(1);
+  handles.ptt.dispose();
+  handles.voiceLoop.dispose();
+});
+
+test("T04-15 — kdem-ils27 VIA arrivals both check in without a command", async () => {
+  const world = createWorldFromScenario(loadKdemIls27());
+  const handles = createApp({
+    speech: new NullSpeechPort(),
+    world,
+    ptt: createPttCaptureController({ onEvent: () => {}, attachTo: null }),
+    readbackPlayer: instantPlayer(),
+  });
+  world.simTimeMs = 9000;
+  handles.afterPhysicsTick();
+  await flushMicrotasks();
+  world.simTimeMs += 500;
+  handles.afterPhysicsTick();
+  await flushMicrotasks();
+  const events = handles.log.byType("radio.checkin");
+  expect(events).toHaveLength(2);
+  expect(events.map((event) => event.callsign).sort()).toEqual(["AAL45", "DAL123"]);
+  for (const event of events) {
+    expect(event.starId).toBe("DEM1");
+    expect(event.starName).toBe("DEMO ONE");
+    expect(event.text).toContain("DEMO ONE");
+    expect(event.text).not.toContain("DEM1");
+    expect(event.text.toLowerCase()).toContain("descending via demo one arrival through");
+  }
+  handles.ptt.dispose();
+  handles.voiceLoop.dispose();
+});
+
+test("T04-15 AC9 — downwind pack without VIA never checks in", async () => {
+  const ac = createAircraft({
+    id: "ac-dw",
+    callsign: "DAL200",
+    xNm: 8,
+    yNm: 10,
+    headingDeg: 100,
+    altitudeFt: 6000,
+    speedKt: 210,
+  });
+  const world = createWorld({ aircraft: [ac] });
+  const handles = createApp({
+    speech: new NullSpeechPort(),
+    world,
+    ptt: createPttCaptureController({ onEvent: () => {}, attachTo: null }),
+  });
+  while (world.simTimeMs < 10_000) {
+    stepWorld(world, SIM_DT_S);
+    handles.afterPhysicsTick();
+  }
+  expect(handles.log.byType("radio.checkin")).toHaveLength(0);
+  handles.ptt.dispose();
+  handles.voiceLoop.dispose();
 });
