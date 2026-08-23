@@ -3,7 +3,8 @@ import { expect, test } from "vitest";
 import { formatCheckIn, isStarViaArrival, starSpokenName } from "./checkin";
 import { formatReadback } from "./readback";
 
-const GOLDEN = "Approach, Delta 123, descending via DEMO ONE arrival through 11000 feet";
+const GOLDEN =
+  "Approach, Delta 123, descending via DEMO ONE arrival through one-one thousand (11000)";
 
 test("AC1 — formatCheckIn golden string for DAL123 / DEMO ONE / 11000", () => {
   const text = formatCheckIn({
@@ -28,13 +29,23 @@ test("AC2 — catalog lookup speaks DEMO ONE and never the coded id DEM1", () =>
   expect(text.toLowerCase()).not.toContain("dem1");
 });
 
-test("3000 ft is through 3000 feet", () => {
+test("3000 ft is through three thousand (3000)", () => {
   const text = formatCheckIn({
     callsign: "DAL123",
     starName: "DEMO ONE",
     altitudeFt: 3000,
   });
-  expect(text).toContain("through 3000 feet");
+  expect(text).toContain("through three thousand (3000)");
+});
+
+test("18000 ft check-in uses FL 180", () => {
+  const text = formatCheckIn({
+    callsign: "DAL123",
+    starName: "DEMO ONE",
+    altitudeFt: 18000,
+  });
+  expect(text).toContain("through FL 180");
+  expect(text).not.toContain("feet");
 });
 
 test("AC11 — formatter comments analog AIM/7110.65 vs trainer delta", async () => {

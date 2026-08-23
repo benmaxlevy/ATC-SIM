@@ -61,7 +61,7 @@ test("radio.checkin is a typed pilot-initiated payload (T04-15)", () => {
     starId: "DEM1",
     starName: "DEMO ONE",
     altitudeFt: 11000,
-    text: "Approach, Delta 123, descending via DEMO ONE arrival through 11000 feet",
+    text: "Approach, Delta 123, descending via DEMO ONE arrival through one-one thousand (11000)",
   });
   const events = log.byType("radio.checkin");
   expect(events).toHaveLength(1);

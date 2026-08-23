@@ -173,7 +173,7 @@ test("CROSS AT readback is cross NEMAX at 4000", () => {
       instructions: [{ type: "CROSS", fixId: "NEMAX", altitudeFt: 4000, restriction: "AT" }],
       aircraft: { headingDeg: 270, altitudeFt: 8000 },
     }),
-  ).toBe("Delta 123 cross NEMAX at 4000");
+  ).toBe("Delta 123 cross NEMAX at four thousand (4000)");
 });
 
 test("DCT NELBO is lone DIRECT and sequences to present heading", async () => {

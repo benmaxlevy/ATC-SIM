@@ -46,9 +46,32 @@ export function formatHeadingDigits(headingDeg: number): string {
   return String(spoken).padStart(3, "0");
 }
 
-/** Altitude in feet MSL as a number. Never "flight level". */
+/** US transition: 18,000 ft MSL and above are flight levels. */
+export const FLIGHT_LEVEL_FT = 18000;
+
+/** Snap Mode C / assigned altitudes to the nearest 100 ft. */
+export function roundAltitudeToHundreds(altitudeFt: number): number {
+  if (!Number.isFinite(altitudeFt)) {
+    return 0;
+  }
+  return Math.max(0, Math.round(altitudeFt / 100) * 100);
+}
+
+/** Rounded altitude in feet MSL as a number. */
 export function formatAltitudeDigits(altitudeFt: number): string {
-  return String(Math.max(0, Math.round(altitudeFt)));
+  return String(roundAltitudeToHundreds(altitudeFt));
+}
+
+/**
+ * Pilot altitude text. Below FL: grouped speech plus the hundreds value
+ * (`one-zero thousand (10000)`). At/above 18,000: `FL 180`.
+ */
+export function formatAltitude(altitudeFt: number): string {
+  const ft = roundAltitudeToHundreds(altitudeFt);
+  if (ft >= FLIGHT_LEVEL_FT) {
+    return `FL ${ft / 100}`;
+  }
+  return `${speakAltitude(ft)} (${ft})`;
 }
 
 /**
@@ -62,15 +85,15 @@ export function speakHeading(headingDeg: number): string {
 /**
  * Altitude in feet MSL. Below 10,000: group thousands then hundreds
  * (`three thousand`, `four thousand five hundred`). At/above 10,000: each
- * digit of the thousands group (`one one thousand`). Never "flight level".
+ * digit of the thousands group, hyphenated (`one-zero thousand`).
  */
 export function speakAltitude(altitudeFt: number): string {
-  const ft = Math.max(0, Math.round(altitudeFt));
+  const ft = roundAltitudeToHundreds(altitudeFt);
   const thousands = Math.floor(ft / 1000);
   const hundreds = Math.floor((ft % 1000) / 100);
   const parts: string[] = [];
   if (thousands >= 10) {
-    parts.push(`${speakDigitString(thousands)} thousand`);
+    parts.push(`${speakDigitString(thousands).replaceAll(" ", "-")} thousand`);
   } else if (thousands > 0) {
     parts.push(`${speakDigit(thousands)} thousand`);
   }

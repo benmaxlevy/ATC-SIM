@@ -10,7 +10,7 @@
  */
 
 import type { Aircraft, Instruction } from "@core";
-import { formatAltitudeDigits, formatDigitString, formatHeadingDigits } from "./digits";
+import { formatAltitude, formatDigitString, formatHeadingDigits } from "./digits";
 import { formatCallsignSpeech } from "./telephony";
 
 export { formatCallsignSpeech } from "./telephony";
@@ -104,7 +104,7 @@ function formatSpeedClause(instruction: Extract<Instruction, { type: "SPEED" }>)
 }
 
 function formatAltitudeClause(instruction: Extract<Instruction, { type: "ALTITUDE" }>): string {
-  const alt = formatAltitudeDigits(instruction.altitudeFt);
+  const alt = formatAltitude(instruction.altitudeFt);
   const until = instruction.untilEstablished ? " until established" : "";
   switch (instruction.verb) {
     case "CLIMB":
@@ -160,7 +160,7 @@ function formatInstructionClause(
     case "SAY_HEADING":
       return `heading ${formatHeadingDigits(aircraft.headingDeg)}`;
     case "SAY_ALTITUDE":
-      return formatAltitudeDigits(aircraft.altitudeFt);
+      return formatAltitude(aircraft.altitudeFt);
     case "CLEARED_APPROACH":
       return `cleared ${speakApproachNav(instruction.approachId)} approach`;
     case "INTERCEPT_LOCALIZER":
@@ -176,7 +176,7 @@ function formatInstructionClause(
     case "CLIMB_VIA":
       return `climb via ${procedureSpeech(instruction.procedureId, procedureNames)}`;
     case "CROSS": {
-      const alt = formatAltitudeDigits(instruction.altitudeFt);
+      const alt = formatAltitude(instruction.altitudeFt);
       const fix = instruction.fixId;
       if (instruction.restriction === "AT_OR_ABOVE") {
         return `cross ${fix} at or above ${alt}`;
@@ -204,7 +204,7 @@ function procedureSpeech(
 
 /**
  * One callsign at the start, then comma-separated instruction clauses.
- * Combined example: `Delta 123 heading 270, descend and maintain 3000,
+ * Combined example: `Delta 123 heading 270, descend and maintain three thousand (3000),
  * maintain 210 knots`.
  */
 export function formatReadback(args: {

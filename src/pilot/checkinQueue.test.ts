@@ -21,7 +21,8 @@ import {
   type CheckInRadio,
 } from "./checkinQueue";
 
-const GOLDEN = "Approach, Delta 123, descending via DEMO ONE arrival through 11000 feet";
+const GOLDEN =
+  "Approach, Delta 123, descending via DEMO ONE arrival through one-one thousand (11000)";
 
 function dem1Catalog(): NonNullable<World["catalog"]> {
   return {

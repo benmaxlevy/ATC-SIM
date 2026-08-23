@@ -2,13 +2,13 @@
  * Analog: AIM initial contact (facility ID, then aircraft ID, then the message)
  * plus JO 7110.65 / AIM descend-via altitude report (R01, R03).
  * Trainer delta: frozen template; facility is the literal word `approach`;
- * altitude is always `through` + present Mode C + trailing `feet`; catalog
- * spoken STAR `name` (never coded id); no ATIS, squawk, or “with you”.
+ * altitude is always `through` + present Mode C (hundreds; FL at 18,000+);
+ * catalog spoken STAR `name` (never coded id); no ATIS, squawk, or “with you”.
  * Unsolicited pilot radio — not a Command IR readback.
  */
 
 import type { Aircraft } from "@core";
-import { formatAltitudeDigits } from "./digits";
+import { formatAltitude } from "./digits";
 import { formatCallsignSpeech } from "./telephony";
 
 export interface FormatCheckInArgs {
@@ -27,8 +27,8 @@ export interface StarNameCatalog {
  */
 export function formatCheckIn(args: FormatCheckInArgs): string {
   const callsignSpeech = formatCallsignSpeech(args.callsign);
-  const altitudeSpeech = formatAltitudeDigits(args.altitudeFt);
-  return `Approach, ${callsignSpeech}, descending via ${args.starName} arrival through ${altitudeSpeech} feet`;
+  const altitudeSpeech = formatAltitude(args.altitudeFt);
+  return `Approach, ${callsignSpeech}, descending via ${args.starName} arrival through ${altitudeSpeech}`;
 }
 
 /** Catalog `name` for a STAR id. Walks `catalog.stars`; no facility switch. */

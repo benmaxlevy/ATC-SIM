@@ -6,7 +6,7 @@ import {
   formatRejectReadback,
   type ReadbackAircraft,
 } from "./readback";
-import { speakAltitude, speakHeading } from "./digits";
+import { formatAltitude, speakAltitude, speakHeading } from "./digits";
 
 const snapshot: ReadbackAircraft = { headingDeg: 100, altitudeFt: 8000 };
 
@@ -33,11 +33,10 @@ test("AC3 — left heading 90 includes turn left heading 090", () => {
   expect(text).not.toContain("zero niner zero");
 });
 
-test("AC4 — descend 3000 is descend and maintain 3000", () => {
+test("AC4 — descend 3000 is descend and maintain three thousand (3000)", () => {
   const text = readback([{ type: "ALTITUDE", altitudeFt: 3000, verb: "DESCEND" }]);
-  expect(text).toContain("descend and maintain 3000");
+  expect(text).toContain("descend and maintain three thousand (3000)");
   expect(text).not.toContain("go down to");
-  expect(text).not.toContain("three thousand");
 });
 
 test("AC5 — combined heading, descend, and speed: callsign once, commas", () => {
@@ -46,7 +45,9 @@ test("AC5 — combined heading, descend, and speed: callsign once, commas", () =
     { type: "ALTITUDE", altitudeFt: 3000, verb: "DESCEND" },
     { type: "SPEED", speedKt: 210, verb: "MAINTAIN" },
   ]);
-  expect(text).toBe("Delta 123 heading 270, descend and maintain 3000, maintain 210 knots");
+  expect(text).toBe(
+    "Delta 123 heading 270, descend and maintain three thousand (3000), maintain 210 knots",
+  );
   expect(text.split("Delta 123").length).toBe(2);
 });
 
@@ -124,24 +125,43 @@ test("FLY_HEADING RIGHT uses turn right heading", () => {
   expect(text).toBe("Delta 123 turn right heading 180");
 });
 
-const altitudeTable: [number, string][] = [
+const altitudeSpeechTable: [number, string][] = [
   [3000, "three thousand"],
   [4500, "four thousand five hundred"],
-  [10000, "one zero thousand"],
-  [11000, "one one thousand"],
-  [10500, "one zero thousand five hundred"],
+  [10000, "one-zero thousand"],
+  [11000, "one-one thousand"],
+  [10500, "one-zero thousand five hundred"],
 ];
 
-test.each(altitudeTable)("altitude speech %i → %s", (ft, expected) => {
+test.each(altitudeSpeechTable)("altitude speech %i → %s", (ft, expected) => {
   expect(speakAltitude(ft)).toBe(expected);
+});
+
+const altitudeDisplayTable: [number, string][] = [
+  [3000, "three thousand (3000)"],
+  [4500, "four thousand five hundred (4500)"],
+  [10000, "one-zero thousand (10000)"],
+  [11000, "one-one thousand (11000)"],
+  [10500, "one-zero thousand five hundred (10500)"],
+  [18000, "FL 180"],
+  [18049, "FL 180"],
+  [18500, "FL 185"],
+  [11047, "one-one thousand (11000)"],
+];
+
+test.each(altitudeDisplayTable)("altitude display %i → %s", (ft, expected) => {
+  expect(formatAltitude(ft)).toBe(expected);
 });
 
 test("climb and maintain / maintain altitude wording", () => {
   expect(readback([{ type: "ALTITUDE", altitudeFt: 3000, verb: "CLIMB" }])).toBe(
-    "Delta 123 climb and maintain 3000",
+    "Delta 123 climb and maintain three thousand (3000)",
   );
   expect(readback([{ type: "ALTITUDE", altitudeFt: 4500, verb: "MAINTAIN" }])).toBe(
-    "Delta 123 maintain 4500",
+    "Delta 123 maintain four thousand five hundred (4500)",
+  );
+  expect(readback([{ type: "ALTITUDE", altitudeFt: 18000, verb: "CLIMB" }])).toBe(
+    "Delta 123 climb and maintain FL 180",
   );
 });
 
@@ -164,7 +184,7 @@ test("IDENT is ident", () => {
 
 test("SAY_ALTITUDE speaks current altitude without say", () => {
   expect(readback([{ type: "SAY_ALTITUDE" }], { headingDeg: 90, altitudeFt: 3000 })).toBe(
-    "Delta 123 3000",
+    "Delta 123 three thousand (3000)",
   );
 });
 
@@ -198,7 +218,7 @@ test("combined ILS vector includes until established and turn right heading", ()
       { type: "CLEARED_APPROACH", approachId: "ILS27" },
     ]),
   ).toBe(
-    "Delta 123 turn right heading 240, maintain 2000 until established, cleared ILS runway 27 approach",
+    "Delta 123 turn right heading 240, maintain two thousand (2000) until established, cleared ILS runway 27 approach",
   );
 });
 
@@ -250,9 +270,10 @@ test.each(rejectTable)("reject %j → %s", (args, expected) => {
   expect(formatRejectReadback(args)).toBe(expected);
 });
 
-test("speed and high altitude use numerals, not niner speech", () => {
+test("speed uses numerals; FL 190 is flight level not niner speech", () => {
   expect(readback([{ type: "SPEED", speedKt: 190, verb: "MAINTAIN" }])).toBe(
     "Delta 123 maintain 190 knots",
   );
-  expect(speakAltitude(19000)).toBe("one niner thousand");
+  expect(speakAltitude(19000)).toBe("one-niner thousand");
+  expect(formatAltitude(19000)).toBe("FL 190");
 });
