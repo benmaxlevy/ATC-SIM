@@ -30,14 +30,33 @@ export function speakDigitString(value: number | string): string {
     .join(" ");
 }
 
+/** Consecutive decimal digits, no padding. `20` → `20`. */
+export function formatDigitString(value: number | string): string {
+  const raw = typeof value === "number" ? String(Math.trunc(Math.abs(value))) : value;
+  return [...raw].filter((ch) => ch >= "0" && ch <= "9").join("");
+}
+
+/**
+ * Magnetic/true heading in `[0, 360)` as three digits. Stored `0` is `360`.
+ * `5` → `005`, `90` → `090`, `270` → `270`.
+ */
+export function formatHeadingDigits(headingDeg: number): string {
+  const normalized = ((Math.round(headingDeg) % 360) + 360) % 360;
+  const spoken = normalized === 0 ? 360 : normalized;
+  return String(spoken).padStart(3, "0");
+}
+
+/** Altitude in feet MSL as a number. Never "flight level". */
+export function formatAltitudeDigits(altitudeFt: number): string {
+  return String(Math.max(0, Math.round(altitudeFt)));
+}
+
 /**
  * Magnetic/true heading in `[0, 360)`. Stored `0` is spoken as `three six zero`.
  * Always three digits: `5` → `zero zero five`, `90` → `zero niner zero`.
  */
 export function speakHeading(headingDeg: number): string {
-  const normalized = ((Math.round(headingDeg) % 360) + 360) % 360;
-  const spoken = normalized === 0 ? 360 : normalized;
-  return speakDigitString(String(spoken).padStart(3, "0"));
+  return speakDigitString(formatHeadingDigits(headingDeg));
 }
 
 /**

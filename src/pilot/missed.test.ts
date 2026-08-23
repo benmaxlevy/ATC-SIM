@@ -56,7 +56,7 @@ test("AC5 — DAL123 GA on loc at 3000 starts missed without waiting for DA", as
   const { dal, world, log } = worldOnLoc(onLoc(3000));
   const result = await handleRadioText(world, "DAL123 GA", log);
   expect(result.accepted).toBe(true);
-  expect(result.readback.toLowerCase()).toBe("delta one two three going around");
+  expect(result.readback).toBe("Delta 123 going around");
   expect(log.byType("nav.missed.started")).toHaveLength(1);
   expect(dal.intent.lateral).toEqual({ type: "MISSED", approachId: "ILS27" });
   expect(dal.intent.vertical).toEqual({ type: "MISSED_CLIMB", altitudeFt: 3000 });

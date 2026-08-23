@@ -15,13 +15,13 @@ function sample(callsign: string, extras: Partial<Parameters<typeof createAircra
   });
 }
 
-test("AC1 — DAL123 H270 readback contains heading two seven zero, not the raw token as the only output", async () => {
+test("AC1 — DAL123 H270 readback contains heading 270, not the raw token as the only output", async () => {
   const dal = sample("DAL123");
   const world = createWorld({ aircraft: [dal] });
   const result = await submitCommand(world, "DAL123 H270", new SessionLog());
 
   expect(result.accepted).toBe(true);
-  expect(result.readback.toLowerCase()).toContain("heading two seven zero");
+  expect(result.readback).toContain("heading 270");
   expect(result.readback.trim().toUpperCase()).not.toBe("DAL123 H270");
   expect(result.readback.trim().toUpperCase()).not.toBe("H270");
   expect(result.command?.source).toBe("text");
@@ -41,7 +41,7 @@ test("spawned KDEM DAL123 rejects H270 until inbound HO is accepted (no PPI)", a
   acceptInboundHandoff(world, dal.id);
   const result = await submitCommand(world, "DAL123 H270", new SessionLog());
   expect(result.accepted).toBe(true);
-  expect(result.readback.toLowerCase()).toContain("heading two seven zero");
+  expect(result.readback).toContain("heading 270");
   expect(dal.intent.assignedHeadingDeg).toBe(270);
 });
 

@@ -187,7 +187,7 @@ test("typed accepted readback uses the same TTS player as PTT", async () => {
   await handles.voiceLoop.playReadback(result.readback, result.command?.callsign);
   expect(synth).toHaveBeenCalledTimes(1);
   const spoken = synth.mock.calls[0] as unknown as [string, ...unknown[]] | undefined;
-  expect(String(spoken?.[0] ?? "").toLowerCase()).toContain("heading two seven zero");
+  expect(String(spoken?.[0] ?? "")).toContain("heading 270");
   handles.ptt.dispose();
   handles.voiceLoop.dispose();
 });

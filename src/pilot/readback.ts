@@ -2,15 +2,16 @@
  * Deterministic pilot readback templates (training / entertainment only).
  *
  * Analog: FAA JO 7110.65 phraseology (R01) — "descend and maintain",
- * "climb and maintain", digit-by-digit headings ("heading two seven zero").
+ * "climb and maintain", three-digit headings ("heading 270").
  * Trainer delta: vice-inspired typed tokens (R08) stay on the command line
- * (`C30`, `H270`); spoken readbacks are 7110.65, not "climb three zero".
+ * (`C30`, `H270`); displayed/sent readbacks use numerals and sentence-style
+ * capitalization instead of digit-by-digit speech.
  * Not NAS STARS. No TTS; this module only returns strings.
  */
 
 import type { Aircraft, Instruction } from "@core";
-import { speakAltitude, speakDigitString, speakHeading } from "./digits";
-import { formatCallsignSpeech, speakAlphanumeric } from "./telephony";
+import { formatAltitudeDigits, formatDigitString, formatHeadingDigits } from "./digits";
+import { formatCallsignSpeech } from "./telephony";
 
 export { formatCallsignSpeech } from "./telephony";
 
@@ -34,11 +35,11 @@ export type RejectReason =
   | "NOT_ON_APPROACH";
 
 const REJECT_FIXED: Record<string, string> = {
-  UNKNOWN_CALLSIGN: "unable, unknown callsign",
-  AMBIGUOUS_CALLSIGN: "unable, ambiguous callsign",
-  NO_CALLSIGN_OR_SELECTION: "unable, no aircraft selected",
-  EMPTY: "unable, say again",
-  PARSE: "unable, say again",
+  UNKNOWN_CALLSIGN: "Unable, unknown callsign",
+  AMBIGUOUS_CALLSIGN: "Unable, ambiguous callsign",
+  NO_CALLSIGN_OR_SELECTION: "Unable, no aircraft selected",
+  EMPTY: "Unable, say again",
+  PARSE: "Unable, say again",
 };
 
 const REJECT_AFTER_CALLSIGN: Record<string, string> = {
@@ -53,38 +54,41 @@ const REJECT_AFTER_CALLSIGN: Record<string, string> = {
   NOT_ON_APPROACH: "unable, not on approach",
 };
 
-/** ILS27 → `runway two seven localizer`. */
+function capitalizeFirst(text: string): string {
+  const i = [...text].findIndex((ch) => /[A-Za-z]/.test(ch));
+  if (i < 0) {
+    return text;
+  }
+  return text.slice(0, i) + text[i]!.toUpperCase() + text.slice(i + 1);
+}
+
+function formatRunway(runway: string, suffix: string): string {
+  return `${runway}${suffix}`;
+}
+
+/** ILS27 → `runway 27 localizer`. */
 function speakRunwayLocalizer(approachId: string): string {
   const id = approachId.trim().toUpperCase();
   const match = /^[A-Z]+(\d{1,2})([LCR]?)$/.exec(id);
   if (!match) {
-    return `${speakAlphanumeric(id)} localizer`;
+    return `${id} localizer`;
   }
   const [, runway, suffix] = match;
-  const runwaySpeech = speakDigitString(runway);
-  const suffixSpeech = suffix ? suffix.toLowerCase() : "";
-  return ["runway", runwaySpeech, suffixSpeech, "localizer"]
-    .filter((part) => part.length > 0)
-    .join(" ");
+  return `runway ${formatRunway(runway, suffix)} localizer`;
 }
 
 function speakApproachNav(approachId: string): string {
   const id = approachId.trim().toUpperCase();
   const match = /^([A-Z]+)(\d{1,2})([LCR]?)$/.exec(id);
   if (!match) {
-    return speakAlphanumeric(id);
+    return id;
   }
   const [, kind, runway, suffix] = match;
-  const kindSpeech = [...kind].map((ch) => ch.toLowerCase()).join(" ");
-  const runwaySpeech = speakDigitString(runway);
-  const suffixSpeech = suffix ? suffix.toLowerCase() : "";
-  return [kindSpeech, "runway", runwaySpeech, suffixSpeech]
-    .filter((part) => part.length > 0)
-    .join(" ");
+  return `${kind} runway ${formatRunway(runway, suffix)}`.trim();
 }
 
 function formatSpeedClause(instruction: Extract<Instruction, { type: "SPEED" }>): string {
-  const knots = `${speakDigitString(instruction.speedKt)} knots`;
+  const knots = `${formatDigitString(instruction.speedKt)} knots`;
   switch (instruction.verb) {
     case "MAINTAIN":
       return `maintain ${knots}`;
@@ -100,7 +104,7 @@ function formatSpeedClause(instruction: Extract<Instruction, { type: "SPEED" }>)
 }
 
 function formatAltitudeClause(instruction: Extract<Instruction, { type: "ALTITUDE" }>): string {
-  const alt = speakAltitude(instruction.altitudeFt);
+  const alt = formatAltitudeDigits(instruction.altitudeFt);
   const until = instruction.untilEstablished ? " until established" : "";
   switch (instruction.verb) {
     case "CLIMB":
@@ -117,7 +121,7 @@ function formatAltitudeClause(instruction: Extract<Instruction, { type: "ALTITUD
 }
 
 function formatHeadingClause(instruction: Extract<Instruction, { type: "FLY_HEADING" }>): string {
-  const heading = speakHeading(instruction.headingDeg);
+  const heading = formatHeadingDigits(instruction.headingDeg);
   switch (instruction.turn) {
     case "LEFT":
       return `turn left heading ${heading}`;
@@ -141,7 +145,7 @@ function formatInstructionClause(
     case "FLY_HEADING":
       return formatHeadingClause(instruction);
     case "TURN_DEGREES": {
-      const n = speakDigitString(instruction.degrees);
+      const n = formatDigitString(instruction.degrees);
       const dir = instruction.direction === "LEFT" ? "left" : "right";
       return `turn ${dir} ${n} degrees`;
     }
@@ -154,9 +158,9 @@ function formatInstructionClause(
     case "IDENT":
       return "ident";
     case "SAY_HEADING":
-      return `heading ${speakHeading(aircraft.headingDeg)}`;
+      return `heading ${formatHeadingDigits(aircraft.headingDeg)}`;
     case "SAY_ALTITUDE":
-      return speakAltitude(aircraft.altitudeFt);
+      return formatAltitudeDigits(aircraft.altitudeFt);
     case "CLEARED_APPROACH":
       return `cleared ${speakApproachNav(instruction.approachId)} approach`;
     case "INTERCEPT_LOCALIZER":
@@ -164,7 +168,7 @@ function formatInstructionClause(
     case "EXPECT_APPROACH":
       return `expect ${speakApproachNav(instruction.approachId)}`;
     case "DIRECT":
-      return `direct ${speakAlphanumeric(instruction.fixId)}`;
+      return `direct ${instruction.fixId}`;
     case "JOIN_PROCEDURE":
       return `join ${procedureSpeech(instruction.procedureId, procedureNames)}`;
     case "DESCEND_VIA":
@@ -172,7 +176,7 @@ function formatInstructionClause(
     case "CLIMB_VIA":
       return `climb via ${procedureSpeech(instruction.procedureId, procedureNames)}`;
     case "CROSS": {
-      const alt = speakAltitude(instruction.altitudeFt);
+      const alt = formatAltitudeDigits(instruction.altitudeFt);
       const fix = instruction.fixId;
       if (instruction.restriction === "AT_OR_ABOVE") {
         return `cross ${fix} at or above ${alt}`;
@@ -200,8 +204,8 @@ function procedureSpeech(
 
 /**
  * One callsign at the start, then comma-separated instruction clauses.
- * Combined example: `delta one two three heading two seven zero, descend and
- * maintain three thousand, maintain two one zero knots`.
+ * Combined example: `Delta 123 heading 270, descend and maintain 3000,
+ * maintain 210 knots`.
  */
 export function formatReadback(args: {
   callsign: string;
@@ -217,7 +221,7 @@ export function formatReadback(args: {
     return callsignSpeech;
   }
   const body = clauses.join(", ");
-  return callsignSpeech ? `${callsignSpeech} ${body}` : body;
+  return capitalizeFirst(callsignSpeech ? `${callsignSpeech} ${body}` : body);
 }
 
 /** Error readbacks for rejects. Omit callsign speech when it is unknown. */
@@ -236,5 +240,5 @@ export function formatRejectReadback(args: {
     after = args.detail ? `unable, not on course to ${args.detail}` : "unable, not on course";
   }
   const cs = args.callsign ? formatCallsignSpeech(args.callsign) : "";
-  return cs ? `${cs} ${after}` : after;
+  return capitalizeFirst(cs ? `${cs} ${after}` : after);
 }

@@ -8,39 +8,36 @@ import {
 } from "./readback";
 import { speakAltitude, speakHeading } from "./digits";
 
-function speech(actual: string): string {
-  return actual.toLowerCase();
-}
-
 const snapshot: ReadbackAircraft = { headingDeg: 100, altitudeFt: 8000 };
 
 function readback(instructions: Instruction[], aircraft: ReadbackAircraft = snapshot): string {
-  return speech(formatReadback({ callsign: "DAL123", instructions, aircraft }));
+  return formatReadback({ callsign: "DAL123", instructions, aircraft });
 }
 
-test("AC1 — DAL123 is delta one two three", () => {
-  expect(speech(formatCallsignSpeech("DAL123"))).toBe("delta one two three");
-  expect(speech(formatCallsignSpeech("dal123"))).toBe("delta one two three");
+test("AC1 — DAL123 is Delta 123", () => {
+  expect(formatCallsignSpeech("DAL123")).toBe("Delta 123");
+  expect(formatCallsignSpeech("dal123")).toBe("Delta 123");
 });
 
 test("AC2 — shortest heading 270 has callsign and heading, no turn word", () => {
   const text = readback([{ type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" }]);
-  expect(text).toContain("delta one two three");
-  expect(text).toContain("heading two seven zero");
+  expect(text).toContain("Delta 123");
+  expect(text).toContain("heading 270");
   expect(text).not.toMatch(/turn left|turn right/);
 });
 
-test("AC3 — left heading 90 includes turn left heading zero niner zero", () => {
+test("AC3 — left heading 90 includes turn left heading 090", () => {
   const text = readback([{ type: "FLY_HEADING", headingDeg: 90, turn: "LEFT" }]);
-  expect(text).toContain("turn left heading zero niner zero");
+  expect(text).toContain("turn left heading 090");
   expect(text).not.toContain("ninety");
-  expect(text).not.toMatch(/\bheading 90\b/);
+  expect(text).not.toContain("zero niner zero");
 });
 
-test("AC4 — descend 3000 is descend and maintain three thousand", () => {
+test("AC4 — descend 3000 is descend and maintain 3000", () => {
   const text = readback([{ type: "ALTITUDE", altitudeFt: 3000, verb: "DESCEND" }]);
-  expect(text).toContain("descend and maintain three thousand");
+  expect(text).toContain("descend and maintain 3000");
   expect(text).not.toContain("go down to");
+  expect(text).not.toContain("three thousand");
 });
 
 test("AC5 — combined heading, descend, and speed: callsign once, commas", () => {
@@ -49,21 +46,17 @@ test("AC5 — combined heading, descend, and speed: callsign once, commas", () =
     { type: "ALTITUDE", altitudeFt: 3000, verb: "DESCEND" },
     { type: "SPEED", speedKt: 210, verb: "MAINTAIN" },
   ]);
-  expect(text).toBe(
-    "delta one two three heading two seven zero, descend and maintain three thousand, maintain two one zero knots",
-  );
-  expect(text.split("delta one two three").length).toBe(2);
+  expect(text).toBe("Delta 123 heading 270, descend and maintain 3000, maintain 210 knots");
+  expect(text.split("Delta 123").length).toBe(2);
 });
 
 test("AC6 — SAY_HEADING uses current snapshot heading, not an assigned field", () => {
   const text = readback([{ type: "SAY_HEADING" }], { headingDeg: 45, altitudeFt: 8000 });
-  expect(text).toBe("delta one two three heading zero four five");
+  expect(text).toBe("Delta 123 heading 045");
 });
 
-test("AC7 — AMBIGUOUS_CALLSIGN reject is unable, ambiguous callsign", () => {
-  expect(speech(formatRejectReadback({ reason: "AMBIGUOUS_CALLSIGN" }))).toBe(
-    "unable, ambiguous callsign",
-  );
+test("AC7 — AMBIGUOUS_CALLSIGN reject is Unable, ambiguous callsign", () => {
+  expect(formatRejectReadback({ reason: "AMBIGUOUS_CALLSIGN" })).toBe("Unable, ambiguous callsign");
 });
 
 test("AC8 — readback modules are DOM-free", () => {
@@ -94,20 +87,20 @@ test("AC9 — templates cite JO 7110.65 (R01) vs vice tokens (R08)", () => {
 });
 
 const telephonyTable: [string, string][] = [
-  ["AAL1", "american one"],
-  ["UAL456", "united four five six"],
-  ["SWA99", "southwest niner niner"],
-  ["JBU12", "jetblue one two"],
-  ["NKS7", "spirit seven"],
-  ["FFT88", "frontier eight eight"],
-  ["ASA9", "alaska niner"],
-  ["FDX10", "fedex one zero"],
-  ["UPS42", "u p s four two"],
-  ["XYZ99", "x-ray yankee zulu niner niner"],
+  ["AAL1", "American 1"],
+  ["UAL456", "United 456"],
+  ["SWA99", "Southwest 99"],
+  ["JBU12", "JetBlue 12"],
+  ["NKS7", "Spirit 7"],
+  ["FFT88", "Frontier 88"],
+  ["ASA9", "Alaska 9"],
+  ["FDX10", "FedEx 10"],
+  ["UPS42", "UPS 42"],
+  ["XYZ99", "X-ray Yankee Zulu 99"],
 ];
 
 test.each(telephonyTable)("telephony %s → %s", (callsign, expected) => {
-  expect(speech(formatCallsignSpeech(callsign))).toBe(expected);
+  expect(formatCallsignSpeech(callsign)).toBe(expected);
 });
 
 const headingTable: [number, string][] = [
@@ -117,18 +110,18 @@ const headingTable: [number, string][] = [
   [5, "zero zero five"],
 ];
 
-test.each(headingTable)("heading %i → %s", (deg, expected) => {
-  expect(speech(speakHeading(deg))).toBe(expected);
+test.each(headingTable)("heading speech %i → %s", (deg, expected) => {
+  expect(speakHeading(deg)).toBe(expected);
 });
 
-test("FLY_HEADING 0 SHORTEST is spoken three six zero", () => {
+test("FLY_HEADING 0 SHORTEST is heading 360", () => {
   const text = readback([{ type: "FLY_HEADING", headingDeg: 0, turn: "SHORTEST" }]);
-  expect(text).toBe("delta one two three heading three six zero");
+  expect(text).toBe("Delta 123 heading 360");
 });
 
 test("FLY_HEADING RIGHT uses turn right heading", () => {
   const text = readback([{ type: "FLY_HEADING", headingDeg: 180, turn: "RIGHT" }]);
-  expect(text).toBe("delta one two three turn right heading one eight zero");
+  expect(text).toBe("Delta 123 turn right heading 180");
 });
 
 const altitudeTable: [number, string][] = [
@@ -139,62 +132,62 @@ const altitudeTable: [number, string][] = [
   [10500, "one zero thousand five hundred"],
 ];
 
-test.each(altitudeTable)("altitude %i → %s", (ft, expected) => {
-  expect(speech(speakAltitude(ft))).toBe(expected);
+test.each(altitudeTable)("altitude speech %i → %s", (ft, expected) => {
+  expect(speakAltitude(ft)).toBe(expected);
 });
 
 test("climb and maintain / maintain altitude wording", () => {
   expect(readback([{ type: "ALTITUDE", altitudeFt: 3000, verb: "CLIMB" }])).toBe(
-    "delta one two three climb and maintain three thousand",
+    "Delta 123 climb and maintain 3000",
   );
   expect(readback([{ type: "ALTITUDE", altitudeFt: 4500, verb: "MAINTAIN" }])).toBe(
-    "delta one two three maintain four thousand five hundred",
+    "Delta 123 maintain 4500",
   );
 });
 
-test("TURN_DEGREES twenty left is two zero", () => {
+test("TURN_DEGREES twenty left is 20", () => {
   expect(readback([{ type: "TURN_DEGREES", direction: "LEFT", degrees: 20 }])).toBe(
-    "delta one two three turn left two zero degrees",
+    "Delta 123 turn left 20 degrees",
   );
   expect(readback([{ type: "TURN_DEGREES", direction: "RIGHT", degrees: 20 }])).toBe(
-    "delta one two three turn right two zero degrees",
+    "Delta 123 turn right 20 degrees",
   );
 });
 
 test("PRESENT_HEADING is fly present heading", () => {
-  expect(readback([{ type: "PRESENT_HEADING" }])).toBe("delta one two three fly present heading");
+  expect(readback([{ type: "PRESENT_HEADING" }])).toBe("Delta 123 fly present heading");
 });
 
 test("IDENT is ident", () => {
-  expect(readback([{ type: "IDENT" }])).toBe("delta one two three ident");
+  expect(readback([{ type: "IDENT" }])).toBe("Delta 123 ident");
 });
 
 test("SAY_ALTITUDE speaks current altitude without say", () => {
   expect(readback([{ type: "SAY_ALTITUDE" }], { headingDeg: 90, altitudeFt: 3000 })).toBe(
-    "delta one two three three thousand",
+    "Delta 123 3000",
   );
 });
 
-test("CLEARED_APPROACH ILS27 spells i l s runway two seven", () => {
+test("CLEARED_APPROACH ILS27 is ILS runway 27", () => {
   expect(readback([{ type: "CLEARED_APPROACH", approachId: "ILS27" }])).toBe(
-    "delta one two three cleared i l s runway two seven approach",
+    "Delta 123 cleared ILS runway 27 approach",
   );
 });
 
-test("INTERCEPT_LOCALIZER ILS27 is intercept the runway two seven localizer", () => {
+test("INTERCEPT_LOCALIZER ILS27 is intercept the runway 27 localizer", () => {
   expect(readback([{ type: "INTERCEPT_LOCALIZER", approachId: "ILS27" }])).toBe(
-    "delta one two three intercept the runway two seven localizer",
+    "Delta 123 intercept the runway 27 localizer",
   );
 });
 
-test("EXPECT_APPROACH ILS27 is expect i l s runway two seven", () => {
+test("EXPECT_APPROACH ILS27 is expect ILS runway 27", () => {
   expect(readback([{ type: "EXPECT_APPROACH", approachId: "ILS27" }])).toBe(
-    "delta one two three expect i l s runway two seven",
+    "Delta 123 expect ILS runway 27",
   );
 });
 
 test("GO_AROUND is going around", () => {
-  expect(readback([{ type: "GO_AROUND" }])).toBe("delta one two three going around");
+  expect(readback([{ type: "GO_AROUND" }])).toBe("Delta 123 going around");
 });
 
 test("combined ILS vector includes until established and turn right heading", () => {
@@ -205,7 +198,7 @@ test("combined ILS vector includes until established and turn right heading", ()
       { type: "CLEARED_APPROACH", approachId: "ILS27" },
     ]),
   ).toBe(
-    "delta one two three turn right heading two four zero, maintain two thousand until established, cleared i l s runway two seven approach",
+    "Delta 123 turn right heading 240, maintain 2000 until established, cleared ILS runway 27 approach",
   );
 });
 
@@ -216,8 +209,8 @@ test("JOIN_PROCEDURE uses the published STAR name", () => {
       instructions: [{ type: "JOIN_PROCEDURE", procedureId: "DEM1" }],
       aircraft: snapshot,
       procedureNames: { DEM1: "DEMO ONE" },
-    }).toLowerCase(),
-  ).toBe("delta one two three join demo one");
+    }),
+  ).toBe("Delta 123 join DEMO ONE");
 });
 
 test("DESCEND_VIA uses the published STAR name", () => {
@@ -227,48 +220,39 @@ test("DESCEND_VIA uses the published STAR name", () => {
       instructions: [{ type: "DESCEND_VIA", procedureId: "DEM1" }],
       aircraft: snapshot,
       procedureNames: { DEM1: "DEMO ONE" },
-    }).toLowerCase(),
-  ).toBe("delta one two three descend via demo one");
+    }),
+  ).toBe("Delta 123 descend via DEMO ONE");
 });
 
 const rejectTable: [{ callsign?: string; reason: string; detail?: string }, string][] = [
-  [{ reason: "UNKNOWN_CALLSIGN" }, "unable, unknown callsign"],
-  [{ reason: "AMBIGUOUS_CALLSIGN" }, "unable, ambiguous callsign"],
-  [{ reason: "NO_CALLSIGN_OR_SELECTION" }, "unable, no aircraft selected"],
-  [{ callsign: "DAL123", reason: "HEADING" }, "delta one two three unable heading"],
-  [{ callsign: "DAL123", reason: "ALTITUDE" }, "delta one two three unable altitude"],
-  [{ callsign: "DAL123", reason: "SPEED" }, "delta one two three unable speed"],
-  [{ reason: "EMPTY" }, "unable, say again"],
-  [{ callsign: "DAL123", reason: "CLIMB_NOT_ABOVE" }, "delta one two three unable altitude"],
-  [{ callsign: "DAL123", reason: "DESCEND_NOT_BELOW" }, "delta one two three unable altitude"],
-  [{ callsign: "DAL123", reason: "UNKNOWN_FIX" }, "delta one two three unable, unknown fix"],
-  [
-    { callsign: "DAL123", reason: "UNKNOWN_PROCEDURE" },
-    "delta one two three unable, unknown procedure",
-  ],
+  [{ reason: "UNKNOWN_CALLSIGN" }, "Unable, unknown callsign"],
+  [{ reason: "AMBIGUOUS_CALLSIGN" }, "Unable, ambiguous callsign"],
+  [{ reason: "NO_CALLSIGN_OR_SELECTION" }, "Unable, no aircraft selected"],
+  [{ callsign: "DAL123", reason: "HEADING" }, "Delta 123 unable heading"],
+  [{ callsign: "DAL123", reason: "ALTITUDE" }, "Delta 123 unable altitude"],
+  [{ callsign: "DAL123", reason: "SPEED" }, "Delta 123 unable speed"],
+  [{ reason: "EMPTY" }, "Unable, say again"],
+  [{ callsign: "DAL123", reason: "CLIMB_NOT_ABOVE" }, "Delta 123 unable altitude"],
+  [{ callsign: "DAL123", reason: "DESCEND_NOT_BELOW" }, "Delta 123 unable altitude"],
+  [{ callsign: "DAL123", reason: "UNKNOWN_FIX" }, "Delta 123 unable, unknown fix"],
+  [{ callsign: "DAL123", reason: "UNKNOWN_PROCEDURE" }, "Delta 123 unable, unknown procedure"],
   [
     { callsign: "DAL123", reason: "NOT_ON_COURSE", detail: "NEMAX" },
-    "delta one two three unable, not on course to nemax",
+    "Delta 123 unable, not on course to NEMAX",
   ],
-  [
-    { callsign: "DAL123", reason: "UNKNOWN_APPROACH" },
-    "delta one two three unable, unknown approach",
-  ],
-  [
-    { callsign: "DAL123", reason: "NOT_ON_APPROACH" },
-    "delta one two three unable, not on approach",
-  ],
-  [{ reason: "PARSE" }, "unable, say again"],
-  [{ reason: "HEADING" }, "unable heading"],
+  [{ callsign: "DAL123", reason: "UNKNOWN_APPROACH" }, "Delta 123 unable, unknown approach"],
+  [{ callsign: "DAL123", reason: "NOT_ON_APPROACH" }, "Delta 123 unable, not on approach"],
+  [{ reason: "PARSE" }, "Unable, say again"],
+  [{ reason: "HEADING" }, "Unable heading"],
 ];
 
 test.each(rejectTable)("reject %j → %s", (args, expected) => {
-  expect(speech(formatRejectReadback(args))).toBe(expected);
+  expect(formatRejectReadback(args)).toBe(expected);
 });
 
-test("niner is used for 9 in speed and high altitude", () => {
+test("speed and high altitude use numerals, not niner speech", () => {
   expect(readback([{ type: "SPEED", speedKt: 190, verb: "MAINTAIN" }])).toBe(
-    "delta one two three maintain one niner zero knots",
+    "Delta 123 maintain 190 knots",
   );
-  expect(speech(speakAltitude(19000))).toBe("one niner thousand");
+  expect(speakAltitude(19000)).toBe("one niner thousand");
 });

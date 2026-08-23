@@ -8,7 +8,7 @@
  */
 
 import type { Aircraft } from "@core";
-import { speakAltitude } from "./digits";
+import { formatAltitudeDigits } from "./digits";
 import { formatCallsignSpeech } from "./telephony";
 
 export interface FormatCheckInArgs {
@@ -27,8 +27,8 @@ export interface StarNameCatalog {
  */
 export function formatCheckIn(args: FormatCheckInArgs): string {
   const callsignSpeech = formatCallsignSpeech(args.callsign);
-  const altitudeSpeech = speakAltitude(args.altitudeFt);
-  return `approach, ${callsignSpeech}, descending via ${args.starName} arrival through ${altitudeSpeech} feet`;
+  const altitudeSpeech = formatAltitudeDigits(args.altitudeFt);
+  return `Approach, ${callsignSpeech}, descending via ${args.starName} arrival through ${altitudeSpeech} feet`;
 }
 
 /** Catalog `name` for a STAR id. Walks `catalog.stars`; no facility switch. */

@@ -21,8 +21,7 @@ import {
   type CheckInRadio,
 } from "./checkinQueue";
 
-const GOLDEN =
-  "approach, delta one two three, descending via DEMO ONE arrival through one one thousand feet";
+const GOLDEN = "Approach, Delta 123, descending via DEMO ONE arrival through 11000 feet";
 
 function dem1Catalog(): NonNullable<World["catalog"]> {
   return {
@@ -115,9 +114,6 @@ test("AC3 — PROCEDURE+VIA_STAR past due with idle radio delivers one check-in"
   expect(events[0]?.altitudeFt).toBe(dal.altitudeFt);
   expect(events[0]?.text).toBe(GOLDEN);
   expect(status).toBe(GOLDEN);
-  expect(events[0]?.text.toLowerCase()).toBe(
-    "approach, delta one two three, descending via demo one arrival through one one thousand feet",
-  );
 });
 
 test("AC4 — heading that cancels VIA before due skips check-in", () => {

@@ -549,8 +549,7 @@ test("T03-10 AC5 — settings PTT bind updates the capture controller", () => {
   }
 });
 
-const CHECKIN_GOLDEN =
-  "approach, delta one two three, descending via DEMO ONE arrival through one one thousand feet";
+const CHECKIN_GOLDEN = "Approach, Delta 123, descending via DEMO ONE arrival through 11000 feet";
 
 async function flushMicrotasks(): Promise<void> {
   for (let i = 0; i < 16; i += 1) {

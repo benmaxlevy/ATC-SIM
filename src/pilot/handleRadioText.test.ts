@@ -58,7 +58,7 @@ test("AC1 — DAL123 H270 accepted; assigned 270 SHORTEST; others unchanged; hea
       aircraft: dal,
     }),
   );
-  expect(result.readback.toLowerCase()).toContain("heading two seven zero");
+  expect(result.readback).toContain("heading 270");
   expect(result.command?.source).toBe("text");
   expect(result.command?.callsign).toBe("DAL123");
   expect(result.command?.issuedAtSimMs).toBe(250);

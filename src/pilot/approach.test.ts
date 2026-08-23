@@ -72,8 +72,8 @@ test("AC1 — EXP ILS27 is scratchpad only; no loc capture", async () => {
   expect(dal.intent.lateral).toBe(beforeLateral);
   expect(dal.intent.clearedApproachId).toBeNull();
   expect(result.readback.toLowerCase()).toContain("expect");
-  expect(result.readback.toLowerCase()).toContain("i l s");
-  expect(result.readback.toLowerCase()).toContain("runway two seven");
+  expect(result.readback).toContain("ILS");
+  expect(result.readback).toContain("runway 27");
   stepUntil(world, () => false, 30_000);
   expect(log.byType("nav.loc.captured")).toHaveLength(0);
   expect(dal.intent.lateral).toBe(beforeLateral);
@@ -170,8 +170,8 @@ test("AC2b — Path A ILS vector sets untilEstablished, holds 2000, no GS", asyn
   const result = await handleRadioText(world, `Delta one two three ${spoken}`, log);
   expect(result.accepted).toBe(true);
   expect(result.readback.toLowerCase()).toContain("until established");
-  expect(result.readback.toLowerCase()).toContain("cleared i l s");
-  expect(result.readback.toLowerCase()).toContain("turn right heading two four zero");
+  expect(result.readback).toContain("cleared ILS");
+  expect(result.readback).toContain("turn right heading 240");
   expect(dal.intent.assignedHeadingDeg).toBe(240);
   expect(dal.intent.assignedAltitudeFt).toBe(2000);
   expect(dal.intent.lateral?.type).toBe("INTERCEPT_LOC");
@@ -349,7 +349,7 @@ test("IL ILS27 intercepts loc, holds assigned altitude, never captures GS", asyn
     log,
   );
   expect(spoken.accepted).toBe(true);
-  expect(spoken.readback.toLowerCase()).toContain("intercept the runway two seven localizer");
+  expect(spoken.readback.toLowerCase()).toContain("intercept the runway 27 localizer");
   expect(dal.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "ILS27" });
   expect(dal.intent.clearedApproachId).toBeNull();
 

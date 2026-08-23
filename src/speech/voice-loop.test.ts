@@ -476,7 +476,7 @@ test("voice-loop tests run without a DOM", () => {
   expect(typeof window).toBe("undefined");
 });
 
-const ACCEPTED_READBACK = "delta one two three turn left heading two seven zero";
+const ACCEPTED_READBACK = "Delta 123 turn left heading 270";
 
 function holdingPlayer(onStartNow?: () => number): {
   player: ReadbackPlayer;

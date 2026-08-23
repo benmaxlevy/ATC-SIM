@@ -166,14 +166,14 @@ test("AC4 — DCT NEMAX then X NEMAX 40 is at 4000 when sequenced", async () => 
   expect(Math.abs(dal.altitudeFt - 4000)).toBeLessThanOrEqual(200);
 });
 
-test("CROSS AT readback is cross NEMAX at four thousand", () => {
+test("CROSS AT readback is cross NEMAX at 4000", () => {
   expect(
     formatReadback({
       callsign: "DAL123",
       instructions: [{ type: "CROSS", fixId: "NEMAX", altitudeFt: 4000, restriction: "AT" }],
       aircraft: { headingDeg: 270, altitudeFt: 8000 },
-    }).toLowerCase(),
-  ).toBe("delta one two three cross nemax at four thousand");
+    }),
+  ).toBe("Delta 123 cross NEMAX at 4000");
 });
 
 test("DCT NELBO is lone DIRECT and sequences to present heading", async () => {

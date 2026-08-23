@@ -78,7 +78,7 @@ test("AC2 — DAL123 H270 still readbacks heading and assigns 270", async () => 
     headingDeg: 270,
     turn: "SHORTEST",
   });
-  expect(result.readback.toLowerCase()).toContain("heading two seven zero");
+  expect(result.readback).toContain("heading 270");
   expect(world.aircraft.find((ac) => ac.callsign === "DAL123")?.intent.assignedHeadingDeg).toBe(
     270,
   );

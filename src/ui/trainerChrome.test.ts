@@ -114,7 +114,7 @@ test("AC4 — radio-focus DAL123 H270 still readbacks and turns", async () => {
   const world = createWorld({ aircraft: [dal] });
   const result = await submitCommand(world, "DAL123 H270", new SessionLog());
   expect(result.accepted).toBe(true);
-  expect(result.readback.toLowerCase()).toContain("heading two seven zero");
+  expect(result.readback).toContain("heading 270");
   expect(dal.intent.assignedHeadingDeg).toBe(270);
   expect(shellSrc()).toMatch(/submitCommand\(/);
 });

@@ -3,8 +3,7 @@ import { expect, test } from "vitest";
 import { formatCheckIn, isStarViaArrival, starSpokenName } from "./checkin";
 import { formatReadback } from "./readback";
 
-const GOLDEN_LOWER =
-  "approach, delta one two three, descending via demo one arrival through one one thousand feet";
+const GOLDEN = "Approach, Delta 123, descending via DEMO ONE arrival through 11000 feet";
 
 test("AC1 — formatCheckIn golden string for DAL123 / DEMO ONE / 11000", () => {
   const text = formatCheckIn({
@@ -12,10 +11,7 @@ test("AC1 — formatCheckIn golden string for DAL123 / DEMO ONE / 11000", () => 
     starName: "DEMO ONE",
     altitudeFt: 11000,
   });
-  expect(text.toLowerCase()).toBe(GOLDEN_LOWER);
-  expect(text).toBe(
-    "approach, delta one two three, descending via DEMO ONE arrival through one one thousand feet",
-  );
+  expect(text).toBe(GOLDEN);
 });
 
 test("AC2 — catalog lookup speaks DEMO ONE and never the coded id DEM1", () => {
@@ -32,13 +28,13 @@ test("AC2 — catalog lookup speaks DEMO ONE and never the coded id DEM1", () =>
   expect(text.toLowerCase()).not.toContain("dem1");
 });
 
-test("3000 ft is spoken as through three thousand feet", () => {
+test("3000 ft is through 3000 feet", () => {
   const text = formatCheckIn({
     callsign: "DAL123",
     starName: "DEMO ONE",
     altitudeFt: 3000,
   });
-  expect(text.toLowerCase()).toContain("through three thousand feet");
+  expect(text).toContain("through 3000 feet");
 });
 
 test("AC11 — formatter comments analog AIM/7110.65 vs trainer delta", async () => {
@@ -87,8 +83,8 @@ test("AC10 — DESCEND_VIA command readback is unchanged and not a check-in", ()
       instructions: [{ type: "DESCEND_VIA", procedureId: "DEM1" }],
       aircraft: { headingDeg: 225, altitudeFt: 11000 },
       procedureNames: { DEM1: "DEMO ONE" },
-    }).toLowerCase(),
-  ).toBe("delta one two three descend via demo one");
+    }),
+  ).toBe("Delta 123 descend via DEMO ONE");
   expect(INSTRUCTION_TYPES.includes("DESCEND_VIA")).toBe(true);
   expect((INSTRUCTION_TYPES as readonly string[]).includes("CHECKIN")).toBe(false);
 });

@@ -59,7 +59,7 @@ test("DAL123 H270 is accepted with assigned 270 SHORTEST and heading readback (A
     headingDeg: 270,
     turn: "SHORTEST",
   });
-  expect(result.readback.toLowerCase()).toContain("two seven zero");
+  expect(result.readback).toContain("heading 270");
 
   const accepted = log.byType("command.accepted");
   expect(accepted.length).toBeGreaterThanOrEqual(1);
