@@ -1115,6 +1115,39 @@ test("playReadback synthesizes accepted typed readbacks without transcribe", asy
   loop.dispose();
 });
 
+test("playReadback TTS omits altitude hundreds in parentheses", async () => {
+  const port = fakePort("ignored");
+  const { player, browserTexts } = instantPlayer();
+  const loop = createVoiceLoop({
+    speechPort: port,
+    parseCommand,
+    dispatchCommand: () => {},
+    getSelectedCallsign: () => "DAL123",
+    readbackPlayer: player,
+  });
+
+  await loop.playReadback("Delta 123 descend and maintain three thousand (3000)");
+  expect(port.lastSynthesizeText).toBe("Delta 123 descend and maintain three thousand");
+
+  const web: SpeechPort = {
+    id: "web-speech",
+    transcribe: port.transcribe,
+    synthesize: port.synthesize,
+  };
+  const webLoop = createVoiceLoop({
+    speechPort: web,
+    parseCommand,
+    dispatchCommand: () => {},
+    getSelectedCallsign: () => "DAL123",
+    readbackPlayer: player,
+  });
+  await webLoop.playReadback("through one-zero thousand (10000)");
+  expect(browserTexts.at(-1)).toBe("through one-zero thousand");
+
+  loop.dispose();
+  webLoop.dispose();
+});
+
 test("playReadback passes callsign into getVoiceId", async () => {
   const seen: Array<string | undefined> = [];
   const port = fakePort("ignored");

@@ -20,6 +20,7 @@ import type { VoiceUtteranceMetrics } from "./metrics";
 import { createReadbackPlayer, type ReadbackPlayer } from "./playback/readback-player";
 import { TransmitGate, type TransmitGateEvent } from "./playback/transmit-gate";
 import type { AudioClip, SpeechPort, Transcript } from "./types";
+import { readbackForTts } from "./tts-text";
 import type { VoiceStatusEvent } from "./voice-error-codes";
 
 /** Named default for the settings slider / logs. T03-15: does not skip parse. */
@@ -435,7 +436,7 @@ class VoiceLoopImpl implements VoiceLoop {
     metrics?: VoiceUtteranceMetrics,
     callsign?: string | null,
   ): Promise<void> {
-    const text = readback.trim();
+    const text = readbackForTts(readback);
     if (this.disposed || text === "") {
       return;
     }
