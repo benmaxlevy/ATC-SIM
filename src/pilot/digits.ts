@@ -64,8 +64,8 @@ export function formatAltitudeDigits(altitudeFt: number): string {
 
 /**
  * Pilot altitude display. Below FL: grouped speech plus hundreds in
- * parentheses (`one-zero thousand (10000)` — TTS strips the paren). At/above
- * 18,000: `FL 180`.
+ * parentheses (`one-zero thousand (10000)` — TTS strips the paren, then groups
+ * remaining numerals). At/above 18,000: `FL 180`.
  */
 export function formatAltitude(altitudeFt: number): string {
   const ft = roundAltitudeToHundreds(altitudeFt);

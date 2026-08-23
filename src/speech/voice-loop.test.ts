@@ -477,6 +477,7 @@ test("voice-loop tests run without a DOM", () => {
 });
 
 const ACCEPTED_READBACK = "Delta 123 turn left heading 270";
+const ACCEPTED_READBACK_TTS = "Delta one twenty three turn left heading two seventy";
 
 function holdingPlayer(onStartNow?: () => number): {
   player: ReadbackPlayer;
@@ -629,7 +630,7 @@ test("AC1 — accepted voice command plays the synthesize clip", async () => {
   });
 
   expect(port.synthesizeCalls).toBe(1);
-  expect(port.lastSynthesizeText).toBe(ACCEPTED_READBACK);
+  expect(port.lastSynthesizeText).toBe(ACCEPTED_READBACK_TTS);
   expect(clips).toEqual([synthClip]);
 });
 
@@ -904,7 +905,7 @@ test("web-speech accepted readback uses playBrowser, not the silence clip", asyn
     result: { kind: "clip", clip: nonEmptyClip() },
   });
 
-  expect(browserTexts).toEqual([ACCEPTED_READBACK]);
+  expect(browserTexts).toEqual([ACCEPTED_READBACK_TTS]);
   expect(clips).toEqual([]);
 });
 
@@ -1115,7 +1116,7 @@ test("playReadback synthesizes accepted typed readbacks without transcribe", asy
   loop.dispose();
 });
 
-test("playReadback TTS omits altitude hundreds in parentheses", async () => {
+test("playReadback TTS groups all numerals and omits altitude parentheses", async () => {
   const port = fakePort("ignored");
   const { player, browserTexts } = instantPlayer();
   const loop = createVoiceLoop({
@@ -1126,8 +1127,10 @@ test("playReadback TTS omits altitude hundreds in parentheses", async () => {
     readbackPlayer: player,
   });
 
-  await loop.playReadback("Delta 123 descend and maintain three thousand (3000)");
-  expect(port.lastSynthesizeText).toBe("Delta 123 descend and maintain three thousand");
+  await loop.playReadback("Delta 123 descend and maintain three thousand (3000)", "DAL123");
+  expect(port.lastSynthesizeText).toBe(
+    "Delta one twenty three descend and maintain three thousand",
+  );
 
   const web: SpeechPort = {
     id: "web-speech",
