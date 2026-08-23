@@ -1,10 +1,9 @@
 /**
  * Analog: CRC STARS display with DCB cells on the PPI glass (R07).
  * Trainer delta: equal-height green cells flush to the top of the host; the
- * canvas below is the drawable PPI (T02-01 view size already minus DCB height
- * so cells do not cover the north of the range circle). Command strip is a
- * footer in this column (T02-15). The flight-strip list overlays the canvas
- * (T02-20). Not a full-width web input. Not NAS STARS.
+ * canvas below is the rectangular PPI (T02-01 view size already minus DCB height).
+ * Command strip overlays the bottom of the canvas (T02-15). The flight-strip
+ * list overlays the canvas (T02-20). Not a full-width web input. Not NAS STARS.
  */
 
 import type { World } from "@core";
@@ -17,7 +16,7 @@ export interface ScopeCanvasProps {
   onScopeChange: () => void;
   world?: World;
   children?: ReactNode;
-  /** Command strip sits under the PPI in this column. */
+  /** Command strip overlays the bottom of the PPI. */
   footer?: ReactNode;
   onCanvasClick?: (event: MouseEvent<HTMLCanvasElement>) => void;
   onCanvasDoubleClick?: (event: MouseEvent<HTMLCanvasElement>) => void;
@@ -55,8 +54,8 @@ export function ScopeCanvas({
         onCanvasContextMenu={onCanvasContextMenu}
       >
         {children}
+        {footer}
       </PpiPlaceholder>
-      {footer}
     </div>
   );
 }

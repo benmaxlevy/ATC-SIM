@@ -15,6 +15,7 @@ import {
   dcbCatalogMaps,
   dcbLeaderDirReadout,
   formatDcbMapLabel,
+  formatDcbRrReadout,
   RR_INTERVALS_NM,
   toggleVideoMap,
 } from "./dcbFunctions";
@@ -78,6 +79,14 @@ test("AC3 — RR interval change alters activeRingRadiiNm", () => {
   const at2 = buildMapCache(toMapCacheInput(view, VIEW));
   expect(at2.ringRadiiNm[0]).toBe(2);
   expect(at2.ringRadiiNm.at(-1)).toBe(20);
+  cycleRrInterval(view);
+  expect(view.showRings).toBe(false);
+  expect(formatDcbRrReadout(view.ringIntervalNm, view.showRings)).toBe("OFF");
+  const off = buildMapCache(toMapCacheInput(view, VIEW));
+  expect(off.ringRadiiNm).toEqual([]);
+  cycleRrInterval(view);
+  expect(view.showRings).toBe(true);
+  expect(view.ringIntervalNm).toBe(5);
 });
 
 test("AC4 — LDR DCB sets the same leader dirs as L1–L9", () => {

@@ -5,7 +5,7 @@
  * Pause / 1× / 2× is a map-green corner readout (not a CRC analog).
  * DCB is a green cell grid on the PPI glass (T02-16). SSA and the
  * flight-strip list live on the PPI (T02-20), not a labeled right dock.
- * Command line is a narrow token strip at the bottom of the PPI column.
+ * Command line overlays the bottom of the rectangular PPI.
  * Not NAS STARS.
  */
 
@@ -17,6 +17,8 @@ import {
   handlePpiCanvasClick,
   handlePpiDoubleClick,
   handlePpiPanDelta,
+  isPpiSlewButton,
+  isPpiSlewHeld,
   handleScopeWheel,
   installAlwaysOnScopeKeys,
   scopeFocusFromDocument,
@@ -125,7 +127,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             handleScopeWheel(event, scopeView);
           }}
           onCanvasPointerDown={(event: PointerEvent<HTMLCanvasElement>) => {
-            if (event.button !== 1) {
+            if (!isPpiSlewButton(event.button)) {
               return;
             }
             event.preventDefault();
@@ -133,7 +135,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             event.currentTarget.setPointerCapture(event.pointerId);
           }}
           onCanvasPointerMove={(event: PointerEvent<HTMLCanvasElement>) => {
-            if (!panRef.current || (event.buttons & 4) === 0) {
+            if (!panRef.current || !isPpiSlewHeld(event.buttons)) {
               return;
             }
             const rect = event.currentTarget.getBoundingClientRect();

@@ -27,8 +27,8 @@
  * Analog: CRC STARS RANGE / CENTER / HISTORY / FDB-LDB / PTL / L1–L9 leader /
  * altitude filter / video maps (docs.virtualnas.net/crc/stars — R07). PCG datablock / Mode C (R02).
  * FOA STARS display data / altitude filters (R05).
- * Trainer delta: PageUp/Down + wheel; no extra CRC presets; middle-drag pan
- * is not CRC. History is 5 s sim / 5 dots, no phosphor. PTL is straight
+ * Trainer delta: PageUp/Down + wheel; no extra CRC presets; right-drag slew
+ * (middle-drag still works) is not CRC. History is 5 s sim / 5 dots, no phosphor. PTL is straight
  * 1.0 min, default off. Trainer-authored JSON maps, not OSM / tiles (R12).
  * IBM Plex Mono, not a STARS face. Not NAS STARS.
  */
@@ -58,6 +58,8 @@ export {
   handlePpiDoubleClick,
   handlePpiLeftClick,
   handlePpiPanDelta,
+  isPpiSlewButton,
+  isPpiSlewHeld,
 } from "./ppiPointer";
 export {
   HIT_RADIUS_CSS_PX,

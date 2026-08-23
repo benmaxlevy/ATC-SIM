@@ -17,6 +17,7 @@ import {
   toggleMapLayer,
   togglePtlOn,
   tryApplyAltitudeFilterDigits,
+  cycleRrInterval,
 } from "@scope";
 import { loadKdem } from "@scenario";
 import { DCB_FONT_PX, DCB_HEIGHT_PX, DisplayControlBar } from "./DisplayControlBar";
@@ -162,7 +163,19 @@ test("AC7 — Research: labels are RANGE/MAPS/FILTER/PTL/HIST, not Zoom/Layers",
   expect(html).not.toMatch(/FLIGHT STRIPS/);
 });
 
-test("cells sit on the PPI glass; canvas below pads the range circle", () => {
+test("RR cell cycles 5 → 10 → 2 → OFF", () => {
+  const view = createScopeView();
+  expect(dcbHtml(view)).toContain("RR 5");
+  cycleRrInterval(view);
+  expect(dcbHtml(view)).toContain("RR 10");
+  cycleRrInterval(view);
+  expect(dcbHtml(view)).toContain("RR 2");
+  cycleRrInterval(view);
+  expect(view.showRings).toBe(false);
+  expect(dcbHtml(view)).toContain("OFF");
+});
+
+test("cells sit on the PPI glass; canvas below fills the rectangular PPI", () => {
   expect(canvasSrc()).toMatch(/className="ppi-column"/);
   expect(canvasSrc()).toMatch(/header=\{<DisplayControlBar/);
   expect(placeholderSrc()).toMatch(/\{header\}/);
@@ -180,6 +193,7 @@ test("cells sit on the PPI glass; canvas below pads the range circle", () => {
   expect(css).toMatch(/\.dcb-cell\s*\{[^}]*border-radius:\s*0/s);
   expect(css).toMatch(/\.dcb-cell\s*\{[^}]*box-shadow:\s*none/s);
   expect(css).toMatch(/\.ppi-canvas\s*\{[^}]*flex:\s*1 1 auto/s);
+  expect(css).toMatch(/\.command-line\s*\{[^}]*position:\s*absolute/s);
   expect(barSrc()).toMatch(/PALETTE\.dcbCell/);
   expect(barSrc()).toMatch(/PALETTE\.dcbText/);
   expect(barSrc()).toMatch(/focusPpi/);

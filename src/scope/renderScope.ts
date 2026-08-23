@@ -3,7 +3,8 @@
  * filter / MAPS / RR / LDR / CHAR SIZE / BRITE / SSA PPI (docs.virtualnas.net/crc/stars — R07).
  * PCG datablock / Mode C (R02). FOA STARS altitude filters (R05).
  * Trainer delta: Canvas2D north-up; digital map from KDEM JSON (runway,
- * localizer feather, generated range rings, optional coastline); circular clip;
+ * localizer feather, generated range rings, optional coastline); rectangular PPI
+ * filling the canvas (RANGE is still the nearest-edge NM; corners show extra);
  * **target** diamond + optional **history** dots (5 s sim / 5 dots, no phosphor);
  * full/limited **datablock** in IBM Plex Mono (not a STARS face); L1–L9 **leader**
  * (pixel-constant 36 CSS px, no length menu); **predicted track line** (PTL) straight 1.0 min
@@ -31,7 +32,7 @@
 
 import { handoffFor, type Aircraft, type World } from "@core";
 import { inAltitudeFilter } from "./altitudeFilter";
-import { nmToScreen, rangeCircle, type ScopeViewSize } from "./camera";
+import { nmToScreen, type ScopeViewSize } from "./camera";
 import {
   datablockMetrics,
   linesForDatablock,
@@ -82,23 +83,9 @@ export function renderScope(
 
   syncTrackDisplays(view.tracks, world);
 
-  const circle = rangeCircle(size);
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(circle.cx, circle.cy, circle.radiusPx, 0, Math.PI * 2);
-  ctx.clip();
-
   view.mapCache = reuseOrBuildMapCache(view.mapCache, toMapCacheInput(view, size));
   drawMapLayers(ctx, view.mapCache, view);
   drawTracks(ctx, world, view, size);
-
-  ctx.restore();
-
-  ctx.beginPath();
-  ctx.arc(circle.cx, circle.cy, circle.radiusPx, 0, Math.PI * 2);
-  ctx.strokeStyle = mapBriteColors(view.mapBriteIndex).map;
-  ctx.lineWidth = 1;
-  ctx.stroke();
 
   const ssaBottomY = drawSsa(ctx, world, view);
   drawChordHint(ctx, view, ssaBottomY);
@@ -332,8 +319,8 @@ function drawTracks(
 }
 
 /**
- * Straight 1.0 min PTL along ground track. Clipped with the PPI range circle
- * (ctx.clip above). Altitude-filtered tracks keep the symbol and lose PTL
+ * Straight 1.0 min PTL along ground track. Canvas bounds clip the rectangular
+ * PPI. Altitude-filtered tracks keep the symbol and lose PTL
  * (`inAltitudeFilter` / `shouldDrawPtl`).
  */
 function drawPredictedTrackLines(

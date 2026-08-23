@@ -1,7 +1,7 @@
 /**
  * Analog: CRC STARS DCB MAPS / RANGE / RR / LDR DIR / CHAR SIZE / BRITE (R07).
  * Trainer delta: numbered video-map catalog (`dcbLabel`), discrete range
- * presets, generated **range rings** (2/5/10 NM about airport ref), **leader**
+ * presets, generated **range rings** (2/5/10 NM about airport ref, DCB-toggleable), **leader**
  * L1–L9 direction only (no length menu), CHAR SIZE 11–13 px IBM Plex Mono,
  * BRITE map-stroke steps. Discrete range presets. Not a brightness slider.
  * Not NAS STARS.
@@ -114,14 +114,33 @@ export function formatDcbMapLabel(map: LoadedVideoMap): string {
   return `${map.dcbNumber} ${map.dcbLabel}`;
 }
 
+/**
+ * DCB RR click: 5 → 10 → 2 → OFF → 5. Rings stay about airport ref while on.
+ */
 export function cycleRrInterval(view: ScopeView): void {
+  if (!view.showRings) {
+    view.showRings = true;
+    const i = RR_INTERVALS_NM.indexOf(view.ringIntervalNm);
+    const next = i < 0 ? 0 : (i + 1) % RR_INTERVALS_NM.length;
+    view.ringIntervalNm = RR_INTERVALS_NM[next]!;
+    invalidateMapCache(view);
+    return;
+  }
   const i = RR_INTERVALS_NM.indexOf(view.ringIntervalNm);
-  const next = i < 0 ? 0 : (i + 1) % RR_INTERVALS_NM.length;
-  view.ringIntervalNm = RR_INTERVALS_NM[next]!;
+  if (i === 0) {
+    view.showRings = false;
+    invalidateMapCache(view);
+    return;
+  }
+  const next = i < 0 ? 0 : i + 1;
+  view.ringIntervalNm = RR_INTERVALS_NM[next % RR_INTERVALS_NM.length]!;
   invalidateMapCache(view);
 }
 
-export function formatDcbRrReadout(intervalNm: RrIntervalNm): string {
+export function formatDcbRrReadout(intervalNm: RrIntervalNm, showRings: boolean = true): string {
+  if (!showRings) {
+    return "OFF";
+  }
   return `RR ${intervalNm}`;
 }
 

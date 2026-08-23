@@ -2,7 +2,7 @@
  * Analog: CRC STARS DCB cell grid (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: green equal-height cells on the glass — RANGE / MAPS / RR /
  * LDR DIR / CHAR SIZE / BRITE / FILTER / PTL / HIST / PLACE CNTR. MAPS opens
- * numbered catalog `dcbLabel`s. RR is generated range rings (2/5/10 NM).
+ * numbered catalog `dcbLabel`s. RR is generated range rings (2/5/10 NM, toggleable).
  * LDR DIR is L1–L9 (same as scope-focus L+digit; no length menu). Pressed =
  * invert/stipple, not a CSS chip. No WX / PREF / SHIFT / CSA / CRDA / FMA (R06).
  * Discrete range presets only. Not NAS STARS.
@@ -117,7 +117,8 @@ export function syncDisplayControlBar(
   setText(DCB_RANGE_READOUT_ID, formatDcbRangeReadout(view.camera.rangeNm));
   setText(DCB_RANGE_OFFSET_ID, isViewOffAirport(view) ? "OFF CNTR" : "\u00a0");
   setText(DCB_FILTER_BAND_ID, formatFilterBand(view.altitudeFilter, view.filterEntry));
-  setText(DCB_RR_READOUT_ID, formatDcbRrReadout(view.ringIntervalNm));
+  setText(DCB_RR_READOUT_ID, formatDcbRrReadout(view.ringIntervalNm, view.showRings));
+  setPressed(doc.querySelector('[data-dcb-cell="rr"]'), view.showRings);
   setText(DCB_LDR_READOUT_ID, dcbLeaderDirReadout(view, world));
   setText(DCB_CHAR_READOUT_ID, formatDcbCharReadout(view.charSizePx));
   setText(DCB_BRITE_READOUT_ID, formatDcbBriteReadout(view.mapBriteIndex));
@@ -268,11 +269,12 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
       <DcbCell
         ariaLabel="Range rings"
         dataDcb="rr"
+        pressed={view.showRings}
         onClick={() => runCell(view, onChange, () => cycleRrInterval(view))}
       >
         <span className="dcb-cell-line">RR</span>
         <span id={DCB_RR_READOUT_ID} className="dcb-cell-line">
-          {formatDcbRrReadout(view.ringIntervalNm)}
+          {formatDcbRrReadout(view.ringIntervalNm, view.showRings)}
         </span>
       </DcbCell>
       <DcbCell

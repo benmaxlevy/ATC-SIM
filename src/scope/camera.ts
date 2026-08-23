@@ -2,12 +2,12 @@
  * Analog: CRC STARS RANGE / CENTER (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: presets 5–60 NM (CRC also has 6/8/12/16/24); PageUp/Down + wheel
  * call `stepRange` (no wrap). DCB RANGE click uses `cycleRange` through the same
- * 8 presets (wrap 60→5). Middle-drag pan is trainer sugar — not CRC.
+ * 8 presets (wrap 60→5). Right-drag (or middle-drag) slew is trainer sugar — not CRC.
  * No zoom-to-cursor (R12 browser-ATC anti-pattern). Not NAS STARS.
  *
- * Range is the radius of the inscribed circle of the drawable PPI
- * (`pxPerNm = min(width, height) / 2 / rangeNm`). Corners of a square canvas
- * sit outside range. Changing range does not move the view center.
+ * Range is the nearest-edge NM of the rectangular PPI
+ * (`pxPerNm = min(width, height) / 2 / rangeNm`). Corners of a wide/tall canvas
+ * show extra NM. Changing range does not move the view center.
  */
 
 export const RANGE_PRESETS_NM = [5, 10, 15, 20, 30, 40, 50, 60] as const;
@@ -38,7 +38,7 @@ export const DEFAULT_SCOPE_CAMERA: ScopeCamera = {
   centerNorthNm: AIRPORT_REF_NORTH_NM,
 };
 
-/** Inscribed-circle pixels per NM. Zero when the canvas has no size. */
+/** Nearest-edge pixels per NM of the rectangular PPI. Zero when the canvas has no size. */
 export function pxPerNm(cam: ScopeCamera, view: ScopeViewSize): number {
   const minDim = Math.min(view.widthPx, view.heightPx);
   if (minDim <= 0 || cam.rangeNm <= 0) {
@@ -80,7 +80,7 @@ export function screenToNm(
   };
 }
 
-/** Canvas-center circle whose radius equals range. */
+/** Canvas-center circle whose radius equals RANGE (nearest edge). Not a clip. */
 export function rangeCircle(view: ScopeViewSize): { cx: number; cy: number; radiusPx: number } {
   return {
     cx: view.widthPx / 2,
@@ -141,7 +141,7 @@ export function cycleRange(cam: ScopeCamera): void {
 
 /**
  * Pan the view so the world follows a CSS-pixel drag.
- * Middle-button drag is trainer sugar — not CRC.
+ * Right-button (or middle-button) slew is trainer sugar — not CRC.
  */
 export function applyPanScreenDelta(
   cam: ScopeCamera,

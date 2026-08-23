@@ -18,9 +18,9 @@ export interface PpiPlaceholderProps {
 /**
  * Analog: CRC STARS display (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: DCB cells are on the PPI glass; the canvas below is the
- * drawable PPI (T02-01 camera view size already minus DCB height so the
- * range circle is not under the cells). Range/center via keys, wheel, and
- * DCB RANGE (not CRC). Middle-drag pan (not CRC). Click selects a track and
+ * drawable PPI (T02-01 camera view size already minus DCB height).
+ * Range/center via keys, wheel, and DCB RANGE (not CRC). Right-drag slew
+ * (middle-drag still works; not CRC). Click selects a track and
  * focuses the PPI so scope-focus H toggles history.
  * Not NAS STARS.
  */

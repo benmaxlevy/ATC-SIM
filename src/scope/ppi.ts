@@ -9,7 +9,7 @@ import type { ScopeView } from "./scopeView";
  * Trainer delta: Canvas2D north-up PPI; rAF paints only after advanceWorld.
  * Resize recomputes pixels and does not reset center/range unless size is 0.
  * T02-10 DCB cells sit on this glass above the canvas, so clientHeight is
- * already the drawable PPI minus bar height (range circle is not under the cells).
+ * already the drawable PPI minus bar height.
  * Not NAS STARS.
  */
 

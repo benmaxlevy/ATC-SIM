@@ -71,7 +71,17 @@ export function handlePpiDoubleClick(
   centerOnWorld(view, nm.eastNm, nm.northNm);
 }
 
-/** Middle-button drag pan. Trainer sugar — not CRC. */
+/** Right-button (2) or middle-button (1) drag slew. Trainer sugar — not CRC. */
+export function isPpiSlewButton(button: number): boolean {
+  return button === 1 || button === 2;
+}
+
+/** `buttons` bitfield: 2 = right, 4 = middle. */
+export function isPpiSlewHeld(buttons: number): boolean {
+  return (buttons & 2) !== 0 || (buttons & 4) !== 0;
+}
+
+/** Right-drag or middle-drag pan. Trainer sugar — not CRC. */
 export function handlePpiPanDelta(
   view: ScopeView,
   dxPx: number,

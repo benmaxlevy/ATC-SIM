@@ -702,7 +702,7 @@ test("AC7 — renderScope comments say PTL / predicted track line and cite CRC",
   expect(src).toMatch(/CRC STARS/);
   expect(src).toMatch(/straight 1\.0 min/);
   expect(src).toMatch(/inAltitudeFilter/);
-  expect(src).toMatch(/ctx\.clip/);
+  expect(src).not.toMatch(/ctx\.clip/);
   expect(src).toMatch(/leader/);
   expect(src).toMatch(/L1–L9/);
   expect(src).not.toMatch(/\bstem\b/);

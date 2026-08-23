@@ -118,8 +118,8 @@ export const KEY_BINDINGS: KeyBinding[] = [
   {
     id: "mouse-pan",
     focus: "always",
-    windowsKeys: "Middle-button drag",
-    action: "Pan view center (trainer sugar). Not CRC.",
+    windowsKeys: "Right-button drag (middle-button still works)",
+    action: "Slew view center (trainer sugar). Not CRC.",
     crcAnalog: "Not CRC — CRC is CENTER then click",
   },
   {

@@ -56,7 +56,7 @@ test("AC1 — default session is 20 NM centered on the airport ref", () => {
   expect(Math.abs(p.y - 400)).toBeLessThanOrEqual(2);
 });
 
-test("pxPerNm is the inscribed-circle scale", () => {
+test("pxPerNm is the nearest-edge scale of the rectangular PPI", () => {
   expect(pxPerNm(cam(20), SQUARE)).toBe(20);
   expect(pxPerNm(cam(20), { widthPx: 800, heightPx: 400 })).toBe(10);
   expect(pxPerNm(cam(20), { widthPx: 0, heightPx: 400 })).toBe(0);
@@ -174,7 +174,7 @@ test("DCB RANGE readout is RANGE n and cycleRange wraps the same 8 presets", () 
   expect(camera.centerNorthNm).toBe(-2);
 });
 
-test("range circle is the inscribed circle; square corners sit outside range", () => {
+test("range circle is the nearest-edge radius; square corners sit outside RANGE", () => {
   const circle = rangeCircle(SQUARE);
   expect(circle.cx).toBe(400);
   expect(circle.cy).toBe(400);
