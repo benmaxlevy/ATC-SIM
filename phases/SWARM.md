@@ -5,6 +5,10 @@ Paste **this entire file** into a new agent. That agent is the **orchestrator**.
 Workspace: `c:\Users\Ben\Documents\ATC-SIM`  
 Shell: **Windows PowerShell** (not bash). Ticket commits use here-strings, not `cat <<'EOF'`.
 
+## Mandatory first action
+
+Before checking git, spawning agents, creating worktrees, or editing application code, update this file for the current swarm. Append a new swarm-start heading/configuration; do not overwrite prior swarm history. If the requested swarm configuration is incomplete, ask before making any other swarm move. Then commit the planning/status update before creating ticket branches or worktrees.
+
 This is the **fourth swarm**. Phases **0 → 1 → 2 (T02-01–13)** are already green on `master`. Phase **3 voice** is preferred (same parser tokens work through SpeechPort) but **not required**. Do **not** redo 0–3. Do **not** start phase 5.
 
 ---
@@ -91,12 +95,12 @@ Research: `phases/_shared/references.md` **R01** (vectors/approaches), **R05** (
 
 ## Your loop (orchestrator)
 
-1. `git checkout master` && `git status`. If dirty and it is not yours, **stop**.
-2. Read `phases/SWARM-STATUS.md`. Append a **fourth swarm started** heading with this config table. Do not delete earlier swarm notes.
+1. Update this file first: append the current swarm-start heading/configuration and preserve all earlier swarm history. Commit the planning update before any branch/worktree or agent action.
+2. Read `phases/SWARM-STATUS.md`, then `git checkout master` && `git status`. If dirty and it is not yours, **stop**.
 3. Confirm T02-01–13 (phase 2 original exit) are on `master`. If phase 2 is missing, **BLOCKED**. Phase 3 missing is **not** blocked — typed commands first. If STATUS still shows an in-flight third swarm, **stop** and tell the human.
-4. Spawn **one** captain for `phases/04-procedures/` with the skip list above. Wait until `PHASE EXIT GREEN` or `BLOCKED`.
+4. Spawn **one** captain for the configured phase. Wait until `PHASE EXIT GREEN` or `BLOCKED`.
 5. If `BLOCKED`: copy the note into STATUS, **stop**, tell the human. Do not start phase 5.
-6. If green: tick phase 4 in STATUS, `npm test` yourself once. Write STATUS **FOURTH SWARM COMPLETE — phase 4 procedures**. List leftover Chrome/script steps (T04-12); list remaining work (phase 5). **Stop.**
+6. If green: run the final required tests yourself, write the swarm-complete STATUS note, list honest manual leftovers and remaining work, and **stop**.
 
 Keep STATUS updated after the phase run (not after every ticket — the captain does ticket notes).
 
