@@ -21,6 +21,30 @@ Waves: A (T04-13 alone) → B (T04-14 ∥ T04-15, isolated worktrees). Check-in 
 
 **2026-08-23:** Human `/run-swarm` for STAR plane spawning. Orchestrator executing the fifth swarm (not a sixth; not phase 5). Planning commit then one captain. Untracked `e2e/` QA screenshots are not this swarm — leave uncommitted.
 
+## FIFTH SWARM COMPLETE — phase 4 post-exit addendum (T04-13–15)
+
+T04-13, T04-14, and T04-15 are on `master`. Captain `npm test` / `npm run ci`: **1039 passed, 1 skipped**. Catalog-generic STAR inbound pose (first transition leg, never MERGE/FAF). Default KDEM pack is seeded `star-inbound` VIA (seed default 1). `kdem-ils27` stays authored DAL123 north / AAL45 south. `?traffic=N` stays the downwind FPS arc. T01-04 box lives on `testdata/scenarios/kdem-downwind.json`. VIA arrivals emit frozen check-in + `radio.checkin`. Skip **T04-11**. Did **not** start phase 5. Did not redo T04-01–12.
+
+**Merged (`--no-ff`, captain only):** T04-13, T04-14, T04-15, plus `ticket/T04-ci-fix` (tsc readonly PROCEDURE / approach test) and `ticket/T04-ci-format` (Prettier `src/parse/spoken/fix-ground.test.ts`). Isolated worktrees. Workers never merged. Deleted local ticket branches. Untracked `e2e/` left uncommitted. Unrelated dirty `speech-api/` / `chore/speech-api-dotenv` left untouched.
+
+**Manual leftover (human `npm run dev`):** default session — six DEMO ONE N/S inbounds at farthest-out transition fix, Mode C ~110, not the old east-downwind line; hear/see check-in without a command; `DAL123 H270` still turns and **cancels** FMS; issue heading before ~3 s on one arrival → that one stays silent; `?scenario=kdem-ils27` still T04-12 (DAL123 north / AAL45 south); `?traffic=30` still heading-090 arc; `?seed=2` reshuffles remainder aircraft. Do not invent a visual pass.
+
+**Remaining work (next paste of `SWARM.md` with config changed):**
+
+| Phase | Folder | What it is |
+| --- | --- | --- |
+| 5 Training | `phases/05-training/` | Practice score, replay, optional bad readbacks |
+
+Optional later: T04-11 constant wind. Do not start phase 5 until a new swarm paste. Phase 5 must **ignore** `radio.checkin` (do not score it).
+
+## Phase 4 addendum captain notes (T04-13–15)
+
+- **Wave A:** merged T04-13 — `listStarSlots` / `outermostStarFix` / `starInboundPose` from catalog first-transition legs. Testdata second STAR `TST1`. No `kdem.json` / `kdem-ils27.json` edits. `npm test` 1004 passed.
+- **Wave B:** merged T04-14 then T04-15 (auto-merged after 14). Seeded assignment `mulberry32`; `spawnPolicy` `star-inbound` vs `authored`; check-in formatter + queue + `radio.checkin`. T04-15 used a local mulberry32 so it could land without 14. `npm test` 1039 passed.
+- **CI follow-ups:** `ticket/T04-ci-fix` (pre-existing tsc: readonly `routeFixIds`, PROCEDURE vs LOC test); `ticket/T04-ci-format` (pre-existing Prettier on `src/parse/spoken/fix-ground.test.ts`). `npm run ci` exit 0.
+- **Skipped:** T04-11. No phase 5.
+- **Product:** Default pack STAR inbound VIA. ils27 deterministic. `?traffic=N` downwind. Check-in is unsolicited pilot radio, not Command IR.
+
 ## Fourth swarm started — Phase 4 procedures
 
 Orchestrator started **2026-08-21**. Phases 0→1→2→3 and Path C (T03-15/14) stay green. This run implements **phase 4 procedures**. Do **not** redo T00–T03. Do **not** start phase 5. Skip **T04-11** (constant wind). Include **T04-08** (CIFP fixture, offline). Untracked `e2e/` left uncommitted.
