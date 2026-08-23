@@ -250,9 +250,7 @@ function drawDatablock(
   );
   const mode = trackDatablockMode(view, ac.id);
   const line1 =
-    mode === "limited"
-      ? base.line1
-      : withInboundHandoffCue(base.line1, handoffFor(world, ac.id));
+    mode === "limited" ? base.line1 : withInboundHandoffCue(base.line1, handoffFor(world, ac.id));
   const lines = { ...base, line1: withCaDatablockTag(line1, tint) };
   const lineH = datablockLineHeightPx(view.charSizePx);
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);

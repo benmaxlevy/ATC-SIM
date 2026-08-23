@@ -1,11 +1,5 @@
 import { expect, test } from "vitest";
-import {
-  createAircraft,
-  createWorld,
-  handoffFor,
-  setSelectedAircraft,
-  type Intent,
-} from "@core";
+import { createAircraft, createWorld, handoffFor, setSelectedAircraft, type Intent } from "@core";
 import { createWorldFromScenario, loadKdem, loadKdemIls27 } from "@scenario";
 import { DEFAULT_SCOPE_CAMERA, nmToScreen, type ScopeCamera } from "./camera";
 import { datablockRect, linesForDatablock } from "./datablock";

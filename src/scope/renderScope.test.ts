@@ -22,7 +22,12 @@ import {
 } from "./targetSymbol";
 import { isIdentFlashing, setScratchpad, syncTrackDisplays } from "./trackDisplay";
 import { DATABLOCK_FONT, DATABLOCK_FONT_PX } from "./fonts";
-import { formatFullDatablock, formatLimitedDatablock, datablockMetrics, withInboundHandoffCue } from "./datablock";
+import {
+  formatFullDatablock,
+  formatLimitedDatablock,
+  datablockMetrics,
+  withInboundHandoffCue,
+} from "./datablock";
 import { datablockTopLeft, DEFAULT_LEADER_DIR, leaderSegmentPx } from "./leader";
 
 interface StrokeRect {
