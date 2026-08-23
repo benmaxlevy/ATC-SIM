@@ -59,8 +59,11 @@ Implement one ticket at a time. Check every AC. Do not start a downstream ticket
 10. `tickets/T04-10-msaw-lite.md` (after T04-01)
 11. `tickets/T04-11-constant-wind-optional.md` (**P1 — skip if exiting without wind**)
 12. `tickets/T04-12-phase-4-scenario-vector-ils-tower.md`
+13. `tickets/T04-13-star-inbound-geometry.md` (post-exit; helpers only)
+14. `tickets/T04-14-seeded-star-inbound-spawn.md` (after T04-13)
+15. `tickets/T04-15-star-descend-via-checkin.md` (after T04-13; may parallel T04-14)
 
-T04-08 is required for phase exit (fixture tests, no network). T04-11 is not.
+T04-08 is required for historical phase exit (fixture tests, no network). T04-11 is not. T04-13–15 are a post-exit addendum: do not un-green T04-01–12.
 
 ## Suggested files (create as needed; match phase 0 layout)
 

@@ -1,5 +1,26 @@
 # Swarm status
 
+## Fifth swarm started — Phase 4 post-exit addendum (T04-13–15)
+
+Orchestrator planning **2026-08-23**. Historical phase 4 exit (T04-01–10, T04-12) stays green. This run is **T04-13, T04-14, T04-15 only**. Do **not** redo T00–T04-12. Do **not** start phase 5. Skip **T04-11**.
+
+| Key | Value |
+| --- | --- |
+| Goal | Default student traffic spawns on catalog STAR entry fixes (VIA descending). Seeded STAR × transition. VIA arrivals check in |
+| Player loop | `npm run dev` → six DEMO ONE N/S inbounds at farthest-out transition fix → check-in → vectors/ILS unchanged |
+| Skip | **T04-11**. **T04-01–12** (already merged). **T05-*** |
+| Include | **T04-13**, **T04-14**, **T04-15** |
+| Stop | **Do not start phase 5.** No scoring, replay, imperfect pilots, or second TCP |
+| Do not redo | T00-*, T01-*, T02-*, T03-*, T04-01–12. Fourth swarm is complete |
+| Max ticket workers in flight | **3** (wave A = 1; wave B = 2) |
+| Merge lock | **Only the phase captain** merges to `master` (`--no-ff`) |
+| Model | **cursor grok 4.6 high only.** `model: "cursor-grok-4.6-high"` on every Task spawn |
+| Paid STT/TTS/LLM | **Forbidden** |
+
+Waves: A (T04-13 alone) → B (T04-14 ∥ T04-15, isolated worktrees). Check-in phraseology: `approach, {callsign}, descending via {STAR name} arrival through {altitude} feet`. `kdem-ils27` stays deterministic. `?traffic=N` stays the downwind FPS arc.
+
+**Not started until captain spawn.** Untracked `e2e/` QA screenshots are not this swarm — leave uncommitted.
+
 ## Fourth swarm started — Phase 4 procedures
 
 Orchestrator started **2026-08-21**. Phases 0→1→2→3 and Path C (T03-15/14) stay green. This run implements **phase 4 procedures**. Do **not** redo T00–T03. Do **not** start phase 5. Skip **T04-11** (constant wind). Include **T04-08** (CIFP fixture, offline). Untracked `e2e/` left uncommitted.

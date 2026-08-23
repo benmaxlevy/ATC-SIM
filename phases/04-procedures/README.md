@@ -464,10 +464,24 @@ Implement in this order unless a ticket says it can parallel. Do not start a tic
 | T04-10 | MSAW lite | P0 | M | T04-01 | T04-12 |
 | T04-11 | Constant wind optional | P1 | S | phase 1 kinematics | none (exit-optional) |
 | T04-12 | Phase 4 scenario: vector to ILS and land/hand off to tower stub | P0 | M | T04-04, T04-06, T04-07, T04-09, T04-10 | phase exit |
+| T04-13 | STAR inbound geometry helpers | P0 | S | T04-01, T04-02, T04-03 | T04-14, T04-15 |
+| T04-14 | Seeded STAR inbound spawn (default session) | P0 | M | T04-13, T04-04 | none |
+| T04-15 | STAR descend-via check-in | P0 | M | T04-13 | none |
 
 **Parallelism:** After T04-01, T04-08 and T04-10 can proceed beside T04-02. T04-09 can start immediately. T04-04 ∥ T04-05 after T04-03. T04-11 can land anytime after kinematics; prefer after T04-05 so loc tests include a wind case if the ticket is pulled.
 
 T04-11 is **not** required for phase exit. T04-08 **is** required: the importer must pass on the frozen fixture even if no real CIFP file is present.
+
+### Post-exit addendum (T04-13–15)
+
+Historical phase 4 exit (T04-01–10, T04-12) stays green. Do **not** uncheck those boxes. This addendum is new product work after that exit:
+
+- Default student session spawns arrivals on catalog STAR **entry** fixes (first transition leg), VIA armed, descending the published path.
+- STAR × transition assignment is seeded-random over the loaded catalog (KDEM today: DEMO ONE N/S). A second STAR JSON of the same shape needs no live `if`.
+- Each VIA arrival checks in: `approach, {callsign}, descending via {STAR name} arrival through {altitude} feet`.
+- `kdem-ils27` stays deterministic (DAL123 north / AAL45 south). `?traffic=N` stays the FPS downwind arc. T01-04 downwind box survives as a test fixture.
+
+Wave: **T04-13** alone, then **T04-14 ∥ T04-15**.
 
 ---
 
@@ -501,4 +515,4 @@ Do not start phase 5 until every box is true.
 2. Paste **`AGENT.md`** from this folder as the implementation prompt, **or** paste a single `tickets/T04-xx-*.md` and say: implement only this ticket, stop when ACs are checked.
 3. Do not implement phase 5 scoring against these events until phase 4 exits — emitting the events is enough.
 
-Ticket IDs are stable. Do not renumber. If you must extend, add `T04-13` at the end.
+Ticket IDs are stable. Do not renumber. T04-13–15 are the post-exit addendum. If you must extend further, add `T04-16` at the end.
