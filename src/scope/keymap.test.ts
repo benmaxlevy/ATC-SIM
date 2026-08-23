@@ -106,6 +106,7 @@ const REQUIRED_BINDING_IDS = [
   "mouse-range",
   "mouse-pan",
   "mouse-select",
+  "mouse-accept-handoff",
   "mouse-deselect",
   "mouse-center",
   "mouse-place-cntr",
@@ -189,4 +190,11 @@ test("F1 / Tab / unmodified slash classifiers match the frozen focus model", () 
   expect(isCycleFocusKey("F1")).toBe(false);
   expect(isRadioFocusSlashKey("/")).toBe(true);
   expect(isRadioFocusSlashKey("?")).toBe(false);
+});
+
+test("T04-17 AC5 — help overlay lists click-accept inbound handoff", () => {
+  const blob = KEY_BINDINGS.map((b) => `${b.windowsKeys} ${b.action}`).join("\n");
+  expect(blob).toMatch(/CLICK accept inbound handoff/);
+  expect(blob).toMatch(/CRC slew analog/);
+  expect(bindingById("mouse-accept-handoff")?.action).toMatch(/CLICK accept inbound handoff/);
 });

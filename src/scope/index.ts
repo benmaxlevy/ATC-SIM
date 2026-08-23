@@ -59,7 +59,12 @@ export {
   handlePpiLeftClick,
   handlePpiPanDelta,
 } from "./ppiPointer";
-export { HIT_RADIUS_CSS_PX, pickAircraftAt, selectAircraftAt } from "./pick";
+export {
+  HIT_RADIUS_CSS_PX,
+  pickAircraftAt,
+  selectAircraftAt,
+  selectOrAcceptAircraftAt,
+} from "./pick";
 export type { DatablockPickView } from "./pick";
 export {
   HISTORY_TRAIL,
@@ -211,6 +216,7 @@ export {
 } from "./ptl";
 export {
   IDENT_DISPLAY_FLASH_MS,
+  acceptInboundOnClick,
   applyDropTrackToSelection,
   applyInitiateTrackToSelection,
   createTrackDisplay,
@@ -263,6 +269,7 @@ export {
   formatLimitedDatablock,
   linesForDatablock,
   sanitizeScratchpad,
+  withInboundHandoffCue,
 } from "./datablock";
 export type {
   DatablockLines,

@@ -6,7 +6,7 @@
  * unseeded draws. Drain from the app tick after physics; do not import SpeechPort.
  */
 
-import type { Aircraft, SessionLog, World } from "@core";
+import { handoffFor, type Aircraft, type SessionLog, type World } from "@core";
 import { formatCheckIn, isStarViaArrival, starSpokenName } from "./checkin";
 
 export const CHECKIN_STAGGER_MIN_MS = 3000;
@@ -134,7 +134,7 @@ export class CheckInQueue {
       if (!this.canStart(world.simTimeMs, busy)) {
         return;
       }
-      const next = this.nextDue(world.simTimeMs);
+      const next = this.nextDue(world.simTimeMs, world);
       if (!next) {
         return;
       }
@@ -174,9 +174,21 @@ export class CheckInQueue {
     }
   }
 
-  private nextDue(simTimeMs: number): ScheduledCheckIn | undefined {
+  /**
+   * Pending inbound HO holds check-in (keep due time). Fire on the first drain
+   * after accept even if due is in the past. Heading-cancel skip is unchanged.
+   */
+  private nextDue(simTimeMs: number, world: World): ScheduledCheckIn | undefined {
     return this.entries
-      .filter((entry) => entry.state === "pending" && simTimeMs >= entry.dueSimMs)
+      .filter((entry) => {
+        if (entry.state !== "pending" || simTimeMs < entry.dueSimMs) {
+          return false;
+        }
+        if (handoffFor(world, entry.aircraftId).kind === "inbound") {
+          return false;
+        }
+        return true;
+      })
       .sort((a, b) => a.dueSimMs - b.dueSimMs || a.spawnOrder - b.spawnOrder)[0];
   }
 

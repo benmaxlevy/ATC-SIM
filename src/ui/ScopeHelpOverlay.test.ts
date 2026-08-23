@@ -23,6 +23,7 @@ test("AC2 — overlay footer is exactly TRAINER KEYS — NOT CRC and lists froze
   expect(html).toMatch(/>M</);
   expect(html).toMatch(/F then 3-digit min/);
   expect(html).toMatch(/Tab/);
+  expect(html).toMatch(/CLICK accept inbound handoff/);
 });
 
 test("closed overlay renders nothing", () => {

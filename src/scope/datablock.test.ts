@@ -11,6 +11,7 @@ import {
   formatLimitedDatablock,
   linesForDatablock,
   pointInDatablock,
+  withInboundHandoffCue,
 } from "./datablock";
 import { DATABLOCK_FONT, DATABLOCK_FONT_PX, SCOPE_FONT_STACK } from "./fonts";
 
@@ -183,4 +184,10 @@ test("AC9 — formatters and font say datablock / Mode C, not label; FDB/LDB + o
   }) as Record<string, string>;
   const html = htmlSources["../../index.html"] ?? "";
   expect(html).toMatch(/IBM\+Plex\+Mono/);
+});
+
+test("T04-17 — pending inbound FDB line 1 shows HO; none stays callsign", () => {
+  expect(withInboundHandoffCue("DAL123", { kind: "none" })).toBe("DAL123");
+  expect(withInboundHandoffCue("DAL123", { kind: "inbound", fromSectorId: "C" })).toBe("DAL123 HO");
+  expect(withInboundHandoffCue("033", { kind: "inbound", fromSectorId: "C" })).toBe("033 HO");
 });

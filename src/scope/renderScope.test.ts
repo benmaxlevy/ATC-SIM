@@ -1,11 +1,12 @@
 ﻿import { expect, test } from "vitest";
-import { SessionLog, SIM_DT_S, createWorld, makeTestAircraft, stepWorld } from "@core";
+import { SessionLog, SIM_DT_S, createWorld, handoffFor, makeTestAircraft, stepWorld } from "@core";
 import { applyIntent } from "@pilot";
 import { createWorldFromScenario, loadKdem } from "@scenario";
 import { formatRangeReadout, nmToScreen } from "./camera";
 import { parseDigitalMap } from "./mapLayers";
 import { PALETTE } from "./palette";
 import { PTL_MINUTES, ptlEndpoint, shouldDrawPtl } from "./ptl";
+import { handlePpiLeftClick } from "./ppiPointer";
 import { renderScope } from "./renderScope";
 import { createScopeView } from "./scopeView";
 import { formatFilterReadout } from "./altitudeFilter";
@@ -19,9 +20,9 @@ import {
   OWNERSHIP_STUB_FONT,
   isTargetDiamondPath,
 } from "./targetSymbol";
-import { isIdentFlashing, setScratchpad } from "./trackDisplay";
+import { isIdentFlashing, setScratchpad, syncTrackDisplays } from "./trackDisplay";
 import { DATABLOCK_FONT, DATABLOCK_FONT_PX } from "./fonts";
-import { formatFullDatablock, formatLimitedDatablock, datablockMetrics } from "./datablock";
+import { formatFullDatablock, formatLimitedDatablock, datablockMetrics, withInboundHandoffCue } from "./datablock";
 import { datablockTopLeft, DEFAULT_LEADER_DIR, leaderSegmentPx } from "./leader";
 
 interface StrokeRect {
@@ -178,7 +179,8 @@ test("AC1 — six spawned arrivals get an 8 px diamond at nmToScreen ±2 px", ()
     const stub = fillTexts.find((t) => t.text === "*" && t.font === OWNERSHIP_STUB_FONT);
     expect(stub, `${ac.callsign} CSI stub`).toBeDefined();
     const block = formatFullDatablock(ac);
-    const line1 = fillTexts.filter((t) => t.text === ac.callsign && t.font === DATABLOCK_FONT);
+    const expectedLine1 = withInboundHandoffCue(ac.callsign, handoffFor(world, ac.id));
+    const line1 = fillTexts.filter((t) => t.text === expectedLine1 && t.font === DATABLOCK_FONT);
     expect(line1, ac.callsign).toHaveLength(1);
     expect(
       fillTexts.some((t) => t.text === block.line2 && t.font === DATABLOCK_FONT),
@@ -1017,4 +1019,23 @@ test("video map labels stack newline-separated STAR restriction lines", () => {
   expect(alt).toBeDefined();
   expect(spd).toBeDefined();
   expect((spd!.y ?? 0) - (alt!.y ?? 0)).toBe(DATABLOCK_FONT_PX);
+});
+
+test("T04-17 AC1 — pending inbound paints HO cue; click owns white and drops cue", () => {
+  const world = createWorldFromScenario(loadKdem(), 1);
+  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const pending = createMockCtx();
+  renderScope(pending.ctx, world, view, 800, 800);
+  expect(pending.fillTexts.some((t) => t.text === "DAL123 HO")).toBe(true);
+  expect(pending.fillTexts.find((t) => t.text === "DAL123 HO")?.fillStyle).toBe(PALETTE.unowned);
+
+  const tick = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: 800, heightPx: 800 });
+  handlePpiLeftClick(view, world, tick.x, tick.y, 800, 800);
+  const owned = createMockCtx();
+  renderScope(owned.ctx, world, view, 800, 800);
+  expect(owned.fillTexts.some((t) => t.text === "DAL123 HO")).toBe(false);
+  expect(owned.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
+  expect(handoffFor(world, dal.id)).toEqual({ kind: "none" });
 });

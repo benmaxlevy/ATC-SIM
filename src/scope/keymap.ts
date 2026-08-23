@@ -130,6 +130,13 @@ export const KEY_BINDINGS: KeyBinding[] = [
     crcAnalog: "Slew / click target",
   },
   {
+    id: "mouse-accept-handoff",
+    focus: "always",
+    windowsKeys: "Left click pending inbound track",
+    action: "CLICK accept inbound handoff (CRC slew analog)",
+    crcAnalog: "CRC STARS: slew the track to accept the handoff",
+  },
+  {
     id: "mouse-deselect",
     focus: "always",
     windowsKeys: "Left click empty PPI",

@@ -1,6 +1,6 @@
 import type { World } from "@core";
 import { applyPanScreenDelta, screenToNm, type ScopeViewSize } from "./camera";
-import { HIT_RADIUS_CSS_PX, pickAircraftAt, selectAircraftAt } from "./pick";
+import { HIT_RADIUS_CSS_PX, pickAircraftAt, selectOrAcceptAircraftAt } from "./pick";
 import { centerOnWorld, recordLastClick, type ScopeView } from "./scopeView";
 
 function viewSize(widthPx: number, heightPx: number): ScopeViewSize {
@@ -15,7 +15,7 @@ export function cssPointFromClient(
   return { x: clientX - rect.left, y: clientY - rect.top };
 }
 
-/** Left click: record world point for End, then hit-test select. */
+/** Left click: record world point for End, then accept inbound HO if pending and select. */
 export function handlePpiLeftClick(
   view: ScopeView,
   world: World,
@@ -31,7 +31,17 @@ export function handlePpiLeftClick(
     centerOnWorld(view, nm.eastNm, nm.northNm);
     view.placeCenterArmed = false;
   }
-  selectAircraftAt(world, cssX, cssY, view.camera, cssWidth, cssHeight, HIT_RADIUS_CSS_PX, view);
+  selectOrAcceptAircraftAt(
+    world,
+    view.tracks,
+    cssX,
+    cssY,
+    view.camera,
+    cssWidth,
+    cssHeight,
+    HIT_RADIUS_CSS_PX,
+    view,
+  );
 }
 
 /** Double-click empty PPI: center there. Track hits stay as select-only. */

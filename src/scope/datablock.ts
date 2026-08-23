@@ -12,6 +12,7 @@
  * Never a label, nametag, or tooltip. Not NAS STARS.
  */
 
+import type { TrackHandoff } from "@core";
 import { DATABLOCK_LINE_HEIGHT_PX, DEFAULT_DATABLOCK_CELL_PX } from "./fonts";
 import {
   DEFAULT_LEADER_DIR,
@@ -163,6 +164,17 @@ export interface DatablockLines {
   line1: string;
   line2?: string;
   line3?: string;
+}
+
+/**
+ * Pending inbound HO cue on FDB line 1 (CRC transferring-sector analog).
+ * Limited datablocks stay Mode C hundreds only.
+ */
+export function withInboundHandoffCue(line1: string, handoff: TrackHandoff): string {
+  if (handoff.kind !== "inbound") {
+    return line1;
+  }
+  return `${line1} HO`;
 }
 
 /** Resolve full vs limited lines for paint and hit-test. */

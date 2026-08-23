@@ -15,7 +15,9 @@
  * selected yellow box independent of ownership. CHAR SIZE 11–13 px. BRITE steps
  * gray map strokes only. SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
  * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. T04-09/T04-10 CA/MSAW tints
- * target + datablock from `world.alerts` (yellow caution, red alert). Not OSM / tiles (R12). Not a
+ * target + datablock from `world.alerts` (yellow caution, red alert). CA halo is
+ * **not** drawn: CRC conflict-alert CA is blinking `CA` text + tone, not a 3 NM circle
+ * (circles are TPA J-rings or ERAM DRI). Not OSM / tiles (R12). Not a
  * sprite. Not an airplane. Not a label. Not NAS STARS.
  *
  * Draw order (phase README): background, rings, coastline, runway, localizer,
@@ -27,10 +29,15 @@
  * character, history cap is 5 dots. Canvas2D only (no WebGL).
  */
 
-import type { Aircraft, World } from "@core";
+import { handoffFor, type Aircraft, type World } from "@core";
 import { inAltitudeFilter } from "./altitudeFilter";
 import { nmToScreen, rangeCircle, type ScopeViewSize } from "./camera";
-import { datablockMetrics, linesForDatablock, type DatablockMode } from "./datablock";
+import {
+  datablockMetrics,
+  linesForDatablock,
+  withInboundHandoffCue,
+  type DatablockMode,
+} from "./datablock";
 import { datablockFontCss, datablockLineHeightPx, measureDatablockCellWidth } from "./fonts";
 import { datablockTopLeft, DEFAULT_LEADER_DIR, drawLeaderLine, type LeaderDir } from "./leader";
 import { reuseOrBuildMapCache, toMapCacheInput, type MapCache } from "./mapLayers";
@@ -241,7 +248,12 @@ function drawDatablock(
     view.modeCVisible,
     scratchpad,
   );
-  const lines = { ...base, line1: withCaDatablockTag(base.line1, tint) };
+  const mode = trackDatablockMode(view, ac.id);
+  const line1 =
+    mode === "limited"
+      ? base.line1
+      : withInboundHandoffCue(base.line1, handoffFor(world, ac.id));
+  const lines = { ...base, line1: withCaDatablockTag(line1, tint) };
   const lineH = datablockLineHeightPx(view.charSizePx);
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
   const origin = datablockTopLeft(trackLeaderDir(view, ac.id), metrics);

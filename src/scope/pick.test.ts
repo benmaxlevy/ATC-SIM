@@ -1,8 +1,23 @@
 import { expect, test } from "vitest";
-import { createAircraft, createWorld, setSelectedAircraft, type Intent } from "@core";
+import {
+  createAircraft,
+  createWorld,
+  handoffFor,
+  setSelectedAircraft,
+  type Intent,
+} from "@core";
+import { createWorldFromScenario, loadKdem, loadKdemIls27 } from "@scenario";
 import { DEFAULT_SCOPE_CAMERA, nmToScreen, type ScopeCamera } from "./camera";
 import { datablockRect, linesForDatablock } from "./datablock";
-import { HIT_RADIUS_CSS_PX, pickAircraftAt, selectAircraftAt } from "./pick";
+import { PALETTE } from "./palette";
+import {
+  HIT_RADIUS_CSS_PX,
+  pickAircraftAt,
+  selectAircraftAt,
+  selectOrAcceptAircraftAt,
+} from "./pick";
+import { handlePpiLeftClick } from "./ppiPointer";
+import { trackPaintColor } from "./ownership";
 import { createScopeView } from "./scopeView";
 import { syncTrackDisplays } from "./trackDisplay";
 
@@ -211,4 +226,68 @@ test("AC5 — selectAircraftAt does not import the radio pipeline or write inten
     expect(src).not.toMatch(/\.intent\s*=/);
     expect(src).not.toMatch(/assignedHeadingDeg\s*=/);
   }
+});
+
+test("T04-17 AC1 — click pending inbound DAL123 accepts, owns white, logs once", () => {
+  const world = createWorldFromScenario(loadKdem(), 1);
+  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  expect(handoffFor(world, dal.id).kind).toBe("inbound");
+  expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
+
+  const tick = nmToScreen(dal.xNm, dal.yNm, view.camera, VIEW);
+  handlePpiLeftClick(view, world, tick.x, tick.y, CSS_W, CSS_H);
+
+  expect(handoffFor(world, dal.id)).toEqual({ kind: "none" });
+  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+  expect(trackPaintColor(view.tracks.get(dal.id)!.ownership)).toBe(PALETTE.owned);
+  expect(PALETTE.owned).toBe("#FFFFFF");
+  expect(world.sessionLog?.byType("handoff.inbound.accepted")).toHaveLength(1);
+  expect(world.selectedAircraftId).toBe(dal.id);
+
+  handlePpiLeftClick(view, world, tick.x, tick.y, CSS_W, CSS_H);
+  expect(world.sessionLog?.byType("handoff.inbound.accepted")).toHaveLength(1);
+  expect(world.selectedAircraftId).toBe(dal.id);
+});
+
+test("T04-17 AC4 — ils27 click is select-only and does not log accepted", () => {
+  const world = createWorldFromScenario(loadKdemIls27());
+  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const before = world.sessionLog?.byType("handoff.inbound.accepted")?.length ?? 0;
+  expect(handoffFor(world, dal.id)).toEqual({ kind: "none" });
+
+  const tick = nmToScreen(dal.xNm, dal.yNm, view.camera, VIEW);
+  const hit = selectOrAcceptAircraftAt(
+    world,
+    view.tracks,
+    tick.x,
+    tick.y,
+    view.camera,
+    CSS_W,
+    CSS_H,
+    HIT_RADIUS_CSS_PX,
+    view,
+  );
+  expect(hit).toBe(dal);
+  expect(handoffFor(world, dal.id)).toEqual({ kind: "none" });
+  expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
+  expect(world.selectedAircraftId).toBe(dal.id);
+  expect(world.sessionLog?.byType("handoff.inbound.accepted")?.length ?? 0).toBe(before);
+});
+
+test("T04-17 AC7 — comments cite CRC slew-accept + owned white; no CA halo", () => {
+  const sources = import.meta.glob("./*.{ts,tsx}", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  const pick = sources["./pick.ts"] ?? "";
+  const render = sources["./renderScope.ts"] ?? "";
+  expect(pick).toMatch(/slew the track/);
+  expect(pick).toMatch(/white/);
+  expect(pick).toMatch(/not a 3 NM circle/);
+  expect(render).toMatch(/not a 3 NM circle/);
 });

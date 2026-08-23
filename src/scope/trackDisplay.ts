@@ -75,6 +75,29 @@ function selectedTrackId(world: World): string | null {
 }
 
 /**
+ * Analog: CRC STARS “To accept the handoff, simply slew the track”
+ * (docs.virtualnas.net/crc/stars — R07). Owned FDB is white (`PALETTE.owned`,
+ * T02-08). Trainer delta: first click on a pending inbound accepts (and the
+ * click handler then selects). Not a Command. Not NAS.
+ *
+ * CA halo is **not** drawn: CRC STARS CA is blinking `CA` text + tone, not a
+ * 3 NM circle (circles are TPA J-rings or ERAM DRI).
+ */
+export function acceptInboundOnClick(
+  tracks: Map<string, TrackDisplay>,
+  world: World,
+  aircraftId: string,
+): boolean {
+  const accepted = acceptInboundHandoff(world, aircraftId);
+  if (!accepted) {
+    return false;
+  }
+  const td = ensureTrackDisplay(tracks, aircraftId);
+  td.ownership = applyInitiateTrack(td.ownership);
+  return true;
+}
+
+/**
  * F3 always-on: selected unowned → owned; already owned stays owned.
  * Pending inbound HO: same key takes the track (CRC INIT CNTL analog) via
  * `acceptInboundHandoff` so radio is no longer gated. No selection: no-op.

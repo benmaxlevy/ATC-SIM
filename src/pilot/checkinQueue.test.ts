@@ -1,8 +1,10 @@
 import {
   SessionLog,
   SIM_DT_S,
+  acceptInboundHandoff,
   createAircraft,
   createWorld,
+  offerInboundHandoff,
   stepWorld,
   type Aircraft,
   type World,
@@ -347,6 +349,78 @@ test("AC9 — downwind bench without VIA never schedules a check-in", () => {
     nowWallMs: () => 1,
   });
   expect(log.byType("radio.checkin")).toHaveLength(0);
+});
+
+test("T04-17 AC3 — inbound pending holds check-in until accept, then one fires", () => {
+  const dal = viaArrival("DAL123");
+  const log = new SessionLog();
+  const world = createWorld({ aircraft: [dal], catalog: dem1Catalog(), sessionLog: log });
+  offerInboundHandoff(world, dal);
+  const queue = createCheckInQueue({ seed: 1 });
+  queue.scheduleFromWorld(world, 0);
+  world.simTimeMs = CHECKIN_STAGGER_MAX_MS + 1000;
+  const plays: string[] = [];
+  let status: string | null = null;
+  queue.drain({
+    world,
+    log,
+    radio: silentRadio(plays),
+    setStatus: (text) => {
+      status = text;
+    },
+    nowWallMs: () => 1,
+  });
+  expect(log.byType("radio.checkin")).toHaveLength(0);
+  expect(plays).toEqual([]);
+  expect(status).toBeNull();
+  expect(queue.scheduled()[0]?.state).toBe("pending");
+
+  expect(acceptInboundHandoff(world, dal.id)).toBe(true);
+  queue.drain({
+    world,
+    log,
+    radio: silentRadio(plays),
+    setStatus: (text) => {
+      status = text;
+    },
+    nowWallMs: () => 2,
+  });
+  expect(log.byType("radio.checkin")).toHaveLength(1);
+  expect(log.byType("radio.checkin")[0]?.callsign).toBe("DAL123");
+  expect(status).toBe(GOLDEN);
+  expect(plays).toEqual([GOLDEN]);
+
+  queue.drain({
+    world,
+    log,
+    radio: silentRadio(plays),
+    setStatus: () => {},
+    nowWallMs: () => 3,
+  });
+  expect(log.byType("radio.checkin")).toHaveLength(1);
+});
+
+test("T04-17 AC3 — heading after accept before due still skips check-in", () => {
+  const dal = viaArrival("DAL123");
+  const log = new SessionLog();
+  const world = createWorld({ aircraft: [dal], catalog: dem1Catalog(), sessionLog: log });
+  offerInboundHandoff(world, dal);
+  const queue = createCheckInQueue({ seed: 1 });
+  queue.scheduleFromWorld(world, 0);
+  expect(acceptInboundHandoff(world, dal.id)).toBe(true);
+  applyIntent(dal, [{ type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" }], 0);
+  world.simTimeMs = CHECKIN_STAGGER_MAX_MS + 1000;
+  const plays: string[] = [];
+  queue.drain({
+    world,
+    log,
+    radio: silentRadio(plays),
+    setStatus: () => {},
+    nowWallMs: () => 1,
+  });
+  expect(log.byType("radio.checkin")).toHaveLength(0);
+  expect(plays).toEqual([]);
+  expect(queue.scheduled()[0]?.state).toBe("skipped");
 });
 
 test("AC10 — parse and scope do not import formatCheckIn or emit radio.checkin", () => {

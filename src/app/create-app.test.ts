@@ -10,7 +10,15 @@ import {
 } from "@speech";
 import { expect, test, vi } from "vitest";
 import { handleRadioText } from "@pilot";
-import { createWorldFromScenario, loadKdemIls27 } from "@scenario";
+import { createWorldFromScenario, loadKdem, loadKdemIls27 } from "@scenario";
+import {
+  PALETTE,
+  createScopeView,
+  handlePpiLeftClick,
+  nmToScreen,
+  syncTrackDisplays,
+  trackPaintColor,
+} from "@scope";
 import { createApp, type AppDeps } from "./create-app";
 
 function nonEmptyClip(): AudioClip {
@@ -694,6 +702,91 @@ test("T04-15 AC9 — downwind pack without VIA never checks in", async () => {
     handles.afterPhysicsTick();
   }
   expect(handles.log.byType("radio.checkin")).toHaveLength(0);
+  handles.ptt.dispose();
+  handles.voiceLoop.dispose();
+});
+
+test("T04-17 AC1/AC2 — default pack click DAL123 owns white then H270 turns", async () => {
+  const world = createWorldFromScenario(loadKdem(), 1);
+  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  const handles = createApp({
+    speech: new NullSpeechPort(),
+    world,
+    ptt: createPttCaptureController({ onEvent: () => {}, attachTo: null }),
+    readbackPlayer: instantPlayer(),
+  });
+  const rejected = await handleRadioText(world, "DAL123 H270", handles.log);
+  expect(rejected.accepted).toBe(false);
+  expect(rejected.reason).toBe("handoff-pending");
+
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const tick = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: 800, heightPx: 800 });
+  handlePpiLeftClick(view, world, tick.x, tick.y, 800, 800);
+  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+  expect(trackPaintColor(view.tracks.get(dal.id)!.ownership)).toBe(PALETTE.owned);
+  expect(world.sessionLog?.byType("handoff.inbound.accepted")).toHaveLength(1);
+
+  const result = await handleRadioText(world, "DAL123 H270", handles.log);
+  expect(result.accepted).toBe(true);
+  expect(dal.intent.assignedHeadingDeg).toBe(270);
+  expect(dal.intent.lateral).toEqual({ type: "HEADING", headingDeg: 270 });
+  handles.ptt.dispose();
+  handles.voiceLoop.dispose();
+});
+
+test("T04-17 AC3 — check-in waits for accept then fires once on NullSpeechPort", async () => {
+  const world = createWorldFromScenario(loadKdem(), 1);
+  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  const handles = createApp({
+    speech: new NullSpeechPort(),
+    world,
+    ptt: createPttCaptureController({ onEvent: () => {}, attachTo: null }),
+    readbackPlayer: instantPlayer(),
+  });
+  world.simTimeMs = 9000;
+  handles.afterPhysicsTick();
+  await flushMicrotasks();
+  expect(handles.log.byType("radio.checkin")).toHaveLength(0);
+
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const tick = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: 800, heightPx: 800 });
+  handlePpiLeftClick(view, world, tick.x, tick.y, 800, 800);
+  handles.afterPhysicsTick();
+  await flushMicrotasks();
+  const events = handles.log.byType("radio.checkin");
+  expect(events).toHaveLength(1);
+  expect(events[0]?.callsign).toBe("DAL123");
+  expect(events[0]?.text).toContain("DEMO ONE");
+
+  handles.afterPhysicsTick();
+  await flushMicrotasks();
+  expect(handles.log.byType("radio.checkin")).toHaveLength(1);
+  handles.ptt.dispose();
+  handles.voiceLoop.dispose();
+});
+
+test("T04-17 AC4 — ils27 click is select-only; H270 works without a prior click", async () => {
+  const world = createWorldFromScenario(loadKdemIls27());
+  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  const handles = createApp({
+    speech: new NullSpeechPort(),
+    world,
+    ptt: createPttCaptureController({ onEvent: () => {}, attachTo: null }),
+    readbackPlayer: instantPlayer(),
+  });
+  const before = world.sessionLog?.byType("handoff.inbound.accepted")?.length ?? 0;
+  const withoutClick = await handleRadioText(world, "DAL123 H270", handles.log);
+  expect(withoutClick.accepted).toBe(true);
+  expect(dal.intent.assignedHeadingDeg).toBe(270);
+
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const tick = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: 800, heightPx: 800 });
+  handlePpiLeftClick(view, world, tick.x, tick.y, 800, 800);
+  expect(world.selectedAircraftId).toBe(dal.id);
+  expect(world.sessionLog?.byType("handoff.inbound.accepted")?.length ?? 0).toBe(before);
   handles.ptt.dispose();
   handles.voiceLoop.dispose();
 });
