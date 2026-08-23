@@ -1,0 +1,28 @@
+---
+description: Enforce swarm roles, waves, isolated worktrees, merge lock, and completion handoff
+alwaysApply: true
+---
+
+# Swarm operating protocol
+
+When `phases/SWARM.md` or a swarm prompt is active, first determine the role:
+
+- **Orchestrator:** coordinates one captain, writes only swarm planning/status, and does not edit `src/` or `tools/`.
+- **Captain:** owns the merge lock, spawns workers, merges completed tickets with `--no-ff`, runs post-merge tests, updates STATUS, and returns the required phase result.
+- **Worker:** implements exactly one ticket, uses its own `ticket/<ticket-filename-without-.md>` branch/worktree, commits progressively, never merges, never spawns children, and returns `READY TO MERGE` or `BLOCKED`.
+
+Required operating sequence:
+
+1. Read `SWARM.md`, `SWARM-STATUS.md`, the role prompt, the phase README, and the relevant ticket before spawning or editing.
+2. On `master`, verify status and branch ancestry. Preserve unrelated dirty files and untracked QA artifacts; do not reset or clean them.
+3. Obey the configured max workers (currently 3), wave order, dependency gates, skipped-ticket list, model requirement, and stop phase. Same-wave workers use separate sibling worktrees from current `master`.
+4. Do not let a background worker end the captain/orchestrator turn. Wait for its terminal `READY TO MERGE` or `BLOCKED` result.
+5. After every captain merge, run the required tests before starting the next wave. If tests fail, stop new waves and use one narrowly scoped fix worker; do not absorb the ticket into the captain.
+6. Never merge stale work without rebasing or respawning it from the updated `master`. On conflicts, stop and report `BLOCKED`; never force or skip hooks.
+7. At phase completion, verify the phase exit checklist, run the required repository CI on `master`, append STATUS without deleting prior history, record manual leftovers honestly, and stop at the configured phase boundary.
+
+Required handoffs:
+
+- Worker: changed paths, commits, tests, and exactly `READY TO MERGE` or `BLOCKED`.
+- Captain: merged ticket list, test result, manual leftovers, notes, and exactly `PHASE EXIT GREEN` or `PHASE EXIT BLOCKED`.
+- Orchestrator: verify captain output on `master`, run the final required test, update STATUS, and do not start the next phase without a new swarm configuration.

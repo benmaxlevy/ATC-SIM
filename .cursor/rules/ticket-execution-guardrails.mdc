@@ -1,0 +1,18 @@
+---
+description: Guard ticket scope, branch isolation, progressive commits, and verification
+alwaysApply: true
+---
+
+# Ticket execution guardrails
+
+When changing code for a ticket, bugfix, or requested implementation:
+
+1. Identify the ticket id and exact acceptance criteria before editing. If no ticket id exists, use a short `fix/` or `chore/` branch.
+2. Before edits, inspect `git status`, `git diff`, current branch, and recent log. Treat unrelated modifications and untracked files as protected: do not stage, delete, reset, or “clean” them. If application files are dirty and ownership is unclear, stop and ask.
+3. Start from current `master` on a dedicated branch. Never mix ticket ids or reuse a ticket branch.
+4. Work in small slices. After each coherent slice passes its relevant typecheck/tests, commit it with an imperative subject, why in the body, and the ticket id when one exists.
+5. Stage explicit paths only. Never stage secrets, `.env`, caches, generated artifacts, or QA screenshots.
+6. Run targeted tests after each slice and the repository CI check before declaring the ticket done. Fix introduced diagnostics; do not hide them with `--no-verify`.
+7. A normal ticket owner merges its completed branch with `--no-ff` to `master`, verifies `git status`, and deletes the local branch. Do not push unless asked.
+
+If the session is a swarm, the swarm rules override step 7: workers never merge; only the captain merges.
