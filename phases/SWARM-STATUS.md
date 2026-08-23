@@ -19,7 +19,7 @@ Orchestrator planning **2026-08-23**. Historical phase 4 exit (T04-01–10, T04-
 
 Waves: A (T04-13 alone) → B (T04-14 ∥ T04-15, isolated worktrees). Check-in phraseology: `approach, {callsign}, descending via {STAR name} arrival through {altitude} feet`. `kdem-ils27` stays deterministic. `?traffic=N` stays the downwind FPS arc.
 
-**Not started until captain spawn.** Untracked `e2e/` QA screenshots are not this swarm — leave uncommitted.
+**2026-08-23:** Human `/run-swarm` for STAR plane spawning. Orchestrator executing the fifth swarm (not a sixth; not phase 5). Planning commit then one captain. Untracked `e2e/` QA screenshots are not this swarm — leave uncommitted.
 
 ## Fourth swarm started — Phase 4 procedures
 

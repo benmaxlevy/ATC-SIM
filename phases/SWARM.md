@@ -34,6 +34,24 @@ If `phases/SWARM-STATUS.md` already lists fifth-swarm exit green with T04-13–1
 
 ---
 
+## Fifth swarm execution — 2026-08-23 (star plane spawning)
+
+Human invoked `/run-swarm` for **STAR plane spawning**. This is the existing fifth-swarm contract (T04-13–15). It is **not** a sixth swarm and **not** phase 5.
+
+| Key | Value |
+| --- | --- |
+| Goal | Default student traffic spawns on catalog STAR **entry** fixes (VIA descending). Seeded random STAR × transition. VIA arrivals check in with frozen phraseology |
+| Include | **T04-13**, **T04-14**, **T04-15** only |
+| Skip | **T04-11**. All of **T04-01–10, T04-12**. All of **T05-*** |
+| Stop | **Do not start phase 5.** No scoring, replay, imperfect pilots, or second TCP |
+| Max ticket workers in flight | **3** (wave A = 1; wave B = 2) |
+| Merge lock | **Only the phase captain** merges to `master` (`--no-ff`) |
+| Model | **cursor grok 4.6 high only.** `model: "cursor-grok-4.6-high"` on every Task spawn |
+
+Waves unchanged: **A** T04-13 alone → **B** T04-14 ∥ T04-15 (isolated worktrees). Captain spawn follows this planning commit.
+
+---
+
 ## Roles (do not collapse them)
 
 ```
