@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import { createWorld } from "@core";
 import {
+  STAR_SPAWN_STAGGER_NM,
   assertScenario,
   createWorldForSession,
   createWorldFromScenario,
@@ -112,7 +113,7 @@ test("T04-14 AC2 — pairwise spacing and south slot used", () => {
     const dist = (ac: (typeof group)[number]) => Math.hypot(ac.xNm - gate!.xNm, ac.yNm - gate!.yNm);
     group.sort((a, b) => dist(a) - dist(b));
     for (let i = 1; i < group.length; i += 1) {
-      expect(dist(group[i]!) - dist(group[i - 1]!)).toBeCloseTo(2, 1);
+      expect(dist(group[i]!) - dist(group[i - 1]!)).toBeCloseTo(STAR_SPAWN_STAGGER_NM, 1);
       const heading = group[0]!.headingDeg;
       expect(Math.abs(group[i]!.headingDeg - heading)).toBeLessThan(1e-9);
     }

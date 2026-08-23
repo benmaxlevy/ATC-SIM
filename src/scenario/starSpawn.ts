@@ -47,8 +47,12 @@ export interface StarRouteAssignment {
 
 /** Extra NM before the gate so distance(gate) > 0 and heading is defined. */
 export const STAR_SPAWN_GATE_OFFSET_NM = 0.25;
-/** Along-track gap used by T04-14 trailers on the same transition. */
-export const STAR_SPAWN_STAGGER_NM = 2;
+/**
+ * Along-track gap for trailers on the same transition.
+ * 2 NM sat inside CA (3 NM / 1000 ft) so same-STAR jets painted as a pile.
+ * 8 NM is in-trail on the first-leg extension and stays clear of CA.
+ */
+export const STAR_SPAWN_STAGGER_NM = 8;
 /** Spawn above an AT_OR_ABOVE so VIA has room to descend (T04-12 used 11000). */
 export const STAR_SPAWN_VIA_ALT_MARGIN_FT = 1000;
 
