@@ -2,7 +2,7 @@ import os
 
 # Contract tests must never hit the Hub. Force mock before app import.
 os.environ["SPEECH_API_MOCK"] = "1"
-os.environ.pop("PARSE_MODEL_ID", None)
+os.environ["PARSE_MODEL_ID"] = ""
 
 import pytest
 from fastapi.testclient import TestClient

@@ -38,6 +38,8 @@ PARSE_MODEL_ID=Qwen/Qwen2.5-1.5B-Instruct-GGUF
 PARSE_GGUF_FILE=qwen2.5-1.5b-instruct-q4_k_m.gguf
 ```
 
+Same pair is in `.env.example`. Copy that file to `.env` so you do not have to export them every shell.
+
 Weights ~1.0–1.2 GB; plan **~2 GB RAM**. **CPU OK, slow OK** — salvage only. VRAM not required. CUDA: Path C auto-offloads all layers when `llama-cpp-python` was built with GGML CUDA **and** CUDA 12 `cublas` loads (same DLL path fix as STT). Force CPU: `PARSE_N_GPU_LAYERS=0`. Partial offload: set a positive layer count.
 
 Install the extra runtime only if you enable Path C (mock mode does not need it):
@@ -101,6 +103,8 @@ python -m uvicorn app:app --host 127.0.0.1 --port 8090
 
 Or `python app.py` (reads `HOST` / `PORT`).
 
+Copy `.env.example` to `.env` to keep local flags on disk. `Settings.load()` reads `speech-api/.env` first; variables already in the process environment win. The example **opts in** Path C with `Qwen/Qwen2.5-1.5B-Instruct-GGUF` (1.5B Q4_K_M, **not** a 7B). Leave `PARSE_MODEL_ID` unset (or set it empty in the shell) to keep `/parse` off.
+
 Docker (binds `0.0.0.0:8090` inside the container; still loopback on the host unless you publish):
 
 ```text
@@ -109,6 +113,8 @@ docker run --rm -p 127.0.0.1:8090:8090 -v speech-api-cache:/app/.cache atc-speec
 ```
 
 ## Environment
+
+Copy `.env.example` → `.env` (gitignored) or export the same names in the shell. Docker: `--env-file .env` (the image does not copy `.env`).
 
 | Env | Default | Meaning |
 | --- | --- | --- |

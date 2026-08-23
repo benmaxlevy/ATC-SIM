@@ -42,6 +42,36 @@ def _optional_env(name: str) -> str | None:
     return value or None
 
 
+def load_env_file(path: Path | None = None, *, override: bool = False) -> bool:
+    """Load KEY=VALUE pairs from speech-api/.env. Process env wins unless override=True.
+
+    Returns True if the file existed and was read. Does not call a cloud dotenv host.
+    """
+    env_path = path if path is not None else API_DIR / ".env"
+    if not env_path.is_file():
+        return False
+    text = env_path.read_text(encoding="utf-8-sig")
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.lower().startswith("export "):
+            line = line[7:].strip()
+        if "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        if not key or key.startswith("#"):
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+            value = value[1:-1]
+        if not override and key in os.environ:
+            continue
+        os.environ[key] = value
+    return True
+
+
 def _tts_voice_roster() -> tuple[str, ...]:
     extra = os.environ.get("TTS_VOICES", "").strip()
     if not extra:
@@ -68,6 +98,7 @@ class Settings:
 
     @classmethod
     def load(cls) -> Settings:
+        load_env_file()
         extra = os.environ.get("CORS_ORIGINS", "").strip()
         origins = list(VITE_ORIGINS)
         if extra:
