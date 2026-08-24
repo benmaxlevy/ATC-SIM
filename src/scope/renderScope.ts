@@ -24,7 +24,7 @@
  * sprite. Not an airplane. Not a label. Not NAS STARS.
  *
  * Draw order (phase README): background, rings, coastline, runway, localizer,
- * history, PTL, targets, leader lines, datablocks, selection box, SSA
+ * history, PTL, TPA J-rings, targets, leader lines, datablocks, selection box, SSA
  * (screen-fixed). Maps rebuild on range/center/resize/layer toggle, not every rAF.
  *
  * Hot path (T02-12): reuse Path2D map cache — do not parse KDEM JSON per frame,
@@ -48,6 +48,13 @@ import { PALETTE, applyBrite } from "./palette";
 import { historyDotsToDraw } from "./history";
 import { drawPredictedTrackLine, ptlEndpoint, shouldDrawPtlForTrack } from "./ptl";
 import { isViewOffAirport, type ScopeView } from "./scopeView";
+import {
+  TPA_STROKE_COLOR,
+  TPA_STROKE_PX,
+  aircraftForTpaRings,
+  shouldPaintAtpaGeometry,
+  tpaRingPoints,
+} from "./tpa";
 import { buildGiLines, buildSsaLines } from "./ssa";
 import { buildMapListLines } from "./dcbFunctions";
 import { type TrackOwnership } from "./ownership";
@@ -286,6 +293,8 @@ function drawTracks(
     drawPredictedTrackLines(ctx, world, view, size);
   }
 
+  drawTpaRings(ctx, world, view, size);
+
   for (const ac of world.aircraft) {
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
     const color = trackColor(view, world, ac);
@@ -384,6 +393,40 @@ function drawPredictedTrackLines(
       applyBrite(identActive ? PALETTE.selected : PALETTE.ptl, view.brite.tls),
       capTickPx,
     );
+  }
+}
+
+/**
+ * CRC TPA J-rings: world-NM mileage circles about selected (or owned) tracks.
+ * Stroke is TLS/tools (`TPA_STROKE_COLOR` / PTL white), not CA red. Canvas
+ * bounds clip like range rings (no extra clip call). ATPA is a stored stub and
+ * paints nothing (no pairing / cones). CA remains datablock text — not a 3 NM
+ * halo. Display only — never a Command.
+ */
+function drawTpaRings(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  view: ScopeView,
+  size: ScopeViewSize,
+): void {
+  // ATPA stub: even when on, no extra stroke.
+  void shouldPaintAtpaGeometry(view.atpa.on);
+  const targets = aircraftForTpaRings(
+    view.tpa.on,
+    world.selectedAircraftId,
+    world.aircraft,
+    view.tracks,
+  );
+  if (targets.length === 0) {
+    return;
+  }
+  ctx.strokeStyle = TPA_STROKE_COLOR;
+  ctx.lineWidth = TPA_STROKE_PX;
+  for (const ac of targets) {
+    const worldPts = tpaRingPoints(ac.xNm, ac.yNm, view.tpa.radiusNm);
+    const pts = worldPts.map((p) => nmToScreen(p.eastNm, p.northNm, view.camera, size));
+    tracePolyline(ctx, pts, false);
+    ctx.stroke();
   }
 }
 

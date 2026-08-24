@@ -437,7 +437,7 @@ test("AC4 — DCB LEFT/RIGHT render as a vertical stack; TOP/BOTTOM stay horizon
   expect(hostBottom).toMatch(/data-dcb-dock="BOTTOM"/);
 });
 
-test("AC5 — TPA/ATPA opener is a stub submenu with DONE only", () => {
+test("AC5 — TPA/ATPA submenu has TPA, TPA MI 2/3/5/10, ATPA stub, DONE", () => {
   const view = createScopeView();
   applyDcbShift(view);
   expect(dcbHtml(view)).toContain("TPA");
@@ -446,10 +446,15 @@ test("AC5 — TPA/ATPA opener is a stub submenu with DONE only", () => {
   const html = dcbHtml(view);
   expect(html).toContain("DONE");
   expect(html).toMatch(/data-dcb-menu="TPA_ATPA"/);
-  expect(html).not.toMatch(/>TPA</);
-  expect(html).not.toMatch(/>ATPA</);
+  expect(html).toMatch(/data-dcb-cell="tpa-on"/);
+  expect(html).toMatch(/data-dcb-cell="tpa-mi"/);
+  expect(html).toMatch(/data-dcb-cell="atpa"/);
+  expect(html).toContain("TPA MI");
+  expect(html).toContain("CONES");
+  expect(html).toContain("MONITOR");
+  expect(html).toContain("ALERT");
+  expect(html).toMatch(/data-dcb-kind="disabled"/);
   expect(html).not.toMatch(/\bJ-?ring/i);
-  expect(html).not.toContain("2 NM");
   closeDcbMenu(view);
   expect(dcbHtml(view)).toContain("RANGE 20");
 });

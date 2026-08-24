@@ -44,6 +44,7 @@ export type DcbSpinnerCell =
   | "LDR_LENGTH"
   | "HISTORY"
   | "PTL"
+  | "TPA_MI"
   | CharSizeSpinnerCell
   | BriteSpinnerCell;
 

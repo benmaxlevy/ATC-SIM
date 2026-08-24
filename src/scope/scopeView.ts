@@ -13,9 +13,10 @@
  * 5 dots, no phosphor; AUX HISTORY spinner shows 0–5 of those dots (F8 / H
  * toggles 0 ↔ last non-zero). PTL is a straight predicted track line (default
  * 1.0 min; AUX spinner 0.5/1/2/4). F7 toggles PTL ALL. PTL OWN is F3-owned
- * tracks; ALL wins if both are on. DCB docks TOP/LEFT/RIGHT/BOTTOM. Altitude
- * filter default 000–180; FILTER stays on MAIN. Discrete range presets only.
- * Not NAS STARS.
+ * tracks; ALL wins if both are on. TPA J-rings (2/3/5/10 NM) about the selected
+ * track, or owned tracks if none selected; ATPA is a stored stub that paints
+ * nothing. DCB docks TOP/LEFT/RIGHT/BOTTOM. Altitude filter default 000–180;
+ * FILTER stays on MAIN. Discrete range presets only. Not NAS STARS.
  *
  * Scope display state only. Never a Command, readback, or intent.
  */
@@ -58,6 +59,14 @@ import {
   type SsaFilterField,
   type SsaVisibility,
 } from "./ssa";
+import {
+  DEFAULT_ATPA_STATE,
+  DEFAULT_TPA_STATE,
+  formatDcbTpaMiReadout,
+  stepTpaRadiusNm,
+  type AtpaState,
+  type TpaState,
+} from "./tpa";
 import type { ScopeChord } from "./keymap";
 import {
   DEFAULT_LEADER_DIR,
@@ -141,6 +150,13 @@ export interface ScopeView {
   /** PTL length in minutes. Default 1.0 (T02-07). AUX spinner 0.5/1/2/4. */
   ptlMinutes: PtlMinutes;
   /**
+   * TPA J-rings (CRC analog). Default off, 5 NM. Display only — never Command IR.
+   * Selected track; if none selected, F3-owned tracks.
+   */
+  tpa: TpaState;
+  /** ATPA stub. Stored boolean; paints nothing (no pairing / cones). */
+  atpa: AtpaState;
+  /**
    * Altitude filter (Mode C hundreds). FOA/CRC analog; default 000–180.
    * Scope command only — never a Command, readback, or intent.
    */
@@ -223,6 +239,8 @@ export function createScopeView(
     ptlOn: false,
     ptlOwn: false,
     ptlMinutes: PTL_MINUTES,
+    tpa: { ...DEFAULT_TPA_STATE },
+    atpa: { ...DEFAULT_ATPA_STATE },
     altitudeFilter: { ...DEFAULT_ALTITUDE_FILTER },
     filterEntry: idleFilterEntry(DEFAULT_ALTITUDE_FILTER),
     ssaFilter: defaultSsaVisibility(),
@@ -299,6 +317,23 @@ export function toggleGiFilter(view: ScopeView, index: number): void {
     return;
   }
   view.giFilterVisible[index] = !view.giFilterVisible[index];
+}
+
+/** DCB TPA: toggle J-rings. Display only — never a Command. */
+export function toggleTpaOn(view: ScopeView): void {
+  view.tpa.on = !view.tpa.on;
+}
+
+/** DCB TPA MI spinner: frozen 2/3/5/10 NM, no wrap. */
+export function stepTpaRadius(view: ScopeView, delta: -1 | 1): void {
+  view.tpa.radiusNm = stepTpaRadiusNm(view.tpa.radiusNm, delta);
+}
+
+export { formatDcbTpaMiReadout };
+
+/** DCB ATPA stub: store the boolean; renderer paints nothing. */
+export function toggleAtpaOn(view: ScopeView): void {
+  view.atpa.on = !view.atpa.on;
 }
 
 export function setDcbDock(view: ScopeView, dock: DcbDock): void {

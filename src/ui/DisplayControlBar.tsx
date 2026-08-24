@@ -7,13 +7,14 @@
  * (arm, wheel steps frozen presets, second click / Esc commits). CHAR SIZE and
  * BRITE open submenus (`CHAR_SIZE` / `BRITE`) with per-channel spinners. AUX: VOL
  * disabled, HISTORY spinner 0–5, DCB TOP/LEFT/RIGHT/BOTTOM, PTL length spinner,
- * PTL OWN, PTL ALL, TPA/ATPA stub. FILTER (altitude) stays on MAIN. SSA FILTER
- * hides existing SSA lines; GI TEXT toggles authored facility lines (not METAR
- * HTTP). HIST/PTL cells live on AUX (F7/F8 still work). MAIN quick video maps 1–6;
- * MAPS submenu slots 1–30 (empty slots disabled). WX1–4 are disabled chrome (no
- * precipitation). Disabled CRDA cell on SSA FILTER is chrome only. No PREF / CSA /
- * FMA (R06). Discrete **range** presets only. CHAR SIZE scales **datablock** /
- * lists / DCB / tools / POS. BRITE multiplies drawn channels. Not NAS STARS.
+ * PTL OWN, PTL ALL, TPA/ATPA submenu (J-rings + ATPA stub). FILTER (altitude)
+ * stays on MAIN. SSA FILTER hides existing SSA lines; GI TEXT toggles authored
+ * facility lines (not METAR HTTP). HIST/PTL cells live on AUX (F7/F8 still work).
+ * MAIN quick video maps 1–6; MAPS submenu slots 1–30 (empty slots disabled).
+ * WX1–4 are disabled chrome (no precipitation). Disabled CRDA cell on SSA FILTER
+ * is chrome only. No PREF / CSA / FMA (R06). Discrete **range** presets only.
+ * CHAR SIZE scales **datablock** / lists / DCB / tools / POS. BRITE multiplies
+ * drawn channels. Not NAS STARS.
  *
  * UI copy: SHIFT / DONE / MAIN / AUX / HISTORY / PTL / range / center / range rings /
  * leader — not toolbar or modal.
@@ -55,6 +56,7 @@ import {
   formatDcbPtlMinutesReadout,
   formatDcbRangeReadout,
   formatDcbRrReadout,
+  formatDcbTpaMiReadout,
   formatFilterBand,
   hideMapLists,
   isDcbMapSlotEnabled,
@@ -73,12 +75,15 @@ import {
   stepPtlLength,
   stepRange,
   stepRrInterval,
+  stepTpaRadius,
+  toggleAtpaOn,
   toggleCurrentMapsList,
   toggleGeoMapsList,
   toggleGiFilter,
   togglePtlOn,
   togglePtlOwn,
   toggleSsaFilter,
+  toggleTpaOn,
   toggleVideoMap,
   videoMapByDcbNumber,
   type BriteChannel,
@@ -109,6 +114,7 @@ export const DCB_CHAR_READOUT_ID = "dcb-char-readout";
 export const DCB_BRITE_READOUT_ID = "dcb-brite-readout";
 export const DCB_HISTORY_READOUT_ID = "dcb-history-readout";
 export const DCB_PTL_MINUTES_READOUT_ID = "dcb-ptl-minutes-readout";
+export const DCB_TPA_MI_READOUT_ID = "dcb-tpa-mi-readout";
 export const DCB_RNG_READOUT_ID = DCB_RANGE_READOUT_ID;
 
 export interface DisplayControlBarProps {
@@ -211,6 +217,10 @@ function ssaFilterLines(field: SsaFilterField): { line1: string; line2: string }
   return { line1: field, line2: "\u00a0" };
 }
 
+function tpaMiSpinnerArmed(view: ScopeView): boolean {
+  return view.dcbSpinner.armed && view.dcbSpinner.cell === "TPA_MI";
+}
+
 /**
  * Keep RANGE / MAPS / RR / LDR DIR / LDR / CHAR / BRITE / FILTER / HISTORY / PTL in sync
  * with keyboard chords.
@@ -241,6 +251,7 @@ export function syncDisplayControlBar(
   setPressed(doc.querySelector("[data-dcb-hist]"), view.historyEnabled);
   setText(DCB_HISTORY_READOUT_ID, formatDcbHistoryReadout(view.historyDotCount));
   setText(DCB_PTL_MINUTES_READOUT_ID, formatDcbPtlMinutesReadout(view.ptlMinutes));
+  setText(DCB_TPA_MI_READOUT_ID, formatDcbTpaMiReadout(view.tpa.radiusNm));
   setPressed(doc.querySelector('[data-dcb-cell="ptl-own"]'), view.ptlOwn);
   setPressed(doc.querySelector('[data-dcb-cell="ptl-all"]'), view.ptlOn);
   setPressed(doc.querySelector('[data-dcb-cell="hist"]'), historySpinnerArmed(view));
@@ -270,6 +281,9 @@ export function syncDisplayControlBar(
       setPressed(el, view.giFilterVisible[slot - 1] === true);
     }
   }
+  setPressed(doc.querySelector('[data-dcb-cell="tpa-on"]'), view.tpa.on);
+  setPressed(doc.querySelector('[data-dcb-cell="tpa-mi"]'), tpaMiSpinnerArmed(view));
+  setPressed(doc.querySelector('[data-dcb-cell="atpa"]'), view.atpa.on);
 }
 
 interface DcbCellProps {
@@ -346,7 +360,13 @@ interface DcbCellProps {
     | "ssa-status"
     | "ssa-ptl"
     | "crda"
-    | "gi-slot";
+    | "gi-slot"
+    | "tpa-on"
+    | "tpa-mi"
+    | "atpa"
+    | "atpa-cones"
+    | "atpa-monitor"
+    | "atpa-alert";
   dataMapId?: string;
   dataMapSlot?: number;
   dataGiSlot?: number;
@@ -865,7 +885,73 @@ function renderAux(view: ScopeView, onChange: () => void) {
 }
 
 function renderTpaAtpa(view: ScopeView, onChange: () => void) {
-  return <>{renderDone(view, onChange)}</>;
+  const miArmed = tpaMiSpinnerArmed(view);
+  return (
+    <>
+      {renderDone(view, onChange)}
+      <DcbCell
+        kind="toggle"
+        ariaLabel="TPA"
+        dataDcb="tpa-on"
+        pressed={view.tpa.on}
+        onClick={() => runAuxCell(view, onChange, () => toggleTpaOn(view))}
+      >
+        <span className="dcb-cell-line">TPA</span>
+        <span className="dcb-cell-line">{view.tpa.on ? "ON" : "OFF"}</span>
+      </DcbCell>
+      <DcbCell
+        kind="spinner"
+        ariaLabel="TPA mileage"
+        dataDcb="tpa-mi"
+        pressed={miArmed}
+        onClick={() => {
+          cancelFilterIfEntering(view);
+          if (miArmed) {
+            commitDcbSpinner(view);
+          } else {
+            armDcbSpinner(view, "TPA_MI");
+          }
+          afterCell(onChange);
+        }}
+        onWheel={(event) =>
+          onSpinnerWheel(view, "TPA_MI", event, (step) => stepTpaRadius(view, step), onChange)
+        }
+      >
+        <span className="dcb-cell-line">TPA MI</span>
+        <span id={DCB_TPA_MI_READOUT_ID} className="dcb-cell-line">
+          {formatDcbTpaMiReadout(view.tpa.radiusNm)}
+        </span>
+      </DcbCell>
+      <DcbCell
+        kind="toggle"
+        ariaLabel="ATPA"
+        dataDcb="atpa"
+        pressed={view.atpa.on}
+        onClick={() => runAuxCell(view, onChange, () => toggleAtpaOn(view))}
+      >
+        <span className="dcb-cell-line">ATPA</span>
+        <span className="dcb-cell-line">{view.atpa.on ? "ON" : "OFF"}</span>
+      </DcbCell>
+      <DcbCell kind="disabled" ariaLabel="ATPA cones" dataDcb="atpa-cones" disabled onClick={() => undefined}>
+        <span className="dcb-cell-line">CONES</span>
+        <span className="dcb-cell-line">{"\u00a0"}</span>
+      </DcbCell>
+      <DcbCell
+        kind="disabled"
+        ariaLabel="ATPA monitor"
+        dataDcb="atpa-monitor"
+        disabled
+        onClick={() => undefined}
+      >
+        <span className="dcb-cell-line">MONITOR</span>
+        <span className="dcb-cell-line">{"\u00a0"}</span>
+      </DcbCell>
+      <DcbCell kind="disabled" ariaLabel="ATPA alert" dataDcb="atpa-alert" disabled onClick={() => undefined}>
+        <span className="dcb-cell-line">ALERT</span>
+        <span className="dcb-cell-line">{"\u00a0"}</span>
+      </DcbCell>
+    </>
+  );
 }
 
 function renderSsaFilter(view: ScopeView, onChange: () => void) {

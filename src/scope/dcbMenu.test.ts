@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { RANGE_PRESETS_NM, stepRange } from "./camera";
-import { createScopeView, stepHistoryDots, stepPtlLength } from "./scopeView";
+import { createScopeView, stepHistoryDots, stepPtlLength, stepTpaRadius } from "./scopeView";
 import {
   applyDcbShift,
   armDcbSpinner,
@@ -119,4 +119,10 @@ test("HISTORY and PTL spinners arm and step like RANGE", () => {
   expect(handleDcbEscape(view)).toBe(true);
   expect(view.dcbSpinner.armed).toBe(false);
   expect(view.ptlMinutes).toBe(2);
+
+  armDcbSpinner(view, "TPA_MI");
+  expect(view.dcbSpinner.cell).toBe("TPA_MI");
+  expect(view.tpa.radiusNm).toBe(5);
+  expect(stepDcbSpinner(view, -1, (delta) => stepTpaRadius(view, delta))).toBe(true);
+  expect(view.tpa.radiusNm).toBe(3);
 });

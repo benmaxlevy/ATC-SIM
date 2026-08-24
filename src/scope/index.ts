@@ -192,6 +192,7 @@ export {
   setHistoryDotCount,
   stepHistoryDots,
   stepPtlLength,
+  stepTpaRadius,
   toggleHistoryEnabled,
   toggleMapLayer,
   toggleModeCVisible,
@@ -199,6 +200,9 @@ export {
   togglePtlOn,
   togglePtlOwn,
   toggleSsaFilter,
+  toggleTpaOn,
+  toggleAtpaOn,
+  formatDcbTpaMiReadout,
 } from "./scopeView";
 export type { MapLayerId, ScopeView } from "./scopeView";
 export { DCB_THICKNESS_PX, drawablePpiSize, isVerticalDcbDock } from "./dcbDock";
@@ -291,6 +295,21 @@ export {
   stepPtlMinutes,
 } from "./ptl";
 export type { PtlMinutes } from "./ptl";
+export {
+  DEFAULT_ATPA_STATE,
+  DEFAULT_TPA_RADIUS_NM,
+  DEFAULT_TPA_STATE,
+  TPA_RADIUS_NM,
+  TPA_STROKE_COLOR,
+  TPA_STROKE_PX,
+  aircraftForTpaRings,
+  formatDcbTpaMiReadout as formatTpaMiReadout,
+  shouldPaintAtpaGeometry,
+  stepTpaRadiusNm,
+  tpaRingPoints,
+  tpaScreenRadiusPx,
+} from "./tpa";
+export type { AtpaState, TpaRadiusNm, TpaState } from "./tpa";
 export {
   IDENT_DISPLAY_FLASH_MS,
   acceptInboundOnClick,

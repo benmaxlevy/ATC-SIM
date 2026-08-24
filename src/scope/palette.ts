@@ -12,7 +12,7 @@
  * - Background black; video maps / range rings dim gray
  * - Owned FDB white after F3; unowned / other-TCP FDB green
  * - Search/fusion position symbol blue; history trail blue (not track-tinted)
- * - PTL white; SSA / DCB / lists phosphor green
+ * - PTL white; TLS/tools cyan for TPA J-rings; SSA / DCB / lists phosphor green
  * - Phase 4 CA/MSAW: caution yellow then alert red (lite trainer, not NAS)
  */
 
@@ -39,6 +39,11 @@ export const PALETTE = {
   history: "#1E50C8",
   /** PTL / min-sep analog — FAA white. */
   ptl: "#FFFFFF",
+  /**
+   * TLS / tools — TPA J-rings (CRC analog). Not CA red.
+   * Distinct from PTL white so rings read as tools, not predicted track.
+   */
+  tools: "#00E5E5",
   /**
    * CA/MSAW caution (yellow). Lite 3 NM / 1000 ft trainer, not NAS parameters.
    * Do not label “STARS CA.”
