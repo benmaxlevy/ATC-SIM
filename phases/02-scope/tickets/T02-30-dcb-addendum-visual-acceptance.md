@@ -47,11 +47,11 @@ Re-read **R07** DCB, **R12** (what not to look like), `phases/_shared/references
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Manual: script 1–10 on Chrome Windows. skip-with-reason allowed; do not invent a pass.
-- [ ] **AC2 —** `npm test` green; Command IR types unchanged vs phase 1.
-- [ ] **AC3 —** DCB/scope clicks produce zero extra `command.accepted` until a radio submit.
-- [ ] **AC4 —** Grep: DCB has SHIFT, PREF, WX; WX buttons disabled; no CSA/CRDA/FMA/OSM cells; no STARS `.ttf`; no `<input>` / Apply in DCB.
-- [ ] **AC5 — Research:** no zoom/label/sprite/OSM/HUD in persistent chrome copy.
+- [ ] **AC1 —** Manual: script 1–10 on Chrome Windows. skip-with-reason: no visual operator; Chrome Windows script not watched. Automated greps/tests prove addendum grammar; do not invent a visual pass.
+- [x] **AC2 —** `npm test` green; Command IR types unchanged vs phase 1.
+- [x] **AC3 —** DCB/scope clicks produce zero extra `command.accepted` until a radio submit.
+- [x] **AC4 —** Grep: DCB has SHIFT, PREF, WX; WX buttons disabled; no CSA/CRDA/FMA/OSM cells; no STARS `.ttf`; no `<input>` / Apply in DCB.
+- [x] **AC5 — Research:** no zoom/label/sprite/OSM/HUD in persistent chrome copy.
 
 ## Notes
 

@@ -527,16 +527,17 @@ Implement **T02-22 → T02-30**. Do not skip T02-22 to “just add SHIFT.”
 
 Do not call the DCB addendum done until:
 
-- [ ] Menu model: MAIN ↔ AUX via SHIFT; submenus replace the bar; DONE / Esc return to MAIN.
-- [ ] Spinners arm on click, step on wheel, commit on second click / Esc (RANGE stays discrete 5–60 NM presets).
-- [ ] PLACE CNTR / OFF CNTR and PLACE RR / RR CNTR behave as separate cells.
-- [ ] MAPS 1–30 + quick 1–6; empty slots disabled; WX1–4 visible and unpressable.
-- [ ] Aux: HISTORY count, PTL length / OWN / ALL, DCB TOP/LEFT/RIGHT/BOTTOM; VOL disabled.
-- [ ] BRITE per drawn channel; CHAR SIZE per subsystem; WX/WXC/BKC channels disabled or stored no-op.
-- [ ] SSA FILTER hides existing SSA lines; GI TEXT has 10 toggleable facility lines.
-- [ ] TPA J-rings work; ATPA is a stub/toggle, not a pairing engine.
+- [x] Menu model: MAIN ↔ AUX via SHIFT; submenus replace the bar; DONE / Esc return to MAIN.
+- [x] Spinners arm on click, step on wheel, commit on second click / Esc (RANGE stays discrete 5–60 NM presets).
+- [x] PLACE CNTR / OFF CNTR and PLACE RR / RR CNTR behave as separate cells.
+- [x] MAPS 1–30 + quick 1–6; empty slots disabled; WX1–4 visible and unpressable.
+- [x] Aux: HISTORY count, PTL length / OWN / ALL, DCB TOP/LEFT/RIGHT/BOTTOM; VOL disabled.
+- [x] BRITE per drawn channel; CHAR SIZE per subsystem; WX/WXC/BKC channels disabled or stored no-op.
+- [x] SSA FILTER hides existing SSA lines; GI TEXT has 10 toggleable facility lines.
+- [x] TPA J-rings work; ATPA is a stub/toggle, not a pairing engine.
 - [x] PREF 1–8 persist/restore display state in `localStorage`.
-- [ ] Still no weather mosaic, CRDA, FMA, OSM, STARS font, Command IR from DCB.
+- [x] Still no weather mosaic, CRDA, FMA, OSM, STARS font, Command IR from DCB. Disabled CRDA on SSA FILTER is chrome only (T02-27).
+- [ ] T02-30 manual script 1–10: cheap STARS DCB, not a web settings ribbon. skip-with-reason: no visual operator; Chrome Windows script not watched. Automated greps/tests prove addendum grammar; do not invent a visual pass.
 
 ## Launching an agent
 
