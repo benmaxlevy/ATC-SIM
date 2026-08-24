@@ -6,10 +6,10 @@
 [![Vitest](https://img.shields.io/badge/Vitest-3.2-yellow.svg)](https://vitest.dev/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Speech--API-009688.svg)](https://fastapi.tiangolo.com/)
 
-An in-browser, high-fidelity **STARS-like (Standard Terminal Automation Replacement System)** radar air traffic control simulator and training workstation. It replicates terminal radar (TRACON) operations with 60 FPS Canvas2D PPI rendering, typed and spoken ATC command parsing ([FAA JO 7110.65](phases/_shared/references.md) phraseology), realistic flight kinematics and FMS procedural navigation, simulated pilot voice readbacks with VHF radio acoustic DSP, and real-time safety alerting (Conflict Alert & MSAW).
+An in-browser, high-fidelity **STARS-like (Standard Terminal Automation Replacement System)** radar air traffic control simulator and training workstation. It replicates terminal radar (TRACON) operations with 60 FPS Canvas2D PPI rendering, typed and spoken ATC command parsing (FAA JO 7110.65 phraseology), realistic flight kinematics and FMS procedural navigation, simulated pilot voice readbacks with VHF radio acoustic DSP, and real-time safety alerting (Conflict Alert & MSAW).
 
 > [!IMPORTANT]
-> **DISCLAIMER**: This simulator is built for **training and entertainment purposes only**. It is not certified for National Airspace System (NAS) operational use, is not FAA equipment, and is not affiliated with the Federal Aviation Administration or Raytheon Technologies. The user interface is a STARS-like visual and functional analog. See [`docs/DISCLAIMER.md`](docs/DISCLAIMER.md) and [`docs/PRODUCT.md`](docs/PRODUCT.md) for frozen project boundaries.
+> **DISCLAIMER**: This simulator is built for **training and entertainment purposes only**. It is not certified for National Airspace System (NAS) operational use, is not FAA equipment, and is not affiliated with the Federal Aviation Administration or Raytheon Technologies. The user interface is a STARS-like visual and functional analog. See [`docs/DISCLAIMER.md`](docs/DISCLAIMER.md) and [`docs/PRODUCT.md`](docs/PRODUCT.md) for details.
 
 ---
 
@@ -19,11 +19,11 @@ An in-browser, high-fidelity **STARS-like (Standard Terminal Automation Replacem
   - [Prerequisites](#prerequisites)
   - [Installation & Dev Server](#installation--dev-server)
   - [URL Query Parameters](#url-query-parameters)
-- [System Architecture](#system-architecture)
-  - [Directory Layout](#directory-layout)
-  - [Simulation & Rendering Architecture](#simulation--rendering-architecture)
-  - [Multi-Stage Parse Pipeline](#multi-stage-parse-pipeline)
-  - [Coordinate System](#coordinate-system)
+- [Environment Configuration](#environment-configuration)
+- [Voice & Local Speech Subsystem (`speech-api`)](#voice--local-speech-subsystem-speech-api)
+  - [Zero-Cloud Architecture](#zero-cloud-architecture)
+  - [Setting Up the Local Speech Server](#setting-up-the-local-speech-server)
+  - [Endpoints](#endpoints)
 - [Features & Capabilities](#features--capabilities)
   - [STARS TCW Display Emulation](#stars-tcw-display-emulation)
   - [Flight Kinematics & FMS Navigation](#flight-kinematics--fms-navigation)
@@ -33,14 +33,16 @@ An in-browser, high-fidelity **STARS-like (Standard Terminal Automation Replacem
   - [Typed Command Syntax](#typed-command-syntax)
   - [Spoken Phraseology (FAA JO 7110.65)](#spoken-phraseology-faa-jo-711065)
 - [Controls & Keybindings](#controls--keybindings)
-- [Voice & Local Speech Subsystem (`speech-api`)](#voice--local-speech-subsystem-speech-api)
-  - [Zero-Cloud Architecture](#zero-cloud-architecture)
-  - [Setting Up the Local Speech Server](#setting-up-the-local-speech-server)
-  - [Endpoints](#endpoints)
+  - [Scope Controls & Mouse Interaction](#scope-controls--mouse-interaction)
+  - [Scope Keypad Shortcuts](#scope-keypad-shortcuts)
+- [System Architecture](#system-architecture)
+  - [Overview](#overview)
+  - [Multi-Stage Parse Pipeline](#multi-stage-parse-pipeline)
+  - [Coordinate System](#coordinate-system)
 - [Aeronautical Data & CIFP Importer](#aeronautical-data--cifp-importer)
-- [Development, Testing & CI](#development-testing--ci)
-- [Implementation Roadmap & Phased Execution](#implementation-roadmap--phased-execution)
+- [Development & Testing](#development--testing)
 - [Documentation Index](#documentation-index)
+- [License](#license)
 
 ---
 
@@ -76,7 +78,7 @@ Customize simulation scenarios, traffic volume, random seeding, and debug overla
 | `seed` | `?seed=42` | PRNG seed for deterministic arrival generation and slot entry times (default: `1`). |
 | `scenario` | `?scenario=kdem-ils27` | Airspace scenario to load (default: KDEM TRACON Runway 27). |
 | `debug` | `?debug=fps` | Displays real-time performance HUD showing canvas FPS, track count, and tick duration. |
-| `voice` | `?voice=http` \| `?voice=web` \| `?voice=null` | Force active speech port backend (`http`, browser `web`, or headless `null`). |
+| `voice` | `?voice=http` \| `?voice=web` \| `?voice=null` | Force active speech backend (`http` local server, browser `web`, or headless `null`). |
 
 Examples:
 - `http://localhost:5173/?traffic=30&debug=fps` — 30-track stress test with real-time FPS counter.
@@ -84,149 +86,93 @@ Examples:
 
 ---
 
-## System Architecture
+## Environment Configuration
 
-```mermaid
-flowchart TD
-    subgraph Browser / Client [Vite SPA - Browser Runtime]
-        subgraph UI [React UI Shell]
-            Shell[STARS TCW Shell]
-            DCB[Display Control Bar]
-            Strips[Flight Strip Bay]
-            CmdLine[Command Line & PTT Input]
-        end
+Configuration templates are provided for both the frontend SPA and the local Python speech service.
 
-        subgraph CanvasEngine [Radar Scope Engine]
-            Canvas[Canvas2D Viewport]
-            Renderer[renderScope.ts - 60 FPS PPI]
-            Maps[Layered Vector Video Maps]
-        end
+### Frontend (`.env`)
 
-        subgraph SimEngine [Core Simulation - Fixed 20 Hz]
-            Clock[Fixed Timestep Clock]
-            World[World State Model]
-            FMS[FMS & Kinematics Engine]
-            Alerts[CA & MSAW Detectors]
-            Handoff[Sector Handoff Coordinator]
-        end
+Copy `.env.example` to `.env` in the root directory if you wish to override speech API endpoints:
 
-        subgraph CommandPipeline [Command & Pilot System]
-            Parser[4-Stage Parse Pipeline]
-            Pilot[Virtual Pilot Agent]
-            CheckIn[STAR Arrival Check-In Queue]
-        end
-
-        subgraph AudioSubsystem [Web Audio DSP Graph]
-            PTT[AudioWorklet 16kHz PCM Capture]
-            RadioFX[VHF Bandpass Filter + Static + Clicks]
-            CATone[Square-Wave Conflict Alert Tone]
-        end
-    end
-
-    subgraph SpeechAPI [Local Speech Server - speech-api/]
-        Whisper[Faster-Whisper STT]
-        Piper[Piper ONNX TTS Engine]
-        PathC[llama.cpp GBNF Salvage /parse]
-    end
-
-    CmdLine -->|Typed Token / Text| Parser
-    PTT -->|Audio Blob| Whisper
-    Whisper -->|Transcript| Parser
-    Parser -->|Command IR| Pilot
-    Pilot -->|Intent Mutations| World
-    Pilot -->|Verbal Readback| Piper
-    Piper -->|Audio Buffer| RadioFX
-    RadioFX -->|Squelch / Sound| Shell
-    World -->|20 Hz Physics| FMS
-    World --> Alerts
-    Alerts -->|Conflict Detected| CATone
-    World -->|Track Geometry| Renderer
-    Renderer --> Canvas
-    DCB -->|Zoom / Filter / Maps| Renderer
+```bash
+cp .env.example .env
 ```
 
-### Directory Layout
+| Variable | Default | Description |
+|---|---|---|
+| `VITE_STT_URL` | `http://127.0.0.1:8090/stt` | Endpoint for speech-to-text audio transcription |
+| `VITE_TTS_URL` | `http://127.0.0.1:8090/tts` | Endpoint for pilot readback audio synthesis |
+| `VITE_SPEECH_TOKEN` | *(empty)* | Optional shared-secret header for local speech-api |
 
-```text
-ATC-SIM/
-├── docs/                        # Architecture, coordinate system, and legal disclaimers
-│   ├── COORDINATE-SYSTEM.md     # Tangent plane ENU math (NmEastNorth)
-│   ├── DISCLAIMER.md            # Mandatory legal notice
-│   └── PRODUCT.md               # Frozen v1 product parameters
-├── phases/                      # Phased implementation roadmaps, tickets, and swarm configs
-│   ├── _shared/                 # Authoritative contracts: Command IR, Parse Pipeline, Architecture
-│   ├── 00-slice/ to 05-training/# Phase ticket specifications (T00-01 to T05-12)
-│   ├── LAUNCH.md                # Agent briefing and execution instructions
-│   └── SWARM.md                 # Multi-agent swarm orchestration guide
-├── speech-api/                  # Local FastAPI STT/TTS and GBNF LLM parsing service
-│   ├── app.py                   # FastAPI server endpoints (/health, /stt, /tts, /parse)
-│   ├── engines.py               # Faster-Whisper, Piper TTS, and llama-cpp wrappers
-│   ├── parse_grammar.gbnf       # BNF grammar for Command IR v0 JSON decoding
-│   └── download_weights.py      # Hugging Face weights downloader
-├── src/                         # Frontend TypeScript/React SPA
-│   ├── app/                     # Composition root: createApp, audio wiring, tone generator
-│   ├── core/                    # (@core) Pure 20 Hz simulation engine (no DOM dependencies)
-│   │   ├── clock.ts             # Fixed timestep physics accumulator
-│   │   ├── world.ts             # World state, traffic stepping, simulation rate
-│   │   ├── aircraft.ts          # Aircraft models, target states, lateral/vertical intent
-│   │   ├── kinematics.ts        # Turn rates, standard rate turns, climb/descent, speeds
-│   │   ├── command/             # Command IR types and schema definitions
-│   │   ├── fms/                 # Direct-to, STAR tracking, ILS intercept, glidepath, missed approach
-│   │   ├── alerts/              # Conflict Alert (CA) and MSAW safety logic
-│   │   └── nav/                 # Fix registry, waypoints, along-track geometry, lead turns
-│   ├── parse/                   # (@parse) 4-stage command parser (Typed, Path A, Path B, Path C)
-│   ├── pilot/                   # (@pilot) Virtual pilot agent, validation, readback generator
-│   ├── scenario/                # (@scenario) Airspace scenarios, KDEM STAR spawn, MVA charts
-│   ├── scope/                   # (@scope) Canvas2D STARS TCW radar renderer, DCB, symbology, keymap
-│   ├── speech/                  # (@speech) Web Audio DSP, AudioWorklet PTT, SpeechPort adapters
-│   └── ui/                      # (@ui) React shell, Display Control Bar, Flight Strips, Overlays
-├── testdata/                    # Catalogs, sample CIFP data, scenario fixtures
-├── tests/                       # Integration tests (e.g. end-to-end command-to-kinematics)
-└── tools/
-    └── cifp-import/             # FAA Coded Instrument Flight Procedures (CIFP) ARINC 424 importer
+### Speech Service (`speech-api/.env`)
+
+Copy `speech-api/.env.example` to `speech-api/.env` to configure the Python speech and language engine:
+
+```bash
+cd speech-api
+cp .env.example .env
 ```
 
-### Simulation & Rendering Architecture
+| Variable | Default | Description |
+|---|---|---|
+| `HOST` | `127.0.0.1` | Local bind address |
+| `PORT` | `8090` | Local bind port |
+| `STT_MODEL_ID` | `Systran/faster-whisper-small.en` | Hugging Face Hub ID or alias (`base.en`, `small.en`, `medium.en`) |
+| `TTS_VOICE` | `en_US-lessac-medium` | Default Piper voice ID |
+| `TTS_VOICES` | lessac, amy, ryan, joe, kristin, kusal | Comma-separated Piper voices preloaded for callsign diversity |
+| `PARSE_MODEL_ID` | `Qwen/Qwen2.5-1.5B-Instruct-GGUF` | Hugging Face Hub ID or local path to a `.gguf` file (e.g. `/path/to/model.gguf`) |
+| `PARSE_GGUF_FILE` | `qwen2.5-1.5b-instruct-q4_k_m.gguf` | GGUF filename when loading from a Hugging Face repo |
+| `PARSE_N_GPU_LAYERS`| auto (`-1` on CUDA, `0` on CPU) | Number of layers to offload to GPU (`-1` = all layers, `0` = CPU only) |
+| `PARSE_CTX` | `2048` | Context window size for llama.cpp |
+| `STT_DEVICE` | auto (`cuda` or `cpu`) | Force `cpu` or `cuda` for Faster-Whisper |
+| `SPEECH_API_CACHE` | `speech-api/.cache` | Local weight cache directory (gitignored) |
 
-1. **Deterministic Fixed-Timestep Simulation**:
-   - The physical simulation updates at a constant **20 Hz** (`SIM_DT_S = 0.05s`, `PHYSICS_HZ = 20`) via an accumulator-based time step decoupled from display frame rates.
-   - Core domain logic in `@core`, `@parse`, and `@pilot` is completely free of DOM references, allowing fast, headless execution in Vitest.
-2. **60 FPS Canvas2D Scope Rendering**:
-   - The PPI scope is rendered using HTML5 Canvas2D optimized for high track densities (tested for 30+ simultaneous tracks at 60 FPS).
-   - Renders radar history dots, predicted track lines (PTL), leader lines, full/limited datablocks (FDB/LDB), J-rings, and vector maps.
-3. **React TCW Shell Overlay**:
-   - React manages the surrounding STARS TCW workspace: the physical-replica Display Control Bar (DCB), Flight Progress Strip bay, Command Line input, System Status Area (SSA), and dialogs.
+> [!TIP]
+> **Custom GGUF Models**: You can drop in any local `.gguf` file by setting `PARSE_MODEL_ID=/path/to/model.gguf`. We recommend using small **instruct-tuned** models (1B–3B parameters, such as Qwen2.5-Instruct or Llama-3.2-Instruct) rather than base models, so the model follows system prompt formatting and GBNF JSON grammar constraints accurately.
 
-### Multi-Stage Parse Pipeline
+---
 
-ATC commands from keyboard input and transcribed speech are evaluated through a rigorous 4-stage pipeline defined in [`phases/_shared/parse-pipeline.md`](phases/_shared/parse-pipeline.md):
+## Voice & Local Speech Subsystem (`speech-api`)
 
-```
-User Input (Text or Voice Audio)
-  │
-  ├──► [Stage 0: Normalization] (telephony expansion, number word translation, whitespace cleanup)
-  │
-  ├──► [Stage 1: Typed Shorthand] (fast vice/STARS token parser: H240, C50, S210, APP ILS27)
-  │      └─► Hit? ──► Return Command IR (parseStage: "typed")
-  │
-  ├──► [Stage 2: Path A - Spoken Grammar] (deterministic FAA JO 7110.65 spoken English parser)
-  │      └─► Hit? ──► Return Command IR (parseStage: "spoken_a")
-  │
-  ├──► [Stage 3: Path B - Fuzzy Rewrite] (spoken-to-typed phonetic salvage)
-  │      └─► Hit? ──► Return Command IR (parseStage: "spoken_b")
-  │
-  └──► [Stage 4: Path C - Local LLM Salvage] (optional GBNF grammar-constrained llama.cpp /parse)
-         └─► Hit? ──► Validate JSON against Command IR schema ──► Return (parseStage: "llm_c")
-```
+### Zero-Cloud Architecture
 
-Every parsed instruction maps directly to the strongly typed [Command IR union](phases/_shared/command-ir.md) (`HeadingInstruction`, `AltitudeInstruction`, `SpeedInstruction`, `DirectInstruction`, `ApproachInstruction`, `CrossInstruction`, `HandoffInstruction`, etc.).
+ATC-SIM enforces a strict **zero paid/metered API policy**. All speech-to-text, text-to-speech, and language salvage models run 100% locally on your machine via the bundled Python service in [`speech-api/`](speech-api/).
 
-### Coordinate System
+- **STT (Speech-to-Text)**: [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2) running `Systran/faster-whisper-small.en` or `base.en`. Uses `X-ATC-Fixes` headers to bias transcription toward active airspace waypoints.
+- **TTS (Text-to-Speech)**: [Piper TTS](https://github.com/OHF-Voice/piper1-gpl) with ONNX Runtime using high-speed multi-speaker medium voices (`en_US-lessac-medium`), assigning distinct voices to different airline callsigns.
+- **Path C Salvage Parser**: [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) running quantized `Qwen2.5-1.5B-Instruct-GGUF` (~1.2 GB) with GBNF grammar-constrained decoding. Operates solely as fallback salvage when deterministic parsers miss.
 
-- **Plane**: Local East-North-Up (ENU) tangent plane in nautical miles (`NmEastNorth`: `xNm` East, `yNm` North) centered at the Airport Reference Point (ARP).
-- **KDEM Demo Field ARP**: Origin `(0, 0)` at `0°N, 0°E` (1 NM = 1 arc-minute; magnetic variation 0°).
-- **Headings**: True/Magnetic heading degrees `[0, 360)` where `000°` = North (+y world), `090°` = East (+x world).
-- **Display Mapping**: North-up PPI maps +y (world North) to -y (canvas up). See [`docs/COORDINATE-SYSTEM.md`](docs/COORDINATE-SYSTEM.md).
+### Setting Up the Local Speech Server
+
+1. Navigate to `speech-api` and create a virtual environment:
+   ```bash
+   cd speech-api
+   python3 -m venv .venv
+   source .venv/bin/activate   # On Windows: .venv\Scripts\activate
+   ```
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   # Optional: install llama-cpp-python for Path C local LLM parsing
+   pip install -r requirements-parse.txt
+   ```
+3. Download open weights from Hugging Face:
+   ```bash
+   python download_weights.py
+   ```
+4. Start the speech API server:
+   ```bash
+   uvicorn app:app --host 127.0.0.1 --port 8090
+   ```
+
+### Endpoints
+
+| Method | Path | Request Body | Response | Description |
+|---|---|---|---|---|
+| `GET` | `/health` | — | `{ "ok": true, "sttModel": "...", "ttsVoice": "...", "parse": "ready" }` | Health check & model status |
+| `POST` | `/stt` | `audio/wav` (PCM 16kHz) | `{ "text": "...", "confidence": 0.95 }` | Transcribe controller speech |
+| `POST` | `/tts` | `{ "text": "...", "voiceId": "..." }` | `audio/wav` binary stream | Synthesize pilot readback |
+| `POST` | `/parse` | `{ "text": "...", "context": { ... } }` | Command IR JSON | Optional GBNF salvage parser |
 
 ---
 
@@ -243,7 +189,7 @@ Every parsed instruction maps directly to the strongly typed [Command IR union](
   - Discrete radar history dots (0–5 dots sampled at 5-second intervals).
   - Predicted Track Line (PTL): 1.0 to 4.0 minute forward ground track lookahead vector (`OWN` or `ALL`).
 - **Target Proximity Alert (TPA)**: Selectable J-rings / separation halos (3 NM / 5 NM) for spacing management.
-- **Display Control Bar (DCB)**: Authentic green physical button matrix with MAIN and AUX menu switching, interactive wheel spinners (RANGE, RR, LDR DIR, LDR LEN, BRITE, CHAR SIZE), altitude filters, and 8 persistent local PREF slots stored in `localStorage`.
+- **Display Control Bar (DCB)**: Authentic green physical button matrix with MAIN and AUX menu switching, interactive wheel spinners (RANGE, RR, LDR DIR, LDR LEN, BRITE, CHAR SIZE), altitude filters, and persistent local PREF slots stored in `localStorage`.
 - **System Status Area (SSA)**: Real-time top-left status display showing UTC/Sim time, altimeter setting (29.92), active altitude filter limits, and sensor mode.
 
 ### Flight Kinematics & FMS Navigation
@@ -263,7 +209,7 @@ Every parsed instruction maps directly to the strongly typed [Command IR union](
 - **Callsign Resolution**: Matches callsigns via telephony name ("Delta 123"), ICAO code ("DAL123"), numeric tail ("123"), or currently hooked radar target.
 - **Automated Check-Ins**: Staggered STAR arrival check-in radio calls as aircraft enter the TRACON sector.
 - **Inbound Handoff Workflow**: Inbound arrivals spawn in pending handoff state from Center (unowned green FDB) → Controller clicks track or presses `F3` to accept → Track becomes owned (white FDB) → Radio frequency unlocked → Pilot checks in.
-- **Realistic Readbacks**: Generates verbal readbacks following FAA JO 7110.65 digit grouping (e.g. "climb and maintain five thousand, Delta one twenty-three"), plus "unable" responses for invalid or aerodynamically impossible clearances.
+- **Realistic Readbacks**: Generates verbal readbacks following FAA JO 7110.65 digit grouping (e.g. "climb and maintain five thousand, Delta one twenty-three"), plus "unable" responses for invalid clearances.
 
 ---
 
@@ -333,7 +279,7 @@ Press **`F1`** at any time in the app to open the interactive keyboard help over
 | **Deselect Track** | `Left Click` empty radar background |
 | **Switch Focus (Command / PPI)** | `Tab` |
 
-### Scope Keypad Shortcuts (When PPI is Focused)
+### Scope Keypad Shortcuts
 
 | Key | Function |
 |---|---|
@@ -351,47 +297,102 @@ Press **`F1`** at any time in the app to open the interactive keyboard help over
 
 ---
 
-## Voice & Local Speech Subsystem (`speech-api`)
+## System Architecture
 
-### Zero-Cloud Architecture
+### Overview
 
-ATC-SIM enforces a strict **zero paid/metered API policy**. All speech-to-text, text-to-speech, and language salvage models run 100% locally on your machine via the bundled Python service in [`speech-api/`](speech-api/).
+```mermaid
+flowchart TD
+    subgraph Browser / Client [Vite SPA - Browser Runtime]
+        subgraph UI [React UI Shell]
+            Shell[STARS TCW Shell]
+            DCB[Display Control Bar]
+            Strips[Flight Strip Bay]
+            CmdLine[Command Line & PTT Input]
+        end
 
-- **STT (Speech-to-Text)**: [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2) running `Systran/faster-whisper-small.en` or `base.en`. Uses `X-ATC-Fixes` headers to bias transcription toward active airspace waypoints.
-- **TTS (Text-to-Speech)**: [Piper TTS](https://github.com/rhasspy/piper) with ONNX Runtime using high-speed multi-speaker medium voices (`en_US-lessac-medium`), assigning distinct voices to different airline callsigns.
-- **Path C Salvage Parser**: [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) running quantized `Qwen2.5-1.5B-Instruct-GGUF` (~1.2 GB) with GBNF grammar-constrained decoding (`parse_grammar.gbnf`). Operates solely as fallback salvage when deterministic parsers miss.
+        subgraph CanvasEngine [Radar Scope Engine]
+            Canvas[Canvas2D Viewport]
+            Renderer[renderScope.ts - 60 FPS PPI]
+            Maps[Layered Vector Video Maps]
+        end
 
-### Setting Up the Local Speech Server
+        subgraph SimEngine [Core Simulation - Fixed 20 Hz]
+            Clock[Fixed Timestep Clock]
+            World[World State Model]
+            FMS[FMS & Kinematics Engine]
+            Alerts[CA & MSAW Detectors]
+            Handoff[Sector Handoff Coordinator]
+        end
 
-1. Navigate to the `speech-api` directory and create a virtual environment:
-   ```bash
-   cd speech-api
-   python3 -m venv .venv
-   source .venv/bin/activate   # On Windows: .venv\Scripts\activate
-   ```
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   # Optional: install llama-cpp-python for Path C local LLM parsing
-   pip install -r requirements-parse.txt
-   ```
-3. Download open weights from Hugging Face:
-   ```bash
-   python download_weights.py
-   ```
-4. Start the speech API server:
-   ```bash
-   uvicorn app:app --host 127.0.0.1 --port 8090
-   ```
+        subgraph CommandPipeline [Command & Pilot System]
+            Parser[4-Stage Parse Pipeline]
+            Pilot[Virtual Pilot Agent]
+            CheckIn[STAR Arrival Check-In Queue]
+        end
 
-### Endpoints
+        subgraph AudioSubsystem [Web Audio DSP Graph]
+            PTT[AudioWorklet 16kHz PCM Capture]
+            RadioFX[VHF Bandpass Filter + Static + Clicks]
+            CATone[Square-Wave Conflict Alert Tone]
+        end
+    end
 
-| Method | Path | Request Body | Response | Description |
-|---|---|---|---|---|
-| `GET` | `/health` | — | `{ "ok": true, "sttModel": "...", "ttsVoice": "...", "parse": "ready" }` | Health check & model status |
-| `POST` | `/stt` | `audio/wav` (PCM 16kHz) | `{ "text": "...", "confidence": 0.95 }` | Transcribe controller speech |
-| `POST` | `/tts` | `{ "text": "...", "voiceId": "..." }` | `audio/wav` binary stream | Synthesize pilot readback |
-| `POST` | `/parse` | `{ "text": "...", "context": { ... } }` | Command IR JSON | Optional GBNF salvage parser |
+    subgraph SpeechAPI [Local Speech Server - speech-api/]
+        Whisper[Faster-Whisper STT]
+        Piper[Piper ONNX TTS Engine]
+        PathC[llama.cpp GBNF Salvage /parse]
+    end
+
+    CmdLine -->|Typed Token / Text| Parser
+    PTT -->|Audio Blob| Whisper
+    Whisper -->|Transcript| Parser
+    Parser -->|Command IR| Pilot
+    Pilot -->|Intent Mutations| World
+    Pilot -->|Verbal Readback| Piper
+    Piper -->|Audio Buffer| RadioFX
+    RadioFX -->|Squelch / Sound| Shell
+    World -->|20 Hz Physics| FMS
+    World --> Alerts
+    Alerts -->|Conflict Detected| CATone
+    World -->|Track Geometry| Renderer
+    Renderer --> Canvas
+    DCB -->|Zoom / Filter / Maps| Renderer
+```
+
+1. **Deterministic 20 Hz Simulation**: The physical simulation updates at a constant 20 Hz via an accumulator-based physics clock decoupled from rendering. Core logic is pure TypeScript with no DOM dependencies.
+2. **60 FPS Canvas2D Scope Rendering**: The PPI radar scope is rendered via high-performance Canvas2D supporting dense traffic with history trails, leader lines, datablocks, J-rings, and vector maps.
+3. **React TCW Shell Overlay**: Manages the surrounding workstation workspace: Display Control Bar (DCB), Flight Progress Strips, Command Line, System Status Area (SSA), and menus.
+
+### Multi-Stage Parse Pipeline
+
+Commands from keyboard input or transcribed speech are evaluated through a robust 4-stage pipeline:
+
+```
+User Input (Text or Spoken Audio)
+  │
+  ├──► [Stage 0: Normalization] (Telephony expansion, number word translation, whitespace cleanup)
+  │
+  ├──► [Stage 1: Typed Shorthand] (Fast STARS token parser: H240, C50, S210, APP ILS27)
+  │      └─► Hit? ──► Return Command IR (parseStage: "typed")
+  │
+  ├──► [Stage 2: Path A - Spoken Grammar] (Deterministic FAA JO 7110.65 spoken English grammar)
+  │      └─► Hit? ──► Return Command IR (parseStage: "spoken_a")
+  │
+  ├──► [Stage 3: Path B - Fuzzy Rewrite] (Spoken-to-typed phonetic and alias salvage)
+  │      └─► Hit? ──► Return Command IR (parseStage: "spoken_b")
+  │
+  └──► [Stage 4: Path C - Local LLM Salvage] (Optional GBNF grammar-constrained llama.cpp /parse)
+         └─► Hit? ──► Validate JSON against Command IR schema ──► Return (parseStage: "llm_c")
+```
+
+All parsed instructions resolve to strongly typed Command IR structures (`HeadingInstruction`, `AltitudeInstruction`, `SpeedInstruction`, `DirectInstruction`, `ApproachInstruction`, `CrossInstruction`, `HandoffInstruction`, etc.).
+
+### Coordinate System
+
+- **Plane**: Local East-North-Up (ENU) tangent plane in nautical miles (`NmEastNorth`: `xNm` East, `yNm` North) centered at the Airport Reference Point (ARP).
+- **Headings**: True/Magnetic heading degrees `[0, 360)` where `000°` = North (+y world), `090°` = East (+x world).
+- **Display Mapping**: North-up PPI maps +y (world North) to -y (canvas up). See [`docs/COORDINATE-SYSTEM.md`](docs/COORDINATE-SYSTEM.md).
 
 ---
 
@@ -404,7 +405,7 @@ ATC-SIM includes an automated tool to ingest FAA Coded Instrument Flight Procedu
 npm run cifp:import
 ```
 
-Processed data lives in [`testdata/catalogs/`](testdata/catalogs/) and [`src/scenario/data/`](src/scenario/data/), defining:
+Processed data defines:
 - Airports, Runways, Displaced Thresholds, and Localizer/Glideslope geometry
 - Waypoints, Navaids (VOR/DME, NDB), and Enroute Fixes
 - SIDs (Standard Instrument Departures) and STARs (Standard Terminal Arrivals)
@@ -412,7 +413,7 @@ Processed data lives in [`testdata/catalogs/`](testdata/catalogs/) and [`src/sce
 
 ---
 
-## Development, Testing & CI
+## Development & Testing
 
 ### Available Scripts
 
@@ -439,32 +440,10 @@ npm run ci
 
 ### Testing Strategy
 
-- **Core & Kinematics Tests**: Vitest unit tests verifying Euler integration, standard rate turn limits, altitude crossing restriction satisfaction, and localizer capture math.
+- **Core & Kinematics Tests**: Unit tests verifying fixed timestep integration, standard rate turn limits, altitude crossing restrictions, and localizer capture math.
 - **Parser Test Suite**: Thousands of unit tests verifying JO 7110.65 spoken phrases, vice token variations, and rejection of malformed clearances.
-- **Integration Tests**: [`tests/integration/`](tests/integration/) tests full radio command execution against simulation state.
+- **Integration Tests**: Tests full radio command execution against simulation state in `tests/integration/`.
 - **Python Tests**: Unit tests in `speech-api/tests/` verifying FastAPI endpoints, WAV encoding, and GBNF parsing.
-
----
-
-## Implementation Roadmap & Phased Execution
-
-ATC-SIM development is divided into **6 sequential phases** (comprising 98 granular ticket specifications):
-
-| Phase | Directory | Description | Status |
-|---|---|---|---|
-| **Phase 00** | [`phases/00-slice/`](phases/00-slice/) | **Thin Vertical Slice**: Coordinate math, basic world state, typed parser stub, Canvas2D skeleton. | Shipped |
-| **Phase 01** | [`phases/01-closed-loop/`](phases/01-closed-loop/) | **Playable Closed Loop**: 20 Hz physics accumulator, virtual pilot agent, flight kinematics, typed parser, readbacks. | Shipped |
-| **Phase 02** | [`phases/02-scope/`](phases/02-scope/) | **STARS TCW Display**: Authentic CRT look, FDB/LDB datablocks, leader lines, video maps, DCB button matrix, 60 FPS Canvas2D. | Shipped |
-| **Phase 03** | [`phases/03-voice/`](phases/03-voice/) | **Voice Pipeline**: PTT capture, Web Audio radio DSP graph, local `speech-api` (Whisper STT + Piper TTS), JO 7110.65 grammar. | Shipped |
-| **Phase 04** | [`phases/04-procedures/`](phases/04-procedures/) | **Procedures & Airspace**: CIFP procedures, STAR descent-via navigation, ILS localizer/glideslope capture, Conflict Alert (CA), MSAW. | Shipped |
-| **Phase 05** | [`phases/05-training/`](phases/05-training/) | **Training & Evaluation**: Controller scoring, phraseology checking, pilot human factor latency/errors, session recorder & replay. | Active |
-
-### How to Launch an Implementation Agent
-
-To implement a phase or ticket using an AI coding agent:
-- **Solo Phase**: Read [`phases/LAUNCH.md`](phases/LAUNCH.md) and copy `phases/NN-name/AGENT.md` into the agent's briefing prompt.
-- **Swarm Orchestration**: See [`phases/SWARM.md`](phases/SWARM.md), [`phases/SWARM-CAPTAIN.md`](phases/SWARM-CAPTAIN.md), and [`phases/SWARM-STATUS.md`](phases/SWARM-STATUS.md).
-- **Git Protocol**: Every ticket is developed on a `ticket/<id>-<slug>` branch off `master` and squash-merged with one commit per ticket ([Workflow Rules](phases/LAUNCH.md)).
 
 ---
 
@@ -472,14 +451,7 @@ To implement a phase or ticket using an AI coding agent:
 
 - [`docs/COORDINATE-SYSTEM.md`](docs/COORDINATE-SYSTEM.md) — Tangent plane ENU coordinate math and projection formulas.
 - [`docs/DISCLAIMER.md`](docs/DISCLAIMER.md) — Legal notice and non-FAA operational disclaimer.
-- [`docs/PRODUCT.md`](docs/PRODUCT.md) — Frozen product scope and parameters.
-- [`phases/_shared/architecture.md`](phases/_shared/architecture.md) — System architecture and dataflow specifications.
-- [`phases/_shared/command-ir.md`](phases/_shared/command-ir.md) — Command IR schema and typed token specifications.
-- [`phases/_shared/parse-pipeline.md`](phases/_shared/parse-pipeline.md) — 4-stage command parser pipeline design.
-- [`phases/_shared/speech-port.md`](phases/_shared/speech-port.md) — SpeechPort abstraction and Web Audio graph.
-- [`phases/_shared/references.md`](phases/_shared/references.md) — FAA JO 7110.65, STARS TCW, and VATSIM CRC reference citations.
-- [`phases/_shared/glossary.md`](phases/_shared/glossary.md) — Domain terminology and frozen physical units.
-- [`phases/_shared/non-goals.md`](phases/_shared/non-goals.md) — Explicit system boundaries and anti-patterns.
+- [`docs/PRODUCT.md`](docs/PRODUCT.md) — Product scope and parameters.
 - [`speech-api/README.md`](speech-api/README.md) — In-depth setup, Docker instructions, and configuration for the local speech service.
 
 ---
