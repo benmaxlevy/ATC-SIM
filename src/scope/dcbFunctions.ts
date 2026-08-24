@@ -1,7 +1,9 @@
 /**
  * Analog: CRC STARS DCB RANGE / PLACE CNTR / OFF CNTR / RR / PLACE RR / RR CNTR /
- * LDR DIR / LDR / MAPS / CHAR SIZE / BRITE (R07).
- * Trainer delta: numbered video-map catalog (`dcbLabel`), discrete **range**
+ * LDR DIR / LDR / MAPS / GEO MAPS / CURRENT / WX / CHAR SIZE / BRITE (R07).
+ * Trainer delta: numbered video-map catalog (`dcbLabel`), slots 1–30 (empty
+ * numbers are disabled cells, not invented geometry), GEO MAPS / CURRENT on-PPI
+ * lists, WX1–4 disabled chrome with no precipitation. Discrete **range**
  * presets, generated **range rings** (2/5/10 NM, PLACE RR origin in world NM),
  * **leader** L1–L9 direction spinner plus discrete length 0/24/36/48 px,
  * CHAR SIZE 11–13 px IBM Plex Mono, BRITE map-stroke steps. Discrete range
@@ -36,6 +38,11 @@ export const DEFAULT_RR_INTERVAL_NM: RrIntervalNm = 5;
 
 /** Numpad compass dirs offered by DCB LDR DIR — same as scope-focus L+digit. */
 export const DCB_LEADER_DIRS: LeaderDir[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+/** CRC analog numbered MAPS slots. Trainer catalog binds dcbNumber; unused stay empty. */
+export const DCB_MAP_SLOT_COUNT = 30;
+/** MAIN quick video-map toggles (catalog 1–6). */
+export const DCB_QUICK_MAP_COUNT = 6;
 
 export function snapRrInterval(nm: number): RrIntervalNm {
   for (const step of RR_INTERVALS_NM) {
@@ -122,6 +129,60 @@ export function syncRoleMapVisibility(view: ScopeView, role: VideoMapRole, on: b
 
 export function formatDcbMapLabel(map: LoadedVideoMap): string {
   return `${map.dcbNumber} ${map.dcbLabel}`;
+}
+
+export function videoMapByDcbNumber(view: ScopeView, slot: number): LoadedVideoMap | undefined {
+  return dcbCatalogMaps(view).find((map) => map.dcbNumber === slot);
+}
+
+export function isDcbMapSlotEnabled(view: ScopeView, slot: number): boolean {
+  const map = videoMapByDcbNumber(view, slot);
+  if (!map) {
+    return false;
+  }
+  if (map.role === "coastline" && view.digitalMap.coastline?.enabled !== true) {
+    return false;
+  }
+  return true;
+}
+
+/** CLR ALL: every catalog video map off. Coastline is a no-op when JSON `enabled: false`. */
+export function clearAllVideoMaps(view: ScopeView): void {
+  for (const map of dcbCatalogMaps(view)) {
+    if (map.role === "coastline" && view.digitalMap.coastline?.enabled !== true) {
+      continue;
+    }
+    view.mapVisibility.set(map.id, false);
+    syncRoleFlag(view, map, false);
+  }
+  invalidateMapCache(view);
+}
+
+export type MapListKind = "geo" | "current";
+
+/** GEO MAPS = every catalog video map + ON/OFF. CURRENT = maps that are on. */
+export function buildMapListLines(view: ScopeView, kind: MapListKind): string[] {
+  const maps = dcbCatalogMaps(view);
+  if (kind === "geo") {
+    return maps.map((map) => {
+      const state = isVideoMapOn(view, map.id) ? "ON" : "OFF";
+      return `${formatDcbMapLabel(map)} ${state}`;
+    });
+  }
+  return maps.filter((map) => isVideoMapOn(view, map.id)).map((map) => formatDcbMapLabel(map));
+}
+
+export function toggleGeoMapsList(view: ScopeView): void {
+  view.geoMapsListOn = !view.geoMapsListOn;
+}
+
+export function toggleCurrentMapsList(view: ScopeView): void {
+  view.currentMapsListOn = !view.currentMapsListOn;
+}
+
+export function hideMapLists(view: ScopeView): void {
+  view.geoMapsListOn = false;
+  view.currentMapsListOn = false;
 }
 
 /**

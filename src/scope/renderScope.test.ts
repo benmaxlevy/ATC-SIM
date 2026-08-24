@@ -8,6 +8,7 @@ import { PALETTE } from "./palette";
 import { PTL_MINUTES, ptlEndpoint, shouldDrawPtl } from "./ptl";
 import { handlePpiLeftClick } from "./ppiPointer";
 import { renderScope } from "./renderScope";
+import { hideMapLists, toggleCurrentMapsList, toggleGeoMapsList } from "./dcbFunctions";
 import { createScopeView } from "./scopeView";
 import { formatFilterReadout } from "./altitudeFilter";
 import { buildSsaLines, formatSsaTime } from "./ssa";
@@ -1043,4 +1044,40 @@ test("T04-17 AC1 — pending inbound paints HO cue; click owns white and drops c
   expect(owned.fillTexts.some((t) => t.text === "DAL123 HO")).toBe(false);
   expect(owned.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
   expect(handoffFor(world, dal.id)).toEqual({ kind: "none" });
+});
+
+test("T02-24 — GEO MAPS / CURRENT overlay is screen-fixed SSA green; no weather mosaic", () => {
+  const view = createScopeView(0, 0, { digitalMap: parseDigitalMap(loadKdem().maps) });
+  const world = createWorldFromScenario(loadKdem());
+  toggleGeoMapsList(view);
+  const geo = createMockCtx();
+  renderScope(geo.ctx, world, view, 800, 800);
+  expect(geo.fillTexts.some((t) => t.text === "GEO MAPS")).toBe(true);
+  expect(geo.fillTexts.some((t) => t.text === "1 RWY27 ON")).toBe(true);
+  expect(geo.fillTexts.find((t) => t.text === "GEO MAPS")?.fillStyle).toBe(PALETTE.ssa);
+
+  toggleGeoMapsList(view);
+  toggleCurrentMapsList(view);
+  const current = createMockCtx();
+  renderScope(current.ctx, world, view, 800, 800);
+  expect(current.fillTexts.some((t) => t.text === "CURRENT")).toBe(true);
+  expect(current.fillTexts.some((t) => t.text === "1 RWY27")).toBe(true);
+  expect(current.fillTexts.some((t) => t.text === "GEO MAPS")).toBe(false);
+
+  hideMapLists(view);
+  const hidden = createMockCtx();
+  renderScope(hidden.ctx, world, view, 800, 800);
+  expect(hidden.fillTexts.some((t) => t.text === "GEO MAPS")).toBe(false);
+  expect(hidden.fillTexts.some((t) => t.text === "CURRENT")).toBe(false);
+
+  const sources = import.meta.glob("./*.{ts,tsx}", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  const src = sources["./renderScope.ts"] ?? "";
+  expect(src).not.toMatch(/nexrad/i);
+  expect(src).not.toMatch(/mosaic/i);
+  expect(src).not.toMatch(/openstreetmap/i);
+  expect(src).not.toMatch(/drawImage/);
 });

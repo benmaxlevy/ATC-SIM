@@ -16,8 +16,8 @@
  * DCB (T02-16/T02-17/T02-22) is a green cell grid on the PPI glass; it calls these same
  * camera / map / filter / PTL / history / MAPS / RR / LDR / CHAR / BRITE
  * functions. MAIN↔AUX via SHIFT; submenus replace the bar; RANGE / RR / LDR DIR /
- * LDR length are spinners over frozen presets. Trainer subset (SHIFT/DONE/VOL) — not a full STARS DCB
- * (no WX / PREF / CSA / CRDA / FMA).
+ * LDR length are spinners over frozen presets. Trainer subset (SHIFT/DONE/VOL,
+ * disabled WX) — not a full STARS DCB (no precipitation / PREF / CSA / CRDA / FMA).
  *
  * SSA (T02-20) is a screen-fixed top-left status block (sim time, KDEM 29.92
  * stub, FILTER, RANGE, OFF CNTR, OK). Never a Command.
@@ -185,12 +185,16 @@ export {
 export type { DcbCellKind, DcbMenu, DcbMenuHost, DcbSpinnerCell, DcbSpinnerState } from "./dcbMenu";
 export {
   DCB_LEADER_DIRS,
+  DCB_MAP_SLOT_COUNT,
+  DCB_QUICK_MAP_COUNT,
   DEFAULT_RR_INTERVAL_NM,
   RR_INTERVALS_NM,
   applyDcbLeaderDir,
   applyRrCenter,
   armPlaceCenter,
   armPlaceRangeRing,
+  buildMapListLines,
+  clearAllVideoMaps,
   closeDcbSubmenu,
   cycleCharSize,
   cycleMapBrite,
@@ -203,15 +207,20 @@ export {
   formatDcbLdrLengthReadout,
   formatDcbMapLabel,
   formatDcbRrReadout,
+  hideMapLists,
+  isDcbMapSlotEnabled,
   isVideoMapOn,
   snapRrInterval,
   stepDcbLeaderDir,
   stepDcbLeaderLength,
   stepRrInterval,
+  toggleCurrentMapsList,
   toggleDcbSubmenu,
+  toggleGeoMapsList,
   toggleVideoMap,
+  videoMapByDcbNumber,
 } from "./dcbFunctions";
-export type { DcbSubmenu, RrIntervalNm } from "./dcbFunctions";
+export type { DcbSubmenu, MapListKind, RrIntervalNm } from "./dcbFunctions";
 export {
   HISTORY_MAX_DOTS,
   HISTORY_SAMPLE_MS,

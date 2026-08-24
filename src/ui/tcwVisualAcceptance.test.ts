@@ -37,7 +37,7 @@ const uiSources = import.meta.glob("./*.{ts,tsx}", {
 }) as Record<string, string>;
 
 const FORBIDDEN_CHROME = /\b(zoom|sprite|osm|hud|nametag|label)\b/i;
-const FORBIDDEN_DCB_CELLS = /\b(WX|PREF|CSA|CRDA|FMA|OSM)\b/;
+const FORBIDDEN_DCB_CELLS = /\b(PREF|CSA|CRDA|FMA|OSM)\b/;
 
 function keyEvent(key: string) {
   return {
@@ -138,7 +138,7 @@ test("AC4 — T00-01 disclaimer is first-run and inside F1; HELP_KEYS_POINTER st
   expect(firstRun).toContain("disclaimer-first-run");
 });
 
-test("AC5 — persistent chrome has no zoom/label/sprite/OSM/HUD; DCB has no WX/PREF clone cells", () => {
+test("AC5 — persistent chrome has no zoom/label/sprite/OSM/HUD; DCB WX1–4 exist disabled; no PREF clone", () => {
   const chromeFiles = [
     "./DisplayControlBar.tsx",
     "./command-line.tsx",
@@ -167,6 +167,14 @@ test("AC5 — persistent chrome has no zoom/label/sprite/OSM/HUD; DCB has no WX/
   expect(dcbText).toMatch(/HIST/);
   expect(dcbText).not.toMatch(FORBIDDEN_CHROME);
   expect(dcbText).not.toMatch(FORBIDDEN_DCB_CELLS);
+  for (const n of [1, 2, 3, 4]) {
+    expect(dcb).toContain(`data-dcb-cell="wx${n}"`);
+    expect(dcb).toMatch(new RegExp(`aria-label="WX${n}"[^>]*\\bdisabled\\b`));
+  }
+  expect(dcb).not.toMatch(/<select/i);
+  expect(uiSources["./DisplayControlBar.tsx"]!).not.toMatch(
+    /drawWeather|NEXRAD|openstreetmap|weatherMosaic/i,
+  );
   expect(dcb).not.toMatch(/<input/i);
   expect(formatDcbRangeReadout(20).toLowerCase()).not.toContain("zoom");
 
@@ -199,6 +207,8 @@ test("AC5 — persistent chrome has no zoom/label/sprite/OSM/HUD; DCB has no WX/
   expect(overlay.replaceAll(/zoom-to-cursor/gi, "")).not.toMatch(FORBIDDEN_CHROME);
   expect(overlay).not.toMatch(/\bOSM\b/);
   expect(overlay).not.toMatch(/\bsprite\b/i);
+  expect(uiSources["./DisplayControlBar.tsx"]!).not.toMatch(/nexrad|mosaic|openstreetmap/i);
+  expect(uiSources["./ScopeCanvas.tsx"]!).not.toMatch(/nexrad|mosaic|openstreetmap/i);
 
   expect(SCOPE_FONT_STACK).toContain("IBM Plex Mono");
   expect(SCOPE_FONT_STACK).toContain("monospace");

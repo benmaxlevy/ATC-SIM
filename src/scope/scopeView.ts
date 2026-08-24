@@ -80,6 +80,10 @@ export interface ScopeView {
   dcbMenu: DcbMenu;
   /** RANGE / RR / LDR DIR / LDR length spinner arm+wheel. Display only. */
   dcbSpinner: DcbSpinnerState;
+  /** GEO MAPS on-PPI list (video map catalog). Display only. */
+  geoMapsListOn: boolean;
+  /** CURRENT on-PPI list of video maps that are on. Display only. */
+  currentMapsListOn: boolean;
   digitalMap: DigitalMap;
   mapCache: MapCache | null;
   /** Global history dots. CRC analog; default on. F8 / scope-focus H. */
@@ -154,6 +158,8 @@ export function createScopeView(
     leaderLengthPx: DEFAULT_LEADER_LENGTH_PX,
     dcbMenu: "MAIN",
     dcbSpinner: idleDcbSpinner(),
+    geoMapsListOn: false,
+    currentMapsListOn: false,
     digitalMap,
     mapCache: null,
     historyEnabled: true,

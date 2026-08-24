@@ -33,6 +33,7 @@ import {
   leaderDigitFromKey,
 } from "./keymap";
 import { handleDcbEscape } from "./dcbMenu";
+import { hideMapLists } from "./dcbFunctions";
 import { PpiPlaceholderId } from "./ppi-placeholder";
 import {
   centerOnAirport,
@@ -206,6 +207,7 @@ export function handleScopeKeyDown(
     const filterBusy = focus === "scope" && view.filterEntry.phase !== "idle";
     const leaderBusy = focus === "scope" && liveLeaderChord(view, nowMs) != null;
     if (!filterBusy && !leaderBusy && handleDcbEscape(view)) {
+      hideMapLists(view);
       consume(event);
       ui?.onHandled?.();
       return true;

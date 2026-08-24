@@ -1,12 +1,14 @@
 /**
  * Analog: CRC STARS DCB RANGE / PLACE CNTR / OFF CNTR / RR / PLACE RR / RR CNTR /
- * LDR DIR / LDR (docs.virtualnas.net/crc/stars — R07).
+ * LDR DIR / LDR / MAPS / WX (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: green equal-height cells on the glass. SHIFT swaps MAIN and AUX.
  * MAPS submenu replaces the bar; DONE / Esc return to MAIN. RANGE / RR / LDR DIR /
  * LDR length are spinners (arm, wheel steps frozen presets, second click / Esc
  * commits). CHAR SIZE and BRITE stay click-cycle until T02-26. AUX is SHIFT back
  * + VOL disabled. FILTER / PTL / HIST stay on MAIN. Pressed = invert/stipple.
- * No WX / PREF / CSA / CRDA / FMA (R06). Discrete **range** presets only. Not NAS STARS.
+ * MAIN quick video maps 1–6; MAPS submenu slots 1–30 (empty slots disabled).
+ * WX1–4 are disabled chrome (no precipitation). No PREF / CSA / CRDA / FMA (R06).
+ * Discrete **range** presets only. Not NAS STARS.
  *
  * UI copy: SHIFT / DONE / MAIN / AUX / range / center / range rings / leader —
  * not toolbar or modal.
@@ -21,6 +23,7 @@ import {
   applyDcbLeaderDir,
   applyDcbShift,
   applyRrCenter,
+  clearAllVideoMaps,
   armDcbSpinner,
   armPlaceCenter,
   armPlaceRangeRing,
@@ -32,9 +35,10 @@ import {
   commitDcbSpinner,
   cycleCharSize,
   cycleMapBrite,
-  dcbCatalogMaps,
   dcbLeaderDirReadout,
   DCB_LEADER_DIRS,
+  DCB_MAP_SLOT_COUNT,
+  DCB_QUICK_MAP_COUNT,
   formatDcbBriteReadout,
   formatDcbCharReadout,
   formatDcbLdrLengthReadout,
@@ -42,7 +46,8 @@ import {
   formatDcbRangeReadout,
   formatDcbRrReadout,
   formatFilterBand,
-  isCoastlineToggleEnabled,
+  hideMapLists,
+  isDcbMapSlotEnabled,
   isRangeRingOffViewCenter,
   isVideoMapOn,
   isViewOffAirport,
@@ -52,13 +57,14 @@ import {
   stepDcbSpinner,
   stepRange,
   stepRrInterval,
+  toggleCurrentMapsList,
+  toggleGeoMapsList,
   toggleHistoryEnabled,
-  toggleMapLayer,
   togglePtlOn,
   toggleVideoMap,
+  videoMapByDcbNumber,
   type DcbCellKind,
   type DcbSpinnerCell,
-  type MapLayerId,
   type ScopeView,
 } from "@scope";
 import { focusPpi } from "./FlightStrips";
@@ -171,9 +177,12 @@ export function syncDisplayControlBar(
   setText(DCB_LDR_LENGTH_READOUT_ID, formatDcbLdrLengthReadout(view.leaderLengthPx));
   setText(DCB_CHAR_READOUT_ID, formatDcbCharReadout(view.charSizePx));
   setText(DCB_BRITE_READOUT_ID, formatDcbBriteReadout(view.mapBriteIndex));
-  setPressed(doc.querySelector('[data-dcb-map="rwy"]'), view.showRunway);
-  setPressed(doc.querySelector('[data-dcb-map="loc"]'), view.showLocalizer);
-  setPressed(doc.querySelector('[data-dcb-map="cst"]'), view.showCoastline);
+  for (const el of doc.querySelectorAll("[data-dcb-map-id]")) {
+    const id = el.getAttribute("data-dcb-map-id");
+    if (id) {
+      setPressed(el, isVideoMapOn(view, id));
+    }
+  }
   setPressed(doc.querySelector("[data-dcb-ptl]"), view.ptlOn);
   setPressed(doc.querySelector("[data-dcb-hist]"), view.historyEnabled);
   setPressed(doc.querySelector('[data-dcb-cell="maps"]'), view.dcbMenu === "MAPS");
@@ -184,6 +193,8 @@ export function syncDisplayControlBar(
   setPressed(doc.querySelector('[data-dcb-cell="range"]'), spinnerArmed(view, "RANGE"));
   setPressed(doc.querySelector('[data-dcb-cell="ldr-dir"]'), spinnerArmed(view, "LDR_DIR"));
   setPressed(doc.querySelector('[data-dcb-cell="ldr-length"]'), spinnerArmed(view, "LDR_LENGTH"));
+  setPressed(doc.querySelector('[data-dcb-cell="geo-maps"]'), view.geoMapsListOn);
+  setPressed(doc.querySelector('[data-dcb-cell="current"]'), view.currentMapsListOn);
 }
 
 interface DcbCellProps {
@@ -194,7 +205,6 @@ interface DcbCellProps {
   disabled?: boolean;
   onClick: () => void;
   onWheel?: (event: WheelEvent<HTMLButtonElement>) => void;
-  dataDcbMap?: "rwy" | "loc" | "cst";
   dataDcb?:
     | "ptl"
     | "hist"
@@ -213,8 +223,16 @@ interface DcbCellProps {
     | "rr-cntr"
     | "shift"
     | "done"
-    | "vol";
+    | "vol"
+    | "wx1"
+    | "wx2"
+    | "wx3"
+    | "wx4"
+    | "clr-all"
+    | "geo-maps"
+    | "current";
   dataMapId?: string;
+  dataMapSlot?: number;
 }
 
 function DcbCell({
@@ -225,9 +243,9 @@ function DcbCell({
   disabled,
   onClick,
   onWheel,
-  dataDcbMap,
   dataDcb,
   dataMapId,
+  dataMapSlot,
 }: DcbCellProps) {
   const inert = disabled || kind === "disabled";
   return (
@@ -239,8 +257,8 @@ function DcbCell({
       aria-disabled={inert ? true : undefined}
       disabled={inert}
       data-dcb-kind={kind}
-      data-dcb-map={dataDcbMap}
       data-dcb-map-id={dataMapId}
+      data-dcb-map-slot={dataMapSlot}
       data-dcb-ptl={dataDcb === "ptl" ? "" : undefined}
       data-dcb-hist={dataDcb === "hist" ? "" : undefined}
       data-dcb-cell={dataDcb}
@@ -263,11 +281,50 @@ function DcbCell({
   );
 }
 
-function mapClick(view: ScopeView, onChange: () => void, layer: MapLayerId): void {
+function mapSlotClick(view: ScopeView, onChange: () => void, slot: number): void {
+  const map = videoMapByDcbNumber(view, slot);
+  if (!map || !isDcbMapSlotEnabled(view, slot)) {
+    return;
+  }
   cancelFilterIfEntering(view);
-  closeDcbSubmenu(view);
-  toggleMapLayer(view, layer);
+  toggleVideoMap(view, map.id);
   afterCell(onChange);
+}
+
+function renderMapSlot(view: ScopeView, onChange: () => void, slot: number) {
+  const map = videoMapByDcbNumber(view, slot);
+  const enabled = isDcbMapSlotEnabled(view, slot);
+  return (
+    <DcbCell
+      key={slot}
+      kind={enabled ? "toggle" : "disabled"}
+      ariaLabel={map ? formatDcbMapLabel(map) : `Map ${slot}`}
+      dataMapId={map?.id}
+      dataMapSlot={slot}
+      pressed={map ? isVideoMapOn(view, map.id) : false}
+      disabled={!enabled}
+      onClick={() => mapSlotClick(view, onChange, slot)}
+    >
+      <span className="dcb-cell-line">{slot}</span>
+      <span className="dcb-cell-line">{map?.dcbLabel ?? "\u00a0"}</span>
+    </DcbCell>
+  );
+}
+
+function renderWxCell(n: 1 | 2 | 3 | 4) {
+  return (
+    <DcbCell
+      key={n}
+      kind="disabled"
+      ariaLabel={`WX${n}`}
+      dataDcb={`wx${n}`}
+      disabled
+      onClick={() => undefined}
+    >
+      <span className="dcb-cell-line">{`WX${n}`}</span>
+      <span className="dcb-cell-line">{"\u00a0"}</span>
+    </DcbCell>
+  );
 }
 
 function runCell(view: ScopeView, onChange: () => void, fn: () => void): void {
@@ -280,6 +337,7 @@ function runCell(view: ScopeView, onChange: () => void, fn: () => void): void {
 
 function clickDone(view: ScopeView, onChange: () => void): void {
   cancelFilterIfEntering(view);
+  hideMapLists(view);
   closeDcbMenu(view);
   afterCell(onChange);
 }
@@ -312,7 +370,6 @@ function renderShift(view: ScopeView, onChange: () => void) {
 }
 
 function renderMain(view: ScopeView, onChange: () => void, world: DisplayControlBarProps["world"]) {
-  const coastOn = isCoastlineToggleEnabled(view);
   const offCntr = isViewOffAirport(view);
   return (
     <>
@@ -373,37 +430,8 @@ function renderMain(view: ScopeView, onChange: () => void, world: DisplayControl
         <span className="dcb-cell-line">MAPS</span>
         <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
-      <DcbCell
-        kind="toggle"
-        ariaLabel="Runway map"
-        dataDcbMap="rwy"
-        pressed={view.showRunway}
-        onClick={() => mapClick(view, onChange, "runway")}
-      >
-        <span className="dcb-cell-line">RWY</span>
-        <span className="dcb-cell-line">{"\u00a0"}</span>
-      </DcbCell>
-      <DcbCell
-        kind="toggle"
-        ariaLabel="Localizer map"
-        dataDcbMap="loc"
-        pressed={view.showLocalizer}
-        onClick={() => mapClick(view, onChange, "localizer")}
-      >
-        <span className="dcb-cell-line">LOC</span>
-        <span className="dcb-cell-line">{"\u00a0"}</span>
-      </DcbCell>
-      <DcbCell
-        kind="toggle"
-        ariaLabel="Coastline map"
-        dataDcbMap="cst"
-        pressed={view.showCoastline}
-        disabled={!coastOn}
-        onClick={() => mapClick(view, onChange, "coastline")}
-      >
-        <span className="dcb-cell-line">CST</span>
-        <span className="dcb-cell-line">{"\u00a0"}</span>
-      </DcbCell>
+      {Array.from({ length: DCB_QUICK_MAP_COUNT }, (_, i) => renderMapSlot(view, onChange, i + 1))}
+      {([1, 2, 3, 4] as const).map((n) => renderWxCell(n))}
       <DcbCell
         kind="spinner"
         ariaLabel="Range rings"
@@ -551,32 +579,52 @@ function renderAux(view: ScopeView, onChange: () => void) {
 }
 
 function renderMaps(view: ScopeView, onChange: () => void) {
-  const coastOn = isCoastlineToggleEnabled(view);
-  const catalog = dcbCatalogMaps(view);
+  const slots = Array.from({ length: DCB_MAP_SLOT_COUNT }, (_, i) => i + 1);
   return (
     <>
       {renderDone(view, onChange)}
-      {catalog.map((map) => {
-        const coastOff = map.role === "coastline" && !coastOn;
-        return (
-          <DcbCell
-            key={map.id}
-            kind={coastOff ? "disabled" : "toggle"}
-            ariaLabel={formatDcbMapLabel(map)}
-            dataMapId={map.id}
-            pressed={isVideoMapOn(view, map.id)}
-            disabled={coastOff}
-            onClick={() => {
-              cancelFilterIfEntering(view);
-              toggleVideoMap(view, map.id);
-              afterCell(onChange);
-            }}
-          >
-            <span className="dcb-cell-line">{map.dcbNumber}</span>
-            <span className="dcb-cell-line">{map.dcbLabel}</span>
-          </DcbCell>
-        );
-      })}
+      <DcbCell
+        kind="action"
+        ariaLabel="Clear all"
+        dataDcb="clr-all"
+        onClick={() => {
+          cancelFilterIfEntering(view);
+          clearAllVideoMaps(view);
+          afterCell(onChange);
+        }}
+      >
+        <span className="dcb-cell-line">CLR</span>
+        <span className="dcb-cell-line">ALL</span>
+      </DcbCell>
+      {slots.map((slot) => renderMapSlot(view, onChange, slot))}
+      <DcbCell
+        kind="toggle"
+        ariaLabel="GEO MAPS"
+        dataDcb="geo-maps"
+        pressed={view.geoMapsListOn}
+        onClick={() => {
+          cancelFilterIfEntering(view);
+          toggleGeoMapsList(view);
+          afterCell(onChange);
+        }}
+      >
+        <span className="dcb-cell-line">GEO</span>
+        <span className="dcb-cell-line">MAPS</span>
+      </DcbCell>
+      <DcbCell
+        kind="toggle"
+        ariaLabel="CURRENT"
+        dataDcb="current"
+        pressed={view.currentMapsListOn}
+        onClick={() => {
+          cancelFilterIfEntering(view);
+          toggleCurrentMapsList(view);
+          afterCell(onChange);
+        }}
+      >
+        <span className="dcb-cell-line">CURRENT</span>
+        <span className="dcb-cell-line">{"\u00a0"}</span>
+      </DcbCell>
     </>
   );
 }

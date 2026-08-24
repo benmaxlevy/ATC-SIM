@@ -46,6 +46,7 @@ import { PALETTE, mapBriteColors } from "./palette";
 import { PTL_MINUTES, drawPredictedTrackLine, ptlEndpoint, shouldDrawPtl } from "./ptl";
 import { isViewOffAirport, type ScopeView } from "./scopeView";
 import { buildSsaLines } from "./ssa";
+import { buildMapListLines } from "./dcbFunctions";
 import { type TrackOwnership } from "./ownership";
 import {
   alertOrOwnershipColor,
@@ -89,6 +90,7 @@ export function renderScope(
 
   const ssaBottomY = drawSsa(ctx, world, view);
   drawChordHint(ctx, view, ssaBottomY);
+  drawMapLists(ctx, view, cssWidth);
 }
 
 function tracePolyline(
@@ -388,4 +390,39 @@ function drawChordHint(ctx: CanvasRenderingContext2D, view: ScopeView, ssaBottom
   ctx.textAlign = "left";
   ctx.fillStyle = PALETTE.uiChrome;
   ctx.fillText(hint, SSA_LEFT_PX, ssaBottomY + 4);
+}
+
+/**
+ * GEO MAPS / CURRENT lists: screen-fixed video-map inventory (CRC analog).
+ * Map-green mono like SSA. Canvas text is not a hit target, so empty-PPI
+ * deselect is unchanged. No HTML select. Not OSM / precipitation.
+ */
+function drawMapLists(ctx: CanvasRenderingContext2D, view: ScopeView, cssWidth: number): void {
+  if (!view.geoMapsListOn && !view.currentMapsListOn) {
+    return;
+  }
+  const lineH = datablockLineHeightPx(view.charSizePx);
+  ctx.font = datablockFontCss(view.charSizePx);
+  ctx.textBaseline = "top";
+  ctx.textAlign = "left";
+  ctx.fillStyle = PALETTE.ssa;
+  const x = Math.max(cssWidth - 220, 200);
+  let y = SSA_TOP_PX;
+  if (view.geoMapsListOn) {
+    ctx.fillText("GEO MAPS", x, y);
+    y += lineH;
+    for (const line of buildMapListLines(view, "geo")) {
+      ctx.fillText(line, x, y);
+      y += lineH;
+    }
+    y += lineH / 2;
+  }
+  if (view.currentMapsListOn) {
+    ctx.fillText("CURRENT", x, y);
+    y += lineH;
+    for (const line of buildMapListLines(view, "current")) {
+      ctx.fillText(line, x, y);
+      y += lineH;
+    }
+  }
 }

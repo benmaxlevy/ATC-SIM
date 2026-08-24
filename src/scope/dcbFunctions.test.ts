@@ -15,13 +15,24 @@ import {
   cycleMapBrite,
   dcbCatalogMaps,
   dcbLeaderDirReadout,
+  DCB_MAP_SLOT_COUNT,
+  DCB_QUICK_MAP_COUNT,
+  buildMapListLines,
+  clearAllVideoMaps,
   formatDcbLdrLengthReadout,
   formatDcbMapLabel,
+  formatDcbRrReadout,
+  hideMapLists,
+  isDcbMapSlotEnabled,
+  isVideoMapOn,
   RR_INTERVALS_NM,
   stepDcbLeaderDir,
   stepDcbLeaderLength,
   stepRrInterval,
+  toggleCurrentMapsList,
+  toggleGeoMapsList,
   toggleVideoMap,
+  videoMapByDcbNumber,
 } from "./dcbFunctions";
 
 const VIEW = { widthPx: 800, heightPx: 800 };
@@ -207,6 +218,113 @@ test("AC6 — radio-focus L090 is still a left turn; LDR DIR spinner does not st
   }
 });
 
+test("T02-24 — unused slots 7–30 disabled; 1–6 bind catalog dcbNumber", () => {
+  const view = kdemView();
+  expect(DCB_MAP_SLOT_COUNT).toBe(30);
+  expect(DCB_QUICK_MAP_COUNT).toBe(6);
+  expect(videoMapByDcbNumber(view, 1)?.dcbLabel).toBe("RWY27");
+  expect(videoMapByDcbNumber(view, 3)?.id).toBe("COAST");
+  expect(videoMapByDcbNumber(view, 6)?.dcbLabel).toBe("DEM1");
+  expect(videoMapByDcbNumber(view, 7)).toBeUndefined();
+  for (let slot = 1; slot <= 6; slot += 1) {
+    expect(isDcbMapSlotEnabled(view, slot)).toBe(true);
+  }
+  for (let slot = 7; slot <= DCB_MAP_SLOT_COUNT; slot += 1) {
+    expect(isDcbMapSlotEnabled(view, slot)).toBe(false);
+  }
+});
+
+test("T02-24 — CLR ALL turns catalog maps off; coastline JSON off is a no-op", () => {
+  const view = kdemView();
+  expect(isVideoMapOn(view, "COAST")).toBe(true);
+  expect(isVideoMapOn(view, "DWNWND")).toBe(true);
+  expect(isVideoMapOn(view, "CLASS_B")).toBe(true);
+  clearAllVideoMaps(view);
+  expect(isVideoMapOn(view, "RWY27")).toBe(false);
+  expect(isVideoMapOn(view, "LOC27")).toBe(false);
+  expect(isVideoMapOn(view, "COAST")).toBe(false);
+  expect(isVideoMapOn(view, "DWNWND")).toBe(false);
+  expect(isVideoMapOn(view, "CLASS_B")).toBe(false);
+  expect(isVideoMapOn(view, "DEM1")).toBe(false);
+  expect(view.showRunway).toBe(false);
+  expect(view.showLocalizer).toBe(false);
+  expect(view.showCoastline).toBe(false);
+  const cleared = buildMapCache(toMapCacheInput(view, VIEW));
+  expect(cleared.coastline).toBeNull();
+  expect(cleared.videoStrokes).toEqual([]);
+
+  const coastOff = createScopeView(0, 0, {
+    digitalMap: {
+      rangeRings: { intervalNm: 5, maxNm: 60 },
+      coastline: {
+        enabled: false,
+        polyline: [
+          [0, 0],
+          [2, 0],
+        ],
+      },
+      loadedVideoMaps: [
+        {
+          id: "COAST",
+          file: "coast.json",
+          dcbNumber: 3,
+          dcbLabel: "COAST",
+          role: "coastline",
+          defaultOn: true,
+          color: "map",
+          name: "coast",
+          features: [],
+        },
+      ],
+    },
+  });
+  expect(isDcbMapSlotEnabled(coastOff, 3)).toBe(false);
+  expect(coastOff.showCoastline).toBe(false);
+  clearAllVideoMaps(coastOff);
+  expect(isVideoMapOn(coastOff, "COAST")).toBe(false);
+  expect(coastOff.showCoastline).toBe(false);
+});
+
+test("T02-24 — GEO MAPS lists every catalog label; CURRENT lists only maps that are on", () => {
+  const view = kdemView();
+  const geo = buildMapListLines(view, "geo");
+  expect(geo).toContain("1 RWY27 ON");
+  expect(geo).toContain("3 COAST ON");
+  expect(geo).toContain("4 DWNWND ON");
+  expect(geo).toHaveLength(6);
+  expect(buildMapListLines(view, "current")).toEqual([
+    "1 RWY27",
+    "2 LOC27",
+    "3 COAST",
+    "4 DWNWND",
+    "5 CLASS_B",
+    "6 DEM1",
+  ]);
+
+  toggleVideoMap(view, "COAST");
+  expect(buildMapListLines(view, "geo")).toContain("3 COAST OFF");
+  expect(buildMapListLines(view, "current")).not.toContain("3 COAST");
+  expect(buildMapListLines(view, "current")).toContain("1 RWY27");
+
+  clearAllVideoMaps(view);
+  expect(buildMapListLines(view, "geo").every((line) => line.endsWith(" OFF"))).toBe(true);
+  expect(buildMapListLines(view, "current")).toEqual([]);
+
+  expect(view.geoMapsListOn).toBe(false);
+  toggleGeoMapsList(view);
+  expect(view.geoMapsListOn).toBe(true);
+  toggleGeoMapsList(view);
+  expect(view.geoMapsListOn).toBe(false);
+
+  toggleCurrentMapsList(view);
+  toggleGeoMapsList(view);
+  expect(view.currentMapsListOn).toBe(true);
+  expect(view.geoMapsListOn).toBe(true);
+  hideMapLists(view);
+  expect(view.geoMapsListOn).toBe(false);
+  expect(view.currentMapsListOn).toBe(false);
+});
+
 test("AC8 — MAPS/RANGE/leader/range rings in comments; not zoom", () => {
   const sources = import.meta.glob("./*.{ts,tsx}", {
     query: "?raw",
@@ -215,6 +333,8 @@ test("AC8 — MAPS/RANGE/leader/range rings in comments; not zoom", () => {
   }) as Record<string, string>;
   const src = sources["./dcbFunctions.ts"] ?? "";
   expect(src).toMatch(/MAPS/);
+  expect(src).toMatch(/video map/i);
+  expect(src).toMatch(/WX/);
   expect(src).toMatch(/RANGE/);
   expect(src).toMatch(/center/i);
   expect(src).toMatch(/leader/i);
@@ -222,4 +342,5 @@ test("AC8 — MAPS/RANGE/leader/range rings in comments; not zoom", () => {
   expect(src).toMatch(/R07/);
   expect(src.toLowerCase()).not.toMatch(/\bzoom\b/);
   expect(src.toLowerCase()).not.toMatch(/\blayers\b/);
+  expect(src.toLowerCase()).not.toMatch(/\bbasemap\b/);
 });

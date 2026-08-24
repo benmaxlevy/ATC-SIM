@@ -158,7 +158,10 @@ test("AC7 — Research: labels are RANGE/MAPS/FILTER/PTL/HIST, not Zoom/Layers",
   expect(html).toContain("000-180");
   expect(bar.toLowerCase()).not.toMatch(/\bzoom\b/);
   expect(bar.toLowerCase()).not.toMatch(/\blayers\b/);
+  expect(bar.toLowerCase()).not.toMatch(/\bbasemap\b/);
   expect(bar.toLowerCase()).not.toMatch(/\bhud\b/);
+  expect(bar).toMatch(/video map/i);
+  expect(bar).toMatch(/WX1/);
   expect(bar).toMatch(/analog: CRC STARS DCB/i);
   expect(bar).toMatch(/range rings/i);
   expect(bar).toMatch(/leader/i);
@@ -204,23 +207,52 @@ test("cells sit on the PPI glass; canvas below fills the rectangular PPI", () =>
   expect(barSrc()).toMatch(/onMouseDown=\{preventButtonFocus\}/);
 });
 
-test("MAPS submenu lists catalog dcbLabels; RWY/LOC/CST stay wired; CST disabled when JSON off", () => {
-  expect(barSrc()).toMatch(/toggleMapLayer\(view,\s*layer\)/);
+test("T02-24 — MAIN quick maps 1–6 and MAPS slots 1–30; unused 7–30 disabled; WX disabled", () => {
   expect(barSrc()).toMatch(/toggleVideoMap/);
-  expect(barSrc()).toMatch(/>\s*RWY\s*</);
-  expect(barSrc()).toMatch(/>\s*LOC\s*</);
-  expect(barSrc()).toMatch(/>\s*CST\s*</);
+  expect(barSrc()).toMatch(/clearAllVideoMaps/);
+  expect(barSrc()).toMatch(/toggleGeoMapsList/);
+  expect(barSrc()).toMatch(/toggleCurrentMapsList/);
+  expect(barSrc()).toMatch(/hideMapLists/);
   expect(barSrc()).toMatch(/dcbLabel/);
-  expect(barSrc()).toMatch(/disabled=\{!coastOn\}/);
+  expect(barSrc()).not.toMatch(/>\s*RWY\s*</);
+  expect(barSrc()).not.toMatch(/>\s*LOC\s*</);
+  expect(barSrc()).not.toMatch(/>\s*CST\s*</);
+  expect(barSrc()).not.toMatch(/toggleMapLayer\(view,\s*layer\)/);
 
   const view = createScopeView(0, 0, { digitalMap: parseDigitalMap(loadKdem().maps) });
+  const main = dcbHtml(view);
+  expect(main).toContain("RWY27");
+  expect(main).toContain("LOC27");
+  expect(main).toContain("COAST");
+  expect(main).toContain("DWNWND");
+  expect(main).toContain("CLASS_B");
+  expect(main).toContain("DEM1");
+  for (const n of [1, 2, 3, 4, 5, 6]) {
+    expect(main).toContain(`data-dcb-map-slot="${n}"`);
+  }
+  expect(main).not.toContain('data-dcb-map-slot="7"');
+  for (const n of [1, 2, 3, 4]) {
+    expect(main).toContain(`data-dcb-cell="wx${n}"`);
+    expect(main).toMatch(new RegExp(`aria-label="WX${n}"[^>]*\\bdisabled\\b`));
+  }
+
   openDcbMenu(view, "MAPS");
-  const html = dcbHtml(view);
-  expect(html).toContain("RWY27");
-  expect(html).toContain("COAST");
-  expect(html).toContain("DWNWND");
-  expect(html).toContain("CLASS_B");
-  expect(html).toContain('data-dcb-map-id="COAST"');
+  const maps = dcbHtml(view);
+  expect(maps).toContain("DONE");
+  expect(maps).toContain("CLR");
+  expect(maps).toContain("ALL");
+  expect(maps).toContain("GEO");
+  expect(maps).toContain("CURRENT");
+  expect(maps).toContain('data-dcb-map-id="COAST"');
+  for (let slot = 1; slot <= 30; slot += 1) {
+    expect(maps).toContain(`data-dcb-map-slot="${slot}"`);
+  }
+  expect(maps).toMatch(/aria-label="Map 7"[^>]*\bdisabled\b/);
+  expect(maps).toMatch(/aria-label="Map 30"[^>]*\bdisabled\b/);
+  expect(main).not.toMatch(/<select/i);
+  expect(maps).not.toMatch(/<select/i);
+  expect(barSrc()).not.toMatch(/<select/);
+  expect(barSrc()).toMatch(/FILTER/);
 
   const off = createScopeView(0, 0, {
     digitalMap: {
