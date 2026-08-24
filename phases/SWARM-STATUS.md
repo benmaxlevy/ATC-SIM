@@ -22,20 +22,36 @@ Waves: A T02-22 → B T02-23∥24∥25 → C T02-26∥27∥28 → D T02-29 → E
 
 **2026-08-23 Wave C resume:** A+B are on `master` (`62a1e34` = T02-25 merge). T02-26 and T02-27 branches are READY TO MERGE in worktrees; T02-28 has uncommitted work (aborted worker). Human: C is not done — finish C, then D T02-29 and E T02-30. Do not discard the T02-28 tree. Do not start phase 5.
 
-## Phase 2 addendum captain notes (T02-22–30 trainer DCB) — Wave C resume through E
+## SEVENTH SWARM COMPLETE — phase 2 post-exit addendum (T02-22–30 trainer DCB)
 
-Captain resume **2026-08-23**. Did **not** redo T02-22–25. Did **not** start phase 5. Isolated worktrees. Workers never merged. Untracked `e2e/` left uncommitted.
+T02-22–30 are on `master` (`502a9fd` includes `ticket/T02-29-fix`). Captain `npm test` / `npm run ci`: **1166 passed, 1 skipped**. Trainer DCB MAIN/AUX via SHIFT; RANGE spinner on eight presets 5–60 NM; MAPS 1–6 + empty 7–30 disabled; WX1–4 / VOL / MODE / SITE disabled (no weather paint, no OS audio); PREF 1–8 `localStorage`; TPA J-rings 2/3/5/10 NM; ATPA stub. No Pointer Lock. FILTER stays on MAIN. Skip **T04-11**. Did **not** start phase 5. Did not redo T02-01–21 / T03 / T04 / T05.
 
-- **Wave C:** Finished T02-28 in its dirty worktree first (do not discard). T02-26 / T02-27 / T02-28 `--no-ff` merges are on `master` (`4494f03`, `e1e2ab0`, `8178631`); captain verified `npm test` then continued. TPA J-rings 2/3/5/10 NM; ATPA stub; no CA 3 NM halo.
+**Merged (`--no-ff`, captains only):** T02-22, T02-23, T02-24, T02-25, T02-26, T02-27, T02-28, T02-29, T02-30, plus `ticket/T02-29-fix` (tsc TS2367 `lastHistoryDotCount !== 0` + leftover Prettier). Isolated worktrees. Workers never merged. Deleted local T02-22–30 ticket branches. Untracked `e2e/` left uncommitted.
+
+**Also on master during this window (not this swarm’s tickets):** T02-31 physical DCB replica + follow-up (`f1578a1` / `3c05e39`); `fix/ca-blink-and-tone` (`3374854`). Left in place.
+
+**Manual leftover (human `npm run dev` on Chrome Windows):** T02-30 script 1–10 — MAIN/AUX via SHIFT, RANGE spinner presets, disabled WX1–4 (no weather paint), PREF SAVE/DEFAULT with no browser dialog, TPA rings, dock LEFT still north-up, `DAL123 H270` still turns. Do not invent a visual pass.
+
+**Remaining work (next paste of `SWARM.md` with config changed):**
+
+| Phase | Folder | What it is |
+| --- | --- | --- |
+| 5 Training | `phases/05-training/` | Practice score, replay, optional bad readbacks |
+
+Optional later: T04-11 constant wind. T02-31–33 physical DCB skin is outside this swarm. Do not start phase 5 until a new swarm paste.
+
+## Phase 2 addendum captain notes (T02-22–30 trainer DCB)
+
+Captain **2026-08-23**. Did **not** start phase 5. Isolated worktrees. Workers never merged. Untracked `e2e/` left uncommitted.
+
+- **Wave A:** Merged T02-22 — DCB menu model, SHIFT MAIN/AUX, primitives (`fb0ed67`).
+- **Wave B:** Merged T02-23 RANGE/CNTR/RR/LDR; T02-24 MAPS 1–30 + disabled WX; T02-25 AUX HISTORY/PTL/dock. Same-wave DCB collisions rebased keep-both.
+- **Wave C:** Finished T02-28 in its dirty worktree first (do not discard). `--no-ff` merged T02-26 (`4494f03`), T02-27 (`e1e2ab0`), T02-28 (`8178631`). TPA J-rings 2/3/5/10 NM; ATPA stub; no CA 3 NM halo.
 - **Wave D:** Merged T02-29 — PREF 1–8 `localStorage`, no `prompt()` / `<input>`, display state only. T02-21 greps allow PREF.
 - **Wave E:** Merged T02-30 — grep grammar + tests; **no features**. Chrome script skip-with-reason (no operator).
 - **CI follow-up:** `ticket/T02-29-fix` — tsc TS2367 on `lastHistoryDotCount !== 0` plus leftover Prettier so `format:check` passes.
 - **Tests:** `npm test` / `npm run ci` exit 0. **1166** passed, **1** skipped.
-- **Skipped:** T04-11. T02-31–33 (planning-only on master; not this swarm). No phase 5.
-
-**Merged (`--no-ff`, captain only this resume):** T02-26, T02-27, T02-28, T02-29, T02-30, `ticket/T02-29-fix`. Already on master before this resume: T02-22–25.
-
-**Manual leftover (human `npm run dev` on Chrome Windows):** T02-30 script 1–10 — MAIN/AUX via SHIFT, RANGE spinner presets, disabled WX1–4 (no weather paint), PREF SAVE/DEFAULT with no browser dialog, TPA rings, dock LEFT still north-up, `DAL123 H270` still turns. Do not invent a visual pass.
+- **Skipped:** T04-11. No phase 5. Did not implement T02-31–33 in this swarm.
 
 **Product:** SHIFT MAIN/AUX; RANGE discrete presets; disabled WX; PREF 1–8; TPA rings; ATPA stub. DCB never emits Command IR. No Pointer Lock. FILTER stays on MAIN.
 
