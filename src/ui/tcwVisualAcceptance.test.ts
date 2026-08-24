@@ -37,7 +37,7 @@ const uiSources = import.meta.glob("./*.{ts,tsx}", {
 }) as Record<string, string>;
 
 const FORBIDDEN_CHROME = /\b(zoom|sprite|osm|hud|nametag|label)\b/i;
-const FORBIDDEN_DCB_CELLS = /\b(WX|PREF|SHIFT|CSA|CRDA|FMA|OSM)\b/;
+const FORBIDDEN_DCB_CELLS = /\b(WX|PREF|CSA|CRDA|FMA|OSM)\b/;
 
 function keyEvent(key: string) {
   return {

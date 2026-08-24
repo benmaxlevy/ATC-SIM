@@ -81,3 +81,9 @@ test("overlay maps KEY_BINDINGS — no duplicated key rows in JSX", () => {
     expect(src).not.toContain(`>${binding.windowsKeys}<`);
   }
 });
+test("F1 notes SHIFT swaps MAIN/AUX and Esc closes a submenu", () => {
+  const html = renderToStaticMarkup(createElement(ScopeHelpOverlay, { open: true }));
+  expect(html).toContain("SHIFT swaps MAIN and AUX");
+  expect(html).toContain("Esc closes a DCB submenu");
+  expect(html).toContain(HELP_FOOTER);
+});

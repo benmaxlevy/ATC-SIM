@@ -79,6 +79,9 @@ export function ScopeHelpOverlay({ open }: ScopeHelpOverlayProps) {
           bindings={scopeFocusKeyBindings()}
         />
         <HelpTable caption="Mouse (pointer over PPI)" bindings={mouseKeyBindings()} />
+        <p className="scope-help-dcb">
+          SHIFT swaps MAIN and AUX. Esc closes a DCB submenu (DONE).
+        </p>
         <p className="scope-help-disclaimer">{DISCLAIMER_COPY}</p>
         <p className="scope-help-footer">{HELP_FOOTER}</p>
       </div>

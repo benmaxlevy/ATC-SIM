@@ -8,7 +8,10 @@ import {
   beginAltitudeFilterChord,
   centerOnAirport,
   createScopeView,
+  applyDcbShift,
+  closeDcbMenu,
   cycleRange,
+  openDcbMenu,
   formatDcbRangeReadout,
   handleFilterEntryKey,
   parseDigitalMap,
@@ -66,8 +69,9 @@ test("AC1 — no input and no Apply in the DCB DOM", () => {
   expect(cssSrc()).not.toMatch(/\.dcb-lite-fil/);
 });
 
-test("AC2 — RANGE click cycles 5–60 presets; readout is RANGE n", () => {
-  expect(barSrc()).toMatch(/cycleRange\(view\.camera\)/);
+test("AC2 — RANGE spinner arms then steps the same 5–60 presets; readout is RANGE n", () => {
+  expect(barSrc()).toMatch(/armDcbSpinner\(view,\s*"RANGE"\)/);
+  expect(barSrc()).toMatch(/stepRange/);
   expect(barSrc()).toMatch(/formatDcbRangeReadout/);
   expect(barSrc()).not.toMatch(/>\s*[−+]\s*</);
   expect(RANGE_PRESETS_NM).toEqual([5, 10, 15, 20, 30, 40, 50, 60]);
@@ -291,4 +295,39 @@ test("mouse-only walkthrough mutates the same scope functions as the cells", () 
   expect(view.showRings).toBe(false);
   expect(view.altitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 100 });
   expect(view.ptlOn).toBe(true);
+});
+test("AC1 — SHIFT on MAIN shows AUX (MAIN cells gone); SHIFT on AUX returns MAIN", () => {
+  const view = createScopeView();
+  expect(dcbHtml(view)).toContain("SHIFT");
+  expect(dcbHtml(view)).toContain("RANGE 20");
+  applyDcbShift(view);
+  const aux = dcbHtml(view);
+  expect(aux).toContain("SHIFT");
+  expect(aux).toContain("VOL");
+  expect(aux).not.toContain("RANGE 20");
+  expect(aux).not.toContain(">MAPS<");
+  expect(aux).toMatch(/disabled/);
+  applyDcbShift(view);
+  expect(dcbHtml(view)).toContain("RANGE 20");
+  expect(dcbHtml(view)).toContain("MAPS");
+});
+
+test("AC2 — MAPS replaces the bar; DONE present; close returns MAIN", () => {
+  const view = createScopeView();
+  openDcbMenu(view, "MAPS");
+  const html = dcbHtml(view);
+  expect(html).toContain("DONE");
+  expect(html).not.toContain("RANGE 20");
+  closeDcbMenu(view);
+  expect(dcbHtml(view)).toContain("RANGE 20");
+});
+
+test("AC4 — disabled VOL is in AUX DOM with aria-disabled", () => {
+  const view = createScopeView();
+  applyDcbShift(view);
+  const html = dcbHtml(view);
+  expect(html).toMatch(/data-dcb-cell="vol"/);
+  expect(html).toMatch(/aria-disabled="true"/);
+  expect(html).toMatch(/disabled/);
+  expect(html).toContain("VOL");
 });

@@ -1,6 +1,6 @@
 /**
  * Analog: CRC STARS RANGE / CENTER / HISTORY / PTL / altitude filter / MAPS /
- * RR / LDR DIR / CHAR SIZE / BRITE (docs.virtualnas.net/crc/stars — R07;
+ * RR / LDR DIR / CHAR SIZE / BRITE / DCB MAIN·AUX·SHIFT (docs.virtualnas.net/crc/stars — R07;
  * FOA STARS display data — R05).
  * Trainer delta: last-click / airport live on this view, not on World. MAPS
  * visibility is keyed by catalog id (RWY/LOC/CST share role flags). RR interval
@@ -31,9 +31,9 @@ import {
   initialMapVisibility,
   snapRrInterval,
   syncRoleMapVisibility,
-  type DcbSubmenu,
   type RrIntervalNm,
 } from "./dcbFunctions";
+import { idleDcbSpinner, type DcbMenu, type DcbSpinnerState } from "./dcbMenu";
 import { DEFAULT_CHAR_SIZE_PX, DEFAULT_DATABLOCK_CELL_PX, type CharSizePx } from "./fonts";
 import type { ScopeChord } from "./keymap";
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
@@ -60,8 +60,10 @@ export interface ScopeView {
   mapBriteIndex: MapBriteIndex;
   /** PLACE CNTR: next PPI click sets view center. */
   placeCenterArmed: boolean;
-  /** MAPS / LDR DIR cell submenus on the glass. */
-  dcbSubmenu: DcbSubmenu;
+  /** DCB menu machine: MAIN/AUX via SHIFT; MAPS/LDR replace the bar. */
+  dcbMenu: DcbMenu;
+  /** RANGE spinner arm+wheel. Display only. */
+  dcbSpinner: DcbSpinnerState;
   digitalMap: DigitalMap;
   mapCache: MapCache | null;
   /** Global history dots. CRC analog; default on. F8 / scope-focus H. */
@@ -129,7 +131,8 @@ export function createScopeView(
     charSizePx: DEFAULT_CHAR_SIZE_PX,
     mapBriteIndex: DEFAULT_MAP_BRITE_INDEX,
     placeCenterArmed: false,
-    dcbSubmenu: null,
+    dcbMenu: "MAIN",
+    dcbSpinner: idleDcbSpinner(),
     digitalMap,
     mapCache: null,
     historyEnabled: true,

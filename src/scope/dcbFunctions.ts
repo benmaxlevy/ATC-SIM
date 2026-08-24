@@ -15,8 +15,10 @@ import { CHAR_SIZE_STEPS_PX, type CharSizePx } from "./fonts";
 import { DEFAULT_LEADER_DIR, isLeaderDir, type LeaderDir } from "./leader";
 import { MAP_BRITE_STEPS, type MapBriteIndex } from "./palette";
 import type { ScopeView } from "./scopeView";
+import { closeDcbMenu, openDcbMenu } from "./dcbMenu";
 import { setLeaderDirForSelection } from "./trackDisplay";
 
+/** @deprecated T02-22: use DcbMenu on ScopeView (`MAPS` / `LDR`). */
 export type DcbSubmenu = "maps" | "ldr" | null;
 type VideoMapRole = NonNullable<LoadedVideoMap["role"]>;
 
@@ -165,11 +167,16 @@ export function formatDcbBriteReadout(index: MapBriteIndex): string {
 }
 
 export function toggleDcbSubmenu(view: ScopeView, menu: Exclude<DcbSubmenu, null>): void {
-  view.dcbSubmenu = view.dcbSubmenu === menu ? null : menu;
+  const target = menu === "maps" ? "MAPS" : "LDR";
+  if (view.dcbMenu === target) {
+    closeDcbMenu(view);
+  } else {
+    openDcbMenu(view, target);
+  }
 }
 
 export function closeDcbSubmenu(view: ScopeView): void {
-  view.dcbSubmenu = null;
+  closeDcbMenu(view);
 }
 
 export function armPlaceCenter(view: ScopeView): void {

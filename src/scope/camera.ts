@@ -1,8 +1,9 @@
 /**
- * Analog: CRC STARS RANGE / CENTER (docs.virtualnas.net/crc/stars — R07).
+ * analog: CRC STARS RANGE / CENTER (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: presets 5–60 NM (CRC also has 6/8/12/16/24); PageUp/Down + wheel
- * call `stepRange` (no wrap). DCB RANGE click uses `cycleRange` through the same
- * 8 presets (wrap 60→5). Right-drag (or middle-drag) slew is trainer sugar — not CRC.
+ * call `stepRange` (no wrap). DCB RANGE is a spinner that arms on click and
+ * steps those same 8 presets (no wrap). `cycleRange` remains for tests.
+ * Right-drag (or middle-drag) slew is trainer sugar — not CRC.
  * No zoom-to-cursor (R12 browser-ATC anti-pattern). Not NAS STARS.
  *
  * Range is the nearest-edge NM of the rectangular PPI

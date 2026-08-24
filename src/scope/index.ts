@@ -13,10 +13,11 @@
  * T04-09 CA/MSAW tints (yellow then red) read `world.alerts`; the PPI does not
  * compute pair distance.
  *
- * DCB (T02-16/T02-17) is a green cell grid on the PPI glass; it calls these same
+ * DCB (T02-16/T02-17/T02-22) is a green cell grid on the PPI glass; it calls these same
  * camera / map / filter / PTL / history / MAPS / RR / LDR / CHAR / BRITE
- * functions. RANGE click cycles presets. Not a full STARS DCB (no WX / PREF /
- * SHIFT / CSA / CRDA / FMA).
+ * functions. MAIN↔AUX via SHIFT; submenus replace the bar; RANGE is a spinner
+ * over the 8 presets. Trainer subset (SHIFT/DONE/VOL) — not a full STARS DCB
+ * (no WX / PREF / CSA / CRDA / FMA).
  *
  * SSA (T02-20) is a screen-fixed top-left status block (sim time, KDEM 29.92
  * stub, FILTER, RANGE, OFF CNTR, OK). Never a Command.
@@ -166,6 +167,19 @@ export {
   togglePtlOn,
 } from "./scopeView";
 export type { MapLayerId, ScopeView } from "./scopeView";
+export {
+  applyDcbShift,
+  armDcbSpinner,
+  closeDcbMenu,
+  commitDcbSpinner,
+  handleDcbEscape,
+  idleDcbSpinner,
+  isDcbSubmenu,
+  openDcbMenu,
+  stepDcbSpinner,
+  toggleDcbMenu,
+} from "./dcbMenu";
+export type { DcbCellKind, DcbMenu, DcbMenuHost, DcbSpinnerCell, DcbSpinnerState } from "./dcbMenu";
 export {
   DCB_LEADER_DIRS,
   DEFAULT_RR_INTERVAL_NM,

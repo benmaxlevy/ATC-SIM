@@ -1,8 +1,9 @@
 /**
  * Analog: CRC STARS RANGE / CENTER / HISTORY / FDB-LDB / PTL / L1–L9 **leader** /
  * altitude filter (docs.virtualnas.net/crc/stars — R07; FOA STARS display data — R05).
- * Trainer delta: PageUp/Down + wheel share `stepRange`; DCB RANGE click uses
- * `cycleRange` through the same 8 presets. Home/End instead of
+ * Trainer delta: PageUp/Down + wheel share `stepRange`; DCB RANGE is a spinner
+ * that steps the same 8 presets. Esc closes a DCB submenu / disarms a spinner
+ * (`preventDefault` so it does not type into the command line). Home/End instead of
  * CENTER-then-click; extra CRC presets 6/8/12/16/24 omitted. F8 always-on
  * history toggle; H only when the PPI is focused (radio H270 stays heading).
  * Scope-focus `T` toggles full ↔ limited datablock; `M` toggles Mode C on full
@@ -31,6 +32,7 @@ import {
   isTowerHandoffKey,
   leaderDigitFromKey,
 } from "./keymap";
+import { handleDcbEscape } from "./dcbMenu";
 import { PpiPlaceholderId } from "./ppi-placeholder";
 import {
   centerOnAirport,
@@ -198,6 +200,16 @@ export function handleScopeKeyDown(
     }
     ui?.onHandled?.();
     return true;
+  }
+
+  if (event.key === "Escape") {
+    const filterBusy = focus === "scope" && view.filterEntry.phase !== "idle";
+    const leaderBusy = focus === "scope" && liveLeaderChord(view, nowMs) != null;
+    if (!filterBusy && !leaderBusy && handleDcbEscape(view)) {
+      consume(event);
+      ui?.onHandled?.();
+      return true;
+    }
   }
 
   if (focus === "scope") {

@@ -156,9 +156,11 @@ body,
   color: var(--dcb-pressed-text, #000000);
 }
 
-.dcb-cell:disabled {
+.dcb-cell:disabled,
+.dcb-cell[aria-disabled="true"] {
   opacity: 0.35;
   cursor: default;
+  background: #001800;
   color: var(--dcb-text, #00ff00);
 }
 
