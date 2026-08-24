@@ -275,6 +275,29 @@ test("T02-32 — physical caps expose raised, pressed, and disabled presentation
   expect(cssSrc()).toMatch(/background:\s*var\(--dcb-pressed,\s*#005500\)/);
 });
 
+test("DCB cap labels are vertically centered without spacer lines", () => {
+  const css = cssSrc();
+  expect(css).toMatch(/\.dcb-cell\s*\{[^}]*box-sizing:\s*border-box/s);
+  expect(css).toMatch(/\.dcb-cell\s*\{[^}]*justify-content:\s*center/s);
+  expect(css).toMatch(/\.dcb-cell-stack\s*\{[^}]*justify-content:\s*center/s);
+  expect(css).toMatch(/\.dcb-cell-line\s*\{[^}]*line-height:\s*1/s);
+  expect(css).toMatch(/\.dcb-cell-line:empty/);
+
+  const html = dcbHtml();
+  expect(html).toMatch(
+    /data-dcb-cell="brite"[^>]*><span class="dcb-cell-stack"><span class="dcb-cell-line">BRITE<\/span><\/span><\/button>/,
+  );
+  expect(html).toMatch(
+    /data-dcb-cell="shift"[^>]*><span class="dcb-cell-stack"><span class="dcb-cell-line">SHIFT<\/span><\/span><\/button>/,
+  );
+  expect(html).toMatch(
+    /data-dcb-cell="ssa-filter"[^>]*><span class="dcb-cell-stack"><span class="dcb-cell-line">SSA<\/span><span class="dcb-cell-line">FILTER<\/span><\/span><\/button>/,
+  );
+  expect(html).toMatch(
+    /data-dcb-cell="ldr-dir"[^>]*><span class="dcb-cell-stack"><span class="dcb-cell-line">LDR DIR<\/span><span id="dcb-ldr-readout"[^>]*>/,
+  );
+});
+
 test("cells sit on the PPI glass; canvas below fills the rectangular PPI", () => {
   expect(canvasSrc()).toMatch(/className="ppi-column"/);
   expect(canvasSrc()).toMatch(/header=\{<DisplayControlBar/);
