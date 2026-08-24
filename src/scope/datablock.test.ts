@@ -2,8 +2,6 @@ import { expect, test } from "vitest";
 import { makeTestAircraft } from "@core";
 import { applyIntent } from "@pilot";
 import {
-  DEFAULT_LEADER_DIR,
-  LEADER_LENGTH_PX,
   datablockRect,
   formatAltitudeHundreds,
   formatFullDatablock,
@@ -14,6 +12,7 @@ import {
   withInboundHandoffCue,
 } from "./datablock";
 import { DATABLOCK_FONT, DATABLOCK_FONT_PX, SCOPE_FONT_STACK } from "./fonts";
+import { DEFAULT_LEADER_DIR, LEADER_LENGTH_PX } from "./leader";
 
 function track(overrides: {
   callsign?: string;

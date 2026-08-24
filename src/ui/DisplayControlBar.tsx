@@ -47,7 +47,6 @@ import {
   cancelFilterEntry,
   centerOnAirport,
   closeDcbMenu,
-  closeDcbSubmenu,
   commitDcbSpinner,
   dcbLeaderDirReadout,
   DCB_LEADER_DIRS,
@@ -643,7 +642,7 @@ function renderWxCell(n: 1 | 2 | 3 | 4) {
 
 function runCell(view: ScopeView, onChange: () => void, fn: () => void): void {
   cancelFilterIfEntering(view);
-  closeDcbSubmenu(view);
+  closeDcbMenu(view);
   commitDcbSpinner(view);
   fn();
   afterCell(onChange);
@@ -1149,7 +1148,7 @@ export function renderMainLegacy(
         ariaLabel="Altitude filter"
         dataDcb="filter"
         onClick={() => {
-          closeDcbSubmenu(view);
+          closeDcbMenu(view);
           beginAltitudeFilterChord(view);
           afterCell(onChange);
         }}

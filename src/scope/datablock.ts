@@ -22,9 +22,6 @@ import {
   type LeaderDir,
 } from "./leader";
 
-export { DEFAULT_LEADER_DIR, LEADER_LENGTH_PX } from "./leader";
-export type { DatablockMetrics, LeaderDir } from "./leader";
-
 const FIELD_GAP = "  ";
 
 /** Trainer scratchpad cell: analog CRC FDB scratchpad; not NAS FP (R27). */

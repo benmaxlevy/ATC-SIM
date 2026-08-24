@@ -34,11 +34,8 @@ import {
 import { BRITE_STEPS, type BriteChannel, type BriteLevel } from "./palette";
 import type { ScopeView } from "./scopeView";
 import { snapRangeRingToViewCenter } from "./scopeView";
-import { closeDcbMenu, openDcbMenu } from "./dcbMenu";
 import { setLeaderDirForSelection } from "./trackDisplay";
 
-/** @deprecated T02-22: use DcbMenu on ScopeView (`MAPS` / `LDR`). */
-export type DcbSubmenu = "maps" | "ldr" | null;
 type VideoMapRole = NonNullable<LoadedVideoMap["role"]>;
 
 export const RR_INTERVALS_NM = [2, 5, 10] as const;
@@ -300,19 +297,6 @@ export function cycleMapBrite(view: ScopeView): void {
 
 export function formatDcbBriteReadout(level: BriteLevel | number): string {
   return String(level);
-}
-
-export function toggleDcbSubmenu(view: ScopeView, menu: Exclude<DcbSubmenu, null>): void {
-  const target = menu === "maps" ? "MAPS" : "LDR";
-  if (view.dcbMenu === target) {
-    closeDcbMenu(view);
-  } else {
-    openDcbMenu(view, target);
-  }
-}
-
-export function closeDcbSubmenu(view: ScopeView): void {
-  closeDcbMenu(view);
 }
 
 export function armPlaceCenter(view: ScopeView): void {

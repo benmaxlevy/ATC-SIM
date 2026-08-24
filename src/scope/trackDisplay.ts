@@ -57,7 +57,7 @@ export function setScratchpad(tracks: Map<string, TrackDisplay>, id: string, raw
   td.scratchpad = sanitizeScratchpad(raw);
 }
 
-function ensureTrackDisplay(tracks: Map<string, TrackDisplay>, id: string): TrackDisplay {
+export function ensureTrackDisplay(tracks: Map<string, TrackDisplay>, id: string): TrackDisplay {
   let td = tracks.get(id);
   if (!td) {
     td = createTrackDisplay();
@@ -66,7 +66,7 @@ function ensureTrackDisplay(tracks: Map<string, TrackDisplay>, id: string): Trac
   return td;
 }
 
-function selectedTrackId(world: World): string | null {
+export function selectedTrackId(world: World): string | null {
   const id = world.selectedAircraftId;
   if (!id || !world.aircraft.some((ac) => ac.id === id)) {
     return null;

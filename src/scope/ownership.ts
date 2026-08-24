@@ -17,7 +17,7 @@
 
 import { acceptTowerHandoff, isTowerHandoffEligible, type World } from "@core";
 import { PALETTE } from "./palette";
-import { createTrackDisplay, type TrackDisplay } from "./trackDisplay";
+import { ensureTrackDisplay, selectedTrackId, type TrackDisplay } from "./trackDisplay";
 
 export type TrackOwnership = "unowned" | "owned" | "tower";
 
@@ -47,13 +47,7 @@ export function applyTowerOwnership(_current: TrackOwnership): TrackOwnership {
 export const NO_SEL_HINT = "NO SEL";
 
 export function trackPaintColor(ownership: TrackOwnership): string {
-  if (ownership === "owned") {
-    return PALETTE.owned;
-  }
-  if (ownership === "tower") {
-    return PALETTE.tower;
-  }
-  return PALETTE.unowned;
+  return PALETTE[ownership];
 }
 
 /**
@@ -71,23 +65,6 @@ export function ownershipStubChar(ownership: TrackOwnership): "*" | "G" | "T" {
   return "*";
 }
 
-function selectedLivingId(world: World): string | null {
-  const id = world.selectedAircraftId;
-  if (!id || !world.aircraft.some((ac) => ac.id === id)) {
-    return null;
-  }
-  return id;
-}
-
-function ensureTrackDisplay(tracks: Map<string, TrackDisplay>, id: string): TrackDisplay {
-  let td = tracks.get(id);
-  if (!td) {
-    td = createTrackDisplay();
-    tracks.set(id, td);
-  }
-  return td;
-}
-
 /**
  * Always-on Shift+H: if the selected track is in the HO gate, accept tower
  * stub and paint tower color. No Command, no readback.
@@ -96,7 +73,7 @@ export function applyTowerHandoffToSelection(
   tracks: Map<string, TrackDisplay>,
   world: World,
 ): { applied: boolean; hint: string | null } {
-  const id = selectedLivingId(world);
+  const id = selectedTrackId(world);
   if (!id) {
     return { applied: false, hint: NO_SEL_HINT };
   }

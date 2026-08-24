@@ -273,16 +273,7 @@ export function alertTintPaintColor(tint: AlertTint): string | null {
 /** Datablock / leader color: MSAW tint wins over ownership white/green. */
 export function alertOrOwnershipColor(ownership: TrackOwnership, tint: AlertTint): string {
   const alertColor = alertTintPaintColor(tint);
-  if (alertColor) {
-    return alertColor;
-  }
-  if (ownership === "owned") {
-    return PALETTE.owned;
-  }
-  if (ownership === "tower") {
-    return PALETTE.tower;
-  }
-  return PALETTE.unowned;
+  return alertColor ?? PALETTE[ownership];
 }
 
 export function caDatablockTagVisible(simTimeMs: number): boolean {

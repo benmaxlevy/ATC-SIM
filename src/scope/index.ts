@@ -271,7 +271,6 @@ export {
   armPlaceRangeRing,
   buildMapListLines,
   clearAllVideoMaps,
-  closeDcbSubmenu,
   cycleCharSize,
   cycleMapBrite,
   cycleRrInterval,
@@ -293,12 +292,11 @@ export {
   stepDcbLeaderLength,
   stepRrInterval,
   toggleCurrentMapsList,
-  toggleDcbSubmenu,
   toggleGeoMapsList,
   toggleVideoMap,
   videoMapByDcbNumber,
 } from "./dcbFunctions";
-export type { DcbSubmenu, MapListKind, RrIntervalNm } from "./dcbFunctions";
+export type { MapListKind, RrIntervalNm } from "./dcbFunctions";
 export {
   HISTORY_DOT_COUNTS,
   HISTORY_MAX_DOTS,
@@ -355,7 +353,9 @@ export {
   applyDropTrackToSelection,
   applyInitiateTrackToSelection,
   createTrackDisplay,
+  ensureTrackDisplay,
   isIdentFlashing,
+  selectedTrackId,
   setLeaderDirForSelection,
   setScratchpad,
   syncTrackDisplays,

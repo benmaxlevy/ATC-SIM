@@ -78,9 +78,6 @@ export interface AppHandles {
 }
 
 function selectedCallsignFromWorld(world: World): string | null {
-  if (world.selectedAircraftId === null) {
-    return null;
-  }
   return world.aircraft.find((ac) => ac.id === world.selectedAircraftId)?.callsign ?? null;
 }
 
