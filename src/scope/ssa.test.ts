@@ -27,7 +27,14 @@ function lines(partial: Partial<Parameters<typeof buildSsaLines>[0]> = {}) {
 
 test("AC1 — SSA block includes FILTER hundreds and RANGE; OFF CNTR only when panned", () => {
   const onAirport = lines({ simTimeMs: 125_000, rangeNm: 20, offCenter: false });
-  expect(onAirport).toEqual(["0002/05", "KDEM 29.92", "FILTER 000-180", "RANGE 20", "OK", "PTL 1.0"]);
+  expect(onAirport).toEqual([
+    "0002/05",
+    "KDEM 29.92",
+    "FILTER 000-180",
+    "RANGE 20",
+    "OK",
+    "PTL 1.0",
+  ]);
   expect(onAirport).not.toContain("OFF CNTR");
 
   const filter: AltitudeFilter = { minHundreds: 50, maxHundreds: 100 };

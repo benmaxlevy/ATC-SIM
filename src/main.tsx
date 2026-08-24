@@ -9,7 +9,14 @@ import {
   parseSpawnSeed,
   parseTrafficCount,
 } from "@scenario";
-import { PpiPlaceholderId, browserDcbPrefStorage, createScopeView, loadDcbPrefFromStorage, paintPpi, parseDigitalMap } from "@scope";
+import {
+  PpiPlaceholderId,
+  browserDcbPrefStorage,
+  createScopeView,
+  loadDcbPrefFromStorage,
+  paintPpi,
+  parseDigitalMap,
+} from "@scope";
 import {
   FPS_DEBUG_ID,
   SIM_HUD_ID,

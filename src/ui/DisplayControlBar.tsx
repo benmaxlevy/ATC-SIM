@@ -282,7 +282,10 @@ export function syncDisplayControlBar(
   setPressed(doc.querySelector('[data-dcb-cell="ssa-filter"]'), view.dcbMenu === "SSA_FILTER");
   setPressed(doc.querySelector('[data-dcb-cell="gi-text"]'), view.dcbMenu === "GI_FILTER");
   for (const field of SSA_FILTER_FIELDS) {
-    setPressed(doc.querySelector(`[data-dcb-cell="${ssaFilterCellId(field)}"]`), view.ssaFilter[field]);
+    setPressed(
+      doc.querySelector(`[data-dcb-cell="${ssaFilterCellId(field)}"]`),
+      view.ssaFilter[field],
+    );
   }
   for (const el of doc.querySelectorAll("[data-dcb-gi-slot]")) {
     const slot = Number(el.getAttribute("data-dcb-gi-slot"));
@@ -970,7 +973,13 @@ function renderTpaAtpa(view: ScopeView, onChange: () => void) {
         <span className="dcb-cell-line">ATPA</span>
         <span className="dcb-cell-line">{view.atpa.on ? "ON" : "OFF"}</span>
       </DcbCell>
-      <DcbCell kind="disabled" ariaLabel="ATPA cones" dataDcb="atpa-cones" disabled onClick={() => undefined}>
+      <DcbCell
+        kind="disabled"
+        ariaLabel="ATPA cones"
+        dataDcb="atpa-cones"
+        disabled
+        onClick={() => undefined}
+      >
         <span className="dcb-cell-line">CONES</span>
         <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
@@ -984,7 +993,13 @@ function renderTpaAtpa(view: ScopeView, onChange: () => void) {
         <span className="dcb-cell-line">MONITOR</span>
         <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
-      <DcbCell kind="disabled" ariaLabel="ATPA alert" dataDcb="atpa-alert" disabled onClick={() => undefined}>
+      <DcbCell
+        kind="disabled"
+        ariaLabel="ATPA alert"
+        dataDcb="atpa-alert"
+        disabled
+        onClick={() => undefined}
+      >
         <span className="dcb-cell-line">ALERT</span>
         <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
@@ -1301,7 +1316,6 @@ function renderBrite(view: ScopeView, onChange: () => void) {
     </>
   );
 }
-
 
 function prefStore() {
   return browserDcbPrefStorage() ?? undefined;

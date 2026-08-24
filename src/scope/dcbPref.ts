@@ -223,7 +223,7 @@ export function applyDcbPref(view: ScopeView, body: DcbPrefBody): void {
     view.historyDotCount = body.historyDotCount;
     view.historyEnabled = body.historyDotCount > 0;
   }
-  if (isHistoryCount(body.lastHistoryDotCount) && body.lastHistoryDotCount !== 0) {
+  if (isHistoryCount(body.lastHistoryDotCount)) {
     view.lastHistoryDotCount = body.lastHistoryDotCount;
   }
   if (isPtlMinutes(body.ptlMinutes)) {

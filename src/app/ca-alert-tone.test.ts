@@ -1,5 +1,10 @@
 import { expect, test, vi } from "vitest";
-import { caToneBeepOn, createCaAlertTone, CA_TONE_BEEP_MS, CA_TONE_PERIOD_MS } from "./ca-alert-tone";
+import {
+  caToneBeepOn,
+  createCaAlertTone,
+  CA_TONE_BEEP_MS,
+  CA_TONE_PERIOD_MS,
+} from "./ca-alert-tone";
 
 test("caToneBeepOn is high for the first slice of each period", () => {
   expect(caToneBeepOn(0)).toBe(true);

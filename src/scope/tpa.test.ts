@@ -140,7 +140,9 @@ test("no selection: TPA rings owned tracks only (not unowned)", () => {
   syncTrackDisplays(view.tracks, world);
   view.tracks.get(dal.id)!.ownership = "owned";
   expect(
-    aircraftForTpaRings(true, world.selectedAircraftId, world.aircraft, view.tracks).map((ac) => ac.id),
+    aircraftForTpaRings(true, world.selectedAircraftId, world.aircraft, view.tracks).map(
+      (ac) => ac.id,
+    ),
   ).toEqual([dal.id]);
   view.tpa.on = true;
   view.tpa.radiusNm = 5;
@@ -168,13 +170,17 @@ test("AC3 — ATPA toggle stores state and paints no extra stroke / cones", () =
 test("AC4 — CA lite still has no automatic 3 NM halo (TPA 3 NM is display-only)", () => {
   const src = [
     ...Object.values(
-      import.meta.glob("./renderScope.ts", { query: "?raw", import: "default", eager: true }) as Record<
+      import.meta.glob("./renderScope.ts", {
+        query: "?raw",
+        import: "default",
+        eager: true,
+      }) as Record<string, string>,
+    ),
+    ...Object.values(
+      import.meta.glob("./tpa.ts", { query: "?raw", import: "default", eager: true }) as Record<
         string,
         string
       >,
-    ),
-    ...Object.values(
-      import.meta.glob("./tpa.ts", { query: "?raw", import: "default", eager: true }) as Record<string, string>,
     ),
   ].join("\n");
   expect(src).toMatch(/not a 3 NM (circle|halo)/i);
