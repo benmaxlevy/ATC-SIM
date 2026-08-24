@@ -753,7 +753,7 @@ test("momentary caps flash inset; toggles remain latches", () => {
   expect(barSrc()).toMatch(/data-dcb-flashing/);
   expect(cssSrc()).toMatch(/:active/);
   expect(cssSrc()).toMatch(/@keyframes dcb-cap-spring/);
-  expect(cssSrc()).toMatch(/animation: dcb-cap-spring 140ms ease-out/);
+  expect(cssSrc()).toMatch(/animation: dcb-cap-spring 70ms ease-out/);
   const view = createScopeView();
   openDcbMenu(view, "PREF");
   const html = dcbHtml(view);
