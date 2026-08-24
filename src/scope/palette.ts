@@ -51,14 +51,20 @@ export const PALETTE = {
   caution: "#FFFF00",
   /** CA/MSAW alert (red). Lite trainer, not NAS-certified. */
   alert: "#FF0000",
-  /** SSA, lists, DCB text — FAA list/preview green. Not map gray. */
+  /** SSA and list text — FAA list/preview green. Not map gray. */
   ssa: "#00FF00",
   /**
-   * DCB cell fill (T02-16). Dark green on the glass, not the T02-10 `#111`
-   * toolbar. Pressed cells invert to `ssa` on `background`.
+   * DCB physical caps (T02-31/32). CRC-style physical-button analog:
+   * trainer CSS bevels replace proprietary hardware/bitmap details.
    */
-  dcbCell: "#003300",
-  dcbText: "#00FF00",
+  dcbCap: "#061F0B",
+  dcbCell: "#061F0B",
+  dcbText: "#DCE0DC",
+  dcbDisabledText: "#4C604C",
+  dcbHighlight: "#7A8A7A",
+  dcbShadow: "#000000",
+  dcbPressed: "#005500",
+  dcbPressedText: "#E0E0E0",
   uiChrome: "#9AA0A6",
   uiChromeBg: "#111111",
 } as const;
