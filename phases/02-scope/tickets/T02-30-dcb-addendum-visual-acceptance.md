@@ -57,6 +57,8 @@ Re-read **R07** DCB, **R12** (what not to look like), `phases/_shared/references
 
 T02-21 historical freeze (no SHIFT/PREF/WX) is **amended** by T02-22–29. Do not re-fail T02-21 greps that were already updated. This ticket only confirms the addendum grammar.
 
+**Superseded visual scope:** T02-31–33 add the physical two-row MAIN arrangement, six WX caps, bevel/palette/typography requirements, and their own visual gate. T02-30 remains the functional addendum gate; do not retroactively claim it proved those later visual requirements.
+
 ## Test plan
 
 - Unit/grep: `dcbAddendumAcceptance.test.ts` (or extended tcw file).

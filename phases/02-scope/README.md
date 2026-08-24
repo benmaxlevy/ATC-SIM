@@ -56,7 +56,7 @@ Lift nothing from `phases/_shared/non-goals.md`. In addition, **do not** build:
 
 | Out | Why |
 | --- | --- |
-| Full NAS DCB / CRDA / FMA / WX mosaic | T02-16/17 are the historical lite grid. **T02-22–30** lift a trainer main/aux/submenu subset (SHIFT, PREF local, disabled WX). Still not CRDA, FMA, weather paint, or a Raytheon clone. |
+| Full NAS DCB / CRDA / FMA / WX mosaic | T02-16/17 are the historical lite grid. **T02-22–33** lift a trainer main/aux/submenu subset (SHIFT, PREF local, disabled WX, then a physical two-row MAIN skin). Still not CRDA, FMA, weather paint, or a Raytheon clone. |
 | CRDA, FMA, ARV, timed approaches | Phase 4+. |
 | Weather mosaic, precipitation, wind barbs | Phase 4+. |
 | Real STARS bitmap font or any licensed NAS typeface | Metric-similar **monospace** only. |
@@ -177,7 +177,8 @@ STARS-like, not a screenshot clone. **No red in phase 2** (alerts are phase 4).
 | History | `#1E50C8` … `#1E1E5A` | Five FAA history blues, newest brighter. Not track-tinted. |
 | PTL | `#FFFFFF` | Predicted track line (FAA white) |
 | Selected accent | `#FFFF00` | Selection box / IDENT flash; not the FDB color |
-| DCB cells | `#003300` fill, `#00FF00` text, 1 px `#000` gutters | T02-16 cell grid on the glass. Pressed = invert/stipple. Not the T02-10 `#111` toolbar. T02-17 MAPS / RANGE / RR / LDR / CHAR SIZE / BRITE / PLACE CNTR. |
+| DCB cells (T02-16–30) | `#003300` fill, `#00FF00` text, 1 px `#000` gutters | Historical functional DCB baseline. |
+| DCB physical caps (T02-31–33) | dark olive `#021B08`–`#0A2412` cap; `#D6DED6`–`#E0E0E0` text; muted `#4C604C` disabled text | Two-row separated physical caps; normal = raised light-top/left, black-bottom/right bevel; pressed = inset, lighter olive body. DCB only—PPI palette roles stay unchanged. |
 | SSA / lists | `#00FF00` | Screen-fixed SSA and on-PPI strip list |
 | UI chrome | `#9AA0A6` on `#111` | help overlay chrome — still dark, not game HUD |
 
