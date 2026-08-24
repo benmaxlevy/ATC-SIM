@@ -7,7 +7,9 @@
  * default about airport ref; PLACE RR sets a world-NM origin (not glued to the
  * airport). RR CNTR lights when that origin ≠ view **center**. Leader direction
  * is L1–L9; length is a discrete px set (0/24/36/48) on this view. CHAR SIZE is
- * 11–13 px Plex/system mono. BRITE steps map strokes only. History is 5 s sim /
+ * per-subsystem Plex/system mono (DATA BLOCKS / LISTS / DCB / TOOLS / POS), not
+ * a font picker. BRITE is per drawn channel (0–100 multiply); WX/WXC/BKC stored
+ * no-ops. History is 5 s sim /
  * 5 dots, no phosphor; AUX HISTORY spinner shows 0–5 of those dots (F8 / H
  * toggles 0 ↔ last non-zero). PTL is a straight predicted track line (default
  * 1.0 min; AUX spinner 0.5/1/2/4). F7 toggles PTL ALL. PTL OWN is F3-owned
@@ -39,7 +41,13 @@ import {
 } from "./dcbFunctions";
 import { type DcbDock } from "./dcbDock";
 import { idleDcbSpinner, type DcbMenu, type DcbSpinnerState } from "./dcbMenu";
-import { DEFAULT_CHAR_SIZE_PX, DEFAULT_DATABLOCK_CELL_PX, type CharSizePx } from "./fonts";
+import {
+  cloneCharSizes,
+  DEFAULT_CHAR_SIZE_PX,
+  DEFAULT_DATABLOCK_CELL_PX,
+  type CharSizePx,
+  type CharSizes,
+} from "./fonts";
 import type { HistoryDotCount } from "./history";
 import { stepHistoryDotCount } from "./history";
 import { PTL_MINUTES, stepPtlMinutes, type PtlMinutes } from "./ptl";
@@ -51,7 +59,7 @@ import {
   type LeaderLengthPx,
 } from "./leader";
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
-import { DEFAULT_MAP_BRITE_INDEX, type MapBriteIndex } from "./palette";
+import { cloneBrite, type BriteState } from "./palette";
 import type { TrackDisplay } from "./trackDisplay";
 
 export interface ScopeView {
@@ -71,10 +79,15 @@ export interface ScopeView {
   /** World origin of generated **range rings** (NM east/north). */
   rangeRingEastNm: number;
   rangeRingNorthNm: number;
-  /** DCB CHAR SIZE. IBM Plex Mono / system mono only. */
+  /** DCB CHAR SIZE per subsystem. IBM Plex Mono / system mono only. */
+  charSizes: CharSizes;
+  /** Alias of `charSizes.dataBlocks` (FDB/LDB). Pick/hit-test still read this. */
   charSizePx: CharSizePx;
-  /** DCB BRITE map-stroke step. Does not recolor tracks. */
-  mapBriteIndex: MapBriteIndex;
+  /**
+   * DCB BRITE per drawn channel (0–100). Hue stays T02-08 green/white/blue.
+   * WX/WXC/BKC/CMP/BCN/PRI are stored; only paint channels tint draw.
+   */
+  brite: BriteState;
   /** PLACE CNTR: next PPI click sets view **center**. */
   placeCenterArmed: boolean;
   /** PLACE RR: next PPI click sets range-ring origin. */
@@ -170,8 +183,9 @@ export function createScopeView(
     ringIntervalNm: snapRrInterval(digitalMap.rangeRings.intervalNm),
     rangeRingEastNm: airportEastNm,
     rangeRingNorthNm: airportNorthNm,
+    charSizes: cloneCharSizes(),
     charSizePx: DEFAULT_CHAR_SIZE_PX,
-    mapBriteIndex: DEFAULT_MAP_BRITE_INDEX,
+    brite: cloneBrite(),
     placeCenterArmed: false,
     placeRangeRingArmed: false,
     defaultLeaderDir: DEFAULT_LEADER_DIR,

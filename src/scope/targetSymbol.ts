@@ -52,13 +52,14 @@ export function targetStrokeColor(_ownership: TrackOwnership, identFlashing: boo
 export function targetDiamondVertices(
   x: number,
   y: number,
+  sizePx: number = TARGET_SIZE_PX,
 ): [
   { x: number; y: number },
   { x: number; y: number },
   { x: number; y: number },
   { x: number; y: number },
 ] {
-  const half = TARGET_SIZE_PX / 2;
+  const half = sizePx / 2;
   return [
     { x, y: y - half },
     { x: x + half, y },
@@ -73,11 +74,12 @@ export function isTargetDiamondPath(
   cx: number,
   cy: number,
   slopPx = 2,
+  sizePx: number = TARGET_SIZE_PX,
 ): boolean {
   if (points.length < 4) {
     return false;
   }
-  const expected = targetDiamondVertices(cx, cy);
+  const expected = targetDiamondVertices(cx, cy, sizePx);
   for (let i = 0; i < 4; i += 1) {
     const p = points[i]!;
     const e = expected[i]!;
@@ -91,34 +93,43 @@ export function isTargetDiamondPath(
 export function selectionBoxRect(
   x: number,
   y: number,
+  sizePx: number = TARGET_SIZE_PX,
 ): { x: number; y: number; w: number; h: number } {
-  const half = TARGET_SIZE_PX / 2 + SELECTION_BOX_PAD_PX;
+  const half = sizePx / 2 + SELECTION_BOX_PAD_PX;
   return {
     x: x - half,
     y: y - half,
-    w: TARGET_SIZE_PX + SELECTION_BOX_PAD_PX * 2,
-    h: TARGET_SIZE_PX + SELECTION_BOX_PAD_PX * 2,
+    w: sizePx + SELECTION_BOX_PAD_PX * 2,
+    h: sizePx + SELECTION_BOX_PAD_PX * 2,
   };
 }
 
-export function drawSelectionBox(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-  const box = selectionBoxRect(x, y);
+export function drawSelectionBox(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  sizePx: number = TARGET_SIZE_PX,
+): void {
+  const box = selectionBoxRect(x, y, sizePx);
   ctx.strokeStyle = SELECTED_ACCENT_COLOR;
   ctx.lineWidth = TARGET_STROKE_PX;
   ctx.strokeRect(box.x, box.y, box.w, box.h);
 }
 
 /** Screen offset for the heading tick. 0° = north (up), 90° = east (right). */
-export function headingTickOffset(headingDeg: number): { dx: number; dy: number } {
+export function headingTickOffset(
+  headingDeg: number,
+  tickPx: number = HEADING_TICK_PX,
+): { dx: number; dy: number } {
   const rad = (headingDeg * Math.PI) / 180;
   return {
-    dx: Math.sin(rad) * HEADING_TICK_PX,
-    dy: -Math.cos(rad) * HEADING_TICK_PX,
+    dx: Math.sin(rad) * tickPx,
+    dy: -Math.cos(rad) * tickPx,
   };
 }
 
-function strokeDiamond(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-  const verts = targetDiamondVertices(x, y);
+function strokeDiamond(ctx: CanvasRenderingContext2D, x: number, y: number, sizePx: number): void {
+  const verts = targetDiamondVertices(x, y, sizePx);
   ctx.beginPath();
   ctx.moveTo(verts[0].x, verts[0].y);
   ctx.lineTo(verts[1].x, verts[1].y);
@@ -149,11 +160,12 @@ export function drawTargetSymbol(
   headingDeg: number,
   strokeColor: string,
   ownership?: TrackOwnership,
+  sizePx: number = TARGET_SIZE_PX,
 ): void {
   ctx.strokeStyle = strokeColor;
   ctx.lineWidth = TARGET_STROKE_PX;
-  strokeDiamond(ctx, x, y);
-  const tick = headingTickOffset(headingDeg);
+  strokeDiamond(ctx, x, y, sizePx);
+  const tick = headingTickOffset(headingDeg, HEADING_TICK_PX * (sizePx / TARGET_SIZE_PX));
   ctx.beginPath();
   ctx.moveTo(x, y);
   ctx.lineTo(x + tick.dx, y + tick.dy);

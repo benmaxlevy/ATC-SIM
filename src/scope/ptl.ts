@@ -87,14 +87,15 @@ export function ptlCapTickOffsets(
   fromY: number,
   toX: number,
   toY: number,
+  capTickPx: number = PTL_CAP_TICK_PX,
 ): { dx: number; dy: number } {
   const dx = toX - fromX;
   const dy = toY - fromY;
   const len = Math.hypot(dx, dy);
   if (len < 1e-6) {
-    return { dx: PTL_CAP_TICK_PX / 2, dy: 0 };
+    return { dx: capTickPx / 2, dy: 0 };
   }
-  const half = PTL_CAP_TICK_PX / 2;
+  const half = capTickPx / 2;
   return { dx: (-dy / len) * half, dy: (dx / len) * half };
 }
 
@@ -105,6 +106,7 @@ export function drawPredictedTrackLine(
   toX: number,
   toY: number,
   color: string,
+  capTickPx: number = PTL_CAP_TICK_PX,
 ): void {
   ctx.strokeStyle = color;
   ctx.lineWidth = PTL_STROKE_PX;
@@ -113,7 +115,7 @@ export function drawPredictedTrackLine(
   ctx.lineTo(toX, toY);
   ctx.stroke();
 
-  const cap = ptlCapTickOffsets(fromX, fromY, toX, toY);
+  const cap = ptlCapTickOffsets(fromX, fromY, toX, toY, capTickPx);
   ctx.beginPath();
   ctx.moveTo(toX - cap.dx, toY - cap.dy);
   ctx.lineTo(toX + cap.dx, toY + cap.dy);

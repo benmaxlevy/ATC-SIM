@@ -10,6 +10,7 @@ import {
   createScopeView,
   applyDcbShift,
   closeDcbMenu,
+  handleDcbEscape,
   cycleRange,
   openDcbMenu,
   formatDcbRangeReadout,
@@ -158,8 +159,11 @@ test("AC7 — Research: labels are RANGE/MAPS/FILTER on MAIN; HISTORY/PTL on AUX
   expect(html).not.toContain("PTL");
   expect(html).toContain("RR 5");
   expect(html).toContain("LDR");
-  expect(html).toContain("CHAR 12");
-  expect(html).toContain("BRITE 2");
+  expect(html).toContain("CHAR");
+  expect(html).toContain("SIZE");
+  expect(html).toContain("BRITE");
+  expect(html).not.toContain("CHAR 12");
+  expect(html).not.toContain("BRITE 2");
   expect(html).toContain("PLACE");
   expect(html).toContain("CNTR");
   expect(html).toContain("000-180");
@@ -444,4 +448,89 @@ test("AC5 — TPA/ATPA opener is a stub submenu with DONE only", () => {
   expect(html).not.toContain("2 NM");
   closeDcbMenu(view);
   expect(dcbHtml(view)).toContain("RANGE 20");
+});
+
+test("T02-26 — CHAR SIZE submenu has DATA BLOCKS / LISTS / DCB / TOOLS / POS; DONE returns MAIN", () => {
+  expect(barSrc()).toMatch(/openDcbMenu\(view,\s*"CHAR_SIZE"\)/);
+  expect(barSrc()).toMatch(/stepCharSizeChannel/);
+  expect(barSrc()).toMatch(/DATA/);
+  expect(barSrc()).toMatch(/BLOCKS/);
+  expect(barSrc()).toMatch(/LISTS/);
+  expect(barSrc()).toMatch(/TOOLS/);
+  expect(barSrc()).toMatch(/POS/);
+  expect(barSrc()).not.toMatch(/cycleCharSize/);
+  const view = createScopeView();
+  openDcbMenu(view, "CHAR_SIZE");
+  const html = dcbHtml(view);
+  expect(html).toMatch(/data-dcb-menu="CHAR_SIZE"/);
+  expect(html).toContain("DONE");
+  expect(html).toContain("DATA");
+  expect(html).toContain("BLOCKS");
+  expect(html).toContain("LISTS");
+  expect(html).toContain("DCB");
+  expect(html).toContain("TOOLS");
+  expect(html).toContain("POS");
+  expect(html).toContain("12");
+  expect(html).not.toContain("RANGE 20");
+  closeDcbMenu(view);
+  expect(dcbHtml(view)).toContain("RANGE 20");
+});
+
+test("T02-26 — BRITE submenu paints FDB/LDB/MPA/HST/RR/TLS; WX/WXC/BKC disabled", () => {
+  expect(barSrc()).toMatch(/openDcbMenu\(view,\s*"BRITE"\)/);
+  expect(barSrc()).toMatch(/stepBriteChannel/);
+  expect(barSrc()).not.toMatch(/cycleMapBrite/);
+  const view = createScopeView();
+  openDcbMenu(view, "BRITE");
+  const html = dcbHtml(view);
+  expect(html).toMatch(/data-dcb-menu="BRITE"/);
+  expect(html).toContain("DONE");
+  for (const label of [
+    "DCB",
+    "MPA",
+    "MPB",
+    "FDB",
+    "LST",
+    "POS",
+    "LDB",
+    "OTH",
+    "TLS",
+    "RR",
+    "HST",
+  ]) {
+    expect(html).toContain(label);
+  }
+  for (const label of ["WX", "WXC", "BKC", "CMP", "BCN", "PRI"]) {
+    expect(html).toContain(label);
+  }
+  expect(html).toMatch(/aria-label="WX"[^>]*\bdisabled\b/);
+  expect(html).toMatch(/aria-label="WXC"[^>]*\bdisabled\b/);
+  expect(html).toMatch(/aria-label="BKC"[^>]*\bdisabled\b/);
+  expect(html).toMatch(/aria-label="CMP"[^>]*\bdisabled\b/);
+  expect(html).not.toContain("RANGE 20");
+  expect(barSrc()).not.toMatch(/drawWeather|NEXRAD|weatherMosaic/i);
+  closeDcbMenu(view);
+  expect(dcbHtml(view)).toContain("RANGE 20");
+});
+
+test("T02-26 — DONE/Esc return MAIN; DAL123 H270 still parses", async () => {
+  const view = createScopeView();
+  openDcbMenu(view, "CHAR_SIZE");
+  expect(dcbHtml(view)).toMatch(/data-dcb-menu="CHAR_SIZE"/);
+  expect(handleDcbEscape(view)).toBe(true);
+  expect(view.dcbMenu).toBe("MAIN");
+  expect(dcbHtml(view)).toContain("RANGE 20");
+  openDcbMenu(view, "BRITE");
+  expect(dcbHtml(view)).toMatch(/data-dcb-menu="BRITE"/);
+  closeDcbMenu(view);
+  expect(dcbHtml(view)).toContain("RANGE 20");
+  const { parseRadioText } = await import("@parse");
+  const heading = parseRadioText("DAL123 H270");
+  expect(heading.ok).toBe(true);
+  if (heading.ok) {
+    expect(heading.callsignToken).toBe("DAL123");
+    expect(heading.instructions).toEqual([
+      { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+    ]);
+  }
 });

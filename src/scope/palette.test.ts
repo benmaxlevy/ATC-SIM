@@ -3,8 +3,10 @@ import {
   HISTORY_TRAIL,
   MAP_BRITE_STEPS,
   PALETTE,
+  applyBrite,
   historyTrailColor,
   mapBriteColors,
+  snapBriteLevel,
 } from "./palette";
 
 test("TCW palette follows FAA/CRC/vice grammar, not a green CRT game map", () => {
@@ -39,11 +41,27 @@ test("history trail is independent blue, newest brighter than oldest", () => {
   expect(historyTrailColor(0, 5).toLowerCase()).not.toBe(PALETTE.owned.toLowerCase());
 });
 
-test("BRITE steps gray maps only; SSA/track colors stay put", () => {
+test("BRITE multiply keeps T02-08 hues; 100 is the palette color", () => {
+  expect(applyBrite(PALETTE.map, 100)).toBe(PALETTE.map.toUpperCase());
+  expect(applyBrite(PALETTE.unowned, 100)).toBe("#00FF00");
+  expect(applyBrite(PALETTE.owned, 100)).toBe("#FFFFFF");
+  expect(applyBrite(PALETTE.positionSymbol, 100).toUpperCase()).toBe("#1E78FF");
+  const dimFdb = applyBrite(PALETTE.unowned, 50);
+  expect(dimFdb).not.toBe("#00FF00");
+  expect(dimFdb.startsWith("#00")).toBe(true);
+  expect(dimFdb.toLowerCase()).not.toBe("#00ee00");
+  const dimMap = applyBrite(PALETTE.map, 40);
+  expect(dimMap).not.toBe(applyBrite(PALETTE.map, 100));
+  const dimHst = applyBrite(PALETTE.history, 20);
+  expect(dimHst).not.toBe(applyBrite(PALETTE.history, 100));
+  const dimRr = applyBrite(PALETTE.mapDim, 10);
+  expect(dimRr).not.toBe(applyBrite(PALETTE.mapDim, 100));
+  const dimTls = applyBrite(PALETTE.ptl, 30);
+  expect(dimTls).not.toBe("#FFFFFF");
+  expect(snapBriteLevel(47)).toBe(50);
+  expect(snapBriteLevel(-4)).toBe(0);
   expect(MAP_BRITE_STEPS.length).toBe(3);
-  expect(mapBriteColors(0).map).not.toBe(mapBriteColors(1).map);
   expect(mapBriteColors(1).map).toBe(PALETTE.map);
-  expect(mapBriteColors(2).map.toLowerCase()).not.toBe("#00ee00");
   expect(PALETTE.unowned).toBe("#00FF00");
   expect(PALETTE.owned).toBe("#FFFFFF");
 });

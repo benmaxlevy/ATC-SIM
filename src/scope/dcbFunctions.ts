@@ -6,15 +6,23 @@
  * lists, WX1–4 disabled chrome with no precipitation. Discrete **range**
  * presets, generated **range rings** (2/5/10 NM, PLACE RR origin in world NM),
  * **leader** L1–L9 direction spinner plus discrete length 0/24/36/48 px,
- * CHAR SIZE 11–13 px IBM Plex Mono, BRITE map-stroke steps. Discrete range
- * presets. Not a brightness slider. Not NAS STARS.
+ * CHAR SIZE per subsystem (DATA BLOCKS / LISTS / DCB / TOOLS / POS) on IBM
+ * Plex Mono so FDB/LDB **datablock** cells stay character-cell. BRITE per
+ * drawn channel as a 0–100 multiply. Discrete range
+ * presets. Not a font picker. Not NAS STARS.
  *
  * Scope display state only. Never a Command, readback, or intent.
  */
 
 import type { World } from "@core";
 import type { LoadedVideoMap } from "@scenario";
-import { CHAR_SIZE_STEPS_PX, type CharSizePx } from "./fonts";
+import {
+  CHAR_SIZE_STEPS_PX,
+  DCB_CHAR_SIZE_STEPS_PX,
+  POS_SIZE_STEPS_PX,
+  type CharSizeChannel,
+  type CharSizePx,
+} from "./fonts";
 import {
   DEFAULT_LEADER_DIR,
   LEADER_LENGTH_STEPS_PX,
@@ -22,7 +30,7 @@ import {
   type LeaderDir,
   type LeaderLengthPx,
 } from "./leader";
-import { MAP_BRITE_STEPS, type MapBriteIndex } from "./palette";
+import { BRITE_STEPS, type BriteChannel, type BriteLevel } from "./palette";
 import type { ScopeView } from "./scopeView";
 import { snapRangeRingToViewCenter } from "./scopeView";
 import { closeDcbMenu, openDcbMenu } from "./dcbMenu";
@@ -243,23 +251,54 @@ export function stepRrInterval(view: ScopeView, delta: number): void {
 }
 
 export function cycleCharSize(view: ScopeView): void {
-  const i = CHAR_SIZE_STEPS_PX.indexOf(view.charSizePx);
+  const i = CHAR_SIZE_STEPS_PX.indexOf(view.charSizes.dataBlocks);
   const next = i < 0 ? 0 : (i + 1) % CHAR_SIZE_STEPS_PX.length;
-  view.charSizePx = CHAR_SIZE_STEPS_PX[next]!;
+  view.charSizes.dataBlocks = CHAR_SIZE_STEPS_PX[next]!;
+  view.charSizePx = view.charSizes.dataBlocks;
 }
 
-export function formatDcbCharReadout(sizePx: CharSizePx): string {
-  return `CHAR ${sizePx}`;
+export function formatDcbCharReadout(sizePx: CharSizePx | number): string {
+  return String(sizePx);
 }
 
+export function stepCharSizeChannel(
+  view: ScopeView,
+  channel: CharSizeChannel,
+  delta: number,
+): void {
+  if (channel === "dcb") {
+    view.charSizes.dcb = stepFrozen(DCB_CHAR_SIZE_STEPS_PX, view.charSizes.dcb, delta);
+    return;
+  }
+  if (channel === "pos") {
+    view.charSizes.pos = stepFrozen(POS_SIZE_STEPS_PX, view.charSizes.pos, delta);
+    return;
+  }
+  view.charSizes[channel] = stepFrozen(CHAR_SIZE_STEPS_PX, view.charSizes[channel], delta);
+  if (channel === "dataBlocks") {
+    view.charSizePx = view.charSizes.dataBlocks;
+  }
+}
+
+const MAP_CACHE_BRITE_CHANNELS: ReadonlySet<BriteChannel> = new Set(["mpa", "mpb", "rr"]);
+
+export function stepBriteChannel(view: ScopeView, channel: BriteChannel, delta: number): void {
+  view.brite[channel] = stepFrozen(BRITE_STEPS, view.brite[channel], delta);
+  if (MAP_CACHE_BRITE_CHANNELS.has(channel)) {
+    invalidateMapCache(view);
+  }
+}
+
+/** T02-17 leftover: click-cycle MPA so older walkthroughs still mutate BRITE. */
 export function cycleMapBrite(view: ScopeView): void {
-  const next = (view.mapBriteIndex + 1) % MAP_BRITE_STEPS.length;
-  view.mapBriteIndex = next as MapBriteIndex;
+  const i = BRITE_STEPS.indexOf(view.brite.mpa);
+  const next = i < 0 ? 0 : (i + 1) % BRITE_STEPS.length;
+  view.brite.mpa = BRITE_STEPS[next]!;
   invalidateMapCache(view);
 }
 
-export function formatDcbBriteReadout(index: MapBriteIndex): string {
-  return `BRITE ${index + 1}`;
+export function formatDcbBriteReadout(level: BriteLevel | number): string {
+  return String(level);
 }
 
 export function toggleDcbSubmenu(view: ScopeView, menu: Exclude<DcbSubmenu, null>): void {
@@ -319,11 +358,7 @@ export function dcbLeaderDirValue(
   return view.defaultLeaderDir ?? DEFAULT_LEADER_DIR;
 }
 
-export function stepDcbLeaderDir(
-  view: ScopeView,
-  world: World | undefined,
-  delta: number,
-): void {
+export function stepDcbLeaderDir(view: ScopeView, world: World | undefined, delta: number): void {
   const next = stepFrozen(DCB_LEADER_DIRS, dcbLeaderDirValue(view, world), delta);
   view.defaultLeaderDir = next;
   if (world) {

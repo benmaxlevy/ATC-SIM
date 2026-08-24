@@ -1,9 +1,15 @@
 import { expect, test } from "vitest";
 import { createWorld, makeTestAircraft } from "@core";
 import { loadKdem } from "@scenario";
-import { CHAR_SIZE_STEPS_PX, datablockFontCss, SCOPE_FONT_STACK } from "./fonts";
+import {
+  CHAR_SIZE_STEPS_PX,
+  DCB_CHAR_SIZE_STEPS_PX,
+  POS_SIZE_STEPS_PX,
+  datablockFontCss,
+  SCOPE_FONT_STACK,
+} from "./fonts";
 import { parseDigitalMap, toMapCacheInput, buildMapCache, activeRingRadiiNm } from "./mapLayers";
-import { MAP_BRITE_STEPS, PALETTE, mapBriteColors } from "./palette";
+import { BRITE_DISABLED_CHANNELS, BRITE_STEPS, PALETTE, applyBrite } from "./palette";
 import { createScopeView } from "./scopeView";
 import { syncTrackDisplays } from "./trackDisplay";
 import {
@@ -21,11 +27,12 @@ import {
   clearAllVideoMaps,
   formatDcbLdrLengthReadout,
   formatDcbMapLabel,
-  formatDcbRrReadout,
   hideMapLists,
   isDcbMapSlotEnabled,
   isVideoMapOn,
   RR_INTERVALS_NM,
+  stepBriteChannel,
+  stepCharSizeChannel,
   stepDcbLeaderDir,
   stepDcbLeaderLength,
   stepRrInterval,
@@ -143,16 +150,33 @@ test("AC6 — LDR DIR spinner steps 1–9; AC7 length includes 0 and 36", () => 
   expect(formatDcbLdrLengthReadout(view.leaderLengthPx)).toBe("0");
 });
 
-test("AC5 — CHAR SIZE has ≥2 sizes; font stack still Plex/system mono", () => {
+test("AC1 — CHAR SIZE fields have ≥2 steps each; font stack still Plex/system mono", () => {
   expect(CHAR_SIZE_STEPS_PX.length).toBeGreaterThanOrEqual(2);
+  expect(DCB_CHAR_SIZE_STEPS_PX.length).toBeGreaterThanOrEqual(2);
+  expect(POS_SIZE_STEPS_PX.length).toBeGreaterThanOrEqual(2);
   const view = createScopeView();
+  expect(view.charSizes.dataBlocks).toBe(12);
+  expect(view.charSizes.lists).toBe(12);
+  expect(view.charSizes.dcb).toBe(11);
+  expect(view.charSizes.tools).toBe(12);
+  expect(view.charSizes.pos).toBe(8);
   expect(view.charSizePx).toBe(12);
-  const seen = new Set<number>([view.charSizePx]);
+
+  stepCharSizeChannel(view, "dataBlocks", -1);
+  expect(view.charSizes.dataBlocks).toBe(11);
+  expect(view.charSizePx).toBe(11);
+  stepCharSizeChannel(view, "lists", 1);
+  expect(view.charSizes.lists).toBe(13);
+  expect(view.charSizes.dataBlocks).toBe(11);
+  stepCharSizeChannel(view, "dcb", 1);
+  expect(view.charSizes.dcb).toBe(12);
+  stepCharSizeChannel(view, "tools", -1);
+  expect(view.charSizes.tools).toBe(11);
+  stepCharSizeChannel(view, "pos", 1);
+  expect(view.charSizes.pos).toBe(10);
+
   cycleCharSize(view);
-  seen.add(view.charSizePx);
-  cycleCharSize(view);
-  seen.add(view.charSizePx);
-  expect(seen.size).toBeGreaterThanOrEqual(2);
+  expect(view.charSizes.dataBlocks).toBe(12);
   for (const size of CHAR_SIZE_STEPS_PX) {
     const css = datablockFontCss(size);
     expect(css).toContain("IBM Plex Mono");
@@ -173,20 +197,48 @@ test("AC5 — no STARS .ttf in the app sources", () => {
   }
 });
 
-test("AC6 — BRITE has ≥2 steps; track/datablock colors unchanged", () => {
-  expect(MAP_BRITE_STEPS.length).toBeGreaterThanOrEqual(2);
-  expect(mapBriteColors(0).map).not.toBe(mapBriteColors(1).map);
+test("AC3 — BRITE FDB/LDB/MPA/HST/RR/TLS change intensity; disabled channels are stored no-ops", () => {
+  expect(BRITE_STEPS.length).toBeGreaterThanOrEqual(2);
+  expect(applyBrite(PALETTE.unowned, 50)).not.toBe(applyBrite(PALETTE.unowned, 100));
+  expect(applyBrite(PALETTE.owned, 50)).not.toBe("#FFFFFF");
+  expect(applyBrite(PALETTE.map, 40)).not.toBe(applyBrite(PALETTE.map, 100));
+  expect(applyBrite(PALETTE.history, 20)).not.toBe(applyBrite(PALETTE.history, 100));
+  expect(applyBrite(PALETTE.mapDim, 10)).not.toBe(applyBrite(PALETTE.mapDim, 100));
+  expect(applyBrite(PALETTE.ptl, 30)).not.toBe("#FFFFFF");
   expect(PALETTE.unowned).toBe("#00FF00");
   expect(PALETTE.owned).toBe("#FFFFFF");
-  expect(PALETTE.selected).toBe("#FFFF00");
-  const view = createScopeView();
-  expect(view.mapBriteIndex).toBe(1);
+  expect(PALETTE.positionSymbol.toUpperCase()).toBe("#1E78FF");
+
+  const view = kdemView();
+  expect(view.brite.mpa).toBe(100);
+  expect(view.brite.fdb).toBe(100);
+  stepBriteChannel(view, "fdb", -1);
+  expect(view.brite.fdb).toBe(90);
+  expect(view.brite.ldb).toBe(100);
+  stepBriteChannel(view, "ldb", -2);
+  expect(view.brite.ldb).toBe(80);
+  const beforeMpa = buildMapCache(toMapCacheInput(view, VIEW));
+  view.mapCache = beforeMpa;
+  stepBriteChannel(view, "hst", -1);
+  expect(view.brite.hst).toBe(90);
+  expect(view.mapCache).toBe(beforeMpa);
+  stepBriteChannel(view, "mpa", -1);
+  expect(view.brite.mpa).toBe(90);
+  expect(view.mapCache).toBeNull();
+  view.mapCache = buildMapCache(toMapCacheInput(view, VIEW));
+  stepBriteChannel(view, "rr", -1);
+  expect(view.brite.rr).toBe(90);
+  expect(view.mapCache).toBeNull();
+  stepBriteChannel(view, "tls", -1);
+  expect(view.brite.tls).toBe(90);
+
+  for (const channel of BRITE_DISABLED_CHANNELS) {
+    expect(view.brite[channel]).toBe(100);
+  }
+  stepBriteChannel(view, "wx", -1);
+  expect(view.brite.wx).toBe(90);
   cycleMapBrite(view);
-  expect(view.mapBriteIndex).toBe(2);
-  cycleMapBrite(view);
-  expect(view.mapBriteIndex).toBe(0);
-  expect(PALETTE.unowned).toBe("#00FF00");
-  expect(PALETTE.map).toBe("#8C8C8C");
+  expect(view.brite.mpa).toBe(100);
 });
 
 test("PLACE CNTR arms; PLACE RR and RR CNTR mutate ring origin", () => {
@@ -215,6 +267,14 @@ test("AC6 — radio-focus L090 is still a left turn; LDR DIR spinner does not st
     expect(parsed.instructions).toEqual(
       expect.arrayContaining([{ type: "FLY_HEADING", headingDeg: 90, turn: "LEFT" }]),
     );
+  }
+  const heading = parseRadioText("DAL123 H270");
+  expect(heading.ok).toBe(true);
+  if (heading.ok) {
+    expect(heading.callsignToken).toBe("DAL123");
+    expect(heading.instructions).toEqual([
+      { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+    ]);
   }
 });
 
@@ -339,6 +399,9 @@ test("AC8 — MAPS/RANGE/leader/range rings in comments; not zoom", () => {
   expect(src).toMatch(/center/i);
   expect(src).toMatch(/leader/i);
   expect(src).toMatch(/range rings/i);
+  expect(src).toMatch(/CHAR SIZE/);
+  expect(src).toMatch(/BRITE/);
+  expect(src).toMatch(/datablock/i);
   expect(src).toMatch(/R07/);
   expect(src.toLowerCase()).not.toMatch(/\bzoom\b/);
   expect(src.toLowerCase()).not.toMatch(/\blayers\b/);

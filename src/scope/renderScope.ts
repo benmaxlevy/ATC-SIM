@@ -14,8 +14,9 @@
  * **Altitude filter** (FILTER readout in SSA): out of band keep target + history,
  * suppress datablock / leader / PTL. F3 initiate-track color stub (unowned green
  * FDB / owned white FDB, CSI-like `*` / `G`); position symbol stays blue;
- * selected yellow box independent of ownership. CHAR SIZE 11–13 px. BRITE steps
- * gray map strokes only. SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
+ * selected yellow box independent of ownership. CHAR SIZE is per-subsystem
+ * (DATA BLOCKS / LISTS / DCB / TOOLS / POS) on IBM Plex Mono. BRITE multiplies
+ * each drawn channel; WX/WXC/BKC do not paint weather. SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
  * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. T04-09/T04-10 CA/MSAW tints
  * target + datablock from `world.alerts` (yellow caution, red alert). CA halo is
  * **not** drawn: CRC conflict-alert CA is blinking `CA` text + tone, not a 3 NM circle
@@ -43,7 +44,7 @@ import {
 import { datablockFontCss, datablockLineHeightPx, measureDatablockCellWidth } from "./fonts";
 import { datablockTopLeft, DEFAULT_LEADER_DIR, drawLeaderLine, type LeaderDir } from "./leader";
 import { reuseOrBuildMapCache, toMapCacheInput, type MapCache } from "./mapLayers";
-import { PALETTE, mapBriteColors } from "./palette";
+import { PALETTE, applyBrite } from "./palette";
 import { historyDotsToDraw } from "./history";
 import { drawPredictedTrackLine, ptlEndpoint, shouldDrawPtlForTrack } from "./ptl";
 import { isViewOffAirport, type ScopeView } from "./scopeView";
@@ -115,8 +116,10 @@ function tracePolyline(
 }
 
 function drawMapLayers(ctx: CanvasRenderingContext2D, cache: MapCache, view: ScopeView): void {
-  const brite = mapBriteColors(view.mapBriteIndex);
-  ctx.strokeStyle = brite.mapDim;
+  const mpa = applyBrite(PALETTE.map, view.brite.mpa);
+  const mpb = applyBrite(PALETTE.mapDim, view.brite.mpb);
+  const rr = applyBrite(PALETTE.mapDim, view.brite.rr);
+  ctx.strokeStyle = rr;
   ctx.lineWidth = RING_STROKE_PX;
   if (cache.ringsPath) {
     ctx.stroke(cache.ringsPath);
@@ -130,7 +133,7 @@ function drawMapLayers(ctx: CanvasRenderingContext2D, cache: MapCache, view: Sco
 
   ctx.lineWidth = MAP_STROKE_PX;
   for (const stroke of cache.videoStrokes) {
-    ctx.strokeStyle = stroke.color === "mapDim" ? brite.mapDim : brite.map;
+    ctx.strokeStyle = stroke.color === "mapDim" ? mpb : mpa;
     if (stroke.points.length < 2) {
       continue;
     }
@@ -138,8 +141,8 @@ function drawMapLayers(ctx: CanvasRenderingContext2D, cache: MapCache, view: Sco
     ctx.stroke();
   }
 
-  ctx.strokeStyle = brite.map;
-  ctx.fillStyle = brite.map;
+  ctx.strokeStyle = mpa;
+  ctx.fillStyle = mpa;
   ctx.lineWidth = MAP_STROKE_PX;
   if (cache.coastlinePath) {
     ctx.stroke(cache.coastlinePath);
@@ -166,21 +169,21 @@ function drawMapLayers(ctx: CanvasRenderingContext2D, cache: MapCache, view: Sco
     ctx.stroke();
   }
 
-  const mapFont = datablockFontCss(view.charSizePx);
+  const mapFont = datablockFontCss(view.charSizes.dataBlocks);
   if (cache.runwayLabel) {
     ctx.font = mapFont;
     ctx.textBaseline = "top";
     ctx.textAlign = "center";
-    ctx.fillStyle = brite.map;
+    ctx.fillStyle = mpa;
     ctx.fillText(cache.runwayLabel.text, cache.runwayLabel.x, cache.runwayLabel.y);
   }
 
   ctx.font = mapFont;
   ctx.textBaseline = "bottom";
   ctx.textAlign = "center";
-  const mapLineH = datablockLineHeightPx(view.charSizePx);
+  const mapLineH = datablockLineHeightPx(view.charSizes.dataBlocks);
   for (const label of cache.videoLabels) {
-    ctx.fillStyle = label.color === "mapDim" ? brite.mapDim : brite.map;
+    ctx.fillStyle = label.color === "mapDim" ? mpb : mpa;
     drawVideoMapLabel(ctx, label.text, label.x, label.y, mapLineH);
   }
 }
@@ -243,10 +246,11 @@ function drawDatablock(
   const line1 =
     mode === "limited" ? base.line1 : withInboundHandoffCue(base.line1, handoffFor(world, ac.id));
   const lines = { ...base, line1: withCaDatablockTag(line1, tint) };
-  const lineH = datablockLineHeightPx(view.charSizePx);
+  const lineH = datablockLineHeightPx(view.charSizes.dataBlocks);
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
   const origin = datablockTopLeft(trackLeaderDir(view, ac.id), metrics, view.leaderLengthPx);
-  ctx.fillStyle = alertOrOwnershipColor(trackOwnership(view, ac.id), tint);
+  const briteCh = mode === "limited" ? view.brite.ldb : view.brite.fdb;
+  ctx.fillStyle = applyBrite(alertOrOwnershipColor(trackOwnership(view, ac.id), tint), briteCh);
   ctx.fillText(lines.line1, targetX + origin.x, targetY + origin.y);
   if (lines.line2 != null) {
     ctx.fillText(lines.line2, targetX + origin.x, targetY + origin.y + lineH);
@@ -273,7 +277,7 @@ function drawTracks(
       const n = dots.eastNm.length;
       for (let i = 0; i < n; i += 1) {
         const p = nmToScreen(dots.eastNm[i]!, dots.northNm[i]!, view.camera, size);
-        drawHistoryDot(ctx, p.x, p.y, historyDotColor(i, n));
+        drawHistoryDot(ctx, p.x, p.y, applyBrite(historyDotColor(i, n), view.brite.hst));
       }
     }
   }
@@ -287,10 +291,19 @@ function drawTracks(
     const color = trackColor(view, world, ac);
     const td = view.tracks.get(ac.id);
     const ownership: TrackOwnership = td?.ownership ?? "unowned";
-    drawTargetSymbol(ctx, p.x, p.y, ac.headingDeg, color, ownership);
+    const posBrite = ownership === "owned" ? view.brite.pos : view.brite.oth;
+    drawTargetSymbol(
+      ctx,
+      p.x,
+      p.y,
+      ac.headingDeg,
+      applyBrite(color, posBrite),
+      ownership,
+      view.charSizes.pos,
+    );
   }
 
-  ctx.font = datablockFontCss(view.charSizePx);
+  ctx.font = datablockFontCss(view.charSizes.dataBlocks);
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   view.datablockCellWidthPx = measureDatablockCellWidth(ctx);
@@ -303,8 +316,21 @@ function drawTracks(
     }
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
     const tint = trackAlertTint(world, ac.callsign);
-    const leaderColor = alertOrOwnershipColor(trackOwnership(view, ac.id), tint);
-    drawLeaderLine(ctx, p.x, p.y, trackLeaderDir(view, ac.id), leaderColor, view.leaderLengthPx);
+    const mode = trackDatablockMode(view, ac.id);
+    const briteCh = mode === "limited" ? view.brite.ldb : view.brite.fdb;
+    const leaderColor = applyBrite(
+      alertOrOwnershipColor(trackOwnership(view, ac.id), tint),
+      briteCh,
+    );
+    drawLeaderLine(
+      ctx,
+      p.x,
+      p.y,
+      trackLeaderDir(view, ac.id),
+      leaderColor,
+      view.leaderLengthPx,
+      view.charSizes.pos,
+    );
   }
 
   for (const ac of world.aircraft) {
@@ -320,7 +346,7 @@ function drawTracks(
       continue;
     }
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
-    drawSelectionBox(ctx, p.x, p.y);
+    drawSelectionBox(ctx, p.x, p.y, view.charSizes.pos);
   }
 }
 
@@ -348,13 +374,15 @@ function drawPredictedTrackLines(
     const to = nmToScreen(end.eastNm, end.northNm, view.camera, size);
     const td = view.tracks.get(ac.id);
     const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
+    const capTickPx = Math.max(2, view.charSizes.tools - 8);
     drawPredictedTrackLine(
       ctx,
       from.x,
       from.y,
       to.x,
       to.y,
-      identActive ? PALETTE.selected : PALETTE.ptl,
+      applyBrite(identActive ? PALETTE.selected : PALETTE.ptl, view.brite.tls),
+      capTickPx,
     );
   }
 }
@@ -374,11 +402,11 @@ function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): 
     filter: view.altitudeFilter,
     filterEntry: view.filterEntry,
   });
-  const lineH = datablockLineHeightPx(view.charSizePx);
-  ctx.font = datablockFontCss(view.charSizePx);
+  const lineH = datablockLineHeightPx(view.charSizes.lists);
+  ctx.font = datablockFontCss(view.charSizes.lists);
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
-  ctx.fillStyle = PALETTE.ssa;
+  ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
   let y = SSA_TOP_PX;
   for (const line of lines) {
     ctx.fillText(line, SSA_LEFT_PX, y);
@@ -392,7 +420,7 @@ function drawChordHint(ctx: CanvasRenderingContext2D, view: ScopeView, ssaBottom
   if (!hint) {
     return;
   }
-  ctx.font = datablockFontCss(view.charSizePx);
+  ctx.font = datablockFontCss(view.charSizes.lists);
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
   ctx.fillStyle = PALETTE.uiChrome;
@@ -408,11 +436,11 @@ function drawMapLists(ctx: CanvasRenderingContext2D, view: ScopeView, cssWidth: 
   if (!view.geoMapsListOn && !view.currentMapsListOn) {
     return;
   }
-  const lineH = datablockLineHeightPx(view.charSizePx);
-  ctx.font = datablockFontCss(view.charSizePx);
+  const lineH = datablockLineHeightPx(view.charSizes.lists);
+  ctx.font = datablockFontCss(view.charSizes.lists);
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
-  ctx.fillStyle = PALETTE.ssa;
+  ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
   const x = Math.max(cssWidth - 220, 200);
   let y = SSA_TOP_PX;
   if (view.geoMapsListOn) {

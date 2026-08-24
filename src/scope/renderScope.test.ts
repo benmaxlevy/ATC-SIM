@@ -4,11 +4,17 @@ import { applyIntent } from "@pilot";
 import { createWorldFromScenario, loadKdem } from "@scenario";
 import { formatRangeReadout, nmToScreen } from "./camera";
 import { parseDigitalMap } from "./mapLayers";
-import { PALETTE } from "./palette";
+import { PALETTE, applyBrite } from "./palette";
 import { PTL_MINUTES, ptlEndpoint, shouldDrawPtl } from "./ptl";
 import { handlePpiLeftClick } from "./ppiPointer";
 import { renderScope } from "./renderScope";
-import { hideMapLists, toggleCurrentMapsList, toggleGeoMapsList } from "./dcbFunctions";
+import {
+  hideMapLists,
+  stepBriteChannel,
+  stepCharSizeChannel,
+  toggleCurrentMapsList,
+  toggleGeoMapsList,
+} from "./dcbFunctions";
 import { createScopeView } from "./scopeView";
 import { formatFilterReadout } from "./altitudeFilter";
 import { buildSsaLines, formatSsaTime } from "./ssa";
@@ -1080,4 +1086,33 @@ test("T02-24 — GEO MAPS / CURRENT overlay is screen-fixed SSA green; no weathe
   expect(src).not.toMatch(/mosaic/i);
   expect(src).not.toMatch(/openstreetmap/i);
   expect(src).not.toMatch(/drawImage/);
+});
+
+test("T02-26 — CHAR SIZE DATA BLOCKS / LISTS and BRITE FDB/MPA change paint", () => {
+  const world = createWorldFromScenario(loadKdem());
+  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  const view = createScopeView(0, 0, { digitalMap: parseDigitalMap(loadKdem().maps) });
+  const full = createMockCtx();
+  renderScope(full.ctx, world, view, 800, 800);
+  const fdbFont = full.fillTexts.find(
+    (t) => t.text === dal.callsign || t.text === `${dal.callsign} HO`,
+  );
+  expect(fdbFont?.font).toContain("12px");
+  expect(fdbFont?.fillStyle).toBe(PALETTE.unowned);
+
+  stepCharSizeChannel(view, "dataBlocks", -1);
+  stepCharSizeChannel(view, "lists", 1);
+  stepBriteChannel(view, "fdb", -5);
+  stepBriteChannel(view, "mpa", -6);
+  const next = createMockCtx();
+  renderScope(next.ctx, world, view, 800, 800);
+  const resized = next.fillTexts.find(
+    (t) => t.text === dal.callsign || t.text === `${dal.callsign} HO`,
+  );
+  expect(resized?.font).toContain("11px");
+  expect(resized?.fillStyle).toBe(applyBrite(PALETTE.unowned, 50));
+  const ssa = next.fillTexts.find((t) => t.text === "RANGE 20" || t.text === "KDEM 29.92");
+  expect(ssa?.font).toContain("13px");
+  expect(ssa?.fillStyle).toBe(applyBrite(PALETTE.ssa, 100));
+  expect(next.fillTexts.some((t) => t.fillStyle === applyBrite(PALETTE.map, 40))).toBe(true);
 });

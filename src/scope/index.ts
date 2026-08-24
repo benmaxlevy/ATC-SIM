@@ -16,7 +16,7 @@
  * DCB (T02-16/T02-17/T02-22/T02-25) is a green cell grid on the PPI glass; it calls these same
  * camera / map / filter / PTL / history / MAPS / RR / LDR / CHAR / BRITE
  * functions. MAIN↔AUX via SHIFT; submenus replace the bar; RANGE / RR / LDR DIR /
- * LDR length are spinners over frozen presets. AUX has HISTORY 0–5, PTL
+ * LDR length / CHAR SIZE / BRITE are spinners over frozen presets. AUX has HISTORY 0–5, PTL
  * length/OWN/ALL, DCB TOP/LEFT/RIGHT/BOTTOM; VOL disabled. Trainer subset
  * (SHIFT/DONE/VOL, disabled WX) — not a full STARS DCB (no precipitation /
  * PREF / CSA / CRDA / FMA).
@@ -74,12 +74,20 @@ export type { DatablockPickView } from "./pick";
 export {
   HISTORY_TRAIL,
   PALETTE,
+  BRITE_DISABLED_CHANNELS,
+  BRITE_PAINT_CHANNELS,
+  BRITE_STEPS,
+  DEFAULT_BRITE,
+  DEFAULT_BRITE_LEVEL,
   DEFAULT_MAP_BRITE_INDEX,
   MAP_BRITE_STEPS,
+  applyBrite,
+  cloneBrite,
   historyTrailColor,
   mapBriteColors,
+  snapBriteLevel,
 } from "./palette";
-export type { Palette, MapBriteIndex } from "./palette";
+export type { BriteChannel, BriteLevel, BriteState, Palette, MapBriteIndex } from "./palette";
 export {
   DEFAULT_DIGITAL_MAP,
   DEFAULT_MAP_LAYER_FLAGS,
@@ -222,6 +230,8 @@ export {
   isDcbMapSlotEnabled,
   isVideoMapOn,
   snapRrInterval,
+  stepBriteChannel,
+  stepCharSizeChannel,
   stepDcbLeaderDir,
   stepDcbLeaderLength,
   stepRrInterval,
@@ -339,10 +349,16 @@ export {
   DATABLOCK_FONT,
   DATABLOCK_FONT_PX,
   DATABLOCK_LINE_HEIGHT_PX,
+  DCB_CHAR_SIZE_STEPS_PX,
+  DEFAULT_CHAR_SIZES,
   DEFAULT_CHAR_SIZE_PX,
   DEFAULT_DATABLOCK_CELL_PX,
+  DEFAULT_DCB_CHAR_SIZE_PX,
+  DEFAULT_POS_SIZE_PX,
+  POS_SIZE_STEPS_PX,
   SCOPE_FONT_STACK,
+  cloneCharSizes,
   datablockFontCss,
   datablockLineHeightPx,
 } from "./fonts";
-export type { CharSizePx } from "./fonts";
+export type { CharSizeChannel, CharSizePx, CharSizes, DcbCharSizePx, PosSizePx } from "./fonts";

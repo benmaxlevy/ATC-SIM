@@ -55,7 +55,11 @@ export interface MapCacheView {
   airportNorthNm: number;
   mapVisibility?: ReadonlyMap<string, boolean>;
   ringIntervalNm?: number;
-  mapBriteIndex?: number;
+  /** Rebuild map cache when MPA / MPB / RR BRITE change (T02-26). */
+  brite?: { mpa: number; mpb: number; rr: number };
+  briteMpa?: number;
+  briteMpb?: number;
+  briteRr?: number;
   rangeRingEastNm?: number;
   rangeRingNorthNm?: number;
 }
@@ -69,7 +73,9 @@ export interface MapCacheInput {
   airportNorthNm: number;
   mapVisibility?: ReadonlyMap<string, boolean>;
   ringIntervalNm: number;
-  mapBriteIndex?: number;
+  briteMpa?: number;
+  briteMpb?: number;
+  briteRr?: number;
   /** World origin of **range rings**. Defaults to airport ref. */
   rangeRingEastNm?: number;
   rangeRingNorthNm?: number;
@@ -249,7 +255,9 @@ export function toMapCacheInput(view: MapCacheView, viewSize: ScopeViewSize): Ma
     airportNorthNm: view.airportNorthNm,
     mapVisibility: view.mapVisibility,
     ringIntervalNm: view.ringIntervalNm ?? view.digitalMap.rangeRings.intervalNm,
-    mapBriteIndex: view.mapBriteIndex,
+    briteMpa: view.brite?.mpa ?? view.briteMpa,
+    briteMpb: view.brite?.mpb ?? view.briteMpb,
+    briteRr: view.brite?.rr ?? view.briteRr,
     rangeRingEastNm: view.rangeRingEastNm ?? view.airportEastNm,
     rangeRingNorthNm: view.rangeRingNorthNm ?? view.airportNorthNm,
   };
@@ -277,7 +285,9 @@ export function buildMapCacheKey(input: MapCacheInput): string {
     input.airportEastNm,
     input.airportNorthNm,
     input.ringIntervalNm,
-    input.mapBriteIndex ?? "",
+    input.briteMpa ?? "",
+    input.briteMpb ?? "",
+    input.briteRr ?? "",
     input.rangeRingEastNm ?? input.airportEastNm,
     input.rangeRingNorthNm ?? input.airportNorthNm,
     visibilityKey(input.digitalMap.loadedVideoMaps ?? [], input.mapVisibility),

@@ -47,7 +47,9 @@ function viewFromInput(input: MapCacheInput): MapCacheView {
     airportNorthNm: input.airportNorthNm,
     mapVisibility: input.mapVisibility,
     ringIntervalNm: input.ringIntervalNm,
-    mapBriteIndex: input.mapBriteIndex,
+    briteMpa: input.briteMpa,
+    briteMpb: input.briteMpb,
+    briteRr: input.briteRr,
   };
 }
 

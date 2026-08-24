@@ -190,6 +190,8 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             world={app.world}
             tracks={scopeView.tracks}
             onSelectionChange={refreshScopeUi}
+            listFontPx={scopeView.charSizes.lists}
+            listBrite={scopeView.brite.lst}
           />
         </ScopeCanvas>
       </div>

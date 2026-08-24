@@ -21,13 +21,31 @@ export type DcbMenu =
 
 export type DcbCellKind = "action" | "toggle" | "spinner" | "submenu" | "disabled";
 
+export type CharSizeSpinnerCell =
+  "CHAR_DATA_BLOCKS" | "CHAR_LISTS" | "CHAR_DCB" | "CHAR_TOOLS" | "CHAR_POS";
+
+export type BriteSpinnerCell =
+  | "BRITE_DCB"
+  | "BRITE_MPA"
+  | "BRITE_MPB"
+  | "BRITE_FDB"
+  | "BRITE_LST"
+  | "BRITE_POS"
+  | "BRITE_LDB"
+  | "BRITE_OTH"
+  | "BRITE_TLS"
+  | "BRITE_RR"
+  | "BRITE_HST";
+
 export type DcbSpinnerCell =
   | "RANGE"
   | "RR"
   | "LDR_DIR"
   | "LDR_LENGTH"
   | "HISTORY"
-  | "PTL";
+  | "PTL"
+  | CharSizeSpinnerCell
+  | BriteSpinnerCell;
 
 export interface DcbSpinnerState {
   armed: boolean;

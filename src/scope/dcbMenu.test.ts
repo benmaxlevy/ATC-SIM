@@ -39,6 +39,14 @@ test("AC2 — DONE and Esc return a submenu to MAIN", () => {
   expect(handleDcbEscape(h)).toBe(true);
   expect(h.dcbMenu).toBe("MAIN");
   expect(handleDcbEscape(h)).toBe(false);
+
+  openDcbMenu(h, "CHAR_SIZE");
+  expect(h.dcbMenu).toBe("CHAR_SIZE");
+  expect(handleDcbEscape(h)).toBe(true);
+  expect(h.dcbMenu).toBe("MAIN");
+  openDcbMenu(h, "BRITE");
+  expect(handleDcbEscape(h)).toBe(true);
+  expect(h.dcbMenu).toBe("MAIN");
 });
 
 test("AC3 — spinner arm → step(+1/−1) → commit; Esc while armed disarms with no extra mutation", () => {
@@ -46,25 +54,33 @@ test("AC3 — spinner arm → step(+1/−1) → commit; Esc while armed disarms 
   let value = 20;
   armDcbSpinner(h, "RANGE");
   expect(h.dcbSpinner.armed).toBe(true);
-  expect(stepDcbSpinner(h, 1, (delta) => {
-    value += delta * 10;
-  })).toBe(true);
+  expect(
+    stepDcbSpinner(h, 1, (delta) => {
+      value += delta * 10;
+    }),
+  ).toBe(true);
   expect(value).toBe(30);
-  expect(stepDcbSpinner(h, -1, (delta) => {
-    value += delta * 10;
-  })).toBe(true);
+  expect(
+    stepDcbSpinner(h, -1, (delta) => {
+      value += delta * 10;
+    }),
+  ).toBe(true);
   expect(value).toBe(20);
   commitDcbSpinner(h);
   expect(h.dcbSpinner.armed).toBe(false);
-  expect(stepDcbSpinner(h, 1, (delta) => {
-    value += delta * 10;
-  })).toBe(false);
+  expect(
+    stepDcbSpinner(h, 1, (delta) => {
+      value += delta * 10;
+    }),
+  ).toBe(false);
   expect(value).toBe(20);
 
   armDcbSpinner(h, "RANGE");
-  expect(stepDcbSpinner(h, 1, (delta) => {
-    value += delta * 10;
-  })).toBe(true);
+  expect(
+    stepDcbSpinner(h, 1, (delta) => {
+      value += delta * 10;
+    }),
+  ).toBe(true);
   expect(value).toBe(30);
   expect(handleDcbEscape(h)).toBe(true);
   expect(h.dcbSpinner.armed).toBe(false);

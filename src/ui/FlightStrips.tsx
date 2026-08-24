@@ -11,7 +11,7 @@
  */
 
 import type { World } from "@core";
-import { PpiPlaceholderId, trackPaintColor, type TrackDisplay } from "@scope";
+import { applyBrite, PALETTE, PpiPlaceholderId, trackPaintColor, type TrackDisplay } from "@scope";
 import {
   STRIP_BAY_EMPTY,
   STRIP_BAY_HEADING,
@@ -23,6 +23,10 @@ export interface FlightStripsProps {
   world: World;
   tracks: Map<string, TrackDisplay>;
   onSelectionChange: () => void;
+  /** CHAR SIZE LISTS. Default CSS 11 px if omitted. */
+  listFontPx?: number;
+  /** BRITE LST 0–100. Default 100. */
+  listBrite?: number;
 }
 
 /** After a list click, scope focus so the next L-chord is a leader, not radio. */
@@ -52,11 +56,25 @@ export function syncStripCallsignColors(tracks: Map<string, TrackDisplay>): void
   }
 }
 
-export function FlightStrips({ world, tracks, onSelectionChange }: FlightStripsProps) {
+export function FlightStrips({
+  world,
+  tracks,
+  onSelectionChange,
+  listFontPx,
+  listBrite = 100,
+}: FlightStripsProps) {
   const strips = stripsFromWorld(world);
+  const listColor = applyBrite(PALETTE.ssa, listBrite);
 
   return (
-    <div className="strip-list" aria-label={STRIP_BAY_HEADING}>
+    <div
+      className="strip-list"
+      aria-label={STRIP_BAY_HEADING}
+      style={{
+        fontSize: listFontPx,
+        color: listColor,
+      }}
+    >
       <div className="strip-list-rows">
         {strips.length === 0 ? (
           <p className="strip-list-empty">{STRIP_BAY_EMPTY}</p>
@@ -78,7 +96,10 @@ export function FlightStrips({ world, tracks, onSelectionChange }: FlightStripsP
                 className="flight-strip-callsign"
                 data-strip-aircraft-id={strip.aircraftId}
                 style={{
-                  color: trackPaintColor(tracks.get(strip.aircraftId)?.ownership ?? "unowned"),
+                  color: applyBrite(
+                    trackPaintColor(tracks.get(strip.aircraftId)?.ownership ?? "unowned"),
+                    listBrite,
+                  ),
                 }}
               >
                 {strip.callsign}

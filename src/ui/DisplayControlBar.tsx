@@ -1,15 +1,17 @@
 /**
  * Analog: CRC STARS DCB RANGE / PLACE CNTR / OFF CNTR / RR / PLACE RR / RR CNTR /
- * LDR DIR / LDR / MAPS / WX / AUX HISTORY / PTL / DCB position (R07).
+ * LDR DIR / LDR / MAPS / WX / CHAR SIZE / BRITE / AUX HISTORY / PTL / DCB position (R07).
  * Trainer delta: green equal-height cells on the glass. SHIFT swaps MAIN and AUX.
- * MAPS / TPA-ATPA submenus replace the bar; DONE / Esc return to MAIN. RANGE / RR /
+ * MAPS / TPA-ATPA / CHAR SIZE / BRITE submenus replace the bar; DONE / Esc return to MAIN. RANGE / RR /
  * LDR DIR / LDR length are spinners (arm, wheel steps frozen presets, second click /
- * Esc commits). CHAR SIZE and BRITE stay click-cycle until T02-26. AUX: VOL disabled,
+ * Esc commits). CHAR SIZE and BRITE open submenus (`CHAR_SIZE` / `BRITE`) with
+ * per-channel spinners. AUX: VOL disabled,
  * HISTORY spinner 0–5, DCB TOP/LEFT/RIGHT/BOTTOM, PTL length spinner, PTL OWN,
  * PTL ALL, TPA/ATPA stub. FILTER stays on MAIN. HIST/PTL cells live on AUX (F7/F8
  * still work). MAIN quick video maps 1–6; MAPS submenu slots 1–30 (empty slots
  * disabled). WX1–4 are disabled chrome (no precipitation). No PREF / CSA / CRDA /
- * FMA (R06). Discrete **range** presets only. Not NAS STARS.
+ * FMA (R06). Discrete **range** presets only. CHAR SIZE scales **datablock** /
+ * lists / DCB / tools / POS. BRITE multiplies drawn channels. Not NAS STARS.
  *
  * UI copy: SHIFT / DONE / MAIN / AUX / HISTORY / PTL / range / center / range rings /
  * leader — not toolbar or modal.
@@ -23,6 +25,7 @@ import type { MouseEvent, PointerEvent, ReactNode, WheelEvent } from "react";
 import {
   PALETTE,
   SCOPE_FONT_STACK,
+  applyBrite,
   applyDcbLeaderDir,
   applyDcbShift,
   applyRrCenter,
@@ -36,8 +39,6 @@ import {
   closeDcbMenu,
   closeDcbSubmenu,
   commitDcbSpinner,
-  cycleCharSize,
-  cycleMapBrite,
   dcbLeaderDirReadout,
   DCB_LEADER_DIRS,
   DCB_MAP_SLOT_COUNT,
@@ -59,6 +60,8 @@ import {
   isViewOffAirport,
   openDcbMenu,
   setDcbDock,
+  stepBriteChannel,
+  stepCharSizeChannel,
   stepDcbLeaderDir,
   stepDcbLeaderLength,
   stepDcbSpinner,
@@ -72,6 +75,8 @@ import {
   togglePtlOwn,
   toggleVideoMap,
   videoMapByDcbNumber,
+  type BriteChannel,
+  type CharSizeChannel,
   type DcbCellKind,
   type DcbSpinnerCell,
   type ScopeView,
@@ -98,9 +103,6 @@ export const DCB_BRITE_READOUT_ID = "dcb-brite-readout";
 export const DCB_HISTORY_READOUT_ID = "dcb-history-readout";
 export const DCB_PTL_MINUTES_READOUT_ID = "dcb-ptl-minutes-readout";
 export const DCB_RNG_READOUT_ID = DCB_RANGE_READOUT_ID;
-
-/** CHAR SIZE 11/12/13 → DCB 10/11/12 so two lines still fit the 36 px bar. */
-const DCB_CHAR_PX: Record<11 | 12 | 13, number> = { 11: 10, 12: 11, 13: 12 };
 
 export interface DisplayControlBarProps {
   view: ScopeView;
@@ -194,8 +196,8 @@ export function syncDisplayControlBar(
   setPressed(doc.querySelector('[data-dcb-cell="rr"]'), spinnerArmed(view, "RR"));
   setText(DCB_LDR_READOUT_ID, dcbLeaderDirReadout(view, world));
   setText(DCB_LDR_LENGTH_READOUT_ID, formatDcbLdrLengthReadout(view.leaderLengthPx));
-  setText(DCB_CHAR_READOUT_ID, formatDcbCharReadout(view.charSizePx));
-  setText(DCB_BRITE_READOUT_ID, formatDcbBriteReadout(view.mapBriteIndex));
+  setText(DCB_CHAR_READOUT_ID, formatDcbCharReadout(view.charSizes.dataBlocks));
+  setText(DCB_BRITE_READOUT_ID, formatDcbBriteReadout(view.brite.mpa));
   for (const el of doc.querySelectorAll("[data-dcb-map-id]")) {
     const id = el.getAttribute("data-dcb-map-id");
     if (id) {
@@ -246,6 +248,28 @@ interface DcbCellProps {
     | "ldr-length"
     | "char"
     | "brite"
+    | "char-data-blocks"
+    | "char-lists"
+    | "char-dcb"
+    | "char-tools"
+    | "char-pos"
+    | "brite-dcb"
+    | "brite-mpa"
+    | "brite-mpb"
+    | "brite-fdb"
+    | "brite-lst"
+    | "brite-pos"
+    | "brite-ldb"
+    | "brite-oth"
+    | "brite-tls"
+    | "brite-rr"
+    | "brite-hst"
+    | "brite-cmp"
+    | "brite-bcn"
+    | "brite-pri"
+    | "brite-wx"
+    | "brite-wxc"
+    | "brite-bkc"
     | "place"
     | "off-cntr"
     | "place-rr"
@@ -387,7 +411,12 @@ function clickDone(view: ScopeView, onChange: () => void): void {
 
 function renderDone(view: ScopeView, onChange: () => void) {
   return (
-    <DcbCell kind="action" ariaLabel="Done" dataDcb="done" onClick={() => clickDone(view, onChange)}>
+    <DcbCell
+      kind="action"
+      ariaLabel="Done"
+      dataDcb="done"
+      onClick={() => clickDone(view, onChange)}
+    >
       <span className="dcb-cell-line">DONE</span>
       <span className="dcb-cell-line">{"\u00a0"}</span>
     </DcbCell>
@@ -538,7 +567,13 @@ function renderMain(view: ScopeView, onChange: () => void, world: DisplayControl
         pressed={spinnerArmed(view, "LDR_LENGTH")}
         onClick={() => toggleSpinner(view, onChange, "LDR_LENGTH")}
         onWheel={(event) =>
-          onSpinnerWheel(view, "LDR_LENGTH", event, (step) => stepDcbLeaderLength(view, step), onChange)
+          onSpinnerWheel(
+            view,
+            "LDR_LENGTH",
+            event,
+            (step) => stepDcbLeaderLength(view, step),
+            onChange,
+          )
         }
       >
         <span className="dcb-cell-line">LDR</span>
@@ -546,28 +581,34 @@ function renderMain(view: ScopeView, onChange: () => void, world: DisplayControl
           {formatDcbLdrLengthReadout(view.leaderLengthPx)}
         </span>
       </DcbCell>
-      {/* CHAR/BRITE remain click-cycle until T02-26 converts them to submenus. */}
+      {/* CHAR SIZE / BRITE open CRC-analog submenus (T02-26). Not click-cycle. */}
       <DcbCell
-        kind="action"
+        kind="submenu"
         ariaLabel="Character size"
         dataDcb="char"
-        onClick={() => runCell(view, onChange, () => cycleCharSize(view))}
+        pressed={view.dcbMenu === "CHAR_SIZE"}
+        onClick={() => {
+          cancelFilterIfEntering(view);
+          openDcbMenu(view, "CHAR_SIZE");
+          afterCell(onChange);
+        }}
       >
         <span className="dcb-cell-line">CHAR</span>
-        <span id={DCB_CHAR_READOUT_ID} className="dcb-cell-line">
-          {formatDcbCharReadout(view.charSizePx)}
-        </span>
+        <span className="dcb-cell-line">SIZE</span>
       </DcbCell>
       <DcbCell
-        kind="action"
-        ariaLabel="Map brightness"
+        kind="submenu"
+        ariaLabel="Brite"
         dataDcb="brite"
-        onClick={() => runCell(view, onChange, () => cycleMapBrite(view))}
+        pressed={view.dcbMenu === "BRITE"}
+        onClick={() => {
+          cancelFilterIfEntering(view);
+          openDcbMenu(view, "BRITE");
+          afterCell(onChange);
+        }}
       >
         <span className="dcb-cell-line">BRITE</span>
-        <span id={DCB_BRITE_READOUT_ID} className="dcb-cell-line">
-          {formatDcbBriteReadout(view.mapBriteIndex)}
-        </span>
+        <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
       <DcbCell
         kind="action"
@@ -819,8 +860,178 @@ function renderLdr(view: ScopeView, onChange: () => void, world: DisplayControlB
   );
 }
 
+const CHAR_SPINNER_CELLS: {
+  cell: DcbSpinnerCell;
+  channel: CharSizeChannel;
+  dataDcb: NonNullable<DcbCellProps["dataDcb"]>;
+  ariaLabel: string;
+  line1: string;
+  line2: string;
+}[] = [
+  {
+    cell: "CHAR_DATA_BLOCKS",
+    channel: "dataBlocks",
+    dataDcb: "char-data-blocks",
+    ariaLabel: "Data blocks character size",
+    line1: "DATA",
+    line2: "BLOCKS",
+  },
+  {
+    cell: "CHAR_LISTS",
+    channel: "lists",
+    dataDcb: "char-lists",
+    ariaLabel: "Lists character size",
+    line1: "LISTS",
+    line2: "",
+  },
+  {
+    cell: "CHAR_DCB",
+    channel: "dcb",
+    dataDcb: "char-dcb",
+    ariaLabel: "DCB character size",
+    line1: "DCB",
+    line2: "",
+  },
+  {
+    cell: "CHAR_TOOLS",
+    channel: "tools",
+    dataDcb: "char-tools",
+    ariaLabel: "Tools character size",
+    line1: "TOOLS",
+    line2: "",
+  },
+  {
+    cell: "CHAR_POS",
+    channel: "pos",
+    dataDcb: "char-pos",
+    ariaLabel: "Position symbol size",
+    line1: "POS",
+    line2: "",
+  },
+];
+
+const BRITE_SPINNER_CELLS: {
+  cell: DcbSpinnerCell;
+  channel: BriteChannel;
+  dataDcb: NonNullable<DcbCellProps["dataDcb"]>;
+  label: string;
+}[] = [
+  { cell: "BRITE_DCB", channel: "dcb", dataDcb: "brite-dcb", label: "DCB" },
+  { cell: "BRITE_MPA", channel: "mpa", dataDcb: "brite-mpa", label: "MPA" },
+  { cell: "BRITE_MPB", channel: "mpb", dataDcb: "brite-mpb", label: "MPB" },
+  { cell: "BRITE_FDB", channel: "fdb", dataDcb: "brite-fdb", label: "FDB" },
+  { cell: "BRITE_LST", channel: "lst", dataDcb: "brite-lst", label: "LST" },
+  { cell: "BRITE_POS", channel: "pos", dataDcb: "brite-pos", label: "POS" },
+  { cell: "BRITE_LDB", channel: "ldb", dataDcb: "brite-ldb", label: "LDB" },
+  { cell: "BRITE_OTH", channel: "oth", dataDcb: "brite-oth", label: "OTH" },
+  { cell: "BRITE_TLS", channel: "tls", dataDcb: "brite-tls", label: "TLS" },
+  { cell: "BRITE_RR", channel: "rr", dataDcb: "brite-rr", label: "RR" },
+  { cell: "BRITE_HST", channel: "hst", dataDcb: "brite-hst", label: "HST" },
+];
+
+const BRITE_DISABLED_CELLS: {
+  dataDcb: NonNullable<DcbCellProps["dataDcb"]>;
+  label: string;
+  ariaLabel: string;
+}[] = [
+  { dataDcb: "brite-cmp", label: "CMP", ariaLabel: "CMP" },
+  { dataDcb: "brite-bcn", label: "BCN", ariaLabel: "BCN" },
+  { dataDcb: "brite-pri", label: "PRI", ariaLabel: "PRI" },
+  { dataDcb: "brite-wx", label: "WX", ariaLabel: "WX" },
+  { dataDcb: "brite-wxc", label: "WXC", ariaLabel: "WXC" },
+  { dataDcb: "brite-bkc", label: "BKC", ariaLabel: "BKC" },
+];
+
+function renderCharSize(view: ScopeView, onChange: () => void) {
+  return (
+    <>
+      {renderDone(view, onChange)}
+      {CHAR_SPINNER_CELLS.map((item) => {
+        const armed = spinnerArmed(view, item.cell);
+        const size =
+          item.channel === "dcb"
+            ? view.charSizes.dcb
+            : item.channel === "pos"
+              ? view.charSizes.pos
+              : view.charSizes[item.channel];
+        return (
+          <DcbCell
+            key={item.cell}
+            kind="spinner"
+            ariaLabel={item.ariaLabel}
+            dataDcb={item.dataDcb}
+            pressed={armed}
+            onClick={() => toggleSpinner(view, onChange, item.cell)}
+            onWheel={(event) =>
+              onSpinnerWheel(
+                view,
+                item.cell,
+                event,
+                (step) => stepCharSizeChannel(view, item.channel, step),
+                onChange,
+              )
+            }
+          >
+            <span className="dcb-cell-line">{item.line1}</span>
+            <span className="dcb-cell-line">
+              {item.line2
+                ? `${item.line2} ${formatDcbCharReadout(size)}`
+                : formatDcbCharReadout(size)}
+            </span>
+          </DcbCell>
+        );
+      })}
+    </>
+  );
+}
+
+function renderBrite(view: ScopeView, onChange: () => void) {
+  return (
+    <>
+      {renderDone(view, onChange)}
+      {BRITE_SPINNER_CELLS.map((item) => (
+        <DcbCell
+          key={item.cell}
+          kind="spinner"
+          ariaLabel={item.label}
+          dataDcb={item.dataDcb}
+          pressed={spinnerArmed(view, item.cell)}
+          onClick={() => toggleSpinner(view, onChange, item.cell)}
+          onWheel={(event) =>
+            onSpinnerWheel(
+              view,
+              item.cell,
+              event,
+              (step) => stepBriteChannel(view, item.channel, step),
+              onChange,
+            )
+          }
+        >
+          <span className="dcb-cell-line">{item.label}</span>
+          <span className="dcb-cell-line">{formatDcbBriteReadout(view.brite[item.channel])}</span>
+        </DcbCell>
+      ))}
+      {BRITE_DISABLED_CELLS.map((item) => (
+        <DcbCell
+          key={item.label}
+          kind="disabled"
+          ariaLabel={item.ariaLabel}
+          dataDcb={item.dataDcb}
+          disabled
+          onClick={() => undefined}
+        >
+          <span className="dcb-cell-line">{item.label}</span>
+          <span className="dcb-cell-line">{"\u00a0"}</span>
+        </DcbCell>
+      ))}
+    </>
+  );
+}
+
 export function DisplayControlBar({ view, onChange, world }: DisplayControlBarProps) {
-  const dcbPx = DCB_CHAR_PX[view.charSizePx] ?? DCB_FONT_PX;
+  const dcbPx = view.charSizes.dcb;
+  const dcbText = applyBrite(PALETTE.dcbText, view.brite.dcb);
+  const dcbFill = applyBrite(PALETTE.dcbCell, view.brite.dcb);
   const menu = view.dcbMenu;
   const vertical = isVerticalDcbDock(view.dcbDock);
 
@@ -838,11 +1049,11 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
         fontFamily: SCOPE_FONT_STACK,
         fontSize: dcbPx,
         backgroundColor: PALETTE.background,
-        color: PALETTE.ssa,
-        ["--dcb-cell" as string]: PALETTE.dcbCell,
-        ["--dcb-text" as string]: PALETTE.dcbText,
+        color: dcbText,
+        ["--dcb-cell" as string]: dcbFill,
+        ["--dcb-text" as string]: dcbText,
         ["--dcb-gutter" as string]: PALETTE.background,
-        ["--dcb-pressed" as string]: PALETTE.dcbText,
+        ["--dcb-pressed" as string]: dcbText,
         ["--dcb-pressed-text" as string]: PALETTE.background,
       }}
     >
@@ -854,7 +1065,11 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
             ? renderLdr(view, onChange, world)
             : menu === "TPA_ATPA"
               ? renderTpaAtpa(view, onChange)
-              : renderMain(view, onChange, world)}
+              : menu === "CHAR_SIZE"
+                ? renderCharSize(view, onChange)
+                : menu === "BRITE"
+                  ? renderBrite(view, onChange)
+                  : renderMain(view, onChange, world)}
     </div>
   );
 }

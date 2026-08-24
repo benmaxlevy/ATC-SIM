@@ -111,12 +111,13 @@ export function leaderOffsetPx(
 export function leaderStartOffsetPx(
   dir: LeaderDir,
   lengthPx: number = LEADER_LENGTH_PX,
+  symbolSizePx: number = TARGET_SIZE_PX,
 ): { dx: number; dy: number } | null {
   if (effectiveLeaderLengthPx(dir, lengthPx) <= 0) {
     return null;
   }
   const end = leaderOffsetPx(dir, lengthPx);
-  const half = TARGET_SIZE_PX / 2;
+  const half = symbolSizePx / 2;
   const cheb = Math.max(Math.abs(end.dx), Math.abs(end.dy));
   if (cheb === 0) {
     return null;
@@ -128,8 +129,9 @@ export function leaderStartOffsetPx(
 export function leaderSegmentPx(
   dir: LeaderDir,
   lengthPx: number = LEADER_LENGTH_PX,
+  symbolSizePx: number = TARGET_SIZE_PX,
 ): { x0: number; y0: number; x1: number; y1: number } | null {
-  const start = leaderStartOffsetPx(dir, lengthPx);
+  const start = leaderStartOffsetPx(dir, lengthPx, symbolSizePx);
   if (!start) {
     return null;
   }
@@ -185,8 +187,9 @@ export function drawLeaderLine(
   dir: LeaderDir,
   color: string,
   lengthPx: number = LEADER_LENGTH_PX,
+  symbolSizePx: number = TARGET_SIZE_PX,
 ): void {
-  const seg = leaderSegmentPx(dir, lengthPx);
+  const seg = leaderSegmentPx(dir, lengthPx, symbolSizePx);
   if (!seg) {
     return;
   }
