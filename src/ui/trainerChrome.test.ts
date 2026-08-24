@@ -155,7 +155,10 @@ test("AC6 — shell analog+delta; no user-facing HUD / zoom / toolbar", () => {
   expect(controls.toLowerCase()).not.toMatch(/aria-label="[^"]*\b(hud|zoom|toolbar)\b/);
   expect(disclaimer).toMatch(/aria-label="Training disclaimer"/);
   expect(disclaimer.toLowerCase()).not.toMatch(/aria-label="[^"]*\b(hud|zoom|toolbar)\b/);
-  const shadows = [...cssSrc().matchAll(/box-shadow:\s*([^;]+)/g)].map((m) => m[1].trim());
-  expect(shadows.length).toBeGreaterThan(0);
+  // Physical DCB caps intentionally use inset bevel shadows; other trainer
+  // chrome remains flat and shadow-free.
+  expect(cssSrc()).toMatch(/\.dcb-cell[\s\S]*inset 1px 1px var\(--dcb-highlight/);
+  const nonDcbCss = cssSrc().replace(/\.dcb-cell[^{]*\{[^}]*\}/g, "");
+  const shadows = [...nonDcbCss.matchAll(/box-shadow:\s*([^;]+)/g)].map((m) => m[1].trim());
   expect(shadows.every((value) => value === "none")).toBe(true);
 });
