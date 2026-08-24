@@ -17,6 +17,8 @@ export interface PathCContext {
   fixes?: string[];
   /** STAR/SID ids + published names. Optional. */
   procedures?: Array<{ id: string; name?: string }>;
+  /** Approach ids + published names/runways. Optional. */
+  approaches?: Array<{ id: string; name?: string; runway?: string }>;
 }
 
 export interface PathCRequest {
@@ -237,7 +239,8 @@ export async function fetchParsePathC(
           (req.context.callsigns.length > 0 ||
             req.context.selectedCallsign ||
             (req.context.fixes?.length ?? 0) > 0 ||
-            (req.context.procedures?.length ?? 0) > 0)
+            (req.context.procedures?.length ?? 0) > 0 ||
+            (req.context.approaches?.length ?? 0) > 0)
             ? {
                 context: {
                   callsigns: req.context.callsigns,
@@ -249,6 +252,9 @@ export async function fetchParsePathC(
                     : {}),
                   ...(req.context.procedures && req.context.procedures.length > 0
                     ? { procedures: req.context.procedures }
+                    : {}),
+                  ...(req.context.approaches && req.context.approaches.length > 0
+                    ? { approaches: req.context.approaches }
                     : {}),
                 },
               }

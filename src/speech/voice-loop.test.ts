@@ -210,6 +210,7 @@ test("AC1 — confidence 0.5 parseable heading dispatches and moves the aircraft
     callsigns: [],
     fixes: [],
     procedures: [],
+    approaches: [],
     pathC: false,
   });
   expect(dispatched).toHaveLength(1);
@@ -251,6 +252,7 @@ test("AC2 — garbage at confidence 0.5 still parse_miss with no dispatch (T03-1
     callsigns: [],
     fixes: [],
     procedures: [],
+    approaches: [],
     pathC: false,
   });
   expect(dispatched).toEqual([]);

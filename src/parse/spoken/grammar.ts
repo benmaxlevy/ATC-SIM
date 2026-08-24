@@ -10,11 +10,14 @@ import type { Instruction, TurnDir } from "@core";
 import type { ParseResult } from "../parseRadioText";
 import { formatParseError, PARSE_ERROR } from "../tokens";
 import {
+  ONES,
   parseAltitudeFt,
   parseHeadingDeg,
   parseSpeedKt,
   parseTurnDegreesValue,
   singleDigit,
+  TEENS,
+  TENS,
 } from "./numbers";
 import {
   groundFixToCatalog,
@@ -26,8 +29,8 @@ import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./tele
 interface Cursor {
   tokens: readonly string[];
   i: number;
-  catalog: readonly string[];
-  procedures: readonly CatalogProcedure[];
+  catalog?: readonly string[];
+  procedures?: readonly CatalogProcedure[];
 }
 
 function peek(c: Cursor, offset = 0): string | undefined {
@@ -271,7 +274,8 @@ function tryJoinProcedure(c: Cursor): Instruction | null {
 }
 
 function parseProcedureId(c: Cursor): string | null {
-  if (c.procedures.length > 0) {
+  const procedures = c.procedures ?? [];
+  if (procedures.length > 0) {
     const remaining = c.tokens.length - c.i;
     for (let n = Math.min(4, remaining); n >= 1; n -= 1) {
       const slice = takeNonReserved(c, n);
@@ -279,7 +283,7 @@ function parseProcedureId(c: Cursor): string | null {
         continue;
       }
       const glued = slice.join(" ");
-      const hit = groundProcedureToCatalog(glued, c.procedures);
+      const hit = groundProcedureToCatalog(glued, procedures);
       if (hit) {
         c.i += n;
         return hit;
@@ -291,7 +295,7 @@ function parseProcedureId(c: Cursor): string | null {
     return null;
   }
   c.i += 1;
-  return groundProcedureToCatalog(tok, c.procedures) ?? tok.toUpperCase();
+  return groundProcedureToCatalog(tok, procedures) ?? tok.toUpperCase();
 }
 
 function takeNonReserved(c: Cursor, n: number): string[] | null {
@@ -330,13 +334,14 @@ function parseFixId(c: Cursor): string | null {
     phonetics.push(PHONETIC_TO_LETTER[tok]!);
     c.i += 1;
   }
+  const catalog = c.catalog ?? [];
   if (phonetics.length >= 2) {
     const id = phonetics.join("");
-    return groundFixToCatalog(id, c.catalog) ?? id;
+    return groundFixToCatalog(id, catalog) ?? id;
   }
   c.i = phoneticStart;
 
-  if (c.catalog.length > 0) {
+  if (catalog.length > 0) {
     const remaining = c.tokens.length - c.i;
     for (let n = Math.min(3, remaining); n >= 1; n -= 1) {
       const slice = takePeek(c, n);
@@ -344,7 +349,7 @@ function parseFixId(c: Cursor): string | null {
         continue;
       }
       const glued = slice.join("");
-      const hit = groundFixToCatalog(glued, c.catalog);
+      const hit = groundFixToCatalog(glued, catalog);
       if (hit) {
         c.i += n;
         return hit;
@@ -357,7 +362,7 @@ function parseFixId(c: Cursor): string | null {
     return null;
   }
   c.i += 1;
-  return groundFixToCatalog(tok, c.catalog) ?? tok.toUpperCase();
+  return groundFixToCatalog(tok, catalog) ?? tok.toUpperCase();
 }
 
 function tryGoAround(c: Cursor): Instruction | null {
@@ -514,6 +519,106 @@ function takeExpedite(c: Cursor): boolean {
   return false;
 }
 
+function isDistanceNumber(tok: string | undefined): boolean {
+  if (!tok) {
+    return false;
+  }
+  return tok in ONES || tok in TEENS || tok in TENS || /^\d+(\.\d+)?$/.test(tok);
+}
+
+export function takePositionAdvisory(c: Cursor): boolean {
+  const start = c.i;
+  if (peek(c) === "you" && peek(c, 1) === "are") {
+    c.i += 2;
+  } else if (peek(c) === "you're" || peek(c) === "youre") {
+    c.i += 1;
+  } else if (peek(c) === "position") {
+    c.i += 1;
+  } else if (peek(c) === "aircraft" && peek(c, 1) === "is") {
+    c.i += 2;
+  }
+
+  if (!isDistanceNumber(peek(c))) {
+    c.i = start;
+    return false;
+  }
+  c.i += 1;
+  if (peek(c) && (peek(c)! in ONES || /^\d+$/.test(peek(c)!))) {
+    c.i += 1;
+  }
+
+  if (peek(c) === "nautical" && (peek(c, 1) === "miles" || peek(c, 1) === "mile")) {
+    c.i += 2;
+  } else if (peek(c) === "miles" || peek(c) === "mile" || peek(c) === "nm") {
+    c.i += 1;
+  } else {
+    c.i = start;
+    return false;
+  }
+
+  const dir = peek(c);
+  if (
+    dir === "north" ||
+    dir === "south" ||
+    dir === "east" ||
+    dir === "west" ||
+    dir === "northeast" ||
+    dir === "northwest" ||
+    dir === "southeast" ||
+    dir === "southwest"
+  ) {
+    c.i += 1;
+    if (peek(c) === "of") {
+      c.i += 1;
+    }
+  }
+
+  if (peek(c) === "from" || peek(c) === "of" || peek(c) === "outside") {
+    c.i += 1;
+  }
+
+  take(c, "the");
+
+  if (peek(c) === "airport" || peek(c) === "field") {
+    c.i += 1;
+    return true;
+  }
+  if (peek(c) === "outer" && peek(c, 1) === "marker") {
+    c.i += 2;
+    return true;
+  }
+  if (peek(c) === "final" && peek(c, 1) === "approach" && peek(c, 2) === "fix") {
+    c.i += 3;
+    return true;
+  }
+  if (peek(c) === "marker" || peek(c) === "faf" || peek(c) === "om") {
+    c.i += 1;
+    return true;
+  }
+  if (peek(c) === "localizer") {
+    c.i += 1;
+    return true;
+  }
+  if (peek(c) === "runway") {
+    c.i += 1;
+    runwayId(c);
+    return true;
+  }
+
+  const fix = parseFixId(c);
+  if (fix !== null) {
+    return true;
+  }
+
+  const nextTok = peek(c);
+  if (nextTok && !RESERVED_SPOKEN.has(nextTok)) {
+    c.i += 1;
+    return true;
+  }
+
+  return true;
+}
+
 function parseOneInstruction(c: Cursor): Instruction | null {
   const start = c.i;
   const expediteBefore = takeExpedite(c);
@@ -600,6 +705,9 @@ export function parseSpokenGrammar(
   while (leftover(c)) {
     if ((peek(c) === "and" && peek(c, 1) !== "maintain") || peek(c) === "then") {
       c.i += 1;
+      continue;
+    }
+    if (takePositionAdvisory(c)) {
       continue;
     }
     const inst = parseOneInstruction(c);

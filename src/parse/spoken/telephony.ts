@@ -5,7 +5,7 @@
 
 import telephonyTable from "./telephony.json";
 import { FULL_CALLSIGN, SUFFIX_CALLSIGN } from "../tokens";
-import { singleDigit } from "./numbers";
+import { singleDigit, TEENS, TENS } from "./numbers";
 
 export const PHONETIC_TO_LETTER: Readonly<Record<string, string>> = {
   alfa: "A",
@@ -87,6 +87,9 @@ export const RESERVED_SPOKEN: ReadonlySet<string> = new Set([
   "thousand",
   "hundred",
   "feet",
+  "miles",
+  "mile",
+  "airport",
 ]);
 
 const TABLE = telephonyTable as Record<string, string>;
@@ -128,40 +131,130 @@ function parseFlightNumber(
   tokens: readonly string[],
   i: number,
 ): { value: string; next: number } | null {
-  let j = i;
-  const digits: number[] = [];
-  while (digits.length < 4) {
-    const d = singleDigit(tokens[j]);
-    if (d === null) {
-      break;
+  const singleCompact = compactFlightNumber(tokens[i]);
+  if (singleCompact !== null && singleCompact.value.length >= 3) {
+    let j = i + 1;
+    let suffix = singleCompact.letter;
+    if (suffix === "") {
+      const letter = phoneticLetter(tokens[j]);
+      if (letter !== null) {
+        suffix = letter;
+        j += 1;
+      }
     }
-    digits.push(d);
-    j += 1;
-  }
-  if (digits.length > 0) {
-    const letter = phoneticLetter(tokens[j]);
-    const suffix = letter !== null ? letter : "";
-    if (letter !== null) {
-      j += 1;
-    }
-    return { value: `${digits.join("")}${suffix}`, next: j };
+    return { value: `${singleCompact.value}${suffix}`, next: j };
   }
 
-  // ASR often writes "203" instead of digit-by-digit "two zero three".
-  const compact = compactFlightNumber(tokens[i]);
-  if (compact === null) {
+  let j = i;
+  let digits = "";
+
+  while (j < tokens.length && digits.length < 4) {
+    const tok = tokens[j];
+    if (tok === undefined || RESERVED_SPOKEN.has(tok)) {
+      break;
+    }
+
+    if (
+      digits.length > 0 &&
+      (tokens[j + 1] === "miles" ||
+        tokens[j + 1] === "mile" ||
+        tokens[j + 1] === "nautical" ||
+        tokens[j + 1] === "nm" ||
+        tokens[j + 1] === "knots" ||
+        tokens[j + 1] === "degrees" ||
+        tokens[j + 1] === "thousand" ||
+        tokens[j + 1] === "feet")
+    ) {
+      break;
+    }
+
+    const d = singleDigit(tok);
+    if (d !== null && d > 0 && tokens[j + 1] === "hundred" && digits.length === 0) {
+      const base = d * 100;
+      j += 2;
+      let rest = 0;
+      if (tokens[j] === "and") {
+        j += 1;
+      }
+      const nextTok = tokens[j];
+      if (nextTok && nextTok in TEENS) {
+        rest = TEENS[nextTok]!;
+        j += 1;
+      } else if (nextTok && nextTok in TENS) {
+        rest = TENS[nextTok]!;
+        j += 1;
+        const ones = singleDigit(tokens[j]);
+        if (ones !== null && ones > 0) {
+          rest += ones;
+          j += 1;
+        }
+      } else {
+        const ones = singleDigit(nextTok);
+        if (ones !== null && ones > 0) {
+          rest = ones;
+          j += 1;
+        }
+      }
+      digits = String(base + rest);
+      break;
+    }
+
+    if (d !== null) {
+      digits += String(d);
+      j += 1;
+      continue;
+    }
+
+    if (tok in TEENS) {
+      digits += String(TEENS[tok]);
+      j += 1;
+      continue;
+    }
+
+    if (tok in TENS) {
+      let val = TENS[tok]!;
+      j += 1;
+      const ones = singleDigit(tokens[j]);
+      if (ones !== null && ones > 0) {
+        val += ones;
+        j += 1;
+      }
+      digits += String(val);
+      continue;
+    }
+
+    if (/^\d{1,4}$/.test(tok)) {
+      if (digits.length + tok.length <= 4) {
+        digits += tok;
+        j += 1;
+        continue;
+      }
+    }
+
+    const compact = compactFlightNumber(tok);
+    if (compact !== null && digits.length === 0) {
+      digits = compact.value;
+      j += 1;
+      if (compact.letter) {
+        return { value: `${digits}${compact.letter}`, next: j };
+      }
+      continue;
+    }
+
+    break;
+  }
+
+  if (digits.length === 0 || digits.length > 4) {
     return null;
   }
-  j = i + 1;
-  let suffix = compact.letter;
-  if (suffix === "") {
-    const letter = phoneticLetter(tokens[j]);
-    if (letter !== null) {
-      suffix = letter;
-      j += 1;
-    }
+
+  const letter = phoneticLetter(tokens[j]);
+  const suffix = letter !== null ? letter : "";
+  if (letter !== null) {
+    j += 1;
   }
-  return { value: `${compact.value}${suffix}`, next: j };
+
+  return { value: `${digits}${suffix}`, next: j };
 }
 
 function matchTelephony(

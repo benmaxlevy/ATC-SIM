@@ -1,19 +1,25 @@
 import { expect, test } from "vitest";
 import {
+  approachesFromCatalog,
+  catalogApproachAliases,
   catalogFixAliases,
   catalogProcedureAliases,
   compactProcedureKey,
+  groundApproachToCatalog,
   groundFixToCatalog,
+  groundInstructionApproaches,
   groundInstructionFixes,
   groundInstructionProcedures,
   groundProcedureToCatalog,
   normalizeFixKey,
   proceduresFromCatalog,
+  sanitizeCatalogApproaches,
   sanitizeFixIds,
 } from "./catalog-ground";
 
 const KDEM = ["NEMAX", "SEMAX", "NELBO", "SELBO", "MERGE", "FI27", "RW27", "MISSD", "DEM", "OCT"];
 const DEM1 = { id: "DEM1", name: "DEMO ONE" };
+const ILS27 = { id: "ILS27", name: "ILS RWY 27", runway: "27" };
 
 test("sanitizeFixIds uppercases, drops junk, caps the list", () => {
   expect(sanitizeFixIds(["semax", "SEMAX", "nope!", "FI27", "x"])).toEqual(["SEMAX", "FI27"]);
@@ -107,4 +113,59 @@ test("proceduresFromCatalog keeps star names", () => {
       stars: [{ id: "DEM1", name: "DEMO ONE" }],
     }),
   ).toEqual([{ id: "DEM1", name: "DEMO ONE" }]);
+});
+
+test("sanitizeCatalogApproaches sanitizes and formats", () => {
+  expect(
+    sanitizeCatalogApproaches([
+      { id: "ils27", name: "ILS RWY 27", runway: "27" },
+      { id: "ILS27" },
+      { id: "bad!!!" },
+    ]),
+  ).toEqual([{ id: "ILS27", name: "ILS RWY 27", runway: "27" }]);
+});
+
+test("catalogApproachAliases contains standard spoken and typed variants", () => {
+  const aliases = catalogApproachAliases(ILS27);
+  expect(aliases).toEqual(expect.arrayContaining(["ILS27", "IL27", "RW27", "RWY27", "27"]));
+});
+
+test("groundApproachToCatalog snaps noisy tokens to catalog ILS27", () => {
+  const catalog = [ILS27];
+  expect(groundApproachToCatalog("IL27", catalog)).toBe("ILS27");
+  expect(groundApproachToCatalog("RW27", catalog)).toBe("ILS27");
+  expect(groundApproachToCatalog("RWY27", catalog)).toBe("ILS27");
+  expect(groundApproachToCatalog("27", catalog)).toBe("ILS27");
+  expect(groundApproachToCatalog("ILS 27", catalog)).toBe("ILS27");
+  expect(groundApproachToCatalog("ILS-27", catalog)).toBe("ILS27");
+  expect(groundApproachToCatalog("LOC27", catalog)).toBe("ILS27");
+  expect(groundApproachToCatalog("ILS", catalog)).toBe("ILS27");
+  expect(groundApproachToCatalog("NOPE", catalog)).toBeNull();
+});
+
+test("groundInstructionApproaches snaps CLEARED_APPROACH, INTERCEPT_LOCALIZER, EXPECT_APPROACH", () => {
+  expect(
+    groundInstructionApproaches(
+      [
+        { type: "CLEARED_APPROACH", approachId: "RW27" },
+        { type: "INTERCEPT_LOCALIZER", approachId: "IL27" },
+        { type: "EXPECT_APPROACH", approachId: "27" },
+        { type: "DIRECT", fixId: "NEMAX" },
+      ],
+      [ILS27],
+    ),
+  ).toEqual([
+    { type: "CLEARED_APPROACH", approachId: "ILS27" },
+    { type: "INTERCEPT_LOCALIZER", approachId: "ILS27" },
+    { type: "EXPECT_APPROACH", approachId: "ILS27" },
+    { type: "DIRECT", fixId: "NEMAX" },
+  ]);
+});
+
+test("approachesFromCatalog extracts approaches with runway", () => {
+  expect(
+    approachesFromCatalog({
+      approaches: [{ id: "ILS27", name: "ILS RWY 27", runway: "27" }],
+    }),
+  ).toEqual([{ id: "ILS27", name: "ILS RWY 27", runway: "27" }]);
 });

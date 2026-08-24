@@ -54,6 +54,8 @@ SYSTEM_PROMPT = """You convert air-traffic control radio into JSON only. No pros
 
 The JSON object must be:
 {"ok": true, "callsignToken": string-or-null, "instructions": Instruction[]}
+OR when unparseable / unrecognized audio:
+{"ok": false, "error": "PARSE_MISS"}
 
 Instruction is exactly one of these frozen Command IR v0 types (no other "type"):
 - {"type": "FLY_HEADING", "headingDeg": number, "turn": "LEFT"|"RIGHT"|"SHORTEST"}
@@ -73,8 +75,9 @@ Instruction is exactly one of these frozen Command IR v0 types (no other "type")
 - {"type": "CROSS", "fixId": string, "altitudeFt": number, "restriction": "AT"|"AT_OR_ABOVE"|"AT_OR_BELOW"}
 - {"type": "GO_AROUND"}
 
-Rules:
+Rules and Guidance:
 - Output JSON only. If you cannot map the text, output {"ok": false, "error": "PARSE_MISS"}.
+- Be tolerant of minor ASR transcript anomalies, phonetic typos, and colloquial phrasing.
 - Do not invent types (no CHAT, no conversation). Do not apply intent. Do not write a readback.
 - callsignToken is ICAO like DAL123 or SWA203, never the spoken airline name and never null if a callsign was spoken.
 - Map telephony: Delta→DAL, Southwest→SWA, American→AAL, United→UAL, JetBlue→JBU, Alaska→ASA, Frontier→FFT, Spirit→NKS, FedEx→FDX, UPS→UPS.
@@ -83,12 +86,16 @@ Rules:
 - TURN_DEGREES only when they say "degrees" and not "heading": "turn left 20 degrees".
 - fly heading 270 → FLY_HEADING SHORTEST. fly/continue/maintain present heading → PRESENT_HEADING.
 - "without delay" on climb/descend is expedite: true.
+- "until established" on altitude is untilEstablished: true.
 - iden / ident / squawk ident → IDENT.
 - go around / going around / GA → GO_AROUND.
-- intercept the runway 27 localizer / IL ILS27 → INTERCEPT_LOCALIZER (loc only, no GS). cleared ILS → CLEARED_APPROACH.
+- intercept the runway 27 localizer / IL ILS27 → INTERCEPT_LOCALIZER (loc only, no GS).
+- cleared ILS / clear to ILS / cleared approach → CLEARED_APPROACH.
+- Position reports (e.g. "you are six miles from the airport", "6 miles from MERGE") are controller advisories. Do NOT emit DIRECT instructions for position reports.
 - If the user message includes onFrequency, callsignToken MUST be one of those ICAO tokens or null. Map noisy ASR (e.g. "giblet 204") to the listed flight number. Do not copy ASR junk. Do not invent a callsign that is not listed.
 - If the user message includes fixes=, DIRECT/CROSS fixId MUST be one of those catalog ids. Map noisy ASR (e.g. "C-Max", "see max") to the listed spelling (SEMAX). Do not invent a fix that is not listed.
 - If the user message includes procedures=, DESCEND_VIA/CLIMB_VIA procedureId MUST be a listed catalog id (DEM1, not DEMO ONE or demo 1). Map spoken STAR names to that id. Do not invent a procedure that is not listed.
+- If the user message includes approaches=, EXPECT_APPROACH/CLEARED_APPROACH/INTERCEPT_LOCALIZER approachId MUST be one listed approach id (e.g. ILS27, not RW27 or IL27). Map noisy ASR (e.g. "ILX RW27", "runway 27") to the matching listed approach id.
 - source is a hint (keyboard tokens vs ASR English), not a second schema.
 """
 
@@ -143,9 +150,11 @@ class ParseEngine(Protocol):
 MAX_ROSTER = 64
 MAX_FIXES = 64
 MAX_PROCEDURES = 32
+MAX_APPROACHES = 32
 _CALLSIGN_RE = re.compile(r"^[A-Z0-9]{2,8}$")
 _FIX_RE = re.compile(r"^[A-Z]{2,6}[0-9]{0,2}$")
 _PROC_RE = re.compile(r"^[A-Z]{2,8}[0-9]{0,2}$")
+_APPROACH_RE = re.compile(r"^[A-Z0-9]{2,10}$")
 
 
 def _sanitize_id_list(raw: object, pattern: re.Pattern[str], limit: int) -> list[str]:
@@ -198,6 +207,44 @@ def _sanitize_procedures(raw: object) -> list[dict[str, str]]:
     return out
 
 
+def _sanitize_approaches(raw: object) -> list[dict[str, str]]:
+    out: list[dict[str, str]] = []
+    seen: set[str] = set()
+    if not isinstance(raw, list):
+        return out
+    for item in raw:
+        aid = ""
+        name: str | None = None
+        rwy: str | None = None
+        if isinstance(item, str):
+            left, sep, right = item.partition("=")
+            aid = left.strip().upper()
+            if sep:
+                name = right.strip().upper() or None
+        elif isinstance(item, dict):
+            raw_id = item.get("id")
+            if isinstance(raw_id, str):
+                aid = raw_id.strip().upper()
+            raw_name = item.get("name")
+            if isinstance(raw_name, str) and raw_name.strip():
+                name = raw_name.strip().upper()
+            raw_rwy = item.get("runway")
+            if isinstance(raw_rwy, str) and raw_rwy.strip():
+                rwy = raw_rwy.strip().upper()
+        if not aid or aid in seen or _APPROACH_RE.match(aid) is None:
+            continue
+        seen.add(aid)
+        rec: dict[str, str] = {"id": aid}
+        if name:
+            rec["name"] = name
+        if rwy:
+            rec["runway"] = rwy
+        out.append(rec)
+        if len(out) >= MAX_APPROACHES:
+            break
+    return out
+
+
 def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
     """Keep live-strip + catalog grounding tiny. Drop junk; never n-best or confidence."""
     if not isinstance(raw, dict):
@@ -205,13 +252,14 @@ def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
     callsigns = _sanitize_id_list(raw.get("callsigns") or [], _CALLSIGN_RE, MAX_ROSTER)
     fixes = _sanitize_id_list(raw.get("fixes") or [], _FIX_RE, MAX_FIXES)
     procedures = _sanitize_procedures(raw.get("procedures") or [])
+    approaches = _sanitize_approaches(raw.get("approaches") or [])
     selected_raw = raw.get("selectedCallsign")
     selected: str | None = None
     if isinstance(selected_raw, str):
         up = selected_raw.strip().upper()
         if up and _CALLSIGN_RE.match(up):
             selected = up
-    if not callsigns and not selected and not fixes and not procedures:
+    if not callsigns and not selected and not fixes and not procedures and not approaches:
         return None
     out: dict[str, Any] = {"callsigns": callsigns}
     if selected:
@@ -220,6 +268,8 @@ def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
         out["fixes"] = fixes
     if procedures:
         out["procedures"] = procedures
+    if approaches:
+        out["approaches"] = approaches
     return out
 
 
@@ -259,6 +309,21 @@ def build_parse_user_message(text: str, source: str, context: dict[str, Any] | N
                 lines.append(
                     "DESCEND_VIA/CLIMB_VIA procedureId MUST be a listed catalog id. "
                     "Map demo one / demo 1 to DEM1."
+                )
+        approaches = ctx.get("approaches") or []
+        if approaches:
+            bits = []
+            for app in approaches:
+                if not isinstance(app, dict):
+                    continue
+                aid = str(app.get("id") or "")
+                aname = str(app.get("name") or "")
+                bits.append(f"{aid} ({aname})" if aname else aid)
+            if bits:
+                lines.append("approaches=" + ",".join(bits))
+                lines.append(
+                    "EXPECT_APPROACH/CLEARED_APPROACH/INTERCEPT_LOCALIZER approachId MUST be a listed catalog id (e.g. ILS27). "
+                    "Map spoken runway/approach variants (e.g. ILX RW27, runway 27, IL27) to that id."
                 )
     lines.append(f"text={text.strip()}")
     lines.append("Output JSON only.")

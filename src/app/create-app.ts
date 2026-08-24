@@ -1,6 +1,6 @@
 import { SessionLog, createWorld, type SessionEvent, type World } from "@core";
 import { DEFAULT_SPAWN_SEED, type Scenario } from "@scenario";
-import { parseCommand, proceduresFromCatalog } from "@parse";
+import { approachesFromCatalog, parseCommand, proceduresFromCatalog } from "@parse";
 import { handleRadioCommand, createCheckInQueue } from "@pilot";
 import {
   VoiceLatencyTracker,
@@ -168,6 +168,7 @@ export function createApp(deps: AppDeps): AppHandles {
       getOnFrequencyCallsigns: () => world.aircraft.map((ac) => ac.callsign),
       getCatalogFixIds: () => (world.fixRegistry ? [...world.fixRegistry.ids()] : []),
       getCatalogProcedures: () => proceduresFromCatalog(world.catalog),
+      getCatalogApproaches: () => approachesFromCatalog(world.catalog),
       getIssuedAtSimMs: () => world.simTimeMs,
       confidenceThreshold: deps.confidenceThreshold ?? prefs.confidenceThreshold,
       getVoiceId: deps.getVoiceId ?? ((callsign) => voiceIdForCallsign(callsign, prefs.voiceId)),

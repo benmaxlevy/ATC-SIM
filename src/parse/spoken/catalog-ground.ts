@@ -14,6 +14,9 @@ const FIX_ID = /^[A-Z]{2,6}[0-9]{0,2}$/;
 export const MAX_CATALOG_PROCEDURES = 32;
 const PROCEDURE_ID = /^[A-Z]{2,8}[0-9]{0,2}$/;
 
+export const MAX_CATALOG_APPROACHES = 32;
+const APPROACH_ID = /^[A-Z]{2,8}[0-9]{0,2}[LRC]?$/;
+
 const WORD_DIGIT: Readonly<Record<string, string>> = {
   ZERO: "0",
   ONE: "1",
@@ -258,4 +261,153 @@ export function proceduresFromCatalog(
     ...(catalog.stars ?? []).map((item) => ({ id: item.id, name: item.name })),
     ...(catalog.sids ?? []).map((item) => ({ id: item.id, name: item.name })),
   ]);
+}
+
+export interface CatalogApproach {
+  id: string;
+  name?: string;
+  runway?: string;
+}
+
+export function sanitizeCatalogApproaches(
+  raw: readonly CatalogApproach[] | undefined | null,
+): CatalogApproach[] {
+  const out: CatalogApproach[] = [];
+  const seen = new Set<string>();
+  for (const item of raw ?? []) {
+    const id = item.id.trim().toUpperCase();
+    if (!id || seen.has(id) || !APPROACH_ID.test(id)) {
+      continue;
+    }
+    seen.add(id);
+    const name = item.name?.trim();
+    const runway = item.runway?.trim();
+    const entry: CatalogApproach = { id };
+    if (name) {
+      entry.name = name;
+    }
+    if (runway) {
+      entry.runway = runway;
+    }
+    out.push(entry);
+    if (out.length >= MAX_CATALOG_APPROACHES) {
+      break;
+    }
+  }
+  return out;
+}
+
+export function catalogApproachAliases(app: CatalogApproach): string[] {
+  const key = normalizeFixKey(app.id);
+  const aliases = new Set<string>([key]);
+  if (app.name) {
+    aliases.add(normalizeFixKey(app.name));
+  }
+  const match = app.id.match(/^([A-Z]+)(\d{1,2}[LRC]?)$/);
+  if (match) {
+    const type = match[1]!;
+    const rwy = match[2]!;
+    aliases.add(rwy);
+    aliases.add(`RW${rwy}`);
+    aliases.add(`RWY${rwy}`);
+    aliases.add(`RUNWAY${rwy}`);
+    if (type === "ILS") {
+      aliases.add(`IL${rwy}`);
+      aliases.add(`LOC${rwy}`);
+    }
+  }
+  if (app.runway) {
+    const rwyNorm = normalizeFixKey(app.runway);
+    aliases.add(rwyNorm);
+    aliases.add(`RW${rwyNorm}`);
+    aliases.add(`RWY${rwyNorm}`);
+    aliases.add(`RUNWAY${rwyNorm}`);
+    aliases.add(`ILS${rwyNorm}`);
+    aliases.add(`IL${rwyNorm}`);
+    aliases.add(`LOC${rwyNorm}`);
+  }
+  return [...aliases];
+}
+
+/**
+ * Unique catalog approach id for a noisy token (e.g. IL27 / RW27 -> ILS27), or null.
+ */
+export function groundApproachToCatalog(
+  token: string | null | undefined,
+  catalog: readonly CatalogApproach[],
+): string | null {
+  const list = sanitizeCatalogApproaches(catalog);
+  if (list.length === 0) {
+    return null;
+  }
+  const key = normalizeFixKey(token ?? "");
+  if (key.length < 2) {
+    if (key.length === 0) {
+      return null;
+    }
+    if (list.length === 1) {
+      return list[0]!.id;
+    }
+    return null;
+  }
+
+  const exact = list.find((app) => normalizeFixKey(app.id) === key);
+  if (exact) {
+    return exact.id;
+  }
+
+  const aliasHits = list.filter((app) => catalogApproachAliases(app).includes(key));
+  if (aliasHits.length === 1) {
+    return aliasHits[0]!.id;
+  }
+
+  if (key.length >= 3) {
+    const near = list.filter((app) => levenshtein(key, normalizeFixKey(app.id)) <= 1);
+    if (near.length === 1) {
+      return near[0]!.id;
+    }
+  }
+
+  if ((key === "ILS" || key === "APPROACH") && list.length === 1) {
+    return list[0]!.id;
+  }
+
+  return null;
+}
+
+export function groundInstructionApproaches(
+  instructions: readonly Instruction[],
+  catalog: readonly CatalogApproach[],
+): Instruction[] {
+  if (catalog.length === 0) {
+    return [...instructions];
+  }
+  return instructions.map((inst) => {
+    if (
+      inst.type !== "CLEARED_APPROACH" &&
+      inst.type !== "INTERCEPT_LOCALIZER" &&
+      inst.type !== "EXPECT_APPROACH"
+    ) {
+      return inst;
+    }
+    const approachId = groundApproachToCatalog(inst.approachId, catalog) ?? inst.approachId;
+    return approachId === inst.approachId ? inst : { ...inst, approachId };
+  });
+}
+
+export function approachesFromCatalog(
+  catalog?: {
+    approaches?: ReadonlyArray<{ id: string; name?: string; runway?: string; runwayId?: string }>;
+  } | null,
+): CatalogApproach[] {
+  if (!catalog) {
+    return [];
+  }
+  return sanitizeCatalogApproaches(
+    (catalog.approaches ?? []).map((item) => ({
+      id: item.id,
+      name: item.name,
+      runway: item.runway ?? item.runwayId,
+    })),
+  );
 }

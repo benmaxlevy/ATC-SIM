@@ -325,6 +325,74 @@ test("go around and going around are GO_AROUND (T04-07)", () => {
   expect(rewriteSpokenToTyped(normalizeSpoken("go around"))).toBe("GA");
 });
 
+test("grouped flight numbers resolve correctly in Path A", () => {
+  const dal = spoken("Delta one twenty three descend and maintain three thousand");
+  expect(dal.ok).toBe(true);
+  if (dal.ok) {
+    expect(dal.callsignToken).toBe("DAL123");
+    expect(dal.instructions).toEqual([{ type: "ALTITUDE", altitudeFt: 3000, verb: "DESCEND" }]);
+  }
+
+  const spirit = spoken("Spirit three ten turn left heading two seven zero");
+  expect(spirit.ok).toBe(true);
+  if (spirit.ok) {
+    expect(spirit.callsignToken).toBe("NKS310");
+    expect(spirit.instructions).toEqual([{ type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" }]);
+  }
+
+  const swa = spoken("Southwest twenty zero three fly heading 360");
+  expect(swa.ok).toBe(true);
+  if (swa.ok) {
+    expect(swa.callsignToken).toBe("SWA2003");
+    expect(swa.instructions).toEqual([{ type: "FLY_HEADING", headingDeg: 0, turn: "SHORTEST" }]);
+  }
+
+  const dal300 = spoken("Delta three hundred climb and maintain 5000");
+  expect(dal300.ok).toBe(true);
+  if (dal300.ok) {
+    expect(dal300.callsignToken).toBe("DAL300");
+    expect(dal300.instructions).toEqual([{ type: "ALTITUDE", altitudeFt: 5000, verb: "CLIMB" }]);
+  }
+});
+
+test("PTAC position advisory phraseology is tolerated as context", () => {
+  const ptac1 = spoken(
+    "Delta 123, you are six miles from the airport. Maintain 3000 until established on the localizer cleared ILS runway 27 approach.",
+  );
+  expect(ptac1.ok).toBe(true);
+  if (ptac1.ok) {
+    expect(ptac1.callsignToken).toBe("DAL123");
+    expect(ptac1.instructions).toEqual([
+      { type: "ALTITUDE", altitudeFt: 3000, verb: "MAINTAIN", untilEstablished: true },
+      { type: "CLEARED_APPROACH", approachId: "ILS27" },
+    ]);
+  }
+
+  const ptac2 = spoken(
+    "Delta one two three 6 miles from MERGE turn right heading 240 maintain 2000 until established cleared ils approach runway 27",
+    undefined,
+    ["MERGE"],
+  );
+  expect(ptac2.ok).toBe(true);
+  if (ptac2.ok) {
+    expect(ptac2.callsignToken).toBe("DAL123");
+    expect(ptac2.instructions).toEqual([
+      { type: "FLY_HEADING", headingDeg: 240, turn: "RIGHT" },
+      { type: "ALTITUDE", altitudeFt: 2000, verb: "MAINTAIN", untilEstablished: true },
+      { type: "CLEARED_APPROACH", approachId: "ILS27" },
+    ]);
+  }
+
+  const ptac3 = spoken(
+    "Spirit 310 you are eight miles north of the field intercept runway two seven localizer",
+  );
+  expect(ptac3.ok).toBe(true);
+  if (ptac3.ok) {
+    expect(ptac3.callsignToken).toBe("NKS310");
+    expect(ptac3.instructions).toEqual([{ type: "INTERCEPT_LOCALIZER", approachId: "ILS27" }]);
+  }
+});
+
 function expectOk(text: string, selected: string, instructions: unknown[]): void {
   const result = spoken(text, selected);
   expect(result.ok, text).toBe(true);

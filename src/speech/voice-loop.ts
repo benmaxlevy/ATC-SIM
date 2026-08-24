@@ -56,6 +56,7 @@ export type ParseCommandFn = (
     callsigns?: readonly string[];
     fixes?: readonly string[];
     procedures?: ReadonlyArray<{ id: string; name?: string }>;
+    approaches?: ReadonlyArray<{ id: string; name?: string; runway?: string }>;
     pathC?: boolean;
   },
 ) => Promise<VoiceParseResult>;
@@ -85,6 +86,8 @@ export interface VoiceLoopOptions {
   getCatalogFixIds?: () => readonly string[];
   /** STAR/SID catalog for STT + Path C procedure grounding. Default none. */
   getCatalogProcedures?: () => ReadonlyArray<{ id: string; name?: string }>;
+  /** Approach catalog for Path C approach grounding. Default none. */
+  getCatalogApproaches?: () => ReadonlyArray<{ id: string; name?: string; runway?: string }>;
   getIssuedAtSimMs?: () => number;
   now?: () => number;
   /**
@@ -195,6 +198,11 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly getOnFrequencyCallsigns: () => readonly string[];
   private readonly getCatalogFixIds: () => readonly string[];
   private readonly getCatalogProcedures: () => ReadonlyArray<{ id: string; name?: string }>;
+  private readonly getCatalogApproaches: () => ReadonlyArray<{
+    id: string;
+    name?: string;
+    runway?: string;
+  }>;
   private readonly getIssuedAtSimMs: () => number;
   private readonly now: () => number;
   private pathC: boolean;
@@ -215,6 +223,7 @@ class VoiceLoopImpl implements VoiceLoop {
     this.getOnFrequencyCallsigns = options.getOnFrequencyCallsigns ?? (() => []);
     this.getCatalogFixIds = options.getCatalogFixIds ?? (() => []);
     this.getCatalogProcedures = options.getCatalogProcedures ?? (() => []);
+    this.getCatalogApproaches = options.getCatalogApproaches ?? (() => []);
     this.getIssuedAtSimMs = options.getIssuedAtSimMs ?? (() => 0);
     this.now = options.now ?? defaultNow;
     this.pathC = options.pathC ?? false;
@@ -386,6 +395,7 @@ class VoiceLoopImpl implements VoiceLoop {
       callsigns: this.getOnFrequencyCallsigns(),
       fixes: this.getCatalogFixIds(),
       procedures: this.getCatalogProcedures(),
+      approaches: this.getCatalogApproaches(),
       pathC: this.pathC,
     });
     if (this.disposed) {

@@ -12,6 +12,7 @@ import {
   singleDigit,
 } from "./numbers";
 import { parseSpokenCallsign } from "./telephony";
+import { takePositionAdvisory } from "./grammar";
 
 interface Cursor {
   tokens: readonly string[];
@@ -75,6 +76,9 @@ export function rewriteSpokenToTyped(normalized: string): string | null {
   while (c.i < tokens.length) {
     if (peek(c) === "and" && peek(c, 1) !== "maintain") {
       c.i += 1;
+      continue;
+    }
+    if (takePositionAdvisory(c)) {
       continue;
     }
     const token = rewriteOne(c);

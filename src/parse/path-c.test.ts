@@ -319,6 +319,42 @@ test("Path C TURN_DEGREES on a heading assignment is repaired to FLY_HEADING", a
   expect(result.instructions).toEqual([{ type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" }]);
 });
 
+test("Path C CLEARED_APPROACH RW27 and INTERCEPT_LOCALIZER IL27 snap onto catalog ILS27", async () => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: "DAL123",
+    instructions: [
+      { type: "INTERCEPT_LOCALIZER", approachId: "IL27" },
+      { type: "CLEARED_APPROACH", approachId: "RW27" },
+    ],
+  }));
+  const result = await parseCommand("pizza intercept 27 cleared 27", {
+    source: "voice",
+    pathC: true,
+    selectedCallsign: "DAL123",
+    approaches: [{ id: "ILS27", name: "ILS RWY 27", runway: "27" }],
+    parsePathC,
+  });
+  expect(parsePathC).toHaveBeenCalledWith({
+    text: "pizza intercept 27 cleared 27",
+    source: "voice",
+    schemaVersion: PATH_C_SCHEMA_VERSION,
+    context: {
+      callsigns: [],
+      selectedCallsign: "DAL123",
+      approaches: [{ id: "ILS27", name: "ILS RWY 27", runway: "27" }],
+    },
+  });
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.parseStage).toBe("llm_c");
+  expect(result.instructions).toEqual([
+    { type: "INTERCEPT_LOCALIZER", approachId: "ILS27" },
+    { type: "CLEARED_APPROACH", approachId: "ILS27" },
+  ]);
+});
+
 test("schemaCheckPathC accepts legal FLY_HEADING and rejects extra keys", () => {
   expect(schemaCheckPathC(LEGAL_BODY)).toEqual(HEADING);
   expect(

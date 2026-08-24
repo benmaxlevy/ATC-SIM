@@ -9,7 +9,7 @@
 
 import type { Command, Instruction, ParseStage, SessionLog, World } from "@core";
 import { assertHandoffOwned, handoffFor } from "@core";
-import { parseCommand, proceduresFromCatalog } from "@parse";
+import { approachesFromCatalog, parseCommand, proceduresFromCatalog } from "@parse";
 import { applyIntent } from "./applyIntent";
 import { formatReadback, formatRejectReadback } from "./readback";
 import { resolveCallsign } from "./resolveCallsign";
@@ -114,6 +114,7 @@ export async function handleRadioText(
     callsigns: callsignsFromWorld(world),
     fixes: catalogFixIdsFromWorld(world),
     procedures: proceduresFromCatalog(world.catalog),
+    approaches: approachesFromCatalog(world.catalog),
     pathC: opts?.pathC ?? false,
   });
   if (!parsed.ok) {

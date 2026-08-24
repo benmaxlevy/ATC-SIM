@@ -1,9 +1,12 @@
-# Constrained JSON for POST /parse success (Command IR v0).
+# Constrained JSON for POST /parse (Command IR v0).
 # Used by llama.cpp GBNF. Browser still schema-checks.
 
-root ::= object
-object ::= "{" ws ok-true "," ws callsign-field "," ws instructions-field ws "}"
+root ::= ok-true-object | ok-false-object
+ok-true-object ::= "{" ws ok-true "," ws callsign-field "," ws instructions-field ws "}"
+ok-false-object ::= "{" ws ok-false "," ws error-field ws "}"
 ok-true ::= "\"ok\"" ws ":" ws "true"
+ok-false ::= "\"ok\"" ws ":" ws "false"
+error-field ::= "\"error\"" ws ":" ws ("\"PARSE_MISS\"" | "\"UNAVAILABLE\"" | "\"SCHEMA\"")
 callsign-field ::= "\"callsignToken\"" ws ":" ws (string | "null")
 instructions-field ::= "\"instructions\"" ws ":" ws "[" ws instruction (ws "," ws instruction)* ws "]"
 

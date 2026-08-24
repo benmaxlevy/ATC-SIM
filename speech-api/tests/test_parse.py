@@ -162,6 +162,12 @@ def test_user_message_includes_on_frequency_roster() -> None:
         "callsigns": [],
         "procedures": [{"id": "DEM1", "name": "DEMO ONE"}],
     }
+    assert sanitize_parse_context(
+        {"approaches": [{"id": "ils27", "name": "ILS RWY 27"}, "NOPE!"]}
+    ) == {
+        "callsigns": [],
+        "approaches": [{"id": "ILS27", "name": "ILS RWY 27"}],
+    }
     msg = build_parse_user_message(
         "giblet 204 proceed direct c-max",
         "voice",
@@ -170,12 +176,14 @@ def test_user_message_includes_on_frequency_roster() -> None:
             "selectedCallsign": "SWA204",
             "fixes": ["SEMAX", "NEMAX", "MERGE"],
             "procedures": [{"id": "DEM1", "name": "DEMO ONE"}],
+            "approaches": [{"id": "ILS27", "name": "ILS RWY 27"}],
         },
     )
     assert "onFrequency=DAL123,SWA204" in msg
     assert "selected=SWA204" in msg
     assert "fixes=SEMAX,NEMAX,MERGE" in msg
     assert "procedures=DEM1 (DEMO ONE)" in msg
+    assert "approaches=ILS27 (ILS RWY 27)" in msg
     assert "text=giblet 204 proceed direct c-max" in msg
     assert "nbest" not in msg
     assert "confidence" not in msg
@@ -183,6 +191,7 @@ def test_user_message_includes_on_frequency_roster() -> None:
     assert "onFrequency=" not in bare
     assert "fixes=" not in bare
     assert "procedures=" not in bare
+    assert "approaches=" not in bare
     assert "text=ident" in bare
 
 
@@ -196,6 +205,9 @@ def test_system_prompt_distinguishes_heading_vector_from_turn_degrees() -> None:
     assert "C-Max" in SYSTEM_PROMPT
     assert "procedures=" in SYSTEM_PROMPT
     assert "DEM1" in SYSTEM_PROMPT
+    assert "approaches=" in SYSTEM_PROMPT
+    assert "ILS27" in SYSTEM_PROMPT
+    assert "Position reports" in SYSTEM_PROMPT
 
 
 def test_parse_n_gpu_layers_auto_cuda(monkeypatch) -> None:

@@ -15,8 +15,12 @@ export type { ParseErrorCode } from "./tokens";
 export { parseCommand } from "./parse-command";
 export type { ParseCommandOpts } from "./parse-command";
 export { normalizeSpoken } from "./spoken/normalizer";
-export { proceduresFromCatalog, sanitizeFixIds } from "./spoken/catalog-ground";
-export type { CatalogProcedure } from "./spoken/catalog-ground";
+export {
+  approachesFromCatalog,
+  proceduresFromCatalog,
+  sanitizeFixIds,
+} from "./spoken/catalog-ground";
+export type { CatalogApproach, CatalogProcedure } from "./spoken/catalog-ground";
 export {
   DEFAULT_PARSE_URL,
   PATH_C_SCHEMA_VERSION,

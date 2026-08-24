@@ -15,10 +15,13 @@ import { normalizeSpoken } from "./spoken/normalizer";
 import { groundCallsignToRoster, spokenCallsignToken } from "./spoken/telephony";
 import { rewriteSpokenToTyped } from "./spoken/typed-fuzzy";
 import {
+  groundInstructionApproaches,
   groundInstructionFixes,
   groundInstructionProcedures,
+  sanitizeCatalogApproaches,
   sanitizeCatalogProcedures,
   sanitizeFixIds,
+  type CatalogApproach,
   type CatalogProcedure,
 } from "./spoken/catalog-ground";
 import {
@@ -43,6 +46,11 @@ export interface ParseCommandOpts {
    * and Path C `procedures=` grounding.
    */
   procedures?: readonly CatalogProcedure[];
+  /**
+   * Approach catalog for CLEARED_APPROACH / INTERCEPT_LOCALIZER snap (`RW27` / `IL27` → `ILS27`)
+   * and Path C `approaches=` grounding.
+   */
+  approaches?: readonly CatalogApproach[];
   /** Default false. When true, stage 4 may fetch after a local miss. */
   pathC?: boolean;
   /** Injected fetch. Default POSTs to our speech-api `/parse`. */
@@ -74,8 +82,15 @@ function pathCContext(
   selected: string | null,
   fixes: readonly string[],
   procedures: readonly CatalogProcedure[],
+  approaches: readonly CatalogApproach[],
 ): PathCContext | undefined {
-  if (roster.length === 0 && !selected && fixes.length === 0 && procedures.length === 0) {
+  if (
+    roster.length === 0 &&
+    !selected &&
+    fixes.length === 0 &&
+    procedures.length === 0 &&
+    approaches.length === 0
+  ) {
     return undefined;
   }
   return {
@@ -83,6 +98,7 @@ function pathCContext(
     selectedCallsign: selected,
     ...(fixes.length > 0 ? { fixes: [...fixes] } : {}),
     ...(procedures.length > 0 ? { procedures: procedures.map((item) => ({ ...item })) } : {}),
+    ...(approaches.length > 0 ? { approaches: approaches.map((item) => ({ ...item })) } : {}),
   };
 }
 
@@ -104,13 +120,14 @@ function okStage(
   selected: string | null,
   catalog: readonly string[],
   procedures: readonly CatalogProcedure[],
+  approaches: readonly CatalogApproach[],
 ): ParseResult {
   return {
     ok: true,
     callsignToken: parsed.callsignToken ?? selected,
-    instructions: groundInstructionProcedures(
-      groundInstructionFixes(parsed.instructions, catalog),
-      procedures,
+    instructions: groundInstructionApproaches(
+      groundInstructionProcedures(groundInstructionFixes(parsed.instructions, catalog), procedures),
+      approaches,
     ),
     sourceText,
     parseStage,
@@ -130,23 +147,51 @@ export async function parseCommand(
   const roster = rosterFromOpts(opts);
   const catalog = sanitizeFixIds(opts.fixes);
   const procedures = sanitizeCatalogProcedures(opts.procedures);
+  const approaches = sanitizeCatalogApproaches(opts.approaches);
   const normalized = normalizeSpoken(sourceText);
 
   const typed = attachCallsign(parseRadioText(normalized), selected);
   if (typed.ok && typed.instructions.length > 0) {
-    return okStage(typed, sourceText, "typed", opts.source, selected, catalog, procedures);
+    return okStage(
+      typed,
+      sourceText,
+      "typed",
+      opts.source,
+      selected,
+      catalog,
+      procedures,
+      approaches,
+    );
   }
 
   const spoken = parseSpokenGrammar(normalized, selected, sourceText, catalog, procedures);
   if (spoken.ok) {
-    return okStage(spoken, sourceText, "spoken_a", opts.source, selected, catalog, procedures);
+    return okStage(
+      spoken,
+      sourceText,
+      "spoken_a",
+      opts.source,
+      selected,
+      catalog,
+      procedures,
+      approaches,
+    );
   }
 
   const rewritten = rewriteSpokenToTyped(normalized);
   if (rewritten !== null) {
     const pathB = attachCallsign(parseRadioText(rewritten), selected);
     if (pathB.ok && pathB.instructions.length > 0) {
-      return okStage(pathB, sourceText, "spoken_b", opts.source, selected, catalog, procedures);
+      return okStage(
+        pathB,
+        sourceText,
+        "spoken_b",
+        opts.source,
+        selected,
+        catalog,
+        procedures,
+        approaches,
+      );
     }
   }
 
@@ -157,7 +202,7 @@ export async function parseCommand(
         text: sourceText,
         source: opts.source,
         schemaVersion: PATH_C_SCHEMA_VERSION,
-        context: pathCContext(roster, selected, catalog, procedures),
+        context: pathCContext(roster, selected, catalog, procedures, approaches),
       });
       if (hit !== null && hit.instructions.length > 0) {
         const grounded =
@@ -182,6 +227,7 @@ export async function parseCommand(
           selected,
           catalog,
           procedures,
+          approaches,
         );
       }
     } catch {
