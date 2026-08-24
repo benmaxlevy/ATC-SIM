@@ -230,7 +230,7 @@ function ssaFilterLines(field: SsaFilterField): { line1: string; line2: string }
   if (field === "OFF_CNTR") {
     return { line1: "OFF", line2: "CNTR" };
   }
-  return { line1: field, line2: "\u00a0" };
+  return { line1: field, line2: "" };
 }
 
 function tpaMiSpinnerArmed(view: ScopeView): boolean {
@@ -569,7 +569,7 @@ function DcbCell({
         invokeClick();
       }}
     >
-      {children}
+      <span className="dcb-cell-stack">{children}</span>
     </button>
   );
 }
@@ -599,7 +599,7 @@ function renderMapSlot(view: ScopeView, onChange: () => void, slot: number) {
       onClick={() => mapSlotClick(view, onChange, slot)}
     >
       <span className="dcb-cell-line">{slot}</span>
-      <span className="dcb-cell-line">{map?.dcbLabel ?? "\u00a0"}</span>
+      <span className="dcb-cell-line">{map?.dcbLabel ?? ""}</span>
     </DcbCell>
   );
 }
@@ -621,7 +621,7 @@ function renderPrefOpener(view: ScopeView, onChange: () => void) {
       }}
     >
       <span className="dcb-cell-line">PREF</span>
-      <span className="dcb-cell-line">{readout || "\u00a0"}</span>
+      <span className="dcb-cell-line">{readout}</span>
     </DcbCell>
   );
 }
@@ -637,7 +637,6 @@ function renderWxCell(n: 1 | 2 | 3 | 4) {
       onClick={() => undefined}
     >
       <span className="dcb-cell-line">{`WX${n}`}</span>
-      <span className="dcb-cell-line">{"\u00a0"}</span>
     </DcbCell>
   );
 }
@@ -672,7 +671,6 @@ function renderDone(view: ScopeView, onChange: () => void) {
       onClick={() => clickDone(view, onChange)}
     >
       <span className="dcb-cell-line">DONE</span>
-      <span className="dcb-cell-line">{"\u00a0"}</span>
     </DcbCell>
   );
 }
@@ -690,7 +688,6 @@ function renderShift(view: ScopeView, onChange: () => void) {
       }}
     >
       <span className="dcb-cell-line">SHIFT</span>
-      <span className="dcb-cell-line">{"\u00a0"}</span>
     </DcbCell>
   );
 }
@@ -715,10 +712,7 @@ function renderPhysicalMain(
           </span>
         ))
       ) : (
-        <>
-          <span className="dcb-cell-line">{label}</span>
-          <span className="dcb-cell-line">{"\u00a0"}</span>
-        </>
+        <span className="dcb-cell-line">{label}</span>
       )}
     </DcbCell>
   );
@@ -826,7 +820,6 @@ function renderPhysicalMain(
             }}
           >
             <span className="dcb-cell-line">MAPS</span>
-            <span className="dcb-cell-line">{"\u00a0"}</span>
           </DcbCell>
         );
       case "brite":
@@ -843,7 +836,6 @@ function renderPhysicalMain(
             }}
           >
             <span className="dcb-cell-line">BRITE</span>
-            <span className="dcb-cell-line">{"\u00a0"}</span>
           </DcbCell>
         );
       case "ldr-dir":
@@ -1011,7 +1003,6 @@ export function renderMainLegacy(
         <span id={DCB_RANGE_READOUT_ID} className="dcb-cell-line">
           {formatDcbRangeReadout(view.camera.rangeNm)}
         </span>
-        <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
       <DcbCell
         kind="toggle"
@@ -1045,7 +1036,6 @@ export function renderMainLegacy(
         }}
       >
         <span className="dcb-cell-line">MAPS</span>
-        <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
       {Array.from({ length: DCB_QUICK_MAP_COUNT }, (_, i) => renderMapSlot(view, onChange, i + 1))}
       {([1, 2, 3, 4] as const).map((n) => renderWxCell(n))}
@@ -1153,7 +1143,6 @@ export function renderMainLegacy(
         }}
       >
         <span className="dcb-cell-line">BRITE</span>
-        <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
       <DcbCell
         kind="action"
@@ -1212,7 +1201,6 @@ function renderAux(view: ScopeView, onChange: () => void) {
       {renderShift(view, onChange)}
       <DcbCell kind="disabled" ariaLabel="Volume" dataDcb="vol" disabled onClick={() => undefined}>
         <span className="dcb-cell-line">VOL</span>
-        <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
       <DcbCell
         kind="spinner"
@@ -1408,7 +1396,6 @@ function renderTpaAtpa(view: ScopeView, onChange: () => void) {
         onClick={() => undefined}
       >
         <span className="dcb-cell-line">CONES</span>
-        <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
       <DcbCell
         kind="disabled"
@@ -1418,7 +1405,6 @@ function renderTpaAtpa(view: ScopeView, onChange: () => void) {
         onClick={() => undefined}
       >
         <span className="dcb-cell-line">MONITOR</span>
-        <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
       <DcbCell
         kind="disabled"
@@ -1428,7 +1414,6 @@ function renderTpaAtpa(view: ScopeView, onChange: () => void) {
         onClick={() => undefined}
       >
         <span className="dcb-cell-line">ALERT</span>
-        <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
     </>
   );
@@ -1460,7 +1445,6 @@ function renderSsaFilter(view: ScopeView, onChange: () => void) {
       })}
       <DcbCell kind="disabled" ariaLabel="CRDA" dataDcb="crda" disabled onClick={() => undefined}>
         <span className="dcb-cell-line">CRDA</span>
-        <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
     </>
   );
@@ -1490,7 +1474,7 @@ function renderGiFilter(view: ScopeView, onChange: () => void) {
             }}
           >
             <span className="dcb-cell-line">{`GI ${slot}`}</span>
-            <span className="dcb-cell-line">{empty ? "\u00a0" : authored}</span>
+            <span className="dcb-cell-line">{authored}</span>
           </DcbCell>
         );
       })}
@@ -1543,7 +1527,6 @@ function renderMaps(view: ScopeView, onChange: () => void) {
         }}
       >
         <span className="dcb-cell-line">CURRENT</span>
-        <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
     </>
   );
@@ -1569,7 +1552,6 @@ function renderLdr(view: ScopeView, onChange: () => void, world: DisplayControlB
           }}
         >
           <span className="dcb-cell-line">{`L${dir}`}</span>
-          <span className="dcb-cell-line">{"\u00a0"}</span>
         </DcbCell>
       ))}
     </>
@@ -1737,7 +1719,6 @@ function renderBrite(view: ScopeView, onChange: () => void) {
           onClick={() => undefined}
         >
           <span className="dcb-cell-line">{item.label}</span>
-          <span className="dcb-cell-line">{"\u00a0"}</span>
         </DcbCell>
       ))}
     </>
@@ -1781,7 +1762,6 @@ function renderPref(view: ScopeView, onChange: () => void) {
         }}
       >
         <span className="dcb-cell-line">DEFAULT</span>
-        <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
       <DcbCell
         kind="action"
@@ -1794,7 +1774,6 @@ function renderPref(view: ScopeView, onChange: () => void) {
         }}
       >
         <span className="dcb-cell-line">RESTORE</span>
-        <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
       <DcbCell
         kind="action"
@@ -1807,7 +1786,6 @@ function renderPref(view: ScopeView, onChange: () => void) {
         }}
       >
         <span className="dcb-cell-line">SAVE</span>
-        <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
       <DcbCell
         kind="action"
@@ -1833,7 +1811,6 @@ function renderPref(view: ScopeView, onChange: () => void) {
         }}
       >
         <span className="dcb-cell-line">DELETE</span>
-        <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
     </>
   );
