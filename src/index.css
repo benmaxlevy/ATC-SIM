@@ -218,7 +218,7 @@ body,
 }
 
 .dcb-cell[data-dcb-flashing="true"] {
-  animation: dcb-cap-spring 140ms ease-out;
+  animation: dcb-cap-spring 70ms ease-out;
 }
 
 .dcb-cell:hover,

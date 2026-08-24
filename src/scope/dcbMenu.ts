@@ -26,7 +26,7 @@ export type DcbCellKind = "action" | "toggle" | "spinner" | "submenu" | "disable
  * Hold or click shows the inset bevel, then they pop back. CRC analog; not a
  * CSS animation. Toggle caps retain their pressed state.
  */
-export const DCB_ACTION_FLASH_MS = 140;
+export const DCB_ACTION_FLASH_MS = 70;
 
 export function dcbActionCapPressed(latched: boolean | undefined, flashing: boolean): boolean {
   return latched === true || flashing;

@@ -130,7 +130,7 @@ test("HISTORY and PTL spinners arm and step like RANGE", () => {
 });
 
 test("action caps are a momentary inset, not a latch", () => {
-  expect(DCB_ACTION_FLASH_MS).toBe(140);
+  expect(DCB_ACTION_FLASH_MS).toBe(70);
   expect(dcbActionCapPressed(undefined, false)).toBe(false);
   expect(dcbActionCapPressed(false, false)).toBe(false);
   expect(dcbActionCapPressed(undefined, true)).toBe(true);
