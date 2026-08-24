@@ -749,6 +749,7 @@ test("momentary caps flash inset; toggles remain latches", () => {
   expect(barSrc()).toMatch(/DCB_ACTION_FLASH_MS/);
   expect(barSrc()).toMatch(/armActionFlash/);
   expect(barSrc()).toMatch(/releaseActionFlash/);
+  expect(barSrc()).toMatch(/armActionFlash\(\);\s*releaseActionFlash\(\);/);
   expect(barSrc()).toMatch(/kind !== "toggle" && kind !== "disabled"/);
   expect(barSrc()).toMatch(/data-dcb-flashing/);
   expect(cssSrc()).toMatch(/:active/);
