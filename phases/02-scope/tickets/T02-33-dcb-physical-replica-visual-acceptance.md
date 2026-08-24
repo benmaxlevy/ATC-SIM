@@ -1,10 +1,10 @@
 # T02-33 DCB physical-replica visual acceptance
 
-**Phase:** 02 Scope (post-exit visual-replica addendum)  
-**Priority:** P0  
-**Size:** S  
-**Depends on:** T02-31, T02-32  
-**Blocks:** none (physical-replica gate)  
+**Phase:** 02 Scope (post-exit visual-replica addendum)
+**Priority:** P0
+**Size:** S
+**Depends on:** T02-31, T02-32
+**Blocks:** none (physical-replica gate)
 **Launch:** Implement this ticket only. Do not add DCB features.
 
 ## Goal

@@ -1,10 +1,10 @@
 # T02-32 DCB physical-button bevel, palette, and typography
 
-**Phase:** 02 Scope (post-exit visual-replica addendum)  
-**Priority:** P0  
-**Size:** M  
-**Depends on:** T02-31  
-**Blocks:** T02-33  
+**Phase:** 02 Scope (post-exit visual-replica addendum)
+**Priority:** P0
+**Size:** M
+**Depends on:** T02-31
+**Blocks:** T02-33
 **Launch:** Implement this ticket only. Do not start downstream tickets.
 
 ## Goal

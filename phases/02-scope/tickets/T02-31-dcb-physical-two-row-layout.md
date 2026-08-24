@@ -1,10 +1,10 @@
 # T02-31 DCB physical two-row layout and MAIN arrangement
 
-**Phase:** 02 Scope (post-exit visual-replica addendum)  
-**Priority:** P0  
-**Size:** L  
-**Depends on:** T02-23, T02-24, T02-26, T02-27, T02-29, T02-30  
-**Blocks:** T02-32, T02-33  
+**Phase:** 02 Scope (post-exit visual-replica addendum)
+**Priority:** P0
+**Size:** L
+**Depends on:** T02-23, T02-24, T02-26, T02-27, T02-29, T02-30
+**Blocks:** T02-32, T02-33
 **Launch:** Implement this ticket only. Do not start downstream tickets.
 
 ## Goal
