@@ -12,7 +12,8 @@
  * facility lines (not METAR HTTP). HIST/PTL cells live on AUX (F7/F8 still work).
  * MAIN quick video maps 1–6; MAPS submenu slots 1–30 (empty slots disabled).
  * WX1–6 are disabled chrome (no precipitation). Disabled CRDA cell on SSA FILTER
- * is chrome only. PREF is 8 local slots (not a NAS host). No CSA / FMA (R06). Discrete **range** presets only.
+ * is chrome only. PREF is 8 local slots (not a NAS host). MAIN PREF shows the
+ * active set name. No CSA / FMA (R06). Discrete **range** presets only.
  * CHAR SIZE scales **datablock** / lists / DCB / tools / POS. BRITE multiplies
  * drawn channels. Not NAS STARS.
  *
@@ -38,6 +39,7 @@ import {
   armPlaceCenter,
   armPlaceRangeRing,
   beginAltitudeFilterChord,
+  activeDcbPrefName,
   beginDcbPrefSession,
   browserDcbPrefStorage,
   cancelFilterEntry,
@@ -56,6 +58,7 @@ import {
   formatDcbHistoryReadout,
   formatDcbLdrLengthReadout,
   formatDcbMapLabel,
+  formatDcbPrefReadout,
   formatDcbPtlMinutesReadout,
   formatDcbRangeReadout,
   formatDcbRrReadout,
@@ -442,7 +445,7 @@ export const MAIN_DCB_LAYOUT: readonly MainDcbLayoutCell[] = [
   { id: "ldr-length", row: 2, column: 16, rowSpan: 1, kind: "spinner", label: "LDR" },
   { id: "char", row: 1, column: 17, rowSpan: 2, kind: "submenu", label: "CHAR SIZE" },
   { id: "mode-fsl", row: 1, column: 18, rowSpan: 2, kind: "disabled", label: "MODE FSL" },
-  { id: "pref", row: 1, column: 19, rowSpan: 2, kind: "submenu", label: "PREF 22/27" },
+  { id: "pref", row: 1, column: 19, rowSpan: 2, kind: "submenu", label: "PREF" },
   { id: "site-fused", row: 1, column: 20, rowSpan: 2, kind: "disabled", label: "SITE FUSED" },
   { id: "ssa-filter", row: 1, column: 21, rowSpan: 1, kind: "submenu", label: "SSA FILTER" },
   { id: "gi-text", row: 2, column: 21, rowSpan: 1, kind: "submenu", label: "GI TEXT FILTER" },
@@ -523,6 +526,28 @@ function renderMapSlot(view: ScopeView, onChange: () => void, slot: number) {
     >
       <span className="dcb-cell-line">{slot}</span>
       <span className="dcb-cell-line">{map?.dcbLabel ?? "\u00a0"}</span>
+    </DcbCell>
+  );
+}
+
+function renderPrefOpener(view: ScopeView, onChange: () => void) {
+  const name = activeDcbPrefName(view);
+  const readout = formatDcbPrefReadout(name);
+  return (
+    <DcbCell
+      kind="submenu"
+      ariaLabel={name ? `Pref ${name}` : "Pref"}
+      dataDcb="pref"
+      pressed={view.dcbMenu === "PREF"}
+      onClick={() => {
+        cancelFilterIfEntering(view);
+        beginDcbPrefSession(view);
+        openDcbMenu(view, "PREF");
+        afterCell(onChange);
+      }}
+    >
+      <span className="dcb-cell-line">PREF</span>
+      <span className="dcb-cell-line">{readout || "\u00a0"}</span>
     </DcbCell>
   );
 }
@@ -825,23 +850,7 @@ function renderPhysicalMain(
           </DcbCell>
         );
       case "pref":
-        return (
-          <DcbCell
-            kind="submenu"
-            ariaLabel="Pref 22/27"
-            dataDcb="pref"
-            pressed={view.dcbMenu === "PREF"}
-            onClick={() => {
-              cancelFilterIfEntering(view);
-              beginDcbPrefSession(view);
-              openDcbMenu(view, "PREF");
-              afterCell(onChange);
-            }}
-          >
-            <span className="dcb-cell-line">PREF</span>
-            <span className="dcb-cell-line">22/27</span>
-          </DcbCell>
-        );
+        return renderPrefOpener(view, onChange);
       case "ssa-filter":
         return (
           <DcbCell
@@ -1127,21 +1136,7 @@ export function renderMainLegacy(
         <span className="dcb-cell-line">GI</span>
         <span className="dcb-cell-line">TEXT</span>
       </DcbCell>
-      <DcbCell
-        kind="submenu"
-        ariaLabel="Pref"
-        dataDcb="pref"
-        pressed={view.dcbMenu === "PREF"}
-        onClick={() => {
-          cancelFilterIfEntering(view);
-          beginDcbPrefSession(view);
-          openDcbMenu(view, "PREF");
-          afterCell(onChange);
-        }}
-      >
-        <span className="dcb-cell-line">PREF</span>
-        <span className="dcb-cell-line">{"\u00a0"}</span>
-      </DcbCell>
+      {renderPrefOpener(view, onChange)}
       {renderShift(view, onChange)}
     </>
   );

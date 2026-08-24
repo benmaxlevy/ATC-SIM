@@ -17,6 +17,7 @@ import {
   cycleRange,
   openDcbMenu,
   formatDcbRangeReadout,
+  saveAsDcbPref,
   handleFilterEntryKey,
   parseDigitalMap,
   toggleGiFilter,
@@ -723,4 +724,22 @@ test("T02-29 — PREF submenu has PREF 1–8, DEFAULT, RESTORE, SAVE, SAVE AS, D
   expect(barSrc()).not.toMatch(/\bprompt\s*\(/);
   closeDcbMenu(view);
   expect(dcbHtml(view)).toContain("RANGE 20");
+});
+
+test("MAIN PREF cap shows the active profile name instead of 22/27", () => {
+  const view = createScopeView();
+  const empty = dcbHtml(view);
+  expect(empty).toMatch(/data-dcb-cell="pref"/);
+  expect(empty).not.toContain("22/27");
+  expect(empty).toMatch(/aria-label="Pref"/);
+
+  saveAsDcbPref(view);
+  const saved = dcbHtml(view);
+  expect(saved).toContain("PREF 1");
+  expect(saved).toMatch(/aria-label="Pref PREF 1"/);
+
+  view.dcbPref.slots[0]!.name = "Approach Night";
+  const named = dcbHtml(view);
+  expect(named).toContain("APPROA");
+  expect(named).toMatch(/aria-label="Pref Approach Night"/);
 });

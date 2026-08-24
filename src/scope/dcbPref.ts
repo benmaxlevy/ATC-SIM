@@ -30,6 +30,9 @@ import {
 /** Trainer freeze: 8 slots, not CRC 32. */
 export const DCB_PREF_SLOT_COUNT = 8;
 
+/** MAIN PREF second-line budget. CRC analog is a short set name (e.g. 22/27). */
+export const DCB_PREF_READOUT_MAX_CHARS = 6;
+
 export const DCB_PREF_SCHEMA_VERSION = 1 as const;
 
 export type DcbPrefStorage = Pick<Storage, "getItem" | "setItem">;
@@ -96,6 +99,20 @@ export function emptyDcbPrefRuntime(icao: string = ""): DcbPrefRuntime {
     activeIndex: 0,
     restore: null,
   };
+}
+
+/** Stored name of the active filled slot; empty string when the slot is vacant. */
+export function activeDcbPrefName(view: Pick<ScopeView, "dcbPref">): string {
+  return view.dcbPref.slots[view.dcbPref.activeIndex]?.name?.trim() ?? "";
+}
+
+/** DCB MAIN second line: uppercase, clipped to the cap budget. */
+export function formatDcbPrefReadout(name: string): string {
+  const compact = name.trim().replace(/\s+/g, " ").toUpperCase();
+  if (compact.length <= DCB_PREF_READOUT_MAX_CHARS) {
+    return compact;
+  }
+  return compact.slice(0, DCB_PREF_READOUT_MAX_CHARS).trimEnd();
 }
 
 export function dcbPrefStorageKey(icao: string): string {
