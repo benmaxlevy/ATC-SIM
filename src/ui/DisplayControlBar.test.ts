@@ -633,3 +633,23 @@ test("T02-27 AC5/AC6 — altitude FILTER stays on MAIN; SSA/GI comments; no Comm
   expect(src).not.toMatch(/from\s+["']@pilot["']/);
   expect(src).not.toMatch(/\bfetch\s*\(/);
 });
+
+test("T02-29 — PREF submenu has PREF 1–8, DEFAULT, RESTORE, SAVE, SAVE AS, DELETE, DONE; no prompt/input", () => {
+  const view = createScopeView();
+  expect(dcbHtml(view)).toContain("PREF");
+  openDcbMenu(view, "PREF");
+  const html = dcbHtml(view);
+  expect(html).toContain("DONE");
+  expect(html).toMatch(/data-dcb-menu="PREF"/);
+  expect(html).toMatch(/data-dcb-cell="pref-1"/);
+  expect(html).toMatch(/data-dcb-cell="pref-8"/);
+  expect(html).toContain("DEFAULT");
+  expect(html).toContain("RESTORE");
+  expect(html).toContain("SAVE");
+  expect(html).toContain("AS");
+  expect(html).toContain("DELETE");
+  expect(html).not.toMatch(/<input/i);
+  expect(barSrc()).not.toMatch(/\bprompt\s*\(/);
+  closeDcbMenu(view);
+  expect(dcbHtml(view)).toContain("RANGE 20");
+});

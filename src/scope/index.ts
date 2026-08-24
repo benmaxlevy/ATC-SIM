@@ -19,7 +19,7 @@
  * LDR length / CHAR SIZE / BRITE are spinners over frozen presets. AUX has HISTORY 0–5, PTL
  * length/OWN/ALL, DCB TOP/LEFT/RIGHT/BOTTOM; VOL disabled. Trainer subset
  * (SHIFT/DONE/VOL, disabled WX) — not a full STARS DCB (no precipitation /
- * PREF / CSA / CRDA / FMA).
+ * CSA / CRDA / FMA). Local PREF 1–8 is trainer localStorage, not a NAS host.
  *
  * SSA (T02-20) is a screen-fixed top-left status block (sim time, KDEM 29.92
  * stub, FILTER, RANGE, OFF CNTR, OK). Never a Command.
@@ -220,6 +220,29 @@ export {
   toggleDcbMenu,
 } from "./dcbMenu";
 export type { DcbCellKind, DcbMenu, DcbMenuHost, DcbSpinnerCell, DcbSpinnerState } from "./dcbMenu";
+export {
+  DCB_PREF_SLOT_COUNT,
+  applyDcbPref,
+  applyDcbPrefDefaults,
+  beginDcbPrefSession,
+  browserDcbPrefStorage,
+  dcbPrefStorageKey,
+  deleteDcbPref,
+  loadDcbPrefFromStorage,
+  persistDcbPref,
+  restoreDcbPrefSession,
+  saveAsDcbPref,
+  saveDcbPref,
+  selectDcbPrefSlot,
+  serializeDcbPref,
+} from "./dcbPref";
+export type {
+  DcbPrefBody,
+  DcbPrefFile,
+  DcbPrefRuntime,
+  DcbPrefSlot,
+  DcbPrefStorage,
+} from "./dcbPref";
 export {
   DCB_LEADER_DIRS,
   DCB_MAP_SLOT_COUNT,

@@ -9,7 +9,7 @@ import {
   parseSpawnSeed,
   parseTrafficCount,
 } from "@scenario";
-import { PpiPlaceholderId, createScopeView, paintPpi, parseDigitalMap } from "@scope";
+import { PpiPlaceholderId, browserDcbPrefStorage, createScopeView, loadDcbPrefFromStorage, paintPpi, parseDigitalMap } from "@scope";
 import {
   FPS_DEBUG_ID,
   SIM_HUD_ID,
@@ -50,6 +50,12 @@ const scopeView = createScopeView(scenario.arpNm.xNm, scenario.arpNm.yNm, {
   digitalMap: parseDigitalMap(scenario.maps),
   giTextLines: scenario.giTextLines,
 });
+const prefStore = browserDcbPrefStorage();
+if (prefStore) {
+  loadDcbPrefFromStorage(scopeView, scenario.icao, prefStore);
+} else {
+  scopeView.dcbPref.icao = scenario.icao;
+}
 
 document.title = scenario.id === "kdem-ils27" ? "ATC-SIM — KDEM ILS 27" : "ATC-SIM — KDEM";
 

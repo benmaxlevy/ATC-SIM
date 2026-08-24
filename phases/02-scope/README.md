@@ -535,7 +535,7 @@ Do not call the DCB addendum done until:
 - [ ] BRITE per drawn channel; CHAR SIZE per subsystem; WX/WXC/BKC channels disabled or stored no-op.
 - [ ] SSA FILTER hides existing SSA lines; GI TEXT has 10 toggleable facility lines.
 - [ ] TPA J-rings work; ATPA is a stub/toggle, not a pairing engine.
-- [ ] PREF 1–8 persist/restore display state in `localStorage`.
+- [x] PREF 1–8 persist/restore display state in `localStorage`.
 - [ ] Still no weather mosaic, CRDA, FMA, OSM, STARS font, Command IR from DCB.
 
 ## Launching an agent

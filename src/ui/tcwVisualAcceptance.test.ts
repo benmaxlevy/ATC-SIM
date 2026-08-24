@@ -38,7 +38,7 @@ const uiSources = import.meta.glob("./*.{ts,tsx}", {
 }) as Record<string, string>;
 
 const FORBIDDEN_CHROME = /\b(zoom|sprite|osm|hud|nametag|label)\b/i;
-const FORBIDDEN_DCB_CELLS = /\b(PREF|CSA|CRDA|FMA|OSM)\b/;
+const FORBIDDEN_DCB_CELLS = /\b(CSA|CRDA|FMA|OSM)\b/;
 
 function keyEvent(key: string) {
   return {
@@ -139,7 +139,7 @@ test("AC4 — T00-01 disclaimer is first-run and inside F1; HELP_KEYS_POINTER st
   expect(firstRun).toContain("disclaimer-first-run");
 });
 
-test("AC5 — persistent chrome has no zoom/label/sprite/OSM/HUD; DCB WX1–4 exist disabled; no PREF clone", () => {
+test("AC5 — persistent chrome has no zoom/label/sprite/OSM/HUD; DCB WX1–4 exist disabled; PREF allowed; no CSA/CRDA/FMA clone", () => {
   const chromeFiles = [
     "./DisplayControlBar.tsx",
     "./command-line.tsx",
@@ -164,6 +164,7 @@ test("AC5 — persistent chrome has no zoom/label/sprite/OSM/HUD; DCB WX1–4 ex
   expect(dcbText).toMatch(/CHAR/);
   expect(dcbText).toMatch(/BRITE/);
   expect(dcbText).toMatch(/FILTER/);
+  expect(dcbText).toMatch(/PREF/);
   expect(dcbText).not.toMatch(FORBIDDEN_CHROME);
   expect(dcbText).not.toMatch(FORBIDDEN_DCB_CELLS);
   for (const n of [1, 2, 3, 4]) {

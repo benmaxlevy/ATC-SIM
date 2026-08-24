@@ -2,7 +2,7 @@
  * Analog: CRC STARS DCB RANGE / PLACE CNTR / OFF CNTR / RR / PLACE RR / RR CNTR /
  * LDR DIR / LDR / MAPS / WX / CHAR SIZE / BRITE / AUX HISTORY / PTL / DCB position (R07).
  * Trainer delta: green equal-height cells on the glass. SHIFT swaps MAIN and AUX.
- * MAPS / TPA-ATPA / CHAR SIZE / BRITE / SSA FILTER / GI TEXT submenus replace the
+ * MAPS / TPA-ATPA / CHAR SIZE / BRITE / SSA FILTER / GI TEXT / PREF submenus replace the
  * bar; DONE / Esc return to MAIN. RANGE / RR / LDR DIR / LDR length are spinners
  * (arm, wheel steps frozen presets, second click / Esc commits). CHAR SIZE and
  * BRITE open submenus (`CHAR_SIZE` / `BRITE`) with per-channel spinners. AUX: VOL
@@ -12,7 +12,7 @@
  * facility lines (not METAR HTTP). HIST/PTL cells live on AUX (F7/F8 still work).
  * MAIN quick video maps 1–6; MAPS submenu slots 1–30 (empty slots disabled).
  * WX1–4 are disabled chrome (no precipitation). Disabled CRDA cell on SSA FILTER
- * is chrome only. No PREF / CSA / FMA (R06). Discrete **range** presets only.
+ * is chrome only. PREF is 8 local slots (not a NAS host). No CSA / FMA (R06). Discrete **range** presets only.
  * CHAR SIZE scales **datablock** / lists / DCB / tools / POS. BRITE multiplies
  * drawn channels. Not NAS STARS.
  *
@@ -30,6 +30,7 @@ import {
   SCOPE_FONT_STACK,
   applyBrite,
   applyDcbLeaderDir,
+  applyDcbPrefDefaults,
   applyDcbShift,
   applyRrCenter,
   clearAllVideoMaps,
@@ -37,6 +38,8 @@ import {
   armPlaceCenter,
   armPlaceRangeRing,
   beginAltitudeFilterChord,
+  beginDcbPrefSession,
+  browserDcbPrefStorage,
   cancelFilterEntry,
   centerOnAirport,
   closeDcbMenu,
@@ -58,6 +61,7 @@ import {
   formatDcbRrReadout,
   formatDcbTpaMiReadout,
   formatFilterBand,
+  deleteDcbPref,
   hideMapLists,
   isDcbMapSlotEnabled,
   isRangeRingOffViewCenter,
@@ -65,6 +69,11 @@ import {
   isVideoMapOn,
   isViewOffAirport,
   openDcbMenu,
+  persistDcbPref,
+  restoreDcbPrefSession,
+  saveAsDcbPref,
+  saveDcbPref,
+  selectDcbPrefSlot,
   setDcbDock,
   stepBriteChannel,
   stepCharSizeChannel,
@@ -366,7 +375,21 @@ interface DcbCellProps {
     | "atpa"
     | "atpa-cones"
     | "atpa-monitor"
-    | "atpa-alert";
+    | "atpa-alert"
+    | "pref"
+    | "pref-1"
+    | "pref-2"
+    | "pref-3"
+    | "pref-4"
+    | "pref-5"
+    | "pref-6"
+    | "pref-7"
+    | "pref-8"
+    | "pref-default"
+    | "pref-restore"
+    | "pref-save"
+    | "pref-save-as"
+    | "pref-delete";
   dataMapId?: string;
   dataMapSlot?: number;
   dataGiSlot?: number;
@@ -730,6 +753,21 @@ function renderMain(view: ScopeView, onChange: () => void, world: DisplayControl
       >
         <span className="dcb-cell-line">GI</span>
         <span className="dcb-cell-line">TEXT</span>
+      </DcbCell>
+      <DcbCell
+        kind="submenu"
+        ariaLabel="Pref"
+        dataDcb="pref"
+        pressed={view.dcbMenu === "PREF"}
+        onClick={() => {
+          cancelFilterIfEntering(view);
+          beginDcbPrefSession(view);
+          openDcbMenu(view, "PREF");
+          afterCell(onChange);
+        }}
+      >
+        <span className="dcb-cell-line">PREF</span>
+        <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
       {renderShift(view, onChange)}
     </>
@@ -1264,6 +1302,102 @@ function renderBrite(view: ScopeView, onChange: () => void) {
   );
 }
 
+
+function prefStore() {
+  return browserDcbPrefStorage() ?? undefined;
+}
+
+function renderPref(view: ScopeView, onChange: () => void) {
+  return (
+    <>
+      {renderDone(view, onChange)}
+      {Array.from({ length: 8 }, (_, i) => (
+        <DcbCell
+          key={i}
+          kind="toggle"
+          ariaLabel={`Pref ${i + 1}`}
+          dataDcb={`pref-${i + 1}` as DcbCellProps["dataDcb"]}
+          pressed={view.dcbPref.activeIndex === i}
+          onClick={() => {
+            cancelFilterIfEntering(view);
+            selectDcbPrefSlot(view, i);
+            persistDcbPref(view, prefStore());
+            afterCell(onChange);
+          }}
+        >
+          <span className="dcb-cell-line">PREF</span>
+          <span className="dcb-cell-line">{`${i + 1}`}</span>
+        </DcbCell>
+      ))}
+      <DcbCell
+        kind="action"
+        ariaLabel="Default"
+        dataDcb="pref-default"
+        onClick={() => {
+          cancelFilterIfEntering(view);
+          applyDcbPrefDefaults(view);
+          afterCell(onChange);
+        }}
+      >
+        <span className="dcb-cell-line">DEFAULT</span>
+        <span className="dcb-cell-line">{"\u00a0"}</span>
+      </DcbCell>
+      <DcbCell
+        kind="action"
+        ariaLabel="Restore"
+        dataDcb="pref-restore"
+        onClick={() => {
+          cancelFilterIfEntering(view);
+          restoreDcbPrefSession(view);
+          afterCell(onChange);
+        }}
+      >
+        <span className="dcb-cell-line">RESTORE</span>
+        <span className="dcb-cell-line">{"\u00a0"}</span>
+      </DcbCell>
+      <DcbCell
+        kind="action"
+        ariaLabel="Save"
+        dataDcb="pref-save"
+        onClick={() => {
+          cancelFilterIfEntering(view);
+          saveDcbPref(view, prefStore());
+          afterCell(onChange);
+        }}
+      >
+        <span className="dcb-cell-line">SAVE</span>
+        <span className="dcb-cell-line">{"\u00a0"}</span>
+      </DcbCell>
+      <DcbCell
+        kind="action"
+        ariaLabel="Save as"
+        dataDcb="pref-save-as"
+        onClick={() => {
+          cancelFilterIfEntering(view);
+          saveAsDcbPref(view, prefStore());
+          afterCell(onChange);
+        }}
+      >
+        <span className="dcb-cell-line">SAVE</span>
+        <span className="dcb-cell-line">AS</span>
+      </DcbCell>
+      <DcbCell
+        kind="action"
+        ariaLabel="Delete"
+        dataDcb="pref-delete"
+        onClick={() => {
+          cancelFilterIfEntering(view);
+          deleteDcbPref(view, prefStore());
+          afterCell(onChange);
+        }}
+      >
+        <span className="dcb-cell-line">DELETE</span>
+        <span className="dcb-cell-line">{"\u00a0"}</span>
+      </DcbCell>
+    </>
+  );
+}
+
 export function DisplayControlBar({ view, onChange, world }: DisplayControlBarProps) {
   const dcbPx = view.charSizes.dcb;
   const dcbText = applyBrite(PALETTE.dcbText, view.brite.dcb);
@@ -1309,7 +1443,9 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
                     ? renderSsaFilter(view, onChange)
                     : menu === "GI_FILTER"
                       ? renderGiFilter(view, onChange)
-                      : renderMain(view, onChange, world)}
+                      : menu === "PREF"
+                        ? renderPref(view, onChange)
+                        : renderMain(view, onChange, world)}
     </div>
   );
 }

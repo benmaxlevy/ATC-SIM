@@ -77,6 +77,7 @@ import {
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
 import { cloneBrite, type BriteState } from "./palette";
 import type { TrackDisplay } from "./trackDisplay";
+import type { DcbPrefRuntime } from "./dcbPref";
 
 export interface ScopeView {
   camera: ScopeCamera;
@@ -173,6 +174,11 @@ export interface ScopeView {
   giTextLines: string[];
   /** GI FILTER 1–10. Empty authored slots stay off and inert. */
   giFilterVisible: boolean[];
+  /**
+   * DCB PREF runtime (T02-29). Eight named local display snapshots.
+   * Analog CRC PREF; trainer localStorage, not a NAS preference host.
+   */
+  dcbPref: DcbPrefRuntime;
   /** Per-track display state (history, IDENT flash, datablock, leader, ownership). Keyed by aircraft id. */
   tracks: Map<string, TrackDisplay>;
   /** Scope-focus letter chord (`L` leader; T02-06 `F` filter). Null when idle. */
@@ -246,6 +252,12 @@ export function createScopeView(
     ssaFilter: defaultSsaVisibility(),
     giTextLines,
     giFilterVisible: defaultGiVisibility(giTextLines),
+    dcbPref: {
+      icao: "",
+      slots: [null, null, null, null, null, null, null, null],
+      activeIndex: 0,
+      restore: null,
+    },
     tracks: new Map(),
     pendingChord: null,
     helpOpen: false,
