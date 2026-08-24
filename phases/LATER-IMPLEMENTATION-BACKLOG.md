@@ -68,6 +68,19 @@ slots. Later implementations may give those cells real behavior:
 Do not fill empty map slots with OSM or add weather paint as an incidental
 change; each capability needs its own data and acceptance criteria.
 
+### PREF SAVE AS named sets
+
+SAVE AS currently auto-names the first empty slot `PREF n` and forbids
+`window.prompt` / HTML `<input>`. CRC STARS prompts for a preference-set name,
+then writes the first available slot.
+
+Later: after SAVE AS, collect a short name via a PPI/status-line chord (same
+grammar as the altitude FILTER `FIL` prompt). Enter commits to the first empty
+slot (slot 8 if all eight are full). Esc cancels. Do not use a browser dialog
+or an HTML text field. Slot caps should show the stored name once it exists.
+
+MAIN already shows the active set name on the PREF cap.
+
 ## Explicit boundary
 
 This document does not pull in untouched phase work such as scoring/replay,
