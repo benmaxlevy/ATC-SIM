@@ -26,24 +26,7 @@ import {
   localizerFromVideoMaps,
   runwayFromVideoMaps,
 } from "./loadVideoMaps";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function assertNumber(value: unknown, path: string): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    throw new Error(`Scenario ${path} must be a finite number`);
-  }
-  return value;
-}
-
-function assertString(value: unknown, path: string): string {
-  if (typeof value !== "string") {
-    throw new Error(`Scenario ${path} must be a string`);
-  }
-  return value;
-}
+import { assertArray, assertNumber, assertString, isRecord } from "./validate";
 
 function assertLatLon(value: unknown, path: string): LatLon {
   if (!isRecord(value)) {
@@ -341,13 +324,6 @@ function parseSpawnPolicy(value: unknown): SpawnPolicy {
     return value;
   }
   throw new Error('Scenario spawnPolicy must be "authored" or "star-inbound"');
-}
-
-function assertArray(value: unknown, path: string): unknown[] {
-  if (!Array.isArray(value)) {
-    throw new Error(`Scenario ${path} must be an array`);
-  }
-  return value;
 }
 
 export interface AssertScenarioOptions {

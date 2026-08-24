@@ -30,7 +30,7 @@ function pcm16ToLeBytes(pcm16: Int16Array): Uint8Array {
   return bytes;
 }
 
-function leBytesToPcm16(bytes: Uint8Array): Int16Array {
+export function leBytesToPcm16(bytes: Uint8Array): Int16Array {
   const even = bytes.byteLength - (bytes.byteLength % 2);
   const pcm16 = new Int16Array(even / 2);
   const view = new DataView(bytes.buffer, bytes.byteOffset, even);

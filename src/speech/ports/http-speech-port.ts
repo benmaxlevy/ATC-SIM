@@ -1,6 +1,6 @@
 import { SpeechPortError } from "../errors";
 import type { AudioClip, SpeechPort, Transcript, TranscribeOpts } from "../types";
-import { isWav, pcm16ToWav, uint8ToArrayBuffer, wavToAudioClip } from "./wav";
+import { isWav, leBytesToPcm16, pcm16ToWav, uint8ToArrayBuffer, wavToAudioClip } from "./wav";
 
 /**
  * Quality-default SpeechPort (`id: "http"`).
@@ -104,16 +104,6 @@ function optionalEnv(value: unknown): string | undefined {
 
 function isAbortError(err: unknown): boolean {
   return typeof err === "object" && err !== null && "name" in err && err.name === "AbortError";
-}
-
-function bytesToPcm16(bytes: Uint8Array): Int16Array {
-  const even = bytes.byteLength - (bytes.byteLength % 2);
-  const pcm16 = new Int16Array(even / 2);
-  const view = new DataView(bytes.buffer, bytes.byteOffset, even);
-  for (let i = 0; i < pcm16.length; i += 1) {
-    pcm16[i] = view.getInt16(i * 2, true);
-  }
-  return pcm16;
 }
 
 export class HttpSpeechPort implements SpeechPort {
@@ -226,7 +216,7 @@ export class HttpSpeechPort implements SpeechPort {
     if (!Number.isFinite(sampleRate) || sampleRate <= 0) {
       throw new SpeechPortError("invalid_response", "TTS sample rate missing");
     }
-    const pcm16 = bytesToPcm16(bytes);
+    const pcm16 = leBytesToPcm16(bytes);
     if (pcm16.length === 0) {
       throw new SpeechPortError("empty", "TTS response body was empty");
     }

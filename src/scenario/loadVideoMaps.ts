@@ -77,23 +77,16 @@ const VIDEO_MAP_JSON = import.meta.glob<unknown>("./video-maps/*/*.json", {
   import: "default",
 });
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+import {
+  assertFinite as assertFiniteVal,
+  assertString as assertStringVal,
+  isRecord,
+} from "./validate";
 
-function assertFinite(value: unknown, path: string): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    throw new Error(`Video map ${path} must be a finite number`);
-  }
-  return value;
-}
-
-function assertString(value: unknown, path: string): string {
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`Video map ${path} must be a non-empty string`);
-  }
-  return value;
-}
+const assertFinite = (value: unknown, path: string): number =>
+  assertFiniteVal(value, path, "Video map");
+const assertString = (value: unknown, path: string): string =>
+  assertStringVal(value, path, "Video map", true);
 
 function assertNmPair(value: unknown, path: string): [number, number] {
   if (!Array.isArray(value) || value.length < 2) {

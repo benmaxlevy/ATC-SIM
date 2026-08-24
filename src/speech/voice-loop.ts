@@ -165,10 +165,7 @@ function commandFromParse(
 }
 
 function acceptedReadback(result: void | VoiceDispatchResult): string | null {
-  if (result === undefined || result === null) {
-    return null;
-  }
-  if (result.accepted !== true) {
+  if (result?.accepted !== true) {
     return null;
   }
   const text = result.readback?.trim() ?? "";

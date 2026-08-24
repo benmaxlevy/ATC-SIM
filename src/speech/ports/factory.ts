@@ -91,10 +91,6 @@ export function readSpeechApiUrls(env?: {
   };
 }
 
-export function isSpeechBackendId(id: string): id is SpeechBackendId {
-  return id === "null" || id === "web-speech" || id === "http";
-}
-
 /**
  * Saved pref wins when it is a known id; `http` still requires URLs.
  * Unknown / whisper-wasm → {@link pickDefaultBackend}.
@@ -108,9 +104,6 @@ export function resolveSpeechBackend(
   }
   if (saved === "null") {
     return "null";
-  }
-  if (saved === "http") {
-    return pickDefaultBackend(urls);
   }
   return pickDefaultBackend(urls);
 }

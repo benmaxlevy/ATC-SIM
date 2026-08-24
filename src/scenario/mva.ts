@@ -9,30 +9,17 @@
 import type { MvaChart, MvaPolygon, MvaVertex } from "@core";
 export type { MvaChart, MvaPolygon, MvaVertex, MsawInhibitGeom } from "@core";
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+import {
+  assertArray as assertArrayVal,
+  assertNumber as assertNumberVal,
+  assertString as assertStringVal,
+  isRecord,
+} from "./validate";
 
-function assertNumber(value: unknown, path: string): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    throw new Error(`MVA ${path} must be a finite number`);
-  }
-  return value;
-}
-
-function assertString(value: unknown, path: string): string {
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`MVA ${path} must be a non-empty string`);
-  }
-  return value;
-}
-
-function assertArray(value: unknown, path: string): unknown[] {
-  if (!Array.isArray(value)) {
-    throw new Error(`MVA ${path} must be an array`);
-  }
-  return value;
-}
+const assertNumber = (value: unknown, path: string): number => assertNumberVal(value, path, "MVA");
+const assertString = (value: unknown, path: string): string =>
+  assertStringVal(value, path, "MVA", true);
+const assertArray = (value: unknown, path: string): unknown[] => assertArrayVal(value, path, "MVA");
 
 function parseVertex(value: unknown, path: string): MvaVertex {
   if (!isRecord(value)) {
