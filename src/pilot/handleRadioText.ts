@@ -147,30 +147,34 @@ export function handleRadioCommand(
   log: SessionLog,
   atWallMs = 0,
 ): PilotResult {
-  const token = command.callsign === "" ? null : command.callsign;
-  const resolved = resolveCallsign({ callsignToken: token, world });
-  if (!resolved.ok) {
-    const reason = resolved.reason;
-    logRejected(log, world, atWallMs, { command, reason, sourceText: command.sourceText });
+  function reject(reason: string, detail?: string, cmd?: Command): PilotResult {
+    const c = cmd ?? command;
+    logRejected(log, world, atWallMs, {
+      command: c,
+      reason,
+      sourceText: c.sourceText,
+    });
     return {
       accepted: false,
-      readback: formatRejectReadback({ reason }),
-      command,
+      readback: formatRejectReadback({
+        callsign: c.callsign || undefined,
+        reason,
+        detail,
+      }),
+      command: c,
       reason,
     };
   }
 
+  const token = command.callsign === "" ? null : command.callsign;
+  const resolved = resolveCallsign({ callsignToken: token, world });
+  if (!resolved.ok) {
+    return reject(resolved.reason);
+  }
+
   const aircraft = world.aircraft.find((ac) => ac.id === resolved.aircraftId);
   if (!aircraft) {
-    const reason = "UNKNOWN_CALLSIGN";
-    const missing: Command = { ...command, callsign: resolved.callsign };
-    logRejected(log, world, atWallMs, { command: missing, reason, sourceText: command.sourceText });
-    return {
-      accepted: false,
-      readback: formatRejectReadback({ reason }),
-      command: missing,
-      reason,
-    };
+    return reject("UNKNOWN_CALLSIGN", undefined, { ...command, callsign: resolved.callsign });
   }
 
   const resolvedCommand: Command = {
@@ -180,20 +184,7 @@ export function handleRadioCommand(
 
   const gate = assertHandoffOwned(handoffFor(world, aircraft.id));
   if (!gate.ok) {
-    logRejected(log, world, atWallMs, {
-      command: resolvedCommand,
-      reason: gate.reason,
-      sourceText: command.sourceText,
-    });
-    return {
-      accepted: false,
-      readback: formatRejectReadback({
-        callsign: resolved.callsign,
-        reason: gate.reason,
-      }),
-      command: resolvedCommand,
-      reason: gate.reason,
-    };
+    return reject(gate.reason, undefined, resolvedCommand);
   }
 
   const validated = validateInstructions(aircraft, resolvedCommand.instructions, {
@@ -202,21 +193,7 @@ export function handleRadioCommand(
     approachIds: world.catalog?.approaches.map((item) => item.id),
   });
   if (!validated.ok) {
-    logRejected(log, world, atWallMs, {
-      command: resolvedCommand,
-      reason: validated.reason,
-      sourceText: command.sourceText,
-    });
-    return {
-      accepted: false,
-      readback: formatRejectReadback({
-        callsign: resolved.callsign,
-        reason: validated.reason,
-        detail: validated.detail,
-      }),
-      command: resolvedCommand,
-      reason: validated.reason,
-    };
+    return reject(validated.reason, validated.detail, resolvedCommand);
   }
 
   applyIntent(aircraft, resolvedCommand.instructions, world.simTimeMs, {

@@ -66,10 +66,6 @@ function capitalizeFirst(text: string): string {
   return text.slice(0, i) + text[i]!.toUpperCase() + text.slice(i + 1);
 }
 
-function formatRunway(runway: string, suffix: string): string {
-  return `${runway}${suffix}`;
-}
-
 /** ILS27 → `runway 27 localizer`. */
 function speakRunwayLocalizer(approachId: string): string {
   const id = approachId.trim().toUpperCase();
@@ -78,7 +74,7 @@ function speakRunwayLocalizer(approachId: string): string {
     return `${id} localizer`;
   }
   const [, runway, suffix] = match;
-  return `runway ${formatRunway(runway, suffix)} localizer`;
+  return `runway ${runway}${suffix} localizer`;
 }
 
 function speakApproachNav(approachId: string): string {
@@ -88,40 +84,19 @@ function speakApproachNav(approachId: string): string {
     return id;
   }
   const [, kind, runway, suffix] = match;
-  return `${kind} runway ${formatRunway(runway, suffix)}`.trim();
+  return `${kind} runway ${runway}${suffix}`.trim();
 }
 
 function formatSpeedClause(instruction: Extract<Instruction, { type: "SPEED" }>): string {
-  const knots = `${formatDigitString(instruction.speedKt)} knots`;
-  switch (instruction.verb) {
-    case "MAINTAIN":
-      return `maintain ${knots}`;
-    case "INCREASE":
-      return `increase ${knots}`;
-    case "REDUCE":
-      return `reduce ${knots}`;
-    default: {
-      const _exhaustive: never = instruction.verb;
-      return _exhaustive;
-    }
-  }
+  return `${instruction.verb.toLowerCase()} ${formatDigitString(instruction.speedKt)} knots`;
 }
 
 function formatAltitudeClause(instruction: Extract<Instruction, { type: "ALTITUDE" }>): string {
   const alt = formatAltitude(instruction.altitudeFt);
   const until = instruction.untilEstablished ? " until established" : "";
-  switch (instruction.verb) {
-    case "CLIMB":
-      return `climb and maintain ${alt}${until}`;
-    case "DESCEND":
-      return `descend and maintain ${alt}${until}`;
-    case "MAINTAIN":
-      return `maintain ${alt}${until}`;
-    default: {
-      const _exhaustive: never = instruction.verb;
-      return _exhaustive;
-    }
-  }
+  const verbPhrase =
+    instruction.verb === "MAINTAIN" ? "maintain" : `${instruction.verb.toLowerCase()} and maintain`;
+  return `${verbPhrase} ${alt}${until}`;
 }
 
 function formatHeadingClause(instruction: Extract<Instruction, { type: "FLY_HEADING" }>): string {

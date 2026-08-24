@@ -144,11 +144,6 @@ export function roundAltitudeToHundreds(altitudeFt: number): number {
   return Math.max(0, Math.round(altitudeFt / 100) * 100);
 }
 
-/** Rounded altitude in feet MSL as a number. */
-export function formatAltitudeDigits(altitudeFt: number): string {
-  return String(roundAltitudeToHundreds(altitudeFt));
-}
-
 /**
  * Pilot altitude display. Below FL: grouped speech plus hundreds in
  * parentheses (`one-zero thousand (10000)` — TTS strips the paren, then groups

@@ -91,21 +91,7 @@ function validateOne(
       }
       return { ok: true };
     case "CLEARED_APPROACH":
-      if (instruction.approachId.trim() === "") {
-        return { ok: false, reason: "EMPTY" };
-      }
-      if (!approachKnown(instruction.approachId, opts)) {
-        return { ok: false, reason: "UNKNOWN_APPROACH" };
-      }
-      return { ok: true };
     case "INTERCEPT_LOCALIZER":
-      if (instruction.approachId.trim() === "") {
-        return { ok: false, reason: "EMPTY" };
-      }
-      if (!approachKnown(instruction.approachId, opts)) {
-        return { ok: false, reason: "UNKNOWN_APPROACH" };
-      }
-      return { ok: true };
     case "EXPECT_APPROACH":
       if (instruction.approachId.trim() === "") {
         return { ok: false, reason: "EMPTY" };
@@ -149,6 +135,15 @@ function headingInRange(headingDeg: number): boolean {
   return Number.isFinite(headingDeg) && headingDeg >= 0 && headingDeg < 360;
 }
 
+function isAltitudeValid(altitudeFt: number): boolean {
+  return (
+    Number.isFinite(altitudeFt) &&
+    altitudeFt % 100 === 0 &&
+    altitudeFt >= ALTITUDE_MIN_FT &&
+    altitudeFt <= ALTITUDE_MAX_FT
+  );
+}
+
 function approachKnown(approachId: string, opts?: ValidateOpts): boolean {
   if (!opts?.approachIds) {
     return true;
@@ -162,7 +157,7 @@ function validateAltitude(
   instruction: Extract<Instruction, { type: "ALTITUDE" }>,
 ): ValidateResult {
   const ft = instruction.altitudeFt;
-  if (!Number.isFinite(ft) || ft % 100 !== 0 || ft < ALTITUDE_MIN_FT || ft > ALTITUDE_MAX_FT) {
+  if (!isAltitudeValid(ft)) {
     return { ok: false, reason: "ALTITUDE" };
   }
   if (instruction.verb === "CLIMB" && ft <= aircraft.altitudeFt) {
@@ -198,8 +193,7 @@ function validateCross(
   if (instruction.fixId.trim() === "") {
     return { ok: false, reason: "EMPTY" };
   }
-  const ft = instruction.altitudeFt;
-  if (!Number.isFinite(ft) || ft % 100 !== 0 || ft < ALTITUDE_MIN_FT || ft > ALTITUDE_MAX_FT) {
+  if (!isAltitudeValid(instruction.altitudeFt)) {
     return { ok: false, reason: "ALTITUDE" };
   }
   if (!opts?.fixRegistry?.has(instruction.fixId)) {

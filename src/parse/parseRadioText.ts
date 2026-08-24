@@ -77,6 +77,22 @@ function fail(sourceText: string, code: ParseErrorCode, detail?: string): ParseR
   return { ok: false, error: formatParseError(code, detail), sourceText };
 }
 
+const ZERO_ARG_INSTRUCTIONS: Readonly<Record<string, Instruction>> = {
+  PH: { type: "PRESENT_HEADING" },
+  GA: { type: "GO_AROUND" },
+  I: { type: "IDENT" },
+  SH: { type: "SAY_HEADING" },
+  SA: { type: "SAY_ALTITUDE" },
+};
+
+const APPROACH_INSTRUCTIONS: Readonly<
+  Record<string, "CLEARED_APPROACH" | "INTERCEPT_LOCALIZER" | "EXPECT_APPROACH">
+> = {
+  APP: "CLEARED_APPROACH",
+  IL: "INTERCEPT_LOCALIZER",
+  EXP: "EXPECT_APPROACH",
+};
+
 type InstructionParse =
   | { ok: true; instruction: Instruction; nextIndex: number }
   | { ok: false; code: ParseErrorCode; detail?: string };
@@ -87,51 +103,20 @@ function parseOneInstruction(tokens: string[], index: number): InstructionParse 
     return { ok: false, code: PARSE_ERROR.EMPTY };
   }
 
-  if (token === "PH") {
-    return { ok: true, instruction: { type: "PRESENT_HEADING" }, nextIndex: index + 1 };
+  const zeroArg = ZERO_ARG_INSTRUCTIONS[token];
+  if (zeroArg) {
+    return { ok: true, instruction: zeroArg, nextIndex: index + 1 };
   }
-  if (token === "GA") {
-    return { ok: true, instruction: { type: "GO_AROUND" }, nextIndex: index + 1 };
-  }
-  if (token === "I") {
-    return { ok: true, instruction: { type: "IDENT" }, nextIndex: index + 1 };
-  }
-  if (token === "SH") {
-    return { ok: true, instruction: { type: "SAY_HEADING" }, nextIndex: index + 1 };
-  }
-  if (token === "SA") {
-    return { ok: true, instruction: { type: "SAY_ALTITUDE" }, nextIndex: index + 1 };
-  }
-  if (token === "APP") {
+
+  const approachType = APPROACH_INSTRUCTIONS[token];
+  if (approachType) {
     const approachId = tokens[index + 1];
     if (approachId === undefined) {
       return { ok: false, code: PARSE_ERROR.MISSING_APPROACH_ID };
     }
     return {
       ok: true,
-      instruction: { type: "CLEARED_APPROACH", approachId },
-      nextIndex: index + 2,
-    };
-  }
-  if (token === "IL") {
-    const approachId = tokens[index + 1];
-    if (approachId === undefined) {
-      return { ok: false, code: PARSE_ERROR.MISSING_APPROACH_ID };
-    }
-    return {
-      ok: true,
-      instruction: { type: "INTERCEPT_LOCALIZER", approachId },
-      nextIndex: index + 2,
-    };
-  }
-  if (token === "EXP") {
-    const approachId = tokens[index + 1];
-    if (approachId === undefined) {
-      return { ok: false, code: PARSE_ERROR.MISSING_APPROACH_ID };
-    }
-    return {
-      ok: true,
-      instruction: { type: "EXPECT_APPROACH", approachId },
+      instruction: { type: approachType, approachId },
       nextIndex: index + 2,
     };
   }

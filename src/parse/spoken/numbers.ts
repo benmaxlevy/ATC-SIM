@@ -226,12 +226,6 @@ export function parseAltitudeFt(
 }
 
 function combineThousandsGroup(parts: number[]): number {
-  if (parts.every((part) => part >= 0 && part <= 9)) {
-    return Number(parts.join(""));
-  }
-  if (parts.length === 1) {
-    return parts[0]!;
-  }
   return Number(parts.join(""));
 }
 

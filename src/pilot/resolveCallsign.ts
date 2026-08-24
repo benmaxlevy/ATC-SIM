@@ -7,18 +7,13 @@
  */
 
 import type { Aircraft, World } from "@core";
+import { FULL_CALLSIGN, SUFFIX_CALLSIGN } from "../parse/tokens";
 
 export type ResolveReason =
   "UNKNOWN_CALLSIGN" | "AMBIGUOUS_CALLSIGN" | "NO_CALLSIGN_OR_SELECTION" | "SELECTED_NOT_FOUND";
 
 export type ResolveResult =
   { ok: true; aircraftId: string; callsign: string } | { ok: false; reason: ResolveReason };
-
-/** Full callsign: three-letter ICAO prefix + 1–4 digits + optional letter. */
-const FULL_CALLSIGN = /^[A-Z]{3}[0-9]{1,4}[A-Z]?$/;
-
-/** Numeric suffix (digits / digits+letter) used when the airline prefix is omitted. */
-const SUFFIX_CALLSIGN = /^[0-9]{1,4}[A-Z]?$/;
 
 /** Strip ICAO prefix `[A-Z]{3}`; remainder must equal a suffix token (`123` ≠ `123A`). */
 export function numericTail(callsign: string): string {
