@@ -52,6 +52,20 @@ If `phases/SWARM-STATUS.md` already lists **seventh-swarm** exit green with T02-
 
 ---
 
+## Seventh swarm resume — 2026-08-23 (captain interrupted)
+
+Human interrupted the captain mid-wave (~45 min). **T02-22 is on `master`.** Wave B worktrees exist with **uncommitted** work:
+
+| Ticket | Worktree | Branch |
+| --- | --- | --- |
+| T02-23 | `C:\Users\Ben\Documents\ATC-SIM-wt-T02-23` | `ticket/T02-23-dcb-main-range-cntr-rr-ldr` |
+| T02-24 | `C:\Users\Ben\Documents\ATC-SIM-wt-T02-24` | `ticket/T02-24-dcb-maps-wx-disabled` |
+| T02-25 | `C:\Users\Ben\Documents\ATC-SIM-wt-T02-25` | `ticket/T02-25-dcb-aux-history-ptl-dock` |
+
+**Do not discard that work.** Resume Wave B in those worktrees: finish ACs, progressive commits, `READY TO MERGE`. Then Wave C (T02-26∥27∥28) from updated `master`, then D T02-29, then E T02-30. Same frozen judgements. Still do not start phase 5.
+
+---
+
 ## Fifth swarm started — T04-13–15 STAR inbound spawn + check-in
 
 Orchestrator planning update. Historical phase 4 exit stays green. This run is a **post-exit addendum** only.
