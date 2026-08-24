@@ -42,6 +42,8 @@ Same pair is in `.env.example`. Copy that file to `.env` so you do not have to e
 
 Weights ~1.0–1.2 GB; plan **~2 GB RAM**. **CPU OK, slow OK** — salvage only. VRAM not required. CUDA: Path C auto-offloads all layers when `llama-cpp-python` was built with GGML CUDA **and** CUDA 12 `cublas` loads (same DLL path fix as STT). Force CPU: `PARSE_N_GPU_LAYERS=0`. Partial offload: set a positive layer count.
 
+**Custom GGUF Models:** You can drop in any local `.gguf` model file on disk by setting `PARSE_MODEL_ID=/path/to/model.gguf`. Small **instruct-tuned** models (1B–3B parameters, such as Qwen2.5-Instruct or Llama-3.2-Instruct) are strongly recommended over base models so that the model reliably follows system prompt instructions and GBNF JSON grammar constraints.
+
 Install the extra runtime only if you enable Path C (mock mode does not need it):
 
 ```text

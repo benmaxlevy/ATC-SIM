@@ -106,29 +106,14 @@ cp .env.example .env
 
 ### Speech Service (`speech-api/.env`)
 
-Copy `speech-api/.env.example` to `speech-api/.env` to configure the Python speech and language engine:
+The local Python speech service is configured via `speech-api/.env` (copy from `speech-api/.env.example`).
 
 ```bash
 cd speech-api
 cp .env.example .env
 ```
 
-| Variable | Default | Description |
-|---|---|---|
-| `HOST` | `127.0.0.1` | Local bind address |
-| `PORT` | `8090` | Local bind port |
-| `STT_MODEL_ID` | `Systran/faster-whisper-small.en` | Hugging Face Hub ID or alias (`base.en`, `small.en`, `medium.en`) |
-| `TTS_VOICE` | `en_US-lessac-medium` | Default Piper voice ID |
-| `TTS_VOICES` | lessac, amy, ryan, joe, kristin, kusal | Comma-separated Piper voices preloaded for callsign diversity |
-| `PARSE_MODEL_ID` | `Qwen/Qwen2.5-1.5B-Instruct-GGUF` | Hugging Face Hub ID or local path to a `.gguf` file (e.g. `/path/to/model.gguf`) |
-| `PARSE_GGUF_FILE` | `qwen2.5-1.5b-instruct-q4_k_m.gguf` | GGUF filename when loading from a Hugging Face repo |
-| `PARSE_N_GPU_LAYERS`| auto (`-1` on CUDA, `0` on CPU) | Number of layers to offload to GPU (`-1` = all layers, `0` = CPU only) |
-| `PARSE_CTX` | `2048` | Context window size for llama.cpp |
-| `STT_DEVICE` | auto (`cuda` or `cpu`) | Force `cpu` or `cuda` for Faster-Whisper |
-| `SPEECH_API_CACHE` | `speech-api/.cache` | Local weight cache directory (gitignored) |
-
-> [!TIP]
-> **Custom GGUF Models**: You can drop in any local `.gguf` file by setting `PARSE_MODEL_ID=/path/to/model.gguf`. We recommend using small **instruct-tuned** models (1B–3B parameters, such as Qwen2.5-Instruct or Llama-3.2-Instruct) rather than base models, so the model follows system prompt formatting and GBNF JSON grammar constraints accurately.
+It supports configuring custom STT/TTS model weights, preloaded voice rosters, CUDA offloading, and custom local `.gguf` models for Path C salvage parsing. For the full environment variable reference and configuration guide, see [`speech-api/README.md`](speech-api/README.md).
 
 ---
 
