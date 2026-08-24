@@ -15,7 +15,7 @@ import {
   toggleCurrentMapsList,
   toggleGeoMapsList,
 } from "./dcbFunctions";
-import { createScopeView } from "./scopeView";
+import { createScopeView, toggleSsaFilter } from "./scopeView";
 import { formatFilterReadout } from "./altitudeFilter";
 import { buildSsaLines, formatSsaTime } from "./ssa";
 import {
@@ -1115,4 +1115,22 @@ test("T02-26 — CHAR SIZE DATA BLOCKS / LISTS and BRITE FDB/MPA change paint", 
   expect(ssa?.font).toContain("13px");
   expect(ssa?.fillStyle).toBe(applyBrite(PALETTE.ssa, 100));
   expect(next.fillTexts.some((t) => t.fillStyle === applyBrite(PALETTE.map, 40))).toBe(true);
+});
+
+test("T02-27 — SSA FILTER hides TIME on the PPI; GI TEXT paints authored lines", () => {
+  const world = createWorld({ simTimeMs: 125_000 });
+  const scenario = loadKdem();
+  const view = createScopeView(0, 0, { giTextLines: scenario.giTextLines });
+  const before = createMockCtx();
+  renderScope(before.ctx, world, view, 800, 800);
+  expect(before.fillTexts.some((t) => t.text === formatSsaTime(125_000))).toBe(true);
+  expect(before.fillTexts.some((t) => t.text === "ATIS A")).toBe(true);
+  expect(before.fillTexts.some((t) => t.text === "RWY 27")).toBe(true);
+
+  toggleSsaFilter(view, "TIME");
+  const after = createMockCtx();
+  renderScope(after.ctx, world, view, 800, 800);
+  expect(after.fillTexts.some((t) => t.text === formatSsaTime(125_000))).toBe(false);
+  expect(after.fillTexts.some((t) => t.text === "ATIS A")).toBe(true);
+  expect(after.fillTexts.filter((t) => t.text === "").length).toBe(0);
 });

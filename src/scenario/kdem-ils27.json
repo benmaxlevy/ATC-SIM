@@ -55,5 +55,17 @@
       "starId": "DEM1",
       "transitionId": "S"
     }
+  ],
+  "giTextLines": [
+    "ATIS A",
+    "RWY 27",
+    "ILS 27 IN USE",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
   ]
 }

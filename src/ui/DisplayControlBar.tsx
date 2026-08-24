@@ -2,14 +2,16 @@
  * Analog: CRC STARS DCB RANGE / PLACE CNTR / OFF CNTR / RR / PLACE RR / RR CNTR /
  * LDR DIR / LDR / MAPS / WX / CHAR SIZE / BRITE / AUX HISTORY / PTL / DCB position (R07).
  * Trainer delta: green equal-height cells on the glass. SHIFT swaps MAIN and AUX.
- * MAPS / TPA-ATPA / CHAR SIZE / BRITE submenus replace the bar; DONE / Esc return to MAIN. RANGE / RR /
- * LDR DIR / LDR length are spinners (arm, wheel steps frozen presets, second click /
- * Esc commits). CHAR SIZE and BRITE open submenus (`CHAR_SIZE` / `BRITE`) with
- * per-channel spinners. AUX: VOL disabled,
- * HISTORY spinner 0–5, DCB TOP/LEFT/RIGHT/BOTTOM, PTL length spinner, PTL OWN,
- * PTL ALL, TPA/ATPA stub. FILTER stays on MAIN. HIST/PTL cells live on AUX (F7/F8
- * still work). MAIN quick video maps 1–6; MAPS submenu slots 1–30 (empty slots
- * disabled). WX1–4 are disabled chrome (no precipitation). No PREF / CSA / CRDA /
+ * MAPS / TPA-ATPA / CHAR SIZE / BRITE / SSA FILTER / GI TEXT submenus replace the
+ * bar; DONE / Esc return to MAIN. RANGE / RR / LDR DIR / LDR length are spinners
+ * (arm, wheel steps frozen presets, second click / Esc commits). CHAR SIZE and
+ * BRITE open submenus (`CHAR_SIZE` / `BRITE`) with per-channel spinners. AUX: VOL
+ * disabled, HISTORY spinner 0–5, DCB TOP/LEFT/RIGHT/BOTTOM, PTL length spinner,
+ * PTL OWN, PTL ALL, TPA/ATPA stub. FILTER (altitude) stays on MAIN. SSA FILTER
+ * hides existing SSA lines; GI TEXT toggles authored facility lines (not METAR
+ * HTTP). HIST/PTL cells live on AUX (F7/F8 still work). MAIN quick video maps 1–6;
+ * MAPS submenu slots 1–30 (empty slots disabled). WX1–4 are disabled chrome (no
+ * precipitation). Disabled CRDA cell on SSA FILTER is chrome only. No PREF / CSA /
  * FMA (R06). Discrete **range** presets only. CHAR SIZE scales **datablock** /
  * lists / DCB / tools / POS. BRITE multiplies drawn channels. Not NAS STARS.
  *
@@ -43,6 +45,8 @@ import {
   DCB_LEADER_DIRS,
   DCB_MAP_SLOT_COUNT,
   DCB_QUICK_MAP_COUNT,
+  GI_SLOT_COUNT,
+  SSA_FILTER_FIELDS,
   formatDcbBriteReadout,
   formatDcbCharReadout,
   formatDcbHistoryReadout,
@@ -71,8 +75,10 @@ import {
   stepRrInterval,
   toggleCurrentMapsList,
   toggleGeoMapsList,
+  toggleGiFilter,
   togglePtlOn,
   togglePtlOwn,
+  toggleSsaFilter,
   toggleVideoMap,
   videoMapByDcbNumber,
   type BriteChannel,
@@ -80,6 +86,7 @@ import {
   type DcbCellKind,
   type DcbSpinnerCell,
   type ScopeView,
+  type SsaFilterField,
 } from "@scope";
 import { focusPpi } from "./FlightStrips";
 
@@ -178,6 +185,32 @@ function ptlSpinnerArmed(view: ScopeView): boolean {
   return view.dcbSpinner.armed && view.dcbSpinner.cell === "PTL";
 }
 
+function ssaFilterCellId(field: SsaFilterField): NonNullable<DcbCellProps["dataDcb"]> {
+  switch (field) {
+    case "TIME":
+      return "ssa-time";
+    case "ALTSTG":
+      return "ssa-altstg";
+    case "FILTER":
+      return "ssa-filter-line";
+    case "RANGE":
+      return "ssa-range";
+    case "OFF_CNTR":
+      return "ssa-off-cntr";
+    case "STATUS":
+      return "ssa-status";
+    case "PTL":
+      return "ssa-ptl";
+  }
+}
+
+function ssaFilterLines(field: SsaFilterField): { line1: string; line2: string } {
+  if (field === "OFF_CNTR") {
+    return { line1: "OFF", line2: "CNTR" };
+  }
+  return { line1: field, line2: "\u00a0" };
+}
+
 /**
  * Keep RANGE / MAPS / RR / LDR DIR / LDR / CHAR / BRITE / FILTER / HISTORY / PTL in sync
  * with keyboard chords.
@@ -226,6 +259,17 @@ export function syncDisplayControlBar(
   setPressed(doc.querySelector('[data-dcb-cell="ldr-length"]'), spinnerArmed(view, "LDR_LENGTH"));
   setPressed(doc.querySelector('[data-dcb-cell="geo-maps"]'), view.geoMapsListOn);
   setPressed(doc.querySelector('[data-dcb-cell="current"]'), view.currentMapsListOn);
+  setPressed(doc.querySelector('[data-dcb-cell="ssa-filter"]'), view.dcbMenu === "SSA_FILTER");
+  setPressed(doc.querySelector('[data-dcb-cell="gi-text"]'), view.dcbMenu === "GI_FILTER");
+  for (const field of SSA_FILTER_FIELDS) {
+    setPressed(doc.querySelector(`[data-dcb-cell="${ssaFilterCellId(field)}"]`), view.ssaFilter[field]);
+  }
+  for (const el of doc.querySelectorAll("[data-dcb-gi-slot]")) {
+    const slot = Number(el.getAttribute("data-dcb-gi-slot"));
+    if (Number.isFinite(slot) && slot >= 1) {
+      setPressed(el, view.giFilterVisible[slot - 1] === true);
+    }
+  }
 }
 
 interface DcbCellProps {
@@ -291,9 +335,21 @@ interface DcbCellProps {
     | "dock-left"
     | "dock-right"
     | "dock-bottom"
-    | "tpa";
+    | "tpa"
+    | "ssa-filter"
+    | "gi-text"
+    | "ssa-time"
+    | "ssa-altstg"
+    | "ssa-filter-line"
+    | "ssa-range"
+    | "ssa-off-cntr"
+    | "ssa-status"
+    | "ssa-ptl"
+    | "crda"
+    | "gi-slot";
   dataMapId?: string;
   dataMapSlot?: number;
+  dataGiSlot?: number;
 }
 
 function DcbCell({
@@ -307,6 +363,7 @@ function DcbCell({
   dataDcb,
   dataMapId,
   dataMapSlot,
+  dataGiSlot,
 }: DcbCellProps) {
   const inert = disabled || kind === "disabled";
   return (
@@ -320,6 +377,7 @@ function DcbCell({
       data-dcb-kind={kind}
       data-dcb-map-id={dataMapId}
       data-dcb-map-slot={dataMapSlot}
+      data-dcb-gi-slot={dataGiSlot}
       data-dcb-ptl={dataDcb === "ptl" ? "" : undefined}
       data-dcb-hist={dataDcb === "hist" ? "" : undefined}
       data-dcb-cell={dataDcb}
@@ -625,6 +683,34 @@ function renderMain(view: ScopeView, onChange: () => void, world: DisplayControl
           {formatFilterBand(view.altitudeFilter, view.filterEntry)}
         </span>
       </DcbCell>
+      <DcbCell
+        kind="submenu"
+        ariaLabel="SSA filter"
+        dataDcb="ssa-filter"
+        pressed={view.dcbMenu === "SSA_FILTER"}
+        onClick={() => {
+          cancelFilterIfEntering(view);
+          openDcbMenu(view, "SSA_FILTER");
+          afterCell(onChange);
+        }}
+      >
+        <span className="dcb-cell-line">SSA</span>
+        <span className="dcb-cell-line">FILTER</span>
+      </DcbCell>
+      <DcbCell
+        kind="submenu"
+        ariaLabel="GI text"
+        dataDcb="gi-text"
+        pressed={view.dcbMenu === "GI_FILTER"}
+        onClick={() => {
+          cancelFilterIfEntering(view);
+          openDcbMenu(view, "GI_FILTER");
+          afterCell(onChange);
+        }}
+      >
+        <span className="dcb-cell-line">GI</span>
+        <span className="dcb-cell-line">TEXT</span>
+      </DcbCell>
       {renderShift(view, onChange)}
     </>
   );
@@ -780,6 +866,70 @@ function renderAux(view: ScopeView, onChange: () => void) {
 
 function renderTpaAtpa(view: ScopeView, onChange: () => void) {
   return <>{renderDone(view, onChange)}</>;
+}
+
+function renderSsaFilter(view: ScopeView, onChange: () => void) {
+  return (
+    <>
+      {renderDone(view, onChange)}
+      {SSA_FILTER_FIELDS.map((field) => {
+        const lines = ssaFilterLines(field);
+        return (
+          <DcbCell
+            key={field}
+            kind="toggle"
+            ariaLabel={`SSA ${lines.line1}${lines.line2.trim() ? ` ${lines.line2}` : ""}`}
+            dataDcb={ssaFilterCellId(field)}
+            pressed={view.ssaFilter[field]}
+            onClick={() => {
+              cancelFilterIfEntering(view);
+              toggleSsaFilter(view, field);
+              afterCell(onChange);
+            }}
+          >
+            <span className="dcb-cell-line">{lines.line1}</span>
+            <span className="dcb-cell-line">{lines.line2}</span>
+          </DcbCell>
+        );
+      })}
+      <DcbCell kind="disabled" ariaLabel="CRDA" dataDcb="crda" disabled onClick={() => undefined}>
+        <span className="dcb-cell-line">CRDA</span>
+        <span className="dcb-cell-line">{"\u00a0"}</span>
+      </DcbCell>
+    </>
+  );
+}
+
+function renderGiFilter(view: ScopeView, onChange: () => void) {
+  return (
+    <>
+      {renderDone(view, onChange)}
+      {Array.from({ length: GI_SLOT_COUNT }, (_, i) => {
+        const slot = i + 1;
+        const authored = view.giTextLines[i] ?? "";
+        const empty = authored.length === 0;
+        return (
+          <DcbCell
+            key={slot}
+            kind={empty ? "disabled" : "toggle"}
+            ariaLabel={`GI ${slot}`}
+            dataDcb="gi-slot"
+            dataGiSlot={slot}
+            pressed={!empty && view.giFilterVisible[i]}
+            disabled={empty}
+            onClick={() => {
+              cancelFilterIfEntering(view);
+              toggleGiFilter(view, i);
+              afterCell(onChange);
+            }}
+          >
+            <span className="dcb-cell-line">{`GI ${slot}`}</span>
+            <span className="dcb-cell-line">{empty ? "\u00a0" : authored}</span>
+          </DcbCell>
+        );
+      })}
+    </>
+  );
 }
 
 function renderMaps(view: ScopeView, onChange: () => void) {
@@ -1069,7 +1219,11 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
                 ? renderCharSize(view, onChange)
                 : menu === "BRITE"
                   ? renderBrite(view, onChange)
-                  : renderMain(view, onChange, world)}
+                  : menu === "SSA_FILTER"
+                    ? renderSsaFilter(view, onChange)
+                    : menu === "GI_FILTER"
+                      ? renderGiFilter(view, onChange)
+                      : renderMain(view, onChange, world)}
     </div>
   );
 }

@@ -51,6 +51,13 @@ import {
 import type { HistoryDotCount } from "./history";
 import { stepHistoryDotCount } from "./history";
 import { PTL_MINUTES, stepPtlMinutes, type PtlMinutes } from "./ptl";
+import {
+  defaultGiVisibility,
+  defaultSsaVisibility,
+  padGiTextLines,
+  type SsaFilterField,
+  type SsaVisibility,
+} from "./ssa";
 import type { ScopeChord } from "./keymap";
 import {
   DEFAULT_LEADER_DIR,
@@ -140,6 +147,16 @@ export interface ScopeView {
   altitudeFilter: AltitudeFilter;
   /** Scope-focus `F` chord. Idle when not entering hundreds. */
   filterEntry: FilterEntry;
+  /**
+   * SSA FILTER: which existing SSA lines paint (TIME / ALTSTG / FILTER / RANGE /
+   * OFF CNTR / STATUS / PTL). Default all on. Display only — not the altitude
+   * FILTER chord.
+   */
+  ssaFilter: SsaVisibility;
+  /** Ten GI TEXT strings from facility JSON. Empty = unused. Not live METAR. */
+  giTextLines: string[];
+  /** GI FILTER 1–10. Empty authored slots stay off and inert. */
+  giFilterVisible: boolean[];
   /** Per-track display state (history, IDENT flash, datablock, leader, ownership). Keyed by aircraft id. */
   tracks: Map<string, TrackDisplay>;
   /** Scope-focus letter chord (`L` leader; T02-06 `F` filter). Null when idle. */
@@ -154,12 +171,13 @@ export interface ScopeView {
 export function createScopeView(
   airportEastNm: number = AIRPORT_REF_EAST_NM,
   airportNorthNm: number = AIRPORT_REF_NORTH_NM,
-  options?: { digitalMap?: DigitalMap; showCoastline?: boolean },
+  options?: { digitalMap?: DigitalMap; showCoastline?: boolean; giTextLines?: readonly string[] },
 ): ScopeView {
   const digitalMap = options?.digitalMap ?? DEFAULT_DIGITAL_MAP;
   const showCoastline = options?.showCoastline ?? digitalMap.coastline?.enabled === true;
   const showRunway = true;
   const showLocalizer = true;
+  const giTextLines = padGiTextLines(options?.giTextLines);
   return {
     camera: {
       rangeNm: DEFAULT_RANGE_NM,
@@ -207,6 +225,9 @@ export function createScopeView(
     ptlMinutes: PTL_MINUTES,
     altitudeFilter: { ...DEFAULT_ALTITUDE_FILTER },
     filterEntry: idleFilterEntry(DEFAULT_ALTITUDE_FILTER),
+    ssaFilter: defaultSsaVisibility(),
+    giTextLines,
+    giFilterVisible: defaultGiVisibility(giTextLines),
     tracks: new Map(),
     pendingChord: null,
     helpOpen: false,
@@ -264,6 +285,20 @@ export function stepPtlLength(view: ScopeView, delta: -1 | 1): void {
 
 export function formatDcbPtlMinutesReadout(minutes: PtlMinutes): string {
   return minutes === 0.5 ? "0.5" : minutes.toFixed(1);
+}
+
+/** SSA FILTER cell: hide/show one existing SSA line. Never a Command. */
+export function toggleSsaFilter(view: ScopeView, key: SsaFilterField): void {
+  view.ssaFilter[key] = !view.ssaFilter[key];
+}
+
+/** GI FILTER 1–10. Empty authored slots are inert. Never a Command. */
+export function toggleGiFilter(view: ScopeView, index: number): void {
+  const text = view.giTextLines[index] ?? "";
+  if (text.length === 0) {
+    return;
+  }
+  view.giFilterVisible[index] = !view.giFilterVisible[index];
 }
 
 export function setDcbDock(view: ScopeView, dock: DcbDock): void {

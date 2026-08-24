@@ -17,7 +17,7 @@ import type {
   SpawnPolicy,
   VideoMap,
 } from "./types";
-import { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN } from "./types";
+import { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN, GI_TEXT_LINE_COUNT } from "./types";
 import { loadCatalog } from "./procedures/loadCatalog";
 import { loadMva } from "./mva/load";
 import {
@@ -310,6 +310,29 @@ function assertArrivals(
   return arrivals;
 }
 
+/**
+ * Ten GI TEXT strings. Omitted → ten empty slots (second facility still loads).
+ * Present → must be length 10; each entry a string. Empty string = unused.
+ * Authored trainer copy — never fetched METAR.
+ */
+function parseGiTextLines(value: unknown): string[] {
+  const lines = Array.from({ length: GI_TEXT_LINE_COUNT }, () => "");
+  if (value == null) {
+    return lines;
+  }
+  if (!Array.isArray(value) || value.length !== GI_TEXT_LINE_COUNT) {
+    throw new Error(`Scenario giTextLines must be an array of ${GI_TEXT_LINE_COUNT} strings`);
+  }
+  for (let i = 0; i < GI_TEXT_LINE_COUNT; i++) {
+    const slot = value[i];
+    if (typeof slot !== "string") {
+      throw new Error(`Scenario giTextLines[${i}] must be a string`);
+    }
+    lines[i] = slot;
+  }
+  return lines;
+}
+
 function parseSpawnPolicy(value: unknown): SpawnPolicy {
   if (value == null) {
     return "authored";
@@ -375,6 +398,7 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
       max: options?.arrivalCountMax ?? ARRIVAL_COUNT_MAX,
     }),
     spawnPolicy: parseSpawnPolicy(s.spawnPolicy),
+    giTextLines: parseGiTextLines(s.giTextLines),
     catalog,
     mva: loadMva(icao),
   };

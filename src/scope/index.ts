@@ -101,8 +101,20 @@ export {
 } from "./mapLayers";
 export type { DigitalMap, MapCache, MapLayerFlags, NmPoint } from "./mapLayers";
 export { renderScope } from "./renderScope";
-export { SSA_ALTIMETER_STUB, SSA_FUSED_STUB, buildSsaLines, formatSsaTime } from "./ssa";
-export type { SsaInput } from "./ssa";
+export {
+  GI_SLOT_COUNT,
+  SSA_ALTIMETER_STUB,
+  SSA_FILTER_FIELDS,
+  SSA_FUSED_STUB,
+  buildGiLines,
+  buildSsaLines,
+  defaultGiVisibility,
+  defaultSsaVisibility,
+  formatSsaPtl,
+  formatSsaTime,
+  padGiTextLines,
+} from "./ssa";
+export type { SsaFilterField, SsaInput, SsaVisibility } from "./ssa";
 export {
   DEFAULT_ALTITUDE_FILTER,
   FILTER_HUNDREDS_MAX,
@@ -183,8 +195,10 @@ export {
   toggleHistoryEnabled,
   toggleMapLayer,
   toggleModeCVisible,
+  toggleGiFilter,
   togglePtlOn,
   togglePtlOwn,
+  toggleSsaFilter,
 } from "./scopeView";
 export type { MapLayerId, ScopeView } from "./scopeView";
 export { DCB_THICKNESS_PX, drawablePpiSize, isVerticalDcbDock } from "./dcbDock";

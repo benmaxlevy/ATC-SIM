@@ -42,7 +42,7 @@ export type {
   StarProcedure,
 } from "./procedures/types";
 export { catalogDctIds } from "./procedures/types";
-export { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN } from "./types";
+export { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN, GI_TEXT_LINE_COUNT } from "./types";
 export { assertScenario, loadKdem, loadKdemIls27 } from "./load";
 export { loadCatalog, parseCatalogFiles } from "./procedures/loadCatalog";
 export type { MvaChart, MvaPolygon, MvaVertex, MsawInhibitGeom } from "./mva/types";

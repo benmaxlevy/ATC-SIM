@@ -6,6 +6,8 @@ import { readFileSync } from "node:fs";
 import {
   RANGE_PRESETS_NM,
   beginAltitudeFilterChord,
+  buildGiLines,
+  buildSsaLines,
   centerOnAirport,
   createScopeView,
   applyDcbShift,
@@ -16,9 +18,11 @@ import {
   formatDcbRangeReadout,
   handleFilterEntryKey,
   parseDigitalMap,
+  toggleGiFilter,
   toggleHistoryEnabled,
   toggleMapLayer,
   togglePtlOn,
+  toggleSsaFilter,
   tryApplyAltitudeFilterDigits,
   stepRrInterval,
   PpiPlaceholder,
@@ -476,6 +480,41 @@ test("T02-26 — CHAR SIZE submenu has DATA BLOCKS / LISTS / DCB / TOOLS / POS; 
   expect(dcbHtml(view)).toContain("RANGE 20");
 });
 
+test("T02-27 AC1 — SSA FILTER submenu hides TIME; restoring shows it again", () => {
+  const view = createScopeView();
+  expect(dcbHtml(view)).toContain("SSA");
+  expect(dcbHtml(view)).toMatch(/>FILTER</);
+  openDcbMenu(view, "SSA_FILTER");
+  const html = dcbHtml(view);
+  expect(html).toContain("DONE");
+  expect(html).toContain("TIME");
+  expect(html).toContain("ALTSTG");
+  expect(html).toContain("STATUS");
+  expect(html).toContain("RANGE");
+  expect(html).toContain("OFF");
+  expect(html).toContain("PTL");
+  expect(html).toMatch(/aria-label="CRDA"[^>]*\bdisabled\b/);
+  expect(html).not.toContain("RANGE 20");
+  expect(html).toMatch(/data-dcb-menu="SSA_FILTER"/);
+
+  const ssaInput = {
+    simTimeMs: 125_000,
+    rangeNm: view.camera.rangeNm,
+    offCenter: false,
+    filter: view.altitudeFilter,
+    filterEntry: view.filterEntry,
+    visibility: view.ssaFilter,
+    ptlMinutes: view.ptlMinutes,
+  };
+  expect(buildSsaLines(ssaInput)).toContain("0002/05");
+  toggleSsaFilter(view, "TIME");
+  expect(buildSsaLines(ssaInput)).not.toContain("0002/05");
+  toggleSsaFilter(view, "TIME");
+  expect(buildSsaLines(ssaInput)).toContain("0002/05");
+  closeDcbMenu(view);
+  expect(dcbHtml(view)).toContain("RANGE 20");
+});
+
 test("T02-26 — BRITE submenu paints FDB/LDB/MPA/HST/RR/TLS; WX/WXC/BKC disabled", () => {
   expect(barSrc()).toMatch(/openDcbMenu\(view,\s*"BRITE"\)/);
   expect(barSrc()).toMatch(/stepBriteChannel/);
@@ -533,4 +572,59 @@ test("T02-26 — DONE/Esc return MAIN; DAL123 H270 still parses", async () => {
       { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
     ]);
   }
+});
+
+test("T02-27 AC3 — GI FILTER hides an authored line; empty slots are disabled", () => {
+  const scenario = loadKdem();
+  const view = createScopeView(0, 0, { giTextLines: scenario.giTextLines });
+  expect(dcbHtml(view)).toContain("GI");
+  expect(dcbHtml(view)).toContain("TEXT");
+  openDcbMenu(view, "GI_FILTER");
+  const html = dcbHtml(view);
+  expect(html).toContain("DONE");
+  expect(html).toContain("GI 1");
+  expect(html).toContain("GI 10");
+  expect(html).toContain("ATIS A");
+  expect(html).toMatch(/aria-label="GI 10"[^>]*\bdisabled\b/);
+  expect(html).toMatch(/data-dcb-menu="GI_FILTER"/);
+  expect(buildGiLines(view.giTextLines, view.giFilterVisible)).toContain("ATIS A");
+  toggleGiFilter(view, 0);
+  expect(buildGiLines(view.giTextLines, view.giFilterVisible)).not.toContain("ATIS A");
+  expect(buildGiLines(view.giTextLines, view.giFilterVisible)).toContain("RWY 27");
+  closeDcbMenu(view);
+  expect(dcbHtml(view)).toContain("RANGE 20");
+  expect(barSrc()).not.toMatch(/\bfetch\s*\(/);
+  expect(barSrc()).not.toMatch(/from\s+["']@parse["']/);
+});
+
+test("T02-27 AC2 — hiding STATUS omits OK; RANGE/FILTER SSA lines still match when visible", () => {
+  const view = createScopeView();
+  const input = {
+    simTimeMs: 0,
+    rangeNm: view.camera.rangeNm,
+    offCenter: false,
+    filter: view.altitudeFilter,
+    filterEntry: view.filterEntry,
+    visibility: view.ssaFilter,
+    ptlMinutes: view.ptlMinutes,
+  };
+  expect(buildSsaLines(input)).toContain("OK");
+  expect(buildSsaLines(input)).toContain("RANGE 20");
+  expect(buildSsaLines(input)).toContain("FILTER 000-180");
+  toggleSsaFilter(view, "STATUS");
+  expect(buildSsaLines(input)).not.toContain("OK");
+  expect(buildSsaLines(input)).toContain("RANGE 20");
+  expect(buildSsaLines(input)).toContain("FILTER 000-180");
+});
+
+test("T02-27 AC5/AC6 — altitude FILTER stays on MAIN; SSA/GI comments; no Command IR", () => {
+  expect(dcbHtml()).toMatch(/data-dcb-cell="filter"/);
+  expect(dcbHtml()).toContain("SSA");
+  const src = barSrc();
+  expect(src).toMatch(/SSA FILTER/);
+  expect(src).toMatch(/GI TEXT/);
+  expect(src).toMatch(/not METAR/i);
+  expect(src).not.toMatch(/from\s+["']@parse["']/);
+  expect(src).not.toMatch(/from\s+["']@pilot["']/);
+  expect(src).not.toMatch(/\bfetch\s*\(/);
 });

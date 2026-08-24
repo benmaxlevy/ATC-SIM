@@ -48,7 +48,7 @@ import { PALETTE, applyBrite } from "./palette";
 import { historyDotsToDraw } from "./history";
 import { drawPredictedTrackLine, ptlEndpoint, shouldDrawPtlForTrack } from "./ptl";
 import { isViewOffAirport, type ScopeView } from "./scopeView";
-import { buildSsaLines } from "./ssa";
+import { buildGiLines, buildSsaLines } from "./ssa";
 import { buildMapListLines } from "./dcbFunctions";
 import { type TrackOwnership } from "./ownership";
 import {
@@ -391,17 +391,23 @@ const SSA_LEFT_PX = 8;
 const SSA_TOP_PX = 8;
 
 /**
- * Screen-fixed SSA (CRC R07 analog). Phosphor-green mono. Never a Command.
+ * Screen-fixed SSA + GI TEXT (CRC R07 analog). Phosphor-green mono. Never a Command.
  * FILTER / RANGE live here so the lower-left stays clear for the on-PPI list.
+ * GI TEXT is authored facility lines (not a METAR panel / HUD). Empty slots never paint.
  */
 function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): number {
-  const lines = buildSsaLines({
-    simTimeMs: world.simTimeMs,
-    rangeNm: view.camera.rangeNm,
-    offCenter: isViewOffAirport(view),
-    filter: view.altitudeFilter,
-    filterEntry: view.filterEntry,
-  });
+  const lines = [
+    ...buildSsaLines({
+      simTimeMs: world.simTimeMs,
+      rangeNm: view.camera.rangeNm,
+      offCenter: isViewOffAirport(view),
+      filter: view.altitudeFilter,
+      filterEntry: view.filterEntry,
+      visibility: view.ssaFilter,
+      ptlMinutes: view.ptlMinutes,
+    }),
+    ...buildGiLines(view.giTextLines, view.giFilterVisible),
+  ];
   const lineH = datablockLineHeightPx(view.charSizes.lists);
   ctx.font = datablockFontCss(view.charSizes.lists);
   ctx.textBaseline = "top";

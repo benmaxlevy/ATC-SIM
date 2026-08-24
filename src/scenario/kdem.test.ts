@@ -89,6 +89,17 @@ test("loadKdem arpNm is origin via T00-04 helpers (AC6)", () => {
   expect(Math.abs(scenario.arpNm.yNm - expected.yNm)).toBeLessThan(1e-9);
 });
 
+test("T02-27 AC3 — KDEM JSON has 10 GI TEXT slots and at least two non-empty trainer lines", () => {
+  expect(kdemJson.giTextLines).toHaveLength(10);
+  const filled = kdemJson.giTextLines.filter((line) => line.length > 0);
+  expect(filled.length).toBeGreaterThanOrEqual(2);
+  expect(filled).toContain("ATIS A");
+  expect(filled).toContain("RWY 27");
+  const scenario = loadKdem();
+  expect(scenario.giTextLines).toHaveLength(10);
+  expect(scenario.giTextLines.filter((line) => line.length > 0).length).toBeGreaterThanOrEqual(2);
+});
+
 test("assertScenario throws on missing icao or empty runways (AC7)", () => {
   const missingIcao = { ...kdemJson };
   delete (missingIcao as { icao?: string }).icao;

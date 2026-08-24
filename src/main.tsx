@@ -48,6 +48,7 @@ window.addEventListener("pagehide", () => {
 
 const scopeView = createScopeView(scenario.arpNm.xNm, scenario.arpNm.yNm, {
   digitalMap: parseDigitalMap(scenario.maps),
+  giTextLines: scenario.giTextLines,
 });
 
 document.title = scenario.id === "kdem-ils27" ? "ATC-SIM — KDEM ILS 27" : "ATC-SIM — KDEM";

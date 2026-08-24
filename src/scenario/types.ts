@@ -86,6 +86,9 @@ export interface Spawn {
 export const ARRIVAL_COUNT_MIN = 4;
 export const ARRIVAL_COUNT_MAX = 8;
 
+/** Facility GI TEXT slots. Empty string = unused; those cells stay inert. */
+export const GI_TEXT_LINE_COUNT = 10;
+
 /**
  * Explicit arrival aircraft. Count must be 4–8 (default KDEM has 6).
  * Playable default (`spawnPolicy: "star-inbound"`) takes pose from
@@ -134,6 +137,11 @@ export interface Scenario {
   maps: ScenarioMaps;
   spawns: Spawn[];
   arrivals: ArrivalSpawn[];
+  /**
+   * Ten GI TEXT slots (CRC analog). Empty string = unused. Authored trainer
+   * copy (ATIS letter / runway / approach) — not a live METAR download.
+   */
+  giTextLines: string[];
   /** `authored` = JSON xy. `star-inbound` = seeded catalog pose. Default authored. */
   spawnPolicy: SpawnPolicy;
   /** Facility navaids / fixes / STAR / approaches. Loaded from `data/<icao>/`. */
