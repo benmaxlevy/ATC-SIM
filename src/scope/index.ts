@@ -208,10 +208,12 @@ export type { MapLayerId, ScopeView } from "./scopeView";
 export { DCB_THICKNESS_PX, drawablePpiSize, isVerticalDcbDock } from "./dcbDock";
 export type { DcbDock } from "./dcbDock";
 export {
+  DCB_ACTION_FLASH_MS,
   applyDcbShift,
   armDcbSpinner,
   closeDcbMenu,
   commitDcbSpinner,
+  dcbActionCapPressed,
   handleDcbEscape,
   idleDcbSpinner,
   isDcbSubmenu,

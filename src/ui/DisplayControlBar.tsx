@@ -21,10 +21,12 @@
  * leader — not toolbar or modal.
  * F8 / scope-focus H still call toggleHistoryEnabled(view) (0 ↔ last non-zero).
  * F7 still calls togglePtlOn(view) (PTL ALL).
- * Clicks call the same `src/scope` functions as the keyboard. Never a Command,
- * readback, or intent.
+ * Clicks call the same `src/scope` functions as the keyboard. Action caps
+ * (SAVE / DONE / CLR ALL) flash the inset bevel then pop; they are not latches.
+ * Never a Command, readback, or intent.
  */
 
+import { useEffect, useRef, useState } from "react";
 import type { MouseEvent, PointerEvent, ReactNode, WheelEvent } from "react";
 import {
   PALETTE,
@@ -51,6 +53,8 @@ import {
   DCB_LEADER_DIRS,
   DCB_MAP_SLOT_COUNT,
   DCB_QUICK_MAP_COUNT,
+  DCB_ACTION_FLASH_MS,
+  dcbActionCapPressed,
   GI_SLOT_COUNT,
   SSA_FILTER_FIELDS,
   formatDcbBriteReadout,
@@ -466,12 +470,50 @@ function DcbCell({
   dataGiSlot,
 }: DcbCellProps) {
   const inert = disabled || kind === "disabled";
+  const [flashing, setFlashing] = useState(false);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inset = dcbActionCapPressed(pressed, kind === "action" && flashing);
+
+  useEffect(() => {
+    return () => {
+      if (flashTimer.current != null) {
+        clearTimeout(flashTimer.current);
+      }
+    };
+  }, []);
+
+  function clearFlashTimer(): void {
+    if (flashTimer.current != null) {
+      clearTimeout(flashTimer.current);
+      flashTimer.current = null;
+    }
+  }
+
+  function armActionFlash(): void {
+    if (inert || kind !== "action") {
+      return;
+    }
+    clearFlashTimer();
+    setFlashing(true);
+  }
+
+  function releaseActionFlash(): void {
+    if (kind !== "action") {
+      return;
+    }
+    clearFlashTimer();
+    flashTimer.current = setTimeout(() => {
+      flashTimer.current = null;
+      setFlashing(false);
+    }, DCB_ACTION_FLASH_MS);
+  }
+
   return (
     <button
       type="button"
       className="dcb-cell"
       aria-label={ariaLabel}
-      aria-pressed={pressed}
+      aria-pressed={inset}
       aria-disabled={inert ? true : undefined}
       disabled={inert}
       data-dcb-kind={kind}
@@ -483,8 +525,18 @@ function DcbCell({
       data-dcb-cell={dataDcb}
       onMouseDown={preventButtonFocus}
       onPointerDown={(event: PointerEvent<HTMLButtonElement>) => {
-        if (kind === "spinner" && event.currentTarget.setPointerCapture) {
-          event.currentTarget.setPointerCapture(event.pointerId);
+        if (event.currentTarget.setPointerCapture) {
+          if (kind === "spinner" || kind === "action") {
+            event.currentTarget.setPointerCapture(event.pointerId);
+          }
+        }
+        armActionFlash();
+      }}
+      onPointerUp={releaseActionFlash}
+      onPointerCancel={() => {
+        if (kind === "action") {
+          clearFlashTimer();
+          setFlashing(false);
         }
       }}
       onWheel={onWheel}

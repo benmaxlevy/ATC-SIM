@@ -6,6 +6,8 @@ import {
   armDcbSpinner,
   closeDcbMenu,
   commitDcbSpinner,
+  DCB_ACTION_FLASH_MS,
+  dcbActionCapPressed,
   handleDcbEscape,
   idleDcbSpinner,
   openDcbMenu,
@@ -125,4 +127,13 @@ test("HISTORY and PTL spinners arm and step like RANGE", () => {
   expect(view.tpa.radiusNm).toBe(5);
   expect(stepDcbSpinner(view, -1, (delta) => stepTpaRadius(view, delta))).toBe(true);
   expect(view.tpa.radiusNm).toBe(3);
+});
+
+test("action caps are a momentary inset, not a latch", () => {
+  expect(DCB_ACTION_FLASH_MS).toBe(140);
+  expect(dcbActionCapPressed(undefined, false)).toBe(false);
+  expect(dcbActionCapPressed(false, false)).toBe(false);
+  expect(dcbActionCapPressed(undefined, true)).toBe(true);
+  expect(dcbActionCapPressed(true, false)).toBe(true);
+  expect(dcbActionCapPressed(true, true)).toBe(true);
 });
