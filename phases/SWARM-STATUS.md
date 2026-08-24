@@ -20,6 +20,8 @@ Waves: A T02-22 → B T02-23∥24∥25 → C T02-26∥27∥28 → D T02-29 → E
 
 **2026-08-23 resume:** Captain was interrupted after Wave A. T02-22 merged on `master` (`fb0ed67`). Wave B worktrees still exist with uncommitted edits. Human: finish the swarm. Resume B from those trees; do not reset them.
 
+**2026-08-23 Wave C resume:** A+B are on `master` (`62a1e34` = T02-25 merge). T02-26 and T02-27 branches are READY TO MERGE in worktrees; T02-28 has uncommitted work (aborted worker). Human: C is not done — finish C, then D T02-29 and E T02-30. Do not discard the T02-28 tree. Do not start phase 5.
+
 ## Sixth swarm started — Phase 4 post-exit addendum (T04-16–17 inbound HO)
 
 Orchestrator planning **2026-08-23**. Human `/run-swarm`: spawn handoff accept + CA 3 NM circles if analog exists. Historical phase 4 exit and fifth swarm (T04-13–15) stay green. This run is **T04-16, T04-17 only**. Do **not** redo T00–T04-15. Do **not** start phase 5. Skip **T04-11**. **No CA 3 NM halo** (CRC STARS STCA is `CA` text + tone; 3 NM circles are TPA J-rings or ERAM DRI). Owned FDB stays **white** after accept (CRC), not green.

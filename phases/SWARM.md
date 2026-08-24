@@ -66,6 +66,33 @@ Human interrupted the captain mid-wave (~45 min). **T02-22 is on `master`.** Wav
 
 ---
 
+## Seventh swarm resume — 2026-08-23 (Wave C)
+
+Human: Wave **C is not done** — finish it. Prior captain ([cec8ebcb](cec8ebcb-dde2-4f84-993c-05a86f6a1a17)) merged A+B then spawned C workers and was interrupted (`check status` abort) before any C merge.
+
+**On `master` now:** T02-22, T02-23, T02-24, T02-25 (`62a1e34`). Do **not** redo A/B.
+
+**Wave C worktrees — preserve; do not reset/clean/discard:**
+
+| Ticket | Worktree | Branch | State |
+| --- | --- | --- | --- |
+| T02-26 | `C:\Users\Ben\Documents\ATC-SIM-wt-T02-26` | `ticket/T02-26-dcb-brite-char-size-submenus` | **READY TO MERGE** (clean; 3 commits; worker ACs 6/6, `npm test` 1132 passed) |
+| T02-27 | `C:\Users\Ben\Documents\ATC-SIM-wt-T02-27` | `ticket/T02-27-dcb-ssa-gi-filters` | **READY TO MERGE** (clean; 5 commits; worker ACs 6/6) |
+| T02-28 | `C:\Users\Ben\Documents\ATC-SIM-wt-T02-28` | `ticket/T02-28-dcb-tpa-atpa-submenu` | **Not done.** Uncommitted `src/` + untracked `tpa.ts` / `tpa.test.ts`. Worker aborted mid-AC. Finish that tree. |
+
+**C merge order (dirty-tree safe):**
+
+1. Spawn **one** worker in the T02-28 worktree. Finish ACs on **current** `master` (same base as 26/27). Progressive commits. **Do not discard** uncommitted files. Wait for `READY TO MERGE`.
+2. Captain `--no-ff` merge **T02-26**, then `npm test`.
+3. Rebase **T02-27** onto updated `master`, `--no-ff` merge, `npm test`.
+4. Rebase **T02-28** onto updated `master` (DCB collisions expected). Resolve or spawn one conflict worker. `--no-ff` merge, `npm test`.
+5. Then Wave **D** T02-29 (needs 23–27; 28 optional), then Wave **E** T02-30. Isolated worktrees from then-current `master`.
+6. Same frozen judgements. Do **not** start phase 5. Do not reopen T02-01–21.
+
+Captain must **not** end the turn while a C worker is running. Do not return “wave C is running” as done.
+
+---
+
 ## Fifth swarm started — T04-13–15 STAR inbound spawn + check-in
 
 Orchestrator planning update. Historical phase 4 exit stays green. This run is a **post-exit addendum** only.
