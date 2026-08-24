@@ -106,7 +106,7 @@ Human approved the physical DCB follow-up tickets after identifying the live bar
 | Stop | Do not start phase 5. Do not add DCB jobs beyond the approved tickets. T02-33 is the visual-replica gate. |
 | Max ticket workers in flight | **3**, but this dependency chain is serialized: A T02-31 → B T02-32 → C T02-33 |
 | Merge lock | Only the phase captain merges to `master` (`--no-ff`) and runs `npm test` after every merge |
-| Model | **cursor grok 4.6 high only.** `model: "cursor-grok-4.6-high"` on every captain/worker spawn |
+| Model | **GPT-5.6 Luna Medium only.** `model: "gpt-5.6-luna-medium"` on every captain/worker spawn; do not use a fast model |
 | Paid STT/TTS/LLM | Forbidden |
 
 **Dependency gate:** T02-30 is already merged and its `npm test` / CI gate is green. Start T02-31 from current `master`; T02-32 follows a green T02-31 merge; T02-33 follows a green T02-32 merge.
@@ -121,7 +121,9 @@ Human approved the physical DCB follow-up tickets after identifying the live bar
 
 **Existing frozen behaviors remain:** WX never paints weather; MAPS 7–30 remain disabled when unpopulated; RANGE retains eight presets; FILTER remains the altitude filter on MAIN; PREF remains eight local slots; TPA is J-rings and ATPA is a stub; DCB clicks never emit Command IR.
 
-If `phases/SWARM-STATUS.md` lists seventh-swarm exit green through T02-33, stop. Otherwise resume at the first incomplete dependency; preserve every existing worktree and untracked QA artifact.
+If `phases/SWARM-STATUS.md` lists eighth-swarm exit green through T02-33, stop. Otherwise resume at the first incomplete dependency; preserve every existing worktree and untracked QA artifact.
+
+**Model override — human instruction 2026-08-23:** every captain and ticket worker for this swarm uses **GPT-5.6 Luna Medium** (`gpt-5.6-luna-medium`), never a fast model. This explicit human override supersedes the historical seventh-swarm Grok requirement above.
 
 ---
 
