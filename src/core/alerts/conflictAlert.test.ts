@@ -2,7 +2,6 @@ import { expect, test } from "vitest";
 import { makeTestAircraft } from "../aircraft";
 import {
   CA_LATERAL_NM,
-  CA_LOOKAHEAD_S,
   CA_VERTICAL_FT,
   caSeverityForCallsign,
   evaluateConflictAlert,
@@ -11,7 +10,6 @@ import {
 test("CA constants are the frozen lite trainer thresholds", () => {
   expect(CA_LATERAL_NM).toBe(3);
   expect(CA_VERTICAL_FT).toBe(1000);
-  expect(CA_LOOKAHEAD_S).toBe(40);
 });
 
 test("AC1 — 2.0 NM apart, Δalt 200 ft is red (alert)", () => {
@@ -46,7 +44,7 @@ test("AC1 — 2.0 NM apart, Δalt 200 ft is red (alert)", () => {
   expect(caSeverityForCallsign(alerts, "AAL45")).toBe("alert");
 });
 
-test("AC2 — 8 NM head-on at 250 kt co-altitude is yellow, not red", () => {
+test("AC2 — 8 NM head-on at 250 kt co-altitude is not a current CA", () => {
   const dal = makeTestAircraft({
     id: "ac-dal",
     callsign: "DAL123",
@@ -66,13 +64,10 @@ test("AC2 — 8 NM head-on at 250 kt co-altitude is yellow, not red", () => {
     speedKt: 250,
   });
   const alerts = evaluateConflictAlert([dal, aal]);
-  expect(alerts).toHaveLength(1);
-  expect(alerts[0]?.severity).toBe("caution");
-  expect(alerts[0]?.distNm).toBeCloseTo(8, 5);
-  expect(alerts[0]?.deltaAltFt).toBe(0);
+  expect(alerts).toEqual([]);
 });
 
-test("AC3 — 10 NM parallel co-altitude never inside 3 NM in 40 s: no CA", () => {
+test("AC3 — 10 NM parallel co-altitude is not a current CA", () => {
   const dal = makeTestAircraft({
     id: "ac-dal",
     callsign: "DAL123",
