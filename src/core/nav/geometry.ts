@@ -6,7 +6,7 @@
  */
 
 import { TURN_RATE_DEG_PER_S } from "../kinematics";
-import { normalizeHeadingDeg } from "../geo/coords";
+import { DEG2RAD, normalizeHeadingDeg } from "../geo/coords";
 import { shortestDeltaDeg } from "../kinematics";
 
 export interface NmPoint {
@@ -29,7 +29,7 @@ export const DIRECT_SEQUENCE_NM = 0.3;
 export function courseDeg(from: NmPoint, to: NmPoint): number {
   const dx = to.xNm - from.xNm;
   const dy = to.yNm - from.yNm;
-  return normalizeHeadingDeg((Math.atan2(dx, dy) * 180) / Math.PI);
+  return normalizeHeadingDeg(Math.atan2(dx, dy) / DEG2RAD);
 }
 
 export function distanceNm(from: NmPoint, to: NmPoint): number {
@@ -41,7 +41,7 @@ export function distanceNm(from: NmPoint, to: NmPoint): number {
  * Abeam / past when this is ≤ 0.
  */
 export function alongTrackNm(from: NmPoint, to: NmPoint, headingDeg: number): number {
-  const rad = (normalizeHeadingDeg(headingDeg) * Math.PI) / 180;
+  const rad = normalizeHeadingDeg(headingDeg) * DEG2RAD;
   const dx = to.xNm - from.xNm;
   const dy = to.yNm - from.yNm;
   return dx * Math.sin(rad) + dy * Math.cos(rad);
@@ -52,7 +52,7 @@ export function alongTrackNm(from: NmPoint, to: NmPoint, headingDeg: number): nu
  * `ω = rate * π/180`; `R = (tas/3600) / ω` ≈ `tas / 188.5` at 3°/s.
  */
 export function turnRadiusNm(tasKt: number, turnRateDegPerS: number = TURN_RATE_DEG_PER_S): number {
-  const omegaRadS = (turnRateDegPerS * Math.PI) / 180;
+  const omegaRadS = turnRateDegPerS * DEG2RAD;
   if (omegaRadS <= 0 || !Number.isFinite(tasKt) || tasKt <= 0) {
     return 0;
   }
@@ -70,7 +70,7 @@ export function courseChangeDeg(fromCourseDeg: number, toCourseDeg: number): num
  */
 export function flyByStartNm(tasKt: number, courseChangeAbsDeg: number): number {
   const thetaDeg = Math.max(FLYBY_MIN_TURN_DEG, Math.abs(courseChangeAbsDeg));
-  const thetaRad = (thetaDeg * Math.PI) / 180;
+  const thetaRad = thetaDeg * DEG2RAD;
   const d = turnRadiusNm(tasKt) * Math.tan(thetaRad / 2);
   if (!Number.isFinite(d) || d < 0) {
     return FLYBY_FLOOR_NM;

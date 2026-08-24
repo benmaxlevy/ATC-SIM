@@ -316,19 +316,16 @@ function currentProcedureFixId(ac: Aircraft): string | undefined {
   return lateral.routeFixIds[lateral.toFixIndex];
 }
 
-function starLegs(star: CatalogStar): CatalogStarLeg[] {
-  const legs: CatalogStarLeg[] = [];
-  for (const transition of star.transitions ?? []) {
-    legs.push(...transition.legs);
-  }
-  if (star.common) {
-    legs.push(...star.common);
-  }
-  return legs;
-}
-
 function findLeg(star: CatalogStar, fixId: string): CatalogStarLeg | undefined {
-  return starLegs(star).find((leg) => leg.fixId === fixId);
+  if (star.transitions) {
+    for (const transition of star.transitions) {
+      const leg = transition.legs.find((item) => item.fixId === fixId);
+      if (leg) {
+        return leg;
+      }
+    }
+  }
+  return star.common?.find((item) => item.fixId === fixId);
 }
 
 function lastStarConstraints(

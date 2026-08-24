@@ -182,55 +182,72 @@ function livePairMetrics(
   };
 }
 
+function syncAlertMap<T extends { severity: string }>(
+  prev: readonly T[],
+  next: readonly T[],
+  keyOf: (item: T) => string,
+  onActive: (alert: T) => void,
+  onClear: (was: T) => void,
+): void {
+  const prevMap = new Map<string, T>();
+  for (const alert of prev) {
+    prevMap.set(keyOf(alert), alert);
+  }
+  const nextMap = new Map<string, T>();
+  for (const alert of next) {
+    nextMap.set(keyOf(alert), alert);
+  }
+  for (const alert of next) {
+    const was = prevMap.get(keyOf(alert));
+    if (was?.severity === alert.severity) {
+      continue;
+    }
+    onActive(alert);
+  }
+  for (const was of prev) {
+    if (nextMap.has(keyOf(was))) {
+      continue;
+    }
+    onClear(was);
+  }
+}
+
 /**
  * Replace `world.alerts.ca` and append `alert.ca.*` only when a pair's
  * severity changes (enter / upgrade / downgrade / clear). No per-tick spam.
  */
 function syncConflictAlerts(world: World, next: CaAlert[]): void {
-  const prev = world.alerts.ca;
-  const prevMap = new Map<string, CaAlert>();
-  for (const alert of prev) {
-    prevMap.set(caPairKey(alert.callsignA, alert.callsignB), alert);
-  }
-  const nextMap = new Map<string, CaAlert>();
-  for (const alert of next) {
-    nextMap.set(caPairKey(alert.callsignA, alert.callsignB), alert);
-  }
   const log = world.sessionLog;
   if (log) {
     const atSimMs = world.simTimeMs;
-    for (const alert of next) {
-      const key = caPairKey(alert.callsignA, alert.callsignB);
-      const was = prevMap.get(key);
-      if (was?.severity === alert.severity) {
-        continue;
-      }
-      log.append({
-        type: alert.severity === "alert" ? "alert.ca.alert" : "alert.ca.caution",
-        atSimMs,
-        atWallMs: 0,
-        callsignA: alert.callsignA,
-        callsignB: alert.callsignB,
-        distNm: alert.distNm,
-        deltaAltFt: alert.deltaAltFt,
-      });
-    }
-    for (const was of prev) {
-      const key = caPairKey(was.callsignA, was.callsignB);
-      if (nextMap.has(key)) {
-        continue;
-      }
-      const live = livePairMetrics(world, was.callsignA, was.callsignB, was);
-      log.append({
-        type: "alert.ca.clear",
-        atSimMs,
-        atWallMs: 0,
-        callsignA: was.callsignA,
-        callsignB: was.callsignB,
-        distNm: live.distNm,
-        deltaAltFt: live.deltaAltFt,
-      });
-    }
+    syncAlertMap(
+      world.alerts.ca,
+      next,
+      (alert) => caPairKey(alert.callsignA, alert.callsignB),
+      (alert) => {
+        log.append({
+          type: alert.severity === "alert" ? "alert.ca.alert" : "alert.ca.caution",
+          atSimMs,
+          atWallMs: 0,
+          callsignA: alert.callsignA,
+          callsignB: alert.callsignB,
+          distNm: alert.distNm,
+          deltaAltFt: alert.deltaAltFt,
+        });
+      },
+      (was) => {
+        const live = livePairMetrics(world, was.callsignA, was.callsignB, was);
+        log.append({
+          type: "alert.ca.clear",
+          atSimMs,
+          atWallMs: 0,
+          callsignA: was.callsignA,
+          callsignB: was.callsignB,
+          distNm: live.distNm,
+          deltaAltFt: live.deltaAltFt,
+        });
+      },
+    );
   }
   world.alerts.ca = next;
 }
@@ -252,46 +269,35 @@ function liveMsawMetrics(
  * severity changes (enter / upgrade / downgrade / clear). No per-tick spam.
  */
 function syncMsawAlerts(world: World, next: MsawAlert[]): void {
-  const prev = world.alerts.msaw;
-  const prevMap = new Map<string, MsawAlert>();
-  for (const alert of prev) {
-    prevMap.set(alert.callsign, alert);
-  }
-  const nextMap = new Map<string, MsawAlert>();
-  for (const alert of next) {
-    nextMap.set(alert.callsign, alert);
-  }
   const log = world.sessionLog;
   if (log) {
     const atSimMs = world.simTimeMs;
-    for (const alert of next) {
-      const was = prevMap.get(alert.callsign);
-      if (was?.severity === alert.severity) {
-        continue;
-      }
-      log.append({
-        type: alert.severity === "alert" ? "alert.msaw.alert" : "alert.msaw.caution",
-        atSimMs,
-        atWallMs: 0,
-        callsign: alert.callsign,
-        altFt: alert.altFt,
-        floorFt: alert.floorFt,
-      });
-    }
-    for (const was of prev) {
-      if (nextMap.has(was.callsign)) {
-        continue;
-      }
-      const live = liveMsawMetrics(world, was.callsign, was);
-      log.append({
-        type: "alert.msaw.clear",
-        atSimMs,
-        atWallMs: 0,
-        callsign: was.callsign,
-        altFt: live.altFt,
-        floorFt: live.floorFt,
-      });
-    }
+    syncAlertMap(
+      world.alerts.msaw,
+      next,
+      (alert) => alert.callsign,
+      (alert) => {
+        log.append({
+          type: alert.severity === "alert" ? "alert.msaw.alert" : "alert.msaw.caution",
+          atSimMs,
+          atWallMs: 0,
+          callsign: alert.callsign,
+          altFt: alert.altFt,
+          floorFt: alert.floorFt,
+        });
+      },
+      (was) => {
+        const live = liveMsawMetrics(world, was.callsign, was);
+        log.append({
+          type: "alert.msaw.clear",
+          atSimMs,
+          atWallMs: 0,
+          callsign: was.callsign,
+          altFt: live.altFt,
+          floorFt: live.floorFt,
+        });
+      },
+    );
   }
   world.alerts.msaw = next;
 }
@@ -312,9 +318,9 @@ export function stepWorld(world: World, dtS: number): World {
     return world;
   }
   world.simTimeMs += dtS * 1000;
+  const locAxisFor = (approachId: string) =>
+    locAxisForApproach(approachId, world.catalog, world.fixRegistry);
   for (const ac of world.aircraft) {
-    const locAxisFor = (approachId: string) =>
-      locAxisForApproach(approachId, world.catalog, world.fixRegistry);
     applyMissedFms(ac, {
       catalog: world.catalog,
       log: world.sessionLog,

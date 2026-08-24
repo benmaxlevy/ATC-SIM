@@ -7,6 +7,8 @@
  * `gsAltFt = fieldElevFt + tchFt + tan(gsAngle) * distToThresholdNm * 6076.12`
  */
 
+import { DEG2RAD } from "../geo/coords";
+
 export const FT_PER_NM = 6076.12;
 export const GS_DEFAULT_ANGLE_DEG = 3;
 export const GS_DEFAULT_TCH_FT = 50;
@@ -57,7 +59,7 @@ export function kdemIls27GsParams(): GsParams {
  * Distance is along-track when established (T04-05 loc axis).
  */
 export function gsAltitudeFt(distToThresholdNm: number, params: GsParams): number {
-  const angleRad = (params.gsAngleDeg * Math.PI) / 180;
+  const angleRad = params.gsAngleDeg * DEG2RAD;
   return params.fieldElevFt + params.tchFt + Math.tan(angleRad) * distToThresholdNm * FT_PER_NM;
 }
 
@@ -66,7 +68,7 @@ export function gsAltitudeFt(distToThresholdNm: number, params: GsParams): numbe
  * `gsKt` is ground speed (IAS=TAS until T04-11 wind).
  */
 export function gsGeometricVsFpm(gsAngleDeg: number, gsKt: number): number {
-  const angleRad = (gsAngleDeg * Math.PI) / 180;
+  const angleRad = gsAngleDeg * DEG2RAD;
   return (-Math.tan(angleRad) * gsKt * FT_PER_NM) / 60;
 }
 

@@ -54,7 +54,7 @@ export {
   stepAircraft,
 } from "./kinematics";
 export type { LatLon, NmEastNorth } from "./geo/coords";
-export { latLonToNm, nmToLatLon, normalizeHeadingDeg } from "./geo/coords";
+export { DEG2RAD, latLonToNm, nmToLatLon, normalizeHeadingDeg } from "./geo/coords";
 export type { Command, Instruction, ParseStage, TurnDir } from "./command/types";
 export { INSTRUCTION_TYPES } from "./command/types";
 export * from "./command/fixtures";

@@ -46,17 +46,11 @@ export function caPairKey(callsignA: string, callsignB: string): string {
  * caution when the aircraft is in more than one pair.
  */
 export function caSeverityForCallsign(ca: readonly CaAlert[], callsign: string): CaSeverity | null {
-  let caution = false;
-  for (const alert of ca) {
-    if (alert.callsignA !== callsign && alert.callsignB !== callsign) {
-      continue;
-    }
-    if (alert.severity === "alert") {
-      return "alert";
-    }
-    caution = true;
+  const touches = ca.filter((a) => a.callsignA === callsign || a.callsignB === callsign);
+  if (touches.length === 0) {
+    return null;
   }
-  return caution ? "caution" : null;
+  return touches.some((a) => a.severity === "alert") ? "alert" : "caution";
 }
 
 function planarNm(a: Aircraft, b: Aircraft): number {
@@ -88,9 +82,6 @@ export function evaluateConflictAlert(aircraft: readonly Aircraft[]): CaAlert[] 
     const a = aircraft[i]!;
     for (let j = i + 1; j < aircraft.length; j += 1) {
       const b = aircraft[j]!;
-      if (a.id === b.id) {
-        continue;
-      }
       const distNm = planarNm(a, b);
       const deltaAltFt = absDeltaAltFt(a, b);
       if (!isCurrentConflict(distNm, deltaAltFt)) {

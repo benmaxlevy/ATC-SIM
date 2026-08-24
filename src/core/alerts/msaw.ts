@@ -140,17 +140,11 @@ export function msawSeverityForCallsign(
   msaw: readonly MsawAlert[],
   callsign: string,
 ): MsawSeverity | null {
-  let caution = false;
-  for (const alert of msaw) {
-    if (alert.callsign !== callsign) {
-      continue;
-    }
-    if (alert.severity === "alert") {
-      return "alert";
-    }
-    caution = true;
+  const touches = msaw.filter((a) => a.callsign === callsign);
+  if (touches.length === 0) {
+    return null;
   }
-  return caution ? "caution" : null;
+  return touches.some((a) => a.severity === "alert") ? "alert" : "caution";
 }
 
 export const DEFAULT_MSAW_INHIBIT: MsawInhibitGeom = {

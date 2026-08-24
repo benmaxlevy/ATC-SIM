@@ -1,5 +1,6 @@
 import type { Aircraft } from "./aircraft";
 import type { TurnDir } from "./command/types";
+import { DEG2RAD, normalizeHeadingDeg } from "./geo/coords";
 
 /**
  * Frozen kinematics (phase 1). Rate-one turn, not bank/TAS.
@@ -14,10 +15,7 @@ export const TURN_RATE_DEG_PER_S = 3;
 export const CLIMB_RATE_FT_PER_MIN = 1800;
 export const ACCEL_KT_PER_S = 1;
 
-export function normalizeHeading(deg: number): number {
-  const d = deg % 360;
-  return d < 0 ? d + 360 : d;
-}
+export const normalizeHeading = normalizeHeadingDeg;
 
 /**
  * Signed delta in (-180, 180]; + = right / increasing heading.
@@ -93,7 +91,7 @@ export function stepAircraft(
   const turn = commandedHeadingDeg !== undefined ? "SHORTEST" : ac.intent.turn;
   const { remainingDeg, sign } = remainingTurn(headingFrom, headingTo, turn);
   const maxTurnDeg = TURN_RATE_DEG_PER_S * dtS;
-  if (remainingDeg <= maxTurnDeg) {
+  if (remainingDeg <= maxTurnDeg + 1e-9) {
     ac.headingDeg = headingTo;
   } else {
     ac.headingDeg = normalizeHeading(headingFrom + sign * maxTurnDeg);
@@ -107,7 +105,7 @@ export function stepAircraft(
   const speedTo = commandedSpeedKt ?? ac.intent.assignedSpeedKt;
   ac.speedKt = Math.max(0, toward(ac.speedKt, speedTo, maxSpeedKt));
 
-  const headingRad = (ac.headingDeg * Math.PI) / 180;
+  const headingRad = ac.headingDeg * DEG2RAD;
   ac.xNm += ac.speedKt * Math.sin(headingRad) * (dtS / 3600);
   ac.yNm += ac.speedKt * Math.cos(headingRad) * (dtS / 3600);
 }
