@@ -1,4 +1,4 @@
-# ATC-SIM swarm orchestrator — Phase 2 post-exit addendum (T02-22–30 trainer DCB)
+# ATC-SIM swarm orchestrator — Phase 2 physical DCB replica addendum (T02-31–33)
 
 Paste **this entire file** into a new agent. That agent is the **orchestrator**. It may run for hours. It writes almost no application code.
 
@@ -9,7 +9,7 @@ Shell: **Windows PowerShell** (not bash). Ticket commits use here-strings, not `
 
 Before checking git, spawning agents, creating worktrees, or editing application code, update this file for the current swarm. Append a new swarm-start heading/configuration; do not overwrite prior swarm history. If the requested swarm configuration is incomplete, ask before making any other swarm move. Then commit the planning/status update before creating ticket branches or worktrees.
 
-This is the **seventh swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–17)** are already green on `master`. Do **not** redo 0–6th. Do **not** start phase 5 scoring. Skip **T04-11** (wind) unless the human names it.
+This is the **eighth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–17)** are already green on `master`. Do **not** redo 0–7th. Do **not** start phase 5 scoring. Skip **T04-11** (wind) unless the human names it. This run is **T02-31–33 only**.
 
 ---
 
@@ -90,6 +90,38 @@ Human: Wave **C is not done** — finish it. Prior captain ([cec8ebcb](cec8ebcb-
 6. Same frozen judgements. Do **not** start phase 5. Do not reopen T02-01–21.
 
 Captain must **not** end the turn while a C worker is running. Do not return “wave C is running” as done.
+
+---
+
+## Eighth swarm started — 2026-08-23 (T02-31–33 physical DCB replica)
+
+Human approved the physical DCB follow-up tickets after identifying the live bar as a flat neon-green ribbon rather than a two-row button grid. The seventh swarm is complete through T02-30; this is a separate, post-exit visual-replica addendum.
+
+| Key | Value |
+| --- | --- |
+| Goal | MAIN reads as a compact **two-row physical DCB**: correct button grouping/order, six disabled WX caps, raised/inset bevels, off-white normal text, muted disabled text, and a documented visual gate |
+| Player loop | `npm run dev` → MAIN has RANGE / center / RR / map 3×2 / WX1–6 / BRITE / leader / CHAR SIZE / MODE / PREF / SITE / SSA-GI / SHIFT in the frozen order → active cap presses inset → `DAL123 H270` still turns |
+| Include | **T02-31**, **T02-32**, **T02-33** only |
+| Skip | **T04-11**; all T00–T01, **T02-01–30**, T03-*, T04-*, T05-*; weather paint; actual FSL/fusion/site modes; any proprietary STARS/FAA font |
+| Stop | Do not start phase 5. Do not add DCB jobs beyond the approved tickets. T02-33 is the visual-replica gate. |
+| Max ticket workers in flight | **3**, but this dependency chain is serialized: A T02-31 → B T02-32 → C T02-33 |
+| Merge lock | Only the phase captain merges to `master` (`--no-ff`) and runs `npm test` after every merge |
+| Model | **cursor grok 4.6 high only.** `model: "cursor-grok-4.6-high"` on every captain/worker spawn |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Dependency gate:** T02-30 is already merged and its `npm test` / CI gate is green. Start T02-31 from current `master`; T02-32 follows a green T02-31 merge; T02-33 follows a green T02-32 merge.
+
+**Frozen visual MAIN layout:** Use the T02-31 data-driven two-row descriptor. Full-height columns are RANGE; RR; MAPS; WX1–WX6; BRITE; CHAR SIZE; MODE FSL (disabled); PREF 22/27; SITE FUSED (disabled); SHIFT. Stacked columns are PLACE CNTR / OFF CNTR, PLACE RR / RR CNTR, LDR DIR / LDR, and SSA FILTER / GI TEXT FILTER. Quick maps 1–6 are exactly a **3 × 2** matrix. Keep the 22-column order documented in T02-31; do not position controls with KDEM-specific branches.
+
+**Frozen physical-cap treatment:** Normal caps are dark tactical olive with off-white text, a light top/left edge, black bottom/right edge, and visible 1–2 px cap gaps. Active/armed caps reverse to an inset bevel and lighter olive body. Disabled WX1–6, MODE FSL, and SITE FUSED use muted gray-green text and stay inert. Remove quick-map stripe/raster backgrounds. PPI/FDB/map/alert palette roles do not change.
+
+**Frozen typography/legal boundary:** Center title/value lines in a legal system/redistributable monospace stack. Do **not** download, embed, claim, or imitate an FAA/STARS proprietary bitmap/vector font.
+
+**Visual evidence:** T02-33 records Chrome Windows observations at 1440×900 and 804×900. QA screenshots remain untracked unless the human explicitly requests an approved artifact. A missing visual operator is a skip-with-reason, never an invented pass.
+
+**Existing frozen behaviors remain:** WX never paints weather; MAPS 7–30 remain disabled when unpopulated; RANGE retains eight presets; FILTER remains the altitude filter on MAIN; PREF remains eight local slots; TPA is J-rings and ATPA is a stub; DCB clicks never emit Command IR.
+
+If `phases/SWARM-STATUS.md` lists seventh-swarm exit green through T02-33, stop. Otherwise resume at the first incomplete dependency; preserve every existing worktree and untracked QA artifact.
 
 ---
 
