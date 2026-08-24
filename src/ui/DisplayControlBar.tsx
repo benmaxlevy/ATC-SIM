@@ -472,7 +472,8 @@ function DcbCell({
   const inert = disabled || kind === "disabled";
   const [flashing, setFlashing] = useState(false);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inset = dcbActionCapPressed(pressed, kind === "action" && flashing);
+  const momentary = kind !== "toggle" && kind !== "disabled";
+  const inset = dcbActionCapPressed(pressed, momentary && flashing);
 
   useEffect(() => {
     return () => {
@@ -490,7 +491,7 @@ function DcbCell({
   }
 
   function armActionFlash(): void {
-    if (inert || kind !== "action") {
+    if (inert || !momentary) {
       return;
     }
     clearFlashTimer();
@@ -498,7 +499,7 @@ function DcbCell({
   }
 
   function releaseActionFlash(): void {
-    if (kind !== "action") {
+    if (!momentary) {
       return;
     }
     clearFlashTimer();
@@ -526,7 +527,7 @@ function DcbCell({
       onMouseDown={preventButtonFocus}
       onPointerDown={(event: PointerEvent<HTMLButtonElement>) => {
         if (event.currentTarget.setPointerCapture) {
-          if (kind === "spinner" || kind === "action") {
+          if (momentary) {
             event.currentTarget.setPointerCapture(event.pointerId);
           }
         }
@@ -534,7 +535,7 @@ function DcbCell({
       }}
       onPointerUp={releaseActionFlash}
       onPointerCancel={() => {
-        if (kind === "action") {
+        if (momentary) {
           clearFlashTimer();
           setFlashing(false);
         }
