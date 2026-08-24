@@ -221,13 +221,16 @@ export {
 } from "./dcbMenu";
 export type { DcbCellKind, DcbMenu, DcbMenuHost, DcbSpinnerCell, DcbSpinnerState } from "./dcbMenu";
 export {
+  DCB_PREF_READOUT_MAX_CHARS,
   DCB_PREF_SLOT_COUNT,
+  activeDcbPrefName,
   applyDcbPref,
   applyDcbPrefDefaults,
   beginDcbPrefSession,
   browserDcbPrefStorage,
   dcbPrefStorageKey,
   deleteDcbPref,
+  formatDcbPrefReadout,
   loadDcbPrefFromStorage,
   persistDcbPref,
   restoreDcbPrefSession,

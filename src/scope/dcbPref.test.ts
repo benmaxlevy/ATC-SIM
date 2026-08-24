@@ -6,12 +6,15 @@ import { expect, test } from "vitest";
 import { loadKdem } from "@scenario";
 import { isVideoMapOn, toggleVideoMap } from "./dcbFunctions";
 import {
+  DCB_PREF_READOUT_MAX_CHARS,
   DCB_PREF_SLOT_COUNT,
+  activeDcbPrefName,
   applyDcbPref,
   applyDcbPrefDefaults,
   beginDcbPrefSession,
   dcbPrefStorageKey,
   deleteDcbPref,
+  formatDcbPrefReadout,
   loadDcbPrefFromStorage,
   restoreDcbPrefSession,
   saveAsDcbPref,
@@ -152,6 +155,23 @@ test("AC6 — eight slots only; PREF is not Command IR; DAL123 H270 still works"
       { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
     ]);
   }
+});
+
+test("MAIN PREF second line is the active set name, abbreviated to the cap budget", () => {
+  expect(formatDcbPrefReadout("")).toBe("");
+  expect(formatDcbPrefReadout("22/27")).toBe("22/27");
+  expect(formatDcbPrefReadout("pref 1")).toBe("PREF 1");
+  expect(formatDcbPrefReadout("Approach Night")).toBe("APPROA");
+  expect(formatDcbPrefReadout("  night  ops ")).toBe("NIGHT");
+  expect(DCB_PREF_READOUT_MAX_CHARS).toBe(6);
+
+  const view = kdemView();
+  expect(activeDcbPrefName(view)).toBe("");
+  saveAsDcbPref(view);
+  expect(activeDcbPrefName(view)).toBe("PREF 1");
+  expect(formatDcbPrefReadout(activeDcbPrefName(view))).toBe("PREF 1");
+  view.dcbPref.slots[0]!.name = "Approach Night";
+  expect(formatDcbPrefReadout(activeDcbPrefName(view))).toBe("APPROA");
 });
 
 test("AC7 — PREF comments cite CRC analog, 8-slot trainer delta, not settings/theme", () => {
