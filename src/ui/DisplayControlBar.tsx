@@ -519,6 +519,7 @@ function DcbCell({
       return;
     }
     armActionFlash();
+    releaseActionFlash();
     if (clickTimer.current != null) {
       clearTimeout(clickTimer.current);
     }
