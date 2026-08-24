@@ -1,0 +1,29 @@
+---
+description: Document shipped-but-incomplete work in phases/LATER-IMPLEMENTATION-BACKLOG.md
+alwaysApply: true
+---
+
+# Later implementation backlog
+
+If something that **should** work is shipped without the real behavior, document it in `phases/LATER-IMPLEMENTATION-BACKLOG.md` in the **same change**. Do not leave a stub, no-op, disabled control, or trainer placeholder without an entry.
+
+Examples that require an entry:
+
+- DCB/PREF/F-key chrome with no behavior, a no-op, or `disabled` until later
+- a stored toggle that does not change simulation or drawing
+- a parser/UI path that accepts input but does not apply it
+- a trainer stub standing in for live or facility data
+
+## How to document
+
+Add or update a subsection under the matching heading (create a heading if needed). State:
+
+- what is already visible or callable
+- what is deliberately missing
+- constraints later work must keep (existing working paths, speech/vendor rules, data-first catalog)
+
+Do **not** duplicate an existing subsection. Extend it if the gap grew.
+
+## What does not belong
+
+Untouched phase work that has never been started (scoring/replay, wind, CRDA, and other never-partial features) stays out. This file is follow-ups implied by **already shipped** slices, not a wishlist. See the Explicit boundary section in that file.
