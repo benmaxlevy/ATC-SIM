@@ -2,11 +2,14 @@ import { expect, test } from "vitest";
 import {
   PTL_CAP_TICK_PX,
   PTL_MINUTES,
+  PTL_MINUTE_PRESETS,
   PTL_STROKE_PX,
   ptlCapTickOffsets,
   ptlDistanceNm,
   ptlEndpoint,
   shouldDrawPtl,
+  shouldDrawPtlForTrack,
+  stepPtlMinutes,
 } from "./ptl";
 
 test("AC1 — 180 kt / 090° / 1 min → +3 NM east, 0 north", () => {
@@ -77,4 +80,21 @@ test("AC7 — comments say PTL / predicted track line and cite CRC; straight 1 m
   expect(src).toMatch(/straight 1\.0 min/);
   expect(src).toMatch(/Not a velocity vector, heading line, or zoom/);
   expect(src).toMatch(/inAltitudeFilter/);
+});
+
+test("AC2 — 180 kt × 2 min → 6 NM", () => {
+  expect(PTL_MINUTE_PRESETS).toEqual([0.5, 1, 2, 4]);
+  expect(ptlDistanceNm(180, 2)).toBe(6);
+  expect(stepPtlMinutes(1, 1)).toBe(2);
+  expect(stepPtlMinutes(4, 1)).toBe(4);
+  expect(stepPtlMinutes(0.5, -1)).toBe(0.5);
+});
+
+test("AC3 — PTL OWN vs ALL: ALL wins; both off draws none", () => {
+  expect(shouldDrawPtlForTrack(180, false, false, true, false)).toBe(true);
+  expect(shouldDrawPtlForTrack(180, false, true, false, true)).toBe(true);
+  expect(shouldDrawPtlForTrack(180, false, false, false, true)).toBe(false);
+  expect(shouldDrawPtlForTrack(180, false, true, true, true)).toBe(true);
+  expect(shouldDrawPtlForTrack(180, false, true, false, false)).toBe(false);
+  expect(shouldDrawPtlForTrack(180, true, true, true, true)).toBe(false);
 });

@@ -21,7 +21,13 @@ export type DcbMenu =
 
 export type DcbCellKind = "action" | "toggle" | "spinner" | "submenu" | "disabled";
 
-export type DcbSpinnerCell = "RANGE" | "RR" | "LDR_DIR" | "LDR_LENGTH";
+export type DcbSpinnerCell =
+  | "RANGE"
+  | "RR"
+  | "LDR_DIR"
+  | "LDR_LENGTH"
+  | "HISTORY"
+  | "PTL";
 
 export interface DcbSpinnerState {
   armed: boolean;

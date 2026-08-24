@@ -12,9 +12,14 @@ import {
   isViewOffAirport,
   setRangeRingOrigin,
   snapRangeRingToViewCenter,
+  setDcbDock,
+  setHistoryDotCount,
+  stepHistoryDots,
+  stepPtlLength,
   toggleHistoryEnabled,
   toggleMapLayer,
   togglePtlOn,
+  togglePtlOwn,
 } from "./scopeView";
 
 const VIEW = { widthPx: 800, heightPx: 800 };
@@ -223,4 +228,52 @@ test("PLACE RR: next PPI click sets ring origin; RR CNTR snaps to view center", 
 
   setRangeRingOrigin(view, 0, 0);
   expect(isRangeRingOffViewCenter(view)).toBe(true);
+});
+
+test("AC1 — F8 toggles HISTORY 0 ↔ last non-zero; spinner 0–5", () => {
+  const view = createScopeView();
+  expect(view.historyDotCount).toBe(5);
+  expect(view.historyEnabled).toBe(true);
+  stepHistoryDots(view, -1);
+  expect(view.historyDotCount).toBe(4);
+  toggleHistoryEnabled(view);
+  expect(view.historyDotCount).toBe(0);
+  expect(view.historyEnabled).toBe(false);
+  toggleHistoryEnabled(view);
+  expect(view.historyDotCount).toBe(4);
+  expect(view.historyEnabled).toBe(true);
+  setHistoryDotCount(view, 0);
+  expect(view.historyEnabled).toBe(false);
+  toggleHistoryEnabled(view);
+  expect(view.historyDotCount).toBe(4);
+});
+
+test("AC2/AC3 — PTL minutes and OWN vs ALL live on the view; F7 toggles ALL", () => {
+  const view = createScopeView();
+  expect(view.ptlOn).toBe(false);
+  expect(view.ptlOwn).toBe(false);
+  expect(view.ptlMinutes).toBe(1);
+  stepPtlLength(view, 1);
+  expect(view.ptlMinutes).toBe(2);
+  togglePtlOwn(view);
+  expect(view.ptlOwn).toBe(true);
+  expect(view.ptlOn).toBe(false);
+  togglePtlOn(view);
+  expect(view.ptlOn).toBe(true);
+  togglePtlOn(view);
+  expect(view.ptlOn).toBe(false);
+  expect(view.ptlOwn).toBe(true);
+  togglePtlOwn(view);
+  expect(view.ptlOwn).toBe(false);
+  togglePtlOn(view);
+  expect(view.ptlOn).toBe(true);
+});
+
+test("AC4 — DCB dock enum is one edge at a time", () => {
+  const view = createScopeView();
+  expect(view.dcbDock).toBe("TOP");
+  setDcbDock(view, "LEFT");
+  expect(view.dcbDock).toBe("LEFT");
+  setDcbDock(view, "BOTTOM");
+  expect(view.dcbDock).toBe("BOTTOM");
 });

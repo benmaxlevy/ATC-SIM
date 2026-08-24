@@ -20,6 +20,7 @@ import {
   togglePtlOn,
   tryApplyAltitudeFilterDigits,
   stepRrInterval,
+  PpiPlaceholder,
 } from "@scope";
 import { loadKdem } from "@scenario";
 import { DCB_FONT_PX, DCB_HEIGHT_PX, DisplayControlBar } from "./DisplayControlBar";
@@ -86,11 +87,13 @@ test("AC2 — RANGE spinner arms then steps the same 5–60 presets; readout is 
   expect(dcbHtml(view)).toContain("RANGE 20");
 });
 
-test("AC3 — PTL and HIST cells match F7/F8", () => {
+test("AC3 — AUX PTL ALL matches F7; F8 still toggles HISTORY 0 ↔ last non-zero", () => {
   expect(barSrc()).toMatch(/togglePtlOn\(view\)/);
   expect(barSrc()).toMatch(/toggleHistoryEnabled\(view\)/);
   expect(barSrc()).toMatch(/>\s*PTL\s*</);
-  expect(barSrc()).toMatch(/>\s*HIST\s*</);
+  expect(barSrc()).toMatch(/>\s*HISTORY\s*</);
+  expect(barSrc()).toMatch(/>\s*OWN\s*</);
+  expect(barSrc()).toMatch(/>\s*ALL\s*</);
   const view = createScopeView();
   expect(view.ptlOn).toBe(false);
   expect(view.historyEnabled).toBe(true);
@@ -98,9 +101,13 @@ test("AC3 — PTL and HIST cells match F7/F8", () => {
   toggleHistoryEnabled(view);
   expect(view.ptlOn).toBe(true);
   expect(view.historyEnabled).toBe(false);
+  applyDcbShift(view);
   const html = dcbHtml(view);
-  expect(html).toMatch(/data-dcb-ptl=""/);
+  expect(html).toMatch(/data-dcb-cell="ptl-all"/);
   expect(html).toMatch(/aria-pressed="true"/);
+  expect(html).toContain("HISTORY");
+  expect(html).toContain("OWN");
+  expect(html).toContain("ALL");
 });
 
 test("AC4 — FILTER cell applies the same predicate as the F chord; invalid max<min does not apply", () => {
@@ -141,14 +148,14 @@ test("AC5 — no command.accepted from DCB clicks", () => {
   expect(mainSources["../main.tsx"]).toMatch(/syncDisplayControlBar\(scopeView/);
 });
 
-test("AC7 — Research: labels are RANGE/MAPS/FILTER/PTL/HIST, not Zoom/Layers", () => {
+test("AC7 — Research: labels are RANGE/MAPS/FILTER on MAIN; HISTORY/PTL on AUX", () => {
   const bar = barSrc();
   const html = dcbHtml();
   expect(html).toContain("RANGE 20");
   expect(html).toContain("MAPS");
   expect(html).toContain("FILTER");
-  expect(html).toContain("PTL");
-  expect(html).toContain("HIST");
+  expect(html).not.toContain("HISTORY");
+  expect(html).not.toContain("PTL");
   expect(html).toContain("RR 5");
   expect(html).toContain("LDR");
   expect(html).toContain("CHAR 12");
@@ -156,6 +163,18 @@ test("AC7 — Research: labels are RANGE/MAPS/FILTER/PTL/HIST, not Zoom/Layers",
   expect(html).toContain("PLACE");
   expect(html).toContain("CNTR");
   expect(html).toContain("000-180");
+  const auxView = createScopeView();
+  applyDcbShift(auxView);
+  const aux = dcbHtml(auxView);
+  expect(aux).toContain("HISTORY");
+  expect(aux).toContain("PTL");
+  expect(aux).toContain("OWN");
+  expect(aux).toContain("ALL");
+  expect(aux).toContain("DCB");
+  expect(aux).toContain("TOP");
+  expect(aux).toContain("LEFT");
+  expect(aux).toContain("RIGHT");
+  expect(aux).toContain("BOTTOM");
   expect(bar.toLowerCase()).not.toMatch(/\bzoom\b/);
   expect(bar.toLowerCase()).not.toMatch(/\blayers\b/);
   expect(bar.toLowerCase()).not.toMatch(/\bbasemap\b/);
@@ -166,6 +185,9 @@ test("AC7 — Research: labels are RANGE/MAPS/FILTER/PTL/HIST, not Zoom/Layers",
   expect(bar).toMatch(/range rings/i);
   expect(bar).toMatch(/leader/i);
   expect(bar).toMatch(/center/i);
+  expect(bar).toMatch(/\bHISTORY\b/);
+  expect(bar).toMatch(/\bPTL\b/);
+  expect(bar).toMatch(/\bDCB\b/);
   expect(bar).not.toMatch(/FLIGHT STRIPS/);
   expect(html).not.toMatch(/FLIGHT STRIPS/);
 });
@@ -185,13 +207,20 @@ test("RR spinner readout stays RR n; does not hide rings by cycling", () => {
 test("cells sit on the PPI glass; canvas below fills the rectangular PPI", () => {
   expect(canvasSrc()).toMatch(/className="ppi-column"/);
   expect(canvasSrc()).toMatch(/header=\{<DisplayControlBar/);
+  expect(canvasSrc()).toMatch(/dock=\{scopeView\.dcbDock\}/);
   expect(placeholderSrc()).toMatch(/\{header\}/);
   expect(placeholderSrc().indexOf("{header}")).toBeLessThan(placeholderSrc().indexOf("<canvas"));
+  expect(placeholderSrc()).toMatch(/data-dcb-dock=\{dock\}/);
+  expect(placeholderSrc()).toMatch(/className="ppi-draw"/);
   expect(DCB_HEIGHT_PX).toBe(36);
   expect(DCB_FONT_PX).toBe(11);
 
   const css = cssSrc();
   expect(css).toMatch(/\.ppi-host\s*\{[^}]*flex-direction:\s*column/s);
+  expect(css).toMatch(/\.ppi-host\[data-dcb-dock="LEFT"\]/);
+  expect(css).toMatch(/\.ppi-host\[data-dcb-dock="RIGHT"\][^}]*flex-direction:\s*row-reverse/s);
+  expect(css).toMatch(/\.ppi-host\[data-dcb-dock="BOTTOM"\][^}]*flex-direction:\s*column-reverse/s);
+  expect(css).toMatch(/\.dcb-vertical\s*\{[^}]*flex-direction:\s*column/s);
   expect(css).toMatch(/\.dcb\s*\{[^}]*flex:\s*0 0 36px/s);
   expect(css).toMatch(/\.dcb\s*\{[^}]*gap:\s*1px/s);
   expect(css).toMatch(/\.dcb\s*\{[^}]*background:\s*#000000/s);
@@ -371,4 +400,48 @@ test("AC4 — disabled VOL is in AUX DOM with aria-disabled", () => {
   expect(html).toMatch(/aria-disabled="true"/);
   expect(html).toMatch(/disabled/);
   expect(html).toContain("VOL");
+});
+
+test("AC4 — DCB LEFT/RIGHT render as a vertical stack; TOP/BOTTOM stay horizontal", () => {
+  const view = createScopeView();
+  expect(dcbHtml(view)).toMatch(/data-dcb-dock="TOP"/);
+  expect(dcbHtml(view)).toMatch(/class="dcb"/);
+  expect(dcbHtml(view)).not.toMatch(/dcb-vertical/);
+  view.dcbDock = "LEFT";
+  const left = dcbHtml(view);
+  expect(left).toMatch(/data-dcb-dock="LEFT"/);
+  expect(left).toMatch(/dcb-vertical/);
+  view.dcbDock = "RIGHT";
+  expect(dcbHtml(view)).toMatch(/data-dcb-dock="RIGHT"/);
+  expect(dcbHtml(view)).toMatch(/dcb-vertical/);
+  view.dcbDock = "BOTTOM";
+  expect(dcbHtml(view)).toMatch(/data-dcb-dock="BOTTOM"/);
+  expect(dcbHtml(view)).not.toMatch(/dcb-vertical/);
+
+  const hostLeft = renderToStaticMarkup(
+    createElement(PpiPlaceholder, { dock: "LEFT", header: createElement("div") }),
+  );
+  expect(hostLeft).toMatch(/data-dcb-dock="LEFT"/);
+  expect(hostLeft).toMatch(/class="ppi-draw"/);
+  const hostBottom = renderToStaticMarkup(
+    createElement(PpiPlaceholder, { dock: "BOTTOM", header: createElement("div") }),
+  );
+  expect(hostBottom).toMatch(/data-dcb-dock="BOTTOM"/);
+});
+
+test("AC5 — TPA/ATPA opener is a stub submenu with DONE only", () => {
+  const view = createScopeView();
+  applyDcbShift(view);
+  expect(dcbHtml(view)).toContain("TPA");
+  expect(dcbHtml(view)).toContain("ATPA");
+  openDcbMenu(view, "TPA_ATPA");
+  const html = dcbHtml(view);
+  expect(html).toContain("DONE");
+  expect(html).toMatch(/data-dcb-menu="TPA_ATPA"/);
+  expect(html).not.toMatch(/>TPA</);
+  expect(html).not.toMatch(/>ATPA</);
+  expect(html).not.toMatch(/\bJ-?ring/i);
+  expect(html).not.toContain("2 NM");
+  closeDcbMenu(view);
+  expect(dcbHtml(view)).toContain("RANGE 20");
 });

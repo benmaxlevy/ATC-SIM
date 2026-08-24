@@ -8,9 +8,12 @@
  * airport). RR CNTR lights when that origin ≠ view **center**. Leader direction
  * is L1–L9; length is a discrete px set (0/24/36/48) on this view. CHAR SIZE is
  * 11–13 px Plex/system mono. BRITE steps map strokes only. History is 5 s sim /
- * 5 dots, no phosphor. PTL is a straight 1.0 min predicted track line (F7),
- * default off. Altitude filter default 000–180; `F` and the DCB FILTER cell
- * start the same chord. Discrete range presets only. Not NAS STARS.
+ * 5 dots, no phosphor; AUX HISTORY spinner shows 0–5 of those dots (F8 / H
+ * toggles 0 ↔ last non-zero). PTL is a straight predicted track line (default
+ * 1.0 min; AUX spinner 0.5/1/2/4). F7 toggles PTL ALL. PTL OWN is F3-owned
+ * tracks; ALL wins if both are on. DCB docks TOP/LEFT/RIGHT/BOTTOM. Altitude
+ * filter default 000–180; FILTER stays on MAIN. Discrete range presets only.
+ * Not NAS STARS.
  *
  * Scope display state only. Never a Command, readback, or intent.
  */
@@ -34,8 +37,12 @@ import {
   syncRoleMapVisibility,
   type RrIntervalNm,
 } from "./dcbFunctions";
+import { type DcbDock } from "./dcbDock";
 import { idleDcbSpinner, type DcbMenu, type DcbSpinnerState } from "./dcbMenu";
 import { DEFAULT_CHAR_SIZE_PX, DEFAULT_DATABLOCK_CELL_PX, type CharSizePx } from "./fonts";
+import type { HistoryDotCount } from "./history";
+import { stepHistoryDotCount } from "./history";
+import { PTL_MINUTES, stepPtlMinutes, type PtlMinutes } from "./ptl";
 import type { ScopeChord } from "./keymap";
 import {
   DEFAULT_LEADER_DIR,
@@ -78,15 +85,24 @@ export interface ScopeView {
   leaderLengthPx: LeaderLengthPx;
   /** DCB menu machine: MAIN/AUX via SHIFT; MAPS/LDR replace the bar. */
   dcbMenu: DcbMenu;
-  /** RANGE / RR / LDR DIR / LDR length spinner arm+wheel. Display only. */
+  /** RANGE / RR / LDR DIR / LDR length / HISTORY / PTL spinner arm+wheel. Display only. */
   dcbSpinner: DcbSpinnerState;
   /** GEO MAPS on-PPI list (video map catalog). Display only. */
   geoMapsListOn: boolean;
   /** CURRENT on-PPI list of video maps that are on. Display only. */
   currentMapsListOn: boolean;
+  /** One DCB along a PPI edge. CRC analog; default TOP. */
+  dcbDock: DcbDock;
   digitalMap: DigitalMap;
   mapCache: MapCache | null;
-  /** Global history dots. CRC analog; default on. F8 / scope-focus H. */
+  /**
+   * HISTORY dots to draw (0–5). 0 = off (same skip as historyEnabled === false).
+   * 5 matches the 5-dot buffer. F8 / H toggles 0 ↔ last non-zero (default 5).
+   */
+  historyDotCount: HistoryDotCount;
+  /** Last non-zero HISTORY count restored by F8 / H. */
+  lastHistoryDotCount: Exclude<HistoryDotCount, 0>;
+  /** Derived from historyDotCount > 0. Kept so existing readers stay valid. */
   historyEnabled: boolean;
   /**
    * Mode C field on full datablocks. CRC analog `M`; default shown.
@@ -96,10 +112,14 @@ export interface ScopeView {
   /** Last measured `0` cell width for datablock hit-tests. */
   datablockCellWidthPx: number;
   /**
-   * Global predicted track line (PTL). CRC analog; default off. F7 always-on.
+   * PTL ALL (global). CRC analog; default off. F7 always-on toggles this.
    * Display only — never a Command, readback, or intent.
    */
   ptlOn: boolean;
+  /** PTL OWN: F3-owned tracks only. ALL wins if both are on. */
+  ptlOwn: boolean;
+  /** PTL length in minutes. Default 1.0 (T02-07). AUX spinner 0.5/1/2/4. */
+  ptlMinutes: PtlMinutes;
   /**
    * Altitude filter (Mode C hundreds). FOA/CRC analog; default 000–180.
    * Scope command only — never a Command, readback, or intent.
@@ -160,12 +180,17 @@ export function createScopeView(
     dcbSpinner: idleDcbSpinner(),
     geoMapsListOn: false,
     currentMapsListOn: false,
+    dcbDock: "TOP",
     digitalMap,
     mapCache: null,
+    historyDotCount: 5,
+    lastHistoryDotCount: 5,
     historyEnabled: true,
     modeCVisible: true,
     datablockCellWidthPx: DEFAULT_DATABLOCK_CELL_PX,
     ptlOn: false,
+    ptlOwn: false,
+    ptlMinutes: PTL_MINUTES,
     altitudeFilter: { ...DEFAULT_ALTITUDE_FILTER },
     filterEntry: idleFilterEntry(DEFAULT_ALTITUDE_FILTER),
     tracks: new Map(),
@@ -174,9 +199,35 @@ export function createScopeView(
   };
 }
 
-/** F8 always-on; H only when scope-focused. Never a Command. */
+function syncHistoryEnabled(view: ScopeView): void {
+  view.historyEnabled = view.historyDotCount > 0;
+}
+
+/** F8 always-on; H only when scope-focused. Toggles 0 ↔ last non-zero (default 5). Never a Command. */
 export function toggleHistoryEnabled(view: ScopeView): void {
-  view.historyEnabled = !view.historyEnabled;
+  if (view.historyDotCount === 0) {
+    view.historyDotCount = view.lastHistoryDotCount;
+  } else {
+    view.lastHistoryDotCount = view.historyDotCount;
+    view.historyDotCount = 0;
+  }
+  syncHistoryEnabled(view);
+}
+
+export function setHistoryDotCount(view: ScopeView, count: HistoryDotCount): void {
+  view.historyDotCount = count;
+  if (count !== 0) {
+    view.lastHistoryDotCount = count;
+  }
+  syncHistoryEnabled(view);
+}
+
+export function stepHistoryDots(view: ScopeView, delta: -1 | 1): void {
+  setHistoryDotCount(view, stepHistoryDotCount(view.historyDotCount, delta));
+}
+
+export function formatDcbHistoryReadout(count: HistoryDotCount): string {
+  return String(count);
 }
 
 /** Scope-focus `M`: hide/show Mode C on full datablocks. Never a Command. */
@@ -184,9 +235,29 @@ export function toggleModeCVisible(view: ScopeView): void {
   view.modeCVisible = !view.modeCVisible;
 }
 
-/** F7 always-on. Never a Command. */
+/** F7 always-on: toggle PTL ALL. If OWN and ALL were off, this turns ALL on. Never a Command. */
 export function togglePtlOn(view: ScopeView): void {
   view.ptlOn = !view.ptlOn;
+}
+
+export function togglePtlOwn(view: ScopeView): void {
+  view.ptlOwn = !view.ptlOwn;
+}
+
+export function stepPtlLength(view: ScopeView, delta: -1 | 1): void {
+  view.ptlMinutes = stepPtlMinutes(view.ptlMinutes, delta);
+}
+
+export function formatDcbPtlMinutesReadout(minutes: PtlMinutes): string {
+  return minutes === 0.5 ? "0.5" : minutes.toFixed(1);
+}
+
+export function setDcbDock(view: ScopeView, dock: DcbDock): void {
+  if (view.dcbDock === dock) {
+    return;
+  }
+  view.dcbDock = dock;
+  view.mapCache = null;
 }
 
 /** F1 always-on. Does not pause kinematics. Never a Command. */

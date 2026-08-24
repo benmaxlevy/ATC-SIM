@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { RANGE_PRESETS_NM, stepRange } from "./camera";
-import { createScopeView } from "./scopeView";
+import { createScopeView, stepHistoryDots, stepPtlLength } from "./scopeView";
 import {
   applyDcbShift,
   armDcbSpinner,
@@ -85,4 +85,22 @@ test("RANGE spinner steps the same 8 presets as stepRange", () => {
   expect(handleDcbEscape(view)).toBe(true);
   expect(view.camera.rangeNm).toBe(before);
   expect(view.dcbSpinner.armed).toBe(false);
+});
+
+test("HISTORY and PTL spinners arm and step like RANGE", () => {
+  const view = createScopeView();
+  armDcbSpinner(view, "HISTORY");
+  expect(view.dcbSpinner.cell).toBe("HISTORY");
+  expect(view.historyDotCount).toBe(5);
+  expect(stepDcbSpinner(view, -1, (delta) => stepHistoryDots(view, delta))).toBe(true);
+  expect(view.historyDotCount).toBe(4);
+  commitDcbSpinner(view);
+  armDcbSpinner(view, "PTL");
+  expect(view.dcbSpinner.cell).toBe("PTL");
+  expect(view.ptlMinutes).toBe(1);
+  expect(stepDcbSpinner(view, 1, (delta) => stepPtlLength(view, delta))).toBe(true);
+  expect(view.ptlMinutes).toBe(2);
+  expect(handleDcbEscape(view)).toBe(true);
+  expect(view.dcbSpinner.armed).toBe(false);
+  expect(view.ptlMinutes).toBe(2);
 });

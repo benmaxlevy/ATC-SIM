@@ -13,11 +13,13 @@
  * T04-09 CA/MSAW tints (yellow then red) read `world.alerts`; the PPI does not
  * compute pair distance.
  *
- * DCB (T02-16/T02-17/T02-22) is a green cell grid on the PPI glass; it calls these same
+ * DCB (T02-16/T02-17/T02-22/T02-25) is a green cell grid on the PPI glass; it calls these same
  * camera / map / filter / PTL / history / MAPS / RR / LDR / CHAR / BRITE
  * functions. MAIN↔AUX via SHIFT; submenus replace the bar; RANGE / RR / LDR DIR /
- * LDR length are spinners over frozen presets. Trainer subset (SHIFT/DONE/VOL,
- * disabled WX) — not a full STARS DCB (no precipitation / PREF / CSA / CRDA / FMA).
+ * LDR length are spinners over frozen presets. AUX has HISTORY 0–5, PTL
+ * length/OWN/ALL, DCB TOP/LEFT/RIGHT/BOTTOM; VOL disabled. Trainer subset
+ * (SHIFT/DONE/VOL, disabled WX) — not a full STARS DCB (no precipitation /
+ * PREF / CSA / CRDA / FMA).
  *
  * SSA (T02-20) is a screen-fixed top-left status block (sim time, KDEM 29.92
  * stub, FILTER, RANGE, OFF CNTR, OK). Never a Command.
@@ -164,12 +166,21 @@ export {
   setRangeRingOrigin,
   snapRangeRingToViewCenter,
   toggleHelpOverlay,
+  formatDcbHistoryReadout,
+  formatDcbPtlMinutesReadout,
+  setDcbDock,
+  setHistoryDotCount,
+  stepHistoryDots,
+  stepPtlLength,
   toggleHistoryEnabled,
   toggleMapLayer,
   toggleModeCVisible,
   togglePtlOn,
+  togglePtlOwn,
 } from "./scopeView";
 export type { MapLayerId, ScopeView } from "./scopeView";
+export { DCB_THICKNESS_PX, drawablePpiSize, isVerticalDcbDock } from "./dcbDock";
+export type { DcbDock } from "./dcbDock";
 export {
   applyDcbShift,
   armDcbSpinner,
@@ -222,12 +233,15 @@ export {
 } from "./dcbFunctions";
 export type { DcbSubmenu, MapListKind, RrIntervalNm } from "./dcbFunctions";
 export {
+  HISTORY_DOT_COUNTS,
   HISTORY_MAX_DOTS,
   HISTORY_SAMPLE_MS,
   createHistoryBuf,
+  historyDotsToDraw,
   maybeSampleHistory,
+  stepHistoryDotCount,
 } from "./history";
-export type { HistoryBuf } from "./history";
+export type { HistoryBuf, HistoryDotCount } from "./history";
 export {
   HEADING_TICK_PX,
   HISTORY_DOT_SIZE_PX,
@@ -244,11 +258,15 @@ export {
 export {
   PTL_CAP_TICK_PX,
   PTL_MINUTES,
+  PTL_MINUTE_PRESETS,
   PTL_STROKE_PX,
   drawPredictedTrackLine,
   ptlEndpoint,
   shouldDrawPtl,
+  shouldDrawPtlForTrack,
+  stepPtlMinutes,
 } from "./ptl";
+export type { PtlMinutes } from "./ptl";
 export {
   IDENT_DISPLAY_FLASH_MS,
   acceptInboundOnClick,

@@ -7,9 +7,10 @@
  * filling the canvas (RANGE is still the nearest-edge NM; corners show extra);
  * **target** diamond + optional **history** dots (5 s sim / 5 dots, no phosphor);
  * full/limited **datablock** in IBM Plex Mono (not a STARS face); L1–L9 **leader**
- * (pixel-constant default 36 CSS px; DCB LDR length 0/24/36/48); **predicted track line** (PTL) straight 1.0 min
- * GS along ground track, default off, F7; CRC may offer extra minute
- * presets / turn curves — we do not. Extra CRC presets omitted.
+ * (pixel-constant default 36 CSS px; DCB LDR length 0/24/36/48); **predicted track line** (PTL)
+ * straight 1.0 min GS along ground track by default (AUX spinner 0.5/1/2/4),
+ * default off, F7 toggles PTL ALL. CRC may offer extra minute presets / turn
+ * curves — we do not. Extra CRC presets omitted.
  * **Altitude filter** (FILTER readout in SSA): out of band keep target + history,
  * suppress datablock / leader / PTL. F3 initiate-track color stub (unowned green
  * FDB / owned white FDB, CSI-like `*` / `G`); position symbol stays blue;
@@ -43,7 +44,8 @@ import { datablockFontCss, datablockLineHeightPx, measureDatablockCellWidth } fr
 import { datablockTopLeft, DEFAULT_LEADER_DIR, drawLeaderLine, type LeaderDir } from "./leader";
 import { reuseOrBuildMapCache, toMapCacheInput, type MapCache } from "./mapLayers";
 import { PALETTE, mapBriteColors } from "./palette";
-import { PTL_MINUTES, drawPredictedTrackLine, ptlEndpoint, shouldDrawPtl } from "./ptl";
+import { historyDotsToDraw } from "./history";
+import { drawPredictedTrackLine, ptlEndpoint, shouldDrawPtlForTrack } from "./ptl";
 import { isViewOffAirport, type ScopeView } from "./scopeView";
 import { buildSsaLines } from "./ssa";
 import { buildMapListLines } from "./dcbFunctions";
@@ -260,21 +262,23 @@ function drawTracks(
   view: ScopeView,
   size: ScopeViewSize,
 ): void {
-  if (view.historyEnabled) {
+  const historyCount = view.historyEnabled ? view.historyDotCount : 0;
+  if (historyCount > 0) {
     for (const ac of world.aircraft) {
       const td = view.tracks.get(ac.id);
       if (!td) {
         continue;
       }
-      const n = td.history.eastNm.length;
+      const dots = historyDotsToDraw(td.history, historyCount);
+      const n = dots.eastNm.length;
       for (let i = 0; i < n; i += 1) {
-        const p = nmToScreen(td.history.eastNm[i]!, td.history.northNm[i]!, view.camera, size);
+        const p = nmToScreen(dots.eastNm[i]!, dots.northNm[i]!, view.camera, size);
         drawHistoryDot(ctx, p.x, p.y, historyDotColor(i, n));
       }
     }
   }
 
-  if (view.ptlOn) {
+  if (view.ptlOn || view.ptlOwn) {
     drawPredictedTrackLines(ctx, world, view, size);
   }
 
@@ -321,8 +325,10 @@ function drawTracks(
 }
 
 /**
- * Straight 1.0 min PTL along ground track. Canvas bounds clip the rectangular
- * PPI. Altitude-filtered tracks keep the symbol and lose PTL
+ * Straight predicted track line along ground track (default 1.0 min; AUX spinner
+ * 0.5/1/2/4). PTL ALL draws every in-filter track; PTL OWN draws F3-owned only;
+ * ALL wins if both are on. Canvas bounds clip the rectangular PPI.
+ * Altitude-filtered tracks keep the symbol and lose PTL
  * (`inAltitudeFilter` / `shouldDrawPtl`).
  */
 function drawPredictedTrackLines(
@@ -333,10 +339,11 @@ function drawPredictedTrackLines(
 ): void {
   for (const ac of world.aircraft) {
     const altitudeFiltered = !inAltitudeFilter(ac.altitudeFt, view.altitudeFilter);
-    if (!shouldDrawPtl(ac.speedKt, altitudeFiltered)) {
+    const owned = (view.tracks.get(ac.id)?.ownership ?? "unowned") === "owned";
+    if (!shouldDrawPtlForTrack(ac.speedKt, altitudeFiltered, owned, view.ptlOn, view.ptlOwn)) {
       continue;
     }
-    const end = ptlEndpoint(ac.xNm, ac.yNm, ac.headingDeg, ac.speedKt, PTL_MINUTES);
+    const end = ptlEndpoint(ac.xNm, ac.yNm, ac.headingDeg, ac.speedKt, view.ptlMinutes);
     const from = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
     const to = nmToScreen(end.eastNm, end.northNm, view.camera, size);
     const td = view.tracks.get(ac.id);

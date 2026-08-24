@@ -1,9 +1,10 @@
 /**
  * Analog: CRC STARS display with DCB cells on the PPI glass (R07).
- * Trainer delta: equal-height green cells flush to the top of the host; the
- * canvas below is the rectangular PPI (T02-01 view size already minus DCB height).
- * Command strip overlays the bottom of the canvas (T02-15). The flight-strip
- * list overlays the canvas (T02-20). Not a full-width web input. Not NAS STARS.
+ * Trainer delta: equal-height green cells along one docked edge (TOP/LEFT/RIGHT/
+ * BOTTOM); the canvas in the remaining rect is the PPI (T02-01 range circle
+ * inscribed there). Command strip overlays the bottom of that canvas (T02-15).
+ * The flight-strip list overlays the canvas (T02-20). Not a full-width web
+ * input. Not NAS STARS.
  */
 
 import type { World } from "@core";
@@ -44,6 +45,7 @@ export function ScopeCanvas({
   return (
     <div className="ppi-column">
       <PpiPlaceholder
+        dock={scopeView.dcbDock}
         header={<DisplayControlBar view={scopeView} world={world} onChange={onScopeChange} />}
         onCanvasClick={onCanvasClick}
         onCanvasDoubleClick={onCanvasDoubleClick}

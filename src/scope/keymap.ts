@@ -93,15 +93,15 @@ export const KEY_BINDINGS: KeyBinding[] = [
     id: "ptl",
     focus: "always",
     windowsKeys: "F7",
-    action: "Toggle predicted track line (PTL) globally.",
+    action: "Toggle PTL ALL (predicted track line). If OWN and ALL are off, F7 turns ALL on.",
     crcAnalog: "DCB PTL OWN / PTL ALL (CRC F7 is MULTIFUNC)",
   },
   {
     id: "history",
     focus: "always",
     windowsKeys: "F8",
-    action: "Toggle history dots globally.",
-    crcAnalog: "DCB history trail length",
+    action: "Toggle history dots (0 ↔ last non-zero count).",
+    crcAnalog: "DCB HISTORY (dot count 0–5)",
   },
   {
     id: "cycle-focus",
@@ -199,7 +199,7 @@ export const KEY_BINDINGS: KeyBinding[] = [
     id: "history-scope",
     focus: "scope",
     windowsKeys: "H",
-    action: "History dots (same as F8) when the PPI is focused.",
+    action: "History dots (same as F8: 0 ↔ last non-zero) when the PPI is focused.",
     crcAnalog: "DCB history (always-on duplicate is F8)",
   },
   {

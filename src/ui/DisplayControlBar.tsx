@@ -1,17 +1,20 @@
 /**
  * Analog: CRC STARS DCB RANGE / PLACE CNTR / OFF CNTR / RR / PLACE RR / RR CNTR /
- * LDR DIR / LDR / MAPS / WX (docs.virtualnas.net/crc/stars — R07).
+ * LDR DIR / LDR / MAPS / WX / AUX HISTORY / PTL / DCB position (R07).
  * Trainer delta: green equal-height cells on the glass. SHIFT swaps MAIN and AUX.
- * MAPS submenu replaces the bar; DONE / Esc return to MAIN. RANGE / RR / LDR DIR /
- * LDR length are spinners (arm, wheel steps frozen presets, second click / Esc
- * commits). CHAR SIZE and BRITE stay click-cycle until T02-26. AUX is SHIFT back
- * + VOL disabled. FILTER / PTL / HIST stay on MAIN. Pressed = invert/stipple.
- * MAIN quick video maps 1–6; MAPS submenu slots 1–30 (empty slots disabled).
- * WX1–4 are disabled chrome (no precipitation). No PREF / CSA / CRDA / FMA (R06).
- * Discrete **range** presets only. Not NAS STARS.
+ * MAPS / TPA-ATPA submenus replace the bar; DONE / Esc return to MAIN. RANGE / RR /
+ * LDR DIR / LDR length are spinners (arm, wheel steps frozen presets, second click /
+ * Esc commits). CHAR SIZE and BRITE stay click-cycle until T02-26. AUX: VOL disabled,
+ * HISTORY spinner 0–5, DCB TOP/LEFT/RIGHT/BOTTOM, PTL length spinner, PTL OWN,
+ * PTL ALL, TPA/ATPA stub. FILTER stays on MAIN. HIST/PTL cells live on AUX (F7/F8
+ * still work). MAIN quick video maps 1–6; MAPS submenu slots 1–30 (empty slots
+ * disabled). WX1–4 are disabled chrome (no precipitation). No PREF / CSA / CRDA /
+ * FMA (R06). Discrete **range** presets only. Not NAS STARS.
  *
- * UI copy: SHIFT / DONE / MAIN / AUX / range / center / range rings / leader —
- * not toolbar or modal.
+ * UI copy: SHIFT / DONE / MAIN / AUX / HISTORY / PTL / range / center / range rings /
+ * leader — not toolbar or modal.
+ * F8 / scope-focus H still call toggleHistoryEnabled(view) (0 ↔ last non-zero).
+ * F7 still calls togglePtlOn(view) (PTL ALL).
  * Clicks call the same `src/scope` functions as the keyboard. Never a Command,
  * readback, or intent.
  */
@@ -41,26 +44,32 @@ import {
   DCB_QUICK_MAP_COUNT,
   formatDcbBriteReadout,
   formatDcbCharReadout,
+  formatDcbHistoryReadout,
   formatDcbLdrLengthReadout,
   formatDcbMapLabel,
+  formatDcbPtlMinutesReadout,
   formatDcbRangeReadout,
   formatDcbRrReadout,
   formatFilterBand,
   hideMapLists,
   isDcbMapSlotEnabled,
   isRangeRingOffViewCenter,
+  isVerticalDcbDock,
   isVideoMapOn,
   isViewOffAirport,
   openDcbMenu,
+  setDcbDock,
   stepDcbLeaderDir,
   stepDcbLeaderLength,
   stepDcbSpinner,
+  stepHistoryDots,
+  stepPtlLength,
   stepRange,
   stepRrInterval,
   toggleCurrentMapsList,
   toggleGeoMapsList,
-  toggleHistoryEnabled,
   togglePtlOn,
+  togglePtlOwn,
   toggleVideoMap,
   videoMapByDcbNumber,
   type DcbCellKind,
@@ -86,6 +95,8 @@ export const DCB_LDR_READOUT_ID = "dcb-ldr-readout";
 export const DCB_LDR_LENGTH_READOUT_ID = "dcb-ldr-length-readout";
 export const DCB_CHAR_READOUT_ID = "dcb-char-readout";
 export const DCB_BRITE_READOUT_ID = "dcb-brite-readout";
+export const DCB_HISTORY_READOUT_ID = "dcb-history-readout";
+export const DCB_PTL_MINUTES_READOUT_ID = "dcb-ptl-minutes-readout";
 export const DCB_RNG_READOUT_ID = DCB_RANGE_READOUT_ID;
 
 /** CHAR SIZE 11/12/13 → DCB 10/11/12 so two lines still fit the 36 px bar. */
@@ -157,8 +168,16 @@ function onSpinnerWheel(
   onChange();
 }
 
+function historySpinnerArmed(view: ScopeView): boolean {
+  return view.dcbSpinner.armed && view.dcbSpinner.cell === "HISTORY";
+}
+
+function ptlSpinnerArmed(view: ScopeView): boolean {
+  return view.dcbSpinner.armed && view.dcbSpinner.cell === "PTL";
+}
+
 /**
- * Keep RANGE / MAPS / RR / LDR DIR / LDR / CHAR / BRITE / FILTER / PTL / HIST in sync
+ * Keep RANGE / MAPS / RR / LDR DIR / LDR / CHAR / BRITE / FILTER / HISTORY / PTL in sync
  * with keyboard chords.
  */
 export function syncDisplayControlBar(
@@ -185,6 +204,16 @@ export function syncDisplayControlBar(
   }
   setPressed(doc.querySelector("[data-dcb-ptl]"), view.ptlOn);
   setPressed(doc.querySelector("[data-dcb-hist]"), view.historyEnabled);
+  setText(DCB_HISTORY_READOUT_ID, formatDcbHistoryReadout(view.historyDotCount));
+  setText(DCB_PTL_MINUTES_READOUT_ID, formatDcbPtlMinutesReadout(view.ptlMinutes));
+  setPressed(doc.querySelector('[data-dcb-cell="ptl-own"]'), view.ptlOwn);
+  setPressed(doc.querySelector('[data-dcb-cell="ptl-all"]'), view.ptlOn);
+  setPressed(doc.querySelector('[data-dcb-cell="hist"]'), historySpinnerArmed(view));
+  setPressed(doc.querySelector('[data-dcb-cell="ptl-len"]'), ptlSpinnerArmed(view));
+  setPressed(doc.querySelector('[data-dcb-cell="dock-top"]'), view.dcbDock === "TOP");
+  setPressed(doc.querySelector('[data-dcb-cell="dock-left"]'), view.dcbDock === "LEFT");
+  setPressed(doc.querySelector('[data-dcb-cell="dock-right"]'), view.dcbDock === "RIGHT");
+  setPressed(doc.querySelector('[data-dcb-cell="dock-bottom"]'), view.dcbDock === "BOTTOM");
   setPressed(doc.querySelector('[data-dcb-cell="maps"]'), view.dcbMenu === "MAPS");
   setPressed(doc.querySelector('[data-dcb-cell="place"]'), view.placeCenterArmed);
   setPressed(doc.querySelector('[data-dcb-cell="off-cntr"]'), isViewOffAirport(view));
@@ -230,7 +259,15 @@ interface DcbCellProps {
     | "wx4"
     | "clr-all"
     | "geo-maps"
-    | "current";
+    | "current"
+    | "ptl-len"
+    | "ptl-own"
+    | "ptl-all"
+    | "dock-top"
+    | "dock-left"
+    | "dock-right"
+    | "dock-bottom"
+    | "tpa";
   dataMapId?: string;
   dataMapSlot?: number;
 }
@@ -331,6 +368,12 @@ function runCell(view: ScopeView, onChange: () => void, fn: () => void): void {
   cancelFilterIfEntering(view);
   closeDcbSubmenu(view);
   commitDcbSpinner(view);
+  fn();
+  afterCell(onChange);
+}
+
+function runAuxCell(view: ScopeView, onChange: () => void, fn: () => void): void {
+  cancelFilterIfEntering(view);
   fn();
   afterCell(onChange);
 }
@@ -541,32 +584,14 @@ function renderMain(view: ScopeView, onChange: () => void, world: DisplayControl
           {formatFilterBand(view.altitudeFilter, view.filterEntry)}
         </span>
       </DcbCell>
-      <DcbCell
-        kind="toggle"
-        ariaLabel="Predicted track line"
-        dataDcb="ptl"
-        pressed={view.ptlOn}
-        onClick={() => runCell(view, onChange, () => togglePtlOn(view))}
-      >
-        <span className="dcb-cell-line">PTL</span>
-        <span className="dcb-cell-line">{view.ptlOn ? "ON" : "OFF"}</span>
-      </DcbCell>
-      <DcbCell
-        kind="toggle"
-        ariaLabel="History"
-        dataDcb="hist"
-        pressed={view.historyEnabled}
-        onClick={() => runCell(view, onChange, () => toggleHistoryEnabled(view))}
-      >
-        <span className="dcb-cell-line">HIST</span>
-        <span className="dcb-cell-line">{view.historyEnabled ? "ON" : "OFF"}</span>
-      </DcbCell>
       {renderShift(view, onChange)}
     </>
   );
 }
 
 function renderAux(view: ScopeView, onChange: () => void) {
+  const historyArmed = historySpinnerArmed(view);
+  const ptlArmed = ptlSpinnerArmed(view);
   return (
     <>
       {renderShift(view, onChange)}
@@ -574,8 +599,146 @@ function renderAux(view: ScopeView, onChange: () => void) {
         <span className="dcb-cell-line">VOL</span>
         <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
+      <DcbCell
+        kind="spinner"
+        ariaLabel="History"
+        dataDcb="hist"
+        pressed={historyArmed}
+        onClick={() => {
+          cancelFilterIfEntering(view);
+          if (historyArmed) {
+            commitDcbSpinner(view);
+          } else {
+            armDcbSpinner(view, "HISTORY");
+          }
+          afterCell(onChange);
+        }}
+        onWheel={(event) => {
+          if (!historySpinnerArmed(view)) {
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+          const delta: -1 | 1 = event.deltaY < 0 ? -1 : 1;
+          stepDcbSpinner(view, delta, (step) => stepHistoryDots(view, step));
+          onChange();
+        }}
+      >
+        <span className="dcb-cell-line">HISTORY</span>
+        <span id={DCB_HISTORY_READOUT_ID} className="dcb-cell-line">
+          {formatDcbHistoryReadout(view.historyDotCount)}
+        </span>
+      </DcbCell>
+      <DcbCell
+        kind="toggle"
+        ariaLabel="DCB top"
+        dataDcb="dock-top"
+        pressed={view.dcbDock === "TOP"}
+        onClick={() => runAuxCell(view, onChange, () => setDcbDock(view, "TOP"))}
+      >
+        <span className="dcb-cell-line">DCB</span>
+        <span className="dcb-cell-line">TOP</span>
+      </DcbCell>
+      <DcbCell
+        kind="toggle"
+        ariaLabel="DCB left"
+        dataDcb="dock-left"
+        pressed={view.dcbDock === "LEFT"}
+        onClick={() => runAuxCell(view, onChange, () => setDcbDock(view, "LEFT"))}
+      >
+        <span className="dcb-cell-line">DCB</span>
+        <span className="dcb-cell-line">LEFT</span>
+      </DcbCell>
+      <DcbCell
+        kind="toggle"
+        ariaLabel="DCB right"
+        dataDcb="dock-right"
+        pressed={view.dcbDock === "RIGHT"}
+        onClick={() => runAuxCell(view, onChange, () => setDcbDock(view, "RIGHT"))}
+      >
+        <span className="dcb-cell-line">DCB</span>
+        <span className="dcb-cell-line">RIGHT</span>
+      </DcbCell>
+      <DcbCell
+        kind="toggle"
+        ariaLabel="DCB bottom"
+        dataDcb="dock-bottom"
+        pressed={view.dcbDock === "BOTTOM"}
+        onClick={() => runAuxCell(view, onChange, () => setDcbDock(view, "BOTTOM"))}
+      >
+        <span className="dcb-cell-line">DCB</span>
+        <span className="dcb-cell-line">BOTTOM</span>
+      </DcbCell>
+      <DcbCell
+        kind="spinner"
+        ariaLabel="Predicted track line length"
+        dataDcb="ptl-len"
+        pressed={ptlArmed}
+        onClick={() => {
+          cancelFilterIfEntering(view);
+          if (ptlArmed) {
+            commitDcbSpinner(view);
+          } else {
+            armDcbSpinner(view, "PTL");
+          }
+          afterCell(onChange);
+        }}
+        onWheel={(event) => {
+          if (!ptlSpinnerArmed(view)) {
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+          const delta: -1 | 1 = event.deltaY < 0 ? -1 : 1;
+          stepDcbSpinner(view, delta, (step) => stepPtlLength(view, step));
+          onChange();
+        }}
+      >
+        <span className="dcb-cell-line">PTL</span>
+        <span id={DCB_PTL_MINUTES_READOUT_ID} className="dcb-cell-line">
+          {formatDcbPtlMinutesReadout(view.ptlMinutes)}
+        </span>
+      </DcbCell>
+      <DcbCell
+        kind="toggle"
+        ariaLabel="Predicted track line own"
+        dataDcb="ptl-own"
+        pressed={view.ptlOwn}
+        onClick={() => runAuxCell(view, onChange, () => togglePtlOwn(view))}
+      >
+        <span className="dcb-cell-line">PTL</span>
+        <span className="dcb-cell-line">OWN</span>
+      </DcbCell>
+      <DcbCell
+        kind="toggle"
+        ariaLabel="Predicted track line all"
+        dataDcb="ptl-all"
+        pressed={view.ptlOn}
+        onClick={() => runAuxCell(view, onChange, () => togglePtlOn(view))}
+      >
+        <span className="dcb-cell-line">PTL</span>
+        <span className="dcb-cell-line">ALL</span>
+      </DcbCell>
+      <DcbCell
+        kind="submenu"
+        ariaLabel="TPA ATPA"
+        dataDcb="tpa"
+        pressed={view.dcbMenu === "TPA_ATPA"}
+        onClick={() => {
+          cancelFilterIfEntering(view);
+          openDcbMenu(view, "TPA_ATPA");
+          afterCell(onChange);
+        }}
+      >
+        <span className="dcb-cell-line">TPA</span>
+        <span className="dcb-cell-line">ATPA</span>
+      </DcbCell>
     </>
   );
+}
+
+function renderTpaAtpa(view: ScopeView, onChange: () => void) {
+  return <>{renderDone(view, onChange)}</>;
 }
 
 function renderMaps(view: ScopeView, onChange: () => void) {
@@ -659,16 +822,19 @@ function renderLdr(view: ScopeView, onChange: () => void, world: DisplayControlB
 export function DisplayControlBar({ view, onChange, world }: DisplayControlBarProps) {
   const dcbPx = DCB_CHAR_PX[view.charSizePx] ?? DCB_FONT_PX;
   const menu = view.dcbMenu;
+  const vertical = isVerticalDcbDock(view.dcbDock);
 
   return (
     <div
       id={DCB_ID}
-      className="dcb"
+      className={vertical ? "dcb dcb-vertical" : "dcb"}
       role="group"
       aria-label="Display control bar"
       data-dcb-menu={menu}
+      data-dcb-dock={view.dcbDock}
       style={{
-        height: DCB_HEIGHT_PX,
+        height: vertical ? undefined : DCB_HEIGHT_PX,
+        width: vertical ? DCB_HEIGHT_PX : undefined,
         fontFamily: SCOPE_FONT_STACK,
         fontSize: dcbPx,
         backgroundColor: PALETTE.background,
@@ -686,7 +852,9 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
           ? renderMaps(view, onChange)
           : menu === "LDR"
             ? renderLdr(view, onChange, world)
-            : renderMain(view, onChange, world)}
+            : menu === "TPA_ATPA"
+              ? renderTpaAtpa(view, onChange)
+              : renderMain(view, onChange, world)}
     </div>
   );
 }

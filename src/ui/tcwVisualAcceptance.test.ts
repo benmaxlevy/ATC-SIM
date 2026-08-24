@@ -11,6 +11,7 @@ import { createWorldFromScenario, loadKdem, loadKdemIls27 } from "@scenario";
 import {
   HELP_KEYS_POINTER,
   SCOPE_FONT_STACK,
+  applyDcbShift,
   buildSsaLines,
   createScopeView,
   cycleCharSize,
@@ -163,8 +164,6 @@ test("AC5 — persistent chrome has no zoom/label/sprite/OSM/HUD; DCB WX1–4 ex
   expect(dcbText).toMatch(/CHAR/);
   expect(dcbText).toMatch(/BRITE/);
   expect(dcbText).toMatch(/FILTER/);
-  expect(dcbText).toMatch(/PTL/);
-  expect(dcbText).toMatch(/HIST/);
   expect(dcbText).not.toMatch(FORBIDDEN_CHROME);
   expect(dcbText).not.toMatch(FORBIDDEN_DCB_CELLS);
   for (const n of [1, 2, 3, 4]) {
@@ -177,6 +176,20 @@ test("AC5 — persistent chrome has no zoom/label/sprite/OSM/HUD; DCB WX1–4 ex
   );
   expect(dcb).not.toMatch(/<input/i);
   expect(formatDcbRangeReadout(20).toLowerCase()).not.toContain("zoom");
+
+  const auxView = createScopeView();
+  applyDcbShift(auxView);
+  const auxText = visibleText(
+    renderToStaticMarkup(
+      createElement(DisplayControlBar, { view: auxView, onChange: () => undefined }),
+    ),
+  );
+  expect(auxText).toMatch(/HISTORY/);
+  expect(auxText).toMatch(/PTL/);
+  expect(auxText).toMatch(/OWN/);
+  expect(auxText).toMatch(/ALL/);
+  expect(auxText).not.toMatch(FORBIDDEN_CHROME);
+  expect(auxText).not.toMatch(FORBIDDEN_DCB_CELLS);
 
   const world = createWorldFromScenario(loadKdem());
   const strips = renderToStaticMarkup(

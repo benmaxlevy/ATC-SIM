@@ -4,7 +4,9 @@ import {
   HISTORY_MAX_DOTS,
   HISTORY_SAMPLE_MS,
   createHistoryBuf,
+  historyDotsToDraw,
   maybeSampleHistory,
+  stepHistoryDotCount,
 } from "./history";
 
 test("AC3 — after samples at 0, 5, 10, 15, 20, 25 s, length is 5 and oldest is t=5 s", () => {
@@ -92,4 +94,17 @@ test("history module comments say target-adjacent CRC history, not a trail name"
   expect(src).not.toMatch(/phosphor bloom/);
   expect(src.toLowerCase()).not.toMatch(/\bsprite\b/);
   expect(src.toLowerCase()).not.toMatch(/\bairplane\b/);
+});
+
+test("AC1 — HISTORY count 0 draws no dots; 5 is the full buffer; step clamps 0–5", () => {
+  const buf = createHistoryBuf();
+  for (const tS of [0, 5, 10, 15, 20]) {
+    maybeSampleHistory(buf, tS * 1000, tS, 0);
+  }
+  expect(historyDotsToDraw(buf, 0).eastNm).toEqual([]);
+  expect(historyDotsToDraw(buf, 5).eastNm).toEqual([0, 5, 10, 15, 20]);
+  expect(historyDotsToDraw(buf, 2).eastNm).toEqual([15, 20]);
+  expect(stepHistoryDotCount(5, 1)).toBe(5);
+  expect(stepHistoryDotCount(0, -1)).toBe(0);
+  expect(stepHistoryDotCount(3, 1)).toBe(4);
 });
