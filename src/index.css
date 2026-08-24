@@ -283,7 +283,7 @@ body,
 .strip-list {
   position: absolute;
   left: 8px;
-  bottom: 28px;
+  bottom: 48px;
   z-index: 2;
   max-width: 11.5rem;
   max-height: 28%;
@@ -560,8 +560,8 @@ body,
 .latency-overlay,
 .latency-overlay-toggle {
   position: absolute;
-  top: 40px;
-  left: 8px;
+  right: 56px;
+  bottom: 26px;
   z-index: 2;
   pointer-events: auto;
   color: #00ff00;
