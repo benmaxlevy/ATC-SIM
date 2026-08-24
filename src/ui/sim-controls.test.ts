@@ -7,7 +7,7 @@ import {
   formatSimTimeMmSs,
   setPaused,
   setSimRate,
-} from "./simControls";
+} from "./sim-controls";
 
 function sample() {
   return createAircraft({
@@ -131,7 +131,7 @@ test("simControls source does not touch intent or the radio path", () => {
     import: "default",
     eager: true,
   }) as Record<string, string>;
-  const src = sources["./simControls.ts"];
+  const src = sources["./sim-controls.tsx"];
   expect(src).toBeDefined();
   expect(src).not.toMatch(/handleRadioText/);
   expect(src).not.toMatch(/submitCommand/);
@@ -158,7 +158,7 @@ test("shell mounts Pause, 1×, and 2× buttons that call session helpers", () =>
   expect(controls).toMatch(/setPaused\(world,\s*!world\.paused\)/);
   expect(controls).toMatch(/setSimRate\(world,\s*1\)/);
   expect(controls).toMatch(/setSimRate\(world,\s*2\)/);
-  expect(controls).not.toMatch(/PLAY_HINT/);
+  expect(shell).not.toMatch(/PLAY_HINT/);
   expect(controls).not.toMatch(/submitCommand/);
   expect(controls).not.toMatch(/handleRadioText/);
   expect(controls).not.toMatch(/from\s+["']@scope["']/);

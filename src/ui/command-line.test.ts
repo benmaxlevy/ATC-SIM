@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { SessionLog, acceptInboundHandoff, createAircraft, createWorld } from "@core";
 import { createWorldFromScenario, loadKdem } from "@scenario";
-import { submitCommand } from "./submitCommand";
+import { echoCommandLine, submitCommand, submitCommandLine } from "./command-line";
 
 function sample(callsign: string, extras: Partial<Parameters<typeof createAircraft>[0]> = {}) {
   return createAircraft({
@@ -14,6 +14,21 @@ function sample(callsign: string, extras: Partial<Parameters<typeof createAircra
     speedKt: extras.speedKt ?? 220,
   });
 }
+
+test('echoCommandLine("  H270  ") === "H270" (AC5)', () => {
+  expect(echoCommandLine("  H270  ")).toBe("H270");
+});
+
+test("echoCommandLine on whitespace does not throw (AC5)", () => {
+  expect(() => echoCommandLine("   ")).not.toThrow();
+  expect(echoCommandLine("   ")).toBe("");
+});
+
+test("submitCommandLine ignores empty trim (AC5)", () => {
+  expect(submitCommandLine("H270", "   ")).toBe("H270");
+  expect(submitCommandLine("", "   ")).toBe("");
+  expect(submitCommandLine("old", "  hello  ")).toBe("hello");
+});
 
 test("AC1 — DAL123 H270 readback contains heading 270, not the raw token as the only output", async () => {
   const dal = sample("DAL123");
@@ -73,7 +88,7 @@ test("AC4 — submitCommand source does not call SpeechPort methods", () => {
     import: "default",
     eager: true,
   }) as Record<string, string>;
-  const submitSrc = sources["./submitCommand.ts"];
+  const submitSrc = sources["./command-line.tsx"];
   expect(submitSrc).toBeDefined();
   expect(submitSrc).not.toMatch(/\.transcribe\s*\(/);
   expect(submitSrc).not.toMatch(/\.synthesize\s*\(/);
@@ -93,7 +108,7 @@ test("AC7 — shell calls submitCommand; command line clears after submit", () =
   const commandLine = sources["./command-line.tsx"];
   expect(shell).toBeDefined();
   expect(commandLine).toBeDefined();
-  expect(shell).toMatch(/from\s+["']\.\/submitCommand["']/);
+  expect(shell).toMatch(/from\s+["']\.\/command-line["']/);
   expect(shell).toMatch(/submitCommand\(/);
   expect(shell).toMatch(/playReadback/);
   expect(shell).not.toMatch(/submitCommandLine/);

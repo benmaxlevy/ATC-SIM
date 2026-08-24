@@ -56,9 +56,9 @@ export {
 export type { LatLon, NmEastNorth } from "./geo/coords";
 export { latLonToNm, nmToLatLon, normalizeHeadingDeg } from "./geo/coords";
 export type { Command, Instruction, ParseStage, TurnDir } from "./command/types";
-export { INSTRUCTION_TYPES } from "./command/instructions";
+export { INSTRUCTION_TYPES } from "./command/types";
 export * from "./command/fixtures";
-export type { SessionEvent } from "./events/types";
+export type { SessionEvent } from "./events/session-log";
 export { SessionLog } from "./events/session-log";
 export type {
   Aircraft,
@@ -70,12 +70,19 @@ export type {
   VerticalMode,
 } from "./aircraft";
 export { createAircraft, makeTestAircraft, nextAircraftId } from "./aircraft";
-export type { CaAlert, CaSeverity, WorldAlerts } from "./alerts/conflictAlert";
+export type {
+  AlertTint,
+  AlertTintTrack,
+  CaAlert,
+  CaSeverity,
+  WorldAlerts,
+} from "./alerts/conflictAlert";
 export {
   CA_LATERAL_NM,
   CA_VERTICAL_FT,
   caPairKey,
   caSeverityForCallsign,
+  datablockAlertTint,
   emptyWorldAlerts,
   evaluateConflictAlert,
 } from "./alerts/conflictAlert";
@@ -98,8 +105,6 @@ export {
   msawSeverityForCallsign,
   polygonContains,
 } from "./alerts/msaw";
-export type { AlertTint, AlertTintTrack } from "./alerts/colors";
-export { datablockAlertTint } from "./alerts/colors";
 export type { FixRegistry, FixRegistrySource, RegisteredFix } from "./nav/fixRegistry";
 export { UnknownFixError, buildFixRegistry } from "./nav/fixRegistry";
 export type { NmPoint } from "./nav/geometry";

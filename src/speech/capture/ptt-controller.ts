@@ -1,9 +1,64 @@
 import type { AudioClip } from "../types";
 import type { CaptureBackend } from "./capture-backend";
 import { WebAudioCaptureBackend } from "./capture-backend";
-import { isEmptyPttCapture } from "./clip-gate";
-import { isTextFieldTarget } from "./ptt-focus";
 import { TARGET_SAMPLE_RATE, resampleToMonoPcm16 } from "./resample";
+
+/** Clips shorter than this are empty — do not send to STT later (T03-08). */
+export const EMPTY_CLIP_MS = 80;
+
+/**
+ * True when a PTT hold has no usable audio: no samples, wall time under
+ * {@link EMPTY_CLIP_MS}, or captured audio duration under that threshold.
+ */
+export function isEmptyPttCapture(options: {
+  durationMs: number;
+  sampleCount: number;
+  sampleRate: number;
+}): boolean {
+  if (options.sampleCount <= 0) {
+    return true;
+  }
+  if (options.durationMs < EMPTY_CLIP_MS) {
+    return true;
+  }
+  if (options.sampleRate <= 0) {
+    return true;
+  }
+  const audioMs = (options.sampleCount / options.sampleRate) * 1000;
+  return audioMs < EMPTY_CLIP_MS;
+}
+
+/**
+ * PTT is ignored while a text field is focused so the command line can take
+ * backtick (default bind) and callsigns. Match `input`, `textarea`, and
+ * `contenteditable` (T03-01). Keyboard matching uses `event.key`.
+ */
+const TEXT_FIELD_SELECTOR = "input, textarea, [contenteditable]:not([contenteditable='false'])";
+
+export function isTextFieldTarget(target: unknown): boolean {
+  if (target == null || typeof target !== "object") {
+    return false;
+  }
+  const node = target as {
+    tagName?: string;
+    isContentEditable?: boolean;
+    closest?: (selector: string) => unknown;
+  };
+  if (typeof node.closest === "function") {
+    try {
+      if (node.closest(TEXT_FIELD_SELECTOR)) {
+        return true;
+      }
+    } catch {
+      // Non-Element test doubles may throw; fall through to tagName.
+    }
+  }
+  const tag = typeof node.tagName === "string" ? node.tagName.toUpperCase() : "";
+  if (tag === "INPUT" || tag === "TEXTAREA") {
+    return true;
+  }
+  return node.isContentEditable === true;
+}
 
 /**
  * Default PTT is Left Control (`KeyboardEvent.code`). Backtick cannot work

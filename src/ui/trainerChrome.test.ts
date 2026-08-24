@@ -5,9 +5,8 @@ import { expect, test } from "vitest";
 import { readFileSync } from "node:fs";
 import { SessionLog, createAircraft, createWorld } from "@core";
 import { HELP_FOOTER } from "@scope";
-import { DISCLAIMER_COPY, DISCLAIMER_DISMISSED_KEY } from "./disclaimer-copy";
-import { Disclaimer } from "./disclaimer";
-import { submitCommand } from "./submitCommand";
+import { DISCLAIMER_COPY, DISCLAIMER_DISMISSED_KEY, Disclaimer } from "./disclaimer";
+import { submitCommand } from "./command-line";
 
 const uiSources = import.meta.glob("./*.{ts,tsx}", {
   query: "?raw",
@@ -89,7 +88,7 @@ test("AC2 — persistent chrome has no tutorial sentences; F1 still lists TRAINE
   expect(shell).not.toMatch(/INITIATE_TRACK_HELP/);
   expect(shell).not.toMatch(/DROP_TRACK_HELP/);
   expect(shell).not.toMatch(/ownership-help/);
-  expect(controls).not.toMatch(/PLAY_HINT/);
+  expect(shell).not.toMatch(/PLAY_HINT/);
   expect(controls).not.toMatch(/play-hint/);
   expect(controls).not.toMatch(/sim-keys/);
   expect(overlay).toMatch(/HELP_FOOTER/);
@@ -121,12 +120,10 @@ test("AC4 — radio-focus DAL123 H270 still readbacks and turns", async () => {
 
 test("AC5 — command strip does not call parseCommand; typed English wins at Path A", async () => {
   const commandLine = uiSources["./command-line.tsx"]!;
-  const submit = uiSources["./submitCommand.ts"]!;
   expect(commandLine).not.toMatch(/parseCommand/);
   expect(commandLine).not.toMatch(/spoken_a/);
   expect(commandLine).toMatch(/placeholder="DAL123 H270"/);
-  expect(submit).toMatch(/handleRadioText/);
-  expect(submit).not.toMatch(/parseCommand/);
+  expect(commandLine).toMatch(/handleRadioText/);
 
   const dal = sample();
   const world = createWorld({ aircraft: [dal] });

@@ -6,7 +6,7 @@ import {
   formatRejectReadback,
   type ReadbackAircraft,
 } from "./readback";
-import { formatAltitude, speakAltitude, speakHeading } from "./digits";
+import { formatAltitude, speakAltitude, speakHeading } from "./telephony";
 
 const snapshot: ReadbackAircraft = { headingDeg: 100, altitudeFt: 8000 };
 

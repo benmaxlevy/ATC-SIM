@@ -14,12 +14,13 @@ import { parseSpokenGrammar, repairHeadingVsTurnDegrees } from "./spoken/grammar
 import { normalizeSpoken } from "./spoken/normalizer";
 import { groundCallsignToRoster, spokenCallsignToken } from "./spoken/telephony";
 import { rewriteSpokenToTyped } from "./spoken/typed-fuzzy";
-import { groundInstructionFixes, sanitizeFixIds } from "./spoken/fix-ground";
 import {
+  groundInstructionFixes,
   groundInstructionProcedures,
   sanitizeCatalogProcedures,
+  sanitizeFixIds,
   type CatalogProcedure,
-} from "./spoken/procedure-ground";
+} from "./spoken/catalog-ground";
 import {
   PATH_C_SCHEMA_VERSION,
   fetchParsePathC,

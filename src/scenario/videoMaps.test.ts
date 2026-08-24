@@ -86,13 +86,10 @@ test("AC6 — loader comments say video map / MAPS, not tiles; Not OSM", () => {
     eager: true,
   }) as Record<string, string>;
   const loader = sources["./loadVideoMaps.ts"] ?? "";
-  const types = sources["./videoMapTypes.ts"] ?? "";
   expect(loader).toMatch(/MAPS/);
   expect(loader).toMatch(/video-map/i);
   expect(loader).toMatch(/Not OSM/);
   expect(loader).toMatch(/tiles/);
-  expect(types).toMatch(/MAPS/);
-  expect(types).toMatch(/Not OSM/);
   expect(loader.toLowerCase()).not.toMatch(/openstreetmap/);
   expect(loader.toLowerCase()).not.toMatch(/mapbox/);
 });

@@ -16,8 +16,11 @@ import {
   parseTurnDegreesValue,
   singleDigit,
 } from "./numbers";
-import { groundFixToCatalog } from "./fix-ground";
-import { groundProcedureToCatalog, type CatalogProcedure } from "./procedure-ground";
+import {
+  groundFixToCatalog,
+  groundProcedureToCatalog,
+  type CatalogProcedure,
+} from "./catalog-ground";
 import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./telephony";
 
 interface Cursor {

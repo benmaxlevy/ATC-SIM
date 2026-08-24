@@ -64,7 +64,7 @@ import {
   trackAlertTint,
   trackPaintAlertTint,
   withCaDatablockTag,
-} from "./alertPaint";
+} from "./palette";
 import {
   drawHistoryDot,
   drawSelectionBox,

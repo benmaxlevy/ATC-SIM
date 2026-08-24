@@ -10,21 +10,86 @@
  */
 
 import type { AudioClip } from "../types";
-import {
-  DEFAULT_RADIO_FX_ENABLED,
-  RADIO_COMPRESSOR_ATTACK_SEC,
-  RADIO_COMPRESSOR_KNEE_DB,
-  RADIO_COMPRESSOR_RATIO,
-  RADIO_COMPRESSOR_RELEASE_SEC,
-  RADIO_COMPRESSOR_THRESHOLD_DB,
-  RADIO_FILTER_Q,
-  RADIO_HIGHPASS_HZ,
-  RADIO_LOWPASS_HZ,
-  RADIO_MASTER_GAIN,
-  RADIO_NOISE_DURATION_SEC,
-  RADIO_NOISE_GAIN,
-  RADIO_VOICE_GAIN,
-} from "./radio-fx-params";
+
+/** Int16 full-scale used by Web Audio. `-32768 / 32768 === -1`. */
+export const PCM16_SCALE = 32768;
+
+export function pcm16ToFloat32(pcm16: Int16Array): Float32Array {
+  const out = new Float32Array(pcm16.length);
+  for (let i = 0; i < pcm16.length; i += 1) {
+    out[i] = pcm16[i]! / PCM16_SCALE;
+  }
+  return out;
+}
+
+/**
+ * Copy a mono {@link AudioClip} into an `AudioBuffer` (channel 0).
+ * Caller creates the buffer so tests can skip a real AudioContext.
+ */
+export function copyClipToAudioBuffer(buffer: AudioBuffer, clip: AudioClip): void {
+  const floats = pcm16ToFloat32(clip.pcm16);
+  const channel = buffer.getChannelData(0);
+  const n = Math.min(channel.length, floats.length);
+  channel.set(floats.subarray(0, n));
+}
+
+export function createAudioBufferFromClip(ctx: AudioContext, clip: AudioClip): AudioBuffer {
+  const length = Math.max(1, clip.pcm16.length);
+  const sampleRate = clip.sampleRate > 0 ? clip.sampleRate : 16000;
+  const buffer = ctx.createBuffer(1, length, sampleRate);
+  copyClipToAudioBuffer(buffer, clip);
+  return buffer;
+}
+
+/**
+ * Named radio-FX constants (README §7.2). v1 should sound like a radio,
+ * not a calibrated transceiver. Tune here — do not scatter magic numbers.
+ */
+
+/** High-pass cutoff (Hz). Typical ATC radio / telephone low edge. */
+export const RADIO_HIGHPASS_HZ = 300;
+
+/** Low-pass cutoff (Hz). Typical ATC radio / telephone high edge. */
+export const RADIO_LOWPASS_HZ = 3000;
+
+/** Butterworth Q for the highpass + lowpass pair (~−3 dB at each cutoff). */
+export const RADIO_FILTER_Q = 0.7071;
+
+/** Voice path gain after the band-limit filters. */
+export const RADIO_VOICE_GAIN = 1;
+
+/**
+ * Looping noise mix versus voice. Ticket range ~0.02–0.05 so hiss does not
+ * drown the readback.
+ */
+export const RADIO_NOISE_GAIN = 0.03;
+
+/** White-noise buffer length (seconds). Looped only while a clip plays. */
+export const RADIO_NOISE_DURATION_SEC = 1;
+
+/** Compressor threshold (dB). Gentle peak taming after the filter. */
+export const RADIO_COMPRESSOR_THRESHOLD_DB = -24;
+
+/** Compressor knee (dB). */
+export const RADIO_COMPRESSOR_KNEE_DB = 12;
+
+/** Compressor ratio. Keep this mild — not a slam limiter. */
+export const RADIO_COMPRESSOR_RATIO = 4;
+
+/** Compressor attack (seconds). */
+export const RADIO_COMPRESSOR_ATTACK_SEC = 0.003;
+
+/**
+ * Compressor release (seconds). Matches the T03-06 50 ms playback tail
+ * so release is not clipped into the next PTT.
+ */
+export const RADIO_COMPRESSOR_RELEASE_SEC = 0.05;
+
+/** Master gain after the compressor. */
+export const RADIO_MASTER_GAIN = 1;
+
+/** Default: PCM clips go through the FX graph. T03-10 may toggle this. */
+export const DEFAULT_RADIO_FX_ENABLED = true;
 
 /** Inspectable node list for tests (AC1). Documented order is the wet chain. */
 export interface RadioGraphNodes {

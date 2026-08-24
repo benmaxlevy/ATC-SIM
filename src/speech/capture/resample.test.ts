@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { EMPTY_CLIP_MS, isEmptyPttCapture } from "./clip-gate";
+import { EMPTY_CLIP_MS, isEmptyPttCapture } from "./ptt-controller";
 import {
   TARGET_SAMPLE_RATE,
   float32ToPcm16,

@@ -10,8 +10,12 @@
  */
 
 import type { Aircraft, Instruction } from "@core";
-import { formatAltitude, formatDigitString, formatHeadingDigits } from "./digits";
-import { formatCallsignSpeech } from "./telephony";
+import {
+  formatAltitude,
+  formatCallsignSpeech,
+  formatDigitString,
+  formatHeadingDigits,
+} from "./telephony";
 
 export { formatCallsignSpeech } from "./telephony";
 

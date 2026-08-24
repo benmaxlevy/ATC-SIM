@@ -4,7 +4,7 @@ import {
   DISCLAIMER_DISMISSED_KEY,
   dismissDisclaimer,
   isDisclaimerDismissed,
-} from "./disclaimer-copy";
+} from "./disclaimer";
 
 const FROZEN_T00_01 =
   "ATC-SIM is a training and entertainment product. It is not an FAA training device, is not certified for operational or NAS use, and is not affiliated with the FAA or any STARS vendor. The display is a STARS-like visual analog only.";

@@ -1,4 +1,4 @@
-import { SpeechPortError } from "../speech-port-error";
+import { SpeechPortError } from "../errors";
 import type { AudioClip, SpeechPort, Transcript, TranscribeOpts } from "../types";
 import { isWav, pcm16ToWav, uint8ToArrayBuffer, wavToAudioClip } from "./wav";
 

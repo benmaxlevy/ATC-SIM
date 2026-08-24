@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { createAircraft, createWorld } from "@core";
 import { nmToScreen } from "./camera";
-import { handlePpiDoubleClick, handlePpiLeftClick } from "./ppiPointer";
+import { handlePpiDoubleClick, handlePpiLeftClick } from "./ppi";
 import {
   beginAltitudeFilterChord,
   centerOnAirport,

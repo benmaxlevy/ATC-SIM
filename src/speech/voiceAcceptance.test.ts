@@ -25,7 +25,7 @@ import {
   type Transcript,
 } from "@speech";
 import { createApp } from "../app/create-app";
-import { submitCommand } from "../ui/submitCommand";
+import { submitCommand } from "../ui/command-line";
 import { DEFAULT_STT_URL, DEFAULT_TTS_URL } from "./ports/http-speech-port";
 import { pcm16ToWav, uint8ToArrayBuffer } from "./ports/wav";
 

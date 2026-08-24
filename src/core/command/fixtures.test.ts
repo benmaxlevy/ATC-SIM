@@ -1,7 +1,6 @@
 import { expect, expectTypeOf, test } from "vitest";
 import { commandFixtures, fixtureFlyHeading } from "./fixtures";
-import { INSTRUCTION_TYPES } from "./instructions";
-import type { Command, Instruction, TurnDir } from "./types";
+import { INSTRUCTION_TYPES, type Command, type Instruction, type TurnDir } from "./types";
 
 test("Command has the frozen radio fields plus optional parseStage", () => {
   expectTypeOf<keyof Command>().toEqualTypeOf<

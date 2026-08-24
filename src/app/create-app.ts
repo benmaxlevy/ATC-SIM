@@ -1,4 +1,5 @@
 import { SessionLog, createWorld, type SessionEvent, type World } from "@core";
+import { DEFAULT_SPAWN_SEED, type Scenario } from "@scenario";
 import { parseCommand, proceduresFromCatalog } from "@parse";
 import { handleRadioCommand, createCheckInQueue } from "@pilot";
 import {
@@ -300,4 +301,20 @@ export function createApp(deps: AppDeps): AppHandles {
     afterPhysicsTick,
     caAlertTone,
   };
+}
+
+/** Append session.started. Call after createApp + loadKdem; tests pass a fake wall clock. */
+export function bootSession(
+  handles: AppHandles,
+  scenario: Scenario,
+  wallMs: number,
+  seed: number = DEFAULT_SPAWN_SEED,
+): void {
+  handles.log.append({
+    type: "session.started",
+    atSimMs: 0,
+    atWallMs: wallMs,
+    scenarioId: scenario.id,
+    seed,
+  });
 }

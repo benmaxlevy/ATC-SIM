@@ -10,7 +10,7 @@ import {
   selectAircraftAt,
   selectOrAcceptAircraftAt,
 } from "./pick";
-import { handlePpiLeftClick } from "./ppiPointer";
+import { handlePpiLeftClick } from "./ppi";
 import { trackPaintColor } from "./ownership";
 import { createScopeView } from "./scopeView";
 import { syncTrackDisplays } from "./trackDisplay";

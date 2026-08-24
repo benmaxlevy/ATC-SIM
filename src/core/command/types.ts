@@ -25,6 +25,27 @@ export type ParseStage = "typed" | "spoken_a" | "spoken_b" | "llm_c";
 
 export type TurnDir = "LEFT" | "RIGHT" | "SHORTEST";
 
+/** Runtime list of Instruction `type` discriminants. Keep in sync with `Instruction`. */
+export const INSTRUCTION_TYPES = [
+  "FLY_HEADING",
+  "TURN_DEGREES",
+  "PRESENT_HEADING",
+  "ALTITUDE",
+  "SPEED",
+  "DIRECT",
+  "EXPECT_APPROACH",
+  "CLEARED_APPROACH",
+  "INTERCEPT_LOCALIZER",
+  "IDENT",
+  "SAY_HEADING",
+  "SAY_ALTITUDE",
+  "DESCEND_VIA",
+  "CLIMB_VIA",
+  "JOIN_PROCEDURE",
+  "CROSS",
+  "GO_AROUND",
+] as const;
+
 export type Instruction =
   | { type: "FLY_HEADING"; headingDeg: number; turn: TurnDir }
   | { type: "TURN_DEGREES"; direction: "LEFT" | "RIGHT"; degrees: number }

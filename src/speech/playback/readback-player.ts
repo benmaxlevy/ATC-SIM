@@ -9,10 +9,10 @@
 
 import type { AudioClip } from "../types";
 import { speakBrowser, type BrowserSpeakResult } from "../ports/browser-tts";
-import { createAudioBufferFromClip } from "./pcm16-to-audio-buffer";
-import { DEFAULT_RADIO_FX_ENABLED } from "./radio-fx-params";
 import {
+  DEFAULT_RADIO_FX_ENABLED,
   connectPlaybackThroughRadio,
+  createAudioBufferFromClip,
   createRadioGraph,
   isSilentClip,
   type RadioGraph,

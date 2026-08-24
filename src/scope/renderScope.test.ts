@@ -1,4 +1,4 @@
-﻿import { expect, test } from "vitest";
+import { expect, test } from "vitest";
 import { SessionLog, SIM_DT_S, createWorld, handoffFor, makeTestAircraft, stepWorld } from "@core";
 import { applyIntent } from "@pilot";
 import { createWorldFromScenario, loadKdem } from "@scenario";
@@ -6,7 +6,7 @@ import { formatRangeReadout, nmToScreen } from "./camera";
 import { parseDigitalMap } from "./mapLayers";
 import { PALETTE, applyBrite } from "./palette";
 import { PTL_MINUTES, ptlEndpoint, shouldDrawPtl } from "./ptl";
-import { handlePpiLeftClick } from "./ppiPointer";
+import { handlePpiLeftClick, isPpiSlewButton, isPpiSlewHeld } from "./ppi";
 import { renderScope } from "./renderScope";
 import {
   hideMapLists,
@@ -1131,4 +1131,15 @@ test("T02-27 — SSA FILTER hides TIME on the PPI; GI TEXT paints authored lines
   expect(after.fillTexts.some((t) => t.text === formatSsaTime(125_000))).toBe(false);
   expect(after.fillTexts.some((t) => t.text === "ATIS A")).toBe(true);
   expect(after.fillTexts.filter((t) => t.text === "").length).toBe(0);
+});
+
+test("right and middle buttons slew; left does not", () => {
+  expect(isPpiSlewButton(0)).toBe(false);
+  expect(isPpiSlewButton(1)).toBe(true);
+  expect(isPpiSlewButton(2)).toBe(true);
+  expect(isPpiSlewHeld(0)).toBe(false);
+  expect(isPpiSlewHeld(1)).toBe(false);
+  expect(isPpiSlewHeld(2)).toBe(true);
+  expect(isPpiSlewHeld(4)).toBe(true);
+  expect(isPpiSlewHeld(6)).toBe(true);
 });

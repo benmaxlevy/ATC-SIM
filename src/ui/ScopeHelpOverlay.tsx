@@ -16,7 +16,7 @@ import {
   scopeFocusKeyBindings,
   type KeyBinding,
 } from "@scope";
-import { DISCLAIMER_COPY } from "./disclaimer-copy";
+import { DISCLAIMER_COPY } from "./disclaimer";
 
 export interface ScopeHelpOverlayProps {
   open: boolean;

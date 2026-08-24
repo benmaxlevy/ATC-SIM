@@ -1,7 +1,7 @@
 import type { LatLon, NmEastNorth } from "@core";
-import type { MvaChart } from "./mva/types";
+import type { MvaChart } from "./mva";
 import type { ProcedureCatalog } from "./procedures/types";
-import type { LoadedVideoMap } from "./videoMapTypes";
+import type { LoadedVideoMap } from "./loadVideoMaps";
 
 /** One runway. Heading true = magnetic at KDEM (mag var 0). */
 export interface Runway {

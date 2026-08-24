@@ -56,15 +56,17 @@ export {
   rangeCircle,
   screenToNm,
 } from "./camera";
-export { paintPpi, fitCanvasToCss, handlePpiCanvasClick } from "./ppi";
 export {
   cssPointFromClient,
+  fitCanvasToCss,
+  handlePpiCanvasClick,
   handlePpiDoubleClick,
   handlePpiLeftClick,
   handlePpiPanDelta,
   isPpiSlewButton,
   isPpiSlewHeld,
-} from "./ppiPointer";
+  paintPpi,
+} from "./ppi";
 export {
   HIT_RADIUS_CSS_PX,
   pickAircraftAt,
@@ -82,11 +84,17 @@ export {
   DEFAULT_BRITE_LEVEL,
   DEFAULT_MAP_BRITE_INDEX,
   MAP_BRITE_STEPS,
+  alertOrOwnershipColor,
+  alertTintPaintColor,
   applyBrite,
+  caDatablockTagVisible,
   cloneBrite,
   historyTrailColor,
   mapBriteColors,
   snapBriteLevel,
+  trackAlertTint,
+  trackPaintAlertTint,
+  withCaDatablockTag,
 } from "./palette";
 export type { BriteChannel, BriteLevel, BriteState, Palette, MapBriteIndex } from "./palette";
 export {
@@ -206,8 +214,6 @@ export {
   formatDcbTpaMiReadout,
 } from "./scopeView";
 export type { MapLayerId, ScopeView } from "./scopeView";
-export { DCB_THICKNESS_PX, drawablePpiSize, isVerticalDcbDock } from "./dcbDock";
-export type { DcbDock } from "./dcbDock";
 export {
   DCB_ACTION_FLASH_MS,
   applyDcbShift,
@@ -226,6 +232,7 @@ export type { DcbCellKind, DcbMenu, DcbMenuHost, DcbSpinnerCell, DcbSpinnerState
 export {
   DCB_PREF_READOUT_MAX_CHARS,
   DCB_PREF_SLOT_COUNT,
+  DCB_THICKNESS_PX,
   activeDcbPrefName,
   applyDcbPref,
   applyDcbPrefDefaults,
@@ -233,7 +240,9 @@ export {
   browserDcbPrefStorage,
   dcbPrefStorageKey,
   deleteDcbPref,
+  drawablePpiSize,
   formatDcbPrefReadout,
+  isVerticalDcbDock,
   loadDcbPrefFromStorage,
   persistDcbPref,
   restoreDcbPrefSession,
@@ -243,6 +252,7 @@ export {
   serializeDcbPref,
 } from "./dcbPref";
 export type {
+  DcbDock,
   DcbPrefBody,
   DcbPrefFile,
   DcbPrefRuntime,
@@ -359,19 +369,12 @@ export {
   TOWER_HANDOFF_HELP,
   applyDropTrack,
   applyInitiateTrack,
+  applyTowerHandoffToSelection,
   applyTowerOwnership,
   ownershipStubChar,
   trackPaintColor,
 } from "./ownership";
 export type { TrackOwnership } from "./ownership";
-export { applyTowerHandoffToSelection } from "./towerHandoff";
-export {
-  alertOrOwnershipColor,
-  alertTintPaintColor,
-  trackAlertTint,
-  trackPaintAlertTint,
-  withCaDatablockTag,
-} from "./alertPaint";
 export {
   DEFAULT_LEADER_DIR,
   DEFAULT_LEADER_LENGTH_PX,

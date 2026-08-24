@@ -20,15 +20,22 @@ export type { HandleRadioOpts, PilotResult } from "./handleRadioText";
 export { handleRadioCommand, handleRadioText } from "./handleRadioText";
 export type { ReadbackAircraft, RejectReason } from "./readback";
 export { formatCallsignSpeech, formatReadback, formatRejectReadback } from "./readback";
-export type { FormatCheckInArgs, StarNameCatalog } from "./checkin";
-export { formatCheckIn, isStarViaArrival, starSpokenName } from "./checkin";
-export type { CheckInRadio, DrainCheckInsArgs, ScheduledCheckIn } from "./checkinQueue";
+export type {
+  CheckInRadio,
+  DrainCheckInsArgs,
+  FormatCheckInArgs,
+  ScheduledCheckIn,
+  StarNameCatalog,
+} from "./checkinQueue";
 export {
   CHECKIN_IDLE_GAP_MS,
   CHECKIN_STAGGER_MAX_MS,
   CHECKIN_STAGGER_MIN_MS,
   CheckInQueue,
   createCheckInQueue,
+  formatCheckIn,
+  isStarViaArrival,
+  starSpokenName,
 } from "./checkinQueue";
 export type { ResolveReason, ResolveResult } from "./resolveCallsign";
 export { numericTail, resolveCallsign } from "./resolveCallsign";

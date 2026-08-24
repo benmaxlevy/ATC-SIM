@@ -9,7 +9,7 @@
 
 import type { Command, Instruction, ParseStage } from "@core";
 import type { PttCaptureEvent, PttUpResult } from "./capture/ptt-controller";
-import { SpeechNotAvailableError } from "./errors";
+import { SpeechNotAvailableError, type VoiceStatusEvent } from "./errors";
 import {
   markPttUp,
   recordAudioStart,
@@ -21,7 +21,6 @@ import { createReadbackPlayer, type ReadbackPlayer } from "./playback/readback-p
 import { TransmitGate, type TransmitGateEvent } from "./playback/transmit-gate";
 import type { AudioClip, SpeechPort, Transcript } from "./types";
 import { readbackForTts } from "./tts-text";
-import type { VoiceStatusEvent } from "./voice-error-codes";
 
 /** Named default for the settings slider / logs. T03-15: does not skip parse. */
 export const DEFAULT_CONFIDENCE_THRESHOLD = 0.55;

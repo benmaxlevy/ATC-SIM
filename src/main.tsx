@@ -28,8 +28,7 @@ import {
   syncDisplayControlBar,
   syncStripCallsignColors,
 } from "@ui";
-import { bootSession } from "./app/boot-session";
-import { createApp } from "./app/create-app";
+import { bootSession, createApp } from "./app/create-app";
 import "./index.css";
 
 const search = window.location.search;

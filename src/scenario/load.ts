@@ -19,7 +19,7 @@ import type {
 } from "./types";
 import { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN, GI_TEXT_LINE_COUNT } from "./types";
 import { loadCatalog } from "./procedures/loadCatalog";
-import { loadMva } from "./mva/load";
+import { loadMva } from "./mva";
 import {
   coastlineFromVideoMaps,
   loadVideoMapSet,

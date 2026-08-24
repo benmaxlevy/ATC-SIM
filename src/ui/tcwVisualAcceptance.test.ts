@@ -25,11 +25,10 @@ import {
   togglePtlOn,
 } from "@scope";
 import { DisplayControlBar } from "./DisplayControlBar";
-import { DISCLAIMER_COPY } from "./disclaimer-copy";
-import { Disclaimer } from "./disclaimer";
+import { DISCLAIMER_COPY, Disclaimer } from "./disclaimer";
 import { FlightStrips } from "./FlightStrips";
 import { ScopeHelpOverlay } from "./ScopeHelpOverlay";
-import { submitCommand } from "./submitCommand";
+import { submitCommand } from "./command-line";
 
 const uiSources = import.meta.glob("./*.{ts,tsx}", {
   query: "?raw",

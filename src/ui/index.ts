@@ -29,44 +29,60 @@ export {
   syncDisplayControlBar,
 } from "./DisplayControlBar";
 export { ScopeCanvas } from "./ScopeCanvas";
-export { FlightStrips, focusPpi, syncStripCallsignColors } from "./FlightStrips";
 export {
+  FlightStrips,
   STRIP_BAY_EMPTY,
   STRIP_BAY_HEADING,
+  compareCallsigns,
+  focusPpi,
+  formatAssignedAltitudeHundreds,
+  formatAssignedHeading,
+  formatAssignedSpeed,
   selectTrackFromStrip,
+  sortStripsByCallsign,
   stripsFromWorld,
-} from "./flightStripModel";
+  syncStripCallsignColors,
+} from "./FlightStrips";
+export type { FlightStripView, FlightStripsProps } from "./FlightStrips";
 export {
   DISCLAIMER_COPY,
   DISCLAIMER_DISMISSED_KEY,
+  Disclaimer,
   dismissDisclaimer,
   isDisclaimerDismissed,
-} from "./disclaimer-copy";
-export { echoCommandLine, submitCommandLine } from "./echo-command-line";
-export { submitCommand } from "./submitCommand";
+} from "./disclaimer";
+export {
+  COMMAND_LINE_INPUT_ID,
+  CommandLine,
+  echoCommandLine,
+  focusCommandLine,
+  submitCommand,
+  submitCommandLine,
+} from "./command-line";
+export type { CommandLineProps, PilotResult } from "./command-line";
 export { displayCommandLineStatus, formatVoiceStatus } from "./voice-status";
-export type { PilotResult } from "./submitCommand";
 export {
   PLAY_HINT,
   SIM_HUD_ID,
+  SimControls,
   applySimControlKey,
   formatSimHud,
   formatSimTimeMmSs,
   setPaused,
   setSimRate,
-} from "./simControls";
-export type { SimControlKey } from "./simControls";
-export { FpsDebug } from "./FpsDebug";
-export { FPS_DEBUG_ID, formatFpsDebug, isFpsDebugEnabled } from "./fpsHud";
-export { LatencyOverlay } from "./LatencyOverlay";
+} from "./sim-controls";
+export type { SimControlKey, SimControlsProps } from "./sim-controls";
+export { FPS_DEBUG_ID, FpsDebug, formatFpsDebug, isFpsDebugEnabled } from "./FpsDebug";
 export {
   LATENCY_OVERLAY_DEFAULT_VISIBLE,
   LATENCY_OVERLAY_ID,
+  LatencyOverlay,
   formatLatencyMs,
   formatLatencyOverlay,
   httpP50Band,
   latencyOverlayClassName,
-} from "./latency-overlay";
+} from "./LatencyOverlay";
+export type { HttpP50Band, LatencyOverlayProps } from "./LatencyOverlay";
 export {
   DEFAULT_BACKEND_HELP,
   DEFAULT_HEALTH_URL,

@@ -1,16 +1,17 @@
 /**
- * Analog: CRC STARS DCB PREF (docs.virtualnas.net/crc/stars — R07).
+ * Analog: CRC STARS DCB PREF / DCB position TOP / LEFT / RIGHT / BOTTOM (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: 8 local preference-set slots (not CRC's 32 NAS host sets),
- * persisted in localStorage, facility-keyed and schema-versioned. No window.prompt,
- * no HTML <input>, not a settings panel / profile modal / theme picker. Not a NAS
- * preference host. Display snapshot only — never Command IR, speech prefs, command-line
- * text, or world kinematics.
+ * persisted in localStorage, facility-keyed and schema-versioned. One DCB at a
+ * time along a PPI edge. LEFT/RIGHT are a vertical cell stack; TOP/BOTTOM stay
+ * horizontal. Drawable PPI size is the host minus DCB thickness on that edge.
+ * No window.prompt, no HTML <input>, not a settings panel / profile modal /
+ * theme picker. Not a NAS preference host. Display snapshot only — never
+ * Command IR, speech prefs, command-line text, or world kinematics.
  *
  * Scope display state only. Never a Command, readback, or intent.
  */
 
 import { RANGE_PRESETS_NM, type RangeNm } from "./camera";
-import { type DcbDock } from "./dcbDock";
 import { snapRrInterval, type RrIntervalNm } from "./dcbFunctions";
 import { cloneCharSizes, type CharSizes } from "./fonts";
 import { HISTORY_DOT_COUNTS, type HistoryDotCount } from "./history";
@@ -26,6 +27,31 @@ import {
   type TpaRadiusNm,
   type TpaState,
 } from "./tpa";
+
+export type DcbDock = "TOP" | "LEFT" | "RIGHT" | "BOTTOM";
+
+/** Same 36 px thickness as the horizontal bar (two text rows + 1 px gutters). */
+export const DCB_THICKNESS_PX = 36;
+
+export function isVerticalDcbDock(dock: DcbDock): boolean {
+  return dock === "LEFT" || dock === "RIGHT";
+}
+
+/**
+ * Camera view size after reserving DCB thickness on the docked edge.
+ * Canvas clientWidth/Height should match this remaining rect.
+ */
+export function drawablePpiSize(
+  hostWidthPx: number,
+  hostHeightPx: number,
+  dock: DcbDock,
+  thicknessPx: number = DCB_THICKNESS_PX,
+): { widthPx: number; heightPx: number } {
+  if (isVerticalDcbDock(dock)) {
+    return { widthPx: Math.max(0, hostWidthPx - thicknessPx), heightPx: hostHeightPx };
+  }
+  return { widthPx: hostWidthPx, heightPx: Math.max(0, hostHeightPx - thicknessPx) };
+}
 
 /** Trainer freeze: 8 slots, not CRC 32. */
 export const DCB_PREF_SLOT_COUNT = 8;

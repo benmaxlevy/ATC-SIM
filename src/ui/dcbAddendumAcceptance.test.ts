@@ -46,7 +46,7 @@ import {
   toggleTpaOn,
 } from "@scope";
 import { DisplayControlBar } from "./DisplayControlBar";
-import { submitCommand } from "./submitCommand";
+import { submitCommand } from "./command-line";
 
 const uiSources = import.meta.glob("./*.{ts,tsx}", {
   query: "?raw",

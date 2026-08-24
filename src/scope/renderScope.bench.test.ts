@@ -9,7 +9,7 @@
 import { describe, expect, test, vi } from "vitest";
 import { SIM_DT_S, createWorld, stepWorld } from "@core";
 import { loadKdem, spawnArrivals } from "@scenario";
-import { formatFpsDebug } from "../ui/fpsHud";
+import { formatFpsDebug } from "../ui/FpsDebug";
 import { HISTORY_MAX_DOTS } from "./history";
 import { getMapCacheBuildCount, parseDigitalMap, resetMapCacheBuildCount } from "./mapLayers";
 import { renderScope } from "./renderScope";

@@ -40,7 +40,7 @@ import {
   syncRoleMapVisibility,
   type RrIntervalNm,
 } from "./dcbFunctions";
-import { type DcbDock } from "./dcbDock";
+import { type DcbDock } from "./dcbPref";
 import { idleDcbSpinner, type DcbMenu, type DcbSpinnerState } from "./dcbMenu";
 import {
   cloneCharSizes,

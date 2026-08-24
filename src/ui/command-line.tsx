@@ -5,9 +5,46 @@
  */
 
 import { type FormEvent, useState } from "react";
+import type { SessionLog, World } from "@core";
+import { handleRadioText, type PilotResult } from "@pilot";
 import { displayCommandLineStatus } from "./voice-status";
 
+export type { PilotResult };
+
 export const COMMAND_LINE_INPUT_ID = "command-line-input";
+
+/**
+ * Trim typed command-line text. Does not parse or apply a Command.
+ * Product submit is `submitCommand` (T01-09); this helper is the Phase 0 echo path.
+ */
+export function echoCommandLine(input: string): string {
+  return input.trim();
+}
+
+/**
+ * Echo reducer for the command line. Whitespace-only submit is ignored so the
+ * last echoed line stays put.
+ */
+export function submitCommandLine(currentEcho: string, input: string): string {
+  const next = echoCommandLine(input);
+  if (next === "") {
+    return currentEcho;
+  }
+  return next;
+}
+
+/**
+ * Run the radio pipeline on a typed line. Does not call SpeechPort, does not
+ * step the world — intent updates wait for the next physics tick (T01-10 rAF).
+ */
+export async function submitCommand(
+  world: World,
+  text: string,
+  log: SessionLog,
+  opts?: { pathC?: boolean },
+): Promise<PilotResult> {
+  return handleRadioText(world, text, log, 0, { source: "text", pathC: opts?.pathC ?? false });
+}
 
 export interface CommandLineProps {
   readback: string;

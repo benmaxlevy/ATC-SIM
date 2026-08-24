@@ -1,8 +1,7 @@
 import { expect, expectTypeOf, test } from "vitest";
 import { fixtureFlyHeading } from "../command/fixtures";
 import type { Command } from "../command/types";
-import { SessionLog } from "./session-log";
-import type { SessionEvent } from "./types";
+import { SessionLog, type SessionEvent } from "./session-log";
 
 const emptyInstructionCommand: Command = {
   id: "cmd-empty",

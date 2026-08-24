@@ -117,7 +117,7 @@ test("scope key/wheel handlers never import the parser", () => {
   }) as Record<string, string>;
   for (const name of [
     "./scopeKeys.ts",
-    "./ppiPointer.ts",
+    "./ppi.ts",
     "./scopeView.ts",
     "./camera.ts",
     "./history.ts",

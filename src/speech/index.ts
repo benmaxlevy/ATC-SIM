@@ -14,7 +14,13 @@
  * Import rule: `@speech` may import `@core` only. `parseCommand` is injected.
  */
 export type { AudioClip, SpeechPort, Transcript, TranscribeOpts } from "./types";
-export { SpeechNotAvailableError } from "./errors";
+export {
+  SpeechNotAvailableError,
+  SpeechPortError,
+  VOICE_ERROR_CODES,
+  shouldLogVoiceReject,
+} from "./errors";
+export type { SpeechPortErrorKind, VoiceErrorCode, VoiceStatusEvent } from "./errors";
 export { NullSpeechPort } from "./null-speech-port";
 export { HttpSpeechPort } from "./ports/http-speech-port";
 export {
@@ -28,7 +34,12 @@ export {
   resolveSpeechBackend,
 } from "./ports/factory";
 export type { CreateSpeechPortDeps, SpeechApiUrlStatus, SpeechBackendId } from "./ports/factory";
-export { DEFAULT_PTT_KEY, createPttCaptureController } from "./capture/ptt-controller";
+export {
+  DEFAULT_PTT_KEY,
+  EMPTY_CLIP_MS,
+  createPttCaptureController,
+  isTextFieldTarget,
+} from "./capture/ptt-controller";
 export type {
   CaptureBackend,
   PttCaptureController,
@@ -37,9 +48,7 @@ export type {
   PttKeyEvent,
   PttUpResult,
 } from "./capture/ptt-controller";
-export { EMPTY_CLIP_MS } from "./capture/clip-gate";
 export { TARGET_SAMPLE_RATE } from "./capture/resample";
-export { isTextFieldTarget } from "./capture/ptt-focus";
 export {
   AUTO_TTS_VOICE_ID,
   PILOT_VOICE_IDS,
@@ -60,8 +69,6 @@ export type {
   VoiceLoopStatus,
   VoiceParseResult,
 } from "./voice-loop";
-export { VOICE_ERROR_CODES, shouldLogVoiceReject } from "./voice-error-codes";
-export type { VoiceErrorCode, VoiceStatusEvent } from "./voice-error-codes";
 export {
   VoiceLatencyTracker,
   markAudioStart,
@@ -75,7 +82,6 @@ export {
 } from "./metrics";
 export type { VoiceSessionSnapshot, VoiceUtteranceMetrics } from "./metrics";
 export { WebSpeechPort, speakBrowser } from "./ports/web-speech-port";
-export { pcm16ToFloat32 } from "./playback/pcm16-to-audio-buffer";
 export { TransmitGate } from "./playback/transmit-gate";
 export {
   PLAYBACK_TAIL_MS,
@@ -90,12 +96,6 @@ export type {
   ReadbackPlayerOptions,
 } from "./playback/readback-player";
 export {
-  connectPlaybackThroughRadio,
-  createRadioGraph,
-  isSilentClip,
-} from "./playback/radio-graph";
-export type { RadioGraph, RadioGraphNodes } from "./playback/radio-graph";
-export {
   DEFAULT_RADIO_FX_ENABLED,
   RADIO_COMPRESSOR_ATTACK_SEC,
   RADIO_COMPRESSOR_KNEE_DB,
@@ -109,5 +109,10 @@ export {
   RADIO_NOISE_DURATION_SEC,
   RADIO_NOISE_GAIN,
   RADIO_VOICE_GAIN,
-} from "./playback/radio-fx-params";
+  connectPlaybackThroughRadio,
+  createRadioGraph,
+  isSilentClip,
+  pcm16ToFloat32,
+} from "./playback/radio-graph";
+export type { RadioGraph, RadioGraphNodes } from "./playback/radio-graph";
 export const SPEECH_PACKAGE = "speech";

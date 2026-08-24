@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
 import { HELP_FOOTER, HELP_GLOSSARY_NOTE, KEY_BINDINGS, RADIO_CONFLICT_WARNING } from "@scope";
-import { DISCLAIMER_COPY } from "./disclaimer-copy";
+import { DISCLAIMER_COPY } from "./disclaimer";
 import { ScopeHelpOverlay } from "./ScopeHelpOverlay";
 
 test("AC2 — overlay footer is exactly TRAINER KEYS — NOT CRC and lists frozen keys", () => {

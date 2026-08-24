@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { SpeechPortError } from "../speech-port-error";
+import { SpeechPortError } from "../errors";
 import type { AudioClip } from "../types";
 import { DEFAULT_STT_URL, DEFAULT_TTS_URL, HttpSpeechPort } from "./http-speech-port";
 import { pcm16ToWav, uint8ToArrayBuffer } from "./wav";

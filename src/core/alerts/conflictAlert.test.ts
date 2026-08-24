@@ -4,6 +4,7 @@ import {
   CA_LATERAL_NM,
   CA_VERTICAL_FT,
   caSeverityForCallsign,
+  datablockAlertTint,
   evaluateConflictAlert,
 } from "./conflictAlert";
 
@@ -140,4 +141,17 @@ test("comments name CA as lite trainer, not TCAS or STARS CA", () => {
   expect(src).toMatch(/Not NAS/);
   expect(src).toMatch(/conflict alert/);
   expect(src).not.toMatch(/STARS CA/);
+});
+
+test("AC5 — datablockAlertTint follows CA alert > MSAW alert > CA caution > MSAW caution", () => {
+  expect(datablockAlertTint({})).toBeNull();
+  expect(datablockAlertTint({ ca: null, msaw: null })).toBeNull();
+  expect(datablockAlertTint({ ca: "caution" })).toBe("ca-caution");
+  expect(datablockAlertTint({ ca: "alert" })).toBe("ca-alert");
+  expect(datablockAlertTint({ msaw: "caution" })).toBe("msaw-caution");
+  expect(datablockAlertTint({ msaw: "alert" })).toBe("msaw-alert");
+  expect(datablockAlertTint({ ca: "caution", msaw: "alert" })).toBe("msaw-alert");
+  expect(datablockAlertTint({ ca: "alert", msaw: "alert" })).toBe("ca-alert");
+  expect(datablockAlertTint({ ca: "caution", msaw: "caution" })).toBe("ca-caution");
+  expect(datablockAlertTint({ ca: "alert", msaw: "caution" })).toBe("ca-alert");
 });

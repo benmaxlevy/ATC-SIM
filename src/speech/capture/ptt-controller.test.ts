@@ -1,9 +1,10 @@
 import { expect, test, vi } from "vitest";
 import type { CaptureBackend } from "./capture-backend";
-import { EMPTY_CLIP_MS } from "./clip-gate";
 import {
   DEFAULT_PTT_KEY,
+  EMPTY_CLIP_MS,
   createPttCaptureController,
+  isTextFieldTarget,
   type PttCaptureEvent,
   type PttKeyEvent,
 } from "./ptt-controller";
@@ -332,4 +333,26 @@ test("worklet source registers an off-main-thread processor", async () => {
   expect(PCM_CAPTURE_WORKLET_SOURCE).toContain("AudioWorkletProcessor");
   expect(PCM_CAPTURE_WORKLET_SOURCE).toContain(`registerProcessor("${PCM_CAPTURE_PROCESSOR}"`);
   expect(PCM_CAPTURE_WORKLET_SOURCE).toContain("this.armed");
+});
+
+test("input, textarea, and contenteditable are text fields (AC2)", () => {
+  expect(isTextFieldTarget({ tagName: "INPUT" })).toBe(true);
+  expect(isTextFieldTarget({ tagName: "input" })).toBe(true);
+  expect(isTextFieldTarget({ tagName: "TEXTAREA" })).toBe(true);
+  expect(isTextFieldTarget({ isContentEditable: true })).toBe(true);
+});
+
+test("canvas, body, and null are not text fields", () => {
+  expect(isTextFieldTarget(null)).toBe(false);
+  expect(isTextFieldTarget({ tagName: "CANVAS" })).toBe(false);
+  expect(isTextFieldTarget({ tagName: "BODY" })).toBe(false);
+  expect(isTextFieldTarget({ tagName: "BUTTON" })).toBe(false);
+});
+
+test("closest() matching an input counts as focused text field", () => {
+  const target = {
+    tagName: "SPAN",
+    closest: (selector: string) => (selector.includes("input") ? {} : null),
+  };
+  expect(isTextFieldTarget(target)).toBe(true);
 });

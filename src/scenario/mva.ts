@@ -1,4 +1,13 @@
+/**
+ * Trainer MVA / floor chart. Not certified MSAW. Sibling of the procedure
+ * catalog so procedure JSON stays procedure-only (T04-10).
+ *
+ * Canonical evaluator types live in `@core`; this file re-exports them so
+ * scenario loaders can name `MvaChart` without importing the alert module path.
+ */
+
 import type { MvaChart, MvaPolygon, MvaVertex } from "@core";
+export type { MvaChart, MvaPolygon, MvaVertex, MsawInhibitGeom } from "@core";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -75,4 +84,27 @@ export function parseMvaChart(raw: unknown): MvaChart {
     chart.note = note;
   }
   return chart;
+}
+
+const MVA_JSON = import.meta.glob<unknown>("./data/*-mva.json", {
+  eager: true,
+  import: "default",
+});
+
+/** Last path segment without `-mva.json`, so `KDEM` and `kdem` both work. */
+export function mvaFileKey(airportId: string): string {
+  return `./data/${airportId.trim().toLowerCase()}-mva.json`;
+}
+
+/**
+ * Parse the committed MVA JSON for `airportId`, or `null` when that facility
+ * has no chart yet.
+ */
+export function loadMva(airportId: string): MvaChart | null {
+  const key = mvaFileKey(airportId);
+  const raw = MVA_JSON[key];
+  if (raw === undefined) {
+    return null;
+  }
+  return parseMvaChart(raw);
 }

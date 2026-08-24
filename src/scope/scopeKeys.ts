@@ -50,7 +50,7 @@ import {
   applyDropTrackToSelection,
   applyInitiateTrackToSelection,
 } from "./trackDisplay";
-import { applyTowerHandoffToSelection } from "./towerHandoff";
+import { applyTowerHandoffToSelection } from "./ownership";
 
 export const ALWAYS_ON_SCOPE_KEYS = [
   "PageUp",

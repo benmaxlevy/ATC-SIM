@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { formatFpsDebug, isFpsDebugEnabled } from "./fpsHud";
+import { formatFpsDebug, isFpsDebugEnabled } from "./FpsDebug";
 
 test("T02-12 — FPS HUD is opt-in via ?debug=fps", () => {
   expect(isFpsDebugEnabled("")).toBe(false);

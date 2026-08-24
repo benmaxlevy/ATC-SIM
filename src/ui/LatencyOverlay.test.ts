@@ -2,15 +2,15 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
 import type { VoiceSessionSnapshot } from "@speech";
-import { LatencyOverlay } from "./LatencyOverlay";
 import {
   LATENCY_OVERLAY_DEFAULT_VISIBLE,
   LATENCY_OVERLAY_ID,
+  LatencyOverlay,
   formatLatencyMs,
   formatLatencyOverlay,
   httpP50Band,
   latencyOverlayClassName,
-} from "./latency-overlay";
+} from "./LatencyOverlay";
 
 const empty: VoiceSessionSnapshot = {
   backendId: "http",
