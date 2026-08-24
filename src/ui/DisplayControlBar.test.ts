@@ -122,9 +122,8 @@ test("AC3 — AUX PTL ALL matches F7; F8 still toggles HISTORY 0 ↔ last non-ze
   expect(html).toContain("ALL");
 });
 
-test("AC4 — FILTER cell applies the same predicate as the F chord; invalid max<min does not apply", () => {
-  expect(barSrc()).toMatch(/beginAltitudeFilterChord\(view\)/);
-  expect(barSrc()).toMatch(/>\s*FILTER\s*</);
+test("AC4 — altitude FILTER stays a scope chord; invalid max<min does not apply", () => {
+  expect(dcbHtml()).not.toMatch(/data-dcb-cell="filter"/);
   expect(barSrc()).not.toMatch(/DCB_FIL_MIN_ID/);
   const view = createScopeView();
   beginAltitudeFilterChord(view, 0);
@@ -140,7 +139,7 @@ test("AC4 — FILTER cell applies the same predicate as the F chord; invalid max
   expect(view.altitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 100 });
   expect(tryApplyAltitudeFilterDigits(view.altitudeFilter, "120", "050")).toBe(false);
   expect(view.altitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 100 });
-  expect(dcbHtml(view)).toContain("050-100");
+  expect(dcbHtml(view)).not.toContain("050-100");
 });
 
 test("AC5 — no command.accepted from DCB clicks", () => {
@@ -160,7 +159,7 @@ test("AC5 — no command.accepted from DCB clicks", () => {
   expect(mainSources["../main.tsx"]).toMatch(/syncDisplayControlBar\(scopeView/);
 });
 
-test("AC7 — Research: labels are RANGE/MAPS/FILTER on MAIN; HISTORY/PTL on AUX", () => {
+test("AC7 — Research: RANGE/MAPS and SSA/GI filter controls are on MAIN; HISTORY/PTL on AUX", () => {
   const bar = barSrc();
   const html = dcbHtml();
   expect(html).toContain("RANGE 20");
@@ -177,7 +176,7 @@ test("AC7 — Research: labels are RANGE/MAPS/FILTER on MAIN; HISTORY/PTL on AUX
   expect(html).not.toContain("BRITE 2");
   expect(html).toContain("PLACE");
   expect(html).toContain("CNTR");
-  expect(html).toContain("000-180");
+  expect(html).not.toContain("000-180");
   const auxView = createScopeView();
   applyDcbShift(auxView);
   const aux = dcbHtml(auxView);
@@ -450,9 +449,11 @@ test("AC1 — SHIFT on MAIN shows AUX (MAIN cells gone); SHIFT on AUX returns MA
   const view = createScopeView();
   expect(dcbHtml(view)).toContain("SHIFT");
   expect(dcbHtml(view)).toContain("RANGE 20");
+  expect(dcbHtml(view)).not.toMatch(/>MAIN</);
   applyDcbShift(view);
   const aux = dcbHtml(view);
   expect(aux).toContain("SHIFT");
+  expect(aux).not.toMatch(/>AUX</);
   expect(aux).toContain("VOL");
   expect(aux).not.toContain("RANGE 20");
   expect(aux).not.toContain(">MAPS<");
@@ -694,8 +695,8 @@ test("T02-27 AC2 — hiding STATUS omits OK; RANGE/FILTER SSA lines still match 
   expect(buildSsaLines(input)).toContain("FILTER 000-180");
 });
 
-test("T02-27 AC5/AC6 — altitude FILTER stays on MAIN; SSA/GI comments; no Command IR", () => {
-  expect(dcbHtml()).toMatch(/data-dcb-cell="filter"/);
+test("T02-27 AC5/AC6 — altitude FILTER stays a scope chord; SSA/GI comments; no Command IR", () => {
+  expect(dcbHtml()).not.toMatch(/data-dcb-cell="filter"/);
   expect(dcbHtml()).toContain("SSA");
   const src = barSrc();
   expect(src).toMatch(/SSA FILTER/);

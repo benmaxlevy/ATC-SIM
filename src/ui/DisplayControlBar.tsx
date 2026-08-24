@@ -234,7 +234,7 @@ function tpaMiSpinnerArmed(view: ScopeView): boolean {
 }
 
 /**
- * Keep RANGE / MAPS / RR / LDR DIR / LDR / CHAR / BRITE / FILTER / HISTORY / PTL in sync
+ * Keep RANGE / MAPS / RR / LDR DIR / LDR / CHAR / BRITE / HISTORY / PTL in sync
  * with keyboard chords.
  */
 export function syncDisplayControlBar(
@@ -245,7 +245,7 @@ export function syncDisplayControlBar(
   if (!doc) {
     return;
   }
-  setText(DCB_RANGE_READOUT_ID, formatDcbRangeReadout(view.camera.rangeNm));
+  setText(DCB_RANGE_READOUT_ID, String(view.camera.rangeNm));
   setText(DCB_FILTER_BAND_ID, formatFilterBand(view.altitudeFilter, view.filterEntry));
   setText(DCB_RR_READOUT_ID, formatDcbRrReadout(view.ringIntervalNm, view.showRings));
   setPressed(doc.querySelector('[data-dcb-cell="rr"]'), spinnerArmed(view, "RR"));
@@ -616,7 +616,7 @@ function renderShift(view: ScopeView, onChange: () => void) {
       }}
     >
       <span className="dcb-cell-line">SHIFT</span>
-      <span className="dcb-cell-line">{view.dcbMenu === "AUX" ? "AUX" : "MAIN"}</span>
+      <span className="dcb-cell-line">{"\u00a0"}</span>
     </DcbCell>
   );
 }
@@ -654,7 +654,7 @@ function renderPhysicalMain(
         return (
           <DcbCell
             kind="spinner"
-            ariaLabel="Range"
+            ariaLabel={formatDcbRangeReadout(view.camera.rangeNm)}
             dataDcb="range"
             pressed={spinnerArmed(view, "RANGE")}
             onClick={() => toggleSpinner(view, onChange, "RANGE")}
@@ -662,21 +662,9 @@ function renderPhysicalMain(
               onSpinnerWheel(view, "RANGE", event, (step) => stepRange(view.camera, step), onChange)
             }
           >
+            <span className="dcb-cell-line">RANGE</span>
             <span id={DCB_RANGE_READOUT_ID} className="dcb-cell-line">
-              {formatDcbRangeReadout(view.camera.rangeNm)}
-            </span>
-            <span
-              className="dcb-cell-line"
-              data-dcb-cell="filter"
-              role="button"
-              tabIndex={0}
-              onClick={(event) => {
-                event.stopPropagation();
-                beginAltitudeFilterChord(view);
-                afterCell(onChange);
-              }}
-            >
-              {formatFilterBand(view.altitudeFilter, view.filterEntry)}
+              {view.camera.rangeNm}
             </span>
           </DcbCell>
         );

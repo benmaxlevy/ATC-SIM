@@ -167,8 +167,7 @@ test("AC4 — DCB has SHIFT / PREF / disabled WX; no CSA/FMA/OSM; no input/Apply
   const mainText = visibleText(main);
   expect(mainText).toMatch(/SHIFT/);
   expect(mainText).toMatch(/PREF/);
-  expect(mainText).toMatch(/FILTER/);
-  expect(main).toMatch(/data-dcb-cell="filter"/);
+  expect(main).not.toMatch(/data-dcb-cell="filter"/);
   expect(main).toMatch(/data-dcb-cell="shift"/);
   expect(main).toMatch(/data-dcb-cell="pref"/);
   expect(mainText).not.toMatch(FORBIDDEN_DCB_CELLS);
