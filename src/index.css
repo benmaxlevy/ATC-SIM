@@ -199,6 +199,28 @@ body,
   white-space: nowrap;
 }
 
+@keyframes dcb-cap-spring {
+  0%,
+  100% {
+    background: var(--dcb-cap, #061f0b);
+    box-shadow:
+      inset 1px 1px var(--dcb-highlight, #7a8a7a),
+      inset -2px -2px var(--dcb-shadow, #000000);
+  }
+
+  35%,
+  55% {
+    background: var(--dcb-pressed, #005500);
+    box-shadow:
+      inset 2px 2px var(--dcb-pressed-shadow, #000000),
+      inset -1px -1px var(--dcb-pressed-highlight, #7a8a7a);
+  }
+}
+
+.dcb-cell[data-dcb-flashing="true"] {
+  animation: dcb-cap-spring 140ms ease-out;
+}
+
 .dcb-cell:hover,
 .dcb-cell:focus-visible {
   outline: none;

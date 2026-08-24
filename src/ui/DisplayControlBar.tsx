@@ -472,6 +472,7 @@ function DcbCell({
   const inert = disabled || kind === "disabled";
   const [flashing, setFlashing] = useState(false);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const momentary = kind !== "toggle" && kind !== "disabled";
   const inset = dcbActionCapPressed(pressed, momentary && flashing);
 
@@ -479,6 +480,9 @@ function DcbCell({
     return () => {
       if (flashTimer.current != null) {
         clearTimeout(flashTimer.current);
+      }
+      if (clickTimer.current != null) {
+        clearTimeout(clickTimer.current);
       }
     };
   }, []);
@@ -509,6 +513,21 @@ function DcbCell({
     }, DCB_ACTION_FLASH_MS);
   }
 
+  function invokeClick(): void {
+    if (!momentary) {
+      onClick();
+      return;
+    }
+    armActionFlash();
+    if (clickTimer.current != null) {
+      clearTimeout(clickTimer.current);
+    }
+    clickTimer.current = setTimeout(() => {
+      clickTimer.current = null;
+      onClick();
+    }, DCB_ACTION_FLASH_MS);
+  }
+
   return (
     <button
       type="button"
@@ -524,6 +543,7 @@ function DcbCell({
       data-dcb-ptl={dataDcb === "ptl" ? "" : undefined}
       data-dcb-hist={dataDcb === "hist" ? "" : undefined}
       data-dcb-cell={dataDcb}
+      data-dcb-flashing={flashing ? "true" : undefined}
       onMouseDown={preventButtonFocus}
       onPointerDown={(event: PointerEvent<HTMLButtonElement>) => {
         if (event.currentTarget.setPointerCapture) {
@@ -545,7 +565,7 @@ function DcbCell({
         if (inert) {
           return;
         }
-        onClick();
+        invokeClick();
       }}
     >
       {children}
