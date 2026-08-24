@@ -22,9 +22,9 @@ export type DcbMenu =
 export type DcbCellKind = "action" | "toggle" | "spinner" | "submenu" | "disabled";
 
 /**
- * Action caps (SAVE / SAVE AS / DELETE / DONE / CLR ALL) are not latches.
+ * Momentary caps (actions, submenu openers, and spinners) are not latches.
  * Hold or click shows the inset bevel, then they pop back. CRC analog; not a
- * CSS animation and not a toggle.
+ * CSS animation. Toggle caps retain their pressed state.
  */
 export const DCB_ACTION_FLASH_MS = 140;
 
