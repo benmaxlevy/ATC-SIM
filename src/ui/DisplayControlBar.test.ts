@@ -5,6 +5,7 @@ import { expect, test } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   RANGE_PRESETS_NM,
+  armPlaceCenter,
   beginAltitudeFilterChord,
   buildGiLines,
   buildSsaLines,
@@ -28,7 +29,12 @@ import {
   PpiPlaceholder,
 } from "@scope";
 import { loadKdem } from "@scenario";
-import { DCB_FONT_PX, DCB_HEIGHT_PX, DisplayControlBar } from "./DisplayControlBar";
+import {
+  DCB_FONT_PX,
+  DCB_HEIGHT_PX,
+  DisplayControlBar,
+  MAIN_DCB_LAYOUT,
+} from "./DisplayControlBar";
 
 const uiSources = import.meta.glob("./*.{ts,tsx}", {
   query: "?raw",
@@ -212,6 +218,63 @@ test("RR spinner readout stays RR n; does not hide rings by cycling", () => {
   expect(view.showRings).toBe(true);
 });
 
+test("T02-31 — MAIN descriptor fixes two rows, 22 columns, and the quick-map matrix", () => {
+  expect(MAIN_DCB_LAYOUT).toHaveLength(29);
+  const physical = MAIN_DCB_LAYOUT.filter((cell) => !cell.id.startsWith("map-"));
+  expect(physical.map((cell) => cell.column)).toEqual([
+    1, 2, 2, 3, 4, 4, 5, 9, 10, 11, 12, 13, 14, 15, 16, 16, 17, 18, 19, 20, 21, 21, 22,
+  ]);
+  expect(
+    MAIN_DCB_LAYOUT.filter((cell) => cell.id.startsWith("map-")).map((cell) => [
+      cell.row,
+      cell.column,
+    ]),
+  ).toEqual([
+    [1, 6],
+    [1, 7],
+    [1, 8],
+    [2, 6],
+    [2, 7],
+    [2, 8],
+  ]);
+  expect(MAIN_DCB_LAYOUT.filter((cell) => cell.rowSpan === 2).every((cell) => cell.row === 1)).toBe(
+    true,
+  );
+  expect(MAIN_DCB_LAYOUT.filter((cell) => cell.row === 2).every((cell) => cell.rowSpan === 1)).toBe(
+    true,
+  );
+});
+
+test("T02-31 — system cells are inert and all six WX cells are visible", () => {
+  const html = dcbHtml();
+  for (const id of ["wx1", "wx2", "wx3", "wx4", "wx5", "wx6"]) {
+    expect(html).toMatch(new RegExp(`aria-label="${id.toUpperCase()}"[^>]*disabled`));
+  }
+  for (const label of ["MODE FSL", "SITE FUSED"]) {
+    expect(html).toMatch(new RegExp(`aria-label="${label}"[^>]*disabled`));
+  }
+  expect(html).toContain('data-dcb-layout="MAIN"');
+  expect(html).toContain('data-dcb-layout-id="map-6"');
+});
+
+test("T02-32 — physical caps expose raised, pressed, and disabled presentation tokens", () => {
+  const view = createScopeView();
+  const normal = dcbHtml(view);
+  expect(normal).toContain("--dcb-cap:#061F0B");
+  expect(normal).toContain("--dcb-text:#DCE0DC");
+  expect(normal).toContain("--dcb-disabled-text:#4C604C");
+  expect(normal).toMatch(/data-dcb-kind="spinner"/);
+  expect(normal).not.toContain("#00FF00");
+  expect(normal).toMatch(/aria-label="MODE FSL"[^>]*disabled/);
+  expect(normal).toMatch(/aria-label="SITE FUSED"[^>]*disabled/);
+
+  armPlaceCenter(view);
+  const pressed = dcbHtml(view);
+  expect(pressed).toMatch(/aria-pressed="true"[^>]*data-dcb-cell="place"/);
+  expect(pressed).toContain("--dcb-pressed:#005500");
+  expect(cssSrc()).toMatch(/background:\s*var\(--dcb-pressed,\s*#005500\)/);
+});
+
 test("cells sit on the PPI glass; canvas below fills the rectangular PPI", () => {
   expect(canvasSrc()).toMatch(/className="ppi-column"/);
   expect(canvasSrc()).toMatch(/header=\{<DisplayControlBar/);
@@ -232,14 +295,22 @@ test("cells sit on the PPI glass; canvas below fills the rectangular PPI", () =>
   expect(css).toMatch(/\.dcb\s*\{[^}]*flex:\s*0 0 36px/s);
   expect(css).toMatch(/\.dcb\s*\{[^}]*gap:\s*1px/s);
   expect(css).toMatch(/\.dcb\s*\{[^}]*background:\s*#000000/s);
-  expect(css).toMatch(/\.dcb-cell\s*\{[^}]*background:\s*var\(--dcb-cell,\s*#003300\)/s);
-  expect(css).toMatch(/\.dcb-cell\s*\{[^}]*color:\s*var\(--dcb-text,\s*#00ff00\)/s);
+  expect(css).toMatch(/\.dcb-cell\s*\{[^}]*background:\s*var\(--dcb-cap,\s*#061f0b\)/s);
+  expect(css).toMatch(/\.dcb-cell\s*\{[^}]*color:\s*var\(--dcb-text,\s*#dce0dc\)/s);
   expect(css).toMatch(/\.dcb-cell\s*\{[^}]*border-radius:\s*0/s);
-  expect(css).toMatch(/\.dcb-cell\s*\{[^}]*box-shadow:\s*none/s);
+  expect(css).toMatch(/\.dcb-cell:not\(:disabled\):not\(\[aria-disabled="true"\]\)/);
+  expect(css).toMatch(/inset 1px 1px var\(--dcb-highlight/);
+  expect(css).toMatch(/inset -2px -2px var\(--dcb-shadow/);
+  expect(css).toMatch(/inset 2px 2px var\(--dcb-pressed-shadow/);
+  expect(css).toMatch(/inset -1px -1px var\(--dcb-pressed-highlight/);
+  expect(css).toMatch(/var\(--dcb-disabled-text,\s*#4c604c\)/);
+  expect(css).not.toMatch(/repeating-linear-gradient/);
   expect(css).toMatch(/\.ppi-canvas\s*\{[^}]*flex:\s*1 1 auto/s);
   expect(css).toMatch(/\.command-line\s*\{[^}]*position:\s*absolute/s);
-  expect(barSrc()).toMatch(/PALETTE\.dcbCell/);
+  expect(barSrc()).toMatch(/PALETTE\.dcbCap/);
   expect(barSrc()).toMatch(/PALETTE\.dcbText/);
+  expect(barSrc()).toMatch(/PALETTE\.dcbDisabledText/);
+  expect(barSrc()).toMatch(/PALETTE\.dcbPressed/);
   expect(barSrc()).toMatch(/focusPpi/);
   expect(barSrc()).toMatch(/onMouseDown=\{preventButtonFocus\}/);
 });

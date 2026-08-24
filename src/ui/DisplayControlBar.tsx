@@ -1,7 +1,7 @@
 /**
  * Analog: CRC STARS DCB RANGE / PLACE CNTR / OFF CNTR / RR / PLACE RR / RR CNTR /
  * LDR DIR / LDR / MAPS / WX / CHAR SIZE / BRITE / AUX HISTORY / PTL / DCB position (R07).
- * Trainer delta: green equal-height cells on the glass. SHIFT swaps MAIN and AUX.
+ * Trainer delta: separated dark-olive physical caps with CSS bevels; SHIFT swaps MAIN and AUX.
  * MAPS / TPA-ATPA / CHAR SIZE / BRITE / SSA FILTER / GI TEXT / PREF submenus replace the
  * bar; DONE / Esc return to MAIN. RANGE / RR / LDR DIR / LDR length are spinners
  * (arm, wheel steps frozen presets, second click / Esc commits). CHAR SIZE and
@@ -11,7 +11,7 @@
  * stays on MAIN. SSA FILTER hides existing SSA lines; GI TEXT toggles authored
  * facility lines (not METAR HTTP). HIST/PTL cells live on AUX (F7/F8 still work).
  * MAIN quick video maps 1–6; MAPS submenu slots 1–30 (empty slots disabled).
- * WX1–4 are disabled chrome (no precipitation). Disabled CRDA cell on SSA FILTER
+ * WX1–6 are disabled chrome (no precipitation). Disabled CRDA cell on SSA FILTER
  * is chrome only. PREF is 8 local slots (not a NAS host). No CSA / FMA (R06). Discrete **range** presets only.
  * CHAR SIZE scales **datablock** / lists / DCB / tools / POS. BRITE multiplies
  * drawn channels. Not NAS STARS.
@@ -398,6 +398,57 @@ interface DcbCellProps {
   dataGiSlot?: number;
 }
 
+export interface MainDcbLayoutCell {
+  id: string;
+  row: 1 | 2;
+  column: number;
+  rowSpan: 1 | 2;
+  kind: DcbCellKind;
+  label: string;
+  value?: string;
+}
+
+/**
+ * Analog: CRC STARS MAIN DCB physical column grammar (R07).
+ * Trainer delta: this is a fixed two-row, 22-column projection; quick maps are
+ * authored six-map controls rather than a full NAS video-map host.
+ */
+export const MAIN_DCB_LAYOUT: readonly MainDcbLayoutCell[] = [
+  { id: "range", row: 1, column: 1, rowSpan: 2, kind: "spinner", label: "RANGE" },
+  { id: "place-cntr", row: 1, column: 2, rowSpan: 1, kind: "toggle", label: "PLACE CNTR" },
+  { id: "off-cntr", row: 2, column: 2, rowSpan: 1, kind: "toggle", label: "OFF CNTR" },
+  { id: "rr", row: 1, column: 3, rowSpan: 2, kind: "spinner", label: "RR" },
+  { id: "place-rr", row: 1, column: 4, rowSpan: 1, kind: "toggle", label: "PLACE RR" },
+  { id: "rr-cntr", row: 2, column: 4, rowSpan: 1, kind: "toggle", label: "RR CNTR" },
+  { id: "maps", row: 1, column: 5, rowSpan: 2, kind: "submenu", label: "MAPS" },
+  ...Array.from({ length: 6 }, (_, index): MainDcbLayoutCell => ({
+    id: `map-${index + 1}`,
+    row: index < 3 ? 1 : 2,
+    column: 6 + (index % 3),
+    rowSpan: 1,
+    kind: "toggle",
+    label: `MAP ${index + 1}`,
+  })),
+  ...Array.from({ length: 6 }, (_, index): MainDcbLayoutCell => ({
+    id: `wx${index + 1}`,
+    row: 1,
+    column: 9 + index,
+    rowSpan: 2,
+    kind: "disabled",
+    label: `WX${index + 1}`,
+  })),
+  { id: "brite", row: 1, column: 15, rowSpan: 2, kind: "submenu", label: "BRITE" },
+  { id: "ldr-dir", row: 1, column: 16, rowSpan: 1, kind: "spinner", label: "LDR DIR" },
+  { id: "ldr-length", row: 2, column: 16, rowSpan: 1, kind: "spinner", label: "LDR" },
+  { id: "char", row: 1, column: 17, rowSpan: 2, kind: "submenu", label: "CHAR SIZE" },
+  { id: "mode-fsl", row: 1, column: 18, rowSpan: 2, kind: "disabled", label: "MODE FSL" },
+  { id: "pref", row: 1, column: 19, rowSpan: 2, kind: "submenu", label: "PREF 22/27" },
+  { id: "site-fused", row: 1, column: 20, rowSpan: 2, kind: "disabled", label: "SITE FUSED" },
+  { id: "ssa-filter", row: 1, column: 21, rowSpan: 1, kind: "submenu", label: "SSA FILTER" },
+  { id: "gi-text", row: 2, column: 21, rowSpan: 1, kind: "submenu", label: "GI TEXT FILTER" },
+  { id: "shift", row: 1, column: 22, rowSpan: 2, kind: "action", label: "SHIFT" },
+];
+
 function DcbCell({
   ariaLabel,
   children,
@@ -545,7 +596,326 @@ function renderShift(view: ScopeView, onChange: () => void) {
   );
 }
 
-function renderMain(view: ScopeView, onChange: () => void, world: DisplayControlBarProps["world"]) {
+function renderPhysicalMain(
+  view: ScopeView,
+  onChange: () => void,
+  world: DisplayControlBarProps["world"],
+) {
+  const disabled = (id: string, label: string) => (
+    <DcbCell
+      kind="disabled"
+      ariaLabel={label}
+      dataDcb={id === "mode-fsl" ? undefined : (id as DcbCellProps["dataDcb"])}
+      disabled
+      onClick={() => undefined}
+    >
+      {label.includes(" ") ? (
+        label.split(" ").map((part) => (
+          <span className="dcb-cell-line" key={part}>
+            {part}
+          </span>
+        ))
+      ) : (
+        <>
+          <span className="dcb-cell-line">{label}</span>
+          <span className="dcb-cell-line">{"\u00a0"}</span>
+        </>
+      )}
+    </DcbCell>
+  );
+  const render = (id: string): ReactNode => {
+    switch (id) {
+      case "range":
+        return (
+          <DcbCell
+            kind="spinner"
+            ariaLabel="Range"
+            dataDcb="range"
+            pressed={spinnerArmed(view, "RANGE")}
+            onClick={() => toggleSpinner(view, onChange, "RANGE")}
+            onWheel={(event) =>
+              onSpinnerWheel(view, "RANGE", event, (step) => stepRange(view.camera, step), onChange)
+            }
+          >
+            <span id={DCB_RANGE_READOUT_ID} className="dcb-cell-line">
+              {formatDcbRangeReadout(view.camera.rangeNm)}
+            </span>
+            <span
+              className="dcb-cell-line"
+              data-dcb-cell="filter"
+              role="button"
+              tabIndex={0}
+              onClick={(event) => {
+                event.stopPropagation();
+                beginAltitudeFilterChord(view);
+                afterCell(onChange);
+              }}
+            >
+              {formatFilterBand(view.altitudeFilter, view.filterEntry)}
+            </span>
+          </DcbCell>
+        );
+      case "place-cntr":
+        return (
+          <DcbCell
+            kind="toggle"
+            ariaLabel="Place center"
+            dataDcb="place"
+            pressed={view.placeCenterArmed}
+            onClick={() => runCell(view, onChange, () => armPlaceCenter(view))}
+          >
+            <span className="dcb-cell-line">PLACE</span>
+            <span className="dcb-cell-line">CNTR</span>
+          </DcbCell>
+        );
+      case "off-cntr":
+        return (
+          <DcbCell
+            kind="toggle"
+            ariaLabel="Off center"
+            dataDcb="off-cntr"
+            pressed={isViewOffAirport(view)}
+            onClick={() => runCell(view, onChange, () => centerOnAirport(view))}
+          >
+            <span className="dcb-cell-line">OFF</span>
+            <span className="dcb-cell-line">CNTR</span>
+          </DcbCell>
+        );
+      case "rr":
+        return (
+          <DcbCell
+            kind="spinner"
+            ariaLabel="Range rings"
+            dataDcb="rr"
+            pressed={spinnerArmed(view, "RR")}
+            onClick={() => toggleSpinner(view, onChange, "RR")}
+            onWheel={(event) =>
+              onSpinnerWheel(view, "RR", event, (step) => stepRrInterval(view, step), onChange)
+            }
+          >
+            <span className="dcb-cell-line">RR</span>
+            <span id={DCB_RR_READOUT_ID} className="dcb-cell-line">
+              {formatDcbRrReadout(view.ringIntervalNm, view.showRings)}
+            </span>
+          </DcbCell>
+        );
+      case "place-rr":
+        return (
+          <DcbCell
+            kind="toggle"
+            ariaLabel="Place range rings"
+            dataDcb="place-rr"
+            pressed={view.placeRangeRingArmed}
+            onClick={() => runCell(view, onChange, () => armPlaceRangeRing(view))}
+          >
+            <span className="dcb-cell-line">PLACE</span>
+            <span className="dcb-cell-line">RR</span>
+          </DcbCell>
+        );
+      case "rr-cntr":
+        return (
+          <DcbCell
+            kind="toggle"
+            ariaLabel="Range rings center"
+            dataDcb="rr-cntr"
+            pressed={isRangeRingOffViewCenter(view)}
+            onClick={() => runCell(view, onChange, () => applyRrCenter(view))}
+          >
+            <span className="dcb-cell-line">RR</span>
+            <span className="dcb-cell-line">CNTR</span>
+          </DcbCell>
+        );
+      case "maps":
+        return (
+          <DcbCell
+            kind="submenu"
+            ariaLabel="Maps"
+            dataDcb="maps"
+            pressed={view.dcbMenu === "MAPS"}
+            onClick={() => {
+              cancelFilterIfEntering(view);
+              openDcbMenu(view, "MAPS");
+              afterCell(onChange);
+            }}
+          >
+            <span className="dcb-cell-line">MAPS</span>
+            <span className="dcb-cell-line">{"\u00a0"}</span>
+          </DcbCell>
+        );
+      case "brite":
+        return (
+          <DcbCell
+            kind="submenu"
+            ariaLabel="Brite"
+            dataDcb="brite"
+            pressed={view.dcbMenu === "BRITE"}
+            onClick={() => {
+              cancelFilterIfEntering(view);
+              openDcbMenu(view, "BRITE");
+              afterCell(onChange);
+            }}
+          >
+            <span className="dcb-cell-line">BRITE</span>
+            <span className="dcb-cell-line">{"\u00a0"}</span>
+          </DcbCell>
+        );
+      case "ldr-dir":
+        return (
+          <DcbCell
+            kind="spinner"
+            ariaLabel="Leader direction"
+            dataDcb="ldr-dir"
+            pressed={spinnerArmed(view, "LDR_DIR")}
+            onClick={() => toggleSpinner(view, onChange, "LDR_DIR")}
+            onWheel={(event) =>
+              onSpinnerWheel(
+                view,
+                "LDR_DIR",
+                event,
+                (step) => stepDcbLeaderDir(view, world, step),
+                onChange,
+              )
+            }
+          >
+            <span className="dcb-cell-line">LDR DIR</span>
+            <span id={DCB_LDR_READOUT_ID} className="dcb-cell-line">
+              {dcbLeaderDirReadout(view, world)}
+            </span>
+          </DcbCell>
+        );
+      case "ldr-length":
+        return (
+          <DcbCell
+            kind="spinner"
+            ariaLabel="Leader length"
+            dataDcb="ldr-length"
+            pressed={spinnerArmed(view, "LDR_LENGTH")}
+            onClick={() => toggleSpinner(view, onChange, "LDR_LENGTH")}
+            onWheel={(event) =>
+              onSpinnerWheel(
+                view,
+                "LDR_LENGTH",
+                event,
+                (step) => stepDcbLeaderLength(view, step),
+                onChange,
+              )
+            }
+          >
+            <span className="dcb-cell-line">LDR</span>
+            <span id={DCB_LDR_LENGTH_READOUT_ID} className="dcb-cell-line">
+              {formatDcbLdrLengthReadout(view.leaderLengthPx)}
+            </span>
+          </DcbCell>
+        );
+      case "char":
+        return (
+          <DcbCell
+            kind="submenu"
+            ariaLabel="Character size"
+            dataDcb="char"
+            pressed={view.dcbMenu === "CHAR_SIZE"}
+            onClick={() => {
+              cancelFilterIfEntering(view);
+              openDcbMenu(view, "CHAR_SIZE");
+              afterCell(onChange);
+            }}
+          >
+            <span className="dcb-cell-line">CHAR</span>
+            <span className="dcb-cell-line">SIZE</span>
+          </DcbCell>
+        );
+      case "pref":
+        return (
+          <DcbCell
+            kind="submenu"
+            ariaLabel="Pref 22/27"
+            dataDcb="pref"
+            pressed={view.dcbMenu === "PREF"}
+            onClick={() => {
+              cancelFilterIfEntering(view);
+              beginDcbPrefSession(view);
+              openDcbMenu(view, "PREF");
+              afterCell(onChange);
+            }}
+          >
+            <span className="dcb-cell-line">PREF</span>
+            <span className="dcb-cell-line">22/27</span>
+          </DcbCell>
+        );
+      case "ssa-filter":
+        return (
+          <DcbCell
+            kind="submenu"
+            ariaLabel="SSA filter"
+            dataDcb="ssa-filter"
+            pressed={view.dcbMenu === "SSA_FILTER"}
+            onClick={() => {
+              cancelFilterIfEntering(view);
+              openDcbMenu(view, "SSA_FILTER");
+              afterCell(onChange);
+            }}
+          >
+            <span className="dcb-cell-line">SSA</span>
+            <span className="dcb-cell-line">FILTER</span>
+          </DcbCell>
+        );
+      case "gi-text":
+        return (
+          <DcbCell
+            kind="submenu"
+            ariaLabel="GI text filter"
+            dataDcb="gi-text"
+            pressed={view.dcbMenu === "GI_FILTER"}
+            onClick={() => {
+              cancelFilterIfEntering(view);
+              openDcbMenu(view, "GI_FILTER");
+              afterCell(onChange);
+            }}
+          >
+            <span className="dcb-cell-line">GI TEXT</span>
+            <span className="dcb-cell-line">FILTER</span>
+          </DcbCell>
+        );
+      case "shift":
+        return renderShift(view, onChange);
+      default:
+        if (id.startsWith("map-")) {
+          return renderMapSlot(view, onChange, Number(id.slice(4)));
+        }
+        return disabled(
+          id,
+          id === "mode-fsl" ? "MODE FSL" : id === "site-fused" ? "SITE FUSED" : id.toUpperCase(),
+        );
+    }
+  };
+  return (
+    <div className="dcb-main-grid" data-dcb-layout="MAIN">
+      {MAIN_DCB_LAYOUT.map((cell) => (
+        <div
+          key={cell.id}
+          className="dcb-main-grid-cell"
+          data-dcb-layout-id={cell.id}
+          data-dcb-row={cell.row}
+          data-dcb-column={cell.column}
+          data-dcb-row-span={cell.rowSpan}
+          style={{
+            gridColumn: cell.column,
+            gridRow: `${cell.row} / span ${cell.rowSpan}`,
+          }}
+        >
+          {render(cell.id)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Legacy flat projection retained for submenu compatibility snapshots. */
+export function renderMainLegacy(
+  view: ScopeView,
+  onChange: () => void,
+  world: DisplayControlBarProps["world"],
+) {
   const offCntr = isViewOffAirport(view);
   return (
     <>
@@ -1415,7 +1785,9 @@ function renderPref(view: ScopeView, onChange: () => void) {
 export function DisplayControlBar({ view, onChange, world }: DisplayControlBarProps) {
   const dcbPx = view.charSizes.dcb;
   const dcbText = applyBrite(PALETTE.dcbText, view.brite.dcb);
-  const dcbFill = applyBrite(PALETTE.dcbCell, view.brite.dcb);
+  const dcbFill = applyBrite(PALETTE.dcbCap, view.brite.dcb);
+  const dcbDisabledText = applyBrite(PALETTE.dcbDisabledText, view.brite.dcb);
+  const dcbHighlight = applyBrite(PALETTE.dcbHighlight, view.brite.dcb);
   const menu = view.dcbMenu;
   const vertical = isVerticalDcbDock(view.dcbDock);
 
@@ -1434,11 +1806,17 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
         fontSize: dcbPx,
         backgroundColor: PALETTE.background,
         color: dcbText,
+        ["--dcb-cap" as string]: dcbFill,
         ["--dcb-cell" as string]: dcbFill,
         ["--dcb-text" as string]: dcbText,
+        ["--dcb-disabled-text" as string]: dcbDisabledText,
+        ["--dcb-highlight" as string]: dcbHighlight,
+        ["--dcb-shadow" as string]: PALETTE.dcbShadow,
         ["--dcb-gutter" as string]: PALETTE.background,
-        ["--dcb-pressed" as string]: dcbText,
-        ["--dcb-pressed-text" as string]: PALETTE.background,
+        ["--dcb-pressed" as string]: applyBrite(PALETTE.dcbPressed, view.brite.dcb),
+        ["--dcb-pressed-text" as string]: applyBrite(PALETTE.dcbPressedText, view.brite.dcb),
+        ["--dcb-pressed-shadow" as string]: PALETTE.dcbShadow,
+        ["--dcb-pressed-highlight" as string]: dcbHighlight,
       }}
     >
       {menu === "AUX"
@@ -1459,7 +1837,7 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
                       ? renderGiFilter(view, onChange)
                       : menu === "PREF"
                         ? renderPref(view, onChange)
-                        : renderMain(view, onChange, world)}
+                        : renderPhysicalMain(view, onChange, world)}
     </div>
   );
 }
