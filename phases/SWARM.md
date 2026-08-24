@@ -399,3 +399,17 @@ Frozen config from the completed phase 4 procedures swarm (T04-01–10, T04-12; 
 Waves executed: A (T04-01 ∥ T04-09) → B (T04-02 ∥ T04-08 ∥ T04-10) → C (T04-03) → D (T04-04 ∥ T04-05) → E (T04-06) → F (T04-07) → G (T04-12).
 
 Captain return (historical): `PHASE EXIT GREEN` — Phase 4 Procedures (T04-01–10, 12; skipped 11). Merged T04-01–10, T04-12 plus CI fix/format. Tests 927 passed, 1 skipped.
+
+---
+
+## Seventh swarm resume — 2026-08-23 (finish D/E with checkpoint discipline)
+
+Human approved finishing the remaining seventh-swarm tickets using subagents. Wave C is already merged on `master`; run only **T02-29 (Wave D)** and **T02-30 (Wave E)**. Do not touch the unrelated `fix/ca-blink-and-tone` worktree or its dirty application files.
+
+Safety requirements for the captain:
+
+- Work only from `master`; verify the branch and clean application status before each phase action. Preserve untracked `e2e/` and unrelated CA work.
+- Use one isolated worker worktree per ticket. The worker must commit and return `READY TO MERGE` before the captain merges.
+- After every worker completion: record the worker result, verify its worktree status, merge with `--no-ff`, run `npm test`, and confirm `master` before starting the next ticket.
+- Never background a worker and finish the captain turn. If a worker stalls, resume or replace that worker explicitly; do not leave a half-finished ticket silently.
+- After T02-30: run both `npm test` and `npm run ci`, append STATUS, and return `PHASE EXIT GREEN` only after all results are recorded. Do not start phase 5.
