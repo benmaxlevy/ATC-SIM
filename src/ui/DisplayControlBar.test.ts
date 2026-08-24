@@ -283,7 +283,7 @@ test("cells sit on the PPI glass; canvas below fills the rectangular PPI", () =>
   expect(placeholderSrc().indexOf("{header}")).toBeLessThan(placeholderSrc().indexOf("<canvas"));
   expect(placeholderSrc()).toMatch(/data-dcb-dock=\{dock\}/);
   expect(placeholderSrc()).toMatch(/className="ppi-draw"/);
-  expect(DCB_HEIGHT_PX).toBe(36);
+  expect(DCB_HEIGHT_PX).toBe(75);
   expect(DCB_FONT_PX).toBe(11);
 
   const css = cssSrc();
@@ -292,7 +292,7 @@ test("cells sit on the PPI glass; canvas below fills the rectangular PPI", () =>
   expect(css).toMatch(/\.ppi-host\[data-dcb-dock="RIGHT"\][^}]*flex-direction:\s*row-reverse/s);
   expect(css).toMatch(/\.ppi-host\[data-dcb-dock="BOTTOM"\][^}]*flex-direction:\s*column-reverse/s);
   expect(css).toMatch(/\.dcb-vertical\s*\{[^}]*flex-direction:\s*column/s);
-  expect(css).toMatch(/\.dcb\s*\{[^}]*flex:\s*0 0 36px/s);
+  expect(css).toMatch(/\.dcb\s*\{[^}]*flex:\s*0 0 75px/s);
   expect(css).toMatch(/\.dcb\s*\{[^}]*gap:\s*1px/s);
   expect(css).toMatch(/\.dcb\s*\{[^}]*background:\s*#000000/s);
   expect(css).toMatch(/\.dcb-cell\s*\{[^}]*background:\s*var\(--dcb-cap,\s*#061f0b\)/s);

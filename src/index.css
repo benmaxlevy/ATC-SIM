@@ -114,7 +114,8 @@ body,
 }
 
 .dcb {
-  flex: 0 0 36px;
+  /* Keep the 75 px physical-cap height; flex basis otherwise compresses the inline height. */
+  flex: 0 0 75px;
   box-sizing: border-box;
   width: 100%;
   position: relative;
@@ -134,7 +135,7 @@ body,
 .dcb-main-grid {
   display: grid;
   grid-template-columns: repeat(22, minmax(42px, 1fr));
-  grid-template-rows: repeat(2, minmax(18px, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 1px;
   width: 100%;
   height: 100%;
@@ -154,9 +155,9 @@ body,
 }
 
 .dcb-vertical {
-  flex: 0 0 36px;
+  flex: 0 0 75px;
   flex-direction: column;
-  width: 36px;
+  width: 75px;
   height: auto;
   align-self: stretch;
 }
@@ -237,7 +238,7 @@ body,
   flex-direction: row;
   align-items: stretch;
   gap: 1px;
-  height: 36px;
+  height: 75px;
   background: #000000;
 }
 

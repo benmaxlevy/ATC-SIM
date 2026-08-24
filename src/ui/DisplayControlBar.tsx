@@ -104,8 +104,8 @@ import {
 } from "@scope";
 import { focusPpi } from "./FlightStrips";
 
-/** Two rows of mono 11–12 px plus 1 px gutters, flush on the PPI. */
-export const DCB_HEIGHT_PX = 36;
+/** Two physical rows with room for centered two-line caps, flush on the PPI. */
+export const DCB_HEIGHT_PX = 75;
 export const DCB_FONT_PX = 11;
 /** @deprecated T02-10 name; same as DCB_HEIGHT_PX. */
 export const DCB_LITE_HEIGHT_PX = DCB_HEIGHT_PX;
