@@ -1,7 +1,8 @@
 /**
  * Analog: CRC STARS MAPS / video maps / range rings (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: KDEM trainer-authored JSON only (runway, localizer feather,
- * generated range rings at RR 2/5/10 NM about airport ref, optional coastline).
+ * generated **range rings** at RR 2/5/10 NM). Default origin is airport ref;
+ * PLACE RR moves the origin in world NM (RR CNTR snaps it to view **center**).
  * MAPS visibility is per catalog id. Not OSM / tiles (R12). Not NAS STARS.
  *
  * Scope never emits Command IR. Geometry is NM east/north of ARP + camera.
@@ -55,6 +56,8 @@ export interface MapCacheView {
   mapVisibility?: ReadonlyMap<string, boolean>;
   ringIntervalNm?: number;
   mapBriteIndex?: number;
+  rangeRingEastNm?: number;
+  rangeRingNorthNm?: number;
 }
 
 export interface MapCacheInput {
@@ -67,6 +70,9 @@ export interface MapCacheInput {
   mapVisibility?: ReadonlyMap<string, boolean>;
   ringIntervalNm: number;
   mapBriteIndex?: number;
+  /** World origin of **range rings**. Defaults to airport ref. */
+  rangeRingEastNm?: number;
+  rangeRingNorthNm?: number;
 }
 
 export interface MapCache {
@@ -244,6 +250,8 @@ export function toMapCacheInput(view: MapCacheView, viewSize: ScopeViewSize): Ma
     mapVisibility: view.mapVisibility,
     ringIntervalNm: view.ringIntervalNm ?? view.digitalMap.rangeRings.intervalNm,
     mapBriteIndex: view.mapBriteIndex,
+    rangeRingEastNm: view.rangeRingEastNm ?? view.airportEastNm,
+    rangeRingNorthNm: view.rangeRingNorthNm ?? view.airportNorthNm,
   };
 }
 
@@ -270,6 +278,8 @@ export function buildMapCacheKey(input: MapCacheInput): string {
     input.airportNorthNm,
     input.ringIntervalNm,
     input.mapBriteIndex ?? "",
+    input.rangeRingEastNm ?? input.airportEastNm,
+    input.rangeRingNorthNm ?? input.airportNorthNm,
     visibilityKey(input.digitalMap.loadedVideoMaps ?? [], input.mapVisibility),
   ].join("|");
 }
@@ -419,11 +429,13 @@ export function buildMapCache(
     maxNm: digitalMap.rangeRings.maxNm,
   };
   const ringRadiiNm = layers.showRings ? activeRingRadiiNm(camera.rangeNm, rings) : [];
-  const airportScreen = nmToScreen(airportEastNm, airportNorthNm, camera, viewSize);
+  const ringEastNm = input.rangeRingEastNm ?? airportEastNm;
+  const ringNorthNm = input.rangeRingNorthNm ?? airportNorthNm;
+  const ringOriginScreen = nmToScreen(ringEastNm, ringNorthNm, camera, viewSize);
   const scale = pxPerNm(camera, viewSize);
   const ringCircles = ringRadiiNm.map((radiusNm) => ({
-    x: airportScreen.x,
-    y: airportScreen.y,
+    x: ringOriginScreen.x,
+    y: ringOriginScreen.y,
     radiusPx: radiusNm * scale,
   }));
 

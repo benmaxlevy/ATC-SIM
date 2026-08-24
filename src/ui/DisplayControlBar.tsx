@@ -1,13 +1,15 @@
 /**
- * Analog: CRC STARS DCB MAIN / AUX / SHIFT / DONE (docs.virtualnas.net/crc/stars — R07).
+ * Analog: CRC STARS DCB RANGE / PLACE CNTR / OFF CNTR / RR / PLACE RR / RR CNTR /
+ * LDR DIR / LDR (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: green equal-height cells on the glass. SHIFT swaps MAIN and AUX.
- * MAPS / LDR submenus replace the bar; DONE / Esc return to MAIN. RANGE is a
- * spinner (arm, wheel steps the 8 presets, second click / Esc commits). CHAR
- * SIZE and BRITE stay click-cycle until T02-26. AUX is SHIFT back + VOL disabled.
- * FILTER / PTL / HIST / PLACE CNTR stay on MAIN. Pressed = invert/stipple.
- * No WX / PREF / CSA / CRDA / FMA (R06). Discrete range presets only. Not NAS STARS.
+ * MAPS submenu replaces the bar; DONE / Esc return to MAIN. RANGE / RR / LDR DIR /
+ * LDR length are spinners (arm, wheel steps frozen presets, second click / Esc
+ * commits). CHAR SIZE and BRITE stay click-cycle until T02-26. AUX is SHIFT back
+ * + VOL disabled. FILTER / PTL / HIST stay on MAIN. Pressed = invert/stipple.
+ * No WX / PREF / CSA / CRDA / FMA (R06). Discrete **range** presets only. Not NAS STARS.
  *
- * UI copy: SHIFT / DONE / MAIN / AUX — not toolbar or modal.
+ * UI copy: SHIFT / DONE / MAIN / AUX / range / center / range rings / leader —
+ * not toolbar or modal.
  * Clicks call the same `src/scope` functions as the keyboard. Never a Command,
  * readback, or intent.
  */
@@ -18,36 +20,44 @@ import {
   SCOPE_FONT_STACK,
   applyDcbLeaderDir,
   applyDcbShift,
+  applyRrCenter,
   armDcbSpinner,
   armPlaceCenter,
+  armPlaceRangeRing,
   beginAltitudeFilterChord,
   cancelFilterEntry,
+  centerOnAirport,
   closeDcbMenu,
   closeDcbSubmenu,
   commitDcbSpinner,
   cycleCharSize,
   cycleMapBrite,
-  cycleRrInterval,
   dcbCatalogMaps,
   dcbLeaderDirReadout,
   DCB_LEADER_DIRS,
   formatDcbBriteReadout,
   formatDcbCharReadout,
+  formatDcbLdrLengthReadout,
   formatDcbMapLabel,
   formatDcbRangeReadout,
   formatDcbRrReadout,
   formatFilterBand,
   isCoastlineToggleEnabled,
+  isRangeRingOffViewCenter,
   isVideoMapOn,
   isViewOffAirport,
   openDcbMenu,
+  stepDcbLeaderDir,
+  stepDcbLeaderLength,
   stepDcbSpinner,
   stepRange,
+  stepRrInterval,
   toggleHistoryEnabled,
   toggleMapLayer,
   togglePtlOn,
   toggleVideoMap,
   type DcbCellKind,
+  type DcbSpinnerCell,
   type MapLayerId,
   type ScopeView,
 } from "@scope";
@@ -67,6 +77,7 @@ export const DCB_RANGE_OFFSET_ID = "dcb-range-offset";
 export const DCB_FILTER_BAND_ID = "dcb-filter-band";
 export const DCB_RR_READOUT_ID = "dcb-rr-readout";
 export const DCB_LDR_READOUT_ID = "dcb-ldr-readout";
+export const DCB_LDR_LENGTH_READOUT_ID = "dcb-ldr-length-readout";
 export const DCB_CHAR_READOUT_ID = "dcb-char-readout";
 export const DCB_BRITE_READOUT_ID = "dcb-brite-readout";
 export const DCB_RNG_READOUT_ID = DCB_RANGE_READOUT_ID;
@@ -109,12 +120,39 @@ function setText(id: string, text: string): void {
   }
 }
 
-function rangeSpinnerArmed(view: ScopeView): boolean {
-  return view.dcbSpinner.armed && view.dcbSpinner.cell === "RANGE";
+function spinnerArmed(view: ScopeView, cell: DcbSpinnerCell): boolean {
+  return view.dcbSpinner.armed && view.dcbSpinner.cell === cell;
+}
+
+function toggleSpinner(view: ScopeView, onChange: () => void, cell: DcbSpinnerCell): void {
+  cancelFilterIfEntering(view);
+  if (spinnerArmed(view, cell)) {
+    commitDcbSpinner(view);
+  } else {
+    armDcbSpinner(view, cell);
+  }
+  afterCell(onChange);
+}
+
+function onSpinnerWheel(
+  view: ScopeView,
+  cell: DcbSpinnerCell,
+  event: WheelEvent<HTMLButtonElement>,
+  apply: (delta: -1 | 1) => void,
+  onChange: () => void,
+): void {
+  if (!spinnerArmed(view, cell)) {
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  const delta: -1 | 1 = event.deltaY < 0 ? -1 : 1;
+  stepDcbSpinner(view, delta, apply);
+  onChange();
 }
 
 /**
- * Keep RANGE / MAPS / RR / LDR / CHAR / BRITE / FILTER / PTL / HIST in sync
+ * Keep RANGE / MAPS / RR / LDR DIR / LDR / CHAR / BRITE / FILTER / PTL / HIST in sync
  * with keyboard chords.
  */
 export function syncDisplayControlBar(
@@ -126,11 +164,11 @@ export function syncDisplayControlBar(
     return;
   }
   setText(DCB_RANGE_READOUT_ID, formatDcbRangeReadout(view.camera.rangeNm));
-  setText(DCB_RANGE_OFFSET_ID, isViewOffAirport(view) ? "OFF CNTR" : "\u00a0");
   setText(DCB_FILTER_BAND_ID, formatFilterBand(view.altitudeFilter, view.filterEntry));
   setText(DCB_RR_READOUT_ID, formatDcbRrReadout(view.ringIntervalNm, view.showRings));
-  setPressed(doc.querySelector('[data-dcb-cell="rr"]'), view.showRings);
+  setPressed(doc.querySelector('[data-dcb-cell="rr"]'), spinnerArmed(view, "RR"));
   setText(DCB_LDR_READOUT_ID, dcbLeaderDirReadout(view, world));
+  setText(DCB_LDR_LENGTH_READOUT_ID, formatDcbLdrLengthReadout(view.leaderLengthPx));
   setText(DCB_CHAR_READOUT_ID, formatDcbCharReadout(view.charSizePx));
   setText(DCB_BRITE_READOUT_ID, formatDcbBriteReadout(view.mapBriteIndex));
   setPressed(doc.querySelector('[data-dcb-map="rwy"]'), view.showRunway);
@@ -139,9 +177,13 @@ export function syncDisplayControlBar(
   setPressed(doc.querySelector("[data-dcb-ptl]"), view.ptlOn);
   setPressed(doc.querySelector("[data-dcb-hist]"), view.historyEnabled);
   setPressed(doc.querySelector('[data-dcb-cell="maps"]'), view.dcbMenu === "MAPS");
-  setPressed(doc.querySelector('[data-dcb-cell="ldr"]'), view.dcbMenu === "LDR");
   setPressed(doc.querySelector('[data-dcb-cell="place"]'), view.placeCenterArmed);
-  setPressed(doc.querySelector('[data-dcb-cell="range"]'), rangeSpinnerArmed(view));
+  setPressed(doc.querySelector('[data-dcb-cell="off-cntr"]'), isViewOffAirport(view));
+  setPressed(doc.querySelector('[data-dcb-cell="place-rr"]'), view.placeRangeRingArmed);
+  setPressed(doc.querySelector('[data-dcb-cell="rr-cntr"]'), isRangeRingOffViewCenter(view));
+  setPressed(doc.querySelector('[data-dcb-cell="range"]'), spinnerArmed(view, "RANGE"));
+  setPressed(doc.querySelector('[data-dcb-cell="ldr-dir"]'), spinnerArmed(view, "LDR_DIR"));
+  setPressed(doc.querySelector('[data-dcb-cell="ldr-length"]'), spinnerArmed(view, "LDR_LENGTH"));
 }
 
 interface DcbCellProps {
@@ -161,9 +203,14 @@ interface DcbCellProps {
     | "filter"
     | "rr"
     | "ldr"
+    | "ldr-dir"
+    | "ldr-length"
     | "char"
     | "brite"
     | "place"
+    | "off-cntr"
+    | "place-rr"
+    | "rr-cntr"
     | "shift"
     | "done"
     | "vol";
@@ -226,6 +273,7 @@ function mapClick(view: ScopeView, onChange: () => void, layer: MapLayerId): voi
 function runCell(view: ScopeView, onChange: () => void, fn: () => void): void {
   cancelFilterIfEntering(view);
   closeDcbSubmenu(view);
+  commitDcbSpinner(view);
   fn();
   afterCell(onChange);
 }
@@ -266,40 +314,50 @@ function renderShift(view: ScopeView, onChange: () => void) {
 function renderMain(view: ScopeView, onChange: () => void, world: DisplayControlBarProps["world"]) {
   const coastOn = isCoastlineToggleEnabled(view);
   const offCntr = isViewOffAirport(view);
-  const rangeArmed = rangeSpinnerArmed(view);
   return (
     <>
       <DcbCell
         kind="spinner"
         ariaLabel="Range"
         dataDcb="range"
-        pressed={rangeArmed}
+        pressed={spinnerArmed(view, "RANGE")}
         onClick={() => {
           cancelFilterIfEntering(view);
-          if (rangeArmed) {
+          if (spinnerArmed(view, "RANGE")) {
             commitDcbSpinner(view);
           } else {
             armDcbSpinner(view, "RANGE");
           }
           afterCell(onChange);
         }}
-        onWheel={(event) => {
-          if (!rangeSpinnerArmed(view)) {
-            return;
-          }
-          event.preventDefault();
-          event.stopPropagation();
-          const delta: -1 | 1 = event.deltaY < 0 ? -1 : 1;
-          stepDcbSpinner(view, delta, (step) => stepRange(view.camera, step));
-          onChange();
-        }}
+        onWheel={(event) =>
+          onSpinnerWheel(view, "RANGE", event, (step) => stepRange(view.camera, step), onChange)
+        }
       >
         <span id={DCB_RANGE_READOUT_ID} className="dcb-cell-line">
           {formatDcbRangeReadout(view.camera.rangeNm)}
         </span>
-        <span id={DCB_RANGE_OFFSET_ID} className="dcb-cell-line">
-          {offCntr ? "OFF CNTR" : "\u00a0"}
-        </span>
+        <span className="dcb-cell-line">{"\u00a0"}</span>
+      </DcbCell>
+      <DcbCell
+        kind="toggle"
+        ariaLabel="Place center"
+        dataDcb="place"
+        pressed={view.placeCenterArmed}
+        onClick={() => runCell(view, onChange, () => armPlaceCenter(view))}
+      >
+        <span className="dcb-cell-line">PLACE</span>
+        <span className="dcb-cell-line">CNTR</span>
+      </DcbCell>
+      <DcbCell
+        kind="toggle"
+        ariaLabel="Off center"
+        dataDcb="off-cntr"
+        pressed={offCntr}
+        onClick={() => runCell(view, onChange, () => centerOnAirport(view))}
+      >
+        <span className="dcb-cell-line">OFF</span>
+        <span className="dcb-cell-line">CNTR</span>
       </DcbCell>
       <DcbCell
         kind="submenu"
@@ -347,11 +405,14 @@ function renderMain(view: ScopeView, onChange: () => void, world: DisplayControl
         <span className="dcb-cell-line">{"\u00a0"}</span>
       </DcbCell>
       <DcbCell
-        kind="toggle"
+        kind="spinner"
         ariaLabel="Range rings"
         dataDcb="rr"
-        pressed={view.showRings}
-        onClick={() => runCell(view, onChange, () => cycleRrInterval(view))}
+        pressed={spinnerArmed(view, "RR")}
+        onClick={() => toggleSpinner(view, onChange, "RR")}
+        onWheel={(event) =>
+          onSpinnerWheel(view, "RR", event, (step) => stepRrInterval(view, step), onChange)
+        }
       >
         <span className="dcb-cell-line">RR</span>
         <span id={DCB_RR_READOUT_ID} className="dcb-cell-line">
@@ -359,19 +420,59 @@ function renderMain(view: ScopeView, onChange: () => void, world: DisplayControl
         </span>
       </DcbCell>
       <DcbCell
-        kind="submenu"
-        ariaLabel="Leader direction"
-        dataDcb="ldr"
-        pressed={view.dcbMenu === "LDR"}
-        onClick={() => {
-          cancelFilterIfEntering(view);
-          openDcbMenu(view, "LDR");
-          afterCell(onChange);
-        }}
+        kind="toggle"
+        ariaLabel="Place range rings"
+        dataDcb="place-rr"
+        pressed={view.placeRangeRingArmed}
+        onClick={() => runCell(view, onChange, () => armPlaceRangeRing(view))}
       >
-        <span className="dcb-cell-line">LDR</span>
+        <span className="dcb-cell-line">PLACE</span>
+        <span className="dcb-cell-line">RR</span>
+      </DcbCell>
+      <DcbCell
+        kind="toggle"
+        ariaLabel="Range rings center"
+        dataDcb="rr-cntr"
+        pressed={isRangeRingOffViewCenter(view)}
+        onClick={() => runCell(view, onChange, () => applyRrCenter(view))}
+      >
+        <span className="dcb-cell-line">RR</span>
+        <span className="dcb-cell-line">CNTR</span>
+      </DcbCell>
+      <DcbCell
+        kind="spinner"
+        ariaLabel="Leader direction"
+        dataDcb="ldr-dir"
+        pressed={spinnerArmed(view, "LDR_DIR")}
+        onClick={() => toggleSpinner(view, onChange, "LDR_DIR")}
+        onWheel={(event) =>
+          onSpinnerWheel(
+            view,
+            "LDR_DIR",
+            event,
+            (step) => stepDcbLeaderDir(view, world, step),
+            onChange,
+          )
+        }
+      >
+        <span className="dcb-cell-line">LDR DIR</span>
         <span id={DCB_LDR_READOUT_ID} className="dcb-cell-line">
           {dcbLeaderDirReadout(view, world)}
+        </span>
+      </DcbCell>
+      <DcbCell
+        kind="spinner"
+        ariaLabel="Leader length"
+        dataDcb="ldr-length"
+        pressed={spinnerArmed(view, "LDR_LENGTH")}
+        onClick={() => toggleSpinner(view, onChange, "LDR_LENGTH")}
+        onWheel={(event) =>
+          onSpinnerWheel(view, "LDR_LENGTH", event, (step) => stepDcbLeaderLength(view, step), onChange)
+        }
+      >
+        <span className="dcb-cell-line">LDR</span>
+        <span id={DCB_LDR_LENGTH_READOUT_ID} className="dcb-cell-line">
+          {formatDcbLdrLengthReadout(view.leaderLengthPx)}
         </span>
       </DcbCell>
       {/* CHAR/BRITE remain click-cycle until T02-26 converts them to submenus. */}
@@ -431,16 +532,6 @@ function renderMain(view: ScopeView, onChange: () => void, world: DisplayControl
       >
         <span className="dcb-cell-line">HIST</span>
         <span className="dcb-cell-line">{view.historyEnabled ? "ON" : "OFF"}</span>
-      </DcbCell>
-      <DcbCell
-        kind="toggle"
-        ariaLabel="Place center"
-        dataDcb="place"
-        pressed={view.placeCenterArmed}
-        onClick={() => runCell(view, onChange, () => armPlaceCenter(view))}
-      >
-        <span className="dcb-cell-line">PLACE</span>
-        <span className="dcb-cell-line">CNTR</span>
       </DcbCell>
       {renderShift(view, onChange)}
     </>

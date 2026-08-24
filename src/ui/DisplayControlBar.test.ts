@@ -15,12 +15,11 @@ import {
   formatDcbRangeReadout,
   handleFilterEntryKey,
   parseDigitalMap,
-  toggleDcbSubmenu,
   toggleHistoryEnabled,
   toggleMapLayer,
   togglePtlOn,
   tryApplyAltitudeFilterDigits,
-  cycleRrInterval,
+  stepRrInterval,
 } from "@scope";
 import { loadKdem } from "@scenario";
 import { DCB_FONT_PX, DCB_HEIGHT_PX, DisplayControlBar } from "./DisplayControlBar";
@@ -163,20 +162,21 @@ test("AC7 — Research: labels are RANGE/MAPS/FILTER/PTL/HIST, not Zoom/Layers",
   expect(bar).toMatch(/analog: CRC STARS DCB/i);
   expect(bar).toMatch(/range rings/i);
   expect(bar).toMatch(/leader/i);
+  expect(bar).toMatch(/center/i);
   expect(bar).not.toMatch(/FLIGHT STRIPS/);
   expect(html).not.toMatch(/FLIGHT STRIPS/);
 });
 
-test("RR cell cycles 5 → 10 → 2 → OFF", () => {
+test("RR spinner readout stays RR n; does not hide rings by cycling", () => {
   const view = createScopeView();
   expect(dcbHtml(view)).toContain("RR 5");
-  cycleRrInterval(view);
+  stepRrInterval(view, 1);
   expect(dcbHtml(view)).toContain("RR 10");
-  cycleRrInterval(view);
+  stepRrInterval(view, -1);
+  expect(dcbHtml(view)).toContain("RR 5");
+  stepRrInterval(view, -1);
   expect(dcbHtml(view)).toContain("RR 2");
-  cycleRrInterval(view);
-  expect(view.showRings).toBe(false);
-  expect(dcbHtml(view)).toContain("OFF");
+  expect(view.showRings).toBe(true);
 });
 
 test("cells sit on the PPI glass; canvas below fills the rectangular PPI", () => {
@@ -214,7 +214,7 @@ test("MAPS submenu lists catalog dcbLabels; RWY/LOC/CST stay wired; CST disabled
   expect(barSrc()).toMatch(/disabled=\{!coastOn\}/);
 
   const view = createScopeView(0, 0, { digitalMap: parseDigitalMap(loadKdem().maps) });
-  toggleDcbSubmenu(view, "maps");
+  openDcbMenu(view, "MAPS");
   const html = dcbHtml(view);
   expect(html).toContain("RWY27");
   expect(html).toContain("COAST");
@@ -260,27 +260,36 @@ test("MAPS submenu lists catalog dcbLabels; RWY/LOC/CST stay wired; CST disabled
   expect(on.showCoastline).toBe(false);
 });
 
-test("PLACE CNTR arms; RANGE shows OFF CNTR when panned", () => {
+test("PLACE CNTR arms; OFF CNTR is its own cell and Home-equivalent", () => {
   expect(barSrc()).toMatch(/armPlaceCenter\(view\)/);
   expect(barSrc()).toMatch(/>\s*PLACE\s*</);
   expect(barSrc()).toMatch(/>\s*CNTR\s*</);
+  expect(barSrc()).toMatch(/data-dcb-cell="off-cntr"/);
   const view = createScopeView();
   view.camera.centerEastNm = 4;
   view.camera.centerNorthNm = -3;
-  expect(dcbHtml(view)).toContain("OFF CNTR");
+  const panned = dcbHtml(view);
+  expect(panned).toMatch(/data-dcb-cell="off-cntr"/);
+  expect(panned).toMatch(/aria-label="Off center"[^>]*aria-pressed="true"/);
   centerOnAirport(view);
   expect(view.camera.centerEastNm).toBe(view.airportEastNm);
   expect(view.camera.centerNorthNm).toBe(view.airportNorthNm);
-  expect(dcbHtml(view)).not.toContain("OFF CNTR");
+  expect(dcbHtml(view)).toMatch(/aria-label="Off center"[^>]*aria-pressed="false"/);
 });
 
-test("LDR submenu lists L1–L9", () => {
-  const view = createScopeView();
-  toggleDcbSubmenu(view, "ldr");
-  const html = dcbHtml(view);
-  for (const dir of [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
-    expect(html).toContain(`L${dir}`);
-  }
+test("MAIN has PLACE RR, RR CNTR, LDR DIR spinner, and LDR length spinner", () => {
+  const html = dcbHtml();
+  expect(html).toMatch(/data-dcb-cell="place-rr"/);
+  expect(html).toMatch(/data-dcb-cell="rr-cntr"/);
+  expect(html).toMatch(/data-dcb-cell="ldr-dir"/);
+  expect(html).toMatch(/data-dcb-cell="ldr-length"/);
+  expect(html).toContain("LDR DIR");
+  expect(html).toContain("L8");
+  expect(html).toContain("36");
+  expect(barSrc()).toMatch(/stepRrInterval/);
+  expect(barSrc()).toMatch(/stepDcbLeaderDir/);
+  expect(barSrc()).toMatch(/stepDcbLeaderLength/);
+  expect(barSrc()).not.toMatch(/openDcbMenu\(view,\s*"LDR"\)/);
 });
 
 test("mouse-only walkthrough mutates the same scope functions as the cells", () => {

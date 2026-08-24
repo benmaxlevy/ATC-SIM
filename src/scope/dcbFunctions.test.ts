@@ -8,15 +8,19 @@ import { createScopeView } from "./scopeView";
 import { syncTrackDisplays } from "./trackDisplay";
 import {
   applyDcbLeaderDir,
+  applyRrCenter,
   armPlaceCenter,
+  armPlaceRangeRing,
   cycleCharSize,
   cycleMapBrite,
-  cycleRrInterval,
   dcbCatalogMaps,
   dcbLeaderDirReadout,
+  formatDcbLdrLengthReadout,
   formatDcbMapLabel,
-  formatDcbRrReadout,
   RR_INTERVALS_NM,
+  stepDcbLeaderDir,
+  stepDcbLeaderLength,
+  stepRrInterval,
   toggleVideoMap,
 } from "./dcbFunctions";
 
@@ -58,7 +62,7 @@ test("AC2 — RANGE presets unchanged; OFF CNTR iff pan offset ≠ airport", () 
   expect(view.camera.centerEastNm).not.toBe(view.airportEastNm);
 });
 
-test("AC3 — RR interval change alters activeRingRadiiNm", () => {
+test("AC3 — RR spinner steps 2/5/10 without hiding rings", () => {
   expect(RR_INTERVALS_NM).toEqual([2, 5, 10]);
   expect(activeRingRadiiNm(20, { intervalNm: 5, maxNm: 60 })).toEqual([5, 10, 15, 20]);
   expect(activeRingRadiiNm(20, { intervalNm: 10, maxNm: 60 })).toEqual([10, 20]);
@@ -70,23 +74,21 @@ test("AC3 — RR interval change alters activeRingRadiiNm", () => {
   expect(view.ringIntervalNm).toBe(5);
   const at5 = buildMapCache(toMapCacheInput(view, VIEW));
   expect(at5.ringRadiiNm).toEqual([5, 10, 15, 20]);
-  cycleRrInterval(view);
+  stepRrInterval(view, 1);
   expect(view.ringIntervalNm).toBe(10);
+  expect(view.showRings).toBe(true);
   const at10 = buildMapCache(toMapCacheInput(view, VIEW));
   expect(at10.ringRadiiNm).toEqual([10, 20]);
-  cycleRrInterval(view);
+  stepRrInterval(view, 1);
+  expect(view.ringIntervalNm).toBe(10);
+  stepRrInterval(view, -1);
+  expect(view.ringIntervalNm).toBe(5);
+  stepRrInterval(view, -1);
   expect(view.ringIntervalNm).toBe(2);
   const at2 = buildMapCache(toMapCacheInput(view, VIEW));
   expect(at2.ringRadiiNm[0]).toBe(2);
   expect(at2.ringRadiiNm.at(-1)).toBe(20);
-  cycleRrInterval(view);
-  expect(view.showRings).toBe(false);
-  expect(formatDcbRrReadout(view.ringIntervalNm, view.showRings)).toBe("OFF");
-  const off = buildMapCache(toMapCacheInput(view, VIEW));
-  expect(off.ringRadiiNm).toEqual([]);
-  cycleRrInterval(view);
   expect(view.showRings).toBe(true);
-  expect(view.ringIntervalNm).toBe(5);
 });
 
 test("AC4 — LDR DCB sets the same leader dirs as L1–L9", () => {
@@ -105,6 +107,29 @@ test("AC4 — LDR DCB sets the same leader dirs as L1–L9", () => {
   applyDcbLeaderDir(view, world, 1);
   expect(view.tracks.get("ac-dal")!.leaderDir).toBe(1);
   expect(view.tracks.get("ac-aal")!.leaderDir).toBe(1);
+});
+
+test("AC6 — LDR DIR spinner steps 1–9; AC7 length includes 0 and 36", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [dal] });
+  world.selectedAircraftId = dal.id;
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  expect(view.leaderLengthPx).toBe(36);
+  stepDcbLeaderDir(view, world, 1);
+  expect(view.tracks.get("ac-dal")!.leaderDir).toBe(9);
+  stepDcbLeaderDir(view, world, 1);
+  expect(view.tracks.get("ac-dal")!.leaderDir).toBe(9);
+  stepDcbLeaderDir(view, world, -1);
+  expect(view.tracks.get("ac-dal")!.leaderDir).toBe(8);
+  stepDcbLeaderLength(view, 1);
+  expect(view.leaderLengthPx).toBe(48);
+  stepDcbLeaderLength(view, -1);
+  stepDcbLeaderLength(view, -1);
+  expect(view.leaderLengthPx).toBe(24);
+  stepDcbLeaderLength(view, -1);
+  expect(view.leaderLengthPx).toBe(0);
+  expect(formatDcbLdrLengthReadout(view.leaderLengthPx)).toBe("0");
 });
 
 test("AC5 — CHAR SIZE has ≥2 sizes; font stack still Plex/system mono", () => {
@@ -153,13 +178,33 @@ test("AC6 — BRITE has ≥2 steps; track/datablock colors unchanged", () => {
   expect(PALETTE.map).toBe("#8C8C8C");
 });
 
-test("PLACE CNTR arms; next helper just flips the flag", () => {
+test("PLACE CNTR arms; PLACE RR and RR CNTR mutate ring origin", () => {
   const view = createScopeView();
   expect(view.placeCenterArmed).toBe(false);
   armPlaceCenter(view);
   expect(view.placeCenterArmed).toBe(true);
-  armPlaceCenter(view);
+  armPlaceRangeRing(view);
   expect(view.placeCenterArmed).toBe(false);
+  expect(view.placeRangeRingArmed).toBe(true);
+  armPlaceRangeRing(view);
+  expect(view.placeRangeRingArmed).toBe(false);
+
+  view.camera.centerEastNm = 4;
+  view.camera.centerNorthNm = -1;
+  applyRrCenter(view);
+  expect(view.rangeRingEastNm).toBe(4);
+  expect(view.rangeRingNorthNm).toBe(-1);
+});
+
+test("AC6 — radio-focus L090 is still a left turn; LDR DIR spinner does not steal L", async () => {
+  const { parseRadioText } = await import("@parse");
+  const parsed = parseRadioText("L090");
+  expect(parsed.ok).toBe(true);
+  if (parsed.ok) {
+    expect(parsed.instructions).toEqual(
+      expect.arrayContaining([{ type: "FLY_HEADING", headingDeg: 90, turn: "LEFT" }]),
+    );
+  }
 });
 
 test("AC8 — MAPS/RANGE/leader/range rings in comments; not zoom", () => {
@@ -171,6 +216,7 @@ test("AC8 — MAPS/RANGE/leader/range rings in comments; not zoom", () => {
   const src = sources["./dcbFunctions.ts"] ?? "";
   expect(src).toMatch(/MAPS/);
   expect(src).toMatch(/RANGE/);
+  expect(src).toMatch(/center/i);
   expect(src).toMatch(/leader/i);
   expect(src).toMatch(/range rings/i);
   expect(src).toMatch(/R07/);

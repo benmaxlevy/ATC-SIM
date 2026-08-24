@@ -6,7 +6,9 @@
  * Trainer delta: exported Windows subset only — F1 is help, F3 is color
  * stub, PageUp/Down range presets 5–60 (no CRC 6/8/12/16/24), `/` when
  * scope-focused focuses the command line (not leader length). 1.5 s L/F
- * chord window; leftover digits never go to the parser; no leader-length menu. `F` is scope-focus only. Inject `nowMs` in tests. Not NAS STARS.
+ * chord window; leftover digits never go to the parser; no keyboard leader-length menu
+ * (`/` is radio focus). DCB LDR length is a discrete px spinner. `F` is scope-focus only.
+ * Inject `nowMs` in tests. Not NAS STARS.
  */
 
 export type KeyFocus = "always" | "scope";
@@ -155,15 +157,22 @@ export const KEY_BINDINGS: KeyBinding[] = [
     focus: "always",
     windowsKeys: "DCB PLACE CNTR, then PPI click",
     action:
-      "Set view center to that world point. Home recenters the airport. End uses last click. No zoom-to-cursor.",
-    crcAnalog: "DCB CENTER then click",
+      "Set view center to that world point. DCB OFF CNTR (or Home) recenters the airport. End uses last click. No zoom-to-cursor.",
+    crcAnalog: "DCB PLACE CNTR then click",
+  },
+  {
+    id: "mouse-place-rr",
+    focus: "always",
+    windowsKeys: "DCB PLACE RR, then PPI click",
+    action: "Set range-ring origin to that world point. RR CNTR snaps origin to the view center.",
+    crcAnalog: "DCB PLACE RR then click",
   },
   {
     id: "leader",
     focus: "scope",
     windowsKeys: "L then 1–9",
     action: "Leader direction (L1–L9). Top-row or numpad. Selected track, or all if none selected.",
-    crcAnalog: "CRC L1–L9 leader (we omit the length menu)",
+    crcAnalog: "CRC L1–L9 leader (keyboard `/` is not length; DCB LDR spinner has 0/24/36/48 px)",
   },
   {
     id: "datablock",

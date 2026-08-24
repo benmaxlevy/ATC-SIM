@@ -8,7 +8,10 @@ import {
   centerOnLastClick,
   createScopeView,
   isCoastlineToggleEnabled,
+  isRangeRingOffViewCenter,
   isViewOffAirport,
+  setRangeRingOrigin,
+  snapRangeRingToViewCenter,
   toggleHistoryEnabled,
   toggleMapLayer,
   togglePtlOn,
@@ -140,7 +143,7 @@ test("PTL and history toggles match F7/F8 (click ≡ key)", () => {
   expect(view.historyEnabled).toBe(true);
 });
 
-test("DCB RANGE second row is OFF CNTR iff the view is off the airport", () => {
+test("OFF CNTR is pressed iff the view is off the airport; click is Home", () => {
   const view = createScopeView();
   expect(isViewOffAirport(view)).toBe(false);
   view.camera.centerEastNm = 4;
@@ -194,4 +197,30 @@ test("PLACE CNTR: next PPI click sets view center and disarms", () => {
   expect(view.camera.centerNorthNm).toBeCloseTo(-3);
   expect(view.placeCenterArmed).toBe(false);
   expect(isViewOffAirport(view)).toBe(true);
+});
+
+test("PLACE RR: next PPI click sets ring origin; RR CNTR snaps to view center", () => {
+  const world = createWorld();
+  const view = createScopeView();
+  expect(view.rangeRingEastNm).toBe(view.airportEastNm);
+  expect(view.rangeRingNorthNm).toBe(view.airportNorthNm);
+  expect(isRangeRingOffViewCenter(view)).toBe(false);
+
+  view.placeRangeRingArmed = true;
+  const p = nmToScreen(6, -2, view.camera, VIEW);
+  handlePpiLeftClick(view, world, p.x, p.y, VIEW.widthPx, VIEW.heightPx);
+  expect(view.rangeRingEastNm).toBeCloseTo(6);
+  expect(view.rangeRingNorthNm).toBeCloseTo(-2);
+  expect(view.placeRangeRingArmed).toBe(false);
+  expect(isRangeRingOffViewCenter(view)).toBe(true);
+
+  view.camera.centerEastNm = 3;
+  view.camera.centerNorthNm = 1;
+  snapRangeRingToViewCenter(view);
+  expect(view.rangeRingEastNm).toBeCloseTo(3);
+  expect(view.rangeRingNorthNm).toBeCloseTo(1);
+  expect(isRangeRingOffViewCenter(view)).toBe(false);
+
+  setRangeRingOrigin(view, 0, 0);
+  expect(isRangeRingOffViewCenter(view)).toBe(true);
 });

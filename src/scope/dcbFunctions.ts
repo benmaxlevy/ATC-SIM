@@ -1,10 +1,11 @@
 /**
- * Analog: CRC STARS DCB MAPS / RANGE / RR / LDR DIR / CHAR SIZE / BRITE (R07).
- * Trainer delta: numbered video-map catalog (`dcbLabel`), discrete range
- * presets, generated **range rings** (2/5/10 NM about airport ref, DCB-toggleable), **leader**
- * L1–L9 direction only (no length menu), CHAR SIZE 11–13 px IBM Plex Mono,
- * BRITE map-stroke steps. Discrete range presets. Not a brightness slider.
- * Not NAS STARS.
+ * Analog: CRC STARS DCB RANGE / PLACE CNTR / OFF CNTR / RR / PLACE RR / RR CNTR /
+ * LDR DIR / LDR / MAPS / CHAR SIZE / BRITE (R07).
+ * Trainer delta: numbered video-map catalog (`dcbLabel`), discrete **range**
+ * presets, generated **range rings** (2/5/10 NM, PLACE RR origin in world NM),
+ * **leader** L1–L9 direction spinner plus discrete length 0/24/36/48 px,
+ * CHAR SIZE 11–13 px IBM Plex Mono, BRITE map-stroke steps. Discrete range
+ * presets. Not a brightness slider. Not NAS STARS.
  *
  * Scope display state only. Never a Command, readback, or intent.
  */
@@ -12,9 +13,16 @@
 import type { World } from "@core";
 import type { LoadedVideoMap } from "@scenario";
 import { CHAR_SIZE_STEPS_PX, type CharSizePx } from "./fonts";
-import { DEFAULT_LEADER_DIR, isLeaderDir, type LeaderDir } from "./leader";
+import {
+  DEFAULT_LEADER_DIR,
+  LEADER_LENGTH_STEPS_PX,
+  isLeaderDir,
+  type LeaderDir,
+  type LeaderLengthPx,
+} from "./leader";
 import { MAP_BRITE_STEPS, type MapBriteIndex } from "./palette";
 import type { ScopeView } from "./scopeView";
+import { snapRangeRingToViewCenter } from "./scopeView";
 import { closeDcbMenu, openDcbMenu } from "./dcbMenu";
 import { setLeaderDirForSelection } from "./trackDisplay";
 
@@ -117,7 +125,8 @@ export function formatDcbMapLabel(map: LoadedVideoMap): string {
 }
 
 /**
- * DCB RR click: 5 → 10 → 2 → OFF → 5. Rings stay about airport ref while on.
+ * DCB RR click-cycle (T02-17): 5 → 10 → 2 → OFF → 5. Kept for T02-21 walkthroughs.
+ * MAIN RR is a spinner (`stepRrInterval`) and does not hide rings.
  */
 export function cycleRrInterval(view: ScopeView): void {
   if (!view.showRings) {
@@ -144,6 +153,32 @@ export function formatDcbRrReadout(intervalNm: RrIntervalNm, showRings: boolean 
     return "OFF";
   }
   return `RR ${intervalNm}`;
+}
+
+function stepFrozen<T>(list: readonly T[], current: T, delta: number): T {
+  const i = list.indexOf(current);
+  if (i < 0) {
+    return list[0]!;
+  }
+  const next = i + Math.trunc(delta);
+  if (next < 0 || next >= list.length) {
+    return current;
+  }
+  return list[next]!;
+}
+
+/**
+ * DCB RR spinner: step the frozen 2/5/10 NM **range ring** interval. No wrap.
+ * Does not hide rings (interval stays on while visible).
+ */
+export function stepRrInterval(view: ScopeView, delta: number): void {
+  const next = stepFrozen(RR_INTERVALS_NM, view.ringIntervalNm, delta);
+  if (next === view.ringIntervalNm && view.showRings) {
+    return;
+  }
+  view.ringIntervalNm = next;
+  view.showRings = true;
+  invalidateMapCache(view);
 }
 
 export function cycleCharSize(view: ScopeView): void {
@@ -180,30 +215,72 @@ export function closeDcbSubmenu(view: ScopeView): void {
 }
 
 export function armPlaceCenter(view: ScopeView): void {
-  view.placeCenterArmed = !view.placeCenterArmed;
+  const next = !view.placeCenterArmed;
+  view.placeRangeRingArmed = false;
+  view.placeCenterArmed = next;
+}
+
+/** PLACE RR: next PPI click sets **range ring** origin in world NM. */
+export function armPlaceRangeRing(view: ScopeView): void {
+  const next = !view.placeRangeRingArmed;
+  view.placeCenterArmed = false;
+  view.placeRangeRingArmed = next;
+}
+
+/** RR CNTR: snap ring origin to the view **center**. */
+export function applyRrCenter(view: ScopeView): void {
+  snapRangeRingToViewCenter(view);
 }
 
 /**
  * DCB LDR DIR: same L1–L9 as scope-focus `L`+digit via `setLeaderDirForSelection`.
- * Direction only — no length menu.
+ * Spinner steps 1–9 (no wrap). Radio-focus `L090` is still a left turn.
  */
 export function applyDcbLeaderDir(view: ScopeView, world: World, dir: LeaderDir): void {
   if (!isLeaderDir(dir)) {
     return;
   }
+  view.defaultLeaderDir = dir;
   setLeaderDirForSelection(view.tracks, world, dir);
+}
+
+export function dcbLeaderDirValue(
+  view: ScopeView,
+  world?: { selectedAircraftId: string | null } | null,
+): LeaderDir {
+  const selected = world?.selectedAircraftId;
+  if (selected) {
+    const dir = view.tracks.get(selected)?.leaderDir;
+    if (dir != null) {
+      return dir;
+    }
+  }
+  return view.defaultLeaderDir ?? DEFAULT_LEADER_DIR;
+}
+
+export function stepDcbLeaderDir(
+  view: ScopeView,
+  world: World | undefined,
+  delta: number,
+): void {
+  const next = stepFrozen(DCB_LEADER_DIRS, dcbLeaderDirValue(view, world), delta);
+  view.defaultLeaderDir = next;
+  if (world) {
+    setLeaderDirForSelection(view.tracks, world, next);
+  }
 }
 
 export function dcbLeaderDirReadout(
   view: ScopeView,
   world?: { selectedAircraftId: string | null } | null,
 ): string {
-  const selected = world?.selectedAircraftId;
-  if (selected) {
-    const dir = view.tracks.get(selected)?.leaderDir;
-    if (dir != null) {
-      return `L${dir}`;
-    }
-  }
-  return `L${DEFAULT_LEADER_DIR}`;
+  return `L${dcbLeaderDirValue(view, world)}`;
+}
+
+export function formatDcbLdrLengthReadout(lengthPx: LeaderLengthPx): string {
+  return `${lengthPx}`;
+}
+
+export function stepDcbLeaderLength(view: ScopeView, delta: number): void {
+  view.leaderLengthPx = stepFrozen(LEADER_LENGTH_STEPS_PX, view.leaderLengthPx, delta);
 }

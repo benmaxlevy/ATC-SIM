@@ -80,7 +80,10 @@ export function ScopeHelpOverlay({ open }: ScopeHelpOverlayProps) {
         />
         <HelpTable caption="Mouse (pointer over PPI)" bindings={mouseKeyBindings()} />
         <p className="scope-help-dcb">
-          SHIFT swaps MAIN and AUX. Esc closes a DCB submenu (DONE).
+          SHIFT swaps MAIN and AUX. Esc closes a DCB submenu (DONE). RANGE / RR / LDR DIR / LDR
+          are spinners. PLACE CNTR then PPI click sets view center; OFF CNTR recenters the
+          airport. PLACE RR then PPI click sets range-ring origin; RR CNTR snaps origin to the
+          view center.
         </p>
         <p className="scope-help-disclaimer">{DISCLAIMER_COPY}</p>
         <p className="scope-help-footer">{HELP_FOOTER}</p>

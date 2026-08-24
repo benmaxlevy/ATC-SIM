@@ -7,7 +7,7 @@
  * filling the canvas (RANGE is still the nearest-edge NM; corners show extra);
  * **target** diamond + optional **history** dots (5 s sim / 5 dots, no phosphor);
  * full/limited **datablock** in IBM Plex Mono (not a STARS face); L1–L9 **leader**
- * (pixel-constant 36 CSS px, no length menu); **predicted track line** (PTL) straight 1.0 min
+ * (pixel-constant default 36 CSS px; DCB LDR length 0/24/36/48); **predicted track line** (PTL) straight 1.0 min
  * GS along ground track, default off, F7; CRC may offer extra minute
  * presets / turn curves — we do not. Extra CRC presets omitted.
  * **Altitude filter** (FILTER readout in SSA): out of band keep target + history,
@@ -241,7 +241,7 @@ function drawDatablock(
   const lines = { ...base, line1: withCaDatablockTag(line1, tint) };
   const lineH = datablockLineHeightPx(view.charSizePx);
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
-  const origin = datablockTopLeft(trackLeaderDir(view, ac.id), metrics);
+  const origin = datablockTopLeft(trackLeaderDir(view, ac.id), metrics, view.leaderLengthPx);
   ctx.fillStyle = alertOrOwnershipColor(trackOwnership(view, ac.id), tint);
   ctx.fillText(lines.line1, targetX + origin.x, targetY + origin.y);
   if (lines.line2 != null) {
@@ -298,7 +298,7 @@ function drawTracks(
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
     const tint = trackAlertTint(world, ac.callsign);
     const leaderColor = alertOrOwnershipColor(trackOwnership(view, ac.id), tint);
-    drawLeaderLine(ctx, p.x, p.y, trackLeaderDir(view, ac.id), leaderColor);
+    drawLeaderLine(ctx, p.x, p.y, trackLeaderDir(view, ac.id), leaderColor, view.leaderLengthPx);
   }
 
   for (const ac of world.aircraft) {

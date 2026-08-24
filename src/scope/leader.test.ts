@@ -4,6 +4,7 @@ import {
   L5_OVERLAY_GAP_PX,
   LEADER_BLOCK_GAP_PX,
   LEADER_LENGTH_PX,
+  LEADER_LENGTH_STEPS_PX,
   datablockTopLeft,
   isLeaderDir,
   leaderOffsetPx,
@@ -91,7 +92,7 @@ test("AC4 — L5 overlay length stays 0 when default leader is 36 px", () => {
   expect(Math.hypot(overlay.dx, overlay.dy)).toBeLessThanOrEqual(1);
 });
 
-test("AC8 — module says leader, cites CRC L1–L9, and omits a length menu", () => {
+test("AC8 — module says leader, cites CRC L1–L9, and names the discrete length set", () => {
   const sources = import.meta.glob("./*.{ts,tsx}", {
     query: "?raw",
     import: "default",
@@ -100,9 +101,20 @@ test("AC8 — module says leader, cites CRC L1–L9, and omits a length menu", (
   const src = sources["./leader.ts"] ?? "";
   expect(src).toMatch(/leader/);
   expect(src).toMatch(/L1–L9/);
-  expect(src).toMatch(/no leader-length DCB menu/);
+  expect(src).toMatch(/0\/24\/36\/48/);
   expect(src).toMatch(/CRC STARS/);
   expect(src).not.toMatch(/\bstem\b/);
   expect(src).not.toMatch(/\bstick\b/);
   expect(src).not.toMatch(/\bcallout\b/);
+});
+
+test("AC7 — LDR length 0 is overlay analog; dir 5 stays overlay at 36 and 48", () => {
+  expect(LEADER_LENGTH_STEPS_PX).toEqual([0, 24, 36, 48]);
+  expect(LEADER_LENGTH_PX).toBe(36);
+  expect(leaderSegmentPx(8, 0)).toBeNull();
+  expect(leaderOffsetPx(8, 0)).toEqual({ dx: 0, dy: 0 });
+  expect(datablockTopLeft(8, METRICS, 0)).toEqual({ x: L5_OVERLAY_GAP_PX, y: L5_OVERLAY_GAP_PX });
+  expect(leaderSegmentPx(5, 36)).toBeNull();
+  expect(leaderSegmentPx(5, 48)).toBeNull();
+  expect(leaderOffsetPx(8, 48).dy).toBeCloseTo(-48);
 });

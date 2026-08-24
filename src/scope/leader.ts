@@ -1,9 +1,9 @@
 /**
- * Analog: CRC STARS L1–L9 **leader** direction (docs.virtualnas.net/crc/stars — R07).
- * Trainer delta: direction only; no leader-length DCB menu (T02-17). Numpad 5 = overlay.
- * Pixel-constant 36 CSS px (T02-19; was 24) so length does not explode at 5 NM range.
- * Limited datablocks use the same 36 px length. Always named **leader**.
- * Not NAS STARS.
+ * Analog: CRC STARS L1–L9 **leader** direction and length (docs.virtualnas.net/crc/stars — R07).
+ * Trainer delta: DCB LDR DIR spinner is 1–9 (same dirs as scope-focus L+digit).
+ * Length is a discrete px set 0/24/36/48 (0 = overlay analog; 36 = T02-19 default).
+ * Numpad 5 = overlay (length 0) even when the default length is 36. Pixel-constant
+ * so length does not explode at 5 NM range. Always named **leader**. Not NAS STARS.
  *
  * Numpad compass (canvas −Y is north):
  * ```
@@ -29,8 +29,13 @@ export type LeaderDir = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 /** Numpad 8 = north. Default at spawn for every track. */
 export const DEFAULT_LEADER_DIR: LeaderDir = 8;
 
-/** Pixel-constant leader length (phase README decision 8, T02-19 36 px). Not nautical miles. */
-export const LEADER_LENGTH_PX = 36;
+/** Frozen DCB LDR length steps (px). Includes overlay analog 0 and T02-19 default 36. */
+export const LEADER_LENGTH_STEPS_PX = [0, 24, 36, 48] as const;
+export type LeaderLengthPx = (typeof LEADER_LENGTH_STEPS_PX)[number];
+
+/** Pixel-constant default **leader** length (phase README decision 8, T02-19 36 px). Not NM. */
+export const DEFAULT_LEADER_LENGTH_PX: LeaderLengthPx = 36;
+export const LEADER_LENGTH_PX = DEFAULT_LEADER_LENGTH_PX;
 
 export const LEADER_STROKE_PX = 1;
 
@@ -65,27 +70,52 @@ export function isLeaderDir(n: number): n is LeaderDir {
   return Number.isInteger(n) && n >= 1 && n <= 9;
 }
 
-/** Leader end relative to symbol center. L5 is ~0 length. */
-export function leaderOffsetPx(dir: LeaderDir): { dx: number; dy: number } {
+export function isLeaderLengthPx(n: number): n is LeaderLengthPx {
+  return (LEADER_LENGTH_STEPS_PX as readonly number[]).includes(n);
+}
+
+/**
+ * Effective stroke length. Dir 5 is always overlay (0) even when the spinner
+ * default is 36. Length 0 is overlay analog for every dir.
+ */
+export function effectiveLeaderLengthPx(
+  dir: LeaderDir,
+  lengthPx: number = LEADER_LENGTH_PX,
+): number {
+  if (dir === 5 || lengthPx <= 0) {
+    return 0;
+  }
+  return lengthPx;
+}
+
+/** Leader end relative to symbol center. L5 / length 0 is overlay. */
+export function leaderOffsetPx(
+  dir: LeaderDir,
+  lengthPx: number = LEADER_LENGTH_PX,
+): { dx: number; dy: number } {
   const step = COMPASS[dir];
   const len = Math.hypot(step.x, step.y);
-  if (len === 0) {
+  const px = effectiveLeaderLengthPx(dir, lengthPx);
+  if (len === 0 || px <= 0) {
     return { dx: 0, dy: 0 };
   }
   return {
-    dx: (step.x / len) * LEADER_LENGTH_PX,
-    dy: (step.y / len) * LEADER_LENGTH_PX,
+    dx: (step.x / len) * px,
+    dy: (step.y / len) * px,
   };
 }
 
 /**
  * Leader start on the diamond edge (not through the fill), or null for L5.
  */
-export function leaderStartOffsetPx(dir: LeaderDir): { dx: number; dy: number } | null {
-  if (dir === 5) {
+export function leaderStartOffsetPx(
+  dir: LeaderDir,
+  lengthPx: number = LEADER_LENGTH_PX,
+): { dx: number; dy: number } | null {
+  if (effectiveLeaderLengthPx(dir, lengthPx) <= 0) {
     return null;
   }
-  const end = leaderOffsetPx(dir);
+  const end = leaderOffsetPx(dir, lengthPx);
   const half = TARGET_SIZE_PX / 2;
   const cheb = Math.max(Math.abs(end.dx), Math.abs(end.dy));
   if (cheb === 0) {
@@ -97,12 +127,13 @@ export function leaderStartOffsetPx(dir: LeaderDir): { dx: number; dy: number } 
 /** Segment in symbol-center space, or null when there is no visible leader. */
 export function leaderSegmentPx(
   dir: LeaderDir,
+  lengthPx: number = LEADER_LENGTH_PX,
 ): { x0: number; y0: number; x1: number; y1: number } | null {
-  const start = leaderStartOffsetPx(dir);
+  const start = leaderStartOffsetPx(dir, lengthPx);
   if (!start) {
     return null;
   }
-  const end = leaderOffsetPx(dir);
+  const end = leaderOffsetPx(dir, lengthPx);
   const len = Math.hypot(end.dx - start.dx, end.dy - start.dy);
   if (len <= 1) {
     return null;
@@ -117,11 +148,12 @@ export function leaderSegmentPx(
 export function datablockTopLeft(
   dir: LeaderDir,
   metrics: DatablockMetrics,
+  lengthPx: number = LEADER_LENGTH_PX,
 ): { x: number; y: number } {
-  if (dir === 5) {
+  if (effectiveLeaderLengthPx(dir, lengthPx) <= 0) {
     return { x: L5_OVERLAY_GAP_PX, y: L5_OVERLAY_GAP_PX };
   }
-  const end = leaderOffsetPx(dir);
+  const end = leaderOffsetPx(dir, lengthPx);
   const step = COMPASS[dir];
   const w = metrics.widthPx;
   const h = metrics.heightPx;
@@ -152,8 +184,9 @@ export function drawLeaderLine(
   symbolY: number,
   dir: LeaderDir,
   color: string,
+  lengthPx: number = LEADER_LENGTH_PX,
 ): void {
-  const seg = leaderSegmentPx(dir);
+  const seg = leaderSegmentPx(dir, lengthPx);
   if (!seg) {
     return;
   }

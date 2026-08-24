@@ -1,7 +1,7 @@
 /**
  * Analog: CRC STARS track display state (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: per-track history buffer, full/limited datablock mode,
- * L1–L9 **leader** direction (no length menu), ownership color stub (T02-08
+ * L1–L9 **leader** direction (length lives on ScopeView as a discrete px spinner), ownership color stub (T02-08
  * F3/F4), trainer **scratchpad** (0–4 A–Z0–9, not NAS FP), and display-only
  * IDENT flash live here, keyed by aircraft id — never on Aircraft kinematics
  * or intent. Not NAS STARS.

@@ -1,7 +1,7 @@
 import type { World } from "@core";
 import { applyPanScreenDelta, screenToNm, type ScopeViewSize } from "./camera";
 import { HIT_RADIUS_CSS_PX, pickAircraftAt, selectOrAcceptAircraftAt } from "./pick";
-import { centerOnWorld, recordLastClick, type ScopeView } from "./scopeView";
+import { centerOnWorld, recordLastClick, setRangeRingOrigin, type ScopeView } from "./scopeView";
 
 function viewSize(widthPx: number, heightPx: number): ScopeViewSize {
   return { widthPx, heightPx };
@@ -30,6 +30,9 @@ export function handlePpiLeftClick(
   if (view.placeCenterArmed) {
     centerOnWorld(view, nm.eastNm, nm.northNm);
     view.placeCenterArmed = false;
+  } else if (view.placeRangeRingArmed) {
+    setRangeRingOrigin(view, nm.eastNm, nm.northNm);
+    view.placeRangeRingArmed = false;
   }
   selectOrAcceptAircraftAt(
     world,

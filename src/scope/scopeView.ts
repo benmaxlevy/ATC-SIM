@@ -1,15 +1,16 @@
 /**
- * Analog: CRC STARS RANGE / CENTER / HISTORY / PTL / altitude filter / MAPS /
- * RR / LDR DIR / CHAR SIZE / BRITE / DCB MAIN·AUX·SHIFT (docs.virtualnas.net/crc/stars — R07;
- * FOA STARS display data — R05).
+ * Analog: CRC STARS RANGE / PLACE CNTR / OFF CNTR / RR / PLACE RR / RR CNTR /
+ * LDR DIR / LDR / HISTORY / PTL / altitude filter / MAPS / CHAR SIZE / BRITE /
+ * DCB MAIN·AUX·SHIFT (docs.virtualnas.net/crc/stars — R07; FOA STARS display data — R05).
  * Trainer delta: last-click / airport live on this view, not on World. MAPS
- * visibility is keyed by catalog id (RWY/LOC/CST share role flags). RR interval
- * is 2/5/10 NM about airport ref (not the view center). Leader direction is
- * L1–L9 (no length menu). CHAR SIZE is 11–13 px Plex/system mono. BRITE steps
- * map strokes only. History is 5 s sim / 5 dots, no phosphor. PTL is a straight
- * 1.0 min predicted track line (F7), default off. Altitude filter default
- * 000–180; `F` and the DCB FILTER cell start the same chord. Discrete range
- * presets only. Not NAS STARS.
+ * visibility is keyed by catalog id (RWY/LOC/CST share role flags). Range rings
+ * default about airport ref; PLACE RR sets a world-NM origin (not glued to the
+ * airport). RR CNTR lights when that origin ≠ view **center**. Leader direction
+ * is L1–L9; length is a discrete px set (0/24/36/48) on this view. CHAR SIZE is
+ * 11–13 px Plex/system mono. BRITE steps map strokes only. History is 5 s sim /
+ * 5 dots, no phosphor. PTL is a straight 1.0 min predicted track line (F7),
+ * default off. Altitude filter default 000–180; `F` and the DCB FILTER cell
+ * start the same chord. Discrete range presets only. Not NAS STARS.
  *
  * Scope display state only. Never a Command, readback, or intent.
  */
@@ -36,6 +37,12 @@ import {
 import { idleDcbSpinner, type DcbMenu, type DcbSpinnerState } from "./dcbMenu";
 import { DEFAULT_CHAR_SIZE_PX, DEFAULT_DATABLOCK_CELL_PX, type CharSizePx } from "./fonts";
 import type { ScopeChord } from "./keymap";
+import {
+  DEFAULT_LEADER_DIR,
+  DEFAULT_LEADER_LENGTH_PX,
+  type LeaderDir,
+  type LeaderLengthPx,
+} from "./leader";
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
 import { DEFAULT_MAP_BRITE_INDEX, type MapBriteIndex } from "./palette";
 import type { TrackDisplay } from "./trackDisplay";
@@ -52,17 +59,26 @@ export interface ScopeView {
   showCoastline: boolean;
   /** MAPS on/off keyed by video-map catalog id. Not on Aircraft. */
   mapVisibility: Map<string, boolean>;
-  /** Frozen RR interval (2 / 5 / 10 NM). Rings stay about airport ref. */
+  /** Frozen RR interval (2 / 5 / 10 NM). */
   ringIntervalNm: RrIntervalNm;
+  /** World origin of generated **range rings** (NM east/north). */
+  rangeRingEastNm: number;
+  rangeRingNorthNm: number;
   /** DCB CHAR SIZE. IBM Plex Mono / system mono only. */
   charSizePx: CharSizePx;
   /** DCB BRITE map-stroke step. Does not recolor tracks. */
   mapBriteIndex: MapBriteIndex;
-  /** PLACE CNTR: next PPI click sets view center. */
+  /** PLACE CNTR: next PPI click sets view **center**. */
   placeCenterArmed: boolean;
+  /** PLACE RR: next PPI click sets range-ring origin. */
+  placeRangeRingArmed: boolean;
+  /** Last DCB LDR DIR (L1–L9). Per-track dir from T02-05 still wins when selected. */
+  defaultLeaderDir: LeaderDir;
+  /** Scope-global **leader** length (DCB LDR spinner). Dir 5 stays overlay. */
+  leaderLengthPx: LeaderLengthPx;
   /** DCB menu machine: MAIN/AUX via SHIFT; MAPS/LDR replace the bar. */
   dcbMenu: DcbMenu;
-  /** RANGE spinner arm+wheel. Display only. */
+  /** RANGE / RR / LDR DIR / LDR length spinner arm+wheel. Display only. */
   dcbSpinner: DcbSpinnerState;
   digitalMap: DigitalMap;
   mapCache: MapCache | null;
@@ -128,9 +144,14 @@ export function createScopeView(
       showCoastline,
     ),
     ringIntervalNm: snapRrInterval(digitalMap.rangeRings.intervalNm),
+    rangeRingEastNm: airportEastNm,
+    rangeRingNorthNm: airportNorthNm,
     charSizePx: DEFAULT_CHAR_SIZE_PX,
     mapBriteIndex: DEFAULT_MAP_BRITE_INDEX,
     placeCenterArmed: false,
+    placeRangeRingArmed: false,
+    defaultLeaderDir: DEFAULT_LEADER_DIR,
+    leaderLengthPx: DEFAULT_LEADER_LENGTH_PX,
     dcbMenu: "MAIN",
     dcbSpinner: idleDcbSpinner(),
     digitalMap,
@@ -209,12 +230,32 @@ export function centerOnAirport(view: ScopeView): void {
 
 const CENTER_EPS_NM = 1e-6;
 
-/** True when the view center is not the airport ref (DCB RANGE `OFF CNTR` row). */
+/** True when the view **center** is not the airport ref (DCB OFF CNTR pressed). */
 export function isViewOffAirport(view: ScopeView): boolean {
   return (
     Math.abs(view.camera.centerEastNm - view.airportEastNm) > CENTER_EPS_NM ||
     Math.abs(view.camera.centerNorthNm - view.airportNorthNm) > CENTER_EPS_NM
   );
+}
+
+/** True when range-ring origin ≠ view **center** (DCB RR CNTR pressed). */
+export function isRangeRingOffViewCenter(view: ScopeView): boolean {
+  return (
+    Math.abs(view.rangeRingEastNm - view.camera.centerEastNm) > CENTER_EPS_NM ||
+    Math.abs(view.rangeRingNorthNm - view.camera.centerNorthNm) > CENTER_EPS_NM
+  );
+}
+
+/** PLACE RR / RR CNTR: set range-ring origin in world NM. Rebuilds ring cache. */
+export function setRangeRingOrigin(view: ScopeView, eastNm: number, northNm: number): void {
+  view.rangeRingEastNm = eastNm;
+  view.rangeRingNorthNm = northNm;
+  view.mapCache = null;
+}
+
+/** DCB RR CNTR: snap range-ring origin to the current view **center**. */
+export function snapRangeRingToViewCenter(view: ScopeView): void {
+  setRangeRingOrigin(view, view.camera.centerEastNm, view.camera.centerNorthNm);
 }
 
 /** DCB FILTER click: same chord as scope-focus `F`. Never a Command. */

@@ -47,7 +47,7 @@ export interface DigitalMapLocalizer {
   halfWidthDeg: number;
 }
 
-/** Concentric range rings about airport ref, not the view center. */
+/** Concentric **range rings**. Runtime origin is ScopeView (airport ref by default). */
 export interface DigitalMapRangeRings {
   intervalNm: number;
   maxNm: number;

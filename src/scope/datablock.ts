@@ -16,6 +16,7 @@ import type { TrackHandoff } from "@core";
 import { DATABLOCK_LINE_HEIGHT_PX, DEFAULT_DATABLOCK_CELL_PX } from "./fonts";
 import {
   DEFAULT_LEADER_DIR,
+  LEADER_LENGTH_PX,
   datablockTopLeft,
   type DatablockMetrics,
   type LeaderDir,
@@ -207,9 +208,10 @@ export function datablockRect(
   cellWidthPx: number = DEFAULT_DATABLOCK_CELL_PX,
   lineHeightPx: number = DATABLOCK_LINE_HEIGHT_PX,
   dir: LeaderDir = DEFAULT_LEADER_DIR,
+  lengthPx: number = LEADER_LENGTH_PX,
 ): DatablockRect {
   const metrics = datablockMetrics(lines, cellWidthPx, lineHeightPx);
-  const origin = datablockTopLeft(dir, metrics);
+  const origin = datablockTopLeft(dir, metrics, lengthPx);
   return {
     x: targetX + origin.x,
     y: targetY + origin.y,

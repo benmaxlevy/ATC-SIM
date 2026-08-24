@@ -7,7 +7,7 @@
  * target diamond + history dots (F8 / scope-focus H), full/limited datablocks
  * (scope-focus T / M; Mode C hundreds + assigned + GS), predicted track line
  * (PTL, F7 always-on, default off), L1–L9 **leader** lines (scope-focus `L`
- * then 1–9; pixel-constant 36 CSS px; no length menu), altitude filter
+ * then 1–9; pixel-constant default 36 CSS px; DCB LDR length 0/24/36/48), altitude filter
  * (scope-focus `F`, default 000–180), F3/F4 ownership color stub (not NAS),
  * F1 help overlay (`TRAINER KEYS — NOT CRC`), Tab cycle focus, `/` radio focus.
  * T04-09 CA/MSAW tints (yellow then red) read `world.alerts`; the PPI does not
@@ -15,8 +15,8 @@
  *
  * DCB (T02-16/T02-17/T02-22) is a green cell grid on the PPI glass; it calls these same
  * camera / map / filter / PTL / history / MAPS / RR / LDR / CHAR / BRITE
- * functions. MAIN↔AUX via SHIFT; submenus replace the bar; RANGE is a spinner
- * over the 8 presets. Trainer subset (SHIFT/DONE/VOL) — not a full STARS DCB
+ * functions. MAIN↔AUX via SHIFT; submenus replace the bar; RANGE / RR / LDR DIR /
+ * LDR length are spinners over frozen presets. Trainer subset (SHIFT/DONE/VOL) — not a full STARS DCB
  * (no WX / PREF / CSA / CRDA / FMA).
  *
  * SSA (T02-20) is a screen-fixed top-left status block (sim time, KDEM 29.92
@@ -158,8 +158,11 @@ export {
   createScopeView,
   beginAltitudeFilterChord,
   isCoastlineToggleEnabled,
+  isRangeRingOffViewCenter,
   isViewOffAirport,
   recordLastClick,
+  setRangeRingOrigin,
+  snapRangeRingToViewCenter,
   toggleHelpOverlay,
   toggleHistoryEnabled,
   toggleMapLayer,
@@ -185,19 +188,26 @@ export {
   DEFAULT_RR_INTERVAL_NM,
   RR_INTERVALS_NM,
   applyDcbLeaderDir,
+  applyRrCenter,
   armPlaceCenter,
+  armPlaceRangeRing,
   closeDcbSubmenu,
   cycleCharSize,
   cycleMapBrite,
   cycleRrInterval,
   dcbCatalogMaps,
   dcbLeaderDirReadout,
+  dcbLeaderDirValue,
   formatDcbBriteReadout,
   formatDcbCharReadout,
+  formatDcbLdrLengthReadout,
   formatDcbMapLabel,
   formatDcbRrReadout,
   isVideoMapOn,
   snapRrInterval,
+  stepDcbLeaderDir,
+  stepDcbLeaderLength,
+  stepRrInterval,
   toggleDcbSubmenu,
   toggleVideoMap,
 } from "./dcbFunctions";
@@ -264,17 +274,20 @@ export {
 } from "./alertPaint";
 export {
   DEFAULT_LEADER_DIR,
+  DEFAULT_LEADER_LENGTH_PX,
   L5_OVERLAY_GAP_PX,
   LEADER_BLOCK_GAP_PX,
   LEADER_LENGTH_PX,
+  LEADER_LENGTH_STEPS_PX,
   LEADER_STROKE_PX,
   datablockTopLeft,
   drawLeaderLine,
+  effectiveLeaderLengthPx,
   isLeaderDir,
   leaderOffsetPx,
   leaderSegmentPx,
 } from "./leader";
-export type { DatablockMetrics, LeaderDir } from "./leader";
+export type { DatablockMetrics, LeaderDir, LeaderLengthPx } from "./leader";
 export {
   SCRATCHPAD_MAX_LEN,
   datablockMetrics,

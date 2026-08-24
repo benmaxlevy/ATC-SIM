@@ -40,6 +40,7 @@ export interface DatablockPickView {
   /** Out-of-filter tracks have no datablock to hit; the target still picks. */
   altitudeFilter: AltitudeFilter;
   charSizePx?: number;
+  leaderLengthPx?: number;
 }
 
 function pickDatablockAt(
@@ -70,7 +71,15 @@ function pickDatablockAt(
         ? base
         : { ...base, line1: withInboundHandoffCue(base.line1, handoffFor(world, ac.id)) };
     const lineH = datablockLineHeightPx(view.charSizePx ?? DATABLOCK_LINE_HEIGHT_PX);
-    const rect = datablockRect(p.x, p.y, lines, cell, lineH, dir);
+    const rect = datablockRect(
+      p.x,
+      p.y,
+      lines,
+      cell,
+      lineH,
+      dir,
+      view.leaderLengthPx,
+    );
     if (!pointInDatablock(cssX, cssY, rect)) {
       continue;
     }

@@ -1,7 +1,7 @@
 import { expect, test, vi } from "vitest";
 import { SIM_DT_S, createWorld, stepWorld } from "@core";
 import { loadKdem } from "@scenario";
-import { DEFAULT_SCOPE_CAMERA, type ScopeCamera, type ScopeViewSize } from "./camera";
+import { DEFAULT_SCOPE_CAMERA, nmToScreen, type ScopeCamera, type ScopeViewSize } from "./camera";
 import {
   DEFAULT_DIGITAL_MAP,
   DEFAULT_MAP_LAYER_FLAGS,
@@ -225,7 +225,7 @@ test("AC7 — buildMapCache is not invoked from stepWorld; rebuilds on camera ch
   expect(cache.ringRadiiNm).toEqual([5, 10]);
 });
 
-test("panned view keeps rings glued to airport ref", () => {
+test("panned view without PLACE RR keeps rings at airport ref", () => {
   const panned = buildMapCache(
     kdemInput({
       camera: { rangeNm: 20, centerEastNm: 8, centerNorthNm: -4 },
@@ -239,4 +239,18 @@ test("panned view keeps rings glued to airport ref", () => {
     expect(circle.x).toBeCloseTo(airport!.x, 6);
     expect(circle.y).toBeCloseTo(airport!.y, 6);
   }
+});
+
+test("AC4 — range rings draw about PLACE RR origin, not only airport ref", () => {
+  const origin = { rangeRingEastNm: 5, rangeRingNorthNm: -3 };
+  const cache = buildMapCache(kdemInput(origin));
+  expect(cache.ringRadiiNm).toEqual([5, 10, 15, 20]);
+  const expected = nmToScreen(5, -3, DEFAULT_SCOPE_CAMERA, VIEW);
+  expect(cache.ringCircles.length).toBeGreaterThan(0);
+  for (const circle of cache.ringCircles) {
+    expect(circle.x).toBeCloseTo(expected.x, 6);
+    expect(circle.y).toBeCloseTo(expected.y, 6);
+  }
+  const airport = nmToScreen(0, 0, DEFAULT_SCOPE_CAMERA, VIEW);
+  expect(cache.ringCircles[0]!.x).not.toBeCloseTo(airport.x, 0);
 });
