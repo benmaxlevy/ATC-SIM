@@ -26,7 +26,7 @@ Before any git inspection, agent spawn, worktree creation, or application edit:
 ## Role rules
 
 - **Orchestrator:** coordinates one captain; writes planning/STATUS only; never edits `src/` or `tools/`.
-- **Captain:** spawns workers, owns the merge lock, merges with `--no-ff`, tests after each merge, updates STATUS, and returns the phase result.
+- **Captain:** spawns workers, owns the merge lock, squash-merges (one commit per ticket branch on `master`), tests after each merge, updates STATUS, and returns the phase result.
 - **Worker:** implements exactly one ticket in its own ticket branch/worktree, commits progressively, never merges, never spawns children, and returns `READY TO MERGE` or `BLOCKED`.
 
 Never exceed the configured worker count. Same-wave workers use separate worktrees from current `master`. Do not end a captain/orchestrator turn while workers are still running. Rebase or respawn stale work after a merge; do not merge conflicts by force.

@@ -9,7 +9,7 @@ This folder is the source of truth for build order. Cursor canvases are summarie
 - **Swarm (hours, many subagents):** paste [`phases/SWARM.md`](SWARM.md) into a new agent. The first swarm does **0 → 1 → 2** (T02-01–13). Phase 2 **polish** is T02-14–21 in `02-scope/README.md` (separate run).
 - **Solo one phase:** paste that phase’s `AGENT.md` (see [LAUNCH.md](LAUNCH.md)). Phase 2 **DCB addendum** is T02-22–30 in `02-scope/README.md` (after T02-21).
 
-Git: always-on project rule `.cursor/rules/ticket-git-workflow.mdc` — one `ticket/Txx-yy-…` branch per ticket, progressive commits, `--no-ff` merge into `master` when the ticket is done. Do not put ticket work on `master` directly.
+Git: always-on project rule `.cursor/rules/ticket-git-workflow.mdc` — one `ticket/Txx-yy-…` branch per ticket, progressive commits on the branch, squash merge into `master` (one commit per ticket) when done. Do not put ticket work on `master` directly.
 
 ## How to launch an agent
 

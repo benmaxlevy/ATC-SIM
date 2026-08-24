@@ -13,6 +13,6 @@ When changing code for a ticket, bugfix, or requested implementation:
 4. Work in small slices. After each coherent slice passes its relevant typecheck/tests, commit it with an imperative subject, why in the body, and the ticket id when one exists.
 5. Stage explicit paths only. Never stage secrets, `.env`, caches, generated artifacts, or QA screenshots.
 6. Run targeted tests after each slice and the repository CI check before declaring the ticket done. Fix introduced diagnostics; do not hide them with `--no-verify`.
-7. A normal ticket owner merges its completed branch with `--no-ff` to `master`, verifies `git status`, and deletes the local branch. Do not push unless asked.
+7. A normal ticket owner squash-merges its completed branch to **one commit** on `master`, verifies `git status`, and deletes the local branch. Do not push unless asked.
 
 If the session is a swarm, the swarm rules override step 7: workers never merge; only the captain merges.

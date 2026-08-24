@@ -15,7 +15,7 @@ Each phase is a self-contained briefing. Do not start phase N until the previous
 2. Copy the entire file.
 3. Paste into a **new** agent as the full prompt.
 4. The agent implements tickets **in the order listed in that AGENT.md**, checks off ACs in the ticket files, and **stops at phase exit**.
-5. Git: branch `ticket/<id>-<slug>` off `master`, commit in slices, merge `--no-ff` into `master` when that ticket’s ACs are done, then start the next ticket from `master`. See `.cursor/rules/ticket-git-workflow.mdc`.
+5. Git: branch `ticket/<id>-<slug>` off `master`, commit in slices, squash merge into `master` (one commit per ticket) when that ticket’s ACs are done, then start the next ticket from `master`. See `.cursor/rules/ticket-git-workflow.mdc`.
 
 | Start here | Paste this |
 | --- | --- |

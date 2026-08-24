@@ -22,7 +22,10 @@ Workspace: `c:\Users\Ben\Documents\ATC-SIM`
 
 ```text
 git checkout master
-git merge --no-ff ticket/Txx-yy-slug -m "Merge ticket/Txx-yy-slug"
+git merge --squash ticket/Txx-yy-slug
+git commit -m "Txx-yy: short imperative subject.
+
+Why this ticket landed."
 git branch -d ticket/Txx-yy-slug
 npm test
 ```

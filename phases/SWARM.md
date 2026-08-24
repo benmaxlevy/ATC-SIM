@@ -105,7 +105,7 @@ Human approved the physical DCB follow-up tickets after identifying the live bar
 | Skip | **T04-11**; all T00–T01, **T02-01–30**, T03-*, T04-*, T05-*; weather paint; actual FSL/fusion/site modes; any proprietary STARS/FAA font |
 | Stop | Do not start phase 5. Do not add DCB jobs beyond the approved tickets. T02-33 is the visual-replica gate. |
 | Max ticket workers in flight | **3**, but this dependency chain is serialized: A T02-31 → B T02-32 → C T02-33 |
-| Merge lock | Only the phase captain merges to `master` (`--no-ff`) and runs `npm test` after every merge |
+| Merge lock | Only the phase captain squash-merges to `master` (one commit per ticket branch) and runs `npm test` after every merge |
 | Model | **GPT-5.6 Luna Medium only.** `model: "gpt-5.6-luna-medium"` on every captain/worker spawn; do not use a fast model |
 | Paid STT/TTS/LLM | Forbidden |
 
@@ -343,11 +343,11 @@ Manual UI ACs (DCB MAIN/AUX/submenus, disabled WX, PREF persist): captain/worker
 
 - Default branch: `master`.
 - Worker: `ticket/<ticket-filename-without-.md>` off **current** `master`, progressive commits, **never merge**.
-- Captain: `git merge --no-ff` then delete local ticket branch, then `npm test`.
+- Captain: `git merge --squash`, one commit with ticket id + why, delete local ticket branch, then `npm test`.
 - No `--force` on `master`. No `--no-verify`. No push unless the human asked (they have not).
-- After a merge, rebase or re-spawn stale in-flight workers. Isolated worktrees for same-wave tickets.
+- After a squash merge, rebase or re-spawn stale in-flight workers. Isolated worktrees for same-wave tickets.
 - Ignore junk branches named `list` or `ls`. Do not merge them.
-- You do not merge from here unless the captain died mid-merge — then finish that one merge and stop.
+- You do not merge from here unless the captain died mid-merge — then finish that one squash merge and stop.
 
 PowerShell commit:
 
@@ -444,6 +444,6 @@ Safety requirements for the captain:
 
 - Work only from `master`; verify the branch and clean application status before each phase action. Preserve untracked `e2e/` and unrelated CA work.
 - Use one isolated worker worktree per ticket. The worker must commit and return `READY TO MERGE` before the captain merges.
-- After every worker completion: record the worker result, verify its worktree status, merge with `--no-ff`, run `npm test`, and confirm `master` before starting the next ticket.
+- After every worker completion: record the worker result, verify its worktree status, squash merge (one commit on `master`), run `npm test`, and confirm `master` before starting the next ticket.
 - Never background a worker and finish the captain turn. If a worker stalls, resume or replace that worker explicitly; do not leave a half-finished ticket silently.
 - After T02-30: run both `npm test` and `npm run ci`, append STATUS, and return `PHASE EXIT GREEN` only after all results are recorded. Do not start phase 5.

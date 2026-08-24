@@ -8,7 +8,7 @@ alwaysApply: true
 When `phases/SWARM.md` or a swarm prompt is active, first determine the role:
 
 - **Orchestrator:** coordinates one captain, writes only swarm planning/status, and does not edit `src/` or `tools/`.
-- **Captain:** owns the merge lock, spawns workers, merges completed tickets with `--no-ff`, runs post-merge tests, updates STATUS, and returns the required phase result.
+- **Captain:** owns the merge lock, spawns workers, squash-merges completed tickets (one commit per branch on `master`), runs post-merge tests, updates STATUS, and returns the required phase result.
 - **Worker:** implements exactly one ticket, uses its own `ticket/<ticket-filename-without-.md>` branch/worktree, commits progressively, never merges, never spawns children, and returns `READY TO MERGE` or `BLOCKED`.
 
 Required operating sequence:
