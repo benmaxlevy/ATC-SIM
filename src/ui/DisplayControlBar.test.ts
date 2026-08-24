@@ -743,3 +743,17 @@ test("MAIN PREF cap shows the active profile name instead of 22/27", () => {
   expect(named).toContain("APPROA");
   expect(named).toMatch(/aria-label="Pref Approach Night"/);
 });
+
+test("action caps flash the inset bevel then pop; SAVE is not a latch", () => {
+  expect(barSrc()).toMatch(/DCB_ACTION_FLASH_MS/);
+  expect(barSrc()).toMatch(/armActionFlash/);
+  expect(barSrc()).toMatch(/releaseActionFlash/);
+  expect(barSrc()).toMatch(/kind === "action"/);
+  expect(cssSrc()).toMatch(/:active/);
+  const view = createScopeView();
+  openDcbMenu(view, "PREF");
+  const html = dcbHtml(view);
+  expect(html).toMatch(/aria-pressed="false"[^>]*data-dcb-cell="pref-save"/);
+  expect(html).toMatch(/aria-pressed="false"[^>]*data-dcb-cell="pref-save-as"/);
+  expect(html).toMatch(/aria-pressed="false"[^>]*data-dcb-cell="pref-delete"/);
+});

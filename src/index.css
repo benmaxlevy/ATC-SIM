@@ -204,7 +204,8 @@ body,
   outline: none;
 }
 
-.dcb-cell[aria-pressed="true"] {
+.dcb-cell[aria-pressed="true"],
+.dcb-cell:not(:disabled):not([aria-disabled="true"]):active {
   background: var(--dcb-pressed, #005500);
   color: var(--dcb-pressed-text, #e0e0e0);
   box-shadow:
@@ -212,7 +213,7 @@ body,
     inset -1px -1px var(--dcb-pressed-highlight, #7a8a7a);
 }
 
-.dcb-cell:not(:disabled):not([aria-disabled="true"]):not([aria-pressed="true"]) {
+.dcb-cell:not(:disabled):not([aria-disabled="true"]):not([aria-pressed="true"]):not(:active) {
   box-shadow:
     inset 1px 1px var(--dcb-highlight, #7a8a7a),
     inset -2px -2px var(--dcb-shadow, #000000);
