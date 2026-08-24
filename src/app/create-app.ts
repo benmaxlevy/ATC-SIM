@@ -24,6 +24,7 @@ import {
   type SpeechPrefs,
   type SpeechSettingsController,
 } from "../ui/settings-speech";
+import { createCaAlertTone, type CaAlertTone } from "./ca-alert-tone";
 
 export interface AppDeps {
   speech: SpeechPort;
@@ -44,6 +45,8 @@ export interface AppDeps {
   speechUrls?: SpeechApiUrlStatus;
   confidenceThreshold?: number;
   getVoiceId?: (callsign?: string) => string;
+  /** Injected in tests. Browser default is a square-wave CA beep. */
+  caAlertTone?: CaAlertTone;
 }
 
 export interface LatencyOverlayState {
@@ -70,6 +73,7 @@ export interface AppHandles {
   subscribeLatencyOverlay(listener: (state: LatencyOverlayState) => void): () => void;
   setLatencyOverlayVisible(visible: boolean): void;
   getLatencyOverlayVisible(): boolean;
+  caAlertTone: CaAlertTone;
 }
 
 function selectedCallsignFromWorld(world: World): string | null {
@@ -248,6 +252,7 @@ export function createApp(deps: AppDeps): AppHandles {
 
   const checkInQueue = createCheckInQueue({ seed: deps.checkInSeed ?? 1 });
   checkInQueue.scheduleFromWorld(world);
+  const caAlertTone = deps.caAlertTone ?? createCaAlertTone();
 
   function afterPhysicsTick(): void {
     checkInQueue.drain({
@@ -260,6 +265,7 @@ export function createApp(deps: AppDeps): AppHandles {
       setStatus: emitVoiceStatus,
       nowWallMs: () => Date.now(),
     });
+    caAlertTone.sync(world.alerts.ca.length > 0);
   }
 
   return {
@@ -292,5 +298,6 @@ export function createApp(deps: AppDeps): AppHandles {
       return latencyOverlayVisible;
     },
     afterPhysicsTick,
+    caAlertTone,
   };
 }

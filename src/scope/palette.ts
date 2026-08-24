@@ -13,7 +13,7 @@
  * - Owned FDB white after F3; unowned / other-TCP FDB green
  * - Search/fusion position symbol blue; history trail blue (not track-tinted)
  * - PTL white; TLS/tools cyan for TPA J-rings; SSA / DCB / lists phosphor green
- * - Phase 4 CA/MSAW: caution yellow then alert red (lite trainer, not NAS)
+ * - Phase 4: MSAW yellow then red. Predicted CA blinks only; current CA is red FDB + blink.
  */
 
 export const PALETTE = {

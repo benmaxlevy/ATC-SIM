@@ -17,8 +17,8 @@
  * selected yellow box independent of ownership. CHAR SIZE is per-subsystem
  * (DATA BLOCKS / LISTS / DCB / TOOLS / POS) on IBM Plex Mono. BRITE multiplies
  * each drawn channel; WX/WXC/BKC do not paint weather. SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
- * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. T04-09/T04-10 CA/MSAW tints
- * target + datablock from `world.alerts` (yellow caution, red alert). CA halo is
+ * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. T04-09 predicted CA blinks `CA`
+ * + tone from `world.alerts` without yellow; current CA paints red. T04-10 MSAW still tints yellow then red. CA halo is
  * **not** drawn: CRC conflict-alert CA is blinking `CA` text + tone, not a 3 NM circle
  * (circles are TPA J-rings or ERAM DRI). Not OSM / tiles (R12). Not a
  * sprite. Not an airplane. Not a label. Not NAS STARS.
@@ -62,6 +62,7 @@ import {
   alertOrOwnershipColor,
   alertTintPaintColor,
   trackAlertTint,
+  trackPaintAlertTint,
   withCaDatablockTag,
 } from "./alertPaint";
 import {
@@ -223,7 +224,7 @@ function trackOwnership(view: ScopeView, aircraftId: string) {
 }
 
 function trackColor(view: ScopeView, world: World, ac: Aircraft): string {
-  const tint = trackAlertTint(world, ac.callsign);
+  const tint = trackPaintAlertTint(world, ac.callsign);
   const alertColor = alertTintPaintColor(tint);
   if (alertColor) {
     return alertColor;
@@ -252,12 +253,16 @@ function drawDatablock(
   const mode = trackDatablockMode(view, ac.id);
   const line1 =
     mode === "limited" ? base.line1 : withInboundHandoffCue(base.line1, handoffFor(world, ac.id));
-  const lines = { ...base, line1: withCaDatablockTag(line1, tint) };
+  const lines = { ...base, line1: withCaDatablockTag(line1, tint, world.simTimeMs) };
   const lineH = datablockLineHeightPx(view.charSizes.dataBlocks);
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
   const origin = datablockTopLeft(trackLeaderDir(view, ac.id), metrics, view.leaderLengthPx);
   const briteCh = mode === "limited" ? view.brite.ldb : view.brite.fdb;
-  ctx.fillStyle = applyBrite(alertOrOwnershipColor(trackOwnership(view, ac.id), tint), briteCh);
+  const paintTint = trackPaintAlertTint(world, ac.callsign);
+  ctx.fillStyle = applyBrite(
+    alertOrOwnershipColor(trackOwnership(view, ac.id), paintTint),
+    briteCh,
+  );
   ctx.fillText(lines.line1, targetX + origin.x, targetY + origin.y);
   if (lines.line2 != null) {
     ctx.fillText(lines.line2, targetX + origin.x, targetY + origin.y + lineH);
@@ -324,11 +329,11 @@ function drawTracks(
       continue;
     }
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
-    const tint = trackAlertTint(world, ac.callsign);
+    const paintTint = trackPaintAlertTint(world, ac.callsign);
     const mode = trackDatablockMode(view, ac.id);
     const briteCh = mode === "limited" ? view.brite.ldb : view.brite.fdb;
     const leaderColor = applyBrite(
-      alertOrOwnershipColor(trackOwnership(view, ac.id), tint),
+      alertOrOwnershipColor(trackOwnership(view, ac.id), paintTint),
       briteCh,
     );
     drawLeaderLine(

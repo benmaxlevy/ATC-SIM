@@ -44,6 +44,7 @@ window.addEventListener("pagehide", () => {
     // Teardown must never throw.
   }
   handles.ptt.dispose();
+  handles.caAlertTone.dispose();
 });
 
 const scopeView = createScopeView(scenario.arpNm.xNm, scenario.arpNm.yNm, {
