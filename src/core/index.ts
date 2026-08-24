@@ -12,7 +12,7 @@
  * types, `INSTRUCTION_TYPES`, and fixtures; session event log (`SessionEvent`,
  * `SessionLog`); aircraft types (`Aircraft`, `Intent`), `createAircraft`,
  * `makeTestAircraft`, `nextAircraftId`; conflict alert lite (`evaluateConflictAlert`,
- * `CA_LATERAL_NM` / `CA_VERTICAL_FT` / `CA_LOOKAHEAD_S`, `datablockAlertTint`);
+ * `CA_LATERAL_NM` / `CA_VERTICAL_FT`, `datablockAlertTint`);
  * nav fix registry (`buildFixRegistry`, `FixRegistry`);
  * nav geometry (`courseDeg`, fly-by radius, loc deviation, GS height); lateral FMS (`applyLateralFms`);
  * vertical FMS (`targetAltitudeFt`, `applyVerticalFms`); missed stub (`applyMissedFms`);
@@ -73,8 +73,6 @@ export { createAircraft, makeTestAircraft, nextAircraftId } from "./aircraft";
 export type { CaAlert, CaSeverity, WorldAlerts } from "./alerts/conflictAlert";
 export {
   CA_LATERAL_NM,
-  CA_LOOKAHEAD_S,
-  CA_LOOKAHEAD_SAMPLE_S,
   CA_VERTICAL_FT,
   caPairKey,
   caSeverityForCallsign,

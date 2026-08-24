@@ -5,8 +5,8 @@
  * certified.” UI word is **MSAW**, not GPWS / TAWS.
  *
  * Trainer delta: scope reads `world.alerts` and `datablockAlertTint`. It does
- * not compute pair distance or MVA floors. Predicted CA (caution) does not
- * recolor the FDB; current CA (alert) paints red with blinking `CA`.
+ * not compute pair distance or MVA floors. Current CA paints red with blinking
+ * `CA`.
  */
 
 import {
@@ -29,7 +29,7 @@ export function trackAlertTint(world: World, callsign: string): AlertTint {
   });
 }
 
-/** Paint: current CA red, MSAW yellow/red. Predicted CA is blink-only (no yellow). */
+/** Paint: current CA red, MSAW yellow/red. */
 export function trackPaintAlertTint(world: World, callsign: string): AlertTint {
   const ca = caSeverityForCallsign(world.alerts.ca, callsign);
   return datablockAlertTint({

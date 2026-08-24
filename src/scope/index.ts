@@ -11,7 +11,8 @@
  * (scope-focus `F`, default 000–180), F3/F4 ownership color stub (not NAS),
  * F1 help overlay (`TRAINER KEYS — NOT CRC`), Tab cycle focus, `/` radio focus.
  * T04-09 predicted CA blinks `CA` + tone (no yellow); current CA is red. T04-10 MSAW still
- * tints yellow then red. The PPI does not compute pair distance.
+ * tints yellow then red. CA is raised only for current conflicts. The PPI does
+ * not compute pair distance.
  *
  * DCB (T02-16/T02-17/T02-22/T02-25) is a green cell grid on the PPI glass; it calls these same
  * camera / map / filter / PTL / history / MAPS / RR / LDR / CHAR / BRITE

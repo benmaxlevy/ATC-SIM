@@ -17,8 +17,8 @@
  * selected yellow box independent of ownership. CHAR SIZE is per-subsystem
  * (DATA BLOCKS / LISTS / DCB / TOOLS / POS) on IBM Plex Mono. BRITE multiplies
  * each drawn channel; WX/WXC/BKC do not paint weather. SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
- * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. T04-09 predicted CA blinks `CA`
- * + tone from `world.alerts` without yellow; current CA paints red. T04-10 MSAW still tints yellow then red. CA halo is
+ * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. Current CA blinks `CA`
+ * + tone from `world.alerts` and paints red. T04-10 MSAW still tints yellow then red. CA halo is
  * **not** drawn: CRC conflict-alert CA is blinking `CA` text + tone, not a 3 NM circle
  * (circles are TPA J-rings or ERAM DRI). Not OSM / tiles (R12). Not a
  * sprite. Not an airplane. Not a label. Not NAS STARS.

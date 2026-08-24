@@ -912,7 +912,7 @@ test("T02-08 — owned PTL stays white, not selection yellow", () => {
   expect(ptl?.strokeStyle).toBe(PALETTE.ptl);
 });
 
-test("T04-09 AC5 — predicted CA blinks without yellow; current CA paints red", () => {
+test("T04-09 AC5 — current CA blinks and paints red", () => {
   const dal = makeTestAircraft({
     id: "ac-dal",
     callsign: "DAL123",
@@ -926,7 +926,7 @@ test("T04-09 AC5 — predicted CA blinks without yellow; current CA paints red",
     callsign: "AAL45",
     altitudeFt: 8000,
     speedKt: 210,
-    xNm: 8,
+    xNm: 2,
     yNm: 0,
   });
   const world = createWorld({ aircraft: [dal, aal] });
@@ -934,23 +934,14 @@ test("T04-09 AC5 — predicted CA blinks without yellow; current CA paints red",
     {
       callsignA: "AAL45",
       callsignB: "DAL123",
-      severity: "caution",
-      distNm: 8,
+      severity: "alert",
+      distNm: 2,
       deltaAltFt: 0,
     },
   ];
   const view = createScopeView();
   const css = 800;
-  const caution = createMockCtx();
-  renderScope(caution.ctx, world, view, css, css);
   const dalP = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: css, heightPx: css });
-  expect(findTargetDiamonds(caution.pathStrokes, dalP.x, dalP.y)[0]?.strokeStyle).toBe(
-    POSITION_SYMBOL_COLOR,
-  );
-  expect(caution.fillTexts.find((t) => t.text === "DAL123 CA")?.fillStyle).toBe(PALETTE.unowned);
-  expect(caution.fillTexts.find((t) => t.text === "AAL45 CA")?.fillStyle).toBe(PALETTE.unowned);
-
-  world.alerts.ca[0]!.severity = "alert";
   world.simTimeMs = 0;
   const alert = createMockCtx();
   renderScope(alert.ctx, world, view, css, css);
