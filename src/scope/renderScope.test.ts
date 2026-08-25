@@ -1152,9 +1152,10 @@ test("T04-23 — slot 7 BAY1_SID video map renders SID lines and labels on PPI s
   const onCtx = createMockCtx();
   renderScope(onCtx.ctx, world, view, 800, 800);
 
-  // Check that SID labels (MISSD, SNARF, NORMA, OCTTA) are drawn on the scope
-  expect(onCtx.fillTexts.some((t) => t.text === "MISSD")).toBe(true);
-  expect(onCtx.fillTexts.some((t) => t.text === "SNARF")).toBe(true);
+  // Check that SID labels (BAYEE, BAYNO, BAYSO, NORMA, OCTTA) are drawn on the scope
+  expect(onCtx.fillTexts.some((t) => t.text === "BAYEE")).toBe(true);
+  expect(onCtx.fillTexts.some((t) => t.text === "BAYNO")).toBe(true);
+  expect(onCtx.fillTexts.some((t) => t.text === "BAYSO")).toBe(true);
   expect(onCtx.fillTexts.some((t) => t.text === "NORMA")).toBe(true);
   expect(onCtx.fillTexts.some((t) => t.text === "OCTTA")).toBe(true);
 
@@ -1162,8 +1163,9 @@ test("T04-23 — slot 7 BAY1_SID video map renders SID lines and labels on PPI s
   toggleVideoMap(view, "BAY1_SID");
   const offCtx = createMockCtx();
   renderScope(offCtx.ctx, world, view, 800, 800);
-  expect(offCtx.fillTexts.some((t) => t.text === "MISSD")).toBe(false);
-  expect(offCtx.fillTexts.some((t) => t.text === "SNARF")).toBe(false);
+  expect(offCtx.fillTexts.some((t) => t.text === "BAYEE")).toBe(false);
+  expect(offCtx.fillTexts.some((t) => t.text === "BAYNO")).toBe(false);
+  expect(offCtx.fillTexts.some((t) => t.text === "BAYSO")).toBe(false);
   expect(offCtx.fillTexts.some((t) => t.text === "NORMA")).toBe(false);
   expect(offCtx.fillTexts.some((t) => t.text === "OCTTA")).toBe(false);
 
@@ -1171,5 +1173,5 @@ test("T04-23 — slot 7 BAY1_SID video map renders SID lines and labels on PPI s
   toggleVideoMap(view, "BAY1_SID");
   const backOnCtx = createMockCtx();
   renderScope(backOnCtx.ctx, world, view, 800, 800);
-  expect(backOnCtx.fillTexts.some((t) => t.text === "MISSD")).toBe(true);
+  expect(backOnCtx.fillTexts.some((t) => t.text === "BAYEE")).toBe(true);
 });

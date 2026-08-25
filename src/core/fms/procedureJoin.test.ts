@@ -122,23 +122,23 @@ test("joinNamedProcedure joins a unique SID from the start", () => {
 
 test("procedureRouteContainingFix finds SID fixes across transitions", () => {
   const catalog = { sids: kdemSids };
-  // MISSD is on runway 27 transition of BAY1
-  const missdJoin = procedureRouteContainingFix(catalog, "MISSD");
-  expect(missdJoin).toBeDefined();
-  expect(missdJoin?.starId).toBe("BAY1");
-  expect(missdJoin?.toFixIndex).toBe(0);
-  expect(missdJoin?.routeFixIds[0]).toBe("MISSD");
+  // BAYEE is on runway 27 transition of BAY1
+  const bayeeJoin = procedureRouteContainingFix(catalog, "BAYEE");
+  expect(bayeeJoin).toBeDefined();
+  expect(bayeeJoin?.starId).toBe("BAY1");
+  expect(bayeeJoin?.toFixIndex).toBe(0);
+  expect(bayeeJoin?.routeFixIds[0]).toBe("BAYEE");
 
-  // SNARF is on the common leg of BAY1
-  const snarfJoin = procedureRouteContainingFix(catalog, "SNARF");
-  expect(snarfJoin).toBeDefined();
-  expect(snarfJoin?.starId).toBe("BAY1");
-  expect(snarfJoin?.toFixIndex).toBe(1);
+  // BAYNO is on the NORMA transition of BAY1
+  const baynoJoin = procedureRouteContainingFix(catalog, "BAYNO");
+  expect(baynoJoin).toBeDefined();
+  expect(baynoJoin?.starId).toBe("BAY1");
+  expect(baynoJoin?.toFixIndex).toBe(1);
 
   // NORMA is on the NORMA enroute transition of BAY1
   const normaJoin = procedureRouteContainingFix(catalog, "NORMA");
   expect(normaJoin).toBeDefined();
   expect(normaJoin?.starId).toBe("BAY1");
   expect(normaJoin?.toFixIndex).toBe(2);
-  expect(normaJoin?.routeFixIds).toEqual(["MISSD", "SNARF", "NORMA"]);
+  expect(normaJoin?.routeFixIds).toEqual(["BAYEE", "BAYNO", "NORMA"]);
 });

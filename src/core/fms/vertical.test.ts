@@ -323,12 +323,12 @@ test("nav.star.vectors clears VIA_STAR and flies last MERGE constraint", () => {
 
 test("AC1 & AC2 — aircraft flies SID legs in sequence with VIA_SID and respects altitude constraints", () => {
   const registry = buildFixRegistry(kdemSource());
-  const missd = registry.require("MISSD");
+  const bayee = registry.require("BAYEE");
   const dal = createAircraft({
     id: "ac-dal",
     callsign: "DAL123",
-    xNm: missd.xNm - 5,
-    yNm: missd.yNm,
+    xNm: bayee.xNm - 5,
+    yNm: bayee.yNm,
     headingDeg: 90,
     altitudeFt: 1500,
     speedKt: 220,
@@ -339,7 +339,7 @@ test("AC1 & AC2 — aircraft flies SID legs in sequence with VIA_SID and respect
     sidId: "BAY1",
     starId: "BAY1",
     toFixIndex: 0,
-    routeFixIds: ["MISSD", "SNARF", "NORMA"],
+    routeFixIds: ["BAYEE", "BAYNO", "NORMA"],
   };
   dal.intent.vertical = { type: "VIA_SID", sidId: "BAY1" };
 
@@ -358,12 +358,12 @@ test("AC1 & AC2 — aircraft flies SID legs in sequence with VIA_SID and respect
     },
   });
 
-  // Sequences MISSD
-  expect(stepUntilFix(world, "MISSD", 300)).toBe(true);
+  // Sequences BAYEE
+  expect(stepUntilFix(world, "BAYEE", 300)).toBe(true);
   expect(dal.altitudeFt).toBeGreaterThanOrEqual(1500);
 
-  // Sequences SNARF (which has AT_OR_ABOVE 4000 and AT_OR_BELOW 250 kt)
-  expect(stepUntilFix(world, "SNARF", 500)).toBe(true);
+  // Sequences BAYNO (which has AT_OR_ABOVE 2500 and AT_OR_BELOW 250 kt)
+  expect(stepUntilFix(world, "BAYNO", 500)).toBe(true);
   expect(dal.speedKt).toBeLessThanOrEqual(250 + 5);
 
   // Aircraft continues to fly towards NORMA
@@ -390,7 +390,7 @@ test("AC3 — heading command cancels PROCEDURE and VIA_SID to HEADING and ASSIG
     sidId: "BAY1",
     starId: "BAY1",
     toFixIndex: 0,
-    routeFixIds: ["MISSD", "SNARF", "NORMA"],
+    routeFixIds: ["BAYEE", "BAYNO", "NORMA"],
   };
   dal.intent.vertical = { type: "VIA_SID", sidId: "BAY1" };
 

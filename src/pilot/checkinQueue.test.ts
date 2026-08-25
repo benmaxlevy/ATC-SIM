@@ -562,7 +562,7 @@ function viaDeparture(callsign: string, id = `ac-${callsign.toLowerCase()}`): Ai
     sidId: "BAY1",
     starId: "BAY1",
     toFixIndex: 0,
-    routeFixIds: ["MISSD", "SNARF", "NORMA"],
+    routeFixIds: ["BAYEE", "BAYNO", "NORMA"],
   };
   ac.intent.vertical = { type: "VIA_SID", sidId: "BAY1" };
   ac.intent.assignedAltitudeFt = 10000;

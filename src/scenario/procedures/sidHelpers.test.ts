@@ -28,32 +28,32 @@ const multiCatalog: ProcedureCatalog = {
 describe("sidRouteFixIds — KDEM BAY1 procedure", () => {
   test("AC2 — sidRouteFixIds(catalog, 'BAY1', '27', 'NORMA') resolves full ordered route", () => {
     const route = sidRouteFixIds(kdemCatalog, "BAY1", "27", "NORMA");
-    expect(route).toEqual(["MISSD", "SNARF", "NORMA"]);
+    expect(route).toEqual(["BAYEE", "BAYNO", "NORMA"]);
   });
 
   test("resolves RWY 27 via OCTTA transition", () => {
     const route = sidRouteFixIds(kdemCatalog, "BAY1", "27", "OCTTA");
-    expect(route).toEqual(["MISSD", "SNARF", "OCTTA"]);
+    expect(route).toEqual(["BAYEE", "BAYSO", "OCTTA"]);
   });
 
   test("resolves RWY 27 without enroute transition", () => {
     const route = sidRouteFixIds(kdemCatalog, "BAY1", "27");
-    expect(route).toEqual(["MISSD", "SNARF"]);
+    expect(route).toEqual(["BAYEE"]);
   });
 
   test("resolves enroute transition without runway transition", () => {
     const route = sidRouteFixIds(kdemCatalog, "BAY1", undefined, "NORMA");
-    expect(route).toEqual(["SNARF", "NORMA"]);
+    expect(route).toEqual(["BAYNO", "NORMA"]);
   });
 
   test("resolves common route only when runway and transition are omitted", () => {
     const route = sidRouteFixIds(kdemCatalog, "BAY1");
-    expect(route).toEqual(["SNARF"]);
+    expect(route).toEqual([]);
   });
 
   test("case insensitivity and whitespace trimming", () => {
     const route = sidRouteFixIds(kdemCatalog, " bay1 ", " 27 ", " norma ");
-    expect(route).toEqual(["MISSD", "SNARF", "NORMA"]);
+    expect(route).toEqual(["BAYEE", "BAYNO", "NORMA"]);
   });
 
   test("throws on unknown SID", () => {

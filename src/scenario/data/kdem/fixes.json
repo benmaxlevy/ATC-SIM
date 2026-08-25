@@ -112,6 +112,27 @@
       "xNm": 28,
       "yNm": -6,
       "formedBy": "OCT R-280 / DEM R-110 (demo)"
+    },
+    {
+      "id": "BAYEE",
+      "kind": "WAYPOINT",
+      "xNm": -3.5,
+      "yNm": 0,
+      "note": "BAY1 departure climb gate along RW27 centerline"
+    },
+    {
+      "id": "BAYNO",
+      "kind": "WAYPOINT",
+      "xNm": -6.5,
+      "yNm": 4.5,
+      "note": "BAY1 North transition right-turn curving waypoint"
+    },
+    {
+      "id": "BAYSO",
+      "kind": "WAYPOINT",
+      "xNm": -6.5,
+      "yNm": -4.5,
+      "note": "BAY1 South transition left-turn curving waypoint"
     }
   ]
 }

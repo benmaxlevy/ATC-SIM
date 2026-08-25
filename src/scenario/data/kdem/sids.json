@@ -1,6 +1,6 @@
 {
   "airportId": "KDEM",
-  "note": "BAY ONE: Runway 27 climbing turn to MISSD, common to SNARF, enroute transitions to NORMA and OCTTA. Video map 007 is a separate MAPS drawing.",
+  "note": "BAY ONE: Runway 27 climb to BAYEE, curving departures to NORMA (North) and OCTTA (South/East). Video map 007 is a separate MAPS drawing.",
   "sids": [
     {
       "id": "BAY1",
@@ -10,27 +10,26 @@
         {
           "runwayId": "27",
           "initialHeadingDeg": 270,
-          "initialClimbFt": 2000,
+          "initialClimbFt": 5000,
           "legs": [
             {
-              "fixId": "MISSD",
-              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 2000 }
+              "fixId": "BAYEE",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 1500 }
             }
           ]
         }
       ],
-      "common": [
-        {
-          "fixId": "SNARF",
-          "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 4000 },
-          "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
-        }
-      ],
+      "common": [],
       "enrouteTransitions": [
         {
           "id": "NORMA",
           "name": "NORMA",
           "legs": [
+            {
+              "fixId": "BAYNO",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 2500 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+            },
             {
               "fixId": "NORMA",
               "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 }
@@ -41,6 +40,11 @@
           "id": "OCTTA",
           "name": "OCTTA",
           "legs": [
+            {
+              "fixId": "BAYSO",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 2500 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+            },
             {
               "fixId": "OCTTA",
               "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 8000 }

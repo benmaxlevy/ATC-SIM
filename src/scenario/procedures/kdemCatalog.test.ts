@@ -75,6 +75,9 @@ test("AC5 — DEM/OCT/DMO/IDEM, STAR fixes, BAY1 sid, airportId is a string", ()
     "SNARF",
     "NORMA",
     "OCTTA",
+    "BAYEE",
+    "BAYNO",
+    "BAYSO",
   ]) {
     expect(
       catalog.fixes.some((item) => item.id === id),
@@ -88,7 +91,7 @@ test("AC5 — DEM/OCT/DMO/IDEM, STAR fixes, BAY1 sid, airportId is a string", ()
   expect(bay1Sid.name).toBe("BAY ONE DEPARTURE");
   expect(bay1Sid.initialClimbFt).toBe(5000);
   expect(bay1Sid.runwayTransitions?.[0]?.runwayId).toBe("27");
-  expect(bay1Sid.common[0]?.fixId).toBe("SNARF");
+  expect(bay1Sid.runwayTransitions?.[0]?.legs[0]?.fixId).toBe("BAYEE");
   expect(bay1Sid.enrouteTransitions?.map((t) => t.id)).toEqual(["NORMA", "OCTTA"]);
 
   const dct = catalogDctIds(catalog);

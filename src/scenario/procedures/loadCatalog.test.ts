@@ -34,7 +34,7 @@ test("AC1 — loadCatalog parses KDEM sids.json with BAY1 procedure", () => {
   expect(bay1.id).toBe("BAY1");
   expect(bay1.name).toBe("BAY ONE DEPARTURE");
   expect(bay1.runwayTransitions?.[0]?.runwayId).toBe("27");
-  expect(bay1.common[0]?.fixId).toBe("SNARF");
+  expect(bay1.runwayTransitions?.[0]?.legs[0]?.fixId).toBe("BAYEE");
   expect(bay1.enrouteTransitions?.map((t) => t.id)).toEqual(["NORMA", "OCTTA"]);
 });
 
@@ -57,7 +57,7 @@ test("AC3 — dangling SID runway transition fixId throws", () => {
 test("AC3 — dangling SID common fixId throws", () => {
   const files = kdemFiles();
   const sids = files.sids as { sids: Array<{ common: Array<{ fixId: string }> }> };
-  sids.sids[0]!.common[0]!.fixId = "NOPE";
+  sids.sids[0]!.common = [{ fixId: "NOPE" }];
   expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
 });
 

@@ -27,8 +27,8 @@ describe("departureSpawnPose (AC1)", () => {
     expect(pose.runwayId).toBe("27");
     expect(pose.transitionId).toBe("NORMA");
 
-    // Route for BAY1 via RW27 to NORMA: RW27 leg (MISSD) -> common (SNARF) -> enroute (NORMA)
-    expect(pose.routeFixIds).toEqual(["MISSD", "SNARF", "NORMA"]);
+    // Route for BAY1 via RW27 to NORMA: RW27 leg (BAYEE) -> enroute (BAYNO, NORMA)
+    expect(pose.routeFixIds).toEqual(["BAYEE", "BAYNO", "NORMA"]);
 
     // Armed Intent
     expect(pose.intent.lateral).toEqual({
@@ -36,7 +36,7 @@ describe("departureSpawnPose (AC1)", () => {
       sidId: "BAY1",
       starId: "BAY1",
       toFixIndex: 0,
-      routeFixIds: ["MISSD", "SNARF", "NORMA"],
+      routeFixIds: ["BAYEE", "BAYNO", "NORMA"],
     });
     expect(pose.intent.vertical).toEqual({
       type: "VIA_SID",
@@ -52,7 +52,7 @@ describe("departureSpawnPose (AC1)", () => {
     // BAY1 initialClimbFt is 5000 in KDEM sids.json
     expect(pose.assignedAltitudeFt).toBe(5000);
     expect(pose.intent.assignedAltitudeFt).toBe(5000);
-    expect(pose.routeFixIds).toEqual(["MISSD", "SNARF", "OCTTA"]);
+    expect(pose.routeFixIds).toEqual(["BAYEE", "BAYSO", "OCTTA"]);
   });
 
   test("spawnDeparture creates aircraft in world and offers departure handoff from TWR", () => {
