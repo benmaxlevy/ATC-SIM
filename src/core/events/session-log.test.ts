@@ -52,8 +52,10 @@ test("radio.checkin is a typed pilot-initiated payload (T04-15)", () => {
     atSimMs: number;
     atWallMs: number;
     callsign: string;
-    starId: string;
-    starName: string;
+    starId?: string;
+    starName?: string;
+    sidId?: string;
+    sidName?: string;
     altitudeFt: number;
     text: string;
   }>();

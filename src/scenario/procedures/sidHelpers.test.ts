@@ -135,4 +135,3 @@ describe("sidSpokenName (AC2)", () => {
     expect(sidSpokenName(kdemCatalog, " dem1 ")).toBe("DEMO ONE");
   });
 });
-

@@ -73,10 +73,7 @@ export interface SidNameCatalog {
  * Strips trailing " DEPARTURE" if present (e.g. "DEMO ONE DEPARTURE" -> "DEMO ONE").
  * Falls back to sidId if not found.
  */
-export function sidSpokenName(
-  catalog: SidNameCatalog | null | undefined,
-  sidId: string,
-): string {
+export function sidSpokenName(catalog: SidNameCatalog | null | undefined, sidId: string): string {
   const want = sidId.trim().toUpperCase();
   const sid = catalog?.sids?.find((item) => item.id.trim().toUpperCase() === want);
   const name = sid?.name?.trim();
@@ -86,4 +83,3 @@ export function sidSpokenName(
   const clean = name.replace(/\s+departure$/i, "").trim();
   return clean.length > 0 ? clean : name;
 }
-

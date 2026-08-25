@@ -23,10 +23,8 @@ import {
   CheckInQueue,
   createCheckInQueue,
   formatCheckIn,
-  formatDepartureCheckIn,
   isSidDeparture,
   isStarViaArrival,
-  sidSpokenName,
   starSpokenName,
   type CheckInRadio,
 } from "./checkinQueue";
@@ -684,9 +682,7 @@ test("AC3 — simultaneous arrival and departure check-ins are sequenced without
 });
 
 test("Departure stagger draws are 2000-5000 ms, 50ms quantized, deterministic", () => {
-  const aircraft = ["DAL1", "DAL2", "DAL3", "DAL4", "DAL5", "DAL6"].map((cs) =>
-    viaDeparture(cs),
-  );
+  const aircraft = ["DAL1", "DAL2", "DAL3", "DAL4", "DAL5", "DAL6"].map((cs) => viaDeparture(cs));
   const world = createWorld({ aircraft, catalog: dem1Catalog() });
   const queue = createCheckInQueue({ seed: 42 });
   queue.scheduleFromWorld(world, 0);
@@ -707,7 +703,7 @@ test("Departure stagger draws are 2000-5000 ms, 50ms quantized, deterministic", 
 
 test("Departure assigned altitude check-in when not climbing via SID", () => {
   const dal = viaDeparture("DAL123");
-  dal.intent.vertical = { type: "ASSIGNED", altitudeFt: 5000 };
+  dal.intent.vertical = { type: "ASSIGNED" };
   dal.intent.assignedAltitudeFt = 5000;
   const log = new SessionLog();
   const world = createWorld({
@@ -728,9 +724,7 @@ test("Departure assigned altitude check-in when not climbing via SID", () => {
     },
     nowWallMs: () => 1,
   });
-  expect(status).toBe(
-    "Departure, Delta 123, leaving one thousand two hundred for five thousand",
-  );
+  expect(status).toBe("Departure, Delta 123, leaving one thousand two hundred for five thousand");
 });
 
 test("isSidDeparture identifies VIA_SID and lateral PROCEDURE with sidId", () => {
@@ -751,8 +745,7 @@ test("isSidDeparture identifies VIA_SID and lateral PROCEDURE with sidId", () =>
     routeFixIds: ["MISSD"],
   };
   expect(isSidDeparture(ac)).toBe(true);
-  ac.intent.lateral = null;
+  ac.intent.lateral = undefined;
   ac.intent.vertical = { type: "VIA_SID", sidId: "DEM1" };
   expect(isSidDeparture(ac)).toBe(true);
 });
-

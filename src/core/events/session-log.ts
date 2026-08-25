@@ -257,7 +257,6 @@ export type SessionEvent =
       callsign: string;
     };
 
-
 /**
  * Append-only in-memory session event log.
  * No max size in v1; phase 5 may truncate when scoring.

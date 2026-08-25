@@ -28,9 +28,7 @@ describe("formatDepartureCheckIn (AC1)", () => {
       assignedAltitudeFt: 5000,
       isClimbVia: false,
     });
-    expect(text).toBe(
-      "Departure, Delta 123, leaving one thousand two hundred for five thousand",
-    );
+    expect(text).toBe("Departure, Delta 123, leaving one thousand two hundred for five thousand");
   });
 
   test("formatDepartureCheckIn with isClimbVia true but no sidName falls back to leaving/for", () => {
@@ -40,9 +38,7 @@ describe("formatDepartureCheckIn (AC1)", () => {
       assignedAltitudeFt: 10000,
       isClimbVia: true,
     });
-    expect(text).toBe(
-      "Departure, American 45, leaving niner hundred for one-zero thousand",
-    );
+    expect(text).toBe("Departure, American 45, leaving niner hundred for one-zero thousand");
   });
 
   test("formatDepartureCheckIn with flight level assigned altitude", () => {
@@ -52,9 +48,7 @@ describe("formatDepartureCheckIn (AC1)", () => {
       assignedAltitudeFt: 19000,
       isClimbVia: false,
     });
-    expect(text).toBe(
-      "Departure, United 890, leaving one thousand five hundred for FL 190",
-    );
+    expect(text).toBe("Departure, United 890, leaving one thousand five hundred for FL 190");
   });
 
   test("formatDepartureCheckIn with flight level current altitude", () => {
@@ -64,9 +58,7 @@ describe("formatDepartureCheckIn (AC1)", () => {
       assignedAltitudeFt: 23000,
       isClimbVia: false,
     });
-    expect(text).toBe(
-      "Departure, Southwest 210, leaving FL 180 for FL 230",
-    );
+    expect(text).toBe("Departure, Southwest 210, leaving FL 180 for FL 230");
   });
 
   test("formatDepartureCheckIn with unknown airline prefix uses phonetic alphabet", () => {

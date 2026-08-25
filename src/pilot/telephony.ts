@@ -212,4 +212,3 @@ export function formatDepartureCheckIn(args: FormatDepartureCheckInArgs): string
     assignedFt >= FLIGHT_LEVEL_FT ? `FL ${assignedFt / 100}` : speakAltitude(assignedFt);
   return `Departure, ${callsignSpeech}, leaving ${altSpeech} for ${assignedAltSpeech}`;
 }
-

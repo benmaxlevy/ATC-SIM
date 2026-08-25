@@ -14,13 +14,8 @@
  */
 
 import { handoffFor, type Aircraft, type SessionLog, type World } from "@core";
-import { sidSpokenName, type SidNameCatalog } from "../scenario/procedures/sidHelpers";
-import {
-  formatAltitude,
-  formatCallsignSpeech,
-  formatDepartureCheckIn,
-  type FormatDepartureCheckInArgs,
-} from "./telephony";
+import { sidSpokenName } from "../scenario/procedures/sidHelpers";
+import { formatAltitude, formatCallsignSpeech, formatDepartureCheckIn } from "./telephony";
 
 export { sidSpokenName, type SidNameCatalog } from "../scenario/procedures/sidHelpers";
 export { formatDepartureCheckIn, type FormatDepartureCheckInArgs } from "./telephony";
@@ -193,7 +188,7 @@ export class CheckInQueue {
     }
     if (isStarViaArrival(aircraft)) {
       const lateral = aircraft.intent.lateral;
-      const starId = lateral?.type === "PROCEDURE" ? lateral.starId : "";
+      const starId = lateral?.type === "PROCEDURE" && lateral.starId ? lateral.starId : "";
       const staggerMs = drawStaggerMs(this.rng);
       this.spawnCounter += 1;
       this.entries.push({
@@ -263,7 +258,7 @@ export class CheckInQueue {
         const starId =
           lateral?.type === "PROCEDURE" && lateral.starId
             ? lateral.starId
-            : next.starId ?? next.procedureId;
+            : (next.starId ?? next.procedureId);
         const starName = starSpokenName(world.catalog, starId);
         const text = formatCheckIn({
           callsign: aircraft.callsign,
@@ -293,7 +288,7 @@ export class CheckInQueue {
             ? aircraft.intent.vertical.sidId
             : lateral?.type === "PROCEDURE" && "sidId" in lateral && lateral.sidId
               ? lateral.sidId
-              : next.sidId ?? next.procedureId ?? "";
+              : (next.sidId ?? next.procedureId ?? "");
         const sidName = sidId ? sidSpokenName(world.catalog, sidId) : undefined;
         const text = formatDepartureCheckIn({
           callsign: aircraft.callsign,
@@ -381,4 +376,3 @@ export class CheckInQueue {
 export function createCheckInQueue(options?: CheckInQueueOptions): CheckInQueue {
   return new CheckInQueue(options);
 }
-
