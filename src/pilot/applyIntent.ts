@@ -47,6 +47,7 @@ function setHeadingMode(
   aircraft.intent.lateral = { type: "HEADING", headingDeg };
   if (
     aircraft.intent.vertical?.type === "VIA_STAR" ||
+    aircraft.intent.vertical?.type === "VIA_SID" ||
     aircraft.intent.vertical?.type === "GS" ||
     aircraft.intent.vertical?.type === "MISSED_CLIMB"
   ) {
@@ -115,11 +116,11 @@ function applyVia(
   sense: "DESCEND" | "CLIMB",
   opts?: ApplyIntentOpts,
 ): void {
-  aircraft.intent.vertical = {
-    type: "VIA_STAR",
-    starId: procedureId.trim().toUpperCase(),
-    sense,
-  };
+  const normId = procedureId.trim().toUpperCase();
+  aircraft.intent.vertical =
+    sense === "CLIMB"
+      ? { type: "VIA_SID", sidId: normId }
+      : { type: "VIA_STAR", starId: normId, sense };
   joinPublishedLateral(aircraft, procedureId, opts);
 }
 

@@ -244,6 +244,29 @@ test("DESCEND_VIA uses the published STAR name", () => {
   ).toBe("Delta 123 descend via DEMO ONE");
 });
 
+test("AC5 — CLIMB_VIA uses the published SID name and combines with maintain altitude", () => {
+  expect(
+    formatReadback({
+      callsign: "DAL123",
+      instructions: [{ type: "CLIMB_VIA", procedureId: "DEM1" }],
+      aircraft: snapshot,
+      procedureNames: { DEM1: "the DEMO ONE departure" },
+    }),
+  ).toBe("Delta 123 climb via the DEMO ONE departure");
+
+  expect(
+    formatReadback({
+      callsign: "DAL123",
+      instructions: [
+        { type: "CLIMB_VIA", procedureId: "DEM1" },
+        { type: "ALTITUDE", altitudeFt: 5000, verb: "MAINTAIN" },
+      ],
+      aircraft: snapshot,
+      procedureNames: { DEM1: "the DEMO ONE departure" },
+    }),
+  ).toBe("Delta 123 climb via the DEMO ONE departure, maintain five thousand (5000)");
+});
+
 const rejectTable: [{ callsign?: string; reason: string; detail?: string }, string][] = [
   [{ reason: "UNKNOWN_CALLSIGN" }, "Unable, unknown callsign"],
   [{ reason: "AMBIGUOUS_CALLSIGN" }, "Unable, ambiguous callsign"],

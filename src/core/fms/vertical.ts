@@ -44,8 +44,35 @@ export interface CatalogStar {
   common?: readonly CatalogStarLeg[];
 }
 
+export interface CatalogSidLeg {
+  fixId: string;
+  altConstraint?: AltConstraint;
+  speedConstraint?: SpeedConstraint;
+}
+
+export interface CatalogSidRunwayTransition {
+  runwayId: string;
+  legs: readonly CatalogSidLeg[];
+}
+
+export interface CatalogSidEnrouteTransition {
+  id: string;
+  legs: readonly CatalogSidLeg[];
+}
+
+export interface CatalogSid {
+  id: string;
+  name?: string;
+  runwayTransitions?: ReadonlyArray<CatalogSidRunwayTransition>;
+  common?: readonly CatalogSidLeg[];
+  enrouteTransitions?: ReadonlyArray<CatalogSidEnrouteTransition>;
+  legs?: readonly CatalogSidLeg[];
+  initialClimbFt?: number;
+}
+
 export interface VerticalCatalog {
   stars?: ReadonlyArray<CatalogStar>;
+  sids?: ReadonlyArray<CatalogSid>;
 }
 
 export interface VerticalFmsContext {
@@ -95,9 +122,26 @@ export function targetAltitudeFt(args: {
   if (args.vertical.type === "MISSED_CLIMB") {
     return args.vertical.altitudeFt;
   }
-  const via = args.vertical.type === "VIA_STAR" && args.onStar;
-  if (!via || !args.nextConstraint) {
+  const isVia =
+    (args.vertical.type === "VIA_STAR" || args.vertical.type === "VIA_SID") && args.onStar;
+  if (!isVia || !args.nextConstraint) {
     return args.assignedFt ?? 0;
+  }
+  const isClimbVia =
+    args.vertical.type === "VIA_SID" ||
+    (args.vertical.type === "VIA_STAR" && args.vertical.sense === "CLIMB");
+  if (isClimbVia) {
+    if (args.nextConstraint.type === "AT_OR_BELOW") {
+      return args.assignedFt !== undefined
+        ? Math.min(args.assignedFt, args.nextConstraint.altitudeFt)
+        : args.nextConstraint.altitudeFt;
+    }
+    if (args.nextConstraint.type === "AT_OR_ABOVE") {
+      return args.assignedFt !== undefined
+        ? Math.max(args.assignedFt, args.nextConstraint.altitudeFt)
+        : args.nextConstraint.altitudeFt;
+    }
+    return args.nextConstraint.altitudeFt;
   }
   return args.nextConstraint.altitudeFt;
 }
@@ -108,7 +152,8 @@ export function targetSpeedKt(args: {
   nextConstraint?: SpeedConstraint;
   onStar: boolean;
 }): number {
-  const via = args.vertical.type === "VIA_STAR" && args.onStar;
+  const via =
+    (args.vertical.type === "VIA_STAR" || args.vertical.type === "VIA_SID") && args.onStar;
   if (!via || !args.nextConstraint) {
     return args.assignedKt;
   }
@@ -132,10 +177,10 @@ export function nextUnpassedConstraints(
       };
     }
   }
-  if (ac.intent.vertical?.type !== "VIA_STAR") {
+  const vertical = ac.intent.vertical;
+  if (vertical?.type !== "VIA_STAR" && vertical?.type !== "VIA_SID") {
     return undefined;
   }
-  const via = ac.intent.vertical;
   const lateral = ac.intent.lateral;
   if (lateral?.type !== "PROCEDURE") {
     return undefined;
@@ -144,8 +189,24 @@ export function nextUnpassedConstraints(
   if (fixId === undefined) {
     return undefined;
   }
-  const star = catalog?.stars?.find((item) => item.id === via.starId);
-  const leg = star ? findLeg(star, fixId) : undefined;
+  if (vertical.type === "VIA_SID") {
+    const sid = catalog?.sids?.find(
+      (item) => item.id.trim().toUpperCase() === vertical.sidId.trim().toUpperCase(),
+    );
+    const leg = sid ? findSidLeg(sid, fixId) : undefined;
+    return { fixId, alt: leg?.altConstraint, speed: leg?.speedConstraint };
+  }
+  const star = catalog?.stars?.find(
+    (item) => item.id.trim().toUpperCase() === vertical.starId.trim().toUpperCase(),
+  );
+  if (star) {
+    const leg = findLeg(star, fixId);
+    return { fixId, alt: leg?.altConstraint, speed: leg?.speedConstraint };
+  }
+  const sid = catalog?.sids?.find(
+    (item) => item.id.trim().toUpperCase() === vertical.starId.trim().toUpperCase(),
+  );
+  const leg = sid ? findSidLeg(sid, fixId) : undefined;
   return { fixId, alt: leg?.altConstraint, speed: leg?.speedConstraint };
 }
 
@@ -274,13 +335,13 @@ function followGsAltitudeFt(
 
 /** Call while lateral is still PROCEDURE, before rolling out to heading. */
 export function clearViaOnVectors(ac: Aircraft, catalog?: VerticalCatalog | null): void {
-  if (ac.intent.vertical?.type !== "VIA_STAR") {
+  if (ac.intent.vertical?.type !== "VIA_STAR" && ac.intent.vertical?.type !== "VIA_SID") {
     return;
   }
   if (ac.intent.cross) {
     return;
   }
-  const last = lastStarConstraints(ac, catalog);
+  const last = lastProcedureConstraints(ac, catalog);
   if (last?.alt) {
     ac.intent.assignedAltitudeFt = last.alt.altitudeFt;
   }
@@ -317,37 +378,90 @@ function currentProcedureFixId(ac: Aircraft): string | undefined {
 }
 
 function findLeg(star: CatalogStar, fixId: string): CatalogStarLeg | undefined {
+  const want = fixId.trim().toUpperCase();
   if (star.transitions) {
     for (const transition of star.transitions) {
-      const leg = transition.legs.find((item) => item.fixId === fixId);
+      const leg = transition.legs.find((item) => item.fixId.trim().toUpperCase() === want);
       if (leg) {
         return leg;
       }
     }
   }
-  return star.common?.find((item) => item.fixId === fixId);
+  return star.common?.find((item) => item.fixId.trim().toUpperCase() === want);
 }
 
-function lastStarConstraints(
+function findSidLeg(sid: CatalogSid, fixId: string): CatalogSidLeg | undefined {
+  const want = fixId.trim().toUpperCase();
+  if (sid.legs) {
+    const leg = sid.legs.find((item) => item.fixId.trim().toUpperCase() === want);
+    if (leg) {
+      return leg;
+    }
+  }
+  if (sid.runwayTransitions) {
+    for (const rt of sid.runwayTransitions) {
+      const leg = rt.legs.find((item) => item.fixId.trim().toUpperCase() === want);
+      if (leg) {
+        return leg;
+      }
+    }
+  }
+  if (sid.common) {
+    const leg = sid.common.find((item) => item.fixId.trim().toUpperCase() === want);
+    if (leg) {
+      return leg;
+    }
+  }
+  if (sid.enrouteTransitions) {
+    for (const et of sid.enrouteTransitions) {
+      const leg = et.legs.find((item) => item.fixId.trim().toUpperCase() === want);
+      if (leg) {
+        return leg;
+      }
+    }
+  }
+  return undefined;
+}
+
+function lastProcedureConstraints(
   ac: Aircraft,
   catalog?: VerticalCatalog | null,
 ): { alt?: AltConstraint; speed?: SpeedConstraint } | undefined {
   const vertical = ac.intent.vertical;
-  if (vertical?.type !== "VIA_STAR") {
-    return undefined;
-  }
-  const star = catalog?.stars?.find((item) => item.id === vertical.starId);
-  if (!star) {
+  if (vertical?.type !== "VIA_STAR" && vertical?.type !== "VIA_SID") {
     return undefined;
   }
   const lateral = ac.intent.lateral;
+  const procedureId = vertical.type === "VIA_SID" ? vertical.sidId : vertical.starId;
   const lastId =
     lateral?.type === "PROCEDURE"
       ? lateral.routeFixIds[lateral.routeFixIds.length - 1]
-      : star.common?.[star.common.length - 1]?.fixId;
+      : undefined;
   if (!lastId) {
     return undefined;
   }
-  const leg = findLeg(star, lastId);
-  return leg ? { alt: leg.altConstraint, speed: leg.speedConstraint } : undefined;
+  if (vertical.type === "VIA_SID") {
+    const sid = catalog?.sids?.find(
+      (item) => item.id.trim().toUpperCase() === procedureId.trim().toUpperCase(),
+    );
+    if (sid) {
+      const leg = findSidLeg(sid, lastId);
+      return leg ? { alt: leg.altConstraint, speed: leg.speedConstraint } : undefined;
+    }
+  }
+  const star = catalog?.stars?.find(
+    (item) => item.id.trim().toUpperCase() === procedureId.trim().toUpperCase(),
+  );
+  if (star) {
+    const leg = findLeg(star, lastId);
+    return leg ? { alt: leg.altConstraint, speed: leg.speedConstraint } : undefined;
+  }
+  const sid = catalog?.sids?.find(
+    (item) => item.id.trim().toUpperCase() === procedureId.trim().toUpperCase(),
+  );
+  if (sid) {
+    const leg = findSidLeg(sid, lastId);
+    return leg ? { alt: leg.altConstraint, speed: leg.speedConstraint } : undefined;
+  }
+  return undefined;
 }

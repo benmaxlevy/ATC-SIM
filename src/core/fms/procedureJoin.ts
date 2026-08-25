@@ -2,14 +2,11 @@
  * Join a named STAR/SID (JOIN or VIA). DCT to a procedure fix is not a join.
  */
 
-import type { CatalogStar } from "./vertical";
+import type { CatalogSid, CatalogStar } from "./vertical";
 
 export interface ProcedureJoinCatalog {
   stars?: ReadonlyArray<CatalogStar> | null;
-  sids?: ReadonlyArray<{
-    id: string;
-    legs?: ReadonlyArray<{ fixId: string }>;
-  }> | null;
+  sids?: ReadonlyArray<CatalogSid> | null;
 }
 
 export interface ProcedureJoin {
@@ -45,16 +42,63 @@ function starHitsForFix(star: CatalogStar, fixId: string): ProcedureJoin[] {
   return hits;
 }
 
-function sidJoin(
-  sid: { id: string; legs?: ReadonlyArray<{ fixId: string }> },
-  fixId: string,
-): ProcedureJoin | undefined {
-  const routeFixIds = (sid.legs ?? []).map((leg) => wantFix(leg.fixId));
-  const toFixIndex = routeFixIds.indexOf(fixId);
-  if (toFixIndex < 0) {
-    return undefined;
+function sidRoutes(sid: CatalogSid): string[][] {
+  if (sid.legs && sid.legs.length > 0) {
+    return [sid.legs.map((leg) => wantFix(leg.fixId))];
   }
-  return { starId: sid.id, routeFixIds, toFixIndex };
+  const rts =
+    sid.runwayTransitions && sid.runwayTransitions.length > 0
+      ? sid.runwayTransitions
+      : [undefined];
+  const ets =
+    sid.enrouteTransitions && sid.enrouteTransitions.length > 0
+      ? sid.enrouteTransitions
+      : [undefined];
+  const commonIds = (sid.common ?? []).map((leg) => wantFix(leg.fixId));
+  const results: string[][] = [];
+
+  for (const rt of rts) {
+    for (const et of ets) {
+      const route: string[] = [];
+      if (rt) {
+        for (const leg of rt.legs) {
+          route.push(wantFix(leg.fixId));
+        }
+      }
+      for (const fixId of commonIds) {
+        if (route.length === 0 || route[route.length - 1] !== fixId) {
+          route.push(fixId);
+        }
+      }
+      if (et) {
+        for (const leg of et.legs) {
+          const fixId = wantFix(leg.fixId);
+          if (route.length === 0 || route[route.length - 1] !== fixId) {
+            route.push(fixId);
+          }
+        }
+      }
+      if (route.length > 0) {
+        const key = route.join(">");
+        if (!results.some((r) => r.join(">") === key)) {
+          results.push(route);
+        }
+      }
+    }
+  }
+  return results;
+}
+
+function sidHitsForFix(sid: CatalogSid, fixId: string): ProcedureJoin[] {
+  const routes = sidRoutes(sid);
+  const hits: ProcedureJoin[] = [];
+  for (const routeFixIds of routes) {
+    const toFixIndex = routeFixIds.indexOf(fixId);
+    if (toFixIndex >= 0) {
+      hits.push({ starId: sid.id, routeFixIds, toFixIndex });
+    }
+  }
+  return hits;
 }
 
 /**
@@ -78,10 +122,7 @@ export function procedureRouteContainingFix(
   }
   const sidHits: ProcedureJoin[] = [];
   for (const sid of catalog.sids ?? []) {
-    const hit = sidJoin(sid, want);
-    if (hit) {
-      sidHits.push(hit);
-    }
+    sidHits.push(...sidHitsForFix(sid, want));
   }
   const preferred = [...starHits, ...sidHits].find(
     (hit) => hit.starId.trim().toUpperCase() === prefer,
@@ -117,8 +158,8 @@ function routesForProcedureId(catalog: ProcedureJoinCatalog, procedureId: string
     if (wantFix(sid.id) !== want) {
       continue;
     }
-    const routeFixIds = (sid.legs ?? []).map((leg) => wantFix(leg.fixId));
-    if (routeFixIds.length > 0) {
+    const sidRouteList = sidRoutes(sid);
+    for (const routeFixIds of sidRouteList) {
       routes.push({ starId: sid.id, routeFixIds, toFixIndex: 0 });
     }
   }

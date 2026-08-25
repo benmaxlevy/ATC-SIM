@@ -200,13 +200,16 @@ test("CLIMB_VIA on a unique SID joins remaining legs", () => {
       sids: [{ id: "KDEM1", legs: [{ fixId: "OCTTA" }, { fixId: "DEMEE" }] }],
     },
   });
-  expect(ac.intent.vertical).toEqual({ type: "VIA_STAR", starId: "KDEM1", sense: "CLIMB" });
+  expect(ac.intent.vertical).toEqual({ type: "VIA_SID", sidId: "KDEM1" });
   expect(ac.intent.lateral).toEqual({
     type: "PROCEDURE",
     starId: "KDEM1",
     toFixIndex: 0,
     routeFixIds: ["OCTTA", "DEMEE"],
   });
+  applyIntent(ac, [{ type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" }], 0);
+  expect(ac.intent.lateral).toEqual({ type: "HEADING", headingDeg: 270 });
+  expect(ac.intent.vertical).toEqual({ type: "ASSIGNED" });
 });
 
 test("SAY_* leave heading/alt/speed intent alone; CLEARED_APPROACH arms INTERCEPT_LOC", () => {
