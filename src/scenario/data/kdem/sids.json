@@ -1,5 +1,53 @@
 {
   "airportId": "KDEM",
-  "sids": [],
-  "note": "Departures live here so a later CIFP/NASR import can fill SIDs without a schema break. Phase 4 does not fly SIDs."
+  "note": "DEMO ONE: Runway 27 climbing turn to MISSD, common to SNARF, enroute transitions to NORMA and OCTTA. Video map 007 is a separate MAPS drawing.",
+  "sids": [
+    {
+      "id": "DEM1",
+      "name": "DEMO ONE DEPARTURE",
+      "initialClimbFt": 5000,
+      "runwayTransitions": [
+        {
+          "runwayId": "27",
+          "initialHeadingDeg": 270,
+          "initialClimbFt": 2000,
+          "legs": [
+            {
+              "fixId": "MISSD",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 2000 }
+            }
+          ]
+        }
+      ],
+      "common": [
+        {
+          "fixId": "SNARF",
+          "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 4000 },
+          "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+        }
+      ],
+      "enrouteTransitions": [
+        {
+          "id": "NORMA",
+          "name": "NORMA",
+          "legs": [
+            {
+              "fixId": "NORMA",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 }
+            }
+          ]
+        },
+        {
+          "id": "OCTTA",
+          "name": "OCTTA",
+          "legs": [
+            {
+              "fixId": "OCTTA",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 8000 }
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }

@@ -53,6 +53,14 @@
       "dcbLabel": "DEM1",
       "defaultOn": true,
       "color": "map"
+    },
+    {
+      "id": "DEM1_SID",
+      "file": "007-dem1-sid.json",
+      "dcbNumber": 7,
+      "dcbLabel": "DEM1_S",
+      "defaultOn": true,
+      "color": "map"
     }
   ]
 }

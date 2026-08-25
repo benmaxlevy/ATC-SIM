@@ -74,11 +74,32 @@ export interface StarProcedure {
   termination: "VECTORS";
 }
 
-export interface SidProcedure {
-  id: string;
+export interface SidLeg {
+  fixId: string;
+  altConstraint?: AltConstraint;
+  speedConstraint?: SpeedConstraint;
+}
+
+export interface SidRunwayTransition {
+  runwayId: string; // e.g. "27" or "09"
+  initialHeadingDeg?: number;
+  initialClimbFt?: number;
+  legs: SidLeg[];
+}
+
+export interface SidEnrouteTransition {
+  id: string; // e.g. "NORMA", "SNARF", "OCTTA"
   name: string;
-  runway?: string;
-  legs: Array<{ fixId: string; altConstraint?: AltConstraint }>;
+  legs: SidLeg[];
+}
+
+export interface SidProcedure {
+  id: string; // e.g. "DEM1"
+  name: string; // e.g. "DEMO ONE DEPARTURE"
+  runwayTransitions?: SidRunwayTransition[];
+  common: SidLeg[];
+  enrouteTransitions?: SidEnrouteTransition[];
+  initialClimbFt?: number; // default top altitude before enroute climb (e.g. 5000)
 }
 
 export interface MissedApproach {

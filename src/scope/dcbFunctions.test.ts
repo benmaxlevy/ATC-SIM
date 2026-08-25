@@ -278,18 +278,19 @@ test("AC6 — radio-focus L090 is still a left turn; LDR DIR spinner does not st
   }
 });
 
-test("T02-24 — unused slots 7–30 disabled; 1–6 bind catalog dcbNumber", () => {
+test("T02-24 — unused slots 8–30 disabled; 1–7 bind catalog dcbNumber", () => {
   const view = kdemView();
   expect(DCB_MAP_SLOT_COUNT).toBe(30);
   expect(DCB_QUICK_MAP_COUNT).toBe(6);
   expect(videoMapByDcbNumber(view, 1)?.dcbLabel).toBe("RWY27");
   expect(videoMapByDcbNumber(view, 3)?.id).toBe("COAST");
   expect(videoMapByDcbNumber(view, 6)?.dcbLabel).toBe("DEM1");
-  expect(videoMapByDcbNumber(view, 7)).toBeUndefined();
-  for (let slot = 1; slot <= 6; slot += 1) {
+  expect(videoMapByDcbNumber(view, 7)?.dcbLabel).toBe("DEM1_S");
+  expect(videoMapByDcbNumber(view, 8)).toBeUndefined();
+  for (let slot = 1; slot <= 7; slot += 1) {
     expect(isDcbMapSlotEnabled(view, slot)).toBe(true);
   }
-  for (let slot = 7; slot <= DCB_MAP_SLOT_COUNT; slot += 1) {
+  for (let slot = 8; slot <= DCB_MAP_SLOT_COUNT; slot += 1) {
     expect(isDcbMapSlotEnabled(view, slot)).toBe(false);
   }
 });
@@ -306,6 +307,7 @@ test("T02-24 — CLR ALL turns catalog maps off; coastline JSON off is a no-op",
   expect(isVideoMapOn(view, "DWNWND")).toBe(false);
   expect(isVideoMapOn(view, "CLASS_B")).toBe(false);
   expect(isVideoMapOn(view, "DEM1")).toBe(false);
+  expect(isVideoMapOn(view, "DEM1_SID")).toBe(false);
   expect(view.showRunway).toBe(false);
   expect(view.showLocalizer).toBe(false);
   expect(view.showCoastline).toBe(false);
@@ -351,7 +353,8 @@ test("T02-24 — GEO MAPS lists every catalog label; CURRENT lists only maps tha
   expect(geo).toContain("1 RWY27 ON");
   expect(geo).toContain("3 COAST ON");
   expect(geo).toContain("4 DWNWND ON");
-  expect(geo).toHaveLength(6);
+  expect(geo).toContain("7 DEM1_S ON");
+  expect(geo).toHaveLength(7);
   expect(buildMapListLines(view, "current")).toEqual([
     "1 RWY27",
     "2 LOC27",
@@ -359,6 +362,7 @@ test("T02-24 — GEO MAPS lists every catalog label; CURRENT lists only maps tha
     "4 DWNWND",
     "5 CLASS_B",
     "6 DEM1",
+    "7 DEM1_S",
   ]);
 
   toggleVideoMap(view, "COAST");

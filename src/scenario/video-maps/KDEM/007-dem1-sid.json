@@ -1,0 +1,65 @@
+{
+  "id": "DEM1_SID",
+  "name": "DEMO ONE departure corridors",
+  "note": "Trainer-authored video map (MAPS). Independent of SID/fix catalog. Restriction boxes are copied onto the drawing (alt hundreds / speed kt); changing sids.json does not change this map.",
+  "features": [
+    {
+      "type": "polyline",
+      "closed": false,
+      "pointsNm": [
+        [0.0, 0.0],
+        [-8.0, 6.0],
+        [8.0, -10.0],
+        [8.0, 12.0]
+      ]
+    },
+    {
+      "type": "polyline",
+      "closed": false,
+      "pointsNm": [
+        [8.0, -10.0],
+        [28.0, -6.0]
+      ]
+    },
+    {
+      "type": "text",
+      "text": "MISSD",
+      "atNm": [-8.4, 6.5]
+    },
+    {
+      "type": "text",
+      "text": "------\n20\n------",
+      "atNm": [-7.0, 6.5]
+    },
+    {
+      "type": "text",
+      "text": "SNARF",
+      "atNm": [8.4, -10.5]
+    },
+    {
+      "type": "text",
+      "text": "------\n40\n250\n------",
+      "atNm": [9.8, -10.5]
+    },
+    {
+      "type": "text",
+      "text": "NORMA",
+      "atNm": [8.4, 12.5]
+    },
+    {
+      "type": "text",
+      "text": "------\n60\n------",
+      "atNm": [9.8, 12.5]
+    },
+    {
+      "type": "text",
+      "text": "OCTTA",
+      "atNm": [28.4, -6.5]
+    },
+    {
+      "type": "text",
+      "text": "------\n80\n------",
+      "atNm": [29.8, -6.5]
+    }
+  ]
+}
