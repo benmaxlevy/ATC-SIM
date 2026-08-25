@@ -26,6 +26,31 @@ MOCK_TRANSCRIPT = "delta one two three fly heading two seven zero"
 MAX_STT_FIXES = 64
 _STT_FIX_RE = re.compile(r"^[A-Z]{2,6}[0-9]{0,2}$")
 
+# Whisper's initial prompt is a transcription prior, not a parser allowlist.
+# Keep every shipped spoken telephony prefix here so ASR preserves carrier words
+# such as Spirit instead of replacing them with a phonetically similar token.
+ATC_CALLSIGN_PREFIXES = (
+    "Delta",
+    "American",
+    "United",
+    "Southwest",
+    "JetBlue",
+    "Jet Blue",
+    "Alaska",
+    "Frontier",
+    "Spirit",
+    "FedEx",
+    "Fed Ex",
+    "Federal Express",
+    "UPS",
+    "Republic",
+    "SkyWest",
+    "Sky West",
+    "Hawaiian",
+    "Air Canada",
+    "Speedbird",
+)
+
 
 def sanitize_stt_fixes(header: str | None) -> list[str]:
     """Catalog ids from `X-ATC-Fixes`. Tiny list; never kinematics or n-best."""
@@ -45,8 +70,8 @@ def sanitize_stt_fixes(header: str | None) -> list[str]:
 
 
 def whisper_fix_prompt(fixes: list[str], procedures: list[str] | None = None) -> str | None:
-    """Bias Whisper toward catalog spellings (SEMAX not C-Max, DEMO ONE not demo 1)."""
-    parts: list[str] = []
+    """Bias Whisper toward radio carrier words and catalog spellings."""
+    parts = ["ATC airline call signs: " + ", ".join(ATC_CALLSIGN_PREFIXES) + "."]
     if fixes:
         parts.append("Named ATC fixes: " + " ".join(fixes) + ".")
     if procedures:

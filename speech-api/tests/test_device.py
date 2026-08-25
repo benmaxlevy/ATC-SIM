@@ -89,15 +89,17 @@ def test_whisper_init_falls_back_after_cublas_load_error(monkeypatch, tmp_path) 
 
 
 def test_sanitize_stt_fixes_and_whisper_prompt() -> None:
-    from engines import sanitize_stt_fixes, sanitize_stt_procedures, whisper_fix_prompt
+    from engines import ATC_CALLSIGN_PREFIXES, sanitize_stt_fixes, sanitize_stt_procedures, whisper_fix_prompt
 
     assert sanitize_stt_fixes("semax, NEMAX, nope!, FI27") == ["SEMAX", "NEMAX", "FI27"]
     assert sanitize_stt_procedures("DEM1=DEMO ONE|SID2") == ["DEM1", "DEMO ONE", "SID2"]
-    assert whisper_fix_prompt(["SEMAX", "NEMAX"]) == "Named ATC fixes: SEMAX NEMAX."
+    prior = "ATC airline call signs: " + ", ".join(ATC_CALLSIGN_PREFIXES) + "."
+    assert "Spirit" in ATC_CALLSIGN_PREFIXES
+    assert whisper_fix_prompt(["SEMAX", "NEMAX"]) == f"{prior} Named ATC fixes: SEMAX NEMAX."
     assert whisper_fix_prompt(["SEMAX"], ["DEM1", "DEMO ONE"]) == (
-        "Named ATC fixes: SEMAX. Procedures: DEM1 DEMO ONE."
+        f"{prior} Named ATC fixes: SEMAX. Procedures: DEM1 DEMO ONE."
     )
-    assert whisper_fix_prompt([]) is None
+    assert whisper_fix_prompt([]) == prior
 
 
 def test_whisper_transcribe_passes_initial_prompt(monkeypatch, tmp_path) -> None:
@@ -118,7 +120,11 @@ def test_whisper_transcribe_passes_initial_prompt(monkeypatch, tmp_path) -> None
     monkeypatch.setattr("engines._load_whisper_model", load)
     stt = FasterWhisperStt(_settings(cache_dir=tmp_path))
     stt.transcribe(b"RIFF", ["SEMAX", "NEMAX"])
-    assert captured["initial_prompt"] == "Named ATC fixes: SEMAX NEMAX."
+    assert captured["initial_prompt"] == (
+        "ATC airline call signs: Delta, American, United, Southwest, JetBlue, Jet Blue, Alaska, Frontier, "
+        "Spirit, FedEx, Fed Ex, Federal Express, UPS, Republic, SkyWest, Sky West, Hawaiian, Air Canada, "
+        "Speedbird. Named ATC fixes: SEMAX NEMAX."
+    )
     assert captured["condition_on_previous_text"] is False
     stt.transcribe(b"RIFF")
-    assert "initial_prompt" not in captured
+    assert captured["initial_prompt"].startswith("ATC airline call signs:")
