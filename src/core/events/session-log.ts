@@ -172,8 +172,10 @@ export type SessionEvent =
       atSimMs: number;
       atWallMs: number;
       callsign: string;
-      starId: string;
-      starName: string;
+      starId?: string;
+      starName?: string;
+      sidId?: string;
+      sidName?: string;
       altitudeFt: number;
       text: string;
     }
@@ -254,6 +256,7 @@ export type SessionEvent =
       atWallMs: number;
       callsign: string;
     };
+
 
 /**
  * Append-only in-memory session event log.

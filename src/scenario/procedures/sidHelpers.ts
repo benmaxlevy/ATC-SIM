@@ -63,3 +63,27 @@ export function sidRouteFixIds(
 
   return fixIds;
 }
+
+export interface SidNameCatalog {
+  sids?: ReadonlyArray<{ id: string; name?: string }>;
+}
+
+/**
+ * Resolves spoken procedure name for a SID id from catalog metadata.
+ * Strips trailing " DEPARTURE" if present (e.g. "DEMO ONE DEPARTURE" -> "DEMO ONE").
+ * Falls back to sidId if not found.
+ */
+export function sidSpokenName(
+  catalog: SidNameCatalog | null | undefined,
+  sidId: string,
+): string {
+  const want = sidId.trim().toUpperCase();
+  const sid = catalog?.sids?.find((item) => item.id.trim().toUpperCase() === want);
+  const name = sid?.name?.trim();
+  if (!name) {
+    return sidId;
+  }
+  const clean = name.replace(/\s+departure$/i, "").trim();
+  return clean.length > 0 ? clean : name;
+}
+

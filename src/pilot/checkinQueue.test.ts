@@ -18,10 +18,15 @@ import {
   CHECKIN_STAGGER_MAX_MS,
   CHECKIN_STAGGER_MIN_MS,
   CHECKIN_STAGGER_QUANT_MS,
+  DEPARTURE_CHECKIN_STAGGER_MAX_MS,
+  DEPARTURE_CHECKIN_STAGGER_MIN_MS,
   CheckInQueue,
   createCheckInQueue,
   formatCheckIn,
+  formatDepartureCheckIn,
+  isSidDeparture,
   isStarViaArrival,
+  sidSpokenName,
   starSpokenName,
   type CheckInRadio,
 } from "./checkinQueue";
@@ -36,7 +41,7 @@ function dem1Catalog(): NonNullable<World["catalog"]> {
     fixes: [],
     stars: [{ id: "DEM1", name: "DEMO ONE" }],
     approaches: [],
-    sids: [],
+    sids: [{ id: "DEM1", name: "DEMO ONE DEPARTURE", common: [] }],
   };
 }
 
@@ -543,3 +548,211 @@ test("AC10 — DESCEND_VIA command readback is unchanged and not a check-in", ()
   expect(INSTRUCTION_TYPES.includes("DESCEND_VIA")).toBe(true);
   expect((INSTRUCTION_TYPES as readonly string[]).includes("CHECKIN")).toBe(false);
 });
+
+function viaDeparture(callsign: string, id = `ac-${callsign.toLowerCase()}`): Aircraft {
+  const ac = createAircraft({
+    id,
+    callsign,
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 270,
+    altitudeFt: 1200,
+    speedKt: 180,
+  });
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "DEM1",
+    starId: "DEM1",
+    toFixIndex: 0,
+    routeFixIds: ["MISSD", "SNARF", "NORMA"],
+  };
+  ac.intent.vertical = { type: "VIA_SID", sidId: "DEM1" };
+  ac.intent.assignedAltitudeFt = 10000;
+  return ac;
+}
+
+test("AC3 & AC4 — departure schedules check-in within 2-5s and SessionLog records transmission", () => {
+  const dal = viaDeparture("DAL123");
+  const log = new SessionLog();
+  const world = createWorld({
+    aircraft: [dal],
+    catalog: dem1Catalog(),
+    sessionLog: log,
+  });
+  const queue = createCheckInQueue({ seed: 1 });
+  queue.scheduleFromWorld(world, 0);
+  expect(queue.scheduled()).toHaveLength(1);
+  const entry = queue.scheduled()[0]!;
+  expect(entry.kind).toBe("departure");
+  expect(entry.staggerMs).toBeGreaterThanOrEqual(DEPARTURE_CHECKIN_STAGGER_MIN_MS);
+  expect(entry.staggerMs).toBeLessThanOrEqual(DEPARTURE_CHECKIN_STAGGER_MAX_MS);
+
+  while (world.simTimeMs < DEPARTURE_CHECKIN_STAGGER_MAX_MS + 1000) {
+    world.simTimeMs += 1000;
+  }
+  let status: string | null = null;
+  const plays: string[] = [];
+  queue.drain({
+    world,
+    log,
+    radio: {
+      isBusy: () => false,
+      play: (text) => {
+        plays.push(text);
+      },
+    },
+    setStatus: (text) => {
+      status = text;
+    },
+    nowWallMs: () => 1_000,
+  });
+  const expectedText =
+    "Departure, Delta 123, passing one thousand two hundred climbing via the DEMO ONE departure";
+  const events = log.byType("radio.checkin");
+  expect(events).toHaveLength(1);
+  expect(events[0]?.callsign).toBe("DAL123");
+  expect(events[0]?.sidId).toBe("DEM1");
+  expect(events[0]?.sidName).toBe("DEMO ONE");
+  expect(events[0]?.altitudeFt).toBe(1200);
+  expect(events[0]?.text).toBe(expectedText);
+  expect(status).toBe(expectedText);
+  expect(plays).toEqual([expectedText]);
+});
+
+test("AC3 — simultaneous arrival and departure check-ins are sequenced without collision", async () => {
+  const arr = viaArrival("AAL45");
+  const dep = viaDeparture("DAL123");
+  const log = new SessionLog();
+  const world = createWorld({
+    aircraft: [arr, dep],
+    catalog: dem1Catalog(),
+    sessionLog: log,
+  });
+  const queue = createCheckInQueue({ seed: 1 });
+  queue.scheduleFromWorld(world, 0);
+  expect(queue.scheduled()).toHaveLength(2);
+
+  world.simTimeMs = 10000;
+  let releaseFirst: (() => void) | undefined;
+  const plays: string[] = [];
+  let playing = false;
+  const radio: CheckInRadio = {
+    isBusy: () => playing,
+    play(text) {
+      plays.push(text);
+      playing = true;
+      return new Promise<void>((resolve) => {
+        releaseFirst = resolve;
+      }).then(() => {
+        playing = false;
+      });
+    },
+  };
+
+  const drain = (): void => {
+    queue.drain({
+      world,
+      log,
+      radio,
+      setStatus: () => {},
+      nowWallMs: () => 1,
+    });
+  };
+
+  drain();
+  await flush();
+  expect(plays).toHaveLength(1);
+
+  // Still playing first transmission: second check-in must NOT start
+  drain();
+  expect(plays).toHaveLength(1);
+
+  // Finish first play: must wait for CHECKIN_IDLE_GAP_MS quiet gap
+  releaseFirst?.();
+  await flush();
+  drain();
+  expect(plays).toHaveLength(1);
+
+  world.simTimeMs += CHECKIN_IDLE_GAP_MS - 50;
+  drain();
+  expect(plays).toHaveLength(1);
+
+  world.simTimeMs += 50;
+  drain();
+  await flush();
+  expect(plays).toHaveLength(2);
+});
+
+test("Departure stagger draws are 2000-5000 ms, 50ms quantized, deterministic", () => {
+  const aircraft = ["DAL1", "DAL2", "DAL3", "DAL4", "DAL5", "DAL6"].map((cs) =>
+    viaDeparture(cs),
+  );
+  const world = createWorld({ aircraft, catalog: dem1Catalog() });
+  const queue = createCheckInQueue({ seed: 42 });
+  queue.scheduleFromWorld(world, 0);
+  expect(queue.scheduled()).toHaveLength(6);
+  for (const entry of queue.scheduled()) {
+    expect(entry.kind).toBe("departure");
+    expect(entry.staggerMs).toBeGreaterThanOrEqual(DEPARTURE_CHECKIN_STAGGER_MIN_MS);
+    expect(entry.staggerMs).toBeLessThanOrEqual(DEPARTURE_CHECKIN_STAGGER_MAX_MS);
+    expect(entry.staggerMs % CHECKIN_STAGGER_QUANT_MS).toBe(0);
+    expect(entry.dueSimMs).toBe(entry.staggerMs);
+  }
+  const again = createCheckInQueue({ seed: 42 });
+  again.scheduleFromWorld(world, 0);
+  expect(again.scheduled().map((entry) => entry.staggerMs)).toEqual(
+    queue.scheduled().map((entry) => entry.staggerMs),
+  );
+});
+
+test("Departure assigned altitude check-in when not climbing via SID", () => {
+  const dal = viaDeparture("DAL123");
+  dal.intent.vertical = { type: "ASSIGNED", altitudeFt: 5000 };
+  dal.intent.assignedAltitudeFt = 5000;
+  const log = new SessionLog();
+  const world = createWorld({
+    aircraft: [dal],
+    catalog: dem1Catalog(),
+    sessionLog: log,
+  });
+  const queue = createCheckInQueue({ seed: 1 });
+  queue.scheduleFromWorld(world, 0);
+  world.simTimeMs = 6000;
+  let status: string | null = null;
+  queue.drain({
+    world,
+    log,
+    radio: silentRadio(),
+    setStatus: (text) => {
+      status = text;
+    },
+    nowWallMs: () => 1,
+  });
+  expect(status).toBe(
+    "Departure, Delta 123, leaving one thousand two hundred for five thousand",
+  );
+});
+
+test("isSidDeparture identifies VIA_SID and lateral PROCEDURE with sidId", () => {
+  const ac = createAircraft({
+    callsign: "DAL123",
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 270,
+    altitudeFt: 1200,
+    speedKt: 180,
+  });
+  expect(isSidDeparture(ac)).toBe(false);
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "DEM1",
+    starId: "DEM1",
+    toFixIndex: 0,
+    routeFixIds: ["MISSD"],
+  };
+  expect(isSidDeparture(ac)).toBe(true);
+  ac.intent.lateral = null;
+  ac.intent.vertical = { type: "VIA_SID", sidId: "DEM1" };
+  expect(isSidDeparture(ac)).toBe(true);
+});
+

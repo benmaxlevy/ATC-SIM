@@ -1,10 +1,29 @@
 import { describe, expect, test } from "vitest";
 import { loadCatalog } from "./loadCatalog";
-import { findSidProcedure, sidRouteFixIds } from "./sidHelpers";
+import { findSidProcedure, sidRouteFixIds, sidSpokenName } from "./sidHelpers";
 import type { ProcedureCatalog } from "./types";
 import multiSidJson from "../../../testdata/catalogs/multi-sid.json";
 
 const kdemCatalog = loadCatalog("src/scenario/data/kdem");
+
+const multiCatalog: ProcedureCatalog = {
+  schemaVersion: 1,
+  airportId: multiSidJson.airportId,
+  name: multiSidJson.name,
+  magVarDeg: 0,
+  fieldElevFt: 100,
+  arp: { latDeg: 40, lonDeg: -74 },
+  navaids: [],
+  fixes: multiSidJson.fixes.map((f) => ({
+    id: f.id,
+    kind: f.kind as "WAYPOINT" | "THRESHOLD",
+    xNm: f.xNm,
+    yNm: f.yNm,
+  })),
+  stars: [],
+  approaches: [],
+  sids: multiSidJson.sids as ProcedureCatalog["sids"],
+};
 
 describe("sidRouteFixIds — KDEM DEM1 procedure", () => {
   test("AC2 — sidRouteFixIds(catalog, 'DEM1', '27', 'NORMA') resolves full ordered route", () => {
@@ -57,25 +76,6 @@ describe("sidRouteFixIds — KDEM DEM1 procedure", () => {
 });
 
 describe("sidRouteFixIds — generic multi-SID fixture (AC5)", () => {
-  const multiCatalog: ProcedureCatalog = {
-    schemaVersion: 1,
-    airportId: multiSidJson.airportId,
-    name: multiSidJson.name,
-    magVarDeg: 0,
-    fieldElevFt: 100,
-    arp: { latDeg: 40, lonDeg: -74 },
-    navaids: [],
-    fixes: multiSidJson.fixes.map((f) => ({
-      id: f.id,
-      kind: f.kind as "WAYPOINT" | "THRESHOLD",
-      xNm: f.xNm,
-      yNm: f.yNm,
-    })),
-    stars: [],
-    approaches: [],
-    sids: multiSidJson.sids as ProcedureCatalog["sids"],
-  };
-
   test("AC5 — resolves multi-SID fixture DEP1 with runway 27 and NORTH exit", () => {
     const route = sidRouteFixIds(multiCatalog, "DEP1", "27", "NORTH");
     expect(route).toEqual(["RW27", "DRAFT", "MIDDL", "NORTH"]);
@@ -112,3 +112,27 @@ describe("Extensibility — data-first, no hardcoded facility branching", () => 
     expect(src).not.toMatch(/["']OCTTA["']/);
   });
 });
+
+describe("sidSpokenName (AC2)", () => {
+  test("AC2 — sidSpokenName(catalog, 'DEM1') returns 'DEMO ONE' from catalog metadata", () => {
+    expect(sidSpokenName(kdemCatalog, "DEM1")).toBe("DEMO ONE");
+    expect(sidSpokenName({ sids: [{ id: "DEM1", name: "DEMO ONE" }] }, "DEM1")).toBe("DEMO ONE");
+  });
+
+  test("resolves spoken name from multi-SID catalog", () => {
+    expect(sidSpokenName(multiCatalog, "DEP1")).toBe("DEPARTURE ONE");
+    expect(sidSpokenName(multiCatalog, "DEP2")).toBe("DEPARTURE TWO");
+  });
+
+  test("falls back to sidId when not found in catalog or catalog is missing", () => {
+    expect(sidSpokenName(kdemCatalog, "UNKNOWN_SID")).toBe("UNKNOWN_SID");
+    expect(sidSpokenName(null, "DEM1")).toBe("DEM1");
+    expect(sidSpokenName(undefined, "DEM1")).toBe("DEM1");
+    expect(sidSpokenName({ sids: [] }, "MY_SID")).toBe("MY_SID");
+  });
+
+  test("case insensitivity and trimming", () => {
+    expect(sidSpokenName(kdemCatalog, " dem1 ")).toBe("DEMO ONE");
+  });
+});
+
