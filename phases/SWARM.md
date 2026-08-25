@@ -1,15 +1,50 @@
-# ATC-SIM swarm orchestrator — Phase 2 physical DCB replica addendum (T02-31–33)
+# ATC-SIM swarm orchestrator — Phase 4 SIDs and randomized departures addendum (T04-18–23)
 
 Paste **this entire file** into a new agent. That agent is the **orchestrator**. It may run for hours. It writes almost no application code.
 
-Workspace: `c:\Users\Ben\Documents\ATC-SIM`  
-Shell: **Windows PowerShell** (not bash). Ticket commits use here-strings, not `cat <<'EOF'`.
+Workspace: `/home/ben/ATC-SIM`
+Shell: **bash** (Linux).
 
 ## Mandatory first action
 
 Before checking git, spawning agents, creating worktrees, or editing application code, update this file for the current swarm. Append a new swarm-start heading/configuration; do not overwrite prior swarm history. If the requested swarm configuration is incomplete, ask before making any other swarm move. Then commit the planning/status update before creating ticket branches or worktrees.
 
-This is the **eighth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–17)** are already green on `master`. Do **not** redo 0–7th. Do **not** start phase 5 scoring. Skip **T04-11** (wind) unless the human names it. This run is **T02-31–33 only**.
+This is the **ninth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–17)** are already green on `master`. Do **not** redo 0–8th. Do **not** start phase 5 scoring. Skip **T04-11** (wind) unless the human names it. This run is **T04-18–23 only**.
+
+---
+
+## Ninth swarm started — T04-18–23 SIDs and randomized departures addendum
+
+Orchestrator planning **2026-08-25**. Human requested SIDs and randomized (customizable) departures tickets. Historical swarms 1–8 stay green. This run is **T04-18–23 only**. Not phase 5. Not a redo of T04-01–17.
+
+| Key | Value |
+| --- | --- |
+| Goal | Standard Instrument Departures (SIDs) and customizable/randomized departures: catalog schema & KDEM `DEM1` SID, FMS `CLIMB_VIA` & SID fly-by navigation, departure spawning off RW27, customizable/seeded traffic generator (`?departures=auto`), radio telephony check-in, end-to-end integration |
+| Player loop | `npm run dev -- ?departures=auto` → STAR arrivals on DEMO ONE + periodic departures rolling off RW27, checking in on Departure frequency ("passing 1,200 climbing via the DEMO ONE departure"), climbing via SID constraints to top altitude, accepting radar vectors, and exiting airspace cleanly |
+| Skip | **T04-11** (wind); all of **T00–T03**, **T02-***, **T04-01–17**, **T05-*** |
+| Include | **T04-18**, **T04-19**, **T04-20**, **T04-21**, **T04-22**, **T04-23** |
+| Stop | **Do not start phase 5.** No scoring, replay, imperfect pilots, or second TCP |
+| Do not redo | T00–T04-17. If STATUS says ninth swarm complete, **stop** |
+| Max ticket workers in flight | **3** (Wave A = 1; Wave B = 2; Wave C = 2; Wave D = 1) |
+| Merge lock | **Only the phase captain** merges to `master` (squash merge, one commit per ticket) |
+| Model | Inherit / default |
+| Paid STT/TTS/LLM | **Forbidden** |
+
+**Waves:**
+- **Wave A (1 worker):** `T04-18` (SID procedure schema, KDEM fixture & video map)
+- **Wave B (2 workers):** `T04-19` (SID climb-via and FMS guidance) ∥ `T04-20` (Departure spawning and handoff lifecycle) [isolated worktrees]
+- **Wave C (2 workers):** `T04-21` (Randomized & customizable departure generator) ∥ `T04-22` (Departure radio check-in & telephony) [isolated worktrees]
+- **Wave D (1 worker):** `T04-23` (SIDs and departures integration & acceptance)
+
+**Product law (ninth swarm — SIDs & departures):**
+- **Data-first SIDs:** KDEM `DEM1` departure in `src/scenario/data/kdem/sids.json` is the shipped fixture; no `"DEM1"` or `"KDEM"` code branches in runtime FMS or helpers.
+- **Climb Via & Vector Cancellation:** `CLIMB_VIA` honors published `AT_OR_BELOW` / `AT_OR_ABOVE` constraints and speed limits up to assigned top altitude. Radar vectors (`FLY_HEADING`, `TURN_DEGREES`) immediately cancel SID published routing and climb-via constraints.
+- **Departure Spawning:** Roll/airborne spawn off active runway (RW27) with initial climb and initial SID leg armed; Tower handoff is auto-acquired / owned on radar (`white` FDB) per CRC STARS standard.
+- **Smart Shift+H Handoff:** Pressing `Shift+H` on a selected track contextually detects destination: initiates handoff to **Tower** (`LANDING` mode) if arrival on final (inside 5 NM gate on LOC/GS), or initiates handoff to **Center** (`handoff.center`) if climbing outbound departure.
+- **Customizable Traffic Stream:** Query parameter `?departures=auto` (or `?dep_rate=N`) enables periodic departures; default session without query parameter retains backward compatibility.
+- **Deterministic PRNG:** Independent stream XOR for departure generator so arrival seeds remain bit-stable.
+- **Telephony:** AIM 4-2-3 standard phraseology (`"Departure, <callsign>, passing <alt> climbing via the <SID> departure"`), queued cleanly through `CheckInQueue` without radio collisions.
+- **Airspace Exit:** Departures reaching TRACON boundary (~28 NM) or cruising altitude are handed off out to Center and despawned cleanly (`nav.departed`).
 
 ---
 
