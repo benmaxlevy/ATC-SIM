@@ -208,6 +208,11 @@ def test_system_prompt_distinguishes_heading_vector_from_turn_degrees() -> None:
     assert "approaches=" in SYSTEM_PROMPT
     assert "ILS27" in SYSTEM_PROMPT
     assert "Position reports" in SYSTEM_PROMPT
+    assert "Never substitute the selected aircraft" in SYSTEM_PROMPT
+    assert "Procedures and approaches are separate namespaces" in SYSTEM_PROMPT
+    assert "INTERSEPTOR RUNWAY 27 LOCALIZER" in SYSTEM_PROMPT
+    assert '"callsignToken": "NKS310"' in SYSTEM_PROMPT
+    assert '"approachId": "ILS27"' in SYSTEM_PROMPT
 
 
 def test_parse_n_gpu_layers_auto_cuda(monkeypatch) -> None:

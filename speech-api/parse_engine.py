@@ -92,10 +92,21 @@ Rules and Guidance:
 - intercept the runway 27 localizer / IL ILS27 → INTERCEPT_LOCALIZER (loc only, no GS).
 - cleared ILS / clear to ILS / cleared approach → CLEARED_APPROACH.
 - Position reports (e.g. "you are six miles from the airport", "6 miles from MERGE") are controller advisories. Do NOT emit DIRECT instructions for position reports.
-- If the user message includes onFrequency, callsignToken MUST be one of those ICAO tokens or null. Map noisy ASR (e.g. "giblet 204") to the listed flight number. Do not copy ASR junk. Do not invent a callsign that is not listed.
+- If a recognizable callsign was spoken, preserve its correct ICAO token even when it is not in onFrequency. Never substitute the selected aircraft or an unrelated onFrequency callsign because a transcript is noisy.
+- If the user message includes onFrequency, use it to repair a noisy callsign only when its flight number uniquely matches. Map noisy ASR (e.g. "giblet 204") to the listed flight number. Do not copy ASR junk. Do not guess a different flight number.
 - If the user message includes fixes=, DIRECT/CROSS fixId MUST be one of those catalog ids. Map noisy ASR (e.g. "C-Max", "see max") to the listed spelling (SEMAX). Do not invent a fix that is not listed.
 - If the user message includes procedures=, DESCEND_VIA/CLIMB_VIA procedureId MUST be a listed catalog id (DEM1, not DEMO ONE or demo 1). Map spoken STAR names to that id. Do not invent a procedure that is not listed.
-- If the user message includes approaches=, EXPECT_APPROACH/CLEARED_APPROACH/INTERCEPT_LOCALIZER approachId MUST be one listed approach id (e.g. ILS27, not RW27 or IL27). Map noisy ASR (e.g. "ILX RW27", "runway 27") to the matching listed approach id.
+- If the user message includes approaches=, EXPECT_APPROACH/CLEARED_APPROACH/INTERCEPT_LOCALIZER approachId MUST be one listed approach id (e.g. ILS27, not RW27, IL27, or a procedure id such as DEM1). Map noisy ASR (e.g. "ILX RW27", "runway 27") to the matching listed approach id.
+- Procedures and approaches are separate namespaces. Never use a procedures= id as approachId. Never use an approaches= id as procedureId.
+- Correct obvious ASR substitutions when intent remains clear: "interseptor runway 27 localizer" means "intercept runway 27 localizer".
+
+Examples:
+Input: "SPIRIT 310 INTERSEPTOR RUNWAY 27 LOCALIZER" with approaches=ILS27 and procedures=DEM1
+Output: {"ok": true, "callsignToken": "NKS310", "instructions": [{"type": "INTERCEPT_LOCALIZER", "approachId": "ILS27"}]}
+Input: "Spirit 310 clear to ILX RW27" with approaches=ILS27
+Output: {"ok": true, "callsignToken": "NKS310", "instructions": [{"type": "CLEARED_APPROACH", "approachId": "ILS27"}]}
+Input: "Delta 123, you are six miles from the airport. Maintain 3000 until established on the localizer cleared ILS runway 27 approach." with approaches=ILS27
+Output: {"ok": true, "callsignToken": "DAL123", "instructions": [{"type": "ALTITUDE", "altitudeFt": 3000, "verb": "MAINTAIN", "untilEstablished": true}, {"type": "CLEARED_APPROACH", "approachId": "ILS27"}]}
 - source is a hint (keyboard tokens vs ASR English), not a second schema.
 """
 
