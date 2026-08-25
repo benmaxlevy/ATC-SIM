@@ -1,6 +1,5 @@
 /**
- * Readback playback: PCM via AudioBufferSourceNode through the T03-07 radio
- * graph, or speechSynthesis for the opt-in web-speech port (no radio FX).
+ * Readback playback: PCM via AudioBufferSourceNode through the radio graph.
  *
  * One readback at a time. PTT lock is owned by the voice-loop / TransmitGate;
  * this player only reports start/end. Tail after `ended` is {@link PLAYBACK_TAIL_MS}
@@ -8,7 +7,6 @@
  */
 
 import type { AudioClip } from "../types";
-import { speakBrowser, type BrowserSpeakResult } from "../ports/browser-tts";
 import {
   DEFAULT_RADIO_FX_ENABLED,
   connectPlaybackThroughRadio,
@@ -23,7 +21,7 @@ export const PLAYBACK_TAIL_MS = 50;
 
 /**
  * Playback seam. Default PCM path uses {@link connectPlaybackThroughRadio}.
- * Tests and debug inject {@link connectPlaybackDry}. Browser TTS never calls this.
+ * Tests and debug inject {@link connectPlaybackDry}.
  */
 export type ConnectPlaybackSource = (source: AudioNode, destination: AudioDestinationNode) => void;
 
@@ -34,18 +32,17 @@ export function connectPlaybackDry(source: AudioNode, destination: AudioDestinat
 export type PlayOutcome = { ok: true } | { ok: false; reason: "unavailable" | "overlap" | "error" };
 
 export interface ReadbackPlayHooks {
-  /** Wall-clock `now` at source.start() / speechSynthesis onstart. Once per play. */
+  /** Wall-clock `now` at source.start(). Once per play. */
   onAudioStart?: (nowMs: number) => void;
 }
 
 export interface ReadbackPlayer {
   readonly playing: boolean;
-  /** T03-10 settings/debug: PCM wet graph vs dry. Browser TTS ignores this. */
+  /** T03-10 settings/debug: PCM wet graph vs dry. */
   readonly fxEnabled: boolean;
   /** Resume the shared playback AudioContext (first PTT or first play). */
   warmUp(): Promise<void>;
   playPcm(clip: AudioClip, hooks?: ReadbackPlayHooks): Promise<PlayOutcome>;
-  playBrowser(text: string, voiceId: string, hooks?: ReadbackPlayHooks): Promise<PlayOutcome>;
   stop(): void;
   setConnectSource(connect: ConnectPlaybackSource): void;
   /** Bypass radio FX on the next PCM play. Does not throw if unused. */
@@ -57,7 +54,6 @@ export interface ReadbackPlayerOptions {
   connectSource?: ConnectPlaybackSource;
   /** Default {@link DEFAULT_RADIO_FX_ENABLED}. T03-10 may persist this. */
   fxEnabled?: boolean;
-  speakBrowser?: (text: string, voiceId: string) => BrowserSpeakResult | null;
   now?: () => number;
   delay?: (ms: number) => Promise<void>;
 }
@@ -93,7 +89,6 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
   private fxEnabledValue: boolean;
   private customConnect: ConnectPlaybackSource | null;
   private readonly getAudioContext?: () => AudioContext | null;
-  private readonly speakFn: (text: string, voiceId: string) => BrowserSpeakResult | null;
   private readonly now: () => number;
   private readonly delay: (ms: number) => Promise<void>;
 
@@ -101,7 +96,6 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
     this.getAudioContext = options.getAudioContext;
     this.customConnect = options.connectSource ?? null;
     this.fxEnabledValue = options.fxEnabled ?? DEFAULT_RADIO_FX_ENABLED;
-    this.speakFn = options.speakBrowser ?? speakBrowser;
     this.now = options.now ?? defaultNow;
     this.delay = options.delay ?? defaultDelay;
   }
@@ -202,58 +196,6 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
       this.radioGraph?.endPlay();
       if (this.generation === generation) {
         this.source = null;
-        this.playingValue = false;
-      }
-    }
-  }
-
-  async playBrowser(
-    text: string,
-    voiceId: string,
-    hooks?: ReadbackPlayHooks,
-  ): Promise<PlayOutcome> {
-    if (this.playingValue) {
-      return { ok: false, reason: "overlap" };
-    }
-    const prepared = this.speakFn(text, voiceId);
-    if (!prepared) {
-      return { ok: false, reason: "unavailable" };
-    }
-
-    this.playingValue = true;
-    const generation = this.generation + 1;
-    this.generation = generation;
-
-    try {
-      await new Promise<void>((resolve) => {
-        let started = false;
-        prepared.utterance.onstart = () => {
-          if (started) {
-            return;
-          }
-          started = true;
-          hooks?.onAudioStart?.(this.now());
-        };
-        prepared.utterance.onend = () => {
-          resolve();
-        };
-        prepared.utterance.onerror = () => {
-          resolve();
-        };
-        try {
-          prepared.speak();
-        } catch {
-          resolve();
-        }
-      });
-      if (this.generation === generation) {
-        await this.delay(PLAYBACK_TAIL_MS);
-      }
-      return { ok: true };
-    } catch {
-      return { ok: false, reason: "error" };
-    } finally {
-      if (this.generation === generation) {
         this.playingValue = false;
       }
     }

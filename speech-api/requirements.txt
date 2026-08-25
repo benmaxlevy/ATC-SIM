@@ -1,6 +1,9 @@
 fastapi>=0.115,<1
 uvicorn[standard]>=0.32,<1
 python-multipart>=0.0.9
-faster-whisper>=1.1.0
+torch>=2.6.0
+qwen-asr==0.0.6
 piper-tts>=1.2.0
 huggingface_hub>=0.26.0
+# Mandatory local Path C inference. Model weights download once from Hub.
+llama-cpp-python>=0.3.0,<1

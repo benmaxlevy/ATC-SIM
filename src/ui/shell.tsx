@@ -30,7 +30,6 @@ import { CommandLine, submitCommand } from "./command-line";
 import { Disclaimer } from "./disclaimer";
 import { FlightStrips, focusPpi } from "./FlightStrips";
 import { FpsDebug, isFpsDebugEnabled } from "./FpsDebug";
-import { LatencyOverlay } from "./LatencyOverlay";
 import { ScopeCanvas } from "./ScopeCanvas";
 import { ScopeHelpOverlay } from "./ScopeHelpOverlay";
 import { SpeechSettingsPanel } from "./settings-speech";
@@ -45,16 +44,6 @@ export interface ShellProps {
 export function Shell({ app, scenario, scopeView }: ShellProps) {
   const [readback, setReadback] = useState("");
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
-  const [latency, setLatency] = useState(() => ({
-    visible: app.getLatencyOverlayVisible(),
-    snapshot: {
-      backendId: app.speech.id,
-      lastTranscriptMs: null as number | null,
-      lastAudioStartMs: null as number | null,
-      p50AudioStartMs: null as number | null,
-      sampleCount: 0,
-    },
-  }));
   const [speechId, setSpeechId] = useState(app.speech.id);
   const [, setScopeUiTick] = useState(0);
   const panRef = useRef<{ lastX: number; lastY: number } | null>(null);
@@ -70,10 +59,6 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
         setReadback("");
       }
     });
-  }, [app]);
-
-  useEffect(() => {
-    return app.subscribeLatencyOverlay(setLatency);
   }, [app]);
 
   useEffect(() => {
@@ -97,7 +82,6 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
       className="scope-shell"
       data-scenario={scenario.id}
       data-speech={speechId}
-      data-latency-overlay={app.speechSettings.prefs.latencyOverlay ? "on" : "off"}
       data-radio-fx={app.speechSettings.prefs.radioFx ? "on" : "off"}
     >
       <div className="scope-work">
@@ -171,11 +155,6 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           }
         >
           {fpsDebug ? <FpsDebug /> : null}
-          <LatencyOverlay
-            snapshot={latency.snapshot}
-            visible={latency.visible}
-            onToggle={(visible) => app.setLatencyOverlayVisible(visible)}
-          />
           <SimControls world={app.world} />
           <SpeechSettingsPanel
             controller={app.speechSettings}

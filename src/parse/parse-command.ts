@@ -1,6 +1,6 @@
 /**
  * Ordered parse stages for text and voice (`phases/_shared/parse-pipeline.md`):
- * normalize → typed tokenizer → Path A → Path B → optional Path C (`llm_c`).
+ * normalize → typed tokenizer → Path A → Path B → configured Path C (`llm_c`).
  *
  * `source` is the channel. `parseStage` is which compiler won.
  * Speech must not construct Instruction objects — only this module + Path A/B
@@ -51,7 +51,7 @@ export interface ParseCommandOpts {
    * and Path C `approaches=` grounding.
    */
   approaches?: readonly CatalogApproach[];
-  /** Default false. When true, stage 4 may fetch after a local miss. */
+  /** Explicit opt-in. When true, stage 4 may fetch after a local miss. */
   pathC?: boolean;
   /** Injected fetch. Default POSTs to our speech-api `/parse`. */
   parsePathC?: ParsePathCFn;

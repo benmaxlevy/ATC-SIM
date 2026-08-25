@@ -11,9 +11,9 @@
  * scope action and does not emit a readback. Session controls (`setPaused` /
  * `setSimRate`) do not touch intent.
  *
- * Speech settings (T03-10) switch the SpeechPort backend without a reload.
- * Voice latency overlay (T03-09) is HTML, not PPI canvas; T03-10 may persist show/hide.
- * The sim tick must never wait on React render.
+ * Speech settings persist PTT, TTS voice, radio FX, and Path C. Voice is
+ * HttpSpeechPort against this repo’s speech-api (typed commands still work if
+ * the API URLs are missing). The sim tick must never wait on React render.
  *
  * Import rule: `@ui` may import all other `src/*` packages. `@pilot` must not
  * import `@ui`.
@@ -74,28 +74,15 @@ export {
 export type { SimControlKey, SimControlsProps } from "./sim-controls";
 export { FPS_DEBUG_ID, FpsDebug, formatFpsDebug, isFpsDebugEnabled } from "./FpsDebug";
 export {
-  LATENCY_OVERLAY_DEFAULT_VISIBLE,
-  LATENCY_OVERLAY_ID,
-  LatencyOverlay,
-  formatLatencyMs,
-  formatLatencyOverlay,
-  httpP50Band,
-  latencyOverlayClassName,
-} from "./LatencyOverlay";
-export type { HttpP50Band, LatencyOverlayProps } from "./LatencyOverlay";
-export {
   DEFAULT_BACKEND_HELP,
   DEFAULT_HEALTH_URL,
-  HTTP_URLS_MISSING,
   PATH_C_HELP,
   PATH_C_LABEL,
   PATH_C_UNAVAILABLE_HELP,
   PTT_BIND_HELP,
   PTT_BIND_OPTIONS,
   SPEECH_PREFS_KEY,
-  SPEECH_SETTINGS_WAIT,
   VOICE_DISABLED_HINT,
-  WEB_SPEECH_VENDOR_WARNING,
   SpeechSettingsPanel,
   createSpeechSettingsController,
   defaultSpeechPrefs,

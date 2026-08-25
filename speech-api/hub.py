@@ -14,8 +14,8 @@ def _hf_hub_download(**kwargs):
     return hf_hub_download(**kwargs)
 
 
-def whisper_weights_source(cache: Path, model_id: str) -> str:
-    """'cache' if a faster-whisper snapshot is already on disk, else 'download'."""
+def model_weights_source(cache: Path, model_id: str) -> str:
+    """'cache' if a Hugging Face model snapshot is already on disk, else 'download'."""
     snap = cache / f"models--{model_id.replace('/', '--')}"
     if snap.is_dir() and (any(snap.rglob("model.bin")) or any(snap.rglob("config.json"))):
         return "cache"

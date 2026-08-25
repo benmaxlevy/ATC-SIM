@@ -1,4 +1,4 @@
-"""Local speech HTTP service: Whisper STT + Piper TTS on our CPU/GPU."""
+"""Local speech HTTP service: Qwen ASR STT + Piper TTS on our CPU/GPU."""
 
 from __future__ import annotations
 
@@ -34,6 +34,7 @@ class ParseContext(BaseModel):
     selectedCallsign: Optional[str] = None
     fixes: List[str] = Field(default_factory=list)
     procedures: List[dict] = Field(default_factory=list)
+    approaches: List[dict] = Field(default_factory=list)
 
 
 class ParseRequest(BaseModel):

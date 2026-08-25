@@ -1,6 +1,6 @@
 import { expect, test, vi } from "vitest";
 import type { AudioClip } from "../types";
-import { PLAYBACK_TAIL_MS, connectPlaybackDry, createReadbackPlayer } from "./readback-player";
+import { PLAYBACK_TAIL_MS, createReadbackPlayer } from "./readback-player";
 
 function clip(samples: number[] = [1, 0, -1]): AudioClip {
   return { sampleRate: 16000, channels: 1, pcm16: Int16Array.from(samples) };
@@ -119,40 +119,6 @@ test("second playPcm while the first is in flight does not overlap (AC2)", async
   await expect(first).resolves.toEqual({ ok: true });
 });
 
-test("playBrowser uses speak() after handlers and does not claim a radio graph", async () => {
-  const utterance = {
-    onstart: null as (() => void) | null,
-    onend: null as (() => void) | null,
-    onerror: null as (() => void) | null,
-  };
-  const speak = vi.fn(() => {
-    utterance.onstart?.();
-    queueMicrotask(() => utterance.onend?.());
-  });
-  const connect = vi.fn(connectPlaybackDry);
-  const starts: number[] = [];
-  const player = createReadbackPlayer({
-    connectSource: connect,
-    delay: async () => {},
-    now: () => 7,
-    speakBrowser: () => ({
-      utterance: utterance as unknown as SpeechSynthesisUtterance,
-      speak,
-    }),
-  });
-
-  const outcome = await player.playBrowser("heading two seven zero", "voice", {
-    onAudioStart: (ms) => {
-      starts.push(ms);
-    },
-  });
-
-  expect(outcome).toEqual({ ok: true });
-  expect(speak).toHaveBeenCalledTimes(1);
-  expect(starts).toEqual([7]);
-  expect(connect).not.toHaveBeenCalled();
-});
-
 test("createReadbackPlayer tests run without a DOM AudioContext", () => {
   expect(typeof AudioContext).toBe("undefined");
 });
@@ -266,26 +232,4 @@ test("re-enabling FX after a dry play routes the next PCM clip through the graph
   const secondVoice = ctx.sources[1]!;
   expect(secondVoice.connect).toHaveBeenCalledWith(ctx.inputs[0]);
   expect(secondVoice.connect).not.toHaveBeenCalledWith(ctx.destination);
-});
-
-test("playBrowser still does not require or throw on the radio graph (AC3)", async () => {
-  const utterance = {
-    onstart: null as (() => void) | null,
-    onend: null as (() => void) | null,
-    onerror: null as (() => void) | null,
-  };
-  const player = createReadbackPlayer({
-    delay: async () => {},
-    speakBrowser: () => ({
-      utterance: utterance as unknown as SpeechSynthesisUtterance,
-      speak: () => {
-        utterance.onstart?.();
-        queueMicrotask(() => utterance.onend?.());
-      },
-    }),
-  });
-  player.setFxEnabled(true);
-  await expect(player.playBrowser("heading two seven zero", "voice")).resolves.toEqual({
-    ok: true,
-  });
 });

@@ -9,8 +9,8 @@ from pathlib import Path
 API_DIR = Path(__file__).resolve().parent
 DEFAULT_CACHE_DIR = API_DIR / ".cache"
 
-# faster-whisper Hub id (CTranslate2). small.en is the quality default (slower than base.en).
-DEFAULT_STT_MODEL_ID = "Systran/faster-whisper-small.en"
+# Qwen3 ASR checkpoint. Weights download once into our local cache.
+DEFAULT_STT_MODEL_ID = "Qwen/Qwen3-ASR-1.7B"
 DEFAULT_TTS_VOICE = "en_US-lessac-medium"
 # Distinct Piper medium voices so each callsign can hash to a different speaker.
 DEFAULT_TTS_VOICES = (
@@ -23,9 +23,9 @@ DEFAULT_TTS_VOICES = (
 )
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8090
-# Path C default when PARSE_MODEL_ID is set. ~1–2B instruct GGUF, not a 7B.
-DEFAULT_PARSE_MODEL_ID = "Qwen/Qwen2.5-1.5B-Instruct-GGUF"
-DEFAULT_PARSE_GGUF_FILE = "qwen2.5-1.5b-instruct-q4_k_m.gguf"
+# Mandatory local Path C default. Qwen3 4B instruct GGUF; no hosted inference.
+DEFAULT_PARSE_MODEL_ID = "MaziyarPanahi/Qwen3-4B-Instruct-2507-GGUF"
+DEFAULT_PARSE_GGUF_FILE = "Qwen3-4B-Instruct-2507.Q4_K_M.gguf"
 
 VITE_ORIGINS = (
     "http://localhost:5173",
@@ -86,14 +86,13 @@ class Settings:
     port: int
     stt_model_id: str
     tts_voice: str
-    parse_model_id: str | None
+    parse_model_id: str
     parse_gguf_file: str
     cache_dir: Path
     mock: bool
     hf_token: str | None
     cors_origins: tuple[str, ...]
     stt_device: str | None
-    stt_compute_type: str | None
     tts_voices: tuple[str, ...]
 
     @classmethod
@@ -109,7 +108,8 @@ class Settings:
             stt_model_id=os.environ.get("STT_MODEL_ID", DEFAULT_STT_MODEL_ID).strip()
             or DEFAULT_STT_MODEL_ID,
             tts_voice=os.environ.get("TTS_VOICE", DEFAULT_TTS_VOICE).strip() or DEFAULT_TTS_VOICE,
-            parse_model_id=_optional_env("PARSE_MODEL_ID"),
+            parse_model_id=os.environ.get("PARSE_MODEL_ID", DEFAULT_PARSE_MODEL_ID).strip()
+            or DEFAULT_PARSE_MODEL_ID,
             parse_gguf_file=os.environ.get("PARSE_GGUF_FILE", DEFAULT_PARSE_GGUF_FILE).strip()
             or DEFAULT_PARSE_GGUF_FILE,
             cache_dir=Path(os.environ.get("SPEECH_API_CACHE", str(DEFAULT_CACHE_DIR))),
@@ -117,11 +117,12 @@ class Settings:
             hf_token=_optional_env("HF_TOKEN") or _optional_env("HUGGING_FACE_HUB_TOKEN"),
             cors_origins=tuple(dict.fromkeys(origins)),
             stt_device=_optional_env("STT_DEVICE"),
-            stt_compute_type=_optional_env("STT_COMPUTE_TYPE"),
             tts_voices=_tts_voice_roster(),
         )
 
     def apply_hub_cache(self) -> None:
         """Point Hugging Face Hub downloads at speech-api/.cache/ (gitignored)."""
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        os.environ.setdefault("HF_HOME", str(self.cache_dir / "hf"))
+        hub_cache = self.cache_dir / "hf"
+        os.environ["HF_HOME"] = str(hub_cache)
+        os.environ["HF_HUB_CACHE"] = str(hub_cache / "hub")

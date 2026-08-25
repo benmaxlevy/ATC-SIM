@@ -21,15 +21,14 @@ def main() -> None:
     print(f"STT:   {settings.stt_model_id}")
     print(f"TTS:   {settings.tts_voice}")
     print(f"roster:{', '.join(settings.tts_voices)}")
-    print(f"parse: {settings.parse_model_id or '(off)'}")
+    print(f"parse: {settings.parse_model_id}")
     build_stt(settings)
     build_tts(settings)
-    if settings.parse_model_id:
-        from parse_engine import build_parse
+    from parse_engine import build_parse
 
-        engine = build_parse(settings)
-        if engine is None or not engine.ready:
-            raise SystemExit("PARSE_MODEL_ID set but the GGUF did not load")
+    engine = build_parse(settings)
+    if engine is None or not engine.ready:
+        raise SystemExit("Path C GGUF did not load")
     print("weights are on disk; start the API with: python -m uvicorn app:app --host 127.0.0.1 --port 8090")
 
 

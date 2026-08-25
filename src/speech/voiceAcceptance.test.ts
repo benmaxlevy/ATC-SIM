@@ -109,10 +109,9 @@ test("E13 — typed H270 stays typed; English in the box is Path A", async () =>
   }
 });
 
-test("E9 / E11 — quality default is http; web-speech is never auto-selected", () => {
+test("E9 — quality default is http against speech-api", () => {
   expect(pickDefaultBackend({})).toBe("http");
   expect(pickDefaultBackend({ sttUrl: DEFAULT_STT_URL, ttsUrl: DEFAULT_TTS_URL })).toBe("http");
-  expect(pickDefaultBackend({ webSpeech: true })).toBe("http");
   expect(createSpeechPort("http").id).toBe("http");
 });
 
@@ -171,9 +170,6 @@ test("typed accepted readback uses the same TTS player as PTT", async () => {
       playing: false,
       async warmUp() {},
       async playPcm() {
-        return { ok: true };
-      },
-      async playBrowser() {
         return { ok: true };
       },
       stop() {},

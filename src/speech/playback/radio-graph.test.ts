@@ -234,7 +234,7 @@ test("beginPlay is a no-op when FX is disabled so idle stays silent (AC4)", () =
   expect(graph.nodes.noiseGain.gain.value).toBe(0);
 });
 
-test("creating a graph does not throw when unused (web-speech path, AC3)", () => {
+test("creating a graph does not throw when unused", () => {
   expect(typeof AudioContext).toBe("undefined");
   const ctx = new FakeContext();
   expect(() => createRadioGraph(ctx as unknown as AudioContext)).not.toThrow();

@@ -582,55 +582,6 @@ body,
   letter-spacing: 0.04em;
 }
 
-.latency-overlay,
-.latency-overlay-toggle {
-  position: absolute;
-  right: 56px;
-  bottom: 26px;
-  z-index: 2;
-  pointer-events: auto;
-  color: #00ff00;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  max-width: 48ch;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: transparent;
-  border: 0;
-  padding: 0;
-  font: inherit;
-  box-shadow: none;
-}
-
-.latency-overlay button,
-.latency-overlay-toggle {
-  cursor: pointer;
-  color: inherit;
-  background: transparent;
-  border: 0;
-  padding: 0;
-  font: inherit;
-  box-shadow: none;
-}
-
-.latency-overlay-toggle {
-  max-width: none;
-}
-
-.latency-overlay--ok {
-  color: #00ff00;
-}
-
-.latency-overlay--warn {
-  color: #cccc00;
-}
-
-.latency-overlay--slow {
-  color: #ff5555;
-}
-
 .scope-help-overlay {
   position: absolute;
   inset: 12px;

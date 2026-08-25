@@ -309,32 +309,6 @@ test("confidence 0.55 still parses (threshold is informational)", async () => {
   expect(dispatched[0]?.source).toBe("voice");
 });
 
-test("AC7 — setConfidenceThreshold(1) does not restore a parse skip", async () => {
-  const parseSpy: ParseCommandFn = vi.fn(parseCommand);
-  const dispatched: Command[] = [];
-  const loop = createVoiceLoop({
-    speechPort: fakePort("turn left heading two seven zero", { confidence: 0.5 }),
-    parseCommand: parseSpy,
-    dispatchCommand: (command) => {
-      dispatched.push(command);
-    },
-    getSelectedCallsign: () => "DAL123",
-    confidenceThreshold: 1,
-  });
-  loop.setConfidenceThreshold(1);
-
-  await loop.handlePttEvent({
-    type: "ptt-up",
-    result: { kind: "clip", clip: nonEmptyClip() },
-  });
-
-  expect(parseSpy).toHaveBeenCalledTimes(1);
-  expect(dispatched).toHaveLength(1);
-  expect(dispatched[0]?.instructions).toEqual([
-    { type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" },
-  ]);
-});
-
 test("AC5 — voice-loop.ts has no confidence early-return gate (T03-15)", () => {
   const sources = import.meta.glob("./voice-loop.ts", {
     query: "?raw",
@@ -484,11 +458,9 @@ const ACCEPTED_READBACK_TTS = "Delta one twenty three turn left heading two seve
 function holdingPlayer(onStartNow?: () => number): {
   player: ReadbackPlayer;
   clips: AudioClip[];
-  browserTexts: string[];
   release: () => void;
 } {
   const clips: AudioClip[] = [];
-  const browserTexts: string[] = [];
   let releasePlay: (() => void) | null = null;
   let playing = false;
   const player: ReadbackPlayer = {
@@ -509,19 +481,6 @@ function holdingPlayer(onStartNow?: () => number): {
       playing = false;
       return { ok: true };
     },
-    async playBrowser(text, _voiceId, hooks) {
-      if (playing) {
-        return { ok: false, reason: "overlap" };
-      }
-      browserTexts.push(text);
-      playing = true;
-      hooks?.onAudioStart?.(onStartNow?.() ?? 0);
-      await new Promise<void>((resolve) => {
-        releasePlay = resolve;
-      });
-      playing = false;
-      return { ok: true };
-    },
     stop() {
       playing = false;
       releasePlay?.();
@@ -533,7 +492,6 @@ function holdingPlayer(onStartNow?: () => number): {
   return {
     player,
     clips,
-    browserTexts,
     release: () => {
       releasePlay?.();
     },
@@ -543,10 +501,8 @@ function holdingPlayer(onStartNow?: () => number): {
 function instantPlayer(onStartNow?: () => number): {
   player: ReadbackPlayer;
   clips: AudioClip[];
-  browserTexts: string[];
 } {
   const clips: AudioClip[] = [];
-  const browserTexts: string[] = [];
   const player: ReadbackPlayer = {
     playing: false,
     async warmUp() {},
@@ -555,17 +511,12 @@ function instantPlayer(onStartNow?: () => number): {
       hooks?.onAudioStart?.(onStartNow?.() ?? 0);
       return { ok: true };
     },
-    async playBrowser(text, _voiceId, hooks) {
-      browserTexts.push(text);
-      hooks?.onAudioStart?.(onStartNow?.() ?? 0);
-      return { ok: true };
-    },
     stop() {},
     fxEnabled: true,
     setConnectSource() {},
     setFxEnabled() {},
   };
-  return { player, clips, browserTexts };
+  return { player, clips };
 }
 
 class FakeCaptureBackend implements CaptureBackend {
@@ -883,34 +834,6 @@ test("T03-09 AC2 — STT failure still logs transcript_ms; audio-start is null",
   expect(completed).toEqual([{ pttUpToTranscriptMs: 75, pttUpToAudioStartMs: null }]);
 });
 
-test("web-speech accepted readback uses playBrowser, not the silence clip", async () => {
-  const port: SpeechPort = {
-    id: "web-speech",
-    async transcribe() {
-      return { text: "turn left heading two seven zero", confidence: 1, latencyMs: 1 };
-    },
-    async synthesize() {
-      return { sampleRate: 16000, channels: 1, pcm16: new Int16Array(160) };
-    },
-  };
-  const { player, clips, browserTexts } = instantPlayer();
-  const loop = createVoiceLoop({
-    speechPort: port,
-    parseCommand,
-    dispatchCommand: () => ({ accepted: true, readback: ACCEPTED_READBACK }),
-    getSelectedCallsign: () => "DAL123",
-    readbackPlayer: player,
-  });
-
-  await loop.handlePttEvent({
-    type: "ptt-up",
-    result: { kind: "clip", clip: nonEmptyClip() },
-  });
-
-  expect(browserTexts).toEqual([ACCEPTED_READBACK_TTS]);
-  expect(clips).toEqual([]);
-});
-
 test("T03-08 — generic transcribe throw is stt_failed with no dispatch", async () => {
   const port: SpeechPort = {
     id: "http",
@@ -1044,7 +967,7 @@ test("T03-08 — PTT-down clears status; PTT during playback is ptt_locked and n
 
 test("T03-10 — setSpeechPort while idle routes the next transcribe to the new id", async () => {
   const first = fakePort("ignored", { id: "http" });
-  const second = fakePort("turn left heading two seven zero", { id: "web-speech" });
+  const second = fakePort("turn left heading two seven zero", { id: "http" });
   const loop = createVoiceLoop({
     speechPort: first,
     parseCommand,
@@ -1052,7 +975,7 @@ test("T03-10 — setSpeechPort while idle routes the next transcribe to the new 
     getSelectedCallsign: () => "DAL123",
   });
   expect(loop.setSpeechPort(second)).toBe(true);
-  expect(loop.speechPortId).toBe("web-speech");
+  expect(loop.speechPortId).toBe("http");
   await loop.handlePttEvent({
     type: "ptt-up",
     result: { kind: "clip", clip: nonEmptyClip() },
@@ -1120,7 +1043,7 @@ test("playReadback synthesizes accepted typed readbacks without transcribe", asy
 
 test("playReadback TTS groups all numerals and omits altitude parentheses", async () => {
   const port = fakePort("ignored");
-  const { player, browserTexts } = instantPlayer();
+  const { player } = instantPlayer();
   const loop = createVoiceLoop({
     speechPort: port,
     parseCommand,
@@ -1134,23 +1057,10 @@ test("playReadback TTS groups all numerals and omits altitude parentheses", asyn
     "Delta one twenty three descend and maintain three thousand",
   );
 
-  const web: SpeechPort = {
-    id: "web-speech",
-    transcribe: port.transcribe,
-    synthesize: port.synthesize,
-  };
-  const webLoop = createVoiceLoop({
-    speechPort: web,
-    parseCommand,
-    dispatchCommand: () => {},
-    getSelectedCallsign: () => "DAL123",
-    readbackPlayer: player,
-  });
-  await webLoop.playReadback("through one-zero thousand (10000)");
-  expect(browserTexts.at(-1)).toBe("through one-zero thousand");
+  await loop.playReadback("through one-zero thousand (10000)");
+  expect(port.lastSynthesizeText).toBe("through one-zero thousand");
 
   loop.dispose();
-  webLoop.dispose();
 });
 
 test("playReadback passes callsign into getVoiceId", async () => {

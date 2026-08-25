@@ -103,6 +103,13 @@ test("ASR compact heading 270/360/090 is FLY_HEADING not TURN_DEGREES (R01)", ()
   expect(spoken("turn right heading 90", "DAL123").ok).toBe(false);
 });
 
+test("ASR leftening is not Path A; fused heading is Path C salvage", () => {
+  const result = spoken(
+    "Delta one twenty three, turn leftening one five zero, maintain five thousand, maintain two one zero knots.",
+  );
+  expect(result.ok).toBe(false);
+});
+
 test("turn left twenty degrees stays TURN_DEGREES when degrees is spoken", () => {
   const result = spoken("turn left twenty degrees", "DAL123");
   expect(result.ok).toBe(true);
@@ -364,6 +371,32 @@ test("PTAC position advisory phraseology is tolerated as context", () => {
     expect(ptac1.callsignToken).toBe("DAL123");
     expect(ptac1.instructions).toEqual([
       { type: "ALTITUDE", altitudeFt: 3000, verb: "MAINTAIN", untilEstablished: true },
+      { type: "CLEARED_APPROACH", approachId: "ILS27" },
+    ]);
+  }
+
+  const ptacTill = spoken(
+    "Spirit 310 10 miles from the airport maintain 5000 till established on the localizer cleared ILS runway 27 approach.",
+  );
+  expect(ptacTill.ok).toBe(true);
+  if (ptacTill.ok) {
+    expect(ptacTill.callsignToken).toBe("NKS310");
+    expect(ptacTill.instructions).toEqual([
+      { type: "ALTITUDE", altitudeFt: 5000, verb: "MAINTAIN", untilEstablished: true },
+      { type: "CLEARED_APPROACH", approachId: "ILS27" },
+    ]);
+  }
+
+  const hyphenatedCallsign = spoken(
+    "American forty-five you are one five miles from merge maintain four thousand until established on the localizer cleared ILS runway two seven approach",
+    undefined,
+    ["MERGE"],
+  );
+  expect(hyphenatedCallsign.ok).toBe(true);
+  if (hyphenatedCallsign.ok) {
+    expect(hyphenatedCallsign.callsignToken).toBe("AAL45");
+    expect(hyphenatedCallsign.instructions).toEqual([
+      { type: "ALTITUDE", altitudeFt: 4000, verb: "MAINTAIN", untilEstablished: true },
       { type: "CLEARED_APPROACH", approachId: "ILS27" },
     ]);
   }

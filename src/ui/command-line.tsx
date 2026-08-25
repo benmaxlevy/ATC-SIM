@@ -1,7 +1,7 @@
 /**
  * Analog: vice / CRC command line at the bottom of the TCW (R07, R08).
  * Trainer delta: narrow map-green token strip, not a lime web input block.
- * Submit runs the shared radio pipeline (typed tokens or Path A English). Not NAS STARS.
+ * Submit runs shared radio pipeline (typed, Path A/B, then health-gated Path C). Not NAS STARS.
  */
 
 import { type FormEvent, useState } from "react";

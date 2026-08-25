@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import io
 import logging
-import math
 import os
 import re
 import tempfile
@@ -14,7 +13,7 @@ from pathlib import Path
 from typing import Protocol
 
 from config import Settings
-from hub import resolve_hub_file, whisper_weights_source
+from hub import model_weights_source, resolve_hub_file
 from logconfig import configure_logging, elapsed_ms
 from wavutil import tone_wav
 
@@ -26,7 +25,7 @@ MOCK_TRANSCRIPT = "delta one two three fly heading two seven zero"
 MAX_STT_FIXES = 64
 _STT_FIX_RE = re.compile(r"^[A-Z]{2,6}[0-9]{0,2}$")
 
-# Whisper's initial prompt is a transcription prior, not a parser allowlist.
+# Qwen's transcription prompt is a prior, not a parser allowlist.
 # Keep every shipped spoken telephony prefix here so ASR preserves carrier words
 # such as Spirit instead of replacing them with a phonetically similar token.
 ATC_CALLSIGN_PREFIXES = (
@@ -69,18 +68,36 @@ def sanitize_stt_fixes(header: str | None) -> list[str]:
     return out
 
 
-def whisper_fix_prompt(fixes: list[str], procedures: list[str] | None = None) -> str | None:
-    """Bias Whisper toward radio carrier words and catalog spellings."""
-    parts = ["ATC airline call signs: " + ", ".join(ATC_CALLSIGN_PREFIXES) + "."]
+def qwen_stt_prompt(fixes: list[str], procedures: list[str] | None = None) -> str:
+    """Bias Qwen toward radio carrier words and catalog spellings."""
+    parts = [
+        "Vocabulary context only. Transcribe audio; never repeat this context unless it is spoken. "
+        "ATC airline call signs: "
+        + ", ".join(ATC_CALLSIGN_PREFIXES)
+        + "."
+    ]
     if fixes:
         parts.append("Named ATC fixes: " + " ".join(fixes) + ".")
     if procedures:
         parts.append("Procedures: " + " ".join(procedures) + ".")
-    return " ".join(parts) if parts else None
+    return " ".join(parts)
+
+
+def discard_qwen_context_echo(text: str, prompt: str) -> str:
+    """Suppress model output that repeats injected vocabulary instead of radio audio."""
+    normalized_text = " ".join(text.lower().split())
+    normalized_prompt = " ".join(prompt.lower().split())
+    if not normalized_text:
+        return ""
+    if normalized_text in normalized_prompt:
+        return ""
+    if "atc airline call signs:" in normalized_text:
+        return ""
+    return text
 
 
 def sanitize_stt_procedures(header: str | None) -> list[str]:
-    """Labels from `X-ATC-Procedures` (`DEM1=DEMO ONE|…`) for the Whisper prompt."""
+    """Labels from `X-ATC-Procedures` (`DEM1=DEMO ONE|…`) for Qwen context."""
     if not header or not header.strip():
         return []
     out: list[str] = []
@@ -100,17 +117,6 @@ def sanitize_stt_procedures(header: str | None) -> list[str]:
         if len(out) >= 32:
             break
     return out
-
-
-def avg_logprob_to_confidence(avg_logprob: float) -> float:
-    """Map Whisper avg_logprob (typically -1.2..0) onto 0–1.
-
-    ``exp(avg_logprob)`` is too harsh against the 0.55 say-again gate
-    (a usable ``-0.7`` becomes 0.50). Linear map: 0 → 1.0, -1.0 → 0.50, -2 → 0.
-    """
-    if not math.isfinite(avg_logprob):
-        return 1.0
-    return max(0.0, min(1.0, 1.0 + avg_logprob / 2.0))
 
 
 class SttEngine(Protocol):
@@ -149,111 +155,27 @@ class MockTts:
 
 
 def is_cuda_runtime_error(exc: BaseException) -> bool:
-    """True when CTranslate2/ONNX asked for CUDA but the toolkit DLLs are missing."""
+    """True when PyTorch cannot execute on the requested CUDA runtime."""
     text = str(exc).lower()
-    return "cublas" in text or "cudnn" in text or "not found or cannot be loaded" in text
+    return any(
+        marker in text
+        for marker in (
+            "cuda",
+            "cublas",
+            "cudnn",
+            "not found or cannot be loaded",
+            "no cuda",
+        )
+    )
 
 
-_WINDOWS_CUDA_DLLS_PREPARED = False
-
-
-def windows_cuda12_bin_dirs() -> list[Path]:
-    """Directories that contain CUDA 12 cuBLAS (`cublas64_12.dll`).
-
-    Cursor/uvicorn often start with a stale PATH: the toolkit is installed and
-    ``nvcc`` works in a new shell, but this process never got ``CUDA_PATH``.
-    Python 3.8+ also will not load dependent CUDA DLLs from PATH unless
-    ``os.add_dll_directory`` is used.
-    """
-    found: list[Path] = []
-    seen: set[str] = set()
-
-    def add(bin_dir: Path) -> None:
-        try:
-            key = str(bin_dir.resolve())
-        except OSError:
-            key = str(bin_dir)
-        if key in seen:
-            return
-        if (bin_dir / "cublas64_12.dll").is_file():
-            seen.add(key)
-            found.append(bin_dir)
-
-    env = (os.environ.get("CUDA_PATH") or "").strip()
-    if env:
-        add(Path(env) / "bin")
-    if os.name == "nt":
-        toolkit = Path(r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA")
-        if toolkit.is_dir():
-            versions = sorted((p for p in toolkit.iterdir() if p.is_dir()), key=lambda p: p.name, reverse=True)
-            for ver in versions:
-                add(ver / "bin")
-    return found
-
-
-def prepare_windows_cuda_dlls() -> None:
-    """Put CUDA 12 ``bin`` on PATH and the Win32 DLL search path (once)."""
-    global _WINDOWS_CUDA_DLLS_PREPARED
-    if os.name != "nt" or _WINDOWS_CUDA_DLLS_PREPARED:
-        return
-    bins = windows_cuda12_bin_dirs()
-    extra = os.pathsep.join(str(p) for p in bins)
-    if extra:
-        os.environ["PATH"] = extra + os.pathsep + os.environ.get("PATH", "")
-        if not (os.environ.get("CUDA_PATH") or "").strip() and bins:
-            os.environ["CUDA_PATH"] = str(bins[0].parent)
-    add_dir = getattr(os, "add_dll_directory", None)
-    if add_dir is not None:
-        for p in bins:
-            try:
-                add_dir(str(p))
-            except OSError:
-                pass
-    _WINDOWS_CUDA_DLLS_PREPARED = True
-
-
-def cublas12_available() -> bool:
-    """CTranslate2 CUDA 12 builds need this lib at *inference*, not just a GPU driver."""
-    import ctypes
-
-    prepare_windows_cuda_dlls()
-    if os.name == "nt":
-        for bin_dir in windows_cuda12_bin_dirs():
-            dll = bin_dir / "cublas64_12.dll"
-            try:
-                ctypes.WinDLL(str(dll))
-                return True
-            except OSError:
-                continue
-        try:
-            ctypes.WinDLL("cublas64_12.dll")
-            return True
-        except OSError:
-            return False
-    for name in ("libcublas.so.12", "libcublas.so"):
-        try:
-            ctypes.CDLL(name)
-            return True
-        except OSError:
-            continue
-    return False
-
-
-def ctranslate2_cuda_ready() -> bool:
+def torch_cuda_available() -> bool:
     try:
-        import ctranslate2
+        import torch
 
-        if ctranslate2.get_cuda_device_count() <= 0:
-            return False
+        return bool(torch.cuda.is_available())
     except Exception:
         return False
-    if not cublas12_available():
-        log.warning(
-            "GPU visible but CUDA 12 cublas is missing (Windows: cublas64_12.dll); STT will use CPU. "
-            "Install the CUDA 12 runtime or set STT_DEVICE=cpu."
-        )
-        return False
-    return True
 
 
 def onnx_cuda_available() -> bool:
@@ -265,116 +187,103 @@ def onnx_cuda_available() -> bool:
         return False
 
 
-def _pick_stt_device(settings: Settings) -> tuple[str, str]:
+def _pick_stt_device(settings: Settings) -> str:
     requested = (settings.stt_device or "").strip().lower()
     if requested == "cpu":
-        device = "cpu"
+        return "cpu"
     elif requested == "cuda":
-        device = "cuda" if ctranslate2_cuda_ready() else "cpu"
-        if device == "cpu":
-            log.warning("STT_DEVICE=cuda requested but CUDA 12 runtime is not usable; using cpu")
-    elif requested:
-        device = requested
-    else:
-        device = "cuda" if ctranslate2_cuda_ready() else "cpu"
-    if settings.stt_compute_type:
-        compute = settings.stt_compute_type
-    else:
-        compute = "float16" if device == "cuda" else "int8"
-    return device, compute
+        if torch_cuda_available():
+            return "cuda"
+        log.warning("STT_DEVICE=cuda requested but PyTorch CUDA is unavailable; using cpu")
+        return "cpu"
+    if requested:
+        log.warning("Unknown STT_DEVICE=%s; using automatic device selection", requested)
+    return "cuda" if torch_cuda_available() else "cpu"
 
 
-def _load_whisper_model(
+def _load_qwen_model(
     settings: Settings,
     device: str,
-    compute_type: str,
     *,
     local_files_only: bool = False,
-) -> object:
-    from faster_whisper import WhisperModel
+) -> tuple[object, object]:
+    import torch
+    from qwen_asr import Qwen3ASRModel
 
     configure_logging()
-    cache = settings.cache_dir / "faster-whisper"
+    cache = settings.cache_dir / "qwen3-asr"
     cache.mkdir(parents=True, exist_ok=True)
-    return WhisperModel(
-        settings.stt_model_id,
-        device=device,
-        compute_type=compute_type,
-        download_root=str(cache),
-        local_files_only=local_files_only,
-        use_auth_token=settings.hf_token,
-    )
+    previous_offline = os.environ.get("HF_HUB_OFFLINE")
+    if local_files_only:
+        os.environ["HF_HUB_OFFLINE"] = "1"
+    try:
+        model = Qwen3ASRModel.from_pretrained(
+            settings.stt_model_id,
+            dtype=torch.bfloat16 if device == "cuda" else torch.float32,
+            device_map="cuda:0" if device == "cuda" else "cpu",
+            max_inference_batch_size=1,
+            max_new_tokens=256,
+            token=settings.hf_token,
+        )
+    finally:
+        if previous_offline is None:
+            os.environ.pop("HF_HUB_OFFLINE", None)
+        else:
+            os.environ["HF_HUB_OFFLINE"] = previous_offline
+    return model, model.processor
 
 
-class FasterWhisperStt:
+class QwenAsrStt:
     def __init__(self, settings: Settings) -> None:
         t0 = time.perf_counter()
-        device, compute_type = _pick_stt_device(settings)
-        cache = settings.cache_dir / "faster-whisper"
+        device = _pick_stt_device(settings)
+        cache = settings.cache_dir / "qwen3-asr"
         cache.mkdir(parents=True, exist_ok=True)
-        weights = whisper_weights_source(cache, settings.stt_model_id)
+        weights = model_weights_source(cache, settings.stt_model_id)
         self._model_id = settings.stt_model_id
         log.info(
-            "STT loading model=%s device=%s compute=%s weights=%s",
+            "STT loading model=%s device=%s weights=%s",
             settings.stt_model_id,
             device,
-            compute_type,
             weights,
         )
-        self._model, device, compute_type, weights = self._load_with_fallback(
-            settings, device, compute_type, weights
-        )
+        self._model, self._processor, device, weights = self._load_with_fallback(settings, device, weights)
         self._device = device
-        self._compute = compute_type
         self._weights = weights
         self._elapsed_ms = elapsed_ms(t0)
         log.info(
-            "STT ready model=%s device=%s compute=%s weights=%s elapsed_ms=%s",
+            "STT ready model=%s device=%s weights=%s elapsed_ms=%s",
             self._model_id,
             self._device,
-            self._compute,
             self._weights,
             self._elapsed_ms,
         )
 
     def _load_with_fallback(
-        self, settings: Settings, device: str, compute_type: str, weights: str
-    ) -> tuple[object, str, str, str]:
-        err = self._assign_model(settings, device, compute_type, weights == "cache")
+        self, settings: Settings, device: str, weights: str
+    ) -> tuple[object, object, str, str]:
+        err = self._assign_model(settings, device, weights == "cache")
         if err is not None and device == "cuda" and is_cuda_runtime_error(err):
             log.warning("CUDA STT failed (%s); falling back to CPU", err)
-            device, compute_type = "cpu", "int8"
-            err = self._assign_model(settings, device, compute_type, weights == "cache")
+            device = "cpu"
+            err = self._assign_model(settings, device, weights == "cache")
         if err is not None and weights == "cache":
             log.info("STT cache incomplete; downloading model=%s", settings.stt_model_id)
             weights = "download"
-            err = self._assign_model(settings, device, compute_type, False)
+            err = self._assign_model(settings, device, False)
         if err is not None:
             raise err
-        return self._model, device, compute_type, weights
+        return self._model, self._processor, device, weights
 
-    def _assign_model(
-        self, settings: Settings, device: str, compute_type: str, local_files_only: bool
-    ) -> BaseException | None:
+    def _assign_model(self, settings: Settings, device: str, local_files_only: bool) -> BaseException | None:
         try:
-            self._model = _load_whisper_model(
-                settings, device, compute_type, local_files_only=local_files_only
-            )
-            if device == "cuda":
-                self._probe_cuda()
+            self._model, self._processor = _load_qwen_model(settings, device, local_files_only=local_files_only)
             return None
         except Exception as exc:
             return exc
 
     def describe(self) -> str:
-        return (
-            f"{self._model_id} device={self._device} compute={self._compute} "
-            f"weights={self._weights} elapsed_ms={self._elapsed_ms}"
-        )
-
-    def _probe_cuda(self) -> None:
-        """Encode once at boot so a missing cublas DLL does not 500 the first PTT."""
-        self.transcribe(tone_wav(duration_s=0.05))
+        return f"{self._model_id} device={self._device} weights={self._weights} elapsed_ms={self._elapsed_ms}"
 
     def transcribe(
         self, wav_bytes: bytes, fixes: list[str] | None = None, procedures: list[str] | None = None
@@ -384,29 +293,14 @@ class FasterWhisperStt:
         try:
             with open(path, "wb") as handle:
                 handle.write(wav_bytes)
-            kwargs: dict[str, object] = {
-                "beam_size": 5,
-                "language": "en",
-                "condition_on_previous_text": False,
-            }
-            prompt = whisper_fix_prompt(fixes or [], procedures)
-            if prompt:
-                kwargs["initial_prompt"] = prompt
-            segments, _info = self._model.transcribe(path, **kwargs)
-            texts: list[str] = []
-            logprobs: list[float] = []
-            for seg in segments:
-                piece = (seg.text or "").strip()
-                if piece:
-                    texts.append(piece)
-                lp = getattr(seg, "avg_logprob", None)
-                if isinstance(lp, (int, float)):
-                    logprobs.append(float(lp))
-            text = " ".join(texts)
-            if not logprobs:
-                return text, 1.0
-            avg = sum(logprobs) / len(logprobs)
-            return text, avg_logprob_to_confidence(avg)
+            prompt = qwen_stt_prompt(fixes or [], procedures)
+            results = self._model.transcribe(
+                audio=path,
+                context=prompt,
+                language="English",
+            )
+            text = discard_qwen_context_echo(str(results[0].text).strip(), prompt)
+            return text, 1.0
         finally:
             try:
                 os.unlink(path)
@@ -456,7 +350,7 @@ class PiperTts:
         self._default_voice = settings.tts_voice
         self._cache_dir = settings.cache_dir
         self._token = settings.hf_token
-        # ONNX CUDA is independent of CTranslate2. Driver-only machines warn and use CPU.
+        # ONNX CUDA selection is independent from Qwen's PyTorch device.
         self._use_cuda = onnx_cuda_available()
         self._device = "cuda" if self._use_cuda else "cpu"
         self._voices: dict[str, object] = {}
@@ -524,7 +418,7 @@ def build_stt(settings: Settings) -> SttEngine:
     if settings.mock:
         log.info("STT mock (SPEECH_API_MOCK=1)")
         return MockStt()
-    return FasterWhisperStt(settings)
+    return QwenAsrStt(settings)
 
 
 def build_tts(settings: Settings) -> TtsEngine:

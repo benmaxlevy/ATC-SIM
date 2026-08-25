@@ -223,28 +223,6 @@ test("T03-15 AC2 — garbage at confidence 0.5 is parse_miss and does not move",
   handles.voiceLoop.dispose();
 });
 
-test("T03-15 AC7 — settings confidence 1.0 does not skip a parseable 0.5 heading", async () => {
-  const { dal, world } = dalWorld();
-  const handles = createApp({
-    speech: fakePort("turn left heading two seven zero", { confidence: 0.5 }),
-    world,
-    ptt: createPttCaptureController({ onEvent: () => {}, attachTo: null }),
-  });
-  handles.speechSettings.setConfidenceThreshold(1);
-
-  await handles.voiceLoop.handlePttEvent({
-    type: "ptt-up",
-    result: { kind: "clip", clip: nonEmptyClip() },
-  });
-
-  expect(dal.intent.assignedHeadingDeg).toBe(270);
-  expect(dal.intent.turn).toBe("LEFT");
-  expect(handles.log.byType("command.accepted")).toHaveLength(1);
-  expect(handles.speechSettings.prefs.confidenceThreshold).toBe(1);
-  handles.ptt.dispose();
-  handles.voiceLoop.dispose();
-});
-
 test("T03-08 AC2 — permission-denied status is microphone blocked; tick path does not throw", async () => {
   const handles = createApp({
     speech: fakePort("ignored"),
@@ -402,32 +380,12 @@ function instantPlayer(): ReadbackPlayer {
       hooks?.onAudioStart?.(now());
       return { ok: true };
     },
-    async playBrowser(_text, _voiceId, hooks) {
-      hooks?.onAudioStart?.(now());
-      return { ok: true };
-    },
     stop() {},
     fxEnabled: true,
     setConnectSource() {},
     setFxEnabled() {},
   };
 }
-
-test("T03-09 — overlay defaults on and setLatencyOverlayVisible hides it", () => {
-  const handles = createApp({ speech: new NullSpeechPort() });
-  expect(handles.getLatencyOverlayVisible()).toBe(true);
-  const seen: boolean[] = [];
-  const stop = handles.subscribeLatencyOverlay((state) => {
-    seen.push(state.visible);
-    expect(state.snapshot.backendId).toBe("null");
-  });
-  handles.setLatencyOverlayVisible(false);
-  expect(handles.getLatencyOverlayVisible()).toBe(false);
-  expect(seen).toEqual([true, false]);
-  stop();
-  handles.ptt.dispose();
-  handles.voiceLoop.dispose();
-});
 
 test("T03-09 — successful utterance logs voice.latency with both wall-clock marks", async () => {
   const { world } = dalWorld();
@@ -436,14 +394,6 @@ test("T03-09 — successful utterance logs voice.latency with both wall-clock ma
     world,
     ptt: createPttCaptureController({ onEvent: () => {}, attachTo: null }),
     readbackPlayer: instantPlayer(),
-  });
-  const overlays: Array<{ stt: number | null; aud: number | null; n: number }> = [];
-  const stop = handles.subscribeLatencyOverlay((state) => {
-    overlays.push({
-      stt: state.snapshot.lastTranscriptMs,
-      aud: state.snapshot.lastAudioStartMs,
-      n: state.snapshot.sampleCount,
-    });
   });
 
   await handles.voiceLoop.handlePttEvent({
@@ -457,9 +407,6 @@ test("T03-09 — successful utterance logs voice.latency with both wall-clock ma
   expect(latency[0]?.pttUpToAudioStartMs).toBeGreaterThanOrEqual(0);
   expect(latency[0]?.pttUpToAudioStartMs).toBeGreaterThanOrEqual(latency[0]!.pttUpToTranscriptMs!);
   expect(latency[0]?.backendId).toBe("fake");
-  expect(overlays.at(-1)?.n).toBe(1);
-  expect(overlays.at(-1)?.aud).toBeGreaterThanOrEqual(0);
-  stop();
   handles.ptt.dispose();
   handles.voiceLoop.dispose();
 });

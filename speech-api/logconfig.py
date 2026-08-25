@@ -24,8 +24,6 @@ _QUIET_LOGGERS = (
     "urllib3",
     "urllib3.connectionpool",
     "transformers",
-    "faster_whisper",
-    "ctranslate2",
     "onnxruntime",
     "numba",
     "fsspec",
@@ -54,12 +52,6 @@ def _quiet_imported_backends() -> None:
 
         hf_logging.set_verbosity_error()
         disable_progress_bars()
-    except Exception:
-        pass
-    try:
-        import ctranslate2
-
-        ctranslate2.set_log_level(logging.ERROR)
     except Exception:
         pass
     try:

@@ -1,18 +1,13 @@
 import { expect, test, vi } from "vitest";
-import { type SpeechPort } from "@speech";
 import {
-  CONFIDENCE_THRESHOLD_HELP,
   DEFAULT_BACKEND_HELP,
-  HTTP_URLS_MISSING,
   PTT_BIND_HELP,
   PTT_BIND_OPTIONS,
   PATH_C_HELP,
   PATH_C_LABEL,
   PATH_C_UNAVAILABLE_HELP,
   SPEECH_PREFS_KEY,
-  SPEECH_SETTINGS_WAIT,
   VOICE_DISABLED_HINT,
-  WEB_SPEECH_VENDOR_WARNING,
   createSpeechSettingsController,
   loadAndResolveSpeechBoot,
   loadSpeechPrefs,
@@ -44,16 +39,7 @@ function memoryStorage(): Storage {
   };
 }
 
-function fakePort(id: string): SpeechPort {
-  return {
-    id,
-    transcribe: () => Promise.reject(new Error("unused")),
-    synthesize: () => Promise.reject(new Error("unused")),
-    dispose: vi.fn(),
-  };
-}
-
-test("AC6 / default-backend helper: URLs present → http; cleared → null; webSpeech ignored", () => {
+test("URLs present → http; cleared → null", () => {
   const present = loadAndResolveSpeechBoot(memoryStorage(), {
     VITE_STT_URL: "http://127.0.0.1:8090/stt",
     VITE_TTS_URL: "http://127.0.0.1:8090/tts",
@@ -69,42 +55,36 @@ test("AC6 / default-backend helper: URLs present → http; cleared → null; web
   expect(cleared.urls.ttsConfigured).toBe(false);
 });
 
-test("unset Vite URLs still boot http via 127.0.0.1:8090 defaults (AC1)", () => {
+test("unset Vite URLs still boot http via 127.0.0.1:8090 defaults", () => {
   const boot = loadAndResolveSpeechBoot(memoryStorage(), {});
   expect(boot.port.id).toBe("http");
   expect(boot.urls.sttConfigured).toBe(true);
   expect(boot.urls.ttsConfigured).toBe(true);
 });
 
-test("persisted web-speech is restored even when URLs are present (opt-in, not default)", () => {
+test("persisted web-speech or null prefs still boot http when URLs are present", () => {
   const store = memoryStorage();
-  const prefs = defaultSpeechPrefs();
-  prefs.backendId = "web-speech";
-  saveSpeechPrefs(prefs, store);
+  store.setItem(SPEECH_PREFS_KEY, JSON.stringify({ backendId: "web-speech" }));
   const boot = loadAndResolveSpeechBoot(store, {
     VITE_STT_URL: "http://127.0.0.1:8090/stt",
     VITE_TTS_URL: "http://127.0.0.1:8090/tts",
   });
-  expect(boot.port.id).toBe("web-speech");
+  expect(boot.port.id).toBe("http");
 });
 
 test("prefs persist in the same atc-sim.* profile storage as phase 0", () => {
   const store = memoryStorage();
   const prefs = defaultSpeechPrefs();
   prefs.pttKey = "CapsLock";
-  prefs.confidenceThreshold = 0.7;
-  prefs.latencyOverlay = false;
   prefs.radioFx = false;
   saveSpeechPrefs(prefs, store);
   expect(store.getItem(SPEECH_PREFS_KEY)).toContain("CapsLock");
   const loaded = loadSpeechPrefs(store);
   expect(loaded.pttKey).toBe("CapsLock");
-  expect(loaded.confidenceThreshold).toBe(0.7);
-  expect(loaded.latencyOverlay).toBe(false);
   expect(loaded.radioFx).toBe(false);
-  expect(loaded.pathC).toBe(false);
+  expect(loaded.pathC).toBe(true);
   expect(defaultSpeechPrefs().voiceId).toBe("auto");
-  expect(defaultSpeechPrefs().pathC).toBe(false);
+  expect(defaultSpeechPrefs().pathC).toBe(true);
 });
 
 test("legacy backtick prefs migrate to Left Control", () => {
@@ -113,98 +93,15 @@ test("legacy backtick prefs migrate to Left Control", () => {
   expect(loadSpeechPrefs(store).pttKey).toBe("ControlLeft");
 });
 
-test("AC3 — selecting another backend while idle constructs that id", () => {
-  const created: string[] = [];
-  let current = fakePort("http");
-  const controller = createSpeechSettingsController({
-    prefs: defaultSpeechPrefs(),
-    urls: {
-      sttUrl: "http://127.0.0.1:8090/stt",
-      ttsUrl: "http://127.0.0.1:8090/tts",
-      sttConfigured: true,
-      ttsConfigured: true,
-    },
-    storage: memoryStorage(),
-    createPort: (id) => {
-      created.push(id);
-      return fakePort(id);
-    },
-    host: {
-      isBusy: () => false,
-      setSpeechPort: (port) => {
-        current = port;
-        return true;
-      },
-      setPttKey: () => {},
-      setConfidenceThreshold: () => {},
-    },
-  });
-  expect(controller.setBackend("null")).toBe(true);
-  expect(created).toEqual(["null"]);
-  expect(current.id).toBe("null");
-  expect(controller.prefs.backendId).toBe("null");
-  expect(controller.setBackend("web-speech")).toBe(true);
-  expect(current.id).toBe("web-speech");
-});
-
-test("AC4 — busy utterance refuses backend change (status wait)", () => {
-  const created: string[] = [];
-  const controller = createSpeechSettingsController({
-    prefs: defaultSpeechPrefs(),
-    urls: {
-      sttUrl: "http://127.0.0.1:8090/stt",
-      ttsUrl: "http://127.0.0.1:8090/tts",
-      sttConfigured: true,
-      ttsConfigured: true,
-    },
-    storage: memoryStorage(),
-    createPort: (id) => {
-      created.push(id);
-      return fakePort(id);
-    },
-    host: {
-      isBusy: () => true,
-      setSpeechPort: () => true,
-      setPttKey: () => {},
-      setConfidenceThreshold: () => {},
-    },
-  });
-  expect(controller.setBackend("null")).toBe(false);
-  expect(controller.rowError).toBe(SPEECH_SETTINGS_WAIT);
-  expect(created).toEqual([]);
-  expect(controller.prefs.backendId).toBe("http");
-});
-
-test("selecting http with missing URLs shows a row error and keeps the previous backend", () => {
-  const controller = createSpeechSettingsController({
-    prefs: { ...defaultSpeechPrefs(), backendId: "null" },
-    urls: { sttUrl: "", ttsUrl: "", sttConfigured: false, ttsConfigured: false },
-    storage: memoryStorage(),
-    createPort: (id) => fakePort(id),
-    host: {
-      isBusy: () => false,
-      setSpeechPort: () => true,
-      setPttKey: () => {},
-      setConfidenceThreshold: () => {},
-    },
-  });
-  expect(controller.setBackend("http")).toBe(false);
-  expect(controller.rowError).toBe(HTTP_URLS_MISSING);
-  expect(controller.prefs.backendId).toBe("null");
-});
-
-test("AC5 — setPttKey updates the host bind", () => {
+test("setPttKey updates the host bind", () => {
   const keys: string[] = [];
   const controller = createSpeechSettingsController({
     prefs: defaultSpeechPrefs(),
     storage: memoryStorage(),
     host: {
-      isBusy: () => false,
-      setSpeechPort: () => true,
       setPttKey: (key) => {
         keys.push(key);
       },
-      setConfidenceThreshold: () => {},
     },
   });
   expect(controller.prefs.pttKey).toBe("ControlLeft");
@@ -226,40 +123,36 @@ test("PTT options include backtick + Caps Lock and omit F/R/range keys", () => {
   expect(values).not.toContain("KeyR");
 });
 
-test("AC7 — web-speech copy warns about the browser vendor; no Deepgram/OpenAI signup", () => {
-  expect(WEB_SPEECH_VENDOR_WARNING).toMatch(/browser vendor/i);
-  expect(WEB_SPEECH_VENDOR_WARNING).not.toMatch(/deepgram|openai|elevenlabs/i);
+test("voice copy points at speech-api; no vendor signup", () => {
   expect(VOICE_DISABLED_HINT).toMatch(/typed commands/i);
-  expect(DEFAULT_BACKEND_HELP).toMatch(/never auto-selected/i);
+  expect(DEFAULT_BACKEND_HELP).toMatch(/speech-api/i);
+  expect(DEFAULT_BACKEND_HELP).not.toMatch(/web-speech|browser vendor/i);
   expect(PTT_BIND_HELP).toMatch(/backtick/i);
   expect(PTT_BIND_HELP).toMatch(/F, R, or range/i);
 });
 
-test("T03-15 — confidence slider copy is informational and does not skip parse", () => {
-  expect(CONFIDENCE_THRESHOLD_HELP).toMatch(/informational/i);
-  expect(CONFIDENCE_THRESHOLD_HELP).toMatch(/does not skip parse/i);
-});
-
-test("settings UI omits whisper-wasm and vendor signup; Path C checkbox is present", () => {
+test("settings UI omits backend switch, overlay, whisper-wasm, and vendor signup", () => {
   const sources = import.meta.glob("./*.{ts,tsx}", {
     query: "?raw",
     import: "default",
     eager: true,
   }) as Record<string, string>;
   const src = sources["./settings-speech.tsx"]!;
-  expect(src).toMatch(/WEB_SPEECH_VENDOR_WARNING/);
   expect(src).toMatch(/VOICE_DISABLED_HINT/);
+  expect(src).not.toMatch(/web-speech/);
+  expect(src).not.toMatch(/Latency overlay/);
   expect(src).not.toMatch(/whisper-wasm/);
   expect(src).not.toMatch(/deepgram|openai|elevenlabs/i);
-  expect(src).not.toMatch(/<option value="whisper/);
+  expect(src).not.toMatch(/Speech backend/);
+  expect(src).not.toMatch(/Confidence threshold|confidenceThreshold/);
   expect(src).toContain(PATH_C_LABEL);
-  expect(src).toMatch(/disabled=\{!controller\.parseReady\}/);
+  expect(src).toMatch(/checked=\{prefs\.pathC\}/);
 });
 
-test("AC10 — Path C default false; disabled until health.parse ready; persist", async () => {
+test("Path C defaults on, remains health-gated, and persists opt-out", async () => {
   expect(PATH_C_LABEL).toBe("Path C (local /parse)");
-  expect(defaultSpeechPrefs().pathC).toBe(false);
-  expect(PATH_C_UNAVAILABLE_HELP).toMatch(/unavailable/i);
+  expect(defaultSpeechPrefs().pathC).toBe(true);
+  expect(PATH_C_UNAVAILABLE_HELP).toMatch(/turn it off/i);
   expect(PATH_C_HELP).toMatch(/salvage/i);
 
   const hostPathC: boolean[] = [];
@@ -269,10 +162,7 @@ test("AC10 — Path C default false; disabled until health.parse ready; persist"
     parseReady: false,
     storage: store,
     host: {
-      isBusy: () => false,
-      setSpeechPort: () => true,
       setPttKey: () => {},
-      setConfidenceThreshold: () => {},
       setPathC: (enabled) => {
         hostPathC.push(enabled);
       },
@@ -280,23 +170,23 @@ test("AC10 — Path C default false; disabled until health.parse ready; persist"
   });
   expect(controller.parseReady).toBe(false);
   expect(controller.pathCActive).toBe(false);
-  expect(controller.setPathC(true)).toBe(false);
+  expect(controller.setPathC(false)).toBe(true);
   expect(controller.prefs.pathC).toBe(false);
+  expect(loadSpeechPrefs(store).pathC).toBe(false);
+  expect(hostPathC).toEqual([false]);
 
   const readyFetch = vi.fn(
     async () => new Response(JSON.stringify({ parse: "ready" }), { status: 200 }),
   );
+  const readyStore = memoryStorage();
   const readyController = createSpeechSettingsController({
     prefs: defaultSpeechPrefs(),
     parseReady: false,
     fetch: readyFetch,
     healthUrl: "http://127.0.0.1:8090/health",
-    storage: store,
+    storage: readyStore,
     host: {
-      isBusy: () => false,
-      setSpeechPort: () => true,
       setPttKey: () => {},
-      setConfidenceThreshold: () => {},
       setPathC: (enabled) => {
         hostPathC.push(enabled);
       },
@@ -304,8 +194,17 @@ test("AC10 — Path C default false; disabled until health.parse ready; persist"
   });
   expect(await readyController.refreshParseHealth()).toBe("ready");
   expect(readyController.parseReady).toBe(true);
-  expect(readyController.setPathC(true)).toBe(true);
   expect(readyController.prefs.pathC).toBe(true);
   expect(readyController.pathCActive).toBe(true);
+  expect(loadSpeechPrefs(readyStore).pathC).toBe(true);
+  expect(hostPathC).toEqual([false, true]);
+});
+
+test("Path C missing from an existing profile defaults on; explicit false survives reload", () => {
+  const store = memoryStorage();
+  store.setItem(SPEECH_PREFS_KEY, JSON.stringify({ backendId: "http" }));
   expect(loadSpeechPrefs(store).pathC).toBe(true);
+
+  saveSpeechPrefs({ ...defaultSpeechPrefs(), pathC: false }, store);
+  expect(loadSpeechPrefs(store).pathC).toBe(false);
 });

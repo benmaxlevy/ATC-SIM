@@ -213,6 +213,33 @@ test("ASR turn left heading 270 stays Path A FLY_HEADING (does not fetch Path C)
   expect(result.instructions).toEqual([{ type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" }]);
 });
 
+test("ASR leftening misses Path A and uses Path C", async () => {
+  const parsePathC = vi.fn(async () => ({
+    callsignToken: "DAL123",
+    instructions: [
+      { type: "FLY_HEADING" as const, headingDeg: 150, turn: "LEFT" as const },
+      { type: "ALTITUDE" as const, altitudeFt: 5000, verb: "MAINTAIN" as const },
+      { type: "SPEED" as const, speedKt: 210, verb: "MAINTAIN" as const },
+    ],
+  }));
+  const result = await parseCommand(
+    "Delta one twenty three, turn leftening one five zero, maintain five thousand, maintain two one zero knots.",
+    { source: "voice", pathC: true, parsePathC },
+  );
+  expect(parsePathC).toHaveBeenCalledTimes(1);
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.parseStage).toBe("llm_c");
+  expect(result.callsignToken).toBe("DAL123");
+  expect(result.instructions).toEqual([
+    { type: "FLY_HEADING", headingDeg: 150, turn: "LEFT" },
+    { type: "ALTITUDE", altitudeFt: 5000, verb: "MAINTAIN" },
+    { type: "SPEED", speedKt: 210, verb: "MAINTAIN" },
+  ]);
+});
+
 test("T04-05 — spoken ILS vector is Path A heading + untilEstablished + APP", async () => {
   const result = await parseCommand(
     "turn right heading two four zero maintain two thousand until established cleared ils approach runway two seven",

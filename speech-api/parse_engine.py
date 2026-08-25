@@ -1,4 +1,4 @@
-"""Optional Path C: local instruct GGUF → Command IR JSON.
+"""Mandatory Path C: local instruct GGUF → Command IR JSON.
 
 Inference is this process (llama.cpp). Hugging Face Hub is a one-time weight
 download. Never call OpenAI, Groq, Anthropic, or Hugging Face Inference.
@@ -36,6 +36,7 @@ INSTRUCTION_TYPES = frozenset(
         "SAY_ALTITUDE",
         "DESCEND_VIA",
         "CLIMB_VIA",
+        "JOIN_PROCEDURE",
         "CROSS",
         "GO_AROUND",
     }
@@ -50,64 +51,17 @@ CROSS_RESTRICTIONS = frozenset({"AT", "AT_OR_ABOVE", "AT_OR_BELOW"})
 # Constrained JSON / GBNF target (Command IR v0). Loaded from parse_grammar.gbnf.
 GRAMMAR_PATH = Path(__file__).resolve().parent / "parse_grammar.gbnf"
 
-SYSTEM_PROMPT = """You convert air-traffic control radio into JSON only. No prose. No markdown.
+SYSTEM_PROMPT = """Convert ATC radio into Command IR v0 JSON. Output JSON only; grammar supplies its closed shape. Never output prose, a readback, intent execution, or a new instruction type. Recover the intended 7110.65 clearance from noisy ASR when that clearance is unambiguous. Return PARSE_MISS only when no command can be recovered or a required identifier is ambiguous.
 
-The JSON object must be:
-{"ok": true, "callsignToken": string-or-null, "instructions": Instruction[]}
-OR when unparseable / unrecognized audio:
-{"ok": false, "error": "PARSE_MISS"}
+Repair fused, slurred, and compact ASR when the intended clearance is clear. Normalize airline telephony to ICAO (Delta DAL, Southwest SWA, American AAL, United UAL, JetBlue JBU, Alaska ASA, Frontier FFT, Spirit NKS, FedEx FDX, UPS UPS), spoken digits to a callsign token, niner/tree/fife to 9/3/5, headings/altitudes to numbers, heading 360 to 0, and grouped thousands (one one thousand is 11000). Preserve a recognizable spoken callsign; use onFrequency only when its flight number uniquely repairs noisy audio. Never substitute selected or unrelated traffic.
 
-Instruction is exactly one of these frozen Command IR v0 types (no other "type"):
-- {"type": "FLY_HEADING", "headingDeg": number, "turn": "LEFT"|"RIGHT"|"SHORTEST"}
-- {"type": "TURN_DEGREES", "direction": "LEFT"|"RIGHT", "degrees": number}
-- {"type": "PRESENT_HEADING"}
-- {"type": "ALTITUDE", "altitudeFt": number, "verb": "CLIMB"|"DESCEND"|"MAINTAIN", "expedite"?: boolean, "untilEstablished"?: boolean}
-- {"type": "SPEED", "speedKt": number, "verb": "MAINTAIN"|"INCREASE"|"REDUCE"}
-- {"type": "DIRECT", "fixId": string}
-- {"type": "EXPECT_APPROACH", "approachId": string}
-- {"type": "CLEARED_APPROACH", "approachId": string}
-- {"type": "INTERCEPT_LOCALIZER", "approachId": string}
-- {"type": "IDENT"}
-- {"type": "SAY_HEADING"}
-- {"type": "SAY_ALTITUDE"}
-- {"type": "DESCEND_VIA", "procedureId": string}
-- {"type": "CLIMB_VIA", "procedureId": string}
-- {"type": "CROSS", "fixId": string, "altitudeFt": number, "restriction": "AT"|"AT_OR_ABOVE"|"AT_OR_BELOW"}
-- {"type": "GO_AROUND"}
+“turn left heading 270” is FLY_HEADING with LEFT, never TURN_DEGREES. ASR “turn leftening 360” and “turn leftening one five zero” mean “turn left heading …” and are FLY_HEADING with LEFT. “zero niner zero” is heading 90. “fly heading” with no left/right is SHORTEST; never invent LEFT or RIGHT. “turn 20 degrees right” is TURN_DEGREES with RIGHT and degrees 20, never FLY_HEADING. TURN_DEGREES requires “degrees” without a heading. “present heading” is PRESENT_HEADING. “descend and maintain 4000” and ASR “descent and maintain 4000” are ALTITUDE with DESCEND and altitudeFt 4000. “maintain 210 knots” is SPEED with MAINTAIN and speedKt 210, never FLY_HEADING or ALTITUDE. “increase speed to 250 knots” is SPEED INCREASE; “reduce speed” is REDUCE. “maintain five thousand, maintain two one zero knots” is both ALTITUDE MAINTAIN 5000 and SPEED MAINTAIN 210; never drop one instruction. DESCEND_VIA and CLIMB_VIA require the word “via” plus a listed procedure; never use VIA for an altitude assignment; never map an unmatched spoken name onto a different listed procedure. “without delay” means expedite, never untilEstablished; “until established” belongs on ALTITUDE. IDENT, go around, localizer intercept, and cleared/expect approach retain their normal instruction meanings. Position reports never imply DIRECT.
 
-Rules and Guidance:
-- Output JSON only. If you cannot map the text, output {"ok": false, "error": "PARSE_MISS"}.
-- Be tolerant of minor ASR transcript anomalies, phonetic typos, and colloquial phrasing.
-- Do not invent types (no CHAT, no conversation). Do not apply intent. Do not write a readback.
-- callsignToken is ICAO like DAL123 or SWA203, never the spoken airline name and never null if a callsign was spoken.
-- Map telephony: Delta→DAL, Southwest→SWA, American→AAL, United→UAL, JetBlue→JBU, Alaska→ASA, Frontier→FFT, Spirit→NKS, FedEx→FDX, UPS→UPS.
-- ASR may write "Southwest 203", "heading 270", or "5,000" instead of digit-by-digit / "five thousand". Still SWA203, headingDeg 270, altitudeFt 5000. heading 360 → headingDeg 0.
-- JO 7110.65 vectors: "turn left heading 270" → FLY_HEADING headingDeg 270 turn LEFT. NEVER TURN_DEGREES for a heading assignment.
-- TURN_DEGREES only when they say "degrees" and not "heading": "turn left 20 degrees".
-- fly heading 270 → FLY_HEADING SHORTEST. fly/continue/maintain present heading → PRESENT_HEADING.
-- "without delay" on climb/descend is expedite: true.
-- "until established" on altitude is untilEstablished: true.
-- iden / ident / squawk ident → IDENT.
-- go around / going around / GA → GO_AROUND.
-- intercept the runway 27 localizer / IL ILS27 → INTERCEPT_LOCALIZER (loc only, no GS).
-- cleared ILS / clear to ILS / cleared approach → CLEARED_APPROACH.
-- Position reports (e.g. "you are six miles from the airport", "6 miles from MERGE") are controller advisories. Do NOT emit DIRECT instructions for position reports.
-- If a recognizable callsign was spoken, preserve its correct ICAO token even when it is not in onFrequency. Never substitute the selected aircraft or an unrelated onFrequency callsign because a transcript is noisy.
-- If the user message includes onFrequency, use it to repair a noisy callsign only when its flight number uniquely matches. Map noisy ASR (e.g. "giblet 204") to the listed flight number. Do not copy ASR junk. Do not guess a different flight number.
-- If the user message includes fixes=, DIRECT/CROSS fixId MUST be one of those catalog ids. Map noisy ASR (e.g. "C-Max", "see max") to the listed spelling (SEMAX). Do not invent a fix that is not listed.
-- If the user message includes procedures=, DESCEND_VIA/CLIMB_VIA procedureId MUST be a listed catalog id (DEM1, not DEMO ONE or demo 1). Map spoken STAR names to that id. Do not invent a procedure that is not listed.
-- If the user message includes approaches=, EXPECT_APPROACH/CLEARED_APPROACH/INTERCEPT_LOCALIZER approachId MUST be one listed approach id (e.g. ILS27, not RW27, IL27, or a procedure id such as DEM1). Map noisy ASR (e.g. "ILX RW27", "runway 27") to the matching listed approach id.
-- Procedures and approaches are separate namespaces. Never use a procedures= id as approachId. Never use an approaches= id as procedureId.
-- Correct obvious ASR substitutions when intent remains clear: "interseptor runway 27 localizer" means "intercept runway 27 localizer".
+Position advisories are not commands, but never stop parsing later sentences. “You are 15 miles from a fix. Maintain 4000 until established on the localizer. Cleared ILS runway 09 approach.” has two instructions after the advisory: ALTITUDE with MAINTAIN, altitudeFt 4000, untilEstablished true; then CLEARED_APPROACH using the matching approaches= id. Preserve every independent instruction in spoken order. “Turn 40 degrees left. Intercept runway 09 localizer. Maintain 5000.” requires three instructions: TURN_DEGREES, INTERCEPT_LOCALIZER using the matching approaches= id, then ALTITUDE. Do not drop one instruction or combine it into another.
 
-Examples:
-Input: "SPIRIT 310 INTERSEPTOR RUNWAY 27 LOCALIZER" with approaches=ILS27 and procedures=DEM1
-Output: {"ok": true, "callsignToken": "NKS310", "instructions": [{"type": "INTERCEPT_LOCALIZER", "approachId": "ILS27"}]}
-Input: "Spirit 310 clear to ILX RW27" with approaches=ILS27
-Output: {"ok": true, "callsignToken": "NKS310", "instructions": [{"type": "CLEARED_APPROACH", "approachId": "ILS27"}]}
-Input: "Delta 123, you are six miles from the airport. Maintain 3000 until established on the localizer cleared ILS runway 27 approach." with approaches=ILS27
-Output: {"ok": true, "callsignToken": "DAL123", "instructions": [{"type": "ALTITUDE", "altitudeFt": 3000, "verb": "MAINTAIN", "untilEstablished": true}, {"type": "CLEARED_APPROACH", "approachId": "ILS27"}]}
-- source is a hint (keyboard tokens vs ASR English), not a second schema.
+Type meanings: DIRECT requires direct/proceed; EXPECT_APPROACH requires expect; CLEARED_APPROACH requires clear/cleared; INTERCEPT_LOCALIZER requires intercept plus localizer; IDENT requires ident; SAY_HEADING and SAY_ALTITUDE require say; JOIN_PROCEDURE requires join; CROSS requires cross; GO_AROUND requires go around. Emit a type when the transcript supports that clearance, including fused ASR (leftening = left heading, descent = descend). Do not invent a type with no supporting phrase.
+
+Catalog lists are authoritative. Never default a facility, procedure, approach, or fix. DIRECT/CROSS use only fixes= ids. DESCEND_VIA, CLIMB_VIA, and JOIN_PROCEDURE use only procedures= ids; JOIN is lateral-only, not VIA. EXPECT_APPROACH, CLEARED_APPROACH, and INTERCEPT_LOCALIZER use only approaches= ids. Procedures and approaches are separate namespaces. Repair a noisy name only when one listed id is unambiguous; otherwise return PARSE_MISS. source is a hint, not another schema.
 """
 
 # Documented mock success (CI / SPEECH_API_MOCK=1). Matches parse-pipeline.md.
@@ -318,8 +272,8 @@ def build_parse_user_message(text: str, source: str, context: dict[str, Any] | N
             if bits:
                 lines.append("procedures=" + ",".join(bits))
                 lines.append(
-                    "DESCEND_VIA/CLIMB_VIA procedureId MUST be a listed catalog id. "
-                    "Map demo one / demo 1 to DEM1."
+                    "DESCEND_VIA/CLIMB_VIA/JOIN_PROCEDURE procedureId MUST be a listed catalog id. "
+                    "Match noisy spoken names (star/sid words, digits) to that id."
                 )
         approaches = ctx.get("approaches") or []
         if approaches:
@@ -333,13 +287,12 @@ def build_parse_user_message(text: str, source: str, context: dict[str, Any] | N
             if bits:
                 lines.append("approaches=" + ",".join(bits))
                 lines.append(
-                    "EXPECT_APPROACH/CLEARED_APPROACH/INTERCEPT_LOCALIZER approachId MUST be a listed catalog id (e.g. ILS27). "
-                    "Map spoken runway/approach variants (e.g. ILX RW27, runway 27, IL27) to that id."
+                    "EXPECT_APPROACH/CLEARED_APPROACH/INTERCEPT_LOCALIZER approachId MUST be a listed catalog id. "
+                    "Match spoken runway/approach variants to that id."
                 )
     lines.append(f"text={text.strip()}")
     lines.append("Output JSON only.")
     return "\n".join(lines)
-
 
 
 def _is_finite_number(value: object) -> bool:
@@ -373,7 +326,10 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
             return None
         if not _is_finite_number(raw["headingDeg"]) or raw["turn"] not in TURN_DIRS:
             return None
-        return {"type": "FLY_HEADING", "headingDeg": _as_number(raw["headingDeg"]), "turn": raw["turn"]}
+        heading = _as_number(raw["headingDeg"])
+        if heading == 360:
+            heading = 0
+        return {"type": "FLY_HEADING", "headingDeg": heading, "turn": raw["turn"]}
     if instr_type == "TURN_DEGREES":
         if not _exact_keys(raw, {"type", "direction", "degrees"}):
             return None
@@ -473,6 +429,14 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         ):
             return None
         return {"type": "CLIMB_VIA", "procedureId": raw["procedureId"]}
+    if instr_type == "JOIN_PROCEDURE":
+        if (
+            not _exact_keys(raw, {"type", "procedureId"})
+            or not isinstance(raw["procedureId"], str)
+            or not raw["procedureId"]
+        ):
+            return None
+        return {"type": "JOIN_PROCEDURE", "procedureId": raw["procedureId"]}
     if instr_type == "CROSS":
         if not _exact_keys(raw, {"type", "fixId", "altitudeFt", "restriction"}):
             return None
@@ -541,6 +505,207 @@ def validate_parse_json(payload: object) -> ParseOutcome:
     return ParseOutcome(ok=True, callsign_token=token, instructions=instructions)
 
 
+def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str) -> bool:
+    def has(pattern: str) -> bool:
+        return re.search(pattern, text) is not None
+
+    has_speed_cue = has(r"\b(knots?|speed|mach|slow)\b")
+    instruction_type = instruction["type"]
+    if instruction_type == "FLY_HEADING":
+        if has(r"\b(say|present)\b"):
+            return False
+        if has(r"\bdegrees?\b") and not has(r"\bheading\b"):
+            return False
+        if has_speed_cue and not has(r"\bheading\b") and not has(r"\bturn\b"):
+            return False
+        return has(r"\bheading\b") or has(r"\bturn\b")
+    if instruction_type == "TURN_DEGREES":
+        return has(r"\bdegrees?\b") and not has(r"\bheading\b")
+    if instruction_type == "PRESENT_HEADING":
+        return has(r"\bpresent\s+heading\b")
+    if instruction_type == "ALTITUDE":
+        verb = instruction["verb"].lower()
+        if has(r"\bvia\b") and not has(r"\bmaintain\b"):
+            return False
+        if verb in {"climb", "descend"}:
+            return has(rf"\b{verb}\b") or (verb == "descend" and has(r"\bdescent\b"))
+        return _has_altitude_maintain_evidence(text)
+    if instruction_type == "SPEED":
+        if not has_speed_cue:
+            return False
+        verb = instruction["verb"].lower()
+        if verb == "increase":
+            return has(r"\bincrease\b")
+        if verb == "reduce":
+            return has(r"\b(reduce|slow)\b")
+        return not has(r"\b(increase|reduce)\b")
+    if instruction_type == "DIRECT":
+        return has(r"\b(direct|proceed)\b")
+    if instruction_type == "EXPECT_APPROACH":
+        return has(r"\bexpect\b") and has(r"\b(approach|ils|localizer|runway)\b")
+    if instruction_type == "CLEARED_APPROACH":
+        return has(r"\bcleared\b|\bclear\s+to\b") and has(r"\b(approach|ils|localizer|runway)\b")
+    if instruction_type == "INTERCEPT_LOCALIZER":
+        return has(r"\bintercept\b") and has(r"\b(localizer|loc)\b")
+    if instruction_type == "IDENT":
+        return has(r"\b(ident|iden)\b")
+    if instruction_type == "SAY_HEADING":
+        return has(r"\bsay\b") and has(r"\bheading\b")
+    if instruction_type == "SAY_ALTITUDE":
+        return has(r"\bsay\b") and has(r"\b(altitude|alt)\b")
+    if instruction_type == "DESCEND_VIA":
+        return (has(r"\bdescend\b") or has(r"\bdescent\b")) and has(r"\bvia\b")
+    if instruction_type == "CLIMB_VIA":
+        return has(r"\bclimb\b") and has(r"\bvia\b")
+    if instruction_type == "JOIN_PROCEDURE":
+        return has(r"\bjoin\b")
+    if instruction_type == "CROSS":
+        return has(r"\bcross\b")
+    if instruction_type == "GO_AROUND":
+        return has(r"\bgo\w*\s*around\b|\bgo-around\b")
+    return False
+
+
+_ALTITUDE_LEX = re.compile(r"\b(thousand|thousands|feet|flight\s*level)\b")
+_MAINTAIN_COMPACT_FT = re.compile(r"\bmaintain\s+\d{3,5}\b(?!\s*(?:knots?|speed|mach))")
+
+
+def _has_altitude_maintain_evidence(text: str) -> bool:
+    """True when a maintain-altitude phrase exists, even if knots also appear."""
+    if re.search(r"\bmaintain\b", text) is None:
+        return False
+    if _ALTITUDE_LEX.search(text) is not None:
+        return True
+    return _MAINTAIN_COMPACT_FT.search(text) is not None
+
+
+def normalize_evidence_text(text: str) -> str:
+    return text.lower()
+
+
+def guard_instruction_semantics(text: str, outcome: ParseOutcome) -> ParseOutcome:
+    """Reject Path C instruction types unsupported by transcript evidence."""
+    if not outcome.ok:
+        return outcome
+    normalized = normalize_evidence_text(text)
+    kept = [
+        instruction
+        for instruction in outcome.instructions
+        if _instruction_has_transcript_evidence(instruction, normalized)
+    ]
+    if not kept:
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    if len(kept) != len(outcome.instructions):
+        return ParseOutcome(
+            ok=True,
+            callsign_token=outcome.callsign_token,
+            instructions=kept,
+        )
+    return outcome
+
+
+_PROCEDURE_STOP = frozenset(
+    {
+        "via",
+        "join",
+        "the",
+        "to",
+        "and",
+        "arrival",
+        "star",
+        "sid",
+        "procedure",
+        "descend",
+        "climb",
+        "descent",
+        "one",
+        "two",
+        "three",
+        "four",
+        "five",
+        "six",
+        "seven",
+        "eight",
+        "nine",
+        "niner",
+        "zero",
+        "oh",
+    }
+)
+
+
+def _letter_tokens(source: str) -> set[str]:
+    return {
+        tok
+        for tok in re.findall(r"[a-z]+", source.lower())
+        if len(tok) > 1 and tok not in _PROCEDURE_STOP
+    }
+
+
+def _procedure_spoken_overlap(text: str, procedure_id: str, rows: list[dict[str, str]]) -> bool:
+    name = ""
+    for row in rows:
+        if row.get("id") == procedure_id:
+            name = row.get("name") or ""
+            break
+    spoken = text
+    match = re.search(r"\b(?:via|join)\b(.+)", text.lower())
+    if match:
+        spoken = match.group(1)
+    spoken_letters = _letter_tokens(spoken)
+    if not spoken_letters:
+        return True
+    return bool(spoken_letters & _letter_tokens(procedure_id + " " + name))
+
+
+def guard_catalog_ids(
+    text: str,
+    context: dict[str, Any] | None,
+    outcome: ParseOutcome,
+) -> ParseOutcome:
+    """When a catalog is provided, instruction ids must be listed ids."""
+    if not outcome.ok:
+        return outcome
+    ctx = sanitize_parse_context(context) if context else None
+    if not ctx:
+        return outcome
+    fixes = set(ctx.get("fixes") or [])
+    procedures = {row["id"] for row in ctx.get("procedures") or []}
+    approaches = {row["id"] for row in ctx.get("approaches") or []}
+    roster = set(ctx.get("callsigns") or [])
+    token = outcome.callsign_token
+    if token and roster and token not in roster:
+        token = None
+    for instruction in outcome.instructions:
+        kind = instruction["type"]
+        if kind in {"DIRECT", "CROSS"} and fixes and instruction.get("fixId") not in fixes:
+            return ParseOutcome(ok=False, error="PARSE_MISS")
+        if (
+            kind in {"DESCEND_VIA", "CLIMB_VIA", "JOIN_PROCEDURE"}
+            and procedures
+            and (
+                instruction.get("procedureId") not in procedures
+                or not _procedure_spoken_overlap(
+                    text, str(instruction.get("procedureId") or ""), ctx.get("procedures") or []
+                )
+            )
+        ):
+            return ParseOutcome(ok=False, error="PARSE_MISS")
+        if (
+            kind in {"EXPECT_APPROACH", "CLEARED_APPROACH", "INTERCEPT_LOCALIZER"}
+            and approaches
+            and instruction.get("approachId") not in approaches
+        ):
+            return ParseOutcome(ok=False, error="PARSE_MISS")
+    if token != outcome.callsign_token:
+        return ParseOutcome(
+            ok=True,
+            callsign_token=token,
+            instructions=outcome.instructions,
+        )
+    return outcome
+
+
 class MockParseEngine:
     """CI / SPEECH_API_MOCK=1. No GGUF download. JSON shape + SCHEMA coverage."""
 
@@ -574,8 +739,6 @@ class MockParseEngine:
 
 def _ensure_gguf(settings: Settings) -> tuple[Path, str]:
     model_id = settings.parse_model_id
-    if not model_id:
-        raise RuntimeError("PARSE_MODEL_ID unset")
     local = Path(model_id)
     if local.is_file() and local.suffix.lower() == ".gguf":
         return local, "local"
@@ -627,10 +790,7 @@ def _silence_llama_cpp() -> None:
 
 
 def _llama_supports_gpu_offload() -> bool:
-    """True when this llama-cpp-python build can offload layers (needs CUDA DLLs on PATH)."""
-    from engines import prepare_windows_cuda_dlls
-
-    prepare_windows_cuda_dlls()
+    """True when this llama-cpp-python build can offload layers."""
     try:
         import llama_cpp
 
@@ -669,15 +829,13 @@ def _load_grammar() -> object | None:
 
 
 class LlamaParseEngine:
-    """Local llama.cpp instruct model. CPU OK, slow OK. Not a 7B default."""
+    """Local llama.cpp instruct model. CPU OK, slow OK. Default is Qwen3 4B."""
 
     def __init__(self, settings: Settings) -> None:
         import time
 
-        from engines import prepare_windows_cuda_dlls
         from llama_cpp import Llama
 
-        prepare_windows_cuda_dlls()
         _silence_llama_cpp()
         t0 = time.perf_counter()
         gguf, weights = _ensure_gguf(settings)
@@ -695,7 +853,7 @@ class LlamaParseEngine:
         }
         if n_threads is not None:
             kwargs["n_threads"] = n_threads
-        self._model_id = settings.parse_model_id or gguf.name
+        self._model_id = settings.parse_model_id
         self._n_gpu = n_gpu
         self._n_ctx = n_ctx
         self._weights = weights
@@ -771,10 +929,19 @@ class LlamaParseEngine:
         parsed = extract_json_object(content)
         if parsed is None:
             return ParseOutcome(ok=False, error="SCHEMA")
-        return validate_parse_json(parsed)
+        outcome = validate_parse_json(parsed)
+        guarded = guard_catalog_ids(text, context, guard_instruction_semantics(text, outcome))
+        if outcome.ok and not guarded.ok:
+            log.info(
+                "parse guard miss types=%s",
+                [ins.get("type") for ins in outcome.instructions],
+            )
+        return guarded
 
 
 def build_parse(settings: Settings) -> ParseEngine | None:
+    # Settings.load always supplies the mandatory default. Keep hand-built
+    # invalid settings fail-soft for callers that bypass configuration.
     if not settings.parse_model_id:
         log.info("LLM off (PARSE_MODEL_ID unset); POST /parse UNAVAILABLE")
         return None
@@ -786,7 +953,7 @@ def build_parse(settings: Settings) -> ParseEngine | None:
     except ImportError:
         log.error(
             "LLM unavailable: PARSE_MODEL_ID=%s but llama-cpp-python is not installed. "
-            "pip install -r requirements-parse.txt (default model %s / %s). "
+            "pip install -r requirements.txt (default model %s / %s). "
             "POST /parse stays UNAVAILABLE.",
             settings.parse_model_id,
             DEFAULT_PARSE_MODEL_ID,

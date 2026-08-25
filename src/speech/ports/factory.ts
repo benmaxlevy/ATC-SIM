@@ -1,10 +1,7 @@
 /**
- * SpeechPort factory and default-backend picker (T03-10).
- *
- * Quality default is `http` → our speech-api when STT+TTS URLs are present
- * (including Vite defaults at 127.0.0.1:8090). `web-speech` is opt-in only
- * and is never auto-selected. Missing/cleared URLs → `null` (typed commands).
- * `whisper-wasm` is omitted until that spike ships.
+ * SpeechPort factory. Quality path is `http` → our speech-api when STT+TTS
+ * URLs are present (including Vite defaults at 127.0.0.1:8090). Missing or
+ * cleared URLs → `null` (typed commands). Browser Web Speech is not a backend.
  */
 
 import { NullSpeechPort } from "../null-speech-port";
@@ -15,16 +12,13 @@ import {
   HttpSpeechPort,
   type HttpSpeechPortConfig,
 } from "./http-speech-port";
-import { WebSpeechPort, type WebSpeechPortOptions } from "./web-speech-port";
 
-export type SpeechBackendId = "null" | "web-speech" | "http";
+export type SpeechBackendId = "null" | "http";
 
-/** Backends the settings dropdown may offer. whisper-wasm is not in the bundle. */
-export const SPEECH_BACKEND_IDS: readonly SpeechBackendId[] = ["null", "web-speech", "http"];
+export const SPEECH_BACKEND_IDS: readonly SpeechBackendId[] = ["null", "http"];
 
 export interface CreateSpeechPortDeps {
   http?: HttpSpeechPortConfig;
-  webSpeech?: WebSpeechPortOptions;
 }
 
 export interface SpeechApiUrlStatus {
@@ -59,15 +53,11 @@ export function httpUrlsConfigured(opts: {
   return speechUrlConfigured(opts.sttUrl) && speechUrlConfigured(opts.ttsUrl);
 }
 
-/**
- * Default backend for quality. `webSpeech` must not auto-select even if true.
- */
+/** Default backend: speech-api when URLs exist, else typed-only null. */
 export function pickDefaultBackend(opts: {
   sttUrl?: string | null;
   ttsUrl?: string | null;
-  webSpeech?: boolean;
-}): "http" | "null" {
-  void opts.webSpeech;
+}): SpeechBackendId {
   if (httpUrlsConfigured(opts)) {
     return "http";
   }
@@ -91,20 +81,11 @@ export function readSpeechApiUrls(env?: {
   };
 }
 
-/**
- * Saved pref wins when it is a known id; `http` still requires URLs.
- * Unknown / whisper-wasm → {@link pickDefaultBackend}.
- */
+/** Saved pref is ignored. Voice is http when URLs exist, else null. */
 export function resolveSpeechBackend(
-  saved: string | undefined,
+  _saved: string | undefined,
   urls: { sttUrl?: string | null; ttsUrl?: string | null },
 ): SpeechBackendId {
-  if (saved === "web-speech") {
-    return "web-speech";
-  }
-  if (saved === "null") {
-    return "null";
-  }
   return pickDefaultBackend(urls);
 }
 
@@ -112,23 +93,19 @@ export function createSpeechPort(id: string, deps: CreateSpeechPortDeps = {}): S
   if (id === "http") {
     return new HttpSpeechPort(deps.http);
   }
-  if (id === "web-speech") {
-    return new WebSpeechPort(deps.webSpeech);
-  }
   return new NullSpeechPort();
 }
 
 /**
  * Boot picker. Never throws: missing URLs or a bad constructor → `null`.
- * `web-speech` is only used when `savedBackend` is that opt-in id.
  */
-export function createBootSpeechPort(
-  savedBackend?: string,
-  env?: { VITE_STT_URL?: unknown; VITE_TTS_URL?: unknown },
-): SpeechPort {
+export function createBootSpeechPort(env?: {
+  VITE_STT_URL?: unknown;
+  VITE_TTS_URL?: unknown;
+}): SpeechPort {
   try {
     const urls = readSpeechApiUrls(env);
-    const id = resolveSpeechBackend(savedBackend, {
+    const id = pickDefaultBackend({
       sttUrl: urls.sttConfigured ? urls.sttUrl : "",
       ttsUrl: urls.ttsConfigured ? urls.ttsUrl : "",
     });
@@ -143,7 +120,7 @@ export function createBootSpeechPort(
   }
 }
 
-/** Dispose the live port (abort Web Speech) then construct the next. Caller must be idle. */
+/** Dispose the live port then construct the next. Caller must be idle. */
 export function replaceSpeechPort(
   current: SpeechPort | null | undefined,
   id: string,

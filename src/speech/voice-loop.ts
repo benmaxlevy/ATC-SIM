@@ -29,7 +29,7 @@ export const DEFAULT_CONFIDENCE_THRESHOLD = 0.55;
 export const DEFAULT_READBACK_VOICE_ID = "en_US-lessac-medium";
 
 /**
- * Live STT hooks (Web Speech). Clip adapters omit them. Kept local so this
+ * Live STT hooks. Clip adapters omit them. Kept local so this
  * ticket does not reopen the frozen SpeechPort contract (`speech-port.md`).
  */
 type LiveSpeechPort = SpeechPort & {
@@ -90,12 +90,7 @@ export interface VoiceLoopOptions {
   getCatalogApproaches?: () => ReadonlyArray<{ id: string; name?: string; runway?: string }>;
   getIssuedAtSimMs?: () => number;
   now?: () => number;
-  /**
-   * Informational / future use after T03-15. Does not skip parseCommand.
-   * Default {@link DEFAULT_CONFIDENCE_THRESHOLD} for the settings slider only.
-   */
-  confidenceThreshold?: number;
-  /** Default false until T03-14/settings. */
+  /** App-provided eligibility for Path C after a local parse miss. */
   pathC?: boolean;
   /** Combined with no barge-in: lock PTT while transcribe/parse/playback run. */
   setTransmitLocked?: (locked: boolean) => void;
@@ -129,12 +124,7 @@ export interface VoiceLoop {
    * Caller disposes the previous port after a successful swap.
    */
   setSpeechPort(port: SpeechPort): boolean;
-  /**
-   * Informational / future use (T03-15). Does not skip parseCommand.
-   * Settings persist the slider in prefs; the coordinator never gates on it.
-   */
-  setConfidenceThreshold(value: number): void;
-  /** Enable Path C after typed/A/B miss. Default false until /health.parse is ready. */
+  /** Set effective Path C eligibility after typed/A/B miss. */
   setPathC(enabled: boolean): void;
   /**
    * Speak an already-accepted pilot readback (typed command line or voice).
@@ -258,10 +248,6 @@ class VoiceLoopImpl implements VoiceLoop {
     }
     this.speechPort = port;
     return true;
-  }
-
-  setConfidenceThreshold(_value: number): void {
-    // Slider persists in settings prefs only. Must not restore the T03-08 parse gate.
   }
 
   setPathC(enabled: boolean): void {
@@ -458,15 +444,6 @@ class VoiceLoopImpl implements VoiceLoop {
     };
 
     try {
-      if (this.speechPort.id === "web-speech") {
-        this.syncLock("play-started");
-        const outcome = await this.readbackPlayer.playBrowser(text, voiceId, { onAudioStart });
-        if (!outcome.ok) {
-          this.emitStatus({ code: "tts_failed" });
-        }
-        return;
-      }
-
       let ttsClip: AudioClip;
       try {
         ttsClip = await this.speechPort.synthesize(text, voiceId);

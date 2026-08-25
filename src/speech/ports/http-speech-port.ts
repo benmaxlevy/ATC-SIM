@@ -23,7 +23,7 @@ import { isWav, leBytesToPcm16, pcm16ToWav, uint8ToArrayBuffer, wavToAudioClip }
  * `http://localhost:5173`). Do not proxy STT/TTS through a vendor or the sim tick.
  *
  * `beginUtterance` / `endUtterance` are omitted — this adapter is clip-only
- * (`transcribe(clip)`). Live methods belong to T03-04 web-speech.
+ * (`transcribe(clip)`).
  */
 
 export const DEFAULT_STT_URL = "http://127.0.0.1:8090/stt";

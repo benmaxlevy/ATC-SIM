@@ -123,9 +123,9 @@ It supports configuring custom STT/TTS model weights, preloaded voice rosters, C
 
 ATC-SIM enforces a strict **zero paid/metered API policy**. All speech-to-text, text-to-speech, and language salvage models run 100% locally on your machine via the bundled Python service in [`speech-api/`](speech-api/).
 
-- **STT (Speech-to-Text)**: [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2) running `Systran/faster-whisper-small.en` or `base.en`. Uses `X-ATC-Fixes` headers to bias transcription toward active airspace waypoints.
+- **STT (Speech-to-Text)**: [Qwen3-ASR](https://huggingface.co/Qwen/Qwen3-ASR-1.7B) running locally through `qwen-asr`. Uses ATC callsign, fix, and procedure context to bias transcription.
 - **TTS (Text-to-Speech)**: [Piper TTS](https://github.com/OHF-Voice/piper1-gpl) with ONNX Runtime using high-speed multi-speaker medium voices (`en_US-lessac-medium`), assigning distinct voices to different airline callsigns.
-- **Path C Salvage Parser**: [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) running quantized `Qwen2.5-1.5B-Instruct-GGUF` (~1.2 GB) with GBNF grammar-constrained decoding. Operates solely as fallback salvage when deterministic parsers miss.
+- **Path C Salvage Parser**: [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) running quantized `MaziyarPanahi/Qwen3-4B-Instruct-2507-GGUF` with GBNF grammar-constrained decoding. Loads by default and operates solely as fallback salvage when deterministic parsers miss.
 
 ### Setting Up the Local Speech Server
 
@@ -138,8 +138,6 @@ ATC-SIM enforces a strict **zero paid/metered API policy**. All speech-to-text, 
 2. Install dependencies:
    ```bash
    pip install -r requirements.txt
-   # Optional: install llama-cpp-python for Path C local LLM parsing
-   pip install -r requirements-parse.txt
    ```
 3. Download open weights from Hugging Face:
    ```bash

@@ -2,13 +2,12 @@
  * Public API for `@speech`.
  *
  * Legal now: `SpeechPort`, `AudioClip`, `Transcript`, `NullSpeechPort`,
- * `createSpeechPort` / `pickDefaultBackend` (T03-10), HTTP + Web Speech ports,
+ * `createSpeechPort` / `pickDefaultBackend`, HTTP speech-api port,
  * `SpeechNotAvailableError`, PTT capture (`createPttCaptureController`),
  * voice-loop coordinator (`createVoiceLoop`), PCM playback + radio FX graph.
  * Boot picks `http` when our speech-api URLs are present, else `null`.
- * `web-speech` is opt-in only.
+ * Browser Web Speech is not a backend.
  *
- * Later: in-tab whisper-wasm (T03-11, skipped this swarm).
  * AudioClip is speech-owned. Do not put vendor SDKs here.
  *
  * Import rule: `@speech` may import `@core` only. `parseCommand` is injected.
@@ -81,7 +80,6 @@ export {
   snapshot,
 } from "./metrics";
 export type { VoiceSessionSnapshot, VoiceUtteranceMetrics } from "./metrics";
-export { WebSpeechPort, speakBrowser } from "./ports/web-speech-port";
 export { TransmitGate } from "./playback/transmit-gate";
 export {
   PLAYBACK_TAIL_MS,

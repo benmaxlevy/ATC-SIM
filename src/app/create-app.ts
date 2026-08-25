@@ -3,7 +3,6 @@ import { DEFAULT_SPAWN_SEED, type Scenario } from "@scenario";
 import { approachesFromCatalog, parseCommand, proceduresFromCatalog } from "@parse";
 import { handleRadioCommand, createCheckInQueue } from "@pilot";
 import {
-  VoiceLatencyTracker,
   createPttCaptureController,
   createVoiceLoop,
   shouldLogVoiceReject,
@@ -13,7 +12,6 @@ import {
   type SpeechApiUrlStatus,
   type SpeechPort,
   type VoiceLoop,
-  type VoiceSessionSnapshot,
   type VoiceStatusEvent,
   type VoiceUtteranceMetrics,
   voiceIdForCallsign,
@@ -44,15 +42,9 @@ export interface AppDeps {
   /** Persisted T03-10 prefs. Boot via `loadAndResolveSpeechBoot`. */
   speechPrefs?: SpeechPrefs;
   speechUrls?: SpeechApiUrlStatus;
-  confidenceThreshold?: number;
   getVoiceId?: (callsign?: string) => string;
   /** Injected in tests. Browser default is a square-wave CA beep. */
   caAlertTone?: CaAlertTone;
-}
-
-export interface LatencyOverlayState {
-  visible: boolean;
-  snapshot: VoiceSessionSnapshot;
 }
 
 export interface AppHandles {
@@ -70,10 +62,6 @@ export interface AppHandles {
   afterPhysicsTick(): void;
   /** Command-line copy (formatted) or `null` to clear. */
   subscribeVoiceStatus(listener: (status: string | null) => void): () => void;
-  /** Last utterance + session p50. T03-10 persists the visibility toggle. */
-  subscribeLatencyOverlay(listener: (state: LatencyOverlayState) => void): () => void;
-  setLatencyOverlayVisible(visible: boolean): void;
-  getLatencyOverlayVisible(): boolean;
   caAlertTone: CaAlertTone;
 }
 
@@ -126,9 +114,8 @@ export function createApp(deps: AppDeps): AppHandles {
   const prefs = deps.speechPrefs ?? defaultSpeechPrefs();
   let ptt: PttCaptureController | undefined = undefined;
   const voiceStatusListeners = new Set<(status: string | null) => void>();
-  const latencyListeners = new Set<(state: LatencyOverlayState) => void>();
-  const tracker = new VoiceLatencyTracker(deps.speech.id);
-  let latencyOverlayVisible = prefs.latencyOverlay;
+  // User intent starts from prefs; /health must still make Path C effective.
+  let pathCActive = false;
 
   function emitVoiceStatus(status: string | null): void {
     for (const listener of voiceStatusListeners) {
@@ -136,27 +123,12 @@ export function createApp(deps: AppDeps): AppHandles {
     }
   }
 
-  function latencyState(): LatencyOverlayState {
-    return { visible: latencyOverlayVisible, snapshot: tracker.snapshot() };
-  }
-
-  function emitLatency(): void {
-    const state = latencyState();
-    for (const listener of latencyListeners) {
-      listener(state);
-    }
-  }
-
-  function observeMetrics(metrics: VoiceUtteranceMetrics): void {
-    tracker.observe(metrics);
-    emitLatency();
-  }
-
   const voiceLoop =
     deps.voiceLoop ??
     createVoiceLoop({
       speechPort: speech,
-      parseCommand,
+      parseCommand: (sourceText, options) =>
+        parseCommand(sourceText, { ...options, pathC: options.pathC && pathCActive }),
       dispatchCommand: (command) => {
         const result = handleRadioCommand(world, command, log);
         if (result.readback) {
@@ -170,7 +142,6 @@ export function createApp(deps: AppDeps): AppHandles {
       getCatalogProcedures: () => proceduresFromCatalog(world.catalog),
       getCatalogApproaches: () => approachesFromCatalog(world.catalog),
       getIssuedAtSimMs: () => world.simTimeMs,
-      confidenceThreshold: deps.confidenceThreshold ?? prefs.confidenceThreshold,
       getVoiceId: deps.getVoiceId ?? ((callsign) => voiceIdForCallsign(callsign, prefs.voiceId)),
       setTransmitLocked: (locked) => {
         ptt?.setTransmitLocked(locked);
@@ -183,12 +154,11 @@ export function createApp(deps: AppDeps): AppHandles {
         emitVoiceStatus(formatVoiceStatus(event));
         logVoiceReject(log, world, event);
       },
-      onMetrics: observeMetrics,
       onUtteranceComplete: (metrics) => {
-        observeMetrics(metrics);
         logVoiceLatency(log, world, metrics, speech.id);
       },
       readbackPlayer: deps.readbackPlayer,
+      pathC: prefs.pathC,
     });
 
   ptt =
@@ -211,8 +181,6 @@ export function createApp(deps: AppDeps): AppHandles {
       return false;
     }
     speech = next;
-    tracker.setBackendId(next.id);
-    emitLatency();
     if (previous !== next) {
       try {
         previous.dispose?.();
@@ -225,22 +193,14 @@ export function createApp(deps: AppDeps): AppHandles {
 
   const speechSettings = createSpeechSettingsController({
     host: {
-      setSpeechPort,
       setPttKey: (key) => {
         pttController.setPttKey(key);
-      },
-      setConfidenceThreshold: (value) => {
-        voiceLoop.setConfidenceThreshold(value);
-      },
-      isBusy: () => voiceLoop.busy,
-      setLatencyOverlayVisible: (visible) => {
-        latencyOverlayVisible = visible;
-        emitLatency();
       },
       setRadioFx: (enabled) => {
         voiceLoop.readbackPlayer.setFxEnabled(enabled);
       },
       setPathC: (enabled) => {
+        pathCActive = enabled;
         voiceLoop.setPathC(enabled);
       },
     },
@@ -282,19 +242,6 @@ export function createApp(deps: AppDeps): AppHandles {
       return () => {
         voiceStatusListeners.delete(listener);
       };
-    },
-    subscribeLatencyOverlay(listener) {
-      latencyListeners.add(listener);
-      listener(latencyState());
-      return () => {
-        latencyListeners.delete(listener);
-      };
-    },
-    setLatencyOverlayVisible(visible) {
-      speechSettings.setLatencyOverlay(visible);
-    },
-    getLatencyOverlayVisible() {
-      return latencyOverlayVisible;
     },
     afterPhysicsTick,
     caAlertTone,

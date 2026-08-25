@@ -542,10 +542,9 @@ export function takePositionAdvisory(c: Cursor): boolean {
     c.i = start;
     return false;
   }
-  c.i += 1;
-  if (peek(c) && (peek(c)! in ONES || /^\d+$/.test(peek(c)!))) {
+  do {
     c.i += 1;
-  }
+  } while (isDistanceNumber(peek(c)));
 
   if (peek(c) === "nautical" && (peek(c, 1) === "miles" || peek(c, 1) === "mile")) {
     c.i += 2;

@@ -4,7 +4,7 @@
  * Scope never writes intent. Does not run physics.
  *
  * Analog: vice typed tokens (R08) compile to IR; 7110.65 readbacks (R01).
- * Trainer delta: awaits `parseCommand` (typed → Path A → Path B → optional C). Not NAS STARS.
+ * Trainer delta: awaits `parseCommand` (typed → Path A → Path B → configured C). Not NAS STARS.
  */
 
 import type { Command, Instruction, ParseStage, SessionLog, World } from "@core";
@@ -25,7 +25,7 @@ export interface PilotResult {
 export interface HandleRadioOpts {
   /** Channel. Default `"text"` so typed command-line callers stay valid. */
   source?: "text" | "voice";
-  /** Default false. Path C after typed/A/B miss only. */
+  /** Explicit opt-in. Path C runs after typed/A/B miss only. */
   pathC?: boolean;
 }
 

@@ -14,7 +14,7 @@ Shared files win over phase READMEs. This file wins over older “text = tokeniz
 | 1 | Typed tokenizer | `typed` | Phase 1 `parseRadioText` (`H270`, `D30`, …). |
 | 2 | Path A | `spoken_a` | 7110.65-shaped English → `Instruction[]` (phase 3 grammar). |
 | 3 | Path B | `spoken_b` | Conservative rewrite of English fragments → tokens → tokenizer. |
-| 4 | Path C | `llm_c` | Optional `POST` on **our** `speech-api`. Off by default. |
+| 4 | Path C | `llm_c` | Required local `POST` on **our** `speech-api` after local stages miss. |
 
 ```
 raw string  (command line or transcript.text)
@@ -25,7 +25,7 @@ normalizeSpoken
     ├─ typed tokenizer ok? ──────────────────────────► done  parseStage=typed
     ├─ Path A ok? ───────────────────────────────────► done  parseStage=spoken_a
     ├─ Path B ok? ───────────────────────────────────► done  parseStage=spoken_b
-    ├─ Path C enabled and /parse ok + schema check? ─► done  parseStage=llm_c
+    ├─ Path C ready and /parse ok + schema check? ───► done  parseStage=llm_c
     └─ miss (no throw)
 ```
 
@@ -47,7 +47,7 @@ parseCommand(
   opts: {
     source: "text" | "voice";
     selectedCallsign?: string | null;
-    /** Default false. When true, stage 4 may fetch. */
+    /** Explicit caller opt-in; product wiring enables it after health is ready. */
     pathC?: boolean;
   },
 ): Promise<ParseResult>;
@@ -73,7 +73,7 @@ Content-Type: application/json
 Optional `context` is prompt grounding, **not** a vector DB:
 
 - `callsigns` / `selectedCallsign` — live strip roster (`onFrequency=`).
-- `fixes` — facility catalog ids (`fixes=`). ASR often writes `C-Max` for `SEMAX`; the 1.5B model must pick a listed spelling. Do not send kinematics.
+- `fixes` — facility catalog ids (`fixes=`). ASR often writes `C-Max` for `SEMAX`; the local model must pick a listed spelling. Do not send kinematics.
 
 The browser also snaps unique noisy `fixId` values onto that catalog after every stage (typed / A / B / C), the same way it snaps flight-number suffixes onto the roster.
 
@@ -91,14 +91,14 @@ Failure / disabled: `{ "ok": false, "error": "UNAVAILABLE" | "PARSE_MISS" | "SCH
 
 | Rule | Why |
 | --- | --- |
-| Default **off** in settings | Happy-path voice must not wait on a 7B. |
-| `PARSE_MODEL_ID` unset → `/parse` is `UNAVAILABLE` (T03-13 stub OK) | Phase 3 exits without a GGUF. |
+| Default **on** after `/health.parse === "ready"` | Every local miss gets constrained local salvage; users may opt out. |
+| `PARSE_MODEL_ID` absent/empty → default Qwen3 4B GGUF | Speech service downloads required local weights at setup. |
 | Browser **schema-checks** `instructions` against the frozen `Instruction` union | Model must not invent types or apply intent. |
 | Unknown `type`, extra keys that break the union, or empty list → treat as miss | Closed schema. |
 | Timeout / network / 503 → miss, status line, typed still works | Same as speech-api down. |
 | Hub (or other public) **weight download once**; inference on this process | Same self-host rule as Whisper. No OpenAI/Groq/HF Inference. |
 
-Constrained decoding (JSON / GBNF matching the union) is preferred. A 1–3B instruct is enough; 7B is allowed if it fits GPU/CPU, not required.
+Constrained decoding (JSON / GBNF matching the union) is required. Default is Qwen3 4B Q4_K_M; it must fit available local GPU/CPU resources.
 
 ## Scoring (phase 5)
 

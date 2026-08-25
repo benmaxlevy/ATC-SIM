@@ -15,6 +15,7 @@ const ICAO_ALWAYS: Readonly<Record<string, string>> = {
   niner: "nine",
   tree: "three",
   fife: "five",
+  till: "until",
 };
 
 const NUMBER_SLOT_TRIGGERS = new Set([
@@ -32,7 +33,7 @@ const ALTITUDE_PREP_PREV = new Set(["descend", "climb"]);
 
 function tokenize(raw: string): string[] {
   const lower = raw.toLowerCase().trim();
-  const stripped = lower.replace(/[^a-z0-9\s-]/g, " ");
+  const stripped = lower.replace(/-/g, " ").replace(/[^a-z0-9\s]/g, " ");
   return stripped.split(/\s+/).filter((tok) => tok.length > 0);
 }
 

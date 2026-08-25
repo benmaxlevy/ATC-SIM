@@ -1,37 +1,40 @@
 import os
 
+import pytest
+
 # Contract tests must never hit the Hub. Force mock before app import.
 os.environ["SPEECH_API_MOCK"] = "1"
-os.environ["PARSE_MODEL_ID"] = ""
 
-import pytest
 from fastapi.testclient import TestClient
 
 from app import create_app
-from config import Settings
+from config import DEFAULT_PARSE_GGUF_FILE, DEFAULT_PARSE_MODEL_ID, Settings
 from wavutil import is_wave, tone_wav
 
 
 @pytest.fixture
-def client() -> TestClient:
+def client(monkeypatch) -> TestClient:
+    monkeypatch.setattr("config.load_env_file", lambda: False)
+    monkeypatch.setenv("PARSE_MODEL_ID", DEFAULT_PARSE_MODEL_ID)
+    monkeypatch.setenv("PARSE_GGUF_FILE", DEFAULT_PARSE_GGUF_FILE)
     settings = Settings.load()
     assert settings.mock
-    assert settings.parse_model_id is None
+    assert settings.parse_model_id == DEFAULT_PARSE_MODEL_ID
     with TestClient(create_app(settings)) as test_client:
         yield test_client
 
 
-def test_health_ok_parse_off(client: TestClient) -> None:
+def test_health_ok_parse_ready(client: TestClient) -> None:
     response = client.get("/health")
     assert response.status_code == 200
     body = response.json()
     assert body["ok"] is True
     assert isinstance(body["sttModel"], str) and body["sttModel"]
     assert isinstance(body["ttsVoice"], str) and body["ttsVoice"]
-    assert body["parse"] == "off"
+    assert body["parse"] == "ready"
 
 
-def test_parse_unavailable(client: TestClient) -> None:
+def test_parse_mock_ready_without_download(client: TestClient) -> None:
     response = client.post(
         "/parse",
         json={
@@ -40,10 +43,9 @@ def test_parse_unavailable(client: TestClient) -> None:
             "schemaVersion": "command-ir-v0",
         },
     )
-    assert response.status_code == 503
+    assert response.status_code == 200
     body = response.json()
-    assert body["ok"] is False
-    assert body["error"] == "UNAVAILABLE"
+    assert body["ok"] is True
 
 
 def test_stt_fixture_wav_json_shape(client: TestClient) -> None:
@@ -87,10 +89,7 @@ def test_piper_voice_maps_to_hub_path() -> None:
     assert piper_hub_filename("en_US-amy-medium") == "en/en_US/amy/medium/en_US-amy-medium.onnx"
 
 
-def test_avg_logprob_mapping_clears_say_again_gate() -> None:
-    from engines import avg_logprob_to_confidence
+def test_mock_stt_has_stable_confidence() -> None:
+    from engines import MockStt
 
-    assert avg_logprob_to_confidence(-0.3) >= 0.55
-    assert avg_logprob_to_confidence(-0.7) >= 0.55
-    assert avg_logprob_to_confidence(-0.9) == pytest.approx(0.55)
-    assert avg_logprob_to_confidence(-1.4) < 0.55
+    assert MockStt().transcribe(b"RIFF") == ("delta one two three fly heading two seven zero", 1.0)

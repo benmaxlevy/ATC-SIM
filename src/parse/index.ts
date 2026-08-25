@@ -2,7 +2,8 @@
  * Public API for `@parse`.
  *
  * `parseCommand` runs normalize → typed tokenizer → Path A → Path B →
- * optional Path C (`phases/_shared/parse-pipeline.md`). Path C is off by default.
+ * configurable Path C (`phases/_shared/parse-pipeline.md`). Low-level callers
+ * must opt in so tests and non-browser paths never make surprise network calls.
  * `parseRadioText` remains the phase-1 typed tokenizer (stage 1 only).
  *
  * Import rule: `@parse` may import `@core` only. No World, no DOM.

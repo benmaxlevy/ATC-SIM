@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from app import create_app
 from config import DEFAULT_PARSE_MODEL_ID, Settings
-from hub import resolve_hub_file, whisper_weights_source
+from hub import model_weights_source, resolve_hub_file
 from logconfig import configure_logging
 
 
@@ -20,17 +20,17 @@ def test_configure_logging_quiets_huggingface() -> None:
     assert logging.getLogger("speech-api").level <= logging.INFO
 
 
-def test_whisper_weights_source_detects_snapshot(tmp_path: Path) -> None:
+def test_model_weights_source_detects_snapshot(tmp_path: Path) -> None:
     snap = (
         tmp_path
-        / "models--Systran--faster-whisper-small.en"
+        / "models--Qwen--Qwen3-ASR-1.7B"
         / "snapshots"
         / "abc"
     )
     snap.mkdir(parents=True)
     (snap / "config.json").write_text("{}", encoding="utf-8")
-    assert whisper_weights_source(tmp_path, "Systran/faster-whisper-small.en") == "cache"
-    assert whisper_weights_source(tmp_path, "missing/model") == "download"
+    assert model_weights_source(tmp_path, "Qwen/Qwen3-ASR-1.7B") == "cache"
+    assert model_weights_source(tmp_path, "missing/model") == "download"
 
 
 def test_resolve_hub_file_prefers_cache(monkeypatch, tmp_path: Path) -> None:
@@ -91,7 +91,6 @@ def _settings(*, parse_model_id: str | None) -> Settings:
         hf_token=None,
         cors_origins=(),
         stt_device=None,
-        stt_compute_type=None,
         tts_voices=("mock",),
     )
 
