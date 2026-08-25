@@ -320,3 +320,58 @@ test("catalog snaps spoken descend via demo 1 onto DEM1", async () => {
     expect(spoken.instructions).toEqual([{ type: "DESCEND_VIA", procedureId: "DEM1" }]);
   }
 });
+
+test("island parser — multi-command in single transmission with non-standard phrasing", async () => {
+  const result = await parseCommand("DAL123 turn left 20 degrees descend 4000 slow to 210", {
+    source: "voice",
+  });
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect(result.parseStage).toBe("spoken_b");
+  expect(result.callsignToken).toBe("DAL123");
+  expect(result.instructions).toEqual([
+    { type: "TURN_DEGREES", direction: "LEFT", degrees: 20 },
+    { type: "ALTITUDE", altitudeFt: 4000, verb: "DESCEND" },
+    { type: "SPEED", speedKt: 210, verb: "REDUCE" },
+  ]);
+});
+
+test("island parser — trailing callsign with heading and altitude", async () => {
+  const result = await parseCommand("heading 270 descend and maintain 3000 delta 123", {
+    source: "voice",
+  });
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect(result.parseStage).toBe("spoken_b");
+  expect(result.callsignToken).toBe("DAL123");
+  expect(result.instructions).toEqual([
+    { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+    { type: "ALTITUDE", altitudeFt: 3000, verb: "DESCEND" },
+  ]);
+});
+
+test("island parser — conversational fillers and noise phrases", async () => {
+  const result = await parseCommand("delta 123 uh please turn right heading 090 for traffic", {
+    source: "voice",
+  });
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect(result.callsignToken).toBe("DAL123");
+  expect(result.instructions).toEqual([
+    { type: "FLY_HEADING", headingDeg: 90, turn: "RIGHT" },
+  ]);
+});
+
+test("island parser — cross fix with altitude restriction", async () => {
+  const result = await parseCommand("cross SEMAX at or above 5000", {
+    source: "voice",
+    selectedCallsign: "DAL123",
+    fixes: ["SEMAX"],
+  });
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect(result.instructions).toEqual([
+    { type: "CROSS", fixId: "SEMAX", altitudeFt: 5000, restriction: "AT_OR_ABOVE" },
+  ]);
+});
+
