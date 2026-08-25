@@ -23,11 +23,7 @@ import {
   type CatalogApproach,
   type CatalogProcedure,
 } from "./catalog-ground";
-import {
-  parseSpokenCallsign,
-  PHONETIC_TO_LETTER,
-  RESERVED_SPOKEN,
-} from "./telephony";
+import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./telephony";
 
 const PROCEDURE_TRAILING = new Set(["arrival", "star", "sid", "departure", "procedure"]);
 
@@ -662,10 +658,7 @@ function matchDirect(
   catalog: readonly string[],
 ): { instruction: Instruction; next: number } | null {
   let j = i;
-  if (
-    (tokens[j] === "proceed" || tokens[j] === "cleared") &&
-    tokens[j + 1] === "direct"
-  ) {
+  if ((tokens[j] === "proceed" || tokens[j] === "cleared") && tokens[j + 1] === "direct") {
     j += 2;
   } else if (tokens[j] === "direct") {
     j += 1;

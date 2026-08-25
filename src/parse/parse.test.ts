@@ -357,9 +357,7 @@ test("island parser — conversational fillers and noise phrases", async () => {
   expect(result.ok).toBe(true);
   if (!result.ok) return;
   expect(result.callsignToken).toBe("DAL123");
-  expect(result.instructions).toEqual([
-    { type: "FLY_HEADING", headingDeg: 90, turn: "RIGHT" },
-  ]);
+  expect(result.instructions).toEqual([{ type: "FLY_HEADING", headingDeg: 90, turn: "RIGHT" }]);
 });
 
 test("island parser — cross fix with altitude restriction", async () => {
@@ -374,4 +372,3 @@ test("island parser — cross fix with altitude restriction", async () => {
     { type: "CROSS", fixId: "SEMAX", altitudeFt: 5000, restriction: "AT_OR_ABOVE" },
   ]);
 });
-

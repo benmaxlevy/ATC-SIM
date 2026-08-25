@@ -76,7 +76,9 @@ describe("pattern-matcher (island parser)", () => {
 
   describe("Reordered instructions and trailing callsigns", () => {
     test("heading 270 descend and maintain 3000 delta 123", () => {
-      const res = parse("heading two seven zero descend and maintain three thousand delta one two three");
+      const res = parse(
+        "heading two seven zero descend and maintain three thousand delta one two three",
+      );
       expect(res.ok).toBe(true);
       if (!res.ok) return;
       expect(res.callsignToken).toBe("DAL123");
@@ -137,9 +139,7 @@ describe("pattern-matcher (island parser)", () => {
       expect(res.ok).toBe(true);
       if (!res.ok) return;
       expect(res.callsignToken).toBe("DAL123");
-      expect(res.instructions).toEqual([
-        { type: "FLY_HEADING", headingDeg: 90, turn: "RIGHT" },
-      ]);
+      expect(res.instructions).toEqual([{ type: "FLY_HEADING", headingDeg: 90, turn: "RIGHT" }]);
     });
 
     test("good morning delta 123 turn left heading 270 radar contact", () => {
@@ -147,9 +147,7 @@ describe("pattern-matcher (island parser)", () => {
       expect(res.ok).toBe(true);
       if (!res.ok) return;
       expect(res.callsignToken).toBe("DAL123");
-      expect(res.instructions).toEqual([
-        { type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" },
-      ]);
+      expect(res.instructions).toEqual([{ type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" }]);
     });
 
     test("delta 123 roger turn 20 degrees left for sequencing", () => {
@@ -157,9 +155,7 @@ describe("pattern-matcher (island parser)", () => {
       expect(res.ok).toBe(true);
       if (!res.ok) return;
       expect(res.callsignToken).toBe("DAL123");
-      expect(res.instructions).toEqual([
-        { type: "TURN_DEGREES", direction: "LEFT", degrees: 20 },
-      ]);
+      expect(res.instructions).toEqual([{ type: "TURN_DEGREES", direction: "LEFT", degrees: 20 }]);
     });
   });
 
