@@ -14,6 +14,7 @@ import {
   stepCharSizeChannel,
   toggleCurrentMapsList,
   toggleGeoMapsList,
+  toggleVideoMap,
 } from "./dcbFunctions";
 import { createScopeView, toggleSsaFilter } from "./scopeView";
 import { formatFilterReadout } from "./altitudeFilter";
@@ -1142,4 +1143,33 @@ test("right and middle buttons slew; left does not", () => {
   expect(isPpiSlewHeld(2)).toBe(true);
   expect(isPpiSlewHeld(4)).toBe(true);
   expect(isPpiSlewHeld(6)).toBe(true);
+});
+
+test("T04-23 — slot 7 DEM1_SID video map renders SID lines and labels on PPI scope canvas and can be toggled", () => {
+  const maps = loadKdem().maps;
+  const view = createScopeView(0, 0, { digitalMap: parseDigitalMap(maps) });
+  const world = createWorld();
+  const onCtx = createMockCtx();
+  renderScope(onCtx.ctx, world, view, 800, 800);
+
+  // Check that SID labels (MISSD, SNARF, NORMA, OCTTA) are drawn on the scope
+  expect(onCtx.fillTexts.some((t) => t.text === "MISSD")).toBe(true);
+  expect(onCtx.fillTexts.some((t) => t.text === "SNARF")).toBe(true);
+  expect(onCtx.fillTexts.some((t) => t.text === "NORMA")).toBe(true);
+  expect(onCtx.fillTexts.some((t) => t.text === "OCTTA")).toBe(true);
+
+  // Toggle DEM1_SID off
+  toggleVideoMap(view, "DEM1_SID");
+  const offCtx = createMockCtx();
+  renderScope(offCtx.ctx, world, view, 800, 800);
+  expect(offCtx.fillTexts.some((t) => t.text === "MISSD")).toBe(false);
+  expect(offCtx.fillTexts.some((t) => t.text === "SNARF")).toBe(false);
+  expect(offCtx.fillTexts.some((t) => t.text === "NORMA")).toBe(false);
+  expect(offCtx.fillTexts.some((t) => t.text === "OCTTA")).toBe(false);
+
+  // Toggle DEM1_SID back on
+  toggleVideoMap(view, "DEM1_SID");
+  const backOnCtx = createMockCtx();
+  renderScope(backOnCtx.ctx, world, view, 800, 800);
+  expect(backOnCtx.fillTexts.some((t) => t.text === "MISSD")).toBe(true);
 });

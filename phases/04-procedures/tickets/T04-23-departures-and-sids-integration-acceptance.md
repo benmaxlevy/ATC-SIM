@@ -50,13 +50,13 @@ See `phases/04-procedures/README.md`, `phases/02-scope/tickets/T02-21-tcw-visual
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Automated integration test verifies a complete mixed session (arrivals + departures): departures spawn, check in on radio, fly SID legs, accept vector commands, hand off via `Shift+H`, and exit airspace at boundary.
-- [ ] **AC2 —** Standard departure climb profiles on DEM1 SID do not trigger false MSAW alerts over terrain or false CA against properly spaced arrivals.
-- [ ] **AC3 —** `Shift+H` on a selected arrival on final executes Tower handoff; `Shift+H` on a selected climbing departure executes Center handoff.
-- [ ] **AC4 —** Issuing radar vectors (`H090`) to a departure immediately transitions lateral mode to `HEADING` while maintaining assigned climb.
-- [ ] **AC5 —** Video map 7 correctly renders the DEM1 SID route lines on the PPI scope when toggled via DCB MAPS or keyboard shortcut.
-- [ ] **AC6 —** Manual acceptance script documented with reproducible steps.
-- [ ] **AC7 —** `npm test` and `npm run ci` pass cleanly with zero diagnostics.
+- [x] **AC1 —** Automated integration test verifies a complete mixed session (arrivals + departures): departures spawn, check in on radio, fly SID legs, accept vector commands, hand off via `Shift+H`, and exit airspace at boundary.
+- [x] **AC2 —** Standard departure climb profiles on DEM1 SID do not trigger false MSAW alerts over terrain or false CA against properly spaced arrivals.
+- [x] **AC3 —** `Shift+H` on a selected arrival on final executes Tower handoff; `Shift+H` on a selected climbing departure executes Center handoff.
+- [x] **AC4 —** Issuing radar vectors (`H090`) to a departure immediately transitions lateral mode to `HEADING` while maintaining assigned climb.
+- [x] **AC5 —** Video map 7 correctly renders the DEM1 SID route lines on the PPI scope when toggled via DCB MAPS or keyboard shortcut.
+- [x] **AC6 —** Manual acceptance script documented with reproducible steps.
+- [x] **AC7 —** `npm test` and `npm run ci` pass cleanly with zero diagnostics.
 
 ## Test plan
 
