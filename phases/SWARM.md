@@ -31,10 +31,12 @@ Orchestrator planning **2026-08-25**. Human requested SIDs and randomized (custo
 | Paid STT/TTS/LLM | **Forbidden** |
 
 **Waves:**
-- **Wave A (1 worker):** `T04-18` (SID procedure schema, KDEM fixture & video map)
-- **Wave B (2 workers):** `T04-19` (SID climb-via and FMS guidance) ∥ `T04-20` (Departure spawning and handoff lifecycle) [isolated worktrees]
-- **Wave C (2 workers):** `T04-21` (Randomized & customizable departure generator) ∥ `T04-22` (Departure radio check-in & telephony) [isolated worktrees]
-- **Wave D (1 worker):** `T04-23` (SIDs and departures integration & acceptance)
+- **Wave A (1 worker):** `T04-18` (SID procedure schema, KDEM fixture & video map) — **COMPLETE** (`15a2314`)
+- **Wave B (2 workers):** `T04-19` (SID climb-via and FMS guidance) ∥ `T04-20` (Departure spawning and handoff lifecycle) — **COMPLETE** (`4ed8a58`, `f640363`)
+- **Wave C (2 workers):** `T04-21` (Randomized & customizable departure generator) ∥ `T04-22` (Departure radio check-in & telephony) — **COMPLETE** (`d3dc743`, `65cdc39`)
+- **Wave D (1 worker):** `T04-23` (SIDs and departures integration & acceptance) — **COMPLETE** (`54c56a2`)
+
+**Ninth Swarm Status: COMPLETE & GREEN** (116/116 test files passed, 1275 tests passed, 0 failures, CI clean)
 
 **Product law (ninth swarm — SIDs & departures):**
 - **Data-first SIDs:** KDEM `DEM1` departure in `src/scenario/data/kdem/sids.json` is the shipped fixture; no `"DEM1"` or `"KDEM"` code branches in runtime FMS or helpers.
