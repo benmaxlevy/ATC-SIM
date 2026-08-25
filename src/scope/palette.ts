@@ -47,6 +47,10 @@ export const PALETTE = {
    * Not NAS handoff / other-TCP.
    */
   tower: "#00DDFF",
+  /**
+   * Center-handoff ownership stub (T04-20). Trainer cyan/outbound cue.
+   */
+  center: "#00DDFF",
   /** Selection box, IDENT flash, unassociated/point-out analog — yellow. */
   selected: "#FFFF00",
   /** Search/fusion position symbol — FAA (30,120,255). Independent of FDB color. */

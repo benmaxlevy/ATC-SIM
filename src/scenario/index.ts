@@ -72,6 +72,18 @@ export {
   outermostStarFix,
   starInboundPose,
 } from "./starSpawn";
+export type {
+  DepartureSpawnConfig,
+  DepartureSpawnPose,
+} from "./departureSpawn";
+export {
+  DEPARTURE_SPAWN_ALTITUDE_FT,
+  DEPARTURE_SPAWN_ROLL_OFFSET_NM,
+  DEPARTURE_SPAWN_SPEED_KT,
+  DEFAULT_DEPARTURE_ALTITUDE_FT,
+  departureSpawnPose,
+  spawnDeparture,
+} from "./departureSpawn";
 export {
   DEFAULT_SPAWN_SEED,
   parseScenarioChoice,
@@ -79,3 +91,4 @@ export {
   parseTrafficCount,
 } from "./trafficQuery";
 export type { ScenarioChoice } from "./trafficQuery";
+

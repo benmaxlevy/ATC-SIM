@@ -11,14 +11,24 @@
  * Phase 5 must not score these events.
  */
 
+import type { Aircraft } from "./aircraft";
+import type { SessionLog } from "./events/session-log";
+import { isLandingInhibited, isOnMissed } from "./fms/missed";
+import { isTowerHandoffEligible } from "./fms/landing";
 import type { World } from "./world";
 
 export const DEFAULT_INBOUND_SECTOR_ID = "C";
+export const DEFAULT_CENTER_SECTOR_ID = "C";
+export const DEFAULT_TOWER_SECTOR_ID = "TWR";
 
 /** Stable `command.rejected` reason while inbound HO is pending. */
 export const HANDOFF_PENDING_REASON = "handoff-pending";
 
-export type TrackHandoff = { kind: "none" } | { kind: "inbound"; fromSectorId: string };
+export type TrackHandoff =
+  | { kind: "none" }
+  | { kind: "inbound"; fromSectorId: string }
+  | { kind: "departure"; fromSectorId: string }
+  | { kind: "outbound"; toSectorId: string };
 
 export const NONE_HANDOFF: TrackHandoff = { kind: "none" };
 
@@ -60,6 +70,28 @@ export function offerInboundHandoff(
   });
 }
 
+/**
+ * Mark a departure spawn from Local Control / Tower.
+ * Emits `handoff.departure.spawned` once.
+ */
+export function offerDepartureHandoff(
+  world: World,
+  aircraft: { id: string; callsign: string },
+  fromSectorId: string = DEFAULT_TOWER_SECTOR_ID,
+  details?: { runwayId?: string; sidId?: string },
+): void {
+  world.handoffs.set(aircraft.id, { kind: "departure", fromSectorId });
+  world.sessionLog?.append({
+    type: "handoff.departure.spawned",
+    atSimMs: world.simTimeMs,
+    atWallMs: 0,
+    callsign: aircraft.callsign,
+    fromSectorId,
+    ...(details?.runwayId ? { runwayId: details.runwayId } : {}),
+    ...(details?.sidId ? { sidId: details.sidId } : {}),
+  });
+}
+
 /** Authored / downwind bench: commandable without HO. */
 export function setHandoffNone(world: World, aircraftId: string): void {
   world.handoffs.set(aircraftId, { kind: "none" });
@@ -85,6 +117,77 @@ export function acceptInboundHandoff(world: World, aircraftId: string, atWallMs 
     atWallMs,
     callsign: ac.callsign,
     fromSectorId: current.fromSectorId,
+  });
+  return true;
+}
+
+/**
+ * True when aircraft is a departure/outbound climbing toward boundary
+ * (altitude >= 5,000 ft or distance from ARP >= 12 NM or climbing on SID, not on approach).
+ */
+export function isCenterHandoffEligible(ac: Aircraft, world: World): boolean {
+  if (isLandingInhibited(ac) || isOnMissed(ac)) {
+    return false;
+  }
+  const lat = ac.intent.lateral?.type;
+  if (lat === "LOC" || lat === "LANDING" || ac.intent.clearedApproachId) {
+    return false;
+  }
+  if (isTowerHandoffEligible(ac, world)) {
+    return false;
+  }
+  const ho = handoffFor(world, ac.id);
+  if (ho.kind === "outbound" || ho.kind === "inbound") {
+    return false;
+  }
+  if (ac.intent.vertical?.type === "VIA_STAR") {
+    return false;
+  }
+  if (
+    ac.intent.vertical?.type === "VIA_SID" ||
+    Boolean(ac.intent.lateral?.sidId) ||
+    ho.kind === "departure"
+  ) {
+    return true;
+  }
+  const distFromArp = Math.hypot(ac.xNm, ac.yNm);
+  if (ac.altitudeFt >= 5000 || distFromArp >= 12) {
+    return true;
+  }
+  return false;
+}
+
+export interface CenterHandoffContext {
+  world?: World;
+  log?: SessionLog | null;
+  simTimeMs: number;
+}
+
+/**
+ * Initiate outbound handoff to Enroute Center (sector C / Z).
+ * Logs handoff.center and handoff.outbound.initiated, sets outbound handoff state.
+ */
+export function initiateCenterHandoff(
+  ac: Aircraft,
+  ctx: CenterHandoffContext,
+  toSectorId: string = DEFAULT_CENTER_SECTOR_ID,
+): boolean {
+  if (ctx.world) {
+    ctx.world.handoffs.set(ac.id, { kind: "outbound", toSectorId });
+  }
+  ctx.log?.append({
+    type: "handoff.center",
+    atSimMs: ctx.simTimeMs,
+    atWallMs: 0,
+    callsign: ac.callsign,
+    toSectorId,
+  });
+  ctx.log?.append({
+    type: "handoff.outbound.initiated",
+    atSimMs: ctx.simTimeMs,
+    atWallMs: 0,
+    callsign: ac.callsign,
+    toSectorId,
   });
   return true;
 }

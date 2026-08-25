@@ -198,6 +198,42 @@ export type SessionEvent =
       atWallMs: number;
       callsign: string;
       fromSectorId: string;
+    }
+  | {
+      type: "handoff.departure.spawned";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      fromSectorId: string;
+      runwayId?: string;
+      sidId?: string;
+    }
+  | {
+      type: "handoff.center";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      toSectorId: string;
+    }
+  | {
+      type: "handoff.outbound.initiated";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      toSectorId: string;
+    }
+  | {
+      type: "handoff.outbound.completed";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      toSectorId: string;
+    }
+  | {
+      type: "nav.departed";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
     };
 
 /**

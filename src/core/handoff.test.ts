@@ -6,7 +6,10 @@ import {
   acceptInboundHandoff,
   assertHandoffOwned,
   handoffFor,
+  initiateCenterHandoff,
+  isCenterHandoffEligible,
   isRadioCommandAllowed,
+  offerDepartureHandoff,
   offerInboundHandoff,
 } from "./handoff";
 
@@ -74,3 +77,128 @@ test("offer then accept logs one offered and one accepted; radio gate flips", ()
   expect(acceptInboundHandoff(world, dal.id)).toBe(false);
   expect(log.byType("handoff.inbound.accepted")).toHaveLength(1);
 });
+
+test("offerDepartureHandoff records departure state from TWR and allows radio commands", () => {
+  const ac = createAircraft({
+    id: "ac-dep",
+    callsign: "SWA555",
+    xNm: -0.8,
+    yNm: 0,
+    headingDeg: 270,
+    altitudeFt: 700,
+    speedKt: 180,
+  });
+  const log = new SessionLog();
+  const world = createWorld({ aircraft: [ac], sessionLog: log, simTimeMs: 5000 });
+
+  offerDepartureHandoff(world, ac, "TWR", { runwayId: "27", sidId: "DEM1" });
+  expect(handoffFor(world, ac.id)).toEqual({
+    kind: "departure",
+    fromSectorId: "TWR",
+  });
+  expect(isRadioCommandAllowed(handoffFor(world, ac.id))).toBe(true);
+
+  const spawned = log.byType("handoff.departure.spawned");
+  expect(spawned).toHaveLength(1);
+  expect(spawned[0]).toMatchObject({
+    callsign: "SWA555",
+    fromSectorId: "TWR",
+    runwayId: "27",
+    sidId: "DEM1",
+    atSimMs: 5000,
+  });
+});
+
+test("isCenterHandoffEligible is true for climbing departures and false for arrivals on approach", () => {
+  const dep = createAircraft({
+    id: "ac-dep",
+    callsign: "AAL222",
+    xNm: 10,
+    yNm: 5,
+    headingDeg: 90,
+    altitudeFt: 5200,
+    speedKt: 250,
+  });
+  dep.intent.vertical = { type: "VIA_SID", sidId: "DEM1" };
+  dep.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "DEM1",
+    toFixIndex: 0,
+    routeFixIds: ["MISSD", "SNARF"],
+  };
+
+  const arr = createAircraft({
+    id: "ac-arr",
+    callsign: "DAL123",
+    xNm: 4,
+    yNm: 0,
+    headingDeg: 270,
+    altitudeFt: 1300,
+    speedKt: 160,
+  });
+  arr.intent.lateral = { type: "LOC", approachId: "ILS27" };
+  arr.intent.vertical = { type: "GS", approachId: "ILS27" };
+  arr.intent.clearedApproachId = "ILS27";
+
+  const world = createWorld({
+    aircraft: [dep, arr],
+    catalog: {
+      airportId: "KDEM",
+      navaids: [],
+      fixes: [{ id: "RW27", xNm: 0, yNm: 0, kind: "THRESHOLD" }],
+      stars: [],
+      approaches: [{
+        id: "ILS27",
+        courseDeg: 270,
+        lengthNm: 18,
+        beamHalfWidthDeg: 2.5,
+        thresholdFixId: "RW27",
+        daFt: 200,
+      }],
+      sids: [{ id: "DEM1", legs: [] }],
+    },
+  });
+
+  expect(isCenterHandoffEligible(dep, world)).toBe(true);
+  expect(isCenterHandoffEligible(arr, world)).toBe(false);
+});
+
+test("initiateCenterHandoff logs handoff.center and handoff.outbound.initiated and sets outbound state", () => {
+  const ac = createAircraft({
+    id: "ac-dep",
+    callsign: "UAL888",
+    xNm: 15,
+    yNm: 10,
+    headingDeg: 45,
+    altitudeFt: 8000,
+    speedKt: 250,
+  });
+  const log = new SessionLog();
+  const world = createWorld({ aircraft: [ac], sessionLog: log, simTimeMs: 12000 });
+
+  expect(initiateCenterHandoff(ac, { world, log, simTimeMs: 12000 }, "C")).toBe(true);
+  expect(handoffFor(world, ac.id)).toEqual({
+    kind: "outbound",
+    toSectorId: "C",
+  });
+
+  const centerEvents = log.byType("handoff.center");
+  expect(centerEvents).toHaveLength(1);
+  expect(centerEvents[0]).toMatchObject({
+    callsign: "UAL888",
+    toSectorId: "C",
+    atSimMs: 12000,
+  });
+
+  const initEvents = log.byType("handoff.outbound.initiated");
+  expect(initEvents).toHaveLength(1);
+  expect(initEvents[0]).toMatchObject({
+    callsign: "UAL888",
+    toSectorId: "C",
+    atSimMs: 12000,
+  });
+
+  // Once outbound, isCenterHandoffEligible becomes false
+  expect(isCenterHandoffEligible(ac, world)).toBe(false);
+});
+
