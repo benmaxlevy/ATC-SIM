@@ -147,14 +147,16 @@ test("isCenterHandoffEligible is true for climbing departures and false for arri
       navaids: [],
       fixes: [{ id: "RW27", xNm: 0, yNm: 0, kind: "THRESHOLD" }],
       stars: [],
-      approaches: [{
-        id: "ILS27",
-        courseDeg: 270,
-        lengthNm: 18,
-        beamHalfWidthDeg: 2.5,
-        thresholdFixId: "RW27",
-        daFt: 200,
-      }],
+      approaches: [
+        {
+          id: "ILS27",
+          courseDeg: 270,
+          lengthNm: 18,
+          beamHalfWidthDeg: 2.5,
+          thresholdFixId: "RW27",
+          daFt: 200,
+        },
+      ],
       sids: [{ id: "DEM1", legs: [] }],
     },
   });
@@ -201,4 +203,3 @@ test("initiateCenterHandoff logs handoff.center and handoff.outbound.initiated a
   // Once outbound, isCenterHandoffEligible becomes false
   expect(isCenterHandoffEligible(ac, world)).toBe(false);
 });
-

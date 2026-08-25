@@ -145,7 +145,7 @@ export function isCenterHandoffEligible(ac: Aircraft, world: World): boolean {
   }
   if (
     ac.intent.vertical?.type === "VIA_SID" ||
-    Boolean(ac.intent.lateral?.sidId) ||
+    (ac.intent.lateral?.type === "PROCEDURE" && Boolean(ac.intent.lateral.sidId)) ||
     ho.kind === "departure"
   ) {
     return true;

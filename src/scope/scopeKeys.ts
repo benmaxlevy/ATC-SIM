@@ -30,7 +30,6 @@ import {
   isRadioFocusSlashKey,
   isScopeChordLive,
   isHandoffKey,
-  isTowerHandoffKey,
   leaderDigitFromKey,
 } from "./keymap";
 import { handleDcbEscape } from "./dcbMenu";
@@ -51,7 +50,7 @@ import {
   applyDropTrackToSelection,
   applyInitiateTrackToSelection,
 } from "./trackDisplay";
-import { applyHandoffToSelection, applyTowerHandoffToSelection } from "./ownership";
+import { applyHandoffToSelection } from "./ownership";
 
 export const ALWAYS_ON_SCOPE_KEYS = [
   "PageUp",

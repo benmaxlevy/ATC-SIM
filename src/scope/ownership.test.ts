@@ -396,4 +396,3 @@ test("AC4 — When departure flies past the TRACON boundary (>28 NM), it is grac
   expect(departed).toHaveLength(1);
   expect(departed[0]?.callsign).toBe("UAL444");
 });
-

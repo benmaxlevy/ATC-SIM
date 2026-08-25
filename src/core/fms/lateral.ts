@@ -154,7 +154,9 @@ function guideProcedure(
   }
   const currentId = lateral.routeFixIds[lateral.toFixIndex];
   if (currentId === undefined) {
-    emitStarVectors(ac, ctx, lateral.starId);
+    if (lateral.starId) {
+      emitStarVectors(ac, ctx, lateral.starId);
+    }
     sequenceToPresentHeading(ac);
     return ac.headingDeg;
   }
@@ -179,12 +181,15 @@ function guideProcedure(
     ac.intent.lateral = {
       type: "PROCEDURE",
       starId: lateral.starId,
+      sidId: lateral.sidId,
       toFixIndex: lateral.toFixIndex + 1,
       routeFixIds: lateral.routeFixIds,
     };
     return nextCourse;
   }
-  emitStarVectors(ac, ctx, lateral.starId);
+  if (lateral.starId) {
+    emitStarVectors(ac, ctx, lateral.starId);
+  }
   sequenceToPresentHeading(ac);
   return ac.headingDeg;
 }

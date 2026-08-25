@@ -35,6 +35,13 @@ test("SessionEvent includes command events, voice.latency, CA edges, MSAW edges,
     | "radio.checkin"
     | "handoff.inbound.offered"
     | "handoff.inbound.accepted"
+    | "handoff.departure.spawned"
+    | "handoff.center"
+    | "handoff.outbound.initiated"
+    | "handoff.outbound.completed"
+    | "departure.scheduled"
+    | "departure.spawned"
+    | "nav.departed"
   >();
 });
 

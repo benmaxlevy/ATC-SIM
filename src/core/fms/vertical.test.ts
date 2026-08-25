@@ -374,7 +374,6 @@ test("AC1 & AC2 — aircraft flies SID legs in sequence with VIA_SID and respect
 });
 
 test("AC3 — heading command cancels PROCEDURE and VIA_SID to HEADING and ASSIGNED", () => {
-  const registry = buildFixRegistry(kdemSource());
   const dal = createAircraft({
     id: "ac-dal",
     callsign: "DAL123",

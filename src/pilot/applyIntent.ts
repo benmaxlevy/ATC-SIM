@@ -58,10 +58,14 @@ function setHeadingMode(
   aircraft.intent.locInterceptApproachId = null;
 }
 
-function publishedLateralHint(
-  aircraft: Aircraft,
-):
-  | { type: "PROCEDURE"; starId: string; routeFixIds: readonly string[]; toFixIndex: number }
+function publishedLateralHint(aircraft: Aircraft):
+  | {
+      type: "PROCEDURE";
+      starId?: string;
+      sidId?: string;
+      routeFixIds: readonly string[];
+      toFixIndex: number;
+    }
   | { type: "DIRECT"; fixId: string }
   | null {
   const lateral = aircraft.intent.lateral;

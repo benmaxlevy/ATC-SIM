@@ -7,11 +7,13 @@ import {
   setHandoffNone,
   type Aircraft,
   type MsawInhibitGeom,
+  type ScheduledDeparture,
   type World,
 } from "@core";
 import type { ArrivalSpawn, Scenario } from "./types";
 import { assignStarRoutes, starRouteFixIds } from "./starSpawn";
-import { DEFAULT_SPAWN_SEED } from "./trafficQuery";
+import { DEFAULT_SPAWN_SEED, type DepartureOptions } from "./trafficQuery";
+import { generateDepartureSchedule, spawnDueDepartures } from "./departureGenerator";
 
 export { starRouteFixIds };
 
@@ -160,6 +162,71 @@ function worldFromScenario(scenario: Scenario): World {
   });
 }
 
+function initDepartures(
+  world: World,
+  scenario: Scenario,
+  seed: number,
+  departureOptions?: DepartureOptions | null,
+): void {
+  const isQuerySpecified = departureOptions !== undefined && departureOptions !== null;
+  const isEnabled = isQuerySpecified
+    ? departureOptions.enabled
+    : scenario.departureConfig?.policy === "auto" ||
+      scenario.departureConfig?.policy === "authored";
+
+  if (!isEnabled) {
+    return;
+  }
+
+  let schedule: ScheduledDeparture[];
+  if (
+    !isQuerySpecified &&
+    scenario.departureConfig?.policy === "authored" &&
+    scenario.departureConfig.departures &&
+    scenario.departureConfig.departures.length > 0
+  ) {
+    schedule = scenario.departureConfig.departures.map((d) => ({
+      callsign: d.callsign,
+      sidId: d.sidId,
+      transitionId: d.transitionId,
+      runwayId: scenario.activeRunwayId,
+      assignedAltitudeFt: d.assignedAltitudeFt,
+      aircraftType: d.aircraftType ?? "B738",
+      scheduledSimMs: d.scheduledSimMs ?? 60_000,
+      spawned: false,
+    }));
+  } else {
+    const depSeed = departureOptions?.seed ?? seed;
+    schedule = generateDepartureSchedule({
+      catalog: scenario.catalog,
+      seed: depSeed,
+      ratePerHour: departureOptions?.ratePerHour ?? scenario.departureConfig?.ratePerHour,
+      count: departureOptions?.count,
+      runwayId: scenario.activeRunwayId,
+      activeCallsigns: world.aircraft.map((a) => a.callsign),
+      startSimMs: world.simTimeMs,
+    });
+  }
+
+  world.scheduledDepartures = schedule;
+  world.departureSpawner = spawnDueDepartures;
+
+  if (world.sessionLog) {
+    for (const dep of schedule) {
+      world.sessionLog.append({
+        type: "departure.scheduled",
+        atSimMs: world.simTimeMs,
+        atWallMs: 0,
+        callsign: dep.callsign,
+        sidId: dep.sidId,
+        transitionId: dep.transitionId || undefined,
+        runwayId: dep.runwayId,
+        scheduledSimMs: dep.scheduledSimMs,
+      });
+    }
+  }
+}
+
 /**
  * Build a World from the scenario. `star-inbound` uses `assignStarRoutes`
  * (seeded catalog pose). `authored` copies JSON xy (ils27 / T01-04 fixture).
@@ -174,6 +241,7 @@ export function createWorldFromScenario(
   } else {
     spawnArrivals(world, scenario);
   }
+  initDepartures(world, scenario, seed, null);
   return world;
 }
 
@@ -186,11 +254,20 @@ export function createWorldForSession(
   scenario: Scenario,
   trafficCount: number | null,
   seed: number = DEFAULT_SPAWN_SEED,
+  departureOptions?: DepartureOptions | null,
 ): World {
+  let world: World;
   if (scenario.spawnPolicy === "star-inbound" && trafficCount !== null) {
-    const world = worldFromScenario(scenario);
+    world = worldFromScenario(scenario);
     spawnArrivals(world, trafficCount);
-    return world;
+  } else {
+    world = worldFromScenario(scenario);
+    if (scenario.spawnPolicy === "star-inbound") {
+      spawnStarInbound(world, scenario, seed);
+    } else {
+      spawnArrivals(world, scenario);
+    }
   }
-  return createWorldFromScenario(scenario, seed);
+  initDepartures(world, scenario, seed, departureOptions);
+  return world;
 }

@@ -19,6 +19,9 @@ export const SCENARIO_PACKAGE = "scenario";
 export type {
   Approach,
   ArrivalSpawn,
+  DepartureConfig,
+  DeparturePolicy,
+  DepartureSpawn,
   DigitalMapCoastline,
   DigitalMapLocalizer,
   DigitalMapRangeRings,
@@ -72,10 +75,7 @@ export {
   outermostStarFix,
   starInboundPose,
 } from "./starSpawn";
-export type {
-  DepartureSpawnConfig,
-  DepartureSpawnPose,
-} from "./departureSpawn";
+export type { DepartureSpawnConfig, DepartureSpawnPose } from "./departureSpawn";
 export {
   DEPARTURE_SPAWN_ALTITUDE_FT,
   DEPARTURE_SPAWN_ROLL_OFFSET_NM,
@@ -84,11 +84,24 @@ export {
   departureSpawnPose,
   spawnDeparture,
 } from "./departureSpawn";
+export type { DepartureSlot, GenerateDepartureScheduleOptions } from "./departureGenerator";
+export {
+  DEFAULT_DEPARTURE_COUNT,
+  DEFAULT_DEPARTURE_RATE_PER_HOUR,
+  DEPARTURE_AIRCRAFT_TYPES,
+  DEPARTURE_AIRLINES,
+  DEPARTURE_ASSIGNED_ALTITUDES_FT,
+  DEPARTURE_STREAM_XOR,
+  MIN_DEPARTURE_INTERVAL_S,
+  generateDepartureSchedule,
+  listDepartureSlots,
+  spawnDueDepartures,
+} from "./departureGenerator";
 export {
   DEFAULT_SPAWN_SEED,
+  parseDepartureOptions,
   parseScenarioChoice,
   parseSpawnSeed,
   parseTrafficCount,
 } from "./trafficQuery";
-export type { ScenarioChoice } from "./trafficQuery";
-
+export type { DepartureOptions, ScenarioChoice } from "./trafficQuery";

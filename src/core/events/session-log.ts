@@ -230,6 +230,25 @@ export type SessionEvent =
       toSectorId: string;
     }
   | {
+      type: "departure.scheduled";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      sidId: string;
+      transitionId?: string;
+      runwayId: string;
+      scheduledSimMs: number;
+    }
+  | {
+      type: "departure.spawned";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      sidId: string;
+      transitionId?: string;
+      runwayId: string;
+    }
+  | {
       type: "nav.departed";
       atSimMs: number;
       atWallMs: number;

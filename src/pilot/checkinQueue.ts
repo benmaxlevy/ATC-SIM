@@ -51,7 +51,7 @@ export function starSpokenName(
 export function isStarViaArrival(aircraft: Aircraft): boolean {
   const lateral = aircraft.intent.lateral;
   const vertical = aircraft.intent.vertical;
-  if (lateral?.type !== "PROCEDURE" || vertical?.type !== "VIA_STAR") {
+  if (lateral?.type !== "PROCEDURE" || vertical?.type !== "VIA_STAR" || !lateral.starId) {
     return false;
   }
   return lateral.starId.trim().toUpperCase() === vertical.starId.trim().toUpperCase();
@@ -159,7 +159,7 @@ export class CheckInQueue {
       return;
     }
     const lateral = aircraft.intent.lateral;
-    const starId = lateral?.type === "PROCEDURE" ? lateral.starId : "";
+    const starId = lateral?.type === "PROCEDURE" && lateral.starId ? lateral.starId : "";
     const staggerMs = drawStaggerMs(this.rng);
     this.spawnCounter += 1;
     this.entries.push({
@@ -197,7 +197,7 @@ export class CheckInQueue {
         continue;
       }
       const lateral = aircraft.intent.lateral;
-      const starId = lateral?.type === "PROCEDURE" ? lateral.starId : next.starId;
+      const starId = lateral?.type === "PROCEDURE" && lateral.starId ? lateral.starId : next.starId;
       const starName = starSpokenName(world.catalog, starId);
       const text = formatCheckIn({
         callsign: aircraft.callsign,

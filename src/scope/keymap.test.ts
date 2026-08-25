@@ -208,4 +208,3 @@ test("T04-20 AC5 — F1 Keymap help overlay documents Shift+H as the unified han
     "Initiate handoff: Tower (if on approach) or Center (if climbing outbound)",
   );
 });
-

@@ -434,9 +434,7 @@ function lastProcedureConstraints(
   const lateral = ac.intent.lateral;
   const procedureId = vertical.type === "VIA_SID" ? vertical.sidId : vertical.starId;
   const lastId =
-    lateral?.type === "PROCEDURE"
-      ? lateral.routeFixIds[lateral.routeFixIds.length - 1]
-      : undefined;
+    lateral?.type === "PROCEDURE" ? lateral.routeFixIds[lateral.routeFixIds.length - 1] : undefined;
   if (!lastId) {
     return undefined;
   }

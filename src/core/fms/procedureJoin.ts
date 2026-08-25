@@ -47,9 +47,7 @@ function sidRoutes(sid: CatalogSid): string[][] {
     return [sid.legs.map((leg) => wantFix(leg.fixId))];
   }
   const rts =
-    sid.runwayTransitions && sid.runwayTransitions.length > 0
-      ? sid.runwayTransitions
-      : [undefined];
+    sid.runwayTransitions && sid.runwayTransitions.length > 0 ? sid.runwayTransitions : [undefined];
   const ets =
     sid.enrouteTransitions && sid.enrouteTransitions.length > 0
       ? sid.enrouteTransitions
@@ -170,7 +168,13 @@ export interface JoinNamedProcedureArgs {
   catalog?: ProcedureJoinCatalog | null;
   procedureId: string;
   current?:
-    | { type: "PROCEDURE"; starId: string; routeFixIds: readonly string[]; toFixIndex: number }
+    | {
+        type: "PROCEDURE";
+        starId?: string;
+        sidId?: string;
+        routeFixIds: readonly string[];
+        toFixIndex: number;
+      }
     | { type: "DIRECT"; fixId: string }
     | null;
   xNm?: number;
@@ -190,7 +194,7 @@ export function joinNamedProcedure(args: JoinNamedProcedureArgs): ProcedureJoin 
     return undefined;
   }
   const current = args.current;
-  if (current?.type === "PROCEDURE" && wantFix(current.starId) === want) {
+  if (current?.type === "PROCEDURE" && current.starId && wantFix(current.starId) === want) {
     return {
       starId: current.starId,
       routeFixIds: [...current.routeFixIds],

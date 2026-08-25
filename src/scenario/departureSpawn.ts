@@ -58,21 +58,14 @@ function resolveRunwayThreshold(
         f.id.toUpperCase() === `RW${cleanId}` ||
         f.id.toUpperCase() === cleanId ||
         f.id.toUpperCase() === runwayId.toUpperCase(),
-    ) ??
-    catalog.fixes.find(
-      (f) => f.kind === "THRESHOLD" && f.id.toUpperCase().includes(cleanId),
-    );
+    ) ?? catalog.fixes.find((f) => f.kind === "THRESHOLD" && f.id.toUpperCase().includes(cleanId));
   if (fix) {
     return { xNm: fix.xNm, yNm: fix.yNm };
   }
   return { xNm: 0, yNm: 0 };
 }
 
-function resolveRunwayHeading(
-  catalog: ProcedureCatalog,
-  sidId: string,
-  runwayId: string,
-): number {
+function resolveRunwayHeading(catalog: ProcedureCatalog, sidId: string, runwayId: string): number {
   const sid = findSidProcedure(catalog, sidId);
   const cleanId = runwayId.replace(/^RW/i, "").trim().toUpperCase();
   const rt = sid.runwayTransitions?.find(

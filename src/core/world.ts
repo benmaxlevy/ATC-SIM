@@ -96,6 +96,25 @@ export interface World {
    * Radio rejects while `kind === "inbound"`. Not Command IR; not kinematics.
    */
   handoffs: Map<string, TrackHandoff>;
+  /**
+   * Scheduled departure traffic (T04-21). Evaluated each stepWorld tick.
+   */
+  scheduledDepartures?: ScheduledDeparture[];
+  /**
+   * Optional custom departure spawner hook.
+   */
+  departureSpawner?: (world: World) => Aircraft[];
+}
+
+export interface ScheduledDeparture {
+  callsign: string;
+  runwayId: string;
+  sidId: string;
+  transitionId?: string;
+  assignedAltitudeFt?: number;
+  aircraftType?: string;
+  scheduledSimMs: number;
+  spawned?: boolean;
 }
 
 function catalogToFixSource(catalog: NonNullable<World["catalog"]>): FixRegistrySource | null {
@@ -154,6 +173,8 @@ export function createWorld(partial?: Partial<World>): World {
     msawInhibit: partial?.msawInhibit ?? null,
     sessionLog: partial?.sessionLog ?? null,
     handoffs: partial?.handoffs ?? new Map(),
+    scheduledDepartures: partial?.scheduledDepartures,
+    departureSpawner: partial?.departureSpawner,
   };
 }
 
@@ -324,6 +345,7 @@ export function stepWorld(world: World, dtS: number): World {
     return world;
   }
   world.simTimeMs += dtS * 1000;
+  world.departureSpawner?.(world);
   const locAxisFor = (approachId: string) =>
     locAxisForApproach(approachId, world.catalog, world.fixRegistry);
   for (const ac of world.aircraft) {
@@ -392,9 +414,7 @@ export function despawnDepartedAircraft(world: World): void {
     const distNm = Math.hypot(ac.xNm, ac.yNm);
     const ho = handoffFor(world, ac.id);
     const isOutboundOrDeparture =
-      ho.kind === "outbound" ||
-      ho.kind === "departure" ||
-      ac.intent.vertical?.type === "VIA_SID";
+      ho.kind === "outbound" || ho.kind === "departure" || ac.intent.vertical?.type === "VIA_SID";
 
     if (isOutboundOrDeparture && distNm >= TRACON_BOUNDARY_RADIUS_NM) {
       if (ho.kind === "outbound") {

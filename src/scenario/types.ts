@@ -115,6 +115,23 @@ export interface ArrivalSpawn {
   transitionId?: string;
 }
 
+export interface DepartureSpawn {
+  callsign: string;
+  sidId: string;
+  transitionId: string;
+  assignedAltitudeFt: number;
+  aircraftType?: string;
+  scheduledSimMs?: number;
+}
+
+export type DeparturePolicy = "none" | "auto" | "authored";
+
+export interface DepartureConfig {
+  policy: DeparturePolicy;
+  ratePerHour?: number;
+  departures?: DepartureSpawn[];
+}
+
 /** How arrivals get pose. Omitted JSON → `authored` (ils27 bit-stable). */
 export type SpawnPolicy = "authored" | "star-inbound";
 
@@ -137,6 +154,8 @@ export interface Scenario {
   maps: ScenarioMaps;
   spawns: Spawn[];
   arrivals: ArrivalSpawn[];
+  /** Optional departure traffic configuration. */
+  departureConfig?: DepartureConfig;
   /**
    * Ten GI TEXT slots (CRC analog). Empty string = unused. Authored trainer
    * copy (ATIS letter / runway / approach) — not a live METAR download.

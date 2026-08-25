@@ -3,7 +3,6 @@ import { createWorld, SessionLog } from "@core";
 import { loadCatalog } from "./procedures/loadCatalog";
 import {
   DEPARTURE_SPAWN_ALTITUDE_FT,
-  DEPARTURE_SPAWN_ROLL_OFFSET_NM,
   DEPARTURE_SPAWN_SPEED_KT,
   departureSpawnPose,
   spawnDeparture,

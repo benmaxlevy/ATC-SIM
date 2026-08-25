@@ -23,7 +23,7 @@
  *
  * Import rule: `@core` depends on nothing in `src/*` except itself.
  */
-export type { World, SimRate, Accumulator } from "./world";
+export type { World, SimRate, Accumulator, ScheduledDeparture } from "./world";
 export {
   TRACON_BOUNDARY_RADIUS_NM,
   createWorld,

@@ -22,8 +22,4 @@ export {
   type TrackHandoff,
 } from "./handoff";
 
-export {
-  acceptTowerHandoff,
-  isTowerHandoffEligible,
-  type LandingFmsContext,
-} from "./fms/landing";
+export { acceptTowerHandoff, isTowerHandoffEligible, type LandingFmsContext } from "./fms/landing";
