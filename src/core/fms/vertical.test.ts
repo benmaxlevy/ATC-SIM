@@ -109,7 +109,7 @@ test("targetAltitudeFt climb-via uses the next unpassed constraint", () => {
 });
 
 test("AC2 — targetAltitudeFt with VIA_SID caps climb on AT_OR_BELOW until sequenced", () => {
-  const viaSid = { type: "VIA_SID" as const, sidId: "DEM1" };
+  const viaSid = { type: "VIA_SID" as const, sidId: "BAY1" };
   // When assigned top altitude is 10000 ft and next constraint is AT_OR_BELOW 5000, target is 5000
   expect(
     targetAltitudeFt({
@@ -336,11 +336,12 @@ test("AC1 & AC2 — aircraft flies SID legs in sequence with VIA_SID and respect
   dal.intent.assignedAltitudeFt = 10000;
   dal.intent.lateral = {
     type: "PROCEDURE",
-    starId: "DEM1",
+    sidId: "BAY1",
+    starId: "BAY1",
     toFixIndex: 0,
     routeFixIds: ["MISSD", "SNARF", "NORMA"],
   };
-  dal.intent.vertical = { type: "VIA_SID", sidId: "DEM1" };
+  dal.intent.vertical = { type: "VIA_SID", sidId: "BAY1" };
 
   const log = new SessionLog();
   const world = createWorld({
@@ -386,11 +387,12 @@ test("AC3 — heading command cancels PROCEDURE and VIA_SID to HEADING and ASSIG
   dal.intent.assignedAltitudeFt = 10000;
   dal.intent.lateral = {
     type: "PROCEDURE",
-    starId: "DEM1",
+    sidId: "BAY1",
+    starId: "BAY1",
     toFixIndex: 0,
     routeFixIds: ["MISSD", "SNARF", "NORMA"],
   };
-  dal.intent.vertical = { type: "VIA_SID", sidId: "DEM1" };
+  dal.intent.vertical = { type: "VIA_SID", sidId: "BAY1" };
 
   // Applying a heading vector (e.g. via setHeadingMode / applyIntent)
   dal.intent.assignedHeadingDeg = 270;

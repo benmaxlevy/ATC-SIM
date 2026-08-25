@@ -1,6 +1,6 @@
 {
-  "id": "DEM1_SID",
-  "name": "DEMO ONE departure corridors",
+  "id": "BAY1_SID",
+  "name": "BAY ONE departure corridors",
   "note": "Trainer-authored video map (MAPS). Independent of SID/fix catalog. Restriction boxes are copied onto the drawing (alt hundreds / speed kt); changing sids.json does not change this map.",
   "features": [
     {

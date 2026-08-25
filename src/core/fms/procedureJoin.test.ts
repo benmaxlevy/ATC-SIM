@@ -122,23 +122,23 @@ test("joinNamedProcedure joins a unique SID from the start", () => {
 
 test("procedureRouteContainingFix finds SID fixes across transitions", () => {
   const catalog = { sids: kdemSids };
-  // MISSD is on runway 27 transition of DEM1
+  // MISSD is on runway 27 transition of BAY1
   const missdJoin = procedureRouteContainingFix(catalog, "MISSD");
   expect(missdJoin).toBeDefined();
-  expect(missdJoin?.starId).toBe("DEM1");
+  expect(missdJoin?.starId).toBe("BAY1");
   expect(missdJoin?.toFixIndex).toBe(0);
   expect(missdJoin?.routeFixIds[0]).toBe("MISSD");
 
-  // SNARF is on the common leg of DEM1
+  // SNARF is on the common leg of BAY1
   const snarfJoin = procedureRouteContainingFix(catalog, "SNARF");
   expect(snarfJoin).toBeDefined();
-  expect(snarfJoin?.starId).toBe("DEM1");
+  expect(snarfJoin?.starId).toBe("BAY1");
   expect(snarfJoin?.toFixIndex).toBe(1);
 
-  // NORMA is on the NORMA enroute transition of DEM1
+  // NORMA is on the NORMA enroute transition of BAY1
   const normaJoin = procedureRouteContainingFix(catalog, "NORMA");
   expect(normaJoin).toBeDefined();
-  expect(normaJoin?.starId).toBe("DEM1");
+  expect(normaJoin?.starId).toBe("BAY1");
   expect(normaJoin?.toFixIndex).toBe(2);
   expect(normaJoin?.routeFixIds).toEqual(["MISSD", "SNARF", "NORMA"]);
 });

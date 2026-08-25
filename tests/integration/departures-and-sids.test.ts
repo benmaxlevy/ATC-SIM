@@ -58,13 +58,13 @@ describe("Departures and SIDs integration test suite (T04-23)", () => {
     expect(arrival).toBeDefined();
     expect(acceptInboundHandoff(world, arrival!.id)).toBe(true);
 
-    // Spawn a RW27 departure (AAL100 on DEM1 via NORMA)
+    // Spawn a RW27 departure (AAL100 on BAY1 via NORMA)
     const departure = spawnDeparture(
       world,
       {
         callsign: "AAL100",
         runwayId: "27",
-        sidId: "DEM1",
+        sidId: "BAY1",
         transitionId: "NORMA",
         assignedAltitudeFt: 10000,
         aircraftType: "A321",
@@ -81,14 +81,14 @@ describe("Departures and SIDs integration test suite (T04-23)", () => {
     expect(departure.speedKt).toBe(180);
     expect(departure.intent.lateral).toEqual({
       type: "PROCEDURE",
-      sidId: "DEM1",
-      starId: "DEM1",
+      sidId: "BAY1",
+      starId: "BAY1",
       toFixIndex: 0,
       routeFixIds: ["MISSD", "SNARF", "NORMA"],
     });
     expect(departure.intent.vertical).toEqual({
       type: "VIA_SID",
-      sidId: "DEM1",
+      sidId: "BAY1",
     });
     expect(handoffFor(world, departure.id)).toEqual({
       kind: "departure",
@@ -122,9 +122,9 @@ describe("Departures and SIDs integration test suite (T04-23)", () => {
 
     const depCheckin = checkinEvents.find((e) => e.callsign === "AAL100");
     expect(depCheckin).toBeDefined();
-    expect(depCheckin?.sidId).toBe("DEM1");
+    expect(depCheckin?.sidId).toBe("BAY1");
     expect(depCheckin?.text).toContain("Departure, American 100, passing");
-    expect(depCheckin?.text).toContain("climbing via the DEMO ONE departure");
+    expect(depCheckin?.text).toContain("climbing via the BAY ONE departure");
 
     const arrCheckin = checkinEvents.find((e) => e.callsign === "DAL123");
     expect(arrCheckin).toBeDefined();
@@ -171,7 +171,7 @@ describe("Departures and SIDs integration test suite (T04-23)", () => {
     expect(departedEvents.some((e) => e.callsign === "AAL100")).toBe(true);
   });
 
-  test("AC2 — DEM1 SID climb profile produces zero false MSAW alerts and no false CA against separated traffic", () => {
+  test("AC2 — BAY1 SID climb profile produces zero false MSAW alerts and no false CA against separated traffic", () => {
     const log = new SessionLog();
     const world = createWorld({
       catalog,
@@ -185,7 +185,7 @@ describe("Departures and SIDs integration test suite (T04-23)", () => {
       {
         callsign: "SWA200",
         runwayId: "27",
-        sidId: "DEM1",
+        sidId: "BAY1",
         transitionId: "OCTTA",
         assignedAltitudeFt: 10000,
         aircraftType: "B737",
@@ -251,7 +251,7 @@ describe("Departures and SIDs integration test suite (T04-23)", () => {
     arr.intent.vertical = { type: "GS", approachId: "ILS27" };
     arr.intent.clearedApproachId = "ILS27";
 
-    // 2. Departure climbing outbound on DEM1 SID (altitude >= 5000 ft)
+    // 2. Departure climbing outbound on BAY1 SID (altitude >= 5000 ft)
     const dep = createAircraft({
       id: "ac-dep",
       callsign: "UAL777",
@@ -263,12 +263,12 @@ describe("Departures and SIDs integration test suite (T04-23)", () => {
     });
     dep.intent.lateral = {
       type: "PROCEDURE",
-      sidId: "DEM1",
-      starId: "DEM1",
+      sidId: "BAY1",
+      starId: "BAY1",
       toFixIndex: 1,
       routeFixIds: ["MISSD", "SNARF", "NORMA"],
     };
-    dep.intent.vertical = { type: "VIA_SID", sidId: "DEM1" };
+    dep.intent.vertical = { type: "VIA_SID", sidId: "BAY1" };
     dep.intent.assignedAltitudeFt = 10000;
 
     world.aircraft.push(arr, dep);
@@ -312,7 +312,7 @@ describe("Departures and SIDs integration test suite (T04-23)", () => {
       {
         callsign: "AAL300",
         runwayId: "27",
-        sidId: "DEM1",
+        sidId: "BAY1",
         transitionId: "NORMA",
         assignedAltitudeFt: 10000,
         aircraftType: "A321",
@@ -389,7 +389,7 @@ describe("Departures and SIDs integration test suite (T04-23)", () => {
       {
         callsign: "JBU500",
         runwayId: "27",
-        sidId: "DEM1",
+        sidId: "BAY1",
         transitionId: "NORMA",
         assignedAltitudeFt: 10000,
         aircraftType: "A320",

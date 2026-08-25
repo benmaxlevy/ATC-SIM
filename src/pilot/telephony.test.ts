@@ -11,13 +11,13 @@ describe("formatDepartureCheckIn (AC1)", () => {
   test("AC1 — formatDepartureCheckIn with climb-via SID", () => {
     const text = formatDepartureCheckIn({
       callsign: "DAL123",
-      sidName: "DEMO ONE",
+      sidName: "BAY ONE",
       currentAltitudeFt: 1200,
       assignedAltitudeFt: 10000,
       isClimbVia: true,
     });
     expect(text).toBe(
-      "Departure, Delta 123, passing one thousand two hundred climbing via the DEMO ONE departure",
+      "Departure, Delta 123, passing one thousand two hundred climbing via the BAY ONE departure",
     );
   });
 
@@ -64,26 +64,26 @@ describe("formatDepartureCheckIn (AC1)", () => {
   test("formatDepartureCheckIn with unknown airline prefix uses phonetic alphabet", () => {
     const text = formatDepartureCheckIn({
       callsign: "XYZ99",
-      sidName: "DEMO ONE",
+      sidName: "BAY ONE",
       currentAltitudeFt: 1000,
       assignedAltitudeFt: 5000,
       isClimbVia: true,
     });
     expect(text).toBe(
-      "Departure, X-ray Yankee Zulu 99, passing one thousand climbing via the DEMO ONE departure",
+      "Departure, X-ray Yankee Zulu 99, passing one thousand climbing via the BAY ONE departure",
     );
   });
 
   test("rounds current and assigned altitude to nearest 100 ft", () => {
     const text = formatDepartureCheckIn({
       callsign: "DAL123",
-      sidName: "DEMO ONE",
+      sidName: "BAY ONE",
       currentAltitudeFt: 1249,
       assignedAltitudeFt: 9951,
       isClimbVia: true,
     });
     expect(text).toBe(
-      "Departure, Delta 123, passing one thousand two hundred climbing via the DEMO ONE departure",
+      "Departure, Delta 123, passing one thousand two hundred climbing via the BAY ONE departure",
     );
   });
 });

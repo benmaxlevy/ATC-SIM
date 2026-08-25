@@ -55,10 +55,10 @@
       "color": "map"
     },
     {
-      "id": "DEM1_SID",
-      "file": "007-dem1-sid.json",
+      "id": "BAY1_SID",
+      "file": "007-bay1-sid.json",
       "dcbNumber": 7,
-      "dcbLabel": "DEM1_S",
+      "dcbLabel": "BAY1",
       "defaultOn": true,
       "color": "map"
     }

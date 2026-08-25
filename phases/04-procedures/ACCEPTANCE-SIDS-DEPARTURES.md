@@ -8,15 +8,15 @@ Repeatable manual and automated verification procedure for **SIDs and Departures
 
 This acceptance script validates that departures and arrivals operate concurrently and seamlessly on the STARS-like radar scope:
 1. **Rolling Departures**: Aircraft spawn along RW27 centerline (~0.8 NM along 270°, 700 ft MSL climbing at 180 kt) under Tower handoff.
-2. **Radio Telephony & Check-In**: Automated check-in on departure frequency (*"Departure, `<callsign>`, passing `<alt>` climbing via the DEMO ONE departure"*).
-3. **Climb-Via SID Navigation**: FMS vertical and lateral adherence to published DEM1 SID route and crossing restrictions (MISSD, SNARF, NORMA, OCTTA).
+2. **Radio Telephony & Check-In**: Automated check-in on departure frequency (*"Departure, `<callsign>`, passing `<alt>` climbing via the BAY ONE departure"*).
+3. **Climb-Via SID Navigation**: FMS vertical and lateral adherence to published BAY1 SID route and crossing restrictions (MISSD, SNARF, NORMA, OCTTA).
 4. **Radar Vector & Altitude Amendments**: Issuing `H360` immediately transitions lateral mode to `HEADING` and cancels `VIA_SID` to `ASSIGNED` while maintaining climb.
 5. **Smart `Shift+H` Handoff**: Contextual auto-detection:
    - Selected arrival on approach (< 5 NM from threshold): executes Tower handoff (`LANDING` mode, cyan Tower color, `T` stub).
    - Selected climbing departure (>= 5000 ft or >= 12 NM): executes Center handoff (`handoff.center` logged, white Center color, `C` stub).
 6. **Airspace Boundary Despawn**: Clean removal upon crossing the 28 NM TRACON boundary with `handoff.outbound.completed` and `nav.departed` telemetry.
 7. **Safety Alerting (CA & MSAW)**: Zero false MSAW alerts on standard SID climb profiles; zero false Conflict Alerts against properly separated arrivals.
-8. **Video Map Slot 7**: DEM1 SID corridor lines and fix labels rendered and toggleable on the PPI scope canvas.
+8. **Video Map Slot 7**: BAY1 SID corridor lines and fix labels rendered and toggleable on the PPI scope canvas.
 
 ---
 
@@ -65,7 +65,7 @@ npx vitest run src/scenario/departureSpawn.test.ts \
 2. Observe radar scope canvas (PPI):
    - KDEM runway 27 and localizer feather are visible.
    - STAR arrivals appear inbound towards NEMAX/NELBO with green unowned datablocks (`*` CSI stub).
-   - DEM1 SID video map lines (Slot 7) display departure corridors from RW27 to MISSD, SNARF, NORMA, and OCTTA with altitude/speed restriction text boxes.
+   - BAY1 SID video map lines (Slot 7) display departure corridors from RW27 to MISSD, SNARF, NORMA, and OCTTA with altitude/speed restriction text boxes.
 3. Click `MAPS` on the Display Control Bar (DCB) or toggle slot 7:
    - Confirm SID corridor lines toggle OFF and ON cleanly.
 
@@ -79,11 +79,11 @@ npx vitest run src/scenario/departureSpawn.test.ts \
 
 ### Step 3: Radio Check-In Telephony
 1. Within 2–5 seconds after departure spawn, check the radio status area / pilot audio:
-   - Status text: *"Departure, American 100, passing 700 climbing via the DEMO ONE departure"*.
+   - Status text: *"Departure, American 100, passing 700 climbing via the BAY ONE departure"*.
 2. Confirm the radio transmission does not collide with arrival check-ins (queued with >= 500 ms idle gap).
 
 ### Step 4: Climb-Via SID Navigation
-1. Watch `AAL100` navigate the DEM1 SID:
+1. Watch `AAL100` navigate the BAY1 SID:
    - Aircraft climbs straight ahead past runway end, initiates right turn towards `MISSD` (-8 NM, +6 NM).
    - Reaches and crosses `MISSD` at or above 2,000 ft.
    - Turns southeast towards `SNARF` (+8 NM, -10 NM), crossing at or above 4,000 ft with speed <= 250 kt.

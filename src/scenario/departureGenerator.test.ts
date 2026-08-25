@@ -17,8 +17,8 @@ describe("departureGenerator", () => {
     expect(slots.length).toBeGreaterThanOrEqual(2);
     expect(slots).toEqual(
       expect.arrayContaining([
-        { sidId: "DEM1", transitionId: "NORMA" },
-        { sidId: "DEM1", transitionId: "OCTTA" },
+        { sidId: "BAY1", transitionId: "NORMA" },
+        { sidId: "BAY1", transitionId: "OCTTA" },
       ]),
     );
   });

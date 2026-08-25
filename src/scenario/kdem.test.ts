@@ -41,7 +41,7 @@ test("AC1 — loaded KDEM video maps come from video-maps/KDEM", () => {
     "DWNWND",
     "CLASS_B",
     "DEM1",
-    "DEM1_SID",
+    "BAY1_SID",
   ]);
   expect(maps.loadedVideoMaps).toHaveLength(7);
 });

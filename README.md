@@ -196,7 +196,7 @@ ATC-SIM enforces a strict **zero paid/metered API policy**. All speech-to-text, 
 - **Callsign Resolution**: Matches callsigns via telephony name ("Delta 123"), ICAO code ("DAL123"), numeric tail ("123"), or currently hooked radar target.
 - **Automated Check-Ins**: Staggered arrival and departure check-in radio calls:
   - STAR arrivals: *"Approach, Delta 123, descending via DEMO ONE arrival through one-one thousand (11000)"*.
-  - SIDs departures: *"Departure, American 100, passing seven hundred climbing via the DEMO ONE departure"*.
+  - SIDs departures: *"Departure, American 100, passing seven hundred climbing via the BAY ONE departure"*.
 - **Inbound & Departure Handoff Workflow**:
   - Inbound arrivals spawn in pending handoff state from Center (unowned green FDB) → Controller clicks track or presses `F3` to accept → Track becomes owned (white FDB) → Radio frequency unlocked → Pilot checks in.
   - Rolling departures spawn off the active runway (~0.8 NM, 700 ft, 180 kt) under Tower handoff → Pilot checks in on departure frequency → Flies published SID climb profile.

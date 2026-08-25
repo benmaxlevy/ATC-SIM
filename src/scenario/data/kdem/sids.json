@@ -1,10 +1,10 @@
 {
   "airportId": "KDEM",
-  "note": "DEMO ONE: Runway 27 climbing turn to MISSD, common to SNARF, enroute transitions to NORMA and OCTTA. Video map 007 is a separate MAPS drawing.",
+  "note": "BAY ONE: Runway 27 climbing turn to MISSD, common to SNARF, enroute transitions to NORMA and OCTTA. Video map 007 is a separate MAPS drawing.",
   "sids": [
     {
-      "id": "DEM1",
-      "name": "DEMO ONE DEPARTURE",
+      "id": "BAY1",
+      "name": "BAY ONE DEPARTURE",
       "initialClimbFt": 5000,
       "runwayTransitions": [
         {

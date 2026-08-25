@@ -248,23 +248,23 @@ test("AC5 — CLIMB_VIA uses the published SID name and combines with maintain a
   expect(
     formatReadback({
       callsign: "DAL123",
-      instructions: [{ type: "CLIMB_VIA", procedureId: "DEM1" }],
+      instructions: [{ type: "CLIMB_VIA", procedureId: "BAY1" }],
       aircraft: snapshot,
-      procedureNames: { DEM1: "the DEMO ONE departure" },
+      procedureNames: { BAY1: "the BAY ONE departure" },
     }),
-  ).toBe("Delta 123 climb via the DEMO ONE departure");
+  ).toBe("Delta 123 climb via the BAY ONE departure");
 
   expect(
     formatReadback({
       callsign: "DAL123",
       instructions: [
-        { type: "CLIMB_VIA", procedureId: "DEM1" },
+        { type: "CLIMB_VIA", procedureId: "BAY1" },
         { type: "ALTITUDE", altitudeFt: 5000, verb: "MAINTAIN" },
       ],
       aircraft: snapshot,
-      procedureNames: { DEM1: "the DEMO ONE departure" },
+      procedureNames: { BAY1: "the BAY ONE departure" },
     }),
-  ).toBe("Delta 123 climb via the DEMO ONE departure, maintain five thousand (5000)");
+  ).toBe("Delta 123 climb via the BAY ONE departure, maintain five thousand (5000)");
 });
 
 const rejectTable: [{ callsign?: string; reason: string; detail?: string }, string][] = [

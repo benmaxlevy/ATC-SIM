@@ -24,18 +24,18 @@ test("parseCatalogFiles accepts the committed KDEM set", () => {
   const catalog = parseCatalogFiles(kdemFiles());
   expect(catalog.airportId).toBe("KDEM");
   expect(catalog.sids).toHaveLength(1);
-  expect(catalog.sids[0]?.id).toBe("DEM1");
+  expect(catalog.sids[0]?.id).toBe("BAY1");
 });
 
-test("AC1 — loadCatalog parses KDEM sids.json with DEM1 procedure", () => {
+test("AC1 — loadCatalog parses KDEM sids.json with BAY1 procedure", () => {
   const catalog = loadCatalog("src/scenario/data/kdem");
   expect(catalog.sids).toHaveLength(1);
-  const dem1 = catalog.sids[0]!;
-  expect(dem1.id).toBe("DEM1");
-  expect(dem1.name).toBe("DEMO ONE DEPARTURE");
-  expect(dem1.runwayTransitions?.[0]?.runwayId).toBe("27");
-  expect(dem1.common[0]?.fixId).toBe("SNARF");
-  expect(dem1.enrouteTransitions?.map((t) => t.id)).toEqual(["NORMA", "OCTTA"]);
+  const bay1 = catalog.sids[0]!;
+  expect(bay1.id).toBe("BAY1");
+  expect(bay1.name).toBe("BAY ONE DEPARTURE");
+  expect(bay1.runwayTransitions?.[0]?.runwayId).toBe("27");
+  expect(bay1.common[0]?.fixId).toBe("SNARF");
+  expect(bay1.enrouteTransitions?.map((t) => t.id)).toEqual(["NORMA", "OCTTA"]);
 });
 
 test("AC3 — dangling STAR fixId throws; no partial catalog is returned", () => {

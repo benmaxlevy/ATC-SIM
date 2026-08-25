@@ -1145,7 +1145,7 @@ test("right and middle buttons slew; left does not", () => {
   expect(isPpiSlewHeld(6)).toBe(true);
 });
 
-test("T04-23 — slot 7 DEM1_SID video map renders SID lines and labels on PPI scope canvas and can be toggled", () => {
+test("T04-23 — slot 7 BAY1_SID video map renders SID lines and labels on PPI scope canvas and can be toggled", () => {
   const maps = loadKdem().maps;
   const view = createScopeView(0, 0, { digitalMap: parseDigitalMap(maps) });
   const world = createWorld();
@@ -1158,8 +1158,8 @@ test("T04-23 — slot 7 DEM1_SID video map renders SID lines and labels on PPI s
   expect(onCtx.fillTexts.some((t) => t.text === "NORMA")).toBe(true);
   expect(onCtx.fillTexts.some((t) => t.text === "OCTTA")).toBe(true);
 
-  // Toggle DEM1_SID off
-  toggleVideoMap(view, "DEM1_SID");
+  // Toggle BAY1_SID off
+  toggleVideoMap(view, "BAY1_SID");
   const offCtx = createMockCtx();
   renderScope(offCtx.ctx, world, view, 800, 800);
   expect(offCtx.fillTexts.some((t) => t.text === "MISSD")).toBe(false);
@@ -1167,8 +1167,8 @@ test("T04-23 — slot 7 DEM1_SID video map renders SID lines and labels on PPI s
   expect(offCtx.fillTexts.some((t) => t.text === "NORMA")).toBe(false);
   expect(offCtx.fillTexts.some((t) => t.text === "OCTTA")).toBe(false);
 
-  // Toggle DEM1_SID back on
-  toggleVideoMap(view, "DEM1_SID");
+  // Toggle BAY1_SID back on
+  toggleVideoMap(view, "BAY1_SID");
   const backOnCtx = createMockCtx();
   renderScope(backOnCtx.ctx, world, view, 800, 800);
   expect(backOnCtx.fillTexts.some((t) => t.text === "MISSD")).toBe(true);

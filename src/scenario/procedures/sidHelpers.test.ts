@@ -25,34 +25,34 @@ const multiCatalog: ProcedureCatalog = {
   sids: multiSidJson.sids as ProcedureCatalog["sids"],
 };
 
-describe("sidRouteFixIds — KDEM DEM1 procedure", () => {
-  test("AC2 — sidRouteFixIds(catalog, 'DEM1', '27', 'NORMA') resolves full ordered route", () => {
-    const route = sidRouteFixIds(kdemCatalog, "DEM1", "27", "NORMA");
+describe("sidRouteFixIds — KDEM BAY1 procedure", () => {
+  test("AC2 — sidRouteFixIds(catalog, 'BAY1', '27', 'NORMA') resolves full ordered route", () => {
+    const route = sidRouteFixIds(kdemCatalog, "BAY1", "27", "NORMA");
     expect(route).toEqual(["MISSD", "SNARF", "NORMA"]);
   });
 
   test("resolves RWY 27 via OCTTA transition", () => {
-    const route = sidRouteFixIds(kdemCatalog, "DEM1", "27", "OCTTA");
+    const route = sidRouteFixIds(kdemCatalog, "BAY1", "27", "OCTTA");
     expect(route).toEqual(["MISSD", "SNARF", "OCTTA"]);
   });
 
   test("resolves RWY 27 without enroute transition", () => {
-    const route = sidRouteFixIds(kdemCatalog, "DEM1", "27");
+    const route = sidRouteFixIds(kdemCatalog, "BAY1", "27");
     expect(route).toEqual(["MISSD", "SNARF"]);
   });
 
   test("resolves enroute transition without runway transition", () => {
-    const route = sidRouteFixIds(kdemCatalog, "DEM1", undefined, "NORMA");
+    const route = sidRouteFixIds(kdemCatalog, "BAY1", undefined, "NORMA");
     expect(route).toEqual(["SNARF", "NORMA"]);
   });
 
   test("resolves common route only when runway and transition are omitted", () => {
-    const route = sidRouteFixIds(kdemCatalog, "DEM1");
+    const route = sidRouteFixIds(kdemCatalog, "BAY1");
     expect(route).toEqual(["SNARF"]);
   });
 
   test("case insensitivity and whitespace trimming", () => {
-    const route = sidRouteFixIds(kdemCatalog, " dem1 ", " 27 ", " norma ");
+    const route = sidRouteFixIds(kdemCatalog, " bay1 ", " 27 ", " norma ");
     expect(route).toEqual(["MISSD", "SNARF", "NORMA"]);
   });
 
@@ -63,14 +63,14 @@ describe("sidRouteFixIds — KDEM DEM1 procedure", () => {
   });
 
   test("throws on unknown runway transition", () => {
-    expect(() => sidRouteFixIds(kdemCatalog, "DEM1", "09", "NORMA")).toThrow(
-      /Unknown runway transition 09 on SID DEM1/,
+    expect(() => sidRouteFixIds(kdemCatalog, "BAY1", "09", "NORMA")).toThrow(
+      /Unknown runway transition 09 on SID BAY1/,
     );
   });
 
   test("throws on unknown enroute transition", () => {
-    expect(() => sidRouteFixIds(kdemCatalog, "DEM1", "27", "INVALID")).toThrow(
-      /Unknown enroute transition INVALID on SID DEM1/,
+    expect(() => sidRouteFixIds(kdemCatalog, "BAY1", "27", "INVALID")).toThrow(
+      /Unknown enroute transition INVALID on SID BAY1/,
     );
   });
 });
@@ -108,15 +108,16 @@ describe("Extensibility — data-first, no hardcoded facility branching", () => 
     const src = sources["./sidHelpers.ts"] ?? "";
     expect(src).not.toMatch(/["']KDEM["']/);
     expect(src).not.toMatch(/["']DEM1["']/);
+    expect(src).not.toMatch(/["']BAY1["']/);
     expect(src).not.toMatch(/["']NORMA["']/);
     expect(src).not.toMatch(/["']OCTTA["']/);
   });
 });
 
 describe("sidSpokenName (AC2)", () => {
-  test("AC2 — sidSpokenName(catalog, 'DEM1') returns 'DEMO ONE' from catalog metadata", () => {
-    expect(sidSpokenName(kdemCatalog, "DEM1")).toBe("DEMO ONE");
-    expect(sidSpokenName({ sids: [{ id: "DEM1", name: "DEMO ONE" }] }, "DEM1")).toBe("DEMO ONE");
+  test("AC2 — sidSpokenName(catalog, 'BAY1') returns 'BAY ONE' from catalog metadata", () => {
+    expect(sidSpokenName(kdemCatalog, "BAY1")).toBe("BAY ONE");
+    expect(sidSpokenName({ sids: [{ id: "BAY1", name: "BAY ONE" }] }, "BAY1")).toBe("BAY ONE");
   });
 
   test("resolves spoken name from multi-SID catalog", () => {
@@ -126,12 +127,12 @@ describe("sidSpokenName (AC2)", () => {
 
   test("falls back to sidId when not found in catalog or catalog is missing", () => {
     expect(sidSpokenName(kdemCatalog, "UNKNOWN_SID")).toBe("UNKNOWN_SID");
-    expect(sidSpokenName(null, "DEM1")).toBe("DEM1");
-    expect(sidSpokenName(undefined, "DEM1")).toBe("DEM1");
+    expect(sidSpokenName(null, "BAY1")).toBe("BAY1");
+    expect(sidSpokenName(undefined, "BAY1")).toBe("BAY1");
     expect(sidSpokenName({ sids: [] }, "MY_SID")).toBe("MY_SID");
   });
 
   test("case insensitivity and trimming", () => {
-    expect(sidSpokenName(kdemCatalog, " dem1 ")).toBe("DEMO ONE");
+    expect(sidSpokenName(kdemCatalog, " bay1 ")).toBe("BAY ONE");
   });
 });

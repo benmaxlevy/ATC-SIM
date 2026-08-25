@@ -10,10 +10,10 @@ test("AC1 — loadKdem videoMapSet is KDEM with RWY, LOC, COAST plus extras", ()
   expect(ids.some((id) => id.includes("LOC"))).toBe(true);
   expect(ids).toContain("COAST");
   expect(ids.length).toBeGreaterThan(3);
-  expect(ids).toEqual(["RWY27", "LOC27", "COAST", "DWNWND", "CLASS_B", "DEM1", "DEM1_SID"]);
+  expect(ids).toEqual(["RWY27", "LOC27", "COAST", "DWNWND", "CLASS_B", "DEM1", "BAY1_SID"]);
 });
 
-test("KDEM catalog loads MAPS in ARP ENU NM including DEM1 STAR and SID", () => {
+test("KDEM catalog loads MAPS in ARP ENU NM including DEM1 STAR and BAY1 SID", () => {
   const maps = loadVideoMapSet("KDEM");
   expect(maps.map((item) => item.id)).toEqual([
     "RWY27",
@@ -22,7 +22,7 @@ test("KDEM catalog loads MAPS in ARP ENU NM including DEM1 STAR and SID", () => 
     "DWNWND",
     "CLASS_B",
     "DEM1",
-    "DEM1_SID",
+    "BAY1_SID",
   ]);
   expect(maps.every((item) => item.dcbNumber >= 1)).toBe(true);
   const coast = maps.find((item) => item.id === "COAST");
@@ -31,8 +31,8 @@ test("KDEM catalog loads MAPS in ARP ENU NM including DEM1 STAR and SID", () => 
   expect(maps.find((item) => item.id === "CLASS_B")?.color).toBe("mapDim");
   expect(maps.find((item) => item.id === "DEM1")?.color).toBe("map");
   expect(maps.find((item) => item.id === "DEM1")?.defaultOn).toBe(true);
-  expect(maps.find((item) => item.id === "DEM1_SID")?.color).toBe("map");
-  expect(maps.find((item) => item.id === "DEM1_SID")?.defaultOn).toBe(true);
+  expect(maps.find((item) => item.id === "BAY1_SID")?.color).toBe("map");
+  expect(maps.find((item) => item.id === "BAY1_SID")?.defaultOn).toBe(true);
 });
 
 test("AC2 — loadKdem derives runway / loc / coast from the catalog", () => {

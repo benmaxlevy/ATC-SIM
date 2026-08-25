@@ -39,7 +39,7 @@ function dem1Catalog(): NonNullable<World["catalog"]> {
     fixes: [],
     stars: [{ id: "DEM1", name: "DEMO ONE" }],
     approaches: [],
-    sids: [{ id: "DEM1", name: "DEMO ONE DEPARTURE", common: [] }],
+    sids: [{ id: "BAY1", name: "BAY ONE DEPARTURE", common: [] }],
   };
 }
 
@@ -559,12 +559,12 @@ function viaDeparture(callsign: string, id = `ac-${callsign.toLowerCase()}`): Ai
   });
   ac.intent.lateral = {
     type: "PROCEDURE",
-    sidId: "DEM1",
-    starId: "DEM1",
+    sidId: "BAY1",
+    starId: "BAY1",
     toFixIndex: 0,
     routeFixIds: ["MISSD", "SNARF", "NORMA"],
   };
-  ac.intent.vertical = { type: "VIA_SID", sidId: "DEM1" };
+  ac.intent.vertical = { type: "VIA_SID", sidId: "BAY1" };
   ac.intent.assignedAltitudeFt = 10000;
   return ac;
 }
@@ -605,12 +605,12 @@ test("AC3 & AC4 — departure schedules check-in within 2-5s and SessionLog reco
     nowWallMs: () => 1_000,
   });
   const expectedText =
-    "Departure, Delta 123, passing one thousand two hundred climbing via the DEMO ONE departure";
+    "Departure, Delta 123, passing one thousand two hundred climbing via the BAY ONE departure";
   const events = log.byType("radio.checkin");
   expect(events).toHaveLength(1);
   expect(events[0]?.callsign).toBe("DAL123");
-  expect(events[0]?.sidId).toBe("DEM1");
-  expect(events[0]?.sidName).toBe("DEMO ONE");
+  expect(events[0]?.sidId).toBe("BAY1");
+  expect(events[0]?.sidName).toBe("BAY ONE");
   expect(events[0]?.altitudeFt).toBe(1200);
   expect(events[0]?.text).toBe(expectedText);
   expect(status).toBe(expectedText);
