@@ -14,6 +14,7 @@ import { parseSpokenGrammar, repairHeadingVsTurnDegrees } from "./spoken/grammar
 import { normalizeSpoken } from "./spoken/normalizer";
 import { groundCallsignToRoster, spokenCallsignToken } from "./spoken/telephony";
 import { rewriteSpokenToTyped } from "./spoken/typed-fuzzy";
+import { matchSpokenPatterns } from "./spoken/pattern-matcher";
 import {
   groundInstructionApproaches,
   groundInstructionFixes,
@@ -195,6 +196,27 @@ export async function parseCommand(
     }
   }
 
+  const island = matchSpokenPatterns(
+    normalized,
+    selected,
+    sourceText,
+    catalog,
+    procedures,
+    approaches,
+  );
+  if (island.ok && island.instructions.length > 0) {
+    return okStage(
+      island,
+      sourceText,
+      "spoken_b",
+      opts.source,
+      selected,
+      catalog,
+      procedures,
+      approaches,
+    );
+  }
+
   if (opts.pathC) {
     const run = opts.parsePathC ?? fetchParsePathC;
     try {
@@ -238,6 +260,8 @@ export async function parseCommand(
   const error =
     !spoken.ok && spoken.error.startsWith(PARSE_ERROR.UNKNOWN_TELEPHONY)
       ? spoken.error
-      : formatParseError(PARSE_ERROR.PARSE_MISS);
+      : !island.ok && island.error.startsWith(PARSE_ERROR.UNKNOWN_TELEPHONY)
+        ? island.error
+        : formatParseError(PARSE_ERROR.PARSE_MISS);
   return { ok: false, error, sourceText };
 }
