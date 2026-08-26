@@ -45,6 +45,8 @@ export const OWNED_TRACK_COLOR = PALETTE.owned;
 export const SELECTED_ACCENT_COLOR = PALETTE.selected;
 /** Search/fusion position symbol. FAA (30,120,255). */
 export const POSITION_SYMBOL_COLOR = PALETTE.positionSymbol;
+/** Solid blue circle background color for target text symbols (#175dc7). */
+export const TARGET_CIRCLE_BG_COLOR = PALETTE.targetCircleBg;
 
 export type TargetSurveillanceType = "primary" | "secondary";
 export type TargetSymbolKind = "diamond" | "asterisk" | "vfr" | "beacon_select" | "tracked";
@@ -60,6 +62,7 @@ export interface TargetSymbolOptions {
   beaconCode?: string;
   beaconSelect?: ReadonlySet<string> | ReadonlyArray<string>;
   sectorId?: string;
+  circleBgColor?: string;
 }
 
 export interface TargetSymbolDescriptor {
@@ -175,7 +178,17 @@ export function historyDotColor(indexFromOldest: number, count: number): string 
   return historyTrailColor(indexFromOldest, count);
 }
 
-export function targetStrokeColor(_ownership: TrackOwnership, identFlashing: boolean): string {
+export function targetTextColor(ownership?: TrackOwnership, identFlashing?: boolean): string {
+  if (identFlashing) {
+    return SELECTED_ACCENT_COLOR;
+  }
+  if (ownership === "owned") {
+    return OWNED_TRACK_COLOR; // White #FFFFFF
+  }
+  return UNOWNED_TRACK_COLOR; // Green #00FF00
+}
+
+export function targetStrokeColor(_ownership?: TrackOwnership, identFlashing?: boolean): string {
   if (identFlashing) {
     return SELECTED_ACCENT_COLOR;
   }
@@ -338,10 +351,23 @@ export function drawTargetSymbol(
     const half = sizePx / 2;
     ctx.strokeRect(x - half, y - half, sizePx, sizePx);
   } else {
+    // 1. Solid blue circle background (#175dc7)
+    const circleBg = options.circleBgColor ?? TARGET_CIRCLE_BG_COLOR;
+    const circleRadius = Math.max(5, Math.round(sizePx * 0.65));
+    ctx.beginPath();
+    ctx.arc(x, y, circleRadius, 0, Math.PI * 2);
+    ctx.fillStyle = circleBg;
+    ctx.fill();
+
+    // 2. Icon letter/symbol on top (white for owned, green for unowned/other)
+    let textColor = color;
+    if (color === POSITION_SYMBOL_COLOR) {
+      textColor = targetTextColor(options.ownership);
+    }
     ctx.font = `${sizePx}px ${SCOPE_FONT_STACK}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = color;
+    ctx.fillStyle = textColor;
     ctx.fillText(desc.char ?? desc.symbol, x, y);
   }
 }

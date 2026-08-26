@@ -62,11 +62,12 @@ import {
   withCaDatablockTag,
 } from "./palette";
 import {
+  POSITION_SYMBOL_COLOR,
   drawHistoryDot,
   drawTargetSymbol,
   historyDotColor,
   isPrimaryTarget,
-  targetStrokeColor,
+  targetTextColor,
 } from "./targetSymbol";
 import { isIdentFlashing, isTrackQueried, syncTrackDisplays } from "./trackDisplay";
 
@@ -383,8 +384,11 @@ function trackColor(view: ScopeView, world: World, ac: Aircraft): string {
     return alertColor;
   }
   const td = view.tracks.get(ac.id);
+  if (isPrimaryTarget(ac, td)) {
+    return POSITION_SYMBOL_COLOR;
+  }
   const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
-  return targetStrokeColor(trackOwnership(view, ac.id), identActive);
+  return targetTextColor(trackOwnership(view, ac.id), identActive);
 }
 
 function drawDatablock(
@@ -515,6 +519,7 @@ function drawTracks(
         squawk,
         beaconSelect: view.beaconSelectCodes,
         sectorId,
+        circleBgColor: applyBrite(PALETTE.targetCircleBg, posBrite),
       },
       view.charSizes.pos,
     );

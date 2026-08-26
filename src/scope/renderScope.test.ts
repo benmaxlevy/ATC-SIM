@@ -790,7 +790,7 @@ test("AC2 / AC7 — L6 leader points east; FDB/leader follow ownership, diamond 
   expect(leader!.points[1]!.y).toBeCloseTo(p.y);
   const target = findTargetPositionSymbol(fillTexts, p.x, p.y)[0];
   expect(target).toBeDefined();
-  expect(target!.fillStyle).toBe(POSITION_SYMBOL_COLOR);
+  expect(target!.fillStyle).toBe(PALETTE.unowned);
   expect(leader!.strokeStyle).toBe(PALETTE.unowned);
   const line1 = fillTexts.find((t) => t.text === "DAL123" && t.font === DATABLOCK_FONT);
   expect(line1).toBeDefined();
@@ -855,7 +855,7 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   renderScope(spawned.ctx, world, view, css, css);
   const spawnedTargets = findTargetPositionSymbol(spawned.fillTexts);
   expect(spawnedTargets).toHaveLength(2);
-  expect(spawnedTargets.every((r) => r.fillStyle === POSITION_SYMBOL_COLOR)).toBe(true);
+  expect(spawnedTargets.every((r) => r.fillStyle === PALETTE.unowned)).toBe(true);
   expect(spawned.fillTexts.find((t) => t.text === "030  210")?.fillStyle).toBe(PALETTE.unowned);
   expect(spawned.fillTexts.find((t) => t.text === "040  220")?.fillStyle).toBe(PALETTE.unowned);
   expect(spawned.fillTexts.filter((t) => t.text === "*")).toHaveLength(2);
@@ -876,8 +876,8 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   const aalP = nmToScreen(aal.xNm, aal.yNm, view.camera, { widthPx: css, heightPx: css });
   const dalTarget = findTargetPositionSymbol(owned.fillTexts, dalP.x, dalP.y)[0];
   const aalTarget = findTargetPositionSymbol(owned.fillTexts, aalP.x, aalP.y)[0];
-  expect(dalTarget?.fillStyle).toBe(POSITION_SYMBOL_COLOR);
-  expect(aalTarget?.fillStyle).toBe(POSITION_SYMBOL_COLOR);
+  expect(dalTarget?.fillStyle).toBe(PALETTE.owned);
+  expect(aalTarget?.fillStyle).toBe(PALETTE.unowned);
   expect(owned.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
   expect(owned.fillTexts.find((t) => t.text === "030  210")?.fillStyle).toBe(PALETTE.owned);
   expect(owned.fillTexts.find((t) => t.text === "040  220")?.fillStyle).toBe(PALETTE.unowned);
@@ -897,7 +897,7 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   renderScope(dropped.ctx, world, view, css, css);
   expect(dropped.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.unowned);
   const droppedTarget = findTargetPositionSymbol(dropped.fillTexts, dalP.x, dalP.y)[0];
-  expect(droppedTarget?.fillStyle).toBe(POSITION_SYMBOL_COLOR);
+  expect(droppedTarget?.fillStyle).toBe(PALETTE.unowned);
   expect(dropped.fillTexts.filter((t) => t.text === "*")).toHaveLength(2);
   expect(dropped.fillTexts.filter((t) => t.text === "D" || t.text === "G")).toHaveLength(0);
 });
@@ -967,7 +967,7 @@ test("T04-09 AC5 — current CA blinks and paints red", () => {
   const cleared = createMockCtx();
   renderScope(cleared.ctx, world, view, css, css);
   expect(findTargetPositionSymbol(cleared.fillTexts, dalP.x, dalP.y)[0]?.fillStyle).toBe(
-    POSITION_SYMBOL_COLOR,
+    PALETTE.unowned,
   );
   expect(cleared.fillTexts.find((t) => t.text === "080  210")?.fillStyle).toBe(PALETTE.unowned);
 
@@ -1337,10 +1337,10 @@ test("T02-34 AC5 — BRITE channels pos, oth, and pri properly modulate target s
   expect(priDiamond?.strokeStyle).toBe(applyBrite(POSITION_SYMBOL_COLOR, 40));
 
   const othSym = findTargetPositionSymbol(fillTexts, othP.x, othP.y)[0];
-  expect(othSym?.fillStyle).toBe(applyBrite(POSITION_SYMBOL_COLOR, 70));
+  expect(othSym?.fillStyle).toBe(applyBrite(PALETTE.unowned, 70));
 
   const posSym = findTargetPositionSymbol(fillTexts, posP.x, posP.y)[0];
-  expect(posSym?.fillStyle).toBe(applyBrite(POSITION_SYMBOL_COLOR, 90));
+  expect(posSym?.fillStyle).toBe(applyBrite(PALETTE.owned, 90));
 });
 
 test("T02-34 AC6 — Position symbol sizing via charSizes.pos", () => {
