@@ -187,7 +187,8 @@ export function formatGroundSpeedTens(
   const tens = Math.max(0, Math.round(speedKt / 10));
   const base = String(tens).padStart(2, "0");
 
-  const wake = typeof opts === "string" ? formatWakeCategory(opts) : formatWakeCategory(opts?.wakeCategory);
+  const wake =
+    typeof opts === "string" ? formatWakeCategory(opts) : formatWakeCategory(opts?.wakeCategory);
   if (wake.length > 0) {
     return `${base}${wake}`;
   }
@@ -249,11 +250,6 @@ export function getSpecialPurposeCode(track: DatablockSource): string | undefine
   return undefined;
 }
 
-function appendScratchpad(line2: string, scratchpad: string | undefined): string {
-  const spad = sanitizeScratchpad(scratchpad ?? "");
-  return spad.length > 0 ? `${line2}${FIELD_GAP}${spad}` : line2;
-}
-
 /**
  * Full datablock (STARS CRC):
  * - Line 1: Callsign + Special Purpose Code (SPC: EM, RF, HJ, etc.)
@@ -309,7 +305,9 @@ export function formatFullDatablock(
       : "";
 
   // Center field: handoff sector ID
-  const centerField = opts.handoffSectorId ? opts.handoffSectorId.trim().toUpperCase().slice(0, 1) : "";
+  const centerField = opts.handoffSectorId
+    ? opts.handoffSectorId.trim().toUpperCase().slice(0, 1)
+    : "";
 
   const line2Parts = [leftField, centerField, rightField].filter((s) => s.length > 0);
   const line2 = line2Parts.join(FIELD_GAP);
@@ -376,7 +374,9 @@ export function formatPartialDatablock(
       : "";
 
   // Center field: handoff sector ID
-  const centerField = opts.handoffSectorId ? opts.handoffSectorId.trim().toUpperCase().slice(0, 1) : "";
+  const centerField = opts.handoffSectorId
+    ? opts.handoffSectorId.trim().toUpperCase().slice(0, 1)
+    : "";
 
   const line1Parts = [leftField, centerField, rightField].filter((s) => s.length > 0);
   const line1 = line1Parts.join(FIELD_GAP);

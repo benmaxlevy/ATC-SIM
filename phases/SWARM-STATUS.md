@@ -1,5 +1,17 @@
 # Swarm status
 
+## ELEVENTH SWARM COMPLETE — Phase 2 STARS CRC datablock & scratchpad fidelity addendum (T02-39–42)
+
+T02-39–42 are merged on `feature/stars-crc-datablock-fidelity`. Captain `npm test` / `npm run ci`: **117 test files passed, 1345 tests passed, 1 skipped, 0 failures**. Complete STARS CRC datablock, scratchpad, ground speed tens, and multi-phase time-sharing fidelity overhaul:
+- **Automatic Scratchpad Derivation (T02-39):** `sp1` and `sp2` fields on `TrackDisplay`. SP1 automatically derives approach shorthand (`ILS 27` $\to$ `I27`, `RNAV 22L` $\to$ `R22L`, `VISUAL 28` $\to$ `V28`, `LOC 09` $\to$ `L09`, `VOR 15` $\to$ `O15`) as highest priority, falling back to interim altitude in 3-digit hundreds (`040`) when no approach is set. SP2 automatically derives speed shorthand with `S` prefix and 2-digit tens (`210 kt` $\to$ `S21`). Manual entries override and persist until cleared.
+- **STARS Ground Speed in Tens & Category Indicators (T02-40):** FDB, PDB, and queried LDB display ground speed in 2-digit tens (`18`, `21`, `25`) via `formatGroundSpeedTens()`. Wake/RNAV category indicators (`18H`, `25R`, `21B`, `12L`, CWT `A`–`I`) and flight categories (`11V`, `28E`) appended directly to GS. `suppressPdbSpeed` suppresses PDB ground speed when configured.
+- **Multi-Phase Line 2 Time-Sharing & Handoff Center Placement (T02-41):** Independent multi-phase column rotation on ~2.5s cycle: Left column rotates `Mode C` $\leftrightarrow$ `SP1` $\leftrightarrow$ `SP2`; Right column rotates `GS (tens)` $\leftrightarrow$ `Type` $\leftrightarrow$ `Requested Alt (R###)`. Seamless omission of unpopulated fields without empty display intervals. Center position displays partner sector ID letter (`D`, `C`) during active handoff transfers. Line 1 displays emergency SPC tags (`7700` `EM`, `7600` `RF`, `7500` `HJ`).
+- **Acceptance & Zero Regressions (T02-42):** Comprehensive end-to-end integration and visual acceptance test suite (`src/scope/datablockFidelity.integration.test.ts`), 100% test pass rate with zero regressions across kinematics, FMS, telephony, and scope rendering.
+
+**Merged (squash-merged, captains only):** T02-39 (`90fdc42`), T02-40 (`d3b2dc4`), T02-41 (`ae520e0`), T02-42 (`pending-merge`).
+
+---
+
 ## TENTH SWARM COMPLETE — Phase 2 STARS CRC scope fidelity addendum (T02-34–38)
 
 T02-34–38 are merged on `feature/stars-crc-fidelity`. Captain `npm test` / `npm run ci`: **117 test files passed, 1322 tests passed, 1 skipped, 0 failures**. Complete STARS CRC radar display fidelity overhaul:

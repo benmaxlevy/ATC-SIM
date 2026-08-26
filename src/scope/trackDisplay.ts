@@ -192,13 +192,8 @@ export function deriveScratchpads(
   }
 
   let sp1 = autoSp1;
-  if (td?.manualSp1 != null) {
-    if (td.manualSp1.length > 0) {
-      sp1 = sanitizeScratchpad(td.manualSp1);
-    }
-  } else if (td?.scratchpad != null && td.scratchpad.length > 0) {
-    sp1 = sanitizeScratchpad(td.scratchpad);
-    td.manualSp1 = sp1;
+  if (td?.manualSp1 != null && td.manualSp1.length > 0) {
+    sp1 = sanitizeScratchpad(td.manualSp1);
   }
 
   // Derive automatic SP2:

@@ -16,6 +16,7 @@ import {
   handleTrackMiddleClick,
   isTargetDiamondPath,
   renderScope,
+  setScratchpad,
   syncTrackDisplays,
 } from "./index";
 
@@ -385,7 +386,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       const td = view.tracks.get(ac.id)!;
       td.ownership = "owned";
       td.datablockMode = "full";
-      td.scratchpad = "HOLD";
+      setScratchpad(view.tracks, ac.id, "HOLD");
 
       // Phase 0 (0 - 2500ms): Mode C altitude + Ground speed on Line 2; Line 3 has A040
       world.simTimeMs = 1000;

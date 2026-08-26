@@ -69,7 +69,12 @@ import {
   isPrimaryTarget,
   targetStrokeColor,
 } from "./targetSymbol";
-import { deriveScratchpads, isIdentFlashing, isTrackQueried, syncTrackDisplays } from "./trackDisplay";
+import {
+  deriveScratchpads,
+  isIdentFlashing,
+  isTrackQueried,
+  syncTrackDisplays,
+} from "./trackDisplay";
 
 const RING_STROKE_PX = 1;
 const RUNWAY_STROKE_PX = 2;

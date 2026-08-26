@@ -790,4 +790,3 @@ test("syncDisplayControlBar preserves aria-pressed when button has active data-d
   expect(barSrc()).toMatch(/data-dcb-flashing/);
   expect(barSrc()).toMatch(/el\.getAttribute\("data-dcb-flashing"\) === "true"/);
 });
-
