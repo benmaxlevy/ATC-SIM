@@ -69,7 +69,12 @@ import {
   isPrimaryTarget,
   targetStrokeColor,
 } from "./targetSymbol";
-import { isIdentFlashing, isTrackQueried, syncTrackDisplays } from "./trackDisplay";
+import {
+  deriveScratchpads,
+  isIdentFlashing,
+  isTrackQueried,
+  syncTrackDisplays,
+} from "./trackDisplay";
 
 const RING_STROKE_PX = 1;
 const RUNWAY_STROKE_PX = 2;
@@ -434,13 +439,25 @@ function drawDatablock(
     return;
   }
   const td = view.tracks.get(ac.id);
-  const scratchpad = td?.scratchpad ?? "";
+  const derived = deriveScratchpads(ac, td);
   const tint = trackAlertTint(world, ac.callsign);
   const mode = visual.mode;
   const isQueried = td ? isTrackQueried(td, world.simTimeMs) : false;
   const squawk = td?.squawk ?? ac.squawk;
   const beaconCodeReadout = view.beaconatorActive === true;
   const callsign = beaconCodeReadout && squawk ? squawk : ac.callsign;
+
+  const handoff = handoffFor(world, ac.id);
+  let handoffSectorId: string | undefined;
+  if (handoff.kind === "inbound") {
+    handoffSectorId = handoff.fromSectorId;
+  } else if (handoff.kind === "outbound") {
+    handoffSectorId = handoff.toSectorId;
+  } else if (handoff.kind === "pointout_inbound") {
+    handoffSectorId = handoff.fromSectorId;
+  } else if (handoff.kind === "pointout_outbound") {
+    handoffSectorId = handoff.toSectorId;
+  }
 
   const base = linesForDatablock(
     {
@@ -449,13 +466,16 @@ function drawDatablock(
       squawk,
     },
     mode,
-    view.modeCVisible,
-    scratchpad,
     {
+      modeCVisible: view.modeCVisible,
+      scratchpad: derived.sp1,
+      sp1: derived.sp1,
+      sp2: derived.sp2,
+      handoffSectorId,
       queried: isQueried,
       beaconVisible: true,
+      simTimeMs: world.simTimeMs,
     },
-    world.simTimeMs,
   );
   let line1 = base.line1;
   if (visual.line1Tag) {

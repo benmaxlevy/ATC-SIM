@@ -52,6 +52,9 @@ export interface DatablockSource {
   speedKt: number;
   intent: {
     assignedAltitudeFt: number;
+    controllerAssignedAltitudeFt?: number;
+    assignedSpeedKt?: number;
+    controllerAssignedSpeedKt?: number;
     requestedAltitudeFt?: number;
   };
   /** ICAO type stub for FDB (e.g. B738). Display-only. */
@@ -74,26 +77,46 @@ export interface DatablockSource {
   pilotReportedAltitude?: boolean;
   /** ATPA distance readout string if enabled (e.g. "2.4"). */
   atpaDistance?: string;
+  /** Flight rules indicator ("VFR" or "IFR"). */
+  flightRules?: "IFR" | "VFR" | string;
+  /** True if aircraft is an overflight / enroute track. */
+  isOverflight?: boolean;
 }
 
 export interface FullDatablockOpts {
   /** Hide the Mode C field on full blocks (`M`). Limited ignores this. */
   modeCVisible?: boolean;
-  /** Trainer scratchpad (sanitized to 0–4 A–Z0–9). Omitted on limited. */
+  /** Trainer scratchpad (legacy SP1 alias). */
   scratchpad?: string;
+  /** Primary scratchpad (SP1: approach shorthand or interim altitude). */
+  sp1?: string;
+  /** Secondary scratchpad (SP2: assigned speed shorthand). */
+  sp2?: string;
+  /** Transferring / receiving sector ID character centered on Line 2 during handoff. */
+  handoffSectorId?: string;
   /** Simulation timestamp in milliseconds for time-sharing cycle. Default 0. */
   simTimeMs?: number;
-  /** Explicit time-share phase override (0 for Mode C/GS, 1 for Scratchpad/Type/ReqAlt). */
-  timeSharePhase?: 0 | 1;
+  /** Explicit time-share phase override (step index 0, 1, 2, ...). */
+  timeSharePhase?: number;
 }
 
 export interface PartialDatablockOpts {
   /** Hide the Mode C field (`M`). */
   modeCVisible?: boolean;
-  /** Trainer scratchpad (sanitized to 0–4 A–Z0–9). */
+  /** Trainer scratchpad (legacy SP1 alias). */
   scratchpad?: string;
+  /** Primary scratchpad (SP1). */
+  sp1?: string;
+  /** Secondary scratchpad (SP2). */
+  sp2?: string;
+  /** Transferring / receiving sector ID character centered on Line 2 during handoff. */
+  handoffSectorId?: string;
   /** Simulation timestamp in milliseconds. */
   simTimeMs?: number;
+  /** Explicit time-share phase override (step index 0, 1, 2, ...). */
+  timeSharePhase?: number;
+  /** Suppress ground speed display in PDB mode. */
+  suppressPdbSpeed?: boolean;
 }
 
 export interface LimitedDatablockOpts {
@@ -146,13 +169,43 @@ export function formatGroundSpeedKt(speedKt: number): string {
   return String(kt).padStart(3, "0");
 }
 
-/** Ground speed in tens of knots (e.g. 180 kt -> "18", 210 kt -> "21", 90 kt -> "09"). */
-export function formatGroundSpeedTens(speedKt: number): string {
+export interface GroundSpeedTensOpts {
+  wakeCategory?: string;
+  flightRules?: "IFR" | "VFR" | string;
+  isOverflight?: boolean;
+}
+
+/**
+ * Ground speed in tens of knots (e.g. 180 kt -> "18", 210 kt -> "21", 90 kt -> "09").
+ * Optionally appends wake/RNAV category indicator (e.g. "18H", "25R"),
+ * or flight category ("V" for VFR, "E" for overflights).
+ */
+export function formatGroundSpeedTens(
+  speedKt: number,
+  opts?: GroundSpeedTensOpts | string,
+): string {
   if (!Number.isFinite(speedKt)) {
     return "00";
   }
   const tens = Math.max(0, Math.round(speedKt / 10));
-  return String(tens).padStart(2, "0");
+  const base = String(tens).padStart(2, "0");
+
+  const wake =
+    typeof opts === "string" ? formatWakeCategory(opts) : formatWakeCategory(opts?.wakeCategory);
+  if (wake.length > 0) {
+    return `${base}${wake}`;
+  }
+
+  if (typeof opts === "object" && opts !== null) {
+    if (opts.flightRules === "VFR") {
+      return `${base}V`;
+    }
+    if (opts.isOverflight) {
+      return `${base}E`;
+    }
+  }
+
+  return base;
 }
 
 function assignedDiffers(modeCFt: number, assignedFt: number): boolean {
@@ -200,17 +253,13 @@ export function getSpecialPurposeCode(track: DatablockSource): string | undefine
   return undefined;
 }
 
-function appendScratchpad(line2: string, scratchpad: string | undefined): string {
-  const spad = sanitizeScratchpad(scratchpad ?? "");
-  return spad.length > 0 ? `${line2}${FIELD_GAP}${spad}` : line2;
-}
-
 /**
  * Full datablock (STARS CRC):
  * - Line 1: Callsign + Special Purpose Code (SPC: EM, RF, HJ, etc.)
- * - Line 2: Dynamic time-sharing alternating (~2.5s cycle):
- *     Phase A: Mode C altitude + Ground speed (with wake/RNAV category suffix)
- *     Phase B: Scratchpad + Aircraft type / Requested altitude (prefixed with R)
+ * - Line 2: Dynamic multi-phase time-sharing (~2.5s cycle):
+ *     Left field:  Mode C altitude <-> SP1 <-> SP2
+ *     Center:      Transferring/receiving sector ID character during active handoff
+ *     Right field: GS (tens) <-> Aircraft Type <-> Requested Altitude (R###)
  * - Line 3: Assigned altitude prefixed with A (e.g. A040) when |assigned - altitude| >= 100 ft,
  *           squawk mismatch, or ATPA distance. Omitted when none applies.
  */
@@ -222,47 +271,57 @@ export function formatFullDatablock(
   const spc = getSpecialPurposeCode(track);
   const line1 = spc ? `${track.callsign} ${spc}` : track.callsign;
 
-  const phase =
+  const phaseStep =
     opts.timeSharePhase !== undefined
       ? opts.timeSharePhase
       : opts.simTimeMs != null
-        ? ((Math.floor(opts.simTimeMs / FDB_TIMESHARE_INTERVAL_MS) % 2) as 0 | 1)
+        ? Math.floor(opts.simTimeMs / FDB_TIMESHARE_INTERVAL_MS)
         : 0;
 
-  // Phase A components:
+  // Left-field queue: [Mode C, SP1, SP2] filtered to active/non-empty entries
   const pilotReportStar = track.pilotReportedAltitude ? "*" : "";
-  const modeC = `${formatAltitudeHundreds(track.altitudeFt)}${pilotReportStar}`;
-  const wake = formatWakeCategory(track.wakeCategory);
-  const gs = `${formatGroundSpeedKt(track.speedKt)}${wake}`;
-  const phaseALine2 = modeCVisible ? `${modeC}${FIELD_GAP}${gs}` : gs;
+  const modeC = modeCVisible ? `${formatAltitudeHundreds(track.altitudeFt)}${pilotReportStar}` : "";
+  const rawSp1 = opts.sp1 ?? opts.scratchpad;
+  const sp1 = sanitizeScratchpad(rawSp1 ?? "");
+  const sp2 = sanitizeScratchpad(opts.sp2 ?? "");
 
-  // Phase B components:
-  const spad = sanitizeScratchpad(opts.scratchpad ?? "");
-  const type = formatAircraftType(track.aircraftType);
+  const leftQueue = [modeC, sp1, sp2].filter((s) => s.length > 0);
+  const leftField =
+    leftQueue.length > 0
+      ? leftQueue[((phaseStep % leftQueue.length) + leftQueue.length) % leftQueue.length]
+      : "";
+
+  // Right-field queue: [GS, Type, Requested Altitude] filtered to active entries
+  const gs = formatGroundSpeedTens(track.speedKt, {
+    wakeCategory: track.wakeCategory,
+    flightRules: track.flightRules,
+    isOverflight: track.isOverflight,
+  });
+  const type = formatAircraftType(track.aircraftType) ?? "";
   const reqAltFt = track.requestedAltitudeFt ?? track.intent?.requestedAltitudeFt;
-  const reqAlt = formatRequestedAltitude(reqAltFt);
+  const reqAlt = formatRequestedAltitude(reqAltFt) ?? "";
 
-  let phaseBLine2: string;
-  if (spad.length > 0) {
-    const right = reqAlt ?? type;
-    phaseBLine2 = right ? `${spad}${FIELD_GAP}${right}` : spad;
-  } else if (type && reqAlt) {
-    phaseBLine2 = `${type}${FIELD_GAP}${reqAlt}`;
-  } else if (reqAlt) {
-    phaseBLine2 = reqAlt;
-  } else if (type) {
-    phaseBLine2 = type;
-  } else {
-    phaseBLine2 = phaseALine2;
-  }
+  const rightQueue = [gs, type, reqAlt].filter((s) => s.length > 0);
+  const rightField =
+    rightQueue.length > 0
+      ? rightQueue[((phaseStep % rightQueue.length) + rightQueue.length) % rightQueue.length]
+      : "";
 
-  const line2 = phase === 1 ? phaseBLine2 : phaseALine2;
+  // Center field: handoff sector ID
+  const centerField = opts.handoffSectorId
+    ? opts.handoffSectorId.trim().toUpperCase().slice(0, 1)
+    : "";
+
+  const line2Parts = [leftField, centerField, rightField].filter((s) => s.length > 0);
+  const line2 = line2Parts.join(FIELD_GAP);
 
   // Line 3: Special and Assigned fields
-  const showAssigned = assignedDiffers(track.altitudeFt, track.intent.assignedAltitudeFt);
-  const assignedField = showAssigned
-    ? `A${formatAltitudeHundreds(track.intent.assignedAltitudeFt)}`
-    : undefined;
+  const targetAssignedAlt = track.intent?.controllerAssignedAltitudeFt;
+  const showAssigned =
+    targetAssignedAlt != null &&
+    Number.isFinite(targetAssignedAlt) &&
+    assignedDiffers(track.altitudeFt, targetAssignedAlt);
+  const assignedField = showAssigned ? `A${formatAltitudeHundreds(targetAssignedAlt)}` : undefined;
   const hasSquawkMismatch =
     track.assignedSquawk && track.reportedSquawk && track.assignedSquawk !== track.reportedSquawk;
   const squawkField = hasSquawkMismatch ? track.reportedSquawk : undefined;
@@ -276,7 +335,7 @@ export function formatFullDatablock(
 }
 
 /**
- * Partial datablock (PDB): Line 2 only (Mode C altitude + Ground speed, optional scratchpad),
+ * Partial datablock (PDB): Line 2 only (Mode C altitude <-> SP1 <-> SP2, optional center handoff ID, ground speed),
  * suppressing callsign (Line 1) and aircraft type (Line 3).
  * Used for associated tracks owned by another controller.
  */
@@ -285,13 +344,48 @@ export function formatPartialDatablock(
   opts: PartialDatablockOpts = {},
 ): PartialDatablock {
   const modeCVisible = opts.modeCVisible !== false;
-  const pilotReportStar = track.pilotReportedAltitude ? "*" : "";
-  const modeC = `${formatAltitudeHundreds(track.altitudeFt)}${pilotReportStar}`;
-  const wake = formatWakeCategory(track.wakeCategory);
-  const gs = `${formatGroundSpeedKt(track.speedKt)}${wake}`;
+  const phaseStep =
+    opts.timeSharePhase !== undefined
+      ? opts.timeSharePhase
+      : opts.simTimeMs != null
+        ? Math.floor(opts.simTimeMs / FDB_TIMESHARE_INTERVAL_MS)
+        : 0;
 
-  let line1 = modeCVisible ? `${modeC}${FIELD_GAP}${gs}` : gs;
-  line1 = appendScratchpad(line1, opts.scratchpad);
+  // Left queue: [Mode C, SP1, SP2]
+  const pilotReportStar = track.pilotReportedAltitude ? "*" : "";
+  const modeC = modeCVisible ? `${formatAltitudeHundreds(track.altitudeFt)}${pilotReportStar}` : "";
+  const rawSp1 = opts.sp1 ?? opts.scratchpad;
+  const sp1 = sanitizeScratchpad(rawSp1 ?? "");
+  const sp2 = sanitizeScratchpad(opts.sp2 ?? "");
+
+  const leftQueue = [modeC, sp1, sp2].filter((s) => s.length > 0);
+  const leftField =
+    leftQueue.length > 0
+      ? leftQueue[((phaseStep % leftQueue.length) + leftQueue.length) % leftQueue.length]
+      : "";
+
+  // Right queue: [GS] unless suppressed
+  const gs = opts.suppressPdbSpeed
+    ? ""
+    : formatGroundSpeedTens(track.speedKt, {
+        wakeCategory: track.wakeCategory,
+        flightRules: track.flightRules,
+        isOverflight: track.isOverflight,
+      });
+  const rightQueue = [gs].filter((s) => s.length > 0);
+  const rightField =
+    rightQueue.length > 0
+      ? rightQueue[((phaseStep % rightQueue.length) + rightQueue.length) % rightQueue.length]
+      : "";
+
+  // Center field: handoff sector ID
+  const centerField = opts.handoffSectorId
+    ? opts.handoffSectorId.trim().toUpperCase().slice(0, 1)
+    : "";
+
+  const line1Parts = [leftField, centerField, rightField].filter((s) => s.length > 0);
+  const line1 = line1Parts.join(FIELD_GAP);
+
   return { line1 };
 }
 
@@ -337,22 +431,67 @@ export function withInboundHandoffCue(line1: string, handoff: TrackHandoff): str
   return `${line1} HO`;
 }
 
+export interface DatablockRenderOpts {
+  modeCVisible?: boolean;
+  scratchpad?: string;
+  sp1?: string;
+  sp2?: string;
+  handoffSectorId?: string;
+  suppressPdbSpeed?: boolean;
+  timeSharePhase?: number;
+  simTimeMs?: number;
+  queried?: boolean;
+  beaconVisible?: boolean;
+  speedFormat?: "tens" | "knots";
+}
+
 /** Resolve full vs partial vs limited lines for paint and hit-test. */
 export function linesForDatablock(
   track: DatablockSource,
   mode: DatablockMode = "full",
-  modeCVisible = true,
+  modeCVisibleOrOpts: boolean | DatablockRenderOpts = true,
   scratchpad = "",
-  opts?: LimitedDatablockOpts,
+  limitedOpts?: LimitedDatablockOpts,
   simTimeMs = 0,
 ): DatablockLines {
+  const opts: DatablockRenderOpts =
+    typeof modeCVisibleOrOpts === "object" && modeCVisibleOrOpts !== null
+      ? modeCVisibleOrOpts
+      : {
+          modeCVisible: modeCVisibleOrOpts,
+          scratchpad,
+          simTimeMs,
+          ...limitedOpts,
+        };
+
   if (mode === "limited") {
-    return formatLimitedDatablock(track, opts);
+    return formatLimitedDatablock(track, {
+      beaconVisible: opts.beaconVisible,
+      queried: opts.queried,
+      speedFormat: opts.speedFormat,
+    });
   }
   if (mode === "partial") {
-    return formatPartialDatablock(track, { modeCVisible, scratchpad, simTimeMs });
+    return formatPartialDatablock(track, {
+      modeCVisible: opts.modeCVisible,
+      scratchpad: opts.scratchpad,
+      sp1: opts.sp1,
+      sp2: opts.sp2,
+      handoffSectorId: opts.handoffSectorId,
+      suppressPdbSpeed: opts.suppressPdbSpeed,
+      timeSharePhase: opts.timeSharePhase,
+      simTimeMs: opts.simTimeMs,
+    });
   }
-  return formatFullDatablock(track, { modeCVisible, scratchpad, simTimeMs });
+  return formatFullDatablock(track, {
+    modeCVisible: opts.modeCVisible,
+    scratchpad: opts.scratchpad,
+    sp1: opts.sp1,
+    sp2: opts.sp2,
+    handoffSectorId: opts.handoffSectorId,
+    timeSharePhase: opts.timeSharePhase,
+    simTimeMs: opts.simTimeMs,
+  });
 }
 
 export function datablockMetrics(

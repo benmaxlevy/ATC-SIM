@@ -566,6 +566,31 @@ Completed visual, interactive, and datablock fidelity pass matching [CRC STARS](
 - [x] F4 drops track to unowned green PDB with `*` position symbol (T02-37).
 - [x] Comprehensive end-to-end integration test suite in `src/scope/starsFidelity.integration.test.ts` (T02-38).
 
+### STARS CRC Datablock & Scratchpad Fidelity Addendum (T02-39–42)
+
+Completed datablock & scratchpad fidelity addendum matching [CRC STARS Specifications](https://docs.virtualnas.net/crc/stars/):
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-39](tickets/T02-39-automatic-scratchpad-sp1-sp2-derivation.md) | Automatic scratchpad (SP1, SP2) derivation from aircraft intent | P0 | M | T02-38 | Shipped |
+| [T02-40](tickets/T02-40-stars-fdb-groundspeed-tens-and-category-indicators.md) | STARS FDB groundspeed tens and category indicators | P1 | M | T02-39 | Shipped |
+| [T02-41](tickets/T02-41-stars-fdb-multiphase-timesharing-and-handoff-center-placement.md) | Multi-phase Line 2 time-sharing & handoff center placement | P1 | L | T02-40 | Shipped |
+| [T02-42](tickets/T02-42-stars-datablock-fidelity-integration-acceptance.md) | Datablock fidelity integration and acceptance test suite | P0 | L | T02-39–41 | Shipped |
+
+### Phase 2 STARS CRC datablock fidelity checklist (T02-39–42)
+
+- [x] Automatic scratchpad derivation: SP1 automatically derives approach shorthand (e.g. `ILS 27` -> `I27`, `RNAV 22L` -> `R22L`, `VISUAL 28` -> `V28`) as highest priority, falling back to interim altitude in 3-digit hundreds (`040`) when no approach is assigned (T02-39).
+- [x] Automatic scratchpad derivation: SP2 automatically derives assigned speed shorthand with `S` prefix and 2-digit tens (e.g. `210 kt` -> `S21`, `180 kt` -> `S18`) (T02-39).
+- [x] Manual scratchpads (`manualSp1`, `manualSp2`) take precedence over auto-derivation; clearing restores auto-derivation (T02-39).
+- [x] Ground speed formatted in tens of knots (e.g. `18`, `21`, `25`) across FDB, PDB, and queried LDB (T02-40).
+- [x] Wake/RNAV category indicators (`H`, `B`, `R`, `L`, CWT `A`–`I`) appended to ground speed (e.g. `18H`, `25R`) (T02-40).
+- [x] Flight category suffixes (`V` for VFR, `E` for overflight) and PDB speed suppression support (T02-40).
+- [x] Multi-phase Line 2 time-sharing: left column independently rotates `Mode C` $\leftrightarrow$ `SP1` $\leftrightarrow$ `SP2`, right column independently rotates `GS` $\leftrightarrow$ `Type` $\leftrightarrow$ `Requested Alt (R###)` every ~2.5s (T02-41).
+- [x] Unassigned/empty scratchpads or types/reqAlts skipped smoothly without dead or blank display intervals (T02-41).
+- [x] Transferring/receiving sector ID character placed in center position of Line 2 during active handoff (e.g. `080  D  25H`, `I27  D  B772`) (T02-41).
+- [x] Emergency transponder Special Purpose Codes: 7700 (`EM`), 7600 (`RF`), 7500 (`HJ`) rendered on Line 1 next to callsign (T02-41).
+- [x] Comprehensive end-to-end integration and acceptance test suite in `src/scope/datablockFidelity.integration.test.ts` (T02-42).
+
 ## Launching an agent
 
 1. Confirm phase 1 README exit is green.
@@ -574,7 +599,9 @@ Completed visual, interactive, and datablock fidelity pass matching [CRC STARS](
 4. After original exit: polish T02-14 → T02-21 (DCB cells, chrome, SSA). Still not a Raytheon clone.
 5. After polish: DCB addendum T02-22 → T02-30 (main/aux/submenus). Still not CRDA / FMA / weather paint.
 6. Scope fidelity addendum T02-34 → T02-38 (STARS CRC symbol shapes, LDB/PDB/FDB modes, time-sharing, handoffs, pointouts, cyan highlights).
+7. Datablock & scratchpad fidelity addendum T02-39 → T02-42 (SP1/SP2 derivation, tens groundspeed + categories, multi-phase time-sharing with center handoff placement, emergency SPCs).
 
 ## Glossary reminders
 
 Use `phases/_shared/glossary.md` terms: **scope**, **PPI**, **datablock**, **track**, **CRC keys**. Distances NM, altitudes feet MSL, speed knots. Do not invent “zoom level,” “labels,” or “sprites” in user-facing UI copy — say **range**, **datablock**, **target**. Forbidden/required list: `phases/_shared/references.md`.
+
