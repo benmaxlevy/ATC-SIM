@@ -397,13 +397,16 @@ describe("Departures and SIDs integration test suite (T04-23)", () => {
       catalog,
     );
 
-    // Datablock format (STARS CRC: Line 2 Phase A Mode C + GS; Line 3 assigned altitude A100)
+    // Datablock format (STARS CRC: Line 2 Mode C + GS; Line 3 omitted while climbing on VIA_SID)
     const fdb = formatFullDatablock(dep);
     expect(fdb.line1).toBe("JBU500");
     // Line 2: Mode C altitude 700 ft -> 007, speed 180 kt -> 18
     expect(fdb.line2).toBe("007  18");
-    // Line 3: assigned altitude A100 (10000 ft)
-    expect(fdb.line3).toBe("A100");
+    expect(fdb.line3).toBeUndefined();
+
+    // When controller explicitly assigns altitude: Line 3 displays A100 (10000 ft)
+    dep.intent.controllerAssignedAltitudeFt = 10000;
+    expect(formatFullDatablock(dep).line3).toBe("A100");
 
     // Flight Strips
     const strips = stripsFromWorld(world);

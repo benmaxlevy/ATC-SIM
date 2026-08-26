@@ -379,6 +379,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
         aircraftType: "A321",
       });
       ac.intent.assignedAltitudeFt = 4000;
+      ac.intent.controllerAssignedAltitudeFt = 4000;
       const world = createWorld({ aircraft: [ac], simTimeMs: 0 });
       const view = createScopeView();
       syncTrackDisplays(view.tracks, world);

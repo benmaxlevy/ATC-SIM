@@ -52,6 +52,9 @@ export interface DatablockSource {
   speedKt: number;
   intent: {
     assignedAltitudeFt: number;
+    controllerAssignedAltitudeFt?: number;
+    assignedSpeedKt?: number;
+    controllerAssignedSpeedKt?: number;
     requestedAltitudeFt?: number;
   };
   /** ICAO type stub for FDB (e.g. B738). Display-only. */
@@ -313,10 +316,12 @@ export function formatFullDatablock(
   const line2 = line2Parts.join(FIELD_GAP);
 
   // Line 3: Special and Assigned fields
-  const showAssigned = assignedDiffers(track.altitudeFt, track.intent.assignedAltitudeFt);
-  const assignedField = showAssigned
-    ? `A${formatAltitudeHundreds(track.intent.assignedAltitudeFt)}`
-    : undefined;
+  const targetAssignedAlt = track.intent?.controllerAssignedAltitudeFt;
+  const showAssigned =
+    targetAssignedAlt != null &&
+    Number.isFinite(targetAssignedAlt) &&
+    assignedDiffers(track.altitudeFt, targetAssignedAlt);
+  const assignedField = showAssigned ? `A${formatAltitudeHundreds(targetAssignedAlt)}` : undefined;
   const hasSquawkMismatch =
     track.assignedSquawk && track.reportedSquawk && track.assignedSquawk !== track.reportedSquawk;
   const squawkField = hasSquawkMismatch ? track.reportedSquawk : undefined;

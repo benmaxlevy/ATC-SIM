@@ -516,6 +516,7 @@ test("T02-04 AC5 / T02-36 — M hides Mode C on full blocks; Line 3 shows assign
     yNm: 0,
   });
   ac.intent.assignedAltitudeFt = 4000;
+  ac.intent.controllerAssignedAltitudeFt = 4000;
   const world = createWorld({ aircraft: [ac] });
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
@@ -523,7 +524,7 @@ test("T02-04 AC5 / T02-36 — M hides Mode C on full blocks; Line 3 shows assign
   view.modeCVisible = false;
   const full = createMockCtx();
   renderScope(full.ctx, world, view, 800, 800);
-  expect(full.fillTexts.some((t) => t.text === "21")).toBe(true);
+  expect(full.fillTexts.some((t) => t.text === "040  21")).toBe(true);
   expect(full.fillTexts.some((t) => t.text === "A040")).toBe(true);
 
   view.tracks.get(ac.id)!.datablockMode = "limited";

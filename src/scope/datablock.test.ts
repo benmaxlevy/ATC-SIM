@@ -49,6 +49,7 @@ function track(overrides: {
   });
   if (overrides.assignedAltitudeFt != null) {
     ac.intent.assignedAltitudeFt = overrides.assignedAltitudeFt;
+    ac.intent.controllerAssignedAltitudeFt = overrides.assignedAltitudeFt;
   }
   if (overrides.requestedAltitudeFt != null) {
     ac.intent.requestedAltitudeFt = overrides.requestedAltitudeFt;
