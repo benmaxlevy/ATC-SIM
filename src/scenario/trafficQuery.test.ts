@@ -28,9 +28,9 @@ test("T04-21 AC1 — parseDepartureOptions handles params and defaults", () => {
     seed: 5,
   });
 
-  // Default without params retains backward compatibility (enabled: false)
-  expect(parseDepartureOptions("")).toEqual({ enabled: false });
-  expect(parseDepartureOptions("?traffic=30")).toEqual({ enabled: false });
+  // Default without params enables departures by default
+  expect(parseDepartureOptions("")).toEqual({ enabled: true });
+  expect(parseDepartureOptions("?traffic=30")).toEqual({ enabled: true });
 
   // Explicit off / false
   expect(parseDepartureOptions("?departures=off")).toEqual({ enabled: false });

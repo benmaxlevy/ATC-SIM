@@ -171,8 +171,7 @@ function initDepartures(
   const isQuerySpecified = departureOptions !== undefined && departureOptions !== null;
   const isEnabled = isQuerySpecified
     ? departureOptions.enabled
-    : scenario.departureConfig?.policy === "auto" ||
-      scenario.departureConfig?.policy === "authored";
+    : scenario.departureConfig?.policy !== "none" && (scenario.catalog?.sids?.length ?? 0) > 0;
 
   if (!isEnabled) {
     return;

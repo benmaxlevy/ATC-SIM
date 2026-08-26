@@ -76,23 +76,14 @@ export interface DepartureOptions {
 export function parseDepartureOptions(search: string): DepartureOptions {
   const params = new URLSearchParams(search);
   const rawDep = params.get("departures")?.trim().toLowerCase();
-  let enabled = false;
+  let enabled = true;
 
   if (rawDep !== undefined) {
-    if (
-      rawDep === "auto" ||
-      rawDep === "true" ||
-      rawDep === "1" ||
-      rawDep === "yes" ||
-      rawDep === "on" ||
-      rawDep === ""
-    ) {
-      enabled = true;
-    } else if (rawDep === "off" || rawDep === "false" || rawDep === "0" || rawDep === "no") {
+    if (rawDep === "off" || rawDep === "false" || rawDep === "0" || rawDep === "no") {
       enabled = false;
+    } else {
+      enabled = true;
     }
-  } else if (params.has("departures")) {
-    enabled = true;
   }
 
   const result: DepartureOptions = { enabled };
