@@ -51,12 +51,12 @@ Read **docs.virtualnas.net/crc/stars** (Tracking Aircraft, Data Blocks, BRITE su
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Primary-only target renders as a diamond without a datablock.
-- [ ] **AC2 —** Unassociated secondary target renders as an asterisk `*` (or `V` for 1200 squawk, `□` for selected beacon).
-- [ ] **AC3 —** Tracked target renders the owning controller's sector ID (e.g. `D` or `G`) as the position symbol.
-- [ ] **AC4 —** Fixed 8px heading tick line is removed from the target symbol; PTL lines continue to render correctly.
-- [ ] **AC5 —** BRITE channels `pos`, `oth`, and `pri` properly modulate the target symbol brightness.
-- [ ] **AC6 —** Automated unit tests cover all target symbol shapes and brightness variations.
+- [x] **AC1 —** Primary-only target renders as a diamond without a datablock.
+- [x] **AC2 —** Unassociated secondary target renders as an asterisk `*` (or `V` for 1200 squawk, `□` for selected beacon).
+- [x] **AC3 —** Tracked target renders the owning controller's sector ID (e.g. `D` or `G`) as the position symbol.
+- [x] **AC4 —** Fixed 8px heading tick line is removed from the target symbol; PTL lines continue to render correctly.
+- [x] **AC5 —** BRITE channels `pos`, `oth`, and `pri` properly modulate the target symbol brightness.
+- [x] **AC6 —** Automated unit tests cover all target symbol shapes and brightness variations.
 
 ## Test plan
 

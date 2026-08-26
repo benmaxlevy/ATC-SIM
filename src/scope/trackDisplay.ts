@@ -34,6 +34,16 @@ export interface TrackDisplay {
    * Display state only — never Aircraft.intent / kinematics.
    */
   scratchpad: string;
+  /** Optional display squawk override. */
+  squawk?: string;
+  /** Primary-only target flag (unfilled diamond, no datablock). */
+  isPrimary?: boolean;
+  primaryOnly?: boolean;
+  surveillance?: "primary" | "secondary";
+  /** Owning controller sector ID (e.g. "D", "G"). */
+  sectorId?: string;
+  /** Explicit tracked flag. */
+  tracked?: boolean;
 }
 
 export function createTrackDisplay(): TrackDisplay {

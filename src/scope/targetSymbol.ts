@@ -1,30 +1,37 @@
 /**
  * Analog: CRC STARS target / position symbol (docs.virtualnas.net/crc/stars — R07).
  * FAA 3-9-1: search/fusion symbol blue; history blue; FDB white/green by ownership.
- * Trainer delta: 8×8 CSS px unfilled **diamond** (T02-18; was a 6×6 box in T02-03),
- * north-up (do not rotate with heading), 8 px heading tick along ground track
- * (not a PTL). CSI-like one-char stub (`*` unowned, `G` after F3) is trainer
- * sugar in/near the symbol — not a real NAS CSI. Diamond stroke is search-target
- * blue; FDB/leader use ownership white/green. Selected is a yellow box,
- * independent of ownership. Not a sprite (R12). Not an airplane. Not NAS STARS.
+ *
+ * Target and position symbols by surveillance and ownership state:
+ * - Primary-only (no transponder/beacon): unfilled diamond (`◇`) with no datablock.
+ * - Unassociated secondary beacon: asterisk (`*`) default, `V` for 1200 VFR squawk,
+ *   or square (`□`) if beacon code matches the beacon code select list.
+ * - Controlled / Tracked: Sector ID character (e.g. `D` for departure / user TCP,
+ *   `G` for generic active track, or transferring controller's ID).
+ * - Fixed 8px heading tick line is removed (PTL handles velocity vector projection).
+ * - Brightness modulated via TCW BRITE channels (`pos` for tracked FDB, `oth` for
+ *   unassociated, `pri` for primary).
+ *
+ * Not a sprite (R12). Not an airplane. Not NAS STARS.
  */
 
 import { SCOPE_FONT_STACK } from "./fonts";
 import { PALETTE, historyTrailColor } from "./palette";
 import { ownershipStubChar, type TrackOwnership } from "./ownership";
 
-/** Frozen T02-18 position-symbol shape. Axis-aligned diamond, not heading-rotated. */
+/** Position-symbol shape for primary targets. Axis-aligned diamond, not heading-rotated. */
 export const TARGET_SHAPE = "diamond" as const;
 
-/** Bounding box of the diamond (vertex to opposite vertex). 7–9 CSS px band. */
+/** Bounding box of the diamond/symbol (vertex to opposite vertex). 7–9 CSS px band. */
 export const TARGET_SIZE_PX = 8;
 export const TARGET_STROKE_PX = 1;
+/** @deprecated T02-34: Heading tick removed from target symbol; PTL handles vector projection. */
 export const HEADING_TICK_PX = 8;
 export const HISTORY_DOT_SIZE_PX = 3;
-/** 1 px yellow selection box sits this far outside the diamond bounding box. */
+/** 1 px yellow selection box sits this far outside the symbol bounding box. */
 export const SELECTION_BOX_PAD_PX = 2;
 
-/** CSI-like stub: one character, IBM Plex Mono, slightly smaller than the FDB. */
+/** Stub/position font: IBM Plex Mono sized to match position symbol char size. */
 export const OWNERSHIP_STUB_FONT_PX = 9;
 export const OWNERSHIP_STUB_FONT = `${OWNERSHIP_STUB_FONT_PX}px ${SCOPE_FONT_STACK}`;
 
@@ -36,6 +43,131 @@ export const OWNED_TRACK_COLOR = PALETTE.owned;
 export const SELECTED_ACCENT_COLOR = PALETTE.selected;
 /** Search/fusion position symbol. FAA (30,120,255). */
 export const POSITION_SYMBOL_COLOR = PALETTE.positionSymbol;
+
+export type TargetSurveillanceType = "primary" | "secondary";
+export type TargetSymbolKind = "diamond" | "asterisk" | "vfr" | "beacon_select" | "tracked";
+
+export interface TargetSymbolOptions {
+  isPrimary?: boolean;
+  primaryOnly?: boolean;
+  transponder?: string;
+  surveillance?: TargetSurveillanceType | string;
+  ownership?: TrackOwnership;
+  tracked?: boolean;
+  squawk?: string;
+  beaconCode?: string;
+  beaconSelect?: ReadonlySet<string> | ReadonlyArray<string>;
+  sectorId?: string;
+}
+
+export interface TargetSymbolDescriptor {
+  kind: TargetSymbolKind;
+  shape: "diamond" | "square" | "text";
+  symbol: string;
+  char?: string;
+}
+
+/** Check if an aircraft/track is primary-only (no transponder/beacon). */
+export function isPrimaryTarget(
+  ac?: { primaryOnly?: boolean; isPrimary?: boolean; transponder?: string } | null,
+  td?: { primaryOnly?: boolean; isPrimary?: boolean; surveillance?: string } | null,
+): boolean {
+  if (!ac && !td) {
+    return false;
+  }
+  return (
+    ac?.primaryOnly === true ||
+    ac?.isPrimary === true ||
+    ac?.transponder === "primary" ||
+    ac?.transponder === "none" ||
+    td?.primaryOnly === true ||
+    td?.isPrimary === true ||
+    td?.surveillance === "primary"
+  );
+}
+
+export function targetSymbolDescriptor(
+  options: TargetSymbolOptions | TrackOwnership = {},
+): TargetSymbolDescriptor {
+  const opts: TargetSymbolOptions = typeof options === "string" ? { ownership: options } : options;
+  if (
+    opts.isPrimary ||
+    opts.primaryOnly ||
+    opts.surveillance === "primary" ||
+    opts.transponder === "primary" ||
+    opts.transponder === "none"
+  ) {
+    return {
+      kind: "diamond",
+      shape: "diamond",
+      symbol: "◇",
+    };
+  }
+
+  const isTracked = opts.tracked ?? (opts.ownership !== undefined && opts.ownership !== "unowned");
+  if (isTracked) {
+    let sectorId = opts.sectorId;
+    if (!sectorId) {
+      if (opts.ownership === "tower") {
+        sectorId = "T";
+      } else if (opts.ownership === "center") {
+        sectorId = "C";
+      } else {
+        sectorId = "D";
+      }
+    }
+    return {
+      kind: "tracked",
+      shape: "text",
+      char: sectorId,
+      symbol: sectorId,
+    };
+  }
+
+  const squawk = opts.squawk ?? opts.beaconCode ?? "";
+  if (squawk === "1200") {
+    return {
+      kind: "vfr",
+      shape: "text",
+      char: "V",
+      symbol: "V",
+    };
+  }
+
+  if (opts.beaconSelect && squawk.length > 0) {
+    const isSelected = Array.isArray(opts.beaconSelect)
+      ? opts.beaconSelect.includes(squawk)
+      : opts.beaconSelect instanceof Set
+        ? opts.beaconSelect.has(squawk)
+        : false;
+    if (isSelected) {
+      return {
+        kind: "beacon_select",
+        shape: "square",
+        symbol: "□",
+        char: "□",
+      };
+    }
+  }
+
+  return {
+    kind: "asterisk",
+    shape: "text",
+    char: "*",
+    symbol: "*",
+  };
+}
+
+export function targetSymbolShape(options: TargetSymbolOptions | TrackOwnership = {}): string {
+  const desc = targetSymbolDescriptor(options);
+  if (desc.kind === "diamond") {
+    return "diamond";
+  }
+  if (desc.kind === "beacon_select") {
+    return "square";
+  }
+  return desc.symbol;
+}
 
 export function historyDotColor(indexFromOldest: number, count: number): string {
   return historyTrailColor(indexFromOldest, count);
@@ -157,23 +289,57 @@ export function drawTargetSymbol(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  headingDeg: number,
-  strokeColor: string,
-  ownership?: TrackOwnership,
-  sizePx: number = TARGET_SIZE_PX,
+  arg4: number | string,
+  arg5?: string | TargetSymbolOptions | TrackOwnership,
+  arg6?: TrackOwnership | number,
+  arg7?: number,
 ): void {
-  ctx.strokeStyle = strokeColor;
-  ctx.lineWidth = TARGET_STROKE_PX;
-  strokeDiamond(ctx, x, y, sizePx);
-  const tick = headingTickOffset(headingDeg, HEADING_TICK_PX * (sizePx / TARGET_SIZE_PX));
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.lineTo(x + tick.dx, y + tick.dy);
-  ctx.stroke();
-  if (ownership !== undefined) {
-    drawOwnershipStub(ctx, x, y, ownership, strokeColor);
+  let color: string;
+  let options: TargetSymbolOptions = {};
+  let sizePx: number = TARGET_SIZE_PX;
+
+  if (typeof arg4 === "number") {
+    color = typeof arg5 === "string" ? arg5 : POSITION_SYMBOL_COLOR;
+    if (typeof arg6 === "string") {
+      options = { ownership: arg6 as TrackOwnership };
+    } else if (typeof arg6 === "object" && arg6 !== null) {
+      options = arg6 as TargetSymbolOptions;
+    }
+    if (typeof arg7 === "number") {
+      sizePx = arg7;
+    }
+  } else {
+    color = arg4;
+    if (typeof arg5 === "string") {
+      options = { ownership: arg5 as TrackOwnership };
+    } else if (typeof arg5 === "object" && arg5 !== null) {
+      options = arg5 as TargetSymbolOptions;
+    }
+    if (typeof arg6 === "number") {
+      sizePx = arg6;
+    }
+  }
+
+  const desc = targetSymbolDescriptor(options);
+  if (desc.shape === "diamond") {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = TARGET_STROKE_PX;
+    strokeDiamond(ctx, x, y, sizePx);
+  } else if (desc.shape === "square") {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = TARGET_STROKE_PX;
+    const half = sizePx / 2;
+    ctx.strokeRect(x - half, y - half, sizePx, sizePx);
+  } else {
+    ctx.font = `${sizePx}px ${SCOPE_FONT_STACK}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = color;
+    ctx.fillText(desc.char ?? desc.symbol, x, y);
   }
 }
+
+export const renderTargetSymbol = drawTargetSymbol;
 
 export function drawHistoryDot(
   ctx: CanvasRenderingContext2D,

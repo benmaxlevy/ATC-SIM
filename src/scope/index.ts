@@ -319,6 +319,17 @@ export {
   drawHistoryDot,
   drawSelectionBox,
   drawTargetSymbol,
+  isPrimaryTarget,
+  renderTargetSymbol,
+  targetDiamondVertices,
+  targetSymbolDescriptor,
+  targetSymbolShape,
+} from "./targetSymbol";
+export type {
+  TargetSurveillanceType,
+  TargetSymbolDescriptor,
+  TargetSymbolKind,
+  TargetSymbolOptions,
 } from "./targetSymbol";
 export {
   PTL_CAP_TICK_PX,

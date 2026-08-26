@@ -93,6 +93,14 @@ export interface Aircraft {
    * Display-only — kinematics ignore this.
    */
   aircraftType?: string;
+  /** Assigned or active 4-digit beacon/squawk code (e.g. "1200", "0342"). */
+  squawk?: string;
+  /** Transponder capability / mode ("primary", "mode_c", "mode_a", "mode_s", "none"). */
+  transponder?: "primary" | "mode_c" | "mode_a" | "mode_s" | "none";
+  /** True if primary radar target only (no beacon / transponder). */
+  primaryOnly?: boolean;
+  /** True if primary radar target only. */
+  isPrimary?: boolean;
 }
 
 export interface AircraftInit {
@@ -105,6 +113,14 @@ export interface AircraftInit {
   speedKt: number;
   /** Optional type stub copied onto Aircraft; does not affect kinematics. */
   aircraftType?: string;
+  /** Optional squawk / beacon code. */
+  squawk?: string;
+  /** Optional transponder mode. */
+  transponder?: "primary" | "mode_c" | "mode_a" | "mode_s" | "none";
+  /** Optional primary-only flag. */
+  primaryOnly?: boolean;
+  /** Optional primary target flag. */
+  isPrimary?: boolean;
 }
 
 let aircraftSeq = 0;
@@ -140,6 +156,10 @@ export function createAircraft(init: AircraftInit): Aircraft {
     },
     identUntilSimMs: 0,
     ...(init.aircraftType ? { aircraftType: init.aircraftType.toUpperCase() } : {}),
+    ...(init.squawk ? { squawk: init.squawk } : {}),
+    ...(init.transponder ? { transponder: init.transponder } : {}),
+    ...(init.primaryOnly !== undefined ? { primaryOnly: init.primaryOnly } : {}),
+    ...(init.isPrimary !== undefined ? { isPrimary: init.isPrimary } : {}),
   };
 }
 

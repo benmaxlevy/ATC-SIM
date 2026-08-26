@@ -70,6 +70,7 @@ import {
   drawSelectionBox,
   drawTargetSymbol,
   historyDotColor,
+  isPrimaryTarget,
   targetStrokeColor,
 } from "./targetSymbol";
 import { isIdentFlashing, syncTrackDisplays } from "./trackDisplay";
@@ -304,15 +305,32 @@ function drawTracks(
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
     const color = trackColor(view, world, ac);
     const td = view.tracks.get(ac.id);
+    const isPrimary = isPrimaryTarget(ac, td);
     const ownership: TrackOwnership = td?.ownership ?? "unowned";
-    const posBrite = ownership === "owned" ? view.brite.pos : view.brite.oth;
+    const isTracked =
+      ownership === "owned" ||
+      ownership === "tower" ||
+      ownership === "center" ||
+      td?.tracked === true;
+    const posBrite = isPrimary ? view.brite.pri : isTracked ? view.brite.pos : view.brite.oth;
+    const squawk = td?.squawk ?? ac.squawk;
+    const sectorId =
+      td?.sectorId ??
+      (ownership === "tower" ? "T" : ownership === "center" ? "C" : (view.sectorId ?? "D"));
+
     drawTargetSymbol(
       ctx,
       p.x,
       p.y,
-      ac.headingDeg,
       applyBrite(color, posBrite),
-      ownership,
+      {
+        isPrimary,
+        ownership,
+        tracked: isTracked,
+        squawk,
+        beaconSelect: view.beaconSelectCodes,
+        sectorId,
+      },
       view.charSizes.pos,
     );
   }
@@ -323,6 +341,10 @@ function drawTracks(
   view.datablockCellWidthPx = measureDatablockCellWidth(ctx);
 
   for (const ac of world.aircraft) {
+    const td = view.tracks.get(ac.id);
+    if (isPrimaryTarget(ac, td)) {
+      continue;
+    }
     // Outside the altitude filter: keep the target (and history above);
     // suppress datablock and leader. T02-05 draws the leader behind this same gate.
     if (!inAltitudeFilter(ac.altitudeFt, view.altitudeFilter)) {
@@ -348,6 +370,10 @@ function drawTracks(
   }
 
   for (const ac of world.aircraft) {
+    const td = view.tracks.get(ac.id);
+    if (isPrimaryTarget(ac, td)) {
+      continue;
+    }
     if (!inAltitudeFilter(ac.altitudeFt, view.altitudeFilter)) {
       continue;
     }

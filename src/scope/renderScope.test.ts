@@ -28,7 +28,12 @@ import {
   OWNERSHIP_STUB_FONT,
   isTargetDiamondPath,
 } from "./targetSymbol";
-import { isIdentFlashing, setScratchpad, syncTrackDisplays } from "./trackDisplay";
+import {
+  ensureTrackDisplay,
+  isIdentFlashing,
+  setScratchpad,
+  syncTrackDisplays,
+} from "./trackDisplay";
 import { DATABLOCK_FONT, DATABLOCK_FONT_PX } from "./fonts";
 import {
   formatFullDatablock,
@@ -173,24 +178,43 @@ function findTargetDiamonds(pathStrokes: PathStroke[], cx?: number, cy?: number)
   });
 }
 
-test("AC1 — six spawned arrivals get an 8 px diamond at nmToScreen ±2 px", () => {
+function findTargetPositionSymbol(
+  fillTexts: { text: string; x?: number; y?: number; fillStyle?: string; font?: string }[],
+  cx?: number,
+  cy?: number,
+  slopPx = 4,
+) {
+  return fillTexts.filter((t) => {
+    const isSymbol =
+      t.text === "*" ||
+      t.text === "V" ||
+      t.text === "D" ||
+      t.text === "G" ||
+      t.text === "T" ||
+      t.text === "C";
+    if (!isSymbol) return false;
+    if (cx != null && cy != null && t.x != null && t.y != null) {
+      return Math.abs(t.x - cx) <= slopPx && Math.abs(t.y - cy) <= slopPx;
+    }
+    return true;
+  });
+}
+
+test("AC1 — six spawned arrivals get unassociated position symbols (*) and datablocks at nmToScreen ±2 px", () => {
   const world = createWorldFromScenario(loadKdem());
   expect(world.aircraft).toHaveLength(6);
   const view = createScopeView();
-  const { ctx, pathStrokes, fillTexts } = createMockCtx();
+  const { ctx, fillTexts } = createMockCtx();
   const css = 800;
   renderScope(ctx, world, view, css, css);
-  const targets = findTargetDiamonds(pathStrokes);
+  const targets = findTargetPositionSymbol(fillTexts);
   expect(targets).toHaveLength(6);
-  expect(TARGET_SIZE_PX).toBeGreaterThanOrEqual(6);
-  expect(fillTexts.filter((t) => t.text === "*" && t.font === OWNERSHIP_STUB_FONT)).toHaveLength(6);
+  expect(fillTexts.filter((t) => t.text === "*")).toHaveLength(6);
   const size = { widthPx: css, heightPx: css };
   for (const ac of world.aircraft) {
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
-    const hit = findTargetDiamonds(pathStrokes, p.x, p.y)[0];
+    const hit = findTargetPositionSymbol(fillTexts, p.x, p.y)[0];
     expect(hit, ac.callsign).toBeDefined();
-    const stub = fillTexts.find((t) => t.text === "*" && t.font === OWNERSHIP_STUB_FONT);
-    expect(stub, `${ac.callsign} CSI stub`).toBeDefined();
     const block = formatFullDatablock(ac);
     const expectedLine1 = withInboundHandoffCue(ac.callsign, handoffFor(world, ac.id));
     const line1 = fillTexts.filter((t) => t.text === expectedLine1 && t.font === DATABLOCK_FONT);
@@ -244,8 +268,8 @@ test("AC6 — IDENT stroke is yellow within 1 s and reverts by 3 s with one appl
   world.simTimeMs = 1000;
   renderScope(at1s.ctx, world, view, 800, 800);
   expect(isIdentFlashing(view.tracks.get(ac.id)!, 1000)).toBe(true);
-  const yellow = findTargetDiamonds(at1s.pathStrokes).filter(
-    (s) => s.strokeStyle === SELECTED_ACCENT_COLOR,
+  const yellow = at1s.fillTexts.filter(
+    (t) => t.text === "*" && t.fillStyle === SELECTED_ACCENT_COLOR,
   );
   expect(yellow.length).toBeGreaterThanOrEqual(1);
 
@@ -253,8 +277,8 @@ test("AC6 — IDENT stroke is yellow within 1 s and reverts by 3 s with one appl
   world.simTimeMs = 3000;
   renderScope(at3s.ctx, world, view, 800, 800);
   expect(isIdentFlashing(view.tracks.get(ac.id)!, 3000)).toBe(false);
-  const stillYellow = findTargetDiamonds(at3s.pathStrokes).filter(
-    (s) => s.strokeStyle === SELECTED_ACCENT_COLOR,
+  const stillYellow = at3s.fillTexts.filter(
+    (t) => t.text === "*" && t.fillStyle === SELECTED_ACCENT_COLOR,
   );
   expect(stillYellow).toHaveLength(0);
 });
@@ -533,7 +557,7 @@ test("AC4 — PTL is off by default; F7 on draws a ~1 min line per unfiltered tr
   renderScope(off.ctx, world, view, css, css);
   expect(view.ptlOn).toBe(false);
   expect(findPtlStroke(off.pathStrokes, ac, view, css)).toBeUndefined();
-  const targetsOff = findTargetDiamonds(off.pathStrokes);
+  const targetsOff = findTargetPositionSymbol(off.fillTexts);
   expect(targetsOff).toHaveLength(1);
 
   view.ptlOn = true;
@@ -543,7 +567,7 @@ test("AC4 — PTL is off by default; F7 on draws a ~1 min line per unfiltered tr
   expect(ptl).toBeDefined();
   expect(ptl!.strokeStyle).toBe(PALETTE.ptl);
   expect(ptl!.lineWidth).toBe(1);
-  const targetsOn = findTargetDiamonds(on.pathStrokes);
+  const targetsOn = findTargetPositionSymbol(on.fillTexts);
   expect(targetsOn).toHaveLength(1);
 
   const traffic = createWorldFromScenario(loadKdem());
@@ -575,7 +599,7 @@ test("AC5 — altitude filter suppresses PTL; target symbol remains", () => {
   const { ctx, pathStrokes, fillTexts } = createMockCtx();
   renderScope(ctx, world, view, 800, 800);
   expect(findPtlStroke(pathStrokes, ac, view, 800)).toBeUndefined();
-  const targets = findTargetDiamonds(pathStrokes);
+  const targets = findTargetPositionSymbol(fillTexts);
   expect(targets).toHaveLength(1);
   expect(fillTexts.some((t) => t.text === "LOW60")).toBe(false);
 });
@@ -604,10 +628,10 @@ test("AC2 — 6000 ft outside 070-090 keeps target+history, loses datablock; 800
   const world = createWorld({ aircraft: [low, inBand], selectedAircraftId: low.id });
   const view = createScopeView();
   view.altitudeFilter = { minHundreds: 70, maxHundreds: 90 };
-  const { ctx, fillTexts, strokeRects, fillRects, pathStrokes } = createMockCtx();
+  const { ctx, fillTexts, strokeRects, fillRects } = createMockCtx();
   renderScope(ctx, world, view, 800, 800);
 
-  const targets = findTargetDiamonds(pathStrokes);
+  const targets = findTargetPositionSymbol(fillTexts);
   expect(targets).toHaveLength(2);
   const history = fillRects.filter(
     (r) => r.w === HISTORY_DOT_SIZE_PX && r.h === HISTORY_DOT_SIZE_PX,
@@ -764,9 +788,9 @@ test("AC2 / AC7 — L6 leader points east; FDB/leader follow ownership, diamond 
   expect(leader).toBeDefined();
   expect(leader!.points[1]!.x).toBeGreaterThan(p.x);
   expect(leader!.points[1]!.y).toBeCloseTo(p.y);
-  const target = findTargetDiamonds(pathStrokes, p.x, p.y)[0];
+  const target = findTargetPositionSymbol(fillTexts, p.x, p.y)[0];
   expect(target).toBeDefined();
-  expect(target!.strokeStyle).toBe(POSITION_SYMBOL_COLOR);
+  expect(target!.fillStyle).toBe(POSITION_SYMBOL_COLOR);
   expect(leader!.strokeStyle).toBe(PALETTE.unowned);
   const line1 = fillTexts.find((t) => t.text === "DAL123" && t.font === DATABLOCK_FONT);
   expect(line1).toBeDefined();
@@ -828,13 +852,13 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
 
   const spawned = createMockCtx();
   renderScope(spawned.ctx, world, view, css, css);
-  const spawnedTargets = findTargetDiamonds(spawned.pathStrokes);
+  const spawnedTargets = findTargetPositionSymbol(spawned.fillTexts);
   expect(spawnedTargets).toHaveLength(2);
-  expect(spawnedTargets.every((r) => r.strokeStyle === POSITION_SYMBOL_COLOR)).toBe(true);
+  expect(spawnedTargets.every((r) => r.fillStyle === POSITION_SYMBOL_COLOR)).toBe(true);
   expect(spawned.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.unowned);
   expect(spawned.fillTexts.find((t) => t.text === "AAL45")?.fillStyle).toBe(PALETTE.unowned);
   expect(
-    spawned.fillTexts.filter((t) => t.text === "*" && t.font === OWNERSHIP_STUB_FONT),
+    spawned.fillTexts.filter((t) => t.text === "*"),
   ).toHaveLength(2);
   expect(spawned.strokeRects.filter((r) => r.w === SELECTION_BOX_PX)).toHaveLength(0);
 
@@ -850,18 +874,18 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   renderScope(owned.ctx, world, view, css, css);
   const dalP = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: css, heightPx: css });
   const aalP = nmToScreen(aal.xNm, aal.yNm, view.camera, { widthPx: css, heightPx: css });
-  const dalTarget = findTargetDiamonds(owned.pathStrokes, dalP.x, dalP.y)[0];
-  const aalTarget = findTargetDiamonds(owned.pathStrokes, aalP.x, aalP.y)[0];
-  expect(dalTarget?.strokeStyle).toBe(POSITION_SYMBOL_COLOR);
-  expect(aalTarget?.strokeStyle).toBe(POSITION_SYMBOL_COLOR);
+  const dalTarget = findTargetPositionSymbol(owned.fillTexts, dalP.x, dalP.y)[0];
+  const aalTarget = findTargetPositionSymbol(owned.fillTexts, aalP.x, aalP.y)[0];
+  expect(dalTarget?.fillStyle).toBe(POSITION_SYMBOL_COLOR);
+  expect(aalTarget?.fillStyle).toBe(POSITION_SYMBOL_COLOR);
   expect(owned.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
   expect(owned.fillTexts.find((t) => t.text === "030  210")?.fillStyle).toBe(PALETTE.owned);
   expect(owned.fillTexts.find((t) => t.text === "AAL45")?.fillStyle).toBe(PALETTE.unowned);
   expect(
-    owned.fillTexts.filter((t) => t.text === "G" && t.font === OWNERSHIP_STUB_FONT),
+    owned.fillTexts.filter((t) => t.text === "D" || t.text === "G"),
   ).toHaveLength(1);
   expect(
-    owned.fillTexts.filter((t) => t.text === "*" && t.font === OWNERSHIP_STUB_FONT),
+    owned.fillTexts.filter((t) => t.text === "*"),
   ).toHaveLength(1);
   const selBoxes = owned.strokeRects.filter(
     (r) => r.w === SELECTION_BOX_PX && r.h === SELECTION_BOX_PX,
@@ -881,12 +905,12 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   const dropped = createMockCtx();
   renderScope(dropped.ctx, world, view, css, css);
   expect(dropped.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.unowned);
-  const droppedTarget = findTargetDiamonds(dropped.pathStrokes, dalP.x, dalP.y)[0];
-  expect(droppedTarget?.strokeStyle).toBe(POSITION_SYMBOL_COLOR);
+  const droppedTarget = findTargetPositionSymbol(dropped.fillTexts, dalP.x, dalP.y)[0];
+  expect(droppedTarget?.fillStyle).toBe(POSITION_SYMBOL_COLOR);
   expect(
-    dropped.fillTexts.filter((t) => t.text === "*" && t.font === OWNERSHIP_STUB_FONT),
+    dropped.fillTexts.filter((t) => t.text === "*"),
   ).toHaveLength(2);
-  expect(dropped.fillTexts.filter((t) => t.text === "G")).toHaveLength(0);
+  expect(dropped.fillTexts.filter((t) => t.text === "D" || t.text === "G")).toHaveLength(0);
   expect(
     dropped.strokeRects.filter(
       (r) => r.w === SELECTION_BOX_PX && r.strokeStyle === SELECTED_ACCENT_COLOR,
@@ -946,7 +970,7 @@ test("T04-09 AC5 — current CA blinks and paints red", () => {
   world.simTimeMs = 0;
   const alert = createMockCtx();
   renderScope(alert.ctx, world, view, css, css);
-  expect(findTargetDiamonds(alert.pathStrokes, dalP.x, dalP.y)[0]?.strokeStyle).toBe(PALETTE.alert);
+  expect(findTargetPositionSymbol(alert.fillTexts, dalP.x, dalP.y)[0]?.fillStyle).toBe(PALETTE.alert);
   expect(alert.fillTexts.find((t) => t.text === "DAL123 CA")?.fillStyle).toBe(PALETTE.alert);
 
   world.simTimeMs = 500;
@@ -958,7 +982,7 @@ test("T04-09 AC5 — current CA blinks and paints red", () => {
   world.alerts.ca = [];
   const cleared = createMockCtx();
   renderScope(cleared.ctx, world, view, css, css);
-  expect(findTargetDiamonds(cleared.pathStrokes, dalP.x, dalP.y)[0]?.strokeStyle).toBe(
+  expect(findTargetPositionSymbol(cleared.fillTexts, dalP.x, dalP.y)[0]?.fillStyle).toBe(
     POSITION_SYMBOL_COLOR,
   );
   expect(cleared.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.unowned);
@@ -991,7 +1015,7 @@ test("T04-10 — scope tints MSAW from world.alerts, not MVA math", () => {
   const caution = createMockCtx();
   renderScope(caution.ctx, world, view, css, css);
   const dalP = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: css, heightPx: css });
-  expect(findTargetDiamonds(caution.pathStrokes, dalP.x, dalP.y)[0]?.strokeStyle).toBe(
+  expect(findTargetPositionSymbol(caution.fillTexts, dalP.x, dalP.y)[0]?.fillStyle).toBe(
     PALETTE.caution,
   );
   expect(caution.fillTexts.find((t) => t.text === "DAL123 MSAW")?.fillStyle).toBe(PALETTE.caution);
@@ -999,7 +1023,7 @@ test("T04-10 — scope tints MSAW from world.alerts, not MVA math", () => {
   world.alerts.msaw[0]!.severity = "alert";
   const alert = createMockCtx();
   renderScope(alert.ctx, world, view, css, css);
-  expect(findTargetDiamonds(alert.pathStrokes, dalP.x, dalP.y)[0]?.strokeStyle).toBe(PALETTE.alert);
+  expect(findTargetPositionSymbol(alert.fillTexts, dalP.x, dalP.y)[0]?.fillStyle).toBe(PALETTE.alert);
   expect(alert.fillTexts.find((t) => t.text === "DAL123 MSAW")?.fillStyle).toBe(PALETTE.alert);
 });
 
@@ -1174,4 +1198,150 @@ test("T04-23 — slot 7 BAY1_SID video map renders SID lines and labels on PPI s
   const backOnCtx = createMockCtx();
   renderScope(backOnCtx.ctx, world, view, 800, 800);
   expect(backOnCtx.fillTexts.some((t) => t.text === "BAYEE")).toBe(true);
+});
+
+test("T02-34 AC1 — Primary-only target renders as a diamond without a datablock", () => {
+  const pri = makeTestAircraft({
+    id: "ac-pri",
+    callsign: "PRI01",
+    xNm: 0,
+    yNm: 0,
+    primaryOnly: true,
+  });
+  const sec = makeTestAircraft({
+    id: "ac-sec",
+    callsign: "SEC02",
+    xNm: 5,
+    yNm: 0,
+  });
+  const world = createWorld({ aircraft: [pri, sec] });
+  const view = createScopeView();
+  const css = 800;
+  const { ctx, pathStrokes, fillTexts } = createMockCtx();
+  renderScope(ctx, world, view, css, css);
+
+  const priP = nmToScreen(pri.xNm, pri.yNm, view.camera, { widthPx: css, heightPx: css });
+  const secP = nmToScreen(sec.xNm, sec.yNm, view.camera, { widthPx: css, heightPx: css });
+
+  // Primary target gets a diamond path stroke
+  const priDiamonds = findTargetDiamonds(pathStrokes, priP.x, priP.y);
+  expect(priDiamonds).toHaveLength(1);
+  // Primary target has no datablock or leader
+  expect(fillTexts.some((t) => t.text === "PRI01")).toBe(false);
+
+  // Secondary target gets an asterisk and datablock
+  const secSymbols = findTargetPositionSymbol(fillTexts, secP.x, secP.y);
+  expect(secSymbols).toHaveLength(1);
+  expect(secSymbols[0]!.text).toBe("*");
+  expect(fillTexts.some((t) => t.text === "SEC02")).toBe(true);
+});
+
+test("T02-34 AC2 — Unassociated secondary targets render *, V for 1200, square for beacon select", () => {
+  const acNorm = makeTestAircraft({ id: "ac-1", callsign: "DAL1", xNm: -2, yNm: 0, squawk: "0342" });
+  const acVfr = makeTestAircraft({ id: "ac-2", callsign: "VFR2", xNm: 0, yNm: 0, squawk: "1200" });
+  const acSel = makeTestAircraft({ id: "ac-3", callsign: "SEL3", xNm: 2, yNm: 0, squawk: "4500" });
+  const world = createWorld({ aircraft: [acNorm, acVfr, acSel] });
+  const view = createScopeView();
+  view.beaconSelectCodes = ["4500"];
+  const css = 800;
+  const { ctx, fillTexts, strokeRects } = createMockCtx();
+  renderScope(ctx, world, view, css, css);
+
+  const pNorm = nmToScreen(acNorm.xNm, acNorm.yNm, view.camera, { widthPx: css, heightPx: css });
+  const pVfr = nmToScreen(acVfr.xNm, acVfr.yNm, view.camera, { widthPx: css, heightPx: css });
+  const pSel = nmToScreen(acSel.xNm, acSel.yNm, view.camera, { widthPx: css, heightPx: css });
+
+  // Normal unassociated -> *
+  const symNorm = findTargetPositionSymbol(fillTexts, pNorm.x, pNorm.y);
+  expect(symNorm[0]?.text).toBe("*");
+
+  // 1200 VFR -> V
+  const symVfr = findTargetPositionSymbol(fillTexts, pVfr.x, pVfr.y);
+  expect(symVfr[0]?.text).toBe("V");
+
+  // Selected beacon -> square
+  const rectSel = strokeRects.filter((r) => Math.abs(r.x + r.w / 2 - pSel.x) <= 2 && Math.abs(r.y + r.h / 2 - pSel.y) <= 2);
+  expect(rectSel.length).toBeGreaterThanOrEqual(1);
+});
+
+test("T02-34 AC3 — Tracked target renders owning controller's sector ID", () => {
+  const ac = makeTestAircraft({ id: "ac-tracked", callsign: "DAL100", xNm: 0, yNm: 0 });
+  const world = createWorld({ aircraft: [ac], selectedAircraftId: ac.id });
+  const view = createScopeView();
+  ensureTrackDisplay(view.tracks, ac.id).ownership = "owned";
+  view.sectorId = "D";
+
+  const css = 800;
+  const { ctx, fillTexts } = createMockCtx();
+  renderScope(ctx, world, view, css, css);
+
+  const p = nmToScreen(ac.xNm, ac.yNm, view.camera, { widthPx: css, heightPx: css });
+  const sym = findTargetPositionSymbol(fillTexts, p.x, p.y);
+  expect(sym[0]?.text).toBe("D");
+});
+
+test("T02-34 AC4 — Fixed 8px heading tick line is removed; PTL renders when enabled", () => {
+  const ac = makeTestAircraft({ id: "ac-notick", callsign: "DAL100", xNm: 0, yNm: 0, headingDeg: 90, speedKt: 250 });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  view.ptlOn = false;
+
+  const css = 800;
+  const offCtx = createMockCtx();
+  renderScope(offCtx.ctx, world, view, css, css);
+  // Only leader line is drawn, no heading tick line from target
+  expect(findPtlStroke(offCtx.pathStrokes, ac, view, css)).toBeUndefined();
+  expect(offCtx.pathStrokes.every((s) => s.points.length <= 2)).toBe(true);
+
+  // Enable PTL
+  view.ptlOn = true;
+  const onCtx = createMockCtx();
+  renderScope(onCtx.ctx, world, view, css, css);
+  const ptl = findPtlStroke(onCtx.pathStrokes, ac, view, css);
+  expect(ptl).toBeDefined();
+});
+
+test("T02-34 AC5 — BRITE channels pos, oth, and pri properly modulate target symbol brightness", () => {
+  const pri = makeTestAircraft({ id: "ac-pri", callsign: "PRI01", xNm: -2, yNm: 0, primaryOnly: true });
+  const oth = makeTestAircraft({ id: "ac-oth", callsign: "OTH02", xNm: 0, yNm: 0 });
+  const pos = makeTestAircraft({ id: "ac-pos", callsign: "POS03", xNm: 2, yNm: 0 });
+  const world = createWorld({ aircraft: [pri, oth, pos] });
+  const view = createScopeView();
+  ensureTrackDisplay(view.tracks, pos.id).ownership = "owned";
+
+  view.brite.pri = 40;
+  view.brite.oth = 70;
+  view.brite.pos = 90;
+
+  const css = 800;
+  const { ctx, pathStrokes, fillTexts } = createMockCtx();
+  renderScope(ctx, world, view, css, css);
+
+  const priP = nmToScreen(pri.xNm, pri.yNm, view.camera, { widthPx: css, heightPx: css });
+  const othP = nmToScreen(oth.xNm, oth.yNm, view.camera, { widthPx: css, heightPx: css });
+  const posP = nmToScreen(pos.xNm, pos.yNm, view.camera, { widthPx: css, heightPx: css });
+
+  const priDiamond = findTargetDiamonds(pathStrokes, priP.x, priP.y)[0];
+  expect(priDiamond?.strokeStyle).toBe(applyBrite(POSITION_SYMBOL_COLOR, 40));
+
+  const othSym = findTargetPositionSymbol(fillTexts, othP.x, othP.y)[0];
+  expect(othSym?.fillStyle).toBe(applyBrite(POSITION_SYMBOL_COLOR, 70));
+
+  const posSym = findTargetPositionSymbol(fillTexts, posP.x, posP.y)[0];
+  expect(posSym?.fillStyle).toBe(applyBrite(POSITION_SYMBOL_COLOR, 90));
+});
+
+test("T02-34 AC6 — Position symbol sizing via charSizes.pos", () => {
+  const ac = makeTestAircraft({ id: "ac-sz", callsign: "DAL1", xNm: 0, yNm: 0 });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  view.charSizes.pos = 12;
+
+  const css = 800;
+  const { ctx, fillTexts } = createMockCtx();
+  renderScope(ctx, world, view, css, css);
+
+  const p = nmToScreen(ac.xNm, ac.yNm, view.camera, { widthPx: css, heightPx: css });
+  const sym = findTargetPositionSymbol(fillTexts, p.x, p.y)[0];
+  expect(sym?.font).toContain("12px");
 });

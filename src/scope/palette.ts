@@ -143,16 +143,16 @@ export const BRITE_PAINT_CHANNELS = [
   "tls",
   "rr",
   "hst",
+  "pri",
 ] as const satisfies readonly BriteChannel[];
 
 /**
- * CMP: no compass `N` tick. BCN/PRI: one fusion symbol (POS is live).
+ * CMP: no compass `N` tick. BCN: secondary beacon symbol uses POS/OTH.
  * WX/WXC/BKC: no weather / no CRC BKC.
  */
 export const BRITE_DISABLED_CHANNELS = [
   "cmp",
   "bcn",
-  "pri",
   "wx",
   "wxc",
   "bkc",
