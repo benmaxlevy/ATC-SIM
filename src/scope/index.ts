@@ -172,6 +172,7 @@ export {
   cycleScopeRadioFocus,
   focusRadioCommandLine,
   handleScopeKeyDown,
+  handleScopeKeyUp,
   handleScopeWheel,
   helpOverlayHasKeyboardFocus,
   installAlwaysOnScopeKeys,
@@ -195,6 +196,8 @@ export {
   setRangeRingOrigin,
   snapRangeRingToViewCenter,
   toggleHelpOverlay,
+  setBeaconatorActive,
+  toggleBeaconator,
   formatDcbHistoryReadout,
   formatDcbPtlMinutesReadout,
   setDcbDock,
@@ -360,17 +363,22 @@ export {
 export type { AtpaState, TpaRadiusNm, TpaState } from "./tpa";
 export {
   IDENT_DISPLAY_FLASH_MS,
+  LDB_QUERY_DURATION_MS,
   acceptInboundOnClick,
   applyDropTrackToSelection,
   applyInitiateTrackToSelection,
   createTrackDisplay,
   ensureTrackDisplay,
+  handleTrackClick,
   isIdentFlashing,
+  isTrackQueried,
+  queryTrack,
   selectedTrackId,
   setLeaderDirForSelection,
   setScratchpad,
   syncTrackDisplays,
   toggleDatablockModeForSelection,
+  toggleTrackPdbFdb,
 } from "./trackDisplay";
 export type { TrackDisplay } from "./trackDisplay";
 export {
@@ -411,7 +419,9 @@ export {
   formatAltitudeHundreds,
   formatFullDatablock,
   formatGroundSpeedKt,
+  formatGroundSpeedTens,
   formatLimitedDatablock,
+  formatPartialDatablock,
   linesForDatablock,
   sanitizeScratchpad,
   withInboundHandoffCue,
@@ -422,6 +432,9 @@ export type {
   DatablockSource,
   FullDatablock,
   LimitedDatablock,
+  LimitedDatablockOpts,
+  PartialDatablock,
+  PartialDatablockOpts,
 } from "./datablock";
 export {
   CHAR_SIZE_STEPS_PX,

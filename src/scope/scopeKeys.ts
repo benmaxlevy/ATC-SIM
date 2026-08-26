@@ -183,9 +183,9 @@ export function handleScopeKeyDown(
   nowMs: number = Date.now(),
   ui?: ScopeKeyUi,
 ): boolean {
-  if (isHelpToggleKey(event.key)) {
+  if (event.key === "F1") {
     consume(event);
-    toggleHelpOverlay(view);
+    view.beaconatorActive = true;
     ui?.onHandled?.();
     return true;
   }
@@ -362,6 +362,23 @@ export function handleScopeWheel(event: ScopeWheelEvent, view: ScopeView): boole
   return true;
 }
 
+/**
+ * Scope keyup handler: deactivates momentary actions like F1 Beaconator.
+ */
+export function handleScopeKeyUp(
+  event: ScopeKeyEvent,
+  view: ScopeView,
+  ui?: ScopeKeyUi,
+): boolean {
+  if (event.key === "F1") {
+    consume(event);
+    view.beaconatorActive = false;
+    ui?.onHandled?.();
+    return true;
+  }
+  return false;
+}
+
 export function installAlwaysOnScopeKeys(
   view: ScopeView,
   world: World,
@@ -374,6 +391,13 @@ export function installAlwaysOnScopeKeys(
       helpOverlayHasFocus: ui?.helpOverlayHasFocus ?? helpOverlayHasKeyboardFocus(event.target),
     });
   }
+  function onKeyUp(event: KeyboardEvent): void {
+    handleScopeKeyUp(event, view, ui);
+  }
   window.addEventListener("keydown", onKeyDown, true);
-  return () => window.removeEventListener("keydown", onKeyDown, true);
+  window.addEventListener("keyup", onKeyUp, true);
+  return () => {
+    window.removeEventListener("keydown", onKeyDown, true);
+    window.removeEventListener("keyup", onKeyUp, true);
+  };
 }

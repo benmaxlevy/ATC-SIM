@@ -4,6 +4,7 @@ import { handleRadioText } from "@pilot";
 import { parseRadioText } from "@parse";
 import {
   handleScopeKeyDown,
+  handleScopeKeyUp,
   handleScopeWheel,
   isAlwaysOnScopeKey,
   type ScopeFocus,
@@ -253,6 +254,8 @@ test("AC4 / AC8 — T with PPI focused toggles datablock; radio T20L still parse
   const world = createWorld({ aircraft: [dal, aal] });
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
+  view.tracks.get("ac-dal")!.datablockMode = "full";
+  view.tracks.get("ac-aal")!.datablockMode = "full";
   const log = new SessionLog();
   const parseSpy = vi.fn();
 
@@ -305,6 +308,7 @@ test("AC5 / AC8 — M with PPI focused hides Mode C on full blocks; limited unch
   const world = createWorld({ aircraft: [dal] });
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
+  view.tracks.get("ac-dal")!.datablockMode = "full";
   const log = new SessionLog();
   expect(view.modeCVisible).toBe(true);
 
@@ -651,7 +655,7 @@ test("AC6 / AC7 — F3/F4 always-on preventDefault, never emit Command IR, ignor
   expect(log.byType("command.accepted")).toHaveLength(1);
 });
 
-test("AC1 — F1 toggles help overlay; second F1 closes; stepWorld still advances", () => {
+test("AC5 — F1 activates momentary beacon code readout on keydown and deactivates on keyup", () => {
   const ac = makeTestAircraft({
     id: "ac-dal",
     xNm: 0,
@@ -661,14 +665,14 @@ test("AC1 — F1 toggles help overlay; second F1 closes; stepWorld still advance
   });
   const world = createWorld({ aircraft: [ac] });
   const view = createScopeView();
-  expect(view.helpOpen).toBe(false);
+  expect(view.beaconatorActive).toBe(false);
   expect(world.paused).toBe(false);
 
-  const first = keyEvent("F1");
-  expect(handleScopeKeyDown(first, view, "radio", world)).toBe(true);
-  expect(first.preventDefault).toHaveBeenCalled();
-  expect(first.stopPropagation).toHaveBeenCalled();
-  expect(view.helpOpen).toBe(true);
+  const down = keyEvent("F1");
+  expect(handleScopeKeyDown(down, view, "radio", world)).toBe(true);
+  expect(down.preventDefault).toHaveBeenCalled();
+  expect(down.stopPropagation).toHaveBeenCalled();
+  expect(view.beaconatorActive).toBe(true);
   expect(world.paused).toBe(false);
 
   const xBefore = ac.xNm;
@@ -677,10 +681,10 @@ test("AC1 — F1 toggles help overlay; second F1 closes; stepWorld still advance
   expect(world.simTimeMs).toBe(1000);
   expect(ac.xNm).toBeGreaterThan(xBefore);
 
-  const second = keyEvent("F1");
-  expect(handleScopeKeyDown(second, view, "scope", world)).toBe(true);
-  expect(second.preventDefault).toHaveBeenCalled();
-  expect(view.helpOpen).toBe(false);
+  const up = keyEvent("F1");
+  expect(handleScopeKeyUp(up, view)).toBe(true);
+  expect(up.preventDefault).toHaveBeenCalled();
+  expect(view.beaconatorActive).toBe(false);
 });
 
 test("Tab cycles focus in both foci; does not steal Tab from help overlay", () => {

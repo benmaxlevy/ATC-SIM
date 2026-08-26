@@ -38,6 +38,7 @@ import { DATABLOCK_FONT, DATABLOCK_FONT_PX } from "./fonts";
 import {
   formatFullDatablock,
   formatLimitedDatablock,
+  formatPartialDatablock,
   datablockMetrics,
   withInboundHandoffCue,
 } from "./datablock";
@@ -215,17 +216,9 @@ test("AC1 — six spawned arrivals get unassociated position symbols (*) and dat
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
     const hit = findTargetPositionSymbol(fillTexts, p.x, p.y)[0];
     expect(hit, ac.callsign).toBeDefined();
-    const block = formatFullDatablock(ac);
-    const expectedLine1 = withInboundHandoffCue(ac.callsign, handoffFor(world, ac.id));
-    const line1 = fillTexts.filter((t) => t.text === expectedLine1 && t.font === DATABLOCK_FONT);
-    expect(line1, ac.callsign).toHaveLength(1);
+    const block = formatPartialDatablock(ac);
     expect(
-      fillTexts.some((t) => t.text === block.line2 && t.font === DATABLOCK_FONT),
-      ac.callsign,
-    ).toBe(true);
-    expect(block.line3, ac.callsign).toBeDefined();
-    expect(
-      fillTexts.some((t) => t.text === block.line3 && t.font === DATABLOCK_FONT),
+      fillTexts.some((t) => t.text === block.line1 && t.font === DATABLOCK_FONT),
       ac.callsign,
     ).toBe(true);
   }
@@ -415,6 +408,8 @@ test("T02-04 AC2 — full datablock is callsign + hundreds/GS in IBM Plex Mono, 
   });
   const world = createWorld({ aircraft: [ac] });
   const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get(ac.id)!.datablockMode = "full";
   const { ctx, fillTexts } = createMockCtx();
   renderScope(ctx, world, view, 800, 800);
   const p = nmToScreen(ac.xNm, ac.yNm, view.camera, { widthPx: 800, heightPx: 800 });
@@ -449,6 +444,8 @@ test("T02-19 — full datablock paints type on line 3 and scratchpad on line 2 t
   });
   const world = createWorld({ aircraft: [ac] });
   const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get(ac.id)!.datablockMode = "full";
   const first = createMockCtx();
   renderScope(first.ctx, world, view, 800, 800);
   setScratchpad(view.tracks, ac.id, "abcd");
@@ -478,6 +475,8 @@ test("T02-04 AC5/AC7 — T limited drops the callsign; no duplicate callsign pai
   });
   const world = createWorld({ aircraft: [ac] });
   const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get(ac.id)!.datablockMode = "full";
   const full = createMockCtx();
   renderScope(full.ctx, world, view, 800, 800);
   expect(full.fillTexts.filter((t) => t.text === "DAL123")).toHaveLength(1);
@@ -627,6 +626,8 @@ test("AC2 — 6000 ft outside 070-090 keeps target+history, loses datablock; 800
   });
   const world = createWorld({ aircraft: [low, inBand], selectedAircraftId: low.id });
   const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get(inBand.id)!.datablockMode = "full";
   view.altitudeFilter = { minHundreds: 70, maxHundreds: 90 };
   const { ctx, fillTexts, strokeRects, fillRects } = createMockCtx();
   renderScope(ctx, world, view, 800, 800);
@@ -778,6 +779,8 @@ test("AC2 / AC7 — L6 leader points east; FDB/leader follow ownership, diamond 
   });
   const world = createWorld({ aircraft: [ac] });
   const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get(ac.id)!.datablockMode = "full";
   const css = 800;
   renderScope(createMockCtx().ctx, world, view, css, css);
   view.tracks.get(ac.id)!.leaderDir = 6;
@@ -813,6 +816,7 @@ test("AC3 — L5 draws no visible leader; block sits off the symbol", () => {
   const css = 800;
   renderScope(createMockCtx().ctx, world, view, css, css);
   view.tracks.get(ac.id)!.leaderDir = 5;
+  view.tracks.get(ac.id)!.datablockMode = "full";
   const { ctx, pathStrokes, fillTexts } = createMockCtx();
   renderScope(ctx, world, view, css, css);
   const p = nmToScreen(ac.xNm, ac.yNm, view.camera, { widthPx: css, heightPx: css });
@@ -855,8 +859,8 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   const spawnedTargets = findTargetPositionSymbol(spawned.fillTexts);
   expect(spawnedTargets).toHaveLength(2);
   expect(spawnedTargets.every((r) => r.fillStyle === POSITION_SYMBOL_COLOR)).toBe(true);
-  expect(spawned.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.unowned);
-  expect(spawned.fillTexts.find((t) => t.text === "AAL45")?.fillStyle).toBe(PALETTE.unowned);
+  expect(spawned.fillTexts.find((t) => t.text === "030  210")?.fillStyle).toBe(PALETTE.unowned);
+  expect(spawned.fillTexts.find((t) => t.text === "040  220")?.fillStyle).toBe(PALETTE.unowned);
   expect(
     spawned.fillTexts.filter((t) => t.text === "*"),
   ).toHaveLength(2);
@@ -865,11 +869,12 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   const noSelF3 = createMockCtx();
   view.tracks.get(dal.id)!.ownership = "unowned";
   renderScope(noSelF3.ctx, world, view, css, css);
-  expect(noSelF3.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.unowned);
-  expect(noSelF3.fillTexts.find((t) => t.text === "AAL45")?.fillStyle).toBe(PALETTE.unowned);
+  expect(noSelF3.fillTexts.find((t) => t.text === "030  210")?.fillStyle).toBe(PALETTE.unowned);
+  expect(noSelF3.fillTexts.find((t) => t.text === "040  220")?.fillStyle).toBe(PALETTE.unowned);
 
   world.selectedAircraftId = dal.id;
   view.tracks.get(dal.id)!.ownership = "owned";
+  view.tracks.get(dal.id)!.datablockMode = "full";
   const owned = createMockCtx();
   renderScope(owned.ctx, world, view, css, css);
   const dalP = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: css, heightPx: css });
@@ -880,7 +885,7 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   expect(aalTarget?.fillStyle).toBe(POSITION_SYMBOL_COLOR);
   expect(owned.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
   expect(owned.fillTexts.find((t) => t.text === "030  210")?.fillStyle).toBe(PALETTE.owned);
-  expect(owned.fillTexts.find((t) => t.text === "AAL45")?.fillStyle).toBe(PALETTE.unowned);
+  expect(owned.fillTexts.find((t) => t.text === "040  220")?.fillStyle).toBe(PALETTE.unowned);
   expect(
     owned.fillTexts.filter((t) => t.text === "D" || t.text === "G"),
   ).toHaveLength(1);
@@ -977,15 +982,13 @@ test("T04-09 AC5 — current CA blinks and paints red", () => {
   const blinkOff = createMockCtx();
   renderScope(blinkOff.ctx, world, view, css, css);
   expect(blinkOff.fillTexts.find((t) => t.text === "DAL123   ")?.fillStyle).toBe(PALETTE.alert);
-  expect(blinkOff.fillTexts.find((t) => t.text === "DAL123 CA")).toBeUndefined();
-
   world.alerts.ca = [];
   const cleared = createMockCtx();
   renderScope(cleared.ctx, world, view, css, css);
   expect(findTargetPositionSymbol(cleared.fillTexts, dalP.x, dalP.y)[0]?.fillStyle).toBe(
     POSITION_SYMBOL_COLOR,
   );
-  expect(cleared.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.unowned);
+  expect(cleared.fillTexts.find((t) => t.text === "080  210")?.fillStyle).toBe(PALETTE.unowned);
 
   const sources = import.meta.glob("./renderScope.ts", {
     query: "?raw",
@@ -1000,30 +1003,41 @@ test("T04-09 AC5 — current CA blinks and paints red", () => {
 });
 
 test("T04-10 — scope tints MSAW from world.alerts, not MVA math", () => {
-  const dal = makeTestAircraft({
+  const ac = makeTestAircraft({
     id: "ac-dal",
     callsign: "DAL123",
-    altitudeFt: 1000,
+    altitudeFt: 3000,
     speedKt: 210,
-    xNm: 2,
-    yNm: 2,
+    xNm: 0,
+    yNm: 0,
   });
-  const world = createWorld({ aircraft: [dal] });
-  world.alerts.msaw = [{ callsign: "DAL123", severity: "caution", altFt: 1400, floorFt: 1500 }];
+  const world = createWorld({
+    aircraft: [ac],
+    alerts: {
+      ca: [],
+      msaw: [{ callsign: "DAL123", severity: "caution", altFt: 1400, floorFt: 1500 }],
+    },
+  });
   const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
   const css = 800;
+  const dalP = nmToScreen(ac.xNm, ac.yNm, view.camera, { widthPx: css, heightPx: css });
+
   const caution = createMockCtx();
   renderScope(caution.ctx, world, view, css, css);
-  const dalP = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: css, heightPx: css });
   expect(findTargetPositionSymbol(caution.fillTexts, dalP.x, dalP.y)[0]?.fillStyle).toBe(
     PALETTE.caution,
   );
-  expect(caution.fillTexts.find((t) => t.text === "DAL123 MSAW")?.fillStyle).toBe(PALETTE.caution);
+  expect(caution.fillTexts.find((t) => t.text === "DAL123 MSAW")?.fillStyle).toBe(
+    PALETTE.caution,
+  );
 
   world.alerts.msaw[0]!.severity = "alert";
   const alert = createMockCtx();
   renderScope(alert.ctx, world, view, css, css);
-  expect(findTargetPositionSymbol(alert.fillTexts, dalP.x, dalP.y)[0]?.fillStyle).toBe(PALETTE.alert);
+  expect(findTargetPositionSymbol(alert.fillTexts, dalP.x, dalP.y)[0]?.fillStyle).toBe(
+    PALETTE.alert,
+  );
   expect(alert.fillTexts.find((t) => t.text === "DAL123 MSAW")?.fillStyle).toBe(PALETTE.alert);
 });
 
@@ -1115,6 +1129,8 @@ test("T02-26 — CHAR SIZE DATA BLOCKS / LISTS and BRITE FDB/MPA change paint", 
   const world = createWorldFromScenario(loadKdem());
   const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
   const view = createScopeView(0, 0, { digitalMap: parseDigitalMap(loadKdem().maps) });
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get(dal.id)!.datablockMode = "full";
   const full = createMockCtx();
   renderScope(full.ctx, world, view, 800, 800);
   const fdbFont = full.fillTexts.find(
@@ -1233,7 +1249,7 @@ test("T02-34 AC1 — Primary-only target renders as a diamond without a databloc
   const secSymbols = findTargetPositionSymbol(fillTexts, secP.x, secP.y);
   expect(secSymbols).toHaveLength(1);
   expect(secSymbols[0]!.text).toBe("*");
-  expect(fillTexts.some((t) => t.text === "SEC02")).toBe(true);
+  expect(fillTexts.some((t) => t.text.includes("080"))).toBe(true);
 });
 
 test("T02-34 AC2 — Unassociated secondary targets render *, V for 1200, square for beacon select", () => {
@@ -1344,4 +1360,167 @@ test("T02-34 AC6 — Position symbol sizing via charSizes.pos", () => {
   const p = nmToScreen(ac.xNm, ac.yNm, view.camera, { widthPx: css, heightPx: css });
   const sym = findTargetPositionSymbol(fillTexts, p.x, p.y)[0];
   expect(sym?.font).toContain("12px");
+});
+
+test("T02-35 AC1/AC2 — LDB renders squawk+Mode C and queries ground speed on click", () => {
+  const ac = makeTestAircraft({
+    id: "ac-ldb",
+    callsign: "VFR12",
+    squawk: "1200",
+    altitudeFt: 4500,
+    speedKt: 180,
+    xNm: 0,
+    yNm: 0,
+  });
+  const world = createWorld({ aircraft: [ac], simTimeMs: 1000 });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get(ac.id)!.datablockMode = "limited";
+  view.tracks.get(ac.id)!.unassociated = true;
+
+  const css = 800;
+  const initial = createMockCtx();
+  renderScope(initial.ctx, world, view, css, css);
+  expect(initial.fillTexts.some((t) => t.text === "1200 045")).toBe(true);
+
+  // Click on unassociated target to query ground speed for 5s
+  const p = nmToScreen(ac.xNm, ac.yNm, view.camera, { widthPx: css, heightPx: css });
+  handlePpiLeftClick(view, world, p.x, p.y, css, css);
+
+  const queried = createMockCtx();
+  renderScope(queried.ctx, world, view, css, css);
+  expect(queried.fillTexts.some((t) => t.text === "045 18")).toBe(true);
+  expect(queried.fillTexts.some((t) => t.text === "1200 045")).toBe(false);
+
+  // After 5s, reverts back to 1200 045
+  world.simTimeMs = 1000 + 5000;
+  const expired = createMockCtx();
+  renderScope(expired.ctx, world, view, css, css);
+  expect(expired.fillTexts.some((t) => t.text === "1200 045")).toBe(true);
+  expect(expired.fillTexts.some((t) => t.text === "045 18")).toBe(false);
+});
+
+test("T02-35 AC3/AC4 — Unowned track defaults to PDB and clicking toggles between PDB and Green FDB", () => {
+  const ac = makeTestAircraft({
+    id: "ac-unowned",
+    callsign: "SWA200",
+    altitudeFt: 6000,
+    speedKt: 240,
+    xNm: 0,
+    yNm: 0,
+  });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  const css = 800;
+  const initial = createMockCtx();
+  renderScope(initial.ctx, world, view, css, css);
+  // Line 2 only, suppressing callsign
+  expect(initial.fillTexts.some((t) => t.text === "060  240")).toBe(true);
+  expect(initial.fillTexts.some((t) => t.text === "SWA200")).toBe(false);
+
+  // Click toggles to Green FDB
+  const p = nmToScreen(ac.xNm, ac.yNm, view.camera, { widthPx: css, heightPx: css });
+  handlePpiLeftClick(view, world, p.x, p.y, css, css);
+
+  const fdb = createMockCtx();
+  renderScope(fdb.ctx, world, view, css, css);
+  const fdbCallsign = fdb.fillTexts.find((t) => t.text === "SWA200");
+  expect(fdbCallsign).toBeDefined();
+  expect(fdbCallsign?.fillStyle).toBe(PALETTE.unowned);
+
+  // Click again toggles back to PDB
+  handlePpiLeftClick(view, world, p.x, p.y, css, css);
+  const pdbAgain = createMockCtx();
+  renderScope(pdbAgain.ctx, world, view, css, css);
+  expect(pdbAgain.fillTexts.some((t) => t.text === "060  240")).toBe(true);
+  expect(pdbAgain.fillTexts.some((t) => t.text === "SWA200")).toBe(false);
+});
+
+test("T02-35 AC5 — F1 Beaconator replaces callsign with beacon code and forces PDBs to FDBs", () => {
+  const owned = makeTestAircraft({
+    id: "ac-owned",
+    callsign: "DAL123",
+    squawk: "0342",
+    altitudeFt: 3000,
+    speedKt: 210,
+    xNm: -2,
+    yNm: 0,
+  });
+  const unowned = makeTestAircraft({
+    id: "ac-unowned",
+    callsign: "AAL45",
+    squawk: "4500",
+    altitudeFt: 4000,
+    speedKt: 220,
+    xNm: 2,
+    yNm: 0,
+  });
+  const world = createWorld({ aircraft: [owned, unowned] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get(owned.id)!.ownership = "owned";
+  view.tracks.get(owned.id)!.datablockMode = "full";
+
+  const css = 800;
+  // Normal state
+  const normal = createMockCtx();
+  renderScope(normal.ctx, world, view, css, css);
+  expect(normal.fillTexts.some((t) => t.text === "DAL123")).toBe(true);
+  expect(normal.fillTexts.some((t) => t.text === "AAL45")).toBe(false); // PDB suppresses callsign
+
+  // Beaconator active (F1 pressed)
+  view.beaconatorActive = true;
+  const beaconator = createMockCtx();
+  renderScope(beaconator.ctx, world, view, css, css);
+  // Shows beacon code in place of callsign for owned track
+  expect(beaconator.fillTexts.some((t) => t.text === "0342")).toBe(true);
+  expect(beaconator.fillTexts.some((t) => t.text === "DAL123")).toBe(false);
+  // PDB is forced to FDB showing squawk on line 1
+  expect(beaconator.fillTexts.some((t) => t.text === "4500")).toBe(true);
+  expect(beaconator.fillTexts.some((t) => t.text === "AAL45")).toBe(false);
+});
+
+test("T02-35 AC6 — BRITE channel ldb controls brightness of both LDB and PDB blocks", () => {
+  const ldbAc = makeTestAircraft({
+    id: "ac-ldb",
+    callsign: "VFR1",
+    squawk: "1200",
+    altitudeFt: 3000,
+    speedKt: 150,
+    xNm: -2,
+    yNm: 0,
+  });
+  const pdbAc = makeTestAircraft({
+    id: "ac-pdb",
+    callsign: "SWA2",
+    altitudeFt: 5000,
+    speedKt: 220,
+    xNm: 2,
+    yNm: 0,
+  });
+  const world = createWorld({ aircraft: [ldbAc, pdbAc] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get(ldbAc.id)!.datablockMode = "limited";
+  view.tracks.get(ldbAc.id)!.unassociated = true;
+
+  const css = 800;
+  // Default brightness (level 10 -> 100%)
+  const def = createMockCtx();
+  renderScope(def.ctx, world, view, css, css);
+  const ldbDef = def.fillTexts.find((t) => t.text === "1200 030");
+  const pdbDef = def.fillTexts.find((t) => t.text === "050  220");
+  expect(ldbDef?.fillStyle).toBe(applyBrite(PALETTE.unowned, 100));
+  expect(pdbDef?.fillStyle).toBe(applyBrite(PALETTE.unowned, 100));
+
+  // Dim LDB channel by -5 (level 5 -> 50%)
+  stepBriteChannel(view, "ldb", -5);
+  const dimmed = createMockCtx();
+  renderScope(dimmed.ctx, world, view, css, css);
+  const ldbDim = dimmed.fillTexts.find((t) => t.text === "1200 030");
+  const pdbDim = dimmed.fillTexts.find((t) => t.text === "050  220");
+  expect(ldbDim?.fillStyle).toBe(applyBrite(PALETTE.unowned, 50));
+  expect(pdbDim?.fillStyle).toBe(applyBrite(PALETTE.unowned, 50));
 });

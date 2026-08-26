@@ -27,7 +27,7 @@ const FIELD_GAP = "  ";
 /** Trainer scratchpad cell: analog CRC FDB scratchpad; not NAS FP (R27). */
 export const SCRATCHPAD_MAX_LEN = 4;
 
-export type DatablockMode = "full" | "limited";
+export type DatablockMode = "full" | "partial" | "limited";
 
 /**
  * Uppercase, drop anything but A–Z0–9, clamp to 4 characters.
@@ -52,6 +52,10 @@ export interface DatablockSource {
   };
   /** ICAO type stub for FDB line 3 (e.g. B738). Display-only. */
   aircraftType?: string;
+  /** Assigned or active squawk / beacon code (e.g. "1200", "0342"). */
+  squawk?: string;
+  /** Optional beacon code alias. */
+  beaconCode?: string;
 }
 
 export interface FullDatablockOpts {
@@ -61,11 +65,31 @@ export interface FullDatablockOpts {
   scratchpad?: string;
 }
 
+export interface PartialDatablockOpts {
+  /** Hide the Mode C field (`M`). */
+  modeCVisible?: boolean;
+  /** Trainer scratchpad (sanitized to 0–4 A–Z0–9). */
+  scratchpad?: string;
+}
+
+export interface LimitedDatablockOpts {
+  /** Show beacon code if present (default true). When false/inhibited, displays Mode C only. */
+  beaconVisible?: boolean;
+  /** When true (queried state), displays Mode C altitude + ground speed. */
+  queried?: boolean;
+  /** Ground speed format when queried: "tens" (e.g. "18" for 180 kt) or "knots" (e.g. "180"). Default "tens". */
+  speedFormat?: "tens" | "knots";
+}
+
 export interface FullDatablock {
   line1: string;
   line2: string;
   /** Aircraft type (character-cell). Omitted when spawn has no type. */
   line3?: string;
+}
+
+export interface PartialDatablock {
+  line1: string;
 }
 
 export interface LimitedDatablock {
@@ -96,6 +120,15 @@ export function formatGroundSpeedKt(speedKt: number): string {
   }
   const kt = Math.max(0, Math.round(speedKt));
   return String(kt).padStart(3, "0");
+}
+
+/** Ground speed in tens of knots (e.g. 180 kt -> "18", 210 kt -> "21", 90 kt -> "09"). */
+export function formatGroundSpeedTens(speedKt: number): string {
+  if (!Number.isFinite(speedKt)) {
+    return "00";
+  }
+  const tens = Math.max(0, Math.round(speedKt / 10));
+  return String(tens).padStart(2, "0");
 }
 
 function assignedDiffers(modeCFt: number, assignedFt: number): boolean {
@@ -153,9 +186,58 @@ export function formatFullDatablock(
   return line3 ? { line1: track.callsign, line2, line3 } : { line1: track.callsign, line2 };
 }
 
-/** Limited datablock: Mode C hundreds only. Ignores the global `M` toggle, scratchpad, and type. */
-export function formatLimitedDatablock(track: DatablockSource): LimitedDatablock {
-  return { line1: formatAltitudeHundreds(track.altitudeFt) };
+/**
+ * Partial datablock (PDB): Line 2 only (Mode C altitude + Ground speed, optional scratchpad),
+ * suppressing callsign (Line 1) and aircraft type (Line 3).
+ * Used for associated tracks owned by another controller.
+ */
+export function formatPartialDatablock(
+  track: DatablockSource,
+  opts: PartialDatablockOpts = {},
+): PartialDatablock {
+  const modeCVisible = opts.modeCVisible !== false;
+  const modeC = formatAltitudeHundreds(track.altitudeFt);
+  const assigned = formatAltitudeHundreds(track.intent.assignedAltitudeFt);
+  const gs = formatGroundSpeedKt(track.speedKt);
+  const showAssigned = assignedDiffers(track.altitudeFt, track.intent.assignedAltitudeFt);
+
+  let line1: string;
+  if (modeCVisible) {
+    line1 = showAssigned
+      ? `${modeC}${FIELD_GAP}${assigned}${FIELD_GAP}${gs}`
+      : `${modeC}${FIELD_GAP}${gs}`;
+  } else if (showAssigned) {
+    line1 = `${assigned}${FIELD_GAP}${gs}`;
+  } else {
+    line1 = gs;
+  }
+  line1 = appendScratchpad(line1, opts.scratchpad);
+  return { line1 };
+}
+
+/**
+ * Limited datablock (LDB): Unassociated tracks.
+ * Default: Beacon code + Mode C altitude in hundreds (e.g. `1200 045`).
+ * When beacon code is inhibited: Mode C altitude only (e.g. `045`).
+ * Queried state (when clicked): Mode C altitude + Ground speed (e.g. `045 18` or `045 180`).
+ */
+export function formatLimitedDatablock(
+  track: DatablockSource,
+  opts: LimitedDatablockOpts = {},
+): LimitedDatablock {
+  const modeC = formatAltitudeHundreds(track.altitudeFt);
+  if (opts.queried) {
+    const gs =
+      opts.speedFormat === "knots"
+        ? formatGroundSpeedKt(track.speedKt)
+        : formatGroundSpeedTens(track.speedKt);
+    return { line1: `${modeC} ${gs}` };
+  }
+  const squawk = track.squawk ?? track.beaconCode;
+  if (opts.beaconVisible !== false && squawk && squawk.length > 0) {
+    return { line1: `${squawk} ${modeC}` };
+  }
+  return { line1: modeC };
 }
 
 export interface DatablockLines {
@@ -166,7 +248,7 @@ export interface DatablockLines {
 
 /**
  * Pending inbound HO cue on FDB line 1 (CRC transferring-sector analog).
- * Limited datablocks stay Mode C hundreds only.
+ * Limited and partial datablocks do not show this on their main lines.
  */
 export function withInboundHandoffCue(line1: string, handoff: TrackHandoff): string {
   if (handoff.kind !== "inbound") {
@@ -175,15 +257,19 @@ export function withInboundHandoffCue(line1: string, handoff: TrackHandoff): str
   return `${line1} HO`;
 }
 
-/** Resolve full vs limited lines for paint and hit-test. */
+/** Resolve full vs partial vs limited lines for paint and hit-test. */
 export function linesForDatablock(
   track: DatablockSource,
   mode: DatablockMode = "full",
   modeCVisible = true,
   scratchpad = "",
+  opts?: LimitedDatablockOpts,
 ): DatablockLines {
   if (mode === "limited") {
-    return formatLimitedDatablock(track);
+    return formatLimitedDatablock(track, opts);
+  }
+  if (mode === "partial") {
+    return formatPartialDatablock(track, { modeCVisible, scratchpad });
   }
   return formatFullDatablock(track, { modeCVisible, scratchpad });
 }

@@ -192,6 +192,11 @@ export interface ScopeView {
    * CRC F1 is beaconator; ours is trainer help.
    */
   helpOpen: boolean;
+  /**
+   * F1 Beaconator (Beacon Code Readout) active state.
+   * When active, displays beacon code in place of callsign and forces PDBs to FDBs.
+   */
+  beaconatorActive: boolean;
 }
 
 export function createScopeView(
@@ -267,7 +272,16 @@ export function createScopeView(
     tracks: new Map(),
     pendingChord: null,
     helpOpen: false,
+    beaconatorActive: false,
   };
+}
+
+export function setBeaconatorActive(view: ScopeView, active: boolean): void {
+  view.beaconatorActive = active;
+}
+
+export function toggleBeaconator(view: ScopeView): void {
+  view.beaconatorActive = !view.beaconatorActive;
 }
 
 function syncHistoryEnabled(view: ScopeView): void {

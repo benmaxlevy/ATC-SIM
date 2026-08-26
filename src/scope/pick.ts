@@ -28,19 +28,30 @@ import {
   datablockLineHeightPx,
 } from "./fonts";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
-import { acceptInboundOnClick, type TrackDisplay } from "./trackDisplay";
+import { handleTrackClick, type TrackDisplay } from "./trackDisplay";
 
 /** Frozen hit radius in CSS pixels (T01-11). Pixel-space so range presets stay stable. */
 export const HIT_RADIUS_CSS_PX = 12;
 
 export interface DatablockPickView {
-  tracks: Map<string, { datablockMode: DatablockMode; leaderDir?: LeaderDir; scratchpad?: string }>;
+  tracks: Map<
+    string,
+    {
+      datablockMode: DatablockMode;
+      leaderDir?: LeaderDir;
+      scratchpad?: string;
+      queriedUntilSimMs?: number;
+      squawk?: string;
+      ownership?: string;
+    }
+  >;
   modeCVisible: boolean;
   datablockCellWidthPx: number;
   /** Out-of-filter tracks have no datablock to hit; the target still picks. */
   altitudeFilter: AltitudeFilter;
   charSizePx?: number;
   leaderLengthPx?: number;
+  beaconatorActive?: boolean;
 }
 
 function pickDatablockAt(
@@ -63,11 +74,23 @@ function pickDatablockAt(
     }
     const p = nmToScreen(ac.xNm, ac.yNm, cam, size);
     const td = view.tracks.get(ac.id);
-    const mode = td?.datablockMode ?? "full";
+    let mode = td?.datablockMode ?? (td?.ownership === "owned" ? "full" : "partial");
+    if (view.beaconatorActive && mode === "partial") {
+      mode = "full";
+    }
     const dir = td?.leaderDir ?? DEFAULT_LEADER_DIR;
-    const base = linesForDatablock(ac, mode, view.modeCVisible, td?.scratchpad ?? "");
+    const isQueried = (td?.queriedUntilSimMs ?? 0) > world.simTimeMs;
+    const squawk = td?.squawk ?? ac.squawk;
+    const callsign = view.beaconatorActive && squawk ? squawk : ac.callsign;
+    const base = linesForDatablock(
+      { ...ac, callsign, squawk },
+      mode,
+      view.modeCVisible,
+      td?.scratchpad ?? "",
+      { queried: isQueried },
+    );
     const lines =
-      mode === "limited"
+      mode === "limited" || mode === "partial"
         ? base
         : { ...base, line1: withInboundHandoffCue(base.line1, handoffFor(world, ac.id)) };
     const lineH = datablockLineHeightPx(view.charSizePx ?? DATABLOCK_LINE_HEIGHT_PX);
@@ -135,8 +158,8 @@ export function selectAircraftAt(
 }
 
 /**
- * CRC slew analog: pending inbound → `acceptInboundHandoff` + owned white, then
- * select. `kind === "none"` (ils27 / ?traffic=N) stays select-only.
+ * CRC slew analog: pending inbound → `acceptInboundHandoff` + owned white, then select.
+ * Clicking unowned track toggles PDB ↔ Green FDB; clicking unassociated queries ground speed.
  */
 export function selectOrAcceptAircraftAt(
   world: World,
@@ -151,7 +174,7 @@ export function selectOrAcceptAircraftAt(
 ): Aircraft | null {
   const hit = pickAircraftAt(world, cssX, cssY, cam, cssWidth, cssHeight, radiusPx, datablockView);
   if (hit) {
-    acceptInboundOnClick(tracks, world, hit.id);
+    handleTrackClick(tracks, world, hit.id);
   }
   setSelectedAircraft(world, hit?.id ?? null);
   return hit;

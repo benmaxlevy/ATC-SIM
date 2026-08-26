@@ -6,7 +6,9 @@ import {
   formatAltitudeHundreds,
   formatFullDatablock,
   formatGroundSpeedKt,
+  formatGroundSpeedTens,
   formatLimitedDatablock,
+  formatPartialDatablock,
   linesForDatablock,
   pointInDatablock,
   withInboundHandoffCue,
@@ -189,4 +191,49 @@ test("T04-17 — pending inbound FDB line 1 shows HO; none stays callsign", () =
   expect(withInboundHandoffCue("DAL123", { kind: "none" })).toBe("DAL123");
   expect(withInboundHandoffCue("DAL123", { kind: "inbound", fromSectorId: "C" })).toBe("DAL123 HO");
   expect(withInboundHandoffCue("033", { kind: "inbound", fromSectorId: "C" })).toBe("033 HO");
+});
+
+test("T02-35 AC1 — LDB formats assigned squawk code and Mode C altitude", () => {
+  const ac = makeTestAircraft({
+    callsign: "VFR12",
+    squawk: "1200",
+    altitudeFt: 4500,
+    speedKt: 180,
+  });
+  // Default LDB: squawk + Mode C
+  expect(formatLimitedDatablock(ac)).toEqual({ line1: "1200 045" });
+
+  // Beacon code inhibited/hidden: Mode C altitude only
+  expect(formatLimitedDatablock(ac, { beaconVisible: false })).toEqual({ line1: "045" });
+});
+
+test("T02-35 AC2 — Queried LDB formats Mode C altitude and ground speed (tens of knots)", () => {
+  const ac = makeTestAircraft({
+    callsign: "VFR12",
+    squawk: "1200",
+    altitudeFt: 4500,
+    speedKt: 180,
+  });
+  expect(formatLimitedDatablock(ac, { queried: true })).toEqual({ line1: "045 18" });
+  expect(formatGroundSpeedTens(180)).toBe("18");
+  expect(formatGroundSpeedTens(85)).toBe("09");
+  expect(formatGroundSpeedTens(80)).toBe("08");
+  expect(formatGroundSpeedTens(250)).toBe("25");
+});
+
+test("T02-35 AC3 — PDB formats Line 2 only (Mode C altitude + ground speed), suppressing callsign", () => {
+  const ac = makeTestAircraft({
+    callsign: "DAL123",
+    altitudeFt: 4500,
+    speedKt: 180,
+    aircraftType: "B738",
+  });
+  const pdb = formatPartialDatablock(ac);
+  expect(pdb).toEqual({ line1: "045  180" });
+  expect(linesForDatablock(ac, "partial")).toEqual({ line1: "045  180" });
+
+  // With scratchpad
+  const withSpad = formatPartialDatablock(ac, { scratchpad: "HOLD" });
+  expect(withSpad).toEqual({ line1: "045  180  HOLD" });
+  expect(linesForDatablock(ac, "partial", true, "HOLD")).toEqual({ line1: "045  180  HOLD" });
 });

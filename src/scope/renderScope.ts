@@ -73,7 +73,7 @@ import {
   isPrimaryTarget,
   targetStrokeColor,
 } from "./targetSymbol";
-import { isIdentFlashing, syncTrackDisplays } from "./trackDisplay";
+import { isIdentFlashing, isTrackQueried, syncTrackDisplays } from "./trackDisplay";
 
 const RING_STROKE_PX = 1;
 const RUNWAY_STROKE_PX = 2;
@@ -213,7 +213,29 @@ function drawVideoMapLabel(
 }
 
 function trackDatablockMode(view: ScopeView, aircraftId: string): DatablockMode {
-  return view.tracks.get(aircraftId)?.datablockMode ?? "full";
+  const td = view.tracks.get(aircraftId);
+  return td?.datablockMode ?? (td?.ownership === "owned" ? "full" : "partial");
+}
+
+function trackEffectiveDatablockMode(
+  view: ScopeView,
+  world: World,
+  aircraftId: string,
+  callsign: string,
+): DatablockMode {
+  const td = view.tracks.get(aircraftId);
+  const baseMode = td?.datablockMode ?? (td?.ownership === "owned" ? "full" : "partial");
+  if (view.beaconatorActive && baseMode === "partial") {
+    return "full";
+  }
+  if (handoffFor(world, aircraftId).kind === "inbound") {
+    return "full";
+  }
+  const tint = trackAlertTint(world, callsign);
+  if (tint && tint.kind !== "none") {
+    return "full";
+  }
+  return baseMode;
 }
 
 function trackLeaderDir(view: ScopeView, aircraftId: string): LeaderDir {
@@ -243,22 +265,38 @@ function drawDatablock(
   view: ScopeView,
   world: World,
 ): void {
-  const scratchpad = view.tracks.get(ac.id)?.scratchpad ?? "";
+  const td = view.tracks.get(ac.id);
+  const scratchpad = td?.scratchpad ?? "";
   const tint = trackAlertTint(world, ac.callsign);
+  const mode = trackEffectiveDatablockMode(view, world, ac.id, ac.callsign);
+  const isQueried = td ? isTrackQueried(td, world.simTimeMs) : false;
+  const squawk = td?.squawk ?? ac.squawk;
+  const beaconCodeReadout = view.beaconatorActive === true;
+  const callsign = beaconCodeReadout && squawk ? squawk : ac.callsign;
+
   const base = linesForDatablock(
-    ac,
-    trackDatablockMode(view, ac.id),
+    {
+      ...ac,
+      callsign,
+      squawk,
+    },
+    mode,
     view.modeCVisible,
     scratchpad,
+    {
+      queried: isQueried,
+      beaconVisible: true,
+    },
   );
-  const mode = trackDatablockMode(view, ac.id);
   const line1 =
-    mode === "limited" ? base.line1 : withInboundHandoffCue(base.line1, handoffFor(world, ac.id));
+    mode === "limited" || mode === "partial"
+      ? base.line1
+      : withInboundHandoffCue(base.line1, handoffFor(world, ac.id));
   const lines = { ...base, line1: withCaDatablockTag(line1, tint, world.simTimeMs) };
   const lineH = datablockLineHeightPx(view.charSizes.dataBlocks);
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
   const origin = datablockTopLeft(trackLeaderDir(view, ac.id), metrics, view.leaderLengthPx);
-  const briteCh = mode === "limited" ? view.brite.ldb : view.brite.fdb;
+  const briteCh = mode === "limited" || mode === "partial" ? view.brite.ldb : view.brite.fdb;
   const paintTint = trackPaintAlertTint(world, ac.callsign);
   ctx.fillStyle = applyBrite(
     alertOrOwnershipColor(trackOwnership(view, ac.id), paintTint),
@@ -352,8 +390,8 @@ function drawTracks(
     }
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
     const paintTint = trackPaintAlertTint(world, ac.callsign);
-    const mode = trackDatablockMode(view, ac.id);
-    const briteCh = mode === "limited" ? view.brite.ldb : view.brite.fdb;
+    const mode = trackEffectiveDatablockMode(view, world, ac.id, ac.callsign);
+    const briteCh = mode === "limited" || mode === "partial" ? view.brite.ldb : view.brite.fdb;
     const leaderColor = applyBrite(
       alertOrOwnershipColor(trackOwnership(view, ac.id), paintTint),
       briteCh,

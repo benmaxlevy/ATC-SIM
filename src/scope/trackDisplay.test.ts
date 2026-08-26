@@ -4,7 +4,9 @@ import { applyIntent } from "@pilot";
 import {
   IDENT_DISPLAY_FLASH_MS,
   createTrackDisplay,
+  handleTrackClick,
   isIdentFlashing,
+  isTrackQueried,
   noteIdentAccepted,
   setScratchpad,
   syncTrackDisplays,
@@ -65,15 +67,19 @@ test("sync samples from the render path and never writes Aircraft kinematics fie
   expect(tracks.get("ac-sync")!.history.northNm[0]).toBe(y);
 });
 
-test("new tracks default to a full datablock", () => {
-  const ac = makeTestAircraft({ id: "ac-fdb" });
-  const world = createWorld({ aircraft: [ac] });
+test("new tracks default to a partial datablock for unowned and full for owned", () => {
+  const unowned = makeTestAircraft({ id: "ac-unowned" });
+  const world = createWorld({ aircraft: [unowned] });
   const tracks = new Map();
   syncTrackDisplays(tracks, world);
-  expect(tracks.get("ac-fdb")!.datablockMode).toBe("full");
-  expect(tracks.get("ac-fdb")!.leaderDir).toBe(8);
-  expect(tracks.get("ac-fdb")!.ownership).toBe("unowned");
-  expect(tracks.get("ac-fdb")!.scratchpad).toBe("");
+  expect(tracks.get("ac-unowned")!.datablockMode).toBe("partial");
+  expect(tracks.get("ac-unowned")!.leaderDir).toBe(8);
+  expect(tracks.get("ac-unowned")!.ownership).toBe("unowned");
+  expect(tracks.get("ac-unowned")!.scratchpad).toBe("");
+
+  const owned = createTrackDisplay("owned");
+  expect(owned.datablockMode).toBe("full");
+  expect(owned.ownership).toBe("owned");
 });
 
 test("AC3 — scratchpad round-trips on display state and does not change Aircraft.intent", () => {
@@ -109,6 +115,8 @@ test("T toggles the selected track only; with no selection it toggles all", () =
   const world = createWorld({ aircraft: [dal, aal] });
   const tracks = new Map();
   syncTrackDisplays(tracks, world);
+  tracks.get("ac-dal")!.datablockMode = "full";
+  tracks.get("ac-aal")!.datablockMode = "full";
 
   world.selectedAircraftId = dal.id;
   toggleDatablockModeForSelection(tracks, world);
@@ -139,4 +147,39 @@ test("leader dir applies to the selected track only; with no selection it applie
   setLeaderDirForSelection(tracks, world, 1);
   expect(tracks.get("ac-dal")!.leaderDir).toBe(1);
   expect(tracks.get("ac-aal")!.leaderDir).toBe(1);
+});
+
+test("AC2 — clicking unassociated target queries ground speed for 5 seconds", () => {
+  const ac = makeTestAircraft({ id: "ac-ldb", callsign: "VFR12" });
+  const world = createWorld({ aircraft: [ac], simTimeMs: 1000 });
+  const tracks = new Map();
+  syncTrackDisplays(tracks, world);
+  const td = tracks.get(ac.id)!;
+  td.datablockMode = "limited";
+  td.unassociated = true;
+
+  expect(isTrackQueried(td, world.simTimeMs)).toBe(false);
+  handleTrackClick(tracks, world, ac.id);
+  expect(isTrackQueried(td, world.simTimeMs)).toBe(true);
+  expect(isTrackQueried(td, 1000 + 4999)).toBe(true);
+  expect(isTrackQueried(td, 1000 + 5000)).toBe(false);
+});
+
+test("AC4 — clicking unowned track toggles between PDB and Green FDB", () => {
+  const ac = makeTestAircraft({ id: "ac-other", callsign: "SWA101" });
+  const world = createWorld({ aircraft: [ac], simTimeMs: 0 });
+  const tracks = new Map();
+  syncTrackDisplays(tracks, world);
+  const td = tracks.get(ac.id)!;
+
+  expect(td.ownership).toBe("unowned");
+  expect(td.datablockMode).toBe("partial");
+
+  handleTrackClick(tracks, world, ac.id);
+  expect(td.datablockMode).toBe("full");
+  expect(td.forcedFdb).toBe(true);
+
+  handleTrackClick(tracks, world, ac.id);
+  expect(td.datablockMode).toBe("partial");
+  expect(td.forcedFdb).toBe(false);
 });
