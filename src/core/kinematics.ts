@@ -2,9 +2,7 @@ import type { Aircraft } from "./aircraft";
 import type { TurnDir } from "./command/types";
 import { DEG2RAD, normalizeHeadingDeg } from "./nav/geometry";
 
-export const PHYSICS_HZ = 20;
-export const SIM_DT_S = 1 / PHYSICS_HZ;
-export const MAX_PHYSICS_STEPS_PER_FRAME = 8;
+export { PHYSICS_HZ, SIM_DT_S } from "./clock";
 
 export const TURN_RATE_DEG_PER_S = 3;
 export const CLIMB_RATE_FT_PER_MIN = 1800;

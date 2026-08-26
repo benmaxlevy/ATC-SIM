@@ -56,10 +56,9 @@ export {
   rejectPointout,
   setHandoffNone,
 } from "./handoff";
+export { PHYSICS_HZ, SIM_DT_S, MAX_PHYSICS_STEPS_PER_FRAME } from "./clock";
+export { mulberry32 } from "./rng";
 export {
-  PHYSICS_HZ,
-  SIM_DT_S,
-  MAX_PHYSICS_STEPS_PER_FRAME,
   TURN_RATE_DEG_PER_S,
   CLIMB_RATE_FT_PER_MIN,
   ACCEL_KT_PER_S,
@@ -67,16 +66,6 @@ export {
   shortestDeltaDeg,
   stepAircraft,
 } from "./kinematics";
-
-export function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 export type { LatLon, NmEastNorth, NmPoint } from "./nav/geometry";
 export {

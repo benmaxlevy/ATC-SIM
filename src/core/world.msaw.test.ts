@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { makeTestAircraft } from "./aircraft";
 import { CLIMB_RATE_FT_PER_MIN } from "./kinematics";
-import { SIM_DT_S } from "./kinematics";
+import { SIM_DT_S } from "./clock";
 import { SessionLog } from "./events/session-log";
 import kdemMvaJson from "../scenario/data/kdem-mva.json";
 import { createWorld, stepWorld } from "./world";
