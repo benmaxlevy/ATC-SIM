@@ -29,7 +29,7 @@ import {
   isLeaderPrefixKey,
   isRadioFocusSlashKey,
   isScopeChordLive,
-  isHandoffKey,
+  isTowerHandoffKey,
   leaderDigitFromKey,
 } from "./keymap";
 import { handleDcbEscape } from "./dcbMenu";
@@ -50,7 +50,7 @@ import {
   applyDropTrackToSelection,
   applyInitiateTrackToSelection,
 } from "./trackDisplay";
-import { applyHandoffToSelection } from "./ownership";
+import { applyTowerHandoffToSelection } from "./ownership";
 
 export const ALWAYS_ON_SCOPE_KEYS = [
   "PageUp",
@@ -265,10 +265,10 @@ export function handleScopeKeyDown(
     cancelFilterEntry(view.filterEntry, view.altitudeFilter);
   }
 
-  if (isHandoffKey(event)) {
+  if (isTowerHandoffKey(event)) {
     consume(event);
     if (world) {
-      applyHandoffToSelection(view.tracks, world);
+      applyTowerHandoffToSelection(view.tracks, world);
     }
     ui?.onHandled?.();
     return true;

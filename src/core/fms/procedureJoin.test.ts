@@ -1,11 +1,9 @@
 import { expect, test } from "vitest";
 import { joinNamedProcedure, procedureRouteContainingFix } from "./procedureJoin";
-import type { CatalogSid, CatalogStar } from "./vertical";
+import type { CatalogStar } from "./vertical";
 import proceduresJson from "../../scenario/data/kdem/procedures.json";
-import sidsJson from "../../scenario/data/kdem/sids.json";
 
 const dem1 = proceduresJson.stars as CatalogStar[];
-const kdemSids = sidsJson.sids as CatalogSid[];
 
 test("NEMAX joins DEMO ONE north remaining legs", () => {
   expect(procedureRouteContainingFix({ stars: dem1 }, "NEMAX")).toEqual({
@@ -107,6 +105,7 @@ test("joinNamedProcedure uses the nearest published fix when position is known",
     toFixIndex: 0,
   });
 });
+
 test("joinNamedProcedure joins a unique SID from the start", () => {
   expect(
     joinNamedProcedure({
@@ -118,27 +117,4 @@ test("joinNamedProcedure joins a unique SID from the start", () => {
     routeFixIds: ["OCTTA", "DEMEE"],
     toFixIndex: 0,
   });
-});
-
-test("procedureRouteContainingFix finds SID fixes across transitions", () => {
-  const catalog = { sids: kdemSids };
-  // BAYEE is on runway 27 transition of BAY1
-  const bayeeJoin = procedureRouteContainingFix(catalog, "BAYEE");
-  expect(bayeeJoin).toBeDefined();
-  expect(bayeeJoin?.starId).toBe("BAY1");
-  expect(bayeeJoin?.toFixIndex).toBe(0);
-  expect(bayeeJoin?.routeFixIds[0]).toBe("BAYEE");
-
-  // BAYNW is on the NORMA transition of BAY1
-  const baynwJoin = procedureRouteContainingFix(catalog, "BAYNW");
-  expect(baynwJoin).toBeDefined();
-  expect(baynwJoin?.starId).toBe("BAY1");
-  expect(baynwJoin?.toFixIndex).toBe(1);
-
-  // NORMA is on the NORMA enroute transition of BAY1
-  const normaJoin = procedureRouteContainingFix(catalog, "NORMA");
-  expect(normaJoin).toBeDefined();
-  expect(normaJoin?.starId).toBe("BAY1");
-  expect(normaJoin?.toFixIndex).toBe(2);
-  expect(normaJoin?.routeFixIds).toEqual(["BAYEE", "BAYNW", "NORMA"]);
 });

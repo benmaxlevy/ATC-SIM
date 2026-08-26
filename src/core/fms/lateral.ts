@@ -95,14 +95,13 @@ export function advanceStarLeg(
     registry: FixRegistry;
     routeFixIds?: readonly string[];
     starId?: string;
-    sidId?: string;
     log?: SessionLog | null;
     simTimeMs?: number;
     catalog?: VerticalCatalog | null;
   },
 ): void {
   const routeFixIds = args.routeFixIds ?? DEMO_ONE_NORTH_FIX_IDS;
-  const starId = args.sidId ?? args.starId ?? "DEM1";
+  const starId = args.starId ?? "DEM1";
   if (ac.intent.lateral?.type !== "PROCEDURE") {
     ac.intent.lateral = {
       type: "PROCEDURE",
@@ -154,9 +153,7 @@ function guideProcedure(
   }
   const currentId = lateral.routeFixIds[lateral.toFixIndex];
   if (currentId === undefined) {
-    if (lateral.starId) {
-      emitStarVectors(ac, ctx, lateral.starId);
-    }
+    emitStarVectors(ac, ctx, lateral.starId);
     sequenceToPresentHeading(ac);
     return ac.headingDeg;
   }
@@ -181,15 +178,12 @@ function guideProcedure(
     ac.intent.lateral = {
       type: "PROCEDURE",
       starId: lateral.starId,
-      sidId: lateral.sidId,
       toFixIndex: lateral.toFixIndex + 1,
       routeFixIds: lateral.routeFixIds,
     };
     return nextCourse;
   }
-  if (lateral.starId) {
-    emitStarVectors(ac, ctx, lateral.starId);
-  }
+  emitStarVectors(ac, ctx, lateral.starId);
   sequenceToPresentHeading(ac);
   return ac.headingDeg;
 }

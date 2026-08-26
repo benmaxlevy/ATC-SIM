@@ -378,7 +378,7 @@ test("T02-24 — MAIN quick maps 1–6 and MAPS slots 1–30; unused 7–30 disa
   for (let slot = 1; slot <= 30; slot += 1) {
     expect(maps).toContain(`data-dcb-map-slot="${slot}"`);
   }
-  expect(maps).toMatch(/aria-label="Map 8"[^>]*\bdisabled\b/);
+  expect(maps).toMatch(/aria-label="Map 7"[^>]*\bdisabled\b/);
   expect(maps).toMatch(/aria-label="Map 30"[^>]*\bdisabled\b/);
   expect(main).not.toMatch(/<select/i);
   expect(maps).not.toMatch(/<select/i);

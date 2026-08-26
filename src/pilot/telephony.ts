@@ -185,30 +185,3 @@ export function speakAltitude(altitudeFt: number): string {
   }
   return parts.length > 0 ? parts.join(" ") : "zero";
 }
-
-export interface FormatDepartureCheckInArgs {
-  callsign: string;
-  sidName?: string;
-  currentAltitudeFt: number;
-  assignedAltitudeFt: number;
-  isClimbVia: boolean;
-}
-
-/**
- * Departure initial check-in phraseology per AIM 4-2-3 & JO 7110.65.
- * Climb-via: "Departure, Delta 123, passing one thousand two hundred climbing via the DEMO ONE departure"
- * Level / assigned: "Departure, Delta 123, leaving one thousand two hundred for one-zero thousand"
- */
-export function formatDepartureCheckIn(args: FormatDepartureCheckInArgs): string {
-  const callsignSpeech = formatCallsignSpeech(args.callsign);
-  const altFt = roundAltitudeToHundreds(args.currentAltitudeFt);
-  const altSpeech = altFt >= FLIGHT_LEVEL_FT ? `FL ${altFt / 100}` : speakAltitude(altFt);
-
-  if (args.isClimbVia && args.sidName) {
-    return `Departure, ${callsignSpeech}, passing ${altSpeech} climbing via the ${args.sidName} departure`;
-  }
-  const assignedFt = roundAltitudeToHundreds(args.assignedAltitudeFt);
-  const assignedAltSpeech =
-    assignedFt >= FLIGHT_LEVEL_FT ? `FL ${assignedFt / 100}` : speakAltitude(assignedFt);
-  return `Departure, ${callsignSpeech}, leaving ${altSpeech} for ${assignedAltSpeech}`;
-}

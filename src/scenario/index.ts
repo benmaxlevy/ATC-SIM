@@ -19,9 +19,6 @@ export const SCENARIO_PACKAGE = "scenario";
 export type {
   Approach,
   ArrivalSpawn,
-  DepartureConfig,
-  DeparturePolicy,
-  DepartureSpawn,
   DigitalMapCoastline,
   DigitalMapLocalizer,
   DigitalMapRangeRings,
@@ -41,21 +38,13 @@ export type {
   NavFix,
   Navaid,
   ProcedureCatalog,
-  SidEnrouteTransition,
-  SidLeg,
   SidProcedure,
-  SidRunwayTransition,
   StarProcedure,
 } from "./procedures/types";
 export { catalogDctIds } from "./procedures/types";
 export { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN, GI_TEXT_LINE_COUNT } from "./types";
 export { assertScenario, loadKdem, loadKdemIls27 } from "./load";
-export {
-  findSidProcedure,
-  loadCatalog,
-  parseCatalogFiles,
-  sidRouteFixIds,
-} from "./procedures/loadCatalog";
+export { loadCatalog, parseCatalogFiles } from "./procedures/loadCatalog";
 export type { MvaChart, MvaPolygon, MvaVertex, MsawInhibitGeom } from "./mva";
 export { loadMva, mvaFileKey, parseMvaChart } from "./mva";
 export { loadVideoMapSet } from "./loadVideoMaps";
@@ -75,33 +64,10 @@ export {
   outermostStarFix,
   starInboundPose,
 } from "./starSpawn";
-export type { DepartureSpawnConfig, DepartureSpawnPose } from "./departureSpawn";
-export {
-  DEPARTURE_SPAWN_ALTITUDE_FT,
-  DEPARTURE_SPAWN_ROLL_OFFSET_NM,
-  DEPARTURE_SPAWN_SPEED_KT,
-  DEFAULT_DEPARTURE_ALTITUDE_FT,
-  departureSpawnPose,
-  spawnDeparture,
-} from "./departureSpawn";
-export type { DepartureSlot, GenerateDepartureScheduleOptions } from "./departureGenerator";
-export {
-  DEFAULT_DEPARTURE_COUNT,
-  DEFAULT_DEPARTURE_RATE_PER_HOUR,
-  DEPARTURE_AIRCRAFT_TYPES,
-  DEPARTURE_AIRLINES,
-  DEPARTURE_ASSIGNED_ALTITUDES_FT,
-  DEPARTURE_STREAM_XOR,
-  MIN_DEPARTURE_INTERVAL_S,
-  generateDepartureSchedule,
-  listDepartureSlots,
-  spawnDueDepartures,
-} from "./departureGenerator";
 export {
   DEFAULT_SPAWN_SEED,
-  parseDepartureOptions,
   parseScenarioChoice,
   parseSpawnSeed,
   parseTrafficCount,
 } from "./trafficQuery";
-export type { DepartureOptions, ScenarioChoice } from "./trafficQuery";
+export type { ScenarioChoice } from "./trafficQuery";

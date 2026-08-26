@@ -5,7 +5,6 @@ import {
   createWorldForSession,
   loadKdem,
   loadKdemIls27,
-  parseDepartureOptions,
   parseScenarioChoice,
   parseSpawnSeed,
   parseTrafficCount,
@@ -35,13 +34,12 @@ import "./index.css";
 const search = window.location.search;
 const scenario = parseScenarioChoice(search) === "kdem-ils27" ? loadKdemIls27() : loadKdem();
 const spawnSeed = parseSpawnSeed(search);
-const departureOptions = parseDepartureOptions(search);
 const speechBoot = loadAndResolveSpeechBoot();
 const handles = createApp({
   speech: speechBoot.port,
   speechPrefs: speechBoot.prefs,
   speechUrls: speechBoot.urls,
-  world: createWorldForSession(scenario, parseTrafficCount(search), spawnSeed, departureOptions),
+  world: createWorldForSession(scenario, parseTrafficCount(search), spawnSeed),
 });
 bootSession(handles, scenario, Date.now(), spawnSeed);
 window.addEventListener("pagehide", () => {

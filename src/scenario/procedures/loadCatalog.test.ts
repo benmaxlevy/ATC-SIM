@@ -23,19 +23,7 @@ function kdemFiles(): CatalogFileSet {
 test("parseCatalogFiles accepts the committed KDEM set", () => {
   const catalog = parseCatalogFiles(kdemFiles());
   expect(catalog.airportId).toBe("KDEM");
-  expect(catalog.sids).toHaveLength(1);
-  expect(catalog.sids[0]?.id).toBe("BAY1");
-});
-
-test("AC1 — loadCatalog parses KDEM sids.json with BAY1 procedure", () => {
-  const catalog = loadCatalog("src/scenario/data/kdem");
-  expect(catalog.sids).toHaveLength(1);
-  const bay1 = catalog.sids[0]!;
-  expect(bay1.id).toBe("BAY1");
-  expect(bay1.name).toBe("BAY ONE DEPARTURE");
-  expect(bay1.runwayTransitions?.[0]?.runwayId).toBe("27");
-  expect(bay1.runwayTransitions?.[0]?.legs[0]?.fixId).toBe("BAYEE");
-  expect(bay1.enrouteTransitions?.map((t) => t.id)).toEqual(["NORMA", "OCTTA"]);
+  expect(catalog.sids).toEqual([]);
 });
 
 test("AC3 — dangling STAR fixId throws; no partial catalog is returned", () => {
@@ -43,42 +31,6 @@ test("AC3 — dangling STAR fixId throws; no partial catalog is returned", () =>
   const procedures = files.procedures as { stars: Array<{ common: Array<{ fixId: string }> }> };
   procedures.stars[0]!.common[0]!.fixId = "NOPE";
   expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
-});
-
-test("AC3 — dangling SID runway transition fixId throws", () => {
-  const files = kdemFiles();
-  const sids = files.sids as {
-    sids: Array<{ runwayTransitions: Array<{ legs: Array<{ fixId: string }> }> }>;
-  };
-  sids.sids[0]!.runwayTransitions[0]!.legs[0]!.fixId = "NOPE";
-  expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
-});
-
-test("AC3 — dangling SID common fixId throws", () => {
-  const files = kdemFiles();
-  const sids = files.sids as { sids: Array<{ common: Array<{ fixId: string }> }> };
-  sids.sids[0]!.common = [{ fixId: "NOPE" }];
-  expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
-});
-
-test("AC3 — dangling SID enroute transition fixId throws", () => {
-  const files = kdemFiles();
-  const sids = files.sids as {
-    sids: Array<{ enrouteTransitions: Array<{ legs: Array<{ fixId: string }> }> }>;
-  };
-  sids.sids[0]!.enrouteTransitions[0]!.legs[0]!.fixId = "NOPE";
-  expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
-});
-
-test("empty SID legs fails load", () => {
-  const files = kdemFiles();
-  const sids = files.sids as {
-    sids: Array<{ runwayTransitions: unknown[]; common: unknown[]; enrouteTransitions: unknown[] }>;
-  };
-  sids.sids[0]!.runwayTransitions = [];
-  sids.sids[0]!.common = [];
-  sids.sids[0]!.enrouteTransitions = [];
-  expect(() => parseCatalogFiles(files)).toThrow(/empty/);
 });
 
 test("duplicate navaid/fix id DEM fails load", () => {
@@ -105,7 +57,6 @@ test("empty STAR fails load", () => {
 
 test("schema accepts empty sids and a non-ILS approach type string", () => {
   const files = kdemFiles();
-  files.sids = { airportId: "KDEM", sids: [] };
   const procedures = files.procedures as { approaches: Array<Record<string, unknown>> };
   procedures.approaches.push({
     id: "RNAV27",

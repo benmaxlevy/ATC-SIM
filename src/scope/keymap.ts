@@ -206,7 +206,8 @@ export const KEY_BINDINGS: KeyBinding[] = [
     id: "tower-handoff",
     focus: "always",
     windowsKeys: "Shift+H",
-    action: "Initiate handoff: Tower (if on approach) or Center (if climbing outbound)",
+    action:
+      "Tower handoff stub when the selected track is loc/GS inside 5 NM (still allowed until DA). Sets LANDING and tower color. Not a readback. Not NAS handoff.",
     crcAnalog: "CRC handoff / HO — we do not initiate/accept a second facility",
   },
   {
@@ -338,11 +339,9 @@ export function isRadioFocusSlashKey(key: string): boolean {
 }
 
 /**
- * Always-on handoff action. Shift+H — not scope-focus H (history) and not radio H270.
- * Auto-detects Tower (for arrivals on final) vs Center (for climbing departures).
+ * Always-on tower stub. Shift+H — not scope-focus H (history) and not radio H270.
+ * Analog: CRC handoff. Trainer delta: LANDING + color only. Not a readback.
  */
-export function isHandoffKey(event: { key: string; shiftKey?: boolean }): boolean {
+export function isTowerHandoffKey(event: { key: string; shiftKey?: boolean }): boolean {
   return event.shiftKey === true && (event.key === "H" || event.key === "h");
 }
-
-export const isTowerHandoffKey = isHandoffKey;
