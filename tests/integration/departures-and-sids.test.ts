@@ -397,15 +397,13 @@ describe("Departures and SIDs integration test suite (T04-23)", () => {
       catalog,
     );
 
-    // Datablock format
+    // Datablock format (STARS CRC: Line 2 Phase A Mode C + GS; Line 3 assigned altitude A100)
     const fdb = formatFullDatablock(dep);
     expect(fdb.line1).toBe("JBU500");
-    // Line 2: Mode C altitude 700 ft -> 007, assigned 10000 ft -> 100, speed 180 kt -> 180
-    expect(fdb.line2).toContain("007");
-    expect(fdb.line2).toContain("100");
-    expect(fdb.line2).toContain("180");
-    // Line 3: aircraft type A320
-    expect(fdb.line3).toBe("A320");
+    // Line 2: Mode C altitude 700 ft -> 007, speed 180 kt -> 180
+    expect(fdb.line2).toBe("007  180");
+    // Line 3: assigned altitude A100 (10000 ft)
+    expect(fdb.line3).toBe("A100");
 
     // Flight Strips
     const strips = stripsFromWorld(world);

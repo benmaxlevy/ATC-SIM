@@ -13,7 +13,7 @@
  * unseeded draws. Drain from the app tick after physics; do not import SpeechPort.
  */
 
-import { handoffFor, type Aircraft, type SessionLog, type World } from "@core";
+import { handoffFor, mulberry32, type Aircraft, type SessionLog, type World } from "@core";
 import { sidSpokenName } from "../scenario/procedures/sidHelpers";
 import { formatAltitude, formatCallsignSpeech, formatDepartureCheckIn } from "./telephony";
 
@@ -116,21 +116,6 @@ export interface DrainCheckInsArgs {
 
 interface CheckInQueueOptions {
   seed?: number;
-}
-
-/**
- * uint32 mulberry32. Same recipe T04-14 uses for spawn; kept local so this
- * ticket can land without `src/core/rng.ts`.
- */
-function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }
 
 function drawStaggerMs(rng: () => number): number {

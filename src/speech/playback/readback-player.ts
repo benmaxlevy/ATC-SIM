@@ -6,7 +6,7 @@
  * so compressor release is not clipped into the next PTT.
  */
 
-import type { AudioClip } from "../types";
+import type { AudioClip } from "..";
 import {
   DEFAULT_RADIO_FX_ENABLED,
   connectPlaybackThroughRadio,
@@ -15,6 +15,50 @@ import {
   isSilentClip,
   type RadioGraph,
 } from "./radio-graph";
+
+export type TransmitGateState = "idle" | "armed" | "working" | "playing";
+
+export type TransmitGateEvent =
+  "ptt-down" | "working" | "play-started" | "play-ended" | "utterance-failed";
+
+export class TransmitGate {
+  private state: TransmitGateState = "idle";
+
+  get current(): TransmitGateState {
+    return this.state;
+  }
+
+  get locked(): boolean {
+    return this.state !== "idle";
+  }
+
+  get idle(): boolean {
+    return this.state === "idle";
+  }
+
+  apply(event: TransmitGateEvent): boolean {
+    switch (event) {
+      case "ptt-down":
+        if (this.state === "idle") {
+          this.state = "armed";
+        }
+        break;
+      case "working":
+        if (this.state === "idle" || this.state === "armed") {
+          this.state = "working";
+        }
+        break;
+      case "play-started":
+        this.state = "playing";
+        break;
+      case "play-ended":
+      case "utterance-failed":
+        this.state = "idle";
+        break;
+    }
+    return this.locked;
+  }
+}
 
 /** Hold PTT lock this long after source `ended` (README §6.3). */
 export const PLAYBACK_TAIL_MS = 50;

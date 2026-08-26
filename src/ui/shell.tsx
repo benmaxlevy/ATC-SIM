@@ -15,6 +15,7 @@ import type { Scenario } from "@scenario";
 import {
   cssPointFromClient,
   handlePpiCanvasClick,
+  handlePpiCanvasMiddleClick,
   handlePpiDoubleClick,
   handlePpiPanDelta,
   isPpiSlewButton,
@@ -90,13 +91,28 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           world={app.world}
           onScopeChange={refreshScopeUi}
           onCanvasClick={(event) => {
+            const cmdInput = document.getElementById(
+              "command-line-input",
+            ) as HTMLInputElement | null;
+            const cmdText = cmdInput?.value;
             handlePpiCanvasClick(
               event.currentTarget,
               app.world,
               event.clientX,
               event.clientY,
               scopeView,
+              cmdText,
             );
+            if (
+              cmdText === "UN" ||
+              cmdText === "**" ||
+              cmdText?.trim().toUpperCase() === "UN" ||
+              cmdText?.trim() === "**"
+            ) {
+              if (cmdInput) {
+                cmdInput.value = "";
+              }
+            }
             refreshScopeUi();
             event.currentTarget.focus();
           }}
@@ -109,6 +125,19 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             handleScopeWheel(event, scopeView);
           }}
           onCanvasPointerDown={(event: PointerEvent<HTMLCanvasElement>) => {
+            if (event.button === 1) {
+              // Middle click: toggle Cyan highlight
+              event.preventDefault();
+              handlePpiCanvasMiddleClick(
+                event.currentTarget,
+                app.world,
+                event.clientX,
+                event.clientY,
+                scopeView,
+              );
+              refreshScopeUi();
+              return;
+            }
             if (!isPpiSlewButton(event.button)) {
               return;
             }

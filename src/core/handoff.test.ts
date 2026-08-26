@@ -4,13 +4,19 @@ import {
   DEFAULT_INBOUND_SECTOR_ID,
   HANDOFF_PENDING_REASON,
   acceptInboundHandoff,
+  acceptOutboundHandoff,
+  acceptPointout,
   assertHandoffOwned,
+  convertPointoutToHandoff,
   handoffFor,
   initiateCenterHandoff,
+  initiatePointout,
   isCenterHandoffEligible,
   isRadioCommandAllowed,
   offerDepartureHandoff,
   offerInboundHandoff,
+  offerPointout,
+  rejectPointout,
 } from "./handoff";
 
 test("isRadioCommandAllowed denies inbound pending and allows none", () => {
@@ -202,4 +208,96 @@ test("initiateCenterHandoff logs handoff.center and handoff.outbound.initiated a
 
   // Once outbound, isCenterHandoffEligible becomes false
   expect(isCenterHandoffEligible(ac, world)).toBe(false);
+});
+
+test("T02-37 AC2 — acceptOutboundHandoff transitions outbound state to accepted and logs handoff.outbound.accepted", () => {
+  const ac = createAircraft({
+    id: "ac-dep",
+    callsign: "UAL888",
+    xNm: 15,
+    yNm: 10,
+    headingDeg: 45,
+    altitudeFt: 8000,
+    speedKt: 250,
+  });
+  const log = new SessionLog();
+  const world = createWorld({ aircraft: [ac], sessionLog: log, simTimeMs: 15000 });
+  initiateCenterHandoff(ac, { world, log, simTimeMs: 15000 }, "C");
+
+  expect(acceptOutboundHandoff(world, ac.id, 25)).toBe(true);
+  expect(handoffFor(world, ac.id)).toMatchObject({
+    kind: "outbound",
+    toSectorId: "C",
+    status: "accepted",
+    acceptedAtSimMs: 15000,
+  });
+
+  const acceptedEvents = log.byType("handoff.outbound.accepted");
+  expect(acceptedEvents).toHaveLength(1);
+  expect(acceptedEvents[0]).toMatchObject({
+    callsign: "UAL888",
+    toSectorId: "C",
+    atSimMs: 15000,
+    atWallMs: 25,
+  });
+});
+
+test("T02-37 AC3 / AC4 — pointout lifecycle: offer, accept, reject, and convert to handoff", () => {
+  const dal = createAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    xNm: 10,
+    yNm: 5,
+    headingDeg: 270,
+    altitudeFt: 8000,
+    speedKt: 210,
+  });
+  const log = new SessionLog();
+  const world = createWorld({ aircraft: [dal], sessionLog: log, simTimeMs: 2000 });
+
+  // 1. Offer incoming pointout
+  offerPointout(world, dal, "C");
+  expect(handoffFor(world, dal.id)).toEqual({
+    kind: "pointout_inbound",
+    fromSectorId: "C",
+    status: "pending",
+  });
+  expect(isRadioCommandAllowed(handoffFor(world, dal.id))).toBe(false);
+  expect(log.byType("pointout.offered")).toHaveLength(1);
+
+  // 2. Accept pointout
+  expect(acceptPointout(world, dal.id, 50)).toBe(true);
+  expect(handoffFor(world, dal.id)).toMatchObject({
+    kind: "pointout_inbound",
+    fromSectorId: "C",
+    status: "accepted",
+  });
+  expect(log.byType("pointout.accepted")).toHaveLength(1);
+
+  // 3. Reject pointout
+  offerPointout(world, dal, "C");
+  expect(rejectPointout(world, dal.id, 60)).toBe(true);
+  expect(handoffFor(world, dal.id)).toMatchObject({
+    kind: "pointout_inbound",
+    fromSectorId: "C",
+    status: "rejected",
+    rejectedAtSimMs: 2000,
+  });
+  expect(log.byType("pointout.rejected")).toHaveLength(1);
+
+  // 4. Convert pointout to handoff (**)
+  offerPointout(world, dal, "C");
+  expect(convertPointoutToHandoff(world, dal.id, 70)).toBe(true);
+  expect(handoffFor(world, dal.id)).toEqual({ kind: "none" });
+  expect(isRadioCommandAllowed(handoffFor(world, dal.id))).toBe(true);
+  expect(log.byType("pointout.converted")).toHaveLength(1);
+  expect(log.byType("handoff.inbound.accepted")).toHaveLength(1);
+
+  // 5. Initiate outgoing pointout
+  initiatePointout(world, dal, "C");
+  expect(handoffFor(world, dal.id)).toEqual({
+    kind: "pointout_outbound",
+    toSectorId: "C",
+    status: "pending",
+  });
 });

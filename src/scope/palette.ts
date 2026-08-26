@@ -51,6 +51,8 @@ export const PALETTE = {
    * Center-handoff ownership stub (T04-20). Trainer cyan/outbound cue.
    */
   center: "#00DDFF",
+  /** STARS datablock Cyan highlight (T02-37). */
+  highlight: "#00FFFF",
   /** Selection box, IDENT flash, unassociated/point-out analog — yellow. */
   selected: "#FFFF00",
   /** Search/fusion position symbol — FAA (30,120,255). Independent of FDB color. */
@@ -143,16 +145,16 @@ export const BRITE_PAINT_CHANNELS = [
   "tls",
   "rr",
   "hst",
+  "pri",
 ] as const satisfies readonly BriteChannel[];
 
 /**
- * CMP: no compass `N` tick. BCN/PRI: one fusion symbol (POS is live).
+ * CMP: no compass `N` tick. BCN: secondary beacon symbol uses POS/OTH.
  * WX/WXC/BKC: no weather / no CRC BKC.
  */
 export const BRITE_DISABLED_CHANNELS = [
   "cmp",
   "bcn",
-  "pri",
   "wx",
   "wxc",
   "bkc",
@@ -242,8 +244,9 @@ export function historyTrailColor(indexFromOldest: number, count: number): strin
   return HISTORY_TRAIL[Math.min(fromNewest, HISTORY_TRAIL.length - 1)] ?? HISTORY_TRAIL[0];
 }
 
-/** CRC-like half-period for the datablock `CA` blink (sim time). */
-export const CA_BLINK_HALF_MS = 500;
+/** Half-period for scope blinking/flashing animations (sim time). Slower, authentic STARS cadence (800ms ON / 800ms OFF). */
+export const BLINK_HALF_PERIOD_MS = 800;
+export const CA_BLINK_HALF_MS = BLINK_HALF_PERIOD_MS;
 
 export function trackAlertTint(world: World, callsign: string): AlertTint {
   return datablockAlertTint({

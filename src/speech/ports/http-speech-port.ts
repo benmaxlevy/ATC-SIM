@@ -1,5 +1,10 @@
-import { SpeechPortError } from "../errors";
-import type { AudioClip, SpeechPort, Transcript, TranscribeOpts } from "../types";
+import {
+  SpeechPortError,
+  type AudioClip,
+  type SpeechPort,
+  type Transcript,
+  type TranscribeOpts,
+} from "..";
 import { isWav, leBytesToPcm16, pcm16ToWav, uint8ToArrayBuffer, wavToAudioClip } from "./wav";
 
 /**

@@ -9,7 +9,7 @@
  * FX off (T03-10 / debug): source → destination, no obligatory noise.
  */
 
-import type { AudioClip } from "../types";
+import type { AudioClip } from "..";
 
 /** Int16 full-scale used by Web Audio. `-32768 / 32768 === -1`. */
 export const PCM16_SCALE = 32768;

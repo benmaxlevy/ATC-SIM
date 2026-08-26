@@ -1,12 +1,13 @@
 import { expect, test } from "vitest";
-import { EMPTY_CLIP_MS, isEmptyPttCapture } from "./ptt-controller";
 import {
+  EMPTY_CLIP_MS,
   TARGET_SAMPLE_RATE,
   float32ToPcm16,
   floatToPcm16Sample,
+  isEmptyPttCapture,
   resampleFloat32,
   resampleToMonoPcm16,
-} from "./resample";
+} from "./ptt-controller";
 
 function sine(length: number, freqHz: number, sampleRate: number, amplitude = 0.5): Float32Array {
   const out = new Float32Array(length);

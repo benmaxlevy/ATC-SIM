@@ -45,8 +45,8 @@ export {
   sidSpokenName,
   starSpokenName,
 } from "./checkinQueue";
-export type { ResolveReason, ResolveResult } from "./resolveCallsign";
-export { numericTail, resolveCallsign } from "./resolveCallsign";
+export type { ResolveReason, ResolveResult } from "./handleRadioText";
+export { numericTail, resolveCallsign } from "./handleRadioText";
 export type { ValidateReason, ValidateResult, ValidateOpts } from "./validate";
 export { validateInstructions } from "./validate";
 export { applyIntent, IDENT_FLASH_MS } from "./applyIntent";

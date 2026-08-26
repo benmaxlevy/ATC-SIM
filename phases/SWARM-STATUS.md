@@ -1,5 +1,18 @@
 # Swarm status
 
+## TENTH SWARM COMPLETE — Phase 2 STARS CRC scope fidelity addendum (T02-34–38)
+
+T02-34–38 are merged on `feature/stars-crc-fidelity`. Captain `npm test` / `npm run ci`: **117 test files passed, 1322 tests passed, 1 skipped, 0 failures**. Complete STARS CRC radar display fidelity overhaul:
+- **Surveillance Target Symbols (T02-34):** Primary-only diamond (`◇`), unassociated secondary asterisk (`*`), 1200 VFR (`V`), beacon select (`□`), tracked sector ID letter (`D`/`G`), removed fixed 8px heading tick line, connected TCW POS/OTH/PRI BRITE channels.
+- **LDB & PDB Modes (T02-35):** LDB renders squawk + Mode C altitude + click-to-query 5s ground speed popup; PDB renders Line 2 only for unowned associated tracks; click toggles between PDB and Green FDB; F1 momentary Beaconator readout.
+- **FDB Dynamic Time-Sharing & Line 3 (T02-36):** Line 2 time-shares every ~2.5s between [Mode C altitude + Ground speed] and [Scratchpad + Aircraft type / requested altitude `R<alt>`] with wake/RNAV category indicators; Line 3 renders temporary assigned altitude `A<alt>` when $\ge 100$ ft delta; SPC indicators on Line 1 (`EM`, `RF`, `HJ`).
+- **Handoffs, Pointouts & Cyan Highlight (T02-37):** Inbound handoff white blinking FDB with click-to-accept; accepted outbound handoff 5s flash with 3-click FDB $\rightarrow$ PDB progression; pointouts with blinking yellow FDB `PO` and `UN` rejection; middle-click Cyan highlight (`#00FFFF`) replacing non-standard yellow box.
+- **Acceptance & Zero Regressions (T02-38):** Full end-to-end integration test suite (`src/scope/starsFidelity.integration.test.ts`), 100% CI pass rate across all simulation, FMS, voice, and procedural components.
+
+**Merged (squash-merged, captains only):** T02-34 (`46abf5b`), T02-35 (`974c82c`), T02-36 (`635a9d1`), T02-37 (`108a62f`), T02-38 (`db52e1c`).
+
+---
+
 ## Seventh swarm started — Phase 2 post-exit addendum (T02-22–30 trainer DCB)
 
 Orchestrator planning **2026-08-23**. Human: DCB spec + tickets, then away (“make any calls”). Historical phase 2 exit/polish (T02-01–21) and sixth swarm (T04-16–17) stay green. This run is **T02-22–30 only**. Do **not** redo T00–T04-17. Do **not** start phase 5. Skip **T04-11**.

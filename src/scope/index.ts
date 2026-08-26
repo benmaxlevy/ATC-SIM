@@ -60,8 +60,10 @@ export {
   cssPointFromClient,
   fitCanvasToCss,
   handlePpiCanvasClick,
+  handlePpiCanvasMiddleClick,
   handlePpiDoubleClick,
   handlePpiLeftClick,
+  handlePpiMiddleClick,
   handlePpiPanDelta,
   isPpiSlewButton,
   isPpiSlewHeld,
@@ -69,6 +71,7 @@ export {
 } from "./ppi";
 export {
   HIT_RADIUS_CSS_PX,
+  middleClickAircraftAt,
   pickAircraftAt,
   selectAircraftAt,
   selectOrAcceptAircraftAt,
@@ -109,7 +112,8 @@ export {
   reuseOrBuildMapCache,
 } from "./mapLayers";
 export type { DigitalMap, MapCache, MapLayerFlags, NmPoint } from "./mapLayers";
-export { renderScope } from "./renderScope";
+export { getDatablockVisualState, renderScope } from "./renderScope";
+export type { DatablockVisualState } from "./renderScope";
 export {
   GI_SLOT_COUNT,
   SSA_ALTIMETER_STUB,
@@ -172,6 +176,7 @@ export {
   cycleScopeRadioFocus,
   focusRadioCommandLine,
   handleScopeKeyDown,
+  handleScopeKeyUp,
   handleScopeWheel,
   helpOverlayHasKeyboardFocus,
   installAlwaysOnScopeKeys,
@@ -195,6 +200,8 @@ export {
   setRangeRingOrigin,
   snapRangeRingToViewCenter,
   toggleHelpOverlay,
+  setBeaconatorActive,
+  toggleBeaconator,
   formatDcbHistoryReadout,
   formatDcbPtlMinutesReadout,
   setDcbDock,
@@ -319,6 +326,18 @@ export {
   drawHistoryDot,
   drawSelectionBox,
   drawTargetSymbol,
+  isPrimaryTarget,
+  isTargetDiamondPath,
+  renderTargetSymbol,
+  targetDiamondVertices,
+  targetSymbolDescriptor,
+  targetSymbolShape,
+} from "./targetSymbol";
+export type {
+  TargetSurveillanceType,
+  TargetSymbolDescriptor,
+  TargetSymbolKind,
+  TargetSymbolOptions,
 } from "./targetSymbol";
 export {
   PTL_CAP_TICK_PX,
@@ -349,17 +368,25 @@ export {
 export type { AtpaState, TpaRadiusNm, TpaState } from "./tpa";
 export {
   IDENT_DISPLAY_FLASH_MS,
+  LDB_QUERY_DURATION_MS,
+  OUTBOUND_ACCEPTED_FLASH_MS,
   acceptInboundOnClick,
   applyDropTrackToSelection,
   applyInitiateTrackToSelection,
   createTrackDisplay,
   ensureTrackDisplay,
+  handleTrackClick,
+  handleTrackMiddleClick,
   isIdentFlashing,
+  isTrackQueried,
+  queryTrack,
   selectedTrackId,
   setLeaderDirForSelection,
   setScratchpad,
   syncTrackDisplays,
   toggleDatablockModeForSelection,
+  toggleTrackHighlight,
+  toggleTrackPdbFdb,
 } from "./trackDisplay";
 export type { TrackDisplay } from "./trackDisplay";
 export {
@@ -400,7 +427,9 @@ export {
   formatAltitudeHundreds,
   formatFullDatablock,
   formatGroundSpeedKt,
+  formatGroundSpeedTens,
   formatLimitedDatablock,
+  formatPartialDatablock,
   linesForDatablock,
   sanitizeScratchpad,
   withInboundHandoffCue,
@@ -411,6 +440,9 @@ export type {
   DatablockSource,
   FullDatablock,
   LimitedDatablock,
+  LimitedDatablockOpts,
+  PartialDatablock,
+  PartialDatablockOpts,
 } from "./datablock";
 export {
   CHAR_SIZE_STEPS_PX,

@@ -7,7 +7,7 @@
  * `gsAltFt = fieldElevFt + tchFt + tan(gsAngle) * distToThresholdNm * 6076.12`
  */
 
-import { DEG2RAD } from "../geo/coords";
+import { DEG2RAD } from "./geometry";
 
 export const FT_PER_NM = 6076.12;
 export const GS_DEFAULT_ANGLE_DEG = 3;

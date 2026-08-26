@@ -7,13 +7,67 @@
  * Trainer delta: awaits `parseCommand` (typed → Path A → Path B → configured C). Not NAS STARS.
  */
 
-import type { Command, Instruction, ParseStage, SessionLog, World } from "@core";
+import type { Aircraft, Command, Instruction, ParseStage, SessionLog, World } from "@core";
 import { assertHandoffOwned, handoffFor } from "@core";
 import { approachesFromCatalog, parseCommand, proceduresFromCatalog } from "@parse";
+import { FULL_CALLSIGN, SUFFIX_CALLSIGN } from "../parse/tokens";
 import { applyIntent } from "./applyIntent";
 import { formatReadback, formatRejectReadback } from "./readback";
-import { resolveCallsign } from "./resolveCallsign";
 import { validateInstructions } from "./validate";
+
+export type ResolveReason =
+  "UNKNOWN_CALLSIGN" | "AMBIGUOUS_CALLSIGN" | "NO_CALLSIGN_OR_SELECTION" | "SELECTED_NOT_FOUND";
+
+export type ResolveResult =
+  { ok: true; aircraftId: string; callsign: string } | { ok: false; reason: ResolveReason };
+
+export function numericTail(callsign: string): string {
+  return callsign.replace(/^[A-Z]{3}/, "");
+}
+
+function matchAircraft(token: string, aircraft: Aircraft[]): Aircraft[] {
+  if (FULL_CALLSIGN.test(token)) {
+    return aircraft.filter((ac) => ac.callsign === token);
+  }
+  if (SUFFIX_CALLSIGN.test(token)) {
+    return aircraft.filter((ac) => numericTail(ac.callsign) === token);
+  }
+  return [];
+}
+
+function resolveExplicitToken(token: string, aircraft: Aircraft[]): ResolveResult {
+  const matches = matchAircraft(token, aircraft);
+  if (matches.length === 1) {
+    const ac = matches[0]!;
+    return { ok: true, aircraftId: ac.id, callsign: ac.callsign };
+  }
+  if (matches.length === 0) {
+    return { ok: false, reason: "UNKNOWN_CALLSIGN" };
+  }
+  return { ok: false, reason: "AMBIGUOUS_CALLSIGN" };
+}
+
+function resolveFromSelection(world: World): ResolveResult {
+  if (world.selectedAircraftId === null) {
+    return { ok: false, reason: "NO_CALLSIGN_OR_SELECTION" };
+  }
+  const selected = world.aircraft.find((ac) => ac.id === world.selectedAircraftId);
+  if (!selected) {
+    return { ok: false, reason: "SELECTED_NOT_FOUND" };
+  }
+  return { ok: true, aircraftId: selected.id, callsign: selected.callsign };
+}
+
+export function resolveCallsign(input: {
+  callsignToken: string | null;
+  world: World;
+}): ResolveResult {
+  const token = input.callsignToken;
+  if (token !== null) {
+    return resolveExplicitToken(token, input.world.aircraft);
+  }
+  return resolveFromSelection(input.world);
+}
 
 export interface PilotResult {
   accepted: boolean;
