@@ -35,12 +35,7 @@
 import { handoffFor, type Aircraft, type World } from "@core";
 import { inAltitudeFilter } from "./altitudeFilter";
 import { nmToScreen, type ScopeViewSize } from "./camera";
-import {
-  datablockMetrics,
-  linesForDatablock,
-  withInboundHandoffCue,
-  type DatablockMode,
-} from "./datablock";
+import { datablockMetrics, linesForDatablock, type DatablockMode } from "./datablock";
 import { datablockFontCss, datablockLineHeightPx, measureDatablockCellWidth } from "./fonts";
 import { datablockTopLeft, DEFAULT_LEADER_DIR, drawLeaderLine, type LeaderDir } from "./leader";
 import { reuseOrBuildMapCache, toMapCacheInput, type MapCache } from "./mapLayers";
@@ -59,7 +54,6 @@ import { buildGiLines, buildSsaLines } from "./ssa";
 import { buildMapListLines } from "./dcbFunctions";
 import { type TrackOwnership } from "./ownership";
 import {
-  alertOrOwnershipColor,
   alertTintPaintColor,
   trackAlertTint,
   trackPaintAlertTint,
@@ -67,7 +61,6 @@ import {
 } from "./palette";
 import {
   drawHistoryDot,
-  drawSelectionBox,
   drawTargetSymbol,
   historyDotColor,
   isPrimaryTarget,

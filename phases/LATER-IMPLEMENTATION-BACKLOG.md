@@ -26,16 +26,19 @@ The shipped TPA implementation supports selected-track rings, or owned-track
 rings when nothing is selected. Possible follow-ups are the CRC `*J` keyboard
 chord, explicit target selection for multi-ring use, and richer ring styling.
 
-### Track lifecycle beyond the F3/F4 stubs
+### Track lifecycle and multi-controller networking
 
-F3/F4 currently provide ownership-color behavior. A later scope increment could
-add the remaining NAS-like lifecycle around that existing behavior:
+The STARS CRC Scope Fidelity Addendum (T02-34–38) shipped the complete radar
+display fidelity model: target symbol shapes (`◇`, `*`, `V`, `□`, Sector IDs),
+LDB with 5s ground speed queries, PDB for unowned associated tracks, FDB
+dynamic time-sharing (~2.5s cycle) and Line 3 assigned altitudes `A<alt>`,
+inbound/outbound handoff blinking and 3-click progression, pointout lifecycle
+(offer, accept, `UN` reject, `**` convert), and cyan track highlight.
 
-- real track association and termination semantics;
-- scratchpad, beacon-code, quick-look, and point-out state;
-- a genuine second-position / facility handoff model.
-
-The existing inbound handoff acceptance path must remain compatible.
+Possible future follow-ups:
+- multi-controller peer networking / live inter-facility handoffs across multiple browser sessions;
+- quick-look multi-facility track filters;
+- host automated flight-plan amendments and route conformance monitoring.
 
 ### SSA and GI data beyond trainer stubs
 

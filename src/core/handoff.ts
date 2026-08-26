@@ -336,11 +336,7 @@ export function rejectPointout(world: World, aircraftId: string, atWallMs = 0): 
  * Convert an incoming pointout to a handoff (typing ** + click).
  * Transfers track ownership.
  */
-export function convertPointoutToHandoff(
-  world: World,
-  aircraftId: string,
-  atWallMs = 0,
-): boolean {
+export function convertPointoutToHandoff(world: World, aircraftId: string, atWallMs = 0): boolean {
   const current = handoffFor(world, aircraftId);
   if (current.kind !== "pointout_inbound") {
     return false;
@@ -366,4 +362,3 @@ export function convertPointoutToHandoff(
   });
   return true;
 }
-

@@ -539,6 +539,33 @@ Do not call the DCB addendum done until:
 - [x] Still no weather mosaic, CRDA, FMA, OSM, STARS font, Command IR from DCB. Disabled CRDA on SSA FILTER is chrome only (T02-27).
 - [ ] T02-30 manual script 1–10: cheap STARS DCB, not a web settings ribbon. skip-with-reason: no visual operator; Chrome Windows script not watched. Automated greps/tests prove addendum grammar; do not invent a visual pass.
 
+### STARS CRC Scope Fidelity Addendum (T02-34–38)
+
+Completed visual, interactive, and datablock fidelity pass matching [CRC STARS](https://docs.virtualnas.net/crc/stars/):
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-34](tickets/T02-34-stars-target-symbols-position-indicators.md) | Target symbols, position indicators, primary/secondary | P0 | M | T02-30 | Shipped |
+| [T02-35](tickets/T02-35-stars-limited-partial-datablock-modes.md) | Limited (LDB) & Partial (PDB) datablock modes | P0 | M | T02-34 | Shipped |
+| [T02-36](tickets/T02-36-stars-fdb-dynamic-timesharing-line3.md) | FDB dynamic time-sharing and Line 3 layout | P0 | M | T02-35 | Shipped |
+| [T02-37](tickets/T02-37-stars-handoff-blinking-pointouts-highlight.md) | Handoff blinking, pointout indicators, cyan highlight | P0 | M | T02-36 | Shipped |
+| [T02-38](tickets/T02-38-stars-crc-scope-fidelity-acceptance.md) | Scope fidelity integration suite & acceptance | P0 | M | T02-34–37 | Shipped |
+
+### Phase 2 STARS CRC scope fidelity checklist (T02-34–38)
+
+- [x] Target symbol shapes: `◇` unfilled diamond for primary-only, `*` for unassociated secondary, `V` for 1200 VFR, `□` for beacon-selected squawks, and sector ID letter (`D`, `T`, `C`) for tracked targets (T02-34).
+- [x] Fixed 8px heading tick line removed from target symbol; PTL handles vector projection (T02-34).
+- [x] LDB renders squawk + Mode C altitude; left-clicking queries ground speed for 5 seconds (e.g. `045 18` / `045 180`) (T02-35).
+- [x] PDB renders Line 2 only for unowned associated tracks; left-clicking toggles between PDB and forced Green FDB (T02-35).
+- [x] FDB dynamic time-sharing: Line 2 alternates on ~2.5s cycle between Phase A (Mode C + GS) and Phase B (Scratchpad + Type / Requested Alt `R<alt>`) (T02-36).
+- [x] FDB Line 3 renders assigned altitude `A<alt>` when assigned altitude differs from Mode C altitude by >= 100 ft (T02-36).
+- [x] Inbound handoffs render as blinking white FDB; left-clicking accepts handoff to solid white FDB and sector ID (T02-37).
+- [x] Outbound accepted handoffs flash white for 5s and complete 3-click progression (solid white -> green FDB -> green PDB) (T02-37).
+- [x] Pointout lifecycle: incoming blinking yellow FDB with `PO` tag; click accepts; `UN` click rejects; `**` click converts to handoff; rejected outbound pointout flashes `UN` tag (T02-37).
+- [x] Datablocks support standard STARS Cyan highlight (`#00FFFF`) toggled via middle-click across LDB, PDB, and FDB (T02-37).
+- [x] F4 drops track to unowned green PDB with `*` position symbol (T02-37).
+- [x] Comprehensive end-to-end integration test suite in `src/scope/starsFidelity.integration.test.ts` (T02-38).
+
 ## Launching an agent
 
 1. Confirm phase 1 README exit is green.
@@ -546,6 +573,7 @@ Do not call the DCB addendum done until:
 3. Work T02-01 → T02-13 as in the table. Do not skip T02-12 to “make it pretty.”
 4. After original exit: polish T02-14 → T02-21 (DCB cells, chrome, SSA). Still not a Raytheon clone.
 5. After polish: DCB addendum T02-22 → T02-30 (main/aux/submenus). Still not CRDA / FMA / weather paint.
+6. Scope fidelity addendum T02-34 → T02-38 (STARS CRC symbol shapes, LDB/PDB/FDB modes, time-sharing, handoffs, pointouts, cyan highlights).
 
 ## Glossary reminders
 

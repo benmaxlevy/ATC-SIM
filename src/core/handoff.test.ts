@@ -292,4 +292,12 @@ test("T02-37 AC3 / AC4 — pointout lifecycle: offer, accept, reject, and conver
   expect(isRadioCommandAllowed(handoffFor(world, dal.id))).toBe(true);
   expect(log.byType("pointout.converted")).toHaveLength(1);
   expect(log.byType("handoff.inbound.accepted")).toHaveLength(1);
+
+  // 5. Initiate outgoing pointout
+  initiatePointout(world, dal, "C");
+  expect(handoffFor(world, dal.id)).toEqual({
+    kind: "pointout_outbound",
+    toSectorId: "C",
+    status: "pending",
+  });
 });

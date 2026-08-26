@@ -399,7 +399,8 @@ export function syncTrackDisplays(tracks: Map<string, TrackDisplay>, world: Worl
       ho.status === "accepted" &&
       td.outboundFlashUntilSimMs === undefined
     ) {
-      td.outboundFlashUntilSimMs = (ho.acceptedAtSimMs ?? world.simTimeMs) + OUTBOUND_ACCEPTED_FLASH_MS;
+      td.outboundFlashUntilSimMs =
+        (ho.acceptedAtSimMs ?? world.simTimeMs) + OUTBOUND_ACCEPTED_FLASH_MS;
       td.outboundClickStep = td.outboundClickStep ?? 0;
     }
   }

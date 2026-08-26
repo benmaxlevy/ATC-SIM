@@ -91,7 +91,9 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           world={app.world}
           onScopeChange={refreshScopeUi}
           onCanvasClick={(event) => {
-            const cmdInput = document.getElementById("command-line-input") as HTMLInputElement | null;
+            const cmdInput = document.getElementById(
+              "command-line-input",
+            ) as HTMLInputElement | null;
             const cmdText = cmdInput?.value;
             handlePpiCanvasClick(
               event.currentTarget,

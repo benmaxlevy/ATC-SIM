@@ -1,7 +1,12 @@
 import type { World } from "@core";
 import { expireFilterEntry } from "./altitudeFilter";
 import { applyPanScreenDelta, screenToNm, type ScopeViewSize } from "./camera";
-import { HIT_RADIUS_CSS_PX, middleClickAircraftAt, pickAircraftAt, selectOrAcceptAircraftAt } from "./pick";
+import {
+  HIT_RADIUS_CSS_PX,
+  middleClickAircraftAt,
+  pickAircraftAt,
+  selectOrAcceptAircraftAt,
+} from "./pick";
 import { renderScope } from "./renderScope";
 import { centerOnWorld, recordLastClick, setRangeRingOrigin, type ScopeView } from "./scopeView";
 

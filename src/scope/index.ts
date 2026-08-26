@@ -327,6 +327,7 @@ export {
   drawSelectionBox,
   drawTargetSymbol,
   isPrimaryTarget,
+  isTargetDiamondPath,
   renderTargetSymbol,
   targetDiamondVertices,
   targetSymbolDescriptor,

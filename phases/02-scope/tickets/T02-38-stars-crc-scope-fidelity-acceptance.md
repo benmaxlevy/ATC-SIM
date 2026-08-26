@@ -51,12 +51,12 @@ Read **docs.virtualnas.net/crc/stars** (Complete CRC STARS reference).
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Integration test suite verifies all target symbol shapes (`◇`, `*`, `V`, Sector ID).
-- [ ] **AC2 —** Integration test suite verifies LDB (squawk + alt + queried GS), PDB (Line 2 only), and FDB (time-sharing + Line 3 `A<alt>`).
-- [ ] **AC3 —** Integration test suite verifies inbound handoff accept, outbound flash, and F4 drop lifecycle.
-- [ ] **AC4 —** Middle-click cyan highlight works across LDB, PDB, and FDB modes.
-- [ ] **AC5 —** Zero regressions: `npm test` and `npm run ci` pass cleanly (100% green).
-- [ ] **AC6 —** Scope documentation in `phases/02-scope/README.md` accurately describes the updated STARS CRC display standard.
+- [x] **AC1 —** Integration test suite verifies all target symbol shapes (`◇`, `*`, `V`, Sector ID).
+- [x] **AC2 —** Integration test suite verifies LDB (squawk + alt + queried GS), PDB (Line 2 only), and FDB (time-sharing + Line 3 `A<alt>`).
+- [x] **AC3 —** Integration test suite verifies inbound handoff accept, outbound flash, and F4 drop lifecycle.
+- [x] **AC4 —** Middle-click cyan highlight works across LDB, PDB, and FDB modes.
+- [x] **AC5 —** Zero regressions: `npm test` and `npm run ci` pass cleanly (100% green).
+- [x] **AC6 —** Scope documentation in `phases/02-scope/README.md` accurately describes the updated STARS CRC display standard.
 
 ## Test plan
 

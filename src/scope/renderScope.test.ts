@@ -638,7 +638,7 @@ test("AC2 — 6000 ft outside 070-090 keeps target+history, loses datablock; 800
   syncTrackDisplays(view.tracks, world);
   view.tracks.get(inBand.id)!.datablockMode = "full";
   view.altitudeFilter = { minHundreds: 70, maxHundreds: 90 };
-  const { ctx, fillTexts, strokeRects, fillRects } = createMockCtx();
+  const { ctx, fillTexts, fillRects } = createMockCtx();
   renderScope(ctx, world, view, 800, 800);
 
   const targets = findTargetPositionSymbol(fillTexts);
