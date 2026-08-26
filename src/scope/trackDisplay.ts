@@ -364,6 +364,7 @@ export function handleTrackClick(
     if (step === 2) {
       td.datablockMode = "partial";
       td.outboundClickStep = 3;
+      world.handoffs.set(aircraftId, { kind: "none" });
       return;
     }
   }

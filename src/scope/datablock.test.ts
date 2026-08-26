@@ -86,11 +86,11 @@ test("AC1 / AC6 — FDB Line 2 time-sharing alternates between Mode C/GS and Scr
     "HOLD  B738",
   );
 
-  // When no scratchpad is set, Phase B shows Type only
+  // When no scratchpad is set, Mode C stays steady on left while right cycles to Type
   const noSpadPhaseB = formatFullDatablock(ac, { simTimeMs: 2500 });
-  expect(noSpadPhaseB.line2).toBe("B738");
+  expect(noSpadPhaseB.line2).toBe("030  B738");
 
-  // When neither scratchpad nor type nor reqAlt exists, Phase B falls back to Phase A
+  // When neither scratchpad nor type nor reqAlt exists, Line 2 stays steady Mode C + GS
   const emptyAc = track({ altitudeFt: 3000, speedKt: 210 });
   expect(formatFullDatablock(emptyAc, { simTimeMs: 2500 }).line2).toBe("030  21");
 });
@@ -146,19 +146,21 @@ test("AC3 — Requested altitude on Line 2 is prefixed with R (e.g. R070) when d
   const spadReq = formatFullDatablock(acWithReq, { simTimeMs: 2500, scratchpad: "BOS" });
   expect(spadReq.line2).toBe("BOS  R070");
 
-  // Track with requested altitude and no scratchpad in Phase B
+  // Track with requested altitude and no scratchpad: Mode C remains on left, R070 on right
   const noSpadReq = formatFullDatablock(acWithReq, { simTimeMs: 2500 });
-  expect(noSpadReq.line2).toBe("R070");
+  expect(noSpadReq.line2).toBe("030  R070");
 
-  // Track with type and requested altitude and no scratchpad in Phase B
+  // Track with type and requested altitude and no scratchpad in Phase B (t=2500) and Phase C (t=5000)
   const typeAndReq = track({
     altitudeFt: 3000,
     speedKt: 210,
     aircraftType: "B738",
     requestedAltitudeFt: 7000,
   });
-  const bothPhaseB = formatFullDatablock(typeAndReq, { simTimeMs: 2500 });
-  expect(bothPhaseB.line2).toBe("B738  R070");
+  const phaseB = formatFullDatablock(typeAndReq, { simTimeMs: 2500 });
+  expect(phaseB.line2).toBe("030  B738");
+  const phaseC = formatFullDatablock(typeAndReq, { simTimeMs: 5000 });
+  expect(phaseC.line2).toBe("030  R070");
 });
 
 test("AC4 — Wake turbulence / RNAV category letters (H, B, R, L, etc.) append to ground speed", () => {
@@ -396,10 +398,11 @@ test("T02-35 AC3 — PDB formats Line 2 only (Mode C altitude + ground speed in 
   expect(pdb).toEqual({ line1: "045  18" });
   expect(linesForDatablock(ac, "partial")).toEqual({ line1: "045  18" });
 
-  // With scratchpad
-  const withSpad = formatPartialDatablock(ac, { scratchpad: "HOLD" });
-  expect(withSpad).toEqual({ line1: "045  18  HOLD" });
-  expect(linesForDatablock(ac, "partial", true, "HOLD")).toEqual({ line1: "045  18  HOLD" });
+  // With scratchpad time-sharing: phase 0 is 045 18, phase 1 is HOLD 18
+  const phase0 = formatPartialDatablock(ac, { scratchpad: "HOLD", simTimeMs: 0 });
+  expect(phase0).toEqual({ line1: "045  18" });
+  const phase1 = formatPartialDatablock(ac, { scratchpad: "HOLD", simTimeMs: 2500 });
+  expect(phase1).toEqual({ line1: "HOLD  18" });
 
   // With suppressPdbSpeed option
   const suppressed = formatPartialDatablock(ac, { suppressPdbSpeed: true });
@@ -411,4 +414,78 @@ test("T02-40: formatGroundSpeedTens handles flight category suffixes VFR and Ove
   expect(formatGroundSpeedTens(280, { isOverflight: true })).toBe("28E");
   // Wake category takes precedence over VFR suffix
   expect(formatGroundSpeedTens(110, { wakeCategory: "L", flightRules: "VFR" })).toBe("11L");
+});
+
+test("T02-41 AC1/AC2: Left field cycles Mode C <-> SP1 <-> SP2, skipping unpopulated scratchpads", () => {
+  const ac = track({
+    altitudeFt: 5000,
+    speedKt: 210,
+    aircraftType: "A321",
+  });
+
+  // 1 populated left field (Mode C only): remains steady on Mode C across all phases
+  expect(formatFullDatablock(ac, { timeSharePhase: 0 }).line2).toBe("050  21");
+  expect(formatFullDatablock(ac, { timeSharePhase: 1 }).line2).toBe("050  A321");
+  expect(formatFullDatablock(ac, { timeSharePhase: 2 }).line2).toBe("050  21");
+
+  // 2 populated left fields (Mode C + SP1): cycles Mode C <-> SP1
+  const twoFields = { sp1: "I27" };
+  expect(formatFullDatablock(ac, { ...twoFields, timeSharePhase: 0 }).line2).toBe("050  21");
+  expect(formatFullDatablock(ac, { ...twoFields, timeSharePhase: 1 }).line2).toBe("I27  A321");
+  expect(formatFullDatablock(ac, { ...twoFields, timeSharePhase: 2 }).line2).toBe("050  21");
+  expect(formatFullDatablock(ac, { ...twoFields, timeSharePhase: 3 }).line2).toBe("I27  A321");
+
+  // 3 populated left fields (Mode C + SP1 + SP2): cycles Mode C <-> SP1 <-> SP2
+  const threeFields = { sp1: "I27", sp2: "S21" };
+  expect(formatFullDatablock(ac, { ...threeFields, timeSharePhase: 0 }).line2).toBe("050  21");
+  expect(formatFullDatablock(ac, { ...threeFields, timeSharePhase: 1 }).line2).toBe("I27  A321");
+  expect(formatFullDatablock(ac, { ...threeFields, timeSharePhase: 2 }).line2).toBe("S21  21");
+  expect(formatFullDatablock(ac, { ...threeFields, timeSharePhase: 3 }).line2).toBe("050  A321");
+  expect(formatFullDatablock(ac, { ...threeFields, timeSharePhase: 4 }).line2).toBe("I27  21");
+  expect(formatFullDatablock(ac, { ...threeFields, timeSharePhase: 5 }).line2).toBe("S21  A321");
+});
+
+test("T02-41 AC3: Right field cycles GS <-> Type <-> Req Alt", () => {
+  const ac = track({
+    altitudeFt: 5000,
+    speedKt: 210,
+    aircraftType: "B738",
+    requestedAltitudeFt: 8000,
+  });
+
+  // 3 populated right fields (GS + Type + ReqAlt): cycles GS <-> Type <-> R080
+  expect(formatFullDatablock(ac, { timeSharePhase: 0 }).line2).toBe("050  21");
+  expect(formatFullDatablock(ac, { timeSharePhase: 1 }).line2).toBe("050  B738");
+  expect(formatFullDatablock(ac, { timeSharePhase: 2 }).line2).toBe("050  R080");
+  expect(formatFullDatablock(ac, { timeSharePhase: 3 }).line2).toBe("050  21");
+});
+
+test("T02-41 AC4: Center handoff sector ID appears between left and right fields during active handoff", () => {
+  const ac = track({
+    altitudeFt: 8000,
+    speedKt: 250,
+    aircraftType: "B772",
+    wakeCategory: "H",
+  });
+
+  const fdbHandoff = formatFullDatablock(ac, {
+    sp1: "I27",
+    handoffSectorId: "D",
+    timeSharePhase: 0,
+  });
+  expect(fdbHandoff.line2).toBe("080  D  25H");
+
+  const fdbPhase1 = formatFullDatablock(ac, {
+    sp1: "I27",
+    handoffSectorId: "D",
+    timeSharePhase: 1,
+  });
+  expect(fdbPhase1.line2).toBe("I27  D  B772");
+
+  const pdbHandoff = formatPartialDatablock(ac, {
+    sp1: "I27",
+    handoffSectorId: "C",
+    timeSharePhase: 0,
+  });
+  expect(pdbHandoff.line1).toBe("080  C  25H");
 });

@@ -526,6 +526,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       handleTrackClick(view.tracks, world, ac.id);
       expect(td.outboundClickStep).toBe(3);
       expect(td.datablockMode).toBe("partial");
+      world.simTimeMs = 5000;
       const step3Ctx = createMockCtx();
       renderScope(step3Ctx.ctx, world, view, 800, 800);
       expect(step3Ctx.fillTexts.some((t) => t.text === "UAL888")).toBe(false);

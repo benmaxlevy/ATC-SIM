@@ -36,6 +36,7 @@ import {
   isTargetDiamondPath,
 } from "./targetSymbol";
 import {
+  deriveScratchpads,
   ensureTrackDisplay,
   isIdentFlashing,
   setScratchpad,
@@ -222,7 +223,14 @@ test("AC1 — six spawned arrivals get unassociated position symbols (*) and dat
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
     const hit = findTargetPositionSymbol(fillTexts, p.x, p.y)[0];
     expect(hit, ac.callsign).toBeDefined();
-    const block = formatPartialDatablock(ac);
+    const td = view.tracks.get(ac.id);
+    const derived = deriveScratchpads(ac, td);
+    const handoff = handoffFor(world, ac.id);
+    const handoffSectorId = handoff.kind === "inbound" ? handoff.fromSectorId : undefined;
+    const block = formatPartialDatablock(ac, {
+      sp1: derived.sp1,
+      handoffSectorId,
+    });
     expect(
       fillTexts.some((t) => t.text === block.line1 && t.font === DATABLOCK_FONT),
       ac.callsign,
@@ -515,7 +523,7 @@ test("T02-04 AC5 / T02-36 — M hides Mode C on full blocks; Line 3 shows assign
   view.modeCVisible = false;
   const full = createMockCtx();
   renderScope(full.ctx, world, view, 800, 800);
-  expect(full.fillTexts.some((t) => t.text === "21")).toBe(true);
+  expect(full.fillTexts.some((t) => t.text === "040  21")).toBe(true);
   expect(full.fillTexts.some((t) => t.text === "A040")).toBe(true);
 
   view.tracks.get(ac.id)!.datablockMode = "limited";
