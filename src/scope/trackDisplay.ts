@@ -42,6 +42,14 @@ export interface TrackDisplay {
    * Display state only — never Aircraft.intent / kinematics.
    */
   scratchpad: string;
+  /** Primary scratchpad #1 (approach shorthand, assigned altitude, or manual). */
+  sp1?: string;
+  /** Secondary scratchpad #2 (assigned speed shorthand or manual). */
+  sp2?: string;
+  /** Manual override for scratchpad 1. */
+  manualSp1?: string;
+  /** Manual override for scratchpad 2. */
+  manualSp2?: string;
   /** Optional display squawk override. */
   squawk?: string;
   /** Primary-only target flag (unfilled diamond, no datablock). */
@@ -79,15 +87,141 @@ export function createTrackDisplay(ownership: TrackOwnership = "unowned"): Track
     leaderDir: DEFAULT_LEADER_DIR,
     ownership,
     scratchpad: "",
+    sp1: "",
+    sp2: "",
     queriedUntilSimMs: 0,
     forcedFdb: false,
   };
 }
 
-/** Set the trainer scratchpad for a track id. Sanitizes to 0–4 A–Z0–9. */
+/** Set the trainer scratchpad (SP1) for a track id. Sanitizes to 0–4 A–Z0–9. */
 export function setScratchpad(tracks: Map<string, TrackDisplay>, id: string, raw: string): void {
   const td = ensureTrackDisplay(tracks, id);
-  td.scratchpad = sanitizeScratchpad(raw);
+  const sanitized = sanitizeScratchpad(raw);
+  td.scratchpad = sanitized;
+  td.sp1 = sanitized;
+  td.manualSp1 = sanitized;
+}
+
+/** Set scratchpad 1 specifically. */
+export function setScratchpad1(tracks: Map<string, TrackDisplay>, id: string, raw: string): void {
+  const td = ensureTrackDisplay(tracks, id);
+  const sanitized = sanitizeScratchpad(raw);
+  td.sp1 = sanitized;
+  td.manualSp1 = sanitized;
+  td.scratchpad = sanitized;
+}
+
+/** Set scratchpad 2 specifically. */
+export function setScratchpad2(tracks: Map<string, TrackDisplay>, id: string, raw: string): void {
+  const td = ensureTrackDisplay(tracks, id);
+  const sanitized = sanitizeScratchpad(raw);
+  td.sp2 = sanitized;
+  td.manualSp2 = sanitized;
+}
+
+/** Clear scratchpad 1 and restore automatic derivation. */
+export function clearScratchpad1(tracks: Map<string, TrackDisplay>, id: string): void {
+  const td = ensureTrackDisplay(tracks, id);
+  td.manualSp1 = undefined;
+  td.sp1 = "";
+  td.scratchpad = "";
+}
+
+/** Clear scratchpad 2 and restore automatic derivation. */
+export function clearScratchpad2(tracks: Map<string, TrackDisplay>, id: string): void {
+  const td = ensureTrackDisplay(tracks, id);
+  td.manualSp2 = undefined;
+  td.sp2 = "";
+}
+
+/**
+ * Format an approach identifier into standard STARS shorthand:
+ * - ILS -> "I" + runway (e.g. "ILS 27" -> "I27", "ILS 04R" -> "I04R", "kdem-ils27" -> "I27")
+ * - RNAV / RNP / GPS -> "R" + runway (e.g. "RNAV 22L" -> "R22L")
+ * - VISUAL / VIS -> "V" + runway (e.g. "VISUAL 28" -> "V28")
+ * - LOC / LOCALIZER -> "L" + runway (e.g. "LOC 09" -> "L09")
+ * - VOR -> "O" + runway (e.g. "VOR 15" -> "O15")
+ */
+export function formatApproachShorthand(approachId: string | null | undefined): string | undefined {
+  if (!approachId || approachId.trim().length === 0) {
+    return undefined;
+  }
+  const raw = approachId.toUpperCase().trim();
+  const numMatch = raw.match(/(\d{1,2}\s*[RLC]?)/);
+  const rwy = numMatch ? numMatch[1].replace(/\s+/g, "") : "";
+
+  if (raw.includes("ILS")) {
+    return rwy ? `I${rwy}` : "ILS";
+  }
+  if (raw.includes("RNAV") || raw.includes("RNP") || raw.includes("GPS")) {
+    return rwy ? `R${rwy}` : "RNAV";
+  }
+  if (raw.includes("VISUAL") || raw.includes("VIS")) {
+    return rwy ? `V${rwy}` : "VIS";
+  }
+  if (raw.includes("LOC") || raw.includes("LOCALIZER")) {
+    return rwy ? `L${rwy}` : "LOC";
+  }
+  if (raw.includes("VOR")) {
+    return rwy ? `O${rwy}` : "VOR";
+  }
+  return sanitizeScratchpad(raw);
+}
+
+export function deriveScratchpads(
+  aircraft: Aircraft,
+  td?: TrackDisplay,
+): { sp1: string; sp2: string } {
+  // Derive automatic SP1:
+  const approachId =
+    aircraft.intent?.clearedApproachId ??
+    aircraft.intent?.locInterceptApproachId ??
+    aircraft.intent?.expectedApproachId;
+  let autoSp1 = "";
+  if (approachId) {
+    autoSp1 = formatApproachShorthand(approachId) ?? "";
+  } else if (
+    aircraft.intent?.assignedAltitudeFt != null &&
+    Number.isFinite(aircraft.intent.assignedAltitudeFt) &&
+    Math.abs(aircraft.intent.assignedAltitudeFt - aircraft.altitudeFt) >= 100
+  ) {
+    const hundreds = Math.round(aircraft.intent.assignedAltitudeFt / 100);
+    const clamped = Math.max(0, Math.min(999, hundreds));
+    autoSp1 = String(clamped).padStart(3, "0");
+  }
+
+  let sp1 = autoSp1;
+  if (td?.manualSp1 != null) {
+    if (td.manualSp1.length > 0) {
+      sp1 = sanitizeScratchpad(td.manualSp1);
+    }
+  } else if (td?.scratchpad != null && td.scratchpad.length > 0) {
+    sp1 = sanitizeScratchpad(td.scratchpad);
+    td.manualSp1 = sp1;
+  }
+
+  // Derive automatic SP2:
+  let sp2 = "";
+  if (td?.manualSp2 != null && td.manualSp2.length > 0) {
+    sp2 = sanitizeScratchpad(td.manualSp2);
+  } else if (
+    aircraft.intent?.assignedSpeedKt != null &&
+    Number.isFinite(aircraft.intent.assignedSpeedKt) &&
+    aircraft.intent.assignedSpeedKt > 0
+  ) {
+    const tens = Math.max(0, Math.round(aircraft.intent.assignedSpeedKt / 10));
+    sp2 = `S${String(tens).padStart(2, "0")}`;
+  }
+
+  // Sync to track display if present
+  if (td) {
+    td.sp1 = sp1;
+    td.sp2 = sp2;
+    td.scratchpad = sp1;
+  }
+
+  return { sp1, sp2 };
 }
 
 export function ensureTrackDisplay(tracks: Map<string, TrackDisplay>, id: string): TrackDisplay {

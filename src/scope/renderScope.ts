@@ -69,7 +69,7 @@ import {
   isPrimaryTarget,
   targetStrokeColor,
 } from "./targetSymbol";
-import { isIdentFlashing, isTrackQueried, syncTrackDisplays } from "./trackDisplay";
+import { deriveScratchpads, isIdentFlashing, isTrackQueried, syncTrackDisplays } from "./trackDisplay";
 
 const RING_STROKE_PX = 1;
 const RUNWAY_STROKE_PX = 2;
@@ -434,7 +434,8 @@ function drawDatablock(
     return;
   }
   const td = view.tracks.get(ac.id);
-  const scratchpad = td?.scratchpad ?? "";
+  const derived = deriveScratchpads(ac, td);
+  const scratchpad = derived.sp1;
   const tint = trackAlertTint(world, ac.callsign);
   const mode = visual.mode;
   const isQueried = td ? isTrackQueried(td, world.simTimeMs) : false;
