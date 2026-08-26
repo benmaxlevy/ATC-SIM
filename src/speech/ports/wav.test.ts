@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import type { AudioClip } from "../types";
+import type { AudioClip } from "..";
 import { isWav, pcm16ToWav, uint8ToArrayBuffer, wavToAudioClip } from "./wav";
 
 function clip(pcm16: Int16Array, sampleRate = 16000): AudioClip {

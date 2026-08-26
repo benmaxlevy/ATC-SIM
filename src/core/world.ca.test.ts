@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { makeTestAircraft } from "./aircraft";
-import { SIM_DT_S } from "./clock";
+import { SIM_DT_S } from "./kinematics";
 import { SessionLog } from "./events/session-log";
 import { createWorld, stepWorld } from "./world";
 

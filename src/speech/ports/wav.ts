@@ -1,4 +1,4 @@
-import type { AudioClip } from "../types";
+import type { AudioClip } from "..";
 
 const WAV_HEADER_BYTES = 44;
 const PCM_FORMAT = 1;

@@ -1,5 +1,5 @@
 import type { TurnDir } from "./command/types";
-import { normalizeHeadingDeg } from "./geo/coords";
+import { normalizeHeadingDeg } from "./nav/geometry";
 
 /**
  * Phase 4 lateral FMS. MSAW inhibit keys on `LOC` | `LANDING` inside FAF.
@@ -127,29 +127,17 @@ export interface AircraftInit {
   headingDeg: number;
   altitudeFt: number;
   speedKt: number;
-  /** Optional type stub copied onto Aircraft; does not affect kinematics. */
   aircraftType?: string;
-  /** Optional squawk / beacon code. */
   squawk?: string;
-  /** Optional transponder mode. */
   transponder?: "primary" | "mode_c" | "mode_a" | "mode_s" | "none";
-  /** Optional primary-only flag. */
   primaryOnly?: boolean;
-  /** Optional primary target flag. */
   isPrimary?: boolean;
-  /** Optional wake turbulence / RNAV category letter. */
   wakeCategory?: string;
-  /** Optional Special Purpose Code tag. */
   spc?: string;
-  /** Optional requested altitude in feet MSL. */
   requestedAltitudeFt?: number;
-  /** Optional assigned squawk. */
   assignedSquawk?: string;
-  /** Optional reported squawk. */
   reportedSquawk?: string;
-  /** Optional pilot-reported altitude flag. */
   pilotReportedAltitude?: boolean;
-  /** Optional ATPA distance string. */
   atpaDistance?: string;
 }
 

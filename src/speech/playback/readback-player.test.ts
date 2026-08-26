@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vitest";
-import type { AudioClip } from "../types";
+import type { AudioClip } from "..";
 import { PLAYBACK_TAIL_MS, createReadbackPlayer } from "./readback-player";
 
 function clip(samples: number[] = [1, 0, -1]): AudioClip {

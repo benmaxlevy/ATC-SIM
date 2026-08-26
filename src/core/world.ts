@@ -15,9 +15,8 @@ import {
   type MsawAlert,
   type MsawInhibitGeom,
 } from "./alerts/msaw";
-import { MAX_PHYSICS_STEPS_PER_FRAME, SIM_DT_S } from "./clock";
 import type { SessionLog } from "./events/session-log";
-import { stepAircraft } from "./kinematics";
+import { MAX_PHYSICS_STEPS_PER_FRAME, SIM_DT_S, stepAircraft } from "./kinematics";
 import type { FixRegistry, FixRegistrySource } from "./nav/fixRegistry";
 import { buildFixRegistry } from "./nav/fixRegistry";
 import { handoffFor } from "./handoff";

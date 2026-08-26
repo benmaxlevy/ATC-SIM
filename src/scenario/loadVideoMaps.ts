@@ -81,7 +81,7 @@ import {
   assertFinite as assertFiniteVal,
   assertString as assertStringVal,
   isRecord,
-} from "./validate";
+} from "./load";
 
 const assertFinite = (value: unknown, path: string): number =>
   assertFiniteVal(value, path, "Video map");

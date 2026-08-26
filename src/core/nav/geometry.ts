@@ -1,31 +1,52 @@
-/**
- * Local-NM geometry for DIRECT / STAR fly-by (T04-03). T04-05 loc intercept
- * reuses `courseDeg`. +x east, +y north; heading 0 = north.
- *
- * Fly-by radius uses the same rate-one turn as T01-03 (`TURN_RATE_DEG_PER_S`).
- */
+import { TURN_RATE_DEG_PER_S, shortestDeltaDeg } from "../kinematics";
 
-import { TURN_RATE_DEG_PER_S } from "../kinematics";
-import { DEG2RAD, normalizeHeadingDeg } from "../geo/coords";
-import { shortestDeltaDeg } from "../kinematics";
+export interface LatLon {
+  latDeg: number;
+  lonDeg: number;
+}
 
-export interface NmPoint {
+export interface NmEastNorth {
   xNm: number;
   yNm: number;
 }
 
-/** Floor / cap for fly-by lead distance (NM). */
+export type NmPoint = NmEastNorth;
+
+export const DEG2RAD = Math.PI / 180;
+const NM_PER_DEG_LAT = 60;
+
+function originCosLat(origin: LatLon): number {
+  if (Math.abs(origin.latDeg) >= 90) {
+    throw new RangeError("ENU origin latitude cannot be at a pole (|latDeg| >= 90)");
+  }
+  return Math.cos(origin.latDeg * DEG2RAD);
+}
+
+export function latLonToNm(point: LatLon, origin: LatLon): NmEastNorth {
+  const cosLat = originCosLat(origin);
+  return {
+    xNm: (point.lonDeg - origin.lonDeg) * NM_PER_DEG_LAT * cosLat,
+    yNm: (point.latDeg - origin.latDeg) * NM_PER_DEG_LAT,
+  };
+}
+
+export function nmToLatLon(en: NmEastNorth, origin: LatLon): LatLon {
+  const cosLat = originCosLat(origin);
+  return {
+    latDeg: origin.latDeg + en.yNm / NM_PER_DEG_LAT,
+    lonDeg: origin.lonDeg + en.xNm / (NM_PER_DEG_LAT * cosLat),
+  };
+}
+
+export function normalizeHeadingDeg(deg: number): number {
+  return ((deg % 360) + 360) % 360;
+}
+
 export const FLYBY_FLOOR_NM = 0.2;
 export const FLYBY_CAP_NM = 4;
-/** Treat course changes smaller than this as 1° so tan(θ/2) is never 0. */
 export const FLYBY_MIN_TURN_DEG = 1;
-/** Lone DIRECT fly-over: sequence inside this NM (plus TAS/dt slack). */
 export const DIRECT_SEQUENCE_NM = 0.3;
 
-/**
- * True course from `from` to `to` in `[0, 360)`.
- * `atan2(east, north)` so 90° is +x and 0° is +y.
- */
 export function courseDeg(from: NmPoint, to: NmPoint): number {
   const dx = to.xNm - from.xNm;
   const dy = to.yNm - from.yNm;
@@ -36,10 +57,6 @@ export function distanceNm(from: NmPoint, to: NmPoint): number {
   return Math.hypot(to.xNm - from.xNm, to.yNm - from.yNm);
 }
 
-/**
- * Along-track NM to `to` along `headingDeg` (positive = target ahead).
- * Abeam / past when this is ≤ 0.
- */
 export function alongTrackNm(from: NmPoint, to: NmPoint, headingDeg: number): number {
   const rad = normalizeHeadingDeg(headingDeg) * DEG2RAD;
   const dx = to.xNm - from.xNm;
@@ -47,10 +64,6 @@ export function alongTrackNm(from: NmPoint, to: NmPoint, headingDeg: number): nu
   return dx * Math.sin(rad) + dy * Math.cos(rad);
 }
 
-/**
- * Turn radius (NM) at TAS for a constant `turnRateDegPerS` rate-one turn:
- * `ω = rate * π/180`; `R = (tas/3600) / ω` ≈ `tas / 188.5` at 3°/s.
- */
 export function turnRadiusNm(tasKt: number, turnRateDegPerS: number = TURN_RATE_DEG_PER_S): number {
   const omegaRadS = turnRateDegPerS * DEG2RAD;
   if (omegaRadS <= 0 || !Number.isFinite(tasKt) || tasKt <= 0) {
@@ -59,15 +72,10 @@ export function turnRadiusNm(tasKt: number, turnRateDegPerS: number = TURN_RATE_
   return tasKt / 3600 / omegaRadS;
 }
 
-/** Absolute heading change in `[0, 180]`. */
 export function courseChangeDeg(fromCourseDeg: number, toCourseDeg: number): number {
   return Math.abs(shortestDeltaDeg(fromCourseDeg, toCourseDeg));
 }
 
-/**
- * Distance to start a fly-by for course change `θ`: `R * tan(θ/2)`.
- * `θ` is absolute degrees (min 1°). Clamped to `[0.2, 4]` NM.
- */
 export function flyByStartNm(tasKt: number, courseChangeAbsDeg: number): number {
   const thetaDeg = Math.max(FLYBY_MIN_TURN_DEG, Math.abs(courseChangeAbsDeg));
   const thetaRad = thetaDeg * DEG2RAD;
@@ -78,11 +86,8 @@ export function flyByStartNm(tasKt: number, courseChangeAbsDeg: number): number 
   return Math.min(FLYBY_CAP_NM, Math.max(FLYBY_FLOOR_NM, d));
 }
 
-/**
- * Lone DIRECT (no next course): sequence when closer than this so the
- * aircraft does not orbit the fix. `max(0.3, 2 * dt * tas / 3600)`.
- */
 export function flyOverSequenceNm(tasKt: number, dtS: number): number {
   const slack = (2 * dtS * Math.max(0, tasKt)) / 3600;
   return Math.max(DIRECT_SEQUENCE_NM, slack);
 }
+

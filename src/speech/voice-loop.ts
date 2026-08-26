@@ -9,7 +9,13 @@
 
 import type { Command, Instruction, ParseStage } from "@core";
 import type { PttCaptureEvent, PttUpResult } from "./capture/ptt-controller";
-import { SpeechNotAvailableError, type VoiceStatusEvent } from "./errors";
+import {
+  SpeechNotAvailableError,
+  type AudioClip,
+  type SpeechPort,
+  type Transcript,
+  type VoiceStatusEvent,
+} from "./index";
 import {
   markPttUp,
   recordAudioStart,
@@ -17,9 +23,12 @@ import {
   recordTranscriptLatency,
 } from "./metrics";
 import type { VoiceUtteranceMetrics } from "./metrics";
-import { createReadbackPlayer, type ReadbackPlayer } from "./playback/readback-player";
-import { TransmitGate, type TransmitGateEvent } from "./playback/transmit-gate";
-import type { AudioClip, SpeechPort, Transcript } from "./types";
+import {
+  TransmitGate,
+  createReadbackPlayer,
+  type ReadbackPlayer,
+  type TransmitGateEvent,
+} from "./playback/readback-player";
 import { readbackForTts } from "./tts-text";
 
 /** Named default for the settings slider / logs. T03-15: does not skip parse. */

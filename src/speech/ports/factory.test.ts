@@ -1,6 +1,5 @@
 import { expect, test, vi } from "vitest";
-import { NullSpeechPort } from "../null-speech-port";
-import type { SpeechPort } from "../types";
+import { NullSpeechPort, type SpeechPort } from "..";
 import {
   createBootSpeechPort,
   createSpeechPort,

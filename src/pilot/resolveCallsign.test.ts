@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { createAircraft, createWorld, setSelectedAircraft, type Aircraft } from "@core";
-import { numericTail, resolveCallsign } from "./resolveCallsign";
+import { numericTail, resolveCallsign } from "./handleRadioText";
 
 function sampleAircraft(callsign: string, id: string): Aircraft {
   return createAircraft({

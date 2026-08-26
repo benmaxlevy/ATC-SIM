@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { mulberry32 } from "./rng";
+import { mulberry32 } from "./index";
 
 test("mulberry32 is deterministic and stays in [0, 1)", () => {
   const a = mulberry32(1);
@@ -18,7 +18,7 @@ test("seed 0 is legal and differs from seed 1", () => {
 });
 
 test("rng source has no unseeded PRNG call", () => {
-  const sources = import.meta.glob("./rng.ts", {
+  const sources = import.meta.glob("./index.ts", {
     query: "?raw",
     import: "default",
     eager: true,

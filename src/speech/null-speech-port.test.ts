@@ -1,7 +1,5 @@
 import { expect, test } from "vitest";
-import { SpeechNotAvailableError } from "./errors";
-import { NullSpeechPort } from "./null-speech-port";
-import type { AudioClip, Transcript } from "./types";
+import { NullSpeechPort, SpeechNotAvailableError, type AudioClip, type Transcript } from "./index";
 
 function silentClip(): AudioClip {
   return {
