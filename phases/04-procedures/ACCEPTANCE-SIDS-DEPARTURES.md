@@ -84,11 +84,11 @@ npx vitest run src/scenario/departureSpawn.test.ts \
 
 ### Step 4: Climb-Via SID Navigation
 1. Watch `AAL100` navigate the BAY1 SID:
-   - Aircraft climbs straight ahead past runway end along RW27 centerline towards `BAYEE` (-3.5 NM, 0 NM).
-   - Reaches `BAYEE` at or above 1,500 ft, initiates gradual sweeping right turn towards `BAYNO` (-6.5 NM, +4.5 NM).
-   - Reaches and crosses `BAYNO` at or above 2,500 ft with speed <= 250 kt.
-   - Curves northeast towards `NORMA` (+8 NM, +12 NM), crossing at or above 6,000 ft and climbing to top assigned altitude (`10,000` ft).
-   - (For South transition departures: aircraft crosses `BAYEE`, initiates sweeping left turn to `BAYSO` at or above 2,500 ft / <= 250 kt, then curves east towards `OCTTA` at or above 8,000 ft).
+   - Aircraft climbs straight ahead past runway end along RW27 centerline towards `BAYEE` (-4.0 NM, 0.0 NM).
+   - Reaches `BAYEE` at or above 1,500 ft, initiates gradual right curve towards `BAYNW` (-8.0 NM, +4.5 NM).
+   - Reaches and crosses `BAYNW` at or above 2,500 ft with speed <= 250 kt.
+   - Curves northwest towards `NORMA` (-16.0 NM, +16.0 NM), crossing at or above 6,000 ft and climbing to top assigned altitude (`10,000` ft).
+   - (For South transition departures: aircraft crosses `BAYEE`, initiates left curve to `BAYSO` (-7.0 NM, -6.0 NM) at or above 2,500 ft / <= 250 kt, then curves south towards `OCTTA` (-8.0 NM, -18.0 NM) at or above 8,000 ft).
 2. Check MSAW and CA alerting:
    - Verify zero false MSAW caution (yellow) or alert (red) warnings during the departure climb.
    - Verify zero false Conflict Alerts (CA) against properly separated STAR arrivals.

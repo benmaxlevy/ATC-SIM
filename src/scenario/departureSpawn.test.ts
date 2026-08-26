@@ -27,8 +27,8 @@ describe("departureSpawnPose (AC1)", () => {
     expect(pose.runwayId).toBe("27");
     expect(pose.transitionId).toBe("NORMA");
 
-    // Route for BAY1 via RW27 to NORMA: RW27 leg (BAYEE) -> enroute (BAYNO, NORMA)
-    expect(pose.routeFixIds).toEqual(["BAYEE", "BAYNO", "NORMA"]);
+    // Route for BAY1 via RW27 to NORMA: RW27 leg (BAYEE) -> enroute (BAYNW, NORMA)
+    expect(pose.routeFixIds).toEqual(["BAYEE", "BAYNW", "NORMA"]);
 
     // Armed Intent
     expect(pose.intent.lateral).toEqual({
@@ -36,7 +36,7 @@ describe("departureSpawnPose (AC1)", () => {
       sidId: "BAY1",
       starId: "BAY1",
       toFixIndex: 0,
-      routeFixIds: ["BAYEE", "BAYNO", "NORMA"],
+      routeFixIds: ["BAYEE", "BAYNW", "NORMA"],
     });
     expect(pose.intent.vertical).toEqual({
       type: "VIA_SID",

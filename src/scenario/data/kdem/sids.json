@@ -1,6 +1,6 @@
 {
   "airportId": "KDEM",
-  "note": "BAY ONE: Runway 27 climb to BAYEE, curving departures to NORMA (North) and OCTTA (South/East). Video map 007 is a separate MAPS drawing.",
+  "note": "BAY ONE: Runway 27 climb to BAYEE, curving departures to NORMA (Northwest) and OCTTA (South). Video map 007 is a separate MAPS drawing.",
   "sids": [
     {
       "id": "BAY1",
@@ -26,7 +26,7 @@
           "name": "NORMA",
           "legs": [
             {
-              "fixId": "BAYNO",
+              "fixId": "BAYNW",
               "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 2500 },
               "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
             },

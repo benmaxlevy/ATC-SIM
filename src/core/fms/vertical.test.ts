@@ -339,7 +339,7 @@ test("AC1 & AC2 — aircraft flies SID legs in sequence with VIA_SID and respect
     sidId: "BAY1",
     starId: "BAY1",
     toFixIndex: 0,
-    routeFixIds: ["BAYEE", "BAYNO", "NORMA"],
+    routeFixIds: ["BAYEE", "BAYNW", "NORMA"],
   };
   dal.intent.vertical = { type: "VIA_SID", sidId: "BAY1" };
 
@@ -362,8 +362,8 @@ test("AC1 & AC2 — aircraft flies SID legs in sequence with VIA_SID and respect
   expect(stepUntilFix(world, "BAYEE", 300)).toBe(true);
   expect(dal.altitudeFt).toBeGreaterThanOrEqual(1500);
 
-  // Sequences BAYNO (which has AT_OR_ABOVE 2500 and AT_OR_BELOW 250 kt)
-  expect(stepUntilFix(world, "BAYNO", 500)).toBe(true);
+  // Sequences BAYNW (which has AT_OR_ABOVE 2500 and AT_OR_BELOW 250 kt)
+  expect(stepUntilFix(world, "BAYNW", 500)).toBe(true);
   expect(dal.speedKt).toBeLessThanOrEqual(250 + 5);
 
   // Aircraft continues to fly towards NORMA
@@ -390,7 +390,7 @@ test("AC3 — heading command cancels PROCEDURE and VIA_SID to HEADING and ASSIG
     sidId: "BAY1",
     starId: "BAY1",
     toFixIndex: 0,
-    routeFixIds: ["BAYEE", "BAYNO", "NORMA"],
+    routeFixIds: ["BAYEE", "BAYNW", "NORMA"],
   };
   dal.intent.vertical = { type: "VIA_SID", sidId: "BAY1" };
 

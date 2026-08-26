@@ -76,7 +76,7 @@ test("AC5 — DEM/OCT/DMO/IDEM, STAR fixes, BAY1 sid, airportId is a string", ()
     "NORMA",
     "OCTTA",
     "BAYEE",
-    "BAYNO",
+    "BAYNW",
     "BAYSO",
   ]) {
     expect(

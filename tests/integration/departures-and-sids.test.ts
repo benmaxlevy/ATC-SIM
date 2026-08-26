@@ -84,7 +84,7 @@ describe("Departures and SIDs integration test suite (T04-23)", () => {
       sidId: "BAY1",
       starId: "BAY1",
       toFixIndex: 0,
-      routeFixIds: ["BAYEE", "BAYNO", "NORMA"],
+      routeFixIds: ["BAYEE", "BAYNW", "NORMA"],
     });
     expect(departure.intent.vertical).toEqual({
       type: "VIA_SID",
@@ -266,7 +266,7 @@ describe("Departures and SIDs integration test suite (T04-23)", () => {
       sidId: "BAY1",
       starId: "BAY1",
       toFixIndex: 1,
-      routeFixIds: ["BAYEE", "BAYNO", "NORMA"],
+      routeFixIds: ["BAYEE", "BAYNW", "NORMA"],
     };
     dep.intent.vertical = { type: "VIA_SID", sidId: "BAY1" };
     dep.intent.assignedAltitudeFt = 10000;
