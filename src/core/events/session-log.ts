@@ -172,8 +172,10 @@ export type SessionEvent =
       atSimMs: number;
       atWallMs: number;
       callsign: string;
-      starId: string;
-      starName: string;
+      starId?: string;
+      starName?: string;
+      sidId?: string;
+      sidName?: string;
       altitudeFt: number;
       text: string;
     }
@@ -198,6 +200,61 @@ export type SessionEvent =
       atWallMs: number;
       callsign: string;
       fromSectorId: string;
+    }
+  | {
+      type: "handoff.departure.spawned";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      fromSectorId: string;
+      runwayId?: string;
+      sidId?: string;
+    }
+  | {
+      type: "handoff.center";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      toSectorId: string;
+    }
+  | {
+      type: "handoff.outbound.initiated";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      toSectorId: string;
+    }
+  | {
+      type: "handoff.outbound.completed";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      toSectorId: string;
+    }
+  | {
+      type: "departure.scheduled";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      sidId: string;
+      transitionId?: string;
+      runwayId: string;
+      scheduledSimMs: number;
+    }
+  | {
+      type: "departure.spawned";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      sidId: string;
+      transitionId?: string;
+      runwayId: string;
+    }
+  | {
+      type: "nav.departed";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
     };
 
 /**

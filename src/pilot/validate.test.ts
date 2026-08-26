@@ -180,6 +180,22 @@ test("VIA unknown procedure rejects; CROSS not on course rejects", () => {
   ).toBe(true);
 });
 
+test("AC4 — validateInstructions approves valid CLIMB_VIA and rejects unknown SID", () => {
+  const catalog = {
+    stars: [{ id: "DEM1", name: "DEMO ONE" }],
+    sids: [{ id: "KDEM1", name: "KDEM ONE DEPARTURE" }],
+  };
+  expect(
+    validateInstructions(jet(), [{ type: "CLIMB_VIA", procedureId: "KDEM1" }], { catalog }).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(jet(), [{ type: "CLIMB_VIA", procedureId: "UNKNOWN" }], { catalog }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_PROCEDURE" });
+  expect(
+    validateInstructions(jet(), [{ type: "JOIN_PROCEDURE", procedureId: "KDEM1" }], { catalog }).ok,
+  ).toBe(true);
+});
+
 test("GO_AROUND rejects unless clearedApproachId is set", () => {
   const ac = jet();
   expect(validateInstructions(ac, [{ type: "GO_AROUND" }])).toEqual({

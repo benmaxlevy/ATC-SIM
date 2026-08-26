@@ -199,3 +199,12 @@ test("T04-17 AC5 — help overlay lists click-accept inbound handoff", () => {
   expect(blob).toMatch(/CRC slew analog/);
   expect(bindingById("mouse-accept-handoff")?.action).toMatch(/CLICK accept inbound handoff/);
 });
+
+test("T04-20 AC5 — F1 Keymap help overlay documents Shift+H as the unified handoff shortcut for Tower/Center", () => {
+  const binding = bindingById("tower-handoff");
+  expect(binding).toBeDefined();
+  expect(binding?.windowsKeys).toBe("Shift+H");
+  expect(binding?.action).toBe(
+    "Initiate handoff: Tower (if on approach) or Center (if climbing outbound)",
+  );
+});

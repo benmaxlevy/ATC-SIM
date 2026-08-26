@@ -14,7 +14,8 @@ export type LateralMode =
   | { type: "DIRECT"; fixId: string }
   | {
       type: "PROCEDURE";
-      starId: string;
+      starId?: string;
+      sidId?: string;
       toFixIndex: number;
       routeFixIds: readonly string[];
     }
@@ -38,6 +39,7 @@ export interface CrossConstraint {
 export type VerticalMode =
   | { type: "ASSIGNED" }
   | { type: "VIA_STAR"; starId: string; sense?: "DESCEND" | "CLIMB" }
+  | { type: "VIA_SID"; sidId: string }
   | { type: "GS"; approachId: string }
   | { type: "MISSED_CLIMB"; altitudeFt: number };
 

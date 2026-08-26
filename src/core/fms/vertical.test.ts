@@ -16,6 +16,7 @@ import fixesJson from "../../scenario/data/kdem/fixes.json";
 import ilsJson from "../../scenario/data/kdem/ils.json";
 import ndbsJson from "../../scenario/data/kdem/ndbs.json";
 import proceduresJson from "../../scenario/data/kdem/procedures.json";
+import sidsJson from "../../scenario/data/kdem/sids.json";
 import vorsJson from "../../scenario/data/kdem/vors.json";
 
 function kdemSource(): FixRegistrySource {
@@ -26,7 +27,10 @@ function kdemSource(): FixRegistrySource {
 }
 
 function kdemCatalog(): VerticalCatalog {
-  return { stars: proceduresJson.stars as VerticalCatalog["stars"] };
+  return {
+    stars: proceduresJson.stars as VerticalCatalog["stars"],
+    sids: sidsJson.sids as VerticalCatalog["sids"],
+  };
 }
 
 function stepUntilFix(
@@ -102,6 +106,45 @@ test("targetAltitudeFt climb-via uses the next unpassed constraint", () => {
       onStar: true,
     }),
   ).toBe(8000);
+});
+
+test("AC2 — targetAltitudeFt with VIA_SID caps climb on AT_OR_BELOW until sequenced", () => {
+  const viaSid = { type: "VIA_SID" as const, sidId: "BAY1" };
+  // When assigned top altitude is 10000 ft and next constraint is AT_OR_BELOW 5000, target is 5000
+  expect(
+    targetAltitudeFt({
+      assignedFt: 10000,
+      vertical: viaSid,
+      nextConstraint: { type: "AT_OR_BELOW", altitudeFt: 5000 },
+      onStar: true,
+    }),
+  ).toBe(5000);
+  // When assigned top altitude is 4000 ft and next constraint is AT_OR_BELOW 5000, target is 4000
+  expect(
+    targetAltitudeFt({
+      assignedFt: 4000,
+      vertical: viaSid,
+      nextConstraint: { type: "AT_OR_BELOW", altitudeFt: 5000 },
+      onStar: true,
+    }),
+  ).toBe(4000);
+  // When assigned top altitude is 10000 ft and next constraint is AT_OR_ABOVE 6000, target is 10000
+  expect(
+    targetAltitudeFt({
+      assignedFt: 10000,
+      vertical: viaSid,
+      nextConstraint: { type: "AT_OR_ABOVE", altitudeFt: 6000 },
+      onStar: true,
+    }),
+  ).toBe(10000);
+  // When nextConstraint is undefined, target is assignedFt
+  expect(
+    targetAltitudeFt({
+      assignedFt: 10000,
+      vertical: viaSid,
+      onStar: true,
+    }),
+  ).toBe(10000);
 });
 
 test("targetSpeedKt does not exceed next AOB and does not speed up to it", () => {
@@ -276,4 +319,87 @@ test("nav.star.vectors clears VIA_STAR and flies last MERGE constraint", () => {
   expect(dal.intent.vertical).toEqual({ type: "ASSIGNED" });
   expect(dal.intent.assignedAltitudeFt).toBe(4000);
   expect(dal.intent.assignedSpeedKt).toBe(210);
+});
+
+test("AC1 & AC2 — aircraft flies SID legs in sequence with VIA_SID and respects altitude constraints", () => {
+  const registry = buildFixRegistry(kdemSource());
+  const bayee = registry.require("BAYEE");
+  const dal = createAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    xNm: bayee.xNm - 5,
+    yNm: bayee.yNm,
+    headingDeg: 90,
+    altitudeFt: 1500,
+    speedKt: 220,
+  });
+  dal.intent.assignedAltitudeFt = 10000;
+  dal.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "BAY1",
+    starId: "BAY1",
+    toFixIndex: 0,
+    routeFixIds: ["BAYEE", "BAYNW", "NORMA"],
+  };
+  dal.intent.vertical = { type: "VIA_SID", sidId: "BAY1" };
+
+  const log = new SessionLog();
+  const world = createWorld({
+    aircraft: [dal],
+    fixRegistry: registry,
+    sessionLog: log,
+    catalog: {
+      airportId: "KDEM",
+      navaids: [],
+      fixes: [],
+      stars: kdemCatalog().stars ?? [],
+      approaches: [],
+      sids: kdemCatalog().sids ?? [],
+    },
+  });
+
+  // Sequences BAYEE
+  expect(stepUntilFix(world, "BAYEE", 300)).toBe(true);
+  expect(dal.altitudeFt).toBeGreaterThanOrEqual(1500);
+
+  // Sequences BAYNW (which has AT_OR_ABOVE 2500 and AT_OR_BELOW 250 kt)
+  expect(stepUntilFix(world, "BAYNW", 500)).toBe(true);
+  expect(dal.speedKt).toBeLessThanOrEqual(250 + 5);
+
+  // Aircraft continues to fly towards NORMA
+  expect(dal.intent.lateral?.type).toBe("PROCEDURE");
+  if (dal.intent.lateral?.type === "PROCEDURE") {
+    expect(dal.intent.lateral.toFixIndex).toBe(2);
+    expect(dal.intent.lateral.routeFixIds[dal.intent.lateral.toFixIndex]).toBe("NORMA");
+  }
+});
+
+test("AC3 — heading command cancels PROCEDURE and VIA_SID to HEADING and ASSIGNED", () => {
+  const dal = createAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 90,
+    altitudeFt: 3000,
+    speedKt: 220,
+  });
+  dal.intent.assignedAltitudeFt = 10000;
+  dal.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "BAY1",
+    starId: "BAY1",
+    toFixIndex: 0,
+    routeFixIds: ["BAYEE", "BAYNW", "NORMA"],
+  };
+  dal.intent.vertical = { type: "VIA_SID", sidId: "BAY1" };
+
+  // Applying a heading vector (e.g. via setHeadingMode / applyIntent)
+  dal.intent.assignedHeadingDeg = 270;
+  dal.intent.lateral = { type: "HEADING", headingDeg: 270 };
+  dal.intent.vertical = { type: "ASSIGNED" };
+
+  expect(dal.intent.lateral).toEqual({ type: "HEADING", headingDeg: 270 });
+  expect(dal.intent.vertical).toEqual({ type: "ASSIGNED" });
+  expect(dal.intent.assignedAltitudeFt).toBe(10000);
 });

@@ -20,10 +20,16 @@ import type { SessionLog } from "./events/session-log";
 import { stepAircraft } from "./kinematics";
 import type { FixRegistry, FixRegistrySource } from "./nav/fixRegistry";
 import { buildFixRegistry } from "./nav/fixRegistry";
+import { handoffFor } from "./handoff";
 import { applyLateralFms } from "./fms/lateral";
-import { applyMissedFms } from "./fms/missed";
+import { applyMissedFms, isLandingInhibited } from "./fms/missed";
 import { despawnLandedAircraft } from "./fms/landing";
-import { applyGlidepathFms, applyVerticalFms, type CatalogStar } from "./fms/vertical";
+import {
+  applyGlidepathFms,
+  applyVerticalFms,
+  type CatalogSid,
+  type CatalogStar,
+} from "./fms/vertical";
 import { locAxisForApproach } from "./nav/localizer";
 import { gsParamsForApproach } from "./nav/glidepath";
 
@@ -61,7 +67,7 @@ export interface World {
       daFt?: number;
       missed?: { headingDeg: number; climbToFt: number; directFixId?: string };
     }>;
-    sids: ReadonlyArray<{ id: string; legs?: ReadonlyArray<{ fixId: string }> }>;
+    sids: ReadonlyArray<CatalogSid>;
   };
   /**
    * O(1) DCT / STAR lookup. Built from `catalog` geometry when present.
@@ -90,6 +96,25 @@ export interface World {
    * Radio rejects while `kind === "inbound"`. Not Command IR; not kinematics.
    */
   handoffs: Map<string, TrackHandoff>;
+  /**
+   * Scheduled departure traffic (T04-21). Evaluated each stepWorld tick.
+   */
+  scheduledDepartures?: ScheduledDeparture[];
+  /**
+   * Optional custom departure spawner hook.
+   */
+  departureSpawner?: (world: World) => Aircraft[];
+}
+
+export interface ScheduledDeparture {
+  callsign: string;
+  runwayId: string;
+  sidId: string;
+  transitionId?: string;
+  assignedAltitudeFt?: number;
+  aircraftType?: string;
+  scheduledSimMs: number;
+  spawned?: boolean;
 }
 
 function catalogToFixSource(catalog: NonNullable<World["catalog"]>): FixRegistrySource | null {
@@ -148,6 +173,8 @@ export function createWorld(partial?: Partial<World>): World {
     msawInhibit: partial?.msawInhibit ?? null,
     sessionLog: partial?.sessionLog ?? null,
     handoffs: partial?.handoffs ?? new Map(),
+    scheduledDepartures: partial?.scheduledDepartures,
+    departureSpawner: partial?.departureSpawner,
   };
 }
 
@@ -318,6 +345,7 @@ export function stepWorld(world: World, dtS: number): World {
     return world;
   }
   world.simTimeMs += dtS * 1000;
+  world.departureSpawner?.(world);
   const locAxisFor = (approachId: string) =>
     locAxisForApproach(approachId, world.catalog, world.fixRegistry);
   for (const ac of world.aircraft) {
@@ -352,6 +380,7 @@ export function stepWorld(world: World, dtS: number): World {
     }
   }
   despawnLandedAircraft(world);
+  despawnDepartedAircraft(world);
   syncConflictAlerts(world, evaluateConflictAlert(world.aircraft));
   if (world.mvaChart) {
     syncMsawAlerts(
@@ -362,6 +391,60 @@ export function stepWorld(world: World, dtS: number): World {
     syncMsawAlerts(world, []);
   }
   return world;
+}
+
+/** Standard TRACON boundary radius in NM for departure exit / despawn. */
+export const TRACON_BOUNDARY_RADIUS_NM = 28;
+
+/**
+ * After kinematics: despawn outbound / departure aircraft that reached or exceeded
+ * the TRACON boundary (>= 28 NM). Logs `handoff.outbound.completed` (if handed off)
+ * and `nav.departed`. Mutates `world.aircraft`.
+ */
+export function despawnDepartedAircraft(world: World): void {
+  const gone = new Set<string>();
+  const ctx = {
+    log: world.sessionLog,
+    simTimeMs: world.simTimeMs,
+  };
+  for (const ac of world.aircraft) {
+    if (isLandingInhibited(ac) || ac.intent.lateral?.type === "LANDING") {
+      continue;
+    }
+    const distNm = Math.hypot(ac.xNm, ac.yNm);
+    const ho = handoffFor(world, ac.id);
+    const isOutboundOrDeparture =
+      ho.kind === "outbound" || ho.kind === "departure" || ac.intent.vertical?.type === "VIA_SID";
+
+    if (isOutboundOrDeparture && distNm >= TRACON_BOUNDARY_RADIUS_NM) {
+      if (ho.kind === "outbound") {
+        ctx.log?.append({
+          type: "handoff.outbound.completed",
+          atSimMs: ctx.simTimeMs,
+          atWallMs: 0,
+          callsign: ac.callsign,
+          toSectorId: ho.toSectorId,
+        });
+      }
+      ctx.log?.append({
+        type: "nav.departed",
+        atSimMs: ctx.simTimeMs,
+        atWallMs: 0,
+        callsign: ac.callsign,
+      });
+      gone.add(ac.id);
+    }
+  }
+  if (gone.size === 0) {
+    return;
+  }
+  world.aircraft = world.aircraft.filter((ac) => !gone.has(ac.id));
+  for (const id of gone) {
+    world.handoffs.delete(id);
+  }
+  if (world.selectedAircraftId && gone.has(world.selectedAircraftId)) {
+    world.selectedAircraftId = null;
+  }
 }
 
 /**

@@ -90,29 +90,46 @@ test("spoken demo 1 snaps to catalog DEM1", () => {
   expect(groundProcedureToCatalog("NOPE", catalog)).toBeNull();
 });
 
-test("groundInstructionProcedures snaps DESCEND_VIA and JOIN_PROCEDURE", () => {
+test("groundInstructionProcedures snaps DESCEND_VIA, CLIMB_VIA, and JOIN_PROCEDURE", () => {
+  const BAY1 = { id: "BAY1", name: "BAY ONE DEPARTURE" };
   expect(
     groundInstructionProcedures(
       [
         { type: "DESCEND_VIA", procedureId: "DEMO1" },
-        { type: "JOIN_PROCEDURE", procedureId: "DEMO1" },
+        { type: "CLIMB_VIA", procedureId: "BAY 1" },
+        { type: "JOIN_PROCEDURE", procedureId: "BAY ONE" },
         { type: "IDENT" },
       ],
-      [DEM1],
+      [DEM1, BAY1],
     ),
   ).toEqual([
     { type: "DESCEND_VIA", procedureId: "DEM1" },
-    { type: "JOIN_PROCEDURE", procedureId: "DEM1" },
+    { type: "CLIMB_VIA", procedureId: "BAY1" },
+    { type: "JOIN_PROCEDURE", procedureId: "BAY1" },
     { type: "IDENT" },
   ]);
 });
 
-test("proceduresFromCatalog keeps star names", () => {
+test("proceduresFromCatalog extracts both STARs and SIDs dynamically from catalog", () => {
   expect(
     proceduresFromCatalog({
       stars: [{ id: "DEM1", name: "DEMO ONE" }],
+      sids: [{ id: "BAY1", name: "BAY ONE DEPARTURE" }],
     }),
-  ).toEqual([{ id: "DEM1", name: "DEMO ONE" }]);
+  ).toEqual([
+    { id: "DEM1", name: "DEMO ONE" },
+    { id: "BAY1", name: "BAY ONE DEPARTURE" },
+  ]);
+});
+
+test("groundFixToCatalog snaps SID departure fixes (BAYEE, BAYNW, BAYSO, NORMA, OCTTA)", () => {
+  const fixes = ["BAYEE", "BAYNW", "BAYSO", "NORMA", "OCTTA", "MISSD"];
+  expect(groundFixToCatalog("bay ee", fixes)).toBe("BAYEE");
+  expect(groundFixToCatalog("BAY-EE", fixes)).toBe("BAYEE");
+  expect(groundFixToCatalog("bay nw", fixes)).toBe("BAYNW");
+  expect(groundFixToCatalog("bay so", fixes)).toBe("BAYSO");
+  expect(groundFixToCatalog("norma", fixes)).toBe("NORMA");
+  expect(groundFixToCatalog("octta", fixes)).toBe("OCTTA");
 });
 
 test("sanitizeCatalogApproaches sanitizes and formats", () => {

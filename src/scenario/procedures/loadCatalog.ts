@@ -17,7 +17,10 @@ import type {
   NavFix,
   NavFixKind,
   ProcedureCatalog,
+  SidEnrouteTransition,
+  SidLeg,
   SidProcedure,
+  SidRunwayTransition,
   SpeedConstraint,
   StarLeg,
   StarProcedure,
@@ -208,32 +211,88 @@ function parseStar(value: unknown, index: number): StarProcedure {
   return star;
 }
 
+function parseSidLeg(value: unknown, path: string): SidLeg {
+  if (!isRecord(value)) {
+    throw new Error(`Catalog ${path} must be an object`);
+  }
+  const leg: SidLeg = { fixId: assertId(value.fixId, `${path}.fixId`) };
+  if (value.altConstraint !== undefined) {
+    leg.altConstraint = parseAltConstraint(value.altConstraint, `${path}.altConstraint`);
+  }
+  if (value.speedConstraint !== undefined) {
+    leg.speedConstraint = parseSpeedConstraint(value.speedConstraint, `${path}.speedConstraint`);
+  }
+  return leg;
+}
+
+function parseSidRunwayTransition(value: unknown, path: string): SidRunwayTransition {
+  if (!isRecord(value)) {
+    throw new Error(`Catalog ${path} must be an object`);
+  }
+  return {
+    runwayId: assertString(value.runwayId, `${path}.runwayId`),
+    initialHeadingDeg: optionalNumber(value.initialHeadingDeg, `${path}.initialHeadingDeg`),
+    initialClimbFt: optionalNumber(value.initialClimbFt, `${path}.initialClimbFt`),
+    legs: assertArray(value.legs, `${path}.legs`).map((leg, i) =>
+      parseSidLeg(leg, `${path}.legs[${i}]`),
+    ),
+  };
+}
+
+function parseSidEnrouteTransition(value: unknown, path: string): SidEnrouteTransition {
+  if (!isRecord(value)) {
+    throw new Error(`Catalog ${path} must be an object`);
+  }
+  return {
+    id: assertString(value.id, `${path}.id`),
+    name: assertString(value.name, `${path}.name`),
+    legs: assertArray(value.legs, `${path}.legs`).map((leg, i) =>
+      parseSidLeg(leg, `${path}.legs[${i}]`),
+    ),
+  };
+}
+
 function parseSid(value: unknown, index: number): SidProcedure {
   const path = `sids[${index}]`;
   if (!isRecord(value)) {
     throw new Error(`Catalog ${path} must be an object`);
   }
-  const runway = optionalString(value.runway, `${path}.runway`);
-  return {
+  const runwayTransitions =
+    value.runwayTransitions !== undefined
+      ? assertArray(value.runwayTransitions, `${path}.runwayTransitions`).map((item, i) =>
+          parseSidRunwayTransition(item, `${path}.runwayTransitions[${i}]`),
+        )
+      : undefined;
+  const common = assertArray(value.common, `${path}.common`).map((leg, i) =>
+    parseSidLeg(leg, `${path}.common[${i}]`),
+  );
+  const enrouteTransitions =
+    value.enrouteTransitions !== undefined
+      ? assertArray(value.enrouteTransitions, `${path}.enrouteTransitions`).map((item, i) =>
+          parseSidEnrouteTransition(item, `${path}.enrouteTransitions[${i}]`),
+        )
+      : undefined;
+  const initialClimbFt = optionalNumber(value.initialClimbFt, `${path}.initialClimbFt`);
+
+  const sid: SidProcedure = {
     id: assertString(value.id, `${path}.id`),
     name: assertString(value.name, `${path}.name`),
-    ...(runway !== undefined ? { runway } : {}),
-    legs: assertArray(value.legs, `${path}.legs`).map((leg, i) => {
-      if (!isRecord(leg)) {
-        throw new Error(`Catalog ${path}.legs[${i}] must be an object`);
-      }
-      const parsed: SidProcedure["legs"][number] = {
-        fixId: assertId(leg.fixId, `${path}.legs[${i}].fixId`),
-      };
-      if (leg.altConstraint !== undefined) {
-        parsed.altConstraint = parseAltConstraint(
-          leg.altConstraint,
-          `${path}.legs[${i}].altConstraint`,
-        );
-      }
-      return parsed;
-    }),
+    ...(runwayTransitions !== undefined ? { runwayTransitions } : {}),
+    common,
+    ...(enrouteTransitions !== undefined ? { enrouteTransitions } : {}),
+    ...(initialClimbFt !== undefined ? { initialClimbFt } : {}),
   };
+
+  const legCount =
+    common.length +
+    (runwayTransitions?.reduce((sum, t) => sum + t.legs.length, 0) ?? 0) +
+    (enrouteTransitions?.reduce((sum, t) => sum + t.legs.length, 0) ?? 0);
+  if (legCount === 0) {
+    throw new Error(
+      `Catalog ${path} is empty (no runway transition, common, or enroute transition legs)`,
+    );
+  }
+  return sid;
 }
 
 function parseMissed(value: unknown, path: string): MissedApproach {
@@ -456,8 +515,26 @@ function validateRefs(catalog: ProcedureCatalog, ids: Set<string>): void {
     }
   }
   for (const sid of catalog.sids) {
-    for (const [i, leg] of sid.legs.entries()) {
-      requireRef(ids, leg.fixId, `SID ${sid.id} legs[${i}].fixId`);
+    if (sid.runwayTransitions) {
+      for (const rt of sid.runwayTransitions) {
+        for (const [i, leg] of rt.legs.entries()) {
+          requireRef(
+            ids,
+            leg.fixId,
+            `SID ${sid.id} runwayTransition ${rt.runwayId} legs[${i}].fixId`,
+          );
+        }
+      }
+    }
+    for (const [i, leg] of sid.common.entries()) {
+      requireRef(ids, leg.fixId, `SID ${sid.id} common[${i}].fixId`);
+    }
+    if (sid.enrouteTransitions) {
+      for (const et of sid.enrouteTransitions) {
+        for (const [i, leg] of et.legs.entries()) {
+          requireRef(ids, leg.fixId, `SID ${sid.id} enrouteTransition ${et.id} legs[${i}].fixId`);
+        }
+      }
     }
   }
   for (const approach of catalog.approaches) {
@@ -602,3 +679,5 @@ export function loadCatalog(dir: string): ProcedureCatalog {
     sids: readListed("sids"),
   });
 }
+
+export { findSidProcedure, sidRouteFixIds } from "./sidHelpers";
