@@ -29,12 +29,7 @@ export class SpeechNotAvailableError extends Error {
 }
 
 export type SpeechPortErrorKind =
-  | "http"
-  | "network"
-  | "timeout"
-  | "empty"
-  | "in_flight"
-  | "invalid_response";
+  "http" | "network" | "timeout" | "empty" | "in_flight" | "invalid_response";
 
 export class SpeechPortError extends Error {
   override name = "SpeechPortError";

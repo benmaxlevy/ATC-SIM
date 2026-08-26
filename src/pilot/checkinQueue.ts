@@ -118,8 +118,6 @@ interface CheckInQueueOptions {
   seed?: number;
 }
 
-
-
 function drawStaggerMs(rng: () => number): number {
   const slots = (CHECKIN_STAGGER_MAX_MS - CHECKIN_STAGGER_MIN_MS) / CHECKIN_STAGGER_QUANT_MS;
   const slot = Math.min(Math.floor(rng() * (slots + 1)), slots);

@@ -16,14 +16,10 @@ import { formatReadback, formatRejectReadback } from "./readback";
 import { validateInstructions } from "./validate";
 
 export type ResolveReason =
-  | "UNKNOWN_CALLSIGN"
-  | "AMBIGUOUS_CALLSIGN"
-  | "NO_CALLSIGN_OR_SELECTION"
-  | "SELECTED_NOT_FOUND";
+  "UNKNOWN_CALLSIGN" | "AMBIGUOUS_CALLSIGN" | "NO_CALLSIGN_OR_SELECTION" | "SELECTED_NOT_FOUND";
 
 export type ResolveResult =
-  | { ok: true; aircraftId: string; callsign: string }
-  | { ok: false; reason: ResolveReason };
+  { ok: true; aircraftId: string; callsign: string } | { ok: false; reason: ResolveReason };
 
 export function numericTail(callsign: string): string {
   return callsign.replace(/^[A-Z]{3}/, "");

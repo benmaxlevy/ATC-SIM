@@ -90,4 +90,3 @@ export function flyOverSequenceNm(tasKt: number, dtS: number): number {
   const slack = (2 * dtS * Math.max(0, tasKt)) / 3600;
   return Math.max(DIRECT_SEQUENCE_NM, slack);
 }
-

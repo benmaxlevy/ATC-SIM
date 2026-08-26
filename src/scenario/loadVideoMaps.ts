@@ -77,11 +77,7 @@ const VIDEO_MAP_JSON = import.meta.glob<unknown>("./video-maps/*/*.json", {
   import: "default",
 });
 
-import {
-  assertFinite as assertFiniteVal,
-  assertString as assertStringVal,
-  isRecord,
-} from "./load";
+import { assertFinite as assertFiniteVal, assertString as assertStringVal, isRecord } from "./load";
 
 const assertFinite = (value: unknown, path: string): number =>
   assertFiniteVal(value, path, "Video map");

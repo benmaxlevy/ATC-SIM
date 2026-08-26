@@ -19,11 +19,7 @@ import {
 export type TransmitGateState = "idle" | "armed" | "working" | "playing";
 
 export type TransmitGateEvent =
-  | "ptt-down"
-  | "working"
-  | "play-started"
-  | "play-ended"
-  | "utterance-failed";
+  "ptt-down" | "working" | "play-started" | "play-ended" | "utterance-failed";
 
 export class TransmitGate {
   private state: TransmitGateState = "idle";
