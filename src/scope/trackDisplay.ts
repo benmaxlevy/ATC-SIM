@@ -173,7 +173,7 @@ export function deriveScratchpads(
   aircraft: Aircraft,
   td?: TrackDisplay,
 ): { sp1: string; sp2: string } {
-  // Derive automatic SP1:
+  // Derive automatic SP1 (approach shorthand, or interim altitude if controller explicitly assigned one):
   const approachId =
     aircraft.intent?.clearedApproachId ??
     aircraft.intent?.locInterceptApproachId ??
@@ -182,11 +182,11 @@ export function deriveScratchpads(
   if (approachId) {
     autoSp1 = formatApproachShorthand(approachId) ?? "";
   } else if (
-    aircraft.intent?.assignedAltitudeFt != null &&
-    Number.isFinite(aircraft.intent.assignedAltitudeFt) &&
-    Math.abs(aircraft.intent.assignedAltitudeFt - aircraft.altitudeFt) >= 100
+    aircraft.intent?.controllerAssignedAltitudeFt != null &&
+    Number.isFinite(aircraft.intent.controllerAssignedAltitudeFt) &&
+    Math.abs(aircraft.intent.controllerAssignedAltitudeFt - aircraft.altitudeFt) >= 100
   ) {
-    const hundreds = Math.round(aircraft.intent.assignedAltitudeFt / 100);
+    const hundreds = Math.round(aircraft.intent.controllerAssignedAltitudeFt / 100);
     const clamped = Math.max(0, Math.min(999, hundreds));
     autoSp1 = String(clamped).padStart(3, "0");
   }

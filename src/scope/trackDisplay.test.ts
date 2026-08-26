@@ -238,6 +238,7 @@ test("T02-39: deriveScratchpads derives interim altitude to SP1 when no approach
     speedKt: 180,
   });
   ac.intent.assignedAltitudeFt = 4000;
+  ac.intent.controllerAssignedAltitudeFt = 4000;
   ac.intent.assignedSpeedKt = 180;
   ac.intent.controllerAssignedSpeedKt = 180;
   ac.intent.clearedApproachId = null;
@@ -257,6 +258,7 @@ test("T02-39: manual scratchpads take precedence over auto-derivation and cleari
     altitudeFt: 8000,
   });
   ac.intent.assignedAltitudeFt = 4000;
+  ac.intent.controllerAssignedAltitudeFt = 4000;
   ac.intent.assignedSpeedKt = 210;
   ac.intent.controllerAssignedSpeedKt = 210;
 

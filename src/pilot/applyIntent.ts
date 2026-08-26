@@ -125,6 +125,7 @@ function applyVia(
     sense === "CLIMB"
       ? { type: "VIA_SID", sidId: normId }
       : { type: "VIA_STAR", starId: normId, sense };
+  aircraft.intent.controllerAssignedAltitudeFt = undefined;
   aircraft.intent.controllerAssignedSpeedKt = undefined;
   joinPublishedLateral(aircraft, procedureId, opts);
 }
@@ -174,6 +175,7 @@ function applyOne(
       return;
     case "ALTITUDE":
       aircraft.intent.assignedAltitudeFt = instruction.altitudeFt;
+      aircraft.intent.controllerAssignedAltitudeFt = instruction.altitudeFt;
       return;
     case "SPEED":
       aircraft.intent.assignedSpeedKt = instruction.speedKt;

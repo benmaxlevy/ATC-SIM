@@ -52,6 +52,8 @@ export interface Intent {
   assignedHeadingDeg: number;
   turn: TurnDir;
   assignedAltitudeFt: number;
+  /** Altitude explicitly assigned by controller via radio/command (e.g. C40, D30). Omitted when locked to STAR/SID or default altitude. */
+  controllerAssignedAltitudeFt?: number;
   assignedSpeedKt: number;
   /** Speed explicitly assigned by controller via radio/command (e.g. S210). Omitted when locked to STAR/SID or default speed. */
   controllerAssignedSpeedKt?: number;

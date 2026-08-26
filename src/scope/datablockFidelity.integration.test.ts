@@ -113,12 +113,23 @@ describe("STARS CRC Datablock & Scratchpad Fidelity Acceptance (T02-42)", () => 
       });
       const td = createTrackDisplay("owned");
 
-      // Descend clearance to 4,000 ft
+      // Initially on spawn or procedure: no altitude in SP1
+      let derived = deriveScratchpads(ac, td);
+      expect(derived.sp1).toBe("");
+
+      // Descend clearance to 4,000 ft -> SP1 derives 040
       applyIntent(ac, [{ type: "ALTITUDE", altitudeFt: 4000, verb: "DESCEND" }], 0);
-      const derived = deriveScratchpads(ac, td);
+      derived = deriveScratchpads(ac, td);
       expect(derived.sp1).toBe("040");
 
-      // When level at assigned altitude, interim altitude scratchpad clears
+      // Controller instructs descend via STAR: altitude restriction reverts to procedure -> SP1 clears
+      applyIntent(ac, [{ type: "DESCEND_VIA", procedureId: "DEMO1" }], 0);
+      derived = deriveScratchpads(ac, td);
+      expect(derived.sp1).toBe("");
+
+      // Re-assign 4,000 ft and level off -> SP1 clears when level
+      applyIntent(ac, [{ type: "ALTITUDE", altitudeFt: 4000, verb: "DESCEND" }], 0);
+      expect(deriveScratchpads(ac, td).sp1).toBe("040");
       ac.altitudeFt = 4000;
       const leveled = deriveScratchpads(ac, td);
       expect(leveled.sp1).toBe("");
@@ -157,6 +168,7 @@ describe("STARS CRC Datablock & Scratchpad Fidelity Acceptance (T02-42)", () => 
         altitudeFt: 8000,
       });
       ac.intent.assignedAltitudeFt = 3000;
+      ac.intent.controllerAssignedAltitudeFt = 3000;
       ac.intent.assignedSpeedKt = 210;
       ac.intent.controllerAssignedSpeedKt = 210;
 

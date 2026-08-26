@@ -523,7 +523,7 @@ test("T02-04 AC5 / T02-36 — M hides Mode C on full blocks; Line 3 shows assign
   view.modeCVisible = false;
   const full = createMockCtx();
   renderScope(full.ctx, world, view, 800, 800);
-  expect(full.fillTexts.some((t) => t.text === "040  21")).toBe(true);
+  expect(full.fillTexts.some((t) => t.text === "21")).toBe(true);
   expect(full.fillTexts.some((t) => t.text === "A040")).toBe(true);
 
   view.tracks.get(ac.id)!.datablockMode = "limited";
