@@ -28,7 +28,7 @@ import {
   datablockLineHeightPx,
 } from "./fonts";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
-import { handleTrackClick, type TrackDisplay } from "./trackDisplay";
+import { handleTrackClick, handleTrackMiddleClick, type TrackDisplay } from "./trackDisplay";
 
 /** Frozen hit radius in CSS pixels (T01-11). Pixel-space so range presets stay stable. */
 export const HIT_RADIUS_CSS_PX = 12;
@@ -90,10 +90,16 @@ function pickDatablockAt(
       { queried: isQueried },
       world.simTimeMs,
     );
-    const lines =
-      mode === "limited" || mode === "partial"
-        ? base
-        : { ...base, line1: withInboundHandoffCue(base.line1, handoffFor(world, ac.id)) };
+    const ho = handoffFor(world, ac.id);
+    let line1 = base.line1;
+    if (ho.kind === "pointout_inbound" && ho.status === "pending") {
+      line1 = `${base.line1} PO`;
+    } else if (ho.kind === "pointout_outbound" && ho.status === "pending") {
+      line1 = `${base.line1} PO ${ho.toSectorId}`;
+    } else if (mode !== "limited" && mode !== "partial") {
+      line1 = withInboundHandoffCue(base.line1, ho);
+    }
+    const lines = { ...base, line1 };
     const lineH = datablockLineHeightPx(view.charSizePx ?? DATABLOCK_LINE_HEIGHT_PX);
     const rect = datablockRect(p.x, p.y, lines, cell, lineH, dir, view.leaderLengthPx);
     if (!pointInDatablock(cssX, cssY, rect)) {
@@ -172,11 +178,33 @@ export function selectOrAcceptAircraftAt(
   cssHeight: number,
   radiusPx: number = HIT_RADIUS_CSS_PX,
   datablockView?: DatablockPickView,
+  commandText?: string,
 ): Aircraft | null {
   const hit = pickAircraftAt(world, cssX, cssY, cam, cssWidth, cssHeight, radiusPx, datablockView);
   if (hit) {
-    handleTrackClick(tracks, world, hit.id);
+    handleTrackClick(tracks, world, hit.id, commandText);
   }
   setSelectedAircraft(world, hit?.id ?? null);
+  return hit;
+}
+
+/**
+ * Middle-click track analog: toggle STARS Cyan highlight on datablock.
+ */
+export function middleClickAircraftAt(
+  world: World,
+  tracks: Map<string, TrackDisplay>,
+  cssX: number,
+  cssY: number,
+  cam: ScopeCamera,
+  cssWidth: number,
+  cssHeight: number,
+  radiusPx: number = HIT_RADIUS_CSS_PX,
+  datablockView?: DatablockPickView,
+): Aircraft | null {
+  const hit = pickAircraftAt(world, cssX, cssY, cam, cssWidth, cssHeight, radiusPx, datablockView);
+  if (hit) {
+    handleTrackMiddleClick(tracks, world, hit.id);
+  }
   return hit;
 }

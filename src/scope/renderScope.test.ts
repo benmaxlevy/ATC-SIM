@@ -1,5 +1,13 @@
 import { expect, test } from "vitest";
-import { SessionLog, SIM_DT_S, createWorld, handoffFor, makeTestAircraft, stepWorld } from "@core";
+import {
+  SessionLog,
+  SIM_DT_S,
+  createWorld,
+  handoffFor,
+  makeTestAircraft,
+  setHandoffNone,
+  stepWorld,
+} from "@core";
 import { applyIntent } from "@pilot";
 import { createWorldFromScenario, loadKdem } from "@scenario";
 import { formatRangeReadout, nmToScreen } from "./camera";
@@ -208,7 +216,7 @@ test("AC1 — six spawned arrivals get unassociated position symbols (*) and dat
   renderScope(ctx, world, view, css, css);
   const targets = findTargetPositionSymbol(fillTexts);
   expect(targets).toHaveLength(6);
-  expect(fillTexts.filter((t) => t.text === "*")).toHaveLength(6);
+  expect(fillTexts.filter((t) => t.text === "C" || t.text === "*")).toHaveLength(6);
   const size = { widthPx: css, heightPx: css };
   for (const ac of world.aircraft) {
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
@@ -644,18 +652,6 @@ test("AC2 — 6000 ft outside 070-090 keeps target+history, loses datablock; 800
   expect(fillTexts.some((t) => t.text === formatFullDatablock(low).line2)).toBe(false);
   expect(fillTexts.some((t) => t.text === "DAL80")).toBe(true);
   expect(fillTexts.some((t) => t.text === formatFullDatablock(inBand).line2)).toBe(true);
-
-  const size = { widthPx: 800, heightPx: 800 };
-  const lowPx = nmToScreen(low.xNm, low.yNm, view.camera, size);
-  const boxPx = TARGET_SIZE_PX + SELECTION_BOX_PAD_PX * 2;
-  const selected = strokeRects.filter(
-    (r) =>
-      r.w === boxPx &&
-      r.h === boxPx &&
-      r.strokeStyle === SELECTED_ACCENT_COLOR &&
-      Math.abs(r.x + boxPx / 2 - lowPx.x) <= 2,
-  );
-  expect(selected.length).toBeGreaterThanOrEqual(1);
 });
 
 test("AC8 — FILTER readout and FOA/CRC altitude filter comments; no cull or slider", () => {
@@ -887,11 +883,6 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   expect(owned.fillTexts.find((t) => t.text === "040  220")?.fillStyle).toBe(PALETTE.unowned);
   expect(owned.fillTexts.filter((t) => t.text === "D" || t.text === "G")).toHaveLength(1);
   expect(owned.fillTexts.filter((t) => t.text === "*")).toHaveLength(1);
-  const selBoxes = owned.strokeRects.filter(
-    (r) => r.w === SELECTION_BOX_PX && r.h === SELECTION_BOX_PX,
-  );
-  expect(selBoxes).toHaveLength(1);
-  expect(selBoxes[0]?.strokeStyle).toBe(SELECTED_ACCENT_COLOR);
   const painted = [
     ...owned.strokeRects.map((r) => r.strokeStyle),
     ...owned.fillTexts.map((t) => t.fillStyle ?? ""),
@@ -909,11 +900,6 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   expect(droppedTarget?.fillStyle).toBe(POSITION_SYMBOL_COLOR);
   expect(dropped.fillTexts.filter((t) => t.text === "*")).toHaveLength(2);
   expect(dropped.fillTexts.filter((t) => t.text === "D" || t.text === "G")).toHaveLength(0);
-  expect(
-    dropped.strokeRects.filter(
-      (r) => r.w === SELECTION_BOX_PX && r.strokeStyle === SELECTED_ACCENT_COLOR,
-    ),
-  ).toHaveLength(1);
 });
 
 test("T02-08 — owned PTL stays white, not selection yellow", () => {
@@ -1063,21 +1049,20 @@ test("video map labels stack newline-separated STAR restriction lines", () => {
   expect((spd!.y ?? 0) - (alt!.y ?? 0)).toBe(DATABLOCK_FONT_PX);
 });
 
-test("T04-17 AC1 — pending inbound paints HO cue; click owns white and drops cue", () => {
+test("T04-17 AC1 — pending inbound paints blinking white FDB; click owns solid white", () => {
   const world = createWorldFromScenario(loadKdem(), 1);
   const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
   const pending = createMockCtx();
   renderScope(pending.ctx, world, view, 800, 800);
-  expect(pending.fillTexts.some((t) => t.text === "DAL123 HO")).toBe(true);
-  expect(pending.fillTexts.find((t) => t.text === "DAL123 HO")?.fillStyle).toBe(PALETTE.unowned);
+  expect(pending.fillTexts.some((t) => t.text === "DAL123")).toBe(true);
+  expect(pending.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
 
   const tick = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: 800, heightPx: 800 });
   handlePpiLeftClick(view, world, tick.x, tick.y, 800, 800);
   const owned = createMockCtx();
   renderScope(owned.ctx, world, view, 800, 800);
-  expect(owned.fillTexts.some((t) => t.text === "DAL123 HO")).toBe(false);
   expect(owned.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
   expect(handoffFor(world, dal.id)).toEqual({ kind: "none" });
 });
@@ -1121,14 +1106,13 @@ test("T02-24 — GEO MAPS / CURRENT overlay is screen-fixed SSA green; no weathe
 test("T02-26 — CHAR SIZE DATA BLOCKS / LISTS and BRITE FDB/MPA change paint", () => {
   const world = createWorldFromScenario(loadKdem());
   const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  setHandoffNone(world, dal.id);
   const view = createScopeView(0, 0, { digitalMap: parseDigitalMap(loadKdem().maps) });
   syncTrackDisplays(view.tracks, world);
   view.tracks.get(dal.id)!.datablockMode = "full";
   const full = createMockCtx();
   renderScope(full.ctx, world, view, 800, 800);
-  const fdbFont = full.fillTexts.find(
-    (t) => t.text === dal.callsign || t.text === `${dal.callsign} HO`,
-  );
+  const fdbFont = full.fillTexts.find((t) => t.text === dal.callsign);
   expect(fdbFont?.font).toContain("12px");
   expect(fdbFont?.fillStyle).toBe(PALETTE.unowned);
 
@@ -1138,9 +1122,7 @@ test("T02-26 — CHAR SIZE DATA BLOCKS / LISTS and BRITE FDB/MPA change paint", 
   stepBriteChannel(view, "mpa", -6);
   const next = createMockCtx();
   renderScope(next.ctx, world, view, 800, 800);
-  const resized = next.fillTexts.find(
-    (t) => t.text === dal.callsign || t.text === `${dal.callsign} HO`,
-  );
+  const resized = next.fillTexts.find((t) => t.text === dal.callsign);
   expect(resized?.font).toContain("11px");
   expect(resized?.fillStyle).toBe(applyBrite(PALETTE.unowned, 50));
   const ssa = next.fillTexts.find((t) => t.text === "RANGE 20" || t.text === "KDEM 29.92");
@@ -1537,4 +1519,184 @@ test("T02-35 AC6 — BRITE channel ldb controls brightness of both LDB and PDB b
   const pdbDim = dimmed.fillTexts.find((t) => t.text === "050  220");
   expect(ldbDim?.fillStyle).toBe(applyBrite(PALETTE.unowned, 50));
   expect(pdbDim?.fillStyle).toBe(applyBrite(PALETTE.unowned, 50));
+});
+
+test("T02-37 AC1 — Inbound handoff visual blinking cadence and acceptance to solid white", () => {
+  const dal = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    altitudeFt: 8000,
+    speedKt: 250,
+  });
+  const world = createWorld({ aircraft: [dal], simTimeMs: 0 });
+  world.handoffs.set(dal.id, { kind: "inbound", fromSectorId: "C" });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  // t=0ms (blink ON phase): visible, white FDB
+  world.simTimeMs = 0;
+  const mockOn1 = createMockCtx();
+  renderScope(mockOn1.ctx, world, view, 800, 800);
+  const callsignOn1 = mockOn1.fillTexts.find((t) => t.text === "DAL123");
+  expect(callsignOn1).toBeDefined();
+  expect(callsignOn1?.fillStyle).toBe(PALETTE.owned);
+
+  // Transferring sector ID symbol "C"
+  const targetSymbol1 = mockOn1.fillTexts.find((t) => t.text === "C");
+  expect(targetSymbol1).toBeDefined();
+
+  // t=500ms (blink OFF phase): datablock is not drawn (blinks off)
+  world.simTimeMs = 500;
+  const mockOff = createMockCtx();
+  renderScope(mockOff.ctx, world, view, 800, 800);
+  const callsignOff = mockOff.fillTexts.find((t) => t.text === "DAL123");
+  expect(callsignOff).toBeUndefined();
+
+  // t=1000ms (blink ON phase again): visible
+  world.simTimeMs = 1000;
+  const mockOn2 = createMockCtx();
+  renderScope(mockOn2.ctx, world, view, 800, 800);
+  expect(mockOn2.fillTexts.some((t) => t.text === "DAL123")).toBe(true);
+
+  // Accept handoff via click
+  const p = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: 800, heightPx: 800 });
+  handlePpiLeftClick(view, world, p.x, p.y, 800, 800);
+
+  // Now accepted: solid white FDB across both 0ms and 500ms phases!
+  world.simTimeMs = 500;
+  const mockAccepted = createMockCtx();
+  renderScope(mockAccepted.ctx, world, view, 800, 800);
+  const callsignAccepted = mockAccepted.fillTexts.find((t) => t.text === "DAL123");
+  expect(callsignAccepted).toBeDefined();
+  expect(callsignAccepted?.fillStyle).toBe(PALETTE.owned);
+
+  // Position symbol updated to receiving sector ID ("D")
+  const targetSymbolAccepted = mockAccepted.fillTexts.find((t) => t.text === "D");
+  expect(targetSymbolAccepted).toBeDefined();
+});
+
+test("T02-37 AC2 — Outbound accepted handoff flashes white for 5 seconds on sender scope", () => {
+  const dep = makeTestAircraft({
+    id: "ac-dep",
+    callsign: "SWA555",
+    altitudeFt: 6000,
+    speedKt: 250,
+  });
+  const world = createWorld({ aircraft: [dep], simTimeMs: 1000 });
+  world.handoffs.set(dep.id, {
+    kind: "outbound",
+    toSectorId: "C",
+    status: "accepted",
+    acceptedAtSimMs: 1000,
+  });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  // Position symbol shows receiver's sector ID ("C")
+  const mockSym = createMockCtx();
+  renderScope(mockSym.ctx, world, view, 800, 800);
+  expect(mockSym.fillTexts.some((t) => t.text === "C")).toBe(true);
+
+  // During 5s window (t=1000 to t=6000ms): flashes white
+  world.simTimeMs = 1200; // blink on
+  const mockFlashOn = createMockCtx();
+  renderScope(mockFlashOn.ctx, world, view, 800, 800);
+  expect(mockFlashOn.fillTexts.find((t) => t.text === "SWA555")?.fillStyle).toBe(PALETTE.owned);
+
+  world.simTimeMs = 1700; // blink off
+  const mockFlashOff = createMockCtx();
+  renderScope(mockFlashOff.ctx, world, view, 800, 800);
+  expect(mockFlashOff.fillTexts.some((t) => t.text === "SWA555")).toBe(false);
+
+  // After 5s window (e.g. t=6500ms): settles (stops blinking)
+  world.simTimeMs = 6500;
+  const mockSettled = createMockCtx();
+  renderScope(mockSettled.ctx, world, view, 800, 800);
+  expect(mockSettled.fillTexts.find((t) => t.text === "SWA555")?.fillStyle).toBe(PALETTE.owned);
+});
+
+test("T02-37 AC3 / AC4 — Incoming pointout renders blinking Yellow FDB with PO; acceptance renders solid Yellow", () => {
+  const dal = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    altitudeFt: 9000,
+    speedKt: 240,
+  });
+  const world = createWorld({ aircraft: [dal], simTimeMs: 0 });
+  world.handoffs.set(dal.id, { kind: "pointout_inbound", fromSectorId: "C", status: "pending" });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  // t=0ms (blink on): Yellow FDB with "DAL123 PO"
+  world.simTimeMs = 0;
+  const mockPoOn = createMockCtx();
+  renderScope(mockPoOn.ctx, world, view, 800, 800);
+  const poLine1 = mockPoOn.fillTexts.find((t) => t.text === "DAL123 PO");
+  expect(poLine1).toBeDefined();
+  expect(poLine1?.fillStyle).toBe(PALETTE.caution); // #FFFF00
+
+  // t=500ms (blink off): not drawn
+  world.simTimeMs = 500;
+  const mockPoOff = createMockCtx();
+  renderScope(mockPoOff.ctx, world, view, 800, 800);
+  expect(mockPoOff.fillTexts.some((t) => t.text === "DAL123 PO")).toBe(false);
+
+  // Slew/click accepts pointout into solid yellow FDB without PO tag
+  const p = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: 800, heightPx: 800 });
+  handlePpiLeftClick(view, world, p.x, p.y, 800, 800);
+
+  world.simTimeMs = 500;
+  const mockAccepted = createMockCtx();
+  renderScope(mockAccepted.ctx, world, view, 800, 800);
+  const acceptedLine1 = mockAccepted.fillTexts.find((t) => t.text === "DAL123");
+  expect(acceptedLine1).toBeDefined();
+  expect(acceptedLine1?.fillStyle).toBe(PALETTE.caution); // Solid Yellow #FFFF00
+  expect(mockAccepted.fillTexts.some((t) => t.text === "DAL123 PO")).toBe(false);
+});
+
+test("T02-37 AC4 — Rejected pointout displays flashing UN on sender display", () => {
+  const dal = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    altitudeFt: 9000,
+    speedKt: 240,
+  });
+  const world = createWorld({ aircraft: [dal], simTimeMs: 0 });
+  world.handoffs.set(dal.id, { kind: "pointout_outbound", toSectorId: "C", status: "rejected" });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  // t=0ms: shows UN tag
+  world.simTimeMs = 0;
+  const mockUnOn = createMockCtx();
+  renderScope(mockUnOn.ctx, world, view, 800, 800);
+  expect(mockUnOn.fillTexts.some((t) => t.text === "DAL123 UN")).toBe(true);
+
+  // t=500ms: tag blinks off
+  world.simTimeMs = 500;
+  const mockUnOff = createMockCtx();
+  renderScope(mockUnOff.ctx, world, view, 800, 800);
+  expect(mockUnOff.fillTexts.some((t) => t.text === "DAL123 UN")).toBe(false);
+});
+
+test("T02-37 AC5 — Datablock renders in standard STARS Cyan highlight (#00FFFF) when highlighted", () => {
+  const ac = makeTestAircraft({
+    id: "ac-1",
+    callsign: "AAL100",
+    altitudeFt: 5000,
+    speedKt: 210,
+  });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  // Highlight track
+  view.tracks.get(ac.id)!.highlighted = true;
+  const mock = createMockCtx();
+  renderScope(mock.ctx, world, view, 800, 800);
+
+  const datablockText = mock.fillTexts.find((t) => t.text === "AAL100" || t.text === "050  210");
+  expect(datablockText).toBeDefined();
+  expect(datablockText?.fillStyle).toBe(PALETTE.highlight);
+  expect(PALETTE.highlight).toBe("#00FFFF");
 });

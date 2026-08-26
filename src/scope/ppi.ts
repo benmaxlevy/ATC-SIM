@@ -1,7 +1,7 @@
 import type { World } from "@core";
 import { expireFilterEntry } from "./altitudeFilter";
 import { applyPanScreenDelta, screenToNm, type ScopeViewSize } from "./camera";
-import { HIT_RADIUS_CSS_PX, pickAircraftAt, selectOrAcceptAircraftAt } from "./pick";
+import { HIT_RADIUS_CSS_PX, middleClickAircraftAt, pickAircraftAt, selectOrAcceptAircraftAt } from "./pick";
 import { renderScope } from "./renderScope";
 import { centerOnWorld, recordLastClick, setRangeRingOrigin, type ScopeView } from "./scopeView";
 
@@ -25,6 +25,7 @@ export function handlePpiLeftClick(
   cssY: number,
   cssWidth: number,
   cssHeight: number,
+  commandText?: string,
 ): void {
   const size = viewSize(cssWidth, cssHeight);
   const nm = screenToNm(cssX, cssY, view.camera, size);
@@ -37,6 +38,29 @@ export function handlePpiLeftClick(
     view.placeRangeRingArmed = false;
   }
   selectOrAcceptAircraftAt(
+    world,
+    view.tracks,
+    cssX,
+    cssY,
+    view.camera,
+    cssWidth,
+    cssHeight,
+    HIT_RADIUS_CSS_PX,
+    view,
+    commandText,
+  );
+}
+
+/** Middle click: toggle STARS Cyan highlight on target. */
+export function handlePpiMiddleClick(
+  view: ScopeView,
+  world: World,
+  cssX: number,
+  cssY: number,
+  cssWidth: number,
+  cssHeight: number,
+): void {
+  middleClickAircraftAt(
     world,
     view.tracks,
     cssX,
@@ -136,10 +160,26 @@ export function handlePpiCanvasClick(
   clientX: number,
   clientY: number,
   view: ScopeView,
+  commandText?: string,
 ): void {
   const rect = canvas.getBoundingClientRect();
   const { x, y } = cssPointFromClient(clientX, clientY, rect);
-  handlePpiLeftClick(view, world, x, y, rect.width, rect.height);
+  handlePpiLeftClick(view, world, x, y, rect.width, rect.height, commandText);
+}
+
+/**
+ * Canvas middle click -> toggle STARS Cyan highlight on target.
+ */
+export function handlePpiCanvasMiddleClick(
+  canvas: HTMLCanvasElement,
+  world: World,
+  clientX: number,
+  clientY: number,
+  view: ScopeView,
+): void {
+  const rect = canvas.getBoundingClientRect();
+  const { x, y } = cssPointFromClient(clientX, clientY, rect);
+  handlePpiMiddleClick(view, world, x, y, rect.width, rect.height);
 }
 
 /** Resize to device pixels, scale to CSS pixels, then draw the clipped PPI. */

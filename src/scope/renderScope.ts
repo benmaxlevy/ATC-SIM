@@ -212,25 +212,165 @@ function drawVideoMapLabel(
   }
 }
 
-function trackEffectiveDatablockMode(
+export interface DatablockVisualState {
+  color: string;
+  visible: boolean;
+  mode: DatablockMode;
+  line1Tag?: string;
+  leaderColor: string;
+}
+
+export function getDatablockVisualState(
   view: ScopeView,
   world: World,
-  aircraftId: string,
-  callsign: string,
-): DatablockMode {
-  const td = view.tracks.get(aircraftId);
-  const baseMode = td?.datablockMode ?? (td?.ownership === "owned" ? "full" : "partial");
-  if (view.beaconatorActive && baseMode === "partial") {
-    return "full";
+  ac: Aircraft,
+): DatablockVisualState {
+  const td = view.tracks.get(ac.id);
+  const ho = handoffFor(world, ac.id);
+  const paintTint = trackPaintAlertTint(world, ac.callsign);
+  const alertColor = alertTintPaintColor(paintTint);
+
+  // 1. Conflict / MSAW Alert tint
+  if (alertColor) {
+    return {
+      color: alertColor,
+      visible: true,
+      mode: "full",
+      leaderColor: alertColor,
+    };
   }
-  if (handoffFor(world, aircraftId).kind === "inbound") {
-    return "full";
+
+  // 2. Inbound pending handoff: Blinking white FDB
+  if (ho.kind === "inbound") {
+    const isBlinkOn = Math.floor(world.simTimeMs / 500) % 2 === 0;
+    return {
+      color: PALETTE.owned,
+      visible: isBlinkOn,
+      mode: "full",
+      leaderColor: PALETTE.owned,
+    };
   }
-  const tint = trackAlertTint(world, callsign);
-  if (tint) {
-    return "full";
+
+  // 3. Outbound accepted handoff: Blinking white for 5s, settles to solid white
+  const isOutboundAccepted =
+    (ho.kind === "outbound" && ho.status === "accepted") ||
+    (td?.outboundFlashUntilSimMs != null && td.outboundFlashUntilSimMs > 0) ||
+    td?.outboundClickStep !== undefined;
+  if (isOutboundAccepted) {
+    const step = td?.outboundClickStep ?? 0;
+    if (step === 0) {
+      const flashDeadline =
+        td?.outboundFlashUntilSimMs ??
+        (ho.kind === "outbound" ? (ho.acceptedAtSimMs ?? 0) + 5000 : 0);
+      const isFlashing = world.simTimeMs < flashDeadline;
+      const isBlinkOn = Math.floor(world.simTimeMs / 500) % 2 === 0;
+      return {
+        color: PALETTE.owned,
+        visible: isFlashing ? isBlinkOn : true,
+        mode: "full",
+        leaderColor: PALETTE.owned,
+      };
+    }
+    if (step === 1) {
+      return {
+        color: PALETTE.owned,
+        visible: true,
+        mode: "full",
+        leaderColor: PALETTE.owned,
+      };
+    }
+    if (step === 2) {
+      return {
+        color: PALETTE.unowned,
+        visible: true,
+        mode: "full",
+        leaderColor: PALETTE.unowned,
+      };
+    }
+    if (step === 3) {
+      return {
+        color: PALETTE.unowned,
+        visible: true,
+        mode: "partial",
+        leaderColor: PALETTE.unowned,
+      };
+    }
   }
-  return baseMode;
+
+  // 4. Pointout inbound pending: Blinking yellow FDB with PO tag
+  if (ho.kind === "pointout_inbound" && ho.status === "pending") {
+    const isBlinkOn = Math.floor(world.simTimeMs / 500) % 2 === 0;
+    return {
+      color: PALETTE.caution,
+      visible: isBlinkOn,
+      mode: "full",
+      line1Tag: "PO",
+      leaderColor: PALETTE.caution,
+    };
+  }
+
+  // 5. Pointout inbound accepted: Solid yellow FDB
+  if (
+    (ho.kind === "pointout_inbound" && ho.status === "accepted") ||
+    td?.pointoutAccepted === true
+  ) {
+    return {
+      color: PALETTE.caution,
+      visible: true,
+      mode: "full",
+      leaderColor: PALETTE.caution,
+    };
+  }
+
+  // 6. Pointout outbound
+  if (ho.kind === "pointout_outbound") {
+    if (ho.status === "pending") {
+      const baseColor = td?.ownership ? PALETTE[td.ownership] : PALETTE.unowned;
+      return {
+        color: td?.highlighted ? PALETTE.highlight : baseColor,
+        visible: true,
+        mode: "full",
+        line1Tag: `PO ${ho.toSectorId}`,
+        leaderColor: td?.highlighted ? PALETTE.highlight : baseColor,
+      };
+    }
+    if (ho.status === "rejected") {
+      const isUnOn = Math.floor(world.simTimeMs / 500) % 2 === 0;
+      const baseColor = td?.ownership ? PALETTE[td.ownership] : PALETTE.unowned;
+      return {
+        color: td?.highlighted ? PALETTE.highlight : baseColor,
+        visible: true,
+        mode: "full",
+        line1Tag: isUnOn ? "UN" : undefined,
+        leaderColor: td?.highlighted ? PALETTE.highlight : baseColor,
+      };
+    }
+  }
+
+  // 7. Track highlight (Cyan #00FFFF)
+  if (td?.highlighted) {
+    const baseMode = td.datablockMode ?? (td.ownership === "owned" ? "full" : "partial");
+    const mode = view.beaconatorActive && baseMode === "partial" ? "full" : baseMode;
+    return {
+      color: PALETTE.highlight,
+      visible: true,
+      mode,
+      leaderColor: PALETTE.highlight,
+    };
+  }
+
+  // 8. Base ownership
+  const ownership = td?.ownership ?? "unowned";
+  const baseMode = td?.datablockMode ?? (ownership === "owned" ? "full" : "partial");
+  const mode = view.beaconatorActive && baseMode === "partial" ? "full" : baseMode;
+  const baseColor = PALETTE[ownership];
+
+  return {
+    color: baseColor,
+    visible: true,
+    mode,
+    leaderColor: baseColor,
+  };
 }
 
 function trackLeaderDir(view: ScopeView, aircraftId: string): LeaderDir {
@@ -260,10 +400,14 @@ function drawDatablock(
   view: ScopeView,
   world: World,
 ): void {
+  const visual = getDatablockVisualState(view, world, ac);
+  if (!visual.visible) {
+    return;
+  }
   const td = view.tracks.get(ac.id);
   const scratchpad = td?.scratchpad ?? "";
   const tint = trackAlertTint(world, ac.callsign);
-  const mode = trackEffectiveDatablockMode(view, world, ac.id, ac.callsign);
+  const mode = visual.mode;
   const isQueried = td ? isTrackQueried(td, world.simTimeMs) : false;
   const squawk = td?.squawk ?? ac.squawk;
   const beaconCodeReadout = view.beaconatorActive === true;
@@ -284,20 +428,16 @@ function drawDatablock(
     },
     world.simTimeMs,
   );
-  const line1 =
-    mode === "limited" || mode === "partial"
-      ? base.line1
-      : withInboundHandoffCue(base.line1, handoffFor(world, ac.id));
+  let line1 = base.line1;
+  if (visual.line1Tag) {
+    line1 = `${line1} ${visual.line1Tag}`;
+  }
   const lines = { ...base, line1: withCaDatablockTag(line1, tint, world.simTimeMs) };
   const lineH = datablockLineHeightPx(view.charSizes.dataBlocks);
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
   const origin = datablockTopLeft(trackLeaderDir(view, ac.id), metrics, view.leaderLengthPx);
   const briteCh = mode === "limited" || mode === "partial" ? view.brite.ldb : view.brite.fdb;
-  const paintTint = trackPaintAlertTint(world, ac.callsign);
-  ctx.fillStyle = applyBrite(
-    alertOrOwnershipColor(trackOwnership(view, ac.id), paintTint),
-    briteCh,
-  );
+  ctx.fillStyle = applyBrite(visual.color, briteCh);
   ctx.fillText(lines.line1, targetX + origin.x, targetY + origin.y);
   if (lines.line2 != null) {
     ctx.fillText(lines.line2, targetX + origin.x, targetY + origin.y + lineH);
@@ -341,16 +481,32 @@ function drawTracks(
     const td = view.tracks.get(ac.id);
     const isPrimary = isPrimaryTarget(ac, td);
     const ownership: TrackOwnership = td?.ownership ?? "unowned";
+    const ho = handoffFor(world, ac.id);
     const isTracked =
       ownership === "owned" ||
       ownership === "tower" ||
       ownership === "center" ||
-      td?.tracked === true;
+      td?.tracked === true ||
+      ho.kind === "inbound" ||
+      (ho.kind === "outbound" && ho.status === "accepted") ||
+      ho.kind === "pointout_inbound" ||
+      ho.kind === "pointout_outbound";
     const posBrite = isPrimary ? view.brite.pri : isTracked ? view.brite.pos : view.brite.oth;
     const squawk = td?.squawk ?? ac.squawk;
-    const sectorId =
-      td?.sectorId ??
-      (ownership === "tower" ? "T" : ownership === "center" ? "C" : (view.sectorId ?? "D"));
+    let sectorId = td?.sectorId;
+    if (!sectorId) {
+      if (ho.kind === "inbound") {
+        sectorId = ho.fromSectorId;
+      } else if (ho.kind === "outbound" && ho.status === "accepted") {
+        sectorId = ho.toSectorId;
+      } else if (ownership === "tower") {
+        sectorId = "T";
+      } else if (ownership === "center") {
+        sectorId = "C";
+      } else {
+        sectorId = view.sectorId ?? "D";
+      }
+    }
 
     drawTargetSymbol(
       ctx,
@@ -385,22 +541,21 @@ function drawTracks(
       continue;
     }
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
-    const paintTint = trackPaintAlertTint(world, ac.callsign);
-    const mode = trackEffectiveDatablockMode(view, world, ac.id, ac.callsign);
-    const briteCh = mode === "limited" || mode === "partial" ? view.brite.ldb : view.brite.fdb;
-    const leaderColor = applyBrite(
-      alertOrOwnershipColor(trackOwnership(view, ac.id), paintTint),
-      briteCh,
-    );
-    drawLeaderLine(
-      ctx,
-      p.x,
-      p.y,
-      trackLeaderDir(view, ac.id),
-      leaderColor,
-      view.leaderLengthPx,
-      view.charSizes.pos,
-    );
+    const visual = getDatablockVisualState(view, world, ac);
+    if (visual.visible) {
+      const briteCh =
+        visual.mode === "limited" || visual.mode === "partial" ? view.brite.ldb : view.brite.fdb;
+      const leaderColor = applyBrite(visual.leaderColor, briteCh);
+      drawLeaderLine(
+        ctx,
+        p.x,
+        p.y,
+        trackLeaderDir(view, ac.id),
+        leaderColor,
+        view.leaderLengthPx,
+        view.charSizes.pos,
+      );
+    }
   }
 
   for (const ac of world.aircraft) {
@@ -413,14 +568,6 @@ function drawTracks(
     }
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
     drawDatablock(ctx, ac, p.x, p.y, view, world);
-  }
-
-  for (const ac of world.aircraft) {
-    if (ac.id !== world.selectedAircraftId) {
-      continue;
-    }
-    const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
-    drawSelectionBox(ctx, p.x, p.y, view.charSizes.pos);
   }
 }
 

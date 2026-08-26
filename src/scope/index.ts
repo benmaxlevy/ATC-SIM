@@ -60,8 +60,10 @@ export {
   cssPointFromClient,
   fitCanvasToCss,
   handlePpiCanvasClick,
+  handlePpiCanvasMiddleClick,
   handlePpiDoubleClick,
   handlePpiLeftClick,
+  handlePpiMiddleClick,
   handlePpiPanDelta,
   isPpiSlewButton,
   isPpiSlewHeld,
@@ -69,6 +71,7 @@ export {
 } from "./ppi";
 export {
   HIT_RADIUS_CSS_PX,
+  middleClickAircraftAt,
   pickAircraftAt,
   selectAircraftAt,
   selectOrAcceptAircraftAt,
@@ -109,7 +112,8 @@ export {
   reuseOrBuildMapCache,
 } from "./mapLayers";
 export type { DigitalMap, MapCache, MapLayerFlags, NmPoint } from "./mapLayers";
-export { renderScope } from "./renderScope";
+export { getDatablockVisualState, renderScope } from "./renderScope";
+export type { DatablockVisualState } from "./renderScope";
 export {
   GI_SLOT_COUNT,
   SSA_ALTIMETER_STUB,
@@ -364,12 +368,14 @@ export type { AtpaState, TpaRadiusNm, TpaState } from "./tpa";
 export {
   IDENT_DISPLAY_FLASH_MS,
   LDB_QUERY_DURATION_MS,
+  OUTBOUND_ACCEPTED_FLASH_MS,
   acceptInboundOnClick,
   applyDropTrackToSelection,
   applyInitiateTrackToSelection,
   createTrackDisplay,
   ensureTrackDisplay,
   handleTrackClick,
+  handleTrackMiddleClick,
   isIdentFlashing,
   isTrackQueried,
   queryTrack,
@@ -378,6 +384,7 @@ export {
   setScratchpad,
   syncTrackDisplays,
   toggleDatablockModeForSelection,
+  toggleTrackHighlight,
   toggleTrackPdbFdb,
 } from "./trackDisplay";
 export type { TrackDisplay } from "./trackDisplay";

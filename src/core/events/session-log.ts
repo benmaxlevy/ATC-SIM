@@ -225,11 +225,46 @@ export type SessionEvent =
       toSectorId: string;
     }
   | {
+      type: "handoff.outbound.accepted";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      toSectorId: string;
+    }
+  | {
       type: "handoff.outbound.completed";
       atSimMs: number;
       atWallMs: number;
       callsign: string;
       toSectorId: string;
+    }
+  | {
+      type: "pointout.offered";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      fromSectorId: string;
+    }
+  | {
+      type: "pointout.accepted";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      fromSectorId: string;
+    }
+  | {
+      type: "pointout.rejected";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      fromSectorId: string;
+    }
+  | {
+      type: "pointout.converted";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      fromSectorId: string;
     }
   | {
       type: "departure.scheduled";

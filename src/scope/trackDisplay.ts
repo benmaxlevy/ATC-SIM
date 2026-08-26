@@ -8,7 +8,13 @@
  */
 
 import type { Aircraft, World } from "@core";
-import { acceptInboundHandoff } from "@core";
+import {
+  acceptInboundHandoff,
+  acceptPointout,
+  convertPointoutToHandoff,
+  handoffFor,
+  rejectPointout,
+} from "@core";
 import { sanitizeScratchpad, type DatablockMode } from "./datablock";
 import { createHistoryBuf, maybeSampleHistory, type HistoryBuf } from "./history";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
@@ -17,6 +23,7 @@ import { applyDropTrack, applyInitiateTrack, NO_SEL_HINT, type TrackOwnership } 
 /** Display IDENT stroke pulse (~2 s sim). Aircraft flag may last longer (phase 1). */
 export const IDENT_DISPLAY_FLASH_MS = 2000;
 export const LDB_QUERY_DURATION_MS = 5000;
+export const OUTBOUND_ACCEPTED_FLASH_MS = 5000;
 
 export interface TrackDisplay {
   history: HistoryBuf;
@@ -51,6 +58,16 @@ export interface TrackDisplay {
   forcedFdb?: boolean;
   /** Explicitly unassociated target flag. */
   unassociated?: boolean;
+  /** STARS datablock Cyan highlight (#00FFFF). Toggled via middle-click or selection. */
+  highlighted?: boolean;
+  /** Sim time until which accepted outbound handoff flashes white (~5s). */
+  outboundFlashUntilSimMs?: number;
+  /** Outbound accepted click step (0: flashing, 1: solid white, 2: green FDB, 3: PDB). */
+  outboundClickStep?: number;
+  /** Pointout accepted visual state flag. */
+  pointoutAccepted?: boolean;
+  /** Pointout rejected visual state flag. */
+  pointoutRejected?: boolean;
 }
 
 export function createTrackDisplay(ownership: TrackOwnership = "unowned"): TrackDisplay {
@@ -109,8 +126,30 @@ export function toggleTrackPdbFdb(td: TrackDisplay): DatablockMode {
 }
 
 /**
+ * Toggle Cyan highlight on a track.
+ */
+export function toggleTrackHighlight(td: TrackDisplay): boolean {
+  td.highlighted = !td.highlighted;
+  return td.highlighted;
+}
+
+/**
+ * Handle middle-clicking a track on the scope to toggle Cyan highlight.
+ */
+export function handleTrackMiddleClick(
+  tracks: Map<string, TrackDisplay>,
+  _world: World,
+  aircraftId: string,
+): boolean {
+  const td = ensureTrackDisplay(tracks, aircraftId);
+  return toggleTrackHighlight(td);
+}
+
+/**
  * Handle clicking a track on the scope:
  * - Accept pending inbound handoff if present.
+ * - Handle pointouts: UN rejects, ** converts to handoff, normal click accepts or reverts.
+ * - Handle outbound accepted 3-click progression: 1) stop blinking, 2) green FDB, 3) PDB.
  * - If unassociated (LDB): query ground speed for 5 seconds.
  * - If unowned (PDB / forced FDB): toggle between PDB and Green FDB.
  */
@@ -118,12 +157,83 @@ export function handleTrackClick(
   tracks: Map<string, TrackDisplay>,
   world: World,
   aircraftId: string,
+  commandText?: string,
 ): void {
-  const accepted = acceptInboundOnClick(tracks, world, aircraftId);
-  if (accepted) {
+  const normalizedCmd = commandText?.trim().toUpperCase();
+  const ho = handoffFor(world, aircraftId);
+  const td = ensureTrackDisplay(tracks, aircraftId);
+
+  // Pointout interactions
+  if (ho.kind === "pointout_inbound") {
+    if (normalizedCmd === "UN") {
+      rejectPointout(world, aircraftId);
+      td.pointoutRejected = true;
+      td.pointoutAccepted = false;
+      return;
+    }
+    if (commandText?.trim() === "**") {
+      convertPointoutToHandoff(world, aircraftId);
+      td.ownership = "owned";
+      td.datablockMode = "full";
+      td.forcedFdb = false;
+      td.pointoutAccepted = false;
+      td.pointoutRejected = false;
+      return;
+    }
+    if (ho.status === "pending") {
+      acceptPointout(world, aircraftId);
+      td.pointoutAccepted = true;
+      td.pointoutRejected = false;
+      return;
+    }
+    if (ho.status === "accepted" || td.pointoutAccepted) {
+      world.handoffs.set(aircraftId, { kind: "none" });
+      td.pointoutAccepted = false;
+      td.ownership = "unowned";
+      return;
+    }
+  }
+
+  if (td.pointoutAccepted) {
+    td.pointoutAccepted = false;
+    td.ownership = "unowned";
     return;
   }
-  const td = ensureTrackDisplay(tracks, aircraftId);
+
+  // Inbound pending handoff: accept on click
+  if (ho.kind === "inbound") {
+    const accepted = acceptInboundOnClick(tracks, world, aircraftId);
+    if (accepted) {
+      return;
+    }
+  }
+
+  // Outbound accepted handoff 3-click progression
+  const isOutboundAccepted =
+    (ho.kind === "outbound" && ho.status === "accepted") ||
+    (td.outboundFlashUntilSimMs != null && td.outboundFlashUntilSimMs > 0) ||
+    td.outboundClickStep != null;
+
+  if (isOutboundAccepted) {
+    const step = td.outboundClickStep ?? 0;
+    if (step === 0) {
+      td.outboundFlashUntilSimMs = 0;
+      td.outboundClickStep = 1;
+      return;
+    }
+    if (step === 1) {
+      td.ownership = "unowned";
+      td.datablockMode = "full";
+      td.outboundClickStep = 2;
+      return;
+    }
+    if (step === 2) {
+      td.datablockMode = "partial";
+      td.outboundClickStep = 3;
+      return;
+    }
+  }
+
   if (td.datablockMode === "limited" || td.unassociated) {
     queryTrack(td, world.simTimeMs);
     return;
@@ -283,5 +393,14 @@ export function syncTrackDisplays(tracks: Map<string, TrackDisplay>, world: Worl
     }
     maybeSampleHistory(td.history, world.simTimeMs, ac.xNm, ac.yNm);
     noteIdentAccepted(td, ac, world.simTimeMs);
+    const ho = handoffFor(world, ac.id);
+    if (
+      ho.kind === "outbound" &&
+      ho.status === "accepted" &&
+      td.outboundFlashUntilSimMs === undefined
+    ) {
+      td.outboundFlashUntilSimMs = (ho.acceptedAtSimMs ?? world.simTimeMs) + OUTBOUND_ACCEPTED_FLASH_MS;
+      td.outboundClickStep = td.outboundClickStep ?? 0;
+    }
   }
 }

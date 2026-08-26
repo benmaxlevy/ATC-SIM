@@ -28,13 +28,31 @@ export type TrackHandoff =
   | { kind: "none" }
   | { kind: "inbound"; fromSectorId: string }
   | { kind: "departure"; fromSectorId: string }
-  | { kind: "outbound"; toSectorId: string };
+  | {
+      kind: "outbound";
+      toSectorId: string;
+      status?: "initiated" | "accepted";
+      acceptedAtSimMs?: number;
+      clickCount?: number;
+    }
+  | {
+      kind: "pointout_inbound";
+      fromSectorId: string;
+      status: "pending" | "accepted" | "rejected";
+      rejectedAtSimMs?: number;
+    }
+  | {
+      kind: "pointout_outbound";
+      toSectorId: string;
+      status: "pending" | "accepted" | "rejected";
+      rejectedAtSimMs?: number;
+    };
 
 export const NONE_HANDOFF: TrackHandoff = { kind: "none" };
 
-/** Radio that changes intent is allowed only when the track is not inbound-pending. */
+/** Radio that changes intent is allowed only when the track is not inbound-pending or pointout-pending. */
 export function isRadioCommandAllowed(handoff: TrackHandoff): boolean {
-  return handoff.kind !== "inbound";
+  return handoff.kind !== "inbound" && handoff.kind !== "pointout_inbound";
 }
 
 export function assertHandoffOwned(
@@ -191,3 +209,161 @@ export function initiateCenterHandoff(
   });
   return true;
 }
+
+/**
+ * Accept an outbound handoff by the receiving controller (Center/Tower).
+ * Updates outbound state to accepted and sets the acceptance timestamp.
+ */
+export function acceptOutboundHandoff(world: World, aircraftId: string, atWallMs = 0): boolean {
+  const current = handoffFor(world, aircraftId);
+  if (current.kind !== "outbound") {
+    return false;
+  }
+  const ac = world.aircraft.find((item) => item.id === aircraftId);
+  if (!ac) {
+    return false;
+  }
+  world.handoffs.set(aircraftId, {
+    kind: "outbound",
+    toSectorId: current.toSectorId,
+    status: "accepted",
+    acceptedAtSimMs: world.simTimeMs,
+    clickCount: 0,
+  });
+  world.sessionLog?.append({
+    type: "handoff.outbound.accepted",
+    atSimMs: world.simTimeMs,
+    atWallMs,
+    callsign: ac.callsign,
+    toSectorId: current.toSectorId,
+  });
+  return true;
+}
+
+/**
+ * Offer an incoming pointout from an adjacent sector.
+ */
+export function offerPointout(
+  world: World,
+  aircraft: { id: string; callsign: string },
+  fromSectorId: string = DEFAULT_INBOUND_SECTOR_ID,
+): void {
+  world.handoffs.set(aircraft.id, {
+    kind: "pointout_inbound",
+    fromSectorId,
+    status: "pending",
+  });
+  world.sessionLog?.append({
+    type: "pointout.offered",
+    atSimMs: world.simTimeMs,
+    atWallMs: 0,
+    callsign: aircraft.callsign,
+    fromSectorId,
+  });
+}
+
+/**
+ * Initiate an outgoing pointout to an adjacent sector.
+ */
+export function initiatePointout(
+  world: World,
+  aircraft: { id: string; callsign: string },
+  toSectorId: string = DEFAULT_CENTER_SECTOR_ID,
+): void {
+  world.handoffs.set(aircraft.id, {
+    kind: "pointout_outbound",
+    toSectorId,
+    status: "pending",
+  });
+}
+
+/**
+ * Accept an incoming pointout. Changes status to accepted.
+ */
+export function acceptPointout(world: World, aircraftId: string, atWallMs = 0): boolean {
+  const current = handoffFor(world, aircraftId);
+  if (current.kind !== "pointout_inbound" || current.status !== "pending") {
+    return false;
+  }
+  const ac = world.aircraft.find((item) => item.id === aircraftId);
+  if (!ac) {
+    return false;
+  }
+  world.handoffs.set(aircraftId, {
+    kind: "pointout_inbound",
+    fromSectorId: current.fromSectorId,
+    status: "accepted",
+  });
+  world.sessionLog?.append({
+    type: "pointout.accepted",
+    atSimMs: world.simTimeMs,
+    atWallMs,
+    callsign: ac.callsign,
+    fromSectorId: current.fromSectorId,
+  });
+  return true;
+}
+
+/**
+ * Reject an incoming pointout (typing UN + click). Sets status to rejected.
+ */
+export function rejectPointout(world: World, aircraftId: string, atWallMs = 0): boolean {
+  const current = handoffFor(world, aircraftId);
+  if (current.kind !== "pointout_inbound") {
+    return false;
+  }
+  const ac = world.aircraft.find((item) => item.id === aircraftId);
+  if (!ac) {
+    return false;
+  }
+  world.handoffs.set(aircraftId, {
+    kind: "pointout_inbound",
+    fromSectorId: current.fromSectorId,
+    status: "rejected",
+    rejectedAtSimMs: world.simTimeMs,
+  });
+  world.sessionLog?.append({
+    type: "pointout.rejected",
+    atSimMs: world.simTimeMs,
+    atWallMs,
+    callsign: ac.callsign,
+    fromSectorId: current.fromSectorId,
+  });
+  return true;
+}
+
+/**
+ * Convert an incoming pointout to a handoff (typing ** + click).
+ * Transfers track ownership.
+ */
+export function convertPointoutToHandoff(
+  world: World,
+  aircraftId: string,
+  atWallMs = 0,
+): boolean {
+  const current = handoffFor(world, aircraftId);
+  if (current.kind !== "pointout_inbound") {
+    return false;
+  }
+  const ac = world.aircraft.find((item) => item.id === aircraftId);
+  if (!ac) {
+    return false;
+  }
+  world.handoffs.set(aircraftId, { kind: "none" });
+  world.sessionLog?.append({
+    type: "pointout.converted",
+    atSimMs: world.simTimeMs,
+    atWallMs,
+    callsign: ac.callsign,
+    fromSectorId: current.fromSectorId,
+  });
+  world.sessionLog?.append({
+    type: "handoff.inbound.accepted",
+    atSimMs: world.simTimeMs,
+    atWallMs,
+    callsign: ac.callsign,
+    fromSectorId: current.fromSectorId,
+  });
+  return true;
+}
+
