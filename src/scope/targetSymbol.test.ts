@@ -1,7 +1,6 @@
 import { expect, test } from "vitest";
 import { PALETTE, applyBrite } from "./palette";
 import {
-  HEADING_TICK_PX,
   HISTORY_DOT_SIZE_PX,
   POSITION_SYMBOL_COLOR,
   SELECTED_ACCENT_COLOR,
@@ -11,13 +10,11 @@ import {
   drawHistoryDot,
   drawSelectionBox,
   drawTargetSymbol,
-  headingTickOffset,
   historyDotColor,
   isPrimaryTarget,
   isTargetDiamondPath,
   renderTargetSymbol,
   selectionBoxRect,
-  targetDiamondVertices,
   targetStrokeColor,
   targetSymbolDescriptor,
   targetSymbolShape,
@@ -31,9 +28,14 @@ interface MockDrawTargetCtx {
 }
 
 function createMockTargetCtx(): MockDrawTargetCtx {
-  const fillTexts: { text: string; font?: string; x?: number; y?: number; fillStyle?: string }[] = [];
+  const fillTexts: { text: string; font?: string; x?: number; y?: number; fillStyle?: string }[] =
+    [];
   const strokeRects: { x: number; y: number; w: number; h: number; strokeStyle?: string }[] = [];
-  const pathStrokes: { points: { x: number; y: number }[]; strokeStyle?: string; lineWidth?: number }[] = [];
+  const pathStrokes: {
+    points: { x: number; y: number }[];
+    strokeStyle?: string;
+    lineWidth?: number;
+  }[] = [];
   let currentPath: { x: number; y: number }[] = [];
 
   const ctx = {
@@ -113,7 +115,14 @@ test("AC2 — Unassociated secondary targets render asterisk, V for 1200, square
   expect(targetSymbolShape({ ownership: "unowned", squawk: "0342" })).toBe("*");
 
   const mockUnassoc = createMockTargetCtx();
-  drawTargetSymbol(mockUnassoc.ctx, 100, 200, POSITION_SYMBOL_COLOR, { ownership: "unowned", squawk: "0342" }, 8);
+  drawTargetSymbol(
+    mockUnassoc.ctx,
+    100,
+    200,
+    POSITION_SYMBOL_COLOR,
+    { ownership: "unowned", squawk: "0342" },
+    8,
+  );
   expect(mockUnassoc.fillTexts).toHaveLength(1);
   expect(mockUnassoc.fillTexts[0]!.text).toBe("*");
   expect(mockUnassoc.pathStrokes).toHaveLength(0);
@@ -126,7 +135,14 @@ test("AC2 — Unassociated secondary targets render asterisk, V for 1200, square
   expect(targetSymbolShape({ ownership: "unowned", squawk: "1200" })).toBe("V");
 
   const mockVfr = createMockTargetCtx();
-  drawTargetSymbol(mockVfr.ctx, 100, 200, POSITION_SYMBOL_COLOR, { ownership: "unowned", squawk: "1200" }, 8);
+  drawTargetSymbol(
+    mockVfr.ctx,
+    100,
+    200,
+    POSITION_SYMBOL_COLOR,
+    { ownership: "unowned", squawk: "1200" },
+    8,
+  );
   expect(mockVfr.fillTexts).toHaveLength(1);
   expect(mockVfr.fillTexts[0]!.text).toBe("V");
   expect(mockVfr.pathStrokes).toHaveLength(0);
@@ -140,18 +156,27 @@ test("AC2 — Unassociated secondary targets render asterisk, V for 1200, square
   expect(bcnSelect.kind).toBe("beacon_select");
   expect(bcnSelect.shape).toBe("square");
   expect(bcnSelect.symbol).toBe("□");
-  expect(targetSymbolShape({
-    ownership: "unowned",
-    squawk: "4521",
-    beaconSelect: new Set(["4521"]),
-  })).toBe("square");
+  expect(
+    targetSymbolShape({
+      ownership: "unowned",
+      squawk: "4521",
+      beaconSelect: new Set(["4521"]),
+    }),
+  ).toBe("square");
 
   const mockBcn = createMockTargetCtx();
-  drawTargetSymbol(mockBcn.ctx, 100, 200, POSITION_SYMBOL_COLOR, {
-    ownership: "unowned",
-    squawk: "4521",
-    beaconSelect: ["4521"],
-  }, 8);
+  drawTargetSymbol(
+    mockBcn.ctx,
+    100,
+    200,
+    POSITION_SYMBOL_COLOR,
+    {
+      ownership: "unowned",
+      squawk: "4521",
+      beaconSelect: ["4521"],
+    },
+    8,
+  );
   expect(mockBcn.strokeRects).toHaveLength(1);
   expect(mockBcn.strokeRects[0]!.w).toBe(8);
   expect(mockBcn.strokeRects[0]!.h).toBe(8);
@@ -174,7 +199,14 @@ test("AC3 — Tracked target renders owning controller's sector ID", () => {
   expect(targetSymbolShape({ tracked: true, sectorId: "D" })).toBe("D");
 
   const mockOwned = createMockTargetCtx();
-  renderTargetSymbol(mockOwned.ctx, 100, 200, POSITION_SYMBOL_COLOR, { ownership: "owned", sectorId: "D" }, 8);
+  renderTargetSymbol(
+    mockOwned.ctx,
+    100,
+    200,
+    POSITION_SYMBOL_COLOR,
+    { ownership: "owned", sectorId: "D" },
+    8,
+  );
   expect(mockOwned.fillTexts).toHaveLength(1);
   expect(mockOwned.fillTexts[0]!.text).toBe("D");
   expect(mockOwned.fillTexts[0]!.fillStyle).toBe(POSITION_SYMBOL_COLOR);
@@ -221,19 +253,40 @@ test("AC5 — BRITE channels pos, oth, pri properly modulate target symbol brigh
 
 test("AC6 — Position symbol sizing via charSizes.pos", () => {
   const mock8 = createMockTargetCtx();
-  drawTargetSymbol(mock8.ctx, 100, 200, POSITION_SYMBOL_COLOR, { ownership: "owned", sectorId: "D" }, 8);
+  drawTargetSymbol(
+    mock8.ctx,
+    100,
+    200,
+    POSITION_SYMBOL_COLOR,
+    { ownership: "owned", sectorId: "D" },
+    8,
+  );
   expect(mock8.fillTexts[0]!.font).toContain("8px");
 
   const mock12 = createMockTargetCtx();
-  drawTargetSymbol(mock12.ctx, 100, 200, POSITION_SYMBOL_COLOR, { ownership: "owned", sectorId: "D" }, 12);
+  drawTargetSymbol(
+    mock12.ctx,
+    100,
+    200,
+    POSITION_SYMBOL_COLOR,
+    { ownership: "owned", sectorId: "D" },
+    12,
+  );
   expect(mock12.fillTexts[0]!.font).toContain("12px");
 
   const mockSquare = createMockTargetCtx();
-  drawTargetSymbol(mockSquare.ctx, 100, 200, POSITION_SYMBOL_COLOR, {
-    ownership: "unowned",
-    squawk: "7000",
-    beaconSelect: ["7000"],
-  }, 10);
+  drawTargetSymbol(
+    mockSquare.ctx,
+    100,
+    200,
+    POSITION_SYMBOL_COLOR,
+    {
+      ownership: "unowned",
+      squawk: "7000",
+      beaconSelect: ["7000"],
+    },
+    10,
+  );
   expect(mockSquare.strokeRects[0]!.w).toBe(10);
   expect(mockSquare.strokeRects[0]!.h).toBe(10);
 });

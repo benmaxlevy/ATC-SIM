@@ -88,6 +88,7 @@ function pickDatablockAt(
       view.modeCVisible,
       td?.scratchpad ?? "",
       { queried: isQueried },
+      world.simTimeMs,
     );
     const lines =
       mode === "limited" || mode === "partial"

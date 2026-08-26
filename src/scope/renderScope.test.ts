@@ -25,7 +25,6 @@ import {
   SELECTION_BOX_PAD_PX,
   TARGET_SIZE_PX,
   HISTORY_DOT_SIZE_PX,
-  OWNERSHIP_STUB_FONT,
   isTargetDiamondPath,
 } from "./targetSymbol";
 import {
@@ -40,7 +39,6 @@ import {
   formatLimitedDatablock,
   formatPartialDatablock,
   datablockMetrics,
-  withInboundHandoffCue,
 } from "./datablock";
 import { datablockTopLeft, DEFAULT_LEADER_DIR, leaderSegmentPx } from "./leader";
 
@@ -432,7 +430,7 @@ test("T02-04 AC2 — full datablock is callsign + hundreds/GS in IBM Plex Mono, 
   expect(line2!.y).toBeCloseTo(p.y + origin.y + DATABLOCK_FONT_PX, 5);
 });
 
-test("T02-19 — full datablock paints type on line 3 and scratchpad on line 2 tail", () => {
+test("T02-19 / T02-36 — full datablock time-shares between altitude/GS and scratchpad/type", () => {
   const ac = makeTestAircraft({
     id: "ac-dal",
     callsign: "DAL123",
@@ -442,23 +440,24 @@ test("T02-19 — full datablock paints type on line 3 and scratchpad on line 2 t
     yNm: 0,
     aircraftType: "B738",
   });
-  const world = createWorld({ aircraft: [ac] });
+  const world = createWorld({ aircraft: [ac], simTimeMs: 0 });
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
   view.tracks.get(ac.id)!.datablockMode = "full";
-  const first = createMockCtx();
-  renderScope(first.ctx, world, view, 800, 800);
   setScratchpad(view.tracks, ac.id, "abcd");
-  const { ctx, fillTexts } = createMockCtx();
-  renderScope(ctx, world, view, 800, 800);
-  const line2 = fillTexts.find((t) => t.text === "030  210  ABCD" && t.font === DATABLOCK_FONT);
-  const line3 = fillTexts.find((t) => t.text === "B738" && t.font === DATABLOCK_FONT);
-  expect(line2).toBeDefined();
-  expect(line3).toBeDefined();
-  if (!line2 || !line3) {
-    throw new Error("expected FDB line 2 scratchpad tail and line 3 type");
-  }
-  expect(line3.y!).toBeCloseTo(line2.y! + DATABLOCK_FONT_PX, 5);
+
+  // Phase A at t=0s: Line 2 shows Mode C + GS
+  const phaseA = createMockCtx();
+  renderScope(phaseA.ctx, world, view, 800, 800);
+  const line2A = phaseA.fillTexts.find((t) => t.text === "030  210" && t.font === DATABLOCK_FONT);
+  expect(line2A).toBeDefined();
+
+  // Phase B at t=2.5s: Line 2 shows scratchpad + type
+  world.simTimeMs = 2500;
+  const phaseB = createMockCtx();
+  renderScope(phaseB.ctx, world, view, 800, 800);
+  const line2B = phaseB.fillTexts.find((t) => t.text === "ABCD  B738" && t.font === DATABLOCK_FONT);
+  expect(line2B).toBeDefined();
   expect(ac.intent.assignedAltitudeFt).toBe(3000);
   expect(view.tracks.get(ac.id)!.scratchpad).toBe("ABCD");
 });
@@ -491,7 +490,7 @@ test("T02-04 AC5/AC7 — T limited drops the callsign; no duplicate callsign pai
   expect(limited.fillTexts.some((t) => t.text === "B738")).toBe(false);
 });
 
-test("T02-04 AC5 — M hides Mode C on full blocks; limited still paints Mode C hundreds", () => {
+test("T02-04 AC5 / T02-36 — M hides Mode C on full blocks; Line 3 shows assigned altitude A040", () => {
   const ac = makeTestAircraft({
     id: "ac-dal",
     callsign: "DAL123",
@@ -503,11 +502,13 @@ test("T02-04 AC5 — M hides Mode C on full blocks; limited still paints Mode C 
   ac.intent.assignedAltitudeFt = 4000;
   const world = createWorld({ aircraft: [ac] });
   const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get(ac.id)!.datablockMode = "full";
   view.modeCVisible = false;
   const full = createMockCtx();
   renderScope(full.ctx, world, view, 800, 800);
-  expect(full.fillTexts.some((t) => t.text === "040  210")).toBe(true);
-  expect(full.fillTexts.some((t) => t.text === "032  040  210")).toBe(false);
+  expect(full.fillTexts.some((t) => t.text === "210")).toBe(true);
+  expect(full.fillTexts.some((t) => t.text === "A040")).toBe(true);
 
   view.tracks.get(ac.id)!.datablockMode = "limited";
   const limited = createMockCtx();
@@ -861,9 +862,7 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   expect(spawnedTargets.every((r) => r.fillStyle === POSITION_SYMBOL_COLOR)).toBe(true);
   expect(spawned.fillTexts.find((t) => t.text === "030  210")?.fillStyle).toBe(PALETTE.unowned);
   expect(spawned.fillTexts.find((t) => t.text === "040  220")?.fillStyle).toBe(PALETTE.unowned);
-  expect(
-    spawned.fillTexts.filter((t) => t.text === "*"),
-  ).toHaveLength(2);
+  expect(spawned.fillTexts.filter((t) => t.text === "*")).toHaveLength(2);
   expect(spawned.strokeRects.filter((r) => r.w === SELECTION_BOX_PX)).toHaveLength(0);
 
   const noSelF3 = createMockCtx();
@@ -886,12 +885,8 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   expect(owned.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
   expect(owned.fillTexts.find((t) => t.text === "030  210")?.fillStyle).toBe(PALETTE.owned);
   expect(owned.fillTexts.find((t) => t.text === "040  220")?.fillStyle).toBe(PALETTE.unowned);
-  expect(
-    owned.fillTexts.filter((t) => t.text === "D" || t.text === "G"),
-  ).toHaveLength(1);
-  expect(
-    owned.fillTexts.filter((t) => t.text === "*"),
-  ).toHaveLength(1);
+  expect(owned.fillTexts.filter((t) => t.text === "D" || t.text === "G")).toHaveLength(1);
+  expect(owned.fillTexts.filter((t) => t.text === "*")).toHaveLength(1);
   const selBoxes = owned.strokeRects.filter(
     (r) => r.w === SELECTION_BOX_PX && r.h === SELECTION_BOX_PX,
   );
@@ -912,9 +907,7 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   expect(dropped.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.unowned);
   const droppedTarget = findTargetPositionSymbol(dropped.fillTexts, dalP.x, dalP.y)[0];
   expect(droppedTarget?.fillStyle).toBe(POSITION_SYMBOL_COLOR);
-  expect(
-    dropped.fillTexts.filter((t) => t.text === "*"),
-  ).toHaveLength(2);
+  expect(dropped.fillTexts.filter((t) => t.text === "*")).toHaveLength(2);
   expect(dropped.fillTexts.filter((t) => t.text === "D" || t.text === "G")).toHaveLength(0);
   expect(
     dropped.strokeRects.filter(
@@ -975,7 +968,9 @@ test("T04-09 AC5 — current CA blinks and paints red", () => {
   world.simTimeMs = 0;
   const alert = createMockCtx();
   renderScope(alert.ctx, world, view, css, css);
-  expect(findTargetPositionSymbol(alert.fillTexts, dalP.x, dalP.y)[0]?.fillStyle).toBe(PALETTE.alert);
+  expect(findTargetPositionSymbol(alert.fillTexts, dalP.x, dalP.y)[0]?.fillStyle).toBe(
+    PALETTE.alert,
+  );
   expect(alert.fillTexts.find((t) => t.text === "DAL123 CA")?.fillStyle).toBe(PALETTE.alert);
 
   world.simTimeMs = 500;
@@ -1028,9 +1023,7 @@ test("T04-10 — scope tints MSAW from world.alerts, not MVA math", () => {
   expect(findTargetPositionSymbol(caution.fillTexts, dalP.x, dalP.y)[0]?.fillStyle).toBe(
     PALETTE.caution,
   );
-  expect(caution.fillTexts.find((t) => t.text === "DAL123 MSAW")?.fillStyle).toBe(
-    PALETTE.caution,
-  );
+  expect(caution.fillTexts.find((t) => t.text === "DAL123 MSAW")?.fillStyle).toBe(PALETTE.caution);
 
   world.alerts.msaw[0]!.severity = "alert";
   const alert = createMockCtx();
@@ -1253,7 +1246,13 @@ test("T02-34 AC1 — Primary-only target renders as a diamond without a databloc
 });
 
 test("T02-34 AC2 — Unassociated secondary targets render *, V for 1200, square for beacon select", () => {
-  const acNorm = makeTestAircraft({ id: "ac-1", callsign: "DAL1", xNm: -2, yNm: 0, squawk: "0342" });
+  const acNorm = makeTestAircraft({
+    id: "ac-1",
+    callsign: "DAL1",
+    xNm: -2,
+    yNm: 0,
+    squawk: "0342",
+  });
   const acVfr = makeTestAircraft({ id: "ac-2", callsign: "VFR2", xNm: 0, yNm: 0, squawk: "1200" });
   const acSel = makeTestAircraft({ id: "ac-3", callsign: "SEL3", xNm: 2, yNm: 0, squawk: "4500" });
   const world = createWorld({ aircraft: [acNorm, acVfr, acSel] });
@@ -1276,7 +1275,9 @@ test("T02-34 AC2 — Unassociated secondary targets render *, V for 1200, square
   expect(symVfr[0]?.text).toBe("V");
 
   // Selected beacon -> square
-  const rectSel = strokeRects.filter((r) => Math.abs(r.x + r.w / 2 - pSel.x) <= 2 && Math.abs(r.y + r.h / 2 - pSel.y) <= 2);
+  const rectSel = strokeRects.filter(
+    (r) => Math.abs(r.x + r.w / 2 - pSel.x) <= 2 && Math.abs(r.y + r.h / 2 - pSel.y) <= 2,
+  );
   expect(rectSel.length).toBeGreaterThanOrEqual(1);
 });
 
@@ -1297,7 +1298,14 @@ test("T02-34 AC3 — Tracked target renders owning controller's sector ID", () =
 });
 
 test("T02-34 AC4 — Fixed 8px heading tick line is removed; PTL renders when enabled", () => {
-  const ac = makeTestAircraft({ id: "ac-notick", callsign: "DAL100", xNm: 0, yNm: 0, headingDeg: 90, speedKt: 250 });
+  const ac = makeTestAircraft({
+    id: "ac-notick",
+    callsign: "DAL100",
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 90,
+    speedKt: 250,
+  });
   const world = createWorld({ aircraft: [ac] });
   const view = createScopeView();
   view.ptlOn = false;
@@ -1318,7 +1326,13 @@ test("T02-34 AC4 — Fixed 8px heading tick line is removed; PTL renders when en
 });
 
 test("T02-34 AC5 — BRITE channels pos, oth, and pri properly modulate target symbol brightness", () => {
-  const pri = makeTestAircraft({ id: "ac-pri", callsign: "PRI01", xNm: -2, yNm: 0, primaryOnly: true });
+  const pri = makeTestAircraft({
+    id: "ac-pri",
+    callsign: "PRI01",
+    xNm: -2,
+    yNm: 0,
+    primaryOnly: true,
+  });
   const oth = makeTestAircraft({ id: "ac-oth", callsign: "OTH02", xNm: 0, yNm: 0 });
   const pos = makeTestAircraft({ id: "ac-pos", callsign: "POS03", xNm: 2, yNm: 0 });
   const world = createWorld({ aircraft: [pri, oth, pos] });
@@ -1351,7 +1365,7 @@ test("T02-34 AC6 — Position symbol sizing via charSizes.pos", () => {
   const ac = makeTestAircraft({ id: "ac-sz", callsign: "DAL1", xNm: 0, yNm: 0 });
   const world = createWorld({ aircraft: [ac] });
   const view = createScopeView();
-  view.charSizes.pos = 12;
+  view.charSizes.pos = 10;
 
   const css = 800;
   const { ctx, fillTexts } = createMockCtx();
@@ -1359,7 +1373,7 @@ test("T02-34 AC6 — Position symbol sizing via charSizes.pos", () => {
 
   const p = nmToScreen(ac.xNm, ac.yNm, view.camera, { widthPx: css, heightPx: css });
   const sym = findTargetPositionSymbol(fillTexts, p.x, p.y)[0];
-  expect(sym?.font).toContain("12px");
+  expect(sym?.font).toContain("10px");
 });
 
 test("T02-35 AC1/AC2 — LDB renders squawk+Mode C and queries ground speed on click", () => {

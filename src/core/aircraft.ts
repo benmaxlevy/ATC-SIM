@@ -71,6 +71,8 @@ export interface Intent {
   vertical?: VerticalMode;
   /** Single CROSS restriction; cleared when the fix sequences. */
   cross?: CrossConstraint;
+  /** Requested cruise/entry altitude in feet MSL. */
+  requestedAltitudeFt?: number;
 }
 
 /**
@@ -101,6 +103,20 @@ export interface Aircraft {
   primaryOnly?: boolean;
   /** True if primary radar target only. */
   isPrimary?: boolean;
+  /** Wake turbulence or RNAV / CWT category indicator letter (e.g. "H", "B", "R", "L", "A"-"I"). */
+  wakeCategory?: string;
+  /** Special Purpose Code: "EM" (7700), "RF" (7600), "HJ" (7500), or explicit SPC tag. */
+  spc?: string;
+  /** Filed / requested cruise or entry altitude in feet MSL (e.g. 7000 for R070). */
+  requestedAltitudeFt?: number;
+  /** Assigned squawk code when tracking squawk mismatch. */
+  assignedSquawk?: string;
+  /** Reported squawk code when tracking squawk mismatch. */
+  reportedSquawk?: string;
+  /** True if altitude is pilot-reported (displays *). */
+  pilotReportedAltitude?: boolean;
+  /** ATPA distance readout string if enabled (e.g. "2.4"). */
+  atpaDistance?: string;
 }
 
 export interface AircraftInit {
@@ -121,6 +137,20 @@ export interface AircraftInit {
   primaryOnly?: boolean;
   /** Optional primary target flag. */
   isPrimary?: boolean;
+  /** Optional wake turbulence / RNAV category letter. */
+  wakeCategory?: string;
+  /** Optional Special Purpose Code tag. */
+  spc?: string;
+  /** Optional requested altitude in feet MSL. */
+  requestedAltitudeFt?: number;
+  /** Optional assigned squawk. */
+  assignedSquawk?: string;
+  /** Optional reported squawk. */
+  reportedSquawk?: string;
+  /** Optional pilot-reported altitude flag. */
+  pilotReportedAltitude?: boolean;
+  /** Optional ATPA distance string. */
+  atpaDistance?: string;
 }
 
 let aircraftSeq = 0;
@@ -160,6 +190,17 @@ export function createAircraft(init: AircraftInit): Aircraft {
     ...(init.transponder ? { transponder: init.transponder } : {}),
     ...(init.primaryOnly !== undefined ? { primaryOnly: init.primaryOnly } : {}),
     ...(init.isPrimary !== undefined ? { isPrimary: init.isPrimary } : {}),
+    ...(init.wakeCategory ? { wakeCategory: init.wakeCategory.toUpperCase() } : {}),
+    ...(init.spc ? { spc: init.spc.toUpperCase() } : {}),
+    ...(init.requestedAltitudeFt !== undefined
+      ? { requestedAltitudeFt: init.requestedAltitudeFt }
+      : {}),
+    ...(init.assignedSquawk ? { assignedSquawk: init.assignedSquawk } : {}),
+    ...(init.reportedSquawk ? { reportedSquawk: init.reportedSquawk } : {}),
+    ...(init.pilotReportedAltitude !== undefined
+      ? { pilotReportedAltitude: init.pilotReportedAltitude }
+      : {}),
+    ...(init.atpaDistance ? { atpaDistance: init.atpaDistance } : {}),
   };
 }
 

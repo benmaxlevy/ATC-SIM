@@ -25,7 +25,6 @@ import {
   isArrowKey,
   isCycleFocusKey,
   isFilterChordKey,
-  isHelpToggleKey,
   isLeaderPrefixKey,
   isRadioFocusSlashKey,
   isScopeChordLive,
@@ -38,7 +37,6 @@ import { PpiPlaceholderId } from "./ppi-placeholder";
 import {
   centerOnAirport,
   centerOnLastClick,
-  toggleHelpOverlay,
   toggleHistoryEnabled,
   toggleModeCVisible,
   togglePtlOn,
@@ -365,11 +363,7 @@ export function handleScopeWheel(event: ScopeWheelEvent, view: ScopeView): boole
 /**
  * Scope keyup handler: deactivates momentary actions like F1 Beaconator.
  */
-export function handleScopeKeyUp(
-  event: ScopeKeyEvent,
-  view: ScopeView,
-  ui?: ScopeKeyUi,
-): boolean {
+export function handleScopeKeyUp(event: ScopeKeyEvent, view: ScopeView, ui?: ScopeKeyUi): boolean {
   if (event.key === "F1") {
     consume(event);
     view.beaconatorActive = false;

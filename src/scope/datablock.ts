@@ -24,6 +24,9 @@ import {
 
 const FIELD_GAP = "  ";
 
+/** STARS FDB Line 2 time-sharing phase interval (~2.5 seconds). */
+export const FDB_TIMESHARE_INTERVAL_MS = 2500;
+
 /** Trainer scratchpad cell: analog CRC FDB scratchpad; not NAS FP (R27). */
 export const SCRATCHPAD_MAX_LEN = 4;
 
@@ -49,13 +52,28 @@ export interface DatablockSource {
   speedKt: number;
   intent: {
     assignedAltitudeFt: number;
+    requestedAltitudeFt?: number;
   };
-  /** ICAO type stub for FDB line 3 (e.g. B738). Display-only. */
+  /** ICAO type stub for FDB (e.g. B738). Display-only. */
   aircraftType?: string;
   /** Assigned or active squawk / beacon code (e.g. "1200", "0342"). */
   squawk?: string;
   /** Optional beacon code alias. */
   beaconCode?: string;
+  /** Assigned squawk code when tracking squawk mismatch. */
+  assignedSquawk?: string;
+  /** Reported squawk code when tracking squawk mismatch. */
+  reportedSquawk?: string;
+  /** Wake turbulence or RNAV / CWT category indicator letter (e.g. "H", "B", "R", "L", "A"-"I"). */
+  wakeCategory?: string;
+  /** Special Purpose Code: "EM" (7700), "RF" (7600), "HJ" (7500), or explicit SPC tag. */
+  spc?: string;
+  /** Filed / requested cruise or entry altitude in feet MSL (e.g. 7000 for R070). */
+  requestedAltitudeFt?: number;
+  /** True if altitude is pilot-reported (displays *). */
+  pilotReportedAltitude?: boolean;
+  /** ATPA distance readout string if enabled (e.g. "2.4"). */
+  atpaDistance?: string;
 }
 
 export interface FullDatablockOpts {
@@ -63,6 +81,10 @@ export interface FullDatablockOpts {
   modeCVisible?: boolean;
   /** Trainer scratchpad (sanitized to 0–4 A–Z0–9). Omitted on limited. */
   scratchpad?: string;
+  /** Simulation timestamp in milliseconds for time-sharing cycle. Default 0. */
+  simTimeMs?: number;
+  /** Explicit time-share phase override (0 for Mode C/GS, 1 for Scratchpad/Type/ReqAlt). */
+  timeSharePhase?: 0 | 1;
 }
 
 export interface PartialDatablockOpts {
@@ -70,6 +92,8 @@ export interface PartialDatablockOpts {
   modeCVisible?: boolean;
   /** Trainer scratchpad (sanitized to 0–4 A–Z0–9). */
   scratchpad?: string;
+  /** Simulation timestamp in milliseconds. */
+  simTimeMs?: number;
 }
 
 export interface LimitedDatablockOpts {
@@ -84,7 +108,7 @@ export interface LimitedDatablockOpts {
 export interface FullDatablock {
   line1: string;
   line2: string;
-  /** Aircraft type (character-cell). Omitted when spawn has no type. */
+  /** Line 3: Assigned altitude prefixed with A, squawk mismatch, or ATPA distance. */
   line3?: string;
 }
 
@@ -149,41 +173,106 @@ function formatAircraftType(type: string | undefined): string | undefined {
   return cell.length > 0 ? cell : undefined;
 }
 
+export function formatWakeCategory(wakeCategory: string | undefined): string {
+  if (!wakeCategory || wakeCategory.length === 0) {
+    return "";
+  }
+  return wakeCategory.toUpperCase().slice(0, 1);
+}
+
+export function formatRequestedAltitude(reqAltFt: number | undefined): string | undefined {
+  if (reqAltFt == null || !Number.isFinite(reqAltFt)) {
+    return undefined;
+  }
+  return `R${formatAltitudeHundreds(reqAltFt)}`;
+}
+
+export function getSpecialPurposeCode(track: DatablockSource): string | undefined {
+  if (track.spc && track.spc.length > 0) {
+    return track.spc.toUpperCase();
+  }
+  const codes = [track.reportedSquawk, track.squawk, track.beaconCode, track.assignedSquawk];
+  for (const c of codes) {
+    if (c === "7700") return "EM";
+    if (c === "7600") return "RF";
+    if (c === "7500") return "HJ";
+  }
+  return undefined;
+}
+
 function appendScratchpad(line2: string, scratchpad: string | undefined): string {
   const spad = sanitizeScratchpad(scratchpad ?? "");
   return spad.length > 0 ? `${line2}${FIELD_GAP}${spad}` : line2;
 }
 
 /**
- * Full datablock: callsign on line 1; Mode C, assigned if ≥100 ft off, GS on
- * line 2 (optional scratchpad tail); aircraft type on line 3 when present.
- * `M` hides Mode C only — assigned + GS remain when they differ; GS-only when not.
- * Frozen extra line is type, not assigned H/A/S. Not a 4-line block.
+ * Full datablock (STARS CRC):
+ * - Line 1: Callsign + Special Purpose Code (SPC: EM, RF, HJ, etc.)
+ * - Line 2: Dynamic time-sharing alternating (~2.5s cycle):
+ *     Phase A: Mode C altitude + Ground speed (with wake/RNAV category suffix)
+ *     Phase B: Scratchpad + Aircraft type / Requested altitude (prefixed with R)
+ * - Line 3: Assigned altitude prefixed with A (e.g. A040) when |assigned - altitude| >= 100 ft,
+ *           squawk mismatch, or ATPA distance. Omitted when none applies.
  */
 export function formatFullDatablock(
   track: DatablockSource,
   opts: FullDatablockOpts = {},
 ): FullDatablock {
   const modeCVisible = opts.modeCVisible !== false;
-  const modeC = formatAltitudeHundreds(track.altitudeFt);
-  const assigned = formatAltitudeHundreds(track.intent.assignedAltitudeFt);
-  const gs = formatGroundSpeedKt(track.speedKt);
-  const showAssigned = assignedDiffers(track.altitudeFt, track.intent.assignedAltitudeFt);
+  const spc = getSpecialPurposeCode(track);
+  const line1 = spc ? `${track.callsign} ${spc}` : track.callsign;
 
-  let line2: string;
-  if (modeCVisible) {
-    line2 = showAssigned
-      ? `${modeC}${FIELD_GAP}${assigned}${FIELD_GAP}${gs}`
-      : `${modeC}${FIELD_GAP}${gs}`;
-  } else if (showAssigned) {
-    line2 = `${assigned}${FIELD_GAP}${gs}`;
+  const phase =
+    opts.timeSharePhase !== undefined
+      ? opts.timeSharePhase
+      : opts.simTimeMs != null
+        ? ((Math.floor(opts.simTimeMs / FDB_TIMESHARE_INTERVAL_MS) % 2) as 0 | 1)
+        : 0;
+
+  // Phase A components:
+  const pilotReportStar = track.pilotReportedAltitude ? "*" : "";
+  const modeC = `${formatAltitudeHundreds(track.altitudeFt)}${pilotReportStar}`;
+  const wake = formatWakeCategory(track.wakeCategory);
+  const gs = `${formatGroundSpeedKt(track.speedKt)}${wake}`;
+  const phaseALine2 = modeCVisible ? `${modeC}${FIELD_GAP}${gs}` : gs;
+
+  // Phase B components:
+  const spad = sanitizeScratchpad(opts.scratchpad ?? "");
+  const type = formatAircraftType(track.aircraftType);
+  const reqAltFt = track.requestedAltitudeFt ?? track.intent?.requestedAltitudeFt;
+  const reqAlt = formatRequestedAltitude(reqAltFt);
+
+  let phaseBLine2: string;
+  if (spad.length > 0) {
+    const right = reqAlt ?? type;
+    phaseBLine2 = right ? `${spad}${FIELD_GAP}${right}` : spad;
+  } else if (type && reqAlt) {
+    phaseBLine2 = `${type}${FIELD_GAP}${reqAlt}`;
+  } else if (reqAlt) {
+    phaseBLine2 = reqAlt;
+  } else if (type) {
+    phaseBLine2 = type;
   } else {
-    line2 = gs;
+    phaseBLine2 = phaseALine2;
   }
-  line2 = appendScratchpad(line2, opts.scratchpad);
 
-  const line3 = formatAircraftType(track.aircraftType);
-  return line3 ? { line1: track.callsign, line2, line3 } : { line1: track.callsign, line2 };
+  const line2 = phase === 1 ? phaseBLine2 : phaseALine2;
+
+  // Line 3: Special and Assigned fields
+  const showAssigned = assignedDiffers(track.altitudeFt, track.intent.assignedAltitudeFt);
+  const assignedField = showAssigned
+    ? `A${formatAltitudeHundreds(track.intent.assignedAltitudeFt)}`
+    : undefined;
+  const hasSquawkMismatch =
+    track.assignedSquawk && track.reportedSquawk && track.assignedSquawk !== track.reportedSquawk;
+  const squawkField = hasSquawkMismatch ? track.reportedSquawk : undefined;
+  const atpaField =
+    track.atpaDistance && track.atpaDistance.length > 0 ? track.atpaDistance : undefined;
+
+  const line3Parts = [assignedField, squawkField, atpaField].filter(Boolean) as string[];
+  const line3 = line3Parts.length > 0 ? line3Parts.join(FIELD_GAP) : undefined;
+
+  return line3 ? { line1, line2, line3 } : { line1, line2 };
 }
 
 /**
@@ -196,21 +285,12 @@ export function formatPartialDatablock(
   opts: PartialDatablockOpts = {},
 ): PartialDatablock {
   const modeCVisible = opts.modeCVisible !== false;
-  const modeC = formatAltitudeHundreds(track.altitudeFt);
-  const assigned = formatAltitudeHundreds(track.intent.assignedAltitudeFt);
-  const gs = formatGroundSpeedKt(track.speedKt);
-  const showAssigned = assignedDiffers(track.altitudeFt, track.intent.assignedAltitudeFt);
+  const pilotReportStar = track.pilotReportedAltitude ? "*" : "";
+  const modeC = `${formatAltitudeHundreds(track.altitudeFt)}${pilotReportStar}`;
+  const wake = formatWakeCategory(track.wakeCategory);
+  const gs = `${formatGroundSpeedKt(track.speedKt)}${wake}`;
 
-  let line1: string;
-  if (modeCVisible) {
-    line1 = showAssigned
-      ? `${modeC}${FIELD_GAP}${assigned}${FIELD_GAP}${gs}`
-      : `${modeC}${FIELD_GAP}${gs}`;
-  } else if (showAssigned) {
-    line1 = `${assigned}${FIELD_GAP}${gs}`;
-  } else {
-    line1 = gs;
-  }
+  let line1 = modeCVisible ? `${modeC}${FIELD_GAP}${gs}` : gs;
   line1 = appendScratchpad(line1, opts.scratchpad);
   return { line1 };
 }
@@ -264,14 +344,15 @@ export function linesForDatablock(
   modeCVisible = true,
   scratchpad = "",
   opts?: LimitedDatablockOpts,
+  simTimeMs = 0,
 ): DatablockLines {
   if (mode === "limited") {
     return formatLimitedDatablock(track, opts);
   }
   if (mode === "partial") {
-    return formatPartialDatablock(track, { modeCVisible, scratchpad });
+    return formatPartialDatablock(track, { modeCVisible, scratchpad, simTimeMs });
   }
-  return formatFullDatablock(track, { modeCVisible, scratchpad });
+  return formatFullDatablock(track, { modeCVisible, scratchpad, simTimeMs });
 }
 
 export function datablockMetrics(

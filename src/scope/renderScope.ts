@@ -212,11 +212,6 @@ function drawVideoMapLabel(
   }
 }
 
-function trackDatablockMode(view: ScopeView, aircraftId: string): DatablockMode {
-  const td = view.tracks.get(aircraftId);
-  return td?.datablockMode ?? (td?.ownership === "owned" ? "full" : "partial");
-}
-
 function trackEffectiveDatablockMode(
   view: ScopeView,
   world: World,
@@ -232,7 +227,7 @@ function trackEffectiveDatablockMode(
     return "full";
   }
   const tint = trackAlertTint(world, callsign);
-  if (tint && tint.kind !== "none") {
+  if (tint) {
     return "full";
   }
   return baseMode;
@@ -287,6 +282,7 @@ function drawDatablock(
       queried: isQueried,
       beaconVisible: true,
     },
+    world.simTimeMs,
   );
   const line1 =
     mode === "limited" || mode === "partial"
