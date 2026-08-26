@@ -124,7 +124,7 @@ describe("STARS CRC Datablock & Scratchpad Fidelity Acceptance (T02-42)", () => 
       expect(leveled.sp1).toBe("");
     });
 
-    test("Speed clearance derives S + 2-digit tens in SP2 (e.g. 210 kt -> S21)", () => {
+    test("Speed clearance derives S + 2-digit tens in SP2 only when controller gave a speed (not locked by STAR/SID)", () => {
       const ac = makeTestAircraft({
         id: "ac-spd",
         callsign: "SWA300",
@@ -133,11 +133,21 @@ describe("STARS CRC Datablock & Scratchpad Fidelity Acceptance (T02-42)", () => 
       });
       const td = createTrackDisplay("owned");
 
-      // Reduce speed to 180 kt
+      // Initially on spawn or procedure: no speed in SP2
+      let derived = deriveScratchpads(ac, td);
+      expect(derived.sp2).toBe("");
+
+      // Controller assigns speed: Reduce speed to 180 kt -> S18 in SP2
       applyIntent(ac, [{ type: "SPEED", speedKt: 180, verb: "REDUCE" }], 0);
-      const derived = deriveScratchpads(ac, td);
+      derived = deriveScratchpads(ac, td);
       expect(derived.sp2).toBe("S18");
       expect(td.sp2).toBe("S18");
+
+      // Controller instructs descend via STAR: speed restriction reverts to procedure -> SP2 clears
+      applyIntent(ac, [{ type: "DESCEND_VIA", procedureId: "DEMO1" }], 0);
+      derived = deriveScratchpads(ac, td);
+      expect(derived.sp2).toBe("");
+      expect(td.sp2).toBe("");
     });
 
     test("Manual scratchpad entry overrides auto-derivation and clearing restores auto-derivation", () => {
@@ -148,6 +158,7 @@ describe("STARS CRC Datablock & Scratchpad Fidelity Acceptance (T02-42)", () => 
       });
       ac.intent.assignedAltitudeFt = 3000;
       ac.intent.assignedSpeedKt = 210;
+      ac.intent.controllerAssignedSpeedKt = 210;
 
       const tracks = new Map();
       const td = createTrackDisplay("owned");
@@ -300,6 +311,7 @@ describe("STARS CRC Datablock & Scratchpad Fidelity Acceptance (T02-42)", () => 
       });
       ac.intent.clearedApproachId = "ILS 27";
       ac.intent.assignedSpeedKt = 210;
+      ac.intent.controllerAssignedSpeedKt = 210;
 
       const world = createWorld({ aircraft: [ac], simTimeMs: 0 });
       const view = createScopeView();

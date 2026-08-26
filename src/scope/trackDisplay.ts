@@ -196,16 +196,16 @@ export function deriveScratchpads(
     sp1 = sanitizeScratchpad(td.manualSp1);
   }
 
-  // Derive automatic SP2:
+  // Derive automatic SP2 (only if controller explicitly gave a speed, not if locked by STAR/SID or default):
   let sp2 = "";
   if (td?.manualSp2 != null && td.manualSp2.length > 0) {
     sp2 = sanitizeScratchpad(td.manualSp2);
   } else if (
-    aircraft.intent?.assignedSpeedKt != null &&
-    Number.isFinite(aircraft.intent.assignedSpeedKt) &&
-    aircraft.intent.assignedSpeedKt > 0
+    aircraft.intent?.controllerAssignedSpeedKt != null &&
+    Number.isFinite(aircraft.intent.controllerAssignedSpeedKt) &&
+    aircraft.intent.controllerAssignedSpeedKt > 0
   ) {
-    const tens = Math.max(0, Math.round(aircraft.intent.assignedSpeedKt / 10));
+    const tens = Math.max(0, Math.round(aircraft.intent.controllerAssignedSpeedKt / 10));
     sp2 = `S${String(tens).padStart(2, "0")}`;
   }
 

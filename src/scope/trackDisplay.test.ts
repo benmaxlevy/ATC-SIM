@@ -203,7 +203,7 @@ test("T02-39: formatApproachShorthand maps approach types to standard STARS code
   expect(formatApproachShorthand("")).toBeUndefined();
 });
 
-test("T02-39: deriveScratchpads auto-derives approach shorthand to SP1 and assigned speed to SP2", () => {
+test("T02-39: deriveScratchpads auto-derives approach shorthand to SP1 and assigned speed to SP2 only when controller gave a speed", () => {
   const ac = makeTestAircraft({
     id: "ac-app",
     altitudeFt: 5000,
@@ -214,8 +214,16 @@ test("T02-39: deriveScratchpads auto-derives approach shorthand to SP1 and assig
   ac.intent.clearedApproachId = "ILS 27";
 
   const td = createTrackDisplay("owned");
-  const derived = deriveScratchpads(ac, td);
 
+  // Default spawn / procedure speed: SP2 is empty
+  let derived = deriveScratchpads(ac, td);
+  expect(derived.sp1).toBe("I27");
+  expect(derived.sp2).toBe("");
+  expect(td.sp2).toBe("");
+
+  // When controller assigns speed: SP2 derives S21
+  ac.intent.controllerAssignedSpeedKt = 210;
+  derived = deriveScratchpads(ac, td);
   expect(derived.sp1).toBe("I27");
   expect(derived.sp2).toBe("S21");
   expect(td.sp1).toBe("I27");
@@ -231,6 +239,7 @@ test("T02-39: deriveScratchpads derives interim altitude to SP1 when no approach
   });
   ac.intent.assignedAltitudeFt = 4000;
   ac.intent.assignedSpeedKt = 180;
+  ac.intent.controllerAssignedSpeedKt = 180;
   ac.intent.clearedApproachId = null;
 
   const td = createTrackDisplay("owned");
@@ -249,6 +258,7 @@ test("T02-39: manual scratchpads take precedence over auto-derivation and cleari
   });
   ac.intent.assignedAltitudeFt = 4000;
   ac.intent.assignedSpeedKt = 210;
+  ac.intent.controllerAssignedSpeedKt = 210;
 
   const tracks = new Map();
   const td = createTrackDisplay("owned");
