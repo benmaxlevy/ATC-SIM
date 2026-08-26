@@ -921,7 +921,7 @@ test("T02-08 — owned PTL stays white, not selection yellow", () => {
   expect(ptl?.strokeStyle).toBe(PALETTE.ptl);
 });
 
-test("T04-09 AC5 — current CA blinks and paints red", () => {
+test("T04-09 AC5 — current CA displays red CA above FDB on tracked targets, rest in white, suppressed on untracked", () => {
   const dal = makeTestAircraft({
     id: "ac-dal",
     callsign: "DAL123",
@@ -949,27 +949,42 @@ test("T04-09 AC5 — current CA blinks and paints red", () => {
     },
   ];
   const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  // Untracked by default: CA is not shown on untracked targets
   const css = 800;
+  const untrackedCtx = createMockCtx();
+  renderScope(untrackedCtx.ctx, world, view, css, css);
+  expect(untrackedCtx.fillTexts.find((t) => t.text === "CA")).toBeUndefined();
+
+  // Track DAL123 (owned FDB)
+  view.tracks.get(dal.id)!.ownership = "owned";
+  view.tracks.get(dal.id)!.datablockMode = "full";
   const dalP = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: css, heightPx: css });
   world.simTimeMs = 0;
   const alert = createMockCtx();
   renderScope(alert.ctx, world, view, css, css);
   expect(findTargetPositionSymbol(alert.fillTexts, dalP.x, dalP.y)[0]?.fillStyle).toBe(
-    PALETTE.alert,
+    PALETTE.owned,
   );
-  expect(alert.fillTexts.find((t) => t.text === "DAL123 CA")?.fillStyle).toBe(PALETTE.alert);
+  expect(alert.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
+  expect(alert.fillTexts.find((t) => t.text === "CA")?.fillStyle).toBe(PALETTE.alert);
 
+  // Static CA (simTimeMs = 800 — remains visible, does not blink off)
   world.simTimeMs = 800;
-  const blinkOff = createMockCtx();
-  renderScope(blinkOff.ctx, world, view, css, css);
-  expect(blinkOff.fillTexts.find((t) => t.text === "DAL123   ")?.fillStyle).toBe(PALETTE.alert);
+  const staticCheck = createMockCtx();
+  renderScope(staticCheck.ctx, world, view, css, css);
+  expect(staticCheck.fillTexts.find((t) => t.text === "CA")?.fillStyle).toBe(PALETTE.alert);
+  expect(staticCheck.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
+
+  // Cleared alert
   world.alerts.ca = [];
   const cleared = createMockCtx();
   renderScope(cleared.ctx, world, view, css, css);
+  expect(cleared.fillTexts.find((t) => t.text === "CA")).toBeUndefined();
   expect(findTargetPositionSymbol(cleared.fillTexts, dalP.x, dalP.y)[0]?.fillStyle).toBe(
-    PALETTE.unowned,
+    PALETTE.owned,
   );
-  expect(cleared.fillTexts.find((t) => t.text === "080  210")?.fillStyle).toBe(PALETTE.unowned);
+  expect(cleared.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
 
   const sources = import.meta.glob("./renderScope.ts", {
     query: "?raw",

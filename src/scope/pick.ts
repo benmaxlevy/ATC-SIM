@@ -5,7 +5,7 @@
  * clicks keep select / FDB toggle. F3 INIT CNTL on a pending inbound is the
  * same `acceptInboundHandoff` helper (T04-16). Not a Command. Not NAS STARS.
  *
- * CA halo is **not** drawn: CRC conflict-alert CA is blinking `CA` text + tone, not a 3 NM circle
+ * CA halo is **not** drawn: CRC conflict-alert CA is static `CA` text + tone, not a 3 NM circle
  * (circles are TPA J-rings or ERAM DRI).
  *
  * Scope action: may clear inbound HO; never writes intent and never emits a

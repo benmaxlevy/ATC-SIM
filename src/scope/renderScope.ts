@@ -17,9 +17,9 @@
  * selected yellow box independent of ownership. CHAR SIZE is per-subsystem
  * (DATA BLOCKS / LISTS / DCB / TOOLS / POS) on IBM Plex Mono. BRITE multiplies
  * each drawn channel; WX/WXC/BKC do not paint weather. SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
- * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. Current CA blinks `CA`
+ * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. Current CA displays static `CA`
  * + tone from `world.alerts` and paints red. T04-10 MSAW still tints yellow then red. CA halo is
- * **not** drawn: CRC conflict-alert CA is blinking `CA` text + tone, not a 3 NM circle
+ * **not** drawn: CRC conflict-alert CA is static `CA` text + tone, not a 3 NM circle
  * (circles are TPA J-rings or ERAM DRI). Not OSM / tiles (R12). Not a
  * sprite. Not an airplane. Not a label. Not NAS STARS.
  *
@@ -32,7 +32,7 @@
  * character, history cap is 5 dots. Canvas2D only (no WebGL).
  */
 
-import { handoffFor, type Aircraft, type World } from "@core";
+import { caSeverityForCallsign, handoffFor, type Aircraft, type World } from "@core";
 import { inAltitudeFilter } from "./altitudeFilter";
 import { nmToScreen, type ScopeViewSize } from "./camera";
 import { datablockMetrics, linesForDatablock, type DatablockMode } from "./datablock";
@@ -57,6 +57,7 @@ import {
   PALETTE,
   alertTintPaintColor,
   applyBrite,
+  caDatablockTagVisible,
   trackAlertTint,
   trackPaintAlertTint,
   withCaDatablockTag,
@@ -215,6 +216,22 @@ export interface DatablockVisualState {
   leaderColor: string;
 }
 
+export function isTrackedTarget(view: ScopeView, world: World, ac: Aircraft): boolean {
+  const td = view.tracks.get(ac.id);
+  const ownership: TrackOwnership = td?.ownership ?? "unowned";
+  const ho = handoffFor(world, ac.id);
+  return (
+    ownership === "owned" ||
+    ownership === "tower" ||
+    ownership === "center" ||
+    td?.tracked === true ||
+    ho.kind === "inbound" ||
+    (ho.kind === "outbound" && ho.status === "accepted") ||
+    ho.kind === "pointout_inbound" ||
+    ho.kind === "pointout_outbound"
+  );
+}
+
 export function getDatablockVisualState(
   view: ScopeView,
   world: World,
@@ -225,13 +242,25 @@ export function getDatablockVisualState(
   const paintTint = trackPaintAlertTint(world, ac.callsign);
   const alertColor = alertTintPaintColor(paintTint);
 
-  // 1. Conflict / MSAW Alert tint
+  // 1. MSAW Alert tint
   if (alertColor) {
     return {
       color: alertColor,
       visible: true,
       mode: "full",
       leaderColor: alertColor,
+    };
+  }
+
+  // 1b. Conflict Alert: only shown for tracked targets (full datablock in white)
+  const isTracked = isTrackedTarget(view, world, ac);
+  const caSeverity = caSeverityForCallsign(world.alerts.ca, ac.callsign);
+  if (isTracked && caSeverity) {
+    return {
+      color: PALETTE.owned,
+      visible: true,
+      mode: "full",
+      leaderColor: PALETTE.owned,
     };
   }
 
@@ -382,6 +411,11 @@ function trackColor(view: ScopeView, world: World, ac: Aircraft): string {
   if (alertColor) {
     return alertColor;
   }
+  const isTracked = isTrackedTarget(view, world, ac);
+  const caSeverity = caSeverityForCallsign(world.alerts.ca, ac.callsign);
+  if (isTracked && caSeverity) {
+    return PALETTE.owned;
+  }
   const td = view.tracks.get(ac.id);
   const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
   return targetStrokeColor(trackOwnership(view, ac.id), identActive);
@@ -432,6 +466,14 @@ function drawDatablock(
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
   const origin = datablockTopLeft(trackLeaderDir(view, ac.id), metrics, view.leaderLengthPx);
   const briteCh = mode === "limited" || mode === "partial" ? view.brite.ldb : view.brite.fdb;
+
+  const isTracked = isTrackedTarget(view, world, ac);
+  const caSeverity = caSeverityForCallsign(world.alerts.ca, ac.callsign);
+  if (isTracked && caSeverity && mode === "full" && caDatablockTagVisible(world.simTimeMs)) {
+    ctx.fillStyle = applyBrite(PALETTE.alert, view.brite.fdb);
+    ctx.fillText("CA", targetX + origin.x, targetY + origin.y - lineH);
+  }
+
   ctx.fillStyle = applyBrite(visual.color, briteCh);
   ctx.fillText(lines.line1, targetX + origin.x, targetY + origin.y);
   if (lines.line2 != null) {
@@ -477,15 +519,7 @@ function drawTracks(
     const isPrimary = isPrimaryTarget(ac, td);
     const ownership: TrackOwnership = td?.ownership ?? "unowned";
     const ho = handoffFor(world, ac.id);
-    const isTracked =
-      ownership === "owned" ||
-      ownership === "tower" ||
-      ownership === "center" ||
-      td?.tracked === true ||
-      ho.kind === "inbound" ||
-      (ho.kind === "outbound" && ho.status === "accepted") ||
-      ho.kind === "pointout_inbound" ||
-      ho.kind === "pointout_outbound";
+    const isTracked = isTrackedTarget(view, world, ac);
     const posBrite = isPrimary ? view.brite.pri : isTracked ? view.brite.pos : view.brite.oth;
     const squawk = td?.squawk ?? ac.squawk;
     let sectorId = td?.sectorId;

@@ -10,7 +10,7 @@
  * then 1–9; pixel-constant default 36 CSS px; DCB LDR length 0/24/36/48), altitude filter
  * (scope-focus `F`, default 000–180), F3/F4 ownership color stub (not NAS),
  * F1 help overlay (`TRAINER KEYS — NOT CRC`), Tab cycle focus, `/` radio focus.
- * T04-09 predicted CA blinks `CA` + tone (no yellow); current CA is red. T04-10 MSAW still
+ * T04-09 CA displays static `CA` + tone (no yellow). T04-10 MSAW still
  * tints yellow then red. CA is raised only for current conflicts. The PPI does
  * not compute pair distance.
  *
@@ -112,7 +112,7 @@ export {
   reuseOrBuildMapCache,
 } from "./mapLayers";
 export type { DigitalMap, MapCache, MapLayerFlags, NmPoint } from "./mapLayers";
-export { getDatablockVisualState, renderScope } from "./renderScope";
+export { getDatablockVisualState, isTrackedTarget, renderScope } from "./renderScope";
 export type { DatablockVisualState } from "./renderScope";
 export {
   GI_SLOT_COUNT,

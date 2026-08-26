@@ -2,7 +2,7 @@
  * Analog: FAA JO 7210.3 3-9-1 National Color Standard (terminal) + FAA HF
  * 2008 STARS TCW RGB table + CRC STARS TCW (docs.virtualnas.net/crc/stars — R07)
  * + vice STARS monitor (Boston Approach screenshot; not ERAM).
- * CRC STARS STCA (R07) — blinking `CA` in the datablock + aural tone.
+ * CRC STARS STCA (R07) — static `CA` in the datablock + aural tone.
  * FOA STARS / 7110.65 name the alert (R01, R05). MSAW still uses caution
  * yellow then alert red. Not certified. Do not label “STARS CA” or “MSAW
  * certified.” UI word is **MSAW**, not GPWS / TAWS.
@@ -13,14 +13,14 @@
  * stored no-ops (no weather). Not a brightness slider.
  * Phase 2 reserved yellow/red; phase 4 CA/MSAW uses them. Scope reads
  * `world.alerts` and `datablockAlertTint`. It does not compute pair distance or
- * MVA floors. Current CA paints red with blinking `CA`. Not NAS STARS.
+ * MVA floors. Current CA displays static `CA`. Not NAS STARS.
  *
  * Grammar (do not invert):
  * - Background black; video maps / range rings dim gray
  * - Owned FDB white after F3; unowned / other-TCP FDB green
  * - Search/fusion position symbol blue; history trail blue (not track-tinted)
  * - PTL white; TLS/tools cyan for TPA J-rings; SSA / DCB / lists phosphor green
- * - Phase 4: MSAW yellow then red. Predicted CA blinks only; current CA is red FDB + blink.
+ * - Phase 4: MSAW yellow then red. CA is static `CA` text above FDB.
  */
 
 import {
@@ -255,20 +255,19 @@ export function trackAlertTint(world: World, callsign: string): AlertTint {
   });
 }
 
-/** Paint: current CA red, MSAW yellow/red. */
+/** Paint: MSAW yellow/red (CA does not tint whole blocks or targets red; CA is red text above FDB). */
 export function trackPaintAlertTint(world: World, callsign: string): AlertTint {
-  const ca = caSeverityForCallsign(world.alerts.ca, callsign);
   return datablockAlertTint({
-    ca: ca === "alert" ? "alert" : null,
+    ca: null,
     msaw: msawSeverityForCallsign(world.alerts.msaw, callsign),
   });
 }
 
 export function alertTintPaintColor(tint: AlertTint): string | null {
-  if (tint === "ca-caution") {
+  if (tint === "ca-caution" || tint === "ca-alert") {
     return null;
   }
-  if (tint === "ca-alert" || tint === "msaw-alert") {
+  if (tint === "msaw-alert") {
     return PALETTE.alert;
   }
   if (tint === "msaw-caution") {
@@ -283,14 +282,11 @@ export function alertOrOwnershipColor(ownership: TrackOwnership, tint: AlertTint
   return alertColor ?? PALETTE[ownership];
 }
 
-export function caDatablockTagVisible(simTimeMs: number): boolean {
-  return Math.floor(simTimeMs / CA_BLINK_HALF_MS) % 2 === 0;
+export function caDatablockTagVisible(_simTimeMs = 0): boolean {
+  return true;
 }
 
-export function withCaDatablockTag(line1: string, tint: AlertTint, simTimeMs = 0): string {
-  if (tint === "ca-alert" || tint === "ca-caution") {
-    return caDatablockTagVisible(simTimeMs) ? `${line1} CA` : `${line1}   `;
-  }
+export function withCaDatablockTag(line1: string, tint: AlertTint, _simTimeMs = 0): string {
   if (tint === "msaw-alert" || tint === "msaw-caution") {
     return `${line1} MSAW`;
   }

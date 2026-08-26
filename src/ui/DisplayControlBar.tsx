@@ -157,6 +157,9 @@ function setPressed(el: Element | null, pressed: boolean): void {
   if (!(el instanceof HTMLElement)) {
     return;
   }
+  if (el.getAttribute("data-dcb-flashing") === "true") {
+    return;
+  }
   el.setAttribute("aria-pressed", pressed ? "true" : "false");
 }
 

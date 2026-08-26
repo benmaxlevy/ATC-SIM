@@ -785,3 +785,9 @@ test("momentary caps flash inset; toggles remain latches", () => {
   expect(html).toMatch(/aria-pressed="false"[^>]*data-dcb-cell="pref-save-as"/);
   expect(html).toMatch(/aria-pressed="false"[^>]*data-dcb-cell="pref-delete"/);
 });
+
+test("syncDisplayControlBar preserves aria-pressed when button has active data-dcb-flashing", () => {
+  expect(barSrc()).toMatch(/data-dcb-flashing/);
+  expect(barSrc()).toMatch(/el\.getAttribute\("data-dcb-flashing"\) === "true"/);
+});
+
