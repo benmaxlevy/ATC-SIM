@@ -84,6 +84,16 @@ or an HTML text field. Slot caps should show the stored name once it exists.
 
 MAIN already shows the active set name on the PREF cap.
 
+### Manual Inhibit Commands and Safety Inhibit Glyphs
+
+STARS CRC supports manual per-track inhibition commands via the `<MULTI FUNC>` (F7) keypad interface:
+- `<MULTI FUNC>M<SLEW>`: Toggles display of Mode C altitude for a specific track.
+- `<MULTI FUNC>C<SLEW>`: Inhibits Conflict Alert for a specific track (rendering `▲` after the aircraft callsign).
+- `<MULTI FUNC>...`: Inhibits MSAW for a specific track (rendering `*` after the aircraft callsign).
+- `<MULTI FUNC>Y(###)<SLEW>`: Enters a pilot-reported altitude (rendering `*` after altitude numbers).
+
+These manual invocation commands and the corresponding `▲` and `*` Line 1 glyphs are skipped for now and preserved for later implementation when a full STARS `<MULTI FUNC>` keyboard chord parser is introduced.
+
 ## Explicit boundary
 
 This document does not pull in untouched phase work such as scoring/replay,

@@ -19,9 +19,9 @@ Orchestrator planning **2026-08-26**. Human requested tickets for dual scratchpa
 
 | Key | Value |
 | --- | --- |
-| Goal | Complete datablock fidelity alignment with STARS CRC (docs.virtualnas.net/crc/stars): dual scratchpad state (`sp1`, `sp2`) with automatic derivation from clearances (approach shorthand `I27`/`R22L`/`V28`, interim alt `040`, speed `S21`), tens-based groundspeed (`18`, `25`) & wake/RNAV category indicators (`18H`, `25R`), multi-phase Line 2 time-sharing (left Mode C/SP1/SP2, right GS/Type/Req Alt, center handoff sector ID), Line 1 safety inhibit glyphs (`*`, `▲`) & expanded SPC tags (`EM`, `RF`, `HJ`, `MI`, `LL`, `OD`, `ME`, `MF`, `LN`), and end-to-end integration acceptance |
-| Player loop | `npm run dev` → issue approach clearance (`"expect ils runway 27"`) → SP1 automatically shows `I27`; assign speed (`"reduce speed to 210 knots"`) → SP2 shows `S21`; Line 2 alternates between Mode C / `I27` / `S21` on the left and GS tens `21H` / aircraft type `B738` on the right; initiating handoff places sector ID `D` in the center of Line 2; emergency squawk 7700 displays `EM` and CA inhibit displays `▲` on Line 1 |
-| Skip | **T04-11** (wind); all of **T00–T03**, **T02-01–38**, **T04-***, **T05-*** |
+| Goal | Complete datablock fidelity alignment with STARS CRC (docs.virtualnas.net/crc/stars): dual scratchpad state (`sp1`, `sp2`) with automatic derivation from clearances (approach shorthand `I27`/`R22L`/`V28`, interim alt `040`, speed `S21`), tens-based groundspeed (`18`, `25`) & wake/RNAV category indicators (`18H`, `25R`), multi-phase Line 2 time-sharing (left Mode C/SP1/SP2, right GS/Type/Req Alt, center handoff sector ID), expanded Line 1 SPC tags (`EM`, `RF`, `HJ`, `MI`, `LL`, `OD`, `ME`, `MF`, `LN`), and end-to-end integration acceptance (manual inhibit glyphs deferred to backlog) |
+| Player loop | `npm run dev` → issue approach clearance (`"expect ils runway 27"`) → SP1 automatically shows `I27`; assign speed (`"reduce speed to 210 knots"`) → SP2 shows `S21`; Line 2 alternates between Mode C / `I27` / `S21` on the left and GS tens `21H` / aircraft type `B738` on the right; initiating handoff places sector ID `D` in the center of Line 2; emergency squawk 7700 displays `EM` on Line 1 |
+| Skip | **T04-11** (wind); all of **T00–T03**, **T02-01–38**, **T04-***, **T05-***; manual `<MULTI FUNC>` inhibit icons (deferred to backlog) |
 | Include | **T02-39**, **T02-40**, **T02-41**, **T02-42**, **T02-43** |
 | Stop | **Do not start phase 5.** No scoring, replay, imperfect pilots, or second TCP |
 | Do not redo | T00–T02-38. If STATUS says eleventh swarm complete, **stop** |
@@ -32,14 +32,14 @@ Orchestrator planning **2026-08-26**. Human requested tickets for dual scratchpa
 
 **Waves:**
 - **Wave A (2 workers):** `T02-39` (Automatic scratchpad SP1/SP2 derivation from aircraft intent) ∥ `T02-40` (STARS FDB ground speed tens and category indicators)
-- **Wave B (2 workers):** `T02-41` (STARS FDB multi-phase time-sharing and handoff center placement) ∥ `T02-42` (STARS datablock safety inhibit glyphs and Special Purpose Codes)
+- **Wave B (2 workers):** `T02-41` (STARS FDB multi-phase time-sharing and handoff center placement) ∥ `T02-42` (STARS datablock Special Purpose Codes)
 - **Wave C (1 worker):** `T02-43` (STARS datablock fidelity integration and acceptance)
 
 **Product law (eleventh swarm — STARS CRC datablock & scratchpad fidelity):**
 - **Dual Scratchpad Derivation:** `TrackDisplay` maintains `sp1` and `sp2`. Approach clearances automatically derive approach shorthand into SP1 (`I27`, `R22L`, `V28`, `L09`, `O15`); assigned interim altitudes derive 3-digit hundreds (`040`) in SP1 when no approach is set; assigned speeds derive `S` + tens (`S21`) in SP2. Manual entries override and persist until cleared.
 - **Tens-Based Ground Speed & Category Indicators:** Ground speed on FDB and PDB formats in 2-digit tens (e.g. `18` for 180 kt) via `formatGroundSpeedTens()`. Wake/RNAV category indicators (`H`, `B`, `R`, `J`, `M`, `F`, `L` or CWT `A`–`I`) append directly to GS (`18H`, `25R`). `suppressPdbSpeed` suppresses PDB ground speed when configured.
 - **Multi-Phase Line 2 Time-Sharing:** Left field cycles `Mode C` $\leftrightarrow$ `SP1` $\leftrightarrow$ `SP2` (~2.5s interval), seamlessly omitting unassigned scratchpad slots. Right field cycles `GS (tens)` $\leftrightarrow$ `Type` $\leftrightarrow$ `Requested Alt (R###)`. Inbound/outbound handoff displays partner sector ID letter in the center position.
-- **Safety Inhibit Glyphs & SPCs:** Line 1 displays `*` after callsign for MSAW-inhibited/VFR tracks and `▲` for Conflict Alert-inhibited tracks. Emergency transponder codes auto-trigger 2-letter SPCs: 7700 (`EM`), 7600 (`RF`), 7500 (`HJ`), 7777 (`MI`), 7400 (`LL`). Tactical SPCs (`OD`, `ME`, `MF`, `LN`) render on demand.
+- **Special Purpose Codes (SPCs):** Emergency transponder codes auto-trigger 2-letter SPCs on Line 1: 7700 (`EM`), 7600 (`RF`), 7500 (`HJ`), 7777 (`MI`), 7400 (`LL`). Tactical SPCs (`OD`, `ME`, `MF`, `LN`) render on demand. Manual inhibit glyphs (`▲`, `*`) are deferred to `phases/LATER-IMPLEMENTATION-BACKLOG.md`.
 - **Zero Simulation Regressions:** All existing kinematics, procedural navigation (SIDs/STARs), ILS approaches, radio telephony, and DCB physical menus remain 100% operational.
 
 ---
