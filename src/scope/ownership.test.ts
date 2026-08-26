@@ -15,6 +15,7 @@ import {
   DROP_TRACK_HELP,
   INITIATE_TRACK_HELP,
   applyDropTrack,
+  applyHandoffToSelection,
   applyInitiateTrack,
   applyTowerHandoffToSelection,
   applyTowerOwnership,
@@ -289,4 +290,109 @@ test("acceptTowerHandoff helper stays off the radio pipeline", () => {
   expect(acceptTowerHandoff(dal, { log, simTimeMs: 1 })).toBe(true);
   expect(log.byType("handoff.tower")[0]?.callsign).toBe("DAL123");
   expect(log.all().every((event) => event.type !== "command.accepted")).toBe(true);
+});
+
+test("AC2 — Given a selected arrival on LOC/GS inside 5 NM, Shift+H initiates handoff to Tower", () => {
+  const dal = locArrival();
+  const log = new SessionLog();
+  const world = createWorld({
+    aircraft: [dal],
+    catalog: kdemCatalog(),
+    sessionLog: log,
+    selectedAircraftId: dal.id,
+  });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  const res = applyHandoffToSelection(view.tracks, world);
+  expect(res).toEqual({ applied: true, target: "tower", hint: null });
+  expect(dal.intent.lateral).toEqual({ type: "LANDING", approachId: "ILS27" });
+  expect(view.tracks.get(dal.id)!.ownership).toBe("tower");
+  expect(log.byType("handoff.tower")).toHaveLength(1);
+});
+
+test("AC3 — Given a selected climbing departure (altitude >= 5000 ft), Shift+H initiates handoff to Center", () => {
+  const dep = createAircraft({
+    id: "ac-dep",
+    callsign: "SWA333",
+    xNm: 10,
+    yNm: 5,
+    headingDeg: 90,
+    altitudeFt: 5500,
+    speedKt: 250,
+  });
+  dep.intent.vertical = { type: "VIA_SID", sidId: "DEM1" };
+  dep.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "DEM1",
+    toFixIndex: 0,
+    routeFixIds: ["MISSD", "SNARF", "NORMA"],
+  };
+
+  const log = new SessionLog();
+  const world = createWorld({
+    aircraft: [dep],
+    catalog: kdemCatalog(),
+    sessionLog: log,
+    selectedAircraftId: dep.id,
+  });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  const res = applyHandoffToSelection(view.tracks, world);
+  expect(res).toEqual({ applied: true, target: "center", hint: null });
+  expect(handoffFor(world, dep.id)).toEqual({ kind: "outbound", toSectorId: "C" });
+  expect(view.tracks.get(dep.id)!.ownership).toBe("center");
+  expect(ownershipStubChar("center")).toBe("C");
+  expect(log.byType("handoff.center")).toHaveLength(1);
+  expect(log.byType("handoff.outbound.initiated")).toHaveLength(1);
+});
+
+test("AC4 — When departure flies past the TRACON boundary (>28 NM), it is gracefully despawned and nav.departed is logged", () => {
+  const dep = createAircraft({
+    id: "ac-dep",
+    callsign: "UAL444",
+    xNm: 27.9,
+    yNm: 0,
+    headingDeg: 90,
+    altitudeFt: 10000,
+    speedKt: 250,
+  });
+  dep.intent.vertical = { type: "VIA_SID", sidId: "DEM1" };
+  dep.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "DEM1",
+    toFixIndex: 2,
+    routeFixIds: ["MISSD", "SNARF", "NORMA"],
+  };
+
+  const log = new SessionLog();
+  const world = createWorld({
+    aircraft: [dep],
+    catalog: kdemCatalog(),
+    sessionLog: log,
+    selectedAircraftId: dep.id,
+  });
+
+  // Handoff to center first
+  applyHandoffToSelection(new Map(), world);
+  expect(handoffFor(world, dep.id)).toEqual({ kind: "outbound", toSectorId: "C" });
+
+  // Move aircraft past 28 NM
+  dep.xNm = 28.2;
+  stepWorld(world, SIM_DT_S);
+
+  // Verify graceful despawn
+  expect(world.aircraft).toHaveLength(0);
+  expect(world.selectedAircraftId).toBeNull();
+  expect(handoffFor(world, dep.id)).toEqual({ kind: "none" });
+
+  const completed = log.byType("handoff.outbound.completed");
+  expect(completed).toHaveLength(1);
+  expect(completed[0]?.callsign).toBe("UAL444");
+  expect(completed[0]?.toSectorId).toBe("C");
+
+  const departed = log.byType("nav.departed");
+  expect(departed).toHaveLength(1);
+  expect(departed[0]?.callsign).toBe("UAL444");
 });

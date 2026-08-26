@@ -14,7 +14,11 @@
  */
 
 import { handoffFor, type Aircraft, type SessionLog, type World } from "@core";
-import { formatAltitude, formatCallsignSpeech } from "./telephony";
+import { sidSpokenName } from "../scenario/procedures/sidHelpers";
+import { formatAltitude, formatCallsignSpeech, formatDepartureCheckIn } from "./telephony";
+
+export { sidSpokenName, type SidNameCatalog } from "../scenario/procedures/sidHelpers";
+export { formatDepartureCheckIn, type FormatDepartureCheckInArgs } from "./telephony";
 
 export interface FormatCheckInArgs {
   callsign: string;
@@ -51,26 +55,45 @@ export function starSpokenName(
 export function isStarViaArrival(aircraft: Aircraft): boolean {
   const lateral = aircraft.intent.lateral;
   const vertical = aircraft.intent.vertical;
-  if (lateral?.type !== "PROCEDURE" || vertical?.type !== "VIA_STAR") {
+  if (lateral?.type !== "PROCEDURE" || vertical?.type !== "VIA_STAR" || !lateral.starId) {
     return false;
   }
   return lateral.starId.trim().toUpperCase() === vertical.starId.trim().toUpperCase();
 }
 
+/** Spawn-eligible SID departure: VIA_SID vertical intent or SID procedure lateral intent. */
+export function isSidDeparture(aircraft: Aircraft): boolean {
+  const vertical = aircraft.intent.vertical;
+  if (vertical?.type === "VIA_SID") {
+    return true;
+  }
+  const lateral = aircraft.intent.lateral;
+  if (lateral?.type === "PROCEDURE" && "sidId" in lateral && Boolean(lateral.sidId)) {
+    return true;
+  }
+  return false;
+}
+
 export const CHECKIN_STAGGER_MIN_MS = 3000;
 export const CHECKIN_STAGGER_MAX_MS = 8000;
 export const CHECKIN_STAGGER_QUANT_MS = 50;
+export const DEPARTURE_CHECKIN_STAGGER_MIN_MS = 2000;
+export const DEPARTURE_CHECKIN_STAGGER_MAX_MS = 5000;
 export const CHECKIN_IDLE_GAP_MS = 500;
 export const DEFAULT_CHECKIN_SEED = 1;
 /** Independent stream from spawn assignment. */
 export const CHECKIN_STREAM_XOR = 0xc0ffee;
 
 export type CheckInEntryState = "pending" | "done" | "skipped";
+export type CheckInKind = "arrival" | "departure";
 
 export interface ScheduledCheckIn {
+  kind: CheckInKind;
   aircraftId: string;
   callsign: string;
-  starId: string;
+  procedureId: string;
+  starId?: string;
+  sidId?: string;
   spawnSimMs: number;
   staggerMs: number;
   dueSimMs: number;
@@ -116,6 +139,14 @@ function drawStaggerMs(rng: () => number): number {
   return CHECKIN_STAGGER_MIN_MS + slot * CHECKIN_STAGGER_QUANT_MS;
 }
 
+function drawDepartureStaggerMs(rng: () => number): number {
+  const slots =
+    (DEPARTURE_CHECKIN_STAGGER_MAX_MS - DEPARTURE_CHECKIN_STAGGER_MIN_MS) /
+    CHECKIN_STAGGER_QUANT_MS;
+  const slot = Math.min(Math.floor(rng() * (slots + 1)), slots);
+  return DEPARTURE_CHECKIN_STAGGER_MIN_MS + slot * CHECKIN_STAGGER_QUANT_MS;
+}
+
 function vectorsAlreadyFired(log: SessionLog, callsign: string): boolean {
   return log.byType("nav.star.vectors").some((event) => event.callsign === callsign);
 }
@@ -142,7 +173,7 @@ export class CheckInQueue {
   }
 
   /**
-   * One pending check-in per eligible PROCEDURE+VIA_STAR arrival.
+   * One pending check-in per eligible arrival or departure.
    * Downwind / bench traffic without VIA is ignored.
    */
   scheduleFromWorld(world: World, spawnSimMs: number = world.simTimeMs): void {
@@ -155,28 +186,54 @@ export class CheckInQueue {
     if (this.entries.some((entry) => entry.aircraftId === aircraft.id)) {
       return;
     }
-    if (!isStarViaArrival(aircraft)) {
-      return;
+    if (isStarViaArrival(aircraft)) {
+      const lateral = aircraft.intent.lateral;
+      const starId = lateral?.type === "PROCEDURE" && lateral.starId ? lateral.starId : "";
+      const staggerMs = drawStaggerMs(this.rng);
+      this.spawnCounter += 1;
+      this.entries.push({
+        kind: "arrival",
+        aircraftId: aircraft.id,
+        callsign: aircraft.callsign,
+        procedureId: starId,
+        starId,
+        spawnSimMs,
+        staggerMs,
+        dueSimMs: spawnSimMs + staggerMs,
+        spawnOrder: this.spawnCounter,
+        state: "pending",
+      });
+    } else if (isSidDeparture(aircraft)) {
+      const lateral = aircraft.intent.lateral;
+      const vertical = aircraft.intent.vertical;
+      const sidId =
+        vertical?.type === "VIA_SID"
+          ? vertical.sidId
+          : lateral?.type === "PROCEDURE" && "sidId" in lateral && lateral.sidId
+            ? lateral.sidId
+            : "";
+      const staggerMs = drawDepartureStaggerMs(this.rng);
+      this.spawnCounter += 1;
+      this.entries.push({
+        kind: "departure",
+        aircraftId: aircraft.id,
+        callsign: aircraft.callsign,
+        procedureId: sidId,
+        sidId,
+        starId: "",
+        spawnSimMs,
+        staggerMs,
+        dueSimMs: spawnSimMs + staggerMs,
+        spawnOrder: this.spawnCounter,
+        state: "pending",
+      });
     }
-    const lateral = aircraft.intent.lateral;
-    const starId = lateral?.type === "PROCEDURE" ? lateral.starId : "";
-    const staggerMs = drawStaggerMs(this.rng);
-    this.spawnCounter += 1;
-    this.entries.push({
-      aircraftId: aircraft.id,
-      callsign: aircraft.callsign,
-      starId,
-      spawnSimMs,
-      staggerMs,
-      dueSimMs: spawnSimMs + staggerMs,
-      spawnOrder: this.spawnCounter,
-      state: "pending",
-    });
   }
 
   drain(args: DrainCheckInsArgs): void {
     const { world, log, radio, setStatus, nowWallMs } = args;
     this.worldRef = world;
+    this.scheduleFromWorld(world, world.simTimeMs);
     for (;;) {
       const busy = radio.isBusy() || this.playInFlight;
       if (!this.canStart(world.simTimeMs, busy)) {
@@ -187,38 +244,75 @@ export class CheckInQueue {
         return;
       }
       const aircraft = world.aircraft.find((item) => item.id === next.aircraftId);
-      if (
-        !aircraft ||
-        !isStarViaArrival(aircraft) ||
-        vectorsAlreadyFired(log, aircraft.callsign) ||
-        alreadyDelivered(log, aircraft.callsign)
-      ) {
+      if (!aircraft || alreadyDelivered(log, aircraft.callsign)) {
         next.state = "skipped";
         continue;
       }
-      const lateral = aircraft.intent.lateral;
-      const starId = lateral?.type === "PROCEDURE" ? lateral.starId : next.starId;
-      const starName = starSpokenName(world.catalog, starId);
-      const text = formatCheckIn({
-        callsign: aircraft.callsign,
-        starName,
-        altitudeFt: aircraft.altitudeFt,
-      });
-      next.state = "done";
-      setStatus(text);
-      log.append({
-        type: "radio.checkin",
-        atSimMs: world.simTimeMs,
-        atWallMs: nowWallMs(),
-        callsign: aircraft.callsign,
-        starId,
-        starName,
-        altitudeFt: aircraft.altitudeFt,
-        text,
-      });
-      this.playInFlight = true;
-      this.beginPlay(radio, text, aircraft.callsign);
-      return;
+
+      if (next.kind === "arrival") {
+        if (!isStarViaArrival(aircraft) || vectorsAlreadyFired(log, aircraft.callsign)) {
+          next.state = "skipped";
+          continue;
+        }
+        const lateral = aircraft.intent.lateral;
+        const starId =
+          lateral?.type === "PROCEDURE" && lateral.starId
+            ? lateral.starId
+            : (next.starId ?? next.procedureId);
+        const starName = starSpokenName(world.catalog, starId);
+        const text = formatCheckIn({
+          callsign: aircraft.callsign,
+          starName,
+          altitudeFt: aircraft.altitudeFt,
+        });
+        next.state = "done";
+        setStatus(text);
+        log.append({
+          type: "radio.checkin",
+          atSimMs: world.simTimeMs,
+          atWallMs: nowWallMs(),
+          callsign: aircraft.callsign,
+          starId,
+          starName,
+          altitudeFt: aircraft.altitudeFt,
+          text,
+        });
+        this.playInFlight = true;
+        this.beginPlay(radio, text, aircraft.callsign);
+        return;
+      } else {
+        const isClimbVia = aircraft.intent.vertical?.type === "VIA_SID";
+        const lateral = aircraft.intent.lateral;
+        const sidId =
+          aircraft.intent.vertical?.type === "VIA_SID"
+            ? aircraft.intent.vertical.sidId
+            : lateral?.type === "PROCEDURE" && "sidId" in lateral && lateral.sidId
+              ? lateral.sidId
+              : (next.sidId ?? next.procedureId ?? "");
+        const sidName = sidId ? sidSpokenName(world.catalog, sidId) : undefined;
+        const text = formatDepartureCheckIn({
+          callsign: aircraft.callsign,
+          sidName,
+          currentAltitudeFt: aircraft.altitudeFt,
+          assignedAltitudeFt: aircraft.intent.assignedAltitudeFt,
+          isClimbVia,
+        });
+        next.state = "done";
+        setStatus(text);
+        log.append({
+          type: "radio.checkin",
+          atSimMs: world.simTimeMs,
+          atWallMs: nowWallMs(),
+          callsign: aircraft.callsign,
+          sidId,
+          sidName,
+          altitudeFt: aircraft.altitudeFt,
+          text,
+        });
+        this.playInFlight = true;
+        this.beginPlay(radio, text, aircraft.callsign);
+        return;
+      }
     }
   }
 
@@ -232,7 +326,7 @@ export class CheckInQueue {
         if (entry.state !== "pending" || simTimeMs < entry.dueSimMs) {
           return false;
         }
-        if (handoffFor(world, entry.aircraftId).kind === "inbound") {
+        if (entry.kind === "arrival" && handoffFor(world, entry.aircraftId).kind === "inbound") {
           return false;
         }
         return true;

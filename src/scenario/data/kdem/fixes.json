@@ -87,9 +87,9 @@
     {
       "id": "NORMA",
       "kind": "WAYPOINT",
-      "xNm": 8,
-      "yNm": 12,
-      "note": "North downwind / vector reference (not on DEM1)"
+      "xNm": -16,
+      "yNm": 16,
+      "note": "BAY1 Northwest departure exit gate"
     },
     {
       "id": "SNARF",
@@ -109,9 +109,31 @@
     {
       "id": "OCTTA",
       "kind": "INTERSECTION",
-      "xNm": 28,
+      "xNm": -8,
+      "yNm": -18,
+      "formedBy": "DEM R-204 (demo)",
+      "note": "BAY1 South departure exit gate"
+    },
+    {
+      "id": "BAYEE",
+      "kind": "WAYPOINT",
+      "xNm": -4,
+      "yNm": 0,
+      "note": "BAY1 departure climb gate along RW27 centerline"
+    },
+    {
+      "id": "BAYNW",
+      "kind": "WAYPOINT",
+      "xNm": -8,
+      "yNm": 4.5,
+      "note": "BAY1 Northwest transition right-turn curving waypoint"
+    },
+    {
+      "id": "BAYSO",
+      "kind": "WAYPOINT",
+      "xNm": -7,
       "yNm": -6,
-      "formedBy": "OCT R-280 / DEM R-110 (demo)"
+      "note": "BAY1 South transition left-turn curving waypoint"
     }
   ]
 }

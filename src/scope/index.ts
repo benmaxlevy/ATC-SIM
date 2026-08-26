@@ -367,14 +367,16 @@ export {
   INITIATE_TRACK_HELP,
   NO_SEL_HINT,
   TOWER_HANDOFF_HELP,
+  applyCenterOwnership,
   applyDropTrack,
+  applyHandoffToSelection,
   applyInitiateTrack,
   applyTowerHandoffToSelection,
   applyTowerOwnership,
   ownershipStubChar,
   trackPaintColor,
 } from "./ownership";
-export type { TrackOwnership } from "./ownership";
+export type { HandoffResult, TrackOwnership } from "./ownership";
 export {
   DEFAULT_LEADER_DIR,
   DEFAULT_LEADER_LENGTH_PX,
