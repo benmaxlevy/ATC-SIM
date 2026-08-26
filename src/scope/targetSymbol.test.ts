@@ -5,7 +5,6 @@ import {
   POSITION_SYMBOL_COLOR,
   SELECTED_ACCENT_COLOR,
   SELECTION_BOX_PAD_PX,
-  TARGET_CIRCLE_BG_COLOR,
   TARGET_SHAPE,
   TARGET_SIZE_PX,
   drawHistoryDot,
@@ -19,7 +18,6 @@ import {
   targetStrokeColor,
   targetSymbolDescriptor,
   targetSymbolShape,
-  targetTextColor,
 } from "./targetSymbol";
 
 interface MockDrawTargetCtx {
@@ -27,7 +25,6 @@ interface MockDrawTargetCtx {
   fillTexts: { text: string; font?: string; x?: number; y?: number; fillStyle?: string }[];
   strokeRects: { x: number; y: number; w: number; h: number; strokeStyle?: string }[];
   pathStrokes: { points: { x: number; y: number }[]; strokeStyle?: string; lineWidth?: number }[];
-  filledCircles: { x: number; y: number; r: number; fillStyle?: string }[];
 }
 
 function createMockTargetCtx(): MockDrawTargetCtx {
@@ -39,9 +36,7 @@ function createMockTargetCtx(): MockDrawTargetCtx {
     strokeStyle?: string;
     lineWidth?: number;
   }[] = [];
-  const filledCircles: { x: number; y: number; r: number; fillStyle?: string }[] = [];
   let currentPath: { x: number; y: number }[] = [];
-  let currentArc: { x: number; y: number; r: number } | null = null;
 
   const ctx = {
     fillStyle: "",
@@ -52,7 +47,6 @@ function createMockTargetCtx(): MockDrawTargetCtx {
     textBaseline: "middle",
     beginPath() {
       currentPath = [];
-      currentArc = null;
     },
     moveTo(x: number, y: number) {
       currentPath.push({ x, y });
@@ -60,15 +54,7 @@ function createMockTargetCtx(): MockDrawTargetCtx {
     lineTo(x: number, y: number) {
       currentPath.push({ x, y });
     },
-    arc(x: number, y: number, r: number) {
-      currentArc = { x, y, r };
-    },
     closePath() {},
-    fill() {
-      if (currentArc) {
-        filledCircles.push({ ...currentArc, fillStyle: this.fillStyle });
-      }
-    },
     stroke() {
       pathStrokes.push({
         points: [...currentPath],
@@ -76,6 +62,10 @@ function createMockTargetCtx(): MockDrawTargetCtx {
         lineWidth: this.lineWidth,
       });
     },
+    arc(x: number, y: number) {
+      currentPath.push({ x, y });
+    },
+    fill() {},
     strokeRect(x: number, y: number, w: number, h: number) {
       strokeRects.push({ x, y, w, h, strokeStyle: this.strokeStyle });
     },
@@ -90,7 +80,6 @@ function createMockTargetCtx(): MockDrawTargetCtx {
     fillTexts,
     strokeRects,
     pathStrokes,
-    filledCircles,
   };
 }
 
@@ -225,8 +214,6 @@ test("AC3 — Tracked target renders owning controller's sector ID", () => {
   expect(mockOwned.fillTexts).toHaveLength(1);
   expect(mockOwned.fillTexts[0]!.text).toBe("D");
   expect(mockOwned.fillTexts[0]!.fillStyle).toBe(PALETTE.owned);
-  expect(mockOwned.filledCircles).toHaveLength(1);
-  expect(mockOwned.filledCircles[0]!.fillStyle).toBe(TARGET_CIRCLE_BG_COLOR);
   expect(mockOwned.pathStrokes).toHaveLength(0);
 });
 
@@ -319,18 +306,9 @@ test("history dots use FAA trail blues, not track-tinted grey", () => {
   expect(historyDotColor(0, 5)).not.toBe(PALETTE.owned);
 });
 
-test("targetTextColor renders white for owned and green for unowned/other", () => {
-  expect(targetTextColor("owned", false)).toBe(PALETTE.owned); // White #FFFFFF
-  expect(targetTextColor("unowned", false)).toBe(PALETTE.unowned); // Green #00FF00
-  expect(targetTextColor("tower", false)).toBe(PALETTE.unowned); // Green
-  expect(targetTextColor("center", false)).toBe(PALETTE.unowned); // Green
-  expect(targetTextColor("owned", true)).toBe(PALETTE.selected); // IDENT Yellow #FFFF00
-  expect(TARGET_CIRCLE_BG_COLOR).toBe("#175dc7");
-});
-
-test("IDENT uses yellow stroke; otherwise search-target blue (FDB color is separate)", () => {
-  expect(targetStrokeColor("unowned", false)).toBe("#1E78FF");
-  expect(targetStrokeColor("owned", false)).toBe("#1E78FF");
+test("IDENT uses yellow stroke; otherwise target text color matches datablock (white for owned, green for unowned)", () => {
+  expect(targetStrokeColor("unowned", false)).toBe(PALETTE.unowned);
+  expect(targetStrokeColor("owned", false)).toBe(PALETTE.owned);
   expect(targetStrokeColor("owned", true)).toBe("#FFFF00");
   expect(targetStrokeColor("unowned", true)).toBe("#FFFF00");
 });

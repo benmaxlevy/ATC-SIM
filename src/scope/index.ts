@@ -320,7 +320,6 @@ export {
   OWNED_TRACK_COLOR,
   POSITION_SYMBOL_COLOR,
   SELECTION_BOX_PAD_PX,
-  TARGET_CIRCLE_BG_COLOR,
   TARGET_SHAPE,
   TARGET_SIZE_PX,
   UNOWNED_TRACK_COLOR,
@@ -333,7 +332,6 @@ export {
   targetDiamondVertices,
   targetSymbolDescriptor,
   targetSymbolShape,
-  targetTextColor,
 } from "./targetSymbol";
 export type {
   TargetSurveillanceType,

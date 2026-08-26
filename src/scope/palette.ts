@@ -55,10 +55,8 @@ export const PALETTE = {
   highlight: "#00FFFF",
   /** Selection box, IDENT flash, unassociated/point-out analog — yellow. */
   selected: "#FFFF00",
-  /** Search/fusion position symbol — FAA (30,120,255). */
+  /** Search/fusion position symbol — FAA (30,120,255). Independent of FDB color. */
   positionSymbol: "#1E78FF",
-  /** Target position symbol background circle — solid blue (#175dc7). */
-  targetCircleBg: "#175dc7",
   /** Newest history trail — FAA History Blue 1 (30,80,200). */
   history: "#1E50C8",
   /** PTL / min-sep analog — FAA white. */
