@@ -341,10 +341,10 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       expect(td.ownership).toBe("unowned");
       expect(td.datablockMode).toBe("partial");
 
-      // PDB state: Line 2 only (080  250), suppressing callsign and aircraft type
+      // PDB state: Line 2 only (080  25), suppressing callsign and aircraft type
       const pdbCtx = createMockCtx();
       renderScope(pdbCtx.ctx, world, view, 800, 800);
-      expect(pdbCtx.fillTexts.some((t) => t.text === "080  250")).toBe(true);
+      expect(pdbCtx.fillTexts.some((t) => t.text === "080  25")).toBe(true);
       expect(pdbCtx.fillTexts.some((t) => t.text === "SWA555")).toBe(false);
       expect(pdbCtx.fillTexts.some((t) => t.text === "B737")).toBe(false);
 
@@ -358,7 +358,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       const callsignText = fdbCtx.fillTexts.find((t) => t.text === "SWA555");
       expect(callsignText).toBeDefined();
       expect(callsignText?.fillStyle).toBe(PALETTE.unowned); // Green #00FF00
-      expect(fdbCtx.fillTexts.some((t) => t.text === "080  250")).toBe(true);
+      expect(fdbCtx.fillTexts.some((t) => t.text === "080  25")).toBe(true);
 
       // Click again toggles back to PDB
       handleTrackClick(view.tracks, world, ac.id);
@@ -392,7 +392,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       const phase0 = createMockCtx();
       renderScope(phase0.ctx, world, view, 800, 800);
       expect(phase0.fillTexts.some((t) => t.text === "AAL777")).toBe(true);
-      expect(phase0.fillTexts.some((t) => t.text === "080  250")).toBe(true);
+      expect(phase0.fillTexts.some((t) => t.text === "080  25")).toBe(true);
       expect(phase0.fillTexts.some((t) => t.text === "A040")).toBe(true);
 
       // Phase 1 (2500 - 5000ms): Scratchpad + Aircraft type on Line 2; Line 3 has A040
@@ -529,7 +529,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       const step3Ctx = createMockCtx();
       renderScope(step3Ctx.ctx, world, view, 800, 800);
       expect(step3Ctx.fillTexts.some((t) => t.text === "UAL888")).toBe(false);
-      expect(step3Ctx.fillTexts.some((t) => t.text === "090  260")).toBe(true);
+      expect(step3Ctx.fillTexts.some((t) => t.text === "090  26")).toBe(true);
     });
 
     test("pointout lifecycle: offer, accept, UN reject, ** convert, and F4 drop track", () => {
@@ -593,7 +593,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       const droppedCtx = createMockCtx();
       renderScope(droppedCtx.ctx, world, view, 800, 800);
       expect(droppedCtx.fillTexts.some((t) => t.text === "*")).toBe(true);
-      expect(droppedCtx.fillTexts.some((t) => t.text === "070  220")).toBe(true);
+      expect(droppedCtx.fillTexts.some((t) => t.text === "070  22")).toBe(true);
       expect(droppedCtx.fillTexts.some((t) => t.text === "FFT123")).toBe(false);
     });
   });
@@ -663,7 +663,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       expect(pdbTd.highlighted).toBe(true);
       const pdbHlCtx = createMockCtx();
       renderScope(pdbHlCtx.ctx, world, view, 800, 800);
-      const pdbText = pdbHlCtx.fillTexts.find((t) => t.text === "060  210");
+      const pdbText = pdbHlCtx.fillTexts.find((t) => t.text === "060  21");
       expect(pdbText?.fillStyle).toBe(PALETTE.highlight); // Cyan #00FFFF
 
       // Toggle PDB highlight off

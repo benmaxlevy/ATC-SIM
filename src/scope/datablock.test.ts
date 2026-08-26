@@ -64,9 +64,9 @@ test("AC1 / AC6 — FDB Line 2 time-sharing alternates between Mode C/GS and Scr
     aircraftType: "B738",
   });
 
-  // t=0s (Phase A): Mode C + GS
+  // t=0s (Phase A): Mode C + GS (tens)
   const at0 = formatFullDatablock(ac, { simTimeMs: 0, scratchpad: "HOLD" });
-  expect(at0).toEqual({ line1: "DAL123", line2: "030  210" });
+  expect(at0).toEqual({ line1: "DAL123", line2: "030  21" });
 
   // t=2.5s (Phase B): Scratchpad + Type
   const at2500 = formatFullDatablock(ac, { simTimeMs: 2500, scratchpad: "HOLD" });
@@ -74,14 +74,14 @@ test("AC1 / AC6 — FDB Line 2 time-sharing alternates between Mode C/GS and Scr
 
   // t=5s (Phase A): Mode C + GS
   const at5000 = formatFullDatablock(ac, { simTimeMs: 5000, scratchpad: "HOLD" });
-  expect(at5000).toEqual({ line1: "DAL123", line2: "030  210" });
+  expect(at5000).toEqual({ line1: "DAL123", line2: "030  21" });
 
   // t=7.5s (Phase B): Scratchpad + Type
   const at7500 = formatFullDatablock(ac, { simTimeMs: 7500, scratchpad: "HOLD" });
   expect(at7500).toEqual({ line1: "DAL123", line2: "HOLD  B738" });
 
   // Phase override options
-  expect(formatFullDatablock(ac, { timeSharePhase: 0, scratchpad: "HOLD" }).line2).toBe("030  210");
+  expect(formatFullDatablock(ac, { timeSharePhase: 0, scratchpad: "HOLD" }).line2).toBe("030  21");
   expect(formatFullDatablock(ac, { timeSharePhase: 1, scratchpad: "HOLD" }).line2).toBe(
     "HOLD  B738",
   );
@@ -92,7 +92,7 @@ test("AC1 / AC6 — FDB Line 2 time-sharing alternates between Mode C/GS and Scr
 
   // When neither scratchpad nor type nor reqAlt exists, Phase B falls back to Phase A
   const emptyAc = track({ altitudeFt: 3000, speedKt: 210 });
-  expect(formatFullDatablock(emptyAc, { simTimeMs: 2500 }).line2).toBe("030  210");
+  expect(formatFullDatablock(emptyAc, { simTimeMs: 2500 }).line2).toBe("030  21");
 });
 
 test("AC2 / AC6 — Line 3 displays assigned altitude prefixed with A when |assigned - altitude| >= 100 ft", () => {
@@ -100,35 +100,35 @@ test("AC2 / AC6 — Line 3 displays assigned altitude prefixed with A when |assi
   const same = formatFullDatablock(
     track({ altitudeFt: 3000, assignedAltitudeFt: 3000, speedKt: 210 }),
   );
-  expect(same).toEqual({ line1: "DAL123", line2: "030  210" });
+  expect(same).toEqual({ line1: "DAL123", line2: "030  21" });
   expect(same.line3).toBeUndefined();
 
   // Differs by 50 ft (< 100 ft): Line 3 omitted
   const underBoundary = formatFullDatablock(
     track({ altitudeFt: 3050, assignedAltitudeFt: 3000, speedKt: 210 }),
   );
-  expect(underBoundary.line2).toBe("031  210");
+  expect(underBoundary.line2).toBe("031  21");
   expect(underBoundary.line3).toBeUndefined();
 
   // Differs by 100 ft (boundary): Line 3 displays A030
   const atBoundary = formatFullDatablock(
     track({ altitudeFt: 3100, assignedAltitudeFt: 3000, speedKt: 210 }),
   );
-  expect(atBoundary.line2).toBe("031  210");
+  expect(atBoundary.line2).toBe("031  21");
   expect(atBoundary.line3).toBe("A030");
 
-  // Descending from 3250 to 3000 ft: Line 2 is 033 210, Line 3 is A030
+  // Descending from 3250 to 3000 ft: Line 2 is 033 21, Line 3 is A030
   const rounded = formatFullDatablock(
     track({ altitudeFt: 3250, assignedAltitudeFt: 3000, speedKt: 210 }),
   );
   expect(formatAltitudeHundreds(3250)).toBe("033");
-  expect(rounded).toEqual({ line1: "DAL123", line2: "033  210", line3: "A030" });
+  expect(rounded).toEqual({ line1: "DAL123", line2: "033  21", line3: "A030" });
 
   // Climbing from 3000 to 4000 ft: Line 3 is A040
   const climb = formatFullDatablock(
     track({ altitudeFt: 3000, assignedAltitudeFt: 4000, speedKt: 210 }),
   );
-  expect(climb).toEqual({ line1: "DAL123", line2: "030  210", line3: "A040" });
+  expect(climb).toEqual({ line1: "DAL123", line2: "030  21", line3: "A040" });
 });
 
 test("AC3 — Requested altitude on Line 2 is prefixed with R (e.g. R070) when displayed", () => {
@@ -169,19 +169,19 @@ test("AC4 — Wake turbulence / RNAV category letters (H, B, R, L, etc.) append 
   expect(formatWakeCategory("")).toBe("");
 
   const heavy = track({ altitudeFt: 3000, speedKt: 210, wakeCategory: "H" });
-  expect(formatFullDatablock(heavy).line2).toBe("030  210H");
+  expect(formatFullDatablock(heavy).line2).toBe("030  21H");
 
   const rnav = track({ altitudeFt: 3000, speedKt: 210, wakeCategory: "R" });
-  expect(formatFullDatablock(rnav).line2).toBe("030  210R");
+  expect(formatFullDatablock(rnav).line2).toBe("030  21R");
 
   const b757 = track({ altitudeFt: 3000, speedKt: 210, wakeCategory: "B" });
-  expect(formatFullDatablock(b757).line2).toBe("030  210B");
+  expect(formatFullDatablock(b757).line2).toBe("030  21B");
 
   const light = track({ altitudeFt: 3000, speedKt: 120, wakeCategory: "L" });
-  expect(formatFullDatablock(light).line2).toBe("030  120L");
+  expect(formatFullDatablock(light).line2).toBe("030  12L");
 
   const cwtA = track({ altitudeFt: 3000, speedKt: 250, wakeCategory: "A" });
-  expect(formatFullDatablock(cwtA).line2).toBe("030  250A");
+  expect(formatFullDatablock(cwtA).line2).toBe("030  25A");
 });
 
 test("AC5 — Special Purpose Code tags (EM, RF, HJ) render cleanly on Line 1 next to callsign", () => {
@@ -218,20 +218,20 @@ test("Mode C hidden (M toggle): GS only on Line 2; Line 3 shows assigned altitud
     track({ altitudeFt: 3000, assignedAltitudeFt: 3000, speedKt: 210 }),
     { modeCVisible: false },
   );
-  expect(same.line2).toBe("210");
+  expect(same.line2).toBe("21");
   expect(same.line3).toBeUndefined();
 
   const different = formatFullDatablock(
     track({ altitudeFt: 3200, assignedAltitudeFt: 4000, speedKt: 210 }),
     { modeCVisible: false },
   );
-  expect(different.line2).toBe("210");
+  expect(different.line2).toBe("21");
   expect(different.line3).toBe("A040");
 });
 
 test("Pilot reported altitude flag appends * to Mode C field", () => {
   const reported = track({ altitudeFt: 3000, speedKt: 210, pilotReportedAltitude: true });
-  expect(formatFullDatablock(reported).line2).toBe("030*  210");
+  expect(formatFullDatablock(reported).line2).toBe("030*  21");
 });
 
 test("Line 3 shows squawk mismatch and ATPA distance when active", () => {
@@ -287,15 +287,15 @@ test("C/D/A assigned altitude with Mode C lag >= 100 ft displays A<alt> on Line 
   applyIntent(ac, [{ type: "ALTITUDE", altitudeFt: 3000, verb: "DESCEND" }], 0);
   expect(ac.intent.assignedAltitudeFt).toBe(3000);
   expect(ac.altitudeFt).toBe(8000);
-  expect(formatFullDatablock(ac).line2).toBe("080  210");
+  expect(formatFullDatablock(ac).line2).toBe("080  21");
   expect(formatFullDatablock(ac).line3).toBe("A030");
 
   applyIntent(ac, [{ type: "ALTITUDE", altitudeFt: 9000, verb: "CLIMB" }], 0);
-  expect(formatFullDatablock(ac).line2).toBe("080  210");
+  expect(formatFullDatablock(ac).line2).toBe("080  21");
   expect(formatFullDatablock(ac).line3).toBe("A090");
 
   applyIntent(ac, [{ type: "ALTITUDE", altitudeFt: 8000, verb: "MAINTAIN" }], 0);
-  expect(formatFullDatablock(ac).line2).toBe("080  210");
+  expect(formatFullDatablock(ac).line2).toBe("080  21");
   expect(formatFullDatablock(ac).line3).toBeUndefined();
 });
 
@@ -303,9 +303,9 @@ test("default L8 offset is north 36 px; rect contains the text cell", () => {
   expect(DEFAULT_LEADER_DIR).toBe(8);
   expect(LEADER_LENGTH_PX).toBe(36);
   expect(LEADER_LENGTH_PX).toBeGreaterThan(24);
-  const full = datablockRect(100, 200, { line1: "DAL123", line2: "030  210" }, 7.2, 12);
+  const full = datablockRect(100, 200, { line1: "DAL123", line2: "030  21" }, 7.2, 12);
   expect(full.h).toBe(24);
-  expect(full.w).toBe(8 * 7.2);
+  expect(full.w).toBe(7 * 7.2);
   const inside = { x: full.x + full.w / 2, y: full.y + full.h / 2 };
   expect(pointInDatablock(inside.x, inside.y, full)).toBe(true);
   expect(pointInDatablock(100, 200, full)).toBe(false);
@@ -315,7 +315,7 @@ test("default L8 offset is north 36 px; rect contains the text cell", () => {
   const three = datablockRect(
     100,
     200,
-    { line1: "DAL123", line2: "030  210", line3: "A040" },
+    { line1: "DAL123", line2: "030  21", line3: "A040" },
     7.2,
     12,
   );
@@ -385,7 +385,7 @@ test("T02-35 AC2 — Queried LDB formats Mode C altitude and ground speed (tens 
   expect(formatGroundSpeedTens(250)).toBe("25");
 });
 
-test("T02-35 AC3 — PDB formats Line 2 only (Mode C altitude + ground speed), suppressing callsign", () => {
+test("T02-35 AC3 — PDB formats Line 2 only (Mode C altitude + ground speed in tens), suppressing callsign", () => {
   const ac = makeTestAircraft({
     callsign: "DAL123",
     altitudeFt: 4500,
@@ -393,11 +393,22 @@ test("T02-35 AC3 — PDB formats Line 2 only (Mode C altitude + ground speed), s
     aircraftType: "B738",
   });
   const pdb = formatPartialDatablock(ac);
-  expect(pdb).toEqual({ line1: "045  180" });
-  expect(linesForDatablock(ac, "partial")).toEqual({ line1: "045  180" });
+  expect(pdb).toEqual({ line1: "045  18" });
+  expect(linesForDatablock(ac, "partial")).toEqual({ line1: "045  18" });
 
   // With scratchpad
   const withSpad = formatPartialDatablock(ac, { scratchpad: "HOLD" });
-  expect(withSpad).toEqual({ line1: "045  180  HOLD" });
-  expect(linesForDatablock(ac, "partial", true, "HOLD")).toEqual({ line1: "045  180  HOLD" });
+  expect(withSpad).toEqual({ line1: "045  18  HOLD" });
+  expect(linesForDatablock(ac, "partial", true, "HOLD")).toEqual({ line1: "045  18  HOLD" });
+
+  // With suppressPdbSpeed option
+  const suppressed = formatPartialDatablock(ac, { suppressPdbSpeed: true });
+  expect(suppressed).toEqual({ line1: "045" });
+});
+
+test("T02-40: formatGroundSpeedTens handles flight category suffixes VFR and Overflight", () => {
+  expect(formatGroundSpeedTens(110, { flightRules: "VFR" })).toBe("11V");
+  expect(formatGroundSpeedTens(280, { isOverflight: true })).toBe("28E");
+  // Wake category takes precedence over VFR suffix
+  expect(formatGroundSpeedTens(110, { wakeCategory: "L", flightRules: "VFR" })).toBe("11L");
 });

@@ -74,6 +74,10 @@ export interface DatablockSource {
   pilotReportedAltitude?: boolean;
   /** ATPA distance readout string if enabled (e.g. "2.4"). */
   atpaDistance?: string;
+  /** Flight rules indicator ("VFR" or "IFR"). */
+  flightRules?: "IFR" | "VFR" | string;
+  /** True if aircraft is an overflight / enroute track. */
+  isOverflight?: boolean;
 }
 
 export interface FullDatablockOpts {
@@ -94,6 +98,8 @@ export interface PartialDatablockOpts {
   scratchpad?: string;
   /** Simulation timestamp in milliseconds. */
   simTimeMs?: number;
+  /** Suppress ground speed display in PDB mode. */
+  suppressPdbSpeed?: boolean;
 }
 
 export interface LimitedDatablockOpts {
@@ -146,13 +152,42 @@ export function formatGroundSpeedKt(speedKt: number): string {
   return String(kt).padStart(3, "0");
 }
 
-/** Ground speed in tens of knots (e.g. 180 kt -> "18", 210 kt -> "21", 90 kt -> "09"). */
-export function formatGroundSpeedTens(speedKt: number): string {
+export interface GroundSpeedTensOpts {
+  wakeCategory?: string;
+  flightRules?: "IFR" | "VFR" | string;
+  isOverflight?: boolean;
+}
+
+/**
+ * Ground speed in tens of knots (e.g. 180 kt -> "18", 210 kt -> "21", 90 kt -> "09").
+ * Optionally appends wake/RNAV category indicator (e.g. "18H", "25R"),
+ * or flight category ("V" for VFR, "E" for overflights).
+ */
+export function formatGroundSpeedTens(
+  speedKt: number,
+  opts?: GroundSpeedTensOpts | string,
+): string {
   if (!Number.isFinite(speedKt)) {
     return "00";
   }
   const tens = Math.max(0, Math.round(speedKt / 10));
-  return String(tens).padStart(2, "0");
+  const base = String(tens).padStart(2, "0");
+
+  const wake = typeof opts === "string" ? formatWakeCategory(opts) : formatWakeCategory(opts?.wakeCategory);
+  if (wake.length > 0) {
+    return `${base}${wake}`;
+  }
+
+  if (typeof opts === "object" && opts !== null) {
+    if (opts.flightRules === "VFR") {
+      return `${base}V`;
+    }
+    if (opts.isOverflight) {
+      return `${base}E`;
+    }
+  }
+
+  return base;
 }
 
 function assignedDiffers(modeCFt: number, assignedFt: number): boolean {
@@ -232,8 +267,11 @@ export function formatFullDatablock(
   // Phase A components:
   const pilotReportStar = track.pilotReportedAltitude ? "*" : "";
   const modeC = `${formatAltitudeHundreds(track.altitudeFt)}${pilotReportStar}`;
-  const wake = formatWakeCategory(track.wakeCategory);
-  const gs = `${formatGroundSpeedKt(track.speedKt)}${wake}`;
+  const gs = formatGroundSpeedTens(track.speedKt, {
+    wakeCategory: track.wakeCategory,
+    flightRules: track.flightRules,
+    isOverflight: track.isOverflight,
+  });
   const phaseALine2 = modeCVisible ? `${modeC}${FIELD_GAP}${gs}` : gs;
 
   // Phase B components:
@@ -287,10 +325,18 @@ export function formatPartialDatablock(
   const modeCVisible = opts.modeCVisible !== false;
   const pilotReportStar = track.pilotReportedAltitude ? "*" : "";
   const modeC = `${formatAltitudeHundreds(track.altitudeFt)}${pilotReportStar}`;
-  const wake = formatWakeCategory(track.wakeCategory);
-  const gs = `${formatGroundSpeedKt(track.speedKt)}${wake}`;
+  const gs = formatGroundSpeedTens(track.speedKt, {
+    wakeCategory: track.wakeCategory,
+    flightRules: track.flightRules,
+    isOverflight: track.isOverflight,
+  });
 
-  let line1 = modeCVisible ? `${modeC}${FIELD_GAP}${gs}` : gs;
+  let line1: string;
+  if (opts.suppressPdbSpeed) {
+    line1 = modeCVisible ? modeC : "";
+  } else {
+    line1 = modeCVisible ? `${modeC}${FIELD_GAP}${gs}` : gs;
+  }
   line1 = appendScratchpad(line1, opts.scratchpad);
   return { line1 };
 }

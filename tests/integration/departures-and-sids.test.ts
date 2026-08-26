@@ -400,8 +400,8 @@ describe("Departures and SIDs integration test suite (T04-23)", () => {
     // Datablock format (STARS CRC: Line 2 Phase A Mode C + GS; Line 3 assigned altitude A100)
     const fdb = formatFullDatablock(dep);
     expect(fdb.line1).toBe("JBU500");
-    // Line 2: Mode C altitude 700 ft -> 007, speed 180 kt -> 180
-    expect(fdb.line2).toBe("007  180");
+    // Line 2: Mode C altitude 700 ft -> 007, speed 180 kt -> 18
+    expect(fdb.line2).toBe("007  18");
     // Line 3: assigned altitude A100 (10000 ft)
     expect(fdb.line3).toBe("A100");
 

@@ -420,7 +420,7 @@ test("T02-04 AC2 — full datablock is callsign + hundreds/GS in IBM Plex Mono, 
   renderScope(ctx, world, view, 800, 800);
   const p = nmToScreen(ac.xNm, ac.yNm, view.camera, { widthPx: 800, heightPx: 800 });
   const line1 = fillTexts.find((t) => t.text === "DAL123" && t.font === DATABLOCK_FONT);
-  const line2 = fillTexts.find((t) => t.text === "030  210" && t.font === DATABLOCK_FONT);
+  const line2 = fillTexts.find((t) => t.text === "030  21" && t.font === DATABLOCK_FONT);
   expect(line1).toBeDefined();
   expect(line2).toBeDefined();
   expect(DATABLOCK_FONT).toContain("IBM Plex Mono");
@@ -457,7 +457,7 @@ test("T02-19 / T02-36 — full datablock time-shares between altitude/GS and scr
   // Phase A at t=0s: Line 2 shows Mode C + GS
   const phaseA = createMockCtx();
   renderScope(phaseA.ctx, world, view, 800, 800);
-  const line2A = phaseA.fillTexts.find((t) => t.text === "030  210" && t.font === DATABLOCK_FONT);
+  const line2A = phaseA.fillTexts.find((t) => t.text === "030  21" && t.font === DATABLOCK_FONT);
   expect(line2A).toBeDefined();
 
   // Phase B at t=2.5s: Line 2 shows scratchpad + type
@@ -494,7 +494,7 @@ test("T02-04 AC5/AC7 — T limited drops the callsign; no duplicate callsign pai
   renderScope(limited.ctx, world, view, 800, 800);
   expect(limited.fillTexts.filter((t) => t.text === "DAL123")).toHaveLength(0);
   expect(limited.fillTexts.some((t) => t.text === formatLimitedDatablock(ac).line1)).toBe(true);
-  expect(limited.fillTexts.some((t) => t.text === "030  210")).toBe(false);
+  expect(limited.fillTexts.some((t) => t.text === "030  21")).toBe(false);
   expect(limited.fillTexts.some((t) => t.text === "B738")).toBe(false);
 });
 
@@ -515,7 +515,7 @@ test("T02-04 AC5 / T02-36 — M hides Mode C on full blocks; Line 3 shows assign
   view.modeCVisible = false;
   const full = createMockCtx();
   renderScope(full.ctx, world, view, 800, 800);
-  expect(full.fillTexts.some((t) => t.text === "210")).toBe(true);
+  expect(full.fillTexts.some((t) => t.text === "21")).toBe(true);
   expect(full.fillTexts.some((t) => t.text === "A040")).toBe(true);
 
   view.tracks.get(ac.id)!.datablockMode = "limited";
@@ -856,16 +856,16 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   const spawnedTargets = findTargetPositionSymbol(spawned.fillTexts);
   expect(spawnedTargets).toHaveLength(2);
   expect(spawnedTargets.every((r) => r.fillStyle === PALETTE.unowned)).toBe(true);
-  expect(spawned.fillTexts.find((t) => t.text === "030  210")?.fillStyle).toBe(PALETTE.unowned);
-  expect(spawned.fillTexts.find((t) => t.text === "040  220")?.fillStyle).toBe(PALETTE.unowned);
+  expect(spawned.fillTexts.find((t) => t.text === "030  21")?.fillStyle).toBe(PALETTE.unowned);
+  expect(spawned.fillTexts.find((t) => t.text === "040  22")?.fillStyle).toBe(PALETTE.unowned);
   expect(spawned.fillTexts.filter((t) => t.text === "*")).toHaveLength(2);
   expect(spawned.strokeRects.filter((r) => r.w === SELECTION_BOX_PX)).toHaveLength(0);
 
   const noSelF3 = createMockCtx();
   view.tracks.get(dal.id)!.ownership = "unowned";
   renderScope(noSelF3.ctx, world, view, css, css);
-  expect(noSelF3.fillTexts.find((t) => t.text === "030  210")?.fillStyle).toBe(PALETTE.unowned);
-  expect(noSelF3.fillTexts.find((t) => t.text === "040  220")?.fillStyle).toBe(PALETTE.unowned);
+  expect(noSelF3.fillTexts.find((t) => t.text === "030  21")?.fillStyle).toBe(PALETTE.unowned);
+  expect(noSelF3.fillTexts.find((t) => t.text === "040  22")?.fillStyle).toBe(PALETTE.unowned);
 
   world.selectedAircraftId = dal.id;
   view.tracks.get(dal.id)!.ownership = "owned";
@@ -879,8 +879,8 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   expect(dalTarget?.fillStyle).toBe(PALETTE.owned);
   expect(aalTarget?.fillStyle).toBe(PALETTE.unowned);
   expect(owned.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
-  expect(owned.fillTexts.find((t) => t.text === "030  210")?.fillStyle).toBe(PALETTE.owned);
-  expect(owned.fillTexts.find((t) => t.text === "040  220")?.fillStyle).toBe(PALETTE.unowned);
+  expect(owned.fillTexts.find((t) => t.text === "030  21")?.fillStyle).toBe(PALETTE.owned);
+  expect(owned.fillTexts.find((t) => t.text === "040  22")?.fillStyle).toBe(PALETTE.unowned);
   expect(owned.fillTexts.filter((t) => t.text === "D" || t.text === "G")).toHaveLength(1);
   expect(owned.fillTexts.filter((t) => t.text === "*")).toHaveLength(1);
   const painted = [
@@ -1428,7 +1428,7 @@ test("T02-35 AC3/AC4 — Unowned track defaults to PDB and clicking toggles betw
   const initial = createMockCtx();
   renderScope(initial.ctx, world, view, css, css);
   // Line 2 only, suppressing callsign
-  expect(initial.fillTexts.some((t) => t.text === "060  240")).toBe(true);
+  expect(initial.fillTexts.some((t) => t.text === "060  24")).toBe(true);
   expect(initial.fillTexts.some((t) => t.text === "SWA200")).toBe(false);
 
   // Click toggles to Green FDB
@@ -1445,7 +1445,7 @@ test("T02-35 AC3/AC4 — Unowned track defaults to PDB and clicking toggles betw
   handlePpiLeftClick(view, world, p.x, p.y, css, css);
   const pdbAgain = createMockCtx();
   renderScope(pdbAgain.ctx, world, view, css, css);
-  expect(pdbAgain.fillTexts.some((t) => t.text === "060  240")).toBe(true);
+  expect(pdbAgain.fillTexts.some((t) => t.text === "060  24")).toBe(true);
   expect(pdbAgain.fillTexts.some((t) => t.text === "SWA200")).toBe(false);
 });
 
@@ -1522,7 +1522,7 @@ test("T02-35 AC6 — BRITE channel ldb controls brightness of both LDB and PDB b
   const def = createMockCtx();
   renderScope(def.ctx, world, view, css, css);
   const ldbDef = def.fillTexts.find((t) => t.text === "1200 030");
-  const pdbDef = def.fillTexts.find((t) => t.text === "050  220");
+  const pdbDef = def.fillTexts.find((t) => t.text === "050  22");
   expect(ldbDef?.fillStyle).toBe(applyBrite(PALETTE.unowned, 100));
   expect(pdbDef?.fillStyle).toBe(applyBrite(PALETTE.unowned, 100));
 
@@ -1531,7 +1531,7 @@ test("T02-35 AC6 — BRITE channel ldb controls brightness of both LDB and PDB b
   const dimmed = createMockCtx();
   renderScope(dimmed.ctx, world, view, css, css);
   const ldbDim = dimmed.fillTexts.find((t) => t.text === "1200 030");
-  const pdbDim = dimmed.fillTexts.find((t) => t.text === "050  220");
+  const pdbDim = dimmed.fillTexts.find((t) => t.text === "050  22");
   expect(ldbDim?.fillStyle).toBe(applyBrite(PALETTE.unowned, 50));
   expect(pdbDim?.fillStyle).toBe(applyBrite(PALETTE.unowned, 50));
 });
@@ -1710,7 +1710,7 @@ test("T02-37 AC5 — Datablock renders in standard STARS Cyan highlight (#00FFFF
   const mock = createMockCtx();
   renderScope(mock.ctx, world, view, 800, 800);
 
-  const datablockText = mock.fillTexts.find((t) => t.text === "AAL100" || t.text === "050  210");
+  const datablockText = mock.fillTexts.find((t) => t.text === "AAL100" || t.text === "050  21");
   expect(datablockText).toBeDefined();
   expect(datablockText?.fillStyle).toBe(PALETTE.highlight);
   expect(PALETTE.highlight).toBe("#00FFFF");
