@@ -433,19 +433,19 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       const view = createScopeView();
       syncTrackDisplays(view.tracks, world);
 
-      // Inbound pending: Blinking white FDB (visible at t=0, hidden at t=500, visible at t=1000)
+      // Inbound pending: Blinking white FDB (visible at t=0, hidden at t=800, visible at t=1600)
       world.simTimeMs = 0;
       const t0 = createMockCtx();
       renderScope(t0.ctx, world, view, 800, 800);
       expect(t0.fillTexts.some((t) => t.text === "DAL999")).toBe(true);
 
-      world.simTimeMs = 500;
+      world.simTimeMs = 800;
       const t500 = createMockCtx();
       renderScope(t500.ctx, world, view, 800, 800);
       expect(t500.fillTexts.some((t) => t.text === "DAL999")).toBe(false);
 
       // Left click to accept inbound handoff
-      world.simTimeMs = 1000;
+      world.simTimeMs = 1600;
       handleTrackClick(view.tracks, world, ac.id);
 
       const td = view.tracks.get(ac.id)!;
@@ -455,7 +455,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       expect(log.byType("handoff.inbound.accepted")).toHaveLength(1);
 
       // Once accepted: Solid white FDB at all times
-      world.simTimeMs = 1500;
+      world.simTimeMs = 2400;
       const acceptedT1500 = createMockCtx();
       renderScope(acceptedT1500.ctx, world, view, 800, 800);
       const callsign = acceptedT1500.fillTexts.find((t) => t.text === "DAL999");
@@ -492,13 +492,13 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       const td = view.tracks.get(ac.id)!;
       expect(td.outboundFlashUntilSimMs).toBe(1000 + 5000);
 
-      // Flashes white during 5s: visible at t=1000, hidden at t=1500
-      world.simTimeMs = 1000;
+      // Flashes white during 5s: visible at t=1600 (even phase), hidden at t=2400 (odd phase)
+      world.simTimeMs = 1600;
       const flashOn = createMockCtx();
       renderScope(flashOn.ctx, world, view, 800, 800);
       expect(flashOn.fillTexts.some((t) => t.text === "UAL888")).toBe(true);
 
-      world.simTimeMs = 1500;
+      world.simTimeMs = 2400;
       const flashOff = createMockCtx();
       renderScope(flashOff.ctx, world, view, 800, 800);
       expect(flashOff.fillTexts.some((t) => t.text === "UAL888")).toBe(false);
@@ -554,7 +554,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       renderScope(poBlinkOn.ctx, world, view, 800, 800);
       expect(poBlinkOn.fillTexts.some((t) => t.text === "FFT123 PO")).toBe(true);
 
-      world.simTimeMs = 500;
+      world.simTimeMs = 800;
       const poBlinkOff = createMockCtx();
       renderScope(poBlinkOff.ctx, world, view, 800, 800);
       expect(poBlinkOff.fillTexts.some((t) => t.text === "FFT123 PO")).toBe(false);

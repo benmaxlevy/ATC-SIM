@@ -22,8 +22,10 @@ import { ownershipStubChar, type TrackOwnership } from "./ownership";
 /** Position-symbol shape for primary targets. Axis-aligned diamond, not heading-rotated. */
 export const TARGET_SHAPE = "diamond" as const;
 
-/** Bounding box of the diamond/symbol (vertex to opposite vertex). 7–9 CSS px band. */
+/** Bounding box of the standard symbol (vertex to opposite vertex). 7–9 CSS px band. */
 export const TARGET_SIZE_PX = 8;
+/** Primary-only target diamond size (a bit larger for visibility). */
+export const PRIMARY_TARGET_SIZE_PX = 11;
 export const TARGET_STROKE_PX = 1;
 /** @deprecated T02-34: Heading tick removed from target symbol; PTL handles vector projection. */
 export const HEADING_TICK_PX = 8;
@@ -184,7 +186,7 @@ export function targetStrokeColor(_ownership: TrackOwnership, identFlashing: boo
 export function targetDiamondVertices(
   x: number,
   y: number,
-  sizePx: number = TARGET_SIZE_PX,
+  sizePx: number = PRIMARY_TARGET_SIZE_PX,
 ): [
   { x: number; y: number },
   { x: number; y: number },
@@ -205,21 +207,25 @@ export function isTargetDiamondPath(
   points: ReadonlyArray<{ x: number; y: number }>,
   cx: number,
   cy: number,
-  slopPx = 2,
-  sizePx: number = TARGET_SIZE_PX,
+  slopPx = 3,
+  sizePx?: number,
 ): boolean {
   if (points.length < 4) {
     return false;
   }
-  const expected = targetDiamondVertices(cx, cy, sizePx);
-  for (let i = 0; i < 4; i += 1) {
-    const p = points[i]!;
-    const e = expected[i]!;
-    if (Math.abs(p.x - e.x) > slopPx || Math.abs(p.y - e.y) > slopPx) {
-      return false;
+  const sizesToTry =
+    sizePx != null ? [sizePx] : [PRIMARY_TARGET_SIZE_PX, 11, 12, 10, TARGET_SIZE_PX];
+  return sizesToTry.some((sz) => {
+    const expected = targetDiamondVertices(cx, cy, sz);
+    for (let i = 0; i < 4; i += 1) {
+      const p = points[i]!;
+      const e = expected[i]!;
+      if (Math.abs(p.x - e.x) > slopPx || Math.abs(p.y - e.y) > slopPx) {
+        return false;
+      }
     }
-  }
-  return true;
+    return true;
+  });
 }
 
 export function selectionBoxRect(
@@ -324,7 +330,8 @@ export function drawTargetSymbol(
   if (desc.shape === "diamond") {
     ctx.strokeStyle = color;
     ctx.lineWidth = TARGET_STROKE_PX;
-    strokeDiamond(ctx, x, y, sizePx);
+    const diamondSize = Math.max(PRIMARY_TARGET_SIZE_PX, Math.round(sizePx * 1.25));
+    strokeDiamond(ctx, x, y, diamondSize);
   } else if (desc.shape === "square") {
     ctx.strokeStyle = color;
     ctx.lineWidth = TARGET_STROKE_PX;

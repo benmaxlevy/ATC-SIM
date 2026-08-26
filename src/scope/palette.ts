@@ -244,8 +244,9 @@ export function historyTrailColor(indexFromOldest: number, count: number): strin
   return HISTORY_TRAIL[Math.min(fromNewest, HISTORY_TRAIL.length - 1)] ?? HISTORY_TRAIL[0];
 }
 
-/** CRC-like half-period for the datablock `CA` blink (sim time). */
-export const CA_BLINK_HALF_MS = 500;
+/** Half-period for scope blinking/flashing animations (sim time). Slower, authentic STARS cadence (800ms ON / 800ms OFF). */
+export const BLINK_HALF_PERIOD_MS = 800;
+export const CA_BLINK_HALF_MS = BLINK_HALF_PERIOD_MS;
 
 export function trackAlertTint(world: World, callsign: string): AlertTint {
   return datablockAlertTint({

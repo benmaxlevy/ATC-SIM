@@ -959,7 +959,7 @@ test("T04-09 AC5 — current CA blinks and paints red", () => {
   );
   expect(alert.fillTexts.find((t) => t.text === "DAL123 CA")?.fillStyle).toBe(PALETTE.alert);
 
-  world.simTimeMs = 500;
+  world.simTimeMs = 800;
   const blinkOff = createMockCtx();
   renderScope(blinkOff.ctx, world, view, css, css);
   expect(blinkOff.fillTexts.find((t) => t.text === "DAL123   ")?.fillStyle).toBe(PALETTE.alert);
@@ -1545,15 +1545,15 @@ test("T02-37 AC1 — Inbound handoff visual blinking cadence and acceptance to s
   const targetSymbol1 = mockOn1.fillTexts.find((t) => t.text === "C");
   expect(targetSymbol1).toBeDefined();
 
-  // t=500ms (blink OFF phase): datablock is not drawn (blinks off)
-  world.simTimeMs = 500;
+  // t=800ms (blink OFF phase): datablock is not drawn (blinks off)
+  world.simTimeMs = 800;
   const mockOff = createMockCtx();
   renderScope(mockOff.ctx, world, view, 800, 800);
   const callsignOff = mockOff.fillTexts.find((t) => t.text === "DAL123");
   expect(callsignOff).toBeUndefined();
 
-  // t=1000ms (blink ON phase again): visible
-  world.simTimeMs = 1000;
+  // t=1600ms (blink ON phase again): visible
+  world.simTimeMs = 1600;
   const mockOn2 = createMockCtx();
   renderScope(mockOn2.ctx, world, view, 800, 800);
   expect(mockOn2.fillTexts.some((t) => t.text === "DAL123")).toBe(true);
@@ -1562,8 +1562,8 @@ test("T02-37 AC1 — Inbound handoff visual blinking cadence and acceptance to s
   const p = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: 800, heightPx: 800 });
   handlePpiLeftClick(view, world, p.x, p.y, 800, 800);
 
-  // Now accepted: solid white FDB across both 0ms and 500ms phases!
-  world.simTimeMs = 500;
+  // Now accepted: solid white FDB across both 0ms and 800ms phases!
+  world.simTimeMs = 800;
   const mockAccepted = createMockCtx();
   renderScope(mockAccepted.ctx, world, view, 800, 800);
   const callsignAccepted = mockAccepted.fillTexts.find((t) => t.text === "DAL123");
@@ -1598,12 +1598,12 @@ test("T02-37 AC2 — Outbound accepted handoff flashes white for 5 seconds on se
   expect(mockSym.fillTexts.some((t) => t.text === "C")).toBe(true);
 
   // During 5s window (t=1000 to t=6000ms): flashes white
-  world.simTimeMs = 1200; // blink on
+  world.simTimeMs = 1600; // blink on (1600 / 800 = 2, even -> ON)
   const mockFlashOn = createMockCtx();
   renderScope(mockFlashOn.ctx, world, view, 800, 800);
   expect(mockFlashOn.fillTexts.find((t) => t.text === "SWA555")?.fillStyle).toBe(PALETTE.owned);
 
-  world.simTimeMs = 1700; // blink off
+  world.simTimeMs = 2400; // blink off (2400 / 800 = 3, odd -> OFF)
   const mockFlashOff = createMockCtx();
   renderScope(mockFlashOff.ctx, world, view, 800, 800);
   expect(mockFlashOff.fillTexts.some((t) => t.text === "SWA555")).toBe(false);
@@ -1635,8 +1635,8 @@ test("T02-37 AC3 / AC4 — Incoming pointout renders blinking Yellow FDB with PO
   expect(poLine1).toBeDefined();
   expect(poLine1?.fillStyle).toBe(PALETTE.caution); // #FFFF00
 
-  // t=500ms (blink off): not drawn
-  world.simTimeMs = 500;
+  // t=800ms (blink off): not drawn
+  world.simTimeMs = 800;
   const mockPoOff = createMockCtx();
   renderScope(mockPoOff.ctx, world, view, 800, 800);
   expect(mockPoOff.fillTexts.some((t) => t.text === "DAL123 PO")).toBe(false);
@@ -1645,7 +1645,7 @@ test("T02-37 AC3 / AC4 — Incoming pointout renders blinking Yellow FDB with PO
   const p = nmToScreen(dal.xNm, dal.yNm, view.camera, { widthPx: 800, heightPx: 800 });
   handlePpiLeftClick(view, world, p.x, p.y, 800, 800);
 
-  world.simTimeMs = 500;
+  world.simTimeMs = 800;
   const mockAccepted = createMockCtx();
   renderScope(mockAccepted.ctx, world, view, 800, 800);
   const acceptedLine1 = mockAccepted.fillTexts.find((t) => t.text === "DAL123");

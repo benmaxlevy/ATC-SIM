@@ -39,7 +39,6 @@ import { datablockMetrics, linesForDatablock, type DatablockMode } from "./datab
 import { datablockFontCss, datablockLineHeightPx, measureDatablockCellWidth } from "./fonts";
 import { datablockTopLeft, DEFAULT_LEADER_DIR, drawLeaderLine, type LeaderDir } from "./leader";
 import { reuseOrBuildMapCache, toMapCacheInput, type MapCache } from "./mapLayers";
-import { PALETTE, applyBrite } from "./palette";
 import { historyDotsToDraw } from "./history";
 import { drawPredictedTrackLine, ptlEndpoint, shouldDrawPtlForTrack } from "./ptl";
 import { isViewOffAirport, type ScopeView } from "./scopeView";
@@ -52,9 +51,12 @@ import {
 } from "./tpa";
 import { buildGiLines, buildSsaLines } from "./ssa";
 import { buildMapListLines } from "./dcbFunctions";
-import { type TrackOwnership } from "./ownership";
+import type { TrackOwnership } from "./ownership";
 import {
+  BLINK_HALF_PERIOD_MS,
+  PALETTE,
   alertTintPaintColor,
+  applyBrite,
   trackAlertTint,
   trackPaintAlertTint,
   withCaDatablockTag,
@@ -235,7 +237,7 @@ export function getDatablockVisualState(
 
   // 2. Inbound pending handoff: Blinking white FDB
   if (ho.kind === "inbound") {
-    const isBlinkOn = Math.floor(world.simTimeMs / 500) % 2 === 0;
+    const isBlinkOn = Math.floor(world.simTimeMs / BLINK_HALF_PERIOD_MS) % 2 === 0;
     return {
       color: PALETTE.owned,
       visible: isBlinkOn,
@@ -256,7 +258,7 @@ export function getDatablockVisualState(
         td?.outboundFlashUntilSimMs ??
         (ho.kind === "outbound" ? (ho.acceptedAtSimMs ?? 0) + 5000 : 0);
       const isFlashing = world.simTimeMs < flashDeadline;
-      const isBlinkOn = Math.floor(world.simTimeMs / 500) % 2 === 0;
+      const isBlinkOn = Math.floor(world.simTimeMs / BLINK_HALF_PERIOD_MS) % 2 === 0;
       return {
         color: PALETTE.owned,
         visible: isFlashing ? isBlinkOn : true,
@@ -292,7 +294,7 @@ export function getDatablockVisualState(
 
   // 4. Pointout inbound pending: Blinking yellow FDB with PO tag
   if (ho.kind === "pointout_inbound" && ho.status === "pending") {
-    const isBlinkOn = Math.floor(world.simTimeMs / 500) % 2 === 0;
+    const isBlinkOn = Math.floor(world.simTimeMs / BLINK_HALF_PERIOD_MS) % 2 === 0;
     return {
       color: PALETTE.caution,
       visible: isBlinkOn,

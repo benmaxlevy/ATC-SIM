@@ -111,10 +111,10 @@ test("AC5 — predicted CA is not yellow; current CA and MSAW still paint", () =
 
 test("CA tag blinks on sim time; MSAW tag is not GPWS/TAWS", () => {
   expect(caDatablockTagVisible(0)).toBe(true);
-  expect(caDatablockTagVisible(499)).toBe(true);
-  expect(caDatablockTagVisible(500)).toBe(false);
+  expect(caDatablockTagVisible(799)).toBe(true);
+  expect(caDatablockTagVisible(800)).toBe(false);
   expect(withCaDatablockTag("DAL123", "ca-caution", 0)).toBe("DAL123 CA");
-  expect(withCaDatablockTag("DAL123", "ca-alert", 500)).toBe("DAL123   ");
+  expect(withCaDatablockTag("DAL123", "ca-alert", 800)).toBe("DAL123   ");
   expect(withCaDatablockTag("DAL123", "msaw-caution")).toBe("DAL123 MSAW");
   expect(withCaDatablockTag("DAL123", "msaw-alert")).toBe("DAL123 MSAW");
   expect(withCaDatablockTag("DAL123", null)).toBe("DAL123");
