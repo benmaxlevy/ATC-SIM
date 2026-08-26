@@ -94,6 +94,18 @@ STARS CRC supports manual per-track inhibition commands via the `<MULTI FUNC>` (
 
 These manual invocation commands and the corresponding `▲` and `*` Line 1 glyphs are skipped for now and preserved for later implementation when a full STARS `<MULTI FUNC>` keyboard chord parser is introduced.
 
+### Tactical and Expanded Special Purpose Codes (SPCs)
+
+STARS CRC supports additional Special Purpose Codes beyond standard emergency squawks:
+- **Expanded Transponder SPCs**: `7777` (`MI` - Military Intercept) and `7400` (`LL` - Lost Link / UAS).
+- **Tactical Controller-Assigned SPCs**:
+  - `OD`: Opposite Direction operations (head-on runway operations).
+  - `ME`: Medical Emergency declared without transponder squawk.
+  - `MF`: Minimum Fuel status.
+  - `LN`: Medevac / LifeGuard priority flight.
+
+These expanded and tactical SPC codes are deferred for future specialized scenario modules. Existing core emergency squawks (`7700` `EM`, `7600` `RF`, `7500` `HJ`) remain fully active.
+
 ## Explicit boundary
 
 This document does not pull in untouched phase work such as scoring/replay,

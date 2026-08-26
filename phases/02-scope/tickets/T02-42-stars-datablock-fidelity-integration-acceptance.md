@@ -1,9 +1,9 @@
-# T02-43 STARS datablock fidelity integration and acceptance
+# T02-42 STARS datablock fidelity integration and acceptance
 
 **Phase:** 02 Scope (STARS CRC fidelity addendum)
 **Priority:** P0
 **Size:** L
-**Depends on:** T02-39, T02-40, T02-41, T02-42
+**Depends on:** T02-39, T02-40, T02-41
 **Blocks:** Phase 05
 **Launch:** Implement this ticket only.
 
@@ -17,17 +17,19 @@ Comprehensive integration, visual fidelity, and regression acceptance test suite
   - Speed clearances (`"reduce speed to 210 knots"`) -> `S21` in SP2.
 - FDB / PDB ground speed tens formatting (`18`, `25`) and wake/RNAV category indicators (`18H`, `25R`).
 - Multi-phase Line 2 time-sharing (cycling left Mode C / SP1 / SP2 and right GS / Type / Requested Alt, plus center handoff ID).
-- Safety inhibit glyphs (`*`, `▲`) and SPC codes (`EM`, `RF`, `HJ`, `MI`, `LL`, `OD`, `ME`, `MF`, `LN`) on Line 1.
+- Emergency transponder codes (`7700` `EM`, `7600` `RF`, `7500` `HJ`) on Line 1.
 - Zero regressions across existing radar tracking, DCB menus, FMS navigation, and voice telephony check-ins.
+
+*(Note: Manual user-invoked inhibit glyphs and tactical SPCs like `OD`, `ME`, `MF`, `LN` are deferred to `phases/LATER-IMPLEMENTATION-BACKLOG.md`).*
 
 ## Context
 
-This is the capstone integration ticket for the Eleventh Swarm (T02-39–43). It ties together scratchpad derivation from radio clearances, tens-based ground speed with category suffixes, multi-phase time-sharing, and safety alert inhibits, ensuring that the ATC-SIM scope faithfully replicates FAA STARS CRC datablock behavior under real operating conditions.
+This is the capstone integration ticket for the Eleventh Swarm (T02-39–42). It ties together scratchpad derivation from radio clearances, tens-based ground speed with category suffixes, multi-phase time-sharing, and emergency transponder SPCs, ensuring that the ATC-SIM scope faithfully replicates FAA STARS CRC datablock behavior under real operating conditions.
 
 ## Research
 
 Read **docs.virtualnas.net/crc/stars** (Complete Datablock & Scratchpad Specifications).
-- Review all acceptance criteria across T02-39, T02-40, T02-41, and T02-42.
+- Review all acceptance criteria across T02-39, T02-40, and T02-41.
 - Verify full test suite execution: `npm test`, `npm run build`, and `npm run ci`.
 
 ## Scope
@@ -44,9 +46,8 @@ Read **docs.virtualnas.net/crc/stars** (Complete Datablock & Scratchpad Specific
      - Verify Line 2 rotates left field (Mode C -> SP1 -> SP2) and right field (GS -> Type -> Req Alt) smoothly as simulation time advances.
      - Verify empty fields are skipped seamlessly without empty display ticks.
      - Verify center handoff sector indicator appears during active handoff transfers.
-  4. **Safety Inhibit Glyphs & SPCs**:
-     - Verify `*` appears for MSAW inhibit and `▲` appears for CA inhibit.
-     - Verify squawk 7700 sets `EM`, 7600 sets `RF`, 7500 sets `HJ`, etc.
+  4. **Emergency Transponder SPCs**:
+     - Verify squawk 7700 sets `EM`, 7600 sets `RF`, 7500 sets `HJ`.
   5. **Scope Rendering & Canvas Output**:
      - Verify that `renderScope` accurately renders all datablock lines and colors across FDB, PDB, and LDB modes.
 - Verify that 100% of all unit, integration, and CI tests pass with zero regressions.
@@ -67,7 +68,7 @@ Read **docs.virtualnas.net/crc/stars** (Complete Datablock & Scratchpad Specific
 - [ ] **AC1 —** Radio voice/text clearances for approaches, altitudes, and speeds automatically update `TrackDisplay` scratchpads (`SP1`/`SP2`).
 - [ ] **AC2 —** FDB and PDB datablocks correctly render tens-based ground speed with wake/RNAV category indicators.
 - [ ] **AC3 —** Multi-phase time-sharing operates smoothly across simulation time for both FDB and PDB modes, including center handoff sector ID.
-- [ ] **AC4 —** Line 1 safety inhibit glyphs (`*`, `▲`) and SPC codes (`EM`, `RF`, `HJ`, `MI`, `LL`, `OD`, `ME`, `MF`, `LN`) display properly.
+- [ ] **AC4 —** Emergency squawks 7700 (`EM`), 7600 (`RF`), and 7500 (`HJ`) render properly on Line 1.
 - [ ] **AC5 —** Zero regressions: all test suites (`npm test`, `npm run build`, `npm run ci`) pass cleanly (100% green).
 - [ ] **AC6 —** Scope documentation in `phases/02-scope/README.md` is updated to detail the complete STARS CRC datablock fidelity model.
 
