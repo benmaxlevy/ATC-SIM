@@ -1,4 +1,4 @@
-# ATC-SIM swarm orchestrator — Phase 4 SIDs and randomized departures addendum (T04-18–23)
+# ATC-SIM swarm orchestrator — Phase 2 STARS CRC scope fidelity addendum (T02-34–38)
 
 Paste **this entire file** into a new agent. That agent is the **orchestrator**. It may run for hours. It writes almost no application code.
 
@@ -9,7 +9,39 @@ Shell: **bash** (Linux).
 
 Before checking git, spawning agents, creating worktrees, or editing application code, update this file for the current swarm. Append a new swarm-start heading/configuration; do not overwrite prior swarm history. If the requested swarm configuration is incomplete, ask before making any other swarm move. Then commit the planning/status update before creating ticket branches or worktrees.
 
-This is the **ninth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–17)** are already green on `master`. Do **not** redo 0–8th. Do **not** start phase 5 scoring. Skip **T04-11** (wind) unless the human names it. This run is **T04-18–23 only**.
+This is the **tenth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–17) → 4 SIDs & departures (T04-18–23)** are already green on `master`. Do **not** redo 0–9th. Do **not** start phase 5 scoring. Skip **T04-11** (wind) unless the human names it. This run is **T02-34–38 only**.
+
+---
+
+## Tenth swarm started — T02-34–38 STARS CRC scope fidelity addendum
+
+Orchestrator planning **2026-08-25**. Human requested tickets to close the gap between ATC-SIM and STARS CRC (docs.virtualnas.net/crc/stars). Historical swarms 1–9 stay green. This run is **T02-34–38 only**. Not phase 5. Not a redo of T00–T04-23.
+
+| Key | Value |
+| --- | --- |
+| Goal | Full fidelity alignment with STARS CRC (docs.virtualnas.net/crc/stars): target symbol shapes (primary diamond, unassociated asterisk, VFR V, sector letters), LDB/PDB datablock modes, FDB dynamic time-sharing (alt/scratchpad, GS/type/req alt) & Line 3 assigned altitude (`A<alt>`), handoff/pointout blinking & states, and cyan track highlight |
+| Player loop | `npm run dev` → unassociated targets show `*` or `V` in green LDB; clicking queries speed; unowned associated tracks show PDB; clicking toggles to FDB; taking control (`F3`/accept) turns FDB white and updates target symbol to owning sector ID; FDB line 2 time-shares fields; climbing/descending tracks show `A<alt>` on Line 3; middle-click highlights track in cyan; `F4` drops control back to `*` |
+| Skip | **T04-11** (wind); all of **T00–T03**, **T02-01–33**, **T04-***, **T05-*** |
+| Include | **T02-34**, **T02-35**, **T02-36**, **T02-37**, **T02-38** |
+| Stop | **Do not start phase 5.** No scoring, replay, imperfect pilots, or second TCP |
+| Do not redo | T00–T04-23. If STATUS says tenth swarm complete, **stop** |
+| Max ticket workers in flight | **3** (Wave A = 1; Wave B = 2; Wave C = 1; Wave D = 1) |
+| Merge lock | **Only the phase captain** merges to `master` (squash merge, one commit per ticket) |
+| Model | Inherit / default |
+| Paid STT/TTS/LLM | **Forbidden** |
+
+**Waves:**
+- **Wave A (1 worker):** `T02-34` (STARS target symbols, position indicators, and primary/secondary radar targets)
+- **Wave B (2 workers):** `T02-35` (STARS Limited Data Block & Partial Data Block modes) ∥ `T02-36` (STARS Full Data Block dynamic time-sharing and Line 3 layout)
+- **Wave C (1 worker):** `T02-37` (STARS handoff blinking states, pointout indicators, and cyan track highlight)
+- **Wave D (1 worker):** `T02-38` (STARS CRC scope fidelity acceptance & integration)
+
+**Product law (tenth swarm — STARS CRC scope fidelity):**
+- **Surveillance-Driven Position Symbols:** Target symbol shape is derived from surveillance state: primary-only is diamond `◇` (no datablock); unassociated secondary is `*` (or `V` for 1200, `□` for selected beacon); controlled target is owning sector ID letter (e.g. `D`). No fixed heading tick attached to target symbol (PTL lines handle vector projection).
+- **LDB & PDB Modes:** Unassociated tracks display LDB (squawk + altitude), with click-to-query temporary ground speed; associated tracks owned by other controllers display PDB (Line 2 only) by default, toggling to Green FDB on click. `F1` momentarily forces beacon code readout.
+- **FDB Time-Sharing:** FDB Line 2 alternates (~2.5s cycle) between [Mode C altitude + Ground speed] and [Scratchpad + Aircraft type / requested altitude]. Line 3 renders temporary assigned altitude (`A040`) when assigned altitude differs from Mode C.
+- **Handoff & Pointout Visual Grammar:** Inbound handoffs blink white at receiving controller; accepted handoff blinks white 5s on sender; pointouts display blinking yellow FDB with `PO`; middle-click toggles standard STARS cyan highlight (`#00FFFF`).
+- **Zero Simulation Regressions:** All existing kinematics, procedural navigation (SIDs/STARs), ILS approaches, radio telephony, and DCB physical menus remain 100% operational.
 
 ---
 
