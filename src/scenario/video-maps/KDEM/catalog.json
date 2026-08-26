@@ -53,14 +53,6 @@
       "dcbLabel": "DEM1",
       "defaultOn": true,
       "color": "map"
-    },
-    {
-      "id": "BAY1_SID",
-      "file": "007-bay1-sid.json",
-      "dcbNumber": 7,
-      "dcbLabel": "BAY1",
-      "defaultOn": true,
-      "color": "map"
     }
   ]
 }

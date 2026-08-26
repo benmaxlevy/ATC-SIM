@@ -23,11 +23,9 @@
  *
  * Import rule: `@core` depends on nothing in `src/*` except itself.
  */
-export type { World, SimRate, Accumulator, ScheduledDeparture } from "./world";
+export type { World, SimRate, Accumulator } from "./world";
 export {
-  TRACON_BOUNDARY_RADIUS_NM,
   createWorld,
-  despawnDepartedAircraft,
   setSelectedAircraft,
   stepWorld,
   createAccumulator,
@@ -35,20 +33,15 @@ export {
 } from "./world";
 export { PHYSICS_HZ, SIM_DT_S, MAX_PHYSICS_STEPS_PER_FRAME } from "./clock";
 export { mulberry32 } from "./rng";
-export type { CenterHandoffContext, TrackHandoff } from "./handoff";
+export type { TrackHandoff } from "./handoff";
 export {
-  DEFAULT_CENTER_SECTOR_ID,
   DEFAULT_INBOUND_SECTOR_ID,
-  DEFAULT_TOWER_SECTOR_ID,
   HANDOFF_PENDING_REASON,
   NONE_HANDOFF,
   acceptInboundHandoff,
   assertHandoffOwned,
   handoffFor,
-  initiateCenterHandoff,
-  isCenterHandoffEligible,
   isRadioCommandAllowed,
-  offerDepartureHandoff,
   offerInboundHandoff,
   setHandoffNone,
 } from "./handoff";
@@ -197,10 +190,6 @@ export {
 } from "./fms/landing";
 export type {
   AltConstraint,
-  CatalogSid,
-  CatalogSidEnrouteTransition,
-  CatalogSidLeg,
-  CatalogSidRunwayTransition,
   CatalogStar,
   CatalogStarLeg,
   GlidepathFmsContext,

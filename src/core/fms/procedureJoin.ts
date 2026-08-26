@@ -2,11 +2,14 @@
  * Join a named STAR/SID (JOIN or VIA). DCT to a procedure fix is not a join.
  */
 
-import type { CatalogSid, CatalogStar } from "./vertical";
+import type { CatalogStar } from "./vertical";
 
 export interface ProcedureJoinCatalog {
   stars?: ReadonlyArray<CatalogStar> | null;
-  sids?: ReadonlyArray<CatalogSid> | null;
+  sids?: ReadonlyArray<{
+    id: string;
+    legs?: ReadonlyArray<{ fixId: string }>;
+  }> | null;
 }
 
 export interface ProcedureJoin {
@@ -42,61 +45,16 @@ function starHitsForFix(star: CatalogStar, fixId: string): ProcedureJoin[] {
   return hits;
 }
 
-function sidRoutes(sid: CatalogSid): string[][] {
-  if (sid.legs && sid.legs.length > 0) {
-    return [sid.legs.map((leg) => wantFix(leg.fixId))];
+function sidJoin(
+  sid: { id: string; legs?: ReadonlyArray<{ fixId: string }> },
+  fixId: string,
+): ProcedureJoin | undefined {
+  const routeFixIds = (sid.legs ?? []).map((leg) => wantFix(leg.fixId));
+  const toFixIndex = routeFixIds.indexOf(fixId);
+  if (toFixIndex < 0) {
+    return undefined;
   }
-  const rts =
-    sid.runwayTransitions && sid.runwayTransitions.length > 0 ? sid.runwayTransitions : [undefined];
-  const ets =
-    sid.enrouteTransitions && sid.enrouteTransitions.length > 0
-      ? sid.enrouteTransitions
-      : [undefined];
-  const commonIds = (sid.common ?? []).map((leg) => wantFix(leg.fixId));
-  const results: string[][] = [];
-
-  for (const rt of rts) {
-    for (const et of ets) {
-      const route: string[] = [];
-      if (rt) {
-        for (const leg of rt.legs) {
-          route.push(wantFix(leg.fixId));
-        }
-      }
-      for (const fixId of commonIds) {
-        if (route.length === 0 || route[route.length - 1] !== fixId) {
-          route.push(fixId);
-        }
-      }
-      if (et) {
-        for (const leg of et.legs) {
-          const fixId = wantFix(leg.fixId);
-          if (route.length === 0 || route[route.length - 1] !== fixId) {
-            route.push(fixId);
-          }
-        }
-      }
-      if (route.length > 0) {
-        const key = route.join(">");
-        if (!results.some((r) => r.join(">") === key)) {
-          results.push(route);
-        }
-      }
-    }
-  }
-  return results;
-}
-
-function sidHitsForFix(sid: CatalogSid, fixId: string): ProcedureJoin[] {
-  const routes = sidRoutes(sid);
-  const hits: ProcedureJoin[] = [];
-  for (const routeFixIds of routes) {
-    const toFixIndex = routeFixIds.indexOf(fixId);
-    if (toFixIndex >= 0) {
-      hits.push({ starId: sid.id, routeFixIds, toFixIndex });
-    }
-  }
-  return hits;
+  return { starId: sid.id, routeFixIds, toFixIndex };
 }
 
 /**
@@ -120,7 +78,10 @@ export function procedureRouteContainingFix(
   }
   const sidHits: ProcedureJoin[] = [];
   for (const sid of catalog.sids ?? []) {
-    sidHits.push(...sidHitsForFix(sid, want));
+    const hit = sidJoin(sid, want);
+    if (hit) {
+      sidHits.push(hit);
+    }
   }
   const preferred = [...starHits, ...sidHits].find(
     (hit) => hit.starId.trim().toUpperCase() === prefer,
@@ -156,8 +117,8 @@ function routesForProcedureId(catalog: ProcedureJoinCatalog, procedureId: string
     if (wantFix(sid.id) !== want) {
       continue;
     }
-    const sidRouteList = sidRoutes(sid);
-    for (const routeFixIds of sidRouteList) {
+    const routeFixIds = (sid.legs ?? []).map((leg) => wantFix(leg.fixId));
+    if (routeFixIds.length > 0) {
       routes.push({ starId: sid.id, routeFixIds, toFixIndex: 0 });
     }
   }
@@ -168,13 +129,7 @@ export interface JoinNamedProcedureArgs {
   catalog?: ProcedureJoinCatalog | null;
   procedureId: string;
   current?:
-    | {
-        type: "PROCEDURE";
-        starId?: string;
-        sidId?: string;
-        routeFixIds: readonly string[];
-        toFixIndex: number;
-      }
+    | { type: "PROCEDURE"; starId: string; routeFixIds: readonly string[]; toFixIndex: number }
     | { type: "DIRECT"; fixId: string }
     | null;
   xNm?: number;
@@ -194,7 +149,7 @@ export function joinNamedProcedure(args: JoinNamedProcedureArgs): ProcedureJoin 
     return undefined;
   }
   const current = args.current;
-  if (current?.type === "PROCEDURE" && current.starId && wantFix(current.starId) === want) {
+  if (current?.type === "PROCEDURE" && wantFix(current.starId) === want) {
     return {
       starId: current.starId,
       routeFixIds: [...current.routeFixIds],
