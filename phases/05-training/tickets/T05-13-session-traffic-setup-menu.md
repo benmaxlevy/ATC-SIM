@@ -3,7 +3,7 @@
 **Phase:** 05 Training
 **Priority:** P0
 **Size:** M
-**Depends on:** T04-18, T04-19, T04-20, T04-21
+**Depends on:** T04-21, T04-24, T04-25
 **Blocks:** none
 **Launch:** Implement this ticket only. Do not add live session edits.
 
@@ -13,7 +13,7 @@ Before a session starts or on explicit restart, user can select playable airport
 
 ## Context
 
-T04-18–20 provide working traffic behavior. T04-21 provides the sole dynamic inventory for airport/scenario choices. This menu must never hardcode an airport list, use display-control PREF, or expose controls whose behavior is unavailable.
+T04-21 provides working departure-rate behavior. T04-24 provides the sole dynamic inventory for airport/scenario choices. T04-25 provides arrival count/rate behavior. This menu must never hardcode an airport list, use display-control PREF, or expose controls whose behavior is unavailable.
 
 T05-11 owns trainer/a11y settings; this ticket owns session construction settings. The two panels may share chrome and keyboard conventions without merging their storage or feature models.
 
