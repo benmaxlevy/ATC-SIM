@@ -1,5 +1,9 @@
 # Swarm status
 
+## NINTH SWARM BLOCKED — session traffic setup
+
+Preflight **2026-08-26** stopped before captain spawn. `master` at `a798d44` does not contain the completed eighth-swarm worker commits: `c12b6d2` (T02-31), `85886e8` (T02-32), or `70ea007` (T02-33). Their dedicated worktrees are clean, but no EIGHTH SWARM COMPLETE entry exists. Preserve those branches/worktrees; do not start T04-18–21 or T05-13 until an eighth-swarm captain merges and verifies T02-31–33 on `master`.
+
 ## Seventh swarm started — Phase 2 post-exit addendum (T02-22–30 trainer DCB)
 
 Orchestrator planning **2026-08-23**. Human: DCB spec + tickets, then away (“make any calls”). Historical phase 2 exit/polish (T02-01–21) and sixth swarm (T04-16–17) stay green. This run is **T02-22–30 only**. Do **not** redo T00–T04-17. Do **not** start phase 5. Skip **T04-11**.
