@@ -24,8 +24,6 @@ import { resolveRunwayHeading, resolveRunwayThreshold } from "./departureSpawn";
 
 export { starRouteFixIds };
 
-/** Left downwind for KDEM RWY 27 (true heading 090, north of the field). */
-const DOWNWIND_HEADING_DEG = 90;
 const ARC_RADIUS_NM = 12;
 const ARC_START_DEG = 20;
 const ARC_END_DEG = 160;
@@ -46,9 +44,7 @@ function downwindArcArrival(index: number, count: number, scenario?: Scenario): 
   const activeRunwayId = scenario?.activeRunwayId ?? "27";
   const catalog = scenario?.catalog;
   const threshold = catalog ? resolveRunwayThreshold(catalog, activeRunwayId) : { xNm: 0, yNm: 0 };
-  const rwyHeading = catalog
-    ? resolveRunwayHeading(catalog, undefined, activeRunwayId)
-    : 270;
+  const rwyHeading = catalog ? resolveRunwayHeading(catalog, undefined, activeRunwayId) : 270;
   const downwindHeading = normalizeHeadingDeg(rwyHeading + 180);
 
   return {
@@ -287,7 +283,11 @@ export function createWorldForSession(
     if (scenario.spawnPolicy === "star-inbound") {
       const scheduler: ArrivalScheduler = createArrivalScheduler(
         scenario.catalog,
-        { ...arrivalTraffic, seed: arrivalTraffic?.seed ?? seed, activeRunwayId: scenario.activeRunwayId },
+        {
+          ...arrivalTraffic,
+          seed: arrivalTraffic?.seed ?? seed,
+          activeRunwayId: scenario.activeRunwayId,
+        },
         scenario.arrivals.map((arrival) => arrival.callsign),
         world.simTimeMs,
         scenario.activeRunwayId,

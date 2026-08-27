@@ -101,10 +101,12 @@ describe("T04-25 configurable arrival traffic", () => {
   });
 
   test("T04-29 — East Flow arrival scheduler assigns only East Flow transitions (WN, WS)", () => {
-    const scheduler = createArrivalScheduler(
-      loadKdem().catalog,
-      { initialArrivalCount: 4, arrivalsPerHour: 12, seed: 1, activeRunwayId: "09" },
-    );
+    const scheduler = createArrivalScheduler(loadKdem().catalog, {
+      initialArrivalCount: 4,
+      arrivalsPerHour: 12,
+      seed: 1,
+      activeRunwayId: "09",
+    });
     expect(scheduler.schedule.length).toBeGreaterThanOrEqual(4);
     for (const item of scheduler.schedule) {
       expect(["WN", "WS"]).toContain(item.assignment.transitionId);
@@ -113,10 +115,12 @@ describe("T04-25 configurable arrival traffic", () => {
   });
 
   test("T04-29 — West Flow arrival scheduler assigns only West Flow transitions (N, S)", () => {
-    const scheduler = createArrivalScheduler(
-      loadKdem().catalog,
-      { initialArrivalCount: 4, arrivalsPerHour: 12, seed: 1, activeRunwayId: "27" },
-    );
+    const scheduler = createArrivalScheduler(loadKdem().catalog, {
+      initialArrivalCount: 4,
+      arrivalsPerHour: 12,
+      seed: 1,
+      activeRunwayId: "27",
+    });
     expect(scheduler.schedule.length).toBeGreaterThanOrEqual(4);
     for (const item of scheduler.schedule) {
       expect(["N", "S"]).toContain(item.assignment.transitionId);

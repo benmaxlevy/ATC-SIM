@@ -551,4 +551,3 @@ test("AC6 — FMS DESCEND_VIA computes correct crossing altitude profile for DEM
   expect(stepUntilFix(world, "WMERG", 500)).toBe(true);
   expect(Math.round(aal.altitudeFt / 100) * 100).toBe(4000);
 });
-

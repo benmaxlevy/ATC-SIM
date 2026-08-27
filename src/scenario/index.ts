@@ -50,9 +50,15 @@ export type {
 export { catalogDctIds } from "./procedures/types";
 export { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN, GI_TEXT_LINE_COUNT } from "./types";
 export { assertScenario, loadKdem, loadKdem09, loadKdemIls09, loadKdemIls27 } from "./load";
-export type { PlayableScenario, PlayableScenarioInventory } from "./playableScenarios";
+export type {
+  PlayableAirport,
+  PlayableScenario,
+  PlayableScenarioInventory,
+} from "./playableScenarios";
 export {
   createPlayableScenarioInventory,
+  listConfigurationsForAirport,
+  listPlayableAirports,
   listPlayableScenarios,
   loadPlayableScenario,
 } from "./playableScenarios";

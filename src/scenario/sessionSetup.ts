@@ -6,7 +6,13 @@ import {
   validateArrivalTrafficConfig,
   type ArrivalTrafficConfig,
 } from "./arrivalScheduler";
-import { listPlayableScenarios } from "./playableScenarios";
+import {
+  listConfigurationsForAirport,
+  listPlayableAirports,
+  listPlayableScenarios,
+} from "./playableScenarios";
+
+export { listPlayableAirports, listConfigurationsForAirport };
 
 export const SESSION_SETUP_STORAGE_KEY = "atc-sim.session.v1";
 export const SESSION_SETUP_VERSION = 1;

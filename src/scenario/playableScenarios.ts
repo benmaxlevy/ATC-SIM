@@ -10,6 +10,8 @@ import { ARRIVAL_COUNT_MAX } from "./types";
 export interface PlayableScenario {
   id: string;
   airportIcao: string;
+  airportName?: string;
+  airportLabel?: string;
   label: string;
   configLabel?: string;
   activeRunwayId?: string;
@@ -17,6 +19,12 @@ export interface PlayableScenario {
   /** False keeps an internal scenario available to URL/tests but off Session setup. */
   sessionSetupVisible: boolean;
   source: string;
+}
+
+export interface PlayableAirport {
+  airportIcao: string;
+  airportLabel: string;
+  defaultScenarioId: string;
 }
 
 interface PlayableScenarioManifest {
@@ -27,6 +35,8 @@ interface PlayableScenarioManifest {
 export interface PlayableScenarioInventory {
   list: () => readonly PlayableScenario[];
   load: (id?: string | null) => Scenario;
+  listAirports: () => readonly PlayableAirport[];
+  listConfigurations: (airportIcao: string) => readonly PlayableScenario[];
 }
 
 export type PlayableScenarioSource = unknown | (() => Scenario);
@@ -70,6 +80,12 @@ export function createPlayableScenarioInventory(
       const chosen = validated.find(({ entry }) => entry.id === id) ?? defaultEntry;
       return validateSource(chosen.source);
     },
+    listAirports: () => listPlayableAirports(validated.map(({ entry }) => entry)),
+    listConfigurations: (airportIcao) =>
+      listConfigurationsForAirport(
+        airportIcao,
+        validated.map(({ entry }) => entry),
+      ),
   };
 }
 
@@ -84,6 +100,41 @@ const inventory = createPlayableScenarioInventory(playableScenariosJson, scenari
 /** Entries are validated with their playable assets before this list is exposed. */
 export function listPlayableScenarios(): readonly PlayableScenario[] {
   return inventory.list();
+}
+
+/**
+ * List unique playable airports derived from validated inventory scenarios.
+ */
+export function listPlayableAirports(
+  scenarios: readonly PlayableScenario[] = inventory.list(),
+): readonly PlayableAirport[] {
+  const visible = scenarios.filter((entry) => entry.sessionSetupVisible);
+  const airports = new Map<string, PlayableAirport>();
+  for (const entry of visible) {
+    if (!airports.has(entry.airportIcao)) {
+      const airportScenarios = visible.filter((s) => s.airportIcao === entry.airportIcao);
+      const defaultEntry = airportScenarios.find((s) => s.default) ?? airportScenarios[0];
+      const airportName = entry.airportName ?? entry.label.split(" — ")[0];
+      const airportLabel = entry.airportLabel ?? `${entry.airportIcao} — ${airportName}`;
+      airports.set(entry.airportIcao, {
+        airportIcao: entry.airportIcao,
+        airportLabel,
+        defaultScenarioId: defaultEntry.id,
+      });
+    }
+  }
+  return Array.from(airports.values());
+}
+
+/**
+ * List playable configurations available for a given airport ICAO.
+ */
+export function listConfigurationsForAirport(
+  airportIcao: string,
+  scenarios: readonly PlayableScenario[] = inventory.list(),
+): readonly PlayableScenario[] {
+  const normalized = airportIcao.toUpperCase();
+  return scenarios.filter((entry) => entry.sessionSetupVisible && entry.airportIcao === normalized);
 }
 
 /**
@@ -130,6 +181,24 @@ function parseManifest(value: unknown): PlayableScenarioManifest {
       "Playable scenario inventory",
       true,
     );
+    const airportName =
+      raw.airportName != null
+        ? assertString(
+            raw.airportName,
+            `scenarios[${index}].airportName`,
+            "Playable scenario inventory",
+            true,
+          )
+        : undefined;
+    const airportLabel =
+      raw.airportLabel != null
+        ? assertString(
+            raw.airportLabel,
+            `scenarios[${index}].airportLabel`,
+            "Playable scenario inventory",
+            true,
+          )
+        : undefined;
     const configLabel =
       raw.configLabel != null
         ? assertString(
@@ -171,6 +240,8 @@ function parseManifest(value: unknown): PlayableScenarioManifest {
     return {
       id,
       airportIcao,
+      airportName,
+      airportLabel,
       label,
       configLabel,
       activeRunwayId,

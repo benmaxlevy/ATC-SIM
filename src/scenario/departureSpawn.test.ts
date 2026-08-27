@@ -133,7 +133,9 @@ describe("departureSpawnPose (AC1)", () => {
     expect(pose.yNm).toBeCloseTo(0, 4);
     expect(pose.headingDeg).toBe(270);
     expect(pose.routeFixIds).toEqual(["BAYEE", "BAYSO", "OCTTA"]);
-    expect(pose.intent.lateral?.routeFixIds).toEqual(["BAYEE", "BAYSO", "OCTTA"]);
+    expect(
+      pose.intent.lateral?.type === "PROCEDURE" ? pose.intent.lateral.routeFixIds : undefined,
+    ).toEqual(["BAYEE", "BAYSO", "OCTTA"]);
     expect(pose.intent.assignedHeadingDeg).toBe(270);
   });
 

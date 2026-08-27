@@ -4,6 +4,7 @@
     {
       "id": "kdem",
       "airportIcao": "KDEM",
+      "airportName": "Demo Field",
       "label": "Demo Field",
       "configLabel": "West Flow (RWY 27)",
       "activeRunwayId": "27",
@@ -13,6 +14,7 @@
     {
       "id": "kdem-09",
       "airportIcao": "KDEM",
+      "airportName": "Demo Field",
       "label": "Demo Field — East Flow (RWY 09)",
       "configLabel": "East Flow (RWY 09)",
       "activeRunwayId": "09",
@@ -22,6 +24,7 @@
     {
       "id": "kdem-ils27",
       "airportIcao": "KDEM",
+      "airportName": "Demo Field",
       "label": "Demo Field — ILS 27",
       "default": false,
       "sessionSetupVisible": false,
@@ -30,6 +33,7 @@
     {
       "id": "kdem-ils09",
       "airportIcao": "KDEM",
+      "airportName": "Demo Field",
       "label": "Demo Field — ILS 09",
       "default": false,
       "sessionSetupVisible": false,

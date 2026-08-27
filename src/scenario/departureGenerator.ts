@@ -52,7 +52,11 @@ export interface GenerateDepartureScheduleOptions {
 export function listDepartureSlots(catalog: ProcedureCatalog, runwayId?: string): DepartureSlot[] {
   const slots: DepartureSlot[] = [];
   const cleanRwy = runwayId ? runwayId.replace(/^RW/i, "").trim().toUpperCase() : undefined;
-  const paddedRwy = cleanRwy ? (cleanRwy.length === 1 ? cleanRwy.padStart(2, "0") : cleanRwy) : undefined;
+  const paddedRwy = cleanRwy
+    ? cleanRwy.length === 1
+      ? cleanRwy.padStart(2, "0")
+      : cleanRwy
+    : undefined;
 
   const matchesRwy = (rId: string) => {
     if (!cleanRwy) return true;
