@@ -52,6 +52,45 @@ This configuration runs on feature branch `feature/atpa-tpa`, cut from `master` 
 
 Wave C and Wave D both touch `renderScope.ts` and `DisplayControlBar.tsx`; use isolated sibling worktrees and rebase the second ticket after each squash merge.
 
+**State ownership (so parallel tickets do not redefine each other):**
+
+- Global ATPA display flags live on `AtpaState` in `src/scope/tpa.ts`. T02-46 and T02-47 both add fields there; whichever merges first introduces them and the second **extends** rather than redefines. The captain resolves that collision at rebase, not by respawning either ticket.
+- Per-track ATPA enable/inhibit flags live on `TrackDisplay`. Per-track manual TPA graphics (rings, cones, size inhibit) are T02-48's and are **session state, not PREF**.
+- Only T02-47 bumps `DCB_PREF_SCHEMA_VERSION`. No other ticket touches the PREF schema.
+- Only T02-45 defines the cone wedge. T02-48 reuses it for manual `*P` cones; a second wedge implementation is a review failure.
+
+**Backlog ownership** (per `.cursor/rules/later-implementation-backlog.mdc`, each in the same commit as its slice):
+
+| Ticket | Backlog edit |
+| --- | --- |
+| T02-44 | adds "ATPA separation criteria not yet modeled" — wake minima, adapted 2.5 NM conditions, per-position adaptation, TDW variant, aural alerting, authored volumes |
+| T02-47 | rewrites "Real ATPA pairing and predicted geometry"; must not delete the T02-44 subsection |
+| T02-48 | closes "Richer TPA controls" |
+
+**Ticket files / branches:**
+
+- `ticket/T02-43-atpa-approach-volume-schema-and-kdem-fixture` ← `phases/02-scope/tickets/T02-43-atpa-approach-volume-schema-and-kdem-fixture.md`
+- `ticket/T02-44-atpa-in-trail-pairing-engine` ← `phases/02-scope/tickets/T02-44-atpa-in-trail-pairing-engine.md`
+- `ticket/T02-45-atpa-cone-geometry-and-rendering` ← `phases/02-scope/tickets/T02-45-atpa-cone-geometry-and-rendering.md`
+- `ticket/T02-46-atpa-intrail-distance-and-cone-mileage` ← `phases/02-scope/tickets/T02-46-atpa-intrail-distance-and-cone-mileage.md`
+- `ticket/T02-47-dcb-tpa-atpa-submenu-live-cells` ← `phases/02-scope/tickets/T02-47-dcb-tpa-atpa-submenu-live-cells.md`
+- `ticket/T02-48-richer-manual-tpa-rings-and-cones` ← `phases/02-scope/tickets/T02-48-richer-manual-tpa-rings-and-cones.md`
+- `ticket/T02-49-stars-tpa-atpa-slew-chord-parser` ← `phases/02-scope/tickets/T02-49-stars-tpa-atpa-slew-chord-parser.md`
+- `ticket/T02-50-tpa-atpa-integration-and-acceptance` ← `phases/02-scope/tickets/T02-50-tpa-atpa-integration-and-acceptance.md`
+
+Captain return:
+
+```
+PHASE EXIT GREEN
+Phase: 2 Scope addendum (T02-43–50 TPA / ATPA)
+Merged: T02-43 … T02-50
+Tests: npm test / npm run ci exit 0
+Manual leftover: <Chrome ATPA walk or none>
+Notes: <volumes as data; monitor/warning/alert; basic radar minima only; no CA halo>
+```
+
+or `PHASE EXIT BLOCKED` with reason.
+
 ---
 
 ## Thirteenth swarm execution — 2026-08-26
