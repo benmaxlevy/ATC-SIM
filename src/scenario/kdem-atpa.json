@@ -47,35 +47,35 @@
       "xNm": 6,
       "yNm": 0,
       "headingDeg": 270,
-      "altitudeFt": 1900,
+      "altitudeFt": 2300,
       "speedKt": 150,
       "aircraftType": "A321"
     },
     {
       "callsign": "UAL300",
-      "xNm": 9,
+      "xNm": 8.4,
       "yNm": 0,
       "headingDeg": 270,
-      "altitudeFt": 2900,
-      "speedKt": 210,
+      "altitudeFt": 3500,
+      "speedKt": 150,
       "aircraftType": "B744"
     },
     {
       "callsign": "SWA200",
-      "xNm": 12.2,
+      "xNm": 11.6,
       "yNm": 0,
       "headingDeg": 270,
-      "altitudeFt": 3800,
-      "speedKt": 190,
+      "altitudeFt": 4700,
+      "speedKt": 170,
       "aircraftType": "B738"
     },
     {
       "callsign": "AAL100",
-      "xNm": 14.4,
+      "xNm": 14.9,
       "yNm": 0,
       "headingDeg": 270,
-      "altitudeFt": 4400,
-      "speedKt": 170,
+      "altitudeFt": 5900,
+      "speedKt": 150,
       "aircraftType": "B739"
     },
     {
@@ -93,11 +93,11 @@
     "RWY 27",
     "ILS 27 IN USE",
     "ATPA BENCH",
-    "ALERT AAL100",
-    "WARN UAL300",
-    "MON SWA200 JBU400",
+    "ALERT UAL300 2.4/2.5",
+    "WARN SWA200 CLOSING",
+    "MON JBU400 AAL100",
     "NKS600 OFF FINAL",
-    "",
+    "WARN LASTS 21 SEC",
     ""
   ]
 }
