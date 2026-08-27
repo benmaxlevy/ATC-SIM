@@ -37,7 +37,7 @@ This configuration runs from feature base `feature/session-setup`, created by me
 | Stop | After T05-13. No scoring, replay, imperfect pilots, second position, or phase acceptance script. |
 | Max ticket workers in flight | **2** |
 | Merge lock | Only phase captain squash-merges ticket branches to `feature/session-setup`, then runs `npm test` |
-| Model | Inherit / default |
+| Model | **GPT-5.6 Luna Medium only.** `model: "gpt-5.6-luna-medium"` on every newly spawned worker |
 | Paid STT/TTS/LLM | Forbidden |
 
 **Product law:**
