@@ -1,4 +1,5 @@
 import kdem09Json from "./kdem-09.json";
+import kdemAtpaJson from "./kdem-atpa.json";
 import kdemIls09Json from "./kdem-ils09.json";
 import kdemIls27Json from "./kdem-ils27.json";
 import kdemJson from "./kdem.json";
@@ -47,6 +48,7 @@ const scenarioSources: ScenarioSources = {
   "scenarios/kdem-09": kdem09Json,
   "scenarios/kdem-ils27": kdemIls27Json,
   "scenarios/kdem-ils09": kdemIls09Json,
+  "scenarios/kdem-atpa": kdemAtpaJson,
 };
 
 /**
