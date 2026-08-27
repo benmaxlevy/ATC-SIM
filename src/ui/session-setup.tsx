@@ -26,7 +26,7 @@ export function SessionSetup({ open, initial, onCancel, onApply }: SessionSetupP
   const openerRef = useRef<HTMLElement | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState(initial);
-  const entries = listPlayableScenarios();
+  const entries = listPlayableScenarios().filter((entry) => entry.sessionSetupVisible);
   const selectedEntry = entries.find((entry) => entry.id === draft.scenarioId) ?? entries[0];
   const selectedScenario = selectedEntry ? loadPlayableScenario(selectedEntry.id) : null;
   const departureAvailable =
@@ -162,7 +162,7 @@ export function SessionSetup({ open, initial, onCancel, onApply }: SessionSetupP
 }
 
 export function sessionSetupDefaults(): SessionSetup {
-  const entry = listPlayableScenarios().find((item) => item.default);
+  const entry = listPlayableScenarios().find((item) => item.default && item.sessionSetupVisible);
   return defaultSessionSetup(entry?.id);
 }
 

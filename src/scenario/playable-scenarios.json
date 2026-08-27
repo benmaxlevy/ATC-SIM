@@ -13,6 +13,7 @@
       "airportIcao": "KDEM",
       "label": "Demo Field — ILS 27",
       "default": false,
+      "sessionSetupVisible": false,
       "source": "scenarios/kdem-ils27"
     }
   ]

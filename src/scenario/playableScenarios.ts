@@ -10,6 +10,8 @@ export interface PlayableScenario {
   airportIcao: string;
   label: string;
   default: boolean;
+  /** False keeps an internal scenario available to URL/tests but off Session setup. */
+  sessionSetupVisible: boolean;
   source: string;
 }
 
@@ -130,6 +132,11 @@ function parseManifest(value: unknown): PlayableScenarioManifest {
     if (typeof raw.default !== "boolean") {
       throw new Error(`Playable scenario inventory scenarios[${index}].default must be boolean`);
     }
+    if (raw.sessionSetupVisible != null && typeof raw.sessionSetupVisible !== "boolean") {
+      throw new Error(
+        `Playable scenario inventory scenarios[${index}].sessionSetupVisible must be boolean`,
+      );
+    }
     if (ids.has(id)) {
       throw new Error(`Playable scenario inventory has duplicate id ${id}`);
     }
@@ -137,7 +144,14 @@ function parseManifest(value: unknown): PlayableScenarioManifest {
     if (raw.default) {
       defaults += 1;
     }
-    return { id, airportIcao, label, default: raw.default, source };
+    return {
+      id,
+      airportIcao,
+      label,
+      default: raw.default,
+      sessionSetupVisible: raw.sessionSetupVisible !== false,
+      source,
+    };
   });
   if (defaults !== 1) {
     throw new Error("Playable scenario inventory requires exactly one default");

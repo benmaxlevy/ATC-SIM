@@ -14,6 +14,7 @@ test("T04-24 AC1/AC2 — shipped inventory lists and loads KDEM scenarios", () =
       airportIcao: "KDEM",
       label: "Demo Field",
       default: true,
+      sessionSetupVisible: true,
       source: "scenarios/kdem",
     },
     {
@@ -21,6 +22,7 @@ test("T04-24 AC1/AC2 — shipped inventory lists and loads KDEM scenarios", () =
       airportIcao: "KDEM",
       label: "Demo Field — ILS 27",
       default: false,
+      sessionSetupVisible: false,
       source: "scenarios/kdem-ils27",
     },
   ]);
