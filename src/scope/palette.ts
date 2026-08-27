@@ -3,8 +3,9 @@
  * 2008 STARS TCW RGB table + CRC STARS TCW (docs.virtualnas.net/crc/stars — R07)
  * + vice STARS monitor (Boston Approach screenshot; not ERAM).
  * CRC STARS STCA (R07) — static `CA` in the datablock + aural tone.
- * FOA STARS / 7110.65 name the alert (R01, R05). MSAW still uses caution
- * yellow then alert red. Not certified. Do not label “STARS CA” or “MSAW
+ * FOA STARS / 7110.65 name the alert (R01, R05). MSAW indicator uses caution
+ * yellow then alert red; it does not tint the datablock, leader, or target.
+ * Not certified. Do not label “STARS CA” or “MSAW
  * certified.” UI word is **MSAW**, not GPWS / TAWS.
  *
  * Trainer delta: one TCW-like set, not MDM3/MDM4 clones, not a NY screenshot.
@@ -20,7 +21,8 @@
  * - Owned FDB white after F3; unowned / other-TCP FDB green
  * - Search/fusion position symbol blue; history trail blue (not track-tinted)
  * - PTL white; TLS/tools cyan for TPA J-rings and ATPA monitor cones; SSA / DCB / lists phosphor green
- * - Phase 4: MSAW yellow then red. CA is static `CA` text above FDB.
+ * - Phase 4: CA and MSAW are colored indicator text above the FDB (alert red /
+ *   caution yellow). They do not tint the block, leader, or target.
  * - ATPA warning uses caution yellow; ATPA alert uses `atpaAlert` orange, never CA red.
  */
 
@@ -262,7 +264,7 @@ export function trackAlertTint(world: World, callsign: string): AlertTint {
   });
 }
 
-/** Paint: MSAW yellow/red (CA does not tint whole blocks or targets red; CA is red text above FDB). */
+/** Paint: CA and MSAW do not tint whole blocks or targets; both are colored indicator text above the FDB. */
 export function trackPaintAlertTint(world: World, callsign: string): AlertTint {
   return datablockAlertTint({
     ca: null,
@@ -270,20 +272,11 @@ export function trackPaintAlertTint(world: World, callsign: string): AlertTint {
   });
 }
 
-export function alertTintPaintColor(tint: AlertTint): string | null {
-  if (tint === "ca-caution" || tint === "ca-alert") {
-    return null;
-  }
-  if (tint === "msaw-alert") {
-    return PALETTE.alert;
-  }
-  if (tint === "msaw-caution") {
-    return PALETTE.caution;
-  }
+export function alertTintPaintColor(_tint: AlertTint): string | null {
   return null;
 }
 
-/** Datablock / leader color: MSAW tint wins over ownership white/green. */
+/** Datablock / leader color: ownership. CA/MSAW paint indicator text instead of tinting the block. */
 export function alertOrOwnershipColor(ownership: TrackOwnership, tint: AlertTint): string {
   const alertColor = alertTintPaintColor(tint);
   return alertColor ?? PALETTE[ownership];
@@ -293,9 +286,6 @@ export function caDatablockTagVisible(_simTimeMs = 0): boolean {
   return true;
 }
 
-export function withCaDatablockTag(line1: string, tint: AlertTint, _simTimeMs = 0): string {
-  if (tint === "msaw-alert" || tint === "msaw-caution") {
-    return `${line1} MSAW`;
-  }
+export function withCaDatablockTag(line1: string, _tint: AlertTint, _simTimeMs = 0): string {
   return line1;
 }

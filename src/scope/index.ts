@@ -11,8 +11,8 @@
  * (scope-focus `F`, default 000–180), F3/F4 ownership color stub (not NAS),
  * F1 help overlay (`TRAINER KEYS — NOT CRC`), Tab cycle focus, `/` radio focus.
  * Scope-focus `*` TPA/ATPA slew chords (R07 Table 36) parse and prompt on the PPI.
- * T04-09 CA displays static `CA` + tone (no yellow). T04-10 MSAW still
- * tints yellow then red. CA is raised only for current conflicts. The PPI does
+ * T04-09 CA displays static `CA` + tone (no yellow). T04-10 MSAW paints a
+ * yellow then red `MSAW` tag the same way; neither tints the block. CA is raised only for current conflicts. The PPI does
  * not compute pair distance.
  *
  * DCB (T02-16/T02-17/T02-22/T02-25) is a green cell grid on the PPI glass; it calls these same

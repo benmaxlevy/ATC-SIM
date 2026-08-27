@@ -19,7 +19,7 @@
  * each drawn channel; WX/WXC/BKC do not paint weather. SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
  * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. Live `*` TPA/ATPA chord
  * buffer paints next to FILTER in SSA/preview green (same FIL-prompt grammar).
- * Current CA displays static `CA` + tone from `world.alerts` and paints red. T04-10 MSAW still tints yellow then red. CA halo is
+ * Current CA displays static `CA` + tone from `world.alerts` and paints red. T04-10 MSAW paints a yellow then red `MSAW` tag the same way; neither tints the block, leader, or target. CA halo is
  * **not** drawn: CRC conflict-alert CA is static `CA` text + tone, not a 3 NM circle
  * (circles are TPA J-rings or ERAM DRI). Not OSM / tiles (R12). Not a
  * sprite. Not an airplane. Not a label. Not NAS STARS.
@@ -34,7 +34,13 @@
  * character, history cap is 5 dots. Canvas2D only (no WebGL).
  */
 
-import { caSeverityForCallsign, handoffFor, type Aircraft, type World } from "@core";
+import {
+  caSeverityForCallsign,
+  handoffFor,
+  msawSeverityForCallsign,
+  type Aircraft,
+  type World,
+} from "@core";
 import { inAltitudeFilter } from "./altitudeFilter";
 import { nmToScreen, type ScopeViewSize } from "./camera";
 import {
@@ -77,16 +83,7 @@ import {
 import { buildGiLines, buildSsaLines } from "./ssa";
 import { buildMapListLines } from "./dcbFunctions";
 import type { TrackOwnership } from "./ownership";
-import {
-  BLINK_HALF_PERIOD_MS,
-  PALETTE,
-  alertTintPaintColor,
-  applyBrite,
-  caDatablockTagVisible,
-  trackAlertTint,
-  trackPaintAlertTint,
-  withCaDatablockTag,
-} from "./palette";
+import { BLINK_HALF_PERIOD_MS, PALETTE, applyBrite, caDatablockTagVisible } from "./palette";
 import {
   drawHistoryDot,
   drawTargetSymbol,
@@ -269,20 +266,8 @@ export function getDatablockVisualState(
 ): DatablockVisualState {
   const td = view.tracks.get(ac.id);
   const ho = handoffFor(world, ac.id);
-  const paintTint = trackPaintAlertTint(world, ac.callsign);
-  const alertColor = alertTintPaintColor(paintTint);
 
-  // 1. MSAW Alert tint
-  if (alertColor) {
-    return {
-      color: alertColor,
-      visible: true,
-      mode: "full",
-      leaderColor: alertColor,
-    };
-  }
-
-  // 1b. Conflict Alert: only shown for tracked targets (full datablock in white)
+  // 1. Conflict Alert: only shown for tracked targets (full datablock in white)
   const isTracked = isTrackedTarget(view, world, ac);
   const caSeverity = caSeverityForCallsign(world.alerts.ca, ac.callsign);
   if (isTracked && caSeverity) {
@@ -436,11 +421,6 @@ function trackOwnership(view: ScopeView, aircraftId: string) {
 }
 
 function trackColor(view: ScopeView, world: World, ac: Aircraft): string {
-  const tint = trackPaintAlertTint(world, ac.callsign);
-  const alertColor = alertTintPaintColor(tint);
-  if (alertColor) {
-    return alertColor;
-  }
   const isTracked = isTrackedTarget(view, world, ac);
   const caSeverity = caSeverityForCallsign(world.alerts.ca, ac.callsign);
   if (isTracked && caSeverity) {
@@ -465,7 +445,6 @@ function drawDatablock(
   }
   const td = view.tracks.get(ac.id);
   const derived = deriveScratchpads(ac, td);
-  const tint = trackAlertTint(world, ac.callsign);
   const mode = visual.mode;
   const isQueried = td ? isTrackQueried(td, world.simTimeMs) : false;
   const squawk = td?.squawk ?? ac.squawk;
@@ -513,7 +492,7 @@ function drawDatablock(
   if (visual.line1Tag) {
     line1 = `${line1} ${visual.line1Tag}`;
   }
-  const lines = { ...base, line1: withCaDatablockTag(line1, tint, world.simTimeMs) };
+  const lines = { ...base, line1 };
   const lineH = datablockLineHeightPx(view.charSizes.dataBlocks);
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
   const origin = datablockTopLeft(trackLeaderDir(view, ac.id), metrics, view.leaderLengthPx);
@@ -521,9 +500,19 @@ function drawDatablock(
 
   const isTracked = isTrackedTarget(view, world, ac);
   const caSeverity = caSeverityForCallsign(world.alerts.ca, ac.callsign);
-  if (isTracked && caSeverity && mode === "full" && caDatablockTagVisible(world.simTimeMs)) {
+  const showCa =
+    isTracked && caSeverity && mode === "full" && caDatablockTagVisible(world.simTimeMs);
+  const msawSeverity = msawSeverityForCallsign(world.alerts.msaw, ac.callsign);
+  let alertTagX = targetX + origin.x;
+  const alertTagY = targetY + origin.y - lineH;
+  if (showCa) {
     ctx.fillStyle = applyBrite(PALETTE.alert, view.brite.fdb);
-    ctx.fillText("CA", targetX + origin.x, targetY + origin.y - lineH);
+    ctx.fillText("CA", alertTagX, alertTagY);
+    alertTagX += ctx.measureText("CA ").width;
+  }
+  if (msawSeverity) {
+    ctx.fillStyle = applyBrite(msawSeverity === "alert" ? PALETTE.alert : PALETTE.caution, briteCh);
+    ctx.fillText("MSAW", alertTagX, alertTagY);
   }
 
   ctx.fillStyle = applyBrite(visual.color, briteCh);

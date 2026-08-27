@@ -103,16 +103,17 @@ test("palette comments name video map / datablock grammar, not tiles or nametags
   expect(src.toLowerCase()).not.toMatch(/sprite/);
 });
 
-test("AC5 — predicted CA is not yellow; CA does not paint block/target; MSAW still paints", () => {
+test("AC5 — predicted CA is not yellow; CA and MSAW do not paint block/target", () => {
   expect(alertTintPaintColor(datablockAlertTint({ ca: "caution" }))).toBeNull();
   expect(alertTintPaintColor(datablockAlertTint({ ca: "alert" }))).toBeNull();
-  expect(alertTintPaintColor(datablockAlertTint({ msaw: "caution" }))).toBe(PALETTE.caution);
-  expect(alertTintPaintColor(datablockAlertTint({ msaw: "alert" }))).toBe(PALETTE.alert);
+  expect(alertTintPaintColor(datablockAlertTint({ msaw: "caution" }))).toBeNull();
+  expect(alertTintPaintColor(datablockAlertTint({ msaw: "alert" }))).toBeNull();
   expect(alertTintPaintColor(null)).toBeNull();
   expect(alertOrOwnershipColor("owned", "ca-alert")).toBe(PALETTE.owned);
-  expect(alertOrOwnershipColor("owned", "msaw-alert")).toBe(PALETTE.alert);
+  expect(alertOrOwnershipColor("owned", "msaw-alert")).toBe(PALETTE.owned);
   expect(alertOrOwnershipColor("owned", "ca-caution")).toBe(PALETTE.owned);
-  expect(alertOrOwnershipColor("owned", "msaw-caution")).toBe(PALETTE.caution);
+  expect(alertOrOwnershipColor("owned", "msaw-caution")).toBe(PALETTE.owned);
+  expect(alertOrOwnershipColor("unowned", "msaw-alert")).toBe(PALETTE.unowned);
   expect(alertOrOwnershipColor("owned", null)).toBe(PALETTE.owned);
   expect(alertOrOwnershipColor("unowned", null)).toBe(PALETTE.unowned);
   expect(PALETTE.caution).toBe("#FFFF00");
@@ -127,8 +128,8 @@ test("CA tag is static (does not blink); MSAW tag is not GPWS/TAWS", () => {
   expect(caDatablockTagVisible(800)).toBe(true);
   expect(withCaDatablockTag("DAL123", "ca-caution", 0)).toBe("DAL123");
   expect(withCaDatablockTag("DAL123", "ca-alert", 800)).toBe("DAL123");
-  expect(withCaDatablockTag("DAL123", "msaw-caution")).toBe("DAL123 MSAW");
-  expect(withCaDatablockTag("DAL123", "msaw-alert")).toBe("DAL123 MSAW");
+  expect(withCaDatablockTag("DAL123", "msaw-caution")).toBe("DAL123");
+  expect(withCaDatablockTag("DAL123", "msaw-alert")).toBe("DAL123");
   expect(withCaDatablockTag("DAL123", null)).toBe("DAL123");
   const sources = import.meta.glob("./palette.ts", {
     query: "?raw",

@@ -1008,7 +1008,7 @@ test("T04-09 AC5 — current CA displays red CA above FDB on tracked targets, re
   expect(src).not.toMatch(/STARS CA/);
 });
 
-test("T04-10 — scope tints MSAW from world.alerts, not MVA math", () => {
+test("T04-10 — scope paints MSAW tag from world.alerts, not MVA math", () => {
   const ac = makeTestAircraft({
     id: "ac-dal",
     callsign: "DAL123",
@@ -1027,23 +1027,61 @@ test("T04-10 — scope tints MSAW from world.alerts, not MVA math", () => {
   });
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
+  view.tracks.get(ac.id)!.datablockMode = "full";
   const css = 800;
   const dalP = nmToScreen(ac.xNm, ac.yNm, view.camera, { widthPx: css, heightPx: css });
 
   const caution = createMockCtx();
   renderScope(caution.ctx, world, view, css, css);
   expect(findTargetPositionSymbol(caution.fillTexts, dalP.x, dalP.y)[0]?.fillStyle).toBe(
-    PALETTE.caution,
+    PALETTE.unowned,
   );
-  expect(caution.fillTexts.find((t) => t.text === "DAL123 MSAW")?.fillStyle).toBe(PALETTE.caution);
+  expect(caution.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.unowned);
+  expect(caution.fillTexts.find((t) => t.text === "MSAW")?.fillStyle).toBe(PALETTE.caution);
+  expect(caution.fillTexts.find((t) => t.text === "DAL123 MSAW")).toBeUndefined();
 
   world.alerts.msaw[0]!.severity = "alert";
   const alert = createMockCtx();
   renderScope(alert.ctx, world, view, css, css);
   expect(findTargetPositionSymbol(alert.fillTexts, dalP.x, dalP.y)[0]?.fillStyle).toBe(
-    PALETTE.alert,
+    PALETTE.unowned,
   );
-  expect(alert.fillTexts.find((t) => t.text === "DAL123 MSAW")?.fillStyle).toBe(PALETTE.alert);
+  expect(alert.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.unowned);
+  expect(alert.fillTexts.find((t) => t.text === "MSAW")?.fillStyle).toBe(PALETTE.alert);
+  expect(alert.fillTexts.find((t) => t.text === "DAL123 MSAW")).toBeUndefined();
+});
+
+test("untracked MSAW alert keeps green datablock and leader; only the MSAW tag is red", () => {
+  const ac = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL500",
+    altitudeFt: 1100,
+    speedKt: 230,
+    xNm: 0,
+    yNm: 0,
+  });
+  const world = createWorld({
+    aircraft: [ac],
+    alerts: {
+      ca: [],
+      msaw: [{ callsign: "DAL500", severity: "alert", altFt: 1100, floorFt: 1500 }],
+      atpa: [],
+    },
+  });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get(ac.id)!.datablockMode = "full";
+  const css = 800;
+  const p = nmToScreen(ac.xNm, ac.yNm, view.camera, { widthPx: css, heightPx: css });
+  const painted = createMockCtx();
+  renderScope(painted.ctx, world, view, css, css);
+
+  expect(painted.fillTexts.find((t) => t.text === "DAL500")?.fillStyle).toBe(PALETTE.unowned);
+  expect(painted.fillTexts.find((t) => t.text === "MSAW")?.fillStyle).toBe(PALETTE.alert);
+  expect(painted.fillTexts.find((t) => t.text === "DAL500 MSAW")).toBeUndefined();
+  const leader = findLeaderStroke(painted.pathStrokes, p.x, p.y, DEFAULT_LEADER_DIR);
+  expect(leader?.strokeStyle).toBe(PALETTE.unowned);
+  expect(findTargetPositionSymbol(painted.fillTexts, p.x, p.y)[0]?.fillStyle).toBe(PALETTE.unowned);
 });
 
 test("video map labels stack newline-separated STAR restriction lines", () => {
@@ -1857,8 +1895,9 @@ test("T02-46 AC3 — alert paints ATPA orange; monitor adds no datablock field; 
   trailer.intent.controllerAssignedAltitudeFt = 4000;
   const msaw = createMockCtx();
   renderScope(msaw.ctx, world, view, 800, 800);
-  expect(msaw.fillTexts.find((t) => t.text === "DAL123 MSAW")?.fillStyle).toBe(PALETTE.alert);
-  expect(msaw.fillTexts.find((t) => t.text === "A040")?.fillStyle).toBe(PALETTE.alert);
+  expect(msaw.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
+  expect(msaw.fillTexts.find((t) => t.text === "MSAW")?.fillStyle).toBe(PALETTE.alert);
+  expect(msaw.fillTexts.find((t) => t.text === "A040")?.fillStyle).toBe(PALETTE.owned);
   expect(msaw.fillTexts.find((t) => t.text === "2.40")?.fillStyle).toBe(PALETTE.atpaAlert);
 });
 
