@@ -14,6 +14,11 @@ import type { ArrivalSpawn, Scenario } from "./types";
 import { assignStarRoutes, starRouteFixIds } from "./starSpawn";
 import { DEFAULT_SPAWN_SEED, type DepartureOptions } from "./trafficQuery";
 import { generateDepartureSchedule, spawnDueDepartures } from "./departureGenerator";
+import {
+  createArrivalScheduler,
+  type ArrivalScheduler,
+  type ArrivalTrafficConfig,
+} from "./arrivalScheduler";
 
 export { starRouteFixIds };
 
@@ -254,6 +259,7 @@ export function createWorldForSession(
   trafficCount: number | null,
   seed: number = DEFAULT_SPAWN_SEED,
   departureOptions?: DepartureOptions | null,
+  arrivalTraffic?: ArrivalTrafficConfig,
 ): World {
   let world: World;
   if (scenario.spawnPolicy === "star-inbound" && trafficCount !== null) {
@@ -262,7 +268,14 @@ export function createWorldForSession(
   } else {
     world = worldFromScenario(scenario);
     if (scenario.spawnPolicy === "star-inbound") {
-      spawnStarInbound(world, scenario, seed);
+      const scheduler: ArrivalScheduler = createArrivalScheduler(
+        scenario.catalog,
+        { ...arrivalTraffic, seed: arrivalTraffic?.seed ?? seed },
+        scenario.arrivals.map((arrival) => arrival.callsign),
+        world.simTimeMs,
+      );
+      world.arrivalScheduler = scheduler;
+      scheduler.drain(world);
     } else {
       spawnArrivals(world, scenario);
     }

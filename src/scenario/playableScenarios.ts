@@ -1,0 +1,160 @@
+import kdemIls27Json from "./kdem-ils27.json";
+import kdemJson from "./kdem.json";
+import playableScenariosJson from "./playable-scenarios.json";
+import { assertScenario, assertString, isRecord } from "./load";
+import type { Scenario } from "./types";
+import { ARRIVAL_COUNT_MAX } from "./types";
+
+export interface PlayableScenario {
+  id: string;
+  airportIcao: string;
+  label: string;
+  default: boolean;
+  /** False keeps an internal scenario available to URL/tests but off Session setup. */
+  sessionSetupVisible: boolean;
+  source: string;
+}
+
+interface PlayableScenarioManifest {
+  version: number;
+  scenarios: PlayableScenario[];
+}
+
+export interface PlayableScenarioInventory {
+  list: () => readonly PlayableScenario[];
+  load: (id?: string | null) => Scenario;
+}
+
+export type PlayableScenarioSource = unknown | (() => Scenario);
+type ScenarioSources = Readonly<Record<string, PlayableScenarioSource>>;
+
+const scenarioSources: ScenarioSources = {
+  "scenarios/kdem": kdemJson,
+  "scenarios/kdem-ils27": kdemIls27Json,
+};
+
+/**
+ * Validated playable-session boundary. New airports add scenario assets plus
+ * this inventory registration; boot code never selects a loader by ICAO/id.
+ */
+export function createPlayableScenarioInventory(
+  rawManifest: unknown,
+  sources: ScenarioSources,
+): PlayableScenarioInventory {
+  const manifest = parseManifest(rawManifest);
+  const validated = manifest.scenarios.map((entry) => {
+    const source = sources[entry.source];
+    if (source === undefined) {
+      throw new Error(`Playable scenario ${entry.id} source ${entry.source} is missing`);
+    }
+    const scenario = validateSource(source);
+    if (scenario.icao.toUpperCase() !== entry.airportIcao) {
+      throw new Error(`Playable scenario ${entry.id} airport ICAO must match source`);
+    }
+    return { entry, source };
+  });
+  const defaultEntry = validated.find(({ entry }) => entry.default);
+  if (!defaultEntry) {
+    throw new Error("Playable scenario inventory requires one default");
+  }
+
+  return {
+    list: () => validated.map(({ entry }) => ({ ...entry })),
+    load: (id) => {
+      const chosen = validated.find(({ entry }) => entry.id === id) ?? defaultEntry;
+      return validateSource(chosen.source);
+    },
+  };
+}
+
+function validateSource(source: PlayableScenarioSource): Scenario {
+  return typeof source === "function"
+    ? source()
+    : assertScenario(source, { arrivalCountMin: 1, arrivalCountMax: ARRIVAL_COUNT_MAX });
+}
+
+const inventory = createPlayableScenarioInventory(playableScenariosJson, scenarioSources);
+
+/** Entries are validated with their playable assets before this list is exposed. */
+export function listPlayableScenarios(): readonly PlayableScenario[] {
+  return inventory.list();
+}
+
+/**
+ * Resolve a stable inventory id. Missing or invalid ids fall back exactly once
+ * to the inventory's documented default entry.
+ */
+export function loadPlayableScenario(id?: string | null): Scenario {
+  return inventory.load(id);
+}
+
+function parseManifest(value: unknown): PlayableScenarioManifest {
+  if (!isRecord(value)) {
+    throw new Error("Playable scenario inventory must be an object");
+  }
+  if (value.version !== 1) {
+    throw new Error("Playable scenario inventory version must be 1");
+  }
+  if (!Array.isArray(value.scenarios) || value.scenarios.length === 0) {
+    throw new Error("Playable scenario inventory scenarios must be a non-empty array");
+  }
+
+  const ids = new Set<string>();
+  let defaults = 0;
+  const scenarios = value.scenarios.map((raw, index) => {
+    if (!isRecord(raw)) {
+      throw new Error(`Playable scenario inventory scenarios[${index}] must be an object`);
+    }
+    const id = assertString(raw.id, `scenarios[${index}].id`, "Playable scenario inventory", true);
+    const airportIcao = assertString(
+      raw.airportIcao,
+      `scenarios[${index}].airportIcao`,
+      "Playable scenario inventory",
+      true,
+    ).toUpperCase();
+    const label = assertString(
+      raw.label,
+      `scenarios[${index}].label`,
+      "Playable scenario inventory",
+      true,
+    );
+    const source = assertString(
+      raw.source,
+      `scenarios[${index}].source`,
+      "Playable scenario inventory",
+      true,
+    );
+    if (!/^[A-Z0-9]{4}$/.test(airportIcao)) {
+      throw new Error(
+        `Playable scenario inventory scenarios[${index}].airportIcao must be ICAO-like`,
+      );
+    }
+    if (typeof raw.default !== "boolean") {
+      throw new Error(`Playable scenario inventory scenarios[${index}].default must be boolean`);
+    }
+    if (raw.sessionSetupVisible != null && typeof raw.sessionSetupVisible !== "boolean") {
+      throw new Error(
+        `Playable scenario inventory scenarios[${index}].sessionSetupVisible must be boolean`,
+      );
+    }
+    if (ids.has(id)) {
+      throw new Error(`Playable scenario inventory has duplicate id ${id}`);
+    }
+    ids.add(id);
+    if (raw.default) {
+      defaults += 1;
+    }
+    return {
+      id,
+      airportIcao,
+      label,
+      default: raw.default,
+      sessionSetupVisible: raw.sessionSetupVisible !== false,
+      source,
+    };
+  });
+  if (defaults !== 1) {
+    throw new Error("Playable scenario inventory requires exactly one default");
+  }
+  return { version: 1, scenarios };
+}

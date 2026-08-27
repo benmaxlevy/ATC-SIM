@@ -1,8 +1,8 @@
 /**
  * Public API for `@scenario`.
  *
- * Legal now: KDEM JSON stub (`loadKdem`, `assertScenario`), phase 4 ILS demo
- * (`loadKdemIls27`, spawn-on-STAR with VIA), Scenario types
+ * Legal now: playable-scenario inventory (`listPlayableScenarios`,
+ * `loadPlayableScenario`), compatibility KDEM loaders, Scenario types
  * including trainer-authored MAPS / video-map geometry from `video-maps/<ICAO>/`
  * (Not OSM / tiles), facility procedure catalog (`loadCatalog`, `data/<icao>/`),
  * trainer MVA (`loadMva`, `data/<icao>-mva.json`), and `createWorldFromScenario`
@@ -50,6 +50,12 @@ export type {
 export { catalogDctIds } from "./procedures/types";
 export { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN, GI_TEXT_LINE_COUNT } from "./types";
 export { assertScenario, loadKdem, loadKdemIls27 } from "./load";
+export type { PlayableScenario, PlayableScenarioInventory } from "./playableScenarios";
+export {
+  createPlayableScenarioInventory,
+  listPlayableScenarios,
+  loadPlayableScenario,
+} from "./playableScenarios";
 export {
   findSidProcedure,
   loadCatalog,
@@ -104,4 +110,41 @@ export {
   parseSpawnSeed,
   parseTrafficCount,
 } from "./trafficQuery";
-export type { DepartureOptions, ScenarioChoice } from "./trafficQuery";
+export type { DepartureOptions } from "./trafficQuery";
+export {
+  SESSION_SETUP_STORAGE_KEY,
+  SESSION_SETUP_VERSION,
+  SESSION_DEPARTURES_PER_HOUR_MAX,
+  SESSION_DEPARTURES_PER_HOUR_MIN,
+  SESSION_INITIAL_COUNT_MAX,
+  SESSION_INITIAL_COUNT_MIN,
+  arrivalTrafficFromSetup,
+  defaultSessionSetup,
+  departuresEnabledForScenario,
+  loadSessionSetup,
+  parseSessionSetupStorage,
+  resolveSessionSetup,
+  saveSessionSetup,
+  serializeSessionSetup,
+  validateSessionSetup,
+} from "./sessionSetup";
+export type {
+  SessionSetup,
+  SessionSetupDefaults,
+  SessionSetupDraft,
+  SessionSetupResolution,
+} from "./sessionSetup";
+export type {
+  ArrivalScheduler,
+  ArrivalTrafficConfig,
+  ScheduledArrival,
+  ValidatedArrivalTrafficConfig,
+} from "./arrivalScheduler";
+export {
+  ARRIVALS_PER_HOUR_MAX,
+  ARRIVALS_PER_HOUR_MIN,
+  DEFAULT_ARRIVALS_PER_HOUR,
+  DEFAULT_INITIAL_ARRIVAL_COUNT,
+  createArrivalScheduler,
+  validateArrivalTrafficConfig,
+} from "./arrivalScheduler";

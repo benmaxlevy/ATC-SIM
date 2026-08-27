@@ -104,6 +104,8 @@ export interface World {
    * Optional custom departure spawner hook.
    */
   departureSpawner?: (world: World) => Aircraft[];
+  /** Optional deterministic scenario arrival scheduler. */
+  arrivalScheduler?: { drain: (world: World) => Aircraft[] };
 }
 
 export interface ScheduledDeparture {
@@ -175,6 +177,7 @@ export function createWorld(partial?: Partial<World>): World {
     handoffs: partial?.handoffs ?? new Map(),
     scheduledDepartures: partial?.scheduledDepartures,
     departureSpawner: partial?.departureSpawner,
+    arrivalScheduler: partial?.arrivalScheduler,
   };
 }
 
@@ -345,6 +348,7 @@ export function stepWorld(world: World, dtS: number): World {
     return world;
   }
   world.simTimeMs += dtS * 1000;
+  world.arrivalScheduler?.drain(world);
   world.departureSpawner?.(world);
   const locAxisFor = (approachId: string) =>
     locAxisForApproach(approachId, world.catalog, world.fixRegistry);

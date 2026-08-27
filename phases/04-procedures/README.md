@@ -435,7 +435,7 @@ Append to the phase 0 log. Suggested names (stable):
 ## Out of scope (this phase)
 
 - Full TAMR, ADS-B fusion error models, weather mosaic, dual-runway CRDA, ARV, FMA.
-- Flying RNAV (RNP), SIDs, holds, procedure turns, DME arcs, circling. **Storing** empty `sids` and extra `approach.type` values in JSON is in scope.
+- Flying RNAV (RNP), holds, procedure turns, DME arcs, circling. **Storing** empty `sids` and extra `approach.type` values in JSON is in scope. T04-20 is the explicit post-exit exception for fictional, catalog-backed SID departure generation.
 - Dual ILS, changing runways, LAHSO.
 - Scraping or bundling copyrighted charts; committing a full CIFP cycle.
 - Certified CA/MSAW algorithms, conflict resolution advisories.
@@ -469,6 +469,14 @@ Implement in this order unless a ticket says it can parallel. Do not start a tic
 | T04-15 | STAR descend-via check-in | P0 | M | T04-13 | none |
 | T04-16 | Inbound handoff state (spawn pending) | P0 | M | T04-14 | T04-17 |
 | T04-17 | Accept inbound handoff (scope) | P0 | M | T04-16 | none |
+| T04-18 | SID procedure schema and KDEM fixture | P0 | M | T04-01, T04-02, T04-14 | T04-19, T04-20, T04-21 |
+| T04-19 | SID climb-via FMS navigation | P0 | L | T04-18, T04-03, T04-04 | T04-20, T04-23 |
+| T04-20 | Departure spawning and handoff lifecycle | P0 | L | T04-18, T04-19, T04-16 | T04-21, T04-23 |
+| T04-21 | Randomized and customizable departure generator | P0 | M | T04-20, T04-14 | T04-22, T04-23, T05-13 |
+| T04-22 | Departure radio telephony and initial check-in | P0 | M | T04-20, T04-21, T04-15 | T04-23 |
+| T04-23 | SIDs and departures integration acceptance | P0 | M | T04-18–22 | T04-24, T04-25 |
+| T04-24 | Playable scenario inventory | P0 | M | T04-23 | T05-13 |
+| T04-25 | Configurable arrival traffic | P0 | L | T04-23 | T05-13 |
 
 **Parallelism:** After T04-01, T04-08 and T04-10 can proceed beside T04-02. T04-09 can start immediately. T04-04 ∥ T04-05 after T04-03. T04-11 can land anytime after kinematics; prefer after T04-05 so loc tests include a wind case if the ticket is pulled.
 
@@ -489,9 +497,15 @@ Wave: **T04-13** alone, then **T04-14 ∥ T04-15**. T04-16–17 (inbound HO acce
 
 Default STAR arrivals spawn pending inbound handoff from sector `C` (unowned green FDB). Click/slew accepts (CRC analog); owned FDB is **white**. Radio vectors reject until accept. Check-in waits until owned. `kdem-ils27` / `?traffic=N` stay commandable without HO. **Do not** draw 3 NM CA circles (CRC STARS CA is datablock `CA` + tone, not a halo).
 
-### Post-exit addendum (T04-16–17 inbound handoff)
+### Post-exit addendum (T04-18–23 SIDs and departures)
 
-Default STAR arrivals spawn pending inbound handoff from sector `C` (unowned green FDB). Click/slew accepts (CRC analog); owned FDB is **white**. Radio vectors reject until accept. Check-in waits until owned. `kdem-ils27` / `?traffic=N` stay commandable without HO. **Do not** draw 3 NM CA circles (CRC STARS CA is datablock `CA` + tone, not a halo).
+T04-18–23 supply generic fictional SID schema/navigation, departure lifecycle, deterministic departure generator, departure check-in, and integration acceptance. Departure frequency is working traffic behavior, not a display preference.
+
+### Post-exit addendum (T04-24–25 session inputs)
+
+T04-24 inventories playable airport/scenario entries through data, not named loaders. T04-25 adds seeded initial arrival count plus simulated-time arrival density, distinct from the `?traffic=N` downwind FPS benchmark. T05-13 owns the setup/restart UI after these foundations and T04-21 are complete.
+
+Wave: **T04-24 ∥ T04-25** after T04-23. T05-13 follows both and the completed departure generator.
 
 ---
 
@@ -525,4 +539,4 @@ Do not start phase 5 until every box is true.
 2. Paste **`AGENT.md`** from this folder as the implementation prompt, **or** paste a single `tickets/T04-xx-*.md` and say: implement only this ticket, stop when ACs are checked.
 3. Do not implement phase 5 scoring against these events until phase 4 exits — emitting the events is enough.
 
-Ticket IDs are stable. Do not renumber. T04-13–15 are the post-exit addendum. If you must extend further, add `T04-16` at the end.
+Ticket IDs are stable. Do not renumber. T04-13–25 are post-exit addenda. If you must extend further, add `T04-26` at the end.

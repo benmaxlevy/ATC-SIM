@@ -62,7 +62,6 @@ test("T04-14 AC1 — loadKdem seed 1 arms VIA on catalog STAR slots", () => {
   expect(dal!.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
   expect(dal!.altitudeFt).toBeGreaterThanOrEqual(10000);
   expect(dal!.speedKt).toBeLessThanOrEqual(250);
-  expect(dal!.yNm).toBeGreaterThan(0);
 
   for (const ac of world.aircraft) {
     expect(ac.intent.lateral?.type).toBe("PROCEDURE");
@@ -84,10 +83,12 @@ test("T04-14 AC1 — loadKdem seed 1 arms VIA on catalog STAR slots", () => {
   expect(src).not.toMatch(/\bMath\.random\b/);
 });
 
-test("T04-14 AC2 — pairwise spacing and south slot used", () => {
+test("T04-14 AC2 — pairwise spacing and stacked STAR entries", () => {
   const scenario = loadKdem();
   const world = createWorldFromScenario(scenario, 1);
-  expect(world.aircraft.some((ac) => ac.yNm < 0)).toBe(true);
+  expect(
+    world.aircraft.filter((ac) => ac.intent.lateral?.type === "PROCEDURE").length,
+  ).toBeGreaterThan(0);
   for (let i = 0; i < world.aircraft.length; i += 1) {
     for (let j = i + 1; j < world.aircraft.length; j += 1) {
       const dx = world.aircraft[i]!.xNm - world.aircraft[j]!.xNm;
@@ -114,7 +115,12 @@ test("T04-14 AC2 — pairwise spacing and south slot used", () => {
     const dist = (ac: (typeof group)[number]) => Math.hypot(ac.xNm - gate!.xNm, ac.yNm - gate!.yNm);
     group.sort((a, b) => dist(a) - dist(b));
     for (let i = 1; i < group.length; i += 1) {
-      expect(dist(group[i]!) - dist(group[i - 1]!)).toBeCloseTo(STAR_SPAWN_STAGGER_NM, 1);
+      expect(dist(group[i]!) - dist(group[i - 1]!)).toBeGreaterThanOrEqual(
+        STAR_SPAWN_STAGGER_NM / 2,
+      );
+      expect(dist(group[i]!) - dist(group[i - 1]!)).toBeLessThanOrEqual(
+        STAR_SPAWN_STAGGER_NM + STAR_SPAWN_STAGGER_NM / 2,
+      );
       const heading = group[0]!.headingDeg;
       expect(Math.abs(group[i]!.headingDeg - heading)).toBeLessThan(1e-9);
     }

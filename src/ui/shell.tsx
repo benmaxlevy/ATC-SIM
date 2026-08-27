@@ -11,7 +11,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent, WheelEvent } from "react";
-import type { Scenario } from "@scenario";
+import {
+  createWorldForSession,
+  defaultSessionSetup,
+  loadPlayableScenario,
+  loadSessionSetup,
+  resolveSessionSetup,
+  type Scenario,
+  type SessionSetup,
+} from "@scenario";
 import {
   cssPointFromClient,
   handlePpiCanvasClick,
@@ -35,6 +43,7 @@ import { ScopeCanvas } from "./ScopeCanvas";
 import { ScopeHelpOverlay } from "./ScopeHelpOverlay";
 import { SpeechSettingsPanel } from "./settings-speech";
 import { SimControls } from "./sim-controls";
+import { SessionSetup as SessionSetupDialog } from "./session-setup";
 
 export interface ShellProps {
   app: AppHandles;
@@ -43,6 +52,18 @@ export interface ShellProps {
 }
 
 export function Shell({ app, scenario, scopeView }: ShellProps) {
+  const [activeScenario, setActiveScenario] = useState(scenario);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [setup, setSetup] = useState<SessionSetup>(() => {
+    const fallback = defaultSessionSetup(scenario.id);
+    const stored =
+      typeof window === "undefined" ? null : loadSessionSetup(window.localStorage, fallback);
+    return resolveSessionSetup(
+      typeof window === "undefined" ? "" : window.location.search,
+      fallback,
+      stored,
+    ).setup;
+  });
   const [readback, setReadback] = useState("");
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
   const [speechId, setSpeechId] = useState(app.speech.id);
@@ -81,7 +102,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   return (
     <div
       className="scope-shell"
-      data-scenario={scenario.id}
+      data-scenario={activeScenario.id}
       data-speech={speechId}
       data-radio-fx={app.speechSettings.prefs.radioFx ? "on" : "off"}
     >
@@ -183,6 +204,9 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             />
           }
         >
+          <button type="button" className="session-setup-open" onClick={() => setSetupOpen(true)}>
+            Session setup
+          </button>
           {fpsDebug ? <FpsDebug /> : null}
           <SimControls world={app.world} />
           <SpeechSettingsPanel
@@ -201,6 +225,34 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           />
         </ScopeCanvas>
       </div>
+      <SessionSetupDialog
+        open={setupOpen}
+        initial={setup}
+        onCancel={() => setSetupOpen(false)}
+        onApply={(next) => {
+          const nextScenario = loadPlayableScenario(next.scenarioId);
+          app.replaceWorld(
+            createWorldForSession(
+              nextScenario,
+              null,
+              next.seed,
+              {
+                enabled: next.departuresPerHour > 0,
+                ratePerHour: next.departuresPerHour,
+                seed: next.seed,
+              },
+              {
+                initialArrivalCount: next.arrivalCount,
+                arrivalsPerHour: next.arrivalsPerHour,
+                seed: next.seed,
+              },
+            ),
+          );
+          setSetup(next);
+          setActiveScenario(nextScenario);
+          setSetupOpen(false);
+        }}
+      />
     </div>
   );
 }

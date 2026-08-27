@@ -72,6 +72,8 @@ export {
   setSimRate,
 } from "./sim-controls";
 export type { SimControlKey, SimControlsProps } from "./sim-controls";
+export { SessionSetup, loadSessionSetupDefaults, sessionSetupDefaults } from "./session-setup";
+export type { SessionSetupProps } from "./session-setup";
 export { FPS_DEBUG_ID, FpsDebug, formatFpsDebug, isFpsDebugEnabled } from "./FpsDebug";
 export {
   DEFAULT_BACKEND_HELP,

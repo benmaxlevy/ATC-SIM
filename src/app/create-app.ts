@@ -63,6 +63,8 @@ export interface AppHandles {
   /** Command-line copy (formatted) or `null` to clear. */
   subscribeVoiceStatus(listener: (status: string | null) => void): () => void;
   caAlertTone: CaAlertTone;
+  /** Replace the session world after explicit setup confirmation. */
+  replaceWorld(next: World): void;
 }
 
 function selectedCallsignFromWorld(world: World): string | null {
@@ -107,7 +109,7 @@ export function createApp(deps: AppDeps): AppHandles {
   if (!deps.speech) {
     throw new Error("createApp requires deps.speech");
   }
-  const world = deps.world ?? createWorld();
+  let world = deps.world ?? createWorld();
   const log = world.sessionLog ?? new SessionLog();
   world.sessionLog = log;
   let speech = deps.speech;
@@ -214,6 +216,8 @@ export function createApp(deps: AppDeps): AppHandles {
   const caAlertTone = deps.caAlertTone ?? createCaAlertTone();
 
   function afterPhysicsTick(): void {
+    // Newly scheduled STAR arrivals enter the same check-in queue as initial traffic.
+    checkInQueue.scheduleFromWorld(world);
     checkInQueue.drain({
       world,
       log,
@@ -245,6 +249,11 @@ export function createApp(deps: AppDeps): AppHandles {
     },
     afterPhysicsTick,
     caAlertTone,
+    replaceWorld(next) {
+      world = next;
+      world.sessionLog = log;
+      checkInQueue.scheduleFromWorld(world);
+    },
   };
 }
 

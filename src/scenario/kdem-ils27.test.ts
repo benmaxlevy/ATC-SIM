@@ -47,10 +47,9 @@ test("AC1 — phase 4 scenario spawns DAL123 on DEM1 north with VIA, and ILS27 e
 });
 
 test("?scenario=kdem-ils27 selects the phase 4 pack; default stays KDEM", () => {
-  expect(parseScenarioChoice("")).toBe("kdem");
-  expect(parseScenarioChoice("?traffic=30")).toBe("kdem");
+  expect(parseScenarioChoice("")).toBeNull();
+  expect(parseScenarioChoice("?traffic=30")).toBeNull();
   expect(parseScenarioChoice("?scenario=kdem")).toBe("kdem");
   expect(parseScenarioChoice("?scenario=kdem-ils27")).toBe("kdem-ils27");
-  expect(parseScenarioChoice("?scenario=phase4")).toBe("kdem-ils27");
-  expect(parseScenarioChoice("?scenario=ils27&traffic=30")).toBe("kdem-ils27");
+  expect(parseScenarioChoice("?scenario=unknown")).toBe("unknown");
 });

@@ -525,3 +525,23 @@ Orchestrator started **2026-08-20**. Resume from the first phase that is not gre
 - **DAL123** default spawn heading **100**. SpeechPort still `null`. Tokens only (`parseRadioText`); no Path A/B/C, no `speech-api`.
 - **Manual leftover** for a human `npm run dev` pass (captain served Vite at localhost, HTTP 200, no pixel-check): dark shell + disclaimer; 6 ticks including DAL123 + range rings; type `DAL123 H270` → text readback (delta / two seven zero) and right turn within ~2 s sim; click DAL123 then `H270`; pause / 1× / 2×; reject `ZZZ1 H270` or empty-canvas `H270`; no maps/datablocks/voice; session log `command.accepted` / `command.rejected` (covered in automated tests).
 
+---
+
+## TWELFTH SWARM BLOCKED — session setup (T04-24, T04-25, T05-13)
+
+Feature base: `feature/session-setup`. T04-24 squash-merged (`93a7c10`); captain `npm test`: **119 files passed, 1349 passed, 1 skipped**. T04-25 was ready, but its required rebase onto T04-24 conflicted in `src/main.tsx`, `src/scenario/index.ts`, and `src/scenario/trafficQuery.ts`; its squash merge had the same conflicts. Per swarm rule, captain stopped without resolving by force. T05-13 was not started.
+
+**Manual leftover:** T04-25 high-rate arrival check and all T05-13 setup/restart UI checks remain unperformed.
+
+**Notes:** T04-23 departure/SID prerequisite tests passed (33 tests). The unavailable historical `54c56a2` object was not a blocker; current source/tests contained required behavior. Untracked `.cursor/rules/caveman-ultra.mdc` and `e2e/` artifacts remain untouched. T04-25 conflict state remains in its isolated worktree; feature base was restored to its committed T04-24 state.
+
+---
+
+## TWELFTH SWARM COMPLETE — session setup (T04-24, T04-25, T05-13)
+
+Recovery resumed from `feature/session-setup`. T04-24 inventory (`93a7c10`), fresh isolated T04-25 retry (`35bd4d8`), and T05-13 session setup (`66f680a`) are squash-merged on the feature branch. Captain `npm test` and final `npm run ci`: **121 files passed, 1359 passed, 1 skipped, 0 failures**.
+
+**Manual leftover:** Human Chrome check: open Session setup; change scenario/arrival/departure rate/seed; Cancel preserves World and focus; confirm Apply/restart warning rebuilds World; verify unavailable departure capability copy. Do not invent pass.
+
+**Notes:** Picker options derive solely from playable inventory; normal arrival count/rate remains seeded STAR inbound/VIA; `?traffic=N` remains benchmark downwind; T04-21 owns departure rate. `atc-sim.session.v1` remains separate from trainer/DCB preferences. No scoring, replay, imperfect pilots, second position, DCB PREF, live traffic editing, second airport data, or radio-frequency IR. Initial T04-25 conflict was superseded by a fresh worker from the T04-24 feature base. Preserved untracked `.cursor/rules/caveman-ultra.mdc`, `e2e/`, and user-modified `speech-api/.env.example`.
+
