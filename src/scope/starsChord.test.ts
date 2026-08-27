@@ -6,6 +6,7 @@ import {
   STARS_CHORD_NM_MAX,
   STARS_CHORD_NM_MIN,
   applyStarsChordAction,
+  armOrApplyStarsChordAction,
   beginStarsChordEntry,
   commitStarsChord,
   expireStarsChordEntry,
@@ -421,4 +422,122 @@ test("T02-46 — *DE / *DI mutate in-trail flags; *D+ family mutates cone mileag
   );
   expect(view.tracks.get(dal.id)?.tpaSizeReadoutEnabled).toBe(true);
   expect(dal.intent.assignedHeadingDeg).toBe(90);
+});
+
+test("track-scoped *J3 with nothing selected arms; select-then-Enter still applies immediately", () => {
+  const aal = makeTestAircraft({ id: "ac-aal", callsign: "AAL122", headingDeg: 180 });
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", headingDeg: 90 });
+  const world = createWorld({ aircraft: [aal, dal] });
+  const view = createScopeView();
+
+  expect(
+    armOrApplyStarsChordAction(view, world, { type: "jRing", target: "slewed", radiusNm: 3 }),
+  ).toBe("armed");
+  expect(view.starsChordArmed).toEqual({ type: "jRing", target: "slewed", radiusNm: 3 });
+  expect(view.tracks.size).toBe(0);
+  expect(formatStarsChordReadout(view.starsChordEntry, view.starsChordArmed)).toBe("*J3");
+
+  world.selectedAircraftId = dal.id;
+  expect(
+    armOrApplyStarsChordAction(view, world, { type: "jRing", target: "slewed", radiusNm: 3 }),
+  ).toBe("applied");
+  expect(view.starsChordArmed).toBeNull();
+  expect(view.tracks.get(dal.id)?.tpaRingNm).toBe(3);
+  expect(view.tracks.has(aal.id)).toBe(false);
+  expect(formatStarsChordReadout(view.starsChordEntry, view.starsChordArmed)).toBeNull();
+
+  world.selectedAircraftId = null;
+  expect(armOrApplyStarsChordAction(view, world, { type: "jRingClear", target: "slewed" })).toBe(
+    "armed",
+  );
+  expect(view.starsChordArmed).toEqual({ type: "jRingClear", target: "slewed" });
+  expect(formatStarsChordReadout(view.starsChordEntry, view.starsChordArmed)).toBe("*J");
+  expect(
+    armOrApplyStarsChordAction(view, world, { type: "cone", target: "slewed", lengthNm: 3 }),
+  ).toBe("armed");
+  expect(view.starsChordArmed).toEqual({ type: "cone", target: "slewed", lengthNm: 3 });
+  expect(formatStarsChordReadout(view.starsChordEntry, view.starsChordArmed)).toBe("*P3");
+});
+
+test("armed *J3 survives well past the 1.5 s chord timeout", () => {
+  const world = createWorld({ aircraft: [makeTestAircraft({ id: "ac-dal", callsign: "DAL123" })] });
+  const view = createScopeView();
+  const entry = view.starsChordEntry;
+  beginStarsChordEntry(entry, 0);
+  handleStarsChordEntryKey(entry, "J", 100);
+  handleStarsChordEntryKey(entry, "3", 200);
+  const committed = handleStarsChordEntryKey(entry, "Enter", 300);
+  expect(committed.action).toEqual({ type: "jRing", target: "slewed", radiusNm: 3 });
+  expect(armOrApplyStarsChordAction(view, world, committed.action!)).toBe("armed");
+  expect(entry.phase).toBe("idle");
+
+  expect(expireStarsChordEntry(entry, 300 + CHORD_TIMEOUT_MS * 10)).toBe(false);
+  expect(view.starsChordArmed).toEqual({ type: "jRing", target: "slewed", radiusNm: 3 });
+  expect(formatStarsChordReadout(entry, view.starsChordArmed)).toBe("*J3");
+});
+
+test("**J / **P clear all immediately with nothing selected and do not arm", () => {
+  const aal = makeTestAircraft({ id: "ac-aal", callsign: "AAL122" });
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [aal, dal] });
+  const view = createScopeView();
+  world.selectedAircraftId = aal.id;
+  applyStarsChordAction(view, world, { type: "jRing", target: "slewed", radiusNm: 5 });
+  applyStarsChordAction(view, world, { type: "cone", target: "slewed", lengthNm: 4 });
+  world.selectedAircraftId = dal.id;
+  applyStarsChordAction(view, world, { type: "jRing", target: "slewed", radiusNm: 8 });
+  applyStarsChordAction(view, world, { type: "cone", target: "slewed", lengthNm: 6 });
+  world.selectedAircraftId = null;
+
+  expect(armOrApplyStarsChordAction(view, world, { type: "jRingClear", target: "all" })).toBe(
+    "applied",
+  );
+  expect(view.starsChordArmed).toBeNull();
+  expect(view.tracks.get(aal.id)?.tpaRingNm).toBeUndefined();
+  expect(view.tracks.get(dal.id)?.tpaRingNm).toBeUndefined();
+  expect(view.tracks.get(aal.id)?.tpaConeNm).toBe(4);
+  expect(view.tracks.get(dal.id)?.tpaConeNm).toBe(6);
+
+  expect(armOrApplyStarsChordAction(view, world, { type: "coneClear", target: "all" })).toBe(
+    "applied",
+  );
+  expect(view.starsChordArmed).toBeNull();
+  expect(view.tracks.get(aal.id)?.tpaConeNm).toBeUndefined();
+  expect(view.tracks.get(dal.id)?.tpaConeNm).toBeUndefined();
+});
+
+test("flag families still fall back to the global view.atpa latch with nothing selected", () => {
+  const world = createWorld({
+    aircraft: [makeTestAircraft({ id: "ac-dal", callsign: "DAL123" })],
+  });
+  const view = createScopeView();
+  expect(view.atpa.inTrailDistance).toBe(true);
+  expect(view.atpa.coneMileage).toBe(true);
+  expect(view.atpa.alertCones).toBe(true);
+  expect(view.atpa.monitorCones).toBe(true);
+
+  expect(
+    armOrApplyStarsChordAction(view, world, { type: "inTrailDistance", mode: "inhibit" }),
+  ).toBe("applied");
+  expect(view.starsChordArmed).toBeNull();
+  expect(view.atpa.inTrailDistance).toBe(false);
+  expect(view.tracks.size).toBe(0);
+
+  expect(armOrApplyStarsChordAction(view, world, { type: "tpaSizeReadout", mode: "inhibit" })).toBe(
+    "applied",
+  );
+  expect(view.starsChordArmed).toBeNull();
+  expect(view.atpa.coneMileage).toBe(false);
+
+  expect(
+    armOrApplyStarsChordAction(view, world, { type: "atpaWarningAlert", mode: "inhibit" }),
+  ).toBe("applied");
+  expect(view.starsChordArmed).toBeNull();
+  expect(view.atpa.alertCones).toBe(false);
+
+  expect(armOrApplyStarsChordAction(view, world, { type: "atpaMonitor", mode: "inhibit" })).toBe(
+    "applied",
+  );
+  expect(view.starsChordArmed).toBeNull();
+  expect(view.atpa.monitorCones).toBe(false);
 });

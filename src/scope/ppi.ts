@@ -1,6 +1,6 @@
-import type { World } from "@core";
+import { setSelectedAircraft, type World } from "@core";
 import { expireFilterEntry } from "./altitudeFilter";
-import { expireStarsChordEntry } from "./starsChord";
+import { applyStarsChordAction, expireStarsChordEntry } from "./starsChord";
 import { applyPanScreenDelta, screenToNm, type ScopeViewSize } from "./camera";
 import {
   HIT_RADIUS_CSS_PX,
@@ -42,6 +42,24 @@ export function handlePpiLeftClick(
   } else if (view.placeRangeRingArmed) {
     setRangeRingOrigin(view, nm.eastNm, nm.northNm);
     view.placeRangeRingArmed = false;
+  } else if (view.starsChordArmed) {
+    // Armed *J/*P: slew applies the chord and must not also accept inbound HO.
+    const hit = pickAircraftAt(
+      world,
+      cssX,
+      cssY,
+      view.camera,
+      cssWidth,
+      cssHeight,
+      HIT_RADIUS_CSS_PX,
+      view,
+    );
+    if (hit) {
+      setSelectedAircraft(world, hit.id);
+      applyStarsChordAction(view, world, view.starsChordArmed);
+      view.starsChordArmed = null;
+      return;
+    }
   }
   selectOrAcceptAircraftAt(
     world,

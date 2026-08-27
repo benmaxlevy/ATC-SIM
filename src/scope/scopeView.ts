@@ -31,7 +31,7 @@ import {
   type AltitudeFilter,
   type FilterEntry,
 } from "./altitudeFilter";
-import { idleStarsChordEntry, type StarsChordEntry } from "./starsChord";
+import { idleStarsChordEntry, type StarsChordAction, type StarsChordEntry } from "./starsChord";
 import {
   AIRPORT_REF_EAST_NM,
   AIRPORT_REF_NORTH_NM,
@@ -171,6 +171,11 @@ export interface ScopeView {
   /** Scope-focus `*` TPA/ATPA chord. Idle when not entering. Display only. */
   starsChordEntry: StarsChordEntry;
   /**
+   * Track-scoped `*J` / `*P` / `*J#` / `*P#` waiting for a slew. Null when none.
+   * Survives the 1.5 s chord timeout until apply, Esc, or a new `*` chord.
+   */
+  starsChordArmed: StarsChordAction | null;
+  /**
    * SSA FILTER: which existing SSA lines paint (TIME / ALTSTG / FILTER / RANGE /
    * OFF CNTR / STATUS / PTL). Default all on. Display only — not the altitude
    * FILTER chord.
@@ -265,6 +270,7 @@ export function createScopeView(
     altitudeFilter: { ...DEFAULT_ALTITUDE_FILTER },
     filterEntry: idleFilterEntry(DEFAULT_ALTITUDE_FILTER),
     starsChordEntry: idleStarsChordEntry(),
+    starsChordArmed: null,
     ssaFilter: defaultSsaVisibility(),
     giTextLines,
     giFilterVisible: defaultGiVisibility(giTextLines),

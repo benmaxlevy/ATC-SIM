@@ -936,7 +936,7 @@ function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): 
 }
 
 function drawChordHint(ctx: CanvasRenderingContext2D, view: ScopeView, ssaBottomY: number): void {
-  const stars = formatStarsChordReadout(view.starsChordEntry);
+  const stars = formatStarsChordReadout(view.starsChordEntry, view.starsChordArmed);
   const hint = view.pendingChord?.hint;
   if (!stars && !hint) {
     return;

@@ -810,3 +810,52 @@ test("AC5 — * chords never emit Command IR; DAL123 H270 still turns; F and L s
   expect(log.byType("command.accepted")).toHaveLength(1);
   expect(dal.intent.assignedHeadingDeg).toBe(270);
 });
+
+test("*J3 Enter with nothing selected arms; Esc clears; a new * replaces it", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", headingDeg: 90 });
+  const world = createWorld({ aircraft: [dal] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  let now = 0;
+  for (const key of ["*", "J", "3", "Enter"]) {
+    expect(handleScopeKeyDown(keyEvent(key), view, "scope", world, now)).toBe(true);
+    now += 100;
+  }
+  expect(view.starsChordEntry.phase).toBe("idle");
+  expect(view.starsChordArmed).toEqual({ type: "jRing", target: "slewed", radiusNm: 3 });
+  expect(view.tracks.get(dal.id)?.tpaRingNm).toBeUndefined();
+
+  view.dcbMenu = "TPA_ATPA";
+  const esc = keyEvent("Escape");
+  expect(handleScopeKeyDown(esc, view, "scope", world, now + CHORD_TIMEOUT_MS * 5)).toBe(true);
+  expect(esc.preventDefault).toHaveBeenCalled();
+  expect(view.starsChordArmed).toBeNull();
+  expect(view.dcbMenu).toBe("TPA_ATPA");
+
+  now += CHORD_TIMEOUT_MS * 6;
+  for (const key of ["*", "J", "5", "Enter"]) {
+    handleScopeKeyDown(keyEvent(key), view, "scope", world, now);
+    now += 100;
+  }
+  expect(view.starsChordArmed).toEqual({ type: "jRing", target: "slewed", radiusNm: 5 });
+  expect(handleScopeKeyDown(keyEvent("*"), view, "scope", world, now)).toBe(true);
+  expect(view.starsChordArmed).toBeNull();
+  expect(view.starsChordEntry.phase).toBe("entry");
+  expect(view.starsChordEntry.buffer).toBe("*");
+});
+
+test("select then *J3 Enter applies immediately and does not arm", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", headingDeg: 90 });
+  const world = createWorld({ aircraft: [dal], selectedAircraftId: dal.id });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  let now = 0;
+  for (const key of ["*", "J", "3", "Enter"]) {
+    handleScopeKeyDown(keyEvent(key), view, "scope", world, now);
+    now += 100;
+  }
+  expect(view.starsChordArmed).toBeNull();
+  expect(view.tracks.get(dal.id)?.tpaRingNm).toBe(3);
+});

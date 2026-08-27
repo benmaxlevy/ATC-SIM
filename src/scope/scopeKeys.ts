@@ -36,7 +36,7 @@ import {
 import {
   beginStarsChordEntry,
   cancelStarsChordEntry,
-  applyStarsChordAction,
+  armOrApplyStarsChordAction,
   handleStarsChordEntryKey,
 } from "./starsChord";
 import { handleDcbEscape } from "./dcbMenu";
@@ -212,7 +212,8 @@ export function handleScopeKeyDown(
   if (event.key === "Escape") {
     const filterBusy = focus === "scope" && view.filterEntry.phase !== "idle";
     const leaderBusy = focus === "scope" && liveLeaderChord(view, nowMs) != null;
-    const starsBusy = focus === "scope" && view.starsChordEntry.phase !== "idle";
+    const starsBusy =
+      focus === "scope" && (view.starsChordEntry.phase !== "idle" || view.starsChordArmed != null);
     if (!filterBusy && !leaderBusy && !starsBusy && handleDcbEscape(view)) {
       hideMapLists(view);
       consume(event);
@@ -225,15 +226,24 @@ export function handleScopeKeyDown(
     const stars = handleStarsChordEntryKey(view.starsChordEntry, event.key, nowMs, event.code);
     if (stars.consumed) {
       consume(event);
-      if (stars.action) {
-        applyStarsChordAction(view, world, stars.action);
+      if (event.key === "Escape") {
+        view.starsChordArmed = null;
       }
+      if (stars.action) {
+        armOrApplyStarsChordAction(view, world, stars.action);
+      }
+      return true;
+    }
+    if (event.key === "Escape" && view.starsChordArmed) {
+      consume(event);
+      view.starsChordArmed = null;
       return true;
     }
     if (isStarsChordPrefixKey(event.key)) {
       consume(event);
       cancelFilterEntry(view.filterEntry, view.altitudeFilter);
       view.pendingChord = null;
+      view.starsChordArmed = null;
       beginStarsChordEntry(view.starsChordEntry, nowMs);
       return true;
     }

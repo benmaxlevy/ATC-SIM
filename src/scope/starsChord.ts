@@ -9,10 +9,11 @@
  *
  * Trainer delta: parser + PPI `*` entry only (same FIL-prompt grammar as the
  * altitude filter: buffer on the PPI, Enter commits, Esc cancels, Backspace
- * edits). No `window.prompt`, no HTML `<input>`. `applyStarsChordAction` fills
- * T02-46 in-trail / cone-mileage flags, T02-48 per-track rings, cones, and
- * size-readout inhibit, and ATPA cone-enable (`*AE` / `*AI` / `*BE` / `*BI`).
- * Not NAS STARS.
+ * edits). Track-scoped `*J` / `*P` / `*J#` / `*P#` arm when nothing is slewed
+ * and apply on the next target click (CRC enter-then-slew). No `window.prompt`,
+ * no HTML `<input>`. `applyStarsChordAction` fills T02-46 in-trail / cone-mileage
+ * flags, T02-48 per-track rings, cones, and size-readout inhibit, and ATPA
+ * cone-enable (`*AE` / `*AI` / `*BE` / `*BI`). Not NAS STARS.
  */
 
 import type { World } from "@core";
@@ -192,13 +193,51 @@ export function expireStarsChordEntry(entry: StarsChordEntry, nowMs: number): bo
   return true;
 }
 
-/** Live `*J2.5` (or `*D INV` after a rejected commit). Null when idle. */
-export function formatStarsChordReadout(entry: StarsChordEntry): string | null {
+/** Format a committed chord back to the PPI readout (`*J3`, `*P`, `*J`). */
+export function formatStarsChordAction(action: StarsChordAction): string {
+  if (action.type === "jRing") {
+    return `*J${action.radiusNm}`;
+  }
+  if (action.type === "cone") {
+    return `*P${action.lengthNm}`;
+  }
+  if (action.type === "jRingClear") {
+    return action.target === "all" ? "**J" : "*J";
+  }
+  if (action.type === "coneClear") {
+    return action.target === "all" ? "**P" : "*P";
+  }
+  if (action.type === "tpaSizeReadout") {
+    if (action.mode === "enable") {
+      return "*D+E";
+    }
+    if (action.mode === "inhibit") {
+      return "*D+I";
+    }
+    return "*D+";
+  }
+  if (action.type === "atpaWarningAlert") {
+    return action.mode === "enable" ? "*AE" : "*AI";
+  }
+  if (action.type === "atpaMonitor") {
+    return action.mode === "enable" ? "*BE" : "*BI";
+  }
+  return action.mode === "enable" ? "*DE" : "*DI";
+}
+
+/** Live `*J2.5`, armed `*J3`, or `*D INV` after a rejected commit. Null when idle. */
+export function formatStarsChordReadout(
+  entry: StarsChordEntry,
+  armed: StarsChordAction | null = null,
+): string | null {
   if (entry.phase === "entry" && entry.buffer.length > 0) {
     return entry.buffer;
   }
   if (entry.rejection) {
     return entry.rejection;
+  }
+  if (armed) {
+    return formatStarsChordAction(armed);
   }
   return null;
 }
@@ -280,6 +319,16 @@ export function handleStarsChordEntryKey(
 }
 
 export type StarsChordApplyResult = "applied" | "unsupported";
+export type StarsChordArmOrApplyResult = "applied" | "armed" | "unsupported";
+
+/** Track-scoped J-ring / cone actions that wait for a slew when nothing is selected. */
+export function starsChordActionNeedsSlew(action: StarsChordAction): boolean {
+  return (
+    action.type === "jRing" ||
+    action.type === "cone" ||
+    ((action.type === "jRingClear" || action.type === "coneClear") && action.target === "slewed")
+  );
+}
 
 function applyEnableMode(
   current: boolean,
@@ -300,8 +349,10 @@ function applyEnableMode(
  * the same `*D+` action's **manual TPA** half (J-ring / `*P` size digits) plus
  * `*J` / `*P` / `**J` / `**P`. `*AE` / `*AI` drive warning+alert
  * (`atpaWarningAlertEnabled` / `alertCones`); `*BE` / `*BI` drive monitor
- * (`atpaMonitorEnabled` / `monitorCones`). Slewed track if one is slewed,
- * otherwise the global flag. Display only — never Command IR.
+ * (`atpaMonitorEnabled` / `monitorCones`). Flag families use the slewed track
+ * if one is slewed, otherwise the global `view.atpa` latch. Track-scoped
+ * `*J` / `*P` with no slew are a silent no-op here — `armOrApplyStarsChordAction`
+ * arms them for the next target click. Display only — never Command IR.
  */
 export function applyStarsChordAction(
   view: ScopeView,
@@ -392,4 +443,26 @@ export function applyStarsChordAction(
     return "applied";
   }
   return "unsupported";
+}
+
+/**
+ * Enter-commit: apply immediately when a slew target is present (or the action
+ * needs none). Track-scoped `*J` / `*P` with nothing slewed arm and stay on
+ * the PPI until the next target click, Esc, or a new `*` chord. `**J` / `**P`
+ * and the four flag families never arm.
+ */
+export function armOrApplyStarsChordAction(
+  view: ScopeView,
+  world: World | undefined,
+  action: StarsChordAction,
+): StarsChordArmOrApplyResult {
+  if (starsChordActionNeedsSlew(action)) {
+    const slewedId = world !== undefined ? selectedTrackId(world) : null;
+    if (!slewedId) {
+      view.starsChordArmed = action;
+      return "armed";
+    }
+  }
+  view.starsChordArmed = null;
+  return applyStarsChordAction(view, world, action);
 }
