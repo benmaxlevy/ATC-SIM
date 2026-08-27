@@ -447,6 +447,22 @@ export function acceptInboundOnClick(
  * `acceptInboundHandoff` so radio is no longer gated. No selection: no-op.
  * Display state only — never a Command.
  */
+export function applyInitiateTrackToId(
+  tracks: Map<string, TrackDisplay>,
+  world: World,
+  aircraftId: string,
+): { applied: boolean; hint: string | null } {
+  if (!world.aircraft.some((ac) => ac.id === aircraftId)) {
+    return { applied: false, hint: NO_SEL_HINT };
+  }
+  const td = ensureTrackDisplay(tracks, aircraftId);
+  acceptInboundHandoff(world, aircraftId);
+  td.ownership = applyInitiateTrack(td.ownership);
+  td.datablockMode = "full";
+  td.forcedFdb = false;
+  return { applied: true, hint: null };
+}
+
 export function applyInitiateTrackToSelection(
   tracks: Map<string, TrackDisplay>,
   world: World,
@@ -455,18 +471,28 @@ export function applyInitiateTrackToSelection(
   if (!id) {
     return { applied: false, hint: NO_SEL_HINT };
   }
-  const td = ensureTrackDisplay(tracks, id);
-  acceptInboundHandoff(world, id);
-  td.ownership = applyInitiateTrack(td.ownership);
-  td.datablockMode = "full";
-  td.forcedFdb = false;
-  return { applied: true, hint: null };
+  return applyInitiateTrackToId(tracks, world, id);
 }
 
 /**
  * F4 always-on: selected owned → unowned. Unowned stays unowned.
  * Trainer sugar, not CRC terminate. Display state only — never a Command.
  */
+export function applyDropTrackToId(
+  tracks: Map<string, TrackDisplay>,
+  world: World,
+  aircraftId: string,
+): { applied: boolean; hint: string | null } {
+  if (!world.aircraft.some((ac) => ac.id === aircraftId)) {
+    return { applied: false, hint: NO_SEL_HINT };
+  }
+  const td = ensureTrackDisplay(tracks, aircraftId);
+  td.ownership = applyDropTrack(td.ownership);
+  td.datablockMode = "partial";
+  td.forcedFdb = false;
+  return { applied: true, hint: null };
+}
+
 export function applyDropTrackToSelection(
   tracks: Map<string, TrackDisplay>,
   world: World,
@@ -475,11 +501,7 @@ export function applyDropTrackToSelection(
   if (!id) {
     return { applied: false, hint: NO_SEL_HINT };
   }
-  const td = ensureTrackDisplay(tracks, id);
-  td.ownership = applyDropTrack(td.ownership);
-  td.datablockMode = "partial";
-  td.forcedFdb = false;
-  return { applied: true, hint: null };
+  return applyDropTrackToId(tracks, world, id);
 }
 
 function flipDatablockMode(mode: DatablockMode): DatablockMode {

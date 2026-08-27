@@ -172,20 +172,28 @@ export {
 } from "./keymap";
 export type { KeyBinding, KeyFocus, ScopeChord } from "./keymap";
 export {
+  armPreviewCntl,
   cancelPreviewArea,
   expirePreviewArea,
   formatPreviewReadout,
   handlePreviewEscape,
+  handlePreviewFlidKey,
   idlePreviewArea,
   parsePreviewCommand,
   previewAreaIsLive,
+  previewCntlArmed,
+  previewFlidMatchesSlew,
   rejectPreviewArea,
+  rejectPreviewCntl,
+  resolveScopeFlid,
 } from "./previewArea";
 export type {
   PreviewArmedAction,
   PreviewAreaState,
   PreviewCommandResult,
+  PreviewFlidKeyResult,
   PreviewPhase,
+  ScopeFlidResult,
 } from "./previewArea";
 export {
   STARS_CHORD_NM_MAX,
@@ -465,7 +473,9 @@ export {
   LDB_QUERY_DURATION_MS,
   OUTBOUND_ACCEPTED_FLASH_MS,
   acceptInboundOnClick,
+  applyDropTrackToId,
   applyDropTrackToSelection,
+  applyInitiateTrackToId,
   applyInitiateTrackToSelection,
   createTrackDisplay,
   ensureTrackDisplay,

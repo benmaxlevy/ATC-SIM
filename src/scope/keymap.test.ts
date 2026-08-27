@@ -148,6 +148,19 @@ test("AC3 — PageUp and F3 are always-on; leader and T are scope-focus", () => 
   expect(bindingById("datablock")?.windowsKeys).toBe("T");
 });
 
+test("F3/F4 KEY_BINDINGS describe command-then-slew and FLID Enter", () => {
+  const init = bindingById("initiate-track")!;
+  expect(init.action).toMatch(/command-then-slew/);
+  expect(init.action).toMatch(/FLID/);
+  expect(init.action).toMatch(/initiate track/);
+  expect(init.crcAnalog).toMatch(/INIT CNTL/);
+  const drop = bindingById("drop-track")!;
+  expect(drop.action).toMatch(/command-then-slew/);
+  expect(drop.action).toMatch(/FLID/);
+  expect(drop.action).toMatch(/TERM CNTL ALL/);
+  expect(drop.crcAnalog).toMatch(/TERM CNTL/);
+});
+
 test("AC2 — bindings list PageUp/PageDown, Home, End, F3, F4, F7, F8, L1–L9, T, M, F filter, Tab", () => {
   const blob = KEY_BINDINGS.map((b) => `${b.windowsKeys} ${b.action}`).join("\n");
   expect(blob).toMatch(/PageUp/);

@@ -249,3 +249,114 @@ test("live *J3 slew click does not accept a pending inbound handoff", () => {
   expect(view.starsChordEntry.phase).toBe("idle");
   expect(dal.intent).toEqual(intent);
 });
+
+test("armed INIT CNTL click owns that track; a second click does not re-apply; miss leaves arm", () => {
+  const dal = sample("DAL123", "ac-dal", 16, 8);
+  const aal = sample("AAL456", "ac-aal", -16, 0);
+  const world = createWorld({ aircraft: [dal, aal] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  handleScopeKeyDown(keyEvent("F3"), view, "radio", world);
+  expect(view.preview.phase).toBe("armed");
+  expect(view.preview.armed).toEqual({ type: "initCntl" });
+
+  const miss = nmToScreen(dal.xNm, dal.yNm, CAM, VIEW);
+  handlePpiLeftClick(view, world, miss.x + 40, miss.y, CSS_W, CSS_H);
+  expect(view.preview.phase).toBe("armed");
+  expect(view.preview.armed).toEqual({ type: "initCntl" });
+  expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
+  expect(world.selectedAircraftId).toBeNull();
+
+  const dalTick = nmToScreen(dal.xNm, dal.yNm, CAM, VIEW);
+  handlePpiLeftClick(view, world, dalTick.x, dalTick.y, CSS_W, CSS_H);
+  expect(view.preview.phase).toBe("idle");
+  expect(view.preview.armed).toBeNull();
+  expect(world.selectedAircraftId).toBe(dal.id);
+  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+  expect(view.tracks.get(aal.id)!.ownership).toBe("unowned");
+
+  const aalTick = nmToScreen(aal.xNm, aal.yNm, CAM, VIEW);
+  handlePpiLeftClick(view, world, aalTick.x, aalTick.y, CSS_W, CSS_H);
+  expect(view.tracks.get(aal.id)!.ownership).toBe("unowned");
+  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+  expect(world.selectedAircraftId).toBe(aal.id);
+});
+
+test("armed TERM CNTL click drops the hit track; miss leaves arm", () => {
+  const dal = sample("DAL123", "ac-dal", 16, 8);
+  const aal = sample("AAL456", "ac-aal", -16, 0);
+  const world = createWorld({ aircraft: [dal, aal], selectedAircraftId: dal.id });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  handleScopeKeyDown(keyEvent("F3"), view, "radio", world);
+  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+
+  world.selectedAircraftId = null;
+  handleScopeKeyDown(keyEvent("F4"), view, "radio", world);
+  expect(view.preview.armed).toEqual({ type: "termCntl" });
+
+  const miss = nmToScreen(dal.xNm, dal.yNm, CAM, VIEW);
+  handlePpiLeftClick(view, world, miss.x + 40, miss.y, CSS_W, CSS_H);
+  expect(view.preview.phase).toBe("armed");
+  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+
+  handlePpiLeftClick(view, world, miss.x, miss.y, CSS_W, CSS_H);
+  expect(view.preview.phase).toBe("idle");
+  expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
+  expect(view.tracks.get(aal.id)!.ownership).toBe("unowned");
+});
+
+test("armed INIT slew on a pending inbound is one accept+own click", () => {
+  const world = createWorldFromScenario(loadKdem(), 1);
+  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  expect(handoffFor(world, dal.id).kind).toBe("inbound");
+  expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
+  const intent = cloneIntent(dal.intent);
+
+  handleScopeKeyDown(keyEvent("F3"), view, "radio", world);
+  const tick = nmToScreen(dal.xNm, dal.yNm, view.camera, VIEW);
+  handlePpiLeftClick(view, world, tick.x, tick.y, CSS_W, CSS_H);
+
+  expect(handoffFor(world, dal.id)).toEqual({ kind: "none" });
+  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+  expect(world.sessionLog?.byType("handoff.inbound.accepted") ?? []).toHaveLength(1);
+  expect(world.sessionLog?.byType("command.accepted") ?? []).toHaveLength(0);
+  expect(world.selectedAircraftId).toBe(dal.id);
+  expect(view.preview.phase).toBe("idle");
+  expect(dal.intent).toEqual(intent);
+
+  handlePpiLeftClick(view, world, tick.x, tick.y, CSS_W, CSS_H);
+  expect(world.sessionLog?.byType("handoff.inbound.accepted") ?? []).toHaveLength(1);
+  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+});
+
+test("typed INIT FLID then slew applies only when the FLID uniquely matches the clicked track", () => {
+  const dal = sample("DAL123", "ac-dal", 16, 8);
+  const aal = sample("AAL456", "ac-aal", -16, 0);
+  const world = createWorld({ aircraft: [dal, aal] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  handleScopeKeyDown(keyEvent("F3"), view, "radio", world);
+  for (const key of ["A", "A", "L", "4", "5", "6"]) {
+    handleScopeKeyDown(keyEvent(key), view, "radio", world);
+  }
+  const dalTick = nmToScreen(dal.xNm, dal.yNm, CAM, VIEW);
+  handlePpiLeftClick(view, world, dalTick.x, dalTick.y, CSS_W, CSS_H);
+  expect(view.preview.rejection).toBe("INIT CNTL AAL456 INV");
+  expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
+  expect(view.tracks.get(aal.id)!.ownership).toBe("unowned");
+  expect(world.selectedAircraftId).toBeNull();
+
+  handleScopeKeyDown(keyEvent("F3"), view, "radio", world);
+  for (const key of ["D", "A", "L", "1", "2", "3"]) {
+    handleScopeKeyDown(keyEvent(key), view, "radio", world);
+  }
+  handlePpiLeftClick(view, world, dalTick.x, dalTick.y, CSS_W, CSS_H);
+  expect(view.preview.phase).toBe("idle");
+  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+  expect(view.tracks.get(aal.id)!.ownership).toBe("unowned");
+});

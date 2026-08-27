@@ -1,6 +1,12 @@
 import { setSelectedAircraft, type World } from "@core";
 import { expireFilterEntry } from "./altitudeFilter";
-import { expirePreviewArea } from "./previewArea";
+import {
+  cancelPreviewArea,
+  expirePreviewArea,
+  previewCntlArmed,
+  previewFlidMatchesSlew,
+  rejectPreviewCntl,
+} from "./previewArea";
 import {
   applyStarsChordAction,
   cancelStarsChordEntry,
@@ -17,6 +23,7 @@ import {
 } from "./pick";
 import { renderScope } from "./renderScope";
 import { centerOnWorld, recordLastClick, setRangeRingOrigin, type ScopeView } from "./scopeView";
+import { applyDropTrackToId, applyInitiateTrackToId } from "./trackDisplay";
 
 function viewSize(widthPx: number, heightPx: number): ScopeViewSize {
   return { widthPx, heightPx };
@@ -79,6 +86,31 @@ export function handlePpiLeftClick(
         view.starsChordArmed = null;
         return;
       }
+    }
+  } else if (previewCntlArmed(view.preview)) {
+    const hit = pickAircraftAt(
+      world,
+      cssX,
+      cssY,
+      view.camera,
+      cssWidth,
+      cssHeight,
+      HIT_RADIUS_CSS_PX,
+      view,
+    );
+    if (hit) {
+      if (!previewFlidMatchesSlew(view.preview, hit.id, world)) {
+        rejectPreviewCntl(view.preview, Date.now());
+        return;
+      }
+      if (view.preview.armed?.type === "initCntl") {
+        applyInitiateTrackToId(view.tracks, world, hit.id);
+      } else {
+        applyDropTrackToId(view.tracks, world, hit.id);
+      }
+      setSelectedAircraft(world, hit.id);
+      cancelPreviewArea(view.preview);
+      return;
     }
   }
   selectOrAcceptAircraftAt(

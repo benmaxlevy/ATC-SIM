@@ -17,6 +17,7 @@ import { PALETTE, applyBrite } from "./palette";
 import { PTL_MINUTES, ptlEndpoint, shouldDrawPtl } from "./ptl";
 import { handlePpiLeftClick, isPpiSlewButton, isPpiSlewHeld } from "./ppi";
 import { renderScope } from "./renderScope";
+import { handleScopeKeyDown } from "./scopeKeys";
 import {
   hideMapLists,
   stepBriteChannel,
@@ -1780,6 +1781,45 @@ test("AC4 — live * chord buffer paints next to FILTER in SSA/preview green", (
   expect(chord).toBeDefined();
   expect(chord!.fillStyle).toBe(PALETTE.ssa);
   expect(painted.fillTexts.some((t) => t.text === "FILTER 000-180")).toBe(true);
+});
+
+test("F3/F4 paint INIT CNTL / TERM CNTL; live * chord still wins the hint", () => {
+  const world = createWorld();
+  const view = createScopeView();
+  const f3Event = {
+    key: "F3",
+    preventDefault(): void {},
+    stopPropagation(): void {},
+  };
+  handleScopeKeyDown(f3Event, view, "radio", world);
+  const initPaint = createMockCtx();
+  renderScope(initPaint.ctx, world, view, 800, 800);
+  expect(initPaint.fillTexts.some((t) => t.text === "INIT CNTL")).toBe(true);
+  expect(initPaint.fillTexts.some((t) => t.text === "F3")).toBe(false);
+
+  handleScopeKeyDown(
+    { key: "Escape", preventDefault(): void {}, stopPropagation(): void {} },
+    view,
+    "radio",
+    world,
+  );
+  handleScopeKeyDown(
+    { key: "F4", preventDefault(): void {}, stopPropagation(): void {} },
+    view,
+    "radio",
+    world,
+  );
+  const termPaint = createMockCtx();
+  renderScope(termPaint.ctx, world, view, 800, 800);
+  expect(termPaint.fillTexts.some((t) => t.text === "TERM CNTL")).toBe(true);
+  expect(termPaint.fillTexts.some((t) => t.text === "F4")).toBe(false);
+
+  view.starsChordEntry.phase = "entry";
+  view.starsChordEntry.buffer = "*J3";
+  const starred = createMockCtx();
+  renderScope(starred.ctx, world, view, 800, 800);
+  expect(starred.fillTexts.some((t) => t.text === "*J3")).toBe(true);
+  expect(starred.fillTexts.some((t) => t.text === "TERM CNTL")).toBe(false);
 });
 
 test("injected preview entry paints INIT CNTL in SSA/preview green, never F3", () => {

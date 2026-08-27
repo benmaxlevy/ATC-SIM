@@ -39,7 +39,12 @@ import {
   armOrApplyStarsChordAction,
   handleStarsChordEntryKey,
 } from "./starsChord";
-import { handlePreviewEscape } from "./previewArea";
+import {
+  armPreviewCntl,
+  cancelPreviewArea,
+  handlePreviewEscape,
+  handlePreviewFlidKey,
+} from "./previewArea";
 import { handleDcbEscape } from "./dcbMenu";
 import { hideMapLists } from "./dcbFunctions";
 import { PpiPlaceholderId } from "./ppi-placeholder";
@@ -54,8 +59,11 @@ import {
 import {
   setLeaderDirForSelection,
   toggleDatablockModeForSelection,
+  applyDropTrackToId,
   applyDropTrackToSelection,
+  applyInitiateTrackToId,
   applyInitiateTrackToSelection,
+  selectedTrackId,
 } from "./trackDisplay";
 import { applyHandoffToSelection } from "./ownership";
 
@@ -171,6 +179,18 @@ function consume(event: ScopeKeyEvent): void {
   event.stopPropagation();
 }
 
+function applyPreviewCntl(
+  view: ScopeView,
+  world: World,
+  apply: { type: "initCntl" | "termCntl"; aircraftId: string },
+): void {
+  if (apply.type === "initCntl") {
+    applyInitiateTrackToId(view.tracks, world, apply.aircraftId);
+  } else {
+    applyDropTrackToId(view.tracks, world, apply.aircraftId);
+  }
+}
+
 function liveLeaderChord(view: ScopeView, nowMs: number) {
   if (!isScopeChordLive(view.pendingChord, nowMs) || view.pendingChord?.prefix !== "L") {
     if (view.pendingChord && !isScopeChordLive(view.pendingChord, nowMs)) {
@@ -226,6 +246,16 @@ export function handleScopeKeyDown(
       ui?.onHandled?.();
       return true;
     }
+  }
+
+  const previewFlid = handlePreviewFlidKey(view.preview, event.key, nowMs, world);
+  if (previewFlid.consumed) {
+    consume(event);
+    if (previewFlid.apply && world) {
+      applyPreviewCntl(view, world, previewFlid.apply);
+    }
+    ui?.onHandled?.();
+    return true;
   }
 
   if (focus === "scope") {
@@ -350,14 +380,20 @@ export function handleScopeKeyDown(
   event.preventDefault();
   event.stopPropagation();
   if (event.key === "F3") {
-    if (world) {
+    if (world && selectedTrackId(world)) {
       applyInitiateTrackToSelection(view.tracks, world);
+      cancelPreviewArea(view.preview);
+    } else {
+      armPreviewCntl(view.preview, "initCntl", nowMs);
     }
     return true;
   }
   if (event.key === "F4") {
-    if (world) {
+    if (world && selectedTrackId(world)) {
       applyDropTrackToSelection(view.tracks, world);
+      cancelPreviewArea(view.preview);
+    } else {
+      armPreviewCntl(view.preview, "termCntl", nowMs);
     }
     return true;
   }
