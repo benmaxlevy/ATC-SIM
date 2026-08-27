@@ -15,7 +15,7 @@ This is the **twelfth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish
 
 ## Twelfth swarm planned — 2026-08-26 (session setup)
 
-This configuration becomes runnable only after its planning branch lands on `master`. It builds session setup foundations and menu only; it does not begin Phase 5 scoring.
+This configuration runs from feature base `feature/session-setup`, created by merging the planning branch. Ticket workers branch from that base; captain squash-merges back into that base. It builds session setup foundations and menu only; it does not begin Phase 5 scoring.
 
 | Key | Value |
 | --- | --- |
@@ -24,7 +24,7 @@ This configuration becomes runnable only after its planning branch lands on `mas
 | Skip | T04-11; all completed work; T05-01–12; second airport data; live traffic edits; DCB PREF; radio-frequency Command IR |
 | Stop | After T05-13. No scoring, replay, imperfect pilots, second position, or phase acceptance script. |
 | Max ticket workers in flight | **2** |
-| Merge lock | Only phase captain squash-merges ticket branches to `master`, then runs `npm test` |
+| Merge lock | Only phase captain squash-merges ticket branches to `feature/session-setup`, then runs `npm test` |
 | Model | Inherit / default |
 | Paid STT/TTS/LLM | Forbidden |
 
@@ -43,7 +43,7 @@ This configuration becomes runnable only after its planning branch lands on `mas
 | A | T04-24 ∥ T04-25 | T04-23 on `master` |
 | B | T05-13 | T04-21, T04-24, T04-25 |
 
-Before execution: commit this planning update, verify no swarm is in flight, then create isolated worktrees from current `master`. Captain records manual restart confirmation honestly and stops after T05-13.
+Before execution: merge this planning branch into `feature/session-setup`, verify no swarm is in flight, then create isolated worktrees from that base. Captain records manual restart confirmation honestly and stops after T05-13. Do not merge feature work into `master` in this swarm.
 
 ---
 
