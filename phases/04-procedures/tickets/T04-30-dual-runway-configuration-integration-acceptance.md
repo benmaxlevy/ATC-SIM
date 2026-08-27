@@ -38,11 +38,11 @@ With tickets T04-26 through T04-29 and T05-14 implemented, the entire dual-runwa
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** West Flow (RWY 27) end-to-end simulation passes all arrival and departure phases.
-- [ ] **AC2 —** East Flow (RWY 09) end-to-end simulation passes all arrival and departure phases.
-- [ ] **AC3 —** Session Setup UI cleanly switches configurations and confirms restart.
-- [ ] **AC4 —** All 116+ test files and 1200+ unit/integration tests pass with 0 failures (`npm test` exit code 0).
-- [ ] **AC5 —** `npm run ci` passes cleanly with no lint or typecheck errors.
+- [x] **AC1 —** West Flow (RWY 27) end-to-end simulation passes all arrival and departure phases.
+- [x] **AC2 —** East Flow (RWY 09) end-to-end simulation passes all arrival and departure phases.
+- [x] **AC3 —** Session Setup UI cleanly switches configurations and confirms restart.
+- [x] **AC4 —** All 116+ test files and 1200+ unit/integration tests pass with 0 failures (`npm test` exit code 0).
+- [x] **AC5 —** `npm run ci` passes cleanly with no lint or typecheck errors.
 
 ## Suggested files
 

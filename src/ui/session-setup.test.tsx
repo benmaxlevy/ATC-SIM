@@ -177,6 +177,21 @@ describe("T05-14 Session Setup component", () => {
     expect(html).toContain('type="number"');
   });
 
+  test("T04-30 AC3 — Session Setup UI renders West Flow and East Flow configurations for KDEM", () => {
+    const html = renderToStaticMarkup(
+      createElement(SessionSetup, {
+        open: true,
+        initial: { ...initialSetup, scenarioId: "kdem-09" },
+        onCancel: () => {},
+        onApply: () => {},
+      }),
+    );
+    expect(html).toContain('value="kdem"');
+    expect(html).toContain('value="kdem-09"');
+    expect(html).toContain("West Flow (RWY 27)");
+    expect(html).toContain("East Flow (RWY 09)");
+  });
+
   test("sessionSetupDefaults and loadSessionSetupDefaults return valid defaults", () => {
     const defaults = sessionSetupDefaults();
     expect(defaults.scenarioId).toBe("kdem");
