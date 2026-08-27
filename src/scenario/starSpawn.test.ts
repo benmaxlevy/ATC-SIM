@@ -185,6 +185,14 @@ test("T04-14 seed=1 n=6 snapshot: seeded slots and stagger avoid mirrored pairs"
   expect(assigned[0]!.pose.toFixIndex).toBe(0);
   expect(assigned[0]!.pose.altitudeFt).toBe(11000);
   expect(assigned[0]!.pose.speedKt).toBe(250);
+  expect(new Set(assigned.slice(0, 3).map((row) => `${row.starId}/${row.transitionId}`)).size).toBe(
+    1,
+  );
+
+  const two = assignStarRoutes({ catalog: kdem, count: 2, seed: 1 });
+  expect(two[0]!.starId).toBe(two[1]!.starId);
+  expect(two[0]!.transitionId).toBe(two[1]!.transitionId);
+  expect(two[1]!.stackIndex).toBe(1);
 
   const again = assignStarRoutes({ catalog: kdem, count: 6, seed: 1 });
   expect(

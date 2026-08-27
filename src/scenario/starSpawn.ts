@@ -188,9 +188,9 @@ function slotKey(slot: StarSlot): string {
 /**
  * Analog: JO 7110.65 descend via / AIM Descend Via — spawned traffic already
  * complies with the published STAR (VIA armed; same as T04-12 spawn-on-VIA).
- * Trainer delta: seeded slot and in-trail-offset mix over catalog STAR
- * transitions. Each arrival remains on published geometry, but matching
- * transitions do not form mirrored pairs. Not random vectors. Not NAS STARS.
+ * Trainer delta: seeded slot mix over catalog STAR transitions. Small packs
+ * stack the first chosen transition so north/south STARs do not spawn as a
+ * mirrored pair. Later remainder draws may still mix slots. Not NAS STARS.
  */
 export function assignStarRoutes(args: {
   catalog: ProcedureCatalog;
@@ -208,8 +208,14 @@ export function assignStarRoutes(args: {
   const rng = mulberry32(seed >>> 0);
   const stackNext = new Map<string, number>();
   const assignments: StarRouteAssignment[] = [];
+  const stackOnPrimary = Math.min(count, Math.max(2, Math.ceil(count / 2)));
+  const primaryIdx =
+    slots.length === 0 ? 0 : Math.min(Math.floor(rng() * slots.length), slots.length - 1);
   for (let i = 0; i < count; i += 1) {
-    const idx = Math.min(Math.floor(rng() * slots.length), slots.length - 1);
+    const idx =
+      i < stackOnPrimary
+        ? primaryIdx
+        : Math.min(Math.floor(rng() * slots.length), slots.length - 1);
     const slot = slots[idx]!;
     const key = slotKey(slot);
     const stackIndex = stackNext.get(key) ?? 0;
