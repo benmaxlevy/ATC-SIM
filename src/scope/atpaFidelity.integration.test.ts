@@ -100,6 +100,7 @@ function createMockCtx(): {
     },
     arc() {},
     clip() {},
+    rect() {},
     fillRect() {},
     strokeRect() {},
     setTransform() {},

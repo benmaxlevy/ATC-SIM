@@ -57,6 +57,7 @@ function createRecordingCtx(): {
     closePath() {},
     arc() {},
     clip() {},
+    rect() {},
     stroke() {},
     fill() {},
     moveTo() {},

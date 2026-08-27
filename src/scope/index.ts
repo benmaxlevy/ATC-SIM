@@ -428,7 +428,6 @@ export {
 export type { AtpaConePaintFlags, AtpaNmPoint } from "./atpaCone";
 export {
   ATPA_CONE_MILEAGE_ALONG_FRAC,
-  ATPA_CONE_MILEAGE_OFFSET_NM,
   atpaConeMileagePlacement,
   atpaConeMileageReadout,
   atpaInTrailDatablockReadout,

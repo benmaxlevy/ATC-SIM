@@ -192,6 +192,7 @@ function createMockCtx(): {
     },
     arc() {},
     clip() {},
+    rect() {},
     stroke(this: { strokeStyle: string; lineWidth: number }) {
       if (currentPath.length >= 2) {
         pathStrokes.push({
@@ -323,7 +324,10 @@ test("drawAtpaCones never fills the wedge", () => {
     eager: true,
   }) as Record<string, string>;
   const src = sources["./renderScope.ts"]!;
-  const fn = src.slice(src.indexOf("function drawAtpaCones"), src.indexOf("const SSA_LEFT_PX"));
+  const fn = src.slice(
+    src.indexOf("function strokeConeAroundDigits"),
+    src.indexOf("const SSA_LEFT_PX"),
+  );
   expect(fn).toMatch(/ctx\.stroke\(\)/);
   expect(fn).not.toMatch(/ctx\.fill\(/);
   expect(fn).toMatch(/requiredNm/);

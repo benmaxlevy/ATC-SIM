@@ -261,6 +261,7 @@ test("AC4 — filter hides datablocks but the list still shows all arrivals", ()
     closePath() {},
     arc() {},
     clip() {},
+    rect() {},
     stroke() {},
     fill() {},
     moveTo() {},

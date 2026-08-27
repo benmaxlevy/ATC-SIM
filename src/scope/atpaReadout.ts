@@ -26,10 +26,13 @@
 import type { AtpaPair, AtpaStatus } from "@core";
 import { PALETTE } from "./palette";
 
-/** Along-axis fraction of `requiredNm` from the trailer toward the leader. */
-export const ATPA_CONE_MILEAGE_ALONG_FRAC = 0.55;
-/** Perpendicular offset (NM) so digits sit alongside the needle, not on it. */
-export const ATPA_CONE_MILEAGE_OFFSET_NM = 0.22;
+/**
+ * Along-axis fraction of `requiredNm` from the trailer toward the leader. The
+ * digits sit **on** the axis at mid-cone (Fig 38/39 paints them inside the
+ * wedge body, not beside it), so the draw site must center the text on this
+ * point rather than anchor it at a corner.
+ */
+export const ATPA_CONE_MILEAGE_ALONG_FRAC = 0.5;
 
 export interface AtpaNmPose {
   xNm: number;
@@ -138,7 +141,7 @@ export function atpaInTrailDatablockReadout(
 }
 
 /**
- * Place cone-mileage digits alongside the T02-45 wedge using only the pose
+ * Place cone-mileage digits inside the T02-45 wedge using only the pose
  * (vertex at the trailer, length = `requiredNm`, axis toward the leader).
  */
 export function atpaConeMileagePlacement(
@@ -157,8 +160,8 @@ export function atpaConeMileagePlacement(
   const uy = dy / dist;
   const along = pose.requiredNm * ATPA_CONE_MILEAGE_ALONG_FRAC;
   return {
-    eastNm: pose.trailing.xNm + ux * along - uy * ATPA_CONE_MILEAGE_OFFSET_NM,
-    northNm: pose.trailing.yNm + uy * along + ux * ATPA_CONE_MILEAGE_OFFSET_NM,
+    eastNm: pose.trailing.xNm + ux * along,
+    northNm: pose.trailing.yNm + uy * along,
     text: formatAtpaConeMileage(pose.requiredNm),
     status: pose.status,
   };

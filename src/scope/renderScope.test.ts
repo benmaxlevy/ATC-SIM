@@ -123,6 +123,7 @@ function createMockCtx(): {
     closePath() {},
     arc() {},
     clip() {},
+    rect() {},
     stroke(this: { strokeStyle: string; lineWidth: number }) {
       if (currentPath.length >= 2) {
         pathStrokes.push({
@@ -742,7 +743,10 @@ test("AC7 — renderScope comments say PTL / predicted track line and cite CRC",
   expect(src).toMatch(/CRC STARS/);
   expect(src).toMatch(/straight 1\.0 min/);
   expect(src).toMatch(/inAltitudeFilter/);
-  expect(src).not.toMatch(/ctx\.clip/);
+  // The only clip is the even-odd hole that breaks a cone line around its
+  // mileage digits. Nothing may clip the scope itself.
+  expect(src.match(/ctx\.clip\(/g)).toHaveLength(1);
+  expect(src).toMatch(/ctx\.clip\("evenodd"\)/);
   expect(src).toMatch(/leader/);
   expect(src).toMatch(/L1–L9/);
   expect(src).not.toMatch(/\bstem\b/);

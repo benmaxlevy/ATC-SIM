@@ -84,6 +84,7 @@ function createMockCtx(): {
     },
     arc() {},
     clip() {},
+    rect() {},
     stroke(this: { strokeStyle: string; lineWidth: number }) {
       if (currentPath.length >= 2) {
         pathStrokes.push({
@@ -284,7 +285,9 @@ test("AC4 — CA lite still has no automatic 3 NM halo (TPA 3 NM is display-only
     ),
   ].join("\n");
   expect(src).toMatch(/not a 3 NM (circle|halo)/i);
-  expect(src).not.toMatch(/ctx\.clip/);
+  // No clip is built from an arc — a clipped circle would be the halo this
+  // rules out. `renderScope.test.ts` pins the one rectangular digit-gap clip.
+  expect(src).not.toMatch(/ctx\.arc\([\s\S]{0,200}?ctx\.clip/);
   const view = createScopeView();
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", xNm: 0, yNm: 0 });
   const world = createWorld({ aircraft: [dal], selectedAircraftId: dal.id });

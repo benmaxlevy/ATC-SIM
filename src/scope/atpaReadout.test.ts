@@ -3,7 +3,6 @@ import type { AtpaPair } from "@core";
 import { PALETTE } from "./palette";
 import {
   ATPA_CONE_MILEAGE_ALONG_FRAC,
-  ATPA_CONE_MILEAGE_OFFSET_NM,
   atpaConeMileagePlacement,
   atpaConeMileageReadout,
   atpaInTrailDatablockReadout,
@@ -135,7 +134,7 @@ test("AC5 — pair clear leaves no residue; inhibit matrix is independent per re
   ).toBe("3");
 });
 
-test("AC4 — cone mileage placement sits alongside the trailer→leader axis at requiredNm", () => {
+test("AC4 — cone mileage placement sits on the trailer→leader axis inside the wedge", () => {
   const placed = atpaConeMileagePlacement({
     trailing: { xNm: 4, yNm: 0 },
     leading: { xNm: 0, yNm: 0 },
@@ -146,7 +145,7 @@ test("AC4 — cone mileage placement sits alongside the trailer→leader axis at
   expect(placed!.text).toBe("2.5");
   expect(placed!.status).toBe("monitor");
   expect(placed!.eastNm).toBeCloseTo(4 - 2.5 * ATPA_CONE_MILEAGE_ALONG_FRAC, 9);
-  expect(placed!.northNm).toBeCloseTo(-ATPA_CONE_MILEAGE_OFFSET_NM, 9);
+  expect(placed!.northNm).toBeCloseTo(0, 9);
   expect(
     atpaConeMileagePlacement({
       trailing: { xNm: 0, yNm: 0 },

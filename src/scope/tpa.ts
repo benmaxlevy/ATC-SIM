@@ -233,8 +233,8 @@ export function tpaRingDigitPlacement(
 }
 
 /**
- * Fig 37: length digits alongside / inside the cone body. Same offset as
- * T02-46 ATPA cone mileage, axis along ground track.
+ * Fig 37: length digits inside the cone body, on the axis at mid-length. Same
+ * placement as T02-46 ATPA cone mileage, axis along ground track.
  */
 export function tpaConeDigitPlacement(
   eastNm: number,

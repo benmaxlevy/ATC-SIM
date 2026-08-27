@@ -684,8 +684,8 @@ function drawAtpaConeMileage(
     return;
   }
   ctx.font = datablockFontCss(view.charSizes.tools);
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
   for (const pair of selectAtpaConesToPaint(pairs)) {
     const trailing = world.aircraft.find((ac) => ac.callsign === pair.trailingCallsign);
     const leading = world.aircraft.find((ac) => ac.callsign === pair.leadingCallsign);
@@ -813,7 +813,7 @@ function drawManualTpaCones(
   ctx.lineWidth = TPA_STROKE_PX;
   ctx.fillStyle = TPA_STROKE_COLOR;
   ctx.font = datablockFontCss(view.charSizes.tools);
-  ctx.textAlign = "left";
+  ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (const { aircraft: ac, lengthNm } of targets) {
     const worldPts = manualTpaConePoints(ac.xNm, ac.yNm, ac.headingDeg, lengthNm);
@@ -821,12 +821,14 @@ function drawManualTpaCones(
       continue;
     }
     const pts = worldPts.map((p) => nmToScreen(p.eastNm, p.northNm, view.camera, size));
-    tracePolyline(ctx, pts, false);
-    ctx.stroke();
     if (tpaSizeReadoutEnabled(view.tracks.get(ac.id))) {
       const digit = tpaConeDigitPlacement(ac.xNm, ac.yNm, ac.headingDeg, lengthNm);
       const p = nmToScreen(digit.eastNm, digit.northNm, view.camera, size);
+      const gap = coneDigitGapBox(ctx, digit.text, p.x, p.y, view.charSizes.tools);
+      strokeConeAroundDigits(ctx, pts, gap, size);
       ctx.fillText(digit.text, p.x, p.y);
+    } else {
+      strokeConeAroundDigits(ctx, pts, null, size);
     }
   }
 }
@@ -836,6 +838,59 @@ function drawManualTpaCones(
  * Never filled. One cone per trailing track (highest status). Length is the
  * pair's `requiredNm`. Display only — never a Command. Not a CA halo.
  */
+/** Breathing room around the numerals where the cone line is cut away. */
+const CONE_DIGIT_GAP_PAD_PX = 1;
+
+interface ScreenBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Box the centered cone digits occupy on screen. `ctx.font` must already be
+ * the tools font so `measureText` matches what `fillText` will paint.
+ */
+function coneDigitGapBox(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  centerX: number,
+  centerY: number,
+  fontPx: number,
+): ScreenBox {
+  const cell = measureDatablockCellWidth(ctx);
+  const width = cell * text.length + CONE_DIGIT_GAP_PAD_PX * 2;
+  const height = fontPx + CONE_DIGIT_GAP_PAD_PX * 2;
+  return { x: centerX - width / 2, y: centerY - height / 2, width, height };
+}
+
+/**
+ * Stroke a cone so its lines stop at the mileage digits and pick up again on
+ * the far side (Fig 38/39), instead of running through the numerals. The gap
+ * is an even-odd clip hole, so the wedge stays one path and one stroke.
+ */
+function strokeConeAroundDigits(
+  ctx: CanvasRenderingContext2D,
+  pts: { x: number; y: number }[],
+  gap: ScreenBox | null,
+  size: ScopeViewSize,
+): void {
+  if (!gap) {
+    tracePolyline(ctx, pts, false);
+    ctx.stroke();
+    return;
+  }
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, size.widthPx, size.heightPx);
+  ctx.rect(gap.x, gap.y, gap.width, gap.height);
+  ctx.clip("evenodd");
+  tracePolyline(ctx, pts, false);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function atpaConePaintFlags(
   view: ScopeView,
   td: { atpaMonitorEnabled?: boolean; atpaWarningAlertEnabled?: boolean } | undefined,
@@ -863,6 +918,7 @@ function drawAtpaCones(
     byCallsign.set(ac.callsign, ac);
   }
   ctx.lineWidth = TPA_STROKE_PX;
+  ctx.font = datablockFontCss(view.charSizes.tools);
   for (const pair of selectAtpaConesToPaint(pairs)) {
     const trailing = byCallsign.get(pair.trailingCallsign);
     const leading = byCallsign.get(pair.leadingCallsign);
@@ -885,8 +941,20 @@ function drawAtpaCones(
     }
     const pts = worldPts.map((p) => nmToScreen(p.eastNm, p.northNm, view.camera, size));
     ctx.strokeStyle = atpaConeColor(pair.status);
-    tracePolyline(ctx, pts, false);
-    ctx.stroke();
+    let gap: ScreenBox | null = null;
+    if (view.atpa.coneMileage && td?.atpaConeMileageEnabled !== false) {
+      const placed = atpaConeMileagePlacement({
+        trailing: { xNm: trailing.xNm, yNm: trailing.yNm },
+        leading: { xNm: leading.xNm, yNm: leading.yNm },
+        requiredNm: pair.requiredNm,
+        status: pair.status,
+      });
+      if (placed) {
+        const digit = nmToScreen(placed.eastNm, placed.northNm, view.camera, size);
+        gap = coneDigitGapBox(ctx, placed.text, digit.x, digit.y, view.charSizes.tools);
+      }
+    }
+    strokeConeAroundDigits(ctx, pts, gap, size);
   }
 }
 
