@@ -19,6 +19,12 @@ Human approved feature-base execution. Worktree base is `feature/session-setup`;
 
 ---
 
+## Twelfth swarm captain start — 2026-08-26
+
+Captain executes **T04-24**, **T04-25**, then **T05-13** from `feature/session-setup`. Workers use isolated worktrees based on that branch; captain alone squash-merges each ready ticket back into `feature/session-setup`, runs `npm test` after every merge, then runs `npm run ci`. Wave A is T04-24 ∥ T04-25 (two workers maximum); Wave B is T05-13 after both merge and existing T04-21 behavior is verified. Keep untracked `.cursor/rules/caveman-ultra.mdc` and `e2e/` artifacts untouched. Scope stops after T05-13; manual UI acceptance remains an explicit leftover.
+
+---
+
 ## Twelfth swarm planned — 2026-08-26 (session setup)
 
 This configuration runs from feature base `feature/session-setup`, created by merging the planning branch. Ticket workers branch from that base; captain squash-merges back into that base. It builds session setup foundations and menu only; it does not begin Phase 5 scoring.
