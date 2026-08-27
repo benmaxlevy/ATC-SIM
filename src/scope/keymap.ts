@@ -5,8 +5,8 @@
  * length. vice (R08) is typed-radio feel, not this map.
  * Trainer delta: exported Windows subset only — F1 is help, F3 is color
  * stub, PageUp/Down range presets 5–60 (no CRC 6/8/12/16/24), `/` when
- * scope-focused focuses the command line (not leader length). 1.5 s L/F/`*`
- * chord window; leftover digits never go to the parser; no keyboard leader-length menu
+ * scope-focused focuses the command line (not leader length). 1.5 s L/F
+ * chord window (`*` persists until Esc, commit, or a new `*`); leftover digits never go to the parser; no keyboard leader-length menu
  * (`/` is radio focus). DCB LDR length is a discrete px spinner. `F` is scope-focus only.
  * `*` with PPI focused is TPA/ATPA slew chords (R07 Table 36), never Command IR.
  * Inject `nowMs` in tests. Not NAS STARS.

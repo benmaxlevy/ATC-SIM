@@ -185,6 +185,7 @@ export {
   handleStarsChordEntryKey,
   idleStarsChordEntry,
   parseStarsChord,
+  rejectStarsChordEntry,
   starsChordActionNeedsSlew,
 } from "./starsChord";
 export type {

@@ -1,6 +1,12 @@
 import { setSelectedAircraft, type World } from "@core";
 import { expireFilterEntry } from "./altitudeFilter";
-import { applyStarsChordAction, expireStarsChordEntry } from "./starsChord";
+import {
+  applyStarsChordAction,
+  cancelStarsChordEntry,
+  commitStarsChord,
+  expireStarsChordEntry,
+  rejectStarsChordEntry,
+} from "./starsChord";
 import { applyPanScreenDelta, screenToNm, type ScopeViewSize } from "./camera";
 import {
   HIT_RADIUS_CSS_PX,
@@ -42,8 +48,8 @@ export function handlePpiLeftClick(
   } else if (view.placeRangeRingArmed) {
     setRangeRingOrigin(view, nm.eastNm, nm.northNm);
     view.placeRangeRingArmed = false;
-  } else if (view.starsChordArmed) {
-    // Armed *J/*P: slew applies the chord and must not also accept inbound HO.
+  } else if (view.starsChordEntry.phase === "entry" || view.starsChordArmed) {
+    // Live or armed * chord: slew applies the command and must not also accept inbound HO.
     const hit = pickAircraftAt(
       world,
       cssX,
@@ -55,10 +61,23 @@ export function handlePpiLeftClick(
       view,
     );
     if (hit) {
-      setSelectedAircraft(world, hit.id);
-      applyStarsChordAction(view, world, view.starsChordArmed);
-      view.starsChordArmed = null;
-      return;
+      if (view.starsChordEntry.phase === "entry") {
+        const committed = commitStarsChord(view.starsChordEntry.buffer);
+        if (committed.kind === "action") {
+          setSelectedAircraft(world, hit.id);
+          applyStarsChordAction(view, world, committed.action);
+          cancelStarsChordEntry(view.starsChordEntry);
+          view.starsChordArmed = null;
+          return;
+        }
+        rejectStarsChordEntry(view.starsChordEntry, Date.now());
+        // Incomplete/invalid: do not swallow the click.
+      } else if (view.starsChordArmed) {
+        setSelectedAircraft(world, hit.id);
+        applyStarsChordAction(view, world, view.starsChordArmed);
+        view.starsChordArmed = null;
+        return;
+      }
     }
   }
   selectOrAcceptAircraftAt(

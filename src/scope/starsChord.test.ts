@@ -1,6 +1,13 @@
 import { expect, test } from "vitest";
 import { createWorld, makeTestAircraft } from "@core";
+import { beginFilterEntry, expireFilterEntry, idleFilterEntry } from "./altitudeFilter";
 import { shouldPaintAtpaGeometry } from "./atpaCone";
+import {
+  CHORD_TIMEOUT_MS,
+  SCOPE_CHORD_WINDOW_MS,
+  beginScopeChord,
+  isScopeChordLive,
+} from "./keymap";
 import { createScopeView } from "./scopeView";
 import {
   STARS_CHORD_NM_MAX,
@@ -17,7 +24,6 @@ import {
   type StarsChordAction,
   type StarsChordResult,
 } from "./starsChord";
-import { CHORD_TIMEOUT_MS } from "./keymap";
 
 function action(expected: StarsChordAction): StarsChordResult {
   return { kind: "action", action: expected };
@@ -154,12 +160,39 @@ test("FIL-style entry: * opens, keys append, Enter commits, Esc cancels, Backspa
   expect(formatStarsChordReadout(entry)).toBeNull();
 });
 
-test("stars chord entry times out at 1.5 s from last key", () => {
+test("live * chord buffer does not expire; INV flash still clears after 1.5 s", () => {
   const entry = idleStarsChordEntry();
   beginStarsChordEntry(entry, 0);
   handleStarsChordEntryKey(entry, "J", 100);
-  expect(expireStarsChordEntry(entry, 100 + CHORD_TIMEOUT_MS)).toBe(true);
+  expect(expireStarsChordEntry(entry, 100 + CHORD_TIMEOUT_MS * 10)).toBe(false);
+  expect(entry.phase).toBe("entry");
+  expect(entry.buffer).toBe("*J");
+  const late = handleStarsChordEntryKey(entry, "3", 100 + CHORD_TIMEOUT_MS * 10);
+  expect(late.consumed).toBe(true);
+  expect(entry.buffer).toBe("*J3");
+
+  const inv = idleStarsChordEntry();
+  beginStarsChordEntry(inv, 0);
+  handleStarsChordEntryKey(inv, "D", 100);
+  handleStarsChordEntryKey(inv, "Enter", 200);
+  expect(inv.rejection).toBe("*D INV");
+  expect(expireStarsChordEntry(inv, 200 + CHORD_TIMEOUT_MS - 1)).toBe(false);
+  expect(inv.rejection).toBe("*D INV");
+  expect(expireStarsChordEntry(inv, 200 + CHORD_TIMEOUT_MS)).toBe(true);
+  expect(inv.rejection).toBeNull();
+});
+
+test("L leader chord and F filter chord still expire on the 1.5 s window", () => {
+  const chord = beginScopeChord("L", 0, "L_");
+  expect(isScopeChordLive(chord, SCOPE_CHORD_WINDOW_MS)).toBe(true);
+  expect(isScopeChordLive(chord, SCOPE_CHORD_WINDOW_MS + 1)).toBe(false);
+
+  const filter = { minHundreds: 10, maxHundreds: 20 };
+  const entry = idleFilterEntry(filter);
+  beginFilterEntry(entry, filter, 0);
+  expect(expireFilterEntry(entry, filter, CHORD_TIMEOUT_MS)).toBe(true);
   expect(entry.phase).toBe("idle");
+  expect(filter).toEqual({ minHundreds: 10, maxHundreds: 20 });
 });
 
 test("ATPA *AE / *AI / *BE / *BI apply to slewed track; global when none slewed", () => {

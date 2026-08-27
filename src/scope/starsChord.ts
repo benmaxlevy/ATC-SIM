@@ -8,12 +8,13 @@
  * F7 `<MULTI FUNC>` inhibit commands (`M`, `C`, `Y`) remain deferred.
  *
  * Trainer delta: parser + PPI `*` entry only (same FIL-prompt grammar as the
- * altitude filter: buffer on the PPI, Enter commits, Esc cancels, Backspace
- * edits). Track-scoped `*J` / `*P` / `*J#` / `*P#` arm when nothing is slewed
- * and apply on the next target click (CRC enter-then-slew). No `window.prompt`,
- * no HTML `<input>`. `applyStarsChordAction` fills T02-46 in-trail / cone-mileage
- * flags, T02-48 per-track rings, cones, and size-readout inhibit, and ATPA
- * cone-enable (`*AE` / `*AI` / `*BE` / `*BI`). Not NAS STARS.
+ * altitude filter: buffer on the PPI, Esc cancels, Backspace edits). A complete
+ * buffer slews on the next target click with no Enter (R07 command-then-slew).
+ * Enter still applies immediately to the slewed track, or arms track-scoped
+ * `*J` / `*P` when nothing is slewed. No `window.prompt`, no HTML `<input>`.
+ * `applyStarsChordAction` fills T02-46 in-trail / cone-mileage flags, T02-48
+ * per-track rings, cones, and size-readout inhibit, and ATPA cone-enable
+ * (`*AE` / `*AI` / `*BE` / `*BI`). Not NAS STARS.
  */
 
 import type { World } from "@core";
@@ -178,19 +179,28 @@ export function cancelStarsChordEntry(entry: StarsChordEntry): void {
   entry.rejection = idle.rejection;
 }
 
+/** Reject a live buffer as `… INV` and idle it so the flash can auto-clear. */
+export function rejectStarsChordEntry(entry: StarsChordEntry, nowMs: number): void {
+  entry.rejection = `${entry.buffer} INV`;
+  entry.phase = "idle";
+  entry.buffer = "";
+  entry.lastKeyAtMs = nowMs;
+}
+
+/**
+ * Live `*` buffers never use the L/F 1.5 s window. They end only on Esc,
+ * a successful commit (Enter or slew click), or a new `*` chord.
+ * The brief `... INV` rejection flash still auto-clears on CHORD_TIMEOUT_MS.
+ */
 export function expireStarsChordEntry(entry: StarsChordEntry, nowMs: number): boolean {
-  if (entry.phase === "idle") {
-    if (entry.rejection != null && chordTimedOut(entry.lastKeyAtMs, nowMs, CHORD_TIMEOUT_MS)) {
-      entry.rejection = null;
-      return true;
-    }
+  if (entry.phase === "entry") {
     return false;
   }
-  if (!chordTimedOut(entry.lastKeyAtMs, nowMs, CHORD_TIMEOUT_MS)) {
-    return false;
+  if (entry.rejection != null && chordTimedOut(entry.lastKeyAtMs, nowMs, CHORD_TIMEOUT_MS)) {
+    entry.rejection = null;
+    return true;
   }
-  cancelStarsChordEntry(entry);
-  return true;
+  return false;
 }
 
 /** Format a committed chord back to the PPI readout (`*J3`, `*P`, `*J`). */
@@ -269,7 +279,8 @@ export interface StarsChordKeyOutcome {
 
 /**
  * Scope-focus `*` chord. Returns consumed when the key is taken (including
- * reject/cancel). Timeout clears the buffer with no throw. Never Command IR.
+ * reject/cancel). A live buffer never times out; only the INV flash does.
+ * Never Command IR.
  */
 export function handleStarsChordEntryKey(
   entry: StarsChordEntry,
@@ -302,10 +313,7 @@ export function handleStarsChordEntryKey(
       cancelStarsChordEntry(entry);
       return { consumed: true, action: committed.action };
     }
-    entry.rejection = `${entry.buffer} INV`;
-    entry.phase = "idle";
-    entry.buffer = "";
-    entry.lastKeyAtMs = nowMs;
+    rejectStarsChordEntry(entry, nowMs);
     return { consumed: true, action: null };
   }
   const ch = chordCharFromKey(key, code);
@@ -449,7 +457,8 @@ export function applyStarsChordAction(
  * Enter-commit: apply immediately when a slew target is present (or the action
  * needs none). Track-scoped `*J` / `*P` with nothing slewed arm and stay on
  * the PPI until the next target click, Esc, or a new `*` chord. `**J` / `**P`
- * and the four flag families never arm.
+ * still apply with no target. Flag families never arm; no-slew Enter falls
+ * back to the global `view.atpa` latch. A live buffer also slews on click.
  */
 export function armOrApplyStarsChordAction(
   view: ScopeView,
