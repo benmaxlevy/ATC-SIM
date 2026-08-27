@@ -1,0 +1,60 @@
+{
+  "id": "kdem-ils09",
+  "name": "Demo Field — ILS 09",
+  "icao": "KDEM",
+  "magVarDeg": 0,
+  "fieldElevFt": 0,
+  "arp": { "latDeg": 0, "lonDeg": 0 },
+  "activeRunwayId": "09",
+  "runways": [
+    {
+      "id": "09",
+      "headingTrueDeg": 90,
+      "headingMagDeg": 90,
+      "lengthFt": 10000,
+      "thresholdLatLon": { "latDeg": 0, "lonDeg": 0 }
+    }
+  ],
+  "approaches": [{ "id": "ILS09", "runwayId": "09", "type": "ILS" }],
+  "fixes": [],
+  "maps": {
+    "videoMapSet": "KDEM",
+    "rangeRings": {
+      "intervalNm": 5,
+      "maxNm": 60
+    }
+  },
+  "spawns": [
+    {
+      "id": "dem1-west-north",
+      "kind": "star",
+      "runwayId": "09",
+      "offsetNm": { "xNm": -18.5, "yNm": 13.5 }
+    }
+  ],
+  "arrivals": [
+    {
+      "callsign": "DAL123",
+      "xNm": -18.5,
+      "yNm": 13.5,
+      "headingDeg": 135,
+      "altitudeFt": 11000,
+      "speedKt": 250,
+      "aircraftType": "B738",
+      "starId": "DEM1",
+      "transitionId": "WN"
+    },
+    {
+      "callsign": "AAL45",
+      "xNm": -17,
+      "yNm": -12,
+      "headingDeg": 11,
+      "altitudeFt": 11000,
+      "speedKt": 250,
+      "aircraftType": "A320",
+      "starId": "DEM1",
+      "transitionId": "WS"
+    }
+  ],
+  "giTextLines": ["ATIS A", "RWY 09", "ILS 09 IN USE", "", "", "", "", "", "", ""]
+}

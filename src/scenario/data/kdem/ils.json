@@ -50,6 +50,54 @@
       "xNm": 0.55,
       "yNm": 0,
       "note": "Short final. Not a capture trigger."
+    },
+    {
+      "id": "IDEM09",
+      "kind": "LOC",
+      "name": "I-DEM 09",
+      "freqMhz": 109.5,
+      "courseDeg": 90,
+      "xNm": 0.2,
+      "yNm": 0,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "note": "Localizer antenna beyond departure end of rwy 09 (east of threshold). Course is inbound 090. Do not use antenna position as GS origin — threshold (-1.645,0) is GS origin."
+    },
+    {
+      "id": "IDEMGS09",
+      "kind": "GS",
+      "name": "I-DEM 09 GS",
+      "freqMhz": 332.0,
+      "gsAngleDeg": 3.0,
+      "tchFt": 50,
+      "xNm": -1.465,
+      "yNm": -0.07,
+      "note": "Glideslope antenna near threshold 09, south of centerline. GS height uses threshold + TCH + 3°, not this antenna xy."
+    },
+    {
+      "id": "IDEMDME09",
+      "kind": "DME",
+      "name": "I-DEM 09 DME",
+      "xNm": 0.2,
+      "yNm": 0,
+      "pairedWith": "IDEM09",
+      "note": "Collocated with the localizer 09. DME distance is not required for v1 intercept math."
+    },
+    {
+      "id": "OM09",
+      "kind": "OM",
+      "name": "ILS 09 outer marker",
+      "xNm": -7.845,
+      "yNm": 0,
+      "note": "Near FAF FI09. Marker passage is not a separate fly-through in v1."
+    },
+    {
+      "id": "MM09",
+      "kind": "MM",
+      "name": "ILS 09 middle marker",
+      "xNm": -2.195,
+      "yNm": 0,
+      "note": "Short final. Not a capture trigger."
     }
   ]
 }

@@ -35,13 +35,13 @@ test("AC1 — loaded KDEM video maps come from video-maps/KDEM", () => {
   const maps = loadKdem().maps;
   expect(maps.videoMapSet).toBe("KDEM");
   expect(maps.videoMaps.map((item) => item.id)).toEqual([
-    "RWY27",
+    "RWY",
     "LOC27",
-    "COAST",
-    "DWNWND",
-    "CLASS_B",
-    "DEM1",
-    "BAY1_SID",
+    "LOC09",
+    "DEM1_27",
+    "DEM1_09",
+    "BAY1_27",
+    "BAY1_09",
   ]);
   expect(maps.loadedVideoMaps).toHaveLength(7);
 });
@@ -52,7 +52,6 @@ test("loaded KDEM includes trainer-authored digital map geometry", () => {
     id: "27",
     thresholdEastNm: 0,
     thresholdNorthNm: 0,
-    lengthNm: 1.5,
     headingTrueDeg: 270,
     widthNm: 0.025,
   });
@@ -63,9 +62,7 @@ test("loaded KDEM includes trainer-authored digital map geometry", () => {
     halfWidthDeg: 2.5,
   });
   expect(maps.rangeRings).toEqual({ intervalNm: 5, maxNm: 60 });
-  expect(maps.coastline?.enabled).toBe(true);
-  expect(maps.coastline?.polyline.length).toBeGreaterThanOrEqual(2);
-  expect(maps.coastline?.note?.toLowerCase()).toMatch(/fictional/);
+  expect(maps.coastline).toBeUndefined();
 });
 
 test("assertScenario keeps spawning when maps.runway is missing", () => {

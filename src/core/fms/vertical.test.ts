@@ -403,3 +403,151 @@ test("AC3 — heading command cancels PROCEDURE and VIA_SID to HEADING and ASSIG
   expect(dal.intent.vertical).toEqual({ type: "ASSIGNED" });
   expect(dal.intent.assignedAltitudeFt).toBe(10000);
 });
+
+test("AC5 — FMS CLIMB_VIA computes correct vertical profile for RW09 departures", () => {
+  const registry = buildFixRegistry(kdemSource());
+  const bayes = registry.get("BAYES")!;
+
+  const ual = createAircraft({
+    id: "ac-ual-09",
+    callsign: "UAL456",
+    xNm: bayes.xNm - 2,
+    yNm: bayes.yNm,
+    headingDeg: 90,
+    altitudeFt: 1000,
+    speedKt: 200,
+  });
+  ual.intent.assignedAltitudeFt = 10000;
+  ual.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "BAY1",
+    starId: "BAY1",
+    toFixIndex: 0,
+    routeFixIds: ["BAYES", "BAYNE", "NORMA"],
+  };
+  ual.intent.vertical = { type: "VIA_SID", sidId: "BAY1" };
+
+  const log = new SessionLog();
+  const world = createWorld({
+    aircraft: [ual],
+    fixRegistry: registry,
+    sessionLog: log,
+    catalog: {
+      airportId: "KDEM",
+      navaids: [],
+      fixes: [],
+      stars: kdemCatalog().stars ?? [],
+      approaches: [],
+      sids: kdemCatalog().sids ?? [],
+    },
+  });
+
+  // Sequences BAYES (>= 1500 ft)
+  expect(stepUntilFix(world, "BAYES", 300)).toBe(true);
+  expect(ual.altitudeFt).toBeGreaterThanOrEqual(1500);
+
+  // Sequences BAYNE (>= 2500 ft, <= 250 kt)
+  expect(stepUntilFix(world, "BAYNE", 500)).toBe(true);
+  expect(ual.altitudeFt).toBeGreaterThanOrEqual(2500);
+  expect(ual.speedKt).toBeLessThanOrEqual(250 + 5);
+
+  // Aircraft continues climbing towards NORMA
+  expect(ual.intent.lateral?.type).toBe("PROCEDURE");
+  if (ual.intent.lateral?.type === "PROCEDURE") {
+    expect(ual.intent.lateral.toFixIndex).toBe(2);
+    expect(ual.intent.lateral.routeFixIds[ual.intent.lateral.toFixIndex]).toBe("NORMA");
+  }
+});
+
+test("AC6 — FMS DESCEND_VIA computes correct crossing altitude profile for DEM1 East Flow arrivals", () => {
+  const catalog = kdemCatalog();
+  const wnRoute = ["WEMAX", "WELBO", "WENJO", "WEMER"];
+  const wsRoute = ["SAMAX", "SALBO", "SANJO", "WEMER"];
+
+  const createArrival = (route: string[], toFixIndex: number) => {
+    const ac = createAircraft({
+      id: "ac-test",
+      callsign: "AAL100",
+      xNm: 0,
+      yNm: 0,
+      headingDeg: 90,
+      altitudeFt: 11000,
+      speedKt: 250,
+    });
+    ac.intent.assignedAltitudeFt = 4000;
+    ac.intent.assignedSpeedKt = 210;
+    ac.intent.lateral = {
+      type: "PROCEDURE",
+      starId: "DEM1",
+      toFixIndex,
+      routeFixIds: route,
+    };
+    ac.intent.vertical = { type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" };
+    return ac;
+  };
+
+  // WN transition crossing constraints
+  expect(applyVerticalFms(createArrival(wnRoute, 0), catalog).altitudeFt).toBe(10000);
+  expect(applyVerticalFms(createArrival(wnRoute, 1), catalog).altitudeFt).toBe(8000);
+  expect(applyVerticalFms(createArrival(wnRoute, 2), catalog).altitudeFt).toBe(6000);
+  expect(applyVerticalFms(createArrival(wnRoute, 3), catalog).altitudeFt).toBe(4000);
+
+  // WS transition crossing constraints
+  expect(applyVerticalFms(createArrival(wsRoute, 0), catalog).altitudeFt).toBe(10000);
+  expect(applyVerticalFms(createArrival(wsRoute, 1), catalog).altitudeFt).toBe(8000);
+  expect(applyVerticalFms(createArrival(wsRoute, 2), catalog).altitudeFt).toBe(6000);
+  expect(applyVerticalFms(createArrival(wsRoute, 3), catalog).altitudeFt).toBe(4000);
+
+  // Simulated descent along WN transition
+  const registry = buildFixRegistry(kdemSource());
+  const wemax = registry.get("WEMAX")!;
+
+  const aal = createAircraft({
+    id: "ac-aal-wn",
+    callsign: "AAL789",
+    xNm: wemax.xNm - 2,
+    yNm: wemax.yNm,
+    headingDeg: 90,
+    altitudeFt: 11000,
+    speedKt: 250,
+  });
+  aal.intent.assignedAltitudeFt = 4000;
+  aal.intent.lateral = {
+    type: "PROCEDURE",
+    starId: "DEM1",
+    toFixIndex: 0,
+    routeFixIds: ["WEMAX", "WELBO", "WENJO", "WEMER"],
+  };
+  aal.intent.vertical = { type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" };
+
+  const log = new SessionLog();
+  const world = createWorld({
+    aircraft: [aal],
+    fixRegistry: registry,
+    sessionLog: log,
+    catalog: {
+      airportId: "KDEM",
+      navaids: [],
+      fixes: [],
+      stars: kdemCatalog().stars ?? [],
+      approaches: [],
+      sids: kdemCatalog().sids ?? [],
+    },
+  });
+
+  // Sequences WEMAX
+  expect(stepUntilFix(world, "WEMAX", 300)).toBe(true);
+  expect(aal.altitudeFt).toBeGreaterThanOrEqual(10000 - 50);
+
+  // Sequences WELBO
+  expect(stepUntilFix(world, "WELBO", 500)).toBe(true);
+  expect(aal.altitudeFt).toBeGreaterThanOrEqual(8000 - 50);
+
+  // Sequences WENJO
+  expect(stepUntilFix(world, "WENJO", 500)).toBe(true);
+  expect(aal.altitudeFt).toBeGreaterThanOrEqual(6000 - 50);
+
+  // Sequences WEMER
+  expect(stepUntilFix(world, "WEMER", 500)).toBe(true);
+  expect(Math.round(aal.altitudeFt / 100) * 100).toBe(4000);
+});

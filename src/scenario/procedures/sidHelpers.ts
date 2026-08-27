@@ -4,7 +4,7 @@
  * across runway transitions, common route, and enroute transitions.
  */
 
-import type { ProcedureCatalog, SidProcedure } from "./types";
+import type { ProcedureCatalog, SidLeg, SidProcedure } from "./types";
 
 export function findSidProcedure(catalog: ProcedureCatalog, sidId: string): SidProcedure {
   const wantSid = sidId.trim().toUpperCase();
@@ -30,10 +30,13 @@ export function sidRouteFixIds(
   const fixIds: string[] = [];
 
   if (runwayId !== undefined) {
-    const wantRwy = runwayId.trim().toUpperCase();
-    const rt = sid.runwayTransitions?.find(
-      (item) => item.runwayId.trim().toUpperCase() === wantRwy,
-    );
+    const wantRwy = runwayId.replace(/^RW/i, "").trim().toUpperCase();
+    const wantPadded = wantRwy.length === 1 ? wantRwy.padStart(2, "0") : wantRwy;
+    const rt = sid.runwayTransitions?.find((item) => {
+      const r = item.runwayId.replace(/^RW/i, "").trim().toUpperCase();
+      const rPadded = r.length === 1 ? r.padStart(2, "0") : r;
+      return r === wantRwy || rPadded === wantPadded;
+    });
     if (!rt) {
       throw new Error(`Unknown runway transition ${runwayId} on SID ${sidId}`);
     }
@@ -54,7 +57,26 @@ export function sidRouteFixIds(
     if (!et) {
       throw new Error(`Unknown enroute transition ${transitionId} on SID ${sidId}`);
     }
-    for (const leg of et.legs) {
+    let etLegs: SidLeg[] | undefined;
+    if (runwayId !== undefined && et.runwayTransitions && et.runwayTransitions.length > 0) {
+      const wantRwy = runwayId.replace(/^RW/i, "").trim().toUpperCase();
+      const wantPadded = wantRwy.length === 1 ? wantRwy.padStart(2, "0") : wantRwy;
+      const rtMatch = et.runwayTransitions.find((rt) => {
+        const r = rt.runwayId.replace(/^RW/i, "").trim().toUpperCase();
+        const rPadded = r.length === 1 ? r.padStart(2, "0") : r;
+        return r === wantRwy || rPadded === wantPadded;
+      });
+      if (rtMatch) {
+        etLegs = rtMatch.legs;
+      }
+    }
+    if (!etLegs) {
+      etLegs = et.legs ?? et.runwayTransitions?.[0]?.legs;
+    }
+    if (!etLegs) {
+      throw new Error(`No legs found for enroute transition ${transitionId} on SID ${sidId}`);
+    }
+    for (const leg of etLegs) {
       if (fixIds.length === 0 || fixIds[fixIds.length - 1] !== leg.fixId) {
         fixIds.push(leg.fixId);
       }

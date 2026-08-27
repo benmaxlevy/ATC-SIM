@@ -5,7 +5,6 @@ import {
   createWorldForSession,
   loadPlayableScenario,
   parseDepartureOptions,
-  parseScenarioChoice,
   parseSpawnSeed,
   parseTrafficCount,
   defaultSessionSetup,
@@ -35,12 +34,18 @@ import { bootSession, createApp } from "./app/create-app";
 import "./index.css";
 
 const search = window.location.search;
-const scenario = loadPlayableScenario(parseScenarioChoice(search));
-const spawnSeed = parseSpawnSeed(search);
-const departureOptions = parseDepartureOptions(search);
-const sessionFallback = defaultSessionSetup(scenario.id);
+const sessionFallback = defaultSessionSetup();
 const sessionDraft = loadSessionSetup(window.localStorage, sessionFallback);
 const sessionResolution = resolveSessionSetup(search, sessionFallback, sessionDraft);
+const scenario = loadPlayableScenario(sessionResolution.setup.scenarioId);
+const spawnSeed = parseSpawnSeed(search);
+const departureQuery = parseDepartureOptions(search);
+const departureOptions = {
+  enabled: departureQuery.enabled && sessionResolution.setup.departuresPerHour > 0,
+  ratePerHour: departureQuery.ratePerHour ?? sessionResolution.setup.departuresPerHour,
+  count: departureQuery.count,
+  seed: departureQuery.seed ?? sessionResolution.setup.seed,
+};
 const speechBoot = loadAndResolveSpeechBoot();
 const handles = createApp({
   speech: speechBoot.port,

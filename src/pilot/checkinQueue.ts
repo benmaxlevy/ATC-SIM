@@ -157,6 +157,13 @@ export class CheckInQueue {
     return this.entries.slice();
   }
 
+  reset(): void {
+    this.entries.length = 0;
+    this.spawnCounter = 0;
+    this.playInFlight = false;
+    this.lastUtteranceEndSimMs = null;
+  }
+
   /**
    * One pending check-in per eligible arrival or departure.
    * Downwind / bench traffic without VIA is ignored.

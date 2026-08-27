@@ -49,10 +49,16 @@ export type {
 } from "./procedures/types";
 export { catalogDctIds } from "./procedures/types";
 export { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN, GI_TEXT_LINE_COUNT } from "./types";
-export { assertScenario, loadKdem, loadKdemIls27 } from "./load";
-export type { PlayableScenario, PlayableScenarioInventory } from "./playableScenarios";
+export { assertScenario, loadKdem, loadKdem09, loadKdemIls09, loadKdemIls27 } from "./load";
+export type {
+  PlayableAirport,
+  PlayableScenario,
+  PlayableScenarioInventory,
+} from "./playableScenarios";
 export {
   createPlayableScenarioInventory,
+  listConfigurationsForAirport,
+  listPlayableAirports,
   listPlayableScenarios,
   loadPlayableScenario,
 } from "./playableScenarios";
@@ -71,7 +77,13 @@ export {
   spawnArrivals,
   starRouteFixIds,
 } from "./spawn";
-export type { OutermostStarFix, StarInboundPose, StarRouteAssignment, StarSlot } from "./starSpawn";
+export type {
+  AssignStarRoutesArgs,
+  OutermostStarFix,
+  StarInboundPose,
+  StarRouteAssignment,
+  StarSlot,
+} from "./starSpawn";
 export {
   STAR_SPAWN_GATE_OFFSET_NM,
   STAR_SPAWN_STAGGER_NM,
@@ -88,6 +100,8 @@ export {
   DEPARTURE_SPAWN_SPEED_KT,
   DEFAULT_DEPARTURE_ALTITUDE_FT,
   departureSpawnPose,
+  resolveRunwayHeading,
+  resolveRunwayThreshold,
   spawnDeparture,
 } from "./departureSpawn";
 export type { DepartureSlot, GenerateDepartureScheduleOptions } from "./departureGenerator";

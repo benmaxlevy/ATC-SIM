@@ -10,7 +10,13 @@ import {
 } from "@speech";
 import { expect, test, vi } from "vitest";
 import { handleRadioText } from "@pilot";
-import { createWorldFromScenario, loadKdem, loadKdemIls27 } from "@scenario";
+import {
+  createWorldForSession,
+  createWorldFromScenario,
+  loadKdem,
+  loadKdemIls27,
+  loadPlayableScenario,
+} from "@scenario";
 import {
   PALETTE,
   createScopeView,
@@ -83,7 +89,7 @@ test("T01-14 playable slice: main wires spawn, speech factory, rAF, and resize p
   expect(main).toMatch(/createWorldForSession/);
   expect(main).toMatch(/parseTrafficCount/);
   expect(main).toMatch(/parseSpawnSeed/);
-  expect(main).toMatch(/parseScenarioChoice/);
+  expect(main).toMatch(/resolveSessionSetup/);
   expect(main).toMatch(/loadPlayableScenario/);
   expect(main).not.toMatch(/loadKdem|loadKdemIls27/);
   expect(main).toMatch(/loadAndResolveSpeechBoot/);
@@ -774,4 +780,31 @@ test("bootSession persists a non-default spawn seed", () => {
   const app = createApp({ speech: new NullSpeechPort() });
   bootSession(app, loadKdem(), 1_700_000_000_000, 42);
   expect(app.log.all()[0]).toMatchObject({ type: "session.started", seed: 42 });
+});
+
+test("replaceWorld dynamically updates app.world and switches scenario traffic", () => {
+  const westScenario = loadKdem();
+  const initialWorld = createWorldForSession(westScenario, null, 1);
+  const app = createApp({
+    speech: new NullSpeechPort(),
+    world: initialWorld,
+  });
+  expect(app.world).toBe(initialWorld);
+  expect(app.world.aircraft[0]?.intent.lateral?.type).toBe("PROCEDURE");
+  if (app.world.aircraft[0]?.intent.lateral?.type === "PROCEDURE") {
+    expect(app.world.aircraft[0].intent.lateral.routeFixIds).toContain("MERGE");
+  }
+
+  // Switch to East Flow
+  const eastScenario = loadPlayableScenario("kdem-09");
+  const eastWorld = createWorldForSession(eastScenario, null, 2);
+  app.replaceWorld(eastWorld);
+
+  // app.world returns the new world dynamically
+  expect(app.world).toBe(eastWorld);
+  expect(app.world.aircraft[0]?.intent.lateral?.type).toBe("PROCEDURE");
+  if (app.world.aircraft[0]?.intent.lateral?.type === "PROCEDURE") {
+    expect(app.world.aircraft[0].intent.lateral.routeFixIds).toContain("WEMER");
+    expect(app.world.aircraft[0].intent.lateral.routeFixIds).not.toContain("MERGE");
+  }
 });

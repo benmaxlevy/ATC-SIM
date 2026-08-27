@@ -32,6 +32,7 @@ import {
   installAlwaysOnScopeKeys,
   scopeFocusFromDocument,
   focusRadioCommandLine,
+  parseDigitalMap,
   type ScopeView,
 } from "@scope";
 import type { AppHandles } from "../app/create-app";
@@ -248,9 +249,16 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
               },
             ),
           );
+          scopeView.tracks.clear();
+          scopeView.giTextLines = nextScenario.giTextLines;
+          scopeView.digitalMap = parseDigitalMap(nextScenario.maps);
+          if (typeof document !== "undefined") {
+            document.title = `ATC-SIM — ${nextScenario.name}`;
+          }
           setSetup(next);
           setActiveScenario(nextScenario);
           setSetupOpen(false);
+          refreshScopeUi();
         }}
       />
     </div>

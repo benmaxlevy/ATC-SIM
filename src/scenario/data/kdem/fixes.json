@@ -75,7 +75,91 @@
       "kind": "THRESHOLD",
       "xNm": -1.645,
       "yNm": 0,
-      "note": "Opposite threshold (10000 ft rwy). No ILS 09 in v1"
+      "note": "Runway 09 threshold / GS origin"
+    },
+    {
+      "id": "FI09",
+      "kind": "FAF",
+      "xNm": -7.645,
+      "yNm": 0,
+      "note": "ILS 09 FAF. GS intercept ~2000 ft"
+    },
+    {
+      "id": "WEMER",
+      "kind": "INTERSECTION",
+      "xNm": -11.645,
+      "yNm": 0,
+      "note": "DEMO ONE west merge / vectors. 10 NM west of threshold 09."
+    },
+    {
+      "id": "WEMAX",
+      "kind": "INTERSECTION",
+      "xNm": -18.645,
+      "yNm": 12,
+      "note": "DEMO ONE northwest entry ~21 NM"
+    },
+    {
+      "id": "WELBO",
+      "kind": "INTERSECTION",
+      "xNm": -17.645,
+      "yNm": 7,
+      "note": "Northwest dogleg"
+    },
+    {
+      "id": "WENJO",
+      "kind": "INTERSECTION",
+      "xNm": -13.645,
+      "yNm": 4,
+      "note": "Northwest join toward WEMER"
+    },
+    {
+      "id": "SAMAX",
+      "kind": "INTERSECTION",
+      "xNm": -18.645,
+      "yNm": -12,
+      "note": "DEMO ONE southwest entry ~21 NM"
+    },
+    {
+      "id": "SALBO",
+      "kind": "INTERSECTION",
+      "xNm": -17.645,
+      "yNm": -7,
+      "note": "Southwest dogleg"
+    },
+    {
+      "id": "SANJO",
+      "kind": "INTERSECTION",
+      "xNm": -13.645,
+      "yNm": -4,
+      "note": "Southwest join toward WEMER"
+    },
+    {
+      "id": "BAYES",
+      "kind": "WAYPOINT",
+      "xNm": 2.355,
+      "yNm": 0,
+      "note": "BAY1 East departure climb gate along RW09 centerline"
+    },
+    {
+      "id": "BAYNE",
+      "kind": "WAYPOINT",
+      "xNm": 6.355,
+      "yNm": 4.5,
+      "note": "BAY1 Northeast transition curving waypoint"
+    },
+    {
+      "id": "BAYSE",
+      "kind": "WAYPOINT",
+      "xNm": 5.355,
+      "yNm": -6,
+      "note": "BAY1 Southeast transition curving waypoint"
+    },
+    {
+      "id": "MISSE",
+      "kind": "MAPT",
+      "xNm": 6.355,
+      "yNm": 6,
+      "note": "Missed-approach stub DIRECT target for RW09"
     },
     {
       "id": "MISSD",

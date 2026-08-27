@@ -4,10 +4,10 @@
   "note": "Trainer-authored video maps. Points are NM east/north of KDEM ARP. Not OSM, not NAS STARS.",
   "maps": [
     {
-      "id": "RWY27",
-      "file": "001-rwy27.json",
+      "id": "RWY",
+      "file": "001-rwy.json",
       "dcbNumber": 1,
-      "dcbLabel": "RWY27",
+      "dcbLabel": "RWY",
       "role": "runway",
       "defaultOn": true,
       "color": "map"
@@ -22,44 +22,44 @@
       "color": "map"
     },
     {
-      "id": "COAST",
-      "file": "003-coast.json",
+      "id": "LOC09",
+      "file": "003-loc09.json",
       "dcbNumber": 3,
-      "dcbLabel": "COAST",
-      "role": "coastline",
-      "defaultOn": true,
+      "dcbLabel": "LOC09",
+      "role": "localizer",
+      "defaultOn": false,
       "color": "map"
     },
     {
-      "id": "DWNWND",
-      "file": "004-downwind.json",
+      "id": "DEM1_27",
+      "file": "004-dem1-star-27.json",
       "dcbNumber": 4,
-      "dcbLabel": "DWNWND",
-      "defaultOn": true,
-      "color": "mapDim"
-    },
-    {
-      "id": "CLASS_B",
-      "file": "005-class-b.json",
-      "dcbNumber": 5,
-      "dcbLabel": "CLASS_B",
-      "defaultOn": true,
-      "color": "mapDim"
-    },
-    {
-      "id": "DEM1",
-      "file": "006-dem1-star.json",
-      "dcbNumber": 6,
-      "dcbLabel": "DEM1",
+      "dcbLabel": "DEM1_27",
       "defaultOn": true,
       "color": "map"
     },
     {
-      "id": "BAY1_SID",
-      "file": "007-bay1-sid.json",
-      "dcbNumber": 7,
-      "dcbLabel": "BAY1",
+      "id": "DEM1_09",
+      "file": "005-dem1-star-09.json",
+      "dcbNumber": 5,
+      "dcbLabel": "DEM1_09",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "BAY1_27",
+      "file": "006-bay1-sid-27.json",
+      "dcbNumber": 6,
+      "dcbLabel": "BAY1_27",
       "defaultOn": true,
+      "color": "map"
+    },
+    {
+      "id": "BAY1_09",
+      "file": "007-bay1-sid-09.json",
+      "dcbNumber": 7,
+      "dcbLabel": "BAY1_09",
+      "defaultOn": false,
       "color": "map"
     }
   ]

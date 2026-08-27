@@ -1,0 +1,97 @@
+{
+  "id": "DEM1_09",
+  "name": "DEMO ONE arrival RWY 09",
+  "note": "Trainer-authored video map (MAPS). Independent of STAR/fix catalog. Restriction boxes are copied onto the drawing (alt hundreds / speed kt); changing procedures.json does not change this map.",
+  "features": [
+    {
+      "type": "polyline",
+      "closed": false,
+      "pointsNm": [
+        [-18.645, 12.0],
+        [-17.645, 7.0],
+        [-13.645, 4.0],
+        [-11.645, 0.0]
+      ]
+    },
+    {
+      "type": "polyline",
+      "closed": false,
+      "pointsNm": [
+        [-18.645, -12.0],
+        [-17.645, -7.0],
+        [-13.645, -4.0],
+        [-11.645, 0.0]
+      ]
+    },
+    {
+      "type": "text",
+      "text": "WEMAX",
+      "atNm": [-19.0, 12.5]
+    },
+    {
+      "type": "text",
+      "text": "------\n100\n250\n------",
+      "atNm": [-17.5, 12.5]
+    },
+    {
+      "type": "text",
+      "text": "WELBO",
+      "atNm": [-18.0, 7.4]
+    },
+    {
+      "type": "text",
+      "text": "------\n80\n230\n------",
+      "atNm": [-16.5, 7.4]
+    },
+    {
+      "type": "text",
+      "text": "WENJO",
+      "atNm": [-14.0, 4.5]
+    },
+    {
+      "type": "text",
+      "text": "------\n60\n210\n------",
+      "atNm": [-12.5, 4.5]
+    },
+    {
+      "type": "text",
+      "text": "SAMAX",
+      "atNm": [-19.0, -12.5]
+    },
+    {
+      "type": "text",
+      "text": "------\n100\n250\n------",
+      "atNm": [-17.5, -12.5]
+    },
+    {
+      "type": "text",
+      "text": "SALBO",
+      "atNm": [-18.0, -7.5]
+    },
+    {
+      "type": "text",
+      "text": "------\n80\n230\n------",
+      "atNm": [-16.5, -7.5]
+    },
+    {
+      "type": "text",
+      "text": "SANJO",
+      "atNm": [-14.0, -4.6]
+    },
+    {
+      "type": "text",
+      "text": "------\n60\n210\n------",
+      "atNm": [-12.5, -4.6]
+    },
+    {
+      "type": "text",
+      "text": "WEMER",
+      "atNm": [-11.645, 0.6]
+    },
+    {
+      "type": "text",
+      "text": "------\n40\n210\n------",
+      "atNm": [-11.645, 1.9]
+    }
+  ]
+}

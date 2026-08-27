@@ -1,0 +1,93 @@
+{
+  "id": "KDEM",
+  "name": "Demo Field (RWY 09)",
+  "icao": "KDEM",
+  "magVarDeg": 0,
+  "fieldElevFt": 0,
+  "arp": { "latDeg": 0, "lonDeg": 0 },
+  "activeRunwayId": "09",
+  "spawnPolicy": "star-inbound",
+  "runways": [
+    {
+      "id": "09",
+      "headingTrueDeg": 90,
+      "headingMagDeg": 90,
+      "lengthFt": 10000,
+      "thresholdLatLon": { "latDeg": 0, "lonDeg": 0 }
+    }
+  ],
+  "approaches": [{ "id": "ILS09", "runwayId": "09", "type": "ILS" }],
+  "fixes": [],
+  "maps": {
+    "videoMapSet": "KDEM",
+    "rangeRings": {
+      "intervalNm": 5,
+      "maxNm": 60
+    }
+  },
+  "spawns": [
+    {
+      "id": "downwind",
+      "kind": "downwind",
+      "runwayId": "09",
+      "offsetNm": { "xNm": 0, "yNm": 8 }
+    }
+  ],
+  "arrivals": [
+    {
+      "callsign": "DAL123",
+      "xNm": -16,
+      "yNm": 8,
+      "headingDeg": 280,
+      "altitudeFt": 8000,
+      "speedKt": 220,
+      "aircraftType": "B738"
+    },
+    {
+      "callsign": "AAL45",
+      "xNm": -12,
+      "yNm": 5,
+      "headingDeg": 270,
+      "altitudeFt": 7000,
+      "speedKt": 230,
+      "aircraftType": "A320"
+    },
+    {
+      "callsign": "UAL200",
+      "xNm": -18,
+      "yNm": 10,
+      "headingDeg": 265,
+      "altitudeFt": 9000,
+      "speedKt": 240,
+      "aircraftType": "B739"
+    },
+    {
+      "callsign": "SWA88",
+      "xNm": -14,
+      "yNm": 4,
+      "headingDeg": 275,
+      "altitudeFt": 6000,
+      "speedKt": 210,
+      "aircraftType": "B737"
+    },
+    {
+      "callsign": "JBU17",
+      "xNm": -20,
+      "yNm": 11,
+      "headingDeg": 260,
+      "altitudeFt": 10000,
+      "speedKt": 250,
+      "aircraftType": "A321"
+    },
+    {
+      "callsign": "NKS310",
+      "xNm": -22,
+      "yNm": 6,
+      "headingDeg": 268,
+      "altitudeFt": 8500,
+      "speedKt": 225,
+      "aircraftType": "A320"
+    }
+  ],
+  "giTextLines": ["ATIS A", "RWY 09", "ILS 09 IN USE", "", "", "", "", "", "", ""]
+}

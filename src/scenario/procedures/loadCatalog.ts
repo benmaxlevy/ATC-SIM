@@ -52,8 +52,8 @@ const ALT_TYPES = new Set(["AT", "AT_OR_ABOVE", "AT_OR_BELOW"]);
 
 const NAVAID_CLASSES = new Set(["T", "L", "H"]);
 
-/** ILS DME ids (IDEMDME) are 7 chars; keep the ceiling at 8. */
-const ID_RE = /^[A-Z0-9]{2,8}$/;
+/** ILS DME ids (IDEMDME, IDEMDME09) are up to 9 chars; keep the ceiling at 10. */
+const ID_RE = /^[A-Z0-9]{2,10}$/;
 
 const REQUIRED_FILES = ["vors", "ndbs", "ils", "fixes", "procedures", "sids"] as const;
 
@@ -173,9 +173,18 @@ function parseStarTransition(value: unknown, path: string): StarTransition {
   if (!isRecord(value)) {
     throw new Error(`Catalog ${path} must be an object`);
   }
+  const runwayId = optionalString(value.runwayId, `${path}.runwayId`);
+  const runways =
+    value.runways !== undefined
+      ? assertArray(value.runways, `${path}.runways`).map((r, i) =>
+          assertString(r, `${path}.runways[${i}]`),
+        )
+      : undefined;
   return {
     id: assertString(value.id, `${path}.id`),
     name: assertString(value.name, `${path}.name`),
+    ...(runwayId !== undefined ? { runwayId } : {}),
+    ...(runways !== undefined ? { runways } : {}),
     legs: assertArray(value.legs, `${path}.legs`).map((leg, i) =>
       parseStarLeg(leg, `${path}.legs[${i}]`),
     ),
@@ -243,12 +252,28 @@ function parseSidEnrouteTransition(value: unknown, path: string): SidEnrouteTran
   if (!isRecord(value)) {
     throw new Error(`Catalog ${path} must be an object`);
   }
+  const id = assertString(value.id, `${path}.id`);
+  const name = assertString(value.name, `${path}.name`);
+  const legs =
+    value.legs !== undefined
+      ? assertArray(value.legs, `${path}.legs`).map((leg, i) =>
+          parseSidLeg(leg, `${path}.legs[${i}]`),
+        )
+      : undefined;
+  const runwayTransitions =
+    value.runwayTransitions !== undefined
+      ? assertArray(value.runwayTransitions, `${path}.runwayTransitions`).map((item, i) =>
+          parseSidRunwayTransition(item, `${path}.runwayTransitions[${i}]`),
+        )
+      : undefined;
+  if (!legs && !runwayTransitions) {
+    throw new Error(`Catalog ${path} must have legs or runwayTransitions`);
+  }
   return {
-    id: assertString(value.id, `${path}.id`),
-    name: assertString(value.name, `${path}.name`),
-    legs: assertArray(value.legs, `${path}.legs`).map((leg, i) =>
-      parseSidLeg(leg, `${path}.legs[${i}]`),
-    ),
+    id,
+    name,
+    ...(legs !== undefined ? { legs } : {}),
+    ...(runwayTransitions !== undefined ? { runwayTransitions } : {}),
   };
 }
 
@@ -286,7 +311,13 @@ function parseSid(value: unknown, index: number): SidProcedure {
   const legCount =
     common.length +
     (runwayTransitions?.reduce((sum, t) => sum + t.legs.length, 0) ?? 0) +
-    (enrouteTransitions?.reduce((sum, t) => sum + t.legs.length, 0) ?? 0);
+    (enrouteTransitions?.reduce(
+      (sum, t) =>
+        sum +
+        (t.legs?.length ?? 0) +
+        (t.runwayTransitions?.reduce((rtSum, rt) => rtSum + rt.legs.length, 0) ?? 0),
+      0,
+    ) ?? 0);
   if (legCount === 0) {
     throw new Error(
       `Catalog ${path} is empty (no runway transition, common, or enroute transition legs)`,
@@ -531,8 +562,21 @@ function validateRefs(catalog: ProcedureCatalog, ids: Set<string>): void {
     }
     if (sid.enrouteTransitions) {
       for (const et of sid.enrouteTransitions) {
-        for (const [i, leg] of et.legs.entries()) {
-          requireRef(ids, leg.fixId, `SID ${sid.id} enrouteTransition ${et.id} legs[${i}].fixId`);
+        if (et.legs) {
+          for (const [i, leg] of et.legs.entries()) {
+            requireRef(ids, leg.fixId, `SID ${sid.id} enrouteTransition ${et.id} legs[${i}].fixId`);
+          }
+        }
+        if (et.runwayTransitions) {
+          for (const rt of et.runwayTransitions) {
+            for (const [i, leg] of rt.legs.entries()) {
+              requireRef(
+                ids,
+                leg.fixId,
+                `SID ${sid.id} enrouteTransition ${et.id} runwayTransition ${rt.runwayId} legs[${i}].fixId`,
+              );
+            }
+          }
         }
       }
     }

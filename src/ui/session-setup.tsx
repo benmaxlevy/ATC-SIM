@@ -7,10 +7,13 @@ import {
   SESSION_INITIAL_COUNT_MAX,
   SESSION_INITIAL_COUNT_MIN,
   defaultSessionSetup,
+  listConfigurationsForAirport,
+  listPlayableAirports,
   listPlayableScenarios,
   loadPlayableScenario,
   loadSessionSetup,
   saveSessionSetup,
+  type PlayableAirport,
   type PlayableScenario,
   type SessionSetup,
 } from "@scenario";
@@ -26,8 +29,15 @@ export function SessionSetup({ open, initial, onCancel, onApply }: SessionSetupP
   const openerRef = useRef<HTMLElement | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState(initial);
-  const entries = listPlayableScenarios().filter((entry) => entry.sessionSetupVisible);
-  const selectedEntry = entries.find((entry) => entry.id === draft.scenarioId) ?? entries[0];
+  const airports = listPlayableAirports();
+  const allScenarios = listPlayableScenarios();
+  const currentScenario = allScenarios.find((entry) => entry.id === draft.scenarioId);
+  const selectedAirportIcao = currentScenario?.airportIcao ?? airports[0]?.airportIcao ?? "KDEM";
+  const availableConfigs = listConfigurationsForAirport(selectedAirportIcao);
+  const selectedEntry =
+    availableConfigs.find((entry) => entry.id === draft.scenarioId) ??
+    availableConfigs.find((entry) => entry.default) ??
+    availableConfigs[0];
   const selectedScenario = selectedEntry ? loadPlayableScenario(selectedEntry.id) : null;
   const departureAvailable =
     selectedScenario?.departureConfig?.policy !== "none" &&
@@ -66,6 +76,15 @@ export function SessionSetup({ open, initial, onCancel, onApply }: SessionSetupP
     }));
   }
 
+  function handleAirportChange(newIcao: string): void {
+    const targetAirport = airports.find((a) => a.airportIcao === newIcao);
+    const configs = listConfigurationsForAirport(newIcao);
+    const defaultScenarioId = targetAirport?.defaultScenarioId ?? configs[0]?.id;
+    if (defaultScenarioId) {
+      update("scenarioId", defaultScenarioId);
+    }
+  }
+
   function apply(): void {
     if (
       selectedEntry &&
@@ -90,14 +109,29 @@ export function SessionSetup({ open, initial, onCancel, onApply }: SessionSetupP
         <h2 id="session-setup-title">Session setup</h2>
         <p>Trainer controls apply when starting or restarting a session.</p>
         <label>
-          Scenario
+          Airport
           <select
+            aria-label="Airport"
+            value={selectedAirportIcao}
+            onChange={(event) => handleAirportChange(event.target.value)}
+          >
+            {airports.map((airport: PlayableAirport) => (
+              <option key={airport.airportIcao} value={airport.airportIcao}>
+                {airport.airportLabel}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Configuration
+          <select
+            aria-label="Configuration"
             value={selectedEntry?.id ?? ""}
             onChange={(event) => update("scenarioId", event.target.value)}
           >
-            {entries.map((entry: PlayableScenario) => (
+            {availableConfigs.map((entry: PlayableScenario) => (
               <option key={entry.id} value={entry.id}>
-                {entry.airportIcao} — {entry.label}
+                {entry.configLabel ?? entry.label}
               </option>
             ))}
           </select>
@@ -122,18 +156,18 @@ export function SessionSetup({ open, initial, onCancel, onApply }: SessionSetupP
             onChange={(event) => update("arrivalsPerHour", event.target.value)}
           />
         </label>
-        {departureAvailable ? (
-          <label>
-            Departures/hour
-            <input
-              type="number"
-              min={SESSION_DEPARTURES_PER_HOUR_MIN}
-              max={SESSION_DEPARTURES_PER_HOUR_MAX}
-              value={draft.departuresPerHour}
-              onChange={(event) => update("departuresPerHour", event.target.value)}
-            />
-          </label>
-        ) : (
+        <label>
+          Departures/hour
+          <input
+            type="number"
+            min={SESSION_DEPARTURES_PER_HOUR_MIN}
+            max={SESSION_DEPARTURES_PER_HOUR_MAX}
+            value={draft.departuresPerHour}
+            disabled={!departureAvailable}
+            onChange={(event) => update("departuresPerHour", event.target.value)}
+          />
+        </label>
+        {!departureAvailable && (
           <p role="status">
             Departures/hour unavailable: selected scenario has no departure capability.
           </p>

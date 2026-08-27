@@ -1,6 +1,6 @@
 {
   "airportId": "KDEM",
-  "note": "DEMO ONE: north and south transitions merge at MERGE, then VECTORS. Video map 006 is a separate MAPS drawing. SIDs are sids.json.",
+  "note": "DEMO ONE: north/south transitions merge at MERGE (West Flow), west-north/west-south transitions merge at WMERG (East Flow), then VECTORS. Video map 006 is a separate MAPS drawing. SIDs are sids.json.",
   "stars": [
     {
       "id": "DEM1",
@@ -9,6 +9,7 @@
         {
           "id": "N",
           "name": "NORTH",
+          "runwayId": "27",
           "legs": [
             {
               "fixId": "NEMAX",
@@ -24,12 +25,18 @@
               "fixId": "NJOIN",
               "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 },
               "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+            },
+            {
+              "fixId": "MERGE",
+              "altConstraint": { "type": "AT", "altitudeFt": 4000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
             }
           ]
         },
         {
           "id": "S",
           "name": "SOUTH",
+          "runwayId": "27",
           "legs": [
             {
               "fixId": "SEMAX",
@@ -45,17 +52,70 @@
               "fixId": "SJOIN",
               "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 },
               "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+            },
+            {
+              "fixId": "MERGE",
+              "altConstraint": { "type": "AT", "altitudeFt": 4000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+            }
+          ]
+        },
+        {
+          "id": "WN",
+          "name": "WEST-NORTH",
+          "runwayId": "09",
+          "legs": [
+            {
+              "fixId": "WEMAX",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 10000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+            },
+            {
+              "fixId": "WELBO",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 8000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 230 }
+            },
+            {
+              "fixId": "WENJO",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+            },
+            {
+              "fixId": "WEMER",
+              "altConstraint": { "type": "AT", "altitudeFt": 4000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+            }
+          ]
+        },
+        {
+          "id": "WS",
+          "name": "WEST-SOUTH",
+          "runwayId": "09",
+          "legs": [
+            {
+              "fixId": "SAMAX",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 10000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+            },
+            {
+              "fixId": "SALBO",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 8000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 230 }
+            },
+            {
+              "fixId": "SANJO",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+            },
+            {
+              "fixId": "WEMER",
+              "altConstraint": { "type": "AT", "altitudeFt": 4000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
             }
           ]
         }
       ],
-      "common": [
-        {
-          "fixId": "MERGE",
-          "altConstraint": { "type": "AT", "altitudeFt": 4000 },
-          "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
-        }
-      ],
+      "common": [],
       "termination": "VECTORS"
     }
   ],
@@ -81,6 +141,29 @@
         "headingDeg": 270,
         "climbToFt": 3000,
         "directFixId": "MISSD"
+      }
+    },
+    {
+      "id": "ILS09",
+      "type": "ILS",
+      "runway": "09",
+      "name": "ILS RWY 09",
+      "locNavaidId": "IDEM09",
+      "gsNavaidId": "IDEMGS09",
+      "fafFixId": "FI09",
+      "thresholdFixId": "RW09",
+      "courseDeg": 90,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "gsAngleDeg": 3.0,
+      "tchFt": 50,
+      "fafDistanceNm": 6,
+      "gsInterceptAltFt": 2000,
+      "daFt": 200,
+      "missed": {
+        "headingDeg": 90,
+        "climbToFt": 3000,
+        "directFixId": "MISSE"
       }
     }
   ]

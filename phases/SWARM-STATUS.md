@@ -1,6 +1,18 @@
 # Swarm status
 
-## ELEVENTH SWARM COMPLETE — Phase 2 STARS CRC datablock & scratchpad fidelity addendum (T02-39–42)
+## THIRTEENTH SWARM COMPLETE — Dual-runway configuration & selection (T04-26–30, T05-14)
+
+T04-26–30 and T05-14 are merged on `feature/dual-runway-configuration`. Captain `npm test` / `npm run ci`: **124 test files passed, 1415 tests passed, 1 skipped, 0 failures**. Complete dual-runway configuration, reciprocal approaches, SIDs/STARs, video maps, and dual-selector session setup overhaul:
+- **KDEM Runway 09 Navaids & ILS Approach (T04-26):** Reciprocal East Flow catalog definitions in `src/scenario/data/kdem/` including `FI09` FAF, `WMERG` merge fix, `WNMAX`/`WSMAX` entry fixes, `BAYEA` departure climb gate, `MISSE` missed fix, and full ILS navaids (`IDEM09` LOC, `IDEMGS09` GS, `IDEMDME09` DME, `OM09`, `MM09`).
+- **Dual-Runway SIDs and STARs (T04-27):** `BAY1` departure enhanced with Runway 09 runway transition (initial heading 090°, climb to `BAYEA`) and per-runway enroute transitions to `NORMA` and `OCTTA`. `DEM1` STAR enhanced with East Flow transitions `WN` (West-North) and `WS` (West-South) terminating at `WMERG` (4000 ft / 210 kt). Verified full lateral/vertical FMS `CLIMB_VIA` and `DESCEND_VIA` guidance.
+- **KDEM RW09 Video Maps & Playable Scenarios (T04-28):** Dedicated procedure and radar video maps for Runway 09 (`LOC09` feather, `DWN09` downwind pattern), dual-ended runway centerline map, and new playable scenarios `kdem-09` (East Flow default) and `kdem-ils09` (East Flow ILS benchmark) registered in playable inventory.
+- **Configuration-Aware Traffic Spawning (T04-29):** Arrival scheduler (`assignStarRoutes`) and departure generator dynamically select STAR transitions and SID runway transitions matching the active scenario's configuration and runway (RW27 $\to$ `N`/`S` $\to$ `MERGE` & `BAYEE`; RW09 $\to$ `WN`/`WS` $\to$ `WMERG` & `BAYEA`). Successive departures maintain >= 60s spacing, and downwind benchmark spawns derive offsets relative to the active runway.
+- **Dual Airport & Configuration Selectors (T05-14):** Session Setup modal renders two separate accessible dropdowns ("Airport" and "Configuration") derived dynamically from inventory metadata without hardcoded UI lists. Supports `atc-sim.session.v1` draft persistence, query parameter overrides, and restart confirmation.
+- **End-to-End Dual Runway Integration & Acceptance (T04-30):** Full automated acceptance test suite in `src/scenario/dualRunwayIntegration.test.ts` proving complete flight cycles (STAR descent via constraints $\to$ vectoring $\to$ ILS capture $\to$ landing / missed approach $\to$ SID departures $\to$ Center handoff) across both West Flow and East Flow.
+
+**Merged (squash-merged, captains only):** T04-26 (`21c0ac4`), T04-27 (`80b32a9`), T04-29 (`d4a51e6`), T04-28 (`7fbc674`), T05-14 (`bfa8f16`), T04-30 (`4528126`).
+
+---
 
 T02-39–42 are merged on `feature/stars-crc-datablock-fidelity`. Captain `npm test` / `npm run ci`: **117 test files passed, 1345 tests passed, 1 skipped, 0 failures**. Complete STARS CRC datablock, scratchpad, ground speed tens, and multi-phase time-sharing fidelity overhaul:
 - **Automatic Scratchpad Derivation (T02-39):** `sp1` and `sp2` fields on `TrackDisplay`. SP1 automatically derives approach shorthand (`ILS 27` $\to$ `I27`, `RNAV 22L` $\to$ `R22L`, `VISUAL 28` $\to$ `V28`, `LOC 09` $\to$ `L09`, `VOR 15` $\to$ `O15`) as highest priority, falling back to interim altitude in 3-digit hundreds (`040`) when no approach is set. SP2 automatically derives speed shorthand with `S` prefix and 2-digit tens (`210 kt` $\to$ `S21`). Manual entries override and persist until cleared.

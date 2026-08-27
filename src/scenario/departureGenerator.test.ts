@@ -178,4 +178,35 @@ describe("departureGenerator", () => {
       }
     }
   });
+
+  test("T04-29 AC5 — Successive departures on RW09 maintain >= 60s simulated spacing", () => {
+    const schedule = generateDepartureSchedule({
+      catalog: scenario.catalog,
+      seed: 42,
+      ratePerHour: 20,
+      count: 15,
+      runwayId: "09",
+    });
+
+    expect(schedule.length).toBe(15);
+    expect(schedule.every((dep) => dep.runwayId === "09")).toBe(true);
+    for (let i = 1; i < schedule.length; i += 1) {
+      const prev = schedule[i - 1]!;
+      const curr = schedule[i]!;
+      const deltaMs = curr.scheduledSimMs - prev.scheduledSimMs;
+      expect(deltaMs).toBeGreaterThanOrEqual(60_000);
+      expect(deltaMs).toBeGreaterThanOrEqual(MIN_DEPARTURE_INTERVAL_S * 1000);
+    }
+  });
+
+  test("T04-29 — listDepartureSlots resolves slots for RW09", () => {
+    const slots = listDepartureSlots(scenario.catalog, "09");
+    expect(slots.length).toBeGreaterThanOrEqual(2);
+    expect(slots).toEqual(
+      expect.arrayContaining([
+        { sidId: "BAY1", transitionId: "NORMA" },
+        { sidId: "BAY1", transitionId: "OCTTA" },
+      ]),
+    );
+  });
 });

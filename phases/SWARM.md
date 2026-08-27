@@ -1,4 +1,4 @@
-# ATC-SIM swarm orchestrator — Phase 2 STARS CRC datablock & scratchpad fidelity addendum (T02-39–42)
+# ATC-SIM swarm orchestrator — Thirteenth swarm (Dual-runway configuration & selection: T04-26–30, T05-14)
 
 Paste **this entire file** into a new agent. That agent is the **orchestrator**. It may run for hours. It writes almost no application code.
 
@@ -9,7 +9,47 @@ Shell: **bash** (Linux).
 
 Before checking git, spawning agents, creating worktrees, or editing application code, update this file for the current swarm. Append a new swarm-start heading/configuration; do not overwrite prior swarm history. If the requested swarm configuration is incomplete, ask before making any other swarm move. Then commit the planning/status update before creating ticket branches or worktrees.
 
-This is the **twelfth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–23) → 2 STARS CRC scope fidelity (T02-34–42)** are already green on `master`. Do **not** redo completed work. Skip **T04-11** (wind) unless the human names it. This run is **T04-24, T04-25, and T05-13 only**.
+This is the **thirteenth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–25) → 2 STARS CRC scope fidelity (T02-34–42) → 5 setup menu (T05-13)** are already green on `master`. Do **not** redo completed work. Skip **T04-11** (wind) unless the human names it. This run is **T04-26–30 and T05-14 only**.
+
+---
+
+## Thirteenth swarm execution — 2026-08-26
+
+Human approved feature-branch execution on branch `feature/dual-runway-configuration`.
+
+---
+
+## Thirteenth swarm planned — 2026-08-26 (dual-runway configuration & selectors)
+
+This configuration runs on feature branch `feature/dual-runway-configuration`. Ticket workers branch from that base; captain squash-merges back into that base.
+
+| Key | Value |
+| --- | --- |
+| Goal | Dual-runway configuration support for KDEM (Runway 27 and reciprocal Runway 09): ILS 09 approach and navaids, dual-runway BAY1 SID and DEM1 STAR transitions, video maps, configuration-aware traffic spawning/departures, and dual Airport + Configuration dropdown selectors in Session Setup |
+| Include | **T04-26**, **T04-27**, **T04-28**, **T04-29**, **T05-14**, **T04-30** |
+| Skip | T04-11; all completed work (T00–T04-25, T05-01–13); third airport data; scoring/replay |
+| Stop | After T04-30 acceptance. |
+| Max ticket workers in flight | **2** |
+| Merge lock | Only phase captain squash-merges ticket branches to `feature/dual-runway-configuration`, then runs `npm test` |
+| Model | Inherit |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law:**
+- **Data-First Multi-Runway Extensibility:** All navaids, fixes, approaches, SIDs, and STARs are defined via JSON in `src/scenario/data/kdem/`. No hardcoded runway switches in FMS or kinematics.
+- **Runway 09 Geometry:** Threshold `RW09` at `(-1.645, 0)` (10,000 ft runway, opposite `RW27` at `(0, 0)`), heading 090°.
+- **Dual-Runway Procedures:** `BAY1` departure supports runway transitions `27` and `09`. `DEM1` STAR supports West Flow (`N`, `S` $\to$ `MERGE`) and East Flow (`WN`, `WS` $\to$ `WMERG`).
+- **Configuration-Aware Spawning:** Active scenario configuration dictates arrival STAR transitions, departure roll pose, and downwind spawn offsets.
+- **Dual Selectors in Session Setup:** Session Setup UI provides separate Airport and Configuration selectors derived purely from inventory metadata.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T04-26 | Current `master` / base |
+| B | T04-27 | T04-26 |
+| C | T04-28 ∥ T04-29 | T04-27 |
+| D | T05-14 | T04-28 |
+| E | T04-30 | T04-29, T05-14 |
 
 ---
 

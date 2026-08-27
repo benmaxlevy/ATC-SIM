@@ -2,7 +2,7 @@
  * Join a named STAR/SID (JOIN or VIA). DCT to a procedure fix is not a join.
  */
 
-import type { CatalogSid, CatalogStar } from "./vertical";
+import type { CatalogSid, CatalogSidLeg, CatalogStar } from "./vertical";
 
 export interface ProcedureJoinCatalog {
   stars?: ReadonlyArray<CatalogStar> | null;
@@ -69,10 +69,25 @@ function sidRoutes(sid: CatalogSid): string[][] {
         }
       }
       if (et) {
-        for (const leg of et.legs) {
-          const fixId = wantFix(leg.fixId);
-          if (route.length === 0 || route[route.length - 1] !== fixId) {
-            route.push(fixId);
+        let etLegs: readonly CatalogSidLeg[] | undefined;
+        if (rt && et.runwayTransitions && et.runwayTransitions.length > 0) {
+          const wantRwy = rt.runwayId.replace(/^RW/i, "").trim().toUpperCase();
+          const rtMatch = et.runwayTransitions.find(
+            (r) => r.runwayId.replace(/^RW/i, "").trim().toUpperCase() === wantRwy,
+          );
+          if (rtMatch) {
+            etLegs = rtMatch.legs;
+          }
+        }
+        if (!etLegs) {
+          etLegs = et.legs ?? et.runwayTransitions?.[0]?.legs;
+        }
+        if (etLegs) {
+          for (const leg of etLegs) {
+            const fixId = wantFix(leg.fixId);
+            if (route.length === 0 || route[route.length - 1] !== fixId) {
+              route.push(fixId);
+            }
           }
         }
       }

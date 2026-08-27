@@ -27,21 +27,26 @@ test("parseCatalogFiles accepts the committed KDEM set", () => {
   expect(catalog.sids[0]?.id).toBe("BAY1");
 });
 
-test("AC1 — loadCatalog parses KDEM sids.json with BAY1 procedure", () => {
+test("AC1 — loadCatalog parses KDEM sids.json with BAY1 procedure for RW27 and RW09", () => {
   const catalog = loadCatalog("src/scenario/data/kdem");
   expect(catalog.sids).toHaveLength(1);
   const bay1 = catalog.sids[0]!;
   expect(bay1.id).toBe("BAY1");
   expect(bay1.name).toBe("BAY ONE DEPARTURE");
+  expect(bay1.runwayTransitions).toHaveLength(2);
   expect(bay1.runwayTransitions?.[0]?.runwayId).toBe("27");
   expect(bay1.runwayTransitions?.[0]?.legs[0]?.fixId).toBe("BAYEE");
+  expect(bay1.runwayTransitions?.[1]?.runwayId).toBe("09");
+  expect(bay1.runwayTransitions?.[1]?.legs[0]?.fixId).toBe("BAYES");
   expect(bay1.enrouteTransitions?.map((t) => t.id)).toEqual(["NORMA", "OCTTA"]);
 });
 
 test("AC3 — dangling STAR fixId throws; no partial catalog is returned", () => {
   const files = kdemFiles();
-  const procedures = files.procedures as { stars: Array<{ common: Array<{ fixId: string }> }> };
-  procedures.stars[0]!.common[0]!.fixId = "NOPE";
+  const procedures = files.procedures as {
+    stars: Array<{ transitions: Array<{ legs: Array<{ fixId: string }> }> }>;
+  };
+  procedures.stars[0]!.transitions[0]!.legs[0]!.fixId = "NOPE";
   expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
 });
 
@@ -64,9 +69,14 @@ test("AC3 — dangling SID common fixId throws", () => {
 test("AC3 — dangling SID enroute transition fixId throws", () => {
   const files = kdemFiles();
   const sids = files.sids as {
-    sids: Array<{ enrouteTransitions: Array<{ legs: Array<{ fixId: string }> }> }>;
+    sids: Array<{
+      enrouteTransitions: Array<{
+        legs?: Array<{ fixId: string }>;
+        runwayTransitions?: Array<{ legs: Array<{ fixId: string }> }>;
+      }>;
+    }>;
   };
-  sids.sids[0]!.enrouteTransitions[0]!.legs[0]!.fixId = "NOPE";
+  sids.sids[0]!.enrouteTransitions[0]!.runwayTransitions![0]!.legs[0]!.fixId = "NOPE";
   expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
 });
 
@@ -125,6 +135,61 @@ test("schema accepts empty sids and a non-ILS approach type string", () => {
 test("loadCatalog takes a directory path, not a KDEM-only name", () => {
   expect(loadCatalog("kdem").airportId).toBe("KDEM");
   expect(loadCatalog("src/scenario/data/kdem").airportId).toBe("KDEM");
+});
+
+test("T04-26 AC4 — loadCatalog parses both ILS27 and ILS09 with all associated navaids and fixes", () => {
+  const catalog = loadCatalog("kdem");
+  expect(catalog.approaches.map((a) => a.id)).toEqual(["ILS27", "ILS09"]);
+  const ils09 = catalog.approaches.find((a) => a.id === "ILS09")!;
+  expect(ils09).toBeDefined();
+  expect(ils09.runway).toBe("09");
+  expect(ils09.locNavaidId).toBe("IDEM09");
+  expect(ils09.gsNavaidId).toBe("IDEMGS09");
+  expect(ils09.fafFixId).toBe("FI09");
+  expect(ils09.thresholdFixId).toBe("RW09");
+  expect(ils09.missed?.directFixId).toBe("MISSE");
+
+  // Verify all approach referenced items exist in catalog
+  expect(catalog.navaids.some((n) => n.id === "IDEM09")).toBe(true);
+  expect(catalog.navaids.some((n) => n.id === "IDEMGS09")).toBe(true);
+  expect(catalog.fixes.some((f) => f.id === "FI09")).toBe(true);
+  expect(catalog.fixes.some((f) => f.id === "RW09")).toBe(true);
+  expect(catalog.fixes.some((f) => f.id === "MISSE")).toBe(true);
+});
+
+test("AC3 — dangling approach locNavaidId, gsNavaidId, fafFixId, thresholdFixId, missed directFixId throws", () => {
+  {
+    const files = kdemFiles();
+    const procedures = files.procedures as { approaches: Array<{ locNavaidId?: string }> };
+    procedures.approaches[1]!.locNavaidId = "NOPE";
+    expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
+  }
+  {
+    const files = kdemFiles();
+    const procedures = files.procedures as { approaches: Array<{ gsNavaidId?: string }> };
+    procedures.approaches[1]!.gsNavaidId = "NOPE";
+    expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
+  }
+  {
+    const files = kdemFiles();
+    const procedures = files.procedures as { approaches: Array<{ fafFixId?: string }> };
+    procedures.approaches[1]!.fafFixId = "NOPE";
+    expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
+  }
+  {
+    const files = kdemFiles();
+    const procedures = files.procedures as { approaches: Array<{ thresholdFixId?: string }> };
+    procedures.approaches[1]!.thresholdFixId = "NOPE";
+    expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
+  }
+  {
+    const files = kdemFiles();
+    const procedures = files.procedures as {
+      approaches: Array<{ missed?: { directFixId?: string } }>;
+    };
+    procedures.approaches[1]!.missed!.directFixId = "NOPE";
+    expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
+  }
 });
 
 test("missing catalog directory throws", () => {

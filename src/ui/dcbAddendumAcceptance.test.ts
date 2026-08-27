@@ -304,7 +304,7 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, disabled WX/VOL, T
   for (let slot = 1; slot <= DCB_MAP_SLOT_COUNT; slot += 1) {
     expect(maps).toMatch(new RegExp(`data-dcb-map-slot="${slot}"`));
   }
-  for (let slot = 8; slot <= DCB_MAP_SLOT_COUNT; slot += 1) {
+  for (let slot = 10; slot <= DCB_MAP_SLOT_COUNT; slot += 1) {
     expect(isDcbMapSlotEnabled(view, slot)).toBe(false);
   }
   expect(handleDcbEscape(view)).toBe(true);

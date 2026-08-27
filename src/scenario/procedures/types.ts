@@ -63,6 +63,8 @@ export interface StarLeg {
 export interface StarTransition {
   id: string;
   name: string;
+  runwayId?: string;
+  runways?: string[];
   legs: StarLeg[];
 }
 
@@ -90,7 +92,8 @@ export interface SidRunwayTransition {
 export interface SidEnrouteTransition {
   id: string; // e.g. "NORMA", "SNARF", "OCTTA"
   name: string;
-  legs: SidLeg[];
+  legs?: SidLeg[];
+  runwayTransitions?: SidRunwayTransition[];
 }
 
 export interface SidProcedure {

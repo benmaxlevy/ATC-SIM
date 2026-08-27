@@ -91,7 +91,17 @@ test("AC3 — range 20 NM draws 5/10/15/20 rings; range 5 NM draws only 5", () =
 });
 
 test("AC4 — coastline.enabled false skips the polyline; true with ≥2 points keeps it", () => {
-  const digitalMap = parseDigitalMap(loadKdem().maps);
+  const baseMap = parseDigitalMap(loadKdem().maps);
+  const digitalMap = {
+    ...baseMap,
+    coastline: {
+      enabled: true,
+      polyline: [
+        [-5, -10],
+        [-5, 10],
+      ] as [number, number][],
+    },
+  };
   const enabled = buildMapCache(
     kdemInput({
       digitalMap,
@@ -104,9 +114,7 @@ test("AC4 — coastline.enabled false skips the polyline; true with ≥2 points 
 
   const disabledMap = {
     ...digitalMap,
-    coastline: digitalMap.coastline
-      ? { ...digitalMap.coastline, enabled: false }
-      : { enabled: false, polyline: [] as [number, number][] },
+    coastline: { ...digitalMap.coastline, enabled: false },
   };
   const disabled = buildMapCache(
     kdemInput({
@@ -161,22 +169,17 @@ test("JSON defaulting — missing rangeRings uses 5/60; missing runway warns onc
   resetDigitalMapWarnings();
 });
 
-test("AC3 — extra default-on polylines (downwind, class B) appear dimmer in the cache", () => {
+test("AC3 — video map polylines (e.g. DEM1_27) appear in the cache", () => {
   const cache = buildMapCache(kdemInput());
   expect(cache.videoStrokes.length).toBeGreaterThanOrEqual(2);
-  const dimStrokes = cache.videoStrokes.filter((stroke) => stroke.color === "mapDim");
-  expect(dimStrokes.length).toBeGreaterThanOrEqual(2);
-  expect(
-    dimStrokes.every((stroke) => stroke.mapId === "DWNWND" || stroke.mapId === "CLASS_B"),
-  ).toBe(true);
-  const dem1Strokes = cache.videoStrokes.filter((stroke) => stroke.mapId === "DEM1");
+  const dem1Strokes = cache.videoStrokes.filter((stroke) => stroke.mapId === "DEM1_27");
   expect(dem1Strokes.length).toBeGreaterThanOrEqual(2);
   expect(dem1Strokes.every((stroke) => stroke.color === "map")).toBe(true);
-  expect(cache.videoLabels.some((label) => label.text === "DW")).toBe(true);
+  expect(cache.videoLabels.some((label) => label.text === "NEMAX")).toBe(true);
   expect(
     cache.videoLabels
-      .filter((label) => label.text === "DW")
-      .every((label) => label.color === "mapDim"),
+      .filter((label) => label.text === "NEMAX")
+      .every((label) => label.color === "map"),
   ).toBe(true);
 });
 

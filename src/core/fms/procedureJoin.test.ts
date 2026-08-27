@@ -31,10 +31,31 @@ test("SEMAX joins the south transition", () => {
   });
 });
 
-test("MERGE joins common only, not a random transition", () => {
+test("MERGE joins DEM1 transition at MERGE fix", () => {
   expect(procedureRouteContainingFix({ stars: dem1 }, "MERGE")).toEqual({
     starId: "DEM1",
-    routeFixIds: ["MERGE"],
+    routeFixIds: ["NEMAX", "NELBO", "NJOIN", "MERGE"],
+    toFixIndex: 3,
+  });
+});
+
+test("WEMER joins DEM1 East Flow transition at WEMER fix", () => {
+  expect(procedureRouteContainingFix({ stars: dem1 }, "WEMER")).toEqual({
+    starId: "DEM1",
+    routeFixIds: ["WEMAX", "WELBO", "WENJO", "WEMER"],
+    toFixIndex: 3,
+  });
+});
+
+test("WEMAX and SAMAX join DEM1 East Flow transitions", () => {
+  expect(procedureRouteContainingFix({ stars: dem1 }, "WEMAX")).toEqual({
+    starId: "DEM1",
+    routeFixIds: ["WEMAX", "WELBO", "WENJO", "WEMER"],
+    toFixIndex: 0,
+  });
+  expect(procedureRouteContainingFix({ stars: dem1 }, "SAMAX")).toEqual({
+    starId: "DEM1",
+    routeFixIds: ["SAMAX", "SALBO", "SANJO", "WEMER"],
     toFixIndex: 0,
   });
 });
@@ -141,4 +162,25 @@ test("procedureRouteContainingFix finds SID fixes across transitions", () => {
   expect(normaJoin?.starId).toBe("BAY1");
   expect(normaJoin?.toFixIndex).toBe(2);
   expect(normaJoin?.routeFixIds).toEqual(["BAYEE", "BAYNW", "NORMA"]);
+
+  // BAYES is on runway 09 transition of BAY1
+  const bayesJoin = procedureRouteContainingFix(catalog, "BAYES");
+  expect(bayesJoin).toBeDefined();
+  expect(bayesJoin?.starId).toBe("BAY1");
+  expect(bayesJoin?.toFixIndex).toBe(0);
+  expect(bayesJoin?.routeFixIds[0]).toBe("BAYES");
+
+  // BAYNE is on the RW09 NORMA transition of BAY1
+  const bayneJoin = procedureRouteContainingFix(catalog, "BAYNE");
+  expect(bayneJoin).toBeDefined();
+  expect(bayneJoin?.starId).toBe("BAY1");
+  expect(bayneJoin?.toFixIndex).toBe(1);
+  expect(bayneJoin?.routeFixIds).toEqual(["BAYES", "BAYNE", "NORMA"]);
+
+  // BAYSE is on the RW09 OCTTA transition of BAY1
+  const bayseJoin = procedureRouteContainingFix(catalog, "BAYSE");
+  expect(bayseJoin).toBeDefined();
+  expect(bayseJoin?.starId).toBe("BAY1");
+  expect(bayseJoin?.toFixIndex).toBe(1);
+  expect(bayseJoin?.routeFixIds).toEqual(["BAYES", "BAYSE", "OCTTA"]);
 });
