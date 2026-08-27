@@ -53,6 +53,8 @@ export const STAR_SPAWN_GATE_OFFSET_NM = 0.25;
  * 8 NM is in-trail on the first-leg extension and stays clear of CA.
  */
 export const STAR_SPAWN_STAGGER_NM = 8;
+/** Seeded variation avoids mirrored arrival pairs on matching STAR transitions. */
+export const STAR_SPAWN_STAGGER_JITTER_NM = 4;
 /** Spawn above an AT_OR_ABOVE so VIA has room to descend (T04-12 used 11000). */
 export const STAR_SPAWN_VIA_ALT_MARGIN_FT = 1000;
 
@@ -186,8 +188,9 @@ function slotKey(slot: StarSlot): string {
 /**
  * Analog: JO 7110.65 descend via / AIM Descend Via — spawned traffic already
  * complies with the published STAR (VIA armed; same as T04-12 spawn-on-VIA).
- * Trainer delta: pose from catalog first-leg + seed mix over `(starId,
- * transitionId)` slots. Not random vectors. Not NAS STARS.
+ * Trainer delta: seeded slot and in-trail-offset mix over catalog STAR
+ * transitions. Each arrival remains on published geometry, but matching
+ * transitions do not form mirrored pairs. Not random vectors. Not NAS STARS.
  */
 export function assignStarRoutes(args: {
   catalog: ProcedureCatalog;
@@ -206,17 +209,15 @@ export function assignStarRoutes(args: {
   const stackNext = new Map<string, number>();
   const assignments: StarRouteAssignment[] = [];
   for (let i = 0; i < count; i += 1) {
-    let slot: StarSlot;
-    if (i < slots.length) {
-      slot = slots[i]!;
-    } else {
-      const idx = Math.min(Math.floor(rng() * slots.length), slots.length - 1);
-      slot = slots[idx]!;
-    }
+    const idx = Math.min(Math.floor(rng() * slots.length), slots.length - 1);
+    const slot = slots[idx]!;
     const key = slotKey(slot);
     const stackIndex = stackNext.get(key) ?? 0;
     stackNext.set(key, stackIndex + 1);
-    const alongTrackOffsetNm = STAR_SPAWN_GATE_OFFSET_NM + stackIndex * STAR_SPAWN_STAGGER_NM;
+    const alongTrackOffsetNm =
+      STAR_SPAWN_GATE_OFFSET_NM +
+      stackIndex * STAR_SPAWN_STAGGER_NM +
+      rng() * STAR_SPAWN_STAGGER_JITTER_NM;
     assignments.push({
       starId: slot.starId,
       transitionId: slot.transitionId,
