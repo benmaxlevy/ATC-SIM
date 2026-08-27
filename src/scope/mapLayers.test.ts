@@ -183,6 +183,52 @@ test("AC3 — video map polylines (e.g. DEM1_27) appear in the cache", () => {
   ).toBe(true);
 });
 
+test("runway labels 27 and 9 sit at opposite thresholds", () => {
+  const cache = buildMapCache(kdemInput());
+  const texts = cache.runwayLabels.map((label) => label.text).sort();
+  expect(texts).toEqual(["27", "9"]);
+  const label27 = cache.runwayLabels.find((label) => label.text === "27");
+  const label9 = cache.runwayLabels.find((label) => label.text === "9");
+  expect(label27).toBeDefined();
+  expect(label9).toBeDefined();
+  expect(label9!.x).toBeLessThan(label27!.x);
+  expect(label27!.x).toBeCloseTo(400, 0);
+});
+
+test("LOC09 feather uses RWY 09 threshold and extends west — not a copy of LOC27", () => {
+  const vis = new Map<string, boolean>([
+    ["RWY", true],
+    ["LOC27", false],
+    ["LOC09", true],
+  ]);
+  const loc09 = buildMapCache(kdemInput({ mapVisibility: vis }));
+  expect(loc09.localizers).toHaveLength(1);
+  expect(loc09.localizer).toHaveLength(3);
+  const maxX = Math.max(...loc09.localizer!.map((p) => p.x));
+  const minX = Math.min(...loc09.localizer!.map((p) => p.x));
+  expect(maxX).toBeLessThan(400);
+  expect(minX).toBeLessThan(400 - 150);
+
+  const loc27 = buildMapCache(kdemInput());
+  const loc27MaxX = Math.max(...loc27.localizer!.map((p) => p.x));
+  expect(loc27MaxX).toBeGreaterThan(400 + 150);
+  expect(loc09.localizer).not.toEqual(loc27.localizer);
+});
+
+test("LOC27 and LOC09 can both paint when both maps are on", () => {
+  const vis = new Map<string, boolean>([
+    ["RWY", true],
+    ["LOC27", true],
+    ["LOC09", true],
+  ]);
+  const cache = buildMapCache(kdemInput({ mapVisibility: vis }));
+  expect(cache.localizers).toHaveLength(2);
+  const east = cache.localizers[0]!;
+  const west = cache.localizers[1]!;
+  expect(Math.max(...east.map((p) => p.x))).toBeGreaterThan(400);
+  expect(Math.max(...west.map((p) => p.x))).toBeLessThan(400);
+});
+
 test("AC6 — map layers use scenario JSON + camera, not OSM/tiles", () => {
   const sources = import.meta.glob("./*.{ts,tsx}", {
     query: "?raw",

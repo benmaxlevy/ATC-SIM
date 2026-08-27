@@ -88,7 +88,9 @@ export interface MapCache {
   coastline: ScreenPoint[] | null;
   runway: ScreenPoint[] | null;
   localizer: ScreenPoint[] | null;
-  runwayLabel: { text: string; x: number; y: number } | null;
+  /** Every visible localizer feather (LOC27, LOC09, …). `localizer` is the first. */
+  localizers: ScreenPoint[][];
+  runwayLabels: { text: string; x: number; y: number }[];
   videoStrokes: {
     mapId: string;
     color: "map" | "mapDim";
@@ -160,6 +162,7 @@ export function headingOffsetNm(
  * Apex = rwy threshold. Far corners lie `featherLengthNm` along the *approach*
  * radial (inbound course + 180°) ± halfWidthDeg.
  * ILS 27: inbound 270, feather east along 090 ± 2.5°.
+ * ILS 09: inbound 090, feather west along 270 ± 2.5° from the RWY 09 threshold.
  */
 export function buildLocalizerFeather(
   runway: DigitalMapRunway,
@@ -298,12 +301,11 @@ function project(point: NmPoint, cam: ScopeCamera, view: ScopeViewSize): ScreenP
   return nmToScreen(point.eastNm, point.northNm, cam, view);
 }
 
-function pathFromPolyline(pts: ScreenPoint[], close: boolean): Path2D | null {
-  if (typeof Path2D !== "function" || pts.length < 2) {
-    return null;
+function addPolylineToPath(path: Path2D, pts: ScreenPoint[], close: boolean): void {
+  const first = pts[0];
+  if (!first) {
+    return;
   }
-  const path = new Path2D();
-  const first = pts[0]!;
   path.moveTo(first.x, first.y);
   for (let i = 1; i < pts.length; i += 1) {
     const pt = pts[i]!;
@@ -311,6 +313,29 @@ function pathFromPolyline(pts: ScreenPoint[], close: boolean): Path2D | null {
   }
   if (close) {
     path.closePath();
+  }
+}
+
+function pathFromPolyline(pts: ScreenPoint[], close: boolean): Path2D | null {
+  if (typeof Path2D !== "function" || pts.length < 2) {
+    return null;
+  }
+  const path = new Path2D();
+  addPolylineToPath(path, pts, close);
+  return path;
+}
+
+function pathFromClosedShapes(shapes: ScreenPoint[][]): Path2D | null {
+  if (typeof Path2D !== "function") {
+    return null;
+  }
+  const usable = shapes.filter((pts) => pts.length >= 2);
+  if (usable.length === 0) {
+    return null;
+  }
+  const path = new Path2D();
+  for (const pts of usable) {
+    addPolylineToPath(path, pts, true);
   }
   return path;
 }
@@ -351,6 +376,103 @@ function runwayLabelPoint(
   );
   const screen = project(mid, cam, view);
   return { x: screen.x, y: screen.y + 10 };
+}
+
+function digitalRunwayFromVideo(
+  maps: LoadedVideoMap[],
+  runwayId: string,
+  fallback: DigitalMapRunway | undefined,
+): DigitalMapRunway | undefined {
+  for (const map of maps) {
+    if (map.role !== "runway") {
+      continue;
+    }
+    for (const feature of map.features) {
+      if (feature.type === "runway" && feature.id === runwayId) {
+        return {
+          id: feature.id,
+          thresholdEastNm: feature.thresholdNm[0],
+          thresholdNorthNm: feature.thresholdNm[1],
+          lengthNm: feature.lengthNm,
+          headingTrueDeg: feature.headingTrueDeg,
+          widthNm: feature.widthNm,
+        };
+      }
+    }
+  }
+  return fallback?.id === runwayId ? fallback : undefined;
+}
+
+function visibleLocalizerFeathersNm(
+  maps: LoadedVideoMap[],
+  visibility: ReadonlyMap<string, boolean> | undefined,
+  fallbackRunway: DigitalMapRunway | undefined,
+  fallbackLoc: DigitalMapLocalizer | undefined,
+): [NmPoint, NmPoint, NmPoint][] {
+  const feathers: [NmPoint, NmPoint, NmPoint][] = [];
+  let sawLocalizerMap = false;
+  for (const map of maps) {
+    if (map.role !== "localizer") {
+      continue;
+    }
+    sawLocalizerMap = true;
+    if (!isExtraMapOn(map, visibility)) {
+      continue;
+    }
+    for (const feature of map.features) {
+      if (feature.type !== "localizerFeather") {
+        continue;
+      }
+      const runway = digitalRunwayFromVideo(maps, feature.runwayId, fallbackRunway);
+      if (!runway) {
+        continue;
+      }
+      feathers.push(
+        buildLocalizerFeather(runway, {
+          runwayId: feature.runwayId,
+          courseTrueDeg: feature.courseTrueDeg,
+          featherLengthNm: feature.featherLengthNm,
+          halfWidthDeg: feature.halfWidthDeg,
+        }),
+      );
+    }
+  }
+  if (!sawLocalizerMap && fallbackRunway && fallbackLoc) {
+    feathers.push(buildLocalizerFeather(fallbackRunway, fallbackLoc));
+  }
+  return feathers;
+}
+
+function runwayEndLabels(
+  maps: LoadedVideoMap[],
+  fallback: DigitalMapRunway | undefined,
+  cam: ScopeCamera,
+  view: ScopeViewSize,
+): MapCache["runwayLabels"] {
+  const labels: MapCache["runwayLabels"] = [];
+  for (const map of maps) {
+    if (map.role !== "runway") {
+      continue;
+    }
+    for (const feature of map.features) {
+      if (feature.type !== "runway") {
+        continue;
+      }
+      const screen = project(
+        { eastNm: feature.thresholdNm[0], northNm: feature.thresholdNm[1] },
+        cam,
+        view,
+      );
+      labels.push({ text: feature.label, x: screen.x, y: screen.y + 10 });
+    }
+  }
+  if (labels.length > 0) {
+    return labels;
+  }
+  if (fallback) {
+    return [{ text: fallback.id, ...runwayLabelPoint(fallback, cam, view) }];
+  }
+  return [];
 }
 
 let mapCacheBuildCount = 0;
@@ -450,21 +572,26 @@ export function buildMapCache(
   }));
 
   let runway: ScreenPoint[] | null = null;
-  let runwayLabel: MapCache["runwayLabel"] = null;
+  let runwayLabels: MapCache["runwayLabels"] = [];
   if (layers.showRunway && digitalMap.runway) {
     runway = buildRunwayCorners(digitalMap.runway).map((pt) => project(pt, camera, viewSize));
-    runwayLabel = {
-      text: digitalMap.runway.id,
-      ...runwayLabelPoint(digitalMap.runway, camera, viewSize),
-    };
-  }
-
-  let localizer: ScreenPoint[] | null = null;
-  if (layers.showLocalizer && digitalMap.runway && digitalMap.localizer) {
-    localizer = buildLocalizerFeather(digitalMap.runway, digitalMap.localizer).map((pt) =>
-      project(pt, camera, viewSize),
+    runwayLabels = runwayEndLabels(
+      digitalMap.loadedVideoMaps ?? [],
+      digitalMap.runway,
+      camera,
+      viewSize,
     );
   }
+
+  const localizers: ScreenPoint[][] = layers.showLocalizer
+    ? visibleLocalizerFeathersNm(
+        digitalMap.loadedVideoMaps ?? [],
+        input.mapVisibility,
+        digitalMap.runway,
+        digitalMap.localizer,
+      ).map((feather) => feather.map((pt) => project(pt, camera, viewSize)))
+    : [];
+  const localizer = localizers[0] ?? null;
 
   const coastline = layers.showCoastline
     ? coastlineScreenPoints(digitalMap.coastline, camera, viewSize)
@@ -490,13 +617,14 @@ export function buildMapCache(
     coastline,
     runway,
     localizer,
-    runwayLabel,
+    localizers,
+    runwayLabels,
     videoStrokes,
     videoLabels,
     ringsPath: pathFromRings(ringCircles),
     coastlinePath: coastline ? pathFromPolyline(coastline, false) : null,
     runwayPath: runway ? pathFromPolyline(runway, true) : null,
-    localizerPath: localizer ? pathFromPolyline(localizer, true) : null,
+    localizerPath: pathFromClosedShapes(localizers),
   };
 }
 

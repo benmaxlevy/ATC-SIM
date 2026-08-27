@@ -65,6 +65,21 @@ test("AC1 — MAPS catalog dcbLabels; extra maps hide strokes", () => {
   expect(noDem.videoStrokes.some((s) => s.mapId === "BAY1_27")).toBe(true);
 });
 
+test("LOC09 toggle paints the west feather; turning LOC27 off does not hide LOC09", () => {
+  const view = kdemView();
+  toggleVideoMap(view, "LOC27");
+  expect(isVideoMapOn(view, "LOC27")).toBe(false);
+  expect(view.showLocalizer).toBe(false);
+  toggleVideoMap(view, "LOC09");
+  expect(isVideoMapOn(view, "LOC09")).toBe(true);
+  expect(isVideoMapOn(view, "LOC27")).toBe(false);
+  expect(view.showLocalizer).toBe(true);
+
+  const cache = buildMapCache(toMapCacheInput(view, VIEW));
+  expect(cache.localizers).toHaveLength(1);
+  expect(Math.max(...cache.localizer!.map((p) => p.x))).toBeLessThan(400);
+});
+
 test("AC2 — RANGE presets unchanged; OFF CNTR iff pan offset ≠ airport", () => {
   const view = createScopeView();
   expect(view.camera.rangeNm).toBe(20);

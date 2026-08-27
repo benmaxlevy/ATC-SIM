@@ -197,18 +197,22 @@ function drawMapLayers(ctx: CanvasRenderingContext2D, cache: MapCache, view: Sco
   ctx.lineWidth = MAP_STROKE_PX;
   if (cache.localizerPath) {
     ctx.stroke(cache.localizerPath);
-  } else if (cache.localizer) {
-    tracePolyline(ctx, cache.localizer, true);
-    ctx.stroke();
+  } else {
+    for (const loc of cache.localizers) {
+      tracePolyline(ctx, loc, true);
+      ctx.stroke();
+    }
   }
 
   const mapFont = datablockFontCss(view.charSizes.dataBlocks);
-  if (cache.runwayLabel) {
+  if (cache.runwayLabels.length > 0) {
     ctx.font = mapFont;
     ctx.textBaseline = "top";
     ctx.textAlign = "center";
     ctx.fillStyle = mpa;
-    ctx.fillText(cache.runwayLabel.text, cache.runwayLabel.x, cache.runwayLabel.y);
+    for (const label of cache.runwayLabels) {
+      ctx.fillText(label.text, label.x, label.y);
+    }
   }
 
   ctx.font = mapFont;

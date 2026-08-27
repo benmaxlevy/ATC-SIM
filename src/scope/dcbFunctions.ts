@@ -101,13 +101,19 @@ function invalidateMapCache(view: ScopeView): void {
   view.mapCache = null;
 }
 
-function syncRoleFlag(view: ScopeView, map: LoadedVideoMap, on: boolean): void {
+function anyRoleOn(view: ScopeView, role: VideoMapRole): boolean {
+  return (view.digitalMap.loadedVideoMaps ?? []).some(
+    (map) => map.role === role && isVideoMapOn(view, map.id),
+  );
+}
+
+function syncRoleFlag(view: ScopeView, map: LoadedVideoMap): void {
   if (map.role === "runway") {
-    view.showRunway = on;
+    view.showRunway = anyRoleOn(view, "runway");
   } else if (map.role === "localizer") {
-    view.showLocalizer = on;
+    view.showLocalizer = anyRoleOn(view, "localizer");
   } else if (map.role === "coastline") {
-    view.showCoastline = on;
+    view.showCoastline = anyRoleOn(view, "coastline");
   }
 }
 
@@ -122,7 +128,7 @@ export function toggleVideoMap(view: ScopeView, mapId: string): void {
   }
   const next = !isVideoMapOn(view, mapId);
   view.mapVisibility.set(mapId, next);
-  syncRoleFlag(view, map, next);
+  syncRoleFlag(view, map);
   invalidateMapCache(view);
 }
 
@@ -160,7 +166,7 @@ export function clearAllVideoMaps(view: ScopeView): void {
       continue;
     }
     view.mapVisibility.set(map.id, false);
-    syncRoleFlag(view, map, false);
+    syncRoleFlag(view, map);
   }
   invalidateMapCache(view);
 }
