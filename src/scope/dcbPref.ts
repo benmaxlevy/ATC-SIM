@@ -21,6 +21,7 @@ import { PTL_MINUTE_PRESETS, type PtlMinutes } from "./ptl";
 import { createScopeView, setDcbDock, type ScopeView } from "./scopeView";
 import { GI_SLOT_COUNT, SSA_FILTER_FIELDS, type SsaVisibility } from "./ssa";
 import {
+  DEFAULT_ATPA_STATE,
   DEFAULT_TPA_STATE,
   TPA_RADIUS_NM,
   type AtpaState,
@@ -219,7 +220,11 @@ export function serializeDcbPref(view: ScopeView): DcbPrefBody {
     ssaFilter: cloneSsa(view.ssaFilter),
     giFilterVisible: cloneGiVisible(view.giFilterVisible),
     tpa: { on: view.tpa.on, radiusNm: view.tpa.radiusNm },
-    atpa: { on: view.atpa.on },
+    atpa: {
+      on: view.atpa.on,
+      inTrailDistance: view.atpa.inTrailDistance,
+      coneMileage: view.atpa.coneMileage,
+    },
   };
 }
 
@@ -283,7 +288,12 @@ export function applyDcbPref(view: ScopeView, body: DcbPrefBody): void {
     on: body.tpa?.on === true,
     radiusNm: isTpaRadius(body.tpa?.radiusNm) ? body.tpa.radiusNm : DEFAULT_TPA_STATE.radiusNm,
   };
-  view.atpa = { on: body.atpa?.on === true };
+  view.atpa = {
+    ...DEFAULT_ATPA_STATE,
+    on: body.atpa?.on === true,
+    inTrailDistance: body.atpa?.inTrailDistance !== false,
+    coneMileage: body.atpa?.coneMileage !== false,
+  };
   view.mapCache = null;
 }
 

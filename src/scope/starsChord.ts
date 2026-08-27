@@ -9,13 +9,15 @@
  *
  * Trainer delta: parser + PPI `*` entry only (same FIL-prompt grammar as the
  * altitude filter: buffer on the PPI, Enter commits, Esc cancels, Backspace
- * edits). No `window.prompt`, no HTML `<input>`. `applyStarsChordAction` is a
- * stub until T02-45–T02-48 own rings, cones, and ATPA flags. Not NAS STARS.
+ * edits). No `window.prompt`, no HTML `<input>`. `applyStarsChordAction` fills
+ * T02-46 in-trail / cone-mileage flags; T02-45–T02-48 own rings, cones, and
+ * ATPA cone enable. Not NAS STARS.
  */
 
 import type { World } from "@core";
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
 import type { ScopeView } from "./scopeView";
+import { ensureTrackDisplay, selectedTrackId } from "./trackDisplay";
 
 export const STARS_CHORD_NM_MIN = 1;
 export const STARS_CHORD_NM_MAX = 30;
@@ -278,16 +280,51 @@ export function handleStarsChordEntryKey(
 
 export type StarsChordApplyResult = "applied" | "unsupported";
 
+function applyEnableMode(
+  current: boolean,
+  mode: StarsChordToggleMode | StarsChordEnableMode,
+): boolean {
+  if (mode === "enable") {
+    return true;
+  }
+  if (mode === "inhibit") {
+    return false;
+  }
+  return !current;
+}
+
 /**
- * Map a parsed TPA/ATPA chord onto scope state. Per-track rings, cones, and
- * ATPA flags do not exist yet (T02-45–T02-48); those actions return
- * `"unsupported"` without throwing. Display only — never Command IR.
- * Slew target is `world.selectedAircraftId` when later tickets fill this in.
+ * Map a parsed TPA/ATPA chord onto scope state. T02-46 owns Intrail Distance
+ * (`*DE` / `*DI`) and A/TPA Mileage (`*D+` / `*D+E` / `*D+I`). Rings, cones,
+ * and `*AE` / `*BE` cone-enable flags stay `"unsupported"` for T02-45/T02-48.
+ * Display only — never Command IR.
  */
 export function applyStarsChordAction(
-  _view: ScopeView,
-  _world: World | undefined,
-  _action: StarsChordAction,
+  view: ScopeView,
+  world: World | undefined,
+  action: StarsChordAction,
 ): StarsChordApplyResult {
-  return "unsupported";
+  if (action.type !== "inTrailDistance" && action.type !== "tpaSizeReadout") {
+    return "unsupported";
+  }
+  const slewedId = world !== undefined ? selectedTrackId(world) : null;
+  if (action.type === "inTrailDistance") {
+    if (slewedId) {
+      const td = ensureTrackDisplay(view.tracks, slewedId);
+      td.atpaInTrailDistanceEnabled = applyEnableMode(
+        td.atpaInTrailDistanceEnabled !== false,
+        action.mode,
+      );
+    } else {
+      view.atpa.inTrailDistance = applyEnableMode(view.atpa.inTrailDistance, action.mode);
+    }
+    return "applied";
+  }
+  if (slewedId) {
+    const td = ensureTrackDisplay(view.tracks, slewedId);
+    td.atpaConeMileageEnabled = applyEnableMode(td.atpaConeMileageEnabled !== false, action.mode);
+  } else {
+    view.atpa.coneMileage = applyEnableMode(view.atpa.coneMileage, action.mode);
+  }
+  return "applied";
 }

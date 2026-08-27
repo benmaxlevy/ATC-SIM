@@ -119,7 +119,7 @@ export interface Aircraft {
   reportedSquawk?: string;
   /** True if altitude is pilot-reported (displays *). */
   pilotReportedAltitude?: boolean;
-  /** ATPA distance readout string if enabled (e.g. "2.4"). */
+  /** ATPA in-trail distance readout (Fig 38/39 two decimals, e.g. "2.40"). */
   atpaDistance?: string;
 }
 

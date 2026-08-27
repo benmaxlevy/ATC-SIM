@@ -37,7 +37,13 @@
 import { caSeverityForCallsign, handoffFor, type Aircraft, type World } from "@core";
 import { inAltitudeFilter } from "./altitudeFilter";
 import { nmToScreen, type ScopeViewSize } from "./camera";
-import { datablockMetrics, linesForDatablock, type DatablockMode } from "./datablock";
+import {
+  DATABLOCK_FIELD_GAP,
+  datablockMetrics,
+  fullDatablockLine3Parts,
+  linesForDatablock,
+  type DatablockMode,
+} from "./datablock";
 import { datablockFontCss, datablockLineHeightPx, measureDatablockCellWidth } from "./fonts";
 import { datablockTopLeft, DEFAULT_LEADER_DIR, drawLeaderLine, type LeaderDir } from "./leader";
 import { reuseOrBuildMapCache, toMapCacheInput, type MapCache } from "./mapLayers";
@@ -45,6 +51,11 @@ import { historyDotsToDraw } from "./history";
 import { drawPredictedTrackLine, ptlEndpoint, shouldDrawPtlForTrack } from "./ptl";
 import { isViewOffAirport, type ScopeView } from "./scopeView";
 import { formatStarsChordReadout } from "./starsChord";
+import {
+  atpaConeMileagePlacement,
+  atpaInTrailDatablockReadout,
+  atpaReadoutColor,
+} from "./atpaReadout";
 import {
   atpaConeColor,
   atpaConePoints,
@@ -462,24 +473,31 @@ function drawDatablock(
     handoffSectorId = handoff.toSectorId;
   }
 
-  const base = linesForDatablock(
-    {
-      ...ac,
-      callsign,
-      squawk,
-    },
-    mode,
-    {
-      modeCVisible: view.modeCVisible,
-      scratchpad: derived.sp1,
-      sp1: derived.sp1,
-      sp2: derived.sp2,
-      handoffSectorId,
-      queried: isQueried,
-      beaconVisible: true,
-      simTimeMs: world.simTimeMs,
-    },
-  );
+  const atpaReadout =
+    mode === "full"
+      ? atpaInTrailDatablockReadout(world.alerts.atpa, ac.callsign, {
+          atpaOn: view.atpa.on,
+          globalEnabled: view.atpa.inTrailDistance,
+          trackEnabled: td?.atpaInTrailDistanceEnabled !== false,
+        })
+      : null;
+
+  const datablockSource = {
+    ...ac,
+    callsign,
+    squawk,
+    atpaDistance: atpaReadout?.text,
+  };
+  const base = linesForDatablock(datablockSource, mode, {
+    modeCVisible: view.modeCVisible,
+    scratchpad: derived.sp1,
+    sp1: derived.sp1,
+    sp2: derived.sp2,
+    handoffSectorId,
+    queried: isQueried,
+    beaconVisible: true,
+    simTimeMs: world.simTimeMs,
+  });
   let line1 = base.line1;
   if (visual.line1Tag) {
     line1 = `${line1} ${visual.line1Tag}`;
@@ -503,7 +521,25 @@ function drawDatablock(
     ctx.fillText(lines.line2, targetX + origin.x, targetY + origin.y + lineH);
   }
   if (lines.line3 != null) {
-    ctx.fillText(lines.line3, targetX + origin.x, targetY + origin.y + 2 * lineH);
+    const line3X = targetX + origin.x;
+    const line3Y = targetY + origin.y + 2 * lineH;
+    if (atpaReadout) {
+      const parts = fullDatablockLine3Parts(datablockSource);
+      const prefix = [parts.assignedField, parts.squawkField]
+        .filter((part): part is string => part != null && part.length > 0)
+        .join(DATABLOCK_FIELD_GAP);
+      if (prefix.length > 0) {
+        ctx.fillText(prefix, line3X, line3Y);
+        const prefixW = ctx.measureText(`${prefix}${DATABLOCK_FIELD_GAP}`).width;
+        ctx.fillStyle = applyBrite(atpaReadoutColor(atpaReadout.status), briteCh);
+        ctx.fillText(atpaReadout.text, line3X + prefixW, line3Y);
+      } else {
+        ctx.fillStyle = applyBrite(atpaReadoutColor(atpaReadout.status), briteCh);
+        ctx.fillText(atpaReadout.text, line3X, line3Y);
+      }
+    } else {
+      ctx.fillText(lines.line3, line3X, line3Y);
+    }
   }
 }
 
@@ -621,6 +657,54 @@ function drawTracks(
     }
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
     drawDatablock(ctx, ac, p.x, p.y, view, world);
+  }
+
+  drawAtpaConeMileage(ctx, world, view, size);
+}
+
+/**
+ * A/TPA Mileage digits alongside the T02-45 cone. Placement uses a local pose
+ * (trailer, leader, requiredNm, status) so the captain can wire it to
+ * `atpaConePoints` at merge time. No wedge polyline here.
+ */
+function drawAtpaConeMileage(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  view: ScopeView,
+  size: ScopeViewSize,
+): void {
+  if (!view.atpa.on || !view.atpa.coneMileage) {
+    return;
+  }
+  const pairs = world.alerts.atpa;
+  if (pairs.length === 0) {
+    return;
+  }
+  ctx.font = datablockFontCss(view.charSizes.tools);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  for (const pair of pairs) {
+    const trailing = world.aircraft.find((ac) => ac.callsign === pair.trailingCallsign);
+    const leading = world.aircraft.find((ac) => ac.callsign === pair.leadingCallsign);
+    if (!trailing || !leading) {
+      continue;
+    }
+    const td = view.tracks.get(trailing.id);
+    if (td?.atpaConeMileageEnabled === false) {
+      continue;
+    }
+    const placed = atpaConeMileagePlacement({
+      trailing: { xNm: trailing.xNm, yNm: trailing.yNm },
+      leading: { xNm: leading.xNm, yNm: leading.yNm },
+      requiredNm: pair.requiredNm,
+      status: pair.status,
+    });
+    if (!placed) {
+      continue;
+    }
+    const p = nmToScreen(placed.eastNm, placed.northNm, view.camera, size);
+    ctx.fillStyle = applyBrite(atpaReadoutColor(placed.status), view.brite.tls);
+    ctx.fillText(placed.text, p.x, p.y);
   }
 }
 

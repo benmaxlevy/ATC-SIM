@@ -75,8 +75,9 @@ export const PALETTE = {
   /** CA/MSAW alert (red). Lite trainer, not NAS-certified. Never ATPA. */
   alert: "#FF0000",
   /**
-   * ATPA alert cone (R07 orange). Distinct from CA/MSAW red (`alert`).
-   * Trainer analog `#FF8800` — R07 names the color, not the RGB.
+   * ATPA alert cone and in-trail readout (R07 Alert Cone). Distinct from
+   * CA/MSAW red (`alert`) and caution yellow. Trainer analog `#FF8800` — R07
+   * names the color, not the RGB.
    */
   atpaAlert: "#FF8800",
   /** SSA and list text — FAA list/preview green. Not map gray. */

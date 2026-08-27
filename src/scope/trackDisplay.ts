@@ -86,6 +86,15 @@ export interface TrackDisplay {
    * (`*AE`/`*AI`). Monitor uses `atpaMonitorEnabled`.
    */
   atpaWarningAlertEnabled?: boolean;
+  /**
+   * Per-track Intrail Distance. Default enabled. Independent of cone mileage.
+   * Scope display only — never Aircraft.intent.
+   */
+  atpaInTrailDistanceEnabled: boolean;
+  /**
+   * Per-track A/TPA Mileage. Default enabled. Independent of in-trail distance.
+   */
+  atpaConeMileageEnabled: boolean;
 }
 
 export function createTrackDisplay(ownership: TrackOwnership = "unowned"): TrackDisplay {
@@ -103,6 +112,8 @@ export function createTrackDisplay(ownership: TrackOwnership = "unowned"): Track
     forcedFdb: false,
     atpaMonitorEnabled: true,
     atpaWarningAlertEnabled: true,
+    atpaInTrailDistanceEnabled: true,
+    atpaConeMileageEnabled: true,
   };
 }
 

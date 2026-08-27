@@ -33,6 +33,16 @@ export interface TpaState {
 export interface AtpaState {
   /** DCB master toggle. Cones paint from `world.alerts.atpa` when on. */
   on: boolean;
+  /**
+   * Datablock Intrail Distance (T02-46 / R07). Default on — this TCP is
+   * adapted to display it. Independent of `coneMileage`. T02-47 wires the DCB.
+   */
+  inTrailDistance: boolean;
+  /**
+   * A/TPA Mileage digits alongside the cone (T02-46 / R07). Default on.
+   * Independent of `inTrailDistance`. T02-45 owns the wedge.
+   */
+  coneMileage: boolean;
 }
 
 export const DEFAULT_TPA_STATE: TpaState = {
@@ -40,7 +50,11 @@ export const DEFAULT_TPA_STATE: TpaState = {
   radiusNm: DEFAULT_TPA_RADIUS_NM,
 };
 
-export const DEFAULT_ATPA_STATE: AtpaState = { on: false };
+export const DEFAULT_ATPA_STATE: AtpaState = {
+  on: false,
+  inTrailDistance: true,
+  coneMileage: true,
+};
 
 /**
  * World-NM polyline for a TPA J-ring about a track. Closed (first point

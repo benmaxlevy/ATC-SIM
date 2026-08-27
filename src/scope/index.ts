@@ -401,6 +401,25 @@ export {
 } from "./atpaCone";
 export type { AtpaConePaintFlags, AtpaNmPoint } from "./atpaCone";
 export {
+  ATPA_CONE_MILEAGE_ALONG_FRAC,
+  ATPA_CONE_MILEAGE_OFFSET_NM,
+  atpaConeMileagePlacement,
+  atpaConeMileageReadout,
+  atpaInTrailDatablockReadout,
+  atpaPairForTrailing,
+  atpaReadoutColor,
+  atpaReadoutEnabled,
+  formatAtpaConeMileage,
+  formatAtpaInTrailDistance,
+} from "./atpaReadout";
+export type {
+  AtpaConeMileagePlacement,
+  AtpaConeMileagePose,
+  AtpaInTrailReadout,
+  AtpaNmPose,
+  AtpaReadoutGate,
+} from "./atpaReadout";
+export {
   IDENT_DISPLAY_FLASH_MS,
   LDB_QUERY_DURATION_MS,
   OUTBOUND_ACCEPTED_FLASH_MS,
@@ -456,6 +475,7 @@ export {
 export type { DatablockMetrics, LeaderDir, LeaderLengthPx } from "./leader";
 export {
   SCRATCHPAD_MAX_LEN,
+  DATABLOCK_FIELD_GAP,
   datablockMetrics,
   datablockRect,
   formatAltitudeHundreds,
@@ -464,6 +484,7 @@ export {
   formatGroundSpeedTens,
   formatLimitedDatablock,
   formatPartialDatablock,
+  fullDatablockLine3Parts,
   linesForDatablock,
   sanitizeScratchpad,
   withInboundHandoffCue,
@@ -473,6 +494,7 @@ export type {
   DatablockMode,
   DatablockSource,
   FullDatablock,
+  FullDatablockLine3Parts,
   LimitedDatablock,
   LimitedDatablockOpts,
   PartialDatablock,

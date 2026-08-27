@@ -37,6 +37,8 @@ test("TCW palette follows FAA/CRC/vice grammar, not a green CRT game map", () =>
   expect(PALETTE.selected).toBe("#FFFF00");
   expect(PALETTE.caution).toBe("#FFFF00");
   expect(PALETTE.alert).toBe("#FF0000");
+  expect(PALETTE.atpaAlert).toBe("#FF8800");
+  expect(PALETTE.atpaAlert.toLowerCase()).not.toBe(PALETTE.alert.toLowerCase());
   expect(PALETTE.owned.toLowerCase()).not.toBe("#ff0000");
   expect(PALETTE.unowned.toLowerCase()).not.toBe("#ff0000");
 });
@@ -115,6 +117,8 @@ test("AC5 — predicted CA is not yellow; CA does not paint block/target; MSAW s
   expect(alertOrOwnershipColor("unowned", null)).toBe(PALETTE.unowned);
   expect(PALETTE.caution).toBe("#FFFF00");
   expect(PALETTE.alert).toBe("#FF0000");
+  expect(PALETTE.atpaAlert).toBe("#FF8800");
+  expect(PALETTE.atpaAlert).not.toBe(PALETTE.alert);
 });
 
 test("CA tag is static (does not blink); MSAW tag is not GPWS/TAWS", () => {

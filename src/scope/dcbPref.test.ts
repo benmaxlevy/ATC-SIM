@@ -223,3 +223,15 @@ test("comments say DCB position / HISTORY-adjacent PPI edge, not a dock panel", 
   expect(src.toLowerCase()).not.toMatch(/dock panel/);
   expect(src.toLowerCase()).not.toMatch(/\bhud\b/);
 });
+
+test("T02-46 — omitted ATPA readout flags default on when an old PREF snapshot loads", () => {
+  const view = createScopeView();
+  const body = serializeDcbPref(view);
+  body.atpa = { on: true } as typeof body.atpa;
+  view.atpa.inTrailDistance = false;
+  view.atpa.coneMileage = false;
+  applyDcbPref(view, body);
+  expect(view.atpa.on).toBe(true);
+  expect(view.atpa.inTrailDistance).toBe(true);
+  expect(view.atpa.coneMileage).toBe(true);
+});

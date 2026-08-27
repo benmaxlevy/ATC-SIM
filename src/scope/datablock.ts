@@ -22,7 +22,7 @@ import {
   type LeaderDir,
 } from "./leader";
 
-const FIELD_GAP = "  ";
+export const DATABLOCK_FIELD_GAP = "  ";
 
 /** STARS FDB Line 2 time-sharing phase interval (~2.5 seconds). */
 export const FDB_TIMESHARE_INTERVAL_MS = 2500;
@@ -75,7 +75,7 @@ export interface DatablockSource {
   requestedAltitudeFt?: number;
   /** True if altitude is pilot-reported (displays *). */
   pilotReportedAltitude?: boolean;
-  /** ATPA distance readout string if enabled (e.g. "2.4"). */
+  /** ATPA in-trail distance readout (Fig 38/39 two decimals, e.g. "2.40"). */
   atpaDistance?: string;
   /** Flight rules indicator ("VFR" or "IFR"). */
   flightRules?: "IFR" | "VFR" | string;
@@ -313,9 +313,27 @@ export function formatFullDatablock(
     : "";
 
   const line2Parts = [leftField, centerField, rightField].filter((s) => s.length > 0);
-  const line2 = line2Parts.join(FIELD_GAP);
+  const line2 = line2Parts.join(DATABLOCK_FIELD_GAP);
 
-  // Line 3: Special and Assigned fields
+  const line3Fields = fullDatablockLine3Parts(track);
+  const line3Parts = [
+    line3Fields.assignedField,
+    line3Fields.squawkField,
+    line3Fields.atpaField,
+  ].filter((part): part is string => part != null && part.length > 0);
+  const line3 = line3Parts.length > 0 ? line3Parts.join(DATABLOCK_FIELD_GAP) : undefined;
+
+  return line3 ? { line1, line2, line3 } : { line1, line2 };
+}
+
+export interface FullDatablockLine3Parts {
+  assignedField?: string;
+  squawkField?: string;
+  atpaField?: string;
+}
+
+/** Line 3 segments so ATPA color cannot leak onto A040 / squawk mismatch. */
+export function fullDatablockLine3Parts(track: DatablockSource): FullDatablockLine3Parts {
   const targetAssignedAlt = track.intent?.controllerAssignedAltitudeFt;
   const showAssigned =
     targetAssignedAlt != null &&
@@ -327,11 +345,7 @@ export function formatFullDatablock(
   const squawkField = hasSquawkMismatch ? track.reportedSquawk : undefined;
   const atpaField =
     track.atpaDistance && track.atpaDistance.length > 0 ? track.atpaDistance : undefined;
-
-  const line3Parts = [assignedField, squawkField, atpaField].filter(Boolean) as string[];
-  const line3 = line3Parts.length > 0 ? line3Parts.join(FIELD_GAP) : undefined;
-
-  return line3 ? { line1, line2, line3 } : { line1, line2 };
+  return { assignedField, squawkField, atpaField };
 }
 
 /**
@@ -384,7 +398,7 @@ export function formatPartialDatablock(
     : "";
 
   const line1Parts = [leftField, centerField, rightField].filter((s) => s.length > 0);
-  const line1 = line1Parts.join(FIELD_GAP);
+  const line1 = line1Parts.join(DATABLOCK_FIELD_GAP);
 
   return { line1 };
 }

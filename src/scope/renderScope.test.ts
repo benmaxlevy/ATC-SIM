@@ -7,6 +7,7 @@ import {
   makeTestAircraft,
   setHandoffNone,
   stepWorld,
+  type AtpaPair,
 } from "@core";
 import { applyIntent } from "@pilot";
 import { createWorldFromScenario, loadKdem } from "@scenario";
@@ -1737,4 +1738,239 @@ test("AC4 — live * chord buffer paints next to FILTER in SSA/preview green", (
   expect(chord).toBeDefined();
   expect(chord!.fillStyle).toBe(PALETTE.ssa);
   expect(painted.fillTexts.some((t) => t.text === "FILTER 000-180")).toBe(true);
+});
+
+function atpaWarningPair(partial: Partial<AtpaPair> = {}): AtpaPair {
+  return {
+    trailingCallsign: "DAL123",
+    leadingCallsign: "AAL45",
+    volumeId: "ATPA27",
+    distanceNm: 9.88,
+    requiredNm: 3,
+    closureKt: 40,
+    status: "warning",
+    ...partial,
+  };
+}
+
+test("T02-46 AC1/AC3 — warning paints two-decimal in-trail field yellow; A040 stays ownership color", () => {
+  const leader = makeTestAircraft({
+    id: "ac-aal",
+    callsign: "AAL45",
+    altitudeFt: 3000,
+    speedKt: 180,
+    xNm: 0,
+    yNm: 0,
+  });
+  const trailer = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    altitudeFt: 3000,
+    speedKt: 180,
+    xNm: 4,
+    yNm: 0,
+  });
+  trailer.intent.controllerAssignedAltitudeFt = 4000;
+  const world = createWorld({
+    aircraft: [leader, trailer],
+    alerts: { ca: [], msaw: [], atpa: [atpaWarningPair()] },
+  });
+  const view = createScopeView();
+  view.atpa.on = true;
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get(trailer.id)!.ownership = "owned";
+  view.tracks.get(trailer.id)!.datablockMode = "full";
+  view.tracks.get(leader.id)!.ownership = "owned";
+  view.tracks.get(leader.id)!.datablockMode = "full";
+
+  const painted = createMockCtx();
+  renderScope(painted.ctx, world, view, 800, 800);
+  expect(painted.fillTexts.find((t) => t.text === "9.88")?.fillStyle).toBe(PALETTE.caution);
+  expect(painted.fillTexts.find((t) => t.text === "A040")?.fillStyle).toBe(PALETTE.owned);
+  expect(painted.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
+  expect(painted.fillTexts.find((t) => t.text === "9.88")?.fillStyle).not.toBe(PALETTE.alert);
+  expect(painted.fillTexts.some((t) => t.text === "9.88" && t.fillStyle === PALETTE.owned)).toBe(
+    false,
+  );
+  expect(painted.fillTexts.find((t) => t.text === "AAL45")).toBeDefined();
+  expect(painted.fillTexts.some((t) => t.text.includes("9.88") && t.text.includes("A040"))).toBe(
+    false,
+  );
+});
+
+test("T02-46 AC3 — alert paints ATPA orange; monitor adds no datablock field; CA/MSAW stay their colors", () => {
+  const trailer = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    altitudeFt: 3000,
+    speedKt: 180,
+    xNm: 4,
+    yNm: 0,
+  });
+  const leader = makeTestAircraft({
+    id: "ac-aal",
+    callsign: "AAL45",
+    altitudeFt: 3000,
+    speedKt: 180,
+    xNm: 0,
+    yNm: 0,
+  });
+  const world = createWorld({
+    aircraft: [leader, trailer],
+    alerts: { ca: [], msaw: [], atpa: [atpaWarningPair({ status: "alert", distanceNm: 2.4 })] },
+  });
+  const view = createScopeView();
+  view.atpa.on = true;
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get(trailer.id)!.ownership = "owned";
+  view.tracks.get(trailer.id)!.datablockMode = "full";
+
+  const alert = createMockCtx();
+  renderScope(alert.ctx, world, view, 800, 800);
+  expect(alert.fillTexts.find((t) => t.text === "2.40")?.fillStyle).toBe(PALETTE.atpaAlert);
+  expect(alert.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
+
+  world.alerts.atpa = [atpaWarningPair({ status: "monitor" })];
+  const monitor = createMockCtx();
+  renderScope(monitor.ctx, world, view, 800, 800);
+  expect(monitor.fillTexts.find((t) => t.text === "9.88")).toBeUndefined();
+  expect(monitor.fillTexts.find((t) => t.text === "2.40")).toBeUndefined();
+
+  world.alerts.atpa = [atpaWarningPair({ status: "alert", distanceNm: 2.4 })];
+  world.alerts.ca = [
+    {
+      callsignA: "AAL45",
+      callsignB: "DAL123",
+      severity: "alert",
+      distNm: 2,
+      deltaAltFt: 0,
+    },
+  ];
+  const mixed = createMockCtx();
+  renderScope(mixed.ctx, world, view, 800, 800);
+  expect(mixed.fillTexts.find((t) => t.text === "CA")?.fillStyle).toBe(PALETTE.alert);
+  expect(mixed.fillTexts.find((t) => t.text === "2.40")?.fillStyle).toBe(PALETTE.atpaAlert);
+  expect(mixed.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
+
+  world.alerts.ca = [];
+  world.alerts.msaw = [{ callsign: "DAL123", severity: "alert", altFt: 1400, floorFt: 1500 }];
+  trailer.intent.controllerAssignedAltitudeFt = 4000;
+  const msaw = createMockCtx();
+  renderScope(msaw.ctx, world, view, 800, 800);
+  expect(msaw.fillTexts.find((t) => t.text === "DAL123 MSAW")?.fillStyle).toBe(PALETTE.alert);
+  expect(msaw.fillTexts.find((t) => t.text === "A040")?.fillStyle).toBe(PALETTE.alert);
+  expect(msaw.fillTexts.find((t) => t.text === "2.40")?.fillStyle).toBe(PALETTE.atpaAlert);
+});
+
+test("T02-46 AC5 — global and per-track inhibit hide the datablock field; pair clear leaves no residue", () => {
+  const trailer = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    altitudeFt: 3000,
+    speedKt: 180,
+    xNm: 4,
+    yNm: 0,
+  });
+  const leader = makeTestAircraft({
+    id: "ac-aal",
+    callsign: "AAL45",
+    altitudeFt: 3000,
+    speedKt: 180,
+    xNm: 0,
+    yNm: 0,
+  });
+  const world = createWorld({
+    aircraft: [leader, trailer],
+    alerts: { ca: [], msaw: [], atpa: [atpaWarningPair()] },
+  });
+  const view = createScopeView();
+  view.atpa.on = true;
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get(trailer.id)!.ownership = "owned";
+  view.tracks.get(trailer.id)!.datablockMode = "full";
+
+  view.atpa.inTrailDistance = false;
+  const globalOff = createMockCtx();
+  renderScope(globalOff.ctx, world, view, 800, 800);
+  expect(globalOff.fillTexts.find((t) => t.text === "9.88")).toBeUndefined();
+
+  view.atpa.inTrailDistance = true;
+  view.tracks.get(trailer.id)!.atpaInTrailDistanceEnabled = false;
+  const trackOff = createMockCtx();
+  renderScope(trackOff.ctx, world, view, 800, 800);
+  expect(trackOff.fillTexts.find((t) => t.text === "9.88")).toBeUndefined();
+
+  view.tracks.get(trailer.id)!.atpaInTrailDistanceEnabled = true;
+  world.alerts.atpa = [];
+  const cleared = createMockCtx();
+  renderScope(cleared.ctx, world, view, 800, 800);
+  expect(cleared.fillTexts.find((t) => t.text === "9.88")).toBeUndefined();
+});
+
+test("T02-46 AC4/AC5 — cone mileage is tenths, cone-colored, independent of in-trail, and clears", () => {
+  const trailer = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    altitudeFt: 3000,
+    speedKt: 180,
+    xNm: 4,
+    yNm: 0,
+  });
+  const leader = makeTestAircraft({
+    id: "ac-aal",
+    callsign: "AAL45",
+    altitudeFt: 3000,
+    speedKt: 180,
+    xNm: 0,
+    yNm: 0,
+  });
+  const world = createWorld({
+    aircraft: [leader, trailer],
+    alerts: {
+      ca: [],
+      msaw: [],
+      atpa: [atpaWarningPair({ status: "monitor", requiredNm: 3, distanceNm: 5 })],
+    },
+  });
+  const view = createScopeView();
+  view.atpa.on = true;
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get(trailer.id)!.ownership = "owned";
+  view.tracks.get(trailer.id)!.datablockMode = "full";
+
+  const monitor = createMockCtx();
+  renderScope(monitor.ctx, world, view, 800, 800);
+  expect(monitor.fillTexts.find((t) => t.text === "3")?.fillStyle).toBe(PALETTE.tools);
+  expect(monitor.fillTexts.find((t) => t.text === "3.00")).toBeUndefined();
+  expect(monitor.fillTexts.find((t) => t.text === "5.00")).toBeUndefined();
+
+  world.alerts.atpa = [atpaWarningPair({ requiredNm: 2.5, distanceNm: 9.88 })];
+  view.atpa.inTrailDistance = false;
+  const warning = createMockCtx();
+  renderScope(warning.ctx, world, view, 800, 800);
+  expect(warning.fillTexts.find((t) => t.text === "2.5")?.fillStyle).toBe(PALETTE.caution);
+  expect(warning.fillTexts.find((t) => t.text === "2.50")).toBeUndefined();
+  expect(warning.fillTexts.find((t) => t.text === "9.88")).toBeUndefined();
+
+  view.atpa.inTrailDistance = true;
+  view.atpa.coneMileage = false;
+  const mileageOff = createMockCtx();
+  renderScope(mileageOff.ctx, world, view, 800, 800);
+  expect(mileageOff.fillTexts.find((t) => t.text === "2.5")).toBeUndefined();
+  expect(mileageOff.fillTexts.find((t) => t.text === "9.88")?.fillStyle).toBe(PALETTE.caution);
+
+  view.atpa.coneMileage = true;
+  view.tracks.get(trailer.id)!.atpaConeMileageEnabled = false;
+  const trackOff = createMockCtx();
+  renderScope(trackOff.ctx, world, view, 800, 800);
+  expect(trackOff.fillTexts.find((t) => t.text === "2.5")).toBeUndefined();
+  expect(trackOff.fillTexts.find((t) => t.text === "9.88")?.fillStyle).toBe(PALETTE.caution);
+
+  view.tracks.get(trailer.id)!.atpaConeMileageEnabled = true;
+  world.alerts.atpa = [];
+  const cleared = createMockCtx();
+  renderScope(cleared.ctx, world, view, 800, 800);
+  expect(cleared.fillTexts.find((t) => t.text === "2.5")).toBeUndefined();
+  expect(cleared.fillTexts.find((t) => t.text === "9.88")).toBeUndefined();
+  expect(cleared.fillTexts.find((t) => t.text === "3")).toBeUndefined();
 });

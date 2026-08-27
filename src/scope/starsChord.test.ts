@@ -160,7 +160,7 @@ test("stars chord entry times out at 1.5 s from last key", () => {
   expect(entry.phase).toBe("idle");
 });
 
-test("applyStarsChordAction returns unsupported without throwing or mutating display state", () => {
+test("applyStarsChordAction returns unsupported for rings, cones, and ATPA cone flags", () => {
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", headingDeg: 90 });
   const world = createWorld({ aircraft: [dal] });
   world.selectedAircraftId = dal.id;
@@ -172,21 +172,64 @@ test("applyStarsChordAction returns unsupported without throwing or mutating dis
     { type: "cone", target: "slewed", lengthNm: 10 },
     { type: "coneClear", target: "slewed" },
     { type: "coneClear", target: "all" },
-    { type: "tpaSizeReadout", mode: "toggle" },
-    { type: "tpaSizeReadout", mode: "enable" },
-    { type: "tpaSizeReadout", mode: "inhibit" },
     { type: "atpaWarningAlert", mode: "enable" },
     { type: "atpaWarningAlert", mode: "inhibit" },
     { type: "atpaMonitor", mode: "enable" },
     { type: "atpaMonitor", mode: "inhibit" },
-    { type: "inTrailDistance", mode: "enable" },
-    { type: "inTrailDistance", mode: "inhibit" },
   ];
   for (const action of actions) {
     expect(() => applyStarsChordAction(view, world, action)).not.toThrow();
     expect(applyStarsChordAction(view, world, action)).toBe("unsupported");
   }
   expect(view.tpa).toEqual({ on: false, radiusNm: 5 });
-  expect(view.atpa).toEqual({ on: false });
+  expect(view.atpa).toEqual({ on: false, inTrailDistance: true, coneMileage: true });
+  expect(dal.intent.assignedHeadingDeg).toBe(90);
+});
+
+test("T02-46 — *DE / *DI mutate in-trail flags; *D+ family mutates cone mileage", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", headingDeg: 90 });
+  const world = createWorld({ aircraft: [dal] });
+  const view = createScopeView();
+  expect(view.atpa.inTrailDistance).toBe(true);
+  expect(view.atpa.coneMileage).toBe(true);
+
+  expect(applyStarsChordAction(view, world, { type: "inTrailDistance", mode: "inhibit" })).toBe(
+    "applied",
+  );
+  expect(view.atpa.inTrailDistance).toBe(false);
+  expect(view.atpa.coneMileage).toBe(true);
+  expect(applyStarsChordAction(view, world, { type: "inTrailDistance", mode: "enable" })).toBe(
+    "applied",
+  );
+  expect(view.atpa.inTrailDistance).toBe(true);
+
+  expect(applyStarsChordAction(view, world, { type: "tpaSizeReadout", mode: "inhibit" })).toBe(
+    "applied",
+  );
+  expect(view.atpa.coneMileage).toBe(false);
+  expect(view.atpa.inTrailDistance).toBe(true);
+  expect(applyStarsChordAction(view, world, { type: "tpaSizeReadout", mode: "enable" })).toBe(
+    "applied",
+  );
+  expect(view.atpa.coneMileage).toBe(true);
+  expect(applyStarsChordAction(view, world, { type: "tpaSizeReadout", mode: "toggle" })).toBe(
+    "applied",
+  );
+  expect(view.atpa.coneMileage).toBe(false);
+
+  world.selectedAircraftId = dal.id;
+  view.atpa.inTrailDistance = true;
+  view.atpa.coneMileage = true;
+  expect(applyStarsChordAction(view, world, { type: "inTrailDistance", mode: "inhibit" })).toBe(
+    "applied",
+  );
+  expect(view.atpa.inTrailDistance).toBe(true);
+  expect(view.tracks.get(dal.id)?.atpaInTrailDistanceEnabled).toBe(false);
+  expect(view.tracks.get(dal.id)?.atpaConeMileageEnabled).toBe(true);
+  expect(applyStarsChordAction(view, world, { type: "tpaSizeReadout", mode: "inhibit" })).toBe(
+    "applied",
+  );
+  expect(view.atpa.coneMileage).toBe(true);
+  expect(view.tracks.get(dal.id)?.atpaConeMileageEnabled).toBe(false);
   expect(dal.intent.assignedHeadingDeg).toBe(90);
 });
