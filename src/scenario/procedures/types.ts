@@ -90,7 +90,8 @@ export interface SidRunwayTransition {
 export interface SidEnrouteTransition {
   id: string; // e.g. "NORMA", "SNARF", "OCTTA"
   name: string;
-  legs: SidLeg[];
+  legs?: SidLeg[];
+  runwayTransitions?: SidRunwayTransition[];
 }
 
 export interface SidProcedure {

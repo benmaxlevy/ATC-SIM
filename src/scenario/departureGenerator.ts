@@ -64,6 +64,14 @@ export function listDepartureSlots(catalog: ProcedureCatalog, runwayId?: string)
     }
     if (sid.enrouteTransitions && sid.enrouteTransitions.length > 0) {
       for (const et of sid.enrouteTransitions) {
+        if (cleanRwy && et.runwayTransitions && et.runwayTransitions.length > 0) {
+          const matches = et.runwayTransitions.some(
+            (rt) => rt.runwayId.replace(/^RW/i, "").trim().toUpperCase() === cleanRwy,
+          );
+          if (!matches) {
+            continue;
+          }
+        }
         slots.push({ sidId: sid.id, transitionId: et.id });
       }
     } else {

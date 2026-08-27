@@ -42,13 +42,13 @@ Under FAA procedure standards and our procedure catalog schema:
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** `sids.json` contains `BAY1` with valid runway transitions for both `"27"` and `"09"`.
-- [ ] **AC2 —** `procedures.json` contains `DEM1` with `N`, `S`, `WN`, and `WS` transitions.
-- [ ] **AC3 —** `sidRouteFixIds` correctly resolves route fix lists for both Runway 27 and Runway 09 runway transitions.
-- [ ] **AC4 —** `starRouteFixIds` correctly resolves route fix lists for all `DEM1` transitions.
-- [ ] **AC5 —** FMS `CLIMB_VIA` computes correct vertical profile for RW09 departures climbing to assigned altitude.
-- [ ] **AC6 —** FMS `DESCEND_VIA` computes correct crossing altitude profile for `DEM1` East Flow arrivals.
-- [ ] **AC7 —** Automated tests cover AC1–AC6.
+- [x] **AC1 —** `sids.json` contains `BAY1` with valid runway transitions for both `"27"` and `"09"`.
+- [x] **AC2 —** `procedures.json` contains `DEM1` with `N`, `S`, `WN`, and `WS` transitions.
+- [x] **AC3 —** `sidRouteFixIds` correctly resolves route fix lists for both Runway 27 and Runway 09 runway transitions.
+- [x] **AC4 —** `starRouteFixIds` correctly resolves route fix lists for all `DEM1` transitions.
+- [x] **AC5 —** FMS `CLIMB_VIA` computes correct vertical profile for RW09 departures climbing to assigned altitude.
+- [x] **AC6 —** FMS `DESCEND_VIA` computes correct crossing altitude profile for `DEM1` East Flow arrivals.
+- [x] **AC7 —** Automated tests cover AC1–AC6.
 
 ## Suggested files
 

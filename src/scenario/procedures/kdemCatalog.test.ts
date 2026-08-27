@@ -119,17 +119,27 @@ test("T04-26 AC2 — ils.json contains all RW09 ILS navaids matching RW09 geomet
   });
 });
 
-test("AC2 — DEM1 north/south transitions, MERGE common, VECTORS, alt+speed on every leg", () => {
+test("AC2 — DEM1 north/south/west-north/west-south transitions, VECTORS, alt+speed on every leg", () => {
   const catalog = loadCatalog("kdem");
   const dem1 = catalog.stars.find((item) => item.id === "DEM1");
   expect(dem1).toBeDefined();
   expect(dem1!.termination).toBe("VECTORS");
-  expect(dem1!.common[0]?.fixId).toBe("MERGE");
+  expect(dem1!.transitions.map((t) => t.id)).toEqual(["N", "S", "WN", "WS"]);
   const north = dem1!.transitions.find((item) => item.id === "N");
   const south = dem1!.transitions.find((item) => item.id === "S");
-  expect(north?.legs).toHaveLength(3);
-  expect(south?.legs).toHaveLength(3);
-  const legs = [...(north?.legs ?? []), ...(south?.legs ?? []), ...dem1!.common];
+  const westNorth = dem1!.transitions.find((item) => item.id === "WN");
+  const westSouth = dem1!.transitions.find((item) => item.id === "WS");
+  expect(north?.legs).toHaveLength(4);
+  expect(south?.legs).toHaveLength(4);
+  expect(westNorth?.legs).toHaveLength(4);
+  expect(westSouth?.legs).toHaveLength(4);
+  const legs = [
+    ...(north?.legs ?? []),
+    ...(south?.legs ?? []),
+    ...(westNorth?.legs ?? []),
+    ...(westSouth?.legs ?? []),
+    ...dem1!.common,
+  ];
   for (const leg of legs) {
     expect(leg.altConstraint, leg.fixId).toBeDefined();
     expect(leg.speedConstraint, leg.fixId).toBeDefined();
@@ -186,6 +196,16 @@ test("AC5 — DEM/OCT/DMO/IDEM, STAR fixes, BAY1 sid, airportId is a string", ()
     "BAYEE",
     "BAYNW",
     "BAYSO",
+    "BAYEA",
+    "BAYNE",
+    "BAYSE",
+    "WMERG",
+    "WNMAX",
+    "WNLBO",
+    "WNJOIN",
+    "WSMAX",
+    "WSLBO",
+    "WSJOIN",
   ]) {
     expect(
       catalog.fixes.some((item) => item.id === id),
@@ -200,6 +220,8 @@ test("AC5 — DEM/OCT/DMO/IDEM, STAR fixes, BAY1 sid, airportId is a string", ()
   expect(bay1Sid.initialClimbFt).toBe(5000);
   expect(bay1Sid.runwayTransitions?.[0]?.runwayId).toBe("27");
   expect(bay1Sid.runwayTransitions?.[0]?.legs[0]?.fixId).toBe("BAYEE");
+  expect(bay1Sid.runwayTransitions?.[1]?.runwayId).toBe("09");
+  expect(bay1Sid.runwayTransitions?.[1]?.legs[0]?.fixId).toBe("BAYEA");
   expect(bay1Sid.enrouteTransitions?.map((t) => t.id)).toEqual(["NORMA", "OCTTA"]);
 
   const dct = catalogDctIds(catalog);

@@ -125,14 +125,25 @@ test("AC4 — testdata TST1/E gate is OUTER and heading is 270", () => {
   expect(Math.abs(distanceNm(pose, gate) - 0.25)).toBeLessThanOrEqual(0.01);
 });
 
+test("AC4 — starRouteFixIds resolves all DEM1 transitions (N, S, WN, WS)", () => {
+  expect(starRouteFixIds(kdem, "DEM1", "N")).toEqual(["NEMAX", "NELBO", "NJOIN", "MERGE"]);
+  expect(starRouteFixIds(kdem, "DEM1", "S")).toEqual(["SEMAX", "SELBO", "SJOIN", "MERGE"]);
+  expect(starRouteFixIds(kdem, "DEM1", "WN")).toEqual(["WNMAX", "WNLBO", "WNJOIN", "WMERG"]);
+  expect(starRouteFixIds(kdem, "DEM1", "WS")).toEqual(["WSMAX", "WSLBO", "WSJOIN", "WMERG"]);
+});
+
 test("AC5 — listStarSlots walks catalog array order", () => {
   expect(listStarSlots(kdem)).toEqual([
     { starId: "DEM1", transitionId: "N" },
     { starId: "DEM1", transitionId: "S" },
+    { starId: "DEM1", transitionId: "WN" },
+    { starId: "DEM1", transitionId: "WS" },
   ]);
   expect(listStarSlots(twoStarCatalog())).toEqual([
     { starId: "DEM1", transitionId: "N" },
     { starId: "DEM1", transitionId: "S" },
+    { starId: "DEM1", transitionId: "WN" },
+    { starId: "DEM1", transitionId: "WS" },
     { starId: "TST1", transitionId: "E" },
   ]);
 });

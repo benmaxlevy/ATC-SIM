@@ -1,6 +1,6 @@
 {
   "airportId": "KDEM",
-  "note": "BAY ONE: Runway 27 climb to BAYEE, curving departures to NORMA (Northwest) and OCTTA (South). Video map 007 is a separate MAPS drawing.",
+  "note": "BAY ONE: Runway 27/09 climb to BAYEE/BAYEA, curving departures to NORMA (Northwest) and OCTTA (South). Video map 007 is a separate MAPS drawing.",
   "sids": [
     {
       "id": "BAY1",
@@ -17,6 +17,17 @@
               "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 1500 }
             }
           ]
+        },
+        {
+          "runwayId": "09",
+          "initialHeadingDeg": 90,
+          "initialClimbFt": 5000,
+          "legs": [
+            {
+              "fixId": "BAYEA",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 1500 }
+            }
+          ]
         }
       ],
       "common": [],
@@ -24,30 +35,68 @@
         {
           "id": "NORMA",
           "name": "NORMA",
-          "legs": [
+          "runwayTransitions": [
             {
-              "fixId": "BAYNW",
-              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 2500 },
-              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+              "runwayId": "27",
+              "legs": [
+                {
+                  "fixId": "BAYNW",
+                  "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 2500 },
+                  "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+                },
+                {
+                  "fixId": "NORMA",
+                  "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 }
+                }
+              ]
             },
             {
-              "fixId": "NORMA",
-              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 }
+              "runwayId": "09",
+              "legs": [
+                {
+                  "fixId": "BAYNE",
+                  "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 2500 },
+                  "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+                },
+                {
+                  "fixId": "NORMA",
+                  "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 }
+                }
+              ]
             }
           ]
         },
         {
           "id": "OCTTA",
           "name": "OCTTA",
-          "legs": [
+          "runwayTransitions": [
             {
-              "fixId": "BAYSO",
-              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 2500 },
-              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+              "runwayId": "27",
+              "legs": [
+                {
+                  "fixId": "BAYSO",
+                  "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 2500 },
+                  "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+                },
+                {
+                  "fixId": "OCTTA",
+                  "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 8000 }
+                }
+              ]
             },
             {
-              "fixId": "OCTTA",
-              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 8000 }
+              "runwayId": "09",
+              "legs": [
+                {
+                  "fixId": "BAYSE",
+                  "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 2500 },
+                  "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+                },
+                {
+                  "fixId": "OCTTA",
+                  "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 8000 }
+                }
+              ]
             }
           ]
         }

@@ -4,7 +4,7 @@
  * across runway transitions, common route, and enroute transitions.
  */
 
-import type { ProcedureCatalog, SidProcedure } from "./types";
+import type { ProcedureCatalog, SidLeg, SidProcedure } from "./types";
 
 export function findSidProcedure(catalog: ProcedureCatalog, sidId: string): SidProcedure {
   const wantSid = sidId.trim().toUpperCase();
@@ -54,7 +54,23 @@ export function sidRouteFixIds(
     if (!et) {
       throw new Error(`Unknown enroute transition ${transitionId} on SID ${sidId}`);
     }
-    for (const leg of et.legs) {
+    let etLegs: SidLeg[] | undefined;
+    if (runwayId !== undefined && et.runwayTransitions && et.runwayTransitions.length > 0) {
+      const wantRwy = runwayId.replace(/^RW/i, "").trim().toUpperCase();
+      const rtMatch = et.runwayTransitions.find(
+        (rt) => rt.runwayId.replace(/^RW/i, "").trim().toUpperCase() === wantRwy,
+      );
+      if (rtMatch) {
+        etLegs = rtMatch.legs;
+      }
+    }
+    if (!etLegs) {
+      etLegs = et.legs ?? et.runwayTransitions?.[0]?.legs;
+    }
+    if (!etLegs) {
+      throw new Error(`No legs found for enroute transition ${transitionId} on SID ${sidId}`);
+    }
+    for (const leg of etLegs) {
       if (fixIds.length === 0 || fixIds[fixIds.length - 1] !== leg.fixId) {
         fixIds.push(leg.fixId);
       }

@@ -27,21 +27,26 @@ test("parseCatalogFiles accepts the committed KDEM set", () => {
   expect(catalog.sids[0]?.id).toBe("BAY1");
 });
 
-test("AC1 — loadCatalog parses KDEM sids.json with BAY1 procedure", () => {
+test("AC1 — loadCatalog parses KDEM sids.json with BAY1 procedure for RW27 and RW09", () => {
   const catalog = loadCatalog("src/scenario/data/kdem");
   expect(catalog.sids).toHaveLength(1);
   const bay1 = catalog.sids[0]!;
   expect(bay1.id).toBe("BAY1");
   expect(bay1.name).toBe("BAY ONE DEPARTURE");
+  expect(bay1.runwayTransitions).toHaveLength(2);
   expect(bay1.runwayTransitions?.[0]?.runwayId).toBe("27");
   expect(bay1.runwayTransitions?.[0]?.legs[0]?.fixId).toBe("BAYEE");
+  expect(bay1.runwayTransitions?.[1]?.runwayId).toBe("09");
+  expect(bay1.runwayTransitions?.[1]?.legs[0]?.fixId).toBe("BAYEA");
   expect(bay1.enrouteTransitions?.map((t) => t.id)).toEqual(["NORMA", "OCTTA"]);
 });
 
 test("AC3 — dangling STAR fixId throws; no partial catalog is returned", () => {
   const files = kdemFiles();
-  const procedures = files.procedures as { stars: Array<{ common: Array<{ fixId: string }> }> };
-  procedures.stars[0]!.common[0]!.fixId = "NOPE";
+  const procedures = files.procedures as {
+    stars: Array<{ transitions: Array<{ legs: Array<{ fixId: string }> }> }>;
+  };
+  procedures.stars[0]!.transitions[0]!.legs[0]!.fixId = "NOPE";
   expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
 });
 
@@ -64,9 +69,14 @@ test("AC3 — dangling SID common fixId throws", () => {
 test("AC3 — dangling SID enroute transition fixId throws", () => {
   const files = kdemFiles();
   const sids = files.sids as {
-    sids: Array<{ enrouteTransitions: Array<{ legs: Array<{ fixId: string }> }> }>;
+    sids: Array<{
+      enrouteTransitions: Array<{
+        legs?: Array<{ fixId: string }>;
+        runwayTransitions?: Array<{ legs: Array<{ fixId: string }> }>;
+      }>;
+    }>;
   };
-  sids.sids[0]!.enrouteTransitions[0]!.legs[0]!.fixId = "NOPE";
+  sids.sids[0]!.enrouteTransitions[0]!.runwayTransitions![0]!.legs[0]!.fixId = "NOPE";
   expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
 });
 

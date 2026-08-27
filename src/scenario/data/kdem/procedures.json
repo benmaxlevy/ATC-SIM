@@ -1,6 +1,6 @@
 {
   "airportId": "KDEM",
-  "note": "DEMO ONE: north and south transitions merge at MERGE, then VECTORS. Video map 006 is a separate MAPS drawing. SIDs are sids.json.",
+  "note": "DEMO ONE: north/south transitions merge at MERGE (West Flow), west-north/west-south transitions merge at WMERG (East Flow), then VECTORS. Video map 006 is a separate MAPS drawing. SIDs are sids.json.",
   "stars": [
     {
       "id": "DEM1",
@@ -24,6 +24,11 @@
               "fixId": "NJOIN",
               "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 },
               "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+            },
+            {
+              "fixId": "MERGE",
+              "altConstraint": { "type": "AT", "altitudeFt": 4000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
             }
           ]
         },
@@ -45,17 +50,68 @@
               "fixId": "SJOIN",
               "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 },
               "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+            },
+            {
+              "fixId": "MERGE",
+              "altConstraint": { "type": "AT", "altitudeFt": 4000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+            }
+          ]
+        },
+        {
+          "id": "WN",
+          "name": "WEST-NORTH",
+          "legs": [
+            {
+              "fixId": "WNMAX",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 10000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+            },
+            {
+              "fixId": "WNLBO",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 8000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 230 }
+            },
+            {
+              "fixId": "WNJOIN",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+            },
+            {
+              "fixId": "WMERG",
+              "altConstraint": { "type": "AT", "altitudeFt": 4000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+            }
+          ]
+        },
+        {
+          "id": "WS",
+          "name": "WEST-SOUTH",
+          "legs": [
+            {
+              "fixId": "WSMAX",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 10000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+            },
+            {
+              "fixId": "WSLBO",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 8000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 230 }
+            },
+            {
+              "fixId": "WSJOIN",
+              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+            },
+            {
+              "fixId": "WMERG",
+              "altConstraint": { "type": "AT", "altitudeFt": 4000 },
+              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
             }
           ]
         }
       ],
-      "common": [
-        {
-          "fixId": "MERGE",
-          "altConstraint": { "type": "AT", "altitudeFt": 4000 },
-          "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
-        }
-      ],
+      "common": [],
       "termination": "VECTORS"
     }
   ],

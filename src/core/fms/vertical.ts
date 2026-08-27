@@ -57,7 +57,8 @@ export interface CatalogSidRunwayTransition {
 
 export interface CatalogSidEnrouteTransition {
   id: string;
-  legs: readonly CatalogSidLeg[];
+  legs?: readonly CatalogSidLeg[];
+  runwayTransitions?: ReadonlyArray<CatalogSidRunwayTransition>;
 }
 
 export interface CatalogSid {
@@ -414,9 +415,19 @@ function findSidLeg(sid: CatalogSid, fixId: string): CatalogSidLeg | undefined {
   }
   if (sid.enrouteTransitions) {
     for (const et of sid.enrouteTransitions) {
-      const leg = et.legs.find((item) => item.fixId.trim().toUpperCase() === want);
-      if (leg) {
-        return leg;
+      if (et.legs) {
+        const leg = et.legs.find((item) => item.fixId.trim().toUpperCase() === want);
+        if (leg) {
+          return leg;
+        }
+      }
+      if (et.runwayTransitions) {
+        for (const rt of et.runwayTransitions) {
+          const leg = rt.legs.find((item) => item.fixId.trim().toUpperCase() === want);
+          if (leg) {
+            return leg;
+          }
+        }
       }
     }
   }
