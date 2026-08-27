@@ -238,7 +238,9 @@ export function createApp(deps: AppDeps): AppHandles {
     setSpeechPort,
     speechSettings,
     log,
-    world,
+    get world() {
+      return world;
+    },
     ptt: pttController,
     voiceLoop,
     subscribeVoiceStatus(listener) {
@@ -252,6 +254,7 @@ export function createApp(deps: AppDeps): AppHandles {
     replaceWorld(next) {
       world = next;
       world.sessionLog = log;
+      checkInQueue.reset();
       checkInQueue.scheduleFromWorld(world);
     },
   };
