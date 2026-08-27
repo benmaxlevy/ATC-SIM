@@ -61,6 +61,23 @@
       "dcbLabel": "BAY1",
       "defaultOn": true,
       "color": "map"
+    },
+    {
+      "id": "LOC09",
+      "file": "008-loc09.json",
+      "dcbNumber": 8,
+      "dcbLabel": "LOC09",
+      "role": "localizer",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "DWNWND09",
+      "file": "009-downwind09.json",
+      "dcbNumber": 9,
+      "dcbLabel": "DWN09",
+      "defaultOn": false,
+      "color": "mapDim"
     }
   ]
 }

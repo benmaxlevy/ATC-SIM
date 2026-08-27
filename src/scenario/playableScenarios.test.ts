@@ -7,15 +7,27 @@ import {
 } from "./playableScenarios";
 import { parseScenarioChoice } from "./trafficQuery";
 
-test("T04-24 AC1/AC2 — shipped inventory lists and loads KDEM scenarios", () => {
+test("T04-24/T04-28 AC1/AC3/AC4 — shipped inventory lists and loads KDEM scenarios", () => {
   expect(listPlayableScenarios()).toEqual([
     {
       id: "kdem",
       airportIcao: "KDEM",
       label: "Demo Field",
+      configLabel: "West Flow (RWY 27)",
+      activeRunwayId: "27",
       default: true,
       sessionSetupVisible: true,
       source: "scenarios/kdem",
+    },
+    {
+      id: "kdem-09",
+      airportIcao: "KDEM",
+      label: "Demo Field — East Flow (RWY 09)",
+      configLabel: "East Flow (RWY 09)",
+      activeRunwayId: "09",
+      default: false,
+      sessionSetupVisible: true,
+      source: "scenarios/kdem-09",
     },
     {
       id: "kdem-ils27",
@@ -25,7 +37,17 @@ test("T04-24 AC1/AC2 — shipped inventory lists and loads KDEM scenarios", () =
       sessionSetupVisible: false,
       source: "scenarios/kdem-ils27",
     },
+    {
+      "id": "kdem-ils09",
+      "airportIcao": "KDEM",
+      "label": "Demo Field — ILS 09",
+      "default": false,
+      "sessionSetupVisible": false,
+      "source": "scenarios/kdem-ils09",
+    },
   ]);
+  expect(loadPlayableScenario("kdem-09").activeRunwayId).toBe("09");
+  expect(loadPlayableScenario("kdem-ils09").activeRunwayId).toBe("09");
   expect(loadPlayableScenario("kdem-ils27").id).toBe("kdem-ils27");
   expect(loadPlayableScenario("not-playable").icao).toBe("KDEM");
   expect(loadPlayableScenario().icao).toBe("KDEM");

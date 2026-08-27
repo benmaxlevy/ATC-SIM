@@ -10,7 +10,17 @@ test("AC1 — loadKdem videoMapSet is KDEM with RWY, LOC, COAST plus extras", ()
   expect(ids.some((id) => id.includes("LOC"))).toBe(true);
   expect(ids).toContain("COAST");
   expect(ids.length).toBeGreaterThan(3);
-  expect(ids).toEqual(["RWY27", "LOC27", "COAST", "DWNWND", "CLASS_B", "DEM1", "BAY1_SID"]);
+  expect(ids).toEqual([
+    "RWY27",
+    "LOC27",
+    "COAST",
+    "DWNWND",
+    "CLASS_B",
+    "DEM1",
+    "BAY1_SID",
+    "LOC09",
+    "DWNWND09",
+  ]);
 });
 
 test("KDEM catalog loads MAPS in ARP ENU NM including DEM1 STAR and BAY1 SID", () => {
@@ -23,6 +33,8 @@ test("KDEM catalog loads MAPS in ARP ENU NM including DEM1 STAR and BAY1 SID", (
     "CLASS_B",
     "DEM1",
     "BAY1_SID",
+    "LOC09",
+    "DWNWND09",
   ]);
   expect(maps.every((item) => item.dcbNumber >= 1)).toBe(true);
   const coast = maps.find((item) => item.id === "COAST");
@@ -95,4 +107,28 @@ test("AC6 — loader comments say video map / MAPS, not tiles; Not OSM", () => {
   expect(loader).toMatch(/tiles/);
   expect(loader.toLowerCase()).not.toMatch(/openstreetmap/);
   expect(loader.toLowerCase()).not.toMatch(/mapbox/);
+});
+
+test("T04-28 AC1 — KDEM video maps include runway definition, LOC09 feather, and DWNWND09 pattern", () => {
+  const maps = loadVideoMapSet("KDEM");
+  const rwy = maps.find((item) => item.id === "RWY27");
+  expect(rwy).toBeDefined();
+  expect(rwy?.features.some((f) => f.type === "runway")).toBe(true);
+
+  const loc09 = maps.find((item) => item.id === "LOC09");
+  expect(loc09).toBeDefined();
+  expect(loc09?.dcbLabel).toBe("LOC09");
+  expect(loc09?.role).toBe("localizer");
+  expect(loc09?.features[0]).toMatchObject({
+    type: "localizerFeather",
+    runwayId: "09",
+    courseTrueDeg: 90,
+    featherLengthNm: 10,
+    halfWidthDeg: 2.5,
+  });
+
+  const dw09 = maps.find((item) => item.id === "DWNWND09");
+  expect(dw09).toBeDefined();
+  expect(dw09?.color).toBe("mapDim");
+  expect(dw09?.features.some((f) => f.type === "polyline")).toBe(true);
 });

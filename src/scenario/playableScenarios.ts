@@ -1,3 +1,5 @@
+import kdem09Json from "./kdem-09.json";
+import kdemIls09Json from "./kdem-ils09.json";
 import kdemIls27Json from "./kdem-ils27.json";
 import kdemJson from "./kdem.json";
 import playableScenariosJson from "./playable-scenarios.json";
@@ -9,6 +11,8 @@ export interface PlayableScenario {
   id: string;
   airportIcao: string;
   label: string;
+  configLabel?: string;
+  activeRunwayId?: string;
   default: boolean;
   /** False keeps an internal scenario available to URL/tests but off Session setup. */
   sessionSetupVisible: boolean;
@@ -30,7 +34,9 @@ type ScenarioSources = Readonly<Record<string, PlayableScenarioSource>>;
 
 const scenarioSources: ScenarioSources = {
   "scenarios/kdem": kdemJson,
+  "scenarios/kdem-09": kdem09Json,
   "scenarios/kdem-ils27": kdemIls27Json,
+  "scenarios/kdem-ils09": kdemIls09Json,
 };
 
 /**
@@ -124,6 +130,24 @@ function parseManifest(value: unknown): PlayableScenarioManifest {
       "Playable scenario inventory",
       true,
     );
+    const configLabel =
+      raw.configLabel != null
+        ? assertString(
+            raw.configLabel,
+            `scenarios[${index}].configLabel`,
+            "Playable scenario inventory",
+            true,
+          )
+        : undefined;
+    const activeRunwayId =
+      raw.activeRunwayId != null
+        ? assertString(
+            raw.activeRunwayId,
+            `scenarios[${index}].activeRunwayId`,
+            "Playable scenario inventory",
+            true,
+          )
+        : undefined;
     if (!/^[A-Z0-9]{4}$/.test(airportIcao)) {
       throw new Error(
         `Playable scenario inventory scenarios[${index}].airportIcao must be ICAO-like`,
@@ -148,6 +172,8 @@ function parseManifest(value: unknown): PlayableScenarioManifest {
       id,
       airportIcao,
       label,
+      configLabel,
+      activeRunwayId,
       default: raw.default,
       sessionSetupVisible: raw.sessionSetupVisible !== false,
       source,

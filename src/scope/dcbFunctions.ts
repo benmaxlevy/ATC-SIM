@@ -68,9 +68,9 @@ export function initialMapVisibility(
   const vis = new Map<string, boolean>();
   for (const map of maps ?? []) {
     if (map.role === "runway") {
-      vis.set(map.id, showRunway);
+      vis.set(map.id, showRunway ? map.defaultOn : false);
     } else if (map.role === "localizer") {
-      vis.set(map.id, showLocalizer);
+      vis.set(map.id, showLocalizer ? map.defaultOn : false);
     } else if (map.role === "coastline") {
       vis.set(map.id, showCoastline);
     } else {

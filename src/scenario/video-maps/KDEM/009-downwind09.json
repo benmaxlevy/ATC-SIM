@@ -1,0 +1,28 @@
+{
+  "id": "DWNWND09",
+  "name": "Runway 09 left downwind",
+  "features": [
+    {
+      "type": "polyline",
+      "closed": false,
+      "pointsNm": [
+        [-6.0, 8.0],
+        [-24.0, 8.0]
+      ]
+    },
+    {
+      "type": "polyline",
+      "closed": false,
+      "pointsNm": [
+        [-6.0, 8.0],
+        [-6.0, 1.0],
+        [0.0, 0.0]
+      ]
+    },
+    {
+      "type": "text",
+      "text": "DW",
+      "atNm": [-15.0, 8.4]
+    }
+  ]
+}

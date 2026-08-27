@@ -1,0 +1,13 @@
+{
+  "id": "LOC09",
+  "name": "ILS 09 localizer",
+  "features": [
+    {
+      "type": "localizerFeather",
+      "runwayId": "09",
+      "courseTrueDeg": 90,
+      "featherLengthNm": 10,
+      "halfWidthDeg": 2.5
+    }
+  ]
+}

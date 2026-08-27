@@ -45,11 +45,11 @@ Additionally, playable inventory needs versioned scenario entries for `kdem-09` 
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Video maps include runway definition showing 09 and 27, LOC 09 feather, and RWY 09 downwind.
-- [ ] **AC2 —** `kdem-09.json` and `kdem-ils09.json` validate against scenario schema with `activeRunwayId: "09"`.
-- [ ] **AC3 —** `listPlayableScenarios()` includes `kdem` (West Flow) and `kdem-09` (East Flow) with valid metadata.
-- [ ] **AC4 —** `loadPlayableScenario("kdem-09")` loads the validated East Flow scenario cleanly.
-- [ ] **AC5 —** Automated tests cover AC1–AC4.
+- [x] **AC1 —** Video maps include runway definition showing 09 and 27, LOC 09 feather, and RWY 09 downwind.
+- [x] **AC2 —** `kdem-09.json` and `kdem-ils09.json` validate against scenario schema with `activeRunwayId: "09"`.
+- [x] **AC3 —** `listPlayableScenarios()` includes `kdem` (West Flow) and `kdem-09` (East Flow) with valid metadata.
+- [x] **AC4 —** `loadPlayableScenario("kdem-09")` loads the validated East Flow scenario cleanly.
+- [x] **AC5 —** Automated tests cover AC1–AC4.
 
 ## Suggested files
 

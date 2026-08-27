@@ -1,6 +1,6 @@
 {
   "id": "RWY27",
-  "name": "Runway 27",
+  "name": "Runways 09/27",
   "features": [
     {
       "type": "runway",
@@ -9,7 +9,7 @@
       "lengthNm": 1.5,
       "headingTrueDeg": 270,
       "widthNm": 0.025,
-      "label": "27"
+      "label": "09/27"
     }
   ]
 }

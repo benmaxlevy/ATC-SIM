@@ -286,11 +286,13 @@ test("T02-24 — unused slots 8–30 disabled; 1–7 bind catalog dcbNumber", ()
   expect(videoMapByDcbNumber(view, 3)?.id).toBe("COAST");
   expect(videoMapByDcbNumber(view, 6)?.dcbLabel).toBe("DEM1");
   expect(videoMapByDcbNumber(view, 7)?.dcbLabel).toBe("BAY1");
-  expect(videoMapByDcbNumber(view, 8)).toBeUndefined();
-  for (let slot = 1; slot <= 7; slot += 1) {
+  expect(videoMapByDcbNumber(view, 8)?.dcbLabel).toBe("LOC09");
+  expect(videoMapByDcbNumber(view, 9)?.dcbLabel).toBe("DWN09");
+  expect(videoMapByDcbNumber(view, 10)).toBeUndefined();
+  for (let slot = 1; slot <= 9; slot += 1) {
     expect(isDcbMapSlotEnabled(view, slot)).toBe(true);
   }
-  for (let slot = 8; slot <= DCB_MAP_SLOT_COUNT; slot += 1) {
+  for (let slot = 10; slot <= DCB_MAP_SLOT_COUNT; slot += 1) {
     expect(isDcbMapSlotEnabled(view, slot)).toBe(false);
   }
 });
@@ -308,6 +310,8 @@ test("T02-24 — CLR ALL turns catalog maps off; coastline JSON off is a no-op",
   expect(isVideoMapOn(view, "CLASS_B")).toBe(false);
   expect(isVideoMapOn(view, "DEM1")).toBe(false);
   expect(isVideoMapOn(view, "BAY1_SID")).toBe(false);
+  expect(isVideoMapOn(view, "LOC09")).toBe(false);
+  expect(isVideoMapOn(view, "DWNWND09")).toBe(false);
   expect(view.showRunway).toBe(false);
   expect(view.showLocalizer).toBe(false);
   expect(view.showCoastline).toBe(false);
@@ -354,7 +358,9 @@ test("T02-24 — GEO MAPS lists every catalog label; CURRENT lists only maps tha
   expect(geo).toContain("3 COAST ON");
   expect(geo).toContain("4 DWNWND ON");
   expect(geo).toContain("7 BAY1 ON");
-  expect(geo).toHaveLength(7);
+  expect(geo).toContain("8 LOC09 OFF");
+  expect(geo).toContain("9 DWN09 OFF");
+  expect(geo).toHaveLength(9);
   expect(buildMapListLines(view, "current")).toEqual([
     "1 RWY27",
     "2 LOC27",

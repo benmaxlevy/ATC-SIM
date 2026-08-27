@@ -1,7 +1,9 @@
 import { latLonToNm } from "@core";
 import type { LatLon, NmEastNorth } from "@core";
-import kdemJson from "./kdem.json";
+import kdem09Json from "./kdem-09.json";
+import kdemIls09Json from "./kdem-ils09.json";
 import kdemIls27Json from "./kdem-ils27.json";
+import kdemJson from "./kdem.json";
 import type {
   Approach,
   ArrivalSpawn,
@@ -417,7 +419,17 @@ export function loadKdem(): Scenario {
   return assertScenario(kdemJson);
 }
 
+/** Phase 4 playable slice: KDEM East Flow (Runway 09). */
+export function loadKdem09(): Scenario {
+  return assertScenario(kdem09Json);
+}
+
 /** Phase 4 playable slice: DAL123 on DEM1 north + AAL45 on DEM1 south at SEMAX. */
 export function loadKdemIls27(): Scenario {
   return assertScenario(kdemIls27Json, { arrivalCountMin: 1, arrivalCountMax: ARRIVAL_COUNT_MAX });
+}
+
+/** Phase 4 playable slice: DAL123 on DEM1 west-north + AAL45 on DEM1 west-south at WSMAX. */
+export function loadKdemIls09(): Scenario {
+  return assertScenario(kdemIls09Json, { arrivalCountMin: 1, arrivalCountMax: ARRIVAL_COUNT_MAX });
 }
