@@ -68,16 +68,10 @@ path and must **not** invent numbers from model recall:
 
 ### Richer TPA controls
 
-The shipped TPA implementation supports selected-track rings, or owned-track
-rings when nothing is selected. T02-49 shipped the CRC `*` slew-chord parser
-(`parseStarsChord`) and the on-PPI `*` entry surface (FIL-prompt grammar,
-no `window.prompt` / HTML `<input>`). `applyStarsChordAction` currently
-returns `"unsupported"` for every action so per-track rings, `*P` cones, and
-ATPA flags stay no-ops until T02-45–T02-48 fill them in. Do not re-parse.
-F7 `<MULTI FUNC>` inhibit commands stay deferred.
-
-Possible follow-ups after those tickets: explicit target selection for
-multi-ring use, and richer ring styling.
+Shipped in T02-48 / T02-49: per-track `*J` / `*P` rings and ground-track cones
+(1–30 NM, session state not PREF), `**J` / `**P` clear-all, and size-readout
+inhibit. DCB TPA_MI stays 2/3/5/10. F7 `<MULTI FUNC>` inhibit commands stay
+deferred under "Manual Inhibit Commands and Safety Inhibit Glyphs".
 
 ### Track lifecycle and multi-controller networking
 

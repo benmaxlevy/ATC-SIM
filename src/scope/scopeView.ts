@@ -13,11 +13,13 @@
  * 5 dots, no phosphor; AUX HISTORY spinner shows 0–5 of those dots (F8 / H
  * toggles 0 ↔ last non-zero). PTL is a straight predicted track line (default
  * 1.0 min; AUX spinner 0.5/1/2/4). F7 toggles PTL ALL. PTL OWN is F3-owned
- * tracks; ALL wins if both are on. TPA J-rings (2/3/5/10 NM) about the selected
- * track, or owned tracks if none selected; ATPA master plus four DCB latches
+ * tracks; ALL wins if both are on. TPA J-rings: DCB 2/3/5/10 NM about the
+ * selected track (or owned tracks if none selected), plus per-track `*J` /
+ * `*P` session graphics (1–30 NM, not PREF). ATPA master plus four DCB latches
  * (A/TPA Mileage, Intrail Distance, Alert Cones, Monitor Cones) gate cones and
- * readouts. DCB docks TOP/LEFT/RIGHT/BOTTOM. Altitude filter default 000–180;
- * FILTER stays on MAIN. Discrete range presets only. Not NAS STARS.
+ * readouts. ATPA cones paint from `world.alerts.atpa` when on. DCB docks
+ * TOP/LEFT/RIGHT/BOTTOM. Altitude filter default 000–180; FILTER stays on MAIN.
+ * Discrete range presets only. Not NAS STARS.
  *
  * Scope display state only. Never a Command, readback, or intent.
  */
@@ -153,8 +155,8 @@ export interface ScopeView {
   /** PTL length in minutes. Default 1.0 (T02-07). AUX spinner 0.5/1/2/4. */
   ptlMinutes: PtlMinutes;
   /**
-   * TPA J-rings (CRC analog). Default off, 5 NM. Display only — never Command IR.
-   * Selected track; if none selected, F3-owned tracks.
+   * TPA. DCB `{ on, radiusNm }` is the toggle + 2/3/5/10 spinner (PREF).
+   * Per-track `*J` / `*P` graphics live on `TrackDisplay` (session, not PREF).
    */
   tpa: TpaState;
   /** ATPA master toggle. Cones paint from `world.alerts.atpa` when on. */

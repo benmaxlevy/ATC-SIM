@@ -10,8 +10,9 @@
  * Trainer delta: parser + PPI `*` entry only (same FIL-prompt grammar as the
  * altitude filter: buffer on the PPI, Enter commits, Esc cancels, Backspace
  * edits). No `window.prompt`, no HTML `<input>`. `applyStarsChordAction` fills
- * T02-46 in-trail / cone-mileage flags; T02-45–T02-48 own rings, cones, and
- * ATPA cone enable. Not NAS STARS.
+ * T02-46 in-trail / cone-mileage flags and T02-48 per-track rings, cones, and
+ * size-readout inhibit. `*AE` / `*BE` ATPA cone-enable flags stay
+ * `"unsupported"` for T02-47. Not NAS STARS.
  */
 
 import type { World } from "@core";
@@ -295,19 +296,56 @@ function applyEnableMode(
 
 /**
  * Map a parsed TPA/ATPA chord onto scope state. T02-46 owns Intrail Distance
- * (`*DE` / `*DI`) and A/TPA Mileage (`*D+` / `*D+E` / `*D+I`). Rings, cones,
- * and `*AE` / `*BE` cone-enable flags stay `"unsupported"` for T02-45/T02-48.
- * Display only — never Command IR.
+ * (`*DE` / `*DI`) and A/TPA Mileage (`*D+` / `*D+E` / `*D+I`). T02-48 fills
+ * the same `*D+` action's **manual TPA** half (J-ring / `*P` size digits) plus
+ * `*J` / `*P` / `**J` / `**P`. `*AE` / `*BE` cone-enable flags stay
+ * `"unsupported"` for T02-47. Display only — never Command IR.
  */
 export function applyStarsChordAction(
   view: ScopeView,
   world: World | undefined,
   action: StarsChordAction,
 ): StarsChordApplyResult {
-  if (action.type !== "inTrailDistance" && action.type !== "tpaSizeReadout") {
-    return "unsupported";
-  }
   const slewedId = world !== undefined ? selectedTrackId(world) : null;
+
+  if (action.type === "jRing") {
+    if (!slewedId) {
+      return "applied";
+    }
+    ensureTrackDisplay(view.tracks, slewedId).tpaRingNm = action.radiusNm;
+    return "applied";
+  }
+  if (action.type === "jRingClear") {
+    if (action.target === "all") {
+      for (const td of view.tracks.values()) {
+        td.tpaRingNm = undefined;
+      }
+      return "applied";
+    }
+    if (slewedId) {
+      ensureTrackDisplay(view.tracks, slewedId).tpaRingNm = undefined;
+    }
+    return "applied";
+  }
+  if (action.type === "cone") {
+    if (!slewedId) {
+      return "applied";
+    }
+    ensureTrackDisplay(view.tracks, slewedId).tpaConeNm = action.lengthNm;
+    return "applied";
+  }
+  if (action.type === "coneClear") {
+    if (action.target === "all") {
+      for (const td of view.tracks.values()) {
+        td.tpaConeNm = undefined;
+      }
+      return "applied";
+    }
+    if (slewedId) {
+      ensureTrackDisplay(view.tracks, slewedId).tpaConeNm = undefined;
+    }
+    return "applied";
+  }
   if (action.type === "inTrailDistance") {
     if (slewedId) {
       const td = ensureTrackDisplay(view.tracks, slewedId);
@@ -320,11 +358,15 @@ export function applyStarsChordAction(
     }
     return "applied";
   }
-  if (slewedId) {
-    const td = ensureTrackDisplay(view.tracks, slewedId);
-    td.atpaConeMileageEnabled = applyEnableMode(td.atpaConeMileageEnabled !== false, action.mode);
-  } else {
-    view.atpa.coneMileage = applyEnableMode(view.atpa.coneMileage, action.mode);
+  if (action.type === "tpaSizeReadout") {
+    if (slewedId) {
+      const td = ensureTrackDisplay(view.tracks, slewedId);
+      td.atpaConeMileageEnabled = applyEnableMode(td.atpaConeMileageEnabled !== false, action.mode);
+      td.tpaSizeReadoutEnabled = applyEnableMode(td.tpaSizeReadoutEnabled !== false, action.mode);
+    } else {
+      view.atpa.coneMileage = applyEnableMode(view.atpa.coneMileage, action.mode);
+    }
+    return "applied";
   }
-  return "applied";
+  return "unsupported";
 }

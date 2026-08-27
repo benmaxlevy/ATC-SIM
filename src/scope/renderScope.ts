@@ -63,7 +63,17 @@ import {
   shouldPaintAtpaGeometry,
   type AtpaConePaintFlags,
 } from "./atpaCone";
-import { TPA_STROKE_COLOR, TPA_STROKE_PX, aircraftForTpaRings, tpaRingPoints } from "./tpa";
+import {
+  TPA_STROKE_COLOR,
+  TPA_STROKE_PX,
+  manualTpaConePoints,
+  tpaConeDigitPlacement,
+  tpaConesToPaint,
+  tpaRingDigitPlacement,
+  tpaRingPoints,
+  tpaRingsToPaint,
+  tpaSizeReadoutEnabled,
+} from "./tpa";
 import { buildGiLines, buildSsaLines } from "./ssa";
 import { buildMapListLines } from "./dcbFunctions";
 import type { TrackOwnership } from "./ownership";
@@ -571,6 +581,7 @@ function drawTracks(
   }
 
   drawTpaRings(ctx, world, view, size);
+  drawManualTpaCones(ctx, world, view, size);
   drawAtpaCones(ctx, world, view, size);
 
   for (const ac of world.aircraft) {
@@ -752,11 +763,12 @@ function drawPredictedTrackLines(
 }
 
 /**
- * CRC TPA J-rings: world-NM mileage circles about selected (or owned) tracks.
- * Stroke is TLS/tools (`TPA_STROKE_COLOR`), not CA red. Canvas bounds clip
- * like range rings (no extra clip call). ATPA cones are `drawAtpaCones` in
- * this same band. CA remains datablock text — not a 3 NM halo. Display only
- * — never a Command.
+ * CRC TPA J-rings: world-NM mileage circles about selected (or owned) tracks
+ * plus per-track `*J` rings. Stroke is TLS/tools (`TPA_STROKE_COLOR`), not CA
+ * red. Radius digits sit inside the ring at lower-left unless inhibited.
+ * Canvas bounds clip like range rings (no extra clip call). Manual `*P` cones
+ * are `drawManualTpaCones`; ATPA cones are `drawAtpaCones`. CA remains
+ * datablock text — not a 3 NM halo. Display only — never a Command.
  */
 function drawTpaRings(
   ctx: CanvasRenderingContext2D,
@@ -764,22 +776,69 @@ function drawTpaRings(
   view: ScopeView,
   size: ScopeViewSize,
 ): void {
-  const targets = aircraftForTpaRings(
+  const targets = tpaRingsToPaint(
     view.tpa.on,
     world.selectedAircraftId,
     world.aircraft,
     view.tracks,
+    view.tpa.radiusNm,
   );
   if (targets.length === 0) {
     return;
   }
   ctx.strokeStyle = TPA_STROKE_COLOR;
   ctx.lineWidth = TPA_STROKE_PX;
-  for (const ac of targets) {
-    const worldPts = tpaRingPoints(ac.xNm, ac.yNm, view.tpa.radiusNm);
+  ctx.fillStyle = TPA_STROKE_COLOR;
+  ctx.font = datablockFontCss(view.charSizes.tools);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const { aircraft: ac, radiusNm } of targets) {
+    const worldPts = tpaRingPoints(ac.xNm, ac.yNm, radiusNm);
     const pts = worldPts.map((p) => nmToScreen(p.eastNm, p.northNm, view.camera, size));
     tracePolyline(ctx, pts, false);
     ctx.stroke();
+    if (tpaSizeReadoutEnabled(view.tracks.get(ac.id))) {
+      const digit = tpaRingDigitPlacement(ac.xNm, ac.yNm, radiusNm);
+      const p = nmToScreen(digit.eastNm, digit.northNm, view.camera, size);
+      ctx.fillText(digit.text, p.x, p.y);
+    }
+  }
+}
+
+/**
+ * Manual `*P` TPA cones along ground track. Reuses T02-45 `atpaConePoints` via
+ * `manualTpaConePoints`. Unfilled wedge, flat far end cap, TPA tools stroke.
+ * Warning/alert ATPA cones suppress this paint; J-rings never do.
+ */
+function drawManualTpaCones(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  view: ScopeView,
+  size: ScopeViewSize,
+): void {
+  const targets = tpaConesToPaint(world.aircraft, view.tracks, world.alerts.atpa, view.atpa.on);
+  if (targets.length === 0) {
+    return;
+  }
+  ctx.strokeStyle = TPA_STROKE_COLOR;
+  ctx.lineWidth = TPA_STROKE_PX;
+  ctx.fillStyle = TPA_STROKE_COLOR;
+  ctx.font = datablockFontCss(view.charSizes.tools);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  for (const { aircraft: ac, lengthNm } of targets) {
+    const worldPts = manualTpaConePoints(ac.xNm, ac.yNm, ac.headingDeg, lengthNm);
+    if (worldPts.length < 2) {
+      continue;
+    }
+    const pts = worldPts.map((p) => nmToScreen(p.eastNm, p.northNm, view.camera, size));
+    tracePolyline(ctx, pts, false);
+    ctx.stroke();
+    if (tpaSizeReadoutEnabled(view.tracks.get(ac.id))) {
+      const digit = tpaConeDigitPlacement(ac.xNm, ac.yNm, ac.headingDeg, lengthNm);
+      const p = nmToScreen(digit.eastNm, digit.northNm, view.camera, size);
+      ctx.fillText(digit.text, p.x, p.y);
+    }
   }
 }
 

@@ -95,6 +95,21 @@ export interface TrackDisplay {
    * Per-track A/TPA Mileage. Default enabled. Independent of in-trail distance.
    */
   atpaConeMileageEnabled: boolean;
+  /**
+   * Manual TPA J-ring radius in NM (`*J(#.#)`). Session state — not PREF.
+   * Chord range is 1–30 with tenths (T02-49); DCB spinner stays 2/3/5/10.
+   */
+  tpaRingNm?: number;
+  /**
+   * Manual TPA cone length in NM (`*P(#.#)`). Session state — not PREF.
+   * Axis is ground track (`Aircraft.headingDeg`), not assigned heading.
+   */
+  tpaConeNm?: number;
+  /**
+   * Size-readout digits on this track's ring/cone. Default enabled.
+   * `*D+I` / inhibit via `*D+` hides digits and keeps the stroke.
+   */
+  tpaSizeReadoutEnabled?: boolean;
 }
 
 export function createTrackDisplay(ownership: TrackOwnership = "unowned"): TrackDisplay {

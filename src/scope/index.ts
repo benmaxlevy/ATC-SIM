@@ -392,11 +392,26 @@ export {
   aircraftForTpaRings,
   atpaFeatureEffective,
   formatDcbTpaMiReadout as formatTpaMiReadout,
+  formatTpaSizeReadout,
+  groundTrackPointNm,
+  manualTpaConePoints,
   stepTpaRadiusNm,
+  tpaConeDigitPlacement,
+  tpaConesToPaint,
+  tpaRingDigitPlacement,
   tpaRingPoints,
+  tpaRingsToPaint,
   tpaScreenRadiusPx,
+  tpaSizeReadoutEnabled,
 } from "./tpa";
-export type { AtpaFeature, AtpaState, TpaRadiusNm, TpaState } from "./tpa";
+export type {
+  AtpaFeature,
+  AtpaState,
+  TpaConePaint,
+  TpaRadiusNm,
+  TpaRingPaint,
+  TpaState,
+} from "./tpa";
 export {
   ATPA_CONE_HALF_ANGLE_DEG,
   atpaConeColor,

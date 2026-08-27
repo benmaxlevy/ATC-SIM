@@ -160,18 +160,12 @@ test("stars chord entry times out at 1.5 s from last key", () => {
   expect(entry.phase).toBe("idle");
 });
 
-test("applyStarsChordAction returns unsupported for rings, cones, and ATPA cone flags", () => {
+test("applyStarsChordAction returns unsupported for ATPA cone-enable flags", () => {
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", headingDeg: 90 });
   const world = createWorld({ aircraft: [dal] });
   world.selectedAircraftId = dal.id;
   const view = createScopeView();
   const actions: StarsChordAction[] = [
-    { type: "jRing", target: "slewed", radiusNm: 3 },
-    { type: "jRingClear", target: "slewed" },
-    { type: "jRingClear", target: "all" },
-    { type: "cone", target: "slewed", lengthNm: 10 },
-    { type: "coneClear", target: "slewed" },
-    { type: "coneClear", target: "all" },
     { type: "atpaWarningAlert", mode: "enable" },
     { type: "atpaWarningAlert", mode: "inhibit" },
     { type: "atpaMonitor", mode: "enable" },
@@ -190,6 +184,75 @@ test("applyStarsChordAction returns unsupported for rings, cones, and ATPA cone 
     monitorCones: true,
   });
   expect(dal.intent.assignedHeadingDeg).toBe(90);
+});
+
+test("T02-48 — *J / *P / **J / **P mutate per-track rings and cones; no longer unsupported", () => {
+  const aal = makeTestAircraft({ id: "ac-aal", callsign: "AAL122", headingDeg: 90 });
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL495", headingDeg: 270 });
+  const world = createWorld({ aircraft: [aal, dal] });
+  const view = createScopeView();
+
+  world.selectedAircraftId = aal.id;
+  expect(applyStarsChordAction(view, world, { type: "jRing", target: "slewed", radiusNm: 3 })).toBe(
+    "applied",
+  );
+  expect(
+    applyStarsChordAction(view, world, { type: "cone", target: "slewed", lengthNm: 2.5 }),
+  ).toBe("applied");
+  world.selectedAircraftId = dal.id;
+  expect(
+    applyStarsChordAction(view, world, { type: "jRing", target: "slewed", radiusNm: 7.5 }),
+  ).toBe("applied");
+  expect(applyStarsChordAction(view, world, { type: "cone", target: "slewed", lengthNm: 30 })).toBe(
+    "applied",
+  );
+  expect(view.tracks.get(aal.id)?.tpaRingNm).toBe(3);
+  expect(view.tracks.get(dal.id)?.tpaRingNm).toBe(7.5);
+  expect(view.tracks.get(aal.id)?.tpaConeNm).toBe(2.5);
+  expect(view.tracks.get(dal.id)?.tpaConeNm).toBe(30);
+  expect(view.tpa).toEqual({ on: false, radiusNm: 5 });
+
+  expect(applyStarsChordAction(view, world, { type: "jRingClear", target: "slewed" })).toBe(
+    "applied",
+  );
+  expect(view.tracks.get(dal.id)?.tpaRingNm).toBeUndefined();
+  expect(view.tracks.get(aal.id)?.tpaRingNm).toBe(3);
+  expect(view.tracks.get(dal.id)?.tpaConeNm).toBe(30);
+
+  expect(applyStarsChordAction(view, world, { type: "coneClear", target: "slewed" })).toBe(
+    "applied",
+  );
+  expect(view.tracks.get(dal.id)?.tpaConeNm).toBeUndefined();
+  expect(view.tracks.get(aal.id)?.tpaConeNm).toBe(2.5);
+
+  expect(applyStarsChordAction(view, world, { type: "jRingClear", target: "all" })).toBe("applied");
+  expect(applyStarsChordAction(view, world, { type: "coneClear", target: "all" })).toBe("applied");
+  expect(view.tracks.get(aal.id)?.tpaRingNm).toBeUndefined();
+  expect(view.tracks.get(aal.id)?.tpaConeNm).toBeUndefined();
+  expect(view.tracks.get(dal.id)?.tpaRingNm).toBeUndefined();
+  expect(view.tracks.get(dal.id)?.tpaConeNm).toBeUndefined();
+  expect(aal.intent.assignedHeadingDeg).toBe(90);
+});
+
+test("T02-48 — *J1 / *J7.5 / *J30 / *P2.5 store the parsed NM; never clamp to DCB 2/3/5/10", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", headingDeg: 90 });
+  const world = createWorld({ aircraft: [dal], selectedAircraftId: dal.id });
+  const view = createScopeView();
+  for (const nm of [1, 7.5, 30]) {
+    const parsed = parseStarsChord(`*J${nm}`);
+    expect(parsed.kind).toBe("action");
+    if (parsed.kind === "action") {
+      expect(applyStarsChordAction(view, world, parsed.action)).toBe("applied");
+    }
+    expect(view.tracks.get(dal.id)?.tpaRingNm).toBe(nm);
+  }
+  const cone = parseStarsChord("*P2.5");
+  expect(cone.kind).toBe("action");
+  if (cone.kind === "action") {
+    expect(applyStarsChordAction(view, world, cone.action)).toBe("applied");
+  }
+  expect(view.tracks.get(dal.id)?.tpaConeNm).toBe(2.5);
+  expect(view.tpa.radiusNm).toBe(5);
 });
 
 test("T02-46 — *DE / *DI mutate in-trail flags; *D+ family mutates cone mileage", () => {
@@ -237,5 +300,10 @@ test("T02-46 — *DE / *DI mutate in-trail flags; *D+ family mutates cone mileag
   );
   expect(view.atpa.coneMileage).toBe(true);
   expect(view.tracks.get(dal.id)?.atpaConeMileageEnabled).toBe(false);
+  expect(view.tracks.get(dal.id)?.tpaSizeReadoutEnabled).toBe(false);
+  expect(applyStarsChordAction(view, world, { type: "tpaSizeReadout", mode: "enable" })).toBe(
+    "applied",
+  );
+  expect(view.tracks.get(dal.id)?.tpaSizeReadoutEnabled).toBe(true);
   expect(dal.intent.assignedHeadingDeg).toBe(90);
 });
