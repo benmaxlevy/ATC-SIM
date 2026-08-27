@@ -859,3 +859,56 @@ test("select then *J3 Enter applies immediately and does not arm", () => {
   expect(view.starsChordArmed).toBeNull();
   expect(view.tracks.get(dal.id)?.tpaRingNm).toBe(3);
 });
+
+test("Esc on injected live preview cancels preview before * chord and DCB", () => {
+  const view = createScopeView();
+  view.preview.phase = "entry";
+  view.preview.mnemonic = "INIT CNTL";
+  view.preview.buffer = "DAL";
+  view.preview.flid = "DAL";
+  view.starsChordEntry.phase = "entry";
+  view.starsChordEntry.buffer = "*J3";
+  view.dcbMenu = "TPA_ATPA";
+
+  const esc = keyEvent("Escape");
+  expect(handleScopeKeyDown(esc, view, "scope", undefined, 0)).toBe(true);
+  expect(esc.preventDefault).toHaveBeenCalled();
+  expect(view.preview.phase).toBe("idle");
+  expect(view.preview.buffer).toBe("");
+  expect(view.preview.mnemonic).toBe("");
+  expect(view.preview.flid).toBeNull();
+  expect(view.starsChordEntry.phase).toBe("entry");
+  expect(view.starsChordEntry.buffer).toBe("*J3");
+  expect(view.dcbMenu).toBe("TPA_ATPA");
+});
+
+test("Esc on injected armed preview cancels preview and leaves * chord / DCB", () => {
+  const view = createScopeView();
+  view.preview.phase = "armed";
+  view.preview.mnemonic = "TERM CNTL";
+  view.preview.armed = { type: "termCntl" };
+  view.starsChordArmed = { type: "jRing", target: "slewed", radiusNm: 3 };
+  view.dcbMenu = "MAPS";
+
+  const esc = keyEvent("Escape");
+  expect(handleScopeKeyDown(esc, view, "scope", undefined, 0)).toBe(true);
+  expect(view.preview.phase).toBe("idle");
+  expect(view.preview.armed).toBeNull();
+  expect(view.preview.mnemonic).toBe("");
+  expect(view.starsChordArmed).toEqual({ type: "jRing", target: "slewed", radiusNm: 3 });
+  expect(view.dcbMenu).toBe("MAPS");
+});
+
+test("idle preview Esc still cancels a live * chord before DCB", () => {
+  const view = createScopeView();
+  expect(view.preview.phase).toBe("idle");
+  view.starsChordEntry.phase = "entry";
+  view.starsChordEntry.buffer = "*P";
+  view.dcbMenu = "TPA_ATPA";
+
+  const esc = keyEvent("Escape");
+  expect(handleScopeKeyDown(esc, view, "scope", undefined, 0)).toBe(true);
+  expect(view.starsChordEntry.phase).toBe("idle");
+  expect(view.starsChordEntry.buffer).toBe("");
+  expect(view.dcbMenu).toBe("TPA_ATPA");
+});

@@ -56,6 +56,7 @@ import { reuseOrBuildMapCache, toMapCacheInput, type MapCache } from "./mapLayer
 import { historyDotsToDraw } from "./history";
 import { drawPredictedTrackLine, ptlEndpoint, shouldDrawPtlForTrack } from "./ptl";
 import { isViewOffAirport, type ScopeView } from "./scopeView";
+import { formatPreviewReadout } from "./previewArea";
 import { formatStarsChordReadout } from "./starsChord";
 import {
   atpaConeMileagePlacement,
@@ -994,8 +995,9 @@ function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): 
 
 function drawChordHint(ctx: CanvasRenderingContext2D, view: ScopeView, ssaBottomY: number): void {
   const stars = formatStarsChordReadout(view.starsChordEntry, view.starsChordArmed);
+  const preview = formatPreviewReadout(view.preview);
   const hint = view.pendingChord?.hint;
-  if (!stars && !hint) {
+  if (!stars && !preview && !hint) {
     return;
   }
   ctx.font = datablockFontCss(view.charSizes.lists);
@@ -1004,6 +1006,11 @@ function drawChordHint(ctx: CanvasRenderingContext2D, view: ScopeView, ssaBottom
   if (stars) {
     ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
     ctx.fillText(stars, SSA_LEFT_PX, ssaBottomY + 4);
+    return;
+  }
+  if (preview) {
+    ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
+    ctx.fillText(preview, SSA_LEFT_PX, ssaBottomY + 4);
     return;
   }
   ctx.fillStyle = PALETTE.uiChrome;

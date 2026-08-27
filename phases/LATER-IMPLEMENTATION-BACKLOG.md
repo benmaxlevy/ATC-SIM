@@ -71,7 +71,51 @@ path and must **not** invent numbers from model recall:
 Shipped in T02-48 / T02-49: per-track `*J` / `*P` rings and ground-track cones
 (1–30 NM, session state not PREF), `**J` / `**P` clear-all, and size-readout
 inhibit. DCB TPA_MI stays 2/3/5/10. F7 `<MULTI FUNC>` inhibit commands stay
-deferred under "Manual Inhibit Commands and Safety Inhibit Glyphs".
+deferred under "Manual Inhibit Commands and Safety Inhibit Glyphs". Preview
+Area command holes (including those MULTIFUNC chords) are listed under
+**STARS preview area — commands not parsed**.
+
+### STARS preview area — commands not parsed
+
+Visible now: `FIL` altitude chord, L1–L9 leader, T02-49 `*` Table 36 TPA/ATPA
+chords, and the Preview Area buffer (readout + machine). F3 / F4 still apply
+immediately to the selected track (color/ownership stubs) until T02-52 wires
+INIT CNTL / TERM CNTL. Beacon `B` is T02-53. The buffer is display-only — not
+the radio command line.
+
+Deliberately unparsed CRC tables / commands — later work, **not** stubs this
+trainer accepts:
+
+- `TERM CNTL ALL`
+- typed TCP / `Δ` handoffs and recall
+- **all** pointouts (`UN` / `**` stay radio + click; do not add preview PO)
+- quicklook `Q`
+- scratchpad `Y` / `+` undo
+- per-track PTL `R`
+- per-track Mode C / MULTIFUNC `M` `C` `Y` (see **Manual Inhibit Commands
+  and Safety Inhibit Glyphs** — do not duplicate that parser here)
+- assigned / filed alt `MΔ` / `++`
+- beacon LDB `BE` / `BI`
+- leader-by-TCP / `L11` global typed
+- relocate preview / lists
+- typed range 6–256 and 1/3 NM steps
+- typed map ID
+- WX overlays
+- dual assoc / unassoc `FC`
+- TAB / VFR / COAST / CA / SIGN-ON / TOWER / CRDA lists
+- RBL `*T` / min-sep / `.find` `.center` `.rings`
+- GI / ATIS `S` type-in
+- FP dump `D`
+- consolidation
+- coordination
+- TDM
+- CRDA Table 26
+- CA `K` / force SPC
+- highlight remains middle-click (T02-37)
+
+Constraints later work must keep: never Command IR; `*` chords remain T02-49;
+radio line unchanged; reject unknown rather than no-op; data-first catalog;
+self-hosted speech.
 
 ### Track lifecycle and multi-controller networking
 
@@ -139,7 +183,7 @@ STARS CRC supports manual per-track inhibition commands via the `<MULTI FUNC>` (
 - `<MULTI FUNC>...`: Inhibits MSAW for a specific track (rendering `*` after the aircraft callsign).
 - `<MULTI FUNC>Y(###)<SLEW>`: Enters a pilot-reported altitude (rendering `*` after altitude numbers).
 
-These manual invocation commands and the corresponding `▲` and `*` Line 1 glyphs are skipped for now and preserved for later implementation when a full STARS `<MULTI FUNC>` keyboard chord parser is introduced.
+These manual invocation commands and the corresponding `▲` and `*` Line 1 glyphs are skipped for now and preserved for later implementation when a full STARS `<MULTI FUNC>` keyboard chord parser is introduced. Typed Preview Area holes that include these chords are listed under **STARS preview area — commands not parsed** rather than duplicated here.
 
 ### Tactical and Expanded Special Purpose Codes (SPCs)
 

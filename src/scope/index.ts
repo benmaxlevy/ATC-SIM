@@ -172,6 +172,22 @@ export {
 } from "./keymap";
 export type { KeyBinding, KeyFocus, ScopeChord } from "./keymap";
 export {
+  cancelPreviewArea,
+  expirePreviewArea,
+  formatPreviewReadout,
+  handlePreviewEscape,
+  idlePreviewArea,
+  parsePreviewCommand,
+  previewAreaIsLive,
+  rejectPreviewArea,
+} from "./previewArea";
+export type {
+  PreviewArmedAction,
+  PreviewAreaState,
+  PreviewCommandResult,
+  PreviewPhase,
+} from "./previewArea";
+export {
   STARS_CHORD_NM_MAX,
   STARS_CHORD_NM_MIN,
   applyStarsChordAction,

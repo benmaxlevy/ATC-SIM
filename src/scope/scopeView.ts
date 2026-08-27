@@ -31,6 +31,7 @@ import {
   type AltitudeFilter,
   type FilterEntry,
 } from "./altitudeFilter";
+import { idlePreviewArea, type PreviewAreaState } from "./previewArea";
 import { idleStarsChordEntry, type StarsChordAction, type StarsChordEntry } from "./starsChord";
 import {
   AIRPORT_REF_EAST_NM,
@@ -176,6 +177,11 @@ export interface ScopeView {
    */
   starsChordArmed: StarsChordAction | null;
   /**
+   * STARS Preview Area buffer (R07). Idle / empty until T02-52 / T02-53 fill
+   * INIT CNTL, TERM CNTL, and beacon. Display only — never Command IR.
+   */
+  preview: PreviewAreaState;
+  /**
    * SSA FILTER: which existing SSA lines paint (TIME / ALTSTG / FILTER / RANGE /
    * OFF CNTR / STATUS / PTL). Default all on. Display only — not the altitude
    * FILTER chord.
@@ -271,6 +277,7 @@ export function createScopeView(
     filterEntry: idleFilterEntry(DEFAULT_ALTITUDE_FILTER),
     starsChordEntry: idleStarsChordEntry(),
     starsChordArmed: null,
+    preview: idlePreviewArea(),
     ssaFilter: defaultSsaVisibility(),
     giTextLines,
     giFilterVisible: defaultGiVisibility(giTextLines),

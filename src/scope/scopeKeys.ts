@@ -39,6 +39,7 @@ import {
   armOrApplyStarsChordAction,
   handleStarsChordEntryKey,
 } from "./starsChord";
+import { handlePreviewEscape } from "./previewArea";
 import { handleDcbEscape } from "./dcbMenu";
 import { hideMapLists } from "./dcbFunctions";
 import { PpiPlaceholderId } from "./ppi-placeholder";
@@ -210,6 +211,11 @@ export function handleScopeKeyDown(
   }
 
   if (event.key === "Escape") {
+    if (handlePreviewEscape(view.preview)) {
+      consume(event);
+      ui?.onHandled?.();
+      return true;
+    }
     const filterBusy = focus === "scope" && view.filterEntry.phase !== "idle";
     const leaderBusy = focus === "scope" && liveLeaderChord(view, nowMs) != null;
     const starsBusy =

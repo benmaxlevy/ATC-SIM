@@ -1,5 +1,6 @@
 import { setSelectedAircraft, type World } from "@core";
 import { expireFilterEntry } from "./altitudeFilter";
+import { expirePreviewArea } from "./previewArea";
 import {
   applyStarsChordAction,
   cancelStarsChordEntry,
@@ -243,5 +244,6 @@ export function paintPpi(
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   expireFilterEntry(view.filterEntry, view.altitudeFilter, Date.now());
   expireStarsChordEntry(view.starsChordEntry, Date.now());
+  expirePreviewArea(view.preview, Date.now());
   renderScope(ctx, world, view, cssWidth, cssHeight);
 }

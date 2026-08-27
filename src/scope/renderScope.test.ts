@@ -1782,6 +1782,61 @@ test("AC4 — live * chord buffer paints next to FILTER in SSA/preview green", (
   expect(painted.fillTexts.some((t) => t.text === "FILTER 000-180")).toBe(true);
 });
 
+test("injected preview entry paints INIT CNTL in SSA/preview green, never F3", () => {
+  const world = createWorld();
+  const view = createScopeView();
+  view.preview.phase = "entry";
+  view.preview.mnemonic = "INIT CNTL";
+  view.preview.flid = "DAL123";
+  const painted = createMockCtx();
+  expect(() => renderScope(painted.ctx, world, view, 800, 800)).not.toThrow();
+  const preview = painted.fillTexts.find((t) => t.text === "INIT CNTL DAL123");
+  expect(preview).toBeDefined();
+  expect(preview!.fillStyle).toBe(PALETTE.ssa);
+  expect(painted.fillTexts.some((t) => t.text === "F3")).toBe(false);
+  expect(painted.fillTexts.some((t) => t.text === "FILTER 000-180")).toBe(true);
+});
+
+test("injected armed preview paints TERM CNTL without throwing", () => {
+  const world = createWorld();
+  const view = createScopeView();
+  view.preview.phase = "armed";
+  view.preview.mnemonic = "TERM CNTL";
+  view.preview.armed = { type: "termCntl" };
+  const painted = createMockCtx();
+  expect(() => renderScope(painted.ctx, world, view, 800, 800)).not.toThrow();
+  const preview = painted.fillTexts.find((t) => t.text === "TERM CNTL");
+  expect(preview).toBeDefined();
+  expect(preview!.fillStyle).toBe(PALETTE.ssa);
+  expect(painted.fillTexts.some((t) => t.text === "F4")).toBe(false);
+});
+
+test("live * chord readout still wins over injected preview", () => {
+  const world = createWorld();
+  const view = createScopeView();
+  view.starsChordEntry.phase = "entry";
+  view.starsChordEntry.buffer = "*J3";
+  view.preview.phase = "entry";
+  view.preview.mnemonic = "INIT CNTL";
+  const painted = createMockCtx();
+  renderScope(painted.ctx, world, view, 800, 800);
+  expect(painted.fillTexts.some((t) => t.text === "*J3")).toBe(true);
+  expect(painted.fillTexts.some((t) => t.text === "INIT CNTL")).toBe(false);
+  const chord = painted.fillTexts.find((t) => t.text === "*J3");
+  expect(chord!.fillStyle).toBe(PALETTE.ssa);
+});
+
+test("preview INV flash paints buffer + INV in SSA green", () => {
+  const world = createWorld();
+  const view = createScopeView();
+  view.preview.rejection = "Q INV";
+  const painted = createMockCtx();
+  renderScope(painted.ctx, world, view, 800, 800);
+  const flash = painted.fillTexts.find((t) => t.text === "Q INV");
+  expect(flash).toBeDefined();
+  expect(flash!.fillStyle).toBe(PALETTE.ssa);
+});
+
 function atpaWarningPair(partial: Partial<AtpaPair> = {}): AtpaPair {
   return {
     trailingCallsign: "DAL123",
