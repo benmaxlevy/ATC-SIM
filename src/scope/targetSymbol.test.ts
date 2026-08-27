@@ -224,9 +224,7 @@ test("CODE BLOCK prefix paints □; unmatched unassociated stays *", () => {
       beaconSelect: new Set(["4501"]),
     }).kind,
   ).toBe("beacon_select");
-  expect(
-    squawkMatchesBeaconSelect("4501", ["45", "1200"]),
-  ).toBe(true);
+  expect(squawkMatchesBeaconSelect("4501", ["45", "1200"])).toBe(true);
   expect(squawkMatchesBeaconSelect("0342", ["45"])).toBe(false);
 });
 

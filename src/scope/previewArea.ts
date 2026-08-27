@@ -272,7 +272,9 @@ export function parsePreviewCommand(buffer: string): PreviewCommandResult {
 
 export function previewCntlArmed(
   state: PreviewAreaState,
-): state is PreviewAreaState & { armed: { readonly type: "initCntl" } | { readonly type: "termCntl" } } {
+): state is PreviewAreaState & {
+  armed: { readonly type: "initCntl" } | { readonly type: "termCntl" };
+} {
   return (
     state.phase === "armed" &&
     (state.armed?.type === "initCntl" || state.armed?.type === "termCntl")
@@ -406,10 +408,7 @@ export function toggleBeaconSelectCode(codes: string[], token: string): void {
   codes.push(token);
 }
 
-export function applyPreviewBeaconAction(
-  codes: string[],
-  action: PreviewArmedAction,
-): boolean {
+export function applyPreviewBeaconAction(codes: string[], action: PreviewArmedAction): boolean {
   if (action.type === "beaconBlock" || action.type === "beaconDiscrete") {
     toggleBeaconSelectCode(codes, action.digits);
     return true;

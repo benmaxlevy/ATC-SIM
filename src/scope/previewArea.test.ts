@@ -76,7 +76,12 @@ const BEACON_PARSE_CASES: ReadonlyArray<{
 }> = [
   { buffer: "B", parse: "incomplete", commit: "invalid" },
   { buffer: "B4", parse: "incomplete", commit: "invalid" },
-  { buffer: "B45", parse: "action", commit: "action", action: { type: "beaconBlock", digits: "45" } },
+  {
+    buffer: "B45",
+    parse: "action",
+    commit: "action",
+    action: { type: "beaconBlock", digits: "45" },
+  },
   { buffer: "B450", parse: "incomplete", commit: "invalid" },
   {
     buffer: "B4501",
