@@ -8,6 +8,9 @@ import {
   parseScenarioChoice,
   parseSpawnSeed,
   parseTrafficCount,
+  defaultSessionSetup,
+  loadSessionSetup,
+  resolveSessionSetup,
 } from "@scenario";
 import {
   PpiPlaceholderId,
@@ -35,12 +38,25 @@ const search = window.location.search;
 const scenario = loadPlayableScenario(parseScenarioChoice(search));
 const spawnSeed = parseSpawnSeed(search);
 const departureOptions = parseDepartureOptions(search);
+const sessionFallback = defaultSessionSetup(scenario.id);
+const sessionDraft = loadSessionSetup(window.localStorage, sessionFallback);
+const sessionResolution = resolveSessionSetup(search, sessionFallback, sessionDraft);
 const speechBoot = loadAndResolveSpeechBoot();
 const handles = createApp({
   speech: speechBoot.port,
   speechPrefs: speechBoot.prefs,
   speechUrls: speechBoot.urls,
-  world: createWorldForSession(scenario, parseTrafficCount(search), spawnSeed, departureOptions),
+  world: createWorldForSession(
+    scenario,
+    sessionResolution.trafficBenchmarkCount ?? parseTrafficCount(search),
+    sessionResolution.setup.seed,
+    departureOptions,
+    {
+      initialArrivalCount: sessionResolution.setup.arrivalCount,
+      arrivalsPerHour: sessionResolution.setup.arrivalsPerHour,
+      seed: sessionResolution.setup.seed,
+    },
+  ),
 });
 bootSession(handles, scenario, Date.now(), spawnSeed);
 window.addEventListener("pagehide", () => {

@@ -111,6 +111,29 @@ export {
   parseTrafficCount,
 } from "./trafficQuery";
 export type { DepartureOptions } from "./trafficQuery";
+export {
+  SESSION_SETUP_STORAGE_KEY,
+  SESSION_SETUP_VERSION,
+  SESSION_DEPARTURES_PER_HOUR_MAX,
+  SESSION_DEPARTURES_PER_HOUR_MIN,
+  SESSION_INITIAL_COUNT_MAX,
+  SESSION_INITIAL_COUNT_MIN,
+  arrivalTrafficFromSetup,
+  defaultSessionSetup,
+  departuresEnabledForScenario,
+  loadSessionSetup,
+  parseSessionSetupStorage,
+  resolveSessionSetup,
+  saveSessionSetup,
+  serializeSessionSetup,
+  validateSessionSetup,
+} from "./sessionSetup";
+export type {
+  SessionSetup,
+  SessionSetupDefaults,
+  SessionSetupDraft,
+  SessionSetupResolution,
+} from "./sessionSetup";
 export type {
   ArrivalScheduler,
   ArrivalTrafficConfig,
