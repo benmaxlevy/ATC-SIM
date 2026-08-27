@@ -87,6 +87,12 @@ or `PHASE EXIT BLOCKED` with reason.
 
 ---
 
+## Fifteenth swarm execution — 2026-08-27 (STARS Preview Area)
+
+Human invoked `/run-swarm` on this file. Config complete; no open questions. Orchestrator+captain in one session (captain subagent cannot spawn workers). Merge lock is `feature/stars-preview-area` at `679bf94` (planning) over `master` `5e9bc0f`. Preserve dirty `src/scope/starsFidelity.integration.test.ts` (`rect()` mock); do not stage it. Wave A is T02-51 alone in an isolated worktree. Stop after T02-54. Do not push. Do not start phase 5.
+
+---
+
 ## Fourteenth swarm planned — 2026-08-26 (TPA / ATPA)
 
 This configuration runs on feature branch `feature/atpa-tpa`, cut from `master` at `997902c`. Ticket workers branch from that base; the captain squash-merges back into that base.
