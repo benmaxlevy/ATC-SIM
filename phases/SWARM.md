@@ -9,7 +9,61 @@ Shell: **Windows PowerShell** (not bash). Ticket commits use here-strings, not `
 
 Before checking git, spawning agents, creating worktrees, or editing application code, update this file for the current swarm. Append a new swarm-start heading/configuration; do not overwrite prior swarm history. If the requested swarm configuration is incomplete, ask before making any other swarm move. Then commit the planning/status update before creating ticket branches or worktrees.
 
-This is the **eighth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–17)** are already green on `master`. Do **not** redo 0–7th. Do **not** start phase 5 scoring. Skip **T04-11** (wind) unless the human names it. This run is **T02-31–33 only**.
+This is the **ninth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–17) → 2 physical DCB (T02-31–33)** are already green on `master`. Do **not** redo completed work. Skip **T04-11** (wind) unless the human names it. This run is **T04-18–21 and T05-13 only**.
+
+---
+
+## Ninth swarm started — 2026-08-26 (session traffic setup)
+
+Human requested tickets only for configurable session traffic, then approved this swarm configuration. The UI is setup/restart-only: it does not edit a live World. This run starts after the eighth swarm is green.
+
+| Key | Value |
+| --- | --- |
+| Goal | Data-first session controls for arrival count/rate, SID departure rate, seed, and dynamically inventoried playable airport/scenario choices |
+| Player loop | Open Session setup → choose inventory-listed airport/scenario → set traffic values + seed → confirm restart → deterministic STAR arrivals and SID departures appear over sim time |
+| Include | **T04-18**, **T04-19**, **T04-20**, **T04-21**, **T05-13** only |
+| Skip | T04-11 wind; all earlier tickets; all T05-01–12; second playable airport data; live session edits; DCB PREF; radio-frequency IR |
+| Stop | After T05-13. Do not begin phase 5 scoring, replay, imperfect pilots, handoff, or acceptance script. |
+| Max ticket workers in flight | **3**; waves below use 2, then 1, then 1, then 1 |
+| Merge lock | Only phase captain squash-merges to `master`, one commit per ticket, then runs `npm test` |
+| Model | **GPT-5.6 Terra Medium only.** `model: "gpt-5.6-terra-medium"` on every captain/worker spawn |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Frozen product decisions:**
+
+- Session menu is a chrome sibling to speech/trainer settings. It is never DCB PREF, and it does not emit Command IR.
+- Airport/scenario options derive only from playable inventory metadata. No UI list or boot path may branch on `KDEM`, `kdem`, or `kdem-ils27`. KDEM remains default only through inventory defaults.
+- One airport may expose multiple scenarios. A second playable airport is later data work: catalog, scenario, MAPS, MVA, and inventory registration. No remote FAA/NASR fetch.
+- `?traffic=N` remains explicit heading-090 downwind FPS benchmark. Normal arrival count generates catalog STAR arrivals; never silently repurpose the benchmark query.
+- Arrival/departure **frequency** means traffic rate per hour, using simulation time. It is not radio frequency. Paused simulation produces no scheduled aircraft.
+- Initial traffic stays at session start; rate schedules later traffic. Existing tracks stay unchanged until explicit Apply/restart rebuilds World.
+- Do not render an active departure-rate control until T04-20 has catalog-backed SID spawn and procedure behavior. No no-op controls. No chart scrape or real FAA procedure data.
+- Seeded paths use deterministic RNG only; no `Math.random` or wall-clock default.
+- Query-string compatibility and `atc-sim.session.v1` persistence have explicit tested precedence.
+
+**Waves:**
+
+| Wave | Tickets (≤3) | Wait for |
+| --- | --- | --- |
+| A | T04-18 ∥ T04-21 | T04-17 and eighth swarm green on `master` |
+| B | T04-19 | T04-18 |
+| C | T04-20 | T04-19, T04-21 |
+| D | T05-13 | T04-18–21 |
+
+Workers receive `phases/SWARM-TICKET-WORKER.md`, one ticket path, and this ninth-swarm product law. Captain receives `phases/SWARM-CAPTAIN.md`, phase paths `phases/04-procedures/` and `phases/05-training/`, the waves above, and this product law. Rebase or respawn every pre-merge worker before merge.
+
+**Exit:** T04-18–21 and T05-13 ACs green; `npm test` and `npm run ci` green on `master`; manual Session setup restart recorded honestly; `phases/SWARM-STATUS.md` appended. Captain returns:
+
+```text
+PHASE EXIT GREEN
+Phase: Session traffic setup addendum (T04-18–21, T05-13)
+Merged: T04-18, T04-21, T04-19, T04-20, T05-13
+Tests: npm test / npm run ci exit 0
+Manual leftover: <Session setup restart walk or none>
+Notes: inventory-backed picker; deterministic sim-time arrivals/departures; no live edits; no phase 5 scoring
+```
+
+or `PHASE EXIT BLOCKED` with reason.
 
 ---
 
