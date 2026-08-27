@@ -52,8 +52,8 @@ const ALT_TYPES = new Set(["AT", "AT_OR_ABOVE", "AT_OR_BELOW"]);
 
 const NAVAID_CLASSES = new Set(["T", "L", "H"]);
 
-/** ILS DME ids (IDEMDME) are 7 chars; keep the ceiling at 8. */
-const ID_RE = /^[A-Z0-9]{2,8}$/;
+/** ILS DME ids (IDEMDME, IDEMDME09) are up to 9 chars; keep the ceiling at 10. */
+const ID_RE = /^[A-Z0-9]{2,10}$/;
 
 const REQUIRED_FILES = ["vors", "ndbs", "ils", "fixes", "procedures", "sids"] as const;
 

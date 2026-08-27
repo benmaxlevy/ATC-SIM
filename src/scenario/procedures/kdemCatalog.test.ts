@@ -11,6 +11,114 @@ test("AC1 — ILS27 course 270 and DA 200 from committed JSON", () => {
   expect(ils27!.daFt).toBe(200);
 });
 
+test("T04-26 AC3 — ILS09 approach procedure defined with correct geometry and missed approach", () => {
+  const catalog = loadCatalog("kdem");
+  const ils09 = catalog.approaches.find((item) => item.id === "ILS09");
+  expect(ils09).toBeDefined();
+  expect(ils09).toMatchObject({
+    id: "ILS09",
+    type: "ILS",
+    runway: "09",
+    name: "ILS RWY 09",
+    courseDeg: 90,
+    lengthNm: 18,
+    beamHalfWidthDeg: 2.5,
+    gsAngleDeg: 3.0,
+    tchFt: 50,
+    fafDistanceNm: 6,
+    gsInterceptAltFt: 2000,
+    daFt: 200,
+    fafFixId: "FI09",
+    thresholdFixId: "RW09",
+    locNavaidId: "IDEM09",
+    gsNavaidId: "IDEMGS09",
+  });
+  expect(ils09!.missed).toEqual({
+    headingDeg: 90,
+    climbToFt: 3000,
+    directFixId: "MISSE",
+  });
+});
+
+test("T04-26 AC1 — fixes.json contains all RW09 navigation and procedure fixes", () => {
+  const catalog = loadCatalog("kdem");
+  const expectedFixes = [
+    { id: "RW09", kind: "THRESHOLD", xNm: -1.645, yNm: 0 },
+    { id: "FI09", kind: "FAF", xNm: -7.645, yNm: 0 },
+    { id: "WMERG", kind: "INTERSECTION", xNm: -11.645, yNm: 0 },
+    { id: "WNMAX", kind: "INTERSECTION", xNm: -18.645, yNm: 12 },
+    { id: "WNLBO", kind: "INTERSECTION", xNm: -17.645, yNm: 7 },
+    { id: "WNJOIN", kind: "INTERSECTION", xNm: -13.645, yNm: 4 },
+    { id: "WSMAX", kind: "INTERSECTION", xNm: -18.645, yNm: -12 },
+    { id: "WSLBO", kind: "INTERSECTION", xNm: -17.645, yNm: -7 },
+    { id: "WSJOIN", kind: "INTERSECTION", xNm: -13.645, yNm: -4 },
+    { id: "BAYEA", kind: "WAYPOINT", xNm: 2.355, yNm: 0 },
+    { id: "BAYNE", kind: "WAYPOINT", xNm: 6.355, yNm: 4.5 },
+    { id: "BAYSE", kind: "WAYPOINT", xNm: 5.355, yNm: -6 },
+    { id: "MISSE", kind: "MAPT", xNm: 6.355, yNm: 6 },
+  ];
+
+  for (const exp of expectedFixes) {
+    const fix = catalog.fixes.find((item) => item.id === exp.id);
+    expect(fix, `fix ${exp.id}`).toBeDefined();
+    expect(fix).toMatchObject(exp);
+  }
+});
+
+test("T04-26 AC2 — ils.json contains all RW09 ILS navaids matching RW09 geometry", () => {
+  const catalog = loadCatalog("kdem");
+  const loc = catalog.navaids.find((item) => item.id === "IDEM09");
+  expect(loc).toBeDefined();
+  expect(loc).toMatchObject({
+    id: "IDEM09",
+    kind: "LOC",
+    courseDeg: 90,
+    lengthNm: 18,
+    beamHalfWidthDeg: 2.5,
+    xNm: 0.2,
+    yNm: 0,
+  });
+
+  const gs = catalog.navaids.find((item) => item.id === "IDEMGS09");
+  expect(gs).toBeDefined();
+  expect(gs).toMatchObject({
+    id: "IDEMGS09",
+    kind: "GS",
+    gsAngleDeg: 3.0,
+    tchFt: 50,
+    xNm: -1.465,
+    yNm: -0.07,
+  });
+
+  const dme = catalog.navaids.find((item) => item.id === "IDEMDME09");
+  expect(dme).toBeDefined();
+  expect(dme).toMatchObject({
+    id: "IDEMDME09",
+    kind: "DME",
+    pairedWith: "IDEM09",
+    xNm: 0.2,
+    yNm: 0,
+  });
+
+  const om = catalog.navaids.find((item) => item.id === "OM09");
+  expect(om).toBeDefined();
+  expect(om).toMatchObject({
+    id: "OM09",
+    kind: "OM",
+    xNm: -7.845,
+    yNm: 0,
+  });
+
+  const mm = catalog.navaids.find((item) => item.id === "MM09");
+  expect(mm).toBeDefined();
+  expect(mm).toMatchObject({
+    id: "MM09",
+    kind: "MM",
+    xNm: -2.195,
+    yNm: 0,
+  });
+});
+
 test("AC2 — DEM1 north/south transitions, MERGE common, VECTORS, alt+speed on every leg", () => {
   const catalog = loadCatalog("kdem");
   const dem1 = catalog.stars.find((item) => item.id === "DEM1");
@@ -100,6 +208,7 @@ test("AC5 — DEM/OCT/DMO/IDEM, STAR fixes, BAY1 sid, airportId is a string", ()
   expect(dct.has("DMO")).toBe(true);
   expect(dct.has("NEMAX")).toBe(true);
   expect(dct.has("IDEM")).toBe(true);
+  expect(dct.has("IDEM09")).toBe(true);
 });
 
 test("AC5b — DEM1 video map is default-on polylines/text; STAR parse does not join MAPS", () => {

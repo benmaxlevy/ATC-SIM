@@ -82,6 +82,29 @@
         "climbToFt": 3000,
         "directFixId": "MISSD"
       }
+    },
+    {
+      "id": "ILS09",
+      "type": "ILS",
+      "runway": "09",
+      "name": "ILS RWY 09",
+      "locNavaidId": "IDEM09",
+      "gsNavaidId": "IDEMGS09",
+      "fafFixId": "FI09",
+      "thresholdFixId": "RW09",
+      "courseDeg": 90,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "gsAngleDeg": 3.0,
+      "tchFt": 50,
+      "fafDistanceNm": 6,
+      "gsInterceptAltFt": 2000,
+      "daFt": 200,
+      "missed": {
+        "headingDeg": 90,
+        "climbToFt": 3000,
+        "directFixId": "MISSE"
+      }
     }
   ]
 }

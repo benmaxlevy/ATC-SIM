@@ -127,6 +127,61 @@ test("loadCatalog takes a directory path, not a KDEM-only name", () => {
   expect(loadCatalog("src/scenario/data/kdem").airportId).toBe("KDEM");
 });
 
+test("T04-26 AC4 — loadCatalog parses both ILS27 and ILS09 with all associated navaids and fixes", () => {
+  const catalog = loadCatalog("kdem");
+  expect(catalog.approaches.map((a) => a.id)).toEqual(["ILS27", "ILS09"]);
+  const ils09 = catalog.approaches.find((a) => a.id === "ILS09")!;
+  expect(ils09).toBeDefined();
+  expect(ils09.runway).toBe("09");
+  expect(ils09.locNavaidId).toBe("IDEM09");
+  expect(ils09.gsNavaidId).toBe("IDEMGS09");
+  expect(ils09.fafFixId).toBe("FI09");
+  expect(ils09.thresholdFixId).toBe("RW09");
+  expect(ils09.missed?.directFixId).toBe("MISSE");
+
+  // Verify all approach referenced items exist in catalog
+  expect(catalog.navaids.some((n) => n.id === "IDEM09")).toBe(true);
+  expect(catalog.navaids.some((n) => n.id === "IDEMGS09")).toBe(true);
+  expect(catalog.fixes.some((f) => f.id === "FI09")).toBe(true);
+  expect(catalog.fixes.some((f) => f.id === "RW09")).toBe(true);
+  expect(catalog.fixes.some((f) => f.id === "MISSE")).toBe(true);
+});
+
+test("AC3 — dangling approach locNavaidId, gsNavaidId, fafFixId, thresholdFixId, missed directFixId throws", () => {
+  {
+    const files = kdemFiles();
+    const procedures = files.procedures as { approaches: Array<{ locNavaidId?: string }> };
+    procedures.approaches[1]!.locNavaidId = "NOPE";
+    expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
+  }
+  {
+    const files = kdemFiles();
+    const procedures = files.procedures as { approaches: Array<{ gsNavaidId?: string }> };
+    procedures.approaches[1]!.gsNavaidId = "NOPE";
+    expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
+  }
+  {
+    const files = kdemFiles();
+    const procedures = files.procedures as { approaches: Array<{ fafFixId?: string }> };
+    procedures.approaches[1]!.fafFixId = "NOPE";
+    expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
+  }
+  {
+    const files = kdemFiles();
+    const procedures = files.procedures as { approaches: Array<{ thresholdFixId?: string }> };
+    procedures.approaches[1]!.thresholdFixId = "NOPE";
+    expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
+  }
+  {
+    const files = kdemFiles();
+    const procedures = files.procedures as {
+      approaches: Array<{ missed?: { directFixId?: string } }>;
+    };
+    procedures.approaches[1]!.missed!.directFixId = "NOPE";
+    expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
+  }
+});
+
 test("missing catalog directory throws", () => {
   expect(() => loadCatalog("kjfk")).toThrow(/Missing catalog file/);
 });
