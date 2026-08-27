@@ -13,6 +13,12 @@ This is the **ninth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (
 
 ---
 
+## Ninth swarm execution — 2026-08-26
+
+Human invoked `/run-swarm`. Execute only the ninth-swarm configuration below. Preserve untracked QA artifacts and unrelated rule files. Do not begin worker setup until this execution update is committed.
+
+---
+
 ## Ninth swarm started — 2026-08-26 (session traffic setup)
 
 Human requested tickets only for configurable session traffic, then approved this swarm configuration. The UI is setup/restart-only: it does not edit a live World. This run starts after the eighth swarm is green.
