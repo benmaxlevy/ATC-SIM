@@ -16,6 +16,7 @@ import {
   isCycleFocusKey,
   isFilterChordKey,
   isHelpToggleKey,
+  isBeaconSelectKey,
   isLeaderPrefixKey,
   isMouseBinding,
   isRadioFocusSlashKey,
@@ -91,6 +92,13 @@ test("F is a scope-focus chord key, never always-on F7", () => {
   expect(isFilterChordKey("f")).toBe(true);
   expect(isFilterChordKey("F7")).toBe(false);
   expect(isFilterChordKey("F3")).toBe(false);
+});
+
+test("B is a scope-focus beacon-select key, never always-on", () => {
+  expect(isBeaconSelectKey("B")).toBe(true);
+  expect(isBeaconSelectKey("b")).toBe(true);
+  expect(isBeaconSelectKey("BE")).toBe(false);
+  expect(isBeaconSelectKey("F3")).toBe(false);
 });
 
 test("* is a scope-focus TPA/ATPA chord prefix, never radio", () => {

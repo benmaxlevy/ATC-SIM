@@ -2,10 +2,14 @@ import { expect, test } from "vitest";
 import { createWorld, makeTestAircraft } from "@core";
 import { CHORD_TIMEOUT_MS } from "./keymap";
 import {
+  applyPreviewBeaconAction,
   armPreviewCntl,
+  beginPreviewBeaconEntry,
   cancelPreviewArea,
+  commitPreviewCommand,
   expirePreviewArea,
   formatPreviewReadout,
+  handlePreviewBeaconKey,
   handlePreviewEscape,
   handlePreviewFlidKey,
   idlePreviewArea,
@@ -16,6 +20,7 @@ import {
   rejectPreviewArea,
   rejectPreviewCntl,
   resolveScopeFlid,
+  toggleBeaconSelectCode,
   type PreviewAreaState,
   type PreviewCommandResult,
 } from "./previewArea";
@@ -61,6 +66,120 @@ test("parsePreviewCommand: empty and live prefix are incomplete; unknown is inva
   expect(parsePreviewCommand("TERM CNTL ALL")).toMatchObject({ kind: "invalid" });
   expect(parsePreviewCommand("BE")).toMatchObject({ kind: "invalid" });
   expect(parsePreviewCommand("F3")).toMatchObject({ kind: "invalid" });
+});
+
+const BEACON_PARSE_CASES: ReadonlyArray<{
+  buffer: string;
+  parse: PreviewCommandResult["kind"];
+  commit: PreviewCommandResult["kind"];
+  action?: { type: "beaconBlock" | "beaconDiscrete"; digits: string };
+}> = [
+  { buffer: "B", parse: "incomplete", commit: "invalid" },
+  { buffer: "B4", parse: "incomplete", commit: "invalid" },
+  { buffer: "B45", parse: "action", commit: "action", action: { type: "beaconBlock", digits: "45" } },
+  { buffer: "B450", parse: "incomplete", commit: "invalid" },
+  {
+    buffer: "B4501",
+    parse: "action",
+    commit: "action",
+    action: { type: "beaconDiscrete", digits: "4501" },
+  },
+  { buffer: "B45012", parse: "invalid", commit: "invalid" },
+  { buffer: "BE", parse: "invalid", commit: "invalid" },
+  { buffer: "B45A", parse: "invalid", commit: "invalid" },
+];
+
+test("parsePreviewCommand table: B45 CODE BLOCK, B4501 discrete, incomplete Enter is INV", () => {
+  for (const row of BEACON_PARSE_CASES) {
+    const parsed = parsePreviewCommand(row.buffer);
+    expect(parsed.kind, row.buffer).toBe(row.parse);
+    if (row.action && parsed.kind === "action") {
+      expect(parsed.action).toEqual(row.action);
+    }
+    const committed = commitPreviewCommand(row.buffer);
+    expect(committed.kind, `commit ${row.buffer}`).toBe(row.commit);
+    if (row.action && committed.kind === "action") {
+      expect(committed.action).toEqual(row.action);
+    }
+  }
+});
+
+test("B45 / B4501 toggle twice; B4500 does not toggle 4501", () => {
+  const codes: string[] = [];
+  const block = parsePreviewCommand("B45");
+  expect(block.kind).toBe("action");
+  if (block.kind !== "action") {
+    return;
+  }
+  expect(block.action).toEqual({ type: "beaconBlock", digits: "45" });
+  expect(applyPreviewBeaconAction(codes, block.action)).toBe(true);
+  expect(codes).toEqual(["45"]);
+  applyPreviewBeaconAction(codes, { type: "beaconBlock", digits: "45" });
+  expect(codes).toEqual([]);
+
+  applyPreviewBeaconAction(codes, { type: "beaconDiscrete", digits: "4501" });
+  expect(codes).toEqual(["4501"]);
+  applyPreviewBeaconAction(codes, { type: "beaconDiscrete", digits: "4500" });
+  expect(codes).toEqual(["4501", "4500"]);
+  applyPreviewBeaconAction(codes, { type: "beaconDiscrete", digits: "4501" });
+  expect(codes).toEqual(["4500"]);
+});
+
+test("toggleBeaconSelectCode add-if-absent remove-if-present; block and discrete coexist", () => {
+  const codes: string[] = [];
+  toggleBeaconSelectCode(codes, "45");
+  toggleBeaconSelectCode(codes, "4501");
+  expect(codes).toEqual(["45", "4501"]);
+  toggleBeaconSelectCode(codes, "45");
+  expect(codes).toEqual(["4501"]);
+});
+
+test("Enter with 0/1/3 digits is INV; two digits wait; four digits auto-commit", () => {
+  const state = idlePreviewArea();
+  beginPreviewBeaconEntry(state, 0);
+  expect(handlePreviewBeaconKey(state, "Enter", 1).action).toBeNull();
+  expect(state.rejection).toBe("B INV");
+
+  beginPreviewBeaconEntry(state, 2);
+  expect(handlePreviewBeaconKey(state, "4", 3).action).toBeNull();
+  expect(state.phase).toBe("entry");
+  expect(handlePreviewBeaconKey(state, "Enter", 4).action).toBeNull();
+  expect(state.rejection).toBe("B4 INV");
+
+  beginPreviewBeaconEntry(state, 5);
+  handlePreviewBeaconKey(state, "4", 6);
+  handlePreviewBeaconKey(state, "5", 7);
+  expect(state.buffer).toBe("B45");
+  expect(state.phase).toBe("entry");
+  const block = handlePreviewBeaconKey(state, "Enter", 8);
+  expect(block.action).toEqual({ type: "beaconBlock", digits: "45" });
+  expect(state.phase).toBe("idle");
+
+  beginPreviewBeaconEntry(state, 9);
+  handlePreviewBeaconKey(state, "4", 10);
+  handlePreviewBeaconKey(state, "5", 11);
+  handlePreviewBeaconKey(state, "0", 12);
+  expect(state.buffer).toBe("B450");
+  expect(handlePreviewBeaconKey(state, "Enter", 13).action).toBeNull();
+  expect(state.rejection).toBe("B450 INV");
+
+  beginPreviewBeaconEntry(state, 14);
+  handlePreviewBeaconKey(state, "4", 15);
+  handlePreviewBeaconKey(state, "5", 16);
+  handlePreviewBeaconKey(state, "0", 17);
+  const discrete = handlePreviewBeaconKey(state, "1", 18);
+  expect(discrete.action).toEqual({ type: "beaconDiscrete", digits: "4501" });
+  expect(state.phase).toBe("idle");
+});
+
+test("non-digit after B is INV, not parse-and-no-op", () => {
+  const state = idlePreviewArea();
+  beginPreviewBeaconEntry(state, 0);
+  const outcome = handlePreviewBeaconKey(state, "E", 1);
+  expect(outcome.consumed).toBe(true);
+  expect(outcome.action).toBeNull();
+  expect(state.phase).toBe("idle");
+  expect(state.rejection).toBe("BE INV");
 });
 
 test("unknown complete input is invalid, not a silent no-op or action", () => {
@@ -157,8 +276,14 @@ test("AC8 — module cites R07 Preview Area + Command Reference, display-only, T
   expect(src).toMatch(/R07/);
   expect(src).toMatch(/Preview Area/);
   expect(src).toMatch(/Command Reference/);
+  expect(src).toMatch(/Table 30/);
   expect(src).toMatch(/display-only/i);
   expect(src).toMatch(/not the[\s*]+radio command line/i);
+  expect(src).toMatch(/B##/);
+  expect(src).toMatch(/B####/);
+  expect(src).toMatch(/BE/);
+  expect(src).toMatch(/BI/);
+  expect(src).toMatch(/M ####/);
   expect(src).toMatch(/T02-52/);
   expect(src).toMatch(/T02-53/);
   expect(src).toMatch(/INIT CNTL/);

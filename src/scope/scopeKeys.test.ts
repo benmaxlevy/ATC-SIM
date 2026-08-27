@@ -39,6 +39,8 @@ test("always-on keys are PageUp, PageDown, Home, End, F1, F3, F4, F7, F8; H/T/M/
   expect(isAlwaysOnScopeKey("L")).toBe(false);
   expect(isAlwaysOnScopeKey("Tab")).toBe(false);
   expect(isAlwaysOnScopeKey("/")).toBe(false);
+  expect(isAlwaysOnScopeKey("B")).toBe(false);
+  expect(isAlwaysOnScopeKey("b")).toBe(false);
 });
 
 test("AC2 — PageUp five times from 20 NM is 5 NM; center unchanged", () => {
@@ -1022,4 +1024,110 @@ test("Backspace edits armed INIT ACID; Esc cancels; F7 stays PTL ALL", () => {
   expect(handleScopeKeyDown(keyEvent("F7"), view, "radio", world)).toBe(true);
   expect(view.ptlOn).toBe(true);
   expect(view.preview.phase).toBe("armed");
+});
+
+test("scope-focus B45 Enter toggles CODE BLOCK; second B45 removes it", () => {
+  const view = createScopeView();
+  let now = 0;
+  for (const key of ["B", "4", "5", "Enter"]) {
+    expect(handleScopeKeyDown(keyEvent(key), view, "scope", undefined, now)).toBe(true);
+    now += 100;
+  }
+  expect(view.beaconSelectCodes).toEqual(["45"]);
+  expect(view.preview.phase).toBe("idle");
+
+  now += 100;
+  for (const key of ["B", "4", "5", "Enter"]) {
+    handleScopeKeyDown(keyEvent(key), view, "scope", undefined, now);
+    now += 100;
+  }
+  expect(view.beaconSelectCodes).toEqual([]);
+});
+
+test("scope-focus B4501 auto-commits discrete; B4500 does not remove 4501", () => {
+  const view = createScopeView();
+  let now = 0;
+  for (const key of ["B", "4", "5", "0", "1"]) {
+    expect(handleScopeKeyDown(keyEvent(key), view, "scope", undefined, now)).toBe(true);
+    now += 100;
+  }
+  expect(view.beaconSelectCodes).toEqual(["4501"]);
+  expect(view.preview.phase).toBe("idle");
+
+  for (const key of ["B", "4", "5", "0", "0"]) {
+    handleScopeKeyDown(keyEvent(key), view, "scope", undefined, now);
+    now += 100;
+  }
+  expect(view.beaconSelectCodes).toEqual(["4501", "4500"]);
+});
+
+test("scope-focus B + incomplete Enter is INV; list unchanged", () => {
+  const view = createScopeView();
+  expect(handleScopeKeyDown(keyEvent("B"), view, "scope", undefined, 0)).toBe(true);
+  expect(handleScopeKeyDown(keyEvent("Enter"), view, "scope", undefined, 1)).toBe(true);
+  expect(view.beaconSelectCodes).toEqual([]);
+  expect(view.preview.rejection).toBe("B INV");
+  expect(view.preview.phase).toBe("idle");
+
+  handleScopeKeyDown(keyEvent("B"), view, "scope", undefined, 2);
+  handleScopeKeyDown(keyEvent("4"), view, "scope", undefined, 3);
+  handleScopeKeyDown(keyEvent("Enter"), view, "scope", undefined, 4);
+  expect(view.beaconSelectCodes).toEqual([]);
+  expect(view.preview.rejection).toBe("B4 INV");
+});
+
+test("radio-focus B is not consumed as a preview command", () => {
+  const view = createScopeView();
+  const event = keyEvent("B");
+  expect(handleScopeKeyDown(event, view, "radio")).toBe(false);
+  expect(event.preventDefault).not.toHaveBeenCalled();
+  expect(view.preview.phase).toBe("idle");
+  expect(view.beaconSelectCodes).toEqual([]);
+});
+
+test("B sequences emit no Command IR; DAL123 H270 still turns", async () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", headingDeg: 90 });
+  const world = createWorld({ aircraft: [dal], selectedAircraftId: dal.id });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const log = new SessionLog();
+
+  for (const key of ["B", "4", "5", "Enter"]) {
+    handleScopeKeyDown(keyEvent(key), view, "scope", world, 0);
+  }
+  expect(view.beaconSelectCodes).toEqual(["45"]);
+  expect(log.byType("command.accepted")).toHaveLength(0);
+  expect(dal.intent.assignedHeadingDeg).toBe(90);
+
+  await handleRadioText(world, "DAL123 H270", log);
+  expect(dal.intent.assignedHeadingDeg).toBe(270);
+  expect(log.byType("command.accepted")).toHaveLength(1);
+  expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
+});
+
+test("live B preview Esc cancels before * chord; *J still works after", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [dal], selectedAircraftId: dal.id });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  handleScopeKeyDown(keyEvent("B"), view, "scope", world, 0);
+  handleScopeKeyDown(keyEvent("4"), view, "scope", world, 1);
+  view.starsChordEntry.phase = "entry";
+  view.starsChordEntry.buffer = "*J3";
+  const esc = keyEvent("Escape");
+  expect(handleScopeKeyDown(esc, view, "scope", world, 2)).toBe(true);
+  expect(view.preview.phase).toBe("idle");
+  expect(view.starsChordEntry.phase).toBe("entry");
+  expect(view.starsChordEntry.buffer).toBe("*J3");
+  expect(view.beaconSelectCodes).toEqual([]);
+
+  const idle = createScopeView();
+  syncTrackDisplays(idle.tracks, world);
+  let now = 10;
+  for (const key of ["*", "J", "3", "Enter"]) {
+    handleScopeKeyDown(keyEvent(key), idle, "scope", world, now);
+    now += 100;
+  }
+  expect(idle.tracks.get(dal.id)?.tpaRingNm).toBe(3);
 });

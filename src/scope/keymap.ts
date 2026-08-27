@@ -330,6 +330,11 @@ export function isFilterChordKey(key: string): boolean {
   return key === "F" || key === "f";
 }
 
+/** Scope-focus Table 30 beacon select. Never always-on; radio `B` is literal. */
+export function isBeaconSelectKey(key: string): boolean {
+  return key === "B" || key === "b";
+}
+
 /** Scope-focus STARS TPA/ATPA `*` chord. Never always-on; radio `*` is literal. */
 export function isStarsChordPrefixKey(key: string): boolean {
   return key === "*" || key === "Multiply";

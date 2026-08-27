@@ -80,8 +80,9 @@ Area command holes (including those MULTIFUNC chords) are listed under
 Visible now: `FIL` altitude chord, L1–L9 leader, T02-49 `*` Table 36 TPA/ATPA
 chords, and the Preview Area buffer (readout + machine). F3 / F4 still apply
 immediately to the selected track (color/ownership stubs) until T02-52 wires
-INIT CNTL / TERM CNTL. Beacon `B` is T02-53. The buffer is display-only — not
-the radio command line.
+INIT CNTL / TERM CNTL. Beacon `B##` / `B####` (Table 30 CODE BLOCK / discrete)
+are parsed as display filters. The buffer is display-only — not the radio
+command line.
 
 Deliberately unparsed CRC tables / commands — later work, **not** stubs this
 trainer accepts:
@@ -95,6 +96,7 @@ trainer accepts:
 - per-track Mode C / MULTIFUNC `M` `C` `Y` (see **Manual Inhibit Commands
   and Safety Inhibit Glyphs** — do not duplicate that parser here)
 - assigned / filed alt `MΔ` / `++`
+- assign-code `M ####` / `M(####)`
 - beacon LDB `BE` / `BI`
 - leader-by-TCP / `L11` global typed
 - relocate preview / lists

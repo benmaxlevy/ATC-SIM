@@ -15,6 +15,7 @@ import {
   isTargetDiamondPath,
   renderTargetSymbol,
   selectionBoxRect,
+  squawkMatchesBeaconSelect,
   targetStrokeColor,
   targetSymbolDescriptor,
   targetSymbolShape,
@@ -185,6 +186,48 @@ test("AC2 — Unassociated secondary targets render asterisk, V for 1200, square
   expect(mockBcn.strokeRects[0]!.w).toBe(8);
   expect(mockBcn.strokeRects[0]!.h).toBe(8);
   expect(mockBcn.fillTexts).toHaveLength(0);
+});
+
+test("CODE BLOCK prefix paints □; unmatched unassociated stays *", () => {
+  expect(
+    targetSymbolDescriptor({
+      ownership: "unowned",
+      squawk: "4501",
+      beaconSelect: ["45"],
+    }).kind,
+  ).toBe("beacon_select");
+  expect(
+    targetSymbolDescriptor({
+      ownership: "unowned",
+      squawk: "4521",
+      beaconSelect: ["45"],
+    }).symbol,
+  ).toBe("□");
+  expect(
+    targetSymbolDescriptor({
+      ownership: "unowned",
+      squawk: "0342",
+      beaconSelect: ["45"],
+    }).symbol,
+  ).toBe("*");
+  expect(
+    targetSymbolDescriptor({
+      ownership: "unowned",
+      squawk: "4500",
+      beaconSelect: ["4501"],
+    }).symbol,
+  ).toBe("*");
+  expect(
+    targetSymbolDescriptor({
+      ownership: "unowned",
+      squawk: "4501",
+      beaconSelect: new Set(["4501"]),
+    }).kind,
+  ).toBe("beacon_select");
+  expect(
+    squawkMatchesBeaconSelect("4501", ["45", "1200"]),
+  ).toBe(true);
+  expect(squawkMatchesBeaconSelect("0342", ["45"])).toBe(false);
 });
 
 test("AC3 — Tracked target renders owning controller's sector ID", () => {

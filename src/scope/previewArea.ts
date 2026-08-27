@@ -2,7 +2,7 @@
  * Analog: CRC STARS Preview Area + Command Reference
  * (docs.virtualnas.net/crc/stars — R07). Typed scope commands paint under the
  * SSA; Tracking Aircraft Table 18/19 names INIT CNTL / TERM CNTL; Table 30
- * names beacon-code select.
+ * names beacon-code select (`B##` CODE BLOCK / `B####` discrete).
  *
  * The preview buffer is a **display-only** scope action surface. It is not the
  * radio command line. `DAL123 H270` remains the radio path and still compiles
@@ -11,23 +11,27 @@
  *
  * T02-51 shipped the machine, readout, Esc cancel, and INV flash. T02-52 wires
  * F3 INIT CNTL / F4 TERM CNTL as armed actions (not typed `F3` in the buffer).
- * Beacon `B` actions arrive in T02-53. T02-51's parse table is live prefix /
- * else invalid — F-keys do not add typed rows. Unknown complete input is
- * invalid, not a silent no-op. Not NAS STARS.
+ * `B##` / `B####` are display-only filters (toggle `beaconSelectCodes`; no
+ * slewed track). `BE` / `BI` LDB inhibit and assign-code (`M ####`) remain
+ * deferred. Unknown complete input is invalid, not a silent no-op. Not NAS STARS.
  */
 
 import type { World } from "@core";
-import { CHORD_TIMEOUT_MS, chordTimedOut } from "./keymap";
+import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
 
 export type PreviewPhase = "idle" | "entry" | "armed";
 
 /**
  * Armed preview action, discriminated on `type`.
  * T02-52: `initCntl` / `termCntl` (FLID lives on `PreviewAreaState.flid`).
- * T02-53 extends with beacon select. Do not put F3-specific field names on
- * ScopeView — later tickets add variants here.
+ * T02-53: `beaconBlock` / `beaconDiscrete`. Do not put F3-specific field names
+ * on ScopeView.
  */
-export type PreviewArmedAction = { readonly type: "initCntl" } | { readonly type: "termCntl" };
+export type PreviewArmedAction =
+  | { readonly type: "initCntl" }
+  | { readonly type: "termCntl" }
+  | { readonly type: "beaconBlock"; readonly digits: string }
+  | { readonly type: "beaconDiscrete"; readonly digits: string };
 
 /** Full callsign / numeric-tail / 4-digit squawk — duplicated, not `@pilot`. */
 const FULL_CALLSIGN = /^[A-Z]{3}[0-9]{1,4}[A-Z]?$/;
@@ -89,12 +93,14 @@ export type PreviewCommandResult =
  * Extension table for `parsePreviewCommand`. Complete commands map to
  * `{ kind: "action" }`. Prefix-only rows stay incomplete. INIT CNTL / TERM CNTL
  * are F-keys (armed on `PreviewAreaState`), not typed `F3` / `F4` buffers.
+ * `B##` / `B####` cannot live as enumerated rows: `B45` is a complete CODE
+ * BLOCK and a live prefix of `B4501`. `parseBeaconSelect` owns those digits.
  * Do not rewrite the state machine to add rows.
  */
 type PreviewTableEntry = { kind: "prefix" } | { kind: "action"; action: PreviewArmedAction };
 
 const PREVIEW_TABLE: Readonly<Record<string, PreviewTableEntry>> = {
-  // T02-53: `B` begins beacon-code select. Digits + commit arrive then.
+  // T02-53: `B` begins beacon-code select. Digits + commit in parseBeaconSelect.
   B: { kind: "prefix" },
 };
 
@@ -210,6 +216,34 @@ function invalid(reason: string): PreviewCommandResult {
 }
 
 /**
+ * Table 30 beacon select. `B45` is a complete CODE BLOCK **and** a live prefix
+ * of `B4501`, so the key handler waits for Enter at two digits; four digits may
+ * auto-commit. 0 / 1 / 3 digits stay incomplete until Enter maps them to INV.
+ */
+function parseBeaconSelect(buffer: string): PreviewCommandResult | null {
+  if (!buffer.startsWith("B")) {
+    return null;
+  }
+  if (buffer.length === 1) {
+    return null;
+  }
+  const digits = buffer.slice(1);
+  if (!/^\d+$/.test(digits)) {
+    return invalid("unknown preview command");
+  }
+  if (digits.length === 2) {
+    return { kind: "action", action: { type: "beaconBlock", digits } };
+  }
+  if (digits.length === 4) {
+    return { kind: "action", action: { type: "beaconDiscrete", digits } };
+  }
+  if (digits.length > 4) {
+    return invalid("unknown preview command");
+  }
+  return { kind: "incomplete" };
+}
+
+/**
  * Pure string parser for the Preview Area buffer.
  * T02-51: empty and live prefixes are `incomplete`; anything else is `invalid`.
  * T02-52 / T02-53 add `action` rows to `PREVIEW_TABLE` without replacing this.
@@ -224,6 +258,10 @@ export function parsePreviewCommand(buffer: string): PreviewCommandResult {
       return { kind: "action", action: exact.action };
     }
     return { kind: "incomplete" };
+  }
+  const beacon = parseBeaconSelect(buffer);
+  if (beacon) {
+    return beacon;
   }
   const keys = Object.keys(PREVIEW_TABLE);
   if (keys.some((key) => key.startsWith(buffer))) {
@@ -347,4 +385,111 @@ export function previewFlidMatchesSlew(
   }
   const resolved = resolveScopeFlid(flid, world);
   return resolved.ok && resolved.aircraftId === aircraftId;
+}
+
+/** Enter-commit: a still-live prefix (`B`, `B4`, `B450`) is `invalid`, not a silent no-op. */
+export function commitPreviewCommand(buffer: string): PreviewCommandResult {
+  const parsed = parsePreviewCommand(buffer);
+  if (parsed.kind === "incomplete") {
+    return invalid("incomplete preview command");
+  }
+  return parsed;
+}
+
+/** Add `token` if absent, remove if present. Stores `"45"` or `"4501"`. */
+export function toggleBeaconSelectCode(codes: string[], token: string): void {
+  const i = codes.indexOf(token);
+  if (i >= 0) {
+    codes.splice(i, 1);
+    return;
+  }
+  codes.push(token);
+}
+
+export function applyPreviewBeaconAction(
+  codes: string[],
+  action: PreviewArmedAction,
+): boolean {
+  if (action.type === "beaconBlock" || action.type === "beaconDiscrete") {
+    toggleBeaconSelectCode(codes, action.digits);
+    return true;
+  }
+  return false;
+}
+
+export type PreviewKeyOutcome = {
+  consumed: boolean;
+  action: PreviewArmedAction | null;
+};
+
+/** Live `B…` CODE BLOCK / discrete entry (not INIT/TERM). */
+export function isBeaconPreviewEntry(state: PreviewAreaState): boolean {
+  return state.phase === "entry" && /^B\d*$/.test(state.buffer);
+}
+
+export function beginPreviewBeaconEntry(state: PreviewAreaState, nowMs: number): void {
+  state.phase = "entry";
+  state.buffer = "B";
+  state.mnemonic = "";
+  state.flid = null;
+  state.rejection = null;
+  state.armed = null;
+  state.lastKeyAtMs = nowMs;
+}
+
+/**
+ * Scope-focus `B` then digits. Enter commits; four digits may auto-commit;
+ * Esc is handled by `handlePreviewEscape`; Backspace edits; any other key is
+ * INV. Never Command IR.
+ */
+export function handlePreviewBeaconKey(
+  state: PreviewAreaState,
+  key: string,
+  nowMs: number,
+  code?: string,
+): PreviewKeyOutcome {
+  if (!isBeaconPreviewEntry(state)) {
+    return { consumed: false, action: null };
+  }
+  if (key === "Escape") {
+    return { consumed: false, action: null };
+  }
+  if (key === "Backspace") {
+    if (state.buffer.length <= 1) {
+      cancelPreviewArea(state);
+      return { consumed: true, action: null };
+    }
+    state.buffer = state.buffer.slice(0, -1);
+    state.lastKeyAtMs = nowMs;
+    return { consumed: true, action: null };
+  }
+  if (key === "Enter" || key === "NumpadEnter") {
+    const committed = commitPreviewCommand(state.buffer);
+    if (committed.kind === "action") {
+      cancelPreviewArea(state);
+      return { consumed: true, action: committed.action };
+    }
+    rejectPreviewArea(state, nowMs);
+    return { consumed: true, action: null };
+  }
+  const digit = digitFromKey(key, code);
+  if (digit !== null) {
+    state.buffer += String(digit);
+    state.lastKeyAtMs = nowMs;
+    const parsed = parsePreviewCommand(state.buffer);
+    if (parsed.kind === "invalid") {
+      rejectPreviewArea(state, nowMs);
+      return { consumed: true, action: null };
+    }
+    if (parsed.kind === "action" && parsed.action.type === "beaconDiscrete") {
+      cancelPreviewArea(state);
+      return { consumed: true, action: parsed.action };
+    }
+    return { consumed: true, action: null };
+  }
+  if (/^[a-zA-Z]$/.test(key)) {
+    state.buffer += key.toUpperCase();
+  }
+  rejectPreviewArea(state, nowMs);
+  return { consumed: true, action: null };
 }

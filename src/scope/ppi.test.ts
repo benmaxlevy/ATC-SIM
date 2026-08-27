@@ -360,3 +360,25 @@ test("typed INIT FLID then slew applies only when the FLID uniquely matches the 
   expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
   expect(view.tracks.get(aal.id)!.ownership).toBe("unowned");
 });
+
+test("empty PPI click does not apply or consume a B command", () => {
+  const dal = sample("DAL123", "ac-dal", 16, 8);
+  const world = createWorld({ aircraft: [dal] });
+  const view = createScopeView();
+  typeChord(view, world, ["B", "4", "5"]);
+  expect(view.preview.phase).toBe("entry");
+  expect(view.preview.buffer).toBe("B45");
+  expect(view.beaconSelectCodes).toEqual([]);
+
+  handlePpiLeftClick(view, world, 10, 10, CSS_W, CSS_H);
+  expect(view.preview.phase).toBe("entry");
+  expect(view.preview.buffer).toBe("B45");
+  expect(view.beaconSelectCodes).toEqual([]);
+
+  typeChord(view, world, ["Enter"]);
+  expect(view.beaconSelectCodes).toEqual(["45"]);
+  expect(view.preview.phase).toBe("idle");
+
+  handlePpiLeftClick(view, world, 10, 10, CSS_W, CSS_H);
+  expect(view.beaconSelectCodes).toEqual(["45"]);
+});

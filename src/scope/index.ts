@@ -161,6 +161,7 @@ export {
   isCycleFocusKey,
   isFilterChordKey,
   isHelpToggleKey,
+  isBeaconSelectKey,
   isMouseBinding,
   isRadioFocusSlashKey,
   isScopeChordLive,
@@ -172,13 +173,18 @@ export {
 } from "./keymap";
 export type { KeyBinding, KeyFocus, ScopeChord } from "./keymap";
 export {
+  applyPreviewBeaconAction,
   armPreviewCntl,
+  beginPreviewBeaconEntry,
   cancelPreviewArea,
+  commitPreviewCommand,
   expirePreviewArea,
   formatPreviewReadout,
+  handlePreviewBeaconKey,
   handlePreviewEscape,
   handlePreviewFlidKey,
   idlePreviewArea,
+  isBeaconPreviewEntry,
   parsePreviewCommand,
   previewAreaIsLive,
   previewCntlArmed,
@@ -186,6 +192,7 @@ export {
   rejectPreviewArea,
   rejectPreviewCntl,
   resolveScopeFlid,
+  toggleBeaconSelectCode,
 } from "./previewArea";
 export type {
   PreviewArmedAction,
@@ -392,6 +399,7 @@ export {
   targetDiamondVertices,
   targetSymbolDescriptor,
   targetSymbolShape,
+  squawkMatchesBeaconSelect,
 } from "./targetSymbol";
 export type {
   TargetSurveillanceType,

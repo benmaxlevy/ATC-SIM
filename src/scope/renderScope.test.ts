@@ -1332,6 +1332,65 @@ test("T02-34 AC2 — Unassociated secondary targets render *, V for 1200, square
   expect(rectSel.length).toBeGreaterThanOrEqual(1);
 });
 
+test("T02-53 — B45 toggle paints matching unassociated □; unmatched stays *", () => {
+  const acMatch = makeTestAircraft({
+    id: "ac-match",
+    callsign: "SEL1",
+    xNm: -2,
+    yNm: 0,
+    squawk: "4521",
+  });
+  const acMiss = makeTestAircraft({
+    id: "ac-miss",
+    callsign: "DAL2",
+    xNm: 2,
+    yNm: 0,
+    squawk: "0342",
+  });
+  const world = createWorld({ aircraft: [acMatch, acMiss] });
+  const view = createScopeView();
+  let now = 0;
+  for (const key of ["B", "4", "5", "Enter"]) {
+    handleScopeKeyDown(
+      { key, preventDefault(): void {}, stopPropagation(): void {} },
+      view,
+      "scope",
+      world,
+      now,
+    );
+    now += 100;
+  }
+  expect(view.beaconSelectCodes).toEqual(["45"]);
+
+  const css = 800;
+  const painted = createMockCtx();
+  renderScope(painted.ctx, world, view, css, css);
+  const pMatch = nmToScreen(acMatch.xNm, acMatch.yNm, view.camera, { widthPx: css, heightPx: css });
+  const pMiss = nmToScreen(acMiss.xNm, acMiss.yNm, view.camera, { widthPx: css, heightPx: css });
+  const rectMatch = painted.strokeRects.filter(
+    (r) => Math.abs(r.x + r.w / 2 - pMatch.x) <= 2 && Math.abs(r.y + r.h / 2 - pMatch.y) <= 2,
+  );
+  expect(rectMatch.length).toBeGreaterThanOrEqual(1);
+  const missSym = findTargetPositionSymbol(painted.fillTexts, pMiss.x, pMiss.y);
+  expect(missSym[0]?.text).toBe("*");
+
+  for (const key of ["B", "4", "5", "Enter"]) {
+    handleScopeKeyDown(
+      { key, preventDefault(): void {}, stopPropagation(): void {} },
+      view,
+      "scope",
+      world,
+      now,
+    );
+    now += 100;
+  }
+  expect(view.beaconSelectCodes).toEqual([]);
+  const cleared = createMockCtx();
+  renderScope(cleared.ctx, world, view, css, css);
+  const matchStar = findTargetPositionSymbol(cleared.fillTexts, pMatch.x, pMatch.y);
+  expect(matchStar[0]?.text).toBe("*");
+});
+
 test("T02-34 AC3 — Tracked target renders owning controller's sector ID", () => {
   const ac = makeTestAircraft({ id: "ac-tracked", callsign: "DAL100", xNm: 0, yNm: 0 });
   const world = createWorld({ aircraft: [ac], selectedAircraftId: ac.id });
