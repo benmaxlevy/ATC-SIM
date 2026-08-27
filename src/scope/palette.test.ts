@@ -41,6 +41,14 @@ test("TCW palette follows FAA/CRC/vice grammar, not a green CRT game map", () =>
   expect(PALETTE.unowned.toLowerCase()).not.toBe("#ff0000");
 });
 
+test("ATPA alert orange is distinct from CA/MSAW red; caution and alert hues unchanged", () => {
+  expect(PALETTE.atpaAlert).toBe("#FF8800");
+  expect(PALETTE.atpaAlert.toUpperCase()).not.toBe("#FF0000");
+  expect(PALETTE.atpaAlert).not.toBe(PALETTE.alert);
+  expect(PALETTE.alert).toBe("#FF0000");
+  expect(PALETTE.caution).toBe("#FFFF00");
+});
+
 test("history trail is independent blue, newest brighter than oldest", () => {
   expect(HISTORY_TRAIL).toHaveLength(5);
   expect(historyTrailColor(0, 5)).toBe(HISTORY_TRAIL[4]);

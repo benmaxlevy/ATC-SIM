@@ -354,7 +354,8 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, disabled WX/VOL, T
   expect(tpa).toMatch(/data-dcb-cell="tpa-on"/);
   expect(tpa).toMatch(/data-dcb-cell="atpa"/);
   expect(TPA_RADIUS_NM).toEqual([2, 3, 5, 10]);
-  expect(shouldPaintAtpaGeometry(true)).toBe(false);
+  expect(shouldPaintAtpaGeometry(false, "monitor")).toBe(false);
+  expect(shouldPaintAtpaGeometry(true, "monitor")).toBe(true);
   closeDcbMenu(view);
   expect(dcbHtml(view)).toContain("RANGE 20");
 });

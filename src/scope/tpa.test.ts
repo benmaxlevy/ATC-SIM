@@ -151,7 +151,7 @@ test("no selection: TPA rings owned tracks only (not unowned)", () => {
   expect(tpaStrokes(pathStrokes)).toHaveLength(1);
 });
 
-test("AC3 — ATPA toggle stores state and paints no extra stroke / cones", () => {
+test("AC3 — ATPA on with an empty pair set paints no extra stroke", () => {
   const view = createScopeView();
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", xNm: 1, yNm: 1 });
   const world = createWorld({ aircraft: [dal], selectedAircraftId: dal.id });
@@ -160,7 +160,8 @@ test("AC3 — ATPA toggle stores state and paints no extra stroke / cones", () =
   renderScope(off.ctx, world, view, VIEW.widthPx, VIEW.heightPx);
   toggleAtpaOn(view);
   expect(view.atpa.on).toBe(true);
-  expect(shouldPaintAtpaGeometry(view.atpa.on)).toBe(false);
+  expect(world.alerts.atpa).toEqual([]);
+  expect(shouldPaintAtpaGeometry(view.atpa.on, "monitor")).toBe(true);
   const on = createMockCtx();
   renderScope(on.ctx, world, view, VIEW.widthPx, VIEW.heightPx);
   expect(tpaStrokes(on.pathStrokes)).toHaveLength(0);
@@ -218,7 +219,7 @@ test("AC5 — TPA/ATPA clicks are not Command IR; DAL123 H270 still works", asyn
   expect(log.byType("command.accepted")).toHaveLength(1);
 });
 
-test("AC6 — comments cite CRC TPA J-rings; CA is not a circle; ATPA is a stub", () => {
+test("AC6 — comments cite CRC TPA J-rings; CA is not a circle; ATPA cones stroke", () => {
   const sources = import.meta.glob("./*.{ts,tsx}", {
     query: "?raw",
     import: "default",
@@ -229,7 +230,9 @@ test("AC6 — comments cite CRC TPA J-rings; CA is not a circle; ATPA is a stub"
   expect(src).toMatch(/J-ring/i);
   expect(src).toMatch(/R07/);
   expect(src).toMatch(/ATPA/);
-  expect(src).toMatch(/no pairing|no cones|paints nothing/i);
+  expect(src).toMatch(/cone/i);
+  expect(src).toMatch(/world\.alerts\.atpa/);
+  expect(src).not.toMatch(/no pairing|paints nothing/i);
   expect(src).toMatch(/not a 3 NM (circle|halo)/i);
   expect(src).toMatch(/TLS|tools/);
   expect(src).not.toMatch(/Command IR/);

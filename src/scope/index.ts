@@ -386,12 +386,20 @@ export {
   TPA_STROKE_PX,
   aircraftForTpaRings,
   formatDcbTpaMiReadout as formatTpaMiReadout,
-  shouldPaintAtpaGeometry,
   stepTpaRadiusNm,
   tpaRingPoints,
   tpaScreenRadiusPx,
 } from "./tpa";
 export type { AtpaState, TpaRadiusNm, TpaState } from "./tpa";
+export {
+  ATPA_CONE_HALF_ANGLE_DEG,
+  atpaConeColor,
+  atpaConePoints,
+  atpaSuppressesManualTpaCone,
+  selectAtpaConesToPaint,
+  shouldPaintAtpaGeometry,
+} from "./atpaCone";
+export type { AtpaConePaintFlags, AtpaNmPoint } from "./atpaCone";
 export {
   IDENT_DISPLAY_FLASH_MS,
   LDB_QUERY_DURATION_MS,

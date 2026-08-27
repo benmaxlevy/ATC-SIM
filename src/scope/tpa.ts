@@ -2,10 +2,11 @@
  * Analog: CRC STARS TPA J-rings (`*J`) / ATPA DCB (docs.virtualnas.net/crc/stars — R07).
  * Trainer delta: DCB TPA draws a mileage circle 2 / 3 / 5 / 10 NM about the
  * **selected** track (if none selected: all F3-**owned** tracks). Default off,
- * 5 NM. Stroke uses TLS/tools color (`PALETTE.tools`), not CA red. ATPA is a
- * stored toggle with **no pairing engine and no cones**. CA remains T04-09
- * datablock text — not a 3 NM circle (circles here are TPA J-rings or ERAM DRI,
- * not CA). Not NAS STARS.
+ * 5 NM. Stroke uses TLS/tools color (`PALETTE.tools`), not CA red. ATPA cones
+ * paint from `world.alerts.atpa` when the DCB toggle is on (T02-45); this
+ * module keeps the J-ring helpers and the master `AtpaState.on` flag. CA remains
+ * T04-09 datablock text — not a 3 NM circle (circles here are TPA J-rings or
+ * ERAM DRI, not CA). Not NAS STARS.
  *
  * Scope display only. Never a Command, readback, or intent.
  */
@@ -30,7 +31,7 @@ export interface TpaState {
 }
 
 export interface AtpaState {
-  /** Stub: stored for PREF; paints nothing. */
+  /** DCB master toggle. Cones paint from `world.alerts.atpa` when on. */
   on: boolean;
 }
 
@@ -106,10 +107,4 @@ export function aircraftForTpaRings(
   return aircraft.filter((ac) => tracks.get(ac.id)?.ownership === "owned");
 }
 
-/**
- * ATPA stub: even when the DCB toggle is on, no pairing / cones / extra stroke.
- * Real ATPA (in-trail sequence) is out of scope.
- */
-export function shouldPaintAtpaGeometry(_atpaOn: boolean): false {
-  return false;
-}
+export { shouldPaintAtpaGeometry } from "./atpaCone";

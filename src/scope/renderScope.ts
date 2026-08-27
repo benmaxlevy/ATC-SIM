@@ -25,8 +25,9 @@
  * sprite. Not an airplane. Not a label. Not NAS STARS.
  *
  * Draw order (phase README): background, rings, coastline, runway, localizer,
- * history, PTL, TPA J-rings, targets, leader lines, datablocks, selection box, SSA
- * (screen-fixed). Maps rebuild on range/center/resize/layer toggle, not every rAF.
+ * history, PTL, TPA J-rings, ATPA cones, targets, leader lines, datablocks,
+ * selection box, SSA (screen-fixed). Maps rebuild on range/center/resize/layer
+ * toggle, not every rAF.
  *
  * Hot path (T02-12): reuse Path2D map cache — do not parse KDEM JSON per frame,
  * do not rebuild maps 60 times for a static camera, do not fillText per
@@ -45,12 +46,12 @@ import { drawPredictedTrackLine, ptlEndpoint, shouldDrawPtlForTrack } from "./pt
 import { isViewOffAirport, type ScopeView } from "./scopeView";
 import { formatStarsChordReadout } from "./starsChord";
 import {
-  TPA_STROKE_COLOR,
-  TPA_STROKE_PX,
-  aircraftForTpaRings,
+  atpaConeColor,
+  atpaConePoints,
+  selectAtpaConesToPaint,
   shouldPaintAtpaGeometry,
-  tpaRingPoints,
-} from "./tpa";
+} from "./atpaCone";
+import { TPA_STROKE_COLOR, TPA_STROKE_PX, aircraftForTpaRings, tpaRingPoints } from "./tpa";
 import { buildGiLines, buildSsaLines } from "./ssa";
 import { buildMapListLines } from "./dcbFunctions";
 import type { TrackOwnership } from "./ownership";
@@ -533,6 +534,7 @@ function drawTracks(
   }
 
   drawTpaRings(ctx, world, view, size);
+  drawAtpaCones(ctx, world, view, size);
 
   for (const ac of world.aircraft) {
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
@@ -661,10 +663,10 @@ function drawPredictedTrackLines(
 
 /**
  * CRC TPA J-rings: world-NM mileage circles about selected (or owned) tracks.
- * Stroke is TLS/tools (`TPA_STROKE_COLOR` / PTL white), not CA red. Canvas
- * bounds clip like range rings (no extra clip call). ATPA is a stored stub and
- * paints nothing (no pairing / cones). CA remains datablock text — not a 3 NM
- * halo. Display only — never a Command.
+ * Stroke is TLS/tools (`TPA_STROKE_COLOR`), not CA red. Canvas bounds clip
+ * like range rings (no extra clip call). ATPA cones are `drawAtpaCones` in
+ * this same band. CA remains datablock text — not a 3 NM halo. Display only
+ * — never a Command.
  */
 function drawTpaRings(
   ctx: CanvasRenderingContext2D,
@@ -672,8 +674,6 @@ function drawTpaRings(
   view: ScopeView,
   size: ScopeViewSize,
 ): void {
-  // ATPA stub: even when on, no extra stroke.
-  void shouldPaintAtpaGeometry(view.atpa.on);
   const targets = aircraftForTpaRings(
     view.tpa.on,
     world.selectedAircraftId,
@@ -688,6 +688,58 @@ function drawTpaRings(
   for (const ac of targets) {
     const worldPts = tpaRingPoints(ac.xNm, ac.yNm, view.tpa.radiusNm);
     const pts = worldPts.map((p) => nmToScreen(p.eastNm, p.northNm, view.camera, size));
+    tracePolyline(ctx, pts, false);
+    ctx.stroke();
+  }
+}
+
+/**
+ * ATPA cones from `world.alerts.atpa`. World-NM polyline → screen → stroke.
+ * Never filled. One cone per trailing track (highest status). Length is the
+ * pair's `requiredNm`. Display only — never a Command. Not a CA halo.
+ */
+function drawAtpaCones(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  view: ScopeView,
+  size: ScopeViewSize,
+): void {
+  const pairs = world.alerts.atpa;
+  if (!view.atpa.on || pairs.length === 0) {
+    return;
+  }
+  const byCallsign = new Map<string, Aircraft>();
+  for (const ac of world.aircraft) {
+    byCallsign.set(ac.callsign, ac);
+  }
+  ctx.lineWidth = TPA_STROKE_PX;
+  for (const pair of selectAtpaConesToPaint(pairs)) {
+    const trailing = byCallsign.get(pair.trailingCallsign);
+    const leading = byCallsign.get(pair.leadingCallsign);
+    if (!trailing || !leading) {
+      continue;
+    }
+    const td = view.tracks.get(trailing.id);
+    if (
+      !shouldPaintAtpaGeometry(view.atpa.on, pair.status, {
+        atpaMonitorEnabled: td?.atpaMonitorEnabled,
+        atpaWarningAlertEnabled: td?.atpaWarningAlertEnabled,
+      })
+    ) {
+      continue;
+    }
+    const worldPts = atpaConePoints(
+      trailing.xNm,
+      trailing.yNm,
+      leading.xNm,
+      leading.yNm,
+      pair.requiredNm,
+    );
+    if (worldPts.length < 2) {
+      continue;
+    }
+    const pts = worldPts.map((p) => nmToScreen(p.eastNm, p.northNm, view.camera, size));
+    ctx.strokeStyle = atpaConeColor(pair.status);
     tracePolyline(ctx, pts, false);
     ctx.stroke();
   }

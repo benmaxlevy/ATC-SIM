@@ -76,6 +76,16 @@ export interface TrackDisplay {
   pointoutAccepted?: boolean;
   /** Pointout rejected visual state flag. */
   pointoutRejected?: boolean;
+  /**
+   * ATPA monitor cone enable. Default on. T02-47 / T02-49 (`*BE`/`*BI`)
+   * wire this; the paint gate already honors it.
+   */
+  atpaMonitorEnabled?: boolean;
+  /**
+   * ATPA warning and alert cone enable. Default on. T02-47 / T02-49
+   * (`*AE`/`*AI`). Monitor uses `atpaMonitorEnabled`.
+   */
+  atpaWarningAlertEnabled?: boolean;
 }
 
 export function createTrackDisplay(ownership: TrackOwnership = "unowned"): TrackDisplay {
@@ -91,6 +101,8 @@ export function createTrackDisplay(ownership: TrackOwnership = "unowned"): Track
     sp2: "",
     queriedUntilSimMs: 0,
     forcedFdb: false,
+    atpaMonitorEnabled: true,
+    atpaWarningAlertEnabled: true,
   };
 }
 

@@ -9,8 +9,9 @@
  * CHAR SIZE per subsystem (DATA BLOCKS / LISTS / DCB / TOOLS / POS) on IBM
  * Plex Mono so FDB/LDB **datablock** cells stay character-cell. BRITE per
  * drawn channel as a 0–100 multiply. TPA J-rings 2/3/5/10 NM (selected or
- * owned tracks) live on the DCB TPA/ATPA submenu; ATPA is a stored stub with
- * no pairing. Discrete range presets. Not a font picker. Not NAS STARS.
+ * owned tracks) live on the DCB TPA/ATPA submenu; ATPA cones paint from
+ * `world.alerts.atpa` when the DCB toggle is on. Discrete range presets. Not a
+ * font picker. Not NAS STARS.
  *
  * Scope display state only. Never a Command, readback, or intent.
  */

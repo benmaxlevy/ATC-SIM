@@ -19,8 +19,9 @@
  * - Background black; video maps / range rings dim gray
  * - Owned FDB white after F3; unowned / other-TCP FDB green
  * - Search/fusion position symbol blue; history trail blue (not track-tinted)
- * - PTL white; TLS/tools cyan for TPA J-rings; SSA / DCB / lists phosphor green
+ * - PTL white; TLS/tools cyan for TPA J-rings and ATPA monitor cones; SSA / DCB / lists phosphor green
  * - Phase 4: MSAW yellow then red. CA is static `CA` text above FDB.
+ * - ATPA warning uses caution yellow; ATPA alert uses `atpaAlert` orange, never CA red.
  */
 
 import {
@@ -71,8 +72,13 @@ export const PALETTE = {
    * Do not label “STARS CA.”
    */
   caution: "#FFFF00",
-  /** CA/MSAW alert (red). Lite trainer, not NAS-certified. */
+  /** CA/MSAW alert (red). Lite trainer, not NAS-certified. Never ATPA. */
   alert: "#FF0000",
+  /**
+   * ATPA alert cone (R07 orange). Distinct from CA/MSAW red (`alert`).
+   * Trainer analog `#FF8800` — R07 names the color, not the RGB.
+   */
+  atpaAlert: "#FF8800",
   /** SSA and list text — FAA list/preview green. Not map gray. */
   ssa: "#00FF00",
   /**

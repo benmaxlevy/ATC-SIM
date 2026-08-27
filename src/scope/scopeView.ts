@@ -156,7 +156,7 @@ export interface ScopeView {
    * Selected track; if none selected, F3-owned tracks.
    */
   tpa: TpaState;
-  /** ATPA stub. Stored boolean; paints nothing (no pairing / cones). */
+  /** ATPA master toggle. Cones paint from `world.alerts.atpa` when on. */
   atpa: AtpaState;
   /**
    * Altitude filter (Mode C hundreds). FOA/CRC analog; default 000–180.
@@ -367,7 +367,7 @@ export function stepTpaRadius(view: ScopeView, delta: -1 | 1): void {
 
 export { formatDcbTpaMiReadout };
 
-/** DCB ATPA stub: store the boolean; renderer paints nothing. */
+/** DCB ATPA master toggle. Cones paint when on and pairs exist. */
 export function toggleAtpaOn(view: ScopeView): void {
   view.atpa.on = !view.atpa.on;
 }
