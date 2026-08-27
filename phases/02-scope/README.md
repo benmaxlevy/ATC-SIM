@@ -618,6 +618,50 @@ Completed TPA / ATPA addendum matching [CRC STARS](https://docs.virtualnas.net/c
 - [x] Conflict alert stays T04-09 `CA` datablock text plus tone; still **no** 3 NM CA halo; circles on this scope are TPA J-rings only.
 - [x] Comprehensive end-to-end integration and acceptance test suite in `src/scope/atpaFidelity.integration.test.ts` (T02-50).
 
+### Preview Area addendum (T02-51–54)
+
+Completed Preview Area addendum matching [CRC STARS](https://docs.virtualnas.net/crc/stars/) Preview Area / Tracking Aircraft / Table 30, with trainer deltas stated in every ticket (F3 is color/ownership stub not NAS associate; F4 is trainer drop not NAS terminate; F1 stays beaconator; F7 stays PTL ALL; no pointouts this swarm):
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-51](tickets/T02-51-stars-preview-area-command-buffer.md) | STARS Preview Area command buffer | P0 | M | none | Shipped |
+| [T02-52](tickets/T02-52-init-term-cntl-command-then-slew.md) | INIT CNTL / TERM CNTL command-then-slew plus FLID Enter | P0 | L | T02-51 | Shipped |
+| [T02-53](tickets/T02-53-beacon-code-select-preview.md) | Beacon code select from Preview Area `B##` / `B####` | P1 | M | T02-51 | Shipped |
+| [T02-54](tickets/T02-54-preview-area-integration-and-acceptance.md) | Preview Area integration and acceptance | P0 | L | T02-52, T02-53 | Shipped |
+
+### Phase 2 Preview Area checklist (T02-51–54)
+
+- [x] Preview Area buffer (idle / entry / armed) paints CRC mnemonics in SSA/preview green under the SSA; Esc cancels to idle; invalid/unknown commit flashes `INV`; reject unknown — never parse-and-no-op; no `window.prompt`, no extra HTML `<input>` (T02-51).
+- [x] F3 INIT CNTL / F4 TERM CNTL command-then-slew, implied selected-track apply, and FLID Enter / FLID slew; empty PPI click does not consume the arm; `TERM CNTL ALL` is `INV`, not drop-all (T02-52).
+- [x] Scope-focus `B##` / `B####` toggles CODE BLOCK / discrete `beaconSelectCodes`; matching unassociated paints □; unmatched stays `*`; incomplete Enter is `INV`; radio-focus `B` is a literal character (T02-53).
+- [x] Preview Area is **not** the radio command line: F3 / F4 / `B` never emit Command IR / readback / intent; `DAL123 H270` still turns; T02-49 `*` chords stay scope-only (T02-51–54).
+- [x] Comprehensive end-to-end integration and acceptance test suite in `src/scope/previewArea.integration.test.ts` (T02-54).
+- [ ] Manual player loop (F3 INIT CNTL slew → F3 DAL123 Enter → F4 slew → `B4500` □ → radio heading → `*J3`). skip-with-reason: no visual operator; Chrome player loop not watched. Automated tests prove the items above; do not invent a visual pass.
+
+**Preview Area is not the radio command line.** Scope commands never emit Command IR / readback / intent. `DAL123 H270` still turns. `*J` / `*P` (and other T02-49 `*` chords) still arm/slew. A live `*` hint still wins over idle preview. Invalid/unknown commit flashes `INV`. Reject unknown; never parse-and-no-op. No `window.prompt`, no extra HTML `<input>`. Trainer F3 is a color/ownership stub (not NAS associate). F4 is trainer drop (not NAS terminate). F1 stays beaconator. F7 stays PTL ALL.
+
+#### Shipped Preview Area commands (do not invent later CRC tables)
+
+| Command | What the operator does | What happens |
+| --- | --- | --- |
+| F3 INIT CNTL | F3 with nothing selected | Preview paints `INIT CNTL` (never the literal `"F3"`); next target click owns **that** track (white FDB). Empty PPI click does not consume the arm. Pending inbound: one click accept+own (`acceptInboundHandoff`). |
+| F3 implied | F3 with a track already selected | Applies immediately (`applyInitiateTrackToSelection`). Preview may flash `INIT CNTL` then clear. |
+| F3 + FLID + Enter | F3, type full callsign / numeric tail / unique 4-digit squawk, Enter | Owns that aircraft with nothing selected. Unknown or ambiguous → brief `INV`, no apply. |
+| F3 + FLID + slew | F3, type FLID, click a target | Applies to the clicked track only if the FLID uniquely matches that track; else `INV`. |
+| F4 TERM CNTL | F4 with nothing selected | Preview paints `TERM CNTL` (never `"F4"`); next target click drops **that** track. Empty click does not consume the arm. |
+| F4 implied | F4 with a track selected | Drops the selection now. |
+| F4 + FLID + Enter | F4, type FLID, Enter | Drops the resolved aircraft. `TERM CNTL ALL` is `INV`, not drop-all. |
+| Esc | Esc while preview is live (entry or armed) | Cancels preview to idle. Precedence: live preview > live `*` chord > DCB. |
+| Backspace | Backspace while typing ACID after F3/F4 | Edits the typed ACID. |
+| Scope-focus `B` + two digits + Enter | PPI focused, `B` `4` `5` Enter | Toggles CODE BLOCK `"45"` on `beaconSelectCodes`; unassociated squawks starting with `45` paint □. Second `B45` Enter removes it. |
+| Scope-focus `B` + four digits | PPI focused, `B4500` (four digits may auto-commit) | Toggles discrete `"4500"`. Matching unassociated paints □; unmatched stays `*`. |
+| Incomplete `B` Enter | Bare `B`, one digit, or three digits then Enter | `INV`; select list unchanged. Non-digit after `B` (other than Enter/Esc/Backspace) is `INV`. |
+| Radio-focus `B` | Command line focused, type `B` | Literal character. Never always-on. Callsign typing still works. |
+
+#### Explicitly not Preview Area this swarm (out / still later)
+
+pointouts `UN` / `**` / `(ID)*` / initiate-recall PO (leave existing click / radio-buffer `UN`/`**`); `TERM CNTL ALL`; typed TCP / Δ handoffs; `BE`/`BI`; assign-code `M ####`; MULTIFUNC (F7 stays PTL ALL); scratchpad `Y`/`+`; per-track PTL `R`; highlight keyboard (stays middle-click); quicklook `Q`; CRDA; WX; list relocate; RBL / `.dot` commands.
+
 ## Launching an agent
 
 1. Confirm phase 1 README exit is green.
@@ -628,6 +672,7 @@ Completed TPA / ATPA addendum matching [CRC STARS](https://docs.virtualnas.net/c
 6. Scope fidelity addendum T02-34 → T02-38 (STARS CRC symbol shapes, LDB/PDB/FDB modes, time-sharing, handoffs, pointouts, cyan highlights).
 7. Datablock & scratchpad fidelity addendum T02-39 → T02-42 (SP1/SP2 derivation, tens groundspeed + categories, multi-phase time-sharing with center handoff placement, emergency SPCs).
 8. TPA / ATPA addendum T02-43 → T02-50 (volumes as data, in-trail pairing, monitor/warning/alert cones, four live DCB cells, PREF v2, `*J`/`*P` chords, integration acceptance). Wake-category minima stay deferred.
+9. Preview Area addendum T02-51 → T02-54 (buffer + INV, INIT/TERM command-then-slew and FLID Enter, `B##`/`B####` beacon select, integration acceptance). Pointouts, TERM CNTL ALL, and MULTIFUNC stay deferred.
 
 ## Glossary reminders
 

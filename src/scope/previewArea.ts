@@ -272,7 +272,7 @@ export function parsePreviewCommand(buffer: string): PreviewCommandResult {
 
 export function previewCntlArmed(
   state: PreviewAreaState,
-): state is PreviewAreaState & { armed: PreviewArmedAction } {
+): state is PreviewAreaState & { armed: { readonly type: "initCntl" } | { readonly type: "termCntl" } } {
   return (
     state.phase === "armed" &&
     (state.armed?.type === "initCntl" || state.armed?.type === "termCntl")
