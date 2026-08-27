@@ -5,9 +5,10 @@
  * length. vice (R08) is typed-radio feel, not this map.
  * Trainer delta: exported Windows subset only — F1 is help, F3 is color
  * stub, PageUp/Down range presets 5–60 (no CRC 6/8/12/16/24), `/` when
- * scope-focused focuses the command line (not leader length). 1.5 s L/F
+ * scope-focused focuses the command line (not leader length). 1.5 s L/F/`*`
  * chord window; leftover digits never go to the parser; no keyboard leader-length menu
  * (`/` is radio focus). DCB LDR length is a discrete px spinner. `F` is scope-focus only.
+ * `*` with PPI focused is TPA/ATPA slew chords (R07 Table 36), never Command IR.
  * Inject `nowMs` in tests. Not NAS STARS.
  */
 
@@ -217,6 +218,14 @@ export const KEY_BINDINGS: KeyBinding[] = [
       "Focus the command line. preventDefault so slash is not inserted. Radio-focused / types as phase 1.",
     crcAnalog: "CRC / is leader length — we do not bind that",
   },
+  {
+    id: "stars-tpa-atpa",
+    focus: "scope",
+    windowsKeys: "* then J/P/D+/AE/BE/DE, Enter commits",
+    action:
+      "TPA/ATPA slew chord on the selected track (J-ring, cone, size/ATPA flags). Display only — never Command IR.",
+    crcAnalog: "CRC STARS TPA/ATPA Table 36 (*J *P **J **P *D+ *AE *BE *DE)",
+  },
 ];
 
 export function isMouseBinding(binding: KeyBinding): boolean {
@@ -317,6 +326,11 @@ export function isLeaderPrefixKey(key: string): boolean {
 /** Scope-focus altitude filter chord. Never always-on. */
 export function isFilterChordKey(key: string): boolean {
   return key === "F" || key === "f";
+}
+
+/** Scope-focus STARS TPA/ATPA `*` chord. Never always-on; radio `*` is literal. */
+export function isStarsChordPrefixKey(key: string): boolean {
+  return key === "*" || key === "Multiply";
 }
 
 /** F1 is always-on help. Not CRC F1. */

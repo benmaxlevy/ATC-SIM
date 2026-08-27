@@ -1724,3 +1724,16 @@ test("T02-37 AC5 — Datablock renders in standard STARS Cyan highlight (#00FFFF
   expect(datablockText?.fillStyle).toBe(PALETTE.highlight);
   expect(PALETTE.highlight).toBe("#00FFFF");
 });
+
+test("AC4 — live * chord buffer paints next to FILTER in SSA/preview green", () => {
+  const world = createWorld();
+  const view = createScopeView();
+  view.starsChordEntry.phase = "entry";
+  view.starsChordEntry.buffer = "*J2.5";
+  const painted = createMockCtx();
+  renderScope(painted.ctx, world, view, 800, 800);
+  const chord = painted.fillTexts.find((t) => t.text === "*J2.5");
+  expect(chord).toBeDefined();
+  expect(chord!.fillStyle).toBe(PALETTE.ssa);
+  expect(painted.fillTexts.some((t) => t.text === "FILTER 000-180")).toBe(true);
+});

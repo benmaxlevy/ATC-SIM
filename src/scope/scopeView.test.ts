@@ -87,6 +87,7 @@ test("AC4 — PTL defaults off; history defaults on; altitude filter 000-180", (
   expect(view.helpOpen).toBe(false);
   expect(view.altitudeFilter).toEqual({ minHundreds: 0, maxHundreds: 180 });
   expect(view.filterEntry.phase).toBe("idle");
+  expect(view.starsChordEntry.phase).toBe("idle");
 });
 
 test("toggleMapLayer hides runway, loc, rings, coastline independently; CST no-op if JSON off", () => {

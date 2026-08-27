@@ -732,3 +732,81 @@ test("slash focuses radio only when scope-focused and preventDefault", () => {
   }
   expect(parseSpy).toHaveBeenCalledWith("/");
 });
+
+function typeStarsKeys(
+  view: ReturnType<typeof createScopeView>,
+  keys: string[],
+  startMs = 0,
+): number {
+  let now = startMs;
+  for (const key of keys) {
+    handleScopeKeyDown(keyEvent(key), view, "scope", undefined, now);
+    now += 100;
+  }
+  return now;
+}
+
+test("AC4 — * with PPI focused opens the chord buffer; Esc cancels leaving no state", () => {
+  const view = createScopeView();
+  const star = keyEvent("*");
+  expect(handleScopeKeyDown(star, view, "scope", undefined, 0)).toBe(true);
+  expect(star.preventDefault).toHaveBeenCalled();
+  expect(star.stopPropagation).toHaveBeenCalled();
+  expect(view.starsChordEntry.phase).toBe("entry");
+  expect(view.starsChordEntry.buffer).toBe("*");
+  typeStarsKeys(view, ["J", "2", ".", "5"], 10);
+  expect(view.starsChordEntry.buffer).toBe("*J2.5");
+  expect(handleScopeKeyDown(keyEvent("Escape"), view, "scope", undefined, 500)).toBe(true);
+  expect(view.starsChordEntry.phase).toBe("idle");
+  expect(view.starsChordEntry.buffer).toBe("");
+  expect(view.starsChordEntry.rejection).toBeNull();
+});
+
+test("AC4 — * typed while the radio command line is focused is a literal *", () => {
+  const view = createScopeView();
+  const parseSpy = vi.fn();
+  const radioStar = keyEvent("*");
+  expect(handleScopeKeyDown(radioStar, view, "radio", undefined, 0)).toBe(false);
+  expect(radioStar.preventDefault).not.toHaveBeenCalled();
+  expect(view.starsChordEntry.phase).toBe("idle");
+
+  let buffer = "";
+  for (const key of ["*", "J", "3"]) {
+    const event = keyEvent(key);
+    if (!handleScopeKeyDown(event, view, "radio", undefined, 10) && key.length === 1) {
+      buffer += key;
+      parseSpy(key);
+    }
+  }
+  expect(buffer).toBe("*J3");
+  expect(view.starsChordEntry.phase).toBe("idle");
+  expect(parseSpy).toHaveBeenCalledWith("*");
+});
+
+test("AC5 — * chords never emit Command IR; DAL123 H270 still turns; F and L still work", async () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", headingDeg: 90 });
+  const world = createWorld({ aircraft: [dal] });
+  world.selectedAircraftId = dal.id;
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const log = new SessionLog();
+  const radio = vi.fn((text: string) => handleRadioText(world, text, log));
+
+  typeStarsKeys(view, ["*", "J", "3", "Enter"]);
+  expect(radio).not.toHaveBeenCalled();
+  expect(log.all()).toHaveLength(0);
+  expect(view.starsChordEntry.phase).toBe("idle");
+  expect(view.tpa).toEqual({ on: false, radiusNm: 5 });
+
+  handleScopeKeyDown(keyEvent("L"), view, "scope", world, 1000);
+  handleScopeKeyDown(keyEvent("6"), view, "scope", world, 1100);
+  expect(view.tracks.get("ac-dal")!.leaderDir).toBe(6);
+  expect(view.pendingChord).toBeNull();
+
+  typeScopeKeys(view, ["F", "0", "5", "0", "Enter", "1", "2", "0", "Enter"], 2000);
+  expect(view.altitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 120 });
+
+  await radio("DAL123 H270");
+  expect(log.byType("command.accepted")).toHaveLength(1);
+  expect(dal.intent.assignedHeadingDeg).toBe(270);
+});

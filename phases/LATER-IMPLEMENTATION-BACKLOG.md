@@ -23,8 +23,15 @@ already work. Do not turn the TPA ring into an automatic CA halo.
 ### Richer TPA controls
 
 The shipped TPA implementation supports selected-track rings, or owned-track
-rings when nothing is selected. Possible follow-ups are the CRC `*J` keyboard
-chord, explicit target selection for multi-ring use, and richer ring styling.
+rings when nothing is selected. T02-49 shipped the CRC `*` slew-chord parser
+(`parseStarsChord`) and the on-PPI `*` entry surface (FIL-prompt grammar,
+no `window.prompt` / HTML `<input>`). `applyStarsChordAction` currently
+returns `"unsupported"` for every action so per-track rings, `*P` cones, and
+ATPA flags stay no-ops until T02-45–T02-48 fill them in. Do not re-parse.
+F7 `<MULTI FUNC>` inhibit commands stay deferred.
+
+Possible follow-ups after those tickets: explicit target selection for
+multi-ring use, and richer ring styling.
 
 ### Track lifecycle and multi-controller networking
 

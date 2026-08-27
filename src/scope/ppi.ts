@@ -1,5 +1,6 @@
 import type { World } from "@core";
 import { expireFilterEntry } from "./altitudeFilter";
+import { expireStarsChordEntry } from "./starsChord";
 import { applyPanScreenDelta, screenToNm, type ScopeViewSize } from "./camera";
 import {
   HIT_RADIUS_CSS_PX,
@@ -204,5 +205,6 @@ export function paintPpi(
   }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   expireFilterEntry(view.filterEntry, view.altitudeFilter, Date.now());
+  expireStarsChordEntry(view.starsChordEntry, Date.now());
   renderScope(ctx, world, view, cssWidth, cssHeight);
 }

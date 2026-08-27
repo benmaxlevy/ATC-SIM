@@ -110,3 +110,30 @@ test("AC6 — radio-focus PageUp does not add text to the command buffer and doe
   expect(view.camera.rangeNm).toBe(15);
   expect(parseCommandSpy).not.toHaveBeenCalled();
 });
+
+test("AC4 — radio-focus * is not a slew chord; parseCommand still sees the character", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [dal] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const parseCommandSpy = vi.fn();
+
+  const leftover = routeKeys(["*", "J", "3"], view, world, "radio", parseCommandSpy);
+  expect(leftover).toBe("*J3");
+  expect(parseCommandSpy).not.toHaveBeenCalled();
+  expect(view.starsChordEntry.phase).toBe("idle");
+  expect(view.pendingChord).toBeNull();
+});
+
+test("AC5 — scope-focus * J 3 Enter consumes keys; parseCommand spy call count 0", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [dal] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const parseCommandSpy = vi.fn();
+
+  const leftover = routeKeys(["*", "J", "3", "Enter"], view, world, "scope", parseCommandSpy);
+  expect(leftover).toBe("");
+  expect(parseCommandSpy).toHaveBeenCalledTimes(0);
+  expect(view.starsChordEntry.phase).toBe("idle");
+});

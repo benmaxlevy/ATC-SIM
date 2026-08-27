@@ -13,7 +13,8 @@
  * Scope-focus `L` then 1–9 is leader direction (no length
  * menu); radio `L090` stays FLY_HEADING left. Scope-focus `F` then hundreds is
  * the altitude filter (never always-on — radio `F` stays a command-line
- * character). Never produce a Command, readback, or intent. Wheel steps
+ * character). Scope-focus `*` is TPA/ATPA slew chords (R07 Table 36); radio `*`
+ * is a literal command-line character. Never produce a Command, readback, or intent. Wheel steps
  * discrete range presets — no zoom-to-cursor (R12). Not NAS STARS.
  */
 
@@ -28,9 +29,16 @@ import {
   isLeaderPrefixKey,
   isRadioFocusSlashKey,
   isScopeChordLive,
+  isStarsChordPrefixKey,
   isHandoffKey,
   leaderDigitFromKey,
 } from "./keymap";
+import {
+  beginStarsChordEntry,
+  cancelStarsChordEntry,
+  applyStarsChordAction,
+  handleStarsChordEntryKey,
+} from "./starsChord";
 import { handleDcbEscape } from "./dcbMenu";
 import { hideMapLists } from "./dcbFunctions";
 import { PpiPlaceholderId } from "./ppi-placeholder";
@@ -204,7 +212,8 @@ export function handleScopeKeyDown(
   if (event.key === "Escape") {
     const filterBusy = focus === "scope" && view.filterEntry.phase !== "idle";
     const leaderBusy = focus === "scope" && liveLeaderChord(view, nowMs) != null;
-    if (!filterBusy && !leaderBusy && handleDcbEscape(view)) {
+    const starsBusy = focus === "scope" && view.starsChordEntry.phase !== "idle";
+    if (!filterBusy && !leaderBusy && !starsBusy && handleDcbEscape(view)) {
       hideMapLists(view);
       consume(event);
       ui?.onHandled?.();
@@ -213,6 +222,21 @@ export function handleScopeKeyDown(
   }
 
   if (focus === "scope") {
+    const stars = handleStarsChordEntryKey(view.starsChordEntry, event.key, nowMs, event.code);
+    if (stars.consumed) {
+      consume(event);
+      if (stars.action) {
+        applyStarsChordAction(view, world, stars.action);
+      }
+      return true;
+    }
+    if (isStarsChordPrefixKey(event.key)) {
+      consume(event);
+      cancelFilterEntry(view.filterEntry, view.altitudeFilter);
+      view.pendingChord = null;
+      beginStarsChordEntry(view.starsChordEntry, nowMs);
+      return true;
+    }
     if (isFilterChordKey(event.key)) {
       consume(event);
       beginFilterEntry(view.filterEntry, view.altitudeFilter, nowMs);
@@ -259,8 +283,13 @@ export function handleScopeKeyDown(
       ui?.onHandled?.();
       return true;
     }
-  } else if (view.filterEntry.phase !== "idle") {
-    cancelFilterEntry(view.filterEntry, view.altitudeFilter);
+  } else {
+    if (view.filterEntry.phase !== "idle") {
+      cancelFilterEntry(view.filterEntry, view.altitudeFilter);
+    }
+    if (view.starsChordEntry.phase !== "idle") {
+      cancelStarsChordEntry(view.starsChordEntry);
+    }
   }
 
   if (isHandoffKey(event)) {

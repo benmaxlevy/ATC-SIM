@@ -17,8 +17,9 @@
  * selected yellow box independent of ownership. CHAR SIZE is per-subsystem
  * (DATA BLOCKS / LISTS / DCB / TOOLS / POS) on IBM Plex Mono. BRITE multiplies
  * each drawn channel; WX/WXC/BKC do not paint weather. SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
- * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. Current CA displays static `CA`
- * + tone from `world.alerts` and paints red. T04-10 MSAW still tints yellow then red. CA halo is
+ * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. Live `*` TPA/ATPA chord
+ * buffer paints next to FILTER in SSA/preview green (same FIL-prompt grammar).
+ * Current CA displays static `CA` + tone from `world.alerts` and paints red. T04-10 MSAW still tints yellow then red. CA halo is
  * **not** drawn: CRC conflict-alert CA is static `CA` text + tone, not a 3 NM circle
  * (circles are TPA J-rings or ERAM DRI). Not OSM / tiles (R12). Not a
  * sprite. Not an airplane. Not a label. Not NAS STARS.
@@ -42,6 +43,7 @@ import { reuseOrBuildMapCache, toMapCacheInput, type MapCache } from "./mapLayer
 import { historyDotsToDraw } from "./history";
 import { drawPredictedTrackLine, ptlEndpoint, shouldDrawPtlForTrack } from "./ptl";
 import { isViewOffAirport, type ScopeView } from "./scopeView";
+import { formatStarsChordReadout } from "./starsChord";
 import {
   TPA_STROKE_COLOR,
   TPA_STROKE_PX,
@@ -726,15 +728,21 @@ function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): 
 }
 
 function drawChordHint(ctx: CanvasRenderingContext2D, view: ScopeView, ssaBottomY: number): void {
+  const stars = formatStarsChordReadout(view.starsChordEntry);
   const hint = view.pendingChord?.hint;
-  if (!hint) {
+  if (!stars && !hint) {
     return;
   }
   ctx.font = datablockFontCss(view.charSizes.lists);
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
+  if (stars) {
+    ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
+    ctx.fillText(stars, SSA_LEFT_PX, ssaBottomY + 4);
+    return;
+  }
   ctx.fillStyle = PALETTE.uiChrome;
-  ctx.fillText(hint, SSA_LEFT_PX, ssaBottomY + 4);
+  ctx.fillText(hint ?? "", SSA_LEFT_PX, ssaBottomY + 4);
 }
 
 /**

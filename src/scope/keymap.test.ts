@@ -20,6 +20,7 @@ import {
   isMouseBinding,
   isRadioFocusSlashKey,
   isScopeChordLive,
+  isStarsChordPrefixKey,
   leaderDigitFromKey,
   mouseKeyBindings,
   scopeFocusKeyBindings,
@@ -92,6 +93,13 @@ test("F is a scope-focus chord key, never always-on F7", () => {
   expect(isFilterChordKey("F3")).toBe(false);
 });
 
+test("* is a scope-focus TPA/ATPA chord prefix, never radio", () => {
+  expect(isStarsChordPrefixKey("*")).toBe(true);
+  expect(isStarsChordPrefixKey("Multiply")).toBe(true);
+  expect(isStarsChordPrefixKey("8")).toBe(false);
+  expect(isStarsChordPrefixKey("F")).toBe(false);
+});
+
 const REQUIRED_BINDING_IDS = [
   "range-in",
   "range-out",
@@ -118,6 +126,7 @@ const REQUIRED_BINDING_IDS = [
   "history-scope",
   "tower-handoff",
   "radio-focus",
+  "stars-tpa-atpa",
 ] as const;
 
 test("exported KEY_BINDINGS cover the frozen Windows subset (required-id list)", () => {

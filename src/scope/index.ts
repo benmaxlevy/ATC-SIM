@@ -10,6 +10,7 @@
  * then 1–9; pixel-constant default 36 CSS px; DCB LDR length 0/24/36/48), altitude filter
  * (scope-focus `F`, default 000–180), F3/F4 ownership color stub (not NAS),
  * F1 help overlay (`TRAINER KEYS — NOT CRC`), Tab cycle focus, `/` radio focus.
+ * Scope-focus `*` TPA/ATPA slew chords (R07 Table 36) parse and prompt on the PPI.
  * T04-09 CA displays static `CA` + tone (no yellow). T04-10 MSAW still
  * tints yellow then red. CA is raised only for current conflicts. The PPI does
  * not compute pair distance.
@@ -163,12 +164,37 @@ export {
   isMouseBinding,
   isRadioFocusSlashKey,
   isScopeChordLive,
+  isStarsChordPrefixKey,
   isTowerHandoffKey,
   leaderDigitFromKey,
   mouseKeyBindings,
   scopeFocusKeyBindings,
 } from "./keymap";
 export type { KeyBinding, KeyFocus, ScopeChord } from "./keymap";
+export {
+  STARS_CHORD_NM_MAX,
+  STARS_CHORD_NM_MIN,
+  applyStarsChordAction,
+  beginStarsChordEntry,
+  cancelStarsChordEntry,
+  commitStarsChord,
+  expireStarsChordEntry,
+  formatStarsChordReadout,
+  handleStarsChordEntryKey,
+  idleStarsChordEntry,
+  parseStarsChord,
+} from "./starsChord";
+export type {
+  StarsChordAction,
+  StarsChordApplyResult,
+  StarsChordEnableMode,
+  StarsChordEntry,
+  StarsChordEntryPhase,
+  StarsChordKeyOutcome,
+  StarsChordResult,
+  StarsChordTarget,
+  StarsChordToggleMode,
+} from "./starsChord";
 export {
   ALWAYS_ON_SCOPE_KEYS,
   HELP_OVERLAY_ID,
