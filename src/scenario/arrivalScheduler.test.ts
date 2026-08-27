@@ -110,7 +110,7 @@ describe("T04-25 configurable arrival traffic", () => {
     expect(scheduler.schedule.length).toBeGreaterThanOrEqual(4);
     for (const item of scheduler.schedule) {
       expect(["WN", "WS"]).toContain(item.assignment.transitionId);
-      expect(item.assignment.pose.routeFixIds).toContain("WMERG");
+      expect(item.assignment.pose.routeFixIds).toContain("WEMER");
     }
   });
 

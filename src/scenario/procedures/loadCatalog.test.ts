@@ -37,7 +37,7 @@ test("AC1 — loadCatalog parses KDEM sids.json with BAY1 procedure for RW27 and
   expect(bay1.runwayTransitions?.[0]?.runwayId).toBe("27");
   expect(bay1.runwayTransitions?.[0]?.legs[0]?.fixId).toBe("BAYEE");
   expect(bay1.runwayTransitions?.[1]?.runwayId).toBe("09");
-  expect(bay1.runwayTransitions?.[1]?.legs[0]?.fixId).toBe("BAYEA");
+  expect(bay1.runwayTransitions?.[1]?.legs[0]?.fixId).toBe("BAYES");
   expect(bay1.enrouteTransitions?.map((t) => t.id)).toEqual(["NORMA", "OCTTA"]);
 });
 

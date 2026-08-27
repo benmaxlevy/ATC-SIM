@@ -128,8 +128,8 @@ test("AC4 — testdata TST1/E gate is OUTER and heading is 270", () => {
 test("AC4 — starRouteFixIds resolves all DEM1 transitions (N, S, WN, WS)", () => {
   expect(starRouteFixIds(kdem, "DEM1", "N")).toEqual(["NEMAX", "NELBO", "NJOIN", "MERGE"]);
   expect(starRouteFixIds(kdem, "DEM1", "S")).toEqual(["SEMAX", "SELBO", "SJOIN", "MERGE"]);
-  expect(starRouteFixIds(kdem, "DEM1", "WN")).toEqual(["WNMAX", "WNLBO", "WNJOIN", "WMERG"]);
-  expect(starRouteFixIds(kdem, "DEM1", "WS")).toEqual(["WSMAX", "WSLBO", "WSJOIN", "WMERG"]);
+  expect(starRouteFixIds(kdem, "DEM1", "WN")).toEqual(["WEMAX", "WELBO", "WENJO", "WEMER"]);
+  expect(starRouteFixIds(kdem, "DEM1", "WS")).toEqual(["SAMAX", "SALBO", "SANJO", "WEMER"]);
 });
 
 test("AC5 — listStarSlots walks catalog array order", () => {
@@ -278,8 +278,8 @@ test("T04-29 AC1 — In East Flow (activeRunwayId: '09'), listStarSlots and assi
   for (const row of assigned) {
     expect(["WN", "WS"]).toContain(row.transitionId);
     expect(row.starId).toBe("DEM1");
-    // Verify feeding WMERG (all WN/WS routeFixIds terminate at WMERG)
-    expect(row.pose.routeFixIds).toContain("WMERG");
+    // Verify feeding WEMER (all WN/WS routeFixIds terminate at WEMER)
+    expect(row.pose.routeFixIds).toContain("WEMER");
     expect(row.pose.routeFixIds).not.toContain("MERGE");
   }
 });

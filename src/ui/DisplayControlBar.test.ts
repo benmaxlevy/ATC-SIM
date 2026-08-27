@@ -352,12 +352,12 @@ test("T02-24 — MAIN quick maps 1–6 and MAPS slots 1–30; unused 7–30 disa
 
   const view = createScopeView(0, 0, { digitalMap: parseDigitalMap(loadKdem().maps) });
   const main = dcbHtml(view);
-  expect(main).toContain("RWY27");
+  expect(main).toContain("RWY");
   expect(main).toContain("LOC27");
+  expect(main).toContain("LOC09");
   expect(main).toContain("COAST");
-  expect(main).toContain("DWNWND");
-  expect(main).toContain("CLASS_B");
-  expect(main).toContain("DEM1");
+  expect(main).toContain("DEM1_27");
+  expect(main).toContain("DEM1_09");
   for (const n of [1, 2, 3, 4, 5, 6]) {
     expect(main).toContain(`data-dcb-map-slot="${n}"`);
   }

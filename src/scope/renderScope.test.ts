@@ -1098,7 +1098,7 @@ test("T02-24 — GEO MAPS / CURRENT overlay is screen-fixed SSA green; no weathe
   const geo = createMockCtx();
   renderScope(geo.ctx, world, view, 800, 800);
   expect(geo.fillTexts.some((t) => t.text === "GEO MAPS")).toBe(true);
-  expect(geo.fillTexts.some((t) => t.text === "1 RWY27 ON")).toBe(true);
+  expect(geo.fillTexts.some((t) => t.text === "1 RWY ON")).toBe(true);
   expect(geo.fillTexts.find((t) => t.text === "GEO MAPS")?.fillStyle).toBe(PALETTE.ssa);
 
   toggleGeoMapsList(view);
@@ -1106,7 +1106,7 @@ test("T02-24 — GEO MAPS / CURRENT overlay is screen-fixed SSA green; no weathe
   const current = createMockCtx();
   renderScope(current.ctx, world, view, 800, 800);
   expect(current.fillTexts.some((t) => t.text === "CURRENT")).toBe(true);
-  expect(current.fillTexts.some((t) => t.text === "1 RWY27")).toBe(true);
+  expect(current.fillTexts.some((t) => t.text === "1 RWY")).toBe(true);
   expect(current.fillTexts.some((t) => t.text === "GEO MAPS")).toBe(false);
 
   hideMapLists(view);
@@ -1184,7 +1184,7 @@ test("right and middle buttons slew; left does not", () => {
   expect(isPpiSlewHeld(6)).toBe(true);
 });
 
-test("T04-23 — slot 7 BAY1_SID video map renders SID lines and labels on PPI scope canvas and can be toggled", () => {
+test("T04-23 — slot 7 BAY1_27 video map renders SID lines and labels on PPI scope canvas and can be toggled", () => {
   const maps = loadKdem().maps;
   const view = createScopeView(0, 0, { digitalMap: parseDigitalMap(maps) });
   const world = createWorld();
@@ -1198,8 +1198,8 @@ test("T04-23 — slot 7 BAY1_SID video map renders SID lines and labels on PPI s
   expect(onCtx.fillTexts.some((t) => t.text === "NORMA")).toBe(true);
   expect(onCtx.fillTexts.some((t) => t.text === "OCTTA")).toBe(true);
 
-  // Toggle BAY1_SID off
-  toggleVideoMap(view, "BAY1_SID");
+  // Toggle BAY1_27 off
+  toggleVideoMap(view, "BAY1_27");
   const offCtx = createMockCtx();
   renderScope(offCtx.ctx, world, view, 800, 800);
   expect(offCtx.fillTexts.some((t) => t.text === "BAYEE")).toBe(false);
@@ -1208,8 +1208,8 @@ test("T04-23 — slot 7 BAY1_SID video map renders SID lines and labels on PPI s
   expect(offCtx.fillTexts.some((t) => t.text === "NORMA")).toBe(false);
   expect(offCtx.fillTexts.some((t) => t.text === "OCTTA")).toBe(false);
 
-  // Toggle BAY1_SID back on
-  toggleVideoMap(view, "BAY1_SID");
+  // Toggle BAY1_27 back on
+  toggleVideoMap(view, "BAY1_27");
   const backOnCtx = createMockCtx();
   renderScope(backOnCtx.ctx, world, view, 800, 800);
   expect(backOnCtx.fillTexts.some((t) => t.text === "BAYEE")).toBe(true);

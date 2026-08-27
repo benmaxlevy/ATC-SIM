@@ -1,6 +1,6 @@
 {
-  "id": "DEM1",
-  "name": "DEMO ONE arrival corridors",
+  "id": "DEM1_27",
+  "name": "DEMO ONE arrival RWY 27",
   "note": "Trainer-authored video map (MAPS). Independent of STAR/fix catalog. Restriction boxes are copied onto the drawing (alt hundreds / speed kt); changing procedures.json does not change this map.",
   "features": [
     {

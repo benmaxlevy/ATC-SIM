@@ -85,56 +85,56 @@
       "note": "ILS 09 FAF. GS intercept ~2000 ft"
     },
     {
-      "id": "WMERG",
+      "id": "WEMER",
       "kind": "INTERSECTION",
       "xNm": -11.645,
       "yNm": 0,
       "note": "DEMO ONE west merge / vectors. 10 NM west of threshold 09."
     },
     {
-      "id": "WNMAX",
+      "id": "WEMAX",
       "kind": "INTERSECTION",
       "xNm": -18.645,
       "yNm": 12,
       "note": "DEMO ONE northwest entry ~21 NM"
     },
     {
-      "id": "WNLBO",
+      "id": "WELBO",
       "kind": "INTERSECTION",
       "xNm": -17.645,
       "yNm": 7,
       "note": "Northwest dogleg"
     },
     {
-      "id": "WNJOIN",
+      "id": "WENJO",
       "kind": "INTERSECTION",
       "xNm": -13.645,
       "yNm": 4,
-      "note": "Northwest join toward WMERG"
+      "note": "Northwest join toward WEMER"
     },
     {
-      "id": "WSMAX",
+      "id": "SAMAX",
       "kind": "INTERSECTION",
       "xNm": -18.645,
       "yNm": -12,
       "note": "DEMO ONE southwest entry ~21 NM"
     },
     {
-      "id": "WSLBO",
+      "id": "SALBO",
       "kind": "INTERSECTION",
       "xNm": -17.645,
       "yNm": -7,
       "note": "Southwest dogleg"
     },
     {
-      "id": "WSJOIN",
+      "id": "SANJO",
       "kind": "INTERSECTION",
       "xNm": -13.645,
       "yNm": -4,
-      "note": "Southwest join toward WMERG"
+      "note": "Southwest join toward WEMER"
     },
     {
-      "id": "BAYEA",
+      "id": "BAYES",
       "kind": "WAYPOINT",
       "xNm": 2.355,
       "yNm": 0,

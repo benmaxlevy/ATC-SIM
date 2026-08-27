@@ -66,22 +66,22 @@
           "runwayId": "09",
           "legs": [
             {
-              "fixId": "WNMAX",
+              "fixId": "WEMAX",
               "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 10000 },
               "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
             },
             {
-              "fixId": "WNLBO",
+              "fixId": "WELBO",
               "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 8000 },
               "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 230 }
             },
             {
-              "fixId": "WNJOIN",
+              "fixId": "WENJO",
               "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 },
               "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
             },
             {
-              "fixId": "WMERG",
+              "fixId": "WEMER",
               "altConstraint": { "type": "AT", "altitudeFt": 4000 },
               "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
             }
@@ -93,22 +93,22 @@
           "runwayId": "09",
           "legs": [
             {
-              "fixId": "WSMAX",
+              "fixId": "SAMAX",
               "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 10000 },
               "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
             },
             {
-              "fixId": "WSLBO",
+              "fixId": "SALBO",
               "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 8000 },
               "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 230 }
             },
             {
-              "fixId": "WSJOIN",
+              "fixId": "SANJO",
               "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 },
               "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
             },
             {
-              "fixId": "WMERG",
+              "fixId": "WEMER",
               "altConstraint": { "type": "AT", "altitudeFt": 4000 },
               "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
             }

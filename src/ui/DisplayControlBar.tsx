@@ -589,6 +589,8 @@ function mapSlotClick(view: ScopeView, onChange: () => void, slot: number): void
 function renderMapSlot(view: ScopeView, onChange: () => void, slot: number) {
   const map = videoMapByDcbNumber(view, slot);
   const enabled = isDcbMapSlotEnabled(view, slot);
+  const label = map?.dcbLabel ?? "";
+  const labelLines = label ? label.split(/[\s_]+/) : [];
   return (
     <DcbCell
       key={slot}
@@ -601,7 +603,15 @@ function renderMapSlot(view: ScopeView, onChange: () => void, slot: number) {
       onClick={() => mapSlotClick(view, onChange, slot)}
     >
       <span className="dcb-cell-line">{slot}</span>
-      <span className="dcb-cell-line">{map?.dcbLabel ?? ""}</span>
+      {labelLines.length > 0 ? (
+        labelLines.map((line, idx) => (
+          <span className="dcb-cell-line" key={idx}>
+            {line}
+          </span>
+        ))
+      ) : (
+        <span className="dcb-cell-line" />
+      )}
     </DcbCell>
   );
 }

@@ -43,7 +43,7 @@ test("T04-28 AC4 — loadKdemIls09 spawns DAL123 on DEM1 WN and AAL45 on DEM1 WS
     type: "PROCEDURE",
     starId: "DEM1",
     toFixIndex: 0,
-    routeFixIds: ["WNMAX", "WNLBO", "WNJOIN", "WMERG"],
+    routeFixIds: ["WEMAX", "WELBO", "WENJO", "WEMER"],
   });
   expect(dal!.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
 
@@ -57,10 +57,10 @@ test("T04-28 AC4 — loadKdemIls09 spawns DAL123 on DEM1 WN and AAL45 on DEM1 WS
   ).toBe("DEM1");
   expect(aal!.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
   expect(starRouteFixIds(scenario.catalog, "DEM1", "WS")).toEqual([
-    "WSMAX",
-    "WSLBO",
-    "WSJOIN",
-    "WMERG",
+    "SAMAX",
+    "SALBO",
+    "SANJO",
+    "WEMER",
   ]);
 });
 

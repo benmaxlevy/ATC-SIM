@@ -39,23 +39,23 @@ test("MERGE joins DEM1 transition at MERGE fix", () => {
   });
 });
 
-test("WMERG joins DEM1 East Flow transition at WMERG fix", () => {
-  expect(procedureRouteContainingFix({ stars: dem1 }, "WMERG")).toEqual({
+test("WEMER joins DEM1 East Flow transition at WEMER fix", () => {
+  expect(procedureRouteContainingFix({ stars: dem1 }, "WEMER")).toEqual({
     starId: "DEM1",
-    routeFixIds: ["WNMAX", "WNLBO", "WNJOIN", "WMERG"],
+    routeFixIds: ["WEMAX", "WELBO", "WENJO", "WEMER"],
     toFixIndex: 3,
   });
 });
 
-test("WNMAX and WSMAX join DEM1 East Flow transitions", () => {
-  expect(procedureRouteContainingFix({ stars: dem1 }, "WNMAX")).toEqual({
+test("WEMAX and SAMAX join DEM1 East Flow transitions", () => {
+  expect(procedureRouteContainingFix({ stars: dem1 }, "WEMAX")).toEqual({
     starId: "DEM1",
-    routeFixIds: ["WNMAX", "WNLBO", "WNJOIN", "WMERG"],
+    routeFixIds: ["WEMAX", "WELBO", "WENJO", "WEMER"],
     toFixIndex: 0,
   });
-  expect(procedureRouteContainingFix({ stars: dem1 }, "WSMAX")).toEqual({
+  expect(procedureRouteContainingFix({ stars: dem1 }, "SAMAX")).toEqual({
     starId: "DEM1",
-    routeFixIds: ["WSMAX", "WSLBO", "WSJOIN", "WMERG"],
+    routeFixIds: ["SAMAX", "SALBO", "SANJO", "WEMER"],
     toFixIndex: 0,
   });
 });
@@ -163,24 +163,24 @@ test("procedureRouteContainingFix finds SID fixes across transitions", () => {
   expect(normaJoin?.toFixIndex).toBe(2);
   expect(normaJoin?.routeFixIds).toEqual(["BAYEE", "BAYNW", "NORMA"]);
 
-  // BAYEA is on runway 09 transition of BAY1
-  const bayeaJoin = procedureRouteContainingFix(catalog, "BAYEA");
-  expect(bayeaJoin).toBeDefined();
-  expect(bayeaJoin?.starId).toBe("BAY1");
-  expect(bayeaJoin?.toFixIndex).toBe(0);
-  expect(bayeaJoin?.routeFixIds[0]).toBe("BAYEA");
+  // BAYES is on runway 09 transition of BAY1
+  const bayesJoin = procedureRouteContainingFix(catalog, "BAYES");
+  expect(bayesJoin).toBeDefined();
+  expect(bayesJoin?.starId).toBe("BAY1");
+  expect(bayesJoin?.toFixIndex).toBe(0);
+  expect(bayesJoin?.routeFixIds[0]).toBe("BAYES");
 
   // BAYNE is on the RW09 NORMA transition of BAY1
   const bayneJoin = procedureRouteContainingFix(catalog, "BAYNE");
   expect(bayneJoin).toBeDefined();
   expect(bayneJoin?.starId).toBe("BAY1");
   expect(bayneJoin?.toFixIndex).toBe(1);
-  expect(bayneJoin?.routeFixIds).toEqual(["BAYEA", "BAYNE", "NORMA"]);
+  expect(bayneJoin?.routeFixIds).toEqual(["BAYES", "BAYNE", "NORMA"]);
 
   // BAYSE is on the RW09 OCTTA transition of BAY1
   const bayseJoin = procedureRouteContainingFix(catalog, "BAYSE");
   expect(bayseJoin).toBeDefined();
   expect(bayseJoin?.starId).toBe("BAY1");
   expect(bayseJoin?.toFixIndex).toBe(1);
-  expect(bayseJoin?.routeFixIds).toEqual(["BAYEA", "BAYSE", "OCTTA"]);
+  expect(bayseJoin?.routeFixIds).toEqual(["BAYES", "BAYSE", "OCTTA"]);
 });

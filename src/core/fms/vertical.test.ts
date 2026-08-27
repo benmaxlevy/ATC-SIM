@@ -406,13 +406,13 @@ test("AC3 — heading command cancels PROCEDURE and VIA_SID to HEADING and ASSIG
 
 test("AC5 — FMS CLIMB_VIA computes correct vertical profile for RW09 departures", () => {
   const registry = buildFixRegistry(kdemSource());
-  const bayea = registry.get("BAYEA")!;
+  const bayes = registry.get("BAYES")!;
 
   const ual = createAircraft({
     id: "ac-ual-09",
     callsign: "UAL456",
-    xNm: bayea.xNm - 2,
-    yNm: bayea.yNm,
+    xNm: bayes.xNm - 2,
+    yNm: bayes.yNm,
     headingDeg: 90,
     altitudeFt: 1000,
     speedKt: 200,
@@ -423,7 +423,7 @@ test("AC5 — FMS CLIMB_VIA computes correct vertical profile for RW09 departure
     sidId: "BAY1",
     starId: "BAY1",
     toFixIndex: 0,
-    routeFixIds: ["BAYEA", "BAYNE", "NORMA"],
+    routeFixIds: ["BAYES", "BAYNE", "NORMA"],
   };
   ual.intent.vertical = { type: "VIA_SID", sidId: "BAY1" };
 
@@ -442,8 +442,8 @@ test("AC5 — FMS CLIMB_VIA computes correct vertical profile for RW09 departure
     },
   });
 
-  // Sequences BAYEA (>= 1500 ft)
-  expect(stepUntilFix(world, "BAYEA", 300)).toBe(true);
+  // Sequences BAYES (>= 1500 ft)
+  expect(stepUntilFix(world, "BAYES", 300)).toBe(true);
   expect(ual.altitudeFt).toBeGreaterThanOrEqual(1500);
 
   // Sequences BAYNE (>= 2500 ft, <= 250 kt)
@@ -461,8 +461,8 @@ test("AC5 — FMS CLIMB_VIA computes correct vertical profile for RW09 departure
 
 test("AC6 — FMS DESCEND_VIA computes correct crossing altitude profile for DEM1 East Flow arrivals", () => {
   const catalog = kdemCatalog();
-  const wnRoute = ["WNMAX", "WNLBO", "WNJOIN", "WMERG"];
-  const wsRoute = ["WSMAX", "WSLBO", "WSJOIN", "WMERG"];
+  const wnRoute = ["WEMAX", "WELBO", "WENJO", "WEMER"];
+  const wsRoute = ["SAMAX", "SALBO", "SANJO", "WEMER"];
 
   const createArrival = (route: string[], toFixIndex: number) => {
     const ac = createAircraft({
@@ -500,13 +500,13 @@ test("AC6 — FMS DESCEND_VIA computes correct crossing altitude profile for DEM
 
   // Simulated descent along WN transition
   const registry = buildFixRegistry(kdemSource());
-  const wnmax = registry.get("WNMAX")!;
+  const wemax = registry.get("WEMAX")!;
 
   const aal = createAircraft({
     id: "ac-aal-wn",
     callsign: "AAL789",
-    xNm: wnmax.xNm - 2,
-    yNm: wnmax.yNm,
+    xNm: wemax.xNm - 2,
+    yNm: wemax.yNm,
     headingDeg: 90,
     altitudeFt: 11000,
     speedKt: 250,
@@ -516,7 +516,7 @@ test("AC6 — FMS DESCEND_VIA computes correct crossing altitude profile for DEM
     type: "PROCEDURE",
     starId: "DEM1",
     toFixIndex: 0,
-    routeFixIds: ["WNMAX", "WNLBO", "WNJOIN", "WMERG"],
+    routeFixIds: ["WEMAX", "WELBO", "WENJO", "WEMER"],
   };
   aal.intent.vertical = { type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" };
 
@@ -535,19 +535,19 @@ test("AC6 — FMS DESCEND_VIA computes correct crossing altitude profile for DEM
     },
   });
 
-  // Sequences WNMAX
-  expect(stepUntilFix(world, "WNMAX", 300)).toBe(true);
+  // Sequences WEMAX
+  expect(stepUntilFix(world, "WEMAX", 300)).toBe(true);
   expect(aal.altitudeFt).toBeGreaterThanOrEqual(10000 - 50);
 
-  // Sequences WNLBO
-  expect(stepUntilFix(world, "WNLBO", 500)).toBe(true);
+  // Sequences WELBO
+  expect(stepUntilFix(world, "WELBO", 500)).toBe(true);
   expect(aal.altitudeFt).toBeGreaterThanOrEqual(8000 - 50);
 
-  // Sequences WNJOIN
-  expect(stepUntilFix(world, "WNJOIN", 500)).toBe(true);
+  // Sequences WENJO
+  expect(stepUntilFix(world, "WENJO", 500)).toBe(true);
   expect(aal.altitudeFt).toBeGreaterThanOrEqual(6000 - 50);
 
-  // Sequences WMERG
-  expect(stepUntilFix(world, "WMERG", 500)).toBe(true);
+  // Sequences WEMER
+  expect(stepUntilFix(world, "WEMER", 500)).toBe(true);
   expect(Math.round(aal.altitudeFt / 100) * 100).toBe(4000);
 });

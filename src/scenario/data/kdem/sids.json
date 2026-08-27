@@ -24,7 +24,7 @@
           "initialClimbFt": 5000,
           "legs": [
             {
-              "fixId": "BAYEA",
+              "fixId": "BAYES",
               "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 1500 }
             }
           ]

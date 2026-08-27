@@ -32,6 +32,7 @@ import {
   installAlwaysOnScopeKeys,
   scopeFocusFromDocument,
   focusRadioCommandLine,
+  parseDigitalMap,
   type ScopeView,
 } from "@scope";
 import type { AppHandles } from "../app/create-app";
@@ -248,9 +249,12 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
               },
             ),
           );
+          scopeView.giTextLines = nextScenario.giTextLines;
+          scopeView.digitalMap = parseDigitalMap(nextScenario.maps);
           setSetup(next);
           setActiveScenario(nextScenario);
           setSetupOpen(false);
+          refreshScopeUi();
         }}
       />
     </div>

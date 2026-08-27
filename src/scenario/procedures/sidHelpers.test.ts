@@ -64,17 +64,17 @@ describe("sidRouteFixIds — KDEM BAY1 procedure", () => {
 
   test("AC3 — sidRouteFixIds(catalog, 'BAY1', '09', 'NORMA') resolves full ordered route", () => {
     const route = sidRouteFixIds(kdemCatalog, "BAY1", "09", "NORMA");
-    expect(route).toEqual(["BAYEA", "BAYNE", "NORMA"]);
+    expect(route).toEqual(["BAYES", "BAYNE", "NORMA"]);
   });
 
   test("AC3 — resolves RWY 09 via OCTTA transition", () => {
     const route = sidRouteFixIds(kdemCatalog, "BAY1", "09", "OCTTA");
-    expect(route).toEqual(["BAYEA", "BAYSE", "OCTTA"]);
+    expect(route).toEqual(["BAYES", "BAYSE", "OCTTA"]);
   });
 
   test("resolves RWY 09 without enroute transition", () => {
     const route = sidRouteFixIds(kdemCatalog, "BAY1", "09");
-    expect(route).toEqual(["BAYEA"]);
+    expect(route).toEqual(["BAYES"]);
   });
 
   test("throws on unknown runway transition", () => {

@@ -45,14 +45,14 @@ test("T04-26 AC1 — fixes.json contains all RW09 navigation and procedure fixes
   const expectedFixes = [
     { id: "RW09", kind: "THRESHOLD", xNm: -1.645, yNm: 0 },
     { id: "FI09", kind: "FAF", xNm: -7.645, yNm: 0 },
-    { id: "WMERG", kind: "INTERSECTION", xNm: -11.645, yNm: 0 },
-    { id: "WNMAX", kind: "INTERSECTION", xNm: -18.645, yNm: 12 },
-    { id: "WNLBO", kind: "INTERSECTION", xNm: -17.645, yNm: 7 },
-    { id: "WNJOIN", kind: "INTERSECTION", xNm: -13.645, yNm: 4 },
-    { id: "WSMAX", kind: "INTERSECTION", xNm: -18.645, yNm: -12 },
-    { id: "WSLBO", kind: "INTERSECTION", xNm: -17.645, yNm: -7 },
-    { id: "WSJOIN", kind: "INTERSECTION", xNm: -13.645, yNm: -4 },
-    { id: "BAYEA", kind: "WAYPOINT", xNm: 2.355, yNm: 0 },
+    { id: "WEMER", kind: "INTERSECTION", xNm: -11.645, yNm: 0 },
+    { id: "WEMAX", kind: "INTERSECTION", xNm: -18.645, yNm: 12 },
+    { id: "WELBO", kind: "INTERSECTION", xNm: -17.645, yNm: 7 },
+    { id: "WENJO", kind: "INTERSECTION", xNm: -13.645, yNm: 4 },
+    { id: "SAMAX", kind: "INTERSECTION", xNm: -18.645, yNm: -12 },
+    { id: "SALBO", kind: "INTERSECTION", xNm: -17.645, yNm: -7 },
+    { id: "SANJO", kind: "INTERSECTION", xNm: -13.645, yNm: -4 },
+    { id: "BAYES", kind: "WAYPOINT", xNm: 2.355, yNm: 0 },
     { id: "BAYNE", kind: "WAYPOINT", xNm: 6.355, yNm: 4.5 },
     { id: "BAYSE", kind: "WAYPOINT", xNm: 5.355, yNm: -6 },
     { id: "MISSE", kind: "MAPT", xNm: 6.355, yNm: 6 },
@@ -196,16 +196,16 @@ test("AC5 — DEM/OCT/DMO/IDEM, STAR fixes, BAY1 sid, airportId is a string", ()
     "BAYEE",
     "BAYNW",
     "BAYSO",
-    "BAYEA",
+    "BAYES",
     "BAYNE",
     "BAYSE",
-    "WMERG",
-    "WNMAX",
-    "WNLBO",
-    "WNJOIN",
-    "WSMAX",
-    "WSLBO",
-    "WSJOIN",
+    "WEMER",
+    "WEMAX",
+    "WELBO",
+    "WENJO",
+    "SAMAX",
+    "SALBO",
+    "SANJO",
   ]) {
     expect(
       catalog.fixes.some((item) => item.id === id),
@@ -221,7 +221,7 @@ test("AC5 — DEM/OCT/DMO/IDEM, STAR fixes, BAY1 sid, airportId is a string", ()
   expect(bay1Sid.runwayTransitions?.[0]?.runwayId).toBe("27");
   expect(bay1Sid.runwayTransitions?.[0]?.legs[0]?.fixId).toBe("BAYEE");
   expect(bay1Sid.runwayTransitions?.[1]?.runwayId).toBe("09");
-  expect(bay1Sid.runwayTransitions?.[1]?.legs[0]?.fixId).toBe("BAYEA");
+  expect(bay1Sid.runwayTransitions?.[1]?.legs[0]?.fixId).toBe("BAYES");
   expect(bay1Sid.enrouteTransitions?.map((t) => t.id)).toEqual(["NORMA", "OCTTA"]);
 
   const dct = catalogDctIds(catalog);
@@ -235,10 +235,10 @@ test("AC5 — DEM/OCT/DMO/IDEM, STAR fixes, BAY1 sid, airportId is a string", ()
 
 test("AC5b — DEM1 video map is default-on polylines/text; STAR parse does not join MAPS", () => {
   const maps = loadVideoMapSet("KDEM");
-  const dem1 = maps.find((item) => item.id === "DEM1");
+  const dem1 = maps.find((item) => item.id === "DEM1_27");
   expect(dem1).toBeDefined();
   expect(dem1!.defaultOn).toBe(true);
-  expect(dem1!.dcbNumber).toBe(6);
+  expect(dem1!.dcbNumber).toBe(5);
   expect(
     dem1!.features.every((feature) => feature.type === "polyline" || feature.type === "text"),
   ).toBe(true);
@@ -262,7 +262,7 @@ test("AC5b — DEM1 video map is default-on polylines/text; STAR parse does not 
 
 test("DEM1 MAPS restriction boxes are stacked alt hundreds / speed kt (authored, not STAR-joined)", () => {
   const maps = loadVideoMapSet("KDEM");
-  const dem1 = maps.find((item) => item.id === "DEM1");
+  const dem1 = maps.find((item) => item.id === "DEM1_27");
   expect(dem1).toBeDefined();
   const texts = dem1!.features.flatMap((feature) =>
     feature.type === "text" ? [feature.text] : [],

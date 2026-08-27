@@ -35,17 +35,16 @@ test("AC1 — loaded KDEM video maps come from video-maps/KDEM", () => {
   const maps = loadKdem().maps;
   expect(maps.videoMapSet).toBe("KDEM");
   expect(maps.videoMaps.map((item) => item.id)).toEqual([
-    "RWY27",
+    "RWY",
     "LOC27",
-    "COAST",
-    "DWNWND",
-    "CLASS_B",
-    "DEM1",
-    "BAY1_SID",
     "LOC09",
-    "DWNWND09",
+    "COAST",
+    "DEM1_27",
+    "DEM1_09",
+    "BAY1_27",
+    "BAY1_09",
   ]);
-  expect(maps.loadedVideoMaps).toHaveLength(9);
+  expect(maps.loadedVideoMaps).toHaveLength(8);
 });
 
 test("loaded KDEM includes trainer-authored digital map geometry", () => {
@@ -54,7 +53,6 @@ test("loaded KDEM includes trainer-authored digital map geometry", () => {
     id: "27",
     thresholdEastNm: 0,
     thresholdNorthNm: 0,
-    lengthNm: 1.5,
     headingTrueDeg: 270,
     widthNm: 0.025,
   });

@@ -92,7 +92,7 @@ describe("departureSpawnPose (AC1)", () => {
     });
   });
 
-  test("T04-29 AC3 — In East Flow, departures spawn at RW09 threshold (-1.645, 0) with heading 090 and armed BAY1 RW09 transition toward BAYEA", () => {
+  test("T04-29 AC3 — In East Flow, departures spawn at RW09 threshold (-1.645, 0) with heading 090 and armed BAY1 RW09 transition toward BAYES", () => {
     const pose = departureSpawnPose(catalog, "09", "BAY1", "NORMA", 10000);
 
     // RW09 threshold is at (-1.645, 0), heading 090 deg
@@ -107,8 +107,8 @@ describe("departureSpawnPose (AC1)", () => {
     expect(pose.runwayId).toBe("09");
     expect(pose.transitionId).toBe("NORMA");
 
-    // Route for BAY1 via RW09 to NORMA: RW09 leg (BAYEA) -> enroute RW09 transition (BAYNE, NORMA)
-    expect(pose.routeFixIds).toEqual(["BAYEA", "BAYNE", "NORMA"]);
+    // Route for BAY1 via RW09 to NORMA: RW09 leg (BAYES) -> enroute RW09 transition (BAYNE, NORMA)
+    expect(pose.routeFixIds).toEqual(["BAYES", "BAYNE", "NORMA"]);
 
     // Armed Intent
     expect(pose.intent.lateral).toEqual({
@@ -116,7 +116,7 @@ describe("departureSpawnPose (AC1)", () => {
       sidId: "BAY1",
       starId: "BAY1",
       toFixIndex: 0,
-      routeFixIds: ["BAYEA", "BAYNE", "NORMA"],
+      routeFixIds: ["BAYES", "BAYNE", "NORMA"],
     });
     expect(pose.intent.vertical).toEqual({
       type: "VIA_SID",

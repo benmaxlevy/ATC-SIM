@@ -71,7 +71,7 @@ describe("T04-30 Dual-Runway Configuration Integration and Acceptance", () => {
         if (ac.intent.lateral?.type === "PROCEDURE") {
           expect(["N", "S"]).toContain(ac.intent.lateral.routeFixIds[0] === "NEMAX" ? "N" : "S");
           expect(ac.intent.lateral.routeFixIds).toContain("MERGE");
-          expect(ac.intent.lateral.routeFixIds).not.toContain("WMERG");
+          expect(ac.intent.lateral.routeFixIds).not.toContain("WEMER");
         }
       }
     });
@@ -314,13 +314,13 @@ describe("T04-30 Dual-Runway Configuration Integration and Acceptance", () => {
       expect(world.catalog?.airportId).toBe("KDEM");
       expect(world.aircraft.length).toBeGreaterThanOrEqual(1);
 
-      // All initial arrivals are assigned East Flow transitions (WN or WS) feeding WMERG
+      // All initial arrivals are assigned East Flow transitions (WN or WS) feeding WEMER
       for (const ac of world.aircraft) {
         if (ac.intent.lateral?.type === "PROCEDURE") {
           expect(["WN", "WS"]).toContain(
-            ac.intent.lateral.routeFixIds[0] === "WNMAX" ? "WN" : "WS",
+            ac.intent.lateral.routeFixIds[0] === "WEMAX" ? "WN" : "WS",
           );
-          expect(ac.intent.lateral.routeFixIds).toContain("WMERG");
+          expect(ac.intent.lateral.routeFixIds).toContain("WEMER");
           expect(ac.intent.lateral.routeFixIds).not.toContain("MERGE");
         }
       }
@@ -340,13 +340,13 @@ describe("T04-30 Dual-Runway Configuration Integration and Acceptance", () => {
       // Accept inbound handoff
       expect(acceptInboundHandoff(world, dal.id)).toBe(true);
 
-      // 1. Descend via STAR toward WMERG (-11.645, 0)
-      const reachedWmerg = stepUntil(
+      // 1. Descend via STAR toward WEMER (-11.645, 0)
+      const reachedWemer = stepUntil(
         world,
         () => dal.altitudeFt <= 4100 && dal.xNm >= -14,
         300_000,
       );
-      expect(reachedWmerg).toBe(true);
+      expect(reachedWemer).toBe(true);
       expect(dal.altitudeFt).toBeLessThanOrEqual(4100);
       expect(dal.altitudeFt).toBeGreaterThanOrEqual(3900);
       expect(dal.speedKt).toBeLessThanOrEqual(210);
@@ -438,7 +438,7 @@ describe("T04-30 Dual-Runway Configuration Integration and Acceptance", () => {
       expect(d1).toBeLessThan(d0);
     });
 
-    test("East Flow departure spawns on RW09 (-1.645, 0), rolls heading 090, climbs via BAY1 to BAYEA -> NORMA, and hands off to Center", () => {
+    test("East Flow departure spawns on RW09 (-1.645, 0), rolls heading 090, climbs via BAY1 to BAYES -> NORMA, and hands off to Center", () => {
       const log = new SessionLog();
       const world = createWorld({ catalog, sessionLog: log });
 
@@ -467,7 +467,7 @@ describe("T04-30 Dual-Runway Configuration Integration and Acceptance", () => {
         sidId: "BAY1",
         starId: "BAY1",
         toFixIndex: 0,
-        routeFixIds: ["BAYEA", "BAYNE", "NORMA"],
+        routeFixIds: ["BAYES", "BAYNE", "NORMA"],
       });
       expect(dep.intent.vertical).toEqual({ type: "VIA_SID", sidId: "BAY1" });
 
@@ -475,13 +475,13 @@ describe("T04-30 Dual-Runway Configuration Integration and Acceptance", () => {
       expect(handoffFor(world, dep.id)).toEqual({ kind: "departure", fromSectorId: "TWR" });
       expect(isRadioCommandAllowed(handoffFor(world, dep.id))).toBe(true);
 
-      // 2. Climb via BAY1: sequences BAYEA (2.355, 0)
-      const sequencedBayea = stepUntil(
+      // 2. Climb via BAY1: sequences BAYES (2.355, 0)
+      const sequencedBayes = stepUntil(
         world,
-        () => log.byType("nav.direct.sequenced").some((e) => e.fixId === "BAYEA"),
+        () => log.byType("nav.direct.sequenced").some((e) => e.fixId === "BAYES"),
         180_000,
       );
-      expect(sequencedBayea).toBe(true);
+      expect(sequencedBayes).toBe(true);
 
       // 3. Sequences BAYNE (6.355, 4.5) and turns toward NORMA (-16, 16)
       const sequencedBayne = stepUntil(
@@ -512,7 +512,7 @@ describe("T04-30 Dual-Runway Configuration Integration and Acceptance", () => {
       expect(world.aircraft.find((a) => a.id === depId)).toBeUndefined();
     });
 
-    test("East Flow departure climbs via BAY1 to BAYEA -> OCTTA transition", () => {
+    test("East Flow departure climbs via BAY1 to BAYES -> OCTTA transition", () => {
       const log = new SessionLog();
       const world = createWorld({ catalog, sessionLog: log });
 
@@ -534,13 +534,13 @@ describe("T04-30 Dual-Runway Configuration Integration and Acceptance", () => {
         sidId: "BAY1",
         starId: "BAY1",
         toFixIndex: 0,
-        routeFixIds: ["BAYEA", "BAYSE", "OCTTA"],
+        routeFixIds: ["BAYES", "BAYSE", "OCTTA"],
       });
 
-      // Sequences BAYEA then turns south toward BAYSE (5.355, -6)
+      // Sequences BAYES then turns south toward BAYSE (5.355, -6)
       stepUntil(
         world,
-        () => log.byType("nav.direct.sequenced").some((e) => e.fixId === "BAYEA"),
+        () => log.byType("nav.direct.sequenced").some((e) => e.fixId === "BAYES"),
         180_000,
       );
       const sequencedBayse = stepUntil(
@@ -562,16 +562,16 @@ describe("T04-30 Dual-Runway Configuration Integration and Acceptance", () => {
         clear() {
           mem.clear();
         },
-        getItem(key) {
+        getItem(key: string) {
           return mem.get(key) ?? null;
         },
-        key(index) {
-          return [...mem.keys()][index] ?? null;
+        key(index: number) {
+          return Array.from(mem.keys())[index] ?? null;
         },
-        removeItem(key) {
+        removeItem(key: string) {
           mem.delete(key);
         },
-        setItem(key, value) {
+        setItem(key: string, value: string) {
           mem.set(key, value);
         },
       };
@@ -630,7 +630,7 @@ describe("T04-30 Dual-Runway Configuration Integration and Acceptance", () => {
       // Verify East Flow STAR arrivals and departure schedule configuration
       for (const ac of eastWorld.aircraft) {
         if (ac.intent.lateral?.type === "PROCEDURE") {
-          expect(ac.intent.lateral.routeFixIds).toContain("WMERG");
+          expect(ac.intent.lateral.routeFixIds).toContain("WEMER");
           expect(ac.intent.lateral.routeFixIds).not.toContain("MERGE");
         }
       }

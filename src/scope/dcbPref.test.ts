@@ -53,18 +53,18 @@ test("AC1 — SAVE then reload helper restores range, a toggled map, and dock", 
   view.dcbPref.icao = "KDEM";
   view.camera.rangeNm = 40;
   setDcbDock(view, "LEFT");
-  expect(isVideoMapOn(view, "DWNWND")).toBe(true);
-  toggleVideoMap(view, "DWNWND");
-  expect(isVideoMapOn(view, "DWNWND")).toBe(false);
+  expect(isVideoMapOn(view, "DEM1_27")).toBe(true);
+  toggleVideoMap(view, "DEM1_27");
+  expect(isVideoMapOn(view, "DEM1_27")).toBe(false);
 
   saveDcbPref(view, store);
-  expect(store.getItem(dcbPrefStorageKey("KDEM"))).toContain("DWNWND");
+  expect(store.getItem(dcbPrefStorageKey("KDEM"))).toContain("DEM1_27");
 
   const reloaded = kdemView();
   loadDcbPrefFromStorage(reloaded, "KDEM", store);
   expect(reloaded.camera.rangeNm).toBe(40);
   expect(reloaded.dcbDock).toBe("LEFT");
-  expect(isVideoMapOn(reloaded, "DWNWND")).toBe(false);
+  expect(isVideoMapOn(reloaded, "DEM1_27")).toBe(false);
   expect(serializeDcbPref(reloaded).rangeNm).toBe(40);
   expect(typeof applyDcbPref).toBe("function");
 });
@@ -74,14 +74,14 @@ test("AC2 — DEFAULT restores factory range 20 and default maps without clearin
   view.tracks.set("keep", createTrackDisplay());
   view.camera.rangeNm = 40;
   setDcbDock(view, "BOTTOM");
-  toggleVideoMap(view, "DWNWND");
-  expect(isVideoMapOn(view, "DWNWND")).toBe(false);
+  toggleVideoMap(view, "DEM1_27");
+  expect(isVideoMapOn(view, "DEM1_27")).toBe(false);
 
   applyDcbPrefDefaults(view);
 
   expect(view.camera.rangeNm).toBe(20);
   expect(view.dcbDock).toBe("TOP");
-  expect(isVideoMapOn(view, "DWNWND")).toBe(true);
+  expect(isVideoMapOn(view, "DEM1_27")).toBe(true);
   expect(view.tracks.has("keep")).toBe(true);
   expect(view.tracks.size).toBe(1);
 });
