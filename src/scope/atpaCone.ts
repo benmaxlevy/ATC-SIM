@@ -47,13 +47,18 @@ export interface AtpaNmPoint {
 }
 
 /**
- * Per-track ATPA cone enable/inhibit. Defaults **on** when omitted — T02-47
- * (DCB) and T02-49 (`*AE`/`*AI` warning+alert, `*BE`/`*BI` monitor) wire the
- * actual flags on `TrackDisplay`. Not global `AtpaState` (T02-46 owns those).
+ * Per-track ATPA cone enable/inhibit plus DCB cone latches. Defaults **on**
+ * when omitted. T02-49 (`*AE`/`*AI` warning+alert, `*BE`/`*BI` monitor) wires
+ * the track flags on `TrackDisplay`. T02-47 wires `alertCones` / `monitorCones`
+ * on `AtpaState`. Alert Cones covers warning (R07 has no Warning Cones cell).
  */
 export interface AtpaConePaintFlags {
   atpaMonitorEnabled?: boolean;
   atpaWarningAlertEnabled?: boolean;
+  /** DCB Alert Cones. False drops alert **and** warning. */
+  alertCones?: boolean;
+  /** DCB Monitor Cones. False drops monitor only. */
+  monitorCones?: boolean;
 }
 
 /**
@@ -118,8 +123,10 @@ export function atpaSuppressesManualTpaCone(status: AtpaStatus): boolean {
 }
 
 /**
- * Master ATPA toggle plus per-track enable/inhibit. Flags default on.
- * Off master paints nothing even if pairs exist.
+ * Master ATPA toggle plus DCB cone latches plus per-track enable/inhibit.
+ * Flags default on. Off master paints nothing even if pairs exist.
+ * `effective(feature) = atpa.on && atpa[feature]`: Monitor Cones gates monitor
+ * only; Alert Cones gates alert **and** warning (R07: no separate Warning cell).
  */
 export function shouldPaintAtpaGeometry(
   atpaOn: boolean,
@@ -130,7 +137,13 @@ export function shouldPaintAtpaGeometry(
     return false;
   }
   if (status === "monitor") {
+    if ((flags.monitorCones ?? true) === false) {
+      return false;
+    }
     return flags.atpaMonitorEnabled ?? true;
+  }
+  if ((flags.alertCones ?? true) === false) {
+    return false;
   }
   return flags.atpaWarningAlertEnabled ?? true;
 }

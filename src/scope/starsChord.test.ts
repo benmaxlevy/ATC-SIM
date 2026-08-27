@@ -182,7 +182,13 @@ test("applyStarsChordAction returns unsupported for rings, cones, and ATPA cone 
     expect(applyStarsChordAction(view, world, action)).toBe("unsupported");
   }
   expect(view.tpa).toEqual({ on: false, radiusNm: 5 });
-  expect(view.atpa).toEqual({ on: false, inTrailDistance: true, coneMileage: true });
+  expect(view.atpa).toEqual({
+    on: false,
+    inTrailDistance: true,
+    coneMileage: true,
+    alertCones: true,
+    monitorCones: true,
+  });
   expect(dal.intent.assignedHeadingDeg).toBe(90);
 });
 

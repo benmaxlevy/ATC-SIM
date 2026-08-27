@@ -533,7 +533,7 @@ test("AC4 — DCB LEFT/RIGHT render as a vertical stack; TOP/BOTTOM stay horizon
   expect(hostBottom).toMatch(/data-dcb-dock="BOTTOM"/);
 });
 
-test("AC5 — TPA/ATPA submenu has TPA, TPA MI 2/3/5/10, ATPA stub, DONE", () => {
+test("AC5 — TPA/ATPA submenu has TPA, TPA MI 2/3/5/10, four live ATPA cells, DONE", () => {
   const view = createScopeView();
   applyDcbShift(view);
   expect(dcbHtml(view)).toContain("TPA");
@@ -544,15 +544,53 @@ test("AC5 — TPA/ATPA submenu has TPA, TPA MI 2/3/5/10, ATPA stub, DONE", () =>
   expect(html).toMatch(/data-dcb-menu="TPA_ATPA"/);
   expect(html).toMatch(/data-dcb-cell="tpa-on"/);
   expect(html).toMatch(/data-dcb-cell="tpa-mi"/);
+  expect(html).toMatch(
+    /data-dcb-kind="spinner"[^>]*data-dcb-cell="tpa-mi"|data-dcb-cell="tpa-mi"[^>]*data-dcb-kind="spinner"/,
+  );
   expect(html).toMatch(/data-dcb-cell="atpa"/);
+  expect(html).toMatch(/data-dcb-cell="atpa-mileage"/);
+  expect(html).toMatch(/data-dcb-cell="atpa-intrail"/);
+  expect(html).toMatch(/data-dcb-cell="atpa-alert"/);
+  expect(html).toMatch(/data-dcb-cell="atpa-monitor"/);
+  expect(html).not.toMatch(/data-dcb-cell="atpa-cones"/);
   expect(html).toContain("TPA MI");
-  expect(html).toContain("CONES");
+  expect(html).toContain("A/TPA");
+  expect(html).toContain("INTRAIL");
   expect(html).toContain("MONITOR");
   expect(html).toContain("ALERT");
-  expect(html).toMatch(/data-dcb-kind="disabled"/);
+  expect(html).toMatch(
+    /data-dcb-kind="toggle"[^>]*data-dcb-cell="atpa-mileage"|data-dcb-cell="atpa-mileage"[^>]*data-dcb-kind="toggle"/,
+  );
   expect(html).not.toMatch(/\bJ-?ring/i);
+  expect(html).toMatch(
+    /aria-pressed="true"[^>]*data-dcb-cell="atpa-mileage"|data-dcb-cell="atpa-mileage"[^>]*aria-pressed="true"/,
+  );
+  view.atpa.coneMileage = false;
+  const mileageOff = dcbHtml(view);
+  expect(mileageOff).toMatch(
+    /aria-pressed="false"[^>]*data-dcb-cell="atpa-mileage"|data-dcb-cell="atpa-mileage"[^>]*aria-pressed="false"/,
+  );
+  expect(mileageOff).toMatch(
+    /aria-pressed="true"[^>]*data-dcb-cell="atpa-alert"|data-dcb-cell="atpa-alert"[^>]*aria-pressed="true"/,
+  );
   closeDcbMenu(view);
   expect(dcbHtml(view)).toContain("RANGE 20");
+});
+
+test("T02-47 — TPA/ATPA comments quote R07 cell meanings; Alert covers Warning", () => {
+  const src = barSrc();
+  expect(src).toMatch(/R07/);
+  expect(src).toMatch(/TPA ATPA Submenu/);
+  expect(src).toMatch(/displays mileage in the A\/TPA cone/);
+  expect(src).toMatch(/displays intrail distance in the datablock/);
+  expect(src).toMatch(/displays alert cones at this TCP/);
+  expect(src).toMatch(/displays monitor cones at this TCP/);
+  expect(src).toMatch(/No separate Warning Cones cell/);
+  expect(src).toMatch(/toggleAtpaConeMileage/);
+  expect(src).toMatch(/toggleAtpaInTrailDistance/);
+  expect(src).toMatch(/toggleAtpaAlertCones/);
+  expect(src).toMatch(/toggleAtpaMonitorCones/);
+  expect(src).not.toMatch(/from\s+["']@parse["']/);
 });
 
 test("T02-26 — CHAR SIZE submenu has DATA BLOCKS / LISTS / DCB / TOOLS / POS; DONE returns MAIN", () => {

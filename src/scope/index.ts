@@ -244,6 +244,10 @@ export {
   toggleSsaFilter,
   toggleTpaOn,
   toggleAtpaOn,
+  toggleAtpaAlertCones,
+  toggleAtpaConeMileage,
+  toggleAtpaInTrailDistance,
+  toggleAtpaMonitorCones,
   formatDcbTpaMiReadout,
 } from "./scopeView";
 export type { MapLayerId, ScopeView } from "./scopeView";
@@ -265,6 +269,7 @@ export type { DcbCellKind, DcbMenu, DcbMenuHost, DcbSpinnerCell, DcbSpinnerState
 export {
   DCB_PREF_READOUT_MAX_CHARS,
   DCB_PREF_SLOT_COUNT,
+  DCB_PREF_SCHEMA_VERSION,
   DCB_THICKNESS_PX,
   activeDcbPrefName,
   applyDcbPref,
@@ -385,12 +390,13 @@ export {
   TPA_STROKE_COLOR,
   TPA_STROKE_PX,
   aircraftForTpaRings,
+  atpaFeatureEffective,
   formatDcbTpaMiReadout as formatTpaMiReadout,
   stepTpaRadiusNm,
   tpaRingPoints,
   tpaScreenRadiusPx,
 } from "./tpa";
-export type { AtpaState, TpaRadiusNm, TpaState } from "./tpa";
+export type { AtpaFeature, AtpaState, TpaRadiusNm, TpaState } from "./tpa";
 export {
   ATPA_CONE_HALF_ANGLE_DEG,
   atpaConeColor,

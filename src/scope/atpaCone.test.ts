@@ -150,6 +150,12 @@ test("AC5 — gate is off with master off; flags default on; inhibit drops that 
   expect(shouldPaintAtpaGeometry(true, "alert", { atpaWarningAlertEnabled: false })).toBe(false);
   expect(shouldPaintAtpaGeometry(true, "monitor", { atpaWarningAlertEnabled: false })).toBe(true);
   expect(shouldPaintAtpaGeometry(true, "alert", { atpaMonitorEnabled: false })).toBe(true);
+  expect(shouldPaintAtpaGeometry(true, "monitor", { monitorCones: false })).toBe(false);
+  expect(shouldPaintAtpaGeometry(true, "warning", { monitorCones: false })).toBe(true);
+  expect(shouldPaintAtpaGeometry(true, "alert", { monitorCones: false })).toBe(true);
+  expect(shouldPaintAtpaGeometry(true, "alert", { alertCones: false })).toBe(false);
+  expect(shouldPaintAtpaGeometry(true, "warning", { alertCones: false })).toBe(false);
+  expect(shouldPaintAtpaGeometry(true, "monitor", { alertCones: false })).toBe(true);
 });
 
 interface PathStroke {

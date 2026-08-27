@@ -60,7 +60,16 @@ export const DCB_PREF_SLOT_COUNT = 8;
 /** MAIN PREF second-line budget. CRC analog is a short set name (e.g. 22/27). */
 export const DCB_PREF_READOUT_MAX_CHARS = 6;
 
-export const DCB_PREF_SCHEMA_VERSION = 1 as const;
+/**
+ * Body schema version. Writes always emit this. `parseDcbPrefJson` also
+ * accepts `v: 1` (T02-29 / T02-46: `atpa: { on }` plus optional readout
+ * flags) and fills the four ATPA sub-toggles from documented defaults.
+ * The storage key's `v1` is the T02-29 namespace, not this body version.
+ */
+export const DCB_PREF_SCHEMA_VERSION = 2 as const;
+
+/** Readable PREF body versions. A mere v1 file is not corrupt. */
+const DCB_PREF_READABLE_VERSIONS: readonly number[] = [1, 2];
 
 export type DcbPrefStorage = Pick<Storage, "getItem" | "setItem">;
 
@@ -146,6 +155,10 @@ export function dcbPrefStorageKey(icao: string): string {
   return `atc-sim.dcb.pref.v1.${icao}`;
 }
 
+function isReadablePrefSchemaVersion(value: unknown): boolean {
+  return typeof value === "number" && DCB_PREF_READABLE_VERSIONS.includes(value);
+}
+
 function isRangeNm(value: unknown): value is RangeNm {
   return (RANGE_PRESETS_NM as readonly number[]).includes(value as number);
 }
@@ -224,6 +237,8 @@ export function serializeDcbPref(view: ScopeView): DcbPrefBody {
       on: view.atpa.on,
       inTrailDistance: view.atpa.inTrailDistance,
       coneMileage: view.atpa.coneMileage,
+      alertCones: view.atpa.alertCones,
+      monitorCones: view.atpa.monitorCones,
     },
   };
 }
@@ -293,6 +308,8 @@ export function applyDcbPref(view: ScopeView, body: DcbPrefBody): void {
     on: body.atpa?.on === true,
     inTrailDistance: body.atpa?.inTrailDistance !== false,
     coneMileage: body.atpa?.coneMileage !== false,
+    alertCones: body.atpa?.alertCones !== false,
+    monitorCones: body.atpa?.monitorCones !== false,
   };
   view.mapCache = null;
 }
@@ -407,7 +424,7 @@ export function parseDcbPrefJson(raw: string | null, icao: string): DcbPrefFile 
       return fallback;
     }
     const file = parsed as { v?: unknown; icao?: unknown; slots?: unknown; activeIndex?: unknown };
-    if (file.v !== DCB_PREF_SCHEMA_VERSION || typeof file.icao !== "string") {
+    if (!isReadablePrefSchemaVersion(file.v) || typeof file.icao !== "string") {
       return fallback;
     }
     if (!Array.isArray(file.slots) || file.slots.length !== DCB_PREF_SLOT_COUNT) {

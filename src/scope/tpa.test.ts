@@ -4,13 +4,24 @@ import { handleRadioText } from "@pilot";
 import { nmToScreen, pxPerNm, type ScopeViewSize } from "./camera";
 import { PALETTE } from "./palette";
 import { renderScope } from "./renderScope";
-import { createScopeView, stepTpaRadius, toggleAtpaOn, toggleTpaOn } from "./scopeView";
 import {
+  createScopeView,
+  stepTpaRadius,
+  toggleAtpaAlertCones,
+  toggleAtpaConeMileage,
+  toggleAtpaInTrailDistance,
+  toggleAtpaMonitorCones,
+  toggleAtpaOn,
+  toggleTpaOn,
+} from "./scopeView";
+import {
+  DEFAULT_ATPA_STATE,
   DEFAULT_TPA_RADIUS_NM,
   DEFAULT_TPA_STATE,
   TPA_RADIUS_NM,
   TPA_STROKE_COLOR,
   aircraftForTpaRings,
+  atpaFeatureEffective,
   formatDcbTpaMiReadout,
   shouldPaintAtpaGeometry,
   stepTpaRadiusNm,
@@ -168,6 +179,63 @@ test("AC3 — ATPA on with an empty pair set paints no extra stroke", () => {
   expect(on.pathStrokes.length).toBe(off.pathStrokes.length);
 });
 
+test("T02-47 — four DCB latches default on; master-off suppresses every feature", () => {
+  expect(DEFAULT_ATPA_STATE).toEqual({
+    on: false,
+    inTrailDistance: true,
+    coneMileage: true,
+    alertCones: true,
+    monitorCones: true,
+  });
+  const view = createScopeView();
+  expect(view.atpa).toEqual(DEFAULT_ATPA_STATE);
+  for (const feature of ["coneMileage", "inTrailDistance", "alertCones", "monitorCones"] as const) {
+    expect(atpaFeatureEffective(view.atpa, feature)).toBe(false);
+  }
+
+  toggleAtpaOn(view);
+  expect(view.atpa.on).toBe(true);
+  expect(atpaFeatureEffective(view.atpa, "coneMileage")).toBe(true);
+  expect(atpaFeatureEffective(view.atpa, "inTrailDistance")).toBe(true);
+  expect(atpaFeatureEffective(view.atpa, "alertCones")).toBe(true);
+  expect(atpaFeatureEffective(view.atpa, "monitorCones")).toBe(true);
+  expect(shouldPaintAtpaGeometry(view.atpa.on, "monitor", view.atpa)).toBe(true);
+  expect(shouldPaintAtpaGeometry(view.atpa.on, "warning", view.atpa)).toBe(true);
+  expect(shouldPaintAtpaGeometry(view.atpa.on, "alert", view.atpa)).toBe(true);
+
+  toggleAtpaConeMileage(view);
+  expect(view.atpa.coneMileage).toBe(false);
+  expect(atpaFeatureEffective(view.atpa, "coneMileage")).toBe(false);
+  expect(atpaFeatureEffective(view.atpa, "inTrailDistance")).toBe(true);
+  toggleAtpaInTrailDistance(view);
+  expect(view.atpa.inTrailDistance).toBe(false);
+  toggleAtpaAlertCones(view);
+  expect(view.atpa.alertCones).toBe(false);
+  expect(shouldPaintAtpaGeometry(view.atpa.on, "alert", view.atpa)).toBe(false);
+  expect(shouldPaintAtpaGeometry(view.atpa.on, "warning", view.atpa)).toBe(false);
+  expect(shouldPaintAtpaGeometry(view.atpa.on, "monitor", view.atpa)).toBe(true);
+  toggleAtpaMonitorCones(view);
+  expect(view.atpa.monitorCones).toBe(false);
+  expect(shouldPaintAtpaGeometry(view.atpa.on, "monitor", view.atpa)).toBe(false);
+
+  view.atpa.coneMileage = true;
+  view.atpa.inTrailDistance = true;
+  view.atpa.alertCones = true;
+  view.atpa.monitorCones = true;
+  toggleAtpaOn(view);
+  expect(view.atpa.on).toBe(false);
+  expect(atpaFeatureEffective(view.atpa, "coneMileage")).toBe(false);
+  expect(atpaFeatureEffective(view.atpa, "inTrailDistance")).toBe(false);
+  expect(atpaFeatureEffective(view.atpa, "alertCones")).toBe(false);
+  expect(atpaFeatureEffective(view.atpa, "monitorCones")).toBe(false);
+  expect(shouldPaintAtpaGeometry(view.atpa.on, "monitor", view.atpa)).toBe(false);
+  expect(shouldPaintAtpaGeometry(view.atpa.on, "alert", view.atpa)).toBe(false);
+  expect(view.atpa.coneMileage).toBe(true);
+  expect(view.atpa.inTrailDistance).toBe(true);
+  expect(view.atpa.alertCones).toBe(true);
+  expect(view.atpa.monitorCones).toBe(true);
+});
+
 test("AC4 — CA lite still has no automatic 3 NM halo (TPA 3 NM is display-only)", () => {
   const src = [
     ...Object.values(
@@ -209,6 +277,10 @@ test("AC5 — TPA/ATPA clicks are not Command IR; DAL123 H270 still works", asyn
   toggleTpaOn(view);
   stepTpaRadius(view, -1);
   toggleAtpaOn(view);
+  toggleAtpaConeMileage(view);
+  toggleAtpaInTrailDistance(view);
+  toggleAtpaAlertCones(view);
+  toggleAtpaMonitorCones(view);
   expect(log.byType("command.accepted")).toHaveLength(0);
   expect(log.byType("command.rejected")).toHaveLength(0);
   expect(dal.intent.assignedHeadingDeg).not.toBe(270);
@@ -236,4 +308,10 @@ test("AC6 — comments cite CRC TPA J-rings; CA is not a circle; ATPA cones stro
   expect(src).toMatch(/not a 3 NM (circle|halo)/i);
   expect(src).toMatch(/TLS|tools/);
   expect(src).not.toMatch(/Command IR/);
+  expect(src).toMatch(/TPA ATPA Submenu/);
+  expect(src).toMatch(/displays mileage in the A\/TPA cone/);
+  expect(src).toMatch(/displays intrail distance in the datablock/);
+  expect(src).toMatch(/displays alert cones at this TCP/);
+  expect(src).toMatch(/displays monitor cones at this TCP/);
+  expect(src).toMatch(/no separate Warning Cones cell/);
 });

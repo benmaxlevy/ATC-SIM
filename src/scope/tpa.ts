@@ -1,12 +1,24 @@
 /**
- * Analog: CRC STARS TPA J-rings (`*J`) / ATPA DCB (docs.virtualnas.net/crc/stars — R07).
- * Trainer delta: DCB TPA draws a mileage circle 2 / 3 / 5 / 10 NM about the
- * **selected** track (if none selected: all F3-**owned** tracks). Default off,
- * 5 NM. Stroke uses TLS/tools color (`PALETTE.tools`), not CA red. ATPA cones
- * paint from `world.alerts.atpa` when the DCB toggle is on (T02-45); this
- * module keeps the J-ring helpers and the master `AtpaState.on` flag. CA remains
- * T04-09 datablock text — not a 3 NM circle (circles here are TPA J-rings or
- * ERAM DRI, not CA). Not NAS STARS.
+ * Analog: CRC STARS TPA J-rings (`*J`) / ATPA DCB (docs.virtualnas.net/crc/stars — R07
+ * "TPA ATPA Submenu"). Trainer delta: DCB TPA draws a mileage circle 2 / 3 / 5 /
+ * 10 NM about the **selected** track (if none selected: all F3-**owned** tracks).
+ * Default off, 5 NM. Stroke uses TLS/tools color (`PALETTE.tools`), not CA red.
+ *
+ * Four live ATPA cells plus master (R07 meanings, quoted):
+ * - A/TPA Mileage — "displays mileage in the A/TPA cone"
+ * - Intrail Distance — "displays intrail distance in the datablock"
+ * - Alert Cones — "displays alert cones at this TCP"
+ * - Monitor Cones — "displays monitor cones at this TCP"
+ * The reference has no separate Warning Cones cell. Positions "adapted to
+ * display ATPA Alert and Warning Cones" are one capability, so Alert Cones
+ * gates both alert and warning (`*AE` / `*AI`) while Monitor Cones is
+ * monitor-only (`*BE` / `*BI`). Single TCP: "at this TCP" is this scope.
+ *
+ * A feature paints only when both latches are on:
+ * `effective(feature) = atpa.on && atpa[feature]`. Master off means no ATPA
+ * geometry and no ATPA readouts; the four cells stay clickable so PREF can
+ * store a setup. CA remains T04-09 datablock text — not a 3 NM circle
+ * (circles here are TPA J-rings or ERAM DRI, not CA). Not NAS STARS.
  *
  * Scope display only. Never a Command, readback, or intent.
  */
@@ -30,19 +42,31 @@ export interface TpaState {
   radiusNm: TpaRadiusNm;
 }
 
+export type AtpaFeature = "coneMileage" | "inTrailDistance" | "alertCones" | "monitorCones";
+
 export interface AtpaState {
-  /** DCB master toggle. Cones paint from `world.alerts.atpa` when on. */
+  /** DCB master toggle. Off suppresses every ATPA cone and readout. */
   on: boolean;
   /**
-   * Datablock Intrail Distance (T02-46 / R07). Default on — this TCP is
-   * adapted to display it. Independent of `coneMileage`. T02-47 wires the DCB.
+   * Intrail Distance — "displays intrail distance in the datablock" (R07).
+   * Default on — this TCP is adapted to display it. Independent of `coneMileage`.
    */
   inTrailDistance: boolean;
   /**
-   * A/TPA Mileage digits alongside the cone (T02-46 / R07). Default on.
+   * A/TPA Mileage — "displays mileage in the A/TPA cone" (R07). Default on.
    * Independent of `inTrailDistance`. T02-45 owns the wedge.
    */
   coneMileage: boolean;
+  /**
+   * Alert Cones — "displays alert cones at this TCP" (R07). Default on.
+   * Gates **alert and warning** cones; there is no separate Warning cell.
+   */
+  alertCones: boolean;
+  /**
+   * Monitor Cones — "displays monitor cones at this TCP" (R07). Default on.
+   * Monitor only; does not affect warning/alert.
+   */
+  monitorCones: boolean;
 }
 
 export const DEFAULT_TPA_STATE: TpaState = {
@@ -54,7 +78,17 @@ export const DEFAULT_ATPA_STATE: AtpaState = {
   on: false,
   inTrailDistance: true,
   coneMileage: true,
+  alertCones: true,
+  monitorCones: true,
 };
+
+/**
+ * Master vs the four DCB cells (R07 TPA ATPA submenu).
+ * `effective(feature) = atpa.on && atpa[feature]`.
+ */
+export function atpaFeatureEffective(atpa: AtpaState, feature: AtpaFeature): boolean {
+  return atpa.on && atpa[feature];
+}
 
 /**
  * World-NM polyline for a TPA J-ring about a track. Closed (first point

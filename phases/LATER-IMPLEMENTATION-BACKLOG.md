@@ -8,17 +8,25 @@ been started.
 
 ### Real ATPA pairing and predicted geometry
 
-The DCB currently exposes an ATPA toggle, but `ATPA` is deliberately a stored
-no-op. Implement later:
+Live now: catalog volumes walked by `approachId` (T02-43), in-trail pairing
+and predicted monitor/warning/alert status on `world.alerts.atpa` (T02-44),
+predicted cones (T02-45), datablock in-trail distance plus A/TPA cone mileage
+(T02-46), and four real AUX TPA/ATPA cells plus master (T02-47). A feature
+paints only when `atpa.on && atpa[feature]`. Alert Cones gates alert and
+warning; Monitor Cones is monitor-only. The four cells stay clickable with
+master off so PREF can store a setup.
 
-- in-trail pairing and sequencing;
-- predicted separation / closure calculations;
-- controller-selected ATPA thresholds;
-- predicted rings, cones, or alert geometry;
-- appropriate audio and datablock alerts.
+Later work must keep:
 
-Keep this separate from TPA: TPA's controller-selected 2/3/5/10 NM J-rings
-already work. Do not turn the TPA ring into an automatic CA halo.
+- volumes as data, walked by `approachId` — no facility id branch;
+- CA as T04-09 datablock text (no 3 NM halo; circles on this scope are TPA
+  J-rings);
+- no aural ATPA tone (CA remains the only conflict audio);
+- TPA J-rings and the `TPA_MI` spinner frozen as T02-28 (2 / 3 / 5 / 10 NM).
+
+Wake-category minima, adapted 2.5 NM extras, per-position adaptation, TDW
+white monitor, and authored-vs-NAS volumes stay in **ATPA separation
+criteria not yet modeled** below.
 
 ### ATPA separation criteria not yet modeled
 

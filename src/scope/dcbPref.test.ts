@@ -8,6 +8,7 @@ import { isVideoMapOn, toggleVideoMap } from "./dcbFunctions";
 import {
   DCB_PREF_READOUT_MAX_CHARS,
   DCB_PREF_SLOT_COUNT,
+  DCB_PREF_SCHEMA_VERSION,
   DCB_THICKNESS_PX,
   activeDcbPrefName,
   applyDcbPref,
@@ -19,6 +20,7 @@ import {
   formatDcbPrefReadout,
   isVerticalDcbDock,
   loadDcbPrefFromStorage,
+  parseDcbPrefJson,
   restoreDcbPrefSession,
   saveAsDcbPref,
   saveDcbPref,
@@ -230,8 +232,92 @@ test("T02-46 — omitted ATPA readout flags default on when an old PREF snapshot
   body.atpa = { on: true } as typeof body.atpa;
   view.atpa.inTrailDistance = false;
   view.atpa.coneMileage = false;
+  view.atpa.alertCones = false;
+  view.atpa.monitorCones = false;
   applyDcbPref(view, body);
   expect(view.atpa.on).toBe(true);
   expect(view.atpa.inTrailDistance).toBe(true);
   expect(view.atpa.coneMileage).toBe(true);
+  expect(view.atpa.alertCones).toBe(true);
+  expect(view.atpa.monitorCones).toBe(true);
+});
+
+test("T02-47 — PREF round-trips five ATPA fields; v1 migrates; v3 and corrupt stay factory", async () => {
+  expect(DCB_PREF_SCHEMA_VERSION).toBe(2);
+  const store = memoryStorage();
+  const view = kdemView();
+  view.dcbPref.icao = "KDEM";
+  view.atpa.on = true;
+  view.atpa.inTrailDistance = false;
+  view.atpa.coneMileage = false;
+  view.atpa.alertCones = false;
+  view.atpa.monitorCones = true;
+  saveDcbPref(view, store);
+  const saved = JSON.parse(store.getItem(dcbPrefStorageKey("KDEM"))!) as {
+    v: number;
+    slots: Array<{ name: string; body: { atpa: unknown } } | null>;
+  };
+  expect(saved.v).toBe(2);
+  expect(saved.slots[0]?.body.atpa).toEqual({
+    on: true,
+    inTrailDistance: false,
+    coneMileage: false,
+    alertCones: false,
+    monitorCones: true,
+  });
+
+  const reloaded = kdemView();
+  loadDcbPrefFromStorage(reloaded, "KDEM", store);
+  expect(reloaded.atpa).toEqual({
+    on: true,
+    inTrailDistance: false,
+    coneMileage: false,
+    alertCones: false,
+    monitorCones: true,
+  });
+
+  saved.v = 1;
+  saved.slots[0]!.body.atpa = { on: true };
+  store.setItem(dcbPrefStorageKey("KDEM"), JSON.stringify(saved));
+  const migrated = kdemView();
+  expect(() => loadDcbPrefFromStorage(migrated, "KDEM", store)).not.toThrow();
+  expect(migrated.atpa).toEqual({
+    on: true,
+    inTrailDistance: true,
+    coneMileage: true,
+    alertCones: true,
+    monitorCones: true,
+  });
+  expect(parseDcbPrefJson(store.getItem(dcbPrefStorageKey("KDEM")), "KDEM").v).toBe(2);
+
+  saved.v = 2;
+  saved.slots[0]!.body.atpa = { on: false };
+  store.setItem(dcbPrefStorageKey("KDEM"), JSON.stringify(saved));
+  const missingV2 = kdemView();
+  loadDcbPrefFromStorage(missingV2, "KDEM", store);
+  expect(missingV2.atpa.on).toBe(false);
+  expect(missingV2.atpa.inTrailDistance).toBe(true);
+  expect(missingV2.atpa.coneMileage).toBe(true);
+  expect(missingV2.atpa.alertCones).toBe(true);
+  expect(missingV2.atpa.monitorCones).toBe(true);
+
+  saved.v = 3;
+  store.setItem(dcbPrefStorageKey("KDEM"), JSON.stringify(saved));
+  const unknown = kdemView();
+  loadDcbPrefFromStorage(unknown, "KDEM", store);
+  expect(unknown.dcbPref.slots.every((slot) => slot === null)).toBe(true);
+
+  store.setItem(dcbPrefStorageKey("KDEM"), "{not-json");
+  const corrupt = kdemView();
+  expect(() => loadDcbPrefFromStorage(corrupt, "KDEM", store)).not.toThrow();
+  expect(corrupt.dcbPref.slots.every((slot) => slot === null)).toBe(true);
+
+  const { parseRadioText } = await import("@parse");
+  const heading = parseRadioText("DAL123 H270");
+  expect(heading.ok).toBe(true);
+  if (heading.ok) {
+    expect(heading.instructions).toEqual([
+      { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+    ]);
+  }
 });

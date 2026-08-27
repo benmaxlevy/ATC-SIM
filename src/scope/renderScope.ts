@@ -61,6 +61,7 @@ import {
   atpaConePoints,
   selectAtpaConesToPaint,
   shouldPaintAtpaGeometry,
+  type AtpaConePaintFlags,
 } from "./atpaCone";
 import { TPA_STROKE_COLOR, TPA_STROKE_PX, aircraftForTpaRings, tpaRingPoints } from "./tpa";
 import { buildGiLines, buildSsaLines } from "./ssa";
@@ -663,9 +664,11 @@ function drawTracks(
 }
 
 /**
- * A/TPA Mileage digits alongside the T02-45 cone. Placement uses a local pose
- * (trailer, leader, requiredNm, status) so the captain can wire it to
- * `atpaConePoints` at merge time. No wedge polyline here.
+ * A/TPA Mileage digits alongside the painted T02-45 cone. Placement is a
+ * local pose (trailer, leader, requiredNm, status) offset from the same
+ * `atpaConePoints` axis the wedge uses. Digits paint only when that cone
+ * would — `selectAtpaConesToPaint` plus `shouldPaintAtpaGeometry` — so a
+ * suppressed cone never keeps a stray numeral. No wedge polyline here.
  */
 function drawAtpaConeMileage(
   ctx: CanvasRenderingContext2D,
@@ -683,13 +686,16 @@ function drawAtpaConeMileage(
   ctx.font = datablockFontCss(view.charSizes.tools);
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  for (const pair of pairs) {
+  for (const pair of selectAtpaConesToPaint(pairs)) {
     const trailing = world.aircraft.find((ac) => ac.callsign === pair.trailingCallsign);
     const leading = world.aircraft.find((ac) => ac.callsign === pair.leadingCallsign);
     if (!trailing || !leading) {
       continue;
     }
     const td = view.tracks.get(trailing.id);
+    if (!shouldPaintAtpaGeometry(view.atpa.on, pair.status, atpaConePaintFlags(view, td))) {
+      continue;
+    }
     if (td?.atpaConeMileageEnabled === false) {
       continue;
     }
@@ -782,6 +788,18 @@ function drawTpaRings(
  * Never filled. One cone per trailing track (highest status). Length is the
  * pair's `requiredNm`. Display only — never a Command. Not a CA halo.
  */
+function atpaConePaintFlags(
+  view: ScopeView,
+  td: { atpaMonitorEnabled?: boolean; atpaWarningAlertEnabled?: boolean } | undefined,
+): AtpaConePaintFlags {
+  return {
+    atpaMonitorEnabled: td?.atpaMonitorEnabled,
+    atpaWarningAlertEnabled: td?.atpaWarningAlertEnabled,
+    alertCones: view.atpa.alertCones,
+    monitorCones: view.atpa.monitorCones,
+  };
+}
+
 function drawAtpaCones(
   ctx: CanvasRenderingContext2D,
   world: World,
@@ -804,12 +822,7 @@ function drawAtpaCones(
       continue;
     }
     const td = view.tracks.get(trailing.id);
-    if (
-      !shouldPaintAtpaGeometry(view.atpa.on, pair.status, {
-        atpaMonitorEnabled: td?.atpaMonitorEnabled,
-        atpaWarningAlertEnabled: td?.atpaWarningAlertEnabled,
-      })
-    ) {
+    if (!shouldPaintAtpaGeometry(view.atpa.on, pair.status, atpaConePaintFlags(view, td))) {
       continue;
     }
     const worldPts = atpaConePoints(

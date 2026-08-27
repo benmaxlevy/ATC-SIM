@@ -1974,3 +1974,81 @@ test("T02-46 AC4/AC5 — cone mileage is tenths, cone-colored, independent of in
   expect(cleared.fillTexts.find((t) => t.text === "9.88")).toBeUndefined();
   expect(cleared.fillTexts.find((t) => t.text === "3")).toBeUndefined();
 });
+
+test("T02-47 — DCB cone latches hide cones and their mileage; master off hides both", () => {
+  const trailer = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    altitudeFt: 3000,
+    speedKt: 180,
+    xNm: 4,
+    yNm: 0,
+  });
+  const leader = makeTestAircraft({
+    id: "ac-aal",
+    callsign: "AAL45",
+    altitudeFt: 3000,
+    speedKt: 180,
+    xNm: 0,
+    yNm: 0,
+  });
+  const world = createWorld({
+    aircraft: [leader, trailer],
+    alerts: {
+      ca: [],
+      msaw: [],
+      atpa: [atpaWarningPair({ status: "monitor", requiredNm: 3, distanceNm: 5 })],
+    },
+  });
+  const view = createScopeView();
+  view.atpa.on = true;
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get(trailer.id)!.ownership = "owned";
+  view.tracks.get(trailer.id)!.datablockMode = "full";
+
+  const monitorOn = createMockCtx();
+  renderScope(monitorOn.ctx, world, view, 800, 800);
+  expect(monitorOn.pathStrokes.filter((s) => s.points.length === 4)).toHaveLength(1);
+  expect(monitorOn.fillTexts.find((t) => t.text === "3")).toBeDefined();
+
+  view.atpa.monitorCones = false;
+  const monitorOff = createMockCtx();
+  renderScope(monitorOff.ctx, world, view, 800, 800);
+  expect(monitorOff.pathStrokes.filter((s) => s.points.length === 4)).toHaveLength(0);
+  expect(monitorOff.fillTexts.find((t) => t.text === "3")).toBeUndefined();
+
+  view.atpa.monitorCones = true;
+  world.alerts.atpa = [atpaWarningPair({ requiredNm: 2.5, distanceNm: 9.88 })];
+  view.atpa.alertCones = false;
+  const warningOff = createMockCtx();
+  renderScope(warningOff.ctx, world, view, 800, 800);
+  expect(warningOff.pathStrokes.filter((s) => s.points.length === 4)).toHaveLength(0);
+  expect(warningOff.fillTexts.find((t) => t.text === "2.5")).toBeUndefined();
+  expect(warningOff.fillTexts.find((t) => t.text === "9.88")?.fillStyle).toBe(PALETTE.caution);
+
+  view.atpa.alertCones = true;
+  world.alerts.atpa = [atpaWarningPair({ status: "alert", requiredNm: 2.5, distanceNm: 2.4 })];
+  view.atpa.alertCones = false;
+  const alertOff = createMockCtx();
+  renderScope(alertOff.ctx, world, view, 800, 800);
+  expect(alertOff.pathStrokes.filter((s) => s.points.length === 4)).toHaveLength(0);
+  expect(alertOff.fillTexts.find((t) => t.text === "2.5")).toBeUndefined();
+
+  view.atpa.alertCones = true;
+  view.atpa.monitorCones = true;
+  view.atpa.coneMileage = true;
+  view.atpa.inTrailDistance = true;
+  view.atpa.on = false;
+  const masterOff = createMockCtx();
+  renderScope(masterOff.ctx, world, view, 800, 800);
+  expect(masterOff.pathStrokes.filter((s) => s.points.length === 4)).toHaveLength(0);
+  expect(masterOff.fillTexts.find((t) => t.text === "2.5")).toBeUndefined();
+  expect(masterOff.fillTexts.find((t) => t.text === "2.40")).toBeUndefined();
+
+  view.atpa.on = true;
+  view.tracks.get(trailer.id)!.atpaWarningAlertEnabled = false;
+  const trackInhibit = createMockCtx();
+  renderScope(trackInhibit.ctx, world, view, 800, 800);
+  expect(trackInhibit.pathStrokes.filter((s) => s.points.length === 4)).toHaveLength(0);
+  expect(trackInhibit.fillTexts.find((t) => t.text === "2.5")).toBeUndefined();
+});
