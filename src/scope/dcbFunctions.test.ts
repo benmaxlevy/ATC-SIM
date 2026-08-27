@@ -48,23 +48,16 @@ function kdemView() {
   return createScopeView(0, 0, { digitalMap: parseDigitalMap(loadKdem().maps) });
 }
 
-test("AC1 — MAPS catalog dcbLabels; COAST and extra maps hide strokes", () => {
+test("AC1 — MAPS catalog dcbLabels; extra maps hide strokes", () => {
   const view = kdemView();
   const labels = dcbCatalogMaps(view).map(formatDcbMapLabel);
   expect(labels).toContain("1 RWY");
-  expect(labels).toContain("4 COAST");
-  expect(labels).toContain("5 DEM1_27");
-  expect(labels).toContain("7 BAY1_27");
+  expect(labels).toContain("4 DEM1_27");
+  expect(labels).toContain("6 BAY1_27");
 
   const before = buildMapCache(toMapCacheInput(view, VIEW));
-  expect(before.coastline).not.toBeNull();
   expect(before.videoStrokes.some((s) => s.mapId === "DEM1_27")).toBe(true);
   expect(before.videoStrokes.some((s) => s.mapId === "BAY1_27")).toBe(true);
-
-  toggleVideoMap(view, "COAST");
-  expect(view.showCoastline).toBe(false);
-  const noCoast = buildMapCache(toMapCacheInput(view, VIEW));
-  expect(noCoast.coastline).toBeNull();
 
   toggleVideoMap(view, "DEM1_27");
   const noDem = buildMapCache(toMapCacheInput(view, VIEW));
@@ -278,37 +271,34 @@ test("AC6 — radio-focus L090 is still a left turn; LDR DIR spinner does not st
   }
 });
 
-test("T02-24 — unused slots 9–30 disabled; 1–8 bind catalog dcbNumber", () => {
+test("T02-24 — unused slots 8–30 disabled; 1–7 bind catalog dcbNumber", () => {
   const view = kdemView();
   expect(DCB_MAP_SLOT_COUNT).toBe(30);
   expect(DCB_QUICK_MAP_COUNT).toBe(6);
   expect(videoMapByDcbNumber(view, 1)?.dcbLabel).toBe("RWY");
   expect(videoMapByDcbNumber(view, 2)?.id).toBe("LOC27");
   expect(videoMapByDcbNumber(view, 3)?.id).toBe("LOC09");
-  expect(videoMapByDcbNumber(view, 4)?.id).toBe("COAST");
-  expect(videoMapByDcbNumber(view, 5)?.dcbLabel).toBe("DEM1_27");
-  expect(videoMapByDcbNumber(view, 6)?.dcbLabel).toBe("DEM1_09");
-  expect(videoMapByDcbNumber(view, 7)?.dcbLabel).toBe("BAY1_27");
-  expect(videoMapByDcbNumber(view, 8)?.dcbLabel).toBe("BAY1_09");
-  expect(videoMapByDcbNumber(view, 9)).toBeUndefined();
-  for (let slot = 1; slot <= 8; slot += 1) {
+  expect(videoMapByDcbNumber(view, 4)?.dcbLabel).toBe("DEM1_27");
+  expect(videoMapByDcbNumber(view, 5)?.dcbLabel).toBe("DEM1_09");
+  expect(videoMapByDcbNumber(view, 6)?.dcbLabel).toBe("BAY1_27");
+  expect(videoMapByDcbNumber(view, 7)?.dcbLabel).toBe("BAY1_09");
+  expect(videoMapByDcbNumber(view, 8)).toBeUndefined();
+  for (let slot = 1; slot <= 7; slot += 1) {
     expect(isDcbMapSlotEnabled(view, slot)).toBe(true);
   }
-  for (let slot = 9; slot <= DCB_MAP_SLOT_COUNT; slot += 1) {
+  for (let slot = 8; slot <= DCB_MAP_SLOT_COUNT; slot += 1) {
     expect(isDcbMapSlotEnabled(view, slot)).toBe(false);
   }
 });
 
 test("T02-24 — CLR ALL turns catalog maps off; coastline JSON off is a no-op", () => {
   const view = kdemView();
-  expect(isVideoMapOn(view, "COAST")).toBe(true);
   expect(isVideoMapOn(view, "DEM1_27")).toBe(true);
   expect(isVideoMapOn(view, "BAY1_27")).toBe(true);
   clearAllVideoMaps(view);
   expect(isVideoMapOn(view, "RWY")).toBe(false);
   expect(isVideoMapOn(view, "LOC27")).toBe(false);
   expect(isVideoMapOn(view, "LOC09")).toBe(false);
-  expect(isVideoMapOn(view, "COAST")).toBe(false);
   expect(isVideoMapOn(view, "DEM1_27")).toBe(false);
   expect(isVideoMapOn(view, "DEM1_09")).toBe(false);
   expect(isVideoMapOn(view, "BAY1_27")).toBe(false);
@@ -358,23 +348,21 @@ test("T02-24 — GEO MAPS lists every catalog label; CURRENT lists only maps tha
   expect(geo).toContain("1 RWY ON");
   expect(geo).toContain("2 LOC27 ON");
   expect(geo).toContain("3 LOC09 OFF");
-  expect(geo).toContain("4 COAST ON");
-  expect(geo).toContain("5 DEM1_27 ON");
-  expect(geo).toContain("6 DEM1_09 OFF");
-  expect(geo).toContain("7 BAY1_27 ON");
-  expect(geo).toContain("8 BAY1_09 OFF");
-  expect(geo).toHaveLength(8);
+  expect(geo).toContain("4 DEM1_27 ON");
+  expect(geo).toContain("5 DEM1_09 OFF");
+  expect(geo).toContain("6 BAY1_27 ON");
+  expect(geo).toContain("7 BAY1_09 OFF");
+  expect(geo).toHaveLength(7);
   expect(buildMapListLines(view, "current")).toEqual([
     "1 RWY",
     "2 LOC27",
-    "4 COAST",
-    "5 DEM1_27",
-    "7 BAY1_27",
+    "4 DEM1_27",
+    "6 BAY1_27",
   ]);
 
-  toggleVideoMap(view, "COAST");
-  expect(buildMapListLines(view, "geo")).toContain("4 COAST OFF");
-  expect(buildMapListLines(view, "current")).not.toContain("4 COAST");
+  toggleVideoMap(view, "DEM1_27");
+  expect(buildMapListLines(view, "geo")).toContain("4 DEM1_27 OFF");
+  expect(buildMapListLines(view, "current")).not.toContain("4 DEM1_27");
   expect(buildMapListLines(view, "current")).toContain("1 RWY");
 
   clearAllVideoMaps(view);

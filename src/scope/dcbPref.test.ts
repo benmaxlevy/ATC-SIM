@@ -93,7 +93,7 @@ test("AC3 — RESTORE undoes changes made after opening PREF", () => {
   beginDcbPrefSession(view);
   view.camera.rangeNm = 10;
   setDcbDock(view, "LEFT");
-  toggleVideoMap(view, "COAST");
+  toggleVideoMap(view, "DEM1_27");
   restoreDcbPrefSession(view);
   expect(view.camera.rangeNm).toBe(40);
   expect(view.dcbDock).toBe("RIGHT");

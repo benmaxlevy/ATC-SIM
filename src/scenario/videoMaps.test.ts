@@ -2,24 +2,14 @@ import { expect, test } from "vitest";
 import { loadKdem } from "./load";
 import { loadVideoMapSet, parseVideoMapFile } from "./loadVideoMaps";
 
-test("AC1 — loadKdem videoMapSet is KDEM with RWY, LOC, COAST plus extras", () => {
+test("AC1 — loadKdem videoMapSet is KDEM with RWY, LOC plus extras", () => {
   const maps = loadKdem().maps;
   expect(maps.videoMapSet).toBe("KDEM");
   const ids = maps.videoMaps.map((item) => item.id);
   expect(ids.some((id) => id.includes("RWY"))).toBe(true);
   expect(ids.some((id) => id.includes("LOC"))).toBe(true);
-  expect(ids).toContain("COAST");
   expect(ids.length).toBeGreaterThan(3);
-  expect(ids).toEqual([
-    "RWY",
-    "LOC27",
-    "LOC09",
-    "COAST",
-    "DEM1_27",
-    "DEM1_09",
-    "BAY1_27",
-    "BAY1_09",
-  ]);
+  expect(ids).toEqual(["RWY", "LOC27", "LOC09", "DEM1_27", "DEM1_09", "BAY1_27", "BAY1_09"]);
 });
 
 test("KDEM catalog loads MAPS in ARP ENU NM including DEM1 STAR and BAY1 SID for both runways", () => {
@@ -28,15 +18,12 @@ test("KDEM catalog loads MAPS in ARP ENU NM including DEM1 STAR and BAY1 SID for
     "RWY",
     "LOC27",
     "LOC09",
-    "COAST",
     "DEM1_27",
     "DEM1_09",
     "BAY1_27",
     "BAY1_09",
   ]);
   expect(maps.every((item) => item.dcbNumber >= 1)).toBe(true);
-  const coast = maps.find((item) => item.id === "COAST");
-  expect(coast?.note?.toLowerCase()).toMatch(/fictional/);
   expect(maps.find((item) => item.id === "DEM1_27")?.color).toBe("map");
   expect(maps.find((item) => item.id === "DEM1_27")?.defaultOn).toBe(true);
   expect(maps.find((item) => item.id === "DEM1_09")?.color).toBe("map");
@@ -47,7 +34,7 @@ test("KDEM catalog loads MAPS in ARP ENU NM including DEM1 STAR and BAY1 SID for
   expect(maps.find((item) => item.id === "BAY1_09")?.defaultOn).toBe(false);
 });
 
-test("AC2 — loadKdem derives runway / loc / coast from the catalog", () => {
+test("AC2 — loadKdem derives runway and loc from the catalog", () => {
   const maps = loadKdem().maps;
   expect(maps.runway).toMatchObject({
     id: "27",
@@ -62,8 +49,7 @@ test("AC2 — loadKdem derives runway / loc / coast from the catalog", () => {
     featherLengthNm: 10,
     halfWidthDeg: 2.5,
   });
-  expect(maps.coastline?.enabled).toBe(true);
-  expect(maps.coastline?.polyline.length).toBeGreaterThan(3);
+  expect(maps.coastline).toBeUndefined();
 });
 
 test("AC4 — missing video-maps/KJFK/catalog.json throws", () => {

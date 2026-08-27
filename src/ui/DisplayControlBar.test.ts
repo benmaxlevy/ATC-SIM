@@ -355,9 +355,9 @@ test("T02-24 — MAIN quick maps 1–6 and MAPS slots 1–30; unused 7–30 disa
   expect(main).toContain("RWY");
   expect(main).toContain("LOC27");
   expect(main).toContain("LOC09");
-  expect(main).toContain("COAST");
   expect(main).toContain("DEM1_27");
   expect(main).toContain("DEM1_09");
+  expect(main).toContain("BAY1_27");
   for (const n of [1, 2, 3, 4, 5, 6]) {
     expect(main).toContain(`data-dcb-map-slot="${n}"`);
   }
@@ -374,7 +374,7 @@ test("T02-24 — MAIN quick maps 1–6 and MAPS slots 1–30; unused 7–30 disa
   expect(maps).toContain("ALL");
   expect(maps).toContain("GEO");
   expect(maps).toContain("CURRENT");
-  expect(maps).toContain('data-dcb-map-id="COAST"');
+  expect(maps).toContain('data-dcb-map-id="DEM1_27"');
   for (let slot = 1; slot <= 30; slot += 1) {
     expect(maps).toContain(`data-dcb-map-slot="${slot}"`);
   }

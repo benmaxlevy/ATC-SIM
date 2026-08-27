@@ -238,7 +238,7 @@ test("AC5b — DEM1 video map is default-on polylines/text; STAR parse does not 
   const dem1 = maps.find((item) => item.id === "DEM1_27");
   expect(dem1).toBeDefined();
   expect(dem1!.defaultOn).toBe(true);
-  expect(dem1!.dcbNumber).toBe(5);
+  expect(dem1!.dcbNumber).toBe(4);
   expect(
     dem1!.features.every((feature) => feature.type === "polyline" || feature.type === "text"),
   ).toBe(true);

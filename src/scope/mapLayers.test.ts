@@ -91,7 +91,17 @@ test("AC3 — range 20 NM draws 5/10/15/20 rings; range 5 NM draws only 5", () =
 });
 
 test("AC4 — coastline.enabled false skips the polyline; true with ≥2 points keeps it", () => {
-  const digitalMap = parseDigitalMap(loadKdem().maps);
+  const baseMap = parseDigitalMap(loadKdem().maps);
+  const digitalMap = {
+    ...baseMap,
+    coastline: {
+      enabled: true,
+      polyline: [
+        [-5, -10],
+        [-5, 10],
+      ] as [number, number][],
+    },
+  };
   const enabled = buildMapCache(
     kdemInput({
       digitalMap,
@@ -104,9 +114,7 @@ test("AC4 — coastline.enabled false skips the polyline; true with ≥2 points 
 
   const disabledMap = {
     ...digitalMap,
-    coastline: digitalMap.coastline
-      ? { ...digitalMap.coastline, enabled: false }
-      : { enabled: false, polyline: [] as [number, number][] },
+    coastline: { ...digitalMap.coastline, enabled: false },
   };
   const disabled = buildMapCache(
     kdemInput({

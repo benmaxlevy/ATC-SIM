@@ -31,42 +31,33 @@
       "color": "map"
     },
     {
-      "id": "COAST",
-      "file": "004-coast.json",
-      "dcbNumber": 4,
-      "dcbLabel": "COAST",
-      "role": "coastline",
-      "defaultOn": true,
-      "color": "map"
-    },
-    {
       "id": "DEM1_27",
-      "file": "005-dem1-star-27.json",
-      "dcbNumber": 5,
+      "file": "004-dem1-star-27.json",
+      "dcbNumber": 4,
       "dcbLabel": "DEM1_27",
       "defaultOn": true,
       "color": "map"
     },
     {
       "id": "DEM1_09",
-      "file": "006-dem1-star-09.json",
-      "dcbNumber": 6,
+      "file": "005-dem1-star-09.json",
+      "dcbNumber": 5,
       "dcbLabel": "DEM1_09",
       "defaultOn": false,
       "color": "map"
     },
     {
       "id": "BAY1_27",
-      "file": "007-bay1-sid-27.json",
-      "dcbNumber": 7,
+      "file": "006-bay1-sid-27.json",
+      "dcbNumber": 6,
       "dcbLabel": "BAY1_27",
       "defaultOn": true,
       "color": "map"
     },
     {
       "id": "BAY1_09",
-      "file": "008-bay1-sid-09.json",
-      "dcbNumber": 8,
+      "file": "007-bay1-sid-09.json",
+      "dcbNumber": 7,
       "dcbLabel": "BAY1_09",
       "defaultOn": false,
       "color": "map"

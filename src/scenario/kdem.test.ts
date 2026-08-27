@@ -38,13 +38,12 @@ test("AC1 — loaded KDEM video maps come from video-maps/KDEM", () => {
     "RWY",
     "LOC27",
     "LOC09",
-    "COAST",
     "DEM1_27",
     "DEM1_09",
     "BAY1_27",
     "BAY1_09",
   ]);
-  expect(maps.loadedVideoMaps).toHaveLength(8);
+  expect(maps.loadedVideoMaps).toHaveLength(7);
 });
 
 test("loaded KDEM includes trainer-authored digital map geometry", () => {
@@ -63,9 +62,7 @@ test("loaded KDEM includes trainer-authored digital map geometry", () => {
     halfWidthDeg: 2.5,
   });
   expect(maps.rangeRings).toEqual({ intervalNm: 5, maxNm: 60 });
-  expect(maps.coastline?.enabled).toBe(true);
-  expect(maps.coastline?.polyline.length).toBeGreaterThanOrEqual(2);
-  expect(maps.coastline?.note?.toLowerCase()).toMatch(/fictional/);
+  expect(maps.coastline).toBeUndefined();
 });
 
 test("assertScenario keeps spawning when maps.runway is missing", () => {
