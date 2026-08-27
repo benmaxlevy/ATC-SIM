@@ -13,6 +13,12 @@ This is the **twelfth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish
 
 ---
 
+## Twelfth swarm execution — 2026-08-26
+
+Human approved feature-base execution. Worktree base is `feature/session-setup`; captain merges only into that branch. Do not push or merge feature work into `master`.
+
+---
+
 ## Twelfth swarm planned — 2026-08-26 (session setup)
 
 This configuration runs from feature base `feature/session-setup`, created by merging the planning branch. Ticket workers branch from that base; captain squash-merges back into that base. It builds session setup foundations and menu only; it does not begin Phase 5 scoring.
