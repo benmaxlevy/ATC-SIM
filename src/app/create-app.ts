@@ -214,6 +214,8 @@ export function createApp(deps: AppDeps): AppHandles {
   const caAlertTone = deps.caAlertTone ?? createCaAlertTone();
 
   function afterPhysicsTick(): void {
+    // Newly scheduled STAR arrivals enter the same check-in queue as initial traffic.
+    checkInQueue.scheduleFromWorld(world);
     checkInQueue.drain({
       world,
       log,

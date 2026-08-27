@@ -111,3 +111,17 @@ export {
   parseTrafficCount,
 } from "./trafficQuery";
 export type { DepartureOptions } from "./trafficQuery";
+export type {
+  ArrivalScheduler,
+  ArrivalTrafficConfig,
+  ScheduledArrival,
+  ValidatedArrivalTrafficConfig,
+} from "./arrivalScheduler";
+export {
+  ARRIVALS_PER_HOUR_MAX,
+  ARRIVALS_PER_HOUR_MIN,
+  DEFAULT_ARRIVALS_PER_HOUR,
+  DEFAULT_INITIAL_ARRIVAL_COUNT,
+  createArrivalScheduler,
+  validateArrivalTrafficConfig,
+} from "./arrivalScheduler";
