@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import atpaVolumesJson from "../data/kdem/atpa-volumes.json";
 import catalogJson from "../data/kdem/catalog.json";
 import fixesJson from "../data/kdem/fixes.json";
 import ilsJson from "../data/kdem/ils.json";
@@ -17,6 +18,7 @@ function kdemFiles(): CatalogFileSet {
     fixes: fixesJson,
     procedures: proceduresJson,
     sids: sidsJson,
+    atpaVolumes: atpaVolumesJson,
   });
 }
 
@@ -25,6 +27,7 @@ test("parseCatalogFiles accepts the committed KDEM set", () => {
   expect(catalog.airportId).toBe("KDEM");
   expect(catalog.sids).toHaveLength(1);
   expect(catalog.sids[0]?.id).toBe("BAY1");
+  expect(catalog.atpaVolumes.map((volume) => volume.id)).toEqual(["ATPA27", "ATPA09"]);
 });
 
 test("AC1 — loadCatalog parses KDEM sids.json with BAY1 procedure for RW27 and RW09", () => {
@@ -194,4 +197,121 @@ test("AC3 — dangling approach locNavaidId, gsNavaidId, fafFixId, thresholdFixI
 
 test("missing catalog directory throws", () => {
   expect(() => loadCatalog("kjfk")).toThrow(/Missing catalog file/);
+});
+
+function sampleAtpaVolume(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: "ATPA27",
+    approachId: "ILS27",
+    enabled: true,
+    lengthNm: 15,
+    halfWidthNm: 1.5,
+    floorFt: 0,
+    ceilingFt: 6000,
+    courseToleranceDeg: 30,
+    basicSeparationNm: 3,
+    reducedSeparationNm: 2.5,
+    reducedWithinNm: 10,
+    ...overrides,
+  };
+}
+
+function withAtpaVolumes(volumes: unknown[], airportId = "KDEM"): CatalogFileSet {
+  const files = kdemFiles();
+  const catalog = files.catalog as { files: Record<string, string> };
+  catalog.files.atpaVolumes = "atpa-volumes.json";
+  files.atpaVolumes = { airportId, atpaVolumes: volumes };
+  return files;
+}
+
+test("T02-43 AC2 — omitting files.atpaVolumes still loads with atpaVolumes []", () => {
+  const files = kdemFiles();
+  const catalogJson = files.catalog as { files: Record<string, unknown> };
+  delete catalogJson.files.atpaVolumes;
+  files.atpaVolumes = undefined;
+  const catalog = parseCatalogFiles(files);
+  expect(catalog.atpaVolumes).toEqual([]);
+});
+
+test("T02-43 AC3 — duplicate volume id throws; no partial catalog", () => {
+  expect(() =>
+    parseCatalogFiles(withAtpaVolumes([sampleAtpaVolume(), sampleAtpaVolume({ id: "ATPA27" })])),
+  ).toThrow(/duplicate id ATPA27/);
+});
+
+test("T02-43 AC3 — unknown approachId throws; no partial catalog", () => {
+  expect(() =>
+    parseCatalogFiles(withAtpaVolumes([sampleAtpaVolume({ approachId: "NOPE" })])),
+  ).toThrow(/unknown id NOPE/);
+});
+
+test("T02-43 AC3 — reducedSeparationNm greater than basicSeparationNm throws", () => {
+  expect(() =>
+    parseCatalogFiles(
+      withAtpaVolumes([sampleAtpaVolume({ basicSeparationNm: 3, reducedSeparationNm: 4 })]),
+    ),
+  ).toThrow(/reducedSeparationNm must be <= basicSeparationNm/);
+});
+
+test("T02-43 AC3 — non-positive lengthNm throws", () => {
+  expect(() => parseCatalogFiles(withAtpaVolumes([sampleAtpaVolume({ lengthNm: 0 })]))).toThrow(
+    /lengthNm must be positive/,
+  );
+  expect(() => parseCatalogFiles(withAtpaVolumes([sampleAtpaVolume({ lengthNm: -1 })]))).toThrow(
+    /lengthNm must be positive/,
+  );
+});
+
+test("T02-43 — omitted minima default to 3 / 2.5 / 10", () => {
+  const files = withAtpaVolumes([
+    sampleAtpaVolume({
+      basicSeparationNm: undefined,
+      reducedSeparationNm: undefined,
+      reducedWithinNm: undefined,
+    }),
+  ]);
+  const catalog = parseCatalogFiles(files);
+  expect(catalog.atpaVolumes).toHaveLength(1);
+  expect(catalog.atpaVolumes[0]).toMatchObject({
+    id: "ATPA27",
+    approachId: "ILS27",
+    basicSeparationNm: 3,
+    reducedSeparationNm: 2.5,
+    reducedWithinNm: 10,
+  });
+});
+
+test("T02-43 — atpaVolumes airportId mismatch throws", () => {
+  expect(() => parseCatalogFiles(withAtpaVolumes([sampleAtpaVolume()], "KJFK"))).toThrow(
+    /does not match catalog.airportId/,
+  );
+});
+
+test("T02-43 AC1 — loadCatalog(kdem) returns ATPA27 and ATPA09 on ILS27/ILS09", () => {
+  const catalog = loadCatalog("kdem");
+  expect(catalog.atpaVolumes).toHaveLength(2);
+  const atpa27 = catalog.atpaVolumes.find((volume) => volume.id === "ATPA27");
+  const atpa09 = catalog.atpaVolumes.find((volume) => volume.id === "ATPA09");
+  expect(atpa27).toBeDefined();
+  expect(atpa09).toBeDefined();
+  const ils27 = catalog.approaches.find((approach) => approach.id === atpa27!.approachId);
+  const ils09 = catalog.approaches.find((approach) => approach.id === atpa09!.approachId);
+  expect(ils27?.id).toBe("ILS27");
+  expect(ils27?.thresholdFixId).toBe("RW27");
+  expect(ils27?.courseDeg).toBe(270);
+  expect(ils09?.id).toBe("ILS09");
+  expect(ils09?.thresholdFixId).toBe("RW09");
+  expect(ils09?.courseDeg).toBe(90);
+  for (const volume of catalog.atpaVolumes) {
+    expect(volume.enabled).toBe(true);
+    expect(volume.lengthNm).toBe(15);
+    expect(volume.halfWidthNm).toBe(1.5);
+    expect(volume.floorFt).toBe(0);
+    expect(volume.ceilingFt).toBe(6000);
+    expect(volume.courseToleranceDeg).toBe(30);
+    expect(volume.basicSeparationNm).toBe(3);
+    expect(volume.reducedSeparationNm).toBe(2.5);
+    expect(volume.reducedWithinNm).toBe(10);
+    expect(volume.note).toMatch(/authored trainer adaptation/i);
+  }
 });

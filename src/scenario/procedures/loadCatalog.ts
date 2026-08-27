@@ -11,6 +11,7 @@ import type {
   AltConstraint,
   ApproachProcedure,
   ApproachType,
+  AtpaVolume,
   MissedApproach,
   Navaid,
   NavaidKind,
@@ -65,6 +66,8 @@ export interface CatalogFileSet {
   fixes: unknown;
   procedures: unknown;
   sids: unknown;
+  /** Present only when `catalog.files.atpaVolumes` lists a file. */
+  atpaVolumes?: unknown;
 }
 
 import {
@@ -407,6 +410,68 @@ function parseApproach(value: unknown, index: number): ApproachProcedure {
   return approach;
 }
 
+/** Schema defaults when JSON omits minima. Live pairing must read the parsed fields. */
+const DEFAULT_BASIC_SEPARATION_NM = 3;
+const DEFAULT_REDUCED_SEPARATION_NM = 2.5;
+const DEFAULT_REDUCED_WITHIN_NM = 10;
+
+function assertBoolean(value: unknown, path: string): boolean {
+  if (typeof value !== "boolean") {
+    throw new Error(`Catalog ${path} must be a boolean`);
+  }
+  return value;
+}
+
+function parseAtpaVolume(value: unknown, index: number): AtpaVolume {
+  const path = `atpaVolumes[${index}]`;
+  if (!isRecord(value)) {
+    throw new Error(`Catalog ${path} must be an object`);
+  }
+  const lengthNm = assertNumber(value.lengthNm, `${path}.lengthNm`);
+  if (lengthNm <= 0) {
+    throw new Error(`Catalog ${path}.lengthNm must be positive`);
+  }
+  const halfWidthNm = assertNumber(value.halfWidthNm, `${path}.halfWidthNm`);
+  if (halfWidthNm <= 0) {
+    throw new Error(`Catalog ${path}.halfWidthNm must be positive`);
+  }
+  const basicSeparationNm =
+    value.basicSeparationNm === undefined
+      ? DEFAULT_BASIC_SEPARATION_NM
+      : assertNumber(value.basicSeparationNm, `${path}.basicSeparationNm`);
+  const reducedSeparationNm =
+    value.reducedSeparationNm === undefined
+      ? DEFAULT_REDUCED_SEPARATION_NM
+      : assertNumber(value.reducedSeparationNm, `${path}.reducedSeparationNm`);
+  if (reducedSeparationNm > basicSeparationNm) {
+    throw new Error(
+      `Catalog ${path}.reducedSeparationNm must be <= basicSeparationNm (${basicSeparationNm})`,
+    );
+  }
+  const reducedWithinNm =
+    value.reducedWithinNm === undefined
+      ? DEFAULT_REDUCED_WITHIN_NM
+      : assertNumber(value.reducedWithinNm, `${path}.reducedWithinNm`);
+  const note = optionalString(value.note, `${path}.note`);
+  const volume: AtpaVolume = {
+    id: assertId(value.id, `${path}.id`),
+    approachId: assertString(value.approachId, `${path}.approachId`).toUpperCase(),
+    enabled: assertBoolean(value.enabled, `${path}.enabled`),
+    lengthNm,
+    halfWidthNm,
+    floorFt: assertNumber(value.floorFt, `${path}.floorFt`),
+    ceilingFt: assertNumber(value.ceilingFt, `${path}.ceilingFt`),
+    courseToleranceDeg: assertNumber(value.courseToleranceDeg, `${path}.courseToleranceDeg`),
+    basicSeparationNm,
+    reducedSeparationNm,
+    reducedWithinNm,
+  };
+  if (note !== undefined) {
+    volume.note = note;
+  }
+  return volume;
+}
+
 function parseNavaid(value: unknown, path: string): Navaid {
   if (!isRecord(value)) {
     throw new Error(`Catalog ${path} must be an object`);
@@ -588,6 +653,19 @@ function validateRefs(catalog: ProcedureCatalog, ids: Set<string>): void {
     requireRef(ids, approach.thresholdFixId, `approach ${approach.id}.thresholdFixId`);
     requireRef(ids, approach.missed?.directFixId, `approach ${approach.id}.missed.directFixId`);
   }
+  const approachIds = new Set(catalog.approaches.map((approach) => approach.id));
+  const volumeIds = new Set<string>();
+  for (const volume of catalog.atpaVolumes) {
+    if (volumeIds.has(volume.id)) {
+      throw new Error(`Catalog duplicate id ${volume.id} (atpaVolume)`);
+    }
+    volumeIds.add(volume.id);
+    if (!approachIds.has(volume.approachId)) {
+      throw new Error(
+        `Catalog atpaVolume ${volume.id}.approachId references unknown id ${volume.approachId}`,
+      );
+    }
+  }
 }
 
 /**
@@ -656,6 +734,21 @@ export function parseCatalogFiles(files: CatalogFileSet): ProcedureCatalog {
   const approaches = assertArray(files.procedures.approaches, "approaches").map(parseApproach);
   const sids = assertArray(files.sids.sids, "sids").map(parseSid);
 
+  let atpaVolumes: AtpaVolume[] = [];
+  if (fileMap.atpaVolumes !== undefined) {
+    if (typeof fileMap.atpaVolumes !== "string" || fileMap.atpaVolumes.length === 0) {
+      throw new Error("Catalog files.atpaVolumes must be a non-empty string");
+    }
+    if (files.atpaVolumes === undefined) {
+      throw new Error(`Missing catalog file ${fileMap.atpaVolumes}`);
+    }
+    if (!isRecord(files.atpaVolumes)) {
+      throw new Error("Catalog atpa-volumes.json must be an object");
+    }
+    assertAirportId(files.atpaVolumes.airportId, "atpaVolumes.airportId", airportId);
+    atpaVolumes = assertArray(files.atpaVolumes.atpaVolumes, "atpaVolumes").map(parseAtpaVolume);
+  }
+
   const originNote = optionalString(files.catalog.originNote, "originNote");
   const catalog: ProcedureCatalog = {
     schemaVersion: 1,
@@ -670,6 +763,7 @@ export function parseCatalogFiles(files: CatalogFileSet): ProcedureCatalog {
     stars,
     approaches,
     sids,
+    atpaVolumes,
   };
   const ids = collectResolveIds(navaids, fixes);
   validateRefs(catalog, ids);
@@ -713,6 +807,11 @@ export function loadCatalog(dir: string): ProcedureCatalog {
     }
     return readDataJson(folder, name);
   };
+  const atpaVolumesName = files.atpaVolumes;
+  const atpaVolumes =
+    typeof atpaVolumesName === "string" && atpaVolumesName.length > 0
+      ? readDataJson(folder, atpaVolumesName)
+      : undefined;
   return parseCatalogFiles({
     catalog: catalogJson,
     vors: readListed("vors"),
@@ -721,6 +820,7 @@ export function loadCatalog(dir: string): ProcedureCatalog {
     fixes: readListed("fixes"),
     procedures: readListed("procedures"),
     sids: readListed("sids"),
+    ...(atpaVolumes !== undefined ? { atpaVolumes } : {}),
   });
 }
 

@@ -38,6 +38,7 @@ export type { LoadedVideoMap, VideoMapCatalog, VideoMapFile } from "./loadVideoM
 export type {
   ApproachProcedure,
   ApproachType,
+  AtpaVolume,
   NavFix,
   Navaid,
   ProcedureCatalog,
@@ -68,6 +69,13 @@ export {
   parseCatalogFiles,
   sidRouteFixIds,
 } from "./procedures/loadCatalog";
+export type { AtpaTrackPose, AtpaVolumeGeometry } from "./atpaVolume";
+export {
+  alongCourseDistanceNm,
+  atpaVolumeThreshold,
+  isInsideAtpaVolume,
+  lateralOffsetNm,
+} from "./atpaVolume";
 export type { MvaChart, MvaPolygon, MvaVertex, MsawInhibitGeom } from "./mva";
 export { loadMva, mvaFileKey, parseMvaChart } from "./mva";
 export { loadVideoMapSet } from "./loadVideoMaps";

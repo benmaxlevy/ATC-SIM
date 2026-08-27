@@ -136,6 +136,27 @@ export interface ApproachProcedure {
   missed?: MissedApproach;
 }
 
+/**
+ * Adapted ATPA approach volume. Threshold and inbound course come from the
+ * referenced `approachId` — never copied runway xy or a facility/runway `if`.
+ * Minima are per-volume JSON (basic radar only). Always present on the catalog
+ * as an array; `[]` when the facility omits `files.atpaVolumes`.
+ */
+export interface AtpaVolume {
+  id: string;
+  approachId: string;
+  enabled: boolean;
+  lengthNm: number;
+  halfWidthNm: number;
+  floorFt: number;
+  ceilingFt: number;
+  courseToleranceDeg: number;
+  basicSeparationNm: number;
+  reducedSeparationNm: number;
+  reducedWithinNm: number;
+  note?: string;
+}
+
 export interface ProcedureCatalog {
   schemaVersion: 1;
   airportId: string;
@@ -149,6 +170,7 @@ export interface ProcedureCatalog {
   stars: StarProcedure[];
   approaches: ApproachProcedure[];
   sids: SidProcedure[];
+  atpaVolumes: AtpaVolume[];
 }
 
 /** Ids a later `DCT` command may resolve: named fixes and navaids. */
