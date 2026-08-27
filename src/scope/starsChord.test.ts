@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { createWorld, makeTestAircraft } from "@core";
+import { shouldPaintAtpaGeometry } from "./atpaCone";
 import { createScopeView } from "./scopeView";
 import {
   STARS_CHORD_NM_MAX,
@@ -160,29 +161,143 @@ test("stars chord entry times out at 1.5 s from last key", () => {
   expect(entry.phase).toBe("idle");
 });
 
-test("applyStarsChordAction returns unsupported for ATPA cone-enable flags", () => {
+test("ATPA *AE / *AI / *BE / *BI apply to slewed track; global when none slewed", () => {
+  const aal = makeTestAircraft({ id: "ac-aal", callsign: "AAL122", headingDeg: 180 });
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", headingDeg: 90 });
+  const world = createWorld({ aircraft: [aal, dal] });
+  const view = createScopeView();
+
+  expect(applyStarsChordAction(view, world, { type: "atpaWarningAlert", mode: "inhibit" })).toBe(
+    "applied",
+  );
+  expect(view.atpa.alertCones).toBe(false);
+  expect(view.atpa.monitorCones).toBe(true);
+  expect(view.tracks.size).toBe(0);
+  expect(applyStarsChordAction(view, world, { type: "atpaWarningAlert", mode: "enable" })).toBe(
+    "applied",
+  );
+  expect(view.atpa.alertCones).toBe(true);
+
+  expect(applyStarsChordAction(view, world, { type: "atpaMonitor", mode: "inhibit" })).toBe(
+    "applied",
+  );
+  expect(view.atpa.monitorCones).toBe(false);
+  expect(view.atpa.alertCones).toBe(true);
+  expect(applyStarsChordAction(view, world, { type: "atpaMonitor", mode: "enable" })).toBe(
+    "applied",
+  );
+  expect(view.atpa.monitorCones).toBe(true);
+
+  world.selectedAircraftId = dal.id;
+  expect(applyStarsChordAction(view, world, { type: "atpaWarningAlert", mode: "inhibit" })).toBe(
+    "applied",
+  );
+  expect(view.atpa.alertCones).toBe(true);
+  expect(view.tracks.get(dal.id)?.atpaWarningAlertEnabled).toBe(false);
+  expect(view.tracks.get(dal.id)?.atpaMonitorEnabled).toBe(true);
+  expect(view.tracks.has(aal.id)).toBe(false);
+
+  expect(applyStarsChordAction(view, world, { type: "atpaWarningAlert", mode: "enable" })).toBe(
+    "applied",
+  );
+  expect(view.tracks.get(dal.id)?.atpaWarningAlertEnabled).toBe(true);
+
+  expect(applyStarsChordAction(view, world, { type: "atpaMonitor", mode: "inhibit" })).toBe(
+    "applied",
+  );
+  expect(view.atpa.monitorCones).toBe(true);
+  expect(view.tracks.get(dal.id)?.atpaMonitorEnabled).toBe(false);
+  expect(view.tracks.get(dal.id)?.atpaWarningAlertEnabled).toBe(true);
+
+  expect(applyStarsChordAction(view, world, { type: "atpaMonitor", mode: "enable" })).toBe(
+    "applied",
+  );
+  expect(view.tracks.get(dal.id)?.atpaMonitorEnabled).toBe(true);
+
+  expect(view.tpa).toEqual({ on: false, radiusNm: 5 });
+  expect(dal.intent.assignedHeadingDeg).toBe(90);
+  expect(aal.intent.assignedHeadingDeg).toBe(180);
+});
+
+test("ATPA *AE affects warning+alert not monitor; *BE affects monitor only; inhibit suppresses paint", () => {
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", headingDeg: 90 });
   const world = createWorld({ aircraft: [dal] });
-  world.selectedAircraftId = dal.id;
   const view = createScopeView();
-  const actions: StarsChordAction[] = [
-    { type: "atpaWarningAlert", mode: "enable" },
-    { type: "atpaWarningAlert", mode: "inhibit" },
-    { type: "atpaMonitor", mode: "enable" },
-    { type: "atpaMonitor", mode: "inhibit" },
-  ];
-  for (const action of actions) {
-    expect(() => applyStarsChordAction(view, world, action)).not.toThrow();
-    expect(applyStarsChordAction(view, world, action)).toBe("unsupported");
-  }
-  expect(view.tpa).toEqual({ on: false, radiusNm: 5 });
-  expect(view.atpa).toEqual({
-    on: false,
-    inTrailDistance: true,
-    coneMileage: true,
-    alertCones: true,
-    monitorCones: true,
-  });
+
+  expect(applyStarsChordAction(view, world, { type: "atpaWarningAlert", mode: "inhibit" })).toBe(
+    "applied",
+  );
+  expect(shouldPaintAtpaGeometry(true, "warning", { alertCones: view.atpa.alertCones })).toBe(
+    false,
+  );
+  expect(shouldPaintAtpaGeometry(true, "alert", { alertCones: view.atpa.alertCones })).toBe(false);
+  expect(shouldPaintAtpaGeometry(true, "monitor", { monitorCones: view.atpa.monitorCones })).toBe(
+    true,
+  );
+
+  expect(applyStarsChordAction(view, world, { type: "atpaWarningAlert", mode: "enable" })).toBe(
+    "applied",
+  );
+  expect(applyStarsChordAction(view, world, { type: "atpaMonitor", mode: "inhibit" })).toBe(
+    "applied",
+  );
+  expect(shouldPaintAtpaGeometry(true, "monitor", { monitorCones: view.atpa.monitorCones })).toBe(
+    false,
+  );
+  expect(shouldPaintAtpaGeometry(true, "warning", { alertCones: view.atpa.alertCones })).toBe(true);
+  expect(shouldPaintAtpaGeometry(true, "alert", { alertCones: view.atpa.alertCones })).toBe(true);
+
+  world.selectedAircraftId = dal.id;
+  view.atpa.alertCones = true;
+  view.atpa.monitorCones = true;
+  expect(applyStarsChordAction(view, world, { type: "atpaWarningAlert", mode: "inhibit" })).toBe(
+    "applied",
+  );
+  const afterAe = view.tracks.get(dal.id)!;
+  expect(
+    shouldPaintAtpaGeometry(true, "warning", {
+      atpaWarningAlertEnabled: afterAe.atpaWarningAlertEnabled,
+      atpaMonitorEnabled: afterAe.atpaMonitorEnabled,
+    }),
+  ).toBe(false);
+  expect(
+    shouldPaintAtpaGeometry(true, "alert", {
+      atpaWarningAlertEnabled: afterAe.atpaWarningAlertEnabled,
+      atpaMonitorEnabled: afterAe.atpaMonitorEnabled,
+    }),
+  ).toBe(false);
+  expect(
+    shouldPaintAtpaGeometry(true, "monitor", {
+      atpaWarningAlertEnabled: afterAe.atpaWarningAlertEnabled,
+      atpaMonitorEnabled: afterAe.atpaMonitorEnabled,
+    }),
+  ).toBe(true);
+
+  expect(applyStarsChordAction(view, world, { type: "atpaWarningAlert", mode: "enable" })).toBe(
+    "applied",
+  );
+  expect(applyStarsChordAction(view, world, { type: "atpaMonitor", mode: "inhibit" })).toBe(
+    "applied",
+  );
+  const afterBe = view.tracks.get(dal.id)!;
+  expect(
+    shouldPaintAtpaGeometry(true, "monitor", {
+      atpaWarningAlertEnabled: afterBe.atpaWarningAlertEnabled,
+      atpaMonitorEnabled: afterBe.atpaMonitorEnabled,
+    }),
+  ).toBe(false);
+  expect(
+    shouldPaintAtpaGeometry(true, "warning", {
+      atpaWarningAlertEnabled: afterBe.atpaWarningAlertEnabled,
+      atpaMonitorEnabled: afterBe.atpaMonitorEnabled,
+    }),
+  ).toBe(true);
+  expect(
+    shouldPaintAtpaGeometry(true, "alert", {
+      atpaWarningAlertEnabled: afterBe.atpaWarningAlertEnabled,
+      atpaMonitorEnabled: afterBe.atpaMonitorEnabled,
+    }),
+  ).toBe(true);
   expect(dal.intent.assignedHeadingDeg).toBe(90);
 });
 

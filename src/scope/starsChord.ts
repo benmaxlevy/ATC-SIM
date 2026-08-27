@@ -10,9 +10,9 @@
  * Trainer delta: parser + PPI `*` entry only (same FIL-prompt grammar as the
  * altitude filter: buffer on the PPI, Enter commits, Esc cancels, Backspace
  * edits). No `window.prompt`, no HTML `<input>`. `applyStarsChordAction` fills
- * T02-46 in-trail / cone-mileage flags and T02-48 per-track rings, cones, and
- * size-readout inhibit. `*AE` / `*BE` ATPA cone-enable flags stay
- * `"unsupported"` for T02-47. Not NAS STARS.
+ * T02-46 in-trail / cone-mileage flags, T02-48 per-track rings, cones, and
+ * size-readout inhibit, and ATPA cone-enable (`*AE` / `*AI` / `*BE` / `*BI`).
+ * Not NAS STARS.
  */
 
 import type { World } from "@core";
@@ -298,8 +298,10 @@ function applyEnableMode(
  * Map a parsed TPA/ATPA chord onto scope state. T02-46 owns Intrail Distance
  * (`*DE` / `*DI`) and A/TPA Mileage (`*D+` / `*D+E` / `*D+I`). T02-48 fills
  * the same `*D+` action's **manual TPA** half (J-ring / `*P` size digits) plus
- * `*J` / `*P` / `**J` / `**P`. `*AE` / `*BE` cone-enable flags stay
- * `"unsupported"` for T02-47. Display only — never Command IR.
+ * `*J` / `*P` / `**J` / `**P`. `*AE` / `*AI` drive warning+alert
+ * (`atpaWarningAlertEnabled` / `alertCones`); `*BE` / `*BI` drive monitor
+ * (`atpaMonitorEnabled` / `monitorCones`). Slewed track if one is slewed,
+ * otherwise the global flag. Display only — never Command IR.
  */
 export function applyStarsChordAction(
   view: ScopeView,
@@ -365,6 +367,27 @@ export function applyStarsChordAction(
       td.tpaSizeReadoutEnabled = applyEnableMode(td.tpaSizeReadoutEnabled !== false, action.mode);
     } else {
       view.atpa.coneMileage = applyEnableMode(view.atpa.coneMileage, action.mode);
+    }
+    return "applied";
+  }
+  if (action.type === "atpaWarningAlert") {
+    if (slewedId) {
+      const td = ensureTrackDisplay(view.tracks, slewedId);
+      td.atpaWarningAlertEnabled = applyEnableMode(
+        td.atpaWarningAlertEnabled !== false,
+        action.mode,
+      );
+    } else {
+      view.atpa.alertCones = applyEnableMode(view.atpa.alertCones, action.mode);
+    }
+    return "applied";
+  }
+  if (action.type === "atpaMonitor") {
+    if (slewedId) {
+      const td = ensureTrackDisplay(view.tracks, slewedId);
+      td.atpaMonitorEnabled = applyEnableMode(td.atpaMonitorEnabled !== false, action.mode);
+    } else {
+      view.atpa.monitorCones = applyEnableMode(view.atpa.monitorCones, action.mode);
     }
     return "applied";
   }
