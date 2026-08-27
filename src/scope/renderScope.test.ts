@@ -1021,6 +1021,7 @@ test("T04-10 — scope tints MSAW from world.alerts, not MVA math", () => {
     alerts: {
       ca: [],
       msaw: [{ callsign: "DAL123", severity: "caution", altFt: 1400, floorFt: 1500 }],
+      atpa: [],
     },
   });
   const view = createScopeView();

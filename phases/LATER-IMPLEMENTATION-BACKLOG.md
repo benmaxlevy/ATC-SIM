@@ -20,6 +20,44 @@ no-op. Implement later:
 Keep this separate from TPA: TPA's controller-selected 2/3/5/10 NM J-rings
 already work. Do not turn the TPA ring into an automatic CA halo.
 
+### ATPA separation criteria not yet modeled
+
+T02-44 ships in-trail pairing and predicted monitor/warning/alert status
+(`world.alerts.atpa`) using **basic radar separation only**. Visible now:
+`evaluateAtpa` reads `basicSeparationNm` / `reducedSeparationNm` /
+`reducedWithinNm` from each catalog volume, pairs eligible tracks inside an
+enabled volume, and classifies status from current distance plus linear
+closure (R07 45 s warning / 24 s alert). Cone length is therefore identical
+for a heavy leader and a light leader.
+
+Deliberately missing, each of which later work must keep the JSON-minima
+path and must **not** invent numbers from model recall:
+
+- **Wake-category in-trail minima.** R07 says cone length is "the distance
+  required by wake category or basic radar separation" but publishes no
+  matrix — its CWT A–I table is only the datablock category letter with a
+  weight range. `Aircraft.wakeCategory` is already the FDB letter; do not
+  let `requiredSeparationNm` read it until a cited table (JO 7110.65 or
+  facility adaptation) is in-repo. A later ticket greps the engine for
+  `wakeCategory`.
+- **Adapted 2.5 NM eligibility** beyond "both tracks inside
+  `reducedWithinNm` of the threshold along the final." Real STARS reduces
+  only under extra conditions (leader type, runway occupancy, facility
+  authorization). Keep the volume JSON fields; extend the predicate, do
+  not hardcode 2.5.
+- **Per-position ATPA adaptation.** We are a single TCP, so there is no
+  "adapted to display" matrix. A multi-controller trainer must not assume
+  every position sees the same volume enablement.
+- **TDW white monitor variant.** The tower display workstation paints the
+  monitor cone white; this trainer has no TDW. Scope ATPA monitor stays
+  TPA blue until a TDW surface exists.
+- **Aural ATPA alerting.** No ATPA tone. CA (T04-09) remains the only
+  conflict audio; do not reuse the CA tone for in-trail ATPA.
+- **Volumes as authored trainer geometry** rather than imported NAS
+  adaptation. KDEM `atpa-volumes.json` is hand-authored. A second airport
+  still adds a JSON row walked by `approachId`; do not special-case KDEM
+  or invent an importer that silently fills unsourced sizes.
+
 ### Richer TPA controls
 
 The shipped TPA implementation supports selected-track rings, or owned-track

@@ -6,6 +6,7 @@ import type { Command } from "../command/types";
  * T03-09 adds voice.latency (wall-clock PTT metrics; not sim time).
  * T04-09 adds alert.ca.caution / alert.ca.alert / alert.ca.clear (edges only).
  * T04-10 adds alert.msaw.caution / alert.msaw.alert / alert.msaw.clear (edges only).
+ * T02-44 adds alert.atpa.monitor / alert.atpa.warning / alert.atpa.alert / alert.atpa.clear.
  * T04-03 adds nav.direct.sequenced / nav.star.vectors.
  * T04-04 adds optional nav.constraint.met.
  * T04-05 adds nav.loc.captured (INTERCEPT_LOC → LOC).
@@ -106,6 +107,46 @@ export type SessionEvent =
       callsign: string;
       altFt: number;
       floorFt: number;
+    }
+  | {
+      type: "alert.atpa.monitor";
+      atSimMs: number;
+      atWallMs: number;
+      trailingCallsign: string;
+      leadingCallsign: string;
+      volumeId: string;
+      distanceNm: number;
+      requiredNm: number;
+    }
+  | {
+      type: "alert.atpa.warning";
+      atSimMs: number;
+      atWallMs: number;
+      trailingCallsign: string;
+      leadingCallsign: string;
+      volumeId: string;
+      distanceNm: number;
+      requiredNm: number;
+    }
+  | {
+      type: "alert.atpa.alert";
+      atSimMs: number;
+      atWallMs: number;
+      trailingCallsign: string;
+      leadingCallsign: string;
+      volumeId: string;
+      distanceNm: number;
+      requiredNm: number;
+    }
+  | {
+      type: "alert.atpa.clear";
+      atSimMs: number;
+      atWallMs: number;
+      trailingCallsign: string;
+      leadingCallsign: string;
+      volumeId: string;
+      distanceNm: number;
+      requiredNm: number;
     }
   | {
       type: "nav.direct.sequenced";
