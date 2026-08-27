@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "kdem",
+      "airportIcao": "KDEM",
+      "label": "Demo Field",
+      "default": true,
+      "source": "scenarios/kdem"
+    },
+    {
+      "id": "kdem-ils27",
+      "airportIcao": "KDEM",
+      "label": "Demo Field — ILS 27",
+      "default": false,
+      "source": "scenarios/kdem-ils27"
+    }
+  ]
+}

@@ -3,8 +3,7 @@ import { createRoot } from "react-dom/client";
 import { advanceWorld, createAccumulator } from "@core";
 import {
   createWorldForSession,
-  loadKdem,
-  loadKdemIls27,
+  loadPlayableScenario,
   parseDepartureOptions,
   parseScenarioChoice,
   parseSpawnSeed,
@@ -33,7 +32,7 @@ import { bootSession, createApp } from "./app/create-app";
 import "./index.css";
 
 const search = window.location.search;
-const scenario = parseScenarioChoice(search) === "kdem-ils27" ? loadKdemIls27() : loadKdem();
+const scenario = loadPlayableScenario(parseScenarioChoice(search));
 const spawnSeed = parseSpawnSeed(search);
 const departureOptions = parseDepartureOptions(search);
 const speechBoot = loadAndResolveSpeechBoot();
@@ -66,7 +65,7 @@ if (prefStore) {
   scopeView.dcbPref.icao = scenario.icao;
 }
 
-document.title = scenario.id === "kdem-ils27" ? "ATC-SIM — KDEM ILS 27" : "ATC-SIM — KDEM";
+document.title = `ATC-SIM — ${scenario.name}`;
 
 const root = document.getElementById("root");
 if (!root) {

@@ -2,7 +2,7 @@
  * Opt-in bench traffic. Default student scenario stays 4–8 from KDEM JSON.
  * Enable with `?traffic=30` (any positive integer). Does not change Command IR.
  *
- * Phase 4 ILS demo: `?scenario=kdem-ils27` (aliases `phase4`, `ils27`).
+ * `?scenario=` resolves through playable scenario inventory.
  * STAR inbound mix: `?seed=` (T04-14). Missing / invalid → 1. Integer 0 is legal.
  */
 
@@ -44,18 +44,13 @@ export function parseSpawnSeed(search: string): number {
   return n;
 }
 
-export type ScenarioChoice = "kdem" | "kdem-ils27";
-
 /**
- * `?scenario=kdem-ils27` (or `phase4` / `ils27`) loads the STAR/ILS demo.
- * Missing / unknown → default KDEM student pack.
+ * Return a normalized inventory id, or null for inventory-default resolution.
+ * Validation and invalid-id fallback live at the inventory boundary.
  */
-export function parseScenarioChoice(search: string): ScenarioChoice {
-  const raw = new URLSearchParams(search).get("scenario")?.trim().toLowerCase();
-  if (raw === "kdem-ils27" || raw === "phase4" || raw === "ils27") {
-    return "kdem-ils27";
-  }
-  return "kdem";
+export function parseScenarioChoice(search: string): string | null {
+  const raw = new URLSearchParams(search).get("scenario")?.trim();
+  return raw ? raw.toLowerCase() : null;
 }
 
 export interface DepartureOptions {

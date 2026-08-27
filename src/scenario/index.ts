@@ -1,8 +1,8 @@
 /**
  * Public API for `@scenario`.
  *
- * Legal now: KDEM JSON stub (`loadKdem`, `assertScenario`), phase 4 ILS demo
- * (`loadKdemIls27`, spawn-on-STAR with VIA), Scenario types
+ * Legal now: playable-scenario inventory (`listPlayableScenarios`,
+ * `loadPlayableScenario`), compatibility KDEM loaders, Scenario types
  * including trainer-authored MAPS / video-map geometry from `video-maps/<ICAO>/`
  * (Not OSM / tiles), facility procedure catalog (`loadCatalog`, `data/<icao>/`),
  * trainer MVA (`loadMva`, `data/<icao>-mva.json`), and `createWorldFromScenario`
@@ -50,6 +50,12 @@ export type {
 export { catalogDctIds } from "./procedures/types";
 export { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN, GI_TEXT_LINE_COUNT } from "./types";
 export { assertScenario, loadKdem, loadKdemIls27 } from "./load";
+export type { PlayableScenario, PlayableScenarioInventory } from "./playableScenarios";
+export {
+  createPlayableScenarioInventory,
+  listPlayableScenarios,
+  loadPlayableScenario,
+} from "./playableScenarios";
 export {
   findSidProcedure,
   loadCatalog,
@@ -104,4 +110,4 @@ export {
   parseSpawnSeed,
   parseTrafficCount,
 } from "./trafficQuery";
-export type { DepartureOptions, ScenarioChoice } from "./trafficQuery";
+export type { DepartureOptions } from "./trafficQuery";
