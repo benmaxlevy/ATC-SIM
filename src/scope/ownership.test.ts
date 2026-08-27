@@ -15,6 +15,7 @@ import {
   DROP_TRACK_HELP,
   INITIATE_TRACK_HELP,
   applyDropTrack,
+  applyHandoffToSelection,
   applyInitiateTrack,
   applyTowerHandoffToSelection,
   applyTowerOwnership,
@@ -25,9 +26,12 @@ import { PALETTE } from "./palette";
 import { handleScopeKeyDown } from "./scopeKeys";
 import { createScopeView } from "./scopeView";
 import {
+  acceptInboundOnClick,
   applyDropTrackToSelection,
   applyInitiateTrackToSelection,
   createTrackDisplay,
+  handleTrackClick,
+  handleTrackMiddleClick,
   syncTrackDisplays,
 } from "./trackDisplay";
 import fixesJson from "../scenario/data/kdem/fixes.json";
@@ -289,4 +293,216 @@ test("acceptTowerHandoff helper stays off the radio pipeline", () => {
   expect(acceptTowerHandoff(dal, { log, simTimeMs: 1 })).toBe(true);
   expect(log.byType("handoff.tower")[0]?.callsign).toBe("DAL123");
   expect(log.all().every((event) => event.type !== "command.accepted")).toBe(true);
+});
+
+test("AC2 — Given a selected arrival on LOC/GS inside 5 NM, Shift+H initiates handoff to Tower", () => {
+  const dal = locArrival();
+  const log = new SessionLog();
+  const world = createWorld({
+    aircraft: [dal],
+    catalog: kdemCatalog(),
+    sessionLog: log,
+    selectedAircraftId: dal.id,
+  });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  const res = applyHandoffToSelection(view.tracks, world);
+  expect(res).toEqual({ applied: true, target: "tower", hint: null });
+  expect(dal.intent.lateral).toEqual({ type: "LANDING", approachId: "ILS27" });
+  expect(view.tracks.get(dal.id)!.ownership).toBe("tower");
+  expect(log.byType("handoff.tower")).toHaveLength(1);
+});
+
+test("AC3 — Given a selected climbing departure (altitude >= 5000 ft), Shift+H initiates handoff to Center", () => {
+  const dep = createAircraft({
+    id: "ac-dep",
+    callsign: "SWA333",
+    xNm: 10,
+    yNm: 5,
+    headingDeg: 90,
+    altitudeFt: 5500,
+    speedKt: 250,
+  });
+  dep.intent.vertical = { type: "VIA_SID", sidId: "DEM1" };
+  dep.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "DEM1",
+    toFixIndex: 0,
+    routeFixIds: ["MISSD", "SNARF", "NORMA"],
+  };
+
+  const log = new SessionLog();
+  const world = createWorld({
+    aircraft: [dep],
+    catalog: kdemCatalog(),
+    sessionLog: log,
+    selectedAircraftId: dep.id,
+  });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  const res = applyHandoffToSelection(view.tracks, world);
+  expect(res).toEqual({ applied: true, target: "center", hint: null });
+  expect(handoffFor(world, dep.id)).toEqual({ kind: "outbound", toSectorId: "C" });
+  expect(view.tracks.get(dep.id)!.ownership).toBe("center");
+  expect(ownershipStubChar("center")).toBe("C");
+  expect(log.byType("handoff.center")).toHaveLength(1);
+  expect(log.byType("handoff.outbound.initiated")).toHaveLength(1);
+});
+
+test("AC4 — When departure flies past the TRACON boundary (>28 NM), it is gracefully despawned and nav.departed is logged", () => {
+  const dep = createAircraft({
+    id: "ac-dep",
+    callsign: "UAL444",
+    xNm: 27.9,
+    yNm: 0,
+    headingDeg: 90,
+    altitudeFt: 10000,
+    speedKt: 250,
+  });
+  dep.intent.vertical = { type: "VIA_SID", sidId: "DEM1" };
+  dep.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "DEM1",
+    toFixIndex: 2,
+    routeFixIds: ["MISSD", "SNARF", "NORMA"],
+  };
+
+  const log = new SessionLog();
+  const world = createWorld({
+    aircraft: [dep],
+    catalog: kdemCatalog(),
+    sessionLog: log,
+    selectedAircraftId: dep.id,
+  });
+
+  // Handoff to center first
+  applyHandoffToSelection(new Map(), world);
+  expect(handoffFor(world, dep.id)).toEqual({ kind: "outbound", toSectorId: "C" });
+
+  // Move aircraft past 28 NM
+  dep.xNm = 28.2;
+  stepWorld(world, SIM_DT_S);
+
+  // Verify graceful despawn
+  expect(world.aircraft).toHaveLength(0);
+  expect(world.selectedAircraftId).toBeNull();
+  expect(handoffFor(world, dep.id)).toEqual({ kind: "none" });
+
+  const completed = log.byType("handoff.outbound.completed");
+  expect(completed).toHaveLength(1);
+  expect(completed[0]?.callsign).toBe("UAL444");
+  expect(completed[0]?.toSectorId).toBe("C");
+
+  const departed = log.byType("nav.departed");
+  expect(departed).toHaveLength(1);
+  expect(departed[0]?.callsign).toBe("UAL444");
+});
+
+test("T02-37 AC1 — Inbound handoff displays as blinking white FDB; click accepts to solid white and sector ID", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [dal] });
+  world.handoffs.set(dal.id, { kind: "inbound", fromSectorId: "C" });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  // Initial inbound pending state: mode is full, visual is white
+  const td = view.tracks.get(dal.id)!;
+  expect(td.ownership).toBe("unowned");
+  expect(handoffFor(world, dal.id).kind).toBe("inbound");
+
+  // Accept via click
+  const accepted = acceptInboundOnClick(view.tracks, world, dal.id);
+  expect(accepted).toBe(true);
+  expect(td.ownership).toBe("owned");
+  expect(td.datablockMode).toBe("full");
+  expect(handoffFor(world, dal.id)).toEqual({ kind: "none" });
+  expect(trackPaintColor(td.ownership)).toBe(PALETTE.owned);
+});
+
+test("T02-37 AC2 — Outbound accepted handoff 3-click state progression", () => {
+  const dep = makeTestAircraft({ id: "ac-dep", callsign: "SWA333" });
+  const world = createWorld({ aircraft: [dep], simTimeMs: 1000 });
+  world.handoffs.set(dep.id, {
+    kind: "outbound",
+    toSectorId: "C",
+    status: "accepted",
+    acceptedAtSimMs: 1000,
+  });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  const td = view.tracks.get(dep.id)!;
+  expect(td.outboundFlashUntilSimMs).toBe(6000);
+  expect(td.outboundClickStep).toBe(0);
+
+  // 1st click: stops blinking (settles to solid white)
+  handleTrackClick(view.tracks, world, dep.id);
+  expect(td.outboundClickStep).toBe(1);
+  expect(td.outboundFlashUntilSimMs).toBe(0);
+
+  // 2nd click: turns datablock green (unowned green FDB)
+  handleTrackClick(view.tracks, world, dep.id);
+  expect(td.outboundClickStep).toBe(2);
+  expect(td.ownership).toBe("unowned");
+  expect(td.datablockMode).toBe("full");
+
+  // 3rd click: collapses FDB to PDB
+  handleTrackClick(view.tracks, world, dep.id);
+  expect(td.outboundClickStep).toBe(3);
+  expect(td.datablockMode).toBe("partial");
+});
+
+test("T02-37 AC3 / AC4 — Pointouts: incoming, accepting, rejecting (UN), and converting (**)", () => {
+  const ac = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+
+  // 1. Incoming pointout
+  world.handoffs.set(ac.id, { kind: "pointout_inbound", fromSectorId: "C", status: "pending" });
+  syncTrackDisplays(view.tracks, world);
+  const td = view.tracks.get(ac.id)!;
+
+  // Slew/click accepts into solid yellow FDB
+  handleTrackClick(view.tracks, world, ac.id);
+  expect(td.pointoutAccepted).toBe(true);
+  expect(handoffFor(world, ac.id)).toMatchObject({ status: "accepted" });
+
+  // Clicking again reverts to green
+  handleTrackClick(view.tracks, world, ac.id);
+  expect(td.pointoutAccepted).toBe(false);
+  expect(td.ownership).toBe("unowned");
+
+  // 2. Rejecting pointout: UN + click
+  world.handoffs.set(ac.id, { kind: "pointout_inbound", fromSectorId: "C", status: "pending" });
+  handleTrackClick(view.tracks, world, ac.id, "UN");
+  expect(td.pointoutRejected).toBe(true);
+  expect(handoffFor(world, ac.id)).toMatchObject({ status: "rejected" });
+
+  // 3. Converting pointout to handoff: ** + click
+  world.handoffs.set(ac.id, { kind: "pointout_inbound", fromSectorId: "C", status: "pending" });
+  handleTrackClick(view.tracks, world, ac.id, "**");
+  expect(td.ownership).toBe("owned");
+  expect(td.datablockMode).toBe("full");
+  expect(handoffFor(world, ac.id)).toEqual({ kind: "none" });
+});
+
+test("T02-37 AC5 — Middle-clicking a target toggles Cyan highlight (#00FFFF)", () => {
+  const ac = makeTestAircraft({ id: "ac-1", callsign: "AAL100" });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  const td = view.tracks.get(ac.id)!;
+  expect(td.highlighted).toBeFalsy();
+  expect(PALETTE.highlight).toBe("#00FFFF");
+
+  // First middle click: highlight on
+  handleTrackMiddleClick(view.tracks, world, ac.id);
+  expect(td.highlighted).toBe(true);
+
+  // Second middle click: highlight off
+  handleTrackMiddleClick(view.tracks, world, ac.id);
+  expect(td.highlighted).toBe(false);
 });

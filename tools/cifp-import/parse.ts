@@ -8,7 +8,7 @@
  * Not imported by `stepWorld` or the Vite app entry. Keep this under `tools/`.
  */
 
-import { latLonToNm, type LatLon } from "../../src/core/geo/coords.ts";
+import { latLonToNm, type LatLon } from "../../src/core/nav/geometry.ts";
 import type {
   AltConstraint,
   ApproachProcedure,

@@ -119,6 +119,17 @@ export function msawSeverityForAltitude(altFt: number, floorFt: number): MsawSev
 export function isMsawInhibited(ac: Aircraft, geom: MsawInhibitGeom): boolean {
   const lat = ac.intent.lateral?.type;
   const vert = ac.intent.vertical?.type;
+  const isSidDeparture =
+    vert === "VIA_SID" ||
+    (lat === "PROCEDURE" &&
+      typeof (ac.intent.lateral as { sidId?: string } | undefined)?.sidId === "string" &&
+      Boolean((ac.intent.lateral as { sidId?: string }).sidId));
+
+  if (isSidDeparture) {
+    const distNm = Math.hypot(ac.xNm - geom.thresholdXNm, ac.yNm - geom.thresholdYNm);
+    return distNm <= geom.fafDistanceNm;
+  }
+
   if (lat !== undefined && NEVER_INHIBIT_LATERAL.has(lat)) {
     return false;
   }

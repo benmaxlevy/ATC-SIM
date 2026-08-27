@@ -75,12 +75,16 @@ Customize simulation scenarios, traffic volume, random seeding, and debug overla
 | Parameter | Type / Example | Description |
 |---|---|---|
 | `traffic` | `?traffic=30` | Number of initial arrival aircraft to spawn (e.g. `30` for a high-density stress test). |
-| `seed` | `?seed=42` | PRNG seed for deterministic arrival generation and slot entry times (default: `1`). |
+| `departures` | `?departures=auto` \| `?departures=off` \| `?departures=true` \| `?departures=false` | Configure dynamic departure spawning policy (`auto` generates departures off active runway; `off` disables). |
+| `dep_rate` | `?dep_rate=15` | Departure generation rate in aircraft per hour (default: `12`). |
+| `dep_count` | `?dep_count=10` | Maximum number of departure aircraft to spawn in the session. |
+| `seed` | `?seed=42` | PRNG seed for deterministic arrival and departure generation (default: `1`). |
 | `scenario` | `?scenario=kdem-ils27` | Airspace scenario to load (default: KDEM TRACON Runway 27). |
 | `debug` | `?debug=fps` | Displays real-time performance HUD showing canvas FPS, track count, and tick duration. |
 | `voice` | `?voice=http` \| `?voice=web` \| `?voice=null` | Force active speech backend (`http` local server, browser `web`, or headless `null`). |
 
 Examples:
+- `http://localhost:5173/?departures=auto&dep_rate=12` — Mixed traffic scenario with STAR arrivals and active RW27 departures.
 - `http://localhost:5173/?traffic=30&debug=fps` — 30-track stress test with real-time FPS counter.
 - `http://localhost:5173/?seed=2` — Seeded arrival schedule with reshuffled STAR slots.
 
@@ -190,8 +194,15 @@ ATC-SIM enforces a strict **zero paid/metered API policy**. All speech-to-text, 
 ### Simulated Pilot Agent & Handoffs
 
 - **Callsign Resolution**: Matches callsigns via telephony name ("Delta 123"), ICAO code ("DAL123"), numeric tail ("123"), or currently hooked radar target.
-- **Automated Check-Ins**: Staggered STAR arrival check-in radio calls as aircraft enter the TRACON sector.
-- **Inbound Handoff Workflow**: Inbound arrivals spawn in pending handoff state from Center (unowned green FDB) → Controller clicks track or presses `F3` to accept → Track becomes owned (white FDB) → Radio frequency unlocked → Pilot checks in.
+- **Automated Check-Ins**: Staggered arrival and departure check-in radio calls:
+  - STAR arrivals: *"Approach, Delta 123, descending via DEMO ONE arrival through one-one thousand (11000)"*.
+  - SIDs departures: *"Departure, American 100, passing seven hundred climbing via the BAY ONE departure"*.
+- **Inbound & Departure Handoff Workflow**:
+  - Inbound arrivals spawn in pending handoff state from Center (unowned green FDB) → Controller clicks track or presses `F3` to accept → Track becomes owned (white FDB) → Radio frequency unlocked → Pilot checks in.
+  - Rolling departures spawn off the active runway (~0.8 NM, 700 ft, 180 kt) under Tower handoff → Pilot checks in on departure frequency → Flies published SID climb profile.
+- **Smart Shift+H Handoff**: Context-sensitive handoff initiator:
+  - Selected arrival on approach (< 5 NM from threshold): executes Tower handoff (sets `LANDING` mode and tower ownership cyan tint).
+  - Selected climbing departure (>= 5000 ft or >= 12 NM): executes Center handoff (logs `handoff.center` and sets outbound white state).
 - **Realistic Readbacks**: Generates verbal readbacks following FAA JO 7110.65 digit grouping (e.g. "climb and maintain five thousand, Delta one twenty-three"), plus "unable" responses for invalid clearances.
 
 ---
@@ -276,7 +287,7 @@ Press **`F1`** at any time in the app to open the interactive keyboard help over
 | `F7` | Toggle Predicted Track Line (`PTL ALL`) |
 | `F8` | Cycle radar history dot count |
 | `/` | Immediately focus radio command line |
-| `Shift + H` | Issue Tower handoff to aircraft established on final |
+| `Shift + H` | Contextual smart handoff: Tower (for arrivals on final) or Center (for climbing departures) |
 
 ---
 

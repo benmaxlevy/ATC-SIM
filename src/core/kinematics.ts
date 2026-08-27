@@ -1,14 +1,7 @@
 import type { Aircraft } from "./aircraft";
 import type { TurnDir } from "./command/types";
-import { DEG2RAD, normalizeHeadingDeg } from "./geo/coords";
+import { DEG2RAD, normalizeHeadingDeg } from "./nav/geometry";
 
-/**
- * Frozen kinematics (phase 1). Rate-one turn, not bank/TAS.
- * No wind; IAS is treated as TAS (`phases/_shared/glossary.md`).
- *
- * PHYSICS_HZ / SIM_DT_S live in `clock.ts` — re-exported so this module is
- * the kinematics constant surface without duplicating conflicting values.
- */
 export { PHYSICS_HZ, SIM_DT_S } from "./clock";
 
 export const TURN_RATE_DEG_PER_S = 3;

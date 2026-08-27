@@ -21,24 +21,32 @@ export { handleRadioCommand, handleRadioText } from "./handleRadioText";
 export type { ReadbackAircraft, RejectReason } from "./readback";
 export { formatCallsignSpeech, formatReadback, formatRejectReadback } from "./readback";
 export type {
+  CheckInKind,
   CheckInRadio,
   DrainCheckInsArgs,
   FormatCheckInArgs,
+  FormatDepartureCheckInArgs,
   ScheduledCheckIn,
+  SidNameCatalog,
   StarNameCatalog,
 } from "./checkinQueue";
 export {
   CHECKIN_IDLE_GAP_MS,
   CHECKIN_STAGGER_MAX_MS,
   CHECKIN_STAGGER_MIN_MS,
+  DEPARTURE_CHECKIN_STAGGER_MAX_MS,
+  DEPARTURE_CHECKIN_STAGGER_MIN_MS,
   CheckInQueue,
   createCheckInQueue,
   formatCheckIn,
+  formatDepartureCheckIn,
+  isSidDeparture,
   isStarViaArrival,
+  sidSpokenName,
   starSpokenName,
 } from "./checkinQueue";
-export type { ResolveReason, ResolveResult } from "./resolveCallsign";
-export { numericTail, resolveCallsign } from "./resolveCallsign";
+export type { ResolveReason, ResolveResult } from "./handleRadioText";
+export { numericTail, resolveCallsign } from "./handleRadioText";
 export type { ValidateReason, ValidateResult, ValidateOpts } from "./validate";
 export { validateInstructions } from "./validate";
 export { applyIntent, IDENT_FLASH_MS } from "./applyIntent";

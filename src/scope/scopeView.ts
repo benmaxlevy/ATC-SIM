@@ -179,6 +179,10 @@ export interface ScopeView {
    * Analog CRC PREF; trainer localStorage, not a NAS preference host.
    */
   dcbPref: DcbPrefRuntime;
+  /** Owning controller sector ID character for tracked targets (default "D"). */
+  sectorId: string;
+  /** Active beacon code select list (squawks rendering square symbol). */
+  beaconSelectCodes: string[];
   /** Per-track display state (history, IDENT flash, datablock, leader, ownership). Keyed by aircraft id. */
   tracks: Map<string, TrackDisplay>;
   /** Scope-focus letter chord (`L` leader; T02-06 `F` filter). Null when idle. */
@@ -188,6 +192,11 @@ export interface ScopeView {
    * CRC F1 is beaconator; ours is trainer help.
    */
   helpOpen: boolean;
+  /**
+   * F1 Beaconator (Beacon Code Readout) active state.
+   * When active, displays beacon code in place of callsign and forces PDBs to FDBs.
+   */
+  beaconatorActive: boolean;
 }
 
 export function createScopeView(
@@ -258,10 +267,21 @@ export function createScopeView(
       activeIndex: 0,
       restore: null,
     },
+    sectorId: "D",
+    beaconSelectCodes: [],
     tracks: new Map(),
     pendingChord: null,
     helpOpen: false,
+    beaconatorActive: false,
   };
+}
+
+export function setBeaconatorActive(view: ScopeView, active: boolean): void {
+  view.beaconatorActive = active;
+}
+
+export function toggleBeaconator(view: ScopeView): void {
+  view.beaconatorActive = !view.beaconatorActive;
 }
 
 function syncHistoryEnabled(view: ScopeView): void {

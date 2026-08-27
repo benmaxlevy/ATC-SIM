@@ -5,10 +5,10 @@ import {
   EMPTY_CLIP_MS,
   createPttCaptureController,
   isTextFieldTarget,
+  TARGET_SAMPLE_RATE,
   type PttCaptureEvent,
   type PttKeyEvent,
 } from "./ptt-controller";
-import { TARGET_SAMPLE_RATE } from "./resample";
 
 class FakeCaptureBackend implements CaptureBackend {
   onAudio: ((samples: Float32Array) => void) | null = null;

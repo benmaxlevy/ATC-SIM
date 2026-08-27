@@ -2,8 +2,7 @@ import { expect, test, vi } from "vitest";
 import { SessionLog, createAircraft, createWorld, type Aircraft, type Command } from "@core";
 import { parseCommand } from "@parse";
 import { handleRadioCommand, handleRadioText } from "@pilot";
-import { NullSpeechPort } from "./null-speech-port";
-import type { AudioClip, SpeechPort, Transcript } from "./types";
+import { NullSpeechPort, type AudioClip, type SpeechPort, type Transcript } from "./index";
 import {
   DEFAULT_CONFIDENCE_THRESHOLD,
   createVoiceLoop,

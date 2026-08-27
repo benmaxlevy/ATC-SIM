@@ -26,16 +26,19 @@ The shipped TPA implementation supports selected-track rings, or owned-track
 rings when nothing is selected. Possible follow-ups are the CRC `*J` keyboard
 chord, explicit target selection for multi-ring use, and richer ring styling.
 
-### Track lifecycle beyond the F3/F4 stubs
+### Track lifecycle and multi-controller networking
 
-F3/F4 currently provide ownership-color behavior. A later scope increment could
-add the remaining NAS-like lifecycle around that existing behavior:
+The STARS CRC Scope Fidelity Addendum (T02-34–38) shipped the complete radar
+display fidelity model: target symbol shapes (`◇`, `*`, `V`, `□`, Sector IDs),
+LDB with 5s ground speed queries, PDB for unowned associated tracks, FDB
+dynamic time-sharing (~2.5s cycle) and Line 3 assigned altitudes `A<alt>`,
+inbound/outbound handoff blinking and 3-click progression, pointout lifecycle
+(offer, accept, `UN` reject, `**` convert), and cyan track highlight.
 
-- real track association and termination semantics;
-- scratchpad, beacon-code, quick-look, and point-out state;
-- a genuine second-position / facility handoff model.
-
-The existing inbound handoff acceptance path must remain compatible.
+Possible future follow-ups:
+- multi-controller peer networking / live inter-facility handoffs across multiple browser sessions;
+- quick-look multi-facility track filters;
+- host automated flight-plan amendments and route conformance monitoring.
 
 ### SSA and GI data beyond trainer stubs
 
@@ -80,6 +83,28 @@ slot (slot 8 if all eight are full). Esc cancels. Do not use a browser dialog
 or an HTML text field. Slot caps should show the stored name once it exists.
 
 MAIN already shows the active set name on the PREF cap.
+
+### Manual Inhibit Commands and Safety Inhibit Glyphs
+
+STARS CRC supports manual per-track inhibition commands via the `<MULTI FUNC>` (F7) keypad interface:
+- `<MULTI FUNC>M<SLEW>`: Toggles display of Mode C altitude for a specific track.
+- `<MULTI FUNC>C<SLEW>`: Inhibits Conflict Alert for a specific track (rendering `▲` after the aircraft callsign).
+- `<MULTI FUNC>...`: Inhibits MSAW for a specific track (rendering `*` after the aircraft callsign).
+- `<MULTI FUNC>Y(###)<SLEW>`: Enters a pilot-reported altitude (rendering `*` after altitude numbers).
+
+These manual invocation commands and the corresponding `▲` and `*` Line 1 glyphs are skipped for now and preserved for later implementation when a full STARS `<MULTI FUNC>` keyboard chord parser is introduced.
+
+### Tactical and Expanded Special Purpose Codes (SPCs)
+
+STARS CRC supports additional Special Purpose Codes beyond standard emergency squawks:
+- **Expanded Transponder SPCs**: `7777` (`MI` - Military Intercept) and `7400` (`LL` - Lost Link / UAS).
+- **Tactical Controller-Assigned SPCs**:
+  - `OD`: Opposite Direction operations (head-on runway operations).
+  - `ME`: Medical Emergency declared without transponder squawk.
+  - `MF`: Minimum Fuel status.
+  - `LN`: Medevac / LifeGuard priority flight.
+
+These expanded and tactical SPC codes are deferred for future specialized scenario modules. Existing core emergency squawks (`7700` `EM`, `7600` `RF`, `7500` `HJ`) remain fully active.
 
 ## Explicit boundary
 

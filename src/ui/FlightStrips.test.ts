@@ -275,8 +275,8 @@ test("AC4 — filter hides datablocks but the list still shows all arrivals", ()
     },
   } as unknown as CanvasRenderingContext2D;
   renderScope(ctx, world, view, 800, 800);
-  expect(fillTexts).not.toContain("UAL60");
-  expect(fillTexts).toContain("DAL80");
+  expect(fillTexts.some((t) => t.includes("060"))).toBe(false);
+  expect(fillTexts.some((t) => t.includes("080"))).toBe(true);
 
   const strips = stripsFromWorld(world);
   expect(strips.map((s) => s.callsign)).toEqual(["DAL80", "UAL60"]);

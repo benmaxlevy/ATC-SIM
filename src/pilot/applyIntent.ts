@@ -47,6 +47,7 @@ function setHeadingMode(
   aircraft.intent.lateral = { type: "HEADING", headingDeg };
   if (
     aircraft.intent.vertical?.type === "VIA_STAR" ||
+    aircraft.intent.vertical?.type === "VIA_SID" ||
     aircraft.intent.vertical?.type === "GS" ||
     aircraft.intent.vertical?.type === "MISSED_CLIMB"
   ) {
@@ -57,10 +58,14 @@ function setHeadingMode(
   aircraft.intent.locInterceptApproachId = null;
 }
 
-function publishedLateralHint(
-  aircraft: Aircraft,
-):
-  | { type: "PROCEDURE"; starId: string; routeFixIds: readonly string[]; toFixIndex: number }
+function publishedLateralHint(aircraft: Aircraft):
+  | {
+      type: "PROCEDURE";
+      starId?: string;
+      sidId?: string;
+      routeFixIds: readonly string[];
+      toFixIndex: number;
+    }
   | { type: "DIRECT"; fixId: string }
   | null {
   const lateral = aircraft.intent.lateral;
@@ -115,11 +120,13 @@ function applyVia(
   sense: "DESCEND" | "CLIMB",
   opts?: ApplyIntentOpts,
 ): void {
-  aircraft.intent.vertical = {
-    type: "VIA_STAR",
-    starId: procedureId.trim().toUpperCase(),
-    sense,
-  };
+  const normId = procedureId.trim().toUpperCase();
+  aircraft.intent.vertical =
+    sense === "CLIMB"
+      ? { type: "VIA_SID", sidId: normId }
+      : { type: "VIA_STAR", starId: normId, sense };
+  aircraft.intent.controllerAssignedAltitudeFt = undefined;
+  aircraft.intent.controllerAssignedSpeedKt = undefined;
   joinPublishedLateral(aircraft, procedureId, opts);
 }
 
@@ -168,9 +175,11 @@ function applyOne(
       return;
     case "ALTITUDE":
       aircraft.intent.assignedAltitudeFt = instruction.altitudeFt;
+      aircraft.intent.controllerAssignedAltitudeFt = instruction.altitudeFt;
       return;
     case "SPEED":
       aircraft.intent.assignedSpeedKt = instruction.speedKt;
+      aircraft.intent.controllerAssignedSpeedKt = instruction.speedKt;
       return;
     case "CLEARED_APPROACH":
       aircraft.intent.clearedApproachId = instruction.approachId;

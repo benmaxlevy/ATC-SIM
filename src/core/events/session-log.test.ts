@@ -35,6 +35,18 @@ test("SessionEvent includes command events, voice.latency, CA edges, MSAW edges,
     | "radio.checkin"
     | "handoff.inbound.offered"
     | "handoff.inbound.accepted"
+    | "handoff.departure.spawned"
+    | "handoff.center"
+    | "handoff.outbound.initiated"
+    | "handoff.outbound.accepted"
+    | "handoff.outbound.completed"
+    | "pointout.offered"
+    | "pointout.accepted"
+    | "pointout.rejected"
+    | "pointout.converted"
+    | "departure.scheduled"
+    | "departure.spawned"
+    | "nav.departed"
   >();
 });
 
@@ -45,8 +57,10 @@ test("radio.checkin is a typed pilot-initiated payload (T04-15)", () => {
     atSimMs: number;
     atWallMs: number;
     callsign: string;
-    starId: string;
-    starName: string;
+    starId?: string;
+    starName?: string;
+    sidId?: string;
+    sidName?: string;
     altitudeFt: number;
     text: string;
   }>();

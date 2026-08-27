@@ -12,15 +12,23 @@
  *
  * Import rule: `@speech` may import `@core` only. `parseCommand` is injected.
  */
-export type { AudioClip, SpeechPort, Transcript, TranscribeOpts } from "./types";
+export type {
+  AudioClip,
+  SpeechPort,
+  SpeechPortErrorKind,
+  Transcript,
+  TranscribeOpts,
+  VoiceErrorCode,
+  VoiceStatusEvent,
+} from "./types";
 export {
+  NullSpeechPort,
   SpeechNotAvailableError,
   SpeechPortError,
   VOICE_ERROR_CODES,
   shouldLogVoiceReject,
-} from "./errors";
-export type { SpeechPortErrorKind, VoiceErrorCode, VoiceStatusEvent } from "./errors";
-export { NullSpeechPort } from "./null-speech-port";
+} from "./types";
+
 export { HttpSpeechPort } from "./ports/http-speech-port";
 export {
   SPEECH_BACKEND_IDS,
@@ -36,8 +44,14 @@ export type { CreateSpeechPortDeps, SpeechApiUrlStatus, SpeechBackendId } from "
 export {
   DEFAULT_PTT_KEY,
   EMPTY_CLIP_MS,
+  TARGET_SAMPLE_RATE,
   createPttCaptureController,
+  float32ToPcm16,
+  floatToPcm16Sample,
+  isEmptyPttCapture,
   isTextFieldTarget,
+  resampleFloat32,
+  resampleToMonoPcm16,
 } from "./capture/ptt-controller";
 export type {
   CaptureBackend,
@@ -47,7 +61,6 @@ export type {
   PttKeyEvent,
   PttUpResult,
 } from "./capture/ptt-controller";
-export { TARGET_SAMPLE_RATE } from "./capture/resample";
 export {
   AUTO_TTS_VOICE_ID,
   PILOT_VOICE_IDS,
@@ -80,9 +93,9 @@ export {
   snapshot,
 } from "./metrics";
 export type { VoiceSessionSnapshot, VoiceUtteranceMetrics } from "./metrics";
-export { TransmitGate } from "./playback/transmit-gate";
 export {
   PLAYBACK_TAIL_MS,
+  TransmitGate,
   connectPlaybackDry,
   createReadbackPlayer,
 } from "./playback/readback-player";
@@ -92,6 +105,8 @@ export type {
   ReadbackPlayHooks,
   ReadbackPlayer,
   ReadbackPlayerOptions,
+  TransmitGateEvent,
+  TransmitGateState,
 } from "./playback/readback-player";
 export {
   DEFAULT_RADIO_FX_ENABLED,

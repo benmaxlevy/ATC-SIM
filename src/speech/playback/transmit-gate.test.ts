@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { TransmitGate } from "./transmit-gate";
+import { TransmitGate } from "./readback-player";
 
 test("down → stt → play → end → idle (AC6)", () => {
   const gate = new TransmitGate();

@@ -10,7 +10,7 @@
  * then 1–9; pixel-constant default 36 CSS px; DCB LDR length 0/24/36/48), altitude filter
  * (scope-focus `F`, default 000–180), F3/F4 ownership color stub (not NAS),
  * F1 help overlay (`TRAINER KEYS — NOT CRC`), Tab cycle focus, `/` radio focus.
- * T04-09 predicted CA blinks `CA` + tone (no yellow); current CA is red. T04-10 MSAW still
+ * T04-09 CA displays static `CA` + tone (no yellow). T04-10 MSAW still
  * tints yellow then red. CA is raised only for current conflicts. The PPI does
  * not compute pair distance.
  *
@@ -60,8 +60,10 @@ export {
   cssPointFromClient,
   fitCanvasToCss,
   handlePpiCanvasClick,
+  handlePpiCanvasMiddleClick,
   handlePpiDoubleClick,
   handlePpiLeftClick,
+  handlePpiMiddleClick,
   handlePpiPanDelta,
   isPpiSlewButton,
   isPpiSlewHeld,
@@ -69,6 +71,7 @@ export {
 } from "./ppi";
 export {
   HIT_RADIUS_CSS_PX,
+  middleClickAircraftAt,
   pickAircraftAt,
   selectAircraftAt,
   selectOrAcceptAircraftAt,
@@ -109,7 +112,8 @@ export {
   reuseOrBuildMapCache,
 } from "./mapLayers";
 export type { DigitalMap, MapCache, MapLayerFlags, NmPoint } from "./mapLayers";
-export { renderScope } from "./renderScope";
+export { getDatablockVisualState, isTrackedTarget, renderScope } from "./renderScope";
+export type { DatablockVisualState } from "./renderScope";
 export {
   GI_SLOT_COUNT,
   SSA_ALTIMETER_STUB,
@@ -172,6 +176,7 @@ export {
   cycleScopeRadioFocus,
   focusRadioCommandLine,
   handleScopeKeyDown,
+  handleScopeKeyUp,
   handleScopeWheel,
   helpOverlayHasKeyboardFocus,
   installAlwaysOnScopeKeys,
@@ -195,6 +200,8 @@ export {
   setRangeRingOrigin,
   snapRangeRingToViewCenter,
   toggleHelpOverlay,
+  setBeaconatorActive,
+  toggleBeaconator,
   formatDcbHistoryReadout,
   formatDcbPtlMinutesReadout,
   setDcbDock,
@@ -319,6 +326,18 @@ export {
   drawHistoryDot,
   drawSelectionBox,
   drawTargetSymbol,
+  isPrimaryTarget,
+  isTargetDiamondPath,
+  renderTargetSymbol,
+  targetDiamondVertices,
+  targetSymbolDescriptor,
+  targetSymbolShape,
+} from "./targetSymbol";
+export type {
+  TargetSurveillanceType,
+  TargetSymbolDescriptor,
+  TargetSymbolKind,
+  TargetSymbolOptions,
 } from "./targetSymbol";
 export {
   PTL_CAP_TICK_PX,
@@ -349,17 +368,25 @@ export {
 export type { AtpaState, TpaRadiusNm, TpaState } from "./tpa";
 export {
   IDENT_DISPLAY_FLASH_MS,
+  LDB_QUERY_DURATION_MS,
+  OUTBOUND_ACCEPTED_FLASH_MS,
   acceptInboundOnClick,
   applyDropTrackToSelection,
   applyInitiateTrackToSelection,
   createTrackDisplay,
   ensureTrackDisplay,
+  handleTrackClick,
+  handleTrackMiddleClick,
   isIdentFlashing,
+  isTrackQueried,
+  queryTrack,
   selectedTrackId,
   setLeaderDirForSelection,
   setScratchpad,
   syncTrackDisplays,
   toggleDatablockModeForSelection,
+  toggleTrackHighlight,
+  toggleTrackPdbFdb,
 } from "./trackDisplay";
 export type { TrackDisplay } from "./trackDisplay";
 export {
@@ -367,14 +394,16 @@ export {
   INITIATE_TRACK_HELP,
   NO_SEL_HINT,
   TOWER_HANDOFF_HELP,
+  applyCenterOwnership,
   applyDropTrack,
+  applyHandoffToSelection,
   applyInitiateTrack,
   applyTowerHandoffToSelection,
   applyTowerOwnership,
   ownershipStubChar,
   trackPaintColor,
 } from "./ownership";
-export type { TrackOwnership } from "./ownership";
+export type { HandoffResult, TrackOwnership } from "./ownership";
 export {
   DEFAULT_LEADER_DIR,
   DEFAULT_LEADER_LENGTH_PX,
@@ -398,7 +427,9 @@ export {
   formatAltitudeHundreds,
   formatFullDatablock,
   formatGroundSpeedKt,
+  formatGroundSpeedTens,
   formatLimitedDatablock,
+  formatPartialDatablock,
   linesForDatablock,
   sanitizeScratchpad,
   withInboundHandoffCue,
@@ -409,6 +440,9 @@ export type {
   DatablockSource,
   FullDatablock,
   LimitedDatablock,
+  LimitedDatablockOpts,
+  PartialDatablock,
+  PartialDatablockOpts,
 } from "./datablock";
 export {
   CHAR_SIZE_STEPS_PX,

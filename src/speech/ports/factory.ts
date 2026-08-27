@@ -4,8 +4,7 @@
  * cleared URLs → `null` (typed commands). Browser Web Speech is not a backend.
  */
 
-import { NullSpeechPort } from "../null-speech-port";
-import type { SpeechPort } from "../types";
+import { NullSpeechPort, type SpeechPort } from "..";
 import {
   DEFAULT_STT_URL,
   DEFAULT_TTS_URL,

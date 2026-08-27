@@ -1,6 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { SpeechPortError } from "../errors";
-import type { AudioClip } from "../types";
+import { SpeechPortError, type AudioClip } from "..";
 import { DEFAULT_STT_URL, DEFAULT_TTS_URL, HttpSpeechPort } from "./http-speech-port";
 import { pcm16ToWav, uint8ToArrayBuffer } from "./wav";
 
@@ -92,17 +91,20 @@ test("STT sends catalog ids as X-ATC-Fixes for Whisper prompt bias", async () =>
   expect(transcript.text).toBe("proceed direct SEMAX");
 });
 
-test("STT sends STAR names as X-ATC-Procedures for Whisper prompt bias", async () => {
+test("STT sends STAR and SID names as X-ATC-Procedures for Whisper prompt bias", async () => {
   const fetchMock: TestFetch = async (_url, init) => {
     const headers = new Headers(init?.headers);
-    expect(headers.get("X-ATC-Procedures")).toBe("DEM1=DEMO ONE");
-    return jsonResponse({ text: "descend via DEMO ONE", confidence: 0.9 });
+    expect(headers.get("X-ATC-Procedures")).toBe("DEM1=DEMO ONE|BAY1=BAY ONE");
+    return jsonResponse({ text: "climb via the BAY ONE departure", confidence: 0.9 });
   };
   const port = new HttpSpeechPort({ fetch: fetchMock });
   const transcript = await port.transcribe(smallClip(), {
-    procedures: [{ id: "dem1", name: "DEMO ONE" }],
+    procedures: [
+      { id: "dem1", name: "DEMO ONE" },
+      { id: "bay1", name: "BAY ONE" },
+    ],
   });
-  expect(transcript.text).toBe("descend via DEMO ONE");
+  expect(transcript.text).toBe("climb via the BAY ONE departure");
 });
 
 test("AC2 — missing confidence defaults to 1.0", async () => {

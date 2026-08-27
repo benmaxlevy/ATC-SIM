@@ -1,75 +1,115 @@
-# ATC-SIM swarm orchestrator — Phase 2 physical DCB replica addendum (T02-31–33)
+# ATC-SIM swarm orchestrator — Phase 2 STARS CRC datablock & scratchpad fidelity addendum (T02-39–42)
 
 Paste **this entire file** into a new agent. That agent is the **orchestrator**. It may run for hours. It writes almost no application code.
 
-Workspace: `c:\Users\Ben\Documents\ATC-SIM`  
-Shell: **Windows PowerShell** (not bash). Ticket commits use here-strings, not `cat <<'EOF'`.
+Workspace: `/home/ben/ATC-SIM`
+Shell: **bash** (Linux).
 
 ## Mandatory first action
 
 Before checking git, spawning agents, creating worktrees, or editing application code, update this file for the current swarm. Append a new swarm-start heading/configuration; do not overwrite prior swarm history. If the requested swarm configuration is incomplete, ask before making any other swarm move. Then commit the planning/status update before creating ticket branches or worktrees.
 
-This is the **ninth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–17) → 2 physical DCB (T02-31–33)** are already green on `master`. Do **not** redo completed work. Skip **T04-11** (wind) unless the human names it. This run is **T04-18–21 and T05-13 only**.
+This is the **eleventh swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–17) → 4 SIDs & departures (T04-18–23) → 2 STARS CRC scope fidelity (T02-34–38)** are already green on `master`. Do **not** redo 0–10th. Do **not** start phase 5 scoring. Skip **T04-11** (wind) unless the human names it. This run is **T02-39–42 only**.
 
 ---
 
-## Ninth swarm execution — 2026-08-26
+## Eleventh swarm started — T02-39–42 STARS CRC datablock & scratchpad fidelity addendum
 
-Human invoked `/run-swarm`. Execute only the ninth-swarm configuration below. Preserve untracked QA artifacts and unrelated rule files. Do not begin worker setup until this execution update is committed.
-
----
-
-## Ninth swarm started — 2026-08-26 (session traffic setup)
-
-Human requested tickets only for configurable session traffic, then approved this swarm configuration. The UI is setup/restart-only: it does not edit a live World. This run starts after the eighth swarm is green.
+Orchestrator planning **2026-08-26**. Human requested tickets for dual scratchpad auto-derivation, ground speed tens & category indicators, multi-phase time-sharing with center handoff placement, and Special Purpose Codes (docs.virtualnas.net/crc/stars). Historical swarms 1–10 stay green. This run is **T02-39–42 only**. Not phase 5. Not a redo of T00–T02-38.
 
 | Key | Value |
 | --- | --- |
-| Goal | Data-first session controls for arrival count/rate, SID departure rate, seed, and dynamically inventoried playable airport/scenario choices |
-| Player loop | Open Session setup → choose inventory-listed airport/scenario → set traffic values + seed → confirm restart → deterministic STAR arrivals and SID departures appear over sim time |
-| Include | **T04-18**, **T04-19**, **T04-20**, **T04-21**, **T05-13** only |
-| Skip | T04-11 wind; all earlier tickets; all T05-01–12; second playable airport data; live session edits; DCB PREF; radio-frequency IR |
-| Stop | After T05-13. Do not begin phase 5 scoring, replay, imperfect pilots, handoff, or acceptance script. |
-| Max ticket workers in flight | **3**; waves below use 2, then 1, then 1, then 1 |
-| Merge lock | Only phase captain squash-merges to `master`, one commit per ticket, then runs `npm test` |
-| Model | **GPT-5.6 Terra Medium only.** `model: "gpt-5.6-terra-medium"` on every captain/worker spawn |
-| Paid STT/TTS/LLM | Forbidden |
-
-**Frozen product decisions:**
-
-- Session menu is a chrome sibling to speech/trainer settings. It is never DCB PREF, and it does not emit Command IR.
-- Airport/scenario options derive only from playable inventory metadata. No UI list or boot path may branch on `KDEM`, `kdem`, or `kdem-ils27`. KDEM remains default only through inventory defaults.
-- One airport may expose multiple scenarios. A second playable airport is later data work: catalog, scenario, MAPS, MVA, and inventory registration. No remote FAA/NASR fetch.
-- `?traffic=N` remains explicit heading-090 downwind FPS benchmark. Normal arrival count generates catalog STAR arrivals; never silently repurpose the benchmark query.
-- Arrival/departure **frequency** means traffic rate per hour, using simulation time. It is not radio frequency. Paused simulation produces no scheduled aircraft.
-- Initial traffic stays at session start; rate schedules later traffic. Existing tracks stay unchanged until explicit Apply/restart rebuilds World.
-- Do not render an active departure-rate control until T04-20 has catalog-backed SID spawn and procedure behavior. No no-op controls. No chart scrape or real FAA procedure data.
-- Seeded paths use deterministic RNG only; no `Math.random` or wall-clock default.
-- Query-string compatibility and `atc-sim.session.v1` persistence have explicit tested precedence.
+| Goal | Complete datablock fidelity alignment with STARS CRC (docs.virtualnas.net/crc/stars): dual scratchpad state (`sp1`, `sp2`) with automatic derivation from clearances (approach shorthand `I27`/`R22L`/`V28`, interim alt `040`, speed `S21`), tens-based groundspeed (`18`, `25`) & wake/RNAV category indicators (`18H`, `25R`), multi-phase Line 2 time-sharing (left Mode C/SP1/SP2, right GS/Type/Req Alt, center handoff sector ID), emergency transponder SPC tags (`EM`, `RF`, `HJ`), and end-to-end integration acceptance (manual inhibit glyphs and tactical SPCs deferred to backlog) |
+| Player loop | `npm run dev` → issue approach clearance (`"expect ils runway 27"`) → SP1 automatically shows `I27`; assign speed (`"reduce speed to 210 knots"`) → SP2 shows `S21`; Line 2 alternates between Mode C / `I27` / `S21` on the left and GS tens `21H` / aircraft type `B738` on the right; initiating handoff places sector ID `D` in the center of Line 2; emergency squawk 7700 displays `EM` on Line 1 |
+| Skip | **T04-11** (wind); all of **T00–T03**, **T02-01–38**, **T04-***, **T05-***; manual `<MULTI FUNC>` inhibit icons and tactical SPCs (deferred to backlog) |
+| Include | **T02-39**, **T02-40**, **T02-41**, **T02-42** |
+| Stop | **Do not start phase 5.** No scoring, replay, imperfect pilots, or second TCP |
+| Do not redo | T00–T02-38. If STATUS says eleventh swarm complete, **stop** |
+| Max ticket workers in flight | **2** (Wave A = 2; Wave B = 1; Wave C = 1) |
+| Merge lock | **Only the phase captain** merges to `master` (squash merge, one commit per ticket) |
+| Model | Inherit / default |
+| Paid STT/TTS/LLM | **Forbidden** |
 
 **Waves:**
+- **Wave A (2 workers):** `T02-39` (Automatic scratchpad SP1/SP2 derivation from aircraft intent) ∥ `T02-40` (STARS FDB ground speed tens and category indicators)
+- **Wave B (1 worker):** `T02-41` (STARS FDB multi-phase time-sharing and handoff center placement)
+- **Wave C (1 worker):** `T02-42` (STARS datablock fidelity integration and acceptance)
 
-| Wave | Tickets (≤3) | Wait for |
-| --- | --- | --- |
-| A | T04-18 ∥ T04-21 | T04-17 and eighth swarm green on `master` |
-| B | T04-19 | T04-18 |
-| C | T04-20 | T04-19, T04-21 |
-| D | T05-13 | T04-18–21 |
+**Product law (eleventh swarm — STARS CRC datablock & scratchpad fidelity):**
+- **Dual Scratchpad Derivation:** `TrackDisplay` maintains `sp1` and `sp2`. Approach clearances automatically derive approach shorthand into SP1 (`I27`, `R22L`, `V28`, `L09`, `O15`); assigned interim altitudes derive 3-digit hundreds (`040`) in SP1 when no approach is set; assigned speeds derive `S` + tens (`S21`) in SP2. Manual entries override and persist until cleared.
+- **Tens-Based Ground Speed & Category Indicators:** Ground speed on FDB and PDB formats in 2-digit tens (e.g. `18` for 180 kt) via `formatGroundSpeedTens()`. Wake/RNAV category indicators (`H`, `B`, `R`, `J`, `M`, `F`, `L` or CWT `A`–`I`) append directly to GS (`18H`, `25R`). `suppressPdbSpeed` suppresses PDB ground speed when configured.
+- **Multi-Phase Line 2 Time-Sharing:** Left field cycles `Mode C` $\leftrightarrow$ `SP1` $\leftrightarrow$ `SP2` (~2.5s interval), seamlessly omitting unassigned scratchpad slots. Right field cycles `GS (tens)` $\leftrightarrow$ `Type` $\leftrightarrow$ `Requested Alt (R###)`. Inbound/outbound handoff displays partner sector ID letter in the center position.
+- **Emergency Special Purpose Codes (SPCs):** Emergency transponder codes auto-trigger 2-letter SPCs on Line 1: 7700 (`EM`), 7600 (`RF`), 7500 (`HJ`). Manual inhibit glyphs (`▲`, `*`) and tactical SPCs (`OD`, `ME`, `MF`, `LN`) are deferred to `phases/LATER-IMPLEMENTATION-BACKLOG.md`.
+- **Zero Simulation Regressions:** All existing kinematics, procedural navigation (SIDs/STARs), ILS approaches, radio telephony, and DCB physical menus remain 100% operational.
 
-Workers receive `phases/SWARM-TICKET-WORKER.md`, one ticket path, and this ninth-swarm product law. Captain receives `phases/SWARM-CAPTAIN.md`, phase paths `phases/04-procedures/` and `phases/05-training/`, the waves above, and this product law. Rebase or respawn every pre-merge worker before merge.
+---
 
-**Exit:** T04-18–21 and T05-13 ACs green; `npm test` and `npm run ci` green on `master`; manual Session setup restart recorded honestly; `phases/SWARM-STATUS.md` appended. Captain returns:
+## Tenth swarm started — T02-34–38 STARS CRC scope fidelity addendum
 
-```text
-PHASE EXIT GREEN
-Phase: Session traffic setup addendum (T04-18–21, T05-13)
-Merged: T04-18, T04-21, T04-19, T04-20, T05-13
-Tests: npm test / npm run ci exit 0
-Manual leftover: <Session setup restart walk or none>
-Notes: inventory-backed picker; deterministic sim-time arrivals/departures; no live edits; no phase 5 scoring
-```
+Orchestrator planning **2026-08-25**. Human requested tickets to close the gap between ATC-SIM and STARS CRC (docs.virtualnas.net/crc/stars). Historical swarms 1–9 stay green. This run is **T02-34–38 only**. Not phase 5. Not a redo of T00–T04-23.
 
-or `PHASE EXIT BLOCKED` with reason.
+| Key | Value |
+| --- | --- |
+| Goal | Full fidelity alignment with STARS CRC (docs.virtualnas.net/crc/stars): target symbol shapes (primary diamond, unassociated asterisk, VFR V, sector letters), LDB/PDB datablock modes, FDB dynamic time-sharing (alt/scratchpad, GS/type/req alt) & Line 3 assigned altitude (`A<alt>`), handoff/pointout blinking & states, and cyan track highlight |
+| Player loop | `npm run dev` → unassociated targets show `*` or `V` in green LDB; clicking queries speed; unowned associated tracks show PDB; clicking toggles to FDB; taking control (`F3`/accept) turns FDB white and updates target symbol to owning sector ID; FDB line 2 time-shares fields; climbing/descending tracks show `A<alt>` on Line 3; middle-click highlights track in cyan; `F4` drops control back to `*` |
+| Skip | **T04-11** (wind); all of **T00–T03**, **T02-01–33**, **T04-***, **T05-*** |
+| Include | **T02-34**, **T02-35**, **T02-36**, **T02-37**, **T02-38** |
+| Stop | **Do not start phase 5.** No scoring, replay, imperfect pilots, or second TCP |
+| Do not redo | T00–T04-23. If STATUS says tenth swarm complete, **stop** |
+| Max ticket workers in flight | **3** (Wave A = 1; Wave B = 2; Wave C = 1; Wave D = 1) |
+| Merge lock | **Only the phase captain** merges to `master` (squash merge, one commit per ticket) |
+| Model | Inherit / default |
+| Paid STT/TTS/LLM | **Forbidden** |
+
+**Waves:**
+- **Wave A (1 worker):** `T02-34` (STARS target symbols, position indicators, and primary/secondary radar targets)
+- **Wave B (2 workers):** `T02-35` (STARS Limited Data Block & Partial Data Block modes) ∥ `T02-36` (STARS Full Data Block dynamic time-sharing and Line 3 layout)
+- **Wave C (1 worker):** `T02-37` (STARS handoff blinking states, pointout indicators, and cyan track highlight)
+- **Wave D (1 worker):** `T02-38` (STARS CRC scope fidelity acceptance & integration)
+
+**Product law (tenth swarm — STARS CRC scope fidelity):**
+- **Surveillance-Driven Position Symbols:** Target symbol shape is derived from surveillance state: primary-only is diamond `◇` (no datablock); unassociated secondary is `*` (or `V` for 1200, `□` for selected beacon); controlled target is owning sector ID letter (e.g. `D`). No fixed heading tick attached to target symbol (PTL lines handle vector projection).
+- **LDB & PDB Modes:** Unassociated tracks display LDB (squawk + altitude), with click-to-query temporary ground speed; associated tracks owned by other controllers display PDB (Line 2 only) by default, toggling to Green FDB on click. `F1` momentarily forces beacon code readout.
+- **FDB Time-Sharing:** FDB Line 2 alternates (~2.5s cycle) between [Mode C altitude + Ground speed] and [Scratchpad + Aircraft type / requested altitude]. Line 3 renders temporary assigned altitude (`A040`) when assigned altitude differs from Mode C.
+- **Handoff & Pointout Visual Grammar:** Inbound handoffs blink white at receiving controller; accepted handoff blinks white 5s on sender; pointouts display blinking yellow FDB with `PO`; middle-click toggles standard STARS cyan highlight (`#00FFFF`).
+- **Zero Simulation Regressions:** All existing kinematics, procedural navigation (SIDs/STARs), ILS approaches, radio telephony, and DCB physical menus remain 100% operational.
+
+---
+
+## Ninth swarm started — T04-18–23 SIDs and randomized departures addendum
+
+Orchestrator planning **2026-08-25**. Human requested SIDs and randomized (customizable) departures tickets. Historical swarms 1–8 stay green. This run is **T04-18–23 only**. Not phase 5. Not a redo of T04-01–17.
+
+| Key | Value |
+| --- | --- |
+| Goal | Standard Instrument Departures (SIDs) and customizable/randomized departures: catalog schema & KDEM `DEM1` SID, FMS `CLIMB_VIA` & SID fly-by navigation, departure spawning off RW27, customizable/seeded traffic generator (`?departures=auto`), radio telephony check-in, end-to-end integration |
+| Player loop | `npm run dev -- ?departures=auto` → STAR arrivals on DEMO ONE + periodic departures rolling off RW27, checking in on Departure frequency ("passing 1,200 climbing via the DEMO ONE departure"), climbing via SID constraints to top altitude, accepting radar vectors, and exiting airspace cleanly |
+| Skip | **T04-11** (wind); all of **T00–T03**, **T02-***, **T04-01–17**, **T05-*** |
+| Include | **T04-18**, **T04-19**, **T04-20**, **T04-21**, **T04-22**, **T04-23** |
+| Stop | **Do not start phase 5.** No scoring, replay, imperfect pilots, or second TCP |
+| Do not redo | T00–T04-17. If STATUS says ninth swarm complete, **stop** |
+| Max ticket workers in flight | **3** (Wave A = 1; Wave B = 2; Wave C = 2; Wave D = 1) |
+| Merge lock | **Only the phase captain** merges to `master` (squash merge, one commit per ticket) |
+| Model | Inherit / default |
+| Paid STT/TTS/LLM | **Forbidden** |
+
+**Waves:**
+- **Wave A (1 worker):** `T04-18` (SID procedure schema, KDEM fixture & video map) — **COMPLETE** (`15a2314`)
+- **Wave B (2 workers):** `T04-19` (SID climb-via and FMS guidance) ∥ `T04-20` (Departure spawning and handoff lifecycle) — **COMPLETE** (`4ed8a58`, `f640363`)
+- **Wave C (2 workers):** `T04-21` (Randomized & customizable departure generator) ∥ `T04-22` (Departure radio check-in & telephony) — **COMPLETE** (`d3dc743`, `65cdc39`)
+- **Wave D (1 worker):** `T04-23` (SIDs and departures integration & acceptance) — **COMPLETE** (`54c56a2`)
+
+**Ninth Swarm Status: COMPLETE & GREEN** (116/116 test files passed, 1275 tests passed, 0 failures, CI clean)
+
+**Product law (ninth swarm — SIDs & departures):**
+- **Data-first SIDs:** KDEM `DEM1` departure in `src/scenario/data/kdem/sids.json` is the shipped fixture; no `"DEM1"` or `"KDEM"` code branches in runtime FMS or helpers.
+- **Climb Via & Vector Cancellation:** `CLIMB_VIA` honors published `AT_OR_BELOW` / `AT_OR_ABOVE` constraints and speed limits up to assigned top altitude. Radar vectors (`FLY_HEADING`, `TURN_DEGREES`) immediately cancel SID published routing and climb-via constraints.
+- **Departure Spawning:** Roll/airborne spawn off active runway (RW27) with initial climb and initial SID leg armed; Tower handoff is auto-acquired / owned on radar (`white` FDB) per CRC STARS standard.
+- **Smart Shift+H Handoff:** Pressing `Shift+H` on a selected track contextually detects destination: initiates handoff to **Tower** (`LANDING` mode) if arrival on final (inside 5 NM gate on LOC/GS), or initiates handoff to **Center** (`handoff.center`) if climbing outbound departure.
+- **Customizable Traffic Stream:** Query parameter `?departures=auto` (or `?dep_rate=N`) enables periodic departures; default session without query parameter retains backward compatibility.
+- **Deterministic PRNG:** Independent stream XOR for departure generator so arrival seeds remain bit-stable.
+- **Telephony:** AIM 4-2-3 standard phraseology (`"Departure, <callsign>, passing <alt> climbing via the <SID> departure"`), queued cleanly through `CheckInQueue` without radio collisions.
+- **Airspace Exit:** Departures reaching TRACON boundary (~28 NM) or cruising altitude are handed off out to Center and despawned cleanly (`nav.departed`).
 
 ---
 

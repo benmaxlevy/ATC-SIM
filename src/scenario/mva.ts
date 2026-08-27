@@ -14,7 +14,7 @@ import {
   assertNumber as assertNumberVal,
   assertString as assertStringVal,
   isRecord,
-} from "./validate";
+} from "./load";
 
 const assertNumber = (value: unknown, path: string): number => assertNumberVal(value, path, "MVA");
 const assertString = (value: unknown, path: string): string =>

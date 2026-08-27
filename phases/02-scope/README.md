@@ -539,6 +539,58 @@ Do not call the DCB addendum done until:
 - [x] Still no weather mosaic, CRDA, FMA, OSM, STARS font, Command IR from DCB. Disabled CRDA on SSA FILTER is chrome only (T02-27).
 - [ ] T02-30 manual script 1–10: cheap STARS DCB, not a web settings ribbon. skip-with-reason: no visual operator; Chrome Windows script not watched. Automated greps/tests prove addendum grammar; do not invent a visual pass.
 
+### STARS CRC Scope Fidelity Addendum (T02-34–38)
+
+Completed visual, interactive, and datablock fidelity pass matching [CRC STARS](https://docs.virtualnas.net/crc/stars/):
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-34](tickets/T02-34-stars-target-symbols-position-indicators.md) | Target symbols, position indicators, primary/secondary | P0 | M | T02-30 | Shipped |
+| [T02-35](tickets/T02-35-stars-limited-partial-datablock-modes.md) | Limited (LDB) & Partial (PDB) datablock modes | P0 | M | T02-34 | Shipped |
+| [T02-36](tickets/T02-36-stars-fdb-dynamic-timesharing-line3.md) | FDB dynamic time-sharing and Line 3 layout | P0 | M | T02-35 | Shipped |
+| [T02-37](tickets/T02-37-stars-handoff-blinking-pointouts-highlight.md) | Handoff blinking, pointout indicators, cyan highlight | P0 | M | T02-36 | Shipped |
+| [T02-38](tickets/T02-38-stars-crc-scope-fidelity-acceptance.md) | Scope fidelity integration suite & acceptance | P0 | M | T02-34–37 | Shipped |
+
+### Phase 2 STARS CRC scope fidelity checklist (T02-34–38)
+
+- [x] Target symbol shapes: `◇` unfilled diamond for primary-only, `*` for unassociated secondary, `V` for 1200 VFR, `□` for beacon-selected squawks, and sector ID letter (`D`, `T`, `C`) for tracked targets (T02-34).
+- [x] Fixed 8px heading tick line removed from target symbol; PTL handles vector projection (T02-34).
+- [x] LDB renders squawk + Mode C altitude; left-clicking queries ground speed for 5 seconds (e.g. `045 18` / `045 180`) (T02-35).
+- [x] PDB renders Line 2 only for unowned associated tracks; left-clicking toggles between PDB and forced Green FDB (T02-35).
+- [x] FDB dynamic time-sharing: Line 2 alternates on ~2.5s cycle between Phase A (Mode C + GS) and Phase B (Scratchpad + Type / Requested Alt `R<alt>`) (T02-36).
+- [x] FDB Line 3 renders assigned altitude `A<alt>` when assigned altitude differs from Mode C altitude by >= 100 ft (T02-36).
+- [x] Inbound handoffs render as blinking white FDB; left-clicking accepts handoff to solid white FDB and sector ID (T02-37).
+- [x] Outbound accepted handoffs flash white for 5s and complete 3-click progression (solid white -> green FDB -> green PDB) (T02-37).
+- [x] Pointout lifecycle: incoming blinking yellow FDB with `PO` tag; click accepts; `UN` click rejects; `**` click converts to handoff; rejected outbound pointout flashes `UN` tag (T02-37).
+- [x] Datablocks support standard STARS Cyan highlight (`#00FFFF`) toggled via middle-click across LDB, PDB, and FDB (T02-37).
+- [x] F4 drops track to unowned green PDB with `*` position symbol (T02-37).
+- [x] Comprehensive end-to-end integration test suite in `src/scope/starsFidelity.integration.test.ts` (T02-38).
+
+### STARS CRC Datablock & Scratchpad Fidelity Addendum (T02-39–42)
+
+Completed datablock & scratchpad fidelity addendum matching [CRC STARS Specifications](https://docs.virtualnas.net/crc/stars/):
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-39](tickets/T02-39-automatic-scratchpad-sp1-sp2-derivation.md) | Automatic scratchpad (SP1, SP2) derivation from aircraft intent | P0 | M | T02-38 | Shipped |
+| [T02-40](tickets/T02-40-stars-fdb-groundspeed-tens-and-category-indicators.md) | STARS FDB groundspeed tens and category indicators | P1 | M | T02-39 | Shipped |
+| [T02-41](tickets/T02-41-stars-fdb-multiphase-timesharing-and-handoff-center-placement.md) | Multi-phase Line 2 time-sharing & handoff center placement | P1 | L | T02-40 | Shipped |
+| [T02-42](tickets/T02-42-stars-datablock-fidelity-integration-acceptance.md) | Datablock fidelity integration and acceptance test suite | P0 | L | T02-39–41 | Shipped |
+
+### Phase 2 STARS CRC datablock fidelity checklist (T02-39–42)
+
+- [x] Automatic scratchpad derivation: SP1 automatically derives approach shorthand (e.g. `ILS 27` -> `I27`, `RNAV 22L` -> `R22L`, `VISUAL 28` -> `V28`) as highest priority, falling back to interim altitude in 3-digit hundreds (`040`) when no approach is assigned (T02-39).
+- [x] Automatic scratchpad derivation: SP2 automatically derives assigned speed shorthand with `S` prefix and 2-digit tens (e.g. `210 kt` -> `S21`, `180 kt` -> `S18`) (T02-39).
+- [x] Manual scratchpads (`manualSp1`, `manualSp2`) take precedence over auto-derivation; clearing restores auto-derivation (T02-39).
+- [x] Ground speed formatted in tens of knots (e.g. `18`, `21`, `25`) across FDB, PDB, and queried LDB (T02-40).
+- [x] Wake/RNAV category indicators (`H`, `B`, `R`, `L`, CWT `A`–`I`) appended to ground speed (e.g. `18H`, `25R`) (T02-40).
+- [x] Flight category suffixes (`V` for VFR, `E` for overflight) and PDB speed suppression support (T02-40).
+- [x] Multi-phase Line 2 time-sharing: left column independently rotates `Mode C` $\leftrightarrow$ `SP1` $\leftrightarrow$ `SP2`, right column independently rotates `GS` $\leftrightarrow$ `Type` $\leftrightarrow$ `Requested Alt (R###)` every ~2.5s (T02-41).
+- [x] Unassigned/empty scratchpads or types/reqAlts skipped smoothly without dead or blank display intervals (T02-41).
+- [x] Transferring/receiving sector ID character placed in center position of Line 2 during active handoff (e.g. `080  D  25H`, `I27  D  B772`) (T02-41).
+- [x] Emergency transponder Special Purpose Codes: 7700 (`EM`), 7600 (`RF`), 7500 (`HJ`) rendered on Line 1 next to callsign (T02-41).
+- [x] Comprehensive end-to-end integration and acceptance test suite in `src/scope/datablockFidelity.integration.test.ts` (T02-42).
+
 ## Launching an agent
 
 1. Confirm phase 1 README exit is green.
@@ -546,7 +598,10 @@ Do not call the DCB addendum done until:
 3. Work T02-01 → T02-13 as in the table. Do not skip T02-12 to “make it pretty.”
 4. After original exit: polish T02-14 → T02-21 (DCB cells, chrome, SSA). Still not a Raytheon clone.
 5. After polish: DCB addendum T02-22 → T02-30 (main/aux/submenus). Still not CRDA / FMA / weather paint.
+6. Scope fidelity addendum T02-34 → T02-38 (STARS CRC symbol shapes, LDB/PDB/FDB modes, time-sharing, handoffs, pointouts, cyan highlights).
+7. Datablock & scratchpad fidelity addendum T02-39 → T02-42 (SP1/SP2 derivation, tens groundspeed + categories, multi-phase time-sharing with center handoff placement, emergency SPCs).
 
 ## Glossary reminders
 
 Use `phases/_shared/glossary.md` terms: **scope**, **PPI**, **datablock**, **track**, **CRC keys**. Distances NM, altitudes feet MSL, speed knots. Do not invent “zoom level,” “labels,” or “sprites” in user-facing UI copy — say **range**, **datablock**, **target**. Forbidden/required list: `phases/_shared/references.md`.
+

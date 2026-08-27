@@ -378,7 +378,7 @@ test("T02-24 — MAIN quick maps 1–6 and MAPS slots 1–30; unused 7–30 disa
   for (let slot = 1; slot <= 30; slot += 1) {
     expect(maps).toContain(`data-dcb-map-slot="${slot}"`);
   }
-  expect(maps).toMatch(/aria-label="Map 7"[^>]*\bdisabled\b/);
+  expect(maps).toMatch(/aria-label="Map 8"[^>]*\bdisabled\b/);
   expect(maps).toMatch(/aria-label="Map 30"[^>]*\bdisabled\b/);
   expect(main).not.toMatch(/<select/i);
   expect(maps).not.toMatch(/<select/i);
@@ -784,4 +784,9 @@ test("momentary caps flash inset; toggles remain latches", () => {
   expect(html).toMatch(/aria-pressed="false"[^>]*data-dcb-cell="pref-save"/);
   expect(html).toMatch(/aria-pressed="false"[^>]*data-dcb-cell="pref-save-as"/);
   expect(html).toMatch(/aria-pressed="false"[^>]*data-dcb-cell="pref-delete"/);
+});
+
+test("syncDisplayControlBar preserves aria-pressed when button has active data-dcb-flashing", () => {
+  expect(barSrc()).toMatch(/data-dcb-flashing/);
+  expect(barSrc()).toMatch(/el\.getAttribute\("data-dcb-flashing"\) === "true"/);
 });
