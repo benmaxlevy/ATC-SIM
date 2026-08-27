@@ -270,9 +270,7 @@ export function parsePreviewCommand(buffer: string): PreviewCommandResult {
   return invalid("unknown preview command");
 }
 
-export function previewCntlArmed(
-  state: PreviewAreaState,
-): state is PreviewAreaState & {
+export function previewCntlArmed(state: PreviewAreaState): state is PreviewAreaState & {
   armed: { readonly type: "initCntl" } | { readonly type: "termCntl" };
 } {
   return (
