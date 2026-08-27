@@ -9,7 +9,41 @@ Shell: **bash** (Linux).
 
 Before checking git, spawning agents, creating worktrees, or editing application code, update this file for the current swarm. Append a new swarm-start heading/configuration; do not overwrite prior swarm history. If the requested swarm configuration is incomplete, ask before making any other swarm move. Then commit the planning/status update before creating ticket branches or worktrees.
 
-This is the **eleventh swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–17) → 4 SIDs & departures (T04-18–23) → 2 STARS CRC scope fidelity (T02-34–38)** are already green on `master`. Do **not** redo 0–10th. Do **not** start phase 5 scoring. Skip **T04-11** (wind) unless the human names it. This run is **T02-39–42 only**.
+This is the **twelfth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–23) → 2 STARS CRC scope fidelity (T02-34–42)** are already green on `master`. Do **not** redo completed work. Skip **T04-11** (wind) unless the human names it. This run is **T04-24, T04-25, and T05-13 only**.
+
+---
+
+## Twelfth swarm planned — 2026-08-26 (session setup)
+
+This configuration runs from feature base `feature/session-setup`, created by merging the planning branch. Ticket workers branch from that base; captain squash-merges back into that base. It builds session setup foundations and menu only; it does not begin Phase 5 scoring.
+
+| Key | Value |
+| --- | --- |
+| Goal | Inventory-driven airport/scenario picker plus deterministic arrival count/rate and existing departure-rate controls in a setup/restart menu |
+| Include | **T04-24**, **T04-25**, **T05-13** only |
+| Skip | T04-11; all completed work; T05-01–12; second airport data; live traffic edits; DCB PREF; radio-frequency Command IR |
+| Stop | After T05-13. No scoring, replay, imperfect pilots, second position, or phase acceptance script. |
+| Max ticket workers in flight | **2** |
+| Merge lock | Only phase captain squash-merges ticket branches to `feature/session-setup`, then runs `npm test` |
+| Model | Inherit / default |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law:**
+
+- Airport/scenario options come only from T04-24 playable inventory. No hardcoded KDEM, ICAO, or scenario-id picker list.
+- T04-25 normal arrival count/rate stays catalog STAR inbound/VIA. `?traffic=N` remains heading-090 downwind FPS benchmark.
+- T04-21 remains departure-rate implementation. T05-13 never shows an active control for unavailable scenario capability.
+- Apply/restart creates a new World only after confirmation. No live add/remove/reposition controls.
+- `atc-sim.session.v1` stores session setup draft only. It does not replace DCB PREF or trainer settings.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T04-24 ∥ T04-25 | T04-23 on `master` |
+| B | T05-13 | T04-21, T04-24, T04-25 |
+
+Before execution: merge this planning branch into `feature/session-setup`, verify no swarm is in flight, then create isolated worktrees from that base. Captain records manual restart confirmation honestly and stops after T05-13. Do not merge feature work into `master` in this swarm.
 
 ---
 

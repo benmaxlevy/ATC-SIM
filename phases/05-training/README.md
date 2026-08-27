@@ -503,15 +503,15 @@ Implement **one ticket at a time**. Do not start downstream work “while you ar
 | [T05-10](tickets/T05-10-scenario-brief-markdown-kdem.md) | Scenario brief markdown for KDEM | P0 | S | none | T05-12 |
 | [T05-11](tickets/T05-11-accessibility-and-trainer-settings.md) | Accessibility and trainer settings | P0 | M | T05-02, T05-05, T05-09 | T05-12 |
 | [T05-12](tickets/T05-12-phase-5-training-acceptance-script.md) | Phase 5 training acceptance script | P0 | M | all P0 above | phase exit |
-| [T05-13](tickets/T05-13-session-traffic-setup-menu.md) | Session traffic setup menu | P0 | M | T04-18, T04-19, T04-20, T04-21 | none |
+| [T05-13](tickets/T05-13-session-traffic-setup-menu.md) | Session traffic setup menu | P0 | M | T04-21, T04-24, T04-25 | none |
 
-**Parallelism:** After T05-01, T05-02 ∥ T05-03 ∥ T05-04. T05-05 ∥ T05-07 ∥ T05-09 ∥ T05-10 can start immediately (phase 4 World). T05-06 after T05-05. T05-08 after T05-07. T05-11 after panel + imperfect + positions. T05-13 follows its phase 4 traffic dependencies and may run beside the phase 5 sequence. T05-12 remains the training acceptance gate.
+**Parallelism:** After T05-01, T05-02 ∥ T05-03 ∥ T05-04. T05-05 ∥ T05-07 ∥ T05-09 ∥ T05-10 can start immediately (phase 4 World). T05-06 after T05-05. T05-08 after T05-07. T05-11 after panel + imperfect + positions. T05-13 follows T04-21, T04-24, and T04-25, and may run beside the phase 5 sequence. T05-12 remains the training acceptance gate.
 
 Efficiency P1 lives **inside T05-01** (marked P1 ACs). Split view P1 lives **inside T05-09**. Neither is required to exit.
 
 Recommended solo-agent sequence:
 
-`01 → 04 → 02 → 03 → 05 → 06 → 07 → 08 → 09 → 10 → 11 → 12`; run `13` after T04-18–21.
+`01 → 04 → 02 → 03 → 05 → 06 → 07 → 08 → 09 → 10 → 11 → 12`; run `13` after T04-21, T04-24, and T04-25.
 
 ---
 
