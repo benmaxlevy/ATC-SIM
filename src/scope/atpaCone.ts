@@ -102,13 +102,13 @@ export function atpaConePoints(
   return [vertex, left, right, vertex];
 }
 
-/** Monitor → TPA tools cyan; warning → caution yellow; alert → ATPA orange. Never CA red. */
+/** Monitor → TPA tools blue; warning → ATPA yellow; alert → ATPA red. Never CA red. */
 export function atpaConeColor(status: AtpaStatus): string {
   if (status === "alert") {
     return PALETTE.atpaAlert;
   }
   if (status === "warning") {
-    return PALETTE.caution;
+    return PALETTE.atpaWarning;
   }
   return PALETTE.tools;
 }

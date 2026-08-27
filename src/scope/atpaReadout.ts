@@ -8,8 +8,8 @@
  *   (`9.88`, `3.97`; a value that used to be shown as `"2.4"` is `"2.40"`).
  * - Cone mileage uses **tenths for non-whole values** (`3` → `"3"`, `2.5` → `"2.5"`).
  *
- * R07 colors the in-trail datablock readout with the cone: warning → caution
- * yellow, alert → ATPA orange. Monitor pairs add no datablock field (the
+ * R07 colors the in-trail datablock readout with the cone: warning → ATPA
+ * yellow, alert → ATPA red. Monitor pairs add no datablock field (the
  * readout is displayed together with the warning / alert cone). Cone mileage
  * digits sit alongside the cone in the cone’s color for every pair status,
  * including monitor blue.
@@ -89,15 +89,15 @@ export function formatAtpaConeMileage(requiredNm: number): string {
 }
 
 /**
- * Monitor → TPA/tools blue; warning → caution yellow; alert → ATPA orange.
- * Never CA/MSAW red (`PALETTE.alert`).
+ * Monitor → TPA/tools blue; warning → ATPA yellow; alert → ATPA red.
+ * Never CA/MSAW red (`PALETTE.alert`) or caution yellow.
  */
 export function atpaReadoutColor(status: AtpaStatus): string {
   if (status === "alert") {
     return PALETTE.atpaAlert;
   }
   if (status === "warning") {
-    return PALETTE.caution;
+    return PALETTE.atpaWarning;
   }
   return PALETTE.tools;
 }

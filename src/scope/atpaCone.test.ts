@@ -118,7 +118,7 @@ test("degenerate axis or length yields no polyline", () => {
 
 test("AC3 — monitor tools, warning caution, alert atpaAlert; never CA red", () => {
   expect(atpaConeColor("monitor")).toBe(PALETTE.tools);
-  expect(atpaConeColor("warning")).toBe(PALETTE.caution);
+  expect(atpaConeColor("warning")).toBe(PALETTE.atpaWarning);
   expect(atpaConeColor("alert")).toBe(PALETTE.atpaAlert);
   expect(atpaConeColor("alert")).not.toBe(PALETTE.alert);
   expect(PALETTE.alert).toBe("#FF0000");
@@ -253,7 +253,7 @@ function pairedWorld(status: AtpaStatus, requiredNm = 3) {
 test("render — monitor/warning/alert stroke the cone color; wedge is never filled", () => {
   const colors: [AtpaStatus, string][] = [
     ["monitor", PALETTE.tools],
-    ["warning", PALETTE.caution],
+    ["warning", PALETTE.atpaWarning],
     ["alert", PALETTE.atpaAlert],
   ];
   for (const [status, color] of colors) {

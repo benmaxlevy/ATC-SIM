@@ -1823,7 +1823,7 @@ test("T02-46 AC1/AC3 — warning paints two-decimal in-trail field yellow; A040 
 
   const painted = createMockCtx();
   renderScope(painted.ctx, world, view, 800, 800);
-  expect(painted.fillTexts.find((t) => t.text === "9.88")?.fillStyle).toBe(PALETTE.caution);
+  expect(painted.fillTexts.find((t) => t.text === "9.88")?.fillStyle).toBe(PALETTE.atpaWarning);
   expect(painted.fillTexts.find((t) => t.text === "A040")?.fillStyle).toBe(PALETTE.owned);
   expect(painted.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
   expect(painted.fillTexts.find((t) => t.text === "9.88")?.fillStyle).not.toBe(PALETTE.alert);
@@ -1987,7 +1987,7 @@ test("T02-46 AC4/AC5 — cone mileage is tenths, cone-colored, independent of in
   view.atpa.inTrailDistance = false;
   const warning = createMockCtx();
   renderScope(warning.ctx, world, view, 800, 800);
-  expect(warning.fillTexts.find((t) => t.text === "2.5")?.fillStyle).toBe(PALETTE.caution);
+  expect(warning.fillTexts.find((t) => t.text === "2.5")?.fillStyle).toBe(PALETTE.atpaWarning);
   expect(warning.fillTexts.find((t) => t.text === "2.50")).toBeUndefined();
   expect(warning.fillTexts.find((t) => t.text === "9.88")).toBeUndefined();
 
@@ -1996,14 +1996,14 @@ test("T02-46 AC4/AC5 — cone mileage is tenths, cone-colored, independent of in
   const mileageOff = createMockCtx();
   renderScope(mileageOff.ctx, world, view, 800, 800);
   expect(mileageOff.fillTexts.find((t) => t.text === "2.5")).toBeUndefined();
-  expect(mileageOff.fillTexts.find((t) => t.text === "9.88")?.fillStyle).toBe(PALETTE.caution);
+  expect(mileageOff.fillTexts.find((t) => t.text === "9.88")?.fillStyle).toBe(PALETTE.atpaWarning);
 
   view.atpa.coneMileage = true;
   view.tracks.get(trailer.id)!.atpaConeMileageEnabled = false;
   const trackOff = createMockCtx();
   renderScope(trackOff.ctx, world, view, 800, 800);
   expect(trackOff.fillTexts.find((t) => t.text === "2.5")).toBeUndefined();
-  expect(trackOff.fillTexts.find((t) => t.text === "9.88")?.fillStyle).toBe(PALETTE.caution);
+  expect(trackOff.fillTexts.find((t) => t.text === "9.88")?.fillStyle).toBe(PALETTE.atpaWarning);
 
   view.tracks.get(trailer.id)!.atpaConeMileageEnabled = true;
   world.alerts.atpa = [];
@@ -2063,7 +2063,7 @@ test("T02-47 — DCB cone latches hide cones and their mileage; master off hides
   renderScope(warningOff.ctx, world, view, 800, 800);
   expect(warningOff.pathStrokes.filter((s) => s.points.length === 4)).toHaveLength(0);
   expect(warningOff.fillTexts.find((t) => t.text === "2.5")).toBeUndefined();
-  expect(warningOff.fillTexts.find((t) => t.text === "9.88")?.fillStyle).toBe(PALETTE.caution);
+  expect(warningOff.fillTexts.find((t) => t.text === "9.88")?.fillStyle).toBe(PALETTE.atpaWarning);
 
   view.atpa.alertCones = true;
   world.alerts.atpa = [atpaWarningPair({ status: "alert", requiredNm: 2.5, distanceNm: 2.4 })];

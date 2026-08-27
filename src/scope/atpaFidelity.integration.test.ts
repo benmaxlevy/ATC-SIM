@@ -271,7 +271,7 @@ function atpaConeStrokes(pathStrokes: PathStroke[]): PathStroke[] {
     (s) =>
       s.points.length === 4 &&
       (s.strokeStyle === PALETTE.tools ||
-        s.strokeStyle === PALETTE.caution ||
+        s.strokeStyle === PALETTE.atpaWarning ||
         s.strokeStyle === PALETTE.atpaAlert),
   );
 }
@@ -425,7 +425,7 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
     test("monitor / warning / alert paint one unfilled wedge at the trailer; mileage is 3; PALETTE.alert unused", () => {
       const colors: [AtpaStatus, number, number, string][] = [
         ["monitor", 180, 180, PALETTE.tools],
-        ["warning", 180, 270, PALETTE.caution],
+        ["warning", 180, 270, PALETTE.atpaWarning],
         ["alert", 70, 250, PALETTE.atpaAlert],
       ];
       for (const [status, leadKt, trailKt, color] of colors) {
@@ -508,7 +508,9 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
       const warnPaint = paint(warned.world, warnView);
       const warnText = formatAtpaInTrailDistance(warned.world.alerts.atpa[0]!.distanceNm);
       expect(warnText).toMatch(/^\d+\.\d{2}$/);
-      expect(warnPaint.fillTexts.find((t) => t.text === warnText)?.fillStyle).toBe(PALETTE.caution);
+      expect(warnPaint.fillTexts.find((t) => t.text === warnText)?.fillStyle).toBe(
+        PALETTE.atpaWarning,
+      );
       expect(warnPaint.fillTexts.find((t) => t.text === "DAL123")).toBeDefined();
       expect(warnPaint.fillTexts.find((t) => t.text === "AAL45")).toBeDefined();
 
@@ -592,9 +594,9 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
       expect(atpaFeatureEffective(view.atpa, "inTrailDistance")).toBe(true);
       const noMiles = paint(world, view);
       expect(atpaConeStrokes(noMiles.pathStrokes)).toHaveLength(1);
-      expect(noMiles.fillTexts.some((t) => t.text === "3" && t.fillStyle === PALETTE.caution)).toBe(
-        false,
-      );
+      expect(
+        noMiles.fillTexts.some((t) => t.text === "3" && t.fillStyle === PALETTE.atpaWarning),
+      ).toBe(false);
 
       toggleAtpaConeMileage(view);
       toggleAtpaInTrailDistance(view);
@@ -750,7 +752,7 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
       const warning = paint(world, view);
       expect(jRingStrokes(warning.pathStrokes)).toHaveLength(1);
       expect(atpaConeStrokes(warning.pathStrokes)).toHaveLength(1);
-      expect(atpaConeStrokes(warning.pathStrokes)[0]!.strokeStyle).toBe(PALETTE.caution);
+      expect(atpaConeStrokes(warning.pathStrokes)[0]!.strokeStyle).toBe(PALETTE.atpaWarning);
       const warningManual = warning.pathStrokes.filter(
         (s) => s.strokeStyle === TPA_STROKE_COLOR && s.points.length === 4,
       );
@@ -869,7 +871,7 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
       expect(rwy27.coneCount).toBe(1);
       expect(rwy09.coneLengthNm).toBeCloseTo(rwy27.coneLengthNm, 3);
       expect(rwy09.inTrail).toBe(rwy27.inTrail);
-      expect(rwy09.inTrail).toBe(PALETTE.caution);
+      expect(rwy09.inTrail).toBe(PALETTE.atpaWarning);
     });
 
     test("heavy vs light leader: identical requiredNm and cone length; engine never reads wakeCategory", () => {

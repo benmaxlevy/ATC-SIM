@@ -93,7 +93,7 @@ test("AC3 — monitor pairs add no datablock field; warning and alert do", () =>
     text: "2.40",
     status: "alert",
   });
-  expect(atpaReadoutColor("warning")).toBe(PALETTE.caution);
+  expect(atpaReadoutColor("warning")).toBe(PALETTE.atpaWarning);
   expect(atpaReadoutColor("alert")).toBe(PALETTE.atpaAlert);
   expect(atpaReadoutColor("alert")).not.toBe(PALETTE.alert);
   expect(atpaReadoutColor("monitor")).toBe(PALETTE.tools);
@@ -171,8 +171,8 @@ test("AC6 — module cites R07, Fig 38/39 two-decimal datablock, and tenths cone
   expect(src).toMatch(/tenths/);
   expect(src).toMatch(/Intrail Distance/);
   expect(src).toMatch(/A\/TPA Mileage/);
-  expect(src).toMatch(/caution yellow/);
-  expect(src).toMatch(/orange/);
+  expect(src).toMatch(/yellow/);
+  expect(src).toMatch(/ATPA red/);
   expect(src).toMatch(/world\.alerts\.atpa/);
   expect(src).toMatch(/requiredNm/);
   expect(src).not.toMatch(/evaluateAtpa/);

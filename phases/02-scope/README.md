@@ -610,7 +610,7 @@ Completed TPA / ATPA addendum matching [CRC STARS](https://docs.virtualnas.net/c
 
 - [x] ATPA approach volumes are catalog data walked by `approachId` (KDEM `ATPA27` / `ATPA09`); a third runway adds JSON, never an `if` (T02-43).
 - [x] In-trail pairing and predicted monitor / warning (45 s) / alert (24 s) status on `world.alerts.atpa` via `stepWorld`; minima from volume JSON (`basicSeparationNm` 3 NM, `reducedSeparationNm` 2.5 NM inside `reducedWithinNm` 10 NM); cone length identical for a heavy or light leader (T02-44).
-- [x] Trailing track paints one unfilled wedge (vertex on the trailer, axis toward the leader, length = `requiredNm`); monitor TPA blue, warning caution yellow, alert `atpaAlert` orange — never CA red `PALETTE.alert` (T02-45).
+- [x] Trailing track paints one unfilled wedge (vertex on the trailer, axis toward the leader, length = `requiredNm`); monitor TPA blue, warning `atpaWarning` yellow, alert `atpaAlert` red — never CA red `PALETTE.alert` (T02-45).
 - [x] Trailing FDB line 3 shows two-decimal in-trail distance on warning / alert; cone mileage digits sit alongside (`"3"` / `"2.5"`); monitor omits the datablock field (T02-46).
 - [x] Four live AUX TPA/ATPA cells plus master (`atpa-mileage`, `atpa-intrail`, `atpa-alert`, `atpa-monitor`); `effective = atpa.on && atpa[feature]`; Alert Cones gates warning and alert; PREF schema `v: 2` round-trips all five `AtpaState` fields; `v: 1` migrates (T02-47).
 - [x] Per-track `*J` / `*P` rings and ground-track cones (1–30 NM, session state not PREF); `**J` / `**P` clear-all; size-readout inhibit; J-rings are never suppressed by ATPA; a manual `*P` cone is suppressed only on warning/alert (T02-48).

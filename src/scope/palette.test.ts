@@ -37,18 +37,21 @@ test("TCW palette follows FAA/CRC/vice grammar, not a green CRT game map", () =>
   expect(PALETTE.selected).toBe("#FFFF00");
   expect(PALETTE.caution).toBe("#FFFF00");
   expect(PALETTE.alert).toBe("#FF0000");
-  expect(PALETTE.atpaAlert).toBe("#FF8800");
+  expect(PALETTE.atpaWarning).toBe("#636300");
+  expect(PALETTE.atpaAlert).toBe("#6A0800");
   expect(PALETTE.atpaAlert.toLowerCase()).not.toBe(PALETTE.alert.toLowerCase());
   expect(PALETTE.owned.toLowerCase()).not.toBe("#ff0000");
   expect(PALETTE.unowned.toLowerCase()).not.toBe("#ff0000");
 });
 
-test("ATPA alert orange is distinct from CA/MSAW red; caution and alert hues unchanged", () => {
-  expect(PALETTE.atpaAlert).toBe("#FF8800");
-  expect(PALETTE.atpaAlert.toUpperCase()).not.toBe("#FF0000");
+test("ATPA owns its warning and alert hues; CA/MSAW caution and alert are untouched", () => {
+  expect(PALETTE.atpaAlert).toBe("#6A0800");
+  expect(PALETTE.atpaWarning).toBe("#636300");
   expect(PALETTE.atpaAlert).not.toBe(PALETTE.alert);
+  expect(PALETTE.atpaWarning).not.toBe(PALETTE.caution);
   expect(PALETTE.alert).toBe("#FF0000");
   expect(PALETTE.caution).toBe("#FFFF00");
+  expect(PALETTE.tools).toBe("#134767");
 });
 
 test("history trail is independent blue, newest brighter than oldest", () => {
@@ -118,7 +121,7 @@ test("AC5 — predicted CA is not yellow; CA and MSAW do not paint block/target"
   expect(alertOrOwnershipColor("unowned", null)).toBe(PALETTE.unowned);
   expect(PALETTE.caution).toBe("#FFFF00");
   expect(PALETTE.alert).toBe("#FF0000");
-  expect(PALETTE.atpaAlert).toBe("#FF8800");
+  expect(PALETTE.atpaAlert).toBe("#6A0800");
   expect(PALETTE.atpaAlert).not.toBe(PALETTE.alert);
 });
 
