@@ -1,5 +1,35 @@
 # Swarm status
 
+## FOURTEENTH SWARM COMPLETE — TPA / ATPA (T02-43–50)
+
+T02-43–50 are merged on `feature/atpa-tpa`. Captain `npm test` / `npm run ci` / `npm run build`: **131 test files passed, 1519 tests passed, 1 skipped, 0 failures**. Real ATPA on adapted approach volumes, in-trail pairing, predicted monitor/warning/alert, wedge cones, datablock in-trail distance, live DCB TPA/ATPA cells, richer manual TPA, and the STARS slew-chord parser:
+- **ATPA volumes as catalog data (T02-43):** KDEM `ATPA27` / `ATPA09` rows walked by `approachId`; threshold and inbound course come from the referenced approach. A third runway adds JSON, never an `if`.
+- **In-trail pairing engine (T02-44):** `evaluateAtpa` on `stepWorld` writes `world.alerts.atpa`. Basic radar minima only from volume JSON (`basicSeparationNm` 3 NM, `reducedSeparationNm` 2.5 NM inside `reducedWithinNm` 10 NM). Cone length identical for a heavy or light leader. No wake-category matrix.
+- **Cone geometry (T02-45):** One unfilled wedge per trailing track; vertex on the trailer, axis toward the leader, length = `requiredNm`. Monitor TPA blue, warning caution yellow, alert `atpaAlert` orange — never CA red.
+- **In-trail distance and cone mileage (T02-46):** Trailing FDB line 3 two-decimal mileage on warning/alert; cone mileage digits `"3"` / `"2.5"`. Monitor omits the datablock field.
+- **Live DCB TPA/ATPA cells (T02-47):** Four AUX cells plus master; `effective = atpa.on && atpa[feature]`; Alert Cones gates warning and alert; PREF schema `v: 2` round-trips all five `AtpaState` fields; `v: 1` migrates.
+- **Richer manual TPA (T02-48):** Per-track `*J` / `*P` (1–30 NM, session state not PREF); `**J` / `**P` clear-all; size-readout inhibit. J-rings are never suppressed; a manual `*P` cone is suppressed only on warning/alert.
+- **Slew-chord parser (T02-49):** `*J` / `*P` / `*A` / `*B` / `*D` (and doubles) are scope-only. `DAL123 H270` still turns. Captain follow-up wired `*AE` / `*AI` / `*BE` / `*BI` dispatch.
+- **Acceptance (T02-50):** `src/scope/atpaFidelity.integration.test.ts` drives real `stepWorld` ticks against the real KDEM catalog and a real `ScopeView`. Wake independence, JSON minima, RW09 data-first parity, master-off gate, CA/MSAW exclusive `PALETTE.alert` red, and zero regressions on CA / MSAW / TPA / DCB / dual-runway.
+
+**Merged (squash-merged, captains only):** T02-43 (`b387220`), T02-49 (`fb6721f`), T02-44 (`7b36511`), T02-45 (`03dee39`), T02-46 (`05d47c3`), T02-47 (`fa2ec94`), T02-48 (`2e094a4`), captain `*A`/`*B` dispatch fix (`9c749f7`), T02-50 (`102bd92`).
+
+**Post-swarm fixes on the same branch:** `*J` / `*P` resolved the track at Enter and silently dropped the command when nothing was slewed, so the reference's own command-then-slew order did nothing. Track-scoped chords now arm on the PPI and apply to the next target click without accepting an inbound handoff; select-then-Enter is unchanged. Verified in a preview build, not only in tests.
+
+**Captain judgement calls:**
+
+- **Orchestrator and captain were one session.** A captain subagent cannot reliably spawn its own workers here, so the merge lock, the worktrees, and the waves were held in the top session. Workers stayed leaf-only and never merged, which is the constraint that matters.
+- **`ticket/` branches were cut from `feature/atpa-tpa`, not `master`.** The run was scoped to a feature branch by request; `master` is untouched and this branch is one squash commit per ticket.
+- **Two rebase conflicts resolved as additive.** T02-46 and T02-45 both defined `PALETTE.atpaAlert` as `#FF8800` with different comments (merged to one comment); T02-48 versus T02-47 collided on `AtpaState`, `TrackDisplay`, and the `src/scope` barrel, where both sides' members were kept per the swarm's state-ownership table. Nothing was dropped.
+- **One out-of-ticket fix (`9c749f7`).** `*AE` / `*AI` / `*BE` / `*BI` parsed and silently no-opped: T02-45 said T02-47 and T02-49 would wire the dispatch, T02-49 deferred all dispatch, and T02-47 wired only the DCB. Fixed on a `fix/` branch rather than absorbed into a ticket.
+- **Duplicated geometry helpers.** `src/core/alerts/atpa.ts` carries its own copy of T02-43's inside-volume and along-course math because `@core` may not import `@scenario`. Same formula, two homes. A later cleanup should lift them into `@core/nav` and have `@scenario` import down; not done here because it would have touched two tickets' files mid-run.
+
+**Manual leftover:** T02-50 Chrome player loop (two ILS 27 arrivals → blue monitor cone → yellow then orange → in-trail field → four DCB cells → `*J3`). skip-with-reason: no visual operator. Automated tests prove the items above.
+
+**Product law held:** basic radar minima only; no CWT/wake matrix; no per-runway or per-position adapted minima; CA untouched (no 3 NM halo); chords never emit Command IR.
+
+---
+
 ## THIRTEENTH SWARM COMPLETE — Dual-runway configuration & selection (T04-26–30, T05-14)
 
 T04-26–30 and T05-14 are merged on `feature/dual-runway-configuration`. Captain `npm test` / `npm run ci`: **124 test files passed, 1415 tests passed, 1 skipped, 0 failures**. Complete dual-runway configuration, reciprocal approaches, SIDs/STARs, video maps, and dual-selector session setup overhaul:

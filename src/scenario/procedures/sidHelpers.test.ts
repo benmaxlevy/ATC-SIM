@@ -23,6 +23,7 @@ const multiCatalog: ProcedureCatalog = {
   stars: [],
   approaches: [],
   sids: multiSidJson.sids as ProcedureCatalog["sids"],
+  atpaVolumes: [],
 };
 
 describe("sidRouteFixIds — KDEM BAY1 procedure", () => {

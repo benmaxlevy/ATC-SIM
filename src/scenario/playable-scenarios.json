@@ -38,6 +38,15 @@
       "default": false,
       "sessionSetupVisible": false,
       "source": "scenarios/kdem-ils09"
+    },
+    {
+      "id": "kdem-atpa",
+      "airportIcao": "KDEM",
+      "airportName": "Demo Field",
+      "label": "Demo Field — ATPA in-trail bench",
+      "default": false,
+      "sessionSetupVisible": false,
+      "source": "scenarios/kdem-atpa"
     }
   ]
 }

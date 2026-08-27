@@ -13,6 +13,7 @@
  * `SessionLog`); aircraft types (`Aircraft`, `Intent`), `createAircraft`,
  * `makeTestAircraft`, `nextAircraftId`; conflict alert lite (`evaluateConflictAlert`,
  * `CA_LATERAL_NM` / `CA_VERTICAL_FT`, `datablockAlertTint`);
+ * ATPA in-trail pairing (`evaluateAtpa`, `world.alerts.atpa`);
  * nav fix registry (`buildFixRegistry`, `FixRegistry`);
  * nav geometry (`courseDeg`, fly-by radius, loc deviation, GS height); lateral FMS (`applyLateralFms`);
  * vertical FMS (`targetAltitudeFt`, `applyVerticalFms`); missed stub (`applyMissedFms`);
@@ -116,6 +117,24 @@ export {
   emptyWorldAlerts,
   evaluateConflictAlert,
 } from "./alerts/conflictAlert";
+export type {
+  AtpaGeometryByVolumeId,
+  AtpaPair,
+  AtpaStatus,
+  AtpaTrack,
+  AtpaVolumeGeometry,
+  AtpaVolumeParams,
+} from "./alerts/atpa";
+export {
+  ATPA_ALERT_S,
+  ATPA_WARNING_S,
+  alongCourseDistanceNm,
+  atpaPairKey,
+  atpaStatus,
+  evaluateAtpa,
+  requiredSeparationNm,
+  resolveAtpaGeometry,
+} from "./alerts/atpa";
 export type {
   MvaChart,
   MvaPolygon,

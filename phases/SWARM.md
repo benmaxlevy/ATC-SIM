@@ -1,4 +1,4 @@
-# ATC-SIM swarm orchestrator — Thirteenth swarm (Dual-runway configuration & selection: T04-26–30, T05-14)
+# ATC-SIM swarm orchestrator — Fourteenth swarm (TPA / ATPA: T02-43–50)
 
 Paste **this entire file** into a new agent. That agent is the **orchestrator**. It may run for hours. It writes almost no application code.
 
@@ -9,7 +9,87 @@ Shell: **bash** (Linux).
 
 Before checking git, spawning agents, creating worktrees, or editing application code, update this file for the current swarm. Append a new swarm-start heading/configuration; do not overwrite prior swarm history. If the requested swarm configuration is incomplete, ask before making any other swarm move. Then commit the planning/status update before creating ticket branches or worktrees.
 
-This is the **thirteenth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–25) → 2 STARS CRC scope fidelity (T02-34–42) → 5 setup menu (T05-13)** are already green on `master`. Do **not** redo completed work. Skip **T04-11** (wind) unless the human names it. This run is **T04-26–30 and T05-14 only**.
+This is the **fourteenth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–25) → 2 STARS CRC scope fidelity (T02-34–42) → 5 setup menu (T05-13, T05-14) → 4 dual runway (T04-26–30)** are already green on `master`. Do **not** redo completed work. Skip **T04-11** (wind) unless the human names it. This run is **T02-43–50 only**.
+
+---
+
+## Fourteenth swarm planned — 2026-08-26 (TPA / ATPA)
+
+This configuration runs on feature branch `feature/atpa-tpa`, cut from `master` at `997902c`. Ticket workers branch from that base; the captain squash-merges back into that base.
+
+| Key | Value |
+| --- | --- |
+| Goal | Real ATPA: adapted approach volumes, in-trail pairing and sequencing, predicted monitor/warning/alert status, wedge cones, datablock in-trail distance, live DCB TPA/ATPA cells; plus richer manual TPA (per-track rings, `*P` cones) and the STARS slew-chord parser that drives them |
+| Player loop | `npm run dev` → two arrivals sequenced onto ILS 27 → trailing track shows a blue ATPA monitor cone pointing at its leader with the required mileage → closure turns the cone yellow, then orange, and the in-trail distance appears in the datablock → `*J3` on a slewed track still draws a manual J-ring |
+| Include | **T02-43**, **T02-44**, **T02-45**, **T02-46**, **T02-47**, **T02-48**, **T02-49**, **T02-50** |
+| Skip | T04-11; all completed work (T00–T02-42, T03-*, T04-*, T05-*); wake-category separation minima (see product law); multi-controller ATPA adaptation; CRDA |
+| Stop | After T02-50 acceptance. Do not start phase 5 scoring. |
+| Max ticket workers in flight | **3** |
+| Merge lock | Only the phase captain squash-merges ticket branches to `feature/atpa-tpa`, then runs `npm test` |
+| Model | **cursor grok 4.6 high only.** `model: "cursor-grok-4.6-high"` on every captain and worker spawn. Not a fast model |
+| Paid STT/TTS/LLM | **Forbidden** |
+
+**Product law (fourteenth swarm — TPA / ATPA):**
+
+- **Separation minima are basic radar only.** 3 NM, reduced to 2.5 NM when both tracks of a pair are established on the same final inside 10 NM of the threshold. Cone length never varies by aircraft type. R07 states cone length is "the distance required by wake category or basic radar separation" but publishes **no matrix** — its CWT A–I table is only the datablock category letter with weight ranges. Do **not** fill a wake matrix from model recall. The gap is documented in `phases/LATER-IMPLEMENTATION-BACKLOG.md` by T02-44.
+- **Minima live in JSON, not code.** `basicSeparationNm`, `reducedSeparationNm`, and `reducedWithinNm` are per-volume adaptation fields. No hardcoded 3 or 2.5 on a live path.
+- **Volumes are data, walked by `approachId`.** A second airport or a third runway adds a volume row, never an `if`. Threshold and final course come from the referenced approach, which already exists for both `ILS27` and `ILS09`.
+- **Frozen ATPA grammar (R07):** cone vertex on the trailing target, oriented toward its leader, length equal to the required in-trail minimum, tenths for non-whole values. Monitor cone in TPA blue. Warning cone yellow when the trailing track is predicted to violate within **45 s**. Alert cone orange when already violating or predicted within **24 s**. Alert supersedes warning supersedes monitor supersedes manual TPA cone.
+- **Trainer deltas, stated in every ticket:** single TCP, so there is no per-position "adapted to display" matrix. No TDW white variant. No aural ATPA tone. Volumes are authored trainer geometry, not NAS adaptation.
+- **CA is untouched.** T04-09 conflict alert stays `CA` datablock text plus tone. Still **no** 3 NM CA halo. Circles on this scope are TPA J-rings only.
+- **Chords are scope-only.** `*J`, `*P`, `*A`, `*B`, `*D` chords resolve against the slewed track and emit scope actions. They never produce Command IR; `DAL123 H270` still turns.
+- **Zero simulation regressions.** Kinematics, SIDs/STARs, ILS, dual-runway configuration, radio telephony, and DCB menus stay 100% operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-43 ∥ T02-49 | Base `feature/atpa-tpa` |
+| B | T02-44 | T02-43 |
+| C | T02-45 ∥ T02-46 | T02-44 |
+| D | T02-47 ∥ T02-48 | T02-45, T02-46 (48 also needs T02-49) |
+| E | T02-50 | T02-47, T02-48 |
+
+Wave C and Wave D both touch `renderScope.ts` and `DisplayControlBar.tsx`; use isolated sibling worktrees and rebase the second ticket after each squash merge.
+
+**State ownership (so parallel tickets do not redefine each other):**
+
+- Global ATPA display flags live on `AtpaState` in `src/scope/tpa.ts`. T02-46 and T02-47 both add fields there; whichever merges first introduces them and the second **extends** rather than redefines. The captain resolves that collision at rebase, not by respawning either ticket.
+- Per-track ATPA enable/inhibit flags live on `TrackDisplay`. Per-track manual TPA graphics (rings, cones, size inhibit) are T02-48's and are **session state, not PREF**.
+- Only T02-47 bumps `DCB_PREF_SCHEMA_VERSION`. No other ticket touches the PREF schema.
+- Only T02-45 defines the cone wedge. T02-48 reuses it for manual `*P` cones; a second wedge implementation is a review failure.
+
+**Backlog ownership** (per `.cursor/rules/later-implementation-backlog.mdc`, each in the same commit as its slice):
+
+| Ticket | Backlog edit |
+| --- | --- |
+| T02-44 | adds "ATPA separation criteria not yet modeled" — wake minima, adapted 2.5 NM conditions, per-position adaptation, TDW variant, aural alerting, authored volumes |
+| T02-47 | rewrites "Real ATPA pairing and predicted geometry"; must not delete the T02-44 subsection |
+| T02-48 | closes "Richer TPA controls" |
+
+**Ticket files / branches:**
+
+- `ticket/T02-43-atpa-approach-volume-schema-and-kdem-fixture` ← `phases/02-scope/tickets/T02-43-atpa-approach-volume-schema-and-kdem-fixture.md`
+- `ticket/T02-44-atpa-in-trail-pairing-engine` ← `phases/02-scope/tickets/T02-44-atpa-in-trail-pairing-engine.md`
+- `ticket/T02-45-atpa-cone-geometry-and-rendering` ← `phases/02-scope/tickets/T02-45-atpa-cone-geometry-and-rendering.md`
+- `ticket/T02-46-atpa-intrail-distance-and-cone-mileage` ← `phases/02-scope/tickets/T02-46-atpa-intrail-distance-and-cone-mileage.md`
+- `ticket/T02-47-dcb-tpa-atpa-submenu-live-cells` ← `phases/02-scope/tickets/T02-47-dcb-tpa-atpa-submenu-live-cells.md`
+- `ticket/T02-48-richer-manual-tpa-rings-and-cones` ← `phases/02-scope/tickets/T02-48-richer-manual-tpa-rings-and-cones.md`
+- `ticket/T02-49-stars-tpa-atpa-slew-chord-parser` ← `phases/02-scope/tickets/T02-49-stars-tpa-atpa-slew-chord-parser.md`
+- `ticket/T02-50-tpa-atpa-integration-and-acceptance` ← `phases/02-scope/tickets/T02-50-tpa-atpa-integration-and-acceptance.md`
+
+Captain return:
+
+```
+PHASE EXIT GREEN
+Phase: 2 Scope addendum (T02-43–50 TPA / ATPA)
+Merged: T02-43 … T02-50
+Tests: npm test / npm run ci exit 0
+Manual leftover: <Chrome ATPA walk or none>
+Notes: <volumes as data; monitor/warning/alert; basic radar minima only; no CA halo>
+```
+
+or `PHASE EXIT BLOCKED` with reason.
 
 ---
 

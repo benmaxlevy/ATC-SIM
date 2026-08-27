@@ -45,6 +45,7 @@ test("createWorld defaults simTimeMs, paused, and simRate (AC1)", () => {
   expect(world.selectedAircraftId).toBeNull();
   expect(world.alerts.ca).toEqual([]);
   expect(world.alerts.msaw).toEqual([]);
+  expect(world.alerts.atpa).toEqual([]);
   expect(world.mvaChart).toBeNull();
   expect(world.msawInhibit).toBeNull();
   expect(world.sessionLog).toBeNull();
@@ -58,6 +59,7 @@ test("createWorld does not share the default alerts array", () => {
   expect(a.alerts).not.toBe(b.alerts);
   expect(a.alerts.ca).not.toBe(b.alerts.ca);
   expect(a.alerts.msaw).not.toBe(b.alerts.msaw);
+  expect(a.alerts.atpa).not.toBe(b.alerts.atpa);
   expect(a.handoffs).not.toBe(b.handoffs);
 });
 

@@ -3,8 +3,9 @@
  * 2008 STARS TCW RGB table + CRC STARS TCW (docs.virtualnas.net/crc/stars — R07)
  * + vice STARS monitor (Boston Approach screenshot; not ERAM).
  * CRC STARS STCA (R07) — static `CA` in the datablock + aural tone.
- * FOA STARS / 7110.65 name the alert (R01, R05). MSAW still uses caution
- * yellow then alert red. Not certified. Do not label “STARS CA” or “MSAW
+ * FOA STARS / 7110.65 name the alert (R01, R05). MSAW indicator uses caution
+ * yellow then alert red; it does not tint the datablock, leader, or target.
+ * Not certified. Do not label “STARS CA” or “MSAW
  * certified.” UI word is **MSAW**, not GPWS / TAWS.
  *
  * Trainer delta: one TCW-like set, not MDM3/MDM4 clones, not a NY screenshot.
@@ -19,8 +20,11 @@
  * - Background black; video maps / range rings dim gray
  * - Owned FDB white after F3; unowned / other-TCP FDB green
  * - Search/fusion position symbol blue; history trail blue (not track-tinted)
- * - PTL white; TLS/tools cyan for TPA J-rings; SSA / DCB / lists phosphor green
- * - Phase 4: MSAW yellow then red. CA is static `CA` text above FDB.
+ * - PTL white; TLS/tools blue for TPA J-rings and ATPA monitor cones; SSA / DCB / lists phosphor green
+ * - Phase 4: CA and MSAW are colored indicator text above the FDB (alert red /
+ *   caution yellow). They do not tint the block, leader, or target.
+ * - ATPA owns its own warning/alert hues (`atpaWarning`, `atpaAlert`) so its
+ *   cones never borrow CA/MSAW `caution` or `alert`.
  */
 
 import {
@@ -62,17 +66,29 @@ export const PALETTE = {
   /** PTL / min-sep analog — FAA white. */
   ptl: "#FFFFFF",
   /**
-   * TLS / tools — TPA J-rings (CRC analog). Not CA red.
+   * TLS / tools — TPA J-rings and ATPA monitor geometry (CRC analog). Not CA red.
    * Distinct from PTL white so rings read as tools, not predicted track.
    */
-  tools: "#00E5E5",
+  tools: "#134767",
   /**
    * CA/MSAW caution (yellow). Lite 3 NM / 1000 ft trainer, not NAS parameters.
    * Do not label “STARS CA.”
    */
   caution: "#FFFF00",
-  /** CA/MSAW alert (red). Lite trainer, not NAS-certified. */
+  /** CA/MSAW alert (red). Lite trainer, not NAS-certified. Never ATPA. */
   alert: "#FF0000",
+  /**
+   * ATPA warning cone and in-trail readout (R07 Warning Cone). ATPA's own
+   * yellow, dimmer than CA/MSAW `caution` so a warning cone never reads as a
+   * caution tag. R07 names the color, not the RGB.
+   */
+  atpaWarning: "#636300",
+  /**
+   * ATPA alert cone and in-trail readout (R07 Alert Cone). Distinct from
+   * CA/MSAW red (`alert`) and from caution yellow. R07 names the color, not
+   * the RGB.
+   */
+  atpaAlert: "#6A0800",
   /** SSA and list text — FAA list/preview green. Not map gray. */
   ssa: "#00FF00",
   /**
@@ -255,7 +271,7 @@ export function trackAlertTint(world: World, callsign: string): AlertTint {
   });
 }
 
-/** Paint: MSAW yellow/red (CA does not tint whole blocks or targets red; CA is red text above FDB). */
+/** Paint: CA and MSAW do not tint whole blocks or targets; both are colored indicator text above the FDB. */
 export function trackPaintAlertTint(world: World, callsign: string): AlertTint {
   return datablockAlertTint({
     ca: null,
@@ -263,20 +279,11 @@ export function trackPaintAlertTint(world: World, callsign: string): AlertTint {
   });
 }
 
-export function alertTintPaintColor(tint: AlertTint): string | null {
-  if (tint === "ca-caution" || tint === "ca-alert") {
-    return null;
-  }
-  if (tint === "msaw-alert") {
-    return PALETTE.alert;
-  }
-  if (tint === "msaw-caution") {
-    return PALETTE.caution;
-  }
+export function alertTintPaintColor(_tint: AlertTint): string | null {
   return null;
 }
 
-/** Datablock / leader color: MSAW tint wins over ownership white/green. */
+/** Datablock / leader color: ownership. CA/MSAW paint indicator text instead of tinting the block. */
 export function alertOrOwnershipColor(ownership: TrackOwnership, tint: AlertTint): string {
   const alertColor = alertTintPaintColor(tint);
   return alertColor ?? PALETTE[ownership];
@@ -286,9 +293,6 @@ export function caDatablockTagVisible(_simTimeMs = 0): boolean {
   return true;
 }
 
-export function withCaDatablockTag(line1: string, tint: AlertTint, _simTimeMs = 0): string {
-  if (tint === "msaw-alert" || tint === "msaw-caution") {
-    return `${line1} MSAW`;
-  }
+export function withCaDatablockTag(line1: string, _tint: AlertTint, _simTimeMs = 0): string {
   return line1;
 }

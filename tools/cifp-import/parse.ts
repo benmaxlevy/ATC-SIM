@@ -157,6 +157,7 @@ function convertRecords(records: CifpLine[]): ProcedureCatalog {
     stars,
     approaches,
     sids: [],
+    atpaVolumes: [],
   };
   validateCatalog(catalog);
   return catalog;

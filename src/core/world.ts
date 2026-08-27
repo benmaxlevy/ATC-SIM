@@ -1,6 +1,13 @@
 import type { Aircraft } from "./aircraft";
 import type { TrackHandoff } from "./handoff";
 import {
+  atpaPairKey,
+  evaluateAtpa,
+  resolveAtpaGeometry,
+  type AtpaPair,
+  type AtpaVolumeParams,
+} from "./alerts/atpa";
+import {
   caPairKey,
   emptyWorldAlerts,
   evaluateConflictAlert,
@@ -68,6 +75,7 @@ export interface World {
       missed?: { headingDeg: number; climbToFt: number; directFixId?: string };
     }>;
     sids: ReadonlyArray<CatalogSid>;
+    atpaVolumes?: ReadonlyArray<AtpaVolumeParams>;
   };
   /**
    * O(1) DCT / STAR lookup. Built from `catalog` geometry when present.
@@ -88,7 +96,7 @@ export interface World {
   msawInhibit: MsawInhibitGeom | null;
   /**
    * Optional session log for CA/MSAW edge events. The app wires `createApp`'s log.
-   * Tests pass one when they assert `alert.ca.*` / `alert.msaw.*`.
+   * Tests pass one when they assert `alert.ca.*` / `alert.msaw.*` / `alert.atpa.*`.
    */
   sessionLog: SessionLog | null;
   /**
@@ -170,7 +178,7 @@ export function createWorld(partial?: Partial<World>): World {
     selectedAircraftId: partial?.selectedAircraftId ?? null,
     catalog: partial?.catalog,
     fixRegistry: fixRegistryFromPartial(partial),
-    alerts: partial?.alerts ?? emptyWorldAlerts(),
+    alerts: { ...emptyWorldAlerts(), ...partial?.alerts },
     mvaChart: partial?.mvaChart ?? null,
     msawInhibit: partial?.msawInhibit ?? null,
     sessionLog: partial?.sessionLog ?? null,
@@ -282,6 +290,87 @@ function syncConflictAlerts(world: World, next: CaAlert[]): void {
   world.alerts.ca = next;
 }
 
+function liveAtpaMetrics(
+  world: World,
+  trailingCallsign: string,
+  leadingCallsign: string,
+  fallback: AtpaPair,
+): { distanceNm: number } {
+  const trailing = world.aircraft.find((ac) => ac.callsign === trailingCallsign);
+  const leading = world.aircraft.find((ac) => ac.callsign === leadingCallsign);
+  if (!trailing || !leading) {
+    return { distanceNm: fallback.distanceNm };
+  }
+  return { distanceNm: Math.hypot(trailing.xNm - leading.xNm, trailing.yNm - leading.yNm) };
+}
+
+function atpaEventType(
+  status: AtpaPair["status"],
+): "alert.atpa.monitor" | "alert.atpa.warning" | "alert.atpa.alert" {
+  if (status === "alert") {
+    return "alert.atpa.alert";
+  }
+  if (status === "warning") {
+    return "alert.atpa.warning";
+  }
+  return "alert.atpa.monitor";
+}
+
+/**
+ * Replace `world.alerts.atpa` and append `alert.atpa.*` only when a pair's
+ * status changes (enter / upgrade / downgrade / clear). No per-tick spam.
+ */
+function syncAtpaPairs(world: World, next: AtpaPair[]): void {
+  const log = world.sessionLog;
+  if (log) {
+    const atSimMs = world.simTimeMs;
+    const prev = world.alerts.atpa ?? [];
+    const prevMap = new Map(prev.map((pair) => [atpaPairKey(pair), pair]));
+    const nextMap = new Map(next.map((pair) => [atpaPairKey(pair), pair]));
+    for (const pair of next) {
+      const was = prevMap.get(atpaPairKey(pair));
+      if (was?.status === pair.status) {
+        continue;
+      }
+      log.append({
+        type: atpaEventType(pair.status),
+        atSimMs,
+        atWallMs: 0,
+        trailingCallsign: pair.trailingCallsign,
+        leadingCallsign: pair.leadingCallsign,
+        volumeId: pair.volumeId,
+        distanceNm: pair.distanceNm,
+        requiredNm: pair.requiredNm,
+      });
+    }
+    for (const was of prev) {
+      if (nextMap.has(atpaPairKey(was))) {
+        continue;
+      }
+      const live = liveAtpaMetrics(world, was.trailingCallsign, was.leadingCallsign, was);
+      log.append({
+        type: "alert.atpa.clear",
+        atSimMs,
+        atWallMs: 0,
+        trailingCallsign: was.trailingCallsign,
+        leadingCallsign: was.leadingCallsign,
+        volumeId: was.volumeId,
+        distanceNm: live.distanceNm,
+        requiredNm: was.requiredNm,
+      });
+    }
+  }
+  world.alerts.atpa = next;
+}
+
+function evaluateWorldAtpa(world: World): AtpaPair[] {
+  const volumes = world.catalog?.atpaVolumes ?? [];
+  if (volumes.length === 0 || world.catalog === undefined) {
+    return [];
+  }
+  return evaluateAtpa(world.aircraft, volumes, resolveAtpaGeometry(world.catalog, volumes));
+}
+
 function liveMsawMetrics(
   world: World,
   callsign: string,
@@ -337,9 +426,9 @@ function syncMsawAlerts(world: World, next: MsawAlert[]): void {
  *
  * Order is frozen: bump `simTimeMs` first, then missed (DA / level-off DIRECT),
  * then lateral FMS (commanded heading), then GS FMS (after loc / LANDING), then
- * kinematics, then threshold despawn (T04-12), then CA, then MSAW (pure
- * functions of the post-kinematics `aircraft[]`). IDENT flash expiry uses the
- * post-bump time. Mutates `world` in place and returns it (single World; no
+ * kinematics, then threshold despawn (T04-12), then CA, then ATPA, then MSAW
+ * (pure functions of the post-kinematics `aircraft[]`). IDENT flash expiry uses
+ * the post-bump time. Mutates `world` in place and returns it (single World; no
  * Redux). Does not throw on non-finite `dtS`.
  * This is the only function that increments `simTimeMs`.
  */
@@ -386,6 +475,7 @@ export function stepWorld(world: World, dtS: number): World {
   despawnLandedAircraft(world);
   despawnDepartedAircraft(world);
   syncConflictAlerts(world, evaluateConflictAlert(world.aircraft));
+  syncAtpaPairs(world, evaluateWorldAtpa(world));
   if (world.mvaChart) {
     syncMsawAlerts(
       world,

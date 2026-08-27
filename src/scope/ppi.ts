@@ -1,5 +1,12 @@
-import type { World } from "@core";
+import { setSelectedAircraft, type World } from "@core";
 import { expireFilterEntry } from "./altitudeFilter";
+import {
+  applyStarsChordAction,
+  cancelStarsChordEntry,
+  commitStarsChord,
+  expireStarsChordEntry,
+  rejectStarsChordEntry,
+} from "./starsChord";
 import { applyPanScreenDelta, screenToNm, type ScopeViewSize } from "./camera";
 import {
   HIT_RADIUS_CSS_PX,
@@ -41,6 +48,37 @@ export function handlePpiLeftClick(
   } else if (view.placeRangeRingArmed) {
     setRangeRingOrigin(view, nm.eastNm, nm.northNm);
     view.placeRangeRingArmed = false;
+  } else if (view.starsChordEntry.phase === "entry" || view.starsChordArmed) {
+    // Live or armed * chord: slew applies the command and must not also accept inbound HO.
+    const hit = pickAircraftAt(
+      world,
+      cssX,
+      cssY,
+      view.camera,
+      cssWidth,
+      cssHeight,
+      HIT_RADIUS_CSS_PX,
+      view,
+    );
+    if (hit) {
+      if (view.starsChordEntry.phase === "entry") {
+        const committed = commitStarsChord(view.starsChordEntry.buffer);
+        if (committed.kind === "action") {
+          setSelectedAircraft(world, hit.id);
+          applyStarsChordAction(view, world, committed.action);
+          cancelStarsChordEntry(view.starsChordEntry);
+          view.starsChordArmed = null;
+          return;
+        }
+        rejectStarsChordEntry(view.starsChordEntry, Date.now());
+        // Incomplete/invalid: do not swallow the click.
+      } else if (view.starsChordArmed) {
+        setSelectedAircraft(world, hit.id);
+        applyStarsChordAction(view, world, view.starsChordArmed);
+        view.starsChordArmed = null;
+        return;
+      }
+    }
   }
   selectOrAcceptAircraftAt(
     world,
@@ -204,5 +242,6 @@ export function paintPpi(
   }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   expireFilterEntry(view.filterEntry, view.altitudeFilter, Date.now());
+  expireStarsChordEntry(view.starsChordEntry, Date.now());
   renderScope(ctx, world, view, cssWidth, cssHeight);
 }

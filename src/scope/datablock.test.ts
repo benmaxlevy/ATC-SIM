@@ -256,9 +256,13 @@ test("Line 3 shows squawk mismatch and ATPA distance when active", () => {
   });
   expect(formatFullDatablock(mismatchWithAssigned).line3).toBe("A040  1200");
 
-  // ATPA distance
-  const atpa = track({ altitudeFt: 3000, assignedAltitudeFt: 3000, atpaDistance: "2.4" });
-  expect(formatFullDatablock(atpa).line3).toBe("2.4");
+  // ATPA distance (Fig 38/39 two decimals — "2.4" is "2.40")
+  const atpa = track({ altitudeFt: 3000, assignedAltitudeFt: 3000, atpaDistance: "2.40" });
+  expect(formatFullDatablock(atpa).line3).toBe("2.40");
+  expect(formatLimitedDatablock(atpa)).not.toHaveProperty("line3");
+  expect(formatLimitedDatablock(atpa).line1).not.toContain("2.40");
+  expect(formatPartialDatablock(atpa)).not.toHaveProperty("line3");
+  expect(formatPartialDatablock(atpa).line1).not.toContain("2.40");
 });
 
 test("limited datablock is Mode C hundreds only and ignores M", () => {

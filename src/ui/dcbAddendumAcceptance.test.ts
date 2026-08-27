@@ -41,6 +41,10 @@ import {
   stepRange,
   syncTrackDisplays,
   toggleAtpaOn,
+  toggleAtpaAlertCones,
+  toggleAtpaConeMileage,
+  toggleAtpaInTrailDistance,
+  toggleAtpaMonitorCones,
   toggleGiFilter,
   toggleSsaFilter,
   toggleTpaOn,
@@ -148,6 +152,10 @@ test("AC3 — DCB/scope addendum clicks emit zero Command IR until radio DAL123 
   toggleGiFilter(view, 0);
   toggleTpaOn(view);
   toggleAtpaOn(view);
+  toggleAtpaConeMileage(view);
+  toggleAtpaInTrailDistance(view);
+  toggleAtpaAlertCones(view);
+  toggleAtpaMonitorCones(view);
   expect(handleScopeKeyDown(keyEvent("F3"), view, "scope", world)).toBe(true);
   expect(handleScopeKeyDown(keyEvent("PageUp"), view, "radio", world)).toBe(true);
 
@@ -353,8 +361,14 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, disabled WX/VOL, T
   const tpa = dcbHtml(view);
   expect(tpa).toMatch(/data-dcb-cell="tpa-on"/);
   expect(tpa).toMatch(/data-dcb-cell="atpa"/);
+  expect(tpa).toMatch(/data-dcb-cell="atpa-mileage"/);
+  expect(tpa).toMatch(/data-dcb-cell="atpa-intrail"/);
+  expect(tpa).toMatch(/data-dcb-cell="atpa-alert"/);
+  expect(tpa).toMatch(/data-dcb-cell="atpa-monitor"/);
+  expect(tpa).not.toMatch(/data-dcb-cell="atpa-cones"/);
   expect(TPA_RADIUS_NM).toEqual([2, 3, 5, 10]);
-  expect(shouldPaintAtpaGeometry(true)).toBe(false);
+  expect(shouldPaintAtpaGeometry(false, "monitor")).toBe(false);
+  expect(shouldPaintAtpaGeometry(true, "monitor")).toBe(true);
   closeDcbMenu(view);
   expect(dcbHtml(view)).toContain("RANGE 20");
 });

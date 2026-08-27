@@ -7,7 +7,7 @@
  * (arm, wheel steps frozen presets, second click / Esc commits). CHAR SIZE and
  * BRITE open submenus (`CHAR_SIZE` / `BRITE`) with per-channel spinners. AUX: VOL
  * disabled, HISTORY spinner 0–5, DCB TOP/LEFT/RIGHT/BOTTOM, PTL length spinner,
- * PTL OWN, PTL ALL, TPA/ATPA submenu (J-rings + ATPA stub). FILTER (altitude)
+ * PTL OWN, PTL ALL, TPA/ATPA submenu (J-rings plus four live ATPA cells). FILTER (altitude)
  * stays on MAIN. SSA FILTER hides existing SSA lines; GI TEXT toggles authored
  * facility lines (not METAR HTTP). HIST/PTL cells live on AUX (F7/F8 still work).
  * MAIN quick video maps 1–6; MAPS submenu slots 1–30 (empty slots disabled).
@@ -92,6 +92,10 @@ import {
   stepRrInterval,
   stepTpaRadius,
   toggleAtpaOn,
+  toggleAtpaAlertCones,
+  toggleAtpaConeMileage,
+  toggleAtpaInTrailDistance,
+  toggleAtpaMonitorCones,
   toggleCurrentMapsList,
   toggleGeoMapsList,
   toggleGiFilter,
@@ -305,6 +309,10 @@ export function syncDisplayControlBar(
   setPressed(doc.querySelector('[data-dcb-cell="tpa-on"]'), view.tpa.on);
   setPressed(doc.querySelector('[data-dcb-cell="tpa-mi"]'), tpaMiSpinnerArmed(view));
   setPressed(doc.querySelector('[data-dcb-cell="atpa"]'), view.atpa.on);
+  setPressed(doc.querySelector('[data-dcb-cell="atpa-mileage"]'), view.atpa.coneMileage);
+  setPressed(doc.querySelector('[data-dcb-cell="atpa-intrail"]'), view.atpa.inTrailDistance);
+  setPressed(doc.querySelector('[data-dcb-cell="atpa-alert"]'), view.atpa.alertCones);
+  setPressed(doc.querySelector('[data-dcb-cell="atpa-monitor"]'), view.atpa.monitorCones);
 }
 
 interface DcbCellProps {
@@ -385,7 +393,8 @@ interface DcbCellProps {
     | "tpa-on"
     | "tpa-mi"
     | "atpa"
-    | "atpa-cones"
+    | "atpa-mileage"
+    | "atpa-intrail"
     | "atpa-monitor"
     | "atpa-alert"
     | "pref"
@@ -1400,32 +1409,55 @@ function renderTpaAtpa(view: ScopeView, onChange: () => void) {
         <span className="dcb-cell-line">ATPA</span>
         <span className="dcb-cell-line">{view.atpa.on ? "ON" : "OFF"}</span>
       </DcbCell>
+      {/*
+        R07 TPA ATPA Submenu (quoted):
+        A/TPA Mileage — "displays mileage in the A/TPA cone"
+        Intrail Distance — "displays intrail distance in the datablock"
+        Alert Cones — "displays alert cones at this TCP"
+        Monitor Cones — "displays monitor cones at this TCP"
+        No separate Warning Cones cell — Alert Cones gates alert and warning.
+        Cells stay clickable with master off so PREF can store a setup.
+        Clicks are never Command IR.
+      */}
       <DcbCell
-        kind="disabled"
-        ariaLabel="ATPA cones"
-        dataDcb="atpa-cones"
-        disabled
-        onClick={() => undefined}
+        kind="toggle"
+        ariaLabel="A/TPA mileage"
+        dataDcb="atpa-mileage"
+        pressed={view.atpa.coneMileage}
+        onClick={() => runAuxCell(view, onChange, () => toggleAtpaConeMileage(view))}
       >
+        <span className="dcb-cell-line">A/TPA</span>
+        <span className="dcb-cell-line">MI</span>
+      </DcbCell>
+      <DcbCell
+        kind="toggle"
+        ariaLabel="Intrail distance"
+        dataDcb="atpa-intrail"
+        pressed={view.atpa.inTrailDistance}
+        onClick={() => runAuxCell(view, onChange, () => toggleAtpaInTrailDistance(view))}
+      >
+        <span className="dcb-cell-line">INTRAIL</span>
+        <span className="dcb-cell-line">DIST</span>
+      </DcbCell>
+      <DcbCell
+        kind="toggle"
+        ariaLabel="Alert cones"
+        dataDcb="atpa-alert"
+        pressed={view.atpa.alertCones}
+        onClick={() => runAuxCell(view, onChange, () => toggleAtpaAlertCones(view))}
+      >
+        <span className="dcb-cell-line">ALERT</span>
         <span className="dcb-cell-line">CONES</span>
       </DcbCell>
       <DcbCell
-        kind="disabled"
-        ariaLabel="ATPA monitor"
+        kind="toggle"
+        ariaLabel="Monitor cones"
         dataDcb="atpa-monitor"
-        disabled
-        onClick={() => undefined}
+        pressed={view.atpa.monitorCones}
+        onClick={() => runAuxCell(view, onChange, () => toggleAtpaMonitorCones(view))}
       >
         <span className="dcb-cell-line">MONITOR</span>
-      </DcbCell>
-      <DcbCell
-        kind="disabled"
-        ariaLabel="ATPA alert"
-        dataDcb="atpa-alert"
-        disabled
-        onClick={() => undefined}
-      >
-        <span className="dcb-cell-line">ALERT</span>
+        <span className="dcb-cell-line">CONES</span>
       </DcbCell>
     </>
   );

@@ -1,4 +1,5 @@
 import type { Aircraft } from "../aircraft";
+import type { AtpaPair } from "./atpa";
 import type { MsawAlert } from "./msaw";
 
 /**
@@ -31,10 +32,12 @@ export interface WorldAlerts {
   ca: CaAlert[];
   /** Active MSAW set. Scope reads this; it must not recompute MSAW. */
   msaw: MsawAlert[];
+  /** Active ATPA in-trail pairs. Scope reads this; it must not recompute pairing. */
+  atpa: AtpaPair[];
 }
 
 export function emptyWorldAlerts(): WorldAlerts {
-  return { ca: [], msaw: [] };
+  return { ca: [], msaw: [], atpa: [] };
 }
 
 export function caPairKey(callsignA: string, callsignB: string): string {

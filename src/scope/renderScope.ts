@@ -17,51 +17,73 @@
  * selected yellow box independent of ownership. CHAR SIZE is per-subsystem
  * (DATA BLOCKS / LISTS / DCB / TOOLS / POS) on IBM Plex Mono. BRITE multiplies
  * each drawn channel; WX/WXC/BKC do not paint weather. SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
- * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. Current CA displays static `CA`
- * + tone from `world.alerts` and paints red. T04-10 MSAW still tints yellow then red. CA halo is
+ * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. Live `*` TPA/ATPA chord
+ * buffer paints next to FILTER in SSA/preview green (same FIL-prompt grammar).
+ * Current CA displays static `CA` + tone from `world.alerts` and paints red. T04-10 MSAW paints a yellow then red `MSAW` tag the same way; neither tints the block, leader, or target. CA halo is
  * **not** drawn: CRC conflict-alert CA is static `CA` text + tone, not a 3 NM circle
  * (circles are TPA J-rings or ERAM DRI). Not OSM / tiles (R12). Not a
  * sprite. Not an airplane. Not a label. Not NAS STARS.
  *
  * Draw order (phase README): background, rings, coastline, runway, localizer,
- * history, PTL, TPA J-rings, targets, leader lines, datablocks, selection box, SSA
- * (screen-fixed). Maps rebuild on range/center/resize/layer toggle, not every rAF.
+ * history, PTL, TPA J-rings, ATPA cones, targets, leader lines, datablocks,
+ * selection box, SSA (screen-fixed). Maps rebuild on range/center/resize/layer
+ * toggle, not every rAF.
  *
  * Hot path (T02-12): reuse Path2D map cache — do not parse KDEM JSON per frame,
  * do not rebuild maps 60 times for a static camera, do not fillText per
  * character, history cap is 5 dots. Canvas2D only (no WebGL).
  */
 
-import { caSeverityForCallsign, handoffFor, type Aircraft, type World } from "@core";
+import {
+  caSeverityForCallsign,
+  handoffFor,
+  msawSeverityForCallsign,
+  type Aircraft,
+  type World,
+} from "@core";
 import { inAltitudeFilter } from "./altitudeFilter";
 import { nmToScreen, type ScopeViewSize } from "./camera";
-import { datablockMetrics, linesForDatablock, type DatablockMode } from "./datablock";
+import {
+  DATABLOCK_FIELD_GAP,
+  datablockMetrics,
+  fullDatablockLine3Parts,
+  linesForDatablock,
+  type DatablockMode,
+} from "./datablock";
 import { datablockFontCss, datablockLineHeightPx, measureDatablockCellWidth } from "./fonts";
 import { datablockTopLeft, DEFAULT_LEADER_DIR, drawLeaderLine, type LeaderDir } from "./leader";
 import { reuseOrBuildMapCache, toMapCacheInput, type MapCache } from "./mapLayers";
 import { historyDotsToDraw } from "./history";
 import { drawPredictedTrackLine, ptlEndpoint, shouldDrawPtlForTrack } from "./ptl";
 import { isViewOffAirport, type ScopeView } from "./scopeView";
+import { formatStarsChordReadout } from "./starsChord";
+import {
+  atpaConeMileagePlacement,
+  atpaInTrailDatablockReadout,
+  atpaReadoutColor,
+} from "./atpaReadout";
+import {
+  atpaConeColor,
+  atpaConePoints,
+  selectAtpaConesToPaint,
+  shouldPaintAtpaGeometry,
+  type AtpaConePaintFlags,
+} from "./atpaCone";
 import {
   TPA_STROKE_COLOR,
   TPA_STROKE_PX,
-  aircraftForTpaRings,
-  shouldPaintAtpaGeometry,
+  manualTpaConePoints,
+  tpaConeDigitPlacement,
+  tpaConesToPaint,
+  tpaRingDigitPlacement,
   tpaRingPoints,
+  tpaRingsToPaint,
+  tpaSizeReadoutEnabled,
 } from "./tpa";
 import { buildGiLines, buildSsaLines } from "./ssa";
 import { buildMapListLines } from "./dcbFunctions";
 import type { TrackOwnership } from "./ownership";
-import {
-  BLINK_HALF_PERIOD_MS,
-  PALETTE,
-  alertTintPaintColor,
-  applyBrite,
-  caDatablockTagVisible,
-  trackAlertTint,
-  trackPaintAlertTint,
-  withCaDatablockTag,
-} from "./palette";
+import { BLINK_HALF_PERIOD_MS, PALETTE, applyBrite, caDatablockTagVisible } from "./palette";
 import {
   drawHistoryDot,
   drawTargetSymbol,
@@ -244,20 +266,8 @@ export function getDatablockVisualState(
 ): DatablockVisualState {
   const td = view.tracks.get(ac.id);
   const ho = handoffFor(world, ac.id);
-  const paintTint = trackPaintAlertTint(world, ac.callsign);
-  const alertColor = alertTintPaintColor(paintTint);
 
-  // 1. MSAW Alert tint
-  if (alertColor) {
-    return {
-      color: alertColor,
-      visible: true,
-      mode: "full",
-      leaderColor: alertColor,
-    };
-  }
-
-  // 1b. Conflict Alert: only shown for tracked targets (full datablock in white)
+  // 1. Conflict Alert: only shown for tracked targets (full datablock in white)
   const isTracked = isTrackedTarget(view, world, ac);
   const caSeverity = caSeverityForCallsign(world.alerts.ca, ac.callsign);
   if (isTracked && caSeverity) {
@@ -411,11 +421,6 @@ function trackOwnership(view: ScopeView, aircraftId: string) {
 }
 
 function trackColor(view: ScopeView, world: World, ac: Aircraft): string {
-  const tint = trackPaintAlertTint(world, ac.callsign);
-  const alertColor = alertTintPaintColor(tint);
-  if (alertColor) {
-    return alertColor;
-  }
   const isTracked = isTrackedTarget(view, world, ac);
   const caSeverity = caSeverityForCallsign(world.alerts.ca, ac.callsign);
   if (isTracked && caSeverity) {
@@ -440,7 +445,6 @@ function drawDatablock(
   }
   const td = view.tracks.get(ac.id);
   const derived = deriveScratchpads(ac, td);
-  const tint = trackAlertTint(world, ac.callsign);
   const mode = visual.mode;
   const isQueried = td ? isTrackQueried(td, world.simTimeMs) : false;
   const squawk = td?.squawk ?? ac.squawk;
@@ -459,29 +463,36 @@ function drawDatablock(
     handoffSectorId = handoff.toSectorId;
   }
 
-  const base = linesForDatablock(
-    {
-      ...ac,
-      callsign,
-      squawk,
-    },
-    mode,
-    {
-      modeCVisible: view.modeCVisible,
-      scratchpad: derived.sp1,
-      sp1: derived.sp1,
-      sp2: derived.sp2,
-      handoffSectorId,
-      queried: isQueried,
-      beaconVisible: true,
-      simTimeMs: world.simTimeMs,
-    },
-  );
+  const atpaReadout =
+    mode === "full"
+      ? atpaInTrailDatablockReadout(world.alerts.atpa, ac.callsign, {
+          atpaOn: view.atpa.on,
+          globalEnabled: view.atpa.inTrailDistance,
+          trackEnabled: td?.atpaInTrailDistanceEnabled !== false,
+        })
+      : null;
+
+  const datablockSource = {
+    ...ac,
+    callsign,
+    squawk,
+    atpaDistance: atpaReadout?.text,
+  };
+  const base = linesForDatablock(datablockSource, mode, {
+    modeCVisible: view.modeCVisible,
+    scratchpad: derived.sp1,
+    sp1: derived.sp1,
+    sp2: derived.sp2,
+    handoffSectorId,
+    queried: isQueried,
+    beaconVisible: true,
+    simTimeMs: world.simTimeMs,
+  });
   let line1 = base.line1;
   if (visual.line1Tag) {
     line1 = `${line1} ${visual.line1Tag}`;
   }
-  const lines = { ...base, line1: withCaDatablockTag(line1, tint, world.simTimeMs) };
+  const lines = { ...base, line1 };
   const lineH = datablockLineHeightPx(view.charSizes.dataBlocks);
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
   const origin = datablockTopLeft(trackLeaderDir(view, ac.id), metrics, view.leaderLengthPx);
@@ -489,9 +500,19 @@ function drawDatablock(
 
   const isTracked = isTrackedTarget(view, world, ac);
   const caSeverity = caSeverityForCallsign(world.alerts.ca, ac.callsign);
-  if (isTracked && caSeverity && mode === "full" && caDatablockTagVisible(world.simTimeMs)) {
+  const showCa =
+    isTracked && caSeverity && mode === "full" && caDatablockTagVisible(world.simTimeMs);
+  const msawSeverity = msawSeverityForCallsign(world.alerts.msaw, ac.callsign);
+  let alertTagX = targetX + origin.x;
+  const alertTagY = targetY + origin.y - lineH;
+  if (showCa) {
     ctx.fillStyle = applyBrite(PALETTE.alert, view.brite.fdb);
-    ctx.fillText("CA", targetX + origin.x, targetY + origin.y - lineH);
+    ctx.fillText("CA", alertTagX, alertTagY);
+    alertTagX += ctx.measureText("CA ").width;
+  }
+  if (msawSeverity) {
+    ctx.fillStyle = applyBrite(msawSeverity === "alert" ? PALETTE.alert : PALETTE.caution, briteCh);
+    ctx.fillText("MSAW", alertTagX, alertTagY);
   }
 
   ctx.fillStyle = applyBrite(visual.color, briteCh);
@@ -500,7 +521,25 @@ function drawDatablock(
     ctx.fillText(lines.line2, targetX + origin.x, targetY + origin.y + lineH);
   }
   if (lines.line3 != null) {
-    ctx.fillText(lines.line3, targetX + origin.x, targetY + origin.y + 2 * lineH);
+    const line3X = targetX + origin.x;
+    const line3Y = targetY + origin.y + 2 * lineH;
+    if (atpaReadout) {
+      const parts = fullDatablockLine3Parts(datablockSource);
+      const prefix = [parts.assignedField, parts.squawkField]
+        .filter((part): part is string => part != null && part.length > 0)
+        .join(DATABLOCK_FIELD_GAP);
+      if (prefix.length > 0) {
+        ctx.fillText(prefix, line3X, line3Y);
+        const prefixW = ctx.measureText(`${prefix}${DATABLOCK_FIELD_GAP}`).width;
+        ctx.fillStyle = applyBrite(atpaReadoutColor(atpaReadout.status), briteCh);
+        ctx.fillText(atpaReadout.text, line3X + prefixW, line3Y);
+      } else {
+        ctx.fillStyle = applyBrite(atpaReadoutColor(atpaReadout.status), briteCh);
+        ctx.fillText(atpaReadout.text, line3X, line3Y);
+      }
+    } else {
+      ctx.fillText(lines.line3, line3X, line3Y);
+    }
   }
 }
 
@@ -531,6 +570,8 @@ function drawTracks(
   }
 
   drawTpaRings(ctx, world, view, size);
+  drawManualTpaCones(ctx, world, view, size);
+  drawAtpaCones(ctx, world, view, size);
 
   for (const ac of world.aircraft) {
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
@@ -618,6 +659,59 @@ function drawTracks(
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
     drawDatablock(ctx, ac, p.x, p.y, view, world);
   }
+
+  drawAtpaConeMileage(ctx, world, view, size);
+}
+
+/**
+ * A/TPA Mileage digits alongside the painted T02-45 cone. Placement is a
+ * local pose (trailer, leader, requiredNm, status) offset from the same
+ * `atpaConePoints` axis the wedge uses. Digits paint only when that cone
+ * would — `selectAtpaConesToPaint` plus `shouldPaintAtpaGeometry` — so a
+ * suppressed cone never keeps a stray numeral. No wedge polyline here.
+ */
+function drawAtpaConeMileage(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  view: ScopeView,
+  size: ScopeViewSize,
+): void {
+  if (!view.atpa.on || !view.atpa.coneMileage) {
+    return;
+  }
+  const pairs = world.alerts.atpa;
+  if (pairs.length === 0) {
+    return;
+  }
+  ctx.font = datablockFontCss(view.charSizes.tools);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const pair of selectAtpaConesToPaint(pairs)) {
+    const trailing = world.aircraft.find((ac) => ac.callsign === pair.trailingCallsign);
+    const leading = world.aircraft.find((ac) => ac.callsign === pair.leadingCallsign);
+    if (!trailing || !leading) {
+      continue;
+    }
+    const td = view.tracks.get(trailing.id);
+    if (!shouldPaintAtpaGeometry(view.atpa.on, pair.status, atpaConePaintFlags(view, td))) {
+      continue;
+    }
+    if (td?.atpaConeMileageEnabled === false) {
+      continue;
+    }
+    const placed = atpaConeMileagePlacement({
+      trailing: { xNm: trailing.xNm, yNm: trailing.yNm },
+      leading: { xNm: leading.xNm, yNm: leading.yNm },
+      requiredNm: pair.requiredNm,
+      status: pair.status,
+    });
+    if (!placed) {
+      continue;
+    }
+    const p = nmToScreen(placed.eastNm, placed.northNm, view.camera, size);
+    ctx.fillStyle = applyBrite(atpaReadoutColor(placed.status), view.brite.tls);
+    ctx.fillText(placed.text, p.x, p.y);
+  }
 }
 
 /**
@@ -658,11 +752,12 @@ function drawPredictedTrackLines(
 }
 
 /**
- * CRC TPA J-rings: world-NM mileage circles about selected (or owned) tracks.
- * Stroke is TLS/tools (`TPA_STROKE_COLOR` / PTL white), not CA red. Canvas
- * bounds clip like range rings (no extra clip call). ATPA is a stored stub and
- * paints nothing (no pairing / cones). CA remains datablock text — not a 3 NM
- * halo. Display only — never a Command.
+ * CRC TPA J-rings: world-NM mileage circles about selected (or owned) tracks
+ * plus per-track `*J` rings. Stroke is TLS/tools (`TPA_STROKE_COLOR`), not CA
+ * red. Radius digits sit inside the ring at lower-left unless inhibited.
+ * Canvas bounds clip like range rings (no extra clip call). Manual `*P` cones
+ * are `drawManualTpaCones`; ATPA cones are `drawAtpaCones`. CA remains
+ * datablock text — not a 3 NM halo. Display only — never a Command.
  */
 function drawTpaRings(
   ctx: CanvasRenderingContext2D,
@@ -670,24 +765,196 @@ function drawTpaRings(
   view: ScopeView,
   size: ScopeViewSize,
 ): void {
-  // ATPA stub: even when on, no extra stroke.
-  void shouldPaintAtpaGeometry(view.atpa.on);
-  const targets = aircraftForTpaRings(
+  const targets = tpaRingsToPaint(
     view.tpa.on,
     world.selectedAircraftId,
     world.aircraft,
     view.tracks,
+    view.tpa.radiusNm,
   );
   if (targets.length === 0) {
     return;
   }
   ctx.strokeStyle = TPA_STROKE_COLOR;
   ctx.lineWidth = TPA_STROKE_PX;
-  for (const ac of targets) {
-    const worldPts = tpaRingPoints(ac.xNm, ac.yNm, view.tpa.radiusNm);
+  ctx.fillStyle = TPA_STROKE_COLOR;
+  ctx.font = datablockFontCss(view.charSizes.tools);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const { aircraft: ac, radiusNm } of targets) {
+    const worldPts = tpaRingPoints(ac.xNm, ac.yNm, radiusNm);
     const pts = worldPts.map((p) => nmToScreen(p.eastNm, p.northNm, view.camera, size));
     tracePolyline(ctx, pts, false);
     ctx.stroke();
+    if (tpaSizeReadoutEnabled(view.tracks.get(ac.id))) {
+      const digit = tpaRingDigitPlacement(ac.xNm, ac.yNm, radiusNm);
+      const p = nmToScreen(digit.eastNm, digit.northNm, view.camera, size);
+      ctx.fillText(digit.text, p.x, p.y);
+    }
+  }
+}
+
+/**
+ * Manual `*P` TPA cones along ground track. Reuses T02-45 `atpaConePoints` via
+ * `manualTpaConePoints`. Unfilled wedge, flat far end cap, TPA tools stroke.
+ * Warning/alert ATPA cones suppress this paint; J-rings never do.
+ */
+function drawManualTpaCones(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  view: ScopeView,
+  size: ScopeViewSize,
+): void {
+  const targets = tpaConesToPaint(world.aircraft, view.tracks, world.alerts.atpa, view.atpa.on);
+  if (targets.length === 0) {
+    return;
+  }
+  ctx.strokeStyle = TPA_STROKE_COLOR;
+  ctx.lineWidth = TPA_STROKE_PX;
+  ctx.fillStyle = TPA_STROKE_COLOR;
+  ctx.font = datablockFontCss(view.charSizes.tools);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const { aircraft: ac, lengthNm } of targets) {
+    const worldPts = manualTpaConePoints(ac.xNm, ac.yNm, ac.headingDeg, lengthNm);
+    if (worldPts.length < 2) {
+      continue;
+    }
+    const pts = worldPts.map((p) => nmToScreen(p.eastNm, p.northNm, view.camera, size));
+    if (tpaSizeReadoutEnabled(view.tracks.get(ac.id))) {
+      const digit = tpaConeDigitPlacement(ac.xNm, ac.yNm, ac.headingDeg, lengthNm);
+      const p = nmToScreen(digit.eastNm, digit.northNm, view.camera, size);
+      const gap = coneDigitGapBox(ctx, digit.text, p.x, p.y, view.charSizes.tools);
+      strokeConeAroundDigits(ctx, pts, gap, size);
+      ctx.fillText(digit.text, p.x, p.y);
+    } else {
+      strokeConeAroundDigits(ctx, pts, null, size);
+    }
+  }
+}
+
+/**
+ * ATPA cones from `world.alerts.atpa`. World-NM polyline → screen → stroke.
+ * Never filled. One cone per trailing track (highest status). Length is the
+ * pair's `requiredNm`. Display only — never a Command. Not a CA halo.
+ */
+/** Breathing room around the numerals where the cone line is cut away. */
+const CONE_DIGIT_GAP_PAD_PX = 1;
+
+interface ScreenBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Box the centered cone digits occupy on screen. `ctx.font` must already be
+ * the tools font so `measureText` matches what `fillText` will paint.
+ */
+function coneDigitGapBox(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  centerX: number,
+  centerY: number,
+  fontPx: number,
+): ScreenBox {
+  const cell = measureDatablockCellWidth(ctx);
+  const width = cell * text.length + CONE_DIGIT_GAP_PAD_PX * 2;
+  const height = fontPx + CONE_DIGIT_GAP_PAD_PX * 2;
+  return { x: centerX - width / 2, y: centerY - height / 2, width, height };
+}
+
+/**
+ * Stroke a cone so its lines stop at the mileage digits and pick up again on
+ * the far side (Fig 38/39), instead of running through the numerals. The gap
+ * is an even-odd clip hole, so the wedge stays one path and one stroke.
+ */
+function strokeConeAroundDigits(
+  ctx: CanvasRenderingContext2D,
+  pts: { x: number; y: number }[],
+  gap: ScreenBox | null,
+  size: ScopeViewSize,
+): void {
+  if (!gap) {
+    tracePolyline(ctx, pts, false);
+    ctx.stroke();
+    return;
+  }
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, size.widthPx, size.heightPx);
+  ctx.rect(gap.x, gap.y, gap.width, gap.height);
+  ctx.clip("evenodd");
+  tracePolyline(ctx, pts, false);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function atpaConePaintFlags(
+  view: ScopeView,
+  td: { atpaMonitorEnabled?: boolean; atpaWarningAlertEnabled?: boolean } | undefined,
+): AtpaConePaintFlags {
+  return {
+    atpaMonitorEnabled: td?.atpaMonitorEnabled,
+    atpaWarningAlertEnabled: td?.atpaWarningAlertEnabled,
+    alertCones: view.atpa.alertCones,
+    monitorCones: view.atpa.monitorCones,
+  };
+}
+
+function drawAtpaCones(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  view: ScopeView,
+  size: ScopeViewSize,
+): void {
+  const pairs = world.alerts.atpa;
+  if (!view.atpa.on || pairs.length === 0) {
+    return;
+  }
+  const byCallsign = new Map<string, Aircraft>();
+  for (const ac of world.aircraft) {
+    byCallsign.set(ac.callsign, ac);
+  }
+  ctx.lineWidth = TPA_STROKE_PX;
+  ctx.font = datablockFontCss(view.charSizes.tools);
+  for (const pair of selectAtpaConesToPaint(pairs)) {
+    const trailing = byCallsign.get(pair.trailingCallsign);
+    const leading = byCallsign.get(pair.leadingCallsign);
+    if (!trailing || !leading) {
+      continue;
+    }
+    const td = view.tracks.get(trailing.id);
+    if (!shouldPaintAtpaGeometry(view.atpa.on, pair.status, atpaConePaintFlags(view, td))) {
+      continue;
+    }
+    const worldPts = atpaConePoints(
+      trailing.xNm,
+      trailing.yNm,
+      leading.xNm,
+      leading.yNm,
+      pair.requiredNm,
+    );
+    if (worldPts.length < 2) {
+      continue;
+    }
+    const pts = worldPts.map((p) => nmToScreen(p.eastNm, p.northNm, view.camera, size));
+    ctx.strokeStyle = atpaConeColor(pair.status);
+    let gap: ScreenBox | null = null;
+    if (view.atpa.coneMileage && td?.atpaConeMileageEnabled !== false) {
+      const placed = atpaConeMileagePlacement({
+        trailing: { xNm: trailing.xNm, yNm: trailing.yNm },
+        leading: { xNm: leading.xNm, yNm: leading.yNm },
+        requiredNm: pair.requiredNm,
+        status: pair.status,
+      });
+      if (placed) {
+        const digit = nmToScreen(placed.eastNm, placed.northNm, view.camera, size);
+        gap = coneDigitGapBox(ctx, placed.text, digit.x, digit.y, view.charSizes.tools);
+      }
+    }
+    strokeConeAroundDigits(ctx, pts, gap, size);
   }
 }
 
@@ -726,15 +993,21 @@ function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): 
 }
 
 function drawChordHint(ctx: CanvasRenderingContext2D, view: ScopeView, ssaBottomY: number): void {
+  const stars = formatStarsChordReadout(view.starsChordEntry, view.starsChordArmed);
   const hint = view.pendingChord?.hint;
-  if (!hint) {
+  if (!stars && !hint) {
     return;
   }
   ctx.font = datablockFontCss(view.charSizes.lists);
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
+  if (stars) {
+    ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
+    ctx.fillText(stars, SSA_LEFT_PX, ssaBottomY + 4);
+    return;
+  }
   ctx.fillStyle = PALETTE.uiChrome;
-  ctx.fillText(hint, SSA_LEFT_PX, ssaBottomY + 4);
+  ctx.fillText(hint ?? "", SSA_LEFT_PX, ssaBottomY + 4);
 }
 
 /**

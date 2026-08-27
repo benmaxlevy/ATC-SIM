@@ -13,10 +13,13 @@
  * 5 dots, no phosphor; AUX HISTORY spinner shows 0–5 of those dots (F8 / H
  * toggles 0 ↔ last non-zero). PTL is a straight predicted track line (default
  * 1.0 min; AUX spinner 0.5/1/2/4). F7 toggles PTL ALL. PTL OWN is F3-owned
- * tracks; ALL wins if both are on. TPA J-rings (2/3/5/10 NM) about the selected
- * track, or owned tracks if none selected; ATPA is a stored stub that paints
- * nothing. DCB docks TOP/LEFT/RIGHT/BOTTOM. Altitude filter default 000–180;
- * FILTER stays on MAIN. Discrete range presets only. Not NAS STARS.
+ * tracks; ALL wins if both are on. TPA J-rings: DCB 2/3/5/10 NM about the
+ * selected track (or owned tracks if none selected), plus per-track `*J` /
+ * `*P` session graphics (1–30 NM, not PREF). ATPA master plus four DCB latches
+ * (A/TPA Mileage, Intrail Distance, Alert Cones, Monitor Cones) gate cones and
+ * readouts. ATPA cones paint from `world.alerts.atpa` when on. DCB docks
+ * TOP/LEFT/RIGHT/BOTTOM. Altitude filter default 000–180; FILTER stays on MAIN.
+ * Discrete range presets only. Not NAS STARS.
  *
  * Scope display state only. Never a Command, readback, or intent.
  */
@@ -28,6 +31,7 @@ import {
   type AltitudeFilter,
   type FilterEntry,
 } from "./altitudeFilter";
+import { idleStarsChordEntry, type StarsChordAction, type StarsChordEntry } from "./starsChord";
 import {
   AIRPORT_REF_EAST_NM,
   AIRPORT_REF_NORTH_NM,
@@ -151,11 +155,11 @@ export interface ScopeView {
   /** PTL length in minutes. Default 1.0 (T02-07). AUX spinner 0.5/1/2/4. */
   ptlMinutes: PtlMinutes;
   /**
-   * TPA J-rings (CRC analog). Default off, 5 NM. Display only — never Command IR.
-   * Selected track; if none selected, F3-owned tracks.
+   * TPA. DCB `{ on, radiusNm }` is the toggle + 2/3/5/10 spinner (PREF).
+   * Per-track `*J` / `*P` graphics live on `TrackDisplay` (session, not PREF).
    */
   tpa: TpaState;
-  /** ATPA stub. Stored boolean; paints nothing (no pairing / cones). */
+  /** ATPA master toggle. Cones paint from `world.alerts.atpa` when on. */
   atpa: AtpaState;
   /**
    * Altitude filter (Mode C hundreds). FOA/CRC analog; default 000–180.
@@ -164,6 +168,13 @@ export interface ScopeView {
   altitudeFilter: AltitudeFilter;
   /** Scope-focus `F` chord. Idle when not entering hundreds. */
   filterEntry: FilterEntry;
+  /** Scope-focus `*` TPA/ATPA chord. Idle when not entering. Display only. */
+  starsChordEntry: StarsChordEntry;
+  /**
+   * Track-scoped `*J` / `*P` / `*J#` / `*P#` waiting for a slew. Null when none.
+   * Survives the 1.5 s chord timeout until apply, Esc, or a new `*` chord.
+   */
+  starsChordArmed: StarsChordAction | null;
   /**
    * SSA FILTER: which existing SSA lines paint (TIME / ALTSTG / FILTER / RANGE /
    * OFF CNTR / STATUS / PTL). Default all on. Display only — not the altitude
@@ -258,6 +269,8 @@ export function createScopeView(
     atpa: { ...DEFAULT_ATPA_STATE },
     altitudeFilter: { ...DEFAULT_ALTITUDE_FILTER },
     filterEntry: idleFilterEntry(DEFAULT_ALTITUDE_FILTER),
+    starsChordEntry: idleStarsChordEntry(),
+    starsChordArmed: null,
     ssaFilter: defaultSsaVisibility(),
     giTextLines,
     giFilterVisible: defaultGiVisibility(giTextLines),
@@ -363,9 +376,29 @@ export function stepTpaRadius(view: ScopeView, delta: -1 | 1): void {
 
 export { formatDcbTpaMiReadout };
 
-/** DCB ATPA stub: store the boolean; renderer paints nothing. */
+/** DCB ATPA master toggle. Cones paint when on and pairs exist. */
 export function toggleAtpaOn(view: ScopeView): void {
   view.atpa.on = !view.atpa.on;
+}
+
+/** DCB A/TPA Mileage. Display only — never a Command. */
+export function toggleAtpaConeMileage(view: ScopeView): void {
+  view.atpa.coneMileage = !view.atpa.coneMileage;
+}
+
+/** DCB Intrail Distance. Display only — never a Command. */
+export function toggleAtpaInTrailDistance(view: ScopeView): void {
+  view.atpa.inTrailDistance = !view.atpa.inTrailDistance;
+}
+
+/** DCB Alert Cones (alert **and** warning). Display only — never a Command. */
+export function toggleAtpaAlertCones(view: ScopeView): void {
+  view.atpa.alertCones = !view.atpa.alertCones;
+}
+
+/** DCB Monitor Cones. Display only — never a Command. */
+export function toggleAtpaMonitorCones(view: ScopeView): void {
+  view.atpa.monitorCones = !view.atpa.monitorCones;
 }
 
 export function setDcbDock(view: ScopeView, dock: DcbDock): void {

@@ -51,6 +51,15 @@ test("T04-24/T04-28/T05-14 AC1/AC2 — shipped inventory lists and loads KDEM sc
       sessionSetupVisible: false,
       source: "scenarios/kdem-ils09",
     },
+    {
+      id: "kdem-atpa",
+      airportIcao: "KDEM",
+      airportName: "Demo Field",
+      label: "Demo Field — ATPA in-trail bench",
+      default: false,
+      sessionSetupVisible: false,
+      source: "scenarios/kdem-atpa",
+    },
   ]);
   expect(loadPlayableScenario("kdem-09").activeRunwayId).toBe("09");
   expect(loadPlayableScenario("kdem-ils09").activeRunwayId).toBe("09");

@@ -76,6 +76,40 @@ export interface TrackDisplay {
   pointoutAccepted?: boolean;
   /** Pointout rejected visual state flag. */
   pointoutRejected?: boolean;
+  /**
+   * ATPA monitor cone enable. Default on. T02-47 / T02-49 (`*BE`/`*BI`)
+   * wire this; the paint gate already honors it.
+   */
+  atpaMonitorEnabled?: boolean;
+  /**
+   * ATPA warning and alert cone enable. Default on. T02-47 / T02-49
+   * (`*AE`/`*AI`). Monitor uses `atpaMonitorEnabled`.
+   */
+  atpaWarningAlertEnabled?: boolean;
+  /**
+   * Per-track Intrail Distance. Default enabled. Independent of cone mileage.
+   * Scope display only — never Aircraft.intent.
+   */
+  atpaInTrailDistanceEnabled: boolean;
+  /**
+   * Per-track A/TPA Mileage. Default enabled. Independent of in-trail distance.
+   */
+  atpaConeMileageEnabled: boolean;
+  /**
+   * Manual TPA J-ring radius in NM (`*J(#.#)`). Session state — not PREF.
+   * Chord range is 1–30 with tenths (T02-49); DCB spinner stays 2/3/5/10.
+   */
+  tpaRingNm?: number;
+  /**
+   * Manual TPA cone length in NM (`*P(#.#)`). Session state — not PREF.
+   * Axis is ground track (`Aircraft.headingDeg`), not assigned heading.
+   */
+  tpaConeNm?: number;
+  /**
+   * Size-readout digits on this track's ring/cone. Default enabled.
+   * `*D+I` / inhibit via `*D+` hides digits and keeps the stroke.
+   */
+  tpaSizeReadoutEnabled?: boolean;
 }
 
 export function createTrackDisplay(ownership: TrackOwnership = "unowned"): TrackDisplay {
@@ -91,6 +125,10 @@ export function createTrackDisplay(ownership: TrackOwnership = "unowned"): Track
     sp2: "",
     queriedUntilSimMs: 0,
     forcedFdb: false,
+    atpaMonitorEnabled: true,
+    atpaWarningAlertEnabled: true,
+    atpaInTrailDistanceEnabled: true,
+    atpaConeMileageEnabled: true,
   };
 }
 

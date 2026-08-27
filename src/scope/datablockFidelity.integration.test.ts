@@ -43,6 +43,7 @@ function createMockCtx() {
     lineTo: () => {},
     arc: () => {},
     rect: () => {},
+    clip: () => {},
     stroke: () => {},
     fill: () => {},
     strokeRect: () => {},

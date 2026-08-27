@@ -10,8 +10,9 @@
  * then 1–9; pixel-constant default 36 CSS px; DCB LDR length 0/24/36/48), altitude filter
  * (scope-focus `F`, default 000–180), F3/F4 ownership color stub (not NAS),
  * F1 help overlay (`TRAINER KEYS — NOT CRC`), Tab cycle focus, `/` radio focus.
- * T04-09 CA displays static `CA` + tone (no yellow). T04-10 MSAW still
- * tints yellow then red. CA is raised only for current conflicts. The PPI does
+ * Scope-focus `*` TPA/ATPA slew chords (R07 Table 36) parse and prompt on the PPI.
+ * T04-09 CA displays static `CA` + tone (no yellow). T04-10 MSAW paints a
+ * yellow then red `MSAW` tag the same way; neither tints the block. CA is raised only for current conflicts. The PPI does
  * not compute pair distance.
  *
  * DCB (T02-16/T02-17/T02-22/T02-25) is a green cell grid on the PPI glass; it calls these same
@@ -163,12 +164,42 @@ export {
   isMouseBinding,
   isRadioFocusSlashKey,
   isScopeChordLive,
+  isStarsChordPrefixKey,
   isTowerHandoffKey,
   leaderDigitFromKey,
   mouseKeyBindings,
   scopeFocusKeyBindings,
 } from "./keymap";
 export type { KeyBinding, KeyFocus, ScopeChord } from "./keymap";
+export {
+  STARS_CHORD_NM_MAX,
+  STARS_CHORD_NM_MIN,
+  applyStarsChordAction,
+  armOrApplyStarsChordAction,
+  beginStarsChordEntry,
+  cancelStarsChordEntry,
+  commitStarsChord,
+  expireStarsChordEntry,
+  formatStarsChordAction,
+  formatStarsChordReadout,
+  handleStarsChordEntryKey,
+  idleStarsChordEntry,
+  parseStarsChord,
+  rejectStarsChordEntry,
+  starsChordActionNeedsSlew,
+} from "./starsChord";
+export type {
+  StarsChordAction,
+  StarsChordApplyResult,
+  StarsChordArmOrApplyResult,
+  StarsChordEnableMode,
+  StarsChordEntry,
+  StarsChordEntryPhase,
+  StarsChordKeyOutcome,
+  StarsChordResult,
+  StarsChordTarget,
+  StarsChordToggleMode,
+} from "./starsChord";
 export {
   ALWAYS_ON_SCOPE_KEYS,
   HELP_OVERLAY_ID,
@@ -218,6 +249,10 @@ export {
   toggleSsaFilter,
   toggleTpaOn,
   toggleAtpaOn,
+  toggleAtpaAlertCones,
+  toggleAtpaConeMileage,
+  toggleAtpaInTrailDistance,
+  toggleAtpaMonitorCones,
   formatDcbTpaMiReadout,
 } from "./scopeView";
 export type { MapLayerId, ScopeView } from "./scopeView";
@@ -239,6 +274,7 @@ export type { DcbCellKind, DcbMenu, DcbMenuHost, DcbSpinnerCell, DcbSpinnerState
 export {
   DCB_PREF_READOUT_MAX_CHARS,
   DCB_PREF_SLOT_COUNT,
+  DCB_PREF_SCHEMA_VERSION,
   DCB_THICKNESS_PX,
   activeDcbPrefName,
   applyDcbPref,
@@ -359,13 +395,55 @@ export {
   TPA_STROKE_COLOR,
   TPA_STROKE_PX,
   aircraftForTpaRings,
+  atpaFeatureEffective,
   formatDcbTpaMiReadout as formatTpaMiReadout,
-  shouldPaintAtpaGeometry,
+  formatTpaSizeReadout,
+  groundTrackPointNm,
+  manualTpaConePoints,
   stepTpaRadiusNm,
+  tpaConeDigitPlacement,
+  tpaConesToPaint,
+  tpaRingDigitPlacement,
   tpaRingPoints,
+  tpaRingsToPaint,
   tpaScreenRadiusPx,
+  tpaSizeReadoutEnabled,
 } from "./tpa";
-export type { AtpaState, TpaRadiusNm, TpaState } from "./tpa";
+export type {
+  AtpaFeature,
+  AtpaState,
+  TpaConePaint,
+  TpaRadiusNm,
+  TpaRingPaint,
+  TpaState,
+} from "./tpa";
+export {
+  ATPA_CONE_HALF_ANGLE_DEG,
+  atpaConeColor,
+  atpaConePoints,
+  atpaSuppressesManualTpaCone,
+  selectAtpaConesToPaint,
+  shouldPaintAtpaGeometry,
+} from "./atpaCone";
+export type { AtpaConePaintFlags, AtpaNmPoint } from "./atpaCone";
+export {
+  ATPA_CONE_MILEAGE_ALONG_FRAC,
+  atpaConeMileagePlacement,
+  atpaConeMileageReadout,
+  atpaInTrailDatablockReadout,
+  atpaPairForTrailing,
+  atpaReadoutColor,
+  atpaReadoutEnabled,
+  formatAtpaConeMileage,
+  formatAtpaInTrailDistance,
+} from "./atpaReadout";
+export type {
+  AtpaConeMileagePlacement,
+  AtpaConeMileagePose,
+  AtpaInTrailReadout,
+  AtpaNmPose,
+  AtpaReadoutGate,
+} from "./atpaReadout";
 export {
   IDENT_DISPLAY_FLASH_MS,
   LDB_QUERY_DURATION_MS,
@@ -422,6 +500,7 @@ export {
 export type { DatablockMetrics, LeaderDir, LeaderLengthPx } from "./leader";
 export {
   SCRATCHPAD_MAX_LEN,
+  DATABLOCK_FIELD_GAP,
   datablockMetrics,
   datablockRect,
   formatAltitudeHundreds,
@@ -430,6 +509,7 @@ export {
   formatGroundSpeedTens,
   formatLimitedDatablock,
   formatPartialDatablock,
+  fullDatablockLine3Parts,
   linesForDatablock,
   sanitizeScratchpad,
   withInboundHandoffCue,
@@ -439,6 +519,7 @@ export type {
   DatablockMode,
   DatablockSource,
   FullDatablock,
+  FullDatablockLine3Parts,
   LimitedDatablock,
   LimitedDatablockOpts,
   PartialDatablock,

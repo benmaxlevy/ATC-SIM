@@ -8,23 +8,70 @@ been started.
 
 ### Real ATPA pairing and predicted geometry
 
-The DCB currently exposes an ATPA toggle, but `ATPA` is deliberately a stored
-no-op. Implement later:
+Live now: catalog volumes walked by `approachId` (T02-43), in-trail pairing
+and predicted monitor/warning/alert status on `world.alerts.atpa` (T02-44),
+predicted cones (T02-45), datablock in-trail distance plus A/TPA cone mileage
+(T02-46), and four real AUX TPA/ATPA cells plus master (T02-47). A feature
+paints only when `atpa.on && atpa[feature]`. Alert Cones gates alert and
+warning; Monitor Cones is monitor-only. The four cells stay clickable with
+master off so PREF can store a setup.
 
-- in-trail pairing and sequencing;
-- predicted separation / closure calculations;
-- controller-selected ATPA thresholds;
-- predicted rings, cones, or alert geometry;
-- appropriate audio and datablock alerts.
+Later work must keep:
 
-Keep this separate from TPA: TPA's controller-selected 2/3/5/10 NM J-rings
-already work. Do not turn the TPA ring into an automatic CA halo.
+- volumes as data, walked by `approachId` — no facility id branch;
+- CA as T04-09 datablock text (no 3 NM halo; circles on this scope are TPA
+  J-rings);
+- no aural ATPA tone (CA remains the only conflict audio);
+- TPA J-rings and the `TPA_MI` spinner frozen as T02-28 (2 / 3 / 5 / 10 NM).
+
+Wake-category minima, adapted 2.5 NM extras, per-position adaptation, TDW
+white monitor, and authored-vs-NAS volumes stay in **ATPA separation
+criteria not yet modeled** below.
+
+### ATPA separation criteria not yet modeled
+
+T02-44 ships in-trail pairing and predicted monitor/warning/alert status
+(`world.alerts.atpa`) using **basic radar separation only**. Visible now:
+`evaluateAtpa` reads `basicSeparationNm` / `reducedSeparationNm` /
+`reducedWithinNm` from each catalog volume, pairs eligible tracks inside an
+enabled volume, and classifies status from current distance plus linear
+closure (R07 45 s warning / 24 s alert). Cone length is therefore identical
+for a heavy leader and a light leader.
+
+Deliberately missing, each of which later work must keep the JSON-minima
+path and must **not** invent numbers from model recall:
+
+- **Wake-category in-trail minima.** R07 says cone length is "the distance
+  required by wake category or basic radar separation" but publishes no
+  matrix — its CWT A–I table is only the datablock category letter with a
+  weight range. `Aircraft.wakeCategory` is already the FDB letter; do not
+  let `requiredSeparationNm` read it until a cited table (JO 7110.65 or
+  facility adaptation) is in-repo. T02-50 greps `src/core/alerts/atpa.ts`
+  and live ATPA paths for `wakeCategory`; keep that gate.
+- **Adapted 2.5 NM eligibility** beyond "both tracks inside
+  `reducedWithinNm` of the threshold along the final." Real STARS reduces
+  only under extra conditions (leader type, runway occupancy, facility
+  authorization). Keep the volume JSON fields; extend the predicate, do
+  not hardcode 2.5.
+- **Per-position ATPA adaptation.** We are a single TCP, so there is no
+  "adapted to display" matrix. A multi-controller trainer must not assume
+  every position sees the same volume enablement.
+- **TDW white monitor variant.** The tower display workstation paints the
+  monitor cone white; this trainer has no TDW. Scope ATPA monitor stays
+  TPA blue until a TDW surface exists.
+- **Aural ATPA alerting.** No ATPA tone. CA (T04-09) remains the only
+  conflict audio; do not reuse the CA tone for in-trail ATPA.
+- **Volumes as authored trainer geometry** rather than imported NAS
+  adaptation. KDEM `atpa-volumes.json` is hand-authored. A second airport
+  still adds a JSON row walked by `approachId`; do not special-case KDEM
+  or invent an importer that silently fills unsourced sizes.
 
 ### Richer TPA controls
 
-The shipped TPA implementation supports selected-track rings, or owned-track
-rings when nothing is selected. Possible follow-ups are the CRC `*J` keyboard
-chord, explicit target selection for multi-ring use, and richer ring styling.
+Shipped in T02-48 / T02-49: per-track `*J` / `*P` rings and ground-track cones
+(1–30 NM, session state not PREF), `**J` / `**P` clear-all, and size-readout
+inhibit. DCB TPA_MI stays 2/3/5/10. F7 `<MULTI FUNC>` inhibit commands stay
+deferred under "Manual Inhibit Commands and Safety Inhibit Glyphs".
 
 ### Track lifecycle and multi-controller networking
 

@@ -1,0 +1,34 @@
+{
+  "airportId": "KDEM",
+  "note": "ATPA approach volumes are authored trainer adaptation, not NAS data (R07). Dimensions and minima are not a published STARS matrix.",
+  "atpaVolumes": [
+    {
+      "id": "ATPA27",
+      "approachId": "ILS27",
+      "enabled": true,
+      "lengthNm": 15,
+      "halfWidthNm": 1.5,
+      "floorFt": 0,
+      "ceilingFt": 6000,
+      "courseToleranceDeg": 30,
+      "basicSeparationNm": 3,
+      "reducedSeparationNm": 2.5,
+      "reducedWithinNm": 10,
+      "note": "Authored trainer adaptation, not NAS data. Basic radar minima only (3 NM, reduced 2.5 NM inside 10 NM)."
+    },
+    {
+      "id": "ATPA09",
+      "approachId": "ILS09",
+      "enabled": true,
+      "lengthNm": 15,
+      "halfWidthNm": 1.5,
+      "floorFt": 0,
+      "ceilingFt": 6000,
+      "courseToleranceDeg": 30,
+      "basicSeparationNm": 3,
+      "reducedSeparationNm": 2.5,
+      "reducedWithinNm": 10,
+      "note": "Authored trainer adaptation, not NAS data. Basic radar minima only (3 NM, reduced 2.5 NM inside 10 NM)."
+    }
+  ]
+}

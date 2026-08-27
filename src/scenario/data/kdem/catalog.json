@@ -12,6 +12,7 @@
     "ils": "ils.json",
     "fixes": "fixes.json",
     "procedures": "procedures.json",
-    "sids": "sids.json"
+    "sids": "sids.json",
+    "atpaVolumes": "atpa-volumes.json"
   }
 }
