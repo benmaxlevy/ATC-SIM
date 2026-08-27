@@ -63,6 +63,8 @@ export interface StarLeg {
 export interface StarTransition {
   id: string;
   name: string;
+  runwayId?: string;
+  runways?: string[];
   legs: StarLeg[];
 }
 

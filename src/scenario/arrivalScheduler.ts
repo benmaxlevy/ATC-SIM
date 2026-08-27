@@ -13,12 +13,14 @@ export interface ArrivalTrafficConfig {
   initialArrivalCount?: number;
   arrivalsPerHour?: number;
   seed?: number;
+  activeRunwayId?: string;
 }
 
 export interface ValidatedArrivalTrafficConfig {
   initialArrivalCount: number;
   arrivalsPerHour: number;
   seed: number;
+  activeRunwayId?: string;
 }
 
 export interface ScheduledArrival {
@@ -62,6 +64,7 @@ export function validateArrivalTrafficConfig(
     ),
     arrivalsPerHour: boundedRate(config.arrivalsPerHour ?? DEFAULT_ARRIVALS_PER_HOUR),
     seed: boundedInteger(config.seed ?? 1, 0, 0xffffffff, "seed"),
+    activeRunwayId: config.activeRunwayId,
   };
 }
 
@@ -125,8 +128,10 @@ export function createArrivalScheduler(
   config: ArrivalTrafficConfig = {},
   reservedCallsigns: readonly string[] = [],
   startSimMs = 0,
+  activeRunwayId?: string,
 ): ArrivalScheduler {
   const validated = validateArrivalTrafficConfig(config);
+  const effectiveRunwayId = activeRunwayId ?? validated.activeRunwayId;
   const initialCount = validated.initialArrivalCount;
   const futureCount =
     validated.arrivalsPerHour === 0
@@ -136,6 +141,7 @@ export function createArrivalScheduler(
     catalog,
     count: initialCount + futureCount,
     seed: validated.seed,
+    activeRunwayId: effectiveRunwayId,
   });
   const callsigns = callsignSequence(
     initialCount + futureCount,

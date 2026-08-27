@@ -91,4 +91,79 @@ describe("departureSpawnPose (AC1)", () => {
       fromSectorId: "TWR",
     });
   });
+
+  test("T04-29 AC3 — In East Flow, departures spawn at RW09 threshold (-1.645, 0) with heading 090 and armed BAY1 RW09 transition toward BAYEA", () => {
+    const pose = departureSpawnPose(catalog, "09", "BAY1", "NORMA", 10000);
+
+    // RW09 threshold is at (-1.645, 0), heading 090 deg
+    // 0.8 NM along 090 deg (sin 90 = 1, cos 90 = 0) -> x = -1.645 + 0.8 = -0.845, y = 0
+    expect(pose.xNm).toBeCloseTo(-0.845, 4);
+    expect(pose.yNm).toBeCloseTo(0, 4);
+    expect(pose.headingDeg).toBe(90);
+    expect(pose.altitudeFt).toBe(DEPARTURE_SPAWN_ALTITUDE_FT);
+    expect(pose.speedKt).toBe(DEPARTURE_SPAWN_SPEED_KT);
+    expect(pose.assignedAltitudeFt).toBe(10000);
+    expect(pose.sidId).toBe("BAY1");
+    expect(pose.runwayId).toBe("09");
+    expect(pose.transitionId).toBe("NORMA");
+
+    // Route for BAY1 via RW09 to NORMA: RW09 leg (BAYEA) -> enroute RW09 transition (BAYNE, NORMA)
+    expect(pose.routeFixIds).toEqual(["BAYEA", "BAYNE", "NORMA"]);
+
+    // Armed Intent
+    expect(pose.intent.lateral).toEqual({
+      type: "PROCEDURE",
+      sidId: "BAY1",
+      starId: "BAY1",
+      toFixIndex: 0,
+      routeFixIds: ["BAYEA", "BAYNE", "NORMA"],
+    });
+    expect(pose.intent.vertical).toEqual({
+      type: "VIA_SID",
+      sidId: "BAY1",
+    });
+    expect(pose.intent.assignedHeadingDeg).toBe(90);
+  });
+
+  test("T04-29 AC4 — In West Flow, departures continue to spawn at RW27 threshold (0, 0) with heading 270 and armed BAY1 RW27 transition toward BAYEE", () => {
+    const pose = departureSpawnPose(catalog, "27", "BAY1", "OCTTA", 8000);
+
+    // RW27 threshold is at (0, 0), heading 270 deg -> x = -0.8, y = 0
+    expect(pose.xNm).toBeCloseTo(-0.8, 4);
+    expect(pose.yNm).toBeCloseTo(0, 4);
+    expect(pose.headingDeg).toBe(270);
+    expect(pose.routeFixIds).toEqual(["BAYEE", "BAYSO", "OCTTA"]);
+    expect(pose.intent.lateral?.routeFixIds).toEqual(["BAYEE", "BAYSO", "OCTTA"]);
+    expect(pose.intent.assignedHeadingDeg).toBe(270);
+  });
+
+  test("T04-29 — spawnDeparture for RW09 creates aircraft in world and offers departure handoff from TWR", () => {
+    const log = new SessionLog();
+    const world = createWorld({ catalog, sessionLog: log });
+    const ac = spawnDeparture(
+      world,
+      {
+        callsign: "DAL900",
+        runwayId: "09",
+        sidId: "BAY1",
+        transitionId: "OCTTA",
+        assignedAltitudeFt: 14000,
+        aircraftType: "B738",
+      },
+      catalog,
+    );
+
+    expect(world.aircraft).toContain(ac);
+    expect(ac.callsign).toBe("DAL900");
+    expect(ac.xNm).toBeCloseTo(-0.845, 4);
+    expect(ac.yNm).toBeCloseTo(0, 4);
+    expect(ac.headingDeg).toBe(90);
+
+    const spawnedEvents = log.byType("handoff.departure.spawned");
+    expect(spawnedEvents).toHaveLength(1);
+    expect(spawnedEvents[0]?.callsign).toBe("DAL900");
+    expect(spawnedEvents[0]?.fromSectorId).toBe("TWR");
+    expect(spawnedEvents[0]?.runwayId).toBe("09");
+    expect(spawnedEvents[0]?.sidId).toBe("BAY1");
+  });
 });

@@ -265,3 +265,67 @@ test("T04-14 seed=1 n=6 snapshot: seeded slots and stagger avoid mirrored pairs"
     }
   }
 });
+
+test("T04-29 AC1 — In East Flow (activeRunwayId: '09'), listStarSlots and assignStarRoutes select only East Flow transitions (WN, WS)", () => {
+  const eastSlots = listStarSlots(kdem, "09");
+  expect(eastSlots).toEqual([
+    { starId: "DEM1", transitionId: "WN" },
+    { starId: "DEM1", transitionId: "WS" },
+  ]);
+
+  const assigned = assignStarRoutes({ catalog: kdem, count: 6, seed: 1, activeRunwayId: "09" });
+  expect(assigned).toHaveLength(6);
+  for (const row of assigned) {
+    expect(["WN", "WS"]).toContain(row.transitionId);
+    expect(row.starId).toBe("DEM1");
+    // Verify feeding WMERG (all WN/WS routeFixIds terminate at WMERG)
+    expect(row.pose.routeFixIds).toContain("WMERG");
+    expect(row.pose.routeFixIds).not.toContain("MERGE");
+  }
+});
+
+test("T04-29 AC2 — In West Flow (activeRunwayId: '27'), listStarSlots and assignStarRoutes select only West Flow transitions (N, S)", () => {
+  const westSlots = listStarSlots(kdem, "27");
+  expect(westSlots).toEqual([
+    { starId: "DEM1", transitionId: "N" },
+    { starId: "DEM1", transitionId: "S" },
+  ]);
+
+  const assigned = assignStarRoutes({ catalog: kdem, count: 6, seed: 1, activeRunwayId: "27" });
+  expect(assigned).toHaveLength(6);
+  for (const row of assigned) {
+    expect(["N", "S"]).toContain(row.transitionId);
+    expect(row.starId).toBe("DEM1");
+    // Verify feeding MERGE (all N/S routeFixIds terminate at MERGE)
+    expect(row.pose.routeFixIds).toContain("MERGE");
+    expect(row.pose.routeFixIds).not.toContain("WMERG");
+  }
+});
+
+test("T04-29 fallback — unconfigured/unknown runway falls back to all catalog slots", () => {
+  const fallbackSlots = listStarSlots(kdem, "99");
+  expect(fallbackSlots).toEqual(listStarSlots(kdem));
+});
+
+test("T04-29 geometric flow fallback — untagged transitions filter by heading alignment", () => {
+  // Catalog with runwayId stripped from transitions
+  const untaggedCatalog: ProcedureCatalog = structuredClone(kdem);
+  for (const star of untaggedCatalog.stars) {
+    for (const transition of star.transitions) {
+      delete transition.runwayId;
+      delete transition.runways;
+    }
+  }
+
+  const westSlots = listStarSlots(untaggedCatalog, "27");
+  expect(westSlots).toEqual([
+    { starId: "DEM1", transitionId: "N" },
+    { starId: "DEM1", transitionId: "S" },
+  ]);
+
+  const eastSlots = listStarSlots(untaggedCatalog, "09");
+  expect(eastSlots).toEqual([
+    { starId: "DEM1", transitionId: "WN" },
+    { starId: "DEM1", transitionId: "WS" },
+  ]);
+});

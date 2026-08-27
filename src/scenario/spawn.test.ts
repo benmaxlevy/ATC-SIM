@@ -359,3 +359,30 @@ test("src/core does not import scenario JSON", () => {
     expect(String(src), path).not.toMatch(/from\s+["']@scenario["']/);
   }
 });
+
+test("T04-29 downwind spawn offsets relative to active runway", () => {
+  const kdemEast = {
+    ...loadKdem(),
+    activeRunwayId: "09",
+  };
+  const worldEast = createWorldForSession(kdemEast, 10, 1);
+  const kdemWest = loadKdem(); // activeRunwayId: "27"
+  const worldWest = createWorldForSession(kdemWest, 10, 1);
+
+  expect(worldEast.aircraft).toHaveLength(10);
+  expect(worldWest.aircraft).toHaveLength(10);
+
+  for (let i = 0; i < 10; i += 1) {
+    const acEast = worldEast.aircraft[i]!;
+    const acWest = worldWest.aircraft[i]!;
+
+    // RW09 downwind heading is 270 deg (reciprocal of 090)
+    expect(acEast.headingDeg).toBe(270);
+    // RW27 downwind heading is 090 deg (reciprocal of 270)
+    expect(acWest.headingDeg).toBe(90);
+
+    // RW09 threshold x is -1.645 vs RW27 threshold x at 0
+    expect(acEast.xNm - acWest.xNm).toBeCloseTo(-1.645, 4);
+    expect(acEast.yNm).toBeCloseTo(acWest.yNm, 4);
+  }
+});

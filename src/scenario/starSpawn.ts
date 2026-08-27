@@ -6,6 +6,7 @@
  */
 
 import { buildFixRegistry, courseDeg, mulberry32, normalizeHeadingDeg, type NmPoint } from "@core";
+import { resolveRunwayHeading, resolveRunwayThreshold } from "./departureSpawn";
 import type {
   AltConstraint,
   ProcedureCatalog,
@@ -120,15 +121,102 @@ export function starRouteFixIds(
   return [...transition.legs.map((leg) => leg.fixId), ...star.common.map((leg) => leg.fixId)];
 }
 
-/** Every `(starId, transitionId)` pair in catalog array order. */
-export function listStarSlots(catalog: ProcedureCatalog): StarSlot[] {
-  const slots: StarSlot[] = [];
+/** Every `(starId, transitionId)` pair matching activeRunwayId (or all if omitted/fallback) in catalog array order. */
+export function listStarSlots(catalog: ProcedureCatalog, activeRunwayId?: string): StarSlot[] {
+  const allSlots: StarSlot[] = [];
   for (const star of catalog.stars) {
     for (const transition of star.transitions) {
-      slots.push({ starId: star.id, transitionId: transition.id });
+      allSlots.push({ starId: star.id, transitionId: transition.id });
     }
   }
-  return slots;
+
+  if (!activeRunwayId) {
+    return allSlots;
+  }
+
+  const cleanRwy = activeRunwayId.replace(/^RW/i, "").trim().toUpperCase();
+  const paddedRwy = cleanRwy.length === 1 ? cleanRwy.padStart(2, "0") : cleanRwy;
+
+  // 1. Explicit runway tagging on transition
+  const explicitMatches: StarSlot[] = [];
+  for (const star of catalog.stars) {
+    for (const transition of star.transitions) {
+      const rId = transition.runwayId?.replace(/^RW/i, "").trim().toUpperCase();
+      const rIdPadded = rId?.length === 1 ? rId.padStart(2, "0") : rId;
+      const matchId = rId && (rId === cleanRwy || rIdPadded === paddedRwy);
+      const matchRunways = transition.runways?.some((r) => {
+        const c = r.replace(/^RW/i, "").trim().toUpperCase();
+        const cp = c.length === 1 ? c.padStart(2, "0") : c;
+        return c === cleanRwy || cp === paddedRwy;
+      });
+      if (matchId || matchRunways) {
+        explicitMatches.push({ starId: star.id, transitionId: transition.id });
+      }
+    }
+  }
+  if (explicitMatches.length > 0) {
+    return explicitMatches;
+  }
+
+  // If runway does not exist at this facility, fallback to all slots
+  const hasRunway =
+    catalog.fixes.some(
+      (f) =>
+        f.kind === "THRESHOLD" &&
+        (f.id.toUpperCase() === `RW${cleanRwy}` ||
+          f.id.toUpperCase() === `RW${paddedRwy}` ||
+          f.id.toUpperCase() === cleanRwy ||
+          f.id.toUpperCase() === paddedRwy),
+    ) ||
+    catalog.approaches.some((app) => {
+      const r = app.runway.replace(/^RW/i, "").trim().toUpperCase();
+      return r === cleanRwy || r === paddedRwy;
+    }) ||
+    catalog.sids.some((s) =>
+      s.runwayTransitions?.some((rt) => {
+        const r = rt.runwayId.replace(/^RW/i, "").trim().toUpperCase();
+        return r === cleanRwy || r === paddedRwy;
+      }),
+    );
+
+  if (!hasRunway) {
+    return allSlots;
+  }
+
+  // 2. Geometric flow alignment heuristic toward runway threshold
+  const threshold = resolveRunwayThreshold(catalog, activeRunwayId);
+  const rwyHeading = resolveRunwayHeading(catalog, undefined, activeRunwayId);
+  const geoMatches: StarSlot[] = [];
+
+  for (const star of catalog.stars) {
+    for (const transition of star.transitions) {
+      const lastFixId =
+        star.common.length > 0
+          ? star.common[star.common.length - 1]!.fixId
+          : transition.legs[transition.legs.length - 1]?.fixId;
+      if (!lastFixId) continue;
+      try {
+        const lastFix = fixXy(catalog, lastFixId);
+        const bearingToThreshold = courseDeg(lastFix, threshold);
+        let diffDeg = Math.abs(normalizeHeadingDeg(bearingToThreshold - rwyHeading));
+        if (diffDeg > 180) {
+          diffDeg = 360 - diffDeg;
+        }
+        if (diffDeg <= 90) {
+          geoMatches.push({ starId: star.id, transitionId: transition.id });
+        }
+      } catch {
+        // ignore missing fix
+      }
+    }
+  }
+
+  if (geoMatches.length > 0) {
+    return geoMatches;
+  }
+
+  // 3. Graceful fallback
+  return allSlots;
 }
 
 /**
@@ -185,6 +273,13 @@ function slotKey(slot: StarSlot): string {
   return `${slot.starId}\0${slot.transitionId}`;
 }
 
+export interface AssignStarRoutesArgs {
+  catalog: ProcedureCatalog;
+  count: number;
+  seed: number;
+  activeRunwayId?: string;
+}
+
 /**
  * Analog: JO 7110.65 descend via / AIM Descend Via — spawned traffic already
  * complies with the published STAR (VIA armed; same as T04-12 spawn-on-VIA).
@@ -192,16 +287,12 @@ function slotKey(slot: StarSlot): string {
  * stack the first chosen transition so north/south STARs do not spawn as a
  * mirrored pair. Later remainder draws may still mix slots. Not NAS STARS.
  */
-export function assignStarRoutes(args: {
-  catalog: ProcedureCatalog;
-  count: number;
-  seed: number;
-}): StarRouteAssignment[] {
-  const { catalog, count, seed } = args;
+export function assignStarRoutes(args: AssignStarRoutesArgs): StarRouteAssignment[] {
+  const { catalog, count, seed, activeRunwayId } = args;
   if (!Number.isInteger(count) || count < 0) {
     throw new Error(`assignStarRoutes count must be a non-negative integer (got ${String(count)})`);
   }
-  const slots = listStarSlots(catalog);
+  const slots = listStarSlots(catalog, activeRunwayId);
   if (count > 0 && slots.length === 0) {
     throw new Error("assignStarRoutes needs at least one STAR transition slot");
   }

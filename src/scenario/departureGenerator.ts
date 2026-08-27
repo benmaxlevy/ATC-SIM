@@ -52,12 +52,18 @@ export interface GenerateDepartureScheduleOptions {
 export function listDepartureSlots(catalog: ProcedureCatalog, runwayId?: string): DepartureSlot[] {
   const slots: DepartureSlot[] = [];
   const cleanRwy = runwayId ? runwayId.replace(/^RW/i, "").trim().toUpperCase() : undefined;
+  const paddedRwy = cleanRwy ? (cleanRwy.length === 1 ? cleanRwy.padStart(2, "0") : cleanRwy) : undefined;
+
+  const matchesRwy = (rId: string) => {
+    if (!cleanRwy) return true;
+    const r = rId.replace(/^RW/i, "").trim().toUpperCase();
+    const rp = r.length === 1 ? r.padStart(2, "0") : r;
+    return r === cleanRwy || rp === paddedRwy;
+  };
 
   for (const sid of catalog.sids) {
     if (cleanRwy && sid.runwayTransitions && sid.runwayTransitions.length > 0) {
-      const matches = sid.runwayTransitions.some(
-        (rt) => rt.runwayId.replace(/^RW/i, "").trim().toUpperCase() === cleanRwy,
-      );
+      const matches = sid.runwayTransitions.some((rt) => matchesRwy(rt.runwayId));
       if (!matches) {
         continue;
       }
@@ -65,9 +71,7 @@ export function listDepartureSlots(catalog: ProcedureCatalog, runwayId?: string)
     if (sid.enrouteTransitions && sid.enrouteTransitions.length > 0) {
       for (const et of sid.enrouteTransitions) {
         if (cleanRwy && et.runwayTransitions && et.runwayTransitions.length > 0) {
-          const matches = et.runwayTransitions.some(
-            (rt) => rt.runwayId.replace(/^RW/i, "").trim().toUpperCase() === cleanRwy,
-          );
+          const matches = et.runwayTransitions.some((rt) => matchesRwy(rt.runwayId));
           if (!matches) {
             continue;
           }

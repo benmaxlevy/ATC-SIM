@@ -35,12 +35,12 @@ When running in West Flow (RWY 27), arrivals should spawn on West Flow STAR tran
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** In East Flow (`kdem-09`), `assignStarRoutes` assigns arrivals only to East Flow transitions (`WN`, `WS`) feeding `WMERG`.
-- [ ] **AC2 —** In West Flow (`kdem`), `assignStarRoutes` assigns arrivals only to West Flow transitions (`N`, `S`) feeding `MERGE`.
-- [ ] **AC3 —** In East Flow, departures spawn at `RW09` threshold (`-1.645, 0`) with heading 090° and armed `BAY1` RW09 transition toward `BAYEA`.
-- [ ] **AC4 —** In West Flow, departures continue to spawn at `RW27` threshold (`0, 0`) with heading 270° and armed `BAY1` RW27 transition toward `BAYEE`.
-- [ ] **AC5 —** Successive departures on RW09 maintain >= 60s simulated spacing.
-- [ ] **AC6 —** Automated tests cover AC1–AC5.
+- [x] **AC1 —** In East Flow (`kdem-09`), `assignStarRoutes` assigns arrivals only to East Flow transitions (`WN`, `WS`) feeding `WMERG`.
+- [x] **AC2 —** In West Flow (`kdem`), `assignStarRoutes` assigns arrivals only to West Flow transitions (`N`, `S`) feeding `MERGE`.
+- [x] **AC3 —** In East Flow, departures spawn at `RW09` threshold (`-1.645, 0`) with heading 090° and armed `BAY1` RW09 transition toward `BAYEA`.
+- [x] **AC4 —** In West Flow, departures continue to spawn at `RW27` threshold (`0, 0`) with heading 270° and armed `BAY1` RW27 transition toward `BAYEE`.
+- [x] **AC5 —** Successive departures on RW09 maintain >= 60s simulated spacing.
+- [x] **AC6 —** Automated tests cover AC1–AC5.
 
 ## Suggested files
 

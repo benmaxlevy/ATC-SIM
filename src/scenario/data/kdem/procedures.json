@@ -9,6 +9,7 @@
         {
           "id": "N",
           "name": "NORTH",
+          "runwayId": "27",
           "legs": [
             {
               "fixId": "NEMAX",
@@ -35,6 +36,7 @@
         {
           "id": "S",
           "name": "SOUTH",
+          "runwayId": "27",
           "legs": [
             {
               "fixId": "SEMAX",
@@ -61,6 +63,7 @@
         {
           "id": "WN",
           "name": "WEST-NORTH",
+          "runwayId": "09",
           "legs": [
             {
               "fixId": "WNMAX",
@@ -87,6 +90,7 @@
         {
           "id": "WS",
           "name": "WEST-SOUTH",
+          "runwayId": "09",
           "legs": [
             {
               "fixId": "WSMAX",

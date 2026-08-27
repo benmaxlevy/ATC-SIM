@@ -47,36 +47,53 @@ export interface DepartureSpawnConfig {
   aircraftType?: string;
 }
 
-function resolveRunwayThreshold(
+export function resolveRunwayThreshold(
   catalog: ProcedureCatalog,
   runwayId: string,
 ): { xNm: number; yNm: number } {
   const cleanId = runwayId.replace(/^RW/i, "").trim().toUpperCase();
+  const paddedId = cleanId.length === 1 ? cleanId.padStart(2, "0") : cleanId;
   const fix =
     catalog.fixes.find(
       (f) =>
         f.id.toUpperCase() === `RW${cleanId}` ||
+        f.id.toUpperCase() === `RW${paddedId}` ||
         f.id.toUpperCase() === cleanId ||
+        f.id.toUpperCase() === paddedId ||
         f.id.toUpperCase() === runwayId.toUpperCase(),
-    ) ?? catalog.fixes.find((f) => f.kind === "THRESHOLD" && f.id.toUpperCase().includes(cleanId));
+    ) ??
+    catalog.fixes.find(
+      (f) =>
+        f.kind === "THRESHOLD" &&
+        (f.id.toUpperCase().includes(cleanId) || f.id.toUpperCase().includes(paddedId)),
+    );
   if (fix) {
     return { xNm: fix.xNm, yNm: fix.yNm };
   }
   return { xNm: 0, yNm: 0 };
 }
 
-function resolveRunwayHeading(catalog: ProcedureCatalog, sidId: string, runwayId: string): number {
-  const sid = findSidProcedure(catalog, sidId);
+export function resolveRunwayHeading(
+  catalog: ProcedureCatalog,
+  sidId: string | undefined,
+  runwayId: string,
+): number {
   const cleanId = runwayId.replace(/^RW/i, "").trim().toUpperCase();
-  const rt = sid.runwayTransitions?.find(
-    (item) => item.runwayId.replace(/^RW/i, "").trim().toUpperCase() === cleanId,
-  );
-  if (rt?.initialHeadingDeg !== undefined) {
-    return normalizeHeadingDeg(rt.initialHeadingDeg);
+  const paddedId = cleanId.length === 1 ? cleanId.padStart(2, "0") : cleanId;
+  if (sidId) {
+    const sid = catalog.sids.find((s) => s.id.trim().toUpperCase() === sidId.trim().toUpperCase());
+    const rt = sid?.runwayTransitions?.find((item) => {
+      const r = item.runwayId.replace(/^RW/i, "").trim().toUpperCase();
+      return r === cleanId || r === paddedId;
+    });
+    if (rt?.initialHeadingDeg !== undefined) {
+      return normalizeHeadingDeg(rt.initialHeadingDeg);
+    }
   }
-  const approach = catalog.approaches.find(
-    (app) => app.runway.replace(/^RW/i, "").trim().toUpperCase() === cleanId,
-  );
+  const approach = catalog.approaches.find((app) => {
+    const r = app.runway.replace(/^RW/i, "").trim().toUpperCase();
+    return r === cleanId || r === paddedId;
+  });
   if (approach?.courseDeg !== undefined) {
     return normalizeHeadingDeg(approach.courseDeg);
   }

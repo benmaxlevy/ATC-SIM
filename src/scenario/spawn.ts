@@ -2,6 +2,7 @@ import {
   createAircraft,
   createWorld,
   MSAW_FAF_DISTANCE_NM,
+  normalizeHeadingDeg,
   SessionLog,
   offerInboundHandoff,
   setHandoffNone,
@@ -19,6 +20,7 @@ import {
   type ArrivalScheduler,
   type ArrivalTrafficConfig,
 } from "./arrivalScheduler";
+import { resolveRunwayHeading, resolveRunwayThreshold } from "./departureSpawn";
 
 export { starRouteFixIds };
 
@@ -32,18 +34,28 @@ const AIRLINES = ["DAL", "AAL", "UAL", "SWA", "JBU", "NKS", "ASA", "FFT", "SKW",
 /**
  * Place `n` jets on a wide downwind arc so they do not sit in one pixel.
  * Bench / `?traffic=30` only — does not replace the default 4–8 KDEM JSON.
+ * Centers and orients downwind relative to the active runway.
  */
-function downwindArcArrival(index: number, count: number): ArrivalSpawn {
+function downwindArcArrival(index: number, count: number, scenario?: Scenario): ArrivalSpawn {
   const t = count <= 1 ? 0.5 : index / (count - 1);
   const bearingDeg = ARC_START_DEG + t * (ARC_END_DEG - ARC_START_DEG);
   const rad = (bearingDeg * Math.PI) / 180;
   const radiusNm = ARC_RADIUS_NM + (index % 3) * 0.4;
   const airline = AIRLINES[index % AIRLINES.length]!;
+
+  const activeRunwayId = scenario?.activeRunwayId ?? "27";
+  const catalog = scenario?.catalog;
+  const threshold = catalog ? resolveRunwayThreshold(catalog, activeRunwayId) : { xNm: 0, yNm: 0 };
+  const rwyHeading = catalog
+    ? resolveRunwayHeading(catalog, undefined, activeRunwayId)
+    : 270;
+  const downwindHeading = normalizeHeadingDeg(rwyHeading + 180);
+
   return {
     callsign: `${airline}${200 + index}`,
-    xNm: radiusNm * Math.sin(rad),
-    yNm: radiusNm * Math.cos(rad),
-    headingDeg: DOWNWIND_HEADING_DEG,
+    xNm: threshold.xNm + radiusNm * Math.sin(rad),
+    yNm: threshold.yNm + radiusNm * Math.cos(rad),
+    headingDeg: downwindHeading,
     altitudeFt: 6000 + (index % 9) * 400,
     speedKt: 210 + (index % 5) * 8,
     aircraftType: "B738",
@@ -91,6 +103,7 @@ function spawnStarInbound(world: World, scenario: Scenario, seed: number): void 
     catalog: scenario.catalog,
     count: scenario.arrivals.length,
     seed,
+    activeRunwayId: scenario.activeRunwayId,
   });
   for (let i = 0; i < scenario.arrivals.length; i += 1) {
     const arrival = scenario.arrivals[i]!;
@@ -116,12 +129,12 @@ function spawnStarInbound(world: World, scenario: Scenario, seed: number): void 
   }
 }
 
-function spawnDownwindArc(world: World, n: number): void {
+function spawnDownwindArc(world: World, n: number, scenario?: Scenario): void {
   if (!Number.isInteger(n) || n < 1) {
     throw new Error(`spawnArrivals count must be a positive integer (got ${String(n)})`);
   }
   for (let i = 0; i < n; i += 1) {
-    spawnArrival(world, downwindArcArrival(i, n));
+    spawnArrival(world, downwindArcArrival(i, n, scenario));
   }
 }
 
@@ -130,14 +143,18 @@ function spawnDownwindArc(world: World, n: number): void {
  * Intent defaults to hold-present so they fly straight until a command.
  *
  * `spawnArrivals(world, scenario)` — authored JSON poses (ils27 / downwind fixture).
- * `spawnArrivals(world, n)` — bench helper: `n` jets on a wide downwind arc
+ * `spawnArrivals(world, n, scenario?)` — bench helper: `n` jets on a wide downwind arc
  * (`?traffic=30`). Does not change Command IR.
  */
-export function spawnArrivals(world: World, n: number): void;
+export function spawnArrivals(world: World, n: number, scenario?: Scenario): void;
 export function spawnArrivals(world: World, scenario: Scenario): void;
-export function spawnArrivals(world: World, source: number | Scenario): void {
+export function spawnArrivals(
+  world: World,
+  source: number | Scenario,
+  scenarioOpt?: Scenario,
+): void {
   if (typeof source === "number") {
-    spawnDownwindArc(world, source);
+    spawnDownwindArc(world, source, scenarioOpt);
     return;
   }
   for (const arrival of source.arrivals) {
@@ -264,15 +281,16 @@ export function createWorldForSession(
   let world: World;
   if (scenario.spawnPolicy === "star-inbound" && trafficCount !== null) {
     world = worldFromScenario(scenario);
-    spawnArrivals(world, trafficCount);
+    spawnArrivals(world, trafficCount, scenario);
   } else {
     world = worldFromScenario(scenario);
     if (scenario.spawnPolicy === "star-inbound") {
       const scheduler: ArrivalScheduler = createArrivalScheduler(
         scenario.catalog,
-        { ...arrivalTraffic, seed: arrivalTraffic?.seed ?? seed },
+        { ...arrivalTraffic, seed: arrivalTraffic?.seed ?? seed, activeRunwayId: scenario.activeRunwayId },
         scenario.arrivals.map((arrival) => arrival.callsign),
         world.simTimeMs,
+        scenario.activeRunwayId,
       );
       world.arrivalScheduler = scheduler;
       scheduler.drain(world);

@@ -30,10 +30,13 @@ export function sidRouteFixIds(
   const fixIds: string[] = [];
 
   if (runwayId !== undefined) {
-    const wantRwy = runwayId.trim().toUpperCase();
-    const rt = sid.runwayTransitions?.find(
-      (item) => item.runwayId.trim().toUpperCase() === wantRwy,
-    );
+    const wantRwy = runwayId.replace(/^RW/i, "").trim().toUpperCase();
+    const wantPadded = wantRwy.length === 1 ? wantRwy.padStart(2, "0") : wantRwy;
+    const rt = sid.runwayTransitions?.find((item) => {
+      const r = item.runwayId.replace(/^RW/i, "").trim().toUpperCase();
+      const rPadded = r.length === 1 ? r.padStart(2, "0") : r;
+      return r === wantRwy || rPadded === wantPadded;
+    });
     if (!rt) {
       throw new Error(`Unknown runway transition ${runwayId} on SID ${sidId}`);
     }
@@ -57,9 +60,12 @@ export function sidRouteFixIds(
     let etLegs: SidLeg[] | undefined;
     if (runwayId !== undefined && et.runwayTransitions && et.runwayTransitions.length > 0) {
       const wantRwy = runwayId.replace(/^RW/i, "").trim().toUpperCase();
-      const rtMatch = et.runwayTransitions.find(
-        (rt) => rt.runwayId.replace(/^RW/i, "").trim().toUpperCase() === wantRwy,
-      );
+      const wantPadded = wantRwy.length === 1 ? wantRwy.padStart(2, "0") : wantRwy;
+      const rtMatch = et.runwayTransitions.find((rt) => {
+        const r = rt.runwayId.replace(/^RW/i, "").trim().toUpperCase();
+        const rPadded = r.length === 1 ? r.padStart(2, "0") : r;
+        return r === wantRwy || rPadded === wantPadded;
+      });
       if (rtMatch) {
         etLegs = rtMatch.legs;
       }

@@ -173,9 +173,18 @@ function parseStarTransition(value: unknown, path: string): StarTransition {
   if (!isRecord(value)) {
     throw new Error(`Catalog ${path} must be an object`);
   }
+  const runwayId = optionalString(value.runwayId, `${path}.runwayId`);
+  const runways =
+    value.runways !== undefined
+      ? assertArray(value.runways, `${path}.runways`).map((r, i) =>
+          assertString(r, `${path}.runways[${i}]`),
+        )
+      : undefined;
   return {
     id: assertString(value.id, `${path}.id`),
     name: assertString(value.name, `${path}.name`),
+    ...(runwayId !== undefined ? { runwayId } : {}),
+    ...(runways !== undefined ? { runways } : {}),
     legs: assertArray(value.legs, `${path}.legs`).map((leg, i) =>
       parseStarLeg(leg, `${path}.legs[${i}]`),
     ),
