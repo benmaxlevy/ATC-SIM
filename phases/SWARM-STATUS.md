@@ -14,6 +14,8 @@ T02-43–50 are merged on `feature/atpa-tpa`. Captain `npm test` / `npm run ci` 
 
 **Merged (squash-merged, captains only):** T02-43 (`b387220`), T02-49 (`fb6721f`), T02-44 (`7b36511`), T02-45 (`03dee39`), T02-46 (`05d47c3`), T02-47 (`fa2ec94`), T02-48 (`2e094a4`), captain `*A`/`*B` dispatch fix (`9c749f7`), T02-50 (`102bd92`).
 
+**Post-swarm fixes on the same branch:** `*J` / `*P` resolved the track at Enter and silently dropped the command when nothing was slewed, so the reference's own command-then-slew order did nothing. Track-scoped chords now arm on the PPI and apply to the next target click without accepting an inbound handoff; select-then-Enter is unchanged. Verified in a preview build, not only in tests.
+
 **Captain judgement calls:**
 
 - **Orchestrator and captain were one session.** A captain subagent cannot reliably spawn its own workers here, so the merge lock, the worktrees, and the waves were held in the top session. Workers stayed leaf-only and never merged, which is the constraint that matters.
