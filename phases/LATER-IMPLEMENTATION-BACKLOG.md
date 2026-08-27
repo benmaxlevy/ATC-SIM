@@ -46,8 +46,8 @@ path and must **not** invent numbers from model recall:
   matrix — its CWT A–I table is only the datablock category letter with a
   weight range. `Aircraft.wakeCategory` is already the FDB letter; do not
   let `requiredSeparationNm` read it until a cited table (JO 7110.65 or
-  facility adaptation) is in-repo. A later ticket greps the engine for
-  `wakeCategory`.
+  facility adaptation) is in-repo. T02-50 greps `src/core/alerts/atpa.ts`
+  and live ATPA paths for `wakeCategory`; keep that gate.
 - **Adapted 2.5 NM eligibility** beyond "both tracks inside
   `reducedWithinNm` of the threshold along the final." Real STARS reduces
   only under extra conditions (leader type, runway occupancy, facility

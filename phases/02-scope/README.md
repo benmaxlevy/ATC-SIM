@@ -591,6 +591,33 @@ Completed datablock & scratchpad fidelity addendum matching [CRC STARS Specifica
 - [x] Emergency transponder Special Purpose Codes: 7700 (`EM`), 7600 (`RF`), 7500 (`HJ`) rendered on Line 1 next to callsign (T02-41).
 - [x] Comprehensive end-to-end integration and acceptance test suite in `src/scope/datablockFidelity.integration.test.ts` (T02-42).
 
+### TPA / ATPA Addendum (T02-43–50)
+
+Completed TPA / ATPA addendum matching [CRC STARS](https://docs.virtualnas.net/crc/stars/) ATPA / TPA ATPA submenu / Table 36, with trainer deltas stated in every ticket (single TCP, no TDW white monitor, no aural ATPA tone, authored volumes, basic radar minima only):
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-43](tickets/T02-43-atpa-approach-volume-schema-and-kdem-fixture.md) | ATPA approach volume schema and KDEM fixture | P0 | M | T04-27 | Shipped |
+| [T02-44](tickets/T02-44-atpa-in-trail-pairing-engine.md) | ATPA in-trail pairing and predicted status engine | P0 | L | T02-43 | Shipped |
+| [T02-45](tickets/T02-45-atpa-cone-geometry-and-rendering.md) | ATPA cone geometry and rendering | P0 | L | T02-44 | Shipped |
+| [T02-46](tickets/T02-46-atpa-intrail-distance-and-cone-mileage.md) | ATPA in-trail distance and cone mileage | P0 | M | T02-44 | Shipped |
+| [T02-47](tickets/T02-47-dcb-tpa-atpa-submenu-live-cells.md) | DCB TPA/ATPA submenu live cells | P0 | M | T02-45, T02-46 | Shipped |
+| [T02-48](tickets/T02-48-richer-manual-tpa-rings-and-cones.md) | Richer manual TPA rings and cones | P1 | L | T02-45, T02-49 | Shipped |
+| [T02-49](tickets/T02-49-stars-tpa-atpa-slew-chord-parser.md) | STARS TPA / ATPA slew-chord parser | P1 | M | none | Shipped |
+| [T02-50](tickets/T02-50-tpa-atpa-integration-and-acceptance.md) | TPA / ATPA integration and acceptance | P0 | L | T02-47, T02-48 | Shipped |
+
+### Phase 2 TPA / ATPA checklist (T02-43–50)
+
+- [x] ATPA approach volumes are catalog data walked by `approachId` (KDEM `ATPA27` / `ATPA09`); a third runway adds JSON, never an `if` (T02-43).
+- [x] In-trail pairing and predicted monitor / warning (45 s) / alert (24 s) status on `world.alerts.atpa` via `stepWorld`; minima from volume JSON (`basicSeparationNm` 3 NM, `reducedSeparationNm` 2.5 NM inside `reducedWithinNm` 10 NM); cone length identical for a heavy or light leader (T02-44).
+- [x] Trailing track paints one unfilled wedge (vertex on the trailer, axis toward the leader, length = `requiredNm`); monitor TPA blue, warning caution yellow, alert `atpaAlert` orange — never CA red `PALETTE.alert` (T02-45).
+- [x] Trailing FDB line 3 shows two-decimal in-trail distance on warning / alert; cone mileage digits sit alongside (`"3"` / `"2.5"`); monitor omits the datablock field (T02-46).
+- [x] Four live AUX TPA/ATPA cells plus master (`atpa-mileage`, `atpa-intrail`, `atpa-alert`, `atpa-monitor`); `effective = atpa.on && atpa[feature]`; Alert Cones gates warning and alert; PREF schema `v: 2` round-trips all five `AtpaState` fields; `v: 1` migrates (T02-47).
+- [x] Per-track `*J` / `*P` rings and ground-track cones (1–30 NM, session state not PREF); `**J` / `**P` clear-all; size-readout inhibit; J-rings are never suppressed by ATPA; a manual `*P` cone is suppressed only on warning/alert (T02-48).
+- [x] STARS slew-chord parser for `*J` / `*P` / `*A` / `*B` / `*D` (and doubles); chords are scope-only and never emit Command IR; `DAL123 H270` still turns (T02-49).
+- [x] Conflict alert stays T04-09 `CA` datablock text plus tone; still **no** 3 NM CA halo; circles on this scope are TPA J-rings only.
+- [x] Comprehensive end-to-end integration and acceptance test suite in `src/scope/atpaFidelity.integration.test.ts` (T02-50).
+
 ## Launching an agent
 
 1. Confirm phase 1 README exit is green.
@@ -600,6 +627,7 @@ Completed datablock & scratchpad fidelity addendum matching [CRC STARS Specifica
 5. After polish: DCB addendum T02-22 → T02-30 (main/aux/submenus). Still not CRDA / FMA / weather paint.
 6. Scope fidelity addendum T02-34 → T02-38 (STARS CRC symbol shapes, LDB/PDB/FDB modes, time-sharing, handoffs, pointouts, cyan highlights).
 7. Datablock & scratchpad fidelity addendum T02-39 → T02-42 (SP1/SP2 derivation, tens groundspeed + categories, multi-phase time-sharing with center handoff placement, emergency SPCs).
+8. TPA / ATPA addendum T02-43 → T02-50 (volumes as data, in-trail pairing, monitor/warning/alert cones, four live DCB cells, PREF v2, `*J`/`*P` chords, integration acceptance). Wake-category minima stay deferred.
 
 ## Glossary reminders
 
