@@ -5,16 +5,20 @@ import {
   applyPreviewBeaconAction,
   armPreviewCntl,
   beginPreviewBeaconEntry,
+  beginPreviewBufferEntry,
   cancelPreviewArea,
   commitPreviewCommand,
   expirePreviewArea,
   formatPreviewReadout,
   handlePreviewBeaconKey,
+  handlePreviewBufferKey,
   handlePreviewEscape,
   handlePreviewFlidKey,
   idlePreviewArea,
+  isPreviewBufferStartChar,
   parsePreviewCommand,
   previewAreaIsLive,
+  previewBufferCharFromKey,
   previewCntlArmed,
   previewFlidMatchesSlew,
   rejectPreviewArea,
@@ -439,4 +443,111 @@ test("idle preview does not steal typing; F-key armed slew FLID must uniquely ma
   armPreviewCntl(inv, "initCntl", 0);
   rejectPreviewCntl(inv, 5);
   expect(inv.rejection).toBe("INIT CNTL INV");
+});
+
+test("T02-61 — * + / and *T stay incomplete; Enter on those prefixes is INV", () => {
+  expect(parsePreviewCommand("*")).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("+")).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("/")).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("*T")).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("* ")).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("+DAL")).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("/A")).toEqual({ kind: "incomplete" });
+  expect(commitPreviewCommand("*")).toMatchObject({ kind: "invalid" });
+  expect(commitPreviewCommand("+")).toMatchObject({ kind: "invalid" });
+  expect(commitPreviewCommand("/")).toMatchObject({ kind: "invalid" });
+  expect(commitPreviewCommand("*T")).toMatchObject({ kind: "invalid" });
+  expect(parsePreviewCommand("Q")).toMatchObject({ kind: "invalid" });
+  expect(parsePreviewCommand("B")).toEqual({ kind: "incomplete" });
+});
+
+test("T02-61 — handlePreviewBufferKey captures, Backspace edits, Enter flashes INV", () => {
+  const state = idlePreviewArea();
+  beginPreviewBufferEntry(state, "*", 0);
+  expect(state.phase).toBe("entry");
+  expect(formatPreviewReadout(state)).toBe("*");
+
+  expect(handlePreviewBufferKey(state, "T", 1).consumed).toBe(true);
+  expect(state.buffer).toBe("*T");
+  expect(formatPreviewReadout(state)).toBe("*T");
+
+  expect(handlePreviewBufferKey(state, " ", 2).consumed).toBe(true);
+  expect(state.buffer).toBe("*T ");
+  expect(handlePreviewBufferKey(state, "Backspace", 3).consumed).toBe(true);
+  expect(state.buffer).toBe("*T");
+
+  expect(handlePreviewBufferKey(state, "Enter", 4)).toEqual({
+    consumed: true,
+    action: null,
+    starsBuffer: "*T",
+  });
+  expect(state.phase).toBe("entry");
+  expect(state.buffer).toBe("*T");
+
+  const plus = idlePreviewArea();
+  beginPreviewBufferEntry(plus, "+", 0);
+  handlePreviewBufferKey(plus, "Q", 1);
+  expect(handlePreviewBufferKey(plus, "Enter", 2)).toEqual({ consumed: true, action: null });
+  expect(plus.rejection).toBe("+Q INV");
+  expect(plus.phase).toBe("idle");
+  expect(formatPreviewReadout(plus)).toBe("+Q INV");
+  expect(expirePreviewArea(plus, 2 + CHORD_TIMEOUT_MS)).toBe(true);
+  expect(plus.rejection).toBeNull();
+
+  const slash = idlePreviewArea();
+  beginPreviewBufferEntry(slash, "/", 0);
+  expect(handlePreviewBufferKey(slash, "Enter", 1)).toEqual({ consumed: true, action: null });
+  expect(slash.rejection).toBe("/ INV");
+
+  const unknown = idlePreviewArea();
+  beginPreviewBufferEntry(unknown, "Q", 0);
+  expect(formatPreviewReadout(unknown)).toBe("Q");
+  expect(handlePreviewBufferKey(unknown, "Enter", 1)).toEqual({ consumed: true, action: null });
+  expect(unknown.rejection).toBe("Q INV");
+});
+
+test("T02-61 — Backspace to empty idles; Esc cancels immediately; *J3 stays for starsChord", () => {
+  const state = idlePreviewArea();
+  beginPreviewBufferEntry(state, "*", 0);
+  handlePreviewBufferKey(state, "J", 1);
+  handlePreviewBufferKey(state, "3", 2);
+  expect(state.buffer).toBe("*J3");
+  expect(handlePreviewBufferKey(state, "Enter", 3)).toEqual({
+    consumed: true,
+    action: null,
+    starsBuffer: "*J3",
+  });
+  expect(state.phase).toBe("entry");
+
+  const edit = idlePreviewArea();
+  beginPreviewBufferEntry(edit, "+", 0);
+  expect(handlePreviewBufferKey(edit, "Backspace", 1).consumed).toBe(true);
+  expect(edit.phase).toBe("idle");
+  expect(edit.buffer).toBe("");
+
+  const esc = idlePreviewArea();
+  beginPreviewBufferEntry(esc, "/", 0);
+  handlePreviewBufferKey(esc, "X", 1);
+  expect(handlePreviewEscape(esc)).toBe(true);
+  expect(esc.phase).toBe("idle");
+  expect(esc.buffer).toBe("");
+  expect(esc.rejection).toBeNull();
+  expect(formatPreviewReadout(esc)).toBeNull();
+});
+
+test("T02-61 — previewBufferCharFromKey maps prefixes, numpad, letters, space", () => {
+  expect(previewBufferCharFromKey("*")).toBe("*");
+  expect(previewBufferCharFromKey("Multiply")).toBe("*");
+  expect(previewBufferCharFromKey("+")).toBe("+");
+  expect(previewBufferCharFromKey("Add")).toBe("+");
+  expect(previewBufferCharFromKey("/")).toBe("/");
+  expect(previewBufferCharFromKey(" ")).toBe(" ");
+  expect(previewBufferCharFromKey("a")).toBe("A");
+  expect(previewBufferCharFromKey("7")).toBe("7");
+  expect(previewBufferCharFromKey(".", "Decimal")).toBe(".");
+  expect(previewBufferCharFromKey("Tab")).toBeNull();
+  expect(previewBufferCharFromKey("Enter")).toBeNull();
+  expect(isPreviewBufferStartChar("*")).toBe(true);
+  expect(isPreviewBufferStartChar(".")).toBe(false);
+  expect(isPreviewBufferStartChar("Q")).toBe(true);
 });

@@ -12,8 +12,10 @@
  * T02-51 shipped the machine, readout, Esc cancel, and INV flash. T02-52 wires
  * F3 INIT CNTL / F4 TERM CNTL as armed actions (not typed `F3` in the buffer).
  * `B##` / `B####` are display-only filters (toggle `beaconSelectCodes`; no
- * slewed track). `BE` / `BI` LDB inhibit and assign-code (`M ####`) remain
- * deferred. Unknown complete input is invalid, not a silent no-op. Not NAS STARS.
+ * slewed track). T02-61 adds the unified scope-focus lexer: `*`, `+`, `/`,
+ * letters, digits, and spaces buffer here. `BE` / `BI` LDB inhibit and
+ * assign-code (`M ####`) remain deferred. Unknown complete input is invalid,
+ * not a silent no-op. Not NAS STARS.
  */
 
 import type { World } from "@core";
@@ -95,6 +97,7 @@ export type PreviewCommandResult =
  * are F-keys (armed on `PreviewAreaState`), not typed `F3` / `F4` buffers.
  * `B##` / `B####` cannot live as enumerated rows: `B45` is a complete CODE
  * BLOCK and a live prefix of `B4501`. `parseBeaconSelect` owns those digits.
+ * T02-61: `*` / `+` / `/` are live prefixes (list/map/track rows come later).
  * Do not rewrite the state machine to add rows.
  */
 type PreviewTableEntry = { kind: "prefix" } | { kind: "action"; action: PreviewArmedAction };
@@ -102,6 +105,10 @@ type PreviewTableEntry = { kind: "prefix" } | { kind: "action"; action: PreviewA
 const PREVIEW_TABLE: Readonly<Record<string, PreviewTableEntry>> = {
   // T02-53: `B` begins beacon-code select. Digits + commit in parseBeaconSelect.
   B: { kind: "prefix" },
+  // T02-61: Multifunction / Track / Slew-Drop. Later tickets add complete rows.
+  "*": { kind: "prefix" },
+  "+": { kind: "prefix" },
+  "/": { kind: "prefix" },
 };
 
 export type PreviewAreaState = {
@@ -267,6 +274,11 @@ export function parsePreviewCommand(buffer: string): PreviewCommandResult {
   if (keys.some((key) => key.startsWith(buffer))) {
     return { kind: "incomplete" };
   }
+  // `*T`, `+FLID`, `/` slew stay incomplete until later tickets add rows.
+  // Enter still maps incomplete → INV via commitPreviewCommand.
+  if (keys.some((key) => key.length > 0 && buffer.startsWith(key))) {
+    return { kind: "incomplete" };
+  }
   return invalid("unknown preview command");
 }
 
@@ -417,6 +429,11 @@ export function applyPreviewBeaconAction(codes: string[], action: PreviewArmedAc
 export type PreviewKeyOutcome = {
   consumed: boolean;
   action: PreviewArmedAction | null;
+  /**
+   * Enter on a live `*` buffer: caller tries T02-49 `commitStarsChord` before INV.
+   * Undefined / null when this key is not that commit.
+   */
+  starsBuffer?: string | null;
 };
 
 /** Live `B…` CODE BLOCK / discrete entry (not INIT/TERM). */
@@ -425,13 +442,103 @@ export function isBeaconPreviewEntry(state: PreviewAreaState): boolean {
 }
 
 export function beginPreviewBeaconEntry(state: PreviewAreaState, nowMs: number): void {
+  beginPreviewBufferEntry(state, "B", nowMs);
+}
+
+/**
+ * STARS preview alphabet: Multifunction `*`, Track `+`, Slew/Drop `/`,
+ * alphanumerics, space, and TPA tenths `.`. Numpad `Multiply` / `Add` / digits
+ * map to the same characters. Never Command IR.
+ */
+export function previewBufferCharFromKey(key: string, code?: string): string | null {
+  if (key === "*" || key === "Multiply") {
+    return "*";
+  }
+  if (key === "+" || key === "Add") {
+    return "+";
+  }
+  if (key === "/") {
+    return "/";
+  }
+  if (key === " " || key === "Spacebar") {
+    return " ";
+  }
+  if (key === "." || key === "Decimal") {
+    return ".";
+  }
+  const digit = digitFromKey(key, code);
+  if (digit !== null) {
+    return String(digit);
+  }
+  if (/^[a-zA-Z]$/.test(key)) {
+    return key.toUpperCase();
+  }
+  return null;
+}
+
+/** Idle start keys: prefixes + alphanumerics + space. `.` only appends once live. */
+export function isPreviewBufferStartChar(ch: string): boolean {
+  return ch === "*" || ch === "+" || ch === "/" || /^[A-Z0-9 ]$/.test(ch);
+}
+
+export function beginPreviewBufferEntry(state: PreviewAreaState, ch: string, nowMs: number): void {
   state.phase = "entry";
-  state.buffer = "B";
+  state.buffer = ch;
   state.mnemonic = "";
   state.flid = null;
   state.rejection = null;
   state.armed = null;
   state.lastKeyAtMs = nowMs;
+}
+
+/**
+ * Unified Preview Area typer. Live `B…` still uses Table 30 auto-commit rules.
+ * Other live buffers wait for Enter; incomplete prefixes INV on Enter.
+ * A live `*` buffer returns `starsBuffer` so T02-49 TPA/ATPA chords still dispatch.
+ */
+export function handlePreviewBufferKey(
+  state: PreviewAreaState,
+  key: string,
+  nowMs: number,
+  code?: string,
+): PreviewKeyOutcome {
+  if (isBeaconPreviewEntry(state)) {
+    return handlePreviewBeaconKey(state, key, nowMs, code);
+  }
+  if (state.phase !== "entry") {
+    return { consumed: false, action: null };
+  }
+  if (key === "Escape") {
+    return { consumed: false, action: null };
+  }
+  if (key === "Backspace") {
+    if (state.buffer.length <= 1) {
+      cancelPreviewArea(state);
+      return { consumed: true, action: null };
+    }
+    state.buffer = state.buffer.slice(0, -1);
+    state.lastKeyAtMs = nowMs;
+    return { consumed: true, action: null };
+  }
+  if (key === "Enter" || key === "NumpadEnter") {
+    const committed = commitPreviewCommand(state.buffer);
+    if (committed.kind === "action") {
+      cancelPreviewArea(state);
+      return { consumed: true, action: committed.action };
+    }
+    if (state.buffer.startsWith("*")) {
+      return { consumed: true, action: null, starsBuffer: state.buffer };
+    }
+    rejectPreviewArea(state, nowMs);
+    return { consumed: true, action: null };
+  }
+  const ch = previewBufferCharFromKey(key, code);
+  if (ch !== null) {
+    state.buffer += ch;
+    state.lastKeyAtMs = nowMs;
+    return { consumed: true, action: null };
+  }
+  return { consumed: false, action: null };
 }
 
 /**

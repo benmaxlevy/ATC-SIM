@@ -11,6 +11,7 @@ import {
 } from "./scopeKeys";
 import { DEFAULT_ALTITUDE_FILTER, formatFilterReadout } from "./altitudeFilter";
 import { CHORD_TIMEOUT_MS, SCOPE_CHORD_WINDOW_MS } from "./keymap";
+import { formatPreviewReadout } from "./previewArea";
 import { createScopeView } from "./scopeView";
 import { syncTrackDisplays } from "./trackDisplay";
 
@@ -434,9 +435,10 @@ test("AC6 — after L with no digit for 1.5 s, a following 6 is not a leader", (
   handleScopeKeyDown(keyEvent("L"), view, "scope", world, 0);
   expect(view.pendingChord?.prefix).toBe("L");
   const six = keyEvent("6");
-  expect(handleScopeKeyDown(six, view, "scope", world, SCOPE_CHORD_WINDOW_MS + 1)).toBe(false);
+  expect(handleScopeKeyDown(six, view, "scope", world, SCOPE_CHORD_WINDOW_MS + 1)).toBe(true);
   expect(view.tracks.get("ac-dal")!.leaderDir).toBe(8);
   expect(view.pendingChord).toBeNull();
+  expect(view.preview.buffer).toBe("6");
 });
 
 test("AC7 — leader chord never emits Command IR events", () => {
@@ -463,9 +465,10 @@ test("Esc or invalid digit cancels the leader chord without changing dir", () =>
   expect(view.tracks.get("ac-dal")!.leaderDir).toBe(8);
 
   handleScopeKeyDown(keyEvent("L"), view, "scope", world, 30);
-  expect(handleScopeKeyDown(keyEvent("0"), view, "scope", world, 40)).toBe(false);
+  expect(handleScopeKeyDown(keyEvent("0"), view, "scope", world, 40)).toBe(true);
   expect(view.pendingChord).toBeNull();
   expect(view.tracks.get("ac-dal")!.leaderDir).toBe(8);
+  expect(view.preview.buffer).toBe("0");
 });
 
 test("numpad ArrowUp during L chord is ignored (NumLock off)", () => {
@@ -589,14 +592,15 @@ test("AC7 — altitude filter never emits command.accepted or a readback", async
   expect(dal.intent.assignedHeadingDeg).toBe(270);
 });
 
-test("F chord times out at 1.5 s with injected now; leftover digit is not consumed", () => {
+test("F chord times out at 1.5 s with injected now; leftover digit is not a filter digit", () => {
   const view = createScopeView();
   expect(handleScopeKeyDown(keyEvent("F"), view, "scope", undefined, 0)).toBe(true);
   expect(view.filterEntry.phase).toBe("min");
   const late = keyEvent("5");
-  expect(handleScopeKeyDown(late, view, "scope", undefined, CHORD_TIMEOUT_MS)).toBe(false);
+  expect(handleScopeKeyDown(late, view, "scope", undefined, CHORD_TIMEOUT_MS)).toBe(true);
   expect(view.filterEntry.phase).toBe("idle");
   expect(view.altitudeFilter).toEqual(DEFAULT_ALTITUDE_FILTER);
+  expect(view.preview.buffer).toBe("5");
 });
 
 test("AC6 / AC7 — F3/F4 always-on preventDefault, never emit Command IR, ignore L/F", async () => {
@@ -714,7 +718,7 @@ test("Tab cycles focus in both foci; does not steal Tab from help overlay", () =
   expect(cycleFocus).toHaveBeenCalledTimes(2);
 });
 
-test("slash focuses radio only when scope-focused and preventDefault", () => {
+test("slash buffers into Preview Area when scope-focused; radio-focus / is literal", () => {
   const view = createScopeView();
   const focusRadio = vi.fn();
   const parseSpy = vi.fn();
@@ -723,12 +727,14 @@ test("slash focuses radio only when scope-focused and preventDefault", () => {
   expect(handleScopeKeyDown(scopeSlash, view, "scope", undefined, 0, { focusRadio })).toBe(true);
   expect(scopeSlash.preventDefault).toHaveBeenCalled();
   expect(scopeSlash.stopPropagation).toHaveBeenCalled();
-  expect(focusRadio).toHaveBeenCalledTimes(1);
+  expect(focusRadio).not.toHaveBeenCalled();
+  expect(view.preview.phase).toBe("entry");
+  expect(view.preview.buffer).toBe("/");
 
   const radioSlash = keyEvent("/");
   expect(handleScopeKeyDown(radioSlash, view, "radio", undefined, 0, { focusRadio })).toBe(false);
   expect(radioSlash.preventDefault).not.toHaveBeenCalled();
-  expect(focusRadio).toHaveBeenCalledTimes(1);
+  expect(focusRadio).not.toHaveBeenCalled();
   if (radioSlash.preventDefault.mock.calls.length === 0) {
     parseSpy("/");
   }
@@ -1130,4 +1136,79 @@ test("live B preview Esc cancels before * chord; *J still works after", () => {
     now += 100;
   }
   expect(idle.tracks.get(dal.id)?.tpaRingNm).toBe(3);
+});
+
+test("T02-61 — scope-focus * + / Q space capture into preview.buffer; radio is isolated", () => {
+  const view = createScopeView();
+  expect(handleScopeKeyDown(keyEvent("*"), view, "scope", undefined, 0)).toBe(true);
+  expect(view.preview.buffer).toBe("*");
+  expect(view.preview.phase).toBe("entry");
+  expect(view.starsChordEntry.buffer).toBe("*");
+  expect(formatPreviewReadout(view.preview)).toBe("*");
+
+  expect(handleScopeKeyDown(keyEvent("T"), view, "scope", undefined, 1)).toBe(true);
+  expect(view.preview.buffer).toBe("*T");
+  expect(handleScopeKeyDown(keyEvent(" "), view, "scope", undefined, 2)).toBe(true);
+  expect(view.preview.buffer).toBe("*T ");
+  expect(handleScopeKeyDown(keyEvent("Backspace"), view, "scope", undefined, 3)).toBe(true);
+  expect(view.preview.buffer).toBe("*T");
+  expect(handleScopeKeyDown(keyEvent("Escape"), view, "scope", undefined, 4)).toBe(true);
+  expect(view.preview.phase).toBe("idle");
+  expect(view.preview.buffer).toBe("");
+  expect(view.starsChordEntry.phase).toBe("idle");
+
+  expect(handleScopeKeyDown(keyEvent("+"), view, "scope", undefined, 5)).toBe(true);
+  expect(view.preview.buffer).toBe("+");
+  expect(handleScopeKeyDown(keyEvent("Enter"), view, "scope", undefined, 6)).toBe(true);
+  expect(view.preview.rejection).toBe("+ INV");
+  expect(formatPreviewReadout(view.preview)).toBe("+ INV");
+
+  const radio = createScopeView();
+  expect(handleScopeKeyDown(keyEvent("+"), radio, "radio", undefined, 0)).toBe(false);
+  expect(radio.preview.phase).toBe("idle");
+  expect(handleScopeKeyDown(keyEvent("Q"), radio, "radio", undefined, 1)).toBe(false);
+  expect(radio.preview.buffer).toBe("");
+});
+
+test("T02-61 — Tab cycles focus without typing into preview or consuming as a buffer char", () => {
+  const view = createScopeView();
+  const cycleFocus = vi.fn();
+  handleScopeKeyDown(keyEvent("*"), view, "scope", undefined, 0);
+  expect(view.preview.buffer).toBe("*");
+
+  const tab = keyEvent("Tab");
+  expect(handleScopeKeyDown(tab, view, "scope", undefined, 1, { cycleFocus })).toBe(true);
+  expect(tab.preventDefault).toHaveBeenCalled();
+  expect(cycleFocus).toHaveBeenCalledTimes(1);
+  expect(view.preview.buffer).toBe("*");
+  expect(view.preview.phase).toBe("entry");
+
+  const radioTab = keyEvent("Tab");
+  expect(handleScopeKeyDown(radioTab, view, "radio", undefined, 2, { cycleFocus })).toBe(true);
+  expect(cycleFocus).toHaveBeenCalledTimes(2);
+  expect(view.preview.buffer).toBe("*");
+});
+
+test("T02-61 — F3/F4 and B## still work; T/M stay dedicated when idle", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [dal] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  expect(handleScopeKeyDown(keyEvent("F3"), view, "scope", world, 0)).toBe(true);
+  expect(view.preview.phase).toBe("armed");
+  expect(formatPreviewReadout(view.preview)).toBe("INIT CNTL");
+  expect(handleScopeKeyDown(keyEvent("Escape"), view, "scope", world, 1)).toBe(true);
+
+  expect(handleScopeKeyDown(keyEvent("B"), view, "scope", world, 2)).toBe(true);
+  expect(handleScopeKeyDown(keyEvent("4"), view, "scope", world, 3)).toBe(true);
+  expect(handleScopeKeyDown(keyEvent("5"), view, "scope", world, 4)).toBe(true);
+  expect(handleScopeKeyDown(keyEvent("Enter"), view, "scope", world, 5)).toBe(true);
+  expect(view.beaconSelectCodes).toEqual(["45"]);
+
+  const tView = createScopeView();
+  syncTrackDisplays(tView.tracks, world);
+  expect(handleScopeKeyDown(keyEvent("T"), tView, "scope", world, 0)).toBe(true);
+  expect(tView.preview.phase).toBe("idle");
+  expect(tView.tracks.get(dal.id)?.datablockMode).toBeDefined();
 });

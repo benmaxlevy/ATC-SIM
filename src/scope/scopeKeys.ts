@@ -9,11 +9,12 @@
  * Scope-focus `T` toggles full ↔ limited datablock; `M` toggles Mode C on full
  * blocks. F7 always-on predicted track line (PTL) toggle — even with the
  * command line focused. F1 always-on help overlay (not CRC F1 / beaconator);
- * Tab cycles radio ↔ PPI; `/` when scope-focused focuses the command line.
- * Scope-focus `L` then 1–9 is leader direction (no length
+ * Tab cycles radio ↔ PPI; `/` when scope-focused buffers into the Preview Area
+ * (slew/drop prefix, not radio focus). Scope-focus `L` then 1–9 is leader direction (no length
  * menu); radio `L090` stays FLY_HEADING left. Scope-focus `F` then hundreds is
  * the altitude filter (never always-on — radio `F` stays a command-line
- * character). Scope-focus `*` is TPA/ATPA slew chords (R07 Table 36); radio `*`
+ * character). Scope-focus `*` is TPA/ATPA slew chords (R07 Table 36) via the
+ * unified Preview Area buffer; radio `*`
  * is a literal command-line character. Scope-focus `B` then digits is Table 30
  * beacon-code select (never always-on — radio `B` stays a command-line
  * character). Never produce a Command, readback, or intent. Wheel steps
@@ -30,6 +31,7 @@ import {
   isCycleFocusKey,
   isFilterChordKey,
   isLeaderPrefixKey,
+  isPreviewPlusKey,
   isRadioFocusSlashKey,
   isScopeChordLive,
   isStarsChordPrefixKey,
@@ -40,18 +42,24 @@ import {
   beginStarsChordEntry,
   cancelStarsChordEntry,
   armOrApplyStarsChordAction,
+  commitStarsChord,
   handleStarsChordEntryKey,
+  rejectStarsChordEntry,
 } from "./starsChord";
 import {
   applyPreviewBeaconAction,
   armPreviewCntl,
   beginPreviewBeaconEntry,
+  beginPreviewBufferEntry,
   cancelPreviewArea,
-  handlePreviewBeaconKey,
+  handlePreviewBufferKey,
   handlePreviewEscape,
   handlePreviewFlidKey,
-  isBeaconPreviewEntry,
+  isPreviewBufferStartChar,
   previewAreaIsLive,
+  previewBufferCharFromKey,
+  rejectPreviewArea,
+  type PreviewKeyOutcome,
 } from "./previewArea";
 import { handleDcbEscape } from "./dcbMenu";
 import { hideMapLists } from "./dcbFunctions";
@@ -187,6 +195,69 @@ function consume(event: ScopeKeyEvent): void {
   event.stopPropagation();
 }
 
+function isReservedScopeLetterShortcut(key: string): boolean {
+  return (
+    isDatablockToggleKey(key) ||
+    isModeCToggleKey(key) ||
+    isHistoryToggleKey(key) ||
+    isLeaderPrefixKey(key) ||
+    isFilterChordKey(key) ||
+    isBeaconSelectKey(key)
+  );
+}
+
+/** Keep T02-49 `*` chords on starsChordEntry so slew-click and *J tests stay green. */
+function syncStarsChordMirror(view: ScopeView, nowMs: number): void {
+  if (view.preview.phase === "entry" && view.preview.buffer.startsWith("*")) {
+    view.starsChordEntry.phase = "entry";
+    view.starsChordEntry.buffer = view.preview.buffer;
+    view.starsChordEntry.lastKeyAtMs = nowMs;
+    view.starsChordEntry.rejection = null;
+  }
+}
+
+function startPreviewBuffer(view: ScopeView, ch: string, nowMs: number): void {
+  cancelFilterEntry(view.filterEntry, view.altitudeFilter);
+  view.pendingChord = null;
+  beginPreviewBufferEntry(view.preview, ch, nowMs);
+  if (ch === "*") {
+    view.starsChordArmed = null;
+    beginStarsChordEntry(view.starsChordEntry, nowMs);
+  } else if (view.starsChordEntry.phase === "entry") {
+    cancelStarsChordEntry(view.starsChordEntry);
+  }
+}
+
+function applyPreviewBufferOutcome(
+  view: ScopeView,
+  world: World | undefined,
+  nowMs: number,
+  outcome: PreviewKeyOutcome,
+): void {
+  if (outcome.action) {
+    applyPreviewBeaconAction(view.beaconSelectCodes, outcome.action);
+  }
+  if (outcome.starsBuffer) {
+    const stars = commitStarsChord(outcome.starsBuffer);
+    if (stars.kind === "action") {
+      cancelPreviewArea(view.preview);
+      cancelStarsChordEntry(view.starsChordEntry);
+      armOrApplyStarsChordAction(view, world, stars.action);
+      return;
+    }
+    rejectPreviewArea(view.preview, nowMs);
+    rejectStarsChordEntry(view.starsChordEntry, nowMs);
+    return;
+  }
+  if (view.preview.phase === "entry" && view.preview.buffer.startsWith("*")) {
+    syncStarsChordMirror(view, nowMs);
+    return;
+  }
+  if (view.preview.phase === "idle" && view.starsChordEntry.phase === "entry") {
+    cancelStarsChordEntry(view.starsChordEntry);
+  }
+}
+
 function applyPreviewCntl(
   view: ScopeView,
   world: World,
@@ -239,7 +310,12 @@ export function handleScopeKeyDown(
   }
 
   if (event.key === "Escape") {
+    const previewStar = view.preview.phase !== "idle" && view.preview.buffer.startsWith("*");
     if (handlePreviewEscape(view.preview)) {
+      if (previewStar) {
+        cancelStarsChordEntry(view.starsChordEntry);
+        view.starsChordArmed = null;
+      }
       consume(event);
       ui?.onHandled?.();
       return true;
@@ -267,27 +343,26 @@ export function handleScopeKeyDown(
   }
 
   if (focus === "scope") {
-    if (isBeaconPreviewEntry(view.preview)) {
-      const preview = handlePreviewBeaconKey(view.preview, event.key, nowMs, event.code);
+    if (view.preview.phase === "entry") {
+      const preview = handlePreviewBufferKey(view.preview, event.key, nowMs, event.code);
       if (preview.consumed) {
         consume(event);
-        if (preview.action) {
-          applyPreviewBeaconAction(view.beaconSelectCodes, preview.action);
-        }
+        applyPreviewBufferOutcome(view, world, nowMs, preview);
         ui?.onHandled?.();
         return true;
       }
-    }
-    const stars = handleStarsChordEntryKey(view.starsChordEntry, event.key, nowMs, event.code);
-    if (stars.consumed) {
-      consume(event);
-      if (event.key === "Escape") {
-        view.starsChordArmed = null;
+    } else {
+      const stars = handleStarsChordEntryKey(view.starsChordEntry, event.key, nowMs, event.code);
+      if (stars.consumed) {
+        consume(event);
+        if (event.key === "Escape") {
+          view.starsChordArmed = null;
+        }
+        if (stars.action) {
+          armOrApplyStarsChordAction(view, world, stars.action);
+        }
+        return true;
       }
-      if (stars.action) {
-        armOrApplyStarsChordAction(view, world, stars.action);
-      }
-      return true;
     }
     if (event.key === "Escape" && view.starsChordArmed) {
       consume(event);
@@ -296,10 +371,20 @@ export function handleScopeKeyDown(
     }
     if (isStarsChordPrefixKey(event.key)) {
       consume(event);
-      cancelFilterEntry(view.filterEntry, view.altitudeFilter);
-      view.pendingChord = null;
-      view.starsChordArmed = null;
-      beginStarsChordEntry(view.starsChordEntry, nowMs);
+      startPreviewBuffer(view, "*", nowMs);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (isPreviewPlusKey(event.key)) {
+      consume(event);
+      startPreviewBuffer(view, "+", nowMs);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (isRadioFocusSlashKey(event.key)) {
+      consume(event);
+      startPreviewBuffer(view, "/", nowMs);
+      ui?.onHandled?.();
       return true;
     }
     if (isBeaconSelectKey(event.key) && !previewAreaIsLive(view.preview)) {
@@ -347,18 +432,17 @@ export function handleScopeKeyDown(
       view.pendingChord = beginScopeChord("L", nowMs, "L_");
       return true;
     }
-    if (isRadioFocusSlashKey(event.key)) {
-      consume(event);
-      if (ui?.focusRadio) {
-        ui.focusRadio();
-      } else if (typeof document !== "undefined") {
-        focusRadioCommandLine(document);
+    if (!event.shiftKey && !isReservedScopeLetterShortcut(event.key)) {
+      const ch = previewBufferCharFromKey(event.key, event.code);
+      if (ch !== null && isPreviewBufferStartChar(ch)) {
+        consume(event);
+        startPreviewBuffer(view, ch, nowMs);
+        ui?.onHandled?.();
+        return true;
       }
-      ui?.onHandled?.();
-      return true;
     }
   } else {
-    if (isBeaconPreviewEntry(view.preview)) {
+    if (view.preview.phase === "entry") {
       cancelPreviewArea(view.preview);
     }
     if (view.filterEntry.phase !== "idle") {

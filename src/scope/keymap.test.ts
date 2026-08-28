@@ -19,6 +19,7 @@ import {
   isBeaconSelectKey,
   isLeaderPrefixKey,
   isMouseBinding,
+  isPreviewPlusKey,
   isRadioFocusSlashKey,
   isScopeChordLive,
   isStarsChordPrefixKey,
@@ -221,6 +222,11 @@ test("F1 / Tab / unmodified slash classifiers match the frozen focus model", () 
   expect(isCycleFocusKey("F1")).toBe(false);
   expect(isRadioFocusSlashKey("/")).toBe(true);
   expect(isRadioFocusSlashKey("?")).toBe(false);
+  expect(isPreviewPlusKey("+")).toBe(true);
+  expect(isPreviewPlusKey("Add")).toBe(true);
+  expect(isPreviewPlusKey("=")).toBe(false);
+  expect(bindingById("radio-focus")?.action).toMatch(/Preview Area/);
+  expect(bindingById("cycle-focus")?.windowsKeys).toBe("Tab");
 });
 
 test("T04-17 AC5 — help overlay lists click-accept inbound handoff", () => {

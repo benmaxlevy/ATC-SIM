@@ -5,6 +5,7 @@ import {
   expirePreviewArea,
   previewCntlArmed,
   previewFlidMatchesSlew,
+  rejectPreviewArea,
   rejectPreviewCntl,
 } from "./previewArea";
 import {
@@ -76,9 +77,15 @@ export function handlePpiLeftClick(
           applyStarsChordAction(view, world, committed.action);
           cancelStarsChordEntry(view.starsChordEntry);
           view.starsChordArmed = null;
+          if (view.preview.phase === "entry" && view.preview.buffer.startsWith("*")) {
+            cancelPreviewArea(view.preview);
+          }
           return;
         }
         rejectStarsChordEntry(view.starsChordEntry, Date.now());
+        if (view.preview.phase === "entry" && view.preview.buffer.startsWith("*")) {
+          rejectPreviewArea(view.preview, Date.now());
+        }
         // Incomplete/invalid: do not swallow the click.
       } else if (view.starsChordArmed) {
         setSelectedAircraft(world, hit.id);
