@@ -411,11 +411,23 @@ export const DEFAULT_CRDA_CONFIGS: CrdaRpcConfig[] = [
   { index: 6, airport: "BOS", pairing: "4L/33L" },
 ];
 
+export function defaultCrdaConfigsForAirport(airportCode: string = "BOS"): CrdaRpcConfig[] {
+  if (airportCode === "BOS") {
+    return DEFAULT_CRDA_CONFIGS;
+  }
+  return [
+    { index: 1, airport: airportCode, pairing: "27/09" },
+    { index: 2, airport: airportCode, pairing: "09/27" },
+    { index: 3, airport: airportCode, pairing: "27/27" },
+  ];
+}
+
 export function buildCrdaStatusList(
   configs?: CrdaRpcConfig[],
   maxLines: number = 10,
+  airportCode: string = "BOS",
 ): string[] {
-  const items = configs && configs.length > 0 ? configs : DEFAULT_CRDA_CONFIGS;
+  const items = configs && configs.length > 0 ? configs : defaultCrdaConfigsForAirport(airportCode);
   const formatter: ListFormatter = {
     title: "CRDA STATUS",
     frameTitle: "CRDA STATUS (CR)",

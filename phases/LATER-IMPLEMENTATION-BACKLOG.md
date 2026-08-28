@@ -104,7 +104,7 @@ trainer accepts:
 - typed map ID
 - WX overlays
 - dual assoc / unassoc `FC`
-- TAB / VFR / COAST / CA / SIGN-ON / TOWER / CRDA lists
+- TAB / VFR / COAST / CA / SIGN-ON / TOWER / CRDA lists (see dedicated item below)
 - RBL `*T` / min-sep / `.find` `.center` `.rings`
 - GI / ATIS `S` type-in
 - FP dump `D`
@@ -118,6 +118,31 @@ trainer accepts:
 Constraints later work must keep: never Command IR; `*` chords remain T02-49;
 radio line unchanged; reject unknown rather than no-op; data-first catalog;
 self-hosted speech.
+
+### STARS Preview Area System List Display Commands (Table 29 & Table 32)
+
+Currently, system lists are rendered via the internal window manager and can be controlled programmatically via `toggleSystemList(view, listId)`. However, the Preview Area command parser does not yet accept standard STARS keyboard list commands.
+
+**Planned Command Set:**
+1. **`SO` (Sign-On List):** Toggles display of the Sign-On list (`SIGN_ON`).
+2. **`T` or `TAB` (Flight Plan List):** Toggles display of the unassociated IFR departure Tab list (`TAB`).
+3. **`TV` (VFR List):** Toggles display of the VFR flight following list (`VFR`).
+4. **`P1` / `P2` / `P3` (Tower Lists):** Toggles display of Tower Arrival Sequence lists 1, 2, and 3 (`TOWER_1`, `TOWER_2`, `TOWER_3`).
+5. **`TC` (Coast/Suspend List):** Toggles display of the Coast/Suspend list (`COAST`).
+6. **`CR` (CRDA Status List):** Toggles display of the CRDA Status list (`CRDA`).
+7. **`TX` (Geographic Video Maps List):** Toggles display of the Geographic Video Maps directory list (`MAPS`).
+8. **`TM` (LA/CA/MCI Alert List):** Toggles manual visibility of the safety alert list (`ALERT`).
+9. **`CO` / `F13` (Coordination List):** Toggles display of the departure coordination list (`COORD`).
+10. **`[List Cmd] + [Slew/Click]` Relocation:** Repositions the specified list anchor to the trackball/cursor coordinates.
+
+### DCB `LISTS` Submenu / Quick Click Controls
+
+In real FAA STARS consoles, the physical Display Control Bar (DCB) provides buttons for **`MAPS`** (GEO and CURRENT video map inventory) and **`AUX` -> `SSA FILTER` / `GI FILTER`**, while other system lists are conventionally driven via keyboard/preview area commands.
+
+To enhance web browser simulator usability without violating STARS fidelity:
+- Add a **`LISTS`** submenu button on the DCB (or under **`AUX -> LISTS`**).
+- Submenu cells: `ALL`, `SO`, `TAB`, `VFR`, `TWR1`, `TWR2`, `TWR3`, `CRDA`, `COAST`, `MAPS`, `COORD`, and `DONE`.
+- Clicking each cell toggles the corresponding window visibility directly without requiring keyboard command entry.
 
 ### Track lifecycle and multi-controller networking
 

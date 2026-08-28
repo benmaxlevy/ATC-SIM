@@ -96,7 +96,9 @@ export interface SsaInput {
   ptlMinutes?: number;
   /** Position subset number / TCP ID. Default 1. */
   subset?: number | string;
-  /** Primary airport altimeter setting. Default "30.17". */
+  /** Primary airport identifier. Default derived from scenario (e.g. "KDEM" or "BOS"). */
+  airportCode?: string;
+  /** Primary airport altimeter setting. Default "30.17" or scenario altimeter. */
   primaryAltimeter?: string;
   /** System / Network status string. Default "OK/OK/NA". */
   systemStatus?: string;
@@ -114,7 +116,7 @@ export interface SsaInput {
   airportAltimeters?: SsaAirportAltimeter[];
   /** Active Quicklook status string. Default "ALL". */
   quicklookStatus?: string;
-  /** Active CRDA RPC or consolidation status. Default "*S1 BOS 27/22L". */
+  /** Active CRDA RPC or consolidation status. Derived dynamically from scenario. */
   crdaRpcStatus?: string;
   /** Whether an active alert (MSAW / CA / system) exists for top alert indicator [▼]. */
   hasAlert?: boolean;
@@ -241,8 +243,10 @@ export function buildSsaRenderLines(input: SsaInput): SsaRenderLine[] {
   const ql = input.quicklookStatus ?? "ALL";
   result.push({ text: `QL: ${ql}`, style: "normal" });
 
-  // 11. Active CRDA RPC / Consolidation Status: *S1 BOS 27/22L
-  const crdaStatus = input.crdaRpcStatus ?? "*S1 BOS 27/22L";
+  // 11. Active CRDA RPC / Consolidation Status: derived from scenario airport or explicit status
+  const airport = input.airportCode ?? "KDEM";
+  const defaultCrda = airport === "BOS" ? "*S1 BOS 27/22L" : `*S1 ${airport} 27/09`;
+  const crdaStatus = input.crdaRpcStatus ?? defaultCrda;
   result.push({ text: crdaStatus, style: "normal" });
 
   return result;

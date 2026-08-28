@@ -21,10 +21,7 @@ function lines(partial: Partial<Parameters<typeof buildSsaLines>[0]> = {}) {
     offCenter: partial.offCenter ?? false,
     filter,
     filterEntry: partial.filterEntry ?? idleFilterEntry(filter),
-    visibility: partial.visibility,
-    ptlMinutes: partial.ptlMinutes,
-    hasAlert: partial.hasAlert,
-    spcAlerts: partial.spcAlerts,
+    ...partial,
   });
 }
 
@@ -39,7 +36,7 @@ test("AC1 — SSA block includes subset, time/altstg, status, beacons, range/PTL
   expect(onAirport).toContain("BOS 30.17 BED 30.17 OWD 30.18");
   expect(onAirport).toContain("BVY 30.17 LWM 30.19");
   expect(onAirport).toContain("QL: ALL");
-  expect(onAirport).toContain("*S1 BOS 27/22L");
+  expect(onAirport).toContain("*S1 KDEM 27/09");
   expect(onAirport).not.toContain("OFF CNTR");
 
   const filter: AltitudeFilter = { minHundreds: 50, maxHundreds: 100 };
@@ -53,6 +50,9 @@ test("AC1 — SSA block includes subset, time/altstg, status, beacons, range/PTL
   expect(panned).toContain("050 100 U 050 100 A");
   expect(panned).toContain("41NM PTL: 3.0");
   expect(panned).toContain("OFF CNTR");
+
+  const bosLines = lines({ airportCode: "BOS" });
+  expect(bosLines).toContain("*S1 BOS 27/22L");
 });
 
 test("AC2 — SSA render lines include alert indicator and red SPCs", () => {

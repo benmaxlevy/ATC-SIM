@@ -989,6 +989,13 @@ function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): 
     (world.alerts?.msaw && world.alerts.msaw.length > 0) ||
     (world.alerts?.ca && world.alerts.ca.length > 0);
 
+  const airportId = world.catalog?.airportId ?? "KDEM";
+  const rwys = world.catalog?.approaches?.map((a) => a.runwayId) ?? [];
+  const primaryRwy = rwys[0] ?? "27";
+  const secondaryRwy = rwys[1] ?? (primaryRwy === "27" ? "09" : "27");
+  const pairing = `${primaryRwy}/${secondaryRwy}`;
+  const crdaRpcStatus = `*S1 ${airportId} ${pairing}`;
+
   const ssaLines = buildSsaRenderLines({
     simTimeMs: world.simTimeMs,
     rangeNm: view.camera.rangeNm,
@@ -998,6 +1005,8 @@ function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): 
     visibility: view.ssaFilter,
     ptlMinutes: view.ptlMinutes,
     hasAlert: Boolean(hasAlert),
+    airportCode: airportId,
+    crdaRpcStatus,
   });
   const giLines = buildGiLines(view.giTextLines, view.giFilterVisible);
 
@@ -1099,6 +1108,7 @@ function drawSystemLists(
   const textColor = applyBrite(PALETTE.ssa, view.brite.lst);
 
   const activeRects: { id: string; bounds: ListRect }[] = [];
+  const airportId = world.catalog?.airportId ?? "KDEM";
 
   for (const [id, placement] of Object.entries(view.systemLists)) {
     if (!placement.visible && id !== "ALERT") {
@@ -1117,13 +1127,13 @@ function drawSystemLists(
         lines = buildVfrList(world, placement.maxLines);
         break;
       case "TOWER_1":
-        lines = buildTowerArrivalList(world, "BOS", 0, 0, placement.maxLines);
+        lines = buildTowerArrivalList(world, view.towerAirports?.[0] ?? airportId, 0, 0, placement.maxLines);
         break;
       case "TOWER_2":
-        lines = buildTowerArrivalList(world, "BED", 0, 0, placement.maxLines);
+        lines = buildTowerArrivalList(world, view.towerAirports?.[1] ?? (airportId === "BOS" ? "BED" : airportId), 0, 0, placement.maxLines);
         break;
       case "TOWER_3":
-        lines = buildTowerArrivalList(world, "OWD", 0, 0, placement.maxLines);
+        lines = buildTowerArrivalList(world, view.towerAirports?.[2] ?? (airportId === "BOS" ? "OWD" : airportId), 0, 0, placement.maxLines);
         break;
       case "ALERT":
         lines = buildAlertList(world, placement.maxLines);
@@ -1132,7 +1142,7 @@ function drawSystemLists(
         lines = buildCoastSuspendList([], placement.maxLines);
         break;
       case "CRDA":
-        lines = buildCrdaStatusList(undefined, placement.maxLines);
+        lines = buildCrdaStatusList(view.crdaRpcConfigs, placement.maxLines, airportId);
         break;
       case "MAPS":
         lines = buildVideoMapsListLines(view, "ALL", placement.maxLines);
