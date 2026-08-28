@@ -72,6 +72,21 @@ export interface TargetSymbolDescriptor {
   char?: string;
 }
 
+/**
+ * Two-character CODE BLOCK tokens match any squawk that starts with those
+ * digits; four-character tokens match exactly. Both may coexist.
+ */
+export function squawkMatchesBeaconSelect(
+  squawk: string,
+  beaconSelect: ReadonlySet<string> | ReadonlyArray<string>,
+): boolean {
+  if (squawk.length === 0) {
+    return false;
+  }
+  const codes = Array.isArray(beaconSelect) ? beaconSelect : [...beaconSelect];
+  return codes.some((code) => (code.length === 2 ? squawk.startsWith(code) : squawk === code));
+}
+
 /** Check if an aircraft/track is primary-only (no transponder/beacon). */
 export function isPrimaryTarget(
   ac?: { primaryOnly?: boolean; isPrimary?: boolean; transponder?: string } | null,
@@ -139,20 +154,13 @@ export function targetSymbolDescriptor(
     };
   }
 
-  if (opts.beaconSelect && squawk.length > 0) {
-    const isSelected = Array.isArray(opts.beaconSelect)
-      ? opts.beaconSelect.includes(squawk)
-      : opts.beaconSelect instanceof Set
-        ? opts.beaconSelect.has(squawk)
-        : false;
-    if (isSelected) {
-      return {
-        kind: "beacon_select",
-        shape: "square",
-        symbol: "□",
-        char: "□",
-      };
-    }
+  if (opts.beaconSelect && squawkMatchesBeaconSelect(squawk, opts.beaconSelect)) {
+    return {
+      kind: "beacon_select",
+      shape: "square",
+      symbol: "□",
+      char: "□",
+    };
   }
 
   return {

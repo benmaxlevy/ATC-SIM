@@ -29,7 +29,7 @@ If a canvas or chat summary disagrees with these files, **these files win**.
 
 ## Hard rules
 
-1. **Radio vs scope:** Command IR is radio-only. Scope keys must never construct a `Command`, never call the parser, never call the pilot agent, never change `intent` or kinematics. F3 only flips ownership color.
+1. **Radio vs scope:** Command IR is radio-only. Scope keys must never construct a `Command`, never call the parser, never call the pilot agent, never change `intent` or kinematics. F3 only flips ownership color. Preview Area INIT CNTL / TERM CNTL / `B` live in `src/scope/previewArea.ts`.
 2. **Do not change** Command IR types, parser tokens, readback templates, or `SpeechPort`.
 3. **Do not reopen** frozen decisions in `phases/02-scope/README.md` (range presets, focus model, palette, L1–L9, font, no zoom-to-cursor, no red).
 4. **Do not bind** `C` or `R` as scope keys (`C30` / `R180` are radio). Center = `Home`. Range = `PageUp` / `PageDown`.

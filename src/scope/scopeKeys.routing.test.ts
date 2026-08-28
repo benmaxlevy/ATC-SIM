@@ -137,3 +137,27 @@ test("AC5 — scope-focus * J 3 Enter consumes keys; parseCommand spy call count
   expect(parseCommandSpy).toHaveBeenCalledTimes(0);
   expect(view.starsChordEntry.phase).toBe("idle");
 });
+
+test("radio-focus B is not consumed; parseCommand still sees the character", () => {
+  const world = createWorld();
+  const view = createScopeView();
+  const parseCommandSpy = vi.fn();
+
+  const leftover = routeKeys(["B", "W", "A"], view, world, "radio", parseCommandSpy);
+  expect(leftover).toBe("BWA");
+  expect(parseCommandSpy).not.toHaveBeenCalled();
+  expect(view.preview.phase).toBe("idle");
+  expect(view.beaconSelectCodes).toEqual([]);
+});
+
+test("scope-focus B 4 5 Enter consumes keys; parseCommand spy call count 0", () => {
+  const world = createWorld();
+  const view = createScopeView();
+  const parseCommandSpy = vi.fn();
+
+  const leftover = routeKeys(["B", "4", "5", "Enter"], view, world, "scope", parseCommandSpy);
+  expect(leftover).toBe("");
+  expect(parseCommandSpy).toHaveBeenCalledTimes(0);
+  expect(view.beaconSelectCodes).toEqual(["45"]);
+  expect(view.preview.phase).toBe("idle");
+});

@@ -35,6 +35,7 @@ An in-browser, high-fidelity **STARS-like (Standard Terminal Automation Replacem
 - [Controls & Keybindings](#controls--keybindings)
   - [Scope Controls & Mouse Interaction](#scope-controls--mouse-interaction)
   - [Scope Keypad Shortcuts](#scope-keypad-shortcuts)
+  - [Preview Area](#preview-area)
 - [System Architecture](#system-architecture)
   - [Overview](#overview)
   - [Multi-Stage Parse Pipeline](#multi-stage-parse-pipeline)
@@ -198,7 +199,7 @@ ATC-SIM enforces a strict **zero paid/metered API policy**. All speech-to-text, 
   - STAR arrivals: *"Approach, Delta 123, descending via DEMO ONE arrival through one-one thousand (11000)"*.
   - SIDs departures: *"Departure, American 100, passing seven hundred climbing via the BAY ONE departure"*.
 - **Inbound & Departure Handoff Workflow**:
-  - Inbound arrivals spawn in pending handoff state from Center (unowned green FDB) → Controller clicks track or presses `F3` to accept → Track becomes owned (white FDB) → Radio frequency unlocked → Pilot checks in.
+  - Inbound arrivals spawn in pending handoff state from Center (unowned green FDB) → Controller left-clicks the track **or** uses Preview Area `F3` INIT CNTL (scope, not radio) to accept → Track becomes owned (white FDB) → Radio frequency unlocked → Pilot checks in.
   - Rolling departures spawn off the active runway (~0.8 NM, 700 ft, 180 kt) under Tower handoff → Pilot checks in on departure frequency → Flies published SID climb profile.
 - **Smart Shift+H Handoff**: Context-sensitive handoff initiator:
   - Selected arrival on approach (< 5 NM from threshold): executes Tower handoff (sets `LANDING` mode and tower ownership cyan tint).
@@ -213,7 +214,7 @@ Commands can be entered via the bottom command line prompt or spoken over Push-t
 
 ### Typed Command Syntax
 
-Prefix with callsign or click a radar target first:
+Typed commands **below** are **radio Command IR** only (command line or PTT). Inbound accept is a **scope** action: left-click the track, or Preview Area `F3` INIT CNTL — not a radio token.
 
 | Category | Typed Syntax | Example | Description |
 |---|---|---|---|
@@ -238,7 +239,6 @@ Prefix with callsign or click a radar target first:
 | **Transponder** | `SQ <CODE>` | `DAL123 SQ 4201` | Squawk transponder beacon code |
 | | `I` / `ID` | `DAL123 I` | Squawk ident (flashes target symbol) |
 | **Handoff** | `HO <SECTOR>` | `DAL123 HO TWR` | Initiate handoff to Tower / Center |
-| | `F3` / `Enter` | `DAL123` + `F3` | Accept inbound handoff / track ownership |
 | **Miscellaneous**| `GA` | `DAL123 GA` | Go around / execute missed approach |
 | | `SH` / `SA` | `DAL123 SH` | Say heading / say altitude |
 
@@ -282,12 +282,38 @@ Press **`F1`** at any time in the app to open the interactive keyboard help over
 | `M` | Toggle Mode C altitude field |
 | `F` | Set Altitude Filter band (`F` → min hundreds → `Enter` → max hundreds → `Enter`) |
 | `H` | Toggle radar history trail dots (0 ↔ last count) |
-| `F1` | Open keyboard help cheatsheet |
-| `F3` / `F4` | Accept / drop track ownership |
+| `F1` | Open keyboard help cheatsheet (CRC analog: beaconator hold; not MULTIFUNC) |
+| `F3` | INIT CNTL: selected track owns now; nothing selected arms command-then-slew (`INIT CNTL`, never `"F3"`); type FLID then Enter or slew. Color/ownership stub, not NAS associate. Pending inbound: accept+own. |
+| `F4` | TERM CNTL: selected track drops now; nothing selected arms command-then-slew (`TERM CNTL`, never `"F4"`); type FLID then Enter or slew. Trainer drop. `TERM CNTL ALL` is `INV`, not drop-all. |
 | `F7` | Toggle Predicted Track Line (`PTL ALL`) |
 | `F8` | Cycle radar history dot count |
 | `/` | Immediately focus radio command line |
 | `Shift + H` | Contextual smart handoff: Tower (for arrivals on final) or Center (for climbing departures) |
+
+### Preview Area
+
+The Preview Area is the typed **scope** buffer painted under the SSA (CRC analog). It is **not** the radio command line. F3 / F4 / `B` never emit Command IR, readback, or intent. `DAL123 H270` still turns. T02-49 `*J` / `*P` chords still arm and slew; a live `*` hint still wins over idle preview. Unknown or invalid commit flashes `INV` (reject, never parse-and-no-op). No `window.prompt`, no extra HTML `<input>`.
+
+Trainer F3 is a color/ownership stub (unowned green FDB → owned white FDB), not NAS associate. F4 is trainer drop, not NAS terminate. Pending inbound + INIT CNTL still accepts the handoff.
+
+| Command | What the operator does | What happens |
+| --- | --- | --- |
+| F3 INIT CNTL (arm) | `F3` with nothing selected | Preview paints `INIT CNTL` under the SSA (never the literal `"F3"`). Next target click owns **that** track (white FDB). Empty PPI click does not consume the arm. Pending inbound: one click accept+own. |
+| F3 implied | `F3` with a track already selected | Owns the selection immediately. Preview may flash `INIT CNTL` then clear. |
+| F3 + FLID + Enter | `F3`, type full callsign / numeric tail / unique 4-digit squawk, Enter | Owns that aircraft with nothing selected. Unknown or ambiguous → brief `INV`, no apply. |
+| F3 + FLID + slew | `F3`, type FLID, click a target | Applies only if the FLID uniquely matches that track; else `INV`. |
+| F4 TERM CNTL (arm) | `F4` with nothing selected | Preview paints `TERM CNTL` (never `"F4"`). Next target click drops **that** track. Empty click does not consume the arm. |
+| F4 implied | `F4` with a track selected | Drops the selection now. |
+| F4 + FLID + Enter | `F4`, type FLID, Enter | Drops the resolved aircraft. `TERM CNTL ALL` is `INV`, not drop-all. |
+| Backspace | Backspace while typing ACID after F3/F4 | Edits the typed ACID. |
+| Esc | Esc while preview is live (entry or armed) | Cancels preview to idle. Precedence: live preview > live `*` chord > DCB. |
+| INV | Unknown or incomplete commit | Brief `INV` flash. Select list / ownership unchanged. |
+| Scope-focus `B` + two digits + Enter | PPI focused, `B` `4` `5` Enter | Toggles CODE BLOCK `"45"`. Unassociated squawks starting with `45` paint □. Second `B45` Enter removes it. |
+| Scope-focus `B` + four digits | PPI focused, `B4500` (four digits may auto-commit) | Toggles discrete `"4500"`. Matching unassociated paints □; unmatched stays `*`. |
+| Incomplete `B` Enter | Bare `B`, one digit, or three digits then Enter | `INV`; select list unchanged. Non-digit after `B` (other than Enter/Esc/Backspace) is `INV`. |
+| Radio-focus `B` | Command line focused, type `B` | Literal character. Never always-on. Callsign typing still works. |
+
+Not Preview Area in this trainer (leave existing click / radio-buffer `UN`/`**`; highlight stays middle-click): pointouts `UN` / `**`, `TERM CNTL ALL`, `BE`/`BI`, assign-code `M ####`, MULTIFUNC (F7 stays PTL ALL), scratchpad `Y`, highlight keyboard. Full later list: **STARS preview area — commands not parsed** in [`phases/LATER-IMPLEMENTATION-BACKLOG.md`](phases/LATER-IMPLEMENTATION-BACKLOG.md).
 
 ---
 

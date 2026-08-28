@@ -1,5 +1,29 @@
 # Swarm status
 
+## FIFTEENTH SWARM COMPLETE — STARS Preview Area (T02-51–54)
+
+T02-51–54 are merged on `feature/stars-preview-area`. Captain `npm test` / `npm run ci` / `npm run build`: **135 test files passed, 1593 tests passed, 1 skipped, 0 failures**. Preview Area under the SSA is the scope command buffer; the radio line stays `DAL123 H270` → Command IR:
+
+- **Buffer (T02-51):** `idle` / `entry` / `armed` machine, SSA/preview-green readout, Esc-first cancel (live preview > live `*` chord > DCB), `INV` flash. Unknown complete input is invalid, not a silent no-op. F3/F4 still selected-only until T02-52.
+- **INIT / TERM CNTL (T02-52):** F3 paints `INIT CNTL` (never `"F3"`); F4 paints `TERM CNTL`. No selection arms command-then-slew; selected track applies immediately. FLID Enter / FLID slew via `resolveScopeFlid` (full callsign, numeric tail, unique 4-digit squawk; no `@pilot` import). `TERM CNTL ALL` is `INV`, not drop-all. Pending inbound INIT is one accept+own click.
+- **Beacon select (T02-53):** Scope-focus `B##` Enter toggles CODE BLOCK; `B####` toggles discrete (four digits may auto-commit). Matching unassociated paints □; unmatched stays `*`. Incomplete Enter is `INV`. Radio-focus `B` is a literal character.
+- **Acceptance (T02-54):** `src/scope/previewArea.integration.test.ts` drives real `World` + `ScopeView`. Root `README.md` **Preview Area** table lists every shipped command (F3/F4 arm, implied, FLID Enter/slew, Backspace, Esc, INV, `B##`/`B####`, radio-focus `B`). Phase README addendum T02-51–54 is present. Pointouts, `TERM CNTL ALL`, `BE`/`BI`, `M ####`, MULTIFUNC, scratchpad `Y`, and highlight keyboard stay out.
+
+**Merged (squash-merged, captains only):** T02-51 (`90037bb`), T02-52 (`c6469ed`), T02-53 (`2895e48`), T02-54 (`9f05a93`), format follow-ups (`8c9017a`, `f1328ff`).
+
+**Captain judgement calls:**
+
+- **Orchestrator and captain were one session.** Merge lock, worktrees, and waves were held in the top session. Workers stayed leaf-only and never merged.
+- **`ticket/` branches were cut from `feature/stars-preview-area`, not `master`.** `master` is untouched.
+- **Wave B rebase was additive.** T02-52 `initCntl`/`termCntl` and T02-53 `beaconBlock`/`beaconDiscrete` both extend `PreviewArmedAction` and `scopeKeys.ts`. Union kept both; `B` prefix row was not deleted.
+- **Dirty `src/scope/starsFidelity.integration.test.ts` (`rect()` mock) was never staged.** T02-54 added a new integration file.
+
+**Manual leftover:** T02-54 Chrome player loop (`npm run dev` → F3 INIT CNTL slew → F3 DAL123 Enter → F4 slew → `B4500` □ → radio heading → `*J3`). skip-with-reason: no visual operator. Automated tests prove the items above.
+
+**Product law held:** preview ≠ radio; no Command IR from F3/F4/`B`; `*J`/`*P` still T02-49; no pointouts this swarm; F7 stays PTL ALL; F1 stays beaconator.
+
+---
+
 ## FOURTEENTH SWARM COMPLETE — TPA / ATPA (T02-43–50)
 
 T02-43–50 are merged on `feature/atpa-tpa`. Captain `npm test` / `npm run ci` / `npm run build`: **131 test files passed, 1519 tests passed, 1 skipped, 0 failures**. Real ATPA on adapted approach volumes, in-trail pairing, predicted monitor/warning/alert, wedge cones, datablock in-trail distance, live DCB TPA/ATPA cells, richer manual TPA, and the STARS slew-chord parser:

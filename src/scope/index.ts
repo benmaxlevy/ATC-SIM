@@ -161,6 +161,7 @@ export {
   isCycleFocusKey,
   isFilterChordKey,
   isHelpToggleKey,
+  isBeaconSelectKey,
   isMouseBinding,
   isRadioFocusSlashKey,
   isScopeChordLive,
@@ -171,6 +172,36 @@ export {
   scopeFocusKeyBindings,
 } from "./keymap";
 export type { KeyBinding, KeyFocus, ScopeChord } from "./keymap";
+export {
+  applyPreviewBeaconAction,
+  armPreviewCntl,
+  beginPreviewBeaconEntry,
+  cancelPreviewArea,
+  commitPreviewCommand,
+  expirePreviewArea,
+  formatPreviewReadout,
+  handlePreviewBeaconKey,
+  handlePreviewEscape,
+  handlePreviewFlidKey,
+  idlePreviewArea,
+  isBeaconPreviewEntry,
+  parsePreviewCommand,
+  previewAreaIsLive,
+  previewCntlArmed,
+  previewFlidMatchesSlew,
+  rejectPreviewArea,
+  rejectPreviewCntl,
+  resolveScopeFlid,
+  toggleBeaconSelectCode,
+} from "./previewArea";
+export type {
+  PreviewArmedAction,
+  PreviewAreaState,
+  PreviewCommandResult,
+  PreviewFlidKeyResult,
+  PreviewPhase,
+  ScopeFlidResult,
+} from "./previewArea";
 export {
   STARS_CHORD_NM_MAX,
   STARS_CHORD_NM_MIN,
@@ -368,6 +399,7 @@ export {
   targetDiamondVertices,
   targetSymbolDescriptor,
   targetSymbolShape,
+  squawkMatchesBeaconSelect,
 } from "./targetSymbol";
 export type {
   TargetSurveillanceType,
@@ -449,7 +481,9 @@ export {
   LDB_QUERY_DURATION_MS,
   OUTBOUND_ACCEPTED_FLASH_MS,
   acceptInboundOnClick,
+  applyDropTrackToId,
   applyDropTrackToSelection,
+  applyInitiateTrackToId,
   applyInitiateTrackToSelection,
   createTrackDisplay,
   ensureTrackDisplay,

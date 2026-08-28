@@ -16,6 +16,7 @@ import {
   isCycleFocusKey,
   isFilterChordKey,
   isHelpToggleKey,
+  isBeaconSelectKey,
   isLeaderPrefixKey,
   isMouseBinding,
   isRadioFocusSlashKey,
@@ -93,6 +94,13 @@ test("F is a scope-focus chord key, never always-on F7", () => {
   expect(isFilterChordKey("F3")).toBe(false);
 });
 
+test("B is a scope-focus beacon-select key, never always-on", () => {
+  expect(isBeaconSelectKey("B")).toBe(true);
+  expect(isBeaconSelectKey("b")).toBe(true);
+  expect(isBeaconSelectKey("BE")).toBe(false);
+  expect(isBeaconSelectKey("F3")).toBe(false);
+});
+
 test("* is a scope-focus TPA/ATPA chord prefix, never radio", () => {
   expect(isStarsChordPrefixKey("*")).toBe(true);
   expect(isStarsChordPrefixKey("Multiply")).toBe(true);
@@ -146,6 +154,19 @@ test("AC3 — PageUp and F3 are always-on; leader and T are scope-focus", () => 
   expect(bindingById("leader")?.focus).toBe("scope");
   expect(bindingById("datablock")?.focus).toBe("scope");
   expect(bindingById("datablock")?.windowsKeys).toBe("T");
+});
+
+test("F3/F4 KEY_BINDINGS describe command-then-slew and FLID Enter", () => {
+  const init = bindingById("initiate-track")!;
+  expect(init.action).toMatch(/command-then-slew/);
+  expect(init.action).toMatch(/FLID/);
+  expect(init.action).toMatch(/initiate track/);
+  expect(init.crcAnalog).toMatch(/INIT CNTL/);
+  const drop = bindingById("drop-track")!;
+  expect(drop.action).toMatch(/command-then-slew/);
+  expect(drop.action).toMatch(/FLID/);
+  expect(drop.action).toMatch(/TERM CNTL ALL/);
+  expect(drop.crcAnalog).toMatch(/TERM CNTL/);
 });
 
 test("AC2 — bindings list PageUp/PageDown, Home, End, F3, F4, F7, F8, L1–L9, T, M, F filter, Tab", () => {

@@ -14,7 +14,9 @@
  * menu); radio `L090` stays FLY_HEADING left. Scope-focus `F` then hundreds is
  * the altitude filter (never always-on — radio `F` stays a command-line
  * character). Scope-focus `*` is TPA/ATPA slew chords (R07 Table 36); radio `*`
- * is a literal command-line character. Never produce a Command, readback, or intent. Wheel steps
+ * is a literal command-line character. Scope-focus `B` then digits is Table 30
+ * beacon-code select (never always-on — radio `B` stays a command-line
+ * character). Never produce a Command, readback, or intent. Wheel steps
  * discrete range presets — no zoom-to-cursor (R12). Not NAS STARS.
  */
 
@@ -24,6 +26,7 @@ import { stepRange } from "./camera";
 import {
   beginScopeChord,
   isArrowKey,
+  isBeaconSelectKey,
   isCycleFocusKey,
   isFilterChordKey,
   isLeaderPrefixKey,
@@ -39,6 +42,17 @@ import {
   armOrApplyStarsChordAction,
   handleStarsChordEntryKey,
 } from "./starsChord";
+import {
+  applyPreviewBeaconAction,
+  armPreviewCntl,
+  beginPreviewBeaconEntry,
+  cancelPreviewArea,
+  handlePreviewBeaconKey,
+  handlePreviewEscape,
+  handlePreviewFlidKey,
+  isBeaconPreviewEntry,
+  previewAreaIsLive,
+} from "./previewArea";
 import { handleDcbEscape } from "./dcbMenu";
 import { hideMapLists } from "./dcbFunctions";
 import { PpiPlaceholderId } from "./ppi-placeholder";
@@ -53,8 +67,11 @@ import {
 import {
   setLeaderDirForSelection,
   toggleDatablockModeForSelection,
+  applyDropTrackToId,
   applyDropTrackToSelection,
+  applyInitiateTrackToId,
   applyInitiateTrackToSelection,
+  selectedTrackId,
 } from "./trackDisplay";
 import { applyHandoffToSelection } from "./ownership";
 
@@ -170,6 +187,18 @@ function consume(event: ScopeKeyEvent): void {
   event.stopPropagation();
 }
 
+function applyPreviewCntl(
+  view: ScopeView,
+  world: World,
+  apply: { type: "initCntl" | "termCntl"; aircraftId: string },
+): void {
+  if (apply.type === "initCntl") {
+    applyInitiateTrackToId(view.tracks, world, apply.aircraftId);
+  } else {
+    applyDropTrackToId(view.tracks, world, apply.aircraftId);
+  }
+}
+
 function liveLeaderChord(view: ScopeView, nowMs: number) {
   if (!isScopeChordLive(view.pendingChord, nowMs) || view.pendingChord?.prefix !== "L") {
     if (view.pendingChord && !isScopeChordLive(view.pendingChord, nowMs)) {
@@ -210,6 +239,11 @@ export function handleScopeKeyDown(
   }
 
   if (event.key === "Escape") {
+    if (handlePreviewEscape(view.preview)) {
+      consume(event);
+      ui?.onHandled?.();
+      return true;
+    }
     const filterBusy = focus === "scope" && view.filterEntry.phase !== "idle";
     const leaderBusy = focus === "scope" && liveLeaderChord(view, nowMs) != null;
     const starsBusy =
@@ -222,7 +256,28 @@ export function handleScopeKeyDown(
     }
   }
 
+  const previewFlid = handlePreviewFlidKey(view.preview, event.key, nowMs, world);
+  if (previewFlid.consumed) {
+    consume(event);
+    if (previewFlid.apply && world) {
+      applyPreviewCntl(view, world, previewFlid.apply);
+    }
+    ui?.onHandled?.();
+    return true;
+  }
+
   if (focus === "scope") {
+    if (isBeaconPreviewEntry(view.preview)) {
+      const preview = handlePreviewBeaconKey(view.preview, event.key, nowMs, event.code);
+      if (preview.consumed) {
+        consume(event);
+        if (preview.action) {
+          applyPreviewBeaconAction(view.beaconSelectCodes, preview.action);
+        }
+        ui?.onHandled?.();
+        return true;
+      }
+    }
     const stars = handleStarsChordEntryKey(view.starsChordEntry, event.key, nowMs, event.code);
     if (stars.consumed) {
       consume(event);
@@ -245,6 +300,15 @@ export function handleScopeKeyDown(
       view.pendingChord = null;
       view.starsChordArmed = null;
       beginStarsChordEntry(view.starsChordEntry, nowMs);
+      return true;
+    }
+    if (isBeaconSelectKey(event.key) && !previewAreaIsLive(view.preview)) {
+      consume(event);
+      cancelFilterEntry(view.filterEntry, view.altitudeFilter);
+      view.pendingChord = null;
+      view.starsChordArmed = null;
+      beginPreviewBeaconEntry(view.preview, nowMs);
+      ui?.onHandled?.();
       return true;
     }
     if (isFilterChordKey(event.key)) {
@@ -294,6 +358,9 @@ export function handleScopeKeyDown(
       return true;
     }
   } else {
+    if (isBeaconPreviewEntry(view.preview)) {
+      cancelPreviewArea(view.preview);
+    }
     if (view.filterEntry.phase !== "idle") {
       cancelFilterEntry(view.filterEntry, view.altitudeFilter);
     }
@@ -344,14 +411,20 @@ export function handleScopeKeyDown(
   event.preventDefault();
   event.stopPropagation();
   if (event.key === "F3") {
-    if (world) {
+    if (world && selectedTrackId(world)) {
       applyInitiateTrackToSelection(view.tracks, world);
+      cancelPreviewArea(view.preview);
+    } else {
+      armPreviewCntl(view.preview, "initCntl", nowMs);
     }
     return true;
   }
   if (event.key === "F4") {
-    if (world) {
+    if (world && selectedTrackId(world)) {
       applyDropTrackToSelection(view.tracks, world);
+      cancelPreviewArea(view.preview);
+    } else {
+      armPreviewCntl(view.preview, "termCntl", nowMs);
     }
     return true;
   }

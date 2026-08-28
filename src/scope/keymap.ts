@@ -80,15 +80,17 @@ export const KEY_BINDINGS: KeyBinding[] = [
     id: "initiate-track",
     focus: "always",
     windowsKeys: "F3",
-    action: "Initiate track stub: selected unowned → owned color only. No NAS associate.",
-    crcAnalog: "F3 INIT CNTL / initiate track (NAS associate)",
+    action:
+      "INIT CNTL initiate track: selected applies now; no selection arms command-then-slew; type FLID then Enter or slew. Color stub, no NAS associate.",
+    crcAnalog: "F3 INIT CNTL / <INIT CNTL><FLID><SLEW> / <INIT CNTL><FLID><ENTER>",
   },
   {
     id: "drop-track",
     focus: "always",
     windowsKeys: "F4",
-    action: "Drop track stub: selected owned → unowned. Trainer sugar, not NAS terminate.",
-    crcAnalog: "Not CRC terminate / TERM CNTL",
+    action:
+      "TERM CNTL drop track: selected drops now; no selection arms command-then-slew; type FLID then Enter or slew. Trainer drop, not TERM CNTL ALL.",
+    crcAnalog: "F4 TERM CNTL / <TERM CNTL><SLEW> / <TERM CNTL><FLID><ENTER>",
   },
   {
     id: "ptl",
@@ -326,6 +328,11 @@ export function isLeaderPrefixKey(key: string): boolean {
 /** Scope-focus altitude filter chord. Never always-on. */
 export function isFilterChordKey(key: string): boolean {
   return key === "F" || key === "f";
+}
+
+/** Scope-focus Table 30 beacon select. Never always-on; radio `B` is literal. */
+export function isBeaconSelectKey(key: string): boolean {
+  return key === "B" || key === "b";
 }
 
 /** Scope-focus STARS TPA/ATPA `*` chord. Never always-on; radio `*` is literal. */

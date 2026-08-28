@@ -56,6 +56,7 @@ import { reuseOrBuildMapCache, toMapCacheInput, type MapCache } from "./mapLayer
 import { historyDotsToDraw } from "./history";
 import { drawPredictedTrackLine, ptlEndpoint, shouldDrawPtlForTrack } from "./ptl";
 import { isViewOffAirport, type ScopeView } from "./scopeView";
+import { formatPreviewReadout } from "./previewArea";
 import { formatStarsChordReadout } from "./starsChord";
 import {
   atpaConeMileagePlacement,
@@ -196,18 +197,22 @@ function drawMapLayers(ctx: CanvasRenderingContext2D, cache: MapCache, view: Sco
   ctx.lineWidth = MAP_STROKE_PX;
   if (cache.localizerPath) {
     ctx.stroke(cache.localizerPath);
-  } else if (cache.localizer) {
-    tracePolyline(ctx, cache.localizer, true);
-    ctx.stroke();
+  } else {
+    for (const loc of cache.localizers) {
+      tracePolyline(ctx, loc, true);
+      ctx.stroke();
+    }
   }
 
   const mapFont = datablockFontCss(view.charSizes.dataBlocks);
-  if (cache.runwayLabel) {
+  if (cache.runwayLabels.length > 0) {
     ctx.font = mapFont;
     ctx.textBaseline = "top";
     ctx.textAlign = "center";
     ctx.fillStyle = mpa;
-    ctx.fillText(cache.runwayLabel.text, cache.runwayLabel.x, cache.runwayLabel.y);
+    for (const label of cache.runwayLabels) {
+      ctx.fillText(label.text, label.x, label.y);
+    }
   }
 
   ctx.font = mapFont;
@@ -994,8 +999,9 @@ function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): 
 
 function drawChordHint(ctx: CanvasRenderingContext2D, view: ScopeView, ssaBottomY: number): void {
   const stars = formatStarsChordReadout(view.starsChordEntry, view.starsChordArmed);
+  const preview = formatPreviewReadout(view.preview);
   const hint = view.pendingChord?.hint;
-  if (!stars && !hint) {
+  if (!stars && !preview && !hint) {
     return;
   }
   ctx.font = datablockFontCss(view.charSizes.lists);
@@ -1004,6 +1010,11 @@ function drawChordHint(ctx: CanvasRenderingContext2D, view: ScopeView, ssaBottom
   if (stars) {
     ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
     ctx.fillText(stars, SSA_LEFT_PX, ssaBottomY + 4);
+    return;
+  }
+  if (preview) {
+    ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
+    ctx.fillText(preview, SSA_LEFT_PX, ssaBottomY + 4);
     return;
   }
   ctx.fillStyle = PALETTE.uiChrome;

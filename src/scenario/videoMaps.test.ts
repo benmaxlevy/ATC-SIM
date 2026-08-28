@@ -112,6 +112,15 @@ test("T04-28 AC1 — KDEM video maps include runway definition, LOC09 feather, a
     halfWidthDeg: 2.5,
   });
 
+  const rwyFeatures = rwy?.features.filter((f) => f.type === "runway") ?? [];
+  expect(rwyFeatures).toHaveLength(2);
+  expect(rwyFeatures).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ type: "runway", id: "27", label: "27" }),
+      expect.objectContaining({ type: "runway", id: "09", label: "9" }),
+    ]),
+  );
+
   const dem09 = maps.find((item) => item.id === "DEM1_09");
   expect(dem09).toBeDefined();
   expect(dem09?.color).toBe("map");

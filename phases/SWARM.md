@@ -1,4 +1,4 @@
-# ATC-SIM swarm orchestrator — Fourteenth swarm (TPA / ATPA: T02-43–50)
+# ATC-SIM swarm orchestrator — Fifteenth swarm (STARS Preview Area: T02-51–54)
 
 Paste **this entire file** into a new agent. That agent is the **orchestrator**. It may run for hours. It writes almost no application code.
 
@@ -9,7 +9,87 @@ Shell: **bash** (Linux).
 
 Before checking git, spawning agents, creating worktrees, or editing application code, update this file for the current swarm. Append a new swarm-start heading/configuration; do not overwrite prior swarm history. If the requested swarm configuration is incomplete, ask before making any other swarm move. Then commit the planning/status update before creating ticket branches or worktrees.
 
-This is the **fourteenth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–25) → 2 STARS CRC scope fidelity (T02-34–42) → 5 setup menu (T05-13, T05-14) → 4 dual runway (T04-26–30)** are already green on `master`. Do **not** redo completed work. Skip **T04-11** (wind) unless the human names it. This run is **T02-43–50 only**.
+This is the **fifteenth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–25) → 2 STARS CRC scope fidelity (T02-34–42) → 5 setup menu (T05-13, T05-14) → 4 dual runway (T04-26–30) → 2 TPA / ATPA (T02-43–50)** are already green on `master`. Do **not** redo completed work. Skip **T04-11** (wind) unless the human names it. This run is **T02-51–54 only**.
+
+---
+
+## Fifteenth swarm planned — 2026-08-27 (STARS Preview Area)
+
+This configuration runs on feature branch `feature/stars-preview-area`, cut from `master` at `5e9bc0f` (ATPA already on `master` via #9). Ticket workers branch from that base; the captain squash-merges back into that base.
+
+| Key | Value |
+| --- | --- |
+| Goal | CRC STARS Preview Area for backed scope commands: buffer under the SSA, F3 INIT CNTL / F4 TERM CNTL command-then-slew plus FLID Enter, and Table 30 `B##` / `B####` beacon-code select. Radio `DAL123 H270` unchanged. |
+| Player loop | `npm run dev` → F3 → preview shows **INIT CNTL** → click unowned arrival → owned white FDB; F3 `DAL123` Enter owns that callsign with nothing selected; F4 slew drops; `B4500` then unassociated 4500 paints □; `*J3` still arms/slews; radio heading still turns |
+| Include | **T02-51**, **T02-52**, **T02-53**, **T02-54** |
+| Skip | T04-11; all completed work (T00–T02-50, T03-*, T04-*, T05-*); **all pointouts** (`UN`, `**`, `(ID)*`, initiate/recall PO — leave existing click / radio-buffer `UN`/`**`); TERM CNTL ALL; typed TCP / Δ handoffs; quicklook; scratchpad `Y`/`+`; per-track PTL `R`; MULTIFUNC / F7 inhibit; highlight keyboard (stays middle-click); CRDA; WX; list relocate; RBL / `.dot` commands |
+| Stop | After T02-54 acceptance. Do not start phase 5 scoring. |
+| Max ticket workers in flight | **3** |
+| Merge lock | Only the phase captain squash-merges ticket branches to `feature/stars-preview-area`, then runs `npm test` |
+| Model | **cursor grok 4.6 high only.** `model: "cursor-grok-4.6-high"` on every captain and worker spawn. Not a fast model |
+| Paid STT/TTS/LLM | **Forbidden** |
+
+**Product law (fifteenth swarm — STARS Preview Area):**
+
+- **Two pipes.** Preview Area is the CRC analog under the SSA. The bottom radio command line stays `DAL123 H270` → Command IR. Scope commands never emit Command, readback, or intent.
+- **Command-then-slew.** Reuse T02-49 `starsChordArmed`: arm on the PPI, next target click applies, empty click does not consume the arm. No `window.prompt`, no extra HTML `<input>`. Esc cancels. Invalid commit flashes `INV` — reject unknown, never parse-and-no-op.
+- **CRC mnemonics.** F3 paints `INIT CNTL`, F4 paints `TERM CNTL`, not the strings `"F3"` / `"F4"`. SSA/preview green via `drawChordHint`. A live `*` chord still wins the hint.
+- **Implied form stays.** Select-then-F3 / select-then-F4 still apply immediately so T02-08 tests stay green. No-selection F3/F4 **arm** (today they no-op).
+- **FLID lookup is scope-local.** `resolveScopeFlid`: full callsign, numeric tail, unique 4-digit squawk. Do **not** import `@pilot` or the radio parser from `@scope`.
+- **Skip all pointouts this swarm.** Do not move `UN`/`**` onto the preview. Do not add `(ID)*`.
+- **F-key jobs stay frozen.** F7 = PTL ALL (not MULTIFUNC). F1 = beaconator hold. `*` Table 36 stays T02-49. Trainer F3 is still a color/ownership stub (not NAS associate); F4 is still trainer drop. Pending inbound + INIT CNTL still `acceptInboundHandoff`.
+- **Zero simulation regressions.** Kinematics, SIDs/STARs, ILS, dual-runway, radio telephony, DCB, ATPA, and `*J`/`*P` stay operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-51 | Base `feature/stars-preview-area` |
+| B | T02-52 ∥ T02-53 | T02-51 |
+| C | T02-54 | T02-52, T02-53 |
+
+Wave B both extend `parsePreviewCommand` / `PreviewArmedAction` and `src/scope/scopeKeys.ts`. Use isolated sibling worktrees. T02-52 owns INIT/TERM, F3/F4 branches, `resolveScopeFlid`, and the PPI armed-slew path for those actions. T02-53 owns the `B` prefix, `beaconSelectCodes` toggle, and scope-focus `B` (never always-on). The captain rebases the second ticket after the first squash; extend the union, do not redefine it.
+
+**State ownership:**
+
+- Preview machine (`idle` \| `entry` \| `armed`, buffer, mnemonic, INV flash) is T02-51's. Later tickets **extend** `PreviewArmedAction`; they do not replace `previewArea.ts`.
+- T02-52 is the only ticket that changes F3/F4 from selected-only apply to arm-when-unselected.
+- T02-53 is the only ticket that writes `beaconSelectCodes` from the keyboard. `targetSymbol` □ paint stays T02-34 unless prefix matching requires a matcher tweak.
+- T02-49 `starsChordArmed` / `*` parser is frozen. Preview Esc precedence: live preview > live `*` chord > DCB.
+- Do not stage or edit `src/scope/starsFidelity.integration.test.ts` (unrelated dirty file on the planner tree). T02-54 adds a **new** integration file.
+
+**Backlog ownership** (per `.cursor/rules/later-implementation-backlog.mdc`, each in the same commit as its slice):
+
+| Ticket | Backlog edit |
+| --- | --- |
+| T02-51 | adds **STARS preview area — commands not parsed** (unparsed CRC tables; pointouts skipped; highlight stays middle-click; pointer to existing MULTIFUNC subsection) |
+| T02-53 | updates that subsection: `B##` / `B####` now parsed; `BE`/`BI` and `M ####` remain later. Must not delete other rows |
+
+**Ticket files / branches:**
+
+- `ticket/T02-51-stars-preview-area-command-buffer` ← `phases/02-scope/tickets/T02-51-stars-preview-area-command-buffer.md`
+- `ticket/T02-52-init-term-cntl-command-then-slew` ← `phases/02-scope/tickets/T02-52-init-term-cntl-command-then-slew.md`
+- `ticket/T02-53-beacon-code-select-preview` ← `phases/02-scope/tickets/T02-53-beacon-code-select-preview.md`
+- `ticket/T02-54-preview-area-integration-and-acceptance` ← `phases/02-scope/tickets/T02-54-preview-area-integration-and-acceptance.md`
+
+Captain return:
+
+```
+PHASE EXIT GREEN
+Phase: 2 Scope addendum (T02-51–54 STARS Preview Area)
+Merged: T02-51 … T02-54
+Tests: npm test / npm run ci exit 0
+Manual leftover: <Chrome F3 INIT CNTL slew walk or none>
+Notes: <preview ≠ radio; INIT/TERM command-then-slew + FLID; B## select; no pointouts; *J still arms>
+```
+
+or `PHASE EXIT BLOCKED` with reason.
+
+---
+
+## Fifteenth swarm execution — 2026-08-27 (STARS Preview Area)
+
+Human invoked `/run-swarm` on this file. Config complete; no open questions. Orchestrator+captain in one session (captain subagent cannot spawn workers). Merge lock is `feature/stars-preview-area` at `679bf94` (planning) over `master` `5e9bc0f`. Preserve dirty `src/scope/starsFidelity.integration.test.ts` (`rect()` mock); do not stage it. Wave A is T02-51 alone in an isolated worktree. Stop after T02-54. Do not push. Do not start phase 5.
 
 ---
 
