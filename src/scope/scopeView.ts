@@ -84,6 +84,13 @@ import { cloneBrite, type BriteState } from "./palette";
 import type { TrackDisplay } from "./trackDisplay";
 import type { DcbPrefRuntime } from "./dcbPref";
 
+import {
+  DEFAULT_SYSTEM_LIST_PLACEMENTS,
+  idleListDragState,
+  type ListDragState,
+  type SystemListPlacement,
+} from "./systemLists";
+
 export interface ScopeView {
   camera: ScopeCamera;
   airportEastNm: number;
@@ -191,6 +198,10 @@ export interface ScopeView {
   giTextLines: string[];
   /** GI FILTER 1–10. Empty authored slots stay off and inert. */
   giFilterVisible: boolean[];
+  /** In-scope system list positions & configurations. */
+  systemLists: Record<string, SystemListPlacement>;
+  /** In-scope system list active middle-click drag state. */
+  listDrag: ListDragState;
   /**
    * DCB PREF runtime (T02-29). Eight named local display snapshots.
    * Analog CRC PREF; trainer localStorage, not a NAS preference host.
@@ -281,6 +292,8 @@ export function createScopeView(
     ssaFilter: defaultSsaVisibility(),
     giTextLines,
     giFilterVisible: defaultGiVisibility(giTextLines),
+    systemLists: { ...DEFAULT_SYSTEM_LIST_PLACEMENTS },
+    listDrag: idleListDragState(),
     dcbPref: {
       icao: "",
       slots: [null, null, null, null, null, null, null, null],
