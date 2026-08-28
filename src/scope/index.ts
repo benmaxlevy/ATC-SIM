@@ -603,3 +603,16 @@ export type {
   ListRect,
   SystemListPlacement,
 } from "./systemLists";
+export {
+  buildCoordinationListLines,
+  buildVideoMapsListLines,
+  createCoordinationList,
+  releaseDepartureByCallsign,
+  releaseSingleDeparture,
+  setCoordinationAutoRelease,
+} from "./coordinationList";
+export type {
+  CoordinationListState,
+  ReleaseDeparture,
+  ReleaseResult,
+} from "./coordinationList";
