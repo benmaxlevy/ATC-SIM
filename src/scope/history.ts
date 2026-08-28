@@ -10,7 +10,9 @@
 export const HISTORY_SAMPLE_MS = 5000;
 export const HISTORY_MAX_DOTS = 5;
 export const HISTORY_DOT_COUNTS = [0, 1, 2, 3, 4, 5] as const;
-export type HistoryDotCount = (typeof HISTORY_DOT_COUNTS)[number];
+export const HISTORY_KEYBOARD_MAX_DOTS = 9;
+/** AUX spinner stays 0–5. Keyboard `*HIST` accepts 0–9 (draw still caps at buffer length). */
+export type HistoryDotCount = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
 export interface HistoryBuf {
   timesSimMs: number[]; // length ≤ 5
@@ -61,6 +63,9 @@ export function historyDotsToDraw(
 }
 
 export function stepHistoryDotCount(current: HistoryDotCount, delta: -1 | 1): HistoryDotCount {
+  if (current > 5) {
+    return delta === 1 ? current : 5;
+  }
   const next = current + delta;
   if (next < 0 || next > 5) {
     return current;

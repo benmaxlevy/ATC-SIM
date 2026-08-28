@@ -15,10 +15,12 @@
  * slewed track). T02-61 adds the unified scope-focus lexer: `*`, `+`, `/`,
  * letters, digits, and spaces buffer here. T02-62 adds Table 31/32 list
  * mnemonics (`*T` / `*TAB` / `*TV` / `*TC` / `*TS` / `*P1`–`*P3` / `*TM` /
- * `*TX` / `*TN` toggle or `[1-100]` resize; `*S` slew-relocates SSA). Spaces
- * are optional (`*T` = `* T`). `BE` / `BI` LDB inhibit and assign-code
- * (`M ####`) remain deferred. Unknown complete input is invalid, not a silent
- * no-op. Not NAS STARS.
+ * `*TX` / `*TN` toggle or `[1-100]` resize; `*S` slew-relocates SSA). T02-64
+ * adds `*C` / `*OFF` / `*RR` / `*PTL` / `*HIST`. Spaces are optional (`*T` =
+ * `* T`). Bare `*P` / `*P3` stay TPA via the starsChord fallback; `*P1`–`*P3`
+ * are tower lists, not PTL. `BE` / `BI` LDB inhibit and assign-code (`M ####`)
+ * remain deferred. Unknown complete input is invalid, not a silent no-op. Not
+ * NAS STARS.
  */
 
 import type { World } from "@core";
@@ -30,7 +32,9 @@ export type PreviewPhase = "idle" | "entry" | "armed";
  * Armed preview action, discriminated on `type`.
  * T02-52: `initCntl` / `termCntl` (FLID lives on `PreviewAreaState.flid`).
  * T02-53: `beaconBlock` / `beaconDiscrete`. T02-62: `toggleList` / `resizeList`
- * / `armRelocateList`. Do not put F3-specific field names on ScopeView.
+ * / `armRelocateList`. T02-64: scope recenter / RR / PTL / HIST. Slew forms
+ * (`armRecenterScope`, `armRecenterRangeRings`) apply via DCB PLACE flags.
+ * Do not put F3-specific field names on ScopeView.
  */
 export type PreviewArmedAction =
   | { readonly type: "initCntl" }
@@ -39,7 +43,14 @@ export type PreviewArmedAction =
   | { readonly type: "beaconDiscrete"; readonly digits: string }
   | { readonly type: "toggleList"; readonly listId: string }
   | { readonly type: "resizeList"; readonly listId: string; readonly maxLines: number }
-  | { readonly type: "armRelocateList"; readonly listId: string };
+  | { readonly type: "armRelocateList"; readonly listId: string }
+  | { readonly type: "armRecenterScope" }
+  | { readonly type: "resetScopeCenter" }
+  | { readonly type: "setRangeRingInterval"; readonly intervalNm: number }
+  | { readonly type: "armRecenterRangeRings" }
+  | { readonly type: "resetRangeRingsCenter" }
+  | { readonly type: "setPtlMinutes"; readonly minutes: number }
+  | { readonly type: "setHistoryDots"; readonly count: number };
 
 /** Full callsign / numeric-tail / 4-digit squawk — duplicated, not `@pilot`. */
 const FULL_CALLSIGN = /^[A-Z]{3}[0-9]{1,4}[A-Z]?$/;
@@ -104,8 +115,9 @@ export type PreviewCommandResult =
  * `B##` / `B####` cannot live as enumerated rows: `B45` is a complete CODE
  * BLOCK and a live prefix of `B4501`. `parseBeaconSelect` owns those digits.
  * T02-61: `*` / `+` / `/` are live prefixes. T02-62 list rows live in
- * `parseListCommand` (spaces stripped; `*P1` vs TPA `*P` / T02-64 `*PTL`).
- * Do not rewrite the state machine to add rows.
+ * `parseListCommand` (`*P1` vs TPA `*P`). T02-64 `*C` / `*RR` / `*PTL` /
+ * `*HIST` live in `parseScopeDisplayCommand`. Do not rewrite the state machine
+ * to add rows.
  */
 type PreviewTableEntry = { kind: "prefix" } | { kind: "action"; action: PreviewArmedAction };
 
@@ -227,6 +239,110 @@ export function formatPreviewReadout(state: PreviewAreaState): string | null {
 
 function invalid(reason: string): PreviewCommandResult {
   return { kind: "invalid", reason };
+}
+
+/** Keyboard RR spacing. DCB spinner stays `RR_INTERVALS_NM` `[2, 5, 10]`. */
+const RR_KEYBOARD_INTERVALS_NM = [2, 5, 10, 20] as const;
+const PTL_KEYBOARD_MAX_MINUTES = 15;
+const HIST_KEYBOARD_MAX_DOTS = 9;
+
+/** `* C` == `*C`, `* RR 10` == `*RR10`. Does not touch `+` / `/` / beacon. */
+function compactStarCommand(buffer: string): string {
+  if (!buffer.startsWith("*")) {
+    return buffer;
+  }
+  return `*${buffer.slice(1).replace(/ /g, "")}`;
+}
+
+/**
+ * T02-64 Table 28 / 36 display commands. Null when this is not our family
+ * (`*J`, `*P`, `*P3`, `*T`, `*D`, … stay on the T02-61 incomplete / starsChord
+ * fallback). `*PTL` is ours; `*PT` is only a live PTL prefix.
+ */
+export function parseScopeDisplayCommand(buffer: string): PreviewCommandResult | null {
+  if (!buffer.startsWith("*")) {
+    return null;
+  }
+  const compact = compactStarCommand(buffer);
+
+  if (compact.startsWith("*PTL")) {
+    const rest = compact.slice(4);
+    if (rest.length === 0) {
+      return { kind: "incomplete" };
+    }
+    if (!/^\d+$/.test(rest)) {
+      return invalid("invalid PTL minutes");
+    }
+    const minutes = Number(rest);
+    if (minutes < 0 || minutes > PTL_KEYBOARD_MAX_MINUTES) {
+      return invalid("PTL minutes out of range");
+    }
+    return { kind: "action", action: { type: "setPtlMinutes", minutes } };
+  }
+  if (compact === "*PT") {
+    return { kind: "incomplete" };
+  }
+
+  if (compact.startsWith("*HIST")) {
+    const rest = compact.slice(5);
+    if (rest.length === 0) {
+      return { kind: "incomplete" };
+    }
+    if (!/^\d+$/.test(rest)) {
+      return invalid("invalid HIST count");
+    }
+    const count = Number(rest);
+    if (count < 0 || count > HIST_KEYBOARD_MAX_DOTS) {
+      return invalid("HIST count out of range");
+    }
+    return { kind: "action", action: { type: "setHistoryDots", count } };
+  }
+  if (compact === "*H" || compact === "*HI" || compact === "*HIS") {
+    return { kind: "incomplete" };
+  }
+
+  if (compact === "*C") {
+    return { kind: "action", action: { type: "armRecenterScope" } };
+  }
+
+  if (compact === "*OFF") {
+    return { kind: "action", action: { type: "resetScopeCenter" } };
+  }
+  if (compact === "*O" || compact === "*OF") {
+    return { kind: "incomplete" };
+  }
+  if (compact.startsWith("*OFF")) {
+    return invalid("unknown OFF command");
+  }
+
+  if (compact.startsWith("*RR")) {
+    const rest = compact.slice(3);
+    if (rest.length === 0) {
+      return { kind: "incomplete" };
+    }
+    if (rest === "C") {
+      return { kind: "action", action: { type: "armRecenterRangeRings" } };
+    }
+    if (rest === "OFF") {
+      return { kind: "action", action: { type: "resetRangeRingsCenter" } };
+    }
+    if (rest === "O" || rest === "OF") {
+      return { kind: "incomplete" };
+    }
+    if (/^\d+$/.test(rest)) {
+      const intervalNm = Number(rest);
+      if ((RR_KEYBOARD_INTERVALS_NM as readonly number[]).includes(intervalNm)) {
+        return { kind: "action", action: { type: "setRangeRingInterval", intervalNm } };
+      }
+      return invalid("invalid RR interval");
+    }
+    return invalid("invalid RR command");
+  }
+  if (compact === "*R") {
+    return { kind: "incomplete" };
+  }
+
+  return null;
 }
 
 /**
@@ -372,6 +488,10 @@ export function parsePreviewCommand(buffer: string): PreviewCommandResult {
   const beacon = parseBeaconSelect(buffer);
   if (beacon) {
     return beacon;
+  }
+  const display = parseScopeDisplayCommand(buffer);
+  if (display) {
+    return display;
   }
   const list = parseListCommand(buffer);
   if (list) {
@@ -654,6 +774,11 @@ export function handlePreviewBufferKey(
       return { consumed: true, action: null };
     }
     if (state.buffer.startsWith("*")) {
+      const display = parseScopeDisplayCommand(state.buffer);
+      if (display?.kind === "invalid") {
+        rejectPreviewArea(state, nowMs);
+        return { consumed: true, action: null };
+      }
       return { consumed: true, action: null, starsBuffer: state.buffer };
     }
     rejectPreviewArea(state, nowMs);

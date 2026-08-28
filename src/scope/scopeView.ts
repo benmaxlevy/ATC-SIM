@@ -103,7 +103,7 @@ export interface ScopeView {
   showCoastline: boolean;
   /** MAPS on/off keyed by video-map catalog id. Not on Aircraft. */
   mapVisibility: Map<string, boolean>;
-  /** Frozen RR interval (2 / 5 / 10 NM). */
+  /** Frozen RR interval (2 / 5 / 10 / 20 NM). DCB spinner is 2/5/10. */
   ringIntervalNm: RrIntervalNm;
   /** World origin of generated **range rings** (NM east/north). */
   rangeRingEastNm: number;
@@ -138,8 +138,9 @@ export interface ScopeView {
   digitalMap: DigitalMap;
   mapCache: MapCache | null;
   /**
-   * HISTORY dots to draw (0–5). 0 = off (same skip as historyEnabled === false).
-   * 5 matches the 5-dot buffer. F8 / H toggles 0 ↔ last non-zero (default 5).
+   * HISTORY dots to draw (0–9 from keyboard; AUX spinner 0–5). 0 = off (same skip as
+   * historyEnabled === false). Sampler still keeps 5 dots. F8 / H toggles 0 ↔ last
+   * non-zero (default 5).
    */
   historyDotCount: HistoryDotCount;
   /** Last non-zero HISTORY count restored by F8 / H. */
@@ -160,7 +161,7 @@ export interface ScopeView {
   ptlOn: boolean;
   /** PTL OWN: F3-owned tracks only. ALL wins if both are on. */
   ptlOwn: boolean;
-  /** PTL length in minutes. Default 1.0 (T02-07). AUX spinner 0.5/1/2/4. */
+  /** PTL length in minutes. Default 1.0 (T02-07). AUX spinner 0.5/1/2/4; keyboard 0–15. */
   ptlMinutes: PtlMinutes;
   /**
    * TPA. DCB `{ on, radiusNm }` is the toggle + 2/3/5/10 spinner (PREF).
@@ -343,6 +344,14 @@ export function setHistoryDotCount(view: ScopeView, count: HistoryDotCount): voi
     view.lastHistoryDotCount = count;
   }
   syncHistoryEnabled(view);
+}
+
+/** Keyboard `*PTL [0-15]`. Zero inhibits the PTL line (PTL ALL off). */
+export function setPtlMinutes(view: ScopeView, minutes: number): void {
+  view.ptlMinutes = minutes;
+  if (minutes <= 0) {
+    view.ptlOn = false;
+  }
 }
 
 export function stepHistoryDots(view: ScopeView, delta: -1 | 1): void {

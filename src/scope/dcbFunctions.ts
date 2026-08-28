@@ -40,7 +40,9 @@ import { setLeaderDirForSelection } from "./trackDisplay";
 type VideoMapRole = NonNullable<LoadedVideoMap["role"]>;
 
 export const RR_INTERVALS_NM = [2, 5, 10] as const;
-export type RrIntervalNm = (typeof RR_INTERVALS_NM)[number];
+/** Keyboard `*RR` may set 20 NM; DCB spinner stays `RR_INTERVALS_NM`. */
+export const RR_KEYBOARD_INTERVALS_NM = [2, 5, 10, 20] as const;
+export type RrIntervalNm = (typeof RR_KEYBOARD_INTERVALS_NM)[number];
 export const DEFAULT_RR_INTERVAL_NM: RrIntervalNm = 5;
 
 /** Numpad compass dirs offered by DCB LDR DIR — same as scope-focus L+digit. */
@@ -52,7 +54,7 @@ export const DCB_MAP_SLOT_COUNT = 32;
 export const DCB_QUICK_MAP_COUNT = 6;
 
 export function snapRrInterval(nm: number): RrIntervalNm {
-  for (const step of RR_INTERVALS_NM) {
+  for (const step of RR_KEYBOARD_INTERVALS_NM) {
     if (step === nm) {
       return step;
     }
@@ -205,13 +207,13 @@ export function hideMapLists(view: ScopeView): void {
 export function cycleRrInterval(view: ScopeView): void {
   if (!view.showRings) {
     view.showRings = true;
-    const i = RR_INTERVALS_NM.indexOf(view.ringIntervalNm);
+    const i = (RR_INTERVALS_NM as readonly number[]).indexOf(view.ringIntervalNm);
     const next = i < 0 ? 0 : (i + 1) % RR_INTERVALS_NM.length;
     view.ringIntervalNm = RR_INTERVALS_NM[next]!;
     invalidateMapCache(view);
     return;
   }
-  const i = RR_INTERVALS_NM.indexOf(view.ringIntervalNm);
+  const i = (RR_INTERVALS_NM as readonly number[]).indexOf(view.ringIntervalNm);
   if (i === 0) {
     view.showRings = false;
     invalidateMapCache(view);
@@ -246,11 +248,35 @@ function stepFrozen<T>(list: readonly T[], current: T, delta: number): T {
  * Does not hide rings (interval stays on while visible).
  */
 export function stepRrInterval(view: ScopeView, delta: number): void {
-  const next = stepFrozen(RR_INTERVALS_NM, view.ringIntervalNm, delta);
+  const inSpinner = (RR_INTERVALS_NM as readonly number[]).includes(view.ringIntervalNm);
+  const current = inSpinner
+    ? (view.ringIntervalNm as (typeof RR_INTERVALS_NM)[number])
+    : snapRrToSpinner(view.ringIntervalNm);
+  const next = stepFrozen(RR_INTERVALS_NM, current, delta);
   if (next === view.ringIntervalNm && view.showRings) {
     return;
   }
   view.ringIntervalNm = next;
+  view.showRings = true;
+  invalidateMapCache(view);
+}
+
+function snapRrToSpinner(nm: number): (typeof RR_INTERVALS_NM)[number] {
+  let closest: (typeof RR_INTERVALS_NM)[number] = RR_INTERVALS_NM[0]!;
+  let minDiff = Math.abs(nm - closest);
+  for (const step of RR_INTERVALS_NM) {
+    const diff = Math.abs(nm - step);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = step;
+    }
+  }
+  return closest;
+}
+
+/** Keyboard `*RR 2|5|10|20`: set interval and turn rings on. */
+export function setRangeRingInterval(view: ScopeView, intervalNm: RrIntervalNm): void {
+  view.ringIntervalNm = intervalNm;
   view.showRings = true;
   invalidateMapCache(view);
 }

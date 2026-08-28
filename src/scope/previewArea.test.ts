@@ -17,6 +17,7 @@ import {
   idlePreviewArea,
   isPreviewBufferStartChar,
   parsePreviewCommand,
+  parseScopeDisplayCommand,
   previewAreaIsLive,
   previewBufferCharFromKey,
   previewCntlArmed,
@@ -27,6 +28,7 @@ import {
   resolveScopeFlid,
   toggleBeaconSelectCode,
   type PreviewAreaState,
+  type PreviewArmedAction,
   type PreviewCommandResult,
 } from "./previewArea";
 
@@ -662,4 +664,111 @@ test("T02-62 — live *T / *S relocate; *T10 does not", () => {
     armed: { type: "armRelocateList", listId: "SSA" },
   });
   expect(previewRelocateListId(armed)).toBe("SSA");
+});
+
+const DISPLAY_PARSE_CASES: ReadonlyArray<{
+  buffer: string;
+  parse: PreviewCommandResult["kind"];
+  action?: PreviewArmedAction;
+}> = [
+  { buffer: "*C", parse: "action", action: { type: "armRecenterScope" } },
+  { buffer: "* C", parse: "action", action: { type: "armRecenterScope" } },
+  { buffer: "*OFF", parse: "action", action: { type: "resetScopeCenter" } },
+  { buffer: "* OFF", parse: "action", action: { type: "resetScopeCenter" } },
+  { buffer: "*RR2", parse: "action", action: { type: "setRangeRingInterval", intervalNm: 2 } },
+  { buffer: "*RR 5", parse: "action", action: { type: "setRangeRingInterval", intervalNm: 5 } },
+  { buffer: "* RR 10", parse: "action", action: { type: "setRangeRingInterval", intervalNm: 10 } },
+  { buffer: "*RR20", parse: "action", action: { type: "setRangeRingInterval", intervalNm: 20 } },
+  { buffer: "*RRC", parse: "action", action: { type: "armRecenterRangeRings" } },
+  { buffer: "*RR C", parse: "action", action: { type: "armRecenterRangeRings" } },
+  { buffer: "*RROFF", parse: "action", action: { type: "resetRangeRingsCenter" } },
+  { buffer: "*RR OFF", parse: "action", action: { type: "resetRangeRingsCenter" } },
+  { buffer: "*PTL0", parse: "action", action: { type: "setPtlMinutes", minutes: 0 } },
+  { buffer: "*PTL 1", parse: "action", action: { type: "setPtlMinutes", minutes: 1 } },
+  { buffer: "* PTL 15", parse: "action", action: { type: "setPtlMinutes", minutes: 15 } },
+  { buffer: "*HIST0", parse: "action", action: { type: "setHistoryDots", count: 0 } },
+  { buffer: "*HIST 9", parse: "action", action: { type: "setHistoryDots", count: 9 } },
+  { buffer: "*RR", parse: "incomplete" },
+  { buffer: "*PTL", parse: "incomplete" },
+  { buffer: "*HIST", parse: "incomplete" },
+  { buffer: "*RR7", parse: "invalid" },
+  { buffer: "*PTL25", parse: "invalid" },
+  { buffer: "*HIST12", parse: "invalid" },
+];
+
+test("T02-64 — parse *C / *OFF / *RR / *PTL / *HIST; spaces optional; bad params INV", () => {
+  for (const row of DISPLAY_PARSE_CASES) {
+    const parsed = parsePreviewCommand(row.buffer);
+    expect(parsed.kind, row.buffer).toBe(row.parse);
+    expect(parseScopeDisplayCommand(row.buffer)?.kind, row.buffer).toBe(row.parse);
+    if (row.action && parsed.kind === "action") {
+      expect(parsed.action).toEqual(row.action);
+    }
+    const committed = commitPreviewCommand(row.buffer);
+    if (row.parse === "incomplete") {
+      expect(committed.kind, `commit ${row.buffer}`).toBe("invalid");
+    } else {
+      expect(committed.kind, `commit ${row.buffer}`).toBe(row.parse);
+    }
+  }
+});
+
+test("T02-64 — *P / *P5 stay TPA (not PTL); *P1 is a list, not PTL", () => {
+  expect(parseScopeDisplayCommand("*P")).toBeNull();
+  expect(parseScopeDisplayCommand("*P5")).toBeNull();
+  expect(parseScopeDisplayCommand("*P1")).toBeNull();
+  expect(parsePreviewCommand("*P").kind).toBe("incomplete");
+  expect(parsePreviewCommand("*P5").kind).toBe("incomplete");
+  expect(parsePreviewCommand("*P1")).toEqual({
+    kind: "action",
+    action: { type: "toggleList", listId: "TOWER_1" },
+  });
+  expect(parsePreviewCommand("*PTL").kind).toBe("incomplete");
+  expect(parsePreviewCommand("*PTL5")).toEqual({
+    kind: "action",
+    action: { type: "setPtlMinutes", minutes: 5 },
+  });
+});
+
+test("T02-64 — Enter on *C returns action; *RR7 INV without starsBuffer", () => {
+  const recenter = idlePreviewArea();
+  beginPreviewBufferEntry(recenter, "*", 0);
+  handlePreviewBufferKey(recenter, "C", 1);
+  expect(handlePreviewBufferKey(recenter, "Enter", 2)).toEqual({
+    consumed: true,
+    action: { type: "armRecenterScope" },
+  });
+  expect(recenter.phase).toBe("idle");
+  expect(recenter.buffer).toBe("");
+
+  const spaced = idlePreviewArea();
+  beginPreviewBufferEntry(spaced, "*", 0);
+  handlePreviewBufferKey(spaced, " ", 1);
+  handlePreviewBufferKey(spaced, "R", 2);
+  handlePreviewBufferKey(spaced, "R", 3);
+  handlePreviewBufferKey(spaced, " ", 4);
+  handlePreviewBufferKey(spaced, "1", 5);
+  handlePreviewBufferKey(spaced, "0", 6);
+  expect(handlePreviewBufferKey(spaced, "Enter", 7)).toEqual({
+    consumed: true,
+    action: { type: "setRangeRingInterval", intervalNm: 10 },
+  });
+
+  const inv = idlePreviewArea();
+  beginPreviewBufferEntry(inv, "*", 0);
+  for (const ch of ["R", "R", "7"]) {
+    handlePreviewBufferKey(inv, ch, 1);
+  }
+  expect(handlePreviewBufferKey(inv, "Enter", 2)).toEqual({ consumed: true, action: null });
+  expect(inv.rejection).toBe("*RR7 INV");
+  expect(inv.phase).toBe("idle");
+
+  const tpa = idlePreviewArea();
+  beginPreviewBufferEntry(tpa, "*", 0);
+  handlePreviewBufferKey(tpa, "P", 1);
+  expect(handlePreviewBufferKey(tpa, "Enter", 2)).toEqual({
+    consumed: true,
+    action: null,
+    starsBuffer: "*P",
+  });
 });

@@ -60,14 +60,24 @@ import {
   previewAreaIsLive,
   previewBufferCharFromKey,
   rejectPreviewArea,
+  type PreviewArmedAction,
   type PreviewKeyOutcome,
 } from "./previewArea";
 import { handleDcbEscape } from "./dcbMenu";
-import { hideMapLists } from "./dcbFunctions";
+import {
+  applyRrCenter,
+  armPlaceCenter,
+  armPlaceRangeRing,
+  hideMapLists,
+  setRangeRingInterval,
+  type RrIntervalNm,
+} from "./dcbFunctions";
 import { PpiPlaceholderId } from "./ppi-placeholder";
 import {
   centerOnAirport,
   centerOnLastClick,
+  setHistoryDotCount,
+  setPtlMinutes,
   toggleHistoryEnabled,
   toggleModeCVisible,
   togglePtlOn,
@@ -84,6 +94,7 @@ import {
 } from "./trackDisplay";
 import { applyHandoffToSelection } from "./ownership";
 import { setSystemListMaxLines, toggleSystemList } from "./systemLists";
+import type { HistoryDotCount } from "./history";
 
 export const ALWAYS_ON_SCOPE_KEYS = [
   "PageUp",
@@ -230,6 +241,66 @@ function startPreviewBuffer(view: ScopeView, ch: string, nowMs: number): void {
   }
 }
 
+function applyPreviewArmedAction(
+  view: ScopeView,
+  action: PreviewArmedAction,
+  nowMs: number,
+): void {
+  if (applyPreviewBeaconAction(view.beaconSelectCodes, action)) {
+    return;
+  }
+  switch (action.type) {
+    case "toggleList":
+      toggleSystemList(view, action.listId);
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      return;
+    case "resizeList":
+      setSystemListMaxLines(view, action.listId, action.maxLines);
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      return;
+    case "armRelocateList":
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      armPreviewRelocateList(view.preview, action.listId, nowMs);
+      return;
+    case "armRecenterScope":
+      if (!view.placeCenterArmed) {
+        armPlaceCenter(view);
+      } else {
+        view.placeRangeRingArmed = false;
+      }
+      return;
+    case "resetScopeCenter":
+      centerOnAirport(view);
+      view.placeCenterArmed = false;
+      return;
+    case "setRangeRingInterval":
+      setRangeRingInterval(view, action.intervalNm as RrIntervalNm);
+      return;
+    case "armRecenterRangeRings":
+      if (!view.placeRangeRingArmed) {
+        armPlaceRangeRing(view);
+      } else {
+        view.placeCenterArmed = false;
+      }
+      return;
+    case "resetRangeRingsCenter":
+      applyRrCenter(view);
+      view.placeRangeRingArmed = false;
+      return;
+    case "setPtlMinutes":
+      setPtlMinutes(view, action.minutes);
+      return;
+    case "setHistoryDots":
+      setHistoryDotCount(view, action.count as HistoryDotCount);
+      return;
+    default:
+      return;
+  }
+}
+
 function applyPreviewBufferOutcome(
   view: ScopeView,
   world: World | undefined,
@@ -237,20 +308,7 @@ function applyPreviewBufferOutcome(
   outcome: PreviewKeyOutcome,
 ): void {
   if (outcome.action) {
-    applyPreviewBeaconAction(view.beaconSelectCodes, outcome.action);
-    if (outcome.action.type === "toggleList") {
-      toggleSystemList(view, outcome.action.listId);
-      cancelStarsChordEntry(view.starsChordEntry);
-      view.starsChordArmed = null;
-    } else if (outcome.action.type === "resizeList") {
-      setSystemListMaxLines(view, outcome.action.listId, outcome.action.maxLines);
-      cancelStarsChordEntry(view.starsChordEntry);
-      view.starsChordArmed = null;
-    } else if (outcome.action.type === "armRelocateList") {
-      cancelStarsChordEntry(view.starsChordEntry);
-      view.starsChordArmed = null;
-      armPreviewRelocateList(view.preview, outcome.action.listId, nowMs);
-    }
+    applyPreviewArmedAction(view, outcome.action, nowMs);
   }
   if (outcome.starsBuffer) {
     const stars = commitStarsChord(outcome.starsBuffer);

@@ -14,7 +14,7 @@
 import { RANGE_PRESETS_NM, type RangeNm } from "./camera";
 import { snapRrInterval, type RrIntervalNm } from "./dcbFunctions";
 import { cloneCharSizes, type CharSizes } from "./fonts";
-import { HISTORY_DOT_COUNTS, type HistoryDotCount } from "./history";
+import { type HistoryDotCount } from "./history";
 import { LEADER_LENGTH_STEPS_PX, type LeaderDir, type LeaderLengthPx } from "./leader";
 import { cloneBrite, type BriteState } from "./palette";
 import { PTL_MINUTE_PRESETS, type PtlMinutes } from "./ptl";
@@ -176,11 +176,17 @@ function isLeaderLength(value: unknown): value is LeaderLengthPx {
 }
 
 function isHistoryCount(value: unknown): value is HistoryDotCount {
-  return (HISTORY_DOT_COUNTS as readonly number[]).includes(value as number);
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 9;
 }
 
 function isPtlMinutes(value: unknown): value is PtlMinutes {
-  return (PTL_MINUTE_PRESETS as readonly number[]).includes(value as number);
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 15) {
+    return false;
+  }
+  if ((PTL_MINUTE_PRESETS as readonly number[]).includes(value)) {
+    return true;
+  }
+  return Number.isInteger(value);
 }
 
 function isTpaRadius(value: unknown): value is TpaRadiusNm {
