@@ -44,6 +44,7 @@ import {
   activeDcbPrefName,
   beginDcbPrefSession,
   browserDcbPrefStorage,
+  cancelDcbSpinner,
   cancelFilterEntry,
   centerOnAirport,
   closeDcbMenu,
@@ -55,6 +56,7 @@ import {
   DCB_ACTION_FLASH_MS,
   dcbActionCapPressed,
   GI_SLOT_COUNT,
+  RANGE_PRESETS_NM,
   SSA_FILTER_FIELDS,
   formatDcbBriteReadout,
   formatDcbCharReadout,
@@ -85,7 +87,6 @@ import {
   stepCharSizeChannel,
   stepDcbLeaderDir,
   stepDcbLeaderLength,
-  stepDcbSpinner,
   stepHistoryDots,
   stepPtlLength,
   stepRange,
@@ -111,6 +112,7 @@ import {
   type CharSizeChannel,
   type CharSizes,
   type DcbSpinnerCell,
+  type RangeNm,
   type ScopeView,
   type SsaFilterField,
 } from "@scope";
@@ -192,21 +194,103 @@ function toggleSpinner(view: ScopeView, onChange: () => void, cell: DcbSpinnerCe
   afterCell(onChange);
 }
 
-function onSpinnerWheel(
+function snapRangeToPreset(num: number): RangeNm {
+  let closest: RangeNm = RANGE_PRESETS_NM[0];
+  let minDiff = Math.abs(num - closest);
+  for (const preset of RANGE_PRESETS_NM) {
+    const diff = Math.abs(num - preset);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = preset;
+    }
+  }
+  return closest;
+}
+
+function snapRrInterval(num: number): number {
+  const intervals = [2, 5, 10, 20];
+  let closest = intervals[0]!;
+  let minDiff = Math.abs(num - closest);
+  for (const iv of intervals) {
+    const diff = Math.abs(num - iv);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = iv;
+    }
+  }
+  return closest;
+}
+
+function snapPtlMinutes(num: number): number {
+  const ptlSteps = [0.5, 1.0, 2.0, 4.0, 8.0];
+  let closest = ptlSteps[0]!;
+  let minDiff = Math.abs(num - closest);
+  for (const step of ptlSteps) {
+    const diff = Math.abs(num - step);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = step;
+    }
+  }
+  return closest;
+}
+
+function snapBriteLevel(num: number): number {
+  return Math.max(0, Math.min(100, Math.round(num / 10) * 10));
+}
+
+function applyDirectNumericInput(
   view: ScopeView,
   cell: DcbSpinnerCell,
+  num: number,
+): void {
+  switch (cell) {
+    case "RANGE":
+      view.camera.rangeNm = snapRangeToPreset(num);
+      break;
+    case "RR":
+      view.ringIntervalNm = snapRrInterval(num) as any;
+      view.showRings = view.ringIntervalNm > 0;
+      break;
+    case "LDR_DIR":
+      if (num >= 1 && num <= 9) {
+        view.defaultLeaderDir = num as any;
+      }
+      break;
+    case "LDR_LENGTH":
+      view.leaderLengthPx = (Math.max(0, Math.min(48, Math.round(num / 12) * 12))) as any;
+      break;
+    case "HISTORY":
+      view.historyDotCount = Math.max(0, Math.min(10, num)) as any;
+      view.historyEnabled = view.historyDotCount > 0;
+      break;
+    case "PTL":
+      view.ptlMinutes = snapPtlMinutes(num) as any;
+      view.ptlOn = true;
+      break;
+    default:
+      if (cell.startsWith("BRITE_")) {
+        const channel = cell.slice(6).toLowerCase() as BriteChannel;
+        if (channel in view.brite) {
+          view.brite[channel] = snapBriteLevel(num) as any;
+        }
+      }
+      break;
+  }
+}
+
+function onSpinnerWheel(
+  _view: ScopeView,
+  _cell: DcbSpinnerCell,
   event: WheelEvent<HTMLButtonElement>,
   apply: (delta: -1 | 1) => void,
   onChange: () => void,
 ): void {
-  if (!spinnerArmed(view, cell)) {
-    return;
-  }
   event.preventDefault();
   event.stopPropagation();
-  const delta: -1 | 1 = event.deltaY < 0 ? -1 : 1;
-  stepDcbSpinner(view, delta, apply);
-  onChange();
+  const delta: -1 | 1 = event.deltaY < 0 ? 1 : -1;
+  apply(delta);
+  afterCell(onChange);
 }
 
 function historySpinnerArmed(view: ScopeView): boolean {
@@ -327,6 +411,7 @@ interface DcbCellProps {
   disabled?: boolean;
   onClick: () => void;
   onWheel?: (event: WheelEvent<HTMLButtonElement>) => void;
+  onDragDelta?: (deltaSteps: number) => void;
   dataDcb?:
     | "lists-all"
     | "ptl"
@@ -480,6 +565,7 @@ function DcbCell({
   disabled,
   onClick,
   onWheel,
+  onDragDelta,
   dataDcb,
   dataMapId,
   dataMapSlot,
@@ -489,6 +575,9 @@ function DcbCell({
   const [flashing, setFlashing] = useState(false);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isDragging = useRef(false);
+  const dragStartY = useRef<number | null>(null);
+  const accumulatedDy = useRef(0);
   const momentary = kind !== "toggle" && kind !== "disabled";
   const inset = dcbActionCapPressed(pressed, momentary && flashing);
 
@@ -563,15 +652,44 @@ function DcbCell({
       data-dcb-flashing={flashing ? "true" : undefined}
       onMouseDown={preventButtonFocus}
       onPointerDown={(event: PointerEvent<HTMLButtonElement>) => {
-        if (event.currentTarget.setPointerCapture) {
+        if (kind === "spinner" && onDragDelta) {
+          isDragging.current = true;
+          dragStartY.current = event.clientY;
+          accumulatedDy.current = 0;
+          event.currentTarget.setPointerCapture?.(event.pointerId);
+        } else if (event.currentTarget.setPointerCapture) {
           if (momentary) {
             event.currentTarget.setPointerCapture(event.pointerId);
           }
         }
         armActionFlash();
       }}
-      onPointerUp={releaseActionFlash}
+      onPointerMove={(event: PointerEvent<HTMLButtonElement>) => {
+        if (isDragging.current && dragStartY.current !== null && onDragDelta) {
+          const dy = dragStartY.current - event.clientY; // Up is positive
+          accumulatedDy.current += dy;
+          dragStartY.current = event.clientY;
+          const STEP_PX = 8;
+          if (Math.abs(accumulatedDy.current) >= STEP_PX) {
+            const steps = Math.trunc(accumulatedDy.current / STEP_PX);
+            accumulatedDy.current -= steps * STEP_PX;
+            onDragDelta(steps);
+          }
+        }
+      }}
+      onPointerUp={(event: PointerEvent<HTMLButtonElement>) => {
+        if (isDragging.current) {
+          isDragging.current = false;
+          dragStartY.current = null;
+          accumulatedDy.current = 0;
+          event.currentTarget.releasePointerCapture?.(event.pointerId);
+        }
+        releaseActionFlash();
+      }}
       onPointerCancel={() => {
+        isDragging.current = false;
+        dragStartY.current = null;
+        accumulatedDy.current = 0;
         if (momentary) {
           clearFlashTimer();
           setFlashing(false);
@@ -755,6 +873,12 @@ function renderPhysicalMain(
             onWheel={(event) =>
               onSpinnerWheel(view, "RANGE", event, (step) => stepRange(view.camera, step), onChange)
             }
+            onDragDelta={(step) => {
+              for (let i = 0; i < Math.abs(step); i++) {
+                stepRange(view.camera, step > 0 ? 1 : -1);
+              }
+              afterCell(onChange);
+            }}
           >
             <span className="dcb-cell-line">RANGE</span>
             <span id={DCB_RANGE_READOUT_ID} className="dcb-cell-line">
@@ -799,6 +923,12 @@ function renderPhysicalMain(
             onWheel={(event) =>
               onSpinnerWheel(view, "RR", event, (step) => stepRrInterval(view, step), onChange)
             }
+            onDragDelta={(step) => {
+              for (let i = 0; i < Math.abs(step); i++) {
+                stepRrInterval(view, step > 0 ? 1 : -1);
+              }
+              afterCell(onChange);
+            }}
           >
             <span className="dcb-cell-line">RR</span>
             <span id={DCB_RR_READOUT_ID} className="dcb-cell-line">
@@ -881,6 +1011,12 @@ function renderPhysicalMain(
                 onChange,
               )
             }
+            onDragDelta={(step) => {
+              for (let i = 0; i < Math.abs(step); i++) {
+                stepDcbLeaderDir(view, world, step > 0 ? 1 : -1);
+              }
+              afterCell(onChange);
+            }}
           >
             <span className="dcb-cell-line">LDR DIR</span>
             <span id={DCB_LDR_READOUT_ID} className="dcb-cell-line">
@@ -905,6 +1041,12 @@ function renderPhysicalMain(
                 onChange,
               )
             }
+            onDragDelta={(step) => {
+              for (let i = 0; i < Math.abs(step); i++) {
+                stepDcbLeaderLength(view, step > 0 ? 1 : -1);
+              }
+              afterCell(onChange);
+            }}
           >
             <span className="dcb-cell-line">LDR</span>
             <span id={DCB_LDR_LENGTH_READOUT_ID} className="dcb-cell-line">
@@ -1242,15 +1384,14 @@ function renderAux(view: ScopeView, onChange: () => void) {
           }
           afterCell(onChange);
         }}
-        onWheel={(event) => {
-          if (!historySpinnerArmed(view)) {
-            return;
+        onWheel={(event) =>
+          onSpinnerWheel(view, "HISTORY", event, (step) => stepHistoryDots(view, step), onChange)
+        }
+        onDragDelta={(step) => {
+          for (let i = 0; i < Math.abs(step); i++) {
+            stepHistoryDots(view, step > 0 ? 1 : -1);
           }
-          event.preventDefault();
-          event.stopPropagation();
-          const delta: -1 | 1 = event.deltaY < 0 ? -1 : 1;
-          stepDcbSpinner(view, delta, (step) => stepHistoryDots(view, step));
-          onChange();
+          afterCell(onChange);
         }}
       >
         <span className="dcb-cell-line">HISTORY</span>
@@ -1312,15 +1453,14 @@ function renderAux(view: ScopeView, onChange: () => void) {
           }
           afterCell(onChange);
         }}
-        onWheel={(event) => {
-          if (!ptlSpinnerArmed(view)) {
-            return;
+        onWheel={(event) =>
+          onSpinnerWheel(view, "PTL", event, (step) => stepPtlLength(view, step), onChange)
+        }
+        onDragDelta={(step) => {
+          for (let i = 0; i < Math.abs(step); i++) {
+            stepPtlLength(view, step > 0 ? 1 : -1);
           }
-          event.preventDefault();
-          event.stopPropagation();
-          const delta: -1 | 1 = event.deltaY < 0 ? -1 : 1;
-          stepDcbSpinner(view, delta, (step) => stepPtlLength(view, step));
-          onChange();
+          afterCell(onChange);
         }}
       >
         <span className="dcb-cell-line">PTL</span>
@@ -1700,6 +1840,12 @@ function renderCharSize(view: ScopeView, onChange: () => void) {
                 onChange,
               )
             }
+            onDragDelta={(step) => {
+              for (let i = 0; i < Math.abs(step); i++) {
+                stepCharSizeChannel(view, item.channel, step > 0 ? 1 : -1);
+              }
+              afterCell(onChange);
+            }}
           >
             <span className="dcb-cell-line">{item.line1}</span>
             <span className="dcb-cell-line">
@@ -1779,6 +1925,12 @@ function renderBrite(view: ScopeView, onChange: () => void) {
                   onChange,
                 )
               }
+              onDragDelta={(step) => {
+                for (let i = 0; i < Math.abs(step); i++) {
+                  stepBriteChannel(view, cell.channel!, step > 0 ? 1 : -1);
+                }
+                afterCell(onChange);
+              }}
             >
               <span className="dcb-cell-line">{cell.label}</span>
               <span className="dcb-cell-line">{formatDcbBriteReadout(view.brite[cell.channel])}</span>
@@ -1833,7 +1985,7 @@ function renderPref(view: ScopeView, onChange: () => void) {
           key={i}
           kind="toggle"
           ariaLabel={`Pref ${i + 1}`}
-          dataDcb={`pref-${i + 1}` as DcbCellProps["dataDcb"]}
+          dataDcb={`pref-${i + 1}` as NonNullable<DcbCellProps["dataDcb"]>}
           pressed={view.dcbPref.activeIndex === i}
           onClick={() => {
             cancelFilterIfEntering(view);
@@ -1853,6 +2005,7 @@ function renderPref(view: ScopeView, onChange: () => void) {
         onClick={() => {
           cancelFilterIfEntering(view);
           applyDcbPrefDefaults(view);
+          persistDcbPref(view, prefStore());
           afterCell(onChange);
         }}
       >
@@ -1919,6 +2072,65 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
   const dcbHighlight = applyBrite(PALETTE.dcbHighlight, view.brite.dcb);
   const menu = view.dcbMenu;
   const vertical = isVerticalDcbDock(view.dcbDock);
+
+  const typedBuffer = useRef<string>("");
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (!view.dcbSpinner.armed || !view.dcbSpinner.cell) {
+        typedBuffer.current = "";
+        return;
+      }
+
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        e.stopPropagation();
+        typedBuffer.current += e.key;
+        if (view.dcbSpinner.cell === "LDR_DIR") {
+          const val = Number(typedBuffer.current);
+          if (val >= 1 && val <= 9) {
+            view.defaultLeaderDir = val as any;
+            commitDcbSpinner(view);
+            typedBuffer.current = "";
+            afterCell(onChange);
+          }
+        }
+        return;
+      }
+
+      if (e.key === "Backspace") {
+        e.preventDefault();
+        e.stopPropagation();
+        typedBuffer.current = typedBuffer.current.slice(0, -1);
+        return;
+      }
+
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        const num = Number(typedBuffer.current);
+        if (Number.isFinite(num) && typedBuffer.current.length > 0) {
+          applyDirectNumericInput(view, view.dcbSpinner.cell, num);
+        }
+        commitDcbSpinner(view);
+        typedBuffer.current = "";
+        afterCell(onChange);
+        return;
+      }
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        cancelDcbSpinner(view);
+        typedBuffer.current = "";
+        afterCell(onChange);
+        return;
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [view, onChange]);
 
   return (
     <div

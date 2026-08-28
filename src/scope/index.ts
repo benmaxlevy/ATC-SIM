@@ -291,6 +291,7 @@ export {
   DCB_ACTION_FLASH_MS,
   applyDcbShift,
   armDcbSpinner,
+  cancelDcbSpinner,
   closeDcbMenu,
   commitDcbSpinner,
   dcbActionCapPressed,
