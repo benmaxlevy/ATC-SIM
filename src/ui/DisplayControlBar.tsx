@@ -54,7 +54,11 @@ import {
   DCB_QUICK_MAP_COUNT,
   DCB_ACTION_FLASH_MS,
   dcbActionCapPressed,
+  HISTORY_DOT_COUNTS,
+  LEADER_LENGTH_STEPS_PX,
+  PTL_MINUTE_PRESETS,
   RANGE_PRESETS_NM,
+  RR_INTERVALS_NM,
   SSA_FILTER_FIELDS,
   formatDcbBriteReadout,
   formatDcbCharReadout,
@@ -70,6 +74,7 @@ import {
   deleteDcbPref,
   hideMapLists,
   isDcbMapSlotEnabled,
+  isLeaderDir,
   isRangeRingOffViewCenter,
   isVerticalDcbDock,
   isVideoMapOn,
@@ -80,6 +85,8 @@ import {
   saveAsDcbPref,
   saveDcbPref,
   selectDcbPrefSlot,
+  setHistoryDotCount,
+  snapBriteLevel,
   setDcbDock,
   stepBriteChannel,
   stepCharSizeChannel,
@@ -105,7 +112,10 @@ import {
   type CharSizeChannel,
   type CharSizes,
   type DcbSpinnerCell,
+  type LeaderLengthPx,
+  type PtlMinutes,
   type RangeNm,
+  type RrIntervalNm,
   type ScopeView,
   type SsaFilterField,
 } from "@scope";
@@ -187,10 +197,10 @@ function toggleSpinner(view: ScopeView, onChange: () => void, cell: DcbSpinnerCe
   afterCell(onChange);
 }
 
-function snapRangeToPreset(num: number): RangeNm {
-  let closest: RangeNm = RANGE_PRESETS_NM[0];
+function nearestPreset<T extends number>(presets: readonly T[], num: number): T {
+  let closest = presets[0]!;
   let minDiff = Math.abs(num - closest);
-  for (const preset of RANGE_PRESETS_NM) {
+  for (const preset of presets) {
     const diff = Math.abs(num - preset);
     if (diff < minDiff) {
       minDiff = diff;
@@ -200,72 +210,51 @@ function snapRangeToPreset(num: number): RangeNm {
   return closest;
 }
 
-function snapRrInterval(num: number): number {
-  const intervals = [2, 5, 10, 20];
-  let closest = intervals[0]!;
-  let minDiff = Math.abs(num - closest);
-  for (const iv of intervals) {
-    const diff = Math.abs(num - iv);
-    if (diff < minDiff) {
-      minDiff = diff;
-      closest = iv;
-    }
-  }
-  return closest;
+function snapRangeToPreset(num: number): RangeNm {
+  return nearestPreset(RANGE_PRESETS_NM, num);
 }
 
-function snapPtlMinutes(num: number): number {
-  const ptlSteps = [0.5, 1.0, 2.0, 4.0, 8.0];
-  let closest = ptlSteps[0]!;
-  let minDiff = Math.abs(num - closest);
-  for (const step of ptlSteps) {
-    const diff = Math.abs(num - step);
-    if (diff < minDiff) {
-      minDiff = diff;
-      closest = step;
-    }
-  }
-  return closest;
+function snapRrToPreset(num: number): RrIntervalNm {
+  return nearestPreset(RR_INTERVALS_NM, num);
 }
 
-function snapBriteLevel(num: number): number {
-  return Math.max(0, Math.min(100, Math.round(num / 10) * 10));
+function snapPtlToPreset(num: number): PtlMinutes {
+  return nearestPreset(PTL_MINUTE_PRESETS, num);
 }
 
-function applyDirectNumericInput(
-  view: ScopeView,
-  cell: DcbSpinnerCell,
-  num: number,
-): void {
+function snapLeaderLength(num: number): LeaderLengthPx {
+  return nearestPreset(LEADER_LENGTH_STEPS_PX, num);
+}
+
+function applyDirectNumericInput(view: ScopeView, cell: DcbSpinnerCell, num: number): void {
   switch (cell) {
     case "RANGE":
       view.camera.rangeNm = snapRangeToPreset(num);
       break;
     case "RR":
-      view.ringIntervalNm = snapRrInterval(num) as any;
+      view.ringIntervalNm = snapRrToPreset(num);
       view.showRings = view.ringIntervalNm > 0;
       break;
     case "LDR_DIR":
-      if (num >= 1 && num <= 9) {
-        view.defaultLeaderDir = num as any;
+      if (isLeaderDir(num)) {
+        view.defaultLeaderDir = num;
       }
       break;
     case "LDR_LENGTH":
-      view.leaderLengthPx = (Math.max(0, Math.min(48, Math.round(num / 12) * 12))) as any;
+      view.leaderLengthPx = snapLeaderLength(num);
       break;
     case "HISTORY":
-      view.historyDotCount = Math.max(0, Math.min(10, num)) as any;
-      view.historyEnabled = view.historyDotCount > 0;
+      setHistoryDotCount(view, nearestPreset(HISTORY_DOT_COUNTS, num));
       break;
     case "PTL":
-      view.ptlMinutes = snapPtlMinutes(num) as any;
+      view.ptlMinutes = snapPtlToPreset(num);
       view.ptlOn = true;
       break;
     default:
       if (cell.startsWith("BRITE_")) {
         const channel = cell.slice(6).toLowerCase() as BriteChannel;
         if (channel in view.brite) {
-          view.brite[channel] = snapBriteLevel(num) as any;
+          view.brite[channel] = snapBriteLevel(num);
         }
       }
       break;
@@ -1356,7 +1345,13 @@ function renderAux(view: ScopeView, onChange: () => void) {
         data-dcb-row-span={2}
         style={{ gridColumn: 1, gridRow: "1 / span 2" }}
       >
-        <DcbCell kind="disabled" ariaLabel="Volume" dataDcb="vol" disabled onClick={() => undefined}>
+        <DcbCell
+          kind="disabled"
+          ariaLabel="Volume"
+          dataDcb="vol"
+          disabled
+          onClick={() => undefined}
+        >
           <span className="dcb-cell-line">VOL</span>
           <span className="dcb-cell-line">2</span>
         </DcbCell>
@@ -1809,7 +1804,9 @@ function renderTpaAtpa(view: ScopeView, onChange: () => void) {
         >
           <span className="dcb-cell-line">INTRAIL</span>
           <span className="dcb-cell-line">DISTANCE</span>
-          <span className="dcb-cell-line">{view.atpa.inTrailDistance ? "ENABLED" : "DISABLED"}</span>
+          <span className="dcb-cell-line">
+            {view.atpa.inTrailDistance ? "ENABLED" : "DISABLED"}
+          </span>
         </DcbCell>
       </div>
       <div
@@ -2776,7 +2773,9 @@ function renderBrite(view: ScopeView, onChange: () => void) {
               }}
             >
               <span className="dcb-cell-line">{cell.label}</span>
-              <span className="dcb-cell-line">{formatDcbBriteReadout(view.brite[cell.channel])}</span>
+              <span className="dcb-cell-line">
+                {formatDcbBriteReadout(view.brite[cell.channel])}
+              </span>
             </DcbCell>
           );
         } else {
@@ -2785,7 +2784,11 @@ function renderBrite(view: ScopeView, onChange: () => void) {
               key={cell.id}
               kind="disabled"
               ariaLabel={cell.label || "Disabled"}
-              dataDcb={cell.id.startsWith("blank") ? undefined : (`brite-${cell.id}` as NonNullable<DcbCellProps["dataDcb"]>)}
+              dataDcb={
+                cell.id.startsWith("blank")
+                  ? undefined
+                  : (`brite-${cell.id}` as NonNullable<DcbCellProps["dataDcb"]>)
+              }
               disabled
               onClick={() => undefined}
             >
@@ -3051,8 +3054,8 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
         typedBuffer.current += e.key;
         if (view.dcbSpinner.cell === "LDR_DIR") {
           const val = Number(typedBuffer.current);
-          if (val >= 1 && val <= 9) {
-            view.defaultLeaderDir = val as any;
+          if (isLeaderDir(val)) {
+            view.defaultLeaderDir = val;
             commitDcbSpinner(view);
             typedBuffer.current = "";
             afterCell(onChange);

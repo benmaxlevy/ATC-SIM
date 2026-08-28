@@ -81,7 +81,7 @@ import {
   tpaRingsToPaint,
   tpaSizeReadoutEnabled,
 } from "./tpa";
-import { buildGiLines, buildSsaLines, buildSsaRenderLines } from "./ssa";
+import { buildGiLines, buildSsaRenderLines } from "./ssa";
 import { buildMapListLines } from "./dcbFunctions";
 import type { TrackOwnership } from "./ownership";
 import { BLINK_HALF_PERIOD_MS, PALETTE, applyBrite, caDatablockTagVisible } from "./palette";
@@ -990,7 +990,16 @@ function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): 
     (world.alerts?.ca && world.alerts.ca.length > 0);
 
   const airportId = world.catalog?.airportId ?? "KDEM";
-  const rwys = world.catalog?.approaches?.map((a) => a.runwayId) ?? [];
+  const rwys: string[] = [];
+  const seenRwys = new Set<string>();
+  for (const approach of world.catalog?.approaches ?? []) {
+    const id = approach.runwayId ?? approach.runway;
+    if (!id || seenRwys.has(id)) {
+      continue;
+    }
+    seenRwys.add(id);
+    rwys.push(id);
+  }
   const primaryRwy = rwys[0] ?? "27";
   const secondaryRwy = rwys[1] ?? (primaryRwy === "27" ? "09" : "27");
   const pairing = `${primaryRwy}/${secondaryRwy}`;
@@ -1143,13 +1152,31 @@ function drawSystemLists(
         lines = buildVfrList(world, placement.maxLines);
         break;
       case "TOWER_1":
-        lines = buildTowerArrivalList(world, view.towerAirports?.[0] ?? airportId, 0, 0, placement.maxLines);
+        lines = buildTowerArrivalList(
+          world,
+          view.towerAirports?.[0] ?? airportId,
+          0,
+          0,
+          placement.maxLines,
+        );
         break;
       case "TOWER_2":
-        lines = buildTowerArrivalList(world, view.towerAirports?.[1] ?? (airportId === "BOS" ? "BED" : airportId), 0, 0, placement.maxLines);
+        lines = buildTowerArrivalList(
+          world,
+          view.towerAirports?.[1] ?? airportId,
+          0,
+          0,
+          placement.maxLines,
+        );
         break;
       case "TOWER_3":
-        lines = buildTowerArrivalList(world, view.towerAirports?.[2] ?? (airportId === "BOS" ? "OWD" : airportId), 0, 0, placement.maxLines);
+        lines = buildTowerArrivalList(
+          world,
+          view.towerAirports?.[2] ?? airportId,
+          0,
+          0,
+          placement.maxLines,
+        );
         break;
       case "ALERT":
         lines = buildAlertList(world, placement.maxLines);
@@ -1207,13 +1234,23 @@ function drawSystemLists(
     ctx.lineWidth = 1;
     for (const item of activeRects) {
       if (overlapping.has(item.id)) {
-        ctx.strokeRect(item.bounds.x - 2, item.bounds.y - 2, item.bounds.width + 4, item.bounds.height + 4);
+        ctx.strokeRect(
+          item.bounds.x - 2,
+          item.bounds.y - 2,
+          item.bounds.width + 4,
+          item.bounds.height + 4,
+        );
       }
     }
   }
 
   // Draw active middle-click drag frames
-  if (view.listDrag?.movingListId && view.listDrag.movingAnchorRect && view.listDrag.movingCurrentPos && view.listDrag.movingOffset) {
+  if (
+    view.listDrag?.movingListId &&
+    view.listDrag.movingAnchorRect &&
+    view.listDrag.movingCurrentPos &&
+    view.listDrag.movingOffset
+  ) {
     // Green anchor box
     ctx.strokeStyle = "#00FF00";
     ctx.lineWidth = 1;
@@ -1227,4 +1264,3 @@ function drawSystemLists(
     ctx.strokeRect(movingX - 2, movingY - 2, anchor.width + 4, anchor.height + 4);
   }
 }
-

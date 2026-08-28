@@ -45,12 +45,7 @@ describe("listFormatter", () => {
       formatLine: (idx) => `LINE ${idx + 1}`,
     };
     const lines = buildSystemListLines(formatter);
-    expect(lines).toEqual([
-      "FLIGHT PLAN",
-      "MORE: 2/5",
-      "LINE 1",
-      "LINE 2",
-    ]);
+    expect(lines).toEqual(["FLIGHT PLAN", "MORE: 2/5", "LINE 1", "LINE 2"]);
   });
 
   it("omits MORE header when entries fit within maxLines", () => {
@@ -62,11 +57,7 @@ describe("listFormatter", () => {
       formatLine: (idx) => `VFR ${idx + 1}`,
     };
     const lines = buildSystemListLines(formatter);
-    expect(lines).toEqual([
-      "VFR LIST",
-      "VFR 1",
-      "VFR 2",
-    ]);
+    expect(lines).toEqual(["VFR LIST", "VFR 1", "VFR 2"]);
   });
 });
 
@@ -99,9 +90,7 @@ describe("systemLists window manager", () => {
 
   it("handles middle-click drag lifecycle and coordinate drop", () => {
     let state = idleListDragState();
-    const lists = [
-      { id: "TAB", bounds: { x: 100, y: 200, width: 150, height: 100 } },
-    ];
+    const lists = [{ id: "TAB", bounds: { x: 100, y: 200, width: 150, height: 100 } }];
     const paneExtent = { width: 1000, height: 800 };
 
     // Click inside TAB list -> starts drag
@@ -120,14 +109,17 @@ describe("systemLists window manager", () => {
     expect(res2.updatedPlacement).toEqual({
       id: "TAB",
       x: (420 - 20) / 1000, // 0.4
-      y: (320 - 20) / 800,  // 0.375
+      y: (320 - 20) / 800, // 0.375
     });
   });
 
   it("cancels drag on cancelListDrag", () => {
     let state = idleListDragState();
     const lists = [{ id: "TAB", bounds: { x: 100, y: 200, width: 150, height: 100 } }];
-    const res = handleListMiddleClick(state, { x: 120, y: 220 }, lists, { width: 1000, height: 800 });
+    const res = handleListMiddleClick(state, { x: 120, y: 220 }, lists, {
+      width: 1000,
+      height: 800,
+    });
     state = res.nextState;
     expect(state.movingListId).toBe("TAB");
 

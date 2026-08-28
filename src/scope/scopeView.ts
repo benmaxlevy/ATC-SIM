@@ -86,6 +86,7 @@ import type { TrackDisplay } from "./trackDisplay";
 import {
   DEFAULT_SYSTEM_LIST_PLACEMENTS,
   idleListDragState,
+  type CrdaRpcConfig,
   type ListDragState,
   type SystemListPlacement,
 } from "./systemLists";
@@ -199,6 +200,16 @@ export interface ScopeView {
   giFilterVisible: boolean[];
   /** In-scope system list positions & configurations. */
   systemLists: Record<string, SystemListPlacement>;
+  /**
+   * TOWER 1–3 airport IDs. When omitted, each list uses the scenario airport.
+   * Satellite airports are not inferred from a facility-id switch.
+   */
+  towerAirports?: string[];
+  /**
+   * CRDA STATUS RPC pairings. When omitted, `buildCrdaStatusList` uses
+   * `defaultCrdaConfigsForAirport`.
+   */
+  crdaRpcConfigs?: CrdaRpcConfig[];
   /** In-scope system list active middle-click drag state. */
   listDrag: ListDragState;
   /**

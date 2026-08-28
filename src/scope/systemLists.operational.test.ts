@@ -46,8 +46,36 @@ describe("systemLists operational builders", () => {
     const world: World = {
       ...createWorld(),
       aircraft: [
-        makeTestAircraft({ id: "1", callsign: "AAL123", assignedSquawk: "1234", aircraftType: "B738", intent: { assignedAltitudeFt: 5000, assignedHeadingDeg: 270, assignedSpeedKt: 210, turn: "SHORTEST", expectedApproachId: "GAYEL", clearedApproachId: null, locInterceptApproachId: null } }),
-        makeTestAircraft({ id: "2", callsign: "DAL456", assignedSquawk: "5678", aircraftType: "A319", intent: { assignedAltitudeFt: 8000, assignedHeadingDeg: 90, assignedSpeedKt: 250, turn: "SHORTEST", expectedApproachId: "BOS", clearedApproachId: null, locInterceptApproachId: null } }),
+        makeTestAircraft({
+          id: "1",
+          callsign: "AAL123",
+          assignedSquawk: "1234",
+          aircraftType: "B738",
+          intent: {
+            assignedAltitudeFt: 5000,
+            assignedHeadingDeg: 270,
+            assignedSpeedKt: 210,
+            turn: "SHORTEST",
+            expectedApproachId: "GAYEL",
+            clearedApproachId: null,
+            locInterceptApproachId: null,
+          },
+        }),
+        makeTestAircraft({
+          id: "2",
+          callsign: "DAL456",
+          assignedSquawk: "5678",
+          aircraftType: "A319",
+          intent: {
+            assignedAltitudeFt: 8000,
+            assignedHeadingDeg: 90,
+            assignedSpeedKt: 250,
+            turn: "SHORTEST",
+            expectedApproachId: "BOS",
+            clearedApproachId: null,
+            locInterceptApproachId: null,
+          },
+        }),
       ],
     };
 
@@ -73,10 +101,13 @@ describe("systemLists operational builders", () => {
   });
 
   it("builds Coast / Suspend list for coasting flights", () => {
-    const lines = buildCoastSuspendList([
-      { callsign: "AAL506", status: "C", squawk: "3553", lastAltitudeHundreds: "015" },
-      { callsign: "JBU389", status: "C", squawk: "3746", lastAltitudeHundreds: "030" },
-    ], 10);
+    const lines = buildCoastSuspendList(
+      [
+        { callsign: "AAL506", status: "C", squawk: "3553", lastAltitudeHundreds: "015" },
+        { callsign: "JBU389", status: "C", squawk: "3746", lastAltitudeHundreds: "030" },
+      ],
+      10,
+    );
     expect(lines[0]).toBe("COAST/SUSPEND");
     expect(lines[1]).toBe("12  AAL506    C 3553 015");
     expect(lines[2]).toBe("13  JBU389    C 3746 030");
@@ -101,7 +132,15 @@ describe("systemLists operational builders", () => {
       aircraft: [],
       alerts: {
         msaw: [{ callsign: "AAL100", severity: "alert", altFt: 600, floorFt: 1000 }],
-        ca: [{ callsignA: "DAL111", callsignB: "UAE124", severity: "alert", distNm: 1.5, deltaAltFt: 200 }],
+        ca: [
+          {
+            callsignA: "DAL111",
+            callsignB: "UAE124",
+            severity: "alert",
+            distNm: 1.5,
+            deltaAltFt: 200,
+          },
+        ],
         atpa: [],
       },
     };

@@ -5,11 +5,7 @@
  */
 
 import { formatAltitudeHundreds } from "./datablock";
-import {
-  buildSystemListLines,
-  rewriteFixForList,
-  type ListFormatter,
-} from "./listFormatter";
+import { buildSystemListLines, rewriteFixForList, type ListFormatter } from "./listFormatter";
 import type { ScopeView } from "./scopeView";
 
 export interface ReleaseDeparture {
@@ -118,10 +114,7 @@ export function releaseDepartureByCallsign(
 /**
  * Toggles auto-release mode for the coordination list (F13 P(ID) A* / M*).
  */
-export function setCoordinationAutoRelease(
-  list: CoordinationListState,
-  auto: boolean,
-): void {
+export function setCoordinationAutoRelease(list: CoordinationListState, auto: boolean): void {
   list.autoRelease = auto;
   if (auto) {
     // Automatically release any pending flights
@@ -183,7 +176,8 @@ export function buildVideoMapsListLines(
     }
   }
 
-  const title = category === "ALL" || category === "GEO" ? "GEOGRAPHIC MAPS" : `VIDEO MAPS (${category})`;
+  const title =
+    category === "ALL" || category === "GEO" ? "GEOGRAPHIC MAPS" : `VIDEO MAPS (${category})`;
 
   const formatter: ListFormatter = {
     title,

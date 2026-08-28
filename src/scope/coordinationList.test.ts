@@ -26,8 +26,24 @@ function makeTestDeparture(partial: Partial<ReleaseDeparture>): ReleaseDeparture
 describe("coordinationList", () => {
   it("formats unreleased and released departures with * and + prefixes", () => {
     const list = createCoordinationList("A", "REPUBLIC", [
-      makeTestDeparture({ id: "1", callsign: "DPJ7156", aircraftType: "E55P", squawk: "1234", exitFix: "GAY", requestedAltitudeFt: 18000, released: false }),
-      makeTestDeparture({ id: "2", callsign: "EJA5253", aircraftType: "C56X", squawk: "5678", exitFix: "WHITE", requestedAltitudeFt: 24000, released: true }),
+      makeTestDeparture({
+        id: "1",
+        callsign: "DPJ7156",
+        aircraftType: "E55P",
+        squawk: "1234",
+        exitFix: "GAY",
+        requestedAltitudeFt: 18000,
+        released: false,
+      }),
+      makeTestDeparture({
+        id: "2",
+        callsign: "EJA5253",
+        aircraftType: "C56X",
+        squawk: "5678",
+        exitFix: "WHITE",
+        requestedAltitudeFt: 24000,
+        released: true,
+      }),
     ]);
 
     const lines = buildCoordinationListLines(list);

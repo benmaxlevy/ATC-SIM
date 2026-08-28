@@ -81,7 +81,15 @@ describe("STARS System Lists & DCB Integration Acceptance", () => {
     // 4. Alert list with active MSAW and CA
     world.alerts = {
       msaw: [{ callsign: "AAL101", severity: "alert", altFt: 500, floorFt: 1000 }],
-      ca: [{ callsignA: "AAL101", callsignB: "DAL202", severity: "alert", distNm: 1.2, deltaAltFt: 100 }],
+      ca: [
+        {
+          callsignA: "AAL101",
+          callsignB: "DAL202",
+          severity: "alert",
+          distNm: 1.2,
+          deltaAltFt: 100,
+        },
+      ],
       atpa: [],
     };
     const alertLines = buildAlertList(world, 50);

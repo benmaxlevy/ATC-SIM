@@ -58,7 +58,10 @@ export function buildSystemListLines(formatter: ListFormatter): string[] {
   if (formatter.entries > formatter.maxLines && formatter.maxLines > 0) {
     lines.push(`MORE: ${formatter.maxLines}/${formatter.entries}`);
   }
-  const count = Math.min(formatter.entries, formatter.maxLines > 0 ? formatter.maxLines : formatter.entries);
+  const count = Math.min(
+    formatter.entries,
+    formatter.maxLines > 0 ? formatter.maxLines : formatter.entries,
+  );
   for (let i = 0; i < count; i++) {
     const line = formatter.formatLine(i);
     if (line.length > 0) {

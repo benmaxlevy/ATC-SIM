@@ -588,11 +588,7 @@ export {
   datablockLineHeightPx,
 } from "./fonts";
 export type { CharSizeChannel, CharSizePx, CharSizes, DcbCharSizePx, PosSizePx } from "./fonts";
-export {
-  buildSystemListLines,
-  formatListEntry,
-  rewriteFixForList,
-} from "./listFormatter";
+export { buildSystemListLines, formatListEntry, rewriteFixForList } from "./listFormatter";
 export type { ListFormatter } from "./listFormatter";
 export {
   DEFAULT_COAST_ENTRIES,
@@ -634,8 +630,4 @@ export {
   releaseSingleDeparture,
   setCoordinationAutoRelease,
 } from "./coordinationList";
-export type {
-  CoordinationListState,
-  ReleaseDeparture,
-  ReleaseResult,
-} from "./coordinationList";
+export type { CoordinationListState, ReleaseDeparture, ReleaseResult } from "./coordinationList";

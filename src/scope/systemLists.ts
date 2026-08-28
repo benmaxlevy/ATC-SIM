@@ -6,11 +6,7 @@
 
 import type { World, Aircraft } from "@core";
 import { formatAltitudeHundreds } from "./datablock";
-import {
-  buildSystemListLines,
-  rewriteFixForList,
-  type ListFormatter,
-} from "./listFormatter";
+import { buildSystemListLines, rewriteFixForList, type ListFormatter } from "./listFormatter";
 import type { ScopeView } from "./scopeView";
 
 export interface SystemListPlacement {
@@ -86,7 +82,7 @@ export const DEFAULT_SYSTEM_LIST_PLACEMENTS: Record<string, SystemListPlacement>
     id: "VFR",
     frameTitle: "VFR LIST (TV)",
     x: 0.02,
-    y: 0.70,
+    y: 0.7,
     visible: false,
     maxLines: 10,
   },
@@ -118,14 +114,14 @@ export const DEFAULT_SYSTEM_LIST_PLACEMENTS: Record<string, SystemListPlacement>
     id: "ALERT",
     frameTitle: "LA/CA/MCI (TM)",
     x: 0.75,
-    y: 0.70,
+    y: 0.7,
     visible: true,
     maxLines: 50,
   },
   COAST: {
     id: "COAST",
     frameTitle: "COAST/SUSPEND (TC)",
-    x: 0.40,
+    x: 0.4,
     y: 0.75,
     visible: false,
     maxLines: 10,
@@ -133,7 +129,7 @@ export const DEFAULT_SYSTEM_LIST_PLACEMENTS: Record<string, SystemListPlacement>
   CRDA: {
     id: "CRDA",
     frameTitle: "CRDA STATUS (CR)",
-    x: 0.40,
+    x: 0.4,
     y: 0.02,
     visible: false,
     maxLines: 10,
@@ -141,7 +137,7 @@ export const DEFAULT_SYSTEM_LIST_PLACEMENTS: Record<string, SystemListPlacement>
   COORD: {
     id: "COORD",
     frameTitle: "COORDINATION (F13)",
-    x: 0.50,
+    x: 0.5,
     y: 0.02,
     visible: false,
     maxLines: 10,
@@ -202,10 +198,7 @@ export interface SignOnState {
   signOnSimMs?: number;
 }
 
-export function buildSignOnList(
-  state?: SignOnState,
-  _maxLines: number = 10,
-): string[] {
+export function buildSignOnList(state?: SignOnState, _maxLines: number = 10): string[] {
   const subset = state?.subset ?? 1;
   const sector = state?.sectorId ?? "D";
   const ms = state?.signOnSimMs ?? 11_460_000; // default 03:11 (3 * 3600 + 11 * 60) * 1000
@@ -236,8 +229,12 @@ export function buildTabFlightPlanList(world: World, maxLines: number = 10): str
       const acid = ac.callsign.padEnd(7, " ");
       const bcn = (ac.assignedSquawk || ac.squawk || "1200").padStart(4, "0");
       const type = (ac.aircraftType || "B738").padEnd(4, " ");
-      const alt = formatAltitudeHundreds(ac.intent.requestedAltitudeFt ?? ac.intent.assignedAltitudeFt);
-      const fix = rewriteFixForList(ac.intent.expectedApproachId ?? ac.intent.clearedApproachId ?? "");
+      const alt = formatAltitudeHundreds(
+        ac.intent.requestedAltitudeFt ?? ac.intent.assignedAltitudeFt,
+      );
+      const fix = rewriteFixForList(
+        ac.intent.expectedApproachId ?? ac.intent.clearedApproachId ?? "",
+      );
       return `${indexStr} ${acid} ${bcn} ${type} ${alt} ${fix}`.trimEnd();
     },
   };
@@ -316,7 +313,10 @@ export function buildCoastSuspendList(
       const indexStr = String(idx + 12).padStart(2, "0");
       const acid = item.callsign.padEnd(9, " ");
       const status = ("status" in item && item.status) || "C";
-      const bcn = ("squawk" in item && item.squawk) || ("assignedSquawk" in item && item.assignedSquawk) || "1200";
+      const bcn =
+        ("squawk" in item && item.squawk) ||
+        ("assignedSquawk" in item && item.assignedSquawk) ||
+        "1200";
       const bcnStr = String(bcn).padStart(4, "0");
       let altStr = "015";
       if ("lastAltitudeHundreds" in item && item.lastAltitudeHundreds !== undefined) {
@@ -450,32 +450,20 @@ export function buildCrdaStatusList(
  */
 export function rectsOverlap(a: ListRect, b: ListRect): boolean {
   if (a.width <= 0 || a.height <= 0 || b.width <= 0 || b.height <= 0) return false;
-  return (
-    a.x < b.x + b.width &&
-    a.x + a.width > b.x &&
-    a.y < b.y + b.height &&
-    a.y + a.height > b.y
-  );
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
 /**
  * Checks if a point (px, py) is inside a bounding rectangle.
  */
 export function pointInsideRect(px: number, py: number, rect: ListRect): boolean {
-  return (
-    px >= rect.x &&
-    px <= rect.x + rect.width &&
-    py >= rect.y &&
-    py <= rect.y + rect.height
-  );
+  return px >= rect.x && px <= rect.x + rect.width && py >= rect.y && py <= rect.y + rect.height;
 }
 
 /**
  * Finds all pairs of overlapping list IDs.
  */
-export function findOverlappingLists(
-  lists: { id: string; bounds: ListRect }[],
-): Set<string> {
+export function findOverlappingLists(lists: { id: string; bounds: ListRect }[]): Set<string> {
   const overlappingIds = new Set<string>();
   for (let i = 0; i < lists.length; i++) {
     for (let j = i + 1; j < lists.length; j++) {

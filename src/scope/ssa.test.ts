@@ -40,13 +40,13 @@ test("AC1 — SSA block includes subset, time/altstg, status, beacons, range/PTL
   const filter: AltitudeFilter = { minHundreds: 50, maxHundreds: 100 };
   const panned = lines({
     simTimeMs: 0,
-    rangeNm: 41,
+    rangeNm: 40,
     offCenter: true,
     filter,
     ptlMinutes: 3.0,
   });
   expect(panned).toContain("050 100 U 050 100 A");
-  expect(panned).toContain("41NM PTL: 3.0");
+  expect(panned).toContain("40NM PTL: 3.0");
   expect(panned).toContain("OFF CNTR");
 
   const bosLines = lines({ airportCode: "BOS" });

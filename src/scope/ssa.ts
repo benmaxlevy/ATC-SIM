@@ -176,7 +176,10 @@ export function buildSsaRenderLines(input: SsaInput): SsaRenderLine[] {
   if (vis.STATUS) {
     const netStatus = input.systemStatus ?? "OK/OK/NA";
     const mode = input.surveillanceMode ?? "FUSED";
-    result.push({ text: `${netStatus} ${mode}`, style: netStatus.includes("NA/NA/NA") ? "alert" : "normal" });
+    result.push({
+      text: `${netStatus} ${mode}`,
+      style: netStatus.includes("NA/NA/NA") ? "alert" : "normal",
+    });
   }
 
   // 5. Beacon Code Selection Blocks: 2364  56  12
@@ -191,7 +194,7 @@ export function buildSsaRenderLines(input: SsaInput): SsaRenderLine[] {
     result.push({ text: spcs.join("  "), style: "spc" });
   }
 
-  // 7. Range + Predicted Track Line: 41NM PTL: 3.0
+  // 7. Range + Predicted Track Line: 40NM PTL: 3.0
   const ptlMinutes = input.ptlMinutes ?? 1.0;
   const ptlText = formatSsaPtl(ptlMinutes);
   if (vis.RANGE && vis.PTL) {

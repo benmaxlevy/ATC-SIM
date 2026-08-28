@@ -27,7 +27,6 @@ import {
   toggleVideoMap,
 } from "./dcbFunctions";
 import { createScopeView, toggleSsaFilter } from "./scopeView";
-import { formatFilterReadout } from "./altitudeFilter";
 import { buildSsaLines, formatSsaTime } from "./ssa";
 import {
   POSITION_SYMBOL_COLOR,
@@ -1193,7 +1192,10 @@ test("T02-26 — CHAR SIZE DATA BLOCKS / LISTS and BRITE FDB/MPA change paint", 
   const resized = next.fillTexts.find((t) => t.text === dal.callsign);
   expect(resized?.font).toContain("11px");
   expect(resized?.fillStyle).toBe(applyBrite(PALETTE.unowned, 50));
-  const ssa = next.fillTexts.find((t) => t.text.includes("PTL") || t.text.includes("OK/OK/NA") || t.text === "000 180 U 000 180 A");
+  const ssa = next.fillTexts.find(
+    (t) =>
+      t.text.includes("PTL") || t.text.includes("OK/OK/NA") || t.text === "000 180 U 000 180 A",
+  );
   expect(ssa?.font).toContain("13px");
   expect(ssa?.fillStyle).toBe(applyBrite(PALETTE.ssa, 100));
   expect(next.fillTexts.some((t) => t.fillStyle === applyBrite(PALETTE.map, 40))).toBe(true);

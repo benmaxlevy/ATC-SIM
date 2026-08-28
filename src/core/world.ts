@@ -65,6 +65,8 @@ export interface World {
     fieldElevFt?: number;
     approaches: ReadonlyArray<{
       id: string;
+      runway?: string;
+      runwayId?: string;
       courseDeg?: number;
       lengthNm?: number;
       beamHalfWidthDeg?: number;
