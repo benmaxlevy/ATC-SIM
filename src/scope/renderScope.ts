@@ -98,6 +98,16 @@ import {
   isTrackQueried,
   syncTrackDisplays,
 } from "./trackDisplay";
+import {
+  buildAlertList,
+  buildCoastSuspendList,
+  buildTabFlightPlanList,
+  buildTowerArrivalList,
+  buildVfrList,
+  findOverlappingLists,
+  type ListRect,
+} from "./systemLists";
+import { buildVideoMapsListLines } from "./coordinationList";
 
 const RING_STROKE_PX = 1;
 const RUNWAY_STROKE_PX = 2;
@@ -127,6 +137,7 @@ export function renderScope(
   const ssaBottomY = drawSsa(ctx, world, view);
   drawChordHint(ctx, view, ssaBottomY);
   drawMapLists(ctx, view, cssWidth);
+  drawSystemLists(ctx, world, view, cssWidth, cssHeight);
 }
 
 function tracePolyline(
@@ -1055,3 +1066,115 @@ function drawMapLists(ctx: CanvasRenderingContext2D, view: ScopeView, cssWidth: 
     }
   }
 }
+
+function drawSystemLists(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  view: ScopeView,
+  cssWidth: number,
+  cssHeight: number,
+): void {
+  if (!view.systemLists) {
+    return;
+  }
+
+  const lineH = datablockLineHeightPx(view.charSizes.lists);
+  ctx.font = datablockFontCss(view.charSizes.lists);
+  ctx.textBaseline = "top";
+  ctx.textAlign = "left";
+  const textColor = applyBrite(PALETTE.ssa, view.brite.lst);
+
+  const activeRects: { id: string; bounds: ListRect }[] = [];
+
+  for (const [id, placement] of Object.entries(view.systemLists)) {
+    if (!placement.visible && id !== "ALERT") {
+      continue;
+    }
+
+    let lines: string[] = [];
+    switch (id) {
+      case "TAB":
+        lines = buildTabFlightPlanList(world, placement.maxLines);
+        break;
+      case "VFR":
+        lines = buildVfrList(world, placement.maxLines);
+        break;
+      case "TOWER_1":
+      case "TOWER_2":
+      case "TOWER_3":
+        lines = buildTowerArrivalList(world, "KDEM", 0, 0, placement.maxLines);
+        break;
+      case "ALERT":
+        lines = buildAlertList(world, placement.maxLines);
+        break;
+      case "COAST":
+        lines = buildCoastSuspendList([], placement.maxLines);
+        break;
+      case "MAPS":
+        lines = buildVideoMapsListLines(view, "ALL", placement.maxLines);
+        break;
+      default:
+        break;
+    }
+
+    if (lines.length === 0) {
+      continue;
+    }
+
+    const x = Math.round(placement.x * cssWidth);
+    const y = Math.round(placement.y * cssHeight);
+    let maxLineW = 0;
+    for (const line of lines) {
+      const w = ctx.measureText(line).width;
+      if (w > maxLineW) maxLineW = w;
+    }
+    const width = Math.max(maxLineW + 8, 80);
+    const height = lines.length * lineH + 4;
+    const bounds: ListRect = { x, y, width, height };
+    activeRects.push({ id, bounds });
+
+    // Draw text lines
+    ctx.fillStyle = textColor;
+    let textY = y;
+    for (const line of lines) {
+      ctx.fillText(line, x, textY);
+      textY += lineH;
+    }
+
+    // If showAllFrames is enabled, draw frame title
+    if (view.listDrag?.showAllFrames) {
+      ctx.strokeStyle = "#00FF00";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x - 2, y - 2, width + 4, height + 4);
+      ctx.fillText(`[${placement.frameTitle}]`, x, y - lineH);
+    }
+  }
+
+  // Check and draw overlapping warning boxes
+  const overlapping = findOverlappingLists(activeRects);
+  if (overlapping.size > 0 && !view.listDrag?.movingListId) {
+    ctx.strokeStyle = "#00FF00";
+    ctx.lineWidth = 1;
+    for (const item of activeRects) {
+      if (overlapping.has(item.id)) {
+        ctx.strokeRect(item.bounds.x - 2, item.bounds.y - 2, item.bounds.width + 4, item.bounds.height + 4);
+      }
+    }
+  }
+
+  // Draw active middle-click drag frames
+  if (view.listDrag?.movingListId && view.listDrag.movingAnchorRect && view.listDrag.movingCurrentPos && view.listDrag.movingOffset) {
+    // Green anchor box
+    ctx.strokeStyle = "#00FF00";
+    ctx.lineWidth = 1;
+    const anchor = view.listDrag.movingAnchorRect;
+    ctx.strokeRect(anchor.x - 2, anchor.y - 2, anchor.width + 4, anchor.height + 4);
+
+    // White moving box
+    ctx.strokeStyle = "#FFFFFF";
+    const movingX = view.listDrag.movingCurrentPos.x - view.listDrag.movingOffset.x;
+    const movingY = view.listDrag.movingCurrentPos.y - view.listDrag.movingOffset.y;
+    ctx.strokeRect(movingX - 2, movingY - 2, anchor.width + 4, anchor.height + 4);
+  }
+}
+
