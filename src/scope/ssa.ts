@@ -155,10 +155,8 @@ export function buildSsaRenderLines(input: SsaInput): SsaRenderLine[] {
   const vis = input.visibility ?? defaultSsaVisibility();
   const result: SsaRenderLine[] = [];
 
-  // 1. Alert Indicator [▼]
-  if (input.hasAlert) {
-    result.push({ text: "[▼]", style: "alert" });
-  }
+  // 1. Alert Indicator [▼] - always present at top of SSA
+  result.push({ text: "[▼]", style: input.hasAlert ? "alert" : "normal" });
 
   // 2. TCP / Display Subset: (1)
   const subset = input.subset ?? 1;
