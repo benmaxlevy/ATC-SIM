@@ -105,14 +105,18 @@ import {
   toggleTpaOn,
   toggleVideoMap,
   videoMapByDcbNumber,
+  areAllSystemListsVisible,
+  toggleAllSystemLists,
   type BriteChannel,
   type CharSizeChannel,
-  type DcbCellKind,
+  type CharSizes,
   type DcbSpinnerCell,
   type ScopeView,
   type SsaFilterField,
 } from "@scope";
 import { focusPpi } from "./FlightStrips";
+
+export type DcbCellKind = "action" | "toggle" | "spinner" | "submenu" | "disabled";
 
 /** Two physical rows with room for centered two-line caps, flush on the PPI. */
 export const DCB_HEIGHT_PX = 75;
@@ -324,6 +328,7 @@ interface DcbCellProps {
   onClick: () => void;
   onWheel?: (event: WheelEvent<HTMLButtonElement>) => void;
   dataDcb?:
+    | "lists-all"
     | "ptl"
     | "hist"
     | "range"
@@ -1652,42 +1657,24 @@ const CHAR_SPINNER_CELLS: {
   },
 ];
 
-const BRITE_SPINNER_CELLS: {
-  cell: DcbSpinnerCell;
-  channel: BriteChannel;
-  dataDcb: NonNullable<DcbCellProps["dataDcb"]>;
-  label: string;
-}[] = [
-  { cell: "BRITE_DCB", channel: "dcb", dataDcb: "brite-dcb", label: "DCB" },
-  { cell: "BRITE_MPA", channel: "mpa", dataDcb: "brite-mpa", label: "MPA" },
-  { cell: "BRITE_MPB", channel: "mpb", dataDcb: "brite-mpb", label: "MPB" },
-  { cell: "BRITE_FDB", channel: "fdb", dataDcb: "brite-fdb", label: "FDB" },
-  { cell: "BRITE_LST", channel: "lst", dataDcb: "brite-lst", label: "LST" },
-  { cell: "BRITE_POS", channel: "pos", dataDcb: "brite-pos", label: "POS" },
-  { cell: "BRITE_LDB", channel: "ldb", dataDcb: "brite-ldb", label: "LDB" },
-  { cell: "BRITE_OTH", channel: "oth", dataDcb: "brite-oth", label: "OTH" },
-  { cell: "BRITE_TLS", channel: "tls", dataDcb: "brite-tls", label: "TLS" },
-  { cell: "BRITE_RR", channel: "rr", dataDcb: "brite-rr", label: "RR" },
-  { cell: "BRITE_HST", channel: "hst", dataDcb: "brite-hst", label: "HST" },
-];
-
-const BRITE_DISABLED_CELLS: {
-  dataDcb: NonNullable<DcbCellProps["dataDcb"]>;
-  label: string;
-  ariaLabel: string;
-}[] = [
-  { dataDcb: "brite-cmp", label: "CMP", ariaLabel: "CMP" },
-  { dataDcb: "brite-bcn", label: "BCN", ariaLabel: "BCN" },
-  { dataDcb: "brite-pri", label: "PRI", ariaLabel: "PRI" },
-  { dataDcb: "brite-wx", label: "WX", ariaLabel: "WX" },
-  { dataDcb: "brite-wxc", label: "WXC", ariaLabel: "WXC" },
-  { dataDcb: "brite-bkc", label: "BKC", ariaLabel: "BKC" },
-];
-
 function renderCharSize(view: ScopeView, onChange: () => void) {
+  const allListsOn = areAllSystemListsVisible(view);
   return (
     <>
       {renderDone(view, onChange)}
+      <DcbCell
+        kind="toggle"
+        ariaLabel="Toggle all system lists"
+        dataDcb="lists-all"
+        pressed={allListsOn}
+        onClick={() => {
+          toggleAllSystemLists(view);
+          afterCell(onChange);
+        }}
+      >
+        <span className="dcb-cell-line">LISTS</span>
+        <span className="dcb-cell-line">{allListsOn ? "HIDE ALL" : "SHOW ALL"}</span>
+      </DcbCell>
       {CHAR_SPINNER_CELLS.map((item) => {
         const armed = spinnerArmed(view, item.cell);
         const size =
@@ -1695,7 +1682,7 @@ function renderCharSize(view: ScopeView, onChange: () => void) {
             ? view.charSizes.dcb
             : item.channel === "pos"
               ? view.charSizes.pos
-              : view.charSizes[item.channel];
+              : view.charSizes[item.channel as keyof CharSizes];
         return (
           <DcbCell
             key={item.cell}
@@ -1727,45 +1714,109 @@ function renderCharSize(view: ScopeView, onChange: () => void) {
   );
 }
 
+const BRITE_GRID_LAYOUT: {
+  id: string;
+  col: number;
+  row: 1 | 2;
+  rowSpan: 1 | 2;
+  channel?: BriteChannel;
+  label: string;
+  disabled?: boolean;
+}[] = [
+  { id: "done", col: 1, row: 1, rowSpan: 2, label: "DONE" },
+  { id: "dcb", col: 2, row: 1, rowSpan: 1, channel: "dcb", label: "DCB" },
+  { id: "ldb", col: 2, row: 2, rowSpan: 1, channel: "ldb", label: "LDB" },
+  { id: "mpa", col: 3, row: 1, rowSpan: 1, channel: "mpa", label: "MPA" },
+  { id: "oth", col: 3, row: 2, rowSpan: 1, channel: "oth", label: "OTH" },
+  { id: "mpb", col: 4, row: 1, rowSpan: 1, channel: "mpb", label: "MPB" },
+  { id: "tls", col: 4, row: 2, rowSpan: 1, channel: "tls", label: "TLS" },
+  { id: "fdb", col: 5, row: 1, rowSpan: 1, channel: "fdb", label: "FDB" },
+  { id: "rr", col: 5, row: 2, rowSpan: 1, channel: "rr", label: "RR" },
+  { id: "lst", col: 6, row: 1, rowSpan: 1, channel: "lst", label: "LST" },
+  { id: "hst", col: 6, row: 2, rowSpan: 1, channel: "hst", label: "HST" },
+  { id: "pos", col: 7, row: 1, rowSpan: 1, channel: "pos", label: "POS" },
+  { id: "cmp", col: 7, row: 2, rowSpan: 1, label: "CMP", disabled: true },
+  { id: "bcn", col: 8, row: 1, rowSpan: 1, label: "BCN", disabled: true },
+  { id: "pri", col: 8, row: 2, rowSpan: 1, label: "PRI", disabled: true },
+  { id: "wx", col: 9, row: 1, rowSpan: 1, label: "WX", disabled: true },
+  { id: "wxc", col: 9, row: 2, rowSpan: 1, label: "WXC", disabled: true },
+  { id: "bkc", col: 10, row: 1, rowSpan: 1, label: "BKC", disabled: true },
+  { id: "blank1", col: 10, row: 2, rowSpan: 1, label: "", disabled: true },
+  { id: "blank2", col: 11, row: 1, rowSpan: 2, label: "", disabled: true },
+  { id: "blank3", col: 12, row: 1, rowSpan: 2, label: "", disabled: true },
+];
+
 function renderBrite(view: ScopeView, onChange: () => void) {
   return (
-    <>
-      {renderDone(view, onChange)}
-      {BRITE_SPINNER_CELLS.map((item) => (
-        <DcbCell
-          key={item.cell}
-          kind="spinner"
-          ariaLabel={item.label}
-          dataDcb={item.dataDcb}
-          pressed={spinnerArmed(view, item.cell)}
-          onClick={() => toggleSpinner(view, onChange, item.cell)}
-          onWheel={(event) =>
-            onSpinnerWheel(
-              view,
-              item.cell,
-              event,
-              (step) => stepBriteChannel(view, item.channel, step),
-              onChange,
-            )
-          }
-        >
-          <span className="dcb-cell-line">{item.label}</span>
-          <span className="dcb-cell-line">{formatDcbBriteReadout(view.brite[item.channel])}</span>
-        </DcbCell>
-      ))}
-      {BRITE_DISABLED_CELLS.map((item) => (
-        <DcbCell
-          key={item.label}
-          kind="disabled"
-          ariaLabel={item.ariaLabel}
-          dataDcb={item.dataDcb}
-          disabled
-          onClick={() => undefined}
-        >
-          <span className="dcb-cell-line">{item.label}</span>
-        </DcbCell>
-      ))}
-    </>
+    <div
+      className="dcb-main-grid"
+      data-dcb-layout="BRITE"
+      style={{
+        gridTemplateColumns: "repeat(12, minmax(42px, 1fr))",
+      }}
+    >
+      {BRITE_GRID_LAYOUT.map((cell) => {
+        let node: ReactNode;
+        if (cell.id === "done") {
+          node = renderDone(view, onChange);
+        } else if (cell.channel) {
+          const spinnerKey = `BRITE_${cell.channel.toUpperCase()}` as DcbSpinnerCell;
+          const armed = spinnerArmed(view, spinnerKey);
+          node = (
+            <DcbCell
+              key={cell.id}
+              kind="spinner"
+              ariaLabel={cell.label}
+              dataDcb={`brite-${cell.channel}` as NonNullable<DcbCellProps["dataDcb"]>}
+              pressed={armed}
+              onClick={() => toggleSpinner(view, onChange, spinnerKey)}
+              onWheel={(event) =>
+                onSpinnerWheel(
+                  view,
+                  spinnerKey,
+                  event,
+                  (step) => stepBriteChannel(view, cell.channel!, step),
+                  onChange,
+                )
+              }
+            >
+              <span className="dcb-cell-line">{cell.label}</span>
+              <span className="dcb-cell-line">{formatDcbBriteReadout(view.brite[cell.channel])}</span>
+            </DcbCell>
+          );
+        } else {
+          node = (
+            <DcbCell
+              key={cell.id}
+              kind="disabled"
+              ariaLabel={cell.label || "Disabled"}
+              dataDcb={cell.id.startsWith("blank") ? undefined : (`brite-${cell.id}` as NonNullable<DcbCellProps["dataDcb"]>)}
+              disabled
+              onClick={() => undefined}
+            >
+              <span className="dcb-cell-line">{cell.label}</span>
+            </DcbCell>
+          );
+        }
+
+        return (
+          <div
+            key={cell.id}
+            className="dcb-main-grid-cell"
+            data-dcb-layout-id={cell.id}
+            data-dcb-row={cell.row}
+            data-dcb-column={cell.col}
+            data-dcb-row-span={cell.rowSpan}
+            style={{
+              gridColumn: cell.col,
+              gridRow: `${cell.row} / span ${cell.rowSpan}`,
+            }}
+          >
+            {node}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

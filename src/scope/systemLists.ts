@@ -11,6 +11,7 @@ import {
   rewriteFixForList,
   type ListFormatter,
 } from "./listFormatter";
+import type { ScopeView } from "./scopeView";
 
 export interface SystemListPlacement {
   id: string;
@@ -138,6 +139,37 @@ export const DEFAULT_SYSTEM_LIST_PLACEMENTS: Record<string, SystemListPlacement>
     maxLines: 20,
   },
 };
+
+export function toggleSystemList(view: ScopeView, listId: string): void {
+  if (!view.systemLists) {
+    view.systemLists = { ...DEFAULT_SYSTEM_LIST_PLACEMENTS };
+  }
+  const placement = view.systemLists[listId];
+  if (placement) {
+    placement.visible = !placement.visible;
+  }
+}
+
+export function areAllSystemListsVisible(view: ScopeView): boolean {
+  if (!view.systemLists) return false;
+  const placements = Object.values(view.systemLists) as SystemListPlacement[];
+  return placements.length > 0 && placements.every((p) => p.visible);
+}
+
+export function setAllSystemListsVisible(view: ScopeView, visible: boolean): void {
+  if (!view.systemLists) {
+    view.systemLists = { ...DEFAULT_SYSTEM_LIST_PLACEMENTS };
+  }
+  const placements = Object.values(view.systemLists) as SystemListPlacement[];
+  for (const placement of placements) {
+    placement.visible = visible;
+  }
+}
+
+export function toggleAllSystemLists(view: ScopeView): void {
+  const current = areAllSystemListsVisible(view);
+  setAllSystemListsVisible(view, !current);
+}
 
 function isVfr(ac: Aircraft): boolean {
   return ac.squawk === "1200" || ac.assignedSquawk === "1200";
