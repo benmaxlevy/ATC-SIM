@@ -396,7 +396,7 @@ test("AC7 — renderScope rebuilds map cache on camera change, not each physics 
   view.camera.rangeNm = 10;
   renderScope(ctx, world, view, 800, 800);
   expect(view.mapCache).not.toBe(first);
-  expect(view.mapCache?.ringRadiiNm).toEqual([5, 10]);
+  expect(view.mapCache?.ringRadiiNm).toEqual([5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]);
 });
 
 test("AC5 — toggling showLocalizer off removes the feather and keeps the runway", () => {

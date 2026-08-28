@@ -90,21 +90,24 @@ test("AC2 — RANGE presets unchanged; OFF CNTR iff pan offset ≠ airport", () 
 
 test("AC3 — RR spinner steps 2/5/10 without hiding rings", () => {
   expect(RR_INTERVALS_NM).toEqual([2, 5, 10]);
-  expect(activeRingRadiiNm(20, { intervalNm: 5, maxNm: 60 })).toEqual([5, 10, 15, 20]);
-  expect(activeRingRadiiNm(20, { intervalNm: 10, maxNm: 60 })).toEqual([10, 20]);
-  expect(activeRingRadiiNm(20, { intervalNm: 2, maxNm: 60 })).toEqual([
-    2, 4, 6, 8, 10, 12, 14, 16, 18, 20,
+  expect(activeRingRadiiNm({ intervalNm: 5, maxNm: 60 })).toEqual([
+    5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60,
+  ]);
+  expect(activeRingRadiiNm({ intervalNm: 10, maxNm: 60 })).toEqual([10, 20, 30, 40, 50, 60]);
+  expect(activeRingRadiiNm({ intervalNm: 2, maxNm: 60 })).toEqual([
+    2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48,
+    50, 52, 54, 56, 58, 60,
   ]);
 
   const view = kdemView();
   expect(view.ringIntervalNm).toBe(5);
   const at5 = buildMapCache(toMapCacheInput(view, VIEW));
-  expect(at5.ringRadiiNm).toEqual([5, 10, 15, 20]);
+  expect(at5.ringRadiiNm).toEqual([5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]);
   stepRrInterval(view, 1);
   expect(view.ringIntervalNm).toBe(10);
   expect(view.showRings).toBe(true);
   const at10 = buildMapCache(toMapCacheInput(view, VIEW));
-  expect(at10.ringRadiiNm).toEqual([10, 20]);
+  expect(at10.ringRadiiNm).toEqual([10, 20, 30, 40, 50, 60]);
   stepRrInterval(view, 1);
   expect(view.ringIntervalNm).toBe(10);
   stepRrInterval(view, -1);
@@ -113,7 +116,7 @@ test("AC3 — RR spinner steps 2/5/10 without hiding rings", () => {
   expect(view.ringIntervalNm).toBe(2);
   const at2 = buildMapCache(toMapCacheInput(view, VIEW));
   expect(at2.ringRadiiNm[0]).toBe(2);
-  expect(at2.ringRadiiNm.at(-1)).toBe(20);
+  expect(at2.ringRadiiNm.at(-1)).toBe(60);
   expect(view.showRings).toBe(true);
 });
 

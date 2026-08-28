@@ -82,6 +82,7 @@ function createMockCtx(): {
     closePath() {},
     arc() {},
     clip() {},
+    rect() {},
     stroke(this: { strokeStyle: string; lineWidth: number }) {
       if (currentPath.length >= 2) {
         pathStrokes.push({

@@ -193,14 +193,22 @@ export function nmDistance(a: NmPoint, b: NmPoint): number {
 }
 
 export function activeRingRadiiNm(
-  rangeNm: number,
-  rings: DigitalMapRangeRings = DEFAULT_RANGE_RINGS,
+  rangeNmOrRings: number | DigitalMapRangeRings = DEFAULT_RANGE_RINGS,
+  maybeRings?: DigitalMapRangeRings,
 ): number[] {
+  let rings: DigitalMapRangeRings;
+  if (typeof rangeNmOrRings === "object") {
+    rings = rangeNmOrRings;
+  } else if (maybeRings) {
+    rings = maybeRings;
+  } else {
+    rings = { ...DEFAULT_RANGE_RINGS, maxNm: rangeNmOrRings };
+  }
   const interval = rings.intervalNm;
-  if (!(interval > 0) || !(rangeNm > 0)) {
+  const max = rings.maxNm;
+  if (!(interval > 0) || !(max > 0)) {
     return [];
   }
-  const max = Math.min(rangeNm, rings.maxNm);
   const radii: number[] = [];
   for (let rNm = interval; rNm <= max + 1e-9; rNm += interval) {
     radii.push(rNm);
@@ -560,7 +568,7 @@ export function buildMapCache(
     intervalNm: input.ringIntervalNm,
     maxNm: digitalMap.rangeRings.maxNm,
   };
-  const ringRadiiNm = layers.showRings ? activeRingRadiiNm(camera.rangeNm, rings) : [];
+  const ringRadiiNm = layers.showRings ? activeRingRadiiNm(rings) : [];
   const ringEastNm = input.rangeRingEastNm ?? airportEastNm;
   const ringNorthNm = input.rangeRingNorthNm ?? airportNorthNm;
   const ringOriginScreen = nmToScreen(ringEastNm, ringNorthNm, camera, viewSize);
