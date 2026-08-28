@@ -13,7 +13,8 @@
 
 export const PTL_MINUTES = 1.0;
 export const PTL_MINUTE_PRESETS = [0.5, 1, 2, 4] as const;
-export type PtlMinutes = (typeof PTL_MINUTE_PRESETS)[number];
+/** AUX spinner stays 0.5/1/2/4. Keyboard `*PTL` stores 0–15 minutes. */
+export type PtlMinutes = number;
 export const PTL_STROKE_PX = 1;
 export const PTL_CAP_TICK_PX = 4;
 
@@ -50,12 +51,22 @@ export function shouldDrawPtl(gsKt: number, altitudeFiltered = false): boolean {
 }
 
 export function stepPtlMinutes(current: PtlMinutes, delta: -1 | 1): PtlMinutes {
-  const i = PTL_MINUTE_PRESETS.indexOf(current);
-  const next = i + delta;
-  if (next < 0 || next >= PTL_MINUTE_PRESETS.length) {
-    return current;
+  const i = (PTL_MINUTE_PRESETS as readonly number[]).indexOf(current);
+  if (i >= 0) {
+    const next = i + delta;
+    if (next < 0 || next >= PTL_MINUTE_PRESETS.length) {
+      return current;
+    }
+    return PTL_MINUTE_PRESETS[next]!;
   }
-  return PTL_MINUTE_PRESETS[next]!;
+  if (delta === 1) {
+    return (
+      PTL_MINUTE_PRESETS.find((preset) => preset > current) ??
+      PTL_MINUTE_PRESETS[PTL_MINUTE_PRESETS.length - 1]!
+    );
+  }
+  const lower = [...PTL_MINUTE_PRESETS].reverse().find((preset) => preset < current);
+  return lower ?? PTL_MINUTE_PRESETS[0]!;
 }
 
 /**

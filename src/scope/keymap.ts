@@ -5,9 +5,10 @@
  * length. vice (R08) is typed-radio feel, not this map.
  * Trainer delta: exported Windows subset only — F1 is help, F3 is color
  * stub, PageUp/Down range presets 5–60 (no CRC 6/8/12/16/24), `/` when
- * scope-focused focuses the command line (not leader length). 1.5 s L/F
+ * scope-focused buffers into the Preview Area (not leader length; Tab cycles
+ * radio ↔ PPI). 1.5 s L/F
  * chord window (`*` persists until Esc, commit, or a new `*`); leftover digits never go to the parser; no keyboard leader-length menu
- * (`/` is radio focus). DCB LDR length is a discrete px spinner. `F` is scope-focus only.
+ * (`/` is Preview Area slew/drop prefix). DCB LDR length is a discrete px spinner. `F` is scope-focus only.
  * `*` with PPI focused is TPA/ATPA slew chords (R07 Table 36), never Command IR.
  * Inject `nowMs` in tests. Not NAS STARS.
  */
@@ -217,8 +218,9 @@ export const KEY_BINDINGS: KeyBinding[] = [
     focus: "scope",
     windowsKeys: "/",
     action:
-      "Focus the command line. preventDefault so slash is not inserted. Radio-focused / types as phase 1.",
-    crcAnalog: "CRC / is leader length — we do not bind that",
+      "Preview Area slew/drop prefix (buffers `/`). Tab cycles PPI ↔ command line. Radio-focused / types as phase 1.",
+    crcAnalog:
+      "CRC / is leader length — we do not bind that; CRC <SLEW> analog is / or canvas click",
   },
   {
     id: "stars-tpa-atpa",
@@ -351,11 +353,16 @@ export function isCycleFocusKey(key: string): boolean {
 }
 
 /**
- * Unmodified slash when scope-focused focuses the command line.
- * Radio-focused `/` is left to phase 1 (insert or no-op).
+ * Unmodified slash. Scope-focused `/` buffers into the Preview Area (T02-61).
+ * Radio-focused `/` is left to phase 1 (insert or no-op). Tab cycles focus.
  */
 export function isRadioFocusSlashKey(key: string): boolean {
   return key === "/";
+}
+
+/** Scope-focus Track Key `+`. Never always-on; radio `+` is literal. */
+export function isPreviewPlusKey(key: string): boolean {
+  return key === "+" || key === "Add";
 }
 
 /**

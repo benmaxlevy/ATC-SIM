@@ -12,26 +12,72 @@
  * T02-51 shipped the machine, readout, Esc cancel, and INV flash. T02-52 wires
  * F3 INIT CNTL / F4 TERM CNTL as armed actions (not typed `F3` in the buffer).
  * `B##` / `B####` are display-only filters (toggle `beaconSelectCodes`; no
- * slewed track). `BE` / `BI` LDB inhibit and assign-code (`M ####`) remain
- * deferred. Unknown complete input is invalid, not a silent no-op. Not NAS STARS.
+ * slewed track). T02-61 adds the unified scope-focus lexer: `*`, `+`, `/`,
+ * letters, digits, and spaces buffer here. T02-62 adds Table 31/32 list
+ * mnemonics (`*T` / `*TAB` / `*TV` / `*TC` / `*TS` / `* P1`–`* P3` / `*TM` /
+ * `*TX` / `*TN` toggle or `[1-100]` resize; `*S` slew-relocates SSA). T02-64
+ * adds `*C` / `*OFF` / `*RR` / `*PTL` / `*HIST`. T02-65 adds `*F` / `*LA` /
+ * `*BCN` / `*BCN DEL`. T02-66: Enter on bare `+` / `/` arms INIT/TERM CNTL;
+ * `+[FLID]` Enter arms associate; `*1`–`*8` / `*0` arm leader slew. Bare `*`
+ * Enter and `*B` Enter stay starsChord TPA fallback; `*B` click is beaconator.
+ * Spaces are optional (`*T` = `* T`, `*F` = `* F`). Compact `*P` / `*P3` /
+ * `*P10` stay TPA cones; tower lists require a space (`* P1`–`* P3`), not `*1`
+ * leader. Bare `*B` / `*BE` / `*BI` stay TPA; only `*BCN…` is the beacon-code
+ * filter. `BE` / `BI` LDB inhibit and assign-code (`M ####`) remain deferred.
+ * Unknown complete input is invalid, not a silent no-op. Not NAS STARS.
  */
 
 import type { World } from "@core";
+import type { LoadedVideoMap } from "@scenario";
+import { parseStrictFilterHundreds } from "./altitudeFilter";
+import { resolveVideoMapToken } from "./dcbFunctions";
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
+import { isStarsLeaderClock, type StarsLeaderClock } from "./leader";
 
 export type PreviewPhase = "idle" | "entry" | "armed";
 
 /**
  * Armed preview action, discriminated on `type`.
  * T02-52: `initCntl` / `termCntl` (FLID lives on `PreviewAreaState.flid`).
- * T02-53: `beaconBlock` / `beaconDiscrete`. Do not put F3-specific field names
- * on ScopeView.
+ * T02-53: `beaconBlock` / `beaconDiscrete`. T02-62: `toggleList` / `resizeList`
+ * / `armRelocateList`. T02-64: scope recenter / RR / PTL / HIST. Slew forms
+ * (`armRecenterScope`, `armRecenterRangeRings`) apply via DCB PLACE flags.
+ * T02-63: `toggleVideoMap` / `setAllVideoMaps`. T02-65: `displayFilters` /
+ * `setAltitudeFilterLimits` / `addBeaconCodeFilter` / `removeBeaconCodeFilter`.
+ * T02-66: handoff accept, pointout ack, leader clock, beaconator slew.
+ * Optional `flid` on INIT/TERM is only for typed `+[Callsign]` Enter.
+ * Do not put F3-specific field names on ScopeView.
  */
 export type PreviewArmedAction =
-  | { readonly type: "initCntl" }
-  | { readonly type: "termCntl" }
+  | { readonly type: "initCntl"; readonly flid?: string }
+  | { readonly type: "termCntl"; readonly flid?: string }
   | { readonly type: "beaconBlock"; readonly digits: string }
-  | { readonly type: "beaconDiscrete"; readonly digits: string };
+  | { readonly type: "beaconDiscrete"; readonly digits: string }
+  | { readonly type: "toggleList"; readonly listId: string }
+  | { readonly type: "resizeList"; readonly listId: string; readonly maxLines: number }
+  | { readonly type: "armRelocateList"; readonly listId: string }
+  | { readonly type: "armRecenterScope" }
+  | { readonly type: "resetScopeCenter" }
+  | { readonly type: "setRangeRingInterval"; readonly intervalNm: number }
+  | { readonly type: "armRecenterRangeRings" }
+  | { readonly type: "resetRangeRingsCenter" }
+  | { readonly type: "setPtlMinutes"; readonly minutes: number }
+  | { readonly type: "setHistoryDots"; readonly count: number }
+  | { readonly type: "toggleVideoMap"; readonly mapId: string; readonly explicitState?: boolean }
+  | { readonly type: "setAllVideoMaps"; readonly enabled: boolean }
+  | { readonly type: "displayFilters" }
+  | {
+      readonly type: "setAltitudeFilterLimits";
+      readonly floorHundreds: number;
+      readonly ceilingHundreds: number;
+    }
+  | { readonly type: "addBeaconCodeFilter"; readonly code: string }
+  | { readonly type: "removeBeaconCodeFilter"; readonly code: string }
+  | { readonly type: "acceptHandoff" }
+  | { readonly type: "ackPointout" }
+  | { readonly type: "setLeaderDir"; readonly starsDir: StarsLeaderClock }
+  | { readonly type: "resetLeaderDir" }
+  | { readonly type: "beaconatorSlew" };
 
 /** Full callsign / numeric-tail / 4-digit squawk — duplicated, not `@pilot`. */
 const FULL_CALLSIGN = /^[A-Z]{3}[0-9]{1,4}[A-Z]?$/;
@@ -95,13 +141,21 @@ export type PreviewCommandResult =
  * are F-keys (armed on `PreviewAreaState`), not typed `F3` / `F4` buffers.
  * `B##` / `B####` cannot live as enumerated rows: `B45` is a complete CODE
  * BLOCK and a live prefix of `B4501`. `parseBeaconSelect` owns those digits.
- * Do not rewrite the state machine to add rows.
+ * T02-61: `*` / `+` / `/` are live prefixes. T02-62 list rows live in
+ * `parseListCommand` (`* P1` vs TPA `*P3`). T02-64 `*C` / `*RR` / `*PTL` /
+ * `*HIST` live in `parseScopeDisplayCommand`. T02-63 `*D` / `M` video-map
+ * rows live in `parseVideoMapCommand`. T02-65 `*F` / `*LA` / `*BCN` live in
+ * `parseAltitudeFilterCommand` / `parseBeaconFilterCommand`. T02-66 tracking
+ * chords live in `parseTrackingCommand` (`+` / `/` Enter arm; `*1`–`*8` /
+ * `*0` leader). Do not rewrite the state machine to add rows.
  */
 type PreviewTableEntry = { kind: "prefix" } | { kind: "action"; action: PreviewArmedAction };
 
 const PREVIEW_TABLE: Readonly<Record<string, PreviewTableEntry>> = {
   // T02-53: `B` begins beacon-code select. Digits + commit in parseBeaconSelect.
   B: { kind: "prefix" },
+  // T02-61: Multifunction. Track `+` / Slew `/` complete in parseTrackingCommand.
+  "*": { kind: "prefix" },
 };
 
 export type PreviewAreaState = {
@@ -215,6 +269,214 @@ function invalid(reason: string): PreviewCommandResult {
   return { kind: "invalid", reason };
 }
 
+/** Keyboard RR spacing. DCB spinner stays `RR_INTERVALS_NM` `[2, 5, 10]`. */
+const RR_KEYBOARD_INTERVALS_NM = [2, 5, 10, 20] as const;
+const PTL_KEYBOARD_MAX_MINUTES = 15;
+const HIST_KEYBOARD_MAX_DOTS = 9;
+
+/** `* C` == `*C`, `* RR 10` == `*RR10`. Does not touch `+` / `/` / beacon. */
+function compactStarCommand(buffer: string): string {
+  if (!buffer.startsWith("*")) {
+    return buffer;
+  }
+  return `*${buffer.slice(1).replace(/ /g, "")}`;
+}
+
+/**
+ * T02-64 Table 28 / 36 display commands. Null when this is not our family
+ * (`*J`, `*P`, `*P3`, `*T`, `*D`, … stay on the T02-61 incomplete / starsChord
+ * fallback). `*PTL` is ours; `*PT` is only a live PTL prefix.
+ */
+export function parseScopeDisplayCommand(buffer: string): PreviewCommandResult | null {
+  if (!buffer.startsWith("*")) {
+    return null;
+  }
+  const compact = compactStarCommand(buffer);
+
+  if (compact.startsWith("*PTL")) {
+    const rest = compact.slice(4);
+    if (rest.length === 0) {
+      return { kind: "incomplete" };
+    }
+    if (!/^\d+$/.test(rest)) {
+      return invalid("invalid PTL minutes");
+    }
+    const minutes = Number(rest);
+    if (minutes < 0 || minutes > PTL_KEYBOARD_MAX_MINUTES) {
+      return invalid("PTL minutes out of range");
+    }
+    return { kind: "action", action: { type: "setPtlMinutes", minutes } };
+  }
+  if (compact === "*PT") {
+    return { kind: "incomplete" };
+  }
+
+  if (compact.startsWith("*HIST")) {
+    const rest = compact.slice(5);
+    if (rest.length === 0) {
+      return { kind: "incomplete" };
+    }
+    if (!/^\d+$/.test(rest)) {
+      return invalid("invalid HIST count");
+    }
+    const count = Number(rest);
+    if (count < 0 || count > HIST_KEYBOARD_MAX_DOTS) {
+      return invalid("HIST count out of range");
+    }
+    return { kind: "action", action: { type: "setHistoryDots", count } };
+  }
+  if (compact === "*H" || compact === "*HI" || compact === "*HIS") {
+    return { kind: "incomplete" };
+  }
+
+  if (compact === "*C") {
+    return { kind: "action", action: { type: "armRecenterScope" } };
+  }
+
+  if (compact === "*OFF") {
+    return { kind: "action", action: { type: "resetScopeCenter" } };
+  }
+  if (compact === "*O" || compact === "*OF") {
+    return { kind: "incomplete" };
+  }
+  if (compact.startsWith("*OFF")) {
+    return invalid("unknown OFF command");
+  }
+
+  if (compact.startsWith("*RR")) {
+    const rest = compact.slice(3);
+    if (rest.length === 0) {
+      return { kind: "incomplete" };
+    }
+    if (rest === "C") {
+      return { kind: "action", action: { type: "armRecenterRangeRings" } };
+    }
+    if (rest === "OFF") {
+      return { kind: "action", action: { type: "resetRangeRingsCenter" } };
+    }
+    if (rest === "O" || rest === "OF") {
+      return { kind: "incomplete" };
+    }
+    if (/^\d+$/.test(rest)) {
+      const intervalNm = Number(rest);
+      if ((RR_KEYBOARD_INTERVALS_NM as readonly number[]).includes(intervalNm)) {
+        return { kind: "action", action: { type: "setRangeRingInterval", intervalNm } };
+      }
+      return invalid("invalid RR interval");
+    }
+    return invalid("invalid RR command");
+  }
+  if (compact === "*R") {
+    return { kind: "incomplete" };
+  }
+
+  return null;
+}
+
+const BEACON_FILTER_OCTAL = /^[0-7]+$/;
+
+function parseBeaconFilterCode(
+  code: string,
+  kind: "addBeaconCodeFilter" | "removeBeaconCodeFilter",
+): PreviewCommandResult {
+  if (code.length === 0) {
+    return { kind: "incomplete" };
+  }
+  if (!BEACON_FILTER_OCTAL.test(code)) {
+    return invalid("invalid beacon code");
+  }
+  if (code.length === 2 || code.length === 4) {
+    return { kind: "action", action: { type: kind, code } };
+  }
+  if (code.length < 4) {
+    return { kind: "incomplete" };
+  }
+  return invalid("invalid beacon code");
+}
+
+/**
+ * Table 29 altitude filters. Exact `*F` displays current bounds; `*LA` sets
+ * 3-digit hundreds 0–180. Spaces optional (`*F` = `* F`). `*FILTER` is not
+ * ours. Null when this is not our family so other `*` rows stay intact.
+ */
+export function parseAltitudeFilterCommand(buffer: string): PreviewCommandResult | null {
+  if (!buffer.startsWith("*")) {
+    return null;
+  }
+  const compact = compactStarCommand(buffer);
+
+  if (compact === "*F") {
+    return { kind: "action", action: { type: "displayFilters" } };
+  }
+
+  if (compact === "*L") {
+    return { kind: "incomplete" };
+  }
+  if (!compact.startsWith("*LA")) {
+    return null;
+  }
+
+  const rest = compact.slice(3);
+  if (rest.length === 0) {
+    return { kind: "incomplete" };
+  }
+  if (!/^\d+$/.test(rest)) {
+    return invalid("invalid altitude filter limits");
+  }
+  if (rest.length < 6) {
+    return { kind: "incomplete" };
+  }
+  if (rest.length > 6) {
+    return invalid("invalid altitude filter limits");
+  }
+  const floorHundreds = parseStrictFilterHundreds(rest.slice(0, 3));
+  const ceilingHundreds = parseStrictFilterHundreds(rest.slice(3, 6));
+  if (floorHundreds === null || ceilingHundreds === null) {
+    return invalid("altitude filter out of range");
+  }
+  if (floorHundreds > ceilingHundreds) {
+    return invalid("altitude filter floor above ceiling");
+  }
+  return {
+    kind: "action",
+    action: { type: "setAltitudeFilterLimits", floorHundreds, ceilingHundreds },
+  };
+}
+
+/**
+ * Table 30 preview `*BCN` / `*BCN DEL`. Bare `*B` / `*BE` / `*BI` stay TPA
+ * (return null). `*BC` is a live prefix of `*BCN`. Codes are 2-digit blocks or
+ * 4-digit discrete, octal 0–7 only.
+ */
+export function parseBeaconFilterCommand(buffer: string): PreviewCommandResult | null {
+  if (!buffer.startsWith("*")) {
+    return null;
+  }
+  const compact = compactStarCommand(buffer);
+
+  if (compact === "*B" || compact.startsWith("*BE") || compact.startsWith("*BI")) {
+    return null;
+  }
+  if (compact === "*BC") {
+    return { kind: "incomplete" };
+  }
+  if (!compact.startsWith("*BCN")) {
+    return null;
+  }
+
+  const rest = compact.slice(4);
+  if (rest.length === 0) {
+    return { kind: "incomplete" };
+  }
+  if (rest === "D" || rest === "DE" || rest === "DEL") {
+    return { kind: "incomplete" };
+  }
+  if (rest.startsWith("DEL")) {
+    return parseBeaconFilterCode(rest.slice(3), "removeBeaconCodeFilter");
+  }
+  return parseBeaconFilterCode(rest, "addBeaconCodeFilter");
+}
+
 /**
  * Table 30 beacon select. `B45` is a complete CODE BLOCK **and** a live prefix
  * of `B4501`, so the key handler waits for Enter at two digits; four digits may
@@ -243,12 +505,327 @@ function parseBeaconSelect(buffer: string): PreviewCommandResult | null {
   return { kind: "incomplete" };
 }
 
+/** Longest-first so `TAB` / `TV` win over `T`. */
+const LIST_TOGGLE_TOKENS: ReadonlyArray<{ token: string; listId: string }> = [
+  { token: "TAB", listId: "TAB" },
+  { token: "TV", listId: "VFR" },
+  { token: "TC", listId: "COAST" },
+  { token: "TS", listId: "SIGN_ON" },
+  { token: "TM", listId: "ALERT" },
+  { token: "TX", listId: "MAPS" },
+  { token: "TN", listId: "CRDA" },
+  { token: "T", listId: "TAB" },
+];
+
+const TOWER_LIST_IDS: Readonly<Record<"1" | "2" | "3", string>> = {
+  "1": "TOWER_1",
+  "2": "TOWER_2",
+  "3": "TOWER_3",
+};
+
+function compactPreviewStars(buffer: string): string {
+  return buffer.replace(/ /g, "");
+}
+
+function listResizeAction(listId: string, digits: string): PreviewCommandResult {
+  const maxLines = Number(digits);
+  if (!Number.isInteger(maxLines) || maxLines < 1 || maxLines > 100) {
+    return invalid("list maxLines out of range");
+  }
+  return { kind: "action", action: { type: "resizeList", listId, maxLines } };
+}
+
+/**
+ * Table 31/32 system lists. Spaces optional (`*T` = `* T`). Tower lists are
+ * the spaced CRC form `* P1`/`* P2`/`* P3`; compact `*P1`/`*P3`/`*P10` stay
+ * TPA cones. `*PTL` stays incomplete (T02-64). `*S` arms SSA relocate and
+ * does not toggle SSA.
+ */
+function parseListCommand(buffer: string): PreviewCommandResult | null {
+  if (!buffer.startsWith("*")) {
+    return null;
+  }
+  const compact = compactPreviewStars(buffer);
+  if (compact === "*" || compact === "") {
+    return null;
+  }
+
+  // Require a space after `*` so `*P3` is a 3 NM cone, not TOWER_3.
+  const tower = /^\*\s+P([123])(?:\s+(\d{1,3}))?$/.exec(buffer);
+  if (tower) {
+    const listId = TOWER_LIST_IDS[tower[1] as "1" | "2" | "3"];
+    if (tower[2] !== undefined) {
+      return listResizeAction(listId, tower[2]);
+    }
+    return { kind: "action", action: { type: "toggleList", listId } };
+  }
+
+  const rest = compact.slice(1);
+  if (rest === "S") {
+    return { kind: "action", action: { type: "armRelocateList", listId: "SSA" } };
+  }
+
+  for (const row of LIST_TOGGLE_TOKENS) {
+    if (rest === row.token) {
+      return { kind: "action", action: { type: "toggleList", listId: row.listId } };
+    }
+    if (rest.startsWith(row.token)) {
+      const suffix = rest.slice(row.token.length);
+      if (/^\d+$/.test(suffix)) {
+        return listResizeAction(row.listId, suffix);
+      }
+      return invalid("malformed list command");
+    }
+  }
+  return null;
+}
+
+/**
+ * Live `*T` / `*S` (no size) or armed `armRelocateList` → list id to slew.
+ * Resize buffers (`*T10`) do not relocate.
+ */
+export function previewRelocateListId(state: PreviewAreaState): string | null {
+  if (state.armed?.type === "armRelocateList") {
+    return state.armed.listId;
+  }
+  if (state.phase !== "entry") {
+    return null;
+  }
+  const parsed = parsePreviewCommand(state.buffer);
+  if (parsed.kind !== "action") {
+    return null;
+  }
+  if (parsed.action.type === "toggleList" || parsed.action.type === "armRelocateList") {
+    return parsed.action.listId;
+  }
+  return null;
+}
+
+function compactPreviewBuffer(buffer: string): string {
+  return buffer.replace(/\s+/g, "");
+}
+
+function isTpaDBuffer(compact: string): boolean {
+  return compact === "*DE" || compact === "*DI" || compact.startsWith("*D+");
+}
+
+function mapToggleAction(
+  token: string,
+  maps: readonly LoadedVideoMap[] | undefined,
+  explicitState?: boolean,
+): PreviewCommandResult {
+  const normalized = token.toUpperCase();
+  if (maps) {
+    const map = resolveVideoMapToken(maps, normalized);
+    if (!map) {
+      return invalid("unknown video map");
+    }
+    return {
+      kind: "action",
+      action:
+        explicitState === undefined
+          ? { type: "toggleVideoMap", mapId: map.id }
+          : { type: "toggleVideoMap", mapId: map.id, explicitState },
+    };
+  }
+  return {
+    kind: "action",
+    action:
+      explicitState === undefined
+        ? { type: "toggleVideoMap", mapId: normalized }
+        : { type: "toggleVideoMap", mapId: normalized, explicitState },
+  };
+}
+
+/**
+ * Table 28 video-map rows. Spaces are optional (`*D LOC27` == `*DLOC27`).
+ * Bare `*D` and TPA `*DE` / `*DI` / `*D+` stay with starsChord — return null.
+ */
+function parseVideoMapCommand(
+  buffer: string,
+  maps?: readonly LoadedVideoMap[],
+): PreviewCommandResult | null {
+  const compact = compactPreviewBuffer(buffer);
+  if (/^M[A-Z0-9_]/.test(compact)) {
+    return mapToggleAction(compact.slice(1), maps);
+  }
+  if (!compact.startsWith("*D") || compact === "*D" || isTpaDBuffer(compact)) {
+    return null;
+  }
+  const rest = compact.slice(2);
+  if (rest === "ALL") {
+    return { kind: "action", action: { type: "setAllVideoMaps", enabled: true } };
+  }
+  if (rest === "NONE") {
+    return { kind: "action", action: { type: "setAllVideoMaps", enabled: false } };
+  }
+  if (rest === "OFF") {
+    return invalid("unknown video map");
+  }
+  if (rest.startsWith("OFF")) {
+    return mapToggleAction(rest.slice(3), maps, false);
+  }
+  return mapToggleAction(rest, maps);
+}
+
+const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
+  "initCntl",
+  "termCntl",
+  "acceptHandoff",
+  "ackPointout",
+  "setLeaderDir",
+  "resetLeaderDir",
+  "beaconatorSlew",
+]);
+
+function compactTrackingBuffer(buffer: string): string {
+  return buffer.replace(/\s+/g, "");
+}
+
+function isFlidPrefixToken(token: string): boolean {
+  return /^[A-Z]{1,3}$/.test(token);
+}
+
+function isCompleteFlidToken(token: string): boolean {
+  return FULL_CALLSIGN.test(token) || SUFFIX_CALLSIGN.test(token) || SQUAWK_CODE.test(token);
+}
+
+function parseTrackFlidRest(kind: "initCntl" | "termCntl", rest: string): PreviewCommandResult {
+  if (rest.length === 0) {
+    return { kind: "action", action: { type: kind } };
+  }
+  if (kind === "termCntl" && rest === "ALL") {
+    return invalid("TERM CNTL ALL");
+  }
+  if (isCompleteFlidToken(rest)) {
+    return { kind: "action", action: { type: kind, flid: rest } };
+  }
+  if (isFlidPrefixToken(rest)) {
+    return { kind: "incomplete" };
+  }
+  return invalid(kind === "initCntl" ? "unknown init FLID" : "unknown drop FLID");
+}
+
+/**
+ * T02-66 tracking / datablock chords. `* P1` is a tower list (parseListCommand).
+ * Bare `*` and `*B` stay incomplete so Enter falls through to starsChord TPA.
+ * `*F` / `*LA` / `*BCN` stay unparsed for T02-65. `+HOLD` / `/ALL` are INV.
+ */
+export function parseTrackingCommand(buffer: string): PreviewCommandResult | null {
+  const compact = compactTrackingBuffer(buffer);
+  if (compact.startsWith("+")) {
+    return parseTrackFlidRest("initCntl", compact.slice(1));
+  }
+  if (compact.startsWith("/")) {
+    return parseTrackFlidRest("termCntl", compact.slice(1));
+  }
+  if (!compact.startsWith("*") || compact === "*" || compact === "") {
+    return null;
+  }
+  const rest = compact.slice(1);
+  if (rest === "0") {
+    return { kind: "action", action: { type: "resetLeaderDir" } };
+  }
+  if (/^[1-8]$/.test(rest) && isStarsLeaderClock(Number(rest))) {
+    return {
+      kind: "action",
+      action: { type: "setLeaderDir", starsDir: Number(rest) as StarsLeaderClock },
+    };
+  }
+  return null;
+}
+
+/**
+ * Live-buffer slew (no Enter): bare `*` ack/highlight, `*B` beaconator, plus
+ * complete parseTrackingCommand rows (`+`, `/`, `*1`–`*8`, `*0`).
+ */
+export function parseTrackingSlewBuffer(buffer: string): PreviewArmedAction | null {
+  const compact = compactTrackingBuffer(buffer);
+  if (compact === "*") {
+    return { type: "ackPointout" };
+  }
+  if (compact === "*B") {
+    return { type: "beaconatorSlew" };
+  }
+  const parsed = parseTrackingCommand(buffer);
+  if (parsed?.kind === "action") {
+    return parsed.action;
+  }
+  return null;
+}
+
+export function isTrackingSlewAction(action: PreviewArmedAction | null): boolean {
+  return action != null && TRACKING_SLEW_TYPES.has(action.type);
+}
+
+/** Armed tracking chord or live `+` `/` `*` `*1`–`*8` `*0` `*B` buffer. */
+export function previewTrackingSlew(state: PreviewAreaState): PreviewArmedAction | null {
+  if (state.phase === "armed" && state.armed && isTrackingSlewAction(state.armed)) {
+    const armed = state.armed;
+    if ((armed.type === "initCntl" || armed.type === "termCntl") && state.flid) {
+      return { type: armed.type, flid: state.flid };
+    }
+    return armed;
+  }
+  if (state.phase !== "entry") {
+    return null;
+  }
+  return parseTrackingSlewBuffer(state.buffer);
+}
+
+function trackingMnemonic(action: PreviewArmedAction): string {
+  switch (action.type) {
+    case "initCntl":
+      return "INIT CNTL";
+    case "termCntl":
+      return "TERM CNTL";
+    case "acceptHandoff":
+      return "HO ACCEPT";
+    case "ackPointout":
+      return "*";
+    case "setLeaderDir":
+      return `*${action.starsDir}`;
+    case "resetLeaderDir":
+      return "*0";
+    case "beaconatorSlew":
+      return "*B";
+    default:
+      return "";
+  }
+}
+
+/** Arm a command-then-slew tracking chord. INIT/TERM mnemonic is never `"F3"` / `"F4"`. */
+export function armPreviewSlewAction(
+  state: PreviewAreaState,
+  action: PreviewArmedAction,
+  nowMs: number,
+): void {
+  if (action.type === "initCntl" || action.type === "termCntl") {
+    armPreviewCntl(state, action.type, nowMs, action.flid);
+    return;
+  }
+  state.phase = "armed";
+  state.buffer = "";
+  state.mnemonic = trackingMnemonic(action);
+  state.flid = null;
+  state.rejection = null;
+  state.armed = action;
+  state.lastKeyAtMs = nowMs;
+}
+
 /**
  * Pure string parser for the Preview Area buffer.
  * T02-51: empty and live prefixes are `incomplete`; anything else is `invalid`.
  * T02-52 / T02-53 add `action` rows to `PREVIEW_TABLE` without replacing this.
+ * T02-62 list mnemonics are parsed in `parseListCommand`. T02-63 video-map
+ * commands are matched before the `*` catch-all prefix. T02-65 `*F` / `*LA` /
+ * `*BCN` are parsed in `parseAltitudeFilterCommand` / `parseBeaconFilterCommand`.
+ * T02-66 tracking chords are parsed in `parseTrackingCommand`.
  */
-export function parsePreviewCommand(buffer: string): PreviewCommandResult {
+export function parsePreviewCommand(
+  buffer: string,
+  maps?: readonly LoadedVideoMap[],
+): PreviewCommandResult {
   if (buffer === "") {
     return { kind: "incomplete" };
   }
@@ -263,8 +840,37 @@ export function parsePreviewCommand(buffer: string): PreviewCommandResult {
   if (beacon) {
     return beacon;
   }
+  const display = parseScopeDisplayCommand(buffer);
+  if (display) {
+    return display;
+  }
+  const altitude = parseAltitudeFilterCommand(buffer);
+  if (altitude) {
+    return altitude;
+  }
+  const beaconFilter = parseBeaconFilterCommand(buffer);
+  if (beaconFilter) {
+    return beaconFilter;
+  }
+  const videoMap = parseVideoMapCommand(buffer, maps);
+  if (videoMap) {
+    return videoMap;
+  }
+  const list = parseListCommand(buffer);
+  if (list) {
+    return list;
+  }
+  const tracking = parseTrackingCommand(buffer);
+  if (tracking) {
+    return tracking;
+  }
   const keys = Object.keys(PREVIEW_TABLE);
   if (keys.some((key) => key.startsWith(buffer))) {
+    return { kind: "incomplete" };
+  }
+  // `+FLID`, `/` slew, TPA `*J`/`*P`, and later `*PTL` stay incomplete.
+  // Enter still maps incomplete → INV via commitPreviewCommand (or starsChord).
+  if (keys.some((key) => key.length > 0 && buffer.startsWith(key))) {
     return { kind: "incomplete" };
   }
   return invalid("unknown preview command");
@@ -279,16 +885,33 @@ export function previewCntlArmed(state: PreviewAreaState): state is PreviewAreaS
   );
 }
 
+/** `*S` Enter: stay armed for SSA slew. Does not toggle SSA visibility. */
+export function armPreviewRelocateList(
+  state: PreviewAreaState,
+  listId: string,
+  nowMs: number,
+  buffer = "*S",
+): void {
+  state.phase = "armed";
+  state.buffer = buffer;
+  state.mnemonic = "";
+  state.flid = null;
+  state.rejection = null;
+  state.armed = { type: "armRelocateList", listId };
+  state.lastKeyAtMs = nowMs;
+}
+
 /** F3 / F4 with no selection: arm command-then-slew. Mnemonic is never `"F3"` / `"F4"`. */
 export function armPreviewCntl(
   state: PreviewAreaState,
   kind: "initCntl" | "termCntl",
   nowMs: number,
+  flid?: string,
 ): void {
   state.phase = "armed";
   state.mnemonic = kind === "initCntl" ? "INIT CNTL" : "TERM CNTL";
   state.buffer = "";
-  state.flid = null;
+  state.flid = flid && flid.length > 0 ? flid : null;
   state.rejection = null;
   state.armed = { type: kind };
   state.lastKeyAtMs = nowMs;
@@ -388,8 +1011,11 @@ export function previewFlidMatchesSlew(
 }
 
 /** Enter-commit: a still-live prefix (`B`, `B4`, `B450`) is `invalid`, not a silent no-op. */
-export function commitPreviewCommand(buffer: string): PreviewCommandResult {
-  const parsed = parsePreviewCommand(buffer);
+export function commitPreviewCommand(
+  buffer: string,
+  maps?: readonly LoadedVideoMap[],
+): PreviewCommandResult {
+  const parsed = parsePreviewCommand(buffer, maps);
   if (parsed.kind === "incomplete") {
     return invalid("incomplete preview command");
   }
@@ -406,9 +1032,32 @@ export function toggleBeaconSelectCode(codes: string[], token: string): void {
   codes.push(token);
 }
 
+/** Add `token` if absent. Does not toggle off a duplicate `*BCN`. */
+export function addBeaconSelectCode(codes: string[], token: string): void {
+  if (!codes.includes(token)) {
+    codes.push(token);
+  }
+}
+
+/** Remove `token` if present. No-op when absent. */
+export function removeBeaconSelectCode(codes: string[], token: string): void {
+  const i = codes.indexOf(token);
+  if (i >= 0) {
+    codes.splice(i, 1);
+  }
+}
+
 export function applyPreviewBeaconAction(codes: string[], action: PreviewArmedAction): boolean {
   if (action.type === "beaconBlock" || action.type === "beaconDiscrete") {
     toggleBeaconSelectCode(codes, action.digits);
+    return true;
+  }
+  if (action.type === "addBeaconCodeFilter") {
+    addBeaconSelectCode(codes, action.code);
+    return true;
+  }
+  if (action.type === "removeBeaconCodeFilter") {
+    removeBeaconSelectCode(codes, action.code);
     return true;
   }
   return false;
@@ -417,6 +1066,11 @@ export function applyPreviewBeaconAction(codes: string[], action: PreviewArmedAc
 export type PreviewKeyOutcome = {
   consumed: boolean;
   action: PreviewArmedAction | null;
+  /**
+   * Enter on a live `*` buffer: caller tries T02-49 `commitStarsChord` before INV.
+   * Undefined / null when this key is not that commit.
+   */
+  starsBuffer?: string | null;
 };
 
 /** Live `B…` CODE BLOCK / discrete entry (not INIT/TERM). */
@@ -425,13 +1079,111 @@ export function isBeaconPreviewEntry(state: PreviewAreaState): boolean {
 }
 
 export function beginPreviewBeaconEntry(state: PreviewAreaState, nowMs: number): void {
+  beginPreviewBufferEntry(state, "B", nowMs);
+}
+
+/**
+ * STARS preview alphabet: Multifunction `*`, Track `+`, Slew/Drop `/`,
+ * alphanumerics, space, and TPA tenths `.`. Numpad `Multiply` / `Add` / digits
+ * map to the same characters. Never Command IR.
+ */
+export function previewBufferCharFromKey(key: string, code?: string): string | null {
+  if (key === "*" || key === "Multiply") {
+    return "*";
+  }
+  if (key === "+" || key === "Add") {
+    return "+";
+  }
+  if (key === "/") {
+    return "/";
+  }
+  if (key === " " || key === "Spacebar") {
+    return " ";
+  }
+  if (key === "." || key === "Decimal") {
+    return ".";
+  }
+  if (key === "_") {
+    return "_";
+  }
+  const digit = digitFromKey(key, code);
+  if (digit !== null) {
+    return String(digit);
+  }
+  if (/^[a-zA-Z]$/.test(key)) {
+    return key.toUpperCase();
+  }
+  return null;
+}
+
+/** Idle start keys: prefixes + alphanumerics + space. `.` only appends once live. */
+export function isPreviewBufferStartChar(ch: string): boolean {
+  return ch === "*" || ch === "+" || ch === "/" || /^[A-Z0-9 ]$/.test(ch);
+}
+
+export function beginPreviewBufferEntry(state: PreviewAreaState, ch: string, nowMs: number): void {
   state.phase = "entry";
-  state.buffer = "B";
+  state.buffer = ch;
   state.mnemonic = "";
   state.flid = null;
   state.rejection = null;
   state.armed = null;
   state.lastKeyAtMs = nowMs;
+}
+
+/**
+ * Unified Preview Area typer. Live `B…` still uses Table 30 auto-commit rules.
+ * Other live buffers wait for Enter; incomplete prefixes INV on Enter.
+ * A live `*` buffer returns `starsBuffer` so T02-49 TPA/ATPA chords still dispatch.
+ */
+export function handlePreviewBufferKey(
+  state: PreviewAreaState,
+  key: string,
+  nowMs: number,
+  code?: string,
+  maps?: readonly LoadedVideoMap[],
+): PreviewKeyOutcome {
+  if (isBeaconPreviewEntry(state)) {
+    return handlePreviewBeaconKey(state, key, nowMs, code);
+  }
+  if (state.phase !== "entry") {
+    return { consumed: false, action: null };
+  }
+  if (key === "Escape") {
+    return { consumed: false, action: null };
+  }
+  if (key === "Backspace") {
+    if (state.buffer.length <= 1) {
+      cancelPreviewArea(state);
+      return { consumed: true, action: null };
+    }
+    state.buffer = state.buffer.slice(0, -1);
+    state.lastKeyAtMs = nowMs;
+    return { consumed: true, action: null };
+  }
+  if (key === "Enter" || key === "NumpadEnter") {
+    const parsed = parsePreviewCommand(state.buffer, maps);
+    if (parsed.kind === "action") {
+      cancelPreviewArea(state);
+      return { consumed: true, action: parsed.action };
+    }
+    if (parsed.kind === "invalid") {
+      rejectPreviewArea(state, nowMs);
+      return { consumed: true, action: null };
+    }
+    if (state.buffer.startsWith("*")) {
+      return { consumed: true, action: null, starsBuffer: state.buffer };
+    }
+    rejectPreviewArea(state, nowMs);
+    return { consumed: true, action: null };
+  }
+  const ch = previewBufferCharFromKey(key, code);
+  if (ch !== null) {
+    state.buffer += ch;
+    state.lastKeyAtMs = nowMs;
+    return { consumed: true, action: null };
+  }
+  return { consumed: false, action: null };
 }
 
 /**

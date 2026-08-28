@@ -152,14 +152,75 @@ export const DEFAULT_SYSTEM_LIST_PLACEMENTS: Record<string, SystemListPlacement>
   },
 };
 
-export function toggleSystemList(view: ScopeView, listId: string): void {
-  if (!view.systemLists) {
-    view.systemLists = { ...DEFAULT_SYSTEM_LIST_PLACEMENTS };
+function cloneSystemListPlacements(): Record<string, SystemListPlacement> {
+  const out: Record<string, SystemListPlacement> = {};
+  for (const [id, placement] of Object.entries(DEFAULT_SYSTEM_LIST_PLACEMENTS)) {
+    out[id] = { ...placement };
   }
-  const placement = view.systemLists[listId];
+  return out;
+}
+
+function ensureSystemListPlacement(
+  view: ScopeView,
+  listId: string,
+): SystemListPlacement | undefined {
+  if (!view.systemLists) {
+    view.systemLists = cloneSystemListPlacements();
+  }
+  const existing = view.systemLists[listId];
+  if (!existing) {
+    return undefined;
+  }
+  const shared = DEFAULT_SYSTEM_LIST_PLACEMENTS[listId];
+  if (shared && existing === shared) {
+    const copy = { ...existing };
+    view.systemLists[listId] = copy;
+    return copy;
+  }
+  return existing;
+}
+
+export function toggleSystemList(view: ScopeView, listId: string): void {
+  const placement = ensureSystemListPlacement(view, listId);
   if (placement) {
     placement.visible = !placement.visible;
   }
+}
+
+/** Clamp to [1, 100]. Returns false when `listId` is unknown. */
+export function setSystemListMaxLines(view: ScopeView, listId: string, maxLines: number): boolean {
+  const placement = ensureSystemListPlacement(view, listId);
+  if (!placement) {
+    return false;
+  }
+  placement.maxLines = Math.max(1, Math.min(100, Math.trunc(maxLines)));
+  return true;
+}
+
+/** Normalized canvas click → list anchor in [0, 1]. */
+export function normalizedClickAnchor(
+  cssX: number,
+  cssY: number,
+  cssWidth: number,
+  cssHeight: number,
+): { x: number; y: number } {
+  const w = cssWidth > 0 ? cssWidth : 1;
+  const h = cssHeight > 0 ? cssHeight : 1;
+  return {
+    x: Math.max(0, Math.min(1, cssX / w)),
+    y: Math.max(0, Math.min(1, cssY / h)),
+  };
+}
+
+/** Relocate a list (or SSA) anchor. Returns false when `listId` is unknown. */
+export function relocateSystemList(view: ScopeView, listId: string, x: number, y: number): boolean {
+  const placement = ensureSystemListPlacement(view, listId);
+  if (!placement) {
+    return false;
+  }
+  placement.x = Math.max(0, Math.min(1, x));
+  placement.y = Math.max(0, Math.min(1, y));
+  return true;
 }
 
 export function areAllSystemListsVisible(view: ScopeView): boolean {

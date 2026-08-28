@@ -9,6 +9,7 @@ import { expect, test } from "vitest";
 import { SessionLog, createWorld, handoffFor, makeTestAircraft, type World } from "@core";
 import { handleRadioText } from "@pilot";
 import { createWorldFromScenario, loadKdem } from "@scenario";
+import { DEFAULT_ALTITUDE_FILTER, formatFilterReadout } from "./altitudeFilter";
 import { DEFAULT_SCOPE_CAMERA, nmToScreen, type ScopeCamera } from "./camera";
 import { bindingById } from "./keymap";
 import { PALETTE } from "./palette";
@@ -351,4 +352,162 @@ test("AC5 — KEY_BINDINGS overlay text includes INIT CNTL command-then-slew", (
   expect(init.crcAnalog).toMatch(/INIT CNTL/);
   expect(bindingById("help")?.crcAnalog).toMatch(/beaconator/);
   expect(bindingById("ptl")?.action).toMatch(/PTL ALL/);
+});
+
+test("T02-64 — *C Enter then PPI click recenters; *OFF resets to KDEM ARP", () => {
+  const world = createWorld();
+  const view = createScopeView();
+  expect(view.camera.centerEastNm).toBe(view.airportEastNm);
+  expect(view.camera.centerNorthNm).toBe(view.airportNorthNm);
+
+  typeKeys(view, world, ["*", "C", "Enter"], "scope");
+  expect(view.placeCenterArmed).toBe(true);
+  expect(view.preview.phase).toBe("idle");
+  expect(formatPreviewReadout(view.preview)).toBeNull();
+
+  const p = nmToScreen(5, -3, view.camera, VIEW);
+  handlePpiLeftClick(view, world, p.x, p.y, CSS, CSS);
+  expect(view.camera.centerEastNm).toBeCloseTo(5);
+  expect(view.camera.centerNorthNm).toBeCloseTo(-3);
+  expect(view.placeCenterArmed).toBe(false);
+
+  typeKeys(view, world, ["*", "O", "F", "F", "Enter"], "scope", 500);
+  expect(view.camera.centerEastNm).toBe(view.airportEastNm);
+  expect(view.camera.centerNorthNm).toBe(view.airportNorthNm);
+});
+
+test("T02-64 — *RR spacing/origin and *PTL / *HIST; invalid params do not mutate", () => {
+  const world = createWorld();
+  const view = createScopeView();
+  view.showRings = false;
+  const startRr = view.ringIntervalNm;
+  const startPtl = view.ptlMinutes;
+  const startHist = view.historyDotCount;
+
+  typeKeys(view, world, ["*", "R", "R", "7", "Enter"], "scope");
+  expect(view.preview.rejection).toBe("*RR7 INV");
+  expect(view.ringIntervalNm).toBe(startRr);
+  expect(view.showRings).toBe(false);
+
+  typeKeys(view, world, ["*", "R", "R", "2", "0", "Enter"], "scope", 200);
+  expect(view.ringIntervalNm).toBe(20);
+  expect(view.showRings).toBe(true);
+
+  typeKeys(view, world, ["*", " ", "R", "R", " ", "1", "0", "Enter"], "scope", 400);
+  expect(view.ringIntervalNm).toBe(10);
+
+  typeKeys(view, world, ["*", "R", "R", "C", "Enter"], "scope", 600);
+  expect(view.placeRangeRingArmed).toBe(true);
+  expect(view.placeCenterArmed).toBe(false);
+  expect(view.preview.phase).toBe("idle");
+  const ringAt = nmToScreen(6, -2, view.camera, VIEW);
+  handlePpiLeftClick(view, world, ringAt.x, ringAt.y, CSS, CSS);
+  expect(view.rangeRingEastNm).toBeCloseTo(6);
+  expect(view.rangeRingNorthNm).toBeCloseTo(-2);
+  expect(view.placeRangeRingArmed).toBe(false);
+
+  view.camera.centerEastNm = 3;
+  view.camera.centerNorthNm = 1;
+  typeKeys(view, world, ["*", "R", "R", "O", "F", "F", "Enter"], "scope", 800);
+  expect(view.rangeRingEastNm).toBeCloseTo(3);
+  expect(view.rangeRingNorthNm).toBeCloseTo(1);
+
+  typeKeys(view, world, ["*", "P", "T", "L", "2", "5", "Enter"], "scope", 1000);
+  expect(view.preview.rejection).toBe("*PTL25 INV");
+  expect(view.ptlMinutes).toBe(startPtl);
+
+  view.ptlOn = true;
+  typeKeys(view, world, ["*", "P", "T", "L", "0", "Enter"], "scope", 1200);
+  expect(view.ptlMinutes).toBe(0);
+  expect(view.ptlOn).toBe(false);
+  typeKeys(view, world, ["*", "P", "T", "L", "1", "5", "Enter"], "scope", 1400);
+  expect(view.ptlMinutes).toBe(15);
+
+  typeKeys(view, world, ["*", "H", "I", "S", "T", "1", "2", "Enter"], "scope", 1600);
+  expect(view.preview.rejection).toBe("*HIST12 INV");
+  expect(view.historyDotCount).toBe(startHist);
+
+  typeKeys(view, world, ["*", "H", "I", "S", "T", "0", "Enter"], "scope", 1800);
+  expect(view.historyDotCount).toBe(0);
+  expect(view.historyEnabled).toBe(false);
+  typeKeys(view, world, ["*", "H", "I", "S", "T", "9", "Enter"], "scope", 2000);
+  expect(view.historyDotCount).toBe(9);
+  expect(view.historyEnabled).toBe(true);
+});
+
+test("T02-64 — *PTL does not steal TPA *P / *P5; *J3 still arms", () => {
+  const world = createWorld();
+  const view = createScopeView();
+
+  typeKeys(view, world, ["*", "P", "Enter"], "scope");
+  expect(view.starsChordArmed).toEqual({ type: "coneClear", target: "slewed" });
+  expect(view.ptlMinutes).toBe(1);
+
+  view.starsChordArmed = null;
+  typeKeys(view, world, ["*", "P", "5", "Enter"], "scope", 200);
+  expect(view.starsChordArmed).toEqual({ type: "cone", target: "slewed", lengthNm: 5 });
+  expect(view.ptlMinutes).toBe(1);
+
+  view.starsChordArmed = null;
+  typeKeys(view, world, ["*", "P", "T", "L", "4", "Enter"], "scope", 400);
+  expect(view.ptlMinutes).toBe(4);
+  expect(view.starsChordArmed).toBeNull();
+
+  typeKeys(view, world, ["*", "J", "3", "Enter"], "scope", 600);
+  expect(view.starsChordArmed).toEqual({ type: "jRing", target: "slewed", radiusNm: 3 });
+});
+
+test("T02-65 — *F readout, *LA bounds, *BCN □ paint; *B / idle F / B45 unchanged", () => {
+  const ac = makeTestAircraft({
+    id: "ac-bcn",
+    callsign: "DAL45",
+    squawk: "4521",
+    altitudeFt: 5000,
+  });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  typeKeys(view, world, ["*", "F", "Enter"], "scope");
+  expect(view.altitudeFilter).toEqual(DEFAULT_ALTITUDE_FILTER);
+  expect(formatPreviewReadout(view.preview)).toBe("FILTER 000-180");
+
+  typeKeys(view, world, ["*", "L", "A", "0", "0", "0", "1", "2", "0", "Enter"], "scope", 200);
+  expect(view.altitudeFilter).toEqual({ minHundreds: 0, maxHundreds: 120 });
+  expect(formatFilterReadout(view.altitudeFilter, view.filterEntry)).toBe("FILTER 000-120");
+
+  typeKeys(view, world, ["*", "B", "C", "N", "4", "5", "Enter"], "scope", 400);
+  expect(view.beaconSelectCodes).toEqual(["45"]);
+  expect(
+    targetSymbolDescriptor({
+      ownership: "unowned",
+      squawk: ac.squawk,
+      beaconSelect: view.beaconSelectCodes,
+    }).symbol,
+  ).toBe("□");
+
+  typeKeys(view, world, ["*", "B", "C", "N", "D", "E", "L", "4", "5", "Enter"], "scope", 600);
+  expect(view.beaconSelectCodes).toEqual([]);
+  expect(
+    targetSymbolDescriptor({
+      ownership: "unowned",
+      squawk: ac.squawk,
+      beaconSelect: view.beaconSelectCodes,
+    }).symbol,
+  ).toBe("*");
+
+  typeKeys(view, world, ["B", "4", "5", "Enter"], "scope", 800);
+  expect(view.beaconSelectCodes).toEqual(["45"]);
+
+  const filterView = createScopeView();
+  typeKeys(filterView, world, ["F"], "scope");
+  expect(filterView.filterEntry.phase).toBe("min");
+  expect(filterView.preview.phase).toBe("idle");
+
+  const tpa = createScopeView();
+  tpa.atpa.monitorCones = false;
+  typeKeys(tpa, world, ["*", "B", "E", "Enter"], "scope");
+  expect(tpa.atpa.monitorCones).toBe(true);
+  expect(tpa.beaconSelectCodes).toEqual([]);
+  expect(tpa.preview.rejection).toBeNull();
 });

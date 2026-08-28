@@ -1,5 +1,31 @@
 # Swarm status
 
+## SEVENTEENTH SWARM COMPLETE — STARS Keyboard Commands & Preview Area Expansion (T02-61–67)
+
+T02-61–67 are merged on `feature/stars-keyboard-commands`. Captain `npm test` / `npm run ci`: **142 test files passed, 1689 tests passed, 2 skipped, 0 failures**. Unified Preview Area lexer under the SSA; system lists, video maps, scope display, altitude/beacon filters, and tracking chords from keyboard; Tab isolation from the radio command line:
+
+- **Lexer (T02-61):** Scope-focus `*` `+` `/` alnum/space buffer into `view.preview.buffer`. Tab is the only focus switcher (`/` no longer steals radio). Incomplete prefixes INV on Enter. Known T02-49 `*J`/`*P` still dispatch via starsChord.
+- **Lists (T02-62):** `*T` Enter toggles; `*T [1-100]` resizes; live `*T`/`*S` plus canvas click relocates. `*P1`–`*P3` are tower lists; TPA cones stay `*P` / `*P5` / `*P10`.
+- **Maps (T02-63):** `*D` slot or catalog id, bulk ALL/NONE, explicit OFF. Bare `*D` stays TPA; tap-M stays Mode C.
+- **Scope display (T02-64):** `*C` click, `*OFF`, `*RR` 2|5|10|20 / `*RR C` click / `*RR OFF`, `*PTL` 0–15, `*HIST` 0–9. DCB RR spinner stays `[2,5,10]`; DCB PTL stays 0.5/1/2/4.
+- **Filters (T02-65):** `*F` flashes FILTER bounds without mutating. `*LA` writes hundreds 0–180. `*BCN` add/remove shares T02-53 `beaconSelectCodes`. Bare `*B` Enter stays TPA.
+- **Tracking chords (T02-66):** `+`/`/` Enter arm INIT/TERM; idle Enter arms HO accept; `*` click acks pointout or cyan highlight; `/` datablock toggles PDB↔FDB; `*1`–`*8`/`*0` leader; `*B` click is 5s beaconator. F3/F4 selected-apply / unselected-arm kept.
+- **Acceptance (T02-67):** `src/scope/starsCommands.integration.test.ts` and `src/ui/starsCommandsAcceptance.test.ts` drive real `ScopeView` + `World`. Idle `cancelFilterEntry` no longer restores 000–180 over committed `*LA` when the next preview key starts.
+
+**Merged (squash-merged, captains only):** T02-61 (`509b4e1`), T02-62 (`15683cd`), T02-64 (`3873e88`), T02-63 (`e54a35e`), T02-65 (`386358d`), T02-66 (`8519deb`), T02-67 (`fa0aea2`), format follow-up (`ce31d2a`). Planning: `e29e8d2`, `b168083`.
+
+**Captain judgement calls:**
+- **Orchestrator and captain were one session.** Merge lock, worktrees, and waves were held in the top session. Workers stayed leaf-only and never merged.
+- **`ticket/` branches were cut from `feature/stars-keyboard-commands`, not `master`.** `master` is untouched.
+- **Wave B2 rebase was additive.** T02-66 tracking arms and T02-65 `displayFilters` / `setAltitudeFilterLimits` both extend `applyPreviewArmedAction`; union kept both. After T02-65, T02-66’s “`*F` stays unparsed” assertion became FILTER readout.
+- **T02-67 product fix.** Idle `cancelFilterEntry` was restoring default 000–180 over committed `*LA` when a later preview `*` started. Guard: no restore when `entry.phase === "idle"`.
+
+**Manual leftover:** Chrome player loop (`npm run dev` → `*T` Enter → `*D LOC27` Enter → `*RR 10` Enter → `+` click → `/` click → Tab to `#command-line-input`). skip-with-reason: no visual operator. Automated tests prove the items above (`starsCommandsAcceptance` Tab walk is `test.skip`).
+
+**Product law held:** preview ≠ radio; no Command IR from scope keys; `*P1` tower list not TPA; bare `*D`/`*B` stay TPA Enter; `*F` Enter is FILTER readout not a flight-plan modal; DCB spinner lists unchanged.
+
+---
+
 ## SIXTEENTH SWARM COMPLETE — STARS In-Scope System Lists & Complete DCB (T02-55–60)
 
 T02-55–60 are merged on `feature/stars-lists-and-dcb`. Captain `npm test` / `npm run ci` / `npm run build`: **140 test files passed, 1624 tests passed, 1 skipped, 0 failures**. Full in-scope STARS system lists window manager and complete 1:1 DCB parity with Vice:

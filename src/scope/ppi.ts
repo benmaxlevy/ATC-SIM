@@ -1,11 +1,14 @@
-import { setSelectedAircraft, type World } from "@core";
+import { acceptPointout, handoffFor, setSelectedAircraft, type World } from "@core";
 import { expireFilterEntry } from "./altitudeFilter";
 import {
   cancelPreviewArea,
   expirePreviewArea,
-  previewCntlArmed,
   previewFlidMatchesSlew,
+  previewRelocateListId,
+  previewTrackingSlew,
+  rejectPreviewArea,
   rejectPreviewCntl,
+  type PreviewArmedAction,
 } from "./previewArea";
 import {
   applyStarsChordAction,
@@ -15,18 +18,136 @@ import {
   rejectStarsChordEntry,
 } from "./starsChord";
 import { applyPanScreenDelta, screenToNm, type ScopeViewSize } from "./camera";
+import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock } from "./leader";
 import {
   HIT_RADIUS_CSS_PX,
   middleClickAircraftAt,
   pickAircraftAt,
+  pickAircraftHitAt,
   selectOrAcceptAircraftAt,
+  type AircraftPickHit,
 } from "./pick";
 import { renderScope } from "./renderScope";
 import { centerOnWorld, recordLastClick, setRangeRingOrigin, type ScopeView } from "./scopeView";
-import { applyDropTrackToId, applyInitiateTrackToId } from "./trackDisplay";
+import { normalizedClickAnchor, relocateSystemList } from "./systemLists";
+import {
+  acceptInboundOnClick,
+  applyBeaconatorSlewToId,
+  applyDropTrackToId,
+  applyInitiateTrackToId,
+  ensureTrackDisplay,
+  setLeaderDirForId,
+  toggleTrackHighlight,
+  toggleTrackPdbFdb,
+} from "./trackDisplay";
 
 function viewSize(widthPx: number, heightPx: number): ScopeViewSize {
   return { widthPx, heightPx };
+}
+
+function trackingFlidMatches(
+  view: ScopeView,
+  action: PreviewArmedAction,
+  aircraftId: string,
+  world: World,
+): boolean {
+  if (action.type !== "initCntl" && action.type !== "termCntl") {
+    return true;
+  }
+  if (action.flid) {
+    const saved = view.preview.flid;
+    view.preview.flid = action.flid;
+    const ok = previewFlidMatchesSlew(view.preview, aircraftId, world);
+    view.preview.flid = saved;
+    return ok;
+  }
+  return previewFlidMatchesSlew(view.preview, aircraftId, world);
+}
+
+function clearTrackingSlew(view: ScopeView): void {
+  cancelPreviewArea(view.preview);
+  cancelStarsChordEntry(view.starsChordEntry);
+  view.starsChordArmed = null;
+}
+
+/**
+ * Command-then-slew apply. Empty click does not call this. Returns true when
+ * the arm/buffer is consumed (applied or INV). False keeps the arm.
+ */
+function applyTrackingSlewHit(
+  view: ScopeView,
+  world: World,
+  hit: AircraftPickHit,
+  action: PreviewArmedAction,
+): boolean {
+  const id = hit.aircraft.id;
+  if (!trackingFlidMatches(view, action, id, world)) {
+    rejectPreviewCntl(view.preview, Date.now());
+    cancelStarsChordEntry(view.starsChordEntry);
+    view.starsChordArmed = null;
+    return true;
+  }
+  switch (action.type) {
+    case "initCntl":
+      applyInitiateTrackToId(view.tracks, world, id);
+      setSelectedAircraft(world, id);
+      clearTrackingSlew(view);
+      return true;
+    case "termCntl": {
+      const td = ensureTrackDisplay(view.tracks, id);
+      if (hit.region === "datablock") {
+        toggleTrackPdbFdb(td);
+      } else {
+        applyDropTrackToId(view.tracks, world, id);
+      }
+      setSelectedAircraft(world, id);
+      clearTrackingSlew(view);
+      return true;
+    }
+    case "acceptHandoff": {
+      const ho = handoffFor(world, id);
+      if (ho.kind !== "inbound") {
+        return false;
+      }
+      acceptInboundOnClick(view.tracks, world, id);
+      setSelectedAircraft(world, id);
+      clearTrackingSlew(view);
+      return true;
+    }
+    case "ackPointout": {
+      const ho = handoffFor(world, id);
+      const td = ensureTrackDisplay(view.tracks, id);
+      if (ho.kind === "pointout_inbound" && ho.status === "pending") {
+        acceptPointout(world, id);
+        td.pointoutAccepted = true;
+        td.pointoutRejected = false;
+      } else {
+        toggleTrackHighlight(td);
+      }
+      setSelectedAircraft(world, id);
+      clearTrackingSlew(view);
+      return true;
+    }
+    case "setLeaderDir":
+      setLeaderDirForId(view.tracks, world, id, leaderDirFromStarsClock(action.starsDir));
+      setSelectedAircraft(world, id);
+      clearTrackingSlew(view);
+      return true;
+    case "resetLeaderDir":
+      setLeaderDirForId(view.tracks, world, id, view.defaultLeaderDir ?? DEFAULT_LEADER_DIR);
+      setSelectedAircraft(world, id);
+      clearTrackingSlew(view);
+      return true;
+    case "beaconatorSlew":
+      if (!applyBeaconatorSlewToId(view.tracks, world, id)) {
+        return false;
+      }
+      setSelectedAircraft(world, id);
+      clearTrackingSlew(view);
+      return true;
+    default:
+      return false;
+  }
 }
 
 export function cssPointFromClient(
@@ -50,67 +171,75 @@ export function handlePpiLeftClick(
   const size = viewSize(cssWidth, cssHeight);
   const nm = screenToNm(cssX, cssY, view.camera, size);
   recordLastClick(view, nm.eastNm, nm.northNm);
+  const relocateId = previewRelocateListId(view.preview);
+  if (relocateId) {
+    const anchor = normalizedClickAnchor(cssX, cssY, cssWidth, cssHeight);
+    if (relocateSystemList(view, relocateId, anchor.x, anchor.y)) {
+      cancelPreviewArea(view.preview);
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      return;
+    }
+  }
   if (view.placeCenterArmed) {
     centerOnWorld(view, nm.eastNm, nm.northNm);
     view.placeCenterArmed = false;
   } else if (view.placeRangeRingArmed) {
     setRangeRingOrigin(view, nm.eastNm, nm.northNm);
     view.placeRangeRingArmed = false;
-  } else if (view.starsChordEntry.phase === "entry" || view.starsChordArmed) {
-    // Live or armed * chord: slew applies the command and must not also accept inbound HO.
-    const hit = pickAircraftAt(
-      world,
-      cssX,
-      cssY,
-      view.camera,
-      cssWidth,
-      cssHeight,
-      HIT_RADIUS_CSS_PX,
-      view,
-    );
-    if (hit) {
-      if (view.starsChordEntry.phase === "entry") {
-        const committed = commitStarsChord(view.starsChordEntry.buffer);
-        if (committed.kind === "action") {
+  } else {
+    const tracking = previewTrackingSlew(view.preview);
+    if (tracking) {
+      const hit = pickAircraftHitAt(
+        world,
+        cssX,
+        cssY,
+        view.camera,
+        cssWidth,
+        cssHeight,
+        HIT_RADIUS_CSS_PX,
+        view,
+      );
+      if (hit && applyTrackingSlewHit(view, world, hit, tracking)) {
+        return;
+      }
+    } else if (view.starsChordEntry.phase === "entry" || view.starsChordArmed) {
+      // Live or armed * chord: slew applies the command and must not also accept inbound HO.
+      const hit = pickAircraftAt(
+        world,
+        cssX,
+        cssY,
+        view.camera,
+        cssWidth,
+        cssHeight,
+        HIT_RADIUS_CSS_PX,
+        view,
+      );
+      if (hit) {
+        if (view.starsChordEntry.phase === "entry") {
+          const committed = commitStarsChord(view.starsChordEntry.buffer);
+          if (committed.kind === "action") {
+            setSelectedAircraft(world, hit.id);
+            applyStarsChordAction(view, world, committed.action);
+            cancelStarsChordEntry(view.starsChordEntry);
+            view.starsChordArmed = null;
+            if (view.preview.phase === "entry" && view.preview.buffer.startsWith("*")) {
+              cancelPreviewArea(view.preview);
+            }
+            return;
+          }
+          rejectStarsChordEntry(view.starsChordEntry, Date.now());
+          if (view.preview.phase === "entry" && view.preview.buffer.startsWith("*")) {
+            rejectPreviewArea(view.preview, Date.now());
+          }
+          // Incomplete/invalid: do not swallow the click.
+        } else if (view.starsChordArmed) {
           setSelectedAircraft(world, hit.id);
-          applyStarsChordAction(view, world, committed.action);
-          cancelStarsChordEntry(view.starsChordEntry);
+          applyStarsChordAction(view, world, view.starsChordArmed);
           view.starsChordArmed = null;
           return;
         }
-        rejectStarsChordEntry(view.starsChordEntry, Date.now());
-        // Incomplete/invalid: do not swallow the click.
-      } else if (view.starsChordArmed) {
-        setSelectedAircraft(world, hit.id);
-        applyStarsChordAction(view, world, view.starsChordArmed);
-        view.starsChordArmed = null;
-        return;
       }
-    }
-  } else if (previewCntlArmed(view.preview)) {
-    const hit = pickAircraftAt(
-      world,
-      cssX,
-      cssY,
-      view.camera,
-      cssWidth,
-      cssHeight,
-      HIT_RADIUS_CSS_PX,
-      view,
-    );
-    if (hit) {
-      if (!previewFlidMatchesSlew(view.preview, hit.id, world)) {
-        rejectPreviewCntl(view.preview, Date.now());
-        return;
-      }
-      if (view.preview.armed?.type === "initCntl") {
-        applyInitiateTrackToId(view.tracks, world, hit.id);
-      } else {
-        applyDropTrackToId(view.tracks, world, hit.id);
-      }
-      setSelectedAircraft(world, hit.id);
-      cancelPreviewArea(view.preview);
-      return;
     }
   }
   selectOrAcceptAircraftAt(

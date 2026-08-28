@@ -161,3 +161,20 @@ test("scope-focus B 4 5 Enter consumes keys; parseCommand spy call count 0", () 
   expect(view.beaconSelectCodes).toEqual(["45"]);
   expect(view.preview.phase).toBe("idle");
 });
+
+test("T02-61 — scope-focus / + Q stay off the radio line; radio-focus / + stay leftover", () => {
+  const world = createWorld();
+  const view = createScopeView();
+  const parseCommandSpy = vi.fn();
+
+  const leftover = routeKeys(["/", "+", "Q"], view, world, "scope", parseCommandSpy);
+  expect(leftover).toBe("");
+  expect(parseCommandSpy).toHaveBeenCalledTimes(0);
+  expect(view.preview.buffer).toBe("/+Q");
+
+  const radio = createScopeView();
+  const radioLeftover = routeKeys(["/", "+"], radio, world, "radio", parseCommandSpy);
+  expect(radioLeftover).toBe("/+");
+  expect(radio.preview.phase).toBe("idle");
+  expect(parseCommandSpy).not.toHaveBeenCalled();
+});

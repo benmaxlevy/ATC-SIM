@@ -40,7 +40,9 @@ import { setLeaderDirForSelection } from "./trackDisplay";
 type VideoMapRole = NonNullable<LoadedVideoMap["role"]>;
 
 export const RR_INTERVALS_NM = [2, 5, 10] as const;
-export type RrIntervalNm = (typeof RR_INTERVALS_NM)[number];
+/** Keyboard `*RR` may set 20 NM; DCB spinner stays `RR_INTERVALS_NM`. */
+export const RR_KEYBOARD_INTERVALS_NM = [2, 5, 10, 20] as const;
+export type RrIntervalNm = (typeof RR_KEYBOARD_INTERVALS_NM)[number];
 export const DEFAULT_RR_INTERVAL_NM: RrIntervalNm = 5;
 
 /** Numpad compass dirs offered by DCB LDR DIR — same as scope-focus L+digit. */
@@ -52,7 +54,7 @@ export const DCB_MAP_SLOT_COUNT = 32;
 export const DCB_QUICK_MAP_COUNT = 6;
 
 export function snapRrInterval(nm: number): RrIntervalNm {
-  for (const step of RR_INTERVALS_NM) {
+  for (const step of RR_KEYBOARD_INTERVALS_NM) {
     if (step === nm) {
       return step;
     }
@@ -117,8 +119,29 @@ function syncRoleFlag(view: ScopeView, map: LoadedVideoMap): void {
   }
 }
 
+/**
+ * Catalog lookup for preview `*D` / `M` tokens: DCB slot `1`–`32` or map id
+ * (`RWY`, `LOC27`, `DEM1_27`, …), case-insensitive. Empty / unknown → undefined.
+ */
+export function resolveVideoMapToken(
+  maps: readonly LoadedVideoMap[],
+  token: string,
+): LoadedVideoMap | undefined {
+  const normalized = token.trim().toUpperCase();
+  if (normalized.length === 0) {
+    return undefined;
+  }
+  if (/^\d+$/.test(normalized)) {
+    const slot = Number(normalized);
+    return maps.find((map) => map.dcbNumber === slot);
+  }
+  return maps.find(
+    (map) => map.id.toUpperCase() === normalized || map.dcbLabel.toUpperCase() === normalized,
+  );
+}
+
 /** MAPS submenu toggle keyed by catalog id. Role maps share RWY/LOC/CST flags. */
-export function toggleVideoMap(view: ScopeView, mapId: string): void {
+export function toggleVideoMap(view: ScopeView, mapId: string, explicitState?: boolean): void {
   const map = view.digitalMap.loadedVideoMaps?.find((item) => item.id === mapId);
   if (!map) {
     return;
@@ -126,7 +149,11 @@ export function toggleVideoMap(view: ScopeView, mapId: string): void {
   if (map.role === "coastline" && view.digitalMap.coastline?.enabled !== true) {
     return;
   }
-  const next = !isVideoMapOn(view, mapId);
+  const currentlyOn = isVideoMapOn(view, mapId);
+  const next = explicitState ?? !currentlyOn;
+  if (next === currentlyOn) {
+    return;
+  }
   view.mapVisibility.set(mapId, next);
   syncRoleFlag(view, map);
   invalidateMapCache(view);
@@ -161,11 +188,19 @@ export function isDcbMapSlotEnabled(view: ScopeView, slot: number): boolean {
 
 /** CLR ALL: every catalog video map off. Coastline is a no-op when JSON `enabled: false`. */
 export function clearAllVideoMaps(view: ScopeView): void {
+  setAllVideoMaps(view, false);
+}
+
+/**
+ * Bulk catalog on/off (`*D ALL` / `*D NONE`). Same coastline JSON-off skip as CLR ALL.
+ * Syncs RWY/LOC/CST role flags and drops the map stroke cache.
+ */
+export function setAllVideoMaps(view: ScopeView, enabled: boolean): void {
   for (const map of dcbCatalogMaps(view)) {
     if (map.role === "coastline" && view.digitalMap.coastline?.enabled !== true) {
       continue;
     }
-    view.mapVisibility.set(map.id, false);
+    view.mapVisibility.set(map.id, enabled);
     syncRoleFlag(view, map);
   }
   invalidateMapCache(view);
@@ -205,13 +240,13 @@ export function hideMapLists(view: ScopeView): void {
 export function cycleRrInterval(view: ScopeView): void {
   if (!view.showRings) {
     view.showRings = true;
-    const i = RR_INTERVALS_NM.indexOf(view.ringIntervalNm);
+    const i = (RR_INTERVALS_NM as readonly number[]).indexOf(view.ringIntervalNm);
     const next = i < 0 ? 0 : (i + 1) % RR_INTERVALS_NM.length;
     view.ringIntervalNm = RR_INTERVALS_NM[next]!;
     invalidateMapCache(view);
     return;
   }
-  const i = RR_INTERVALS_NM.indexOf(view.ringIntervalNm);
+  const i = (RR_INTERVALS_NM as readonly number[]).indexOf(view.ringIntervalNm);
   if (i === 0) {
     view.showRings = false;
     invalidateMapCache(view);
@@ -246,11 +281,35 @@ function stepFrozen<T>(list: readonly T[], current: T, delta: number): T {
  * Does not hide rings (interval stays on while visible).
  */
 export function stepRrInterval(view: ScopeView, delta: number): void {
-  const next = stepFrozen(RR_INTERVALS_NM, view.ringIntervalNm, delta);
+  const inSpinner = (RR_INTERVALS_NM as readonly number[]).includes(view.ringIntervalNm);
+  const current = inSpinner
+    ? (view.ringIntervalNm as (typeof RR_INTERVALS_NM)[number])
+    : snapRrToSpinner(view.ringIntervalNm);
+  const next = stepFrozen(RR_INTERVALS_NM, current, delta);
   if (next === view.ringIntervalNm && view.showRings) {
     return;
   }
   view.ringIntervalNm = next;
+  view.showRings = true;
+  invalidateMapCache(view);
+}
+
+function snapRrToSpinner(nm: number): (typeof RR_INTERVALS_NM)[number] {
+  let closest: (typeof RR_INTERVALS_NM)[number] = RR_INTERVALS_NM[0]!;
+  let minDiff = Math.abs(nm - closest);
+  for (const step of RR_INTERVALS_NM) {
+    const diff = Math.abs(nm - step);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = step;
+    }
+  }
+  return closest;
+}
+
+/** Keyboard `*RR 2|5|10|20`: set interval and turn rings on. */
+export function setRangeRingInterval(view: ScopeView, intervalNm: RrIntervalNm): void {
+  view.ringIntervalNm = intervalNm;
   view.showRings = true;
   invalidateMapCache(view);
 }

@@ -94,6 +94,7 @@ import {
 } from "./targetSymbol";
 import {
   deriveScratchpads,
+  isBeaconatorReadout,
   isIdentFlashing,
   isTrackQueried,
   syncTrackDisplays,
@@ -407,7 +408,10 @@ export function getDatablockVisualState(
   // 7. Track highlight (Cyan #00FFFF)
   if (td?.highlighted) {
     const baseMode = td.datablockMode ?? (td.ownership === "owned" ? "full" : "partial");
-    const mode = view.beaconatorActive && baseMode === "partial" ? "full" : baseMode;
+    const mode =
+      isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs) && baseMode === "partial"
+        ? "full"
+        : baseMode;
     return {
       color: PALETTE.highlight,
       visible: true,
@@ -419,7 +423,10 @@ export function getDatablockVisualState(
   // 8. Base ownership
   const ownership = td?.ownership ?? "unowned";
   const baseMode = td?.datablockMode ?? (ownership === "owned" ? "full" : "partial");
-  const mode = view.beaconatorActive && baseMode === "partial" ? "full" : baseMode;
+  const mode =
+    isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs) && baseMode === "partial"
+      ? "full"
+      : baseMode;
   const baseColor = PALETTE[ownership];
 
   return {
@@ -466,7 +473,7 @@ function drawDatablock(
   const mode = visual.mode;
   const isQueried = td ? isTrackQueried(td, world.simTimeMs) : false;
   const squawk = td?.squawk ?? ac.squawk;
-  const beaconCodeReadout = view.beaconatorActive === true;
+  const beaconCodeReadout = isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs);
   const callsign = beaconCodeReadout && squawk ? squawk : ac.callsign;
 
   const handoff = handoffFor(world, ac.id);
