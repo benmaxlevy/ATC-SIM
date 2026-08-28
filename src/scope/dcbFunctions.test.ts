@@ -30,7 +30,9 @@ import {
   hideMapLists,
   isDcbMapSlotEnabled,
   isVideoMapOn,
+  resolveVideoMapToken,
   RR_INTERVALS_NM,
+  setAllVideoMaps,
   stepBriteChannel,
   stepCharSizeChannel,
   stepDcbLeaderDir,
@@ -358,6 +360,52 @@ test("T02-24 — CLR ALL turns catalog maps off; coastline JSON off is a no-op",
   clearAllVideoMaps(coastOff);
   expect(isVideoMapOn(coastOff, "COAST")).toBe(false);
   expect(coastOff.showCoastline).toBe(false);
+});
+
+test("T02-63 — resolveVideoMapToken matches slot number and catalog id", () => {
+  const maps = dcbCatalogMaps(kdemView());
+  expect(resolveVideoMapToken(maps, "1")?.id).toBe("RWY");
+  expect(resolveVideoMapToken(maps, "2")?.id).toBe("LOC27");
+  expect(resolveVideoMapToken(maps, "loc27")?.id).toBe("LOC27");
+  expect(resolveVideoMapToken(maps, "DEM1_27")?.id).toBe("DEM1_27");
+  expect(resolveVideoMapToken(maps, "99")).toBeUndefined();
+  expect(resolveVideoMapToken(maps, "XYZ")).toBeUndefined();
+  expect(resolveVideoMapToken(maps, "")).toBeUndefined();
+});
+
+test("T02-63 — *D OFF is explicit off; ALL enables catalog; NONE clears", () => {
+  const view = kdemView();
+  expect(isVideoMapOn(view, "LOC27")).toBe(true);
+  expect(view.showLocalizer).toBe(true);
+
+  toggleVideoMap(view, "LOC27", false);
+  expect(isVideoMapOn(view, "LOC27")).toBe(false);
+  expect(isVideoMapOn(view, "LOC09")).toBe(false);
+  expect(view.showLocalizer).toBe(false);
+  toggleVideoMap(view, "LOC27", false);
+  expect(isVideoMapOn(view, "LOC27")).toBe(false);
+
+  view.mapCache = buildMapCache(toMapCacheInput(view, VIEW));
+  setAllVideoMaps(view, true);
+  expect(view.mapCache).toBeNull();
+  expect(isVideoMapOn(view, "RWY")).toBe(true);
+  expect(isVideoMapOn(view, "LOC27")).toBe(true);
+  expect(isVideoMapOn(view, "LOC09")).toBe(true);
+  expect(isVideoMapOn(view, "DEM1_27")).toBe(true);
+  expect(isVideoMapOn(view, "DEM1_09")).toBe(true);
+  expect(isVideoMapOn(view, "BAY1_27")).toBe(true);
+  expect(isVideoMapOn(view, "BAY1_09")).toBe(true);
+  expect(view.showRunway).toBe(true);
+  expect(view.showLocalizer).toBe(true);
+
+  view.mapCache = buildMapCache(toMapCacheInput(view, VIEW));
+  setAllVideoMaps(view, false);
+  expect(view.mapCache).toBeNull();
+  expect(isVideoMapOn(view, "RWY")).toBe(false);
+  expect(isVideoMapOn(view, "LOC27")).toBe(false);
+  expect(isVideoMapOn(view, "DEM1_27")).toBe(false);
+  expect(view.showRunway).toBe(false);
+  expect(view.showLocalizer).toBe(false);
 });
 
 test("T02-24 — GEO MAPS lists every catalog label; CURRENT lists only maps that are on", () => {

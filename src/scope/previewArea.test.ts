@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { createWorld, makeTestAircraft } from "@core";
+import { loadKdem } from "@scenario";
 import { CHORD_TIMEOUT_MS } from "./keymap";
 import {
   applyPreviewBeaconAction,
@@ -545,6 +546,7 @@ test("T02-61 — previewBufferCharFromKey maps prefixes, numpad, letters, space"
   expect(previewBufferCharFromKey("a")).toBe("A");
   expect(previewBufferCharFromKey("7")).toBe("7");
   expect(previewBufferCharFromKey(".", "Decimal")).toBe(".");
+  expect(previewBufferCharFromKey("_")).toBe("_");
   expect(previewBufferCharFromKey("Tab")).toBeNull();
   expect(previewBufferCharFromKey("Enter")).toBeNull();
   expect(isPreviewBufferStartChar("*")).toBe(true);
@@ -770,5 +772,124 @@ test("T02-64 — Enter on *C returns action; *RR7 INV without starsBuffer", () =
     consumed: true,
     action: null,
     starsBuffer: "*P",
+  });
+});
+
+const KDEM_MAPS = loadKdem().maps.loadedVideoMaps;
+
+test("T02-63 — parsePreviewCommand toggles by slot, id, and M shorthand", () => {
+  expect(parsePreviewCommand("*D 1", KDEM_MAPS)).toEqual({
+    kind: "action",
+    action: { type: "toggleVideoMap", mapId: "RWY" },
+  });
+  expect(parsePreviewCommand("*D1", KDEM_MAPS)).toEqual({
+    kind: "action",
+    action: { type: "toggleVideoMap", mapId: "RWY" },
+  });
+  expect(parsePreviewCommand("*D LOC27", KDEM_MAPS)).toEqual({
+    kind: "action",
+    action: { type: "toggleVideoMap", mapId: "LOC27" },
+  });
+  expect(parsePreviewCommand("*DLOC27", KDEM_MAPS)).toEqual({
+    kind: "action",
+    action: { type: "toggleVideoMap", mapId: "LOC27" },
+  });
+  expect(parsePreviewCommand("* D LOC27", KDEM_MAPS)).toEqual({
+    kind: "action",
+    action: { type: "toggleVideoMap", mapId: "LOC27" },
+  });
+  expect(parsePreviewCommand("M DEM1_27", KDEM_MAPS)).toEqual({
+    kind: "action",
+    action: { type: "toggleVideoMap", mapId: "DEM1_27" },
+  });
+  expect(parsePreviewCommand("MDEM1_27", KDEM_MAPS)).toEqual({
+    kind: "action",
+    action: { type: "toggleVideoMap", mapId: "DEM1_27" },
+  });
+});
+
+test("T02-63 — *D OFF / ALL / NONE; unknown id is INV not a TPA fallback", () => {
+  expect(parsePreviewCommand("*D OFF LOC27", KDEM_MAPS)).toEqual({
+    kind: "action",
+    action: { type: "toggleVideoMap", mapId: "LOC27", explicitState: false },
+  });
+  expect(parsePreviewCommand("*DOFF1", KDEM_MAPS)).toEqual({
+    kind: "action",
+    action: { type: "toggleVideoMap", mapId: "RWY", explicitState: false },
+  });
+  expect(parsePreviewCommand("*D ALL", KDEM_MAPS)).toEqual({
+    kind: "action",
+    action: { type: "setAllVideoMaps", enabled: true },
+  });
+  expect(parsePreviewCommand("*DALL")).toEqual({
+    kind: "action",
+    action: { type: "setAllVideoMaps", enabled: true },
+  });
+  expect(parsePreviewCommand("*D NONE")).toEqual({
+    kind: "action",
+    action: { type: "setAllVideoMaps", enabled: false },
+  });
+  expect(parsePreviewCommand("*D 99", KDEM_MAPS)).toMatchObject({ kind: "invalid" });
+  expect(parsePreviewCommand("*D XYZ", KDEM_MAPS)).toMatchObject({ kind: "invalid" });
+  expect(parsePreviewCommand("*D", KDEM_MAPS)).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("*DE", KDEM_MAPS)).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("*DI", KDEM_MAPS)).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("*D+", KDEM_MAPS)).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("*J3", KDEM_MAPS)).toEqual({ kind: "incomplete" });
+});
+
+test("T02-63 — handlePreviewBufferKey commits map actions and leaves TPA *D to starsBuffer", () => {
+  const maps = KDEM_MAPS;
+  const loc = idlePreviewArea();
+  beginPreviewBufferEntry(loc, "*", 0);
+  for (const key of ["D", " ", "L", "O", "C", "2", "7"]) {
+    handlePreviewBufferKey(loc, key, 1, undefined, maps);
+  }
+  expect(handlePreviewBufferKey(loc, "Enter", 2, undefined, maps)).toEqual({
+    consumed: true,
+    action: { type: "toggleVideoMap", mapId: "LOC27" },
+  });
+  expect(loc.phase).toBe("idle");
+
+  const bare = idlePreviewArea();
+  beginPreviewBufferEntry(bare, "*", 0);
+  handlePreviewBufferKey(bare, "D", 1, undefined, maps);
+  expect(handlePreviewBufferKey(bare, "Enter", 2, undefined, maps)).toEqual({
+    consumed: true,
+    action: null,
+    starsBuffer: "*D",
+  });
+  expect(bare.phase).toBe("entry");
+  expect(bare.buffer).toBe("*D");
+
+  const tpa = idlePreviewArea();
+  beginPreviewBufferEntry(tpa, "*", 0);
+  handlePreviewBufferKey(tpa, "D", 1, undefined, maps);
+  handlePreviewBufferKey(tpa, "E", 2, undefined, maps);
+  expect(handlePreviewBufferKey(tpa, "Enter", 3, undefined, maps)).toEqual({
+    consumed: true,
+    action: null,
+    starsBuffer: "*DE",
+  });
+
+  const unknown = idlePreviewArea();
+  beginPreviewBufferEntry(unknown, "*", 0);
+  for (const key of ["D", " ", "X", "Y", "Z"]) {
+    handlePreviewBufferKey(unknown, key, 1, undefined, maps);
+  }
+  expect(handlePreviewBufferKey(unknown, "Enter", 2, undefined, maps)).toEqual({
+    consumed: true,
+    action: null,
+  });
+  expect(unknown.rejection).toBe("*D XYZ INV");
+  expect(unknown.phase).toBe("idle");
+
+  const slot = idlePreviewArea();
+  beginPreviewBufferEntry(slot, "*", 0);
+  handlePreviewBufferKey(slot, "D", 1, undefined, maps);
+  handlePreviewBufferKey(slot, "1", 2, undefined, maps);
+  expect(handlePreviewBufferKey(slot, "Enter", 3, undefined, maps)).toEqual({
+    consumed: true,
+    action: { type: "toggleVideoMap", mapId: "RWY" },
   });
 });

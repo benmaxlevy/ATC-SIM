@@ -119,8 +119,29 @@ function syncRoleFlag(view: ScopeView, map: LoadedVideoMap): void {
   }
 }
 
+/**
+ * Catalog lookup for preview `*D` / `M` tokens: DCB slot `1`–`32` or map id
+ * (`RWY`, `LOC27`, `DEM1_27`, …), case-insensitive. Empty / unknown → undefined.
+ */
+export function resolveVideoMapToken(
+  maps: readonly LoadedVideoMap[],
+  token: string,
+): LoadedVideoMap | undefined {
+  const normalized = token.trim().toUpperCase();
+  if (normalized.length === 0) {
+    return undefined;
+  }
+  if (/^\d+$/.test(normalized)) {
+    const slot = Number(normalized);
+    return maps.find((map) => map.dcbNumber === slot);
+  }
+  return maps.find(
+    (map) => map.id.toUpperCase() === normalized || map.dcbLabel.toUpperCase() === normalized,
+  );
+}
+
 /** MAPS submenu toggle keyed by catalog id. Role maps share RWY/LOC/CST flags. */
-export function toggleVideoMap(view: ScopeView, mapId: string): void {
+export function toggleVideoMap(view: ScopeView, mapId: string, explicitState?: boolean): void {
   const map = view.digitalMap.loadedVideoMaps?.find((item) => item.id === mapId);
   if (!map) {
     return;
@@ -128,7 +149,11 @@ export function toggleVideoMap(view: ScopeView, mapId: string): void {
   if (map.role === "coastline" && view.digitalMap.coastline?.enabled !== true) {
     return;
   }
-  const next = !isVideoMapOn(view, mapId);
+  const currentlyOn = isVideoMapOn(view, mapId);
+  const next = explicitState ?? !currentlyOn;
+  if (next === currentlyOn) {
+    return;
+  }
   view.mapVisibility.set(mapId, next);
   syncRoleFlag(view, map);
   invalidateMapCache(view);
@@ -163,11 +188,19 @@ export function isDcbMapSlotEnabled(view: ScopeView, slot: number): boolean {
 
 /** CLR ALL: every catalog video map off. Coastline is a no-op when JSON `enabled: false`. */
 export function clearAllVideoMaps(view: ScopeView): void {
+  setAllVideoMaps(view, false);
+}
+
+/**
+ * Bulk catalog on/off (`*D ALL` / `*D NONE`). Same coastline JSON-off skip as CLR ALL.
+ * Syncs RWY/LOC/CST role flags and drops the map stroke cache.
+ */
+export function setAllVideoMaps(view: ScopeView, enabled: boolean): void {
   for (const map of dcbCatalogMaps(view)) {
     if (map.role === "coastline" && view.digitalMap.coastline?.enabled !== true) {
       continue;
     }
-    view.mapVisibility.set(map.id, false);
+    view.mapVisibility.set(map.id, enabled);
     syncRoleFlag(view, map);
   }
   invalidateMapCache(view);

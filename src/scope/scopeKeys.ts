@@ -6,9 +6,10 @@
  * (`preventDefault` so it does not type into the command line). Home/End instead of
  * CENTER-then-click; extra CRC presets 6/8/12/16/24 omitted. F8 always-on
  * history toggle; H only when the PPI is focused (radio H270 stays heading).
- * Scope-focus `T` toggles full ↔ limited datablock; `M` toggles Mode C on full
- * blocks. F7 always-on predicted track line (PTL) toggle — even with the
- * command line focused. F1 always-on help overlay (not CRC F1 / beaconator);
+ * Scope-focus `T` toggles full ↔ limited datablock; tap `M` toggles Mode C on
+ * full blocks. `M` then a map token (`M DEM1_27`) continues a Preview Area
+ * buffer and undoes that Mode C tap. F7 always-on predicted track line (PTL)
+ * toggle — even with the command line focused. F1 always-on help overlay (not CRC F1 / beaconator);
  * Tab cycles radio ↔ PPI; `/` when scope-focused buffers into the Preview Area
  * (slew/drop prefix, not radio focus). Scope-focus `L` then 1–9 is leader direction (no length
  * menu); radio `L090` stays FLY_HEADING left. Scope-focus `F` then hundreds is
@@ -68,8 +69,12 @@ import {
   applyRrCenter,
   armPlaceCenter,
   armPlaceRangeRing,
+  dcbCatalogMaps,
   hideMapLists,
+  resolveVideoMapToken,
+  setAllVideoMaps,
   setRangeRingInterval,
+  toggleVideoMap,
   type RrIntervalNm,
 } from "./dcbFunctions";
 import { PpiPlaceholderId } from "./ppi-placeholder";
@@ -296,6 +301,16 @@ function applyPreviewArmedAction(
     case "setHistoryDots":
       setHistoryDotCount(view, action.count as HistoryDotCount);
       return;
+    case "toggleVideoMap": {
+      const map = resolveVideoMapToken(dcbCatalogMaps(view), action.mapId);
+      if (map) {
+        toggleVideoMap(view, map.id, action.explicitState);
+      }
+      return;
+    }
+    case "setAllVideoMaps":
+      setAllVideoMaps(view, action.enabled);
+      return;
     default:
       return;
   }
@@ -329,6 +344,14 @@ function applyPreviewBufferOutcome(
   if (view.preview.phase === "idle" && view.starsChordEntry.phase === "entry") {
     cancelStarsChordEntry(view.starsChordEntry);
   }
+}
+
+function isVideoMapPreviewContinueKey(key: string, code?: string): boolean {
+  if (isReservedScopeLetterShortcut(key)) {
+    return false;
+  }
+  const ch = previewBufferCharFromKey(key, code);
+  return ch !== null && (ch === " " || ch === "_" || /^[A-Z0-9]$/.test(ch));
 }
 
 function applyPreviewCntl(
@@ -417,7 +440,13 @@ export function handleScopeKeyDown(
 
   if (focus === "scope") {
     if (view.preview.phase === "entry") {
-      const preview = handlePreviewBufferKey(view.preview, event.key, nowMs, event.code);
+      const preview = handlePreviewBufferKey(
+        view.preview,
+        event.key,
+        nowMs,
+        event.code,
+        dcbCatalogMaps(view),
+      );
       if (preview.consumed) {
         consume(event);
         applyPreviewBufferOutcome(view, world, nowMs, preview);
@@ -425,6 +454,29 @@ export function handleScopeKeyDown(
         return true;
       }
     } else {
+      if (
+        view.pendingChord?.prefix === "M" &&
+        isScopeChordLive(view.pendingChord, nowMs) &&
+        isVideoMapPreviewContinueKey(event.key, event.code)
+      ) {
+        consume(event);
+        toggleModeCVisible(view);
+        view.pendingChord = null;
+        startPreviewBuffer(view, "M", nowMs);
+        const preview = handlePreviewBufferKey(
+          view.preview,
+          event.key,
+          nowMs,
+          event.code,
+          dcbCatalogMaps(view),
+        );
+        applyPreviewBufferOutcome(view, world, nowMs, preview);
+        ui?.onHandled?.();
+        return true;
+      }
+      if (view.pendingChord?.prefix === "M") {
+        view.pendingChord = null;
+      }
       const stars = handleStarsChordEntryKey(view.starsChordEntry, event.key, nowMs, event.code);
       if (stars.consumed) {
         consume(event);
@@ -560,6 +612,7 @@ export function handleScopeKeyDown(
     event.preventDefault();
     event.stopPropagation();
     toggleModeCVisible(view);
+    view.pendingChord = beginScopeChord("M", nowMs, "");
     return true;
   }
   if (!isAlwaysOnScopeKey(event.key)) {

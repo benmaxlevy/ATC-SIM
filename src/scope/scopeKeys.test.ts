@@ -2,6 +2,7 @@ import { expect, test, vi } from "vitest";
 import { SessionLog, createWorld, makeTestAircraft, stepWorld } from "@core";
 import { handleRadioText } from "@pilot";
 import { parseRadioText } from "@parse";
+import { loadKdem } from "@scenario";
 import {
   handleScopeKeyDown,
   handleScopeKeyUp,
@@ -10,7 +11,9 @@ import {
   type ScopeFocus,
 } from "./scopeKeys";
 import { DEFAULT_ALTITUDE_FILTER, formatFilterReadout } from "./altitudeFilter";
+import { isVideoMapOn } from "./dcbFunctions";
 import { CHORD_TIMEOUT_MS, SCOPE_CHORD_WINDOW_MS } from "./keymap";
+import { parseDigitalMap } from "./mapLayers";
 import { formatPreviewReadout } from "./previewArea";
 import { createScopeView } from "./scopeView";
 import { syncTrackDisplays } from "./trackDisplay";
@@ -1211,4 +1214,81 @@ test("T02-61 — F3/F4 and B## still work; T/M stay dedicated when idle", () => 
   expect(handleScopeKeyDown(keyEvent("T"), tView, "scope", world, 0)).toBe(true);
   expect(tView.preview.phase).toBe("idle");
   expect(tView.tracks.get(dal.id)?.datablockMode).toBeDefined();
+});
+
+function kdemScopeView() {
+  return createScopeView(0, 0, { digitalMap: parseDigitalMap(loadKdem().maps) });
+}
+
+function typeMapKeys(
+  view: ReturnType<typeof createScopeView>,
+  keys: string[],
+  startMs = 0,
+  world?: ReturnType<typeof createWorld>,
+): number {
+  let now = startMs;
+  for (const key of keys) {
+    handleScopeKeyDown(keyEvent(key), view, "scope", world, now);
+    now += 10;
+  }
+  return now;
+}
+
+test("T02-63 — *D 1 / *D LOC27 / M DEM1_27 Enter toggle catalog maps", () => {
+  const view = kdemScopeView();
+  expect(isVideoMapOn(view, "RWY")).toBe(true);
+  typeMapKeys(view, ["*", "D", " ", "1", "Enter"]);
+  expect(isVideoMapOn(view, "RWY")).toBe(false);
+  expect(view.showRunway).toBe(false);
+  expect(view.preview.phase).toBe("idle");
+  expect(view.starsChordEntry.phase).toBe("idle");
+
+  expect(isVideoMapOn(view, "LOC27")).toBe(true);
+  typeMapKeys(view, ["*", "D", "L", "O", "C", "2", "7", "Enter"], 100);
+  expect(isVideoMapOn(view, "LOC27")).toBe(false);
+  expect(view.showLocalizer).toBe(false);
+
+  expect(isVideoMapOn(view, "DEM1_27")).toBe(true);
+  expect(view.modeCVisible).toBe(true);
+  typeMapKeys(view, ["M", " ", "D", "E", "M", "1", "_", "2", "7", "Enter"], 200);
+  expect(isVideoMapOn(view, "DEM1_27")).toBe(false);
+  expect(view.modeCVisible).toBe(true);
+  expect(view.preview.phase).toBe("idle");
+});
+
+test("T02-63 — tap M stays Mode C; *D ALL / NONE / OFF and unknown INV", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [dal] });
+  const view = kdemScopeView();
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get(dal.id)!.datablockMode = "full";
+  expect(view.modeCVisible).toBe(true);
+  expect(handleScopeKeyDown(keyEvent("M"), view, "scope", world, 0)).toBe(true);
+  expect(view.modeCVisible).toBe(false);
+  expect(view.preview.phase).toBe("idle");
+  expect(handleScopeKeyDown(keyEvent("T"), view, "scope", world, 10)).toBe(true);
+  expect(view.tracks.get(dal.id)!.datablockMode).toBe("limited");
+  expect(view.preview.phase).toBe("idle");
+
+  typeMapKeys(view, ["*", "D", " ", "A", "L", "L", "Enter"], 100, world);
+  expect(isVideoMapOn(view, "LOC09")).toBe(true);
+  expect(isVideoMapOn(view, "DEM1_09")).toBe(true);
+  expect(view.showLocalizer).toBe(true);
+
+  typeMapKeys(view, ["*", "D", " ", "N", "O", "N", "E", "Enter"], 200, world);
+  expect(isVideoMapOn(view, "RWY")).toBe(false);
+  expect(isVideoMapOn(view, "LOC27")).toBe(false);
+  expect(view.showRunway).toBe(false);
+
+  typeMapKeys(view, ["*", "D", " ", "1", "Enter"], 300, world);
+  expect(isVideoMapOn(view, "RWY")).toBe(true);
+  typeMapKeys(view, ["*", "D", " ", "O", "F", "F", " ", "1", "Enter"], 400, world);
+  expect(isVideoMapOn(view, "RWY")).toBe(false);
+
+  typeMapKeys(view, ["*", "D", " ", "X", "Y", "Z", "Enter"], 500, world);
+  expect(view.preview.rejection).toBe("*D XYZ INV");
+  expect(isVideoMapOn(view, "RWY")).toBe(false);
+
+  typeMapKeys(view, ["*", "J", "3", "Enter"], 600, world);
+  expect(view.starsChordArmed?.type).toBe("jRing");
 });

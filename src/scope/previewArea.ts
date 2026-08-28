@@ -24,6 +24,8 @@
  */
 
 import type { World } from "@core";
+import type { LoadedVideoMap } from "@scenario";
+import { resolveVideoMapToken } from "./dcbFunctions";
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
 
 export type PreviewPhase = "idle" | "entry" | "armed";
@@ -34,6 +36,7 @@ export type PreviewPhase = "idle" | "entry" | "armed";
  * T02-53: `beaconBlock` / `beaconDiscrete`. T02-62: `toggleList` / `resizeList`
  * / `armRelocateList`. T02-64: scope recenter / RR / PTL / HIST. Slew forms
  * (`armRecenterScope`, `armRecenterRangeRings`) apply via DCB PLACE flags.
+ * T02-63: `toggleVideoMap` / `setAllVideoMaps`.
  * Do not put F3-specific field names on ScopeView.
  */
 export type PreviewArmedAction =
@@ -50,7 +53,9 @@ export type PreviewArmedAction =
   | { readonly type: "armRecenterRangeRings" }
   | { readonly type: "resetRangeRingsCenter" }
   | { readonly type: "setPtlMinutes"; readonly minutes: number }
-  | { readonly type: "setHistoryDots"; readonly count: number };
+  | { readonly type: "setHistoryDots"; readonly count: number }
+  | { readonly type: "toggleVideoMap"; readonly mapId: string; readonly explicitState?: boolean }
+  | { readonly type: "setAllVideoMaps"; readonly enabled: boolean };
 
 /** Full callsign / numeric-tail / 4-digit squawk — duplicated, not `@pilot`. */
 const FULL_CALLSIGN = /^[A-Z]{3}[0-9]{1,4}[A-Z]?$/;
@@ -116,7 +121,8 @@ export type PreviewCommandResult =
  * BLOCK and a live prefix of `B4501`. `parseBeaconSelect` owns those digits.
  * T02-61: `*` / `+` / `/` are live prefixes. T02-62 list rows live in
  * `parseListCommand` (`*P1` vs TPA `*P`). T02-64 `*C` / `*RR` / `*PTL` /
- * `*HIST` live in `parseScopeDisplayCommand`. Do not rewrite the state machine
+ * `*HIST` live in `parseScopeDisplayCommand`. T02-63 `*D` / `M` video-map
+ * rows live in `parseVideoMapCommand`. Do not rewrite the state machine
  * to add rows.
  */
 type PreviewTableEntry = { kind: "prefix" } | { kind: "action"; action: PreviewArmedAction };
@@ -468,13 +474,84 @@ export function previewRelocateListId(state: PreviewAreaState): string | null {
   return null;
 }
 
+function compactPreviewBuffer(buffer: string): string {
+  return buffer.replace(/\s+/g, "");
+}
+
+function isTpaDBuffer(compact: string): boolean {
+  return compact === "*DE" || compact === "*DI" || compact.startsWith("*D+");
+}
+
+function mapToggleAction(
+  token: string,
+  maps: readonly LoadedVideoMap[] | undefined,
+  explicitState?: boolean,
+): PreviewCommandResult {
+  const normalized = token.toUpperCase();
+  if (maps) {
+    const map = resolveVideoMapToken(maps, normalized);
+    if (!map) {
+      return invalid("unknown video map");
+    }
+    return {
+      kind: "action",
+      action:
+        explicitState === undefined
+          ? { type: "toggleVideoMap", mapId: map.id }
+          : { type: "toggleVideoMap", mapId: map.id, explicitState },
+    };
+  }
+  return {
+    kind: "action",
+    action:
+      explicitState === undefined
+        ? { type: "toggleVideoMap", mapId: normalized }
+        : { type: "toggleVideoMap", mapId: normalized, explicitState },
+  };
+}
+
+/**
+ * Table 28 video-map rows. Spaces are optional (`*D LOC27` == `*DLOC27`).
+ * Bare `*D` and TPA `*DE` / `*DI` / `*D+` stay with starsChord — return null.
+ */
+function parseVideoMapCommand(
+  buffer: string,
+  maps?: readonly LoadedVideoMap[],
+): PreviewCommandResult | null {
+  const compact = compactPreviewBuffer(buffer);
+  if (/^M[A-Z0-9_]/.test(compact)) {
+    return mapToggleAction(compact.slice(1), maps);
+  }
+  if (!compact.startsWith("*D") || compact === "*D" || isTpaDBuffer(compact)) {
+    return null;
+  }
+  const rest = compact.slice(2);
+  if (rest === "ALL") {
+    return { kind: "action", action: { type: "setAllVideoMaps", enabled: true } };
+  }
+  if (rest === "NONE") {
+    return { kind: "action", action: { type: "setAllVideoMaps", enabled: false } };
+  }
+  if (rest === "OFF") {
+    return invalid("unknown video map");
+  }
+  if (rest.startsWith("OFF")) {
+    return mapToggleAction(rest.slice(3), maps, false);
+  }
+  return mapToggleAction(rest, maps);
+}
+
 /**
  * Pure string parser for the Preview Area buffer.
  * T02-51: empty and live prefixes are `incomplete`; anything else is `invalid`.
  * T02-52 / T02-53 add `action` rows to `PREVIEW_TABLE` without replacing this.
- * T02-62 list mnemonics are parsed in `parseListCommand` before the `*` prefix.
+ * T02-62 list mnemonics are parsed in `parseListCommand`. T02-63 video-map
+ * commands are matched before the `*` catch-all prefix.
  */
-export function parsePreviewCommand(buffer: string): PreviewCommandResult {
+export function parsePreviewCommand(
+  buffer: string,
+  maps?: readonly LoadedVideoMap[],
+): PreviewCommandResult {
   if (buffer === "") {
     return { kind: "incomplete" };
   }
@@ -492,6 +569,10 @@ export function parsePreviewCommand(buffer: string): PreviewCommandResult {
   const display = parseScopeDisplayCommand(buffer);
   if (display) {
     return display;
+  }
+  const videoMap = parseVideoMapCommand(buffer, maps);
+  if (videoMap) {
+    return videoMap;
   }
   const list = parseListCommand(buffer);
   if (list) {
@@ -643,8 +724,11 @@ export function previewFlidMatchesSlew(
 }
 
 /** Enter-commit: a still-live prefix (`B`, `B4`, `B450`) is `invalid`, not a silent no-op. */
-export function commitPreviewCommand(buffer: string): PreviewCommandResult {
-  const parsed = parsePreviewCommand(buffer);
+export function commitPreviewCommand(
+  buffer: string,
+  maps?: readonly LoadedVideoMap[],
+): PreviewCommandResult {
+  const parsed = parsePreviewCommand(buffer, maps);
   if (parsed.kind === "incomplete") {
     return invalid("incomplete preview command");
   }
@@ -709,6 +793,9 @@ export function previewBufferCharFromKey(key: string, code?: string): string | n
   if (key === "." || key === "Decimal") {
     return ".";
   }
+  if (key === "_") {
+    return "_";
+  }
   const digit = digitFromKey(key, code);
   if (digit !== null) {
     return String(digit);
@@ -744,6 +831,7 @@ export function handlePreviewBufferKey(
   key: string,
   nowMs: number,
   code?: string,
+  maps?: readonly LoadedVideoMap[],
 ): PreviewKeyOutcome {
   if (isBeaconPreviewEntry(state)) {
     return handlePreviewBeaconKey(state, key, nowMs, code);
@@ -764,7 +852,7 @@ export function handlePreviewBufferKey(
     return { consumed: true, action: null };
   }
   if (key === "Enter" || key === "NumpadEnter") {
-    const parsed = parsePreviewCommand(state.buffer);
+    const parsed = parsePreviewCommand(state.buffer, maps);
     if (parsed.kind === "action") {
       cancelPreviewArea(state);
       return { consumed: true, action: parsed.action };
@@ -774,11 +862,6 @@ export function handlePreviewBufferKey(
       return { consumed: true, action: null };
     }
     if (state.buffer.startsWith("*")) {
-      const display = parseScopeDisplayCommand(state.buffer);
-      if (display?.kind === "invalid") {
-        rejectPreviewArea(state, nowMs);
-        return { consumed: true, action: null };
-      }
       return { consumed: true, action: null, starsBuffer: state.buffer };
     }
     rejectPreviewArea(state, nowMs);

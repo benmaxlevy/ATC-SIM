@@ -380,6 +380,8 @@ export {
   hideMapLists,
   isDcbMapSlotEnabled,
   isVideoMapOn,
+  resolveVideoMapToken,
+  setAllVideoMaps,
   snapRrInterval,
   stepBriteChannel,
   stepCharSizeChannel,
