@@ -36,6 +36,13 @@ An in-browser, high-fidelity **STARS-like (Standard Terminal Automation Replacem
   - [Scope Controls & Mouse Interaction](#scope-controls--mouse-interaction)
   - [Scope Keypad Shortcuts](#scope-keypad-shortcuts)
   - [Preview Area](#preview-area)
+    - [INIT / TERM / beacon select](#init--term--beacon-select)
+    - [Tracking, handoff, and datablock](#tracking-handoff-and-datablock)
+    - [System lists](#system-lists)
+    - [Video maps](#video-maps)
+    - [Scope display](#scope-display)
+    - [Altitude and beacon filters](#altitude-and-beacon-filters)
+    - [TPA / ATPA chords](#tpa--atpa-chords)
 - [System Architecture](#system-architecture)
   - [Overview](#overview)
   - [Multi-Stage Parse Pipeline](#multi-stage-parse-pipeline)
@@ -199,7 +206,7 @@ ATC-SIM enforces a strict **zero paid/metered API policy**. All speech-to-text, 
   - STAR arrivals: *"Approach, Delta 123, descending via DEMO ONE arrival through one-one thousand (11000)"*.
   - SIDs departures: *"Departure, American 100, passing seven hundred climbing via the BAY ONE departure"*.
 - **Inbound & Departure Handoff Workflow**:
-  - Inbound arrivals spawn in pending handoff state from Center (unowned green FDB) → Controller left-clicks the track **or** uses Preview Area `F3` INIT CNTL (scope, not radio) to accept → Track becomes owned (white FDB) → Radio frequency unlocked → Pilot checks in.
+  - Inbound arrivals spawn in pending handoff state from Center (unowned green FDB) → Controller left-clicks the track, uses Preview Area `F3` INIT CNTL, **or** idle scope `Enter` then click (`HO ACCEPT`) to accept → Track becomes owned (white FDB) → Radio frequency unlocked → Pilot checks in.
   - Rolling departures spawn off the active runway (~0.8 NM, 700 ft, 180 kt) under Tower handoff → Pilot checks in on departure frequency → Flies published SID climb profile.
 - **Smart Shift+H Handoff**: Context-sensitive handoff initiator:
   - Selected arrival on approach (< 5 NM from threshold): executes Tower handoff (sets `LANDING` mode and tower ownership cyan tint).
@@ -214,7 +221,7 @@ Commands can be entered via the bottom command line prompt or spoken over Push-t
 
 ### Typed Command Syntax
 
-Typed commands **below** are **radio Command IR** only (command line or PTT). Inbound accept is a **scope** action: left-click the track, or Preview Area `F3` INIT CNTL — not a radio token.
+Typed commands **below** are **radio Command IR** only (command line or PTT). Inbound accept is a **scope** action: left-click the track, Preview Area `F3` INIT CNTL, or idle scope `Enter` then click — not a radio token.
 
 | Category | Typed Syntax | Example | Description |
 |---|---|---|---|
@@ -287,33 +294,125 @@ Press **`F1`** at any time in the app to open the interactive keyboard help over
 | `F4` | TERM CNTL: selected track drops now; nothing selected arms command-then-slew (`TERM CNTL`, never `"F4"`); type FLID then Enter or slew. Trainer drop. `TERM CNTL ALL` is `INV`, not drop-all. |
 | `F7` | Toggle Predicted Track Line (`PTL ALL`) |
 | `F8` | Cycle radar history dot count |
-| `/` | Immediately focus radio command line |
+| `Tab` | Cycle keyboard focus between the PPI (scope / Preview Area) and `#command-line-input` |
+| `/` | **Scope focus:** Preview Area drop (`TERM CNTL`) or PDB ↔ FDB on a datablock click — not a radio-focus steal. **Radio focus:** leftover character for the command line. |
 | `Shift + H` | Contextual smart handoff: Tower (for arrivals on final) or Center (for climbing departures) |
 
 ### Preview Area
 
-The Preview Area is the typed **scope** buffer painted under the SSA (CRC analog). It is **not** the radio command line. F3 / F4 / `B` never emit Command IR, readback, or intent. `DAL123 H270` still turns. T02-49 `*J` / `*P` chords still arm and slew; a live `*` hint still wins over idle preview. Unknown or invalid commit flashes `INV` (reject, never parse-and-no-op). No `window.prompt`, no extra HTML `<input>`.
+The Preview Area is the typed **scope** buffer painted under the SSA (CRC analog). It is **not** the radio command line. With PPI focus, `*` `+` `/` and alnum/space buffer into `view.preview` and paint live under the SSA. `<Tab>` is the only focus switcher between the PPI and `#command-line-input`. Scope keys never emit Command IR, readback, or intent. Radio typing never mutates the Preview Area. `DAL123 H270` still turns.
 
-Trainer F3 is a color/ownership stub (unowned green FDB → owned white FDB), not NAS associate. F4 is trainer drop, not NAS terminate. Pending inbound + INIT CNTL still accepts the handoff.
+Unknown or incomplete commit flashes `<buffer> INV` (reject, never parse-and-no-op). Backspace edits; Esc cancels to idle (live preview > live `*` chord > DCB). Empty PPI click does not consume an armed tracking command. No `window.prompt`, no extra HTML `<input>`.
+
+Trainer F3 is a color/ownership stub (unowned green FDB → owned white FDB), not NAS associate. F4 is trainer drop, not NAS terminate. Pending inbound + INIT CNTL or idle `Enter` then click still accepts the handoff.
+
+#### INIT / TERM / beacon select
 
 | Command | What the operator does | What happens |
 | --- | --- | --- |
-| F3 INIT CNTL (arm) | `F3` with nothing selected | Preview paints `INIT CNTL` under the SSA (never the literal `"F3"`). Next target click owns **that** track (white FDB). Empty PPI click does not consume the arm. Pending inbound: one click accept+own. |
+| F3 INIT CNTL (arm) | `F3` with nothing selected | Preview paints `INIT CNTL` (never the literal `"F3"`). Next target click owns **that** track (white FDB). Pending inbound: one click accept+own. |
 | F3 implied | `F3` with a track already selected | Owns the selection immediately. Preview may flash `INIT CNTL` then clear. |
 | F3 + FLID + Enter | `F3`, type full callsign / numeric tail / unique 4-digit squawk, Enter | Owns that aircraft with nothing selected. Unknown or ambiguous → brief `INV`, no apply. |
 | F3 + FLID + slew | `F3`, type FLID, click a target | Applies only if the FLID uniquely matches that track; else `INV`. |
-| F4 TERM CNTL (arm) | `F4` with nothing selected | Preview paints `TERM CNTL` (never `"F4"`). Next target click drops **that** track. Empty click does not consume the arm. |
+| F4 TERM CNTL (arm) | `F4` with nothing selected | Preview paints `TERM CNTL` (never `"F4"`). Next target click drops **that** track. |
 | F4 implied | `F4` with a track selected | Drops the selection now. |
 | F4 + FLID + Enter | `F4`, type FLID, Enter | Drops the resolved aircraft. `TERM CNTL ALL` is `INV`, not drop-all. |
-| Backspace | Backspace while typing ACID after F3/F4 | Edits the typed ACID. |
-| Esc | Esc while preview is live (entry or armed) | Cancels preview to idle. Precedence: live preview > live `*` chord > DCB. |
-| INV | Unknown or incomplete commit | Brief `INV` flash. Select list / ownership unchanged. |
 | Scope-focus `B` + two digits + Enter | PPI focused, `B` `4` `5` Enter | Toggles CODE BLOCK `"45"`. Unassociated squawks starting with `45` paint □. Second `B45` Enter removes it. |
 | Scope-focus `B` + four digits | PPI focused, `B4500` (four digits may auto-commit) | Toggles discrete `"4500"`. Matching unassociated paints □; unmatched stays `*`. |
-| Incomplete `B` Enter | Bare `B`, one digit, or three digits then Enter | `INV`; select list unchanged. Non-digit after `B` (other than Enter/Esc/Backspace) is `INV`. |
-| Radio-focus `B` | Command line focused, type `B` | Literal character. Never always-on. Callsign typing still works. |
+| Incomplete `B` Enter | Bare `B`, one digit, or three digits then Enter | `INV`; select list unchanged. |
+| Radio-focus `B` | Command line focused, type `B` | Literal character. Never always-on. |
 
-Not Preview Area in this trainer (leave existing click / radio-buffer `UN`/`**`; highlight stays middle-click): pointouts `UN` / `**`, `TERM CNTL ALL`, `BE`/`BI`, assign-code `M ####`, MULTIFUNC (F7 stays PTL ALL), scratchpad `Y`, highlight keyboard. Full later list: **STARS preview area — commands not parsed** in [`phases/LATER-IMPLEMENTATION-BACKLOG.md`](phases/LATER-IMPLEMENTATION-BACKLOG.md).
+Idle `F` (no star) still starts the altitude-filter chord (`F` → min hundreds → Enter → max hundreds → Enter). That is not `*F`.
+
+#### Tracking, handoff, and datablock
+
+| Command | What the operator does | What happens |
+| --- | --- | --- |
+| `+` then click | Scope-focus `+`, click a target | Arms `INIT CNTL`; click owns that track. Live `+` click also completes. |
+| `+ [FLID]` Enter then click | `+DAL123` Enter, then click | Associates that FLID to the clicked track (`resolveScopeFlid`). |
+| `/` then click **symbol** | Scope-focus `/`, click the target symbol | Arms `TERM CNTL`; click drops an owned track. |
+| `/` then click **datablock** | Scope-focus `/`, click the datablock (not the symbol) | Toggles PDB ↔ FDB. |
+| Idle Enter then click | Empty scope buffer, `Enter`, click inbound | Arms `HO ACCEPT`; click accepts the inbound handoff. Live `*T` / `*D LOC27` Enter still commit those commands instead. |
+| `*` then click | Scope-focus `*`, click a target | Acks a pending pointout, or toggles cyan highlight. Bare `*` Enter still goes to TPA (`starsChord`). |
+| `*1`–`*8` then click | `*3` then click a datablock | STARS leader clock (1 = NE clockwise through 8 = N). Idle `L` then `1`–`9` is the old keypad compass and is unchanged. |
+| `*0` then click | `*0` then click | Resets leader direction to the facility default. |
+| `*B` then click | `*B`, click an uncorrelated track | 5 s Mode 3/A beaconator readout. Bare `*B` Enter stays TPA (`*B INV`). |
+| `+HOLD` / `/ALL` | Type those strings, Enter | `INV`. Not coast-all / drop-all. |
+
+#### System lists
+
+Spaces optional (`*T` = `* T`). Line limit is `1`–`100`.
+
+| Command | What the operator does | What happens |
+| --- | --- | --- |
+| `*T` / `*TAB` Enter | Scope-focus `*T` Enter | Toggles TAB flight-plan list. |
+| `*TV` Enter | | Toggles VFR list. |
+| `*TC` Enter | | Toggles Coast/Suspend list. |
+| `*TS` Enter | | Toggles Sign-On list. |
+| `*P1` / `*P2` / `*P3` Enter | | Toggles Tower lists 1–3. **Not** TPA cones (`*P` / `*P5` / `*P10` stay TPA). |
+| `*TM` Enter | | Toggles Alert list. |
+| `*TX` Enter | | Toggles Maps directory list. |
+| `*TN` Enter | | Toggles CRDA status list (the list window, not CRDA geometry). |
+| `*T 15` Enter | `*T` `1` `5` Enter | Sets TAB visible-line limit to 15. `*T 0` / `*T 999` → `INV`, no mutation. |
+| Live `*T` then click | Type `*T`, click the PPI (no Enter) | Relocates TAB to the click. |
+| `*S` then click | Type `*S` (Enter optional), click | Relocates SSA. Does not toggle SSA off. |
+
+#### Video maps
+
+Maps match catalog **slot** `1`–`32` or **id** (`LOC27`, `RWY`, `DEM1_27`, …).
+
+| Command | What the operator does | What happens |
+| --- | --- | --- |
+| `*D 1` / `*D LOC27` Enter | | Toggles that map. |
+| `*D OFF LOC27` Enter | | Forces that map off. |
+| `*D ALL` / `*D NONE` Enter | | All maps on / all off. |
+| Bare `*D` Enter | `*D` with no token | Stays TPA (`*D` / `*DE` / `*DI` / `*D+` are incomplete prefixes of TPA, not a map toggle). Unknown id / slot `99` → `INV`. |
+| Tap `M` | Single `M` with scope focus | Still toggles Mode C. |
+| `M DEM1_27` Enter | `M` then a map id (within the chord window) | Toggles that map. Not assign-code `M ####`. |
+
+#### Scope display
+
+DCB spinner lists are unchanged: RR `[2, 5, 10]`, PTL `0.5 / 1 / 2 / 4`. Keyboard may use a wider set.
+
+| Command | What the operator does | What happens |
+| --- | --- | --- |
+| `*C` then click | `*C` Enter (or live `*C`), click PPI | Recenters the scope on the click. |
+| `*OFF` Enter | | Off-centers / resets scope center. |
+| `*RR 5` Enter | `*RR` then `2`, `5`, `10`, or `20` | Sets range-ring interval (NM). Other numbers → `INV`. |
+| `*RR C` then click | | Places range-ring center on the click. |
+| `*RR OFF` Enter | | Clears range-ring center. |
+| `*PTL 3` Enter | Minutes `0`–`15` | Sets PTL duration. `*PTL` is not TPA `*P`. |
+| `*HIST 4` Enter | Dots `0`–`9` | Sets history-dot count. |
+
+#### Altitude and beacon filters
+
+| Command | What the operator does | What happens |
+| --- | --- | --- |
+| `*F` Enter | | Flashes current `FILTER` min–max hundreds. Does **not** mutate limits and does **not** open a flight-plan modal. |
+| `*LA 000 150` Enter | Three-digit hundreds, floor then ceiling, `0`–`180`, floor ≤ ceiling | Writes altitude-filter limits. Incomplete `*LA` Enter → `INV`. |
+| `*BCN 45` Enter | 2-digit block or 4-digit discrete, octal `0`–`7` | Adds a beacon-select code (same list as `B##` / `B####`). |
+| `*BCN DEL 45` Enter | | Removes that code. Incomplete `*BCN` Enter → `INV`. |
+
+#### TPA / ATPA chords
+
+Unchanged T02-49 slew chords. Incomplete `*` prefixes (`*J`, `*P`, `*P5`, `*P10`, `*AI`, `*AE`, `*BE`, `*BI`) still fall through to `starsChord` on Enter. A live `*` TPA hint still wins over idle preview.
+
+| Command | What the operator does | What happens |
+| --- | --- | --- |
+| `*J [1–30]` / `*J 0` | | Per-track J-ring; `0` clears. `**J` clear-all. |
+| `*P` / `*P5` / `*P10` | | Ground-track TPA cone. Not tower list `*P1`. |
+| `*AI` click / `*AE` Enter | | ATPA inhibit / enable per T02-49. |
+
+**Mnemonic collisions (do not mix these up):**
+
+- Idle `T` = FDB ↔ LDB. `*T` = TAB list.
+- `*P1`–`*P3` = tower lists. `*P` / `*P5` / `*P10` = TPA. `*PTL` = PTL minutes.
+- `*D token` = maps. Bare `*D` = TPA.
+- Idle `F` = filter chord. `*F` Enter = FILTER readout (not `*F [Callsign]` flight plan).
+- `*BCN` = beacon filter. Bare `*B` Enter = TPA. `*B` click = beaconator.
+- Tap `M` = Mode C. `M [map id]` = map toggle.
+
+Deferred (not parsed here): flight-plan modals `*F [Callsign]` / `*V` / `*A` / `*DEL`; scratchpads and assigned alt/hdg/spd; `+HOLD` / `+UNS` / `+R` / `/ALL`; multi-controller handoff / pointout TCP / consol / QL; `*WX`; `*CRDA` geometry; TDM `*G`; CA inhibit `*K`. Full list: **STARS preview area — commands not parsed / deferred** in [`phases/LATER-IMPLEMENTATION-BACKLOG.md`](phases/LATER-IMPLEMENTATION-BACKLOG.md).
 
 ---
 
