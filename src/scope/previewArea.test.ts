@@ -18,6 +18,8 @@ import {
   idlePreviewArea,
   isPreviewBufferStartChar,
   parsePreviewCommand,
+  parseAltitudeFilterCommand,
+  parseBeaconFilterCommand,
   parseScopeDisplayCommand,
   previewAreaIsLive,
   previewBufferCharFromKey,
@@ -27,6 +29,8 @@ import {
   rejectPreviewArea,
   rejectPreviewCntl,
   resolveScopeFlid,
+  addBeaconSelectCode,
+  removeBeaconSelectCode,
   toggleBeaconSelectCode,
   type PreviewAreaState,
   type PreviewArmedAction,
@@ -145,6 +149,23 @@ test("toggleBeaconSelectCode add-if-absent remove-if-present; block and discrete
   expect(codes).toEqual(["45", "4501"]);
   toggleBeaconSelectCode(codes, "45");
   expect(codes).toEqual(["4501"]);
+});
+
+test("T02-65 — *BCN add is idempotent; DEL removes; B45 still toggles", () => {
+  const codes: string[] = [];
+  expect(applyPreviewBeaconAction(codes, { type: "addBeaconCodeFilter", code: "45" })).toBe(true);
+  expect(codes).toEqual(["45"]);
+  applyPreviewBeaconAction(codes, { type: "addBeaconCodeFilter", code: "45" });
+  expect(codes).toEqual(["45"]);
+  applyPreviewBeaconAction(codes, { type: "addBeaconCodeFilter", code: "4501" });
+  expect(codes).toEqual(["45", "4501"]);
+  applyPreviewBeaconAction(codes, { type: "removeBeaconCodeFilter", code: "45" });
+  expect(codes).toEqual(["4501"]);
+  applyPreviewBeaconAction(codes, { type: "removeBeaconCodeFilter", code: "45" });
+  expect(codes).toEqual(["4501"]);
+  addBeaconSelectCode(codes, "1200");
+  removeBeaconSelectCode(codes, "4501");
+  expect(codes).toEqual(["1200"]);
 });
 
 test("Enter with 0/1/3 digits is INV; two digits wait; four digits auto-commit", () => {
@@ -891,5 +912,189 @@ test("T02-63 — handlePreviewBufferKey commits map actions and leaves TPA *D to
   expect(handlePreviewBufferKey(slot, "Enter", 3, undefined, maps)).toEqual({
     consumed: true,
     action: { type: "toggleVideoMap", mapId: "RWY" },
+  });
+});
+
+const FILTER_PARSE_CASES: ReadonlyArray<{
+  buffer: string;
+  parse: PreviewCommandResult["kind"];
+  action?: PreviewArmedAction;
+}> = [
+  { buffer: "*F", parse: "action", action: { type: "displayFilters" } },
+  { buffer: "* F", parse: "action", action: { type: "displayFilters" } },
+  {
+    buffer: "*LA 000 120",
+    parse: "action",
+    action: { type: "setAltitudeFilterLimits", floorHundreds: 0, ceilingHundreds: 120 },
+  },
+  {
+    buffer: "*LA000120",
+    parse: "action",
+    action: { type: "setAltitudeFilterLimits", floorHundreds: 0, ceilingHundreds: 120 },
+  },
+  {
+    buffer: "* LA 000 180",
+    parse: "action",
+    action: { type: "setAltitudeFilterLimits", floorHundreds: 0, ceilingHundreds: 180 },
+  },
+  { buffer: "*L", parse: "incomplete" },
+  { buffer: "*LA", parse: "incomplete" },
+  { buffer: "*LA000", parse: "incomplete" },
+  { buffer: "*LA 000 999", parse: "invalid" },
+  { buffer: "*LA000999", parse: "invalid" },
+  { buffer: "*LA 120 000", parse: "invalid" },
+  { buffer: "*LA120000", parse: "invalid" },
+  { buffer: "*LA000181", parse: "invalid" },
+];
+
+test("T02-65 — parse *F / *LA; spaces optional; out of range and floor>ceiling INV", () => {
+  for (const row of FILTER_PARSE_CASES) {
+    const parsed = parsePreviewCommand(row.buffer);
+    expect(parsed.kind, row.buffer).toBe(row.parse);
+    expect(parseAltitudeFilterCommand(row.buffer)?.kind, row.buffer).toBe(row.parse);
+    if (row.action && parsed.kind === "action") {
+      expect(parsed.action).toEqual(row.action);
+    }
+    const committed = commitPreviewCommand(row.buffer);
+    if (row.parse === "incomplete") {
+      expect(committed.kind, `commit ${row.buffer}`).toBe("invalid");
+    } else {
+      expect(committed.kind, `commit ${row.buffer}`).toBe(row.parse);
+    }
+  }
+  expect(parseAltitudeFilterCommand("*FILTER")).toBeNull();
+  expect(parsePreviewCommand("*FILTER").kind).toBe("incomplete");
+  expect(parsePreviewCommand("*T")).toEqual({
+    kind: "action",
+    action: { type: "toggleList", listId: "TAB" },
+  });
+  expect(parsePreviewCommand("*C")).toEqual({
+    kind: "action",
+    action: { type: "armRecenterScope" },
+  });
+});
+
+const BCN_PARSE_CASES: ReadonlyArray<{
+  buffer: string;
+  parse: PreviewCommandResult["kind"];
+  action?: PreviewArmedAction;
+}> = [
+  {
+    buffer: "*BCN 45",
+    parse: "action",
+    action: { type: "addBeaconCodeFilter", code: "45" },
+  },
+  {
+    buffer: "*BCN45",
+    parse: "action",
+    action: { type: "addBeaconCodeFilter", code: "45" },
+  },
+  {
+    buffer: "* BCN 4501",
+    parse: "action",
+    action: { type: "addBeaconCodeFilter", code: "4501" },
+  },
+  {
+    buffer: "*BCN DEL 45",
+    parse: "action",
+    action: { type: "removeBeaconCodeFilter", code: "45" },
+  },
+  {
+    buffer: "*BCNDEL45",
+    parse: "action",
+    action: { type: "removeBeaconCodeFilter", code: "45" },
+  },
+  { buffer: "*BC", parse: "incomplete" },
+  { buffer: "*BCN", parse: "incomplete" },
+  { buffer: "*BCN 4", parse: "incomplete" },
+  { buffer: "*BCN DEL", parse: "incomplete" },
+  { buffer: "*BCN 48", parse: "invalid" },
+  { buffer: "*BCN 4508", parse: "invalid" },
+  { buffer: "*BCN 45012", parse: "invalid" },
+];
+
+test("T02-65 — parse *BCN / *BCN DEL; octal only; *B / *BE stay TPA", () => {
+  for (const row of BCN_PARSE_CASES) {
+    const parsed = parsePreviewCommand(row.buffer);
+    expect(parsed.kind, row.buffer).toBe(row.parse);
+    expect(parseBeaconFilterCommand(row.buffer)?.kind, row.buffer).toBe(row.parse);
+    if (row.action && parsed.kind === "action") {
+      expect(parsed.action).toEqual(row.action);
+    }
+    const committed = commitPreviewCommand(row.buffer);
+    if (row.parse === "incomplete") {
+      expect(committed.kind, `commit ${row.buffer}`).toBe("invalid");
+    } else {
+      expect(committed.kind, `commit ${row.buffer}`).toBe(row.parse);
+    }
+  }
+  expect(parseBeaconFilterCommand("*B")).toBeNull();
+  expect(parseBeaconFilterCommand("*BE")).toBeNull();
+  expect(parseBeaconFilterCommand("*BI")).toBeNull();
+  expect(parsePreviewCommand("*B").kind).toBe("incomplete");
+  expect(parsePreviewCommand("*BE").kind).toBe("incomplete");
+  expect(parsePreviewCommand("*BI").kind).toBe("incomplete");
+  expect(parsePreviewCommand("B45")).toEqual({
+    kind: "action",
+    action: { type: "beaconBlock", digits: "45" },
+  });
+});
+
+test("T02-65 — Enter on *F / *LA / *BCN returns actions; bad params INV; *B stays starsBuffer", () => {
+  const display = idlePreviewArea();
+  beginPreviewBufferEntry(display, "*", 0);
+  handlePreviewBufferKey(display, "F", 1);
+  expect(handlePreviewBufferKey(display, "Enter", 2)).toEqual({
+    consumed: true,
+    action: { type: "displayFilters" },
+  });
+  expect(display.phase).toBe("idle");
+
+  const spaced = idlePreviewArea();
+  beginPreviewBufferEntry(spaced, "*", 0);
+  for (const ch of [" ", "L", "A", " ", "0", "0", "0", " ", "1", "2", "0"]) {
+    handlePreviewBufferKey(spaced, ch, 1);
+  }
+  expect(handlePreviewBufferKey(spaced, "Enter", 2)).toEqual({
+    consumed: true,
+    action: { type: "setAltitudeFilterLimits", floorHundreds: 0, ceilingHundreds: 120 },
+  });
+
+  const inv = idlePreviewArea();
+  beginPreviewBufferEntry(inv, "*", 0);
+  for (const ch of ["L", "A", "0", "0", "0", "9", "9", "9"]) {
+    handlePreviewBufferKey(inv, ch, 1);
+  }
+  expect(handlePreviewBufferKey(inv, "Enter", 2)).toEqual({ consumed: true, action: null });
+  expect(inv.rejection).toBe("*LA000999 INV");
+  expect(inv.phase).toBe("idle");
+
+  const bcn = idlePreviewArea();
+  beginPreviewBufferEntry(bcn, "*", 0);
+  for (const ch of ["B", "C", "N", " ", "4", "5"]) {
+    handlePreviewBufferKey(bcn, ch, 1);
+  }
+  expect(handlePreviewBufferKey(bcn, "Enter", 2)).toEqual({
+    consumed: true,
+    action: { type: "addBeaconCodeFilter", code: "45" },
+  });
+
+  const del = idlePreviewArea();
+  beginPreviewBufferEntry(del, "*", 0);
+  for (const ch of ["B", "C", "N", "D", "E", "L", "4", "5"]) {
+    handlePreviewBufferKey(del, ch, 1);
+  }
+  expect(handlePreviewBufferKey(del, "Enter", 2)).toEqual({
+    consumed: true,
+    action: { type: "removeBeaconCodeFilter", code: "45" },
+  });
+
+  const tpa = idlePreviewArea();
+  beginPreviewBufferEntry(tpa, "*", 0);
+  handlePreviewBufferKey(tpa, "B", 1);
+  expect(handlePreviewBufferKey(tpa, "Enter", 2)).toEqual({
+    consumed: true,
+    action: null,
+    starsBuffer: "*B",
   });
 });

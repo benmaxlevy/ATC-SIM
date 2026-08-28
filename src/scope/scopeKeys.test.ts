@@ -1292,3 +1292,61 @@ test("T02-63 — tap M stays Mode C; *D ALL / NONE / OFF and unknown INV", () =>
   typeMapKeys(view, ["*", "J", "3", "Enter"], 600, world);
   expect(view.starsChordArmed?.type).toBe("jRing");
 });
+
+test("T02-65 — *F Enter shows FILTER readout without mutating; idle F still starts the chord", () => {
+  const view = createScopeView();
+  typeScopeKeys(view, ["*", "F", "Enter"]);
+  expect(view.altitudeFilter).toEqual(DEFAULT_ALTITUDE_FILTER);
+  expect(view.filterEntry.phase).toBe("idle");
+  expect(formatPreviewReadout(view.preview)).toBe("FILTER 000-180");
+  expect(formatFilterReadout(view.altitudeFilter, view.filterEntry)).toBe("FILTER 000-180");
+
+  const chord = createScopeView();
+  expect(handleScopeKeyDown(keyEvent("F"), chord, "scope", undefined, 0)).toBe(true);
+  expect(chord.filterEntry.phase).toBe("min");
+  expect(chord.preview.phase).toBe("idle");
+});
+
+test("T02-65 — *LA 000 120 sets 0–12,000 ft; SSA readout follows; bad windows INV", () => {
+  const view = createScopeView();
+  typeScopeKeys(view, ["*", "L", "A", " ", "0", "0", "0", " ", "1", "2", "0", "Enter"]);
+  expect(view.altitudeFilter).toEqual({ minHundreds: 0, maxHundreds: 120 });
+  expect(formatFilterReadout(view.altitudeFilter, view.filterEntry)).toBe("FILTER 000-120");
+  expect(view.preview.phase).toBe("idle");
+  expect(view.preview.rejection).toBeNull();
+
+  typeScopeKeys(view, ["*", "L", "A", "0", "0", "0", "1", "8", "0", "Enter"], 200);
+  expect(view.altitudeFilter).toEqual({ minHundreds: 0, maxHundreds: 180 });
+
+  typeScopeKeys(view, ["*", "L", "A", "0", "0", "0", "9", "9", "9", "Enter"], 400);
+  expect(view.preview.rejection).toBe("*LA000999 INV");
+  expect(view.altitudeFilter).toEqual({ minHundreds: 0, maxHundreds: 180 });
+
+  typeScopeKeys(view, ["*", "L", "A", "1", "2", "0", "0", "0", "0", "Enter"], 600);
+  expect(view.preview.rejection).toBe("*LA120000 INV");
+  expect(view.altitudeFilter).toEqual({ minHundreds: 0, maxHundreds: 180 });
+});
+
+test("T02-65 — *BCN 45 adds to beaconSelectCodes; *BCN DEL 45 removes; B45 and *B stay distinct", () => {
+  const view = createScopeView();
+  typeScopeKeys(view, ["*", "B", "C", "N", " ", "4", "5", "Enter"]);
+  expect(view.beaconSelectCodes).toEqual(["45"]);
+  typeScopeKeys(view, ["*", "B", "C", "N", " ", "4", "5", "Enter"], 200);
+  expect(view.beaconSelectCodes).toEqual(["45"]);
+
+  typeScopeKeys(view, ["*", "B", "C", "N", " ", "D", "E", "L", " ", "4", "5", "Enter"], 400);
+  expect(view.beaconSelectCodes).toEqual([]);
+
+  typeScopeKeys(view, ["B", "4", "5", "Enter"], 600);
+  expect(view.beaconSelectCodes).toEqual(["45"]);
+
+  typeScopeKeys(view, ["*", "B", "C", "N", " ", "4", "8", "Enter"], 800);
+  expect(view.preview.rejection).toBe("*BCN 48 INV");
+  expect(view.beaconSelectCodes).toEqual(["45"]);
+
+  const tpa = createScopeView();
+  typeScopeKeys(tpa, ["*", "B", "Enter"]);
+  expect(tpa.beaconSelectCodes).toEqual([]);
+  expect(tpa.preview.rejection).toBe("*B INV");
+});
+

@@ -72,6 +72,21 @@ export function parseFilterHundreds(digits: string): number | null {
 }
 
 /**
+ * Preview `*LA` hundreds: exactly 3 digits, 0–180 inclusive.
+ * Out of range is null (no clamp) so `*LA 000 999` can INV.
+ */
+export function parseStrictFilterHundreds(digits: string): number | null {
+  if (!/^\d{3}$/.test(digits)) {
+    return null;
+  }
+  const n = Number.parseInt(digits, 10);
+  if (n < FILTER_HUNDREDS_MIN || n > FILTER_HUNDREDS_MAX) {
+    return null;
+  }
+  return n;
+}
+
+/**
  * Mode C (feet) vs the altitude filter, inclusive hundreds.
  * Non-finite Mode C is treated as outside the band.
  */

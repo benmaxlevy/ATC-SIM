@@ -9,6 +9,7 @@ import { expect, test } from "vitest";
 import { SessionLog, createWorld, handoffFor, makeTestAircraft, type World } from "@core";
 import { handleRadioText } from "@pilot";
 import { createWorldFromScenario, loadKdem } from "@scenario";
+import { DEFAULT_ALTITUDE_FILTER, formatFilterReadout } from "./altitudeFilter";
 import { DEFAULT_SCOPE_CAMERA, nmToScreen, type ScopeCamera } from "./camera";
 import { bindingById } from "./keymap";
 import { PALETTE } from "./palette";
@@ -455,3 +456,59 @@ test("T02-64 — *PTL does not steal TPA *P / *P5; *J3 still arms", () => {
   typeKeys(view, world, ["*", "J", "3", "Enter"], "scope", 600);
   expect(view.starsChordArmed).toEqual({ type: "jRing", target: "slewed", radiusNm: 3 });
 });
+
+test("T02-65 — *F readout, *LA bounds, *BCN □ paint; *B / idle F / B45 unchanged", () => {
+  const ac = makeTestAircraft({
+    id: "ac-bcn",
+    callsign: "DAL45",
+    squawk: "4521",
+    altitudeFt: 5000,
+  });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  typeKeys(view, world, ["*", "F", "Enter"], "scope");
+  expect(view.altitudeFilter).toEqual(DEFAULT_ALTITUDE_FILTER);
+  expect(formatPreviewReadout(view.preview)).toBe("FILTER 000-180");
+
+  typeKeys(view, world, ["*", "L", "A", "0", "0", "0", "1", "2", "0", "Enter"], "scope", 200);
+  expect(view.altitudeFilter).toEqual({ minHundreds: 0, maxHundreds: 120 });
+  expect(formatFilterReadout(view.altitudeFilter, view.filterEntry)).toBe("FILTER 000-120");
+
+  typeKeys(view, world, ["*", "B", "C", "N", "4", "5", "Enter"], "scope", 400);
+  expect(view.beaconSelectCodes).toEqual(["45"]);
+  expect(
+    targetSymbolDescriptor({
+      ownership: "unowned",
+      squawk: ac.squawk,
+      beaconSelect: view.beaconSelectCodes,
+    }).symbol,
+  ).toBe("□");
+
+  typeKeys(view, world, ["*", "B", "C", "N", "D", "E", "L", "4", "5", "Enter"], "scope", 600);
+  expect(view.beaconSelectCodes).toEqual([]);
+  expect(
+    targetSymbolDescriptor({
+      ownership: "unowned",
+      squawk: ac.squawk,
+      beaconSelect: view.beaconSelectCodes,
+    }).symbol,
+  ).toBe("*");
+
+  typeKeys(view, world, ["B", "4", "5", "Enter"], "scope", 800);
+  expect(view.beaconSelectCodes).toEqual(["45"]);
+
+  const filterView = createScopeView();
+  typeKeys(filterView, world, ["F"], "scope");
+  expect(filterView.filterEntry.phase).toBe("min");
+  expect(filterView.preview.phase).toBe("idle");
+
+  const tpa = createScopeView();
+  tpa.atpa.monitorCones = false;
+  typeKeys(tpa, world, ["*", "B", "E", "Enter"], "scope");
+  expect(tpa.atpa.monitorCones).toBe(true);
+  expect(tpa.beaconSelectCodes).toEqual([]);
+  expect(tpa.preview.rejection).toBeNull();
+});
+

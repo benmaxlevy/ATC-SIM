@@ -23,7 +23,14 @@
  */
 
 import type { World } from "@core";
-import { beginFilterEntry, cancelFilterEntry, handleFilterEntryKey } from "./altitudeFilter";
+import {
+  beginFilterEntry,
+  cancelFilterEntry,
+  formatFilterReadout,
+  handleFilterEntryKey,
+  idleFilterEntry,
+  tryApplyAltitudeFilter,
+} from "./altitudeFilter";
 import { stepRange } from "./camera";
 import {
   beginScopeChord,
@@ -310,6 +317,16 @@ function applyPreviewArmedAction(
     }
     case "setAllVideoMaps":
       setAllVideoMaps(view, action.enabled);
+      return;
+    case "displayFilters":
+      view.preview.rejection = formatFilterReadout(
+        view.altitudeFilter,
+        idleFilterEntry(view.altitudeFilter),
+      );
+      view.preview.lastKeyAtMs = nowMs;
+      return;
+    case "setAltitudeFilterLimits":
+      tryApplyAltitudeFilter(view.altitudeFilter, action.floorHundreds, action.ceilingHundreds);
       return;
     default:
       return;

@@ -11,6 +11,7 @@ import {
   idleFilterEntry,
   inAltitudeFilter,
   parseFilterHundreds,
+  parseStrictFilterHundreds,
   tryApplyAltitudeFilter,
   tryApplyAltitudeFilterDigits,
   type AltitudeFilter,
@@ -43,6 +44,13 @@ test("parse 1-3 digit hundreds; 50 Enter = 050; clamp 0-180", () => {
   expect(parseFilterHundreds("")).toBeNull();
   expect(parseFilterHundreds("12a")).toBeNull();
   expect(parseFilterHundreds("4")).toBe(4);
+  expect(parseStrictFilterHundreds("000")).toBe(0);
+  expect(parseStrictFilterHundreds("050")).toBe(50);
+  expect(parseStrictFilterHundreds("180")).toBe(180);
+  expect(parseStrictFilterHundreds("181")).toBeNull();
+  expect(parseStrictFilterHundreds("999")).toBeNull();
+  expect(parseStrictFilterHundreds("50")).toBeNull();
+  expect(parseStrictFilterHundreds("")).toBeNull();
   expect(clampFilterHundreds(-3)).toBe(0);
   expect(clampFilterHundreds(200)).toBe(180);
   expect(clampFilterHundreds(Number.NaN)).toBe(0);

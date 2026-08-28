@@ -16,15 +16,18 @@
  * letters, digits, and spaces buffer here. T02-62 adds Table 31/32 list
  * mnemonics (`*T` / `*TAB` / `*TV` / `*TC` / `*TS` / `*P1`–`*P3` / `*TM` /
  * `*TX` / `*TN` toggle or `[1-100]` resize; `*S` slew-relocates SSA). T02-64
- * adds `*C` / `*OFF` / `*RR` / `*PTL` / `*HIST`. Spaces are optional (`*T` =
- * `* T`). Bare `*P` / `*P3` stay TPA via the starsChord fallback; `*P1`–`*P3`
- * are tower lists, not PTL. `BE` / `BI` LDB inhibit and assign-code (`M ####`)
+ * adds `*C` / `*OFF` / `*RR` / `*PTL` / `*HIST`. T02-65 adds `*F` / `*LA` /
+ * `*BCN` / `*BCN DEL`. Spaces are optional (`*T` = `* T`, `*F` = `* F`). Bare
+ * `*P` / `*P3` stay TPA via the starsChord fallback; `*P1`–`*P3` are tower
+ * lists, not PTL. Bare `*B` / `*BE` / `*BI` stay TPA; only `*BCN…` is the
+ * beacon-code filter. `BE` / `BI` LDB inhibit and assign-code (`M ####`)
  * remain deferred. Unknown complete input is invalid, not a silent no-op. Not
  * NAS STARS.
  */
 
 import type { World } from "@core";
 import type { LoadedVideoMap } from "@scenario";
+import { parseStrictFilterHundreds } from "./altitudeFilter";
 import { resolveVideoMapToken } from "./dcbFunctions";
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
 
@@ -36,7 +39,8 @@ export type PreviewPhase = "idle" | "entry" | "armed";
  * T02-53: `beaconBlock` / `beaconDiscrete`. T02-62: `toggleList` / `resizeList`
  * / `armRelocateList`. T02-64: scope recenter / RR / PTL / HIST. Slew forms
  * (`armRecenterScope`, `armRecenterRangeRings`) apply via DCB PLACE flags.
- * T02-63: `toggleVideoMap` / `setAllVideoMaps`.
+ * T02-63: `toggleVideoMap` / `setAllVideoMaps`. T02-65: `displayFilters` /
+ * `setAltitudeFilterLimits` / `addBeaconCodeFilter` / `removeBeaconCodeFilter`.
  * Do not put F3-specific field names on ScopeView.
  */
 export type PreviewArmedAction =
@@ -55,7 +59,15 @@ export type PreviewArmedAction =
   | { readonly type: "setPtlMinutes"; readonly minutes: number }
   | { readonly type: "setHistoryDots"; readonly count: number }
   | { readonly type: "toggleVideoMap"; readonly mapId: string; readonly explicitState?: boolean }
-  | { readonly type: "setAllVideoMaps"; readonly enabled: boolean };
+  | { readonly type: "setAllVideoMaps"; readonly enabled: boolean }
+  | { readonly type: "displayFilters" }
+  | {
+      readonly type: "setAltitudeFilterLimits";
+      readonly floorHundreds: number;
+      readonly ceilingHundreds: number;
+    }
+  | { readonly type: "addBeaconCodeFilter"; readonly code: string }
+  | { readonly type: "removeBeaconCodeFilter"; readonly code: string };
 
 /** Full callsign / numeric-tail / 4-digit squawk — duplicated, not `@pilot`. */
 const FULL_CALLSIGN = /^[A-Z]{3}[0-9]{1,4}[A-Z]?$/;
@@ -122,8 +134,9 @@ export type PreviewCommandResult =
  * T02-61: `*` / `+` / `/` are live prefixes. T02-62 list rows live in
  * `parseListCommand` (`*P1` vs TPA `*P`). T02-64 `*C` / `*RR` / `*PTL` /
  * `*HIST` live in `parseScopeDisplayCommand`. T02-63 `*D` / `M` video-map
- * rows live in `parseVideoMapCommand`. Do not rewrite the state machine
- * to add rows.
+ * rows live in `parseVideoMapCommand`. T02-65 `*F` / `*LA` / `*BCN` live in
+ * `parseAltitudeFilterCommand` / `parseBeaconFilterCommand`. Do not rewrite
+ * the state machine to add rows.
  */
 type PreviewTableEntry = { kind: "prefix" } | { kind: "action"; action: PreviewArmedAction };
 
@@ -351,6 +364,110 @@ export function parseScopeDisplayCommand(buffer: string): PreviewCommandResult |
   return null;
 }
 
+const BEACON_FILTER_OCTAL = /^[0-7]+$/;
+
+function parseBeaconFilterCode(
+  code: string,
+  kind: "addBeaconCodeFilter" | "removeBeaconCodeFilter",
+): PreviewCommandResult {
+  if (code.length === 0) {
+    return { kind: "incomplete" };
+  }
+  if (!BEACON_FILTER_OCTAL.test(code)) {
+    return invalid("invalid beacon code");
+  }
+  if (code.length === 2 || code.length === 4) {
+    return { kind: "action", action: { type: kind, code } };
+  }
+  if (code.length < 4) {
+    return { kind: "incomplete" };
+  }
+  return invalid("invalid beacon code");
+}
+
+/**
+ * Table 29 altitude filters. Exact `*F` displays current bounds; `*LA` sets
+ * 3-digit hundreds 0–180. Spaces optional (`*F` = `* F`). `*FILTER` is not
+ * ours. Null when this is not our family so other `*` rows stay intact.
+ */
+export function parseAltitudeFilterCommand(buffer: string): PreviewCommandResult | null {
+  if (!buffer.startsWith("*")) {
+    return null;
+  }
+  const compact = compactStarCommand(buffer);
+
+  if (compact === "*F") {
+    return { kind: "action", action: { type: "displayFilters" } };
+  }
+
+  if (compact === "*L") {
+    return { kind: "incomplete" };
+  }
+  if (!compact.startsWith("*LA")) {
+    return null;
+  }
+
+  const rest = compact.slice(3);
+  if (rest.length === 0) {
+    return { kind: "incomplete" };
+  }
+  if (!/^\d+$/.test(rest)) {
+    return invalid("invalid altitude filter limits");
+  }
+  if (rest.length < 6) {
+    return { kind: "incomplete" };
+  }
+  if (rest.length > 6) {
+    return invalid("invalid altitude filter limits");
+  }
+  const floorHundreds = parseStrictFilterHundreds(rest.slice(0, 3));
+  const ceilingHundreds = parseStrictFilterHundreds(rest.slice(3, 6));
+  if (floorHundreds === null || ceilingHundreds === null) {
+    return invalid("altitude filter out of range");
+  }
+  if (floorHundreds > ceilingHundreds) {
+    return invalid("altitude filter floor above ceiling");
+  }
+  return {
+    kind: "action",
+    action: { type: "setAltitudeFilterLimits", floorHundreds, ceilingHundreds },
+  };
+}
+
+/**
+ * Table 30 preview `*BCN` / `*BCN DEL`. Bare `*B` / `*BE` / `*BI` stay TPA
+ * (return null). `*BC` is a live prefix of `*BCN`. Codes are 2-digit blocks or
+ * 4-digit discrete, octal 0–7 only.
+ */
+export function parseBeaconFilterCommand(buffer: string): PreviewCommandResult | null {
+  if (!buffer.startsWith("*")) {
+    return null;
+  }
+  const compact = compactStarCommand(buffer);
+
+  if (compact === "*B" || compact.startsWith("*BE") || compact.startsWith("*BI")) {
+    return null;
+  }
+  if (compact === "*BC") {
+    return { kind: "incomplete" };
+  }
+  if (!compact.startsWith("*BCN")) {
+    return null;
+  }
+
+  const rest = compact.slice(4);
+  if (rest.length === 0) {
+    return { kind: "incomplete" };
+  }
+  if (rest === "D" || rest === "DE" || rest === "DEL") {
+    return { kind: "incomplete" };
+  }
+  if (rest.startsWith("DEL")) {
+    return parseBeaconFilterCode(rest.slice(3), "removeBeaconCodeFilter");
+  }
+  return parseBeaconFilterCode(rest, "addBeaconCodeFilter");
+}
+
 /**
  * Table 30 beacon select. `B45` is a complete CODE BLOCK **and** a live prefix
  * of `B4501`, so the key handler waits for Enter at two digits; four digits may
@@ -546,7 +663,8 @@ function parseVideoMapCommand(
  * T02-51: empty and live prefixes are `incomplete`; anything else is `invalid`.
  * T02-52 / T02-53 add `action` rows to `PREVIEW_TABLE` without replacing this.
  * T02-62 list mnemonics are parsed in `parseListCommand`. T02-63 video-map
- * commands are matched before the `*` catch-all prefix.
+ * commands are matched before the `*` catch-all prefix. T02-65 `*F` / `*LA` /
+ * `*BCN` are parsed in `parseAltitudeFilterCommand` / `parseBeaconFilterCommand`.
  */
 export function parsePreviewCommand(
   buffer: string,
@@ -569,6 +687,14 @@ export function parsePreviewCommand(
   const display = parseScopeDisplayCommand(buffer);
   if (display) {
     return display;
+  }
+  const altitude = parseAltitudeFilterCommand(buffer);
+  if (altitude) {
+    return altitude;
+  }
+  const beaconFilter = parseBeaconFilterCommand(buffer);
+  if (beaconFilter) {
+    return beaconFilter;
   }
   const videoMap = parseVideoMapCommand(buffer, maps);
   if (videoMap) {
@@ -745,9 +871,32 @@ export function toggleBeaconSelectCode(codes: string[], token: string): void {
   codes.push(token);
 }
 
+/** Add `token` if absent. Does not toggle off a duplicate `*BCN`. */
+export function addBeaconSelectCode(codes: string[], token: string): void {
+  if (!codes.includes(token)) {
+    codes.push(token);
+  }
+}
+
+/** Remove `token` if present. No-op when absent. */
+export function removeBeaconSelectCode(codes: string[], token: string): void {
+  const i = codes.indexOf(token);
+  if (i >= 0) {
+    codes.splice(i, 1);
+  }
+}
+
 export function applyPreviewBeaconAction(codes: string[], action: PreviewArmedAction): boolean {
   if (action.type === "beaconBlock" || action.type === "beaconDiscrete") {
     toggleBeaconSelectCode(codes, action.digits);
+    return true;
+  }
+  if (action.type === "addBeaconCodeFilter") {
+    addBeaconSelectCode(codes, action.code);
+    return true;
+  }
+  if (action.type === "removeBeaconCodeFilter") {
+    removeBeaconSelectCode(codes, action.code);
     return true;
   }
   return false;

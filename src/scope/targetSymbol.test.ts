@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { PALETTE, applyBrite } from "./palette";
+import { addBeaconSelectCode, removeBeaconSelectCode } from "./previewArea";
 import {
   HISTORY_DOT_SIZE_PX,
   POSITION_SYMBOL_COLOR,
@@ -226,6 +227,26 @@ test("CODE BLOCK prefix paints □; unmatched unassociated stays *", () => {
   ).toBe("beacon_select");
   expect(squawkMatchesBeaconSelect("4501", ["45", "1200"])).toBe(true);
   expect(squawkMatchesBeaconSelect("0342", ["45"])).toBe(false);
+});
+
+test("T02-65 — *BCN add/remove uses the same store that paints □", () => {
+  const codes: string[] = [];
+  addBeaconSelectCode(codes, "45");
+  expect(
+    targetSymbolDescriptor({
+      ownership: "unowned",
+      squawk: "4521",
+      beaconSelect: codes,
+    }).symbol,
+  ).toBe("□");
+  removeBeaconSelectCode(codes, "45");
+  expect(
+    targetSymbolDescriptor({
+      ownership: "unowned",
+      squawk: "4521",
+      beaconSelect: codes,
+    }).symbol,
+  ).toBe("*");
 });
 
 test("AC3 — Tracked target renders owning controller's sector ID", () => {

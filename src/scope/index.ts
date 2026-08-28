@@ -152,6 +152,7 @@ export {
   handleFilterEntryKey,
   inAltitudeFilter,
   parseFilterHundreds,
+  parseStrictFilterHundreds,
   tryApplyAltitudeFilter,
   tryApplyAltitudeFilterDigits,
 } from "./altitudeFilter";
@@ -209,6 +210,8 @@ export {
   rejectPreviewArea,
   rejectPreviewCntl,
   resolveScopeFlid,
+  addBeaconSelectCode,
+  removeBeaconSelectCode,
   toggleBeaconSelectCode,
 } from "./previewArea";
 export type {
