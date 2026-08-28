@@ -1,4 +1,4 @@
-# ATC-SIM swarm orchestrator — Sixteenth swarm (STARS In-Scope System Lists & Complete DCB: T02-55–60)
+# ATC-SIM swarm orchestrator — Seventeenth swarm (STARS Keyboard Commands & Preview Area Expansion: T02-61–67)
 
 Paste **this entire file** into a new agent. That agent is the **orchestrator**. It may run for hours. It writes almost no application code.
 
@@ -9,7 +9,74 @@ Shell: **bash** (Linux).
 
 Before checking git, spawning agents, creating worktrees, or editing application code, update this file for the current swarm. Append a new swarm-start heading/configuration; do not overwrite prior swarm history. If the requested swarm configuration is incomplete, ask before making any other swarm move. Then commit the planning/status update before creating ticket branches or worktrees.
 
-This is the **sixteenth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–25) → 2 STARS CRC scope fidelity (T02-34–42) → 5 setup menu (T05-13, T05-14) → 4 dual runway (T04-26–30) → 2 TPA / ATPA (T02-43–50) → 2 STARS Preview Area (T02-51–54)** are already green on `master`. Do **not** redo completed work. Skip **T04-11** (wind) unless the human names it. This run is **T02-55–60 only**.
+This is the **seventeenth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–25) → 2 STARS CRC scope fidelity (T02-34–42) → 5 setup menu (T05-13, T05-14) → 4 dual runway (T04-26–30) → 2 TPA / ATPA (T02-43–50) → 2 STARS Preview Area (T02-51–54) → 2 STARS In-Scope System Lists & Complete DCB (T02-55–60)** are already green on `master`. Do **not** redo completed work. Skip **T04-11** (wind) unless the human names it. This run is **T02-61–67 only**.
+
+---
+
+## Seventeenth swarm planned — 2026-08-28 (STARS Keyboard Commands & Preview Area Expansion)
+
+This configuration runs on feature branch `feature/stars-keyboard-commands`, cut from `master`. Ticket workers branch from that base; the captain squash-merges back into that base.
+
+| Key | Value |
+| --- | --- |
+| Goal | Complete vNAS / FAA STARS single-controller keyboard command set: unified Preview Area buffer lexer under SSA with `<Backspace>` / `<Esc>` / `<buffer> INV` flash; system list management (`*T`, `*TV`, `*TC`, `*TS`, `*P1`–`P3`, `*TM`, `*TX`, `*TN`) with line limits (`[1-100]`) and click-to-relocate (`* [List] [Click]` / `* S [Click]`); video map toggles (`*D [ID]`, `*D OFF [ID]`, `*D ALL`, `*D NONE`, `M [ID]`); scope display manipulation (`*C [Click]`, `*OFF`, `*RR [Spacing]`, `*RR C [Click]`, `*RR OFF`, `*PTL [Min]`, `*HIST [0-9]`); altitude filter controls (`*F`, `*LA [Floor] [Ceiling]`) and beacon filters (`*BCN [Code]`, `*BCN DEL [Code]`); standard tracking chords (`+ [Click]`, `+ [Callsign] Enter [Click]`, `/ [Click]`, `Enter [Click]` accept handoff, `* [Click]` pointout ack/highlight, `/ [Click DB]` PDB/FDB, `* [1-8]` leader line direction, `* 0` default leader, `*B` beacon readout); and strict focus isolation from the bottom radio command line (`#command-line-input`). |
+| Player loop | `npm run dev` → type `*T` with scope focus → preview shows `*T` → `Enter` toggles TAB list → type `*D LOC27` `Enter` toggles localizer map → type `*RR 10` `Enter` changes range rings to 10 NM → type `+` click target initiates track → type `/` click target drops track → `Tab` key cleanly switches focus to `#command-line-input` for pilot radio commands. |
+| Include | **T02-61**, **T02-62**, **T02-63**, **T02-64**, **T02-65**, **T02-66**, **T02-67** |
+| Skip | T04-11; all completed work (T00–T02-60, T03-*, T04-*, T05-*); flight plan edit modals (`*F`, `*V`, `*A`, `*DEL`); scratchpads & assigned alt/spd/hdg (`* [Text]`, `* /[Text]`, `* [Alt]`, `*H`, `*S`); advanced track overrides (`+HOLD`, `+UNS`, `+R`, `/ALL`); multi-controller networking & coordination (`[Handoff ID]`, `[TCP ID]*`, `/*`, `INIT CONSOL`, `DECONSOL`, `DISP CONSOL`, `QL`, `ZDE`, `ZCL`); weather radar reflectivity (`*WX`); CRDA ghost prediction (`*CRDA`); TDM ground targets (`*G`); conflict alert suppression (`*K`). |
+| Stop | After T02-67 acceptance. Do not start flight plan modals or multi-controller networking. |
+| Max ticket workers in flight | **3** |
+| Merge lock | Only the phase captain squash-merges ticket branches to `feature/stars-keyboard-commands`, then runs `npm test` |
+| Model | **cursor grok 4.6 high only.** `model: "cursor-grok-4.6-high"` on every captain and worker spawn. Not a fast model |
+| Paid STT/TTS/LLM | **Forbidden** |
+
+**Product law (seventeenth swarm — STARS Keyboard Commands & Preview Area Expansion):**
+
+- **Two Isolated Pipes.** Preview Area is the scope command surface under the SSA. The bottom radio command line (`#command-line-input`) stays `DAL123 H270` → Command IR. Scope commands never emit Command, readback, or pilot intent. Keystrokes with scope focus never bleed into the radio input, and radio typing never alters the Preview Area. `<Tab>` strictly toggles keyboard focus between the two.
+- **Unified Preview Machine.** All scope command entries buffer into `PreviewAreaState.buffer` and render under the SSA in real time. `<Backspace>` edits; `<Escape>` resets to idle; `<Enter>` commits; unrecognized commands flash `<buffer> INV` for 1.5 seconds.
+- **Command-then-Slew Consistency.** Slew commands (`+ [Click]`, `+ [Callsign] Enter [Click]`, `/ [Click]`, `Enter [Click]`, `* [Click]`, `* [List] [Click]`, `* S [Click]`, `* C [Click]`, `* RR C [Click]`) arm the scope, and the subsequent canvas click completes the action.
+- **Data-Driven Map & List Identifiers.** Video maps match by catalog slot number (1–32) or map ID (`RWY`, `LOC27`, `DEM1_27`, etc.). System lists match standard STARS abbreviations (`T`/`TAB`, `TV`, `TC`, `TS`, `P1`–`P3`, `TM`, `TX`, `TN`, `S`).
+- **Exact STARS Syntax.** ATPA and J-Rings strictly use `*J [Radius]`, `*J 0`, `*AI [Click]`, `*AE Enter`. No pseudo-text keywords, no dot commands.
+- **Zero simulation regressions.** Kinematics, SIDs/STARs, ILS, dual-runway, radio telephony, DCB, and in-scope draggable system lists stay 100% operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-61 | Base `feature/stars-keyboard-commands` |
+| B | T02-62 ∥ T02-63 ∥ T02-64 ∥ T02-65 ∥ T02-66 | T02-61 |
+| C | T02-67 | T02-62, T02-63, T02-64, T02-65, T02-66 |
+
+**State ownership:**
+
+- `src/scope/previewArea.ts` and `src/scope/scopeKeys.ts` are initialized in T02-61 with the unified buffer lexer and extended in T02-62 through T02-66.
+- `src/scope/systemLists.ts` is modified in T02-62 for command toggling and slew relocation.
+- `src/scope/dcbFunctions.ts` is modified in T02-63 for map command parsing and token resolution.
+- `src/scope/camera.ts` and range ring state are modified in T02-64.
+- `src/scope/altitudeFilter.ts` is modified in T02-65.
+- `src/scope/trackDisplay.ts`, `ownership.ts`, and `leader.ts` are modified in T02-66.
+
+**Ticket files / branches:**
+
+- `ticket/T02-61-stars-command-buffer-lexer-and-scope-capture` ← `phases/02-scope/tickets/T02-61-stars-command-buffer-lexer-and-scope-capture.md`
+- `ticket/T02-62-system-list-management-and-slew-relocate` ← `phases/02-scope/tickets/T02-62-system-list-management-and-slew-relocate.md`
+- `ticket/T02-63-video-map-display-commands` ← `phases/02-scope/tickets/T02-63-video-map-display-commands.md`
+- `ticket/T02-64-scope-centering-range-rings-ptl-and-history` ← `phases/02-scope/tickets/T02-64-scope-centering-range-rings-ptl-and-history.md`
+- `ticket/T02-65-altitude-filters-and-beacon-code-preview` ← `phases/02-scope/tickets/T02-65-altitude-filters-and-beacon-code-preview.md`
+- `ticket/T02-66-tracking-handoff-and-datablock-key-chords` ← `phases/02-scope/tickets/T02-66-tracking-handoff-and-datablock-key-chords.md`
+- `ticket/T02-67-stars-commands-integration-and-acceptance` ← `phases/02-scope/tickets/T02-67-stars-commands-integration-and-acceptance.md`
+
+Captain return:
+
+```
+PHASE EXIT GREEN
+Phase: 2 Scope addendum (T02-61–67 STARS Keyboard Commands & Preview Area Expansion)
+Merged: T02-61 … T02-67
+Tests: npm test / npm run ci exit 0
+Manual leftover: <Chrome preview command walk or none>
+Notes: <unified preview lexer; list toggles & click relocate; map D-commands; scope centering/RR/PTL/HIST; altitude & beacon filters; track +, drop /, handoff accept Enter, datablock chords; zero radio bleeding>
+```
+
+or `PHASE EXIT BLOCKED` with reason.
 
 ---
 

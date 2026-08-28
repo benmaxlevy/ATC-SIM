@@ -75,74 +75,68 @@ deferred under "Manual Inhibit Commands and Safety Inhibit Glyphs". Preview
 Area command holes (including those MULTIFUNC chords) are listed under
 **STARS preview area — commands not parsed**.
 
-### STARS preview area — commands not parsed
+### STARS preview area — commands not parsed / deferred
 
-Visible now: `FIL` altitude chord, L1–L9 leader, T02-49 `*` Table 36 TPA/ATPA
-chords, and the Preview Area buffer (readout + machine). F3 / F4 still apply
-immediately to the selected track (color/ownership stubs) until T02-52 wires
-INIT CNTL / TERM CNTL. Beacon `B##` / `B####` (Table 30 CODE BLOCK / discrete)
-are parsed as display filters. The buffer is display-only — not the radio
-command line.
+The Seventeenth Swarm (T02-61–67) implements the core single-controller STARS keyboard command set:
+- `<TRK>` (`+`) and `<SLEW>` (`/`) track initiation, callsign association, and track dropping
+- `<ENTER>` inbound handoff acceptance; `<MULTI>` (`*`) pointout acknowledgement and cyan highlight
+- Data block mode toggling (`/` for PDB ↔ FDB), leader line direction (`* [1-8]` / `* 0`), and beacon readout (`* B`)
+- System list management (`* T`, `* TV`, `* TC`, `* TS`, `* P1`–`P3`, `* TM`, `* TX`, `* TN`), visible line limits (`[1-100]`), and click relocation (`* [List] [Click]` / `* S [Click]`)
+- Video map toggles (`* D [ID]`, `* D OFF [ID]`, `* D ALL`, `* D NONE`, `M [ID]`)
+- Scope display manipulation (`* C [Click]`, `* OFF`, `* RR [Spacing]`, `* RR C [Click]`, `* RR OFF`, `* PTL [Min]`, `* HIST [0-9]`)
+- Altitude filters (`* F`, `* LA [Floor] [Ceiling]`) and beacon filters (`* BCN [Code]`, `* BCN DEL [Code]`)
+- TPA / ATPA standard chords (`* J [Radius]`, `* J 0`, `* AI [Click]`, `* AE Enter`). All pseudo-text or dot commands have been removed.
 
-Deliberately unparsed CRC tables / commands — later work, **not** stubs this
-trainer accepts:
+The following specialized or multi-subsystem command sets remain deliberately deferred to later phases:
 
-- `TERM CNTL ALL`
-- typed TCP / `Δ` handoffs and recall
-- **all** pointouts (`UN` / `**` stay radio + click; do not add preview PO)
-- quicklook `Q`
-- scratchpad `Y` / `+` undo
-- per-track PTL `R`
-- per-track Mode C / MULTIFUNC `M` `C` `Y` (see **Manual Inhibit Commands
-  and Safety Inhibit Glyphs** — do not duplicate that parser here)
-- assigned / filed alt `MΔ` / `++`
-- assign-code `M ####` / `M(####)`
-- beacon LDB `BE` / `BI`
-- leader-by-TCP / `L11` global typed
-- relocate preview / lists
-- typed range 6–256 and 1/3 NM steps
-- typed map ID
-- WX overlays
-- dual assoc / unassoc `FC`
-- TAB / VFR / COAST / CA / SIGN-ON / TOWER / CRDA lists (see dedicated item below)
-- RBL `*T` / min-sep / `.find` `.center` `.rings`
-- GI / ATIS `S` type-in
-- FP dump `D`
-- consolidation
-- coordination
-- TDM
-- CRDA Table 26
-- CA `K` / force SPC
-- highlight remains middle-click (T02-37)
+1. **Flight Plan Amendments & Modals:**
+   - `* F [Callsign] <ENTER>`: Open flight plan creation / amendment modal.
+   - `* V [Callsign] <ENTER>`: Create VFR flight plan.
+   - `* A [Callsign] <ENTER>`: Create abbreviated flight plan.
+   - `* DEL <ENTER> [Click Target]`: Delete flight plan / drop flight plan association.
 
-Constraints later work must keep: never Command IR; `*` chords remain T02-49;
-radio line unchanged; reject unknown rather than no-op; data-first catalog;
-self-hosted speech.
+2. **Scratchpads & Tactical Target Autopilot Overrides:**
+   - `* [Text] <ENTER> [Click Target]`: Set Scratchpad 1 (up to 3 characters).
+   - `* /[Text] <ENTER> [Click Target]`: Set Scratchpad 2.
+   - `* [Alt] <ENTER> [Click Target]`: Set assigned altitude (e.g. `* 050`).
+   - `* H[Heading] <ENTER> [Click Target]`: Set assigned heading (e.g. `* H240`).
+   - `* S[Speed] <ENTER> [Click Target]`: Set assigned airspeed (e.g. `* S210`).
 
-### STARS Preview Area System List Display Commands (Table 29 & Table 32)
+3. **Advanced Track States & Unsupported Blocks:**
+   - `+ HOLD <ENTER> [Click Target]`: Place target into coast/suspend state.
+   - `+ UNS <ENTER> [Click Scope]`: Create an Unsupported Data Block at cursor coordinates.
+   - `+ R <ENTER> [Click Target]`: Reposition kinematic track coordinates.
+   - `/ ALL <ENTER>`: Drop track on all owned targets simultaneously.
 
-Currently, system lists are rendered via the internal window manager and can be controlled programmatically via `toggleSystemList(view, listId)`. However, the Preview Area command parser does not yet accept standard STARS keyboard list commands.
+4. **Multi-Controller Networking & Coordination:**
+   - `[Handoff ID] <ENTER> [Click Target]`: Initiate handoff to external TCP or sector.
+   - `[Handoff ID] <ENTER> [Click Target]`: Redirect incoming handoff to another controller.
+   - `/ <ENTER> [Click Target]`: Retract / cancel initiated handoff.
+   - `[TCP ID] * [Click Target]`: Initiate point out to specified controller.
+   - `/ * [Click Target]`: Reject / recall point out.
+   - `INIT CONSOL [Sector ID] <ENTER>` / `DECONSOL [Sector ID] <ENTER>`: Sector consolidation and de-consolidation.
+   - `DISP CONSOL <ENTER>`: Display active facility consolidations list.
+   - `QL [Sector ID] <ENTER>` / `QL OFF [Sector ID] <ENTER>`: Enable / disable Quick Look for specified sector.
+   - `ZDE [Callsign] <ENTER>` / `ZCL [Callsign] <ENTER>`: Electronic departure coordination messaging to Tower.
 
-**Planned Command Set:**
-1. **`SO` (Sign-On List):** Toggles display of the Sign-On list (`SIGN_ON`).
-2. **`T` or `TAB` (Flight Plan List):** Toggles display of the unassociated IFR departure Tab list (`TAB`).
-3. **`TV` (VFR List):** Toggles display of the VFR flight following list (`VFR`).
-4. **`P1` / `P2` / `P3` (Tower Lists):** Toggles display of Tower Arrival Sequence lists 1, 2, and 3 (`TOWER_1`, `TOWER_2`, `TOWER_3`).
-5. **`TC` (Coast/Suspend List):** Toggles display of the Coast/Suspend list (`COAST`).
-6. **`CR` (CRDA Status List):** Toggles display of the CRDA Status list (`CRDA`).
-7. **`TX` (Geographic Video Maps List):** Toggles display of the Geographic Video Maps directory list (`MAPS`).
-8. **`TM` (LA/CA/MCI Alert List):** Toggles manual visibility of the safety alert list (`ALERT`).
-9. **`CO` / `F13` (Coordination List):** Toggles display of the departure coordination list (`COORD`).
-10. **`[List Cmd] + [Slew/Click]` Relocation:** Repositions the specified list anchor to the trackball/cursor coordinates.
+5. **Weather Radar Simulation:**
+   - `* WX [1-6] <ENTER>`: Toggle precipitation reflectivity levels 1 through 6.
+   - `* WX ALL <ENTER>` / `* WX OFF <ENTER>`: Enable / disable all weather overlay levels.
 
-### DCB `LISTS` Submenu / Quick Click Controls
+6. **Converging Runway Display Aid (CRDA):**
+   - `* CRDA ON [Pair ID] <ENTER>`: Activate CRDA runway pair configuration.
+   - `* CRDA OFF [Pair ID] <ENTER>`: Deactivate CRDA runway pair.
+   - `* CRDA DISP <ENTER>`: Display active CRDA configuration matrix.
 
-In real FAA STARS consoles, the physical Display Control Bar (DCB) provides buttons for **`MAPS`** (GEO and CURRENT video map inventory) and **`AUX` -> `SSA FILTER` / `GI FILTER`**, while other system lists are conventionally driven via keyboard/preview area commands.
+7. **Tower Display Mode (TDM):**
+   - `* G [Click Data Block]`: Toggle TDM ground target data block format.
+   - `* G [1-8] [Click Data Block]`: Set TDM ground target leader line direction.
 
-To enhance web browser simulator usability without violating STARS fidelity:
-- Add a **`LISTS`** submenu button on the DCB (or under **`AUX -> LISTS`**).
-- Submenu cells: `ALL`, `SO`, `TAB`, `VFR`, `TWR1`, `TWR2`, `TWR3`, `CRDA`, `COAST`, `MAPS`, `COORD`, and `DONE`.
-- Clicking each cell toggles the corresponding window visibility directly without requiring keyboard command entry.
+8. **Conflict Alert Manual Inhibit:**
+   - `* K [Click Target]`: Inhibit Conflict Alert on specific target.
+   - `* K ALL <ENTER>`: Inhibit Conflict Alert on all targets.
+
+Constraints later work must keep: never Command IR; radio line isolated; reject unknown rather than no-op; data-first catalog; self-hosted speech.
 
 ### Track lifecycle and multi-controller networking
 
