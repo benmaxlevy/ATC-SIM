@@ -171,6 +171,9 @@ export function beginFilterEntry(entry: FilterEntry, filter: AltitudeFilter, now
 }
 
 export function cancelFilterEntry(entry: FilterEntry, filter: AltitudeFilter): void {
+  if (entry.phase === "idle") {
+    return;
+  }
   const previous = cloneAltitudeFilter(entry.previous);
   filter.minHundreds = previous.minHundreds;
   filter.maxHundreds = previous.maxHundreds;

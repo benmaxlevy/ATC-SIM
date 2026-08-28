@@ -152,3 +152,11 @@ test("cancelFilterEntry restores previous without throwing", () => {
   expect(() => cancelFilterEntry(entry, filter)).not.toThrow();
   expect(filter).toEqual({ minHundreds: 70, maxHundreds: 90 });
 });
+
+test("cancelFilterEntry on idle leaves committed *LA limits in place", () => {
+  const filter = { minHundreds: 0, maxHundreds: 150 };
+  const entry = idleFilterEntry({ minHundreds: 0, maxHundreds: 180 });
+  cancelFilterEntry(entry, filter);
+  expect(filter).toEqual({ minHundreds: 0, maxHundreds: 150 });
+  expect(entry.phase).toBe("idle");
+});

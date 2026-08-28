@@ -80,7 +80,7 @@ Area command holes (including those MULTIFUNC chords) are listed under
 The Seventeenth Swarm (T02-61–67) implements the core single-controller STARS keyboard command set:
 - `<TRK>` (`+`) and `<SLEW>` (`/`) track initiation, callsign association, and track dropping
 - `<ENTER>` inbound handoff acceptance; `<MULTI>` (`*`) pointout acknowledgement and cyan highlight
-- Data block mode toggling (`/` for PDB ↔ FDB), leader line direction (`* [1-8]` / `* 0`), and beacon readout (`* B`)
+- Data block mode toggling (`/` click **datablock** for PDB ↔ FDB; `/` click **symbol** drops owned track), leader line direction (`* [1-8]` / `* 0`), and beacon readout (`*B` **click** is T02-66 5s beaconator on uncorrelated; bare `*B` **Enter** is TPA `*B INV`)
 - System list management (`* T`, `* TV`, `* TC`, `* TS`, `* P1`–`P3`, `* TM`, `* TX`, `* TN`), visible line limits (`[1-100]`), and click relocation (`* [List] [Click]` / `* S [Click]`)
 - Video map toggles (`* D [ID]`, `* D OFF [ID]`, `* D ALL`, `* D NONE`, `M [ID]`)
 - Scope display manipulation (`* C [Click]`, `* OFF`, `* RR [Spacing]`, `* RR C [Click]`, `* RR OFF`, `* PTL [Min]`, `* HIST [0-9]`)
@@ -135,6 +135,11 @@ The following specialized or multi-subsystem command sets remain deliberately de
 8. **Conflict Alert Manual Inhibit:**
    - `* K [Click Target]`: Inhibit Conflict Alert on specific target.
    - `* K ALL <ENTER>`: Inhibit Conflict Alert on all targets.
+
+**Shipped vs deferred collisions (do not regress):**
+- Idle F is the altitude-filter chord (`beginFilterEntry`). `*F` Enter is T02-65 FILTER readout and does **not** open the deferred `*F [Callsign]` flight-plan modal.
+- `*BCN` / `*BCN DEL` are T02-65 beacon filters. Bare `*B` Enter is TPA (`*B INV`). Live `*B` click is T02-66 beaconator.
+- DCB RR spinner stays `[2, 5, 10]`; keyboard `*RR 20` is allowed. DCB PTL spinner stays `0.5/1/2/4`; keyboard `*PTL` accepts 0–15.
 
 Constraints later work must keep: never Command IR; radio line isolated; reject unknown rather than no-op; data-first catalog; self-hosted speech.
 
