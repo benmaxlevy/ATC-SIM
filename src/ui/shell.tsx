@@ -54,7 +54,7 @@ export interface ShellProps {
 
 export function Shell({ app, scenario, scopeView }: ShellProps) {
   const [activeScenario, setActiveScenario] = useState(scenario);
-  const [setupOpen, setSetupOpen] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(true);
   const [setup, setSetup] = useState<SessionSetup>(() => {
     const fallback = defaultSessionSetup(scenario.id);
     const stored =
@@ -205,9 +205,6 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             />
           }
         >
-          <button type="button" className="session-setup-open" onClick={() => setSetupOpen(true)}>
-            Session setup
-          </button>
           {fpsDebug ? <FpsDebug /> : null}
           <SimControls world={app.world} />
           <SpeechSettingsPanel
