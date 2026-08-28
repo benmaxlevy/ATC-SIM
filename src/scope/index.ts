@@ -186,6 +186,7 @@ export type { KeyBinding, KeyFocus, ScopeChord } from "./keymap";
 export {
   applyPreviewBeaconAction,
   armPreviewCntl,
+  armPreviewRelocateList,
   beginPreviewBeaconEntry,
   beginPreviewBufferEntry,
   cancelPreviewArea,
@@ -204,6 +205,7 @@ export {
   previewBufferCharFromKey,
   previewCntlArmed,
   previewFlidMatchesSlew,
+  previewRelocateListId,
   rejectPreviewArea,
   rejectPreviewCntl,
   resolveScopeFlid,
@@ -613,9 +615,12 @@ export {
   handleListMiddleClick,
   handleListMouseMove,
   idleListDragState,
+  normalizedClickAnchor,
   pointInsideRect,
   rectsOverlap,
+  relocateSystemList,
   setAllSystemListsVisible,
+  setSystemListMaxLines,
   toggleAllSystemLists,
   toggleSystemList,
 } from "./systemLists";

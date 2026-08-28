@@ -21,6 +21,7 @@ import {
   previewBufferCharFromKey,
   previewCntlArmed,
   previewFlidMatchesSlew,
+  previewRelocateListId,
   rejectPreviewArea,
   rejectPreviewCntl,
   resolveScopeFlid,
@@ -445,18 +446,16 @@ test("idle preview does not steal typing; F-key armed slew FLID must uniquely ma
   expect(inv.rejection).toBe("INIT CNTL INV");
 });
 
-test("T02-61 — * + / and *T stay incomplete; Enter on those prefixes is INV", () => {
+test("T02-61 — * + / stay incomplete; Enter on those prefixes is INV", () => {
   expect(parsePreviewCommand("*")).toEqual({ kind: "incomplete" });
   expect(parsePreviewCommand("+")).toEqual({ kind: "incomplete" });
   expect(parsePreviewCommand("/")).toEqual({ kind: "incomplete" });
-  expect(parsePreviewCommand("*T")).toEqual({ kind: "incomplete" });
   expect(parsePreviewCommand("* ")).toEqual({ kind: "incomplete" });
   expect(parsePreviewCommand("+DAL")).toEqual({ kind: "incomplete" });
   expect(parsePreviewCommand("/A")).toEqual({ kind: "incomplete" });
   expect(commitPreviewCommand("*")).toMatchObject({ kind: "invalid" });
   expect(commitPreviewCommand("+")).toMatchObject({ kind: "invalid" });
   expect(commitPreviewCommand("/")).toMatchObject({ kind: "invalid" });
-  expect(commitPreviewCommand("*T")).toMatchObject({ kind: "invalid" });
   expect(parsePreviewCommand("Q")).toMatchObject({ kind: "invalid" });
   expect(parsePreviewCommand("B")).toEqual({ kind: "incomplete" });
 });
@@ -478,11 +477,10 @@ test("T02-61 — handlePreviewBufferKey captures, Backspace edits, Enter flashes
 
   expect(handlePreviewBufferKey(state, "Enter", 4)).toEqual({
     consumed: true,
-    action: null,
-    starsBuffer: "*T",
+    action: { type: "toggleList", listId: "TAB" },
   });
-  expect(state.phase).toBe("entry");
-  expect(state.buffer).toBe("*T");
+  expect(state.phase).toBe("idle");
+  expect(state.buffer).toBe("");
 
   const plus = idlePreviewArea();
   beginPreviewBufferEntry(plus, "+", 0);
@@ -550,4 +548,118 @@ test("T02-61 — previewBufferCharFromKey maps prefixes, numpad, letters, space"
   expect(isPreviewBufferStartChar("*")).toBe(true);
   expect(isPreviewBufferStartChar(".")).toBe(false);
   expect(isPreviewBufferStartChar("Q")).toBe(true);
+});
+
+const LIST_TOGGLE_CASES: ReadonlyArray<{ buffer: string; listId: string }> = [
+  { buffer: "*T", listId: "TAB" },
+  { buffer: "* T", listId: "TAB" },
+  { buffer: "*TAB", listId: "TAB" },
+  { buffer: "*TV", listId: "VFR" },
+  { buffer: "* TV", listId: "VFR" },
+  { buffer: "*TC", listId: "COAST" },
+  { buffer: "*TS", listId: "SIGN_ON" },
+  { buffer: "*P1", listId: "TOWER_1" },
+  { buffer: "* P1", listId: "TOWER_1" },
+  { buffer: "*P2", listId: "TOWER_2" },
+  { buffer: "*P3", listId: "TOWER_3" },
+  { buffer: "*TM", listId: "ALERT" },
+  { buffer: "*TX", listId: "MAPS" },
+  { buffer: "*TN", listId: "CRDA" },
+];
+
+test("T02-62 — list mnemonics toggle; spaces optional; *TAB aliases *T", () => {
+  for (const row of LIST_TOGGLE_CASES) {
+    expect(parsePreviewCommand(row.buffer), row.buffer).toEqual({
+      kind: "action",
+      action: { type: "toggleList", listId: row.listId },
+    });
+    expect(commitPreviewCommand(row.buffer), `commit ${row.buffer}`).toEqual({
+      kind: "action",
+      action: { type: "toggleList", listId: row.listId },
+    });
+  }
+});
+
+test("T02-62 — *S arms SSA relocate and does not toggle; *S Enter is armRelocateList", () => {
+  expect(parsePreviewCommand("*S")).toEqual({
+    kind: "action",
+    action: { type: "armRelocateList", listId: "SSA" },
+  });
+  expect(parsePreviewCommand("* S")).toEqual({
+    kind: "action",
+    action: { type: "armRelocateList", listId: "SSA" },
+  });
+  const state = idlePreviewArea();
+  beginPreviewBufferEntry(state, "*", 0);
+  handlePreviewBufferKey(state, "S", 1);
+  expect(handlePreviewBufferKey(state, "Enter", 2)).toEqual({
+    consumed: true,
+    action: { type: "armRelocateList", listId: "SSA" },
+  });
+  expect(state.phase).toBe("idle");
+});
+
+test("T02-62 — * [List] [1-100] resizes; *T 0 and *T 999 are INV", () => {
+  expect(parsePreviewCommand("*T10")).toEqual({
+    kind: "action",
+    action: { type: "resizeList", listId: "TAB", maxLines: 10 },
+  });
+  expect(parsePreviewCommand("*T 10")).toEqual({
+    kind: "action",
+    action: { type: "resizeList", listId: "TAB", maxLines: 10 },
+  });
+  expect(parsePreviewCommand("*TV 1")).toEqual({
+    kind: "action",
+    action: { type: "resizeList", listId: "VFR", maxLines: 1 },
+  });
+  expect(parsePreviewCommand("*P1 100")).toEqual({
+    kind: "action",
+    action: { type: "resizeList", listId: "TOWER_1", maxLines: 100 },
+  });
+  expect(parsePreviewCommand("*T0")).toMatchObject({ kind: "invalid" });
+  expect(parsePreviewCommand("*T 0")).toMatchObject({ kind: "invalid" });
+  expect(parsePreviewCommand("*T999")).toMatchObject({ kind: "invalid" });
+  expect(commitPreviewCommand("*T 0")).toMatchObject({ kind: "invalid" });
+  expect(commitPreviewCommand("*T999")).toMatchObject({ kind: "invalid" });
+
+  const zero = idlePreviewArea();
+  beginPreviewBufferEntry(zero, "*", 0);
+  handlePreviewBufferKey(zero, "T", 1);
+  handlePreviewBufferKey(zero, "0", 2);
+  expect(handlePreviewBufferKey(zero, "Enter", 3)).toEqual({ consumed: true, action: null });
+  expect(zero.rejection).toBe("*T0 INV");
+});
+
+test("T02-62 — *P1 is list, *P is TPA incomplete, *P10 stays TPA, *PTL incomplete, *TZ INV", () => {
+  expect(parsePreviewCommand("*P1")).toEqual({
+    kind: "action",
+    action: { type: "toggleList", listId: "TOWER_1" },
+  });
+  expect(parsePreviewCommand("*P")).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("*P10")).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("*PTL")).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("*J")).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("*J3")).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("*TZ")).toMatchObject({ kind: "invalid" });
+  expect(commitPreviewCommand("*TZ")).toMatchObject({ kind: "invalid" });
+  expect(commitPreviewCommand("*P")).toMatchObject({ kind: "invalid" });
+});
+
+test("T02-62 — live *T / *S relocate; *T10 does not", () => {
+  const tab = injectEntry({ buffer: "*T" });
+  expect(previewRelocateListId(tab)).toBe("TAB");
+  const spaced = injectEntry({ buffer: "* T" });
+  expect(previewRelocateListId(spaced)).toBe("TAB");
+  const ssa = injectEntry({ buffer: "*S" });
+  expect(previewRelocateListId(ssa)).toBe("SSA");
+  const sized = injectEntry({ buffer: "*T10" });
+  expect(previewRelocateListId(sized)).toBeNull();
+  const tpa = injectEntry({ buffer: "*P" });
+  expect(previewRelocateListId(tpa)).toBeNull();
+  const armed = injectEntry({
+    phase: "armed",
+    buffer: "*S",
+    armed: { type: "armRelocateList", listId: "SSA" },
+  });
+  expect(previewRelocateListId(armed)).toBe("SSA");
 });

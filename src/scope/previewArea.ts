@@ -13,9 +13,12 @@
  * F3 INIT CNTL / F4 TERM CNTL as armed actions (not typed `F3` in the buffer).
  * `B##` / `B####` are display-only filters (toggle `beaconSelectCodes`; no
  * slewed track). T02-61 adds the unified scope-focus lexer: `*`, `+`, `/`,
- * letters, digits, and spaces buffer here. `BE` / `BI` LDB inhibit and
- * assign-code (`M ####`) remain deferred. Unknown complete input is invalid,
- * not a silent no-op. Not NAS STARS.
+ * letters, digits, and spaces buffer here. T02-62 adds Table 31/32 list
+ * mnemonics (`*T` / `*TAB` / `*TV` / `*TC` / `*TS` / `*P1`–`*P3` / `*TM` /
+ * `*TX` / `*TN` toggle or `[1-100]` resize; `*S` slew-relocates SSA). Spaces
+ * are optional (`*T` = `* T`). `BE` / `BI` LDB inhibit and assign-code
+ * (`M ####`) remain deferred. Unknown complete input is invalid, not a silent
+ * no-op. Not NAS STARS.
  */
 
 import type { World } from "@core";
@@ -26,14 +29,17 @@ export type PreviewPhase = "idle" | "entry" | "armed";
 /**
  * Armed preview action, discriminated on `type`.
  * T02-52: `initCntl` / `termCntl` (FLID lives on `PreviewAreaState.flid`).
- * T02-53: `beaconBlock` / `beaconDiscrete`. Do not put F3-specific field names
- * on ScopeView.
+ * T02-53: `beaconBlock` / `beaconDiscrete`. T02-62: `toggleList` / `resizeList`
+ * / `armRelocateList`. Do not put F3-specific field names on ScopeView.
  */
 export type PreviewArmedAction =
   | { readonly type: "initCntl" }
   | { readonly type: "termCntl" }
   | { readonly type: "beaconBlock"; readonly digits: string }
-  | { readonly type: "beaconDiscrete"; readonly digits: string };
+  | { readonly type: "beaconDiscrete"; readonly digits: string }
+  | { readonly type: "toggleList"; readonly listId: string }
+  | { readonly type: "resizeList"; readonly listId: string; readonly maxLines: number }
+  | { readonly type: "armRelocateList"; readonly listId: string };
 
 /** Full callsign / numeric-tail / 4-digit squawk — duplicated, not `@pilot`. */
 const FULL_CALLSIGN = /^[A-Z]{3}[0-9]{1,4}[A-Z]?$/;
@@ -97,7 +103,8 @@ export type PreviewCommandResult =
  * are F-keys (armed on `PreviewAreaState`), not typed `F3` / `F4` buffers.
  * `B##` / `B####` cannot live as enumerated rows: `B45` is a complete CODE
  * BLOCK and a live prefix of `B4501`. `parseBeaconSelect` owns those digits.
- * T02-61: `*` / `+` / `/` are live prefixes (list/map/track rows come later).
+ * T02-61: `*` / `+` / `/` are live prefixes. T02-62 list rows live in
+ * `parseListCommand` (spaces stripped; `*P1` vs TPA `*P` / T02-64 `*PTL`).
  * Do not rewrite the state machine to add rows.
  */
 type PreviewTableEntry = { kind: "prefix" } | { kind: "action"; action: PreviewArmedAction };
@@ -250,10 +257,106 @@ function parseBeaconSelect(buffer: string): PreviewCommandResult | null {
   return { kind: "incomplete" };
 }
 
+/** Longest-first so `TAB` / `TV` win over `T`. */
+const LIST_TOGGLE_TOKENS: ReadonlyArray<{ token: string; listId: string }> = [
+  { token: "TAB", listId: "TAB" },
+  { token: "TV", listId: "VFR" },
+  { token: "TC", listId: "COAST" },
+  { token: "TS", listId: "SIGN_ON" },
+  { token: "TM", listId: "ALERT" },
+  { token: "TX", listId: "MAPS" },
+  { token: "TN", listId: "CRDA" },
+  { token: "T", listId: "TAB" },
+];
+
+const TOWER_LIST_IDS: Readonly<Record<"1" | "2" | "3", string>> = {
+  "1": "TOWER_1",
+  "2": "TOWER_2",
+  "3": "TOWER_3",
+};
+
+function compactPreviewStars(buffer: string): string {
+  return buffer.replace(/ /g, "");
+}
+
+function listResizeAction(listId: string, digits: string): PreviewCommandResult {
+  const maxLines = Number(digits);
+  if (!Number.isInteger(maxLines) || maxLines < 1 || maxLines > 100) {
+    return invalid("list maxLines out of range");
+  }
+  return { kind: "action", action: { type: "resizeList", listId, maxLines } };
+}
+
+/**
+ * Table 31/32 system lists. Spaces optional (`*T` = `* T`). `*P1`/`*P2`/`*P3`
+ * are tower lists; bare `*P` and `*P10` stay TPA; `*PTL` stays incomplete
+ * (T02-64). `*S` arms SSA relocate and does not toggle SSA.
+ */
+function parseListCommand(buffer: string): PreviewCommandResult | null {
+  if (!buffer.startsWith("*")) {
+    return null;
+  }
+  const compact = compactPreviewStars(buffer);
+  if (compact === "*" || compact === "") {
+    return null;
+  }
+
+  // Space before a size so `*P10` remains TPA cone 10 NM, not TOWER_1 resize 0.
+  const tower = /^(\*)\s*P([123])(?:\s+(\d{1,3}))?$/.exec(buffer);
+  if (tower) {
+    const listId = TOWER_LIST_IDS[tower[2] as "1" | "2" | "3"];
+    if (tower[3] !== undefined) {
+      return listResizeAction(listId, tower[3]);
+    }
+    return { kind: "action", action: { type: "toggleList", listId } };
+  }
+
+  const rest = compact.slice(1);
+  if (rest === "S") {
+    return { kind: "action", action: { type: "armRelocateList", listId: "SSA" } };
+  }
+
+  for (const row of LIST_TOGGLE_TOKENS) {
+    if (rest === row.token) {
+      return { kind: "action", action: { type: "toggleList", listId: row.listId } };
+    }
+    if (rest.startsWith(row.token)) {
+      const suffix = rest.slice(row.token.length);
+      if (/^\d+$/.test(suffix)) {
+        return listResizeAction(row.listId, suffix);
+      }
+      return invalid("malformed list command");
+    }
+  }
+  return null;
+}
+
+/**
+ * Live `*T` / `*S` (no size) or armed `armRelocateList` → list id to slew.
+ * Resize buffers (`*T10`) do not relocate.
+ */
+export function previewRelocateListId(state: PreviewAreaState): string | null {
+  if (state.armed?.type === "armRelocateList") {
+    return state.armed.listId;
+  }
+  if (state.phase !== "entry") {
+    return null;
+  }
+  const parsed = parsePreviewCommand(state.buffer);
+  if (parsed.kind !== "action") {
+    return null;
+  }
+  if (parsed.action.type === "toggleList" || parsed.action.type === "armRelocateList") {
+    return parsed.action.listId;
+  }
+  return null;
+}
+
 /**
  * Pure string parser for the Preview Area buffer.
  * T02-51: empty and live prefixes are `incomplete`; anything else is `invalid`.
  * T02-52 / T02-53 add `action` rows to `PREVIEW_TABLE` without replacing this.
+ * T02-62 list mnemonics are parsed in `parseListCommand` before the `*` prefix.
  */
 export function parsePreviewCommand(buffer: string): PreviewCommandResult {
   if (buffer === "") {
@@ -270,12 +373,16 @@ export function parsePreviewCommand(buffer: string): PreviewCommandResult {
   if (beacon) {
     return beacon;
   }
+  const list = parseListCommand(buffer);
+  if (list) {
+    return list;
+  }
   const keys = Object.keys(PREVIEW_TABLE);
   if (keys.some((key) => key.startsWith(buffer))) {
     return { kind: "incomplete" };
   }
-  // `*T`, `+FLID`, `/` slew stay incomplete until later tickets add rows.
-  // Enter still maps incomplete → INV via commitPreviewCommand.
+  // `+FLID`, `/` slew, TPA `*J`/`*P`, and later `*PTL` stay incomplete.
+  // Enter still maps incomplete → INV via commitPreviewCommand (or starsChord).
   if (keys.some((key) => key.length > 0 && buffer.startsWith(key))) {
     return { kind: "incomplete" };
   }
@@ -289,6 +396,22 @@ export function previewCntlArmed(state: PreviewAreaState): state is PreviewAreaS
     state.phase === "armed" &&
     (state.armed?.type === "initCntl" || state.armed?.type === "termCntl")
   );
+}
+
+/** `*S` Enter: stay armed for SSA slew. Does not toggle SSA visibility. */
+export function armPreviewRelocateList(
+  state: PreviewAreaState,
+  listId: string,
+  nowMs: number,
+  buffer = "*S",
+): void {
+  state.phase = "armed";
+  state.buffer = buffer;
+  state.mnemonic = "";
+  state.flid = null;
+  state.rejection = null;
+  state.armed = { type: "armRelocateList", listId };
+  state.lastKeyAtMs = nowMs;
 }
 
 /** F3 / F4 with no selection: arm command-then-slew. Mnemonic is never `"F3"` / `"F4"`. */
@@ -521,10 +644,14 @@ export function handlePreviewBufferKey(
     return { consumed: true, action: null };
   }
   if (key === "Enter" || key === "NumpadEnter") {
-    const committed = commitPreviewCommand(state.buffer);
-    if (committed.kind === "action") {
+    const parsed = parsePreviewCommand(state.buffer);
+    if (parsed.kind === "action") {
       cancelPreviewArea(state);
-      return { consumed: true, action: committed.action };
+      return { consumed: true, action: parsed.action };
+    }
+    if (parsed.kind === "invalid") {
+      rejectPreviewArea(state, nowMs);
+      return { consumed: true, action: null };
     }
     if (state.buffer.startsWith("*")) {
       return { consumed: true, action: null, starsBuffer: state.buffer };

@@ -5,6 +5,7 @@ import {
   expirePreviewArea,
   previewCntlArmed,
   previewFlidMatchesSlew,
+  previewRelocateListId,
   rejectPreviewArea,
   rejectPreviewCntl,
 } from "./previewArea";
@@ -24,6 +25,7 @@ import {
 } from "./pick";
 import { renderScope } from "./renderScope";
 import { centerOnWorld, recordLastClick, setRangeRingOrigin, type ScopeView } from "./scopeView";
+import { normalizedClickAnchor, relocateSystemList } from "./systemLists";
 import { applyDropTrackToId, applyInitiateTrackToId } from "./trackDisplay";
 
 function viewSize(widthPx: number, heightPx: number): ScopeViewSize {
@@ -51,6 +53,16 @@ export function handlePpiLeftClick(
   const size = viewSize(cssWidth, cssHeight);
   const nm = screenToNm(cssX, cssY, view.camera, size);
   recordLastClick(view, nm.eastNm, nm.northNm);
+  const relocateId = previewRelocateListId(view.preview);
+  if (relocateId) {
+    const anchor = normalizedClickAnchor(cssX, cssY, cssWidth, cssHeight);
+    if (relocateSystemList(view, relocateId, anchor.x, anchor.y)) {
+      cancelPreviewArea(view.preview);
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      return;
+    }
+  }
   if (view.placeCenterArmed) {
     centerOnWorld(view, nm.eastNm, nm.northNm);
     view.placeCenterArmed = false;

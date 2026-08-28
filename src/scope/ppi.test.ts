@@ -79,12 +79,13 @@ test("a click that misses every target leaves the armed chord waiting", () => {
   const world = createWorld({ aircraft: [dal] });
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
-  typeChord(view, world, ["*", "P", "3", "Enter"]);
-  expect(view.starsChordArmed).toEqual({ type: "cone", target: "slewed", lengthNm: 3 });
+  // *P1/*P2/*P3 are T02-62 tower lists; TPA cone mileage uses *P4+.
+  typeChord(view, world, ["*", "P", "4", "Enter"]);
+  expect(view.starsChordArmed).toEqual({ type: "cone", target: "slewed", lengthNm: 4 });
 
   const tick = nmToScreen(dal.xNm, dal.yNm, CAM, VIEW);
   handlePpiLeftClick(view, world, tick.x + 40, tick.y, CSS_W, CSS_H);
-  expect(view.starsChordArmed).toEqual({ type: "cone", target: "slewed", lengthNm: 3 });
+  expect(view.starsChordArmed).toEqual({ type: "cone", target: "slewed", lengthNm: 4 });
   expect(view.tracks.get(dal.id)?.tpaConeNm).toBeUndefined();
   expect(world.selectedAircraftId).toBeNull();
 });

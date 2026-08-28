@@ -49,6 +49,7 @@ import {
 import {
   applyPreviewBeaconAction,
   armPreviewCntl,
+  armPreviewRelocateList,
   beginPreviewBeaconEntry,
   beginPreviewBufferEntry,
   cancelPreviewArea,
@@ -82,6 +83,7 @@ import {
   selectedTrackId,
 } from "./trackDisplay";
 import { applyHandoffToSelection } from "./ownership";
+import { setSystemListMaxLines, toggleSystemList } from "./systemLists";
 
 export const ALWAYS_ON_SCOPE_KEYS = [
   "PageUp",
@@ -236,6 +238,19 @@ function applyPreviewBufferOutcome(
 ): void {
   if (outcome.action) {
     applyPreviewBeaconAction(view.beaconSelectCodes, outcome.action);
+    if (outcome.action.type === "toggleList") {
+      toggleSystemList(view, outcome.action.listId);
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+    } else if (outcome.action.type === "resizeList") {
+      setSystemListMaxLines(view, outcome.action.listId, outcome.action.maxLines);
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+    } else if (outcome.action.type === "armRelocateList") {
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      armPreviewRelocateList(view.preview, outcome.action.listId, nowMs);
+    }
   }
   if (outcome.starsBuffer) {
     const stars = commitStarsChord(outcome.starsBuffer);
