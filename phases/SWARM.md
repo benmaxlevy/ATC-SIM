@@ -80,6 +80,14 @@ or `PHASE EXIT BLOCKED` with reason.
 
 ---
 
+## Seventeenth swarm execution — 2026-08-28 (STARS Keyboard Commands & Preview Area Expansion)
+
+Human invoked `/run-swarm` on this file. Config complete; no open questions. Orchestrator+captain in one session (captain subagent cannot spawn workers). Merge lock is `feature/stars-keyboard-commands`, cut from current `master`. Ticket workers branch from that base; captain squash-merges back into that base. Do not merge this swarm onto `master`. Preserve unrelated dirty `src/` files and untracked QA artifacts; do not stage them.
+
+Wave A is T02-61 alone in an isolated worktree. Wave B is five tickets with max 3 in flight: first T02-62 ∥ T02-63 ∥ T02-64, then T02-65 ∥ T02-66 after those three merge and rebase. Wave C is T02-67. Stop after T02-67. Do not push. Do not start flight plan modals or multi-controller networking.
+
+---
+
 ## Sixteenth swarm planned — 2026-08-28 (STARS In-Scope System Lists & Complete DCB)
 
 This configuration runs on feature branch `feature/stars-lists-and-dcb`, cut from `master`. Ticket workers branch from that base; the captain squash-merges back into that base.
