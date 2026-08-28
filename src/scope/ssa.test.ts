@@ -27,7 +27,7 @@ function lines(partial: Partial<Parameters<typeof buildSsaLines>[0]> = {}) {
 
 test("AC1 — SSA block includes subset, time/altstg, status, beacons, range/PTL, dual filter, and altimeters", () => {
   const onAirport = lines({ simTimeMs: 125_000, rangeNm: 20, offCenter: false });
-  expect(onAirport).toContain("[▼]");
+  expect(onAirport).toContain("▼");
   expect(onAirport).toContain("(1)");
   expect(onAirport).toContain("0002/05  30.17");
   expect(onAirport).toContain("OK/OK/NA FUSED");
@@ -64,7 +64,7 @@ test("AC2 — SSA render lines include alert indicator and red SPCs", () => {
     spcAlerts: ["RF", "EM"],
   });
 
-  const topAlert = renderLines.find((l) => l.text === "[▼]");
+  const topAlert = renderLines.find((l) => l.text === "▼");
   expect(topAlert).toBeDefined();
   expect(topAlert?.style).toBe("alert");
 

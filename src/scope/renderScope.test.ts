@@ -715,7 +715,7 @@ test("AC1 — SSA paints FILTER, RANGE, and OFF CNTR only when panned", () => {
   for (const line of expected) {
     const painted = onAirport.fillTexts.find((t) => t.text === line);
     expect(painted, line).toBeDefined();
-    expect(painted!.fillStyle).toBe(PALETTE.ssa);
+    expect(painted!.fillStyle).toBe(line === "▼" ? PALETTE.alert : PALETTE.ssa);
     expect(painted!.x).toBe(8);
     expect(painted!.textBaseline).toBe("top");
   }
@@ -899,7 +899,7 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   expect(owned.fillTexts.filter((t) => t.text === "*")).toHaveLength(1);
   const painted = [
     ...owned.strokeRects.map((r) => r.strokeStyle),
-    ...owned.fillTexts.map((t) => t.fillStyle ?? ""),
+    ...owned.fillTexts.filter((t) => t.text !== "▼").map((t) => t.fillStyle ?? ""),
     ...owned.pathStrokes.map((s) => s.strokeStyle),
   ];
   expect(painted.some((c) => c.toLowerCase() === "#ff0000" || c.toLowerCase() === "red")).toBe(

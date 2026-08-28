@@ -1019,8 +1019,17 @@ function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): 
 
   let y = SSA_TOP_PX;
   for (const item of ssaLines) {
-    ctx.fillStyle = item.style === "alert" || item.style === "spc" ? alertColor : defaultColor;
-    ctx.fillText(item.text, SSA_LEFT_PX, y);
+    if (item.text === "▼") {
+      ctx.fillStyle = alertColor;
+      ctx.fillText(item.text, SSA_LEFT_PX, y);
+      const metrics = ctx.measureText(item.text);
+      ctx.strokeStyle = defaultColor;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(SSA_LEFT_PX, y, metrics.width, lineH);
+    } else {
+      ctx.fillStyle = item.style === "alert" || item.style === "spc" ? alertColor : defaultColor;
+      ctx.fillText(item.text, SSA_LEFT_PX, y);
+    }
     y += lineH;
   }
   for (const line of giLines) {

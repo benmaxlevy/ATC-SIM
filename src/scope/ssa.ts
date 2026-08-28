@@ -118,7 +118,7 @@ export interface SsaInput {
   quicklookStatus?: string;
   /** Active CRDA RPC or consolidation status. Derived dynamically from scenario. */
   crdaRpcStatus?: string;
-  /** Whether an active alert (MSAW / CA / system) exists for top alert indicator [▼]. */
+  /** Whether an active alert (MSAW / CA / system) exists for top alert indicator ▼. */
   hasAlert?: boolean;
 }
 
@@ -155,8 +155,8 @@ export function buildSsaRenderLines(input: SsaInput): SsaRenderLine[] {
   const vis = input.visibility ?? defaultSsaVisibility();
   const result: SsaRenderLine[] = [];
 
-  // 1. Alert Indicator [▼] - always present at top of SSA
-  result.push({ text: "[▼]", style: input.hasAlert ? "alert" : "normal" });
+  // 1. Alert Indicator ▼ - red triangle enclosed in thin green border
+  result.push({ text: "▼", style: "alert" });
 
   // 2. TCP / Display Subset: (1)
   const subset = input.subset ?? 1;

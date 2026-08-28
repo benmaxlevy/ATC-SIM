@@ -167,6 +167,13 @@ comes from authored facility JSON. Later work could provide:
 - richer facility status and ATIS-style updates;
 - source timestamps, stale-data handling, and filtering.
 
+### SSA Alert Triangle (`▼`) Operational State & Lifecycle
+
+The solid inverted triangle `▼` at the top of the SSA is permanently rendered in red (`PALETTE.alert`), tightly enclosed in a thin green border with no margin.
+* **Follow-up Verification & Modeling:**
+  1. Verify and refine alert state mappings triggering the red indicator across all subsystem fault conditions (surveillance data link loss, emergency squawks 7700/7600/7500, active CA/MSAW, and multi-sensor processing failure).
+  2. Implement visual blink/acknowledgment cycles if specified by terminal STARS facility adaptation.
+
 ### Multi-Airport Satellite Altimeter Matrix in SSA
 
 In multi-airport terminal operations (such as Boston A90 TRACON), the SSA displays rows of altimeter readings for the primary airport and up to 5 configured satellite towered airports:
