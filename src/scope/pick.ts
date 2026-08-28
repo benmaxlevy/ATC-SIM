@@ -183,8 +183,10 @@ export function pickAircraftAt(
   radiusPx: number,
   datablockView?: DatablockPickView,
 ): Aircraft | null {
-  return pickAircraftHitAt(world, cssX, cssY, cam, cssWidth, cssHeight, radiusPx, datablockView)
-    ?.aircraft ?? null;
+  return (
+    pickAircraftHitAt(world, cssX, cssY, cam, cssWidth, cssHeight, radiusPx, datablockView)
+      ?.aircraft ?? null
+  );
 }
 
 /**

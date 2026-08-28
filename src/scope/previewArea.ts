@@ -689,10 +689,7 @@ function isCompleteFlidToken(token: string): boolean {
   return FULL_CALLSIGN.test(token) || SUFFIX_CALLSIGN.test(token) || SQUAWK_CODE.test(token);
 }
 
-function parseTrackFlidRest(
-  kind: "initCntl" | "termCntl",
-  rest: string,
-): PreviewCommandResult {
+function parseTrackFlidRest(kind: "initCntl" | "termCntl", rest: string): PreviewCommandResult {
   if (rest.length === 0) {
     return { kind: "action", action: { type: kind } };
   }

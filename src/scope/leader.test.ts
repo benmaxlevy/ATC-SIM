@@ -126,4 +126,3 @@ test("T02-66 — STARS *1–*8 is NE clockwise, not the numpad L compass", () =>
   expect(leaderDirFromStarsClock(8)).toBe(8);
   expect(leaderDirFromStarsClock(5)).toBe(1);
 });
-

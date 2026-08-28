@@ -160,7 +160,10 @@ function cloneSystemListPlacements(): Record<string, SystemListPlacement> {
   return out;
 }
 
-function ensureSystemListPlacement(view: ScopeView, listId: string): SystemListPlacement | undefined {
+function ensureSystemListPlacement(
+  view: ScopeView,
+  listId: string,
+): SystemListPlacement | undefined {
   if (!view.systemLists) {
     view.systemLists = cloneSystemListPlacements();
   }

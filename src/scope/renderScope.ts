@@ -408,9 +408,10 @@ export function getDatablockVisualState(
   // 7. Track highlight (Cyan #00FFFF)
   if (td?.highlighted) {
     const baseMode = td.datablockMode ?? (td.ownership === "owned" ? "full" : "partial");
-    const mode = isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs) && baseMode === "partial"
-      ? "full"
-      : baseMode;
+    const mode =
+      isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs) && baseMode === "partial"
+        ? "full"
+        : baseMode;
     return {
       color: PALETTE.highlight,
       visible: true,
@@ -422,9 +423,10 @@ export function getDatablockVisualState(
   // 8. Base ownership
   const ownership = td?.ownership ?? "unowned";
   const baseMode = td?.datablockMode ?? (ownership === "owned" ? "full" : "partial");
-  const mode = isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs) && baseMode === "partial"
-    ? "full"
-    : baseMode;
+  const mode =
+    isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs) && baseMode === "partial"
+      ? "full"
+      : baseMode;
   const baseColor = PALETTE[ownership];
 
   return {

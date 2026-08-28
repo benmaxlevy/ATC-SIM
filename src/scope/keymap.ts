@@ -219,7 +219,8 @@ export const KEY_BINDINGS: KeyBinding[] = [
     windowsKeys: "/",
     action:
       "Preview Area slew/drop prefix (buffers `/`). Tab cycles PPI ↔ command line. Radio-focused / types as phase 1.",
-    crcAnalog: "CRC / is leader length — we do not bind that; CRC <SLEW> analog is / or canvas click",
+    crcAnalog:
+      "CRC / is leader length — we do not bind that; CRC <SLEW> analog is / or canvas click",
   },
   {
     id: "stars-tpa-atpa",

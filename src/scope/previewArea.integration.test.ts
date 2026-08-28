@@ -511,4 +511,3 @@ test("T02-65 — *F readout, *LA bounds, *BCN □ paint; *B / idle F / B45 uncha
   expect(tpa.beaconSelectCodes).toEqual([]);
   expect(tpa.preview.rejection).toBeNull();
 });
-

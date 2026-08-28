@@ -1426,4 +1426,3 @@ test("T02-66 — *F is T02-65 display; incomplete *LA/*BCN INV; F3/F4 and L+digi
   handleScopeKeyDown(keyEvent("6"), view, "scope", world, 700);
   expect(view.tracks.get(dal.id)!.leaderDir).toBe(6);
 });
-

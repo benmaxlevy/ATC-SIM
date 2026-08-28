@@ -254,11 +254,7 @@ function startPreviewBuffer(view: ScopeView, ch: string, nowMs: number): void {
   }
 }
 
-function applyPreviewArmedAction(
-  view: ScopeView,
-  action: PreviewArmedAction,
-  nowMs: number,
-): void {
+function applyPreviewArmedAction(view: ScopeView, action: PreviewArmedAction, nowMs: number): void {
   if (applyPreviewBeaconAction(view.beaconSelectCodes, action)) {
     return;
   }
@@ -595,10 +591,7 @@ export function handleScopeKeyDown(
         return true;
       }
     }
-    if (
-      (event.key === "Enter" || event.key === "NumpadEnter") &&
-      view.preview.phase === "idle"
-    ) {
+    if ((event.key === "Enter" || event.key === "NumpadEnter") && view.preview.phase === "idle") {
       consume(event);
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;

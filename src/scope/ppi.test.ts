@@ -1,5 +1,12 @@
 import { expect, test } from "vitest";
-import { createAircraft, createWorld, handoffFor, offerPointout, type Aircraft, type Intent } from "@core";
+import {
+  createAircraft,
+  createWorld,
+  handoffFor,
+  offerPointout,
+  type Aircraft,
+  type Intent,
+} from "@core";
 import { createWorldFromScenario, loadKdem } from "@scenario";
 import { DEFAULT_SCOPE_CAMERA, nmToScreen, type ScopeCamera } from "./camera";
 import { datablockRect, linesForDatablock } from "./datablock";
@@ -12,11 +19,7 @@ import { formatPreviewReadout } from "./previewArea";
 import { handleScopeKeyDown } from "./scopeKeys";
 import { createScopeView } from "./scopeView";
 import { expireStarsChordEntry, formatStarsChordReadout } from "./starsChord";
-import {
-  BEACONATOR_SLEW_MS,
-  isTrackBeaconator,
-  syncTrackDisplays,
-} from "./trackDisplay";
+import { BEACONATOR_SLEW_MS, isTrackBeaconator, syncTrackDisplays } from "./trackDisplay";
 
 const CAM: ScopeCamera = DEFAULT_SCOPE_CAMERA;
 const CSS_W = 800;
@@ -402,7 +405,14 @@ function datablockCenter(
 ): { x: number; y: number } {
   const td = view.tracks.get(ac.id);
   const mode = td?.datablockMode ?? "partial";
-  const lines = linesForDatablock(ac, mode, view.modeCVisible, td?.scratchpad ?? "", undefined, simTimeMs);
+  const lines = linesForDatablock(
+    ac,
+    mode,
+    view.modeCVisible,
+    td?.scratchpad ?? "",
+    undefined,
+    simTimeMs,
+  );
   const lineH = datablockLineHeightPx(view.charSizePx);
   const rect = datablockRect(
     tick.x,

@@ -174,11 +174,7 @@ function keyEvent(key: string) {
   };
 }
 
-function typeScope(
-  view: ReturnType<typeof createScopeView>,
-  keys: string[],
-  startMs = 0,
-): number {
+function typeScope(view: ReturnType<typeof createScopeView>, keys: string[], startMs = 0): number {
   let now = startMs;
   for (const key of keys) {
     handleScopeKeyDown(keyEvent(key), view, "scope", undefined, now);
