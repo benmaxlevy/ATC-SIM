@@ -74,10 +74,11 @@ export {
   HIT_RADIUS_CSS_PX,
   middleClickAircraftAt,
   pickAircraftAt,
+  pickAircraftHitAt,
   selectAircraftAt,
   selectOrAcceptAircraftAt,
 } from "./pick";
-export type { DatablockPickView } from "./pick";
+export type { AircraftPickHit, AircraftPickRegion, DatablockPickView } from "./pick";
 export {
   HISTORY_TRAIL,
   PALETTE,
@@ -188,6 +189,7 @@ export {
   applyPreviewBeaconAction,
   armPreviewCntl,
   armPreviewRelocateList,
+  armPreviewSlewAction,
   beginPreviewBeaconEntry,
   beginPreviewBufferEntry,
   cancelPreviewArea,
@@ -202,11 +204,14 @@ export {
   isBeaconPreviewEntry,
   isPreviewBufferStartChar,
   parsePreviewCommand,
+  parseTrackingCommand,
+  parseTrackingSlewBuffer,
   previewAreaIsLive,
   previewBufferCharFromKey,
   previewCntlArmed,
   previewFlidMatchesSlew,
   previewRelocateListId,
+  previewTrackingSlew,
   rejectPreviewArea,
   rejectPreviewCntl,
   resolveScopeFlid,
@@ -507,7 +512,9 @@ export {
   IDENT_DISPLAY_FLASH_MS,
   LDB_QUERY_DURATION_MS,
   OUTBOUND_ACCEPTED_FLASH_MS,
+  BEACONATOR_SLEW_MS,
   acceptInboundOnClick,
+  applyBeaconatorSlewToId,
   applyDropTrackToId,
   applyDropTrackToSelection,
   applyInitiateTrackToId,
@@ -516,10 +523,13 @@ export {
   ensureTrackDisplay,
   handleTrackClick,
   handleTrackMiddleClick,
+  isBeaconatorReadout,
   isIdentFlashing,
+  isTrackBeaconator,
   isTrackQueried,
   queryTrack,
   selectedTrackId,
+  setLeaderDirForId,
   setLeaderDirForSelection,
   setScratchpad,
   syncTrackDisplays,
@@ -555,10 +565,12 @@ export {
   drawLeaderLine,
   effectiveLeaderLengthPx,
   isLeaderDir,
+  isStarsLeaderClock,
+  leaderDirFromStarsClock,
   leaderOffsetPx,
   leaderSegmentPx,
 } from "./leader";
-export type { DatablockMetrics, LeaderDir, LeaderLengthPx } from "./leader";
+export type { DatablockMetrics, LeaderDir, LeaderLengthPx, StarsLeaderClock } from "./leader";
 export {
   SCRATCHPAD_MAX_LEN,
   DATABLOCK_FIELD_GAP,

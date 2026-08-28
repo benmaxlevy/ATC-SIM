@@ -1,13 +1,22 @@
 import { expect, test } from "vitest";
-import { createAircraft, createWorld, handoffFor, type Intent } from "@core";
+import { createAircraft, createWorld, handoffFor, offerPointout, type Aircraft, type Intent } from "@core";
 import { createWorldFromScenario, loadKdem } from "@scenario";
 import { DEFAULT_SCOPE_CAMERA, nmToScreen, type ScopeCamera } from "./camera";
+import { datablockRect, linesForDatablock } from "./datablock";
+import { datablockLineHeightPx } from "./fonts";
 import { CHORD_TIMEOUT_MS } from "./keymap";
+import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock } from "./leader";
+import { pickAircraftHitAt } from "./pick";
 import { handlePpiLeftClick } from "./ppi";
+import { formatPreviewReadout } from "./previewArea";
 import { handleScopeKeyDown } from "./scopeKeys";
 import { createScopeView } from "./scopeView";
 import { expireStarsChordEntry, formatStarsChordReadout } from "./starsChord";
-import { syncTrackDisplays } from "./trackDisplay";
+import {
+  BEACONATOR_SLEW_MS,
+  isTrackBeaconator,
+  syncTrackDisplays,
+} from "./trackDisplay";
 
 const CAM: ScopeCamera = DEFAULT_SCOPE_CAMERA;
 const CSS_W = 800;
@@ -226,7 +235,8 @@ test("incomplete live buffer at click shows INV, does not throw, and does not sw
 
   typeChord(view, world, ["*"]);
   expect(() => handlePpiLeftClick(view, world, aalTick.x, aalTick.y, CSS_W, CSS_H)).not.toThrow();
-  expect(view.starsChordEntry.rejection).toBe("* INV");
+  expect(view.preview.phase).toBe("idle");
+  expect(view.tracks.get(aal.id)!.highlighted).toBe(true);
   expect(world.selectedAircraftId).toBe(aal.id);
 });
 
@@ -382,4 +392,156 @@ test("empty PPI click does not apply or consume a B command", () => {
 
   handlePpiLeftClick(view, world, 10, 10, CSS_W, CSS_H);
   expect(view.beaconSelectCodes).toEqual(["45"]);
+});
+
+function datablockCenter(
+  view: ReturnType<typeof createScopeView>,
+  ac: Aircraft,
+  tick: { x: number; y: number },
+  simTimeMs = 0,
+): { x: number; y: number } {
+  const td = view.tracks.get(ac.id);
+  const mode = td?.datablockMode ?? "partial";
+  const lines = linesForDatablock(ac, mode, view.modeCVisible, td?.scratchpad ?? "", undefined, simTimeMs);
+  const lineH = datablockLineHeightPx(view.charSizePx);
+  const rect = datablockRect(
+    tick.x,
+    tick.y,
+    lines,
+    view.datablockCellWidthPx,
+    lineH,
+    td?.leaderDir ?? DEFAULT_LEADER_DIR,
+    view.leaderLengthPx,
+  );
+  return { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
+}
+
+test("T02-66 — + click initiates; +FLID Enter slew associates; empty click keeps arm", () => {
+  const dal = sample("DAL123", "ac-dal", 16, 8);
+  const aal = sample("AAL456", "ac-aal", -16, 0);
+  const world = createWorld({ aircraft: [dal, aal] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  typeChord(view, world, ["+"]);
+  expect(view.preview.phase).toBe("entry");
+  handlePpiLeftClick(view, world, 10, 10, CSS_W, CSS_H);
+  expect(view.preview.phase).toBe("entry");
+  expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
+
+  const dalTick = nmToScreen(dal.xNm, dal.yNm, CAM, VIEW);
+  handlePpiLeftClick(view, world, dalTick.x, dalTick.y, CSS_W, CSS_H);
+  expect(view.preview.phase).toBe("idle");
+  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+  expect(view.tracks.get(aal.id)!.ownership).toBe("unowned");
+
+  typeChord(view, world, ["+", "A", "A", "L", "4", "5", "6", "Enter"]);
+  expect(view.preview.armed).toEqual({ type: "initCntl" });
+  expect(view.preview.flid).toBe("AAL456");
+  expect(formatPreviewReadout(view.preview)).toBe("INIT CNTL AAL456");
+  handlePpiLeftClick(view, world, dalTick.x, dalTick.y, CSS_W, CSS_H);
+  expect(view.preview.rejection).toBe("INIT CNTL AAL456 INV");
+  expect(view.tracks.get(aal.id)!.ownership).toBe("unowned");
+
+  typeChord(view, world, ["+", "A", "A", "L", "4", "5", "6", "Enter"]);
+  const aalTick = nmToScreen(aal.xNm, aal.yNm, CAM, VIEW);
+  handlePpiLeftClick(view, world, aalTick.x, aalTick.y, CSS_W, CSS_H);
+  expect(view.tracks.get(aal.id)!.ownership).toBe("owned");
+  expect(view.preview.phase).toBe("idle");
+});
+
+test("T02-66 — / symbol drops owned; / datablock toggles PDB↔FDB", () => {
+  const dal = sample("DAL123", "ac-dal", 16, 8);
+  const world = createWorld({ aircraft: [dal], selectedAircraftId: dal.id });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  handleScopeKeyDown(keyEvent("F3"), view, "radio", world);
+  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+  expect(view.tracks.get(dal.id)!.datablockMode).toBe("full");
+  world.selectedAircraftId = null;
+
+  typeChord(view, world, ["/", "Enter"]);
+  expect(view.preview.armed).toEqual({ type: "termCntl" });
+  const tick = nmToScreen(dal.xNm, dal.yNm, CAM, VIEW);
+  const symbol = pickAircraftHitAt(world, tick.x, tick.y, CAM, CSS_W, CSS_H, 12, view);
+  expect(symbol?.region).toBe("symbol");
+  handlePpiLeftClick(view, world, tick.x, tick.y, CSS_W, CSS_H);
+  expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
+  expect(view.preview.phase).toBe("idle");
+
+  handleScopeKeyDown(keyEvent("F3"), view, "radio", world);
+  world.selectedAircraftId = dal.id;
+  handleScopeKeyDown(keyEvent("F3"), view, "radio", world);
+  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+  world.selectedAircraftId = null;
+  typeChord(view, world, ["/"]);
+  const db = datablockCenter(view, dal, tick);
+  const dbHit = pickAircraftHitAt(world, db.x, db.y, CAM, CSS_W, CSS_H, 12, view);
+  expect(dbHit?.region).toBe("datablock");
+  handlePpiLeftClick(view, world, db.x, db.y, CSS_W, CSS_H);
+  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+  expect(view.tracks.get(dal.id)!.datablockMode).toBe("partial");
+  expect(view.preview.phase).toBe("idle");
+});
+
+test("T02-66 — idle Enter then inbound click accepts; * click highlights; *1 sets NE leader", () => {
+  const world = createWorldFromScenario(loadKdem(), 1);
+  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  expect(handoffFor(world, dal.id).kind).toBe("inbound");
+
+  typeChord(view, world, ["Enter"]);
+  expect(view.preview.armed).toEqual({ type: "acceptHandoff" });
+  handlePpiLeftClick(view, world, 10, 10, CSS_W, CSS_H);
+  expect(view.preview.armed).toEqual({ type: "acceptHandoff" });
+  expect(handoffFor(world, dal.id).kind).toBe("inbound");
+
+  const tick = nmToScreen(dal.xNm, dal.yNm, view.camera, VIEW);
+  handlePpiLeftClick(view, world, tick.x, tick.y, CSS_W, CSS_H);
+  expect(handoffFor(world, dal.id).kind).not.toBe("inbound");
+  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+  expect(view.preview.phase).toBe("idle");
+
+  typeChord(view, world, ["*"]);
+  handlePpiLeftClick(view, world, tick.x, tick.y, CSS_W, CSS_H);
+  expect(view.tracks.get(dal.id)!.highlighted).toBe(true);
+  expect(view.preview.phase).toBe("idle");
+
+  typeChord(view, world, ["*", "1", "Enter"]);
+  handlePpiLeftClick(view, world, tick.x, tick.y, CSS_W, CSS_H);
+  expect(view.tracks.get(dal.id)!.leaderDir).toBe(leaderDirFromStarsClock(1));
+  expect(view.preview.phase).toBe("idle");
+
+  view.tracks.get(dal.id)!.leaderDir = 6;
+  typeChord(view, world, ["*", "0", "Enter"]);
+  handlePpiLeftClick(view, world, tick.x, tick.y, CSS_W, CSS_H);
+  expect(view.tracks.get(dal.id)!.leaderDir).toBe(view.defaultLeaderDir);
+});
+
+test("T02-66 — *B click shows beaconator 5s on uncorrelated; * click acks pointout", () => {
+  const dal = sample("DAL123", "ac-dal", 16, 8);
+  dal.squawk = "0342";
+  const world = createWorld({ aircraft: [dal], simTimeMs: 1000 });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
+
+  typeChord(view, world, ["*", "B"]);
+  const tick = nmToScreen(dal.xNm, dal.yNm, CAM, VIEW);
+  handlePpiLeftClick(view, world, tick.x, tick.y, CSS_W, CSS_H);
+  const td = view.tracks.get(dal.id)!;
+  expect(isTrackBeaconator(td, world.simTimeMs)).toBe(true);
+  expect(td.beaconatorUntilSimMs).toBe(1000 + BEACONATOR_SLEW_MS);
+  expect(view.preview.phase).toBe("idle");
+  world.simTimeMs = 1000 + BEACONATOR_SLEW_MS;
+  expect(isTrackBeaconator(td, world.simTimeMs)).toBe(false);
+
+  offerPointout(world, dal, "C");
+  typeChord(view, world, ["*"]);
+  handlePpiLeftClick(view, world, tick.x, tick.y, CSS_W, CSS_H);
+  const po = handoffFor(world, dal.id);
+  expect(po.kind).toBe("pointout_inbound");
+  expect(po.kind === "pointout_inbound" && po.status === "accepted").toBe(true);
+  expect(view.tracks.get(dal.id)!.pointoutAccepted).toBe(true);
 });

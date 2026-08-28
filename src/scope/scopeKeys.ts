@@ -58,6 +58,7 @@ import {
   applyPreviewBeaconAction,
   armPreviewCntl,
   armPreviewRelocateList,
+  armPreviewSlewAction,
   beginPreviewBeaconEntry,
   beginPreviewBufferEntry,
   cancelPreviewArea,
@@ -328,6 +329,17 @@ function applyPreviewArmedAction(
     case "setAltitudeFilterLimits":
       tryApplyAltitudeFilter(view.altitudeFilter, action.floorHundreds, action.ceilingHundreds);
       return;
+    case "initCntl":
+    case "termCntl":
+    case "acceptHandoff":
+    case "ackPointout":
+    case "setLeaderDir":
+    case "resetLeaderDir":
+    case "beaconatorSlew":
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      armPreviewSlewAction(view.preview, action, nowMs);
+      return;
     default:
       return;
   }
@@ -582,6 +594,17 @@ export function handleScopeKeyDown(
         ui?.onHandled?.();
         return true;
       }
+    }
+    if (
+      (event.key === "Enter" || event.key === "NumpadEnter") &&
+      view.preview.phase === "idle"
+    ) {
+      consume(event);
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      armPreviewSlewAction(view.preview, { type: "acceptHandoff" }, nowMs);
+      ui?.onHandled?.();
+      return true;
     }
   } else {
     if (view.preview.phase === "entry") {

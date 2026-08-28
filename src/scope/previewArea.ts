@@ -17,12 +17,14 @@
  * mnemonics (`*T` / `*TAB` / `*TV` / `*TC` / `*TS` / `*P1`–`*P3` / `*TM` /
  * `*TX` / `*TN` toggle or `[1-100]` resize; `*S` slew-relocates SSA). T02-64
  * adds `*C` / `*OFF` / `*RR` / `*PTL` / `*HIST`. T02-65 adds `*F` / `*LA` /
- * `*BCN` / `*BCN DEL`. Spaces are optional (`*T` = `* T`, `*F` = `* F`). Bare
- * `*P` / `*P3` stay TPA via the starsChord fallback; `*P1`–`*P3` are tower
- * lists, not PTL. Bare `*B` / `*BE` / `*BI` stay TPA; only `*BCN…` is the
- * beacon-code filter. `BE` / `BI` LDB inhibit and assign-code (`M ####`)
- * remain deferred. Unknown complete input is invalid, not a silent no-op. Not
- * NAS STARS.
+ * `*BCN` / `*BCN DEL`. T02-66: Enter on bare `+` / `/` arms INIT/TERM CNTL;
+ * `+[FLID]` Enter arms associate; `*1`–`*8` / `*0` arm leader slew. Bare `*`
+ * Enter and `*B` Enter stay starsChord TPA fallback; `*B` click is beaconator.
+ * Spaces are optional (`*T` = `* T`, `*F` = `* F`). Bare `*P` / `*P3` stay TPA
+ * via the starsChord fallback; `*P1`–`*P3` are tower lists, not PTL or `*1`
+ * leader. Bare `*B` / `*BE` / `*BI` stay TPA; only `*BCN…` is the beacon-code
+ * filter. `BE` / `BI` LDB inhibit and assign-code (`M ####`) remain deferred.
+ * Unknown complete input is invalid, not a silent no-op. Not NAS STARS.
  */
 
 import type { World } from "@core";
@@ -30,6 +32,7 @@ import type { LoadedVideoMap } from "@scenario";
 import { parseStrictFilterHundreds } from "./altitudeFilter";
 import { resolveVideoMapToken } from "./dcbFunctions";
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
+import { isStarsLeaderClock, type StarsLeaderClock } from "./leader";
 
 export type PreviewPhase = "idle" | "entry" | "armed";
 
@@ -41,11 +44,13 @@ export type PreviewPhase = "idle" | "entry" | "armed";
  * (`armRecenterScope`, `armRecenterRangeRings`) apply via DCB PLACE flags.
  * T02-63: `toggleVideoMap` / `setAllVideoMaps`. T02-65: `displayFilters` /
  * `setAltitudeFilterLimits` / `addBeaconCodeFilter` / `removeBeaconCodeFilter`.
+ * T02-66: handoff accept, pointout ack, leader clock, beaconator slew.
+ * Optional `flid` on INIT/TERM is only for typed `+[Callsign]` Enter.
  * Do not put F3-specific field names on ScopeView.
  */
 export type PreviewArmedAction =
-  | { readonly type: "initCntl" }
-  | { readonly type: "termCntl" }
+  | { readonly type: "initCntl"; readonly flid?: string }
+  | { readonly type: "termCntl"; readonly flid?: string }
   | { readonly type: "beaconBlock"; readonly digits: string }
   | { readonly type: "beaconDiscrete"; readonly digits: string }
   | { readonly type: "toggleList"; readonly listId: string }
@@ -67,7 +72,12 @@ export type PreviewArmedAction =
       readonly ceilingHundreds: number;
     }
   | { readonly type: "addBeaconCodeFilter"; readonly code: string }
-  | { readonly type: "removeBeaconCodeFilter"; readonly code: string };
+  | { readonly type: "removeBeaconCodeFilter"; readonly code: string }
+  | { readonly type: "acceptHandoff" }
+  | { readonly type: "ackPointout" }
+  | { readonly type: "setLeaderDir"; readonly starsDir: StarsLeaderClock }
+  | { readonly type: "resetLeaderDir" }
+  | { readonly type: "beaconatorSlew" };
 
 /** Full callsign / numeric-tail / 4-digit squawk — duplicated, not `@pilot`. */
 const FULL_CALLSIGN = /^[A-Z]{3}[0-9]{1,4}[A-Z]?$/;
@@ -135,18 +145,17 @@ export type PreviewCommandResult =
  * `parseListCommand` (`*P1` vs TPA `*P`). T02-64 `*C` / `*RR` / `*PTL` /
  * `*HIST` live in `parseScopeDisplayCommand`. T02-63 `*D` / `M` video-map
  * rows live in `parseVideoMapCommand`. T02-65 `*F` / `*LA` / `*BCN` live in
- * `parseAltitudeFilterCommand` / `parseBeaconFilterCommand`. Do not rewrite
- * the state machine to add rows.
+ * `parseAltitudeFilterCommand` / `parseBeaconFilterCommand`. T02-66 tracking
+ * chords live in `parseTrackingCommand` (`+` / `/` Enter arm; `*1`–`*8` /
+ * `*0` leader). Do not rewrite the state machine to add rows.
  */
 type PreviewTableEntry = { kind: "prefix" } | { kind: "action"; action: PreviewArmedAction };
 
 const PREVIEW_TABLE: Readonly<Record<string, PreviewTableEntry>> = {
   // T02-53: `B` begins beacon-code select. Digits + commit in parseBeaconSelect.
   B: { kind: "prefix" },
-  // T02-61: Multifunction / Track / Slew-Drop. Later tickets add complete rows.
+  // T02-61: Multifunction. Track `+` / Slew `/` complete in parseTrackingCommand.
   "*": { kind: "prefix" },
-  "+": { kind: "prefix" },
-  "/": { kind: "prefix" },
 };
 
 export type PreviewAreaState = {
@@ -658,6 +667,154 @@ function parseVideoMapCommand(
   return mapToggleAction(rest, maps);
 }
 
+const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
+  "initCntl",
+  "termCntl",
+  "acceptHandoff",
+  "ackPointout",
+  "setLeaderDir",
+  "resetLeaderDir",
+  "beaconatorSlew",
+]);
+
+function compactTrackingBuffer(buffer: string): string {
+  return buffer.replace(/\s+/g, "");
+}
+
+function isFlidPrefixToken(token: string): boolean {
+  return /^[A-Z]{1,3}$/.test(token);
+}
+
+function isCompleteFlidToken(token: string): boolean {
+  return FULL_CALLSIGN.test(token) || SUFFIX_CALLSIGN.test(token) || SQUAWK_CODE.test(token);
+}
+
+function parseTrackFlidRest(
+  kind: "initCntl" | "termCntl",
+  rest: string,
+): PreviewCommandResult {
+  if (rest.length === 0) {
+    return { kind: "action", action: { type: kind } };
+  }
+  if (kind === "termCntl" && rest === "ALL") {
+    return invalid("TERM CNTL ALL");
+  }
+  if (isCompleteFlidToken(rest)) {
+    return { kind: "action", action: { type: kind, flid: rest } };
+  }
+  if (isFlidPrefixToken(rest)) {
+    return { kind: "incomplete" };
+  }
+  return invalid(kind === "initCntl" ? "unknown init FLID" : "unknown drop FLID");
+}
+
+/**
+ * T02-66 tracking / datablock chords. `*P1` is a tower list (parseListCommand).
+ * Bare `*` and `*B` stay incomplete so Enter falls through to starsChord TPA.
+ * `*F` / `*LA` / `*BCN` stay unparsed for T02-65. `+HOLD` / `/ALL` are INV.
+ */
+export function parseTrackingCommand(buffer: string): PreviewCommandResult | null {
+  const compact = compactTrackingBuffer(buffer);
+  if (compact.startsWith("+")) {
+    return parseTrackFlidRest("initCntl", compact.slice(1));
+  }
+  if (compact.startsWith("/")) {
+    return parseTrackFlidRest("termCntl", compact.slice(1));
+  }
+  if (!compact.startsWith("*") || compact === "*" || compact === "") {
+    return null;
+  }
+  const rest = compact.slice(1);
+  if (rest === "0") {
+    return { kind: "action", action: { type: "resetLeaderDir" } };
+  }
+  if (/^[1-8]$/.test(rest) && isStarsLeaderClock(Number(rest))) {
+    return {
+      kind: "action",
+      action: { type: "setLeaderDir", starsDir: Number(rest) as StarsLeaderClock },
+    };
+  }
+  return null;
+}
+
+/**
+ * Live-buffer slew (no Enter): bare `*` ack/highlight, `*B` beaconator, plus
+ * complete parseTrackingCommand rows (`+`, `/`, `*1`–`*8`, `*0`).
+ */
+export function parseTrackingSlewBuffer(buffer: string): PreviewArmedAction | null {
+  const compact = compactTrackingBuffer(buffer);
+  if (compact === "*") {
+    return { type: "ackPointout" };
+  }
+  if (compact === "*B") {
+    return { type: "beaconatorSlew" };
+  }
+  const parsed = parseTrackingCommand(buffer);
+  if (parsed?.kind === "action") {
+    return parsed.action;
+  }
+  return null;
+}
+
+export function isTrackingSlewAction(action: PreviewArmedAction | null): boolean {
+  return action != null && TRACKING_SLEW_TYPES.has(action.type);
+}
+
+/** Armed tracking chord or live `+` `/` `*` `*1`–`*8` `*0` `*B` buffer. */
+export function previewTrackingSlew(state: PreviewAreaState): PreviewArmedAction | null {
+  if (state.phase === "armed" && state.armed && isTrackingSlewAction(state.armed)) {
+    const armed = state.armed;
+    if ((armed.type === "initCntl" || armed.type === "termCntl") && state.flid) {
+      return { type: armed.type, flid: state.flid };
+    }
+    return armed;
+  }
+  if (state.phase !== "entry") {
+    return null;
+  }
+  return parseTrackingSlewBuffer(state.buffer);
+}
+
+function trackingMnemonic(action: PreviewArmedAction): string {
+  switch (action.type) {
+    case "initCntl":
+      return "INIT CNTL";
+    case "termCntl":
+      return "TERM CNTL";
+    case "acceptHandoff":
+      return "HO ACCEPT";
+    case "ackPointout":
+      return "*";
+    case "setLeaderDir":
+      return `*${action.starsDir}`;
+    case "resetLeaderDir":
+      return "*0";
+    case "beaconatorSlew":
+      return "*B";
+    default:
+      return "";
+  }
+}
+
+/** Arm a command-then-slew tracking chord. INIT/TERM mnemonic is never `"F3"` / `"F4"`. */
+export function armPreviewSlewAction(
+  state: PreviewAreaState,
+  action: PreviewArmedAction,
+  nowMs: number,
+): void {
+  if (action.type === "initCntl" || action.type === "termCntl") {
+    armPreviewCntl(state, action.type, nowMs, action.flid);
+    return;
+  }
+  state.phase = "armed";
+  state.buffer = "";
+  state.mnemonic = trackingMnemonic(action);
+  state.flid = null;
+  state.rejection = null;
+  state.armed = action;
+  state.lastKeyAtMs = nowMs;
+}
+
 /**
  * Pure string parser for the Preview Area buffer.
  * T02-51: empty and live prefixes are `incomplete`; anything else is `invalid`.
@@ -665,6 +822,7 @@ function parseVideoMapCommand(
  * T02-62 list mnemonics are parsed in `parseListCommand`. T02-63 video-map
  * commands are matched before the `*` catch-all prefix. T02-65 `*F` / `*LA` /
  * `*BCN` are parsed in `parseAltitudeFilterCommand` / `parseBeaconFilterCommand`.
+ * T02-66 tracking chords are parsed in `parseTrackingCommand`.
  */
 export function parsePreviewCommand(
   buffer: string,
@@ -703,6 +861,10 @@ export function parsePreviewCommand(
   const list = parseListCommand(buffer);
   if (list) {
     return list;
+  }
+  const tracking = parseTrackingCommand(buffer);
+  if (tracking) {
+    return tracking;
   }
   const keys = Object.keys(PREVIEW_TABLE);
   if (keys.some((key) => key.startsWith(buffer))) {
@@ -746,11 +908,12 @@ export function armPreviewCntl(
   state: PreviewAreaState,
   kind: "initCntl" | "termCntl",
   nowMs: number,
+  flid?: string,
 ): void {
   state.phase = "armed";
   state.mnemonic = kind === "initCntl" ? "INIT CNTL" : "TERM CNTL";
   state.buffer = "";
-  state.flid = null;
+  state.flid = flid && flid.length > 0 ? flid : null;
   state.rejection = null;
   state.armed = { type: kind };
   state.lastKeyAtMs = nowMs;

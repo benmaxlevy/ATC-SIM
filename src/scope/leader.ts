@@ -26,6 +26,32 @@ import { TARGET_SIZE_PX } from "./targetSymbol";
 
 export type LeaderDir = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
+/**
+ * STARS `*1`–`*8` leader clock (R07 Table 20): 1 = NE clockwise through 8 = N.
+ * Distinct from the numpad L1–L9 compass (`L`+digit). `*P1` is a tower list.
+ */
+export type StarsLeaderClock = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+
+/** 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW, 8=N → numpad LeaderDir. */
+const STARS_CLOCK_TO_DIR: Record<StarsLeaderClock, LeaderDir> = {
+  1: 9,
+  2: 6,
+  3: 3,
+  4: 2,
+  5: 1,
+  6: 4,
+  7: 7,
+  8: 8,
+};
+
+export function isStarsLeaderClock(n: number): n is StarsLeaderClock {
+  return Number.isInteger(n) && n >= 1 && n <= 8;
+}
+
+export function leaderDirFromStarsClock(clock: StarsLeaderClock): LeaderDir {
+  return STARS_CLOCK_TO_DIR[clock];
+}
+
 /** Numpad 8 = north. Default at spawn for every track. */
 export const DEFAULT_LEADER_DIR: LeaderDir = 8;
 

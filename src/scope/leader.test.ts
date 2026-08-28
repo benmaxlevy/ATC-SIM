@@ -7,6 +7,7 @@ import {
   LEADER_LENGTH_STEPS_PX,
   datablockTopLeft,
   isLeaderDir,
+  leaderDirFromStarsClock,
   leaderOffsetPx,
   leaderSegmentPx,
   type LeaderDir,
@@ -118,3 +119,11 @@ test("AC7 — LDR length 0 is overlay analog; dir 5 stays overlay at 36 and 48",
   expect(leaderSegmentPx(5, 48)).toBeNull();
   expect(leaderOffsetPx(8, 48).dy).toBeCloseTo(-48);
 });
+
+test("T02-66 — STARS *1–*8 is NE clockwise, not the numpad L compass", () => {
+  expect(leaderDirFromStarsClock(1)).toBe(9);
+  expect(leaderDirFromStarsClock(2)).toBe(6);
+  expect(leaderDirFromStarsClock(8)).toBe(8);
+  expect(leaderDirFromStarsClock(5)).toBe(1);
+});
+

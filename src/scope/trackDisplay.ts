@@ -24,6 +24,8 @@ import { applyDropTrack, applyInitiateTrack, NO_SEL_HINT, type TrackOwnership } 
 export const IDENT_DISPLAY_FLASH_MS = 2000;
 export const LDB_QUERY_DURATION_MS = 5000;
 export const OUTBOUND_ACCEPTED_FLASH_MS = 5000;
+/** `*B` slew beaconator on one uncorrelated track (R07 Table 18). */
+export const BEACONATOR_SLEW_MS = 5000;
 
 export interface TrackDisplay {
   history: HistoryBuf;
@@ -70,6 +72,8 @@ export interface TrackDisplay {
   highlighted?: boolean;
   /** Sim time until which accepted outbound handoff flashes white (~5s). */
   outboundFlashUntilSimMs?: number;
+  /** Sim time until which `*B` slew shows Mode 3/A in place of callsign. */
+  beaconatorUntilSimMs?: number;
   /** Outbound accepted click step (0: flashing, 1: solid white, 2: green FDB, 3: PDB). */
   outboundClickStep?: number;
   /** Pointout accepted visual state flag. */
@@ -276,6 +280,19 @@ export function queryTrack(
 
 export function isTrackQueried(td: TrackDisplay, simTimeMs: number): boolean {
   return (td.queriedUntilSimMs ?? 0) > simTimeMs;
+}
+
+export function isTrackBeaconator(td: TrackDisplay | undefined, simTimeMs: number): boolean {
+  return (td?.beaconatorUntilSimMs ?? 0) > simTimeMs;
+}
+
+/** F1 hold or per-track `*B` slew: squawk in place of callsign. */
+export function isBeaconatorReadout(
+  viewBeaconator: boolean,
+  td: TrackDisplay | undefined,
+  simTimeMs: number,
+): boolean {
+  return viewBeaconator || isTrackBeaconator(td, simTimeMs);
 }
 
 /**
@@ -539,14 +556,46 @@ export function setLeaderDirForSelection(
 ): void {
   const selected = world.selectedAircraftId;
   if (selected && world.aircraft.some((ac) => ac.id === selected)) {
-    const td = ensureTrackDisplay(tracks, selected);
-    td.leaderDir = dir;
+    setLeaderDirForId(tracks, world, selected, dir);
     return;
   }
   for (const ac of world.aircraft) {
-    const td = ensureTrackDisplay(tracks, ac.id);
-    td.leaderDir = dir;
+    setLeaderDirForId(tracks, world, ac.id, dir);
   }
+}
+
+export function setLeaderDirForId(
+  tracks: Map<string, TrackDisplay>,
+  world: World,
+  aircraftId: string,
+  dir: LeaderDir,
+): boolean {
+  if (!world.aircraft.some((ac) => ac.id === aircraftId)) {
+    return false;
+  }
+  ensureTrackDisplay(tracks, aircraftId).leaderDir = dir;
+  return true;
+}
+
+/**
+ * `*B` slew: Mode 3/A readout for 5s on an uncorrelated (unowned / LDB) target.
+ * Owned FDB is not a beaconator target — returns false so the arm stays.
+ */
+export function applyBeaconatorSlewToId(
+  tracks: Map<string, TrackDisplay>,
+  world: World,
+  aircraftId: string,
+  durationMs = BEACONATOR_SLEW_MS,
+): boolean {
+  if (!world.aircraft.some((ac) => ac.id === aircraftId)) {
+    return false;
+  }
+  const td = ensureTrackDisplay(tracks, aircraftId);
+  if (td.ownership === "owned" && td.datablockMode !== "limited" && !td.unassociated) {
+    return false;
+  }
+  td.beaconatorUntilSimMs = world.simTimeMs + durationMs;
+  return true;
 }
 
 export function isIdentFlashing(td: TrackDisplay, simTimeMs: number): boolean {

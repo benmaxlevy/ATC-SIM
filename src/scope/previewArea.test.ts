@@ -21,7 +21,9 @@ import {
   parseAltitudeFilterCommand,
   parseBeaconFilterCommand,
   parseScopeDisplayCommand,
+  parseTrackingSlewBuffer,
   previewAreaIsLive,
+  previewTrackingSlew,
   previewBufferCharFromKey,
   previewCntlArmed,
   previewFlidMatchesSlew,
@@ -470,16 +472,28 @@ test("idle preview does not steal typing; F-key armed slew FLID must uniquely ma
   expect(inv.rejection).toBe("INIT CNTL INV");
 });
 
-test("T02-61 — * + / stay incomplete; Enter on those prefixes is INV", () => {
+test("T02-61 — * stays incomplete; + / Enter arm INIT/TERM; unknown is INV", () => {
   expect(parsePreviewCommand("*")).toEqual({ kind: "incomplete" });
-  expect(parsePreviewCommand("+")).toEqual({ kind: "incomplete" });
-  expect(parsePreviewCommand("/")).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("+")).toEqual({
+    kind: "action",
+    action: { type: "initCntl" },
+  });
+  expect(parsePreviewCommand("/")).toEqual({
+    kind: "action",
+    action: { type: "termCntl" },
+  });
   expect(parsePreviewCommand("* ")).toEqual({ kind: "incomplete" });
   expect(parsePreviewCommand("+DAL")).toEqual({ kind: "incomplete" });
   expect(parsePreviewCommand("/A")).toEqual({ kind: "incomplete" });
   expect(commitPreviewCommand("*")).toMatchObject({ kind: "invalid" });
-  expect(commitPreviewCommand("+")).toMatchObject({ kind: "invalid" });
-  expect(commitPreviewCommand("/")).toMatchObject({ kind: "invalid" });
+  expect(commitPreviewCommand("+")).toEqual({
+    kind: "action",
+    action: { type: "initCntl" },
+  });
+  expect(commitPreviewCommand("/")).toEqual({
+    kind: "action",
+    action: { type: "termCntl" },
+  });
   expect(parsePreviewCommand("Q")).toMatchObject({ kind: "invalid" });
   expect(parsePreviewCommand("B")).toEqual({ kind: "incomplete" });
 });
@@ -518,8 +532,12 @@ test("T02-61 — handlePreviewBufferKey captures, Backspace edits, Enter flashes
 
   const slash = idlePreviewArea();
   beginPreviewBufferEntry(slash, "/", 0);
-  expect(handlePreviewBufferKey(slash, "Enter", 1)).toEqual({ consumed: true, action: null });
-  expect(slash.rejection).toBe("/ INV");
+  expect(handlePreviewBufferKey(slash, "Enter", 1)).toEqual({
+    consumed: true,
+    action: { type: "termCntl" },
+  });
+  expect(slash.phase).toBe("idle");
+  expect(slash.rejection).toBeNull();
 
   const unknown = idlePreviewArea();
   beginPreviewBufferEntry(unknown, "Q", 0);
@@ -1097,4 +1115,95 @@ test("T02-65 — Enter on *F / *LA / *BCN returns actions; bad params INV; *B st
     action: null,
     starsBuffer: "*B",
   });
+});
+
+test("T02-66 — + / +FLID / *1–*8 / *0 parse; *P1 is list; *B stays TPA; *F is T02-65", () => {
+  expect(parsePreviewCommand("+DAL123")).toEqual({
+    kind: "action",
+    action: { type: "initCntl", flid: "DAL123" },
+  });
+  expect(parsePreviewCommand("+ DAL123")).toEqual({
+    kind: "action",
+    action: { type: "initCntl", flid: "DAL123" },
+  });
+  expect(parsePreviewCommand("+HOLD")).toMatchObject({ kind: "invalid" });
+  expect(parsePreviewCommand("/ALL")).toMatchObject({ kind: "invalid" });
+  expect(parsePreviewCommand("/DAL123")).toEqual({
+    kind: "action",
+    action: { type: "termCntl", flid: "DAL123" },
+  });
+
+  expect(parsePreviewCommand("*1")).toEqual({
+    kind: "action",
+    action: { type: "setLeaderDir", starsDir: 1 },
+  });
+  expect(parsePreviewCommand("* 8")).toEqual({
+    kind: "action",
+    action: { type: "setLeaderDir", starsDir: 8 },
+  });
+  expect(parsePreviewCommand("*0")).toEqual({
+    kind: "action",
+    action: { type: "resetLeaderDir" },
+  });
+  expect(parsePreviewCommand("*P1")).toEqual({
+    kind: "action",
+    action: { type: "toggleList", listId: "TOWER_1" },
+  });
+  expect(parsePreviewCommand("*P1")).not.toMatchObject({ type: "setLeaderDir" });
+
+  expect(parsePreviewCommand("*")).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("*B")).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("*F")).toEqual({
+    kind: "action",
+    action: { type: "displayFilters" },
+  });
+  expect(parsePreviewCommand("*LA")).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("*BCN")).toEqual({ kind: "incomplete" });
+  expect(parsePreviewCommand("*9")).toEqual({ kind: "incomplete" });
+  expect(commitPreviewCommand("*B")).toMatchObject({ kind: "invalid" });
+  expect(commitPreviewCommand("*")).toMatchObject({ kind: "invalid" });
+
+  expect(parseTrackingSlewBuffer("*")).toEqual({ type: "ackPointout" });
+  expect(parseTrackingSlewBuffer("*B")).toEqual({ type: "beaconatorSlew" });
+  expect(parseTrackingSlewBuffer("*BE")).toBeNull();
+  expect(parseTrackingSlewBuffer("*BCN")).toBeNull();
+  expect(parseTrackingSlewBuffer("*J3")).toBeNull();
+  expect(parseTrackingSlewBuffer("+")).toEqual({ type: "initCntl" });
+  expect(parseTrackingSlewBuffer("/")).toEqual({ type: "termCntl" });
+
+  const plus = idlePreviewArea();
+  beginPreviewBufferEntry(plus, "+", 0);
+  expect(handlePreviewBufferKey(plus, "Enter", 1)).toEqual({
+    consumed: true,
+    action: { type: "initCntl" },
+  });
+
+  const star = idlePreviewArea();
+  beginPreviewBufferEntry(star, "*", 0);
+  expect(handlePreviewBufferKey(star, "Enter", 1)).toEqual({
+    consumed: true,
+    action: null,
+    starsBuffer: "*",
+  });
+
+  const bcn = idlePreviewArea();
+  beginPreviewBufferEntry(bcn, "*", 0);
+  handlePreviewBufferKey(bcn, "B", 1);
+  expect(handlePreviewBufferKey(bcn, "Enter", 2)).toEqual({
+    consumed: true,
+    action: null,
+    starsBuffer: "*B",
+  });
+
+  const leader = idlePreviewArea();
+  beginPreviewBufferEntry(leader, "*", 0);
+  handlePreviewBufferKey(leader, "1", 1);
+  expect(handlePreviewBufferKey(leader, "Enter", 2)).toEqual({
+    consumed: true,
+    action: { type: "setLeaderDir", starsDir: 1 },
+  });
+
+  const live = idlePreviewArea();
+  beginPreviewBufferEntry(live, "+", 0);
+  expect(previewTrackingSlew(live)).toEqual({ type: "initCntl" });
 });

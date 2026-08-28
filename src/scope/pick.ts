@@ -41,6 +41,7 @@ export interface DatablockPickView {
       leaderDir?: LeaderDir;
       scratchpad?: string;
       queriedUntilSimMs?: number;
+      beaconatorUntilSimMs?: number;
       squawk?: string;
       ownership?: string;
     }
@@ -81,7 +82,8 @@ function pickDatablockAt(
     const dir = td?.leaderDir ?? DEFAULT_LEADER_DIR;
     const isQueried = (td?.queriedUntilSimMs ?? 0) > world.simTimeMs;
     const squawk = td?.squawk ?? ac.squawk;
-    const callsign = view.beaconatorActive && squawk ? squawk : ac.callsign;
+    const trackBeaconator = (td?.beaconatorUntilSimMs ?? 0) > world.simTimeMs;
+    const callsign = (view.beaconatorActive || trackBeaconator) && squawk ? squawk : ac.callsign;
     const base = linesForDatablock(
       { ...ac, callsign, squawk },
       mode,
@@ -114,7 +116,14 @@ function pickDatablockAt(
   return nearest;
 }
 
-export function pickAircraftAt(
+export type AircraftPickRegion = "datablock" | "symbol";
+
+export type AircraftPickHit = {
+  aircraft: Aircraft;
+  region: AircraftPickRegion;
+};
+
+function pickSymbolAt(
   world: World,
   cssX: number,
   cssY: number,
@@ -122,14 +131,7 @@ export function pickAircraftAt(
   cssWidth: number,
   cssHeight: number,
   radiusPx: number,
-  datablockView?: DatablockPickView,
 ): Aircraft | null {
-  if (datablockView) {
-    const blockHit = pickDatablockAt(world, cssX, cssY, cam, cssWidth, cssHeight, datablockView);
-    if (blockHit) {
-      return blockHit;
-    }
-  }
   const view = { widthPx: cssWidth, heightPx: cssHeight };
   let nearest: Aircraft | null = null;
   let nearestDist = Infinity;
@@ -142,6 +144,47 @@ export function pickAircraftAt(
     }
   }
   return nearest;
+}
+
+/**
+ * Prefer the datablock rectangle, then the target symbol. Lets TERM CNTL
+ * distinguish `/` datablock PDB↔FDB from symbol drop.
+ */
+export function pickAircraftHitAt(
+  world: World,
+  cssX: number,
+  cssY: number,
+  cam: ScopeCamera,
+  cssWidth: number,
+  cssHeight: number,
+  radiusPx: number,
+  datablockView?: DatablockPickView,
+): AircraftPickHit | null {
+  if (datablockView) {
+    const blockHit = pickDatablockAt(world, cssX, cssY, cam, cssWidth, cssHeight, datablockView);
+    if (blockHit) {
+      return { aircraft: blockHit, region: "datablock" };
+    }
+  }
+  const symbol = pickSymbolAt(world, cssX, cssY, cam, cssWidth, cssHeight, radiusPx);
+  if (symbol) {
+    return { aircraft: symbol, region: "symbol" };
+  }
+  return null;
+}
+
+export function pickAircraftAt(
+  world: World,
+  cssX: number,
+  cssY: number,
+  cam: ScopeCamera,
+  cssWidth: number,
+  cssHeight: number,
+  radiusPx: number,
+  datablockView?: DatablockPickView,
+): Aircraft | null {
+  return pickAircraftHitAt(world, cssX, cssY, cam, cssWidth, cssHeight, radiusPx, datablockView)
+    ?.aircraft ?? null;
 }
 
 /**
