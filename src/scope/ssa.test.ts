@@ -34,9 +34,6 @@ test("AC1 — SSA block includes subset, time/altstg, status, beacons, range/PTL
   expect(onAirport).toContain("2364  56  12");
   expect(onAirport).toContain("20NM PTL: 1.0");
   expect(onAirport).toContain("000 180 U 000 180 A");
-  expect(onAirport).toContain("BOS 30.17 BED 30.17 OWD 30.18");
-  expect(onAirport).toContain("BVY 30.17 LWM 30.19");
-  expect(onAirport).toContain("QL: ALL");
   expect(onAirport).toContain("*S1 KDEM 27/09");
   expect(onAirport).not.toContain("OFF CNTR");
 
@@ -100,14 +97,14 @@ test("AC3 — SSA FILTER hides TIME / ALTSTG and restores them", () => {
   vis.ALTSTG = false;
   const hidden = lines({ simTimeMs: 125_000, visibility: vis });
   expect(hidden.some((l) => l.includes("0002/05"))).toBe(false);
-  expect(hidden.some((l) => l.includes("BOS 30.17"))).toBe(false);
+  expect(hidden.some((l) => l.includes("30.17"))).toBe(false);
   expect(hidden).toContain("000 180 U 000 180 A");
 
   vis.TIME = true;
   vis.ALTSTG = true;
   const shown = lines({ simTimeMs: 125_000, visibility: vis });
   expect(shown.some((l) => l.includes("0002/05"))).toBe(true);
-  expect(shown.some((l) => l.includes("BOS 30.17"))).toBe(true);
+  expect(shown.some((l) => l.includes("30.17"))).toBe(true);
 });
 
 test("AC4 — GI FILTER hides a non-empty line on the PPI string list", () => {

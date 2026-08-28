@@ -223,25 +223,7 @@ export function buildSsaRenderLines(input: SsaInput): SsaRenderLine[] {
     }
   }
 
-  // 9. Configured Airport Altimeters:
-  //    BOS 30.17 BED 30.17 OWD 30.18
-  //    BVY 30.17 LWM 30.19
-  if (vis.ALTSTG) {
-    const airportList = input.airportAltimeters ?? DEFAULT_SSA_AIRPORT_ALTIMETERS;
-    if (airportList.length > 0) {
-      const formatted = airportList.map((a) => `${a.airportCode} ${a.altimeter}`);
-      const line1 = formatted.slice(0, 3).join(" ");
-      const line2 = formatted.slice(3, 6).join(" ");
-      if (line1) result.push({ text: line1, style: "normal" });
-      if (line2) result.push({ text: line2, style: "normal" });
-    }
-  }
-
-  // 10. Quicklook Status: QL: ALL
-  const ql = input.quicklookStatus ?? "ALL";
-  result.push({ text: `QL: ${ql}`, style: "normal" });
-
-  // 11. Active CRDA RPC / Consolidation Status: derived from scenario airport or explicit status
+  // 9. Active CRDA RPC / Consolidation Status: derived from scenario airport or explicit status
   const airport = input.airportCode ?? "KDEM";
   const defaultCrda = airport === "BOS" ? "*S1 BOS 27/22L" : `*S1 ${airport} 27/09`;
   const crdaStatus = input.crdaRpcStatus ?? defaultCrda;

@@ -167,6 +167,26 @@ comes from authored facility JSON. Later work could provide:
 - richer facility status and ATIS-style updates;
 - source timestamps, stale-data handling, and filtering.
 
+### Multi-Airport Satellite Altimeter Matrix in SSA
+
+In multi-airport terminal operations (such as Boston A90 TRACON), the SSA displays rows of altimeter readings for the primary airport and up to 5 configured satellite towered airports:
+```text
+BOS 30.17 BED 30.17 OWD 30.18
+BVY 30.17 LWM 30.19
+```
+* **Required Implementation:**
+  1. Automated weather sensor telemetry integration for primary and satellite towered airports configured in the facility adaptation.
+  2. Formatting in 3-airport chunks on dedicated SSA lines.
+  3. Dynamic barometric altimeter updates matching active weather simulation.
+
+### Quicklook (`QL`) Status & Facility-Wide Sector Filtering
+
+In real STARS operations, the SSA includes a Quicklook indicator (`QL: ALL` or `QL: <sector>`) showing whether the workstation is monitoring all sector tracks or filtering data blocks to assigned control sectors:
+* **Required Implementation:**
+  1. Keyboard command `Q <sector>` / `Q ALL` to toggle quicklook display modes.
+  2. Scope datablock filtering and handoff routing based on active quicklook configuration.
+  3. Displaying `QL: ALL` or `QL: <sectors>` in the SSA.
+
 Any live-data design must preserve the self-hosted speech rule and must not
 silently introduce a metered vendor dependency.
 
