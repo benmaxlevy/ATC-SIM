@@ -85,7 +85,7 @@ The Seventeenth Swarm (T02-61–67) implements the core single-controller STARS 
 - Video map toggles (`* D [ID]`, `* D OFF [ID]`, `* D ALL`, `* D NONE`, `M [ID]`)
 - Scope display manipulation (`* C [Click]`, `* OFF`, `* RR [Spacing]`, `* RR C [Click]`, `* RR OFF`, `* PTL [Min]`, `* HIST [0-9]`)
 - Altitude filters (`* F`, `* LA [Floor] [Ceiling]`) and beacon filters (`* BCN [Code]`, `* BCN DEL [Code]`)
-- TPA / ATPA standard chords (`* J [Radius]`, `* J 0`, `* AI [Click]`, `* AE Enter`). All pseudo-text or dot commands have been removed.
+- TPA / ATPA standard chords (`* J [Radius]`, `* P [Miles]`, `* J 0` / `* P` clear, `* AI [Click]`, `* AE Enter`). Compact `*P3` is a 3 NM cone; spaced `* P3` is Tower list 3. All pseudo-text or dot commands have been removed.
 
 The following specialized or multi-subsystem command sets remain deliberately deferred to later phases:
 
@@ -139,7 +139,7 @@ The following specialized or multi-subsystem command sets remain deliberately de
 **Shipped vs deferred collisions (do not regress):**
 - Idle F is the altitude-filter chord (`beginFilterEntry`). `*F` Enter is T02-65 FILTER readout and does **not** open the deferred `*F [Callsign]` flight-plan modal.
 - `*BCN` / `*BCN DEL` are T02-65 beacon filters. Bare `*B` Enter is TPA (`*B INV`). Live `*B` click is T02-66 beaconator.
-- DCB RR spinner stays `[2, 5, 10]`; keyboard `*RR 20` is allowed. DCB PTL spinner stays `0.5/1/2/4`; keyboard `*PTL` accepts 0–15.
+- Compact `*P1`/`*P2`/`*P3` (and `*P5`/`*P10`) are TPA cone miles. Tower lists require a space: `* P1`–`* P3`. `*PTL` is PTL minutes.
 
 Constraints later work must keep: never Command IR; radio line isolated; reject unknown rather than no-op; data-first catalog; self-hosted speech.
 

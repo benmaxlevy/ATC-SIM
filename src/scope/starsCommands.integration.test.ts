@@ -118,7 +118,7 @@ function datablockCenter(
   return { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
 }
 
-test("AC1 — *T *TV *P1 toggle lists; *T 15 resizes; live *T/*S click relocates", () => {
+test("AC1 — *T *TV * P1 toggle lists; *T 15 resizes; live *T/*S click relocates", () => {
   const world = createWorld();
   const view = createScopeView();
   expect(view.systemLists.TAB.visible).toBe(false);
@@ -134,10 +134,14 @@ test("AC1 — *T *TV *P1 toggle lists; *T 15 resizes; live *T/*S click relocates
   expect(view.systemLists.TAB.visible).toBe(true);
 
   const tpaBefore = view.starsChordArmed;
-  typeKeys(view, world, ["*", "P", "1", "Enter"], "scope", 400);
+  typeKeys(view, world, ["*", " ", "P", "1", "Enter"], "scope", 400);
   expect(view.systemLists.TOWER_1.visible).toBe(true);
   expect(view.systemLists.TAB.visible).toBe(true);
   expect(view.starsChordArmed).toBe(tpaBefore);
+
+  typeKeys(view, world, ["*", "P", "3", "Enter"], "scope", 500);
+  expect(view.starsChordArmed).toEqual({ type: "cone", target: "slewed", lengthNm: 3 });
+  expect(view.systemLists.TOWER_3.visible).toBe(false);
 
   typeKeys(view, world, ["*", "T", " ", "1", "5", "Enter"], "scope", 600);
   expect(view.systemLists.TAB.maxLines).toBe(15);

@@ -14,14 +14,14 @@
  * `B##` / `B####` are display-only filters (toggle `beaconSelectCodes`; no
  * slewed track). T02-61 adds the unified scope-focus lexer: `*`, `+`, `/`,
  * letters, digits, and spaces buffer here. T02-62 adds Table 31/32 list
- * mnemonics (`*T` / `*TAB` / `*TV` / `*TC` / `*TS` / `*P1`–`*P3` / `*TM` /
+ * mnemonics (`*T` / `*TAB` / `*TV` / `*TC` / `*TS` / `* P1`–`* P3` / `*TM` /
  * `*TX` / `*TN` toggle or `[1-100]` resize; `*S` slew-relocates SSA). T02-64
  * adds `*C` / `*OFF` / `*RR` / `*PTL` / `*HIST`. T02-65 adds `*F` / `*LA` /
  * `*BCN` / `*BCN DEL`. T02-66: Enter on bare `+` / `/` arms INIT/TERM CNTL;
  * `+[FLID]` Enter arms associate; `*1`–`*8` / `*0` arm leader slew. Bare `*`
  * Enter and `*B` Enter stay starsChord TPA fallback; `*B` click is beaconator.
- * Spaces are optional (`*T` = `* T`, `*F` = `* F`). Bare `*P` / `*P3` stay TPA
- * via the starsChord fallback; `*P1`–`*P3` are tower lists, not PTL or `*1`
+ * Spaces are optional (`*T` = `* T`, `*F` = `* F`). Compact `*P` / `*P3` /
+ * `*P10` stay TPA cones; tower lists require a space (`* P1`–`* P3`), not `*1`
  * leader. Bare `*B` / `*BE` / `*BI` stay TPA; only `*BCN…` is the beacon-code
  * filter. `BE` / `BI` LDB inhibit and assign-code (`M ####`) remain deferred.
  * Unknown complete input is invalid, not a silent no-op. Not NAS STARS.
@@ -142,7 +142,7 @@ export type PreviewCommandResult =
  * `B##` / `B####` cannot live as enumerated rows: `B45` is a complete CODE
  * BLOCK and a live prefix of `B4501`. `parseBeaconSelect` owns those digits.
  * T02-61: `*` / `+` / `/` are live prefixes. T02-62 list rows live in
- * `parseListCommand` (`*P1` vs TPA `*P`). T02-64 `*C` / `*RR` / `*PTL` /
+ * `parseListCommand` (`* P1` vs TPA `*P3`). T02-64 `*C` / `*RR` / `*PTL` /
  * `*HIST` live in `parseScopeDisplayCommand`. T02-63 `*D` / `M` video-map
  * rows live in `parseVideoMapCommand`. T02-65 `*F` / `*LA` / `*BCN` live in
  * `parseAltitudeFilterCommand` / `parseBeaconFilterCommand`. T02-66 tracking
@@ -536,9 +536,10 @@ function listResizeAction(listId: string, digits: string): PreviewCommandResult 
 }
 
 /**
- * Table 31/32 system lists. Spaces optional (`*T` = `* T`). `*P1`/`*P2`/`*P3`
- * are tower lists; bare `*P` and `*P10` stay TPA; `*PTL` stays incomplete
- * (T02-64). `*S` arms SSA relocate and does not toggle SSA.
+ * Table 31/32 system lists. Spaces optional (`*T` = `* T`). Tower lists are
+ * the spaced CRC form `* P1`/`* P2`/`* P3`; compact `*P1`/`*P3`/`*P10` stay
+ * TPA cones. `*PTL` stays incomplete (T02-64). `*S` arms SSA relocate and
+ * does not toggle SSA.
  */
 function parseListCommand(buffer: string): PreviewCommandResult | null {
   if (!buffer.startsWith("*")) {
@@ -549,12 +550,12 @@ function parseListCommand(buffer: string): PreviewCommandResult | null {
     return null;
   }
 
-  // Space before a size so `*P10` remains TPA cone 10 NM, not TOWER_1 resize 0.
-  const tower = /^(\*)\s*P([123])(?:\s+(\d{1,3}))?$/.exec(buffer);
+  // Require a space after `*` so `*P3` is a 3 NM cone, not TOWER_3.
+  const tower = /^\*\s+P([123])(?:\s+(\d{1,3}))?$/.exec(buffer);
   if (tower) {
-    const listId = TOWER_LIST_IDS[tower[2] as "1" | "2" | "3"];
-    if (tower[3] !== undefined) {
-      return listResizeAction(listId, tower[3]);
+    const listId = TOWER_LIST_IDS[tower[1] as "1" | "2" | "3"];
+    if (tower[2] !== undefined) {
+      return listResizeAction(listId, tower[2]);
     }
     return { kind: "action", action: { type: "toggleList", listId } };
   }
@@ -706,7 +707,7 @@ function parseTrackFlidRest(kind: "initCntl" | "termCntl", rest: string): Previe
 }
 
 /**
- * T02-66 tracking / datablock chords. `*P1` is a tower list (parseListCommand).
+ * T02-66 tracking / datablock chords. `* P1` is a tower list (parseListCommand).
  * Bare `*` and `*B` stay incomplete so Enter falls through to starsChord TPA.
  * `*F` / `*LA` / `*BCN` stay unparsed for T02-65. `+HOLD` / `/ALL` are INV.
  */

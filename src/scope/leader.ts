@@ -28,7 +28,7 @@ export type LeaderDir = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
 /**
  * STARS `*1`–`*8` leader clock (R07 Table 20): 1 = NE clockwise through 8 = N.
- * Distinct from the numpad L1–L9 compass (`L`+digit). `*P1` is a tower list.
+ * Distinct from the numpad L1–L9 compass (`L`+digit). Spaced `* P1` is a tower list.
  */
 export type StarsLeaderClock = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 

@@ -601,10 +601,9 @@ const LIST_TOGGLE_CASES: ReadonlyArray<{ buffer: string; listId: string }> = [
   { buffer: "* TV", listId: "VFR" },
   { buffer: "*TC", listId: "COAST" },
   { buffer: "*TS", listId: "SIGN_ON" },
-  { buffer: "*P1", listId: "TOWER_1" },
   { buffer: "* P1", listId: "TOWER_1" },
-  { buffer: "*P2", listId: "TOWER_2" },
-  { buffer: "*P3", listId: "TOWER_3" },
+  { buffer: "* P2", listId: "TOWER_2" },
+  { buffer: "* P3", listId: "TOWER_3" },
   { buffer: "*TM", listId: "ALERT" },
   { buffer: "*TX", listId: "MAPS" },
   { buffer: "*TN", listId: "CRDA" },
@@ -655,7 +654,7 @@ test("T02-62 — * [List] [1-100] resizes; *T 0 and *T 999 are INV", () => {
     kind: "action",
     action: { type: "resizeList", listId: "VFR", maxLines: 1 },
   });
-  expect(parsePreviewCommand("*P1 100")).toEqual({
+  expect(parsePreviewCommand("* P1 100")).toEqual({
     kind: "action",
     action: { type: "resizeList", listId: "TOWER_1", maxLines: 100 },
   });
@@ -673,11 +672,13 @@ test("T02-62 — * [List] [1-100] resizes; *T 0 and *T 999 are INV", () => {
   expect(zero.rejection).toBe("*T0 INV");
 });
 
-test("T02-62 — *P1 is list, *P is TPA incomplete, *P10 stays TPA, *PTL incomplete, *TZ INV", () => {
-  expect(parsePreviewCommand("*P1")).toEqual({
+test("T02-62 — * P1 is list, compact *P3/*P10 stay TPA, *PTL incomplete, *TZ INV", () => {
+  expect(parsePreviewCommand("* P1")).toEqual({
     kind: "action",
     action: { type: "toggleList", listId: "TOWER_1" },
   });
+  expect(parsePreviewCommand("*P1").kind).toBe("incomplete");
+  expect(parsePreviewCommand("*P3").kind).toBe("incomplete");
   expect(parsePreviewCommand("*P")).toEqual({ kind: "incomplete" });
   expect(parsePreviewCommand("*P10")).toEqual({ kind: "incomplete" });
   expect(parsePreviewCommand("*PTL")).toEqual({ kind: "incomplete" });
@@ -754,13 +755,14 @@ test("T02-64 — parse *C / *OFF / *RR / *PTL / *HIST; spaces optional; bad para
   }
 });
 
-test("T02-64 — *P / *P5 stay TPA (not PTL); *P1 is a list, not PTL", () => {
+test("T02-64 — *P / *P5 / *P3 stay TPA (not PTL); * P1 is a list, not PTL", () => {
   expect(parseScopeDisplayCommand("*P")).toBeNull();
   expect(parseScopeDisplayCommand("*P5")).toBeNull();
   expect(parseScopeDisplayCommand("*P1")).toBeNull();
   expect(parsePreviewCommand("*P").kind).toBe("incomplete");
   expect(parsePreviewCommand("*P5").kind).toBe("incomplete");
-  expect(parsePreviewCommand("*P1")).toEqual({
+  expect(parsePreviewCommand("*P3").kind).toBe("incomplete");
+  expect(parsePreviewCommand("* P1")).toEqual({
     kind: "action",
     action: { type: "toggleList", listId: "TOWER_1" },
   });
@@ -1117,7 +1119,7 @@ test("T02-65 — Enter on *F / *LA / *BCN returns actions; bad params INV; *B st
   });
 });
 
-test("T02-66 — + / +FLID / *1–*8 / *0 parse; *P1 is list; *B stays TPA; *F is T02-65", () => {
+test("T02-66 — + / +FLID / *1–*8 / *0 parse; * P1 is list; compact *P1 is TPA; *B stays TPA; *F is T02-65", () => {
   expect(parsePreviewCommand("+DAL123")).toEqual({
     kind: "action",
     action: { type: "initCntl", flid: "DAL123" },
@@ -1145,10 +1147,11 @@ test("T02-66 — + / +FLID / *1–*8 / *0 parse; *P1 is list; *B stays TPA; *F i
     kind: "action",
     action: { type: "resetLeaderDir" },
   });
-  expect(parsePreviewCommand("*P1")).toEqual({
+  expect(parsePreviewCommand("* P1")).toEqual({
     kind: "action",
     action: { type: "toggleList", listId: "TOWER_1" },
   });
+  expect(parsePreviewCommand("*P1").kind).toBe("incomplete");
   expect(parsePreviewCommand("*P1")).not.toMatchObject({ type: "setLeaderDir" });
 
   expect(parsePreviewCommand("*")).toEqual({ kind: "incomplete" });

@@ -349,7 +349,7 @@ Spaces optional (`*T` = `* T`). Line limit is `1`–`100`.
 | `*TV` Enter | | Toggles VFR list. |
 | `*TC` Enter | | Toggles Coast/Suspend list. |
 | `*TS` Enter | | Toggles Sign-On list. |
-| `*P1` / `*P2` / `*P3` Enter | | Toggles Tower lists 1–3. **Not** TPA cones (`*P` / `*P5` / `*P10` stay TPA). |
+| `* P1` / `* P2` / `* P3` Enter | Space after `*` | Toggles Tower lists 1–3. Compact `*P3` is a 3 NM cone, not this list. |
 | `*TM` Enter | | Toggles Alert list. |
 | `*TX` Enter | | Toggles Maps directory list. |
 | `*TN` Enter | | Toggles CRDA status list (the list window, not CRDA geometry). |
@@ -395,18 +395,18 @@ DCB spinner lists are unchanged: RR `[2, 5, 10]`, PTL `0.5 / 1 / 2 / 4`. Keyboar
 
 #### TPA / ATPA chords
 
-Unchanged T02-49 slew chords. Incomplete `*` prefixes (`*J`, `*P`, `*P5`, `*P10`, `*AI`, `*AE`, `*BE`, `*BI`) still fall through to `starsChord` on Enter. A live `*` TPA hint still wins over idle preview.
+Unchanged T02-49 slew chords. Incomplete `*` prefixes (`*J`, `*P`, `*P3`, `*P5`, `*P10`, `*AI`, `*AE`, `*BE`, `*BI`) still fall through to `starsChord` on Enter. A live `*` TPA hint still wins over idle preview.
 
 | Command | What the operator does | What happens |
 | --- | --- | --- |
 | `*J [1–30]` / `*J 0` | | Per-track J-ring; `0` clears. `**J` clear-all. |
-| `*P` / `*P5` / `*P10` | | Ground-track TPA cone. Not tower list `*P1`. |
+| `*P3` / `*P5` / `*P10` / `*P2.5` | `*P` then miles, Enter or click the target | Ground-track TPA cone 1–30 NM. Bare `*P` clears that track's cone. |
 | `*AI` click / `*AE` Enter | | ATPA inhibit / enable per T02-49. |
 
 **Mnemonic collisions (do not mix these up):**
 
 - Idle `T` = FDB ↔ LDB. `*T` = TAB list.
-- `*P1`–`*P3` = tower lists. `*P` / `*P5` / `*P10` = TPA. `*PTL` = PTL minutes.
+- Compact `*P1`–`*P3` = TPA cone miles. Spaced `* P1`–`* P3` = tower lists. `*PTL` = PTL minutes.
 - `*D token` = maps. Bare `*D` = TPA.
 - Idle `F` = filter chord. `*F` Enter = FILTER readout (not `*F [Callsign]` flight plan).
 - `*BCN` = beacon filter. Bare `*B` Enter = TPA. `*B` click = beaconator.

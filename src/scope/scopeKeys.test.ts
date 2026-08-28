@@ -1385,9 +1385,14 @@ test("T02-66 — + / Enter arms INIT/TERM; idle Enter arms HO ACCEPT; *T Enter s
   expect(formatPreviewReadout(view.preview)).toBe("*1");
 
   handleScopeKeyDown(keyEvent("Escape"), view, "scope", undefined, 1000);
-  typeScopeKeys(view, ["*", "P", "1", "Enter"], 1100);
+  typeScopeKeys(view, ["*", " ", "P", "1", "Enter"], 1100);
   expect(view.systemLists.TOWER_1.visible).toBe(true);
   expect(view.preview.armed).toBeNull();
+  expect(view.starsChordArmed).toBeNull();
+
+  typeScopeKeys(view, ["*", "P", "3", "Enter"], 1150);
+  expect(view.starsChordArmed).toEqual({ type: "cone", target: "slewed", lengthNm: 3 });
+  expect(view.systemLists.TOWER_3.visible).toBe(false);
 
   typeScopeKeys(view, ["*", "B", "Enter"], 1200);
   expect(view.preview.armed).toBeNull();
