@@ -4,6 +4,16 @@
  * drag-and-drop lifecycle, collision overlap detection, and show-all-frames preview.
  */
 
+import type { World, Aircraft } from "@core";
+import { formatAltitudeHundreds } from "./datablock";
+import {
+  buildSystemListLines,
+  formatListEntry,
+  rewriteFixForList,
+  type ListFormatter,
+} from "./listFormatter";
+import type { ScopeView } from "./scopeView";
+
 export interface SystemListPlacement {
   id: string;
   frameTitle: string;
@@ -130,6 +140,140 @@ export const DEFAULT_SYSTEM_LIST_PLACEMENTS: Record<string, SystemListPlacement>
     maxLines: 20,
   },
 };
+
+/**
+ * Builds TAB Flight Plan list lines.
+ */
+export function buildTabFlightPlanList(world: World, maxLines: number = 10): string[] {
+  const flights = world.aircraft.filter((ac) => ac.flightRules !== "VFR");
+  const formatter: ListFormatter = {
+    title: "FLIGHT PLAN",
+    frameTitle: "FLIGHT PLAN (T)",
+    maxLines,
+    entries: flights.length,
+    formatLine: (idx) => {
+      const ac = flights[idx]!;
+      const indexStr = String(idx + 1).padStart(2, "0");
+      const acid = ac.callsign.padEnd(7, " ");
+      const bcn = (ac.assignedSquawk || "1200").padStart(4, "0");
+      const alt = formatAltitudeHundreds(ac.intent.assignedAltitudeFt);
+      const fix = rewriteFixForList(ac.intent.exitFix || ac.intent.entryFix);
+      return `${indexStr} ${acid} ${bcn} ${alt} ${fix}`;
+    },
+  };
+  return buildSystemListLines(formatter);
+}
+
+/**
+ * Builds VFR list lines.
+ */
+export function buildVfrList(world: World, maxLines: number = 10): string[] {
+  const vfrFlights = world.aircraft.filter((ac) => ac.flightRules === "VFR");
+  const formatter: ListFormatter = {
+    title: "VFR LIST",
+    frameTitle: "VFR LIST (TV)",
+    maxLines,
+    entries: vfrFlights.length,
+    formatLine: (idx) => {
+      const ac = vfrFlights[idx]!;
+      const indexStr = String(idx + 1).padStart(2, "0");
+      const acid = ac.callsign.padEnd(7, " ");
+      const bcn = (ac.assignedSquawk || "1200").padStart(4, "0");
+      return `${indexStr} ${acid} ${bcn}`;
+    },
+  };
+  return buildSystemListLines(formatter);
+}
+
+/**
+ * Builds Tower arrival sequence list lines (sorted ascending by distance to airport).
+ */
+export function buildTowerArrivalList(
+  world: World,
+  airportCode: string = "KDEM",
+  airportXNm: number = 0,
+  airportYNm: number = 0,
+  maxLines: number = 10,
+): string[] {
+  const arrivals = world.aircraft
+    .map((ac) => {
+      const distNm = Math.hypot(ac.xNm - airportXNm, ac.yNm - airportYNm);
+      return { ac, distNm };
+    })
+    .sort((a, b) => a.distNm - b.distNm);
+
+  const formatter: ListFormatter = {
+    title: airportCode.toUpperCase(),
+    frameTitle: `TOWER (${airportCode.toUpperCase()})`,
+    maxLines,
+    entries: arrivals.length,
+    formatLine: (idx) => {
+      const { ac, distNm } = arrivals[idx]!;
+      const indexStr = String(idx + 1).padStart(2, "0");
+      const acid = ac.callsign.padEnd(7, " ");
+      const type = (ac.aircraftType || "B738").padEnd(4, " ");
+      const gs = String(Math.round(ac.groundSpeedKt)).padStart(3, "0");
+      const distStr = distNm.toFixed(1).padStart(4, " ");
+      return `${indexStr} ${acid} ${type} ${gs} ${distStr}`;
+    },
+  };
+  return buildSystemListLines(formatter);
+}
+
+/**
+ * Builds Alert list lines (active MSAW and CA alerts).
+ */
+export function buildAlertList(world: World, maxLines: number = 50): string[] {
+  const lines: string[] = [];
+  if (world.alerts) {
+    if (world.alerts.msaw) {
+      for (const alert of world.alerts.msaw) {
+        const ac = world.aircraft.find((a) => a.id === alert.aircraftId);
+        if (ac) {
+          lines.push(`LA ${ac.callsign.padEnd(7, " ")} ${formatAltitudeHundreds(ac.altitudeFt)}`);
+        }
+      }
+    }
+    if (world.alerts.ca) {
+      for (const alert of world.alerts.ca) {
+        const ac1 = world.aircraft.find((a) => a.id === alert.aircraft1Id);
+        const ac2 = world.aircraft.find((a) => a.id === alert.aircraft2Id);
+        if (ac1 && ac2) {
+          lines.push(`CA ${ac1.callsign.padEnd(7, " ")} ${ac2.callsign.padEnd(7, " ")}`);
+        }
+      }
+    }
+  }
+  if (lines.length === 0) return [];
+  const formatter: ListFormatter = {
+    title: "ALERT LIST",
+    frameTitle: "ALERT LIST (TM)",
+    maxLines,
+    entries: lines.length,
+    formatLine: (idx) => lines[idx]!,
+  };
+  return buildSystemListLines(formatter);
+}
+
+/**
+ * Builds Coast / Suspend list lines.
+ */
+export function buildCoastSuspendList(suspendedAc: Aircraft[], maxLines: number = 10): string[] {
+  const formatter: ListFormatter = {
+    title: "COAST/SUSPEND",
+    frameTitle: "COAST/SUSPEND (TC)",
+    maxLines,
+    entries: suspendedAc.length,
+    formatLine: (idx) => {
+      const ac = suspendedAc[idx]!;
+      const indexStr = String(idx + 1).padStart(2, "0");
+      const acid = ac.callsign.padEnd(7, " ");
+      const bcn = (ac.assignedSquawk || "1200").padStart(4, "0");
+      return `${indexStr} ${acid} ${bcn} SUSP`;
+    },
+  };
+  return buildSystemListLines(formatter);
+}
 
 /**
  * Checks if two bounding rectangles overlap on the screen.
