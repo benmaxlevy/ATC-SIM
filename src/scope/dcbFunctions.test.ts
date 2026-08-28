@@ -95,8 +95,8 @@ test("AC3 — RR spinner steps 2/5/10 without hiding rings", () => {
   ]);
   expect(activeRingRadiiNm({ intervalNm: 10, maxNm: 60 })).toEqual([10, 20, 30, 40, 50, 60]);
   expect(activeRingRadiiNm({ intervalNm: 2, maxNm: 60 })).toEqual([
-    2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48,
-    50, 52, 54, 56, 58, 60,
+    2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50,
+    52, 54, 56, 58, 60,
   ]);
 
   const view = kdemView();
