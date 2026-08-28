@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { createWorld, stepWorld, type Aircraft, type World } from "@core";
+import { createWorld, type Aircraft } from "@core";
 import {
   buildAlertList,
-  buildCoastSuspendList,
   buildCoordinationListLines,
   buildTabFlightPlanList,
   buildTowerArrivalList,
@@ -29,25 +28,22 @@ function makeArrival(id: string, callsign: string, xNm: number, yNm: number, gs:
     id,
     callsign,
     assignedSquawk: "1234",
+    squawk: "1234",
     aircraftType: "B738",
-    flightRules: "IFR",
     xNm,
     yNm,
     altitudeFt: 4000,
     headingDeg: 270,
-    groundSpeedKt: gs,
-    verticalSpeedFpm: 0,
-    targetAltitudeFt: 4000,
-    targetHeadingDeg: 270,
-    targetSpeedKt: gs,
-    state: "AIRBORNE",
-    handoffState: { status: "NONE" },
+    speedKt: gs,
+    identUntilSimMs: 0,
     intent: {
       assignedAltitudeFt: 4000,
       assignedHeadingDeg: 270,
       assignedSpeedKt: gs,
-      turn: "FLY_HEADING",
-      exitFix: "GAYEL",
+      turn: "SHORTEST",
+      expectedApproachId: "GAYEL",
+      clearedApproachId: null,
+      locInterceptApproachId: null,
     },
   };
 }
@@ -60,7 +56,7 @@ describe("STARS System Lists & DCB Integration Acceptance", () => {
       makeArrival("ac-2", "DAL202", 6, 0, 170),
       {
         ...makeArrival("ac-3", "N789V", 15, 10, 120),
-        flightRules: "VFR",
+        squawk: "1200",
         assignedSquawk: "1200",
       },
     );
@@ -84,8 +80,8 @@ describe("STARS System Lists & DCB Integration Acceptance", () => {
 
     // 4. Alert list with active MSAW and CA
     world.alerts = {
-      msaw: [{ aircraftId: "ac-1", warning: true, groundElevationFt: 500 }],
-      ca: [{ aircraft1Id: "ac-1", aircraft2Id: "ac-2", horizontalSepNm: 1.2, verticalSepFt: 100, timeToClosestPointSec: 15 }],
+      msaw: [{ callsign: "AAL101", severity: "alert", altFt: 500, floorFt: 1000 }],
+      ca: [{ callsignA: "AAL101", callsignB: "DAL202", severity: "alert", distNm: 1.2, deltaAltFt: 100 }],
       atpa: [],
     };
     const alertLines = buildAlertList(world, 50);

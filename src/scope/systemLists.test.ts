@@ -6,7 +6,6 @@ import {
   type ListFormatter,
 } from "./listFormatter";
 import {
-  DEFAULT_SYSTEM_LIST_PLACEMENTS,
   cancelListDrag,
   findOverlappingLists,
   handleListMiddleClick,

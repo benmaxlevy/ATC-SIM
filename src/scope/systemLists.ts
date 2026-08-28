@@ -8,11 +8,9 @@ import type { World, Aircraft } from "@core";
 import { formatAltitudeHundreds } from "./datablock";
 import {
   buildSystemListLines,
-  formatListEntry,
   rewriteFixForList,
   type ListFormatter,
 } from "./listFormatter";
-import type { ScopeView } from "./scopeView";
 
 export interface SystemListPlacement {
   id: string;
@@ -141,11 +139,15 @@ export const DEFAULT_SYSTEM_LIST_PLACEMENTS: Record<string, SystemListPlacement>
   },
 };
 
+function isVfr(ac: Aircraft): boolean {
+  return ac.squawk === "1200" || ac.assignedSquawk === "1200";
+}
+
 /**
  * Builds TAB Flight Plan list lines.
  */
 export function buildTabFlightPlanList(world: World, maxLines: number = 10): string[] {
-  const flights = world.aircraft.filter((ac) => ac.flightRules !== "VFR");
+  const flights = world.aircraft.filter((ac) => !isVfr(ac));
   const formatter: ListFormatter = {
     title: "FLIGHT PLAN",
     frameTitle: "FLIGHT PLAN (T)",
@@ -155,9 +157,9 @@ export function buildTabFlightPlanList(world: World, maxLines: number = 10): str
       const ac = flights[idx]!;
       const indexStr = String(idx + 1).padStart(2, "0");
       const acid = ac.callsign.padEnd(7, " ");
-      const bcn = (ac.assignedSquawk || "1200").padStart(4, "0");
-      const alt = formatAltitudeHundreds(ac.intent.assignedAltitudeFt);
-      const fix = rewriteFixForList(ac.intent.exitFix || ac.intent.entryFix);
+      const bcn = (ac.assignedSquawk || ac.squawk || "1200").padStart(4, "0");
+      const alt = formatAltitudeHundreds(ac.intent.requestedAltitudeFt ?? ac.intent.assignedAltitudeFt);
+      const fix = rewriteFixForList(ac.intent.expectedApproachId ?? ac.intent.clearedApproachId ?? "");
       return `${indexStr} ${acid} ${bcn} ${alt} ${fix}`;
     },
   };
@@ -168,7 +170,7 @@ export function buildTabFlightPlanList(world: World, maxLines: number = 10): str
  * Builds VFR list lines.
  */
 export function buildVfrList(world: World, maxLines: number = 10): string[] {
-  const vfrFlights = world.aircraft.filter((ac) => ac.flightRules === "VFR");
+  const vfrFlights = world.aircraft.filter(isVfr);
   const formatter: ListFormatter = {
     title: "VFR LIST",
     frameTitle: "VFR LIST (TV)",
@@ -178,7 +180,7 @@ export function buildVfrList(world: World, maxLines: number = 10): string[] {
       const ac = vfrFlights[idx]!;
       const indexStr = String(idx + 1).padStart(2, "0");
       const acid = ac.callsign.padEnd(7, " ");
-      const bcn = (ac.assignedSquawk || "1200").padStart(4, "0");
+      const bcn = (ac.assignedSquawk || ac.squawk || "1200").padStart(4, "0");
       return `${indexStr} ${acid} ${bcn}`;
     },
   };
@@ -212,7 +214,7 @@ export function buildTowerArrivalList(
       const indexStr = String(idx + 1).padStart(2, "0");
       const acid = ac.callsign.padEnd(7, " ");
       const type = (ac.aircraftType || "B738").padEnd(4, " ");
-      const gs = String(Math.round(ac.groundSpeedKt)).padStart(3, "0");
+      const gs = String(Math.round(ac.speedKt)).padStart(3, "0");
       const distStr = distNm.toFixed(1).padStart(4, " ");
       return `${indexStr} ${acid} ${type} ${gs} ${distStr}`;
     },
@@ -228,19 +230,12 @@ export function buildAlertList(world: World, maxLines: number = 50): string[] {
   if (world.alerts) {
     if (world.alerts.msaw) {
       for (const alert of world.alerts.msaw) {
-        const ac = world.aircraft.find((a) => a.id === alert.aircraftId);
-        if (ac) {
-          lines.push(`LA ${ac.callsign.padEnd(7, " ")} ${formatAltitudeHundreds(ac.altitudeFt)}`);
-        }
+        lines.push(`LA ${alert.callsign.padEnd(7, " ")} ${formatAltitudeHundreds(alert.altFt)}`);
       }
     }
     if (world.alerts.ca) {
       for (const alert of world.alerts.ca) {
-        const ac1 = world.aircraft.find((a) => a.id === alert.aircraft1Id);
-        const ac2 = world.aircraft.find((a) => a.id === alert.aircraft2Id);
-        if (ac1 && ac2) {
-          lines.push(`CA ${ac1.callsign.padEnd(7, " ")} ${ac2.callsign.padEnd(7, " ")}`);
-        }
+        lines.push(`CA ${alert.callsignA.padEnd(7, " ")} ${alert.callsignB.padEnd(7, " ")}`);
       }
     }
   }
@@ -268,7 +263,7 @@ export function buildCoastSuspendList(suspendedAc: Aircraft[], maxLines: number 
       const ac = suspendedAc[idx]!;
       const indexStr = String(idx + 1).padStart(2, "0");
       const acid = ac.callsign.padEnd(7, " ");
-      const bcn = (ac.assignedSquawk || "1200").padStart(4, "0");
+      const bcn = (ac.assignedSquawk || ac.squawk || "1200").padStart(4, "0");
       return `${indexStr} ${acid} ${bcn} SUSP`;
     },
   };
@@ -377,6 +372,6 @@ export function handleListMouseMove(
 /**
  * Cancels active list dragging.
  */
-export function cancelListDrag(state: ListDragState): ListDragState {
+export function cancelListDrag(_state: ListDragState): ListDragState {
   return idleListDragState();
 }

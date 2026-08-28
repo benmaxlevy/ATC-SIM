@@ -13,25 +13,22 @@ function makeTestAircraft(partial: Partial<Aircraft>): Aircraft {
     id: "ac-1",
     callsign: "AAL123",
     assignedSquawk: "1234",
+    squawk: "1234",
     aircraftType: "B738",
-    flightRules: "IFR",
     xNm: 10,
     yNm: 10,
     altitudeFt: 5000,
     headingDeg: 270,
-    groundSpeedKt: 210,
-    verticalSpeedFpm: 0,
-    targetAltitudeFt: 5000,
-    targetHeadingDeg: 270,
-    targetSpeedKt: 210,
-    state: "AIRBORNE",
-    handoffState: { status: "NONE" },
+    speedKt: 210,
+    identUntilSimMs: 0,
     intent: {
       assignedAltitudeFt: 5000,
       assignedHeadingDeg: 270,
       assignedSpeedKt: 210,
-      turn: "FLY_HEADING",
-      exitFix: "GAYEL",
+      turn: "SHORTEST",
+      expectedApproachId: "ILS27",
+      clearedApproachId: null,
+      locInterceptApproachId: null,
     },
     ...partial,
   };
@@ -42,8 +39,8 @@ describe("systemLists operational builders", () => {
     const world: World = {
       ...createWorld(),
       aircraft: [
-        makeTestAircraft({ id: "1", callsign: "AAL123", assignedSquawk: "1234" }),
-        makeTestAircraft({ id: "2", callsign: "DAL456", assignedSquawk: "5678", intent: { assignedAltitudeFt: 8000, assignedHeadingDeg: 90, assignedSpeedKt: 250, turn: "FLY_HEADING", exitFix: "BOS" } }),
+        makeTestAircraft({ id: "1", callsign: "AAL123", assignedSquawk: "1234", intent: { assignedAltitudeFt: 5000, assignedHeadingDeg: 270, assignedSpeedKt: 210, turn: "SHORTEST", expectedApproachId: "GAYEL", clearedApproachId: null, locInterceptApproachId: null } }),
+        makeTestAircraft({ id: "2", callsign: "DAL456", assignedSquawk: "5678", intent: { assignedAltitudeFt: 8000, assignedHeadingDeg: 90, assignedSpeedKt: 250, turn: "SHORTEST", expectedApproachId: "BOS", clearedApproachId: null, locInterceptApproachId: null } }),
       ],
     };
 
@@ -57,8 +54,8 @@ describe("systemLists operational builders", () => {
     const world: World = {
       ...createWorld(),
       aircraft: [
-        makeTestAircraft({ id: "1", callsign: "N12345", flightRules: "VFR", assignedSquawk: "1200" }),
-        makeTestAircraft({ id: "2", callsign: "AAL123", flightRules: "IFR" }),
+        makeTestAircraft({ id: "1", callsign: "N12345", squawk: "1200", assignedSquawk: "1200" }),
+        makeTestAircraft({ id: "2", callsign: "AAL123", squawk: "1234" }),
       ],
     };
 
@@ -72,8 +69,8 @@ describe("systemLists operational builders", () => {
     const world: World = {
       ...createWorld(),
       aircraft: [
-        makeTestAircraft({ id: "far", callsign: "DAL456", xNm: 20, yNm: 0, groundSpeedKt: 250 }),
-        makeTestAircraft({ id: "near", callsign: "AAL123", xNm: 5, yNm: 0, groundSpeedKt: 180 }),
+        makeTestAircraft({ id: "far", callsign: "DAL456", xNm: 20, yNm: 0, speedKt: 250 }),
+        makeTestAircraft({ id: "near", callsign: "AAL123", xNm: 5, yNm: 0, speedKt: 180 }),
       ],
     };
 
@@ -84,14 +81,12 @@ describe("systemLists operational builders", () => {
   });
 
   it("builds Alert list with active MSAW and CA alerts", () => {
-    const ac1 = makeTestAircraft({ id: "ac-1", callsign: "AAL123", altitudeFt: 600 });
-    const ac2 = makeTestAircraft({ id: "ac-2", callsign: "DAL456", altitudeFt: 600 });
     const world: World = {
       ...createWorld(),
-      aircraft: [ac1, ac2],
+      aircraft: [],
       alerts: {
-        msaw: [{ aircraftId: "ac-1", warning: true, groundElevationFt: 500 }],
-        ca: [{ aircraft1Id: "ac-1", aircraft2Id: "ac-2", horizontalSepNm: 1.5, verticalSepFt: 200, timeToClosestPointSec: 20 }],
+        msaw: [{ callsign: "AAL123", severity: "alert", altFt: 600, floorFt: 1000 }],
+        ca: [{ callsignA: "AAL123", callsignB: "DAL456", severity: "alert", distNm: 1.5, deltaAltFt: 200 }],
         atpa: [],
       },
     };

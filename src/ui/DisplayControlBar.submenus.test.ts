@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createScopeView } from "@scope";
 import {
   openDcbMenu,
@@ -11,8 +11,6 @@ import {
   saveDcbPref,
   saveAsDcbPref,
   deleteDcbPref,
-  applyDcbPrefDefaults,
-  restoreDcbPrefSession,
 } from "@scope";
 
 describe("DCB submenus functional suite", () => {
