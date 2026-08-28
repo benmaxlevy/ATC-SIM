@@ -104,7 +104,7 @@ trainer accepts:
 - typed map ID
 - WX overlays
 - dual assoc / unassoc `FC`
-- TAB / VFR / COAST / CA / SIGN-ON / TOWER / CRDA lists
+- TAB / VFR / COAST / CA / SIGN-ON / TOWER / CRDA lists (see dedicated item below)
 - RBL `*T` / min-sep / `.find` `.center` `.rings`
 - GI / ATIS `S` type-in
 - FP dump `D`
@@ -118,6 +118,31 @@ trainer accepts:
 Constraints later work must keep: never Command IR; `*` chords remain T02-49;
 radio line unchanged; reject unknown rather than no-op; data-first catalog;
 self-hosted speech.
+
+### STARS Preview Area System List Display Commands (Table 29 & Table 32)
+
+Currently, system lists are rendered via the internal window manager and can be controlled programmatically via `toggleSystemList(view, listId)`. However, the Preview Area command parser does not yet accept standard STARS keyboard list commands.
+
+**Planned Command Set:**
+1. **`SO` (Sign-On List):** Toggles display of the Sign-On list (`SIGN_ON`).
+2. **`T` or `TAB` (Flight Plan List):** Toggles display of the unassociated IFR departure Tab list (`TAB`).
+3. **`TV` (VFR List):** Toggles display of the VFR flight following list (`VFR`).
+4. **`P1` / `P2` / `P3` (Tower Lists):** Toggles display of Tower Arrival Sequence lists 1, 2, and 3 (`TOWER_1`, `TOWER_2`, `TOWER_3`).
+5. **`TC` (Coast/Suspend List):** Toggles display of the Coast/Suspend list (`COAST`).
+6. **`CR` (CRDA Status List):** Toggles display of the CRDA Status list (`CRDA`).
+7. **`TX` (Geographic Video Maps List):** Toggles display of the Geographic Video Maps directory list (`MAPS`).
+8. **`TM` (LA/CA/MCI Alert List):** Toggles manual visibility of the safety alert list (`ALERT`).
+9. **`CO` / `F13` (Coordination List):** Toggles display of the departure coordination list (`COORD`).
+10. **`[List Cmd] + [Slew/Click]` Relocation:** Repositions the specified list anchor to the trackball/cursor coordinates.
+
+### DCB `LISTS` Submenu / Quick Click Controls
+
+In real FAA STARS consoles, the physical Display Control Bar (DCB) provides buttons for **`MAPS`** (GEO and CURRENT video map inventory) and **`AUX` -> `SSA FILTER` / `GI FILTER`**, while other system lists are conventionally driven via keyboard/preview area commands.
+
+To enhance web browser simulator usability without violating STARS fidelity:
+- Add a **`LISTS`** submenu button on the DCB (or under **`AUX -> LISTS`**).
+- Submenu cells: `ALL`, `SO`, `TAB`, `VFR`, `TWR1`, `TWR2`, `TWR3`, `CRDA`, `COAST`, `MAPS`, `COORD`, and `DONE`.
+- Clicking each cell toggles the corresponding window visibility directly without requiring keyboard command entry.
 
 ### Track lifecycle and multi-controller networking
 
@@ -141,6 +166,33 @@ comes from authored facility JSON. Later work could provide:
 - live or scenario-driven site-fused weather/altimeter data;
 - richer facility status and ATIS-style updates;
 - source timestamps, stale-data handling, and filtering.
+
+### SSA Alert Triangle (`▼`) Operational State & Lifecycle
+
+The solid inverted triangle `▼` at the top of the SSA is permanently rendered in red (`PALETTE.alert`), tightly enclosed in a thin green border with no margin.
+* **Follow-up Verification & Modeling:**
+  1. Verify and refine alert state mappings triggering the red indicator across all subsystem fault conditions (surveillance data link loss, emergency squawks 7700/7600/7500, active CA/MSAW, and multi-sensor processing failure).
+  2. Implement visual blink/acknowledgment cycles if specified by terminal STARS facility adaptation.
+
+### Multi-Airport Satellite Altimeter Matrix in SSA
+
+In multi-airport terminal operations (such as Boston A90 TRACON), the SSA displays rows of altimeter readings for the primary airport and up to 5 configured satellite towered airports:
+```text
+BOS 30.17 BED 30.17 OWD 30.18
+BVY 30.17 LWM 30.19
+```
+* **Required Implementation:**
+  1. Automated weather sensor telemetry integration for primary and satellite towered airports configured in the facility adaptation.
+  2. Formatting in 3-airport chunks on dedicated SSA lines.
+  3. Dynamic barometric altimeter updates matching active weather simulation.
+
+### Quicklook (`QL`) Status & Facility-Wide Sector Filtering
+
+In real STARS operations, the SSA includes a Quicklook indicator (`QL: ALL` or `QL: <sector>`) showing whether the workstation is monitoring all sector tracks or filtering data blocks to assigned control sectors:
+* **Required Implementation:**
+  1. Keyboard command `Q <sector>` / `Q ALL` to toggle quicklook display modes.
+  2. Scope datablock filtering and handoff routing based on active quicklook configuration.
+  3. Displaying `QL: ALL` or `QL: <sectors>` in the SSA.
 
 Any live-data design must preserve the self-hosted speech rule and must not
 silently introduce a metered vendor dependency.
@@ -199,8 +251,51 @@ STARS CRC supports additional Special Purpose Codes beyond standard emergency sq
 
 These expanded and tactical SPC codes are deferred for future specialized scenario modules. Existing core emergency squawks (`7700` `EM`, `7600` `RF`, `7500` `HJ`) remain fully active.
 
+### CRDA Ghost Prediction and Dynamic Runway Configuration Pairing (RPC)
+
+Visible now: `CRDA STATUS` in-scope list formatting RPC pairs 1–6 (e.g., `1  BOS 27/22L`, `2  BOS 27/33L`, `3  BOS 4L/15R`, etc.) and active SSA status (`*S1 BOS 27/22L`).
+
+Deferred to future simulation phases:
+- **Live Ghost Target Generation**: Mathematical projection of master runway approach tracks onto slave runway approach centerlines based on threshold crossing time estimates.
+- **Stagger Cones & Tie Lines**: Dynamic display of spacing cones and connecting tie lines between real aircraft and projected ghosts for converging and dependent runway operations.
+- **STARS Table 26 CRDA Keyboard Grammar**: Keyboard commands for pairing activation/deactivation, spacing distance adjustment, and runway configuration switching.
+
+### Multi-Airport Tower Sequencing and Strip-Less Automation
+
+Visible now: In-scope `TOWER 1`, `TOWER 2`, and `TOWER 3` list panes rendering dynamic aircraft approach sequences sorted by distance to airport threshold.
+
+Deferred to future simulation phases:
+- **Automated Slot Sequencing**: Time-based metering and automated arrival slot management across multiple satellite airports.
+- **Tower Display Workstation (TDW) Inter-Facility Coordination**: Direct sequence handoffs between TRACON radar controller and Tower local/ground controllers without flight progress strips.
+- **Dynamic Multi-Airport Adaptation**: Auto-populating runway designations, ILS/RNAV approach identifiers, and tower list airport identifiers based on active scenario airport configuration.
+
+### Surveillance Drop-Out Coast/Suspend Track Lifecycle (30s Timeout)
+
+Visible now: `COAST/SUSPEND` list formatting displaying track status (`C` for Coasting), transponder beacon code, and last received Mode C altitude in hundreds of feet.
+
+Deferred to future simulation phases:
+- **30-Second Target Drop Timeout**: Automated detection of radar/ADS-B target signal loss, moving the track into the Coast list after 30 seconds of missing surveillance returns.
+- **Dead-Reckoning Extrapolation**: Kinematic position extrapolation along the last known ground track vector during the coast period.
+- **Automated Target Re-Correlation**: Seamless track resumption and full datablock restoration when radar returns resume on the assigned squawk code.
+
+### Terminal Control Position (TCP) Sign-On and Multi-Controller Authentication
+
+Visible now: `SIGN-ON` list rendering the current TCP display subset, sector ID, and Zulu sign-on timestamp (e.g., `1D  0311`).
+
+Deferred to future simulation phases:
+- **Sign-On/Sign-Off Keyboard Commands**: Formal controller authentication chords (`SO <TCP> <OPERATOR_ID>`) with session duration tracking and relief briefings.
+- **Multi-Position Sector Consolidation**: Dynamically combining or de-combining sector boundaries and transferring owned track lists between TCPs.
+
+### SSA Multi-Sensor Fusion Telemetry and Network Health
+
+Visible now: SSA header layout rendering alert indicator `[▼]`, subset `(1)`, Zulu time + altimeter, network status + radar mode (`OK/OK/NA FUSED`), beacon blocks, red SPC alerts, range + PTL, dual altitude filters, and satellite airport altimeters.
+
+Deferred to future simulation phases:
+- **Live Multi-Sensor Radar Health Telemetry**: Dynamic degradation to `NA/NA/NA` with sensor-specific failover when individual radar heads disconnect.
+- **Automated Beacon Bank Exhaustion Tracking**: Dynamic allocation and exhaustion warnings for discrete transponder code banks.
+
 ## Explicit boundary
 
 This document does not pull in untouched phase work such as scoring/replay,
-constant-wind simulation, CRDA/FMA/ARV, a licensed STARS typeface, or other
+constant-wind simulation, a licensed STARS typeface, or other
 features that have not been partially implemented in the shipped slices.

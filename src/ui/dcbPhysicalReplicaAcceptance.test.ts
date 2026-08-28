@@ -115,7 +115,7 @@ test("AC2 — normal, pressed, and disabled caps have distinct physical tokens",
   expect(css).toMatch(/inset -2px -2px var\(--dcb-shadow/);
   expect(css).toMatch(/inset 2px 2px var\(--dcb-pressed-shadow/);
   expect(css).toMatch(/inset -1px -1px var\(--dcb-pressed-highlight/);
-  expect(css).toMatch(/var\(--dcb-disabled-text,\s*#4c604c\)/);
+  expect(css).toMatch(/var\(--dcb-disabled-text,\s*#4c604c\)/i);
   expect(css).not.toMatch(/repeating-linear-gradient|raster|stripe/i);
 });
 

@@ -45,7 +45,7 @@ import {
   syncRoleMapVisibility,
   type RrIntervalNm,
 } from "./dcbFunctions";
-import { type DcbDock } from "./dcbPref";
+import { emptyDcbPrefRuntime, type DcbDock, type DcbPrefRuntime } from "./dcbPref";
 import { idleDcbSpinner, type DcbMenu, type DcbSpinnerState } from "./dcbMenu";
 import {
   cloneCharSizes,
@@ -82,7 +82,14 @@ import {
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
 import { cloneBrite, type BriteState } from "./palette";
 import type { TrackDisplay } from "./trackDisplay";
-import type { DcbPrefRuntime } from "./dcbPref";
+
+import {
+  DEFAULT_SYSTEM_LIST_PLACEMENTS,
+  idleListDragState,
+  type CrdaRpcConfig,
+  type ListDragState,
+  type SystemListPlacement,
+} from "./systemLists";
 
 export interface ScopeView {
   camera: ScopeCamera;
@@ -191,6 +198,20 @@ export interface ScopeView {
   giTextLines: string[];
   /** GI FILTER 1–10. Empty authored slots stay off and inert. */
   giFilterVisible: boolean[];
+  /** In-scope system list positions & configurations. */
+  systemLists: Record<string, SystemListPlacement>;
+  /**
+   * TOWER 1–3 airport IDs. When omitted, each list uses the scenario airport.
+   * Satellite airports are not inferred from a facility-id switch.
+   */
+  towerAirports?: string[];
+  /**
+   * CRDA STATUS RPC pairings. When omitted, `buildCrdaStatusList` uses
+   * `defaultCrdaConfigsForAirport`.
+   */
+  crdaRpcConfigs?: CrdaRpcConfig[];
+  /** In-scope system list active middle-click drag state. */
+  listDrag: ListDragState;
   /**
    * DCB PREF runtime (T02-29). Eight named local display snapshots.
    * Analog CRC PREF; trainer localStorage, not a NAS preference host.
@@ -281,12 +302,9 @@ export function createScopeView(
     ssaFilter: defaultSsaVisibility(),
     giTextLines,
     giFilterVisible: defaultGiVisibility(giTextLines),
-    dcbPref: {
-      icao: "",
-      slots: [null, null, null, null, null, null, null, null],
-      activeIndex: 0,
-      restore: null,
-    },
+    systemLists: { ...DEFAULT_SYSTEM_LIST_PLACEMENTS },
+    listDrag: idleListDragState(),
+    dcbPref: emptyDcbPrefRuntime(),
     sectorId: "D",
     beaconSelectCodes: [],
     tracks: new Map(),

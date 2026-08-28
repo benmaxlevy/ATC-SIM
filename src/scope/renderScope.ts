@@ -81,7 +81,7 @@ import {
   tpaRingsToPaint,
   tpaSizeReadoutEnabled,
 } from "./tpa";
-import { buildGiLines, buildSsaLines } from "./ssa";
+import { buildGiLines, buildSsaRenderLines } from "./ssa";
 import { buildMapListLines } from "./dcbFunctions";
 import type { TrackOwnership } from "./ownership";
 import { BLINK_HALF_PERIOD_MS, PALETTE, applyBrite, caDatablockTagVisible } from "./palette";
@@ -98,6 +98,18 @@ import {
   isTrackQueried,
   syncTrackDisplays,
 } from "./trackDisplay";
+import {
+  buildAlertList,
+  buildCoastSuspendList,
+  buildCrdaStatusList,
+  buildSignOnList,
+  buildTabFlightPlanList,
+  buildTowerArrivalList,
+  buildVfrList,
+  findOverlappingLists,
+  type ListRect,
+} from "./systemLists";
+import { buildVideoMapsListLines } from "./coordinationList";
 
 const RING_STROKE_PX = 1;
 const RUNWAY_STROKE_PX = 2;
@@ -127,6 +139,7 @@ export function renderScope(
   const ssaBottomY = drawSsa(ctx, world, view);
   drawChordHint(ctx, view, ssaBottomY);
   drawMapLists(ctx, view, cssWidth);
+  drawSystemLists(ctx, world, view, cssWidth, cssHeight);
 }
 
 function tracePolyline(
@@ -972,25 +985,71 @@ const SSA_TOP_PX = 8;
  * GI TEXT is authored facility lines (not a METAR panel / HUD). Empty slots never paint.
  */
 function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): number {
-  const lines = [
-    ...buildSsaLines({
-      simTimeMs: world.simTimeMs,
-      rangeNm: view.camera.rangeNm,
-      offCenter: isViewOffAirport(view),
-      filter: view.altitudeFilter,
-      filterEntry: view.filterEntry,
-      visibility: view.ssaFilter,
-      ptlMinutes: view.ptlMinutes,
-    }),
-    ...buildGiLines(view.giTextLines, view.giFilterVisible),
-  ];
+  const hasAlert =
+    (world.alerts?.msaw && world.alerts.msaw.length > 0) ||
+    (world.alerts?.ca && world.alerts.ca.length > 0);
+
+  const airportId = world.catalog?.airportId ?? "KDEM";
+  const rwys: string[] = [];
+  const seenRwys = new Set<string>();
+  for (const approach of world.catalog?.approaches ?? []) {
+    const id = approach.runwayId ?? approach.runway;
+    if (!id || seenRwys.has(id)) {
+      continue;
+    }
+    seenRwys.add(id);
+    rwys.push(id);
+  }
+  const primaryRwy = rwys[0] ?? "27";
+  const secondaryRwy = rwys[1] ?? (primaryRwy === "27" ? "09" : "27");
+  const pairing = `${primaryRwy}/${secondaryRwy}`;
+  const crdaRpcStatus = `*S1 ${airportId} ${pairing}`;
+
+  const ssaLines = buildSsaRenderLines({
+    simTimeMs: world.simTimeMs,
+    rangeNm: view.camera.rangeNm,
+    offCenter: isViewOffAirport(view),
+    filter: view.altitudeFilter,
+    filterEntry: view.filterEntry,
+    visibility: view.ssaFilter,
+    ptlMinutes: view.ptlMinutes,
+    hasAlert: Boolean(hasAlert),
+    airportCode: airportId,
+    crdaRpcStatus,
+  });
+  const giLines = buildGiLines(view.giTextLines, view.giFilterVisible);
+
   const lineH = datablockLineHeightPx(view.charSizes.lists);
   ctx.font = datablockFontCss(view.charSizes.lists);
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
-  ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
+  const defaultColor = applyBrite(PALETTE.ssa, view.brite.lst);
+  const alertColor = applyBrite(PALETTE.alert, view.brite.lst);
+
   let y = SSA_TOP_PX;
-  for (const line of lines) {
+  for (const item of ssaLines) {
+    if (item.text === "▼") {
+      const listSize = view.charSizes.lists;
+      const triFontSize = Math.round(listSize * 1.25);
+      ctx.font = datablockFontCss(triFontSize);
+      const metrics = ctx.measureText(item.text);
+      const triW = metrics.width > 0 ? metrics.width : Math.round(triFontSize * 0.85);
+      const triH = Math.round(triFontSize * 0.9);
+      ctx.fillStyle = alertColor;
+      ctx.fillText(item.text, SSA_LEFT_PX, y);
+      ctx.strokeStyle = defaultColor;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(SSA_LEFT_PX, y, triW, triH);
+      ctx.font = datablockFontCss(view.charSizes.lists);
+      y += triH + Math.round(lineH * 0.25);
+    } else {
+      ctx.fillStyle = item.style === "alert" || item.style === "spc" ? alertColor : defaultColor;
+      ctx.fillText(item.text, SSA_LEFT_PX, y);
+      y += lineH;
+    }
+  }
+  for (const line of giLines) {
+    ctx.fillStyle = defaultColor;
     ctx.fillText(line, SSA_LEFT_PX, y);
     y += lineH;
   }
@@ -1053,5 +1112,155 @@ function drawMapLists(ctx: CanvasRenderingContext2D, view: ScopeView, cssWidth: 
       ctx.fillText(line, x, y);
       y += lineH;
     }
+  }
+}
+
+function drawSystemLists(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  view: ScopeView,
+  cssWidth: number,
+  cssHeight: number,
+): void {
+  if (!view.systemLists) {
+    return;
+  }
+
+  const lineH = datablockLineHeightPx(view.charSizes.lists);
+  ctx.font = datablockFontCss(view.charSizes.lists);
+  ctx.textBaseline = "top";
+  ctx.textAlign = "left";
+  const textColor = applyBrite(PALETTE.ssa, view.brite.lst);
+
+  const activeRects: { id: string; bounds: ListRect }[] = [];
+  const airportId = world.catalog?.airportId ?? "KDEM";
+
+  for (const [id, placement] of Object.entries(view.systemLists)) {
+    if (!placement.visible && id !== "ALERT") {
+      continue;
+    }
+
+    let lines: string[] = [];
+    switch (id) {
+      case "SIGN_ON":
+        lines = buildSignOnList();
+        break;
+      case "TAB":
+        lines = buildTabFlightPlanList(world, placement.maxLines);
+        break;
+      case "VFR":
+        lines = buildVfrList(world, placement.maxLines);
+        break;
+      case "TOWER_1":
+        lines = buildTowerArrivalList(
+          world,
+          view.towerAirports?.[0] ?? airportId,
+          0,
+          0,
+          placement.maxLines,
+        );
+        break;
+      case "TOWER_2":
+        lines = buildTowerArrivalList(
+          world,
+          view.towerAirports?.[1] ?? airportId,
+          0,
+          0,
+          placement.maxLines,
+        );
+        break;
+      case "TOWER_3":
+        lines = buildTowerArrivalList(
+          world,
+          view.towerAirports?.[2] ?? airportId,
+          0,
+          0,
+          placement.maxLines,
+        );
+        break;
+      case "ALERT":
+        lines = buildAlertList(world, placement.maxLines);
+        break;
+      case "COAST":
+        lines = buildCoastSuspendList([], placement.maxLines);
+        break;
+      case "CRDA":
+        lines = buildCrdaStatusList(view.crdaRpcConfigs, placement.maxLines, airportId);
+        break;
+      case "MAPS":
+        lines = buildVideoMapsListLines(view, "ALL", placement.maxLines);
+        break;
+      default:
+        break;
+    }
+
+    if (lines.length === 0) {
+      continue;
+    }
+
+    const x = Math.round(placement.x * cssWidth);
+    const y = Math.round(placement.y * cssHeight);
+    let maxLineW = 0;
+    for (const line of lines) {
+      const w = ctx.measureText(line).width;
+      if (w > maxLineW) maxLineW = w;
+    }
+    const width = Math.max(maxLineW + 8, 80);
+    const height = lines.length * lineH + 4;
+    const bounds: ListRect = { x, y, width, height };
+    activeRects.push({ id, bounds });
+
+    // Draw text lines
+    ctx.fillStyle = textColor;
+    let textY = y;
+    for (const line of lines) {
+      ctx.fillText(line, x, textY);
+      textY += lineH;
+    }
+
+    // If showAllFrames is enabled, draw frame title
+    if (view.listDrag?.showAllFrames) {
+      ctx.strokeStyle = "#00FF00";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x - 2, y - 2, width + 4, height + 4);
+      ctx.fillText(`[${placement.frameTitle}]`, x, y - lineH);
+    }
+  }
+
+  // Check and draw overlapping warning boxes
+  const overlapping = findOverlappingLists(activeRects);
+  if (overlapping.size > 0 && !view.listDrag?.movingListId) {
+    ctx.strokeStyle = "#00FF00";
+    ctx.lineWidth = 1;
+    for (const item of activeRects) {
+      if (overlapping.has(item.id)) {
+        ctx.strokeRect(
+          item.bounds.x - 2,
+          item.bounds.y - 2,
+          item.bounds.width + 4,
+          item.bounds.height + 4,
+        );
+      }
+    }
+  }
+
+  // Draw active middle-click drag frames
+  if (
+    view.listDrag?.movingListId &&
+    view.listDrag.movingAnchorRect &&
+    view.listDrag.movingCurrentPos &&
+    view.listDrag.movingOffset
+  ) {
+    // Green anchor box
+    ctx.strokeStyle = "#00FF00";
+    ctx.lineWidth = 1;
+    const anchor = view.listDrag.movingAnchorRect;
+    ctx.strokeRect(anchor.x - 2, anchor.y - 2, anchor.width + 4, anchor.height + 4);
+
+    // White moving box
+    ctx.strokeStyle = "#FFFFFF";
+    const movingX = view.listDrag.movingCurrentPos.x - view.listDrag.movingOffset.x;
+    const movingY = view.listDrag.movingCurrentPos.y - view.listDrag.movingOffset.y;
+    ctx.strokeRect(movingX - 2, movingY - 2, anchor.width + 4, anchor.height + 4);
   }
 }

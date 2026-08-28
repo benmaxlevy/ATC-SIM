@@ -27,7 +27,6 @@ import {
   toggleVideoMap,
 } from "./dcbFunctions";
 import { createScopeView, toggleSsaFilter } from "./scopeView";
-import { formatFilterReadout } from "./altitudeFilter";
 import { buildSsaLines, formatSsaTime } from "./ssa";
 import {
   POSITION_SYMBOL_COLOR,
@@ -671,8 +670,7 @@ test("AC8 — FILTER readout and FOA/CRC altitude filter comments; no cull or sl
   const view = createScopeView();
   const painted = createMockCtx();
   renderScope(painted.ctx, world, view, 800, 800);
-  const readout = formatFilterReadout(view.altitudeFilter, view.filterEntry);
-  expect(readout).toBe("FILTER 000-180");
+  const readout = "000 180 U 000 180 A";
   const filterText = painted.fillTexts.find((t) => t.text === readout);
   expect(filterText).toBeDefined();
   expect(filterText!.fillStyle).toBe(PALETTE.ssa);
@@ -710,17 +708,17 @@ test("AC1 — SSA paints FILTER, RANGE, and OFF CNTR only when panned", () => {
     filter: view.altitudeFilter,
     filterEntry: view.filterEntry,
   });
-  expect(expected).toContain("FILTER 000-180");
-  expect(expected).toContain("RANGE 20");
+  expect(expected).toContain("000 180 U 000 180 A");
+  expect(expected).toContain("20NM PTL: 1.0");
   expect(expected).not.toContain("OFF CNTR");
   for (const line of expected) {
     const painted = onAirport.fillTexts.find((t) => t.text === line);
     expect(painted, line).toBeDefined();
-    expect(painted!.fillStyle).toBe(PALETTE.ssa);
+    expect(painted!.fillStyle).toBe(line === "▼" ? PALETTE.alert : PALETTE.ssa);
     expect(painted!.x).toBe(8);
     expect(painted!.textBaseline).toBe("top");
   }
-  expect(onAirport.fillTexts.some((t) => t.text === formatSsaTime(125_000))).toBe(true);
+  expect(onAirport.fillTexts.some((t) => t.text.includes(formatSsaTime(125_000)))).toBe(true);
   expect(onAirport.fillTexts.some((t) => t.text === "OFF CNTR")).toBe(false);
 
   view.camera.centerEastNm = 4;
@@ -900,7 +898,7 @@ test("T02-08 AC2/AC3/AC4/AC5/AC8 — F3 greens selected symbol+datablock; others
   expect(owned.fillTexts.filter((t) => t.text === "*")).toHaveLength(1);
   const painted = [
     ...owned.strokeRects.map((r) => r.strokeStyle),
-    ...owned.fillTexts.map((t) => t.fillStyle ?? ""),
+    ...owned.fillTexts.filter((t) => t.text !== "▼").map((t) => t.fillStyle ?? ""),
     ...owned.pathStrokes.map((s) => s.strokeStyle),
   ];
   expect(painted.some((c) => c.toLowerCase() === "#ff0000" || c.toLowerCase() === "red")).toBe(
@@ -1194,7 +1192,10 @@ test("T02-26 — CHAR SIZE DATA BLOCKS / LISTS and BRITE FDB/MPA change paint", 
   const resized = next.fillTexts.find((t) => t.text === dal.callsign);
   expect(resized?.font).toContain("11px");
   expect(resized?.fillStyle).toBe(applyBrite(PALETTE.unowned, 50));
-  const ssa = next.fillTexts.find((t) => t.text === "RANGE 20" || t.text === "KDEM 29.92");
+  const ssa = next.fillTexts.find(
+    (t) =>
+      t.text.includes("PTL") || t.text.includes("OK/OK/NA") || t.text === "000 180 U 000 180 A",
+  );
   expect(ssa?.font).toContain("13px");
   expect(ssa?.fillStyle).toBe(applyBrite(PALETTE.ssa, 100));
   expect(next.fillTexts.some((t) => t.fillStyle === applyBrite(PALETTE.map, 40))).toBe(true);
@@ -1206,14 +1207,14 @@ test("T02-27 — SSA FILTER hides TIME on the PPI; GI TEXT paints authored lines
   const view = createScopeView(0, 0, { giTextLines: scenario.giTextLines });
   const before = createMockCtx();
   renderScope(before.ctx, world, view, 800, 800);
-  expect(before.fillTexts.some((t) => t.text === formatSsaTime(125_000))).toBe(true);
+  expect(before.fillTexts.some((t) => t.text.includes(formatSsaTime(125_000)))).toBe(true);
   expect(before.fillTexts.some((t) => t.text === "ATIS A")).toBe(true);
   expect(before.fillTexts.some((t) => t.text === "RWY 27")).toBe(true);
 
   toggleSsaFilter(view, "TIME");
   const after = createMockCtx();
   renderScope(after.ctx, world, view, 800, 800);
-  expect(after.fillTexts.some((t) => t.text === formatSsaTime(125_000))).toBe(false);
+  expect(after.fillTexts.some((t) => t.text.includes(formatSsaTime(125_000)))).toBe(false);
   expect(after.fillTexts.some((t) => t.text === "ATIS A")).toBe(true);
   expect(after.fillTexts.filter((t) => t.text === "").length).toBe(0);
 });
@@ -1839,7 +1840,7 @@ test("AC4 — live * chord buffer paints next to FILTER in SSA/preview green", (
   const chord = painted.fillTexts.find((t) => t.text === "*J2.5");
   expect(chord).toBeDefined();
   expect(chord!.fillStyle).toBe(PALETTE.ssa);
-  expect(painted.fillTexts.some((t) => t.text === "FILTER 000-180")).toBe(true);
+  expect(painted.fillTexts.some((t) => t.text === "000 180 U 000 180 A")).toBe(true);
 });
 
 test("F3/F4 paint INIT CNTL / TERM CNTL; live * chord still wins the hint", () => {
@@ -1893,7 +1894,7 @@ test("injected preview entry paints INIT CNTL in SSA/preview green, never F3", (
   expect(preview).toBeDefined();
   expect(preview!.fillStyle).toBe(PALETTE.ssa);
   expect(painted.fillTexts.some((t) => t.text === "F3")).toBe(false);
-  expect(painted.fillTexts.some((t) => t.text === "FILTER 000-180")).toBe(true);
+  expect(painted.fillTexts.some((t) => t.text === "000 180 U 000 180 A")).toBe(true);
 });
 
 test("injected armed preview paints TERM CNTL without throwing", () => {

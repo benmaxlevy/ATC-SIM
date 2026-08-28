@@ -1,5 +1,26 @@
 # Swarm status
 
+## SIXTEENTH SWARM COMPLETE — STARS In-Scope System Lists & Complete DCB (T02-55–60)
+
+T02-55–60 are merged on `feature/stars-lists-and-dcb`. Captain `npm test` / `npm run ci` / `npm run build`: **140 test files passed, 1624 tests passed, 1 skipped, 0 failures**. Full in-scope STARS system lists window manager and complete 1:1 DCB parity with Vice:
+
+- **System Lists Core & Drag Manager (T02-55):** Canvas2D-native declarative `ListFormatter` with bracketed tokens (`[INDEX]`, `[ACID]`, `[BEACON]`, `[REQ_ALT]`, `[EXIT_FIX]`), normalized $[x, y]$ coords, middle-click drag lifecycle (green anchor frame + white cursor frame + commit/cancel), collision overlap detection with green warning frames, and `CHAR SIZE -> LISTS` (0–5) / `BRITE -> LST` font scaling.
+- **TAB, VFR, Tower, Alert, and Coast Lists (T02-56):** TAB Flight Plan list (`[MULTIFUNC]T`, unassociated flights, `MORE: n/m`), VFR list (`[MULTIFUNC]TV`), Tower arrival sequence list 1–3 (`[MULTIFUNC]P#`, real-time sorting by distance to threshold), Alert list (auto MSAW `LA` and Collision Alert `CA` entries), and Coast/Suspend list (`[MULTIFUNC]TC`).
+- **Coordination & Video Maps Lists (T02-57):** Hold-for-release departure management with `[F13]` keys (single release, `[F13]ACID` release/remove, auto-release `AUTO` flag via `[F13]P(ID) A*`/`M*`, flashing `*` unreleased, steady `+` released) and Video Maps directory list (`[MULTIFUNC]TX`, active `>` indicator, `GEO MAPS` / `SYS PROC` / `CURRENT` categorization).
+- **DCB MAIN Grid & Spinner Panning (T02-58):** Authentic 19-column / 22-slot MAIN layout (`RANGE`, `PLACE CNTR`/`OFF CNTR`, `RR`, `PLACE RR`/`RR CNTR`, `MAPS`, Quick Maps, `WX` with `AVL` badges, `BRITE`, `LDR DIR`/`LDR`, `CHAR SIZE`, `MODE FSL`, `SITE`, `PREF`, `SSA FILTER`/`GI TEXT FILTER`, `SHIFT`), continuous PPI mouse-drag panning for `PLACE CNTR`/`PLACE RR`, spinner vertical mouse-drag delta capture, and direct numeric keyboard entry.
+- **AUX Toolbar & Submenus Parity (T02-59):** AUX DCB (`H_RATE`, `CURSOR HOME`, `DWELL` `OFF`/`ON`/`LOCK`, 0–10 history dots, authentic spacer caps), BRITE full 16-channel $12\times 2$ grid, PREF 32-slot profile grid with active illumination and custom naming, SSA FILTER full 22-flag $14\times 2$ grid with master `ALL` toggle logic, MAPS category filters and SITE mode toggles.
+- **Integration Acceptance (T02-60):** `src/scope/systemListsAndDcb.integration.test.ts` drives real `World` + `ScopeView` ticks proving all system lists, middle-click dragging, collision detection, DCB submenus, spinner physics, and zero simulation regressions.
+
+**Merged (squash-merged, captains only):** T02-55 (`34d8297`), T02-58 (`bdc08ca`), T02-56 (`f7b4416`), T02-59 (`a9c773f`), T02-57 (`a177ac1`), T02-60 (`ab60329`), typing & test follow-ups (`749dbbf`).
+
+**Captain judgement calls:**
+- **Orchestrator and captain were one session.** Merge lock, worktrees, and waves were held in the top session. Workers stayed leaf-only and never merged.
+- **`ticket/` branches were cut from `feature/stars-lists-and-dcb`, not `master`.** `master` is untouched.
+- **Wave B and C rebase was additive.** System lists extended `systemLists.ts` and `coordinationList.ts` cleanly.
+- **Product law held:** canvas-native lists in STARS green; middle-click drag with collision frames; authentic 19-column DCB; preview ≠ radio; no Command IR from scope UI.
+
+---
+
 ## FIFTEENTH SWARM COMPLETE — STARS Preview Area (T02-51–54)
 
 T02-51–54 are merged on `feature/stars-preview-area`. Captain `npm test` / `npm run ci` / `npm run build`: **135 test files passed, 1593 tests passed, 1 skipped, 0 failures**. Preview Area under the SSA is the scope command buffer; the radio line stays `DAL123 H270` → Command IR:

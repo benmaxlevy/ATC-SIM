@@ -47,7 +47,7 @@ export const DEFAULT_RR_INTERVAL_NM: RrIntervalNm = 5;
 export const DCB_LEADER_DIRS: LeaderDir[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 /** CRC analog numbered MAPS slots. Trainer catalog binds dcbNumber; unused stay empty. */
-export const DCB_MAP_SLOT_COUNT = 30;
+export const DCB_MAP_SLOT_COUNT = 32;
 /** MAIN quick video-map toggles (catalog 1–6). */
 export const DCB_QUICK_MAP_COUNT = 6;
 

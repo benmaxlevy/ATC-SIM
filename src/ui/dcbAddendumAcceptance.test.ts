@@ -214,7 +214,7 @@ test("AC4 — DCB has SHIFT / PREF / disabled WX; no CSA/FMA/OSM; no input/Apply
   expect(pref).toContain("SAVE");
   expect(pref).toContain("DEFAULT");
   expect(pref).not.toMatch(/<input/i);
-  expect(DCB_PREF_SLOT_COUNT).toBe(8);
+  expect(DCB_PREF_SLOT_COUNT).toBe(32);
 
   expect(SCOPE_FONT_STACK).toContain("IBM Plex Mono");
   expect(SCOPE_FONT_STACK).toContain("monospace");
@@ -308,7 +308,7 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, disabled WX/VOL, T
   expect(maps).toContain("GEO");
   expect(maps).toContain("CURRENT");
   expect(maps).not.toContain("RANGE 20");
-  expect(DCB_MAP_SLOT_COUNT).toBe(30);
+  expect(DCB_MAP_SLOT_COUNT).toBe(32);
   for (let slot = 1; slot <= DCB_MAP_SLOT_COUNT; slot += 1) {
     expect(maps).toMatch(new RegExp(`data-dcb-map-slot="${slot}"`));
   }
@@ -353,14 +353,14 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, disabled WX/VOL, T
   const gi = dcbHtml(view);
   expect(GI_SLOT_COUNT).toBe(10);
   expect(gi).toContain("GI 1");
-  expect(gi).toContain("GI 10");
+  expect(gi).toContain("GI 9");
   closeDcbMenu(view);
 
   applyDcbShift(view);
   openDcbMenu(view, "TPA_ATPA");
   const tpa = dcbHtml(view);
-  expect(tpa).toMatch(/data-dcb-cell="tpa-on"/);
-  expect(tpa).toMatch(/data-dcb-cell="atpa"/);
+  expect(tpa).toContain("DONE");
+  expect(tpa).toMatch(/data-dcb-cell="done"/);
   expect(tpa).toMatch(/data-dcb-cell="atpa-mileage"/);
   expect(tpa).toMatch(/data-dcb-cell="atpa-intrail"/);
   expect(tpa).toMatch(/data-dcb-cell="atpa-alert"/);

@@ -1,6 +1,6 @@
 /**
  * Analog: CRC STARS DCB PREF / DCB position TOP / LEFT / RIGHT / BOTTOM (docs.virtualnas.net/crc/stars — R07).
- * Trainer delta: 8 local preference-set slots (not CRC's 32 NAS host sets),
+ * STARS spec: 32 local preference-set slots (16 columns x 2 rows = 32 slots; CRC analog / NAS host sets),
  * persisted in localStorage, facility-keyed and schema-versioned. One DCB at a
  * time along a PPI edge. LEFT/RIGHT are a vertical cell stack; TOP/BOTTOM stay
  * horizontal. Drawable PPI size is the host minus DCB thickness on that edge.
@@ -54,8 +54,8 @@ export function drawablePpiSize(
   return { widthPx: hostWidthPx, heightPx: Math.max(0, hostHeightPx - thicknessPx) };
 }
 
-/** Trainer freeze: 8 slots, not CRC 32. */
-export const DCB_PREF_SLOT_COUNT = 8;
+/** STARS specification: 32 preference slots (16 columns x 2 rows). */
+export const DCB_PREF_SLOT_COUNT = 32;
 
 /** MAIN PREF second-line budget. CRC analog is a short set name (e.g. 22/27). */
 export const DCB_PREF_READOUT_MAX_CHARS = 6;
@@ -427,7 +427,7 @@ export function parseDcbPrefJson(raw: string | null, icao: string): DcbPrefFile 
     if (!isReadablePrefSchemaVersion(file.v) || typeof file.icao !== "string") {
       return fallback;
     }
-    if (!Array.isArray(file.slots) || file.slots.length !== DCB_PREF_SLOT_COUNT) {
+    if (!Array.isArray(file.slots)) {
       return fallback;
     }
     const activeIndex =
@@ -436,11 +436,15 @@ export function parseDcbPrefJson(raw: string | null, icao: string): DcbPrefFile 
       file.activeIndex < DCB_PREF_SLOT_COUNT
         ? file.activeIndex
         : 0;
+    const parsedSlots = file.slots.slice(0, DCB_PREF_SLOT_COUNT).map((slot) => parseSlot(slot));
+    while (parsedSlots.length < DCB_PREF_SLOT_COUNT) {
+      parsedSlots.push(null);
+    }
     return {
       v: DCB_PREF_SCHEMA_VERSION,
       icao: file.icao,
       activeIndex,
-      slots: file.slots.map((slot) => parseSlot(slot)),
+      slots: parsedSlots,
     };
   } catch {
     return fallback;

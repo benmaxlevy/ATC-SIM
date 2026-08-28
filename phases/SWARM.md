@@ -1,4 +1,4 @@
-# ATC-SIM swarm orchestrator — Fifteenth swarm (STARS Preview Area: T02-51–54)
+# ATC-SIM swarm orchestrator — Sixteenth swarm (STARS In-Scope System Lists & Complete DCB: T02-55–60)
 
 Paste **this entire file** into a new agent. That agent is the **orchestrator**. It may run for hours. It writes almost no application code.
 
@@ -9,7 +9,71 @@ Shell: **bash** (Linux).
 
 Before checking git, spawning agents, creating worktrees, or editing application code, update this file for the current swarm. Append a new swarm-start heading/configuration; do not overwrite prior swarm history. If the requested swarm configuration is incomplete, ask before making any other swarm move. Then commit the planning/status update before creating ticket branches or worktrees.
 
-This is the **fifteenth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–25) → 2 STARS CRC scope fidelity (T02-34–42) → 5 setup menu (T05-13, T05-14) → 4 dual runway (T04-26–30) → 2 TPA / ATPA (T02-43–50)** are already green on `master`. Do **not** redo completed work. Skip **T04-11** (wind) unless the human names it. This run is **T02-51–54 only**.
+This is the **sixteenth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–25) → 2 STARS CRC scope fidelity (T02-34–42) → 5 setup menu (T05-13, T05-14) → 4 dual runway (T04-26–30) → 2 TPA / ATPA (T02-43–50) → 2 STARS Preview Area (T02-51–54)** are already green on `master`. Do **not** redo completed work. Skip **T04-11** (wind) unless the human names it. This run is **T02-55–60 only**.
+
+---
+
+## Sixteenth swarm planned — 2026-08-28 (STARS In-Scope System Lists & Complete DCB)
+
+This configuration runs on feature branch `feature/stars-lists-and-dcb`, cut from `master`. Ticket workers branch from that base; the captain squash-merges back into that base.
+
+| Key | Value |
+| --- | --- |
+| Goal | Full in-scope STARS system lists engine (TAB Flight Plan, VFR, Tower sequences, Alert list, Coast/Suspend, Coordination departures, Video Maps list) with middle-click drag/drop, collision detection warning frames, and 1:1 DCB parity with Vice (19-column MAIN grid, spinner mouse-drag delta & typed entry, continuous `PLACE CNTR` PPI panning, AUX `H_RATE`/`DWELL`/`CURSOR HOME`, 16-channel BRITE, 32-slot PREF, 22-filter SSA, and `Scale to Fit`). |
+| Player loop | `npm run dev` → TAB list shows unassociated flights with `[MULTIFUNC]T` → middle-click list moves it across scope; dragging onto Tower list displays green overlap conflict frames → `[F13]` releases unreleased departure from Coordination list → DCB `RANGE` spinner steps on wheel or drag and accepts typed number → DCB `BRITE` opens 16-channel $12\times 2$ grid → DCB `PREF` displays 32 profiles with active highlight. |
+| Include | **T02-55**, **T02-56**, **T02-57**, **T02-58**, **T02-59**, **T02-60** |
+| Skip | T04-11; all completed work (T00–T02-54, T03-*, T04-*, T05-*); downstream FMS holding pattern navigation & crossing constraints (Phase 3); pointout lifecycle & TG mode expansions (Phase 4); multi-TRACON scenario importer (Phase 5). |
+| Stop | After T02-60 acceptance. Do not start phase 3/4 navigation or command parsing. |
+| Max ticket workers in flight | **3** |
+| Merge lock | Only the phase captain squash-merges ticket branches to `feature/stars-lists-and-dcb`, then runs `npm test` |
+| Model | **cursor grok 4.6 high only.** `model: "cursor-grok-4.6-high"` on every captain and worker spawn. Not a fast model |
+| Paid STT/TTS/LLM | **Forbidden** |
+
+**Product law (sixteenth swarm — STARS In-Scope System Lists & Complete DCB):**
+
+- **Canvas-native System Lists.** All system lists (SSA, Preview Area, TAB, VFR, Tower, Alert, Coordination, Coast/Suspend, Video Maps, CRDA, MCI, Sign-On) render directly onto Canvas2D in STARS green, governed by `CHAR SIZE -> LISTS` (0–5) and `BRITE -> LST`.
+- **Middle-Click Drag & Drop.** Clicking middle mouse button inside list bounds starts drag (green anchor frame + white moving frame); second click commits new normalized $[x, y]$ coords; Esc cancels.
+- **Overlap Detection.** Colliding list bounds render green line-loop frames around both lists when not actively dragging.
+- **DCB 19-Column Grid Parity.** Align MAIN DCB with Vice/STARS standard: `RANGE`, `PLACE CNTR`/`OFF CNTR`, `RR`, `PLACE RR`/`RR CNTR`, `MAPS`, Quick Maps, `WX` (with `AVL` badges), `BRITE`, `LDR DIR`/`LDR`, `CHAR SIZE`, `MODE FSL`, `SITE`, `PREF`, `SSA FILTER`/`GI TEXT FILTER`, `SHIFT`.
+- **Spinner Physics.** Spinners step directly on mouse wheel over cell without opening submenus, capture vertical mouse drag when clicked, and accept direct numeric keyboard entry + Enter commit.
+- **Zero simulation regressions.** Kinematics, SIDs/STARs, ILS, dual-runway, radio telephony, Preview Area command buffer, and ATPA/TPA stay 100% operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-55 ∥ T02-58 | Base `feature/stars-lists-and-dcb` |
+| B | T02-56 ∥ T02-59 | T02-55 (56), T02-58 (59) |
+| C | T02-57 | T02-56 |
+| D | T02-60 | T02-57, T02-59 |
+
+**State ownership:**
+
+- `src/scope/systemLists.ts` and `src/scope/listFormatter.ts` are T02-55's. Later tickets (T02-56, T02-57) extend list formatters and selectors.
+- `DisplayControlBar.tsx`, `dcbMenu.ts`, and `dcbFunctions.ts` are updated by T02-58 (MAIN grid & spinner physics) and extended by T02-59 (AUX, 16-channel BRITE, 32-slot PREF, 22-filter SSA).
+- `ScopeView.systemLists` and `ScopeView.dcbScaleToFit` are persisted via `src/scope/dcbPref.ts`.
+
+**Ticket files / branches:**
+
+- `ticket/T02-55-in-scope-system-lists-core-and-middle-click-drag` ← `phases/02-scope/tickets/T02-55-in-scope-system-lists-core-and-middle-click-drag.md`
+- `ticket/T02-56-flight-plan-tab-vfr-tower-and-alert-lists` ← `phases/02-scope/tickets/T02-56-flight-plan-tab-vfr-tower-and-alert-lists.md`
+- `ticket/T02-57-coordination-and-video-maps-lists` ← `phases/02-scope/tickets/T02-57-coordination-and-video-maps-lists.md`
+- `ticket/T02-58-dcb-main-grid-and-spinner-mouse-delta-pan` ← `phases/02-scope/tickets/T02-58-dcb-main-grid-and-spinner-mouse-delta-pan.md`
+- `ticket/T02-59-dcb-aux-and-full-submenus-parity` ← `phases/02-scope/tickets/T02-59-dcb-aux-and-full-submenus-parity.md`
+- `ticket/T02-60-dcb-scale-to-fit-scroll-and-ui-acceptance` ← `phases/02-scope/tickets/T02-60-dcb-scale-to-fit-scroll-and-ui-acceptance.md`
+
+Captain return:
+
+```
+PHASE EXIT GREEN
+Phase: 2 Scope addendum (T02-55–60 STARS In-Scope System Lists & Complete DCB)
+Merged: T02-55 … T02-60
+Tests: npm test / npm run ci exit 0
+Manual leftover: <Chrome visual walk or none>
+Notes: <in-scope draggable lists; overlap detection; full 19-col DCB; 16-ch BRITE; 32-slot PREF; 22-filter SSA; scale-to-fit>
+```
+
+or `PHASE EXIT BLOCKED` with reason.
 
 ---
 

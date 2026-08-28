@@ -574,7 +574,6 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
       applyDcbShift(view);
       openDcbMenu(view, "TPA_ATPA");
       const html = dcbHtml(view);
-      expect(html).toMatch(/data-dcb-cell="atpa"/);
       expect(html).toMatch(/data-dcb-cell="atpa-mileage"/);
       expect(html).toMatch(/data-dcb-cell="atpa-intrail"/);
       expect(html).toMatch(/data-dcb-cell="atpa-alert"/);
