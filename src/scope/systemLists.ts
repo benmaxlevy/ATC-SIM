@@ -58,6 +58,14 @@ export const DEFAULT_SYSTEM_LIST_PLACEMENTS: Record<string, SystemListPlacement>
     visible: true,
     maxLines: 15,
   },
+  SIGN_ON: {
+    id: "SIGN_ON",
+    frameTitle: "SIGN-ON (SO)",
+    x: 0.02,
+    y: 0.22,
+    visible: false,
+    maxLines: 10,
+  },
   PREVIEW: {
     id: "PREVIEW",
     frameTitle: "PREVIEW AREA (P)",
@@ -108,7 +116,7 @@ export const DEFAULT_SYSTEM_LIST_PLACEMENTS: Record<string, SystemListPlacement>
   },
   ALERT: {
     id: "ALERT",
-    frameTitle: "ALERT LIST (TM)",
+    frameTitle: "LA/CA/MCI (TM)",
     x: 0.75,
     y: 0.70,
     visible: true,
@@ -122,6 +130,14 @@ export const DEFAULT_SYSTEM_LIST_PLACEMENTS: Record<string, SystemListPlacement>
     visible: false,
     maxLines: 10,
   },
+  CRDA: {
+    id: "CRDA",
+    frameTitle: "CRDA STATUS (CR)",
+    x: 0.40,
+    y: 0.02,
+    visible: false,
+    maxLines: 10,
+  },
   COORD: {
     id: "COORD",
     frameTitle: "COORDINATION (F13)",
@@ -132,7 +148,7 @@ export const DEFAULT_SYSTEM_LIST_PLACEMENTS: Record<string, SystemListPlacement>
   },
   MAPS: {
     id: "MAPS",
-    frameTitle: "VIDEO MAPS (TX)",
+    frameTitle: "GEOGRAPHIC MAPS (TX)",
     x: 0.25,
     y: 0.02,
     visible: false,
@@ -175,9 +191,38 @@ function isVfr(ac: Aircraft): boolean {
   return ac.squawk === "1200" || ac.assignedSquawk === "1200";
 }
 
-/**
- * Builds TAB Flight Plan list lines.
- */
+/* =========================================================================
+ * 2. Sign-On List
+ * Format: 1D  0311
+ * ========================================================================= */
+
+export interface SignOnState {
+  subset?: number | string;
+  sectorId?: string;
+  signOnSimMs?: number;
+}
+
+export function buildSignOnList(
+  state?: SignOnState,
+  _maxLines: number = 10,
+): string[] {
+  const subset = state?.subset ?? 1;
+  const sector = state?.sectorId ?? "D";
+  const ms = state?.signOnSimMs ?? 11_460_000; // default 03:11 (3 * 3600 + 11 * 60) * 1000
+  const totalSec = Math.floor(ms / 1000);
+  const totalMin = Math.floor(totalSec / 60);
+  const mm = String(totalMin % 60).padStart(2, "0");
+  const hh = String(Math.floor(totalMin / 60) % 24).padStart(2, "0");
+  const signOnTime = `${hh}${mm}`;
+
+  return [`${subset}${sector}  ${signOnTime}`];
+}
+
+/* =========================================================================
+ * 3. Flight Plan List (TAB List)
+ * Format: [Index] [Callsign] [Assigned Squawk] [Type / Dest / Route Info]
+ * ========================================================================= */
+
 export function buildTabFlightPlanList(world: World, maxLines: number = 10): string[] {
   const flights = world.aircraft.filter((ac) => !isVfr(ac));
   const formatter: ListFormatter = {
@@ -190,41 +235,25 @@ export function buildTabFlightPlanList(world: World, maxLines: number = 10): str
       const indexStr = String(idx + 1).padStart(2, "0");
       const acid = ac.callsign.padEnd(7, " ");
       const bcn = (ac.assignedSquawk || ac.squawk || "1200").padStart(4, "0");
+      const type = (ac.aircraftType || "B738").padEnd(4, " ");
       const alt = formatAltitudeHundreds(ac.intent.requestedAltitudeFt ?? ac.intent.assignedAltitudeFt);
       const fix = rewriteFixForList(ac.intent.expectedApproachId ?? ac.intent.clearedApproachId ?? "");
-      return `${indexStr} ${acid} ${bcn} ${alt} ${fix}`;
+      return `${indexStr} ${acid} ${bcn} ${type} ${alt} ${fix}`.trimEnd();
     },
   };
   return buildSystemListLines(formatter);
 }
 
-/**
- * Builds VFR list lines.
- */
-export function buildVfrList(world: World, maxLines: number = 10): string[] {
-  const vfrFlights = world.aircraft.filter(isVfr);
-  const formatter: ListFormatter = {
-    title: "VFR LIST",
-    frameTitle: "VFR LIST (TV)",
-    maxLines,
-    entries: vfrFlights.length,
-    formatLine: (idx) => {
-      const ac = vfrFlights[idx]!;
-      const indexStr = String(idx + 1).padStart(2, "0");
-      const acid = ac.callsign.padEnd(7, " ");
-      const bcn = (ac.assignedSquawk || ac.squawk || "1200").padStart(4, "0");
-      return `${indexStr} ${acid} ${bcn}`;
-    },
-  };
-  return buildSystemListLines(formatter);
-}
+/* =========================================================================
+ * 4. Tower List
+ * Format:
+ * BOS TOWER
+ * AAL100    CRJ7
+ * ========================================================================= */
 
-/**
- * Builds Tower arrival sequence list lines (sorted ascending by distance to airport).
- */
 export function buildTowerArrivalList(
   world: World,
-  airportCode: string = "KDEM",
+  airportCode: string = "BOS",
   airportXNm: number = 0,
   airportYNm: number = 0,
   maxLines: number = 10,
@@ -237,44 +266,122 @@ export function buildTowerArrivalList(
     .sort((a, b) => a.distNm - b.distNm);
 
   const formatter: ListFormatter = {
-    title: airportCode.toUpperCase(),
+    title: `${airportCode.toUpperCase()} TOWER`,
     frameTitle: `TOWER (${airportCode.toUpperCase()})`,
     maxLines,
     entries: arrivals.length,
     formatLine: (idx) => {
-      const { ac, distNm } = arrivals[idx]!;
-      const indexStr = String(idx + 1).padStart(2, "0");
-      const acid = ac.callsign.padEnd(7, " ");
+      const { ac } = arrivals[idx]!;
+      const acid = ac.callsign.padEnd(9, " ");
       const type = (ac.aircraftType || "B738").padEnd(4, " ");
-      const gs = String(Math.round(ac.speedKt)).padStart(3, "0");
-      const distStr = distNm.toFixed(1).padStart(4, " ");
-      return `${indexStr} ${acid} ${type} ${gs} ${distStr}`;
+      return `${acid} ${type}`;
     },
   };
   return buildSystemListLines(formatter);
 }
 
-/**
- * Builds Alert list lines (active MSAW and CA alerts).
- */
+/* =========================================================================
+ * 5. Coast/Suspend List
+ * Format:
+ * COAST/SUSPEND
+ * 12  AAL506    C 3553 015
+ * ========================================================================= */
+
+export interface CoastTrackEntry {
+  id?: string;
+  callsign: string;
+  status?: "C" | "S";
+  squawk?: string;
+  lastAltitudeHundreds?: number | string;
+}
+
+export const DEFAULT_COAST_ENTRIES: CoastTrackEntry[] = [
+  { callsign: "AAL506", status: "C", squawk: "3553", lastAltitudeHundreds: "015" },
+  { callsign: "JBU389", status: "C", squawk: "3746", lastAltitudeHundreds: "030" },
+];
+
+export function buildCoastSuspendList(
+  suspendedAc?: (CoastTrackEntry | Aircraft)[],
+  maxLines: number = 10,
+): string[] {
+  const items = suspendedAc && suspendedAc.length > 0 ? suspendedAc : DEFAULT_COAST_ENTRIES;
+
+  const formatter: ListFormatter = {
+    title: "COAST/SUSPEND",
+    frameTitle: "COAST/SUSPEND (TC)",
+    maxLines,
+    entries: items.length,
+    formatLine: (idx) => {
+      const item = items[idx]!;
+      const indexStr = String(idx + 12).padStart(2, "0");
+      const acid = item.callsign.padEnd(9, " ");
+      const status = ("status" in item && item.status) || "C";
+      const bcn = ("squawk" in item && item.squawk) || ("assignedSquawk" in item && item.assignedSquawk) || "1200";
+      const bcnStr = String(bcn).padStart(4, "0");
+      let altStr = "015";
+      if ("lastAltitudeHundreds" in item && item.lastAltitudeHundreds !== undefined) {
+        altStr = String(item.lastAltitudeHundreds).padStart(3, "0");
+      } else if ("altitudeFt" in item && typeof item.altitudeFt === "number") {
+        altStr = formatAltitudeHundreds(item.altitudeFt);
+      }
+      return `${indexStr}  ${acid} ${status} ${bcnStr} ${altStr}`;
+    },
+  };
+  return buildSystemListLines(formatter);
+}
+
+/* =========================================================================
+ * 6. VFR List
+ * Format:
+ * VFR LIST
+ * 14  *N925RC    0263
+ * ========================================================================= */
+
+export function buildVfrList(world: World, maxLines: number = 10): string[] {
+  const vfrFlights = world.aircraft.filter(isVfr);
+  const formatter: ListFormatter = {
+    title: "VFR LIST",
+    frameTitle: "VFR LIST (TV)",
+    maxLines,
+    entries: vfrFlights.length,
+    formatLine: (idx) => {
+      const ac = vfrFlights[idx]!;
+      const indexStr = String(idx + 14).padStart(2, "0");
+      const acid = `*${ac.callsign}`.padEnd(10, " ");
+      const bcn = (ac.assignedSquawk || ac.squawk || "1200").padStart(4, "0");
+      return `${indexStr}  ${acid} ${bcn}`;
+    },
+  };
+  return buildSystemListLines(formatter);
+}
+
+/* =========================================================================
+ * 7. LA/CA/MCI List
+ * Format:
+ * LA/CA/MCI
+ * DAL111*UAE124    CA
+ * ========================================================================= */
+
 export function buildAlertList(world: World, maxLines: number = 50): string[] {
   const lines: string[] = [];
   if (world.alerts) {
-    if (world.alerts.msaw) {
-      for (const alert of world.alerts.msaw) {
-        lines.push(`LA ${alert.callsign.padEnd(7, " ")} ${formatAltitudeHundreds(alert.altFt)}`);
-      }
-    }
     if (world.alerts.ca) {
       for (const alert of world.alerts.ca) {
-        lines.push(`CA ${alert.callsignA.padEnd(7, " ")} ${alert.callsignB.padEnd(7, " ")}`);
+        const pair = `${alert.callsignA}*${alert.callsignB}`.padEnd(16, " ");
+        lines.push(`${pair} CA`);
+      }
+    }
+    if (world.alerts.msaw) {
+      for (const alert of world.alerts.msaw) {
+        const callsign = alert.callsign.padEnd(16, " ");
+        lines.push(`${callsign} LA`);
       }
     }
   }
   if (lines.length === 0) return [];
   const formatter: ListFormatter = {
-    title: "ALERT LIST",
-    frameTitle: "ALERT LIST (TM)",
+    title: "LA/CA/MCI",
+    frameTitle: "LA/CA/MCI (TM)",
     maxLines,
     entries: lines.length,
     formatLine: (idx) => lines[idx]!,
@@ -282,25 +389,49 @@ export function buildAlertList(world: World, maxLines: number = 50): string[] {
   return buildSystemListLines(formatter);
 }
 
-/**
- * Builds Coast / Suspend list lines.
- */
-export function buildCoastSuspendList(suspendedAc: Aircraft[], maxLines: number = 10): string[] {
+/* =========================================================================
+ * 9. CRDA Status List
+ * Format:
+ * CRDA STATUS
+ * 1  BOS 27/22L
+ * ========================================================================= */
+
+export interface CrdaRpcConfig {
+  index: number;
+  airport: string;
+  pairing: string;
+}
+
+export const DEFAULT_CRDA_CONFIGS: CrdaRpcConfig[] = [
+  { index: 1, airport: "BOS", pairing: "27/22L" },
+  { index: 2, airport: "BOS", pairing: "27/33L" },
+  { index: 3, airport: "BOS", pairing: "4L/15R" },
+  { index: 4, airport: "BOS", pairing: "4R/15R" },
+  { index: 5, airport: "BOS", pairing: "27/32" },
+  { index: 6, airport: "BOS", pairing: "4L/33L" },
+];
+
+export function buildCrdaStatusList(
+  configs?: CrdaRpcConfig[],
+  maxLines: number = 10,
+): string[] {
+  const items = configs && configs.length > 0 ? configs : DEFAULT_CRDA_CONFIGS;
   const formatter: ListFormatter = {
-    title: "COAST/SUSPEND",
-    frameTitle: "COAST/SUSPEND (TC)",
+    title: "CRDA STATUS",
+    frameTitle: "CRDA STATUS (CR)",
     maxLines,
-    entries: suspendedAc.length,
+    entries: items.length,
     formatLine: (idx) => {
-      const ac = suspendedAc[idx]!;
-      const indexStr = String(idx + 1).padStart(2, "0");
-      const acid = ac.callsign.padEnd(7, " ");
-      const bcn = (ac.assignedSquawk || ac.squawk || "1200").padStart(4, "0");
-      return `${indexStr} ${acid} ${bcn} SUSP`;
+      const cfg = items[idx]!;
+      return `${cfg.index}  ${cfg.airport} ${cfg.pairing}`;
     },
   };
   return buildSystemListLines(formatter);
 }
+
+/* =========================================================================
+ * Window Manager & Drag Handlers
+ * ========================================================================= */
 
 /**
  * Checks if two bounding rectangles overlap on the screen.

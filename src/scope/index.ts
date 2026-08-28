@@ -116,19 +116,29 @@ export type { DigitalMap, MapCache, MapLayerFlags, NmPoint } from "./mapLayers";
 export { getDatablockVisualState, isTrackedTarget, renderScope } from "./renderScope";
 export type { DatablockVisualState } from "./renderScope";
 export {
+  DEFAULT_SSA_AIRPORT_ALTIMETERS,
+  DEFAULT_SSA_BEACON_BANKS,
   GI_SLOT_COUNT,
   SSA_ALTIMETER_STUB,
   SSA_FILTER_FIELDS,
   SSA_FUSED_STUB,
   buildGiLines,
   buildSsaLines,
+  buildSsaRenderLines,
   defaultGiVisibility,
   defaultSsaVisibility,
   formatSsaPtl,
   formatSsaTime,
   padGiTextLines,
 } from "./ssa";
-export type { SsaFilterField, SsaInput, SsaVisibility } from "./ssa";
+export type {
+  SsaAirportAltimeter,
+  SsaFilterField,
+  SsaInput,
+  SsaLineStyle,
+  SsaRenderLine,
+  SsaVisibility,
+} from "./ssa";
 export {
   DEFAULT_ALTITUDE_FILTER,
   FILTER_HUNDREDS_MAX,
@@ -585,10 +595,14 @@ export {
 } from "./listFormatter";
 export type { ListFormatter } from "./listFormatter";
 export {
+  DEFAULT_COAST_ENTRIES,
+  DEFAULT_CRDA_CONFIGS,
   DEFAULT_SYSTEM_LIST_PLACEMENTS,
   areAllSystemListsVisible,
   buildAlertList,
   buildCoastSuspendList,
+  buildCrdaStatusList,
+  buildSignOnList,
   buildTabFlightPlanList,
   buildTowerArrivalList,
   buildVfrList,
@@ -604,11 +618,15 @@ export {
   toggleSystemList,
 } from "./systemLists";
 export type {
+  CoastTrackEntry,
+  CrdaRpcConfig,
   ListDragState,
   ListRect,
+  SignOnState,
   SystemListPlacement,
 } from "./systemLists";
 export {
+  DEFAULT_GEOGRAPHIC_MAPS,
   buildCoordinationListLines,
   buildVideoMapsListLines,
   createCoordinationList,

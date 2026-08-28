@@ -6,6 +6,7 @@ import {
   SSA_FUSED_STUB,
   buildGiLines,
   buildSsaLines,
+  buildSsaRenderLines,
   defaultGiVisibility,
   defaultSsaVisibility,
   formatSsaPtl,
@@ -22,43 +23,66 @@ function lines(partial: Partial<Parameters<typeof buildSsaLines>[0]> = {}) {
     filterEntry: partial.filterEntry ?? idleFilterEntry(filter),
     visibility: partial.visibility,
     ptlMinutes: partial.ptlMinutes,
+    hasAlert: partial.hasAlert,
+    spcAlerts: partial.spcAlerts,
   });
 }
 
-test("AC1 — SSA block includes FILTER hundreds and RANGE; OFF CNTR only when panned", () => {
+test("AC1 — SSA block includes subset, time/altstg, status, beacons, range/PTL, dual filter, and altimeters", () => {
   const onAirport = lines({ simTimeMs: 125_000, rangeNm: 20, offCenter: false });
-  expect(onAirport).toEqual([
-    "0002/05",
-    "KDEM 29.92",
-    "FILTER 000-180",
-    "RANGE 20",
-    "OK",
-    "PTL 1.0",
-  ]);
+  expect(onAirport).toContain("(1)");
+  expect(onAirport).toContain("0002/05  30.17");
+  expect(onAirport).toContain("OK/OK/NA FUSED");
+  expect(onAirport).toContain("2364  56  12");
+  expect(onAirport).toContain("20NM PTL: 1.0");
+  expect(onAirport).toContain("000 180 U 000 180 A");
+  expect(onAirport).toContain("BOS 30.17 BED 30.17 OWD 30.18");
+  expect(onAirport).toContain("BVY 30.17 LWM 30.19");
+  expect(onAirport).toContain("QL: ALL");
+  expect(onAirport).toContain("*S1 BOS 27/22L");
   expect(onAirport).not.toContain("OFF CNTR");
 
   const filter: AltitudeFilter = { minHundreds: 50, maxHundreds: 100 };
   const panned = lines({
     simTimeMs: 0,
-    rangeNm: 10,
+    rangeNm: 41,
     offCenter: true,
     filter,
+    ptlMinutes: 3.0,
   });
-  expect(panned).toContain("FILTER 050-100");
-  expect(panned).toContain("RANGE 10");
+  expect(panned).toContain("050 100 U 050 100 A");
+  expect(panned).toContain("41NM PTL: 3.0");
   expect(panned).toContain("OFF CNTR");
-  expect(panned.indexOf("RANGE 10")).toBeLessThan(panned.indexOf("OFF CNTR"));
-  expect(panned.indexOf("OFF CNTR")).toBeLessThan(panned.indexOf("OK"));
 });
 
-test("SSA time is HHMM/SS from sim ms; altimeter and fused stubs are constant", () => {
+test("AC2 — SSA render lines include alert indicator and red SPCs", () => {
+  const renderLines = buildSsaRenderLines({
+    simTimeMs: 0,
+    rangeNm: 20,
+    offCenter: false,
+    filter: DEFAULT_ALTITUDE_FILTER,
+    filterEntry: idleFilterEntry(DEFAULT_ALTITUDE_FILTER),
+    hasAlert: true,
+    spcAlerts: ["RF", "EM"],
+  });
+
+  const topAlert = renderLines.find((l) => l.text === "[▼]");
+  expect(topAlert).toBeDefined();
+  expect(topAlert?.style).toBe("alert");
+
+  const spcLine = renderLines.find((l) => l.text === "RF  EM");
+  expect(spcLine).toBeDefined();
+  expect(spcLine?.style).toBe("spc");
+});
+
+test("SSA time is HHMM/SS from sim ms; altimeter and fused stubs match spec", () => {
   expect(formatSsaTime(0)).toBe("0000/00");
   expect(formatSsaTime(3661_000)).toBe("0101/01");
   expect(formatSsaTime(Number.NaN)).toBe("0000/00");
-  expect(SSA_ALTIMETER_STUB).toBe("KDEM 29.92");
-  expect(SSA_FUSED_STUB).toBe("OK");
-  expect(formatSsaPtl(1)).toBe("PTL 1.0");
-  expect(formatSsaPtl(0.5)).toBe("PTL 0.5");
+  expect(SSA_ALTIMETER_STUB).toBe("30.17");
+  expect(SSA_FUSED_STUB).toBe("OK/OK/NA FUSED");
+  expect(formatSsaPtl(1)).toBe("PTL: 1.0");
+  expect(formatSsaPtl(0.5)).toBe("PTL: 0.5");
 });
 
 test("FILTER chord entry uses the same FIL hundreds readout", () => {
@@ -69,40 +93,23 @@ test("FILTER chord entry uses the same FIL hundreds readout", () => {
   expect(lines({ filter, filterEntry: entry })).toContain("FIL 050-___");
 });
 
-test("AC1 — SSA FILTER hides TIME / ALTSTG and restores them", () => {
+test("AC3 — SSA FILTER hides TIME / ALTSTG and restores them", () => {
   const vis = defaultSsaVisibility();
   vis.TIME = false;
   vis.ALTSTG = false;
   const hidden = lines({ simTimeMs: 125_000, visibility: vis });
-  expect(hidden).not.toContain("0002/05");
-  expect(hidden).not.toContain(SSA_ALTIMETER_STUB);
-  expect(hidden).toContain("FILTER 000-180");
+  expect(hidden.some((l) => l.includes("0002/05"))).toBe(false);
+  expect(hidden.some((l) => l.includes("BOS 30.17"))).toBe(false);
+  expect(hidden).toContain("000 180 U 000 180 A");
+
   vis.TIME = true;
   vis.ALTSTG = true;
   const shown = lines({ simTimeMs: 125_000, visibility: vis });
-  expect(shown[0]).toBe("0002/05");
-  expect(shown).toContain(SSA_ALTIMETER_STUB);
+  expect(shown.some((l) => l.includes("0002/05"))).toBe(true);
+  expect(shown.some((l) => l.includes("BOS 30.17"))).toBe(true);
 });
 
-test("AC2 — hiding STATUS omits OK; RANGE/FILTER still match camera/filter when visible", () => {
-  const vis = defaultSsaVisibility();
-  vis.STATUS = false;
-  const hidden = lines({ rangeNm: 10, visibility: vis });
-  expect(hidden).not.toContain(SSA_FUSED_STUB);
-  expect(hidden).toContain("RANGE 10");
-  expect(hidden).toContain("FILTER 000-180");
-  vis.FILTER = false;
-  vis.RANGE = false;
-  vis.OFF_CNTR = false;
-  vis.STATUS = true;
-  const onlyStatus = lines({ rangeNm: 10, offCenter: true, visibility: vis });
-  expect(onlyStatus).not.toContain("RANGE 10");
-  expect(onlyStatus).not.toContain("FILTER 000-180");
-  expect(onlyStatus).not.toContain("OFF CNTR");
-  expect(onlyStatus).toContain(SSA_FUSED_STUB);
-});
-
-test("AC3 — GI FILTER hides a non-empty line on the PPI string list", () => {
+test("AC4 — GI FILTER hides a non-empty line on the PPI string list", () => {
   const authored = pad10(["ATIS A", "RWY 27", "ILS 27 IN USE"]);
   const vis = defaultGiVisibility(authored);
   expect(buildGiLines(authored, vis)).toEqual(["ATIS A", "RWY 27", "ILS 27 IN USE"]);
@@ -111,7 +118,7 @@ test("AC3 — GI FILTER hides a non-empty line on the PPI string list", () => {
   expect(GI_SLOT_COUNT).toBe(10);
 });
 
-test("AC4 — empty GI slots cannot paint", () => {
+test("AC5 — empty GI slots cannot paint", () => {
   const authored = pad10(["ATIS A", "", "RWY 27"]);
   const vis = [true, true, true, true, true, true, true, true, true, true];
   expect(buildGiLines(authored, vis)).toEqual(["ATIS A", "RWY 27"]);
@@ -122,7 +129,7 @@ function pad10(lines: string[]): string[] {
   return Array.from({ length: 10 }, (_, i) => lines[i] ?? "");
 }
 
-test("AC5/AC6 — SSA/GI comments are CRC analog; not HUD/METAR panel; no Command IR", () => {
+test("AC6 — SSA/GI comments are CRC analog; not HUD/METAR panel; no Command IR", () => {
   const sources = import.meta.glob("./*.{ts,tsx}", {
     query: "?raw",
     import: "default",

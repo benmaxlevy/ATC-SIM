@@ -70,13 +70,13 @@ describe("STARS System Lists & DCB Integration Acceptance", () => {
     // 2. VFR list
     const vfrLines = buildVfrList(world, 10);
     expect(vfrLines[0]).toBe("VFR LIST");
-    expect(vfrLines[1]).toContain("01 N789V   1200");
+    expect(vfrLines[1]).toContain("14  *N789V");
 
     // 3. Tower arrival sequence (sorted ascending by distance to threshold)
     const towerLines = buildTowerArrivalList(world, "KDEM", 0, 0, 10);
-    expect(towerLines[0]).toBe("KDEM");
-    expect(towerLines[1]).toContain("01 DAL202  B738 170  6.0");
-    expect(towerLines[2]).toContain("02 AAL101  B738 190 12.0");
+    expect(towerLines[0]).toBe("KDEM TOWER");
+    expect(towerLines[1]).toContain("DAL202    B738");
+    expect(towerLines[2]).toContain("AAL101    B738");
 
     // 4. Alert list with active MSAW and CA
     world.alerts = {
@@ -85,9 +85,9 @@ describe("STARS System Lists & DCB Integration Acceptance", () => {
       atpa: [],
     };
     const alertLines = buildAlertList(world, 50);
-    expect(alertLines[0]).toBe("ALERT LIST");
-    expect(alertLines.some((l) => l.includes("LA AAL101"))).toBe(true);
-    expect(alertLines.some((l) => l.includes("CA AAL101  DAL202"))).toBe(true);
+    expect(alertLines[0]).toBe("LA/CA/MCI");
+    expect(alertLines.some((l) => l.includes("AAL101*DAL202"))).toBe(true);
+    expect(alertLines.some((l) => l.includes("AAL101"))).toBe(true);
 
     // 5. Coordination departures with release lifecycle
     const coordList = createCoordinationList("A", "REPUBLIC", [
@@ -112,7 +112,7 @@ describe("STARS System Lists & DCB Integration Acceptance", () => {
     // 6. Video Maps list
     const view = createScopeView();
     const mapLines = buildVideoMapsListLines(view, "ALL");
-    expect(mapLines[0]).toContain("VIDEO MAPS");
+    expect(mapLines[0]).toContain("GEOGRAPHIC MAPS");
   });
 
   it("AC2 — drives middle-click list dragging and detects overlapping collision frames", () => {

@@ -132,7 +132,25 @@ export function setCoordinationAutoRelease(
 }
 
 /**
+ * Default example video maps for facility display when loaded maps are not present.
+ */
+export const DEFAULT_GEOGRAPHIC_MAPS = [
+  { id: 3, shortName: "A90", fullName: "A90 BASE", active: false },
+  { id: 12, shortName: "EOVM", fullName: "A90 EOVM", active: false },
+  { id: 15, shortName: "MAIN", fullName: "BOS A90 MAIN", active: true },
+  { id: 31, shortName: "27/22", fullName: "BOS 27/22", active: true },
+  { id: 32, shortName: "27/32", fullName: "BOS 27/32", active: false },
+];
+
+/**
  * Builds Video Maps list lines with category groupings and '>' active indicators.
+ * Format:
+ * GEOGRAPHIC MAPS
+ *    3 A90       A90 BASE
+ *   12 EOVM      A90 EOVM
+ * > 15 MAIN      BOS A90 MAIN
+ * > 31 27/22     BOS 27/22
+ *   32 27/32     BOS 27/32
  */
 export function buildVideoMapsListLines(
   view: ScopeView,
@@ -140,31 +158,44 @@ export function buildVideoMapsListLines(
   maxLines: number = 20,
 ): string[] {
   const loadedMaps = view.digitalMap?.loadedVideoMaps ?? [];
-  const entries: { id: number; label: string; active: boolean }[] = [];
+  const entries: { id: number; shortName: string; fullName: string; active: boolean }[] = [];
 
-  for (let i = 0; i < loadedMaps.length; i++) {
-    const map = loadedMaps[i]!;
-    const active = view.mapVisibility.get(map.id) === true;
-    if (category === "CURRENT" && !active) {
-      continue;
+  if (loadedMaps.length > 0) {
+    for (let i = 0; i < loadedMaps.length; i++) {
+      const map = loadedMaps[i]!;
+      const active = view.mapVisibility.get(map.id) === true;
+      if (category === "CURRENT" && !active) {
+        continue;
+      }
+      entries.push({
+        id: i + 1,
+        shortName: map.dcbLabel || map.name || `MAP${i + 1}`,
+        fullName: map.name || map.dcbLabel || `Map ${i + 1}`,
+        active,
+      });
     }
-    entries.push({
-      id: i + 1,
-      label: map.dcbLabel || map.name || `Map ${i + 1}`,
-      active,
-    });
+  } else {
+    for (const m of DEFAULT_GEOGRAPHIC_MAPS) {
+      if (category === "CURRENT" && !m.active) {
+        continue;
+      }
+      entries.push(m);
+    }
   }
 
+  const title = category === "ALL" || category === "GEO" ? "GEOGRAPHIC MAPS" : `VIDEO MAPS (${category})`;
+
   const formatter: ListFormatter = {
-    title: `VIDEO MAPS (${category})`,
-    frameTitle: "VIDEO MAPS (TX)",
+    title,
+    frameTitle: "GEOGRAPHIC MAPS (TX)",
     maxLines,
     entries: entries.length,
     formatLine: (idx) => {
       const e = entries[idx]!;
       const marker = e.active ? ">" : " ";
       const idStr = String(e.id).padStart(3, " ");
-      return `${marker} ${idStr} ${e.label}`;
+      const shortStr = e.shortName.padEnd(10, " ");
+      return `${marker} ${idStr} ${shortStr}${e.fullName}`;
     },
   };
   return buildSystemListLines(formatter);

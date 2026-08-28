@@ -81,7 +81,7 @@ import {
   tpaRingsToPaint,
   tpaSizeReadoutEnabled,
 } from "./tpa";
-import { buildGiLines, buildSsaLines } from "./ssa";
+import { buildGiLines, buildSsaLines, buildSsaRenderLines } from "./ssa";
 import { buildMapListLines } from "./dcbFunctions";
 import type { TrackOwnership } from "./ownership";
 import { BLINK_HALF_PERIOD_MS, PALETTE, applyBrite, caDatablockTagVisible } from "./palette";
@@ -101,6 +101,8 @@ import {
 import {
   buildAlertList,
   buildCoastSuspendList,
+  buildCrdaStatusList,
+  buildSignOnList,
   buildTabFlightPlanList,
   buildTowerArrivalList,
   buildVfrList,
@@ -983,25 +985,37 @@ const SSA_TOP_PX = 8;
  * GI TEXT is authored facility lines (not a METAR panel / HUD). Empty slots never paint.
  */
 function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): number {
-  const lines = [
-    ...buildSsaLines({
-      simTimeMs: world.simTimeMs,
-      rangeNm: view.camera.rangeNm,
-      offCenter: isViewOffAirport(view),
-      filter: view.altitudeFilter,
-      filterEntry: view.filterEntry,
-      visibility: view.ssaFilter,
-      ptlMinutes: view.ptlMinutes,
-    }),
-    ...buildGiLines(view.giTextLines, view.giFilterVisible),
-  ];
+  const hasAlert =
+    (world.alerts?.msaw && world.alerts.msaw.length > 0) ||
+    (world.alerts?.ca && world.alerts.ca.length > 0);
+
+  const ssaLines = buildSsaRenderLines({
+    simTimeMs: world.simTimeMs,
+    rangeNm: view.camera.rangeNm,
+    offCenter: isViewOffAirport(view),
+    filter: view.altitudeFilter,
+    filterEntry: view.filterEntry,
+    visibility: view.ssaFilter,
+    ptlMinutes: view.ptlMinutes,
+    hasAlert: Boolean(hasAlert),
+  });
+  const giLines = buildGiLines(view.giTextLines, view.giFilterVisible);
+
   const lineH = datablockLineHeightPx(view.charSizes.lists);
   ctx.font = datablockFontCss(view.charSizes.lists);
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
-  ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
+  const defaultColor = applyBrite(PALETTE.ssa, view.brite.lst);
+  const alertColor = applyBrite(PALETTE.alert, view.brite.lst);
+
   let y = SSA_TOP_PX;
-  for (const line of lines) {
+  for (const item of ssaLines) {
+    ctx.fillStyle = item.style === "alert" || item.style === "spc" ? alertColor : defaultColor;
+    ctx.fillText(item.text, SSA_LEFT_PX, y);
+    y += lineH;
+  }
+  for (const line of giLines) {
+    ctx.fillStyle = defaultColor;
     ctx.fillText(line, SSA_LEFT_PX, y);
     y += lineH;
   }
@@ -1093,6 +1107,9 @@ function drawSystemLists(
 
     let lines: string[] = [];
     switch (id) {
+      case "SIGN_ON":
+        lines = buildSignOnList();
+        break;
       case "TAB":
         lines = buildTabFlightPlanList(world, placement.maxLines);
         break;
@@ -1100,15 +1117,22 @@ function drawSystemLists(
         lines = buildVfrList(world, placement.maxLines);
         break;
       case "TOWER_1":
+        lines = buildTowerArrivalList(world, "BOS", 0, 0, placement.maxLines);
+        break;
       case "TOWER_2":
+        lines = buildTowerArrivalList(world, "BED", 0, 0, placement.maxLines);
+        break;
       case "TOWER_3":
-        lines = buildTowerArrivalList(world, "KDEM", 0, 0, placement.maxLines);
+        lines = buildTowerArrivalList(world, "OWD", 0, 0, placement.maxLines);
         break;
       case "ALERT":
         lines = buildAlertList(world, placement.maxLines);
         break;
       case "COAST":
         lines = buildCoastSuspendList([], placement.maxLines);
+        break;
+      case "CRDA":
+        lines = buildCrdaStatusList(undefined, placement.maxLines);
         break;
       case "MAPS":
         lines = buildVideoMapsListLines(view, "ALL", placement.maxLines);

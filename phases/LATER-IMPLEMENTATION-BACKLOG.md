@@ -199,8 +199,51 @@ STARS CRC supports additional Special Purpose Codes beyond standard emergency sq
 
 These expanded and tactical SPC codes are deferred for future specialized scenario modules. Existing core emergency squawks (`7700` `EM`, `7600` `RF`, `7500` `HJ`) remain fully active.
 
+### CRDA Ghost Prediction and Dynamic Runway Configuration Pairing (RPC)
+
+Visible now: `CRDA STATUS` in-scope list formatting RPC pairs 1–6 (e.g., `1  BOS 27/22L`, `2  BOS 27/33L`, `3  BOS 4L/15R`, etc.) and active SSA status (`*S1 BOS 27/22L`).
+
+Deferred to future simulation phases:
+- **Live Ghost Target Generation**: Mathematical projection of master runway approach tracks onto slave runway approach centerlines based on threshold crossing time estimates.
+- **Stagger Cones & Tie Lines**: Dynamic display of spacing cones and connecting tie lines between real aircraft and projected ghosts for converging and dependent runway operations.
+- **STARS Table 26 CRDA Keyboard Grammar**: Keyboard commands for pairing activation/deactivation, spacing distance adjustment, and runway configuration switching.
+
+### Multi-Airport Tower Sequencing and Strip-Less Automation
+
+Visible now: In-scope `TOWER 1`, `TOWER 2`, and `TOWER 3` list panes rendering dynamic aircraft approach sequences sorted by distance to airport threshold.
+
+Deferred to future simulation phases:
+- **Automated Slot Sequencing**: Time-based metering and automated arrival slot management across multiple satellite airports.
+- **Tower Display Workstation (TDW) Inter-Facility Coordination**: Direct sequence handoffs between TRACON radar controller and Tower local/ground controllers without flight progress strips.
+- **Dynamic Multi-Airport Adaptation**: Auto-populating runway designations, ILS/RNAV approach identifiers, and tower list airport identifiers based on active scenario airport configuration.
+
+### Surveillance Drop-Out Coast/Suspend Track Lifecycle (30s Timeout)
+
+Visible now: `COAST/SUSPEND` list formatting displaying track status (`C` for Coasting), transponder beacon code, and last received Mode C altitude in hundreds of feet.
+
+Deferred to future simulation phases:
+- **30-Second Target Drop Timeout**: Automated detection of radar/ADS-B target signal loss, moving the track into the Coast list after 30 seconds of missing surveillance returns.
+- **Dead-Reckoning Extrapolation**: Kinematic position extrapolation along the last known ground track vector during the coast period.
+- **Automated Target Re-Correlation**: Seamless track resumption and full datablock restoration when radar returns resume on the assigned squawk code.
+
+### Terminal Control Position (TCP) Sign-On and Multi-Controller Authentication
+
+Visible now: `SIGN-ON` list rendering the current TCP display subset, sector ID, and Zulu sign-on timestamp (e.g., `1D  0311`).
+
+Deferred to future simulation phases:
+- **Sign-On/Sign-Off Keyboard Commands**: Formal controller authentication chords (`SO <TCP> <OPERATOR_ID>`) with session duration tracking and relief briefings.
+- **Multi-Position Sector Consolidation**: Dynamically combining or de-combining sector boundaries and transferring owned track lists between TCPs.
+
+### SSA Multi-Sensor Fusion Telemetry and Network Health
+
+Visible now: SSA header layout rendering alert indicator `[▼]`, subset `(1)`, Zulu time + altimeter, network status + radar mode (`OK/OK/NA FUSED`), beacon blocks, red SPC alerts, range + PTL, dual altitude filters, and satellite airport altimeters.
+
+Deferred to future simulation phases:
+- **Live Multi-Sensor Radar Health Telemetry**: Dynamic degradation to `NA/NA/NA` with sensor-specific failover when individual radar heads disconnect.
+- **Automated Beacon Bank Exhaustion Tracking**: Dynamic allocation and exhaustion warnings for discrete transponder code banks.
+
 ## Explicit boundary
 
 This document does not pull in untouched phase work such as scoring/replay,
-constant-wind simulation, CRDA/FMA/ARV, a licensed STARS typeface, or other
+constant-wind simulation, a licensed STARS typeface, or other
 features that have not been partially implemented in the shipped slices.

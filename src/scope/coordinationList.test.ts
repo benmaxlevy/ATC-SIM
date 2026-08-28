@@ -92,6 +92,6 @@ describe("coordinationList", () => {
   it("formats Video Maps list with active > indicators", () => {
     const view = createScopeView();
     const lines = buildVideoMapsListLines(view, "ALL");
-    expect(lines[0]).toContain("VIDEO MAPS");
+    expect(lines[0]).toContain("GEOGRAPHIC MAPS");
   });
 });

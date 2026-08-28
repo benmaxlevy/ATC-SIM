@@ -289,9 +289,9 @@ test("AC6 — radio-focus L090 is still a left turn; LDR DIR spinner does not st
   }
 });
 
-test("T02-24 — unused slots 8–30 disabled; 1–7 bind catalog dcbNumber", () => {
+test("T02-24 — unused slots 8–32 disabled; 1–7 bind catalog dcbNumber", () => {
   const view = kdemView();
-  expect(DCB_MAP_SLOT_COUNT).toBe(30);
+  expect(DCB_MAP_SLOT_COUNT).toBe(32);
   expect(DCB_QUICK_MAP_COUNT).toBe(6);
   expect(videoMapByDcbNumber(view, 1)?.dcbLabel).toBe("RWY");
   expect(videoMapByDcbNumber(view, 2)?.id).toBe("LOC27");

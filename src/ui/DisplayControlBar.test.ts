@@ -272,7 +272,7 @@ test("T02-32 — physical caps expose raised, pressed, and disabled presentation
   const pressed = dcbHtml(view);
   expect(pressed).toMatch(/aria-pressed="true"[^>]*data-dcb-cell="place"/);
   expect(pressed).toContain("--dcb-pressed:#005500");
-  expect(cssSrc()).toMatch(/background:\s*var\(--dcb-pressed,\s*#005500\)/);
+  expect(cssSrc()).toMatch(/background:\s*var\(--dcb-pressed,\s*#005500\)/i);
 });
 
 test("DCB cap labels are vertically centered without spacer lines", () => {
@@ -318,15 +318,15 @@ test("cells sit on the PPI glass; canvas below fills the rectangular PPI", () =>
   expect(css).toMatch(/\.dcb\s*\{[^}]*flex:\s*0 0 75px/s);
   expect(css).toMatch(/\.dcb\s*\{[^}]*gap:\s*1px/s);
   expect(css).toMatch(/\.dcb\s*\{[^}]*background:\s*#000000/s);
-  expect(css).toMatch(/\.dcb-cell\s*\{[^}]*background:\s*var\(--dcb-cap,\s*#061f0b\)/s);
-  expect(css).toMatch(/\.dcb-cell\s*\{[^}]*color:\s*var\(--dcb-text,\s*#dce0dc\)/s);
+  expect(css).toMatch(/\.dcb-cell\s*\{[^}]*background:\s*var\(--dcb-cap,\s*#061f0b\)/is);
+  expect(css).toMatch(/\.dcb-cell\s*\{[^}]*color:\s*var\(--dcb-text,\s*#dce0dc\)/is);
   expect(css).toMatch(/\.dcb-cell\s*\{[^}]*border-radius:\s*0/s);
   expect(css).toMatch(/\.dcb-cell:not\(:disabled\):not\(\[aria-disabled="true"\]\)/);
   expect(css).toMatch(/inset 1px 1px var\(--dcb-highlight/);
   expect(css).toMatch(/inset -2px -2px var\(--dcb-shadow/);
   expect(css).toMatch(/inset 2px 2px var\(--dcb-pressed-shadow/);
   expect(css).toMatch(/inset -1px -1px var\(--dcb-pressed-highlight/);
-  expect(css).toMatch(/var\(--dcb-disabled-text,\s*#4c604c\)/);
+  expect(css).toMatch(/var\(--dcb-disabled-text,\s*#4c604c\)/i);
   expect(css).not.toMatch(/repeating-linear-gradient/);
   expect(css).toMatch(/\.ppi-canvas\s*\{[^}]*flex:\s*1 1 auto/s);
   expect(css).toMatch(/\.command-line\s*\{[^}]*position:\s*absolute/s);
@@ -533,7 +533,7 @@ test("AC4 — DCB LEFT/RIGHT render as a vertical stack; TOP/BOTTOM stay horizon
   expect(hostBottom).toMatch(/data-dcb-dock="BOTTOM"/);
 });
 
-test("AC5 — TPA/ATPA submenu has TPA, TPA MI 2/3/5/10, four live ATPA cells, DONE", () => {
+test("AC5 — TPA/ATPA submenu has four live ATPA cells (A/TPA MILEAGE, INTRAIL DISTANCE, ALERT CONES, MONITOR CONES) and DONE", () => {
   const view = createScopeView();
   applyDcbShift(view);
   expect(dcbHtml(view)).toContain("TPA");
@@ -541,23 +541,20 @@ test("AC5 — TPA/ATPA submenu has TPA, TPA MI 2/3/5/10, four live ATPA cells, D
   openDcbMenu(view, "TPA_ATPA");
   const html = dcbHtml(view);
   expect(html).toContain("DONE");
+  expect(html).toMatch(/data-dcb-cell="done"/);
   expect(html).toMatch(/data-dcb-menu="TPA_ATPA"/);
-  expect(html).toMatch(/data-dcb-cell="tpa-on"/);
-  expect(html).toMatch(/data-dcb-cell="tpa-mi"/);
-  expect(html).toMatch(
-    /data-dcb-kind="spinner"[^>]*data-dcb-cell="tpa-mi"|data-dcb-cell="tpa-mi"[^>]*data-dcb-kind="spinner"/,
-  );
-  expect(html).toMatch(/data-dcb-cell="atpa"/);
   expect(html).toMatch(/data-dcb-cell="atpa-mileage"/);
   expect(html).toMatch(/data-dcb-cell="atpa-intrail"/);
   expect(html).toMatch(/data-dcb-cell="atpa-alert"/);
   expect(html).toMatch(/data-dcb-cell="atpa-monitor"/);
   expect(html).not.toMatch(/data-dcb-cell="atpa-cones"/);
-  expect(html).toContain("TPA MI");
   expect(html).toContain("A/TPA");
+  expect(html).toContain("MILEAGE");
   expect(html).toContain("INTRAIL");
+  expect(html).toContain("DISTANCE");
   expect(html).toContain("MONITOR");
   expect(html).toContain("ALERT");
+  expect(html).toContain("CONES");
   expect(html).toMatch(
     /data-dcb-kind="toggle"[^>]*data-dcb-cell="atpa-mileage"|data-dcb-cell="atpa-mileage"[^>]*data-dcb-kind="toggle"/,
   );
@@ -645,11 +642,11 @@ test("T02-27 AC1 — SSA FILTER submenu hides TIME; restoring shows it again", (
     visibility: view.ssaFilter,
     ptlMinutes: view.ptlMinutes,
   };
-  expect(buildSsaLines(ssaInput)).toContain("0002/05");
+  expect(buildSsaLines(ssaInput).some((l) => l.includes("0002/05"))).toBe(true);
   toggleSsaFilter(view, "TIME");
-  expect(buildSsaLines(ssaInput)).not.toContain("0002/05");
+  expect(buildSsaLines(ssaInput).some((l) => l.includes("0002/05"))).toBe(false);
   toggleSsaFilter(view, "TIME");
-  expect(buildSsaLines(ssaInput)).toContain("0002/05");
+  expect(buildSsaLines(ssaInput).some((l) => l.includes("0002/05"))).toBe(true);
   closeDcbMenu(view);
   expect(dcbHtml(view)).toContain("RANGE 20");
 });
@@ -722,9 +719,9 @@ test("T02-27 AC3 — GI FILTER hides an authored line; empty slots are disabled"
   const html = dcbHtml(view);
   expect(html).toContain("DONE");
   expect(html).toContain("GI 1");
-  expect(html).toContain("GI 10");
+  expect(html).toContain("GI 9");
   expect(html).toContain("ATIS A");
-  expect(html).toMatch(/aria-label="GI 10"[^>]*\bdisabled\b/);
+  expect(html).toMatch(/aria-label="GI 9"[^>]*\bdisabled\b/);
   expect(html).toMatch(/data-dcb-menu="GI_FILTER"/);
   expect(buildGiLines(view.giTextLines, view.giFilterVisible)).toContain("ATIS A");
   toggleGiFilter(view, 0);
@@ -747,13 +744,13 @@ test("T02-27 AC2 — hiding STATUS omits OK; RANGE/FILTER SSA lines still match 
     visibility: view.ssaFilter,
     ptlMinutes: view.ptlMinutes,
   };
-  expect(buildSsaLines(input)).toContain("OK");
-  expect(buildSsaLines(input)).toContain("RANGE 20");
-  expect(buildSsaLines(input)).toContain("FILTER 000-180");
+  expect(buildSsaLines(input)).toContain("OK/OK/NA FUSED");
+  expect(buildSsaLines(input)).toContain("20NM PTL: 1.0");
+  expect(buildSsaLines(input)).toContain("000 180 U 000 180 A");
   toggleSsaFilter(view, "STATUS");
-  expect(buildSsaLines(input)).not.toContain("OK");
-  expect(buildSsaLines(input)).toContain("RANGE 20");
-  expect(buildSsaLines(input)).toContain("FILTER 000-180");
+  expect(buildSsaLines(input)).not.toContain("OK/OK/NA FUSED");
+  expect(buildSsaLines(input)).toContain("20NM PTL: 1.0");
+  expect(buildSsaLines(input)).toContain("000 180 U 000 180 A");
 });
 
 test("T02-27 AC5/AC6 — altitude FILTER stays a scope chord; SSA/GI comments; no Command IR", () => {

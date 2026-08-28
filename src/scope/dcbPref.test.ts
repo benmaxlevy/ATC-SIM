@@ -122,9 +122,9 @@ test("AC4 — SAVE AS fills the first empty slot named PREF n with no prompt/inp
   expect(view.dcbPref.slots.every((slot) => slot !== null)).toBe(true);
   view.camera.rangeNm = 60;
   const overflow = saveAsDcbPref(view, store);
-  expect(overflow).toBe(7);
-  expect(view.dcbPref.slots[7]?.name).toBe("PREF 8");
-  expect(view.dcbPref.slots[7]?.body.rangeNm).toBe(60);
+  expect(overflow).toBe(31);
+  expect(view.dcbPref.slots[31]?.name).toBe("PREF 32");
+  expect(view.dcbPref.slots[31]?.body.rangeNm).toBe(60);
 });
 
 test("AC5 — DELETE clears the active slot; corrupt JSON falls back to factory", () => {
@@ -144,10 +144,10 @@ test("AC5 — DELETE clears the active slot; corrupt JSON falls back to factory"
   expect(boot.dcbPref.slots.every((slot) => slot === null)).toBe(true);
 });
 
-test("AC6 — eight slots only; PREF is not Command IR; DAL123 H270 still works", async () => {
-  expect(DCB_PREF_SLOT_COUNT).toBe(8);
+test("AC6 — 32 slots; PREF is not Command IR; DAL123 H270 still works", async () => {
+  expect(DCB_PREF_SLOT_COUNT).toBe(32);
   const view = kdemView();
-  expect(view.dcbPref.slots).toHaveLength(8);
+  expect(view.dcbPref.slots).toHaveLength(32);
   selectDcbPrefSlot(view, 3);
   expect(view.dcbPref.activeIndex).toBe(3);
 
@@ -179,7 +179,7 @@ test("MAIN PREF second line is the active set name, abbreviated to the cap budge
   expect(formatDcbPrefReadout(activeDcbPrefName(view))).toBe("APPROA");
 });
 
-test("AC7 — PREF comments cite CRC analog, 8-slot trainer delta, not settings/theme", () => {
+test("AC7 — PREF comments cite CRC analog, 32-slot STARS spec, not settings/theme", () => {
   const sources = import.meta.glob("./*.ts", {
     query: "?raw",
     import: "default",
@@ -188,12 +188,35 @@ test("AC7 — PREF comments cite CRC analog, 8-slot trainer delta, not settings/
   const text = sources["./dcbPref.ts"]!;
   expect(text).toMatch(/PREF/);
   expect(text).toMatch(/CRC/);
-  expect(text).toMatch(/\b8\b/);
+  expect(text).toMatch(/\b32\b/);
   expect(text).toMatch(/localStorage/);
-  expect(text).toMatch(/32 NAS/);
   expect(text).toMatch(/not a settings panel/i);
   expect(text).toMatch(/theme picker/i);
   expect(text).toMatch(/No window\.prompt/);
+});
+
+test("parseDcbPrefJson gracefully handles legacy 8-slot configs by padding with null to 32 slots", () => {
+  const view = kdemView();
+  const legacy8Slots = Array.from({ length: 8 }, (_, i) => ({
+    name: `PREF ${i + 1}`,
+    body: serializeDcbPref(view),
+  }));
+  const legacyConfig = JSON.stringify({
+    v: 2,
+    icao: "KDEM",
+    activeIndex: 5,
+    slots: legacy8Slots,
+  });
+
+  const parsed = parseDcbPrefJson(legacyConfig, "KDEM");
+  expect(parsed.slots).toHaveLength(32);
+  expect(parsed.activeIndex).toBe(5);
+  for (let i = 0; i < 8; i += 1) {
+    expect(parsed.slots[i]?.name).toBe(`PREF ${i + 1}`);
+  }
+  for (let i = 8; i < 32; i += 1) {
+    expect(parsed.slots[i]).toBeNull();
+  }
 });
 
 test("AC4 — drawable PPI shrinks on the docked edge", () => {

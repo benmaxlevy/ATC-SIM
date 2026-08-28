@@ -210,8 +210,8 @@ test("AC5 — persistent chrome has no zoom/label/sprite/OSM/HUD; DCB WX1–4 ex
     filter: view.altitudeFilter,
     filterEntry: view.filterEntry,
   }).join(" ");
-  expect(ssa).toMatch(/FILTER/);
-  expect(ssa).toMatch(/RANGE 20/);
+  expect(ssa).toMatch(/000 180 U 000 180 A/);
+  expect(ssa).toMatch(/20NM PTL/);
   expect(ssa).not.toMatch(FORBIDDEN_CHROME);
 
   const overlay = visibleText(

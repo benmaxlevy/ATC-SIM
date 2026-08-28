@@ -45,7 +45,7 @@ import {
   syncRoleMapVisibility,
   type RrIntervalNm,
 } from "./dcbFunctions";
-import { type DcbDock } from "./dcbPref";
+import { emptyDcbPrefRuntime, type DcbDock, type DcbPrefRuntime } from "./dcbPref";
 import { idleDcbSpinner, type DcbMenu, type DcbSpinnerState } from "./dcbMenu";
 import {
   cloneCharSizes,
@@ -82,7 +82,6 @@ import {
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
 import { cloneBrite, type BriteState } from "./palette";
 import type { TrackDisplay } from "./trackDisplay";
-import type { DcbPrefRuntime } from "./dcbPref";
 
 import {
   DEFAULT_SYSTEM_LIST_PLACEMENTS,
@@ -294,12 +293,7 @@ export function createScopeView(
     giFilterVisible: defaultGiVisibility(giTextLines),
     systemLists: { ...DEFAULT_SYSTEM_LIST_PLACEMENTS },
     listDrag: idleListDragState(),
-    dcbPref: {
-      icao: "",
-      slots: [null, null, null, null, null, null, null, null],
-      activeIndex: 0,
-      restore: null,
-    },
+    dcbPref: emptyDcbPrefRuntime(),
     sectorId: "D",
     beaconSelectCodes: [],
     tracks: new Map(),
