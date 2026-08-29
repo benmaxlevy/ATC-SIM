@@ -331,6 +331,14 @@ export {
 } from "./dcbMenu";
 export type { DcbCellKind, DcbMenu, DcbMenuHost, DcbSpinnerCell, DcbSpinnerState } from "./dcbMenu";
 export {
+  DCB_CURSOR_TRAP_CELL_SELECTOR,
+  clampPointToRect,
+  dcbCursorTrapKind,
+  dcbTrapShouldBlockPointer,
+  pointInTrapRect,
+} from "./dcbCursorTrap";
+export type { DcbCursorTrapKind, DcbTrapPoint, DcbTrapRect } from "./dcbCursorTrap";
+export {
   DCB_PREF_READOUT_MAX_CHARS,
   DCB_PREF_SLOT_COUNT,
   DCB_PREF_SCHEMA_VERSION,

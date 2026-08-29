@@ -4,7 +4,9 @@
  * Trainer delta: separated dark-olive physical caps with CSS bevels; SHIFT swaps MAIN and AUX.
  * MAPS / TPA-ATPA / CHAR SIZE / BRITE / SSA FILTER / GI TEXT / PREF submenus replace the
  * bar; DONE / Esc return to MAIN. RANGE / RR / LDR DIR / LDR length are spinners
- * (arm, wheel steps frozen presets, second click / Esc commits). CHAR SIZE and
+ * (arm, wheel steps frozen presets, second click / Esc commits; cursor stays in
+ * that cell). An open submenu (PREF, MAPS, …) keeps the cursor in the DCB boxes.
+ * CHAR SIZE and
  * BRITE open submenus (`CHAR_SIZE` / `BRITE`) with per-channel spinners. AUX: VOL
  * disabled, HISTORY spinner 0–5, DCB TOP/LEFT/RIGHT/BOTTOM, PTL length spinner,
  * PTL OWN, PTL ALL, TPA/ATPA submenu (TPA ON, TPA MI, ATPA master, four live
@@ -124,6 +126,7 @@ import {
   type SsaFilterField,
 } from "@scope";
 import { focusPpi } from "./FlightStrips";
+import { useDcbCursorTrap } from "./useDcbCursorTrap";
 
 export type DcbCellKind = "action" | "toggle" | "spinner" | "submenu" | "disabled";
 
@@ -3089,6 +3092,8 @@ function renderPref(view: ScopeView, onChange: () => void) {
 }
 
 export function DisplayControlBar({ view, onChange, world }: DisplayControlBarProps) {
+  const dcbRef = useRef<HTMLDivElement>(null);
+  const trap = useDcbCursorTrap(view, dcbRef);
   const dcbPx = view.charSizes.dcb;
   const dcbText = applyBrite(PALETTE.dcbText, view.brite.dcb);
   const dcbFill = applyBrite(PALETTE.dcbCap, view.brite.dcb);
@@ -3158,11 +3163,13 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
 
   return (
     <div
+      ref={dcbRef}
       id={DCB_ID}
       className={vertical ? "dcb dcb-vertical" : "dcb"}
       role="group"
       aria-label="Display control bar"
       data-dcb-menu={menu}
+      data-dcb-cursor-trap={trap.kind}
       data-dcb-dock={view.dcbDock}
       style={{
         height: vertical ? undefined : DCB_HEIGHT_PX,
@@ -3203,6 +3210,13 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
                       : menu === "PREF"
                         ? renderPref(view, onChange)
                         : renderPhysicalMain(view, onChange, world)}
+      {trap.cursor ? (
+        <div
+          className="dcb-trapped-cursor"
+          style={{ left: trap.cursor.x, top: trap.cursor.y }}
+          aria-hidden="true"
+        />
+      ) : null}
     </div>
   );
 }

@@ -12,7 +12,9 @@ import {
   centerOnAirport,
   createScopeView,
   applyDcbShift,
+  armDcbSpinner,
   closeDcbMenu,
+  commitDcbSpinner,
   handleDcbEscape,
   cycleRange,
   openDcbMenu,
@@ -831,4 +833,28 @@ test("momentary caps flash inset; toggles remain latches", () => {
 test("syncDisplayControlBar preserves aria-pressed when button has active data-dcb-flashing", () => {
   expect(barSrc()).toMatch(/data-dcb-flashing/);
   expect(barSrc()).toMatch(/el\.getAttribute\("data-dcb-flashing"\) === "true"/);
+});
+
+test("RANGE spinner traps the cell; PREF submenu traps the DCB boxes; no Pointer Lock", () => {
+  expect(barSrc()).toMatch(/useDcbCursorTrap/);
+  expect(barSrc()).toMatch(/data-dcb-cursor-trap/);
+  expect(barSrc()).not.toMatch(/requestPointerLock\s*\(/);
+  expect(uiSources["./useDcbCursorTrap.ts"]!).not.toMatch(/requestPointerLock\s*\(/);
+  expect(cssSrc()).toMatch(/html\[data-dcb-cursor-trap\]/);
+  expect(cssSrc()).toMatch(/\.dcb-trapped-cursor/);
+
+  const view = createScopeView();
+  expect(dcbHtml(view)).toMatch(/data-dcb-cursor-trap="none"/);
+
+  armDcbSpinner(view, "RANGE");
+  expect(dcbHtml(view)).toMatch(/data-dcb-cursor-trap="cell"/);
+  commitDcbSpinner(view);
+
+  openDcbMenu(view, "PREF");
+  expect(dcbHtml(view)).toMatch(/data-dcb-cursor-trap="submenu"/);
+
+  openDcbMenu(view, "BRITE");
+  expect(dcbHtml(view)).toMatch(/data-dcb-cursor-trap="submenu"/);
+  armDcbSpinner(view, "BRITE_DCB");
+  expect(dcbHtml(view)).toMatch(/data-dcb-cursor-trap="cell"/);
 });

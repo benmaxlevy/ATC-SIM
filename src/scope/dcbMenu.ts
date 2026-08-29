@@ -2,6 +2,7 @@
  * Analog: CRC STARS DCB MAIN / AUX / SHIFT / DONE / spinner arm+wheel (R07).
  * Trainer subset: MAIN↔AUX via SHIFT; submenus replace the bar; DONE / Esc
  * return to MAIN. Spinner is arm → step → commit (no requestPointerLock).
+ * Armed spinner / open submenu clamps the cursor to that cell or the DCB boxes.
  * Not a toolbar or modal. Not NAS STARS.
  *
  * Scope display state only. Never a Command, readback, or intent.
