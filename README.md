@@ -517,18 +517,44 @@ All parsed instructions resolve to strongly typed Command IR structures (`Headin
 
 ## Aeronautical Data & CIFP Importer
 
-ATC-SIM includes an automated tool to ingest FAA Coded Instrument Flight Procedures (CIFP) in ARINC 424 format into simulator JSON catalogs:
+ATC-SIM includes an offline developer tool that converts a locally available
+FAA Coded Instrument Flight Procedures (CIFP) ARINC 424 file into simulator
+JSON catalogs. It covers supported SIDs, STARs, approaches, fixes, and
+navaids. The browser never downloads or parses CIFP.
 
 ```bash
-# Run CIFP procedure extraction tool
-npm run cifp:import
+# Generate one catalog JSON from a local CIFP file
+npm run cifp:import -- --in .cifp/FAACIFP18 --out tools/cifp-import/out/catalog.json
+
+# Generate a scenario-ready ICAO catalog pack
+npm run cifp:pack -- --in .cifp/FAACIFP18 --airport KATL --radius 40 --out src/scenario/data/katl
+
+# Preview selection without writing files
+npm run cifp:pack -- --in .cifp/FAACIFP18 --airport KATL --radius 40 \
+  --sids SID1,SID2 --stars STAR1 --approaches ILS26L --out tools/cifp-import/out/katl --dry-run
 ```
 
-Processed data defines:
+Pack generation first selects records within radius of airport ARP, then
+recursively includes every referenced SID, STAR, and approach fix/navaid.
+Radius is a seed, not a procedure boundary. Use `--sids`, `--stars`, and
+`--approaches` for explicit flow selection; omit all three to include all
+supported procedures for that airport.
+
+Processed data can define:
 - Airports, Runways, Displaced Thresholds, and Localizer/Glideslope geometry
 - Waypoints, Navaids (VOR/DME, NDB), and Enroute Fixes
 - SIDs (Standard Instrument Departures) and STARs (Standard Terminal Arrivals)
 - Instrument Approach Plates (ILS, RNAV, Visual)
+
+Input CIFP files and generated intermediate output belong in `.cifp/` and
+`tools/cifp-import/out/`; both are gitignored. Do not commit FAA cycles,
+national derived dumps, chart data, or source files. Only intentionally
+reviewed trainer packs belong under `src/scenario/data/<icao>/`. Video maps,
+traffic spawns, MVA/ATPA, and telephony remain separate authored data.
+
+See [`tools/cifp-import/README.md`](tools/cifp-import/README.md) for supported
+record types, SID/STAR/approach selection, reproducibility, legal boundaries,
+and synthetic offline fixtures.
 
 ---
 
