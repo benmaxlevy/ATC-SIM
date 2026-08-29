@@ -533,7 +533,7 @@ test("AC4 — DCB LEFT/RIGHT render as a vertical stack; TOP/BOTTOM stay horizon
   expect(hostBottom).toMatch(/data-dcb-dock="BOTTOM"/);
 });
 
-test("AC5 — TPA/ATPA submenu has four live ATPA cells (A/TPA MILEAGE, INTRAIL DISTANCE, ALERT CONES, MONITOR CONES) and DONE", () => {
+test("AC5 — TPA/ATPA submenu has TPA ON, TPA MI, ATPA master, four live ATPA cells, and DONE", () => {
   const view = createScopeView();
   applyDcbShift(view);
   expect(dcbHtml(view)).toContain("TPA");
@@ -543,6 +543,15 @@ test("AC5 — TPA/ATPA submenu has four live ATPA cells (A/TPA MILEAGE, INTRAIL 
   expect(html).toContain("DONE");
   expect(html).toMatch(/data-dcb-cell="done"/);
   expect(html).toMatch(/data-dcb-menu="TPA_ATPA"/);
+  expect(html).toMatch(/data-dcb-cell="tpa-on"/);
+  expect(html).toMatch(/data-dcb-cell="tpa-mi"/);
+  expect(html).toMatch(
+    /data-dcb-kind="spinner"[^>]*data-dcb-cell="tpa-mi"|data-dcb-cell="tpa-mi"[^>]*data-dcb-kind="spinner"/,
+  );
+  expect(html).toMatch(/data-dcb-cell="atpa"/);
+  expect(html).toMatch(
+    /aria-pressed="false"[^>]*data-dcb-cell="atpa"|data-dcb-cell="atpa"[^>]*aria-pressed="false"/,
+  );
   expect(html).toMatch(/data-dcb-cell="atpa-mileage"/);
   expect(html).toMatch(/data-dcb-cell="atpa-intrail"/);
   expect(html).toMatch(/data-dcb-cell="atpa-alert"/);
@@ -570,6 +579,11 @@ test("AC5 — TPA/ATPA submenu has four live ATPA cells (A/TPA MILEAGE, INTRAIL 
   expect(mileageOff).toMatch(
     /aria-pressed="true"[^>]*data-dcb-cell="atpa-alert"|data-dcb-cell="atpa-alert"[^>]*aria-pressed="true"/,
   );
+  view.atpa.on = true;
+  const masterOn = dcbHtml(view);
+  expect(masterOn).toMatch(
+    /aria-pressed="true"[^>]*data-dcb-cell="atpa"|data-dcb-cell="atpa"[^>]*aria-pressed="true"/,
+  );
   closeDcbMenu(view);
   expect(dcbHtml(view)).toContain("RANGE 20");
 });
@@ -583,6 +597,8 @@ test("T02-47 — TPA/ATPA comments quote R07 cell meanings; Alert covers Warning
   expect(src).toMatch(/displays alert cones at this TCP/);
   expect(src).toMatch(/displays monitor cones at this TCP/);
   expect(src).toMatch(/No separate Warning Cones cell/);
+  expect(src).toMatch(/toggleAtpaOn/);
+  expect(src).toMatch(/toggleTpaOn/);
   expect(src).toMatch(/toggleAtpaConeMileage/);
   expect(src).toMatch(/toggleAtpaInTrailDistance/);
   expect(src).toMatch(/toggleAtpaAlertCones/);

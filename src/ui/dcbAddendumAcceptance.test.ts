@@ -361,6 +361,9 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, disabled WX/VOL, T
   const tpa = dcbHtml(view);
   expect(tpa).toContain("DONE");
   expect(tpa).toMatch(/data-dcb-cell="done"/);
+  expect(tpa).toMatch(/data-dcb-cell="tpa-on"/);
+  expect(tpa).toMatch(/data-dcb-cell="tpa-mi"/);
+  expect(tpa).toMatch(/data-dcb-cell="atpa"/);
   expect(tpa).toMatch(/data-dcb-cell="atpa-mileage"/);
   expect(tpa).toMatch(/data-dcb-cell="atpa-intrail"/);
   expect(tpa).toMatch(/data-dcb-cell="atpa-alert"/);
