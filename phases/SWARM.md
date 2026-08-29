@@ -13,6 +13,36 @@ This is the **eighteenth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 pol
 
 ---
 
+## Eighteenth swarm execution — 2026-08-29 (CIFP-derived catalog packs)
+
+Human invoked `/run-swarm` with **cursor grok 4.6 high**. Execute T04-31–35
+only. Planning commits `317bc86` and `d2df65e` contain this configuration
+and must be present on the execution base before ticket work starts.
+
+Role: orchestrator coordinates one captain. Captain uses isolated worktrees,
+spawns at most three workers, waits for terminal `READY TO MERGE` or
+`BLOCKED`, squash-merges each ticket to `master`, and runs `npm test` after
+each merge. Every captain and worker spawn must set
+`model: "cursor-grok-4.6-high"`.
+
+Preflight: verify `master` contains the planning commits, read
+`SWARM-STATUS.md`, phase README, captain/worker prompts, and T04-31–35. Stop
+if application changes are dirty or another swarm is active. Preserve
+untracked `.cursor/rules/caveman-ultra.mdc` and `e2e/`.
+
+Execution waves:
+
+1. T04-31
+2. T04-32 ∥ T04-33
+3. T04-34
+4. T04-35
+
+No push. No phase 5. At completion, captain returns the exact phase result
+format above; orchestrator verifies `master`, runs final `npm run ci`, appends
+`SWARM-STATUS.md`, and stops.
+
+---
+
 ## Eighteenth swarm planned — 2026-08-29 (CIFP-derived catalog packs)
 
 This configuration is planning-only until the human invokes `/run-swarm`. It
