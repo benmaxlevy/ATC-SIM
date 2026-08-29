@@ -12,9 +12,10 @@ This directory is **not** a runtime dependency of `stepWorld` or the Vite app.
 Do not import it from `src/`. Runtime never parses ARINC 424.
 
 `NormalizedCifpSource` (including `NormalizedSid` and SID runway/enroute
-transition types) is the tool-only IR. T04-32 / T04-33 import those types.
-Catalog `xNm` / `yNm` is derived only at emit from the selected airport ARP.
-Source `latDeg` / `lonDeg` is preserved on every point.
+transition types) is the tool-only IR. T04-32 imports those types and exports
+`selectByRadius` / `CifpRadiusSeed` for T04-33. Catalog `xNm` / `yNm` is
+derived only at emit from the selected airport ARP. Source `latDeg` / `lonDeg`
+is preserved on every point.
 
 ## Legal / source provenance
 
@@ -175,5 +176,25 @@ does not gain new RNAV/hold/RF flying from this tool.
 
 Full ARINC 424 (holds, RF flying, procedure turns, DME arcs, continuation
 payloads). RNAV (RNP) flying. Live FAA download. Chart scrape. Replacing KDEM as
-the default scenario. T04-32 spatial seed, T04-33 procedure closure, T04-34 pack
-CLI, T04-35 acceptance.
+the default scenario. T04-33 procedure closure, T04-34 pack CLI, T04-35
+acceptance.
+
+## Geographic radius seed (T04-32)
+
+`selectByRadius(source, { airportId, radiusNm })` in `spatialIndex.ts` builds a
+`CifpRadiusSeed` for T04-33. `--airport` / `--radius` CLI flags are T04-34 pack
+wiring; this ticket owns the selection API and seed type only.
+
+- **Units:** `radiusNm` is nautical miles. Origin is the selected airport ARP
+  (`latDeg` / `lonDeg`). Distance is great-circle (haversine), including
+  longitude wrap near ±180°. The boundary is inclusive (`distance <= radiusNm`).
+- **Not closure:** a selected SID, STAR, or approach may still name fixes
+  outside the radius. Those fixes stay out of the seed. T04-33 walks
+  procedure references. Do not treat the seed as a complete procedure pack.
+- **Coordinates:** source `latDeg` / `lonDeg` only. No ENU / `xNm` / `yNm` in
+  the seed or index.
+- **National files:** `.cifp/` and `tools/cifp-import/out/` are gitignored.
+  Do not commit a national CIFP cycle or a derived national source/index.
+  Generated temp output stays local. Vite and `src/` never import this tool.
+- **Determinism:** selected arrays are sorted by `identity.key`.
+  `serializeRadiusSeed` is stable pretty JSON for temp intermediates.

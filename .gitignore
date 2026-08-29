@@ -16,7 +16,8 @@ __pycache__/
 .pytest_cache/
 *.pyc
 
-# Local FAA CIFP inputs and generated pack intermediates
+# Local FAA CIFP inputs, national derived source/index, pack intermediates
+# (T04-32). Never imported by Vite. Do not commit national dumps.
 .cifp/
 FAACIFP18*
 tools/cifp-import/out/

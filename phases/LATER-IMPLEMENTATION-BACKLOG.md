@@ -325,6 +325,37 @@ Constraints later work must keep:
 - KDEM remains the authored default scenario;
 - unsupported legs stay explicit skips, not flattened geometry.
 
+### CIFP national source storage and pack-generation boundary (T04-32)
+
+Visible now: `tools/cifp-import/spatialIndex.ts` exports `selectByRadius` and
+`CifpRadiusSeed` (airport ARP origin, `radiusNm` in nautical miles,
+source `latDeg` / `lonDeg` only). Radius is a geographic seed. It does not
+walk SID/STAR/approach references and does not contain every procedure leg.
+`buildSpatialIndex` keys records by ICAO and `identity.key`. Runtime `src/`
+does not import this tool.
+
+Deliberately missing:
+
+- **Procedure-reference closure (T04-33).** Out-of-radius fixes named by a
+  selected SID/STAR/approach stay in the full source until closure pulls them.
+- **Pack CLI and scenario-folder emit (T04-34).** `--airport` / `--radius`
+  wiring and writing `src/scenario/data/<ICAO>/` are not this ticket.
+- **National CIFP / derived national index in git.** A full cycle or a
+  nationwide source/index dump must stay on disk under gitignored `.cifp/`
+  or `tools/cifp-import/out/`. Only synthetic fixtures under `testdata/cifp/`
+  belong in the repo.
+- **Browser or network fetch.** No Vite import, no CDN, no vendor API, no
+  chart scrape.
+
+Constraints later work must keep:
+
+- one local path: CIFP on disk → `NormalizedCifpSource` → radius seed →
+  closure → existing catalog schema;
+- no `src/` import of `tools/cifp-import`; no airport-id runtime branches;
+- KDEM remains the authored default scenario;
+- seed coordinates stay source lat/lon; ENU only at catalog emit;
+- national source/index files stay gitignored and are never bundled.
+
 ## Explicit boundary
 
 This document does not pull in untouched phase work such as scoring/replay,
