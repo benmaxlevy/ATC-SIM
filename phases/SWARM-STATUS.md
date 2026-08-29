@@ -1,5 +1,28 @@
 # Swarm status
 
+## EIGHTEENTH SWARM COMPLETE — CIFP-derived catalog packs (T04-31–35)
+
+T04-31–35 are squash-merged on `master`. Captain `npm test` / `npm run ci`: **150 test files passed, 1764 tests passed, 2 skipped, 0 failures**. Local CIFP converts once into `ProcedureCatalog`; packs are a geographic radius seed plus recursive SID/STAR/approach closure. Runtime still loads JSON only. KDEM stays authored/default. No phase 5. Skip T04-11.
+
+- **Parser (T04-31):** Fixed-width ARINC 424-18 plus existing comma fixture. `NormalizedCifpSource` includes `NormalizedSid` (runway / common / enroute). Unsupported RF/hold/arc/PT legs are skip-counted, never flattened. Source `latDeg`/`lonDeg` preserved.
+- **Radius seed (T04-32):** `selectByRadius` / `CifpRadiusSeed`. NM from ARP, dateline wrap, inclusive boundary. Seed only — out-of-radius procedure fixes stay unselected.
+- **Closure (T04-33):** Walks SID runway transitions plus STAR/approach loc/GS/FAF/threshold/missed. Missing refs looked up in the full source. Unrelated airport procedures excluded.
+- **Pack CLI (T04-34):** `npm run cifp:pack -- --in <local> --airport <ICAO> --radius <NM> [--sids …] [--stars …] [--approaches …] --out <dir>`. Dry-run reports seed vs closure. `extract-katl-slice.ts` is a thin wrapper (`--airport KATL`, radius 40) with no KATL parse branch. No committed KATL pack on disk.
+- **Acceptance (T04-35):** Playable KDEM scenarios load through generic loaders. Synthetic `testdata/catalog-packs/kbbb` proves no facility-id branch. Far SID/STAR/approach refs remain after pack generation. `src/` does not import `tools/cifp-import`.
+
+**Merged (squash-merged, captain only):** T04-31 (`9f5c82b`), T04-32 (`8dee9ae`), T04-33 (`e2eac02`), T04-34 (`e83263c`), T04-35 (`60e0784`). Planning: `317bc86`, `d2df65e`, `f92894f`, SID-scope correction `534856a`.
+
+**Captain judgement calls:**
+- First T04-31 worker was interrupted; WIP in `ATC-SIM-wt-T04-31` was stashed, fast-forwarded onto `534856a`, restored, then finished with SID records. Not discarded.
+- Wave B README/backlog rebase conflict after T04-32 was keep-both docs only.
+- No `src/scenario/data/katl/` existed; T04-34/35 did not invent a national ATL dump.
+
+**Manual leftover:** Developer pack generation from an authorized local FAA CIFP file. skip-with-reason: no authorized cycle on this machine. `cifp:pack --dry-run` is the path when one exists. Do not invent a visual or cycle pass.
+
+**Product law held:** local CIFP only; no browser/network fetch; no chart scrape; no full cycle or national dump in git; radius is seed; recursive SID/STAR/approach closure; KDEM default; maps/spawns/MVA/ATPA/telephony separate; no airport-id runtime branches; no new RNAV/hold/RF flying.
+
+**Remaining work (next paste of `SWARM.md` with config changed):** phase 5 scoring/replay; T04-11 wind; live `faa:update`; SID *flying* of imported CIFP SIDs.
+
 ## SEVENTEENTH SWARM COMPLETE — STARS Keyboard Commands & Preview Area Expansion (T02-61–67)
 
 T02-61–67 are merged on `feature/stars-keyboard-commands`. Captain `npm test` / `npm run ci`: **142 test files passed, 1689 tests passed, 2 skipped, 0 failures**. Unified Preview Area lexer under the SSA; system lists, video maps, scope display, altitude/beacon filters, and tracking chords from keyboard; Tab isolation from the radio command line:
