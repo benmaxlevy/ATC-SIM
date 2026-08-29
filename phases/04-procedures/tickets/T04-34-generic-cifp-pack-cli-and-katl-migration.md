@@ -15,7 +15,7 @@ extraction logic while preserving existing playable behavior.
 ## Scope
 
 - Add a command with explicit inputs such as:
-  `--in <local CIFP> --airport <ICAO> --radius <NM> [--stars ...] [--approaches ...] --out <dir>`.
+  `--in <local CIFP> --airport <ICAO> --radius <NM> [--sids ...] [--stars ...] [--approaches ...] --out <dir>`.
 - Generate the existing `src/scenario/data/<icao>/` catalog file layout and
   preserve optional scenario/video-map/MVA files outside the catalog writer.
 - Replace `extract-katl-slice.ts` with generic configuration or make it a thin
@@ -32,12 +32,13 @@ extraction logic while preserving existing playable behavior.
 - Automatic FAA download, scheduled update, CDN, or browser fetch.
 - Replacing KDEM default.
 - KATL-specific runtime conditionals, SID flying, RNAV, holds, RF, or maps
-  generated from CIFP.
+  generated from CIFP. SID catalog data itself is in scope.
 
 ## Acceptance criteria
 
-- [ ] AC1 — Generic CLI generates a valid catalog for a synthetic second
-  airport without code changes or an ICAO conditional.
+- [ ] AC1 — Generic CLI generates a valid catalog containing supported SID,
+  STAR, and approach data for a synthetic second airport without code changes
+  or an ICAO conditional.
 - [ ] AC2 — KATL output is generated through generic parser/seed/closure code
   and preserves required playable STAR/approach references.
 - [ ] AC3 — Dry run reports seed vs closure counts and unsupported records;

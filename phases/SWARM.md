@@ -16,7 +16,7 @@ This is the **eighteenth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 pol
 ## Eighteenth swarm execution — 2026-08-29 (CIFP-derived catalog packs)
 
 Human invoked `/run-swarm` with **cursor grok 4.6 high**. Execute T04-31–35
-only. Planning commits `317bc86` and `d2df65e` contain this configuration
+only. Planning commits `317bc86`, `d2df65e`, and `f92894f` contain this configuration
 and must be present on the execution base before ticket work starts.
 
 Role: orchestrator coordinates one captain. Captain uses isolated worktrees,
@@ -40,6 +40,11 @@ Execution waves:
 No push. No phase 5. At completion, captain returns the exact phase result
 format above; orchestrator verifies `master`, runs final `npm run ci`, appends
 `SWARM-STATUS.md`, and stops.
+
+**Scope correction — 2026-08-29:** Human clarified that generated packs must
+cover supported **SIDs, STARs, and approaches**. T04-31 parses SID records;
+T04-33 closes SID references; T04-34 emits SID data. SID *flying* remains out
+of scope unless separately approved.
 
 ---
 

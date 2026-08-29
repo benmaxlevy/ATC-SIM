@@ -515,13 +515,15 @@ Wave: **T04-24 ∥ T04-25** after T04-23. T05-13 follows both and the completed 
 ### Post-exit addendum (T04-31–35 CIFP-derived catalog packs)
 
 This addendum makes local CIFP the single conversion source for real-airport
-catalog packs while keeping the browser on the existing JSON contract.
+SID, STAR, and approach catalog packs while keeping the browser on the existing
+JSON contract.
 
 - T04-31 parses local fixed-width CIFP records into a normalized tool-only
-  model and emits supported fields into `ProcedureCatalog`.
+  model and emits supported SID, STAR, and approach fields into
+  `ProcedureCatalog`.
 - T04-32 selects a geographic radius seed around scenario ARP.
-- T04-33 follows selected procedure references to stable closure, so a STAR
-  entry fix outside radius is retained.
+- T04-33 follows selected procedure references to stable closure, so a SID,
+  STAR, or approach fix outside radius is retained.
 - T04-34 wires the generic pack CLI and regenerates KATL without an
   airport-specific parser branch.
 - T04-35 proves KDEM default, KATL, and a synthetic second facility load
@@ -530,6 +532,8 @@ catalog packs while keeping the browser on the existing JSON contract.
 The local source cycle and national/intermediate data stay outside git. Only
 intentional reviewable trainer packs are committed. Radius is a seed, not a
 procedure boundary. No browser CIFP fetch, chart scrape, or new FMS behavior.
+SID catalog data is included even though SID flying remains a later behavior
+ticket.
 
 Wave: **T04-31** → **T04-32 ∥ T04-33** → **T04-34** → **T04-35**.
 

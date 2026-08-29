@@ -20,15 +20,16 @@ only after normalization. Runtime must not import this tool or parse ARINC 424.
   - airport/runway identity and reference coordinates;
   - VOR/DME, NDB, localizer, glideslope, and marker navaids;
   - terminal/enroute fixes;
-  - STAR legs and altitude restrictions;
+  - SID and STAR legs, runway transitions, and altitude restrictions;
   - ILS/LOC approaches, missed references, and supported constraints.
 - Preserve source `latDeg` / `lonDeg` in normalized points.
 - Represent unsupported leg types explicitly as skipped diagnostics; never
   silently convert RF, hold, arc, or procedure-turn behavior into straight legs.
 - Deduplicate records by stable source identity and report malformed or
   conflicting records with airport/section context.
-- Keep SID route flying out of scope. Emit empty SIDs or normalized authored
-  departure data only where current schema permits it.
+- Parse supported SID records into the existing SID schema. Keep SID route
+  flying out of scope; unsupported SID leg types must be diagnosed, not
+  flattened into straight legs.
 
 ## Out of scope
 
@@ -40,8 +41,8 @@ only after normalization. Runtime must not import this tool or parse ARINC 424.
 
 - [ ] AC1 — Local fixed-width fixture parses offline into normalized source
   records and emits a catalog matching expected schema.
-- [ ] AC2 — At least one VOR/NDB, fix, STAR constraint, and ILS approach
-  survive conversion with lat/lon preserved.
+- [ ] AC2 — At least one VOR/NDB, fix, SID constraint, STAR constraint, and ILS
+  approach survive conversion with lat/lon preserved.
 - [ ] AC3 — Duplicate/conflicting source records produce deterministic
   diagnostics; dangling procedure references fail conversion clearly.
 - [ ] AC4 — Unsupported leg types are counted and documented, never silently

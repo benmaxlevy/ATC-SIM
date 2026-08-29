@@ -16,9 +16,10 @@ with the pack even when their coordinates fall outside the requested radius.
 
 - Accept selected airport/procedure policy:
   - airport plus all supported terminal procedures; or
-  - explicit STAR/approach identifiers from scenario metadata.
-- Walk every supported procedure reference: leg fixes, navaid components,
-  localizer/glideslope, FAF, threshold, missed fix, and transition references.
+  - explicit SID/STAR/approach identifiers from scenario metadata.
+- Walk every supported procedure reference: SID/STAR leg fixes, runway
+  transitions, navaid components, localizer/glideslope, FAF, threshold,
+  missed fix, and transition references.
 - Recursively include referenced records until closure is stable.
 - Detect missing references, ambiguous identifiers, cross-airport leakage, and
   unsupported procedure elements. Fail or report according to explicit policy;
@@ -36,8 +37,8 @@ with the pack even when their coordinates fall outside the requested radius.
 
 ## Acceptance criteria
 
-- [ ] AC1 — A procedure whose first or intermediate fix lies outside radius is
-  complete in output when selected by policy.
+- [ ] AC1 — A selected SID, STAR, or approach whose first or intermediate fix
+  lies outside radius is complete in output.
 - [ ] AC2 — Every emitted `fixId`, navaid component, approach reference, and
   missed fix resolves.
 - [ ] AC3 — Closure is deterministic and terminates on cycles or repeated
@@ -52,6 +53,7 @@ with the pack even when their coordinates fall outside the requested radius.
 ## Test plan
 
 - Synthetic STAR with an entry fix outside seed radius.
+- Synthetic SID with a runway transition fix outside seed radius.
 - Approach with localizer/GS and missed fix references.
 - Missing, duplicate, cyclic, and cross-airport reference cases.
 - Snapshot or structural comparison of deterministic pack output.

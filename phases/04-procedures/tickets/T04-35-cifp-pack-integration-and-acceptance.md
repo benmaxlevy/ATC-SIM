@@ -17,7 +17,7 @@ dependent on FAA data.
 - Add generic loader/inventory coverage for a synthetic second facility and
   the committed KATL pack.
 - Verify catalog validation, coordinate projection, fix registry, DCT/VIA/APP
-  resolution, STAR spawn references, approach references, and video-map
+  resolution, SID/STAR spawn references, approach references, and video-map
   independence.
 - Add guardrails preventing `src/` from importing `tools/cifp-import` or
   assuming one airport's procedure IDs.
@@ -40,8 +40,8 @@ dependent on FAA data.
 - [ ] AC2 — KDEM remains the default and boots without CIFP input.
 - [ ] AC3 — Synthetic second-facility pack proves no facility-id branch is
   required.
-- [ ] AC4 — Procedure references outside seed radius remain usable after pack
-  generation.
+- [ ] AC4 — SID, STAR, and approach references outside seed radius remain usable
+  after pack generation.
 - [ ] AC5 — Video maps, authored spawns, MVA/ATPA, and CIFP catalog data stay
   separate and existing tests remain green.
 - [ ] AC6 — `npm run ci` passes and documentation matches shipped behavior.
