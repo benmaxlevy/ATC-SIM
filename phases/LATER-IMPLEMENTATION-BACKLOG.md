@@ -293,6 +293,38 @@ Deferred to future simulation phases:
 - **Live Multi-Sensor Radar Health Telemetry**: Dynamic degradation to `NA/NA/NA` with sensor-specific failover when individual radar heads disconnect.
 - **Automated Beacon Bank Exhaustion Tracking**: Dynamic allocation and exhaustion warnings for discrete transponder code banks.
 
+## Procedures
+
+### CIFP importer — unsupported ARINC behaviors (T04-31)
+
+Visible now: `tools/cifp-import` reads a **local** CIFP file (comma-separated
+T04-08 subset or 132-char ARINC 424-18) into `NormalizedCifpSource` and emits
+`ProcedureCatalog` with supported SID, STAR, and approach fields. Source
+`latDeg` / `lonDeg` is preserved; scenario ENU is derived only at catalog emit.
+`NormalizedSid` (runway / common / enroute) is exported for T04-33. Runtime
+`src/` does not import this tool or parse ARINC 424.
+
+Deliberately missing, each of which later work must keep as diagnostics — never
+silent straight-line TF conversion:
+
+- **RF, holds, arcs, procedure turns.** Path terminators `RF`, `HA`/`HF`/`HM`,
+  `AF`, `PI` are counted in `skippedByType` and omitted from catalog legs.
+- **Heading / course-unterminated legs.** `CA`/`CD`/`CI`/`CR`, `VA`/`VD`/`VI`/
+  `VM`/`VR`, `FA`/`FC`/`FD`/`FM` are skipped the same way.
+- **Continuation-record payloads.** Primary records only; `*-CONT` rows are
+  skip-counted.
+- **SID flying from imported CIFP.** Catalog `sids` may be non-empty. FMS
+  climb-via / SID route following for those imported rows is not this tool.
+- **Live FAA cycle download, chart scrape, vendor APIs.** Input stays a local
+  path. Full CIFP/NASR cycles stay out of git (`.cifp/`).
+
+Constraints later work must keep:
+
+- one conversion path: local CIFP → normalized IR → existing catalog schema;
+- no `src/` import of `tools/cifp-import`; no airport-id runtime branches;
+- KDEM remains the authored default scenario;
+- unsupported legs stay explicit skips, not flattened geometry.
+
 ## Explicit boundary
 
 This document does not pull in untouched phase work such as scoring/replay,

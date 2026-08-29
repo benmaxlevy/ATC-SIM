@@ -39,17 +39,17 @@ only after normalization. Runtime must not import this tool or parse ARINC 424.
 
 ## Acceptance criteria
 
-- [ ] AC1 — Local fixed-width fixture parses offline into normalized source
+- [x] AC1 — Local fixed-width fixture parses offline into normalized source
   records and emits a catalog matching expected schema.
-- [ ] AC2 — At least one VOR/NDB, fix, SID constraint, STAR constraint, and ILS
+- [x] AC2 — At least one VOR/NDB, fix, SID constraint, STAR constraint, and ILS
   approach survive conversion with lat/lon preserved.
-- [ ] AC3 — Duplicate/conflicting source records produce deterministic
+- [x] AC3 — Duplicate/conflicting source records produce deterministic
   diagnostics; dangling procedure references fail conversion clearly.
-- [ ] AC4 — Unsupported leg types are counted and documented, never silently
+- [x] AC4 — Unsupported leg types are counted and documented, never silently
   emitted as valid straight-line legs.
-- [ ] AC5 — Existing synthetic fixture tests stay green; no `src/` import points
+- [x] AC5 — Existing synthetic fixture tests stay green; no `src/` import points
   at `tools/cifp-import`.
-- [ ] AC6 — Tool README documents local input, source provenance responsibility,
+- [x] AC6 — Tool README documents local input, source provenance responsibility,
   unsupported records, and no-cycle-in-git boundary.
 
 ## Test plan

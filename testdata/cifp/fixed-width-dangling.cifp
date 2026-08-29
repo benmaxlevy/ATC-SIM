@@ -1,0 +1,6 @@
+# STAR references MERGE which is absent.
+SUSAP KSYNK A        0          N00000000E000000000E000000000                                Synthetic Field                        
+SUSAP KSYNK CNEMAX K 0      I   N00120000E000170000                                                                                 
+SUSAP KSYNK CNELBO K 0      I   N00070000E000160000                                                                                 
+SUSAP KSYNK EDEM1  1N     010NEMAXK PC0E       TF                                                                                   
+SUSAP KSYNK EDEM1  2      010MERGEK PC0E       TF                                                                                   

@@ -1,14 +1,18 @@
 /**
- * Offline CIFP *subset* parser (T04-08).
+ * Offline CIFP parser (T04-08 comma subset + T04-31 fixed-width ARINC 424).
  *
- * Analog: FAA CIFP / ARINC 424 section codes (R11). Trainer dialect is
- * comma-separated with packed lat/lon — not a full 132-char cycle parse.
- * Real CIFP uses lat/lon only; this fixture is synthetic. KDEM is not in CIFP.
+ * Detects dialect, then either the original comma-separated fixture path or
+ * fixed-width → `NormalizedCifpSource` → `ProcedureCatalog`. Real CIFP uses
+ * lat/lon only. KDEM is not in CIFP.
  *
  * Not imported by `stepWorld` or the Vite app entry. Keep this under `tools/`.
  */
 
 import { latLonToNm, type LatLon } from "../../src/core/nav/geometry.ts";
+import { detectCifpDialect, parsePackedLat, parsePackedLon } from "./arincLayout.ts";
+import { emitCatalogFromSource } from "./normalize.ts";
+import { parseFixedWidthCifp } from "./parseFixedWidth.ts";
+import type { CifpSkipStats } from "./types.ts";
 import type {
   AltConstraint,
   ApproachProcedure,
@@ -25,6 +29,17 @@ import type {
   StarTransition,
 } from "../../src/scenario/procedures/types.ts";
 
+export type {
+  CifpSkipStats,
+  NormalizedCifpSource,
+  NormalizedSid,
+  NormalizedSidEnrouteTransition,
+  NormalizedSidRunwayTransition,
+} from "./types.ts";
+export { parseFixedWidthCifp } from "./parseFixedWidth.ts";
+export { emitCatalogFromSource } from "./normalize.ts";
+export { detectCifpDialect, parsePackedLat, parsePackedLon } from "./arincLayout.ts";
+
 const KNOWN_TYPES = new Set(["PA", "D", "DB", "PC", "EA", "PI", "GS", "PE", "PF"]);
 
 const ID_RE = /^[A-Z0-9]{2,8}$/;
@@ -38,11 +53,6 @@ const VHF_KINDS = new Set<NavaidKind>(["VOR", "VORDME"]);
 const DEFAULT_LOC_LENGTH_NM = 18;
 const DEFAULT_BEAM_HALF_WIDTH_DEG = 2.5;
 const DEFAULT_TCH_FT = 50;
-
-export interface CifpSkipStats {
-  count: number;
-  byType: Record<string, number>;
-}
 
 export interface CifpImportResult {
   catalog: ProcedureCatalog;
@@ -62,6 +72,9 @@ interface StarBuild {
 }
 
 export function parseCifpSubset(text: string): CifpImportResult {
+  if (detectCifpDialect(text) === "fixed-width") {
+    return emitCatalogFromSource(parseFixedWidthCifp(text));
+  }
   const skipped: CifpSkipStats = { count: 0, byType: {} };
   const records: CifpLine[] = [];
 
@@ -179,8 +192,8 @@ function parsePa(row: CifpLine): {
     magVarDeg: parseNumber(row.fields[5], row, "magVarDeg"),
     fieldElevFt: parseNumber(row.fields[6], row, "elevFt"),
     arp: {
-      latDeg: parsePackedLat(requireText(row.fields[3], row, "lat"), row),
-      lonDeg: parsePackedLon(requireText(row.fields[4], row, "lon"), row),
+      latDeg: parsePackedLatField(requireText(row.fields[3], row, "lat"), row),
+      lonDeg: parsePackedLonField(requireText(row.fields[4], row, "lon"), row),
     },
     originNote:
       "Imported from a synthetic CIFP subset fixture (not a real FAA cycle). Local tangent NM from ARP using the phase 0 projector. KDEM remains the sim default.",
@@ -498,8 +511,8 @@ function projectPoint(
   arp: LatLon,
   row: CifpLine,
 ): GeoPoint {
-  const latDeg = parsePackedLat(requireText(latField, row, "lat"), row);
-  const lonDeg = parsePackedLon(requireText(lonField, row, "lon"), row);
+  const latDeg = parsePackedLatField(requireText(latField, row, "lat"), row);
+  const lonDeg = parsePackedLonField(requireText(lonField, row, "lon"), row);
   const en = latLonToNm({ latDeg, lonDeg }, arp);
   return {
     xNm: cleanNm(en.xNm),
@@ -509,37 +522,22 @@ function projectPoint(
   };
 }
 
-/** ARINC 424-style: N/S + DD + MM + SS + hundredths (9 chars). */
-export function parsePackedLat(text: string, row?: CifpLine): number {
-  const match = /^([NS])(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(text);
-  if (match === null) {
-    throw new Error(
-      row ? lineError(row, `invalid packed latitude ${text}`) : `invalid packed latitude ${text}`,
-    );
+function parsePackedLatField(text: string, row: CifpLine): number {
+  try {
+    return parsePackedLat(text);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(lineError(row, message));
   }
-  const deg = packedToDeg(match[2]!, match[3]!, match[4]!, match[5]!);
-  return match[1] === "S" ? -deg : deg;
 }
 
-/** ARINC 424-style: E/W + DDD + MM + SS + hundredths (10 chars). */
-export function parsePackedLon(text: string, row?: CifpLine): number {
-  const match = /^([EW])(\d{3})(\d{2})(\d{2})(\d{2})$/.exec(text);
-  if (match === null) {
-    throw new Error(
-      row ? lineError(row, `invalid packed longitude ${text}`) : `invalid packed longitude ${text}`,
-    );
+function parsePackedLonField(text: string, row: CifpLine): number {
+  try {
+    return parsePackedLon(text);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(lineError(row, message));
   }
-  const deg = packedToDeg(match[2]!, match[3]!, match[4]!, match[5]!);
-  return match[1] === "W" ? -deg : deg;
-}
-
-function packedToDeg(deg: string, min: string, sec: string, hundredths: string): number {
-  const minutes = Number(min);
-  const seconds = Number(sec);
-  if (minutes >= 60 || seconds >= 60) {
-    throw new Error(`invalid packed DMS ${deg}${min}${sec}${hundredths}`);
-  }
-  return Number(deg) + minutes / 60 + (seconds + Number(hundredths) / 100) / 3600;
 }
 
 function parseAlt(qual: string | undefined, alt: string | undefined, row: CifpLine): AltConstraint {

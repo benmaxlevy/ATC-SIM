@@ -1,30 +1,36 @@
 # CIFP subset importer
 
-Developer tool (T04-08). Converts a **local** CIFP-like text file into the same
-`ProcedureCatalog` JSON schema KDEM uses (`airportId: string`, navaids, fixes,
-STARs, approaches, `sids: []`).
+Developer tool (T04-08 comma subset + T04-31 fixed-width ARINC 424-18). Converts
+a **local** CIFP-like text file into the same `ProcedureCatalog` JSON schema
+KDEM uses (`airportId: string`, navaids, fixes, STARs, approaches, SIDs).
 
 **KDEM remains the runtime default.** The sim loads `src/scenario/data/kdem/`.
 KDEM is a fictional field and **is not in CIFP**; do not try to replace Demo
 Field with an import in v1.
 
 This directory is **not** a runtime dependency of `stepWorld` or the Vite app.
-Do not import it from `src/`.
+Do not import it from `src/`. Runtime never parses ARINC 424.
 
-## Legal / what not to do
+`NormalizedCifpSource` (including `NormalizedSid` and SID runway/enroute
+transition types) is the tool-only IR. T04-32 / T04-33 import those types.
+Catalog `xNm` / `yNm` is derived only at emit from the selected airport ARP.
+Source `latDeg` / `lonDeg` is preserved on every point.
 
+## Legal / source provenance
+
+- **You** are responsible for CIFP/NASR terms of use. This tool does not grant
+  redistribution rights. Keep the real cycle on disk outside git.
 - **Do not scrape charts** (Jeppesen, ForeFlight, FAA PDF plates, or any web
   procedure page).
-- **Do not commit a full FAA CIFP/NASR cycle** (or any non-redistributable FAA
-  product) into this repo.
+- **Do not commit a full FAA CIFP/NASR cycle** (or any national derived dump)
+  into this repo. Input CIFP stays local / gitignored (`.cifp/`). Only
+  synthetic reviewable fixtures under `testdata/cifp/` belong in git.
 - **The app never downloads CIFP.** There is no browser fetch, no CDN, and no
-  `faa:update` script in this ticket. A later ticket may add an official-source
-  writer into `src/scenario/data/<ICAO>/` using this same schema.
+  `faa:update` script. A later ticket may write an official-source pack into
+  `src/scenario/data/<ICAO>/` using this same schema.
 - Official product page (documentation only — you download by hand if you have
   rights, you do not commit the cycle):
   https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/cifp/
-- **You** are responsible for CIFP/NASR terms of use. This tool does not grant
-  redistribution rights.
 
 ## How to run
 
@@ -32,6 +38,12 @@ From the repo root, on a file already on disk:
 
 ```text
 npm run cifp:import -- --in testdata/cifp/frozen-subset.cifp --out out/catalog.json
+```
+
+Fixed-width synthetic fixture:
+
+```text
+npm run cifp:import -- --in testdata/cifp/fixed-width-subset.cifp --out out/catalog.json
 ```
 
 Equivalent:
@@ -45,29 +57,40 @@ Node 22.6+ type-stripping is enough (no extra package). If you are on Node 20,
 paid service or network fetch.
 
 `--in` is required. `--out` writes pretty-printed catalog JSON; omit it to print
-JSON on stdout. Unknown record types are skipped; skip counts go to stderr.
+JSON on stdout. Unknown / unsupported records are skipped; skip counts go to
+stderr.
 
 Tests import `parseCifpSubset` directly (no CLI, no network).
 
-## Frozen fixture
+## Frozen fixtures
 
-`testdata/cifp/frozen-subset.cifp` is **synthetic**. It is not a real cycle
-extract. Geometry is KDEM-like near 0°N 0°E so the phase 0 ENU projector yields
-NEMAX ≈ (17, 12) NM, MERGE ≈ (10, 0), ILS 27 course 270, etc. Expected catalog:
-`testdata/cifp/frozen-subset.expected.json`.
+`testdata/cifp/frozen-subset.cifp` is **synthetic comma-separated** (T04-08). It
+is not a real cycle extract. Geometry is KDEM-like near 0°N 0°E so the phase 0
+ENU projector yields NEMAX ≈ (17, 12) NM, MERGE ≈ (10, 0), ILS 27 course 270,
+etc. Expected catalog: `testdata/cifp/frozen-subset.expected.json`. That fixture
+has no SID records worth converting; output `sids` is `[]`.
 
-Airport id in the fixture is `KSYN` (schema check). Runtime still boots KDEM.
+`testdata/cifp/fixed-width-subset.cifp` is **synthetic 132-char ARINC 424-18**
+(T04-31). Same KDEM-like geometry, plus a supported SID (`DEP1`) with a runway
+transition constraint and lat/lon-preserved `SIDEP`.
 
-## Dialect (documented subset)
+Airport id in both fixtures is `KSYN` (schema check). Runtime still boots KDEM.
 
-Real CIFP is fixed-width ARINC 424. This importer accepts a **comma-separated**
-subset with the same section codes, documented here so the fixture stays
-reviewable. **Real CIFP uses lat/lon only** — there is no `XNM`/`YNM` field.
+## Dialects
 
-Lat/lon fields are ARINC-style packed DMS:
+`parseCifpSubset` detects dialect from the first non-comment line:
 
-- Latitude (9 chars): `N|S` + DD + MM + SS + hundredths (`N00120000` = 0°12′00.00″ → 12 NM north of 0°N)
+- **Fixed-width:** 132-character records starting with `S`/`T` (real CIFP
+  shape). Parsed into `NormalizedCifpSource`, then emitted as `ProcedureCatalog`.
+- **Comma-separated:** the T04-08 reviewable subset. Same section codes, packed
+  lat/lon. **Real CIFP uses lat/lon only** — there is no `XNM`/`YNM` field.
+
+Packed DMS:
+
+- Latitude (9 chars): `N|S` + DD + MM + SS + hundredths (`N00120000` = 0°12′00.00″)
 - Longitude (10 chars): `E|W` + DDD + MM + SS + hundredths
+
+### Comma-separated record types
 
 | Type | Meaning | Fields |
 | --- | --- | --- |
@@ -80,9 +103,10 @@ Lat/lon fields are ARINC-style packed DMS:
 | `PE` | STAR | see below |
 | `PF` | Approach | see below |
 
-Unknown types (`ER` airways, `PD` SIDs, garbage lines) are **skipped** with a
-count. SIDs are not imported; output `sids` is always `[]`. `#` comments and
-blank lines are ignored (not skips).
+Unknown comma types (`ER` airways, `PD` SIDs, garbage lines) are **skipped**
+with a count. The comma dialect does not parse SID encodings; `sids` is `[]`
+when the source has no supported SID (as in `frozen-subset.cifp`). `#` comments
+and blank lines are ignored (not skips).
 
 STAR altitude/speed qualifiers: `+` / `A` / `AT_OR_ABOVE`, `-` / `B` /
 `AT_OR_BELOW`, `@` / `AT`.
@@ -106,11 +130,50 @@ PF,<icao>,<appId>,<type>,<runway>,<name>,<locId>,<gsId>,<fafId>,<thrId>,<courseD
 
 ILS defaults when omitted: loc length **18 NM**, beam **2.5°**, TCH **50 ft**.
 
-Every STAR/approach `fixId` / navaid ref must exist or convert throws. Duplicate
-ids throw.
+Every STAR/SID/approach `fixId` / navaid ref must exist or convert throws.
+Duplicate / conflicting fixed-width identities throw with airport/section
+context.
+
+### Fixed-width ARINC subset (T04-31)
+
+Primary records only. Continuation records are counted as skips (`PA-CONT`,
+`PD-CONT`, …).
+
+| Section | Meaning |
+| --- | --- |
+| `PA` | Airport |
+| `PG` | Runway |
+| `D` / `DB` / `PN` | VHF navaid / NDB |
+| `EA` / `PC` | Enroute / terminal fix |
+| `PI` / `PM` | Localizer + glideslope / marker |
+| `PE` | STAR |
+| `PD` | Airport SID |
+| `PF` | Approach |
+
+Supported path terminators emitted as named-fix catalog legs: **IF, TF, CF,
+DF**. Unsupported path terminators are counted (`skippedByType`) and **never**
+emitted as straight TF legs: RF, holds (`HA`/`HF`/`HM`), DME arc (`AF`),
+procedure turn (`PI`), plus heading/course-unterminated `CA`/`CD`/`CI`/`CR`/
+`VA`/`VD`/`VI`/`VM`/`VR`/`FA`/`FC`/`FD`/`FM`.
+
+SID (`PD`) route types mapped into `SidProcedure`:
+
+| Route type | Bucket |
+| --- | --- |
+| `0`, `1`, `4` | Runway transition (`RW27` → `runwayId` `27`) |
+| `2`, `5` | Common route |
+| `3`, `6` | Enroute transition |
+| `T` / `F` / `S` / `M` | RNP / FMS / military: `RW*` → runway, empty trans → common, else enroute |
+
+Other SID route-type letters are diagnosed (`SKIPPED_SID_ROUTE`) and skipped.
+Empty `sids` only when the source has no supported SID — not a hardcoded emit.
+
+SID *catalog conversion* is in scope. SID *flight behavior* is not; the FMS
+does not gain new RNAV/hold/RF flying from this tool.
 
 ## Out of scope
 
-Full ARINC 424 (holds, RF, procedure turns, SID encodings, continuation
-records). RNAV (RNP) flying. Live FAA download. Chart scrape. Replacing KDEM as
-the default scenario.
+Full ARINC 424 (holds, RF flying, procedure turns, DME arcs, continuation
+payloads). RNAV (RNP) flying. Live FAA download. Chart scrape. Replacing KDEM as
+the default scenario. T04-32 spatial seed, T04-33 procedure closure, T04-34 pack
+CLI, T04-35 acceptance.
