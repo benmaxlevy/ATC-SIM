@@ -261,11 +261,11 @@ test("ATPA *AE affects warning+alert not monitor; *BE affects monitor only; inhi
   expect(applyStarsChordAction(view, world, { type: "atpaWarningAlert", mode: "inhibit" })).toBe(
     "applied",
   );
-  expect(shouldPaintAtpaGeometry(true, "warning", { alertCones: view.atpa.alertCones })).toBe(
+  expect(shouldPaintAtpaGeometry("warning", { alertCones: view.atpa.alertCones })).toBe(
     false,
   );
-  expect(shouldPaintAtpaGeometry(true, "alert", { alertCones: view.atpa.alertCones })).toBe(false);
-  expect(shouldPaintAtpaGeometry(true, "monitor", { monitorCones: view.atpa.monitorCones })).toBe(
+  expect(shouldPaintAtpaGeometry("alert", { alertCones: view.atpa.alertCones })).toBe(false);
+  expect(shouldPaintAtpaGeometry("monitor", { monitorCones: view.atpa.monitorCones })).toBe(
     true,
   );
 
@@ -275,11 +275,11 @@ test("ATPA *AE affects warning+alert not monitor; *BE affects monitor only; inhi
   expect(applyStarsChordAction(view, world, { type: "atpaMonitor", mode: "inhibit" })).toBe(
     "applied",
   );
-  expect(shouldPaintAtpaGeometry(true, "monitor", { monitorCones: view.atpa.monitorCones })).toBe(
+  expect(shouldPaintAtpaGeometry("monitor", { monitorCones: view.atpa.monitorCones })).toBe(
     false,
   );
-  expect(shouldPaintAtpaGeometry(true, "warning", { alertCones: view.atpa.alertCones })).toBe(true);
-  expect(shouldPaintAtpaGeometry(true, "alert", { alertCones: view.atpa.alertCones })).toBe(true);
+  expect(shouldPaintAtpaGeometry("warning", { alertCones: view.atpa.alertCones })).toBe(true);
+  expect(shouldPaintAtpaGeometry("alert", { alertCones: view.atpa.alertCones })).toBe(true);
 
   world.selectedAircraftId = dal.id;
   view.atpa.alertCones = true;
@@ -289,19 +289,19 @@ test("ATPA *AE affects warning+alert not monitor; *BE affects monitor only; inhi
   );
   const afterAe = view.tracks.get(dal.id)!;
   expect(
-    shouldPaintAtpaGeometry(true, "warning", {
+    shouldPaintAtpaGeometry("warning", {
       atpaWarningAlertEnabled: afterAe.atpaWarningAlertEnabled,
       atpaMonitorEnabled: afterAe.atpaMonitorEnabled,
     }),
   ).toBe(false);
   expect(
-    shouldPaintAtpaGeometry(true, "alert", {
+    shouldPaintAtpaGeometry("alert", {
       atpaWarningAlertEnabled: afterAe.atpaWarningAlertEnabled,
       atpaMonitorEnabled: afterAe.atpaMonitorEnabled,
     }),
   ).toBe(false);
   expect(
-    shouldPaintAtpaGeometry(true, "monitor", {
+    shouldPaintAtpaGeometry("monitor", {
       atpaWarningAlertEnabled: afterAe.atpaWarningAlertEnabled,
       atpaMonitorEnabled: afterAe.atpaMonitorEnabled,
     }),
@@ -315,19 +315,19 @@ test("ATPA *AE affects warning+alert not monitor; *BE affects monitor only; inhi
   );
   const afterBe = view.tracks.get(dal.id)!;
   expect(
-    shouldPaintAtpaGeometry(true, "monitor", {
+    shouldPaintAtpaGeometry("monitor", {
       atpaWarningAlertEnabled: afterBe.atpaWarningAlertEnabled,
       atpaMonitorEnabled: afterBe.atpaMonitorEnabled,
     }),
   ).toBe(false);
   expect(
-    shouldPaintAtpaGeometry(true, "warning", {
+    shouldPaintAtpaGeometry("warning", {
       atpaWarningAlertEnabled: afterBe.atpaWarningAlertEnabled,
       atpaMonitorEnabled: afterBe.atpaMonitorEnabled,
     }),
   ).toBe(true);
   expect(
-    shouldPaintAtpaGeometry(true, "alert", {
+    shouldPaintAtpaGeometry("alert", {
       atpaWarningAlertEnabled: afterBe.atpaWarningAlertEnabled,
       atpaMonitorEnabled: afterBe.atpaMonitorEnabled,
     }),

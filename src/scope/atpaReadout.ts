@@ -58,8 +58,6 @@ export interface AtpaConeMileagePlacement {
 }
 
 export interface AtpaReadoutGate {
-  /** Master ATPA DCB latch (`view.atpa.on`). */
-  atpaOn: boolean;
   /** Global Intrail Distance or A/TPA Mileage flag. */
   globalEnabled: boolean;
   /** Per-track inhibit; missing / undefined counts as enabled. */
@@ -105,9 +103,9 @@ export function atpaReadoutColor(status: AtpaStatus): string {
   return PALETTE.tools;
 }
 
-/** Both the global flag and the per-track latch, under the ATPA master. */
+/** Global feature latch and the per-track inhibit. No system-wide ATPA master. */
 export function atpaReadoutEnabled(gate: AtpaReadoutGate): boolean {
-  return gate.atpaOn && gate.globalEnabled && gate.trackEnabled;
+  return gate.globalEnabled && gate.trackEnabled;
 }
 
 /** Trailing pair for this callsign, or `undefined` for the frontmost track. */

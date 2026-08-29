@@ -26,8 +26,7 @@ function pair(
   };
 }
 
-const ON: { atpaOn: boolean; globalEnabled: boolean; trackEnabled: boolean } = {
-  atpaOn: true,
+const ON: { globalEnabled: boolean; trackEnabled: boolean } = {
   globalEnabled: true,
   trackEnabled: true,
 };
@@ -112,11 +111,10 @@ test("AC5 — pair clear leaves no residue; inhibit matrix is independent per re
   ).toBeNull();
 
   const gates = [
-    { atpaOn: true, globalEnabled: true, trackEnabled: true, expect: true },
-    { atpaOn: true, globalEnabled: true, trackEnabled: false, expect: false },
-    { atpaOn: true, globalEnabled: false, trackEnabled: true, expect: false },
-    { atpaOn: true, globalEnabled: false, trackEnabled: false, expect: false },
-    { atpaOn: false, globalEnabled: true, trackEnabled: true, expect: false },
+    { globalEnabled: true, trackEnabled: true, expect: true },
+    { globalEnabled: true, trackEnabled: false, expect: false },
+    { globalEnabled: false, trackEnabled: true, expect: false },
+    { globalEnabled: false, trackEnabled: false, expect: false },
   ];
   for (const gate of gates) {
     expect(atpaReadoutEnabled(gate)).toBe(gate.expect);
@@ -126,8 +124,8 @@ test("AC5 — pair clear leaves no residue; inhibit matrix is independent per re
     ).toBe(gate.expect);
   }
 
-  const inTrailOff = { atpaOn: true, globalEnabled: false, trackEnabled: true };
-  const mileageOn = { atpaOn: true, globalEnabled: true, trackEnabled: true };
+  const inTrailOff = { globalEnabled: false, trackEnabled: true };
+  const mileageOn = { globalEnabled: true, trackEnabled: true };
   expect(atpaInTrailDatablockReadout(live, "DAL123", inTrailOff)).toBeNull();
   expect(
     atpaConeMileageReadout(live, "DAL123", { xNm: 4, yNm: 0 }, { xNm: 0, yNm: 0 }, mileageOn)?.text,

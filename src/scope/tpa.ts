@@ -22,7 +22,7 @@
  * toggle. ATPA warning/alert cones suppress that track's manual `*P` cone via
  * `atpaSuppressesManualTpaCone`; monitor does not; J-rings are never suppressed.
  *
- * Four live ATPA cells plus master (R07 meanings, quoted):
+ * Four live ATPA cells (R07 meanings, quoted) — no system-wide ATPA on/off:
  * - A/TPA Mileage — "displays mileage in the A/TPA cone"
  * - Intrail Distance — "displays intrail distance in the datablock"
  * - Alert Cones — "displays alert cones at this TCP"
@@ -32,11 +32,9 @@
  * gates both alert and warning (`*AE` / `*AI`) while Monitor Cones is
  * monitor-only (`*BE` / `*BI`). Single TCP: "at this TCP" is this scope.
  *
- * A feature paints only when both latches are on:
- * `effective(feature) = atpa.on && atpa[feature]`. Master off means no ATPA
- * geometry and no ATPA readouts; the four cells stay clickable so PREF can
- * store a setup. CA remains T04-09 datablock text — not a 3 NM circle
- * (circles here are TPA J-rings or ERAM DRI, not CA). Not NAS STARS.
+ * A feature paints when its own latch is on: `effective(feature) = atpa[feature]`.
+ * CA remains T04-09 datablock text — not a 3 NM circle (circles here are TPA
+ * J-rings or ERAM DRI, not CA). Not NAS STARS.
  *
  * Scope display only. Never a Command, readback, or intent.
  */
@@ -85,7 +83,10 @@ export interface TpaState {
 export type AtpaFeature = "coneMileage" | "inTrailDistance" | "alertCones" | "monitorCones";
 
 export interface AtpaState {
-  /** DCB master toggle. Off suppresses every ATPA cone and readout. */
+  /**
+   * PREF v2 leftover. Not a DCB cell. Paint and readouts use the four
+   * feature latches only.
+   */
   on: boolean;
   /**
    * Intrail Distance — "displays intrail distance in the datablock" (R07).
@@ -123,11 +124,10 @@ export const DEFAULT_ATPA_STATE: AtpaState = {
 };
 
 /**
- * Master vs the four DCB cells (R07 TPA ATPA submenu).
- * `effective(feature) = atpa.on && atpa[feature]`.
+ * R07 TPA ATPA submenu is per-feature. `effective(feature) = atpa[feature]`.
  */
 export function atpaFeatureEffective(atpa: AtpaState, feature: AtpaFeature): boolean {
-  return atpa.on && atpa[feature];
+  return atpa[feature];
 }
 
 /**
@@ -334,16 +334,19 @@ export function tpaRingsToPaint(
 
 /**
  * Per-track `*P` cones. Warning/alert ATPA cones that actually paint suppress
- * the manual cone (`atpaSuppressesManualTpaCone`). Monitor does not. ATPA
- * master-off or an inhibited ATPA cone leaves the manual cone up.
+ * the manual cone (`atpaSuppressesManualTpaCone`). Monitor does not. An
+ * inhibited ATPA cone (DCB or per-track) leaves the manual cone up.
  */
 export function tpaConesToPaint(
   aircraft: readonly Aircraft[],
   tracks: Map<string, TrackDisplay>,
   atpaPairs: readonly AtpaPair[],
-  atpaOn: boolean,
+  atpa: Pick<AtpaState, "alertCones" | "monitorCones"> = {
+    alertCones: true,
+    monitorCones: true,
+  },
 ): TpaConePaint[] {
-  const best = atpaOn ? selectAtpaConesToPaint(atpaPairs) : [];
+  const best = selectAtpaConesToPaint(atpaPairs);
   const byCallsign = new Map(best.map((pair) => [pair.trailingCallsign, pair]));
   const out: TpaConePaint[] = [];
   for (const ac of aircraft) {
@@ -354,9 +357,11 @@ export function tpaConesToPaint(
     }
     const pair = byCallsign.get(ac.callsign);
     if (pair) {
-      const paintsAtpa = shouldPaintAtpaGeometry(atpaOn, pair.status, {
+      const paintsAtpa = shouldPaintAtpaGeometry(pair.status, {
         atpaMonitorEnabled: td?.atpaMonitorEnabled,
         atpaWarningAlertEnabled: td?.atpaWarningAlertEnabled,
+        alertCones: atpa.alertCones,
+        monitorCones: atpa.monitorCones,
       });
       if (paintsAtpa && atpaSuppressesManualTpaCone(pair.status)) {
         continue;

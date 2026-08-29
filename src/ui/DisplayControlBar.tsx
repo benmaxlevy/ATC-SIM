@@ -103,7 +103,6 @@ import {
   toggleAtpaConeMileage,
   toggleAtpaInTrailDistance,
   toggleAtpaMonitorCones,
-  toggleAtpaOn,
   toggleTpaOn,
   toggleCurrentMapsList,
   toggleGeoMapsList,
@@ -1773,9 +1772,8 @@ function renderTpaAtpa(view: ScopeView, onChange: () => void) {
         Alert Cones — "displays alert cones at this TCP"
         Monitor Cones — "displays monitor cones at this TCP"
         No separate Warning Cones cell — Alert Cones gates alert and warning.
-        Master ATPA (`atpa.on`) gates every cone and readout. TPA ON / TPA MI
+        Master ATPA is not a DCB cell — R07 gates per feature. TPA ON / TPA MI
         are the T02-28 J-ring toggle and 2/3/5/10 NM spinner.
-        Cells stay clickable with master off so PREF can store a setup.
         Clicks are never Command IR.
       */}
       <div
@@ -1829,30 +1827,11 @@ function renderTpaAtpa(view: ScopeView, onChange: () => void) {
       </div>
       <div
         className="dcb-main-grid-cell"
-        data-dcb-layout-id="atpa"
+        data-dcb-layout-id="atpa-mileage"
         data-dcb-row={1}
         data-dcb-column={3}
         data-dcb-row-span={1}
         style={{ gridColumn: 3, gridRow: "1 / span 1" }}
-      >
-        <DcbCell
-          kind="toggle"
-          ariaLabel="ATPA"
-          dataDcb="atpa"
-          pressed={view.atpa.on}
-          onClick={() => runAuxCell(view, onChange, () => toggleAtpaOn(view))}
-        >
-          <span className="dcb-cell-line">ATPA</span>
-          <span className="dcb-cell-line">{view.atpa.on ? "ON" : "OFF"}</span>
-        </DcbCell>
-      </div>
-      <div
-        className="dcb-main-grid-cell"
-        data-dcb-layout-id="atpa-mileage"
-        data-dcb-row={1}
-        data-dcb-column={4}
-        data-dcb-row-span={1}
-        style={{ gridColumn: 4, gridRow: "1 / span 1" }}
       >
         <DcbCell
           kind="toggle"
@@ -1870,9 +1849,9 @@ function renderTpaAtpa(view: ScopeView, onChange: () => void) {
         className="dcb-main-grid-cell"
         data-dcb-layout-id="atpa-intrail"
         data-dcb-row={1}
-        data-dcb-column={5}
+        data-dcb-column={4}
         data-dcb-row-span={1}
-        style={{ gridColumn: 5, gridRow: "1 / span 1" }}
+        style={{ gridColumn: 4, gridRow: "1 / span 1" }}
       >
         <DcbCell
           kind="toggle"
@@ -1892,9 +1871,9 @@ function renderTpaAtpa(view: ScopeView, onChange: () => void) {
         className="dcb-main-grid-cell"
         data-dcb-layout-id="atpa-alert"
         data-dcb-row={1}
-        data-dcb-column={6}
+        data-dcb-column={5}
         data-dcb-row-span={1}
-        style={{ gridColumn: 6, gridRow: "1 / span 1" }}
+        style={{ gridColumn: 5, gridRow: "1 / span 1" }}
       >
         <DcbCell
           kind="toggle"
@@ -1912,9 +1891,9 @@ function renderTpaAtpa(view: ScopeView, onChange: () => void) {
         className="dcb-main-grid-cell"
         data-dcb-layout-id="atpa-monitor"
         data-dcb-row={1}
-        data-dcb-column={7}
+        data-dcb-column={6}
         data-dcb-row-span={1}
-        style={{ gridColumn: 7, gridRow: "1 / span 1" }}
+        style={{ gridColumn: 6, gridRow: "1 / span 1" }}
       >
         <DcbCell
           kind="toggle"
@@ -1932,9 +1911,9 @@ function renderTpaAtpa(view: ScopeView, onChange: () => void) {
         className="dcb-main-grid-cell"
         data-dcb-layout-id="done"
         data-dcb-row={1}
-        data-dcb-column={8}
+        data-dcb-column={7}
         data-dcb-row-span={1}
-        style={{ gridColumn: 8, gridRow: "1 / span 1" }}
+        style={{ gridColumn: 7, gridRow: "1 / span 1" }}
       >
         {renderDone(view, onChange)}
       </div>

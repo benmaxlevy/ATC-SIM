@@ -491,7 +491,6 @@ function drawDatablock(
   const atpaReadout =
     mode === "full"
       ? atpaInTrailDatablockReadout(world.alerts.atpa, ac.callsign, {
-          atpaOn: view.atpa.on,
           globalEnabled: view.atpa.inTrailDistance,
           trackEnabled: td?.atpaInTrailDistanceEnabled !== false,
         })
@@ -701,7 +700,7 @@ function drawAtpaConeMileage(
   view: ScopeView,
   size: ScopeViewSize,
 ): void {
-  if (!view.atpa.on || !view.atpa.coneMileage) {
+  if (!view.atpa.coneMileage) {
     return;
   }
   const pairs = world.alerts.atpa;
@@ -718,7 +717,7 @@ function drawAtpaConeMileage(
       continue;
     }
     const td = view.tracks.get(trailing.id);
-    if (!shouldPaintAtpaGeometry(view.atpa.on, pair.status, atpaConePaintFlags(view, td))) {
+    if (!shouldPaintAtpaGeometry(pair.status, atpaConePaintFlags(view, td))) {
       continue;
     }
     if (td?.atpaConeMileageEnabled === false) {
@@ -830,7 +829,7 @@ function drawManualTpaCones(
   view: ScopeView,
   size: ScopeViewSize,
 ): void {
-  const targets = tpaConesToPaint(world.aircraft, view.tracks, world.alerts.atpa, view.atpa.on);
+  const targets = tpaConesToPaint(world.aircraft, view.tracks, world.alerts.atpa, view.atpa);
   if (targets.length === 0) {
     return;
   }
@@ -935,7 +934,7 @@ function drawAtpaCones(
   size: ScopeViewSize,
 ): void {
   const pairs = world.alerts.atpa;
-  if (!view.atpa.on || pairs.length === 0) {
+  if (pairs.length === 0) {
     return;
   }
   const byCallsign = new Map<string, Aircraft>();
@@ -951,7 +950,7 @@ function drawAtpaCones(
       continue;
     }
     const td = view.tracks.get(trailing.id);
-    if (!shouldPaintAtpaGeometry(view.atpa.on, pair.status, atpaConePaintFlags(view, td))) {
+    if (!shouldPaintAtpaGeometry(pair.status, atpaConePaintFlags(view, td))) {
       continue;
     }
     const worldPts = atpaConePoints(

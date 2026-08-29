@@ -2237,13 +2237,12 @@ test("T02-47 — DCB cone latches hide cones and their mileage; master off hides
   view.atpa.coneMileage = true;
   view.atpa.inTrailDistance = true;
   view.atpa.on = false;
-  const masterOff = createMockCtx();
-  renderScope(masterOff.ctx, world, view, 800, 800);
-  expect(masterOff.pathStrokes.filter((s) => s.points.length === 4)).toHaveLength(0);
-  expect(masterOff.fillTexts.find((t) => t.text === "2.5")).toBeUndefined();
-  expect(masterOff.fillTexts.find((t) => t.text === "2.40")).toBeUndefined();
+  const leftoverOn = createMockCtx();
+  renderScope(leftoverOn.ctx, world, view, 800, 800);
+  expect(leftoverOn.pathStrokes.filter((s) => s.points.length === 4)).toHaveLength(1);
+  expect(leftoverOn.fillTexts.find((t) => t.text === "2.5")).toBeDefined();
+  expect(leftoverOn.fillTexts.find((t) => t.text === "2.40")).toBeDefined();
 
-  view.atpa.on = true;
   view.tracks.get(trailer.id)!.atpaWarningAlertEnabled = false;
   const trackInhibit = createMockCtx();
   renderScope(trackInhibit.ctx, world, view, 800, 800);

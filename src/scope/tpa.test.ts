@@ -194,24 +194,22 @@ test("no selection: TPA rings owned tracks only (not unowned)", () => {
   expect(tpaStrokes(pathStrokes)).toHaveLength(1);
 });
 
-test("AC3 — ATPA on with an empty pair set paints no extra stroke", () => {
+test("AC3 — ATPA with an empty pair set paints no extra stroke", () => {
   const view = createScopeView();
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", xNm: 1, yNm: 1 });
   const world = createWorld({ aircraft: [dal], selectedAircraftId: dal.id });
   syncTrackDisplays(view.tracks, world);
   const off = createMockCtx();
   renderScope(off.ctx, world, view, VIEW.widthPx, VIEW.heightPx);
-  toggleAtpaOn(view);
-  expect(view.atpa.on).toBe(true);
   expect(world.alerts.atpa).toEqual([]);
-  expect(shouldPaintAtpaGeometry(view.atpa.on, "monitor")).toBe(true);
+  expect(shouldPaintAtpaGeometry("monitor")).toBe(true);
   const on = createMockCtx();
   renderScope(on.ctx, world, view, VIEW.widthPx, VIEW.heightPx);
   expect(tpaStrokes(on.pathStrokes)).toHaveLength(0);
   expect(on.pathStrokes.length).toBe(off.pathStrokes.length);
 });
 
-test("T02-47 — four DCB latches default on; master-off suppresses every feature", () => {
+test("T02-47 — four DCB latches default on and each gates only its feature", () => {
   expect(DEFAULT_ATPA_STATE).toEqual({
     on: false,
     inTrailDistance: true,
@@ -222,18 +220,12 @@ test("T02-47 — four DCB latches default on; master-off suppresses every featur
   const view = createScopeView();
   expect(view.atpa).toEqual(DEFAULT_ATPA_STATE);
   for (const feature of ["coneMileage", "inTrailDistance", "alertCones", "monitorCones"] as const) {
-    expect(atpaFeatureEffective(view.atpa, feature)).toBe(false);
+    expect(atpaFeatureEffective(view.atpa, feature)).toBe(true);
   }
 
-  toggleAtpaOn(view);
-  expect(view.atpa.on).toBe(true);
-  expect(atpaFeatureEffective(view.atpa, "coneMileage")).toBe(true);
-  expect(atpaFeatureEffective(view.atpa, "inTrailDistance")).toBe(true);
-  expect(atpaFeatureEffective(view.atpa, "alertCones")).toBe(true);
-  expect(atpaFeatureEffective(view.atpa, "monitorCones")).toBe(true);
-  expect(shouldPaintAtpaGeometry(view.atpa.on, "monitor", view.atpa)).toBe(true);
-  expect(shouldPaintAtpaGeometry(view.atpa.on, "warning", view.atpa)).toBe(true);
-  expect(shouldPaintAtpaGeometry(view.atpa.on, "alert", view.atpa)).toBe(true);
+  expect(shouldPaintAtpaGeometry("monitor", view.atpa)).toBe(true);
+  expect(shouldPaintAtpaGeometry("warning", view.atpa)).toBe(true);
+  expect(shouldPaintAtpaGeometry("alert", view.atpa)).toBe(true);
 
   toggleAtpaConeMileage(view);
   expect(view.atpa.coneMileage).toBe(false);
@@ -243,29 +235,20 @@ test("T02-47 — four DCB latches default on; master-off suppresses every featur
   expect(view.atpa.inTrailDistance).toBe(false);
   toggleAtpaAlertCones(view);
   expect(view.atpa.alertCones).toBe(false);
-  expect(shouldPaintAtpaGeometry(view.atpa.on, "alert", view.atpa)).toBe(false);
-  expect(shouldPaintAtpaGeometry(view.atpa.on, "warning", view.atpa)).toBe(false);
-  expect(shouldPaintAtpaGeometry(view.atpa.on, "monitor", view.atpa)).toBe(true);
+  expect(shouldPaintAtpaGeometry("alert", view.atpa)).toBe(false);
+  expect(shouldPaintAtpaGeometry("warning", view.atpa)).toBe(false);
+  expect(shouldPaintAtpaGeometry("monitor", view.atpa)).toBe(true);
   toggleAtpaMonitorCones(view);
   expect(view.atpa.monitorCones).toBe(false);
-  expect(shouldPaintAtpaGeometry(view.atpa.on, "monitor", view.atpa)).toBe(false);
+  expect(shouldPaintAtpaGeometry("monitor", view.atpa)).toBe(false);
 
   view.atpa.coneMileage = true;
   view.atpa.inTrailDistance = true;
   view.atpa.alertCones = true;
   view.atpa.monitorCones = true;
-  toggleAtpaOn(view);
-  expect(view.atpa.on).toBe(false);
-  expect(atpaFeatureEffective(view.atpa, "coneMileage")).toBe(false);
-  expect(atpaFeatureEffective(view.atpa, "inTrailDistance")).toBe(false);
-  expect(atpaFeatureEffective(view.atpa, "alertCones")).toBe(false);
-  expect(atpaFeatureEffective(view.atpa, "monitorCones")).toBe(false);
-  expect(shouldPaintAtpaGeometry(view.atpa.on, "monitor", view.atpa)).toBe(false);
-  expect(shouldPaintAtpaGeometry(view.atpa.on, "alert", view.atpa)).toBe(false);
-  expect(view.atpa.coneMileage).toBe(true);
-  expect(view.atpa.inTrailDistance).toBe(true);
-  expect(view.atpa.alertCones).toBe(true);
-  expect(view.atpa.monitorCones).toBe(true);
+  expect(atpaFeatureEffective(view.atpa, "coneMileage")).toBe(true);
+  expect(shouldPaintAtpaGeometry("monitor", view.atpa)).toBe(true);
+  expect(shouldPaintAtpaGeometry("alert", view.atpa)).toBe(true);
 });
 
 test("AC4 — CA lite still has no automatic 3 NM halo (TPA 3 NM is display-only)", () => {
@@ -499,11 +482,17 @@ test("AC6 — warning/alert ATPA cones suppress the manual *P cone; monitor does
   view.tracks.get(trail.id)!.tpaRingNm = 3;
   view.atpa.on = true;
 
-  expect(tpaConesToPaint(world.aircraft, view.tracks, world.alerts.atpa, true)).toHaveLength(0);
+  expect(tpaConesToPaint(world.aircraft, view.tracks, world.alerts.atpa, view.atpa)).toHaveLength(
+    0,
+  );
   world.alerts.atpa[0]!.status = "monitor";
-  expect(tpaConesToPaint(world.aircraft, view.tracks, world.alerts.atpa, true)).toHaveLength(1);
+  expect(tpaConesToPaint(world.aircraft, view.tracks, world.alerts.atpa, view.atpa)).toHaveLength(
+    1,
+  );
   world.alerts.atpa[0]!.status = "alert";
-  expect(tpaConesToPaint(world.aircraft, view.tracks, world.alerts.atpa, true)).toHaveLength(0);
+  expect(tpaConesToPaint(world.aircraft, view.tracks, world.alerts.atpa, view.atpa)).toHaveLength(
+    0,
+  );
   expect(
     tpaRingsToPaint(false, null, world.aircraft, view.tracks, 5).map((p) => p.radiusNm),
   ).toEqual([3]);

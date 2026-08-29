@@ -123,19 +123,15 @@ export function atpaSuppressesManualTpaCone(status: AtpaStatus): boolean {
 }
 
 /**
- * Master ATPA toggle plus DCB cone latches plus per-track enable/inhibit.
- * Flags default on. Off master paints nothing even if pairs exist.
- * `effective(feature) = atpa.on && atpa[feature]`: Monitor Cones gates monitor
- * only; Alert Cones gates alert **and** warning (R07: no separate Warning cell).
+ * DCB cone latches plus per-track enable/inhibit. Flags default on.
+ * No system-wide ATPA master — R07 TPA ATPA submenu is per-feature.
+ * Monitor Cones gates monitor only; Alert Cones gates alert **and** warning
+ * (R07: no separate Warning cell).
  */
 export function shouldPaintAtpaGeometry(
-  atpaOn: boolean,
   status: AtpaStatus,
   flags: AtpaConePaintFlags = {},
 ): boolean {
-  if (!atpaOn) {
-    return false;
-  }
   if (status === "monitor") {
     if ((flags.monitorCones ?? true) === false) {
       return false;
