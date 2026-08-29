@@ -323,6 +323,15 @@ export function erAirway(): string {
   ]);
 }
 
+/**
+ * Same KDEM-like geometry as `buildFixedWidthSubset`, any ICAO. Not a real
+ * cycle. Used by T04-34 pack tests for a synthetic second airport / KATL-shaped
+ * fixture without an ICAO parse branch.
+ */
+export function buildIcaoFixedWidthSubset(icao: string): string {
+  return buildFixedWidthSubset().replaceAll("KSYN", icao);
+}
+
 /** Happy-path KDEM-like geometry near 0°N 0°E. */
 export function buildFixedWidthSubset(): string {
   return [

@@ -637,9 +637,7 @@ function resolveFixRef(id: string, path: string, procedure: ProcedureRef, ctx: C
   if (fixHits.length > 0) {
     return;
   }
-  const runwayHits = ctx.source.runways.filter(
-    (row) => row.runwayId === id || row.runwayId === stripRwPrefix(id),
-  );
+  const runwayHits = ctx.source.runways.filter((row) => runwayIdsMatch(row.runwayId, id));
   const pickedRunway = pickOwned(runwayHits, ctx.airportId, id, path, procedure, ctx.diagnostics, {
     allowEmpty: true,
   });
@@ -681,8 +679,7 @@ function resolveRunwayRef(
   procedure: ProcedureRef,
   ctx: ClosureCtx,
 ): void {
-  const want = stripRwPrefix(id);
-  const hits = ctx.source.runways.filter((row) => row.runwayId === want || row.runwayId === id);
+  const hits = ctx.source.runways.filter((row) => runwayIdsMatch(row.runwayId, id));
   const picked = pickOwned(hits, ctx.airportId, id, path, procedure, ctx.diagnostics);
   if (picked === undefined) {
     return;
@@ -796,6 +793,11 @@ function isNavaidKind(kind: string): kind is NormalizedNavaidKind {
 
 function stripRwPrefix(id: string): string {
   return id.startsWith("RW") ? id.slice(2) : id;
+}
+
+/** PG ids are `RW27`; SID/approach refs are `27`. Match either form. */
+function runwayIdsMatch(stored: string, ref: string): boolean {
+  return stored === ref || stripRwPrefix(stored) === stripRwPrefix(ref);
 }
 
 function sortByKey<T extends { identity: { key: string } }>(rows: T[]): T[] {

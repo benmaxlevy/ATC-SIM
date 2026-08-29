@@ -338,8 +338,6 @@ Deliberately missing:
 
 - **Procedure-reference closure (T04-33).** Out-of-radius fixes named by a
   selected SID/STAR/approach stay in the full source until closure pulls them.
-- **Pack CLI and scenario-folder emit (T04-34).** `--airport` / `--radius`
-  wiring and writing `src/scenario/data/<ICAO>/` are not this ticket.
 - **National CIFP / derived national index in git.** A full cycle or a
   nationwide source/index dump must stay on disk under gitignored `.cifp/`
   or `tools/cifp-import/out/`. Only synthetic fixtures under `testdata/cifp/`
@@ -387,6 +385,37 @@ Constraints later work must keep:
   source-record names;
 - emit the existing `files` layout and preserve source lat/lon;
 - no airport-id runtime branches; KDEM stays the authored default.
+
+### Generic CIFP pack CLI (T04-34)
+
+Visible now: `npm run cifp:pack` (and `cli.ts pack`) parses a **local**
+fixed-width CIFP, seeds by ARP radius, closes SID/STAR/approach refs, and
+writes the existing ICAO `files` layout. `--sids` / `--stars` /
+`--approaches` select `ClosurePolicy.kind === "explicit"`; omit them for
+`airport-all`. `--dry-run` reports seed vs closure counts and unsupported
+records without writing. `extract-katl-slice.ts` is a thin default-flag
+wrapper (`--airport KATL`, `--radius 40`) that only calls generic pack.
+
+Deliberately missing:
+
+- **Committed KATL trainer pack.** `src/scenario/data/katl/` is absent. No
+  national ATL catalog was invented. The generic CLI is the replacement; no
+  airport-specific extractor or KATL parse branch was shipped. A developer
+  with a local cycle can write `src/scenario/data/katl/` via
+  `cifp:pack --in <local CIFP> --airport KATL --radius 40 --out src/scenario/data/katl`.
+  Do not commit the source cycle.
+- **KATL in playable inventory.** Session / video-map / default scenario stay
+  KDEM. Do not register KATL until a reviewed pack exists (T04-35).
+- **Maps, spawns, MVA, ATPA, telephony from CIFP.** Catalog JSON only.
+- **SID flying, RNAV / hold / RF FMS, live FAA download, chart scrape.**
+
+Constraints later work must keep:
+
+- one generic pipeline — no `if (icao === "KATL")` parse or runtime branch;
+- KDEM remains the authored default;
+- national CIFP / intermediates stay gitignored (`.cifp/`,
+  `tools/cifp-import/out/`);
+- `src/` never imports this tool.
 
 ## Explicit boundary
 

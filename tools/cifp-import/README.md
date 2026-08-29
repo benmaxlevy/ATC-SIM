@@ -63,6 +63,66 @@ stderr.
 
 Tests import `parseCifpSubset` directly (no CLI, no network).
 
+## Pack CLI (T04-34)
+
+`cifp:import` still emits one catalog JSON file. `cifp:pack` writes the ICAO
+folder layout (`catalog.json`, `vors.json`, `ndbs.json`, `ils.json`,
+`fixes.json`, `procedures.json`, `sids.json`) through one generic pipeline:
+
+parse (fixed-width) → `selectByRadius` → adapt `CifpRadiusSeed` to
+`ClosureSeed` (`selected: { airports, runways, … }`) →
+`closeProcedureReferences` / `catalogWriter`.
+
+```text
+npm run cifp:pack -- --in <local CIFP> --airport <ICAO> --radius <NM> [--sids …] [--stars …] [--approaches …] --out <dir> [--dry-run]
+```
+
+`--sids` is required to be accepted (comma-separated or repeated flags), same
+as `--stars` and `--approaches`. If those three flags are omitted, policy is
+`airport-all` for that airport. If any is present, policy is `explicit` and
+omitted lists are empty.
+
+`--dry-run` prints seed vs closure counts, unsupported records, and output
+paths; it does not write. Missing `--in`, an invalid ICAO, or an invalid
+radius fail before parse.
+
+Pack requires **fixed-width** ARINC 424 CIFP. The comma subset still uses
+`cifp:import`. Writes are deterministic pretty JSON. Radius is a seed only;
+closure pulls SID/STAR/approach refs outside the circle. Video maps, spawns,
+MVA, ATPA, and telephony are not generated.
+
+Synthetic second-airport check (not KDEM):
+
+```text
+npm run cifp:pack -- --in testdata/cifp/fixed-width-subset.cifp --airport KSYN --radius 40 --out tools/cifp-import/out/ksyn --dry-run
+```
+
+## KATL data (none committed)
+
+There is **no** `src/scenario/data/katl/` trainer pack in git. Playable
+inventory stays KDEM-only. Do not invent a national ATL dump. Do not add KATL
+to `playable-scenarios.json` until a reviewed pack exists.
+
+`extract-katl-slice.ts` is a **thin wrapper**: default `--airport KATL` and
+`--radius 40` only. It calls generic pack. No KATL parse branch.
+
+To reproduce a committed pack from a **local** CIFP the developer already has
+(cycle stays outside git, typically `.cifp/`):
+
+```text
+npm run cifp:pack -- --in .cifp/FAACIFP18 --airport KATL --radius 40 --out src/scenario/data/katl
+```
+
+or
+
+```text
+node --experimental-strip-types tools/cifp-import/extract-katl-slice.ts --in .cifp/FAACIFP18 --out src/scenario/data/katl
+```
+
+Add `--sids` / `--stars` / `--approaches` when a later scenario needs a named
+subset. Maps, spawns, and MVA stay hand-authored and are not written by this
+tool. Never commit `FAACIFP18` or a national intermediate.
+
 ## Frozen fixtures
 
 `testdata/cifp/frozen-subset.cifp` is **synthetic comma-separated** (T04-08). It
@@ -176,7 +236,7 @@ does not gain new RNAV/hold/RF flying from this tool.
 
 Full ARINC 424 (holds, RF flying, procedure turns, DME arcs, continuation
 payloads). RNAV (RNP) flying. Live FAA download. Chart scrape. Replacing KDEM as
-the default scenario. T04-34 pack CLI, T04-35 acceptance.
+the default scenario. T04-35 pack integration / runtime acceptance.
 
 ## Geographic radius seed (T04-32)
 

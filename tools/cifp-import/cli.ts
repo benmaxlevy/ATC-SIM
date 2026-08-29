@@ -1,8 +1,9 @@
 /**
- * Developer CLI for the CIFP subset importer (T04-08).
+ * Developer CLI for the CIFP subset importer (T04-08) and generic pack (T04-34).
  * Not imported by `stepWorld` or the Vite app. Offline files only.
  */
 import { parseCifpSubset, type CifpSkipStats } from "./parse.ts";
+import { runPackCli } from "./pack.ts";
 // @ts-expect-error tsconfig has no @types/node
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 // @ts-expect-error tsconfig has no @types/node
@@ -62,6 +63,10 @@ export interface CliIo {
 }
 
 export function runCli(args: string[], io: CliIo = defaultIo()): void {
+  if (args[0] === "pack") {
+    runPackCli(args.slice(1), io);
+    return;
+  }
   const parsed = parseCliArgs(args);
   const text = io.readFile(parsed.inPath);
   const result = parseCifpSubset(text);
