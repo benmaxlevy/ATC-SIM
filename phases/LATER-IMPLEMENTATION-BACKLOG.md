@@ -356,6 +356,38 @@ Constraints later work must keep:
 - seed coordinates stay source lat/lon; ENU only at catalog emit;
 - national source/index files stay gitignored and are never bundled.
 
+### CIFP radius seed vs procedure-reference closure (T04-33)
+
+Visible now: `tools/cifp-import/closure.ts` accepts a duck-typed `ClosureSeed`
+(airport plus optional `radiusNm` plus `selected` record arrays) and
+`closeProcedureReferences` recursively includes SID / STAR / approach
+references from the full normalized source. SID **runway transitions** are
+walked with common and enroute legs. `catalogWriter.ts` writes the existing
+catalog `files` layout. Tests prove a far SID runway-transition fix outside
+the seed radius is present after closure, and that an unrelated airport
+procedure is excluded.
+
+Deliberately missing:
+
+- **Great-circle radius selection.** T04-32 owns `spatialIndex.ts`. This
+  ticket does not compute NM distance or drop points by radius. `radiusNm` on
+  the seed is metadata for later wiring.
+- **Radius-based deletion after closure.** Once a procedure is selected, its
+  required fixes/navaids stay even when they sit outside the seed radius.
+- **Runtime national catalog or browser CIFP fetch.** Closure stays in the
+  developer tool. `src/` does not import it.
+- **New RNAV / hold / RF flying.** Unsupported path terminators remain
+  diagnostics, not catalog TF legs.
+
+Constraints later work must keep:
+
+- radius is seed only — never a silent procedure truncate;
+- look up missing refs in the full source, not only `seed.selected`;
+- fail or report missing / ambiguous / cross-airport refs with procedure and
+  source-record names;
+- emit the existing `files` layout and preserve source lat/lon;
+- no airport-id runtime branches; KDEM stays the authored default.
+
 ## Explicit boundary
 
 This document does not pull in untouched phase work such as scoring/replay,

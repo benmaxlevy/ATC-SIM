@@ -176,8 +176,7 @@ does not gain new RNAV/hold/RF flying from this tool.
 
 Full ARINC 424 (holds, RF flying, procedure turns, DME arcs, continuation
 payloads). RNAV (RNP) flying. Live FAA download. Chart scrape. Replacing KDEM as
-the default scenario. T04-33 procedure closure, T04-34 pack CLI, T04-35
-acceptance.
+the default scenario. T04-34 pack CLI, T04-35 acceptance.
 
 ## Geographic radius seed (T04-32)
 
@@ -198,3 +197,33 @@ wiring; this ticket owns the selection API and seed type only.
   Generated temp output stays local. Vite and `src/` never import this tool.
 - **Determinism:** selected arrays are sorted by `identity.key`.
   `serializeRadiusSeed` is stable pretty JSON for temp intermediates.
+
+## Procedure-reference closure (T04-33)
+
+Radius around ARP is a **seed**, not a procedure boundary. `closeProcedureReferences`
+walks selected SID, STAR, and approach records — including **SID runway
+transitions**, common / enroute legs, STAR transitions, and approach loc / GS /
+FAF / threshold / missed — and pulls missing fixes and navaids from the **full**
+`NormalizedCifpSource`. A required reference is never dropped silently.
+
+Policy:
+
+- `airport-all` — selected airport plus every supported terminal procedure there
+- `explicit` — SID / STAR / approach identifiers from scenario metadata
+
+Seed input is duck-typed (`ClosureSeed` in `closure.ts`) so T04-32's later
+radius object can be assigned without this module importing `spatialIndex.ts`.
+`radiusNm` is metadata only; this ticket does not implement great-circle
+selection.
+
+Missing, ambiguous, and cross-airport references become diagnostics that name
+the procedure and source record (`onError: "fail"` throws; `"report"` returns
+them). Unsupported path terminators are reported the same way and stay skips,
+not TF legs.
+
+`catalogWriter.ts` emits the existing ICAO `files` layout (`catalog.json`,
+`vors.json`, `ndbs.json`, `ils.json`, `fixes.json`, `procedures.json`,
+`sids.json`) via `emitCatalogFromSource` after closure. Source `latDeg` /
+`lonDeg` is preserved. Video-map ids and authored spawn routes are not copied
+as procedure geometry. ATPA volumes are omitted unless the catalog already
+has rows.
