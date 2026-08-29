@@ -82,8 +82,8 @@ export function ScopeHelpOverlay({ open }: ScopeHelpOverlayProps) {
         <p className="scope-help-dcb">
           SHIFT swaps MAIN and AUX. AUX has HISTORY, PTL length/OWN/ALL, and DCB
           TOP/LEFT/RIGHT/BOTTOM. VOL is disabled. FILTER stays on MAIN. Esc closes a DCB submenu
-          (DONE). RANGE / RR / LDR DIR / LDR are spinners — click traps the cursor in that cell.
-          An open submenu traps the cursor in the DCB boxes. PLACE CNTR then PPI click sets view
+          (DONE). RANGE / RR / LDR DIR / LDR are spinners — click traps the cursor in that cell. An
+          open submenu traps the cursor in the DCB boxes. PLACE CNTR then PPI click sets view
           center; OFF CNTR recenters the airport. PLACE RR then PPI click sets range-ring origin; RR
           CNTR snaps origin to the view center.
         </p>

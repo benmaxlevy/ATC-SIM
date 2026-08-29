@@ -104,7 +104,14 @@ export function useDcbCursorTrap(
       }
       const rect = host.getBoundingClientRect();
       syncCursor(event.clientX, event.clientY);
-      if (!dcbTrapShouldBlockPointer(event.clientX, event.clientY, rect, targetInside(host, event.target))) {
+      if (
+        !dcbTrapShouldBlockPointer(
+          event.clientX,
+          event.clientY,
+          rect,
+          targetInside(host, event.target),
+        )
+      ) {
         outsideDown.current = false;
         return;
       }
@@ -146,7 +153,14 @@ export function useDcbCursorTrap(
         return;
       }
       const rect = host.getBoundingClientRect();
-      if (!dcbTrapShouldBlockPointer(event.clientX, event.clientY, rect, targetInside(host, event.target))) {
+      if (
+        !dcbTrapShouldBlockPointer(
+          event.clientX,
+          event.clientY,
+          rect,
+          targetInside(host, event.target),
+        )
+      ) {
         return;
       }
       event.preventDefault();
@@ -159,7 +173,14 @@ export function useDcbCursorTrap(
         return;
       }
       const rect = host.getBoundingClientRect();
-      if (!dcbTrapShouldBlockPointer(event.clientX, event.clientY, rect, targetInside(host, event.target))) {
+      if (
+        !dcbTrapShouldBlockPointer(
+          event.clientX,
+          event.clientY,
+          rect,
+          targetInside(host, event.target),
+        )
+      ) {
         return;
       }
       event.preventDefault();

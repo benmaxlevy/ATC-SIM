@@ -261,13 +261,9 @@ test("ATPA *AE affects warning+alert not monitor; *BE affects monitor only; inhi
   expect(applyStarsChordAction(view, world, { type: "atpaWarningAlert", mode: "inhibit" })).toBe(
     "applied",
   );
-  expect(shouldPaintAtpaGeometry("warning", { alertCones: view.atpa.alertCones })).toBe(
-    false,
-  );
+  expect(shouldPaintAtpaGeometry("warning", { alertCones: view.atpa.alertCones })).toBe(false);
   expect(shouldPaintAtpaGeometry("alert", { alertCones: view.atpa.alertCones })).toBe(false);
-  expect(shouldPaintAtpaGeometry("monitor", { monitorCones: view.atpa.monitorCones })).toBe(
-    true,
-  );
+  expect(shouldPaintAtpaGeometry("monitor", { monitorCones: view.atpa.monitorCones })).toBe(true);
 
   expect(applyStarsChordAction(view, world, { type: "atpaWarningAlert", mode: "enable" })).toBe(
     "applied",
@@ -275,9 +271,7 @@ test("ATPA *AE affects warning+alert not monitor; *BE affects monitor only; inhi
   expect(applyStarsChordAction(view, world, { type: "atpaMonitor", mode: "inhibit" })).toBe(
     "applied",
   );
-  expect(shouldPaintAtpaGeometry("monitor", { monitorCones: view.atpa.monitorCones })).toBe(
-    false,
-  );
+  expect(shouldPaintAtpaGeometry("monitor", { monitorCones: view.atpa.monitorCones })).toBe(false);
   expect(shouldPaintAtpaGeometry("warning", { alertCones: view.atpa.alertCones })).toBe(true);
   expect(shouldPaintAtpaGeometry("alert", { alertCones: view.atpa.alertCones })).toBe(true);
 
