@@ -16,3 +16,7 @@ __pycache__/
 .pytest_cache/
 *.pyc
 
+# Local FAA CIFP inputs and generated pack intermediates
+.cifp/
+FAACIFP18*
+tools/cifp-import/out/
