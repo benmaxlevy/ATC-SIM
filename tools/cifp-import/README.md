@@ -123,6 +123,29 @@ Add `--sids` / `--stars` / `--approaches` when a later scenario needs a named
 subset. Maps, spawns, and MVA stay hand-authored and are not written by this
 tool. Never commit `FAACIFP18` or a national intermediate.
 
+Manual pack-generation from an official cycle is **skipped** unless the
+developer already has an authorized local CIFP file. CI uses synthetic
+fixtures only. Do not claim FAA-cycle regeneration was tested.
+
+## Pack integration (T04-35)
+
+Runtime still loads `src/scenario/data/<dir>/` through `loadCatalog`. Packs
+are interchangeable because they emit the same `files` layout and go through
+`parseCatalogFiles` — the same parser `loadCatalog` uses. There is no second
+catalog loader and `src/` does not import this tool.
+
+Coverage:
+
+- Playable inventory is KDEM-only. Every listed scenario loads catalog +
+  video maps + authored MVA/spawns through generic loaders.
+- `testdata/catalog-packs/kbbb/` is a synthetic second-facility pack (not
+  KDEM, not KATL). Loader tests parse it through `parseCatalogFiles`.
+- `pack.integration.test.ts` packs a CIFP fixture whose SID/STAR/approach
+  fixes sit outside a 20 NM seed, writes to a temp dir, and reloads through
+  `parseCatalogFiles`. Far refs stay.
+- KATL coverage is this generic path + `extract-katl-slice.ts` + the
+  reproduce commands above. `src/scenario/data/katl/` is not in git.
+
 ## Frozen fixtures
 
 `testdata/cifp/frozen-subset.cifp` is **synthetic comma-separated** (T04-08). It
@@ -236,7 +259,8 @@ does not gain new RNAV/hold/RF flying from this tool.
 
 Full ARINC 424 (holds, RF flying, procedure turns, DME arcs, continuation
 payloads). RNAV (RNP) flying. Live FAA download. Chart scrape. Replacing KDEM as
-the default scenario. T04-35 pack integration / runtime acceptance.
+the default scenario. Committed KATL trainer pack (none ships). SID *flight*
+behavior for imported rows.
 
 ## Geographic radius seed (T04-32)
 

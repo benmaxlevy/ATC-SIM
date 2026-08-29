@@ -1,0 +1,16 @@
+{
+  "airportId": "KBBB",
+  "vors": [
+    {
+      "id": "BBB",
+      "kind": "VORDME",
+      "name": "BRAVO",
+      "xNm": 0.5,
+      "yNm": 0.5,
+      "latDeg": 0.008,
+      "lonDeg": 0.008,
+      "freqMhz": 114.0,
+      "class": "T"
+    }
+  ]
+}

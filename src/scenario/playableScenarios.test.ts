@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { loadKdem } from "./load";
+import { loadVideoMapSet } from "./loadVideoMaps";
 import {
   createPlayableScenarioInventory,
   listConfigurationsForAirport,
@@ -196,4 +197,31 @@ test("T04-24 AC5 — query resolves inventory id and preserves ILS scenario", ()
   expect(parseScenarioChoice("?scenario=kdem-ils27")).toBe("kdem-ils27");
   expect(loadPlayableScenario(parseScenarioChoice("?scenario=kdem-ils27")).id).toBe("kdem-ils27");
   expect(loadPlayableScenario(parseScenarioChoice("?scenario=unknown")).icao).toBe("KDEM");
+});
+
+test("T04-35 AC1 — every playable scenario loads catalog and maps through generic loaders", () => {
+  const listed = listPlayableScenarios();
+  expect(listed.length).toBeGreaterThan(0);
+  for (const entry of listed) {
+    const scenario = loadPlayableScenario(entry.id);
+    expect(scenario.catalog.airportId).toBe(entry.airportIcao);
+    expect(scenario.maps.videoMapSet).toBeTruthy();
+    const maps = loadVideoMapSet(scenario.maps.videoMapSet!);
+    expect(maps.length).toBeGreaterThan(0);
+    expect(scenario.mva).not.toBeNull();
+    expect(scenario.mva!.polygons.length).toBeGreaterThan(0);
+    expect(scenario.spawns.length).toBeGreaterThan(0);
+  }
+});
+
+test("T04-35 AC2 — KDEM remains default; inventory has no KATL row", () => {
+  expect(loadPlayableScenario().icao).toBe("KDEM");
+  expect(loadPlayableScenario(null).icao).toBe("KDEM");
+  const defaults = listPlayableScenarios().filter((entry) => entry.default);
+  expect(defaults).toEqual([
+    expect.objectContaining({ id: "kdem", airportIcao: "KDEM", default: true }),
+  ]);
+  expect(listPlayableScenarios().every((entry) => entry.airportIcao === "KDEM")).toBe(true);
+  expect(listPlayableScenarios().some((entry) => entry.airportIcao === "KATL")).toBe(false);
+  expect(listPlayableAirports().map((row) => row.airportIcao)).toEqual(["KDEM"]);
 });

@@ -405,7 +405,8 @@ Deliberately missing:
   `cifp:pack --in <local CIFP> --airport KATL --radius 40 --out src/scenario/data/katl`.
   Do not commit the source cycle.
 - **KATL in playable inventory.** Session / video-map / default scenario stay
-  KDEM. Do not register KATL until a reviewed pack exists (T04-35).
+  KDEM. T04-35 confirmed inventory stays KDEM-only. Do not register KATL
+  until a reviewed pack exists.
 - **Maps, spawns, MVA, ATPA, telephony from CIFP.** Catalog JSON only.
 - **SID flying, RNAV / hold / RF FMS, live FAA download, chart scrape.**
 
@@ -416,6 +417,43 @@ Constraints later work must keep:
 - national CIFP / intermediates stay gitignored (`.cifp/`,
   `tools/cifp-import/out/`);
 - `src/` never imports this tool.
+
+### CIFP pack integration acceptance (T04-35)
+
+Visible now: every listed playable scenario loads its catalog and video-map
+set through generic `loadCatalog` / `loadVideoMapSet` (KDEM-only inventory).
+`loadCatalog(dir)` is unchanged. CIFP-derived packs interchange with
+authored catalogs via `parseCatalogFiles` (same parser). Synthetic
+second-facility testdata (`testdata/catalog-packs/kbbb/`) and
+`tools/cifp-import/pack.integration.test.ts` prove no facility-id branch
+and that SID/STAR/approach refs outside the seed radius remain after pack
+write. `extract-katl-slice.ts` stays a thin default-flag wrapper.
+`src/scenario/data/katl/` is absent. Maps, authored spawns, and MVA/ATPA
+stay outside CIFP catalog JSON.
+
+Deliberately missing:
+
+- **Committed KATL trainer pack / playable KATL.** A developer with a local
+  authorized CIFP can write `src/scenario/data/katl/` via `cifp:pack`. Do
+  not invent a national ATL dump. Do not add KATL to
+  `playable-scenarios.json` until that reviewed pack exists.
+- **`faa:update` live download.** Input stays a local path. CI and this
+  ticket did not regenerate from an official FAA cycle (no authorized
+  local CIFP in the environment). Record a skip-with-reason; do not claim
+  cycle regeneration was tested.
+- **RNAV / hold / RF flying** from imported CIFP. Unsupported path
+  terminators stay diagnostics, not TF legs.
+- **SID flying from imported CIFP.** Catalog `sids` may be non-empty. FMS
+  climb-via for those imported rows is not this ticket.
+- **Browser CIFP fetch, national dump in git, T04-11 wind, phase 5.**
+
+Constraints later work must keep:
+
+- one conversion path: local CIFP → pack → existing catalog schema;
+- no `src/` import of `tools/cifp-import`; no airport-id runtime branches;
+- KDEM remains the authored default and boots without CIFP;
+- radius is seed only; closure keeps out-of-radius procedure refs;
+- maps, spawns, MVA, ATPA, and telephony stay authored, not CIFP-emitted.
 
 ## Explicit boundary
 

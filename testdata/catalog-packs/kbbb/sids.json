@@ -1,0 +1,19 @@
+{
+  "airportId": "KBBB",
+  "sids": [
+    {
+      "id": "OUT1",
+      "name": "OUT ONE DEPARTURE",
+      "initialClimbFt": 5000,
+      "runwayTransitions": [
+        {
+          "runwayId": "27",
+          "initialHeadingDeg": 270,
+          "initialClimbFt": 5000,
+          "legs": [{ "fixId": "FARSID" }]
+        }
+      ],
+      "common": [{ "fixId": "NEARX" }]
+    }
+  ]
+}

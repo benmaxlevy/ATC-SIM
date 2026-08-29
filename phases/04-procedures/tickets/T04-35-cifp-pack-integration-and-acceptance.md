@@ -35,16 +35,16 @@ dependent on FAA data.
 
 ## Acceptance criteria
 
-- [ ] AC1 — Every listed playable scenario loads its catalog and required map
+- [x] AC1 — Every listed playable scenario loads its catalog and required map
   set through generic loaders.
-- [ ] AC2 — KDEM remains the default and boots without CIFP input.
-- [ ] AC3 — Synthetic second-facility pack proves no facility-id branch is
+- [x] AC2 — KDEM remains the default and boots without CIFP input.
+- [x] AC3 — Synthetic second-facility pack proves no facility-id branch is
   required.
-- [ ] AC4 — SID, STAR, and approach references outside seed radius remain usable
+- [x] AC4 — SID, STAR, and approach references outside seed radius remain usable
   after pack generation.
-- [ ] AC5 — Video maps, authored spawns, MVA/ATPA, and CIFP catalog data stay
+- [x] AC5 — Video maps, authored spawns, MVA/ATPA, and CIFP catalog data stay
   separate and existing tests remain green.
-- [ ] AC6 — `npm run ci` passes and documentation matches shipped behavior.
+- [x] AC6 — `npm run ci` passes and documentation matches shipped behavior.
 
 ## Test plan
 

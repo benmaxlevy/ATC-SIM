@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "airportId": "KBBB",
+  "name": "Bravo Field",
+  "magVarDeg": 0,
+  "fieldElevFt": 0,
+  "arp": { "latDeg": 0, "lonDeg": 0 },
+  "originNote": "Synthetic second-facility pack for T04-35. Not a real airport or FAA cycle. Loaded through parseCatalogFiles (same parser as loadCatalog). No facility-id branch.",
+  "files": {
+    "vors": "vors.json",
+    "ndbs": "ndbs.json",
+    "ils": "ils.json",
+    "fixes": "fixes.json",
+    "procedures": "procedures.json",
+    "sids": "sids.json"
+  }
+}

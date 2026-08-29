@@ -1,4 +1,11 @@
 import { expect, test } from "vitest";
+import kbbbCatalogJson from "../../../testdata/catalog-packs/kbbb/catalog.json";
+import kbbbFixesJson from "../../../testdata/catalog-packs/kbbb/fixes.json";
+import kbbbIlsJson from "../../../testdata/catalog-packs/kbbb/ils.json";
+import kbbbNdbsJson from "../../../testdata/catalog-packs/kbbb/ndbs.json";
+import kbbbProceduresJson from "../../../testdata/catalog-packs/kbbb/procedures.json";
+import kbbbSidsJson from "../../../testdata/catalog-packs/kbbb/sids.json";
+import kbbbVorsJson from "../../../testdata/catalog-packs/kbbb/vors.json";
 import atpaVolumesJson from "../data/kdem/atpa-volumes.json";
 import catalogJson from "../data/kdem/catalog.json";
 import fixesJson from "../data/kdem/fixes.json";
@@ -7,7 +14,9 @@ import ndbsJson from "../data/kdem/ndbs.json";
 import proceduresJson from "../data/kdem/procedures.json";
 import sidsJson from "../data/kdem/sids.json";
 import vorsJson from "../data/kdem/vors.json";
-import { loadCatalog, parseCatalogFiles, type CatalogFileSet } from "./loadCatalog";
+import { starRouteFixIds } from "../starSpawn";
+import { catalogDctIds } from "./types";
+import { loadCatalog, parseCatalogFiles, sidRouteFixIds, type CatalogFileSet } from "./loadCatalog";
 
 function kdemFiles(): CatalogFileSet {
   return structuredClone({
@@ -19,6 +28,18 @@ function kdemFiles(): CatalogFileSet {
     procedures: proceduresJson,
     sids: sidsJson,
     atpaVolumes: atpaVolumesJson,
+  });
+}
+
+function kbbbFiles(): CatalogFileSet {
+  return structuredClone({
+    catalog: kbbbCatalogJson,
+    vors: kbbbVorsJson,
+    ndbs: kbbbNdbsJson,
+    ils: kbbbIlsJson,
+    fixes: kbbbFixesJson,
+    procedures: kbbbProceduresJson,
+    sids: kbbbSidsJson,
   });
 }
 
@@ -285,6 +306,53 @@ test("T02-43 — atpaVolumes airportId mismatch throws", () => {
   expect(() => parseCatalogFiles(withAtpaVolumes([sampleAtpaVolume()], "KJFK"))).toThrow(
     /does not match catalog.airportId/,
   );
+});
+
+test("T04-35 AC2 — KDEM catalog loads through loadCatalog without CIFP input", () => {
+  const catalog = loadCatalog("kdem");
+  expect(catalog.airportId).toBe("KDEM");
+  expect(catalog.stars.length).toBeGreaterThan(0);
+  expect(catalog.approaches.length).toBeGreaterThan(0);
+  expect(catalog.sids.length).toBeGreaterThan(0);
+  expect(() => loadCatalog("katl")).toThrow(/Missing catalog file/);
+});
+
+test("T04-35 AC3 — synthetic second-facility pack loads through parseCatalogFiles", () => {
+  const catalog = parseCatalogFiles(kbbbFiles());
+  expect(catalog.airportId).toBe("KBBB");
+  expect(catalog.name).toBe("Bravo Field");
+  expect(catalog.stars.map((row) => row.id)).toEqual(["BBB1"]);
+  expect(catalog.sids.map((row) => row.id)).toEqual(["OUT1"]);
+  expect(catalog.approaches.map((row) => row.id)).toEqual(["ILSBB"]);
+  expect(catalog.atpaVolumes).toEqual([]);
+  expect(starRouteFixIds(catalog, "BBB1", "N")).toEqual(["FARST", "NEARX"]);
+  expect(sidRouteFixIds(catalog, "OUT1", "27")).toEqual(["FARSID", "NEARX"]);
+  const dct = catalogDctIds(catalog);
+  expect(dct.has("FARST")).toBe(true);
+  expect(dct.has("FARSID")).toBe(true);
+  expect(dct.has("FARAF")).toBe(true);
+  expect(dct.has("FARMS")).toBe(true);
+  expect(dct.has("BBB")).toBe(true);
+  expect(dct.has("IBBB")).toBe(true);
+  const ils = catalog.approaches[0]!;
+  expect(ils.locNavaidId).toBe("IBBB");
+  expect(ils.fafFixId).toBe("FARAF");
+  expect(ils.missed?.directFixId).toBe("FARMS");
+});
+
+test("T04-35 AC3 — loadCatalog has no facility-id branch and no tool import", () => {
+  const loaderSrc = import.meta.glob("./loadCatalog.ts", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  const src = loaderSrc["./loadCatalog.ts"] ?? "";
+  expect(src.length).toBeGreaterThan(0);
+  expect(src.includes(["cifp", "import"].join("-"))).toBe(false);
+  expect(src.includes(["tools", "cifp"].join("/"))).toBe(false);
+  expect(src).not.toMatch(/if\s*\([^)]*(icao|airportId|dir|folder)\s*===\s*["']K/);
+  expect(src).not.toMatch(/["']KDEM["']\s*===\s*(icao|airportId|dir|folder)/);
+  expect(src).not.toMatch(/["']KATL["']/);
 });
 
 test("T02-43 AC1 — loadCatalog(kdem) returns ATPA27 and ATPA09 on ILS27/ILS09", () => {
