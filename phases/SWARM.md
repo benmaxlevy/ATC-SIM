@@ -1,4 +1,4 @@
-# ATC-SIM swarm orchestrator — Seventeenth swarm (STARS Keyboard Commands & Preview Area Expansion: T02-61–67)
+# ATC-SIM swarm orchestrator — Eighteenth swarm (CIFP-derived catalog packs: T04-31–35)
 
 Paste **this entire file** into a new agent. That agent is the **orchestrator**. It may run for hours. It writes almost no application code.
 
@@ -9,7 +9,7 @@ Shell: **bash** (Linux).
 
 Before checking git, spawning agents, creating worktrees, or editing application code, update this file for the current swarm. Append a new swarm-start heading/configuration; do not overwrite prior swarm history. If the requested swarm configuration is incomplete, ask before making any other swarm move. Then commit the planning/status update before creating ticket branches or worktrees.
 
-This is the **seventeenth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–25) → 2 STARS CRC scope fidelity (T02-34–42) → 5 setup menu (T05-13, T05-14) → 4 dual runway (T04-26–30) → 2 TPA / ATPA (T02-43–50) → 2 STARS Preview Area (T02-51–54) → 2 STARS In-Scope System Lists & Complete DCB (T02-55–60)** are already green on `master`. Do **not** redo completed work. Skip **T04-11** (wind) unless the human names it. This run is **T02-61–67 only**.
+This is the **eighteenth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–25) → 2 STARS CRC scope fidelity (T02-34–42) → 5 setup menu (T05-13, T05-14) → 4 dual runway (T04-26–30) → 2 TPA / ATPA (T02-43–50) → 2 STARS Preview Area (T02-51–54) → 2 STARS In-Scope System Lists & Complete DCB (T02-55–60) → 2 STARS Keyboard Commands & Preview Area Expansion (T02-61–67)** are already green on `master`. Do **not** redo completed work. Skip **T04-11** (wind) unless the human names it. This run is **T04-31–35 only**.
 
 ---
 
