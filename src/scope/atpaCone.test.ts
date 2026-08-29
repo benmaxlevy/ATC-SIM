@@ -140,22 +140,20 @@ test("AC4 — one cone per trailer at highest status; warning/alert suppress man
 });
 
 test("AC5 — gate is off with master off; flags default on; inhibit drops that status", () => {
-  expect(shouldPaintAtpaGeometry(false, "monitor")).toBe(false);
-  expect(shouldPaintAtpaGeometry(false, "alert")).toBe(false);
-  expect(shouldPaintAtpaGeometry(true, "monitor")).toBe(true);
-  expect(shouldPaintAtpaGeometry(true, "warning")).toBe(true);
-  expect(shouldPaintAtpaGeometry(true, "alert")).toBe(true);
-  expect(shouldPaintAtpaGeometry(true, "monitor", { atpaMonitorEnabled: false })).toBe(false);
-  expect(shouldPaintAtpaGeometry(true, "warning", { atpaWarningAlertEnabled: false })).toBe(false);
-  expect(shouldPaintAtpaGeometry(true, "alert", { atpaWarningAlertEnabled: false })).toBe(false);
-  expect(shouldPaintAtpaGeometry(true, "monitor", { atpaWarningAlertEnabled: false })).toBe(true);
-  expect(shouldPaintAtpaGeometry(true, "alert", { atpaMonitorEnabled: false })).toBe(true);
-  expect(shouldPaintAtpaGeometry(true, "monitor", { monitorCones: false })).toBe(false);
-  expect(shouldPaintAtpaGeometry(true, "warning", { monitorCones: false })).toBe(true);
-  expect(shouldPaintAtpaGeometry(true, "alert", { monitorCones: false })).toBe(true);
-  expect(shouldPaintAtpaGeometry(true, "alert", { alertCones: false })).toBe(false);
-  expect(shouldPaintAtpaGeometry(true, "warning", { alertCones: false })).toBe(false);
-  expect(shouldPaintAtpaGeometry(true, "monitor", { alertCones: false })).toBe(true);
+  expect(shouldPaintAtpaGeometry("monitor")).toBe(true);
+  expect(shouldPaintAtpaGeometry("warning")).toBe(true);
+  expect(shouldPaintAtpaGeometry("alert")).toBe(true);
+  expect(shouldPaintAtpaGeometry("monitor", { atpaMonitorEnabled: false })).toBe(false);
+  expect(shouldPaintAtpaGeometry("warning", { atpaWarningAlertEnabled: false })).toBe(false);
+  expect(shouldPaintAtpaGeometry("alert", { atpaWarningAlertEnabled: false })).toBe(false);
+  expect(shouldPaintAtpaGeometry("monitor", { atpaWarningAlertEnabled: false })).toBe(true);
+  expect(shouldPaintAtpaGeometry("alert", { atpaMonitorEnabled: false })).toBe(true);
+  expect(shouldPaintAtpaGeometry("monitor", { monitorCones: false })).toBe(false);
+  expect(shouldPaintAtpaGeometry("warning", { monitorCones: false })).toBe(true);
+  expect(shouldPaintAtpaGeometry("alert", { monitorCones: false })).toBe(true);
+  expect(shouldPaintAtpaGeometry("alert", { alertCones: false })).toBe(false);
+  expect(shouldPaintAtpaGeometry("warning", { alertCones: false })).toBe(false);
+  expect(shouldPaintAtpaGeometry("monitor", { alertCones: false })).toBe(true);
 });
 
 interface PathStroke {
@@ -260,9 +258,11 @@ test("render — monitor/warning/alert stroke the cone color; wedge is never fil
   for (const [status, color] of colors) {
     const { world, view } = pairedWorld(status);
     const offFill = createMockCtx();
-    view.atpa.on = false;
+    view.atpa.alertCones = false;
+    view.atpa.monitorCones = false;
     renderScope(offFill.ctx, world, view, VIEW.widthPx, VIEW.heightPx);
-    view.atpa.on = true;
+    view.atpa.alertCones = true;
+    view.atpa.monitorCones = true;
     const on = createMockCtx();
     renderScope(on.ctx, world, view, VIEW.widthPx, VIEW.heightPx);
     const cones = coneStrokes(on.pathStrokes);
@@ -291,14 +291,14 @@ test("render — 3 NM cone axial length is 3 * pxPerNm; length comes from requir
   );
 });
 
-test("render — master off paints no cone; inhibit drops monitor; alert supersedes monitor on the same trailer", () => {
+test("render — DCB cone latch off paints no cone; inhibit drops monitor; alert supersedes monitor on the same trailer", () => {
   const { world, view } = pairedWorld("monitor");
-  view.atpa.on = false;
+  view.atpa.monitorCones = false;
   const off = createMockCtx();
   renderScope(off.ctx, world, view, VIEW.widthPx, VIEW.heightPx);
   expect(coneStrokes(off.pathStrokes)).toHaveLength(0);
 
-  view.atpa.on = true;
+  view.atpa.monitorCones = true;
   const td = view.tracks.get("ac-trail")!;
   td.atpaMonitorEnabled = false;
   const inhibited = createMockCtx();

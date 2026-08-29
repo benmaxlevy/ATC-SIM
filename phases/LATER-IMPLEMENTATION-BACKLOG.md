@@ -11,10 +11,10 @@ been started.
 Live now: catalog volumes walked by `approachId` (T02-43), in-trail pairing
 and predicted monitor/warning/alert status on `world.alerts.atpa` (T02-44),
 predicted cones (T02-45), datablock in-trail distance plus A/TPA cone mileage
-(T02-46), and four real AUX TPA/ATPA cells plus master (T02-47). A feature
-paints only when `atpa.on && atpa[feature]`. Alert Cones gates alert and
-warning; Monitor Cones is monitor-only. The four cells stay clickable with
-master off so PREF can store a setup.
+(T02-46), and four real AUX TPA/ATPA cells (T02-47). R07 has no system-wide
+ATPA on/off — a feature paints when `atpa[feature]` is on. Alert Cones gates
+alert and warning; Monitor Cones is monitor-only. `AtpaState.on` remains in
+PREF v2 as an unused leftover.
 
 Later work must keep:
 

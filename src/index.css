@@ -239,7 +239,7 @@ body,
   width: 100%;
   height: 100%;
   gap: 1px;
-  grid-template-columns: repeat(5, minmax(42px, 1fr));
+  grid-template-columns: repeat(7, minmax(42px, 1fr));
   grid-template-rows: repeat(1, minmax(0, 1fr));
 }
 
@@ -364,6 +364,22 @@ body,
   box-shadow:
     inset 1px 1px var(--dcb-highlight, #7a8a7a),
     inset -2px -2px var(--dcb-shadow, #000000);
+}
+
+html[data-dcb-cursor-trap],
+html[data-dcb-cursor-trap] * {
+  cursor: none !important;
+}
+
+.dcb-trapped-cursor {
+  position: fixed;
+  z-index: 2147483646;
+  width: 11px;
+  height: 16px;
+  pointer-events: none;
+  background: #f2f2f2;
+  clip-path: polygon(0 0, 0 14px, 4px 11px, 7px 16px, 9px 15px, 5px 10px, 11px 10px);
+  filter: drop-shadow(1px 1px 0 #111);
 }
 
 .dcb-cell:disabled,

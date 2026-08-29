@@ -1,0 +1,39 @@
+---
+description: Run repository CI locally and pass before every application commit
+alwaysApply: true
+---
+
+# CI before commit
+
+Before `git commit` of application, test, or tool changes, run the same checks GitHub CI runs and **only commit when they pass**.
+
+## Required check
+
+From the repo root:
+
+```text
+npm run ci
+```
+
+That is `typecheck` + `lint` + `format:check` + `test` (see `package.json`). Do not skip `format:check` — Prettier failures fail CI the same as type errors.
+
+If the slice touches `speech-api/`:
+
+```text
+cd speech-api
+pip install -r requirements-ci.txt   # if needed
+SPEECH_API_MOCK=1 pytest
+```
+
+(On Windows PowerShell: `$env:SPEECH_API_MOCK="1"; pytest`.)
+
+## Workflow
+
+1. Finish the slice.
+2. Run the checks above.
+3. If anything fails: fix, re-run until green, then commit.
+4. Never `--no-verify` to bypass a failed check or hook.
+
+Targeted tests during editing are fine. The full `npm run ci` (and speech-api pytest when relevant) is the gate **immediately before** the commit.
+
+Docs-only / rules-only / STATUS-only commits may skip the suite when no `src/`, `tools/`, `tests/`, `speech-api/`, or config that affects those paths changed.

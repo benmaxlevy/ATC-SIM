@@ -4,10 +4,13 @@
  * Trainer delta: separated dark-olive physical caps with CSS bevels; SHIFT swaps MAIN and AUX.
  * MAPS / TPA-ATPA / CHAR SIZE / BRITE / SSA FILTER / GI TEXT / PREF submenus replace the
  * bar; DONE / Esc return to MAIN. RANGE / RR / LDR DIR / LDR length are spinners
- * (arm, wheel steps frozen presets, second click / Esc commits). CHAR SIZE and
+ * (arm, wheel steps frozen presets, second click / Esc commits; cursor stays in
+ * that cell). An open submenu (PREF, MAPS, …) keeps the cursor in the DCB boxes.
+ * CHAR SIZE and
  * BRITE open submenus (`CHAR_SIZE` / `BRITE`) with per-channel spinners. AUX: VOL
  * disabled, HISTORY spinner 0–5, DCB TOP/LEFT/RIGHT/BOTTOM, PTL length spinner,
- * PTL OWN, PTL ALL, TPA/ATPA submenu (J-rings plus four live ATPA cells). FILTER (altitude)
+ * PTL OWN, PTL ALL, TPA/ATPA submenu (TPA ON, TPA MI, ATPA master, four live
+ * ATPA cells). FILTER (altitude)
  * stays on MAIN. SSA FILTER hides existing SSA lines; GI TEXT toggles authored
  * facility lines (not METAR HTTP). HIST/PTL cells live on AUX (F7/F8 still work).
  * MAIN quick video maps 1–6; MAPS submenu slots 1–30 (empty slots disabled).
@@ -60,6 +63,7 @@ import {
   RANGE_PRESETS_NM,
   RR_INTERVALS_NM,
   SSA_FILTER_FIELDS,
+  TPA_RADIUS_NM,
   formatDcbBriteReadout,
   formatDcbCharReadout,
   formatDcbHistoryReadout,
@@ -96,10 +100,12 @@ import {
   stepPtlLength,
   stepRange,
   stepRrInterval,
+  stepTpaRadius,
   toggleAtpaAlertCones,
   toggleAtpaConeMileage,
   toggleAtpaInTrailDistance,
   toggleAtpaMonitorCones,
+  toggleTpaOn,
   toggleCurrentMapsList,
   toggleGeoMapsList,
   toggleGiFilter,
@@ -120,6 +126,7 @@ import {
   type SsaFilterField,
 } from "@scope";
 import { focusPpi } from "./FlightStrips";
+import { useDcbCursorTrap } from "./useDcbCursorTrap";
 
 export type DcbCellKind = "action" | "toggle" | "spinner" | "submenu" | "disabled";
 
@@ -249,6 +256,9 @@ function applyDirectNumericInput(view: ScopeView, cell: DcbSpinnerCell, num: num
     case "PTL":
       view.ptlMinutes = snapPtlToPreset(num);
       view.ptlOn = true;
+      break;
+    case "TPA_MI":
+      view.tpa.radiusNm = nearestPreset(TPA_RADIUS_NM, num);
       break;
     default:
       if (cell.startsWith("BRITE_")) {
@@ -1755,6 +1765,7 @@ function renderAux(view: ScopeView, onChange: () => void) {
 }
 
 function renderTpaAtpa(view: ScopeView, onChange: () => void) {
+  const miArmed = tpaMiSpinnerArmed(view);
   return (
     <div className="dcb-main-grid" data-dcb-layout="TPA_ATPA">
       {/*
@@ -1764,16 +1775,66 @@ function renderTpaAtpa(view: ScopeView, onChange: () => void) {
         Alert Cones — "displays alert cones at this TCP"
         Monitor Cones — "displays monitor cones at this TCP"
         No separate Warning Cones cell — Alert Cones gates alert and warning.
-        Cells stay clickable with master off so PREF can store a setup.
+        Master ATPA is not a DCB cell — R07 gates per feature. TPA ON / TPA MI
+        are the T02-28 J-ring toggle and 2/3/5/10 NM spinner.
         Clicks are never Command IR.
       */}
       <div
         className="dcb-main-grid-cell"
-        data-dcb-layout-id="atpa-mileage"
+        data-dcb-layout-id="tpa-on"
         data-dcb-row={1}
         data-dcb-column={1}
         data-dcb-row-span={1}
         style={{ gridColumn: 1, gridRow: "1 / span 1" }}
+      >
+        <DcbCell
+          kind="toggle"
+          ariaLabel="TPA"
+          dataDcb="tpa-on"
+          pressed={view.tpa.on}
+          onClick={() => runAuxCell(view, onChange, () => toggleTpaOn(view))}
+        >
+          <span className="dcb-cell-line">TPA</span>
+          <span className="dcb-cell-line">{view.tpa.on ? "ON" : "OFF"}</span>
+        </DcbCell>
+      </div>
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="tpa-mi"
+        data-dcb-row={1}
+        data-dcb-column={2}
+        data-dcb-row-span={1}
+        style={{ gridColumn: 2, gridRow: "1 / span 1" }}
+      >
+        <DcbCell
+          kind="spinner"
+          ariaLabel="TPA mileage"
+          dataDcb="tpa-mi"
+          pressed={miArmed}
+          onClick={() => toggleSpinner(view, onChange, "TPA_MI")}
+          onWheel={(event) =>
+            onSpinnerWheel(view, "TPA_MI", event, (step) => stepTpaRadius(view, step), onChange)
+          }
+          onDragDelta={(step) => {
+            for (let i = 0; i < Math.abs(step); i++) {
+              stepTpaRadius(view, step > 0 ? 1 : -1);
+            }
+            afterCell(onChange);
+          }}
+        >
+          <span className="dcb-cell-line">TPA MI</span>
+          <span id={DCB_TPA_MI_READOUT_ID} className="dcb-cell-line">
+            {formatDcbTpaMiReadout(view.tpa.radiusNm)}
+          </span>
+        </DcbCell>
+      </div>
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="atpa-mileage"
+        data-dcb-row={1}
+        data-dcb-column={3}
+        data-dcb-row-span={1}
+        style={{ gridColumn: 3, gridRow: "1 / span 1" }}
       >
         <DcbCell
           kind="toggle"
@@ -1791,9 +1852,9 @@ function renderTpaAtpa(view: ScopeView, onChange: () => void) {
         className="dcb-main-grid-cell"
         data-dcb-layout-id="atpa-intrail"
         data-dcb-row={1}
-        data-dcb-column={2}
+        data-dcb-column={4}
         data-dcb-row-span={1}
-        style={{ gridColumn: 2, gridRow: "1 / span 1" }}
+        style={{ gridColumn: 4, gridRow: "1 / span 1" }}
       >
         <DcbCell
           kind="toggle"
@@ -1813,9 +1874,9 @@ function renderTpaAtpa(view: ScopeView, onChange: () => void) {
         className="dcb-main-grid-cell"
         data-dcb-layout-id="atpa-alert"
         data-dcb-row={1}
-        data-dcb-column={3}
+        data-dcb-column={5}
         data-dcb-row-span={1}
-        style={{ gridColumn: 3, gridRow: "1 / span 1" }}
+        style={{ gridColumn: 5, gridRow: "1 / span 1" }}
       >
         <DcbCell
           kind="toggle"
@@ -1833,9 +1894,9 @@ function renderTpaAtpa(view: ScopeView, onChange: () => void) {
         className="dcb-main-grid-cell"
         data-dcb-layout-id="atpa-monitor"
         data-dcb-row={1}
-        data-dcb-column={4}
+        data-dcb-column={6}
         data-dcb-row-span={1}
-        style={{ gridColumn: 4, gridRow: "1 / span 1" }}
+        style={{ gridColumn: 6, gridRow: "1 / span 1" }}
       >
         <DcbCell
           kind="toggle"
@@ -1853,9 +1914,9 @@ function renderTpaAtpa(view: ScopeView, onChange: () => void) {
         className="dcb-main-grid-cell"
         data-dcb-layout-id="done"
         data-dcb-row={1}
-        data-dcb-column={5}
+        data-dcb-column={7}
         data-dcb-row-span={1}
-        style={{ gridColumn: 5, gridRow: "1 / span 1" }}
+        style={{ gridColumn: 7, gridRow: "1 / span 1" }}
       >
         {renderDone(view, onChange)}
       </div>
@@ -3031,6 +3092,8 @@ function renderPref(view: ScopeView, onChange: () => void) {
 }
 
 export function DisplayControlBar({ view, onChange, world }: DisplayControlBarProps) {
+  const dcbRef = useRef<HTMLDivElement>(null);
+  const trap = useDcbCursorTrap(view, dcbRef);
   const dcbPx = view.charSizes.dcb;
   const dcbText = applyBrite(PALETTE.dcbText, view.brite.dcb);
   const dcbFill = applyBrite(PALETTE.dcbCap, view.brite.dcb);
@@ -3100,11 +3163,13 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
 
   return (
     <div
+      ref={dcbRef}
       id={DCB_ID}
       className={vertical ? "dcb dcb-vertical" : "dcb"}
       role="group"
       aria-label="Display control bar"
       data-dcb-menu={menu}
+      data-dcb-cursor-trap={trap.kind}
       data-dcb-dock={view.dcbDock}
       style={{
         height: vertical ? undefined : DCB_HEIGHT_PX,
@@ -3145,6 +3210,13 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
                       : menu === "PREF"
                         ? renderPref(view, onChange)
                         : renderPhysicalMain(view, onChange, world)}
+      {trap.cursor ? (
+        <div
+          className="dcb-trapped-cursor"
+          style={{ left: trap.cursor.x, top: trap.cursor.y }}
+          aria-hidden="true"
+        />
+      ) : null}
     </div>
   );
 }

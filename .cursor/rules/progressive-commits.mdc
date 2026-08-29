@@ -11,7 +11,7 @@ Do **not** one-dump at the end. Do **not** wait for “please commit.”
 
 ## When to commit
 
-After each slice that typechecks / tests:
+After each slice that passes the CI-before-commit gate (`.cursor/rules/ci-before-commit.mdc` — `npm run ci`, plus speech-api pytest when that tree changed):
 
 - Parser, then wiring, then API prompt, then UI — not all of those in one commit.
 - A cluster of ACs or one user-visible fix you can describe in a sentence.

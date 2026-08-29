@@ -361,14 +361,16 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, disabled WX/VOL, T
   const tpa = dcbHtml(view);
   expect(tpa).toContain("DONE");
   expect(tpa).toMatch(/data-dcb-cell="done"/);
+  expect(tpa).toMatch(/data-dcb-cell="tpa-on"/);
+  expect(tpa).toMatch(/data-dcb-cell="tpa-mi"/);
+  expect(tpa).not.toMatch(/data-dcb-cell="atpa"/);
   expect(tpa).toMatch(/data-dcb-cell="atpa-mileage"/);
   expect(tpa).toMatch(/data-dcb-cell="atpa-intrail"/);
   expect(tpa).toMatch(/data-dcb-cell="atpa-alert"/);
   expect(tpa).toMatch(/data-dcb-cell="atpa-monitor"/);
   expect(tpa).not.toMatch(/data-dcb-cell="atpa-cones"/);
   expect(TPA_RADIUS_NM).toEqual([2, 3, 5, 10]);
-  expect(shouldPaintAtpaGeometry(false, "monitor")).toBe(false);
-  expect(shouldPaintAtpaGeometry(true, "monitor")).toBe(true);
+  expect(shouldPaintAtpaGeometry("monitor")).toBe(true);
   closeDcbMenu(view);
   expect(dcbHtml(view)).toContain("RANGE 20");
 });

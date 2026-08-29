@@ -12,7 +12,9 @@ import {
   centerOnAirport,
   createScopeView,
   applyDcbShift,
+  armDcbSpinner,
   closeDcbMenu,
+  commitDcbSpinner,
   handleDcbEscape,
   cycleRange,
   openDcbMenu,
@@ -533,7 +535,7 @@ test("AC4 — DCB LEFT/RIGHT render as a vertical stack; TOP/BOTTOM stay horizon
   expect(hostBottom).toMatch(/data-dcb-dock="BOTTOM"/);
 });
 
-test("AC5 — TPA/ATPA submenu has four live ATPA cells (A/TPA MILEAGE, INTRAIL DISTANCE, ALERT CONES, MONITOR CONES) and DONE", () => {
+test("AC5 — TPA/ATPA submenu has TPA ON, TPA MI, four live ATPA cells, and DONE", () => {
   const view = createScopeView();
   applyDcbShift(view);
   expect(dcbHtml(view)).toContain("TPA");
@@ -543,6 +545,12 @@ test("AC5 — TPA/ATPA submenu has four live ATPA cells (A/TPA MILEAGE, INTRAIL 
   expect(html).toContain("DONE");
   expect(html).toMatch(/data-dcb-cell="done"/);
   expect(html).toMatch(/data-dcb-menu="TPA_ATPA"/);
+  expect(html).toMatch(/data-dcb-cell="tpa-on"/);
+  expect(html).toMatch(/data-dcb-cell="tpa-mi"/);
+  expect(html).toMatch(
+    /data-dcb-kind="spinner"[^>]*data-dcb-cell="tpa-mi"|data-dcb-cell="tpa-mi"[^>]*data-dcb-kind="spinner"/,
+  );
+  expect(html).not.toMatch(/data-dcb-cell="atpa"/);
   expect(html).toMatch(/data-dcb-cell="atpa-mileage"/);
   expect(html).toMatch(/data-dcb-cell="atpa-intrail"/);
   expect(html).toMatch(/data-dcb-cell="atpa-alert"/);
@@ -583,6 +591,7 @@ test("T02-47 — TPA/ATPA comments quote R07 cell meanings; Alert covers Warning
   expect(src).toMatch(/displays alert cones at this TCP/);
   expect(src).toMatch(/displays monitor cones at this TCP/);
   expect(src).toMatch(/No separate Warning Cones cell/);
+  expect(src).toMatch(/toggleTpaOn/);
   expect(src).toMatch(/toggleAtpaConeMileage/);
   expect(src).toMatch(/toggleAtpaInTrailDistance/);
   expect(src).toMatch(/toggleAtpaAlertCones/);
@@ -824,4 +833,28 @@ test("momentary caps flash inset; toggles remain latches", () => {
 test("syncDisplayControlBar preserves aria-pressed when button has active data-dcb-flashing", () => {
   expect(barSrc()).toMatch(/data-dcb-flashing/);
   expect(barSrc()).toMatch(/el\.getAttribute\("data-dcb-flashing"\) === "true"/);
+});
+
+test("RANGE spinner traps the cell; PREF submenu traps the DCB boxes; no Pointer Lock", () => {
+  expect(barSrc()).toMatch(/useDcbCursorTrap/);
+  expect(barSrc()).toMatch(/data-dcb-cursor-trap/);
+  expect(barSrc()).not.toMatch(/requestPointerLock\s*\(/);
+  expect(uiSources["./useDcbCursorTrap.ts"]!).not.toMatch(/requestPointerLock\s*\(/);
+  expect(cssSrc()).toMatch(/html\[data-dcb-cursor-trap\]/);
+  expect(cssSrc()).toMatch(/\.dcb-trapped-cursor/);
+
+  const view = createScopeView();
+  expect(dcbHtml(view)).toMatch(/data-dcb-cursor-trap="none"/);
+
+  armDcbSpinner(view, "RANGE");
+  expect(dcbHtml(view)).toMatch(/data-dcb-cursor-trap="cell"/);
+  commitDcbSpinner(view);
+
+  openDcbMenu(view, "PREF");
+  expect(dcbHtml(view)).toMatch(/data-dcb-cursor-trap="submenu"/);
+
+  openDcbMenu(view, "BRITE");
+  expect(dcbHtml(view)).toMatch(/data-dcb-cursor-trap="submenu"/);
+  armDcbSpinner(view, "BRITE_DCB");
+  expect(dcbHtml(view)).toMatch(/data-dcb-cursor-trap="cell"/);
 });

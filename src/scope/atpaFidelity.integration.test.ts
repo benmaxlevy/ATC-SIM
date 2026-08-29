@@ -442,11 +442,11 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
         expect(world.alerts.atpa[0]?.requiredNm).toBe(volume.basicSeparationNm);
 
         const view = ownedView(world);
-        const off = paint(world, view);
-        view.atpa.on = false;
-        const offPaint = paint(world, view);
-        view.atpa.on = true;
         const on = paint(world, view);
+        const noConeView = ownedView(world);
+        noConeView.atpa.alertCones = false;
+        noConeView.atpa.monitorCones = false;
+        const offPaint = paint(world, noConeView);
 
         const cones = atpaConeStrokes(on.pathStrokes);
         expect(cones, status).toHaveLength(1);
@@ -464,7 +464,7 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
         expect(on.fillTexts.some((t) => t.text === mileage && t.fillStyle === color)).toBe(true);
         expect(on.fills.count).toBe(offPaint.fills.count);
         expect(atpaConeStrokes(offPaint.pathStrokes)).toHaveLength(0);
-        expect(off.pathStrokes.every((s) => s.strokeStyle !== PALETTE.alert)).toBe(true);
+        expect(on.pathStrokes.every((s) => s.strokeStyle !== PALETTE.alert)).toBe(true);
       }
     });
 
@@ -551,7 +551,7 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
   });
 
   describe("AC4: DCB cells, PREF v2, and no Command IR", () => {
-    test("master plus four cells each gate only their piece; PREF round-trips; v1 migrates", () => {
+    test("four cells each gate only their piece; PREF round-trips; v1 migrates", () => {
       expect(DEFAULT_ATPA_STATE).toEqual({
         on: false,
         inTrailDistance: true,
@@ -574,21 +574,18 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
       applyDcbShift(view);
       openDcbMenu(view, "TPA_ATPA");
       const html = dcbHtml(view);
+      expect(html).not.toMatch(/data-dcb-cell="atpa"/);
       expect(html).toMatch(/data-dcb-cell="atpa-mileage"/);
       expect(html).toMatch(/data-dcb-cell="atpa-intrail"/);
       expect(html).toMatch(/data-dcb-cell="atpa-alert"/);
       expect(html).toMatch(/data-dcb-cell="atpa-monitor"/);
 
-      view.atpa.on = false;
-      expect(atpaFeatureEffective(view.atpa, "coneMileage")).toBe(false);
-      const masterOff = paint(world, view);
-      expect(atpaConeStrokes(masterOff.pathStrokes)).toHaveLength(0);
-      expect(masterOff.fillTexts.some((t) => t.text === "3")).toBe(false);
-      const warnDist = formatAtpaInTrailDistance(world.alerts.atpa[0]!.distanceNm);
-      expect(masterOff.fillTexts.find((t) => t.text === warnDist)).toBeUndefined();
+      expect(atpaFeatureEffective(view.atpa, "coneMileage")).toBe(true);
+      const defaultsOn = paint(world, view);
+      expect(atpaConeStrokes(defaultsOn.pathStrokes)).toHaveLength(1);
       expect(world.alerts.atpa).toHaveLength(1);
+      const warnDist = formatAtpaInTrailDistance(world.alerts.atpa[0]!.distanceNm);
 
-      view.atpa.on = true;
       toggleAtpaConeMileage(view);
       expect(atpaFeatureEffective(view.atpa, "coneMileage")).toBe(false);
       expect(atpaFeatureEffective(view.atpa, "inTrailDistance")).toBe(true);
