@@ -15,9 +15,11 @@ T04-36–42 are squash-merged on `feature/crc-a80-videomaps` (not `master`). Cap
 **Merged (squash-merged, captain only, onto `feature/crc-a80-videomaps`):** T04-36 (`b802bfa`), T04-37 (`5e973f7`), T04-38 (`c66f11b`), T04-39 (`0fc6f96`), T04-40 (`736e4a6`), T04-41 (`a7a8618`), T04-42 (`af5391d`). Planning: `fdd5155`, `8d91110`, `037812b`, execution `0d74ff3`.
 
 **Captain judgement calls:**
-- Merge lock was `feature/crc-a80-videomaps`. `master` remains `47d2ad0`. Parent handles push.
-- Wave B README rebase after T04-37 was clean. After T04-40, T04-41 `*D ALL` test was updated to expect full-inventory toggle.
-- T04-42 leftover operator-docs slice committed before squash. Untracked `.cursor/rules/caveman-ultra.mdc` and `e2e/` left uncommitted.
+- Merge lock was `feature/crc-a80-videomaps`. `master` remains `47d2ad0`. Parent handles push. Did not merge `master`. Did not push.
+- Resume after interrupt: T04-36–39 already on this feature (`b802bfa`, `5e973f7`, `c66f11b`, `0fc6f96`). Wave D/E only. Did not redo A–C.
+- After T04-40, T04-41 `*D ALL` test expects full-inventory toggle (not DCB-only).
+- T04-42 ships operator converter how-to (frozen CRC paths, A80 selection, ARP, dry-run, pack out `src/scenario/video-maps/KATL`, permission, no runtime vNAS) with `tools/crc-videomap-import/docs.test.ts` CI gate.
+- Untracked `.cursor/rules/caveman-ultra.mdc` and `e2e/` left uncommitted.
 
 **Manual leftover:** Chrome KATL MAPS / GEO / BRITE / group walk. skip-with-reason: no visual operator. Automated tests prove load, GEO, `*D`, ARP, brightness. Do not invent a visual pass.
 
