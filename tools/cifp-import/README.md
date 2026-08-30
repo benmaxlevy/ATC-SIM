@@ -86,6 +86,13 @@ omitted lists are empty.
 paths; it does not write. Missing `--in`, an invalid ICAO, or an invalid
 radius fail before parse.
 
+On Windows PowerShell, use `npm.cmd run cifp:pack -- ...` if the PowerShell
+`npm` shim consumes forwarded `--in` flags. Direct Node invocation also works:
+
+```text
+node --experimental-strip-types tools/cifp-import/cli.ts pack --in <local CIFP> --airport <ICAO> --radius <NM> --out <dir> --dry-run
+```
+
 Pack requires **fixed-width** ARINC 424 CIFP. The comma subset still uses
 `cifp:import`. Writes are deterministic pretty JSON. Radius is a seed only;
 closure pulls SID/STAR/approach refs outside the circle. Video maps, spawns,

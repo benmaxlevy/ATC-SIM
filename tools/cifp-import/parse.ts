@@ -8,8 +8,8 @@
  * Not imported by `stepWorld` or the Vite app entry. Keep this under `tools/`.
  */
 
-import { latLonToNm, type LatLon } from "../../src/core/nav/geometry.ts";
 import { detectCifpDialect, parsePackedLat, parsePackedLon } from "./arincLayout.ts";
+import { latLonToNm, type LatLon } from "./coordinates.ts";
 import { emitCatalogFromSource } from "./normalize.ts";
 import { parseFixedWidthCifp } from "./parseFixedWidth.ts";
 import type { CifpSkipStats } from "./types.ts";

@@ -7,7 +7,6 @@
  * populated from `PD` records; SID flying stays out of this tool.
  */
 
-import { latLonToNm, type LatLon } from "../../src/core/nav/geometry.ts";
 import type {
   ApproachProcedure,
   GeoPoint,
@@ -20,6 +19,7 @@ import type {
   StarLeg,
   StarProcedure,
 } from "../../src/scenario/procedures/types.ts";
+import { latLonToNm, type LatLon } from "./coordinates.ts";
 import {
   sourceErrorCount,
   type CifpSkipStats,

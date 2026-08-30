@@ -534,6 +534,9 @@ npm run cifp:pack -- --in .cifp/FAACIFP18 --airport KATL --radius 40 \
   --sids SID1,SID2 --stars STAR1 --approaches ILS26L --out tools/cifp-import/out/katl --dry-run
 ```
 
+On Windows PowerShell, use `npm.cmd run cifp:pack -- ...` when forwarded
+arguments are consumed by the PowerShell `npm` shim.
+
 Pack generation first selects records within radius of airport ARP, then
 recursively includes every referenced SID, STAR, and approach fix/navaid.
 Radius is a seed, not a procedure boundary. Use `--sids`, `--stars`, and
