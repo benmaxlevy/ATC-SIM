@@ -1,7 +1,7 @@
 import type { LatLon, NmEastNorth } from "@core";
 import type { MvaChart } from "./mva";
 import type { ProcedureCatalog } from "./procedures/types";
-import type { LoadedVideoMap } from "./loadVideoMaps";
+import type { LoadedVideoMap, VideoMapGroupSet } from "./loadVideoMaps";
 
 /** One runway. Heading true = magnetic at KDEM (mag var 0). */
 export interface Runway {
@@ -68,6 +68,8 @@ export interface ScenarioMaps {
   videoMapSet?: string;
   videoMaps: VideoMap[];
   loadedVideoMaps: LoadedVideoMap[];
+  /** Present when `video-maps/<ICAO>/groups.json` exists. DCB layout, not identity. */
+  videoMapGroups?: VideoMapGroupSet;
   runway?: DigitalMapRunway;
   localizer?: DigitalMapLocalizer;
   rangeRings?: DigitalMapRangeRings;

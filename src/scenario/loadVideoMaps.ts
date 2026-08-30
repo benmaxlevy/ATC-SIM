@@ -52,11 +52,43 @@ export interface VideoMapFile {
 export interface VideoMapCatalogEntry {
   id: string;
   file: string;
-  dcbNumber: number;
+  /** DCB slot layout only. Omit for GEO-only maps. Never densify identity to 1–N. */
+  dcbNumber?: number;
+  /**
+   * CRC STARS map ID. Optional so KDEM stays unlabeled. Never used as catalog `id`.
+   * DCB group slots are a separate layout; do not densify this to 1–N.
+   */
+  starsId?: number;
   dcbLabel: string;
   role?: VideoMapRole;
   defaultOn: boolean;
   color: VideoMapColor;
+}
+
+/** One DCB layout cell. Empty `starsId` / missing `mapId` stays disabled. */
+export interface VideoMapGroupSlot {
+  position: { groupId: string; mainIndex?: number; submenuIndex?: number };
+  starsId: number | null;
+  mapId?: string;
+}
+
+export interface VideoMapGroup {
+  id: string;
+  /** Index in source `mapGroups` order. Default selected group is sourceIndex 0. */
+  sourceIndex: number;
+  tcps: string[];
+  /** Always length 6. Trailing omitted MAIN cells are empty, not densified. */
+  main: VideoMapGroupSlot[];
+  /** Length 0..32. Preserves source nulls, duplicates, and omitted trailing slots. */
+  submenu: VideoMapGroupSlot[];
+}
+
+/** Packed `video-maps/<ICAO>/groups.json` when present. KDEM has none. */
+export interface VideoMapGroupSet {
+  facilityId: string;
+  facilityName: string;
+  mapsAbsentFromGroups: string[];
+  groups: VideoMapGroup[];
 }
 
 export interface VideoMapCatalog {
@@ -177,18 +209,51 @@ export function parseVideoMapFile(value: unknown, expectedId: string, path: stri
   };
 }
 
+function parseOptionalDcbNumber(value: unknown, index: number): number | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  const dcbNumber = assertFinite(value, `catalog.maps[${index}].dcbNumber`);
+  if (!Number.isInteger(dcbNumber) || dcbNumber < 1) {
+    throw new Error(`Video map catalog.maps[${index}].dcbNumber must be an integer ≥ 1`);
+  }
+  return dcbNumber;
+}
+
+function parseOptionalStarsId(value: unknown, path: string): number | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  const starsId = assertFinite(value, path);
+  if (!Number.isInteger(starsId) || starsId < 1) {
+    throw new Error(`Video map ${path} must be an integer ≥ 1`);
+  }
+  return starsId;
+}
+
+/** CRC `starsId N` in converted map notes when catalog omits the field. */
+export function starsIdFromNote(note: string | undefined): number | undefined {
+  if (note === undefined) {
+    return undefined;
+  }
+  const match = /starsId\s+(\d+)/.exec(note);
+  if (match === null) {
+    return undefined;
+  }
+  return parseOptionalStarsId(Number(match[1]), "note.starsId");
+}
+
 function parseCatalogEntry(value: unknown, index: number): VideoMapCatalogEntry {
   if (!isRecord(value)) {
     throw new Error(`Video map catalog.maps[${index}] must be an object`);
   }
-  const dcbNumber = assertFinite(value.dcbNumber, `catalog.maps[${index}].dcbNumber`);
-  if (!Number.isInteger(dcbNumber) || dcbNumber < 1) {
-    throw new Error(`Video map catalog.maps[${index}].dcbNumber must be an integer ≥ 1`);
-  }
+  const dcbNumber = parseOptionalDcbNumber(value.dcbNumber, index);
+  const starsId = parseOptionalStarsId(value.starsId, `catalog.maps[${index}].starsId`);
   return {
     id: assertString(value.id, `catalog.maps[${index}].id`),
     file: assertString(value.file, `catalog.maps[${index}].file`),
-    dcbNumber,
+    ...(dcbNumber !== undefined ? { dcbNumber } : {}),
+    ...(starsId !== undefined ? { starsId } : {}),
     dcbLabel: assertString(value.dcbLabel, `catalog.maps[${index}].dcbLabel`),
     role: parseRole(value.role, `catalog.maps[${index}].role`),
     defaultOn: value.defaultOn === true,
@@ -222,8 +287,17 @@ function parseCatalog(value: unknown, icao: string): VideoMapCatalog {
   return { icao: catalogIcao, frame: "arp-enu-nm", note, maps };
 }
 
+/** Parse a video-map catalog document. `dcbNumber` is optional layout, not identity. */
+export function parseVideoMapCatalog(value: unknown, icao: string): VideoMapCatalog {
+  return parseCatalog(value, icao);
+}
+
 function jsonPath(icao: string, file: string): string {
   return `./video-maps/${icao}/${file}`;
+}
+
+function hasVideoMapJson(icao: string, file: string): boolean {
+  return jsonPath(icao, file) in VIDEO_MAP_JSON;
 }
 
 function readJson(icao: string, file: string): unknown {
@@ -234,17 +308,122 @@ function readJson(icao: string, file: string): unknown {
   return VIDEO_MAP_JSON[path];
 }
 
+function parseGroupSlot(value: unknown, path: string): VideoMapGroupSlot {
+  if (!isRecord(value)) {
+    throw new Error(`Video map ${path} must be an object`);
+  }
+  if (!isRecord(value.position) || typeof value.position.groupId !== "string") {
+    throw new Error(`Video map ${path}.position.groupId must be a string`);
+  }
+  const mainIndex =
+    value.position.mainIndex === undefined
+      ? undefined
+      : assertFinite(value.position.mainIndex, `${path}.position.mainIndex`);
+  const submenuIndex =
+    value.position.submenuIndex === undefined
+      ? undefined
+      : assertFinite(value.position.submenuIndex, `${path}.position.submenuIndex`);
+  const starsId =
+    value.starsId === null
+      ? null
+      : (parseOptionalStarsId(value.starsId, `${path}.starsId`) ?? null);
+  const mapId = typeof value.mapId === "string" ? value.mapId : undefined;
+  if (starsId === null && mapId !== undefined) {
+    throw new Error(`Video map ${path} empty slot cannot have mapId`);
+  }
+  return {
+    position: {
+      groupId: value.position.groupId,
+      ...(mainIndex !== undefined ? { mainIndex } : {}),
+      ...(submenuIndex !== undefined ? { submenuIndex } : {}),
+    },
+    starsId,
+    ...(mapId !== undefined ? { mapId } : {}),
+  };
+}
+
+function parseVideoMapGroup(value: unknown, index: number): VideoMapGroup {
+  if (!isRecord(value)) {
+    throw new Error(`Video map groups.groups[${index}] must be an object`);
+  }
+  if (!Array.isArray(value.main) || value.main.length !== 6) {
+    throw new Error(`Video map groups.groups[${index}].main must have 6 slots`);
+  }
+  if (!Array.isArray(value.submenu) || value.submenu.length > 32) {
+    throw new Error(`Video map groups.groups[${index}].submenu must have 0–32 slots`);
+  }
+  const sourceIndex = assertFinite(value.sourceIndex, `groups.groups[${index}].sourceIndex`);
+  if (!Number.isInteger(sourceIndex) || sourceIndex < 0) {
+    throw new Error(`Video map groups.groups[${index}].sourceIndex must be an integer ≥ 0`);
+  }
+  if (!Array.isArray(value.tcps) || value.tcps.some((tcp) => typeof tcp !== "string")) {
+    throw new Error(`Video map groups.groups[${index}].tcps must be a string array`);
+  }
+  return {
+    id: assertString(value.id, `groups.groups[${index}].id`),
+    sourceIndex,
+    tcps: value.tcps as string[],
+    main: value.main.map((slot, i) => parseGroupSlot(slot, `groups.groups[${index}].main[${i}]`)),
+    submenu: value.submenu.map((slot, i) =>
+      parseGroupSlot(slot, `groups.groups[${index}].submenu[${i}]`),
+    ),
+  };
+}
+
+/** Parse packed `groups.json`. Layout only — never renumbers map identity. */
+export function parseVideoMapGroups(value: unknown, icao: string): VideoMapGroupSet {
+  if (!isRecord(value)) {
+    throw new Error(`Video map groups for ${icao} must be an object`);
+  }
+  if (!Array.isArray(value.mapsAbsentFromGroups)) {
+    throw new Error(`Video map groups.mapsAbsentFromGroups must be an array`);
+  }
+  if (!Array.isArray(value.groups) || value.groups.length === 0) {
+    throw new Error(`Video map groups.groups must be a non-empty array`);
+  }
+  const mapsAbsentFromGroups = value.mapsAbsentFromGroups.map((id, i) =>
+    assertString(id, `groups.mapsAbsentFromGroups[${i}]`),
+  );
+  const groups = value.groups.map(parseVideoMapGroup);
+  const ids = new Set<string>();
+  for (const group of groups) {
+    if (ids.has(group.id)) {
+      throw new Error(`Video map groups has duplicate id ${group.id}`);
+    }
+    ids.add(group.id);
+  }
+  return {
+    facilityId: assertString(value.facilityId, "groups.facilityId"),
+    facilityName: assertString(value.facilityName, "groups.facilityName"),
+    mapsAbsentFromGroups,
+    groups,
+  };
+}
+
 export function loadVideoMapSet(icao: string): LoadedVideoMap[] {
   const catalog = parseCatalog(readJson(icao, "catalog.json"), icao);
   return catalog.maps.map((entry) => {
     const file = parseVideoMapFile(readJson(icao, entry.file), entry.id, `${icao}/${entry.file}`);
+    const starsId = entry.starsId ?? starsIdFromNote(file.note);
     return {
       ...entry,
+      ...(starsId !== undefined ? { starsId } : {}),
       name: file.name,
       note: file.note,
       features: file.features,
     };
   });
+}
+
+/**
+ * Load `video-maps/<ICAO>/groups.json` when present. Missing file is KDEM-style
+ * dcbNumber layout, not an error. No facility-id branch.
+ */
+export function loadVideoMapGroups(icao: string): VideoMapGroupSet | undefined {
+  if (!hasVideoMapJson(icao, "groups.json")) {
+    return undefined;
+  }
+  return parseVideoMapGroups(readJson(icao, "groups.json"), icao);
 }
 
 export function runwayFromVideoMaps(maps: LoadedVideoMap[]): DigitalMapRunway | undefined {

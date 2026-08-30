@@ -1,0 +1,18 @@
+---
+description: Keep tests generic and fixture-driven
+alwaysApply: true
+---
+
+# Generic tests
+
+- Test reusable behavior with synthetic, minimal fixtures.
+- Do not add tests tied to a specific airport, scenario, facility, runway,
+  procedure, or imported production data when a generic fixture can prove the
+  behavior.
+- Keep airport/scenario acceptance tests out of unit and component suites.
+- Test committed facility data with loader/schema validation only when required
+  to prove the data contract.
+- Use parameterized fixtures for coordinate, map, procedure, and rendering
+  cases.
+- Do not encode production map counts, IDs, ordering, or geometry into generic
+  tests.

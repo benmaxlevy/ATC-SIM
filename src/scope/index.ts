@@ -370,6 +370,8 @@ export type {
   DcbPrefStorage,
 } from "./dcbPref";
 export {
+  DCB_GROUP_SLOT_COUNT,
+  DCB_GROUP_SUBMENU_SLOT_START,
   DCB_LEADER_DIRS,
   DCB_MAP_SLOT_COUNT,
   DCB_QUICK_MAP_COUNT,
@@ -388,6 +390,8 @@ export {
   dcbCatalogMaps,
   dcbLeaderDirReadout,
   dcbLeaderDirValue,
+  dcbMapsPageSlotNumbers,
+  defaultSelectedMapGroupId,
   formatDcbBriteReadout,
   formatDcbCharReadout,
   formatDcbLdrLengthReadout,
@@ -396,7 +400,9 @@ export {
   hideMapLists,
   isDcbMapSlotEnabled,
   isVideoMapOn,
+  loadedCatalogMaps,
   resolveVideoMapToken,
+  selectedVideoMapGroup,
   setAllVideoMaps,
   snapRrInterval,
   stepBriteChannel,
@@ -409,8 +415,9 @@ export {
   toggleGeoMapsList,
   toggleVideoMap,
   videoMapByDcbNumber,
+  videoMapTokenLayout,
 } from "./dcbFunctions";
-export type { MapListKind, RrIntervalNm } from "./dcbFunctions";
+export type { MapListKind, RrIntervalNm, VideoMapTokenLayout } from "./dcbFunctions";
 export {
   HISTORY_DOT_COUNTS,
   HISTORY_MAX_DOTS,

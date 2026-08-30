@@ -26,6 +26,7 @@ import { loadCatalog } from "./procedures/loadCatalog";
 import { loadMva } from "./mva";
 import {
   coastlineFromVideoMaps,
+  loadVideoMapGroups,
   loadVideoMapSet,
   localizerFromVideoMaps,
   runwayFromVideoMaps,
@@ -215,6 +216,7 @@ function parseScenarioMaps(maps: Record<string, unknown>): ScenarioMaps {
       ? maps.videoMapSet
       : undefined;
   const loadedVideoMaps = videoMapSet === undefined ? [] : loadVideoMapSet(videoMapSet);
+  const videoMapGroups = videoMapSet === undefined ? undefined : loadVideoMapGroups(videoMapSet);
   const listed =
     maps.videoMaps === undefined && videoMapSet !== undefined
       ? loadedVideoMaps.map((map) => ({ id: map.id }))
@@ -223,6 +225,7 @@ function parseScenarioMaps(maps: Record<string, unknown>): ScenarioMaps {
     videoMapSet,
     videoMaps: listed,
     loadedVideoMaps,
+    ...(videoMapGroups !== undefined ? { videoMapGroups } : {}),
     runway: parseMapRunway(maps.runway) ?? runwayFromVideoMaps(loadedVideoMaps),
     localizer: parseMapLocalizer(maps.localizer) ?? localizerFromVideoMaps(loadedVideoMaps),
     rangeRings: parseMapRangeRings(maps.rangeRings),

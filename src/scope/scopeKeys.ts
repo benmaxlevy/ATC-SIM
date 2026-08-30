@@ -77,12 +77,13 @@ import {
   applyRrCenter,
   armPlaceCenter,
   armPlaceRangeRing,
-  dcbCatalogMaps,
   hideMapLists,
+  loadedCatalogMaps,
   resolveVideoMapToken,
   setAllVideoMaps,
   setRangeRingInterval,
   toggleVideoMap,
+  videoMapTokenLayout,
   type RrIntervalNm,
 } from "./dcbFunctions";
 import { PpiPlaceholderId } from "./ppi-placeholder";
@@ -306,7 +307,11 @@ function applyPreviewArmedAction(view: ScopeView, action: PreviewArmedAction, no
       setHistoryDotCount(view, action.count as HistoryDotCount);
       return;
     case "toggleVideoMap": {
-      const map = resolveVideoMapToken(dcbCatalogMaps(view), action.mapId);
+      const map = resolveVideoMapToken(
+        loadedCatalogMaps(view),
+        action.mapId,
+        videoMapTokenLayout(view),
+      );
       if (map) {
         toggleVideoMap(view, map.id, action.explicitState);
       }
@@ -470,7 +475,8 @@ export function handleScopeKeyDown(
         event.key,
         nowMs,
         event.code,
-        dcbCatalogMaps(view),
+        loadedCatalogMaps(view),
+        videoMapTokenLayout(view),
       );
       if (preview.consumed) {
         consume(event);
@@ -493,7 +499,8 @@ export function handleScopeKeyDown(
           event.key,
           nowMs,
           event.code,
-          dcbCatalogMaps(view),
+          loadedCatalogMaps(view),
+          videoMapTokenLayout(view),
         );
         applyPreviewBufferOutcome(view, world, nowMs, preview);
         ui?.onHandled?.();

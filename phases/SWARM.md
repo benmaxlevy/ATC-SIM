@@ -1,5 +1,153 @@
 # ATC-SIM swarm orchestrator — Eighteenth swarm (CIFP-derived catalog packs: T04-31–35)
 
+## Nineteenth swarm planned — 2026-08-29 (CRC A80 videomap import)
+
+This configuration is planning-only until `/run-swarm` execution begins. It
+adds an offline, permissioned CRC/vNAS videomap conversion phase. Existing
+swarm history stays intact. Execution branch is
+`feature/crc-a80-videomaps`, created from current `master`; the captain
+squash-merges ticket branches into that feature branch. Push that feature
+branch only after phase exit.
+
+| Key | Value |
+| --- | --- |
+| Goal | Import complete permitted A80 STARS videomap inventory into the existing `arp-enu-nm` trainer format, preserve CRC map identity, model CRC map groups, and make every imported map reachable through GEO MAPS or map-ID commands |
+| Include | **T04-36**, **T04-37**, **T04-38**, **T04-39**, **T04-40**, **T04-41**, **T04-42** |
+| Source | Local CRC cache: `C:\Users\Ben\AppData\Local\CRC\ARTCCs\ZTL.json` plus `C:\Users\Ben\AppData\Local\CRC\VideoMaps\ZTL\`; select maps tagged `A80` and `STARS`; scenario ARP supplies projection origin |
+| Output | Committed, permissioned converted KATL A80 trainer maps; local source CRC cache and generated national/intermediate data remain uncommitted |
+| Skip | Runtime CRC/vNAS fetch; ERAM/Cab/ASDE-X semantics; chart scraping; proprietary fonts; OSM; map identity renumbering; unrelated phase 5 work |
+| Stop | After T04-42 acceptance. Do not start phase 5 or live FAA/vNAS update automation |
+| Max ticket workers in flight | **3** |
+| Merge lock | Only phase captain squash-merges ticket branches to `feature/crc-a80-videomaps`, then runs `npm test` / `npm run ci` |
+| Model | **cursor-grok-4.6-high only, non-fast** on captain and every worker |
+| Paid STT/TTS/LLM | **Forbidden** |
+
+**Source facts frozen for this swarm:** ZTL `ARTCCs\ZTL.json` contains
+`facility.childFacilities[0]` Atlanta TRACON, its `starsConfiguration.videoMapIds`,
+and fourteen `mapGroups`. The A80 inventory contains 90 assigned maps, while
+each group supplies up to six MAIN plus 32 submenu assignments. Map metadata
+comes from `videoMaps[]`; geometry comes from the matching ULID-named
+`.geojson` file. CRC `starsId` remains identity. DCB position is separate
+layout metadata. A→`map`, B→`mapDim`.
+
+**Product law (nineteenth swarm — CRC A80 videomap import):**
+
+- **Offline conversion only.** Developer tooling reads the explicit local CRC
+  paths above. Browser/runtime never reads CRC files, calls vNAS, or parses a
+  national source pack.
+- **Complete inventory.** Facility-assigned A80 STARS maps remain loadable even
+  when absent from a selected DCB group. GEO MAPS and map-ID lookup must reach
+  DCB maps and GEO-only maps.
+- **Identity is not renumbered.** Preserve CRC `starsId` and source ULID. DCB
+  slots are group layout positions, not replacement map IDs. Do not use dense
+  1–30 numbering as map identity.
+- **ARP projection.** Convert WGS84 GeoJSON `[lon, lat]` to `[eastNm, northNm]`
+  using selected scenario ARP and existing `latLonToNm`. Do not bake KATL ENU
+  into reusable source data.
+- **Geometry policy.** Support LineString, MultiLineString, Polygon outline,
+  and Point text. Skip null/empty/default features and invalid zero vertices
+  with deterministic diagnostics. Preserve stroke-font labels as polylines.
+- **Map groups are data.** Preserve group order, TCP assignments, MAIN order,
+  submenu order, duplicates, and empty slots where source semantics require
+  them. No A80-specific runtime branch.
+- **Brightness stays separate.** CRC A/B maps become existing `map`/`mapDim`
+  channels. BRITE changes intensity; it does not change map availability.
+- **Legal boundary.** Human confirms permission to commit converted maps.
+  Record source/provenance in committed metadata. Do not commit local CRC
+  cache, secrets, caches, or unrelated QA screenshots.
+- **Performance is measured.** Import all maps first. Simplification, culling,
+  or lazy loading requires measured acceptance evidence and must preserve
+  reproducible unsimplified conversion.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T04-36 | `feature/crc-a80-videomaps` |
+| B | T04-37 ∥ T04-38 | T04-36 |
+| C | T04-39 | T04-37, T04-38 |
+| D | T04-40 ∥ T04-41 | T04-39 |
+| E | T04-42 | T04-40, T04-41 |
+
+**Ticket ownership:**
+
+- T04-36 owns normalized CRC source metadata and schema split between stable
+  internal map identity, `starsId`, and optional DCB layout.
+- T04-37 owns offline GeoJSON conversion, ARP projection, geometry cleanup,
+  deterministic output, and converter diagnostics.
+- T04-38 owns CRC facility/map-group extraction and preserved group layout.
+- T04-39 owns full permitted A80/KATL generation, manifest, attribution, and
+  committed converted output.
+- T04-40 owns runtime map identity, GEO/CURRENT reachability, high-ID lookup,
+  and DCB group-slot rendering without renumbering.
+- T04-41 owns rendering compatibility, A/B brightness, large-map behavior,
+  and measured performance safeguards.
+- T04-42 owns end-to-end acceptance, CI, docs, and migration guardrails.
+
+**Ticket files / branches:**
+
+- `ticket/T04-36-crc-videomap-source-schema` ← `phases/04-procedures/tickets/T04-36-crc-videomap-source-schema.md`
+- `ticket/T04-37-crc-geojson-converter` ← `phases/04-procedures/tickets/T04-37-crc-geojson-converter.md`
+- `ticket/T04-38-crc-map-groups-and-dcb-layout` ← `phases/04-procedures/tickets/T04-38-crc-map-groups-and-dcb-layout.md`
+- `ticket/T04-39-a80-videomap-pack-generation` ← `phases/04-procedures/tickets/T04-39-a80-videomap-pack-generation.md`
+- `ticket/T04-40-videomap-identity-and-geo-reachability` ← `phases/04-procedures/tickets/T04-40-videomap-identity-and-geo-reachability.md`
+- `ticket/T04-41-videomap-rendering-and-performance-acceptance` ← `phases/04-procedures/tickets/T04-41-videomap-rendering-and-performance-acceptance.md`
+- `ticket/T04-42-a80-videomap-integration-and-acceptance` ← `phases/04-procedures/tickets/T04-42-a80-videomap-integration-and-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 4 procedures addendum (T04-36–42 CRC A80 videomap import)
+Merged: T04-36 … T04-42
+Tests: npm test / npm run ci exit 0
+Manual leftover: <Chrome KATL map/group walk or none>
+Notes: <local CRC ZTL/A80 source; complete inventory; ARP conversion; CRC identity preserved; map groups; GEO reachability; no runtime vNAS>
+```
+
+or `PHASE EXIT BLOCKED` with reason.
+
+## Nineteenth swarm execution — 2026-08-29 (CRC A80 videomap import)
+
+Human invoked `/run-swarm` with **cursor grok 4.6 high**. Execute T04-36–42
+only. Planning commits `fdd5155`, `8d91110`, and `037812b` are on
+`feature/crc-a80-videomaps` (cut from current `master` `47d2ad0`). Ticket
+workers branch from that feature base. Captain squash-merges each ticket
+into `feature/crc-a80-videomaps`. Do **not** merge this swarm onto `master`.
+Push is the parent’s job after phase exit.
+
+Role: captain owns the merge lock on `feature/crc-a80-videomaps`. Isolated
+worktrees. At most three workers. Wait for terminal `READY TO MERGE` or
+`BLOCKED`. Every captain and worker spawn must set
+`model: "cursor-grok-4.6-high"`. Non-fast.
+
+Preflight: working tree clean except untracked
+`.cursor/rules/caveman-ultra.mdc` and `e2e/` QA artifacts — preserve them.
+Do not reset/clean. Do not touch speech vendor rules, phase 5, or unrelated
+tickets.
+
+Execution waves:
+
+1. T04-36
+2. T04-37 ∥ T04-38
+3. T04-39
+4. T04-40 ∥ T04-41
+5. T04-42
+
+Frozen source: local CRC metadata
+`C:\Users\Ben\AppData\Local\CRC\ARTCCs\ZTL.json`; geometry
+`C:\Users\Ben\AppData\Local\CRC\VideoMaps\ZTL\<ULID>.geojson`. A80 selection
+uses Atlanta TRACON `facility.childFacilities[0].starsConfiguration.videoMapIds`
+and maps tagged A80 + STARS. Scenario ARP is projection origin. Preserve CRC
+`starsId`; DCB slots are layout only. A→`map`, B→`mapDim`. Runtime never
+reads CRC/vNAS. Commit converted maps with permission/provenance; never
+commit local source cache, secrets, caches, or QA screenshots.
+
+No push. No phase 5. At completion, captain runs `npm run ci`, appends
+`SWARM-STATUS.md`, and returns the exact phase result format above.
+
+---
+
 Paste **this entire file** into a new agent. That agent is the **orchestrator**. It may run for hours. It writes almost no application code.
 
 Workspace: `/home/ben/ATC-SIM`

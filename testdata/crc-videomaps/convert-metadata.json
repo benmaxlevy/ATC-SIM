@@ -1,0 +1,49 @@
+{
+  "id": "SYN",
+  "videoMaps": [
+    {
+      "id": "01SYNCVT00000000000000001",
+      "name": "SYN LINES",
+      "tags": ["STARS", "A80"],
+      "shortName": "LINES",
+      "sourceFileName": "LINES.geojson",
+      "starsBrightnessCategory": "A",
+      "starsId": 11,
+      "tdmOnly": false
+    },
+    {
+      "id": "01SYNCVT00000000000000002",
+      "name": "SYN CLEANUP",
+      "tags": ["STARS", "A80"],
+      "shortName": "CLEAN",
+      "sourceFileName": "CLEAN.geojson",
+      "starsBrightnessCategory": "B",
+      "starsId": 12,
+      "tdmOnly": false
+    },
+    {
+      "id": "01SYNCVT00000000000000003",
+      "name": "SYN MISSING FILE",
+      "tags": ["STARS", "A80"],
+      "shortName": "MISS",
+      "starsBrightnessCategory": "A",
+      "starsId": 13,
+      "tdmOnly": false
+    },
+    {
+      "id": "01SYNCVT00000000000000004",
+      "name": "SYN EMPTY",
+      "tags": ["STARS", "A80"],
+      "shortName": "EMPTY",
+      "sourceFileName": "EMPTY.geojson",
+      "starsBrightnessCategory": "A",
+      "starsId": 14,
+      "tdmOnly": false
+    }
+  ],
+  "facility": {
+    "id": "SYN",
+    "name": "Synthetic ARTCC",
+    "childFacilities": []
+  }
+}

@@ -482,6 +482,13 @@ Implement in this order unless a ticket says it can parallel. Do not start a tic
 | T04-33 | CIFP procedure reference closure | P0 | M | T04-31 | T04-34 |
 | T04-34 | Generic CIFP pack CLI and KATL migration | P0 | L | T04-32, T04-33 | T04-35 |
 | T04-35 | CIFP pack integration and acceptance | P0 | M | T04-34 | none |
+| T04-36 | CRC videomap source schema | P0 | M | T04-35 | T04-37, T04-38 |
+| T04-37 | CRC GeoJSON conversion | P0 | L | T04-36 | T04-39 |
+| T04-38 | CRC map-group extraction | P0 | M | T04-36 | T04-39 |
+| T04-39 | A80/KATL videomap pack | P0 | L | T04-37, T04-38 | T04-40, T04-41 |
+| T04-40 | Videomap identity and GEO reachability | P0 | M | T04-39 | T04-42 |
+| T04-41 | Videomap rendering and performance | P0 | M | T04-39 | T04-42 |
+| T04-42 | A80 videomap integration and acceptance | P0 | M | T04-40, T04-41 | none |
 
 **Parallelism:** After T04-01, T04-08 and T04-10 can proceed beside T04-02. T04-09 can start immediately. T04-04 ∥ T04-05 after T04-03. T04-11 can land anytime after kinematics; prefer after T04-05 so loc tests include a wind case if the ticket is pulled.
 
@@ -540,6 +547,34 @@ do not invent a national ATL dump.
 
 Wave: **T04-31** → **T04-32 ∥ T04-33** → **T04-34** → **T04-35**.
 
+### Post-exit addendum (T04-36–42 CRC A80 videomaps)
+
+Historical phase 4 exit and the T04-13–35 addenda stay as written. Do **not**
+uncheck those boxes. This addendum imports permitted local CRC/vNAS STARS A80
+videomaps into the existing `arp-enu-nm` trainer format.
+
+- T04-36 splits CRC ULID identity from sparse `starsId` and DCB slot layout.
+- T04-37 converts local GeoJSON through `latLonToNm` (ARP-parameterized).
+- T04-38 extracts map groups as DCB MAIN/submenu layout without renumbering.
+- T04-39 packs 90 assigned A80 STARS maps into `src/scenario/video-maps/KATL/`
+  (`videoMapSet: "KATL"`). GEO-only maps stay in the inventory.
+- T04-40 reaches every loaded map from GEO MAPS, CURRENT, and `*D` (ULID,
+  `starsId`, or group slot). Empty slots stay disabled.
+- T04-41 paints converted polylines on existing canvas paths (A→`map` / B→`mapDim`).
+- T04-42 proves the pack through `loadPlayableScenario("katl")` /
+  `loadVideoMapSet("KATL")` / ScopeView. Chrome visual is skip-with-reason.
+
+Runtime never reads CRC, never fetches vNAS, and never imports
+`tools/crc-videomap-import`. KDEM stays the authored default (7 numbered MAPS
+slots). Local CRC cache is never committed. Reproducible pack (local CRC
+required; not CI):
+
+```text
+npm run crc:videomaps -- pack --metadata C:\Users\Ben\AppData\Local\CRC\ARTCCs\ZTL.json --maps C:\Users\Ben\AppData\Local\CRC\VideoMaps\ZTL --arp 33.6367,-84.4278638888889 --out src/scenario/video-maps/KATL
+```
+
+Wave: **T04-36** → **T04-37 ∥ T04-38** → **T04-39** → **T04-40 ∥ T04-41** → **T04-42**.
+
 ---
 
 ## Phase exit checklist
@@ -572,4 +607,5 @@ Do not start phase 5 until every box is true.
 2. Paste **`AGENT.md`** from this folder as the implementation prompt, **or** paste a single `tickets/T04-xx-*.md` and say: implement only this ticket, stop when ACs are checked.
 3. Do not implement phase 5 scoring against these events until phase 4 exits — emitting the events is enough.
 
-Ticket IDs are stable. Do not renumber. T04-13–25 are post-exit addenda. If you must extend further, add `T04-26` at the end.
+Ticket IDs are stable. Do not renumber. T04-13–25, T04-31–35, and T04-36–42
+are post-exit addenda. Historical exit boxes stay unchecked-as-written.

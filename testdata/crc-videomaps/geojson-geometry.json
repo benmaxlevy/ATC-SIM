@@ -1,0 +1,90 @@
+{
+  "type": "FeatureCollection",
+  "name": "SYN GEOMETRY",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "style": "solid", "thickness": 1 },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [1, 0],
+          [1, 1]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "bcg": 1 },
+      "geometry": {
+        "type": "MultiLineString",
+        "coordinates": [
+          [
+            [2, 0],
+            [2, 1]
+          ],
+          [
+            [3, 0],
+            [3, 1],
+            [3.5, 1]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "CLASS": "B" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [4, 0],
+            [5, 0],
+            [5, 1],
+            [4, 1],
+            [4, 0]
+          ],
+          [
+            [4.2, 0.2],
+            [4.8, 0.2],
+            [4.8, 0.8],
+            [4.2, 0.8],
+            [4.2, 0.2]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "text": "FIX1" },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [6, 1]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "style": "solid" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [0.1, 0.1],
+          [0.11, 0.2],
+          [0.12, 0.1]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "style": "solid" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [0.14, 0.1],
+          [0.15, 0.2],
+          [0.16, 0.1]
+        ]
+      }
+    }
+  ]
+}

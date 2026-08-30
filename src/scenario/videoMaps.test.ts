@@ -1,6 +1,12 @@
 import { expect, test } from "vitest";
 import { loadKdem } from "./load";
-import { loadVideoMapSet, parseVideoMapFile } from "./loadVideoMaps";
+import {
+  loadVideoMapSet,
+  parseVideoMapCatalog,
+  parseVideoMapFile,
+  parseVideoMapGroups,
+  starsIdFromNote,
+} from "./loadVideoMaps";
 
 test("AC1 — loadKdem videoMapSet is KDEM with RWY, LOC plus extras", () => {
   const maps = loadKdem().maps;
@@ -23,7 +29,7 @@ test("KDEM catalog loads MAPS in ARP ENU NM including DEM1 STAR and BAY1 SID for
     "BAY1_27",
     "BAY1_09",
   ]);
-  expect(maps.every((item) => item.dcbNumber >= 1)).toBe(true);
+  expect(maps.every((item) => item.dcbNumber !== undefined && item.dcbNumber >= 1)).toBe(true);
   expect(maps.find((item) => item.id === "DEM1_27")?.color).toBe("map");
   expect(maps.find((item) => item.id === "DEM1_27")?.defaultOn).toBe(true);
   expect(maps.find((item) => item.id === "DEM1_09")?.color).toBe("map");
@@ -50,6 +56,111 @@ test("AC2 — loadKdem derives runway and loc from the catalog", () => {
     halfWidthDeg: 2.5,
   });
   expect(maps.coastline).toBeUndefined();
+});
+
+test("T04-39 — catalog dcbNumber is optional layout, not identity", () => {
+  const catalog = parseVideoMapCatalog(
+    {
+      icao: "KBBB",
+      frame: "arp-enu-nm",
+      maps: [
+        {
+          id: "01GEOONLY00000000000000001",
+          file: "01GEOONLY00000000000000001.json",
+          dcbLabel: "136",
+          defaultOn: false,
+          color: "map",
+        },
+        {
+          id: "RWY",
+          file: "001-rwy.json",
+          dcbNumber: 1,
+          dcbLabel: "RWY",
+          defaultOn: true,
+          color: "map",
+        },
+      ],
+    },
+    "KBBB",
+  );
+  expect(catalog.maps[0]?.id).toBe("01GEOONLY00000000000000001");
+  expect(catalog.maps[0]?.id).not.toBe("1");
+  expect(catalog.maps[0]?.dcbNumber).toBeUndefined();
+  expect(catalog.maps[1]?.dcbNumber).toBe(1);
+  expect(() =>
+    parseVideoMapCatalog(
+      {
+        icao: "KBBB",
+        frame: "arp-enu-nm",
+        maps: [
+          {
+            id: "X",
+            file: "x.json",
+            dcbNumber: 0,
+            dcbLabel: "X",
+            defaultOn: false,
+            color: "map",
+          },
+        ],
+      },
+      "KBBB",
+    ),
+  ).toThrow(/dcbNumber/);
+});
+
+test("T04-40 — optional catalog starsId is not identity; KDEM omits it", () => {
+  const catalog = parseVideoMapCatalog(
+    {
+      icao: "KBBB",
+      frame: "arp-enu-nm",
+      maps: [
+        {
+          id: "01GEOONLY00000000000000001",
+          file: "01GEOONLY00000000000000001.json",
+          starsId: 136,
+          dcbLabel: "40DME F",
+          defaultOn: false,
+          color: "map",
+        },
+      ],
+    },
+    "KBBB",
+  );
+  expect(catalog.maps[0]?.id).toBe("01GEOONLY00000000000000001");
+  expect(catalog.maps[0]?.starsId).toBe(136);
+  expect(catalog.maps[0]?.dcbNumber).toBeUndefined();
+  expect(starsIdFromNote("CRC ULID X; starsId 201; foo.geojson")).toBe(201);
+  expect(starsIdFromNote("no identity here")).toBeUndefined();
+  expect(loadVideoMapSet("KDEM").every((map) => map.starsId === undefined)).toBe(true);
+});
+
+test("T04-40 — generic group parser preserves sparse layout and identity", () => {
+  const parsed = parseVideoMapGroups(
+    {
+      facilityId: "X99",
+      facilityName: "Demo",
+      mapsAbsentFromGroups: ["01ABSENT000000000000000001"],
+      groups: [
+        {
+          id: "G1",
+          sourceIndex: 0,
+          tcps: ["1N"],
+          main: Array.from({ length: 6 }, (_, i) => ({
+            position: { groupId: "G1", mainIndex: i },
+            starsId: i === 3 ? null : 10 + i,
+            ...(i === 3 ? {} : { mapId: `MAP${i}` }),
+          })),
+          submenu: [
+            { position: { groupId: "G1", submenuIndex: 0 }, starsId: 201, mapId: "HIGH" },
+            { position: { groupId: "G1", submenuIndex: 1 }, starsId: null },
+          ],
+        },
+      ],
+    },
+    "KBBB",
+  );
+  expect(parsed.groups[0]?.main[3]?.starsId).toBeNull();
+  expect(parsed.groups[0]?.submenu[0]?.starsId).toBe(201);
 });
 
 test("AC4 — missing video-maps/KJFK/catalog.json throws", () => {

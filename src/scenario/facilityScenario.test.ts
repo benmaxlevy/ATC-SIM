@@ -34,13 +34,16 @@ test("committed catalog directory loads through loadCatalog without a facility-i
   }
 });
 
-test("assertScenario loads a catalog facility without a video map set", () => {
+test("assertScenario loads a catalog facility with the generic KATL video map set", () => {
   for (const raw of [katlJson, katl08Json]) {
     const scenario = assertScenario(raw);
     expect(scenario.icao).toBe(scenario.catalog.airportId);
-    expect(scenario.maps.videoMapSet).toBeUndefined();
-    expect(scenario.maps.videoMaps).toEqual([]);
-    expect(scenario.maps.loadedVideoMaps).toEqual([]);
+    expect(scenario.maps.videoMapSet).toBe("KATL");
+    expect(scenario.maps.loadedVideoMaps.length).toBeGreaterThan(0);
+    expect(scenario.maps.videoMaps.map((row) => row.id)).toEqual(
+      scenario.maps.loadedVideoMaps.map((row) => row.id),
+    );
+    expect(scenario.maps.loadedVideoMaps.every((row) => row.id !== "1")).toBe(true);
     expect(scenario.mva?.airportId).toBe(scenario.icao);
     expect(scenario.mva?.defaultMinAltitudeFt).toBe(3000);
     expect(scenario.mva?.polygons.every((poly) => poly.minAltitudeFt === 3000)).toBe(true);
@@ -121,15 +124,15 @@ test("authored catalog-facility arrivals spawn inside 50 NM of ARP with procedur
   }
 });
 
-test("playable inventory lists a catalog facility even without video maps", () => {
+test("playable inventory lists a catalog facility with the generic KATL video map set", () => {
   const listed = listPlayableScenarios().filter((entry) => entry.airportIcao === katlJson.icao);
   expect(listed.length).toBeGreaterThanOrEqual(2);
   expect(listed.every((entry) => entry.sessionSetupVisible && !entry.default)).toBe(true);
   expect(listConfigurationsForAirport(katlJson.icao)).toHaveLength(listed.length);
   for (const entry of listed) {
     const scenario = loadPlayableScenario(entry.id);
-    expect(scenario.maps.videoMapSet).toBeUndefined();
-    expect(scenario.maps.videoMaps).toEqual([]);
+    expect(scenario.maps.videoMapSet).toBe("KATL");
+    expect(scenario.maps.loadedVideoMaps.length).toBeGreaterThan(0);
     expect(scenario.mva?.defaultMinAltitudeFt).toBe(3000);
   }
 });

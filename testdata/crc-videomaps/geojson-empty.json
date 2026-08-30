@@ -1,0 +1,19 @@
+{
+  "type": "FeatureCollection",
+  "name": "SYN EMPTY",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "isLineDefaults": true },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [1, 1]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": null
+    }
+  ]
+}

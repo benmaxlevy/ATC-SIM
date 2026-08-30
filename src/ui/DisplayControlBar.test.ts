@@ -425,6 +425,12 @@ test("T02-24 — MAIN quick maps 1–6 and MAPS slots 1–30; unused 7–30 disa
   expect(on.showCoastline).toBe(false);
 });
 
+test("MAPS caps keep CRC map IDs and short names on separate lines", () => {
+  expect(barSrc()).not.toMatch(/const labelLines = label\.split/);
+  expect(barSrc()).toContain('<span className="dcb-cell-line">{identity}</span>');
+  expect(barSrc()).toContain('<span className="dcb-cell-line">{label}</span>');
+});
+
 test("PLACE CNTR arms; OFF CNTR is its own cell and Home-equivalent", () => {
   expect(barSrc()).toMatch(/armPlaceCenter\(view\)/);
   expect(barSrc()).toMatch(/>\s*PLACE\s*</);

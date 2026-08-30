@@ -1,5 +1,32 @@
 # Swarm status
 
+## NINETEENTH SWARM COMPLETE — CRC A80 videomap import (T04-36–42)
+
+T04-36–42 are squash-merged on `feature/crc-a80-videomaps` (not `master`). Captain `npm test` / `npm run ci`: **162 test files passed, 1856 tests passed, 4 skipped, 0 failures**. Offline CRC/vNAS STARS A80 conversion into `arp-enu-nm` trainer maps. Runtime still loads JSON only. KDEM stays authored/default. No phase 5. Skip T04-11.
+
+- **Schema (T04-36):** Tool-only `tools/crc-videomap-import`. Internal id = CRC ULID; `starsId` is controller-facing; DCB MAIN 0–5 / submenu 0–31 are layout only.
+- **Converter (T04-37):** GeoJSON → `latLonToNm` `[eastNm, northNm]`. LineString / MultiLineString / Polygon outline / Point text. A→`map`, B→`mapDim`. Stroke-font labels stay polylines.
+- **Groups (T04-38):** Fourteen A80 groups extracted with TCP, MAIN, submenu, duplicates, empty slots. Inventory stays complete when a map is absent from every group.
+- **Pack (T04-39):** 90 assigned A80 STARS maps committed under `src/scenario/video-maps/KATL/` (17 GEO-only). Manifest skippedFeatures 9163 (mostly null-geometry). Attribution in `ATTRIBUTION.md`. Local CRC cache not committed.
+- **Reachability (T04-40):** GEO MAPS / CURRENT / `*D ALL|NONE` walk full inventory. DCB buttons follow selected group (sourceIndex 0). Commands resolve ULID and `starsId`. KDEM keeps numbered slots 1–7.
+- **Render (T04-41):** Existing canvas paths; MPA/MPB brightness; invalid geometry dropped before stroke. Unsimplified full-pack measurement recorded. No culling/lazy load.
+- **Acceptance (T04-42):** `loadPlayableScenario("katl")` loads 90 maps. ARP checks vs scenario thresholds. Docs record frozen CRC paths and pack command. `src/` does not import the converter.
+
+**Merged (squash-merged, captain only, onto `feature/crc-a80-videomaps`):** T04-36 (`b802bfa`), T04-37 (`5e973f7`), T04-38 (`c66f11b`), T04-39 (`0fc6f96`), T04-40 (`736e4a6`), T04-41 (`a7a8618`), T04-42 (`af5391d`). Planning: `fdd5155`, `8d91110`, `037812b`, execution `0d74ff3`.
+
+**Captain judgement calls:**
+- Merge lock was `feature/crc-a80-videomaps`. `master` remains `47d2ad0`. Parent handles push. Did not merge `master`. Did not push.
+- Resume after interrupt: T04-36–39 already on this feature (`b802bfa`, `5e973f7`, `c66f11b`, `0fc6f96`). Wave D/E only. Did not redo A–C.
+- After T04-40, T04-41 `*D ALL` test expects full-inventory toggle (not DCB-only).
+- T04-42 ships operator converter how-to (frozen CRC paths, A80 selection, ARP, dry-run, pack out `src/scenario/video-maps/KATL`, permission, no runtime vNAS) with `tools/crc-videomap-import/docs.test.ts` CI gate.
+- Untracked `.cursor/rules/caveman-ultra.mdc` and `e2e/` left uncommitted.
+
+**Manual leftover:** Chrome KATL MAPS / GEO / BRITE / group walk. skip-with-reason: no visual operator. Automated tests prove load, GEO, `*D`, ARP, brightness. Do not invent a visual pass.
+
+**Product law held:** local CRC only; no runtime vNAS; complete assigned inventory; CRC `starsId` preserved; DCB slots are layout; ARP projection; A/B = `map`/`mapDim`; converted maps committed with attribution; no CRC cache in git; no phase 5.
+
+**Remaining work (next paste of `SWARM.md` with config changed):** merge `feature/crc-a80-videomaps` to `master` when the human asks; phase 5 scoring/replay; T04-11 wind; live `faa:update`; SID *flying* of imported CIFP SIDs.
+
 ## EIGHTEENTH SWARM COMPLETE — CIFP-derived catalog packs (T04-31–35)
 
 T04-31–35 are squash-merged on `master`. Captain `npm test` / `npm run ci`: **150 test files passed, 1764 tests passed, 2 skipped, 0 failures**. Local CIFP converts once into `ProcedureCatalog`; packs are a geographic radius seed plus recursive SID/STAR/approach closure. Runtime still loads JSON only. KDEM stays authored/default. No phase 5. Skip T04-11.

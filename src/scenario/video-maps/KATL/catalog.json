@@ -1,0 +1,637 @@
+{
+  "icao": "KATL",
+  "frame": "arp-enu-nm",
+  "note": "Converted CRC/vNAS STARS A80 videomaps for KATL. Internal id is the CRC ULID; dcbNumber omitted (DCB layout is groups.json). ARP 33.6367,-84.4278638888889. Training/entertainment only. Not NAS-certified.",
+  "maps": [
+    {
+      "id": "01GP6XQB91R44BSYQ5Q0MGSAKW",
+      "file": "01GP6XQB91R44BSYQ5Q0MGSAKW.json",
+      "dcbLabel": "CLASS B",
+      "defaultOn": false,
+      "color": "mapDim"
+    },
+    {
+      "id": "01H8GGP8BSDFMBM50F3MKV4KE6",
+      "file": "01H8GGP8BSDFMBM50F3MKV4KE6.json",
+      "dcbLabel": "CLASS D",
+      "defaultOn": false,
+      "color": "mapDim"
+    },
+    {
+      "id": "01GP6Y4FAAN3CQ94T4XN6FTT4C",
+      "file": "01GP6Y4FAAN3CQ94T4XN6FTT4C.json",
+      "dcbLabel": "MVA",
+      "defaultOn": false,
+      "color": "mapDim"
+    },
+    {
+      "id": "01H8JV8WT7B5YR14FH2ZEV7CHN",
+      "file": "01H8JV8WT7B5YR14FH2ZEV7CHN.json",
+      "dcbLabel": "EMER",
+      "defaultOn": false,
+      "color": "mapDim"
+    },
+    {
+      "id": "01GQ8KW483X8R4V4QSQRWHE2QP",
+      "file": "01GQ8KW483X8R4V4QSQRWHE2QP.json",
+      "dcbLabel": "RWY 10",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8JV0CCV20MF5QM2QHFSFT2S",
+      "file": "01H8JV0CCV20MF5QM2QHFSFT2S.json",
+      "dcbLabel": "T RTE",
+      "defaultOn": false,
+      "color": "mapDim"
+    },
+    {
+      "id": "01H8JV3KARPB1TP8Y19P0D978K",
+      "file": "01H8JV3KARPB1TP8Y19P0D978K.json",
+      "dcbLabel": "T FIXES",
+      "defaultOn": false,
+      "color": "mapDim"
+    },
+    {
+      "id": "01H8GBHT11FK1A1GD0DEJWRNCJ",
+      "file": "01H8GBHT11FK1A1GD0DEJWRNCJ.json",
+      "dcbLabel": "W TAR",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8GBQJ0DD1BN0QR4APY9Y6Z9",
+      "file": "01H8GBQJ0DD1BN0QR4APY9Y6Z9.json",
+      "dcbLabel": "E TAR",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8JV65MEWXQQZK4BZ12WTCT4",
+      "file": "01H8JV65MEWXQQZK4BZ12WTCT4.json",
+      "dcbLabel": "ST CO",
+      "defaultOn": false,
+      "color": "mapDim"
+    },
+    {
+      "id": "01GA7MV414N11N4FWETP3SFPBV",
+      "file": "01GA7MV414N11N4FWETP3SFPBV.json",
+      "dcbLabel": "E DEP",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01GP6Y7FTCAG4JTAVQZDSFNAMD",
+      "file": "01GP6Y7FTCAG4JTAVQZDSFNAMD.json",
+      "dcbLabel": "AE WP F",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8GCY04EQ4AHPJB6K809T35B",
+      "file": "01H8GCY04EQ4AHPJB6K809T35B.json",
+      "dcbLabel": "AW DW N",
+      "defaultOn": false,
+      "color": "mapDim"
+    },
+    {
+      "id": "01GP6Y6EAEB5EJTG1GZD7E22AT",
+      "file": "01GP6Y6EAEB5EJTG1GZD7E22AT.json",
+      "dcbLabel": "AW WP F",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01GQ8KX8SAFMKC7W4VREE0PTJT",
+      "file": "01GQ8KX8SAFMKC7W4VREE0PTJT.json",
+      "dcbLabel": "RWY 28",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01G8YM63HVT055BS84APH6BD4X",
+      "file": "01G8YM63HVT055BS84APH6BD4X.json",
+      "dcbLabel": "W DEP",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01GP6Y9BCEW475ASGWPBZSCVHZ",
+      "file": "01GP6Y9BCEW475ASGWPBZSCVHZ.json",
+      "dcbLabel": "AE WP N",
+      "defaultOn": false,
+      "color": "mapDim"
+    },
+    {
+      "id": "01H8GD3HT5SCM3MQJ6PT1A8D4Y",
+      "file": "01H8GD3HT5SCM3MQJ6PT1A8D4Y.json",
+      "dcbLabel": "AE DW N",
+      "defaultOn": false,
+      "color": "mapDim"
+    },
+    {
+      "id": "01GP6Y8BRNFS4MWSPZJ4GHT4E1",
+      "file": "01GP6Y8BRNFS4MWSPZJ4GHT4E1.json",
+      "dcbLabel": "AW WP N",
+      "defaultOn": false,
+      "color": "mapDim"
+    },
+    {
+      "id": "01GP6Y1DGYY7NC8JJ0M34Z7FTX",
+      "file": "01GP6Y1DGYY7NC8JJ0M34Z7FTX.json",
+      "dcbLabel": "DE WP F",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01GP6XZ5R6SFBVB4QGEHWPN233",
+      "file": "01GP6XZ5R6SFBVB4QGEHWPN233.json",
+      "dcbLabel": "DE WP N",
+      "defaultOn": false,
+      "color": "mapDim"
+    },
+    {
+      "id": "01GP6XZSDJ8SN30FEEXYZ89ZWH",
+      "file": "01GP6XZSDJ8SN30FEEXYZ89ZWH.json",
+      "dcbLabel": "DW WP F",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01GP6XY3KFARFSBBCRYKD08MQE",
+      "file": "01GP6XY3KFARFSBBCRYKD08MQE.json",
+      "dcbLabel": "DW WP N",
+      "defaultOn": false,
+      "color": "mapDim"
+    },
+    {
+      "id": "01GP6XTK75VPEAG48HENXGK82G",
+      "file": "01GP6XTK75VPEAG48HENXGK82G.json",
+      "dcbLabel": "E DU TK",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01GP6XWAD28MARP7YJAX4B8MED",
+      "file": "01GP6XWAD28MARP7YJAX4B8MED.json",
+      "dcbLabel": "W DU TK",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8GEMWXBRWWW2WYMY14NW7VF",
+      "file": "01H8GEMWXBRWWW2WYMY14NW7VF.json",
+      "dcbLabel": "E TP TK",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8GEQEJ80FZMJ8PJR4996VGT",
+      "file": "01H8GEQEJ80FZMJ8PJR4996VGT.json",
+      "dcbLabel": "W TP TK",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8GFS8YV5HMBJ40VK5Y4ZZJS",
+      "file": "01H8GFS8YV5HMBJ40VK5Y4ZZJS.json",
+      "dcbLabel": "E TP SP",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8GFCNY9XYX2F2M6C8R5CMYF",
+      "file": "01H8GFCNY9XYX2F2M6C8R5CMYF.json",
+      "dcbLabel": "E DU NS",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01HA88709392KQ6D97YW4WDJZF",
+      "file": "01HA88709392KQ6D97YW4WDJZF.json",
+      "dcbLabel": "E DIV",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8GFF5AYJ1TV982Q68D7NC2J",
+      "file": "01H8GFF5AYJ1TV982Q68D7NC2J.json",
+      "dcbLabel": "W TP SP",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01HA887092RBGDK23R1SCM57SP",
+      "file": "01HA887092RBGDK23R1SCM57SP.json",
+      "dcbLabel": "W DIV",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8GFVEGAB23KG2HMN8Y9BYTD",
+      "file": "01H8GFVEGAB23KG2HMN8Y9BYTD.json",
+      "dcbLabel": "W DU NS",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01GP6Y2H2TXT4XFBNE0HA88NEB",
+      "file": "01GP6Y2H2TXT4XFBNE0HA88NEB.json",
+      "dcbLabel": "40DME N",
+      "defaultOn": false,
+      "color": "mapDim"
+    },
+    {
+      "id": "01H8GE1GRCTK0ESW5P115V0PM5",
+      "file": "01H8GE1GRCTK0ESW5P115V0PM5.json",
+      "dcbLabel": "W SAT",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8GE0949H9HFSKC3EGJPKXT9",
+      "file": "01H8GE0949H9HFSKC3EGJPKXT9.json",
+      "dcbLabel": "E SAT",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01HAD5PFYK1G9QYYM7J6Y536HW",
+      "file": "01HAD5PFYK1G9QYYM7J6Y536HW.json",
+      "dcbLabel": "RNAVGPS",
+      "defaultOn": false,
+      "color": "mapDim"
+    },
+    {
+      "id": "01H8JT6QPS1W5X6Q8H8Y2S876M",
+      "file": "01H8JT6QPS1W5X6Q8H8Y2S876M.json",
+      "dcbLabel": "RNP 3R",
+      "defaultOn": false,
+      "color": "mapDim"
+    },
+    {
+      "id": "01H8JSZ878SPKFH48VXSS07X71",
+      "file": "01H8JSZ878SPKFH48VXSS07X71.json",
+      "dcbLabel": "PDK FIN",
+      "defaultOn": false,
+      "color": "mapDim"
+    },
+    {
+      "id": "01H8JT9HRZ0RPZMEH8R5NGZGCF",
+      "file": "01H8JT9HRZ0RPZMEH8R5NGZGCF.json",
+      "dcbLabel": "RNP 21L",
+      "defaultOn": false,
+      "color": "mapDim"
+    },
+    {
+      "id": "01H8GFZDSHP3M4KXZ7EWJ9YA7J",
+      "file": "01H8GFZDSHP3M4KXZ7EWJ9YA7J.json",
+      "dcbLabel": "WIGLE",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8GC94ZQXCVBWS617DN8BGS8",
+      "file": "01H8GC94ZQXCVBWS617DN8BGS8.json",
+      "dcbLabel": "ZTLEAST",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8GCGMCM0F998E3ZB370EG82",
+      "file": "01H8GCGMCM0F998E3ZB370EG82.json",
+      "dcbLabel": "ZTLWEST",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8JSPBM760BJ1BXXEJ2C31FY",
+      "file": "01H8JSPBM760BJ1BXXEJ2C31FY.json",
+      "dcbLabel": "STAR F",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8JSXT29SARCF4JNRDTFTAVZ",
+      "file": "01H8JSXT29SARCF4JNRDTFTAVZ.json",
+      "dcbLabel": "STAR N",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01GP6Y38GCS0BQSWSVRDK7JH5C",
+      "file": "01GP6Y38GCS0BQSWSVRDK7JH5C.json",
+      "dcbLabel": "40DME F",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8GDZH6KWGSTND0PPSASGC9D",
+      "file": "01H8GDZH6KWGSTND0PPSASGC9D.json",
+      "dcbLabel": "RNPE",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8GDVYR88K7FPM04GFV70QKE",
+      "file": "01H8GDVYR88K7FPM04GFV70QKE.json",
+      "dcbLabel": "RNPW",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8JV7KWJ2WTE505SSBRB0HEF",
+      "file": "01H8JV7KWJ2WTE505SSBRB0HEF.json",
+      "dcbLabel": "EOVM",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01HABHSSD5K3JMN2DGX7NE87JR",
+      "file": "01HABHSSD5K3JMN2DGX7NE87JR.json",
+      "dcbLabel": "MGE TDW",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01HABH3NFBS9Q53YE6RE174EV1",
+      "file": "01HABH3NFBS9Q53YE6RE174EV1.json",
+      "dcbLabel": "RYY TDW",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01HAQQSTB05TX569WVQVC73XD1",
+      "file": "01HAQQSTB05TX569WVQVC73XD1.json",
+      "dcbLabel": "AHN TDW",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01HABD9MDFY4YS4G9068M4A9AP",
+      "file": "01HABD9MDFY4YS4G9068M4A9AP.json",
+      "dcbLabel": "FTY TDW",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01HAAH0X59366P3QVDR9GVRY6V",
+      "file": "01HAAH0X59366P3QVDR9GVRY6V.json",
+      "dcbLabel": "TDW",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01HAQMT8X7SA8J75R5V5YC1D81",
+      "file": "01HAQMT8X7SA8J75R5V5YC1D81.json",
+      "dcbLabel": "CSG TDW",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01HAAT6CHMDQ5VA7396JT9SA5T",
+      "file": "01HAAT6CHMDQ5VA7396JT9SA5T.json",
+      "dcbLabel": "21L",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01HAAN60AP0SS5K46D4T7A43GZ",
+      "file": "01HAAN60AP0SS5K46D4T7A43GZ.json",
+      "dcbLabel": "PDK TDW",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01HAAN6X3E0DWSRETPY4BJ8RDH",
+      "file": "01HAAN6X3E0DWSRETPY4BJ8RDH.json",
+      "dcbLabel": "LZU TDW",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8JTC00QTYG5FGZF1EC19XPR",
+      "file": "01H8JTC00QTYG5FGZF1EC19XPR.json",
+      "dcbLabel": "AR E DU",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8JTFT3VVP19QPS857B9TFBT",
+      "file": "01H8JTFT3VVP19QPS857B9TFBT.json",
+      "dcbLabel": "AR E TR",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8JTH6AK9Q9Y9F361EKP1JMB",
+      "file": "01H8JTH6AK9Q9Y9F361EKP1JMB.json",
+      "dcbLabel": "AR W DU",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01H8JTGH5SXG3KP4R356VRA8WH",
+      "file": "01H8JTGH5SXG3KP4R356VRA8WH.json",
+      "dcbLabel": "AR W TR",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01GQ8KXV5B2PRN0T57YVDNQ17M",
+      "file": "01GQ8KXV5B2PRN0T57YVDNQ17M.json",
+      "dcbLabel": "RWY 9L",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01GQ8KYC91383MQCDPS17MZTYV",
+      "file": "01GQ8KYC91383MQCDPS17MZTYV.json",
+      "dcbLabel": "RWY 27R",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01GQ8KYYVXDFRA1XPFWMNNB9GQ",
+      "file": "01GQ8KYYVXDFRA1XPFWMNNB9GQ.json",
+      "dcbLabel": "RWY 26L",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01GQ8KZFK0VYY8MR2JBCA25FJG",
+      "file": "01GQ8KZFK0VYY8MR2JBCA25FJG.json",
+      "dcbLabel": "RWY 8R",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01GQ8JWDJN686XBJPF5F80MBV1",
+      "file": "01GQ8JWDJN686XBJPF5F80MBV1.json",
+      "dcbLabel": "W DUALS",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01GQ8JDTB4CR17E3DG782BS9BA",
+      "file": "01GQ8JDTB4CR17E3DG782BS9BA.json",
+      "dcbLabel": "E DUALS",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01GPCY49WQG4CC4SKCK112GF3F",
+      "file": "01GPCY49WQG4CC4SKCK112GF3F.json",
+      "dcbLabel": "ATL W",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01GPCXN5HXKCM83EVSS3KJZZXE",
+      "file": "01GPCXN5HXKCM83EVSS3KJZZXE.json",
+      "dcbLabel": "ATL E",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01J7D232JHW3XBZ26CEW5X3N0R",
+      "file": "01J7D232JHW3XBZ26CEW5X3N0R.json",
+      "dcbLabel": "PDKTDM",
+      "defaultOn": true,
+      "color": "map"
+    },
+    {
+      "id": "01J7D232JFDAZ0TB9MTFTKNCJR",
+      "file": "01J7D232JFDAZ0TB9MTFTKNCJR.json",
+      "dcbLabel": "LZUTDM",
+      "defaultOn": true,
+      "color": "map"
+    },
+    {
+      "id": "01J7D232JBVXFQJHW7RBJF9866",
+      "file": "01J7D232JBVXFQJHW7RBJF9866.json",
+      "dcbLabel": "FTYTDM",
+      "defaultOn": true,
+      "color": "map"
+    },
+    {
+      "id": "01J7D232JFHM7T8G7W02ADGK1F",
+      "file": "01J7D232JFHM7T8G7W02ADGK1F.json",
+      "dcbLabel": "MGETDM",
+      "defaultOn": true,
+      "color": "map"
+    },
+    {
+      "id": "01J7D232JHYT7ZXM83NC1HKD94",
+      "file": "01J7D232JHYT7ZXM83NC1HKD94.json",
+      "dcbLabel": "RYYTDM",
+      "defaultOn": true,
+      "color": "map"
+    },
+    {
+      "id": "01J7D232JAD8JHTMZPTQYH0JCR",
+      "file": "01J7D232JAD8JHTMZPTQYH0JCR.json",
+      "dcbLabel": "ATLTDM",
+      "defaultOn": true,
+      "color": "map"
+    },
+    {
+      "id": "01J7D232JBJ82Y9NPZ30NY9KM6",
+      "file": "01J7D232JBJ82Y9NPZ30NY9KM6.json",
+      "dcbLabel": "AHNTDM",
+      "defaultOn": true,
+      "color": "map"
+    },
+    {
+      "id": "01J7D232JFCGNQXZDAS6WQSZHK",
+      "file": "01J7D232JFCGNQXZDAS6WQSZHK.json",
+      "dcbLabel": "MCNTDM",
+      "defaultOn": true,
+      "color": "map"
+    },
+    {
+      "id": "01J7D232JJH6D17MK1PBVGTFNT",
+      "file": "01J7D232JJH6D17MK1PBVGTFNT.json",
+      "dcbLabel": "WRBTDM",
+      "defaultOn": true,
+      "color": "map"
+    },
+    {
+      "id": "01J7D232JC5DS97G9MNJG6HZ7M",
+      "file": "01J7D232JC5DS97G9MNJG6HZ7M.json",
+      "dcbLabel": "CSGTDM",
+      "defaultOn": true,
+      "color": "map"
+    },
+    {
+      "id": "01J7D232JF7B0M8BPVX2RAKYQZ",
+      "file": "01J7D232JF7B0M8BPVX2RAKYQZ.json",
+      "dcbLabel": "LSFTDM",
+      "defaultOn": true,
+      "color": "map"
+    },
+    {
+      "id": "01J7D232JAJ0BN9M8MS6Z76ER0",
+      "file": "01J7D232JAJ0BN9M8MS6Z76ER0.json",
+      "dcbLabel": "AUOTDM",
+      "defaultOn": true,
+      "color": "map"
+    },
+    {
+      "id": "01KREW4R6Z7X0CCMGXE6Q4DGHQ",
+      "file": "01KREW4R6Z7X0CCMGXE6Q4DGHQ.json",
+      "dcbLabel": "RWY 26R",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01KREXMHSCDZQ5MFXENFB2C3BM",
+      "file": "01KREXMHSCDZQ5MFXENFB2C3BM.json",
+      "dcbLabel": "RWY 27L",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01KREXP92SN7J2FKFP9VHYK093",
+      "file": "01KREXP92SN7J2FKFP9VHYK093.json",
+      "dcbLabel": "RWY 8L",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01KREXRD4VSK7P6GPSMJZWM6EE",
+      "file": "01KREXRD4VSK7P6GPSMJZWM6EE.json",
+      "dcbLabel": "RWY 9R",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01KREYJNM6863JHRZDFZ3PAYFC",
+      "file": "01KREYJNM6863JHRZDFZ3PAYFC.json",
+      "dcbLabel": "EFINALS",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01KREYH4ZRK8Z7E8M8RSRNT4V8",
+      "file": "01KREYH4ZRK8Z7E8M8RSRNT4V8.json",
+      "dcbLabel": "WFINALS",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01KYQRGJFJSQXSW1KW3GJR0235",
+      "file": "01KYQRGJFJSQXSW1KW3GJR0235.json",
+      "dcbLabel": "EASTNTZ",
+      "defaultOn": false,
+      "color": "map"
+    },
+    {
+      "id": "01KXKTAGDTEKX1N1P6H6V0PYS8",
+      "file": "01KXKTAGDTEKX1N1P6H6V0PYS8.json",
+      "dcbLabel": "WESTNTZ",
+      "defaultOn": false,
+      "color": "map"
+    }
+  ]
+}

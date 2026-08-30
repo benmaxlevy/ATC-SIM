@@ -5,6 +5,7 @@
  */
 
 import { formatAltitudeHundreds } from "./datablock";
+import { isVideoMapOn } from "./dcbFunctions";
 import { buildSystemListLines, rewriteFixForList, type ListFormatter } from "./listFormatter";
 import type { ScopeView } from "./scopeView";
 
@@ -156,12 +157,12 @@ export function buildVideoMapsListLines(
   if (loadedMaps.length > 0) {
     for (let i = 0; i < loadedMaps.length; i++) {
       const map = loadedMaps[i]!;
-      const active = view.mapVisibility.get(map.id) === true;
+      const active = isVideoMapOn(view, map.id);
       if (category === "CURRENT" && !active) {
         continue;
       }
       entries.push({
-        id: i + 1,
+        id: map.starsId ?? map.dcbNumber ?? i + 1,
         shortName: map.dcbLabel || map.name || `MAP${i + 1}`,
         fullName: map.name || map.dcbLabel || `Map ${i + 1}`,
         active,

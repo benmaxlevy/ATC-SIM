@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { loadVideoMapGroups, loadVideoMapSet } from "@scenario";
 import { createScopeView } from "./scopeView";
 import {
   buildCoordinationListLines,
@@ -109,5 +110,27 @@ describe("coordinationList", () => {
     const view = createScopeView();
     const lines = buildVideoMapsListLines(view, "ALL");
     expect(lines[0]).toContain("GEOGRAPHIC MAPS");
+  });
+
+  it("T04-40 — GEOGRAPHIC MAPS lists complete KATL inventory by starsId", () => {
+    const view = createScopeView(0, 0, {
+      digitalMap: {
+        rangeRings: { intervalNm: 5, maxNm: 60 },
+        loadedVideoMaps: loadVideoMapSet("KATL"),
+        videoMapGroups: loadVideoMapGroups("KATL"),
+      },
+    });
+    const lines = buildVideoMapsListLines(view, "GEO", 100);
+    expect(
+      lines.filter((line) => /^\s*[> ]\s+\d+/.test(line) || /136/.test(line)).length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(lines.some((line) => line.includes("136") && line.includes("40DME F"))).toBe(true);
+    expect(lines.some((line) => line.includes("01GP6Y38GCS0BQSWSVRDK7JH5C"))).toBe(false);
+    const full = buildVideoMapsListLines(view, "GEO", 200);
+    const mapRows = full.filter(
+      (line) => /40DME F|MVA|CLASS B/.test(line) || /^\s*[> ]\s+\d+\s/.test(line),
+    );
+    expect(full.length).toBeGreaterThanOrEqual(91);
+    expect(mapRows.length).toBeGreaterThanOrEqual(90);
   });
 });

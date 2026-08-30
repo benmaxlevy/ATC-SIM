@@ -1,9 +1,9 @@
 /**
  * Analog: CRC STARS DCB RANGE / PLACE CNTR / OFF CNTR / RR / PLACE RR / RR CNTR /
  * LDR DIR / LDR / MAPS / GEO MAPS / CURRENT / WX / CHAR SIZE / BRITE (R07).
- * Trainer delta: numbered video-map catalog (`dcbLabel`), slots 1–30 (empty
- * numbers are disabled cells, not invented geometry), GEO MAPS / CURRENT on-PPI
- * lists, WX1–4 disabled chrome with no precipitation. Discrete **range**
+ * Trainer delta: numbered video-map catalog (`dcbLabel`) or CRC map-group
+ * layout. GEO MAPS / CURRENT / *D ALL iterate the complete loaded inventory,
+ * including maps absent from DCB groups. Empty DCB slots stay disabled. WX1–4
  * presets, generated **range rings** (2/5/10 NM, PLACE RR origin in world NM),
  * **leader** L1–L9 direction spinner plus discrete length 0/24/36/48 px,
  * CHAR SIZE per subsystem (DATA BLOCKS / LISTS / DCB / TOOLS / POS) on IBM
@@ -17,7 +17,7 @@
  */
 
 import type { World } from "@core";
-import type { LoadedVideoMap } from "@scenario";
+import type { LoadedVideoMap, VideoMapGroup, VideoMapGroupSet, VideoMapGroupSlot } from "@scenario";
 import {
   CHAR_SIZE_STEPS_PX,
   DCB_CHAR_SIZE_STEPS_PX,
@@ -50,8 +50,18 @@ export const DCB_LEADER_DIRS: LeaderDir[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 /** CRC analog numbered MAPS slots. Trainer catalog binds dcbNumber; unused stay empty. */
 export const DCB_MAP_SLOT_COUNT = 32;
-/** MAIN quick video-map toggles (catalog 1–6). */
+/** MAIN quick video-map toggles (catalog 1–6 / group MAIN). */
 export const DCB_QUICK_MAP_COUNT = 6;
+/** Group submenu slots start after MAIN 1–6 (`*D 7` is submenu[0]). */
+export const DCB_GROUP_SUBMENU_SLOT_START = DCB_QUICK_MAP_COUNT + 1;
+/** MAIN 6 + submenu 32. */
+export const DCB_GROUP_SLOT_COUNT = DCB_QUICK_MAP_COUNT + DCB_MAP_SLOT_COUNT;
+
+/** Optional layout for `*D` / `M` tokens when map groups are loaded. */
+export interface VideoMapTokenLayout {
+  groups?: VideoMapGroupSet;
+  selectedGroupId?: string | null;
+}
 
 export function snapRrInterval(nm: number): RrIntervalNm {
   for (const step of RR_KEYBOARD_INTERVALS_NM) {
@@ -83,8 +93,92 @@ export function initialMapVisibility(
   return vis;
 }
 
+function hasDcbNumber(map: LoadedVideoMap): map is LoadedVideoMap & { dcbNumber: number } {
+  return map.dcbNumber !== undefined;
+}
+
+/** Complete loaded inventory. GEO / *D ALL / CURRENT iterate this, not DCB slots. */
+export function loadedCatalogMaps(view: ScopeView): LoadedVideoMap[] {
+  return [...(view.digitalMap.loadedVideoMaps ?? [])];
+}
+
 export function dcbCatalogMaps(view: ScopeView): LoadedVideoMap[] {
-  return [...(view.digitalMap.loadedVideoMaps ?? [])].sort((a, b) => a.dcbNumber - b.dcbNumber);
+  return loadedCatalogMaps(view)
+    .filter(hasDcbNumber)
+    .sort((a, b) => a.dcbNumber - b.dcbNumber);
+}
+
+/** First group by `sourceIndex`. No A80 id hardcode. */
+export function defaultSelectedMapGroupId(groups: VideoMapGroupSet | undefined): string | null {
+  if (groups === undefined || groups.groups.length === 0) {
+    return null;
+  }
+  const ordered = [...groups.groups].sort((a, b) => a.sourceIndex - b.sourceIndex);
+  return ordered[0]!.id;
+}
+
+export function selectedVideoMapGroup(view: ScopeView): VideoMapGroup | undefined {
+  const groups = view.digitalMap.videoMapGroups;
+  if (groups === undefined || groups.groups.length === 0) {
+    return undefined;
+  }
+  const selectedId = view.selectedMapGroupId;
+  if (selectedId) {
+    const hit = groups.groups.find((group) => group.id === selectedId);
+    if (hit) {
+      return hit;
+    }
+  }
+  const fallbackId = defaultSelectedMapGroupId(groups);
+  return groups.groups.find((group) => group.id === fallbackId);
+}
+
+export function videoMapTokenLayout(view: ScopeView): VideoMapTokenLayout {
+  const groups = view.digitalMap.videoMapGroups;
+  if (groups === undefined) {
+    return {};
+  }
+  return { groups, selectedGroupId: view.selectedMapGroupId };
+}
+
+function groupById(
+  groups: VideoMapGroupSet,
+  selectedGroupId: string | null | undefined,
+): VideoMapGroup | undefined {
+  if (selectedGroupId) {
+    const hit = groups.groups.find((group) => group.id === selectedGroupId);
+    if (hit) {
+      return hit;
+    }
+  }
+  const fallbackId = defaultSelectedMapGroupId(groups);
+  return groups.groups.find((group) => group.id === fallbackId);
+}
+
+function slotFromGroup(group: VideoMapGroup, slot: number): VideoMapGroupSlot | undefined {
+  if (slot >= 1 && slot <= DCB_QUICK_MAP_COUNT) {
+    return group.main[slot - 1];
+  }
+  if (slot >= DCB_GROUP_SUBMENU_SLOT_START && slot <= DCB_GROUP_SLOT_COUNT) {
+    return group.submenu[slot - DCB_GROUP_SUBMENU_SLOT_START];
+  }
+  return undefined;
+}
+
+function mapForGroupSlot(
+  maps: readonly LoadedVideoMap[],
+  slot: VideoMapGroupSlot | undefined,
+): LoadedVideoMap | undefined {
+  if (slot === undefined || slot.starsId === null || slot.mapId === undefined) {
+    return undefined;
+  }
+  return maps.find((map) => map.id === slot.mapId);
+}
+
+/** MAPS submenu cell numbers: 1–32 (KDEM dcbNumber) or 7–38 (group submenu). */
+export function dcbMapsPageSlotNumbers(view: ScopeView): number[] {
+  const start = selectedVideoMapGroup(view) ? DCB_GROUP_SUBMENU_SLOT_START : 1;
+  return Array.from({ length: DCB_MAP_SLOT_COUNT }, (_, i) => start + i);
 }
 
 export function videoMapByRole(view: ScopeView, role: VideoMapRole): LoadedVideoMap | undefined {
@@ -120,24 +214,45 @@ function syncRoleFlag(view: ScopeView, map: LoadedVideoMap): void {
 }
 
 /**
- * Catalog lookup for preview `*D` / `M` tokens: DCB slot `1`–`32` or map id
- * (`RWY`, `LOC27`, `DEM1_27`, …), case-insensitive. Empty / unknown → undefined.
+ * Catalog lookup for preview `*D` / `M` tokens.
+ * Matches ULID `id`, `dcbLabel`, DCB layout slot, and CRC `starsId`.
+ * Numeric tokens prefer CRC `starsId` so they match GEO MAPS, then fall back
+ * to legacy KDEM `dcbNumber` or a selected group slot.
  */
 export function resolveVideoMapToken(
   maps: readonly LoadedVideoMap[],
   token: string,
+  layout?: VideoMapTokenLayout,
 ): LoadedVideoMap | undefined {
   const normalized = token.trim().toUpperCase();
   if (normalized.length === 0) {
     return undefined;
   }
-  if (/^\d+$/.test(normalized)) {
-    const slot = Number(normalized);
-    return maps.find((map) => map.dcbNumber === slot);
+  const byId = maps.find((map) => map.id.toUpperCase() === normalized);
+  if (byId) {
+    return byId;
   }
-  return maps.find(
-    (map) => map.id.toUpperCase() === normalized || map.dcbLabel.toUpperCase() === normalized,
-  );
+  if (/^\d+$/.test(normalized)) {
+    const n = Number(normalized);
+    const byStars = maps.find((map) => map.starsId === n);
+    if (byStars) {
+      return byStars;
+    }
+    const groups = layout?.groups;
+    if (groups !== undefined) {
+      const group = groupById(groups, layout?.selectedGroupId);
+      const slotted = mapForGroupSlot(maps, group ? slotFromGroup(group, n) : undefined);
+      if (slotted) {
+        return slotted;
+      }
+    } else {
+      const byDcb = maps.find((map) => map.dcbNumber === n);
+      if (byDcb) {
+        return byDcb;
+      }
+    }
+  }
+  return maps.find((map) => map.dcbLabel.toUpperCase() === normalized);
 }
 
 /** MAPS submenu toggle keyed by catalog id. Role maps share RWY/LOC/CST flags. */
@@ -168,10 +283,20 @@ export function syncRoleMapVisibility(view: ScopeView, role: VideoMapRole, on: b
 }
 
 export function formatDcbMapLabel(map: LoadedVideoMap): string {
+  if (map.starsId !== undefined) {
+    return `${map.starsId} ${map.dcbLabel}`;
+  }
+  if (map.dcbNumber === undefined) {
+    return map.dcbLabel;
+  }
   return `${map.dcbNumber} ${map.dcbLabel}`;
 }
 
 export function videoMapByDcbNumber(view: ScopeView, slot: number): LoadedVideoMap | undefined {
+  const group = selectedVideoMapGroup(view);
+  if (group) {
+    return mapForGroupSlot(loadedCatalogMaps(view), slotFromGroup(group, slot));
+  }
   return dcbCatalogMaps(view).find((map) => map.dcbNumber === slot);
 }
 
@@ -196,7 +321,7 @@ export function clearAllVideoMaps(view: ScopeView): void {
  * Syncs RWY/LOC/CST role flags and drops the map stroke cache.
  */
 export function setAllVideoMaps(view: ScopeView, enabled: boolean): void {
-  for (const map of dcbCatalogMaps(view)) {
+  for (const map of loadedCatalogMaps(view)) {
     if (map.role === "coastline" && view.digitalMap.coastline?.enabled !== true) {
       continue;
     }
@@ -208,9 +333,9 @@ export function setAllVideoMaps(view: ScopeView, enabled: boolean): void {
 
 export type MapListKind = "geo" | "current";
 
-/** GEO MAPS = every catalog video map + ON/OFF. CURRENT = maps that are on. */
+/** GEO MAPS = every loaded video map + ON/OFF. CURRENT = maps that are on. */
 export function buildMapListLines(view: ScopeView, kind: MapListKind): string[] {
-  const maps = dcbCatalogMaps(view);
+  const maps = loadedCatalogMaps(view);
   if (kind === "geo") {
     return maps.map((map) => {
       const state = isVideoMapOn(view, map.id) ? "ON" : "OFF";

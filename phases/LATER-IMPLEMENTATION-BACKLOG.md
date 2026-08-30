@@ -396,13 +396,15 @@ writes the existing ICAO `files` layout. `--sids` / `--stars` /
 records without writing. `extract-katl-slice.ts` is a thin default-flag
 wrapper (`--airport KATL`, `--radius 40`) that only calls generic pack.
 `src/scenario/data/katl/` is the committed trainer catalog pack; west/east
-scenario JSON is registered in playable inventory without a video map set.
-Authored trainer MVA is a uniform 3000 ft floor (not FAA source data).
+scenario JSON is registered in playable inventory. Video maps are a separate
+CRC conversion pack loaded through generic `loadVideoMapSet("KATL")` (T04-39),
+not CIFP-emitted. Authored trainer MVA is a uniform 3000 ft floor (not FAA
+source data).
 
 Deliberately missing:
 
-- **KATL video maps, ATPA, telephony.** Catalog JSON and authored
-  scenario/spawn files are separate. Maps are not CIFP-emitted. Never point
+- **KATL ATPA, telephony.** Catalog JSON and authored scenario/spawn files
+  are separate. Maps are not CIFP-emitted (CRC pack is T04-39). Never point
   KATL at KDEM maps.
 - **Operational / FAA KATL MVA.** Shipped chart is a uniform 3000 ft trainer
   box over the ±60 NM training area, not source sector minima.
@@ -422,7 +424,7 @@ Constraints later work must keep:
 
 Visible now: every listed playable scenario loads its catalog through
 generic `loadCatalog`. Map-backed entries also load `loadVideoMapSet`; KATL
-keeps empty `videoMaps`. KDEM remains the authored default. `loadCatalog(dir)`
+uses `videoMapSet: "KATL"` (T04-39 CRC pack). KDEM remains the authored default. `loadCatalog(dir)`
 is unchanged. CIFP-derived packs interchange with authored catalogs via
 `parseCatalogFiles` (same parser). Synthetic second-facility testdata
 (`testdata/catalog-packs/kbbb/`) and `tools/cifp-import/pack.integration.test.ts`
@@ -436,8 +438,6 @@ not FAA source data.
 
 Deliberately missing:
 
-- **KATL video maps.** Do not invent a national ATL dump. Never point KATL at
-  KDEM maps.
 - **`faa:update` live download.** Input stays a local path. CI and this
   ticket did not regenerate from an official FAA cycle (no authorized
   local CIFP in the environment). Record a skip-with-reason; do not claim
@@ -455,6 +455,33 @@ Constraints later work must keep:
 - KDEM remains the authored default and boots without CIFP;
 - radius is seed only; closure keeps out-of-radius procedure refs;
 - maps, spawns, MVA, ATPA, and telephony stay authored, not CIFP-emitted.
+
+### KATL A80 video maps (T04-36–42)
+
+Visible now: committed trainer pack under `src/scenario/video-maps/KATL/`
+(catalog, per-map JSON, manifest, `groups.json` sidecar, attribution).
+Playable `katl.json` / `katl-08.json` set `videoMapSet: "KATL"` and load
+through generic `loadVideoMapSet` / `loadVideoMapGroups`. Catalog `id` is
+the CRC ULID; `starsId` is DCB/command identity; `dcbNumber` is omitted.
+Default group is `groups.json` `sourceIndex` 0. GEO MAPS lists all 90 maps,
+including 17 GEO-only ULIDs in `mapsAbsentFromGroups`. `*D ALL` / `*D NONE` /
+CLR ALL / CURRENT walk the full inventory. CRC A/B is `map` / `mapDim`.
+Runtime does not read CRC or import the converter.
+
+Deliberately missing:
+
+- **Chrome visual leftover (T04-41 / T04-42).** Automated tests pass. The
+  operator MAPS / GEO / BRITE walk is `test.skip` skip-with-reason (no
+  visual operator). Do not invent a pass.
+- **`faa:update` live download, SID flying, RNAV / hold / RF FMS.** CIFP
+  catalog rows stay as T04-35. Unsupported path terminators stay diagnostics.
+
+Constraints later work must keep:
+
+- no `if (icao === "KATL")` runtime branch; KDEM stays the authored default;
+- do not densify CRC ULID / `starsId` identity to 1–30;
+- do not commit local CRC cache JSON/GeoJSON;
+- `src/` never imports `tools/crc-videomap-import`; no runtime vNAS fetch.
 
 ## Explicit boundary
 

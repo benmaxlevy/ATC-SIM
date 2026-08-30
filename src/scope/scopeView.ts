@@ -40,6 +40,7 @@ import {
   type ScopeCamera,
 } from "./camera";
 import {
+  defaultSelectedMapGroupId,
   initialMapVisibility,
   snapRrInterval,
   syncRoleMapVisibility,
@@ -133,6 +134,11 @@ export interface ScopeView {
   geoMapsListOn: boolean;
   /** CURRENT on-PPI list of video maps that are on. Display only. */
   currentMapsListOn: boolean;
+  /**
+   * Selected DCB map group id. Trainer is a single TCP. Defaults to the first
+   * group (`sourceIndex` 0). Data-driven; never an A80 hardcode.
+   */
+  selectedMapGroupId: string | null;
   /** One DCB along a PPI edge. CRC analog; default TOP. */
   dcbDock: DcbDock;
   digitalMap: DigitalMap;
@@ -282,6 +288,7 @@ export function createScopeView(
     dcbSpinner: idleDcbSpinner(),
     geoMapsListOn: false,
     currentMapsListOn: false,
+    selectedMapGroupId: defaultSelectedMapGroupId(digitalMap.videoMapGroups),
     dcbDock: "TOP",
     digitalMap,
     mapCache: null,

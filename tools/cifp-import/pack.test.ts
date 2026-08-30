@@ -285,13 +285,14 @@ function walkTs(dir: string, acc: string[] = []): string[] {
   return acc;
 }
 
-test("AC5 — KDEM stays default and KATL video maps stay absent", () => {
+test("AC5 — KDEM stays default; KATL maps are a separate CRC pack not CIFP", () => {
   const playable = JSON.parse(
     readFileSync(join(repoRoot, "src/scenario/playable-scenarios.json"), "utf8"),
   ) as { scenarios: { airportIcao: string; default: boolean }[] };
   expect(playable.scenarios.some((row) => row.default && row.airportIcao === "KDEM")).toBe(true);
   expect(existsSync(join(repoRoot, "src/scenario/data/katl/catalog.json"))).toBe(true);
-  expect(existsSync(join(repoRoot, "src/scenario/video-maps/KATL"))).toBe(false);
+  expect(existsSync(join(repoRoot, "src/scenario/video-maps/KATL/catalog.json"))).toBe(true);
+  expect(existsSync(join(repoRoot, "src/scenario/video-maps/KATL/ATTRIBUTION.md"))).toBe(true);
 });
 
 test("AC4 — pack testdata is synthetic and src does not import the tool", () => {

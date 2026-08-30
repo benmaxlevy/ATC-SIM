@@ -159,7 +159,7 @@ Coverage:
 
 - Playable inventory lists KDEM (default) and KATL west/east configurations.
   Listed scenarios load catalog through generic `loadCatalog`. Map-backed
-  entries load video maps; KATL keeps empty `videoMaps` until a map set exists.
+  entries load video maps; KATL uses generic `videoMapSet: "KATL"` (T04-39).
   Authored trainer MVA is a uniform 3000 ft floor (not FAA source data).
 - `testdata/catalog-packs/kbbb/` is a synthetic second-facility pack (not
   KDEM, not KATL). Loader tests parse it through `parseCatalogFiles`.

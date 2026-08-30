@@ -1,0 +1,93 @@
+{
+  "id": "SYN",
+  "videoMaps": [
+    {
+      "id": "01GRPMISS00000000000000001",
+      "name": "MAP 1",
+      "starsId": 1,
+      "tags": ["STARS", "A80"]
+    },
+    {
+      "id": "01GRPMISS0000000000000003A",
+      "name": "MAP 3A",
+      "starsId": 3,
+      "tags": ["STARS", "A80"]
+    },
+    {
+      "id": "01GRPMISS0000000000000003B",
+      "name": "MAP 3B",
+      "starsId": 3,
+      "tags": ["STARS", "A80"]
+    },
+    {
+      "id": "01GRPMISS00000000000000136",
+      "name": "MAP 136",
+      "starsId": 136,
+      "tags": ["STARS", "A80"]
+    }
+  ],
+  "facility": {
+    "childFacilities": [
+      {
+        "id": "A80",
+        "name": "Ambiguous TRACON",
+        "type": "Tracon",
+        "starsConfiguration": {
+          "videoMapIds": [
+            "01GRPMISS00000000000000001",
+            "01GRPMISS0000000000000003A",
+            "01GRPMISS0000000000000003B",
+            "01GRPMISS00000000000000136"
+          ],
+          "mapGroups": [
+            {
+              "id": "01GRPDIAG000000000000001",
+              "tcps": ["1A"],
+              "mapIds": [
+                1,
+                3,
+                999,
+                null,
+                null,
+                null,
+                3,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                888
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

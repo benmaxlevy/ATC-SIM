@@ -13,7 +13,8 @@
  * ATPA cells). FILTER (altitude)
  * stays on MAIN. SSA FILTER hides existing SSA lines; GI TEXT toggles authored
  * facility lines (not METAR HTTP). HIST/PTL cells live on AUX (F7/F8 still work).
- * MAIN quick video maps 1–6; MAPS submenu slots 1–30 (empty slots disabled).
+ * MAIN quick video maps 1–6; MAPS submenu slots 1–32 (KDEM) or group
+ * submenu 7–38. Empty slots disabled. Group cells show CRC starsId plus short name.
  * WX1–6 are disabled chrome (no precipitation). Disabled CRDA cell on SSA FILTER
  * is chrome only. PREF is 8 local slots (not a NAS host). MAIN PREF shows the
  * active set name. No CSA / FMA (R06). Discrete **range** presets only.
@@ -57,6 +58,7 @@ import {
   DCB_QUICK_MAP_COUNT,
   DCB_ACTION_FLASH_MS,
   dcbActionCapPressed,
+  dcbMapsPageSlotNumbers,
   HISTORY_DOT_COUNTS,
   LEADER_LENGTH_STEPS_PX,
   PTL_MINUTE_PRESETS,
@@ -701,8 +703,13 @@ function mapSlotClick(view: ScopeView, onChange: () => void, slot: number): void
 function renderMapSlot(view: ScopeView, onChange: () => void, slot: number) {
   const map = videoMapByDcbNumber(view, slot);
   const enabled = isDcbMapSlotEnabled(view, slot);
+  const identity =
+    map === undefined
+      ? String(slot)
+      : map.starsId !== undefined
+        ? String(map.starsId)
+        : String(map.dcbNumber ?? slot);
   const label = map?.dcbLabel ?? "";
-  const labelLines = label ? label.split(/[\s_]+/) : [];
   return (
     <DcbCell
       key={slot}
@@ -714,16 +721,8 @@ function renderMapSlot(view: ScopeView, onChange: () => void, slot: number) {
       disabled={!enabled}
       onClick={() => mapSlotClick(view, onChange, slot)}
     >
-      <span className="dcb-cell-line">{slot}</span>
-      {labelLines.length > 0 ? (
-        labelLines.map((line, idx) => (
-          <span className="dcb-cell-line" key={idx}>
-            {line}
-          </span>
-        ))
-      ) : (
-        <span className="dcb-cell-line" />
-      )}
+      <span className="dcb-cell-line">{identity}</span>
+      <span className="dcb-cell-line">{label}</span>
     </DcbCell>
   );
 }
@@ -2535,35 +2534,23 @@ function renderMaps(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Cols 2..17 (Slots 1..32) */}
-      {Array.from({ length: 16 }, (_, i) => {
-        const col = i + 2;
-        const slotRow1 = i * 2 + 1;
-        const slotRow2 = i * 2 + 2;
-        return [
+      {/* Cols 2..17 (Slots 1..32 KDEM, or group submenu 7–38) */}
+      {dcbMapsPageSlotNumbers(view).map((slot, i) => {
+        const col = Math.floor(i / 2) + 2;
+        const row = (i % 2) + 1;
+        return (
           <div
-            key={slotRow1}
+            key={slot}
             className="dcb-main-grid-cell"
-            data-dcb-layout-id={`map-slot-${slotRow1}`}
-            data-dcb-row={1}
+            data-dcb-layout-id={`map-slot-${slot}`}
+            data-dcb-row={row}
             data-dcb-column={col}
             data-dcb-row-span={1}
-            style={{ gridColumn: col, gridRow: "1 / span 1" }}
+            style={{ gridColumn: col, gridRow: `${row} / span 1` }}
           >
-            {renderMapSlot(view, onChange, slotRow1)}
-          </div>,
-          <div
-            key={slotRow2}
-            className="dcb-main-grid-cell"
-            data-dcb-layout-id={`map-slot-${slotRow2}`}
-            data-dcb-row={2}
-            data-dcb-column={col}
-            data-dcb-row-span={1}
-            style={{ gridColumn: col, gridRow: "2 / span 1" }}
-          >
-            {renderMapSlot(view, onChange, slotRow2)}
-          </div>,
-        ];
+            {renderMapSlot(view, onChange, slot)}
+          </div>
+        );
       })}
 
       {/* Col 18 */}
