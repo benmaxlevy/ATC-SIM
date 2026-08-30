@@ -456,25 +456,32 @@ Constraints later work must keep:
 - radius is seed only; closure keeps out-of-radius procedure refs;
 - maps, spawns, MVA, ATPA, and telephony stay authored, not CIFP-emitted.
 
-### KATL A80 video maps (T04-39)
+### KATL A80 video maps (T04-36–42)
 
 Visible now: committed trainer pack under `src/scenario/video-maps/KATL/`
 (catalog, per-map JSON, manifest, `groups.json` sidecar, attribution).
 Playable `katl.json` / `katl-08.json` set `videoMapSet: "KATL"` and load
-through generic `loadVideoMapSet`. Catalog `id` is the CRC ULID;
-`dcbNumber` is omitted (layout is not identity). Runtime does not read CRC.
+through generic `loadVideoMapSet` / `loadVideoMapGroups`. Catalog `id` is
+the CRC ULID; `starsId` is DCB/command identity; `dcbNumber` is omitted.
+Default group is `groups.json` `sourceIndex` 0. GEO MAPS lists all 90 maps,
+including 17 GEO-only ULIDs in `mapsAbsentFromGroups`. `*D ALL` / `*D NONE` /
+CLR ALL / CURRENT walk the full inventory. CRC A/B is `map` / `mapDim`.
+Runtime does not read CRC or import the converter.
 
 Deliberately missing:
 
-- **DCB group-slot UI and GEO map-ID reachability (T04-40).** `groups.json`
-  is committed layout only; the DCB still binds KDEM-style numbered slots.
-- **Measured large-map rendering / BRITE (T04-41).**
+- **Chrome visual leftover (T04-41 / T04-42).** Automated tests pass. The
+  operator MAPS / GEO / BRITE walk is `test.skip` skip-with-reason (no
+  visual operator). Do not invent a pass.
+- **`faa:update` live download, SID flying, RNAV / hold / RF FMS.** CIFP
+  catalog rows stay as T04-35. Unsupported path terminators stay diagnostics.
 
 Constraints later work must keep:
 
 - no `if (icao === "KATL")` runtime branch; KDEM stays the authored default;
 - do not densify CRC ULID / `starsId` identity to 1–30;
-- do not commit local CRC cache JSON/GeoJSON.
+- do not commit local CRC cache JSON/GeoJSON;
+- `src/` never imports `tools/crc-videomap-import`; no runtime vNAS fetch.
 
 ## Explicit boundary
 

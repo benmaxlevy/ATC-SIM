@@ -48,6 +48,7 @@ An in-browser, high-fidelity **STARS-like (Standard Terminal Automation Replacem
   - [Multi-Stage Parse Pipeline](#multi-stage-parse-pipeline)
   - [Coordinate System](#coordinate-system)
 - [Aeronautical Data & CIFP Importer](#aeronautical-data--cifp-importer)
+- [CRC / vNAS video maps](#crc--vnas-video-maps)
 - [Development & Testing](#development--testing)
 - [Documentation Index](#documentation-index)
 - [License](#license)
@@ -555,13 +556,62 @@ national derived dumps, chart data, or source files. Only intentionally
 reviewed trainer packs belong under `src/scenario/data/<icao>/`. The committed
 KATL pack is catalog JSON plus `src/scenario/katl.json` / `katl-08.json`.
 Those configurations are in playable inventory (KDEM stays default). Video
-maps remain absent; do not point KATL at KDEM maps. Authored trainer MVA is a
-uniform 3000 ft floor, not FAA source data. ATPA and telephony remain
-separate authored data.
+maps for KATL are the committed CRC A80 pack under
+`src/scenario/video-maps/KATL/` (`videoMapSet: "KATL"`). Do not point KATL at
+KDEM maps. Authored trainer MVA is a uniform 3000 ft floor, not FAA source
+data. ATPA and telephony remain separate authored data.
 
 See [`tools/cifp-import/README.md`](tools/cifp-import/README.md) for supported
 record types, SID/STAR/approach selection, reproducibility, legal boundaries,
 and synthetic offline fixtures.
+
+## CRC / vNAS video maps
+
+Offline developer pack from **local** CRC cache into trainer `arp-enu-nm`
+JSON. The browser never reads CRC files, never calls vNAS, and never parses a
+national source pack. `src/` must not import `tools/crc-videomap-import`.
+
+Canonical operator walkthrough:
+[`tools/crc-videomap-import/README.md`](tools/crc-videomap-import/README.md)
+(`How to convert / pack A80`).
+
+- Metadata: `C:\Users\Ben\AppData\Local\CRC\ARTCCs\ZTL.json`
+- Geometry: `C:\Users\Ben\AppData\Local\CRC\VideoMaps\ZTL\<ULID>.geojson` (directory `C:\Users\Ben\AppData\Local\CRC\VideoMaps\ZTL`)
+- A80 selection: Atlanta TRACON `facility.childFacilities[0]` / facility id
+  `A80`; `starsConfiguration.videoMapIds` UNION maps tagged both `A80` and
+  `STARS`. Complete assigned inventory, not a DCB-group subset.
+- ARP: scenario ARP. KATL west-flow example `33.6367,-84.4278638888889` via
+  `--arp` (or `--arp-lat` / `--arp-lon`). Uses existing `latLonToNm`. Do not
+  bake KATL ENU into reusable source GeoJSON.
+- Identity: preserve CRC `starsId` and source ULID. DCB slots are layout only.
+  A→`map`, B→`mapDim`.
+- Output: `src/scenario/video-maps/KATL/` (`catalog.json`, per-map ULID JSON,
+  `groups.json`, `manifest.json`, `ATTRIBUTION.md`).
+- Permission: a human confirms permission to commit converted maps; record
+  source in `ATTRIBUTION.md`. **Never commit** local CRC cache, secrets,
+  caches, converter `out/`, or QA screenshots.
+
+Dry-run (no writes):
+
+```text
+npm run crc:videomaps -- pack --metadata C:\Users\Ben\AppData\Local\CRC\ARTCCs\ZTL.json --maps C:\Users\Ben\AppData\Local\CRC\VideoMaps\ZTL --arp 33.6367,-84.4278638888889 --dry-run
+```
+
+Generation (committed trainer output):
+
+```text
+npm run crc:videomaps -- pack --metadata C:\Users\Ben\AppData\Local\CRC\ARTCCs\ZTL.json --maps C:\Users\Ben\AppData\Local\CRC\VideoMaps\ZTL --arp 33.6367,-84.4278638888889 --out src/scenario/video-maps/KATL
+```
+
+On Windows PowerShell, use `npm.cmd run crc:videomaps -- ...` if the npm shim
+swallows args.
+
+KDEM stays the authored default (7 numbered MAPS slots). GEO MAPS lists the
+complete inventory, including GEO-only maps. Chrome visual leftover is
+skip-with-reason.
+
+See [`src/scenario/video-maps/KATL/ATTRIBUTION.md`](src/scenario/video-maps/KATL/ATTRIBUTION.md)
+for pack provenance.
 
 ---
 
