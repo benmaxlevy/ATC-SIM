@@ -293,6 +293,169 @@ Deferred to future simulation phases:
 - **Live Multi-Sensor Radar Health Telemetry**: Dynamic degradation to `NA/NA/NA` with sensor-specific failover when individual radar heads disconnect.
 - **Automated Beacon Bank Exhaustion Tracking**: Dynamic allocation and exhaustion warnings for discrete transponder code banks.
 
+## Procedures
+
+### CIFP importer — unsupported ARINC behaviors (T04-31)
+
+Visible now: `tools/cifp-import` reads a **local** CIFP file (comma-separated
+T04-08 subset or 132-char ARINC 424-18) into `NormalizedCifpSource` and emits
+`ProcedureCatalog` with supported SID, STAR, and approach fields. Source
+`latDeg` / `lonDeg` is preserved; scenario ENU is derived only at catalog emit.
+`NormalizedSid` (runway / common / enroute) is exported for T04-33. Runtime
+`src/` does not import this tool or parse ARINC 424.
+
+Deliberately missing, each of which later work must keep as diagnostics — never
+silent straight-line TF conversion:
+
+- **RF, holds, arcs, procedure turns.** Path terminators `RF`, `HA`/`HF`/`HM`,
+  `AF`, `PI` are counted in `skippedByType` and omitted from catalog legs.
+- **Heading / course-unterminated legs.** `CA`/`CD`/`CI`/`CR`, `VA`/`VD`/`VI`/
+  `VM`/`VR`, `FA`/`FC`/`FD`/`FM` are skipped the same way.
+- **Continuation-record payloads.** Primary records only; `*-CONT` rows are
+  skip-counted.
+- **SID flying from imported CIFP.** Catalog `sids` may be non-empty. FMS
+  climb-via / SID route following for those imported rows is not this tool.
+- **Live FAA cycle download, chart scrape, vendor APIs.** Input stays a local
+  path. Full CIFP/NASR cycles stay out of git (`.cifp/`).
+
+Constraints later work must keep:
+
+- one conversion path: local CIFP → normalized IR → existing catalog schema;
+- no `src/` import of `tools/cifp-import`; no airport-id runtime branches;
+- KDEM remains the authored default scenario;
+- unsupported legs stay explicit skips, not flattened geometry.
+
+### CIFP national source storage and pack-generation boundary (T04-32)
+
+Visible now: `tools/cifp-import/spatialIndex.ts` exports `selectByRadius` and
+`CifpRadiusSeed` (airport ARP origin, `radiusNm` in nautical miles,
+source `latDeg` / `lonDeg` only). Radius is a geographic seed. It does not
+walk SID/STAR/approach references and does not contain every procedure leg.
+`buildSpatialIndex` keys records by ICAO and `identity.key`. Runtime `src/`
+does not import this tool.
+
+Deliberately missing:
+
+- **Procedure-reference closure (T04-33).** Out-of-radius fixes named by a
+  selected SID/STAR/approach stay in the full source until closure pulls them.
+- **National CIFP / derived national index in git.** A full cycle or a
+  nationwide source/index dump must stay on disk under gitignored `.cifp/`
+  or `tools/cifp-import/out/`. Only synthetic fixtures under `testdata/cifp/`
+  belong in the repo.
+- **Browser or network fetch.** No Vite import, no CDN, no vendor API, no
+  chart scrape.
+
+Constraints later work must keep:
+
+- one local path: CIFP on disk → `NormalizedCifpSource` → radius seed →
+  closure → existing catalog schema;
+- no `src/` import of `tools/cifp-import`; no airport-id runtime branches;
+- KDEM remains the authored default scenario;
+- seed coordinates stay source lat/lon; ENU only at catalog emit;
+- national source/index files stay gitignored and are never bundled.
+
+### CIFP radius seed vs procedure-reference closure (T04-33)
+
+Visible now: `tools/cifp-import/closure.ts` accepts a duck-typed `ClosureSeed`
+(airport plus optional `radiusNm` plus `selected` record arrays) and
+`closeProcedureReferences` recursively includes SID / STAR / approach
+references from the full normalized source. SID **runway transitions** are
+walked with common and enroute legs. `catalogWriter.ts` writes the existing
+catalog `files` layout. Tests prove a far SID runway-transition fix outside
+the seed radius is present after closure, and that an unrelated airport
+procedure is excluded.
+
+Deliberately missing:
+
+- **Great-circle radius selection.** T04-32 owns `spatialIndex.ts`. This
+  ticket does not compute NM distance or drop points by radius. `radiusNm` on
+  the seed is metadata for later wiring.
+- **Radius-based deletion after closure.** Once a procedure is selected, its
+  required fixes/navaids stay even when they sit outside the seed radius.
+- **Runtime national catalog or browser CIFP fetch.** Closure stays in the
+  developer tool. `src/` does not import it.
+- **New RNAV / hold / RF flying.** Unsupported path terminators remain
+  diagnostics, not catalog TF legs.
+
+Constraints later work must keep:
+
+- radius is seed only — never a silent procedure truncate;
+- look up missing refs in the full source, not only `seed.selected`;
+- fail or report missing / ambiguous / cross-airport refs with procedure and
+  source-record names;
+- emit the existing `files` layout and preserve source lat/lon;
+- no airport-id runtime branches; KDEM stays the authored default.
+
+### Generic CIFP pack CLI (T04-34)
+
+Visible now: `npm run cifp:pack` (and `cli.ts pack`) parses a **local**
+fixed-width CIFP, seeds by ARP radius, closes SID/STAR/approach refs, and
+writes the existing ICAO `files` layout. `--sids` / `--stars` /
+`--approaches` select `ClosurePolicy.kind === "explicit"`; omit them for
+`airport-all`. `--dry-run` reports seed vs closure counts and unsupported
+records without writing. `extract-katl-slice.ts` is a thin default-flag
+wrapper (`--airport KATL`, `--radius 40`) that only calls generic pack.
+`src/scenario/data/katl/` is the committed trainer catalog pack; west/east
+scenario JSON is registered in playable inventory without a video map set.
+Authored trainer MVA is a uniform 3000 ft floor (not FAA source data).
+
+Deliberately missing:
+
+- **KATL video maps, ATPA, telephony.** Catalog JSON and authored
+  scenario/spawn files are separate. Maps are not CIFP-emitted. Never point
+  KATL at KDEM maps.
+- **Operational / FAA KATL MVA.** Shipped chart is a uniform 3000 ft trainer
+  box over the ±60 NM training area, not source sector minima.
+- **Heading-only vector SID flying (`ATL2`).** Unsupported CIFP path
+  terminators stay skipped; empty named-fix SIDs are omitted from the pack.
+- **SID flying, RNAV / hold / RF FMS, live FAA download, chart scrape.**
+
+Constraints later work must keep:
+
+- one generic pipeline — no `if (icao === "KATL")` parse or runtime branch;
+- KDEM remains the authored default;
+- national CIFP / intermediates stay gitignored (`.cifp/`,
+  `tools/cifp-import/out/`);
+- `src/` never imports this tool.
+
+### CIFP pack integration acceptance (T04-35)
+
+Visible now: every listed playable scenario loads its catalog through
+generic `loadCatalog`. Map-backed entries also load `loadVideoMapSet`; KATL
+keeps empty `videoMaps`. KDEM remains the authored default. `loadCatalog(dir)`
+is unchanged. CIFP-derived packs interchange with authored catalogs via
+`parseCatalogFiles` (same parser). Synthetic second-facility testdata
+(`testdata/catalog-packs/kbbb/`) and `tools/cifp-import/pack.integration.test.ts`
+prove no facility-id branch and that SID/STAR/approach refs outside the seed
+radius remain after pack write. `extract-katl-slice.ts` stays a thin
+default-flag wrapper. `src/scenario/data/katl/` is the committed trainer
+catalog pack. `src/scenario/katl.json` and `katl-08.json` author west/east
+flows from that catalog and are session-visible inventory entries. Maps and
+ATPA stay outside CIFP catalog JSON. Trainer MVA is a uniform 3000 ft floor,
+not FAA source data.
+
+Deliberately missing:
+
+- **KATL video maps.** Do not invent a national ATL dump. Never point KATL at
+  KDEM maps.
+- **`faa:update` live download.** Input stays a local path. CI and this
+  ticket did not regenerate from an official FAA cycle (no authorized
+  local CIFP in the environment). Record a skip-with-reason; do not claim
+  cycle regeneration was tested.
+- **RNAV / hold / RF flying** from imported CIFP. Unsupported path
+  terminators stay diagnostics, not TF legs.
+- **SID flying from imported CIFP.** Catalog `sids` may be non-empty. FMS
+  climb-via for those imported rows is not this ticket.
+- **Browser CIFP fetch, national dump in git, T04-11 wind, phase 5.**
+
+Constraints later work must keep:
+
+- one conversion path: local CIFP → pack → existing catalog schema;
+- no `src/` import of `tools/cifp-import`; no airport-id runtime branches;
+- KDEM remains the authored default and boots without CIFP;
+- radius is seed only; closure keeps out-of-radius procedure refs;
+- maps, spawns, MVA, ATPA, and telephony stay authored, not CIFP-emitted.
+
 ## Explicit boundary
 
 This document does not pull in untouched phase work such as scoring/replay,

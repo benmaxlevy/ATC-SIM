@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { evaluateMsaw, makeTestAircraft } from "@core";
+import { evaluateMsaw, makeTestAircraft, msawFloorFt } from "@core";
 import { createWorldFromScenario, loadKdem, loadMva, parseMvaChart } from "@scenario";
 import kdemMvaJson from "./data/kdem-mva.json";
 
@@ -45,6 +45,19 @@ test("loadMva(KDEM) matches parse of kdem-mva.json", () => {
   const loaded = loadMva("KDEM");
   expect(loaded).toEqual(parseMvaChart(kdemMvaJson));
   expect(loadMva("XXXX")).toBeNull();
+});
+
+test("loadMva returns a uniform-floor chart when facility MVA JSON exists", () => {
+  expect(loadMva("XXXX")).toBeNull();
+  const chart = loadMva("KATL");
+  expect(chart).not.toBeNull();
+  expect(chart!.airportId.length).toBe(4);
+  expect(chart!.defaultMinAltitudeFt).toBe(3000);
+  expect(chart!.polygons.length).toBeGreaterThan(0);
+  expect(chart!.polygons.every((poly) => poly.minAltitudeFt === 3000)).toBe(true);
+  expect(chart!.note?.toLowerCase()).toMatch(/not faa/);
+  expect(chart!.note?.toLowerCase()).toMatch(/not operational/);
+  expect(msawFloorFt(0, 0, chart!)).toBe(3000);
 });
 
 test("loadKdem attaches the MVA chart and RW27 / 6 NM inhibit", () => {

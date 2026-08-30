@@ -477,6 +477,11 @@ Implement in this order unless a ticket says it can parallel. Do not start a tic
 | T04-23 | SIDs and departures integration acceptance | P0 | M | T04-18–22 | T04-24, T04-25 |
 | T04-24 | Playable scenario inventory | P0 | M | T04-23 | T05-13 |
 | T04-25 | Configurable arrival traffic | P0 | L | T04-23 | T05-13 |
+| T04-31 | CIFP normalized source parser | P0 | L | T04-08 | T04-32, T04-33 |
+| T04-32 | CIFP spatial index and pack seed | P0 | M | T04-31 | T04-34 |
+| T04-33 | CIFP procedure reference closure | P0 | M | T04-31 | T04-34 |
+| T04-34 | Generic CIFP pack CLI and KATL migration | P0 | L | T04-32, T04-33 | T04-35 |
+| T04-35 | CIFP pack integration and acceptance | P0 | M | T04-34 | none |
 
 **Parallelism:** After T04-01, T04-08 and T04-10 can proceed beside T04-02. T04-09 can start immediately. T04-04 ∥ T04-05 after T04-03. T04-11 can land anytime after kinematics; prefer after T04-05 so loc tests include a wind case if the ticket is pulled.
 
@@ -506,6 +511,34 @@ T04-18–23 supply generic fictional SID schema/navigation, departure lifecycle,
 T04-24 inventories playable airport/scenario entries through data, not named loaders. T04-25 adds seeded initial arrival count plus simulated-time arrival density, distinct from the `?traffic=N` downwind FPS benchmark. T05-13 owns the setup/restart UI after these foundations and T04-21 are complete.
 
 Wave: **T04-24 ∥ T04-25** after T04-23. T05-13 follows both and the completed departure generator.
+
+### Post-exit addendum (T04-31–35 CIFP-derived catalog packs)
+
+This addendum makes local CIFP the single conversion source for real-airport
+SID, STAR, and approach catalog packs while keeping the browser on the existing
+JSON contract.
+
+- T04-31 parses local fixed-width CIFP records into a normalized tool-only
+  model and emits supported SID, STAR, and approach fields into
+  `ProcedureCatalog`.
+- T04-32 selects a geographic radius seed around scenario ARP.
+- T04-33 follows selected procedure references to stable closure, so a SID,
+  STAR, or approach fix outside radius is retained.
+- T04-34 wires the generic pack CLI. `extract-katl-slice.ts` is a thin
+  `--airport KATL --radius 40` wrapper.
+- T04-35 proves KDEM remains default, a synthetic second facility loads
+  through the existing `parseCatalogFiles` / `loadCatalog` contract, and
+  SID/STAR/approach refs outside the seed radius survive pack generation.
+
+The local source cycle and national/intermediate data stay outside git. Only
+intentional reviewable trainer packs are committed. Radius is a seed, not a
+procedure boundary. No browser CIFP fetch, chart scrape, or new FMS behavior.
+SID catalog data is included even though SID flying remains a later behavior
+ticket. Playable inventory stays KDEM-only until KATL video maps exist. The
+committed KATL pack is catalog JSON plus authored west/east scenario files;
+do not invent a national ATL dump.
+
+Wave: **T04-31** → **T04-32 ∥ T04-33** → **T04-34** → **T04-35**.
 
 ---
 

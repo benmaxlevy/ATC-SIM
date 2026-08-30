@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "airportId": "KATL",
+  "name": "HARTSFIELD/JACKSON ATLANTA INT",
+  "magVarDeg": -5,
+  "fieldElevFt": 1026,
+  "arp": {
+    "latDeg": 33.6367,
+    "lonDeg": -84.4278638888889
+  },
+  "files": {
+    "vors": "vors.json",
+    "ndbs": "ndbs.json",
+    "ils": "ils.json",
+    "fixes": "fixes.json",
+    "procedures": "procedures.json",
+    "sids": "sids.json"
+  },
+  "originNote": "Trainer catalog pack imported through the generic CIFP pack CLI (not a national dump). Local tangent NM from ARP using the phase 0 projector. Heading-only vector SID ATL2 omitted: remaining CIFP legs were unsupported path terminators with no named-fix TF/IF/CF/DF legs. KDEM remains the sim default. Video maps are not part of this pack."
+}

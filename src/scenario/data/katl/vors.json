@@ -1,0 +1,71 @@
+{
+  "airportId": "KATL",
+  "vors": [
+    {
+      "id": "AHN",
+      "kind": "VORDME",
+      "name": "ATHENS",
+      "xNm": 55.104531,
+      "yNm": 18.653667,
+      "latDeg": 33.94759444444444,
+      "lonDeg": -83.32475833333334,
+      "freqMhz": 116.95,
+      "class": "H"
+    },
+    {
+      "id": "IRQ",
+      "kind": "VORDME",
+      "name": "COLLIERS",
+      "xNm": 113.185765,
+      "yNm": 4.239167,
+      "latDeg": 33.70735277777778,
+      "lonDeg": -82.1620638888889,
+      "freqMhz": 113.9,
+      "class": "T"
+    },
+    {
+      "id": "LGC",
+      "kind": "VORDME",
+      "name": "LAGRANGE",
+      "xNm": -38.882109,
+      "yNm": -35.254833,
+      "latDeg": 33.04911944444444,
+      "lonDeg": -85.20622222222222,
+      "freqMhz": 115.6,
+      "class": "T"
+    },
+    {
+      "id": "RMG",
+      "kind": "VORDME",
+      "name": "ROME",
+      "xNm": -34.545409,
+      "yNm": 31.551833,
+      "latDeg": 34.16256388888889,
+      "lonDeg": -85.11940833333333,
+      "freqMhz": 115.4,
+      "class": "T"
+    },
+    {
+      "id": "VUZ",
+      "kind": "VORDME",
+      "name": "VULCAN",
+      "xNm": -123.484891,
+      "yNm": 2.006,
+      "latDeg": 33.67013333333333,
+      "lonDeg": -86.89983611111111,
+      "freqMhz": 114.4,
+      "class": "T"
+    },
+    {
+      "id": "WRB",
+      "kind": "VOR",
+      "name": "ROBINS",
+      "xNm": 41.825926,
+      "yNm": -59.742,
+      "latDeg": 32.641,
+      "lonDeg": -83.590575,
+      "freqMhz": 135.3,
+      "class": "T"
+    }
+  ]
+}

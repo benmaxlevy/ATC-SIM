@@ -1,0 +1,32 @@
+{
+  "airportId": "KBBB",
+  "runwayId": "27",
+  "approachId": "ILSBB",
+  "components": [
+    {
+      "id": "IBBB",
+      "kind": "LOC",
+      "name": "I-BBB",
+      "freqMhz": 111.1,
+      "courseDeg": 270,
+      "xNm": -1.8,
+      "yNm": 0,
+      "latDeg": 0,
+      "lonDeg": -0.03,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5
+    },
+    {
+      "id": "IBBBGS",
+      "kind": "GS",
+      "name": "I-BBB GS",
+      "freqMhz": 334.0,
+      "gsAngleDeg": 3.0,
+      "tchFt": 50,
+      "xNm": 0.2,
+      "yNm": -0.05,
+      "latDeg": -0.001,
+      "lonDeg": 0.003
+    }
+  ]
+}

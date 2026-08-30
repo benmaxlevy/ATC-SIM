@@ -1,0 +1,41 @@
+{
+  "airportId": "KBBB",
+  "stars": [
+    {
+      "id": "BBB1",
+      "name": "BRAVO ONE",
+      "transitions": [
+        {
+          "id": "N",
+          "name": "NORTH",
+          "legs": [{ "fixId": "FARST" }]
+        }
+      ],
+      "common": [{ "fixId": "NEARX" }],
+      "termination": "VECTORS"
+    }
+  ],
+  "approaches": [
+    {
+      "id": "ILSBB",
+      "type": "ILS",
+      "runway": "27",
+      "name": "ILS RWY 27",
+      "locNavaidId": "IBBB",
+      "gsNavaidId": "IBBBGS",
+      "fafFixId": "FARAF",
+      "thresholdFixId": "RW27",
+      "courseDeg": 270,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "gsAngleDeg": 3,
+      "tchFt": 50,
+      "daFt": 200,
+      "missed": {
+        "headingDeg": 270,
+        "climbToFt": 3000,
+        "directFixId": "FARMS"
+      }
+    }
+  ]
+}

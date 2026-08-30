@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.6.0"
   },
   "scripts": {
     "dev": "vite",
@@ -17,7 +17,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "ci": "npm run typecheck && npm run lint && npm run format:check && npm test",
-    "cifp:import": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/cifp-import/cli.ts"
+    "cifp:import": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/cifp-import/cli.ts",
+    "cifp:pack": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/cifp-import/cli.ts pack"
   },
   "dependencies": {
     "react": "^18.3.1",

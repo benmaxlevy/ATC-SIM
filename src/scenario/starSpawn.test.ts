@@ -4,6 +4,7 @@ import {
   STAR_SPAWN_GATE_OFFSET_NM,
   STAR_SPAWN_STAGGER_NM,
   assignStarRoutes,
+  authoredStarToFixIndex,
   listStarSlots,
   loadCatalog,
   outermostStarFix,
@@ -328,4 +329,14 @@ test("T04-29 geometric flow fallback — untagged transitions filter by heading 
     { starId: "DEM1", transitionId: "WN" },
     { starId: "DEM1", transitionId: "WS" },
   ]);
+});
+
+test("authoredStarToFixIndex keeps gate-offset poses at index 0", () => {
+  const catalog = twoStarCatalog();
+  expect(authoredStarToFixIndex(catalog, "TST1", "E", { xNm: 30.25, yNm: 0 })).toBe(0);
+});
+
+test("authoredStarToFixIndex skips STAR fixes already behind a mid-route pose", () => {
+  const catalog = twoStarCatalog();
+  expect(authoredStarToFixIndex(catalog, "TST1", "E", { xNm: 25, yNm: 0 })).toBe(1);
 });

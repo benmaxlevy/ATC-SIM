@@ -1,4 +1,4 @@
-# ATC-SIM swarm orchestrator — Seventeenth swarm (STARS Keyboard Commands & Preview Area Expansion: T02-61–67)
+# ATC-SIM swarm orchestrator — Eighteenth swarm (CIFP-derived catalog packs: T04-31–35)
 
 Paste **this entire file** into a new agent. That agent is the **orchestrator**. It may run for hours. It writes almost no application code.
 
@@ -9,7 +9,141 @@ Shell: **bash** (Linux).
 
 Before checking git, spawning agents, creating worktrees, or editing application code, update this file for the current swarm. Append a new swarm-start heading/configuration; do not overwrite prior swarm history. If the requested swarm configuration is incomplete, ask before making any other swarm move. Then commit the planning/status update before creating ticket branches or worktrees.
 
-This is the **seventeenth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–25) → 2 STARS CRC scope fidelity (T02-34–42) → 5 setup menu (T05-13, T05-14) → 4 dual runway (T04-26–30) → 2 TPA / ATPA (T02-43–50) → 2 STARS Preview Area (T02-51–54) → 2 STARS In-Scope System Lists & Complete DCB (T02-55–60)** are already green on `master`. Do **not** redo completed work. Skip **T04-11** (wind) unless the human names it. This run is **T02-61–67 only**.
+This is the **eighteenth swarm**. Phases **0 → 1 → 2 (T02-01–13) → 2 polish (T02-14–21) → 2 DCB addendum (T02-22–30) → 2 physical replica (T02-31–33) → 3 → 4 (T04-01–10, T04-12) → 4 addenda (T04-13–25) → 2 STARS CRC scope fidelity (T02-34–42) → 5 setup menu (T05-13, T05-14) → 4 dual runway (T04-26–30) → 2 TPA / ATPA (T02-43–50) → 2 STARS Preview Area (T02-51–54) → 2 STARS In-Scope System Lists & Complete DCB (T02-55–60) → 2 STARS Keyboard Commands & Preview Area Expansion (T02-61–67)** are already green on `master`. Do **not** redo completed work. Skip **T04-11** (wind) unless the human names it. This run is **T04-31–35 only**.
+
+---
+
+## Eighteenth swarm execution — 2026-08-29 (CIFP-derived catalog packs)
+
+Human invoked `/run-swarm` with **cursor grok 4.6 high**. Execute T04-31–35
+only. Planning commits `317bc86`, `d2df65e`, and `f92894f` contain this configuration
+and must be present on the execution base before ticket work starts.
+
+Role: orchestrator coordinates one captain. Captain uses isolated worktrees,
+spawns at most three workers, waits for terminal `READY TO MERGE` or
+`BLOCKED`, squash-merges each ticket to `master`, and runs `npm test` after
+each merge. Every captain and worker spawn must set
+`model: "cursor-grok-4.6-high"`.
+
+Preflight: verify `master` contains the planning commits, read
+`SWARM-STATUS.md`, phase README, captain/worker prompts, and T04-31–35. Stop
+if application changes are dirty or another swarm is active. Preserve
+untracked `.cursor/rules/caveman-ultra.mdc` and `e2e/`.
+
+Execution waves:
+
+1. T04-31
+2. T04-32 ∥ T04-33
+3. T04-34
+4. T04-35
+
+No push. No phase 5. At completion, captain returns the exact phase result
+format above; orchestrator verifies `master`, runs final `npm run ci`, appends
+`SWARM-STATUS.md`, and stops.
+
+**Scope correction — 2026-08-29:** Human clarified that generated packs must
+cover supported **SIDs, STARs, and approaches**. T04-31 parses SID records;
+T04-33 closes SID references; T04-34 emits SID data. SID *flying* remains out
+of scope unless separately approved.
+
+---
+
+## Eighteenth swarm planned — 2026-08-29 (CIFP-derived catalog packs)
+
+This configuration is planning-only until the human invokes `/run-swarm`. It
+extends phase 4 procedures. Ticket workers must branch from current `master`;
+the captain squash-merges completed tickets back to `master`.
+
+| Key | Value |
+| --- | --- |
+| Goal | Convert official local FAA CIFP data once into the existing `ProcedureCatalog` schema, then generate small scenario-ready catalog packs from a geographic seed plus procedure-reference closure. Remove KATL-specific extraction logic without putting national CIFP or ARINC parsing in the browser. |
+| Include | **T04-31**, **T04-32**, **T04-33**, **T04-34**, **T04-35** |
+| Skip | T04-11 wind; chart scraping; browser CIFP fetch; paid services; full FAA cycle or full derived national dump in git; RNAV/holds/RF flying; unrelated phase 5 scoring/replay |
+| Stop | After T04-35 acceptance. Do not start phase 5 or live FAA update automation beyond the approved local-input developer tool. |
+| Max ticket workers in flight | **3** |
+| Merge lock | Only the phase captain squash-merges ticket branches to `master`, then runs `npm test` / `npm run ci` |
+| Model | Inherit |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law (eighteenth swarm — CIFP-derived catalog packs):**
+
+- **One source conversion.** A local CIFP file is parsed by a developer tool
+  into a normalized intermediate representation, then emitted into the
+  existing catalog schema. Runtime code does not parse ARINC 424.
+- **Pack selection is two-stage.** Radius around scenario ARP is a geographic
+  seed. Selected STARs, approaches, and their referenced fixes/navaids are
+  then recursively included until reference closure is stable. Radius alone
+  must never silently truncate a procedure.
+- **Coordinates stay portable.** Preserve source `latDeg` / `lonDeg`; derive
+  scenario-local `xNm` / `yNm` when loading a pack. Do not bake one facility's
+  ENU projection into national source data.
+- **Runtime contract stays stable.** `loadCatalog(icao)`, catalog validation,
+  fix registry, FMS walkers, scenario inventory, and video-map loading remain
+  generic. New airports require data, not airport-id branches.
+- **Separate layers stay separate.** CIFP procedure geometry, authored scenario
+  routes/spawns, video-map artwork, MVA/ATPA, and telephony remain distinct.
+  CIFP-derived packs may contain only fields the current schema can represent.
+- **Legal and distribution boundary.** Input CIFP is local and gitignored.
+  Generated national/intermediate data is not committed. Only intentionally
+  selected, reviewable trainer packs may be committed. No browser network
+  fetch, chart scrape, or vendor API.
+- **Compatibility before migration.** KDEM remains authored and default.
+  Existing KATL behavior must remain green while its pack is regenerated by
+  the generic tool.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T04-31 | Current `master` |
+| B | T04-32 ∥ T04-33 | T04-31 |
+| C | T04-34 | T04-32, T04-33 |
+| D | T04-35 | T04-34 |
+
+**State ownership:**
+
+- T04-31 owns the normalized CIFP importer interface and record-to-schema
+  mapping. It must extend fixture coverage without importing tools from
+  `src/`.
+- T04-32 owns the reusable geographic seed/index and pack output boundaries.
+- T04-33 owns procedure-reference closure, missing-reference diagnostics, and
+  radius-vs-closure tests. It must not duplicate T04-32's spatial index.
+- T04-34 owns generic CLI wiring and KATL regeneration through the pack
+  pipeline. It may update committed KATL JSON, never add a KATL-only runtime
+  branch.
+- T04-35 owns end-to-end acceptance, docs, and migration guardrails. It adds
+  no second parser or alternate catalog loader.
+
+**Backlog ownership:**
+
+| Ticket | Backlog edit |
+| --- | --- |
+| T04-31 | Documents unsupported CIFP behaviors retained as authored/unsupported |
+| T04-32 | Documents national-source storage and pack-generation boundary |
+| T04-33 | Documents radius seed limitations and closure requirement |
+| T04-34 | Closes the KATL-specific extractor follow-up if generic regeneration passes |
+| T04-35 | Updates remaining `faa:update` / RNAV / SID limitations without deleting prior rows |
+
+**Ticket files / branches:**
+
+- `ticket/T04-31-cifp-normalized-source-parser` ← `phases/04-procedures/tickets/T04-31-cifp-normalized-source-parser.md`
+- `ticket/T04-32-cifp-spatial-index-and-pack-seed` ← `phases/04-procedures/tickets/T04-32-cifp-spatial-index-and-pack-seed.md`
+- `ticket/T04-33-cifp-procedure-reference-closure` ← `phases/04-procedures/tickets/T04-33-cifp-procedure-reference-closure.md`
+- `ticket/T04-34-generic-cifp-pack-cli-and-katl-migration` ← `phases/04-procedures/tickets/T04-34-generic-cifp-pack-cli-and-katl-migration.md`
+- `ticket/T04-35-cifp-pack-integration-and-acceptance` ← `phases/04-procedures/tickets/T04-35-cifp-pack-integration-and-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 4 procedures addendum (T04-31–35 CIFP-derived catalog packs)
+Merged: T04-31 … T04-35
+Tests: npm test / npm run ci exit 0
+Manual leftover: <developer pack generation or none>
+Notes: <local CIFP normalized once; radius seed plus procedure closure; generic KATL migration; no national/browser CIFP>
+```
+
+or `PHASE EXIT BLOCKED` with reason.
 
 ---
 

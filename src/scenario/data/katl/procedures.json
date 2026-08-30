@@ -1,0 +1,3423 @@
+{
+  "airportId": "KATL",
+  "stars": [
+    {
+      "id": "CHPPR1",
+      "name": "CHPPR1",
+      "transitions": [
+        {
+          "id": "BBABE",
+          "name": "BBABE",
+          "legs": [
+            {
+              "fixId": "BBABE"
+            },
+            {
+              "fixId": "LEMKE"
+            },
+            {
+              "fixId": "CHPPR",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 13000
+              }
+            }
+          ]
+        },
+        {
+          "id": "LEMKE",
+          "name": "LEMKE",
+          "legs": [
+            {
+              "fixId": "LEMKE"
+            },
+            {
+              "fixId": "CHPPR",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 13000
+              }
+            }
+          ]
+        },
+        {
+          "id": "MTHEW",
+          "name": "MTHEW",
+          "legs": [
+            {
+              "fixId": "MTHEW"
+            },
+            {
+              "fixId": "MGRIF"
+            },
+            {
+              "fixId": "BBABE"
+            },
+            {
+              "fixId": "LEMKE"
+            },
+            {
+              "fixId": "CHPPR",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 13000
+              }
+            }
+          ]
+        },
+        {
+          "id": "RUTTH",
+          "name": "RUTTH",
+          "legs": [
+            {
+              "fixId": "RUTTH"
+            },
+            {
+              "fixId": "JCKEE"
+            },
+            {
+              "fixId": "OWNNS"
+            },
+            {
+              "fixId": "CHPPR",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 13000
+              }
+            }
+          ]
+        },
+        {
+          "id": "RW08B",
+          "name": "RW08B",
+          "legs": [
+            {
+              "fixId": "MRCHH"
+            },
+            {
+              "fixId": "JAGRR",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 9000
+              }
+            }
+          ],
+          "runways": ["08L", "08R"]
+        },
+        {
+          "id": "RW09L",
+          "name": "RW09L",
+          "legs": [
+            {
+              "fixId": "MRCHH"
+            },
+            {
+              "fixId": "BSHOP",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 9000
+              }
+            },
+            {
+              "fixId": "NAVVY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              }
+            },
+            {
+              "fixId": "RYENN",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 7000
+              }
+            },
+            {
+              "fixId": "AAKAY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 6000
+              }
+            }
+          ],
+          "runwayId": "09L"
+        },
+        {
+          "id": "RW09R",
+          "name": "RW09R",
+          "legs": [
+            {
+              "fixId": "MRCHH"
+            },
+            {
+              "fixId": "BSHOP",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 9000
+              }
+            },
+            {
+              "fixId": "NAVVY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              }
+            },
+            {
+              "fixId": "ANDIY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 7000
+              }
+            },
+            {
+              "fixId": "DFINS",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 6000
+              }
+            }
+          ],
+          "runwayId": "09R"
+        },
+        {
+          "id": "RW10",
+          "name": "RW10",
+          "legs": [
+            {
+              "fixId": "MRCHH"
+            },
+            {
+              "fixId": "BSHOP",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 9000
+              }
+            },
+            {
+              "fixId": "NAVVY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              }
+            },
+            {
+              "fixId": "DROYD",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 8000
+              }
+            }
+          ],
+          "runwayId": "10"
+        },
+        {
+          "id": "RW26B",
+          "name": "RW26B",
+          "legs": [
+            {
+              "fixId": "MRCHH"
+            },
+            {
+              "fixId": "HIDRO"
+            },
+            {
+              "fixId": "RAIIN"
+            },
+            {
+              "fixId": "KLOWD"
+            },
+            {
+              "fixId": "SWEPT"
+            },
+            {
+              "fixId": "KYMMY"
+            },
+            {
+              "fixId": "KEAVY"
+            }
+          ],
+          "runways": ["26L", "26R"]
+        },
+        {
+          "id": "RW27B",
+          "name": "RW27B",
+          "legs": [
+            {
+              "fixId": "MRCHH"
+            },
+            {
+              "fixId": "HIDRO"
+            },
+            {
+              "fixId": "EAGYL"
+            },
+            {
+              "fixId": "SHURT"
+            },
+            {
+              "fixId": "FOGER"
+            },
+            {
+              "fixId": "HITTT"
+            },
+            {
+              "fixId": "YURII"
+            }
+          ],
+          "runways": ["27L", "27R"]
+        },
+        {
+          "id": "RW28",
+          "name": "RW28",
+          "legs": [
+            {
+              "fixId": "MRCHH"
+            },
+            {
+              "fixId": "HIDRO"
+            },
+            {
+              "fixId": "EAGYL"
+            },
+            {
+              "fixId": "SHURT"
+            },
+            {
+              "fixId": "FOGER"
+            },
+            {
+              "fixId": "HITTT"
+            },
+            {
+              "fixId": "YURII"
+            }
+          ],
+          "runwayId": "28"
+        }
+      ],
+      "common": [
+        {
+          "fixId": "CHPPR",
+          "altConstraint": {
+            "type": "AT",
+            "altitudeFt": 13000
+          }
+        },
+        {
+          "fixId": "MRCHH"
+        }
+      ],
+      "termination": "VECTORS"
+    },
+    {
+      "id": "GLAVN2",
+      "name": "GLAVN2",
+      "transitions": [
+        {
+          "id": "JKSON",
+          "name": "JKSON",
+          "legs": [
+            {
+              "fixId": "JKSON"
+            },
+            {
+              "fixId": "MADDX"
+            },
+            {
+              "fixId": "GLAVN"
+            }
+          ]
+        },
+        {
+          "id": "MGRIF",
+          "name": "MGRIF",
+          "legs": [
+            {
+              "fixId": "MGRIF"
+            },
+            {
+              "fixId": "DENST"
+            },
+            {
+              "fixId": "AAARN"
+            },
+            {
+              "fixId": "GLAVN"
+            }
+          ]
+        },
+        {
+          "id": "RUSSA",
+          "name": "RUSSA",
+          "legs": [
+            {
+              "fixId": "RUSSA"
+            },
+            {
+              "fixId": "RUTTH"
+            },
+            {
+              "fixId": "JKSON"
+            },
+            {
+              "fixId": "MADDX"
+            },
+            {
+              "fixId": "GLAVN"
+            }
+          ]
+        },
+        {
+          "id": "RW08L",
+          "name": "RW08L",
+          "legs": [
+            {
+              "fixId": "STHRN"
+            },
+            {
+              "fixId": "YABBA",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 9000
+              }
+            },
+            {
+              "fixId": "NAVVY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              }
+            },
+            {
+              "fixId": "LARII",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 5000
+              }
+            },
+            {
+              "fixId": "JAAJJ",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 5000
+              }
+            }
+          ],
+          "runwayId": "08L"
+        },
+        {
+          "id": "RW08R",
+          "name": "RW08R",
+          "legs": [
+            {
+              "fixId": "STHRN"
+            },
+            {
+              "fixId": "YABBA",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 9000
+              }
+            },
+            {
+              "fixId": "NAVVY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              }
+            },
+            {
+              "fixId": "GPEAT",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 5000
+              }
+            },
+            {
+              "fixId": "PEARI",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 5000
+              }
+            }
+          ],
+          "runwayId": "08R"
+        },
+        {
+          "id": "RW09L",
+          "name": "RW09L",
+          "legs": [
+            {
+              "fixId": "STHRN"
+            },
+            {
+              "fixId": "YABBA",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 9000
+              }
+            },
+            {
+              "fixId": "NAVVY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              }
+            },
+            {
+              "fixId": "RYENN",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 7000
+              }
+            },
+            {
+              "fixId": "AAKAY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 6000
+              }
+            }
+          ],
+          "runwayId": "09L"
+        },
+        {
+          "id": "RW09R",
+          "name": "RW09R",
+          "legs": [
+            {
+              "fixId": "STHRN"
+            },
+            {
+              "fixId": "YABBA",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 9000
+              }
+            },
+            {
+              "fixId": "NAVVY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              }
+            },
+            {
+              "fixId": "ANDIY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 7000
+              }
+            },
+            {
+              "fixId": "DFINS",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 6000
+              }
+            }
+          ],
+          "runwayId": "09R"
+        },
+        {
+          "id": "RW10",
+          "name": "RW10",
+          "legs": [
+            {
+              "fixId": "STHRN"
+            },
+            {
+              "fixId": "YABBA",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 9000
+              }
+            },
+            {
+              "fixId": "NAVVY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              }
+            },
+            {
+              "fixId": "DROYD",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 8000
+              }
+            }
+          ],
+          "runwayId": "10"
+        },
+        {
+          "id": "RW26B",
+          "name": "RW26B",
+          "legs": [
+            {
+              "fixId": "STHRN"
+            },
+            {
+              "fixId": "HOGGG"
+            },
+            {
+              "fixId": "RAIIN"
+            },
+            {
+              "fixId": "KLOWD"
+            },
+            {
+              "fixId": "SWEPT"
+            },
+            {
+              "fixId": "KYMMY"
+            },
+            {
+              "fixId": "KEAVY"
+            }
+          ],
+          "runways": ["26L", "26R"]
+        },
+        {
+          "id": "RW27B",
+          "name": "RW27B",
+          "legs": [
+            {
+              "fixId": "STHRN"
+            },
+            {
+              "fixId": "HOGGG"
+            },
+            {
+              "fixId": "EAGYL"
+            },
+            {
+              "fixId": "SHURT"
+            },
+            {
+              "fixId": "FOGER"
+            },
+            {
+              "fixId": "HITTT"
+            },
+            {
+              "fixId": "YURII"
+            }
+          ],
+          "runways": ["27L", "27R"]
+        },
+        {
+          "id": "RW28",
+          "name": "RW28",
+          "legs": [
+            {
+              "fixId": "STHRN"
+            },
+            {
+              "fixId": "HOGGG"
+            },
+            {
+              "fixId": "EAGYL"
+            },
+            {
+              "fixId": "SHURT"
+            },
+            {
+              "fixId": "FOGER"
+            },
+            {
+              "fixId": "HITTT"
+            },
+            {
+              "fixId": "YURII"
+            }
+          ],
+          "runwayId": "28"
+        }
+      ],
+      "common": [
+        {
+          "fixId": "GLAVN"
+        },
+        {
+          "fixId": "STHRN"
+        }
+      ],
+      "termination": "VECTORS"
+    },
+    {
+      "id": "GNDLF3",
+      "name": "GNDLF3",
+      "transitions": [
+        {
+          "id": "BEORN",
+          "name": "BEORN",
+          "legs": [
+            {
+              "fixId": "BEORN"
+            },
+            {
+              "fixId": "STRDR",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "GIMLY"
+            },
+            {
+              "fixId": "AZZOG"
+            },
+            {
+              "fixId": "SMAWG"
+            },
+            {
+              "fixId": "GNDLF",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 11000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            }
+          ]
+        },
+        {
+          "id": "COOUP",
+          "name": "COOUP",
+          "legs": [
+            {
+              "fixId": "COOUP"
+            },
+            {
+              "fixId": "KHMYA"
+            },
+            {
+              "fixId": "CNDLR"
+            },
+            {
+              "fixId": "FNLEY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "SMAWG"
+            },
+            {
+              "fixId": "GNDLF",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 11000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            }
+          ]
+        },
+        {
+          "id": "DRSDN",
+          "name": "DRSDN",
+          "legs": [
+            {
+              "fixId": "DRSDN"
+            },
+            {
+              "fixId": "SMAWG"
+            },
+            {
+              "fixId": "GNDLF",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 11000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            }
+          ]
+        },
+        {
+          "id": "ENNTT",
+          "name": "ENNTT",
+          "legs": [
+            {
+              "fixId": "ENNTT"
+            },
+            {
+              "fixId": "GONDR",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "SMAWG"
+            },
+            {
+              "fixId": "GNDLF",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 11000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            }
+          ]
+        },
+        {
+          "id": "FRDDO",
+          "name": "FRDDO",
+          "legs": [
+            {
+              "fixId": "FRDDO"
+            },
+            {
+              "fixId": "BLLBO"
+            },
+            {
+              "fixId": "BGGNS",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "SMAWG"
+            },
+            {
+              "fixId": "GNDLF",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 11000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            }
+          ]
+        },
+        {
+          "id": "GOLLM",
+          "name": "GOLLM",
+          "legs": [
+            {
+              "fixId": "GOLLM"
+            },
+            {
+              "fixId": "ROHUN",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "AZZOG"
+            },
+            {
+              "fixId": "SMAWG"
+            },
+            {
+              "fixId": "GNDLF",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 11000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            }
+          ]
+        },
+        {
+          "id": "KHMYA",
+          "name": "KHMYA",
+          "legs": [
+            {
+              "fixId": "KHMYA"
+            },
+            {
+              "fixId": "CNDLR"
+            },
+            {
+              "fixId": "FNLEY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "SMAWG"
+            },
+            {
+              "fixId": "GNDLF",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 11000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            }
+          ]
+        },
+        {
+          "id": "ORRKK",
+          "name": "ORRKK",
+          "legs": [
+            {
+              "fixId": "ORRKK"
+            },
+            {
+              "fixId": "MORDR"
+            },
+            {
+              "fixId": "RAETH"
+            },
+            {
+              "fixId": "NZGUL",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "SMAWG"
+            },
+            {
+              "fixId": "GNDLF",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 11000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            }
+          ]
+        },
+        {
+          "id": "SHYRE",
+          "name": "SHYRE",
+          "legs": [
+            {
+              "fixId": "SHYRE"
+            },
+            {
+              "fixId": "FRDDO"
+            },
+            {
+              "fixId": "BLLBO"
+            },
+            {
+              "fixId": "BGGNS",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "SMAWG"
+            },
+            {
+              "fixId": "GNDLF",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 11000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            }
+          ]
+        },
+        {
+          "id": "STRDR",
+          "name": "STRDR",
+          "legs": [
+            {
+              "fixId": "STRDR",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "GIMLY"
+            },
+            {
+              "fixId": "AZZOG"
+            },
+            {
+              "fixId": "SMAWG"
+            },
+            {
+              "fixId": "GNDLF",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 11000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            }
+          ]
+        }
+      ],
+      "common": [
+        {
+          "fixId": "GNDLF",
+          "altConstraint": {
+            "type": "AT_OR_ABOVE",
+            "altitudeFt": 11000
+          },
+          "speedConstraint": {
+            "type": "AT",
+            "speedKt": 250
+          }
+        },
+        {
+          "fixId": "HALRR",
+          "altConstraint": {
+            "type": "AT_OR_ABOVE",
+            "altitudeFt": 10000
+          },
+          "speedConstraint": {
+            "type": "AT",
+            "speedKt": 250
+          }
+        },
+        {
+          "fixId": "SHULR",
+          "altConstraint": {
+            "type": "AT",
+            "altitudeFt": 8000
+          }
+        },
+        {
+          "fixId": "JNGLE"
+        },
+        {
+          "fixId": "QUBIT"
+        }
+      ],
+      "termination": "VECTORS"
+    },
+    {
+      "id": "HOBTT3",
+      "name": "HOBTT3",
+      "transitions": [
+        {
+          "id": "BEORN",
+          "name": "BEORN",
+          "legs": [
+            {
+              "fixId": "BEORN"
+            },
+            {
+              "fixId": "STRDR",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "GIMLY"
+            },
+            {
+              "fixId": "AZZOG"
+            },
+            {
+              "fixId": "SMAWG",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 17000
+              }
+            },
+            {
+              "fixId": "HOBTT",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              }
+            }
+          ]
+        },
+        {
+          "id": "COOUP",
+          "name": "COOUP",
+          "legs": [
+            {
+              "fixId": "COOUP"
+            },
+            {
+              "fixId": "KHMYA"
+            },
+            {
+              "fixId": "CNDLR"
+            },
+            {
+              "fixId": "FNLEY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "SMAWG",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 17000
+              }
+            },
+            {
+              "fixId": "HOBTT",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              }
+            }
+          ]
+        },
+        {
+          "id": "DRSDN",
+          "name": "DRSDN",
+          "legs": [
+            {
+              "fixId": "DRSDN"
+            },
+            {
+              "fixId": "SMAWG",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 17000
+              }
+            },
+            {
+              "fixId": "HOBTT",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              }
+            }
+          ]
+        },
+        {
+          "id": "ENNTT",
+          "name": "ENNTT",
+          "legs": [
+            {
+              "fixId": "ENNTT"
+            },
+            {
+              "fixId": "GONDR",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "SMAWG",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 17000
+              }
+            },
+            {
+              "fixId": "HOBTT",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              }
+            }
+          ]
+        },
+        {
+          "id": "FRDDO",
+          "name": "FRDDO",
+          "legs": [
+            {
+              "fixId": "FRDDO"
+            },
+            {
+              "fixId": "BLLBO"
+            },
+            {
+              "fixId": "BGGNS",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "SMAWG",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 17000
+              }
+            },
+            {
+              "fixId": "HOBTT",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              }
+            }
+          ]
+        },
+        {
+          "id": "GOLLM",
+          "name": "GOLLM",
+          "legs": [
+            {
+              "fixId": "GOLLM"
+            },
+            {
+              "fixId": "ROHUN",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "AZZOG"
+            },
+            {
+              "fixId": "SMAWG",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 17000
+              }
+            },
+            {
+              "fixId": "HOBTT",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              }
+            }
+          ]
+        },
+        {
+          "id": "KHMYA",
+          "name": "KHMYA",
+          "legs": [
+            {
+              "fixId": "KHMYA"
+            },
+            {
+              "fixId": "CNDLR"
+            },
+            {
+              "fixId": "FNLEY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "SMAWG",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 17000
+              }
+            },
+            {
+              "fixId": "HOBTT",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              }
+            }
+          ]
+        },
+        {
+          "id": "ORRKK",
+          "name": "ORRKK",
+          "legs": [
+            {
+              "fixId": "ORRKK"
+            },
+            {
+              "fixId": "MORDR"
+            },
+            {
+              "fixId": "RAETH"
+            },
+            {
+              "fixId": "NZGUL",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "SMAWG",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 17000
+              }
+            },
+            {
+              "fixId": "HOBTT",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              }
+            }
+          ]
+        },
+        {
+          "id": "RW26B",
+          "name": "RW26B",
+          "legs": [
+            {
+              "fixId": "ENSLL",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 12000
+              }
+            },
+            {
+              "fixId": "RAIIN"
+            },
+            {
+              "fixId": "KLOWD"
+            },
+            {
+              "fixId": "SWEPT"
+            },
+            {
+              "fixId": "KYMMY"
+            },
+            {
+              "fixId": "KEAVY"
+            }
+          ],
+          "runways": ["26L", "26R"]
+        },
+        {
+          "id": "RW27B",
+          "name": "RW27B",
+          "legs": [
+            {
+              "fixId": "ENSLL",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 12000
+              }
+            },
+            {
+              "fixId": "EAGYL"
+            },
+            {
+              "fixId": "SHURT"
+            },
+            {
+              "fixId": "FOGER"
+            },
+            {
+              "fixId": "HITTT"
+            },
+            {
+              "fixId": "YURII"
+            }
+          ],
+          "runways": ["27L", "27R"]
+        },
+        {
+          "id": "RW28",
+          "name": "RW28",
+          "legs": [
+            {
+              "fixId": "ENSLL",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 12000
+              }
+            },
+            {
+              "fixId": "EAGYL"
+            },
+            {
+              "fixId": "SHURT"
+            },
+            {
+              "fixId": "FOGER"
+            },
+            {
+              "fixId": "HITTT"
+            },
+            {
+              "fixId": "YURII"
+            }
+          ],
+          "runwayId": "28"
+        },
+        {
+          "id": "SHYRE",
+          "name": "SHYRE",
+          "legs": [
+            {
+              "fixId": "SHYRE"
+            },
+            {
+              "fixId": "FRDDO"
+            },
+            {
+              "fixId": "BLLBO"
+            },
+            {
+              "fixId": "BGGNS",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "SMAWG",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 17000
+              }
+            },
+            {
+              "fixId": "HOBTT",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              }
+            }
+          ]
+        },
+        {
+          "id": "STRDR",
+          "name": "STRDR",
+          "legs": [
+            {
+              "fixId": "STRDR",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "GIMLY"
+            },
+            {
+              "fixId": "AZZOG"
+            },
+            {
+              "fixId": "SMAWG",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 17000
+              }
+            },
+            {
+              "fixId": "HOBTT",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              }
+            }
+          ]
+        }
+      ],
+      "common": [
+        {
+          "fixId": "HOBTT",
+          "altConstraint": {
+            "type": "AT_OR_ABOVE",
+            "altitudeFt": 14000
+          }
+        },
+        {
+          "fixId": "ENSLL",
+          "altConstraint": {
+            "type": "AT",
+            "altitudeFt": 12000
+          }
+        }
+      ],
+      "termination": "VECTORS"
+    },
+    {
+      "id": "JJEDI4",
+      "name": "JJEDI4",
+      "transitions": [
+        {
+          "id": "EEWOK",
+          "name": "EEWOK",
+          "legs": [
+            {
+              "fixId": "EEWOK"
+            },
+            {
+              "fixId": "LAYUH"
+            },
+            {
+              "fixId": "FLKNN",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 280
+              }
+            },
+            {
+              "fixId": "CHWEE",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 11000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            },
+            {
+              "fixId": "JJEDI",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 10000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            }
+          ]
+        },
+        {
+          "id": "HOTHH",
+          "name": "HOTHH",
+          "legs": [
+            {
+              "fixId": "HOTHH"
+            },
+            {
+              "fixId": "LLNDO"
+            },
+            {
+              "fixId": "XWNNG",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 280
+              }
+            },
+            {
+              "fixId": "BBFET",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 11000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            },
+            {
+              "fixId": "JJEDI",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 10000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            }
+          ]
+        },
+        {
+          "id": "LARZZ",
+          "name": "LARZZ",
+          "legs": [
+            {
+              "fixId": "LARZZ",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "NEWHP"
+            },
+            {
+              "fixId": "DTSTR",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 280
+              }
+            },
+            {
+              "fixId": "WOKIE",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 11000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            },
+            {
+              "fixId": "JJEDI",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 10000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            }
+          ]
+        },
+        {
+          "id": "LAYUH",
+          "name": "LAYUH",
+          "legs": [
+            {
+              "fixId": "LAYUH"
+            },
+            {
+              "fixId": "FLKNN",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 280
+              }
+            },
+            {
+              "fixId": "CHWEE",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 11000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            },
+            {
+              "fixId": "JJEDI",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 10000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            }
+          ]
+        },
+        {
+          "id": "MELNM",
+          "name": "MELNM",
+          "legs": [
+            {
+              "fixId": "MELNM"
+            },
+            {
+              "fixId": "LAYUH"
+            },
+            {
+              "fixId": "FLKNN",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 280
+              }
+            },
+            {
+              "fixId": "CHWEE",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 11000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            },
+            {
+              "fixId": "JJEDI",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 10000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            }
+          ]
+        },
+        {
+          "id": "SKWKR",
+          "name": "SKWKR",
+          "legs": [
+            {
+              "fixId": "SKWKR"
+            },
+            {
+              "fixId": "LAYUH"
+            },
+            {
+              "fixId": "FLKNN",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 280
+              }
+            },
+            {
+              "fixId": "CHWEE",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 11000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            },
+            {
+              "fixId": "JJEDI",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 10000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            }
+          ]
+        },
+        {
+          "id": "TYFTR",
+          "name": "TYFTR",
+          "legs": [
+            {
+              "fixId": "TYFTR"
+            },
+            {
+              "fixId": "NEWHP"
+            },
+            {
+              "fixId": "DTSTR",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 280
+              }
+            },
+            {
+              "fixId": "WOKIE",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 11000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            },
+            {
+              "fixId": "JJEDI",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 10000
+              },
+              "speedConstraint": {
+                "type": "AT",
+                "speedKt": 250
+              }
+            }
+          ]
+        }
+      ],
+      "common": [
+        {
+          "fixId": "JJEDI",
+          "altConstraint": {
+            "type": "AT_OR_ABOVE",
+            "altitudeFt": 10000
+          },
+          "speedConstraint": {
+            "type": "AT",
+            "speedKt": 250
+          }
+        },
+        {
+          "fixId": "DAFII",
+          "altConstraint": {
+            "type": "AT",
+            "altitudeFt": 8000
+          }
+        },
+        {
+          "fixId": "GRHAM"
+        },
+        {
+          "fixId": "POOBA"
+        }
+      ],
+      "termination": "VECTORS"
+    },
+    {
+      "id": "ONDRE1",
+      "name": "ONDRE1",
+      "transitions": [
+        {
+          "id": "HIGGI",
+          "name": "HIGGI",
+          "legs": [
+            {
+              "fixId": "HIGGI"
+            },
+            {
+              "fixId": "ZPPLN"
+            },
+            {
+              "fixId": "STRWY"
+            },
+            {
+              "fixId": "ONDRE",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 13000
+              }
+            }
+          ]
+        },
+        {
+          "id": "HLRRY",
+          "name": "HLRRY",
+          "legs": [
+            {
+              "fixId": "HLRRY"
+            },
+            {
+              "fixId": "ADEIN"
+            },
+            {
+              "fixId": "PUPDG"
+            },
+            {
+              "fixId": "ALADY"
+            },
+            {
+              "fixId": "WEALL"
+            },
+            {
+              "fixId": "KNOWW"
+            },
+            {
+              "fixId": "STRWY"
+            },
+            {
+              "fixId": "ONDRE",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 13000
+              }
+            }
+          ]
+        },
+        {
+          "id": "KTRYN",
+          "name": "KTRYN",
+          "legs": [
+            {
+              "fixId": "KTRYN"
+            },
+            {
+              "fixId": "THERZ"
+            },
+            {
+              "fixId": "PUPDG"
+            },
+            {
+              "fixId": "ALADY"
+            },
+            {
+              "fixId": "WEALL"
+            },
+            {
+              "fixId": "KNOWW"
+            },
+            {
+              "fixId": "STRWY"
+            },
+            {
+              "fixId": "ONDRE",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 13000
+              }
+            }
+          ]
+        },
+        {
+          "id": "PUPDG",
+          "name": "PUPDG",
+          "legs": [
+            {
+              "fixId": "PUPDG"
+            },
+            {
+              "fixId": "ALADY"
+            },
+            {
+              "fixId": "WEALL"
+            },
+            {
+              "fixId": "KNOWW"
+            },
+            {
+              "fixId": "STRWY"
+            },
+            {
+              "fixId": "ONDRE",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 13000
+              }
+            }
+          ]
+        },
+        {
+          "id": "RW08B",
+          "name": "RW08B",
+          "legs": [
+            {
+              "fixId": "SMELY"
+            },
+            {
+              "fixId": "GAASS"
+            },
+            {
+              "fixId": "KLOWD"
+            },
+            {
+              "fixId": "KUNFU"
+            },
+            {
+              "fixId": "TRAPE"
+            },
+            {
+              "fixId": "SNEVE"
+            }
+          ],
+          "runways": ["08L", "08R"]
+        },
+        {
+          "id": "RW09B",
+          "name": "RW09B",
+          "legs": [
+            {
+              "fixId": "SMELY"
+            },
+            {
+              "fixId": "FRYES"
+            },
+            {
+              "fixId": "SHURT"
+            },
+            {
+              "fixId": "REMAC"
+            },
+            {
+              "fixId": "DACTL"
+            },
+            {
+              "fixId": "STUMP"
+            }
+          ],
+          "runways": ["09L", "09R"]
+        },
+        {
+          "id": "RW10",
+          "name": "RW10",
+          "legs": [
+            {
+              "fixId": "SMELY"
+            },
+            {
+              "fixId": "FRYES"
+            },
+            {
+              "fixId": "SHURT"
+            },
+            {
+              "fixId": "REMAC"
+            },
+            {
+              "fixId": "DACTL"
+            },
+            {
+              "fixId": "STUMP"
+            }
+          ],
+          "runwayId": "10"
+        },
+        {
+          "id": "RW26B",
+          "name": "RW26B",
+          "legs": [
+            {
+              "fixId": "SMELY"
+            },
+            {
+              "fixId": "VOLTS",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 9000
+              }
+            }
+          ],
+          "runways": ["26L", "26R"]
+        },
+        {
+          "id": "RW27L",
+          "name": "RW27L",
+          "legs": [
+            {
+              "fixId": "SMELY"
+            },
+            {
+              "fixId": "ANVAL",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 9000
+              }
+            },
+            {
+              "fixId": "POSEY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              }
+            },
+            {
+              "fixId": "SLVAA",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 7000
+              }
+            },
+            {
+              "fixId": "ROMMM",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 6000
+              }
+            }
+          ],
+          "runwayId": "27L"
+        },
+        {
+          "id": "RW27R",
+          "name": "RW27R",
+          "legs": [
+            {
+              "fixId": "SMELY"
+            },
+            {
+              "fixId": "ANVAL",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 9000
+              }
+            },
+            {
+              "fixId": "POSEY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              }
+            },
+            {
+              "fixId": "YOUYU",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 7000
+              }
+            },
+            {
+              "fixId": "MMCAP",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 6000
+              }
+            }
+          ],
+          "runwayId": "27R"
+        },
+        {
+          "id": "RW28",
+          "name": "RW28",
+          "legs": [
+            {
+              "fixId": "SMELY"
+            },
+            {
+              "fixId": "ANVAL",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 9000
+              }
+            },
+            {
+              "fixId": "POSEY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              }
+            },
+            {
+              "fixId": "BLUFF",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 8000
+              }
+            }
+          ],
+          "runwayId": "28"
+        },
+        {
+          "id": "STRWY",
+          "name": "STRWY",
+          "legs": [
+            {
+              "fixId": "STRWY"
+            },
+            {
+              "fixId": "ONDRE",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 13000
+              }
+            }
+          ]
+        }
+      ],
+      "common": [
+        {
+          "fixId": "ONDRE",
+          "altConstraint": {
+            "type": "AT",
+            "altitudeFt": 13000
+          }
+        },
+        {
+          "fixId": "SMELY"
+        }
+      ],
+      "termination": "VECTORS"
+    },
+    {
+      "id": "OZZZI2",
+      "name": "OZZZI2",
+      "transitions": [
+        {
+          "id": "DGESS",
+          "name": "DGESS",
+          "legs": [
+            {
+              "fixId": "DGESS"
+            },
+            {
+              "fixId": "BTTIS"
+            },
+            {
+              "fixId": "DNIKK"
+            },
+            {
+              "fixId": "WINNG"
+            },
+            {
+              "fixId": "OZZZI"
+            }
+          ]
+        },
+        {
+          "id": "FLASK",
+          "name": "FLASK",
+          "legs": [
+            {
+              "fixId": "FLASK"
+            },
+            {
+              "fixId": "YEOLD"
+            },
+            {
+              "fixId": "SCHUL"
+            },
+            {
+              "fixId": "TDUNN"
+            },
+            {
+              "fixId": "WLLSN"
+            },
+            {
+              "fixId": "MHONY"
+            },
+            {
+              "fixId": "TEDGE"
+            },
+            {
+              "fixId": "GBAKE"
+            },
+            {
+              "fixId": "WINNG"
+            },
+            {
+              "fixId": "OZZZI"
+            }
+          ]
+        },
+        {
+          "id": "LEAVI",
+          "name": "LEAVI",
+          "legs": [
+            {
+              "fixId": "LEAVI"
+            },
+            {
+              "fixId": "RMOON"
+            },
+            {
+              "fixId": "DGESS"
+            },
+            {
+              "fixId": "BTTIS"
+            },
+            {
+              "fixId": "DNIKK"
+            },
+            {
+              "fixId": "WINNG"
+            },
+            {
+              "fixId": "OZZZI"
+            }
+          ]
+        },
+        {
+          "id": "MHONY",
+          "name": "MHONY",
+          "legs": [
+            {
+              "fixId": "MHONY"
+            },
+            {
+              "fixId": "TEDGE"
+            },
+            {
+              "fixId": "GBAKE"
+            },
+            {
+              "fixId": "WINNG"
+            },
+            {
+              "fixId": "OZZZI"
+            }
+          ]
+        },
+        {
+          "id": "RW08B",
+          "name": "RW08B",
+          "legs": [
+            {
+              "fixId": "HAARY"
+            },
+            {
+              "fixId": "KILRR"
+            },
+            {
+              "fixId": "GAASS"
+            },
+            {
+              "fixId": "KLOWD"
+            },
+            {
+              "fixId": "KUNFU"
+            },
+            {
+              "fixId": "TRAPE"
+            },
+            {
+              "fixId": "SNEVE"
+            }
+          ],
+          "runways": ["08L", "08R"]
+        },
+        {
+          "id": "RW09B",
+          "name": "RW09B",
+          "legs": [
+            {
+              "fixId": "HAARY"
+            },
+            {
+              "fixId": "KILRR"
+            },
+            {
+              "fixId": "FRYES"
+            },
+            {
+              "fixId": "SHURT"
+            },
+            {
+              "fixId": "REMAC"
+            },
+            {
+              "fixId": "DACTL"
+            },
+            {
+              "fixId": "STUMP"
+            }
+          ],
+          "runways": ["09L", "09R"]
+        },
+        {
+          "id": "RW10",
+          "name": "RW10",
+          "legs": [
+            {
+              "fixId": "HAARY"
+            },
+            {
+              "fixId": "KILRR"
+            },
+            {
+              "fixId": "FRYES"
+            },
+            {
+              "fixId": "SHURT"
+            },
+            {
+              "fixId": "REMAC"
+            },
+            {
+              "fixId": "DACTL"
+            },
+            {
+              "fixId": "STUMP"
+            }
+          ],
+          "runwayId": "10"
+        },
+        {
+          "id": "RW26L",
+          "name": "RW26L",
+          "legs": [
+            {
+              "fixId": "HAARY"
+            },
+            {
+              "fixId": "CALLA",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 9000
+              }
+            },
+            {
+              "fixId": "POSEY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              }
+            },
+            {
+              "fixId": "JIRRI",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 5000
+              }
+            },
+            {
+              "fixId": "BOYKN",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 5000
+              }
+            }
+          ],
+          "runwayId": "26L"
+        },
+        {
+          "id": "RW26R",
+          "name": "RW26R",
+          "legs": [
+            {
+              "fixId": "HAARY"
+            },
+            {
+              "fixId": "CALLA",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 9000
+              }
+            },
+            {
+              "fixId": "POSEY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              }
+            },
+            {
+              "fixId": "ZELOW",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 5000
+              }
+            },
+            {
+              "fixId": "HAINZ",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 5000
+              }
+            }
+          ],
+          "runwayId": "26R"
+        },
+        {
+          "id": "RW27L",
+          "name": "RW27L",
+          "legs": [
+            {
+              "fixId": "HAARY"
+            },
+            {
+              "fixId": "CALLA",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 9000
+              }
+            },
+            {
+              "fixId": "POSEY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              }
+            },
+            {
+              "fixId": "SLVAA",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 7000
+              }
+            },
+            {
+              "fixId": "ROMMM",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 6000
+              }
+            }
+          ],
+          "runwayId": "27L"
+        },
+        {
+          "id": "RW27R",
+          "name": "RW27R",
+          "legs": [
+            {
+              "fixId": "HAARY"
+            },
+            {
+              "fixId": "CALLA",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 9000
+              }
+            },
+            {
+              "fixId": "POSEY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              }
+            },
+            {
+              "fixId": "YOUYU",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 7000
+              }
+            },
+            {
+              "fixId": "MMCAP",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 6000
+              }
+            }
+          ],
+          "runwayId": "27R"
+        },
+        {
+          "id": "RW28",
+          "name": "RW28",
+          "legs": [
+            {
+              "fixId": "HAARY"
+            },
+            {
+              "fixId": "CALLA",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 9000
+              }
+            },
+            {
+              "fixId": "POSEY",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              }
+            },
+            {
+              "fixId": "BLUFF",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 8000
+              }
+            }
+          ],
+          "runwayId": "28"
+        },
+        {
+          "id": "WINNG",
+          "name": "WINNG",
+          "legs": [
+            {
+              "fixId": "WINNG"
+            },
+            {
+              "fixId": "OZZZI"
+            }
+          ]
+        }
+      ],
+      "common": [
+        {
+          "fixId": "OZZZI"
+        },
+        {
+          "fixId": "HAARY"
+        }
+      ],
+      "termination": "VECTORS"
+    },
+    {
+      "id": "SITTH3",
+      "name": "SITTH3",
+      "transitions": [
+        {
+          "id": "EEWOK",
+          "name": "EEWOK",
+          "legs": [
+            {
+              "fixId": "EEWOK"
+            },
+            {
+              "fixId": "LAYUH"
+            },
+            {
+              "fixId": "SITTH",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              }
+            }
+          ]
+        },
+        {
+          "id": "HOTHH",
+          "name": "HOTHH",
+          "legs": [
+            {
+              "fixId": "HOTHH"
+            },
+            {
+              "fixId": "LLNDO"
+            },
+            {
+              "fixId": "AATAT"
+            },
+            {
+              "fixId": "SITTH",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              }
+            }
+          ]
+        },
+        {
+          "id": "LARZZ",
+          "name": "LARZZ",
+          "legs": [
+            {
+              "fixId": "LARZZ",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 24000
+              }
+            },
+            {
+              "fixId": "NEWHP"
+            },
+            {
+              "fixId": "FORCC"
+            },
+            {
+              "fixId": "SITTH",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              }
+            }
+          ]
+        },
+        {
+          "id": "LAYUH",
+          "name": "LAYUH",
+          "legs": [
+            {
+              "fixId": "LAYUH"
+            },
+            {
+              "fixId": "SITTH",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              }
+            }
+          ]
+        },
+        {
+          "id": "MELNM",
+          "name": "MELNM",
+          "legs": [
+            {
+              "fixId": "MELNM"
+            },
+            {
+              "fixId": "LAYUH"
+            },
+            {
+              "fixId": "SITTH",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              }
+            }
+          ]
+        },
+        {
+          "id": "RW08B",
+          "name": "RW08B",
+          "legs": [
+            {
+              "fixId": "TIZZY",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 12000
+              }
+            },
+            {
+              "fixId": "GAASS"
+            },
+            {
+              "fixId": "KLOWD"
+            },
+            {
+              "fixId": "KUNFU"
+            },
+            {
+              "fixId": "TRAPE"
+            },
+            {
+              "fixId": "SNEVE"
+            }
+          ],
+          "runways": ["08L", "08R"]
+        },
+        {
+          "id": "RW09B",
+          "name": "RW09B",
+          "legs": [
+            {
+              "fixId": "TIZZY",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 12000
+              }
+            },
+            {
+              "fixId": "FRYES"
+            },
+            {
+              "fixId": "SHURT"
+            },
+            {
+              "fixId": "REMAC"
+            },
+            {
+              "fixId": "DACTL"
+            },
+            {
+              "fixId": "STUMP"
+            }
+          ],
+          "runways": ["09L", "09R"]
+        },
+        {
+          "id": "RW10",
+          "name": "RW10",
+          "legs": [
+            {
+              "fixId": "TIZZY",
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 12000
+              }
+            },
+            {
+              "fixId": "FRYES"
+            },
+            {
+              "fixId": "SHURT"
+            },
+            {
+              "fixId": "REMAC"
+            },
+            {
+              "fixId": "DACTL"
+            },
+            {
+              "fixId": "STUMP"
+            }
+          ],
+          "runwayId": "10"
+        },
+        {
+          "id": "SKWKR",
+          "name": "SKWKR",
+          "legs": [
+            {
+              "fixId": "SKWKR"
+            },
+            {
+              "fixId": "LAYUH"
+            },
+            {
+              "fixId": "SITTH",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              }
+            }
+          ]
+        },
+        {
+          "id": "TYFTR",
+          "name": "TYFTR",
+          "legs": [
+            {
+              "fixId": "TYFTR"
+            },
+            {
+              "fixId": "NEWHP"
+            },
+            {
+              "fixId": "FORCC"
+            },
+            {
+              "fixId": "SITTH",
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 14000
+              }
+            }
+          ]
+        }
+      ],
+      "common": [
+        {
+          "fixId": "SITTH",
+          "altConstraint": {
+            "type": "AT_OR_ABOVE",
+            "altitudeFt": 14000
+          }
+        },
+        {
+          "fixId": "TIZZY",
+          "altConstraint": {
+            "type": "AT",
+            "altitudeFt": 12000
+          }
+        }
+      ],
+      "termination": "VECTORS"
+    }
+  ],
+  "approaches": [
+    {
+      "id": "H08LZ",
+      "type": "RNAV",
+      "runway": "08L",
+      "name": "RNAV RWY 08L",
+      "locNavaidId": "IAFA",
+      "gsNavaidId": "IAFAGS",
+      "thresholdFixId": "RW08L",
+      "courseDeg": 94.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.555,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500
+    },
+    {
+      "id": "H10-Z",
+      "type": "RNAV",
+      "runway": "10",
+      "name": "RNAV RWY 10",
+      "locNavaidId": "IAFA",
+      "gsNavaidId": "IAFAGS",
+      "thresholdFixId": "RW10",
+      "courseDeg": 94.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.555,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500
+    },
+    {
+      "id": "H26RZ",
+      "type": "RNAV",
+      "runway": "26R",
+      "name": "RNAV RWY 26R",
+      "locNavaidId": "IAFA",
+      "gsNavaidId": "IAFAGS",
+      "thresholdFixId": "RW26R",
+      "courseDeg": 275.1,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.555,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500
+    },
+    {
+      "id": "H28-Z",
+      "type": "RNAV",
+      "runway": "28",
+      "name": "RNAV RWY 28",
+      "locNavaidId": "IAFA",
+      "gsNavaidId": "IAFAGS",
+      "thresholdFixId": "RW28",
+      "courseDeg": 275.1,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.555,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500
+    },
+    {
+      "id": "I08L",
+      "type": "ILS",
+      "runway": "08L",
+      "name": "ILS RWY 08L",
+      "locNavaidId": "IHFW",
+      "gsNavaidId": "IHFWGS",
+      "thresholdFixId": "RW08L",
+      "courseDeg": 95,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.02,
+      "tchFt": 50,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500,
+      "missed": {
+        "headingDeg": 95,
+        "climbToFt": 1065,
+        "directFixId": "RW08L"
+      }
+    },
+    {
+      "id": "I08R",
+      "type": "ILS",
+      "runway": "08R",
+      "name": "ILS RWY 08R",
+      "locNavaidId": "IATL",
+      "gsNavaidId": "IATLGS",
+      "thresholdFixId": "RW08R",
+      "courseDeg": 95,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.82,
+      "tchFt": 53,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500,
+      "missed": {
+        "headingDeg": 95,
+        "climbToFt": 1077,
+        "directFixId": "RW08R"
+      }
+    },
+    {
+      "id": "I09L",
+      "type": "ILS",
+      "runway": "09L",
+      "name": "ILS RWY 09L",
+      "locNavaidId": "IHZK",
+      "gsNavaidId": "IHZKGS",
+      "thresholdFixId": "RW09L",
+      "courseDeg": 95,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.545,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "missed": {
+        "headingDeg": 95,
+        "climbToFt": 1075,
+        "directFixId": "RW09L"
+      }
+    },
+    {
+      "id": "I09R",
+      "type": "ILS",
+      "runway": "09R",
+      "name": "ILS RWY 09R",
+      "locNavaidId": "IFUN",
+      "gsNavaidId": "IFUNGS",
+      "thresholdFixId": "RW09R",
+      "courseDeg": 95,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.975,
+      "tchFt": 55,
+      "gsAngleDeg": 3,
+      "missed": {
+        "headingDeg": 95,
+        "climbToFt": 1082,
+        "directFixId": "RW09R"
+      }
+    },
+    {
+      "id": "I10",
+      "type": "ILS",
+      "runway": "10",
+      "name": "ILS RWY 10",
+      "locNavaidId": "IOMO",
+      "gsNavaidId": "IOMOGS",
+      "thresholdFixId": "RW10",
+      "courseDeg": 95,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2,
+      "tchFt": 55,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1400,
+      "missed": {
+        "headingDeg": 95,
+        "climbToFt": 1055,
+        "directFixId": "RW10"
+      }
+    },
+    {
+      "id": "I26L",
+      "type": "ILS",
+      "runway": "26L",
+      "name": "ILS RWY 26L",
+      "locNavaidId": "IBRU",
+      "gsNavaidId": "IBRUGS",
+      "thresholdFixId": "RW26L",
+      "courseDeg": 275,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.82,
+      "tchFt": 52,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500,
+      "missed": {
+        "headingDeg": 275,
+        "climbToFt": 1048,
+        "directFixId": "RW26L"
+      }
+    },
+    {
+      "id": "I26R",
+      "type": "ILS",
+      "runway": "26R",
+      "name": "ILS RWY 26R",
+      "locNavaidId": "IGXZ",
+      "gsNavaidId": "IGXZGS",
+      "thresholdFixId": "RW26R",
+      "courseDeg": 275,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.04,
+      "tchFt": 55,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1800,
+      "missed": {
+        "headingDeg": 275,
+        "climbToFt": 1045,
+        "directFixId": "RW26R"
+      }
+    },
+    {
+      "id": "I27L",
+      "type": "ILS",
+      "runway": "27L",
+      "name": "ILS RWY 27L",
+      "locNavaidId": "IFSQ",
+      "gsNavaidId": "IFSQGS",
+      "thresholdFixId": "RW27L",
+      "courseDeg": 275,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.03,
+      "tchFt": 58,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500,
+      "missed": {
+        "headingDeg": 275,
+        "climbToFt": 1043,
+        "directFixId": "RW27L"
+      }
+    },
+    {
+      "id": "I27R",
+      "type": "ILS",
+      "runway": "27R",
+      "name": "ILS RWY 27R",
+      "locNavaidId": "IAFA",
+      "gsNavaidId": "IAFAGS",
+      "thresholdFixId": "RW27R",
+      "courseDeg": 275,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.555,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500,
+      "missed": {
+        "headingDeg": 275,
+        "climbToFt": 1034,
+        "directFixId": "RW27R"
+      }
+    },
+    {
+      "id": "I28",
+      "type": "ILS",
+      "runway": "28",
+      "name": "ILS RWY 28",
+      "locNavaidId": "IPKU",
+      "gsNavaidId": "IPKUGS",
+      "thresholdFixId": "RW28",
+      "courseDeg": 275,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.985,
+      "tchFt": 57,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500,
+      "missed": {
+        "headingDeg": 275,
+        "climbToFt": 1054,
+        "directFixId": "RW28"
+      }
+    },
+    {
+      "id": "L08L",
+      "type": "LOC",
+      "runway": "08L",
+      "name": "LOC RWY 08L",
+      "locNavaidId": "IHFW",
+      "gsNavaidId": "IHFWGS",
+      "thresholdFixId": "RW08L",
+      "courseDeg": 95,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.02,
+      "tchFt": 50,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500,
+      "missed": {
+        "headingDeg": 95,
+        "climbToFt": 1065,
+        "directFixId": "RW08L"
+      }
+    },
+    {
+      "id": "L08R",
+      "type": "LOC",
+      "runway": "08R",
+      "name": "LOC RWY 08R",
+      "locNavaidId": "IATL",
+      "gsNavaidId": "IATLGS",
+      "thresholdFixId": "RW08R",
+      "courseDeg": 95,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.82,
+      "tchFt": 53,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500,
+      "missed": {
+        "headingDeg": 95,
+        "climbToFt": 1077,
+        "directFixId": "RW08R"
+      }
+    },
+    {
+      "id": "L09L",
+      "type": "LOC",
+      "runway": "09L",
+      "name": "LOC RWY 09L",
+      "locNavaidId": "IHZK",
+      "gsNavaidId": "IHZKGS",
+      "thresholdFixId": "RW09L",
+      "courseDeg": 95,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.545,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "missed": {
+        "headingDeg": 95,
+        "climbToFt": 1075,
+        "directFixId": "RW09L"
+      }
+    },
+    {
+      "id": "L09R",
+      "type": "LOC",
+      "runway": "09R",
+      "name": "LOC RWY 09R",
+      "locNavaidId": "IFUN",
+      "gsNavaidId": "IFUNGS",
+      "thresholdFixId": "RW09R",
+      "courseDeg": 95,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.975,
+      "tchFt": 55,
+      "gsAngleDeg": 3,
+      "missed": {
+        "headingDeg": 95,
+        "climbToFt": 1082,
+        "directFixId": "RW09R"
+      }
+    },
+    {
+      "id": "L10",
+      "type": "LOC",
+      "runway": "10",
+      "name": "LOC RWY 10",
+      "locNavaidId": "IOMO",
+      "gsNavaidId": "IOMOGS",
+      "thresholdFixId": "RW10",
+      "courseDeg": 95,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2,
+      "tchFt": 55,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1400,
+      "missed": {
+        "headingDeg": 95,
+        "climbToFt": 1055,
+        "directFixId": "RW10"
+      }
+    },
+    {
+      "id": "L26L",
+      "type": "LOC",
+      "runway": "26L",
+      "name": "LOC RWY 26L",
+      "locNavaidId": "IBRU",
+      "gsNavaidId": "IBRUGS",
+      "thresholdFixId": "RW26L",
+      "courseDeg": 275,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.82,
+      "tchFt": 52,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500,
+      "missed": {
+        "headingDeg": 275,
+        "climbToFt": 1264,
+        "directFixId": "USUCI"
+      }
+    },
+    {
+      "id": "L26R",
+      "type": "LOC",
+      "runway": "26R",
+      "name": "LOC RWY 26R",
+      "locNavaidId": "IGXZ",
+      "gsNavaidId": "IGXZGS",
+      "thresholdFixId": "RW26R",
+      "courseDeg": 275,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.04,
+      "tchFt": 55,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1800,
+      "missed": {
+        "headingDeg": 275,
+        "climbToFt": 1045,
+        "directFixId": "RW26R"
+      }
+    },
+    {
+      "id": "L27L",
+      "type": "LOC",
+      "runway": "27L",
+      "name": "LOC RWY 27L",
+      "locNavaidId": "IFSQ",
+      "gsNavaidId": "IFSQGS",
+      "thresholdFixId": "RW27L",
+      "courseDeg": 275,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.03,
+      "tchFt": 58,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500,
+      "missed": {
+        "headingDeg": 275,
+        "climbToFt": 1043,
+        "directFixId": "RW27L"
+      }
+    },
+    {
+      "id": "L27R",
+      "type": "LOC",
+      "runway": "27R",
+      "name": "LOC RWY 27R",
+      "locNavaidId": "IAFA",
+      "gsNavaidId": "IAFAGS",
+      "thresholdFixId": "RW27R",
+      "courseDeg": 275,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.555,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500,
+      "missed": {
+        "headingDeg": 275,
+        "climbToFt": 1034,
+        "directFixId": "RW27R"
+      }
+    },
+    {
+      "id": "L28",
+      "type": "LOC",
+      "runway": "28",
+      "name": "LOC RWY 28",
+      "locNavaidId": "IPKU",
+      "gsNavaidId": "IPKUGS",
+      "thresholdFixId": "RW28",
+      "courseDeg": 275,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.985,
+      "tchFt": 57,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500,
+      "missed": {
+        "headingDeg": 275,
+        "climbToFt": 1054,
+        "directFixId": "RW28"
+      }
+    },
+    {
+      "id": "R08LY",
+      "type": "RNAV",
+      "runway": "08L",
+      "name": "RNAV RWY 08L",
+      "locNavaidId": "IAFA",
+      "gsNavaidId": "IAFAGS",
+      "thresholdFixId": "RW08L",
+      "courseDeg": 94.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.555,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500
+    },
+    {
+      "id": "R08R",
+      "type": "RNAV",
+      "runway": "08R",
+      "name": "RNAV RWY 08R",
+      "locNavaidId": "IAFA",
+      "gsNavaidId": "IAFAGS",
+      "thresholdFixId": "RW08R",
+      "courseDeg": 94.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.555,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500
+    },
+    {
+      "id": "R09L",
+      "type": "RNAV",
+      "runway": "09L",
+      "name": "RNAV RWY 09L",
+      "locNavaidId": "IAFA",
+      "gsNavaidId": "IAFAGS",
+      "thresholdFixId": "RW09L",
+      "courseDeg": 94.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.555,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1359
+    },
+    {
+      "id": "R09R",
+      "type": "RNAV",
+      "runway": "09R",
+      "name": "RNAV RWY 09R",
+      "locNavaidId": "IAFA",
+      "gsNavaidId": "IAFAGS",
+      "thresholdFixId": "RW09R",
+      "courseDeg": 94.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.555,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1226
+    },
+    {
+      "id": "R10-Y",
+      "type": "RNAV",
+      "runway": "10",
+      "name": "RNAV RWY 10",
+      "locNavaidId": "IAFA",
+      "gsNavaidId": "IAFAGS",
+      "thresholdFixId": "RW10",
+      "courseDeg": 94.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.555,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500
+    },
+    {
+      "id": "R26L",
+      "type": "RNAV",
+      "runway": "26L",
+      "name": "RNAV RWY 26L",
+      "locNavaidId": "IAFA",
+      "gsNavaidId": "IAFAGS",
+      "thresholdFixId": "RW26L",
+      "courseDeg": 275,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.555,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500
+    },
+    {
+      "id": "R26RY",
+      "type": "RNAV",
+      "runway": "26R",
+      "name": "RNAV RWY 26R",
+      "locNavaidId": "IAFA",
+      "gsNavaidId": "IAFAGS",
+      "thresholdFixId": "RW26R",
+      "courseDeg": 275.1,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.555,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500
+    },
+    {
+      "id": "R27L",
+      "type": "RNAV",
+      "runway": "27L",
+      "name": "RNAV RWY 27L",
+      "locNavaidId": "IAFA",
+      "gsNavaidId": "IAFAGS",
+      "thresholdFixId": "RW27L",
+      "courseDeg": 275.1,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.555,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1199
+    },
+    {
+      "id": "R27R",
+      "type": "RNAV",
+      "runway": "27R",
+      "name": "RNAV RWY 27R",
+      "locNavaidId": "IAFA",
+      "gsNavaidId": "IAFAGS",
+      "thresholdFixId": "RW27R",
+      "courseDeg": 275.1,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.555,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1185
+    },
+    {
+      "id": "R28-Y",
+      "type": "RNAV",
+      "runway": "28",
+      "name": "RNAV RWY 28",
+      "locNavaidId": "IAFA",
+      "gsNavaidId": "IAFAGS",
+      "thresholdFixId": "RW28",
+      "courseDeg": 275,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 1.555,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500
+    }
+  ]
+}

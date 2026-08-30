@@ -97,6 +97,7 @@ export {
   STAR_SPAWN_STAGGER_NM,
   STAR_SPAWN_VIA_ALT_MARGIN_FT,
   assignStarRoutes,
+  authoredStarToFixIndex,
   listStarSlots,
   outermostStarFix,
   starInboundPose,

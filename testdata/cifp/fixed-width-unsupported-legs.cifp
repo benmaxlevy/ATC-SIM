@@ -1,0 +1,11 @@
+# Unsupported RF/hold/arc/PT legs must be counted, never emitted as TF.
+SUSAP KSYNK A        0          N00000000E000000000E000000000                                Synthetic Field                        
+SUSAP KSYNK CNEMAX K 0      I   N00120000E000170000                                                                                 
+SUSAP KSYNK CNELBO K 0      I   N00070000E000160000                                                                                 
+SUSAP KSYNK CMERGE K 0      I   N00000000E000100000                                                                                 
+SUSAP KSYNK EDEM1  2      010NEMAXK PC0E       IF                                 + 10000                                           
+SUSAP KSYNK EDEM1  2      020NELBOK PC0E       RF                                                                                   
+SUSAP KSYNK EDEM1  2      030MERGEK PC0E       HA                                                                                   
+SUSAP KSYNK EDEM1  2      040MERGEK PC0E       AF                                                                                   
+SUSAP KSYNK EDEM1  2      050MERGEK PC0E       PI                                                                                   
+SUSAP KSYNK EDEM1  2      060MERGEK PC0E       TF                                   04000                                           

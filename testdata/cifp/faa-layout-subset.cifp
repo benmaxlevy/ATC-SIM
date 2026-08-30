@@ -1,0 +1,35 @@
+HDR01FAACIFP18      001P000000000000000001JAN00000:00:00  U.S.A. DOT FAA SYNTHETIC
+# Synthetic FAA-column ARINC 424-18. NOT a real cycle.
+SUSAP KSYNK A        0          N00000000E000000000E000000000                                Synthetic Field                        
+SUSAD        DEM   K 011300VDT  N00004800E000002400                                 1        DEMO                                   
+SUSADB       DMO   K 003850     N00000900E000060000                                          DEMO                                   
+SUSAP KSYNK CNEMAX K 0      I   N00120000E000170000                                                                                 
+SUSAP KSYNK CNELBO K 0      I   N00070000E000160000                                                                                 
+SUSAP KSYNK CMERGE K 0      I   N00000000E000100000                                                                                 
+SUSAP KSYNK CFI27  K 0      F   N00000000E000060000                                                                                 
+SUSAP KSYNK CRW27  K 0      G   N00000000E000000000                                                                                 
+SUSAP KSYNK CMISSD K 0      M   N00060000W000080000                                                                                 
+SUSAP KSYNK CSIDEP K 0      I   N00010000E000040000                                                                                 
+SUSAP KSYNK GRW27    0100002700 N00000000E000000000                                                                                 
+SUSAP KSYNK IIDEM1   011030RW27 N00000000W0000151002700S00000420E000001080         0500300     50                                   
+SUSAP KSYNK MIDEMOM  0     RW27 N00000000E000062000                                                                                 
+SUSAP KSYNK EDEM1  1N     010NEMAXK PC0E       IF                                 + 10000          250               -              
+SUSAP KSYNK EDEM1  1N     020NELBOK PC0E       TF                                 + 08000          230               -              
+SUSAP KSYNK EDEM1  2      010MERGEK PC0E       TF                                   04000          210               -              
+SUSAP KSYNK FILS27 IRW27  010FI27 K PC0E  F    IF IDEM                2700          02000                                           
+SUSAP KSYNK FILS27 IRW27  020RW27 K PC0E       CF IDEM                2700                                                          
+SUSAP KSYNK FILS27 Z      010     K PC0E  M    VA                     2700        + 03000                                           
+SUSAP KSYNK FILS27 Z      020MISSDK PC0E  M    DF                                                                                   
+SUSAP KSYNK DDEP1  1RW27  010SIDEPK PC0E       IF                     2700        + 01500     05000                                 
+SUSAP KSYNK DDEP1  2      010MERGEK PC0E       TF                                   05000          250               -              
+SUSAP KSYNK DDEP1  3NORMA 010NEMAXK PC0E       TF                                 + 06000                                           
+SUSAER       V1      0                                                                                                              
+this is garbage not a record
+
+SUSAD        SDM   K7011400 DUW                    SDM N00004800E000002400                   SYN DME                                
+SUSAD KSYN   IDEM  K7011030 ITW                    IDEMS00000420E000001080                   ILS DME                                
+SUSAPNKSYNK7 SYN   K7002410     N00000900E000050000                                          SYN NDB                                
+SUSAP KSYNK FR10-Y AFI27  010FI27 K PC0E       IF IDEM                2700          02000                                           
+SUSAP KSYNK FR10-Y RRW27  010FI27 K PC0E       IF IDEM                2700                                                          
+SUSAP KSYNK FR10-Y RRW27  020RW27 K PC0E       CF IDEM                2700                                                          
+SUSAP KSYNK7FR10-Y RRW27  020RW27     2        CF                                                                                   

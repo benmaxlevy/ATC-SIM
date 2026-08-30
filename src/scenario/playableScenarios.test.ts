@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { loadKdem } from "./load";
+import { loadVideoMapSet } from "./loadVideoMaps";
 import {
   createPlayableScenarioInventory,
   listConfigurationsForAirport,
@@ -60,6 +61,28 @@ test("T04-24/T04-28/T05-14 AC1/AC2 — shipped inventory lists and loads KDEM sc
       sessionSetupVisible: false,
       source: "scenarios/kdem-atpa",
     },
+    {
+      id: "katl",
+      airportIcao: "KATL",
+      airportName: "Hartsfield-Jackson Atlanta Intl",
+      label: "Hartsfield-Jackson Atlanta Intl",
+      configLabel: "West Flow (RWY 26R)",
+      activeRunwayId: "26R",
+      default: false,
+      sessionSetupVisible: true,
+      source: "scenarios/katl",
+    },
+    {
+      id: "katl-08",
+      airportIcao: "KATL",
+      airportName: "Hartsfield-Jackson Atlanta Intl",
+      label: "Hartsfield-Jackson Atlanta Intl — East Flow (RWY 08L)",
+      configLabel: "East Flow (RWY 08L)",
+      activeRunwayId: "08L",
+      default: false,
+      sessionSetupVisible: true,
+      source: "scenarios/katl-08",
+    },
   ]);
   expect(loadPlayableScenario("kdem-09").activeRunwayId).toBe("09");
   expect(loadPlayableScenario("kdem-ils09").activeRunwayId).toBe("09");
@@ -76,6 +99,11 @@ test("T05-14 AC2/AC3 — listPlayableAirports and listConfigurationsForAirport r
       airportLabel: "KDEM — Demo Field",
       defaultScenarioId: "kdem",
     },
+    {
+      airportIcao: "KATL",
+      airportLabel: "KATL — Hartsfield-Jackson Atlanta Intl",
+      defaultScenarioId: "katl",
+    },
   ]);
 
   const configs = listConfigurationsForAirport("KDEM");
@@ -87,8 +115,18 @@ test("T05-14 AC2/AC3 — listPlayableAirports and listConfigurationsForAirport r
     { id: "kdem-09", configLabel: "East Flow (RWY 09)", rwy: "09" },
   ]);
 
+  const katlConfigs = listConfigurationsForAirport("KATL");
+  expect(katlConfigs).toHaveLength(2);
+  expect(
+    katlConfigs.map((c) => ({ id: c.id, configLabel: c.configLabel, rwy: c.activeRunwayId })),
+  ).toEqual([
+    { id: "katl", configLabel: "West Flow (RWY 26R)", rwy: "26R" },
+    { id: "katl-08", configLabel: "East Flow (RWY 08L)", rwy: "08L" },
+  ]);
+
   // Case insensitive ICAO lookup
   expect(listConfigurationsForAirport("kdem")).toEqual(configs);
+  expect(listConfigurationsForAirport("katl")).toEqual(katlConfigs);
   expect(listConfigurationsForAirport("UNKNOWN")).toEqual([]);
 });
 
@@ -196,4 +234,36 @@ test("T04-24 AC5 — query resolves inventory id and preserves ILS scenario", ()
   expect(parseScenarioChoice("?scenario=kdem-ils27")).toBe("kdem-ils27");
   expect(loadPlayableScenario(parseScenarioChoice("?scenario=kdem-ils27")).id).toBe("kdem-ils27");
   expect(loadPlayableScenario(parseScenarioChoice("?scenario=unknown")).icao).toBe("KDEM");
+});
+
+test("T04-35 AC1 — every playable scenario loads catalog through generic loaders", () => {
+  const listed = listPlayableScenarios();
+  expect(listed.length).toBeGreaterThan(0);
+  for (const entry of listed) {
+    const scenario = loadPlayableScenario(entry.id);
+    expect(scenario.catalog.airportId).toBe(entry.airportIcao);
+    if (scenario.maps.videoMapSet) {
+      const maps = loadVideoMapSet(scenario.maps.videoMapSet);
+      expect(maps.length).toBeGreaterThan(0);
+    } else {
+      expect(scenario.maps.videoMaps).toEqual([]);
+      expect(scenario.maps.loadedVideoMaps).toEqual([]);
+    }
+    expect(scenario.mva).not.toBeNull();
+    expect(scenario.mva!.polygons.length).toBeGreaterThan(0);
+    expect(scenario.spawns.length).toBeGreaterThan(0);
+  }
+});
+
+test("T04-35 AC2 — KDEM remains default; KATL configurations are session-visible", () => {
+  expect(loadPlayableScenario().icao).toBe("KDEM");
+  expect(loadPlayableScenario(null).icao).toBe("KDEM");
+  const defaults = listPlayableScenarios().filter((entry) => entry.default);
+  expect(defaults).toEqual([
+    expect.objectContaining({ id: "kdem", airportIcao: "KDEM", default: true }),
+  ]);
+  const katl = listPlayableScenarios().filter((entry) => entry.airportIcao === "KATL");
+  expect(katl.length).toBeGreaterThanOrEqual(2);
+  expect(katl.every((entry) => entry.sessionSetupVisible && !entry.default)).toBe(true);
+  expect(listPlayableAirports().map((row) => row.airportIcao)).toEqual(["KDEM", "KATL"]);
 });

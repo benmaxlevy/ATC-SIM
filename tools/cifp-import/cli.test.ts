@@ -3,6 +3,8 @@ import { expect, test } from "vitest";
 import { readFileSync } from "node:fs";
 import expectedCatalog from "../../testdata/cifp/frozen-subset.expected.json";
 import { formatSkipLog, parseCliArgs, runCli } from "./cli.ts";
+import { buildFaaLayoutSubset, buildFixedWidthSubset } from "./fixedWidthRecords.ts";
+import { CATALOG_PACK_FILES } from "./pack.ts";
 
 test("parseCliArgs requires --in and accepts --out", () => {
   expect(parseCliArgs(["--in", "a.cifp"])).toEqual({ inPath: "a.cifp", outPath: null });
@@ -42,9 +44,77 @@ test("CLI writes catalog JSON matching the frozen snapshot", () => {
   expect(stderr).toMatch(/skipped 3 record\(s\): ER=1 GARBAGE=1 PD=1/);
 });
 
+test("pack subcommand writes catalog files without breaking import args", () => {
+  const files = new Map<string, string>([["in.cifp", buildFixedWidthSubset()]]);
+  let stderr = "";
+  runCli(["pack", "--in", "in.cifp", "--airport", "KSYN", "--radius", "40", "--out", "out/ksyn"], {
+    readFile: (path) => {
+      const body = files.get(path);
+      if (body === undefined) {
+        throw new Error(`missing ${path}`);
+      }
+      return body;
+    },
+    writeFile: (path, body) => {
+      files.set(path, body);
+    },
+    stdout: () => {
+      throw new Error("stdout should not be used when pack --out is set");
+    },
+    stderr: (body) => {
+      stderr += body;
+    },
+  });
+  expect(stderr).toMatch(/cifp-pack: write/);
+  for (const name of CATALOG_PACK_FILES) {
+    expect(files.has(`out/ksyn/${name}`)).toBe(true);
+  }
+});
+
 test("formatSkipLog prints type counts", () => {
   expect(formatSkipLog({ count: 0, byType: {} })).toBe("cifp-import: skipped 0 record(s)\n");
   expect(formatSkipLog({ count: 2, byType: { ER: 1, PD: 1 } })).toBe(
     "cifp-import: skipped 2 record(s): ER=1 PD=1\n",
   );
+});
+
+test("pack --dry-run on FAA-column fixture reaches seed selection", () => {
+  const files = new Map<string, string>([["in.cifp", buildFaaLayoutSubset()]]);
+  let stderr = "";
+  runCli(
+    [
+      "pack",
+      "--in",
+      "in.cifp",
+      "--airport",
+      "KSYN",
+      "--radius",
+      "40",
+      "--out",
+      "out/ksyn",
+      "--dry-run",
+    ],
+    {
+      readFile: (path) => {
+        const body = files.get(path);
+        if (body === undefined) {
+          throw new Error(`missing ${path}`);
+        }
+        return body;
+      },
+      writeFile: () => {
+        throw new Error("dry-run must not write");
+      },
+      stdout: () => {
+        throw new Error("stdout should not be used by pack");
+      },
+      stderr: (body) => {
+        stderr += body;
+      },
+    },
+  );
+  expect(stderr).toMatch(/cifp-pack: dry-run/);
+  expect(stderr).toMatch(/airport: KSYN/);
+  expect(stderr).toMatch(/seed: /);
+  expect(stderr).toMatch(/closed: /);
 });

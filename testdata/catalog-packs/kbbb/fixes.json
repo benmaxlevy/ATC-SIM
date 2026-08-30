@@ -1,0 +1,57 @@
+{
+  "airportId": "KBBB",
+  "fixes": [
+    {
+      "id": "NEARX",
+      "kind": "WAYPOINT",
+      "xNm": 4,
+      "yNm": 1,
+      "latDeg": 0.0167,
+      "lonDeg": 0.0667
+    },
+    {
+      "id": "FARST",
+      "kind": "WAYPOINT",
+      "xNm": 0,
+      "yNm": 60,
+      "latDeg": 1,
+      "lonDeg": 0,
+      "note": "STAR transition fix outside a 20 NM ARP seed"
+    },
+    {
+      "id": "FARSID",
+      "kind": "WAYPOINT",
+      "xNm": 60,
+      "yNm": 0,
+      "latDeg": 0,
+      "lonDeg": 1,
+      "note": "SID runway-transition fix outside a 20 NM ARP seed"
+    },
+    {
+      "id": "FARAF",
+      "kind": "FAF",
+      "xNm": 0,
+      "yNm": -60,
+      "latDeg": -1,
+      "lonDeg": 0,
+      "note": "Approach FAF outside a 20 NM ARP seed"
+    },
+    {
+      "id": "RW27",
+      "kind": "THRESHOLD",
+      "xNm": 0,
+      "yNm": 0,
+      "latDeg": 0,
+      "lonDeg": 0
+    },
+    {
+      "id": "FARMS",
+      "kind": "WAYPOINT",
+      "xNm": -60,
+      "yNm": 0,
+      "latDeg": 0,
+      "lonDeg": -1,
+      "note": "Missed-approach fix outside a 20 NM ARP seed"
+    }
+  ]
+}

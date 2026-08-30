@@ -12,7 +12,7 @@ import {
   type World,
 } from "@core";
 import type { ArrivalSpawn, Scenario } from "./types";
-import { assignStarRoutes, starRouteFixIds } from "./starSpawn";
+import { assignStarRoutes, authoredStarToFixIndex, starRouteFixIds } from "./starSpawn";
 import { DEFAULT_SPAWN_SEED, type DepartureOptions } from "./trafficQuery";
 import { generateDepartureSchedule, spawnDueDepartures } from "./departureGenerator";
 import {
@@ -83,7 +83,7 @@ function armStarVia(ac: Aircraft, scenario: Scenario, arrival: ArrivalSpawn): vo
   ac.intent.lateral = {
     type: "PROCEDURE",
     starId: arrival.starId,
-    toFixIndex: 0,
+    toFixIndex: authoredStarToFixIndex(scenario.catalog, arrival.starId, arrival.transitionId, ac),
     routeFixIds,
   };
   ac.intent.vertical = { type: "VIA_STAR", starId: arrival.starId, sense: "DESCEND" };
