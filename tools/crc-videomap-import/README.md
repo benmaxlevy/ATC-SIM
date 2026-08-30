@@ -73,4 +73,56 @@ const a80 = artcc.starsFacilities.find((row) => row.facilityId === CRC_A80_FACIL
 ```
 
 KDEM remains the authored runtime default. Existing `src/scenario/video-maps/`
-loading is unchanged. This tool does not emit trainer `arp-enu-nm` catalogs.
+loading is unchanged until T04-40. T04-37 emits trainer `arp-enu-nm` files from
+this CLI; the Vite app still does not import this directory.
+
+## Conversion (T04-37)
+
+Offline GeoJSON → trainer `VideoMapFile` JSON (`polyline` / `text` in
+`arp-enu-nm`). Browser/runtime never reads CRC. `src/` must not import this
+tool.
+
+**Identity.** Output `id` is the CRC ULID (`NormalizedCrcVideoMap.id`).
+`starsId` is recorded in `note` only. Do not densify to 1–30 or use a DCB
+slot as `id`.
+
+**ARP.** Conversion is parameterized by scenario ARP. KATL west-flow example
+from `src/scenario/katl.json`: `latDeg 33.6367`, `lonDeg -84.4278638888889`.
+Do not bake KATL ENU into reusable source GeoJSON.
+
+**Geometry.** WGS84 `[lon, lat]` → `[eastNm, northNm]` via this tree's
+`latLonToNm` (copied from `tools/cifp-import/coordinates.ts`). Supported:
+LineString, MultiLineString, Polygon outlines (closed polylines, including
+holes), Point with `properties.text`. Stroke-font labels stay polylines; no
+OCR and no proprietary font.
+
+**Cleanup.** Null geometry, empty coordinates, CRC default features
+(`isLineDefaults` / `isTextDefaults` / `isSymbolDefaults`), `[0, 0]` vertices,
+malformed coordinates, unsupported types (MultiPoint, GeometryCollection),
+and Point symbols without text are skipped with deterministic diagnostics.
+Maps that produce no valid features are not written.
+
+**Brightness.** CRC A → `map`; B → `mapDim` (`crcBrightnessToVideoMapColor`).
+Recorded in `note` (catalog wiring is T04-39). BRITE is later.
+
+### CLI
+
+From the repo root:
+
+```text
+npm run crc:videomaps -- --metadata <ARTCC.json> --maps <VideoMaps/ZTL> --arp-lat 33.6367 --arp-lon -84.4278638888889 --out tools/crc-videomap-import/out
+```
+
+`--arp LAT,LON` is accepted instead of `--arp-lat` / `--arp-lon`. `--dry-run`
+prints map counts, feature counts, skipped-reason totals, and NM bounds; it
+does not write files. `--out` is required unless `--dry-run`.
+
+Local CRC examples (never commit these files):
+
+```text
+npm run crc:videomaps -- --metadata C:\Users\Ben\AppData\Local\CRC\ARTCCs\ZTL.json --maps C:\Users\Ben\AppData\Local\CRC\VideoMaps\ZTL --arp 33.6367,-84.4278638888889 --dry-run
+```
+
+Written files are `<ULID>.json` under `--out`. That directory is gitignored.
+Do not commit generated A80 packs here (T04-39). Tests use synthetic fixtures
+under `testdata/crc-videomaps/geojson-*.json` and `convert-metadata.json`.

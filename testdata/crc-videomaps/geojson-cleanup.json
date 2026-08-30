@@ -1,0 +1,139 @@
+{
+  "type": "FeatureCollection",
+  "name": "SYN CLEANUP",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "style": "solid" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-1, 0],
+          [-1, 1]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "color": "#424242" },
+      "geometry": null
+    },
+    {
+      "type": "Feature",
+      "properties": { "style": "solid" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": []
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "isLineDefaults": true,
+        "style": "Solid",
+        "thickness": 2
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-85.78, 34.6]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "isTextDefaults": true,
+        "size": 1
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-88.34, 37.33]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "isSymbolDefaults": true,
+        "style": "Vor"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-85.78, 34.6]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "style": "solid", "thickness": 0 },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [0, 0],
+          [0, 0]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "text": "ZERO" },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [0, 0]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "style": "Vor" },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [0.5, 0.5]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "style": "solid" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          ["x", "y"],
+          [1, 1]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "style": "OtherWaypoints" },
+      "geometry": {
+        "type": "MultiPoint",
+        "coordinates": []
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "type": "GeometryCollection",
+        "geometries": []
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "style": "solid" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [[7, 1]]
+      }
+    },
+    "not-an-object",
+    {
+      "type": "Feature",
+      "properties": { "style": "solid" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [8, 0],
+          [0, 0],
+          [8, 1]
+        ]
+      }
+    }
+  ]
+}

@@ -18,7 +18,8 @@
     "format:check": "prettier --check .",
     "ci": "npm run typecheck && npm run lint && npm run format:check && npm test",
     "cifp:import": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/cifp-import/cli.ts",
-    "cifp:pack": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/cifp-import/cli.ts pack"
+    "cifp:pack": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/cifp-import/cli.ts pack",
+    "crc:videomaps": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/crc-videomap-import/cli.ts"
   },
   "dependencies": {
     "react": "^18.3.1",
