@@ -107,6 +107,46 @@ Notes: <local CRC ZTL/A80 source; complete inventory; ARP conversion; CRC identi
 
 or `PHASE EXIT BLOCKED` with reason.
 
+## Nineteenth swarm execution — 2026-08-29 (CRC A80 videomap import)
+
+Human invoked `/run-swarm` with **cursor grok 4.6 high**. Execute T04-36–42
+only. Planning commits `fdd5155`, `8d91110`, and `037812b` are on
+`feature/crc-a80-videomaps` (cut from current `master` `47d2ad0`). Ticket
+workers branch from that feature base. Captain squash-merges each ticket
+into `feature/crc-a80-videomaps`. Do **not** merge this swarm onto `master`.
+Push is the parent’s job after phase exit.
+
+Role: captain owns the merge lock on `feature/crc-a80-videomaps`. Isolated
+worktrees. At most three workers. Wait for terminal `READY TO MERGE` or
+`BLOCKED`. Every captain and worker spawn must set
+`model: "cursor-grok-4.6-high"`. Non-fast.
+
+Preflight: working tree clean except untracked
+`.cursor/rules/caveman-ultra.mdc` and `e2e/` QA artifacts — preserve them.
+Do not reset/clean. Do not touch speech vendor rules, phase 5, or unrelated
+tickets.
+
+Execution waves:
+
+1. T04-36
+2. T04-37 ∥ T04-38
+3. T04-39
+4. T04-40 ∥ T04-41
+5. T04-42
+
+Frozen source: local CRC metadata
+`C:\Users\Ben\AppData\Local\CRC\ARTCCs\ZTL.json`; geometry
+`C:\Users\Ben\AppData\Local\CRC\VideoMaps\ZTL\<ULID>.geojson`. A80 selection
+uses Atlanta TRACON `facility.childFacilities[0].starsConfiguration.videoMapIds`
+and maps tagged A80 + STARS. Scenario ARP is projection origin. Preserve CRC
+`starsId`; DCB slots are layout only. A→`map`, B→`mapDim`. Runtime never
+reads CRC/vNAS. Commit converted maps with permission/provenance; never
+commit local source cache, secrets, caches, or QA screenshots.
+
+No push. No phase 5. At completion, captain runs `npm run ci`, appends
+`SWARM-STATUS.md`, and returns the exact phase result format above.
+
+---
 
 Paste **this entire file** into a new agent. That agent is the **orchestrator**. It may run for hours. It writes almost no application code.
 
