@@ -290,7 +290,7 @@ SID (`PD`) route types mapped into `SidProcedure`:
 
 | Route type | Bucket |
 | --- | --- |
-| `0`, `1`, `4` | Runway transition (`RW27` → `runwayId` `27`) |
+| `0`, `1`, `4` | Runway transition (`RW27` → `runwayId` `27`; `RW26B` stays grouped until emit) |
 | `2`, `5` | Common route |
 | `3`, `6` | Enroute transition |
 | `T` / `F` / `S` / `M` | RNP / FMS / military: `RW*` → runway, empty trans → common, else enroute |
@@ -298,6 +298,42 @@ SID (`PD`) route types mapped into `SidProcedure`:
 Other SID route-type letters (FAA `V` vector SIDs) are diagnosed
 (`SKIPPED_SID_ROUTE`) and skipped. Empty `sids` only when the source has no
 supported SID — not a hardcoded emit.
+
+### Grouped runway identifiers (`B` = both)
+
+FAA CIFP PG records name **physical** runways (`RW26L`, `RW26R`, `RW10`).
+SID (`PD`) and STAR (`PE`) runway transitions may use suffix **`B`** (“both”)
+when the same procedure applies to a parallel pair. There is no `RW26B` PG
+row. Observed on real KATL (and nationally): `RW26B` / `RW27B` / `RW08B` /
+`RW09B` sit next to `RW26L`/`RW26R` etc.
+
+Generic matching (no airport-id branch):
+
+| Procedure ref | PG records matched |
+| --- | --- |
+| `26B` / `RW26B` | `RW26L` and `RW26R` only |
+| `27` / `RW27` | exact `RW27` / `27` only — **not** `27L`/`27R` |
+| `26L` / `RW26L` | exact left only |
+
+`B` does **not** include center (`C`) or water (`W`, e.g. PHNL `RW08W`).
+Numeric base is padded (`9B` → `09L`/`09R`).
+
+Catalog emit **expands** grouped SID runway transitions into concrete
+`runwayId` rows (`26L` and `26R`) so runtime spawn matching (`26L`) works.
+If a SID also has a more specific `26L` transition, that row wins and the
+group fills only the remaining parallel. STAR `RW*` transitions keep the CIFP
+transition id and set `runwayId` (single) or `runways` (group). STAR `ALL`
+tags every PG runway at the airport.
+
+Approaches (`PF`) at KATL use specific L/R ids (`I26L`). A `B` suffix is not
+expanded into two approaches (duplicate approach ids). Closure still resolves
+a `26B` approach runway ref to both PG rows if one appears.
+
+Unsupported path terminators stay diagnostics / skips and are **never**
+rewritten as TF legs.
+
+See `testdata/cifp/grouped-runway.cifp` (synthetic) and
+`buildGroupedRunwaySubset()`.
 
 Approach route types mapped into catalog `ILS`/`LOC`/`RNAV`/`VOR`/`NDB`:
 `I`; `L`/`B`/`X`/`T`/`G`; `R`/`H`/`P`/`F`/`J`; `V`/`S`/`D`; `N`/`Q`.

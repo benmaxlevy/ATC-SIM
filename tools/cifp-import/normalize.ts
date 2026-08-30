@@ -21,9 +21,17 @@ import type {
 } from "../../src/scenario/procedures/types.ts";
 import { latLonToNm, type LatLon } from "./coordinates.ts";
 import {
+  catalogRunwayId,
+  isAllRunwaysIdent,
+  isGroupedBothRunwayRef,
+  isRunwayTransitionIdent,
+  matchingRunways,
+} from "./runwayIdentity.ts";
+import {
   type CifpSkipStats,
   type NormalizedCifpSource,
   type NormalizedProcedureLeg,
+  type NormalizedRunway,
   type NormalizedSid,
 } from "./types.ts";
 
@@ -132,11 +140,21 @@ export function emitCatalogFromSource(
       continue;
     }
     const transitions = row.transitions
-      .map((transition) => ({
-        id: transition.id,
-        name: transition.name,
-        legs: supportedFixLegs(transition.legs),
-      }))
+      .map((transition) => {
+        const out: StarProcedure["transitions"][number] = {
+          id: transition.id,
+          name: transition.name,
+          legs: supportedFixLegs(transition.legs),
+        };
+        const tagged = starRunwayTag(transition.id, source.runways, airportId);
+        if (tagged.runwayId !== undefined) {
+          out.runwayId = tagged.runwayId;
+        }
+        if (tagged.runways !== undefined) {
+          out.runways = tagged.runways;
+        }
+        return out;
+      })
       .filter((transition) => transition.legs.length > 0);
     const common = supportedFixLegs(row.common);
     if (transitions.length === 0 && common.length === 0) {
@@ -259,7 +277,7 @@ function emitSids(
     if (row.airportId !== airportId) {
       continue;
     }
-    const converted = toSidProcedure(row);
+    const converted = toSidProcedure(row, source.runways);
     if (converted === undefined) {
       bumpSkip("EMPTY_SID");
       continue;
@@ -269,13 +287,42 @@ function emitSids(
   return sids;
 }
 
-function toSidProcedure(row: NormalizedSid): SidProcedure | undefined {
-  const runwayTransitions: SidRunwayTransition[] = row.runwayTransitions
-    .map((transition) => {
-      const legs = supportedFixLegs(transition.legs);
+function toSidProcedure(
+  row: NormalizedSid,
+  airportRunways: readonly NormalizedRunway[],
+): SidProcedure | undefined {
+  const specificIds = new Set(
+    row.runwayTransitions
+      .filter((transition) => !isGroupedBothRunwayRef(transition.runwayId))
+      .map((transition) => catalogRunwayId(transition.runwayId)),
+  );
+  const ordered = [
+    ...row.runwayTransitions.filter((transition) => !isGroupedBothRunwayRef(transition.runwayId)),
+    ...row.runwayTransitions.filter((transition) => isGroupedBothRunwayRef(transition.runwayId)),
+  ];
+  const seen = new Set<string>();
+  const runwayTransitions: SidRunwayTransition[] = [];
+  for (const transition of ordered) {
+    const legs = supportedFixLegs(transition.legs);
+    const catalogIds = sidCatalogRunwayIds(transition.runwayId, airportRunways, row.airportId);
+    for (const catalogId of catalogIds) {
+      if (isGroupedBothRunwayRef(transition.runwayId) && specificIds.has(catalogId)) {
+        continue;
+      }
+      if (seen.has(catalogId)) {
+        continue;
+      }
+      if (
+        legs.length === 0 &&
+        transition.initialHeadingDeg === undefined &&
+        transition.initialClimbFt === undefined
+      ) {
+        continue;
+      }
+      seen.add(catalogId);
       const out: SidRunwayTransition = {
-        runwayId: transition.runwayId,
-        legs,
+        runwayId: catalogId,
+        legs: [...legs],
       };
       if (transition.initialHeadingDeg !== undefined) {
         out.initialHeadingDeg = transition.initialHeadingDeg;
@@ -283,14 +330,10 @@ function toSidProcedure(row: NormalizedSid): SidProcedure | undefined {
       if (transition.initialClimbFt !== undefined) {
         out.initialClimbFt = transition.initialClimbFt;
       }
-      return out;
-    })
-    .filter(
-      (transition) =>
-        transition.legs.length > 0 ||
-        transition.initialHeadingDeg !== undefined ||
-        transition.initialClimbFt !== undefined,
-    );
+      runwayTransitions.push(out);
+    }
+  }
+  runwayTransitions.sort((a, b) => a.runwayId.localeCompare(b.runwayId));
   const common = supportedFixLegs(row.common);
   const enrouteTransitions: SidEnrouteTransition[] = row.enrouteTransitions
     .map((transition) => ({
@@ -317,6 +360,52 @@ function toSidProcedure(row: NormalizedSid): SidProcedure | undefined {
     sid.initialClimbFt = row.initialClimbFt;
   }
   return sid;
+}
+
+function sidCatalogRunwayIds(
+  runwayId: string,
+  airportRunways: readonly NormalizedRunway[],
+  airportId: string,
+): string[] {
+  const matches = matchingRunways(airportRunways, runwayId, airportId);
+  if (matches.length > 0) {
+    return [...new Set(matches.map((row) => catalogRunwayId(row.runwayId)))].sort();
+  }
+  return [catalogRunwayId(runwayId)];
+}
+
+function starRunwayTag(
+  transitionId: string,
+  airportRunways: readonly NormalizedRunway[],
+  airportId: string,
+): { runwayId?: string; runways?: string[] } {
+  if (isAllRunwaysIdent(transitionId)) {
+    const ids = [
+      ...new Set(
+        airportRunways
+          .filter((row) => row.airportId === airportId)
+          .map((row) => catalogRunwayId(row.runwayId)),
+      ),
+    ].sort();
+    return ids.length > 0 ? { runways: ids } : {};
+  }
+  if (!isRunwayTransitionIdent(transitionId)) {
+    return {};
+  }
+  const ids = [
+    ...new Set(
+      matchingRunways(airportRunways, transitionId, airportId).map((row) =>
+        catalogRunwayId(row.runwayId),
+      ),
+    ),
+  ].sort();
+  if (ids.length === 1) {
+    return { runwayId: ids[0] };
+  }
+  if (ids.length > 1) {
+    return { runways: ids };
+  }
+  return {};
 }
 
 function supportedFixLegs(legs: NormalizedProcedureLeg[]): StarLeg[] {

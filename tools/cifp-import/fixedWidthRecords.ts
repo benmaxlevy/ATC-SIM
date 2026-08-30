@@ -822,3 +822,106 @@ export function buildConflictSubset(): string {
     "",
   ].join("\n");
 }
+
+/**
+ * Synthetic parallel-runway field. PG has L/R (and one water `W`) only.
+ * SID/STAR transitions use FAA `B` (“both”) grouping: `RW26B` → 26L+26R,
+ * not 26W. Exact `RW10` / `10` stay ungrouped. Not a real cycle.
+ */
+export function buildGroupedRunwaySubset(): string {
+  const icao = "KGRP";
+  const rwy = (id: string, lat: string, lon: string, bearing: string): string =>
+    pg({ icao, rwy: id, lat, lon, bearing });
+  const sidLeg = (
+    trans: string,
+    seq: string,
+    path: string,
+    extra: { fixId?: string; course?: string; altDesc?: string; alt?: string } = {},
+  ): string =>
+    pd({
+      icao,
+      sidId: "GRP1",
+      routeType: "4",
+      trans,
+      seq,
+      path,
+      ...extra,
+    });
+  return [
+    "# Synthetic grouped-runway CIFP. NOT a real cycle. FAA B = both L/R.",
+    pa({ icao, name: "Group Field", lat: "N00000000", lon: "E000000000" }),
+    rwy("RW08L", "N00000100", "W000002000", "0800"),
+    rwy("RW08R", "S00000100", "W000002000", "0800"),
+    rwy("RW08W", "N00000300", "W000002000", "0800"),
+    rwy("RW09L", "N00000100", "W000001000", "0900"),
+    rwy("RW09R", "S00000100", "W000001000", "0900"),
+    rwy("RW10", "N00000000", "E000000000", "1000"),
+    rwy("RW26L", "S00000100", "E000002000", "2600"),
+    rwy("RW26R", "N00000100", "E000002000", "2600"),
+    rwy("RW27L", "S00000100", "E000001000", "2700"),
+    rwy("RW27R", "N00000100", "E000001000", "2700"),
+    pc({ icao, id: "JOIN", lat: "N00010000", lon: "E000040000" }),
+    pc({ icao, id: "GATE", lat: "N00020000", lon: "E000050000" }),
+    pc({ icao, id: "FI26L", lat: "N00000050", lon: "E000030000", type: "  F" }),
+    sidLeg("RW26B", "010", "IF", { fixId: "JOIN", course: "2600", altDesc: "+", alt: "01500" }),
+    sidLeg("RW27B", "010", "IF", { fixId: "JOIN", course: "2700", altDesc: "+", alt: "01500" }),
+    sidLeg("RW08B", "010", "IF", { fixId: "JOIN", course: "0800", altDesc: "+", alt: "01500" }),
+    sidLeg("RW09B", "010", "IF", { fixId: "JOIN", course: "0900", altDesc: "+", alt: "01500" }),
+    sidLeg("RW10", "010", "IF", { fixId: "JOIN", course: "1000", altDesc: "+", alt: "01500" }),
+    pd({
+      icao,
+      sidId: "GRP1",
+      routeType: "5",
+      seq: "010",
+      fixId: "JOIN",
+      path: "TF",
+      altDesc: " ",
+      alt: "05000",
+    }),
+    pe({
+      icao,
+      starId: "GRR1",
+      routeType: "6",
+      trans: "RW26B",
+      seq: "010",
+      fixId: "GATE",
+      path: "IF",
+    }),
+    pe({
+      icao,
+      starId: "GRR1",
+      routeType: "5",
+      seq: "010",
+      fixId: "JOIN",
+      path: "TF",
+    }),
+    pe({
+      icao,
+      starId: "GRR1",
+      routeType: "6",
+      trans: "RW10",
+      seq: "010",
+      fixId: "GATE",
+      path: "IF",
+    }),
+    pf({
+      icao,
+      appId: "I26L",
+      routeType: "I",
+      trans: "RW26L",
+      seq: "010",
+      fixId: "FI26L",
+      path: "IF",
+    }),
+    pf({
+      icao,
+      appId: "I26L",
+      routeType: "I",
+      trans: "RW26L",
+      seq: "020",
+      fixId: "RW26L",
+      path: "CF",
+    }),
+    "",
+  ].join("\n");
+}

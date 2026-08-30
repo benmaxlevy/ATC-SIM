@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { closeProcedureReferences } from "./closure.ts";
-import { FAR, fix, fixtureSource, ident, radiusSeed, tf } from "./closureFixture.ts";
+import { FAR, fix, fixtureSource, ident, radiusSeed, runway, tf } from "./closureFixture.ts";
 import { emitCatalogFromSource } from "./normalize.ts";
 import { catalogDctIds } from "../../src/scenario/procedures/types.ts";
 
@@ -202,4 +202,88 @@ test("source lat/lon of a far SID runway-transition fix is preserved", () => {
   const emitted = catalog.fixes.find((row) => row.id === "FARRW");
   expect(emitted?.latDeg).toBe(FAR.latDeg);
   expect(emitted?.lonDeg).toBe(FAR.lonDeg);
+});
+
+test("grouped 26B/27B/08B/09B close to L/R PG records and not water", () => {
+  const source = fixtureSource();
+  source.runways = [
+    ...source.runways,
+    runway("KAAA", "RW08L"),
+    runway("KAAA", "RW08R"),
+    runway("KAAA", "RW08W"),
+    runway("KAAA", "RW09L"),
+    runway("KAAA", "RW09R"),
+    runway("KAAA", "RW26L"),
+    runway("KAAA", "RW26R"),
+    runway("KAAA", "RW27L"),
+    runway("KAAA", "RW27R"),
+  ];
+  source.sids[0]!.runwayTransitions = [
+    {
+      runwayId: "26B",
+      legs: [tf("FARRW", 10, { routeType: "4", transitionId: "RW26B" })],
+    },
+    {
+      runwayId: "27B",
+      legs: [tf("FARRW", 11, { routeType: "4", transitionId: "RW27B" })],
+    },
+    {
+      runwayId: "08B",
+      legs: [tf("FARRW", 12, { routeType: "4", transitionId: "RW08B" })],
+    },
+    {
+      runwayId: "09B",
+      legs: [tf("FARRW", 13, { routeType: "4", transitionId: "RW09B" })],
+    },
+  ];
+  const result = closeProcedureReferences(source, radiusSeed(source), { kind: "airport-all" });
+  const missing = result.diagnostics.filter((row) => row.code === "MISSING_REFERENCE");
+  expect(missing).toEqual([]);
+  const ids = result.closed.runways.map((row) => row.runwayId).sort();
+  expect(ids).toEqual(
+    expect.arrayContaining([
+      "RW08L",
+      "RW08R",
+      "RW09L",
+      "RW09R",
+      "RW26L",
+      "RW26R",
+      "RW27L",
+      "RW27R",
+    ]),
+  );
+  const { catalog } = emitCatalogFromSource(result.closed, { airportId: "KAAA" });
+  expect(catalog.sids[0]?.runwayTransitions?.map((row) => row.runwayId).sort()).toEqual([
+    "08L",
+    "08R",
+    "09L",
+    "09R",
+    "26L",
+    "26R",
+    "27L",
+    "27R",
+  ]);
+  expect(catalog.sids[0]?.runwayTransitions?.some((row) => row.runwayId === "08W")).toBe(false);
+});
+
+test("exact 27 still does not match 27L; 26B does not match 27L", () => {
+  const source = fixtureSource();
+  source.runways = [runway("KAAA", "RW27L"), runway("KAAA", "RW27R")];
+  const reported = closeProcedureReferences(source, radiusSeed(source), {
+    kind: "airport-all",
+    onError: "report",
+  });
+  const missing = reported.diagnostics.filter(
+    (row) => row.code === "MISSING_REFERENCE" && row.refId === "27",
+  );
+  expect(missing.length).toBeGreaterThanOrEqual(1);
+
+  source.sids[0]!.runwayTransitions[0]!.runwayId = "26B";
+  const groupedWrong = closeProcedureReferences(source, radiusSeed(source), {
+    kind: "airport-all",
+    onError: "report",
+  });
+  expect(
+    groupedWrong.diagnostics.some((row) => row.code === "MISSING_REFERENCE" && row.refId === "26B"),
+  ).toBe(true);
 });

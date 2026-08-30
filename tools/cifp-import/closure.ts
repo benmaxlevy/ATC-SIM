@@ -11,6 +11,12 @@
  */
 
 import {
+  isGroupedBothRunwayRef,
+  isRunwayTransitionIdent,
+  matchingRunways,
+  stripRwPrefix,
+} from "./runwayIdentity.ts";
+import {
   type CifpDiagnostic,
   type NormalizedAirport,
   type NormalizedApproach,
@@ -494,6 +500,14 @@ function walkStar(star: NormalizedStar, ctx: ClosureCtx): void {
     sourceRecord: star.identity.key,
   };
   for (const transition of star.transitions) {
+    if (isRunwayTransitionIdent(transition.id)) {
+      enqueueRunway(
+        stripRwPrefix(transition.id),
+        `STAR ${star.id} (${star.identity.key}) transition ${transition.id}`,
+        procedure,
+        ctx,
+      );
+    }
     walkLegs(
       transition.legs,
       `STAR ${star.id} (${star.identity.key}) transition ${transition.id} legs`,
@@ -637,12 +651,8 @@ function resolveFixRef(id: string, path: string, procedure: ProcedureRef, ctx: C
   if (fixHits.length > 0) {
     return;
   }
-  const runwayHits = ctx.source.runways.filter((row) => runwayIdsMatch(row.runwayId, id));
-  const pickedRunway = pickOwned(runwayHits, ctx.airportId, id, path, procedure, ctx.diagnostics, {
-    allowEmpty: true,
-  });
-  if (pickedRunway !== undefined) {
-    includeRecord(pickedRunway, ctx);
+  const runwayHits = matchingRunways(ctx.source.runways, id);
+  if (includeRunwayHits(runwayHits, id, path, procedure, ctx, { allowEmpty: true })) {
     return;
   }
   if (runwayHits.length > 0) {
@@ -679,12 +689,49 @@ function resolveRunwayRef(
   procedure: ProcedureRef,
   ctx: ClosureCtx,
 ): void {
-  const hits = ctx.source.runways.filter((row) => runwayIdsMatch(row.runwayId, id));
-  const picked = pickOwned(hits, ctx.airportId, id, path, procedure, ctx.diagnostics);
+  const hits = matchingRunways(ctx.source.runways, id);
+  includeRunwayHits(hits, id, path, procedure, ctx);
+}
+
+function includeRunwayHits(
+  hits: readonly NormalizedRunway[],
+  id: string,
+  path: string,
+  procedure: ProcedureRef,
+  ctx: ClosureCtx,
+  options: { allowEmpty?: boolean } = {},
+): boolean {
+  if (isGroupedBothRunwayRef(id)) {
+    const local = hits.filter((row) => row.airportId === ctx.airportId);
+    if (local.length > 0) {
+      for (const row of sortByKey(local)) {
+        includeRecord(row, ctx);
+      }
+      return true;
+    }
+    if (hits.length === 0) {
+      if (options.allowEmpty === true) {
+        return false;
+      }
+      ctx.diagnostics.push({
+        severity: "error",
+        code: "MISSING_REFERENCE",
+        message: `${path} ${id}: missing reference`,
+        procedureKind: procedure.kind,
+        procedureId: procedure.id,
+        sourceRecord: procedure.sourceRecord,
+        refId: id,
+        airportId: ctx.airportId,
+      });
+      return false;
+    }
+  }
+  const picked = pickOwned(hits, ctx.airportId, id, path, procedure, ctx.diagnostics, options);
   if (picked === undefined) {
-    return;
+    return false;
   }
   includeRecord(picked, ctx);
+  return true;
 }
 
 function pickOwned<T extends { airportId?: string; identity: { key: string } }>(
@@ -789,15 +836,6 @@ const NAVAID_KINDS = new Set<NormalizedNavaidKind>([
 
 function isNavaidKind(kind: string): kind is NormalizedNavaidKind {
   return NAVAID_KINDS.has(kind as NormalizedNavaidKind);
-}
-
-function stripRwPrefix(id: string): string {
-  return id.startsWith("RW") ? id.slice(2) : id;
-}
-
-/** PG ids are `RW27`; SID/approach refs are `27`. Match either form. */
-function runwayIdsMatch(stored: string, ref: string): boolean {
-  return stored === ref || stripRwPrefix(stored) === stripRwPrefix(ref);
 }
 
 function sortByKey<T extends { identity: { key: string } }>(rows: T[]): T[] {

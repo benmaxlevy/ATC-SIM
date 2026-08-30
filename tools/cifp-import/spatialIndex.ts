@@ -9,6 +9,7 @@
  * stay source `latDeg` / `lonDeg`. Scenario-local ENU is never stored here.
  */
 
+import { matchingRunways } from "./runwayIdentity.ts";
 import type {
   CifpRecordIdentity,
   NormalizedAirport,
@@ -96,7 +97,6 @@ export function buildSpatialIndex(source: NormalizedCifpSource): CifpSpatialInde
   const byAirportId = new Map<string, NormalizedAirport>();
   const airportsById = firstByAirportId(source.airports);
   const fixesById = firstByFixId(source.fixes);
-  const runwaysByKey = firstByRunwayKey(source.runways);
 
   for (const row of source.airports) {
     remember(byKey, {
@@ -146,7 +146,7 @@ export function buildSpatialIndex(source: NormalizedCifpSource): CifpSpatialInde
       kind: "sid",
       identity: row.identity,
       airportId: row.airportId,
-      position: sidSeedPosition(row, airportsById, fixesById, runwaysByKey),
+      position: sidSeedPosition(row, airportsById, fixesById, source.runways),
     });
   }
   for (const row of source.approaches) {
@@ -154,7 +154,7 @@ export function buildSpatialIndex(source: NormalizedCifpSource): CifpSpatialInde
       kind: "approach",
       identity: row.identity,
       airportId: row.airportId,
-      position: approachSeedPosition(row, airportsById, fixesById, runwaysByKey),
+      position: approachSeedPosition(row, airportsById, fixesById, source.runways),
     });
   }
 
@@ -186,7 +186,6 @@ export function selectByRadius(
 
   const airportsById = firstByAirportId(source.airports);
   const fixesById = firstByFixId(source.fixes);
-  const runwaysByKey = firstByRunwayKey(source.runways);
 
   return {
     airportId,
@@ -203,12 +202,12 @@ export function selectByRadius(
     ),
     sids: sortByKey(
       source.sids.filter((row) =>
-        sidSeedPositions(row, airportsById, fixesById, runwaysByKey).some((pos) => inside(pos)),
+        sidSeedPositions(row, airportsById, fixesById, source.runways).some((pos) => inside(pos)),
       ),
     ),
     approaches: sortByKey(
       source.approaches.filter((row) =>
-        approachSeedPositions(row, airportsById, fixesById, runwaysByKey).some((pos) =>
+        approachSeedPositions(row, airportsById, fixesById, source.runways).some((pos) =>
           inside(pos),
         ),
       ),
@@ -268,21 +267,6 @@ function firstByFixId(rows: readonly NormalizedFix[]): Map<string, NormalizedFix
   return map;
 }
 
-function runwayMapKey(airportId: string, runwayId: string): string {
-  return `${airportId}:${runwayId}`;
-}
-
-function firstByRunwayKey(rows: readonly NormalizedRunway[]): Map<string, NormalizedRunway> {
-  const map = new Map<string, NormalizedRunway>();
-  for (const row of rows) {
-    const key = runwayMapKey(row.airportId, row.runwayId);
-    if (!map.has(key)) {
-      map.set(key, row);
-    }
-  }
-  return map;
-}
-
 function firstSupportedFixPosition(
   legs: readonly NormalizedProcedureLeg[],
   fixesById: ReadonlyMap<string, NormalizedFix>,
@@ -328,7 +312,7 @@ function sidSeedPositions(
   sid: NormalizedSid,
   airportsById: ReadonlyMap<string, NormalizedAirport>,
   fixesById: ReadonlyMap<string, NormalizedFix>,
-  runwaysByKey: ReadonlyMap<string, NormalizedRunway>,
+  runways: readonly NormalizedRunway[],
 ): SourceLatLon[] {
   const positions: SourceLatLon[] = [];
   const arp = airportArp(sid.airportId, airportsById);
@@ -345,7 +329,7 @@ function sidSeedPositions(
     positions.push(firstFix);
   }
   for (const transition of sid.runwayTransitions) {
-    const runway = runwaysByKey.get(runwayMapKey(sid.airportId, transition.runwayId));
+    const runway = matchingRunways(runways, transition.runwayId, sid.airportId)[0];
     if (runway !== undefined) {
       positions.push(runway.threshold);
       break;
@@ -358,7 +342,7 @@ function approachSeedPositions(
   approach: NormalizedApproach,
   airportsById: ReadonlyMap<string, NormalizedAirport>,
   fixesById: ReadonlyMap<string, NormalizedFix>,
-  runwaysByKey: ReadonlyMap<string, NormalizedRunway>,
+  runways: readonly NormalizedRunway[],
 ): SourceLatLon[] {
   const positions: SourceLatLon[] = [];
   const arp = airportArp(approach.airportId, airportsById);
@@ -376,7 +360,7 @@ function approachSeedPositions(
   if (threshold !== undefined) {
     positions.push(threshold);
   }
-  const runway = runwaysByKey.get(runwayMapKey(approach.airportId, approach.runway));
+  const runway = matchingRunways(runways, approach.runway, approach.airportId)[0];
   if (runway !== undefined) {
     positions.push(runway.threshold);
   }
@@ -395,16 +379,16 @@ function sidSeedPosition(
   sid: NormalizedSid,
   airportsById: ReadonlyMap<string, NormalizedAirport>,
   fixesById: ReadonlyMap<string, NormalizedFix>,
-  runwaysByKey: ReadonlyMap<string, NormalizedRunway>,
+  runways: readonly NormalizedRunway[],
 ): SourceLatLon | undefined {
-  return sidSeedPositions(sid, airportsById, fixesById, runwaysByKey)[0];
+  return sidSeedPositions(sid, airportsById, fixesById, runways)[0];
 }
 
 function approachSeedPosition(
   approach: NormalizedApproach,
   airportsById: ReadonlyMap<string, NormalizedAirport>,
   fixesById: ReadonlyMap<string, NormalizedFix>,
-  runwaysByKey: ReadonlyMap<string, NormalizedRunway>,
+  runways: readonly NormalizedRunway[],
 ): SourceLatLon | undefined {
-  return approachSeedPositions(approach, airportsById, fixesById, runwaysByKey)[0];
+  return approachSeedPositions(approach, airportsById, fixesById, runways)[0];
 }

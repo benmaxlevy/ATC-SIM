@@ -47,7 +47,7 @@ function airport(airportId: string, name = "Field"): NormalizedAirport {
   };
 }
 
-function runway(airportId: string, runwayId: string): NormalizedRunway {
+export function runway(airportId: string, runwayId: string): NormalizedRunway {
   return {
     identity: ident("PG", airportId, runwayId),
     airportId,

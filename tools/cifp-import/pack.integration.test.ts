@@ -20,14 +20,24 @@ import { execPath } from "node:process";
 import { fileURLToPath } from "node:url";
 import { parseCatalogFiles } from "../../src/scenario/procedures/loadCatalog.ts";
 import { catalogDctIds } from "../../src/scenario/procedures/types.ts";
-import { starRouteFixIds } from "../../src/scenario/starSpawn.ts";
+import { listStarSlots, starRouteFixIds } from "../../src/scenario/starSpawn.ts";
 import { sidRouteFixIds } from "../../src/scenario/procedures/sidHelpers.ts";
 import {
   applyKatlPackDefaults,
   KATL_DEFAULT_AIRPORT,
   KATL_DEFAULT_RADIUS_NM,
 } from "./extract-katl-slice.ts";
-import { buildFaaLayoutSubset, pa, pc, pd, pe, pf, pg, pi } from "./fixedWidthRecords.ts";
+import {
+  buildFaaLayoutSubset,
+  buildGroupedRunwaySubset,
+  pa,
+  pc,
+  pd,
+  pe,
+  pf,
+  pg,
+  pi,
+} from "./fixedWidthRecords.ts";
 import { CATALOG_PACK_FILES, packFromText, writeCatalogPack } from "./pack.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -326,4 +336,43 @@ test("cifp:pack --dry-run reads committed FAA-column testdata fixture", () => {
   );
   expect(result.status).toBe(0);
   expect(`${result.stdout ?? ""}${result.stderr ?? ""}`).toMatch(/cifp-pack: dry-run/);
+});
+
+test("grouped 26B/27B/08B/09B pack expands to concrete L/R SID transitions", () => {
+  const text = buildGroupedRunwaySubset();
+  const result = packFromText(text, {
+    inPath: "in.cifp",
+    airportId: "KGRP",
+    radiusNm: 40,
+    outDir: "out/kgrp",
+    dryRun: false,
+  });
+  expect(result.pack.closure.diagnostics.filter((row) => row.code === "MISSING_REFERENCE")).toEqual(
+    [],
+  );
+  const loaded = parseCatalogFiles(result.pack.files);
+  const sid = loaded.sids.find((row) => row.id === "GRP1");
+  expect(sid?.runwayTransitions?.map((row) => row.runwayId).sort()).toEqual([
+    "08L",
+    "08R",
+    "09L",
+    "09R",
+    "10",
+    "26L",
+    "26R",
+    "27L",
+    "27R",
+  ]);
+  expect(sidRouteFixIds(loaded, "GRP1", "26L")).toEqual(["JOIN"]);
+  expect(sidRouteFixIds(loaded, "GRP1", "26R")).toEqual(["JOIN"]);
+  expect(sidRouteFixIds(loaded, "GRP1", "10")).toEqual(["JOIN"]);
+  const star = loaded.stars.find((row) => row.id === "GRR1");
+  const grouped = star?.transitions.find((row) => row.id === "RW26B");
+  expect(grouped?.runways).toEqual(["26L", "26R"]);
+  const exact = star?.transitions.find((row) => row.id === "RW10");
+  expect(exact?.runwayId).toBe("10");
+  expect(listStarSlots(loaded, "26L").some((slot) => slot.transitionId === "RW26B")).toBe(true);
+  expect(listStarSlots(loaded, "10").some((slot) => slot.transitionId === "RW10")).toBe(true);
+  expect(loaded.approaches[0]?.runway).toBe("26L");
+  expect(sid?.runwayTransitions?.some((row) => row.runwayId === "08W")).toBe(false);
 });

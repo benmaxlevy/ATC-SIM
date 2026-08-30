@@ -1,0 +1,26 @@
+# Synthetic grouped-runway CIFP. NOT a real cycle. FAA B = both L/R.
+SUSAP KGRPK A        0          N00000000E000000000E000000000                                Group Field                            
+SUSAP KGRPK GRW08L   0100000800 N00000100W000002000                                                                                 
+SUSAP KGRPK GRW08R   0100000800 S00000100W000002000                                                                                 
+SUSAP KGRPK GRW08W   0100000800 N00000300W000002000                                                                                 
+SUSAP KGRPK GRW09L   0100000900 N00000100W000001000                                                                                 
+SUSAP KGRPK GRW09R   0100000900 S00000100W000001000                                                                                 
+SUSAP KGRPK GRW10    0100001000 N00000000E000000000                                                                                 
+SUSAP KGRPK GRW26L   0100002600 S00000100E000002000                                                                                 
+SUSAP KGRPK GRW26R   0100002600 N00000100E000002000                                                                                 
+SUSAP KGRPK GRW27L   0100002700 S00000100E000001000                                                                                 
+SUSAP KGRPK GRW27R   0100002700 N00000100E000001000                                                                                 
+SUSAP KGRPK CJOIN  K 0      I   N00010000E000040000                                                                                 
+SUSAP KGRPK CGATE  K 0      I   N00020000E000050000                                                                                 
+SUSAP KGRPK CFI26L K 0      F   N00000050E000030000                                                                                 
+SUSAP KGRPK DGRP1  4RW26B 010JOIN K PC0E       IF                     2600        + 01500                                           
+SUSAP KGRPK DGRP1  4RW27B 010JOIN K PC0E       IF                     2700        + 01500                                           
+SUSAP KGRPK DGRP1  4RW08B 010JOIN K PC0E       IF                     0800        + 01500                                           
+SUSAP KGRPK DGRP1  4RW09B 010JOIN K PC0E       IF                     0900        + 01500                                           
+SUSAP KGRPK DGRP1  4RW10  010JOIN K PC0E       IF                     1000        + 01500                                           
+SUSAP KGRPK DGRP1  5      010JOIN K PC0E       TF                                   05000                                           
+SUSAP KGRPK EGRR1  6RW26B 010GATE K PC0E       IF                                                                                   
+SUSAP KGRPK EGRR1  5      010JOIN K PC0E       TF                                                                                   
+SUSAP KGRPK EGRR1  6RW10  010GATE K PC0E       IF                                                                                   
+SUSAP KGRPK FI26L  IRW26L 010FI26LK PC0E       IF                                                                                   
+SUSAP KGRPK FI26L  IRW26L 020RW26LK PC0E       CF                                                                                   

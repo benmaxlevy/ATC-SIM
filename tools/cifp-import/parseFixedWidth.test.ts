@@ -15,6 +15,7 @@ import {
   buildDanglingSidSubset,
   buildFaaLayoutSubset,
   buildFixedWidthSubset,
+  buildGroupedRunwaySubset,
   buildMalformedCoordSubset,
   buildUnsupportedLegsSubset,
   buildUnsupportedSidSubset,
@@ -380,4 +381,53 @@ test("HDR + FAA-column fixture is fixed-width and converts", () => {
   expect(catalog.airportId).toBe("KSYN");
   expect(catalog.navaids.some((row) => row.id === "IDEM")).toBe(true);
   expect(catalog.navaids.some((row) => row.id === "IDEMDME")).toBe(true);
+});
+
+test("grouped FAA B SID transitions parse as 26B not a physical PG ident", () => {
+  const source = parseFixedWidthCifp(buildGroupedRunwaySubset());
+  expect(sourceErrorCount(source)).toBe(0);
+  expect(source.runways.map((row) => row.runwayId).sort()).toEqual([
+    "RW08L",
+    "RW08R",
+    "RW08W",
+    "RW09L",
+    "RW09R",
+    "RW10",
+    "RW26L",
+    "RW26R",
+    "RW27L",
+    "RW27R",
+  ]);
+  const sid = source.sids.find((row) => row.id === "GRP1");
+  expect(sid?.runwayTransitions.map((row) => row.runwayId).sort()).toEqual([
+    "08B",
+    "09B",
+    "10",
+    "26B",
+    "27B",
+  ]);
+  const star = source.stars.find((row) => row.id === "GRR1");
+  expect(star?.transitions.map((row) => row.id).sort()).toEqual(["RW10", "RW26B"]);
+  expect(source.approaches[0]?.runway).toBe("26L");
+});
+
+test("testdata/cifp/grouped-runway.cifp matches the in-memory grouped fixture", () => {
+  const text = readFileSync(
+    new URL("../../testdata/cifp/grouped-runway.cifp", import.meta.url),
+    "utf8",
+  );
+  expect(text.replace(/\r\n/g, "\n")).toBe(buildGroupedRunwaySubset());
+  const catalog = parseCifpSubset(text).catalog;
+  expect(catalog.airportId).toBe("KGRP");
+  expect(catalog.sids[0]?.runwayTransitions?.map((row) => row.runwayId).sort()).toEqual([
+    "08L",
+    "08R",
+    "09L",
+    "09R",
+    "10",
+    "26L",
+    "26R",
+    "27L",
+    "27R",
+  ]);
 });
