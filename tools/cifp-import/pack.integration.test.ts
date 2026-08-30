@@ -1,7 +1,7 @@
 /**
  * T04-35: CIFP pack interchange with authored catalogs.
  * Pack pipeline → parseCatalogFiles (same parser as loadCatalog).
- * No committed KATL dump. No src/ import of this tool.
+ * Playable inventory stays KDEM. No src/ import of this tool.
  */
 import { expect, test } from "vitest";
 // @ts-expect-error tsconfig has no @types/node
@@ -242,8 +242,9 @@ test("T04-35 AC5 — pack emit is catalog-only; maps/spawns/MVA/ATPA stay separa
   expect(blob).not.toMatch(/videoMapSet|spawns|mva/);
 });
 
-test("T04-35 AC5 — src does not import cifp-import; no committed KATL pack", () => {
-  expect(existsSync(join(repoRoot, "src/scenario/data/katl"))).toBe(false);
+test("T04-35 AC5 — src does not import cifp-import; KATL pack stays off playable inventory", () => {
+  expect(existsSync(join(repoRoot, "src/scenario/data/katl/catalog.json"))).toBe(true);
+  expect(existsSync(join(repoRoot, "src/scenario/video-maps/KATL"))).toBe(false);
   const playable = JSON.parse(
     readFileSync(join(repoRoot, "src/scenario/playable-scenarios.json"), "utf8"),
   ) as { scenarios: { airportIcao: string; default: boolean }[] };

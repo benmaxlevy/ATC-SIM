@@ -7,6 +7,8 @@ import kdemJson from "./kdem.json";
 import type {
   Approach,
   ArrivalSpawn,
+  DepartureConfig,
+  DepartureSpawn,
   DigitalMapCoastline,
   DigitalMapLocalizer,
   DigitalMapRangeRings,
@@ -360,6 +362,64 @@ function parseSpawnPolicy(value: unknown): SpawnPolicy {
   throw new Error('Scenario spawnPolicy must be "authored" or "star-inbound"');
 }
 
+function parseDepartureSpawn(value: unknown, index: number): DepartureSpawn {
+  if (!isRecord(value)) {
+    throw new Error(`Scenario departureConfig.departures[${index}] must be an object`);
+  }
+  const callsign = assertString(
+    value.callsign,
+    `departureConfig.departures[${index}].callsign`,
+  ).toUpperCase();
+  if (callsign.length === 0) {
+    throw new Error(`Scenario departureConfig.departures[${index}].callsign must be non-empty`);
+  }
+  const aircraftType = parseOptionalAircraftType(
+    value.aircraftType,
+    `departureConfig.departures[${index}].aircraftType`,
+  );
+  const scheduledSimMs =
+    value.scheduledSimMs === undefined
+      ? undefined
+      : assertNumber(value.scheduledSimMs, `departureConfig.departures[${index}].scheduledSimMs`);
+  return {
+    callsign,
+    sidId: assertString(value.sidId, `departureConfig.departures[${index}].sidId`).toUpperCase(),
+    transitionId: assertString(
+      value.transitionId,
+      `departureConfig.departures[${index}].transitionId`,
+    ).toUpperCase(),
+    assignedAltitudeFt: assertNumber(
+      value.assignedAltitudeFt,
+      `departureConfig.departures[${index}].assignedAltitudeFt`,
+    ),
+    ...(aircraftType ? { aircraftType } : {}),
+    ...(scheduledSimMs !== undefined ? { scheduledSimMs } : {}),
+  };
+}
+
+function parseDepartureConfig(value: unknown): DepartureConfig | undefined {
+  if (value == null) {
+    return undefined;
+  }
+  if (!isRecord(value)) {
+    throw new Error("Scenario departureConfig must be an object");
+  }
+  const policy = value.policy;
+  if (policy !== "none" && policy !== "auto" && policy !== "authored") {
+    throw new Error('Scenario departureConfig.policy must be "none", "auto", or "authored"');
+  }
+  const config: DepartureConfig = { policy };
+  if (value.ratePerHour !== undefined) {
+    config.ratePerHour = assertNumber(value.ratePerHour, "departureConfig.ratePerHour");
+  }
+  if (value.departures !== undefined) {
+    config.departures = assertArray(value.departures, "departureConfig.departures").map(
+      parseDepartureSpawn,
+    );
+  }
+  return config;
+}
+
 export interface AssertScenarioOptions {
   /** Default KDEM student pack is 4–8. Phase 4 ILS demo may spawn 1–2. */
   arrivalCountMin?: number;
@@ -388,6 +448,7 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
   }
 
   const catalog = loadCatalog(icao.toLowerCase());
+  const departureConfig = parseDepartureConfig(s.departureConfig);
 
   return {
     id: assertString(s.id, "id"),
@@ -409,6 +470,7 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
     }),
     spawnPolicy: parseSpawnPolicy(s.spawnPolicy),
     giTextLines: parseGiTextLines(s.giTextLines),
+    ...(departureConfig ? { departureConfig } : {}),
     catalog,
     mva: loadMva(icao),
   };

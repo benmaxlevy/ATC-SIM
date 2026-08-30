@@ -5,8 +5,9 @@
  * seed, closure, and catalog emit go through the generic pack. There is no
  * KATL-specific parser branch.
  *
- * No committed KATL trainer pack ships in this repo. Point `--in` at a local
- * CIFP file the developer already has; do not commit the cycle.
+ * A reviewed trainer pack may live under `src/scenario/data/katl/`. Point
+ * `--in` at a local CIFP the developer already has; do not commit the cycle.
+ * Playable inventory stays KDEM until KATL video maps exist.
  */
 import { runPackCli, type PackIo } from "./pack.ts";
 // @ts-expect-error tsconfig has no @types/node

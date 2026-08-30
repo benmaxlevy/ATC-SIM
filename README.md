@@ -552,8 +552,11 @@ Processed data can define:
 Input CIFP files and generated intermediate output belong in `.cifp/` and
 `tools/cifp-import/out/`; both are gitignored. Do not commit FAA cycles,
 national derived dumps, chart data, or source files. Only intentionally
-reviewed trainer packs belong under `src/scenario/data/<icao>/`. Video maps,
-traffic spawns, MVA/ATPA, and telephony remain separate authored data.
+reviewed trainer packs belong under `src/scenario/data/<icao>/`. The committed
+KATL pack is catalog JSON plus `src/scenario/katl.json` / `katl-08.json`.
+Those scenarios are **not** in playable inventory until KATL video maps exist.
+Do not point KATL at KDEM maps. Video maps, MVA/ATPA, and telephony remain
+separate authored data.
 
 See [`tools/cifp-import/README.md`](tools/cifp-import/README.md) for supported
 record types, SID/STAR/approach selection, reproducibility, legal boundaries,

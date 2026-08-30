@@ -314,7 +314,6 @@ test("T04-35 AC2 — KDEM catalog loads through loadCatalog without CIFP input",
   expect(catalog.stars.length).toBeGreaterThan(0);
   expect(catalog.approaches.length).toBeGreaterThan(0);
   expect(catalog.sids.length).toBeGreaterThan(0);
-  expect(() => loadCatalog("katl")).toThrow(/Missing catalog file/);
 });
 
 test("T04-35 AC3 — synthetic second-facility pack loads through parseCatalogFiles", () => {

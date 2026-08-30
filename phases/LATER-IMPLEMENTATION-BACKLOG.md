@@ -395,19 +395,18 @@ writes the existing ICAO `files` layout. `--sids` / `--stars` /
 `airport-all`. `--dry-run` reports seed vs closure counts and unsupported
 records without writing. `extract-katl-slice.ts` is a thin default-flag
 wrapper (`--airport KATL`, `--radius 40`) that only calls generic pack.
+`src/scenario/data/katl/` is the committed trainer catalog pack; west/east
+scenario JSON loads it without a video map set.
 
 Deliberately missing:
 
-- **Committed KATL trainer pack.** `src/scenario/data/katl/` is absent. No
-  national ATL catalog was invented. The generic CLI is the replacement; no
-  airport-specific extractor or KATL parse branch was shipped. A developer
-  with a local cycle can write `src/scenario/data/katl/` via
-  `cifp:pack --in <local CIFP> --airport KATL --radius 40 --out src/scenario/data/katl`.
-  Do not commit the source cycle.
 - **KATL in playable inventory.** Session / video-map / default scenario stay
-  KDEM. T04-35 confirmed inventory stays KDEM-only. Do not register KATL
-  until a reviewed pack exists.
-- **Maps, spawns, MVA, ATPA, telephony from CIFP.** Catalog JSON only.
+  KDEM. Do not register KATL until a KATL video map set exists. Never point
+  KATL at KDEM maps.
+- **KATL video maps, MVA, ATPA, telephony.** Catalog JSON and authored
+  scenario/spawn files are separate. Maps are not CIFP-emitted.
+- **Heading-only vector SID flying (`ATL2`).** Unsupported CIFP path
+  terminators stay skipped; empty named-fix SIDs are omitted from the pack.
 - **SID flying, RNAV / hold / RF FMS, live FAA download, chart scrape.**
 
 Constraints later work must keep:
@@ -428,15 +427,15 @@ second-facility testdata (`testdata/catalog-packs/kbbb/`) and
 `tools/cifp-import/pack.integration.test.ts` prove no facility-id branch
 and that SID/STAR/approach refs outside the seed radius remain after pack
 write. `extract-katl-slice.ts` stays a thin default-flag wrapper.
-`src/scenario/data/katl/` is absent. Maps, authored spawns, and MVA/ATPA
-stay outside CIFP catalog JSON.
+`src/scenario/data/katl/` is the committed trainer catalog pack.
+`src/scenario/katl.json` and `katl-08.json` author west/east flows from that
+catalog. Maps, MVA, and ATPA stay outside CIFP catalog JSON.
 
 Deliberately missing:
 
-- **Committed KATL trainer pack / playable KATL.** A developer with a local
-  authorized CIFP can write `src/scenario/data/katl/` via `cifp:pack`. Do
-  not invent a national ATL dump. Do not add KATL to
-  `playable-scenarios.json` until that reviewed pack exists.
+- **Playable KATL.** Do not add KATL to `playable-scenarios.json` until a
+  KATL video map set exists. Do not invent a national ATL dump. Never point
+  KATL at KDEM maps.
 - **`faa:update` live download.** Input stays a local path. CI and this
   ticket did not regenerate from an official FAA cycle (no authorized
   local CIFP in the environment). Record a skip-with-reason; do not claim

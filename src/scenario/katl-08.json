@@ -1,0 +1,234 @@
+{
+  "id": "katl-08",
+  "name": "Hartsfield-Jackson Atlanta Intl (RWY 08L)",
+  "icao": "KATL",
+  "magVarDeg": -5,
+  "fieldElevFt": 1026,
+  "arp": {
+    "latDeg": 33.6367,
+    "lonDeg": -84.4278638888889
+  },
+  "activeRunwayId": "08L",
+  "spawnPolicy": "authored",
+  "runways": [
+    {
+      "id": "08L",
+      "headingTrueDeg": 90,
+      "headingMagDeg": 95,
+      "lengthFt": 8976,
+      "thresholdLatLon": {
+        "latDeg": 33.64953333333333,
+        "lonDeg": -84.439025
+      }
+    },
+    {
+      "id": "08R",
+      "headingTrueDeg": 90,
+      "headingMagDeg": 95,
+      "lengthFt": 9972,
+      "thresholdLatLon": {
+        "latDeg": 33.64678611111111,
+        "lonDeg": -84.43836111111112
+      }
+    },
+    {
+      "id": "09L",
+      "headingTrueDeg": 90,
+      "headingMagDeg": 95,
+      "lengthFt": 11855,
+      "thresholdLatLon": {
+        "latDeg": 33.634705555555556,
+        "lonDeg": -84.44796666666667
+      }
+    },
+    {
+      "id": "09R",
+      "headingTrueDeg": 90,
+      "headingMagDeg": 95,
+      "lengthFt": 8974,
+      "thresholdLatLon": {
+        "latDeg": 33.63181388888889,
+        "lonDeg": -84.44796666666667
+      }
+    },
+    {
+      "id": "10",
+      "headingTrueDeg": 90,
+      "headingMagDeg": 95,
+      "lengthFt": 8973,
+      "thresholdLatLon": {
+        "latDeg": 33.62027222222222,
+        "lonDeg": -84.44787777777778
+      }
+    },
+    {
+      "id": "26L",
+      "headingTrueDeg": 270,
+      "headingMagDeg": 275,
+      "lengthFt": 9972,
+      "thresholdLatLon": {
+        "latDeg": 33.646794444444446,
+        "lonDeg": -84.40550833333334
+      }
+    },
+    {
+      "id": "26R",
+      "headingTrueDeg": 270,
+      "headingMagDeg": 275,
+      "lengthFt": 8976,
+      "thresholdLatLon": {
+        "latDeg": 33.649541666666664,
+        "lonDeg": -84.40945277777779
+      }
+    },
+    {
+      "id": "27L",
+      "headingTrueDeg": 270,
+      "headingMagDeg": 275,
+      "lengthFt": 8974,
+      "thresholdLatLon": {
+        "latDeg": 33.631822222222226,
+        "lonDeg": -84.4184
+      }
+    },
+    {
+      "id": "27R",
+      "headingTrueDeg": 270,
+      "headingMagDeg": 275,
+      "lengthFt": 11855,
+      "thresholdLatLon": {
+        "latDeg": 33.634702777777775,
+        "lonDeg": -84.40890833333334
+      }
+    },
+    {
+      "id": "28",
+      "headingTrueDeg": 270,
+      "headingMagDeg": 275,
+      "lengthFt": 8973,
+      "thresholdLatLon": {
+        "latDeg": 33.62028611111111,
+        "lonDeg": -84.41831666666667
+      }
+    }
+  ],
+  "approaches": [
+    {
+      "id": "I08L",
+      "runwayId": "08L",
+      "type": "ILS"
+    },
+    {
+      "id": "I08R",
+      "runwayId": "08R",
+      "type": "ILS"
+    },
+    {
+      "id": "I09L",
+      "runwayId": "09L",
+      "type": "ILS"
+    },
+    {
+      "id": "I09R",
+      "runwayId": "09R",
+      "type": "ILS"
+    },
+    {
+      "id": "I10",
+      "runwayId": "10",
+      "type": "ILS"
+    }
+  ],
+  "fixes": [],
+  "maps": {
+    "videoMaps": [],
+    "rangeRings": {
+      "intervalNm": 5,
+      "maxNm": 60
+    }
+  },
+  "spawns": [
+    {
+      "id": "downwind",
+      "kind": "downwind",
+      "runwayId": "08L",
+      "offsetNm": {
+        "xNm": 0,
+        "yNm": 8
+      }
+    }
+  ],
+  "arrivals": [
+    {
+      "callsign": "DAL123",
+      "xNm": -57.46311,
+      "yNm": 69.454705,
+      "headingDeg": 142,
+      "altitudeFt": 13000,
+      "speedKt": 250,
+      "starId": "CHPPR1",
+      "transitionId": "BBABE",
+      "aircraftType": "B738"
+    },
+    {
+      "callsign": "AAL45",
+      "xNm": -86.265789,
+      "yNm": 42.088995,
+      "headingDeg": 107,
+      "altitudeFt": 11000,
+      "speedKt": 250,
+      "starId": "GLAVN2",
+      "transitionId": "JKSON",
+      "aircraftType": "A320"
+    },
+    {
+      "callsign": "UAL200",
+      "xNm": -20.093652,
+      "yNm": -103.332877,
+      "headingDeg": 338,
+      "altitudeFt": 25000,
+      "speedKt": 250,
+      "starId": "GNDLF3",
+      "transitionId": "BEORN",
+      "aircraftType": "B739"
+    },
+    {
+      "callsign": "SWA88",
+      "xNm": 32.482448,
+      "yNm": 108.823142,
+      "headingDeg": 185,
+      "altitudeFt": 13000,
+      "speedKt": 250,
+      "starId": "ONDRE1",
+      "transitionId": "HIGGI",
+      "aircraftType": "B737"
+    },
+    {
+      "callsign": "JBU17",
+      "xNm": 83.208093,
+      "yNm": 68.971174,
+      "headingDeg": 236,
+      "altitudeFt": 11000,
+      "speedKt": 250,
+      "starId": "OZZZI2",
+      "transitionId": "DGESS",
+      "aircraftType": "A321"
+    },
+    {
+      "callsign": "NKS310",
+      "xNm": 128.284012,
+      "yNm": -22.309745,
+      "headingDeg": 273,
+      "altitudeFt": 15000,
+      "speedKt": 250,
+      "starId": "SITTH3",
+      "transitionId": "EEWOK",
+      "aircraftType": "A320"
+    }
+  ],
+  "departureConfig": {
+    "policy": "auto",
+    "ratePerHour": 12
+  },
+  "giTextLines": ["ATIS A", "RWY 08L", "ILS 08L IN USE", "", "", "", "", "", "", ""]
+}

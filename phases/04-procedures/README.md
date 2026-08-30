@@ -525,7 +525,7 @@ JSON contract.
 - T04-33 follows selected procedure references to stable closure, so a SID,
   STAR, or approach fix outside radius is retained.
 - T04-34 wires the generic pack CLI. `extract-katl-slice.ts` is a thin
-  `--airport KATL --radius 40` wrapper. No committed KATL pack ships.
+  `--airport KATL --radius 40` wrapper.
 - T04-35 proves KDEM remains default, a synthetic second facility loads
   through the existing `parseCatalogFiles` / `loadCatalog` contract, and
   SID/STAR/approach refs outside the seed radius survive pack generation.
@@ -534,9 +534,9 @@ The local source cycle and national/intermediate data stay outside git. Only
 intentional reviewable trainer packs are committed. Radius is a seed, not a
 procedure boundary. No browser CIFP fetch, chart scrape, or new FMS behavior.
 SID catalog data is included even though SID flying remains a later behavior
-ticket. Playable inventory stays KDEM-only until a reviewed real-airport pack
-exists. KATL coverage is the generic pack path plus the thin wrapper and
-docs — do not invent a national ATL dump.
+ticket. Playable inventory stays KDEM-only until KATL video maps exist. The
+committed KATL pack is catalog JSON plus authored west/east scenario files;
+do not invent a national ATL dump.
 
 Wave: **T04-31** → **T04-32 ∥ T04-33** → **T04-34** → **T04-35**.
 

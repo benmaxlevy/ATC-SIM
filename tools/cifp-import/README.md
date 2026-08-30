@@ -108,16 +108,23 @@ npm run cifp:pack -- --in testdata/cifp/faa-layout-subset.cifp --airport KSYN --
 npm run cifp:pack -- --in testdata/cifp/fixed-width-subset.cifp --airport KSYN --radius 40 --out tools/cifp-import/out/ksyn --dry-run
 ```
 
-## KATL data (none committed)
+## KATL data
 
-There is **no** `src/scenario/data/katl/` trainer pack in git. Playable
-inventory stays KDEM-only. Do not invent a national ATL dump. Do not add KATL
-to `playable-scenarios.json` until a reviewed pack exists.
+`src/scenario/data/katl/` is the committed trainer catalog pack. Scenario JSON
+(`src/scenario/katl.json` west flow RWY 26R, `src/scenario/katl-08.json` east
+flow RWY 08L) loads that pack through generic `assertScenario` /
+`loadCatalog`. Playable inventory stays KDEM-only until KATL video maps exist.
+Do not point KATL at KDEM maps. Do not invent a national ATL dump.
+
+Heading-only vector SID `ATL2` is omitted from the committed pack: remaining
+CIFP legs were unsupported path terminators with no named-fix TF/IF/CF/DF
+legs. Unsupported RF/hold/arc/PT/heading legs stay skipped; this pack does
+not add FMS flying for those types.
 
 `extract-katl-slice.ts` is a **thin wrapper**: default `--airport KATL` and
 `--radius 40` only. It calls generic pack. No KATL parse branch.
 
-To reproduce a committed pack from a **local** CIFP the developer already has
+To regenerate the pack from a **local** CIFP the developer already has
 (cycle stays outside git, typically `.cifp/`):
 
 ```text
@@ -131,8 +138,10 @@ node --experimental-strip-types tools/cifp-import/extract-katl-slice.ts --in .ci
 ```
 
 Add `--sids` / `--stars` / `--approaches` when a later scenario needs a named
-subset. Maps, spawns, and MVA stay hand-authored and are not written by this
-tool. Never commit `FAACIFP18` or a national intermediate.
+subset. Maps, MVA, and ATPA stay hand-authored and are not written by this
+tool. Never commit `FAACIFP18` or a national intermediate. Regenerating the
+pack can re-emit heading-only `ATL2`; `loadCatalog` rejects SIDs with no
+named-fix legs, so omit that SID before committing (same as this pack).
 
 Manual pack-generation from an official cycle is **skipped** unless the
 developer already has an authorized local CIFP file. CI uses synthetic
@@ -148,14 +157,16 @@ catalog loader and `src/` does not import this tool.
 Coverage:
 
 - Playable inventory is KDEM-only. Every listed scenario loads catalog +
-  video maps + authored MVA/spawns through generic loaders.
+  video maps + authored MVA/spawns through generic loaders. KATL scenario
+  JSON is committed but not registered until video maps exist.
 - `testdata/catalog-packs/kbbb/` is a synthetic second-facility pack (not
   KDEM, not KATL). Loader tests parse it through `parseCatalogFiles`.
 - `pack.integration.test.ts` packs a CIFP fixture whose SID/STAR/approach
   fixes sit outside a 20 NM seed, writes to a temp dir, and reloads through
   `parseCatalogFiles`. Far refs stay.
-- KATL coverage is this generic path + `extract-katl-slice.ts` + the
-  reproduce commands above. `src/scenario/data/katl/` is not in git.
+- KATL coverage is the committed `src/scenario/data/katl/` pack + scenario
+  JSON + `extract-katl-slice.ts` + the reproduce commands above. Maps/MVA
+  stay unauthored.
 
 ## Frozen fixtures
 
@@ -352,8 +363,8 @@ payloads, RF/hold/arc/PT flying. Marker (`PM`) rows parse when present.
 
 Full ARINC 424 (holds, RF flying, procedure turns, DME arcs, continuation
 payloads). RNAV (RNP) flying. Live FAA download. Chart scrape. Replacing KDEM as
-the default scenario. Committed KATL trainer pack (none ships). SID *flight*
-behavior for imported rows.
+the default scenario. KATL playable inventory (maps still required). SID
+*flight* behavior for imported rows.
 
 ## Geographic radius seed (T04-32)
 
