@@ -505,6 +505,34 @@ function isExtraMapOn(
   return visibility?.get(map.id) ?? map.defaultOn;
 }
 
+/**
+ * Loader already rejects empty polylines. Cache still drops <2 finite points
+ * so in-memory / slipped features never reach canvas stroke.
+ */
+function projectDrawablePolyline(
+  pointsNm: [number, number][],
+  cam: ScopeCamera,
+  view: ScopeViewSize,
+): ScreenPoint[] | null {
+  if (pointsNm.length < 2) {
+    return null;
+  }
+  const points: ScreenPoint[] = [];
+  for (const pair of pointsNm) {
+    const eastNm = pair[0];
+    const northNm = pair[1];
+    if (!Number.isFinite(eastNm) || !Number.isFinite(northNm)) {
+      continue;
+    }
+    points.push(project({ eastNm, northNm }, cam, view));
+  }
+  return points.length >= 2 ? points : null;
+}
+
+function isDrawableText(text: string, atNm: [number, number]): boolean {
+  return text.length > 0 && Number.isFinite(atNm[0]) && Number.isFinite(atNm[1]);
+}
+
 /** Extra default-on MAPS polylines (no role) — dimmer than runway/loc. Not OSM. */
 function extraVideoStrokes(
   maps: LoadedVideoMap[],
@@ -521,13 +549,15 @@ function extraVideoStrokes(
       if (feature.type !== "polyline") {
         continue;
       }
+      const points = projectDrawablePolyline(feature.pointsNm, cam, view);
+      if (!points) {
+        continue;
+      }
       strokes.push({
         mapId: map.id,
         color: map.color,
         closed: feature.closed,
-        points: feature.pointsNm.map(([eastNm, northNm]) =>
-          project({ eastNm, northNm }, cam, view),
-        ),
+        points,
       });
     }
   }
@@ -546,7 +576,7 @@ function extraVideoLabels(
       continue;
     }
     for (const feature of map.features) {
-      if (feature.type !== "text") {
+      if (feature.type !== "text" || !isDrawableText(feature.text, feature.atNm)) {
         continue;
       }
       const screen = project({ eastNm: feature.atNm[0], northNm: feature.atNm[1] }, cam, view);
