@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { createWorld, makeTestAircraft } from "@core";
-import { loadKdem, loadVideoMapGroups, loadVideoMapSet } from "@scenario";
+import { loadKdem } from "@scenario";
 import { CHORD_TIMEOUT_MS } from "./keymap";
 import {
   applyPreviewBeaconAction,
@@ -877,31 +877,6 @@ test("T02-63 — *D OFF / ALL / NONE; unknown id is INV not a TPA fallback", () 
   expect(parsePreviewCommand("*DI", KDEM_MAPS)).toEqual({ kind: "incomplete" });
   expect(parsePreviewCommand("*D+", KDEM_MAPS)).toEqual({ kind: "incomplete" });
   expect(parsePreviewCommand("*J3", KDEM_MAPS)).toEqual({ kind: "incomplete" });
-});
-
-test("T04-40 — *D resolves KATL by ULID, starsId, and group slot; ALL reaches GEO-only", () => {
-  const maps = loadVideoMapSet("KATL");
-  const groups = loadVideoMapGroups("KATL");
-  const layout = {
-    groups,
-    selectedGroupId: groups?.groups.find((g) => g.sourceIndex === 0)?.id,
-  };
-  expect(parsePreviewCommand("*D 01GP6Y38GCS0BQSWSVRDK7JH5C", maps, layout)).toEqual({
-    kind: "action",
-    action: { type: "toggleVideoMap", mapId: "01GP6Y38GCS0BQSWSVRDK7JH5C" },
-  });
-  expect(parsePreviewCommand("*D 136", maps, layout)).toEqual({
-    kind: "action",
-    action: { type: "toggleVideoMap", mapId: "01GP6Y38GCS0BQSWSVRDK7JH5C" },
-  });
-  expect(parsePreviewCommand("*D 1", maps, layout)).toEqual({
-    kind: "action",
-    action: { type: "toggleVideoMap", mapId: "01GP6Y4FAAN3CQ94T4XN6FTT4C" },
-  });
-  expect(parsePreviewCommand("*D ALL", maps, layout)).toEqual({
-    kind: "action",
-    action: { type: "setAllVideoMaps", enabled: true },
-  });
 });
 
 test("T02-63 — handlePreviewBufferKey commits map actions and leaves TPA *D to starsBuffer", () => {

@@ -216,8 +216,8 @@ function syncRoleFlag(view: ScopeView, map: LoadedVideoMap): void {
 /**
  * Catalog lookup for preview `*D` / `M` tokens.
  * Matches ULID `id`, `dcbLabel`, DCB layout slot, and CRC `starsId`.
- * Groups active: digit token is MAIN 1–6 / submenu 7–38 first, then starsId.
- * KDEM (no groups): digit token is `dcbNumber` so slot "3" stays LOC09.
+ * Numeric tokens prefer CRC `starsId` so they match GEO MAPS, then fall back
+ * to legacy KDEM `dcbNumber` or a selected group slot.
  */
 export function resolveVideoMapToken(
   maps: readonly LoadedVideoMap[],
@@ -234,6 +234,10 @@ export function resolveVideoMapToken(
   }
   if (/^\d+$/.test(normalized)) {
     const n = Number(normalized);
+    const byStars = maps.find((map) => map.starsId === n);
+    if (byStars) {
+      return byStars;
+    }
     const groups = layout?.groups;
     if (groups !== undefined) {
       const group = groupById(groups, layout?.selectedGroupId);
@@ -246,10 +250,6 @@ export function resolveVideoMapToken(
       if (byDcb) {
         return byDcb;
       }
-    }
-    const byStars = maps.find((map) => map.starsId === n);
-    if (byStars) {
-      return byStars;
     }
   }
   return maps.find((map) => map.dcbLabel.toUpperCase() === normalized);
