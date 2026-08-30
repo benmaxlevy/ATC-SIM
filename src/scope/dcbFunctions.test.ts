@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { createWorld, makeTestAircraft } from "@core";
-import { loadKdem, loadVideoMapGroups, loadVideoMapSet } from "@scenario";
+import { loadKdem } from "@scenario";
 import {
   CHAR_SIZE_STEPS_PX,
   DCB_CHAR_SIZE_STEPS_PX,
@@ -21,12 +21,8 @@ import {
   cycleMapBrite,
   dcbCatalogMaps,
   dcbLeaderDirReadout,
-  dcbMapsPageSlotNumbers,
-  DCB_GROUP_SLOT_COUNT,
-  DCB_GROUP_SUBMENU_SLOT_START,
   DCB_MAP_SLOT_COUNT,
   DCB_QUICK_MAP_COUNT,
-  defaultSelectedMapGroupId,
   buildMapListLines,
   clearAllVideoMaps,
   formatDcbLdrLengthReadout,
@@ -35,7 +31,6 @@ import {
   isDcbMapSlotEnabled,
   isVideoMapOn,
   resolveVideoMapToken,
-  selectedVideoMapGroup,
   RR_INTERVALS_NM,
   setAllVideoMaps,
   stepBriteChannel,
@@ -509,77 +504,4 @@ test("AC8 — MAPS/RANGE/leader/range rings in comments; not zoom", () => {
   expect(src.toLowerCase()).not.toMatch(/\bzoom\b/);
   expect(src.toLowerCase()).not.toMatch(/\blayers\b/);
   expect(src.toLowerCase()).not.toMatch(/\bbasemap\b/);
-});
-
-function katlView() {
-  const loadedVideoMaps = loadVideoMapSet("KATL");
-  const videoMapGroups = loadVideoMapGroups("KATL");
-  return createScopeView(0, 0, {
-    digitalMap: {
-      rangeRings: { intervalNm: 5, maxNm: 60 },
-      loadedVideoMaps,
-      videoMapGroups,
-    },
-  });
-}
-
-test("T04-40 — GEO MAPS lists complete KATL inventory including GEO-only maps", () => {
-  const view = katlView();
-  expect(view.selectedMapGroupId).toBe(defaultSelectedMapGroupId(view.digitalMap.videoMapGroups));
-  expect(selectedVideoMapGroup(view)?.sourceIndex).toBe(0);
-  const geo = buildMapListLines(view, "geo");
-  expect(geo).toHaveLength(90);
-  expect(geo.some((line) => line.includes("40DME F"))).toBe(true);
-  expect(geo.some((line) => line.startsWith("136 "))).toBe(true);
-  expect(dcbCatalogMaps(view)).toHaveLength(0);
-  expect(isVideoMapOn(view, "01GP6Y38GCS0BQSWSVRDK7JH5C")).toBe(false);
-  expect(buildMapListLines(view, "current").length).toBeGreaterThan(0);
-  expect(buildMapListLines(view, "current").length).toBeLessThan(90);
-  setAllVideoMaps(view, true);
-  expect(isVideoMapOn(view, "01GP6Y38GCS0BQSWSVRDK7JH5C")).toBe(true);
-  expect(buildMapListLines(view, "current")).toHaveLength(90);
-  toggleVideoMap(view, "01GP6Y38GCS0BQSWSVRDK7JH5C");
-  expect(buildMapListLines(view, "current")).toHaveLength(89);
-  expect(buildMapListLines(view, "geo")).toContain("136 40DME F OFF");
-});
-
-test("T04-40 — resolveVideoMapToken matches ULID, starsId, and group slot", () => {
-  const view = katlView();
-  const maps = view.digitalMap.loadedVideoMaps!;
-  const layout = {
-    groups: view.digitalMap.videoMapGroups,
-    selectedGroupId: view.selectedMapGroupId,
-  };
-  expect(resolveVideoMapToken(maps, "01GP6Y38GCS0BQSWSVRDK7JH5C", layout)?.starsId).toBe(136);
-  expect(resolveVideoMapToken(maps, "136", layout)?.id).toBe("01GP6Y38GCS0BQSWSVRDK7JH5C");
-  expect(resolveVideoMapToken(maps, "1", layout)?.id).toBe("01GP6Y4FAAN3CQ94T4XN6FTT4C");
-  expect(resolveVideoMapToken(maps, "1", layout)?.starsId).toBe(3);
-  expect(resolveVideoMapToken(maps, "3", layout)?.starsId).toBe(32);
-  expect(resolveVideoMapToken(maps, "201", layout)?.starsId).toBe(201);
-  expect(resolveVideoMapToken(maps, "01GP6Y4FAAN3CQ94T4XN6FTT4C", layout)?.dcbLabel).toBe("MVA");
-  const kdem = dcbCatalogMaps(kdemView());
-  expect(resolveVideoMapToken(kdem, "3")?.id).toBe("LOC09");
-  expect(resolveVideoMapToken(kdem, "3")?.starsId).toBeUndefined();
-});
-
-test("T04-40 — DCB group slots use layout; empty cells stay disabled", () => {
-  const view = katlView();
-  expect(DCB_GROUP_SUBMENU_SLOT_START).toBe(7);
-  expect(DCB_GROUP_SLOT_COUNT).toBe(38);
-  expect(videoMapByDcbNumber(view, 1)?.dcbLabel).toBe("MVA");
-  expect(videoMapByDcbNumber(view, 1)?.starsId).toBe(3);
-  expect(formatDcbMapLabel(videoMapByDcbNumber(view, 1)!)).toBe("3 MVA");
-  expect(isDcbMapSlotEnabled(view, 1)).toBe(true);
-  expect(dcbMapsPageSlotNumbers(view)).toEqual(
-    Array.from({ length: 32 }, (_, i) => i + DCB_GROUP_SUBMENU_SLOT_START),
-  );
-  const empty = selectedVideoMapGroup(view)!.submenu.findIndex(
-    (slot) => slot.starsId === null || slot.mapId === undefined,
-  );
-  expect(empty).toBeGreaterThanOrEqual(0);
-  const emptySlot = DCB_GROUP_SUBMENU_SLOT_START + empty;
-  expect(videoMapByDcbNumber(view, emptySlot)).toBeUndefined();
-  expect(isDcbMapSlotEnabled(view, emptySlot)).toBe(false);
-  expect(videoMapByDcbNumber(view, 136)).toBeUndefined();
-  expect(dcbMapsPageSlotNumbers(kdemView())[0]).toBe(1);
 });

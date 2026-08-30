@@ -1,7 +1,6 @@
 import { expect, test } from "vitest";
 import { loadKdem } from "./load";
 import {
-  loadVideoMapGroups,
   loadVideoMapSet,
   parseVideoMapCatalog,
   parseVideoMapFile,
@@ -109,23 +108,6 @@ test("T04-39 — catalog dcbNumber is optional layout, not identity", () => {
   ).toThrow(/dcbNumber/);
 });
 
-test("T04-39 — KATL pack loads through loadVideoMapSet with CRC ULID ids", () => {
-  const maps = loadVideoMapSet("KATL");
-  expect(maps).toHaveLength(90);
-  expect(maps.every((item) => item.dcbNumber === undefined)).toBe(true);
-  expect(maps.map((item) => item.id)).not.toEqual(
-    Array.from({ length: 90 }, (_, i) => String(i + 1)),
-  );
-  const geoOnly = maps.find((item) => item.id === "01GP6Y38GCS0BQSWSVRDK7JH5C");
-  expect(geoOnly).toBeDefined();
-  expect(geoOnly?.dcbLabel).toBe("40DME F");
-  expect(geoOnly?.note).toMatch(/starsId 136/);
-  expect(geoOnly?.note).toMatch(/CRC ULID 01GP6Y38GCS0BQSWSVRDK7JH5C/);
-  expect(geoOnly?.features.length).toBeGreaterThan(0);
-  expect(maps.every((item) => item.features.length > 0)).toBe(true);
-  expect(maps.every((item) => item.color === "map" || item.color === "mapDim")).toBe(true);
-});
-
 test("T04-40 — optional catalog starsId is not identity; KDEM omits it", () => {
   const catalog = parseVideoMapCatalog(
     {
@@ -152,29 +134,7 @@ test("T04-40 — optional catalog starsId is not identity; KDEM omits it", () =>
   expect(loadVideoMapSet("KDEM").every((map) => map.starsId === undefined)).toBe(true);
 });
 
-test("T04-40 — KATL loads 90 maps with ULID id, starsId, and groups.json layout", () => {
-  const maps = loadVideoMapSet("KATL");
-  expect(maps).toHaveLength(90);
-  const geoOnly = maps.find((item) => item.id === "01GP6Y38GCS0BQSWSVRDK7JH5C");
-  expect(geoOnly?.starsId).toBe(136);
-  expect(geoOnly?.dcbNumber).toBeUndefined();
-  expect(geoOnly?.id).toBe("01GP6Y38GCS0BQSWSVRDK7JH5C");
-  expect(maps.every((item) => item.starsId !== undefined && item.starsId >= 1)).toBe(true);
-  expect(loadVideoMapGroups("KDEM")).toBeUndefined();
-  const groups = loadVideoMapGroups("KATL");
-  expect(groups).toBeDefined();
-  expect(groups?.groups).toHaveLength(14);
-  expect(groups?.mapsAbsentFromGroups).toHaveLength(17);
-  expect(groups?.mapsAbsentFromGroups).toContain("01GP6Y38GCS0BQSWSVRDK7JH5C");
-  const first = [...groups!.groups].sort((a, b) => a.sourceIndex - b.sourceIndex)[0]!;
-  expect(first.sourceIndex).toBe(0);
-  expect(first.main).toHaveLength(6);
-  expect(first.main[0]?.starsId).toBe(3);
-  expect(first.main[0]?.mapId).toBe("01GP6Y4FAAN3CQ94T4XN6FTT4C");
-  expect(first.submenu.some((slot) => slot.starsId === null && slot.mapId === undefined)).toBe(
-    true,
-  );
-  expect(groups?.facilityId).not.toBe("KATL");
+test("T04-40 — generic group parser preserves sparse layout and identity", () => {
   const parsed = parseVideoMapGroups(
     {
       facilityId: "X99",

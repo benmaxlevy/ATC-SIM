@@ -710,7 +710,6 @@ function renderMapSlot(view: ScopeView, onChange: () => void, slot: number) {
         ? String(map.starsId)
         : String(map.dcbNumber ?? slot);
   const label = map?.dcbLabel ?? "";
-  const labelLines = label ? label.split(/[\s_]+/) : [];
   return (
     <DcbCell
       key={slot}
@@ -723,15 +722,7 @@ function renderMapSlot(view: ScopeView, onChange: () => void, slot: number) {
       onClick={() => mapSlotClick(view, onChange, slot)}
     >
       <span className="dcb-cell-line">{identity}</span>
-      {labelLines.length > 0 ? (
-        labelLines.map((line, idx) => (
-          <span className="dcb-cell-line" key={idx}>
-            {line}
-          </span>
-        ))
-      ) : (
-        <span className="dcb-cell-line" />
-      )}
+      <span className="dcb-cell-line">{label}</span>
     </DcbCell>
   );
 }
