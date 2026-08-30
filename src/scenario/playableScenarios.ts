@@ -1,3 +1,5 @@
+import katl08Json from "./katl-08.json";
+import katlJson from "./katl.json";
 import kdem09Json from "./kdem-09.json";
 import kdemAtpaJson from "./kdem-atpa.json";
 import kdemIls09Json from "./kdem-ils09.json";
@@ -49,6 +51,8 @@ const scenarioSources: ScenarioSources = {
   "scenarios/kdem-ils27": kdemIls27Json,
   "scenarios/kdem-ils09": kdemIls09Json,
   "scenarios/kdem-atpa": kdemAtpaJson,
+  "scenarios/katl": katlJson,
+  "scenarios/katl-08": katl08Json,
 };
 
 /**

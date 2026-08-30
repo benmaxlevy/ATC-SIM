@@ -113,8 +113,9 @@ npm run cifp:pack -- --in testdata/cifp/fixed-width-subset.cifp --airport KSYN -
 `src/scenario/data/katl/` is the committed trainer catalog pack. Scenario JSON
 (`src/scenario/katl.json` west flow RWY 26R, `src/scenario/katl-08.json` east
 flow RWY 08L) loads that pack through generic `assertScenario` /
-`loadCatalog`. Playable inventory stays KDEM-only until KATL video maps exist.
-Do not point KATL at KDEM maps. Do not invent a national ATL dump.
+`loadCatalog`. Playable inventory lists KATL west/east configurations; KDEM
+stays the default. Video maps stay absent — do not point KATL at KDEM maps.
+Do not invent a national ATL dump.
 
 Heading-only vector SID `ATL2` is omitted from the committed pack: remaining
 CIFP legs were unsupported path terminators with no named-fix TF/IF/CF/DF
@@ -156,9 +157,10 @@ catalog loader and `src/` does not import this tool.
 
 Coverage:
 
-- Playable inventory is KDEM-only. Every listed scenario loads catalog +
-  video maps + authored MVA/spawns through generic loaders. KATL scenario
-  JSON is committed but not registered until video maps exist.
+- Playable inventory lists KDEM (default) and KATL west/east configurations.
+  Listed scenarios load catalog through generic `loadCatalog`. Map-backed
+  entries load video maps; KATL keeps empty `videoMaps` until a map set exists.
+  Authored trainer MVA is a uniform 3000 ft floor (not FAA source data).
 - `testdata/catalog-packs/kbbb/` is a synthetic second-facility pack (not
   KDEM, not KATL). Loader tests parse it through `parseCatalogFiles`.
 - `pack.integration.test.ts` packs a CIFP fixture whose SID/STAR/approach
@@ -363,7 +365,7 @@ payloads, RF/hold/arc/PT flying. Marker (`PM`) rows parse when present.
 
 Full ARINC 424 (holds, RF flying, procedure turns, DME arcs, continuation
 payloads). RNAV (RNP) flying. Live FAA download. Chart scrape. Replacing KDEM as
-the default scenario. KATL playable inventory (maps still required). SID
+the default scenario. KATL video maps. SID
 *flight* behavior for imported rows.
 
 ## Geographic radius seed (T04-32)

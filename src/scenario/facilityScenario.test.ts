@@ -2,9 +2,11 @@ import { expect, test } from "vitest";
 import {
   assertScenario,
   createWorldFromScenario,
+  listConfigurationsForAirport,
   listDepartureSlots,
   listPlayableScenarios,
   loadCatalog,
+  loadPlayableScenario,
   starRouteFixIds,
 } from "@scenario";
 import katl08Json from "./katl-08.json";
@@ -38,7 +40,9 @@ test("assertScenario loads a catalog facility without a video map set", () => {
     expect(scenario.maps.videoMapSet).toBeUndefined();
     expect(scenario.maps.videoMaps).toEqual([]);
     expect(scenario.maps.loadedVideoMaps).toEqual([]);
-    expect(scenario.mva).toBeNull();
+    expect(scenario.mva?.airportId).toBe(scenario.icao);
+    expect(scenario.mva?.defaultMinAltitudeFt).toBe(3000);
+    expect(scenario.mva?.polygons.every((poly) => poly.minAltitudeFt === 3000)).toBe(true);
     expect(scenario.spawnPolicy).toBe("authored");
     expect(scenario.departureConfig?.policy).toBe("auto");
     expect(scenario.runways.some((runway) => runway.id === scenario.activeRunwayId)).toBe(true);
@@ -61,7 +65,15 @@ test("assertScenario loads a catalog facility without a video map set", () => {
   }
 });
 
-test("playable inventory stays map-backed and does not list a no-map facility", () => {
-  expect(listPlayableScenarios().some((entry) => entry.airportIcao === katlJson.icao)).toBe(false);
-  expect(listPlayableScenarios().every((entry) => entry.airportIcao === "KDEM")).toBe(true);
+test("playable inventory lists a catalog facility even without video maps", () => {
+  const listed = listPlayableScenarios().filter((entry) => entry.airportIcao === katlJson.icao);
+  expect(listed.length).toBeGreaterThanOrEqual(2);
+  expect(listed.every((entry) => entry.sessionSetupVisible && !entry.default)).toBe(true);
+  expect(listConfigurationsForAirport(katlJson.icao)).toHaveLength(listed.length);
+  for (const entry of listed) {
+    const scenario = loadPlayableScenario(entry.id);
+    expect(scenario.maps.videoMapSet).toBeUndefined();
+    expect(scenario.maps.videoMaps).toEqual([]);
+    expect(scenario.mva?.defaultMinAltitudeFt).toBe(3000);
+  }
 });

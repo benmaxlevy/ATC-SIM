@@ -47,6 +47,28 @@
       "default": false,
       "sessionSetupVisible": false,
       "source": "scenarios/kdem-atpa"
+    },
+    {
+      "id": "katl",
+      "airportIcao": "KATL",
+      "airportName": "Hartsfield-Jackson Atlanta Intl",
+      "label": "Hartsfield-Jackson Atlanta Intl",
+      "configLabel": "West Flow (RWY 26R)",
+      "activeRunwayId": "26R",
+      "default": false,
+      "sessionSetupVisible": true,
+      "source": "scenarios/katl"
+    },
+    {
+      "id": "katl-08",
+      "airportIcao": "KATL",
+      "airportName": "Hartsfield-Jackson Atlanta Intl",
+      "label": "Hartsfield-Jackson Atlanta Intl — East Flow (RWY 08L)",
+      "configLabel": "East Flow (RWY 08L)",
+      "activeRunwayId": "08L",
+      "default": false,
+      "sessionSetupVisible": true,
+      "source": "scenarios/katl-08"
     }
   ]
 }

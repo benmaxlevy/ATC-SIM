@@ -59,8 +59,9 @@ describe("T05-13 / T05-14 session setup", () => {
   test("re-exports listPlayableAirports and listConfigurationsForAirport", () => {
     expect(typeof listPlayableAirports).toBe("function");
     expect(typeof listConfigurationsForAirport).toBe("function");
-    expect(listPlayableAirports()).toHaveLength(1);
-    expect(listPlayableAirports()[0].airportIcao).toBe("KDEM");
+    expect(listPlayableAirports().length).toBeGreaterThanOrEqual(2);
+    expect(listPlayableAirports().some((airport) => airport.airportIcao === "KDEM")).toBe(true);
     expect(listConfigurationsForAirport("KDEM")).toHaveLength(2);
+    expect(listConfigurationsForAirport("KATL")).toHaveLength(2);
   });
 });

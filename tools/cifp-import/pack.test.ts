@@ -285,12 +285,11 @@ function walkTs(dir: string, acc: string[] = []): string[] {
   return acc;
 }
 
-test("AC5 — KDEM stays default and KATL stays off playable inventory", () => {
+test("AC5 — KDEM stays default and KATL video maps stay absent", () => {
   const playable = JSON.parse(
     readFileSync(join(repoRoot, "src/scenario/playable-scenarios.json"), "utf8"),
   ) as { scenarios: { airportIcao: string; default: boolean }[] };
   expect(playable.scenarios.some((row) => row.default && row.airportIcao === "KDEM")).toBe(true);
-  expect(playable.scenarios.some((row) => row.airportIcao === "KATL")).toBe(false);
   expect(existsSync(join(repoRoot, "src/scenario/data/katl/catalog.json"))).toBe(true);
   expect(existsSync(join(repoRoot, "src/scenario/video-maps/KATL"))).toBe(false);
 });

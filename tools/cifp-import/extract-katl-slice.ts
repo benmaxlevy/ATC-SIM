@@ -7,7 +7,7 @@
  *
  * A reviewed trainer pack may live under `src/scenario/data/katl/`. Point
  * `--in` at a local CIFP the developer already has; do not commit the cycle.
- * Playable inventory stays KDEM until KATL video maps exist.
+ * Playable inventory may list KATL configurations; video maps stay absent.
  */
 import { runPackCli, type PackIo } from "./pack.ts";
 // @ts-expect-error tsconfig has no @types/node

@@ -554,8 +554,9 @@ Input CIFP files and generated intermediate output belong in `.cifp/` and
 national derived dumps, chart data, or source files. Only intentionally
 reviewed trainer packs belong under `src/scenario/data/<icao>/`. The committed
 KATL pack is catalog JSON plus `src/scenario/katl.json` / `katl-08.json`.
-Those scenarios are **not** in playable inventory until KATL video maps exist.
-Do not point KATL at KDEM maps. Video maps, MVA/ATPA, and telephony remain
+Those configurations are in playable inventory (KDEM stays default). Video
+maps remain absent; do not point KATL at KDEM maps. Authored trainer MVA is a
+uniform 3000 ft floor, not FAA source data. ATPA and telephony remain
 separate authored data.
 
 See [`tools/cifp-import/README.md`](tools/cifp-import/README.md) for supported

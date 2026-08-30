@@ -396,15 +396,16 @@ writes the existing ICAO `files` layout. `--sids` / `--stars` /
 records without writing. `extract-katl-slice.ts` is a thin default-flag
 wrapper (`--airport KATL`, `--radius 40`) that only calls generic pack.
 `src/scenario/data/katl/` is the committed trainer catalog pack; west/east
-scenario JSON loads it without a video map set.
+scenario JSON is registered in playable inventory without a video map set.
+Authored trainer MVA is a uniform 3000 ft floor (not FAA source data).
 
 Deliberately missing:
 
-- **KATL in playable inventory.** Session / video-map / default scenario stay
-  KDEM. Do not register KATL until a KATL video map set exists. Never point
+- **KATL video maps, ATPA, telephony.** Catalog JSON and authored
+  scenario/spawn files are separate. Maps are not CIFP-emitted. Never point
   KATL at KDEM maps.
-- **KATL video maps, MVA, ATPA, telephony.** Catalog JSON and authored
-  scenario/spawn files are separate. Maps are not CIFP-emitted.
+- **Operational / FAA KATL MVA.** Shipped chart is a uniform 3000 ft trainer
+  box over the ±60 NM training area, not source sector minima.
 - **Heading-only vector SID flying (`ATL2`).** Unsupported CIFP path
   terminators stay skipped; empty named-fix SIDs are omitted from the pack.
 - **SID flying, RNAV / hold / RF FMS, live FAA download, chart scrape.**
@@ -419,23 +420,24 @@ Constraints later work must keep:
 
 ### CIFP pack integration acceptance (T04-35)
 
-Visible now: every listed playable scenario loads its catalog and video-map
-set through generic `loadCatalog` / `loadVideoMapSet` (KDEM-only inventory).
-`loadCatalog(dir)` is unchanged. CIFP-derived packs interchange with
-authored catalogs via `parseCatalogFiles` (same parser). Synthetic
-second-facility testdata (`testdata/catalog-packs/kbbb/`) and
-`tools/cifp-import/pack.integration.test.ts` prove no facility-id branch
-and that SID/STAR/approach refs outside the seed radius remain after pack
-write. `extract-katl-slice.ts` stays a thin default-flag wrapper.
-`src/scenario/data/katl/` is the committed trainer catalog pack.
-`src/scenario/katl.json` and `katl-08.json` author west/east flows from that
-catalog. Maps, MVA, and ATPA stay outside CIFP catalog JSON.
+Visible now: every listed playable scenario loads its catalog through
+generic `loadCatalog`. Map-backed entries also load `loadVideoMapSet`; KATL
+keeps empty `videoMaps`. KDEM remains the authored default. `loadCatalog(dir)`
+is unchanged. CIFP-derived packs interchange with authored catalogs via
+`parseCatalogFiles` (same parser). Synthetic second-facility testdata
+(`testdata/catalog-packs/kbbb/`) and `tools/cifp-import/pack.integration.test.ts`
+prove no facility-id branch and that SID/STAR/approach refs outside the seed
+radius remain after pack write. `extract-katl-slice.ts` stays a thin
+default-flag wrapper. `src/scenario/data/katl/` is the committed trainer
+catalog pack. `src/scenario/katl.json` and `katl-08.json` author west/east
+flows from that catalog and are session-visible inventory entries. Maps and
+ATPA stay outside CIFP catalog JSON. Trainer MVA is a uniform 3000 ft floor,
+not FAA source data.
 
 Deliberately missing:
 
-- **Playable KATL.** Do not add KATL to `playable-scenarios.json` until a
-  KATL video map set exists. Do not invent a national ATL dump. Never point
-  KATL at KDEM maps.
+- **KATL video maps.** Do not invent a national ATL dump. Never point KATL at
+  KDEM maps.
 - **`faa:update` live download.** Input stays a local path. CI and this
   ticket did not regenerate from an official FAA cycle (no authorized
   local CIFP in the environment). Record a skip-with-reason; do not claim

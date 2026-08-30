@@ -1,0 +1,17 @@
+{
+  "airportId": "KATL",
+  "defaultMinAltitudeFt": 3000,
+  "note": "Trainer MVA approximation; not FAA source data, not certified MSAW, not operational MVA. Uniform 3000 ft floor over the authored ±60 NM training box (scenario range-ring max). Rectangles v1. Do not treat as real ATL sector minima.",
+  "polygons": [
+    {
+      "id": "training-area",
+      "minAltitudeFt": 3000,
+      "verticesNm": [
+        { "xNm": -60, "yNm": -60 },
+        { "xNm": 60, "yNm": -60 },
+        { "xNm": 60, "yNm": 60 },
+        { "xNm": -60, "yNm": 60 }
+      ]
+    }
+  ]
+}

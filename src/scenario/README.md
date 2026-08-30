@@ -30,7 +30,7 @@ catalog schema. Procedure JSON lives under `data/<icao>/`; the directory name
 is runtime code.
 
 Loose scenario JSON is intentional. KDEM has visible configurations plus
-hidden ILS/ATPA test benches. KATL scenarios currently load the committed
-catalog for validation but stay out of playable inventory until KATL maps are
-authored. Do not delete or move these files without updating their manifest,
-loader, tests, and compatibility exports.
+hidden ILS/ATPA test benches. KATL west/east configurations are playable and
+session-visible; video maps stay empty until a KATL map set is authored. Do
+not point KATL at KDEM maps. Do not delete or move these files without
+updating their manifest, loader, tests, and compatibility exports.
