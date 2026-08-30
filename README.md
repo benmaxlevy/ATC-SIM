@@ -58,7 +58,7 @@ An in-browser, high-fidelity **STARS-like (Standard Terminal Automation Replacem
 
 ### Prerequisites
 
-- **Node.js**: `v20.0.0+`
+- **Node.js**: `v22.6.0+`
 - **npm**: `v10.0.0+`
 - **Python**: `3.11+` *(Optional, required only for local speech recognition/synthesis and Path C salvage parsing)*
 
