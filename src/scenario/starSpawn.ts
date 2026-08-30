@@ -5,7 +5,16 @@
  * plus first-leg course, not chart scrape. Not NAS STARS.
  */
 
-import { buildFixRegistry, courseDeg, mulberry32, normalizeHeadingDeg, type NmPoint } from "@core";
+import {
+  alongTrackNm,
+  buildFixRegistry,
+  courseDeg,
+  DIRECT_SEQUENCE_NM,
+  distanceNm,
+  mulberry32,
+  normalizeHeadingDeg,
+  type NmPoint,
+} from "@core";
 import { resolveRunwayHeading, resolveRunwayThreshold } from "./departureSpawn";
 import type {
   AltConstraint,
@@ -119,6 +128,43 @@ export function starRouteFixIds(
 ): string[] {
   const { star, transition } = findStarTransition(catalog, starId, transitionId);
   return [...transition.legs.map((leg) => leg.fixId), ...star.common.map((leg) => leg.fixId)];
+}
+
+/**
+ * First unpassed STAR fix for an authored pose. Gate-offset spawns stay index
+ * 0. Mid-STAR poses skip fixes already behind the aircraft so VIA does not
+ * turn outbound toward a gate outside the range rings.
+ */
+export function authoredStarToFixIndex(
+  catalog: ProcedureCatalog,
+  starId: string,
+  transitionId: string,
+  pose: NmPoint,
+): number {
+  const routeFixIds = starRouteFixIds(catalog, starId, transitionId);
+  if (routeFixIds.length === 0) {
+    throw new Error(`STAR ${starId} ${transitionId} has no route fixes`);
+  }
+  const registry = buildFixRegistry(catalog);
+  for (let i = 0; i < routeFixIds.length; i += 1) {
+    const current = registry.require(routeFixIds[i]!);
+    let next: NmPoint | undefined;
+    for (let nextIndex = i + 1; nextIndex < routeFixIds.length; nextIndex += 1) {
+      const candidate = registry.require(routeFixIds[nextIndex]!);
+      if (distanceNm(current, candidate) > 1e-6) {
+        next = candidate;
+        break;
+      }
+    }
+    if (!next) {
+      return i;
+    }
+    const along = alongTrackNm(current, pose, courseDeg(current, next));
+    if (along < DIRECT_SEQUENCE_NM) {
+      return i;
+    }
+  }
+  return routeFixIds.length - 1;
 }
 
 /** Every `(starId, transitionId)` pair matching activeRunwayId (or all if omitted/fallback) in catalog array order. */

@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { buildFixRegistry } from "@core";
 import {
   assertScenario,
   createWorldFromScenario,
@@ -61,6 +62,61 @@ test("assertScenario loads a catalog facility without a video map set", () => {
     for (const ac of world.aircraft) {
       expect(ac.intent.lateral?.type).toBe("PROCEDURE");
       expect(ac.intent.vertical?.type).toBe("VIA_STAR");
+    }
+  }
+});
+
+test("authored catalog-facility arrivals spawn inside 50 NM of ARP with procedure refs", () => {
+  const authoredMinNm = 45;
+  const authoredMaxNm = 50;
+  const minPairNm = 3;
+  for (const raw of [katlJson, katl08Json]) {
+    const scenario = assertScenario(raw);
+    expect(scenario.spawnPolicy).toBe("authored");
+    const rangeRings = scenario.maps.rangeRings;
+    expect(rangeRings).toBeDefined();
+    const rangeMaxNm = rangeRings!.maxNm;
+    expect(rangeMaxNm).toBeGreaterThanOrEqual(authoredMaxNm);
+
+    const arrivals = scenario.arrivals;
+    expect(arrivals.length).toBeGreaterThanOrEqual(2);
+    for (const arrival of arrivals) {
+      const distNm = Math.hypot(arrival.xNm, arrival.yNm);
+      expect(distNm).toBeGreaterThanOrEqual(authoredMinNm);
+      expect(distNm).toBeLessThanOrEqual(authoredMaxNm);
+      expect(distNm).toBeLessThanOrEqual(rangeMaxNm);
+      expect(arrival.starId).toBeDefined();
+      expect(arrival.transitionId).toBeDefined();
+      const route = starRouteFixIds(scenario.catalog, arrival.starId!, arrival.transitionId!);
+      expect(route.length).toBeGreaterThan(1);
+    }
+
+    for (let i = 0; i < arrivals.length; i += 1) {
+      for (let j = i + 1; j < arrivals.length; j += 1) {
+        const pairNm = Math.hypot(
+          arrivals[i]!.xNm - arrivals[j]!.xNm,
+          arrivals[i]!.yNm - arrivals[j]!.yNm,
+        );
+        expect(pairNm).toBeGreaterThanOrEqual(minPairNm);
+      }
+    }
+
+    const world = createWorldFromScenario(scenario, 1);
+    const registry = buildFixRegistry(scenario.catalog);
+    expect(world.aircraft).toHaveLength(arrivals.length);
+    for (const arrival of arrivals) {
+      const ac = world.aircraft.find((row) => row.callsign === arrival.callsign);
+      expect(ac).toBeDefined();
+      expect(Math.hypot(ac!.xNm, ac!.yNm)).toBeLessThanOrEqual(authoredMaxNm);
+      expect(ac!.intent.lateral?.type).toBe("PROCEDURE");
+      if (ac!.intent.lateral?.type !== "PROCEDURE") {
+        continue;
+      }
+      expect(ac!.intent.lateral.starId).toBe(arrival.starId);
+      const targetId = ac!.intent.lateral.routeFixIds[ac!.intent.lateral.toFixIndex];
+      expect(targetId).toBeDefined();
+      const target = registry.require(targetId!);
+      expect(Math.hypot(target.xNm, target.yNm)).toBeLessThanOrEqual(rangeMaxNm);
     }
   }
 });
