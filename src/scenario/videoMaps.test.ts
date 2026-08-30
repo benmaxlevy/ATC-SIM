@@ -1,6 +1,13 @@
 import { expect, test } from "vitest";
 import { loadKdem } from "./load";
-import { loadVideoMapSet, parseVideoMapCatalog, parseVideoMapFile } from "./loadVideoMaps";
+import {
+  loadVideoMapGroups,
+  loadVideoMapSet,
+  parseVideoMapCatalog,
+  parseVideoMapFile,
+  parseVideoMapGroups,
+  starsIdFromNote,
+} from "./loadVideoMaps";
 
 test("AC1 — loadKdem videoMapSet is KDEM with RWY, LOC plus extras", () => {
   const maps = loadKdem().maps;
@@ -117,6 +124,83 @@ test("T04-39 — KATL pack loads through loadVideoMapSet with CRC ULID ids", () 
   expect(geoOnly?.features.length).toBeGreaterThan(0);
   expect(maps.every((item) => item.features.length > 0)).toBe(true);
   expect(maps.every((item) => item.color === "map" || item.color === "mapDim")).toBe(true);
+});
+
+test("T04-40 — optional catalog starsId is not identity; KDEM omits it", () => {
+  const catalog = parseVideoMapCatalog(
+    {
+      icao: "KBBB",
+      frame: "arp-enu-nm",
+      maps: [
+        {
+          id: "01GEOONLY00000000000000001",
+          file: "01GEOONLY00000000000000001.json",
+          starsId: 136,
+          dcbLabel: "40DME F",
+          defaultOn: false,
+          color: "map",
+        },
+      ],
+    },
+    "KBBB",
+  );
+  expect(catalog.maps[0]?.id).toBe("01GEOONLY00000000000000001");
+  expect(catalog.maps[0]?.starsId).toBe(136);
+  expect(catalog.maps[0]?.dcbNumber).toBeUndefined();
+  expect(starsIdFromNote("CRC ULID X; starsId 201; foo.geojson")).toBe(201);
+  expect(starsIdFromNote("no identity here")).toBeUndefined();
+  expect(loadVideoMapSet("KDEM").every((map) => map.starsId === undefined)).toBe(true);
+});
+
+test("T04-40 — KATL loads 90 maps with ULID id, starsId, and groups.json layout", () => {
+  const maps = loadVideoMapSet("KATL");
+  expect(maps).toHaveLength(90);
+  const geoOnly = maps.find((item) => item.id === "01GP6Y38GCS0BQSWSVRDK7JH5C");
+  expect(geoOnly?.starsId).toBe(136);
+  expect(geoOnly?.dcbNumber).toBeUndefined();
+  expect(geoOnly?.id).toBe("01GP6Y38GCS0BQSWSVRDK7JH5C");
+  expect(maps.every((item) => item.starsId !== undefined && item.starsId >= 1)).toBe(true);
+  expect(loadVideoMapGroups("KDEM")).toBeUndefined();
+  const groups = loadVideoMapGroups("KATL");
+  expect(groups).toBeDefined();
+  expect(groups?.groups).toHaveLength(14);
+  expect(groups?.mapsAbsentFromGroups).toHaveLength(17);
+  expect(groups?.mapsAbsentFromGroups).toContain("01GP6Y38GCS0BQSWSVRDK7JH5C");
+  const first = [...groups!.groups].sort((a, b) => a.sourceIndex - b.sourceIndex)[0]!;
+  expect(first.sourceIndex).toBe(0);
+  expect(first.main).toHaveLength(6);
+  expect(first.main[0]?.starsId).toBe(3);
+  expect(first.main[0]?.mapId).toBe("01GP6Y4FAAN3CQ94T4XN6FTT4C");
+  expect(first.submenu.some((slot) => slot.starsId === null && slot.mapId === undefined)).toBe(
+    true,
+  );
+  expect(groups?.facilityId).not.toBe("KATL");
+  const parsed = parseVideoMapGroups(
+    {
+      facilityId: "X99",
+      facilityName: "Demo",
+      mapsAbsentFromGroups: ["01ABSENT000000000000000001"],
+      groups: [
+        {
+          id: "G1",
+          sourceIndex: 0,
+          tcps: ["1N"],
+          main: Array.from({ length: 6 }, (_, i) => ({
+            position: { groupId: "G1", mainIndex: i },
+            starsId: i === 3 ? null : 10 + i,
+            ...(i === 3 ? {} : { mapId: `MAP${i}` }),
+          })),
+          submenu: [
+            { position: { groupId: "G1", submenuIndex: 0 }, starsId: 201, mapId: "HIGH" },
+            { position: { groupId: "G1", submenuIndex: 1 }, starsId: null },
+          ],
+        },
+      ],
+    },
+    "KBBB",
+  );
+  expect(parsed.groups[0]?.main[3]?.starsId).toBeNull();
+  expect(parsed.groups[0]?.submenu[0]?.starsId).toBe(201);
 });
 
 test("AC4 — missing video-maps/KJFK/catalog.json throws", () => {

@@ -30,7 +30,7 @@
 import type { World } from "@core";
 import type { LoadedVideoMap } from "@scenario";
 import { parseStrictFilterHundreds } from "./altitudeFilter";
-import { resolveVideoMapToken } from "./dcbFunctions";
+import { resolveVideoMapToken, type VideoMapTokenLayout } from "./dcbFunctions";
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
 import { isStarsLeaderClock, type StarsLeaderClock } from "./leader";
 
@@ -613,10 +613,11 @@ function mapToggleAction(
   token: string,
   maps: readonly LoadedVideoMap[] | undefined,
   explicitState?: boolean,
+  layout?: VideoMapTokenLayout,
 ): PreviewCommandResult {
   const normalized = token.toUpperCase();
   if (maps) {
-    const map = resolveVideoMapToken(maps, normalized);
+    const map = resolveVideoMapToken(maps, normalized, layout);
     if (!map) {
       return invalid("unknown video map");
     }
@@ -644,10 +645,11 @@ function mapToggleAction(
 function parseVideoMapCommand(
   buffer: string,
   maps?: readonly LoadedVideoMap[],
+  layout?: VideoMapTokenLayout,
 ): PreviewCommandResult | null {
   const compact = compactPreviewBuffer(buffer);
   if (/^M[A-Z0-9_]/.test(compact)) {
-    return mapToggleAction(compact.slice(1), maps);
+    return mapToggleAction(compact.slice(1), maps, undefined, layout);
   }
   if (!compact.startsWith("*D") || compact === "*D" || isTpaDBuffer(compact)) {
     return null;
@@ -663,9 +665,9 @@ function parseVideoMapCommand(
     return invalid("unknown video map");
   }
   if (rest.startsWith("OFF")) {
-    return mapToggleAction(rest.slice(3), maps, false);
+    return mapToggleAction(rest.slice(3), maps, false, layout);
   }
-  return mapToggleAction(rest, maps);
+  return mapToggleAction(rest, maps, undefined, layout);
 }
 
 const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
@@ -825,6 +827,7 @@ export function armPreviewSlewAction(
 export function parsePreviewCommand(
   buffer: string,
   maps?: readonly LoadedVideoMap[],
+  layout?: VideoMapTokenLayout,
 ): PreviewCommandResult {
   if (buffer === "") {
     return { kind: "incomplete" };
@@ -852,7 +855,7 @@ export function parsePreviewCommand(
   if (beaconFilter) {
     return beaconFilter;
   }
-  const videoMap = parseVideoMapCommand(buffer, maps);
+  const videoMap = parseVideoMapCommand(buffer, maps, layout);
   if (videoMap) {
     return videoMap;
   }
@@ -1014,8 +1017,9 @@ export function previewFlidMatchesSlew(
 export function commitPreviewCommand(
   buffer: string,
   maps?: readonly LoadedVideoMap[],
+  layout?: VideoMapTokenLayout,
 ): PreviewCommandResult {
-  const parsed = parsePreviewCommand(buffer, maps);
+  const parsed = parsePreviewCommand(buffer, maps, layout);
   if (parsed.kind === "incomplete") {
     return invalid("incomplete preview command");
   }
@@ -1142,6 +1146,7 @@ export function handlePreviewBufferKey(
   nowMs: number,
   code?: string,
   maps?: readonly LoadedVideoMap[],
+  layout?: VideoMapTokenLayout,
 ): PreviewKeyOutcome {
   if (isBeaconPreviewEntry(state)) {
     return handlePreviewBeaconKey(state, key, nowMs, code);
@@ -1162,7 +1167,7 @@ export function handlePreviewBufferKey(
     return { consumed: true, action: null };
   }
   if (key === "Enter" || key === "NumpadEnter") {
-    const parsed = parsePreviewCommand(state.buffer, maps);
+    const parsed = parsePreviewCommand(state.buffer, maps, layout);
     if (parsed.kind === "action") {
       cancelPreviewArea(state);
       return { consumed: true, action: parsed.action };

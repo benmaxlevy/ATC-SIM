@@ -16,6 +16,7 @@ import type {
   DigitalMapRunway,
   LoadedVideoMap,
   ScenarioMaps,
+  VideoMapGroupSet,
 } from "@scenario";
 import { nmToScreen, pxPerNm, type ScopeCamera, type ScopeViewSize } from "./camera";
 
@@ -35,6 +36,8 @@ export interface DigitalMap {
   rangeRings: DigitalMapRangeRings;
   coastline?: DigitalMapCoastline;
   loadedVideoMaps?: LoadedVideoMap[];
+  /** DCB group layout when `video-maps/<ICAO>/groups.json` loaded. Not identity. */
+  videoMapGroups?: VideoMapGroupSet;
 }
 
 export interface MapLayerFlags {
@@ -141,6 +144,7 @@ export function parseDigitalMap(maps: Partial<ScenarioMaps>): DigitalMap {
     rangeRings: maps.rangeRings ?? DEFAULT_RANGE_RINGS,
     coastline: maps.coastline,
     loadedVideoMaps: maps.loadedVideoMaps ?? [],
+    ...(maps.videoMapGroups !== undefined ? { videoMapGroups: maps.videoMapGroups } : {}),
   };
 }
 

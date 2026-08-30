@@ -34,7 +34,14 @@ export type {
   SpawnPolicy,
   VideoMap,
 } from "./types";
-export type { LoadedVideoMap, VideoMapCatalog, VideoMapFile } from "./loadVideoMaps";
+export type {
+  LoadedVideoMap,
+  VideoMapCatalog,
+  VideoMapFile,
+  VideoMapGroup,
+  VideoMapGroupSet,
+  VideoMapGroupSlot,
+} from "./loadVideoMaps";
 export type {
   ApproachProcedure,
   ApproachType,
@@ -78,7 +85,12 @@ export {
 } from "./atpaVolume";
 export type { MvaChart, MvaPolygon, MvaVertex, MsawInhibitGeom } from "./mva";
 export { loadMva, mvaFileKey, parseMvaChart } from "./mva";
-export { loadVideoMapSet } from "./loadVideoMaps";
+export {
+  loadVideoMapGroups,
+  loadVideoMapSet,
+  parseVideoMapGroups,
+  starsIdFromNote,
+} from "./loadVideoMaps";
 export {
   createWorldForSession,
   createWorldFromScenario,

@@ -22,6 +22,7 @@ import {
   saveAsDcbPref,
   handleFilterEntryKey,
   parseDigitalMap,
+  selectedVideoMapGroup,
   toggleGiFilter,
   toggleHistoryEnabled,
   toggleMapLayer,
@@ -31,7 +32,7 @@ import {
   stepRrInterval,
   PpiPlaceholder,
 } from "@scope";
-import { loadKdem } from "@scenario";
+import { loadKdem, loadVideoMapGroups, loadVideoMapSet } from "@scenario";
 import {
   DCB_FONT_PX,
   DCB_HEIGHT_PX,
@@ -423,6 +424,34 @@ test("T02-24 — MAIN quick maps 1–6 and MAPS slots 1–30; unused 7–30 disa
   expect(on.showCoastline).toBe(true);
   toggleMapLayer(on, "coastline");
   expect(on.showCoastline).toBe(false);
+});
+
+test("T04-40 — KATL DCB uses group order, CRC starsId labels, empty slots disabled", () => {
+  const view = createScopeView(0, 0, {
+    digitalMap: {
+      rangeRings: { intervalNm: 5, maxNm: 60 },
+      loadedVideoMaps: loadVideoMapSet("KATL"),
+      videoMapGroups: loadVideoMapGroups("KATL"),
+    },
+  });
+  const main = dcbHtml(view);
+  expect(main).toContain("MVA");
+  expect(main).toMatch(/aria-label="3 MVA"/);
+  expect(main).toContain('data-dcb-map-id="01GP6Y4FAAN3CQ94T4XN6FTT4C"');
+  expect(main).toContain('data-dcb-map-slot="1"');
+  expect(main).not.toContain('data-dcb-map-slot="7"');
+
+  openDcbMenu(view, "MAPS");
+  const maps = dcbHtml(view);
+  expect(maps).toContain('data-dcb-map-slot="7"');
+  expect(maps).toContain('data-dcb-map-slot="38"');
+  expect(maps).not.toContain('data-dcb-map-slot="1"');
+  const emptyIndex = selectedVideoMapGroup(view)!.submenu.findIndex(
+    (slot) => slot.starsId === null || slot.mapId === undefined,
+  );
+  expect(emptyIndex).toBeGreaterThanOrEqual(0);
+  const emptySlot = 7 + emptyIndex;
+  expect(maps).toMatch(new RegExp(`aria-label="Map ${emptySlot}"[^>]*\\bdisabled\\b`));
 });
 
 test("PLACE CNTR arms; OFF CNTR is its own cell and Home-equivalent", () => {
