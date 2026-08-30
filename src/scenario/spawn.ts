@@ -79,11 +79,22 @@ function armStarVia(ac: Aircraft, scenario: Scenario, arrival: ArrivalSpawn): vo
   if (!arrival.starId || !arrival.transitionId) {
     return;
   }
-  const routeFixIds = starRouteFixIds(scenario.catalog, arrival.starId, arrival.transitionId);
+  const routeFixIds = starRouteFixIds(
+    scenario.catalog,
+    arrival.starId,
+    arrival.transitionId,
+    scenario.activeRunwayId,
+  );
   ac.intent.lateral = {
     type: "PROCEDURE",
     starId: arrival.starId,
-    toFixIndex: authoredStarToFixIndex(scenario.catalog, arrival.starId, arrival.transitionId, ac),
+    toFixIndex: authoredStarToFixIndex(
+      scenario.catalog,
+      arrival.starId,
+      arrival.transitionId,
+      ac,
+      scenario.activeRunwayId,
+    ),
     routeFixIds,
   };
   ac.intent.vertical = { type: "VIA_STAR", starId: arrival.starId, sense: "DESCEND" };
