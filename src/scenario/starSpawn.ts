@@ -100,6 +100,20 @@ function fixXy(catalog: ProcedureCatalog, fixId: string): NmPoint {
   return { xNm: registered.xNm, yNm: registered.yNm };
 }
 
+function transitionMatchesRunway(transition: StarTransition, activeRunwayId: string): boolean {
+  const cleanRwy = activeRunwayId.replace(/^RW/i, "").trim().toUpperCase();
+  const paddedRwy = cleanRwy.length === 1 ? cleanRwy.padStart(2, "0") : cleanRwy;
+  const matches = (runwayId: string): boolean => {
+    const clean = runwayId.replace(/^RW/i, "").trim().toUpperCase();
+    const padded = clean.length === 1 ? clean.padStart(2, "0") : clean;
+    return clean === cleanRwy || padded === paddedRwy;
+  };
+  return (
+    (transition.runwayId !== undefined && matches(transition.runwayId)) ||
+    (transition.runways?.some(matches) ?? false)
+  );
+}
+
 function spawnAltitudeFt(constraint: AltConstraint | undefined, gateFixId: string): number {
   if (!constraint) {
     throw new Error(`STAR gate ${gateFixId} has no altitude constraint`);
@@ -125,9 +139,37 @@ export function starRouteFixIds(
   catalog: ProcedureCatalog,
   starId: string,
   transitionId: string,
+  activeRunwayId?: string,
 ): string[] {
   const { star, transition } = findStarTransition(catalog, starId, transitionId);
-  return [...transition.legs.map((leg) => leg.fixId), ...star.common.map((leg) => leg.fixId)];
+  // CIFP STARs may separate an enroute transition from its runway transition.
+  // Join both at the common fix when an active runway is supplied.
+  const isRunwayTransition = transition.runwayId !== undefined || transition.runways !== undefined;
+  if (activeRunwayId === undefined) {
+    return [...transition.legs.map((leg) => leg.fixId), ...star.common.map((leg) => leg.fixId)];
+  }
+  if (isRunwayTransition) {
+    return transition.legs.map((leg) => leg.fixId);
+  }
+  const runwayTransition = star.transitions.find(
+    (candidate) =>
+      candidate !== transition &&
+      (candidate.runwayId !== undefined || candidate.runways !== undefined) &&
+      transitionMatchesRunway(candidate, activeRunwayId),
+  );
+  const route = [
+    ...transition.legs.map((leg) => leg.fixId),
+    ...star.common.map((leg) => leg.fixId),
+  ];
+  if (runwayTransition === undefined) {
+    return route;
+  }
+  for (const leg of runwayTransition.legs) {
+    if (route[route.length - 1] !== leg.fixId) {
+      route.push(leg.fixId);
+    }
+  }
+  return route;
 }
 
 /**
@@ -140,8 +182,9 @@ export function authoredStarToFixIndex(
   starId: string,
   transitionId: string,
   pose: NmPoint,
+  activeRunwayId?: string,
 ): number {
-  const routeFixIds = starRouteFixIds(catalog, starId, transitionId);
+  const routeFixIds = starRouteFixIds(catalog, starId, transitionId, activeRunwayId);
   if (routeFixIds.length === 0) {
     throw new Error(`STAR ${starId} ${transitionId} has no route fixes`);
   }
@@ -187,18 +230,26 @@ export function listStarSlots(catalog: ProcedureCatalog, activeRunwayId?: string
   const explicitMatches: StarSlot[] = [];
   for (const star of catalog.stars) {
     for (const transition of star.transitions) {
-      const rId = transition.runwayId?.replace(/^RW/i, "").trim().toUpperCase();
-      const rIdPadded = rId?.length === 1 ? rId.padStart(2, "0") : rId;
-      const matchId = rId && (rId === cleanRwy || rIdPadded === paddedRwy);
-      const matchRunways = transition.runways?.some((r) => {
-        const c = r.replace(/^RW/i, "").trim().toUpperCase();
-        const cp = c.length === 1 ? c.padStart(2, "0") : c;
-        return c === cleanRwy || cp === paddedRwy;
-      });
-      if (matchId || matchRunways) {
+      if (transitionMatchesRunway(transition, activeRunwayId)) {
         explicitMatches.push({ starId: star.id, transitionId: transition.id });
       }
     }
+  }
+  const enrouteMatches: StarSlot[] = [];
+  for (const star of catalog.stars) {
+    if (
+      !star.transitions.some((transition) => transitionMatchesRunway(transition, activeRunwayId))
+    ) {
+      continue;
+    }
+    for (const transition of star.transitions) {
+      if (transition.runwayId === undefined && transition.runways === undefined) {
+        enrouteMatches.push({ starId: star.id, transitionId: transition.id });
+      }
+    }
+  }
+  if (enrouteMatches.length > 0) {
+    return enrouteMatches;
   }
   if (explicitMatches.length > 0) {
     return explicitMatches;
@@ -286,6 +337,7 @@ export function starInboundPose(
   starId: string,
   transitionId: string,
   alongTrackOffsetNm: number,
+  activeRunwayId?: string,
 ): StarInboundPose {
   if (!Number.isFinite(alongTrackOffsetNm) || alongTrackOffsetNm < 0) {
     throw new Error(
@@ -293,7 +345,7 @@ export function starInboundPose(
     );
   }
   const gateLeg = requireGateLeg(catalog, starId, transitionId);
-  const routeFixIds = starRouteFixIds(catalog, starId, transitionId);
+  const routeFixIds = starRouteFixIds(catalog, starId, transitionId, activeRunwayId);
   const nextFixId = routeFixIds[1];
   if (!nextFixId) {
     throw new Error(`STAR ${starId} ${transitionId} has no next fix after the gate`);
@@ -365,7 +417,13 @@ export function assignStarRoutes(args: AssignStarRoutesArgs): StarRouteAssignmen
       starId: slot.starId,
       transitionId: slot.transitionId,
       stackIndex,
-      pose: starInboundPose(catalog, slot.starId, slot.transitionId, alongTrackOffsetNm),
+      pose: starInboundPose(
+        catalog,
+        slot.starId,
+        slot.transitionId,
+        alongTrackOffsetNm,
+        activeRunwayId,
+      ),
     });
   }
   return assignments;
