@@ -1,0 +1,4043 @@
+{
+  "facilityId": "A80",
+  "facilityName": "Atlanta TRACON",
+  "mapsAbsentFromGroups": [
+    "01H8GFZDSHP3M4KXZ7EWJ9YA7J",
+    "01GP6Y38GCS0BQSWSVRDK7JH5C",
+    "01H8JV7KWJ2WTE505SSBRB0HEF",
+    "01J7D232JHW3XBZ26CEW5X3N0R",
+    "01J7D232JFDAZ0TB9MTFTKNCJR",
+    "01J7D232JBVXFQJHW7RBJF9866",
+    "01J7D232JFHM7T8G7W02ADGK1F",
+    "01J7D232JHYT7ZXM83NC1HKD94",
+    "01J7D232JAD8JHTMZPTQYH0JCR",
+    "01J7D232JBJ82Y9NPZ30NY9KM6",
+    "01J7D232JFCGNQXZDAS6WQSZHK",
+    "01J7D232JJH6D17MK1PBVGTFNT",
+    "01J7D232JC5DS97G9MNJG6HZ7M",
+    "01J7D232JF7B0M8BPVX2RAKYQZ",
+    "01J7D232JAJ0BN9M8MS6Z76ER0",
+    "01KYQRGJFJSQXSW1KW3GJR0235",
+    "01KXKTAGDTEKX1N1P6H6V0PYS8"
+  ],
+  "groups": [
+    {
+      "id": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+      "sourceIndex": 0,
+      "tcps": ["1I", "1N", "1S"],
+      "main": [
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "mainIndex": 0
+          },
+          "starsId": 3,
+          "mapId": "01GP6Y4FAAN3CQ94T4XN6FTT4C"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "mainIndex": 1
+          },
+          "starsId": 1,
+          "mapId": "01GP6XQB91R44BSYQ5Q0MGSAKW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "mainIndex": 2
+          },
+          "starsId": 32,
+          "mapId": "01GP6XY3KFARFSBBCRYKD08MQE"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "mainIndex": 3
+          },
+          "starsId": 30,
+          "mapId": "01GP6XZ5R6SFBVB4QGEHWPN233"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "mainIndex": 4
+          },
+          "starsId": 22,
+          "mapId": "01H8GCY04EQ4AHPJB6K809T35B"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "mainIndex": 5
+          },
+          "starsId": 25,
+          "mapId": "01H8GD3HT5SCM3MQJ6PT1A8D4Y"
+        }
+      ],
+      "submenu": [
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 0
+          },
+          "starsId": 27,
+          "mapId": "01G8YM63HVT055BS84APH6BD4X"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 1
+          },
+          "starsId": 20,
+          "mapId": "01GA7MV414N11N4FWETP3SFPBV"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 2
+          },
+          "starsId": 31,
+          "mapId": "01GP6XZSDJ8SN30FEEXYZ89ZWH"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 3
+          },
+          "starsId": 29,
+          "mapId": "01GP6Y1DGYY7NC8JJ0M34Z7FTX"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 4
+          },
+          "starsId": 32,
+          "mapId": "01GP6XY3KFARFSBBCRYKD08MQE"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 5
+          },
+          "starsId": 30,
+          "mapId": "01GP6XZ5R6SFBVB4QGEHWPN233"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 6
+          },
+          "starsId": 34,
+          "mapId": "01GP6XWAD28MARP7YJAX4B8MED"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 7
+          },
+          "starsId": 33,
+          "mapId": "01GP6XTK75VPEAG48HENXGK82G"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 8
+          },
+          "starsId": 36,
+          "mapId": "01H8GEQEJ80FZMJ8PJR4996VGT"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 9
+          },
+          "starsId": 35,
+          "mapId": "01H8GEMWXBRWWW2WYMY14NW7VF"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 10
+          },
+          "starsId": 41,
+          "mapId": "01HA887092RBGDK23R1SCM57SP"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 11
+          },
+          "starsId": 39,
+          "mapId": "01HA88709392KQ6D97YW4WDJZF"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 12
+          },
+          "starsId": 42,
+          "mapId": "01H8GFVEGAB23KG2HMN8Y9BYTD"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 13
+          },
+          "starsId": 38,
+          "mapId": "01H8GFCNY9XYX2F2M6C8R5CMYF"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 14
+          },
+          "starsId": 40,
+          "mapId": "01H8GFF5AYJ1TV982Q68D7NC2J"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 15
+          },
+          "starsId": 37,
+          "mapId": "01H8GFS8YV5HMBJ40VK5Y4ZZJS"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 16
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 17
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 18
+          },
+          "starsId": 44,
+          "mapId": "01H8GE1GRCTK0ESW5P115V0PM5"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 19
+          },
+          "starsId": 45,
+          "mapId": "01H8GE0949H9HFSKC3EGJPKXT9"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 20
+          },
+          "starsId": 12,
+          "mapId": "01H8JV3KARPB1TP8Y19P0D978K"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 21
+          },
+          "starsId": 46,
+          "mapId": "01HAD5PFYK1G9QYYM7J6Y536HW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 22
+          },
+          "starsId": 23,
+          "mapId": "01GP6Y6EAEB5EJTG1GZD7E22AT"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 23
+          },
+          "starsId": 21,
+          "mapId": "01GP6Y7FTCAG4JTAVQZDSFNAMD"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 24
+          },
+          "starsId": 24,
+          "mapId": "01GP6Y8BRNFS4MWSPZJ4GHT4E1"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 25
+          },
+          "starsId": 26,
+          "mapId": "01GP6Y9BCEW475ASGWPBZSCVHZ"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 26
+          },
+          "starsId": 17,
+          "mapId": "01H8GBHT11FK1A1GD0DEJWRNCJ"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 27
+          },
+          "starsId": 18,
+          "mapId": "01H8GBQJ0DD1BN0QR4APY9Y6Z9"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 28
+          },
+          "starsId": 85,
+          "mapId": "01KREYH4ZRK8Z7E8M8RSRNT4V8"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 29
+          },
+          "starsId": 84,
+          "mapId": "01KREYJNM6863JHRZDFZ3PAYFC"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 30
+          },
+          "starsId": 28,
+          "mapId": "01GQ8KX8SAFMKC7W4VREE0PTJT"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZ9X9H5P64NEEX5YEMCRD",
+            "submenuIndex": 31
+          },
+          "starsId": 10,
+          "mapId": "01GQ8KW483X8R4V4QSQRWHE2QP"
+        }
+      ]
+    },
+    {
+      "id": "01HBPTZFFS83GZASB8SZEQCEXR",
+      "sourceIndex": 1,
+      "tcps": ["1D", "1H", "1L", "1Y"],
+      "main": [
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "mainIndex": 0
+          },
+          "starsId": 3,
+          "mapId": "01GP6Y4FAAN3CQ94T4XN6FTT4C"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "mainIndex": 1
+          },
+          "starsId": 1,
+          "mapId": "01GP6XQB91R44BSYQ5Q0MGSAKW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "mainIndex": 2
+          },
+          "starsId": 24,
+          "mapId": "01GP6Y8BRNFS4MWSPZJ4GHT4E1"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "mainIndex": 3
+          },
+          "starsId": 26,
+          "mapId": "01GP6Y9BCEW475ASGWPBZSCVHZ"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "mainIndex": 4
+          },
+          "starsId": 22,
+          "mapId": "01H8GCY04EQ4AHPJB6K809T35B"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "mainIndex": 5
+          },
+          "starsId": 25,
+          "mapId": "01H8GD3HT5SCM3MQJ6PT1A8D4Y"
+        }
+      ],
+      "submenu": [
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 0
+          },
+          "starsId": 17,
+          "mapId": "01H8GBHT11FK1A1GD0DEJWRNCJ"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 1
+          },
+          "starsId": 18,
+          "mapId": "01H8GBQJ0DD1BN0QR4APY9Y6Z9"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 2
+          },
+          "starsId": 24,
+          "mapId": "01GP6Y8BRNFS4MWSPZJ4GHT4E1"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 3
+          },
+          "starsId": 26,
+          "mapId": "01GP6Y9BCEW475ASGWPBZSCVHZ"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 4
+          },
+          "starsId": 23,
+          "mapId": "01GP6Y6EAEB5EJTG1GZD7E22AT"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 5
+          },
+          "starsId": 21,
+          "mapId": "01GP6Y7FTCAG4JTAVQZDSFNAMD"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 6
+          },
+          "starsId": 22,
+          "mapId": "01H8GCY04EQ4AHPJB6K809T35B"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 7
+          },
+          "starsId": 25,
+          "mapId": "01H8GD3HT5SCM3MQJ6PT1A8D4Y"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 8
+          },
+          "starsId": 131,
+          "mapId": "01H8GCGMCM0F998E3ZB370EG82"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 9
+          },
+          "starsId": 130,
+          "mapId": "01H8GC94ZQXCVBWS617DN8BGS8"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 10
+          },
+          "starsId": 142,
+          "mapId": "01H8GDVYR88K7FPM04GFV70QKE"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 11
+          },
+          "starsId": 141,
+          "mapId": "01H8GDZH6KWGSTND0PPSASGC9D"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 12
+          },
+          "starsId": 85,
+          "mapId": "01KREYH4ZRK8Z7E8M8RSRNT4V8"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 13
+          },
+          "starsId": 84,
+          "mapId": "01KREYJNM6863JHRZDFZ3PAYFC"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 14
+          },
+          "starsId": 28,
+          "mapId": "01GQ8KX8SAFMKC7W4VREE0PTJT"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 15
+          },
+          "starsId": 10,
+          "mapId": "01GQ8KW483X8R4V4QSQRWHE2QP"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 16
+          },
+          "starsId": 80,
+          "mapId": "01KREW4R6Z7X0CCMGXE6Q4DGHQ"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 17
+          },
+          "starsId": 82,
+          "mapId": "01KREXP92SN7J2FKFP9VHYK093"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 18
+          },
+          "starsId": 77,
+          "mapId": "01GQ8KYYVXDFRA1XPFWMNNB9GQ"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 19
+          },
+          "starsId": 76,
+          "mapId": "01GQ8KZFK0VYY8MR2JBCA25FJG"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 20
+          },
+          "starsId": 79,
+          "mapId": "01GQ8KYC91383MQCDPS17MZTYV"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 21
+          },
+          "starsId": 78,
+          "mapId": "01GQ8KXV5B2PRN0T57YVDNQ17M"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 22
+          },
+          "starsId": 81,
+          "mapId": "01KREXMHSCDZQ5MFXENFB2C3BM"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 23
+          },
+          "starsId": 83,
+          "mapId": "01KREXRD4VSK7P6GPSMJZWM6EE"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 24
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 25
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 26
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 27
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 28
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 29
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 30
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZFFS83GZASB8SZEQCEXR",
+            "submenuIndex": 31
+          },
+          "starsId": null
+        }
+      ]
+    },
+    {
+      "id": "01HBPTZSA1CY64Q8EKQTB699YJ",
+      "sourceIndex": 2,
+      "tcps": ["1A", "1O", "1V"],
+      "main": [
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "mainIndex": 0
+          },
+          "starsId": 3,
+          "mapId": "01GP6Y4FAAN3CQ94T4XN6FTT4C"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "mainIndex": 1
+          },
+          "starsId": 1,
+          "mapId": "01GP6XQB91R44BSYQ5Q0MGSAKW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "mainIndex": 2
+          },
+          "starsId": 8,
+          "mapId": "01H8JV8WT7B5YR14FH2ZEV7CHN"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "mainIndex": 3
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "mainIndex": 4
+          },
+          "starsId": 10,
+          "mapId": "01GQ8KW483X8R4V4QSQRWHE2QP"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "mainIndex": 5
+          },
+          "starsId": 28,
+          "mapId": "01GQ8KX8SAFMKC7W4VREE0PTJT"
+        }
+      ],
+      "submenu": [
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 0
+          },
+          "starsId": 57,
+          "mapId": "01H8JTH6AK9Q9Y9F361EKP1JMB"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 1
+          },
+          "starsId": 51,
+          "mapId": "01H8JTC00QTYG5FGZF1EC19XPR"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 2
+          },
+          "starsId": 63,
+          "mapId": "01H8JTGH5SXG3KP4R356VRA8WH"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 3
+          },
+          "starsId": 56,
+          "mapId": "01H8JTFT3VVP19QPS857B9TFBT"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 4
+          },
+          "starsId": 23,
+          "mapId": "01GP6Y6EAEB5EJTG1GZD7E22AT"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 5
+          },
+          "starsId": 21,
+          "mapId": "01GP6Y7FTCAG4JTAVQZDSFNAMD"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 6
+          },
+          "starsId": 24,
+          "mapId": "01GP6Y8BRNFS4MWSPZJ4GHT4E1"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 7
+          },
+          "starsId": 26,
+          "mapId": "01GP6Y9BCEW475ASGWPBZSCVHZ"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 8
+          },
+          "starsId": 85,
+          "mapId": "01KREYH4ZRK8Z7E8M8RSRNT4V8"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 9
+          },
+          "starsId": 84,
+          "mapId": "01KREYJNM6863JHRZDFZ3PAYFC"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 10
+          },
+          "starsId": 28,
+          "mapId": "01GQ8KX8SAFMKC7W4VREE0PTJT"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 11
+          },
+          "starsId": 10,
+          "mapId": "01GQ8KW483X8R4V4QSQRWHE2QP"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 12
+          },
+          "starsId": 80,
+          "mapId": "01KREW4R6Z7X0CCMGXE6Q4DGHQ"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 13
+          },
+          "starsId": 82,
+          "mapId": "01KREXP92SN7J2FKFP9VHYK093"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 14
+          },
+          "starsId": 77,
+          "mapId": "01GQ8KYYVXDFRA1XPFWMNNB9GQ"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 15
+          },
+          "starsId": 76,
+          "mapId": "01GQ8KZFK0VYY8MR2JBCA25FJG"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 16
+          },
+          "starsId": 79,
+          "mapId": "01GQ8KYC91383MQCDPS17MZTYV"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 17
+          },
+          "starsId": 78,
+          "mapId": "01GQ8KXV5B2PRN0T57YVDNQ17M"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 18
+          },
+          "starsId": 81,
+          "mapId": "01KREXMHSCDZQ5MFXENFB2C3BM"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 19
+          },
+          "starsId": 83,
+          "mapId": "01KREXRD4VSK7P6GPSMJZWM6EE"
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 20
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 21
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 22
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 23
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 24
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 25
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 26
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 27
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 28
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 29
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 30
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPTZSA1CY64Q8EKQTB699YJ",
+            "submenuIndex": 31
+          },
+          "starsId": null
+        }
+      ]
+    },
+    {
+      "id": "01HBPV03JS1XBPZWASTZS8JQDH",
+      "sourceIndex": 3,
+      "tcps": ["1F", "1G", "1M", "1P", "1Q", "1R", "1W", "1X", "1Z"],
+      "main": [
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "mainIndex": 0
+          },
+          "starsId": 3,
+          "mapId": "01GP6Y4FAAN3CQ94T4XN6FTT4C"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "mainIndex": 1
+          },
+          "starsId": 1,
+          "mapId": "01GP6XQB91R44BSYQ5Q0MGSAKW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "mainIndex": 2
+          },
+          "starsId": 8,
+          "mapId": "01H8JV8WT7B5YR14FH2ZEV7CHN"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "mainIndex": 3
+          },
+          "starsId": 2,
+          "mapId": "01H8GGP8BSDFMBM50F3MKV4KE6"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "mainIndex": 4
+          },
+          "starsId": 46,
+          "mapId": "01HAD5PFYK1G9QYYM7J6Y536HW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "mainIndex": 5
+          },
+          "starsId": 12,
+          "mapId": "01H8JV3KARPB1TP8Y19P0D978K"
+        }
+      ],
+      "submenu": [
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 0
+          },
+          "starsId": 44,
+          "mapId": "01H8GE1GRCTK0ESW5P115V0PM5"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 1
+          },
+          "starsId": 45,
+          "mapId": "01H8GE0949H9HFSKC3EGJPKXT9"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 2
+          },
+          "starsId": 46,
+          "mapId": "01HAD5PFYK1G9QYYM7J6Y536HW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 3
+          },
+          "starsId": 47,
+          "mapId": "01H8JSZ878SPKFH48VXSS07X71"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 4
+          },
+          "starsId": 49,
+          "mapId": "01H8JT9HRZ0RPZMEH8R5NGZGCF"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 5
+          },
+          "starsId": 48,
+          "mapId": "01H8JT6QPS1W5X6Q8H8Y2S876M"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 6
+          },
+          "starsId": 11,
+          "mapId": "01H8JV0CCV20MF5QM2QHFSFT2S"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 7
+          },
+          "starsId": 2,
+          "mapId": "01H8GGP8BSDFMBM50F3MKV4KE6"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 8
+          },
+          "starsId": 11,
+          "mapId": "01H8JV0CCV20MF5QM2QHFSFT2S"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 9
+          },
+          "starsId": 2,
+          "mapId": "01H8GGP8BSDFMBM50F3MKV4KE6"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 10
+          },
+          "starsId": 19,
+          "mapId": "01H8JV65MEWXQQZK4BZ12WTCT4"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 11
+          },
+          "starsId": 43,
+          "mapId": "01GP6Y2H2TXT4XFBNE0HA88NEB"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 12
+          },
+          "starsId": 134,
+          "mapId": "01H8JSPBM760BJ1BXXEJ2C31FY"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 13
+          },
+          "starsId": 135,
+          "mapId": "01H8JSXT29SARCF4JNRDTFTAVZ"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 14
+          },
+          "starsId": 85,
+          "mapId": "01KREYH4ZRK8Z7E8M8RSRNT4V8"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 15
+          },
+          "starsId": 84,
+          "mapId": "01KREYJNM6863JHRZDFZ3PAYFC"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 16
+          },
+          "starsId": 80,
+          "mapId": "01KREW4R6Z7X0CCMGXE6Q4DGHQ"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 17
+          },
+          "starsId": 82,
+          "mapId": "01KREXP92SN7J2FKFP9VHYK093"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 18
+          },
+          "starsId": 77,
+          "mapId": "01GQ8KYYVXDFRA1XPFWMNNB9GQ"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 19
+          },
+          "starsId": 76,
+          "mapId": "01GQ8KZFK0VYY8MR2JBCA25FJG"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 20
+          },
+          "starsId": 79,
+          "mapId": "01GQ8KYC91383MQCDPS17MZTYV"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 21
+          },
+          "starsId": 78,
+          "mapId": "01GQ8KXV5B2PRN0T57YVDNQ17M"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 22
+          },
+          "starsId": 81,
+          "mapId": "01KREXMHSCDZQ5MFXENFB2C3BM"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 23
+          },
+          "starsId": 76,
+          "mapId": "01GQ8KZFK0VYY8MR2JBCA25FJG"
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 24
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 25
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 26
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 27
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 28
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 29
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPV03JS1XBPZWASTZS8JQDH",
+            "submenuIndex": 30
+          },
+          "starsId": null
+        }
+      ]
+    },
+    {
+      "id": "01HBPVPQVVX7SE3EBE1D84HKCY",
+      "sourceIndex": 4,
+      "tcps": ["1T", "21", "22", "23", "24", "25", "2C", "2D", "2N", "2S", "2U"],
+      "main": [
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "mainIndex": 0
+          },
+          "starsId": 1,
+          "mapId": "01GP6XQB91R44BSYQ5Q0MGSAKW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "mainIndex": 1
+          },
+          "starsId": 2,
+          "mapId": "01H8GGP8BSDFMBM50F3MKV4KE6"
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "mainIndex": 2
+          },
+          "starsId": 3,
+          "mapId": "01GP6Y4FAAN3CQ94T4XN6FTT4C"
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "mainIndex": 3
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "mainIndex": 4
+          },
+          "starsId": 24,
+          "mapId": "01GP6Y8BRNFS4MWSPZJ4GHT4E1"
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "mainIndex": 5
+          },
+          "starsId": 30,
+          "mapId": "01GP6XZ5R6SFBVB4QGEHWPN233"
+        }
+      ],
+      "submenu": [
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 0
+          },
+          "starsId": 73,
+          "mapId": "01GPCY49WQG4CC4SKCK112GF3F"
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 1
+          },
+          "starsId": 72,
+          "mapId": "01GPCXN5HXKCM83EVSS3KJZZXE"
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 2
+          },
+          "starsId": 75,
+          "mapId": "01GQ8JWDJN686XBJPF5F80MBV1"
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 3
+          },
+          "starsId": 74,
+          "mapId": "01GQ8JDTB4CR17E3DG782BS9BA"
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 4
+          },
+          "starsId": 28,
+          "mapId": "01GQ8KX8SAFMKC7W4VREE0PTJT"
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 5
+          },
+          "starsId": 10,
+          "mapId": "01GQ8KW483X8R4V4QSQRWHE2QP"
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 6
+          },
+          "starsId": 31,
+          "mapId": "01GP6XZSDJ8SN30FEEXYZ89ZWH"
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 7
+          },
+          "starsId": 29,
+          "mapId": "01GP6Y1DGYY7NC8JJ0M34Z7FTX"
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 8
+          },
+          "starsId": 32,
+          "mapId": "01GP6XY3KFARFSBBCRYKD08MQE"
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 9
+          },
+          "starsId": 30,
+          "mapId": "01GP6XZ5R6SFBVB4QGEHWPN233"
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 10
+          },
+          "starsId": 34,
+          "mapId": "01GP6XWAD28MARP7YJAX4B8MED"
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 11
+          },
+          "starsId": 33,
+          "mapId": "01GP6XTK75VPEAG48HENXGK82G"
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 12
+          },
+          "starsId": 36,
+          "mapId": "01H8GEQEJ80FZMJ8PJR4996VGT"
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 13
+          },
+          "starsId": 35,
+          "mapId": "01H8GEMWXBRWWW2WYMY14NW7VF"
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 14
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 15
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 16
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 17
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 18
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 19
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 20
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 21
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 22
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 23
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 24
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 25
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 26
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 27
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 28
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 29
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 30
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPVPQVVX7SE3EBE1D84HKCY",
+            "submenuIndex": 31
+          },
+          "starsId": null
+        }
+      ]
+    },
+    {
+      "id": "01HBPZSPVWRXS3T95H4488YAZQ",
+      "sourceIndex": 5,
+      "tcps": ["1K"],
+      "main": [
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "mainIndex": 0
+          },
+          "starsId": 3,
+          "mapId": "01GP6Y4FAAN3CQ94T4XN6FTT4C"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "mainIndex": 1
+          },
+          "starsId": 1,
+          "mapId": "01GP6XQB91R44BSYQ5Q0MGSAKW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "mainIndex": 2
+          },
+          "starsId": 88,
+          "mapId": "01HAAN60AP0SS5K46D4T7A43GZ"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "mainIndex": 3
+          },
+          "starsId": 2,
+          "mapId": "01H8GGP8BSDFMBM50F3MKV4KE6"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "mainIndex": 4
+          },
+          "starsId": 89,
+          "mapId": "01HAAT6CHMDQ5VA7396JT9SA5T"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "mainIndex": 5
+          },
+          "starsId": null
+        }
+      ],
+      "submenu": [
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 0
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 1
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 2
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 3
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 4
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 5
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 6
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 7
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 8
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 9
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 10
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 11
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 12
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 13
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 14
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 15
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 16
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 17
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 18
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 19
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 20
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 21
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 22
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 23
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 24
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 25
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 26
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 27
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 28
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 29
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 30
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZSPVWRXS3T95H4488YAZQ",
+            "submenuIndex": 31
+          },
+          "starsId": null
+        }
+      ]
+    },
+    {
+      "id": "01HBPZT46J85GGADXCFPDVN6R4",
+      "sourceIndex": 6,
+      "tcps": ["1B"],
+      "main": [
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "mainIndex": 0
+          },
+          "starsId": 3,
+          "mapId": "01GP6Y4FAAN3CQ94T4XN6FTT4C"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "mainIndex": 1
+          },
+          "starsId": 1,
+          "mapId": "01GP6XQB91R44BSYQ5Q0MGSAKW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "mainIndex": 2
+          },
+          "starsId": 103,
+          "mapId": "01HABD9MDFY4YS4G9068M4A9AP"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "mainIndex": 3
+          },
+          "starsId": 2,
+          "mapId": "01H8GGP8BSDFMBM50F3MKV4KE6"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "mainIndex": 4
+          },
+          "starsId": 46,
+          "mapId": "01HAD5PFYK1G9QYYM7J6Y536HW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "mainIndex": 5
+          },
+          "starsId": null
+        }
+      ],
+      "submenu": [
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 0
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 1
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 2
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 3
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 4
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 5
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 6
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 7
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 8
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 9
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 10
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 11
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 12
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 13
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 14
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 15
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 16
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 17
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 18
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 19
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 20
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 21
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 22
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 23
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 24
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 25
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 26
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 27
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 28
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 29
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 30
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT46J85GGADXCFPDVN6R4",
+            "submenuIndex": 31
+          },
+          "starsId": null
+        }
+      ]
+    },
+    {
+      "id": "01HBPZT5389PWRT8AW1GW7F3YQ",
+      "sourceIndex": 7,
+      "tcps": ["29"],
+      "main": [
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "mainIndex": 0
+          },
+          "starsId": 3,
+          "mapId": "01GP6Y4FAAN3CQ94T4XN6FTT4C"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "mainIndex": 1
+          },
+          "starsId": 1,
+          "mapId": "01GP6XQB91R44BSYQ5Q0MGSAKW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "mainIndex": 2
+          },
+          "starsId": 110,
+          "mapId": "01HABHSSD5K3JMN2DGX7NE87JR"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "mainIndex": 3
+          },
+          "starsId": 2,
+          "mapId": "01H8GGP8BSDFMBM50F3MKV4KE6"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "mainIndex": 4
+          },
+          "starsId": 46,
+          "mapId": "01HAD5PFYK1G9QYYM7J6Y536HW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "mainIndex": 5
+          },
+          "starsId": null
+        }
+      ],
+      "submenu": [
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 0
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 1
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 2
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 3
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 4
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 5
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 6
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 7
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 8
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 9
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 10
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 11
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 12
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 13
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 14
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 15
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 16
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 17
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 18
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 19
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 20
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 21
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 22
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 23
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 24
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 25
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 26
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 27
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 28
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 29
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 30
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZT5389PWRT8AW1GW7F3YQ",
+            "submenuIndex": 31
+          },
+          "starsId": null
+        }
+      ]
+    },
+    {
+      "id": "01HBPZTD3TC5KEQPF09P7MX3CF",
+      "sourceIndex": 8,
+      "tcps": ["4M"],
+      "main": [
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "mainIndex": 0
+          },
+          "starsId": 1,
+          "mapId": "01GP6XQB91R44BSYQ5Q0MGSAKW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "mainIndex": 1
+          },
+          "starsId": 3,
+          "mapId": "01GP6Y4FAAN3CQ94T4XN6FTT4C"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "mainIndex": 2
+          },
+          "starsId": 106,
+          "mapId": "01HABH3NFBS9Q53YE6RE174EV1"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "mainIndex": 3
+          },
+          "starsId": 2,
+          "mapId": "01H8GGP8BSDFMBM50F3MKV4KE6"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "mainIndex": 4
+          },
+          "starsId": 46,
+          "mapId": "01HAD5PFYK1G9QYYM7J6Y536HW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "mainIndex": 5
+          },
+          "starsId": null
+        }
+      ],
+      "submenu": [
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 0
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 1
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 2
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 3
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 4
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 5
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 6
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 7
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 8
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 9
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 10
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 11
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 12
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 13
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 14
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 15
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 16
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 17
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 18
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 19
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 20
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 21
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 22
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 23
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 24
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 25
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 26
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 27
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 28
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 29
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 30
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD3TC5KEQPF09P7MX3CF",
+            "submenuIndex": 31
+          },
+          "starsId": null
+        }
+      ]
+    },
+    {
+      "id": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+      "sourceIndex": 9,
+      "tcps": ["4Z"],
+      "main": [
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "mainIndex": 0
+          },
+          "starsId": 3,
+          "mapId": "01GP6Y4FAAN3CQ94T4XN6FTT4C"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "mainIndex": 1
+          },
+          "starsId": 1,
+          "mapId": "01GP6XQB91R44BSYQ5Q0MGSAKW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "mainIndex": 2
+          },
+          "starsId": 201,
+          "mapId": "01HAAN6X3E0DWSRETPY4BJ8RDH"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "mainIndex": 3
+          },
+          "starsId": 46,
+          "mapId": "01HAD5PFYK1G9QYYM7J6Y536HW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "mainIndex": 4
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "mainIndex": 5
+          },
+          "starsId": null
+        }
+      ],
+      "submenu": [
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 0
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 1
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 2
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 3
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 4
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 5
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 6
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 7
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 8
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 9
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 10
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 11
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 12
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 13
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 14
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 15
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 16
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 17
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 18
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 19
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 20
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 21
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 22
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 23
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 24
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 25
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 26
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 27
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 28
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 29
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 30
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTD7D7RCDYYKGKQMN3TRE",
+            "submenuIndex": 31
+          },
+          "starsId": null
+        }
+      ]
+    },
+    {
+      "id": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+      "sourceIndex": 10,
+      "tcps": ["4A"],
+      "main": [
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "mainIndex": 0
+          },
+          "starsId": 3,
+          "mapId": "01GP6Y4FAAN3CQ94T4XN6FTT4C"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "mainIndex": 1
+          },
+          "starsId": 2,
+          "mapId": "01H8GGP8BSDFMBM50F3MKV4KE6"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "mainIndex": 2
+          },
+          "starsId": 105,
+          "mapId": "01HAQQSTB05TX569WVQVC73XD1"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "mainIndex": 3
+          },
+          "starsId": 46,
+          "mapId": "01HAD5PFYK1G9QYYM7J6Y536HW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "mainIndex": 4
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "mainIndex": 5
+          },
+          "starsId": null
+        }
+      ],
+      "submenu": [
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 0
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 1
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 2
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 3
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 4
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 5
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 6
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 7
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 8
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 9
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 10
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 11
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 12
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 13
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 14
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 15
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 16
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 17
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 18
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 19
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 20
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 21
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 22
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 23
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 24
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 25
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 26
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 27
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 28
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 29
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 30
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTJ65JA5EXSG6KMGEWJD8",
+            "submenuIndex": 31
+          },
+          "starsId": null
+        }
+      ]
+    },
+    {
+      "id": "01HBPZTK6N64J171YT0TX0H1H1",
+      "sourceIndex": 11,
+      "tcps": ["4W", "4Y"],
+      "main": [
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "mainIndex": 0
+          },
+          "starsId": 3,
+          "mapId": "01GP6Y4FAAN3CQ94T4XN6FTT4C"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "mainIndex": 1
+          },
+          "starsId": 102,
+          "mapId": "01HAAH0X59366P3QVDR9GVRY6V"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "mainIndex": 2
+          },
+          "starsId": 46,
+          "mapId": "01HAD5PFYK1G9QYYM7J6Y536HW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "mainIndex": 3
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "mainIndex": 4
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "mainIndex": 5
+          },
+          "starsId": null
+        }
+      ],
+      "submenu": [
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 0
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 1
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 2
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 3
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 4
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 5
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 6
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 7
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 8
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 9
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 10
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 11
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 12
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 13
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 14
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 15
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 16
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 17
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 18
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 19
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 20
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 21
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 22
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 23
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 24
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 25
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 26
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 27
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 28
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 29
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 30
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTK6N64J171YT0TX0H1H1",
+            "submenuIndex": 31
+          },
+          "starsId": null
+        }
+      ]
+    },
+    {
+      "id": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+      "sourceIndex": 12,
+      "tcps": ["4K"],
+      "main": [
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "mainIndex": 0
+          },
+          "starsId": 3,
+          "mapId": "01GP6Y4FAAN3CQ94T4XN6FTT4C"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "mainIndex": 1
+          },
+          "starsId": 93,
+          "mapId": "01HAQMT8X7SA8J75R5V5YC1D81"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "mainIndex": 2
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "mainIndex": 3
+          },
+          "starsId": 46,
+          "mapId": "01HAD5PFYK1G9QYYM7J6Y536HW"
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "mainIndex": 4
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "mainIndex": 5
+          },
+          "starsId": null
+        }
+      ],
+      "submenu": [
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 0
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 1
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 2
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 3
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 4
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 5
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 6
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 7
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 8
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 9
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 10
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 11
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 12
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 13
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 14
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 15
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 16
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 17
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 18
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 19
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 20
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 21
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 22
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 23
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 24
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 25
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 26
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 27
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 28
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 29
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 30
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBPZTKQ6PTTADVNJSSXXNDKY",
+            "submenuIndex": 31
+          },
+          "starsId": null
+        }
+      ]
+    },
+    {
+      "id": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+      "sourceIndex": 13,
+      "tcps": ["4B"],
+      "main": [
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "mainIndex": 0
+          },
+          "starsId": 3,
+          "mapId": "01GP6Y4FAAN3CQ94T4XN6FTT4C"
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "mainIndex": 1
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "mainIndex": 2
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "mainIndex": 3
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "mainIndex": 4
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "mainIndex": 5
+          },
+          "starsId": null
+        }
+      ],
+      "submenu": [
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 0
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 1
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 2
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 3
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 4
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 5
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 6
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 7
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 8
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 9
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 10
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 11
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 12
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 13
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 14
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 15
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 16
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 17
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 18
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 19
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 20
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 21
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 22
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 23
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 24
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 25
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 26
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 27
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 28
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 29
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 30
+          },
+          "starsId": null
+        },
+        {
+          "position": {
+            "groupId": "01HBQ0DRBFWM0RWYEDJTFG6QSV",
+            "submenuIndex": 31
+          },
+          "starsId": null
+        }
+      ]
+    }
+  ]
+}

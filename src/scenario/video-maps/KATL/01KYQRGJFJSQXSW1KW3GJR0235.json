@@ -1,0 +1,39 @@
+{
+  "id": "01KYQRGJFJSQXSW1KW3GJR0235",
+  "name": "ATL NTZ EAST",
+  "note": "CRC ULID 01KYQRGJFJSQXSW1KW3GJR0235; starsId 87; East NTZ.geojson; brightness A→map; frame arp-enu-nm; ARP 33.6367,-84.4278638888889. Stroke-font labels kept as polylines.",
+  "features": [
+    {
+      "type": "polyline",
+      "closed": false,
+      "pointsNm": [
+        [-24.47377962214824, 0.3460364610378974],
+        [-1.0545149210764169, 0.41550617905144804]
+      ]
+    },
+    {
+      "type": "polyline",
+      "closed": false,
+      "pointsNm": [
+        [-24.474408193965616, 0.016283613413605735],
+        [-1.0551434928937915, 0.08575333142715635]
+      ]
+    },
+    {
+      "type": "polyline",
+      "closed": false,
+      "pointsNm": [
+        [-24.916765482202784, -0.5370240414326588],
+        [-1.4975007811309609, -0.4675543234191082]
+      ]
+    },
+    {
+      "type": "polyline",
+      "closed": false,
+      "pointsNm": [
+        [-24.917394054020157, -0.8667768890569505],
+        [-1.4981293529483355, -0.7973071710433999]
+      ]
+    }
+  ]
+}

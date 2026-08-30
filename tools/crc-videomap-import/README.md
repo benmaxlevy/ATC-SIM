@@ -157,5 +157,30 @@ npm run crc:videomaps -- --metadata C:\Users\Ben\AppData\Local\CRC\ARTCCs\ZTL.js
 ```
 
 Written files are `<ULID>.json` under `--out`. That directory is gitignored.
-Do not commit generated A80 packs here (T04-39). Tests use synthetic fixtures
-under `testdata/crc-videomaps/geojson-*.json` and `convert-metadata.json`.
+Do not commit generated A80 packs via this whole-ARTCC convert command (use
+`pack` for T04-39). Tests use synthetic fixtures under
+`testdata/crc-videomaps/geojson-*.json` and `convert-metadata.json`.
+
+## Pack (T04-39)
+
+`pack` filters conversion to the facility assigned `videoMapIds` UNION maps
+tagged both `A80` and `STARS`. That is the complete inventory — not a DCB-group
+subset. Maps omitted from every group stay in the pack. Catalog `id` is the CRC
+ULID. `dcbNumber` is omitted (layout lives in `groups.json` for T04-40). Empty
+maps are recorded in the manifest and are not written.
+
+```text
+npm run crc:videomaps -- pack --metadata <ARTCC.json> --maps <VideoMaps/ZTL> --arp 33.6367,-84.4278638888889 --out src/scenario/video-maps/KATL
+```
+
+`--facility` defaults to `A80`. `--icao` defaults to `KATL`. `--dry-run` prints
+source/output/skipped/failure counts and writes nothing. Local CRC example:
+
+```text
+npm run crc:videomaps -- pack --metadata C:\Users\Ben\AppData\Local\CRC\ARTCCs\ZTL.json --maps C:\Users\Ben\AppData\Local\CRC\VideoMaps\ZTL --arp 33.6367,-84.4278638888889 --dry-run
+```
+
+Committed trainer output (never the local CRC cache) is
+`src/scenario/video-maps/KATL/` — `catalog.json`, per-map JSON, `manifest.json`,
+`groups.json`, and `ATTRIBUTION.md`. Tests use
+`testdata/crc-videomaps/pack-metadata.json`.

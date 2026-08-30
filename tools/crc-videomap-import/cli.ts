@@ -1,11 +1,13 @@
 /**
- * Developer CLI for CRC GeoJSON → arp-enu-nm video maps (T04-37).
- * Not imported by `stepWorld` or the Vite app. Offline files only.
+ * Developer CLI for CRC GeoJSON → arp-enu-nm video maps (T04-37) and
+ * facility pack generation (T04-39). Not imported by `stepWorld` or the Vite
+ * app. Offline files only.
  *
  * Output `id` is the CRC ULID. Do not densify to 1–30. `starsId` stays in note.
+ * `pack` filters to assigned facility inventory UNION A80+STARS tags.
  */
 import { convertCrcArtccMaps, formatConvertReport, trainerVideoMapJson } from "./convert.ts";
-import { crcGeojsonFilename } from "./identity.ts";
+import { loadGeojsonByMapId, runPackCli } from "./pack.ts";
 import { parseCrcArtccMaps } from "./parse.ts";
 import { CRC_LOCAL_ARTCC_METADATA_PATH, CRC_LOCAL_VIDEOMAP_DIR } from "./paths.ts";
 // @ts-expect-error tsconfig has no @types/node
@@ -155,31 +157,11 @@ function parseJson(text: string, path: string): unknown {
   }
 }
 
-function loadGeojsonByMapId(
-  mapsDir: string,
-  mapIds: readonly string[],
-  io: CliIo,
-): Map<string, unknown> {
-  const loaded = new Map<string, unknown>();
-  for (const id of mapIds) {
-    const path = join(mapsDir, crcGeojsonFilename(id));
-    let text: string;
-    try {
-      text = io.readFile(path);
-    } catch {
-      continue;
-    }
-    try {
-      loaded.set(id, JSON.parse(text) as unknown);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      loaded.set(id, { type: "InvalidJson", error: message });
-    }
-  }
-  return loaded;
-}
-
 export function runCli(args: string[], io: CliIo = defaultIo()): void {
+  if (args[0] === "pack") {
+    runPackCli(args.slice(1), io);
+    return;
+  }
   const parsed = parseCliArgs(args);
   const metadata = parseJson(io.readFile(parsed.metadataPath), parsed.metadataPath);
   const artcc = parseCrcArtccMaps(metadata);

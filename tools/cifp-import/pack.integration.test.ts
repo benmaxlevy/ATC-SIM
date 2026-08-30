@@ -242,9 +242,10 @@ test("T04-35 AC5 — pack emit is catalog-only; maps/spawns/MVA/ATPA stay separa
   expect(blob).not.toMatch(/videoMapSet|spawns|mva/);
 });
 
-test("T04-35 AC5 — src does not import cifp-import; KATL video maps stay absent", () => {
+test("T04-35 AC5 — src does not import cifp-import; KATL maps are not CIFP-emitted", () => {
   expect(existsSync(join(repoRoot, "src/scenario/data/katl/catalog.json"))).toBe(true);
-  expect(existsSync(join(repoRoot, "src/scenario/video-maps/KATL"))).toBe(false);
+  expect(existsSync(join(repoRoot, "src/scenario/video-maps/KATL/catalog.json"))).toBe(true);
+  expect(existsSync(join(repoRoot, "src/scenario/video-maps/KATL/ATTRIBUTION.md"))).toBe(true);
   const playable = JSON.parse(
     readFileSync(join(repoRoot, "src/scenario/playable-scenarios.json"), "utf8"),
   ) as { scenarios: { airportIcao: string; default: boolean }[] };

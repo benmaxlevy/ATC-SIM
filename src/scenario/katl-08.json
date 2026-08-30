@@ -141,7 +141,7 @@
   ],
   "fixes": [],
   "maps": {
-    "videoMaps": [],
+    "videoMapSet": "KATL",
     "rangeRings": {
       "intervalNm": 5,
       "maxNm": 60

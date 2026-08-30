@@ -311,6 +311,39 @@ test("T02-24 — unused slots 8–32 disabled; 1–7 bind catalog dcbNumber", ()
   }
 });
 
+test("T04-39 — maps without dcbNumber stay out of DCB slot numbering", () => {
+  const view = createScopeView(0, 0, {
+    digitalMap: {
+      rangeRings: { intervalNm: 5, maxNm: 60 },
+      loadedVideoMaps: [
+        {
+          id: "01GEOONLY00000000000000136",
+          file: "01GEOONLY00000000000000136.json",
+          dcbLabel: "136",
+          defaultOn: false,
+          color: "map",
+          name: "GEO",
+          features: [],
+        },
+        {
+          id: "RWY",
+          file: "001-rwy.json",
+          dcbNumber: 1,
+          dcbLabel: "RWY",
+          defaultOn: true,
+          color: "map",
+          name: "rwy",
+          features: [],
+        },
+      ],
+    },
+  });
+  expect(dcbCatalogMaps(view).map((map) => map.id)).toEqual(["RWY"]);
+  expect(videoMapByDcbNumber(view, 1)?.id).toBe("RWY");
+  expect(videoMapByDcbNumber(view, 136)).toBeUndefined();
+  expect(formatDcbMapLabel(view.digitalMap.loadedVideoMaps![0]!)).toBe("136");
+});
+
 test("T02-24 — CLR ALL turns catalog maps off; coastline JSON off is a no-op", () => {
   const view = kdemView();
   expect(isVideoMapOn(view, "DEM1_27")).toBe(true);

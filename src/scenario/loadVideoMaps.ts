@@ -52,7 +52,8 @@ export interface VideoMapFile {
 export interface VideoMapCatalogEntry {
   id: string;
   file: string;
-  dcbNumber: number;
+  /** DCB slot layout only. Omit for GEO-only maps. Never densify identity to 1–N. */
+  dcbNumber?: number;
   dcbLabel: string;
   role?: VideoMapRole;
   defaultOn: boolean;
@@ -177,18 +178,26 @@ export function parseVideoMapFile(value: unknown, expectedId: string, path: stri
   };
 }
 
+function parseOptionalDcbNumber(value: unknown, index: number): number | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  const dcbNumber = assertFinite(value, `catalog.maps[${index}].dcbNumber`);
+  if (!Number.isInteger(dcbNumber) || dcbNumber < 1) {
+    throw new Error(`Video map catalog.maps[${index}].dcbNumber must be an integer ≥ 1`);
+  }
+  return dcbNumber;
+}
+
 function parseCatalogEntry(value: unknown, index: number): VideoMapCatalogEntry {
   if (!isRecord(value)) {
     throw new Error(`Video map catalog.maps[${index}] must be an object`);
   }
-  const dcbNumber = assertFinite(value.dcbNumber, `catalog.maps[${index}].dcbNumber`);
-  if (!Number.isInteger(dcbNumber) || dcbNumber < 1) {
-    throw new Error(`Video map catalog.maps[${index}].dcbNumber must be an integer ≥ 1`);
-  }
+  const dcbNumber = parseOptionalDcbNumber(value.dcbNumber, index);
   return {
     id: assertString(value.id, `catalog.maps[${index}].id`),
     file: assertString(value.file, `catalog.maps[${index}].file`),
-    dcbNumber,
+    ...(dcbNumber !== undefined ? { dcbNumber } : {}),
     dcbLabel: assertString(value.dcbLabel, `catalog.maps[${index}].dcbLabel`),
     role: parseRole(value.role, `catalog.maps[${index}].role`),
     defaultOn: value.defaultOn === true,
@@ -220,6 +229,11 @@ function parseCatalog(value: unknown, icao: string): VideoMapCatalog {
   }
   const note = typeof value.note === "string" ? value.note : undefined;
   return { icao: catalogIcao, frame: "arp-enu-nm", note, maps };
+}
+
+/** Parse a video-map catalog document. `dcbNumber` is optional layout, not identity. */
+export function parseVideoMapCatalog(value: unknown, icao: string): VideoMapCatalog {
+  return parseCatalog(value, icao);
 }
 
 function jsonPath(icao: string, file: string): string {

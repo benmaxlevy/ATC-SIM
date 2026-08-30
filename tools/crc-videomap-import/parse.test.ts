@@ -192,7 +192,7 @@ test("src does not import tools/crc-videomap-import", () => {
   }
 });
 
-test("existing KDEM and KATL video-map loading remains unchanged", () => {
+test("existing KDEM loading stays the default; KATL uses a generic video map set", () => {
   expect(loadVideoMapSet("KDEM").map((row) => row.id)).toEqual([
     "RWY",
     "LOC27",
@@ -207,8 +207,8 @@ test("existing KDEM and KATL video-map loading remains unchanged", () => {
   expect(katl.length).toBeGreaterThan(0);
   for (const entry of katl) {
     const scenario = loadPlayableScenario(entry.id);
-    expect(scenario.maps.videoMapSet).toBeUndefined();
-    expect(scenario.maps.videoMaps).toEqual([]);
-    expect(scenario.maps.loadedVideoMaps).toEqual([]);
+    expect(scenario.maps.videoMapSet).toBe("KATL");
+    expect(scenario.maps.loadedVideoMaps.length).toBeGreaterThan(0);
+    expect(scenario.maps.loadedVideoMaps.every((row) => row.dcbNumber === undefined)).toBe(true);
   }
 });

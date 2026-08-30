@@ -83,8 +83,14 @@ export function initialMapVisibility(
   return vis;
 }
 
+function hasDcbNumber(map: LoadedVideoMap): map is LoadedVideoMap & { dcbNumber: number } {
+  return map.dcbNumber !== undefined;
+}
+
 export function dcbCatalogMaps(view: ScopeView): LoadedVideoMap[] {
-  return [...(view.digitalMap.loadedVideoMaps ?? [])].sort((a, b) => a.dcbNumber - b.dcbNumber);
+  return [...(view.digitalMap.loadedVideoMaps ?? [])]
+    .filter(hasDcbNumber)
+    .sort((a, b) => a.dcbNumber - b.dcbNumber);
 }
 
 export function videoMapByRole(view: ScopeView, role: VideoMapRole): LoadedVideoMap | undefined {
@@ -168,6 +174,9 @@ export function syncRoleMapVisibility(view: ScopeView, role: VideoMapRole, on: b
 }
 
 export function formatDcbMapLabel(map: LoadedVideoMap): string {
+  if (map.dcbNumber === undefined) {
+    return map.dcbLabel;
+  }
   return `${map.dcbNumber} ${map.dcbLabel}`;
 }
 

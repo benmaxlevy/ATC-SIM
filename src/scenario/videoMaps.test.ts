@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { loadKdem } from "./load";
-import { loadVideoMapSet, parseVideoMapFile } from "./loadVideoMaps";
+import { loadVideoMapSet, parseVideoMapCatalog, parseVideoMapFile } from "./loadVideoMaps";
 
 test("AC1 — loadKdem videoMapSet is KDEM with RWY, LOC plus extras", () => {
   const maps = loadKdem().maps;
@@ -23,7 +23,7 @@ test("KDEM catalog loads MAPS in ARP ENU NM including DEM1 STAR and BAY1 SID for
     "BAY1_27",
     "BAY1_09",
   ]);
-  expect(maps.every((item) => item.dcbNumber >= 1)).toBe(true);
+  expect(maps.every((item) => item.dcbNumber !== undefined && item.dcbNumber >= 1)).toBe(true);
   expect(maps.find((item) => item.id === "DEM1_27")?.color).toBe("map");
   expect(maps.find((item) => item.id === "DEM1_27")?.defaultOn).toBe(true);
   expect(maps.find((item) => item.id === "DEM1_09")?.color).toBe("map");
@@ -50,6 +50,73 @@ test("AC2 — loadKdem derives runway and loc from the catalog", () => {
     halfWidthDeg: 2.5,
   });
   expect(maps.coastline).toBeUndefined();
+});
+
+test("T04-39 — catalog dcbNumber is optional layout, not identity", () => {
+  const catalog = parseVideoMapCatalog(
+    {
+      icao: "KBBB",
+      frame: "arp-enu-nm",
+      maps: [
+        {
+          id: "01GEOONLY00000000000000001",
+          file: "01GEOONLY00000000000000001.json",
+          dcbLabel: "136",
+          defaultOn: false,
+          color: "map",
+        },
+        {
+          id: "RWY",
+          file: "001-rwy.json",
+          dcbNumber: 1,
+          dcbLabel: "RWY",
+          defaultOn: true,
+          color: "map",
+        },
+      ],
+    },
+    "KBBB",
+  );
+  expect(catalog.maps[0]?.id).toBe("01GEOONLY00000000000000001");
+  expect(catalog.maps[0]?.id).not.toBe("1");
+  expect(catalog.maps[0]?.dcbNumber).toBeUndefined();
+  expect(catalog.maps[1]?.dcbNumber).toBe(1);
+  expect(() =>
+    parseVideoMapCatalog(
+      {
+        icao: "KBBB",
+        frame: "arp-enu-nm",
+        maps: [
+          {
+            id: "X",
+            file: "x.json",
+            dcbNumber: 0,
+            dcbLabel: "X",
+            defaultOn: false,
+            color: "map",
+          },
+        ],
+      },
+      "KBBB",
+    ),
+  ).toThrow(/dcbNumber/);
+});
+
+test("T04-39 — KATL pack loads through loadVideoMapSet with CRC ULID ids", () => {
+  const maps = loadVideoMapSet("KATL");
+  expect(maps).toHaveLength(90);
+  expect(maps.every((item) => item.dcbNumber === undefined)).toBe(true);
+  expect(maps.map((item) => item.id)).not.toEqual(
+    Array.from({ length: 90 }, (_, i) => String(i + 1)),
+  );
+  const geoOnly = maps.find((item) => item.id === "01GP6Y38GCS0BQSWSVRDK7JH5C");
+  expect(geoOnly).toBeDefined();
+  expect(geoOnly?.dcbLabel).toBe("40DME F");
+  expect(geoOnly?.note).toMatch(/starsId 136/);
+  expect(geoOnly?.note).toMatch(/CRC ULID 01GP6Y38GCS0BQSWSVRDK7JH5C/);
+  expect(geoOnly?.features.length).toBeGreaterThan(0);
+  expect(maps.every((item) => item.features.length > 0)).toBe(true);
+  expect(maps.every((item) => item.color === "map" || item.color === "mapDim")).toBe(true);
 });
 
 test("AC4 — missing video-maps/KJFK/catalog.json throws", () => {

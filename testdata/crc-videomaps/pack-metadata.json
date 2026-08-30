@@ -1,0 +1,101 @@
+{
+  "id": "SYN",
+  "videoMaps": [
+    {
+      "id": "01SYNCVT00000000000000001",
+      "name": "SYN LINES",
+      "tags": ["STARS", "A80"],
+      "shortName": "LINES",
+      "sourceFileName": "LINES.geojson",
+      "starsBrightnessCategory": "A",
+      "starsId": 11,
+      "starsAlwaysVisible": true,
+      "tdmOnly": false
+    },
+    {
+      "id": "01SYNCVT00000000000000002",
+      "name": "SYN CLEANUP",
+      "tags": ["STARS", "A80"],
+      "shortName": "CLEAN",
+      "sourceFileName": "CLEAN.geojson",
+      "starsBrightnessCategory": "B",
+      "starsId": 12,
+      "tdmOnly": false
+    },
+    {
+      "id": "01SYNCVT00000000000000003",
+      "name": "SYN MISSING FILE",
+      "tags": ["STARS", "A80"],
+      "shortName": "MISS",
+      "starsBrightnessCategory": "A",
+      "starsId": 13,
+      "tdmOnly": false
+    },
+    {
+      "id": "01SYNCVT00000000000000004",
+      "name": "SYN EMPTY",
+      "tags": ["STARS", "A80"],
+      "shortName": "EMPTY",
+      "sourceFileName": "EMPTY.geojson",
+      "starsBrightnessCategory": "A",
+      "starsId": 14,
+      "tdmOnly": false
+    },
+    {
+      "id": "01SYNCVT00000000000000136",
+      "name": "SYN GEO ONLY",
+      "tags": ["STARS", "A80"],
+      "sourceFileName": "GEO.geojson",
+      "starsBrightnessCategory": "A",
+      "starsId": 136,
+      "tdmOnly": false
+    },
+    {
+      "id": "01SYNCVT00000000000000TAG",
+      "name": "SYN TAGGED EXTRA",
+      "tags": ["STARS", "A80"],
+      "shortName": "TAGEXTRA",
+      "sourceFileName": "TAG.geojson",
+      "starsBrightnessCategory": "A",
+      "starsId": 999,
+      "tdmOnly": false
+    },
+    {
+      "id": "01SYNCVT0000000000000ZTLX",
+      "name": "SYN ZTL ONLY",
+      "tags": ["STARS", "ZTL"],
+      "shortName": "ZTLX",
+      "sourceFileName": "ZTLX.geojson",
+      "starsBrightnessCategory": "A",
+      "starsId": 50,
+      "tdmOnly": false
+    }
+  ],
+  "facility": {
+    "id": "SYN",
+    "name": "Synthetic ARTCC",
+    "childFacilities": [
+      {
+        "id": "A80",
+        "name": "Pack TRACON",
+        "type": "Tracon",
+        "starsConfiguration": {
+          "videoMapIds": [
+            "01SYNCVT00000000000000001",
+            "01SYNCVT00000000000000002",
+            "01SYNCVT00000000000000003",
+            "01SYNCVT00000000000000004",
+            "01SYNCVT00000000000000136"
+          ],
+          "mapGroups": [
+            {
+              "id": "01SYNPACKGROUP00000000001",
+              "tcps": ["1N"],
+              "mapIds": [11, 12, null, null, null, null]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
