@@ -1,0 +1,135 @@
+{
+  "id": "SYN",
+  "videoMaps": [
+    {
+      "id": "01GRPSPARSE000000000000001",
+      "name": "MAP 1",
+      "starsId": 1,
+      "tags": ["STARS", "A80"]
+    },
+    {
+      "id": "01GRPSPARSE000000000000007",
+      "name": "MAP 7",
+      "starsId": 7,
+      "tags": ["STARS", "A80"]
+    },
+    {
+      "id": "01GRPSPARSE000000000000136",
+      "name": "MAP 136",
+      "starsId": 136,
+      "tags": ["STARS", "A80"]
+    },
+    {
+      "id": "01GRPSPARSE000000000000200",
+      "name": "MAP 200",
+      "starsId": 200,
+      "tags": ["STARS", "A80"]
+    }
+  ],
+  "facility": {
+    "childFacilities": [
+      {
+        "id": "A80",
+        "name": "Sparse TRACON",
+        "type": "Tracon",
+        "starsConfiguration": {
+          "videoMapIds": [
+            "01GRPSPARSE000000000000001",
+            "01GRPSPARSE000000000000007",
+            "01GRPSPARSE000000000000136",
+            "01GRPSPARSE000000000000200"
+          ],
+          "mapGroups": [
+            {
+              "id": "01GRPORDER000000000000001",
+              "tcps": ["1N", "1S"],
+              "mapIds": [
+                7,
+                1,
+                null,
+                200,
+                7,
+                1,
+                200,
+                null,
+                1,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            },
+            {
+              "id": "01GRPORDER000000000000002",
+              "tcps": ["1K"],
+              "mapIds": [
+                1,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

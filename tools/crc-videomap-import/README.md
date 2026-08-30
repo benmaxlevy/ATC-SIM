@@ -58,6 +58,39 @@ CRC `videoMaps[]` → `NormalizedCrcVideoMap`:
 or `null`, plus `tcps`). T04-38 extracts MAIN/submenu semantics from that
 shape. Group `mapIds` are never ULIDs and never become map identity.
 
+## Map groups (T04-38)
+
+`extractCrcFacilityGroups(artcc, facilityId)` walks a facility's
+`mapGroups` into DCB layout without changing map identity.
+
+- Source order, `tcps`, MAIN order (`mainIndex` 0–5), submenu order
+  (`submenuIndex` 0–31), duplicate `starsId` slots, and `null` empty
+  cells are preserved.
+- Slot index is layout, not identity. Sparse CRC `starsId` values stay
+  as-is. Do not densify to 1–30.
+- Non-null `mapIds` resolve through assigned inventory `videoMapIds`
+  (ULIDs keyed by `starsId`). ARTCC-wide `starsId` reuse is not
+  ambiguity. Missing or duplicate `starsId` inside that inventory become
+  diagnostics; the slot keeps `starsId` and omits `map`.
+- Groups shorter than 38 slots are not padded. Source indexes ≥ 38 emit
+  `SLOT_OUT_OF_RANGE` and are ignored.
+- Assigned maps omitted from every group remain in `inventory` and
+  `mapsAbsentFromGroups`.
+
+Tests use `testdata/crc-videomaps/map-groups-*.json`. Live
+`ARTCCs\ZTL.json` is optional local coverage and is never committed.
+
+```text
+import { extractCrcFacilityGroups } from "./groups.ts";
+import { parseCrcArtccMaps } from "./parse.ts";
+import { CRC_A80_FACILITY_ID } from "./paths.ts";
+
+const artcc = parseCrcArtccMaps(json);
+const groups = extractCrcFacilityGroups(artcc, CRC_A80_FACILITY_ID);
+```
+
+Runtime DCB wiring is T04-40. This tool does not import from `src/`.
+
 ## How to parse
 
 Tests import `parseCrcArtccMaps` on `testdata/crc-videomaps/source-schema-fixture.json`.
