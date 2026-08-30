@@ -7,18 +7,24 @@ import {
   parsePackedLat,
   parsePackedLon,
   readTrim,
+  sectionIdent,
 } from "./arincLayout.ts";
 import {
   buildConflictSubset,
   buildDanglingFixSubset,
   buildDanglingSidSubset,
+  buildFaaLayoutSubset,
   buildFixedWidthSubset,
   buildMalformedCoordSubset,
   buildUnsupportedLegsSubset,
   buildUnsupportedSidSubset,
   pa,
   pc,
+  pf,
+  pn,
+  ndb,
   vhf,
+  vhfDmeOnly,
 } from "./fixedWidthRecords.ts";
 import { emitCatalogFromSource } from "./normalize.ts";
 import { parseCifpSubset, parseFixedWidthCifp } from "./parse.ts";
@@ -63,6 +69,17 @@ test("AC1 — testdata/cifp/fixed-width-subset.cifp parses offline", () => {
   } finally {
     globalThis.fetch = fetchWas;
   }
+});
+
+test("AC1 — testdata/cifp/faa-layout-subset.cifp parses offline", () => {
+  const text = readFileSync(
+    new URL("../../testdata/cifp/faa-layout-subset.cifp", import.meta.url),
+    "utf8",
+  );
+  expect(detectCifpDialect(text)).toBe("fixed-width");
+  const source = parseFixedWidthCifp(text);
+  expect(sourceErrorCount(source)).toBe(0);
+  expect(source.navaids.some((row) => row.id === "SDM")).toBe(true);
 });
 
 test("AC1 — in-memory fixed-width subset emits catalog schema", () => {
@@ -209,6 +226,30 @@ test("AC4 — SID RF is counted and never emitted as a TF catalog leg", () => {
   expect(catalog.sids[0]?.common).toHaveLength(2);
 });
 
+test("enroute NDB same ident in different ICAO regions does not conflict", () => {
+  const text = [
+    pa({ icao: "KSYN", name: "Synthetic Field", lat: "N00000000", lon: "E000000000" }),
+    ndb({ id: "AA", name: "KENIE", lat: "N47003259", lon: "W096485466" }),
+    arincRecord([
+      [1, 1, "S"],
+      [2, 3, "USA"],
+      [5, 1, "D"],
+      [6, 1, "B"],
+      [14, 4, "AA"],
+      [20, 2, "K7"],
+      [22, 1, "0"],
+      [23, 5, "03410"],
+      [33, 9, "N33315982"],
+      [42, 10, "W082365173"],
+      [94, 30, "CEDAR"],
+    ]),
+    "",
+  ].join("\n");
+  const source = parseFixedWidthCifp(text);
+  expect(sourceErrorCount(source)).toBe(0);
+  expect(source.navaids.filter((row) => row.id === "AA")).toHaveLength(2);
+});
+
 test("identical duplicate navaid is a warning, not a conflict", () => {
   const text = [
     pa({ icao: "KSYN", name: "Synthetic Field", lat: "N00000000", lon: "E000000000" }),
@@ -221,4 +262,122 @@ test("identical duplicate navaid is a warning, not a conflict", () => {
   expect(source.navaids.filter((row) => row.id === "DEM")).toHaveLength(1);
   expect(source.diagnostics.some((row) => row.code === "DUPLICATE_IDENTICAL")).toBe(true);
   expect(sourceErrorCount(source)).toBe(0);
+});
+
+test("FAA DME-only D record uses DME lat/lon when VOR columns are blank", () => {
+  const text = [
+    pa({ icao: "KSYN", name: "Synthetic Field", lat: "N00000000", lon: "E000000000" }),
+    vhfDmeOnly({
+      id: "SDM",
+      name: "SYN DME",
+      lat: "N00004800",
+      lon: "E000002400",
+      classRaw: " DUW ",
+    }),
+    "",
+  ].join("\n");
+  const source = parseFixedWidthCifp(text);
+  expect(sourceErrorCount(source)).toBe(0);
+  const navaid = source.navaids.find((row) => row.id === "SDM");
+  expect(navaid?.kind).toBe("DME");
+  expect(navaid?.position.latDeg).toBeCloseTo(0.013333333333333334, 10);
+  expect(navaid?.position.lonDeg).toBeCloseTo(0.006666666666666667, 10);
+});
+
+test("FAA ILS/DME D record does not collide with localizer ident", () => {
+  const text = [
+    pa({ icao: "KSYN", name: "Synthetic Field", lat: "N00000000", lon: "E000000000" }),
+    vhfDmeOnly({
+      id: "IDEM",
+      name: "ILS DME",
+      lat: "S00000420",
+      lon: "E000001080",
+      classRaw: " ITW ",
+      airport: "KSYN",
+    }),
+    "",
+  ].join("\n");
+  const source = parseFixedWidthCifp(text);
+  expect(sourceErrorCount(source)).toBe(0);
+  expect(source.navaids.map((row) => row.id)).toEqual(["IDEMDME"]);
+  expect(source.navaids[0]?.kind).toBe("DME");
+});
+
+test("FAA terminal NDB uses PN subsection at column 6", () => {
+  const line = pn({
+    icao: "KSYN",
+    id: "SYN",
+    name: "SYN NDB",
+    lat: "N00000900",
+    lon: "E000050000",
+  });
+  expect(sectionIdent(line)).toBe("PN");
+  const source = parseFixedWidthCifp(
+    [
+      pa({ icao: "KSYN", name: "Synthetic Field", lat: "N00000000", lon: "E000000000" }),
+      line,
+      "",
+    ].join("\n"),
+  );
+  expect(sourceErrorCount(source)).toBe(0);
+  const ndb = source.navaids.find((row) => row.id === "SYN");
+  expect(ndb?.kind).toBe("NDB");
+  expect(ndb?.airportId).toBe("KSYN");
+  expect(ndb?.freqKhz).toBe(241);
+});
+
+test("hyphenated FAA approach id and continuation are parsed", () => {
+  const text = [
+    pa({ icao: "KSYN", name: "Synthetic Field", lat: "N00000000", lon: "E000000000" }),
+    pc({ icao: "KSYN", id: "FI27", lat: "N00000000", lon: "E000060000", type: "  F" }),
+    pc({ icao: "KSYN", id: "RW27", lat: "N00000000", lon: "E000000000", type: "  G" }),
+    pf({
+      icao: "KSYN",
+      appId: "R10-Y",
+      routeType: "A",
+      trans: "FI27",
+      seq: "010",
+      fixId: "FI27",
+      path: "IF",
+    }),
+    pf({
+      icao: "KSYN",
+      appId: "R10-Y",
+      routeType: "R",
+      trans: "RW27",
+      seq: "010",
+      fixId: "FI27",
+      path: "IF",
+    }),
+    arincRecord([
+      [1, 1, "S"],
+      [5, 1, "P"],
+      [7, 4, "KSYN"],
+      [13, 1, "F"],
+      [14, 6, "R10-Y"],
+      [39, 1, "2"],
+    ]),
+    "",
+  ].join("\n");
+  const source = parseFixedWidthCifp(text);
+  expect(sourceErrorCount(source)).toBe(0);
+  expect(source.approaches[0]?.id).toBe("R10-Y");
+  expect(source.approaches[0]?.type).toBe("RNAV");
+  expect(source.approaches[0]?.runway).toBe("10");
+  expect(source.skippedByType["PF-CONT"]).toBe(1);
+});
+
+test("HDR + FAA-column fixture is fixed-width and converts", () => {
+  const text = buildFaaLayoutSubset();
+  expect(detectCifpDialect(text)).toBe("fixed-width");
+  const source = parseFixedWidthCifp(text);
+  expect(sourceErrorCount(source)).toBe(0);
+  expect(source.navaids.some((row) => row.id === "SDM" && row.kind === "DME")).toBe(true);
+  expect(source.navaids.some((row) => row.id === "IDEMDME")).toBe(true);
+  expect(source.navaids.some((row) => row.id === "SYN" && row.kind === "NDB")).toBe(true);
+  expect(source.approaches.some((row) => row.id === "R10-Y" && row.type === "RNAV")).toBe(true);
+  const catalog = parseCifpSubset(text).catalog;
+  expect(catalog.airportId).toBe("KSYN");
+  expect(catalog.navaids.some((row) => row.id === "IDEM")).toBe(true);
+  expect(catalog.navaids.some((row) => row.id === "IDEMDME")).toBe(true);
 });

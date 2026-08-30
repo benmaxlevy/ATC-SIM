@@ -101,6 +101,10 @@ MVA, ATPA, and telephony are not generated.
 Synthetic second-airport check (not KDEM):
 
 ```text
+npm run cifp:pack -- --in testdata/cifp/faa-layout-subset.cifp --airport KSYN --radius 40 --out tools/cifp-import/out/ksyn --dry-run
+```
+
+```text
 npm run cifp:pack -- --in testdata/cifp/fixed-width-subset.cifp --airport KSYN --radius 40 --out tools/cifp-import/out/ksyn --dry-run
 ```
 
@@ -165,14 +169,19 @@ has no SID records worth converting; output `sids` is `[]`.
 (T04-31). Same KDEM-like geometry, plus a supported SID (`DEP1`) with a runway
 transition constraint and lat/lon-preserved `SIDEP`.
 
+`testdata/cifp/faa-layout-subset.cifp` is **synthetic FAA-column** packing
+(HDR, DME-only `D` at columns 56/65, `PN`, hyphenated approach id). Use it to
+prove `cifp:pack --dry-run` reaches radius seed selection without a real cycle.
+
 Airport id in both fixtures is `KSYN` (schema check). Runtime still boots KDEM.
 
 ## Dialects
 
-`parseCifpSubset` detects dialect from the first non-comment line:
+`parseCifpSubset` detects dialect from the first non-comment, non-`HDR` line:
 
-- **Fixed-width:** 132-character records starting with `S`/`T` (real CIFP
-  shape). Parsed into `NormalizedCifpSource`, then emitted as `ProcedureCatalog`.
+- **Fixed-width:** 132-character records starting with `S`/`T` (real FAA CIFP
+  ARINC 424-18). Parsed into `NormalizedCifpSource`, then emitted as
+  `ProcedureCatalog`.
 - **Comma-separated:** the T04-08 reviewable subset. Same section codes, packed
   lat/lon. **Real CIFP uses lat/lon only** — there is no `XNM`/`YNM` field.
 
@@ -180,6 +189,33 @@ Packed DMS:
 
 - Latitude (9 chars): `N|S` + DD + MM + SS + hundredths (`N00120000` = 0°12′00.00″)
 - Longitude (10 chars): `E|W` + DDD + MM + SS + hundredths
+
+Real FAA files start with `HDR*` lines (skipped) then `SUSA` / `SCAN` records.
+Section/subsection packing:
+
+| Family | Section col 5 | Subsection | Examples |
+| --- | --- | --- | --- |
+| Airport | `P` (col 6 blank) | col 13 | `PA` airport, `PG` runway, `PC` terminal fix, `PI` localizer/GS, `PM` marker, `PE` STAR, `PD` SID, `PF` approach |
+| Navaid / enroute | col 5–6 | col 6 | `D` VHF (blank sub), `DB` enroute NDB, `PN` terminal NDB, `EA` enroute fix |
+| Skipped with counts | — | — | `ER` airway, `PP` path point, `PS` MSA, `AS` grid, `UR`/`UC` airspace, `HA`/`HC`/`HF` heliport, `PF`/`PD`/… continuation (`2`+ / letters) |
+
+VHF navaid (`D`) coordinates:
+
+- VOR lat/lon at columns **33 / 42** when present (VOR / VORTAC / VOR-DME).
+- If those 19 columns are blank (DME-only, TACAN, ILS/DME), DME lat/lon at
+  **56 / 65** is required. Blank on both sides is still a parse error — the
+  record is not dropped silently.
+- ILS/DME class (` I…` / leading `I`) keeps kind `DME` and suffixes the ident
+  (`IATL` → `IATLDME`) so it does not collide with the `PI` localizer ident.
+- Enroute VHF/NDB/fix identity includes ICAO region (columns 20–21) so two
+  `AA` NDBs in `K3` and `K7` are distinct source rows. Catalog emit then keeps
+  the copy closer to the selected ARP when ids would collide.
+
+Approach / SID / STAR identifiers may include hyphens (`H10-Z`, `RNV-A`).
+Point idents stay `[A-Z0-9]{2,8}`.
+
+`testdata/cifp/faa-layout-subset.cifp` is a **synthetic** FAA-column fixture
+(HDR, DME-only `D`, `PN`, hyphenated `PF`, continuation). Not a real cycle.
 
 ### Comma-separated record types
 
@@ -227,16 +263,17 @@ context.
 
 ### Fixed-width ARINC subset (T04-31)
 
-Primary records only. Continuation records are counted as skips (`PA-CONT`,
-`PD-CONT`, …).
+Primary records only. Continuation records (continuation number `2`+ or a
+letter; `0`/`1` are primary) are counted as skips (`PA-CONT`, `PD-CONT`,
+`PF-CONT`, …). Payload on those rows is not merged.
 
 | Section | Meaning |
 | --- | --- |
 | `PA` | Airport |
 | `PG` | Runway |
-| `D` / `DB` / `PN` | VHF navaid / NDB |
-| `EA` / `PC` | Enroute / terminal fix |
-| `PI` / `PM` | Localizer + glideslope / marker |
+| `D` / `DB` / `PN` | VHF navaid / enroute NDB / terminal NDB |
+| `EA` / `PC` | Enroute / terminal fix (`ENRT` region is not an airport id) |
+| `PI` / `PM` | Localizer + glideslope / marker (`PM` is absent from current FAA cycles) |
 | `PE` | STAR |
 | `PD` | Airport SID |
 | `PF` | Approach |
@@ -245,7 +282,9 @@ Supported path terminators emitted as named-fix catalog legs: **IF, TF, CF,
 DF**. Unsupported path terminators are counted (`skippedByType`) and **never**
 emitted as straight TF legs: RF, holds (`HA`/`HF`/`HM`), DME arc (`AF`),
 procedure turn (`PI`), plus heading/course-unterminated `CA`/`CD`/`CI`/`CR`/
-`VA`/`VD`/`VI`/`VM`/`VR`/`FA`/`FC`/`FD`/`FM`.
+`VA`/`VD`/`VI`/`VM`/`VR`/`FA`/`FC`/`FD`/`FM`. A SID/STAR whose remaining legs
+are all unsupported is omitted (`EMPTY_SID` / `EMPTY_STAR`) rather than
+aborting the pack.
 
 SID (`PD`) route types mapped into `SidProcedure`:
 
@@ -256,11 +295,22 @@ SID (`PD`) route types mapped into `SidProcedure`:
 | `3`, `6` | Enroute transition |
 | `T` / `F` / `S` / `M` | RNP / FMS / military: `RW*` → runway, empty trans → common, else enroute |
 
-Other SID route-type letters are diagnosed (`SKIPPED_SID_ROUTE`) and skipped.
-Empty `sids` only when the source has no supported SID — not a hardcoded emit.
+Other SID route-type letters (FAA `V` vector SIDs) are diagnosed
+(`SKIPPED_SID_ROUTE`) and skipped. Empty `sids` only when the source has no
+supported SID — not a hardcoded emit.
+
+Approach route types mapped into catalog `ILS`/`LOC`/`RNAV`/`VOR`/`NDB`:
+`I`; `L`/`B`/`X`/`T`/`G`; `R`/`H`/`P`/`F`/`J`; `V`/`S`/`D`; `N`/`Q`.
+`A` (transition) and `Z` (missed) do not set type; a later final-approach
+row updates it. MLS/TACAN letters `K`/`U`/`W`/`Y` are skipped
+(`SKIPPED_APPROACH_ROUTE`).
 
 SID *catalog conversion* is in scope. SID *flight behavior* is not; the FMS
 does not gain new RNAV/hold/RF flying from this tool.
+
+Still unsupported (counted skips, not silent drops of supported rows):
+airways, MSA, path points, airspace, heliport procedures, continuation
+payloads, RF/hold/arc/PT flying. Marker (`PM`) rows parse when present.
 
 ## Out of scope
 

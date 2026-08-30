@@ -6,6 +6,7 @@
  */
 
 import {
+  ARINC_COL,
   ARINC_RECORD_LENGTH,
   isPrimaryRecord,
   padRecord,
@@ -18,6 +19,7 @@ import {
   parsePackedLon,
   parseTenthsDeg,
   readField,
+  readPackedLatLon,
   readTrim,
   sectionIdent,
 } from "./arincLayout.ts";
@@ -48,6 +50,9 @@ import {
 } from "./types.ts";
 
 const ID_RE = /^[A-Z0-9]{2,8}$/;
+/** Approach/SID/STAR identifiers in FAA CIFP may include hyphens (`H10-Z`, `RNV-A`). */
+const PROCEDURE_ID_RE = /^[A-Z0-9][A-Z0-9-]{1,7}$/;
+const ENROUTE_REGION = "ENRT";
 
 interface RawLine {
   line: string;
@@ -208,7 +213,8 @@ export function parseFixedWidthCifp(text: string): NormalizedCifpSource {
           break;
         }
         case "DB":
-        case "PN": {
+        case "PN":
+        case "HN": {
           if (!isPrimaryRecord(row.line, 22)) {
             bumpSkip(`${row.section}-CONT`, row.lineNo);
             break;
@@ -323,9 +329,9 @@ export function parseFixedWidthCifp(text: string): NormalizedCifpSource {
 
 function parseAirport(row: RawLine): NormalizedAirport {
   const ctx = lineCtx(row);
-  const airportId = requireId(readTrim(row.line, 7, 4), ctx, "airportId");
-  const name = readTrim(row.line, 94, 30) || airportId;
-  const arp = requireLatLon(row.line, 33, 42, ctx);
+  const airportId = requireId(readTrim(row.line, ARINC_COL.AIRPORT_ID, 4), ctx, "airportId");
+  const name = readTrim(row.line, ARINC_COL.NAME, 30) || airportId;
+  const arp = requireLatLon(row.line, ARINC_COL.LAT, ARINC_COL.LON, ctx);
   const magVarDeg = parseMagVarDeg(readField(row.line, 52, 5), ctx);
   const fieldElevFt = parseFeet(readField(row.line, 57, 5), ctx) ?? 0;
   return {
@@ -341,9 +347,12 @@ function parseAirport(row: RawLine): NormalizedAirport {
 
 function parseRunway(row: RawLine): NormalizedRunway {
   const ctx = lineCtx(row);
-  const airportId = requireId(readTrim(row.line, 7, 4), ctx, "airportId");
-  const runwayId = requireText(readTrim(row.line, 14, 5), ctx, "runwayId").replace(/\s+/g, "");
-  const threshold = requireLatLon(row.line, 33, 42, ctx);
+  const airportId = requireId(readTrim(row.line, ARINC_COL.AIRPORT_ID, 4), ctx, "airportId");
+  const runwayId = requireText(readTrim(row.line, ARINC_COL.IDENT, 5), ctx, "runwayId").replace(
+    /\s+/g,
+    "",
+  );
+  const threshold = requireLatLon(row.line, ARINC_COL.LAT, ARINC_COL.LON, ctx);
   const bearingDeg = parseTenthsDeg(readField(row.line, 28, 4), ctx);
   const lengthFt = parseFeet(readField(row.line, 23, 5), ctx);
   return {
@@ -359,17 +368,17 @@ function parseRunway(row: RawLine): NormalizedRunway {
 
 function parseVhf(row: RawLine): NormalizedNavaid {
   const ctx = lineCtx(row);
-  const airportRaw = readTrim(row.line, 7, 4);
-  const airportId = airportRaw.length > 0 ? requireId(airportRaw, ctx, "airportId") : undefined;
-  const id = requireId(readTrim(row.line, 14, 4), ctx, "id");
-  const name = readTrim(row.line, 94, 30) || id;
-  const position = requireLatLon(row.line, 33, 42, ctx);
-  const freqMhz = parseFreqMhz(readField(row.line, 23, 5), ctx);
-  const classRaw = readField(row.line, 28, 5);
+  const airportId = optionalPointAirport(readTrim(row.line, ARINC_COL.AIRPORT_ID, 4), ctx);
+  const rawId = requireId(readTrim(row.line, ARINC_COL.IDENT, 4), ctx, "id");
+  const name = readTrim(row.line, ARINC_COL.NAME, 30) || rawId;
+  const position = requireVhfLatLon(row.line, ctx);
+  const freqMhz = parseFreqMhz(readField(row.line, ARINC_COL.FREQ, 5), ctx);
+  const classRaw = readField(row.line, ARINC_COL.NAVAID_CLASS, 5);
   const kind = vhfKind(classRaw);
+  const id = isIlsDmeClass(classRaw) ? `${rawId}DME`.slice(0, 8) : rawId;
   const rangeClass = vhfClass(classRaw, readField(row.line, 85, 1));
   return {
-    identity: ident("D", airportId, id),
+    identity: ident("D", airportId, id, readIcaoRegion(row.line)),
     ...(airportId !== undefined ? { airportId } : {}),
     id,
     kind,
@@ -383,14 +392,13 @@ function parseVhf(row: RawLine): NormalizedNavaid {
 
 function parseNdb(row: RawLine): NormalizedNavaid {
   const ctx = lineCtx(row);
-  const airportRaw = readTrim(row.line, 7, 4);
-  const airportId = airportRaw.length > 0 ? requireId(airportRaw, ctx, "airportId") : undefined;
-  const id = requireId(readTrim(row.line, 14, 4), ctx, "id");
-  const name = readTrim(row.line, 94, 30) || id;
-  const position = requireLatLon(row.line, 33, 42, ctx);
-  const freqKhz = parseFreqKhz(readField(row.line, 23, 5), ctx);
+  const airportId = optionalPointAirport(readTrim(row.line, ARINC_COL.AIRPORT_ID, 4), ctx);
+  const id = requireId(readTrim(row.line, ARINC_COL.IDENT, 4), ctx, "id");
+  const name = readTrim(row.line, ARINC_COL.NAME, 30) || id;
+  const position = requireLatLon(row.line, ARINC_COL.LAT, ARINC_COL.LON, ctx);
+  const freqKhz = parseFreqKhz(readField(row.line, ARINC_COL.FREQ, 5), ctx);
   return {
-    identity: ident(row.section, airportId, id),
+    identity: ident(row.section, airportId, id, readIcaoRegion(row.line)),
     ...(airportId !== undefined ? { airportId } : {}),
     id,
     kind: "NDB",
@@ -403,13 +411,12 @@ function parseNdb(row: RawLine): NormalizedNavaid {
 
 function parseFix(row: RawLine): NormalizedFix {
   const ctx = lineCtx(row);
-  const airportRaw = readTrim(row.line, 7, 4);
-  const airportId = airportRaw.length > 0 ? requireId(airportRaw, ctx, "airportId") : undefined;
-  const id = requireId(readTrim(row.line, 14, 5), ctx, "id");
-  const position = requireLatLon(row.line, 33, 42, ctx);
+  const airportId = optionalPointAirport(readTrim(row.line, ARINC_COL.AIRPORT_ID, 4), ctx);
+  const id = requireId(readTrim(row.line, ARINC_COL.IDENT, 5), ctx, "id");
+  const position = requireLatLon(row.line, ARINC_COL.LAT, ARINC_COL.LON, ctx);
   const kind = fixKind(id, readField(row.line, 27, 3));
   return {
-    identity: ident(row.section, airportId, id),
+    identity: ident(row.section, airportId, id, readIcaoRegion(row.line)),
     ...(airportId !== undefined ? { airportId } : {}),
     id,
     kind,
@@ -420,10 +427,10 @@ function parseFix(row: RawLine): NormalizedFix {
 
 function parseLocalizerGlideslope(row: RawLine): NormalizedNavaid[] {
   const ctx = lineCtx(row);
-  const airportId = requireId(readTrim(row.line, 7, 4), ctx, "airportId");
-  const locId = requireId(readTrim(row.line, 14, 4), ctx, "localizerId");
-  const locPos = requireLatLon(row.line, 33, 42, ctx);
-  const freqMhz = parseFreqMhz(readField(row.line, 23, 5), ctx);
+  const airportId = requireId(readTrim(row.line, ARINC_COL.AIRPORT_ID, 4), ctx, "airportId");
+  const locId = requireId(readTrim(row.line, ARINC_COL.IDENT, 4), ctx, "localizerId");
+  const locPos = requireLatLon(row.line, ARINC_COL.LAT, ARINC_COL.LON, ctx);
+  const freqMhz = parseFreqMhz(readField(row.line, ARINC_COL.FREQ, 5), ctx);
   const courseDeg = parseTenthsDeg(readField(row.line, 52, 4), ctx);
   const locWidthDeg = parseHundredthsDeg(readField(row.line, 84, 4), ctx);
   const gsAngleDeg = parseHundredthsDeg(readField(row.line, 88, 3), `${ctx} glideslope angle`);
@@ -444,8 +451,8 @@ function parseLocalizerGlideslope(row: RawLine): NormalizedNavaid[] {
     ...(locWidthDeg !== undefined ? { locWidthDeg } : {}),
     lineNo: row.lineNo,
   };
-  const gsLat = readTrim(row.line, 56, 9);
-  const gsLon = readTrim(row.line, 65, 10);
+  const gsLat = readTrim(row.line, ARINC_COL.DME_LAT, 9);
+  const gsLon = readTrim(row.line, ARINC_COL.DME_LON, 10);
   const out: NormalizedNavaid[] = [loc];
   if (gsLat.length > 0 && gsLon.length > 0) {
     const gsId = `${locId}GS`.slice(0, 8);
@@ -470,8 +477,8 @@ function parseLocalizerGlideslope(row: RawLine): NormalizedNavaid[] {
 
 function parseMarker(row: RawLine): NormalizedNavaid {
   const ctx = lineCtx(row);
-  const airportId = requireId(readTrim(row.line, 7, 4), ctx, "airportId");
-  const locId = readTrim(row.line, 14, 4);
+  const airportId = requireId(readTrim(row.line, ARINC_COL.AIRPORT_ID, 4), ctx, "airportId");
+  const locId = readTrim(row.line, ARINC_COL.IDENT, 4);
   const typeRaw = readTrim(row.line, 18, 3).toUpperCase();
   const kind: NormalizedNavaidKind =
     typeRaw.startsWith("IM") || typeRaw === "I"
@@ -488,7 +495,7 @@ function parseMarker(row: RawLine): NormalizedNavaid {
     id: markerId,
     kind,
     name: markerId,
-    position: requireLatLon(row.line, 33, 42, ctx),
+    position: requireLatLon(row.line, ARINC_COL.LAT, ARINC_COL.LON, ctx),
     ...(locId.length > 0 ? { pairedLocId: locId } : {}),
     lineNo: row.lineNo,
   };
@@ -501,8 +508,8 @@ function ingestStarLeg(
   skippedByType: Record<string, number>,
 ): void {
   const ctx = lineCtx(row);
-  const airportId = requireId(readTrim(row.line, 7, 4), ctx, "airportId");
-  const starId = requireId(readTrim(row.line, 14, 6), ctx, "starId");
+  const airportId = requireId(readTrim(row.line, ARINC_COL.AIRPORT_ID, 4), ctx, "airportId");
+  const starId = requireProcedureId(readTrim(row.line, ARINC_COL.IDENT, 6), ctx, "starId");
   const routeType = readField(row.line, 20, 1).trim();
   const transitionId = readTrim(row.line, 21, 5);
   const key = `PE:${airportId}:${starId}`;
@@ -537,8 +544,8 @@ function ingestSidLeg(
   skippedByType: Record<string, number>,
 ): void {
   const ctx = lineCtx(row);
-  const airportId = requireId(readTrim(row.line, 7, 4), ctx, "airportId");
-  const sidId = requireId(readTrim(row.line, 14, 6), ctx, "sidId");
+  const airportId = requireId(readTrim(row.line, ARINC_COL.AIRPORT_ID, 4), ctx, "airportId");
+  const sidId = requireProcedureId(readTrim(row.line, ARINC_COL.IDENT, 6), ctx, "sidId");
   const routeType = readField(row.line, 20, 1);
   const transitionId = readTrim(row.line, 21, 5);
   const bucket = classifySidRoute(routeType, transitionId);
@@ -637,8 +644,8 @@ function ingestApproachLeg(
   skippedByType: Record<string, number>,
 ): void {
   const ctx = lineCtx(row);
-  const airportId = requireId(readTrim(row.line, 7, 4), ctx, "airportId");
-  const appId = requireId(readTrim(row.line, 14, 6), ctx, "approachId");
+  const airportId = requireId(readTrim(row.line, ARINC_COL.AIRPORT_ID, 4), ctx, "airportId");
+  const appId = requireProcedureId(readTrim(row.line, ARINC_COL.IDENT, 6), ctx, "approachId");
   const routeType = readField(row.line, 20, 1);
   const mapped = mapApproachType(routeType);
   if (mapped === undefined && routeType.trim() !== "Z" && routeType.trim() !== "A") {
@@ -669,6 +676,9 @@ function ingestApproachLeg(
       legs: [],
     };
     approaches.set(key, acc);
+  } else if (mapped !== undefined) {
+    acc.type = mapped;
+    acc.name = `${mapped} RWY ${acc.runway}`;
   }
   const recNav = readTrim(row.line, 51, 4);
   if (recNav.length >= 2 && acc.locNavaidId === undefined && ID_RE.test(recNav.toUpperCase())) {
@@ -898,10 +908,16 @@ function mapApproachType(routeType: string): NormalizedApproachType | undefined 
     case "I":
       return "ILS";
     case "L":
+    case "B":
+    case "X":
+    case "T":
+    case "G":
       return "LOC";
     case "R":
     case "H":
     case "P":
+    case "F":
+    case "J":
       return "RNAV";
     case "V":
     case "S":
@@ -920,17 +936,27 @@ function runwayFromApproach(appId: string, transitionId: string): string {
   if (/^\d{1,2}[LCR]?$/.test(fromTrans)) {
     return fromTrans;
   }
-  const match = /(\d{1,2}[LCR]?)$/.exec(appId);
+  const match = /(\d{1,2}[LCR]?)/.exec(appId);
   return match?.[1] ?? appId;
+}
+
+function isIlsDmeClass(classRaw: string): boolean {
+  const c0 = classRaw[0] ?? " ";
+  const c1 = classRaw[1] ?? " ";
+  return c1 === "I" || c0 === "I";
 }
 
 function vhfKind(classRaw: string): NormalizedNavaidKind {
   const c0 = classRaw[0] ?? " ";
-  const hasDme = classRaw.includes("D");
+  const c1 = classRaw[1] ?? " ";
+  const hasDme = classRaw.includes("D") || classRaw.includes("T") || c1 === "I";
   if (c0 === "V" && hasDme) {
     return "VORDME";
   }
-  if (c0 === "D" && !classRaw.includes("V")) {
+  if (c0 === "V") {
+    return "VOR";
+  }
+  if (c0 === "D" || c0 === "T" || c1 === "D" || c1 === "T" || c1 === "I" || c0 === "I") {
     return "DME";
   }
   return "VOR";
@@ -968,21 +994,48 @@ function fixKind(id: string, typeField: string): NormalizedFixKind {
   return "INTERSECTION";
 }
 
+function requireVhfLatLon(line: string, ctx: string): SourceLatLon {
+  const vor = readPackedLatLon(line, ARINC_COL.LAT, ARINC_COL.LON);
+  const dme = readPackedLatLon(line, ARINC_COL.DME_LAT, ARINC_COL.DME_LON);
+  const packed = vor ?? dme;
+  if (packed === undefined) {
+    throw new Error(`${ctx}: missing coordinate`);
+  }
+  return {
+    latDeg: parsePackedLat(packed.lat, ctx),
+    lonDeg: parsePackedLon(packed.lon, ctx),
+  };
+}
+
 function requireLatLon(
   line: string,
   latStart: number,
   lonStart: number,
   ctx: string,
 ): SourceLatLon {
-  const lat = readTrim(line, latStart, 9);
-  const lon = readTrim(line, lonStart, 10);
-  if (lat.length === 0 || lon.length === 0) {
+  const packed = readPackedLatLon(line, latStart, lonStart);
+  if (packed === undefined) {
     throw new Error(`${ctx}: missing coordinate`);
   }
   return {
-    latDeg: parsePackedLat(lat, ctx),
-    lonDeg: parsePackedLon(lon, ctx),
+    latDeg: parsePackedLat(packed.lat, ctx),
+    lonDeg: parsePackedLon(packed.lon, ctx),
   };
+}
+
+function optionalPointAirport(value: string, ctx: string): string | undefined {
+  if (value.length === 0 || value === ENROUTE_REGION) {
+    return undefined;
+  }
+  return requireId(value, ctx, "airportId");
+}
+
+function requireProcedureId(value: string, ctx: string, field: string): string {
+  const id = requireText(value, ctx, field).toUpperCase();
+  if (!PROCEDURE_ID_RE.test(id)) {
+    throw new Error(`${ctx}: ${field} must be uppercase [A-Z0-9-]{2,8} (got ${id})`);
+  }
+  return id;
 }
 
 function requireId(value: string, ctx: string, field: string): string {
@@ -1004,14 +1057,20 @@ function ident(
   section: string,
   airportId: string | undefined,
   recordId: string,
+  region?: string,
 ): CifpRecordIdentity {
-  const key = `${section}:${airportId ?? "_"}:${recordId}`;
+  const owner = airportId ?? (region !== undefined && region.length > 0 ? region : undefined);
+  const key = `${section}:${owner ?? "_"}:${recordId}`;
   return {
     key,
     section,
     ...(airportId !== undefined ? { airportId } : {}),
     recordId,
   };
+}
+
+function readIcaoRegion(line: string): string {
+  return readTrim(line, 20, 2);
 }
 
 function lineCtx(row: RawLine): string {
@@ -1021,9 +1080,18 @@ function lineCtx(row: RawLine): string {
 }
 
 function optionalAirport(line: string, section: string): string | undefined {
-  if (section.startsWith("P") || section === "D" || section === "DB" || section === "EA") {
-    const raw = readTrim(line, 7, 4);
-    return raw.length > 0 ? raw : undefined;
+  if (
+    section.startsWith("P") ||
+    section.startsWith("H") ||
+    section === "D" ||
+    section === "DB" ||
+    section === "EA"
+  ) {
+    const raw = readTrim(line, ARINC_COL.AIRPORT_ID, 4);
+    if (raw.length === 0 || raw === ENROUTE_REGION) {
+      return undefined;
+    }
+    return raw;
   }
   return undefined;
 }

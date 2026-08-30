@@ -21,7 +21,6 @@ import type {
 } from "../../src/scenario/procedures/types.ts";
 import { latLonToNm, type LatLon } from "./coordinates.ts";
 import {
-  sourceErrorCount,
   type CifpSkipStats,
   type NormalizedCifpSource,
   type NormalizedProcedureLeg,
@@ -39,16 +38,28 @@ export interface NormalizeOptions {
   airportId?: string;
 }
 
+function firstRelevantError(
+  source: NormalizedCifpSource,
+  airportId: string | undefined,
+): (typeof source.diagnostics)[number] | undefined {
+  return source.diagnostics.find((row) => {
+    if (row.severity !== "error") {
+      return false;
+    }
+    if (airportId === undefined) {
+      return true;
+    }
+    return row.airportId === undefined || row.airportId === airportId;
+  });
+}
+
 export function emitCatalogFromSource(
   source: NormalizedCifpSource,
   options: NormalizeOptions = {},
 ): { catalog: ProcedureCatalog; skipped: CifpSkipStats } {
-  const firstError = source.diagnostics.find((row) => row.severity === "error");
+  const firstError = firstRelevantError(source, options.airportId);
   if (firstError !== undefined) {
     throw new Error(firstError.message);
-  }
-  if (sourceErrorCount(source) > 0) {
-    throw new Error("CIFP import: source contains error diagnostics");
   }
 
   const airport =
@@ -68,6 +79,11 @@ export function emitCatalogFromSource(
     );
   }
 
+  const skippedByType: Record<string, number> = { ...source.skippedByType };
+  const bumpSkip = (type: string): void => {
+    skippedByType[type] = (skippedByType[type] ?? 0) + 1;
+  };
+
   const arp: LatLon = airport.arp;
   const airportId = airport.airportId;
 
@@ -78,6 +94,7 @@ export function emitCatalogFromSource(
     }
     navaids.push(toNavaid(row, arp));
   }
+  navaids.splice(0, navaids.length, ...keepCloserToOrigin(navaids));
 
   const fixes: NavFix[] = [];
   const fixIds = new Set<string>();
@@ -86,6 +103,12 @@ export function emitCatalogFromSource(
       continue;
     }
     fixes.push(toFix(row, arp));
+    fixIds.add(row.id);
+  }
+  const uniqueFixes = keepCloserToOrigin(fixes);
+  fixes.splice(0, fixes.length, ...uniqueFixes);
+  fixIds.clear();
+  for (const row of uniqueFixes) {
     fixIds.add(row.id);
   }
   for (const row of source.runways) {
@@ -117,7 +140,8 @@ export function emitCatalogFromSource(
       .filter((transition) => transition.legs.length > 0);
     const common = supportedFixLegs(row.common);
     if (transitions.length === 0 && common.length === 0) {
-      throw new Error(`CIFP import: STAR ${row.id} has no supported legs`);
+      bumpSkip("EMPTY_STAR");
+      continue;
     }
     stars.push({
       id: row.id,
@@ -212,31 +236,40 @@ export function emitCatalogFromSource(
     fixes,
     stars,
     approaches,
-    sids: emitSids(source, airportId),
+    sids: emitSids(source, airportId, bumpSkip),
     atpaVolumes: [],
   };
   validateCatalog(catalog);
   return {
     catalog,
     skipped: {
-      count: Object.values(source.skippedByType).reduce((sum, n) => sum + n, 0),
-      byType: { ...source.skippedByType },
+      count: Object.values(skippedByType).reduce((sum, n) => sum + n, 0),
+      byType: skippedByType,
     },
   };
 }
 
-function emitSids(source: NormalizedCifpSource, airportId: string): SidProcedure[] {
+function emitSids(
+  source: NormalizedCifpSource,
+  airportId: string,
+  bumpSkip: (type: string) => void,
+): SidProcedure[] {
   const sids: SidProcedure[] = [];
   for (const row of source.sids) {
     if (row.airportId !== airportId) {
       continue;
     }
-    sids.push(toSidProcedure(row));
+    const converted = toSidProcedure(row);
+    if (converted === undefined) {
+      bumpSkip("EMPTY_SID");
+      continue;
+    }
+    sids.push(converted);
   }
   return sids;
 }
 
-function toSidProcedure(row: NormalizedSid): SidProcedure {
+function toSidProcedure(row: NormalizedSid): SidProcedure | undefined {
   const runwayTransitions: SidRunwayTransition[] = row.runwayTransitions
     .map((transition) => {
       const legs = supportedFixLegs(transition.legs);
@@ -267,7 +300,7 @@ function toSidProcedure(row: NormalizedSid): SidProcedure {
     }))
     .filter((transition) => (transition.legs?.length ?? 0) > 0);
   if (runwayTransitions.length === 0 && common.length === 0 && enrouteTransitions.length === 0) {
-    throw new Error(`CIFP import: SID ${row.id} has no supported legs`);
+    return undefined;
   }
   const sid: SidProcedure = {
     id: row.id,
@@ -302,6 +335,23 @@ function supportedFixLegs(legs: NormalizedProcedureLeg[]): StarLeg[] {
     out.push(starLeg);
   }
   return out;
+}
+
+function keepCloserToOrigin<T extends { id: string; xNm: number; yNm: number }>(rows: T[]): T[] {
+  const byId = new Map<string, T>();
+  for (const row of rows) {
+    const prior = byId.get(row.id);
+    if (prior === undefined) {
+      byId.set(row.id, row);
+      continue;
+    }
+    const nextDist = row.xNm * row.xNm + row.yNm * row.yNm;
+    const priorDist = prior.xNm * prior.xNm + prior.yNm * prior.yNm;
+    if (nextDist < priorDist) {
+      byId.set(row.id, row);
+    }
+  }
+  return [...byId.values()];
 }
 
 function toNavaid(

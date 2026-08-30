@@ -5,6 +5,8 @@
  */
 import { expect, test } from "vitest";
 // @ts-expect-error tsconfig has no @types/node
+import { spawnSync } from "node:child_process";
+// @ts-expect-error tsconfig has no @types/node
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 // @ts-expect-error tsconfig has no @types/node
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -12,6 +14,8 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 // @ts-expect-error tsconfig has no @types/node
 import { dirname, join } from "node:path";
+// @ts-expect-error tsconfig has no @types/node
+import { execPath } from "node:process";
 // @ts-expect-error tsconfig has no @types/node
 import { fileURLToPath } from "node:url";
 import { parseCatalogFiles } from "../../src/scenario/procedures/loadCatalog.ts";
@@ -23,7 +27,7 @@ import {
   KATL_DEFAULT_AIRPORT,
   KATL_DEFAULT_RADIUS_NM,
 } from "./extract-katl-slice.ts";
-import { pa, pc, pd, pe, pf, pg, pi } from "./fixedWidthRecords.ts";
+import { buildFaaLayoutSubset, pa, pc, pd, pe, pf, pg, pi } from "./fixedWidthRecords.ts";
 import { CATALOG_PACK_FILES, packFromText, writeCatalogPack } from "./pack.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -261,4 +265,65 @@ test("T04-35 — extract-katl-slice stays a thin default-flag wrapper", () => {
   const src = readFileSync(join(here, "extract-katl-slice.ts"), "utf8");
   expect(src).not.toMatch(/parseFixedWidth|parseCifpSubset|selectByRadius|closeProcedure/);
   expect(src).not.toMatch(/if\s*\([^)]*KATL/);
+});
+
+test("cifp:pack --dry-run on FAA-column fixture reaches pack selection", () => {
+  const dir = mkdtempSync(join(tmpdir(), "cifp-faa-pack-"));
+  const inPath = join(dir, "faa-layout-subset.cifp");
+  writeFileSync(inPath, buildFaaLayoutSubset(), "utf8");
+  try {
+    const result = spawnSync(
+      execPath,
+      [
+        "--experimental-strip-types",
+        "--disable-warning=ExperimentalWarning",
+        join(here, "cli.ts"),
+        "pack",
+        "--in",
+        inPath,
+        "--airport",
+        "KSYN",
+        "--radius",
+        "40",
+        "--out",
+        join(dir, "out"),
+        "--dry-run",
+      ],
+      { encoding: "utf8", cwd: repoRoot },
+    );
+    expect(result.status).toBe(0);
+    const combined = `${result.stdout ?? ""}${result.stderr ?? ""}`;
+    expect(combined).toMatch(/cifp-pack: dry-run/);
+    expect(combined).toMatch(/airport: KSYN/);
+    expect(combined).toMatch(/seed: /);
+    expect(combined).not.toMatch(/missing coordinate/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("cifp:pack --dry-run reads committed FAA-column testdata fixture", () => {
+  const fixture = join(repoRoot, "testdata/cifp/faa-layout-subset.cifp");
+  expect(existsSync(fixture)).toBe(true);
+  const result = spawnSync(
+    execPath,
+    [
+      "--experimental-strip-types",
+      "--disable-warning=ExperimentalWarning",
+      join(here, "cli.ts"),
+      "pack",
+      "--in",
+      fixture,
+      "--airport",
+      "KSYN",
+      "--radius",
+      "40",
+      "--out",
+      join(tmpdir(), "cifp-faa-out"),
+      "--dry-run",
+    ],
+    { encoding: "utf8", cwd: repoRoot },
+  );
+  expect(result.status).toBe(0);
+  expect(`${result.stdout ?? ""}${result.stderr ?? ""}`).toMatch(/cifp-pack: dry-run/);
 });

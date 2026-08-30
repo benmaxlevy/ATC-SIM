@@ -79,6 +79,64 @@ export function vhf(opts: {
   ]);
 }
 
+/**
+ * FAA CIFP DME-only / TACAN / ILS-DME VHF row: VOR lat/lon (33/42) blank,
+ * DME ident at 52 and DME lat/lon at 56/65. Matches the real cycle D shape
+ * that previously threw `missing coordinate`.
+ */
+export function vhfDmeOnly(opts: {
+  id: string;
+  name: string;
+  lat: string;
+  lon: string;
+  freq?: string;
+  classRaw?: string;
+  airport?: string;
+  dmeIdent?: string;
+}): string {
+  return arincRecord([
+    [1, 1, "S"],
+    [2, 3, "USA"],
+    [5, 1, "D"],
+    [7, 4, opts.airport ?? ""],
+    [14, 4, opts.id],
+    [20, 2, "K7"],
+    [22, 1, "0"],
+    [23, 5, opts.freq ?? "11400"],
+    [28, 5, opts.classRaw ?? " DUW "],
+    [52, 4, opts.dmeIdent ?? opts.id],
+    [56, 9, opts.lat],
+    [65, 10, opts.lon],
+    [94, 30, opts.name],
+  ]);
+}
+
+/** FAA terminal NDB: subsection N at column 6 (PN), not column 13. */
+export function pn(opts: {
+  icao: string;
+  id: string;
+  name: string;
+  lat: string;
+  lon: string;
+  freq?: string;
+}): string {
+  return arincRecord([
+    [1, 1, "S"],
+    [2, 3, "USA"],
+    [5, 1, "P"],
+    [6, 1, "N"],
+    [7, 4, opts.icao],
+    [11, 2, "K7"],
+    [14, 4, opts.id],
+    [20, 2, "K7"],
+    [22, 1, "0"],
+    [23, 5, opts.freq ?? "02410"],
+    [33, 9, opts.lat],
+    [42, 10, opts.lon],
+    [94, 30, opts.name],
+  ]);
+}
+
 export function ndb(opts: {
   id: string;
   name: string;
@@ -492,6 +550,100 @@ export function buildFixedWidthSubset(): string {
     }),
     erAirway(),
     "this is garbage not a record",
+    "",
+  ].join("\n");
+}
+
+/**
+ * Synthetic records packed like a real FAA CIFP cycle (HDR prefix, DME-only
+ * D row, PN at col 6, hyphenated approach id, procedure continuation).
+ * Geometry is KDEM-like near 0°N 0°E. Not a real cycle extract.
+ */
+export function buildFaaLayoutSubset(): string {
+  const ilsDme = vhfDmeOnly({
+    id: "IDEM",
+    name: "ILS DME",
+    lat: "S00000420",
+    lon: "E000001080",
+    freq: "11030",
+    classRaw: " ITW ",
+    airport: "KSYN",
+  });
+  const dmeOnly = vhfDmeOnly({
+    id: "SDM",
+    name: "SYN DME",
+    lat: "N00004800",
+    lon: "E000002400",
+    classRaw: " DUW ",
+  });
+  const terminalNdb = pn({
+    icao: "KSYN",
+    id: "SYN",
+    name: "SYN NDB",
+    lat: "N00000900",
+    lon: "E000050000",
+  });
+  const hyphenApp = pf({
+    icao: "KSYN",
+    appId: "R10-Y",
+    routeType: "A",
+    trans: "FI27",
+    seq: "010",
+    fixId: "FI27",
+    path: "IF",
+    recNav: "IDEM",
+    course: "2700",
+    altDesc: " ",
+    alt: "02000",
+  });
+  const hyphenFinal = pf({
+    icao: "KSYN",
+    appId: "R10-Y",
+    routeType: "R",
+    trans: "RW27",
+    seq: "010",
+    fixId: "FI27",
+    path: "IF",
+    recNav: "IDEM",
+    course: "2700",
+  });
+  const hyphenMap = pf({
+    icao: "KSYN",
+    appId: "R10-Y",
+    routeType: "R",
+    trans: "RW27",
+    seq: "020",
+    fixId: "RW27",
+    path: "CF",
+    recNav: "IDEM",
+    course: "2700",
+  });
+  const continuation = arincRecord([
+    [1, 1, "S"],
+    [2, 3, "USA"],
+    [5, 1, "P"],
+    [7, 4, "KSYN"],
+    [11, 2, "K7"],
+    [13, 1, "F"],
+    [14, 6, "R10-Y"],
+    [20, 1, "R"],
+    [21, 5, "RW27"],
+    [27, 3, "020"],
+    [30, 5, "RW27"],
+    [39, 1, "2"],
+    [48, 2, "CF"],
+  ]);
+  return [
+    "HDR01FAACIFP18      001P000000000000000001JAN00000:00:00  U.S.A. DOT FAA SYNTHETIC",
+    "# Synthetic FAA-column ARINC 424-18. NOT a real cycle.",
+    buildFixedWidthSubset().replace(/^#[^\n]*\n/gm, ""),
+    dmeOnly,
+    ilsDme,
+    terminalNdb,
+    hyphenApp,
+    hyphenFinal,
+    hyphenMap,
+    continuation,
     "",
   ].join("\n");
 }

@@ -3,11 +3,35 @@
  *
  * Column numbers are 1-based, matching the specification. Records are 132
  * characters. Packed lat/lon is N/S+DDMMSSHH and E/W+DDDMMSSHH.
+ *
+ * FAA CIFP uses the same 132-char packing as ARINC 424-18. VHF navaid (D)
+ * primary records put VOR lat/lon at 33/42 when the facility has a VOR;
+ * DME-only / TACAN / ILS-DME rows leave those blank and put DME lat/lon at
+ * 56/65. Terminal NDB (PN) uses subsection N at column 6, not column 13.
  */
 
 import type { CifpDialect } from "./types.ts";
 
 export const ARINC_RECORD_LENGTH = 132;
+
+/** 1-based ARINC 424-18 / FAA CIFP columns used by the subset parser. */
+export const ARINC_COL = {
+  SECTION: 5,
+  SUBSECTION_NAVAID: 6,
+  AIRPORT_ID: 7,
+  SUBSECTION_AIRPORT: 13,
+  IDENT: 14,
+  CONT_POINT: 22,
+  FREQ: 23,
+  NAVAID_CLASS: 28,
+  LAT: 33,
+  LON: 42,
+  DME_IDENT: 52,
+  DME_LAT: 56,
+  DME_LON: 65,
+  CONT_PROCEDURE: 39,
+  NAME: 94,
+} as const;
 
 /** ARINC 424-style: N/S + DD + MM + SS + hundredths (9 chars). */
 export function parsePackedLat(text: string, context?: string): number {
@@ -64,15 +88,36 @@ export function isPrimaryRecord(line: string, continuationColumn: number): boole
 
 /**
  * Section/subsection ident used throughout CIFP (PA, D, DB, EA, PC, PI, PE, …).
- * Airport-family records put the subsection at column 13; navaid/enroute at 6.
+ *
+ * Enroute/navaid family (D, DB, EA, PN): subsection at column 6.
+ * Airport family (PA, PG, PC, PE, PD, PF, PI, PM): column 6 blank, subsection
+ * at column 13. FAA terminal NDB is `PN` at columns 5–6 (not column 13).
  */
 export function sectionIdent(line: string): string {
-  const section = readField(line, 5, 1);
+  const section = readField(line, ARINC_COL.SECTION, 1);
+  const subNavaid = readField(line, ARINC_COL.SUBSECTION_NAVAID, 1).trim();
+  const subAirport = readField(line, ARINC_COL.SUBSECTION_AIRPORT, 1).trim();
   if (section === "P" || section === "H") {
-    return `${section}${readField(line, 13, 1)}`;
+    if (subNavaid.length > 0) {
+      return `${section}${subNavaid}`;
+    }
+    return subAirport.length > 0 ? `${section}${subAirport}` : section;
   }
-  const sub = readField(line, 6, 1).trim();
-  return sub.length === 0 ? section : `${section}${sub}`;
+  return subNavaid.length > 0 ? `${section}${subNavaid}` : section;
+}
+
+/** Packed lat/lon at 1-based columns, or undefined when either side is blank. */
+export function readPackedLatLon(
+  line: string,
+  latStart: number,
+  lonStart: number,
+): { lat: string; lon: string } | undefined {
+  const lat = readTrim(line, latStart, 9);
+  const lon = readTrim(line, lonStart, 10);
+  if (lat.length === 0 || lon.length === 0) {
+    return undefined;
+  }
+  return { lat, lon };
 }
 
 export function writeField(buf: string[], start: number, length: number, value: string): void {
@@ -93,7 +138,7 @@ export function arincRecord(fields: Array<[number, number, string]>): string {
 export function detectCifpDialect(text: string): CifpDialect {
   for (const line of text.split(/\r?\n/)) {
     const trimmed = line.trim();
-    if (trimmed.length === 0 || trimmed.startsWith("#")) {
+    if (trimmed.length === 0 || trimmed.startsWith("#") || trimmed.startsWith("HDR")) {
       continue;
     }
     const paddedLook = line.length >= 128 && /^[ST]/.test(line);
