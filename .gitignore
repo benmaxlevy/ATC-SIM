@@ -21,3 +21,9 @@ __pycache__/
 .cifp/
 FAACIFP18*
 tools/cifp-import/out/
+
+# Local CRC/vNAS cache copies and videomap converter intermediates (T04-36).
+# Never commit ARTCCs/ZTL.json, VideoMaps GeoJSON, or generated dumps.
+# Keep testdata/crc-videomaps/ fixtures.
+.crc/
+tools/crc-videomap-import/out/

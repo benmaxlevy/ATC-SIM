@@ -1,0 +1,132 @@
+{
+  "id": "SYN",
+  "videoMaps": [
+    {
+      "id": "01SYNMAPA00000000000000001",
+      "name": "SYN CLASS B",
+      "tags": ["STARS", "A80"],
+      "shortName": "CLASS B",
+      "sourceFileName": "BRAVO.geojson",
+      "starsBrightnessCategory": "B",
+      "starsId": 1,
+      "starsAlwaysVisible": false,
+      "tdmOnly": false
+    },
+    {
+      "id": "01SYNMAPA00000000000000003",
+      "name": "SYN MVA",
+      "tags": ["STARS", "A80"],
+      "shortName": "MVA",
+      "starsBrightnessCategory": "A",
+      "starsId": 3,
+      "tdmOnly": false
+    },
+    {
+      "id": "01SYNMAPA00000000000000007",
+      "name": "SYN GEO NAME",
+      "tags": ["STARS", "A80"],
+      "shortName": "CLASS B",
+      "sourceFileName": "GEO.geojson",
+      "starsBrightnessCategory": "A",
+      "starsId": 7,
+      "tdmOnly": false
+    },
+    {
+      "id": "01SYNMAPA00000000000000136",
+      "name": "SYN SPARSE HIGH",
+      "tags": ["STARS", "A80"],
+      "shortName": "SPARSE",
+      "sourceFileName": "SPARSE.geojson",
+      "starsBrightnessCategory": "A",
+      "starsId": 136,
+      "tdmOnly": false
+    },
+    {
+      "id": "01SYNMAPA00000000000000998",
+      "name": "SYN TDM",
+      "tags": ["TDM", "STARS"],
+      "shortName": "TDM",
+      "sourceFileName": "TDM.geojson",
+      "starsBrightnessCategory": "A",
+      "starsId": 998,
+      "starsAlwaysVisible": true,
+      "tdmOnly": true
+    },
+    {
+      "id": "01SYNMAPB00000000000000998",
+      "name": "SYN OTHER TDM",
+      "tags": ["TDM"],
+      "shortName": "OTDM",
+      "sourceFileName": "OTHER.geojson",
+      "starsBrightnessCategory": "A",
+      "starsId": 998,
+      "tdmOnly": true
+    }
+  ],
+  "facility": {
+    "id": "SYN",
+    "name": "Synthetic ARTCC",
+    "childFacilities": [
+      {
+        "id": "A80",
+        "type": "Tracon",
+        "name": "Synthetic TRACON",
+        "starsConfiguration": {
+          "videoMapIds": [
+            "01SYNMAPA00000000000000001",
+            "01SYNMAPA00000000000000003",
+            "01SYNMAPA00000000000000007",
+            "01SYNMAPA00000000000000136",
+            "01SYNMAPA00000000000000998"
+          ],
+          "mapGroups": [
+            {
+              "id": "01SYNGRP000000000000000001",
+              "tcps": ["1N", "1S"],
+              "mapIds": [
+                3,
+                1,
+                null,
+                998,
+                3,
+                1,
+                7,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
