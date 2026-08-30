@@ -4,7 +4,10 @@
 
 This configuration is planning-only until `/run-swarm` execution begins. It
 adds an offline, permissioned CRC/vNAS videomap conversion phase. Existing
-swarm history stays intact.
+swarm history stays intact. Execution branch is
+`feature/crc-a80-videomaps`, created from current `master`; the captain
+squash-merges ticket branches into that feature branch. Push that feature
+branch only after phase exit.
 
 | Key | Value |
 | --- | --- |
@@ -15,7 +18,7 @@ swarm history stays intact.
 | Skip | Runtime CRC/vNAS fetch; ERAM/Cab/ASDE-X semantics; chart scraping; proprietary fonts; OSM; map identity renumbering; unrelated phase 5 work |
 | Stop | After T04-42 acceptance. Do not start phase 5 or live FAA/vNAS update automation |
 | Max ticket workers in flight | **3** |
-| Merge lock | Only phase captain squash-merges ticket branches to `master`, then runs `npm test` / `npm run ci` |
+| Merge lock | Only phase captain squash-merges ticket branches to `feature/crc-a80-videomaps`, then runs `npm test` / `npm run ci` |
 | Model | **cursor-grok-4.6-high only, non-fast** on captain and every worker |
 | Paid STT/TTS/LLM | **Forbidden** |
 
@@ -60,7 +63,7 @@ layout metadata. A→`map`, B→`mapDim`.
 
 | Wave | Tickets | Wait for |
 | --- | --- | --- |
-| A | T04-36 | Current `master` |
+| A | T04-36 | `feature/crc-a80-videomaps` |
 | B | T04-37 ∥ T04-38 | T04-36 |
 | C | T04-39 | T04-37, T04-38 |
 | D | T04-40 ∥ T04-41 | T04-39 |
