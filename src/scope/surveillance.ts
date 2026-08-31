@@ -47,7 +47,7 @@ export const SITE_RECT_MAX_THICKNESS_PX = 8;
 export const SITE_RECT_OUTLINE_RANGE_FRACTION = 0.9;
 export const SITE_FAR_LINE_GAP_PX = 1;
 /** Green far-side line stays 1 px; length is slightly longer than the blue block. */
-export const SITE_FAR_LINE_LENGTH_SCALE = 1.35;
+export const SITE_FAR_LINE_LENGTH_SCALE = 1.75;
 export const SITE_FAR_LINE_STROKE_PX = 1;
 export const SITE_FAR_LINE_COLOR = PALETTE.unowned;
 /** Same frozen blue as `TARGET_PUCK_BG`. */
