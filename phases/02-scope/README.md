@@ -662,6 +662,20 @@ Completed Preview Area addendum matching [CRC STARS](https://docs.virtualnas.net
 
 pointouts `UN` / `**` / `(ID)*` / initiate-recall PO (leave existing click / radio-buffer `UN`/`**`); `TERM CNTL ALL`; typed TCP / Δ handoffs; `BE`/`BI`; assign-code `M ####`; MULTIFUNC (F7 stays PTL ALL); scratchpad `Y`/`+`; per-track PTL `R`; highlight keyboard (stays middle-click); quicklook `Q`; CRDA; WX; list relocate; RBL / `.dot` commands.
 
+### Planned phase 2 addendum (T02-68–72 WX mosaic)
+
+Weather mosaic is now planned as a phase-2 addendum in the Twenty-first
+swarm, not deferred to “Phase 4+” forever. Historical T02-22–30 remains
+accurate: its WX cells shipped without weather paint.
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-68](tickets/T02-68-wx-mosaic-iem-client-and-vip.md) | WX mosaic IEM client and VIP decode | P0 | M | none | Planned |
+| [T02-69](tickets/T02-69-wx-vip-paint-under-tracks.md) | WX VIP paint under tracks | P0 | M | T02-68 | Planned |
+| [T02-70](tickets/T02-70-dcb-wx-levels-and-pref.md) | DCB WX levels and PREF | P0 | M | T02-69 | Planned |
+| [T02-71](tickets/T02-71-preview-wx-commands.md) | Preview WX commands | P0 | S | T02-69 | Planned |
+| [T02-72](tickets/T02-72-brite-wx-wxc-and-acceptance.md) | BRITE WX/WXC and acceptance | P0 | M | T02-70, T02-71 | Planned |
+
 ## Launching an agent
 
 1. Confirm phase 1 README exit is green.

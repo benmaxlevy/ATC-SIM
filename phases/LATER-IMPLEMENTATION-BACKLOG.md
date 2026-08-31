@@ -215,6 +215,12 @@ slots. Later implementations may give those cells real behavior:
 Do not fill empty map slots with OSM or add weather paint as an incidental
 change; each capability needs its own data and acceptance criteria.
 
+### Weather Radar / DCB WX chrome
+
+T02-68–72 is the planned WX mosaic swarm on `feature/wx-mosaic`: IEM N0Q
+display, VIP 1–6, DCB WX, `*WX`, and BRITE WX/WXC. Keep HIST, BKC, and
+pilot deviate as later work.
+
 ### PREF SAVE AS named sets
 
 SAVE AS currently auto-names the first empty slot `PREF n` and forbids
