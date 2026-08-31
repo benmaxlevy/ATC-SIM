@@ -195,31 +195,16 @@ Possible future follow-ups:
 
 ### SSA and GI data beyond trainer stubs
 
-SSA currently includes a fixed trainer altimeter/site status stub, and GI text
-comes from authored facility JSON. Later work could provide:
+SSA displays live primary altimeter settings on Line 3, multi-airport satellite altimeter matrix rows in 3-airport chunks (T02-79), and surface weather conditions in designated GI TEXT slots (T02-80), fetched from the AviationWeather METAR JSON API (T02-78). Airport list is defined in scenario JSON (`ssaWeatherAirports`).
 
-- live or scenario-driven site-fused weather/altimeter data;
-- richer facility status and ATIS-style updates;
-- source timestamps, stale-data handling, and filtering.
-
-### SSA Alert Triangle (`▼`) Operational State & Lifecycle
-
-The solid inverted triangle `▼` at the top of the SSA is permanently rendered in red (`PALETTE.alert`), tightly enclosed in a thin green border with no margin.
-* **Follow-up Verification & Modeling:**
-  1. Verify and refine alert state mappings triggering the red indicator across all subsystem fault conditions (surveillance data link loss, emergency squawks 7700/7600/7500, active CA/MSAW, and multi-sensor processing failure).
-  2. Implement visual blink/acknowledgment cycles if specified by terminal STARS facility adaptation.
+Remaining possible follow-ups:
+- richer facility status and ATIS-style broadcasts;
+- pilot aircraft barometric kinematic corrections;
+- source timestamps, stale-data handling, and alerting.
 
 ### Multi-Airport Satellite Altimeter Matrix in SSA
 
-In multi-airport terminal operations (such as Boston A90 TRACON), the SSA displays rows of altimeter readings for the primary airport and up to 5 configured satellite towered airports:
-```text
-BOS 30.17 BED 30.17 OWD 30.18
-BVY 30.17 LWM 30.19
-```
-* **Required Implementation:**
-  1. Automated weather sensor telemetry integration for primary and satellite towered airports configured in the facility adaptation.
-  2. Formatting in 3-airport chunks on dedicated SSA lines.
-  3. Dynamic barometric altimeter updates matching active weather simulation.
+Shipped in T02-78–80: `ssaWeatherAirports` in scenario JSON drives automated METAR fetching and decoding; primary airport altimeter renders on Line 3 alongside time (`1620/02  30.18`), and satellite airports render in 3-airport matrix rows below SSA (e.g. `KATL 30.18  FTY 30.18  PDK 30.18`), fully controlled by the `ALTSTG` SSA FILTER toggle.
 
 ### Quicklook (`QL`) Status & Facility-Wide Sector Filtering
 

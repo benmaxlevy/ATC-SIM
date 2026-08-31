@@ -1,5 +1,27 @@
 # Swarm status
 
+## TWENTY-THIRD SWARM COMPLETE — Real METAR weather and SSA altimeter display (T02-78–80)
+
+T02-78–80 are squash-merged on `feature/metar-weather-altimeter` (not `master`). Captain `npm test` / `npm run ci`: **177 test files passed, 2053 tests passed, 4 skipped, 0 failures**. Real-time METAR weather, SSA primary and satellite altimeter matrix, and GI text on `feature/metar-weather-altimeter`. No phase 5. Did not push.
+
+- **METAR client & decoder (T02-78):** AviationWeather JSON API fetch, in-memory cache with configurable TTL, hPa-to-inHg decoding (`(altim * 0.029529983).toFixed(2)`), rawOb altimeter fallback (`A3018` -> `"30.18"`), and KATL/satellite airport fixtures. Scenario `ssaWeatherAirports` config.
+- **SSA primary and satellite altimeters (T02-79):** Line 3 displays Zulu/Sim time + live primary altimeter (`HHMM/SS  30.18`), satellite airports render in 3-airport matrix rows below SSA (e.g. `KATL 30.18  FTY 30.18  PDK 30.18`), and `ALTSTG` SSA FILTER toggle cleanly controls visibility for both.
+- **GI weather & acceptance (T02-80):** `formatMetarGiLine` renders standard FAA surface weather summary (`KATL 00000KT 10SM 30/22 A3018`), `ssaWeatherGiSlot` in scenario JSON populates designated GI line, periodic background polling with teardown, and full test acceptance.
+
+**Merged (squash-merged, captain only, onto `feature/metar-weather-altimeter`):** T02-78 (`e19876b`), T02-79 (`56a22d7`), T02-80 (`d81ab7a`). Planning `20e6b38`.
+
+**Captain judgement calls:**
+- Merge lock was `feature/metar-weather-altimeter`.
+- Airport list is strictly scenario configuration (`scenario.ssaWeatherAirports`); no runtime scope keyboard commands.
+- Offline and synthetic KDEM scenarios fall back smoothly to default stub (`30.17`) without network errors.
+- Vitest suite uses `testdata/wx/metar-katl.json` fixture without external HTTP calls in CI.
+
+**Manual leftover:** Chrome live METAR inspection with active internet connection. skip-with-reason: no visual operator in automated CI. Automated tests prove fetch, decode, caching, SSA rendering, and GI line formatting.
+
+**Product law held:** AviationWeather JSON API only; altimeter always 2 decimals; primary = `ssaWeatherAirports[0]`; satellite in 3-airport chunks; ALTSTG/GI FILTER compliance; scenario-driven airport list; offline fallback; zero regressions; no paid vendors.
+
+**Remaining work (next paste of `SWARM.md` with config changed):** merge `feature/metar-weather-altimeter` to `master` when the human asks; Chrome visual inspection; phase 5 scoring/replay.
+
 ## TWENTY-SECOND SWARM COMPLETE — PREF / PTL / VIA / radar sites (T02-73–77 / T04-43–45)
 
 T02-73–77 and T04-43–45 are squash-merged on `feature/pref-ptl-via-radar` (not `master`). Captain `npm test` / `npm run ci`: **169 test files passed, 1993 tests passed, 3 skipped, 0 failures**. Twenty-first (WX mosaic T02-68–72) is on `master`. No phase 5. Did not merge `master`. Did not push.

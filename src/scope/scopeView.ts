@@ -67,9 +67,11 @@ import {
   type PtlMinutes,
 } from "./ptl";
 import {
+  SSA_ALTIMETER_STUB,
   defaultGiVisibility,
   defaultSsaVisibility,
   padGiTextLines,
+  type SsaAirportAltimeter,
   type SsaFilterField,
   type SsaVisibility,
 } from "./ssa";
@@ -234,6 +236,12 @@ export interface ScopeView {
    * Satellite airports are not inferred from a facility-id switch.
    */
   towerAirports?: string[];
+  /** Primary airport altimeter setting (e.g. "30.18"). Default "30.17" or scenario value. */
+  primaryAltimeter?: string;
+  /** Terminal satellite airport altimeters rendered in SSA matrix. */
+  airportAltimeters?: SsaAirportAltimeter[];
+  /** Configured SSA weather airports from scenario ([0]=primary, [1..]=satellites). */
+  ssaWeatherAirports?: string[];
   /**
    * CRDA STATUS RPC pairings. When omitted, `buildCrdaStatusList` uses
    * `defaultCrdaConfigsForAirport`.
@@ -295,6 +303,9 @@ export function createScopeView(
     radarSites?: readonly RadarSite[];
     surveillanceMode?: SurveillanceMode;
     arp?: LatLon;
+    ssaWeatherAirports?: readonly string[];
+    primaryAltimeter?: string;
+    airportAltimeters?: readonly SsaAirportAltimeter[];
   },
 ): ScopeView {
   const digitalMap = options?.digitalMap ?? DEFAULT_DIGITAL_MAP;
@@ -360,6 +371,9 @@ export function createScopeView(
     ssaFilter: defaultSsaVisibility(),
     giTextLines,
     giFilterVisible: defaultGiVisibility(giTextLines),
+    primaryAltimeter: options?.primaryAltimeter ?? SSA_ALTIMETER_STUB,
+    airportAltimeters: options?.airportAltimeters ? [...options.airportAltimeters] : [],
+    ssaWeatherAirports: options?.ssaWeatherAirports ? [...options.ssaWeatherAirports] : undefined,
     systemLists: { ...DEFAULT_SYSTEM_LIST_PLACEMENTS },
     listDrag: idleListDragState(),
     dcbPref: emptyDcbPrefRuntime(),
