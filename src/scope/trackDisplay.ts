@@ -36,56 +36,32 @@ export const BEACONATOR_SLEW_MS = 5000;
 
 export interface TrackDisplay {
   history: HistoryBuf;
-  /** Sim time when the yellow IDENT stroke ends; 0 = inactive. */
   identUntilSimMs: number;
   /** Last seen `Aircraft.identUntilSimMs` so a new IDENT retriggers the pulse. */
   lastAircraftIdentDeadlineMs: number;
-  /** Datablock mode: full (FDB), partial (PDB, line 2 only), or limited (LDB). */
   datablockMode: DatablockMode;
-  /** Numpad compass L1–L9. Default L8 (north). */
   leaderDir: LeaderDir;
-  /** Spawn unowned (green/PDB). F3 → owned (white/FDB). F4 → unowned. */
   ownership: TrackOwnership;
-  /**
-   * Trainer scratchpad on the full/partial datablock (0–4 A–Z0–9). Default empty.
-   * Display state only — never Aircraft.intent / kinematics.
-   */
+  /** Display-only 0–4 A–Z0–9. Never Aircraft.intent. */
   scratchpad: string;
-  /** Primary scratchpad #1 (approach shorthand, assigned altitude, or manual). */
   sp1?: string;
-  /** Secondary scratchpad #2 (assigned speed shorthand or manual). */
   sp2?: string;
-  /** Manual override for scratchpad 1. */
   manualSp1?: string;
-  /** Manual override for scratchpad 2. */
   manualSp2?: string;
-  /** Optional display squawk override. */
   squawk?: string;
-  /** Primary-only target flag (unfilled diamond, no datablock). */
   isPrimary?: boolean;
   primaryOnly?: boolean;
   surveillance?: "primary" | "secondary";
-  /** Owning controller sector ID (e.g. "D", "G"). */
   sectorId?: string;
-  /** Explicit tracked flag. */
   tracked?: boolean;
-  /** Sim time until which LDB ground speed query is active. */
   queriedUntilSimMs?: number;
-  /** Forced FDB toggle flag on unowned/PDB track. */
   forcedFdb?: boolean;
-  /** Explicitly unassociated target flag. */
   unassociated?: boolean;
-  /** STARS datablock Cyan highlight (#00FFFF). Toggled via middle-click or selection. */
   highlighted?: boolean;
-  /** Sim time until which accepted outbound handoff flashes white (~5s). */
   outboundFlashUntilSimMs?: number;
-  /** Sim time until which `*B` slew shows Mode 3/A in place of callsign. */
   beaconatorUntilSimMs?: number;
-  /** Outbound accepted click step (0: flashing, 1: solid white, 2: green FDB, 3: PDB). */
   outboundClickStep?: number;
-  /** Pointout accepted visual state flag. */
   pointoutAccepted?: boolean;
-  /** Pointout rejected visual state flag. */
   pointoutRejected?: boolean;
   /**
    * ATPA monitor cone enable. Default on. T02-47 / T02-49 (`*BE`/`*BI`)
@@ -148,7 +124,6 @@ export function createTrackDisplay(ownership: TrackOwnership = "unowned"): Track
   };
 }
 
-/** Set the trainer scratchpad (SP1) for a track id. Sanitizes to 0–4 A–Z0–9. */
 export function setScratchpad(tracks: Map<string, TrackDisplay>, id: string, raw: string): void {
   const td = ensureTrackDisplay(tracks, id);
   const sanitized = sanitizeScratchpad(raw);
@@ -157,7 +132,6 @@ export function setScratchpad(tracks: Map<string, TrackDisplay>, id: string, raw
   td.manualSp1 = sanitized;
 }
 
-/** Set scratchpad 1 specifically. */
 export function setScratchpad1(tracks: Map<string, TrackDisplay>, id: string, raw: string): void {
   const td = ensureTrackDisplay(tracks, id);
   const sanitized = sanitizeScratchpad(raw);
@@ -166,7 +140,6 @@ export function setScratchpad1(tracks: Map<string, TrackDisplay>, id: string, ra
   td.scratchpad = sanitized;
 }
 
-/** Set scratchpad 2 specifically. */
 export function setScratchpad2(tracks: Map<string, TrackDisplay>, id: string, raw: string): void {
   const td = ensureTrackDisplay(tracks, id);
   const sanitized = sanitizeScratchpad(raw);
