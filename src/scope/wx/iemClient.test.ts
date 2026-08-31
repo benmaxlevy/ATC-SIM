@@ -3,11 +3,17 @@ import { expect, test } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   DEFAULT_WX_VIP_BREAKS_DBZ,
-  IEM_N0Q_WMS_PATH,
+  IEM_N0Q_TILE_LAYER,
+  IEM_N0Q_TILE_PATH,
+  IEM_N0Q_TILE_SIZE_PX,
+  IEM_N0Q_TILE_Z,
   WX_IEM_PROXY_PREFIX,
   bboxFromArp,
   binVip,
-  buildIemN0qGetMapUrl,
+  latToTileY,
+  lonToTileX,
+  planIemN0qTile,
+  tileBbox,
 } from "./index";
 
 const wxSources = import.meta.glob("./*.{ts,tsx}", {
@@ -62,43 +68,29 @@ test("bboxFromArp at CONUS-like ARP 33.6,-84.4 is ARP-driven not an airport id",
   expect(bbox.eastLon).toBeCloseTo(-84.4 + lonPad, 9);
 });
 
-test("GetMap URL uses /wx-iem, EPSG:4326, transparent PNG, and a 256–512 size", () => {
-  const bbox = bboxFromArp({ latDeg: 33.6, lonDeg: -84.4 });
-  const url = buildIemN0qGetMapUrl(bbox, { widthPx: 512, heightPx: 256 });
-  expect(url.startsWith(`${IEM_N0Q_WMS_PATH}?`)).toBe(true);
-  expect(url.startsWith(`${WX_IEM_PROXY_PREFIX}/`)).toBe(true);
-  const query = new URL(url, "http://scope.local").searchParams;
-  expect(query.get("SERVICE")).toBe("WMS");
-  expect(query.get("VERSION")).toBe("1.1.1");
-  expect(query.get("REQUEST")).toBe("GetMap");
-  expect(query.get("LAYERS")).toBe("nexrad-n0q");
-  expect(query.get("STYLES")).toBe("default");
-  expect(query.get("FILTER")).toBeNull();
-  expect(query.get("SRS")).toBe("EPSG:4326");
-  expect(query.get("FORMAT")).toBe("image/png");
-  expect(query.get("TRANSPARENT")).toBe("TRUE");
-  expect(query.get("WIDTH")).toBe("512");
-  expect(query.get("HEIGHT")).toBe("256");
-  expect(query.get("BBOX")).toBe(
-    `${bbox.westLon},${bbox.southLat},${bbox.eastLon},${bbox.northLat}`,
-  );
-  expect(url).not.toMatch(/speech-api|rainviewer|openstreetmap|grib/i);
+test("N0Q tile URL is /wx-iem XYZ with no WMS query", () => {
+  const tile = planIemN0qTile({ latDeg: 0, lonDeg: 0 });
+  expect(tile.z).toBe(IEM_N0Q_TILE_Z);
+  expect(tile.x).toBe(lonToTileX(0));
+  expect(tile.y).toBe(latToTileY(0));
+  expect(tile.x).toBe(2 ** (IEM_N0Q_TILE_Z - 1));
+  expect(tile.y).toBe(2 ** (IEM_N0Q_TILE_Z - 1));
+  expect(tile.url).toBe(`${IEM_N0Q_TILE_PATH}/${tile.z}/${tile.x}/${tile.y}.png`);
+  expect(
+    tile.url.startsWith(`${WX_IEM_PROXY_PREFIX}/cache/tile.py/1.0.0/${IEM_N0Q_TILE_LAYER}/`),
+  ).toBe(true);
+  expect(tile.url).toMatch(/\.png$/);
+  expect(tile.url).not.toMatch(/[?&]/);
+  expect(tile.url).not.toMatch(/wms|GetMap|FILTER|STYLES|n0q\.cgi|speech-api|rainviewer|grib/i);
+  expect(IEM_N0Q_TILE_SIZE_PX).toBe(256);
 });
 
-test("GetMap size clamps to 256–512 px", () => {
-  const bbox = bboxFromArp({ latDeg: 0, lonDeg: 0 });
-  const small = new URL(
-    buildIemN0qGetMapUrl(bbox, { widthPx: 64, heightPx: 64 }),
-    "http://scope.local",
-  );
-  const large = new URL(
-    buildIemN0qGetMapUrl(bbox, { widthPx: 2048, heightPx: 1024 }),
-    "http://scope.local",
-  );
-  expect(small.searchParams.get("WIDTH")).toBe("256");
-  expect(small.searchParams.get("HEIGHT")).toBe("256");
-  expect(large.searchParams.get("WIDTH")).toBe("512");
-  expect(large.searchParams.get("HEIGHT")).toBe("512");
+test("tileBbox at z=1 x=0 y=0 is the NW hemisphere tile", () => {
+  const bbox = tileBbox(0, 0, 1);
+  expect(bbox.westLon).toBe(-180);
+  expect(bbox.eastLon).toBe(0);
+  expect(bbox.northLat).toBeCloseTo(85.05112878, 5);
+  expect(bbox.southLat).toBeCloseTo(0, 5);
 });
 
 test("src/scope/wx has no airport-id or icao branch", () => {

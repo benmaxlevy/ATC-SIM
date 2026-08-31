@@ -227,10 +227,11 @@ injected fetch.
 ### WX mosaic leftovers (T02-72)
 
 Shipped display-only path: IEM N0Q VIP 1–6 fills, MAIN WX1–6, `*WX`, BRITE
-WX/WXC contours. `ensureWxMosaic` on the session rAF fetches one GetMap when
-any latch is on and the mosaic is empty or older than 5 min. Extra WX clicks
-do not refetch. Default levels remain off. Live GetMap needs Vite `/wx-iem`
-(`npm run dev`).
+WX/WXC contours. `ensureWxMosaic` on the session rAF fetches one IEM N0Q
+XYZ tile when any latch is on and the mosaic is empty or older than 5 min.
+Extra WX clicks do not refetch. Default levels remain off. Live tiles need
+Vite `/wx-iem` (`npm run dev`). Not WMS GetMap — IEM MapServer FILTER
+rejects the `nexrad-n0q` layer group.
 
 Still later:
 

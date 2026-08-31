@@ -4,7 +4,7 @@
  * IEM paints CONUS N0Q to match the NWS NEXRAD display
  * (https://mesonet.agron.iastate.edu/docs/nexrad_composites/): values below
  * 0 dBZ and NODATA are black; the visual ramp follows the NWS 5 dBZ stops.
- * WMS GetMap is already color-mapped PNG, not raw 0.5 dBZ indices.
+ * IEM N0Q tiles are already color-mapped PNG, not raw 0.5 dBZ indices.
  *
  * Official 5 dBZ stops use the common NWS Level-III hues (cyan → green →
  * yellow → orange → red → magenta → white). Extra stops at 18 / 36 / 41 /

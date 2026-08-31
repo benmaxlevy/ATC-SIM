@@ -1,8 +1,8 @@
 import { nmToLatLon, type LatLon } from "@core";
-import { bboxContains, bboxFromArp } from "./bbox";
-import { buildIemN0qGetMapUrl } from "./iemUrl";
+import { bboxContains } from "./bbox";
+import { planIemN0qTile } from "./iemUrl";
 import { rgbToDbz } from "./n0qRamp";
-import { decodePngToRgba } from "./png";
+import { decodePngToRgba, isPng } from "./png";
 import {
   DEFAULT_WX_PAD_NM,
   DEFAULT_WX_VIP_BREAKS_DBZ,
@@ -139,33 +139,25 @@ export interface FetchWxMosaicOpts {
 }
 
 /**
- * Fetch one IEM N0Q GetMap about `arp`. `fetchImpl` is required in tests.
+ * Fetch one IEM N0Q tile that contains `arp`. `fetchImpl` is required in tests.
  * Default `fetch` is for runtime later — CI must inject a mock.
- * HTTP or decode failure returns an empty mosaic with the attempted bbox;
- * never throws to boot.
+ * HTTP or decode failure returns an empty mosaic with the tile bbox;
+ * never throws to boot. Not WMS — IEM GetMap FILTER rejects the n0q group.
  */
 export async function fetchWxMosaic(opts: FetchWxMosaicOpts): Promise<WxMosaic> {
-  const padNm = opts.padNm ?? DEFAULT_WX_PAD_NM;
-  const bbox = bboxFromArp(opts.arp, padNm);
-  const failed = (): WxMosaic => emptyWxMosaic({ ...bbox, fetchedAtMs: opts.nowMs });
+  const tile = planIemN0qTile(opts.arp);
+  const failed = (): WxMosaic => emptyWxMosaic({ ...tile.bbox, fetchedAtMs: opts.nowMs });
   const fetchImpl = opts.fetchImpl ?? globalThis.fetch.bind(globalThis);
   try {
-    const url = buildIemN0qGetMapUrl(bbox, opts.size);
-    const res = await fetchImpl(url);
+    const res = await fetchImpl(tile.url);
     if (!res.ok) {
       return failed();
     }
     const png = new Uint8Array(await res.arrayBuffer());
-    if (
-      png.length < 8 ||
-      png[0] !== 0x89 ||
-      png[1] !== 0x50 ||
-      png[2] !== 0x4e ||
-      png[3] !== 0x47
-    ) {
+    if (!isPng(png)) {
       return failed();
     }
-    return await decodePngToVipMasks(png, bbox, opts.nowMs, opts.breaks);
+    return await decodePngToVipMasks(png, tile.bbox, opts.nowMs, opts.breaks);
   } catch {
     return failed();
   }

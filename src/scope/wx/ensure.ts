@@ -27,7 +27,7 @@ export interface EnsureWxMosaicOpts {
 }
 
 /**
- * Start at most one GetMap per view. Assigns `view.wxMosaic` when done.
+ * Start at most one IEM tile fetch per view. Assigns `view.wxMosaic` when done.
  * Tests inject `fetchImpl`. Runtime uses `globalThis.fetch` via `/wx-iem`.
  */
 export function ensureWxMosaic(

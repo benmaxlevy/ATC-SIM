@@ -2,7 +2,7 @@ import { nmToLatLon, type LatLon } from "@core";
 import { DEFAULT_WX_PAD_NM, type WxBbox } from "./types";
 
 /**
- * Geographic pad about `arp` for one IEM GetMap. Default ±80 NM.
+ * Geographic pad about `arp` for mosaic coverage checks. Default ±80 NM.
  * At lat 0, lon pad is 80/60 deg (flat-earth `nmToLatLon`).
  */
 export function bboxFromArp(arp: LatLon, padNm: number = DEFAULT_WX_PAD_NM): WxBbox {

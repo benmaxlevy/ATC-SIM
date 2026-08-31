@@ -6,6 +6,7 @@ import {
   DEFAULT_WX_PAD_NM,
   WX_REFRESH_MS,
   bboxFromArp,
+  planIemN0qTile,
   decodePngToVipMasks,
   emptyWxMosaic,
   encodeRgbaPng,
@@ -125,8 +126,8 @@ test("fetchWxMosaic uses injected fetch and returns empty on HTTP or decode fail
     nowMs: 50_000,
     fetchImpl: async (input) => {
       const url = String(input);
-      expect(url.startsWith("/wx-iem/")).toBe(true);
-      expect(url).not.toMatch(/mesonet|speech-api/i);
+      expect(url.startsWith("/wx-iem/cache/tile.py/1.0.0/nexrad-n0q-900913/")).toBe(true);
+      expect(url).not.toMatch(/wms|GetMap|FILTER|n0q\.cgi|mesonet|speech-api/i);
       return new Response(png, { status: 200 });
     },
   });
@@ -141,7 +142,7 @@ test("fetchWxMosaic uses injected fetch and returns empty on HTTP or decode fail
   });
   expect(httpFail.widthPx).toBe(0);
   expect(httpFail.fetchedAtMs).toBe(60_000);
-  expect(httpFail.westLon).toBeCloseTo(bboxFromArp(arp).westLon);
+  expect(httpFail.westLon).toBeCloseTo(planIemN0qTile(arp).bbox.westLon);
 
   const decodeFail = await fetchWxMosaic({
     arp,

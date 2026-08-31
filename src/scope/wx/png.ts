@@ -253,6 +253,18 @@ function expandToRgba(
   return rgba;
 }
 
+export function isPng(bytes: Uint8Array): boolean {
+  if (bytes.length < PNG_SIG.length) {
+    return false;
+  }
+  for (let i = 0; i < PNG_SIG.length; i++) {
+    if (bytes[i] !== PNG_SIG[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export interface DecodedPng {
   width: number;
   height: number;
@@ -261,7 +273,7 @@ export interface DecodedPng {
 
 /**
  * Decode an 8-bit non-interlaced PNG to RGBA. Used at fetch time, not in the
- * animation loop. IEM GetMap is PNG; PPI paint is T02-69.
+ * animation loop. IEM tiles are PNG; PPI paint is T02-69.
  */
 export async function decodePngToRgba(bytes: Uint8Array): Promise<DecodedPng> {
   for (let i = 0; i < PNG_SIG.length; i++) {

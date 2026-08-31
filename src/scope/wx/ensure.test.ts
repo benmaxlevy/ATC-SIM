@@ -46,7 +46,7 @@ test("ensureWxMosaic fetches once when a level is on and mosaic is empty", async
   expect(calls).toHaveLength(1);
 });
 
-test("ensureWxMosaic shares one in-flight GetMap and refetches after 5 min", async () => {
+test("ensureWxMosaic shares one in-flight tile fetch and refetches after 5 min", async () => {
   const view = createScopeView(0, 0, { arp: { latDeg: 33.6, lonDeg: -84.4 } });
   view.wxLevels = [false, false, false, false, false, true];
   const calls: string[] = [];

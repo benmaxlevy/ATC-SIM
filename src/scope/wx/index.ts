@@ -10,14 +10,21 @@ export {
 } from "./types";
 export { bboxCovers, bboxContains, bboxFromArp } from "./bbox";
 export {
-  IEM_N0Q_WMS_LAYER,
-  IEM_N0Q_WMS_PATH,
+  IEM_N0Q_TILE_LAYER,
+  IEM_N0Q_TILE_PATH,
+  IEM_N0Q_TILE_SIZE_PX,
+  IEM_N0Q_TILE_Z,
   WX_IEM_PROXY_PREFIX,
-  buildIemN0qGetMapUrl,
+  buildIemN0qTileUrl,
+  latToTileY,
+  lonToTileX,
+  planIemN0qTile,
+  tileBbox,
 } from "./iemUrl";
+export type { WxTile } from "./iemUrl";
 export { binVip } from "./vip";
 export { N0Q_RGB_DBZ_RAMP, rgbToDbz } from "./n0qRamp";
-export { decodePngToRgba, encodeRgbaPng } from "./png";
+export { decodePngToRgba, encodeRgbaPng, isPng } from "./png";
 export {
   decodePngToVipMasks,
   decodeRgbaToVipMasks,
