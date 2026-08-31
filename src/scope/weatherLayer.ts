@@ -2,26 +2,27 @@
  * Composite enabled VIP masks into one cached canvas and draw it under tracks.
  * Decode / fetch stay in `wx/`. Display only — does not steer aircraft.
  *
- * Trainer STARS-like fills (dark green → yellow → orange → red → magenta →
- * white), not the IEM NWS rainbow. `view.brite.wx` tints fills; `view.brite.wxc`
- * tints VIP band-edge contours. Rebuild when mosaic, levels, wx, or wxc change.
+ * STARS pair fills (green / olive / maroon). VIP 2/4/6 stamp one shared hatch
+ * in screen space so marks stay aligned. Not the IEM NWS rainbow.
+ * `view.brite.wx` tints fills and hatch; `view.brite.wxc` tints VIP band-edge
+ * contours. Rebuild when mosaic, levels, brite, camera, or size change.
  */
 
 import { latLonToNm, nmToLatLon, type LatLon } from "@core";
-import { nmToScreen, type ScopeViewSize } from "./camera";
+import { nmToScreen, type ScopeCamera, type ScopeViewSize } from "./camera";
 import { applyBrite } from "./palette";
 import type { ScopeView } from "./scopeView";
 import type { WxLevels, WxMosaic } from "./wx";
+import { WX_VIP_FILL_HEX, WX_VIP_HATCH_HEX, wxHatchBit, wxLevelHasHatch } from "./wxStarsFill";
 
-/** VIP 1–6 trainer fills. Distinct hues; not N0Q cyan/lime ramp stops. */
-export const WX_VIP_FILL_HEX = [
-  "#146414",
-  "#C8C800",
-  "#E67800",
-  "#C80000",
-  "#C800C8",
-  "#FFFFFF",
-] as const;
+export {
+  WX_HATCH_H,
+  WX_HATCH_W,
+  WX_VIP_FILL_HEX,
+  WX_VIP_HATCH_HEX,
+  wxHatchBit,
+  wxLevelHasHatch,
+} from "./wxStarsFill";
 
 export function wxVipFillHex(level: 1 | 2 | 3 | 4 | 5 | 6, briteWx: number): string {
   return applyBrite(WX_VIP_FILL_HEX[level - 1]!, briteWx);
@@ -94,6 +95,11 @@ let cachedBriteWxc = -1;
 let cachedCanvas: WxCompositeCanvas | null = null;
 let cachedWidth = 0;
 let cachedHeight = 0;
+let cachedRangeNm = -1;
+let cachedCenterEastNm = Number.NaN;
+let cachedCenterNorthNm = Number.NaN;
+let cachedArpLat = Number.NaN;
+let cachedArpLon = Number.NaN;
 
 function acquireCanvas(width: number, height: number): WxCompositeCanvas {
   if (cachedCanvas && cachedWidth === width && cachedHeight === height) {
@@ -165,16 +171,37 @@ function isVipBandEdge(
   );
 }
 
+function highestVipAt(mosaic: WxMosaic, levels: WxLevels, index: number): number {
+  let vip = 0;
+  for (let level = 0; level < 6; level++) {
+    if (levels[level] && maskBit(mosaic.vipMasks[level]!, index)) {
+      vip = level + 1;
+    }
+  }
+  return vip;
+}
+
+function cameraMatches(cam: ScopeCamera, arp: LatLon): boolean {
+  return (
+    cachedRangeNm === cam.rangeNm &&
+    cachedCenterEastNm === cam.centerEastNm &&
+    cachedCenterNorthNm === cam.centerNorthNm &&
+    cachedArpLat === arp.latDeg &&
+    cachedArpLon === arp.lonDeg
+  );
+}
+
 function rebuildComposite(
   mosaic: WxMosaic,
   levels: WxLevels,
   briteWx: number,
   briteWxc: number,
+  view: ScopeView,
+  size: ScopeViewSize,
 ): WxCompositeCanvas {
-  const width = mosaic.widthPx;
-  const height = mosaic.heightPx;
-  const pixelCount = width * height;
-  const pixels = new Uint8ClampedArray(pixelCount * 4);
+  const width = Math.max(1, Math.round(size.widthPx));
+  const height = Math.max(1, Math.round(size.heightPx));
+  const pixels = new Uint8ClampedArray(width * height * 4);
   const fills: Array<[number, number, number] | null> = [
     levels[0] ? parseHexRgb(wxVipFillHex(1, briteWx)) : null,
     levels[1] ? parseHexRgb(wxVipFillHex(2, briteWx)) : null,
@@ -183,6 +210,7 @@ function rebuildComposite(
     levels[4] ? parseHexRgb(wxVipFillHex(5, briteWx)) : null,
     levels[5] ? parseHexRgb(wxVipFillHex(6, briteWx)) : null,
   ];
+  const hatchRgb = parseHexRgb(applyBrite(WX_VIP_HATCH_HEX, briteWx));
   const contours: Array<[number, number, number] | null> = [
     levels[0] ? parseHexRgb(wxVipContourHex(1, briteWxc)) : null,
     levels[1] ? parseHexRgb(wxVipContourHex(2, briteWxc)) : null,
@@ -191,42 +219,58 @@ function rebuildComposite(
     levels[4] ? parseHexRgb(wxVipContourHex(5, briteWxc)) : null,
     levels[5] ? parseHexRgb(wxVipContourHex(6, briteWxc)) : null,
   ];
-  for (let i = 0; i < pixelCount; i++) {
-    for (let level = 0; level < 6; level++) {
-      const rgb = fills[level];
-      if (!rgb) {
+  const arp = resolveArp(view);
+  const nw = latLonToNm({ latDeg: mosaic.northLat, lonDeg: mosaic.westLon }, arp);
+  const se = latLonToNm({ latDeg: mosaic.southLat, lonDeg: mosaic.eastLon }, arp);
+  const nwPx = nmToScreen(nw.xNm, nw.yNm, view.camera, size);
+  const sePx = nmToScreen(se.xNm, se.yNm, view.camera, size);
+  const dw = sePx.x - nwPx.x;
+  const dh = sePx.y - nwPx.y;
+  if (dw === 0 || dh === 0) {
+    const canvas = acquireCanvas(width, height);
+    writeCompositePixels(canvas, pixels);
+    return canvas;
+  }
+  const x0 = Math.max(0, Math.floor(Math.min(nwPx.x, sePx.x)));
+  const x1 = Math.min(width, Math.ceil(Math.max(nwPx.x, sePx.x)));
+  const y0 = Math.max(0, Math.floor(Math.min(nwPx.y, sePx.y)));
+  const y1 = Math.min(height, Math.ceil(Math.max(nwPx.y, sePx.y)));
+  const mw = mosaic.widthPx;
+  const mh = mosaic.heightPx;
+  for (let y = y0; y < y1; y++) {
+    const v = (y + 0.5 - nwPx.y) / dh;
+    if (v < 0 || v >= 1) {
+      continue;
+    }
+    const row = Math.min(mh - 1, Math.max(0, Math.floor(v * mh)));
+    for (let x = x0; x < x1; x++) {
+      const u = (x + 0.5 - nwPx.x) / dw;
+      if (u < 0 || u >= 1) {
         continue;
       }
-      if (maskBit(mosaic.vipMasks[level]!, i)) {
-        const o = i * 4;
-        pixels[o] = rgb[0];
-        pixels[o + 1] = rgb[1];
-        pixels[o + 2] = rgb[2];
-        pixels[o + 3] = 255;
+      const col = Math.min(mw - 1, Math.max(0, Math.floor(u * mw)));
+      const index = row * mw + col;
+      const vip = highestVipAt(mosaic, levels, index);
+      if (vip === 0) {
+        continue;
       }
-    }
-  }
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const i = y * width + x;
-      for (let level = 0; level < 6; level++) {
-        const rgb = contours[level];
-        if (!rgb) {
-          continue;
-        }
-        const mask = mosaic.vipMasks[level]!;
-        if (!maskBit(mask, i)) {
-          continue;
-        }
-        if (!isVipBandEdge(mask, width, height, x, y)) {
-          continue;
-        }
-        const o = i * 4;
-        pixels[o] = rgb[0];
-        pixels[o + 1] = rgb[1];
-        pixels[o + 2] = rgb[2];
-        pixels[o + 3] = 255;
+      const fill = fills[vip - 1];
+      if (!fill) {
+        continue;
       }
+      let rgb = fill;
+      if (wxLevelHasHatch(vip as 1 | 2 | 3 | 4 | 5 | 6) && wxHatchBit(x, y)) {
+        rgb = hatchRgb;
+      }
+      const contour = contours[vip - 1];
+      if (contour && isVipBandEdge(mosaic.vipMasks[vip - 1]!, mw, mh, col, row)) {
+        rgb = contour;
+      }
+      const o = (y * width + x) * 4;
+      pixels[o] = rgb[0];
+      pixels[o + 1] = rgb[1];
+      pixels[o + 2] = rgb[2];
+      pixels[o + 3] = 255;
     }
   }
   const canvas = acquireCanvas(width, height);
@@ -239,23 +283,34 @@ function reuseOrRebuildComposite(
   levels: WxLevels,
   briteWx: number,
   briteWxc: number,
+  view: ScopeView,
+  size: ScopeViewSize,
 ): WxCompositeCanvas {
+  const arp = resolveArp(view);
   if (
     cachedCanvas &&
     cachedMosaic === mosaic &&
     cachedLevels !== null &&
     levelsMatch(cachedLevels, levels) &&
     cachedBriteWx === briteWx &&
-    cachedBriteWxc === briteWxc
+    cachedBriteWxc === briteWxc &&
+    cachedWidth === Math.round(size.widthPx) &&
+    cachedHeight === Math.round(size.heightPx) &&
+    cameraMatches(view.camera, arp)
   ) {
     return cachedCanvas;
   }
-  const canvas = rebuildComposite(mosaic, levels, briteWx, briteWxc);
+  const canvas = rebuildComposite(mosaic, levels, briteWx, briteWxc, view, size);
   cachedMosaic = mosaic;
   cachedLevels = levels;
   cachedBriteWx = briteWx;
   cachedBriteWxc = briteWxc;
   cachedCanvas = canvas;
+  cachedRangeNm = view.camera.rangeNm;
+  cachedCenterEastNm = view.camera.centerEastNm;
+  cachedCenterNorthNm = view.camera.centerNorthNm;
+  cachedArpLat = arp.latDeg;
+  cachedArpLon = arp.lonDeg;
   return canvas;
 }
 
@@ -271,19 +326,13 @@ export function drawWeatherLayer(
   if (!mosaic || mosaic.widthPx <= 0 || mosaic.heightPx <= 0) {
     return;
   }
-  const canvas = reuseOrRebuildComposite(mosaic, view.wxLevels, view.brite.wx, view.brite.wxc);
-  const arp = resolveArp(view);
-  const nw = latLonToNm({ latDeg: mosaic.northLat, lonDeg: mosaic.westLon }, arp);
-  const se = latLonToNm({ latDeg: mosaic.southLat, lonDeg: mosaic.eastLon }, arp);
-  const nwPx = nmToScreen(nw.xNm, nw.yNm, view.camera, size);
-  const sePx = nmToScreen(se.xNm, se.yNm, view.camera, size);
-  const dw = sePx.x - nwPx.x;
-  const dh = sePx.y - nwPx.y;
-  if (dw === 0 || dh === 0) {
-    return;
-  }
-  const prevSmooth = ctx.imageSmoothingEnabled;
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(canvas as CanvasImageSource, nwPx.x, nwPx.y, dw, dh);
-  ctx.imageSmoothingEnabled = prevSmooth;
+  const canvas = reuseOrRebuildComposite(
+    mosaic,
+    view.wxLevels,
+    view.brite.wx,
+    view.brite.wxc,
+    view,
+    size,
+  );
+  ctx.drawImage(canvas as CanvasImageSource, 0, 0, size.widthPx, size.heightPx);
 }

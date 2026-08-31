@@ -2,9 +2,14 @@ import { expect, test } from "vitest";
 import { applyBrite } from "./palette";
 import { createScopeView } from "./scopeView";
 import {
+  WX_HATCH_H,
+  WX_HATCH_W,
   WX_VIP_CONTOUR_HEX,
   WX_VIP_FILL_HEX,
+  WX_VIP_HATCH_HEX,
   drawWeatherLayer,
+  wxHatchBit,
+  wxLevelHasHatch,
   wxVipContourHex,
   wxVipFillHex,
 } from "./weatherLayer";
@@ -35,21 +40,31 @@ function vip1Mosaic() {
   return decodeRgbaToVipMasks(rgba, 2, 2, bboxFromArp({ latDeg: 0, lonDeg: 0 }, 4), 1_000);
 }
 
-test("trainer fills are six distinct STARS-like colors, not IEM rainbow", () => {
+test("trainer fills are STARS green/olive/maroon pairs, not IEM rainbow", () => {
   expect(WX_VIP_FILL_HEX).toEqual([
-    "#146414",
-    "#C8C800",
-    "#E67800",
-    "#C80000",
-    "#C800C8",
-    "#FFFFFF",
+    "#0d1b0e",
+    "#0d1b0e",
+    "#362507",
+    "#362507",
+    "#361821",
+    "#361821",
   ]);
-  expect(new Set(WX_VIP_FILL_HEX).size).toBe(6);
+  expect(new Set(WX_VIP_FILL_HEX).size).toBe(3);
+  expect(WX_VIP_HATCH_HEX).toBe("#3f3f3f");
   for (const hex of WX_VIP_FILL_HEX) {
     expect(hex).not.toMatch(/#00EC|#00FF00|#00E8|#00F0/i);
   }
   expect(wxVipFillHex(1, 100)).toBe(applyBrite(WX_VIP_FILL_HEX[0], 100));
   expect(wxVipFillHex(4, 50)).toBe(applyBrite(WX_VIP_FILL_HEX[3], 50));
+});
+
+test("VIP 2/4/6 share one hatch cell origin", () => {
+  expect(wxLevelHasHatch(1)).toBe(false);
+  expect(wxLevelHasHatch(2)).toBe(true);
+  expect(wxLevelHasHatch(4)).toBe(true);
+  expect(wxLevelHasHatch(6)).toBe(true);
+  expect(wxHatchBit(5, 0)).toBe(wxHatchBit(5 + WX_HATCH_W, WX_HATCH_H));
+  expect(wxHatchBit(-1, -1)).toBe(wxHatchBit(WX_HATCH_W - 1, WX_HATCH_H - 1));
 });
 
 test("WXC contours are six distinct hues tinted by brite.wxc, not IEM rainbow", () => {
