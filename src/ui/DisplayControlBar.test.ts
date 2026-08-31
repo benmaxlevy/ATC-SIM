@@ -1020,3 +1020,15 @@ test("T02-76 — SITE comments cite R07, R05, and the CRC-to-trainer lift", () =
   expect(src).toMatch(/adapted/);
   expect(src).not.toMatch(/from\s+["']@parse["']/);
 });
+
+test("DCB buttons invoke onClick immediately without post-click re-flash after pointer release", () => {
+  const src = barSrc();
+  expect(src).toMatch(/pointerPressed/);
+  expect(src).toMatch(/pointerDown/);
+  expect(src).toMatch(/data-dcb-pointer-down/);
+  expect(src).toMatch(/data-dcb-pointer-down.*setPressed|setPressed.*data-dcb-pointer-down/s);
+  expect(src).not.toMatch(/clickTimer/);
+  expect(src).toMatch(/if \(!pointerPressed\.current\) \{\s*armActionFlash\(\);\s*releaseActionFlash\(\);\s*\}/);
+});
+
+

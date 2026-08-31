@@ -200,7 +200,10 @@ function setPressed(el: Element | null, pressed: boolean): void {
   if (!(el instanceof HTMLElement)) {
     return;
   }
-  if (el.getAttribute("data-dcb-flashing") === "true") {
+  if (
+    el.getAttribute("data-dcb-flashing") === "true" ||
+    el.getAttribute("data-dcb-pointer-down") === "true"
+  ) {
     return;
   }
   el.setAttribute("aria-pressed", pressed ? "true" : "false");
@@ -604,21 +607,19 @@ function DcbCell({
 }: DcbCellProps) {
   const inert = disabled || kind === "disabled";
   const [flashing, setFlashing] = useState(false);
+  const [pointerDown, setPointerDown] = useState(false);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pointerPressed = useRef(false);
   const isDragging = useRef(false);
   const dragStartY = useRef<number | null>(null);
   const accumulatedDy = useRef(0);
   const momentary = kind !== "toggle" && kind !== "disabled";
-  const inset = dcbActionCapPressed(pressed, momentary && flashing);
+  const inset = dcbActionCapPressed(pressed, momentary && (pointerDown || flashing));
 
   useEffect(() => {
     return () => {
       if (flashTimer.current != null) {
         clearTimeout(flashTimer.current);
-      }
-      if (clickTimer.current != null) {
-        clearTimeout(clickTimer.current);
       }
     };
   }, []);
@@ -654,15 +655,12 @@ function DcbCell({
       onClick();
       return;
     }
-    armActionFlash();
-    releaseActionFlash();
-    if (clickTimer.current != null) {
-      clearTimeout(clickTimer.current);
+    if (!pointerPressed.current) {
+      armActionFlash();
+      releaseActionFlash();
     }
-    clickTimer.current = setTimeout(() => {
-      clickTimer.current = null;
-      onClick();
-    }, DCB_ACTION_FLASH_MS);
+    pointerPressed.current = false;
+    onClick();
   }
 
   return (
@@ -681,9 +679,12 @@ function DcbCell({
       data-dcb-ptl={dataDcb === "ptl" ? "" : undefined}
       data-dcb-hist={dataDcb === "hist" ? "" : undefined}
       data-dcb-cell={dataDcb}
+      data-dcb-pointer-down={pointerDown ? "true" : undefined}
       data-dcb-flashing={flashing ? "true" : undefined}
       onMouseDown={preventButtonFocus}
       onPointerDown={(event: PointerEvent<HTMLButtonElement>) => {
+        pointerPressed.current = true;
+        setPointerDown(true);
         if (kind === "spinner" && onDragDelta) {
           isDragging.current = true;
           dragStartY.current = event.clientY;
@@ -694,7 +695,6 @@ function DcbCell({
             event.currentTarget.setPointerCapture(event.pointerId);
           }
         }
-        armActionFlash();
       }}
       onPointerMove={(event: PointerEvent<HTMLButtonElement>) => {
         if (isDragging.current && dragStartY.current !== null && onDragDelta) {
@@ -710,22 +710,26 @@ function DcbCell({
         }
       }}
       onPointerUp={(event: PointerEvent<HTMLButtonElement>) => {
+        setPointerDown(false);
         if (isDragging.current) {
           isDragging.current = false;
           dragStartY.current = null;
           accumulatedDy.current = 0;
-          event.currentTarget.releasePointerCapture?.(event.pointerId);
         }
-        releaseActionFlash();
+        try {
+          if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }
+        } catch {
+          // ignore
+        }
       }}
       onPointerCancel={() => {
+        pointerPressed.current = false;
+        setPointerDown(false);
         isDragging.current = false;
         dragStartY.current = null;
         accumulatedDy.current = 0;
-        if (momentary) {
-          clearFlashTimer();
-          setFlashing(false);
-        }
       }}
       onWheel={onWheel}
       onClick={() => {
