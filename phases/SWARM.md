@@ -1,4 +1,96 @@
-# ATC-SIM swarm orchestrator — Eighteenth swarm (CIFP-derived catalog packs: T04-31–35)
+# ATC-SIM swarm orchestrator — Twentieth swarm (catalog retrieve + margin snap: T03-16–20)
+
+## Twentieth swarm planned — 2026-08-30 (catalog retrieve, margin snap, Path C candidates)
+
+This configuration is planning-only until `/run-swarm` execution begins. It
+extends phase 3 voice/parse for large CIFP catalogs. Existing swarm history
+stays intact. Ticket workers branch from current `master` after the
+prerequisite snap (below) is on `master`. Captain squash-merges to `master`.
+
+| Key | Value |
+| --- | --- |
+| Goal | Rank spoken fix/navaid/approach tokens against the **full** facility catalog. Snap a unique high-margin winner locally. On tie or weak score, do not invent an id — treat the identifier as ungrounded so Path C can run with a **retrieved** candidate list, not file-order 64. Stop dumping the first 64 registry ids into STT. |
+| Include | **T03-16**, **T03-17**, **T03-18**, **T03-19**, **T03-20** |
+| Prerequisite | Squash-merge `fix/katl-spoken-approach-and-fix-grounding` onto `master` before Wave A if it is not already there (CIFP `I26R` / Haynes→`HAINZ` / AJ→`AJAAY` unique snap; local cap 4096). Do not re-implement that snap. |
+| Skip | Second LLM besides Path C `/parse`; always-on LLM after STT; dumping the full catalog into STT or Path C prompts; paid vendors; replacing Path A; kinematics/pilot executor; phase 5 scoring; KATL-only runtime branches |
+| Stop | After T03-20 acceptance. Do not start a later phase without a new swarm section. |
+| Max ticket workers in flight | **3** |
+| Merge lock | Only the phase captain squash-merges ticket branches to `master`, then runs `npm test` / `npm run ci` |
+| Model | **cursor-grok-4.6-high only, non-fast** on captain and every worker |
+| Paid STT/TTS/LLM | **Forbidden** |
+
+**Product law (twentieth swarm — catalog retrieve + margin snap):**
+
+- **Retrieve, then maybe LLM.** Local ranker walks the full facility. Path C
+  sees 8–16 **retrieved** ids for this transcript, never `ids().slice(0, 64)`
+  and never the whole pack.
+- **Margin, not raw argmax.** Snap only when `best ≥ floor` and
+  (`unique` or `best − second ≥ margin`). Tie includes “too close.” Weak or
+  empty cluster does not snap the least-bad 5-letter id.
+- **Ungrounded identifier is not a finished Command.** Island/A/B that emit
+  DIRECT/CROSS/VIA/APP with a raw unmatched token must **miss** so Path C can
+  run. Do not validate `UNKNOWN_FIX` as the only salvage. Typed `DCT NOPE`
+  still rejects at the pilot when Path C is off or also misses.
+- **One salvage model.** Same `POST /parse`, miss-only, schema-checked
+  Command IR. No extra round-trip that only rewrites names. No always-on
+  post-STT LLM (PTT budget / Path A must still win unique snaps).
+- **STT header is not a search index.** Do not send first-64 file-order ids.
+  Either omit `X-ATC-Fixes` or send a tiny high-value prior (procedure names,
+  published STAR/SID words). Retrieval from the transcript is Path C context,
+  not the STT prompt.
+- **Unique local snap stays the happy path.** Haynes / AJ / ILS 26R must stay
+  `spoken_a` / `spoken_b` with catalog ids. Path C is salvage.
+- **Generic tests.** Synthetic catalogs. No KATL production counts, map IDs,
+  or facility-id branches. KDEM `ILS27` / `SEMAX` fixtures stay green.
+- **Self-hosted only.** Path C remains our `speech-api`. No paid LLM hosts.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T03-16 | Prerequisite snap on `master` |
+| B | T03-17 ∥ T03-19 | T03-16 |
+| C | T03-18 | T03-16, T03-17 |
+| D | T03-20 | T03-18, T03-19 |
+
+**Ticket ownership:**
+
+- T03-16 owns the spoken index and retrieve API over the full catalog
+  (aliases, fold, optional metaphone, ranked candidates). It does not change
+  Path C trigger or STT headers.
+- T03-17 owns floor + margin snap and the ungrounded-id signal. It must not
+  argmax without margin. Procedure/on-route ids are a **tie-break**, not a
+  hard filter.
+- T03-18 owns parse-pipeline behavior: ungrounded identifier → local miss;
+  Path C `fixes=` / `approaches=` / `procedures=` = retrieved cluster.
+  Same `/parse`. Update `phases/_shared/parse-pipeline.md` in this ticket or
+  T03-20 — T03-18 writes the behavior, T03-20 may finish docs if split.
+- T03-19 owns STT `X-ATC-Fixes` hygiene (none or tiny high-value prior).
+- T03-20 owns end-to-end acceptance, phase 3 README ticket table, leftover
+  honesty, and grep-ban paid hosts.
+
+**Ticket files / branches:**
+
+- `ticket/T03-16-spoken-catalog-index-and-retrieve` ← `phases/03-voice/tickets/T03-16-spoken-catalog-index-and-retrieve.md`
+- `ticket/T03-17-margin-snap-for-catalog-ids` ← `phases/03-voice/tickets/T03-17-margin-snap-for-catalog-ids.md`
+- `ticket/T03-18-ungrounded-id-path-c-candidates` ← `phases/03-voice/tickets/T03-18-ungrounded-id-path-c-candidates.md`
+- `ticket/T03-19-stt-fix-header-hygiene` ← `phases/03-voice/tickets/T03-19-stt-fix-header-hygiene.md`
+- `ticket/T03-20-catalog-retrieve-acceptance` ← `phases/03-voice/tickets/T03-20-catalog-retrieve-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 3 voice addendum (T03-16–20 catalog retrieve + margin snap)
+Merged: T03-16 … T03-20
+Tests: npm test / npm run ci exit 0
+Manual leftover: <Path C live Haynes-tie salvage or none>
+Notes: <retrieve+margin; ungrounded miss; Path C candidates not slice-64; STT header hygiene; no second LLM; unique snap still local>
+```
+
+or `PHASE EXIT BLOCKED` with reason.
+
+---
 
 ## Nineteenth swarm planned — 2026-08-29 (CRC A80 videomap import)
 

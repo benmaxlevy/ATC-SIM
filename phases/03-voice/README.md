@@ -444,6 +444,13 @@ T03-15 Parse despite low STT confidence  P1   needs 02 / 08; can land before 14
 T03-14 Optional Path C /parse            P1   needs 03 + 13; size L; not on exit path
 T03-11 Optional whisper-wasm spike       P2   needs 01; MAY DEFER; not on exit path
 T03-12 Phase 3 voice acceptance script   P0   needs all P0/P1 except 11 and 14; speech-api up
+
+Addendum (T03-16–20, post-exit; do not reopen E1–E14):
+T03-16 Spoken catalog index + retrieve     P0   needs 03 + 14
+T03-17 Margin snap for catalog ids         P0   needs 16
+T03-19 STT fix header hygiene              P1   needs 16  (parallel with 17)
+T03-18 Ungrounded id → Path C candidates   P0   needs 16 + 17
+T03-20 Catalog retrieve + margin snap acceptance  P0   needs 18 + 19
 ```
 
 Recommended solo-agent sequence:
@@ -472,6 +479,8 @@ Do not start phase 5 until this is green. Phase 4 does not need this.
 - [x] **E12 —** `whisper-wasm` absent or incomplete is **not** an exit failure.
 - [x] **E13 —** Typed command line still works (tokens **and** English via Path A); phase 1 tests still pass.
 - [x] **E14 —** No always-on listen, no paid vendor STT/TTS/LLM APIs. Path C absent or off is **not** an exit failure. Inference only on `speech-api` or optional wasm.
+
+Addendum T03-16–20 (twentieth swarm): unique local snap; Path C uses retrieved candidates, not file-order 64. Does not reopen E1–E14.
 
 ---
 
