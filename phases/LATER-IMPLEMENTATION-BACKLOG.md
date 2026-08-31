@@ -204,10 +204,11 @@ and richer prediction geometry.
 
 ### DCB capabilities currently represented as disabled chrome
 
-The trainer DCB now includes disabled WX, VOL, MODE, SITE, and unpopulated map
-slots. Later implementations may give those cells real behavior:
+The trainer DCB now includes live MAIN WX1–6 latches plus disabled VOL, MODE,
+SITE, BRITE WX/WXC, and unpopulated map slots. Later implementations may give
+the remaining cells real behavior:
 
-- weather layers and weather-data lifecycle;
+- BRITE WX/WXC and weather-data lifecycle chrome;
 - audio/display mode controls that remain separate from OS volume;
 - additional catalog-backed maps and map management;
 - fuller CRC-style DCB workflows.
@@ -220,11 +221,12 @@ change; each capability needs its own data and acceptance criteria.
 T02-68 ships IEM N0Q fetch/decode (`src/scope/wx/`), `ScopeView.wxLevels`
 (six false), and `vipAtNm`. T02-69 paints enabled VIP fills under tracks
 from `view.wxMosaic` via `weatherLayer.ts` (one cached `drawImage`, default
-levels off). DCB still disabled: no latch, no `*WX`, no BRITE WX/WXC, no
-aircraft deviate. Vite `/wx-iem` proxies to IEM; CI uses `testdata/wx/`
-plus injected fetch.
+levels off). T02-70 latches MAIN WX1–6 onto `view.wxLevels` and persists
+them in PREF v3. Still later: no `*WX`, no BRITE WX/WXC, no aircraft
+deviate. Vite `/wx-iem` proxies to IEM; CI uses `testdata/wx/` plus
+injected fetch.
 
-T02-70–72 still own DCB WX, `*WX`, and BRITE WX/WXC. Keep HIST, BKC, and
+T02-71–72 still own `*WX` and BRITE WX/WXC. Keep HIST, BKC, and
 pilot deviate as later work.
 
 ### PREF SAVE AS named sets

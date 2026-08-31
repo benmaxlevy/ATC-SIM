@@ -41,6 +41,7 @@ import {
   toggleCurrentMapsList,
   toggleGeoMapsList,
   toggleVideoMap,
+  toggleWxLevel,
   videoMapByDcbNumber,
 } from "./dcbFunctions";
 
@@ -270,6 +271,28 @@ test("PLACE CNTR arms; PLACE RR and RR CNTR mutate ring origin", () => {
   applyRrCenter(view);
   expect(view.rangeRingEastNm).toBe(4);
   expect(view.rangeRingNorthNm).toBe(-1);
+});
+
+test("T02-70 — WX1–6 toggle independent wxLevels bits; default off; no Command IR", async () => {
+  const view = createScopeView();
+  expect(view.wxLevels).toEqual([false, false, false, false, false, false]);
+  toggleWxLevel(view, 1);
+  expect(view.wxLevels).toEqual([true, false, false, false, false, false]);
+  toggleWxLevel(view, 6);
+  expect(view.wxLevels).toEqual([true, false, false, false, false, true]);
+  toggleWxLevel(view, 1);
+  expect(view.wxLevels).toEqual([false, false, false, false, false, true]);
+  toggleWxLevel(view, 3);
+  expect(view.wxLevels).toEqual([false, false, true, false, false, true]);
+
+  const { parseRadioText } = await import("@parse");
+  const heading = parseRadioText("DAL123 H270");
+  expect(heading.ok).toBe(true);
+  if (heading.ok) {
+    expect(heading.instructions).toEqual([
+      { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+    ]);
+  }
 });
 
 test("AC6 — radio-focus L090 is still a left turn; LDR DIR spinner does not steal L", async () => {

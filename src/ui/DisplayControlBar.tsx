@@ -15,7 +15,7 @@
  * facility lines (not METAR HTTP). HIST/PTL cells live on AUX (F7/F8 still work).
  * MAIN quick video maps 1–6; MAPS submenu slots 1–32 (KDEM) or group
  * submenu 7–38. Empty slots disabled. Group cells show CRC starsId plus short name.
- * WX1–6 are disabled chrome (no precipitation). Disabled CRDA cell on SSA FILTER
+ * WX1–6 latch `view.wxLevels` (VIP 1–6). Disabled CRDA cell on SSA FILTER
  * is chrome only. PREF is 8 local slots (not a NAS host). MAIN PREF shows the
  * active set name. No CSA / FMA (R06). Discrete **range** presets only.
  * CHAR SIZE scales **datablock** / lists / DCB / tools / POS. BRITE multiplies
@@ -115,6 +115,7 @@ import {
   togglePtlOwn,
   toggleSsaFilter,
   toggleVideoMap,
+  toggleWxLevel,
   videoMapByDcbNumber,
   type BriteChannel,
   type CharSizeChannel,
@@ -388,6 +389,9 @@ export function syncDisplayControlBar(
   setPressed(doc.querySelector('[data-dcb-cell="atpa-intrail"]'), view.atpa.inTrailDistance);
   setPressed(doc.querySelector('[data-dcb-cell="atpa-alert"]'), view.atpa.alertCones);
   setPressed(doc.querySelector('[data-dcb-cell="atpa-monitor"]'), view.atpa.monitorCones);
+  for (let i = 0; i < 6; i += 1) {
+    setPressed(doc.querySelector(`[data-dcb-cell="wx${i + 1}"]`), view.wxLevels[i] === true);
+  }
 }
 
 interface DcbCellProps {
@@ -445,6 +449,8 @@ interface DcbCellProps {
     | "wx2"
     | "wx3"
     | "wx4"
+    | "wx5"
+    | "wx6"
     | "clr-all"
     | "geo-maps"
     | "current"
@@ -524,7 +530,7 @@ export const MAIN_DCB_LAYOUT: readonly MainDcbLayoutCell[] = [
     row: 1,
     column: 9 + index,
     rowSpan: 2,
-    kind: "disabled",
+    kind: "toggle",
     label: `WX${index + 1}`,
   })),
   { id: "brite", row: 1, column: 15, rowSpan: 2, kind: "submenu", label: "BRITE" },
@@ -749,15 +755,15 @@ function renderPrefOpener(view: ScopeView, onChange: () => void) {
   );
 }
 
-function renderWxCell(n: 1 | 2 | 3 | 4) {
+function renderWxCell(view: ScopeView, onChange: () => void, n: 1 | 2 | 3 | 4 | 5 | 6) {
   return (
     <DcbCell
       key={n}
-      kind="disabled"
+      kind="toggle"
       ariaLabel={`WX${n}`}
       dataDcb={`wx${n}`}
-      disabled
-      onClick={() => undefined}
+      pressed={view.wxLevels[n - 1] === true}
+      onClick={() => runCell(view, onChange, () => toggleWxLevel(view, n))}
     >
       <span className="dcb-cell-line">{`WX${n}`}</span>
     </DcbCell>
@@ -1092,6 +1098,12 @@ function renderPhysicalMain(
         if (id.startsWith("map-")) {
           return renderMapSlot(view, onChange, Number(id.slice(4)));
         }
+        if (id.startsWith("wx")) {
+          const n = Number(id.slice(2));
+          if (n >= 1 && n <= 6) {
+            return renderWxCell(view, onChange, n as 1 | 2 | 3 | 4 | 5 | 6);
+          }
+        }
         return disabled(
           id,
           id === "mode-fsl" ? "MODE FSL" : id === "site-fused" ? "SITE FUSED" : id.toUpperCase(),
@@ -1185,7 +1197,7 @@ export function renderMainLegacy(
         <span className="dcb-cell-line">MAPS</span>
       </DcbCell>
       {Array.from({ length: DCB_QUICK_MAP_COUNT }, (_, i) => renderMapSlot(view, onChange, i + 1))}
-      {([1, 2, 3, 4] as const).map((n) => renderWxCell(n))}
+      {([1, 2, 3, 4, 5, 6] as const).map((n) => renderWxCell(view, onChange, n))}
       <DcbCell
         kind="spinner"
         ariaLabel="Range rings"

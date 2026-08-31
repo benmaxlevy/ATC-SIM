@@ -20,8 +20,8 @@
  * functions. MAIN↔AUX via SHIFT; submenus replace the bar; RANGE / RR / LDR DIR /
  * LDR length / CHAR SIZE / BRITE are spinners over frozen presets. AUX has HISTORY 0–5, PTL
  * length/OWN/ALL, DCB TOP/LEFT/RIGHT/BOTTOM; VOL disabled. Trainer subset
- * (SHIFT/DONE/VOL, disabled WX) — not a full STARS DCB (no precipitation /
- * CSA / CRDA / FMA). Local PREF 1–8 is trainer localStorage, not a NAS host.
+ * (SHIFT/DONE/VOL, live MAIN WX1–6, disabled BRITE WX/WXC) — not a full STARS
+ * DCB (no CSA / CRDA / FMA). Local PREF 1–8 is trainer localStorage, not a NAS host.
  *
  * SSA (T02-20) is a screen-fixed top-left status block (sim time, KDEM 29.92
  * stub, FILTER, RANGE, OFF CNTR, OK). Never a Command.
@@ -340,6 +340,7 @@ export {
 } from "./dcbCursorTrap";
 export type { DcbCursorTrapKind, DcbTrapPoint, DcbTrapRect } from "./dcbCursorTrap";
 export {
+  DCB_PREF_READABLE_VERSIONS,
   DCB_PREF_READOUT_MAX_CHARS,
   DCB_PREF_SLOT_COUNT,
   DCB_PREF_SCHEMA_VERSION,
@@ -415,6 +416,7 @@ export {
   toggleCurrentMapsList,
   toggleGeoMapsList,
   toggleVideoMap,
+  toggleWxLevel,
   videoMapByDcbNumber,
   videoMapTokenLayout,
 } from "./dcbFunctions";

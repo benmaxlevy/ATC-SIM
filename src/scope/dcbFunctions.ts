@@ -3,8 +3,8 @@
  * LDR DIR / LDR / MAPS / GEO MAPS / CURRENT / WX / CHAR SIZE / BRITE (R07).
  * Trainer delta: numbered video-map catalog (`dcbLabel`) or CRC map-group
  * layout. GEO MAPS / CURRENT / *D ALL iterate the complete loaded inventory,
- * including maps absent from DCB groups. Empty DCB slots stay disabled. WX1–4
- * presets, generated **range rings** (2/5/10 NM, PLACE RR origin in world NM),
+ * including maps absent from DCB groups. Empty DCB slots stay disabled. WX1–6
+ * latch `view.wxLevels` (VIP 1–6). Generated **range rings** (2/5/10 NM, PLACE RR origin in world NM),
  * **leader** L1–L9 direction spinner plus discrete length 0/24/36/48 px,
  * CHAR SIZE per subsystem (DATA BLOCKS / LISTS / DCB / TOOLS / POS) on IBM
  * Plex Mono so FDB/LDB **datablock** cells stay character-cell. BRITE per
@@ -36,6 +36,7 @@ import { BRITE_STEPS, type BriteChannel, type BriteLevel } from "./palette";
 import type { ScopeView } from "./scopeView";
 import { snapRangeRingToViewCenter } from "./scopeView";
 import { setLeaderDirForSelection } from "./trackDisplay";
+import { cloneWxLevels, type VipLevel } from "./wx";
 
 type VideoMapRole = NonNullable<LoadedVideoMap["role"]>;
 
@@ -555,4 +556,24 @@ export function formatDcbLdrLengthReadout(lengthPx: LeaderLengthPx): string {
 
 export function stepDcbLeaderLength(view: ScopeView, delta: number): void {
   view.leaderLengthPx = stepFrozen(LEADER_LENGTH_STEPS_PX, view.leaderLengthPx, delta);
+}
+
+/**
+ * MAIN WX1–WX6 latch. Index 0 is VIP 1. Display only — never a Command.
+ */
+export function toggleWxLevel(view: ScopeView, level: VipLevel): void {
+  const i = level - 1;
+  if (i < 0 || i > 5) {
+    return;
+  }
+  const next = cloneWxLevels(view.wxLevels) as [
+    boolean,
+    boolean,
+    boolean,
+    boolean,
+    boolean,
+    boolean,
+  ];
+  next[i] = !next[i];
+  view.wxLevels = next;
 }
