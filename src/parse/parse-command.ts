@@ -59,6 +59,10 @@ export interface ParseCommandOpts {
 }
 
 const MAX_ROSTER = 64;
+/** LLM prompt bound. Local grounding uses the larger catalog-ground caps. */
+const MAX_PATH_C_FIXES = 64;
+const MAX_PATH_C_PROCEDURES = 32;
+const MAX_PATH_C_APPROACHES = 32;
 
 function rosterFromOpts(opts: ParseCommandOpts): string[] {
   const raw = opts.callsigns ?? [];
@@ -97,9 +101,13 @@ function pathCContext(
   return {
     callsigns: [...roster],
     selectedCallsign: selected,
-    ...(fixes.length > 0 ? { fixes: [...fixes] } : {}),
-    ...(procedures.length > 0 ? { procedures: procedures.map((item) => ({ ...item })) } : {}),
-    ...(approaches.length > 0 ? { approaches: approaches.map((item) => ({ ...item })) } : {}),
+    ...(fixes.length > 0 ? { fixes: [...fixes.slice(0, MAX_PATH_C_FIXES)] } : {}),
+    ...(procedures.length > 0
+      ? { procedures: procedures.slice(0, MAX_PATH_C_PROCEDURES).map((item) => ({ ...item })) }
+      : {}),
+    ...(approaches.length > 0
+      ? { approaches: approaches.slice(0, MAX_PATH_C_APPROACHES).map((item) => ({ ...item })) }
+      : {}),
   };
 }
 

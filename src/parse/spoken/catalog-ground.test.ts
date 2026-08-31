@@ -5,6 +5,7 @@ import {
   catalogFixAliases,
   catalogProcedureAliases,
   compactProcedureKey,
+  foldSpokenFix,
   groundApproachToCatalog,
   groundFixToCatalog,
   groundInstructionApproaches,
@@ -21,8 +22,14 @@ const KDEM = ["NEMAX", "SEMAX", "NELBO", "SELBO", "MERGE", "FI27", "RW27", "MISS
 const DEM1 = { id: "DEM1", name: "DEMO ONE" };
 const ILS27 = { id: "ILS27", name: "ILS RWY 27", runway: "27" };
 
-test("sanitizeFixIds uppercases, drops junk, caps the list", () => {
+test("sanitizeFixIds uppercases, drops junk, keeps lists past the STT header cap of 64", () => {
   expect(sanitizeFixIds(["semax", "SEMAX", "nope!", "FI27", "x"])).toEqual(["SEMAX", "FI27"]);
+  const many = Array.from({ length: 80 }, (_, i) => {
+    const tens = String.fromCharCode(65 + Math.floor(i / 26));
+    const ones = String.fromCharCode(65 + (i % 26));
+    return `F${tens}${ones}`;
+  });
+  expect(sanitizeFixIds(many)).toHaveLength(80);
 });
 
 test("C-Max / see max normalize to CMAX / SEEMAX", () => {
@@ -185,4 +192,59 @@ test("approachesFromCatalog extracts approaches with runway", () => {
       approaches: [{ id: "ILS27", name: "ILS RWY 27", runway: "27" }],
     }),
   ).toEqual([{ id: "ILS27", name: "ILS RWY 27", runway: "27" }]);
+});
+
+test("Haynes / AJ spoken names snap to unique catalog ids", () => {
+  const fixes = ["HAINZ", "AJAAY", "NEMAX", "SEMAX"];
+  expect(foldSpokenFix("HAINZ")).toBe("HAINS");
+  expect(catalogFixAliases("AJAAY")).toEqual(expect.arrayContaining(["AJAAY", "AJAY", "AJ"]));
+  expect(groundFixToCatalog("Haynes", fixes)).toBe("HAINZ");
+  expect(groundFixToCatalog("hainz", fixes)).toBe("HAINZ");
+  expect(groundFixToCatalog("AJ", fixes)).toBe("AJAAY");
+  expect(groundFixToCatalog("Ajay", fixes)).toBe("AJAAY");
+});
+
+test("spoken Haynes still snaps when the id sits past the old 64-fix STT cap", () => {
+  const padding = Array.from({ length: 70 }, (_, i) => {
+    const tens = String.fromCharCode(65 + Math.floor(i / 26));
+    const ones = String.fromCharCode(65 + (i % 26));
+    return `Z${tens}${ones}`;
+  });
+  expect(groundFixToCatalog("Haynes", [...padding, "HAINZ"])).toBe("HAINZ");
+});
+
+test("sanitizeCatalogApproaches keeps CIFP ids including hyphen suffixes", () => {
+  expect(
+    sanitizeCatalogApproaches([
+      { id: "I26R", name: "ILS RWY 26R", runway: "26R", type: "ILS" },
+      { id: "H28-Z", name: "RNAV RWY 28", runway: "28", type: "RNAV" },
+    ]),
+  ).toEqual([
+    { id: "I26R", name: "ILS RWY 26R", runway: "26R", type: "ILS" },
+    { id: "H28-Z", name: "RNAV RWY 28", runway: "28", type: "RNAV" },
+  ]);
+});
+
+test("ILS26R snaps to CIFP I26R when LOC/RNAV share the runway", () => {
+  const catalog = [
+    { id: "I26R", name: "ILS RWY 26R", runway: "26R", type: "ILS" },
+    { id: "L26R", name: "LOC RWY 26R", runway: "26R", type: "LOC" },
+    { id: "H26RZ", name: "RNAV RWY 26R", runway: "26R", type: "RNAV" },
+  ];
+  expect(catalogApproachAliases(catalog[0]!)).toEqual(expect.arrayContaining(["I26R", "ILS26R"]));
+  expect(catalogApproachAliases(catalog[1]!)).not.toContain("ILS26R");
+  expect(groundApproachToCatalog("ILS26R", catalog)).toBe("I26R");
+  expect(groundApproachToCatalog("ILS 26R", catalog)).toBe("I26R");
+  expect(groundApproachToCatalog("I26R", catalog)).toBe("I26R");
+  expect(
+    groundInstructionApproaches([{ type: "CLEARED_APPROACH", approachId: "ILS26R" }], catalog),
+  ).toEqual([{ type: "CLEARED_APPROACH", approachId: "I26R" }]);
+});
+
+test("approachesFromCatalog keeps CIFP type so ILS aliases stay unique", () => {
+  expect(
+    approachesFromCatalog({
+      approaches: [{ id: "I26R", name: "ILS RWY 26R", runway: "26R", type: "ILS" }],
+    }),
+  ).toEqual([{ id: "I26R", name: "ILS RWY 26R", runway: "26R", type: "ILS" }]);
 });

@@ -188,6 +188,26 @@ describe("pattern-matcher (island parser)", () => {
       expect(res.instructions).toEqual([{ type: "DIRECT", fixId: "SEMAX" }]);
     });
 
+    test("proceed direct Haynes snaps to HAINZ", () => {
+      const res = parse("proceed direct Haynes", {
+        selected: "DAL123",
+        fixes: ["HAINZ", "AJAAY", "SEMAX"],
+      });
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.instructions).toEqual([{ type: "DIRECT", fixId: "HAINZ" }]);
+    });
+
+    test("proceed direct AJ snaps to AJAAY", () => {
+      const res = parse("proceed direct, AJ", {
+        selected: "DAL123",
+        fixes: ["HAINZ", "AJAAY", "SEMAX"],
+      });
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.instructions).toEqual([{ type: "DIRECT", fixId: "AJAAY" }]);
+    });
+
     test("join DEM1 arrival", () => {
       const res = parse("join DEM1 arrival", { selected: "DAL123" });
       expect(res.ok).toBe(true);

@@ -372,3 +372,55 @@ test("island parser — cross fix with altitude restriction", async () => {
     { type: "CROSS", fixId: "SEMAX", altitudeFt: 5000, restriction: "AT_OR_ABOVE" },
   ]);
 });
+
+const CIFP_26R = [
+  { id: "I26R", name: "ILS RWY 26R", runway: "26R", type: "ILS" },
+  { id: "L26R", name: "LOC RWY 26R", runway: "26R", type: "LOC" },
+  { id: "H26RZ", name: "RNAV RWY 26R", runway: "26R", type: "RNAV" },
+];
+
+test("spoken ILS 26R snaps onto CIFP I26R among same-runway LOC/RNAV", async () => {
+  const result = await parseCommand(
+    "JetBlue seventeen, you are two zero miles from the airport. Turn right, heading two five zero. Maintain three thousand. Till established on the localizer, cleared ILS runway two six right approach.",
+    {
+      source: "voice",
+      approaches: CIFP_26R,
+      pathC: false,
+    },
+  );
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.callsignToken).toBe("JBU17");
+  expect(result.instructions).toEqual([
+    { type: "FLY_HEADING", headingDeg: 250, turn: "RIGHT" },
+    { type: "ALTITUDE", altitudeFt: 3000, verb: "MAINTAIN", untilEstablished: true },
+    { type: "CLEARED_APPROACH", approachId: "I26R" },
+  ]);
+});
+
+test("spoken Haynes and AJ snap onto unique catalog ids", async () => {
+  const fixes = ["HAINZ", "AJAAY", "NEMAX"];
+  const haynes = await parseCommand("Jet Blue seventeen, proceed direct Haynes.", {
+    source: "voice",
+    fixes,
+    pathC: false,
+  });
+  expect(haynes.ok).toBe(true);
+  if (haynes.ok) {
+    expect(haynes.callsignToken).toBe("JBU17");
+    expect(haynes.instructions).toEqual([{ type: "DIRECT", fixId: "HAINZ" }]);
+  }
+
+  const aj = await parseCommand("JetBlue seventeen, proceed direct, AJ.", {
+    source: "voice",
+    fixes,
+    pathC: false,
+  });
+  expect(aj.ok).toBe(true);
+  if (aj.ok) {
+    expect(aj.callsignToken).toBe("JBU17");
+    expect(aj.instructions).toEqual([{ type: "DIRECT", fixId: "AJAAY" }]);
+  }
+});

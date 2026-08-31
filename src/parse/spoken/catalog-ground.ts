@@ -8,14 +8,19 @@
 
 import type { Instruction } from "@core";
 
-export const MAX_CATALOG_FIXES = 64;
+/**
+ * Local snap needs the full facility (CIFP packs are hundreds of fixes).
+ * Path C / STT prompt headers still cap at 64 in parse-command / speech-port.
+ */
+export const MAX_CATALOG_FIXES = 4096;
 const FIX_ID = /^[A-Z]{2,6}[0-9]{0,2}$/;
 
-export const MAX_CATALOG_PROCEDURES = 32;
+export const MAX_CATALOG_PROCEDURES = 256;
 const PROCEDURE_ID = /^[A-Z]{2,8}[0-9]{0,2}$/;
 
-export const MAX_CATALOG_APPROACHES = 32;
-const APPROACH_ID = /^[A-Z]{2,8}[0-9]{0,2}[LRC]?$/;
+export const MAX_CATALOG_APPROACHES = 256;
+/** Authored `ILS27` and CIFP `I26R` / `H26RZ` / `H28-Z`. */
+const APPROACH_ID = /^[A-Z]{1,8}\d{1,2}[LRC]?(?:-?[A-Z])?$/;
 
 const WORD_DIGIT: Readonly<Record<string, string>> = {
   ZERO: "0",
@@ -82,8 +87,19 @@ export function normalizeFixKey(raw: string): string {
 }
 
 /**
+ * Collapse doubles and fold Z/Y so ASR "Haynes" / "AJ" can match HAINZ / AJAAY.
+ */
+export function foldSpokenFix(raw: string): string {
+  return normalizeFixKey(raw)
+    .replace(/(.)\1+/g, "$1")
+    .replace(/Z/g, "S")
+    .replace(/Y/g, "I");
+}
+
+/**
  * Spoken aliases for a catalog id. `SEMAX` → `CMAX` / `SEEMAX` because ASR
- * writes the "see" in Sierra-Echo as the letter C.
+ * writes the "see" in Sierra-Echo as the letter C. `AJAAY` → `AJ` because
+ * controllers say the published word, not five letters.
  */
 export function catalogFixAliases(id: string): string[] {
   const key = normalizeFixKey(id);
@@ -93,6 +109,14 @@ export function catalogFixAliases(id: string): string[] {
     aliases.add(`C${rest}`);
     aliases.add(`SEE${rest}`);
     aliases.add(`SEA${rest}`);
+  }
+  const collapsed = key.replace(/(.)\1+/g, "$1");
+  aliases.add(collapsed);
+  aliases.add(collapsed.replace(/Z/g, "S"));
+  aliases.add(foldSpokenFix(id));
+  const ay = collapsed.match(/^([A-Z]{2,4})(AY|EY|EE)$/);
+  if (ay) {
+    aliases.add(ay[1]!);
   }
   return [...aliases];
 }
@@ -124,10 +148,25 @@ export function groundFixToCatalog(
     return aliasHits[0]!;
   }
 
+  const folded = foldSpokenFix(key);
+  if (folded !== key) {
+    const foldAliasHits = list.filter((id) => catalogFixAliases(id).includes(folded));
+    if (foldAliasHits.length === 1) {
+      return foldAliasHits[0]!;
+    }
+  }
+
   if (key.length >= 3) {
     const near = list.filter((id) => levenshtein(key, normalizeFixKey(id)) <= 1);
     if (near.length === 1) {
       return near[0]!;
+    }
+  }
+
+  if (folded.length >= 3) {
+    const foldNear = list.filter((id) => levenshtein(folded, foldSpokenFix(id)) <= 1);
+    if (foldNear.length === 1) {
+      return foldNear[0]!;
     }
   }
 
@@ -267,6 +306,7 @@ export interface CatalogApproach {
   id: string;
   name?: string;
   runway?: string;
+  type?: string;
 }
 
 export function sanitizeCatalogApproaches(
@@ -282,12 +322,16 @@ export function sanitizeCatalogApproaches(
     seen.add(id);
     const name = item.name?.trim();
     const runway = item.runway?.trim();
+    const type = item.type?.trim().toUpperCase();
     const entry: CatalogApproach = { id };
     if (name) {
       entry.name = name;
     }
     if (runway) {
       entry.runway = runway;
+    }
+    if (type) {
+      entry.type = type;
     }
     out.push(entry);
     if (out.length >= MAX_CATALOG_APPROACHES) {
@@ -297,13 +341,58 @@ export function sanitizeCatalogApproaches(
   return out;
 }
 
+function cifpApproachKind(id: string): string {
+  const key = normalizeFixKey(id);
+  if (key.startsWith("ILS")) {
+    return "ILS";
+  }
+  if (key.startsWith("LOC")) {
+    return "LOC";
+  }
+  if (key.startsWith("RNAV")) {
+    return "RNAV";
+  }
+  if (key.startsWith("VOR")) {
+    return "VOR";
+  }
+  if (key.startsWith("NDB")) {
+    return "NDB";
+  }
+  const letter = key.match(/^([ILRHVN])\d/);
+  if (letter === null) {
+    return "";
+  }
+  const prefix = letter[1]!;
+  if (prefix === "I") {
+    return "ILS";
+  }
+  if (prefix === "L" || prefix === "B") {
+    return "LOC";
+  }
+  if (prefix === "R" || prefix === "H") {
+    return "RNAV";
+  }
+  if (prefix === "V") {
+    return "VOR";
+  }
+  return "NDB";
+}
+
+function approachKind(app: CatalogApproach): string {
+  const typed = app.type?.trim().toUpperCase();
+  if (typed) {
+    return typed;
+  }
+  return cifpApproachKind(app.id);
+}
+
 export function catalogApproachAliases(app: CatalogApproach): string[] {
   const key = normalizeFixKey(app.id);
   const aliases = new Set<string>([key]);
   if (app.name) {
     aliases.add(normalizeFixKey(app.name));
   }
-  const match = app.id.match(/^([A-Z]+)(\d{1,2}[LRC]?)$/);
+  const match = app.id.match(/^([A-Z]+)(\d{1,2}[LRC]?)(?:-?[A-Z])?$/);
   if (match) {
     const type = match[1]!;
     const rwy = match[2]!;
@@ -322,9 +411,17 @@ export function catalogApproachAliases(app: CatalogApproach): string[] {
     aliases.add(`RW${rwyNorm}`);
     aliases.add(`RWY${rwyNorm}`);
     aliases.add(`RUNWAY${rwyNorm}`);
-    aliases.add(`ILS${rwyNorm}`);
-    aliases.add(`IL${rwyNorm}`);
-    aliases.add(`LOC${rwyNorm}`);
+    const kind = approachKind(app);
+    if (kind === "ILS") {
+      aliases.add(`ILS${rwyNorm}`);
+      aliases.add(`IL${rwyNorm}`);
+      aliases.add(`LOC${rwyNorm}`);
+    } else if (kind === "LOC") {
+      aliases.add(`LOC${rwyNorm}`);
+    } else if (kind === "RNAV") {
+      aliases.add(`RNAV${rwyNorm}`);
+      aliases.add(`GPS${rwyNorm}`);
+    }
   }
   return [...aliases];
 }
@@ -397,7 +494,13 @@ export function groundInstructionApproaches(
 
 export function approachesFromCatalog(
   catalog?: {
-    approaches?: ReadonlyArray<{ id: string; name?: string; runway?: string; runwayId?: string }>;
+    approaches?: ReadonlyArray<{
+      id: string;
+      name?: string;
+      runway?: string;
+      runwayId?: string;
+      type?: string;
+    }>;
   } | null,
 ): CatalogApproach[] {
   if (!catalog) {
@@ -408,6 +511,7 @@ export function approachesFromCatalog(
       id: item.id,
       name: item.name,
       runway: item.runway ?? item.runwayId,
+      type: item.type,
     })),
   );
 }
