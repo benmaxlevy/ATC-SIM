@@ -10,6 +10,7 @@ import {
   drawWeatherLayer,
   wxHatchBit,
   wxLevelHasHatch,
+  wxScreenStyle,
   wxVipContourHex,
   wxVipFillHex,
 } from "./weatherLayer";
@@ -56,6 +57,13 @@ test("trainer fills are STARS green/olive/maroon pairs, not IEM rainbow", () => 
   }
   expect(wxVipFillHex(1, 100)).toBe(applyBrite(WX_VIP_FILL_HEX[0], 100));
   expect(wxVipFillHex(4, 50)).toBe(applyBrite(WX_VIP_FILL_HEX[3], 50));
+});
+
+test("WXC contour is a 1px screen outline, not a mosaic-bin flood", () => {
+  expect(wxScreenStyle(1, 20, 20, false)).toBe("fill");
+  expect(wxScreenStyle(1, 20, 20, true)).toBe("contour");
+  expect(wxScreenStyle(2, 5, 0, false)).toBe("hatch");
+  expect(wxScreenStyle(2, 5, 0, true)).toBe("contour");
 });
 
 test("VIP 2/4/6 share one hatch cell origin", () => {

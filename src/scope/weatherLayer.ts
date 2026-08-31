@@ -143,34 +143,6 @@ function writeCompositePixels(canvas: WxCompositeCanvas, pixels: Uint8ClampedArr
   maybeCtx.putImageData(imageData, 0, 0);
 }
 
-function neighborSameLevel(
-  mask: Uint8Array,
-  width: number,
-  height: number,
-  x: number,
-  y: number,
-): boolean {
-  if (x < 0 || y < 0 || x >= width || y >= height) {
-    return false;
-  }
-  return maskBit(mask, y * width + x);
-}
-
-function isVipBandEdge(
-  mask: Uint8Array,
-  width: number,
-  height: number,
-  x: number,
-  y: number,
-): boolean {
-  return (
-    !neighborSameLevel(mask, width, height, x - 1, y) ||
-    !neighborSameLevel(mask, width, height, x + 1, y) ||
-    !neighborSameLevel(mask, width, height, x, y - 1) ||
-    !neighborSameLevel(mask, width, height, x, y + 1)
-  );
-}
-
 function highestVipAt(mosaic: WxMosaic, levels: WxLevels, index: number): number {
   let vip = 0;
   for (let level = 0; level < 6; level++) {
@@ -179,6 +151,41 @@ function highestVipAt(mosaic: WxMosaic, levels: WxLevels, index: number): number
     }
   }
   return vip;
+}
+
+function vipAtScreen(
+  mosaic: WxMosaic,
+  levels: WxLevels,
+  x: number,
+  y: number,
+  nwPx: { x: number; y: number },
+  dw: number,
+  dh: number,
+): number {
+  const v = (y + 0.5 - nwPx.y) / dh;
+  const u = (x + 0.5 - nwPx.x) / dw;
+  if (v < 0 || v >= 1 || u < 0 || u >= 1) {
+    return 0;
+  }
+  const row = Math.min(mosaic.heightPx - 1, Math.max(0, Math.floor(v * mosaic.heightPx)));
+  const col = Math.min(mosaic.widthPx - 1, Math.max(0, Math.floor(u * mosaic.widthPx)));
+  return highestVipAt(mosaic, levels, row * mosaic.widthPx + col);
+}
+
+/** Fill / shared hatch / 1px screen outline. Not a mosaic-bin flood. */
+export function wxScreenStyle(
+  vip: 1 | 2 | 3 | 4 | 5 | 6,
+  screenX: number,
+  screenY: number,
+  outline: boolean,
+): "fill" | "hatch" | "contour" {
+  if (outline) {
+    return "contour";
+  }
+  if (wxLevelHasHatch(vip) && wxHatchBit(screenX, screenY)) {
+    return "hatch";
+  }
+  return "fill";
 }
 
 function cameraMatches(cam: ScopeCamera, arp: LatLon): boolean {
@@ -258,13 +265,17 @@ function rebuildComposite(
       if (!fill) {
         continue;
       }
+      const outline =
+        vipAtScreen(mosaic, levels, x - 1, y, nwPx, dw, dh) !== vip ||
+        vipAtScreen(mosaic, levels, x + 1, y, nwPx, dw, dh) !== vip ||
+        vipAtScreen(mosaic, levels, x, y - 1, nwPx, dw, dh) !== vip ||
+        vipAtScreen(mosaic, levels, x, y + 1, nwPx, dw, dh) !== vip;
+      const style = wxScreenStyle(vip as 1 | 2 | 3 | 4 | 5 | 6, x, y, outline);
       let rgb = fill;
-      if (wxLevelHasHatch(vip as 1 | 2 | 3 | 4 | 5 | 6) && wxHatchBit(x, y)) {
+      if (style === "hatch") {
         rgb = hatchRgb;
-      }
-      const contour = contours[vip - 1];
-      if (contour && isVipBandEdge(mosaic.vipMasks[vip - 1]!, mw, mh, col, row)) {
-        rgb = contour;
+      } else if (style === "contour") {
+        rgb = contours[vip - 1] ?? fill;
       }
       const o = (y * width + x) * 4;
       pixels[o] = rgb[0];
