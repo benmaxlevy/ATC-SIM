@@ -337,6 +337,7 @@ function applyPreviewArmedAction(view: ScopeView, action: PreviewArmedAction, no
     case "setLeaderDir":
     case "resetLeaderDir":
     case "beaconatorSlew":
+    case "armPerTrackPtl":
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;
       armPreviewSlewAction(view.preview, action, nowMs);

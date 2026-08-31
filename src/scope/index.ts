@@ -302,6 +302,8 @@ export {
   toggleMapLayer,
   toggleModeCVisible,
   toggleGiFilter,
+  clearPerTrackPtl,
+  togglePerTrackPtl,
   togglePtlOn,
   togglePtlOwn,
   toggleSsaFilter,
@@ -459,11 +461,13 @@ export {
   PTL_MINUTES,
   PTL_MINUTE_PRESETS,
   PTL_STROKE_PX,
+  clearPtlByAircraftId,
   drawPredictedTrackLine,
   ptlEndpoint,
   shouldDrawPtl,
   shouldDrawPtlForTrack,
   stepPtlMinutes,
+  togglePtlByAircraftId,
 } from "./ptl";
 export type { PtlMinutes } from "./ptl";
 export {

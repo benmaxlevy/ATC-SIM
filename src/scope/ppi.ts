@@ -1,5 +1,5 @@
 import { acceptPointout, handoffFor, setSelectedAircraft, type World } from "@core";
-import { expireFilterEntry } from "./altitudeFilter";
+import { expireFilterEntry, inAltitudeFilter } from "./altitudeFilter";
 import {
   cancelPreviewArea,
   expirePreviewArea,
@@ -27,8 +27,15 @@ import {
   selectOrAcceptAircraftAt,
   type AircraftPickHit,
 } from "./pick";
+import { shouldDrawPtlForTrack } from "./ptl";
 import { renderScope } from "./renderScope";
-import { centerOnWorld, recordLastClick, setRangeRingOrigin, type ScopeView } from "./scopeView";
+import {
+  centerOnWorld,
+  recordLastClick,
+  setRangeRingOrigin,
+  togglePerTrackPtl,
+  type ScopeView,
+} from "./scopeView";
 import { normalizedClickAnchor, relocateSystemList } from "./systemLists";
 import {
   acceptInboundOnClick,
@@ -145,6 +152,22 @@ function applyTrackingSlewHit(
       setSelectedAircraft(world, id);
       clearTrackingSlew(view);
       return true;
+    case "armPerTrackPtl": {
+      const ac = hit.aircraft;
+      const altitudeFiltered = !inAltitudeFilter(ac.altitudeFt, view.altitudeFilter);
+      const owned = (view.tracks.get(id)?.ownership ?? "unowned") === "owned";
+      const currentlyDrawn = shouldDrawPtlForTrack(
+        ac.speedKt,
+        altitudeFiltered,
+        owned,
+        view.ptlOn,
+        view.ptlOwn,
+        view.ptlByAircraftId.get(id),
+      );
+      togglePerTrackPtl(view, id, currentlyDrawn);
+      clearTrackingSlew(view);
+      return true;
+    }
     default:
       return false;
   }

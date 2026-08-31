@@ -4,12 +4,14 @@ import {
   PTL_MINUTES,
   PTL_MINUTE_PRESETS,
   PTL_STROKE_PX,
+  clearPtlByAircraftId,
   ptlCapTickOffsets,
   ptlDistanceNm,
   ptlEndpoint,
   shouldDrawPtl,
   shouldDrawPtlForTrack,
   stepPtlMinutes,
+  togglePtlByAircraftId,
 } from "./ptl";
 
 test("AC1 — 180 kt / 090° / 1 min → +3 NM east, 0 north", () => {
@@ -77,6 +79,9 @@ test("AC7 — comments say PTL / predicted track line and cite CRC; straight 1 m
   expect(src).toMatch(/\bPTL\b/);
   expect(src).toMatch(/CRC STARS PTL/);
   expect(src).toMatch(/docs\.virtualnas\.net\/crc\/stars/);
+  expect(src).toMatch(/Table 24/);
+  expect(src).toMatch(/session map, not PREF/);
+  expect(src).toMatch(/\*R/);
   expect(src).toMatch(/straight 1\.0 min/);
   expect(src).toMatch(/Not a velocity vector, heading line, or zoom/);
   expect(src).toMatch(/inAltitudeFilter/);
@@ -97,4 +102,29 @@ test("AC3 — PTL OWN vs ALL: ALL wins; both off draws none", () => {
   expect(shouldDrawPtlForTrack(180, false, true, true, true)).toBe(true);
   expect(shouldDrawPtlForTrack(180, false, true, false, false)).toBe(false);
   expect(shouldDrawPtlForTrack(180, true, true, true, true)).toBe(false);
+});
+
+test("per-track ON draws when ALL and OWN are off; OFF hides when ALL is on", () => {
+  expect(shouldDrawPtlForTrack(180, false, false, false, false, true)).toBe(true);
+  expect(shouldDrawPtlForTrack(180, false, true, false, false, true)).toBe(true);
+  expect(shouldDrawPtlForTrack(180, false, false, true, false, false)).toBe(false);
+  expect(shouldDrawPtlForTrack(180, false, true, true, true, false)).toBe(false);
+  expect(shouldDrawPtlForTrack(180, false, true, false, true, false)).toBe(false);
+  expect(shouldDrawPtlForTrack(180, false, false, true, false, undefined)).toBe(true);
+  expect(shouldDrawPtlForTrack(180, false, true, false, true, undefined)).toBe(true);
+  expect(shouldDrawPtlForTrack(180, true, false, false, false, true)).toBe(false);
+});
+
+test("session map toggle flips effective visibility; reset clears the map", () => {
+  const map = new Map<string, boolean>();
+  expect(togglePtlByAircraftId(map, "ac-1", false)).toBe(true);
+  expect(map.get("ac-1")).toBe(true);
+  expect(shouldDrawPtlForTrack(180, false, false, false, false, map.get("ac-1"))).toBe(true);
+  expect(togglePtlByAircraftId(map, "ac-1", true)).toBe(false);
+  expect(map.get("ac-1")).toBe(false);
+  expect(shouldDrawPtlForTrack(180, false, false, true, false, map.get("ac-1"))).toBe(false);
+  expect(togglePtlByAircraftId(map, "ac-2", true)).toBe(false);
+  expect(map.size).toBe(2);
+  clearPtlByAircraftId(map);
+  expect(map.size).toBe(0);
 });

@@ -13,7 +13,8 @@
  * 5 dots, no phosphor; AUX HISTORY spinner shows 0–5 of those dots (F8 / H
  * toggles 0 ↔ last non-zero). PTL is a straight predicted track line (default
  * 1.0 min; AUX spinner 0.5/1/2/4). F7 toggles PTL ALL. PTL OWN is F3-owned
- * tracks; ALL wins if both are on. TPA J-rings: DCB 2/3/5/10 NM about the
+ * tracks; ALL wins if both are on. Per-track PTL is `*R` plus click
+ * (`ptlByAircraftId`, session, not PREF). TPA J-rings: DCB 2/3/5/10 NM about the
  * selected track (or owned tracks if none selected), plus per-track `*J` /
  * `*P` session graphics (1–30 NM, not PREF). ATPA master plus four DCB latches
  * (A/TPA Mileage, Intrail Distance, Alert Cones, Monitor Cones) gate cones and
@@ -57,7 +58,13 @@ import {
 } from "./fonts";
 import type { HistoryDotCount } from "./history";
 import { stepHistoryDotCount } from "./history";
-import { PTL_MINUTES, stepPtlMinutes, type PtlMinutes } from "./ptl";
+import {
+  PTL_MINUTES,
+  clearPtlByAircraftId,
+  stepPtlMinutes,
+  togglePtlByAircraftId,
+  type PtlMinutes,
+} from "./ptl";
 import {
   defaultGiVisibility,
   defaultSsaVisibility,
@@ -169,6 +176,11 @@ export interface ScopeView {
   ptlOwn: boolean;
   /** PTL length in minutes. Default 1.0 (T02-07). AUX spinner 0.5/1/2/4; keyboard 0–15. */
   ptlMinutes: PtlMinutes;
+  /**
+   * Per-track PTL override (`*R` plus click). Session map, not PREF.
+   * `true` forces the line; `false` hides it under PTL ALL.
+   */
+  ptlByAircraftId: Map<string, boolean>;
   /**
    * TPA. DCB `{ on, radiusNm }` is the toggle + 2/3/5/10 spinner (PREF).
    * Per-track `*J` / `*P` graphics live on `TrackDisplay` (session, not PREF).
@@ -300,6 +312,7 @@ export function createScopeView(
     ptlOn: false,
     ptlOwn: false,
     ptlMinutes: PTL_MINUTES,
+    ptlByAircraftId: new Map(),
     tpa: { ...DEFAULT_TPA_STATE },
     atpa: { ...DEFAULT_ATPA_STATE },
     altitudeFilter: { ...DEFAULT_ALTITUDE_FILTER },
@@ -381,6 +394,20 @@ export function togglePtlOn(view: ScopeView): void {
 
 export function togglePtlOwn(view: ScopeView): void {
   view.ptlOwn = !view.ptlOwn;
+}
+
+/** `*R` click: flip this track’s session PTL override. Length stays global. */
+export function togglePerTrackPtl(
+  view: ScopeView,
+  aircraftId: string,
+  currentlyDrawn: boolean,
+): boolean {
+  return togglePtlByAircraftId(view.ptlByAircraftId, aircraftId, currentlyDrawn);
+}
+
+/** Session / map reset. Does not touch PREF, F7, or `*PTL` minutes. */
+export function clearPerTrackPtl(view: ScopeView): void {
+  clearPtlByAircraftId(view.ptlByAircraftId);
 }
 
 export function stepPtlLength(view: ScopeView, delta: -1 | 1): void {

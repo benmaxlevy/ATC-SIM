@@ -32,6 +32,7 @@ import {
   installAlwaysOnScopeKeys,
   scopeFocusFromDocument,
   focusRadioCommandLine,
+  clearPerTrackPtl,
   parseDigitalMap,
   type ScopeView,
 } from "@scope";
@@ -247,6 +248,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             ),
           );
           scopeView.tracks.clear();
+          clearPerTrackPtl(scopeView);
           scopeView.giTextLines = nextScenario.giTextLines;
           scopeView.digitalMap = parseDigitalMap(nextScenario.maps);
           if (typeof document !== "undefined") {

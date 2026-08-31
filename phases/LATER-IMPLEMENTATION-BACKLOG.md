@@ -198,9 +198,9 @@ silently introduce a metered vendor dependency.
 
 ### PTL targeting
 
-The predicted track line is currently global, with OWN/ALL display controls.
-Possible follow-ups are per-track PTL selection, additional duration presets,
-and richer prediction geometry.
+Per-track PTL is shipped (`*R` plus click, session map, not PREF). Global ALL /
+OWN / LNTH / `*PTL` minutes and F7 stay as they are. Remaining follow-ups are
+additional duration presets and richer prediction geometry.
 
 ### DCB capabilities currently represented as disabled chrome
 

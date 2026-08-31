@@ -42,6 +42,7 @@ export type PreviewPhase = "idle" | "entry" | "armed";
  * T02-53: `beaconBlock` / `beaconDiscrete`. T02-62: `toggleList` / `resizeList`
  * / `armRelocateList`. T02-64: scope recenter / RR / PTL / HIST. Slew forms
  * (`armRecenterScope`, `armRecenterRangeRings`) apply via DCB PLACE flags.
+ * T02-74: exact `*R` arms per-track PTL; `*RR…` stays range rings.
  * T02-63: `toggleVideoMap` / `setAllVideoMaps`. T02-65: `displayFilters` /
  * `setAltitudeFilterLimits` / `addBeaconCodeFilter` / `removeBeaconCodeFilter`.
  * T02-66: handoff accept, pointout ack, leader clock, beaconator slew.
@@ -61,6 +62,7 @@ export type PreviewArmedAction =
   | { readonly type: "setRangeRingInterval"; readonly intervalNm: number }
   | { readonly type: "armRecenterRangeRings" }
   | { readonly type: "resetRangeRingsCenter" }
+  | { readonly type: "armPerTrackPtl" }
   | { readonly type: "setPtlMinutes"; readonly minutes: number }
   | { readonly type: "setHistoryDots"; readonly count: number }
   | { readonly type: "toggleVideoMap"; readonly mapId: string; readonly explicitState?: boolean }
@@ -366,8 +368,9 @@ export function parseScopeDisplayCommand(buffer: string): PreviewCommandResult |
     }
     return invalid("invalid RR command");
   }
+  // Exact `*R` only. `startsWith("*RR")` above owns range rings; do not prefix-match.
   if (compact === "*R") {
-    return { kind: "incomplete" };
+    return { kind: "action", action: { type: "armPerTrackPtl" } };
   }
 
   return null;
@@ -678,6 +681,7 @@ const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
   "setLeaderDir",
   "resetLeaderDir",
   "beaconatorSlew",
+  "armPerTrackPtl",
 ]);
 
 function compactTrackingBuffer(buffer: string): string {
@@ -791,6 +795,8 @@ function trackingMnemonic(action: PreviewArmedAction): string {
       return "*0";
     case "beaconatorSlew":
       return "*B";
+    case "armPerTrackPtl":
+      return "*R";
     default:
       return "";
   }

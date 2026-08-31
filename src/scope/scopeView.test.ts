@@ -18,9 +18,12 @@ import {
   stepPtlLength,
   toggleHistoryEnabled,
   toggleMapLayer,
+  clearPerTrackPtl,
+  togglePerTrackPtl,
   togglePtlOn,
   togglePtlOwn,
 } from "./scopeView";
+import { serializeDcbPref } from "./dcbPref";
 
 const VIEW = { widthPx: 800, heightPx: 800 };
 
@@ -261,6 +264,7 @@ test("AC2/AC3 — PTL minutes and OWN vs ALL live on the view; F7 toggles ALL", 
   expect(view.ptlOn).toBe(false);
   expect(view.ptlOwn).toBe(false);
   expect(view.ptlMinutes).toBe(1);
+  expect(view.ptlByAircraftId.size).toBe(0);
   stepPtlLength(view, 1);
   expect(view.ptlMinutes).toBe(2);
   togglePtlOwn(view);
@@ -275,6 +279,26 @@ test("AC2/AC3 — PTL minutes and OWN vs ALL live on the view; F7 toggles ALL", 
   expect(view.ptlOwn).toBe(false);
   togglePtlOn(view);
   expect(view.ptlOn).toBe(true);
+});
+
+test("per-track PTL is session-only; F7 and *PTL minutes stay global; not PREF", () => {
+  const view = createScopeView();
+  expect(togglePerTrackPtl(view, "ac-1", false)).toBe(true);
+  expect(view.ptlByAircraftId.get("ac-1")).toBe(true);
+  expect(view.ptlOn).toBe(false);
+  expect(view.ptlMinutes).toBe(1);
+  togglePtlOn(view);
+  expect(view.ptlOn).toBe(true);
+  expect(view.ptlByAircraftId.get("ac-1")).toBe(true);
+  const body = serializeDcbPref(view);
+  expect("ptlByAircraftId" in body).toBe(false);
+  expect(JSON.stringify(body)).not.toMatch(/ac-1/);
+  expect(body.ptlOn).toBe(true);
+  expect(body.ptlMinutes).toBe(1);
+  clearPerTrackPtl(view);
+  expect(view.ptlByAircraftId.size).toBe(0);
+  expect(view.ptlOn).toBe(true);
+  expect(view.ptlMinutes).toBe(1);
 });
 
 test("AC4 — DCB dock enum is one edge at a time", () => {

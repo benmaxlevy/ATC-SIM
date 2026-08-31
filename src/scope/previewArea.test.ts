@@ -730,6 +730,8 @@ const DISPLAY_PARSE_CASES: ReadonlyArray<{
   { buffer: "* PTL 15", parse: "action", action: { type: "setPtlMinutes", minutes: 15 } },
   { buffer: "*HIST0", parse: "action", action: { type: "setHistoryDots", count: 0 } },
   { buffer: "*HIST 9", parse: "action", action: { type: "setHistoryDots", count: 9 } },
+  { buffer: "*R", parse: "action", action: { type: "armPerTrackPtl" } },
+  { buffer: "* R", parse: "action", action: { type: "armPerTrackPtl" } },
   { buffer: "*RR", parse: "incomplete" },
   { buffer: "*PTL", parse: "incomplete" },
   { buffer: "*HIST", parse: "incomplete" },
@@ -770,6 +772,49 @@ test("T02-64 — *P / *P5 / *P3 stay TPA (not PTL); * P1 is a list, not PTL", ()
   expect(parsePreviewCommand("*PTL5")).toEqual({
     kind: "action",
     action: { type: "setPtlMinutes", minutes: 5 },
+  });
+});
+
+test("T02-74 — exact *R arms per-track PTL; *RR family is unchanged", () => {
+  expect(parseScopeDisplayCommand("*R")).toEqual({
+    kind: "action",
+    action: { type: "armPerTrackPtl" },
+  });
+  expect(parseScopeDisplayCommand("* R")).toEqual({
+    kind: "action",
+    action: { type: "armPerTrackPtl" },
+  });
+  expect(parseScopeDisplayCommand("*RR")).toEqual({ kind: "incomplete" });
+  expect(parseScopeDisplayCommand("*RR5")).toEqual({
+    kind: "action",
+    action: { type: "setRangeRingInterval", intervalNm: 5 },
+  });
+  expect(parseScopeDisplayCommand("*RRC")).toEqual({
+    kind: "action",
+    action: { type: "armRecenterRangeRings" },
+  });
+  expect(parseScopeDisplayCommand("*RROFF")).toEqual({
+    kind: "action",
+    action: { type: "resetRangeRingsCenter" },
+  });
+  expect(parsePreviewCommand("*RX").kind).toBe("incomplete");
+
+  const armed = idlePreviewArea();
+  beginPreviewBufferEntry(armed, "*", 0);
+  handlePreviewBufferKey(armed, "R", 1);
+  expect(handlePreviewBufferKey(armed, "Enter", 2)).toEqual({
+    consumed: true,
+    action: { type: "armPerTrackPtl" },
+  });
+
+  const rr = idlePreviewArea();
+  beginPreviewBufferEntry(rr, "*", 0);
+  handlePreviewBufferKey(rr, "R", 1);
+  handlePreviewBufferKey(rr, "R", 2);
+  expect(handlePreviewBufferKey(rr, "Enter", 3)).toEqual({
+    consumed: true,
+    action: null,
+    starsBuffer: "*RR",
   });
 });
 

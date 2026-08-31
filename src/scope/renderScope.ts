@@ -589,7 +589,7 @@ function drawTracks(
     }
   }
 
-  if (view.ptlOn || view.ptlOwn) {
+  if (view.ptlOn || view.ptlOwn || view.ptlByAircraftId.size > 0) {
     drawPredictedTrackLines(ctx, world, view, size);
   }
 
@@ -741,7 +741,8 @@ function drawAtpaConeMileage(
 /**
  * Straight predicted track line along ground track (default 1.0 min; AUX spinner
  * 0.5/1/2/4). PTL ALL draws every in-filter track; PTL OWN draws F3-owned only;
- * ALL wins if both are on. Canvas bounds clip the rectangular PPI.
+ * ALL wins if both are on. Per-track `*R` overrides (session, not PREF) can
+ * force or hide a line. Canvas bounds clip the rectangular PPI.
  * Altitude-filtered tracks keep the symbol and lose PTL
  * (`inAltitudeFilter` / `shouldDrawPtl`).
  */
@@ -754,7 +755,16 @@ function drawPredictedTrackLines(
   for (const ac of world.aircraft) {
     const altitudeFiltered = !inAltitudeFilter(ac.altitudeFt, view.altitudeFilter);
     const owned = (view.tracks.get(ac.id)?.ownership ?? "unowned") === "owned";
-    if (!shouldDrawPtlForTrack(ac.speedKt, altitudeFiltered, owned, view.ptlOn, view.ptlOwn)) {
+    if (
+      !shouldDrawPtlForTrack(
+        ac.speedKt,
+        altitudeFiltered,
+        owned,
+        view.ptlOn,
+        view.ptlOwn,
+        view.ptlByAircraftId.get(ac.id),
+      )
+    ) {
       continue;
     }
     const end = ptlEndpoint(ac.xNm, ac.yNm, ac.headingDeg, ac.speedKt, view.ptlMinutes);
