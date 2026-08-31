@@ -1090,6 +1090,8 @@ function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): 
     ptlMinutes: view.ptlMinutes,
     hasAlert: Boolean(hasAlert),
     airportCode: airportId,
+    primaryAltimeter: view.primaryAltimeter ?? SSA_ALTIMETER_STUB,
+    airportAltimeters: view.airportAltimeters,
     crdaRpcStatus,
     systemStatus: SSA_NETWORK_HEALTH_STUB,
     surveillanceMode: surveillanceModeWord(

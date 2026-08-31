@@ -162,6 +162,25 @@ export interface SsaRenderLine {
 }
 
 /**
+ * Format terminal satellite airport altimeters in chunks of up to 3 per line.
+ * e.g. "KATL 30.18  KFTY 30.18  KPDK 30.18"
+ */
+export function formatSatelliteAltimeterLines(
+  altimeters: readonly SsaAirportAltimeter[],
+): string[] {
+  if (!altimeters || altimeters.length === 0) {
+    return [];
+  }
+  const lines: string[] = [];
+  for (let i = 0; i < altimeters.length; i += 3) {
+    const chunk = altimeters.slice(i, i + 3);
+    const line = chunk.map((a) => `${a.airportCode} ${a.altimeter}`).join("  ");
+    lines.push(line);
+  }
+  return lines;
+}
+
+/**
  * Builds structured SSA lines with styling metadata (alert indicator, red SPC, etc.).
  */
 export function buildSsaRenderLines(input: SsaInput): SsaRenderLine[] {
@@ -176,10 +195,12 @@ export function buildSsaRenderLines(input: SsaInput): SsaRenderLine[] {
   result.push({ text: `(${subset})`, style: "normal" });
 
   // 3. Zulu Time / Sec + Primary Altimeter: 1620/02  30.17
-  if (vis.TIME) {
+  if (vis.TIME && vis.ALTSTG) {
     const timeStr = formatSsaTime(input.simTimeMs);
     const altStr = input.primaryAltimeter ?? SSA_ALTIMETER_STUB;
     result.push({ text: `${timeStr}  ${altStr}`, style: "normal" });
+  } else if (vis.TIME) {
+    result.push({ text: formatSsaTime(input.simTimeMs), style: "normal" });
   } else if (vis.ALTSTG) {
     const altStr = input.primaryAltimeter ?? SSA_ALTIMETER_STUB;
     result.push({ text: altStr, style: "normal" });
@@ -244,6 +265,14 @@ export function buildSsaRenderLines(input: SsaInput): SsaRenderLine[] {
   const defaultCrda = airport === "BOS" ? "*S1 BOS 27/22L" : `*S1 ${airport} 27/09`;
   const crdaStatus = input.crdaRpcStatus ?? defaultCrda;
   result.push({ text: crdaStatus, style: "normal" });
+
+  // 10. Satellite Altimeter Matrix: 3 airports per line when ALTSTG filter is active
+  if (vis.ALTSTG && input.airportAltimeters && input.airportAltimeters.length > 0) {
+    const satLines = formatSatelliteAltimeterLines(input.airportAltimeters);
+    for (const satLine of satLines) {
+      result.push({ text: satLine, style: "normal" });
+    }
+  }
 
   return result;
 }

@@ -116,10 +116,52 @@ test("AC3 — SSA FILTER hides TIME / ALTSTG and restores them", () => {
   expect(hidden).toContain("000 180 U 000 180 A");
 
   vis.TIME = true;
+  vis.ALTSTG = false;
+  const timeOnly = lines({ simTimeMs: 125_000, visibility: vis });
+  expect(timeOnly).toContain("0002/05");
+  expect(timeOnly.some((l) => l.includes("30.17"))).toBe(false);
+
+  vis.TIME = false;
   vis.ALTSTG = true;
-  const shown = lines({ simTimeMs: 125_000, visibility: vis });
-  expect(shown.some((l) => l.includes("0002/05"))).toBe(true);
-  expect(shown.some((l) => l.includes("30.17"))).toBe(true);
+  const altOnly = lines({ simTimeMs: 125_000, primaryAltimeter: "30.18", visibility: vis });
+  expect(altOnly).toContain("30.18");
+  expect(altOnly.some((l) => l.includes("0002/05"))).toBe(false);
+
+  vis.TIME = true;
+  vis.ALTSTG = true;
+  const shown = lines({ simTimeMs: 125_000, primaryAltimeter: "30.18", visibility: vis });
+  expect(shown).toContain("0002/05  30.18");
+});
+
+test("T02-79 — satellite altimeter matrix formats in 3-airport blocks and obeys ALTSTG", () => {
+  const satAlts = [
+    { airportCode: "KATL", altimeter: "30.18" },
+    { airportCode: "KFTY", altimeter: "30.18" },
+    { airportCode: "KPDK", altimeter: "30.18" },
+    { airportCode: "KMGE", altimeter: "30.18" },
+    { airportCode: "KRYY", altimeter: "30.18" },
+  ];
+
+  const withSat = lines({
+    simTimeMs: 0,
+    primaryAltimeter: "30.18",
+    airportAltimeters: satAlts,
+  });
+
+  expect(withSat).toContain("KATL 30.18  KFTY 30.18  KPDK 30.18");
+  expect(withSat).toContain("KMGE 30.18  KRYY 30.18");
+
+  // When ALTSTG is turned off, all satellite rows are hidden
+  const vis = defaultSsaVisibility();
+  vis.ALTSTG = false;
+  const withoutSat = lines({
+    simTimeMs: 0,
+    primaryAltimeter: "30.18",
+    airportAltimeters: satAlts,
+    visibility: vis,
+  });
+  expect(withoutSat.some((l) => l.includes("KATL 30.18"))).toBe(false);
+  expect(withoutSat.some((l) => l.includes("KMGE 30.18"))).toBe(false);
 });
 
 test("AC4 — GI FILTER hides a non-empty line on the PPI string list", () => {
