@@ -34,3 +34,18 @@ hidden ILS/ATPA test benches. KATL west/east configurations are playable and
 session-visible; video maps stay empty until a KATL map set is authored. Do
 not point KATL at KDEM maps. Do not delete or move these files without
 updating their manifest, loader, tests, and compatibility exports.
+
+## Radar sites
+
+Optional `radarSites` rows are trainer-authored display fixtures (R07 SITE /
+FUSED / MULTI vocabulary; R04 STARS / TAMR posture). They are **not** FAA/NAS
+sensor adaptation or live sensors. Ids such as `KDEM-APT`, `KDEM-REMOTE`,
+`KATL-APT`, and `KATL-REMOTE` are invented trainer labels.
+
+Each row is `asr` or `airport`, with either local ENU (`xNm`/`yNm`) or
+lat/lon (`latDeg`/`lonDeg`) — exactly one complete pair. Load converts lat/lon
+through `latLonToNm` and the scenario ARP. Omitted `rangeNm` is 60 NM; omitted
+`periodMs` is 4800 ms; omitted `radarSites` is `[]`.
+
+Empty `[]` means implicit FUSED for T02-75: no SITE selection entries, not “no
+surveillance.” This package does not sample reports or paint SITE marks.

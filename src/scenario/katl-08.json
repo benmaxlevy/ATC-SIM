@@ -230,5 +230,25 @@
     "policy": "auto",
     "ratePerHour": 12
   },
-  "giTextLines": ["ATIS A", "RWY 08L", "ILS 08L IN USE", "", "", "", "", "", "", ""]
+  "giTextLines": ["ATIS A", "RWY 08L", "ILS 08L IN USE", "", "", "", "", "", "", ""],
+  "radarSites": [
+    {
+      "id": "KATL-APT",
+      "name": "Trainer Atlanta airport",
+      "kind": "airport",
+      "latDeg": 33.6367,
+      "lonDeg": -84.4278638888889,
+      "rangeNm": 60,
+      "periodMs": 4800
+    },
+    {
+      "id": "KATL-REMOTE",
+      "name": "Trainer Atlanta remote ASR",
+      "kind": "asr",
+      "latDeg": 33.6367,
+      "lonDeg": -83.6278638888889,
+      "rangeNm": 60,
+      "periodMs": 4800
+    }
+  ]
 }

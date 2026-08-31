@@ -24,6 +24,7 @@ import type {
 import { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN, GI_TEXT_LINE_COUNT } from "./types";
 import { loadCatalog } from "./procedures/loadCatalog";
 import { loadMva } from "./mva";
+import { parseRadarSites } from "./radarSites";
 import {
   coastlineFromVideoMaps,
   loadVideoMapGroups,
@@ -476,6 +477,7 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
     ...(departureConfig ? { departureConfig } : {}),
     catalog,
     mva: loadMva(icao),
+    radarSites: parseRadarSites(s.radarSites, arp),
   };
 }
 

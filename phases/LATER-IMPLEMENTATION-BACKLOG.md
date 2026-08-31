@@ -6,6 +6,31 @@ been started.
 
 ## Scope and display
 
+### Authored radar sites without sampler or SITE DCB (T04-45)
+
+Visible now: scenario JSON may declare trainer-authored `radarSites` (`id`,
+`name`, `kind` `asr`|`airport`, ENU or lat/lon, `rangeNm` default 60,
+`periodMs` default 4800). The loader validates rows and normalizes position
+to local NM via `latLonToNm` and the scenario ARP. Omitted or empty
+`radarSites` loads as `[]`, which is implicit FUSED (no site-selection
+entries, not “no surveillance”). KDEM and KATL ship airport-at-ARP plus one
+remote ASR using invented trainer ids (`KDEM-APT` / `KDEM-REMOTE`,
+`KATL-APT` / `KATL-REMOTE`).
+
+Deliberately missing, each owned by a later ticket:
+
+- surveillance sampler, report pose, history, coast, and FUSED / MULTI /
+  single-site paints (T02-75);
+- SITE DCB caps and a live SSA radar word (T02-76);
+- end-to-end SITE walk and coverage paints (T02-77).
+
+Constraints later work must keep:
+
+- sites stay trainer fixtures, not NAS adaptation or official FAA ids;
+- no `src/` import of `tools/cifp-import`; no airport-id site branch;
+- empty `[]` remains implicit FUSED; range checks at report time belong
+  to the sampler, not a KDEM-only fallback.
+
 ### Real ATPA pairing and predicted geometry
 
 Live now: catalog volumes walked by `approachId` (T02-43), in-trail pairing

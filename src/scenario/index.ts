@@ -5,7 +5,8 @@
  * `loadPlayableScenario`), compatibility KDEM loaders, Scenario types
  * including trainer-authored MAPS / video-map geometry from `video-maps/<ICAO>/`
  * (Not OSM / tiles), facility procedure catalog (`loadCatalog`, `data/<icao>/`),
- * trainer MVA (`loadMva`, `data/<icao>-mva.json`), and `createWorldFromScenario`
+ * trainer MVA (`loadMva`, `data/<icao>-mva.json`), trainer-authored `radarSites`
+ * (empty = implicit FUSED; sampling is T02-75), and `createWorldFromScenario`
  * (6 STAR-inbound arrivals including DAL123, VIA armed). Bench:
  * `spawnArrivals(world, n)` / `?traffic=30` places n jets on a
  * downwind arc; default student scenario stays 4–8. `?seed=` reshuffles STAR
@@ -27,6 +28,8 @@ export type {
   DigitalMapRangeRings,
   DigitalMapRunway,
   Fix,
+  RadarSite,
+  RadarSiteKind,
   Runway,
   Scenario,
   ScenarioMaps,
@@ -56,8 +59,15 @@ export type {
   StarProcedure,
 } from "./procedures/types";
 export { catalogDctIds } from "./procedures/types";
-export { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN, GI_TEXT_LINE_COUNT } from "./types";
+export {
+  ARRIVAL_COUNT_MAX,
+  ARRIVAL_COUNT_MIN,
+  GI_TEXT_LINE_COUNT,
+  RADAR_SITE_DEFAULT_PERIOD_MS,
+  RADAR_SITE_DEFAULT_RANGE_NM,
+} from "./types";
 export { assertScenario, loadKdem, loadKdem09, loadKdemIls09, loadKdemIls27 } from "./load";
+export { isImplicitFusedSurveillance, parseRadarSites } from "./radarSites";
 export type {
   PlayableAirport,
   PlayableScenario,
