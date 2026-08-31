@@ -8,8 +8,8 @@
  * airport). RR CNTR lights when that origin ≠ view **center**. Leader direction
  * is L1–L9; length is a discrete px set (0/24/36/48) on this view. CHAR SIZE is
  * per-subsystem Plex/system mono (DATA BLOCKS / LISTS / DCB / TOOLS / POS), not
- * a font picker. BRITE is per drawn channel (0–100 multiply); WX/WXC/BKC stored
- * no-ops. History records on each surveillance report, cap 5 dots, no
+ * a font picker. BRITE is per drawn channel (0–100 multiply); WX/WXC tint VIP
+ * paint; BKC is a stored no-op. History records on each surveillance report, cap 5 dots, no
  * phosphor; AUX HISTORY spinner shows 0–5 of those dots (F8 / H
  * toggles 0 ↔ last non-zero). Default SITE mode is FUSED. PTL is a straight predicted track line (default
  * 1.0 min; AUX spinner 0.5/1/2/4). F7 toggles PTL ALL. PTL OWN is F3-owned
@@ -25,6 +25,7 @@
  * Scope display state only. Never a Command, readback, or intent.
  */
 
+import type { LatLon } from "@core";
 import {
   DEFAULT_ALTITUDE_FILTER,
   beginFilterEntry,
@@ -97,6 +98,7 @@ import {
   surveillanceModesEqual,
   type SurveillanceMode,
 } from "./surveillance";
+import { cloneWxLevels, emptyWxMosaic, type WxLevels, type WxMosaic } from "./wx";
 
 import {
   DEFAULT_SYSTEM_LIST_PLACEMENTS,
@@ -129,7 +131,8 @@ export interface ScopeView {
   charSizePx: CharSizePx;
   /**
    * DCB BRITE per drawn channel (0–100). Hue stays T02-08 green/white/blue.
-   * WX/WXC/BKC/CMP/BCN are stored; paint channels (including PRI) tint draw.
+   * WX/WXC tint VIP fills and contours. PRI tints the position mark.
+   * BKC/CMP/BCN stay stored; paint channels tint draw.
    */
   brite: BriteState;
   /** PLACE CNTR: next PPI click sets view **center**. */
@@ -269,6 +272,17 @@ export interface ScopeView {
   surveillanceMode: SurveillanceMode;
   /** Trainer-authored sites from the loaded scenario. `[]` = implicit FUSED. */
   radarSites: RadarSite[];
+  /**
+   * STARS VIP 1–6 display latches. Default all false.
+   * Display only. Paint is weatherLayer. Does not steer aircraft.
+   */
+  wxLevels: WxLevels;
+  /**
+   * Fetched VIP mosaic. Default empty. Paint reads this; do not fetch here.
+   */
+  wxMosaic: WxMosaic;
+  /** Scenario ARP for mosaic placement. Default 0,0. Not an airport-id switch. */
+  arp: LatLon;
 }
 
 export function createScopeView(
@@ -280,6 +294,7 @@ export function createScopeView(
     giTextLines?: readonly string[];
     radarSites?: readonly RadarSite[];
     surveillanceMode?: SurveillanceMode;
+    arp?: LatLon;
   },
 ): ScopeView {
   const digitalMap = options?.digitalMap ?? DEFAULT_DIGITAL_MAP;
@@ -287,6 +302,7 @@ export function createScopeView(
   const showRunway = true;
   const showLocalizer = true;
   const giTextLines = padGiTextLines(options?.giTextLines);
+  const arp = options?.arp ?? { latDeg: 0, lonDeg: 0 };
   return {
     camera: {
       rangeNm: DEFAULT_RANGE_NM,
@@ -355,6 +371,9 @@ export function createScopeView(
     beaconatorActive: false,
     surveillanceMode: options?.surveillanceMode ?? defaultSurveillanceMode(),
     radarSites: options?.radarSites ? [...options.radarSites] : [],
+    wxLevels: cloneWxLevels(),
+    wxMosaic: emptyWxMosaic(),
+    arp,
   };
 }
 

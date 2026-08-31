@@ -16,7 +16,8 @@
  * FDB / owned white FDB, CSI-like `*` / `G`); position symbol stays blue;
  * selected yellow box independent of ownership. CHAR SIZE is per-subsystem
  * (DATA BLOCKS / LISTS / DCB / TOOLS / POS) on IBM Plex Mono. BRITE multiplies
- * each drawn channel; WX/WXC/BKC do not paint weather. SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
+ * each drawn channel. Weather VIP fills paint after maps and before tracks
+ * (display only). SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
  * FILTER, RANGE, OFF CNTR, `OK/OK/NA` plus live SITE radar word) — not world-fixed. Live `*` TPA/ATPA chord
  * buffer paints next to FILTER in SSA/preview green (same FIL-prompt grammar).
  * Current CA displays static `CA` + tone from `world.alerts` and paints red. T04-10 MSAW paints a yellow then red `MSAW` tag the same way; neither tints the block, leader, or target. CA halo is
@@ -25,9 +26,9 @@
  * sprite. Not an airplane. Not a label. Not NAS STARS.
  *
  * Draw order (phase README): background, rings, coastline, runway, localizer,
- * history, PTL, TPA J-rings, ATPA cones, targets, leader lines, datablocks,
- * selection box, SSA (screen-fixed). Maps rebuild on range/center/resize/layer
- * toggle, not every rAF.
+ * weather VIP fills, history, PTL, TPA J-rings, ATPA cones, targets, leader
+ * lines, datablocks, selection box, SSA (screen-fixed). Maps rebuild on
+ * range/center/resize/layer toggle, not every rAF.
  *
  * Hot path (T02-12): reuse Path2D map cache — do not parse KDEM JSON per frame,
  * do not rebuild maps 60 times for a static camera, do not fillText per
@@ -119,6 +120,7 @@ import {
   type ListRect,
 } from "./systemLists";
 import { buildVideoMapsListLines } from "./coordinationList";
+import { drawWeatherLayer } from "./weatherLayer";
 
 const RING_STROKE_PX = 1;
 const RUNWAY_STROKE_PX = 2;
@@ -146,6 +148,7 @@ export function renderScope(
 
   view.mapCache = reuseOrBuildMapCache(view.mapCache, toMapCacheInput(view, size));
   drawMapLayers(ctx, view.mapCache, view);
+  drawWeatherLayer(ctx, view, size);
   drawTracks(ctx, world, view, size);
 
   const ssaBottomY = drawSsa(ctx, world, view);

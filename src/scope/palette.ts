@@ -9,9 +9,9 @@
  * certified.” UI word is **MSAW**, not GPWS / TAWS.
  *
  * Trainer delta: one TCW-like set, not MDM3/MDM4 clones, not a NY screenshot.
- * DCB BRITE is per drawn channel (MPA/MPB/FDB/LDB/…) as a 0–100 intensity
- * multiply on this palette — hues stay the T02-08 roles. WX/WXC/BKC are
- * stored no-ops (no weather). Not a brightness slider.
+ * DCB BRITE is per drawn channel (MPA/MPB/FDB/LDB/WX/WXC/…) as a 0–100
+ * intensity multiply on this palette — hues stay the T02-08 roles. BKC is a
+ * stored no-op. Not a brightness slider.
  * Phase 2 reserved yellow/red; phase 4 CA/MSAW uses them. Scope reads
  * `world.alerts` and `datablockAlertTint`. It does not compute pair distance or
  * MVA floors. Current CA displays static `CA`. Not NAS STARS.
@@ -118,8 +118,8 @@ export const HISTORY_TRAIL = ["#1E50C8", "#4646AA", "#323282", "#28286E", "#1E1E
 /**
  * Analog: CRC STARS DCB BRITE channels (R07).
  * Trainer delta: discrete 0–100 in steps of 10 applied as a multiply on the
- * existing palette hex (hue stays green/white/blue/gray). WX / WXC / BKC are
- * stored no-ops — no weather paint. CMP is stored; we have no compass `N`
+ * existing palette hex (hue stays green/white/blue/gray). WX / WXC tint VIP
+ * fills and band contours. BKC is a stored no-op — no CRC BKC. CMP is stored; we have no compass `N`
  * tick so the cell is disabled. BCN is a stored no-op (beacon symbol uses
  * POS/OTH). PRI tints the FUSED puck and MULTI/single-site position
  * rectangles. Not a brightness slider. Not NAS STARS.
@@ -163,17 +163,17 @@ export const BRITE_PAINT_CHANNELS = [
   "rr",
   "hst",
   "pri",
+  "wx",
+  "wxc",
 ] as const satisfies readonly BriteChannel[];
 
 /**
  * CMP: no compass `N` tick. BCN: secondary beacon symbol uses POS/OTH.
- * WX/WXC/BKC: no weather / no CRC BKC.
+ * BKC: no CRC BKC paint.
  */
 export const BRITE_DISABLED_CHANNELS = [
   "cmp",
   "bcn",
-  "wx",
-  "wxc",
   "bkc",
 ] as const satisfies readonly BriteChannel[];
 

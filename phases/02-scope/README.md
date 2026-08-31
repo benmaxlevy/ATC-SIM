@@ -58,7 +58,7 @@ Lift nothing from `phases/_shared/non-goals.md`. In addition, **do not** build:
 | --- | --- |
 | Full NAS DCB / CRDA / FMA / WX mosaic | T02-16/17 are the historical lite grid. **T02-22–33** lift a trainer main/aux/submenu subset (SHIFT, PREF local, disabled WX, then a physical two-row MAIN skin). Still not CRDA, FMA, weather paint, or a Raytheon clone. |
 | CRDA, FMA, ARV, timed approaches | Phase 4+. |
-| Weather mosaic, precipitation, wind barbs | Phase 4+. |
+| Weather mosaic, precipitation, wind barbs | T02-68–72 VIP mosaic shipped (IEM N0Q fills + WXC contours, display only). Wind still later. |
 | Real STARS bitmap font or any licensed NAS typeface | Metric-similar **monospace** only. |
 | CRC-compatible full keyboard | Subset below is frozen; document every difference. Local PREF slots are T02-29, not a NAS pref host. |
 | Handoff, point-out, quick-look other facility, scratchpad, beacon code | F3 only recolors ownership. |
@@ -532,11 +532,11 @@ Do not call the DCB addendum done until:
 - [x] PLACE CNTR / OFF CNTR and PLACE RR / RR CNTR behave as separate cells.
 - [x] MAPS 1–30 + quick 1–6; empty slots disabled; WX1–4 visible and unpressable.
 - [x] Aux: HISTORY count, PTL length / OWN / ALL, DCB TOP/LEFT/RIGHT/BOTTOM; VOL disabled.
-- [x] BRITE per drawn channel; CHAR SIZE per subsystem; WX/WXC/BKC channels disabled or stored no-op.
+- [x] BRITE per drawn channel; CHAR SIZE per subsystem; WX/WXC live (T02-72); BKC still disabled / stored no-op.
 - [x] SSA FILTER hides existing SSA lines; GI TEXT has 10 toggleable facility lines.
 - [x] TPA J-rings work; ATPA is a stub/toggle, not a pairing engine.
 - [x] PREF 1–8 persist/restore display state in `localStorage`.
-- [x] Still no weather mosaic, CRDA, FMA, OSM, STARS font, Command IR from DCB. Disabled CRDA on SSA FILTER is chrome only (T02-27).
+- [x] WX VIP mosaic shipped; BKC/HIST/deviate still later. Still no CRDA, FMA, OSM, STARS font, Command IR from DCB. Disabled CRDA on SSA FILTER is chrome only (T02-27).
 - [ ] T02-30 manual script 1–10: cheap STARS DCB, not a web settings ribbon. skip-with-reason: no visual operator; Chrome Windows script not watched. Automated greps/tests prove addendum grammar; do not invent a visual pass.
 
 ### STARS CRC Scope Fidelity Addendum (T02-34–38)
@@ -683,6 +683,20 @@ Completed SITE integration addendum matching [CRC STARS](https://docs.virtualnas
 #### Explicitly not Preview Area this swarm (out / still later)
 
 pointouts `UN` / `**` / `(ID)*` / initiate-recall PO (leave existing click / radio-buffer `UN`/`**`); `TERM CNTL ALL`; typed TCP / Δ handoffs; `BE`/`BI`; assign-code `M ####`; MULTIFUNC (F7 stays PTL ALL); scratchpad `Y`/`+`; per-track PTL `R`; highlight keyboard (stays middle-click); quicklook `Q`; CRDA; WX; list relocate; RBL / `.dot` commands.
+
+### Phase 2 addendum (T02-68–72 WX mosaic)
+
+T02-68–72 VIP mosaic is shipped: IEM N0Q fills + WXC contours, display only.
+Wind still later. Historical T02-22–30 remains accurate: its WX cells first
+shipped without weather paint.
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-68](tickets/T02-68-wx-mosaic-iem-client-and-vip.md) | WX mosaic IEM client and VIP decode | P0 | M | none | Shipped |
+| [T02-69](tickets/T02-69-wx-vip-paint-under-tracks.md) | WX VIP paint under tracks | P0 | M | T02-68 | Shipped |
+| [T02-70](tickets/T02-70-dcb-wx-levels-and-pref.md) | DCB WX levels and PREF | P0 | M | T02-69 | Shipped |
+| [T02-71](tickets/T02-71-preview-wx-commands.md) | Preview WX commands | P0 | S | T02-69 | Shipped |
+| [T02-72](tickets/T02-72-brite-wx-wxc-and-acceptance.md) | BRITE WX/WXC and acceptance | P0 | M | T02-70, T02-71 | Shipped |
 
 ## Launching an agent
 

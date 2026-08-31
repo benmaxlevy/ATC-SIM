@@ -56,6 +56,7 @@ import {
 } from "./starsChord";
 import {
   applyPreviewBeaconAction,
+  applyPreviewWxAction,
   armPreviewCntl,
   armPreviewRelocateList,
   armPreviewSlewAction,
@@ -259,6 +260,11 @@ function startPreviewBuffer(view: ScopeView, ch: string, nowMs: number): void {
 
 function applyPreviewArmedAction(view: ScopeView, action: PreviewArmedAction, nowMs: number): void {
   if (applyPreviewBeaconAction(view.beaconSelectCodes, action)) {
+    return;
+  }
+  const wxLevels = applyPreviewWxAction(view.wxLevels, action);
+  if (wxLevels) {
+    view.wxLevels = wxLevels;
     return;
   }
   switch (action.type) {

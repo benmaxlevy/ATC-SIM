@@ -79,11 +79,12 @@ test("AC1 — MAIN is the fixed two-row, 22-column physical DCB descriptor", () 
   expect(MAIN_DCB_LAYOUT.every(({ row, rowSpan }) => row === 1 || rowSpan === 1)).toBe(true);
 });
 
-test("AC1 — MAIN renders six inert WX caps and inert MODE FSL; SITE is enabled", () => {
+test("AC1 — MAIN renders six WX latches, enabled SITE, inert MODE FSL", () => {
   const html = dcbHtml();
   for (const id of ["wx1", "wx2", "wx3", "wx4", "wx5", "wx6"]) {
     expect(html).toMatch(new RegExp(`data-dcb-layout-id="${id}"`));
-    expect(html).toMatch(new RegExp(`aria-label="${id.toUpperCase()}"[^>]*disabled`));
+    expect(html).toMatch(new RegExp(`aria-label="${id.toUpperCase()}"[^>]*data-dcb-kind="toggle"`));
+    expect(html).not.toMatch(new RegExp(`aria-label="${id.toUpperCase()}"[^>]*\\bdisabled\\b`));
   }
   expect(html).toMatch(/aria-label="MODE FSL"[^>]*disabled/);
   expect(html).toMatch(/aria-label="SITE FUSED"/);

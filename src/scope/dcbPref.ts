@@ -40,6 +40,7 @@ import {
   type TpaState,
 } from "./tpa";
 import { resolveSurveillancePref, type SurveillanceMode } from "./surveillance";
+import { cloneWxLevels, type WxLevels } from "./wx";
 
 export type DcbDock = "TOP" | "LEFT" | "RIGHT" | "BOTTOM";
 
@@ -79,12 +80,13 @@ export const DCB_PREF_NAME_MAX_CHARS = 8;
  * Body schema version. Writes always emit this. `parseDcbPrefJson` also
  * accepts `v: 1` (T02-29 / T02-46: `atpa: { on }` plus optional readout
  * flags) and fills the four ATPA sub-toggles from documented defaults.
+ * `v: 2` loads with all six WX levels off when `wxLevels` is absent.
  * The storage key's `v1` is the T02-29 namespace, not this body version.
  */
-export const DCB_PREF_SCHEMA_VERSION = 2 as const;
+export const DCB_PREF_SCHEMA_VERSION = 3 as const;
 
-/** Readable PREF body versions. A mere v1 file is not corrupt. */
-const DCB_PREF_READABLE_VERSIONS: readonly number[] = [1, 2];
+/** Readable PREF body versions. A mere v1 or v2 file is not corrupt. */
+export const DCB_PREF_READABLE_VERSIONS: readonly number[] = [1, 2, 3];
 
 export type DcbPrefStorage = Pick<Storage, "getItem" | "setItem">;
 
@@ -117,6 +119,7 @@ export interface DcbPrefBody {
   atpa: AtpaState;
   /** SITE display mode only. Per-track PTL / TPA are not stored. */
   surveillanceMode: SurveillanceMode;
+  wxLevels: WxLevels;
 }
 
 export interface DcbPrefSlot {
@@ -243,6 +246,17 @@ function isTpaRadius(value: unknown): value is TpaRadiusNm {
   return (TPA_RADIUS_NM as readonly number[]).includes(value as number);
 }
 
+/** Missing or malformed WX levels become six false. Valid six-boolean arrays pass through. */
+function parseWxLevels(value: unknown): WxLevels {
+  if (!Array.isArray(value) || value.length !== 6) {
+    return cloneWxLevels();
+  }
+  if (!value.every((flag) => typeof flag === "boolean")) {
+    return cloneWxLevels();
+  }
+  return cloneWxLevels([value[0], value[1], value[2], value[3], value[4], value[5]]);
+}
+
 function cloneSsa(filter: SsaVisibility): SsaVisibility {
   const next = {} as SsaVisibility;
   for (const field of SSA_FILTER_FIELDS) {
@@ -297,6 +311,7 @@ export function serializeDcbPref(view: ScopeView): DcbPrefBody {
       monitorCones: view.atpa.monitorCones,
     },
     surveillanceMode: view.surveillanceMode,
+    wxLevels: cloneWxLevels(view.wxLevels),
   };
 }
 
@@ -369,6 +384,7 @@ export function applyDcbPref(view: ScopeView, body: DcbPrefBody): void {
     monitorCones: body.atpa?.monitorCones !== false,
   };
   setSurveillanceMode(view, resolveSurveillancePref(body.surveillanceMode, view.radarSites));
+  view.wxLevels = parseWxLevels(body.wxLevels);
   view.mapCache = null;
 }
 
@@ -378,6 +394,8 @@ export function applyDcbPrefDefaults(view: ScopeView): void {
     digitalMap: view.digitalMap,
     giTextLines: view.giTextLines,
     showCoastline: view.digitalMap.coastline?.enabled === true,
+    arp: view.arp,
+    radarSites: view.radarSites,
   });
   applyDcbPref(view, serializeDcbPref(factory));
 }

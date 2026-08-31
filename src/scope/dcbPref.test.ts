@@ -7,6 +7,7 @@ import { loadKdem, type RadarSite } from "@scenario";
 import { isVideoMapOn, toggleVideoMap } from "./dcbFunctions";
 import {
   DCB_PREF_NAME_MAX_CHARS,
+  DCB_PREF_READABLE_VERSIONS,
   DCB_PREF_READOUT_MAX_CHARS,
   DCB_PREF_SLOT_COUNT,
   DCB_PREF_SCHEMA_VERSION,
@@ -338,8 +339,9 @@ test("T02-46 — omitted ATPA readout flags default on when an old PREF snapshot
   expect(view.atpa.monitorCones).toBe(true);
 });
 
-test("T02-47 — PREF round-trips five ATPA fields; v1 migrates; v3 and corrupt stay factory", async () => {
-  expect(DCB_PREF_SCHEMA_VERSION).toBe(2);
+test("T02-47 — PREF round-trips five ATPA fields; v1 migrates; v4 and corrupt stay factory", async () => {
+  expect(DCB_PREF_SCHEMA_VERSION).toBe(3);
+  expect(DCB_PREF_READABLE_VERSIONS).toEqual([1, 2, 3]);
   const store = memoryStorage();
   const view = kdemView();
   view.dcbPref.icao = "KDEM";
@@ -353,7 +355,7 @@ test("T02-47 — PREF round-trips five ATPA fields; v1 migrates; v3 and corrupt 
     v: number;
     slots: Array<{ name: string; body: { atpa: unknown } } | null>;
   };
-  expect(saved.v).toBe(2);
+  expect(saved.v).toBe(3);
   expect(saved.slots[0]?.body.atpa).toEqual({
     on: true,
     inTrailDistance: false,
@@ -384,7 +386,7 @@ test("T02-47 — PREF round-trips five ATPA fields; v1 migrates; v3 and corrupt 
     alertCones: true,
     monitorCones: true,
   });
-  expect(parseDcbPrefJson(store.getItem(dcbPrefStorageKey("KDEM")), "KDEM").v).toBe(2);
+  expect(parseDcbPrefJson(store.getItem(dcbPrefStorageKey("KDEM")), "KDEM").v).toBe(3);
 
   saved.v = 2;
   saved.slots[0]!.body.atpa = { on: false };
@@ -397,7 +399,7 @@ test("T02-47 — PREF round-trips five ATPA fields; v1 migrates; v3 and corrupt 
   expect(missingV2.atpa.alertCones).toBe(true);
   expect(missingV2.atpa.monitorCones).toBe(true);
 
-  saved.v = 3;
+  saved.v = 4;
   store.setItem(dcbPrefStorageKey("KDEM"), JSON.stringify(saved));
   const unknown = kdemView();
   loadDcbPrefFromStorage(unknown, "KDEM", store);
@@ -463,4 +465,59 @@ test("T02-76 — PREF round-trips SITE mode; unknown site id falls back to FUSED
   const factory = createScopeView(0, 0, { radarSites: sites, surveillanceMode: "MULTI" });
   applyDcbPref(factory, omitted);
   expect(factory.surveillanceMode).toBe("FUSED");
+});
+
+test("T02-70 — v3 PREF round-trips wxLevels; v2 missing field is six false", async () => {
+  expect(DCB_PREF_SCHEMA_VERSION).toBe(3);
+  expect(DCB_PREF_READABLE_VERSIONS).toEqual([1, 2, 3]);
+  const store = memoryStorage();
+  const view = kdemView();
+  view.dcbPref.icao = "KDEM";
+  view.wxLevels = [true, false, true, false, false, true];
+  view.camera.rangeNm = 40;
+  saveDcbPref(view, store);
+  const saved = JSON.parse(store.getItem(dcbPrefStorageKey("KDEM"))!) as {
+    v: number;
+    slots: Array<{ body: { wxLevels?: unknown; rangeNm?: number } } | null>;
+  };
+  expect(saved.v).toBe(3);
+  expect(saved.slots[0]?.body.wxLevels).toEqual([true, false, true, false, false, true]);
+  expect(saved.slots[0]?.body.rangeNm).toBe(40);
+
+  const reloaded = kdemView();
+  loadDcbPrefFromStorage(reloaded, "KDEM", store);
+  expect(reloaded.wxLevels).toEqual([true, false, true, false, false, true]);
+  expect(reloaded.camera.rangeNm).toBe(40);
+
+  saved.v = 2;
+  delete saved.slots[0]!.body.wxLevels;
+  store.setItem(dcbPrefStorageKey("KDEM"), JSON.stringify(saved));
+  const fromV2 = kdemView();
+  fromV2.wxLevels = [true, true, true, true, true, true];
+  loadDcbPrefFromStorage(fromV2, "KDEM", store);
+  expect(fromV2.wxLevels).toEqual([false, false, false, false, false, false]);
+  expect(fromV2.camera.rangeNm).toBe(40);
+
+  saved.v = 3;
+  saved.slots[0]!.body.wxLevels = [true, "nope", false, false, false, false];
+  store.setItem(dcbPrefStorageKey("KDEM"), JSON.stringify(saved));
+  const malformed = kdemView();
+  malformed.wxLevels = [true, true, true, true, true, true];
+  loadDcbPrefFromStorage(malformed, "KDEM", store);
+  expect(malformed.wxLevels).toEqual([false, false, false, false, false, false]);
+  expect(malformed.camera.rangeNm).toBe(40);
+
+  const reset = kdemView();
+  reset.wxLevels = [true, false, false, false, false, false];
+  applyDcbPrefDefaults(reset);
+  expect(reset.wxLevels).toEqual([false, false, false, false, false, false]);
+
+  const { parseRadioText } = await import("@parse");
+  const heading = parseRadioText("DAL123 H270");
+  expect(heading.ok).toBe(true);
+  if (heading.ok) {
+    expect(heading.instructions).toEqual([
+      { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+    ]);
+  }
 });

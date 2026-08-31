@@ -44,6 +44,8 @@ import {
   syncTrackDisplays,
 } from "./trackDisplay";
 import { DATABLOCK_FONT, DATABLOCK_FONT_PX } from "./fonts";
+import { WX_VIP_FILL_HEX, wxVipFillHex } from "./weatherLayer";
+import { bboxFromArp, decodeRgbaToVipMasks } from "./wx";
 import {
   formatFullDatablock,
   formatLimitedDatablock,
@@ -77,6 +79,14 @@ function mockCtx(): CanvasRenderingContext2D {
   return createMockCtx().ctx;
 }
 
+interface DrawImageCall {
+  image: unknown;
+  dx: number;
+  dy: number;
+  dw: number;
+  dh: number;
+}
+
 function createMockCtx(): {
   ctx: CanvasRenderingContext2D;
   strokeRects: StrokeRect[];
@@ -91,6 +101,8 @@ function createMockCtx(): {
     textBaseline?: string;
   }[];
   pathStrokes: PathStroke[];
+  drawImages: DrawImageCall[];
+  ops: string[];
 } {
   const strokeRects: StrokeRect[] = [];
   const fillRects: FillRect[] = [];
@@ -104,6 +116,8 @@ function createMockCtx(): {
     textBaseline?: string;
   }[] = [];
   const pathStrokes: PathStroke[] = [];
+  const drawImages: DrawImageCall[] = [];
+  const ops: string[] = [];
   let currentPath: { x: number; y: number }[] = [];
   const ctx = {
     fillStyle: "",
@@ -113,6 +127,7 @@ function createMockCtx(): {
     textBaseline: "alphabetic",
     textAlign: "start",
     fillRect(this: { fillStyle: string }, x: number, y: number, w: number, h: number) {
+      ops.push("fillRect");
       fillRects.push({ x, y, w, h });
     },
     save() {},
@@ -125,6 +140,7 @@ function createMockCtx(): {
     clip() {},
     rect() {},
     stroke(this: { strokeStyle: string; lineWidth: number }) {
+      ops.push("stroke");
       if (currentPath.length >= 2) {
         pathStrokes.push({
           points: currentPath.slice(),
@@ -147,12 +163,17 @@ function createMockCtx(): {
     measureText(text: string) {
       return { width: Math.max(0, text.length) * 7.2 };
     },
+    drawImage(image: unknown, dx: number, dy: number, dw: number, dh: number) {
+      ops.push("drawImage");
+      drawImages.push({ image, dx, dy, dw, dh });
+    },
     fillText(
       this: { font: string; fillStyle: string; textAlign: string; textBaseline: string },
       text: string,
       x?: number,
       y?: number,
     ) {
+      ops.push("fillText");
       fillTexts.push({
         text,
         font: this.font,
@@ -170,6 +191,8 @@ function createMockCtx(): {
     fillRects,
     fillTexts,
     pathStrokes,
+    drawImages,
+    ops,
   };
 }
 
@@ -1211,6 +1234,9 @@ test("T02-24 — GEO MAPS / CURRENT overlay is screen-fixed SSA green; no weathe
   expect(src).not.toMatch(/mosaic/i);
   expect(src).not.toMatch(/openstreetmap/i);
   expect(src).not.toMatch(/drawImage/);
+  const wxPaint = sources["./weatherLayer.ts"] ?? "";
+  expect(wxPaint).toMatch(/drawImage/);
+  expect(wxPaint).not.toMatch(/openstreetmap/i);
 });
 
 test("T02-26 — CHAR SIZE DATA BLOCKS / LISTS and BRITE FDB/MPA change paint", () => {
@@ -2291,4 +2317,55 @@ test("T02-47 — DCB cone latches hide cones and their mileage; master off hides
   renderScope(trackInhibit.ctx, world, view, 800, 800);
   expect(trackInhibit.pathStrokes.filter((s) => s.points.length === 4)).toHaveLength(0);
   expect(trackInhibit.fillTexts.find((t) => t.text === "2.5")).toBeUndefined();
+});
+
+function syntheticVip1Mosaic() {
+  const rgba = new Uint8Array(2 * 2 * 4);
+  for (let i = 0; i < 4; i++) {
+    const o = i * 4;
+    rgba[o] = 0;
+    rgba[o + 1] = 255;
+    rgba[o + 2] = 0;
+    rgba[o + 3] = 255;
+  }
+  return decodeRgbaToVipMasks(rgba, 2, 2, bboxFromArp({ latDeg: 0, lonDeg: 0 }, 4), 1_000);
+}
+
+test("T02-69 — default and all-off weather skips drawImage", () => {
+  const world = createWorld();
+  const view = createScopeView();
+  expect(view.wxLevels).toEqual([false, false, false, false, false, false]);
+  const off = createMockCtx();
+  renderScope(off.ctx, world, view, 800, 800);
+  expect(off.drawImages).toHaveLength(0);
+
+  view.wxMosaic = syntheticVip1Mosaic();
+  view.wxLevels = [false, false, false, false, false, false];
+  const stillOff = createMockCtx();
+  renderScope(stillOff.ctx, world, view, 800, 800);
+  expect(stillOff.drawImages).toHaveLength(0);
+});
+
+test("T02-69 — one wxLevels latch paints trainer fill under tracks", () => {
+  const world = createWorldFromScenario(loadKdem());
+  const view = createScopeView();
+  view.wxMosaic = syntheticVip1Mosaic();
+  view.wxLevels = [true, false, false, false, false, false];
+  const rec = createMockCtx();
+  renderScope(rec.ctx, world, view, 800, 800);
+  expect(rec.drawImages).toHaveLength(1);
+  expect(WX_VIP_FILL_HEX).toHaveLength(6);
+  expect(new Set(WX_VIP_FILL_HEX).size).toBe(6);
+  expect(wxVipFillHex(1, 100)).toBe(applyBrite("#146414", 100));
+  expect(wxVipFillHex(1, 50)).toBe(applyBrite("#146414", 50));
+  expect(wxVipFillHex(1, 100)).not.toMatch(/#00EC|#00FF00|#00ECEC/i);
+
+  const drawAt = rec.ops.indexOf("drawImage");
+  const firstTrackText = rec.ops.indexOf("fillText");
+  expect(drawAt).toBeGreaterThan(-1);
+  expect(firstTrackText).toBeGreaterThan(drawAt);
+
+  renderScope(rec.ctx, world, view, 800, 800);
+  expect(rec.drawImages).toHaveLength(2);
+  expect(rec.drawImages[0]!.image).toBe(rec.drawImages[1]!.image);
 });

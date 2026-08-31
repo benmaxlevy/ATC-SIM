@@ -48,7 +48,9 @@ export type BriteSpinnerCell =
   | "BRITE_OTH"
   | "BRITE_TLS"
   | "BRITE_RR"
-  | "BRITE_HST";
+  | "BRITE_HST"
+  | "BRITE_WX"
+  | "BRITE_WXC";
 
 export type DcbSpinnerCell =
   | "RANGE"

@@ -39,6 +39,7 @@ import {
   type DcbPrefStorage,
 } from "./dcbPref";
 import { nmToScreen, pxPerNm, type ScopeViewSize } from "./camera";
+import { toggleWxLevel } from "./dcbFunctions";
 import { applyDcbShift, openDcbMenu } from "./dcbMenu";
 import { PALETTE } from "./palette";
 import { renderScope } from "./renderScope";
@@ -550,7 +551,7 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
     });
   });
 
-  describe("AC4: DCB cells, PREF v2, and no Command IR", () => {
+  describe("AC4: DCB cells, PREF v3, and no Command IR", () => {
     test("four cells each gate only their piece; PREF round-trips; v1 migrates", () => {
       expect(DEFAULT_ATPA_STATE).toEqual({
         on: false,
@@ -639,7 +640,7 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
         slots: Array<{ body: { atpa: unknown } } | null>;
       };
       expect(saved.v).toBe(DCB_PREF_SCHEMA_VERSION);
-      expect(DCB_PREF_SCHEMA_VERSION).toBe(2);
+      expect(DCB_PREF_SCHEMA_VERSION).toBe(3);
       expect(saved.slots[0]?.body.atpa).toEqual({
         on: true,
         inTrailDistance: false,
@@ -670,7 +671,7 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
         alertCones: true,
         monitorCones: true,
       });
-      expect(parseDcbPrefJson(store.getItem(dcbPrefStorageKey("KDEM")), "KDEM").v).toBe(2);
+      expect(parseDcbPrefJson(store.getItem(dcbPrefStorageKey("KDEM")), "KDEM").v).toBe(3);
       expect(serializeDcbPref(migrated).atpa).toEqual(migrated.atpa);
     });
 
@@ -685,6 +686,8 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
       const view = ownedView(world);
       const log = new SessionLog();
       toggleAtpaOn(view);
+      toggleWxLevel(view, 1);
+      expect(view.wxLevels[0]).toBe(true);
       toggleAtpaConeMileage(view);
       toggleAtpaInTrailDistance(view);
       toggleAtpaAlertCones(view);

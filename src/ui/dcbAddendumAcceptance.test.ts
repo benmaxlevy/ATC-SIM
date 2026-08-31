@@ -1,6 +1,6 @@
 /**
  * T02-30 automated DCB addendum gate. No new features — confirms T02-22–29
- * grammar (SHIFT / PREF / disabled WX) and keeps radio vs DCB pipelines apart.
+ * grammar (SHIFT / PREF / WX latches) and keeps radio vs DCB pipelines apart.
  *
  * AC1 (manual Chrome Windows script 1–10) is skip-with-reason: this worker
  * has no visual operator. Do not invent a visual pass.
@@ -13,6 +13,7 @@ import { INSTRUCTION_TYPES, SessionLog, type Command, type Instruction } from "@
 import { createWorldFromScenario, loadKdem, loadKdemIls27 } from "@scenario";
 import {
   BRITE_DISABLED_CHANNELS,
+  BRITE_PAINT_CHANNELS,
   DCB_MAP_SLOT_COUNT,
   DCB_PREF_SLOT_COUNT,
   DCB_QUICK_MAP_COUNT,
@@ -48,6 +49,7 @@ import {
   toggleGiFilter,
   toggleSsaFilter,
   toggleTpaOn,
+  toggleWxLevel,
 } from "@scope";
 import { DisplayControlBar } from "./DisplayControlBar";
 import { submitCommand } from "./command-line";
@@ -57,6 +59,15 @@ const uiSources = import.meta.glob("./*.{ts,tsx}", {
   import: "default",
   eager: true,
 }) as Record<string, string>;
+
+const weatherPaintSrc =
+  (
+    import.meta.glob("../scope/weatherLayer.ts", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>
+  )["../scope/weatherLayer.ts"] ?? "";
 
 const appSources = import.meta.glob(["../**/*.{ts,tsx,css,html}", "../../index.html"], {
   query: "?raw",
@@ -156,6 +167,8 @@ test("AC3 — DCB/scope addendum clicks emit zero Command IR until radio DAL123 
   toggleAtpaInTrailDistance(view);
   toggleAtpaAlertCones(view);
   toggleAtpaMonitorCones(view);
+  toggleWxLevel(view, 1);
+  expect(view.wxLevels[0]).toBe(true);
   expect(handleScopeKeyDown(keyEvent("F3"), view, "scope", world)).toBe(true);
   expect(handleScopeKeyDown(keyEvent("PageUp"), view, "radio", world)).toBe(true);
 
@@ -170,7 +183,7 @@ test("AC3 — DCB/scope addendum clicks emit zero Command IR until radio DAL123 
   expect(dal!.intent.assignedHeadingDeg).toBe(270);
 });
 
-test("AC4 — DCB has SHIFT / PREF / disabled WX; no CSA/FMA/OSM; no input/Apply; no licensed typeface file", () => {
+test("AC4 — DCB has SHIFT / PREF / WX latches; no CSA/FMA/OSM; no input/Apply; no licensed typeface file", () => {
   const main = dcbHtml();
   const mainText = visibleText(main);
   expect(mainText).toMatch(/SHIFT/);
@@ -181,9 +194,10 @@ test("AC4 — DCB has SHIFT / PREF / disabled WX; no CSA/FMA/OSM; no input/Apply
   expect(mainText).not.toMatch(FORBIDDEN_DCB_CELLS);
   expect(main).not.toMatch(/data-dcb-cell="(csa|crda|fma|osm)"/i);
   expect(main).not.toMatch(/aria-label="(CSA|CRDA|FMA|OSM)"/);
-  for (const n of [1, 2, 3, 4]) {
+  for (const n of [1, 2, 3, 4, 5, 6]) {
     expect(main).toContain(`data-dcb-cell="wx${n}"`);
-    expect(main).toMatch(new RegExp(`aria-label="WX${n}"[^>]*\\bdisabled\\b`));
+    expect(main).toMatch(new RegExp(`aria-label="WX${n}"[^>]*data-dcb-kind="toggle"`));
+    expect(main).not.toMatch(new RegExp(`aria-label="WX${n}"[^>]*\\bdisabled\\b`));
   }
   expect(main).not.toMatch(/<input/i);
   expect(main).not.toMatch(/Apply/);
@@ -254,9 +268,10 @@ test("AC5 — persistent chrome copy has no zoom/label/sprite/OSM/HUD", () => {
 
   expect(uiSources["./DisplayControlBar.tsx"]!).not.toMatch(/nexrad|mosaic|openstreetmap/i);
   expect(uiSources["./ScopeCanvas.tsx"]!).not.toMatch(/nexrad|mosaic|openstreetmap/i);
+  expect(weatherPaintSrc).toMatch(/drawImage/);
 });
 
-test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, disabled WX/VOL, TPA stub", () => {
+test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, WX latches / disabled VOL, TPA stub", () => {
   const scenario = loadKdem();
   const view = createScopeView(0, 0, {
     digitalMap: parseDigitalMap(scenario.maps),
@@ -328,10 +343,14 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, disabled WX/VOL, T
 
   openDcbMenu(view, "BRITE");
   const brite = dcbHtml(view);
-  expect(brite).toMatch(/aria-label="WX"[^>]*\bdisabled\b/);
-  expect(brite).toMatch(/aria-label="WXC"[^>]*\bdisabled\b/);
+  expect(brite).toMatch(/aria-label="WX"[^>]*data-dcb-kind="spinner"/);
+  expect(brite).toMatch(/aria-label="WXC"[^>]*data-dcb-kind="spinner"/);
+  expect(brite).not.toMatch(/aria-label="WX"[^>]*\bdisabled\b/);
+  expect(brite).not.toMatch(/aria-label="WXC"[^>]*\bdisabled\b/);
   expect(brite).toMatch(/aria-label="BKC"[^>]*\bdisabled\b/);
-  expect(BRITE_DISABLED_CHANNELS).toEqual(expect.arrayContaining(["wx", "wxc", "bkc"]));
+  expect(BRITE_PAINT_CHANNELS).toEqual(expect.arrayContaining(["wx", "wxc"]));
+  expect(BRITE_DISABLED_CHANNELS).toEqual(expect.arrayContaining(["bkc"]));
+  expect(BRITE_DISABLED_CHANNELS).not.toEqual(expect.arrayContaining(["wx", "wxc"]));
   closeDcbMenu(view);
 
   openDcbMenu(view, "SSA_FILTER");

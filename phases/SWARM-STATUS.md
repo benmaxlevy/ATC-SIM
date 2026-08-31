@@ -2,21 +2,21 @@
 
 ## TWENTY-SECOND SWARM COMPLETE — PREF / PTL / VIA / radar sites (T02-73–77 / T04-43–45)
 
-T02-73–77 and T04-43–45 are squash-merged on `feature/pref-ptl-via-radar` (not `master`). Captain `npm test` / `npm run ci`: **169 test files passed, 1993 tests passed, 3 skipped, 0 failures**. Twenty-first (WX mosaic T02-68–72) stays on `feature/wx-mosaic`. No phase 5. Did not merge `master`. Did not push.
+T02-73–77 and T04-43–45 are squash-merged on `feature/pref-ptl-via-radar` (not `master`). Captain `npm test` / `npm run ci`: **169 test files passed, 1993 tests passed, 3 skipped, 0 failures**. Twenty-first (WX mosaic T02-68–72) is on `master`. No phase 5. Did not merge `master`. Did not push.
 
 - **PREF names (T02-73):** SAVE AS collects a short alnum name via the preview/status buffer. Enter writes the first empty slot (last of 32 when the table is full). Esc and digit-only names write nothing. MAIN/slot caps show the stored name. No `prompt` / `<input>`.
 - **Per-track PTL (T02-74):** `*R` + click toggles session `ptlByAircraftId`. Does not steal `*RR`. Not PREF. ON draws that track even if ALL/OWN are off; OFF hides under ALL.
 - **RadarSite schema (T04-45):** Authored `kind: "asr" | "airport"` rows, ENU or lat/lon→ENU, `rangeNm`, `periodMs` (defaults 60 NM / 4800 ms). KDEM/KATL fixtures. Empty `radarSites` → implicit FUSED.
 - **STAR transition (T04-43):** Optional `transitionId` on `DESCEND_VIA` / `JOIN_PROCEDURE`. Join only at a shared remaining-route fix. `VIA DEM1` stays transition-less. Past-branch / unknown / ambiguous reject with no mutation. Heading still cancels VIA.
 - **SID transition (T04-44):** Optional `transitionId` on `CLIMB_VIA`. Keeps the current runway transition; switches enroute only at a catalog common fix. Does not rebuild T04-19 climb-via. RF/hold/heading-only legs stay skipped diagnostics.
-- **Sampler (T02-75):** Display uses last report pose. FUSED 1000 ms blue puck. MULTI / single-site use site `periodMs` (4800 for airport/ASR). MULTI thick blue rect perpendicular to PTL. Single-site thin green slash toward antenna. No 30 s coast. World/FMS/CA/MSAW stay 20 Hz truth.
+- **Sampler (T02-75):** Display uses last report pose. FUSED 1000 ms blue puck. MULTI / single-site use site `periodMs` (4800 for airport/ASR). MULTI filled blue rect, long axis ⊥ PTL/history. Single-site filled blue rect facing the site, size grows with range, green far-side line. No 30 s coast. World/FMS/CA/MSAW stay 20 Hz truth.
 - **SITE DCB (T02-76):** MAIN SITE enabled: FUSED, MULTI, one cap per adapted site. SSA `OK/OK/NA` + live word. PREF persists SITE mode only; unknown stored site → FUSED. MODE FSL stays disabled.
-- **Acceptance (T02-77):** Scenario `radarSites` bind on boot/session apply. Generic integration tests. Backlog records shipped PREF names, per-track PTL, live SITE/SSA; remaining gaps are live sensor health, 30 s coast, aural ATPA. WX mosaic not stolen.
+- **Acceptance (T02-77):** Scenario `radarSites` bind on boot/session apply. Generic integration tests. Backlog records shipped PREF names, per-track PTL, live SITE/SSA; remaining gaps are live sensor health, 30 s coast, aural ATPA.
 
 **Merged (squash-merged, captain only, onto `feature/pref-ptl-via-radar`):** T02-74 (`d8d3c8f`), T04-45 (`d6a8cc2`), T02-73 (`e892952`), T04-43 (`d196ef1`), T04-44 (`0cb267e`), T02-75 (`525d5f6`), T02-76 (`a295f6f`), T02-77 (`9595b73`). Planning `bd6fff8`.
 
 **Captain judgement calls:**
-- Merge lock was `feature/pref-ptl-via-radar`. Did not touch `fix/meaningful-test-suite` or `feature/wx-mosaic` / `ATC-SIM-wt-T02-68`.
+- Merge lock was `feature/pref-ptl-via-radar`. Did not touch `fix/meaningful-test-suite`.
 - T02-73 rebased onto T02-74 `*R` preview-area union before squash (keep both `armPerTrackPtl` and `saveAsPref`).
 - Wave C file lock: T04-44 owned IR/join/pilot; T02-75 owned sampler/paints. No overlap.
 - Ticket worktrees left in place (cannot delete branches while checked out).
@@ -24,9 +24,56 @@ T02-73–77 and T04-43–45 are squash-merged on `feature/pref-ptl-via-radar` (n
 
 **Manual leftover:** Chrome PREF SAVE AS / Esc / digit-only; live VIA then named STAR/SID transition; SITE FUSED / MULTI / site walk and paint marks. skip-with-reason: no visual operator. Automated tests prove parse, join, sample, DCB/SSA, and scenario bind. Do not invent a visual pass.
 
-**Product law held:** PREF name is a PPI chord; `*R` ≠ `*RR`; `transitionId` catalog-only, no airport-id live `if`; heading cancels VIA; FUSED 1.0 s puck / MULTI rect / site green slash; 4.8 s site period; no 30 s coast; authored JSON sites; MODE FSL disabled; generic tests; no paid vendors.
+**Product law held:** PREF name is a PPI chord; `*R` ≠ `*RR`; `transitionId` catalog-only, no airport-id live `if`; heading cancels VIA; FUSED 1.0 s puck / MULTI rect / site rect facing antenna; 4.8 s site period; no 30 s coast; authored JSON sites; MODE FSL disabled; generic tests; no paid vendors.
 
-**Remaining work (next paste of `SWARM.md` with config changed):** merge `feature/pref-ptl-via-radar` to `master` when the human asks; Chrome SITE/PREF/VIA walks; live sensor health; 30 s coast (only if asked); aural ATPA; WX mosaic stays the other swarm; phase 5 scoring/replay.
+**Remaining work (next paste of `SWARM.md` with config changed):** merge `feature/pref-ptl-via-radar` to `master` when the human asks; Chrome SITE/PREF/VIA walks; live sensor health; 30 s coast (only if asked); aural ATPA; phase 5 scoring/replay.
+
+## TWENTY-FIRST SWARM COMPLETE — WX mosaic NEXRAD VIP (T02-68–72)
+
+T02-68–72 are squash-merged on **`feature/wx-mosaic`** (not `master`). Captain
+`npm test` / `npm run ci`: **168 test files passed, 1935 tests passed, 3
+skipped, 0 failures**. IEM CONUS N0Q → VIP 1–6, display only. No phase 5.
+Did not redo T03 or T04-36–42. Did not push. Did not merge to `master`.
+
+- **Client (T02-68):** `src/scope/wx/` WMS URL, ARP bbox, RGB→dBZ, VIP bins,
+  `vipAtNm`, `ScopeView.wxLevels` default off. Vite `/wx-iem` proxy. CI
+  fixture `testdata/wx/`. No live IEM in tests.
+- **Paint (T02-69):** `weatherLayer.ts` after maps / before tracks. One cached
+  `drawImage`. Default off. OSM greps kept. `non-goals.md` mosaic line lifted.
+- **DCB (T02-70):** MAIN WX1–6 latches. PREF schema v3. v2 loads levels off.
+- **Preview (T02-71):** `*WX 1`–`6` / `ALL` / `OFF`. Incomplete vs INV.
+- **BRITE (T02-72):** WX/WXC live; BKC stays disabled. Combined acceptance.
+
+**Merged (squash-merged, captain only, onto `feature/wx-mosaic`):** T02-68
+(`e6f350e`), T02-69 (`e212039`), T02-70 (`ca454ed`), T02-71 (`de8065f`),
+T02-72 (`5ccd729`). Planning `a4589a1`.
+
+**Captain judgement calls:**
+- First T02-68 squash landed on local `master` by mistake. Reset that
+  unpushed commit (`HEAD~1`); re-squashed onto `feature/wx-mosaic`. Local
+  `master` still has unrelated `630bd5b` (meaningful tests); not this swarm.
+- Wave C backlog conflict: kept both T02-70 DCB/PREF and T02-71 `*WX` text.
+- Twenty-second PREF/PTL/radar swarm stays PARKED (T02-73–77 / T04-43–45).
+- Untracked `.cursor/rules/caveman-ultra.mdc`, `e2e/`, and T02-73+ / T04-43+
+  ticket drafts left uncommitted.
+
+**Manual leftover:** Chrome KATL live IEM walk. skip-with-reason: no visual
+operator. Automated tests cover decode, paint, DCB, `*WX`, BRITE. Do not
+invent a visual pass.
+
+**Product leftover:** `fetchWxMosaic` is not called from `main.tsx`. Live
+GetMap stays unhooked; PPI paints only when `view.wxMosaic` is set (tests).
+Documented under WX mosaic leftovers.
+
+**Product law held:** IEM only; ARP fetch; KDEM 0,0 empty valid; no airport-id
+branch; VIP data breaks; trainer fills not NWS rainbow; `drawImage` in weather
+module; DCB no Command IR; preview unknown INV; display only; `vipAtNm` unused
+by pilots; no paid weather API; no OSM.
+
+**Remaining work (next paste of `SWARM.md` with config changed):** hook
+session-loop IEM refresh; SSA WX HIST; BKC; AVL; deviate; merge
+`feature/wx-mosaic` to `master` when the human asks; parked twenty-second
+swarm.
 
 ## TWENTIETH SWARM COMPLETE — catalog retrieve + margin snap (T03-16–20)
 

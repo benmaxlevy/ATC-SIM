@@ -15,6 +15,8 @@ import {
   PpiPlaceholderId,
   browserDcbPrefStorage,
   createScopeView,
+  ensureWxLevelTiles,
+  ensureWxMosaic,
   loadDcbPrefFromStorage,
   paintPpi,
   parseDigitalMap,
@@ -83,6 +85,7 @@ const scopeView = createScopeView(scenario.arpNm.xNm, scenario.arpNm.yNm, {
   digitalMap: parseDigitalMap(scenario.maps),
   giTextLines: scenario.giTextLines,
   radarSites: scenario.radarSites,
+  arp: scenario.arp,
 });
 const prefStore = browserDcbPrefStorage();
 if (prefStore) {
@@ -123,6 +126,8 @@ function onFrame(nowMs: number): void {
   // Physics: wall Δt feeds the accumulator. Never pass this dt into stepWorld.
   advanceWorld(handles.world, wallDtS, acc);
   handles.afterPhysicsTick();
+  void ensureWxLevelTiles();
+  void ensureWxMosaic(scopeView, { nowMs });
   paintCurrentPpi();
   const hud = document.getElementById(SIM_HUD_ID);
   if (hud) {

@@ -422,6 +422,35 @@ test("AC1 — radio leftover *T does not toggle lists; scope *T Enter is not rad
   expect(scope.preview.phase).toBe("idle");
 });
 
+test("T02-71 — *WX 1 / ALL / OFF / INV; radio leftover does not latch WX", () => {
+  const world = createWorld();
+  const view = createScopeView();
+  expect(view.wxLevels).toEqual([false, false, false, false, false, false]);
+
+  typeKeys(view, world, ["*", "W", "X", "1", "Enter"]);
+  expect(view.wxLevels).toEqual([true, false, false, false, false, false]);
+
+  typeKeys(view, world, ["*", "W", "X", " ", "A", "L", "L", "Enter"], "scope", 200);
+  expect(view.wxLevels).toEqual([true, true, true, true, true, true]);
+
+  typeKeys(view, world, ["*", "W", "X", " ", "O", "F", "F", "Enter"], "scope", 400);
+  expect(view.wxLevels).toEqual([false, false, false, false, false, false]);
+
+  typeKeys(view, world, ["*", "W", "X", "7", "Enter"], "scope", 600);
+  expect(view.preview.rejection).toBe("*WX7 INV");
+  expect(view.wxLevels).toEqual([false, false, false, false, false, false]);
+
+  const radio = createScopeView();
+  const leftover = leftoverKeys(["*", "W", "X", "1", "Enter"], radio, world, "radio");
+  expect(leftover).toBe("*WX1");
+  expect(radio.wxLevels).toEqual([false, false, false, false, false, false]);
+  expect(radio.preview.phase).toBe("idle");
+
+  const scopeLeftover = leftoverKeys(["*", "W", "X", "1", "Enter"], view, world, "scope", 800);
+  expect(scopeLeftover).toBe("");
+  expect(view.wxLevels).toEqual([true, false, false, false, false, false]);
+});
+
 test("AC2 — invalid *XYZ *T 999 *D 99 flash buffer INV and do not mutate", () => {
   const world = createWorld();
   const lists = createScopeView();

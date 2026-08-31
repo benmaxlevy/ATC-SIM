@@ -1,14 +1,113 @@
 # ATC-SIM swarm orchestrator — Twenty-second swarm (PREF / PTL / VIA / radar sites)
 
-Twenty-first (WX mosaic T02-68–72) lives on `feature/wx-mosaic`. This branch
-does not implement WX. Do not touch T02-68–72 ticket files.
+Twenty-first (WX mosaic T02-68–72) landed on `master` via `feature/wx-mosaic`.
+This file keeps that history, then the twenty-second addendum on
+**`feature/pref-ptl-via-radar`**.
+
+## Twenty-first swarm planned — 2026-08-30 (WX mosaic NEXRAD VIP)
+
+This configuration is planning-only until `/run-swarm` execution begins.
+Execution branch is **`feature/wx-mosaic`**, created from current `master`.
+The captain squash-merges ticket branches into **`feature/wx-mosaic`**, not
+`master`. Do not push. Existing swarm history stays intact.
+
+| Key | Value |
+| --- | --- |
+| Goal | Live IEM CONUS N0Q mosaic on the PPI as STARS VIP 1–6. DCB WX1–6 + `*WX` + BRITE WX/WXC. Display only. |
+| Include | T02-68, T02-69, T02-70, T02-71, T02-72 |
+| Skip | BKC, SSA WX / WX HIST, AVL 2×3 restyle, wind, METAR, pilot deviate, RainViewer default, OSM, paid weather APIs, phase 5, T03 redo, T04-36–42 redo |
+| Stop | After T02-72. No next phase. |
+| Max workers | 3 |
+| Merge lock | captain squash to `feature/wx-mosaic`, then `npm test` / `npm run ci` |
+| Model | **cursor-grok-4.6-high only, non-fast** on captain and every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law:**
+
+- IEM N0Q WMS only. One GetMap for ARP ± ~80 NM. Vite `/wx-iem` proxy.
+  CI uses `testdata/wx/` fixture, no live IEM in tests.
+- Fetch by `scenario.arp`. KDEM 0,0 empty is valid. No airport-id branch.
+- VIP breaks in data (7110.65 30/40/50 + trainer splits). Decode ramp →
+  dBZ → 6 masks. Trainer fills, not NWS rainbow.
+- `drawImage` only in weather module. Decode off rAF. 30/60 Canvas2D envelope.
+- DCB never Command IR. Preview unknown stays INV.
+- Display only. `vipAtNm` for later deviate. Do not steer aircraft.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-68 | `feature/wx-mosaic` + planning commit |
+| B | T02-69 | T02-68 |
+| C | T02-70 ∥ T02-71 | T02-69 |
+| D | T02-72 | T02-70, T02-71 |
+
+**Ticket ownership:**
+
+- T02-68 owns IEM client and VIP decode.
+- T02-69 owns weather paint under tracks.
+- T02-70 owns DCB WX levels and PREF.
+- T02-71 owns preview WX commands.
+- T02-72 owns BRITE WX/WXC, docs, and acceptance.
+
+**Ticket files / branches:**
+
+- `ticket/T02-68-wx-mosaic-iem-client-and-vip` ← `phases/02-scope/tickets/T02-68-wx-mosaic-iem-client-and-vip.md`
+- `ticket/T02-69-wx-vip-paint-under-tracks` ← `phases/02-scope/tickets/T02-69-wx-vip-paint-under-tracks.md`
+- `ticket/T02-70-dcb-wx-levels-and-pref` ← `phases/02-scope/tickets/T02-70-dcb-wx-levels-and-pref.md`
+- `ticket/T02-71-preview-wx-commands` ← `phases/02-scope/tickets/T02-71-preview-wx-commands.md`
+- `ticket/T02-72-brite-wx-wxc-and-acceptance` ← `phases/02-scope/tickets/T02-72-brite-wx-wxc-and-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope addendum (T02-68–72 WX mosaic)
+Merge target: `feature/wx-mosaic`
+Merged: T02-68, T02-69, T02-70, T02-71, T02-72
+Tests: npm test / npm run ci exit 0
+Manual leftover: <WX mosaic / BRITE WX/WXC walk or none>
+Notes: <IEM N0Q; VIP 1–6; display-only; no paid APIs>
+```
+
+or `PHASE EXIT BLOCKED` with reason.
+
+## Twenty-first swarm execution — 2026-08-30 (WX mosaic NEXRAD VIP)
+
+Human invoked `/run-swarm` with **cursor grok 4.6 high (non-fast)**. Execute
+T02-68–72 only. Planning tickets must land on **`feature/wx-mosaic`** so
+workers see them. Use isolated worktrees. Max 3 workers. Captain squash-merges
+ticket branches into **`feature/wx-mosaic`**, not `master`. Do not push. Stop
+after T02-72. Captain appends `SWARM-STATUS.md` after phase exit.
+
+Every captain and worker uses **cursor-grok-4.6-high only, non-fast**.
+Preserve untracked `.cursor/rules/caveman-ultra.mdc` and `e2e/`; do not stage
+or delete them. Paid STT/TTS/LLM forbidden.
+
+Execution waves:
+
+1. T02-68
+2. T02-69
+3. T02-70 ∥ T02-71
+4. T02-72
+
+Product law: IEM N0Q WMS only; one ARP-centered GetMap; `/wx-iem` proxy;
+scenario.arp fetch; data-driven VIP breaks; weather-module-only `drawImage`;
+decode off rAF; DCB scope-only; preview unknown `INV`; display-only; `vipAtNm`
+reserved for later deviate; no aircraft steering.
+
+No push. No merge to `master`. No next phase.
+
+---
+
+---
 
 ## Twenty-second swarm planned — 2026-08-30 (PREF named SAVE AS, per-track PTL, STAR/SID transition amend, radar sites)
 
-Adds a scope/procedures addendum on **`feature/pref-ptl-via-radar`**, cut from
-`master` `d7dd717`. Captain squash-merges ticket branches into that feature
-branch. Isolated worktrees. Do not merge onto `master` unless the human asks.
-Do not edit the `fix/meaningful-test-suite` checkout.
+Adds a scope/procedures addendum on **`feature/pref-ptl-via-radar`**. WX
+T02-68–72 already landed on `master`. Captain squash-merges ticket branches
+into that feature branch. Isolated worktrees. Do not merge onto `master`
+unless the human asks.
 
 | Key | Value |
 | --- | --- |
@@ -107,9 +206,8 @@ or `PHASE EXIT BLOCKED` with reason.
 
 Human said use worktrees and implement. Captain owns
 **`feature/pref-ptl-via-radar`**. Isolated worktrees from that feature.
-Max 3 workers. Model **cursor-grok-4.6-high** only, non-fast. Do not touch
-`fix/meaningful-test-suite` or `feature/wx-mosaic` / `ATC-SIM-wt-T02-68`.
-Do not merge to `master`. Do not push.
+Max 3 workers. Model **cursor-grok-4.6-high** only, non-fast. WX T02-68–72
+is already on `master`. Do not merge to `master` unless asked. Do not push.
 
 Execution waves:
 

@@ -4,6 +4,7 @@ import { loadKdem } from "@scenario";
 import { CHORD_TIMEOUT_MS } from "./keymap";
 import {
   applyPreviewBeaconAction,
+  applyPreviewWxAction,
   armPreviewCntl,
   beginPrefNameEntry,
   beginPreviewBeaconEntry,
@@ -860,6 +861,133 @@ test("T02-64 — Enter on *C returns action; *RR7 INV without starsBuffer", () =
     consumed: true,
     action: null,
     starsBuffer: "*P",
+  });
+});
+
+const WX_PARSE_CASES: ReadonlyArray<{
+  buffer: string;
+  parse: PreviewCommandResult["kind"];
+  action?: PreviewArmedAction;
+}> = [
+  { buffer: "*WX 1", parse: "action", action: { type: "toggleWxLevel", level: 1 } },
+  { buffer: "*WX2", parse: "action", action: { type: "toggleWxLevel", level: 2 } },
+  { buffer: "* WX 3", parse: "action", action: { type: "toggleWxLevel", level: 3 } },
+  { buffer: "*WX 4", parse: "action", action: { type: "toggleWxLevel", level: 4 } },
+  { buffer: "* WX5", parse: "action", action: { type: "toggleWxLevel", level: 5 } },
+  { buffer: "*WX6", parse: "action", action: { type: "toggleWxLevel", level: 6 } },
+  { buffer: "*WX ALL", parse: "action", action: { type: "setWxLevelsAll", enabled: true } },
+  { buffer: "*WXALL", parse: "action", action: { type: "setWxLevelsAll", enabled: true } },
+  { buffer: "* WX ALL", parse: "action", action: { type: "setWxLevelsAll", enabled: true } },
+  { buffer: "*WX OFF", parse: "action", action: { type: "setWxLevelsAll", enabled: false } },
+  { buffer: "*WXOFF", parse: "action", action: { type: "setWxLevelsAll", enabled: false } },
+  { buffer: "* WX OFF", parse: "action", action: { type: "setWxLevelsAll", enabled: false } },
+  { buffer: "*WX", parse: "incomplete" },
+  { buffer: "* WX", parse: "incomplete" },
+  { buffer: "*WX ", parse: "incomplete" },
+  { buffer: "*W", parse: "incomplete" },
+  { buffer: "*WX A", parse: "incomplete" },
+  { buffer: "*WX O", parse: "incomplete" },
+  { buffer: "*WX 7", parse: "invalid" },
+  { buffer: "*WX 0", parse: "invalid" },
+  { buffer: "*WX FOO", parse: "invalid" },
+];
+
+test("T02-71 — parse *WX 1-6 / ALL / OFF; spaces optional; bare incomplete; garbage INV", () => {
+  for (const row of WX_PARSE_CASES) {
+    const parsed = parsePreviewCommand(row.buffer);
+    expect(parsed.kind, row.buffer).toBe(row.parse);
+    expect(parseScopeDisplayCommand(row.buffer)?.kind, row.buffer).toBe(row.parse);
+    if (row.action && parsed.kind === "action") {
+      expect(parsed.action).toEqual(row.action);
+    }
+    const committed = commitPreviewCommand(row.buffer);
+    if (row.parse === "incomplete") {
+      expect(committed.kind, `commit ${row.buffer}`).toBe("invalid");
+    } else {
+      expect(committed.kind, `commit ${row.buffer}`).toBe(row.parse);
+    }
+  }
+  expect(parsePreviewCommand("WX 1").kind).toBe("invalid");
+  expect(parsePreviewCommand("*D ALL").kind).toBe("action");
+});
+
+test("T02-71 — applyPreviewWxAction toggles one bit; ALL/OFF replace all six", () => {
+  const off = [false, false, false, false, false, false] as const;
+  expect(applyPreviewWxAction(off, { type: "toggleWxLevel", level: 1 })).toEqual([
+    true,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ]);
+  const oneOn = [true, false, false, false, false, false] as const;
+  expect(applyPreviewWxAction(oneOn, { type: "toggleWxLevel", level: 1 })).toEqual(off);
+  expect(applyPreviewWxAction(oneOn, { type: "toggleWxLevel", level: 6 })).toEqual([
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+  ]);
+  expect(applyPreviewWxAction(off, { type: "setWxLevelsAll", enabled: true })).toEqual([
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+  ]);
+  expect(
+    applyPreviewWxAction([true, false, true, false, true, false], {
+      type: "setWxLevelsAll",
+      enabled: false,
+    }),
+  ).toEqual(off);
+  expect(applyPreviewWxAction(oneOn, { type: "setPtlMinutes", minutes: 3 })).toBeNull();
+});
+
+test("T02-71 — Enter on *WX 1 / * WX ALL returns action; *WX 7 INV; bare *WX is incomplete", () => {
+  const toggle = idlePreviewArea();
+  beginPreviewBufferEntry(toggle, "*", 0);
+  for (const ch of ["W", "X", "1"]) {
+    handlePreviewBufferKey(toggle, ch, 1);
+  }
+  expect(handlePreviewBufferKey(toggle, "Enter", 2)).toEqual({
+    consumed: true,
+    action: { type: "toggleWxLevel", level: 1 },
+  });
+  expect(toggle.phase).toBe("idle");
+
+  const spaced = idlePreviewArea();
+  beginPreviewBufferEntry(spaced, "*", 0);
+  for (const ch of [" ", "W", "X", " ", "A", "L", "L"]) {
+    handlePreviewBufferKey(spaced, ch, 1);
+  }
+  expect(handlePreviewBufferKey(spaced, "Enter", 2)).toEqual({
+    consumed: true,
+    action: { type: "setWxLevelsAll", enabled: true },
+  });
+
+  const inv = idlePreviewArea();
+  beginPreviewBufferEntry(inv, "*", 0);
+  for (const ch of ["W", "X", "7"]) {
+    handlePreviewBufferKey(inv, ch, 1);
+  }
+  expect(handlePreviewBufferKey(inv, "Enter", 2)).toEqual({ consumed: true, action: null });
+  expect(inv.rejection).toBe("*WX7 INV");
+  expect(inv.phase).toBe("idle");
+
+  const bare = idlePreviewArea();
+  beginPreviewBufferEntry(bare, "*", 0);
+  handlePreviewBufferKey(bare, "W", 1);
+  handlePreviewBufferKey(bare, "X", 2);
+  expect(parsePreviewCommand(bare.buffer).kind).toBe("incomplete");
+  expect(handlePreviewBufferKey(bare, "Enter", 3)).toEqual({
+    consumed: true,
+    action: null,
+    starsBuffer: "*WX",
   });
 });
 

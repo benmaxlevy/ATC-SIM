@@ -9,7 +9,13 @@ import {
   SCOPE_FONT_STACK,
 } from "./fonts";
 import { parseDigitalMap, toMapCacheInput, buildMapCache, activeRingRadiiNm } from "./mapLayers";
-import { BRITE_DISABLED_CHANNELS, BRITE_STEPS, PALETTE, applyBrite } from "./palette";
+import {
+  BRITE_DISABLED_CHANNELS,
+  BRITE_PAINT_CHANNELS,
+  BRITE_STEPS,
+  PALETTE,
+  applyBrite,
+} from "./palette";
 import { createScopeView } from "./scopeView";
 import { syncTrackDisplays } from "./trackDisplay";
 import {
@@ -41,6 +47,7 @@ import {
   toggleCurrentMapsList,
   toggleGeoMapsList,
   toggleVideoMap,
+  toggleWxLevel,
   videoMapByDcbNumber,
 } from "./dcbFunctions";
 
@@ -248,8 +255,14 @@ test("AC3 — BRITE FDB/LDB/MPA/HST/RR/TLS change intensity; disabled channels a
   for (const channel of BRITE_DISABLED_CHANNELS) {
     expect(view.brite[channel]).toBe(100);
   }
+  expect(BRITE_PAINT_CHANNELS).toEqual(expect.arrayContaining(["wx", "wxc"]));
+  expect(BRITE_DISABLED_CHANNELS).toEqual(expect.arrayContaining(["bkc"]));
+  expect(BRITE_DISABLED_CHANNELS).not.toEqual(expect.arrayContaining(["wx", "wxc"]));
   stepBriteChannel(view, "wx", -1);
   expect(view.brite.wx).toBe(90);
+  stepBriteChannel(view, "wxc", -2);
+  expect(view.brite.wxc).toBe(80);
+  expect(view.brite.bkc).toBe(100);
   cycleMapBrite(view);
   expect(view.brite.mpa).toBe(100);
 });
@@ -270,6 +283,28 @@ test("PLACE CNTR arms; PLACE RR and RR CNTR mutate ring origin", () => {
   applyRrCenter(view);
   expect(view.rangeRingEastNm).toBe(4);
   expect(view.rangeRingNorthNm).toBe(-1);
+});
+
+test("T02-70 — WX1–6 toggle independent wxLevels bits; default off; no Command IR", async () => {
+  const view = createScopeView();
+  expect(view.wxLevels).toEqual([false, false, false, false, false, false]);
+  toggleWxLevel(view, 1);
+  expect(view.wxLevels).toEqual([true, false, false, false, false, false]);
+  toggleWxLevel(view, 6);
+  expect(view.wxLevels).toEqual([true, false, false, false, false, true]);
+  toggleWxLevel(view, 1);
+  expect(view.wxLevels).toEqual([false, false, false, false, false, true]);
+  toggleWxLevel(view, 3);
+  expect(view.wxLevels).toEqual([false, false, true, false, false, true]);
+
+  const { parseRadioText } = await import("@parse");
+  const heading = parseRadioText("DAL123 H270");
+  expect(heading.ok).toBe(true);
+  if (heading.ok) {
+    expect(heading.instructions).toEqual([
+      { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+    ]);
+  }
 });
 
 test("AC6 — radio-focus L090 is still a left turn; LDR DIR spinner does not steal L", async () => {
