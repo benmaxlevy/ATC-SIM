@@ -1,5 +1,33 @@
 # Swarm status
 
+## TWENTY-SECOND SWARM COMPLETE — PREF / PTL / VIA / radar sites (T02-73–77 / T04-43–45)
+
+T02-73–77 and T04-43–45 are squash-merged on `feature/pref-ptl-via-radar` (not `master`). Captain `npm test` / `npm run ci`: **169 test files passed, 1993 tests passed, 3 skipped, 0 failures**. Twenty-first (WX mosaic T02-68–72) stays on `feature/wx-mosaic`. No phase 5. Did not merge `master`. Did not push.
+
+- **PREF names (T02-73):** SAVE AS collects a short alnum name via the preview/status buffer. Enter writes the first empty slot (last of 32 when the table is full). Esc and digit-only names write nothing. MAIN/slot caps show the stored name. No `prompt` / `<input>`.
+- **Per-track PTL (T02-74):** `*R` + click toggles session `ptlByAircraftId`. Does not steal `*RR`. Not PREF. ON draws that track even if ALL/OWN are off; OFF hides under ALL.
+- **RadarSite schema (T04-45):** Authored `kind: "asr" | "airport"` rows, ENU or lat/lon→ENU, `rangeNm`, `periodMs` (defaults 60 NM / 4800 ms). KDEM/KATL fixtures. Empty `radarSites` → implicit FUSED.
+- **STAR transition (T04-43):** Optional `transitionId` on `DESCEND_VIA` / `JOIN_PROCEDURE`. Join only at a shared remaining-route fix. `VIA DEM1` stays transition-less. Past-branch / unknown / ambiguous reject with no mutation. Heading still cancels VIA.
+- **SID transition (T04-44):** Optional `transitionId` on `CLIMB_VIA`. Keeps the current runway transition; switches enroute only at a catalog common fix. Does not rebuild T04-19 climb-via. RF/hold/heading-only legs stay skipped diagnostics.
+- **Sampler (T02-75):** Display uses last report pose. FUSED 1000 ms blue puck. MULTI / single-site use site `periodMs` (4800 for airport/ASR). MULTI thick blue rect perpendicular to PTL. Single-site thin green slash toward antenna. No 30 s coast. World/FMS/CA/MSAW stay 20 Hz truth.
+- **SITE DCB (T02-76):** MAIN SITE enabled: FUSED, MULTI, one cap per adapted site. SSA `OK/OK/NA` + live word. PREF persists SITE mode only; unknown stored site → FUSED. MODE FSL stays disabled.
+- **Acceptance (T02-77):** Scenario `radarSites` bind on boot/session apply. Generic integration tests. Backlog records shipped PREF names, per-track PTL, live SITE/SSA; remaining gaps are live sensor health, 30 s coast, aural ATPA. WX mosaic not stolen.
+
+**Merged (squash-merged, captain only, onto `feature/pref-ptl-via-radar`):** T02-74 (`d8d3c8f`), T04-45 (`d6a8cc2`), T02-73 (`e892952`), T04-43 (`d196ef1`), T04-44 (`0cb267e`), T02-75 (`525d5f6`), T02-76 (`a295f6f`), T02-77 (`9595b73`). Planning `bd6fff8`.
+
+**Captain judgement calls:**
+- Merge lock was `feature/pref-ptl-via-radar`. Did not touch `fix/meaningful-test-suite` or `feature/wx-mosaic` / `ATC-SIM-wt-T02-68`.
+- T02-73 rebased onto T02-74 `*R` preview-area union before squash (keep both `armPerTrackPtl` and `saveAsPref`).
+- Wave C file lock: T04-44 owned IR/join/pilot; T02-75 owned sampler/paints. No overlap.
+- Ticket worktrees left in place (cannot delete branches while checked out).
+- Untracked `package-lock.json` engine bumps from worktree `npm install` left uncommitted.
+
+**Manual leftover:** Chrome PREF SAVE AS / Esc / digit-only; live VIA then named STAR/SID transition; SITE FUSED / MULTI / site walk and paint marks. skip-with-reason: no visual operator. Automated tests prove parse, join, sample, DCB/SSA, and scenario bind. Do not invent a visual pass.
+
+**Product law held:** PREF name is a PPI chord; `*R` ≠ `*RR`; `transitionId` catalog-only, no airport-id live `if`; heading cancels VIA; FUSED 1.0 s puck / MULTI rect / site green slash; 4.8 s site period; no 30 s coast; authored JSON sites; MODE FSL disabled; generic tests; no paid vendors.
+
+**Remaining work (next paste of `SWARM.md` with config changed):** merge `feature/pref-ptl-via-radar` to `master` when the human asks; Chrome SITE/PREF/VIA walks; live sensor health; 30 s coast (only if asked); aural ATPA; WX mosaic stays the other swarm; phase 5 scoring/replay.
+
 ## TWENTIETH SWARM COMPLETE — catalog retrieve + margin snap (T03-16–20)
 
 T03-16–20 are squash-merged on `master`. Captain `npm test` / `npm run ci`: **164 test files passed, 1896 tests passed, 3 skipped, 0 failures**. Prerequisite unique snap (`I26R` / Haynes→`HAINZ` / AJ→`AJAAY`, local cap 4096) landed first. Phase 3 E1–E14 unchanged. No phase 5. Did not redo T04-36–42. Did not push.
