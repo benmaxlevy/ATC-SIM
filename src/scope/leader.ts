@@ -22,7 +22,7 @@
  * | 5 | top-left 4 px east and 4 px south of symbol center |
  */
 
-import { TARGET_SIZE_PX } from "./targetSymbol";
+import { TARGET_SIZE_PX } from "./render";
 
 export type LeaderDir = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 

@@ -1,6 +1,6 @@
 ---
 description: Keep DCB, PPI paint, and preview splits; do not grow orchestrators
-globs: src/ui/DisplayControlBar.tsx,src/ui/dcbChrome.tsx,src/ui/DisplayControlBarMenus.tsx,src/ui/dcbLayouts.ts,src/scope/renderScope.ts,src/scope/renderScopePaint.ts,src/scope/previewArea.ts,src/scope/previewParse.ts,src/parse/spoken/pattern-matcher.ts,src/scope/scopeKeys.ts
+globs: src/ui/dcb/DisplayControlBar.tsx,src/ui/dcb/dcbChrome.tsx,src/ui/dcb/DisplayControlBarMenus.tsx,src/ui/dcb/dcbLayouts.ts,src/scope/render/renderScope.ts,src/scope/render/renderScopePaint.ts,src/scope/previewArea.ts,src/scope/previewParse.ts,src/parse/spoken/pattern-matcher.ts,src/scope/scopeKeys.ts
 alwaysApply: false
 ---
 

@@ -17,13 +17,13 @@ import {
   type VoiceUtteranceMetrics,
   voiceIdForCallsign,
 } from "@speech";
-import { formatVoiceStatus } from "../ui/voice-status";
+import { formatVoiceStatus } from "../ui/command/voice-status";
 import {
   createSpeechSettingsController,
   defaultSpeechPrefs,
   type SpeechPrefs,
   type SpeechSettingsController,
-} from "../ui/settings-speech";
+} from "../ui/controls/settings-speech";
 import { createCaAlertTone, type CaAlertTone } from "./ca-alert-tone";
 
 export interface AppDeps {

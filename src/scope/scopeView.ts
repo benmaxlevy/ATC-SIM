@@ -47,9 +47,9 @@ import {
   snapRrInterval,
   syncRoleMapVisibility,
   type RrIntervalNm,
-} from "./dcbFunctions";
-import { emptyDcbPrefRuntime, type DcbDock, type DcbPrefRuntime } from "./dcbPref";
-import { idleDcbSpinner, type DcbMenu, type DcbSpinnerState } from "./dcbMenu";
+} from "./dcb/dcbFunctions";
+import { emptyDcbPrefRuntime, type DcbDock, type DcbPrefRuntime } from "./dcb/dcbPref";
+import { idleDcbSpinner, type DcbMenu, type DcbSpinnerState } from "./dcb/dcbMenu";
 import {
   cloneCharSizes,
   DEFAULT_CHAR_SIZE_PX,

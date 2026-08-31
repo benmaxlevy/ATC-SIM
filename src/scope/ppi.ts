@@ -28,7 +28,7 @@ import {
   type AircraftPickHit,
 } from "./pick";
 import { shouldDrawPtlForTrack } from "./ptl";
-import { renderScope } from "./renderScope";
+import { renderScope } from "./render";
 import {
   centerOnWorld,
   recordLastClick,

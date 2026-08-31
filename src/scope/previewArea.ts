@@ -15,8 +15,8 @@
 
 import type { World } from "@core";
 import type { LoadedVideoMap } from "@scenario";
-import { DCB_PREF_NAME_MAX_CHARS, parseDcbPrefName } from "./dcbPref";
-import { type VideoMapTokenLayout } from "./dcbFunctions";
+import { DCB_PREF_NAME_MAX_CHARS, parseDcbPrefName } from "./dcb/dcbPref";
+import { type VideoMapTokenLayout } from "./dcb/dcbFunctions";
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
 import { cloneWxLevels, type WxLevels } from "./wx";
 import {

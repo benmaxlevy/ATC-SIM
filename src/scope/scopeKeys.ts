@@ -73,8 +73,8 @@ import {
   type PreviewArmedAction,
   type PreviewKeyOutcome,
 } from "./previewArea";
-import { browserDcbPrefStorage, cancelDcbPrefSaveAs, commitDcbPrefSaveAs } from "./dcbPref";
-import { handleDcbEscape } from "./dcbMenu";
+import { browserDcbPrefStorage, cancelDcbPrefSaveAs, commitDcbPrefSaveAs } from "./dcb/dcbPref";
+import { handleDcbEscape } from "./dcb/dcbMenu";
 import {
   applyRrCenter,
   armPlaceCenter,
@@ -87,7 +87,7 @@ import {
   toggleVideoMap,
   videoMapTokenLayout,
   type RrIntervalNm,
-} from "./dcbFunctions";
+} from "./dcb/dcbFunctions";
 import { PpiPlaceholderId } from "./ppi-placeholder";
 import {
   centerOnAirport,
