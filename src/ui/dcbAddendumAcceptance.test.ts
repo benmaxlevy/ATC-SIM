@@ -13,6 +13,7 @@ import { INSTRUCTION_TYPES, SessionLog, type Command, type Instruction } from "@
 import { createWorldFromScenario, loadKdem, loadKdemIls27 } from "@scenario";
 import {
   BRITE_DISABLED_CHANNELS,
+  BRITE_PAINT_CHANNELS,
   DCB_MAP_SLOT_COUNT,
   DCB_PREF_SLOT_COUNT,
   DCB_QUICK_MAP_COUNT,
@@ -342,10 +343,14 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, WX latches / disab
 
   openDcbMenu(view, "BRITE");
   const brite = dcbHtml(view);
-  expect(brite).toMatch(/aria-label="WX"[^>]*\bdisabled\b/);
-  expect(brite).toMatch(/aria-label="WXC"[^>]*\bdisabled\b/);
+  expect(brite).toMatch(/aria-label="WX"[^>]*data-dcb-kind="spinner"/);
+  expect(brite).toMatch(/aria-label="WXC"[^>]*data-dcb-kind="spinner"/);
+  expect(brite).not.toMatch(/aria-label="WX"[^>]*\bdisabled\b/);
+  expect(brite).not.toMatch(/aria-label="WXC"[^>]*\bdisabled\b/);
   expect(brite).toMatch(/aria-label="BKC"[^>]*\bdisabled\b/);
-  expect(BRITE_DISABLED_CHANNELS).toEqual(expect.arrayContaining(["wx", "wxc", "bkc"]));
+  expect(BRITE_PAINT_CHANNELS).toEqual(expect.arrayContaining(["wx", "wxc"]));
+  expect(BRITE_DISABLED_CHANNELS).toEqual(expect.arrayContaining(["bkc"]));
+  expect(BRITE_DISABLED_CHANNELS).not.toEqual(expect.arrayContaining(["wx", "wxc"]));
   closeDcbMenu(view);
 
   openDcbMenu(view, "SSA_FILTER");

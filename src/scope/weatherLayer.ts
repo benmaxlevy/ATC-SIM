@@ -3,7 +3,8 @@
  * Decode / fetch stay in `wx/`. Display only — does not steer aircraft.
  *
  * Trainer STARS-like fills (dark green → yellow → orange → red → magenta →
- * white), not the IEM NWS rainbow. Stored `view.brite.wx` tints via applyBrite.
+ * white), not the IEM NWS rainbow. `view.brite.wx` tints fills; `view.brite.wxc`
+ * tints VIP band-edge contours. Rebuild when mosaic, levels, wx, or wxc change.
  */
 
 import { latLonToNm, nmToLatLon, type LatLon } from "@core";
@@ -24,6 +25,20 @@ export const WX_VIP_FILL_HEX = [
 
 export function wxVipFillHex(level: 1 | 2 | 3 | 4 | 5 | 6, briteWx: number): string {
   return applyBrite(WX_VIP_FILL_HEX[level - 1]!, briteWx);
+}
+
+/** VIP 1–6 band-edge contours. Brighter than fills; not IEM NWS ramp stops. */
+export const WX_VIP_CONTOUR_HEX = [
+  "#3CC83C",
+  "#FFFF64",
+  "#FFA028",
+  "#FF3C3C",
+  "#FF3CFF",
+  "#FFFFFF",
+] as const;
+
+export function wxVipContourHex(level: 1 | 2 | 3 | 4 | 5 | 6, briteWxc: number): string {
+  return applyBrite(WX_VIP_CONTOUR_HEX[level - 1]!, briteWxc);
 }
 
 function maskBit(mask: Uint8Array, index: number): boolean {
@@ -75,6 +90,7 @@ type WxCompositeCanvas = {
 let cachedMosaic: WxMosaic | null = null;
 let cachedLevels: WxLevels | null = null;
 let cachedBriteWx = -1;
+let cachedBriteWxc = -1;
 let cachedCanvas: WxCompositeCanvas | null = null;
 let cachedWidth = 0;
 let cachedHeight = 0;
@@ -116,7 +132,40 @@ function writeCompositePixels(canvas: WxCompositeCanvas, pixels: Uint8ClampedArr
   maybeCtx.putImageData(imageData, 0, 0);
 }
 
-function rebuildComposite(mosaic: WxMosaic, levels: WxLevels, briteWx: number): WxCompositeCanvas {
+function neighborSameLevel(
+  mask: Uint8Array,
+  width: number,
+  height: number,
+  x: number,
+  y: number,
+): boolean {
+  if (x < 0 || y < 0 || x >= width || y >= height) {
+    return false;
+  }
+  return maskBit(mask, y * width + x);
+}
+
+function isVipBandEdge(
+  mask: Uint8Array,
+  width: number,
+  height: number,
+  x: number,
+  y: number,
+): boolean {
+  return (
+    !neighborSameLevel(mask, width, height, x - 1, y) ||
+    !neighborSameLevel(mask, width, height, x + 1, y) ||
+    !neighborSameLevel(mask, width, height, x, y - 1) ||
+    !neighborSameLevel(mask, width, height, x, y + 1)
+  );
+}
+
+function rebuildComposite(
+  mosaic: WxMosaic,
+  levels: WxLevels,
+  briteWx: number,
+  briteWxc: number,
+): WxCompositeCanvas {
   const width = mosaic.widthPx;
   const height = mosaic.heightPx;
   const pixelCount = width * height;
@@ -129,6 +178,14 @@ function rebuildComposite(mosaic: WxMosaic, levels: WxLevels, briteWx: number): 
     levels[4] ? parseHexRgb(wxVipFillHex(5, briteWx)) : null,
     levels[5] ? parseHexRgb(wxVipFillHex(6, briteWx)) : null,
   ];
+  const contours: Array<[number, number, number] | null> = [
+    levels[0] ? parseHexRgb(wxVipContourHex(1, briteWxc)) : null,
+    levels[1] ? parseHexRgb(wxVipContourHex(2, briteWxc)) : null,
+    levels[2] ? parseHexRgb(wxVipContourHex(3, briteWxc)) : null,
+    levels[3] ? parseHexRgb(wxVipContourHex(4, briteWxc)) : null,
+    levels[4] ? parseHexRgb(wxVipContourHex(5, briteWxc)) : null,
+    levels[5] ? parseHexRgb(wxVipContourHex(6, briteWxc)) : null,
+  ];
   for (let i = 0; i < pixelCount; i++) {
     for (let level = 0; level < 6; level++) {
       const rgb = fills[level];
@@ -136,6 +193,29 @@ function rebuildComposite(mosaic: WxMosaic, levels: WxLevels, briteWx: number): 
         continue;
       }
       if (maskBit(mosaic.vipMasks[level]!, i)) {
+        const o = i * 4;
+        pixels[o] = rgb[0];
+        pixels[o + 1] = rgb[1];
+        pixels[o + 2] = rgb[2];
+        pixels[o + 3] = 255;
+      }
+    }
+  }
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = y * width + x;
+      for (let level = 0; level < 6; level++) {
+        const rgb = contours[level];
+        if (!rgb) {
+          continue;
+        }
+        const mask = mosaic.vipMasks[level]!;
+        if (!maskBit(mask, i)) {
+          continue;
+        }
+        if (!isVipBandEdge(mask, width, height, x, y)) {
+          continue;
+        }
         const o = i * 4;
         pixels[o] = rgb[0];
         pixels[o + 1] = rgb[1];
@@ -153,20 +233,23 @@ function reuseOrRebuildComposite(
   mosaic: WxMosaic,
   levels: WxLevels,
   briteWx: number,
+  briteWxc: number,
 ): WxCompositeCanvas {
   if (
     cachedCanvas &&
     cachedMosaic === mosaic &&
     cachedLevels !== null &&
     levelsMatch(cachedLevels, levels) &&
-    cachedBriteWx === briteWx
+    cachedBriteWx === briteWx &&
+    cachedBriteWxc === briteWxc
   ) {
     return cachedCanvas;
   }
-  const canvas = rebuildComposite(mosaic, levels, briteWx);
+  const canvas = rebuildComposite(mosaic, levels, briteWx, briteWxc);
   cachedMosaic = mosaic;
   cachedLevels = levels;
   cachedBriteWx = briteWx;
+  cachedBriteWxc = briteWxc;
   cachedCanvas = canvas;
   return canvas;
 }
@@ -183,7 +266,7 @@ export function drawWeatherLayer(
   if (!mosaic || mosaic.widthPx <= 0 || mosaic.heightPx <= 0) {
     return;
   }
-  const canvas = reuseOrRebuildComposite(mosaic, view.wxLevels, view.brite.wx);
+  const canvas = reuseOrRebuildComposite(mosaic, view.wxLevels, view.brite.wx, view.brite.wxc);
   const arp = resolveArp(view);
   const nw = latLonToNm({ latDeg: mosaic.northLat, lonDeg: mosaic.westLon }, arp);
   const se = latLonToNm({ latDeg: mosaic.southLat, lonDeg: mosaic.eastLon }, arp);

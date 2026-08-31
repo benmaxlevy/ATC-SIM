@@ -20,7 +20,7 @@
  * functions. MAIN↔AUX via SHIFT; submenus replace the bar; RANGE / RR / LDR DIR /
  * LDR length / CHAR SIZE / BRITE are spinners over frozen presets. AUX has HISTORY 0–5, PTL
  * length/OWN/ALL, DCB TOP/LEFT/RIGHT/BOTTOM; VOL disabled. Trainer subset
- * (SHIFT/DONE/VOL, live MAIN WX1–6, disabled BRITE WX/WXC) — not a full STARS
+ * (SHIFT/DONE/VOL, live MAIN WX1–6, live BRITE WX/WXC) — not a full STARS
  * DCB (no CSA / CRDA / FMA). Local PREF 1–8 is trainer localStorage, not a NAS host.
  *
  * SSA (T02-20) is a screen-fixed top-left status block (sim time, KDEM 29.92
@@ -315,7 +315,13 @@ export {
   formatDcbTpaMiReadout,
 } from "./scopeView";
 export type { MapLayerId, ScopeView } from "./scopeView";
-export { WX_VIP_FILL_HEX, drawWeatherLayer, wxVipFillHex } from "./weatherLayer";
+export {
+  WX_VIP_CONTOUR_HEX,
+  WX_VIP_FILL_HEX,
+  drawWeatherLayer,
+  wxVipContourHex,
+  wxVipFillHex,
+} from "./weatherLayer";
 export {
   DCB_ACTION_FLASH_MS,
   applyDcbShift,

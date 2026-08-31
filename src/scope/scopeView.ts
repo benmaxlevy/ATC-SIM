@@ -8,8 +8,8 @@
  * airport). RR CNTR lights when that origin ≠ view **center**. Leader direction
  * is L1–L9; length is a discrete px set (0/24/36/48) on this view. CHAR SIZE is
  * per-subsystem Plex/system mono (DATA BLOCKS / LISTS / DCB / TOOLS / POS), not
- * a font picker. BRITE is per drawn channel (0–100 multiply); WX/WXC/BKC stored
- * no-ops. History is 5 s sim /
+ * a font picker. BRITE is per drawn channel (0–100 multiply); WX/WXC tint VIP
+ * paint; BKC is a stored no-op. History is 5 s sim /
  * 5 dots, no phosphor; AUX HISTORY spinner shows 0–5 of those dots (F8 / H
  * toggles 0 ↔ last non-zero). PTL is a straight predicted track line (default
  * 1.0 min; AUX spinner 0.5/1/2/4). F7 toggles PTL ALL. PTL OWN is F3-owned
@@ -117,7 +117,7 @@ export interface ScopeView {
   charSizePx: CharSizePx;
   /**
    * DCB BRITE per drawn channel (0–100). Hue stays T02-08 green/white/blue.
-   * WX/WXC/BKC/CMP/BCN/PRI are stored; only paint channels tint draw.
+   * WX/WXC tint VIP fills and contours. BKC/CMP/BCN stay stored; paint channels tint draw.
    */
   brite: BriteState;
   /** PLACE CNTR: next PPI click sets view **center**. */

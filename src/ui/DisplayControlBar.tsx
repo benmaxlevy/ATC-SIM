@@ -2792,8 +2792,8 @@ export const BRITE_GRID_LAYOUT: {
   { id: "bcn", col: 7, row: 1, rowSpan: 1, label: "BCN", disabled: true, staticVal: "55" },
   { id: "pri", col: 7, row: 2, rowSpan: 1, channel: "pri", label: "PRI" },
   { id: "hst", col: 8, row: 1, rowSpan: 1, channel: "hst", label: "HST" },
-  { id: "wx", col: 8, row: 2, rowSpan: 1, label: "WX", disabled: true, staticVal: "100" },
-  { id: "wxc", col: 9, row: 1, rowSpan: 1, label: "WXC", disabled: true, staticVal: "100" },
+  { id: "wx", col: 8, row: 2, rowSpan: 1, channel: "wx", label: "WX" },
+  { id: "wxc", col: 9, row: 1, rowSpan: 1, channel: "wxc", label: "WXC" },
   { id: "blank1", col: 9, row: 2, rowSpan: 1, label: "", disabled: true },
   { id: "done", col: 10, row: 1, rowSpan: 2, label: "DONE" },
 ];

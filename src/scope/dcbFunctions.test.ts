@@ -9,7 +9,13 @@ import {
   SCOPE_FONT_STACK,
 } from "./fonts";
 import { parseDigitalMap, toMapCacheInput, buildMapCache, activeRingRadiiNm } from "./mapLayers";
-import { BRITE_DISABLED_CHANNELS, BRITE_STEPS, PALETTE, applyBrite } from "./palette";
+import {
+  BRITE_DISABLED_CHANNELS,
+  BRITE_PAINT_CHANNELS,
+  BRITE_STEPS,
+  PALETTE,
+  applyBrite,
+} from "./palette";
 import { createScopeView } from "./scopeView";
 import { syncTrackDisplays } from "./trackDisplay";
 import {
@@ -249,8 +255,14 @@ test("AC3 — BRITE FDB/LDB/MPA/HST/RR/TLS change intensity; disabled channels a
   for (const channel of BRITE_DISABLED_CHANNELS) {
     expect(view.brite[channel]).toBe(100);
   }
+  expect(BRITE_PAINT_CHANNELS).toEqual(expect.arrayContaining(["wx", "wxc"]));
+  expect(BRITE_DISABLED_CHANNELS).toEqual(expect.arrayContaining(["bkc"]));
+  expect(BRITE_DISABLED_CHANNELS).not.toEqual(expect.arrayContaining(["wx", "wxc"]));
   stepBriteChannel(view, "wx", -1);
   expect(view.brite.wx).toBe(90);
+  stepBriteChannel(view, "wxc", -2);
+  expect(view.brite.wxc).toBe(80);
+  expect(view.brite.bkc).toBe(100);
   cycleMapBrite(view);
   expect(view.brite.mpa).toBe(100);
 });

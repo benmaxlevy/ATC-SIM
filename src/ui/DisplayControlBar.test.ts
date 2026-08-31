@@ -36,6 +36,7 @@ import { loadKdem } from "@scenario";
 import {
   DCB_FONT_PX,
   DCB_HEIGHT_PX,
+  BRITE_GRID_LAYOUT,
   DisplayControlBar,
   MAIN_DCB_LAYOUT,
 } from "./DisplayControlBar";
@@ -695,7 +696,7 @@ test("T02-27 AC1 — SSA FILTER submenu hides TIME; restoring shows it again", (
   expect(dcbHtml(view)).toContain("RANGE 20");
 });
 
-test("T02-26 — BRITE submenu paints FDB/LDB/MPA/HST/RR/TLS; WX/WXC/BKC disabled", () => {
+test("T02-26 / T02-72 — BRITE submenu paints FDB/LDB/MPA/HST/RR/TLS/WX/WXC; BKC disabled", () => {
   expect(barSrc()).toMatch(/openDcbMenu\(view,\s*"BRITE"\)/);
   expect(barSrc()).toMatch(/stepBriteChannel/);
   expect(barSrc()).not.toMatch(/cycleMapBrite/);
@@ -722,8 +723,22 @@ test("T02-26 — BRITE submenu paints FDB/LDB/MPA/HST/RR/TLS; WX/WXC/BKC disable
   for (const label of ["WX", "WXC", "BKC", "CMP", "BCN", "PRI"]) {
     expect(html).toContain(label);
   }
-  expect(html).toMatch(/aria-label="WX"[^>]*\bdisabled\b/);
-  expect(html).toMatch(/aria-label="WXC"[^>]*\bdisabled\b/);
+  expect(BRITE_GRID_LAYOUT.find((cell) => cell.id === "wx")).toMatchObject({
+    channel: "wx",
+  });
+  expect(BRITE_GRID_LAYOUT.find((cell) => cell.id === "wxc")).toMatchObject({
+    channel: "wxc",
+  });
+  expect(BRITE_GRID_LAYOUT.find((cell) => cell.id === "wx")?.staticVal).toBeUndefined();
+  expect(BRITE_GRID_LAYOUT.find((cell) => cell.id === "wxc")?.staticVal).toBeUndefined();
+  expect(BRITE_GRID_LAYOUT.find((cell) => cell.id === "bkc")).toMatchObject({
+    disabled: true,
+    staticVal: "100",
+  });
+  expect(html).toMatch(/aria-label="WX"[^>]*data-dcb-kind="spinner"/);
+  expect(html).toMatch(/aria-label="WXC"[^>]*data-dcb-kind="spinner"/);
+  expect(html).not.toMatch(/aria-label="WX"[^>]*\bdisabled\b/);
+  expect(html).not.toMatch(/aria-label="WXC"[^>]*\bdisabled\b/);
   expect(html).toMatch(/aria-label="BKC"[^>]*\bdisabled\b/);
   expect(html).toMatch(/aria-label="CMP"[^>]*\bdisabled\b/);
   expect(html).not.toContain("RANGE 20");
