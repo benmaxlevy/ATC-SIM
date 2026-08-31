@@ -1,8 +1,71 @@
-# ATC-SIM swarm orchestrator — Twenty-second swarm (PREF / PTL / VIA / radar sites)
+# ATC-SIM swarm orchestrator — Twenty-third swarm (Real METAR weather and SSA altimeter display)
 
-Twenty-first (WX mosaic T02-68–72) landed on `master` via `feature/wx-mosaic`.
-This file keeps that history, then the twenty-second addendum on
-**`feature/pref-ptl-via-radar`**.
+Twenty-second (PREF / PTL / VIA / radar sites T02-73–77, T04-43–45) planned/landed.
+This file keeps that history, then the twenty-third addendum on
+**`feature/metar-weather-altimeter`**.
+
+## Twenty-third swarm planned — 2026-08-31 (Live METAR weather, SSA primary/satellite altimeters, GI text)
+
+This configuration adds real-time METAR weather and altimeter display across the STARS scope and SSA on **`feature/metar-weather-altimeter`**, cut from current `master`.
+Captain squash-merges ticket branches into **`feature/metar-weather-altimeter`**, not `master`. Do not push. Existing swarm history stays intact.
+
+| Key | Value |
+| --- | --- |
+| Goal | Fetch real-time METAR weather from `aviationweather.gov/api/data/metar`, decode observations and altimeter inHg, display live primary altimeter and multi-airport satellite altimeter matrix in SSA, render surface wind/weather in GI text lines, respect SSA/GI filters, and fallback gracefully offline. |
+| Include | **T02-78**, **T02-79**, **T02-80** |
+| Source | AviationWeather METAR JSON API (`https://aviationweather.gov/api/data/metar?ids=<ICAO>&format=json`), scenario primary/satellite airports, and offline fixture `testdata/wx/metar-katl.json`. |
+| Skip | Paid weather APIs; OSM; pilot aircraft kinematic deviation; voice synthesis of ATIS audio; manual keyboard altimeter editing prompts. |
+| Stop | After T02-80 acceptance. No next phase. |
+| Max workers | 3 |
+| Merge lock | captain squash to `feature/metar-weather-altimeter`, then `npm test` / `npm run ci` |
+| Model | **cursor-grok-4.6-high only, non-fast** on captain and every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law (twenty-third swarm — METAR weather & altimeter display):**
+
+- **AviationWeather JSON API only.** Fetch by scenario primary airport ID and configured satellite airport IDs (e.g. `ids=KATL,KFTY,KPDK,KMGE,KRYY` or single `ids=KATL`). Vite `/api-metar` proxy or direct fetch. CI uses `testdata/wx/` fixture; no live network calls in Vitest suite.
+- **Altimeter decoding.** Decode `altim` hPa to inHg `(altim * 0.029529983).toFixed(2)` and verify against `rawOb` `A(\d{4})` (e.g. `1022.1` hPa / `A3018` → `"30.18"`). Altimeters must always be formatted with 2 decimal places.
+- **SSA primary and satellite altimeter matrix.** Line 3 displays Zulu/Sim time + primary altimeter (`1620/02  30.18`). Configured satellite towered airports render in 3-airport matrix rows (e.g. `KATL 30.18  FTY 30.18  PDK 30.18`).
+- **SSA & GI FILTER compliance.** DCB `SSA FILTER` `ALTSTG` toggle hides/shows primary and satellite altimeter readings without altering time or layout. DCB `GI TEXT FILTER` toggles individual GI weather lines.
+- **Graceful fallback.** Synthetic KDEM and offline/network drop fallback cleanly to scenario default altimeters (`30.17` / `29.92`) without throwing errors.
+- **Zero simulation regressions.** Scope camera, radar tracking, datablocks, DCB submenus, system lists, and radio parsing stay 100% operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-78 | `feature/metar-weather-altimeter` + planning commit |
+| B | T02-79 | T02-78 |
+| C | T02-80 | T02-79 |
+
+**Ticket ownership:**
+
+- T02-78 owns the AviationWeather METAR client, JSON decoder, altimeter inHg conversion, in-memory cache, and mock fixture.
+- T02-79 owns SSA primary altimeter line integration, satellite altimeter matrix formatting, and SSA FILTER ALTSTG handling.
+- T02-80 owns GI text weather surface conditions, scope view periodic polling, end-to-end integration tests, docs, and backlog updates.
+
+**Ticket files / branches:**
+
+- `ticket/T02-78-metar-weather-fetch-and-decode` ← `phases/02-scope/tickets/T02-78-metar-weather-fetch-and-decode.md`
+- `ticket/T02-79-ssa-primary-and-satellite-altimeter-display` ← `phases/02-scope/tickets/T02-79-ssa-primary-and-satellite-altimeter-display.md`
+- `ticket/T02-80-weather-gi-text-and-acceptance` ← `phases/02-scope/tickets/T02-80-weather-gi-text-and-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope addendum (T02-78–80 Real METAR weather & SSA altimeter)
+Merge target: `feature/metar-weather-altimeter`
+Merged: T02-78, T02-79, T02-80
+Tests: npm test / npm run ci exit 0
+Manual leftover: <METAR / SSA altimeter walk or none>
+Notes: <AviationWeather API; altimeter inHg; SSA primary + satellite matrix; ALTSTG filter; GI weather; offline fallback>
+```
+
+or `PHASE EXIT BLOCKED` with reason.
+
+---
+
 
 ## Twenty-first swarm planned — 2026-08-30 (WX mosaic NEXRAD VIP)
 
