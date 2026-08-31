@@ -1,12 +1,12 @@
 # ATC-SIM architecture
 
-Training and entertainment only. Legal copy: [`DISCLAIMER.md`](DISCLAIMER.md). Ticket-normative contracts stay in [`phases/_shared/`](../phases/_shared/architecture.md). This file restates frozen v1 decisions and the live runtime shape; it does not add new freeze rows.
+Ticket-normative contracts stay in [`phases/_shared/`](../phases/_shared/architecture.md). This file restates frozen v1 decisions and the live runtime shape; it does not add new freeze rows.
 
 ## v1 freeze
 
 | Topic | Frozen value |
 | --- | --- |
-| Claim | Training / entertainment only (see disclaimer). |
+| Claim | Simulator (not operational ATC equipment). |
 | Runtime | In-browser Vite SPA. No server-authoritative tick. |
 | Demo Facility | KDEM (fictional Demo Field). Mag var 0°. Field elev 0 ft. Runway 27. ILS id `ILS27`. ARP 0°N, 0°E. |
 | Coordinates | Local ENU NM; T00-04 documents formulas. |

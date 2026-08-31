@@ -1,9 +1,6 @@
 # ATC-SIM
 
-In-browser **STARS-like** terminal radar trainer: Canvas2D PPI, typed and spoken ATC commands, FMS procedures, simulated-pilot readbacks, Conflict Alert and MSAW. Training and entertainment only — not FAA equipment, not NAS-certified.
-
-> [!IMPORTANT]
-> **DISCLAIMER**: Training and entertainment only. Not certified for National Airspace System operational use. Not affiliated with the FAA or Raytheon Technologies. STARS-like analog. See [`docs/DISCLAIMER.md`](docs/DISCLAIMER.md). Frozen product rows: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+In-browser **STARS-like** terminal radar **simulator**: Canvas2D PPI, typed and spoken ATC commands, FMS procedures, simulated-pilot readbacks, Conflict Alert and MSAW.
 
 ## Quick start
 
@@ -27,7 +24,6 @@ Voice (weights on this machine, no paid STT/TTS APIs): [`speech-api/README.md`](
 | --- | --- |
 | [`docs/USER.md`](docs/USER.md) | Operators: URL params, features, radio syntax, keys, Preview Area |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Contributors: v1 freeze, packages, tick, parse pipeline |
-| [`docs/DISCLAIMER.md`](docs/DISCLAIMER.md) | Legal notice |
 | [`docs/COORDINATE-SYSTEM.md`](docs/COORDINATE-SYSTEM.md) | ENU NM formulas |
 | [`speech-api/README.md`](speech-api/README.md) | Local STT/TTS/Path C service |
 | [`tools/cifp-import/README.md`](tools/cifp-import/README.md) | Offline CIFP → catalog JSON (browser never downloads CIFP) |

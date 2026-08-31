@@ -1,7 +1,5 @@
 # ATC-SIM user guide
 
-Training and entertainment only. Legal copy: [`DISCLAIMER.md`](DISCLAIMER.md).
-
 Press **`F1`** in the app for the keyboard overlay. That overlay is a subset. This file is the complete radio and Preview Area reference.
 
 Voice install (Python 3.11+, local weights): [`speech-api/README.md`](../speech-api/README.md).
