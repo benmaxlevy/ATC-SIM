@@ -230,6 +230,7 @@
     "policy": "auto",
     "ratePerHour": 12
   },
+  "ssaWeatherAirports": ["KATL", "KFTY", "KPDK", "KMGE", "KRYY"],
   "giTextLines": ["ATIS A", "RWY 26R", "ILS 26R IN USE", "", "", "", "", "", "", ""],
   "radarSites": [
     {

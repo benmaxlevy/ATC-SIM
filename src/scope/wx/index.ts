@@ -60,3 +60,16 @@ export {
   wxLevelTilesGeneration,
 } from "./levelTiles";
 export type { EnsureWxLevelTilesOpts, WxLevelTile } from "./levelTiles";
+export type { FetchMetarOptions, MetarObservation } from "./metarClient";
+export {
+  DEFAULT_ALTIMETER_STUB,
+  DEFAULT_METAR_BASE_URL,
+  DEFAULT_METAR_TTL_MS,
+  clearMetarCache,
+  decodeMetarObservation,
+  fetchMetar,
+  getCachedMetar,
+  hPaToAltimeterInHg,
+  parseAltimeterFromRawOb,
+  setCachedMetar,
+} from "./metarClient";

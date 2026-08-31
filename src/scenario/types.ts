@@ -199,6 +199,12 @@ export interface Scenario {
    * copy (ATIS letter / runway / approach) — not a live METAR download.
    */
   giTextLines: string[];
+  /**
+   * Configured airports for live METAR weather fetch and SSA altimeter display.
+   * [0] = primary airport (drives Line 3 altimeter); [1..] = satellite airports.
+   * When omitted, defaults to [icao]. Scenario JSON config only — no runtime command.
+   */
+  ssaWeatherAirports?: string[];
   /** `authored` = JSON xy. `star-inbound` = seeded catalog pose. Default authored. */
   spawnPolicy: SpawnPolicy;
   /** Facility navaids / fixes / STAR / approaches. Loaded from `data/<icao>/`. */

@@ -356,6 +356,16 @@ function parseGiTextLines(value: unknown): string[] {
   return lines;
 }
 
+function parseSsaWeatherAirports(value: unknown): string[] | undefined {
+  if (value == null) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    throw new Error("Scenario ssaWeatherAirports must be an array of strings");
+  }
+  return value.map((code, i) => assertString(code, `ssaWeatherAirports[${i}]`, "Scenario", { nonEmpty: true }));
+}
+
 function parseSpawnPolicy(value: unknown): SpawnPolicy {
   if (value == null) {
     return "authored";
@@ -474,6 +484,9 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
     }),
     spawnPolicy: parseSpawnPolicy(s.spawnPolicy),
     giTextLines: parseGiTextLines(s.giTextLines),
+    ...(parseSsaWeatherAirports(s.ssaWeatherAirports)
+      ? { ssaWeatherAirports: parseSsaWeatherAirports(s.ssaWeatherAirports) }
+      : {}),
     ...(departureConfig ? { departureConfig } : {}),
     catalog,
     mva: loadMva(icao),
