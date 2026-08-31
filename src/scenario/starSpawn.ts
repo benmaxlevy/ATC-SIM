@@ -114,9 +114,66 @@ function transitionMatchesRunway(transition: StarTransition, activeRunwayId: str
   );
 }
 
-function spawnAltitudeFt(constraint: AltConstraint | undefined, gateFixId: string): number {
+export const DEFAULT_STAR_SPAWN_ALTITUDE_FT = 24000;
+export const DEFAULT_STAR_SPAWN_SPEED_KT = 250;
+
+function resolveStarAltConstraint(
+  catalog: ProcedureCatalog,
+  starId: string,
+  transitionId: string,
+  gateLeg: StarLeg,
+): AltConstraint | undefined {
+  if (gateLeg.altConstraint) {
+    return gateLeg.altConstraint;
+  }
+  try {
+    const { star, transition } = findStarTransition(catalog, starId, transitionId);
+    for (const leg of transition.legs) {
+      if (leg.altConstraint) {
+        return leg.altConstraint;
+      }
+    }
+    for (const leg of star.common) {
+      if (leg.altConstraint) {
+        return leg.altConstraint;
+      }
+    }
+  } catch {
+    // fallback
+  }
+  return undefined;
+}
+
+function resolveStarSpeedConstraint(
+  catalog: ProcedureCatalog,
+  starId: string,
+  transitionId: string,
+  gateLeg: StarLeg,
+): SpeedConstraint | undefined {
+  if (gateLeg.speedConstraint) {
+    return gateLeg.speedConstraint;
+  }
+  try {
+    const { star, transition } = findStarTransition(catalog, starId, transitionId);
+    for (const leg of transition.legs) {
+      if (leg.speedConstraint) {
+        return leg.speedConstraint;
+      }
+    }
+    for (const leg of star.common) {
+      if (leg.speedConstraint) {
+        return leg.speedConstraint;
+      }
+    }
+  } catch {
+    // fallback
+  }
+  return undefined;
+}
+
+function spawnAltitudeFt(constraint: AltConstraint | undefined): number {
   if (!constraint) {
-    throw new Error(`STAR gate ${gateFixId} has no altitude constraint`);
+    return DEFAULT_STAR_SPAWN_ALTITUDE_FT;
   }
   const raw =
     constraint.type === "AT_OR_ABOVE"
@@ -125,9 +182,9 @@ function spawnAltitudeFt(constraint: AltConstraint | undefined, gateFixId: strin
   return Math.round(raw / 100) * 100;
 }
 
-function spawnSpeedKt(constraint: SpeedConstraint | undefined, gateFixId: string): number {
+function spawnSpeedKt(constraint: SpeedConstraint | undefined): number {
   if (!constraint) {
-    throw new Error(`STAR gate ${gateFixId} has no speed constraint`);
+    return DEFAULT_STAR_SPAWN_SPEED_KT;
   }
   return constraint.speedKt;
 }
@@ -355,12 +412,14 @@ export function starInboundPose(
   const headingDeg = courseDeg(gate, next);
   const backAzimuth = normalizeHeadingDeg(headingDeg + 180);
   const rad = (backAzimuth * Math.PI) / 180;
+  const altConstraint = resolveStarAltConstraint(catalog, starId, transitionId, gateLeg);
+  const speedConstraint = resolveStarSpeedConstraint(catalog, starId, transitionId, gateLeg);
   return {
     xNm: gate.xNm + alongTrackOffsetNm * Math.sin(rad),
     yNm: gate.yNm + alongTrackOffsetNm * Math.cos(rad),
     headingDeg,
-    altitudeFt: spawnAltitudeFt(gateLeg.altConstraint, gateLeg.fixId),
-    speedKt: spawnSpeedKt(gateLeg.speedConstraint, gateLeg.fixId),
+    altitudeFt: spawnAltitudeFt(altConstraint),
+    speedKt: spawnSpeedKt(speedConstraint),
     routeFixIds,
     toFixIndex: 0,
     gateFixId: gateLeg.fixId,

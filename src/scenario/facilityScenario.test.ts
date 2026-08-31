@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import { buildFixRegistry } from "@core";
 import {
   assertScenario,
+  createWorldForSession,
   createWorldFromScenario,
   listConfigurationsForAirport,
   listDepartureSlots,
@@ -134,5 +135,39 @@ test("playable inventory lists a catalog facility with the generic KATL video ma
     expect(scenario.maps.videoMapSet).toBe("KATL");
     expect(scenario.maps.loadedVideoMaps.length).toBeGreaterThan(0);
     expect(scenario.mva?.defaultMinAltitudeFt).toBe(3000);
+  }
+});
+
+test("createWorldForSession with KATL schedules arrivals without altitude constraint error", () => {
+  const scenario = assertScenario(katlJson);
+  const world = createWorldFromScenario(scenario, 1);
+  expect(world.aircraft).toHaveLength(scenario.arrivals.length);
+
+  // Session with 12 arrivals/hr
+  const sessionWorld = createWorldForSession(
+    scenario,
+    null,
+    1,
+    { enabled: true, ratePerHour: 10 },
+    {
+      initialArrivalCount: 6,
+      arrivalsPerHour: 12,
+      seed: 1,
+    },
+  );
+  expect(sessionWorld.aircraft).toHaveLength(6);
+  expect(sessionWorld.arrivalScheduler).toBeDefined();
+
+  // Draining new arrivals from KATL STAR catalog after sim advances
+  const initialCount = sessionWorld.aircraft.length;
+  sessionWorld.simTimeMs += 300_000;
+  const spawned = sessionWorld.arrivalScheduler!.drain(sessionWorld);
+  expect(spawned.length).toBeGreaterThanOrEqual(1);
+  expect(sessionWorld.aircraft.length).toBeGreaterThan(initialCount);
+  for (const ac of spawned) {
+    expect(ac.altitudeFt).toBeGreaterThanOrEqual(10000);
+    expect(ac.speedKt).toBeGreaterThan(0);
+    expect(Number.isFinite(ac.xNm)).toBe(true);
+    expect(Number.isFinite(ac.yNm)).toBe(true);
   }
 });

@@ -1773,6 +1773,56 @@ test("T02-37 AC1 — Inbound handoff visual blinking cadence and acceptance to s
   expect(targetSymbolAccepted).toBeDefined();
 });
 
+test("Departure handoff visual blinking cadence and acceptance to solid white", () => {
+  const dep = makeTestAircraft({
+    id: "ac-dep",
+    callsign: "SWA555",
+    xNm: -0.8,
+    yNm: 0,
+    headingDeg: 270,
+    altitudeFt: 700,
+    speedKt: 180,
+  });
+  const world = createWorld({ aircraft: [dep], simTimeMs: 0 });
+  world.handoffs.set(dep.id, { kind: "departure", fromSectorId: "TWR" });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  // t=0ms (blink ON phase): Full datablock drawn in white (PALETTE.owned)
+  const mockOn1 = createMockCtx();
+  renderScope(mockOn1.ctx, world, view, 800, 800);
+  const callsignOn1 = mockOn1.fillTexts.find((t) => t.text === "SWA555");
+  expect(callsignOn1).toBeDefined();
+  expect(callsignOn1?.fillStyle).toBe(PALETTE.owned);
+
+  // Transferring sector ID symbol "T"
+  const targetSymbol1 = mockOn1.fillTexts.find((t) => t.text === "T");
+  expect(targetSymbol1).toBeDefined();
+
+  // t=800ms (blink OFF phase): datablock is not drawn (blinks off)
+  world.simTimeMs = 800;
+  const mockOff = createMockCtx();
+  renderScope(mockOff.ctx, world, view, 800, 800);
+  const callsignOff = mockOff.fillTexts.find((t) => t.text === "SWA555");
+  expect(callsignOff).toBeUndefined();
+
+  // Accept handoff via click
+  const p = nmToScreen(dep.xNm, dep.yNm, view.camera, { widthPx: 800, heightPx: 800 });
+  handlePpiLeftClick(view, world, p.x, p.y, 800, 800);
+
+  // Now accepted: solid white FDB across both 0ms and 800ms phases
+  world.simTimeMs = 800;
+  const mockAccepted = createMockCtx();
+  renderScope(mockAccepted.ctx, world, view, 800, 800);
+  const callsignAccepted = mockAccepted.fillTexts.find((t) => t.text === "SWA555");
+  expect(callsignAccepted).toBeDefined();
+  expect(callsignAccepted?.fillStyle).toBe(PALETTE.owned);
+
+  // Position symbol updated to receiving sector ID ("D")
+  const targetSymbolAccepted = mockAccepted.fillTexts.find((t) => t.text === "D");
+  expect(targetSymbolAccepted).toBeDefined();
+});
+
 test("T02-37 AC2 — Outbound accepted handoff flashes white for 5 seconds on sender scope", () => {
   const dep = makeTestAircraft({
     id: "ac-dep",

@@ -71,7 +71,12 @@ function spawnArrival(world: World, arrival: ArrivalSpawn, scenario?: Scenario):
   if (scenario) {
     armStarVia(ac, scenario, arrival);
   }
-  setHandoffNone(world, ac.id);
+  const isAuthoredDemo = scenario?.id === "kdem-ils27" || scenario?.id === "kdem-ils09";
+  if (arrival.starId && !isAuthoredDemo) {
+    offerInboundHandoff(world, ac);
+  } else {
+    setHandoffNone(world, ac.id);
+  }
   world.aircraft.push(ac);
 }
 
@@ -308,6 +313,25 @@ export function createWorldForSession(
       scheduler.drain(world);
     } else {
       spawnArrivals(world, scenario);
+      if (
+        (scenario.catalog?.stars?.length ?? 0) > 0 &&
+        arrivalTraffic?.arrivalsPerHour !== undefined &&
+        arrivalTraffic.arrivalsPerHour > 0
+      ) {
+        const scheduler = createArrivalScheduler(
+          scenario.catalog,
+          {
+            ...arrivalTraffic,
+            initialArrivalCount: 0,
+            seed: arrivalTraffic.seed ?? seed,
+            activeRunwayId: scenario.activeRunwayId,
+          },
+          scenario.arrivals.map((arrival) => arrival.callsign),
+          world.simTimeMs,
+          scenario.activeRunwayId,
+        );
+        world.arrivalScheduler = scheduler;
+      }
     }
   }
   initDepartures(world, scenario, seed, departureOptions);

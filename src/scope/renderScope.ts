@@ -295,6 +295,7 @@ export function isTrackedTarget(view: ScopeView, world: World, ac: Aircraft): bo
     ownership === "center" ||
     td?.tracked === true ||
     ho.kind === "inbound" ||
+    ho.kind === "departure" ||
     (ho.kind === "outbound" && ho.status === "accepted") ||
     ho.kind === "pointout_inbound" ||
     ho.kind === "pointout_outbound"
@@ -321,8 +322,8 @@ export function getDatablockVisualState(
     };
   }
 
-  // 2. Inbound pending handoff: Blinking white FDB
-  if (ho.kind === "inbound") {
+  // 2. Inbound / Departure pending handoff: Blinking white FDB
+  if (ho.kind === "inbound" || ho.kind === "departure") {
     const isBlinkOn = Math.floor(world.simTimeMs / BLINK_HALF_PERIOD_MS) % 2 === 0;
     return {
       color: PALETTE.owned,
@@ -503,6 +504,8 @@ function drawDatablock(
   let handoffSectorId: string | undefined;
   if (handoff.kind === "inbound") {
     handoffSectorId = handoff.fromSectorId;
+  } else if (handoff.kind === "departure") {
+    handoffSectorId = handoff.fromSectorId === "TWR" ? "T" : handoff.fromSectorId;
   } else if (handoff.kind === "outbound") {
     handoffSectorId = handoff.toSectorId;
   } else if (handoff.kind === "pointout_inbound") {
@@ -639,6 +642,8 @@ function drawTracks(
     if (!sectorId) {
       if (ho.kind === "inbound") {
         sectorId = ho.fromSectorId;
+      } else if (ho.kind === "departure") {
+        sectorId = ho.fromSectorId === "TWR" ? "T" : ho.fromSectorId;
       } else if (ho.kind === "outbound" && ho.status === "accepted") {
         sectorId = ho.toSectorId;
       } else if (ownership === "tower") {

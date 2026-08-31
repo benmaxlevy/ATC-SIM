@@ -396,8 +396,8 @@ export function handleTrackClick(
     return;
   }
 
-  // Inbound pending handoff: accept on click
-  if (ho.kind === "inbound") {
+  // Inbound / Departure pending handoff: accept on click
+  if (ho.kind === "inbound" || ho.kind === "departure") {
     const accepted = acceptInboundOnClick(tracks, world, aircraftId);
     if (accepted) {
       return;

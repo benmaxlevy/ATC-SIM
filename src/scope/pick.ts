@@ -75,7 +75,11 @@ function pickDatablockAt(
     }
     const p = nmToScreen(ac.xNm, ac.yNm, cam, size);
     const td = view.tracks.get(ac.id);
+    const ho = handoffFor(world, ac.id);
     let mode = td?.datablockMode ?? (td?.ownership === "owned" ? "full" : "partial");
+    if (ho.kind === "inbound" || ho.kind === "departure") {
+      mode = "full";
+    }
     if (view.beaconatorActive && mode === "partial") {
       mode = "full";
     }
@@ -84,15 +88,25 @@ function pickDatablockAt(
     const squawk = td?.squawk ?? ac.squawk;
     const trackBeaconator = (td?.beaconatorUntilSimMs ?? 0) > world.simTimeMs;
     const callsign = (view.beaconatorActive || trackBeaconator) && squawk ? squawk : ac.callsign;
-    const base = linesForDatablock(
-      { ...ac, callsign, squawk },
-      mode,
-      view.modeCVisible,
-      td?.scratchpad ?? "",
-      { queried: isQueried },
-      world.simTimeMs,
-    );
-    const ho = handoffFor(world, ac.id);
+    let handoffSectorId: string | undefined;
+    if (ho.kind === "inbound") {
+      handoffSectorId = ho.fromSectorId;
+    } else if (ho.kind === "departure") {
+      handoffSectorId = ho.fromSectorId === "TWR" ? "T" : ho.fromSectorId;
+    } else if (ho.kind === "outbound") {
+      handoffSectorId = ho.toSectorId;
+    } else if (ho.kind === "pointout_inbound") {
+      handoffSectorId = ho.fromSectorId;
+    } else if (ho.kind === "pointout_outbound") {
+      handoffSectorId = ho.toSectorId;
+    }
+    const base = linesForDatablock({ ...ac, callsign, squawk }, mode, {
+      modeCVisible: view.modeCVisible,
+      scratchpad: td?.scratchpad ?? "",
+      handoffSectorId,
+      queried: isQueried,
+      simTimeMs: world.simTimeMs,
+    });
     let line1 = base.line1;
     if (ho.kind === "pointout_inbound" && ho.status === "pending") {
       line1 = `${base.line1} PO`;

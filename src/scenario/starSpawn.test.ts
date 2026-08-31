@@ -340,3 +340,13 @@ test("authoredStarToFixIndex skips STAR fixes already behind a mid-route pose", 
   const catalog = twoStarCatalog();
   expect(authoredStarToFixIndex(catalog, "TST1", "E", { xNm: 25, yNm: 0 })).toBe(1);
 });
+
+test("starInboundPose handles unconstrained gate fix (e.g. KATL KHMYA on GNDLF3) without throwing", () => {
+  const katl = loadCatalog("katl");
+  // GNDLF3 has transition KHMYA where legs[0] (KHMYA) has no altitude constraint
+  const pose = starInboundPose(katl, "GNDLF3", "KHMYA", STAR_SPAWN_GATE_OFFSET_NM);
+  expect(pose.gateFixId).toBe("KHMYA");
+  expect(pose.altitudeFt).toBeGreaterThanOrEqual(10000);
+  expect(pose.speedKt).toBe(250);
+  expect(pose.routeFixIds[0]).toBe("KHMYA");
+});

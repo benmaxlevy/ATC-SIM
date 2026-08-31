@@ -121,7 +121,7 @@ export function setHandoffNone(world: World, aircraftId: string): void {
  */
 export function acceptInboundHandoff(world: World, aircraftId: string, atWallMs = 0): boolean {
   const current = handoffFor(world, aircraftId);
-  if (current.kind !== "inbound") {
+  if (current.kind !== "inbound" && current.kind !== "departure") {
     return false;
   }
   const ac = world.aircraft.find((item) => item.id === aircraftId);
