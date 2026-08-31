@@ -35,5 +35,6 @@ export {
   vipAtNm,
 } from "./mosaic";
 export type { FetchWxMosaicOpts } from "./mosaic";
+export { WX_N0Q_VIP_EDGES_PNG_URL, isWxFixtureEnabled } from "./fixture";
 export { anyWxLevelOn, ensureWxMosaic } from "./ensure";
 export type { EnsureWxMosaicOpts } from "./ensure";

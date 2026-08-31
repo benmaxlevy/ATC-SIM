@@ -153,6 +153,19 @@ test("fetchWxMosaic uses injected fetch and returns empty on HTTP or decode fail
   expect(decodeFail.widthPx).toBe(0);
   expect(decodeFail.fetchedAtMs).toBe(70_000);
 
+  const fromFixture = await fetchWxMosaic({
+    arp,
+    nowMs: 90_000,
+    fixtureUrl: "/testdata/wx/n0q-vip-edges.png",
+    fetchImpl: async (input) => {
+      expect(String(input)).toBe("/testdata/wx/n0q-vip-edges.png");
+      return new Response(png, { status: 200 });
+    },
+  });
+  expect(fromFixture.widthPx).toBe(8);
+  expect(fromFixture.heightPx).toBe(2);
+  expect(fromFixture.westLon).toBeCloseTo(bboxFromArp(arp).westLon);
+
   const wmsException = await fetchWxMosaic({
     arp,
     nowMs: 80_000,

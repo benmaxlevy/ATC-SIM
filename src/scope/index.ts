@@ -700,8 +700,10 @@ export {
   cloneWxLevels,
   decodePngToVipMasks,
   emptyWxMosaic,
+  WX_N0Q_VIP_EDGES_PNG_URL,
   ensureWxMosaic,
   fetchWxMosaic,
+  isWxFixtureEnabled,
   shouldRefetch,
   vipAtNm,
 } from "./wx";

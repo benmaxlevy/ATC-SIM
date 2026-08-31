@@ -136,6 +136,8 @@ export interface FetchWxMosaicOpts {
   padNm?: number;
   size?: WxMapSize;
   breaks?: readonly number[];
+  /** When set, fetch this PNG once and bin it over the ARP pad. Skips IEM. */
+  fixtureUrl?: string;
 }
 
 function blitRgba(
@@ -161,10 +163,22 @@ function blitRgba(
  */
 export async function fetchWxMosaic(opts: FetchWxMosaicOpts): Promise<WxMosaic> {
   const padNm = opts.padNm ?? DEFAULT_WX_PAD_NM;
-  const cover = planIemN0qCover(bboxFromArp(opts.arp, padNm));
+  const pad = bboxFromArp(opts.arp, padNm);
+  const cover = planIemN0qCover(pad);
   const failed = (): WxMosaic => emptyWxMosaic({ ...cover.bbox, fetchedAtMs: opts.nowMs });
   const fetchImpl = opts.fetchImpl ?? globalThis.fetch.bind(globalThis);
   try {
+    if (opts.fixtureUrl) {
+      const res = await fetchImpl(opts.fixtureUrl);
+      if (!res.ok) {
+        return emptyWxMosaic({ ...pad, fetchedAtMs: opts.nowMs });
+      }
+      const png = new Uint8Array(await res.arrayBuffer());
+      if (!isPng(png)) {
+        return emptyWxMosaic({ ...pad, fetchedAtMs: opts.nowMs });
+      }
+      return await decodePngToVipMasks(png, pad, opts.nowMs, opts.breaks);
+    }
     const decodedTiles: Array<{
       x: number;
       y: number;

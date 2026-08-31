@@ -8,6 +8,7 @@ import {
   IEM_N0Q_TILE_SIZE_PX,
   IEM_N0Q_TILE_Z,
   WX_IEM_PROXY_PREFIX,
+  isWxFixtureEnabled,
   bboxFromArp,
   binVip,
   latToTileY,
@@ -22,6 +23,13 @@ const wxSources = import.meta.glob("./*.{ts,tsx}", {
   import: "default",
   eager: true,
 }) as Record<string, string>;
+
+test("isWxFixtureEnabled is only wx=fixture", () => {
+  expect(isWxFixtureEnabled("?wx=fixture")).toBe(true);
+  expect(isWxFixtureEnabled("wx=fixture&scenario=katl")).toBe(true);
+  expect(isWxFixtureEnabled("?debug=fps")).toBe(false);
+  expect(isWxFixtureEnabled("")).toBe(false);
+});
 
 test("binVip uses JO 7110.65 30/40/50 plus trainer splits", () => {
   expect(DEFAULT_WX_VIP_BREAKS_DBZ).toEqual([18, 30, 36, 41, 46, 51]);

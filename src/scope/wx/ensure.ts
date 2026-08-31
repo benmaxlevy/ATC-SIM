@@ -24,6 +24,7 @@ export function anyWxLevelOn(levels: WxLevels): boolean {
 export interface EnsureWxMosaicOpts {
   nowMs: number;
   fetchImpl?: typeof fetch;
+  fixtureUrl?: string;
 }
 
 /**
@@ -48,6 +49,7 @@ export function ensureWxMosaic(
     arp: view.arp,
     nowMs: opts.nowMs,
     fetchImpl: opts.fetchImpl,
+    fixtureUrl: opts.fixtureUrl,
   })
     .then((mosaic) => {
       view.wxMosaic = mosaic;

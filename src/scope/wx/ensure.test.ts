@@ -20,6 +20,20 @@ test("anyWxLevelOn is false until one latch is true", () => {
   expect(anyWxLevelOn([false, false, true, false, false, false])).toBe(true);
 });
 
+test("ensureWxMosaic fixtureUrl fetches the sample PNG once, not IEM tiles", async () => {
+  const view = createScopeView(0, 0, { arp: { latDeg: 33.6, lonDeg: -84.4 } });
+  view.wxLevels = [true, false, false, false, false, false];
+  const calls: string[] = [];
+  await ensureWxMosaic(view, {
+    nowMs: 3_000,
+    fixtureUrl: "/testdata/wx/n0q-vip-edges.png",
+    fetchImpl: mockFetch(calls),
+  });
+  expect(calls).toEqual(["/testdata/wx/n0q-vip-edges.png"]);
+  expect(view.wxMosaic.widthPx).toBe(8);
+  expect(view.wxMosaic.heightPx).toBe(2);
+});
+
 test("ensureWxMosaic skips fetch when all levels are off", async () => {
   const view = createScopeView(0, 0, { arp: { latDeg: 33.6, lonDeg: -84.4 } });
   const calls: string[] = [];
