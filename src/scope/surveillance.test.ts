@@ -11,8 +11,10 @@ import {
   MULTI_RECT_COLOR,
   MULTI_RECT_LENGTH_PX,
   MULTI_RECT_THICKNESS_PX,
-  SITE_SLASH_COLOR,
-  SITE_SLASH_LENGTH_PX,
+  SITE_FAR_LINE_COLOR,
+  SITE_RECT_MAX_LENGTH_PX,
+  SITE_RECT_MIN_LENGTH_PX,
+  SITE_RECT_OUTLINE_RANGE_FRACTION,
   createSurveillanceSampler,
   defaultSurveillanceMode,
   displayReportFor,
@@ -29,7 +31,7 @@ import {
   nearestCoveringSite,
   reportPeriodMs,
   siteCovers,
-  siteSlashEndpoints,
+  siteRectMark,
   stepSurveillanceSampler,
   surveillancePaintFor,
 } from "./surveillance";
@@ -130,7 +132,7 @@ test("AC3 — single-site uses that site periodMs and paints only inside its ran
 
   expect(stepSurveillanceSampler(sampler, [jet], 0)).toHaveLength(1);
   expect(displayReportFor(sampler, "ac-site")!.sourceSiteId).toBe("APT");
-  expect(displayReportFor(sampler, "ac-site")!.paint).toBe("site-slash");
+  expect(displayReportFor(sampler, "ac-site")!.paint).toBe("site-rect");
 
   jet.xNm = 6;
   clock.set(4799);
@@ -208,35 +210,41 @@ test("AC7 — uncovered targets drop immediately; no 30 s coast", () => {
   expect(displayReportFor(sampler, "ac-coast")).toBeNull();
 });
 
-test("AC4/AC5 — MULTI rect is perpendicular to ground track; slash aims at antenna", () => {
+test("AC4/AC5 — MULTI rect follows heading; site rect faces antenna and grows with range", () => {
   const eastbound = multiRectCorners(0, 0, 90);
   const longDx = eastbound[0]!.x - eastbound[1]!.x;
   const longDy = eastbound[0]!.y - eastbound[1]!.y;
-  expect(Math.abs(longDx)).toBeLessThan(1e-9);
-  expect(Math.abs(longDy)).toBeCloseTo(MULTI_RECT_LENGTH_PX, 6);
+  expect(Math.abs(longDy)).toBeLessThan(1e-9);
+  expect(Math.abs(longDx)).toBeCloseTo(MULTI_RECT_LENGTH_PX, 6);
   const thickDx = eastbound[0]!.x - eastbound[3]!.x;
   const thickDy = eastbound[0]!.y - eastbound[3]!.y;
-  expect(Math.abs(thickDy)).toBeLessThan(1e-9);
-  expect(Math.abs(thickDx)).toBeCloseTo(MULTI_RECT_THICKNESS_PX, 6);
+  expect(Math.abs(thickDx)).toBeLessThan(1e-9);
+  expect(Math.abs(thickDy)).toBeCloseTo(MULTI_RECT_THICKNESS_PX, 6);
 
   const northbound = multiRectCorners(10, 20, 0);
-  expect(northbound[0]!.y).toBeCloseTo(northbound[1]!.y, 6);
-  expect(Math.abs(northbound[0]!.x - northbound[1]!.x)).toBeCloseTo(MULTI_RECT_LENGTH_PX, 6);
+  expect(northbound[0]!.x).toBeCloseTo(northbound[1]!.x, 6);
+  expect(Math.abs(northbound[0]!.y - northbound[1]!.y)).toBeCloseTo(MULTI_RECT_LENGTH_PX, 6);
 
-  const slash = siteSlashEndpoints(100, 200, 0, 0, 10, 0);
-  expect(SITE_SLASH_LENGTH_PX).toBe(8);
-  expect(slash.y1).toBeCloseTo(200, 6);
-  expect(slash.y2).toBeCloseTo(200, 6);
-  expect(slash.x2 - slash.x1).toBeCloseTo(SITE_SLASH_LENGTH_PX, 6);
-  expect(slash.x2).toBeGreaterThan(slash.x1);
+  const near = siteRectMark(0, 0, 0, 0, 10, 0, 60);
+  const far = siteRectMark(0, 0, 0, 0, 50, 0, 60);
+  const outline = siteRectMark(0, 0, 0, 0, 54, 0, 60);
+  expect(near.outlineOnly).toBe(false);
+  expect(far.outlineOnly).toBe(false);
+  expect(outline.outlineOnly).toBe(true);
+  expect(far.lengthPx).toBeGreaterThan(near.lengthPx);
+  expect(far.lengthPx).toBeLessThanOrEqual(SITE_RECT_MAX_LENGTH_PX);
+  expect(near.lengthPx).toBeGreaterThanOrEqual(SITE_RECT_MIN_LENGTH_PX);
+  expect(SITE_RECT_OUTLINE_RANGE_FRACTION).toBe(0.9);
 
-  const northSlash = siteSlashEndpoints(0, 0, 0, 0, 0, 8);
-  expect(northSlash.x1).toBeCloseTo(0, 6);
-  expect(northSlash.x2).toBeCloseTo(0, 6);
-  expect(northSlash.y2).toBeLessThan(northSlash.y1);
+  // Site east: long axis N-S (vertical); far-side green line is west (left).
+  expect(Math.abs(far.corners[0]!.x - far.corners[1]!.x)).toBeLessThan(1e-9);
+  expect(Math.abs(far.corners[0]!.y - far.corners[1]!.y)).toBeCloseTo(far.lengthPx, 6);
+  expect(far.farLine.x1).toBeLessThan(0);
+  expect(far.farLine.x2).toBeLessThan(0);
+  expect(far.farLine.x1).toBeCloseTo(far.farLine.x2, 6);
 
   expect(MULTI_RECT_COLOR).toBe("#175dc7");
-  expect(SITE_SLASH_COLOR).toBe("#00FF00");
+  expect(SITE_FAR_LINE_COLOR).toBe("#00FF00");
 });
 
 test("AC9 — comment names R07/R05 and frozen trainer paint/period delta", () => {

@@ -22,7 +22,7 @@ import {
   targetSymbolDescriptor,
   targetSymbolShape,
 } from "./targetSymbol";
-import { MULTI_RECT_COLOR, SITE_SLASH_COLOR, SITE_SLASH_STROKE_PX } from "./surveillance";
+import { MULTI_RECT_COLOR, SITE_FAR_LINE_COLOR, SITE_FAR_LINE_STROKE_PX } from "./surveillance";
 
 interface MockDrawTargetCtx {
   ctx: CanvasRenderingContext2D;
@@ -408,6 +408,21 @@ test("drawHistoryDot draws square dot centered on coordinates", () => {
   expect(mock.ctx).toBeDefined();
 });
 
+test("BRITE PRI tints the FUSED puck", () => {
+  const dim = applyBrite(TARGET_PUCK_BG, 40);
+  const mock = createMockTargetCtx();
+  drawTargetSymbol(
+    mock.ctx,
+    100,
+    200,
+    POSITION_SYMBOL_COLOR,
+    { ownership: "unowned", positionMarkColor: dim },
+    8,
+  );
+  expect(mock.pathFills.some((fill) => fill.fillStyle === dim)).toBe(true);
+  expect(mock.pathFills.some((fill) => fill.fillStyle === TARGET_PUCK_BG)).toBe(false);
+});
+
 test("AC6 — FUSED keeps the existing blue circle puck", () => {
   expect(TARGET_PUCK_BG).toBe(MULTI_RECT_COLOR);
   const mock = createMockTargetCtx();
@@ -435,7 +450,7 @@ test("AC4 — MULTI paints a thick blue rect and no puck", () => {
   expect(mock.fillTexts[0]!.text).toBe("*");
 });
 
-test("AC5 — single-site paints a thin green slash and no blue block", () => {
+test("AC5 — single-site paints a blue rect and a far-side green line", () => {
   const mock = createMockTargetCtx();
   drawTargetSymbol(
     mock.ctx,
@@ -444,20 +459,45 @@ test("AC5 — single-site paints a thin green slash and no blue block", () => {
     POSITION_SYMBOL_COLOR,
     {
       ownership: "unowned",
-      surveillancePaint: "site-slash",
+      surveillancePaint: "site-rect",
       reportXNm: 0,
       reportYNm: 0,
       antennaXNm: 10,
       antennaYNm: 0,
+      siteRangeNm: 60,
     },
     8,
   );
   expect(mock.arcs).toHaveLength(0);
-  expect(mock.pathFills.some((fill) => fill.fillStyle === TARGET_PUCK_BG)).toBe(false);
-  expect(mock.pathStrokes).toHaveLength(1);
-  expect(mock.pathStrokes[0]!.strokeStyle).toBe(SITE_SLASH_COLOR);
-  expect(mock.pathStrokes[0]!.lineWidth).toBe(SITE_SLASH_STROKE_PX);
+  expect(mock.pathFills.some((fill) => fill.fillStyle === MULTI_RECT_COLOR)).toBe(true);
+  expect(mock.pathStrokes.some((stroke) => stroke.strokeStyle === SITE_FAR_LINE_COLOR)).toBe(true);
+  expect(
+    mock.pathStrokes.find((stroke) => stroke.strokeStyle === SITE_FAR_LINE_COLOR)!.lineWidth,
+  ).toBe(SITE_FAR_LINE_STROKE_PX);
   expect(mock.fillTexts[0]!.text).toBe("*");
+});
+
+test("single-site very far paints outline only", () => {
+  const mock = createMockTargetCtx();
+  drawTargetSymbol(
+    mock.ctx,
+    100,
+    200,
+    POSITION_SYMBOL_COLOR,
+    {
+      ownership: "unowned",
+      surveillancePaint: "site-rect",
+      reportXNm: 0,
+      reportYNm: 0,
+      antennaXNm: 54,
+      antennaYNm: 0,
+      siteRangeNm: 60,
+    },
+    8,
+  );
+  expect(mock.pathFills.some((fill) => fill.fillStyle === MULTI_RECT_COLOR)).toBe(false);
+  expect(mock.pathStrokes.some((stroke) => stroke.strokeStyle === MULTI_RECT_COLOR)).toBe(true);
+  expect(mock.pathStrokes.some((stroke) => stroke.strokeStyle === SITE_FAR_LINE_COLOR)).toBe(true);
 });
 
 test("targetSymbol comments say target/history grammar, not sprite or airplane", () => {

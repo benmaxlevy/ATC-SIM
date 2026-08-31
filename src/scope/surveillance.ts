@@ -5,11 +5,14 @@
  *
  * Trainer delta (frozen): FUSED reports every 1000 ms and keeps the existing
  * blue circle puck (`TARGET_PUCK_BG`). Single-site and MULTI use the covering
- * site `periodMs` (airport/ASR fixtures 4800 ms). MULTI paints a thick blue
- * rectangle centered on the glyph, perpendicular to PTL ground track (not
- * leader). Single-site paints a thin green slash through the glyph aimed at
- * that site’s antenna — no blue block. Out of coverage: no paint, no 30 s
- * coast. Empty `radarSites` is implicit FUSED.
+ * site `periodMs` (airport/ASR fixtures 4800 ms). MULTI paints a small filled
+ * blue rectangle centered on the glyph, long axis along aircraft heading
+ * (ground track, not leader). Single-site paints a filled blue rectangle
+ * facing the selected antenna: long axis perpendicular to the site radial,
+ * size grows with range (uncertainty), thin green line on the far edge
+ * opposite the site. Very far from the site (90% of `rangeNm`) is outline
+ * only. Out of coverage: no paint, no 30 s coast. Empty `radarSites` is
+ * implicit FUSED. BRITE PRI tints the position mark.
  *
  * World / FMS / CA / MSAW stay 20 Hz truth. Display consumers (PPI symbol,
  * datablock, PTL, ATPA cones) use last report pose only. History dots record
@@ -31,19 +34,25 @@ export const FUSED_PERIOD_MS = 1000;
 /** Same CSS px as `TARGET_SIZE_PX` — kept local so this module cannot cycle. */
 const SYMBOL_LENGTH_PX = 8;
 
-/** MULTI mark: long axis ≈ symbol, thick fill, ⊥ ground track. */
+/** MULTI mark: small filled rect, long axis along heading. */
 export const MULTI_RECT_LENGTH_PX = SYMBOL_LENGTH_PX + 2;
-export const MULTI_RECT_THICKNESS_PX = 4;
+export const MULTI_RECT_THICKNESS_PX = 5;
 
-/** Single-site slash: ≈ symbol length, thin green, aimed at antenna. */
-export const SITE_SLASH_LENGTH_PX = SYMBOL_LENGTH_PX;
-export const SITE_SLASH_STROKE_PX = 1;
-export const SITE_SLASH_COLOR = PALETTE.unowned;
+/** Single-site rect: grows with range-to-site. Long axis faces the antenna. */
+export const SITE_RECT_MIN_LENGTH_PX = SYMBOL_LENGTH_PX + 2;
+export const SITE_RECT_MAX_LENGTH_PX = 28;
+export const SITE_RECT_MIN_THICKNESS_PX = 6;
+export const SITE_RECT_MAX_THICKNESS_PX = 16;
+/** Filled below this fraction of site `rangeNm`; outline at/above (50 NM of 60 stays filled). */
+export const SITE_RECT_OUTLINE_RANGE_FRACTION = 0.9;
+export const SITE_FAR_LINE_GAP_PX = 1;
+export const SITE_FAR_LINE_STROKE_PX = 1;
+export const SITE_FAR_LINE_COLOR = PALETTE.unowned;
 /** Same frozen blue as `TARGET_PUCK_BG`. */
 export const MULTI_RECT_COLOR = "#175dc7";
 
 export type SurveillanceMode = "FUSED" | "MULTI" | { siteId: string };
-export type SurveillancePaint = "fused-puck" | "multi-rect" | "site-slash";
+export type SurveillancePaint = "fused-puck" | "multi-rect" | "site-rect";
 
 export type SurveillanceClock = () => number;
 
@@ -227,7 +236,7 @@ export function surveillancePaintFor(
   if (effective === "MULTI") {
     return "multi-rect";
   }
-  return "site-slash";
+  return "site-rect";
 }
 
 export function sourceSiteFor(
@@ -362,9 +371,34 @@ export function aircraftAtReport<T extends SurveillanceWorldPose>(
   };
 }
 
+function orientedRectCorners(
+  cx: number,
+  cy: number,
+  axisX: number,
+  axisY: number,
+  lengthPx: number,
+  thicknessPx: number,
+): [
+  { x: number; y: number },
+  { x: number; y: number },
+  { x: number; y: number },
+  { x: number; y: number },
+] {
+  const perpX = -axisY;
+  const perpY = axisX;
+  const halfLen = lengthPx / 2;
+  const halfTh = thicknessPx / 2;
+  return [
+    { x: cx + axisX * halfLen + perpX * halfTh, y: cy + axisY * halfLen + perpY * halfTh },
+    { x: cx - axisX * halfLen + perpX * halfTh, y: cy - axisY * halfLen + perpY * halfTh },
+    { x: cx - axisX * halfLen - perpX * halfTh, y: cy - axisY * halfLen - perpY * halfTh },
+    { x: cx + axisX * halfLen - perpX * halfTh, y: cy + axisY * halfLen - perpY * halfTh },
+  ];
+}
+
 /**
- * MULTI rectangle corners in screen px. Long axis is perpendicular to PTL
- * ground-track heading (0° = north / up). Not leader direction.
+ * MULTI rectangle corners in screen px. Long axis follows ground-track
+ * heading (0° = north / up). Not leader direction. Analog: CRC MULTI.
  */
 export function multiRectCorners(
   cx: number,
@@ -379,41 +413,73 @@ export function multiRectCorners(
   { x: number; y: number },
 ] {
   const rad = (headingDeg * Math.PI) / 180;
-  const trackX = Math.sin(rad);
-  const trackY = -Math.cos(rad);
-  const perpX = -trackY;
-  const perpY = trackX;
-  const halfLen = lengthPx / 2;
-  const halfTh = thicknessPx / 2;
-  return [
-    { x: cx + perpX * halfLen + trackX * halfTh, y: cy + perpY * halfLen + trackY * halfTh },
-    { x: cx - perpX * halfLen + trackX * halfTh, y: cy - perpY * halfLen + trackY * halfTh },
-    { x: cx - perpX * halfLen - trackX * halfTh, y: cy - perpY * halfLen - trackY * halfTh },
-    { x: cx + perpX * halfLen - trackX * halfTh, y: cy + perpY * halfLen - trackY * halfTh },
+  return orientedRectCorners(cx, cy, Math.sin(rad), -Math.cos(rad), lengthPx, thicknessPx);
+}
+
+export interface SiteRectMark {
+  corners: [
+    { x: number; y: number },
+    { x: number; y: number },
+    { x: number; y: number },
+    { x: number; y: number },
   ];
+  farLine: { x1: number; y1: number; x2: number; y2: number };
+  outlineOnly: boolean;
+  rangeNm: number;
+  lengthPx: number;
+  thicknessPx: number;
+}
+
+function lerpPx(minPx: number, maxPx: number, t: number): number {
+  const u = Math.max(0, Math.min(1, t));
+  return minPx + (maxPx - minPx) * u;
 }
 
 /**
- * Thin slash through the glyph. Screen vector aims from report pose toward
- * the site antenna (ENU). Length is approximately the position symbol.
+ * Single-site position mark. Long axis is perpendicular to the site radial
+ * (rectangle faces the antenna). Size grows with range. Green far-side line
+ * sits opposite the antenna. Outline-only when very far.
  */
-export function siteSlashEndpoints(
+export function siteRectMark(
   cx: number,
   cy: number,
   reportXNm: number,
   reportYNm: number,
   antennaXNm: number,
   antennaYNm: number,
-  lengthPx: number = SITE_SLASH_LENGTH_PX,
-): { x1: number; y1: number; x2: number; y2: number } {
+  siteRangeNm: number,
+): SiteRectMark {
   const dxNm = antennaXNm - reportXNm;
   const dyNm = antennaYNm - reportYNm;
-  const range = Math.hypot(dxNm, dyNm);
-  const half = lengthPx / 2;
-  if (range < 1e-9) {
-    return { x1: cx, y1: cy - half, x2: cx, y2: cy + half };
+  const rangeNm = Math.hypot(dxNm, dyNm);
+  const coverage = siteRangeNm > 0 ? siteRangeNm : 60;
+  let towardX = 0;
+  let towardY = -1;
+  if (rangeNm >= 1e-9) {
+    towardX = dxNm / rangeNm;
+    towardY = -dyNm / rangeNm;
   }
-  const sx = (dxNm / range) * half;
-  const sy = (-dyNm / range) * half;
-  return { x1: cx - sx, y1: cy - sy, x2: cx + sx, y2: cy + sy };
+  const t = Math.max(0, Math.min(1, rangeNm / coverage));
+  const lengthPx = lerpPx(SITE_RECT_MIN_LENGTH_PX, SITE_RECT_MAX_LENGTH_PX, t);
+  const thicknessPx = lerpPx(SITE_RECT_MIN_THICKNESS_PX, SITE_RECT_MAX_THICKNESS_PX, t);
+  const longX = -towardY;
+  const longY = towardX;
+  const corners = orientedRectCorners(cx, cy, longX, longY, lengthPx, thicknessPx);
+  const farOff = thicknessPx / 2 + SITE_FAR_LINE_GAP_PX;
+  const fx = cx - towardX * farOff;
+  const fy = cy - towardY * farOff;
+  const halfLen = lengthPx / 2;
+  return {
+    corners,
+    farLine: {
+      x1: fx - longX * halfLen,
+      y1: fy - longY * halfLen,
+      x2: fx + longX * halfLen,
+      y2: fy + longY * halfLen,
+    },
+    outlineOnly: rangeNm >= coverage * SITE_RECT_OUTLINE_RANGE_FRACTION,
+    rangeNm,
+    lengthPx,
+    thicknessPx,
+  };
 }

@@ -17,8 +17,9 @@ entries, not “no surveillance”). KDEM and KATL ship airport-at-ARP plus one
 remote ASR using invented trainer ids (`KDEM-APT` / `KDEM-REMOTE`,
 `KATL-APT` / `KATL-REMOTE`). T02-75 samples FUSED / MULTI / `{ siteId }`
 display reports, freezes PPI / datablock / PTL / ATPA pose on the last
-report, records history on report arrival, and paints the frozen FUSED puck,
-MULTI rectangle, and single-site slash. T02-77 binds those rows onto the
+report, records history on report arrival, and paints the FUSED puck,
+MULTI heading-aligned rectangle, and single-site range-sized rectangle
+(green far-side line; outline when very far). T02-77 binds those rows onto the
 live view at boot and session apply (`radarSites` from the loaded scenario;
 unknown stored SITE id → FUSED). MAIN SITE is enabled: submenu FUSED /
 MULTI / one cap per adapted site; MAIN text is `SITE FUSED`, `SITE MULTI`,

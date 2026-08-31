@@ -82,11 +82,17 @@ import {
   tpaSizeReadoutEnabled,
 } from "./tpa";
 import { buildGiLines, buildSsaRenderLines, SSA_NETWORK_HEALTH_STUB } from "./ssa";
-import { effectiveSurveillanceMode, surveillanceModeWord } from "./surveillance";
+import {
+  SITE_FAR_LINE_COLOR,
+  aircraftAtReport,
+  effectiveSurveillanceMode,
+  surveillanceModeWord,
+} from "./surveillance";
 import { buildMapListLines } from "./dcbFunctions";
 import type { TrackOwnership } from "./ownership";
 import { BLINK_HALF_PERIOD_MS, PALETTE, applyBrite, caDatablockTagVisible } from "./palette";
 import {
+  TARGET_PUCK_BG,
   drawHistoryDot,
   drawTargetSymbol,
   historyDotColor,
@@ -101,7 +107,6 @@ import {
   syncTrackDisplays,
   type TrackDisplay,
 } from "./trackDisplay";
-import { aircraftAtReport } from "./surveillance";
 import {
   buildAlertList,
   buildCoastSuspendList,
@@ -620,6 +625,7 @@ function drawTracks(
     const ho = handoffFor(world, ac.id);
     const isTracked = isTrackedTarget(view, world, ac);
     const posBrite = isPrimary ? view.brite.pri : isTracked ? view.brite.pos : view.brite.oth;
+    const priMark = applyBrite(TARGET_PUCK_BG, view.brite.pri);
     const squawk = td?.squawk ?? ac.squawk;
     let sectorId = td?.sectorId;
     if (!sectorId) {
@@ -657,6 +663,9 @@ function drawTracks(
         reportYNm: td.lastReport.yNm,
         antennaXNm: antenna?.xNm,
         antennaYNm: antenna?.yNm,
+        siteRangeNm: antenna?.rangeNm,
+        positionMarkColor: priMark,
+        farLineColor: applyBrite(SITE_FAR_LINE_COLOR, view.brite.pri),
       },
       view.charSizes.pos,
     );

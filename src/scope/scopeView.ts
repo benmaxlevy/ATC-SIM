@@ -129,7 +129,7 @@ export interface ScopeView {
   charSizePx: CharSizePx;
   /**
    * DCB BRITE per drawn channel (0–100). Hue stays T02-08 green/white/blue.
-   * WX/WXC/BKC/CMP/BCN/PRI are stored; only paint channels tint draw.
+   * WX/WXC/BKC/CMP/BCN are stored; paint channels (including PRI) tint draw.
    */
   brite: BriteState;
   /** PLACE CNTR: next PPI click sets view **center**. */

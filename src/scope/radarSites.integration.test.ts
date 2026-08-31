@@ -18,7 +18,7 @@ import { buildSsaLines, SSA_NETWORK_HEALTH_STUB } from "./ssa";
 import {
   FUSED_PERIOD_MS,
   MULTI_RECT_COLOR,
-  SITE_SLASH_COLOR,
+  SITE_FAR_LINE_COLOR,
   effectiveSurveillanceMode,
   formatDcbSiteLabel,
   nearestCoveringSite,
@@ -181,9 +181,9 @@ test("AC2 — FUSED to airport site changes period, coverage, and paint", () => 
 
   chooseSite(view, { siteId: "APT" });
   expect(reportPeriodMs(view.surveillanceMode, view.radarSites, 2, 0)).toBe(4800);
-  expect(surveillancePaintFor(view.surveillanceMode, view.radarSites)).toBe("site-slash");
+  expect(surveillancePaintFor(view.surveillanceMode, view.radarSites)).toBe("site-rect");
   syncTrackDisplays(view.tracks, world, { mode: view.surveillanceMode, sites: view.radarSites });
-  expect(view.tracks.get("ac-in")!.lastReport!.paint).toBe("site-slash");
+  expect(view.tracks.get("ac-in")!.lastReport!.paint).toBe("site-rect");
   expect(view.tracks.get("ac-in")!.lastReport!.sourceSiteId).toBe("APT");
   expect(view.tracks.get("ac-out")!.lastReport).toBeUndefined();
 });
@@ -208,10 +208,10 @@ test("AC3 — MULTI selects nearest covering site and paints the thick blue rect
   renderScope(ctx, world, view, 800, 800);
   expect(view.tracks.get("ac-multi")!.lastReport!.paint).toBe("multi-rect");
   expect(view.tracks.get("ac-multi")!.lastReport!.sourceSiteId).toBe("NEAR");
-  expect(fills).toContain(MULTI_RECT_COLOR);
+  expect(fills.some((fill) => fill.toLowerCase() === MULTI_RECT_COLOR.toLowerCase())).toBe(true);
 });
 
-test("AC4 — single-site paints a thin green slash and no blue block", () => {
+test("AC4 — single-site paints a blue rect and a far-side green line", () => {
   const apt = syntheticSite({ id: "APT", kind: "airport", xNm: 8, yNm: 0, rangeNm: 30 });
   const view = createScopeView(0, 0, { radarSites: [apt] });
   chooseSite(view, { siteId: "APT" });
@@ -225,9 +225,9 @@ test("AC4 — single-site paints a thin green slash and no blue block", () => {
   const world = createWorld({ aircraft: [jet], simTimeMs: 0 });
   const { ctx, fills, strokes } = mockRenderCtx();
   renderScope(ctx, world, view, 800, 800);
-  expect(view.tracks.get("ac-site")!.lastReport!.paint).toBe("site-slash");
-  expect(strokes).toContain(SITE_SLASH_COLOR);
-  expect(fills).not.toContain(MULTI_RECT_COLOR);
+  expect(view.tracks.get("ac-site")!.lastReport!.paint).toBe("site-rect");
+  expect(fills.some((fill) => fill.toLowerCase() === MULTI_RECT_COLOR.toLowerCase())).toBe(true);
+  expect(strokes).toContain(SITE_FAR_LINE_COLOR);
 });
 
 test("AC5 — MAIN SITE and SSA word stay in sync; OK/OK/NA stays the stub", () => {
