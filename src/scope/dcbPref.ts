@@ -1,12 +1,17 @@
 /**
- * Analog: CRC STARS DCB PREF / DCB position TOP / LEFT / RIGHT / BOTTOM (docs.virtualnas.net/crc/stars — R07).
+ * Analog: CRC STARS DCB PREF / DCB position TOP / LEFT / RIGHT / BOTTOM /
+ * PREF SAVE AS name prompt (docs.virtualnas.net/crc/stars — R07).
  * STARS spec: 32 local preference-set slots (16 columns x 2 rows = 32 slots; CRC analog / NAS host sets),
  * persisted in localStorage, facility-keyed and schema-versioned. One DCB at a
  * time along a PPI edge. LEFT/RIGHT are a vertical cell stack; TOP/BOTTOM stay
  * horizontal. Drawable PPI size is the host minus DCB thickness on that edge.
- * No window.prompt, no HTML <input>, not a settings panel / profile modal /
- * theme picker. Not a NAS preference host. Display snapshot only — never
- * Command IR, speech prefs, command-line text, or world kinematics.
+ * Trainer delta: named local sets collected via the preview-area / status-line
+ * buffer (eight-slot analog; this table is 32). Enter writes the first empty
+ * slot, or the last slot when full. Esc cancels before any write. Digit-only
+ * names are rejected (FIL reserved). No window.prompt, no HTML <input>,
+ * not a settings panel / profile modal / theme picker. Not a NAS preference host.
+ * Display snapshot only — never Command IR, speech prefs, command-line text,
+ * or world kinematics.
  *
  * Scope display state only. Never a Command, readback, or intent.
  */
@@ -59,6 +64,9 @@ export const DCB_PREF_SLOT_COUNT = 32;
 
 /** MAIN PREF second-line budget. CRC analog is a short set name (e.g. 22/27). */
 export const DCB_PREF_READOUT_MAX_CHARS = 6;
+
+/** SAVE AS type-in budget. Stored exact; MAIN still clips to the readout cap. */
+export const DCB_PREF_NAME_MAX_CHARS = 8;
 
 /**
  * Body schema version. Writes always emit this. `parseDcbPrefJson` also
@@ -114,12 +122,14 @@ export interface DcbPrefFile {
   slots: Array<DcbPrefSlot | null>;
 }
 
-/** Live PREF machine on ScopeView. Slots are the trainer 8-set table. */
+/** Live PREF machine on ScopeView. Slots are the trainer 32-set table. */
 export interface DcbPrefRuntime {
   icao: string;
   slots: Array<DcbPrefSlot | null>;
   activeIndex: number;
   restore: DcbPrefBody | null;
+  /** True while SAVE AS waits for a preview-area name. Not persisted. */
+  pendingSaveAs: boolean;
 }
 
 const DOCKS: readonly DcbDock[] = ["TOP", "LEFT", "RIGHT", "BOTTOM"];
@@ -134,7 +144,38 @@ export function emptyDcbPrefRuntime(icao: string = ""): DcbPrefRuntime {
     slots: emptyDcbPrefSlots(),
     activeIndex: 0,
     restore: null,
+    pendingSaveAs: false,
   };
+}
+
+export type DcbPrefNameParse =
+  { ok: true; name: string } | { ok: false; reason: "empty" | "non-alnum" | "digit-only" };
+
+/**
+ * Non-empty alphanumeric only. Digit-only is reserved for FIL-style input.
+ * Exact stored spelling; display clips/uppercases separately.
+ */
+export function parseDcbPrefName(raw: string): DcbPrefNameParse {
+  const name = raw.trim();
+  if (name.length === 0) {
+    return { ok: false, reason: "empty" };
+  }
+  if (!/^[A-Za-z0-9]+$/.test(name)) {
+    return { ok: false, reason: "non-alnum" };
+  }
+  if (/^\d+$/.test(name)) {
+    return { ok: false, reason: "digit-only" };
+  }
+  return { ok: true, name };
+}
+
+/** First empty slot, or the last slot when the table is full. */
+export function nextDcbPrefSaveAsIndex(view: Pick<ScopeView, "dcbPref">): number {
+  const index = view.dcbPref.slots.findIndex((slot) => slot === null);
+  if (index < 0) {
+    return DCB_PREF_SLOT_COUNT - 1;
+  }
+  return index;
 }
 
 /** Stored name of the active filled slot; empty string when the slot is vacant. */
@@ -381,16 +422,41 @@ export function saveDcbPref(view: ScopeView, storage?: DcbPrefStorage): void {
 }
 
 /**
- * First empty slot, auto-name PREF n. If all eight are full, overwrite slot 8
- * (no browser prompt / <input>).
+ * Arm SAVE AS naming. Does not write a slot. Esc via `cancelDcbPrefSaveAs`
+ * clears this before any persist.
  */
-export function saveAsDcbPref(view: ScopeView, storage?: DcbPrefStorage): number {
-  let index = view.dcbPref.slots.findIndex((slot) => slot === null);
-  if (index < 0) {
-    index = DCB_PREF_SLOT_COUNT - 1;
+export function beginDcbPrefSaveAs(view: ScopeView): void {
+  view.dcbPref.pendingSaveAs = true;
+}
+
+export function cancelDcbPrefSaveAs(view: ScopeView): void {
+  view.dcbPref.pendingSaveAs = false;
+}
+
+export function isDcbPrefSaveAsPending(view: Pick<ScopeView, "dcbPref">): boolean {
+  return view.dcbPref.pendingSaveAs;
+}
+
+/**
+ * Commit a parsed name to the first empty slot, or the last slot when full.
+ * Invalid names return null and leave pending SAVE AS armed.
+ */
+export function commitDcbPrefSaveAs(
+  view: ScopeView,
+  rawName: string,
+  storage?: DcbPrefStorage,
+): number | null {
+  if (!view.dcbPref.pendingSaveAs) {
+    return null;
   }
-  view.dcbPref.slots[index] = { name: `PREF ${index + 1}`, body: serializeDcbPref(view) };
+  const parsed = parseDcbPrefName(rawName);
+  if (!parsed.ok) {
+    return null;
+  }
+  const index = nextDcbPrefSaveAsIndex(view);
+  view.dcbPref.slots[index] = { name: parsed.name, body: serializeDcbPref(view) };
   view.dcbPref.activeIndex = index;
+  view.dcbPref.pendingSaveAs = false;
   persistRuntime(view, storage);
   return index;
 }

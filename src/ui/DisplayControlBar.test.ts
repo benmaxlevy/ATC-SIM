@@ -19,7 +19,9 @@ import {
   cycleRange,
   openDcbMenu,
   formatDcbRangeReadout,
-  saveAsDcbPref,
+  beginDcbPrefSaveAs,
+  beginPrefNameEntry,
+  commitDcbPrefSaveAs,
   handleFilterEntryKey,
   parseDigitalMap,
   toggleGiFilter,
@@ -807,15 +809,34 @@ test("MAIN PREF cap shows the active profile name instead of 22/27", () => {
   expect(empty).not.toContain("22/27");
   expect(empty).toMatch(/aria-label="Pref"/);
 
-  saveAsDcbPref(view);
+  beginDcbPrefSaveAs(view);
+  commitDcbPrefSaveAs(view, "NIGHT");
   const saved = dcbHtml(view);
-  expect(saved).toContain("PREF 1");
-  expect(saved).toMatch(/aria-label="Pref PREF 1"/);
+  expect(saved).toContain("NIGHT");
+  expect(saved).toMatch(/aria-label="Pref NIGHT"/);
 
   view.dcbPref.slots[0]!.name = "Approach Night";
   const named = dcbHtml(view);
   expect(named).toContain("APPROA");
   expect(named).toMatch(/aria-label="Pref Approach Night"/);
+});
+
+test("SAVE AS starts a PREF name prompt; slot caps show the stored name", () => {
+  const view = createScopeView();
+  openDcbMenu(view, "PREF");
+  beginDcbPrefSaveAs(view);
+  beginPrefNameEntry(view.preview, 0);
+  expect(view.dcbPref.pendingSaveAs).toBe(true);
+  expect(view.preview.mnemonic).toBe("PREF");
+  expect(view.dcbPref.slots[0]).toBeNull();
+  const pendingHtml = dcbHtml(view);
+  expect(pendingHtml).not.toMatch(/window\.prompt/);
+  expect(pendingHtml).not.toMatch(/<input/i);
+
+  commitDcbPrefSaveAs(view, "NIGHT");
+  const named = dcbHtml(view);
+  expect(named).toContain("NIGHT");
+  expect(named).toMatch(/data-dcb-cell="pref-1"/);
 });
 
 test("momentary caps flash inset; toggles remain latches", () => {

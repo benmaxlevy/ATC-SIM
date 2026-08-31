@@ -242,16 +242,15 @@ change; each capability needs its own data and acceptance criteria.
 
 ### PREF SAVE AS named sets
 
-SAVE AS currently auto-names the first empty slot `PREF n` and forbids
-`window.prompt` / HTML `<input>`. CRC STARS prompts for a preference-set name,
-then writes the first available slot.
+Shipped: SAVE AS collects a short alphanumeric name through the preview-area /
+status-line buffer (CRC analog, R07). Enter writes the first empty slot, or the
+last slot when the 32-slot table is full. Esc cancels with no write. Digit-only
+names are rejected (FIL reserved). MAIN shows the active set name; slot caps
+show the stored name. No `window.prompt`, no HTML `<input>`.
 
-Later: after SAVE AS, collect a short name via a PPI/status-line chord (same
-grammar as the altitude FILTER `FIL` prompt). Enter commits to the first empty
-slot (slot 8 if all eight are full). Esc cancels. Do not use a browser dialog
-or an HTML text field. Slot caps should show the stored name once it exists.
-
-MAIN already shows the active set name on the PREF cap.
+Still not a NAS preference host. Slash names such as `22/27` are not typeable
+(alphanumeric only). Per-track PTL and TPA stay session state and are not
+persisted in PREF. WX `wxLevels` stay the other swarm.
 
 ### Manual Inhibit Commands and Safety Inhibit Glyphs
 

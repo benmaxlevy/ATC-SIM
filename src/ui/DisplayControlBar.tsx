@@ -16,8 +16,9 @@
  * MAIN quick video maps 1–6; MAPS submenu slots 1–32 (KDEM) or group
  * submenu 7–38. Empty slots disabled. Group cells show CRC starsId plus short name.
  * WX1–6 are disabled chrome (no precipitation). Disabled CRDA cell on SSA FILTER
- * is chrome only. PREF is 8 local slots (not a NAS host). MAIN PREF shows the
- * active set name. No CSA / FMA (R06). Discrete **range** presets only.
+ * is chrome only. PREF is 32 local slots (not a NAS host). SAVE AS names via
+ * the preview-area buffer (R07 analog; no window.prompt / HTML input). MAIN
+ * PREF shows the active set name. No CSA / FMA (R06). Discrete **range** presets only.
  * CHAR SIZE scales **datablock** / lists / DCB / tools / POS. BRITE multiplies
  * drawn channels. Not NAS STARS.
  *
@@ -88,7 +89,8 @@ import {
   openDcbMenu,
   persistDcbPref,
   restoreDcbPrefSession,
-  saveAsDcbPref,
+  beginDcbPrefSaveAs,
+  beginPrefNameEntry,
   saveDcbPref,
   selectDcbPrefSlot,
   setHistoryDotCount,
@@ -3035,7 +3037,8 @@ function renderPref(view: ScopeView, onChange: () => void) {
           dataDcb="pref-save-as"
           onClick={() => {
             cancelFilterIfEntering(view);
-            saveAsDcbPref(view, prefStore());
+            beginDcbPrefSaveAs(view);
+            beginPrefNameEntry(view.preview, Date.now());
             afterCell(onChange);
           }}
         >

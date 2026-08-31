@@ -72,6 +72,7 @@ import {
   type PreviewArmedAction,
   type PreviewKeyOutcome,
 } from "./previewArea";
+import { browserDcbPrefStorage, cancelDcbPrefSaveAs, commitDcbPrefSaveAs } from "./dcbPref";
 import { handleDcbEscape } from "./dcbMenu";
 import {
   applyRrCenter,
@@ -245,6 +246,7 @@ function syncStarsChordMirror(view: ScopeView, nowMs: number): void {
 
 function startPreviewBuffer(view: ScopeView, ch: string, nowMs: number): void {
   cancelFilterEntry(view.filterEntry, view.altitudeFilter);
+  cancelDcbPrefSaveAs(view);
   view.pendingChord = null;
   beginPreviewBufferEntry(view.preview, ch, nowMs);
   if (ch === "*") {
@@ -341,6 +343,11 @@ function applyPreviewArmedAction(view: ScopeView, action: PreviewArmedAction, no
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;
       armPreviewSlewAction(view.preview, action, nowMs);
+      return;
+    case "saveAsPref":
+      if (action.name) {
+        commitDcbPrefSaveAs(view, action.name, browserDcbPrefStorage() ?? undefined);
+      }
       return;
     default:
       return;
@@ -439,6 +446,7 @@ export function handleScopeKeyDown(
   if (event.key === "Escape") {
     const previewStar = view.preview.phase !== "idle" && view.preview.buffer.startsWith("*");
     if (handlePreviewEscape(view.preview)) {
+      cancelDcbPrefSaveAs(view);
       if (previewStar) {
         cancelStarsChordEntry(view.starsChordEntry);
         view.starsChordArmed = null;
@@ -610,6 +618,7 @@ export function handleScopeKeyDown(
   } else {
     if (view.preview.phase === "entry") {
       cancelPreviewArea(view.preview);
+      cancelDcbPrefSaveAs(view);
     }
     if (view.filterEntry.phase !== "idle") {
       cancelFilterEntry(view.filterEntry, view.altitudeFilter);

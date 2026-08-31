@@ -6,6 +6,7 @@ import { expect, test } from "vitest";
 import { loadKdem } from "@scenario";
 import { isVideoMapOn, toggleVideoMap } from "./dcbFunctions";
 import {
+  DCB_PREF_NAME_MAX_CHARS,
   DCB_PREF_READOUT_MAX_CHARS,
   DCB_PREF_SLOT_COUNT,
   DCB_PREF_SCHEMA_VERSION,
@@ -13,16 +14,20 @@ import {
   activeDcbPrefName,
   applyDcbPref,
   applyDcbPrefDefaults,
+  beginDcbPrefSaveAs,
   beginDcbPrefSession,
+  cancelDcbPrefSaveAs,
+  commitDcbPrefSaveAs,
   dcbPrefStorageKey,
   deleteDcbPref,
   drawablePpiSize,
   formatDcbPrefReadout,
+  isDcbPrefSaveAsPending,
   isVerticalDcbDock,
   loadDcbPrefFromStorage,
   parseDcbPrefJson,
+  parseDcbPrefName,
   restoreDcbPrefSession,
-  saveAsDcbPref,
   saveDcbPref,
   selectDcbPrefSlot,
   serializeDcbPref,
@@ -101,30 +106,85 @@ test("AC3 — RESTORE undoes changes made after opening PREF", () => {
   expect(view.dcbDock).toBe("RIGHT");
 });
 
-test("AC4 — SAVE AS fills the first empty slot named PREF n with no prompt/input", () => {
+test("SAVE AS begin does not write; alphanumeric Enter fills the first empty slot", () => {
   const store = memoryStorage();
-  const view = kdemView();
-  view.dcbPref.icao = "KDEM";
+  const view = createScopeView();
+  view.dcbPref.icao = "KXXX";
   view.camera.rangeNm = 30;
-  const first = saveAsDcbPref(view, store);
-  expect(first).toBe(0);
-  expect(view.dcbPref.slots[0]?.name).toBe("PREF 1");
-  expect(view.dcbPref.activeIndex).toBe(0);
-  view.camera.rangeNm = 50;
-  const second = saveAsDcbPref(view, store);
-  expect(second).toBe(1);
-  expect(view.dcbPref.slots[1]?.name).toBe("PREF 2");
+  beginDcbPrefSaveAs(view);
+  expect(isDcbPrefSaveAsPending(view)).toBe(true);
+  expect(view.dcbPref.slots[0]).toBeNull();
+  expect(store.data.size).toBe(0);
 
-  for (let i = 2; i < DCB_PREF_SLOT_COUNT; i += 1) {
+  const first = commitDcbPrefSaveAs(view, "NIGHT", store);
+  expect(first).toBe(0);
+  expect(view.dcbPref.slots[0]?.name).toBe("NIGHT");
+  expect(view.dcbPref.slots[0]?.body.rangeNm).toBe(30);
+  expect(view.dcbPref.activeIndex).toBe(0);
+  expect(isDcbPrefSaveAsPending(view)).toBe(false);
+
+  view.camera.rangeNm = 50;
+  beginDcbPrefSaveAs(view);
+  const second = commitDcbPrefSaveAs(view, "DAY", store);
+  expect(second).toBe(1);
+  expect(view.dcbPref.slots[1]?.name).toBe("DAY");
+  expect(view.dcbPref.slots[0]?.name).toBe("NIGHT");
+});
+
+test("SAVE AS replaces the last slot when the table is full", () => {
+  const store = memoryStorage();
+  const view = createScopeView();
+  view.dcbPref.icao = "KXXX";
+  for (let i = 0; i < DCB_PREF_SLOT_COUNT; i += 1) {
     view.camera.rangeNm = 15;
-    saveAsDcbPref(view, store);
+    beginDcbPrefSaveAs(view);
+    commitDcbPrefSaveAs(view, `SET${i}`, store);
   }
   expect(view.dcbPref.slots.every((slot) => slot !== null)).toBe(true);
+  expect(view.dcbPref.slots[0]?.name).toBe("SET0");
   view.camera.rangeNm = 60;
-  const overflow = saveAsDcbPref(view, store);
+  beginDcbPrefSaveAs(view);
+  const overflow = commitDcbPrefSaveAs(view, "FULL", store);
   expect(overflow).toBe(31);
-  expect(view.dcbPref.slots[31]?.name).toBe("PREF 32");
+  expect(view.dcbPref.slots[31]?.name).toBe("FULL");
   expect(view.dcbPref.slots[31]?.body.rangeNm).toBe(60);
+  expect(view.dcbPref.slots[0]?.name).toBe("SET0");
+});
+
+test("Esc cancel and invalid names leave slots unchanged", () => {
+  const store = memoryStorage();
+  const view = createScopeView();
+  view.dcbPref.icao = "KXXX";
+  view.camera.rangeNm = 40;
+  beginDcbPrefSaveAs(view);
+  commitDcbPrefSaveAs(view, "KEEP", store);
+  const before = JSON.stringify(view.dcbPref.slots);
+
+  beginDcbPrefSaveAs(view);
+  view.camera.rangeNm = 10;
+  cancelDcbPrefSaveAs(view);
+  expect(isDcbPrefSaveAsPending(view)).toBe(false);
+  expect(JSON.stringify(view.dcbPref.slots)).toBe(before);
+  expect(view.dcbPref.activeIndex).toBe(0);
+  expect(activeDcbPrefName(view)).toBe("KEEP");
+
+  beginDcbPrefSaveAs(view);
+  expect(commitDcbPrefSaveAs(view, "", store)).toBeNull();
+  expect(commitDcbPrefSaveAs(view, "22/27", store)).toBeNull();
+  expect(commitDcbPrefSaveAs(view, "123", store)).toBeNull();
+  expect(isDcbPrefSaveAsPending(view)).toBe(true);
+  expect(JSON.stringify(view.dcbPref.slots)).toBe(before);
+  expect(activeDcbPrefName(view)).toBe("KEEP");
+});
+
+test("parseDcbPrefName rejects empty, non-alnum, and digit-only text", () => {
+  expect(parseDcbPrefName("NIGHT")).toEqual({ ok: true, name: "NIGHT" });
+  expect(parseDcbPrefName("  day1  ")).toEqual({ ok: true, name: "day1" });
+  expect(parseDcbPrefName("")).toEqual({ ok: false, reason: "empty" });
+  expect(parseDcbPrefName("   ")).toEqual({ ok: false, reason: "empty" });
+  expect(parseDcbPrefName("22/27")).toEqual({ ok: false, reason: "non-alnum" });
+  expect(parseDcbPrefName("123")).toEqual({ ok: false, reason: "digit-only" });
+  expect(DCB_PREF_NAME_MAX_CHARS).toBe(8);
 });
 
 test("AC5 — DELETE clears the active slot; corrupt JSON falls back to factory", () => {
@@ -170,11 +230,12 @@ test("MAIN PREF second line is the active set name, abbreviated to the cap budge
   expect(formatDcbPrefReadout("  night  ops ")).toBe("NIGHT");
   expect(DCB_PREF_READOUT_MAX_CHARS).toBe(6);
 
-  const view = kdemView();
+  const view = createScopeView();
   expect(activeDcbPrefName(view)).toBe("");
-  saveAsDcbPref(view);
-  expect(activeDcbPrefName(view)).toBe("PREF 1");
-  expect(formatDcbPrefReadout(activeDcbPrefName(view))).toBe("PREF 1");
+  beginDcbPrefSaveAs(view);
+  commitDcbPrefSaveAs(view, "NIGHT");
+  expect(activeDcbPrefName(view)).toBe("NIGHT");
+  expect(formatDcbPrefReadout(activeDcbPrefName(view))).toBe("NIGHT");
   view.dcbPref.slots[0]!.name = "Approach Night";
   expect(formatDcbPrefReadout(activeDcbPrefName(view))).toBe("APPROA");
 });
