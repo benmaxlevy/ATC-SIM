@@ -231,6 +231,9 @@ WX/WXC contours. Default levels remain off.
 
 Still later:
 
+- Session-loop IEM refresh. `fetchWxMosaic` is callable and fixture-tested;
+  `main.tsx` never assigns `view.wxMosaic`. Live GetMap stays unhooked until
+  a later ticket. Overlay paints only when tests (or a hook) set the mosaic.
 - SSA WX / WX HIST
 - BRITE BKC
 - AVL 2×3 / half-height badge restyle
