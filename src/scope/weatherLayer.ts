@@ -99,11 +99,6 @@ function acquireCanvas(width: number, height: number): WxCompositeCanvas {
   if (cachedCanvas && cachedWidth === width && cachedHeight === height) {
     return cachedCanvas;
   }
-  if (typeof OffscreenCanvas === "function") {
-    cachedWidth = width;
-    cachedHeight = height;
-    return new OffscreenCanvas(width, height);
-  }
   if (typeof document !== "undefined") {
     const canvas = document.createElement("canvas");
     canvas.width = width;
@@ -112,19 +107,29 @@ function acquireCanvas(width: number, height: number): WxCompositeCanvas {
     cachedHeight = height;
     return canvas;
   }
+  if (typeof OffscreenCanvas === "function") {
+    cachedWidth = width;
+    cachedHeight = height;
+    return new OffscreenCanvas(width, height);
+  }
   cachedWidth = width;
   cachedHeight = height;
   return { width, height };
 }
 
+type Wx2dContext = {
+  createImageData(width: number, height: number): ImageData;
+  putImageData(imageData: ImageData, dx: number, dy: number): void;
+};
+
 function writeCompositePixels(canvas: WxCompositeCanvas, pixels: Uint8ClampedArray): void {
   const width = canvas.width;
   const height = canvas.height;
-  const maybeCtx =
-    "getContext" in canvas
-      ? (canvas as OffscreenCanvas | HTMLCanvasElement).getContext("2d")
-      : null;
-  if (!maybeCtx || typeof maybeCtx.createImageData !== "function") {
+  if (!("getContext" in canvas)) {
+    return;
+  }
+  const maybeCtx = (canvas as { getContext(id: "2d"): Wx2dContext | null }).getContext("2d");
+  if (!maybeCtx) {
     return;
   }
   const imageData = maybeCtx.createImageData(width, height);
@@ -277,5 +282,8 @@ export function drawWeatherLayer(
   if (dw === 0 || dh === 0) {
     return;
   }
+  const prevSmooth = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = false;
   ctx.drawImage(canvas as CanvasImageSource, nwPx.x, nwPx.y, dw, dh);
+  ctx.imageSmoothingEnabled = prevSmooth;
 }

@@ -1,5 +1,6 @@
 import { nmToLatLon, type LatLon } from "@core";
 import { bboxContains, bboxFromArp } from "./bbox";
+import { N0Q_VIP_EDGES_HEIGHT, N0Q_VIP_EDGES_WIDTH, n0qVipEdgesRgba } from "./fixture";
 import { planIemN0qCover } from "./iemUrl";
 import { rgbToDbz } from "./n0qRamp";
 import { decodePngToRgba, isPng } from "./png";
@@ -46,7 +47,9 @@ function maskBit(mask: Uint8Array, index: number): boolean {
   return ((mask[index >> 3] ?? 0) & (1 << (index & 7))) !== 0;
 }
 
-export function emptyWxMosaic(bounds?: Partial<WxBbox> & { fetchedAtMs?: number }): WxMosaic {
+export function emptyWxMosaic(
+  bounds?: Partial<WxBbox> & { fetchedAtMs?: number; source?: WxMosaic["source"] },
+): WxMosaic {
   return {
     westLon: bounds?.westLon ?? 0,
     southLat: bounds?.southLat ?? 0,
@@ -56,6 +59,7 @@ export function emptyWxMosaic(bounds?: Partial<WxBbox> & { fetchedAtMs?: number 
     heightPx: 0,
     vipMasks: emptyMasks(),
     fetchedAtMs: bounds?.fetchedAtMs ?? 0,
+    source: bounds?.source,
   };
 }
 
@@ -167,17 +171,34 @@ export async function fetchWxMosaic(opts: FetchWxMosaicOpts): Promise<WxMosaic> 
   const cover = planIemN0qCover(pad);
   const failed = (): WxMosaic => emptyWxMosaic({ ...cover.bbox, fetchedAtMs: opts.nowMs });
   const fetchImpl = opts.fetchImpl ?? globalThis.fetch.bind(globalThis);
+  const fixtureMosaic = (): WxMosaic => ({
+    ...decodeRgbaToVipMasks(
+      n0qVipEdgesRgba(),
+      N0Q_VIP_EDGES_WIDTH,
+      N0Q_VIP_EDGES_HEIGHT,
+      pad,
+      opts.nowMs,
+      opts.breaks,
+    ),
+    source: "fixture",
+  });
   try {
     if (opts.fixtureUrl) {
-      const res = await fetchImpl(opts.fixtureUrl);
-      if (!res.ok) {
-        return emptyWxMosaic({ ...pad, fetchedAtMs: opts.nowMs });
+      try {
+        const res = await fetchImpl(opts.fixtureUrl);
+        if (res.ok) {
+          const png = new Uint8Array(await res.arrayBuffer());
+          if (isPng(png)) {
+            return {
+              ...(await decodePngToVipMasks(png, pad, opts.nowMs, opts.breaks)),
+              source: "fixture",
+            };
+          }
+        }
+      } catch {
+        // Embedded 8×2 still paints if the PNG fetch or inflate fails.
       }
-      const png = new Uint8Array(await res.arrayBuffer());
-      if (!isPng(png)) {
-        return emptyWxMosaic({ ...pad, fetchedAtMs: opts.nowMs });
-      }
-      return await decodePngToVipMasks(png, pad, opts.nowMs, opts.breaks);
+      return fixtureMosaic();
     }
     const decodedTiles: Array<{
       x: number;
@@ -217,7 +238,10 @@ export async function fetchWxMosaic(opts: FetchWxMosaicOpts): Promise<WxMosaic> 
       const dy = (part.y - cover.y0) * tileH;
       blitRgba(rgba, widthPx, part.rgba, part.width, part.height, dx, dy);
     }
-    return decodeRgbaToVipMasks(rgba, widthPx, heightPx, cover.bbox, opts.nowMs, opts.breaks);
+    return {
+      ...decodeRgbaToVipMasks(rgba, widthPx, heightPx, cover.bbox, opts.nowMs, opts.breaks),
+      source: "iem",
+    };
   } catch {
     return failed();
   }

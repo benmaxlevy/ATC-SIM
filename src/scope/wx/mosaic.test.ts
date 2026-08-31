@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { latLonToNm } from "@core";
 import {
   DEFAULT_WX_PAD_NM,
+  N0Q_VIP_EDGES_PIXELS,
   WX_REFRESH_MS,
   bboxFromArp,
   planIemN0qCover,
@@ -11,6 +12,7 @@ import {
   emptyWxMosaic,
   encodeRgbaPng,
   fetchWxMosaic,
+  n0qVipEdgesRgba,
   rgbToDbz,
   shouldRefetch,
   vipAtNm,
@@ -18,37 +20,6 @@ import {
 import { N0Q_RGB_DBZ_RAMP } from "./n0qRamp";
 
 const FIXTURE_PNG = new URL("../../../testdata/wx/n0q-vip-edges.png", import.meta.url);
-
-/** 8×2 RGBA: transparent / black / unknown / VIP edges / JO 30-40-50 neighbors. */
-const FIXTURE_PIXELS: readonly { r: number; g: number; b: number; a: number; vip: number }[] = [
-  { r: 0, g: 0, b: 0, a: 0, vip: 0 },
-  { r: 0, g: 0, b: 0, a: 255, vip: 0 },
-  { r: 128, g: 128, b: 128, a: 255, vip: 0 },
-  { r: 0, g: 0, b: 246, a: 255, vip: 0 },
-  { r: 0, g: 153, b: 98, a: 255, vip: 1 },
-  { r: 0, g: 144, b: 0, a: 255, vip: 2 },
-  { r: 250, g: 242, b: 0, a: 255, vip: 3 },
-  { r: 236, g: 182, b: 0, a: 255, vip: 4 },
-  { r: 255, g: 115, b: 0, a: 255, vip: 5 },
-  { r: 247, g: 0, b: 0, a: 255, vip: 6 },
-  { r: 0, g: 200, b: 0, a: 255, vip: 1 },
-  { r: 255, g: 255, b: 0, a: 255, vip: 2 },
-  { r: 231, g: 192, b: 0, a: 255, vip: 3 },
-  { r: 255, g: 0, b: 0, a: 255, vip: 5 },
-  { r: 0, g: 255, b: 0, a: 255, vip: 1 },
-  { r: 214, g: 0, b: 0, a: 255, vip: 6 },
-];
-
-function fixtureRgba(): Uint8Array {
-  const rgba = new Uint8Array(FIXTURE_PIXELS.length * 4);
-  FIXTURE_PIXELS.forEach((p, i) => {
-    rgba[i * 4] = p.r;
-    rgba[i * 4 + 1] = p.g;
-    rgba[i * 4 + 2] = p.b;
-    rgba[i * 4 + 3] = p.a;
-  });
-  return rgba;
-}
 
 function stop(dbz: number) {
   const found = N0Q_RGB_DBZ_RAMP.find((s) => s.dbz === dbz);
@@ -75,19 +46,19 @@ test("rgbToDbz maps documented N0Q stops and drops transparent/black/unknown", (
 
 test("testdata/wx fixture PNG decodes to VIP edges at 18/30/36/41/46/51", async () => {
   const png = new Uint8Array(readFileSync(FIXTURE_PNG));
-  expect(png.subarray(0, 8)).toEqual(encodeRgbaPng(8, 2, fixtureRgba()).subarray(0, 8));
+  expect(png.subarray(0, 8)).toEqual(encodeRgbaPng(8, 2, n0qVipEdgesRgba()).subarray(0, 8));
   const bbox = { westLon: -1, southLat: -0.5, eastLon: 1, northLat: 0.5 };
   const mosaic = await decodePngToVipMasks(png, bbox, 1_000);
   expect(mosaic.widthPx).toBe(8);
   expect(mosaic.heightPx).toBe(2);
   const arp = { latDeg: 0, lonDeg: 0 };
-  for (let i = 0; i < FIXTURE_PIXELS.length; i++) {
+  for (let i = 0; i < N0Q_VIP_EDGES_PIXELS.length; i++) {
     const col = i % 8;
     const row = Math.floor(i / 8);
     const lon = bbox.westLon + ((col + 0.5) / 8) * (bbox.eastLon - bbox.westLon);
     const lat = bbox.northLat - ((row + 0.5) / 2) * (bbox.northLat - bbox.southLat);
     const en = latLonToNm({ latDeg: lat, lonDeg: lon }, arp);
-    expect(vipAtNm(mosaic, en.xNm, en.yNm, arp), `pixel ${i}`).toBe(FIXTURE_PIXELS[i]!.vip);
+    expect(vipAtNm(mosaic, en.xNm, en.yNm, arp), `pixel ${i}`).toBe(N0Q_VIP_EDGES_PIXELS[i]!.vip);
   }
 });
 
@@ -164,7 +135,18 @@ test("fetchWxMosaic uses injected fetch and returns empty on HTTP or decode fail
   });
   expect(fromFixture.widthPx).toBe(8);
   expect(fromFixture.heightPx).toBe(2);
+  expect(fromFixture.source).toBe("fixture");
   expect(fromFixture.westLon).toBeCloseTo(bboxFromArp(arp).westLon);
+
+  const fixtureFallback = await fetchWxMosaic({
+    arp,
+    nowMs: 91_000,
+    fixtureUrl: "/testdata/wx/n0q-vip-edges.png",
+    fetchImpl: async () => new Response("not-png", { status: 200 }),
+  });
+  expect(fixtureFallback.widthPx).toBe(8);
+  expect(fixtureFallback.heightPx).toBe(2);
+  expect(fixtureFallback.source).toBe("fixture");
 
   const wmsException = await fetchWxMosaic({
     arp,

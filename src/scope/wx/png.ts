@@ -271,11 +271,30 @@ export interface DecodedPng {
   rgba: Uint8Array;
 }
 
-/**
- * Decode an 8-bit non-interlaced PNG to RGBA. Used at fetch time, not in the
- * animation loop. IEM tiles are PNG; PPI paint is T02-69.
- */
-export async function decodePngToRgba(bytes: Uint8Array): Promise<DecodedPng> {
+async function decodePngViaBitmap(bytes: Uint8Array): Promise<DecodedPng> {
+  if (typeof createImageBitmap !== "function") {
+    throw new Error("createImageBitmap unavailable");
+  }
+  const blob = new Blob([bytes.slice()], { type: "image/png" });
+  const bmp = await createImageBitmap(blob);
+  try {
+    if (typeof OffscreenCanvas !== "function") {
+      throw new Error("OffscreenCanvas unavailable");
+    }
+    const canvas = new OffscreenCanvas(bmp.width, bmp.height);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("bitmap canvas unavailable");
+    }
+    ctx.drawImage(bmp, 0, 0);
+    const image = ctx.getImageData(0, 0, bmp.width, bmp.height);
+    return { width: bmp.width, height: bmp.height, rgba: new Uint8Array(image.data) };
+  } finally {
+    bmp.close();
+  }
+}
+
+async function decodePngToRgbaManual(bytes: Uint8Array): Promise<DecodedPng> {
   for (let i = 0; i < PNG_SIG.length; i++) {
     if (bytes[i] !== PNG_SIG[i]) {
       throw new Error("not a PNG");
@@ -325,4 +344,17 @@ export async function decodePngToRgba(bytes: Uint8Array): Promise<DecodedPng> {
   const samples = unfilter(inflated, width, height, bpp);
   const rgba = expandToRgba(samples, width, height, colorType, palette, trns);
   return { width, height, rgba };
+}
+
+/**
+ * Decode an 8-bit non-interlaced PNG to RGBA. Used at fetch time, not in the
+ * animation loop. IEM tiles are PNG; PPI paint is T02-69. Browser bitmap is
+ * tried first so a failed inflate still yields pixels.
+ */
+export async function decodePngToRgba(bytes: Uint8Array): Promise<DecodedPng> {
+  try {
+    return await decodePngViaBitmap(bytes);
+  } catch {
+    return decodePngToRgbaManual(bytes);
+  }
 }

@@ -1,4 +1,12 @@
-export type { VipBin, VipLevel, WxBbox, WxLevels, WxMapSize, WxMosaic } from "./types";
+export type {
+  VipBin,
+  VipLevel,
+  WxBbox,
+  WxLevels,
+  WxMapSize,
+  WxMosaic,
+  WxMosaicSource,
+} from "./types";
 export {
   DEFAULT_WX_LEVELS,
   DEFAULT_WX_PAD_NM,
@@ -35,6 +43,11 @@ export {
   vipAtNm,
 } from "./mosaic";
 export type { FetchWxMosaicOpts } from "./mosaic";
-export { WX_N0Q_VIP_EDGES_PNG_URL, isWxFixtureEnabled } from "./fixture";
+export {
+  N0Q_VIP_EDGES_HEIGHT,
+  N0Q_VIP_EDGES_PIXELS,
+  N0Q_VIP_EDGES_WIDTH,
+  n0qVipEdgesRgba,
+} from "./fixture";
 export { anyWxLevelOn, ensureWxMosaic } from "./ensure";
 export type { EnsureWxMosaicOpts } from "./ensure";

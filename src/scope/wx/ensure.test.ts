@@ -32,6 +32,39 @@ test("ensureWxMosaic fixtureUrl fetches the sample PNG once, not IEM tiles", asy
   expect(calls).toEqual(["/testdata/wx/n0q-vip-edges.png"]);
   expect(view.wxMosaic.widthPx).toBe(8);
   expect(view.wxMosaic.heightPx).toBe(2);
+  expect(view.wxMosaic.source).toBe("fixture");
+  const second = ensureWxMosaic(view, {
+    nowMs: 4_000,
+    fixtureUrl: "/testdata/wx/n0q-vip-edges.png",
+    fetchImpl: mockFetch(calls),
+  });
+  expect(second).toBeUndefined();
+  expect(calls).toEqual(["/testdata/wx/n0q-vip-edges.png"]);
+});
+
+test("ensureWxMosaic fixtureUrl replaces a stale empty IEM mosaic", async () => {
+  const arp = { latDeg: 33.6, lonDeg: -84.4 };
+  const view = createScopeView(0, 0, { arp });
+  view.wxLevels = [true, true, true, true, true, true];
+  view.wxMosaic = emptyWxMosaic({
+    ...{
+      westLon: arp.lonDeg - 1,
+      eastLon: arp.lonDeg + 1,
+      southLat: arp.latDeg - 1,
+      northLat: arp.latDeg + 1,
+    },
+    fetchedAtMs: 10_000,
+    source: "iem",
+  });
+  const calls: string[] = [];
+  await ensureWxMosaic(view, {
+    nowMs: 11_000,
+    fixtureUrl: "/testdata/wx/n0q-vip-edges.png",
+    fetchImpl: mockFetch(calls),
+  });
+  expect(calls).toEqual(["/testdata/wx/n0q-vip-edges.png"]);
+  expect(view.wxMosaic.source).toBe("fixture");
+  expect(view.wxMosaic.widthPx).toBe(8);
 });
 
 test("ensureWxMosaic skips fetch when all levels are off", async () => {

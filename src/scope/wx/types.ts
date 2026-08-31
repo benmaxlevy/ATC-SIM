@@ -44,12 +44,16 @@ export interface WxMapSize {
  * Fetched N0Q mosaic, already binned to six packed VIP masks.
  * Decode happens at fetch time, never in the animation loop.
  */
+export type WxMosaicSource = "iem" | "fixture";
+
 export interface WxMosaic extends WxBbox {
   widthPx: number;
   heightPx: number;
   /** Packed bits, row-major (row 0 = north). One plane per VIP 1–6. */
   vipMasks: readonly [Uint8Array, Uint8Array, Uint8Array, Uint8Array, Uint8Array, Uint8Array];
   fetchedAtMs: number;
+  /** Set after a fetch. Missing on a never-fetched empty mosaic. */
+  source?: WxMosaicSource;
 }
 
 export function cloneWxLevels(levels: WxLevels = DEFAULT_WX_LEVELS): WxLevels {

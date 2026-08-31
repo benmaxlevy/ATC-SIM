@@ -42,7 +42,11 @@ export function ensureWxMosaic(
   if (pending) {
     return pending;
   }
-  if (!shouldRefetch(view.wxMosaic, opts.nowMs, view.arp)) {
+  if (opts.fixtureUrl) {
+    if (view.wxMosaic.source === "fixture" && !shouldRefetch(view.wxMosaic, opts.nowMs, view.arp)) {
+      return undefined;
+    }
+  } else if (!shouldRefetch(view.wxMosaic, opts.nowMs, view.arp)) {
     return undefined;
   }
   const started = fetchWxMosaic({

@@ -15,9 +15,7 @@ import {
   PpiPlaceholderId,
   browserDcbPrefStorage,
   createScopeView,
-  WX_N0Q_VIP_EDGES_PNG_URL,
   ensureWxMosaic,
-  isWxFixtureEnabled,
   loadDcbPrefFromStorage,
   paintPpi,
   parseDigitalMap,
@@ -122,10 +120,7 @@ function onFrame(nowMs: number): void {
   // Physics: wall Δt feeds the accumulator. Never pass this dt into stepWorld.
   advanceWorld(handles.world, wallDtS, acc);
   handles.afterPhysicsTick();
-  void ensureWxMosaic(scopeView, {
-    nowMs,
-    fixtureUrl: isWxFixtureEnabled(search) ? WX_N0Q_VIP_EDGES_PNG_URL : undefined,
-  });
+  void ensureWxMosaic(scopeView, { nowMs });
   paintCurrentPpi();
   const hud = document.getElementById(SIM_HUD_ID);
   if (hud) {
