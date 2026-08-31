@@ -2,14 +2,9 @@ import { expect, test } from "vitest";
 import { applyBrite } from "./palette";
 import { createScopeView } from "./scopeView";
 import {
-  WX_HATCH_H,
-  WX_HATCH_W,
   WX_VIP_CONTOUR_HEX,
   WX_VIP_FILL_HEX,
-  WX_VIP_HATCH_HEX,
   drawWeatherLayer,
-  wxHatchBit,
-  wxLevelHasHatch,
   wxScreenStyle,
   wxVipContourHex,
   wxVipFillHex,
@@ -41,17 +36,16 @@ function vip1Mosaic() {
   return decodeRgbaToVipMasks(rgba, 2, 2, bboxFromArp({ latDeg: 0, lonDeg: 0 }, 4), 1_000);
 }
 
-test("trainer fills are STARS green/olive/maroon pairs, not IEM rainbow", () => {
+test("trainer fills are six distinct STARS-like colors, not IEM rainbow", () => {
   expect(WX_VIP_FILL_HEX).toEqual([
-    "#0d1b0e",
-    "#0d1b0e",
-    "#362507",
-    "#362507",
-    "#361821",
-    "#361821",
+    "#146414",
+    "#C8C800",
+    "#E67800",
+    "#C80000",
+    "#C800C8",
+    "#FFFFFF",
   ]);
-  expect(new Set(WX_VIP_FILL_HEX).size).toBe(3);
-  expect(WX_VIP_HATCH_HEX).toBe("#3f3f3f");
+  expect(new Set(WX_VIP_FILL_HEX).size).toBe(6);
   for (const hex of WX_VIP_FILL_HEX) {
     expect(hex).not.toMatch(/#00EC|#00FF00|#00E8|#00F0/i);
   }
@@ -60,19 +54,8 @@ test("trainer fills are STARS green/olive/maroon pairs, not IEM rainbow", () => 
 });
 
 test("WXC contour is a 1px screen outline, not a mosaic-bin flood", () => {
-  expect(wxScreenStyle(1, 20, 20, false)).toBe("fill");
-  expect(wxScreenStyle(1, 20, 20, true)).toBe("contour");
-  expect(wxScreenStyle(2, 5, 0, false)).toBe("hatch");
-  expect(wxScreenStyle(2, 5, 0, true)).toBe("contour");
-});
-
-test("VIP 2/4/6 share one hatch cell origin", () => {
-  expect(wxLevelHasHatch(1)).toBe(false);
-  expect(wxLevelHasHatch(2)).toBe(true);
-  expect(wxLevelHasHatch(4)).toBe(true);
-  expect(wxLevelHasHatch(6)).toBe(true);
-  expect(wxHatchBit(5, 0)).toBe(wxHatchBit(5 + WX_HATCH_W, WX_HATCH_H));
-  expect(wxHatchBit(-1, -1)).toBe(wxHatchBit(WX_HATCH_W - 1, WX_HATCH_H - 1));
+  expect(wxScreenStyle(false)).toBe("fill");
+  expect(wxScreenStyle(true)).toBe("contour");
 });
 
 test("WXC contours are six distinct hues tinted by brite.wxc, not IEM rainbow", () => {

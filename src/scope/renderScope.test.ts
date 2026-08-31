@@ -2312,9 +2312,9 @@ test("T02-69 — one wxLevels latch paints trainer fill under tracks", () => {
   renderScope(rec.ctx, world, view, 800, 800);
   expect(rec.drawImages).toHaveLength(1);
   expect(WX_VIP_FILL_HEX).toHaveLength(6);
-  expect(new Set(WX_VIP_FILL_HEX).size).toBe(3);
-  expect(wxVipFillHex(1, 100)).toBe(applyBrite("#0d1b0e", 100));
-  expect(wxVipFillHex(1, 50)).toBe(applyBrite("#0d1b0e", 50));
+  expect(new Set(WX_VIP_FILL_HEX).size).toBe(6);
+  expect(wxVipFillHex(1, 100)).toBe(applyBrite("#146414", 100));
+  expect(wxVipFillHex(1, 50)).toBe(applyBrite("#146414", 50));
   expect(wxVipFillHex(1, 100)).not.toMatch(/#00EC|#00FF00|#00ECEC/i);
 
   const drawAt = rec.ops.indexOf("drawImage");

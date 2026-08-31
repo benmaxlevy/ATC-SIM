@@ -2,27 +2,21 @@
  * Composite enabled VIP masks into one cached canvas and draw it under tracks.
  * Decode / fetch stay in `wx/`. Display only — does not steer aircraft.
  *
- * STARS pair fills (green / olive / maroon). VIP 2/4/6 stamp one shared hatch
- * in screen space so marks stay aligned. Not the IEM NWS rainbow.
- * `view.brite.wx` tints fills and hatch; `view.brite.wxc` tints VIP band-edge
- * contours. Rebuild when mosaic, levels, brite, camera, or size change.
+ * Per-level tiles from `testdata/wx/levels/wx1.png` … `wx6.png`, sampled in
+ * screen space from one origin. Fallback solids if a tile is missing. Not the
+ * IEM NWS rainbow. `view.brite.wx` tints fills; `view.brite.wxc` tints a 1px
+ * outline. Rebuild when mosaic, levels, brite, camera, size, or tiles change.
  */
 
 import { latLonToNm, nmToLatLon, type LatLon } from "@core";
 import { nmToScreen, type ScopeCamera, type ScopeViewSize } from "./camera";
-import { applyBrite } from "./palette";
+import { applyBrite, snapBriteLevel } from "./palette";
 import type { ScopeView } from "./scopeView";
 import type { WxLevels, WxMosaic } from "./wx";
-import { WX_VIP_FILL_HEX, WX_VIP_HATCH_HEX, wxHatchBit, wxLevelHasHatch } from "./wxStarsFill";
+import { sampleWxLevelTile, wxLevelTilesGeneration } from "./wx/levelTiles";
+import { WX_VIP_FILL_HEX } from "./wxStarsFill";
 
-export {
-  WX_HATCH_H,
-  WX_HATCH_W,
-  WX_VIP_FILL_HEX,
-  WX_VIP_HATCH_HEX,
-  wxHatchBit,
-  wxLevelHasHatch,
-} from "./wxStarsFill";
+export { WX_VIP_FILL_HEX } from "./wxStarsFill";
 
 export function wxVipFillHex(level: 1 | 2 | 3 | 4 | 5 | 6, briteWx: number): string {
   return applyBrite(WX_VIP_FILL_HEX[level - 1]!, briteWx);
@@ -100,6 +94,7 @@ let cachedCenterEastNm = Number.NaN;
 let cachedCenterNorthNm = Number.NaN;
 let cachedArpLat = Number.NaN;
 let cachedArpLon = Number.NaN;
+let cachedTilesGen = -1;
 
 function acquireCanvas(width: number, height: number): WxCompositeCanvas {
   if (cachedCanvas && cachedWidth === width && cachedHeight === height) {
@@ -172,20 +167,14 @@ function vipAtScreen(
   return highestVipAt(mosaic, levels, row * mosaic.widthPx + col);
 }
 
-/** Fill / shared hatch / 1px screen outline. Not a mosaic-bin flood. */
-export function wxScreenStyle(
-  vip: 1 | 2 | 3 | 4 | 5 | 6,
-  screenX: number,
-  screenY: number,
-  outline: boolean,
-): "fill" | "hatch" | "contour" {
-  if (outline) {
-    return "contour";
-  }
-  if (wxLevelHasHatch(vip) && wxHatchBit(screenX, screenY)) {
-    return "hatch";
-  }
-  return "fill";
+/** Tile / fallback fill / 1px screen outline. Not a mosaic-bin flood. */
+export function wxScreenStyle(outline: boolean): "fill" | "contour" {
+  return outline ? "contour" : "fill";
+}
+
+function tintRgb(rgb: [number, number, number], brite: number): [number, number, number] {
+  const t = snapBriteLevel(brite) / 100;
+  return [Math.round(rgb[0] * t), Math.round(rgb[1] * t), Math.round(rgb[2] * t)];
 }
 
 function cameraMatches(cam: ScopeCamera, arp: LatLon): boolean {
@@ -217,7 +206,6 @@ function rebuildComposite(
     levels[4] ? parseHexRgb(wxVipFillHex(5, briteWx)) : null,
     levels[5] ? parseHexRgb(wxVipFillHex(6, briteWx)) : null,
   ];
-  const hatchRgb = parseHexRgb(applyBrite(WX_VIP_HATCH_HEX, briteWx));
   const contours: Array<[number, number, number] | null> = [
     levels[0] ? parseHexRgb(wxVipContourHex(1, briteWxc)) : null,
     levels[1] ? parseHexRgb(wxVipContourHex(2, briteWxc)) : null,
@@ -270,12 +258,15 @@ function rebuildComposite(
         vipAtScreen(mosaic, levels, x + 1, y, nwPx, dw, dh) !== vip ||
         vipAtScreen(mosaic, levels, x, y - 1, nwPx, dw, dh) !== vip ||
         vipAtScreen(mosaic, levels, x, y + 1, nwPx, dw, dh) !== vip;
-      const style = wxScreenStyle(vip as 1 | 2 | 3 | 4 | 5 | 6, x, y, outline);
+      const style = wxScreenStyle(outline);
       let rgb = fill;
-      if (style === "hatch") {
-        rgb = hatchRgb;
-      } else if (style === "contour") {
+      if (style === "contour") {
         rgb = contours[vip - 1] ?? fill;
+      } else {
+        const sampled = sampleWxLevelTile(vip as 1 | 2 | 3 | 4 | 5 | 6, x, y);
+        if (sampled) {
+          rgb = tintRgb(sampled, briteWx);
+        }
       }
       const o = (y * width + x) * 4;
       pixels[o] = rgb[0];
@@ -307,6 +298,7 @@ function reuseOrRebuildComposite(
     cachedBriteWxc === briteWxc &&
     cachedWidth === Math.round(size.widthPx) &&
     cachedHeight === Math.round(size.heightPx) &&
+    cachedTilesGen === wxLevelTilesGeneration() &&
     cameraMatches(view.camera, arp)
   ) {
     return cachedCanvas;
@@ -322,6 +314,7 @@ function reuseOrRebuildComposite(
   cachedCenterNorthNm = view.camera.centerNorthNm;
   cachedArpLat = arp.latDeg;
   cachedArpLon = arp.lonDeg;
+  cachedTilesGen = wxLevelTilesGeneration();
   return canvas;
 }
 

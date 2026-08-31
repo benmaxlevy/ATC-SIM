@@ -119,7 +119,49 @@ function concat(chunks: Uint8Array[]): Uint8Array {
   return out;
 }
 
+/** Unwrap zlib + stored deflate from `encodeRgbaPng`. No stream. */
+function inflateZlibStored(data: Uint8Array): Uint8Array | null {
+  if (data.length < 8 || data[0] !== 0x78) {
+    return null;
+  }
+  let i = 2;
+  const out: number[] = [];
+  for (;;) {
+    if (i + 5 > data.length) {
+      return null;
+    }
+    const header = data[i] ?? 0;
+    const final = (header & 1) === 1;
+    const type = (header >> 1) & 3;
+    if (type !== 0) {
+      return null;
+    }
+    i += 1;
+    const n = (data[i] ?? 0) | ((data[i + 1] ?? 0) << 8);
+    const nlen = (data[i + 2] ?? 0) | ((data[i + 3] ?? 0) << 8);
+    if ((n ^ 0xffff) !== nlen) {
+      return null;
+    }
+    i += 4;
+    if (i + n + 4 > data.length) {
+      return null;
+    }
+    for (let k = 0; k < n; k++) {
+      out.push(data[i + k] ?? 0);
+    }
+    i += n;
+    if (final) {
+      break;
+    }
+  }
+  return new Uint8Array(out);
+}
+
 async function inflateZlib(data: Uint8Array): Promise<Uint8Array> {
+  const stored = inflateZlibStored(data);
+  if (stored) {
+    return stored;
+  }
   if (typeof DecompressionStream !== "function") {
     throw new Error("deflate unavailable");
   }
@@ -348,13 +390,13 @@ async function decodePngToRgbaManual(bytes: Uint8Array): Promise<DecodedPng> {
 
 /**
  * Decode an 8-bit non-interlaced PNG to RGBA. Used at fetch time, not in the
- * animation loop. IEM tiles are PNG; PPI paint is T02-69. Browser bitmap is
- * tried first so a failed inflate still yields pixels.
+ * animation loop. IEM tiles are PNG; PPI paint is T02-69. Manual inflate
+ * first — createImageBitmap can hang in Node on large store-compressed tiles.
  */
 export async function decodePngToRgba(bytes: Uint8Array): Promise<DecodedPng> {
   try {
-    return await decodePngViaBitmap(bytes);
+    return await decodePngToRgbaManual(bytes);
   } catch {
-    return decodePngToRgbaManual(bytes);
+    return decodePngViaBitmap(bytes);
   }
 }

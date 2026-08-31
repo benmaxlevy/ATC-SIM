@@ -700,6 +700,7 @@ export {
   cloneWxLevels,
   decodePngToVipMasks,
   emptyWxMosaic,
+  ensureWxLevelTiles,
   ensureWxMosaic,
   fetchWxMosaic,
   shouldRefetch,
