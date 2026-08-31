@@ -16,7 +16,7 @@
  * letters, digits, and spaces buffer here. T02-62 adds Table 31/32 list
  * mnemonics (`*T` / `*TAB` / `*TV` / `*TC` / `*TS` / `* P1`–`* P3` / `*TM` /
  * `*TX` / `*TN` toggle or `[1-100]` resize; `*S` slew-relocates SSA). T02-64
- * adds `*C` / `*OFF` / `*RR` / `*PTL` / `*HIST`. T02-65 adds `*F` / `*LA` /
+ * adds `*C` / `*OFF` / `*RR` / `*PTL` / `*HIST`. T02-71 adds `*WX`. T02-65 adds `*F` / `*LA` /
  * `*BCN` / `*BCN DEL`. T02-66: Enter on bare `+` / `/` arms INIT/TERM CNTL;
  * `+[FLID]` Enter arms associate; `*1`–`*8` / `*0` arm leader slew. Bare `*`
  * Enter and `*B` Enter stay starsChord TPA fallback; `*B` click is beaconator.
@@ -33,6 +33,7 @@ import { parseStrictFilterHundreds } from "./altitudeFilter";
 import { resolveVideoMapToken, type VideoMapTokenLayout } from "./dcbFunctions";
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
 import { isStarsLeaderClock, type StarsLeaderClock } from "./leader";
+import { cloneWxLevels, type VipLevel, type WxLevels } from "./wx";
 
 export type PreviewPhase = "idle" | "entry" | "armed";
 
@@ -42,7 +43,8 @@ export type PreviewPhase = "idle" | "entry" | "armed";
  * T02-53: `beaconBlock` / `beaconDiscrete`. T02-62: `toggleList` / `resizeList`
  * / `armRelocateList`. T02-64: scope recenter / RR / PTL / HIST. Slew forms
  * (`armRecenterScope`, `armRecenterRangeRings`) apply via DCB PLACE flags.
- * T02-63: `toggleVideoMap` / `setAllVideoMaps`. T02-65: `displayFilters` /
+ * T02-63: `toggleVideoMap` / `setAllVideoMaps`. T02-71: `toggleWxLevel` /
+ * `setWxLevelsAll`. T02-65: `displayFilters` /
  * `setAltitudeFilterLimits` / `addBeaconCodeFilter` / `removeBeaconCodeFilter`.
  * T02-66: handoff accept, pointout ack, leader clock, beaconator slew.
  * Optional `flid` on INIT/TERM is only for typed `+[Callsign]` Enter.
@@ -63,6 +65,8 @@ export type PreviewArmedAction =
   | { readonly type: "resetRangeRingsCenter" }
   | { readonly type: "setPtlMinutes"; readonly minutes: number }
   | { readonly type: "setHistoryDots"; readonly count: number }
+  | { readonly type: "toggleWxLevel"; readonly level: VipLevel }
+  | { readonly type: "setWxLevelsAll"; readonly enabled: boolean }
   | { readonly type: "toggleVideoMap"; readonly mapId: string; readonly explicitState?: boolean }
   | { readonly type: "setAllVideoMaps"; readonly enabled: boolean }
   | { readonly type: "displayFilters" }
@@ -143,7 +147,7 @@ export type PreviewCommandResult =
  * BLOCK and a live prefix of `B4501`. `parseBeaconSelect` owns those digits.
  * T02-61: `*` / `+` / `/` are live prefixes. T02-62 list rows live in
  * `parseListCommand` (`* P1` vs TPA `*P3`). T02-64 `*C` / `*RR` / `*PTL` /
- * `*HIST` live in `parseScopeDisplayCommand`. T02-63 `*D` / `M` video-map
+ * `*HIST` and T02-71 `*WX` live in `parseScopeDisplayCommand`. T02-63 `*D` / `M` video-map
  * rows live in `parseVideoMapCommand`. T02-65 `*F` / `*LA` / `*BCN` live in
  * `parseAltitudeFilterCommand` / `parseBeaconFilterCommand`. T02-66 tracking
  * chords live in `parseTrackingCommand` (`+` / `/` Enter arm; `*1`–`*8` /
@@ -285,13 +289,40 @@ function compactStarCommand(buffer: string): string {
 /**
  * T02-64 Table 28 / 36 display commands. Null when this is not our family
  * (`*J`, `*P`, `*P3`, `*T`, `*D`, … stay on the T02-61 incomplete / starsChord
- * fallback). `*PTL` is ours; `*PT` is only a live PTL prefix.
+ * fallback). `*PTL` is ours; `*PT` is only a live PTL prefix. `*WX` is ours;
+ * `*W` is only a live WX prefix.
  */
 export function parseScopeDisplayCommand(buffer: string): PreviewCommandResult | null {
   if (!buffer.startsWith("*")) {
     return null;
   }
   const compact = compactStarCommand(buffer);
+
+  if (compact.startsWith("*WX")) {
+    const rest = compact.slice(3);
+    if (rest.length === 0) {
+      return { kind: "incomplete" };
+    }
+    if (rest === "ALL") {
+      return { kind: "action", action: { type: "setWxLevelsAll", enabled: true } };
+    }
+    if (rest === "OFF") {
+      return { kind: "action", action: { type: "setWxLevelsAll", enabled: false } };
+    }
+    if (rest === "A" || rest === "AL" || rest === "O" || rest === "OF") {
+      return { kind: "incomplete" };
+    }
+    if (/^[1-6]$/.test(rest)) {
+      return {
+        kind: "action",
+        action: { type: "toggleWxLevel", level: Number(rest) as VipLevel },
+      };
+    }
+    return invalid("invalid WX command");
+  }
+  if (compact === "*W") {
+    return { kind: "incomplete" };
+  }
 
   if (compact.startsWith("*PTL")) {
     const rest = compact.slice(4);
@@ -1065,6 +1096,32 @@ export function applyPreviewBeaconAction(codes: string[], action: PreviewArmedAc
     return true;
   }
   return false;
+}
+
+const WX_LEVELS_ALL_ON: WxLevels = [true, true, true, true, true, true];
+const WX_LEVELS_ALL_OFF: WxLevels = [false, false, false, false, false, false];
+
+/** Toggle one VIP latch or replace all six. Null when `action` is not WX. */
+export function applyPreviewWxAction(
+  levels: WxLevels,
+  action: PreviewArmedAction,
+): WxLevels | null {
+  if (action.type === "toggleWxLevel") {
+    const next = cloneWxLevels(levels);
+    const i = action.level - 1;
+    return [
+      i === 0 ? !next[0] : next[0],
+      i === 1 ? !next[1] : next[1],
+      i === 2 ? !next[2] : next[2],
+      i === 3 ? !next[3] : next[3],
+      i === 4 ? !next[4] : next[4],
+      i === 5 ? !next[5] : next[5],
+    ];
+  }
+  if (action.type === "setWxLevelsAll") {
+    return action.enabled ? WX_LEVELS_ALL_ON : WX_LEVELS_ALL_OFF;
+  }
+  return null;
 }
 
 export type PreviewKeyOutcome = {

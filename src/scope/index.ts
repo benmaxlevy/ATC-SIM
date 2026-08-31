@@ -187,6 +187,7 @@ export {
 export type { KeyBinding, KeyFocus, ScopeChord } from "./keymap";
 export {
   applyPreviewBeaconAction,
+  applyPreviewWxAction,
   armPreviewCntl,
   armPreviewRelocateList,
   armPreviewSlewAction,

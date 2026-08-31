@@ -222,12 +222,13 @@ T02-68 ships IEM N0Q fetch/decode (`src/scope/wx/`), `ScopeView.wxLevels`
 (six false), and `vipAtNm`. T02-69 paints enabled VIP fills under tracks
 from `view.wxMosaic` via `weatherLayer.ts` (one cached `drawImage`, default
 levels off). T02-70 latches MAIN WX1–6 onto `view.wxLevels` and persists
-them in PREF v3. Still later: no `*WX`, no BRITE WX/WXC, no aircraft
-deviate. Vite `/wx-iem` proxies to IEM; CI uses `testdata/wx/` plus
-injected fetch.
+them in PREF v3. T02-71 ships scope-preview `*WX 1`–`6` / `ALL` / `OFF`
+(optional space after `*`) against the same bitmask. Still later: no BRITE
+WX/WXC, no aircraft deviate. Vite `/wx-iem` proxies to IEM; CI uses
+`testdata/wx/` plus injected fetch.
 
-T02-71–72 still own `*WX` and BRITE WX/WXC. Keep HIST, BKC, and
-pilot deviate as later work.
+T02-72 still owns BRITE WX/WXC. Keep HIST, BKC, and pilot deviate as later
+work.
 
 ### PREF SAVE AS named sets
 

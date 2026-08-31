@@ -112,3 +112,18 @@ test("AC3 — scope-focus * + / alnum never leftover for the radio line", () => 
   expect(leftoverKeys(["/"], slash, world, "scope")).toBe("");
   expect(slash.preview.buffer).toBe("/");
 });
+
+test("T02-71 — radio leftover *WX1 does not latch WX; scope *WX 1 is not leftover", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [dal] });
+  const radio = createScopeView();
+  syncTrackDisplays(radio.tracks, world);
+  expect(leftoverKeys(["*", "W", "X", "1"], radio, world, "radio")).toBe("*WX1");
+  expect(radio.wxLevels).toEqual([false, false, false, false, false, false]);
+  expect(radio.preview.phase).toBe("idle");
+
+  const scope = createScopeView();
+  syncTrackDisplays(scope.tracks, world);
+  expect(leftoverKeys(["*", "W", "X", "1", "Enter"], scope, world, "scope")).toBe("");
+  expect(scope.wxLevels).toEqual([true, false, false, false, false, false]);
+});
