@@ -152,11 +152,20 @@ export function isLegalInstruction(value: unknown): value is Instruction {
       obj.approachId.length > 0
     );
   }
-  if (type === "DESCEND_VIA" || type === "CLIMB_VIA" || type === "JOIN_PROCEDURE") {
+  if (type === "CLIMB_VIA") {
     return (
       keysOk(obj, ["type", "procedureId"]) &&
       typeof obj.procedureId === "string" &&
       obj.procedureId.length > 0
+    );
+  }
+  if (type === "DESCEND_VIA" || type === "JOIN_PROCEDURE") {
+    const trans = obj.transitionId;
+    return (
+      keysOk(obj, ["type", "procedureId"], ["transitionId"]) &&
+      typeof obj.procedureId === "string" &&
+      obj.procedureId.length > 0 &&
+      (trans === undefined || (typeof trans === "string" && trans.length > 0))
     );
   }
   if (type === "CROSS") {

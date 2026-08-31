@@ -244,6 +244,25 @@ test("DESCEND_VIA uses the published STAR name", () => {
   ).toBe("Delta 123 descend via DEMO ONE");
 });
 
+test("DESCEND_VIA and JOIN_PROCEDURE read back procedure plus transition", () => {
+  expect(
+    formatReadback({
+      callsign: "DAL123",
+      instructions: [{ type: "DESCEND_VIA", procedureId: "DEM1", transitionId: "WN" }],
+      aircraft: snapshot,
+      procedureNames: { DEM1: "DEMO ONE" },
+    }),
+  ).toBe("Delta 123 descend via DEMO ONE, WN transition");
+  expect(
+    formatReadback({
+      callsign: "DAL123",
+      instructions: [{ type: "JOIN_PROCEDURE", procedureId: "SYN1", transitionId: "N" }],
+      aircraft: snapshot,
+      procedureNames: { SYN1: "SYN ONE" },
+    }),
+  ).toBe("Delta 123 join SYN ONE, N transition");
+});
+
 test("AC5 — CLIMB_VIA uses the published SID name and combines with maintain altitude", () => {
   expect(
     formatReadback({
@@ -279,6 +298,11 @@ const rejectTable: [{ callsign?: string; reason: string; detail?: string }, stri
   [{ callsign: "DAL123", reason: "DESCEND_NOT_BELOW" }, "Delta 123 unable altitude"],
   [{ callsign: "DAL123", reason: "UNKNOWN_FIX" }, "Delta 123 unable, unknown fix"],
   [{ callsign: "DAL123", reason: "UNKNOWN_PROCEDURE" }, "Delta 123 unable, unknown procedure"],
+  [{ callsign: "DAL123", reason: "UNKNOWN_TRANSITION" }, "Delta 123 unable, unknown transition"],
+  [
+    { callsign: "DAL123", reason: "AMBIGUOUS_TRANSITION" },
+    "Delta 123 unable, ambiguous transition",
+  ],
   [
     { callsign: "DAL123", reason: "NOT_ON_COURSE", detail: "NEMAX" },
     "Delta 123 unable, not on course to NEMAX",

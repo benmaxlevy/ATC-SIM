@@ -196,10 +196,17 @@ export type { LateralFmsContext } from "./fms/lateral";
 export { DEMO_ONE_NORTH_FIX_IDS, advanceStarLeg, applyLateralFms } from "./fms/lateral";
 export type {
   JoinNamedProcedureArgs,
+  JoinStarTransitionArgs,
+  JoinStarTransitionResult,
   ProcedureJoin,
   ProcedureJoinCatalog,
+  StarTransitionJoinReason,
 } from "./fms/procedureJoin";
-export { joinNamedProcedure, procedureRouteContainingFix } from "./fms/procedureJoin";
+export {
+  joinNamedProcedure,
+  joinStarTransition,
+  procedureRouteContainingFix,
+} from "./fms/procedureJoin";
 export type { MissedApproachSpec, MissedCatalog, MissedFmsContext } from "./fms/missed";
 export {
   DEFAULT_DA_FT,
@@ -232,6 +239,7 @@ export type {
   CatalogSidRunwayTransition,
   CatalogStar,
   CatalogStarLeg,
+  CatalogStarTransition,
   GlidepathFmsContext,
   SpeedConstraint,
   VerticalCatalog,

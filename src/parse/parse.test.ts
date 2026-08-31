@@ -323,6 +323,41 @@ test("catalog snaps spoken descend via demo 1 onto DEM1", async () => {
   }
 });
 
+test("spoken descend via SYN ONE north transition matches typed VIA SYN1 N", async () => {
+  const procedures = [
+    {
+      id: "SYN1",
+      name: "SYN ONE",
+      transitions: [
+        { id: "N", name: "NORTH" },
+        { id: "S", name: "SOUTH" },
+        { id: "RW09", runwayId: "09" },
+      ],
+    },
+  ];
+  const typed = await parseCommand("VIA SYN1 N", { source: "text", pathC: false });
+  expect(typed.ok).toBe(true);
+  if (typed.ok) {
+    expect(typed.parseStage).toBe("typed");
+    expect(typed.instructions).toEqual([
+      { type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "N" },
+    ]);
+  }
+  const spoken = await parseCommand("descend via SYN ONE, north transition", {
+    source: "voice",
+    selectedCallsign: "DAL123",
+    procedures,
+    pathC: false,
+  });
+  expect(spoken.ok).toBe(true);
+  if (spoken.ok) {
+    expect(spoken.parseStage).toBe("spoken_a");
+    expect(spoken.instructions).toEqual([
+      { type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "N" },
+    ]);
+  }
+});
+
 test("island parser — multi-command in single transmission with non-standard phrasing", async () => {
   const result = await parseCommand("DAL123 turn left 20 degrees descend 4000 slow to 210", {
     source: "voice",

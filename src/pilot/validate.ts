@@ -10,7 +10,7 @@ import type {
   ProcedureJoinCatalog,
   VerticalCatalog,
 } from "@core";
-import { isOnCourseToFix } from "@core";
+import { isOnCourseToFix, joinStarTransition } from "@core";
 
 export const ALTITUDE_MIN_FT = 1000;
 export const ALTITUDE_MAX_FT = 18000;
@@ -28,6 +28,8 @@ export type ValidateReason =
   | "DESCEND_NOT_BELOW"
   | "UNKNOWN_FIX"
   | "UNKNOWN_PROCEDURE"
+  | "UNKNOWN_TRANSITION"
+  | "AMBIGUOUS_TRANSITION"
   | "NOT_ON_COURSE"
   | "UNKNOWN_APPROACH"
   | "NOT_ON_APPROACH";
@@ -37,6 +39,8 @@ export type ValidateResult = { ok: true } | { ok: false; reason: ValidateReason;
 export interface ValidateOpts {
   fixRegistry?: FixRegistry | null;
   catalog?: (VerticalCatalog & ProcedureJoinCatalog) | null;
+  /** Scenario active runway; runway-tagged STAR transitions must match. */
+  activeRunwayId?: string | null;
   /** When set (catalog loaded), CLEARED/EXPECT must match an approach id. */
   approachIds?: readonly string[] | null;
 }
@@ -109,8 +113,9 @@ function validateOne(
       }
       return { ok: true };
     case "DESCEND_VIA":
-    case "CLIMB_VIA":
     case "JOIN_PROCEDURE":
+      return validateDescendViaOrJoin(aircraft, instruction, opts);
+    case "CLIMB_VIA":
       return validateVia(instruction.procedureId, opts);
     case "CROSS":
       return validateCross(aircraft, instruction, opts);
@@ -165,6 +170,42 @@ function validateAltitude(
   }
   if (instruction.verb === "DESCEND" && ft >= aircraft.altitudeFt) {
     return { ok: false, reason: "DESCEND_NOT_BELOW" };
+  }
+  return { ok: true };
+}
+
+function remainingStarFixIds(aircraft: Aircraft, procedureId: string): string[] | undefined {
+  const lateral = aircraft.intent.lateral;
+  if (lateral?.type !== "PROCEDURE" || !lateral.starId) {
+    return undefined;
+  }
+  if (lateral.starId.trim().toUpperCase() !== procedureId.trim().toUpperCase()) {
+    return undefined;
+  }
+  return lateral.routeFixIds.slice(lateral.toFixIndex);
+}
+
+function validateDescendViaOrJoin(
+  aircraft: Aircraft,
+  instruction: Extract<Instruction, { type: "DESCEND_VIA" | "JOIN_PROCEDURE" }>,
+  opts?: ValidateOpts,
+): ValidateResult {
+  const known = validateVia(instruction.procedureId, opts);
+  if (!known.ok) {
+    return known;
+  }
+  if (!instruction.transitionId) {
+    return { ok: true };
+  }
+  const resolved = joinStarTransition({
+    catalog: opts?.catalog,
+    procedureId: instruction.procedureId,
+    transitionId: instruction.transitionId,
+    activeRunwayId: opts?.activeRunwayId,
+    remainingFixIds: remainingStarFixIds(aircraft, instruction.procedureId),
+  });
+  if (!resolved.ok) {
+    return { ok: false, reason: resolved.reason };
   }
   return { ok: true };
 }

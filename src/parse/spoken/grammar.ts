@@ -22,6 +22,8 @@ import {
 import {
   groundFixToCatalog,
   groundProcedureToCatalog,
+  looksLikeSpokenTransition,
+  matchSpokenStarTransition,
   type CatalogProcedure,
 } from "./catalog-ground";
 import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./telephony";
@@ -253,7 +255,15 @@ function tryVia(c: Cursor): Instruction | null {
   if (peek(c) !== undefined && PROCEDURE_TRAILING.has(peek(c)!)) {
     c.i += 1;
   }
-  return climb ? { type: "CLIMB_VIA", procedureId } : { type: "DESCEND_VIA", procedureId };
+  if (climb) {
+    return { type: "CLIMB_VIA", procedureId };
+  }
+  const descend = attachSpokenStarTransition(c, { type: "DESCEND_VIA", procedureId }, procedureId);
+  if (!descend) {
+    c.i = start;
+    return null;
+  }
+  return descend;
 }
 
 function tryJoinProcedure(c: Cursor): Instruction | null {
@@ -270,7 +280,31 @@ function tryJoinProcedure(c: Cursor): Instruction | null {
   if (peek(c) !== undefined && PROCEDURE_TRAILING.has(peek(c)!)) {
     c.i += 1;
   }
-  return { type: "JOIN_PROCEDURE", procedureId };
+  const join = attachSpokenStarTransition(c, { type: "JOIN_PROCEDURE", procedureId }, procedureId);
+  if (!join) {
+    c.i = start;
+    return null;
+  }
+  return join;
+}
+
+function attachSpokenStarTransition(
+  c: Cursor,
+  instruction: Extract<Instruction, { type: "DESCEND_VIA" | "JOIN_PROCEDURE" }>,
+  procedureId: string,
+): Instruction | null {
+  const match = matchSpokenStarTransition(c.tokens, c.i, procedureId, c.procedures ?? []);
+  if (match.kind === "hit") {
+    c.i = match.next;
+    return { ...instruction, transitionId: match.id };
+  }
+  if (match.kind === "ambiguous") {
+    return null;
+  }
+  if (looksLikeSpokenTransition(c.tokens, c.i)) {
+    return null;
+  }
+  return instruction;
 }
 
 function parseProcedureId(c: Cursor): string | null {

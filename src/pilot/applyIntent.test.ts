@@ -193,6 +193,86 @@ test("DESCEND_VIA with catalog joins the STAR laterally and arms VIA", () => {
   });
 });
 
+const synCatalog = {
+  stars: [
+    {
+      id: "SYN1",
+      name: "SYN ONE",
+      common: [{ fixId: "MERGE" }],
+      transitions: [
+        { id: "N", legs: [{ fixId: "NA" }, { fixId: "NB" }] },
+        { id: "S", legs: [{ fixId: "SA" }, { fixId: "SB" }] },
+        { id: "RW09", runwayId: "09", legs: [{ fixId: "RA" }] },
+      ],
+    },
+  ],
+};
+
+test("DESCEND_VIA with transition rebuilds at MERGE and keeps VIA_STAR", () => {
+  const ac = jet();
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    starId: "SYN1",
+    toFixIndex: 1,
+    routeFixIds: ["NA", "NB", "MERGE"],
+  };
+  ac.intent.vertical = { type: "VIA_STAR", starId: "SYN1", sense: "DESCEND" };
+  applyIntent(ac, [{ type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "S" }], 0, {
+    catalog: synCatalog,
+  });
+  expect(ac.intent.vertical).toEqual({ type: "VIA_STAR", starId: "SYN1", sense: "DESCEND" });
+  expect(ac.intent.lateral).toEqual({
+    type: "PROCEDURE",
+    starId: "SYN1",
+    toFixIndex: 0,
+    routeFixIds: ["MERGE"],
+  });
+});
+
+test("past-branch DESCEND_VIA transition does not mutate intent", () => {
+  const ac = jet();
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    starId: "SYN1",
+    toFixIndex: 0,
+    routeFixIds: ["NA"],
+  };
+  ac.intent.vertical = { type: "VIA_STAR", starId: "SYN1", sense: "DESCEND" };
+  const before = structuredClone(ac.intent);
+  applyIntent(ac, [{ type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "S" }], 0, {
+    catalog: synCatalog,
+  });
+  expect(ac.intent).toEqual(before);
+});
+
+test("heading after a STAR transition amend still cancels VIA", () => {
+  const ac = jet();
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    starId: "SYN1",
+    toFixIndex: 0,
+    routeFixIds: ["NA", "NB", "MERGE"],
+  };
+  applyIntent(ac, [{ type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "S" }], 0, {
+    catalog: synCatalog,
+  });
+  expect(ac.intent.vertical?.type).toBe("VIA_STAR");
+  applyIntent(ac, [{ type: "FLY_HEADING", headingDeg: 90, turn: "SHORTEST" }], 0);
+  expect(ac.intent.vertical).toEqual({ type: "ASSIGNED" });
+  expect(ac.intent.lateral).toEqual({ type: "HEADING", headingDeg: 90 });
+  applyIntent(
+    ac,
+    [
+      { type: "DESCEND_VIA", procedureId: "SYN1" },
+      { type: "TURN_DEGREES", direction: "LEFT", degrees: 20 },
+    ],
+    0,
+    { catalog: synCatalog },
+  );
+  expect(ac.intent.vertical).toEqual({ type: "ASSIGNED" });
+  expect(ac.intent.lateral?.type).toBe("HEADING");
+});
+
 test("CLIMB_VIA on a unique SID joins remaining legs", () => {
   const ac = jet();
   applyIntent(ac, [{ type: "CLIMB_VIA", procedureId: "KDEM1" }], 0, {

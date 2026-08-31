@@ -20,6 +20,8 @@ import {
   groundApproachToCatalog,
   groundFixToCatalog,
   groundProcedureToCatalog,
+  looksLikeSpokenTransition,
+  matchSpokenStarTransition,
   type CatalogApproach,
   type CatalogProcedure,
 } from "./catalog-ground";
@@ -615,12 +617,20 @@ function matchVia(
     j += 1;
   }
 
-  return {
-    instruction: isClimb
-      ? { type: "CLIMB_VIA", procedureId: proc.id }
-      : { type: "DESCEND_VIA", procedureId: proc.id },
-    next: j,
-  };
+  if (isClimb) {
+    return {
+      instruction: { type: "CLIMB_VIA", procedureId: proc.id },
+      next: j,
+    };
+  }
+  const trans = attachSpokenStarTransition(tokens, j, proc.id, procedures, {
+    type: "DESCEND_VIA",
+    procedureId: proc.id,
+  });
+  if (!trans) {
+    return null;
+  }
+  return trans;
 }
 
 function matchJoinProcedure(
@@ -646,10 +656,30 @@ function matchJoinProcedure(
     j += 1;
   }
 
-  return {
-    instruction: { type: "JOIN_PROCEDURE", procedureId: proc.id },
-    next: j,
-  };
+  return attachSpokenStarTransition(tokens, j, proc.id, procedures, {
+    type: "JOIN_PROCEDURE",
+    procedureId: proc.id,
+  });
+}
+
+function attachSpokenStarTransition(
+  tokens: readonly string[],
+  i: number,
+  procedureId: string,
+  procedures: readonly CatalogProcedure[],
+  instruction: Extract<Instruction, { type: "DESCEND_VIA" | "JOIN_PROCEDURE" }>,
+): { instruction: Instruction; next: number } | null {
+  const match = matchSpokenStarTransition(tokens, i, procedureId, procedures);
+  if (match.kind === "hit") {
+    return { instruction: { ...instruction, transitionId: match.id }, next: match.next };
+  }
+  if (match.kind === "ambiguous") {
+    return null;
+  }
+  if (looksLikeSpokenTransition(tokens, i)) {
+    return null;
+  }
+  return { instruction, next: i };
 }
 
 function matchDirect(

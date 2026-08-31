@@ -55,9 +55,9 @@ export type Instruction =
   | { type: "IDENT" }
   | { type: "SAY_HEADING" }
   | { type: "SAY_ALTITUDE" }
-  | { type: "DESCEND_VIA"; procedureId: string }
+  | { type: "DESCEND_VIA"; procedureId: string; transitionId?: string }
   | { type: "CLIMB_VIA"; procedureId: string }
-  | { type: "JOIN_PROCEDURE"; procedureId: string }
+  | { type: "JOIN_PROCEDURE"; procedureId: string; transitionId?: string }
   | {
       type: "CROSS";
       fixId: string;
@@ -88,9 +88,11 @@ Suggested v1 tokens (callsign optional if a track is selected):
 | `APP ILS27` | `CLEARED_APPROACH` (phase 1 may accept and no-op fly-through; phase 4 fly-through) |
 | `IL ILS27` | `INTERCEPT_LOCALIZER` — join loc, hold assigned altitude, **no GS** until `APP` |
 | `R240 A20 APP ILS27` | `FLY_HEADING 240 RIGHT` + `ALTITUDE MAINTAIN 2000 untilEstablished` + `CLEARED_APPROACH ILS27` (phase 4; same-line heading+alt+APP) |
-| `VIA DEM1` | `DESCEND_VIA { procedureId: "DEM1" }` (`D` stays descend; via is `VIA`) — lateral **and** published constraints |
+| `VIA DEM1` | `DESCEND_VIA { procedureId: "DEM1" }` (`D` stays descend; via is `VIA`) — lateral **and** published constraints. No `transitionId`; do not guess one. |
+| `VIA DEM1 WN` | `DESCEND_VIA { procedureId: "DEM1", transitionId: "WN" }` — named STAR transition amend (T04-43) |
 | `CVIA DEM1` | `CLIMB_VIA { procedureId: "DEM1" }` |
 | `JOIN DEM1` | `JOIN_PROCEDURE { procedureId: "DEM1" }` — **lateral only**; does not arm VIA |
+| `JOIN DEM1 WN` | `JOIN_PROCEDURE { procedureId: "DEM1", transitionId: "WN" }` — lateral join on that STAR transition |
 | `DCT NELBO JOIN DEM1` | `DIRECT NELBO` then `JOIN_PROCEDURE DEM1` (join remaining legs from that fix) |
 | `X NEMAX 40` | `CROSS { fixId: "NEMAX", altitudeFt: 4000, restriction: "AT" }` (hundreds, same as `C30`) |
 | `X NEMAX 40A` / `X NEMAX 40B` | same with `AT_OR_ABOVE` / `AT_OR_BELOW` |
@@ -107,7 +109,9 @@ Reject (no intent change, error readback) when:
 - Altitude not a multiple of 100 ft, or outside `[1000, 18000]` for v1.
 - Speed outside `[150, 280]` KIAS for v1 jets (tune per type later).
 - Empty instruction list.
-- Unknown STAR/SID `procedureId` on `DESCEND_VIA` / `CLIMB_VIA` / `JOIN_PROCEDURE`.
+- Unknown STAR/SID `procedureId` on `DESCEND_VIA` / `CLIMB_VIA` / `JOIN_PROCEDURE` (`UNKNOWN_PROCEDURE`).
+- Unknown or runway-ineligible `transitionId` on `DESCEND_VIA` / `JOIN_PROCEDURE` (`UNKNOWN_TRANSITION`). Several catalog transitions remain eligible (`AMBIGUOUS_TRANSITION`); do not pick silently.
+- Named STAR transition with no reachable common fix on the remaining STAR route (`NOT_ON_COURSE`). Past the branch with no join: reject, no intent mutation.
 - `CROSS` to an unknown fix, altitude not a multiple of 100 / outside `[1000, 18000]`, or not on course to that fix (`DIRECT` or remaining `PROCEDURE` leg).
 - `GO_AROUND` when `clearedApproachId` is not set (not on an armed/captured approach).
 
@@ -145,6 +149,14 @@ Spoken (Path A must accept both runway wordings):
 Aircraft (must match the words): fly the heading, **hold assigned altitude until `nav.loc.captured` (established)**, then intercept GS from below (T04-06). `APP ILS27` / `IL ILS27` arms loc capture on the **current lateral path** (heading, DIRECT, or STAR) — do not turn inbound to find the loc; join loc inbound only after capture. `DCT MERGE` then `IL ILS27` continues to MERGE and intercepts when able. A heading in the **same** command is the intercept heading (`R240 A20 APP ILS27`). Hold the **already assigned** altitude until established.
 
 Parser `DCT` is still `{ type: "DIRECT"; fixId }` and is **lone DIRECT** — a STAR/SID fix does not join remaining legs. `JOIN DEM1` / spoken *join the demo one arrival* is `JOIN_PROCEDURE` (lateral `PROCEDURE` only). `DCT NELBO JOIN DEM1` / *proceed direct NELBO then join DEMO ONE* directs that fix then joins remaining published legs. `VIA` / `CVIA` arm `VIA_STAR` **and** join that procedure laterally. Heading still cancels the path.
+
+Spoken Descend Via with a named STAR transition (T04-43; JO 7110.65 / AIM — R01 / R03). Catalog ids only; trainer delta is catalog-backed, not NAS:
+
+> descend via DEMO ONE, north transition
+
+> descend via DEMO ONE, runway niner transition
+
+These normalize to the same `DESCEND_VIA` as `VIA <STAR> <transitionId>`. Bare *descend via demo one* / `VIA DEM1` stays transition-less. Join only at a shared catalog fix with the remaining STAR route. SID climb-via transition amend is T04-44.
 
 T04-03 flies `DIRECT`. T04-05 flies `CLEARED_APPROACH` (loc intercept) and arms `EXPECT_APPROACH` scratchpad. `untilEstablished` is additive on `ALTITUDE` — do not confuse with T04-04 `DESCEND_VIA` / `CROSS`.
 

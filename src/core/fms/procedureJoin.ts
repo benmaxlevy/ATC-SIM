@@ -182,6 +182,10 @@ function routesForProcedureId(catalog: ProcedureJoinCatalog, procedureId: string
 export interface JoinNamedProcedureArgs {
   catalog?: ProcedureJoinCatalog | null;
   procedureId: string;
+  /** Named STAR transition. Omit to keep the existing no-guess VIA path. */
+  transitionId?: string;
+  /** Scenario active runway; runway-tagged transitions must match. */
+  activeRunwayId?: string | null;
   current?:
     | {
         type: "PROCEDURE";
@@ -197,6 +201,124 @@ export interface JoinNamedProcedureArgs {
   fixXy?: (id: string) => { xNm: number; yNm: number } | undefined;
 }
 
+export type StarTransitionJoinReason =
+  "UNKNOWN_PROCEDURE" | "UNKNOWN_TRANSITION" | "AMBIGUOUS_TRANSITION" | "NOT_ON_COURSE";
+
+export interface JoinStarTransitionArgs {
+  catalog?: ProcedureJoinCatalog | null;
+  procedureId: string;
+  transitionId: string;
+  activeRunwayId?: string | null;
+  remainingFixIds?: readonly string[] | null;
+}
+
+export type JoinStarTransitionResult =
+  { ok: true; join: ProcedureJoin } | { ok: false; reason: StarTransitionJoinReason };
+
+function padRunwayId(runwayId: string): string {
+  const clean = runwayId.replace(/^RW/i, "").trim().toUpperCase();
+  const side = /[LRC]$/.test(clean) ? clean.slice(-1) : "";
+  const num = side ? clean.slice(0, -1) : clean;
+  return `${num.padStart(2, "0")}${side}`;
+}
+
+function isRunwayTagged(transition: { runwayId?: string; runways?: readonly string[] }): boolean {
+  return transition.runwayId !== undefined || (transition.runways?.length ?? 0) > 0;
+}
+
+function transitionMatchesActiveRunway(
+  transition: { runwayId?: string; runways?: readonly string[] },
+  activeRunwayId: string,
+): boolean {
+  const want = padRunwayId(activeRunwayId);
+  if (transition.runwayId !== undefined && padRunwayId(transition.runwayId) === want) {
+    return true;
+  }
+  return transition.runways?.some((id) => padRunwayId(id) === want) ?? false;
+}
+
+function starRouteFromTransition(
+  star: CatalogStar,
+  transition: NonNullable<CatalogStar["transitions"]>[number],
+): string[] {
+  const commonIds = (star.common ?? []).map((leg) => wantFix(leg.fixId));
+  const route = transition.legs.map((leg) => wantFix(leg.fixId));
+  for (const fixId of commonIds) {
+    if (route.length === 0 || route[route.length - 1] !== fixId) {
+      route.push(fixId);
+    }
+  }
+  return route;
+}
+
+/**
+ * Analog: JO 7110.65 Descend Via / arrival amendment (R01); AIM procedure-name
+ * and transition phraseology (R03). Trainer delta: join is catalog-backed JSON,
+ * not NAS adaptation. Prove a shared remaining-route fix before mutating path.
+ */
+export function joinStarTransition(args: JoinStarTransitionArgs): JoinStarTransitionResult {
+  const wantProc = wantFix(args.procedureId);
+  const wantTrans = wantFix(args.transitionId);
+  if (!wantProc) {
+    return { ok: false, reason: "UNKNOWN_PROCEDURE" };
+  }
+  if (!wantTrans || !args.catalog) {
+    return { ok: false, reason: "UNKNOWN_TRANSITION" };
+  }
+
+  const stars = (args.catalog.stars ?? []).filter((star) => wantFix(star.id) === wantProc);
+  if (stars.length === 0) {
+    return { ok: false, reason: "UNKNOWN_PROCEDURE" };
+  }
+
+  type Eligible = {
+    star: CatalogStar;
+    transition: NonNullable<CatalogStar["transitions"]>[number];
+  };
+  const eligible: Eligible[] = [];
+  for (const star of stars) {
+    for (const transition of star.transitions ?? []) {
+      if (wantFix(transition.id) !== wantTrans) {
+        continue;
+      }
+      if (isRunwayTagged(transition)) {
+        if (
+          !args.activeRunwayId ||
+          !transitionMatchesActiveRunway(transition, args.activeRunwayId)
+        ) {
+          continue;
+        }
+      }
+      eligible.push({ star, transition });
+    }
+  }
+  if (eligible.length === 0) {
+    return { ok: false, reason: "UNKNOWN_TRANSITION" };
+  }
+  if (eligible.length > 1) {
+    return { ok: false, reason: "AMBIGUOUS_TRANSITION" };
+  }
+
+  const { star, transition } = eligible[0]!;
+  const transitionRoute = starRouteFromTransition(star, transition);
+  const remaining = (args.remainingFixIds ?? [])
+    .map((id) => wantFix(id))
+    .filter((id) => id.length > 0);
+  const commonFix = remaining.find((fixId) => transitionRoute.includes(fixId));
+  if (!commonFix) {
+    return { ok: false, reason: "NOT_ON_COURSE" };
+  }
+  const joinIndex = transitionRoute.indexOf(commonFix);
+  return {
+    ok: true,
+    join: {
+      starId: star.id,
+      routeFixIds: transitionRoute.slice(joinIndex),
+      toFixIndex: 0,
+    },
+  };
+}
+
 /**
  * Lateral path for VIA/CVIA. Keeps an existing PROCEDURE of this id. Else
  * joins from a DIRECT/current fix on it, a unique SID/STAR route, or the
@@ -207,6 +329,21 @@ export function joinNamedProcedure(args: JoinNamedProcedureArgs): ProcedureJoin 
   const want = wantFix(args.procedureId);
   if (!want || !args.catalog) {
     return undefined;
+  }
+  if (args.transitionId) {
+    const currentProc = args.current?.type === "PROCEDURE" ? args.current : null;
+    const remainingFixIds =
+      currentProc && currentProc.starId && wantFix(currentProc.starId) === want
+        ? currentProc.routeFixIds.slice(currentProc.toFixIndex)
+        : undefined;
+    const resolved = joinStarTransition({
+      catalog: args.catalog,
+      procedureId: args.procedureId,
+      transitionId: args.transitionId,
+      activeRunwayId: args.activeRunwayId,
+      remainingFixIds,
+    });
+    return resolved.ok ? resolved.join : undefined;
   }
   const current = args.current;
   if (current?.type === "PROCEDURE" && current.starId && wantFix(current.starId) === want) {

@@ -12,6 +12,7 @@ import {
   groundInstructionFixes,
   groundInstructionProcedures,
   groundProcedureToCatalog,
+  matchSpokenStarTransition,
   normalizeFixKey,
   proceduresFromCatalog,
   sanitizeCatalogApproaches,
@@ -132,6 +133,32 @@ test("proceduresFromCatalog extracts both STARs and SIDs dynamically from catalo
     { id: "DEM1", name: "DEMO ONE" },
     { id: "BAY1", name: "BAY ONE DEPARTURE" },
   ]);
+});
+
+test("matchSpokenStarTransition resolves unique names and rejects ambiguous rows", () => {
+  const procedures = [
+    {
+      id: "SYN1",
+      name: "SYN ONE",
+      transitions: [
+        { id: "N", name: "NORTH" },
+        { id: "WN", name: "NORTH" },
+        { id: "RW09", runwayId: "09" },
+      ],
+    },
+  ];
+  expect(matchSpokenStarTransition(["north", "transition"], 0, "SYN1", procedures)).toEqual({
+    kind: "ambiguous",
+    next: 2,
+  });
+  expect(matchSpokenStarTransition(["wn"], 0, "SYN1", procedures)).toEqual({
+    kind: "hit",
+    id: "WN",
+    next: 1,
+  });
+  expect(
+    matchSpokenStarTransition(["runway", "nine", "transition"], 0, "SYN1", procedures),
+  ).toEqual({ kind: "hit", id: "RW09", next: 3 });
 });
 
 test("groundFixToCatalog snaps SID departure fixes (BAYEE, BAYNW, BAYSO, NORMA, OCTTA)", () => {

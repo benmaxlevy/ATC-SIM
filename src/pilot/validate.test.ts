@@ -206,6 +206,68 @@ test("GO_AROUND rejects unless clearedApproachId is set", () => {
   expect(validateInstructions(ac, [{ type: "GO_AROUND" }]).ok).toBe(true);
 });
 
+const synCatalog = {
+  stars: [
+    {
+      id: "SYN1",
+      name: "SYN ONE",
+      common: [{ fixId: "MERGE" }],
+      transitions: [
+        { id: "N", legs: [{ fixId: "NA" }, { fixId: "NB" }] },
+        { id: "S", legs: [{ fixId: "SA" }, { fixId: "SB" }] },
+        { id: "RW09", runwayId: "09", legs: [{ fixId: "RA" }] },
+      ],
+    },
+  ],
+};
+
+test("named STAR transition validate accepts a shared fix and rejects the rest", () => {
+  const ac = jet();
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    starId: "SYN1",
+    toFixIndex: 1,
+    routeFixIds: ["NA", "NB", "MERGE"],
+  };
+  expect(
+    validateInstructions(ac, [{ type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "S" }], {
+      catalog: synCatalog,
+    }).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(ac, [{ type: "JOIN_PROCEDURE", procedureId: "SYN1", transitionId: "S" }], {
+      catalog: synCatalog,
+    }).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(ac, [{ type: "DESCEND_VIA", procedureId: "NOPE", transitionId: "S" }], {
+      catalog: synCatalog,
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_PROCEDURE" });
+  expect(
+    validateInstructions(ac, [{ type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "ZZ" }], {
+      catalog: synCatalog,
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_TRANSITION" });
+  expect(
+    validateInstructions(ac, [{ type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "RW09" }], {
+      catalog: synCatalog,
+      activeRunwayId: "27",
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_TRANSITION" });
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    starId: "SYN1",
+    toFixIndex: 0,
+    routeFixIds: ["NA"],
+  };
+  expect(
+    validateInstructions(ac, [{ type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "S" }], {
+      catalog: synCatalog,
+    }),
+  ).toEqual({ ok: false, reason: "NOT_ON_COURSE" });
+});
+
 test("one bad instruction rejects the whole list", () => {
   expect(
     validateInstructions(jet({ altitudeFt: 8000 }), [

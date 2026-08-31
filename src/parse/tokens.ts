@@ -34,6 +34,8 @@ const TURN_DIR_LETTER = /^[LR]$/;
 const FIX_ID_TOKEN = /^[A-Z]{2,5}$/;
 /** STAR / SID id: letters plus optional digits (`DEM1`). `D` stays descend. */
 const PROCEDURE_ID_TOKEN = /^[A-Z]{2,8}[0-9]{0,2}$/;
+/** STAR transition id (`WN`, `N`, `RW09`). Shorter than a procedure id. */
+const TRANSITION_ID_TOKEN = /^[A-Z]{1,8}[0-9]{0,2}$/;
 /** CROSS altitude hundreds with optional A/B suffix (`40`, `40A`, `40B`). */
 const CROSS_ALT_TOKEN = /^(\d+)([AB])?$/;
 
@@ -51,6 +53,10 @@ export function isFixIdToken(token: string): boolean {
 
 export function isProcedureIdToken(token: string): boolean {
   return PROCEDURE_ID_TOKEN.test(token);
+}
+
+export function isTransitionIdToken(token: string): boolean {
+  return TRANSITION_ID_TOKEN.test(token);
 }
 
 export type CrossRestriction = "AT" | "AT_OR_ABOVE" | "AT_OR_BELOW";

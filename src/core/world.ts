@@ -79,6 +79,8 @@ export interface World {
     sids: ReadonlyArray<CatalogSid>;
     atpaVolumes?: ReadonlyArray<AtpaVolumeParams>;
   };
+  /** Scenario active runway. Runway-tagged STAR transition amends must match. */
+  activeRunwayId?: string;
   /**
    * O(1) DCT / STAR lookup. Built from `catalog` geometry when present.
    * `stepWorld` consumes this — no hard-coded lat/lon in the tick.
@@ -179,6 +181,7 @@ export function createWorld(partial?: Partial<World>): World {
     aircraft: partial?.aircraft ?? [],
     selectedAircraftId: partial?.selectedAircraftId ?? null,
     catalog: partial?.catalog,
+    activeRunwayId: partial?.activeRunwayId,
     fixRegistry: fixRegistryFromPartial(partial),
     alerts: { ...emptyWorldAlerts(), ...partial?.alerts },
     mvaChart: partial?.mvaChart ?? null,

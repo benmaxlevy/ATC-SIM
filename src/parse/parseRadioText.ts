@@ -15,6 +15,7 @@ import {
   isCallsignToken,
   isFixIdToken,
   isProcedureIdToken,
+  isTransitionIdToken,
   isTurnDirLetter,
   PARSE_ERROR,
   parseCrossAltitudeToken,
@@ -77,6 +78,16 @@ export function parseRadioText(sourceText: string): ParseResult {
 
 function fail(sourceText: string, code: ParseErrorCode, detail?: string): ParseResult {
   return { ok: false, error: formatParseError(code, detail), sourceText };
+}
+
+function isTypedInstructionStart(token: string): boolean {
+  if (token in ZERO_ARG_INSTRUCTIONS || token in APPROACH_INSTRUCTIONS) {
+    return true;
+  }
+  if (token === "DCT" || token === "VIA" || token === "CVIA" || token === "JOIN" || token === "X") {
+    return true;
+  }
+  return LETTER_NUMBER.test(token) || TURN_COMPACT.test(token) || TURN_NUMBER_ONLY.test(token);
 }
 
 const ZERO_ARG_INSTRUCTIONS: Readonly<Record<string, Instruction>> = {
@@ -144,16 +155,34 @@ function parseOneInstruction(tokens: string[], index: number): InstructionParse 
     if (!isProcedureIdToken(procedureId)) {
       return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: procedureId };
     }
-    const instruction: Instruction =
-      token === "VIA"
-        ? { type: "DESCEND_VIA", procedureId }
-        : token === "CVIA"
-          ? { type: "CLIMB_VIA", procedureId }
-          : { type: "JOIN_PROCEDURE", procedureId };
+    const maybeTrans = tokens[index + 2];
+    const takeTransition =
+      token !== "CVIA" &&
+      maybeTrans !== undefined &&
+      isTransitionIdToken(maybeTrans) &&
+      !isTypedInstructionStart(maybeTrans);
+    if (token === "VIA") {
+      return {
+        ok: true,
+        instruction: takeTransition
+          ? { type: "DESCEND_VIA", procedureId, transitionId: maybeTrans }
+          : { type: "DESCEND_VIA", procedureId },
+        nextIndex: takeTransition ? index + 3 : index + 2,
+      };
+    }
+    if (token === "CVIA") {
+      return {
+        ok: true,
+        instruction: { type: "CLIMB_VIA", procedureId },
+        nextIndex: index + 2,
+      };
+    }
     return {
       ok: true,
-      instruction,
-      nextIndex: index + 2,
+      instruction: takeTransition
+        ? { type: "JOIN_PROCEDURE", procedureId, transitionId: maybeTrans }
+        : { type: "JOIN_PROCEDURE", procedureId },
+      nextIndex: takeTransition ? index + 3 : index + 2,
     };
   }
   if (token === "X") {

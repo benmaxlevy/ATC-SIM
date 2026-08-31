@@ -245,6 +245,7 @@ export function handleRadioCommand(
   const validated = validateInstructions(aircraft, resolvedCommand.instructions, {
     fixRegistry: world.fixRegistry,
     catalog: world.catalog,
+    activeRunwayId: world.activeRunwayId,
     approachIds: world.catalog?.approaches.map((item) => item.id),
   });
   if (!validated.ok) {
@@ -255,6 +256,7 @@ export function handleRadioCommand(
     catalog: world.catalog,
     log,
     fixXy: world.fixRegistry ? (id) => world.fixRegistry?.get(id) : undefined,
+    activeRunwayId: world.activeRunwayId,
   });
   const procedureNames = Object.fromEntries(
     (world.catalog?.stars ?? []).map((star) => [star.id, star.name ?? star.id]),

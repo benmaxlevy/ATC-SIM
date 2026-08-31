@@ -75,9 +75,9 @@ export type Instruction =
   | { type: "IDENT" }
   | { type: "SAY_HEADING" }
   | { type: "SAY_ALTITUDE" }
-  | { type: "DESCEND_VIA"; procedureId: string }
+  | { type: "DESCEND_VIA"; procedureId: string; transitionId?: string }
   | { type: "CLIMB_VIA"; procedureId: string }
-  | { type: "JOIN_PROCEDURE"; procedureId: string }
+  | { type: "JOIN_PROCEDURE"; procedureId: string; transitionId?: string }
   | {
       type: "CROSS";
       fixId: string;
