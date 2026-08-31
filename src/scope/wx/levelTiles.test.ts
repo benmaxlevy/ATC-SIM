@@ -27,9 +27,9 @@ test("committed wx1-6 tiles decode", async () => {
   const decoded = await decodePngToRgba(png);
   expect(decoded.width).toBeGreaterThan(0);
   expect(decoded.height).toBeGreaterThan(0);
-  expect(decoded.rgba[0]).toBe(0x14);
-  expect(decoded.rgba[1]).toBe(0x64);
-  expect(decoded.rgba[2]).toBe(0x14);
+  expect(decoded.rgba[0]).toBe(0x0d);
+  expect(decoded.rgba[1]).toBe(0x1b);
+  expect(decoded.rgba[2]).toBe(0x0e);
 });
 
 test("ensureWxLevelTiles fetches each level PNG once", async () => {

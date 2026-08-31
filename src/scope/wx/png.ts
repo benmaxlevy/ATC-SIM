@@ -157,14 +157,23 @@ function inflateZlibStored(data: Uint8Array): Uint8Array | null {
   return new Uint8Array(out);
 }
 
-async function inflateZlib(data: Uint8Array): Promise<Uint8Array> {
-  const stored = inflateZlibStored(data);
-  if (stored) {
-    return stored;
+type ZlibBuiltin = { inflateSync(data: Uint8Array): Uint8Array };
+
+function nodeZlibInflate(data: Uint8Array): Uint8Array | null {
+  const getBuiltin = (
+    globalThis as { process?: { getBuiltinModule?: (name: string) => ZlibBuiltin } }
+  ).process?.getBuiltinModule;
+  if (!getBuiltin) {
+    return null;
   }
-  if (typeof DecompressionStream !== "function") {
-    throw new Error("deflate unavailable");
+  try {
+    return (getBuiltin("node:zlib") ?? getBuiltin("zlib")).inflateSync(data);
+  } catch {
+    return null;
   }
+}
+
+async function inflateViaDecompressionStream(data: Uint8Array): Promise<Uint8Array> {
   const stream = new DecompressionStream("deflate");
   const writer = stream.writable.getWriter();
   const copy = new Uint8Array(data.byteLength);
@@ -181,6 +190,21 @@ async function inflateZlib(data: Uint8Array): Promise<Uint8Array> {
     chunks.push(value);
   }
   return concat(chunks);
+}
+
+async function inflateZlib(data: Uint8Array): Promise<Uint8Array> {
+  const stored = inflateZlibStored(data);
+  if (stored) {
+    return stored;
+  }
+  const fromNode = nodeZlibInflate(data);
+  if (fromNode) {
+    return fromNode;
+  }
+  if (typeof DecompressionStream === "function") {
+    return inflateViaDecompressionStream(data);
+  }
+  throw new Error("deflate unavailable");
 }
 
 function paeth(a: number, b: number, c: number): number {
@@ -396,7 +420,10 @@ async function decodePngToRgbaManual(bytes: Uint8Array): Promise<DecodedPng> {
 export async function decodePngToRgba(bytes: Uint8Array): Promise<DecodedPng> {
   try {
     return await decodePngToRgbaManual(bytes);
-  } catch {
+  } catch (err) {
+    if (typeof document === "undefined") {
+      throw err;
+    }
     return decodePngViaBitmap(bytes);
   }
 }
