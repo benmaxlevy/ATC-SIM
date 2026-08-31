@@ -11,7 +11,7 @@ import { snapFix, type RankedCatalogHit } from "./catalog-snap";
 
 /**
  * Local snap needs the full facility (CIFP packs are hundreds of fixes).
- * Path C / STT prompt headers still cap at 64 in parse-command / speech-port.
+ * Path C prompt lists are retrieved candidates (`MAX_PATH_C_FIXES` in path-c).
  */
 export const MAX_CATALOG_FIXES = 4096;
 const FIX_ID = /^[A-Z]{2,6}[0-9]{0,2}$/;

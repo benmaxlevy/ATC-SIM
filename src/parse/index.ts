@@ -29,6 +29,7 @@ export { SNAP_SCORE_FLOOR, SNAP_SCORE_MARGIN, snapFix } from "./spoken/catalog-s
 export type { RankedCatalogHit, SnapResult } from "./spoken/catalog-snap";
 export {
   DEFAULT_PARSE_URL,
+  MAX_PATH_C_FIXES,
   PATH_C_SCHEMA_VERSION,
   createParsePathC,
   fetchParsePathC,

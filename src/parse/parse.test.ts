@@ -429,7 +429,7 @@ test("spoken Haynes and AJ snap onto unique catalog ids", async () => {
   }
 });
 
-test("tied Haynes ids stay raw and populate ungroundedFixes", async () => {
+test("tied Haynes ids are a spoken parse miss, not a fake DIRECT", async () => {
   const parsePathC = vi.fn(async () => null);
   const result = await parseCommand("proceed direct Haynes", {
     source: "voice",
@@ -439,12 +439,10 @@ test("tied Haynes ids stay raw and populate ungroundedFixes", async () => {
     parsePathC,
   });
   expect(parsePathC).not.toHaveBeenCalled();
-  expect(result.ok).toBe(true);
+  expect(result.ok).toBe(false);
   if (!result.ok) {
-    return;
+    expect(result.error).toContain(PARSE_ERROR.PARSE_MISS);
   }
-  expect(result.instructions).toEqual([{ type: "DIRECT", fixId: "HAYNES" }]);
-  expect(result.ungroundedFixes).toEqual(["HAYNES"]);
 });
 
 test("weak unknown DIRECT keeps the raw token on ungroundedFixes", async () => {

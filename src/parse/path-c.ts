@@ -9,6 +9,8 @@ import { INSTRUCTION_TYPES, type Instruction, type TurnDir } from "@core";
 export const PATH_C_SCHEMA_VERSION = "command-ir-v0" as const;
 export const DEFAULT_PARSE_URL = "http://127.0.0.1:8090/parse";
 export const DEFAULT_PARSE_TIMEOUT_MS = 15000;
+/** Retrieved Path C `fixes=` / approaches / procedures cap. Not file-order 64. */
+export const MAX_PATH_C_FIXES = 16;
 
 export interface PathCContext {
   callsigns: string[];

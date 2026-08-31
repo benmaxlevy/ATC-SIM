@@ -2,6 +2,7 @@ import { expect, test, vi } from "vitest";
 import { PARSE_ERROR, parseCommand } from "@parse";
 import {
   DEFAULT_PARSE_URL,
+  MAX_PATH_C_FIXES,
   PATH_C_SCHEMA_VERSION,
   createParsePathC,
   fetchParsePathC,
@@ -36,8 +37,12 @@ test("AC6 — path-c source does not call paid LLM hosts", async () => {
     eager: true,
   }) as Record<string, string>;
   const src = sources["./path-c.ts"]!;
+  const command = sources["./parse-command.ts"]!;
   expect(src).not.toMatch(/openai\.com|api\.groq\.com|api-inference\.huggingface\.co/i);
+  expect(command).not.toMatch(/openai\.com|api\.groq\.com|api-inference\.huggingface\.co/i);
   expect(src).toContain("127.0.0.1:8090/parse");
+  expect(src).not.toMatch(/\/ground/);
+  expect(command).not.toMatch(/\/ground/);
 });
 
 test("required parse fields are text, source, schemaVersion; context is optional", () => {
@@ -403,4 +408,171 @@ test("fetch body may include roster and catalog fixes but never n-best or confid
     { fetch: fetchSpy },
   );
   expect(fetchSpy).toHaveBeenCalledTimes(1);
+});
+
+function padFixes(count: number, extra: readonly string[]): string[] {
+  const padding = Array.from({ length: count }, (_, i) => `PAD${String(i).padStart(2, "0")}`);
+  return [...padding, ...extra];
+}
+
+test("AC1 — unique Haynes margin snap does not fetch Path C", async () => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => HEADING);
+  const result = await parseCommand("proceed direct Haynes", {
+    source: "voice",
+    pathC: true,
+    parsePathC,
+    fixes: ["HAINZ", "AJAAY", "NEMAX"],
+  });
+  expect(parsePathC).not.toHaveBeenCalled();
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.parseStage === "spoken_a" || result.parseStage === "spoken_b").toBe(true);
+  expect(result.parseStage).not.toBe("llm_c");
+  expect(result.instructions).toEqual([{ type: "DIRECT", fixId: "HAINZ" }]);
+});
+
+test("AC2 — Haynes tie with 80 padding sends retrieved cluster, not file-order 64", async () => {
+  // HAYNS unique-snaps Haynes (edit distance 1). HAYNZ is the fold-tie with HAINZ.
+  const padding = padFixes(80, []);
+  expect(padding).toHaveLength(80);
+  const catalog = padFixes(80, ["HAINZ", "HAYNZ"]);
+  const parsePathC = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: null,
+    instructions: [{ type: "DIRECT", fixId: "HAINZ" }],
+  }));
+  const result = await parseCommand("proceed direct Haynes", {
+    source: "voice",
+    selectedCallsign: "DAL123",
+    pathC: true,
+    parsePathC,
+    fixes: catalog,
+  });
+  expect(parsePathC).toHaveBeenCalledTimes(1);
+  const req = parsePathC.mock.calls[0]![0];
+  expect(req).not.toHaveProperty("nbest");
+  expect(req).not.toHaveProperty("confidence");
+  expect(req.context?.fixes).toBeDefined();
+  const sent = req.context?.fixes ?? [];
+  expect(sent.length).toBeGreaterThan(0);
+  expect(sent.length).toBeLessThanOrEqual(MAX_PATH_C_FIXES);
+  expect(sent).toEqual(expect.arrayContaining(["HAINZ", "HAYNZ"]));
+  expect(sent).not.toEqual(expect.arrayContaining(padding.slice(0, 64)));
+  for (const id of padding.slice(0, 64)) {
+    expect(sent).not.toContain(id);
+  }
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.parseStage).toBe("llm_c");
+  expect(result.instructions).toEqual([{ type: "DIRECT", fixId: "HAINZ" }]);
+});
+
+test("AC3 — spoken ungrounded Haynes with pathC false is PARSE_MISS", async () => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => HEADING);
+  const voice = await parseCommand("proceed direct Haynes", {
+    source: "voice",
+    pathC: false,
+    parsePathC,
+    fixes: ["HAINZ", "HAYNZ"],
+  });
+  const typedLine = await parseCommand("proceed direct Haynes", {
+    source: "text",
+    pathC: false,
+    parsePathC,
+    fixes: ["HAINZ", "HAYNZ"],
+  });
+  expect(parsePathC).not.toHaveBeenCalled();
+  expect(voice.ok).toBe(false);
+  expect(typedLine.ok).toBe(false);
+  if (!voice.ok) {
+    expect(voice.error).toContain(PARSE_ERROR.PARSE_MISS);
+  }
+  if (!typedLine.ok) {
+    expect(typedLine.error).toContain(PARSE_ERROR.PARSE_MISS);
+  }
+});
+
+test("typed DCT NOPE with pathC false still ok-parses for pilot UNKNOWN_FIX", async () => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => HEADING);
+  const result = await parseCommand("DCT NOPE", {
+    source: "text",
+    pathC: false,
+    parsePathC,
+    fixes: ["HAINZ", "NEMAX"],
+  });
+  expect(parsePathC).not.toHaveBeenCalled();
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.parseStage).toBe("typed");
+  expect(result.instructions).toEqual([{ type: "DIRECT", fixId: "NOPE" }]);
+  expect(result.ungroundedFixes).toEqual(["NOPE"]);
+});
+
+test("empty retrieve on Haynes does not pad Path C or dispatch a fake id", async () => {
+  const padding = padFixes(80, []);
+  const parsePathC = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: null,
+    instructions: [{ type: "DIRECT", fixId: "HAYNES" }],
+  }));
+  const result = await parseCommand("proceed direct Haynes", {
+    source: "voice",
+    pathC: true,
+    parsePathC,
+    fixes: padding,
+  });
+  expect(result.ok).toBe(false);
+  if (!result.ok) {
+    expect(result.error).toContain(PARSE_ERROR.PARSE_MISS);
+  }
+  if (parsePathC.mock.calls.length > 0) {
+    const sent = parsePathC.mock.calls[0]![0].context?.fixes ?? [];
+    expect(sent).not.toEqual(expect.arrayContaining(padding.slice(0, 64)));
+    expect(sent).not.toContain("HAYNES");
+  }
+});
+
+test("Path C mock DIRECT HAYNES not in context.fixes is not dispatched", async () => {
+  const catalog = padFixes(80, ["HAINZ", "HAYNZ"]);
+  const parsePathC = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: null,
+    instructions: [{ type: "DIRECT", fixId: "HAYNES" }],
+  }));
+  const result = await parseCommand("proceed direct Haynes", {
+    source: "voice",
+    pathC: true,
+    parsePathC,
+    fixes: catalog,
+  });
+  expect(parsePathC).toHaveBeenCalledTimes(1);
+  const sent = parsePathC.mock.calls[0]![0].context?.fixes ?? [];
+  expect(sent).toEqual(expect.arrayContaining(["HAINZ", "HAYNZ"]));
+  expect(sent).not.toContain("HAYNES");
+  expect(result.ok).toBe(false);
+  if (!result.ok) {
+    expect(result.error).toContain(PARSE_ERROR.PARSE_MISS);
+  }
+});
+
+test("pizza the runway with a large catalog does not send file-order 64 fixes", async () => {
+  const padding = padFixes(80, []);
+  const parsePathC = vi.fn<ParsePathCFn>(async () => HEADING);
+  const result = await parseCommand("pizza the runway", {
+    source: "voice",
+    selectedCallsign: "DAL123",
+    pathC: true,
+    parsePathC,
+    fixes: padding,
+  });
+  expect(parsePathC).toHaveBeenCalledTimes(1);
+  const sent = parsePathC.mock.calls[0]![0].context?.fixes;
+  expect(sent).toBeUndefined();
+  expect(result.ok).toBe(true);
+  if (result.ok) {
+    expect(result.parseStage).toBe("llm_c");
+  }
 });
