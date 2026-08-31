@@ -43,10 +43,11 @@ Do not edit the `fix/meaningful-test-suite` checkout.
   and MULTI (nearest covering site) = that site’s `periodMs`, **4800** for
   airport / ASR rows. Out of coverage: no paint. No 30 s coast.
 - **Site paints (frozen, operator shots).** FUSED = current blue circle puck
-  (`TARGET_PUCK_BG`). MULTI = small filled blue rectangle, **long axis along
-  heading**. Single-site = filled blue rectangle **facing the site** (long
-  axis ⊥ radial), size grows with range, thin green line on the far side
-  opposite the antenna; very far is outline only. BRITE PRI tints the
+  (`TARGET_PUCK_BG`). MULTI = small filled blue rectangle, **long axis
+  perpendicular to PTL / history**. Single-site = filled blue rectangle
+  **facing the site** (long axis ⊥ radial), size grows with range, green
+  far-side line ~30% longer than the blue block; very far is outline only.
+  BRITE PRI tints the
   position mark. Glyph / stub stays on top. History dots unchanged.
 - **Sites are authored JSON.** `kind: "asr" | "airport"`, ENU or lat/lon→ENU,
   `rangeNm`, `periodMs`. Trainer-authored, not NAS adaptation. Empty

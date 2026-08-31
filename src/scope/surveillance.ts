@@ -6,11 +6,11 @@
  * Trainer delta (frozen): FUSED reports every 1000 ms and keeps the existing
  * blue circle puck (`TARGET_PUCK_BG`). Single-site and MULTI use the covering
  * site `periodMs` (airport/ASR fixtures 4800 ms). MULTI paints a small filled
- * blue rectangle centered on the glyph, long axis along aircraft heading
- * (ground track, not leader). Single-site paints a filled blue rectangle
- * facing the selected antenna: long axis perpendicular to the site radial,
- * size grows with range (uncertainty), thin green line on the far edge
- * opposite the site. Very far from the site (90% of `rangeNm`) is outline
+ * blue rectangle centered on the glyph, long axis perpendicular to PTL /
+ * history (ground track, not leader). Single-site paints a filled blue
+ * rectangle facing the selected antenna: long axis perpendicular to the site
+ * radial, size grows with range (uncertainty), green far-side line ~30%
+ * longer than the blue block. Very far from the site (90% of `rangeNm`) is outline
  * only. Out of coverage: no paint, no 30 s coast. Empty `radarSites` is
  * implicit FUSED. BRITE PRI tints the position mark.
  *
@@ -34,7 +34,7 @@ export const FUSED_PERIOD_MS = 1000;
 /** Same CSS px as `TARGET_SIZE_PX` — kept local so this module cannot cycle. */
 const SYMBOL_LENGTH_PX = 8;
 
-/** MULTI mark: small filled rect, long axis along heading. */
+/** MULTI mark: small filled rect, long axis ⊥ PTL / history. */
 export const MULTI_RECT_LENGTH_PX = SYMBOL_LENGTH_PX + 2;
 export const MULTI_RECT_THICKNESS_PX = 5;
 
@@ -46,6 +46,8 @@ export const SITE_RECT_MAX_THICKNESS_PX = 16;
 /** Filled below this fraction of site `rangeNm`; outline at/above (50 NM of 60 stays filled). */
 export const SITE_RECT_OUTLINE_RANGE_FRACTION = 0.9;
 export const SITE_FAR_LINE_GAP_PX = 1;
+/** Green far-side line is ~30% longer than the blue block’s long axis. */
+export const SITE_FAR_LINE_LENGTH_SCALE = 1.3;
 export const SITE_FAR_LINE_STROKE_PX = 1;
 export const SITE_FAR_LINE_COLOR = PALETTE.unowned;
 /** Same frozen blue as `TARGET_PUCK_BG`. */
@@ -397,8 +399,8 @@ function orientedRectCorners(
 }
 
 /**
- * MULTI rectangle corners in screen px. Long axis follows ground-track
- * heading (0° = north / up). Not leader direction. Analog: CRC MULTI.
+ * MULTI rectangle corners in screen px. Long axis is perpendicular to PTL
+ * / history (ground-track heading, 0° = north / up). Not leader. Analog: CRC MULTI.
  */
 export function multiRectCorners(
   cx: number,
@@ -413,7 +415,9 @@ export function multiRectCorners(
   { x: number; y: number },
 ] {
   const rad = (headingDeg * Math.PI) / 180;
-  return orientedRectCorners(cx, cy, Math.sin(rad), -Math.cos(rad), lengthPx, thicknessPx);
+  const trackX = Math.sin(rad);
+  const trackY = -Math.cos(rad);
+  return orientedRectCorners(cx, cy, -trackY, trackX, lengthPx, thicknessPx);
 }
 
 export interface SiteRectMark {
@@ -468,7 +472,7 @@ export function siteRectMark(
   const farOff = thicknessPx / 2 + SITE_FAR_LINE_GAP_PX;
   const fx = cx - towardX * farOff;
   const fy = cy - towardY * farOff;
-  const halfLen = lengthPx / 2;
+  const halfLen = (lengthPx * SITE_FAR_LINE_LENGTH_SCALE) / 2;
   return {
     corners,
     farLine: {

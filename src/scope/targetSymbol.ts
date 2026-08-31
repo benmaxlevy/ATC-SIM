@@ -73,7 +73,7 @@ export interface TargetSymbolOptions {
   sectorId?: string;
   /** Default FUSED puck. MULTI / single-site replace the blue circle. */
   surveillancePaint?: SurveillancePaint;
-  /** Ground-track heading for the MULTI rectangle (along heading, not leader). */
+  /** Ground-track heading for the MULTI rectangle (long axis ⊥ PTL, not leader). */
   groundTrackDeg?: number;
   reportXNm?: number;
   reportYNm?: number;
@@ -345,7 +345,7 @@ function fillOrientedRect(
   ctx.fill();
 }
 
-/** Small blue MULTI rectangle centered on the glyph, long axis along heading. */
+/** Small blue MULTI rectangle centered on the glyph, long axis ⊥ PTL / history. */
 export function drawMultiSurveillanceRect(
   ctx: CanvasRenderingContext2D,
   x: number,

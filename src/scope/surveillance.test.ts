@@ -12,6 +12,7 @@ import {
   MULTI_RECT_LENGTH_PX,
   MULTI_RECT_THICKNESS_PX,
   SITE_FAR_LINE_COLOR,
+  SITE_FAR_LINE_LENGTH_SCALE,
   SITE_RECT_MAX_LENGTH_PX,
   SITE_RECT_MIN_LENGTH_PX,
   SITE_RECT_OUTLINE_RANGE_FRACTION,
@@ -210,20 +211,20 @@ test("AC7 — uncovered targets drop immediately; no 30 s coast", () => {
   expect(displayReportFor(sampler, "ac-coast")).toBeNull();
 });
 
-test("AC4/AC5 — MULTI rect follows heading; site rect faces antenna and grows with range", () => {
+test("AC4/AC5 — MULTI rect is perpendicular to PTL; site far line is 30% longer", () => {
   const eastbound = multiRectCorners(0, 0, 90);
   const longDx = eastbound[0]!.x - eastbound[1]!.x;
   const longDy = eastbound[0]!.y - eastbound[1]!.y;
-  expect(Math.abs(longDy)).toBeLessThan(1e-9);
-  expect(Math.abs(longDx)).toBeCloseTo(MULTI_RECT_LENGTH_PX, 6);
+  expect(Math.abs(longDx)).toBeLessThan(1e-9);
+  expect(Math.abs(longDy)).toBeCloseTo(MULTI_RECT_LENGTH_PX, 6);
   const thickDx = eastbound[0]!.x - eastbound[3]!.x;
   const thickDy = eastbound[0]!.y - eastbound[3]!.y;
-  expect(Math.abs(thickDx)).toBeLessThan(1e-9);
-  expect(Math.abs(thickDy)).toBeCloseTo(MULTI_RECT_THICKNESS_PX, 6);
+  expect(Math.abs(thickDy)).toBeLessThan(1e-9);
+  expect(Math.abs(thickDx)).toBeCloseTo(MULTI_RECT_THICKNESS_PX, 6);
 
   const northbound = multiRectCorners(10, 20, 0);
-  expect(northbound[0]!.x).toBeCloseTo(northbound[1]!.x, 6);
-  expect(Math.abs(northbound[0]!.y - northbound[1]!.y)).toBeCloseTo(MULTI_RECT_LENGTH_PX, 6);
+  expect(northbound[0]!.y).toBeCloseTo(northbound[1]!.y, 6);
+  expect(Math.abs(northbound[0]!.x - northbound[1]!.x)).toBeCloseTo(MULTI_RECT_LENGTH_PX, 6);
 
   const near = siteRectMark(0, 0, 0, 0, 10, 0, 60);
   const far = siteRectMark(0, 0, 0, 0, 50, 0, 60);
@@ -242,6 +243,10 @@ test("AC4/AC5 — MULTI rect follows heading; site rect faces antenna and grows 
   expect(far.farLine.x1).toBeLessThan(0);
   expect(far.farLine.x2).toBeLessThan(0);
   expect(far.farLine.x1).toBeCloseTo(far.farLine.x2, 6);
+  expect(Math.hypot(far.farLine.x2 - far.farLine.x1, far.farLine.y2 - far.farLine.y1)).toBeCloseTo(
+    far.lengthPx * SITE_FAR_LINE_LENGTH_SCALE,
+    6,
+  );
 
   expect(MULTI_RECT_COLOR).toBe("#175dc7");
   expect(SITE_FAR_LINE_COLOR).toBe("#00FF00");
