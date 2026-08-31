@@ -9,8 +9,8 @@
  * blue rectangle centered on the glyph, long axis perpendicular to PTL /
  * history (ground track, not leader). Single-site paints a filled blue
  * rectangle facing the selected antenna: long axis perpendicular to the site
- * radial, size grows with range (uncertainty), green far-side line ~30%
- * longer than the blue block. Very far from the site (90% of `rangeNm`) is outline
+ * radial, size grows with range (uncertainty), thin 1 px green far-side line
+ * slightly longer than the blue block. Very far from the site (90% of `rangeNm`) is outline
  * only. Out of coverage: no paint, no 30 s coast. Empty `radarSites` is
  * implicit FUSED. BRITE PRI tints the position mark.
  *
@@ -38,16 +38,16 @@ const SYMBOL_LENGTH_PX = 8;
 export const MULTI_RECT_LENGTH_PX = SYMBOL_LENGTH_PX + 2;
 export const MULTI_RECT_THICKNESS_PX = 5;
 
-/** Single-site rect: grows with range-to-site. Long axis faces the antenna. */
-export const SITE_RECT_MIN_LENGTH_PX = SYMBOL_LENGTH_PX + 2;
-export const SITE_RECT_MAX_LENGTH_PX = 28;
-export const SITE_RECT_MIN_THICKNESS_PX = 6;
-export const SITE_RECT_MAX_THICKNESS_PX = 16;
+/** Single-site rect: compact; grows with range-to-site. Long axis faces the antenna. */
+export const SITE_RECT_MIN_LENGTH_PX = 7;
+export const SITE_RECT_MAX_LENGTH_PX = 16;
+export const SITE_RECT_MIN_THICKNESS_PX = 3;
+export const SITE_RECT_MAX_THICKNESS_PX = 8;
 /** Filled below this fraction of site `rangeNm`; outline at/above (50 NM of 60 stays filled). */
 export const SITE_RECT_OUTLINE_RANGE_FRACTION = 0.9;
 export const SITE_FAR_LINE_GAP_PX = 1;
-/** Green far-side line is ~30% longer than the blue block’s long axis. */
-export const SITE_FAR_LINE_LENGTH_SCALE = 1.3;
+/** Green far-side line stays 1 px; length is slightly longer than the blue block. */
+export const SITE_FAR_LINE_LENGTH_SCALE = 1.35;
 export const SITE_FAR_LINE_STROKE_PX = 1;
 export const SITE_FAR_LINE_COLOR = PALETTE.unowned;
 /** Same frozen blue as `TARGET_PUCK_BG`. */
