@@ -6,18 +6,23 @@ function srcDir(name: string): string {
   return fileURLToPath(new URL(`./src/${name}`, import.meta.url));
 }
 
-const iemProxy = {
+const weatherProxies = {
   "/wx-iem": {
     target: "https://mesonet.agron.iastate.edu",
     changeOrigin: true,
     rewrite: (path: string) => path.replace(/^\/wx-iem/, ""),
   },
+  "/api-metar": {
+    target: "https://aviationweather.gov",
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/api-metar/, "/api/data/metar"),
+  },
 };
 
 export default defineConfig({
   plugins: [react()],
-  server: { proxy: iemProxy },
-  preview: { proxy: iemProxy },
+  server: { proxy: weatherProxies },
+  preview: { proxy: weatherProxies },
   resolve: {
     alias: {
       "@core": srcDir("core"),

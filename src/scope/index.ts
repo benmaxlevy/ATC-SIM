@@ -750,6 +750,7 @@ export {
   DEFAULT_WX_VIP_BREAKS_DBZ,
   IEM_N0Q_TILE_PATH,
   WX_IEM_PROXY_PREFIX,
+  WX_METAR_PROXY_PREFIX,
   WX_REFRESH_MS,
   applyMetarToScopeView,
   bboxFromArp,

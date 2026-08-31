@@ -65,6 +65,7 @@ export {
   DEFAULT_ALTIMETER_STUB,
   DEFAULT_METAR_BASE_URL,
   DEFAULT_METAR_TTL_MS,
+  WX_METAR_PROXY_PREFIX,
   applyMetarToScopeView,
   clearMetarCache,
   decodeMetarObservation,

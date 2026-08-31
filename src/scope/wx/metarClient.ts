@@ -24,7 +24,11 @@ export interface MetarObservation {
 }
 
 export const DEFAULT_METAR_TTL_MS = 5 * 60 * 1000;
-export const DEFAULT_METAR_BASE_URL = "https://aviationweather.gov/api/data/metar";
+export const WX_METAR_PROXY_PREFIX = "/api-metar";
+export const DEFAULT_METAR_BASE_URL =
+  typeof window !== "undefined" && window.location
+    ? WX_METAR_PROXY_PREFIX
+    : "https://aviationweather.gov/api/data/metar";
 export const DEFAULT_ALTIMETER_STUB = "30.17";
 
 /**
@@ -185,25 +189,35 @@ export async function fetchMetar(
     return result;
   }
 
-  const url = `${baseUrl}?ids=${encodeURIComponent(neededCodes.join(","))}&format=json`;
+  const candidateUrls = [baseUrl];
+  if (baseUrl.startsWith("/") && baseUrl !== "https://aviationweather.gov/api/data/metar") {
+    candidateUrls.push("https://aviationweather.gov/api/data/metar");
+  }
 
-  try {
-    const res = await fetchFn(url);
-    if (!res.ok) {
-      return result;
-    }
-    const data = await res.json();
-    if (Array.isArray(data)) {
-      for (const item of data) {
-        const obs = decodeMetarObservation(item);
-        if (obs) {
-          setCachedMetar(obs, now);
-          result.set(obs.icaoId, obs);
+  for (const rootUrl of candidateUrls) {
+    const url = `${rootUrl}?ids=${encodeURIComponent(neededCodes.join(","))}&format=json`;
+
+    try {
+      const res = await fetchFn(url);
+      if (!res.ok) {
+        continue;
+      }
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        for (const item of data) {
+          const obs = decodeMetarObservation(item);
+          if (obs) {
+            setCachedMetar(obs, now);
+            result.set(obs.icaoId, obs);
+          }
+        }
+        if (result.size > 0) {
+          break;
         }
       }
+    } catch {
+      // Try next candidate URL
     }
-  } catch {
-    // Network errors or invalid JSON return whatever was cached without throwing.
   }
 
   return result;
