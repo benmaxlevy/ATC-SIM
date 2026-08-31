@@ -166,7 +166,7 @@ export async function fetchMetar(
 
   const fetchFn = options.fetchFn ?? (typeof fetch !== "undefined" ? fetch : undefined);
   const baseUrl = options.baseUrl ?? DEFAULT_METAR_BASE_URL;
-  const now = (options.nowMs ? options.nowMs() : Date.now());
+  const now = options.nowMs ? options.nowMs() : Date.now();
   const ttl = options.ttlMs ?? DEFAULT_METAR_TTL_MS;
   const forceRefresh = options.forceRefresh === true;
 

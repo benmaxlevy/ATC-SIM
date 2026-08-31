@@ -82,7 +82,12 @@ import {
   tpaRingsToPaint,
   tpaSizeReadoutEnabled,
 } from "./tpa";
-import { buildGiLines, buildSsaRenderLines, SSA_NETWORK_HEALTH_STUB } from "./ssa";
+import {
+  buildGiLines,
+  buildSsaRenderLines,
+  SSA_ALTIMETER_STUB,
+  SSA_NETWORK_HEALTH_STUB,
+} from "./ssa";
 import {
   SITE_FAR_LINE_COLOR,
   aircraftAtReport,

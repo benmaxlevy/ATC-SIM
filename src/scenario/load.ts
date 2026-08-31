@@ -363,15 +363,24 @@ function parseSsaWeatherAirports(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) {
     throw new Error("Scenario ssaWeatherAirports must be an array of strings");
   }
-  return value.map((code, i) => assertString(code, `ssaWeatherAirports[${i}]`, "Scenario", { nonEmpty: true }));
+  return value.map((code, i) =>
+    assertString(code, `ssaWeatherAirports[${i}]`, "Scenario", { nonEmpty: true }),
+  );
 }
 
 function parseSsaWeatherGiSlot(value: unknown): number | undefined {
   if (value == null) {
     return undefined;
   }
-  if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value >= GI_TEXT_LINE_COUNT) {
-    throw new Error(`Scenario ssaWeatherGiSlot must be an integer between 0 and ${GI_TEXT_LINE_COUNT - 1}`);
+  if (
+    typeof value !== "number" ||
+    !Number.isInteger(value) ||
+    value < 0 ||
+    value >= GI_TEXT_LINE_COUNT
+  ) {
+    throw new Error(
+      `Scenario ssaWeatherGiSlot must be an integer between 0 and ${GI_TEXT_LINE_COUNT - 1}`,
+    );
   }
   return value;
 }
