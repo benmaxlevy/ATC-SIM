@@ -56,109 +56,10 @@ import {
 } from "./scopeView";
 import { DEFAULT_ATPA_STATE, TPA_STROKE_COLOR, atpaFeatureEffective } from "./tpa";
 import { syncTrackDisplays } from "./trackDisplay";
+import { createMockCtx, type MockPathStroke } from "./test/mockCanvas";
 
 const VIEW: ScopeViewSize = { widthPx: 800, heightPx: 800 };
 const CATALOG_DIR = "src/scenario/data/kdem";
-
-interface PathStroke {
-  points: { x: number; y: number }[];
-  strokeStyle: string;
-  lineWidth: number;
-}
-
-interface FillText {
-  text: string;
-  x: number;
-  y: number;
-  fillStyle: string;
-}
-
-function createMockCtx(): {
-  ctx: CanvasRenderingContext2D;
-  pathStrokes: PathStroke[];
-  fillTexts: FillText[];
-  fills: { count: number };
-} {
-  const pathStrokes: PathStroke[] = [];
-  const fillTexts: FillText[] = [];
-  const fills = { count: 0 };
-  let currentPath: { x: number; y: number }[] = [];
-  let currentFillStyle = "#FFFFFF";
-  let currentStrokeStyle = "#FFFFFF";
-  let currentLineWidth = 1;
-  let currentFont = "12px monospace";
-
-  const ctx = {
-    save() {},
-    restore() {},
-    beginPath() {
-      currentPath = [];
-    },
-    closePath() {
-      if (currentPath[0]) {
-        currentPath.push({ ...currentPath[0] });
-      }
-    },
-    arc() {},
-    clip() {},
-    rect() {},
-    fillRect() {},
-    strokeRect() {},
-    setTransform() {},
-    measureText(text: string) {
-      return { width: Math.max(0, text.length) * 7.2 };
-    },
-    moveTo(x: number, y: number) {
-      currentPath.push({ x, y });
-    },
-    lineTo(x: number, y: number) {
-      currentPath.push({ x, y });
-    },
-    stroke() {
-      if (currentPath.length >= 2) {
-        pathStrokes.push({
-          points: currentPath.slice(),
-          strokeStyle: currentStrokeStyle,
-          lineWidth: currentLineWidth,
-        });
-      }
-    },
-    fill() {
-      fills.count += 1;
-    },
-    fillText(text: string, x: number, y: number) {
-      fillTexts.push({ text, x, y, fillStyle: currentFillStyle });
-    },
-    get fillStyle() {
-      return currentFillStyle;
-    },
-    set fillStyle(val: string) {
-      currentFillStyle = String(val);
-    },
-    get strokeStyle() {
-      return currentStrokeStyle;
-    },
-    set strokeStyle(val: string) {
-      currentStrokeStyle = String(val);
-    },
-    get lineWidth() {
-      return currentLineWidth;
-    },
-    set lineWidth(val: number) {
-      currentLineWidth = val;
-    },
-    get font() {
-      return currentFont;
-    },
-    set font(val: string) {
-      currentFont = val;
-    },
-    textBaseline: "alphabetic",
-    textAlign: "start",
-  };
-
-  return { ctx: ctx as unknown as CanvasRenderingContext2D, pathStrokes, fillTexts, fills };
-}
 
 function memoryStorage(): DcbPrefStorage & { data: Map<string, string> } {
   const data = new Map<string, string>();
@@ -263,12 +164,12 @@ function ownedView(world: World) {
 }
 
 function paint(world: World, view: ReturnType<typeof createScopeView>) {
-  const mock = createMockCtx();
+  const mock = createMockCtx({ closePathJoinsStart: true });
   renderScope(mock.ctx, world, view, VIEW.widthPx, VIEW.heightPx);
   return mock;
 }
 
-function atpaConeStrokes(pathStrokes: PathStroke[]): PathStroke[] {
+function atpaConeStrokes(pathStrokes: MockPathStroke[]): MockPathStroke[] {
   return pathStrokes.filter(
     (s) =>
       s.points.length === 4 &&
@@ -278,12 +179,12 @@ function atpaConeStrokes(pathStrokes: PathStroke[]): PathStroke[] {
   );
 }
 
-function jRingStrokes(pathStrokes: PathStroke[]): PathStroke[] {
+function jRingStrokes(pathStrokes: MockPathStroke[]): MockPathStroke[] {
   return pathStrokes.filter((s) => s.strokeStyle === TPA_STROKE_COLOR && s.points.length >= 16);
 }
 
 function coneAxialNm(
-  stroke: PathStroke,
+  stroke: MockPathStroke,
   trailer: { xNm: number; yNm: number },
   view: ReturnType<typeof createScopeView>,
 ): number {

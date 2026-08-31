@@ -12,86 +12,18 @@ import { SELECTED_ACCENT_COLOR } from "./targetSymbol";
 import { deriveScratchpads, isIdentFlashing, syncTrackDisplays } from "./trackDisplay";
 import { DATABLOCK_FONT } from "./fonts";
 import { formatPartialDatablock } from "./datablock";
-
-interface PathStroke {
-  points: { x: number; y: number }[];
-  strokeStyle: string;
-  lineWidth: number;
-}
-
-function createMockCtx(): {
-  ctx: CanvasRenderingContext2D;
-  fillTexts: { text: string; font: string; fillStyle?: string }[];
-  pathStrokes: PathStroke[];
-  drawImages: unknown[];
-} {
-  const fillTexts: { text: string; font: string; fillStyle?: string }[] = [];
-  const pathStrokes: PathStroke[] = [];
-  const drawImages: unknown[] = [];
-  let currentPath: { x: number; y: number }[] = [];
-  const ctx = {
-    fillStyle: "",
-    strokeStyle: "",
-    lineWidth: 1,
-    font: "",
-    textBaseline: "alphabetic",
-    textAlign: "start",
-    fillRect() {},
-    save() {},
-    restore() {},
-    beginPath() {
-      currentPath = [];
-    },
-    closePath() {},
-    arc() {},
-    clip() {},
-    rect() {},
-    stroke(this: { strokeStyle: string; lineWidth: number }) {
-      if (currentPath.length >= 2) {
-        pathStrokes.push({
-          points: currentPath.slice(),
-          strokeStyle: String(this.strokeStyle),
-          lineWidth: this.lineWidth,
-        });
-      }
-    },
-    fill() {},
-    moveTo(x: number, y: number) {
-      currentPath.push({ x, y });
-    },
-    lineTo(x: number, y: number) {
-      currentPath.push({ x, y });
-    },
-    setTransform() {},
-    strokeRect() {},
-    measureText(text: string) {
-      return { width: Math.max(0, text.length) * 7.2 };
-    },
-    drawImage(image: unknown) {
-      drawImages.push(image);
-    },
-    fillText(this: { font: string; fillStyle: string }, text: string) {
-      fillTexts.push({ text, font: this.font, fillStyle: String(this.fillStyle) });
-    },
-  };
-  return {
-    ctx: ctx as unknown as CanvasRenderingContext2D,
-    fillTexts,
-    pathStrokes,
-    drawImages,
-  };
-}
+import { createMockCtx, type MockPathStroke } from "./test/mockCanvas";
 
 function symbolCount(fillTexts: { text: string }[]): number {
   return fillTexts.filter((t) => ["*", "V", "D", "G", "T", "C"].includes(t.text)).length;
 }
 
 function findPtlStroke(
-  pathStrokes: PathStroke[],
+  pathStrokes: MockPathStroke[],
   ac: { xNm: number; yNm: number; headingDeg: number; speedKt: number },
   view: ReturnType<typeof createScopeView>,
   css: number,
-): PathStroke | undefined {
+): MockPathStroke | undefined {
   const size = { widthPx: css, heightPx: css };
   const end = ptlEndpoint(ac.xNm, ac.yNm, ac.headingDeg, ac.speedKt, PTL_MINUTES);
   const from = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
