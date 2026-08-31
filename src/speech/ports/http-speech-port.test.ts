@@ -77,7 +77,7 @@ test("AC1 AC6 — happy STT JSON fills Transcript and id is http", async () => {
   expect(transcript.latencyMs).toBeGreaterThanOrEqual(0);
 });
 
-test("STT sends catalog ids as X-ATC-Fixes for Whisper prompt bias", async () => {
+test("STT sanitizes a tiny explicit X-ATC-Fixes prior (not a registry dump)", async () => {
   const fetchMock: TestFetch = async (_url, init) => {
     const headers = new Headers(init?.headers);
     expect(headers.get("X-ATC-Fixes")).toBe("SEMAX,NEMAX,MERGE");
@@ -91,7 +91,24 @@ test("STT sends catalog ids as X-ATC-Fixes for Whisper prompt bias", async () =>
   expect(transcript.text).toBe("proceed direct SEMAX");
 });
 
-test("STT sends STAR and SID names as X-ATC-Procedures for Whisper prompt bias", async () => {
+test("T03-19 AC1 — 80 file-order ids do not dump first 64 as X-ATC-Fixes", async () => {
+  const ids = Array.from({ length: 80 }, (_, i) => `FX${String(i).padStart(2, "0")}`);
+  const dump64 = ids.slice(0, 64).join(",");
+  let sentFixes: string | null = "unset";
+  const fetchMock: TestFetch = async (_url, init) => {
+    sentFixes = new Headers(init?.headers).get("X-ATC-Fixes");
+    return jsonResponse({ text: "ident", confidence: 1 });
+  };
+  const port = new HttpSpeechPort({ fetch: fetchMock });
+  await port.transcribe(smallClip(), { fixes: ids });
+  if (sentFixes !== null) {
+    const sent = sentFixes.split(",").filter((id) => id.length > 0);
+    expect(sent.length).toBeLessThanOrEqual(16);
+    expect(sentFixes).not.toBe(dump64);
+  }
+});
+
+test("T03-19 AC2 — STT still sends STAR and SID names as X-ATC-Procedures", async () => {
   const fetchMock: TestFetch = async (_url, init) => {
     const headers = new Headers(init?.headers);
     expect(headers.get("X-ATC-Procedures")).toBe("DEM1=DEMO ONE|BAY1=BAY ONE");

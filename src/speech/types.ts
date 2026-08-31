@@ -1,4 +1,5 @@
 export interface TranscribeOpts {
+  /** Tiny optional STT prompt bias, not an allowlist or catalog dump. */
   fixes?: readonly string[];
   procedures?: ReadonlyArray<{ id: string; name?: string }>;
 }

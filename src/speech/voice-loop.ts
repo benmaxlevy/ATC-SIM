@@ -91,8 +91,14 @@ export interface VoiceLoopOptions {
   getSelectedCallsign: () => string | null;
   /** Live ICAO roster for Path C grounding. Default none. */
   getOnFrequencyCallsigns?: () => readonly string[];
-  /** Facility catalog ids for STT prompt + Path C fix grounding. Default none. */
+  /** Full facility catalog ids for parseCommand / Path C. Not the STT header. */
   getCatalogFixIds?: () => readonly string[];
+  /**
+   * Tiny optional STT prompt prior (procedure-referenced ids, cap 16). Default none.
+   * R11 CIFP ids are catalog lookup, not STT vocabulary; T03-19 does not require
+   * the spoken fix in X-ATC-Fixes.
+   */
+  getSttFixIds?: () => readonly string[];
   /** STAR/SID catalog for STT + Path C procedure grounding. Default none. */
   getCatalogProcedures?: () => ReadonlyArray<{ id: string; name?: string }>;
   /** Approach catalog for Path C approach grounding. Default none. */
@@ -196,6 +202,7 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly getSelectedCallsign: () => string | null;
   private readonly getOnFrequencyCallsigns: () => readonly string[];
   private readonly getCatalogFixIds: () => readonly string[];
+  private readonly getSttFixIds: () => readonly string[];
   private readonly getCatalogProcedures: () => ReadonlyArray<{ id: string; name?: string }>;
   private readonly getCatalogApproaches: () => ReadonlyArray<{
     id: string;
@@ -221,6 +228,7 @@ class VoiceLoopImpl implements VoiceLoop {
     this.getSelectedCallsign = options.getSelectedCallsign;
     this.getOnFrequencyCallsigns = options.getOnFrequencyCallsigns ?? (() => []);
     this.getCatalogFixIds = options.getCatalogFixIds ?? (() => []);
+    this.getSttFixIds = options.getSttFixIds ?? (() => []);
     this.getCatalogProcedures = options.getCatalogProcedures ?? (() => []);
     this.getCatalogApproaches = options.getCatalogApproaches ?? (() => []);
     this.getIssuedAtSimMs = options.getIssuedAtSimMs ?? (() => 0);
@@ -483,8 +491,11 @@ class VoiceLoopImpl implements VoiceLoop {
         return fromLive;
       }
     }
+    // R11 CIFP ids are catalog lookup, not STT vocabulary; T03-19 does not require
+    // the spoken fix in X-ATC-Fixes. Haynes/AJ transcribed without being in the 64.
+    // STT runs before a transcript exists — do not call retrieveFix on audio.
     return this.speechPort.transcribe(clip, {
-      fixes: this.getCatalogFixIds(),
+      fixes: this.getSttFixIds(),
       procedures: this.getCatalogProcedures(),
     });
   }

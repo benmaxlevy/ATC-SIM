@@ -1106,3 +1106,94 @@ test("playReadback skips empty and does not throw on TTS failure", async () => {
   expect(statusCodes(statuses)).toEqual(["tts_failed"]);
   loop.dispose();
 });
+
+function fileOrderFixIds(count: number): string[] {
+  return Array.from({ length: count }, (_, i) => `FX${String(i).padStart(2, "0")}`);
+}
+
+test("T03-19 AC6 — parseCommand keeps full catalog ids when STT prior is omitted", async () => {
+  const fileOrder = fileOrderFixIds(80);
+  let transcribeFixes: readonly string[] | undefined;
+  const parseSpy: ParseCommandFn = vi.fn(parseCommand);
+  const port: SpeechPort = {
+    id: "fake",
+    async transcribe(_audio, opts) {
+      transcribeFixes = opts?.fixes;
+      return { text: "turn left heading two seven zero", confidence: 1, latencyMs: 2 };
+    },
+    async synthesize() {
+      return nonEmptyClip();
+    },
+  };
+  const loop = createVoiceLoop({
+    speechPort: port,
+    parseCommand: parseSpy,
+    dispatchCommand: () => {},
+    getSelectedCallsign: () => "DAL123",
+    getCatalogFixIds: () => fileOrder,
+    readbackPlayer: instantPlayer().player,
+  });
+
+  await loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  expect(transcribeFixes).toEqual([]);
+  expect(transcribeFixes?.join(",")).not.toBe(fileOrder.slice(0, 64).join(","));
+  expect(parseSpy).toHaveBeenCalledWith("turn left heading two seven zero", {
+    source: "voice",
+    selectedCallsign: "DAL123",
+    callsigns: [],
+    fixes: fileOrder,
+    procedures: [],
+    approaches: [],
+    pathC: false,
+  });
+  loop.dispose();
+});
+
+test("T03-19 AC6 — STT receives high-value prior only; parse keeps full catalog", async () => {
+  const fileOrder = fileOrderFixIds(80);
+  const sttPrior = ["ALPHA", "BRAVO"];
+  let transcribeFixes: readonly string[] | undefined;
+  const parseSpy: ParseCommandFn = vi.fn(parseCommand);
+  const port: SpeechPort = {
+    id: "fake",
+    async transcribe(_audio, opts) {
+      transcribeFixes = opts?.fixes;
+      return { text: "turn left heading two seven zero", confidence: 1, latencyMs: 2 };
+    },
+    async synthesize() {
+      return nonEmptyClip();
+    },
+  };
+  const loop = createVoiceLoop({
+    speechPort: port,
+    parseCommand: parseSpy,
+    dispatchCommand: () => {},
+    getSelectedCallsign: () => "DAL123",
+    getCatalogFixIds: () => fileOrder,
+    getSttFixIds: () => sttPrior,
+    readbackPlayer: instantPlayer().player,
+  });
+
+  await loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  expect(transcribeFixes).toEqual(sttPrior);
+  expect(transcribeFixes?.length).toBeLessThanOrEqual(16);
+  expect(transcribeFixes?.join(",")).not.toBe(fileOrder.slice(0, 64).join(","));
+  expect(parseSpy).toHaveBeenCalledWith("turn left heading two seven zero", {
+    source: "voice",
+    selectedCallsign: "DAL123",
+    callsigns: [],
+    fixes: fileOrder,
+    procedures: [],
+    approaches: [],
+    pathC: false,
+  });
+  loop.dispose();
+});

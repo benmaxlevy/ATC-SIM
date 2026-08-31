@@ -30,6 +30,7 @@ export {
 } from "./types";
 
 export { HttpSpeechPort } from "./ports/http-speech-port";
+export { MAX_STT_FIX_PRIOR, highValueFixIds } from "./high-value-fix-ids";
 export {
   SPEECH_BACKEND_IDS,
   createBootSpeechPort,

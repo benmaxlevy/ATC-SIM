@@ -5,6 +5,7 @@ import { handleRadioCommand, createCheckInQueue } from "@pilot";
 import {
   createPttCaptureController,
   createVoiceLoop,
+  highValueFixIds,
   shouldLogVoiceReject,
   type PttCaptureController,
   type PttCaptureEvent,
@@ -141,6 +142,7 @@ export function createApp(deps: AppDeps): AppHandles {
       getSelectedCallsign: () => selectedCallsignFromWorld(world),
       getOnFrequencyCallsigns: () => world.aircraft.map((ac) => ac.callsign),
       getCatalogFixIds: () => (world.fixRegistry ? [...world.fixRegistry.ids()] : []),
+      getSttFixIds: () => highValueFixIds(world.catalog),
       getCatalogProcedures: () => proceduresFromCatalog(world.catalog),
       getCatalogApproaches: () => approachesFromCatalog(world.catalog),
       getIssuedAtSimMs: () => world.simTimeMs,

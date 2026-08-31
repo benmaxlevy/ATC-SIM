@@ -57,8 +57,16 @@ export interface HttpSpeechPortConfig {
 }
 
 const FIX_ID = /^[A-Z]{2,6}[0-9]{0,2}$/;
-const MAX_FIX_HEADER = 64;
+/** Client STT prior cap. Server MAX_STT_FIXES=64 stays a safety net; do not raise it. */
+const MAX_FIX_HEADER = 16;
 
+/**
+ * Optional Whisper prompt bias, not an allowlist or search index.
+ * Analog ATC has no X-ATC-Fixes. Haynes (HAINZ) / AJ (AJAAY) transcribed
+ * without being in the first 64 file-order registry ids.
+ * R11 CIFP ids are catalog lookup, not STT vocabulary; T03-19 does not require
+ * the spoken fix in X-ATC-Fixes.
+ */
 function headerFixIds(raw: readonly string[] | undefined): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
