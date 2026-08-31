@@ -1,6 +1,6 @@
 # ATC-SIM user guide
 
-Press **`F1`** in the app for the keyboard overlay. That overlay is a subset. This file is the complete radio and Preview Area reference.
+Press **`F1`** in the app for the keyboard overlay.
 
 Voice: [`speech-api/README.md`](../speech-api/README.md) (local models).
 
@@ -83,7 +83,7 @@ Commands can be entered via the bottom command line prompt or spoken over Push-t
 
 ### Typed command syntax
 
-Typed commands **below** are **radio Command IR** only (command line or PTT). Inbound accept is a **scope** action: left-click the track, Preview Area `F3` INIT CNTL, or idle scope `Enter` then click — not a radio token.
+Typed commands below are radio Command IR (command line or PTT). Inbound accept is scope: left-click the track, Preview Area `F3` INIT CNTL, or idle scope `Enter` then click.
 
 | Category | Typed Syntax | Example | Description |
 |---|---|---|---|
@@ -126,8 +126,6 @@ Typed commands **below** are **radio Command IR** only (command line or PTT). In
 
 ## Controls & keybindings
 
-Press **`F1`** at any time in the app to open the interactive keyboard help overlay.
-
 ### Scope controls & mouse
 
 | Action | Shortcut / Mouse |
@@ -149,40 +147,40 @@ Press **`F1`** at any time in the app to open the interactive keyboard help over
 | `M` | Toggle Mode C altitude field |
 | `F` | Set Altitude Filter band (`F` → min hundreds → `Enter` → max hundreds → `Enter`) |
 | `H` | Toggle radar history trail dots (0 ↔ last count) |
-| `F1` | Open keyboard help cheatsheet (CRC analog: beaconator hold; not MULTIFUNC) |
-| `F3` | INIT CNTL: selected track owns now; nothing selected arms command-then-slew (`INIT CNTL`, never `"F3"`); type FLID then Enter or slew. Color/ownership stub, not NAS associate. Pending inbound: accept+own. |
-| `F4` | TERM CNTL: selected track drops now; nothing selected arms command-then-slew (`TERM CNTL`, never `"F4"`); type FLID then Enter or slew. Trainer drop. `TERM CNTL ALL` is `INV`, not drop-all. |
+| `F1` | Keyboard overlay |
+| `F3` | INIT CNTL: selected track owns now; nothing selected arms command-then-slew; type FLID then Enter or slew. Pending inbound: accept+own. |
+| `F4` | TERM CNTL: selected track drops now; nothing selected arms command-then-slew; type FLID then Enter or slew. `TERM CNTL ALL` is `INV`. |
 | `F7` | Toggle Predicted Track Line (`PTL ALL`) |
 | `F8` | Cycle radar history dot count |
 | `Tab` | Cycle keyboard focus between the PPI (scope / Preview Area) and `#command-line-input` |
-| `/` | **Scope focus:** Preview Area drop (`TERM CNTL`) or PDB ↔ FDB on a datablock click — not a radio-focus steal. **Radio focus:** leftover character for the command line. |
+| `/` | **Scope focus:** Preview Area drop (`TERM CNTL`) or PDB ↔ FDB on a datablock click. **Radio focus:** leftover character for the command line. |
 | `Shift + H` | Contextual smart handoff: Tower (for arrivals on final) or Center (for climbing departures) |
 
 ### Preview Area
 
-The Preview Area is the typed **scope** buffer painted under the SSA (CRC analog). It is **not** the radio command line. With PPI focus, `*` `+` `/` and alnum/space buffer into `view.preview` and paint live under the SSA. `<Tab>` is the only focus switcher between the PPI and `#command-line-input`. Scope keys never emit Command IR, readback, or intent. Radio typing never mutates the Preview Area. `DAL123 H270` still turns.
+The Preview Area is the typed **scope** buffer under the SSA. With PPI focus, `*` `+` `/` and alnum/space buffer into `view.preview`. `<Tab>` switches PPI and `#command-line-input`. Scope keys do not emit Command IR, readback, or intent. Radio typing does not mutate the Preview Area.
 
-Unknown or incomplete commit flashes `<buffer> INV` (reject, never parse-and-no-op). Backspace edits; Esc cancels to idle (live preview > live `*` chord > DCB). Empty PPI click does not consume an armed tracking command. No `window.prompt`, no extra HTML `<input>`.
+Unknown or incomplete commit flashes `<buffer> INV`. Backspace edits; Esc cancels to idle (live preview > live `*` chord > DCB). Empty PPI click does not consume an armed tracking command.
 
-Trainer F3 is a color/ownership stub (unowned green FDB → owned white FDB), not NAS associate. F4 is trainer drop, not NAS terminate. Pending inbound + INIT CNTL or idle `Enter` then click still accepts the handoff.
+F3 owns (unowned green FDB → owned white FDB). F4 drops. Pending inbound + INIT CNTL or idle `Enter` then click accepts the handoff.
 
 #### INIT / TERM / beacon select
 
 | Command | What the operator does | What happens |
 | --- | --- | --- |
-| F3 INIT CNTL (arm) | `F3` with nothing selected | Preview paints `INIT CNTL` (never the literal `"F3"`). Next target click owns **that** track (white FDB). Pending inbound: one click accept+own. |
+| F3 INIT CNTL (arm) | `F3` with nothing selected | Preview paints `INIT CNTL`. Next target click owns **that** track (white FDB). Pending inbound: one click accept+own. |
 | F3 implied | `F3` with a track already selected | Owns the selection immediately. Preview may flash `INIT CNTL` then clear. |
 | F3 + FLID + Enter | `F3`, type full callsign / numeric tail / unique 4-digit squawk, Enter | Owns that aircraft with nothing selected. Unknown or ambiguous → brief `INV`, no apply. |
 | F3 + FLID + slew | `F3`, type FLID, click a target | Applies only if the FLID uniquely matches that track; else `INV`. |
-| F4 TERM CNTL (arm) | `F4` with nothing selected | Preview paints `TERM CNTL` (never `"F4"`). Next target click drops **that** track. |
+| F4 TERM CNTL (arm) | `F4` with nothing selected | Preview paints `TERM CNTL`. Next target click drops **that** track. |
 | F4 implied | `F4` with a track selected | Drops the selection now. |
 | F4 + FLID + Enter | `F4`, type FLID, Enter | Drops the resolved aircraft. `TERM CNTL ALL` is `INV`, not drop-all. |
 | Scope-focus `B` + two digits + Enter | PPI focused, `B` `4` `5` Enter | Toggles CODE BLOCK `"45"`. Unassociated squawks starting with `45` paint □. Second `B45` Enter removes it. |
 | Scope-focus `B` + four digits | PPI focused, `B4500` (four digits may auto-commit) | Toggles discrete `"4500"`. Matching unassociated paints □; unmatched stays `*`. |
 | Incomplete `B` Enter | Bare `B`, one digit, or three digits then Enter | `INV`; select list unchanged. |
-| Radio-focus `B` | Command line focused, type `B` | Literal character. Never always-on. |
+| Radio-focus `B` | Command line focused, type `B` | Literal character. |
 
-Idle `F` (no star) still starts the altitude-filter chord (`F` → min hundreds → Enter → max hundreds → Enter). That is not `*F`.
+Idle `F` (no star) starts the altitude-filter chord (`F` → min hundreds → Enter → max hundreds → Enter).
 
 #### Tracking, handoff, and datablock
 
@@ -255,7 +253,7 @@ DCB spinner lists are unchanged: RR `[2, 5, 10]`, PTL `0.5 / 1 / 2 / 4`. Keyboar
 
 #### TPA / ATPA chords
 
-Unchanged T02-49 slew chords. Incomplete `*` prefixes (`*J`, `*P`, `*P3`, `*P5`, `*P10`, `*AI`, `*AE`, `*BE`, `*BI`) still fall through to `starsChord` on Enter. A live `*` TPA hint still wins over idle preview.
+Incomplete `*` prefixes (`*J`, `*P`, `*P3`, `*P5`, `*P10`, `*AI`, `*AE`, `*BE`, `*BI`) fall through to `starsChord` on Enter.
 
 | Command | What the operator does | What happens |
 | --- | --- | --- |
@@ -263,7 +261,7 @@ Unchanged T02-49 slew chords. Incomplete `*` prefixes (`*J`, `*P`, `*P3`, `*P5`,
 | `*P3` / `*P5` / `*P10` / `*P2.5` | `*P` then miles, Enter or click the target | Ground-track TPA cone 1–30 NM. Bare `*P` clears that track's cone. |
 | `*AI` click / `*AE` Enter | | ATPA inhibit / enable per T02-49. |
 
-**Mnemonic collisions (do not mix these up):**
+**Overlaps:**
 
 - Idle `T` = FDB ↔ LDB. `*T` = TAB list.
 - Compact `*P1`–`*P3` = TPA cone miles. Spaced `* P1`–`* P3` = tower lists. `*PTL` = PTL minutes.

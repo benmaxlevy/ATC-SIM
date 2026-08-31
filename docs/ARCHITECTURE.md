@@ -1,6 +1,6 @@
 # ATC-SIM architecture
 
-Ticket-normative contracts stay in [`phases/_shared/`](../phases/_shared/architecture.md). This file restates frozen v1 decisions and the live runtime shape; it does not add new freeze rows.
+Contracts: [`phases/_shared/`](../phases/_shared/architecture.md). This file is the v1 freeze table plus the live runtime shape.
 
 ## v1 freeze
 
