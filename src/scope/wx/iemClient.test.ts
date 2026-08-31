@@ -23,8 +23,10 @@ const wxSources = import.meta.glob("./*.{ts,tsx}", {
 }) as Record<string, string>;
 
 test("binVip uses JO 7110.65 30/40/50 plus trainer splits", () => {
-  expect(DEFAULT_WX_VIP_BREAKS_DBZ).toEqual([18, 30, 36, 41, 46, 51]);
-  expect(binVip(17.9)).toBe(0);
+  expect(DEFAULT_WX_VIP_BREAKS_DBZ).toEqual([5, 30, 36, 41, 46, 51]);
+  expect(binVip(4.9)).toBe(0);
+  expect(binVip(5)).toBe(1);
+  expect(binVip(17.9)).toBe(1);
   expect(binVip(18)).toBe(1);
   expect(binVip(29.9)).toBe(1);
   expect(binVip(30)).toBe(2);
