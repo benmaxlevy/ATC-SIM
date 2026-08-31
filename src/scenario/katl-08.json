@@ -231,6 +231,7 @@
     "ratePerHour": 12
   },
   "ssaWeatherAirports": ["KATL", "KFTY", "KPDK", "KMGE", "KRYY"],
+  "ssaWeatherGiSlot": 9,
   "giTextLines": ["ATIS A", "RWY 08L", "ILS 08L IN USE", "", "", "", "", "", "", ""],
   "radarSites": [
     {

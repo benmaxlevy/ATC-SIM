@@ -208,3 +208,141 @@ export async function fetchMetar(
 
   return result;
 }
+
+/**
+ * Format a live METAR observation as a concise GI TEXT line.
+ * e.g. "KATL 00000KT 10SM 30/22 A3018"
+ */
+export function formatMetarGiLine(obs: MetarObservation): string {
+  const parts: string[] = [obs.icaoId];
+  if (obs.wdir !== undefined && obs.wspd !== undefined) {
+    const dir = String(obs.wdir).padStart(3, "0");
+    const spd = String(obs.wspd).padStart(2, "0");
+    parts.push(`${dir}${spd}KT`);
+  }
+  if (obs.visib) {
+    const cleanVis = String(obs.visib).replace("+", "").replace(/SM$/i, "");
+    parts.push(`${cleanVis}SM`);
+  }
+  if (obs.temp !== undefined && obs.dewp !== undefined) {
+    parts.push(`${Math.round(obs.temp)}/${Math.round(obs.dewp)}`);
+  }
+  if (obs.altimeterInHg) {
+    const altDigits = obs.altimeterInHg.replace(".", "");
+    parts.push(`A${altDigits}`);
+  }
+  return parts.join(" ");
+}
+
+/**
+ * Update ScopeView primary altimeter, satellite altimeters, and optional GI weather slot.
+ */
+export function applyMetarToScopeView(
+  view: {
+    primaryAltimeter?: string;
+    airportAltimeters?: { airportCode: string; altimeter: string }[];
+    ssaWeatherAirports?: string[];
+    giTextLines: string[];
+    giFilterVisible: boolean[];
+  },
+  observations: Map<string, MetarObservation> | Record<string, MetarObservation>,
+  options?: {
+    primaryIcao?: string;
+    giSlot?: number;
+  },
+): void {
+  const getObs = (code: string): MetarObservation | undefined => {
+    const normalized = code.trim().toUpperCase();
+    if (observations instanceof Map) {
+      return observations.get(normalized);
+    }
+    return (observations as Record<string, MetarObservation>)[normalized];
+  };
+
+  const weatherAirports = view.ssaWeatherAirports ?? [];
+  const primaryIcao = options?.primaryIcao ?? weatherAirports[0];
+
+  if (primaryIcao) {
+    const primaryObs = getObs(primaryIcao);
+    if (primaryObs) {
+      view.primaryAltimeter = primaryObs.altimeterInHg;
+      const giSlot = options?.giSlot;
+      if (giSlot !== undefined && giSlot >= 0 && giSlot < view.giTextLines.length) {
+        view.giTextLines[giSlot] = formatMetarGiLine(primaryObs);
+        view.giFilterVisible[giSlot] = true;
+      }
+    }
+  }
+
+  const satAirports = weatherAirports.slice(1);
+  if (satAirports.length > 0) {
+    const satAlts: { airportCode: string; altimeter: string }[] = [];
+    for (const code of satAirports) {
+      const obs = getObs(code);
+      if (obs) {
+        satAlts.push({
+          airportCode: obs.icaoId,
+          altimeter: obs.altimeterInHg,
+        });
+      }
+    }
+    if (satAlts.length > 0) {
+      view.airportAltimeters = satAlts;
+    }
+  }
+}
+
+/**
+ * Start periodic METAR polling for a ScopeView.
+ * Returns an unbind/dispose function to stop polling.
+ */
+export function startMetarPolling(
+  view: {
+    primaryAltimeter?: string;
+    airportAltimeters?: { airportCode: string; altimeter: string }[];
+    ssaWeatherAirports?: string[];
+    giTextLines: string[];
+    giFilterVisible: boolean[];
+  },
+  options?: {
+    fetchOptions?: FetchMetarOptions;
+    primaryIcao?: string;
+    giSlot?: number;
+    pollIntervalMs?: number;
+  },
+): () => void {
+  const airports = view.ssaWeatherAirports ?? [];
+  if (airports.length === 0) {
+    return () => {};
+  }
+
+  const intervalMs = options?.pollIntervalMs ?? DEFAULT_METAR_TTL_MS;
+  let active = true;
+
+  const runPoll = async () => {
+    if (!active) return;
+    try {
+      const obsMap = await fetchMetar(airports, options?.fetchOptions);
+      if (active && obsMap.size > 0) {
+        applyMetarToScopeView(view, obsMap, {
+          primaryIcao: options?.primaryIcao,
+          giSlot: options?.giSlot,
+        });
+      }
+    } catch {
+      // Polling errors are swallowed; retains previous state.
+    }
+  };
+
+  // Immediate initial poll
+  void runPoll();
+
+  const timerId = setInterval(() => {
+    void runPoll();
+  }, intervalMs);
+
+  return () => {
+    active = false;
+    clearInterval(timerId);
+  };
+}

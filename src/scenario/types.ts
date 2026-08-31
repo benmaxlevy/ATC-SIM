@@ -205,6 +205,11 @@ export interface Scenario {
    * When omitted, defaults to [icao]. Scenario JSON config only — no runtime command.
    */
   ssaWeatherAirports?: string[];
+  /**
+   * Optional 0-indexed slot (0–9) in giTextLines to populate with live surface METAR summary.
+   * When omitted, no GI slot is dynamically overwritten by weather.
+   */
+  ssaWeatherGiSlot?: number;
   /** `authored` = JSON xy. `star-inbound` = seeded catalog pose. Default authored. */
   spawnPolicy: SpawnPolicy;
   /** Facility navaids / fixes / STAR / approaches. Loaded from `data/<icao>/`. */

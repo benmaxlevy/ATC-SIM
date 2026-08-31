@@ -20,6 +20,7 @@ import {
   loadDcbPrefFromStorage,
   paintPpi,
   parseDigitalMap,
+  startMetarPolling,
 } from "@scope";
 import {
   FPS_DEBUG_ID,
@@ -75,17 +76,24 @@ window.addEventListener("pagehide", () => {
   }
   handles.ptt.dispose();
   handles.caAlertTone.dispose();
+  stopMetarPolling();
 });
 
 // T02-77: authored radarSites ride the same generic scenario bind as MAPS /
 // GI TEXT. Empty catalog stays implicit FUSED. CRC R07 SITE analog; R05 FOA
 // display data; R01 radar-identification wording. Trainer fixtures, not live
 // sensors. No airport-id branch.
+// T02-80: live AviationWeather METAR polling for scenario.ssaWeatherAirports.
 const scopeView = createScopeView(scenario.arpNm.xNm, scenario.arpNm.yNm, {
   digitalMap: parseDigitalMap(scenario.maps),
   giTextLines: scenario.giTextLines,
   radarSites: scenario.radarSites,
   arp: scenario.arp,
+  ssaWeatherAirports: scenario.ssaWeatherAirports,
+});
+const stopMetarPolling = startMetarPolling(scopeView, {
+  primaryIcao: scenario.icao,
+  giSlot: scenario.ssaWeatherGiSlot,
 });
 const prefStore = browserDcbPrefStorage();
 if (prefStore) {

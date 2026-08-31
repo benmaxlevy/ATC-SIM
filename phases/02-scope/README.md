@@ -698,6 +698,16 @@ shipped without weather paint.
 | [T02-71](tickets/T02-71-preview-wx-commands.md) | Preview WX commands | P0 | S | T02-69 | Shipped |
 | [T02-72](tickets/T02-72-brite-wx-wxc-and-acceptance.md) | BRITE WX/WXC and acceptance | P0 | M | T02-70, T02-71 | Shipped |
 
+### Phase 2 addendum (T02-78–80 Real METAR weather and SSA altimeter)
+
+AviationWeather METAR JSON fetch, decode, and cache; SSA Line 3 primary altimeter (`HHMM/SS  XX.XX`); multi-airport satellite altimeter matrix in 3-airport rows; GI TEXT live surface conditions; SSA/GI filter compliance.
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-78](tickets/T02-78-metar-weather-fetch-and-decode.md) | METAR weather fetch and decode | P0 | M | none | Shipped |
+| [T02-79](tickets/T02-79-ssa-primary-and-satellite-altimeter-display.md) | SSA primary and satellite altimeter display | P0 | M | T02-78 | Shipped |
+| [T02-80](tickets/T02-80-weather-gi-text-and-acceptance.md) | Weather GI text and integration acceptance | P0 | M | T02-78, T02-79 | Shipped |
+
 ## Launching an agent
 
 1. Confirm phase 1 README exit is green.
@@ -710,6 +720,7 @@ shipped without weather paint.
 8. TPA / ATPA addendum T02-43 → T02-50 (volumes as data, in-trail pairing, monitor/warning/alert cones, four live DCB cells, PREF v2, `*J`/`*P` chords, integration acceptance). Wake-category minima stay deferred.
 9. Preview Area addendum T02-51 → T02-54 (buffer + INV, INIT/TERM command-then-slew and FLID Enter, `B##`/`B####` beacon select, integration acceptance). Pointouts, TERM CNTL ALL, and MULTIFUNC stay deferred.
 10. Radar sites / PREF / PTL addendum T02-73 → T02-77 (named PREF sets, per-track PTL, RadarSite fixtures, sampler, SITE DCB + SSA word, integration acceptance). WX mosaic stays T02-68–72. Live sensor health, 30 s coast, and aural ATPA stay deferred.
+11. METAR weather & SSA altimeter addendum T02-78 → T02-80 (AviationWeather API, SSA Line 3 primary altimeter, satellite matrix rows, GI weather slot, offline fallback). Wind-in-SSA and paid weather stay deferred.
 
 ## Glossary reminders
 
