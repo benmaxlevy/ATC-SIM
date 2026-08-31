@@ -6,7 +6,7 @@ been started.
 
 ## Scope and display
 
-### Authored radar sites without SITE DCB (T04-45 / T02-75)
+### Authored radar sites without end-to-end SITE acceptance (T04-45 / T02-75 / T02-76)
 
 Visible now: scenario JSON may declare trainer-authored `radarSites` (`id`,
 `name`, `kind` `asr`|`airport`, ENU or lat/lon, `rangeNm` default 60,
@@ -19,13 +19,16 @@ remote ASR using invented trainer ids (`KDEM-APT` / `KDEM-REMOTE`,
 display reports, freezes PPI / datablock / PTL / ATPA pose on the last
 report, records history on report arrival, and paints the frozen FUSED puck,
 MULTI rectangle, and single-site slash. Empty `radarSites` on the scope view
-stays implicit FUSED.
+stays implicit FUSED. MAIN SITE is enabled: submenu FUSED / MULTI / one cap
+per adapted site; MAIN text is `SITE FUSED`, `SITE MULTI`, or `SITE <id>`;
+SSA radar word follows that live mode. PREF persists SITE display mode only
+and falls back to FUSED for an unknown stored site id.
 
 Deliberately missing, each owned by a later ticket:
 
-- SITE DCB caps and a live SSA radar word (T02-76);
 - end-to-end SITE walk, scenario `radarSites` boot onto the view, and
   coverage paints (T02-77).
+- live sensor / network-health telemetry. SSA keeps the `OK/OK/NA` stub.
 
 Constraints later work must keep:
 
@@ -234,8 +237,9 @@ additional duration presets and richer prediction geometry.
 
 ### DCB capabilities currently represented as disabled chrome
 
-The trainer DCB now includes disabled WX, VOL, MODE, SITE, and unpopulated map
-slots. Later implementations may give those cells real behavior:
+The trainer DCB now includes disabled WX, VOL, MODE FSL, and unpopulated map
+slots. SITE is live (FUSED / MULTI / adapted sites). Later implementations
+may give the remaining cells real behavior:
 
 - weather layers and weather-data lifecycle;
 - audio/display mode controls that remain separate from OS volume;
@@ -316,7 +320,7 @@ Deferred to future simulation phases:
 
 ### SSA Multi-Sensor Fusion Telemetry and Network Health
 
-Visible now: SSA header layout rendering alert indicator `[▼]`, subset `(1)`, Zulu time + altimeter, network status + radar mode (`OK/OK/NA FUSED`), beacon blocks, red SPC alerts, range + PTL, dual altitude filters, and satellite airport altimeters.
+Visible now: SSA header layout rendering alert indicator `[▼]`, subset `(1)`, Zulu time + altimeter, network-health stub plus live radar word (`OK/OK/NA FUSED` / `MULTI` / selected site id), beacon blocks, red SPC alerts, range + PTL, dual altitude filters, and satellite airport altimeters. Network health is still the `OK/OK/NA` stub, not live sensors.
 
 Deferred to future simulation phases:
 - **Live Multi-Sensor Radar Health Telemetry**: Dynamic degradation to `NA/NA/NA` with sensor-specific failover when individual radar heads disconnect.

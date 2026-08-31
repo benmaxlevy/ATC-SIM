@@ -3,7 +3,7 @@
  */
 
 import { expect, test } from "vitest";
-import { loadKdem } from "@scenario";
+import { loadKdem, type RadarSite } from "@scenario";
 import { isVideoMapOn, toggleVideoMap } from "./dcbFunctions";
 import {
   DCB_PREF_NAME_MAX_CHARS,
@@ -36,6 +36,18 @@ import {
 import { parseDigitalMap } from "./mapLayers";
 import { createScopeView, setDcbDock } from "./scopeView";
 import { createTrackDisplay } from "./trackDisplay";
+
+function syntheticSite(id: string): RadarSite {
+  return {
+    id,
+    name: id,
+    kind: "asr",
+    xNm: 0,
+    yNm: 0,
+    rangeNm: 60,
+    periodMs: 4800,
+  };
+}
 
 function memoryStorage(): DcbPrefStorage & { data: Map<string, string> } {
   const data = new Map<string, string>();
@@ -404,4 +416,51 @@ test("T02-47 — PREF round-trips five ATPA fields; v1 migrates; v3 and corrupt 
       { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
     ]);
   }
+});
+
+test("T02-76 — PREF round-trips SITE mode; unknown site id falls back to FUSED", () => {
+  const sites = [syntheticSite("ASR-N"), syntheticSite("ASR-S")];
+  const store = memoryStorage();
+  const view = createScopeView(0, 0, { radarSites: sites });
+  view.dcbPref.icao = "KXXX";
+  view.surveillanceMode = { siteId: "ASR-N" };
+  view.ptlByAircraftId.set("ac-1", true);
+  saveDcbPref(view, store);
+  const saved = JSON.parse(store.getItem(dcbPrefStorageKey("KXXX"))!) as {
+    slots: Array<{ body: Record<string, unknown> } | null>;
+  };
+  expect(saved.slots[0]?.body.surveillanceMode).toEqual({ siteId: "ASR-N" });
+  expect(saved.slots[0]?.body).not.toHaveProperty("ptlByAircraftId");
+  expect(JSON.stringify(saved.slots[0]?.body)).not.toMatch(/ptlByAircraftId/);
+
+  const reloaded = createScopeView(0, 0, { radarSites: sites });
+  reloaded.ptlByAircraftId.set("keep", false);
+  loadDcbPrefFromStorage(reloaded, "KXXX", store);
+  expect(reloaded.surveillanceMode).toEqual({ siteId: "ASR-N" });
+  expect(reloaded.ptlByAircraftId.get("keep")).toBe(false);
+  expect(reloaded.ptlByAircraftId.has("ac-1")).toBe(false);
+
+  view.surveillanceMode = "MULTI";
+  saveDcbPref(view, store);
+  const multi = createScopeView(0, 0, { radarSites: sites });
+  loadDcbPrefFromStorage(multi, "KXXX", store);
+  expect(multi.surveillanceMode).toBe("MULTI");
+
+  view.surveillanceMode = { siteId: "ASR-N" };
+  saveDcbPref(view, store);
+  const missingSite = createScopeView(0, 0, { radarSites: [syntheticSite("ASR-S")] });
+  loadDcbPrefFromStorage(missingSite, "KXXX", store);
+  expect(missingSite.surveillanceMode).toBe("FUSED");
+
+  view.surveillanceMode = "MULTI";
+  saveDcbPref(view, store);
+  const emptySites = createScopeView(0, 0, { radarSites: [] });
+  loadDcbPrefFromStorage(emptySites, "KXXX", store);
+  expect(emptySites.surveillanceMode).toBe("FUSED");
+
+  const omitted = serializeDcbPref(createScopeView());
+  delete (omitted as { surveillanceMode?: unknown }).surveillanceMode;
+  const factory = createScopeView(0, 0, { radarSites: sites, surveillanceMode: "MULTI" });
+  applyDcbPref(factory, omitted);
+  expect(factory.surveillanceMode).toBe("FUSED");
 });

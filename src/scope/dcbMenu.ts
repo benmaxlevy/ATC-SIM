@@ -18,7 +18,8 @@ export type DcbMenu =
   | "PREF"
   | "SSA_FILTER"
   | "GI_FILTER"
-  | "TPA_ATPA";
+  | "TPA_ATPA"
+  | "SITE";
 
 export type DcbCellKind = "action" | "toggle" | "spinner" | "submenu" | "disabled";
 

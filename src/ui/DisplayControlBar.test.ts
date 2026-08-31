@@ -31,9 +31,10 @@ import {
   toggleSsaFilter,
   tryApplyAltitudeFilterDigits,
   stepRrInterval,
+  setSurveillanceMode,
   PpiPlaceholder,
 } from "@scope";
-import { loadKdem } from "@scenario";
+import { loadKdem, type RadarSite } from "@scenario";
 import {
   DCB_FONT_PX,
   DCB_HEIGHT_PX,
@@ -254,9 +255,9 @@ test("T02-31 — system cells are inert and all six WX cells are visible", () =>
   for (const id of ["wx1", "wx2", "wx3", "wx4", "wx5", "wx6"]) {
     expect(html).toMatch(new RegExp(`aria-label="${id.toUpperCase()}"[^>]*disabled`));
   }
-  for (const label of ["MODE FSL", "SITE FUSED"]) {
-    expect(html).toMatch(new RegExp(`aria-label="${label}"[^>]*disabled`));
-  }
+  expect(html).toMatch(/aria-label="MODE FSL"[^>]*disabled/);
+  expect(html).toMatch(/aria-label="SITE FUSED"/);
+  expect(html).not.toMatch(/aria-label="SITE FUSED"[^>]*disabled/);
   expect(html).toContain('data-dcb-layout="MAIN"');
   expect(html).toContain('data-dcb-layout-id="map-6"');
 });
@@ -270,7 +271,8 @@ test("T02-32 — physical caps expose raised, pressed, and disabled presentation
   expect(normal).toMatch(/data-dcb-kind="spinner"/);
   expect(normal).not.toContain("#00FF00");
   expect(normal).toMatch(/aria-label="MODE FSL"[^>]*disabled/);
-  expect(normal).toMatch(/aria-label="SITE FUSED"[^>]*disabled/);
+  expect(normal).toMatch(/aria-label="SITE FUSED"/);
+  expect(normal).not.toMatch(/aria-label="SITE FUSED"[^>]*disabled/);
 
   armPlaceCenter(view);
   const pressed = dcbHtml(view);
@@ -884,4 +886,93 @@ test("RANGE spinner traps the cell; PREF submenu traps the DCB boxes; no Pointer
   expect(dcbHtml(view)).toMatch(/data-dcb-cursor-trap="submenu"/);
   armDcbSpinner(view, "BRITE_DCB");
   expect(dcbHtml(view)).toMatch(/data-dcb-cursor-trap="cell"/);
+});
+
+function syntheticSite(id: string): RadarSite {
+  return {
+    id,
+    name: id,
+    kind: "asr",
+    xNm: 0,
+    yNm: 0,
+    rangeNm: 60,
+    periodMs: 4800,
+  };
+}
+
+test("T02-76 — SITE is enabled; empty sites hide MULTI and site caps", () => {
+  const empty = createScopeView();
+  const main = dcbHtml(empty);
+  expect(main).toMatch(/aria-label="SITE FUSED"/);
+  expect(main).not.toMatch(/aria-label="SITE FUSED"[^>]*disabled/);
+  expect(main).toMatch(/data-dcb-cell="site-fused"/);
+  expect(main).toMatch(
+    /data-dcb-kind="submenu"[^>]*data-dcb-cell="site-fused"|data-dcb-cell="site-fused"[^>]*data-dcb-kind="submenu"/,
+  );
+  expect(main).toMatch(/aria-label="MODE FSL"[^>]*disabled/);
+
+  openDcbMenu(empty, "SITE");
+  const emptyMenu = dcbHtml(empty);
+  expect(emptyMenu).toMatch(/data-dcb-menu="SITE"/);
+  expect(emptyMenu).toMatch(/data-dcb-cell="site-mode-fused"/);
+  expect(emptyMenu).not.toMatch(/data-dcb-cell="site-multi"/);
+  expect(emptyMenu).not.toMatch(/data-dcb-site-id=/);
+  expect(emptyMenu).toMatch(/data-dcb-cell="done"/);
+});
+
+test("T02-76 — SITE submenu, MAIN labels, and SSA word follow sampler mode", () => {
+  const sites = [syntheticSite("ASR-N"), syntheticSite("ASR-S")];
+  const view = createScopeView(0, 0, { radarSites: sites });
+  openDcbMenu(view, "SITE");
+  const menu = dcbHtml(view);
+  expect(menu).toMatch(/data-dcb-cell="site-mode-fused"/);
+  expect(menu).toMatch(/data-dcb-cell="site-multi"/);
+  expect(menu).toMatch(/data-dcb-site-id="ASR-N"/);
+  expect(menu).toMatch(/data-dcb-site-id="ASR-S"/);
+  expect(menu).toMatch(/aria-label="FUSED"/);
+  expect(menu).toMatch(/aria-label="MULTI"/);
+  expect(menu).toMatch(/aria-label="ASR-N"/);
+  expect(menu).toMatch(/aria-label="ASR-S"/);
+
+  setSurveillanceMode(view, "MULTI");
+  closeDcbMenu(view);
+  expect(dcbHtml(view)).toMatch(/aria-label="SITE MULTI"/);
+  expect(dcbHtml(view)).not.toMatch(/aria-label="SITE MULTI"[^>]*disabled/);
+  expect(
+    buildSsaLines({
+      simTimeMs: 0,
+      rangeNm: view.camera.rangeNm,
+      offCenter: false,
+      filter: view.altitudeFilter,
+      filterEntry: view.filterEntry,
+      surveillanceMode: "MULTI",
+    }),
+  ).toContain("OK/OK/NA MULTI");
+
+  setSurveillanceMode(view, { siteId: "ASR-N" });
+  expect(dcbHtml(view)).toMatch(/aria-label="SITE ASR-N"/);
+  expect(
+    buildSsaLines({
+      simTimeMs: 0,
+      rangeNm: view.camera.rangeNm,
+      offCenter: false,
+      filter: view.altitudeFilter,
+      filterEntry: view.filterEntry,
+      surveillanceMode: "ASR-N",
+    }),
+  ).toContain("OK/OK/NA ASR-N");
+
+  expect(view.surveillanceMode).toEqual({ siteId: "ASR-N" });
+  expect(MAIN_DCB_LAYOUT.find((cell) => cell.id === "site-fused")?.kind).toBe("submenu");
+  expect(MAIN_DCB_LAYOUT.find((cell) => cell.id === "mode-fsl")?.kind).toBe("disabled");
+});
+
+test("T02-76 — SITE comments cite R07, R05, and the CRC-to-trainer lift", () => {
+  const src = barSrc();
+  expect(src).toMatch(/R07/);
+  expect(src).toMatch(/R05/);
+  expect(src).toMatch(/FUSION-only analog/);
+  expect(src).toMatch(/radarSites/);
+  expect(src).toMatch(/adapted/);
+  expect(src).not.toMatch(/from\s+["']@parse["']/);
 });

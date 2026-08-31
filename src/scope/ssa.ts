@@ -8,6 +8,11 @@
  * fields; GI TEXT FILTER toggles facility-authored general-information lines
  * (ATIS letter stub, runway in use). Not a HUD, caption, tooltip, or METAR panel.
  * No live weather fetch. Altitude FILTER on MAIN is the Mode C window, not SSA FILTER.
+ *
+ * T02-76 radar word: CRC R07 SITE is disabled in its FUSION-only analog. This
+ * trainer lifts SITE (FUSED / MULTI / adapted site id). SSA shows `OK/OK/NA`
+ * plus the live mode word. Network health is the stub — not live sensors
+ * (R05 FOA STARS display data).
  */
 
 import { formatFilterReadout, type AltitudeFilter, type FilterEntry } from "./altitudeFilter";
@@ -16,8 +21,16 @@ import { formatDcbRangeReadout, type RangeNm } from "./camera";
 /** Default primary altimeter setting. */
 export const SSA_ALTIMETER_STUB = "30.17";
 
-/** Static fused-status stub. Not a live radar health system. */
-export const SSA_FUSED_STUB = "OK/OK/NA FUSED";
+/** Network-health stub. Not live sensor / radar-head telemetry. */
+export const SSA_NETWORK_HEALTH_STUB = "OK/OK/NA";
+
+/** Default fused-status line. Radar word is live; health stays this stub. */
+export const SSA_FUSED_STUB = `${SSA_NETWORK_HEALTH_STUB} FUSED`;
+
+/** `OK/OK/NA` plus live `FUSED` / `MULTI` / site id. Health is never live. */
+export function formatSsaRadarStatus(radarWord: string = "FUSED"): string {
+  return `${SSA_NETWORK_HEALTH_STUB} ${radarWord}`;
+}
 
 /** Default configured terminal airport altimeters. */
 export const DEFAULT_SSA_AIRPORT_ALTIMETERS: { airportCode: string; altimeter: string }[] = [
@@ -174,7 +187,7 @@ export function buildSsaRenderLines(input: SsaInput): SsaRenderLine[] {
 
   // 4. System / Network Status + Radar Mode: OK/OK/NA FUSED
   if (vis.STATUS) {
-    const netStatus = input.systemStatus ?? "OK/OK/NA";
+    const netStatus = input.systemStatus ?? SSA_NETWORK_HEALTH_STUB;
     const mode = input.surveillanceMode ?? "FUSED";
     result.push({
       text: `${netStatus} ${mode}`,

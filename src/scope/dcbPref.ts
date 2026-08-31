@@ -13,6 +13,12 @@
  * Display snapshot only — never Command IR, speech prefs, command-line text,
  * or world kinematics.
  *
+ * PREF may persist SITE display mode only (T02-76). Stored site IDs are
+ * validated against current adapted `radarSites`; unknown → FUSED. Per-track
+ * PTL (`ptlByAircraftId`) and per-track TPA stay session state, not PREF.
+ * CRC R07 SITE is disabled in its FUSION-only analog; this trainer lifts
+ * FUSED / MULTI / adapted sites (R05 FOA display data).
+ *
  * Scope display state only. Never a Command, readback, or intent.
  */
 
@@ -33,6 +39,7 @@ import {
   type TpaRadiusNm,
   type TpaState,
 } from "./tpa";
+import { resolveSurveillancePref, type SurveillanceMode } from "./surveillance";
 
 export type DcbDock = "TOP" | "LEFT" | "RIGHT" | "BOTTOM";
 
@@ -108,6 +115,8 @@ export interface DcbPrefBody {
   giFilterVisible: boolean[];
   tpa: TpaState;
   atpa: AtpaState;
+  /** SITE display mode only. Per-track PTL / TPA are not stored. */
+  surveillanceMode: SurveillanceMode;
 }
 
 export interface DcbPrefSlot {
@@ -287,6 +296,7 @@ export function serializeDcbPref(view: ScopeView): DcbPrefBody {
       alertCones: view.atpa.alertCones,
       monitorCones: view.atpa.monitorCones,
     },
+    surveillanceMode: view.surveillanceMode,
   };
 }
 
@@ -358,6 +368,7 @@ export function applyDcbPref(view: ScopeView, body: DcbPrefBody): void {
     alertCones: body.atpa?.alertCones !== false,
     monitorCones: body.atpa?.monitorCones !== false,
   };
+  view.surveillanceMode = resolveSurveillancePref(body.surveillanceMode, view.radarSites);
   view.mapCache = null;
 }
 

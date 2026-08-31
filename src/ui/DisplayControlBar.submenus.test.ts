@@ -15,7 +15,7 @@ import {
 } from "@scope";
 
 describe("DCB submenus functional suite", () => {
-  it("opens and closes BRITE, CHAR SIZE, SSA FILTER, GI FILTER, MAPS, PREF, and TPA_ATPA submenus", () => {
+  it("opens and closes BRITE, CHAR SIZE, SSA FILTER, GI FILTER, MAPS, PREF, TPA_ATPA, and SITE submenus", () => {
     const view = createScopeView();
     expect(view.dcbMenu).toBe("MAIN");
 
@@ -51,6 +51,11 @@ describe("DCB submenus functional suite", () => {
 
     openDcbMenu(view, "TPA_ATPA");
     expect(view.dcbMenu).toBe("TPA_ATPA");
+    closeDcbMenu(view);
+    expect(view.dcbMenu).toBe("MAIN");
+
+    openDcbMenu(view, "SITE");
+    expect(view.dcbMenu).toBe("SITE");
     closeDcbMenu(view);
     expect(view.dcbMenu).toBe("MAIN");
   });

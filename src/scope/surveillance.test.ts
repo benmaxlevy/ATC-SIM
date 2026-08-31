@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { createWorld, makeTestAircraft, stepWorld } from "@core";
 import { HISTORY_MAX_DOTS, createHistoryBuf, recordHistoryOnReport } from "./history";
-import { createScopeView } from "./scopeView";
+import { createScopeView, setSurveillanceMode } from "./scopeView";
 import { renderScope } from "./renderScope";
 import { syncTrackDisplays } from "./trackDisplay";
 import { nmToScreen } from "./camera";
@@ -17,6 +17,12 @@ import {
   defaultSurveillanceMode,
   displayReportFor,
   effectiveSurveillanceMode,
+  formatDcbSiteLabel,
+  parseSurveillanceMode,
+  resolveSurveillancePref,
+  siteDcbChoices,
+  surveillanceModeWord,
+  surveillanceModesEqual,
   horizontalRangeNm,
   isInSurveillanceCoverage,
   multiRectCorners,
@@ -306,6 +312,46 @@ test("AC1 — createScopeView boots FUSED with empty radarSites", () => {
   const view = createScopeView();
   expect(view.surveillanceMode).toBe("FUSED");
   expect(view.radarSites).toEqual([]);
+});
+
+test("T02-76 — SITE labels, empty-site choices, and PREF site-id fallback", () => {
+  expect(surveillanceModeWord("FUSED")).toBe("FUSED");
+  expect(surveillanceModeWord("MULTI")).toBe("MULTI");
+  expect(surveillanceModeWord({ siteId: "ASR-N" })).toBe("ASR-N");
+  expect(formatDcbSiteLabel("FUSED")).toBe("SITE FUSED");
+  expect(formatDcbSiteLabel("MULTI")).toBe("SITE MULTI");
+  expect(formatDcbSiteLabel({ siteId: "ASR-N" })).toBe("SITE ASR-N");
+  expect(surveillanceModesEqual("FUSED", "FUSED")).toBe(true);
+  expect(surveillanceModesEqual({ siteId: "A" }, { siteId: "A" })).toBe(true);
+  expect(surveillanceModesEqual({ siteId: "A" }, { siteId: "B" })).toBe(false);
+
+  expect(siteDcbChoices([])).toEqual(["FUSED"]);
+  const rows = [site({ id: "ASR-N", xNm: 0, yNm: 0 }), site({ id: "ASR-S", xNm: 10, yNm: 0 })];
+  expect(siteDcbChoices(rows)).toEqual([
+    "FUSED",
+    "MULTI",
+    { siteId: "ASR-N" },
+    { siteId: "ASR-S" },
+  ]);
+
+  expect(parseSurveillanceMode("MULTI")).toBe("MULTI");
+  expect(parseSurveillanceMode({ siteId: "ASR-N" })).toEqual({ siteId: "ASR-N" });
+  expect(parseSurveillanceMode({ siteId: "" })).toBe("FUSED");
+  expect(parseSurveillanceMode(null)).toBe("FUSED");
+  expect(resolveSurveillancePref({ siteId: "GONE" }, rows)).toBe("FUSED");
+  expect(resolveSurveillancePref({ siteId: "ASR-N" }, rows)).toEqual({ siteId: "ASR-N" });
+  expect(resolveSurveillancePref("MULTI", [])).toBe("FUSED");
+
+  const view = createScopeView(0, 0, { radarSites: rows });
+  setSurveillanceMode(view, { siteId: "ASR-S" });
+  expect(view.surveillanceMode).toEqual({ siteId: "ASR-S" });
+  setSurveillanceMode(view, { siteId: "GONE" });
+  expect(view.surveillanceMode).toBe("FUSED");
+  setSurveillanceMode(view, "MULTI");
+  expect(view.surveillanceMode).toBe("MULTI");
+  const empty = createScopeView();
+  setSurveillanceMode(empty, "MULTI");
+  expect(empty.surveillanceMode).toBe("FUSED");
 });
 
 test("AC2 — PPI, datablock, and PTL use last report pose, not 20 Hz world", () => {

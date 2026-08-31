@@ -14,6 +14,11 @@
  * World / FMS / CA / MSAW stay 20 Hz truth. Display consumers (PPI symbol,
  * datablock, PTL, ATPA cones) use last report pose only. History dots record
  * on report arrival. Not a live sensor. Not NAS STARS.
+ *
+ * T02-76 DCB/SSA: CRC R07 SITE is disabled in its FUSION-only analog. This
+ * trainer lifts SITE to FUSED / MULTI / one adapted site id. SSA radar word
+ * follows that live mode. Network health stays the `OK/OK/NA` stub — not live
+ * sensors (R05 display-data wording; FOA STARS chapter).
  */
 
 import { isImplicitFusedSurveillance } from "@scenario";
@@ -93,6 +98,57 @@ export function isFusedMode(mode: SurveillanceMode): boolean {
 
 export function selectedSiteId(mode: SurveillanceMode): string | null {
   return typeof mode === "object" ? mode.siteId : null;
+}
+
+/** SSA / MAIN second word: `FUSED`, `MULTI`, or the selected site id. */
+export function surveillanceModeWord(mode: SurveillanceMode): string {
+  return typeof mode === "object" ? mode.siteId : mode;
+}
+
+/** MAIN SITE text. Exactly `SITE FUSED`, `SITE MULTI`, or `SITE <id>`. */
+export function formatDcbSiteLabel(mode: SurveillanceMode): string {
+  return `SITE ${surveillanceModeWord(mode)}`;
+}
+
+export function surveillanceModesEqual(a: SurveillanceMode, b: SurveillanceMode): boolean {
+  const aId = selectedSiteId(a);
+  const bId = selectedSiteId(b);
+  if (aId != null || bId != null) {
+    return aId != null && aId === bId;
+  }
+  return a === b;
+}
+
+/**
+ * SITE submenu choices. Empty / missing sites keep FUSED only and hide
+ * MULTI plus every site-specific cap.
+ */
+export function siteDcbChoices(sites: readonly RadarSite[]): SurveillanceMode[] {
+  if (isImplicitFusedSurveillance(sites)) {
+    return ["FUSED"];
+  }
+  return ["FUSED", "MULTI", ...sites.map((site) => ({ siteId: site.id }))];
+}
+
+export function parseSurveillanceMode(value: unknown): SurveillanceMode {
+  if (value === "FUSED" || value === "MULTI") {
+    return value;
+  }
+  if (value !== null && typeof value === "object") {
+    const siteId = (value as { siteId?: unknown }).siteId;
+    if (typeof siteId === "string" && siteId.length > 0) {
+      return { siteId };
+    }
+  }
+  return "FUSED";
+}
+
+/** PREF restore: unknown / unavailable site id falls back to FUSED. */
+export function resolveSurveillancePref(
+  value: unknown,
+  sites: readonly RadarSite[],
+): SurveillanceMode {
+  return effectiveSurveillanceMode(parseSurveillanceMode(value), sites);
 }
 
 /**

@@ -91,7 +91,11 @@ import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers
 import { cloneBrite, type BriteState } from "./palette";
 import type { TrackDisplay } from "./trackDisplay";
 import type { RadarSite } from "@scenario";
-import { defaultSurveillanceMode, type SurveillanceMode } from "./surveillance";
+import {
+  defaultSurveillanceMode,
+  effectiveSurveillanceMode,
+  type SurveillanceMode,
+} from "./surveillance";
 
 import {
   DEFAULT_SYSTEM_LIST_PLACEMENTS,
@@ -352,9 +356,9 @@ export function createScopeView(
   };
 }
 
-/** Sampler mode only. SITE DCB caps stay T02-76. */
+/** Bind SITE DCB / PREF to the T02-75 sampler. Unknown site id → FUSED. */
 export function setSurveillanceMode(view: ScopeView, mode: SurveillanceMode): void {
-  view.surveillanceMode = mode;
+  view.surveillanceMode = effectiveSurveillanceMode(mode, view.radarSites);
 }
 
 export function setBeaconatorActive(view: ScopeView, active: boolean): void {

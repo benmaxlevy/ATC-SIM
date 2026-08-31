@@ -17,7 +17,7 @@
  * selected yellow box independent of ownership. CHAR SIZE is per-subsystem
  * (DATA BLOCKS / LISTS / DCB / TOOLS / POS) on IBM Plex Mono. BRITE multiplies
  * each drawn channel; WX/WXC/BKC do not paint weather. SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
- * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. Live `*` TPA/ATPA chord
+ * FILTER, RANGE, OFF CNTR, `OK/OK/NA` plus live SITE radar word) — not world-fixed. Live `*` TPA/ATPA chord
  * buffer paints next to FILTER in SSA/preview green (same FIL-prompt grammar).
  * Current CA displays static `CA` + tone from `world.alerts` and paints red. T04-10 MSAW paints a yellow then red `MSAW` tag the same way; neither tints the block, leader, or target. CA halo is
  * **not** drawn: CRC conflict-alert CA is static `CA` text + tone, not a 3 NM circle
@@ -81,7 +81,8 @@ import {
   tpaRingsToPaint,
   tpaSizeReadoutEnabled,
 } from "./tpa";
-import { buildGiLines, buildSsaRenderLines } from "./ssa";
+import { buildGiLines, buildSsaRenderLines, SSA_NETWORK_HEALTH_STUB } from "./ssa";
+import { effectiveSurveillanceMode, surveillanceModeWord } from "./surveillance";
 import { buildMapListLines } from "./dcbFunctions";
 import type { TrackOwnership } from "./ownership";
 import { BLINK_HALF_PERIOD_MS, PALETTE, applyBrite, caDatablockTagVisible } from "./palette";
@@ -1078,6 +1079,10 @@ function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): 
     hasAlert: Boolean(hasAlert),
     airportCode: airportId,
     crdaRpcStatus,
+    systemStatus: SSA_NETWORK_HEALTH_STUB,
+    surveillanceMode: surveillanceModeWord(
+      effectiveSurveillanceMode(view.surveillanceMode, view.radarSites),
+    ),
   });
   const giLines = buildGiLines(view.giTextLines, view.giFilterVisible);
 

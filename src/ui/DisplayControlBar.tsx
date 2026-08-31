@@ -16,7 +16,10 @@
  * MAIN quick video maps 1–6; MAPS submenu slots 1–32 (KDEM) or group
  * submenu 7–38. Empty slots disabled. Group cells show CRC starsId plus short name.
  * WX1–6 are disabled chrome (no precipitation). Disabled CRDA cell on SSA FILTER
- * is chrome only. PREF is 32 local slots (not a NAS host). SAVE AS names via
+ * is chrome only. MAIN SITE opens FUSED / MULTI / one cap per adapted
+ * `radarSites` row (R05 FOA display data). CRC R07 SITE is disabled in its
+ * FUSION-only analog; this trainer lifts that. Empty sites keep FUSED only.
+ * MODE FSL stays disabled. PREF is 32 local slots (not a NAS host). SAVE AS names via
  * the preview-area buffer (R07 analog; no window.prompt / HTML input). MAIN
  * PREF shows the active set name. No CSA / FMA (R06). Discrete **range** presets only.
  * CHAR SIZE scales **datablock** / lists / DCB / tools / POS. BRITE multiplies
@@ -118,6 +121,12 @@ import {
   toggleSsaFilter,
   toggleVideoMap,
   videoMapByDcbNumber,
+  effectiveSurveillanceMode,
+  formatDcbSiteLabel,
+  setSurveillanceMode,
+  siteDcbChoices,
+  surveillanceModeWord,
+  surveillanceModesEqual,
   type BriteChannel,
   type CharSizeChannel,
   type CharSizes,
@@ -154,7 +163,16 @@ export const DCB_BRITE_READOUT_ID = "dcb-brite-readout";
 export const DCB_HISTORY_READOUT_ID = "dcb-history-readout";
 export const DCB_PTL_MINUTES_READOUT_ID = "dcb-ptl-minutes-readout";
 export const DCB_TPA_MI_READOUT_ID = "dcb-tpa-mi-readout";
+export const DCB_SITE_READOUT_ID = "dcb-site-readout";
 export const DCB_RNG_READOUT_ID = DCB_RANGE_READOUT_ID;
+
+function liveSiteMode(view: ScopeView) {
+  return effectiveSurveillanceMode(view.surveillanceMode, view.radarSites);
+}
+
+function liveSiteLabel(view: ScopeView): string {
+  return formatDcbSiteLabel(liveSiteMode(view));
+}
 
 export interface DisplayControlBarProps {
   view: ScopeView;
@@ -390,6 +408,23 @@ export function syncDisplayControlBar(
   setPressed(doc.querySelector('[data-dcb-cell="atpa-intrail"]'), view.atpa.inTrailDistance);
   setPressed(doc.querySelector('[data-dcb-cell="atpa-alert"]'), view.atpa.alertCones);
   setPressed(doc.querySelector('[data-dcb-cell="atpa-monitor"]'), view.atpa.monitorCones);
+  setPressed(doc.querySelector('[data-dcb-cell="site-fused"]'), view.dcbMenu === "SITE");
+  setPressed(
+    doc.querySelector('[data-dcb-cell="site-mode-fused"]'),
+    surveillanceModesEqual(liveSiteMode(view), "FUSED"),
+  );
+  setPressed(
+    doc.querySelector('[data-dcb-cell="site-multi"]'),
+    surveillanceModesEqual(liveSiteMode(view), "MULTI"),
+  );
+  const siteWord = surveillanceModeWord(liveSiteMode(view));
+  setText(DCB_SITE_READOUT_ID, siteWord);
+  for (const el of doc.querySelectorAll("[data-dcb-site-id]")) {
+    const siteId = el.getAttribute("data-dcb-site-id");
+    if (siteId) {
+      setPressed(el, surveillanceModesEqual(liveSiteMode(view), { siteId }));
+    }
+  }
 }
 
 interface DcbCellProps {
@@ -478,6 +513,10 @@ interface DcbCellProps {
     | "atpa-intrail"
     | "atpa-monitor"
     | "atpa-alert"
+    | "site-fused"
+    | "site-mode-fused"
+    | "site-multi"
+    | "site-choice"
     | "pref"
     | `pref-${number}`
     | "pref-default"
@@ -488,6 +527,7 @@ interface DcbCellProps {
   dataMapId?: string;
   dataMapSlot?: number;
   dataGiSlot?: number;
+  dataSiteId?: string;
 }
 
 export interface MainDcbLayoutCell {
@@ -535,7 +575,7 @@ export const MAIN_DCB_LAYOUT: readonly MainDcbLayoutCell[] = [
   { id: "char", row: 1, column: 17, rowSpan: 2, kind: "submenu", label: "CHAR SIZE" },
   { id: "mode-fsl", row: 1, column: 18, rowSpan: 2, kind: "disabled", label: "MODE FSL" },
   { id: "pref", row: 1, column: 19, rowSpan: 2, kind: "submenu", label: "PREF" },
-  { id: "site-fused", row: 1, column: 20, rowSpan: 2, kind: "disabled", label: "SITE FUSED" },
+  { id: "site-fused", row: 1, column: 20, rowSpan: 2, kind: "submenu", label: "SITE FUSED" },
   { id: "ssa-filter", row: 1, column: 21, rowSpan: 1, kind: "submenu", label: "SSA FILTER" },
   { id: "gi-text", row: 2, column: 21, rowSpan: 1, kind: "submenu", label: "GI TEXT FILTER" },
   { id: "shift", row: 1, column: 22, rowSpan: 2, kind: "action", label: "SHIFT" },
@@ -554,6 +594,7 @@ function DcbCell({
   dataMapId,
   dataMapSlot,
   dataGiSlot,
+  dataSiteId,
 }: DcbCellProps) {
   const inert = disabled || kind === "disabled";
   const [flashing, setFlashing] = useState(false);
@@ -630,6 +671,7 @@ function DcbCell({
       data-dcb-map-id={dataMapId}
       data-dcb-map-slot={dataMapSlot}
       data-dcb-gi-slot={dataGiSlot}
+      data-dcb-site-id={dataSiteId}
       data-dcb-ptl={dataDcb === "ptl" ? "" : undefined}
       data-dcb-hist={dataDcb === "hist" ? "" : undefined}
       data-dcb-cell={dataDcb}
@@ -748,6 +790,97 @@ function renderPrefOpener(view: ScopeView, onChange: () => void) {
       <span className="dcb-cell-line">PREF</span>
       <span className="dcb-cell-line">{readout}</span>
     </DcbCell>
+  );
+}
+
+function renderSiteOpener(view: ScopeView, onChange: () => void) {
+  const label = liveSiteLabel(view);
+  const word = surveillanceModeWord(liveSiteMode(view));
+  return (
+    <DcbCell
+      kind="submenu"
+      ariaLabel={label}
+      dataDcb="site-fused"
+      pressed={view.dcbMenu === "SITE"}
+      onClick={() => {
+        cancelFilterIfEntering(view);
+        openDcbMenu(view, "SITE");
+        afterCell(onChange);
+      }}
+    >
+      <span className="dcb-cell-line">SITE</span>
+      <span id={DCB_SITE_READOUT_ID} className="dcb-cell-line">
+        {word}
+      </span>
+    </DcbCell>
+  );
+}
+
+function siteChoiceDataDcb(
+  mode: ReturnType<typeof liveSiteMode>,
+): "site-mode-fused" | "site-multi" | "site-choice" {
+  if (mode === "FUSED") {
+    return "site-mode-fused";
+  }
+  if (mode === "MULTI") {
+    return "site-multi";
+  }
+  return "site-choice";
+}
+
+function renderSite(view: ScopeView, onChange: () => void) {
+  const selected = liveSiteMode(view);
+  const choices = siteDcbChoices(view.radarSites);
+  return (
+    <div className="dcb-main-grid" data-dcb-layout="SITE">
+      {/*
+        R07 CRC SITE is disabled in its FUSION-only analog. This trainer
+        lifts FUSED / MULTI / one cap per adapted radarSites row (R05 FOA
+        display data). Empty catalog hides MULTI and site-specific caps.
+        Network health is not live sensors. Clicks bind T02-75 sampler mode.
+      */}
+      {choices.map((mode, index) => {
+        const word = surveillanceModeWord(mode);
+        const siteId = typeof mode === "object" ? mode.siteId : undefined;
+        const dataDcb = siteChoiceDataDcb(mode);
+        return (
+          <div
+            key={word}
+            className="dcb-main-grid-cell"
+            data-dcb-layout-id={dataDcb === "site-choice" ? `site-${word}` : dataDcb}
+            data-dcb-row={1}
+            data-dcb-column={index + 1}
+            data-dcb-row-span={2}
+            style={{ gridColumn: index + 1, gridRow: "1 / span 2" }}
+          >
+            <DcbCell
+              kind="toggle"
+              ariaLabel={word}
+              dataDcb={dataDcb}
+              dataSiteId={siteId}
+              pressed={surveillanceModesEqual(selected, mode)}
+              onClick={() => {
+                cancelFilterIfEntering(view);
+                setSurveillanceMode(view, mode);
+                afterCell(onChange);
+              }}
+            >
+              <span className="dcb-cell-line">{word}</span>
+            </DcbCell>
+          </div>
+        );
+      })}
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="done"
+        data-dcb-row={1}
+        data-dcb-column={choices.length + 1}
+        data-dcb-row-span={2}
+        style={{ gridColumn: choices.length + 1, gridRow: "1 / span 2" }}
+      >
+        {renderDone(view, onChange)}
+      </div>
+    </div>
   );
 }
 
@@ -1054,6 +1187,8 @@ function renderPhysicalMain(
         );
       case "pref":
         return renderPrefOpener(view, onChange);
+      case "site-fused":
+        return renderSiteOpener(view, onChange);
       case "ssa-filter":
         return (
           <DcbCell
@@ -1094,10 +1229,7 @@ function renderPhysicalMain(
         if (id.startsWith("map-")) {
           return renderMapSlot(view, onChange, Number(id.slice(4)));
         }
-        return disabled(
-          id,
-          id === "mode-fsl" ? "MODE FSL" : id === "site-fused" ? "SITE FUSED" : id.toUpperCase(),
-        );
+        return disabled(id, id === "mode-fsl" ? "MODE FSL" : id.toUpperCase());
     }
   };
   return (
@@ -3199,7 +3331,9 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
                       ? renderGiFilter(view, onChange)
                       : menu === "PREF"
                         ? renderPref(view, onChange)
-                        : renderPhysicalMain(view, onChange, world)}
+                        : menu === "SITE"
+                          ? renderSite(view, onChange)
+                          : renderPhysicalMain(view, onChange, world)}
       {trap.cursor ? (
         <div
           className="dcb-trapped-cursor"
