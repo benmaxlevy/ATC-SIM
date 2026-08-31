@@ -2,7 +2,7 @@
 
 Press **`F1`** in the app for the keyboard overlay. That overlay is a subset. This file is the complete radio and Preview Area reference.
 
-Voice install (Python 3.11+, local weights): [`speech-api/README.md`](../speech-api/README.md).
+Voice: [`speech-api/README.md`](../speech-api/README.md) (local models).
 
 ## URL query parameters
 

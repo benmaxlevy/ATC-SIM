@@ -11,7 +11,7 @@ Ticket-normative contracts stay in [`phases/_shared/`](../phases/_shared/archite
 | Demo Facility | KDEM (fictional Demo Field). Mag var 0°. Field elev 0 ft. Runway 27. ILS id `ILS27`. ARP 0°N, 0°E. |
 | Coordinates | Local ENU NM; T00-04 documents formulas. |
 | Command IR | Radio-only; types match [`phases/_shared/command-ir.md`](../phases/_shared/command-ir.md). |
-| SpeechPort | Adapter; `null` in phase 0. Quality path is **our** [`speech-api`](../speech-api/README.md) (HF weights). No paid STT/TTS vendors. |
+| SpeechPort | Adapter. Quality path: local [`speech-api`](../speech-api/README.md). |
 | Scope vs radio | Scope commands never produce a Readback. |
 | v1 traffic | Single-player simulated aircraft. No VATSIM/MSFS live traffic. |
 
@@ -26,7 +26,7 @@ Single Vite app. Folders under `src/`, not a monorepo.
 | `src/pilot` | Validation, readback templates, intent apply |
 | `src/scope` | Canvas PPI, maps, datablocks, scope keys |
 | `src/speech` | SpeechPort impls, capture, radio graph |
-| `speech-api/` | Local HTTP: Qwen3-ASR STT + Piper TTS; Path C `/parse`. Hub weights on disk |
+| `speech-api/` | Local HTTP STT/TTS and Path C `/parse` |
 | `src/scenario` | Airport, spawn, maps JSON — see [`src/scenario/README.md`](../src/scenario/README.md) |
 | `src/ui` | Shell, command line, strips, settings |
 
@@ -104,7 +104,7 @@ flowchart TD
 2. **60 FPS Canvas2D scope**: PPI paints tracks, history, leaders, datablocks, J-rings, and vector maps.
 3. **React TCW shell**: DCB, strips, command line, SSA, menus.
 
-Speech install, endpoints, Path C, banned vendors: [`speech-api/README.md`](../speech-api/README.md).
+Speech setup: [`speech-api/README.md`](../speech-api/README.md).
 
 ## Parse pipeline
 
