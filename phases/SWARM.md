@@ -90,6 +90,45 @@ Notes: <retrieve+margin; ungrounded miss; Path C candidates not slice-64; STT he
 
 or `PHASE EXIT BLOCKED` with reason.
 
+## Twentieth swarm execution — 2026-08-30 (catalog retrieve, margin snap, Path C candidates)
+
+Human invoked `/run-swarm` with **cursor grok 4.6 high (non-fast)**. Execute
+**T03-16–20** only. Planning is the twentieth swarm section above (tickets
+under `phases/03-voice/tickets/`). Captain squash-merges each ticket onto
+**`master`**. Do **not** start phase 5. Do **not** redo T04-36–42. Do **not**
+push.
+
+Role: **captain** owns the merge lock on `master`. Isolated worktrees. At
+most three workers. Wait for terminal `READY TO MERGE` or `BLOCKED`. Every
+captain and worker spawn must set `model: "cursor-grok-4.6-high"`. Non-fast.
+
+Prerequisite before Wave A: squash-merge
+`fix/katl-spoken-approach-and-fix-grounding` onto `master` if that unique
+snap (CIFP `I26R` / Haynes→`HAINZ` / AJ→`AJAAY`, local cap 4096) is not
+already there. Land planning tickets (`chore/T03-16-20-catalog-retrieve-swarm`)
+on `master` so workers see T03-16–20 files. Do not re-implement the snap.
+
+Preflight: preserve untracked `.cursor/rules/caveman-ultra.mdc` and `e2e/`
+QA artifacts. Do not reset/clean. Do not touch speech vendor rules, phase 5,
+or unrelated tickets.
+
+Execution waves:
+
+1. T03-16
+2. T03-17 ∥ T03-19
+3. T03-18
+4. T03-20
+
+Product law: retrieve then maybe Path C; floor+margin snap, never raw
+argmax; ungrounded identifier is a local miss; Path C `fixes=` is an 8–16
+retrieved cluster, not `ids().slice(0, 64)`; STT header is not a search
+index; one salvage model (`POST /parse`); unique Haynes/AJ/ILS26R stay
+local; synthetic tests only; no paid LLM hosts.
+
+No push. Stop after T03-20. Captain runs `npm run ci` after each merge and
+at phase exit, appends `SWARM-STATUS.md`, and returns the exact phase
+result format above.
+
 ---
 
 ## Nineteenth swarm planned — 2026-08-29 (CRC A80 videomap import)
