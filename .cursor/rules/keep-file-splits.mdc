@@ -1,0 +1,28 @@
+---
+description: Keep DCB, PPI paint, and preview splits; do not grow orchestrators
+globs: src/ui/DisplayControlBar.tsx,src/ui/dcbChrome.tsx,src/ui/DisplayControlBarMenus.tsx,src/ui/dcbLayouts.ts,src/scope/renderScope.ts,src/scope/renderScopePaint.ts,src/scope/previewArea.ts,src/scope/previewParse.ts,src/parse/spoken/pattern-matcher.ts,src/scope/scopeKeys.ts
+alwaysApply: false
+---
+
+# Keep shipped file splits
+
+These files were split so one module stays an orchestrator. Do not dump the
+extracted bodies back in.
+
+| Keep thin | Lives in |
+| --- | --- |
+| `DisplayControlBar.tsx` | Public bar, MAIN grid, `syncDisplayControlBar` re-exports |
+| `dcbLayouts.ts` | MAIN cell data |
+| `dcbChrome.tsx` | `DcbCell`, shared caps, SITE |
+| `DisplayControlBarMenus.tsx` | AUX + MAPS/PREF/CHAR/BRITE/… |
+| `renderScope.ts` | Draw **order** only: maps → wx → tracks → SSA/lists |
+| `renderScopePaint.ts` | Paint stages |
+| `previewArea.ts` | Idle/entry/armed, slew apply, keys |
+| `previewParse.ts` | Buffer grammar / `parsePreviewCommand` |
+
+DCB clicks still call `@scope` only. Never Command IR from the bar. Re-export
+`MAIN_DCB_LAYOUT` from `DisplayControlBar`.
+
+**Do not split** `pattern-matcher.ts` or `scopeKeys.ts` (high-regression
+routers). New behavior there stays in those files unless a later ticket says
+otherwise.

@@ -15,7 +15,7 @@ Required operating sequence:
 
 1. Read `SWARM.md`, `SWARM-STATUS.md`, the role prompt, the phase README, and the relevant ticket before spawning or editing.
 2. On `master`, verify status and branch ancestry. Preserve unrelated dirty files and untracked QA artifacts; do not reset or clean them.
-3. Obey the configured max workers (currently 3), wave order, dependency gates, skipped-ticket list, model requirement, and stop phase. Same-wave workers use separate sibling worktrees from current `master`.
+3. Obey the configured max workers (currently 3), wave order, dependency gates, skipped-ticket list, model requirement, and stop phase. Same-wave workers use separate sibling worktrees from current `master`. If Task spawn fails with `Named models unavailable` / Free plan Auto only, stop the swarm and report `BLOCKED` — do not retry named slugs (see `subagent-models.mdc`).
 4. Do not let a background worker end the captain/orchestrator turn. Wait for its terminal `READY TO MERGE` or `BLOCKED` result.
 5. After every captain merge, run the required tests before starting the next wave. If tests fail, stop new waves and use one narrowly scoped fix worker; do not absorb the ticket into the captain.
 6. Never merge stale work without rebasing or respawning it from the updated `master`. On conflicts, stop and report `BLOCKED`; never force or skip hooks.

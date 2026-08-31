@@ -1,0 +1,21 @@
+---
+description: Do not spawn named-model Task subagents that this plan cannot run
+alwaysApply: true
+---
+
+# Subagent models
+
+This Cursor plan can run **Auto only**. Named Task `model` slugs fail with
+`Named models unavailable Free plans can only use Auto`.
+
+- **Omit** the Task `model` field (inherit/Auto). Do not pass
+  `cursor-grok-4.6-high`, `composer-2.5-fast`, `gpt-5.6-*`, Claude, Gemini, or
+  any other named slug unless the user can actually run that slug here.
+- If a spawn fails with that named-model / Free-plan error: **do the work in
+  this session immediately**. Do not retry Task, do not switch slugs, do not
+  wait on another worker.
+- `inherit` still failed that way in this repo. Treat any named-model Task
+  error as a hard stop on subagents for that request.
+- Swarm `phases/SWARM.md` may demand a named worker model. On this plan that
+  is **BLOCKED** until the user upgrades or rewrites the swarm model to Auto.
+  Do not burn turns respawning captains/workers that cannot start.

@@ -16,3 +16,17 @@ alwaysApply: true
   cases.
 - Do not encode production map counts, IDs, ordering, or geometry into generic
   tests.
+
+# One suite per shipped feature
+
+Keep **one** acceptance / fidelity / integration file per feature. Do not add
+a second unit file that only restates those ACs.
+
+Leftover units: **1 happy path + 2–3 real edges**. Table-driven is fine when
+each row is a distinct edge, not a restatement.
+
+Share canvas/test harnesses (`src/scope/test/mockCanvas.ts`) instead of
+copying `createMockCtx` into every fidelity file.
+
+If a cut breaks CI, restore **that feature’s acceptance test**, not the old
+unit pile.
