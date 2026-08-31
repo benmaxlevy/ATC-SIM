@@ -24,7 +24,7 @@ const FIXTURE_PIXELS: readonly { r: number; g: number; b: number; a: number; vip
   { r: 0, g: 0, b: 0, a: 0, vip: 0 },
   { r: 0, g: 0, b: 0, a: 255, vip: 0 },
   { r: 128, g: 128, b: 128, a: 255, vip: 0 },
-  { r: 0, g: 0, b: 246, a: 255, vip: 1 },
+  { r: 0, g: 0, b: 246, a: 255, vip: 0 },
   { r: 0, g: 153, b: 98, a: 255, vip: 1 },
   { r: 0, g: 144, b: 0, a: 255, vip: 2 },
   { r: 250, g: 242, b: 0, a: 255, vip: 3 },
