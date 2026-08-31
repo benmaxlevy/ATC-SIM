@@ -5,7 +5,7 @@
 
 import type { LoadedVideoMap } from "@scenario";
 import { parseStrictFilterHundreds } from "./altitudeFilter";
-import { resolveVideoMapToken, type VideoMapTokenLayout } from "./dcbFunctions";
+import { resolveVideoMapToken, type VideoMapTokenLayout } from "./dcb/dcbFunctions";
 import { digitFromKey } from "./keymap";
 import { isStarsLeaderClock, type StarsLeaderClock } from "./leader";
 import type { VipLevel } from "./wx";

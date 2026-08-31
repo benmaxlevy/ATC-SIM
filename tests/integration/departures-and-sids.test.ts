@@ -34,7 +34,7 @@ import {
   trackPaintColor,
   PALETTE,
 } from "@scope";
-import { selectTrackFromStrip, stripsFromWorld } from "../../src/ui/FlightStrips";
+import { selectTrackFromStrip, stripsFromWorld } from "@ui";
 
 function silentRadio(plays: string[] = []): CheckInRadio {
   return {

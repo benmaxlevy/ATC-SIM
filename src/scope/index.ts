@@ -114,8 +114,8 @@ export {
   reuseOrBuildMapCache,
 } from "./mapLayers";
 export type { DigitalMap, MapCache, MapLayerFlags, NmPoint } from "./mapLayers";
-export { getDatablockVisualState, isTrackedTarget, renderScope } from "./renderScope";
-export type { DatablockVisualState } from "./renderScope";
+export { getDatablockVisualState, isTrackedTarget, renderScope } from "./render";
+export type { DatablockVisualState } from "./render";
 export {
   DEFAULT_SSA_AIRPORT_ALTIMETERS,
   DEFAULT_SSA_BEACON_BANKS,
@@ -329,7 +329,7 @@ export {
   drawWeatherLayer,
   wxVipContourHex,
   wxVipFillHex,
-} from "./weatherLayer";
+} from "./render";
 export {
   DCB_ACTION_FLASH_MS,
   applyDcbShift,
@@ -344,16 +344,22 @@ export {
   openDcbMenu,
   stepDcbSpinner,
   toggleDcbMenu,
-} from "./dcbMenu";
-export type { DcbCellKind, DcbMenu, DcbMenuHost, DcbSpinnerCell, DcbSpinnerState } from "./dcbMenu";
+} from "./dcb/dcbMenu";
+export type {
+  DcbCellKind,
+  DcbMenu,
+  DcbMenuHost,
+  DcbSpinnerCell,
+  DcbSpinnerState,
+} from "./dcb/dcbMenu";
 export {
   DCB_CURSOR_TRAP_CELL_SELECTOR,
   clampPointToRect,
   dcbCursorTrapKind,
   dcbTrapShouldBlockPointer,
   pointInTrapRect,
-} from "./dcbCursorTrap";
-export type { DcbCursorTrapKind, DcbTrapPoint, DcbTrapRect } from "./dcbCursorTrap";
+} from "./dcb/dcbCursorTrap";
+export type { DcbCursorTrapKind, DcbTrapPoint, DcbTrapRect } from "./dcb/dcbCursorTrap";
 export {
   DCB_PREF_NAME_MAX_CHARS,
   DCB_PREF_READABLE_VERSIONS,
@@ -383,7 +389,7 @@ export {
   saveDcbPref,
   selectDcbPrefSlot,
   serializeDcbPref,
-} from "./dcbPref";
+} from "./dcb/dcbPref";
 export type {
   DcbDock,
   DcbPrefBody,
@@ -391,7 +397,7 @@ export type {
   DcbPrefRuntime,
   DcbPrefSlot,
   DcbPrefStorage,
-} from "./dcbPref";
+} from "./dcb/dcbPref";
 export {
   DCB_GROUP_SLOT_COUNT,
   DCB_GROUP_SUBMENU_SLOT_START,
@@ -440,8 +446,8 @@ export {
   toggleWxLevel,
   videoMapByDcbNumber,
   videoMapTokenLayout,
-} from "./dcbFunctions";
-export type { MapListKind, RrIntervalNm, VideoMapTokenLayout } from "./dcbFunctions";
+} from "./dcb/dcbFunctions";
+export type { MapListKind, RrIntervalNm, VideoMapTokenLayout } from "./dcb/dcbFunctions";
 export {
   HISTORY_DOT_COUNTS,
   HISTORY_MAX_DOTS,
@@ -512,13 +518,13 @@ export {
   targetSymbolDescriptor,
   targetSymbolShape,
   squawkMatchesBeaconSelect,
-} from "./targetSymbol";
+} from "./render";
 export type {
   TargetSurveillanceType,
   TargetSymbolDescriptor,
   TargetSymbolKind,
   TargetSymbolOptions,
-} from "./targetSymbol";
+} from "./render";
 export {
   PTL_CAP_TICK_PX,
   PTL_MINUTES,

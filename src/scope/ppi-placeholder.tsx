@@ -1,5 +1,5 @@
 import type { MouseEvent, PointerEvent, ReactNode, WheelEvent } from "react";
-import type { DcbDock } from "./dcbPref";
+import type { DcbDock } from "./dcb/dcbPref";
 
 export const PpiPlaceholderId = "ppi-placeholder";
 

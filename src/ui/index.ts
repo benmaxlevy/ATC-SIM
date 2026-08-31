@@ -19,7 +19,7 @@
  * import `@ui`.
  */
 export { Shell, Shell as App } from "./shell";
-export { ScopeHelpOverlay } from "./ScopeHelpOverlay";
+export { ScopeHelpOverlay } from "./overlays/ScopeHelpOverlay";
 export {
   DCB_FONT_PX,
   DCB_HEIGHT_PX,
@@ -27,8 +27,8 @@ export {
   DCB_LITE_HEIGHT_PX,
   DisplayControlBar,
   syncDisplayControlBar,
-} from "./DisplayControlBar";
-export { ScopeCanvas } from "./ScopeCanvas";
+} from "./dcb/DisplayControlBar";
+export { ScopeCanvas } from "./canvas/ScopeCanvas";
 export {
   FlightStrips,
   STRIP_BAY_EMPTY,
@@ -42,15 +42,15 @@ export {
   sortStripsByCallsign,
   stripsFromWorld,
   syncStripCallsignColors,
-} from "./FlightStrips";
-export type { FlightStripView, FlightStripsProps } from "./FlightStrips";
+} from "./strips/FlightStrips";
+export type { FlightStripView, FlightStripsProps } from "./strips/FlightStrips";
 export {
   DISCLAIMER_COPY,
   DISCLAIMER_DISMISSED_KEY,
   Disclaimer,
   dismissDisclaimer,
   isDisclaimerDismissed,
-} from "./disclaimer";
+} from "./overlays/disclaimer";
 export {
   COMMAND_LINE_INPUT_ID,
   CommandLine,
@@ -58,9 +58,9 @@ export {
   focusCommandLine,
   submitCommand,
   submitCommandLine,
-} from "./command-line";
-export type { CommandLineProps, PilotResult } from "./command-line";
-export { displayCommandLineStatus, formatVoiceStatus } from "./voice-status";
+} from "./command/command-line";
+export type { CommandLineProps, PilotResult } from "./command/command-line";
+export { displayCommandLineStatus, formatVoiceStatus } from "./command/voice-status";
 export {
   PLAY_HINT,
   SIM_HUD_ID,
@@ -70,11 +70,15 @@ export {
   formatSimTimeMmSs,
   setPaused,
   setSimRate,
-} from "./sim-controls";
-export type { SimControlKey, SimControlsProps } from "./sim-controls";
-export { SessionSetup, loadSessionSetupDefaults, sessionSetupDefaults } from "./session-setup";
-export type { SessionSetupProps } from "./session-setup";
-export { FPS_DEBUG_ID, FpsDebug, formatFpsDebug, isFpsDebugEnabled } from "./FpsDebug";
+} from "./controls/sim-controls";
+export type { SimControlKey, SimControlsProps } from "./controls/sim-controls";
+export {
+  SessionSetup,
+  loadSessionSetupDefaults,
+  sessionSetupDefaults,
+} from "./controls/session-setup";
+export type { SessionSetupProps } from "./controls/session-setup";
+export { FPS_DEBUG_ID, FpsDebug, formatFpsDebug, isFpsDebugEnabled } from "./controls/FpsDebug";
 export {
   DEFAULT_BACKEND_HELP,
   DEFAULT_HEALTH_URL,
@@ -92,11 +96,11 @@ export {
   loadAndResolveSpeechBoot,
   loadSpeechPrefs,
   saveSpeechPrefs,
-} from "./settings-speech";
+} from "./controls/settings-speech";
 export type {
   SpeechBoot,
   SpeechPrefs,
   SpeechSettingsController,
   SpeechSettingsHost,
   SpeechSettingsPanelProps,
-} from "./settings-speech";
+} from "./controls/settings-speech";

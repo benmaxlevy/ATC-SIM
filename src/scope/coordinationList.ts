@@ -5,7 +5,7 @@
  */
 
 import { formatAltitudeHundreds } from "./datablock";
-import { isVideoMapOn } from "./dcbFunctions";
+import { isVideoMapOn } from "./dcb/dcbFunctions";
 import { buildSystemListLines, rewriteFixForList, type ListFormatter } from "./listFormatter";
 import type { ScopeView } from "./scopeView";
 

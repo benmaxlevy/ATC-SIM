@@ -1,0 +1,375 @@
+import { expect, test } from "vitest";
+import { createAircraft, type Instruction } from "@core";
+import { validateInstructions } from "../validate";
+
+function jet(overrides: { altitudeFt?: number; headingDeg?: number; speedKt?: number } = {}) {
+  return createAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    xNm: 10,
+    yNm: 5,
+    headingDeg: overrides.headingDeg ?? 100,
+    altitudeFt: overrides.altitudeFt ?? 8000,
+    speedKt: overrides.speedKt ?? 220,
+  });
+}
+
+test("empty instructions are EMPTY", () => {
+  expect(validateInstructions(jet(), [])).toEqual({ ok: false, reason: "EMPTY" });
+});
+
+test("heading 0 is valid; 360 is not in [0, 360)", () => {
+  const h0: Instruction = { type: "FLY_HEADING", headingDeg: 0, turn: "SHORTEST" };
+  const h360: Instruction = { type: "FLY_HEADING", headingDeg: 360, turn: "SHORTEST" };
+  expect(validateInstructions(jet(), [h0]).ok).toBe(true);
+  expect(validateInstructions(jet(), [h360])).toEqual({ ok: false, reason: "HEADING" });
+});
+
+test("TURN_DEGREES 1 and 180 pass; 181 is HEADING", () => {
+  expect(
+    validateInstructions(jet(), [{ type: "TURN_DEGREES", direction: "LEFT", degrees: 1 }]).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(jet(), [{ type: "TURN_DEGREES", direction: "RIGHT", degrees: 180 }]).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(jet(), [{ type: "TURN_DEGREES", direction: "LEFT", degrees: 181 }]),
+  ).toEqual({ ok: false, reason: "HEADING" });
+});
+
+test("altitude must be a multiple of 100 in [1000, 18000]", () => {
+  const ac = jet({ altitudeFt: 8000 });
+  expect(
+    validateInstructions(ac, [{ type: "ALTITUDE", altitudeFt: 3050, verb: "MAINTAIN" }]),
+  ).toEqual({ ok: false, reason: "ALTITUDE" });
+  expect(
+    validateInstructions(ac, [{ type: "ALTITUDE", altitudeFt: 900, verb: "MAINTAIN" }]),
+  ).toEqual({ ok: false, reason: "ALTITUDE" });
+  expect(
+    validateInstructions(ac, [{ type: "ALTITUDE", altitudeFt: 18100, verb: "MAINTAIN" }]),
+  ).toEqual({ ok: false, reason: "ALTITUDE" });
+  expect(
+    validateInstructions(ac, [{ type: "ALTITUDE", altitudeFt: 18000, verb: "MAINTAIN" }]).ok,
+  ).toBe(true);
+});
+
+test("CLIMB must be above present; DESCEND below; MAINTAIN any in range", () => {
+  const ac = jet({ altitudeFt: 8000 });
+  expect(validateInstructions(ac, [{ type: "ALTITUDE", altitudeFt: 3000, verb: "CLIMB" }])).toEqual(
+    {
+      ok: false,
+      reason: "CLIMB_NOT_ABOVE",
+    },
+  );
+  expect(validateInstructions(ac, [{ type: "ALTITUDE", altitudeFt: 8000, verb: "CLIMB" }])).toEqual(
+    {
+      ok: false,
+      reason: "CLIMB_NOT_ABOVE",
+    },
+  );
+  expect(validateInstructions(ac, [{ type: "ALTITUDE", altitudeFt: 9000, verb: "CLIMB" }]).ok).toBe(
+    true,
+  );
+  expect(
+    validateInstructions(ac, [{ type: "ALTITUDE", altitudeFt: 8000, verb: "DESCEND" }]),
+  ).toEqual({ ok: false, reason: "DESCEND_NOT_BELOW" });
+  expect(
+    validateInstructions(ac, [{ type: "ALTITUDE", altitudeFt: 3000, verb: "DESCEND" }]).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(ac, [{ type: "ALTITUDE", altitudeFt: 8000, verb: "MAINTAIN" }]).ok,
+  ).toBe(true);
+});
+
+test("speed outside [150, 280] is SPEED; edges pass", () => {
+  expect(validateInstructions(jet(), [{ type: "SPEED", speedKt: 149, verb: "MAINTAIN" }])).toEqual({
+    ok: false,
+    reason: "SPEED",
+  });
+  expect(validateInstructions(jet(), [{ type: "SPEED", speedKt: 281, verb: "MAINTAIN" }])).toEqual({
+    ok: false,
+    reason: "SPEED",
+  });
+  expect(validateInstructions(jet(), [{ type: "SPEED", speedKt: 150, verb: "MAINTAIN" }]).ok).toBe(
+    true,
+  );
+  expect(validateInstructions(jet(), [{ type: "SPEED", speedKt: 280, verb: "MAINTAIN" }]).ok).toBe(
+    true,
+  );
+});
+
+test("CLEARED_APPROACH needs a known approachId when catalog is present", () => {
+  expect(validateInstructions(jet(), [{ type: "CLEARED_APPROACH", approachId: "ILS27" }]).ok).toBe(
+    true,
+  );
+  expect(validateInstructions(jet(), [{ type: "CLEARED_APPROACH", approachId: "" }])).toEqual({
+    ok: false,
+    reason: "EMPTY",
+  });
+  expect(
+    validateInstructions(jet(), [{ type: "CLEARED_APPROACH", approachId: "ILS99" }], {
+      approachIds: ["ILS27"],
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_APPROACH" });
+  expect(
+    validateInstructions(jet(), [{ type: "EXPECT_APPROACH", approachId: "ILS27" }], {
+      approachIds: ["ILS27"],
+    }).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(jet(), [{ type: "INTERCEPT_LOCALIZER", approachId: "ILS27" }], {
+      approachIds: ["ILS27"],
+    }).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(jet(), [{ type: "INTERCEPT_LOCALIZER", approachId: "ILS99" }], {
+      approachIds: ["ILS27"],
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_APPROACH" });
+  expect(validateInstructions(jet(), [{ type: "IDENT" }]).ok).toBe(true);
+});
+
+test("DIRECT unknown fix is UNKNOWN_FIX; known catalog id passes", () => {
+  const registry = {
+    has: (id: string) => id.toUpperCase() === "NEMAX",
+  } as import("@core").FixRegistry;
+  expect(
+    validateInstructions(jet(), [{ type: "DIRECT", fixId: "NOPE" }], { fixRegistry: registry }),
+  ).toEqual({
+    ok: false,
+    reason: "UNKNOWN_FIX",
+  });
+  expect(
+    validateInstructions(jet(), [{ type: "DIRECT", fixId: "NEMAX" }], { fixRegistry: registry }).ok,
+  ).toBe(true);
+  expect(validateInstructions(jet(), [{ type: "DIRECT", fixId: "NEMAX" }])).toEqual({
+    ok: false,
+    reason: "UNKNOWN_FIX",
+  });
+});
+
+test("VIA unknown procedure rejects; CROSS not on course rejects", () => {
+  const registry = {
+    has: (id: string) => id.toUpperCase() === "NEMAX",
+  } as import("@core").FixRegistry;
+  const catalog = { stars: [{ id: "DEM1", name: "DEMO ONE" }] };
+  expect(
+    validateInstructions(jet(), [{ type: "DESCEND_VIA", procedureId: "NOPE" }], { catalog }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_PROCEDURE" });
+  expect(
+    validateInstructions(jet(), [{ type: "JOIN_PROCEDURE", procedureId: "DEM1" }], { catalog }).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(jet(), [{ type: "JOIN_PROCEDURE", procedureId: "NOPE" }], { catalog }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_PROCEDURE" });
+  const ac = jet();
+  expect(
+    validateInstructions(
+      ac,
+      [{ type: "CROSS", fixId: "NEMAX", altitudeFt: 4000, restriction: "AT" }],
+      { fixRegistry: registry, catalog },
+    ),
+  ).toEqual({ ok: false, reason: "NOT_ON_COURSE", detail: "NEMAX" });
+  ac.intent.lateral = { type: "DIRECT", fixId: "NEMAX" };
+  expect(
+    validateInstructions(
+      ac,
+      [{ type: "CROSS", fixId: "NEMAX", altitudeFt: 4000, restriction: "AT" }],
+      { fixRegistry: registry, catalog },
+    ).ok,
+  ).toBe(true);
+});
+
+test("AC4 — validateInstructions approves valid CLIMB_VIA and rejects unknown SID", () => {
+  const catalog = {
+    stars: [{ id: "DEM1", name: "DEMO ONE" }],
+    sids: [{ id: "KDEM1", name: "KDEM ONE DEPARTURE" }],
+  };
+  expect(
+    validateInstructions(jet(), [{ type: "CLIMB_VIA", procedureId: "KDEM1" }], { catalog }).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(jet(), [{ type: "CLIMB_VIA", procedureId: "UNKNOWN" }], { catalog }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_PROCEDURE" });
+  expect(
+    validateInstructions(jet(), [{ type: "JOIN_PROCEDURE", procedureId: "KDEM1" }], { catalog }).ok,
+  ).toBe(true);
+});
+
+test("GO_AROUND rejects unless clearedApproachId is set", () => {
+  const ac = jet();
+  expect(validateInstructions(ac, [{ type: "GO_AROUND" }])).toEqual({
+    ok: false,
+    reason: "NOT_ON_APPROACH",
+  });
+  ac.intent.clearedApproachId = "ILS27";
+  expect(validateInstructions(ac, [{ type: "GO_AROUND" }]).ok).toBe(true);
+});
+
+const synCatalog = {
+  stars: [
+    {
+      id: "SYN1",
+      name: "SYN ONE",
+      common: [{ fixId: "MERGE" }],
+      transitions: [
+        { id: "N", legs: [{ fixId: "NA" }, { fixId: "NB" }] },
+        { id: "S", legs: [{ fixId: "SA" }, { fixId: "SB" }] },
+        { id: "RW09", runwayId: "09", legs: [{ fixId: "RA" }] },
+      ],
+    },
+  ],
+};
+
+test("named STAR transition validate accepts a shared fix and rejects the rest", () => {
+  const ac = jet();
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    starId: "SYN1",
+    toFixIndex: 1,
+    routeFixIds: ["NA", "NB", "MERGE"],
+  };
+  expect(
+    validateInstructions(ac, [{ type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "S" }], {
+      catalog: synCatalog,
+    }).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(ac, [{ type: "JOIN_PROCEDURE", procedureId: "SYN1", transitionId: "S" }], {
+      catalog: synCatalog,
+    }).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(ac, [{ type: "DESCEND_VIA", procedureId: "NOPE", transitionId: "S" }], {
+      catalog: synCatalog,
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_PROCEDURE" });
+  expect(
+    validateInstructions(ac, [{ type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "ZZ" }], {
+      catalog: synCatalog,
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_TRANSITION" });
+  expect(
+    validateInstructions(ac, [{ type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "RW09" }], {
+      catalog: synCatalog,
+      activeRunwayId: "27",
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_TRANSITION" });
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    starId: "SYN1",
+    toFixIndex: 0,
+    routeFixIds: ["NA"],
+  };
+  expect(
+    validateInstructions(ac, [{ type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "S" }], {
+      catalog: synCatalog,
+    }),
+  ).toEqual({ ok: false, reason: "NOT_ON_COURSE" });
+});
+
+const synSidCatalog = {
+  sids: [
+    {
+      id: "SYNDEP",
+      name: "SYN DEP",
+      runwayTransitions: [
+        { runwayId: "27", legs: [{ fixId: "R27A" }, { fixId: "R27B" }] },
+        { runwayId: "09", legs: [{ fixId: "R09A" }] },
+      ],
+      common: [{ fixId: "JOIN" }],
+      enrouteTransitions: [
+        { id: "NORMA", name: "NORMA", legs: [{ fixId: "N1" }, { fixId: "NORMA" }] },
+        { id: "OCTTA", name: "OCTTA", legs: [{ fixId: "O1" }, { fixId: "OCTTA" }] },
+      ],
+    },
+  ],
+};
+
+test("named SID transition validate accepts a shared fix and rejects the rest", () => {
+  const ac = jet();
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "SYNDEP",
+    starId: "SYNDEP",
+    toFixIndex: 2,
+    routeFixIds: ["R27A", "R27B", "JOIN", "N1", "NORMA"],
+  };
+  expect(
+    validateInstructions(
+      ac,
+      [{ type: "CLIMB_VIA", procedureId: "SYNDEP", transitionId: "OCTTA" }],
+      {
+        catalog: synSidCatalog,
+      },
+    ).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(
+      ac,
+      [{ type: "JOIN_PROCEDURE", procedureId: "SYNDEP", transitionId: "OCTTA" }],
+      {
+        catalog: synSidCatalog,
+      },
+    ).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(ac, [{ type: "CLIMB_VIA", procedureId: "NOPE", transitionId: "OCTTA" }], {
+      catalog: synSidCatalog,
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_PROCEDURE" });
+  expect(
+    validateInstructions(ac, [{ type: "CLIMB_VIA", procedureId: "SYNDEP", transitionId: "ZZ" }], {
+      catalog: synSidCatalog,
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_TRANSITION" });
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "SYNDEP",
+    starId: "SYNDEP",
+    toFixIndex: 0,
+    routeFixIds: ["R27A", "R27B", "JOIN", "N1", "NORMA"],
+  };
+  expect(
+    validateInstructions(ac, [{ type: "CLIMB_VIA", procedureId: "SYNDEP", transitionId: "RW09" }], {
+      catalog: synSidCatalog,
+    }).ok,
+  ).toBe(true);
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "SYNDEP",
+    starId: "SYNDEP",
+    toFixIndex: 2,
+    routeFixIds: ["R27A", "R27B", "JOIN", "N1", "NORMA"],
+  };
+  expect(
+    validateInstructions(ac, [{ type: "CLIMB_VIA", procedureId: "SYNDEP", transitionId: "RW09" }], {
+      catalog: synSidCatalog,
+    }),
+  ).toEqual({ ok: false, reason: "NOT_ON_COURSE" });
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "SYNDEP",
+    starId: "SYNDEP",
+    toFixIndex: 0,
+    routeFixIds: ["NORMA"],
+  };
+  expect(
+    validateInstructions(
+      ac,
+      [{ type: "CLIMB_VIA", procedureId: "SYNDEP", transitionId: "OCTTA" }],
+      {
+        catalog: synSidCatalog,
+      },
+    ),
+  ).toEqual({ ok: false, reason: "NOT_ON_COURSE" });
+});
+
+test("one bad instruction rejects the whole list", () => {
+  expect(
+    validateInstructions(jet({ altitudeFt: 8000 }), [
+      { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+      { type: "ALTITUDE", altitudeFt: 3000, verb: "CLIMB" },
+    ]),
+  ).toEqual({ ok: false, reason: "CLIMB_NOT_ABOVE" });
+});

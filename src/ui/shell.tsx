@@ -38,15 +38,15 @@ import {
   type ScopeView,
 } from "@scope";
 import type { AppHandles } from "../app/create-app";
-import { CommandLine, submitCommand } from "./command-line";
-import { Disclaimer } from "./disclaimer";
-import { FlightStrips, focusPpi } from "./FlightStrips";
-import { FpsDebug, isFpsDebugEnabled } from "./FpsDebug";
-import { ScopeCanvas } from "./ScopeCanvas";
-import { ScopeHelpOverlay } from "./ScopeHelpOverlay";
-import { SpeechSettingsPanel } from "./settings-speech";
-import { SimControls } from "./sim-controls";
-import { SessionSetup as SessionSetupDialog } from "./session-setup";
+import { CommandLine, submitCommand } from "./command/command-line";
+import { Disclaimer } from "./overlays/disclaimer";
+import { FlightStrips, focusPpi } from "./strips/FlightStrips";
+import { FpsDebug, isFpsDebugEnabled } from "./controls/FpsDebug";
+import { ScopeCanvas } from "./canvas/ScopeCanvas";
+import { ScopeHelpOverlay } from "./overlays/ScopeHelpOverlay";
+import { SpeechSettingsPanel } from "./controls/settings-speech";
+import { SimControls } from "./controls/sim-controls";
+import { SessionSetup as SessionSetupDialog } from "./controls/session-setup";
 
 export interface ShellProps {
   app: AppHandles;
