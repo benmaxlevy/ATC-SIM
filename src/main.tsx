@@ -15,6 +15,7 @@ import {
   PpiPlaceholderId,
   browserDcbPrefStorage,
   createScopeView,
+  ensureWxMosaic,
   loadDcbPrefFromStorage,
   paintPpi,
   parseDigitalMap,
@@ -119,6 +120,7 @@ function onFrame(nowMs: number): void {
   // Physics: wall Δt feeds the accumulator. Never pass this dt into stepWorld.
   advanceWorld(handles.world, wallDtS, acc);
   handles.afterPhysicsTick();
+  void ensureWxMosaic(scopeView, { nowMs });
   paintCurrentPpi();
   const hud = document.getElementById(SIM_HUD_ID);
   if (hud) {

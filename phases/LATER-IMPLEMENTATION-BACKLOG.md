@@ -227,13 +227,13 @@ injected fetch.
 ### WX mosaic leftovers (T02-72)
 
 Shipped display-only path: IEM N0Q VIP 1–6 fills, MAIN WX1–6, `*WX`, BRITE
-WX/WXC contours. Default levels remain off.
+WX/WXC contours. `ensureWxMosaic` on the session rAF fetches one GetMap when
+any latch is on and the mosaic is empty or older than 5 min. Extra WX clicks
+do not refetch. Default levels remain off. Live GetMap needs Vite `/wx-iem`
+(`npm run dev`).
 
 Still later:
 
-- Session-loop IEM refresh. `fetchWxMosaic` is callable and fixture-tested;
-  `main.tsx` never assigns `view.wxMosaic`. Live GetMap stays unhooked until
-  a later ticket. Overlay paints only when tests (or a hook) set the mosaic.
 - SSA WX / WX HIST
 - BRITE BKC
 - AVL 2×3 / half-height badge restyle

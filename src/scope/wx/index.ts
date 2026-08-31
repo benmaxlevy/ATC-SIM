@@ -27,3 +27,5 @@ export {
   vipAtNm,
 } from "./mosaic";
 export type { FetchWxMosaicOpts } from "./mosaic";
+export { anyWxLevelOn, ensureWxMosaic } from "./ensure";
+export type { EnsureWxMosaicOpts } from "./ensure";

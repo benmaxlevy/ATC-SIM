@@ -96,6 +96,7 @@ test("T01-14 playable slice: main wires spawn, speech factory, rAF, and resize p
   expect(main).toMatch(/handles\.ptt\.dispose/);
   expect(main).toMatch(/requestAnimationFrame/);
   expect(main).toMatch(/paintPpi/);
+  expect(main).toMatch(/ensureWxMosaic/);
   expect(main).toMatch(/afterPhysicsTick/);
   expect(main).toMatch(/addEventListener\("resize"/);
   expect(main).not.toMatch(/from\s+["']@speech["'].*(http|openai|deepgram)/i);

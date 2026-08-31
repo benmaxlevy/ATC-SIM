@@ -700,8 +700,17 @@ export {
   cloneWxLevels,
   decodePngToVipMasks,
   emptyWxMosaic,
+  ensureWxMosaic,
   fetchWxMosaic,
   shouldRefetch,
   vipAtNm,
 } from "./wx";
-export type { FetchWxMosaicOpts, VipBin, VipLevel, WxBbox, WxLevels, WxMosaic } from "./wx";
+export type {
+  EnsureWxMosaicOpts,
+  FetchWxMosaicOpts,
+  VipBin,
+  VipLevel,
+  WxBbox,
+  WxLevels,
+  WxMosaic,
+} from "./wx";

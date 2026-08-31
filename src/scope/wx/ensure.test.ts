@@ -1,0 +1,74 @@
+import { expect, test } from "vitest";
+// @ts-expect-error tsconfig has no @types/node
+import { readFileSync } from "node:fs";
+import { createScopeView } from "../scopeView";
+import { WX_REFRESH_MS, emptyWxMosaic } from "./index";
+import { anyWxLevelOn, ensureWxMosaic } from "./ensure";
+
+const FIXTURE_PNG = new URL("../../../testdata/wx/n0q-vip-edges.png", import.meta.url);
+
+function mockFetch(calls: string[]): typeof fetch {
+  const png = new Uint8Array(readFileSync(FIXTURE_PNG));
+  return async (input) => {
+    calls.push(String(input));
+    return new Response(png, { status: 200 });
+  };
+}
+
+test("anyWxLevelOn is false until one latch is true", () => {
+  expect(anyWxLevelOn([false, false, false, false, false, false])).toBe(false);
+  expect(anyWxLevelOn([false, false, true, false, false, false])).toBe(true);
+});
+
+test("ensureWxMosaic skips fetch when all levels are off", async () => {
+  const view = createScopeView(0, 0, { arp: { latDeg: 33.6, lonDeg: -84.4 } });
+  const calls: string[] = [];
+  const result = ensureWxMosaic(view, { nowMs: 1_000, fetchImpl: mockFetch(calls) });
+  expect(result).toBeUndefined();
+  expect(calls).toEqual([]);
+  expect(view.wxMosaic.widthPx).toBe(0);
+});
+
+test("ensureWxMosaic fetches once when a level is on and mosaic is empty", async () => {
+  const view = createScopeView(0, 0, { arp: { latDeg: 33.6, lonDeg: -84.4 } });
+  view.wxLevels = [true, false, false, false, false, false];
+  const calls: string[] = [];
+  const fetchImpl = mockFetch(calls);
+  await ensureWxMosaic(view, { nowMs: 5_000, fetchImpl });
+  expect(calls).toHaveLength(1);
+  expect(calls[0]).toMatch(/^\/wx-iem\//);
+  expect(view.wxMosaic.widthPx).toBe(8);
+  expect(view.wxMosaic.fetchedAtMs).toBe(5_000);
+
+  view.wxLevels = [true, true, false, false, false, false];
+  const second = ensureWxMosaic(view, { nowMs: 6_000, fetchImpl });
+  expect(second).toBeUndefined();
+  expect(calls).toHaveLength(1);
+});
+
+test("ensureWxMosaic shares one in-flight GetMap and refetches after 5 min", async () => {
+  const view = createScopeView(0, 0, { arp: { latDeg: 33.6, lonDeg: -84.4 } });
+  view.wxLevels = [false, false, false, false, false, true];
+  const calls: string[] = [];
+  const fetchImpl = mockFetch(calls);
+  const first = ensureWxMosaic(view, { nowMs: 0, fetchImpl });
+  const overlap = ensureWxMosaic(view, { nowMs: 10, fetchImpl });
+  expect(overlap).toBe(first);
+  await first;
+  expect(calls).toHaveLength(1);
+
+  await ensureWxMosaic(view, { nowMs: WX_REFRESH_MS, fetchImpl });
+  expect(calls).toHaveLength(2);
+  expect(view.wxMosaic.fetchedAtMs).toBe(WX_REFRESH_MS);
+});
+
+test("ensureWxMosaic leaves last mosaic when all levels turn off", async () => {
+  const view = createScopeView(0, 0, { arp: { latDeg: 33.6, lonDeg: -84.4 } });
+  view.wxLevels = [true, false, false, false, false, false];
+  await ensureWxMosaic(view, { nowMs: 1, fetchImpl: mockFetch([]) });
+  const kept = view.wxMosaic;
+  view.wxLevels = [false, false, false, false, false, false];
+  expect(ensureWxMosaic(view, { nowMs: 2, fetchImpl: mockFetch([]) })).toBeUndefined();
+  expect(view.wxMosaic).toBe(kept);
+  expect(emptyWxMosaic().widthPx).toBe(0);
+});
