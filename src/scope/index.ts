@@ -283,6 +283,7 @@ export {
   centerOnAirport,
   centerOnLastClick,
   centerOnWorld,
+  applyRadarSites,
   createScopeView,
   setSurveillanceMode,
   beginAltitudeFilterChord,

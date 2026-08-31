@@ -638,6 +638,28 @@ Completed Preview Area addendum matching [CRC STARS](https://docs.virtualnas.net
 - [x] Comprehensive end-to-end integration and acceptance test suite in `src/scope/previewArea.integration.test.ts` (T02-54).
 - [ ] Manual player loop (F3 INIT CNTL slew → F3 DAL123 Enter → F4 slew → `B4500` □ → radio heading → `*J3`). skip-with-reason: no visual operator; Chrome player loop not watched. Automated tests prove the items above; do not invent a visual pass.
 
+### Radar sites / PREF / PTL addendum (T02-73–77)
+
+Completed SITE integration addendum matching [CRC STARS](https://docs.virtualnas.net/crc/stars/) SITE / SSA radar-word grammar, with trainer deltas (authored fixture sites, no live sensor health, no 30 s coast, no aural ATPA). WX mosaic stays T02-68–72.
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-73](tickets/T02-73-pref-save-as-named-sets.md) | PREF SAVE AS named sets | P0 | M | T02-29 | Shipped |
+| [T02-74](tickets/T02-74-per-track-ptl.md) | Per-track PTL | P0 | M | T02-25 | Shipped |
+| [T04-45](../04-procedures/tickets/T04-45-radar-site-schema-and-scenario-fixtures.md) | RadarSite schema and scenario fixtures | P0 | M | — | Shipped |
+| [T02-75](tickets/T02-75-surveillance-display-sampler.md) | Surveillance display sampler | P0 | L | T04-45 | Shipped |
+| [T02-76](tickets/T02-76-site-dcb-and-ssa-radar-word.md) | SITE DCB and SSA radar word | P0 | M | T02-75 | Shipped |
+| [T02-77](tickets/T02-77-radar-sites-integration-and-acceptance.md) | Radar sites integration and acceptance | P0 | S | T02-76, T04-44, T04-45 | Shipped |
+
+### Phase 2 radar-sites checklist (T02-73–77)
+
+- [x] PREF SAVE AS collects a short alphanumeric name through the preview-area / status-line buffer; Enter writes the first empty slot (T02-73).
+- [x] Per-track PTL via `*R` click; session map, not PREF (T02-74).
+- [x] Authored `radarSites` load through generic catalog/scenario integration; no `if (icao === "KATL")` live path (T04-45 / T02-77).
+- [x] FUSED / MULTI / `{ siteId }` sample, cover, and paint per T02-75; SITE DCB + SSA word stay in sync; `OK/OK/NA` stays the network stub (T02-75 / T02-76 / T02-77).
+- [x] Generic synthetic-site tests in `src/scope/radarSites.integration.test.ts`; no KATL production map counts or geometry.
+- [ ] Manual Chrome SITE walk. skip-with-reason: no visual operator in this swarm; Chrome SITE walk not watched. Automated tests prove boot / SITE / SSA / paint; do not invent a visual pass.
+
 **Preview Area is not the radio command line.** Scope commands never emit Command IR / readback / intent. `DAL123 H270` still turns. `*J` / `*P` (and other T02-49 `*` chords) still arm/slew. A live `*` hint still wins over idle preview. Invalid/unknown commit flashes `INV`. Reject unknown; never parse-and-no-op. No `window.prompt`, no extra HTML `<input>`. Trainer F3 is a color/ownership stub (not NAS associate). F4 is trainer drop (not NAS terminate). F1 stays beaconator. F7 stays PTL ALL.
 
 #### Shipped Preview Area commands (do not invent later CRC tables)
@@ -673,6 +695,7 @@ pointouts `UN` / `**` / `(ID)*` / initiate-recall PO (leave existing click / rad
 7. Datablock & scratchpad fidelity addendum T02-39 → T02-42 (SP1/SP2 derivation, tens groundspeed + categories, multi-phase time-sharing with center handoff placement, emergency SPCs).
 8. TPA / ATPA addendum T02-43 → T02-50 (volumes as data, in-trail pairing, monitor/warning/alert cones, four live DCB cells, PREF v2, `*J`/`*P` chords, integration acceptance). Wake-category minima stay deferred.
 9. Preview Area addendum T02-51 → T02-54 (buffer + INV, INIT/TERM command-then-slew and FLID Enter, `B##`/`B####` beacon select, integration acceptance). Pointouts, TERM CNTL ALL, and MULTIFUNC stay deferred.
+10. Radar sites / PREF / PTL addendum T02-73 → T02-77 (named PREF sets, per-track PTL, RadarSite fixtures, sampler, SITE DCB + SSA word, integration acceptance). WX mosaic stays T02-68–72. Live sensor health, 30 s coast, and aural ATPA stay deferred.
 
 ## Glossary reminders
 

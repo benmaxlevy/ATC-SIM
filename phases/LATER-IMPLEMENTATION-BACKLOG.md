@@ -6,7 +6,7 @@ been started.
 
 ## Scope and display
 
-### Authored radar sites without end-to-end SITE acceptance (T04-45 / T02-75 / T02-76)
+### Authored radar sites — live SITE/SSA chrome, no live sensors (T04-45 / T02-75 / T02-76 / T02-77)
 
 Visible now: scenario JSON may declare trainer-authored `radarSites` (`id`,
 `name`, `kind` `asr`|`airport`, ENU or lat/lon, `rangeNm` default 60,
@@ -18,17 +18,22 @@ remote ASR using invented trainer ids (`KDEM-APT` / `KDEM-REMOTE`,
 `KATL-APT` / `KATL-REMOTE`). T02-75 samples FUSED / MULTI / `{ siteId }`
 display reports, freezes PPI / datablock / PTL / ATPA pose on the last
 report, records history on report arrival, and paints the frozen FUSED puck,
-MULTI rectangle, and single-site slash. Empty `radarSites` on the scope view
-stays implicit FUSED. MAIN SITE is enabled: submenu FUSED / MULTI / one cap
-per adapted site; MAIN text is `SITE FUSED`, `SITE MULTI`, or `SITE <id>`;
-SSA radar word follows that live mode. PREF persists SITE display mode only
-and falls back to FUSED for an unknown stored site id.
+MULTI rectangle, and single-site slash. T02-77 binds those rows onto the
+live view at boot and session apply (`radarSites` from the loaded scenario;
+unknown stored SITE id → FUSED). MAIN SITE is enabled: submenu FUSED /
+MULTI / one cap per adapted site; MAIN text is `SITE FUSED`, `SITE MULTI`,
+or `SITE <id>`; SSA radar word follows that live mode. PREF persists SITE
+display mode only and falls back to FUSED for an unknown stored site id.
+PREF named sets (T02-73) and per-track PTL (T02-74) are shipped.
 
-Deliberately missing, each owned by a later ticket:
+Deliberately missing:
 
-- end-to-end SITE walk, scenario `radarSites` boot onto the view, and
-  coverage paints (T02-77).
 - live sensor / network-health telemetry. SSA keeps the `OK/OK/NA` stub.
+- 30-second coast after a missed report. Out of coverage drops immediately.
+- aural ATPA (CA remains the only conflict audio).
+
+WX mosaic stays the other swarm (T02-68–72). Do not fold weather paint or
+IEM/mosaic work into SITE follow-ups.
 
 Constraints later work must keep:
 

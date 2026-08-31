@@ -94,6 +94,7 @@ import type { RadarSite } from "@scenario";
 import {
   defaultSurveillanceMode,
   effectiveSurveillanceMode,
+  surveillanceModesEqual,
   type SurveillanceMode,
 } from "./surveillance";
 
@@ -263,6 +264,7 @@ export interface ScopeView {
   /**
    * SITE display mode. Default FUSED. Empty `radarSites` is implicit FUSED.
    * T02-76 owns the DCB SITE caps; this field is the sampler input.
+   * T02-77 binds authored scenario rows onto the live view.
    */
   surveillanceMode: SurveillanceMode;
   /** Trainer-authored sites from the loaded scenario. `[]` = implicit FUSED. */
@@ -356,9 +358,36 @@ export function createScopeView(
   };
 }
 
+/**
+ * Bind authored scenario `radarSites` onto the live view (T02-77).
+ *
+ * Analog: CRC / vNAS STARS SITE FUSED / MULTI / single-site (R07);
+ * FOA STARS display-data / radar coverage (R05); JO 7110.65 radar
+ * identification display wording (R01). Trainer delta: sites are fixture
+ * rows, not live sensors. Unknown stored site id → FUSED. Empty catalog
+ * stays implicit FUSED. No 30 s coast. No airport-id branch. Not NAS STARS.
+ */
+export function applyRadarSites(view: ScopeView, sites: readonly RadarSite[]): void {
+  view.radarSites = [...sites];
+  view.surveillanceMode = effectiveSurveillanceMode(view.surveillanceMode, view.radarSites);
+  clearLastSurveillanceReports(view);
+}
+
+/** SITE / catalog change resamples immediately. Trainer delta: no 30 s coast. */
+function clearLastSurveillanceReports(view: ScopeView): void {
+  for (const td of view.tracks.values()) {
+    delete td.lastReport;
+  }
+}
+
 /** Bind SITE DCB / PREF to the T02-75 sampler. Unknown site id → FUSED. */
 export function setSurveillanceMode(view: ScopeView, mode: SurveillanceMode): void {
-  view.surveillanceMode = effectiveSurveillanceMode(mode, view.radarSites);
+  const next = effectiveSurveillanceMode(mode, view.radarSites);
+  if (surveillanceModesEqual(view.surveillanceMode, next)) {
+    return;
+  }
+  view.surveillanceMode = next;
+  clearLastSurveillanceReports(view);
 }
 
 export function setBeaconatorActive(view: ScopeView, active: boolean): void {

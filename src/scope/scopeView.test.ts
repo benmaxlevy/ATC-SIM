@@ -3,6 +3,7 @@ import { createAircraft, createWorld } from "@core";
 import { nmToScreen } from "./camera";
 import { handlePpiDoubleClick, handlePpiLeftClick } from "./ppi";
 import {
+  applyRadarSites,
   beginAltitudeFilterChord,
   centerOnAirport,
   centerOnLastClick,
@@ -299,6 +300,27 @@ test("per-track PTL is session-only; F7 and *PTL minutes stay global; not PREF",
   expect(view.ptlByAircraftId.size).toBe(0);
   expect(view.ptlOn).toBe(true);
   expect(view.ptlMinutes).toBe(1);
+});
+
+test("T02-77 — applyRadarSites copies catalog rows and falls back unknown SITE to FUSED", () => {
+  const view = createScopeView(0, 0, {
+    radarSites: [
+      { id: "APT", name: "Apt", kind: "airport", xNm: 0, yNm: 0, rangeNm: 20, periodMs: 4800 },
+    ],
+    surveillanceMode: { siteId: "APT" },
+  });
+  expect(view.surveillanceMode).toEqual({ siteId: "APT" });
+
+  applyRadarSites(view, [
+    { id: "ASR-N", name: "North", kind: "asr", xNm: 10, yNm: 0, rangeNm: 30, periodMs: 4800 },
+  ]);
+  expect(view.radarSites.map((row) => row.id)).toEqual(["ASR-N"]);
+  expect(view.surveillanceMode).toBe("FUSED");
+
+  view.surveillanceMode = { siteId: "ASR-N" };
+  applyRadarSites(view, []);
+  expect(view.radarSites).toEqual([]);
+  expect(view.surveillanceMode).toBe("FUSED");
 });
 
 test("AC4 — DCB dock enum is one edge at a time", () => {

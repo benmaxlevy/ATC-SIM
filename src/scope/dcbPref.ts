@@ -29,7 +29,7 @@ import { type HistoryDotCount } from "./history";
 import { LEADER_LENGTH_STEPS_PX, type LeaderDir, type LeaderLengthPx } from "./leader";
 import { cloneBrite, type BriteState } from "./palette";
 import { PTL_MINUTE_PRESETS, type PtlMinutes } from "./ptl";
-import { createScopeView, setDcbDock, type ScopeView } from "./scopeView";
+import { createScopeView, setDcbDock, setSurveillanceMode, type ScopeView } from "./scopeView";
 import { GI_SLOT_COUNT, SSA_FILTER_FIELDS, type SsaVisibility } from "./ssa";
 import {
   DEFAULT_ATPA_STATE,
@@ -368,7 +368,7 @@ export function applyDcbPref(view: ScopeView, body: DcbPrefBody): void {
     alertCones: body.atpa?.alertCones !== false,
     monitorCones: body.atpa?.monitorCones !== false,
   };
-  view.surveillanceMode = resolveSurveillancePref(body.surveillanceMode, view.radarSites);
+  setSurveillanceMode(view, resolveSurveillancePref(body.surveillanceMode, view.radarSites));
   view.mapCache = null;
 }
 
