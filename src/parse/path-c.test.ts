@@ -596,6 +596,38 @@ test("Path C mock DIRECT HAYNES not in context.fixes is not dispatched", async (
   }
 });
 
+test("ASR EAGLE d=2 salvage injects Path C with EAGYL, not file-order 64", async () => {
+  const padding = padFixes(80, []);
+  const catalog = padFixes(80, ["EAGYL", "EAONE", "EUGNE", "TALLE"]);
+  const parsePathC = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: null,
+    instructions: [{ type: "DIRECT", fixId: "EAGYL" }],
+  }));
+  const result = await parseCommand("proceed direct eagle", {
+    source: "voice",
+    selectedCallsign: "DAL123",
+    pathC: true,
+    parsePathC,
+    fixes: catalog,
+  });
+  expect(parsePathC).toHaveBeenCalledTimes(1);
+  const sent = parsePathC.mock.calls[0]![0].context?.fixes ?? [];
+  expect(sent.length).toBeGreaterThan(0);
+  expect(sent.length).toBeLessThanOrEqual(MAX_PATH_C_FIXES);
+  expect(sent).toEqual(expect.arrayContaining(["EAGYL"]));
+  expect(sent).not.toEqual(catalog.slice(0, 64));
+  expect(sent).not.toEqual(expect.arrayContaining(padding.slice(0, 64)));
+  for (const id of padding.slice(0, 64)) {
+    expect(sent).not.toContain(id);
+  }
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.parseStage).toBe("llm_c");
+  expect(result.instructions).toEqual([{ type: "DIRECT", fixId: "EAGYL" }]);
+});
+
 test("pizza the runway with a large catalog does not send file-order 64 fixes", async () => {
   const padding = padFixes(80, []);
   const parsePathC = vi.fn<ParsePathCFn>(async () => HEADING);

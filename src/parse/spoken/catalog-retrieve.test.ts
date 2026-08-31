@@ -4,6 +4,7 @@ import {
   retrieveFix as parseRetrieveFix,
 } from "@parse";
 import { groundFixToCatalog } from "./catalog-ground";
+import { SNAP_SCORE_FLOOR, snapFix } from "./catalog-snap";
 import { MAX_RETRIEVE_CANDIDATES, retrieveFix, type RetrieveHit } from "./catalog-retrieve";
 
 /** Valid 3-letter ids so file-order 64 would miss anything appended after. */
@@ -119,4 +120,52 @@ test("AC6/AC7 — retrieve is local and cites 7110.65 analog vs trainer ids", ()
 test("retrieveFix and MAX_RETRIEVE_CANDIDATES are exported from @parse", () => {
   expect(parseRetrieveFix).toBe(retrieveFix);
   expect(PARSE_MAX_RETRIEVE_CANDIDATES).toBe(MAX_RETRIEVE_CANDIDATES);
+});
+
+test("EAGLE retrieves EAGYL at d=2 below SNAP_SCORE_FLOOR", () => {
+  const catalog = padFixes(20, ["EAGYL", "EAONE", "EUGNE", "TALLE"]);
+  const hits = retrieveFix("EAGLE", catalog);
+  expectUnitScores(hits);
+  expect(hits.map((hit) => hit.id)).toEqual(expect.arrayContaining(["EAGYL"]));
+  for (const hit of hits) {
+    expect(hit.score).toBeLessThan(SNAP_SCORE_FLOOR);
+  }
+  const eagle = hits.find((hit) => hit.id === "EAGYL");
+  expect(eagle).toBeDefined();
+  const near = retrieveFix("HAINZ", ["HAINS"]);
+  expect(near[0]?.score).toBeGreaterThan(eagle!.score);
+});
+
+test("ANDRA retrieves ONDRE and ANDIY at d=2", () => {
+  const catalog = padFixes(20, ["ONDRE", "ANDIY"]);
+  const hits = retrieveFix("ANDRA", catalog);
+  expectUnitScores(hits);
+  const ids = hits.map((hit) => hit.id);
+  expect(ids).toEqual(expect.arrayContaining(["ONDRE"]));
+  expect(ids).toEqual(expect.arrayContaining(["ANDIY"]));
+  for (const hit of hits) {
+    expect(hit.score).toBeLessThan(SNAP_SCORE_FLOOR);
+    expect(hit.score).toBeLessThan(0.5);
+  }
+});
+
+test("unique snap does not widen to d=2 for EAGLE", () => {
+  expect(groundFixToCatalog("EAGLE", ["EAGYL", "EAONE", "TALLE"])).toBeNull();
+});
+
+test("snapFix stays weak on EAGLE d=2 retrieve cluster", () => {
+  const catalog = padFixes(20, ["EAGYL", "EAONE", "EUGNE", "TALLE"]);
+  const ranked = retrieveFix("EAGLE", catalog);
+  expect(ranked.length).toBeGreaterThan(0);
+  const snapped = snapFix("EAGLE", ranked);
+  expect(snapped.kind === "weak" || snapped.kind === "tie").toBe(true);
+  expect(snapped.kind).not.toBe("snap");
+});
+
+test("short AT does not retrieve a d=2 soup of 5-letter ids", () => {
+  const fiveLetter = ["EAGYL", "EAONE", "EUGNE", "TALLE", "ALTAR", "ALBEE", "ATONE", "ATEAL"];
+  const catalog = padFixes(40, fiveLetter);
+  const hits = retrieveFix("AT", catalog);
+  expectUnitScores(hits);
+  expect(hits.map((hit) => hit.id).filter((id) => fiveLetter.includes(id))).toEqual([]);
 });

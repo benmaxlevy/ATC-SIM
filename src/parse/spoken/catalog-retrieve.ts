@@ -15,6 +15,7 @@
  *
  * Scores are on [0, 1], higher better, so a later floor (0.80) and margin
  * (0.05) can compare hits without every integer rank passing the floor.
+ * Distance 2 is Path C salvage, not snap. Lowering the floor would invent ids.
  */
 
 import {
@@ -37,6 +38,10 @@ const SCORE_ALIAS = 0.9;
 const SCORE_FOLD_ALIAS = 0.8;
 const SCORE_NEAR = 0.6;
 const SCORE_FOLD_NEAR = 0.5;
+/** Raw d==2, token length >= 5. Below SNAP_SCORE_FLOOR so snapFix stays weak. */
+const SCORE_FAR = 0.45;
+/** Fold d==2, folded length >= 5. Below SCORE_NEAR / SCORE_FOLD_NEAR. */
+const SCORE_FOLD_FAR = 0.4;
 
 interface IndexedFix {
   id: string;
@@ -82,6 +87,13 @@ function scoreFix(tokenKey: string, folded: string, entry: IndexedFix): number |
   }
   if (folded.length >= 3 && levenshtein(folded, entry.folded) <= 1) {
     return SCORE_FOLD_NEAR;
+  }
+  // d=2 is Path C salvage, not snap. Lowering the floor would invent ids.
+  if (tokenKey.length >= 5 && levenshtein(tokenKey, entry.key) === 2) {
+    return SCORE_FAR;
+  }
+  if (folded.length >= 5 && levenshtein(folded, entry.folded) === 2) {
+    return SCORE_FOLD_FAR;
   }
   return null;
 }
