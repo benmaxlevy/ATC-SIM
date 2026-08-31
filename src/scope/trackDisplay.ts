@@ -16,7 +16,14 @@ import {
   rejectPointout,
 } from "@core";
 import { sanitizeScratchpad, type DatablockMode } from "./datablock";
-import { createHistoryBuf, maybeSampleHistory, type HistoryBuf } from "./history";
+import { createHistoryBuf, recordHistoryOnReport, type HistoryBuf } from "./history";
+import {
+  createSurveillanceSampler,
+  stepSurveillanceSampler,
+  type SurveillanceMode,
+  type SurveillanceReport,
+} from "./surveillance";
+import type { RadarSite } from "@scenario";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
 import { applyDropTrack, applyInitiateTrack, NO_SEL_HINT, type TrackOwnership } from "./ownership";
 
@@ -114,6 +121,11 @@ export interface TrackDisplay {
    * `*D+I` / inhibit via `*D+` hides digits and keeps the stroke.
    */
   tpaSizeReadoutEnabled?: boolean;
+  /**
+   * Last surveillance report. Display consumers use this pose; missing means
+   * out of coverage (no paint, no 30 s coast).
+   */
+  lastReport?: SurveillanceReport;
 }
 
 export function createTrackDisplay(ownership: TrackOwnership = "unowned"): TrackDisplay {
@@ -614,23 +626,51 @@ export function noteIdentAccepted(td: TrackDisplay, ac: Aircraft, simTimeMs: num
 }
 
 /**
- * Display sampler: drop despawned tracks, sample history, arm IDENT flash.
- * Call from the render path, never from `stepWorld`.
+ * Display sampler: drop despawned tracks, issue surveillance reports, record
+ * history on report arrival, arm IDENT flash. Call from the render path,
+ * never from `stepWorld`. World / FMS / CA / MSAW stay 20 Hz truth.
  */
-export function syncTrackDisplays(tracks: Map<string, TrackDisplay>, world: World): void {
+export function syncTrackDisplays(
+  tracks: Map<string, TrackDisplay>,
+  world: World,
+  surveillance?: { mode?: SurveillanceMode; sites?: readonly RadarSite[] },
+): void {
   const living = new Set(world.aircraft.map((ac) => ac.id));
   for (const id of [...tracks.keys()]) {
     if (!living.has(id)) {
       tracks.delete(id);
     }
   }
+  const sampler = createSurveillanceSampler({
+    mode: surveillance?.mode,
+    sites: surveillance?.sites,
+  });
   for (const ac of world.aircraft) {
     let td = tracks.get(ac.id);
     if (!td) {
       td = createTrackDisplay();
       tracks.set(ac.id, td);
     }
-    maybeSampleHistory(td.history, world.simTimeMs, ac.xNm, ac.yNm);
+    if (td.lastReport) {
+      sampler.reports.set(ac.id, td.lastReport);
+    }
+  }
+  const issued = new Set(
+    stepSurveillanceSampler(sampler, world.aircraft, world.simTimeMs).map(
+      (report) => report.aircraftId,
+    ),
+  );
+  for (const ac of world.aircraft) {
+    const td = tracks.get(ac.id)!;
+    const report = sampler.reports.get(ac.id);
+    if (report) {
+      td.lastReport = report;
+      if (issued.has(ac.id)) {
+        recordHistoryOnReport(td.history, report.reportedAtSimMs, report.xNm, report.yNm);
+      }
+    } else {
+      delete td.lastReport;
+    }
     noteIdentAccepted(td, ac, world.simTimeMs);
     const ho = handoffFor(world, ac.id);
     if (

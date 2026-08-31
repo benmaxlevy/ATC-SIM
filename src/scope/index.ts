@@ -33,7 +33,7 @@
  * altitude filter / video maps (docs.virtualnas.net/crc/stars — R07). PCG datablock / Mode C (R02).
  * FOA STARS display data / altitude filters (R05).
  * Trainer delta: PageUp/Down + wheel; no extra CRC presets; right-drag slew
- * (middle-drag still works) is not CRC. History is 5 s sim / 5 dots, no phosphor. PTL is straight
+ * (middle-drag still works) is not CRC. History records on each surveillance report, cap 5 dots, no phosphor. PTL is straight
  * 1.0 min, default off. Trainer-authored JSON maps, not OSM / tiles (R12).
  * IBM Plex Mono, not a STARS face. Not NAS STARS.
  */
@@ -282,6 +282,7 @@ export {
   centerOnLastClick,
   centerOnWorld,
   createScopeView,
+  setSurveillanceMode,
   beginAltitudeFilterChord,
   isCoastlineToggleEnabled,
   isRangeRingOffViewCenter,
@@ -435,9 +436,40 @@ export {
   createHistoryBuf,
   historyDotsToDraw,
   maybeSampleHistory,
+  recordHistoryOnReport,
   stepHistoryDotCount,
 } from "./history";
 export type { HistoryBuf, HistoryDotCount } from "./history";
+export {
+  FUSED_PERIOD_MS,
+  MULTI_RECT_COLOR,
+  MULTI_RECT_LENGTH_PX,
+  MULTI_RECT_THICKNESS_PX,
+  SITE_SLASH_COLOR,
+  SITE_SLASH_LENGTH_PX,
+  SITE_SLASH_STROKE_PX,
+  aircraftAtReport,
+  createSurveillanceSampler,
+  defaultSurveillanceMode,
+  displayReportFor,
+  effectiveSurveillanceMode,
+  isInSurveillanceCoverage,
+  multiRectCorners,
+  nearestCoveringSite,
+  reportPeriodMs,
+  siteCovers,
+  siteSlashEndpoints,
+  stepSurveillanceSampler,
+  surveillancePaintFor,
+} from "./surveillance";
+export type {
+  SurveillanceClock,
+  SurveillanceMode,
+  SurveillancePaint,
+  SurveillanceReport,
+  SurveillanceSampler,
+  SurveillanceWorldPose,
+} from "./surveillance";
 export {
   HEADING_TICK_PX,
   HISTORY_DOT_SIZE_PX,

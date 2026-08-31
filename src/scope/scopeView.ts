@@ -9,9 +9,9 @@
  * is L1–L9; length is a discrete px set (0/24/36/48) on this view. CHAR SIZE is
  * per-subsystem Plex/system mono (DATA BLOCKS / LISTS / DCB / TOOLS / POS), not
  * a font picker. BRITE is per drawn channel (0–100 multiply); WX/WXC/BKC stored
- * no-ops. History is 5 s sim /
- * 5 dots, no phosphor; AUX HISTORY spinner shows 0–5 of those dots (F8 / H
- * toggles 0 ↔ last non-zero). PTL is a straight predicted track line (default
+ * no-ops. History records on each surveillance report, cap 5 dots, no
+ * phosphor; AUX HISTORY spinner shows 0–5 of those dots (F8 / H
+ * toggles 0 ↔ last non-zero). Default SITE mode is FUSED. PTL is a straight predicted track line (default
  * 1.0 min; AUX spinner 0.5/1/2/4). F7 toggles PTL ALL. PTL OWN is F3-owned
  * tracks; ALL wins if both are on. Per-track PTL is `*R` plus click
  * (`ptlByAircraftId`, session, not PREF). TPA J-rings: DCB 2/3/5/10 NM about the
@@ -90,6 +90,8 @@ import {
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
 import { cloneBrite, type BriteState } from "./palette";
 import type { TrackDisplay } from "./trackDisplay";
+import type { RadarSite } from "@scenario";
+import { defaultSurveillanceMode, type SurveillanceMode } from "./surveillance";
 
 import {
   DEFAULT_SYSTEM_LIST_PLACEMENTS,
@@ -254,12 +256,25 @@ export interface ScopeView {
    * When active, displays beacon code in place of callsign and forces PDBs to FDBs.
    */
   beaconatorActive: boolean;
+  /**
+   * SITE display mode. Default FUSED. Empty `radarSites` is implicit FUSED.
+   * T02-76 owns the DCB SITE caps; this field is the sampler input.
+   */
+  surveillanceMode: SurveillanceMode;
+  /** Trainer-authored sites from the loaded scenario. `[]` = implicit FUSED. */
+  radarSites: RadarSite[];
 }
 
 export function createScopeView(
   airportEastNm: number = AIRPORT_REF_EAST_NM,
   airportNorthNm: number = AIRPORT_REF_NORTH_NM,
-  options?: { digitalMap?: DigitalMap; showCoastline?: boolean; giTextLines?: readonly string[] },
+  options?: {
+    digitalMap?: DigitalMap;
+    showCoastline?: boolean;
+    giTextLines?: readonly string[];
+    radarSites?: readonly RadarSite[];
+    surveillanceMode?: SurveillanceMode;
+  },
 ): ScopeView {
   const digitalMap = options?.digitalMap ?? DEFAULT_DIGITAL_MAP;
   const showCoastline = options?.showCoastline ?? digitalMap.coastline?.enabled === true;
@@ -332,7 +347,14 @@ export function createScopeView(
     pendingChord: null,
     helpOpen: false,
     beaconatorActive: false,
+    surveillanceMode: options?.surveillanceMode ?? defaultSurveillanceMode(),
+    radarSites: options?.radarSites ? [...options.radarSites] : [],
   };
+}
+
+/** Sampler mode only. SITE DCB caps stay T02-76. */
+export function setSurveillanceMode(view: ScopeView, mode: SurveillanceMode): void {
+  view.surveillanceMode = mode;
 }
 
 export function setBeaconatorActive(view: ScopeView, active: boolean): void {

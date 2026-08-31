@@ -18,6 +18,15 @@
 import { SCOPE_FONT_STACK } from "./fonts";
 import { PALETTE, historyTrailColor } from "./palette";
 import { ownershipStubChar, type TrackOwnership } from "./ownership";
+import {
+  MULTI_RECT_COLOR,
+  SITE_SLASH_COLOR,
+  SITE_SLASH_LENGTH_PX,
+  SITE_SLASH_STROKE_PX,
+  multiRectCorners,
+  siteSlashEndpoints,
+  type SurveillancePaint,
+} from "./surveillance";
 
 /** Position-symbol shape for primary targets. Axis-aligned diamond, not heading-rotated. */
 export const TARGET_SHAPE = "diamond" as const;
@@ -63,6 +72,14 @@ export interface TargetSymbolOptions {
   beaconCode?: string;
   beaconSelect?: ReadonlySet<string> | ReadonlyArray<string>;
   sectorId?: string;
+  /** Default FUSED puck. MULTI / single-site replace the blue circle. */
+  surveillancePaint?: SurveillancePaint;
+  /** Ground-track heading for the MULTI rectangle (PTL axis, not leader). */
+  groundTrackDeg?: number;
+  reportXNm?: number;
+  reportYNm?: number;
+  antennaXNm?: number;
+  antennaYNm?: number;
 }
 
 export interface TargetSymbolDescriptor {
@@ -301,6 +318,83 @@ function strokeDiamond(ctx: CanvasRenderingContext2D, x: number, y: number, size
   ctx.stroke();
 }
 
+/** Thick blue MULTI rectangle centered on the glyph, ⊥ PTL ground track. */
+export function drawMultiSurveillanceRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  headingDeg: number,
+): void {
+  const corners = multiRectCorners(x, y, headingDeg);
+  ctx.beginPath();
+  ctx.moveTo(corners[0].x, corners[0].y);
+  ctx.lineTo(corners[1].x, corners[1].y);
+  ctx.lineTo(corners[2].x, corners[2].y);
+  ctx.lineTo(corners[3].x, corners[3].y);
+  ctx.closePath();
+  ctx.fillStyle = MULTI_RECT_COLOR;
+  ctx.fill();
+}
+
+/** Thin green slash through the glyph, aimed from report pose at the antenna. */
+export function drawSiteSurveillanceSlash(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  reportXNm: number,
+  reportYNm: number,
+  antennaXNm: number,
+  antennaYNm: number,
+): void {
+  const slash = siteSlashEndpoints(
+    x,
+    y,
+    reportXNm,
+    reportYNm,
+    antennaXNm,
+    antennaYNm,
+    SITE_SLASH_LENGTH_PX,
+  );
+  ctx.strokeStyle = SITE_SLASH_COLOR;
+  ctx.lineWidth = SITE_SLASH_STROKE_PX;
+  ctx.beginPath();
+  ctx.moveTo(slash.x1, slash.y1);
+  ctx.lineTo(slash.x2, slash.y2);
+  ctx.stroke();
+}
+
+function drawSurveillanceMark(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  options: TargetSymbolOptions,
+  paint: SurveillancePaint,
+): void {
+  if (paint === "multi-rect") {
+    drawMultiSurveillanceRect(ctx, x, y, options.groundTrackDeg ?? 0);
+    return;
+  }
+  if (paint === "site-slash") {
+    drawSiteSurveillanceSlash(
+      ctx,
+      x,
+      y,
+      options.reportXNm ?? 0,
+      options.reportYNm ?? 0,
+      options.antennaXNm ?? 0,
+      options.antennaYNm ?? 0,
+    );
+  }
+}
+
+function fillFusedPuck(ctx: CanvasRenderingContext2D, x: number, y: number, sizePx: number): void {
+  const radiusPx = Math.max(5, Math.round(sizePx * 0.65));
+  ctx.beginPath();
+  ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
+  ctx.fillStyle = TARGET_PUCK_BG;
+  ctx.fill();
+}
+
 export function drawOwnershipStub(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -351,32 +445,29 @@ export function drawTargetSymbol(
   }
 
   const desc = targetSymbolDescriptor(options);
+  const paint = options.surveillancePaint ?? "fused-puck";
+  if (paint !== "fused-puck") {
+    drawSurveillanceMark(ctx, x, y, options, paint);
+  }
   if (desc.shape === "diamond") {
     ctx.strokeStyle = color;
     ctx.lineWidth = TARGET_STROKE_PX;
     const diamondSize = Math.max(PRIMARY_TARGET_SIZE_PX, Math.round(sizePx * 1.25));
     strokeDiamond(ctx, x, y, diamondSize);
   } else if (desc.shape === "square") {
-    // Solid blue circle background behind the square
-    const radiusPx = Math.max(5, Math.round(sizePx * 0.65));
-    ctx.beginPath();
-    ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
-    ctx.fillStyle = TARGET_PUCK_BG;
-    ctx.fill();
+    if (paint === "fused-puck") {
+      fillFusedPuck(ctx, x, y, sizePx);
+    }
 
     ctx.strokeStyle = color;
     ctx.lineWidth = TARGET_STROKE_PX;
     const half = sizePx / 2;
     ctx.strokeRect(x - half, y - half, sizePx, sizePx);
   } else {
-    // 1. Draw solid blue background circle (#175dc7)
-    const radiusPx = Math.max(5, Math.round(sizePx * 0.65));
-    ctx.beginPath();
-    ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
-    ctx.fillStyle = TARGET_PUCK_BG;
-    ctx.fill();
+    if (paint === "fused-puck") {
+      fillFusedPuck(ctx, x, y, sizePx);
+    }
 
-    // 2. Text color: White for owned aircraft (matching datablock), Green for others (matching datablock)
     let textColor = color;
     if (
       color === POSITION_SYMBOL_COLOR ||

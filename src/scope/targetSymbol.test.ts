@@ -6,6 +6,7 @@ import {
   POSITION_SYMBOL_COLOR,
   SELECTED_ACCENT_COLOR,
   SELECTION_BOX_PAD_PX,
+  TARGET_PUCK_BG,
   TARGET_SHAPE,
   TARGET_SIZE_PX,
   drawHistoryDot,
@@ -21,12 +22,15 @@ import {
   targetSymbolDescriptor,
   targetSymbolShape,
 } from "./targetSymbol";
+import { MULTI_RECT_COLOR, SITE_SLASH_COLOR, SITE_SLASH_STROKE_PX } from "./surveillance";
 
 interface MockDrawTargetCtx {
   ctx: CanvasRenderingContext2D;
   fillTexts: { text: string; font?: string; x?: number; y?: number; fillStyle?: string }[];
   strokeRects: { x: number; y: number; w: number; h: number; strokeStyle?: string }[];
   pathStrokes: { points: { x: number; y: number }[]; strokeStyle?: string; lineWidth?: number }[];
+  pathFills: { points: { x: number; y: number }[]; fillStyle?: string }[];
+  arcs: { x: number; y: number }[];
 }
 
 function createMockTargetCtx(): MockDrawTargetCtx {
@@ -38,6 +42,8 @@ function createMockTargetCtx(): MockDrawTargetCtx {
     strokeStyle?: string;
     lineWidth?: number;
   }[] = [];
+  const pathFills: { points: { x: number; y: number }[]; fillStyle?: string }[] = [];
+  const arcs: { x: number; y: number }[] = [];
   let currentPath: { x: number; y: number }[] = [];
 
   const ctx = {
@@ -66,8 +72,11 @@ function createMockTargetCtx(): MockDrawTargetCtx {
     },
     arc(x: number, y: number) {
       currentPath.push({ x, y });
+      arcs.push({ x, y });
     },
-    fill() {},
+    fill() {
+      pathFills.push({ points: [...currentPath], fillStyle: this.fillStyle });
+    },
     strokeRect(x: number, y: number, w: number, h: number) {
       strokeRects.push({ x, y, w, h, strokeStyle: this.strokeStyle });
     },
@@ -82,6 +91,8 @@ function createMockTargetCtx(): MockDrawTargetCtx {
     fillTexts,
     strokeRects,
     pathStrokes,
+    pathFills,
+    arcs,
   };
 }
 
@@ -395,6 +406,58 @@ test("drawHistoryDot draws square dot centered on coordinates", () => {
   const mock = createMockTargetCtx();
   drawHistoryDot(mock.ctx, 50, 60, "#1E50C8");
   expect(mock.ctx).toBeDefined();
+});
+
+test("AC6 — FUSED keeps the existing blue circle puck", () => {
+  expect(TARGET_PUCK_BG).toBe(MULTI_RECT_COLOR);
+  const mock = createMockTargetCtx();
+  drawTargetSymbol(mock.ctx, 100, 200, POSITION_SYMBOL_COLOR, { ownership: "unowned" }, 8);
+  expect(mock.arcs).toHaveLength(1);
+  expect(mock.pathFills.some((fill) => fill.fillStyle === TARGET_PUCK_BG)).toBe(true);
+  expect(mock.fillTexts[0]!.text).toBe("*");
+});
+
+test("AC4 — MULTI paints a thick blue rect and no puck", () => {
+  const mock = createMockTargetCtx();
+  drawTargetSymbol(
+    mock.ctx,
+    100,
+    200,
+    POSITION_SYMBOL_COLOR,
+    { ownership: "unowned", surveillancePaint: "multi-rect", groundTrackDeg: 90 },
+    8,
+  );
+  expect(mock.arcs).toHaveLength(0);
+  expect(mock.pathFills.some((fill) => fill.fillStyle === MULTI_RECT_COLOR)).toBe(true);
+  expect(mock.pathFills.find((fill) => fill.fillStyle === MULTI_RECT_COLOR)!.points).toHaveLength(
+    4,
+  );
+  expect(mock.fillTexts[0]!.text).toBe("*");
+});
+
+test("AC5 — single-site paints a thin green slash and no blue block", () => {
+  const mock = createMockTargetCtx();
+  drawTargetSymbol(
+    mock.ctx,
+    100,
+    200,
+    POSITION_SYMBOL_COLOR,
+    {
+      ownership: "unowned",
+      surveillancePaint: "site-slash",
+      reportXNm: 0,
+      reportYNm: 0,
+      antennaXNm: 10,
+      antennaYNm: 0,
+    },
+    8,
+  );
+  expect(mock.arcs).toHaveLength(0);
+  expect(mock.pathFills.some((fill) => fill.fillStyle === TARGET_PUCK_BG)).toBe(false);
+  expect(mock.pathStrokes).toHaveLength(1);
+  expect(mock.pathStrokes[0]!.strokeStyle).toBe(SITE_SLASH_COLOR);
+  expect(mock.pathStrokes[0]!.lineWidth).toBe(SITE_SLASH_STROKE_PX);
+  expect(mock.fillTexts[0]!.text).toBe("*");
 });
 
 test("targetSymbol comments say target/history grammar, not sprite or airplane", () => {
