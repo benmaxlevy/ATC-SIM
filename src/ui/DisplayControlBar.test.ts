@@ -27,6 +27,7 @@ import {
   toggleMapLayer,
   togglePtlOn,
   toggleSsaFilter,
+  toggleWxLevel,
   tryApplyAltitudeFilterDigits,
   stepRrInterval,
   PpiPlaceholder,
@@ -35,6 +36,7 @@ import { loadKdem } from "@scenario";
 import {
   DCB_FONT_PX,
   DCB_HEIGHT_PX,
+  BRITE_GRID_LAYOUT,
   DisplayControlBar,
   MAIN_DCB_LAYOUT,
 } from "./DisplayControlBar";
@@ -247,16 +249,43 @@ test("T02-31 — MAIN descriptor fixes two rows, 22 columns, and the quick-map m
   );
 });
 
-test("T02-31 — system cells are inert and all six WX cells are visible", () => {
+test("T02-31 — MODE/SITE stay inert; WX1–6 are visible latches", () => {
   const html = dcbHtml();
   for (const id of ["wx1", "wx2", "wx3", "wx4", "wx5", "wx6"]) {
-    expect(html).toMatch(new RegExp(`aria-label="${id.toUpperCase()}"[^>]*disabled`));
+    expect(html).toMatch(new RegExp(`aria-label="${id.toUpperCase()}"[^>]*data-dcb-kind="toggle"`));
+    expect(html).not.toMatch(new RegExp(`aria-label="${id.toUpperCase()}"[^>]*\\bdisabled\\b`));
   }
   for (const label of ["MODE FSL", "SITE FUSED"]) {
     expect(html).toMatch(new RegExp(`aria-label="${label}"[^>]*disabled`));
   }
   expect(html).toContain('data-dcb-layout="MAIN"');
   expect(html).toContain('data-dcb-layout-id="map-6"');
+});
+
+test("T02-70 — MAIN WX1–6 latch wxLevels independently; full-height columns 9–14", () => {
+  const wxCells = MAIN_DCB_LAYOUT.filter((cell) => cell.id.startsWith("wx"));
+  expect(wxCells).toHaveLength(6);
+  expect(wxCells.map((cell) => [cell.id, cell.column, cell.rowSpan, cell.kind])).toEqual([
+    ["wx1", 9, 2, "toggle"],
+    ["wx2", 10, 2, "toggle"],
+    ["wx3", 11, 2, "toggle"],
+    ["wx4", 12, 2, "toggle"],
+    ["wx5", 13, 2, "toggle"],
+    ["wx6", 14, 2, "toggle"],
+  ]);
+  expect(MAIN_DCB_LAYOUT.every((cell) => cell.row === 1 || cell.rowSpan === 1)).toBe(true);
+
+  const view = createScopeView();
+  expect(view.wxLevels).toEqual([false, false, false, false, false, false]);
+  const off = dcbHtml(view);
+  expect(off).toMatch(/aria-pressed="false"[^>]*data-dcb-cell="wx1"/);
+  toggleWxLevel(view, 2);
+  const on = dcbHtml(view);
+  expect(on).toMatch(/aria-pressed="true"[^>]*data-dcb-cell="wx2"/);
+  expect(on).toMatch(/aria-pressed="false"[^>]*data-dcb-cell="wx1"/);
+  expect(view.wxLevels).toEqual([false, true, false, false, false, false]);
+  expect(barSrc()).toMatch(/toggleWxLevel\(view,\s*n\)/);
+  expect(barSrc()).not.toMatch(/from\s+["']@parse["']/);
 });
 
 test("T02-32 — physical caps expose raised, pressed, and disabled presentation tokens", () => {
@@ -340,7 +369,7 @@ test("cells sit on the PPI glass; canvas below fills the rectangular PPI", () =>
   expect(barSrc()).toMatch(/onMouseDown=\{preventButtonFocus\}/);
 });
 
-test("T02-24 — MAIN quick maps 1–6 and MAPS slots 1–30; unused 7–30 disabled; WX disabled", () => {
+test("T02-24 — MAIN quick maps 1–6 and MAPS slots 1–30; unused 7–30 disabled; WX latches", () => {
   expect(barSrc()).toMatch(/toggleVideoMap/);
   expect(barSrc()).toMatch(/clearAllVideoMaps/);
   expect(barSrc()).toMatch(/toggleGeoMapsList/);
@@ -364,9 +393,10 @@ test("T02-24 — MAIN quick maps 1–6 and MAPS slots 1–30; unused 7–30 disa
     expect(main).toContain(`data-dcb-map-slot="${n}"`);
   }
   expect(main).not.toContain('data-dcb-map-slot="7"');
-  for (const n of [1, 2, 3, 4]) {
+  for (const n of [1, 2, 3, 4, 5, 6]) {
     expect(main).toContain(`data-dcb-cell="wx${n}"`);
-    expect(main).toMatch(new RegExp(`aria-label="WX${n}"[^>]*\\bdisabled\\b`));
+    expect(main).toMatch(new RegExp(`aria-label="WX${n}"[^>]*data-dcb-kind="toggle"`));
+    expect(main).not.toMatch(new RegExp(`aria-label="WX${n}"[^>]*\\bdisabled\\b`));
   }
 
   openDcbMenu(view, "MAPS");
@@ -666,7 +696,7 @@ test("T02-27 AC1 — SSA FILTER submenu hides TIME; restoring shows it again", (
   expect(dcbHtml(view)).toContain("RANGE 20");
 });
 
-test("T02-26 — BRITE submenu paints FDB/LDB/MPA/HST/RR/TLS; WX/WXC/BKC disabled", () => {
+test("T02-26 / T02-72 — BRITE submenu paints FDB/LDB/MPA/HST/RR/TLS/WX/WXC; BKC disabled", () => {
   expect(barSrc()).toMatch(/openDcbMenu\(view,\s*"BRITE"\)/);
   expect(barSrc()).toMatch(/stepBriteChannel/);
   expect(barSrc()).not.toMatch(/cycleMapBrite/);
@@ -693,8 +723,22 @@ test("T02-26 — BRITE submenu paints FDB/LDB/MPA/HST/RR/TLS; WX/WXC/BKC disable
   for (const label of ["WX", "WXC", "BKC", "CMP", "BCN", "PRI"]) {
     expect(html).toContain(label);
   }
-  expect(html).toMatch(/aria-label="WX"[^>]*\bdisabled\b/);
-  expect(html).toMatch(/aria-label="WXC"[^>]*\bdisabled\b/);
+  expect(BRITE_GRID_LAYOUT.find((cell) => cell.id === "wx")).toMatchObject({
+    channel: "wx",
+  });
+  expect(BRITE_GRID_LAYOUT.find((cell) => cell.id === "wxc")).toMatchObject({
+    channel: "wxc",
+  });
+  expect(BRITE_GRID_LAYOUT.find((cell) => cell.id === "wx")?.staticVal).toBeUndefined();
+  expect(BRITE_GRID_LAYOUT.find((cell) => cell.id === "wxc")?.staticVal).toBeUndefined();
+  expect(BRITE_GRID_LAYOUT.find((cell) => cell.id === "bkc")).toMatchObject({
+    disabled: true,
+    staticVal: "100",
+  });
+  expect(html).toMatch(/aria-label="WX"[^>]*data-dcb-kind="spinner"/);
+  expect(html).toMatch(/aria-label="WXC"[^>]*data-dcb-kind="spinner"/);
+  expect(html).not.toMatch(/aria-label="WX"[^>]*\bdisabled\b/);
+  expect(html).not.toMatch(/aria-label="WXC"[^>]*\bdisabled\b/);
   expect(html).toMatch(/aria-label="BKC"[^>]*\bdisabled\b/);
   expect(html).toMatch(/aria-label="CMP"[^>]*\bdisabled\b/);
   expect(html).not.toContain("RANGE 20");

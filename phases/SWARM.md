@@ -1,4 +1,210 @@
-# ATC-SIM swarm orchestrator — Twentieth swarm (catalog retrieve + margin snap: T03-16–20)
+# ATC-SIM swarm orchestrator — Twenty-first swarm (WX mosaic NEXRAD VIP)
+
+## Twenty-first swarm planned — 2026-08-30 (WX mosaic NEXRAD VIP)
+
+This configuration is planning-only until `/run-swarm` execution begins.
+Execution branch is **`feature/wx-mosaic`**, created from current `master`.
+The captain squash-merges ticket branches into **`feature/wx-mosaic`**, not
+`master`. Do not push. Existing swarm history stays intact.
+
+| Key | Value |
+| --- | --- |
+| Goal | Live IEM CONUS N0Q mosaic on the PPI as STARS VIP 1–6. DCB WX1–6 + `*WX` + BRITE WX/WXC. Display only. |
+| Include | T02-68, T02-69, T02-70, T02-71, T02-72 |
+| Skip | BKC, SSA WX / WX HIST, AVL 2×3 restyle, wind, METAR, pilot deviate, RainViewer default, OSM, paid weather APIs, phase 5, T03 redo, T04-36–42 redo |
+| Stop | After T02-72. No next phase. |
+| Max workers | 3 |
+| Merge lock | captain squash to `feature/wx-mosaic`, then `npm test` / `npm run ci` |
+| Model | **cursor-grok-4.6-high only, non-fast** on captain and every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law:**
+
+- IEM N0Q WMS only. One GetMap for ARP ± ~80 NM. Vite `/wx-iem` proxy.
+  CI uses `testdata/wx/` fixture, no live IEM in tests.
+- Fetch by `scenario.arp`. KDEM 0,0 empty is valid. No airport-id branch.
+- VIP breaks in data (7110.65 30/40/50 + trainer splits). Decode ramp →
+  dBZ → 6 masks. Trainer fills, not NWS rainbow.
+- `drawImage` only in weather module. Decode off rAF. 30/60 Canvas2D envelope.
+- DCB never Command IR. Preview unknown stays INV.
+- Display only. `vipAtNm` for later deviate. Do not steer aircraft.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-68 | `feature/wx-mosaic` + planning commit |
+| B | T02-69 | T02-68 |
+| C | T02-70 ∥ T02-71 | T02-69 |
+| D | T02-72 | T02-70, T02-71 |
+
+**Ticket ownership:**
+
+- T02-68 owns IEM client and VIP decode.
+- T02-69 owns weather paint under tracks.
+- T02-70 owns DCB WX levels and PREF.
+- T02-71 owns preview WX commands.
+- T02-72 owns BRITE WX/WXC, docs, and acceptance.
+
+**Ticket files / branches:**
+
+- `ticket/T02-68-wx-mosaic-iem-client-and-vip` ← `phases/02-scope/tickets/T02-68-wx-mosaic-iem-client-and-vip.md`
+- `ticket/T02-69-wx-vip-paint-under-tracks` ← `phases/02-scope/tickets/T02-69-wx-vip-paint-under-tracks.md`
+- `ticket/T02-70-dcb-wx-levels-and-pref` ← `phases/02-scope/tickets/T02-70-dcb-wx-levels-and-pref.md`
+- `ticket/T02-71-preview-wx-commands` ← `phases/02-scope/tickets/T02-71-preview-wx-commands.md`
+- `ticket/T02-72-brite-wx-wxc-and-acceptance` ← `phases/02-scope/tickets/T02-72-brite-wx-wxc-and-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope addendum (T02-68–72 WX mosaic)
+Merge target: `feature/wx-mosaic`
+Merged: T02-68, T02-69, T02-70, T02-71, T02-72
+Tests: npm test / npm run ci exit 0
+Manual leftover: <WX mosaic / BRITE WX/WXC walk or none>
+Notes: <IEM N0Q; VIP 1–6; display-only; no paid APIs>
+```
+
+or `PHASE EXIT BLOCKED` with reason.
+
+## Twenty-first swarm execution — 2026-08-30 (WX mosaic NEXRAD VIP)
+
+Human invoked `/run-swarm` with **cursor grok 4.6 high (non-fast)**. Execute
+T02-68–72 only. Planning tickets must land on **`feature/wx-mosaic`** so
+workers see them. Use isolated worktrees. Max 3 workers. Captain squash-merges
+ticket branches into **`feature/wx-mosaic`**, not `master`. Do not push. Stop
+after T02-72. Captain appends `SWARM-STATUS.md` after phase exit.
+
+Every captain and worker uses **cursor-grok-4.6-high only, non-fast**.
+Preserve untracked `.cursor/rules/caveman-ultra.mdc` and `e2e/`; do not stage
+or delete them. Paid STT/TTS/LLM forbidden.
+
+Execution waves:
+
+1. T02-68
+2. T02-69
+3. T02-70 ∥ T02-71
+4. T02-72
+
+Product law: IEM N0Q WMS only; one ARP-centered GetMap; `/wx-iem` proxy;
+scenario.arp fetch; data-driven VIP breaks; weather-module-only `drawImage`;
+decode off rAF; DCB scope-only; preview unknown `INV`; display-only; `vipAtNm`
+reserved for later deviate; no aircraft steering.
+
+No push. No merge to `master`. No next phase.
+
+---
+
+---
+
+## Twenty-second swarm planned — 2026-08-30 (PREF named SAVE AS, per-track PTL, STAR/SID transition amend, radar sites)
+
+**PARKED.** Do not start workers while twenty-first (WX T02-68–72 on
+`feature/wx-mosaic`) or `fix/meaningful-test-suite` is in flight. T02-68–72
+are WX ids. This swarm uses **T02-73–77** plus **T04-43–45**.
+
+This configuration is planning-only. Execution branch is
+**`feature/pref-ptl-via-radar`**, cut from `master` after the other sessions
+land or the human says go. Captain squash-merges into that feature branch.
+Do not merge onto `master` unless the human asks.
+
+| Key | Value |
+| --- | --- |
+| Goal | Named PREF SAVE AS, per-track PTL toggle, controller STAR/SID transition amend, and authored radar sites with FUSED / MULTI / single-site paints and 1.0 s / 4.8 s reports |
+| Include | **T02-73**, **T02-74**, **T04-43**, **T04-44**, **T04-45**, **T02-75**, **T02-76**, **T02-77** |
+| Skip | T04-11 wind; phase 5; wake ATPA; WX mosaic (T02-68–72); 30 s coast; RF/hold/heading-leg FMS; `faa:update`; MODE FSL; redo T04-19 climb-via engine; live sensors; paid vendors |
+| Stop | After T02-77 acceptance. Do not start phase 5 or merge to `master` without a new ask |
+| Max ticket workers in flight | **3** |
+| Merge lock | Only the phase captain squash-merges ticket branches to **`feature/pref-ptl-via-radar`**, then runs `npm test` / `npm run ci` |
+| Model | **cursor-grok-4.6-high only, non-fast** on captain and every worker |
+| Paid STT/TTS/LLM | **Forbidden** |
+
+**Product law (twenty-second swarm — PREF / PTL / VIA / radar):**
+
+- **PREF name is a PPI chord.** SAVE AS collects a short alnum name via the
+  preview / status-line buffer (same no-dialog rule as FILTER). Enter commits
+  to the first empty slot (slot 8 if all eight are full). Esc cancels. No
+  `window.prompt`, no HTML `<input>`. Slot caps show the stored name.
+- **Per-track PTL is session state.** CRC Table 24 `R` + slew. Ours: `*R` +
+  click. Do not steal `*RR`. Not PREF (same as `*J` / `*P`). Global ALL / OWN
+  / LNTH stay. Per-track on draws that track even if ALL/OWN are off.
+  Per-track off hides that track when ALL is on. Length stays global.
+- **Transition amend is catalog data.** Optional `transitionId` on
+  `DESCEND_VIA` / `CLIMB_VIA` / `JOIN_PROCEDURE`. Join only at a matching
+  common fix. Past the branch with no join → reject. No airport-id branch.
+  Heading still cancels VIA. Do not flatten RF / hold / heading-only CIFP
+  legs. T04-19 VIA_SID fly-through stays; T04-44 does not rebuild it.
+- **Radar: truth vs report.** World / FMS / CA / MSAW stay 20 Hz truth. PPI
+  symbol, datablock, PTL, history, and ATPA cones use the last surveillance
+  report. Default boot is FUSED.
+- **Report periods (frozen).** FUSED = **1.0 s** (R07 fusion). Single site
+  and MULTI (nearest covering site) = that site’s `periodMs`, **4800** for
+  airport / ASR rows. Out of coverage: no paint. No 30 s coast.
+- **Site paints (frozen, operator shots).** FUSED = current blue circle puck
+  (`TARGET_PUCK_BG`). MULTI = no circle; thick blue rectangle centered on the
+  glyph, **perpendicular to PTL** (ground track, not leader). Other / single
+  site = no blue block; thin green slash through the glyph **aimed at that
+  site’s antenna**. Glyph / stub stays on top. History dots unchanged.
+- **Sites are authored JSON.** `kind: "asr" | "airport"`, ENU or lat/lon→ENU,
+  `rangeNm`, `periodMs`. Trainer-authored, not NAS adaptation. Empty
+  `radarSites` → implicit FUSED, no SITE buttons. MODE FSL stays disabled.
+- **Generic tests.** Synthetic catalogs / sites. No KATL production counts.
+  KDEM stays the authored default.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-73 ∥ T02-74 ∥ T04-45 | `feature/pref-ptl-via-radar` after park lifts |
+| B | T04-43 | Wave A |
+| C | T04-44 ∥ T02-75 | T04-43, T04-45 |
+| D | T02-76 | T02-75 |
+| E | T02-77 | T02-76, T04-44 |
+
+**Ticket ownership:**
+
+- T02-73 owns PREF SAVE AS name chord and slot-cap names.
+- T02-74 owns per-track PTL session map and `*R` click (not `*RR`).
+- T04-45 owns `RadarSite` schema, loader, and KDEM/KATL authored fixtures.
+- T04-43 owns STAR `transitionId` on DESCEND_VIA / JOIN and catalog join.
+- T04-44 owns SID `transitionId` on CLIMB_VIA / JOIN; does not redo T04-19.
+- T02-75 owns the display sampler, report pose, history-on-report, and the
+  three site paints.
+- T02-76 owns live SITE DCB submenu and SSA radar word.
+- T02-77 owns end-to-end acceptance, backlog, and leftover honesty.
+
+**Ticket files / branches:**
+
+- `ticket/T02-73-pref-save-as-named-sets` ← `phases/02-scope/tickets/T02-73-pref-save-as-named-sets.md`
+- `ticket/T02-74-per-track-ptl` ← `phases/02-scope/tickets/T02-74-per-track-ptl.md`
+- `ticket/T04-43-star-descend-via-transition-amend` ← `phases/04-procedures/tickets/T04-43-star-descend-via-transition-amend.md`
+- `ticket/T04-44-sid-climb-via-transition-amend` ← `phases/04-procedures/tickets/T04-44-sid-climb-via-transition-amend.md`
+- `ticket/T04-45-radar-site-schema-and-scenario-fixtures` ← `phases/04-procedures/tickets/T04-45-radar-site-schema-and-scenario-fixtures.md`
+- `ticket/T02-75-surveillance-display-sampler` ← `phases/02-scope/tickets/T02-75-surveillance-display-sampler.md`
+- `ticket/T02-76-site-dcb-and-ssa-radar-word` ← `phases/02-scope/tickets/T02-76-site-dcb-and-ssa-radar-word.md`
+- `ticket/T02-77-radar-sites-integration-and-acceptance` ← `phases/02-scope/tickets/T02-77-radar-sites-integration-and-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2/4 addendum (T02-73–77 / T04-43–45 PREF, PTL, VIA, radar sites)
+Merged: T02-73, T02-74, T04-45, T04-43, T04-44, T02-75, T02-76, T02-77
+Tests: npm test / npm run ci exit 0
+Manual leftover: <Chrome SITE FUSED/MULTI/site walk or none>
+Notes: <PREF name chord; *R PTL; transitionId; FUSED circle / MULTI rect / site green slash; 1.0s / 4.8s; no 30s coast>
+```
+
+or `PHASE EXIT BLOCKED` with reason.
+
+## Twenty-second swarm execution — PARKED 2026-08-30
+
+Do **not** spawn workers. Wait until WX twenty-first and the meaningful-test-suite
+branch are clear, then a new `/run-swarm` on this section. Merge lock remains
+`feature/pref-ptl-via-radar`. IDs are T02-73–77 and T04-43–45 only.
+
+---
 
 ## Twentieth swarm planned — 2026-08-30 (catalog retrieve, margin snap, Path C candidates)
 

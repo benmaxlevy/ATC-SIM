@@ -6,8 +6,18 @@ function srcDir(name: string): string {
   return fileURLToPath(new URL(`./src/${name}`, import.meta.url));
 }
 
+const iemProxy = {
+  "/wx-iem": {
+    target: "https://mesonet.agron.iastate.edu",
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/wx-iem/, ""),
+  },
+};
+
 export default defineConfig({
   plugins: [react()],
+  server: { proxy: iemProxy },
+  preview: { proxy: iemProxy },
   resolve: {
     alias: {
       "@core": srcDir("core"),

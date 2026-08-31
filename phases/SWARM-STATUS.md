@@ -1,5 +1,52 @@
 # Swarm status
 
+## TWENTY-FIRST SWARM COMPLETE — WX mosaic NEXRAD VIP (T02-68–72)
+
+T02-68–72 are squash-merged on **`feature/wx-mosaic`** (not `master`). Captain
+`npm test` / `npm run ci`: **168 test files passed, 1935 tests passed, 3
+skipped, 0 failures**. IEM CONUS N0Q → VIP 1–6, display only. No phase 5.
+Did not redo T03 or T04-36–42. Did not push. Did not merge to `master`.
+
+- **Client (T02-68):** `src/scope/wx/` WMS URL, ARP bbox, RGB→dBZ, VIP bins,
+  `vipAtNm`, `ScopeView.wxLevels` default off. Vite `/wx-iem` proxy. CI
+  fixture `testdata/wx/`. No live IEM in tests.
+- **Paint (T02-69):** `weatherLayer.ts` after maps / before tracks. One cached
+  `drawImage`. Default off. OSM greps kept. `non-goals.md` mosaic line lifted.
+- **DCB (T02-70):** MAIN WX1–6 latches. PREF schema v3. v2 loads levels off.
+- **Preview (T02-71):** `*WX 1`–`6` / `ALL` / `OFF`. Incomplete vs INV.
+- **BRITE (T02-72):** WX/WXC live; BKC stays disabled. Combined acceptance.
+
+**Merged (squash-merged, captain only, onto `feature/wx-mosaic`):** T02-68
+(`e6f350e`), T02-69 (`e212039`), T02-70 (`ca454ed`), T02-71 (`de8065f`),
+T02-72 (`5ccd729`). Planning `a4589a1`.
+
+**Captain judgement calls:**
+- First T02-68 squash landed on local `master` by mistake. Reset that
+  unpushed commit (`HEAD~1`); re-squashed onto `feature/wx-mosaic`. Local
+  `master` still has unrelated `630bd5b` (meaningful tests); not this swarm.
+- Wave C backlog conflict: kept both T02-70 DCB/PREF and T02-71 `*WX` text.
+- Twenty-second PREF/PTL/radar swarm stays PARKED (T02-73–77 / T04-43–45).
+- Untracked `.cursor/rules/caveman-ultra.mdc`, `e2e/`, and T02-73+ / T04-43+
+  ticket drafts left uncommitted.
+
+**Manual leftover:** Chrome KATL live IEM walk. skip-with-reason: no visual
+operator. Automated tests cover decode, paint, DCB, `*WX`, BRITE. Do not
+invent a visual pass.
+
+**Product leftover:** `fetchWxMosaic` is not called from `main.tsx`. Live
+GetMap stays unhooked; PPI paints only when `view.wxMosaic` is set (tests).
+Documented under WX mosaic leftovers.
+
+**Product law held:** IEM only; ARP fetch; KDEM 0,0 empty valid; no airport-id
+branch; VIP data breaks; trainer fills not NWS rainbow; `drawImage` in weather
+module; DCB no Command IR; preview unknown INV; display only; `vipAtNm` unused
+by pilots; no paid weather API; no OSM.
+
+**Remaining work (next paste of `SWARM.md` with config changed):** hook
+session-loop IEM refresh; SSA WX HIST; BKC; AVL; deviate; merge
+`feature/wx-mosaic` to `master` when the human asks; parked twenty-second
+swarm.
+
 ## TWENTIETH SWARM COMPLETE — catalog retrieve + margin snap (T03-16–20)
 
 T03-16–20 are squash-merged on `master`. Captain `npm test` / `npm run ci`: **164 test files passed, 1896 tests passed, 3 skipped, 0 failures**. Prerequisite unique snap (`I26R` / Haynes→`HAINZ` / AJ→`AJAAY`, local cap 4096) landed first. Phase 3 E1–E14 unchanged. No phase 5. Did not redo T04-36–42. Did not push.

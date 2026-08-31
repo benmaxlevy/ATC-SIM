@@ -119,20 +119,16 @@ The following specialized or multi-subsystem command sets remain deliberately de
    - `QL [Sector ID] <ENTER>` / `QL OFF [Sector ID] <ENTER>`: Enable / disable Quick Look for specified sector.
    - `ZDE [Callsign] <ENTER>` / `ZCL [Callsign] <ENTER>`: Electronic departure coordination messaging to Tower.
 
-5. **Weather Radar Simulation:**
-   - `* WX [1-6] <ENTER>`: Toggle precipitation reflectivity levels 1 through 6.
-   - `* WX ALL <ENTER>` / `* WX OFF <ENTER>`: Enable / disable all weather overlay levels.
-
-6. **Converging Runway Display Aid (CRDA):**
+5. **Converging Runway Display Aid (CRDA):**
    - `* CRDA ON [Pair ID] <ENTER>`: Activate CRDA runway pair configuration.
    - `* CRDA OFF [Pair ID] <ENTER>`: Deactivate CRDA runway pair.
    - `* CRDA DISP <ENTER>`: Display active CRDA configuration matrix.
 
-7. **Tower Display Mode (TDM):**
+6. **Tower Display Mode (TDM):**
    - `* G [Click Data Block]`: Toggle TDM ground target data block format.
    - `* G [1-8] [Click Data Block]`: Set TDM ground target leader line direction.
 
-8. **Conflict Alert Manual Inhibit:**
+7. **Conflict Alert Manual Inhibit:**
    - `* K [Click Target]`: Inhibit Conflict Alert on specific target.
    - `* K ALL <ENTER>`: Inhibit Conflict Alert on all targets.
 
@@ -204,16 +200,49 @@ and richer prediction geometry.
 
 ### DCB capabilities currently represented as disabled chrome
 
-The trainer DCB now includes disabled WX, VOL, MODE, SITE, and unpopulated map
-slots. Later implementations may give those cells real behavior:
+The trainer DCB now includes live MAIN WX1–6 latches and live BRITE WX/WXC
+spinners. VOL, MODE, SITE, and BRITE BKC stay disabled, as do unpopulated
+map slots. Later implementations may give the remaining cells real behavior:
 
-- weather layers and weather-data lifecycle;
+- BRITE BKC and weather-data lifecycle chrome (SSA WX HIST);
 - audio/display mode controls that remain separate from OS volume;
 - additional catalog-backed maps and map management;
 - fuller CRC-style DCB workflows.
 
 Do not fill empty map slots with OSM or add weather paint as an incidental
 change; each capability needs its own data and acceptance criteria.
+
+### Weather Radar / DCB WX chrome
+
+T02-68 ships IEM N0Q fetch/decode (`src/scope/wx/`), `ScopeView.wxLevels`
+(six false), and `vipAtNm`. T02-69 paints enabled VIP fills under tracks
+from `view.wxMosaic` via `weatherLayer.ts` (one cached `drawImage`, default
+levels off). T02-70 latches MAIN WX1–6 onto `view.wxLevels` and persists
+them in PREF v3. T02-71 ships scope-preview `*WX 1`–`6` / `ALL` / `OFF`
+(optional space after `*`) against the same bitmask. T02-72 ships live
+BRITE WX/WXC: fills tint with `brite.wx`, VIP band contours tint with
+`brite.wxc`. Vite `/wx-iem` proxies to IEM; CI uses `testdata/wx/` plus
+injected fetch.
+
+### WX mosaic leftovers (T02-72)
+
+Shipped display-only path: IEM N0Q VIP 1–6 fills, MAIN WX1–6, `*WX`, BRITE
+WX/WXC contours. `ensureWxMosaic` on the session rAF fetches one IEM N0Q
+XYZ tile when any latch is on and the mosaic is empty or older than 5 min.
+Extra WX clicks do not refetch. Default levels remain off. Live tiles need
+Vite `/wx-iem` (`npm run dev`). Not WMS GetMap — IEM MapServer FILTER
+rejects the `nexrad-n0q` layer group.
+
+Still later:
+
+- SSA WX / WX HIST
+- BRITE BKC
+- AVL 2×3 / half-height badge restyle
+- Pilot deviate via `vipAtNm` (query exists; does not steer aircraft)
+
+Manual leftover: Chrome KATL live IEM walk. skip-with-reason: no visual
+operator in this worker worktree. Automated tests cover DCB / `*WX` /
+BRITE / cached paint. Do not invent a visual pass.
 
 ### PREF SAVE AS named sets
 

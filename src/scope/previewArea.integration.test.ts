@@ -18,6 +18,8 @@ import { formatPreviewReadout } from "./previewArea";
 import { renderScope } from "./renderScope";
 import { handleScopeKeyDown } from "./scopeKeys";
 import { createScopeView } from "./scopeView";
+import { drawWeatherLayer } from "./weatherLayer";
+import { bboxFromArp, decodeRgbaToVipMasks } from "./wx";
 import { formatStarsChordReadout } from "./starsChord";
 import { targetSymbolDescriptor } from "./targetSymbol";
 import { syncTrackDisplays } from "./trackDisplay";
@@ -510,4 +512,97 @@ test("T02-65 — *F readout, *LA bounds, *BCN □ paint; *B / idle F / B45 uncha
   expect(tpa.atpa.monitorCones).toBe(true);
   expect(tpa.beaconSelectCodes).toEqual([]);
   expect(tpa.preview.rejection).toBeNull();
+});
+
+function vip1Mosaic() {
+  const rgba = new Uint8Array(2 * 2 * 4);
+  for (let i = 0; i < 4; i++) {
+    const o = i * 4;
+    rgba[o] = 0;
+    rgba[o + 1] = 255;
+    rgba[o + 2] = 0;
+    rgba[o + 3] = 255;
+  }
+  return decodeRgbaToVipMasks(rgba, 2, 2, bboxFromArp({ latDeg: 0, lonDeg: 0 }, 4), 1_000);
+}
+
+test("T02-71 — *WX 1-6 / ALL / OFF mutate view.wxLevels; INV leaves prior bits", () => {
+  const world = createWorld();
+  const view = createScopeView();
+  const prior = [...view.wxLevels];
+  expect(view.wxLevels).toEqual([false, false, false, false, false, false]);
+
+  typeKeys(view, world, ["*", "W", "X", "7", "Enter"], "scope");
+  expect(view.preview.rejection).toBe("*WX7 INV");
+  expect(view.wxLevels).toEqual(prior);
+
+  typeKeys(view, world, ["*", "W", "X", " ", "F", "O", "O", "Enter"], "scope", 200);
+  expect(view.preview.rejection).toBe("*WX FOO INV");
+  expect(view.wxLevels).toEqual(prior);
+
+  typeKeys(view, world, ["*", "W", "X", "0", "Enter"], "scope", 400);
+  expect(view.preview.rejection).toBe("*WX0 INV");
+  expect(view.wxLevels).toEqual(prior);
+
+  typeKeys(view, world, ["*", "W", "X", "1", "Enter"], "scope", 600);
+  expect(view.wxLevels).toEqual([true, false, false, false, false, false]);
+  typeKeys(view, world, ["*", "W", "X", "1", "Enter"], "scope", 800);
+  expect(view.wxLevels).toEqual([false, false, false, false, false, false]);
+
+  typeKeys(view, world, ["*", " ", "W", "X", " ", "2", "Enter"], "scope", 1000);
+  expect(view.wxLevels).toEqual([false, true, false, false, false, false]);
+
+  typeKeys(view, world, ["*", "W", "X", " ", "A", "L", "L", "Enter"], "scope", 1200);
+  expect(view.wxLevels).toEqual([true, true, true, true, true, true]);
+
+  typeKeys(view, world, ["*", " ", "W", "X", " ", "O", "F", "F", "Enter"], "scope", 1400);
+  expect(view.wxLevels).toEqual([false, false, false, false, false, false]);
+});
+
+test("T02-71 — weather paint reads the same wxLevels *WX writes; radio DAL123 H270 still turns", async () => {
+  const log = new SessionLog();
+  const dal = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    headingDeg: 90,
+    xNm: 16,
+    yNm: 8,
+  });
+  const world = createWorld({ aircraft: [dal], sessionLog: log });
+  const view = createScopeView();
+  view.wxMosaic = vip1Mosaic();
+  syncTrackDisplays(view.tracks, world);
+
+  const size = { widthPx: 800, heightPx: 800 };
+  const drawImages: unknown[] = [];
+  const ctx = {
+    drawImage(image: unknown) {
+      drawImages.push(image);
+    },
+  } as unknown as CanvasRenderingContext2D;
+
+  drawWeatherLayer(ctx, view, size);
+  expect(drawImages).toHaveLength(0);
+
+  typeKeys(view, world, ["*", "W", "X", "1", "Enter"], "scope");
+  expect(view.wxLevels).toEqual([true, false, false, false, false, false]);
+  expect(log.byType("command.accepted")).toHaveLength(0);
+  expect(dal.intent.assignedHeadingDeg).toBe(90);
+
+  drawWeatherLayer(ctx, view, size);
+  expect(drawImages).toHaveLength(1);
+
+  let radio = "";
+  for (const key of ["D", "A", "L", "1", "2", "3", " ", "H", "2", "7", "0"]) {
+    const event = keyEvent(key);
+    if (!handleScopeKeyDown(event, view, "radio", world, 2000) && key.length === 1) {
+      radio += key;
+    }
+  }
+  expect(radio).toBe("DAL123 H270");
+  expect(view.wxLevels).toEqual([true, false, false, false, false, false]);
+  const result = await handleRadioText(world, radio, log);
+  expect(result.accepted).toBe(true);
+  expect(dal.intent.assignedHeadingDeg).toBe(270);
+  expect(view.wxLevels).toEqual([true, false, false, false, false, false]);
 });

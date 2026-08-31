@@ -23,6 +23,7 @@ import {
   syncTrackDisplays,
   toggleHistoryEnabled,
   togglePtlOn,
+  toggleWxLevel,
 } from "@scope";
 import { DisplayControlBar } from "./DisplayControlBar";
 import { DISCLAIMER_COPY, Disclaimer } from "./disclaimer";
@@ -35,6 +36,15 @@ const uiSources = import.meta.glob("./*.{ts,tsx}", {
   import: "default",
   eager: true,
 }) as Record<string, string>;
+
+const weatherPaintSrc =
+  (
+    import.meta.glob("../scope/weatherLayer.ts", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>
+  )["../scope/weatherLayer.ts"] ?? "";
 
 const FORBIDDEN_CHROME = /\b(zoom|sprite|osm|hud|nametag|label)\b/i;
 const FORBIDDEN_DCB_CELLS = /\b(CSA|CRDA|FMA|OSM)\b/;
@@ -107,6 +117,8 @@ test("AC3 — DCB/scope mutations emit zero Command IR; only radio DAL123 H270 a
   cycleRrInterval(view);
   cycleCharSize(view);
   cycleMapBrite(view);
+  toggleWxLevel(view, 4);
+  expect(view.wxLevels[3]).toBe(true);
   expect(handleScopeKeyDown(keyEvent("F3"), view, "scope", world)).toBe(true);
   expect(handleScopeKeyDown(keyEvent("F7"), view, "radio", world)).toBe(true);
   expect(handleScopeKeyDown(keyEvent("PageUp"), view, "radio", world)).toBe(true);
@@ -138,7 +150,7 @@ test("AC4 — T00-01 disclaimer is first-run and inside F1; HELP_KEYS_POINTER st
   expect(firstRun).toContain("disclaimer-first-run");
 });
 
-test("AC5 — persistent chrome has no zoom/label/sprite/OSM/HUD; DCB WX1–4 exist disabled; PREF allowed; no CSA/CRDA/FMA clone", () => {
+test("AC5 — persistent chrome has no zoom/label/sprite/OSM/HUD; DCB WX1–6 latch; PREF allowed; no CSA/CRDA/FMA clone", () => {
   const chromeFiles = [
     "./DisplayControlBar.tsx",
     "./command-line.tsx",
@@ -166,9 +178,10 @@ test("AC5 — persistent chrome has no zoom/label/sprite/OSM/HUD; DCB WX1–4 ex
   expect(dcbText).toMatch(/PREF/);
   expect(dcbText).not.toMatch(FORBIDDEN_CHROME);
   expect(dcbText).not.toMatch(FORBIDDEN_DCB_CELLS);
-  for (const n of [1, 2, 3, 4]) {
+  for (const n of [1, 2, 3, 4, 5, 6]) {
     expect(dcb).toContain(`data-dcb-cell="wx${n}"`);
-    expect(dcb).toMatch(new RegExp(`aria-label="WX${n}"[^>]*\\bdisabled\\b`));
+    expect(dcb).toMatch(new RegExp(`aria-label="WX${n}"[^>]*data-dcb-kind="toggle"`));
+    expect(dcb).not.toMatch(new RegExp(`aria-label="WX${n}"[^>]*\\bdisabled\\b`));
   }
   expect(dcb).not.toMatch(/<select/i);
   expect(uiSources["./DisplayControlBar.tsx"]!).not.toMatch(
@@ -222,6 +235,7 @@ test("AC5 — persistent chrome has no zoom/label/sprite/OSM/HUD; DCB WX1–4 ex
   expect(overlay).not.toMatch(/\bsprite\b/i);
   expect(uiSources["./DisplayControlBar.tsx"]!).not.toMatch(/nexrad|mosaic|openstreetmap/i);
   expect(uiSources["./ScopeCanvas.tsx"]!).not.toMatch(/nexrad|mosaic|openstreetmap/i);
+  expect(weatherPaintSrc).toMatch(/drawImage/);
 
   expect(SCOPE_FONT_STACK).toContain("IBM Plex Mono");
   expect(SCOPE_FONT_STACK).toContain("monospace");
