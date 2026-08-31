@@ -150,6 +150,18 @@ test("fetchWxMosaic uses injected fetch and returns empty on HTTP or decode fail
   });
   expect(decodeFail.widthPx).toBe(0);
   expect(decodeFail.fetchedAtMs).toBe(70_000);
+
+  const wmsException = await fetchWxMosaic({
+    arp,
+    nowMs: 80_000,
+    fetchImpl: async () =>
+      new Response(
+        "<?xml version='1.0'?><ServiceExceptionReport><ServiceException>msWMSApplyFilter(): WMS server error. Invalid or Unsupported FILTER : downloading</ServiceException></ServiceExceptionReport>",
+        { status: 200, headers: { "Content-Type": "application/vnd.ogc.se_xml" } },
+      ),
+  });
+  expect(wmsException.widthPx).toBe(0);
+  expect(wmsException.fetchedAtMs).toBe(80_000);
   expect(shouldRefetch(httpFail, 60_000 + 1_000, arp)).toBe(false);
   expect(shouldRefetch(httpFail, 60_000 + WX_REFRESH_MS, arp)).toBe(true);
 });

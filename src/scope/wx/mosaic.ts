@@ -156,6 +156,15 @@ export async function fetchWxMosaic(opts: FetchWxMosaicOpts): Promise<WxMosaic> 
       return failed();
     }
     const png = new Uint8Array(await res.arrayBuffer());
+    if (
+      png.length < 8 ||
+      png[0] !== 0x89 ||
+      png[1] !== 0x50 ||
+      png[2] !== 0x4e ||
+      png[3] !== 0x47
+    ) {
+      return failed();
+    }
     return await decodePngToVipMasks(png, bbox, opts.nowMs, opts.breaks);
   } catch {
     return failed();

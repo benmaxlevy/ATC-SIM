@@ -6,7 +6,13 @@ export const WX_IEM_PROXY_PREFIX = "/wx-iem";
 /** IEM CONUS NEXRAD N0Q WMS. Never RainViewer, GRIB, OSM, or speech-api. */
 export const IEM_N0Q_WMS_PATH = `${WX_IEM_PROXY_PREFIX}/cgi-bin/wms/nexrad/n0q.cgi`;
 
+/**
+ * Current mosaic. Empty STYLES on this group trips MapServer filters.
+ * Never send WMS FILTER — IEM GetMetadata "download" uses that word and 1.1.1 rejects it.
+ */
 export const IEM_N0Q_WMS_LAYER = "nexrad-n0q";
+
+export const IEM_N0Q_WMS_STYLE = "default";
 
 const DEFAULT_SIZE: WxMapSize = { widthPx: 256, heightPx: 256 };
 
@@ -33,7 +39,7 @@ export function buildIemN0qGetMapUrl(bbox: WxBbox, size: WxMapSize = DEFAULT_SIZ
     VERSION: "1.1.1",
     REQUEST: "GetMap",
     LAYERS: IEM_N0Q_WMS_LAYER,
-    STYLES: "",
+    STYLES: IEM_N0Q_WMS_STYLE,
     SRS: "EPSG:4326",
     BBOX: bboxCsv(bbox),
     WIDTH: String(width),

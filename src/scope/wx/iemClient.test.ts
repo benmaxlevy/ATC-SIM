@@ -72,6 +72,8 @@ test("GetMap URL uses /wx-iem, EPSG:4326, transparent PNG, and a 256–512 size"
   expect(query.get("VERSION")).toBe("1.1.1");
   expect(query.get("REQUEST")).toBe("GetMap");
   expect(query.get("LAYERS")).toBe("nexrad-n0q");
+  expect(query.get("STYLES")).toBe("default");
+  expect(query.get("FILTER")).toBeNull();
   expect(query.get("SRS")).toBe("EPSG:4326");
   expect(query.get("FORMAT")).toBe("image/png");
   expect(query.get("TRANSPARENT")).toBe("TRUE");
