@@ -677,3 +677,21 @@ export {
   setCoordinationAutoRelease,
 } from "./coordinationList";
 export type { CoordinationListState, ReleaseDeparture, ReleaseResult } from "./coordinationList";
+export {
+  DEFAULT_WX_LEVELS,
+  DEFAULT_WX_PAD_NM,
+  DEFAULT_WX_VIP_BREAKS_DBZ,
+  IEM_N0Q_WMS_PATH,
+  WX_IEM_PROXY_PREFIX,
+  WX_REFRESH_MS,
+  bboxFromArp,
+  binVip,
+  buildIemN0qGetMapUrl,
+  cloneWxLevels,
+  decodePngToVipMasks,
+  emptyWxMosaic,
+  fetchWxMosaic,
+  shouldRefetch,
+  vipAtNm,
+} from "./wx";
+export type { FetchWxMosaicOpts, VipBin, VipLevel, WxBbox, WxLevels, WxMosaic } from "./wx";

@@ -8,6 +8,15 @@ function srcDir(name: string): string {
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    proxy: {
+      "/wx-iem": {
+        target: "https://mesonet.agron.iastate.edu",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/wx-iem/, ""),
+      },
+    },
+  },
   resolve: {
     alias: {
       "@core": srcDir("core"),

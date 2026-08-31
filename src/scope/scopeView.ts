@@ -83,6 +83,7 @@ import {
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
 import { cloneBrite, type BriteState } from "./palette";
 import type { TrackDisplay } from "./trackDisplay";
+import { cloneWxLevels, type WxLevels } from "./wx";
 
 import {
   DEFAULT_SYSTEM_LIST_PLACEMENTS,
@@ -242,6 +243,11 @@ export interface ScopeView {
    * When active, displays beacon code in place of callsign and forces PDBs to FDBs.
    */
   beaconatorActive: boolean;
+  /**
+   * STARS VIP 1–6 display latches. Default all false.
+   * Display only — T02-70 DCB later. Does not paint or steer aircraft.
+   */
+  wxLevels: WxLevels;
 }
 
 export function createScopeView(
@@ -319,6 +325,7 @@ export function createScopeView(
     pendingChord: null,
     helpOpen: false,
     beaconatorActive: false,
+    wxLevels: cloneWxLevels(),
   };
 }
 
