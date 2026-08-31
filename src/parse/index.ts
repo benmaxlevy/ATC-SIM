@@ -23,6 +23,8 @@ export {
   sanitizeFixIds,
 } from "./spoken/catalog-ground";
 export type { CatalogApproach, CatalogProcedure } from "./spoken/catalog-ground";
+export { MAX_RETRIEVE_CANDIDATES, retrieveFix } from "./spoken/catalog-retrieve";
+export type { RetrieveHit } from "./spoken/catalog-retrieve";
 export {
   DEFAULT_PARSE_URL,
   PATH_C_SCHEMA_VERSION,
