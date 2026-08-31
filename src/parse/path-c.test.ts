@@ -122,9 +122,9 @@ test("AC4 — CHAT type is a miss, no instructions dispatched", async () => {
   expect(
     isLegalInstruction({ type: "JOIN_PROCEDURE", procedureId: "DEM1", transitionId: "WN" }),
   ).toBe(true);
-  expect(isLegalInstruction({ type: "CLIMB_VIA", procedureId: "BAY1", transitionId: "WN" })).toBe(
-    false,
-  );
+  expect(
+    isLegalInstruction({ type: "CLIMB_VIA", procedureId: "BAY1", transitionId: "NORMA" }),
+  ).toBe(true);
   expect(
     isLegalInstruction({
       type: "CROSS",

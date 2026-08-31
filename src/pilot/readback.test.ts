@@ -263,6 +263,17 @@ test("DESCEND_VIA and JOIN_PROCEDURE read back procedure plus transition", () =>
   ).toBe("Delta 123 join SYN ONE, N transition");
 });
 
+test("CLIMB_VIA readbacks procedure plus transition", () => {
+  expect(
+    formatReadback({
+      callsign: "DAL123",
+      instructions: [{ type: "CLIMB_VIA", procedureId: "BAY1", transitionId: "NORMA" }],
+      aircraft: snapshot,
+      procedureNames: { BAY1: "the BAY ONE departure" },
+    }),
+  ).toBe("Delta 123 climb via the BAY ONE departure, NORMA transition");
+});
+
 test("AC5 — CLIMB_VIA uses the published SID name and combines with maintain altitude", () => {
   expect(
     formatReadback({

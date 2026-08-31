@@ -157,7 +157,7 @@ function formatInstructionClause(
     case "DESCEND_VIA":
       return `descend via ${procedureSpeech(instruction.procedureId, procedureNames)}${transitionSpeech(instruction.transitionId)}`;
     case "CLIMB_VIA":
-      return `climb via ${procedureSpeech(instruction.procedureId, procedureNames)}`;
+      return `climb via ${procedureSpeech(instruction.procedureId, procedureNames)}${transitionSpeech(instruction.transitionId)}`;
     case "CROSS": {
       const alt = formatAltitude(instruction.altitudeFt);
       const fix = instruction.fixId;

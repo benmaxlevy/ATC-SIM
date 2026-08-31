@@ -135,6 +135,30 @@ test("proceduresFromCatalog extracts both STARs and SIDs dynamically from catalo
   ]);
 });
 
+test("proceduresFromCatalog copies SID enroute and runway transition vocab", () => {
+  expect(
+    proceduresFromCatalog({
+      sids: [
+        {
+          id: "BAY1",
+          name: "BAY ONE DEPARTURE",
+          runwayTransitions: [{ runwayId: "27" }],
+          enrouteTransitions: [{ id: "NORMA", name: "NORMA" }],
+        },
+      ],
+    }),
+  ).toEqual([
+    {
+      id: "BAY1",
+      name: "BAY ONE DEPARTURE",
+      transitions: [
+        { id: "NORMA", name: "NORMA" },
+        { id: "RW27", runwayId: "27" },
+      ],
+    },
+  ]);
+});
+
 test("matchSpokenStarTransition resolves unique names and rejects ambiguous rows", () => {
   const procedures = [
     {

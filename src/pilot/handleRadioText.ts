@@ -258,9 +258,10 @@ export function handleRadioCommand(
     fixXy: world.fixRegistry ? (id) => world.fixRegistry?.get(id) : undefined,
     activeRunwayId: world.activeRunwayId,
   });
-  const procedureNames = Object.fromEntries(
-    (world.catalog?.stars ?? []).map((star) => [star.id, star.name ?? star.id]),
-  );
+  const procedureNames = Object.fromEntries([
+    ...(world.catalog?.stars ?? []).map((star) => [star.id, star.name ?? star.id] as const),
+    ...(world.catalog?.sids ?? []).map((sid) => [sid.id, sid.name ?? sid.id] as const),
+  ]);
   const readback = formatReadback({
     callsign: resolved.callsign,
     instructions: resolvedCommand.instructions,

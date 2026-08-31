@@ -2,7 +2,12 @@
  * Join a named STAR/SID (JOIN or VIA). DCT to a procedure fix is not a join.
  */
 
-import type { CatalogSid, CatalogSidLeg, CatalogStar } from "./vertical";
+import type {
+  CatalogSid,
+  CatalogSidLeg,
+  CatalogSidRunwayTransition,
+  CatalogStar,
+} from "./vertical";
 
 export interface ProcedureJoinCatalog {
   stars?: ReadonlyArray<CatalogStar> | null;
@@ -210,6 +215,8 @@ export interface JoinStarTransitionArgs {
   transitionId: string;
   activeRunwayId?: string | null;
   remainingFixIds?: readonly string[] | null;
+  /** Full current PROCEDURE route; used to retain the SID runway after it is sequenced. */
+  currentRouteFixIds?: readonly string[] | null;
 }
 
 export type JoinStarTransitionResult =
@@ -319,6 +326,340 @@ export function joinStarTransition(args: JoinStarTransitionArgs): JoinStarTransi
   };
 }
 
+function sidLegFixIds(legs: readonly CatalogSidLeg[] | undefined): string[] {
+  return (legs ?? []).map((leg) => wantFix(leg.fixId)).filter((id) => id.length > 0);
+}
+
+function appendUniqueFixIds(route: string[], fixIds: readonly string[]): void {
+  for (const fixId of fixIds) {
+    if (route.length === 0 || route[route.length - 1] !== fixId) {
+      route.push(fixId);
+    }
+  }
+}
+
+function composeSidRoute(
+  sid: CatalogSid,
+  runwayId: string | undefined,
+  enrouteId: string | undefined,
+): string[] {
+  const route: string[] = [];
+  const wantRwy = runwayId ? padRunwayId(runwayId) : undefined;
+  if (wantRwy) {
+    const rt = sid.runwayTransitions?.find((item) => padRunwayId(item.runwayId) === wantRwy);
+    if (rt) {
+      appendUniqueFixIds(route, sidLegFixIds(rt.legs));
+    }
+  }
+  appendUniqueFixIds(route, sidLegFixIds(sid.common));
+  if (enrouteId) {
+    const wantEt = wantFix(enrouteId);
+    const et = sid.enrouteTransitions?.find((item) => wantFix(item.id) === wantEt);
+    if (et) {
+      let etLegs = et.legs;
+      if (wantRwy && et.runwayTransitions && et.runwayTransitions.length > 0) {
+        const rtMatch = et.runwayTransitions.find((item) => padRunwayId(item.runwayId) === wantRwy);
+        if (rtMatch) {
+          etLegs = rtMatch.legs;
+        }
+      }
+      if (!etLegs) {
+        etLegs = et.runwayTransitions?.[0]?.legs;
+      }
+      appendUniqueFixIds(route, sidLegFixIds(etLegs));
+    }
+  }
+  return route;
+}
+
+function sidRunwayIds(sid: CatalogSid): string[] {
+  return (sid.runwayTransitions ?? []).map((item) => item.runwayId);
+}
+
+function exclusiveSidRunwayFixes(sid: CatalogSid, runwayId: string): Set<string> {
+  const want = padRunwayId(runwayId);
+  const own = new Set<string>();
+  const shared = new Set<string>(sidLegFixIds(sid.common));
+  for (const rt of sid.runwayTransitions ?? []) {
+    const ids = sidLegFixIds(rt.legs);
+    if (padRunwayId(rt.runwayId) === want) {
+      for (const id of ids) {
+        own.add(id);
+      }
+    } else {
+      for (const id of ids) {
+        shared.add(id);
+      }
+    }
+  }
+  for (const id of shared) {
+    own.delete(id);
+  }
+  return own;
+}
+
+function exclusiveSidEnrouteFixes(sid: CatalogSid, enrouteId: string): Set<string> {
+  const want = wantFix(enrouteId);
+  const own = new Set<string>();
+  const shared = new Set<string>(sidLegFixIds(sid.common));
+  for (const rt of sid.runwayTransitions ?? []) {
+    for (const id of sidLegFixIds(rt.legs)) {
+      shared.add(id);
+    }
+  }
+  for (const et of sid.enrouteTransitions ?? []) {
+    const ids = [
+      ...sidLegFixIds(et.legs),
+      ...(et.runwayTransitions ?? []).flatMap((rt) => sidLegFixIds(rt.legs)),
+    ];
+    if (wantFix(et.id) === want) {
+      for (const id of ids) {
+        own.add(id);
+      }
+    } else {
+      for (const id of ids) {
+        shared.add(id);
+      }
+    }
+  }
+  for (const id of shared) {
+    own.delete(id);
+  }
+  return own;
+}
+
+function inferSidRunwayId(
+  sid: CatalogSid,
+  routeFixIds: readonly string[],
+  activeRunwayId?: string | null,
+): string | undefined {
+  const hits: string[] = [];
+  for (const rt of sid.runwayTransitions ?? []) {
+    const exclusive = exclusiveSidRunwayFixes(sid, rt.runwayId);
+    if (routeFixIds.some((id) => exclusive.has(wantFix(id)))) {
+      hits.push(rt.runwayId);
+    }
+  }
+  if (hits.length === 1) {
+    return hits[0];
+  }
+  if (activeRunwayId) {
+    const match = sid.runwayTransitions?.find(
+      (item) => padRunwayId(item.runwayId) === padRunwayId(activeRunwayId),
+    );
+    if (match) {
+      return match.runwayId;
+    }
+  }
+  if ((sid.runwayTransitions?.length ?? 0) === 1) {
+    return sid.runwayTransitions![0]!.runwayId;
+  }
+  return undefined;
+}
+
+function inferSidEnrouteId(sid: CatalogSid, routeFixIds: readonly string[]): string | undefined {
+  const hits: string[] = [];
+  for (const et of sid.enrouteTransitions ?? []) {
+    const exclusive = exclusiveSidEnrouteFixes(sid, et.id);
+    if (routeFixIds.some((id) => exclusive.has(wantFix(id)))) {
+      hits.push(et.id);
+    }
+  }
+  if (hits.length === 1) {
+    return hits[0];
+  }
+  if ((sid.enrouteTransitions?.length ?? 0) === 1) {
+    return sid.enrouteTransitions![0]!.id;
+  }
+  return undefined;
+}
+
+function matchSidRunwayTransition(
+  sid: CatalogSid,
+  transitionId: string,
+): CatalogSidRunwayTransition | undefined {
+  const want = wantFix(transitionId);
+  const padded = padRunwayId(transitionId);
+  return sid.runwayTransitions?.find((item) => {
+    const rtPad = padRunwayId(item.runwayId);
+    return rtPad === padded || wantFix(`RW${rtPad}`) === want;
+  });
+}
+
+function firstSharedFix(
+  remaining: readonly string[],
+  route: readonly string[],
+): string | undefined {
+  return remaining.find((fixId) => route.includes(fixId));
+}
+
+function joinAtSharedFix(
+  sidId: string,
+  route: string[],
+  remaining: readonly string[],
+): JoinStarTransitionResult {
+  const commonFix = firstSharedFix(remaining, route);
+  if (!commonFix) {
+    return { ok: false, reason: "NOT_ON_COURSE" };
+  }
+  const joinIndex = route.indexOf(commonFix);
+  return {
+    ok: true,
+    join: {
+      starId: sidId,
+      routeFixIds: route.slice(joinIndex),
+      toFixIndex: 0,
+    },
+  };
+}
+
+/**
+ * Analog: JO 7110.65 Climb Via / SID amendment (R01); AIM procedure-name and
+ * transition phraseology (R03). Trainer delta: join is catalog JSON, not NAS.
+ * Named enroute keeps the active runway transition and switches only at a
+ * shared remaining-route fix. Runway-transition change only while still on
+ * runway-transition legs. Catalog fixIds only — never flatten RF/hold/heading
+ * legs into TF.
+ */
+export function joinSidTransition(args: JoinStarTransitionArgs): JoinStarTransitionResult {
+  const wantProc = wantFix(args.procedureId);
+  const wantTrans = wantFix(args.transitionId);
+  if (!wantProc) {
+    return { ok: false, reason: "UNKNOWN_PROCEDURE" };
+  }
+  if (!wantTrans || !args.catalog) {
+    return { ok: false, reason: "UNKNOWN_TRANSITION" };
+  }
+
+  const sids = (args.catalog.sids ?? []).filter((sid) => wantFix(sid.id) === wantProc);
+  if (sids.length === 0) {
+    return { ok: false, reason: "UNKNOWN_PROCEDURE" };
+  }
+
+  type EnrouteHit = {
+    sid: CatalogSid;
+    transition: NonNullable<CatalogSid["enrouteTransitions"]>[number];
+  };
+  const enrouteHits: EnrouteHit[] = [];
+  for (const sid of sids) {
+    for (const transition of sid.enrouteTransitions ?? []) {
+      if (wantFix(transition.id) === wantTrans) {
+        enrouteHits.push({ sid, transition });
+      }
+    }
+  }
+  if (enrouteHits.length > 1) {
+    return { ok: false, reason: "AMBIGUOUS_TRANSITION" };
+  }
+  if (enrouteHits.length === 1) {
+    return joinSidEnrouteAmendment(enrouteHits[0]!.sid, enrouteHits[0]!.transition.id, args);
+  }
+
+  type RunwayHit = { sid: CatalogSid; runwayId: string };
+  const runwayHits: RunwayHit[] = [];
+  for (const sid of sids) {
+    const rt = matchSidRunwayTransition(sid, wantTrans);
+    if (rt) {
+      runwayHits.push({ sid, runwayId: rt.runwayId });
+    }
+  }
+  if (runwayHits.length === 0) {
+    return { ok: false, reason: "UNKNOWN_TRANSITION" };
+  }
+  if (runwayHits.length > 1) {
+    return { ok: false, reason: "AMBIGUOUS_TRANSITION" };
+  }
+  return joinSidRunwayAmendment(runwayHits[0]!.sid, runwayHits[0]!.runwayId, args);
+}
+
+function hintRouteFixIds(args: JoinStarTransitionArgs): string[] {
+  const current = (args.currentRouteFixIds ?? [])
+    .map((id) => wantFix(id))
+    .filter((id) => id.length > 0);
+  if (current.length > 0) {
+    return current;
+  }
+  return (args.remainingFixIds ?? []).map((id) => wantFix(id)).filter((id) => id.length > 0);
+}
+
+function remainingOrEmpty(args: JoinStarTransitionArgs): string[] {
+  return (args.remainingFixIds ?? []).map((id) => wantFix(id)).filter((id) => id.length > 0);
+}
+
+function joinSidEnrouteAmendment(
+  sid: CatalogSid,
+  enrouteId: string,
+  args: JoinStarTransitionArgs,
+): JoinStarTransitionResult {
+  const remaining = remainingOrEmpty(args);
+  const hint = hintRouteFixIds(args);
+  const inferredRwy = inferSidRunwayId(sid, hint, args.activeRunwayId);
+  const candidates: string[][] = [];
+  if (inferredRwy) {
+    candidates.push(composeSidRoute(sid, inferredRwy, enrouteId));
+  } else if (sidRunwayIds(sid).length === 0) {
+    candidates.push(composeSidRoute(sid, undefined, enrouteId));
+  } else {
+    for (const runwayId of sidRunwayIds(sid)) {
+      candidates.push(composeSidRoute(sid, runwayId, enrouteId));
+    }
+    candidates.push(composeSidRoute(sid, undefined, enrouteId));
+  }
+  const unique = candidates.filter((route, index, all) => {
+    const key = route.join(">");
+    return key.length > 0 && all.findIndex((item) => item.join(">") === key) === index;
+  });
+  const commonFix = remaining.find((fixId) => unique.some((route) => route.includes(fixId)));
+  if (!commonFix) {
+    return { ok: false, reason: "NOT_ON_COURSE" };
+  }
+  const matching = unique.filter((route) => route.includes(commonFix));
+  const suffixes = matching.map((route) => route.slice(route.indexOf(commonFix)));
+  const firstKey = suffixes[0]!.join(">");
+  if (suffixes.some((item) => item.join(">") !== firstKey)) {
+    return { ok: false, reason: "AMBIGUOUS_TRANSITION" };
+  }
+  return {
+    ok: true,
+    join: { starId: sid.id, routeFixIds: suffixes[0]!, toFixIndex: 0 },
+  };
+}
+
+function joinSidRunwayAmendment(
+  sid: CatalogSid,
+  runwayId: string,
+  args: JoinStarTransitionArgs,
+): JoinStarTransitionResult {
+  const remaining = remainingOrEmpty(args);
+  const hint = hintRouteFixIds(args);
+  const currentRwy = inferSidRunwayId(sid, hint, args.activeRunwayId);
+  if (!currentRwy) {
+    return { ok: false, reason: "NOT_ON_COURSE" };
+  }
+  const runwayFixes = exclusiveSidRunwayFixes(sid, currentRwy);
+  const stillOnRunway = remaining.some((id) => runwayFixes.has(id));
+  if (!stillOnRunway) {
+    return { ok: false, reason: "NOT_ON_COURSE" };
+  }
+  const currentEt = inferSidEnrouteId(sid, hint);
+  const route = composeSidRoute(sid, runwayId, currentEt);
+  return joinAtSharedFix(sid.id, route, remaining);
+}
+
+/**
+ * STAR first (T04-43), then SID (T04-44). Unknown STAR id is not a SID miss
+ * when the id exists on `catalog.sids`.
+ */
+export function joinProcedureTransition(args: JoinStarTransitionArgs): JoinStarTransitionResult {
+  const stars = (args.catalog?.stars ?? []).filter(
+    (star) => wantFix(star.id) === wantFix(args.procedureId),
+  );
+  if (stars.length > 0) {
+    return joinStarTransition(args);
+  }
+  return joinSidTransition(args);
+}
+
 /**
  * Lateral path for VIA/CVIA. Keeps an existing PROCEDURE of this id. Else
  * joins from a DIRECT/current fix on it, a unique SID/STAR route, or the
@@ -332,16 +673,21 @@ export function joinNamedProcedure(args: JoinNamedProcedureArgs): ProcedureJoin 
   }
   if (args.transitionId) {
     const currentProc = args.current?.type === "PROCEDURE" ? args.current : null;
-    const remainingFixIds =
-      currentProc && currentProc.starId && wantFix(currentProc.starId) === want
-        ? currentProc.routeFixIds.slice(currentProc.toFixIndex)
-        : undefined;
-    const resolved = joinStarTransition({
+    const onThisProc =
+      currentProc &&
+      ((currentProc.starId && wantFix(currentProc.starId) === want) ||
+        (currentProc.sidId && wantFix(currentProc.sidId) === want));
+    const remainingFixIds = onThisProc
+      ? currentProc.routeFixIds.slice(currentProc.toFixIndex)
+      : undefined;
+    const currentRouteFixIds = onThisProc ? currentProc.routeFixIds : undefined;
+    const resolved = joinProcedureTransition({
       catalog: args.catalog,
       procedureId: args.procedureId,
       transitionId: args.transitionId,
       activeRunwayId: args.activeRunwayId,
       remainingFixIds,
+      currentRouteFixIds,
     });
     return resolved.ok ? resolved.join : undefined;
   }

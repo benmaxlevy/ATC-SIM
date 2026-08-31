@@ -268,6 +268,103 @@ test("named STAR transition validate accepts a shared fix and rejects the rest",
   ).toEqual({ ok: false, reason: "NOT_ON_COURSE" });
 });
 
+const synSidCatalog = {
+  sids: [
+    {
+      id: "SYNDEP",
+      name: "SYN DEP",
+      runwayTransitions: [
+        { runwayId: "27", legs: [{ fixId: "R27A" }, { fixId: "R27B" }] },
+        { runwayId: "09", legs: [{ fixId: "R09A" }] },
+      ],
+      common: [{ fixId: "JOIN" }],
+      enrouteTransitions: [
+        { id: "NORMA", name: "NORMA", legs: [{ fixId: "N1" }, { fixId: "NORMA" }] },
+        { id: "OCTTA", name: "OCTTA", legs: [{ fixId: "O1" }, { fixId: "OCTTA" }] },
+      ],
+    },
+  ],
+};
+
+test("named SID transition validate accepts a shared fix and rejects the rest", () => {
+  const ac = jet();
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "SYNDEP",
+    starId: "SYNDEP",
+    toFixIndex: 2,
+    routeFixIds: ["R27A", "R27B", "JOIN", "N1", "NORMA"],
+  };
+  expect(
+    validateInstructions(
+      ac,
+      [{ type: "CLIMB_VIA", procedureId: "SYNDEP", transitionId: "OCTTA" }],
+      {
+        catalog: synSidCatalog,
+      },
+    ).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(
+      ac,
+      [{ type: "JOIN_PROCEDURE", procedureId: "SYNDEP", transitionId: "OCTTA" }],
+      {
+        catalog: synSidCatalog,
+      },
+    ).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(ac, [{ type: "CLIMB_VIA", procedureId: "NOPE", transitionId: "OCTTA" }], {
+      catalog: synSidCatalog,
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_PROCEDURE" });
+  expect(
+    validateInstructions(ac, [{ type: "CLIMB_VIA", procedureId: "SYNDEP", transitionId: "ZZ" }], {
+      catalog: synSidCatalog,
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_TRANSITION" });
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "SYNDEP",
+    starId: "SYNDEP",
+    toFixIndex: 0,
+    routeFixIds: ["R27A", "R27B", "JOIN", "N1", "NORMA"],
+  };
+  expect(
+    validateInstructions(ac, [{ type: "CLIMB_VIA", procedureId: "SYNDEP", transitionId: "RW09" }], {
+      catalog: synSidCatalog,
+    }).ok,
+  ).toBe(true);
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "SYNDEP",
+    starId: "SYNDEP",
+    toFixIndex: 2,
+    routeFixIds: ["R27A", "R27B", "JOIN", "N1", "NORMA"],
+  };
+  expect(
+    validateInstructions(ac, [{ type: "CLIMB_VIA", procedureId: "SYNDEP", transitionId: "RW09" }], {
+      catalog: synSidCatalog,
+    }),
+  ).toEqual({ ok: false, reason: "NOT_ON_COURSE" });
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "SYNDEP",
+    starId: "SYNDEP",
+    toFixIndex: 0,
+    routeFixIds: ["NORMA"],
+  };
+  expect(
+    validateInstructions(
+      ac,
+      [{ type: "CLIMB_VIA", procedureId: "SYNDEP", transitionId: "OCTTA" }],
+      {
+        catalog: synSidCatalog,
+      },
+    ),
+  ).toEqual({ ok: false, reason: "NOT_ON_COURSE" });
+});
+
 test("one bad instruction rejects the whole list", () => {
   expect(
     validateInstructions(jet({ altitudeFt: 8000 }), [

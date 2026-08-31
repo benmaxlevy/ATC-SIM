@@ -65,6 +65,7 @@ export interface CatalogSidRunwayTransition {
 
 export interface CatalogSidEnrouteTransition {
   id: string;
+  name?: string;
   legs?: readonly CatalogSidLeg[];
   runwayTransitions?: ReadonlyArray<CatalogSidRunwayTransition>;
 }

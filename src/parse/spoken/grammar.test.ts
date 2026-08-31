@@ -372,6 +372,31 @@ test("descend via SYN ONE north / runway niner transition normalizes catalog tra
   }
 });
 
+test("climb via BAY ONE NORMA transition normalizes catalog transition id", () => {
+  const procedures = [
+    {
+      id: "BAY1",
+      name: "BAY ONE DEPARTURE",
+      transitions: [
+        { id: "NORMA", name: "NORMA" },
+        { id: "OCTTA", name: "OCTTA" },
+      ],
+    },
+  ];
+  const bare = spoken("climb via bay one", "DAL123", undefined, procedures);
+  expect(bare.ok).toBe(true);
+  if (bare.ok) {
+    expect(bare.instructions).toEqual([{ type: "CLIMB_VIA", procedureId: "BAY1" }]);
+  }
+  const named = spoken("climb via BAY ONE, NORMA transition", "DAL123", undefined, procedures);
+  expect(named.ok).toBe(true);
+  if (named.ok) {
+    expect(named.instructions).toEqual([
+      { type: "CLIMB_VIA", procedureId: "BAY1", transitionId: "NORMA" },
+    ]);
+  }
+});
+
 test("go around and going around are GO_AROUND (T04-07)", () => {
   expectOk("go around", "DAL123", [{ type: "GO_AROUND" }]);
   expectOk("going around", "DAL123", [{ type: "GO_AROUND" }]);

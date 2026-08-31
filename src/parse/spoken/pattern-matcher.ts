@@ -618,10 +618,10 @@ function matchVia(
   }
 
   if (isClimb) {
-    return {
-      instruction: { type: "CLIMB_VIA", procedureId: proc.id },
-      next: j,
-    };
+    return attachSpokenStarTransition(tokens, j, proc.id, procedures, {
+      type: "CLIMB_VIA",
+      procedureId: proc.id,
+    });
   }
   const trans = attachSpokenStarTransition(tokens, j, proc.id, procedures, {
     type: "DESCEND_VIA",
@@ -667,7 +667,7 @@ function attachSpokenStarTransition(
   i: number,
   procedureId: string,
   procedures: readonly CatalogProcedure[],
-  instruction: Extract<Instruction, { type: "DESCEND_VIA" | "JOIN_PROCEDURE" }>,
+  instruction: Extract<Instruction, { type: "DESCEND_VIA" | "CLIMB_VIA" | "JOIN_PROCEDURE" }>,
 ): { instruction: Instruction; next: number } | null {
   const match = matchSpokenStarTransition(tokens, i, procedureId, procedures);
   if (match.kind === "hit") {

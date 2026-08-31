@@ -256,7 +256,12 @@ function tryVia(c: Cursor): Instruction | null {
     c.i += 1;
   }
   if (climb) {
-    return { type: "CLIMB_VIA", procedureId };
+    const climbVia = attachSpokenStarTransition(c, { type: "CLIMB_VIA", procedureId }, procedureId);
+    if (!climbVia) {
+      c.i = start;
+      return null;
+    }
+    return climbVia;
   }
   const descend = attachSpokenStarTransition(c, { type: "DESCEND_VIA", procedureId }, procedureId);
   if (!descend) {
@@ -290,7 +295,7 @@ function tryJoinProcedure(c: Cursor): Instruction | null {
 
 function attachSpokenStarTransition(
   c: Cursor,
-  instruction: Extract<Instruction, { type: "DESCEND_VIA" | "JOIN_PROCEDURE" }>,
+  instruction: Extract<Instruction, { type: "DESCEND_VIA" | "CLIMB_VIA" | "JOIN_PROCEDURE" }>,
   procedureId: string,
 ): Instruction | null {
   const match = matchSpokenStarTransition(c.tokens, c.i, procedureId, c.procedures ?? []);

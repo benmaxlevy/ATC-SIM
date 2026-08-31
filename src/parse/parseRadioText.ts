@@ -157,7 +157,6 @@ function parseOneInstruction(tokens: string[], index: number): InstructionParse 
     }
     const maybeTrans = tokens[index + 2];
     const takeTransition =
-      token !== "CVIA" &&
       maybeTrans !== undefined &&
       isTransitionIdToken(maybeTrans) &&
       !isTypedInstructionStart(maybeTrans);
@@ -173,8 +172,10 @@ function parseOneInstruction(tokens: string[], index: number): InstructionParse 
     if (token === "CVIA") {
       return {
         ok: true,
-        instruction: { type: "CLIMB_VIA", procedureId },
-        nextIndex: index + 2,
+        instruction: takeTransition
+          ? { type: "CLIMB_VIA", procedureId, transitionId: maybeTrans }
+          : { type: "CLIMB_VIA", procedureId },
+        nextIndex: takeTransition ? index + 3 : index + 2,
       };
     }
     return {

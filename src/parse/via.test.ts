@@ -44,6 +44,20 @@ test("CVIA DEM1 is CLIMB_VIA; mixed case uppercases", () => {
   expect(result.instructions).toEqual([{ type: "CLIMB_VIA", procedureId: "DEM1" }]);
 });
 
+test("CVIA BAY1 NORMA and JOIN BAY1 NORMA attach transitionId; CVIA BAY1 stays transition-less", () => {
+  expectOk("DAL123 CVIA BAY1", [{ type: "CLIMB_VIA", procedureId: "BAY1" }]);
+  expectOk("DAL123 CVIA BAY1 NORMA", [
+    { type: "CLIMB_VIA", procedureId: "BAY1", transitionId: "NORMA" },
+  ]);
+  expectOk("DAL123 JOIN BAY1 NORMA", [
+    { type: "JOIN_PROCEDURE", procedureId: "BAY1", transitionId: "NORMA" },
+  ]);
+  expectOk("DAL123 CVIA BAY1 C30", [
+    { type: "CLIMB_VIA", procedureId: "BAY1" },
+    { type: "ALTITUDE", altitudeFt: 3000, verb: "CLIMB" },
+  ]);
+});
+
 test("D remains descend; VIA is the only descend-via token", () => {
   const descend = parseRadioText("DAL123 D30");
   expect(descend.ok).toBe(true);

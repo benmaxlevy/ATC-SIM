@@ -337,6 +337,30 @@ export function groundInstructionProcedures(
   });
 }
 
+function sidTransitionVocab(sid: {
+  enrouteTransitions?: ReadonlyArray<{ id: string; name?: string }>;
+  runwayTransitions?: ReadonlyArray<{ runwayId: string }>;
+}): CatalogStarTransitionVocab[] {
+  const out: CatalogStarTransitionVocab[] = [];
+  for (const et of sid.enrouteTransitions ?? []) {
+    const id = et.id.trim().toUpperCase();
+    if (!id) {
+      continue;
+    }
+    const name = et.name?.trim();
+    out.push(name ? { id, name } : { id });
+  }
+  for (const rt of sid.runwayTransitions ?? []) {
+    const runwayId = rt.runwayId.trim();
+    if (!runwayId) {
+      continue;
+    }
+    const padded = padRunwayId(runwayId);
+    out.push({ id: `RW${padded}`, runwayId: padded });
+  }
+  return out;
+}
+
 export function proceduresFromCatalog(
   catalog?: {
     stars?: ReadonlyArray<{
@@ -344,7 +368,12 @@ export function proceduresFromCatalog(
       name?: string;
       transitions?: ReadonlyArray<CatalogStarTransitionVocab>;
     }>;
-    sids?: ReadonlyArray<{ id: string; name?: string }>;
+    sids?: ReadonlyArray<{
+      id: string;
+      name?: string;
+      enrouteTransitions?: ReadonlyArray<{ id: string; name?: string }>;
+      runwayTransitions?: ReadonlyArray<{ runwayId: string }>;
+    }>;
   } | null,
 ): CatalogProcedure[] {
   if (!catalog) {
@@ -356,7 +385,11 @@ export function proceduresFromCatalog(
       name: item.name,
       transitions: item.transitions,
     })),
-    ...(catalog.sids ?? []).map((item) => ({ id: item.id, name: item.name })),
+    ...(catalog.sids ?? []).map((item) => ({
+      id: item.id,
+      name: item.name,
+      transitions: sidTransitionVocab(item),
+    })),
   ]);
 }
 

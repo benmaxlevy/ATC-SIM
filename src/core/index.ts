@@ -204,6 +204,8 @@ export type {
 } from "./fms/procedureJoin";
 export {
   joinNamedProcedure,
+  joinProcedureTransition,
+  joinSidTransition,
   joinStarTransition,
   procedureRouteContainingFix,
 } from "./fms/procedureJoin";

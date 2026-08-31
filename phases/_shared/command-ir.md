@@ -56,7 +56,7 @@ export type Instruction =
   | { type: "SAY_HEADING" }
   | { type: "SAY_ALTITUDE" }
   | { type: "DESCEND_VIA"; procedureId: string; transitionId?: string }
-  | { type: "CLIMB_VIA"; procedureId: string }
+  | { type: "CLIMB_VIA"; procedureId: string; transitionId?: string }
   | { type: "JOIN_PROCEDURE"; procedureId: string; transitionId?: string }
   | {
       type: "CROSS";
@@ -90,9 +90,11 @@ Suggested v1 tokens (callsign optional if a track is selected):
 | `R240 A20 APP ILS27` | `FLY_HEADING 240 RIGHT` + `ALTITUDE MAINTAIN 2000 untilEstablished` + `CLEARED_APPROACH ILS27` (phase 4; same-line heading+alt+APP) |
 | `VIA DEM1` | `DESCEND_VIA { procedureId: "DEM1" }` (`D` stays descend; via is `VIA`) — lateral **and** published constraints. No `transitionId`; do not guess one. |
 | `VIA DEM1 WN` | `DESCEND_VIA { procedureId: "DEM1", transitionId: "WN" }` — named STAR transition amend (T04-43) |
-| `CVIA DEM1` | `CLIMB_VIA { procedureId: "DEM1" }` |
+| `CVIA DEM1` | `CLIMB_VIA { procedureId: "DEM1" }` — no `transitionId`; do not guess one. |
+| `CVIA BAY1 NORMA` | `CLIMB_VIA { procedureId: "BAY1", transitionId: "NORMA" }` — named SID enroute transition amend (T04-44) |
 | `JOIN DEM1` | `JOIN_PROCEDURE { procedureId: "DEM1" }` — **lateral only**; does not arm VIA |
 | `JOIN DEM1 WN` | `JOIN_PROCEDURE { procedureId: "DEM1", transitionId: "WN" }` — lateral join on that STAR transition |
+| `JOIN BAY1 NORMA` | `JOIN_PROCEDURE { procedureId: "BAY1", transitionId: "NORMA" }` — lateral join on that SID enroute transition |
 | `DCT NELBO JOIN DEM1` | `DIRECT NELBO` then `JOIN_PROCEDURE DEM1` (join remaining legs from that fix) |
 | `X NEMAX 40` | `CROSS { fixId: "NEMAX", altitudeFt: 4000, restriction: "AT" }` (hundreds, same as `C30`) |
 | `X NEMAX 40A` / `X NEMAX 40B` | same with `AT_OR_ABOVE` / `AT_OR_BELOW` |
@@ -110,8 +112,8 @@ Reject (no intent change, error readback) when:
 - Speed outside `[150, 280]` KIAS for v1 jets (tune per type later).
 - Empty instruction list.
 - Unknown STAR/SID `procedureId` on `DESCEND_VIA` / `CLIMB_VIA` / `JOIN_PROCEDURE` (`UNKNOWN_PROCEDURE`).
-- Unknown or runway-ineligible `transitionId` on `DESCEND_VIA` / `JOIN_PROCEDURE` (`UNKNOWN_TRANSITION`). Several catalog transitions remain eligible (`AMBIGUOUS_TRANSITION`); do not pick silently.
-- Named STAR transition with no reachable common fix on the remaining STAR route (`NOT_ON_COURSE`). Past the branch with no join: reject, no intent mutation.
+- Unknown or runway-ineligible `transitionId` on `DESCEND_VIA` / `CLIMB_VIA` / `JOIN_PROCEDURE` (`UNKNOWN_TRANSITION`). Several catalog transitions remain eligible (`AMBIGUOUS_TRANSITION`); do not pick silently.
+- Named STAR/SID transition with no reachable common fix on the remaining published route (`NOT_ON_COURSE`). Past the branch with no join: reject, no intent mutation. SID enroute amend keeps the active runway transition. Runway-transition change only while still on runway-transition legs.
 - `CROSS` to an unknown fix, altitude not a multiple of 100 / outside `[1000, 18000]`, or not on course to that fix (`DIRECT` or remaining `PROCEDURE` leg).
 - `GO_AROUND` when `clearedApproachId` is not set (not on an armed/captured approach).
 
@@ -156,7 +158,13 @@ Spoken Descend Via with a named STAR transition (T04-43; JO 7110.65 / AIM — R0
 
 > descend via DEMO ONE, runway niner transition
 
-These normalize to the same `DESCEND_VIA` as `VIA <STAR> <transitionId>`. Bare *descend via demo one* / `VIA DEM1` stays transition-less. Join only at a shared catalog fix with the remaining STAR route. SID climb-via transition amend is T04-44.
+These normalize to the same `DESCEND_VIA` as `VIA <STAR> <transitionId>`. Bare *descend via demo one* / `VIA DEM1` stays transition-less. Join only at a shared catalog fix with the remaining STAR route.
+
+Spoken Climb Via with a named SID enroute transition (T04-44; JO 7110.65 / AIM — R01 / R03). Catalog ids only; trainer delta is catalog-backed, not NAS:
+
+> climb via BAY ONE, NORMA transition
+
+These normalize to the same `CLIMB_VIA` as `CVIA <SID> <transitionId>`. Bare *climb via bay one* / `CVIA BAY1` stays transition-less. Join only at a shared catalog fix with the remaining SID route. Preserve the current runway transition until that common fix.
 
 T04-03 flies `DIRECT`. T04-05 flies `CLEARED_APPROACH` (loc intercept) and arms `EXPECT_APPROACH` scratchpad. `untilEstablished` is additive on `ALTITUDE` — do not confuse with T04-04 `DESCEND_VIA` / `CROSS`.
 

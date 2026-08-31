@@ -358,6 +358,40 @@ test("spoken descend via SYN ONE north transition matches typed VIA SYN1 N", asy
   }
 });
 
+test("spoken climb via BAY ONE NORMA transition matches typed CVIA BAY1 NORMA", async () => {
+  const procedures = [
+    {
+      id: "BAY1",
+      name: "BAY ONE",
+      transitions: [
+        { id: "NORMA", name: "NORMA" },
+        { id: "OCTTA", name: "OCTTA" },
+      ],
+    },
+  ];
+  const typed = await parseCommand("CVIA BAY1 NORMA", { source: "text", pathC: false });
+  expect(typed.ok).toBe(true);
+  if (typed.ok) {
+    expect(typed.parseStage).toBe("typed");
+    expect(typed.instructions).toEqual([
+      { type: "CLIMB_VIA", procedureId: "BAY1", transitionId: "NORMA" },
+    ]);
+  }
+  const spoken = await parseCommand("climb via BAY ONE, NORMA transition", {
+    source: "voice",
+    selectedCallsign: "DAL123",
+    procedures,
+    pathC: false,
+  });
+  expect(spoken.ok).toBe(true);
+  if (spoken.ok) {
+    expect(spoken.parseStage).toBe("spoken_a");
+    expect(spoken.instructions).toEqual([
+      { type: "CLIMB_VIA", procedureId: "BAY1", transitionId: "NORMA" },
+    ]);
+  }
+});
+
 test("island parser — multi-command in single transmission with non-standard phrasing", async () => {
   const result = await parseCommand("DAL123 turn left 20 degrees descend 4000 slow to 210", {
     source: "voice",
