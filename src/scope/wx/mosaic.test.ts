@@ -6,7 +6,7 @@ import {
   DEFAULT_WX_PAD_NM,
   WX_REFRESH_MS,
   bboxFromArp,
-  planIemN0qTile,
+  planIemN0qCover,
   decodePngToVipMasks,
   emptyWxMosaic,
   encodeRgbaPng,
@@ -131,8 +131,9 @@ test("fetchWxMosaic uses injected fetch and returns empty on HTTP or decode fail
       return new Response(png, { status: 200 });
     },
   });
-  expect(ok.widthPx).toBe(8);
-  expect(ok.heightPx).toBe(2);
+  const cover = planIemN0qCover(bboxFromArp(arp));
+  expect(ok.widthPx).toBe(cover.cols * 8);
+  expect(ok.heightPx).toBe(cover.rows * 2);
   expect(ok.fetchedAtMs).toBe(50_000);
 
   const httpFail = await fetchWxMosaic({
@@ -142,7 +143,7 @@ test("fetchWxMosaic uses injected fetch and returns empty on HTTP or decode fail
   });
   expect(httpFail.widthPx).toBe(0);
   expect(httpFail.fetchedAtMs).toBe(60_000);
-  expect(httpFail.westLon).toBeCloseTo(planIemN0qTile(arp).bbox.westLon);
+  expect(httpFail.westLon).toBeCloseTo(planIemN0qCover(bboxFromArp(arp)).bbox.westLon);
 
   const decodeFail = await fetchWxMosaic({
     arp,

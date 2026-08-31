@@ -12,6 +12,7 @@ import {
   binVip,
   latToTileY,
   lonToTileX,
+  planIemN0qCover,
   planIemN0qTile,
   tileBbox,
 } from "./index";
@@ -85,6 +86,19 @@ test("N0Q tile URL is /wx-iem XYZ with no WMS query", () => {
   expect(tile.url).not.toMatch(/[?&]/);
   expect(tile.url).not.toMatch(/wms|GetMap|FILTER|STYLES|n0q\.cgi|speech-api|rainviewer|grib/i);
   expect(IEM_N0Q_TILE_SIZE_PX).toBe(256);
+});
+
+test("N0Q cover around ARP pad is at most four tiles and never WMS", () => {
+  const cover = planIemN0qCover(bboxFromArp({ latDeg: 0, lonDeg: 0 }));
+  expect(cover.tiles.length).toBeGreaterThanOrEqual(1);
+  expect(cover.tiles.length).toBeLessThanOrEqual(4);
+  expect(cover.z).toBeLessThanOrEqual(IEM_N0Q_TILE_Z);
+  expect(cover.bbox.westLon).toBeLessThan(0);
+  expect(cover.bbox.eastLon).toBeGreaterThan(0);
+  for (const tile of cover.tiles) {
+    expect(tile.url.startsWith(`${IEM_N0Q_TILE_PATH}/`)).toBe(true);
+    expect(tile.url).not.toMatch(/wms|GetMap|FILTER|n0q\.cgi/i);
+  }
 });
 
 test("tileBbox at z=1 x=0 y=0 is the NW hemisphere tile", () => {

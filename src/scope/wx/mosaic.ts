@@ -1,6 +1,6 @@
 import { nmToLatLon, type LatLon } from "@core";
-import { bboxContains } from "./bbox";
-import { planIemN0qTile } from "./iemUrl";
+import { bboxContains, bboxFromArp } from "./bbox";
+import { planIemN0qCover } from "./iemUrl";
 import { rgbToDbz } from "./n0qRamp";
 import { decodePngToRgba, isPng } from "./png";
 import {
@@ -138,26 +138,72 @@ export interface FetchWxMosaicOpts {
   breaks?: readonly number[];
 }
 
+function blitRgba(
+  dest: Uint8Array,
+  destW: number,
+  src: Uint8Array,
+  srcW: number,
+  srcH: number,
+  dx: number,
+  dy: number,
+): void {
+  for (let row = 0; row < srcH; row++) {
+    const destRow = (dy + row) * destW + dx;
+    const srcRow = row * srcW;
+    dest.set(src.subarray(srcRow * 4, (srcRow + srcW) * 4), destRow * 4);
+  }
+}
+
 /**
- * Fetch one IEM N0Q tile that contains `arp`. `fetchImpl` is required in tests.
- * Default `fetch` is for runtime later — CI must inject a mock.
- * HTTP or decode failure returns an empty mosaic with the tile bbox;
+ * Fetch IEM N0Q tiles that cover ARP ± pad and stitch them. `fetchImpl` is
+ * required in tests. HTTP or decode failure returns an empty mosaic;
  * never throws to boot. Not WMS — IEM GetMap FILTER rejects the n0q group.
  */
 export async function fetchWxMosaic(opts: FetchWxMosaicOpts): Promise<WxMosaic> {
-  const tile = planIemN0qTile(opts.arp);
-  const failed = (): WxMosaic => emptyWxMosaic({ ...tile.bbox, fetchedAtMs: opts.nowMs });
+  const padNm = opts.padNm ?? DEFAULT_WX_PAD_NM;
+  const cover = planIemN0qCover(bboxFromArp(opts.arp, padNm));
+  const failed = (): WxMosaic => emptyWxMosaic({ ...cover.bbox, fetchedAtMs: opts.nowMs });
   const fetchImpl = opts.fetchImpl ?? globalThis.fetch.bind(globalThis);
   try {
-    const res = await fetchImpl(tile.url);
-    if (!res.ok) {
+    const decodedTiles: Array<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      rgba: Uint8Array;
+    }> = [];
+    for (const tile of cover.tiles) {
+      const res = await fetchImpl(tile.url);
+      if (!res.ok) {
+        continue;
+      }
+      const png = new Uint8Array(await res.arrayBuffer());
+      if (!isPng(png)) {
+        continue;
+      }
+      const decoded = await decodePngToRgba(png);
+      decodedTiles.push({
+        x: tile.x,
+        y: tile.y,
+        width: decoded.width,
+        height: decoded.height,
+        rgba: decoded.rgba,
+      });
+    }
+    if (decodedTiles.length === 0) {
       return failed();
     }
-    const png = new Uint8Array(await res.arrayBuffer());
-    if (!isPng(png)) {
-      return failed();
+    const tileW = decodedTiles[0]!.width;
+    const tileH = decodedTiles[0]!.height;
+    const widthPx = cover.cols * tileW;
+    const heightPx = cover.rows * tileH;
+    const rgba = new Uint8Array(widthPx * heightPx * 4);
+    for (const part of decodedTiles) {
+      const dx = (part.x - cover.x0) * tileW;
+      const dy = (part.y - cover.y0) * tileH;
+      blitRgba(rgba, widthPx, part.rgba, part.width, part.height, dx, dy);
     }
-    return await decodePngToVipMasks(png, tile.bbox, opts.nowMs, opts.breaks);
+    return decodeRgbaToVipMasks(rgba, widthPx, heightPx, cover.bbox, opts.nowMs, opts.breaks);
   } catch {
     return failed();
   }

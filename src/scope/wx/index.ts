@@ -18,10 +18,11 @@ export {
   buildIemN0qTileUrl,
   latToTileY,
   lonToTileX,
+  planIemN0qCover,
   planIemN0qTile,
   tileBbox,
 } from "./iemUrl";
-export type { WxTile } from "./iemUrl";
+export type { WxTile, WxTileCover } from "./iemUrl";
 export { binVip } from "./vip";
 export { N0Q_RGB_DBZ_RAMP, rgbToDbz } from "./n0qRamp";
 export { decodePngToRgba, encodeRgbaPng, isPng } from "./png";
