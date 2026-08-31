@@ -1,5 +1,29 @@
 # Swarm status
 
+## TWENTIETH SWARM COMPLETE — catalog retrieve + margin snap (T03-16–20)
+
+T03-16–20 are squash-merged on `master`. Captain `npm test` / `npm run ci`: **164 test files passed, 1896 tests passed, 3 skipped, 0 failures**. Prerequisite unique snap (`I26R` / Haynes→`HAINZ` / AJ→`AJAAY`, local cap 4096) landed first. Phase 3 E1–E14 unchanged. No phase 5. Did not redo T04-36–42. Did not push.
+
+- **Retrieve (T03-16):** `retrieveFix` ranks spoken tokens over the full catalog (scores `[0, 1]`). Cap 16 on the returned list, not the index. Unique `groundFixToCatalog` unchanged.
+- **Margin snap (T03-17):** `SNAP_SCORE_FLOOR = 0.80`, `SNAP_SCORE_MARGIN = 0.05`. 0.91 vs 0.89 is a tie. Unique alias hits stay first. `ungroundedFixes` on the ok parse path.
+- **Ungrounded miss (T03-18):** Spoken/island ungrounded identifier is a local miss. Path C `fixes=` is a retrieved cluster (`MAX_PATH_C_FIXES = 16`), never `ids().slice(0, 64)`. Typed `DCT NOPE` still ok-parses → pilot `UNKNOWN_FIX`. Unique Haynes does not fetch Path C.
+- **STT header (T03-19):** `X-ATC-Fixes` omitted or ≤16 procedure-referenced ids. Parse still gets the full catalog. Client cap 16. Server `MAX_STT_FIXES = 64` left as safety.
+- **Acceptance (T03-20):** Synthetic Haynes / AJ / ILS 26R unique snaps stay `spoken_a`/`spoken_b`. Tie + injected Path C gets the retrieved cluster. README §12 addendum. Live Path C tie salvage leftover recorded.
+
+**Merged (squash-merged, captain only, onto `master`):** T03-16 (`44d975d`), T03-17 (`8f6dea6`), T03-19 (`df37d1c`), T03-18 (`00a6fc7`), T03-20 (`a956107`). Prerequisite snap `1d1b652`. Planning `3c1c441`, execution `7253a03`.
+
+**Captain judgement calls:**
+- T03-16 first landed with 0–100 retrieve scores. Respawned the same worker to scale to `[0, 1]` before merge so T03-17 floor 0.80 stays meaningful.
+- Wave B file lock: T03-17 owned catalog-ground/parse; T03-19 put `highValueFixIds` beside the speech port, not in catalog-ground.
+- Orchestrator and captain were one session. Merge lock, worktrees, and waves were held in the top session. Workers stayed leaf-only and never merged.
+- Untracked `.cursor/rules/caveman-ultra.mdc` and `e2e/` left uncommitted.
+
+**Manual leftover:** live Path C tie salvage against a real `speech-api` `POST /parse` on a Haynes-like **tie** (not unique snap). skip-with-reason: injected Path C covers the cluster contract; live GGUF not run this swarm. Chrome PTT p50 (T03-12 E10) not measured. Do not invent a p50.
+
+**Product law held:** retrieve then maybe Path C; floor+margin, never raw argmax; ungrounded identifier is a local miss; Path C candidates not slice-64; STT header is not a search index; one salvage model (`POST /parse`); unique Haynes/AJ/ILS26R stay local; synthetic tests only; no paid LLM hosts.
+
+**Remaining work (next paste of `SWARM.md` with config changed):** live Path C Haynes-tie salvage; T03-12 E10 p50; phase 5 scoring/replay.
+
 ## NINETEENTH SWARM COMPLETE — CRC A80 videomap import (T04-36–42)
 
 T04-36–42 are squash-merged on `feature/crc-a80-videomaps` (not `master`). Captain `npm test` / `npm run ci`: **162 test files passed, 1856 tests passed, 4 skipped, 0 failures**. Offline CRC/vNAS STARS A80 conversion into `arp-enu-nm` trainer maps. Runtime still loads JSON only. KDEM stays authored/default. No phase 5. Skip T04-11.
