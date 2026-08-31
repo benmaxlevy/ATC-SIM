@@ -1,6 +1,6 @@
 import { expect, expectTypeOf, test, vi } from "vitest";
 import type { ParseResult } from "@parse";
-import { PARSE_ERROR, parseCommand, parseRadioText } from "@parse";
+import { PARSE_ERROR, parseCommand, parseRadioText, type ParsePathCFn } from "@parse";
 
 test("parseCommand returns Promise<ParseResult>", () => {
   expectTypeOf(parseCommand).returns.toEqualTypeOf<Promise<ParseResult>>();
@@ -400,6 +400,50 @@ test("spoken ILS 26R snaps onto CIFP I26R among same-runway LOC/RNAV", async () 
     { type: "ALTITUDE", altitudeFt: 3000, verb: "MAINTAIN", untilEstablished: true },
     { type: "CLEARED_APPROACH", approachId: "I26R" },
   ]);
+});
+
+// R01 JO 7110.65: CLEARED ILS RUNWAY (digits + side) and PROCEED DIRECT to a
+// published fix. PCG ILS; AIM radio digits (`two six right`). Trainer delta:
+// catalog snap is trainer grounding onto CIFP-style ids, not 7110.65 NLU.
+// Unique Haynes / AJ / ILS 26R stay Path A/B. Path C is salvage after a miss.
+const T03_20_SYNTH_FIXES = ["HAINZ", "AJAAY", "OTHER"];
+
+test("T03-20 AC1 — unique Haynes / AJ / ILS 26R stay local when pathC is true", async () => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: null,
+    instructions: [{ type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" }],
+  }));
+  const cases: ReadonlyArray<{
+    text: string;
+    instruction:
+      { type: "DIRECT"; fixId: string } | { type: "CLEARED_APPROACH"; approachId: string };
+  }> = [
+    { text: "proceed direct haynes", instruction: { type: "DIRECT", fixId: "HAINZ" } },
+    { text: "proceed direct aj", instruction: { type: "DIRECT", fixId: "AJAAY" } },
+    {
+      text: "cleared ils runway two six right",
+      instruction: { type: "CLEARED_APPROACH", approachId: "I26R" },
+    },
+  ];
+  for (const row of cases) {
+    parsePathC.mockClear();
+    const result = await parseCommand(row.text, {
+      source: "voice",
+      selectedCallsign: "DAL123",
+      pathC: true,
+      parsePathC,
+      fixes: T03_20_SYNTH_FIXES,
+      approaches: CIFP_26R,
+    });
+    expect(parsePathC, row.text).not.toHaveBeenCalled();
+    expect(result.ok, row.text).toBe(true);
+    if (!result.ok) {
+      continue;
+    }
+    expect(result.parseStage === "spoken_a" || result.parseStage === "spoken_b").toBe(true);
+    expect(result.parseStage).not.toBe("llm_c");
+    expect(result.instructions).toEqual([row.instruction]);
+  }
 });
 
 test("spoken Haynes and AJ snap onto unique catalog ids", async () => {

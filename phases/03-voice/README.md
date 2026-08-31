@@ -448,7 +448,7 @@ T03-12 Phase 3 voice acceptance script   P0   needs all P0/P1 except 11 and 14; 
 Addendum (T03-16–20, post-exit; do not reopen E1–E14):
 T03-16 Spoken catalog index + retrieve     P0   needs 03 + 14
 T03-17 Margin snap for catalog ids         P0   needs 16
-T03-19 STT fix header hygiene              P1   needs 16  (parallel with 17)
+T03-19 STT fix header hygiene              P0   needs 16  (parallel with 17)
 T03-18 Ungrounded id → Path C candidates   P0   needs 16 + 17
 T03-20 Catalog retrieve + margin snap acceptance  P0   needs 18 + 19
 ```

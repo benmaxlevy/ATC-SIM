@@ -31,15 +31,19 @@ const REQ: PathCRequest = {
 };
 
 test("AC6 — path-c source does not call paid LLM hosts", async () => {
-  const sources = import.meta.glob("./*.{ts,tsx}", {
+  const sources = import.meta.glob(["./*.{ts,tsx}", "./spoken/*.{ts,tsx}"], {
     query: "?raw",
     import: "default",
     eager: true,
   }) as Record<string, string>;
+  const banned = /openai\.com|api\.groq\.com|api-inference\.huggingface\.co/i;
+  const production = Object.entries(sources).filter(([path]) => !path.includes(".test."));
+  expect(production.length).toBeGreaterThan(0);
+  for (const [path, src] of production) {
+    expect(src, path).not.toMatch(banned);
+  }
   const src = sources["./path-c.ts"]!;
   const command = sources["./parse-command.ts"]!;
-  expect(src).not.toMatch(/openai\.com|api\.groq\.com|api-inference\.huggingface\.co/i);
-  expect(command).not.toMatch(/openai\.com|api\.groq\.com|api-inference\.huggingface\.co/i);
   expect(src).toContain("127.0.0.1:8090/parse");
   expect(src).not.toMatch(/\/ground/);
   expect(command).not.toMatch(/\/ground/);
@@ -430,6 +434,40 @@ test("AC1 — unique Haynes margin snap does not fetch Path C", async () => {
   }
   expect(result.parseStage === "spoken_a" || result.parseStage === "spoken_b").toBe(true);
   expect(result.parseStage).not.toBe("llm_c");
+  expect(result.instructions).toEqual([{ type: "DIRECT", fixId: "HAINZ" }]);
+});
+
+test("T03-20 AC2 — within-margin Haynes tie injects Path C with retrieved cluster", async () => {
+  const padding = padFixes(80, []);
+  const catalog = padFixes(80, ["HAINZ", "HAYNZ", "AJAAY"]);
+  const parsePathC = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: null,
+    instructions: [{ type: "DIRECT", fixId: "HAINZ" }],
+  }));
+  const result = await parseCommand("proceed direct Haynes", {
+    source: "voice",
+    selectedCallsign: "DAL123",
+    pathC: true,
+    parsePathC,
+    fixes: catalog,
+  });
+  expect(parsePathC).toHaveBeenCalledTimes(1);
+  const sent = parsePathC.mock.calls[0]![0].context?.fixes ?? [];
+  expect(sent.length).toBeGreaterThan(0);
+  expect(sent.length).toBeLessThanOrEqual(MAX_PATH_C_FIXES);
+  expect(sent.length).toBeLessThan(catalog.length);
+  expect(sent).not.toHaveLength(64);
+  expect(sent).toEqual(expect.arrayContaining(["HAINZ", "HAYNZ"]));
+  expect(sent).not.toEqual(catalog);
+  expect(sent).not.toEqual(catalog.slice(0, 64));
+  for (const id of padding.slice(0, 64)) {
+    expect(sent).not.toContain(id);
+  }
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.parseStage).toBe("llm_c");
   expect(result.instructions).toEqual([{ type: "DIRECT", fixId: "HAINZ" }]);
 });
 

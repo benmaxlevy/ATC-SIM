@@ -504,6 +504,28 @@ Constraints later work must keep:
 - do not commit local CRC cache JSON/GeoJSON;
 - `src/` never imports `tools/crc-videomap-import`; no runtime vNAS fetch.
 
+## Voice
+
+### Live Path C tie salvage (T03-20)
+
+Visible now: unique Haynes / AJ / ILS 26R snap locally (`spoken_a` / `spoken_b`)
+against a synthetic catalog. A within-margin tie misses locally and, with
+`pathC: true`, an injected Path C receives the retrieved candidate cluster
+(cap 16), not file-order 64 and not the whole pack. STT `X-ATC-Fixes` is
+omitted or a tiny high-value prior (T03-19).
+
+Deliberately missing: live Path C tie salvage against a real `speech-api`
+`POST /parse` model on a Haynes-like **tie** (not unique snap) was not run
+this ticket. Chrome PTT p50 (T03-12 E10) was not measured.
+
+Constraints later work must keep:
+
+- one salvage model, same `POST /parse`, miss-only, schema-checked Command IR;
+- retrieved cluster 8–16, never `ids().slice(0, 64)` or the whole pack;
+- unique high-margin snap stays local;
+- self-hosted `speech-api` only; no paid STT/TTS/LLM hosts;
+- synthetic catalogs in generic tests; no KATL production counts.
+
 ## Explicit boundary
 
 This document does not pull in untouched phase work such as scoring/replay,
