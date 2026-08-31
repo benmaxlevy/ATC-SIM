@@ -314,6 +314,7 @@ export {
   formatDcbTpaMiReadout,
 } from "./scopeView";
 export type { MapLayerId, ScopeView } from "./scopeView";
+export { WX_VIP_FILL_HEX, drawWeatherLayer, wxVipFillHex } from "./weatherLayer";
 export {
   DCB_ACTION_FLASH_MS,
   applyDcbShift,

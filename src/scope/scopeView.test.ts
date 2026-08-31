@@ -277,9 +277,12 @@ test("AC2/AC3 — PTL minutes and OWN vs ALL live on the view; F7 toggles ALL", 
   expect(view.ptlOn).toBe(true);
 });
 
-test("wxLevels defaults to six false; display only", () => {
+test("wxLevels defaults to six false; mosaic empty; display only", () => {
   const view = createScopeView();
   expect(view.wxLevels).toEqual([false, false, false, false, false, false]);
+  expect(view.wxMosaic.widthPx).toBe(0);
+  expect(view.wxMosaic.heightPx).toBe(0);
+  expect(view.arp).toEqual({ latDeg: 0, lonDeg: 0 });
 });
 
 test("AC4 — DCB dock enum is one edge at a time", () => {

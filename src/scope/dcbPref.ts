@@ -326,6 +326,7 @@ export function applyDcbPrefDefaults(view: ScopeView): void {
     digitalMap: view.digitalMap,
     giTextLines: view.giTextLines,
     showCoastline: view.digitalMap.coastline?.enabled === true,
+    arp: view.arp,
   });
   applyDcbPref(view, serializeDcbPref(factory));
 }

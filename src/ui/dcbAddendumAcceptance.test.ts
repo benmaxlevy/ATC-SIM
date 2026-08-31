@@ -58,6 +58,15 @@ const uiSources = import.meta.glob("./*.{ts,tsx}", {
   eager: true,
 }) as Record<string, string>;
 
+const weatherPaintSrc =
+  (
+    import.meta.glob("../scope/weatherLayer.ts", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>
+  )["../scope/weatherLayer.ts"] ?? "";
+
 const appSources = import.meta.glob(["../**/*.{ts,tsx,css,html}", "../../index.html"], {
   query: "?raw",
   import: "default",
@@ -254,6 +263,7 @@ test("AC5 — persistent chrome copy has no zoom/label/sprite/OSM/HUD", () => {
 
   expect(uiSources["./DisplayControlBar.tsx"]!).not.toMatch(/nexrad|mosaic|openstreetmap/i);
   expect(uiSources["./ScopeCanvas.tsx"]!).not.toMatch(/nexrad|mosaic|openstreetmap/i);
+  expect(weatherPaintSrc).toMatch(/drawImage/);
 });
 
 test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, disabled WX/VOL, TPA stub", () => {

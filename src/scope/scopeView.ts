@@ -24,6 +24,7 @@
  * Scope display state only. Never a Command, readback, or intent.
  */
 
+import type { LatLon } from "@core";
 import {
   DEFAULT_ALTITUDE_FILTER,
   beginFilterEntry,
@@ -83,7 +84,7 @@ import {
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
 import { cloneBrite, type BriteState } from "./palette";
 import type { TrackDisplay } from "./trackDisplay";
-import { cloneWxLevels, type WxLevels } from "./wx";
+import { cloneWxLevels, emptyWxMosaic, type WxLevels, type WxMosaic } from "./wx";
 
 import {
   DEFAULT_SYSTEM_LIST_PLACEMENTS,
@@ -245,21 +246,33 @@ export interface ScopeView {
   beaconatorActive: boolean;
   /**
    * STARS VIP 1–6 display latches. Default all false.
-   * Display only — T02-70 DCB later. Does not paint or steer aircraft.
+   * Display only — T02-70 DCB later. Paint is weatherLayer. Does not steer aircraft.
    */
   wxLevels: WxLevels;
+  /**
+   * Fetched VIP mosaic. Default empty. Paint reads this; do not fetch here.
+   */
+  wxMosaic: WxMosaic;
+  /** Scenario ARP for mosaic placement. Default 0,0. Not an airport-id switch. */
+  arp: LatLon;
 }
 
 export function createScopeView(
   airportEastNm: number = AIRPORT_REF_EAST_NM,
   airportNorthNm: number = AIRPORT_REF_NORTH_NM,
-  options?: { digitalMap?: DigitalMap; showCoastline?: boolean; giTextLines?: readonly string[] },
+  options?: {
+    digitalMap?: DigitalMap;
+    showCoastline?: boolean;
+    giTextLines?: readonly string[];
+    arp?: LatLon;
+  },
 ): ScopeView {
   const digitalMap = options?.digitalMap ?? DEFAULT_DIGITAL_MAP;
   const showCoastline = options?.showCoastline ?? digitalMap.coastline?.enabled === true;
   const showRunway = true;
   const showLocalizer = true;
   const giTextLines = padGiTextLines(options?.giTextLines);
+  const arp = options?.arp ?? { latDeg: 0, lonDeg: 0 };
   return {
     camera: {
       rangeNm: DEFAULT_RANGE_NM,
@@ -326,6 +339,8 @@ export function createScopeView(
     helpOpen: false,
     beaconatorActive: false,
     wxLevels: cloneWxLevels(),
+    wxMosaic: emptyWxMosaic(),
+    arp,
   };
 }
 

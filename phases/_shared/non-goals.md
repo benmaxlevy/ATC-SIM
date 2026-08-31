@@ -9,7 +9,7 @@ These are out of scope unless a later ticket explicitly lifts them. Implementing
 - VATSIM / MSFS / X-Plane live traffic in v1.
 - Tower cab, ASDE-X, ERAM, or oceanic.
 - Multi-facility NAS, ARTCC, or overlapping sectors (phase 5 may *stub* a second position).
-- Weather mosaic, precipitation, wind (until a phase 4 ticket). WX DCB cells may exist as **disabled** chrome (T02-24); they must not paint weather.
+- Wind (until a later ticket). Phase-2 addendum T02-68–72 paints the IEM N0Q VIP mosaic on the PPI (trainer fills, display only). DCB WX cells stay **disabled** until T02-70. Certification remains out of scope.
 - CRDA, FMA, ARV, dual FSL/EFSL.
 - Full NAS DCB / preference host. T02-22–30 lift a **trainer DCB subset** (main/aux/submenus, local PREF slots, disabled WX/VOL/MODE/SITE). Still not a Raytheon clone.
 

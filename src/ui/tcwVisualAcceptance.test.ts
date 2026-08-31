@@ -36,6 +36,15 @@ const uiSources = import.meta.glob("./*.{ts,tsx}", {
   eager: true,
 }) as Record<string, string>;
 
+const weatherPaintSrc =
+  (
+    import.meta.glob("../scope/weatherLayer.ts", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>
+  )["../scope/weatherLayer.ts"] ?? "";
+
 const FORBIDDEN_CHROME = /\b(zoom|sprite|osm|hud|nametag|label)\b/i;
 const FORBIDDEN_DCB_CELLS = /\b(CSA|CRDA|FMA|OSM)\b/;
 
@@ -222,6 +231,7 @@ test("AC5 — persistent chrome has no zoom/label/sprite/OSM/HUD; DCB WX1–4 ex
   expect(overlay).not.toMatch(/\bsprite\b/i);
   expect(uiSources["./DisplayControlBar.tsx"]!).not.toMatch(/nexrad|mosaic|openstreetmap/i);
   expect(uiSources["./ScopeCanvas.tsx"]!).not.toMatch(/nexrad|mosaic|openstreetmap/i);
+  expect(weatherPaintSrc).toMatch(/drawImage/);
 
   expect(SCOPE_FONT_STACK).toContain("IBM Plex Mono");
   expect(SCOPE_FONT_STACK).toContain("monospace");

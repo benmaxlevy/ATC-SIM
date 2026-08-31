@@ -78,6 +78,7 @@ window.addEventListener("pagehide", () => {
 const scopeView = createScopeView(scenario.arpNm.xNm, scenario.arpNm.yNm, {
   digitalMap: parseDigitalMap(scenario.maps),
   giTextLines: scenario.giTextLines,
+  arp: scenario.arp,
 });
 const prefStore = browserDcbPrefStorage();
 if (prefStore) {

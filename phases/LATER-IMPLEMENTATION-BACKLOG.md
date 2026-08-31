@@ -218,12 +218,14 @@ change; each capability needs its own data and acceptance criteria.
 ### Weather Radar / DCB WX chrome
 
 T02-68 ships IEM N0Q fetch/decode (`src/scope/wx/`), `ScopeView.wxLevels`
-(six false), and `vipAtNm`. Callable, not painted: no PPI overlay, no DCB
-enable, no `*WX`, no BRITE WX/WXC, no aircraft deviate. Vite `/wx-iem`
-proxies to IEM; CI uses `testdata/wx/` plus injected fetch.
+(six false), and `vipAtNm`. T02-69 paints enabled VIP fills under tracks
+from `view.wxMosaic` via `weatherLayer.ts` (one cached `drawImage`, default
+levels off). DCB still disabled: no latch, no `*WX`, no BRITE WX/WXC, no
+aircraft deviate. Vite `/wx-iem` proxies to IEM; CI uses `testdata/wx/`
+plus injected fetch.
 
-T02-69–72 still own paint, DCB WX, `*WX`, and BRITE WX/WXC. Keep HIST, BKC,
-and pilot deviate as later work.
+T02-70–72 still own DCB WX, `*WX`, and BRITE WX/WXC. Keep HIST, BKC, and
+pilot deviate as later work.
 
 ### PREF SAVE AS named sets
 
