@@ -25,6 +25,7 @@ import {
   type CatalogApproach,
   type CatalogProcedure,
 } from "./spoken/catalog-ground";
+import { retrieveFix } from "./spoken/catalog-retrieve";
 import {
   PATH_C_SCHEMA_VERSION,
   fetchParsePathC,
@@ -131,16 +132,22 @@ function okStage(
   procedures: readonly CatalogProcedure[],
   approaches: readonly CatalogApproach[],
 ): ParseResult {
+  const groundedFixes = groundInstructionFixes(parsed.instructions, catalog, {
+    rankedFor: (token) => retrieveFix(token, catalog),
+  });
   return {
     ok: true,
     callsignToken: parsed.callsignToken ?? selected,
     instructions: groundInstructionApproaches(
-      groundInstructionProcedures(groundInstructionFixes(parsed.instructions, catalog), procedures),
+      groundInstructionProcedures(groundedFixes.instructions, procedures),
       approaches,
     ),
     sourceText,
     parseStage,
     source,
+    ...(groundedFixes.ungroundedFixes.length > 0
+      ? { ungroundedFixes: groundedFixes.ungroundedFixes }
+      : {}),
   };
 }
 

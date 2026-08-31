@@ -17,6 +17,8 @@ import {
   sanitizeCatalogApproaches,
   sanitizeFixIds,
 } from "./catalog-ground";
+import { retrieveFix } from "./catalog-retrieve";
+import { SNAP_SCORE_FLOOR, SNAP_SCORE_MARGIN } from "./catalog-snap";
 
 const KDEM = ["NEMAX", "SEMAX", "NELBO", "SELBO", "MERGE", "FI27", "RW27", "MISSD", "DEM", "OCT"];
 const DEM1 = { id: "DEM1", name: "DEMO ONE" };
@@ -69,11 +71,14 @@ test("groundInstructionFixes snaps DIRECT and CROSS only", () => {
       ],
       KDEM,
     ),
-  ).toEqual([
-    { type: "DIRECT", fixId: "SEMAX" },
-    { type: "CROSS", fixId: "SEMAX", altitudeFt: 4000, restriction: "AT" },
-    { type: "IDENT" },
-  ]);
+  ).toEqual({
+    instructions: [
+      { type: "DIRECT", fixId: "SEMAX" },
+      { type: "CROSS", fixId: "SEMAX", altitudeFt: 4000, restriction: "AT" },
+      { type: "IDENT" },
+    ],
+    ungroundedFixes: [],
+  });
 });
 
 test("demo 1 / demo one / DEMO ONE compact to DEMO1 / DEMOONE", () => {
@@ -247,4 +252,84 @@ test("approachesFromCatalog keeps CIFP type so ILS aliases stay unique", () => {
       approaches: [{ id: "I26R", name: "ILS RWY 26R", runway: "26R", type: "ILS" }],
     }),
   ).toEqual([{ id: "I26R", name: "ILS RWY 26R", runway: "26R", type: "ILS" }]);
+});
+
+test("AC1 — instruction grounding unique-snaps Haynes to HAINZ, not raw HAYNES", () => {
+  const catalog = ["HAINZ", "NEMAX", "SEMAX"];
+  const result = groundInstructionFixes([{ type: "DIRECT", fixId: "Haynes" }], catalog);
+  expect(result).toEqual({
+    instructions: [{ type: "DIRECT", fixId: "HAINZ" }],
+    ungroundedFixes: [],
+  });
+});
+
+test("AC1 — ranked leftover snaps Haynes when unique miss and margin is clear", () => {
+  const catalog = ["HAINZ", "HAYNZ", "NEMAX"];
+  expect(groundFixToCatalog("Haynes", catalog)).toBeNull();
+  const result = groundInstructionFixes([{ type: "DIRECT", fixId: "HAYNES" }], catalog, {
+    rankedFor: () => [
+      { id: "HAINZ", score: SNAP_SCORE_FLOOR + SNAP_SCORE_MARGIN },
+      { id: "HAYNZ", score: SNAP_SCORE_FLOOR - 0.2 },
+    ],
+  });
+  expect(result).toEqual({
+    instructions: [{ type: "DIRECT", fixId: "HAINZ" }],
+    ungroundedFixes: [],
+  });
+});
+
+test("AC2 — within-margin ranked pair keeps raw token and lists ungroundedFixes", () => {
+  const catalog = ["HAINZ", "HAYNZ"];
+  const result = groundInstructionFixes(
+    [
+      { type: "DIRECT", fixId: "HAYNES" },
+      { type: "CROSS", fixId: "HAYNES", altitudeFt: 4000, restriction: "AT" },
+    ],
+    catalog,
+    {
+      rankedFor: () => [
+        { id: "HAINZ", score: 0.91 },
+        { id: "HAYNZ", score: 0.89 },
+      ],
+    },
+  );
+  expect(result.instructions).toEqual([
+    { type: "DIRECT", fixId: "HAYNES" },
+    { type: "CROSS", fixId: "HAYNES", altitudeFt: 4000, restriction: "AT" },
+  ]);
+  expect(result.ungroundedFixes).toEqual(["HAYNES", "HAYNES"]);
+});
+
+test("AC3 — weak retrieve does not promote the least-bad id", () => {
+  const catalog = ["HAINZ", "HAYNZ"];
+  const result = groundInstructionFixes([{ type: "DIRECT", fixId: "HAYNES" }], catalog, {
+    rankedFor: (token) => retrieveFix(token, catalog),
+  });
+  expect(groundFixToCatalog("Haynes", catalog)).toBeNull();
+  expect(result.instructions).toEqual([{ type: "DIRECT", fixId: "HAYNES" }]);
+  expect(result.ungroundedFixes).toEqual(["HAYNES"]);
+});
+
+test("AC6 — uniquely better off-route Haynes wins; preferIds is not a filter", () => {
+  const catalog = ["HAINZ", "ONRTE"];
+  const unique = groundInstructionFixes([{ type: "DIRECT", fixId: "Haynes" }], catalog, {
+    preferIds: new Set(["ONRTE"]),
+  });
+  expect(unique).toEqual({
+    instructions: [{ type: "DIRECT", fixId: "HAINZ" }],
+    ungroundedFixes: [],
+  });
+
+  const catalogTie = ["HAINZ", "HAYNZ"];
+  const ranked = groundInstructionFixes([{ type: "DIRECT", fixId: "HAYNES" }], catalogTie, {
+    preferIds: new Set(["ONRTE"]),
+    rankedFor: () => [
+      { id: "HAINZ", score: SNAP_SCORE_FLOOR + SNAP_SCORE_MARGIN },
+      { id: "ONRTE", score: SNAP_SCORE_FLOOR },
+    ],
+  });
+  expect(ranked).toEqual({
+    instructions: [{ type: "DIRECT", fixId: "HAINZ" }],
+    ungroundedFixes: [],
+  });
 });

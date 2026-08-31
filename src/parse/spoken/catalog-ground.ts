@@ -7,6 +7,7 @@
  */
 
 import type { Instruction } from "@core";
+import { snapFix, type RankedCatalogHit } from "./catalog-snap";
 
 /**
  * Local snap needs the full facility (CIFP packs are hundreds of fixes).
@@ -173,24 +174,59 @@ export function groundFixToCatalog(
   return null;
 }
 
+export interface GroundedFixInstructions {
+  instructions: Instruction[];
+  ungroundedFixes: string[];
+}
+
+function groundDirectOrCrossFix(
+  token: string,
+  catalog: readonly string[],
+  opts?: {
+    preferIds?: ReadonlySet<string>;
+    rankedFor?: (token: string) => readonly RankedCatalogHit[];
+  },
+): { fixId: string; ungrounded: boolean } {
+  const unique = groundFixToCatalog(token, catalog);
+  if (unique !== null) {
+    return { fixId: unique, ungrounded: false };
+  }
+  const ranked = opts?.rankedFor?.(token) ?? [];
+  const snapped = snapFix(token, ranked, opts?.preferIds);
+  if (snapped.kind === "snap") {
+    return { fixId: snapped.id, ungrounded: false };
+  }
+  return { fixId: token, ungrounded: true };
+}
+
+/**
+ * Unique exact/alias/near-miss first, then T03-16 retrieve → snapFix.
+ * Tie / weak / none keep the raw token and list it in `ungroundedFixes`.
+ */
 export function groundInstructionFixes(
   instructions: readonly Instruction[],
   catalog: readonly string[],
-): Instruction[] {
+  opts?: {
+    preferIds?: ReadonlySet<string>;
+    rankedFor?: (token: string) => readonly RankedCatalogHit[];
+  },
+): GroundedFixInstructions {
   if (catalog.length === 0) {
-    return [...instructions];
+    return { instructions: [...instructions], ungroundedFixes: [] };
   }
-  return instructions.map((inst) => {
-    if (inst.type === "DIRECT") {
-      const fixId = groundFixToCatalog(inst.fixId, catalog) ?? inst.fixId;
-      return fixId === inst.fixId ? inst : { ...inst, fixId };
+  const ungroundedFixes: string[] = [];
+  const next = instructions.map((inst) => {
+    if (inst.type !== "DIRECT" && inst.type !== "CROSS") {
+      return inst;
     }
-    if (inst.type === "CROSS") {
-      const fixId = groundFixToCatalog(inst.fixId, catalog) ?? inst.fixId;
-      return fixId === inst.fixId ? inst : { ...inst, fixId };
+    const grounded = groundDirectOrCrossFix(inst.fixId, catalog, opts);
+    if (grounded.ungrounded) {
+      ungroundedFixes.push(inst.fixId);
+      return inst;
     }
-    return inst;
+    return grounded.fixId === inst.fixId ? inst : { ...inst, fixId: grounded.fixId };
   });
+  return { instructions: next, ungroundedFixes };
 }
 
 export function sanitizeCatalogProcedures(

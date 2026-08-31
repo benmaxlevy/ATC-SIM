@@ -30,6 +30,8 @@ export type ParseResult =
       sourceText: string;
       parseStage?: ParseStage;
       source?: "text" | "voice";
+      /** Raw DIRECT/CROSS tokens that unique/margin snap did not ground. T03-18 miss. */
+      ungroundedFixes?: string[];
     }
   | { ok: false; error: string; sourceText: string };
 

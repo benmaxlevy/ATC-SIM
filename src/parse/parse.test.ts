@@ -269,6 +269,7 @@ test("catalog snaps spoken C-Max and typed DCT CMAX onto SEMAX", async () => {
   if (spoken.ok) {
     expect(spoken.parseStage).toBe("spoken_a");
     expect(spoken.instructions).toEqual([{ type: "DIRECT", fixId: "SEMAX" }]);
+    expect(spoken.ungroundedFixes).toBeUndefined();
   }
 
   const typed = await parseCommand("DCT CMAX", {
@@ -281,6 +282,7 @@ test("catalog snaps spoken C-Max and typed DCT CMAX onto SEMAX", async () => {
   if (typed.ok) {
     expect(typed.parseStage).toBe("typed");
     expect(typed.instructions).toEqual([{ type: "DIRECT", fixId: "SEMAX" }]);
+    expect(typed.ungroundedFixes).toBeUndefined();
   }
 });
 
@@ -411,6 +413,7 @@ test("spoken Haynes and AJ snap onto unique catalog ids", async () => {
   if (haynes.ok) {
     expect(haynes.callsignToken).toBe("JBU17");
     expect(haynes.instructions).toEqual([{ type: "DIRECT", fixId: "HAINZ" }]);
+    expect(haynes.ungroundedFixes).toBeUndefined();
   }
 
   const aj = await parseCommand("JetBlue seventeen, proceed direct, AJ.", {
@@ -422,5 +425,39 @@ test("spoken Haynes and AJ snap onto unique catalog ids", async () => {
   if (aj.ok) {
     expect(aj.callsignToken).toBe("JBU17");
     expect(aj.instructions).toEqual([{ type: "DIRECT", fixId: "AJAAY" }]);
+    expect(aj.ungroundedFixes).toBeUndefined();
   }
+});
+
+test("tied Haynes ids stay raw and populate ungroundedFixes", async () => {
+  const parsePathC = vi.fn(async () => null);
+  const result = await parseCommand("proceed direct Haynes", {
+    source: "voice",
+    selectedCallsign: "DAL123",
+    fixes: ["HAINZ", "HAYNZ"],
+    pathC: false,
+    parsePathC,
+  });
+  expect(parsePathC).not.toHaveBeenCalled();
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.instructions).toEqual([{ type: "DIRECT", fixId: "HAYNES" }]);
+  expect(result.ungroundedFixes).toEqual(["HAYNES"]);
+});
+
+test("weak unknown DIRECT keeps the raw token on ungroundedFixes", async () => {
+  const result = await parseCommand("DCT NOPE", {
+    source: "text",
+    selectedCallsign: "DAL123",
+    fixes: ["HAINZ", "NEMAX"],
+    pathC: false,
+  });
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return;
+  }
+  expect(result.instructions).toEqual([{ type: "DIRECT", fixId: "NOPE" }]);
+  expect(result.ungroundedFixes).toEqual(["NOPE"]);
 });

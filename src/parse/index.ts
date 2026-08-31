@@ -25,6 +25,8 @@ export {
 export type { CatalogApproach, CatalogProcedure } from "./spoken/catalog-ground";
 export { MAX_RETRIEVE_CANDIDATES, retrieveFix } from "./spoken/catalog-retrieve";
 export type { RetrieveHit } from "./spoken/catalog-retrieve";
+export { SNAP_SCORE_FLOOR, SNAP_SCORE_MARGIN, snapFix } from "./spoken/catalog-snap";
+export type { RankedCatalogHit, SnapResult } from "./spoken/catalog-snap";
 export {
   DEFAULT_PARSE_URL,
   PATH_C_SCHEMA_VERSION,
