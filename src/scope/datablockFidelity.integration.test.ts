@@ -20,62 +20,7 @@ import {
 import { renderScope } from "./renderScope";
 import { createScopeView } from "./scopeView";
 import { PALETTE } from "./palette";
-
-interface MockText {
-  text: string;
-  x: number;
-  y: number;
-  fillStyle?: string;
-  font: string;
-}
-
-function createMockCtx() {
-  const fillTexts: MockText[] = [];
-  let currentFillStyle = "#FFFFFF";
-  let currentFont = "12px monospace";
-
-  const ctx = {
-    save: () => {},
-    restore: () => {},
-    beginPath: () => {},
-    closePath: () => {},
-    moveTo: () => {},
-    lineTo: () => {},
-    arc: () => {},
-    rect: () => {},
-    clip: () => {},
-    stroke: () => {},
-    fill: () => {},
-    strokeRect: () => {},
-    fillRect: () => {},
-    clearRect: () => {},
-    setLineDash: () => {},
-    fillText: (text: string, x: number, y: number) => {
-      fillTexts.push({
-        text,
-        x,
-        y,
-        fillStyle: currentFillStyle,
-        font: currentFont,
-      });
-    },
-    measureText: (text: string) => ({ width: text.length * 7.2 }),
-    get fillStyle() {
-      return currentFillStyle;
-    },
-    set fillStyle(val: string) {
-      currentFillStyle = val;
-    },
-    get font() {
-      return currentFont;
-    },
-    set font(val: string) {
-      currentFont = val;
-    },
-  } as unknown as CanvasRenderingContext2D;
-
-  return { ctx, fillTexts };
-}
+import { createMockCtx } from "./test/mockCanvas";
 
 describe("STARS CRC Datablock & Scratchpad Fidelity Acceptance (T02-42)", () => {
   describe("AC1: Radio Clearances to Automatic Scratchpad Derivation (SP1 / SP2)", () => {
