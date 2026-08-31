@@ -1,4 +1,8 @@
-# ATC-SIM swarm orchestrator — Twenty-first swarm (WX mosaic NEXRAD VIP)
+# ATC-SIM swarm orchestrator — Twenty-second swarm (PREF / PTL / VIA / radar sites)
+
+Twenty-first (WX mosaic T02-68–72) landed on `master` via `feature/wx-mosaic`.
+This file keeps that history, then the twenty-second addendum on
+**`feature/pref-ptl-via-radar`**.
 
 ## Twenty-first swarm planned — 2026-08-30 (WX mosaic NEXRAD VIP)
 
@@ -100,14 +104,10 @@ No push. No merge to `master`. No next phase.
 
 ## Twenty-second swarm planned — 2026-08-30 (PREF named SAVE AS, per-track PTL, STAR/SID transition amend, radar sites)
 
-**PARKED.** Do not start workers while twenty-first (WX T02-68–72 on
-`feature/wx-mosaic`) or `fix/meaningful-test-suite` is in flight. T02-68–72
-are WX ids. This swarm uses **T02-73–77** plus **T04-43–45**.
-
-This configuration is planning-only. Execution branch is
-**`feature/pref-ptl-via-radar`**, cut from `master` after the other sessions
-land or the human says go. Captain squash-merges into that feature branch.
-Do not merge onto `master` unless the human asks.
+Adds a scope/procedures addendum on **`feature/pref-ptl-via-radar`**. WX
+T02-68–72 already landed on `master`. Captain squash-merges ticket branches
+into that feature branch. Isolated worktrees. Do not merge onto `master`
+unless the human asks.
 
 | Key | Value |
 | --- | --- |
@@ -142,10 +142,12 @@ Do not merge onto `master` unless the human asks.
   and MULTI (nearest covering site) = that site’s `periodMs`, **4800** for
   airport / ASR rows. Out of coverage: no paint. No 30 s coast.
 - **Site paints (frozen, operator shots).** FUSED = current blue circle puck
-  (`TARGET_PUCK_BG`). MULTI = no circle; thick blue rectangle centered on the
-  glyph, **perpendicular to PTL** (ground track, not leader). Other / single
-  site = no blue block; thin green slash through the glyph **aimed at that
-  site’s antenna**. Glyph / stub stays on top. History dots unchanged.
+  (`TARGET_PUCK_BG`). MULTI = small filled blue rectangle, **long axis
+  perpendicular to PTL / history**. Single-site = filled blue rectangle
+  **facing the site** (long axis ⊥ radial), size grows with range, green
+  far-side line ~30% longer than the blue block; very far is outline only.
+  BRITE PRI tints the
+  position mark. Glyph / stub stays on top. History dots unchanged.
 - **Sites are authored JSON.** `kind: "asr" | "airport"`, ENU or lat/lon→ENU,
   `rangeNm`, `periodMs`. Trainer-authored, not NAS adaptation. Empty
   `radarSites` → implicit FUSED, no SITE buttons. MODE FSL stays disabled.
@@ -156,7 +158,7 @@ Do not merge onto `master` unless the human asks.
 
 | Wave | Tickets | Wait for |
 | --- | --- | --- |
-| A | T02-73 ∥ T02-74 ∥ T04-45 | `feature/pref-ptl-via-radar` after park lifts |
+| A | T02-73 ∥ T02-74 ∥ T04-45 | `feature/pref-ptl-via-radar` |
 | B | T04-43 | Wave A |
 | C | T04-44 ∥ T02-75 | T04-43, T04-45 |
 | D | T02-76 | T02-75 |
@@ -164,8 +166,10 @@ Do not merge onto `master` unless the human asks.
 
 **Ticket ownership:**
 
-- T02-73 owns PREF SAVE AS name chord and slot-cap names.
-- T02-74 owns per-track PTL session map and `*R` click (not `*RR`).
+- T02-73 owns PREF SAVE AS name chord and slot-cap names. Owns preview name prompt.
+- T02-74 owns per-track PTL session map and `*R` click (not `*RR`). If both
+  Wave A workers touch `previewArea.ts`, T02-73 owns SAVE AS prompt; T02-74
+  owns `*R` parse only. Captain rebases, no force.
 - T04-45 owns `RadarSite` schema, loader, and KDEM/KATL authored fixtures.
 - T04-43 owns STAR `transitionId` on DESCEND_VIA / JOIN and catalog join.
 - T04-44 owns SID `transitionId` on CLIMB_VIA / JOIN; does not redo T04-19.
@@ -198,11 +202,20 @@ Notes: <PREF name chord; *R PTL; transitionId; FUSED circle / MULTI rect / site 
 
 or `PHASE EXIT BLOCKED` with reason.
 
-## Twenty-second swarm execution — PARKED 2026-08-30
+## Twenty-second swarm execution — 2026-08-30 (PREF / PTL / VIA / radar sites)
 
-Do **not** spawn workers. Wait until WX twenty-first and the meaningful-test-suite
-branch are clear, then a new `/run-swarm` on this section. Merge lock remains
-`feature/pref-ptl-via-radar`. IDs are T02-73–77 and T04-43–45 only.
+Human said use worktrees and implement. Captain owns
+**`feature/pref-ptl-via-radar`**. Isolated worktrees from that feature.
+Max 3 workers. Model **cursor-grok-4.6-high** only, non-fast. WX T02-68–72
+is already on `master`. Do not merge to `master` unless asked. Do not push.
+
+Execution waves:
+
+1. T02-73 ∥ T02-74 ∥ T04-45
+2. T04-43
+3. T04-44 ∥ T02-75
+4. T02-76
+5. T02-77
 
 ---
 

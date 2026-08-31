@@ -193,6 +193,104 @@ test("DESCEND_VIA with catalog joins the STAR laterally and arms VIA", () => {
   });
 });
 
+const synCatalog = {
+  stars: [
+    {
+      id: "SYN1",
+      name: "SYN ONE",
+      common: [{ fixId: "MERGE" }],
+      transitions: [
+        { id: "N", legs: [{ fixId: "NA" }, { fixId: "NB" }] },
+        { id: "S", legs: [{ fixId: "SA" }, { fixId: "SB" }] },
+        { id: "RW09", runwayId: "09", legs: [{ fixId: "RA" }] },
+      ],
+    },
+  ],
+};
+
+test("DESCEND_VIA with transition rebuilds at MERGE and keeps VIA_STAR", () => {
+  const ac = jet();
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    starId: "SYN1",
+    toFixIndex: 1,
+    routeFixIds: ["NA", "NB", "MERGE"],
+  };
+  ac.intent.vertical = { type: "VIA_STAR", starId: "SYN1", sense: "DESCEND" };
+  applyIntent(ac, [{ type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "S" }], 0, {
+    catalog: synCatalog,
+  });
+  expect(ac.intent.vertical).toEqual({ type: "VIA_STAR", starId: "SYN1", sense: "DESCEND" });
+  expect(ac.intent.lateral).toEqual({
+    type: "PROCEDURE",
+    starId: "SYN1",
+    toFixIndex: 0,
+    routeFixIds: ["MERGE"],
+  });
+});
+
+test("past-branch DESCEND_VIA transition does not mutate intent", () => {
+  const ac = jet();
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    starId: "SYN1",
+    toFixIndex: 0,
+    routeFixIds: ["NA"],
+  };
+  ac.intent.vertical = { type: "VIA_STAR", starId: "SYN1", sense: "DESCEND" };
+  const before = structuredClone(ac.intent);
+  applyIntent(ac, [{ type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "S" }], 0, {
+    catalog: synCatalog,
+  });
+  expect(ac.intent).toEqual(before);
+});
+
+test("heading after a STAR transition amend still cancels VIA", () => {
+  const ac = jet();
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    starId: "SYN1",
+    toFixIndex: 0,
+    routeFixIds: ["NA", "NB", "MERGE"],
+  };
+  applyIntent(ac, [{ type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "S" }], 0, {
+    catalog: synCatalog,
+  });
+  expect(ac.intent.vertical?.type).toBe("VIA_STAR");
+  applyIntent(ac, [{ type: "FLY_HEADING", headingDeg: 90, turn: "SHORTEST" }], 0);
+  expect(ac.intent.vertical).toEqual({ type: "ASSIGNED" });
+  expect(ac.intent.lateral).toEqual({ type: "HEADING", headingDeg: 90 });
+  applyIntent(
+    ac,
+    [
+      { type: "DESCEND_VIA", procedureId: "SYN1" },
+      { type: "TURN_DEGREES", direction: "LEFT", degrees: 20 },
+    ],
+    0,
+    { catalog: synCatalog },
+  );
+  expect(ac.intent.vertical).toEqual({ type: "ASSIGNED" });
+  expect(ac.intent.lateral?.type).toBe("HEADING");
+});
+
+const synSidCatalog = {
+  sids: [
+    {
+      id: "SYNDEP",
+      name: "SYN DEP",
+      runwayTransitions: [
+        { runwayId: "27", legs: [{ fixId: "R27A" }, { fixId: "R27B" }] },
+        { runwayId: "09", legs: [{ fixId: "R09A" }] },
+      ],
+      common: [{ fixId: "JOIN" }],
+      enrouteTransitions: [
+        { id: "NORMA", name: "NORMA", legs: [{ fixId: "N1" }, { fixId: "NORMA" }] },
+        { id: "OCTTA", name: "OCTTA", legs: [{ fixId: "O1" }, { fixId: "OCTTA" }] },
+      ],
+    },
+  ],
+};
+
 test("CLIMB_VIA on a unique SID joins remaining legs", () => {
   const ac = jet();
   applyIntent(ac, [{ type: "CLIMB_VIA", procedureId: "KDEM1" }], 0, {
@@ -210,6 +308,80 @@ test("CLIMB_VIA on a unique SID joins remaining legs", () => {
   applyIntent(ac, [{ type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" }], 0);
   expect(ac.intent.lateral).toEqual({ type: "HEADING", headingDeg: 270 });
   expect(ac.intent.vertical).toEqual({ type: "ASSIGNED" });
+});
+
+test("CLIMB_VIA with transition rebuilds at JOIN, keeps VIA_SID and assigned altitude", () => {
+  const ac = jet();
+  ac.intent.assignedAltitudeFt = 10000;
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "SYNDEP",
+    starId: "SYNDEP",
+    toFixIndex: 2,
+    routeFixIds: ["R27A", "R27B", "JOIN", "N1", "NORMA"],
+  };
+  ac.intent.vertical = { type: "VIA_SID", sidId: "SYNDEP" };
+  applyIntent(ac, [{ type: "CLIMB_VIA", procedureId: "SYNDEP", transitionId: "OCTTA" }], 0, {
+    catalog: synSidCatalog,
+  });
+  expect(ac.intent.vertical).toEqual({ type: "VIA_SID", sidId: "SYNDEP" });
+  expect(ac.intent.assignedAltitudeFt).toBe(10000);
+  expect(ac.intent.lateral).toEqual({
+    type: "PROCEDURE",
+    sidId: "SYNDEP",
+    starId: "SYNDEP",
+    toFixIndex: 0,
+    routeFixIds: ["JOIN", "O1", "OCTTA"],
+  });
+});
+
+test("past-branch CLIMB_VIA transition does not mutate intent", () => {
+  const ac = jet();
+  ac.intent.assignedAltitudeFt = 10000;
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "SYNDEP",
+    starId: "SYNDEP",
+    toFixIndex: 0,
+    routeFixIds: ["NORMA"],
+  };
+  ac.intent.vertical = { type: "VIA_SID", sidId: "SYNDEP" };
+  const before = structuredClone(ac.intent);
+  applyIntent(ac, [{ type: "CLIMB_VIA", procedureId: "SYNDEP", transitionId: "OCTTA" }], 0, {
+    catalog: synSidCatalog,
+  });
+  expect(ac.intent).toEqual(before);
+});
+
+test("heading after a SID transition amend still cancels VIA_SID", () => {
+  const ac = jet();
+  ac.intent.assignedAltitudeFt = 10000;
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    sidId: "SYNDEP",
+    starId: "SYNDEP",
+    toFixIndex: 0,
+    routeFixIds: ["R27A", "R27B", "JOIN", "N1", "NORMA"],
+  };
+  applyIntent(ac, [{ type: "CLIMB_VIA", procedureId: "SYNDEP", transitionId: "OCTTA" }], 0, {
+    catalog: synSidCatalog,
+  });
+  expect(ac.intent.vertical?.type).toBe("VIA_SID");
+  applyIntent(ac, [{ type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" }], 0);
+  expect(ac.intent.vertical).toEqual({ type: "ASSIGNED" });
+  expect(ac.intent.lateral).toEqual({ type: "HEADING", headingDeg: 270 });
+  expect(ac.intent.assignedAltitudeFt).toBe(10000);
+  applyIntent(
+    ac,
+    [
+      { type: "CLIMB_VIA", procedureId: "SYNDEP" },
+      { type: "TURN_DEGREES", direction: "LEFT", degrees: 20 },
+    ],
+    0,
+    { catalog: synSidCatalog },
+  );
+  expect(ac.intent.vertical).toEqual({ type: "ASSIGNED" });
+  expect(ac.intent.lateral?.type).toBe("HEADING");
 });
 
 test("SAY_* leave heading/alt/speed intent alone; CLEARED_APPROACH arms INTERCEPT_LOC", () => {

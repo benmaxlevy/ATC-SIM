@@ -216,12 +216,14 @@ test("AC4 — unsupported RF/hold/arc/PT are counted and never emitted as TF", (
   expect(star?.common).toHaveLength(2);
 });
 
-test("AC4 — SID RF is counted and never emitted as a TF catalog leg", () => {
+test("AC4 — SID heading-only, RF, and hold stay skipped and are never emitted as TF", () => {
   const text = buildUnsupportedSidSubset();
   const source = parseFixedWidthCifp(text);
+  expect(source.skippedByType.VA).toBe(1);
   expect(source.skippedByType.RF).toBe(1);
+  expect(source.skippedByType.HA).toBe(1);
   const unsupported = source.sids[0]?.common.filter((leg) => !leg.supported) ?? [];
-  expect(unsupported.map((leg) => leg.pathTerminator)).toEqual(["RF"]);
+  expect(unsupported.map((leg) => leg.pathTerminator).sort()).toEqual(["HA", "RF", "VA"]);
   const catalog = parseCifpSubset(text).catalog;
   expect(catalog.sids[0]?.common.map((leg) => leg.fixId)).toEqual(["SIDEP", "MERGE"]);
   expect(catalog.sids[0]?.common).toHaveLength(2);

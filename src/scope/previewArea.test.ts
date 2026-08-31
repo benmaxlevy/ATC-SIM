@@ -6,6 +6,7 @@ import {
   applyPreviewBeaconAction,
   applyPreviewWxAction,
   armPreviewCntl,
+  beginPrefNameEntry,
   beginPreviewBeaconEntry,
   beginPreviewBufferEntry,
   cancelPreviewArea,
@@ -17,6 +18,7 @@ import {
   handlePreviewEscape,
   handlePreviewFlidKey,
   idlePreviewArea,
+  isPrefNameEntry,
   isPreviewBufferStartChar,
   parsePreviewCommand,
   parseAltitudeFilterCommand,
@@ -731,6 +733,8 @@ const DISPLAY_PARSE_CASES: ReadonlyArray<{
   { buffer: "* PTL 15", parse: "action", action: { type: "setPtlMinutes", minutes: 15 } },
   { buffer: "*HIST0", parse: "action", action: { type: "setHistoryDots", count: 0 } },
   { buffer: "*HIST 9", parse: "action", action: { type: "setHistoryDots", count: 9 } },
+  { buffer: "*R", parse: "action", action: { type: "armPerTrackPtl" } },
+  { buffer: "* R", parse: "action", action: { type: "armPerTrackPtl" } },
   { buffer: "*RR", parse: "incomplete" },
   { buffer: "*PTL", parse: "incomplete" },
   { buffer: "*HIST", parse: "incomplete" },
@@ -771,6 +775,49 @@ test("T02-64 — *P / *P5 / *P3 stay TPA (not PTL); * P1 is a list, not PTL", ()
   expect(parsePreviewCommand("*PTL5")).toEqual({
     kind: "action",
     action: { type: "setPtlMinutes", minutes: 5 },
+  });
+});
+
+test("T02-74 — exact *R arms per-track PTL; *RR family is unchanged", () => {
+  expect(parseScopeDisplayCommand("*R")).toEqual({
+    kind: "action",
+    action: { type: "armPerTrackPtl" },
+  });
+  expect(parseScopeDisplayCommand("* R")).toEqual({
+    kind: "action",
+    action: { type: "armPerTrackPtl" },
+  });
+  expect(parseScopeDisplayCommand("*RR")).toEqual({ kind: "incomplete" });
+  expect(parseScopeDisplayCommand("*RR5")).toEqual({
+    kind: "action",
+    action: { type: "setRangeRingInterval", intervalNm: 5 },
+  });
+  expect(parseScopeDisplayCommand("*RRC")).toEqual({
+    kind: "action",
+    action: { type: "armRecenterRangeRings" },
+  });
+  expect(parseScopeDisplayCommand("*RROFF")).toEqual({
+    kind: "action",
+    action: { type: "resetRangeRingsCenter" },
+  });
+  expect(parsePreviewCommand("*RX").kind).toBe("incomplete");
+
+  const armed = idlePreviewArea();
+  beginPreviewBufferEntry(armed, "*", 0);
+  handlePreviewBufferKey(armed, "R", 1);
+  expect(handlePreviewBufferKey(armed, "Enter", 2)).toEqual({
+    consumed: true,
+    action: { type: "armPerTrackPtl" },
+  });
+
+  const rr = idlePreviewArea();
+  beginPreviewBufferEntry(rr, "*", 0);
+  handlePreviewBufferKey(rr, "R", 1);
+  handlePreviewBufferKey(rr, "R", 2);
+  expect(handlePreviewBufferKey(rr, "Enter", 3)).toEqual({
+    consumed: true,
+    action: null,
+    starsBuffer: "*RR",
   });
 });
 
@@ -1337,4 +1384,68 @@ test("T02-66 — + / +FLID / *1–*8 / *0 parse; * P1 is list; compact *P1 is TP
   const live = idlePreviewArea();
   beginPreviewBufferEntry(live, "+", 0);
   expect(previewTrackingSlew(live)).toEqual({ type: "initCntl" });
+});
+
+test("PREF SAVE AS name entry: Enter commits, Esc cancels, invalid stays pending", () => {
+  const state = idlePreviewArea();
+  beginPrefNameEntry(state, 0);
+  expect(isPrefNameEntry(state)).toBe(true);
+  expect(formatPreviewReadout(state)).toBe("PREF");
+
+  expect(handlePreviewBufferKey(state, "N", 1).consumed).toBe(true);
+  expect(handlePreviewBufferKey(state, "I", 2).consumed).toBe(true);
+  expect(handlePreviewBufferKey(state, "G", 3).consumed).toBe(true);
+  expect(handlePreviewBufferKey(state, "H", 4).consumed).toBe(true);
+  expect(handlePreviewBufferKey(state, "T", 5).consumed).toBe(true);
+  expect(formatPreviewReadout(state)).toBe("PREF NIGHT");
+  expect(handlePreviewBufferKey(state, "Enter", 6)).toEqual({
+    consumed: true,
+    action: { type: "saveAsPref", name: "NIGHT" },
+  });
+  expect(state.phase).toBe("idle");
+
+  const digits = idlePreviewArea();
+  beginPrefNameEntry(digits, 0);
+  handlePreviewBufferKey(digits, "1", 1);
+  handlePreviewBufferKey(digits, "2", 2);
+  handlePreviewBufferKey(digits, "3", 3);
+  expect(handlePreviewBufferKey(digits, "Enter", 4)).toEqual({ consumed: true, action: null });
+  expect(isPrefNameEntry(digits)).toBe(true);
+  expect(formatPreviewReadout(digits)).toBe("PREF 123 INV");
+
+  const empty = idlePreviewArea();
+  beginPrefNameEntry(empty, 0);
+  expect(handlePreviewBufferKey(empty, "Enter", 1)).toEqual({ consumed: true, action: null });
+  expect(isPrefNameEntry(empty)).toBe(true);
+  expect(formatPreviewReadout(empty)).toBe("PREF INV");
+
+  const named = idlePreviewArea();
+  beginPrefNameEntry(named, 0);
+  handlePreviewBufferKey(named, "B", 1);
+  handlePreviewBufferKey(named, "2", 2);
+  expect(handlePreviewBufferKey(named, "Enter", 3)).toEqual({
+    consumed: true,
+    action: { type: "saveAsPref", name: "B2" },
+  });
+
+  const esc = idlePreviewArea();
+  beginPrefNameEntry(esc, 0);
+  handlePreviewBufferKey(esc, "D", 1);
+  expect(handlePreviewEscape(esc)).toBe(true);
+  expect(esc.phase).toBe("idle");
+  expect(formatPreviewReadout(esc)).toBeNull();
+});
+
+test("PREF SAVE AS name path has no window.prompt or HTML input", () => {
+  const sources = import.meta.glob("./*.ts", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  const text = sources["./previewArea.ts"]!;
+  expect(text).toMatch(/PREF SAVE AS/);
+  expect(text).toMatch(/docs\.virtualnas\.net\/crc\/stars/);
+  expect(text).toMatch(/No window\.prompt/);
+  expect(text).toMatch(/no HTML `<input>`/);
+  expect(text).not.toMatch(/window\.prompt\s*\(/);
 });

@@ -49,6 +49,10 @@ test("AC2 — DONE and Esc return a submenu to MAIN", () => {
   openDcbMenu(h, "BRITE");
   expect(handleDcbEscape(h)).toBe(true);
   expect(h.dcbMenu).toBe("MAIN");
+  openDcbMenu(h, "SITE");
+  expect(h.dcbMenu).toBe("SITE");
+  expect(handleDcbEscape(h)).toBe(true);
+  expect(h.dcbMenu).toBe("MAIN");
 });
 
 test("AC3 — spinner arm → step(+1/−1) → commit; Esc while armed disarms with no extra mutation", () => {

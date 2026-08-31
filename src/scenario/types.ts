@@ -137,6 +137,42 @@ export interface DepartureConfig {
 /** How arrivals get pose. Omitted JSON → `authored` (ils27 bit-stable). */
 export type SpawnPolicy = "authored" | "star-inbound";
 
+/** Trainer-authored site kind. Not a NAS sensor class. */
+export type RadarSiteKind = "asr" | "airport";
+
+/**
+ * Default site range when JSON omits `rangeNm`.
+ * Coverage at report time is T02-75; load only stores the authored radius.
+ */
+export const RADAR_SITE_DEFAULT_RANGE_NM = 60;
+
+/**
+ * Default airport/ASR report period when JSON omits `periodMs`.
+ * FUSED 1.0 s sampling is T02-75; this default is the single-site / MULTI period.
+ */
+export const RADAR_SITE_DEFAULT_PERIOD_MS = 4800;
+
+/**
+ * Trainer-authored display fixture; not NAS adaptation or a live sensor.
+ *
+ * R07 (CRC / vNAS STARS SITE FUSED / MULTI) and R04 (FAA STARS / TAMR) supply
+ * display vocabulary only. Rows are simulator fixtures with configurable range
+ * and period — not certified surveillance or official site adaptation.
+ *
+ * Authored JSON may use local ENU (`xNm`/`yNm`) or lat/lon (`latDeg`/`lonDeg`).
+ * Exactly one complete pair is required. Loaded form is always ENU relative to
+ * the scenario ARP via `latLonToNm`.
+ */
+export type RadarSite = {
+  id: string;
+  name: string;
+  kind: RadarSiteKind;
+  xNm: number;
+  yNm: number;
+  rangeNm: number;
+  periodMs: number;
+};
+
 /**
  * Facility scenario: spawn rules, active runway, maps, traffic mix.
  * `arpNm` is filled on load via `latLonToNm(arp, arp)`, not stored as sim state.
@@ -169,4 +205,10 @@ export interface Scenario {
   catalog: ProcedureCatalog;
   /** Trainer MVA polygons. Null when the facility has no `*-mva.json`. */
   mva: MvaChart | null;
+  /**
+   * Trainer-authored radar sites. Omitted JSON loads as `[]`.
+   * Empty means implicit FUSED for T02-75 (no site-selection entries, not
+   * “no surveillance”). This ticket does not sample or paint.
+   */
+  radarSites: RadarSite[];
 }

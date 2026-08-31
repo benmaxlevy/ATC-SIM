@@ -4,6 +4,8 @@ import {
   GI_SLOT_COUNT,
   SSA_ALTIMETER_STUB,
   SSA_FUSED_STUB,
+  SSA_NETWORK_HEALTH_STUB,
+  formatSsaRadarStatus,
   buildGiLines,
   buildSsaLines,
   buildSsaRenderLines,
@@ -78,9 +80,22 @@ test("SSA time is HHMM/SS from sim ms; altimeter and fused stubs match spec", ()
   expect(formatSsaTime(3661_000)).toBe("0101/01");
   expect(formatSsaTime(Number.NaN)).toBe("0000/00");
   expect(SSA_ALTIMETER_STUB).toBe("30.17");
+  expect(SSA_NETWORK_HEALTH_STUB).toBe("OK/OK/NA");
   expect(SSA_FUSED_STUB).toBe("OK/OK/NA FUSED");
+  expect(formatSsaRadarStatus()).toBe("OK/OK/NA FUSED");
   expect(formatSsaPtl(1)).toBe("PTL: 1.0");
   expect(formatSsaPtl(0.5)).toBe("PTL: 0.5");
+});
+
+test("T02-76 — SSA radar word follows live mode; network health stays OK/OK/NA", () => {
+  expect(lines({ surveillanceMode: "FUSED" })).toContain("OK/OK/NA FUSED");
+  expect(lines({ surveillanceMode: "MULTI" })).toContain("OK/OK/NA MULTI");
+  expect(lines({ surveillanceMode: "ASR-N" })).toContain("OK/OK/NA ASR-N");
+  expect(formatSsaRadarStatus("MULTI")).toBe("OK/OK/NA MULTI");
+  expect(formatSsaRadarStatus("ASR-N")).toBe("OK/OK/NA ASR-N");
+  const alert = lines({ systemStatus: "NA/NA/NA", surveillanceMode: "MULTI" });
+  expect(alert).toContain("NA/NA/NA MULTI");
+  expect(alert.some((line) => line.startsWith("OK/OK/NA"))).toBe(false);
 });
 
 test("FILTER chord entry uses the same FIL hundreds readout", () => {
@@ -140,6 +155,8 @@ test("AC6 — SSA/GI comments are CRC analog; not HUD/METAR panel; no Command IR
   expect(src).toMatch(/\brange\b/i);
   expect(src).toMatch(/R07/);
   expect(src).toMatch(/R05/);
+  expect(src).toMatch(/FUSION-only analog/);
+  expect(src).toMatch(/not live sensors/);
   expect(src).toMatch(/not a HUD/i);
   expect(src).toMatch(/METAR panel/i);
   expect(src).not.toMatch(/sidebar/i);

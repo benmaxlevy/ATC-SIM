@@ -5,7 +5,7 @@
  * Trainer delta: Canvas2D north-up; digital map from KDEM JSON (runway,
  * localizer feather, generated range rings, optional coastline); rectangular PPI
  * filling the canvas (RANGE is still the nearest-edge NM; corners show extra);
- * **target** diamond + optional **history** dots (5 s sim / 5 dots, no phosphor);
+ * **target** diamond + optional **history** dots (report arrival, cap 5, no phosphor);
  * full/limited **datablock** in IBM Plex Mono (not a STARS face); L1–L9 **leader**
  * (pixel-constant default 36 CSS px; DCB LDR length 0/24/36/48); **predicted track line** (PTL)
  * straight 1.0 min GS along ground track by default (AUX spinner 0.5/1/2/4),
@@ -18,7 +18,7 @@
  * (DATA BLOCKS / LISTS / DCB / TOOLS / POS) on IBM Plex Mono. BRITE multiplies
  * each drawn channel. Weather VIP fills paint after maps and before tracks
  * (display only). SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
- * FILTER, RANGE, OFF CNTR, OK) — not world-fixed. Live `*` TPA/ATPA chord
+ * FILTER, RANGE, OFF CNTR, `OK/OK/NA` plus live SITE radar word) — not world-fixed. Live `*` TPA/ATPA chord
  * buffer paints next to FILTER in SSA/preview green (same FIL-prompt grammar).
  * Current CA displays static `CA` + tone from `world.alerts` and paints red. T04-10 MSAW paints a yellow then red `MSAW` tag the same way; neither tints the block, leader, or target. CA halo is
  * **not** drawn: CRC conflict-alert CA is static `CA` text + tone, not a 3 NM circle
@@ -82,11 +82,18 @@ import {
   tpaRingsToPaint,
   tpaSizeReadoutEnabled,
 } from "./tpa";
-import { buildGiLines, buildSsaRenderLines } from "./ssa";
+import { buildGiLines, buildSsaRenderLines, SSA_NETWORK_HEALTH_STUB } from "./ssa";
+import {
+  SITE_FAR_LINE_COLOR,
+  aircraftAtReport,
+  effectiveSurveillanceMode,
+  surveillanceModeWord,
+} from "./surveillance";
 import { buildMapListLines } from "./dcbFunctions";
 import type { TrackOwnership } from "./ownership";
 import { BLINK_HALF_PERIOD_MS, PALETTE, applyBrite, caDatablockTagVisible } from "./palette";
 import {
+  TARGET_PUCK_BG,
   drawHistoryDot,
   drawTargetSymbol,
   historyDotColor,
@@ -99,6 +106,7 @@ import {
   isIdentFlashing,
   isTrackQueried,
   syncTrackDisplays,
+  type TrackDisplay,
 } from "./trackDisplay";
 import {
   buildAlertList,
@@ -133,7 +141,10 @@ export function renderScope(
     return;
   }
 
-  syncTrackDisplays(view.tracks, world);
+  syncTrackDisplays(view.tracks, world, {
+    mode: view.surveillanceMode,
+    sites: view.radarSites,
+  });
 
   view.mapCache = reuseOrBuildMapCache(view.mapCache, toMapCacheInput(view, size));
   drawMapLayers(ctx, view.mapCache, view);
@@ -144,6 +155,10 @@ export function renderScope(
   drawChordHint(ctx, view, ssaBottomY);
   drawMapLists(ctx, view, cssWidth);
   drawSystemLists(ctx, world, view, cssWidth, cssHeight);
+}
+
+function displayAircraft(ac: Aircraft, td: TrackDisplay | undefined): Aircraft | null {
+  return td?.lastReport ? aircraftAtReport(ac, td.lastReport) : null;
 }
 
 function tracePolyline(
@@ -580,7 +595,7 @@ function drawTracks(
   if (historyCount > 0) {
     for (const ac of world.aircraft) {
       const td = view.tracks.get(ac.id);
-      if (!td) {
+      if (!td?.lastReport) {
         continue;
       }
       const dots = historyDotsToDraw(td.history, historyCount);
@@ -592,7 +607,7 @@ function drawTracks(
     }
   }
 
-  if (view.ptlOn || view.ptlOwn) {
+  if (view.ptlOn || view.ptlOwn || view.ptlByAircraftId.size > 0) {
     drawPredictedTrackLines(ctx, world, view, size);
   }
 
@@ -601,14 +616,19 @@ function drawTracks(
   drawAtpaCones(ctx, world, view, size);
 
   for (const ac of world.aircraft) {
-    const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
-    const color = trackColor(view, world, ac);
     const td = view.tracks.get(ac.id);
+    const shown = displayAircraft(ac, td);
+    if (!shown || !td?.lastReport) {
+      continue;
+    }
+    const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
+    const color = trackColor(view, world, ac);
     const isPrimary = isPrimaryTarget(ac, td);
     const ownership: TrackOwnership = td?.ownership ?? "unowned";
     const ho = handoffFor(world, ac.id);
     const isTracked = isTrackedTarget(view, world, ac);
     const posBrite = isPrimary ? view.brite.pri : isTracked ? view.brite.pos : view.brite.oth;
+    const priMark = applyBrite(TARGET_PUCK_BG, view.brite.pri);
     const squawk = td?.squawk ?? ac.squawk;
     let sectorId = td?.sectorId;
     if (!sectorId) {
@@ -625,6 +645,9 @@ function drawTracks(
       }
     }
 
+    const antenna = td.lastReport.sourceSiteId
+      ? view.radarSites.find((site) => site.id === td.lastReport!.sourceSiteId)
+      : undefined;
     drawTargetSymbol(
       ctx,
       p.x,
@@ -637,6 +660,15 @@ function drawTracks(
         squawk,
         beaconSelect: view.beaconSelectCodes,
         sectorId,
+        surveillancePaint: td.lastReport.paint,
+        groundTrackDeg: td.lastReport.headingDeg,
+        reportXNm: td.lastReport.xNm,
+        reportYNm: td.lastReport.yNm,
+        antennaXNm: antenna?.xNm,
+        antennaYNm: antenna?.yNm,
+        siteRangeNm: antenna?.rangeNm,
+        positionMarkColor: priMark,
+        farLineColor: applyBrite(SITE_FAR_LINE_COLOR, view.brite.pri),
       },
       view.charSizes.pos,
     );
@@ -649,15 +681,16 @@ function drawTracks(
 
   for (const ac of world.aircraft) {
     const td = view.tracks.get(ac.id);
-    if (isPrimaryTarget(ac, td)) {
+    const shown = displayAircraft(ac, td);
+    if (!shown || isPrimaryTarget(ac, td)) {
       continue;
     }
     // Outside the altitude filter: keep the target (and history above);
     // suppress datablock and leader. T02-05 draws the leader behind this same gate.
-    if (!inAltitudeFilter(ac.altitudeFt, view.altitudeFilter)) {
+    if (!inAltitudeFilter(shown.altitudeFt, view.altitudeFilter)) {
       continue;
     }
-    const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
+    const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
     const visual = getDatablockVisualState(view, world, ac);
     if (visual.visible) {
       const briteCh =
@@ -677,14 +710,15 @@ function drawTracks(
 
   for (const ac of world.aircraft) {
     const td = view.tracks.get(ac.id);
-    if (isPrimaryTarget(ac, td)) {
+    const shown = displayAircraft(ac, td);
+    if (!shown || isPrimaryTarget(ac, td)) {
       continue;
     }
-    if (!inAltitudeFilter(ac.altitudeFt, view.altitudeFilter)) {
+    if (!inAltitudeFilter(shown.altitudeFt, view.altitudeFilter)) {
       continue;
     }
-    const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
-    drawDatablock(ctx, ac, p.x, p.y, view, world);
+    const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
+    drawDatablock(ctx, shown, p.x, p.y, view, world);
   }
 
   drawAtpaConeMileage(ctx, world, view, size);
@@ -726,9 +760,14 @@ function drawAtpaConeMileage(
     if (td?.atpaConeMileageEnabled === false) {
       continue;
     }
+    const trailingShown = displayAircraft(trailing, view.tracks.get(trailing.id));
+    const leadingShown = displayAircraft(leading, view.tracks.get(leading.id));
+    if (!trailingShown || !leadingShown) {
+      continue;
+    }
     const placed = atpaConeMileagePlacement({
-      trailing: { xNm: trailing.xNm, yNm: trailing.yNm },
-      leading: { xNm: leading.xNm, yNm: leading.yNm },
+      trailing: { xNm: trailingShown.xNm, yNm: trailingShown.yNm },
+      leading: { xNm: leadingShown.xNm, yNm: leadingShown.yNm },
       requiredNm: pair.requiredNm,
       status: pair.status,
     });
@@ -744,7 +783,8 @@ function drawAtpaConeMileage(
 /**
  * Straight predicted track line along ground track (default 1.0 min; AUX spinner
  * 0.5/1/2/4). PTL ALL draws every in-filter track; PTL OWN draws F3-owned only;
- * ALL wins if both are on. Canvas bounds clip the rectangular PPI.
+ * ALL wins if both are on. Per-track `*R` overrides (session, not PREF) can
+ * force or hide a line. Canvas bounds clip the rectangular PPI.
  * Altitude-filtered tracks keep the symbol and lose PTL
  * (`inAltitudeFilter` / `shouldDrawPtl`).
  */
@@ -755,13 +795,26 @@ function drawPredictedTrackLines(
   size: ScopeViewSize,
 ): void {
   for (const ac of world.aircraft) {
-    const altitudeFiltered = !inAltitudeFilter(ac.altitudeFt, view.altitudeFilter);
-    const owned = (view.tracks.get(ac.id)?.ownership ?? "unowned") === "owned";
-    if (!shouldDrawPtlForTrack(ac.speedKt, altitudeFiltered, owned, view.ptlOn, view.ptlOwn)) {
+    const shown = displayAircraft(ac, view.tracks.get(ac.id));
+    if (!shown) {
       continue;
     }
-    const end = ptlEndpoint(ac.xNm, ac.yNm, ac.headingDeg, ac.speedKt, view.ptlMinutes);
-    const from = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
+    const altitudeFiltered = !inAltitudeFilter(shown.altitudeFt, view.altitudeFilter);
+    const owned = (view.tracks.get(ac.id)?.ownership ?? "unowned") === "owned";
+    if (
+      !shouldDrawPtlForTrack(
+        shown.speedKt,
+        altitudeFiltered,
+        owned,
+        view.ptlOn,
+        view.ptlOwn,
+        view.ptlByAircraftId.get(ac.id),
+      )
+    ) {
+      continue;
+    }
+    const end = ptlEndpoint(shown.xNm, shown.yNm, shown.headingDeg, shown.speedKt, view.ptlMinutes);
+    const from = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
     const to = nmToScreen(end.eastNm, end.northNm, view.camera, size);
     const td = view.tracks.get(ac.id);
     const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
@@ -809,12 +862,16 @@ function drawTpaRings(
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (const { aircraft: ac, radiusNm } of targets) {
-    const worldPts = tpaRingPoints(ac.xNm, ac.yNm, radiusNm);
+    const shown = displayAircraft(ac, view.tracks.get(ac.id));
+    if (!shown) {
+      continue;
+    }
+    const worldPts = tpaRingPoints(shown.xNm, shown.yNm, radiusNm);
     const pts = worldPts.map((p) => nmToScreen(p.eastNm, p.northNm, view.camera, size));
     tracePolyline(ctx, pts, false);
     ctx.stroke();
     if (tpaSizeReadoutEnabled(view.tracks.get(ac.id))) {
-      const digit = tpaRingDigitPlacement(ac.xNm, ac.yNm, radiusNm);
+      const digit = tpaRingDigitPlacement(shown.xNm, shown.yNm, radiusNm);
       const p = nmToScreen(digit.eastNm, digit.northNm, view.camera, size);
       ctx.fillText(digit.text, p.x, p.y);
     }
@@ -843,13 +900,17 @@ function drawManualTpaCones(
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (const { aircraft: ac, lengthNm } of targets) {
-    const worldPts = manualTpaConePoints(ac.xNm, ac.yNm, ac.headingDeg, lengthNm);
+    const shown = displayAircraft(ac, view.tracks.get(ac.id));
+    if (!shown) {
+      continue;
+    }
+    const worldPts = manualTpaConePoints(shown.xNm, shown.yNm, shown.headingDeg, lengthNm);
     if (worldPts.length < 2) {
       continue;
     }
     const pts = worldPts.map((p) => nmToScreen(p.eastNm, p.northNm, view.camera, size));
     if (tpaSizeReadoutEnabled(view.tracks.get(ac.id))) {
-      const digit = tpaConeDigitPlacement(ac.xNm, ac.yNm, ac.headingDeg, lengthNm);
+      const digit = tpaConeDigitPlacement(shown.xNm, shown.yNm, shown.headingDeg, lengthNm);
       const p = nmToScreen(digit.eastNm, digit.northNm, view.camera, size);
       const gap = coneDigitGapBox(ctx, digit.text, p.x, p.y, view.charSizes.tools);
       strokeConeAroundDigits(ctx, pts, gap, size);
@@ -956,11 +1017,16 @@ function drawAtpaCones(
     if (!shouldPaintAtpaGeometry(pair.status, atpaConePaintFlags(view, td))) {
       continue;
     }
+    const trailingShown = displayAircraft(trailing, td);
+    const leadingShown = displayAircraft(leading, view.tracks.get(leading.id));
+    if (!trailingShown || !leadingShown) {
+      continue;
+    }
     const worldPts = atpaConePoints(
-      trailing.xNm,
-      trailing.yNm,
-      leading.xNm,
-      leading.yNm,
+      trailingShown.xNm,
+      trailingShown.yNm,
+      leadingShown.xNm,
+      leadingShown.yNm,
       pair.requiredNm,
     );
     if (worldPts.length < 2) {
@@ -971,8 +1037,8 @@ function drawAtpaCones(
     let gap: ScreenBox | null = null;
     if (view.atpa.coneMileage && td?.atpaConeMileageEnabled !== false) {
       const placed = atpaConeMileagePlacement({
-        trailing: { xNm: trailing.xNm, yNm: trailing.yNm },
-        leading: { xNm: leading.xNm, yNm: leading.yNm },
+        trailing: { xNm: trailingShown.xNm, yNm: trailingShown.yNm },
+        leading: { xNm: leadingShown.xNm, yNm: leadingShown.yNm },
         requiredNm: pair.requiredNm,
         status: pair.status,
       });
@@ -1025,6 +1091,10 @@ function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): 
     hasAlert: Boolean(hasAlert),
     airportCode: airportId,
     crdaRpcStatus,
+    systemStatus: SSA_NETWORK_HEALTH_STUB,
+    surveillanceMode: surveillanceModeWord(
+      effectiveSurveillanceMode(view.surveillanceMode, view.radarSites),
+    ),
   });
   const giLines = buildGiLines(view.giTextLines, view.giFilterVisible);
 

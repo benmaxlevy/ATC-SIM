@@ -24,12 +24,16 @@
  * `*P10` stay TPA cones; tower lists require a space (`* P1`–`* P3`), not `*1`
  * leader. Bare `*B` / `*BE` / `*BI` stay TPA; only `*BCN…` is the beacon-code
  * filter. `BE` / `BI` LDB inhibit and assign-code (`M ####`) remain deferred.
+ * T02-73: DCB PREF SAVE AS uses this buffer for a short name (`PREF` mnemonic).
+ * Alphanumeric Enter commits; digit-only / empty / non-alnum stay pending with
+ * INV. Esc cancels. No window.prompt, no HTML `<input>`.
  * Unknown complete input is invalid, not a silent no-op. Not NAS STARS.
  */
 
 import type { World } from "@core";
 import type { LoadedVideoMap } from "@scenario";
 import { parseStrictFilterHundreds } from "./altitudeFilter";
+import { DCB_PREF_NAME_MAX_CHARS, parseDcbPrefName } from "./dcbPref";
 import { resolveVideoMapToken, type VideoMapTokenLayout } from "./dcbFunctions";
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
 import { isStarsLeaderClock, type StarsLeaderClock } from "./leader";
@@ -43,10 +47,12 @@ export type PreviewPhase = "idle" | "entry" | "armed";
  * T02-53: `beaconBlock` / `beaconDiscrete`. T02-62: `toggleList` / `resizeList`
  * / `armRelocateList`. T02-64: scope recenter / RR / PTL / HIST. Slew forms
  * (`armRecenterScope`, `armRecenterRangeRings`) apply via DCB PLACE flags.
+ * T02-74: exact `*R` arms per-track PTL; `*RR…` stays range rings.
  * T02-63: `toggleVideoMap` / `setAllVideoMaps`. T02-71: `toggleWxLevel` /
  * `setWxLevelsAll`. T02-65: `displayFilters` /
  * `setAltitudeFilterLimits` / `addBeaconCodeFilter` / `removeBeaconCodeFilter`.
  * T02-66: handoff accept, pointout ack, leader clock, beaconator slew.
+ * T02-73: `saveAsPref` is the SAVE AS name commit (name on Enter only).
  * Optional `flid` on INIT/TERM is only for typed `+[Callsign]` Enter.
  * Do not put F3-specific field names on ScopeView.
  */
@@ -63,6 +69,7 @@ export type PreviewArmedAction =
   | { readonly type: "setRangeRingInterval"; readonly intervalNm: number }
   | { readonly type: "armRecenterRangeRings" }
   | { readonly type: "resetRangeRingsCenter" }
+  | { readonly type: "armPerTrackPtl" }
   | { readonly type: "setPtlMinutes"; readonly minutes: number }
   | { readonly type: "setHistoryDots"; readonly count: number }
   | { readonly type: "toggleWxLevel"; readonly level: VipLevel }
@@ -81,7 +88,8 @@ export type PreviewArmedAction =
   | { readonly type: "ackPointout" }
   | { readonly type: "setLeaderDir"; readonly starsDir: StarsLeaderClock }
   | { readonly type: "resetLeaderDir" }
-  | { readonly type: "beaconatorSlew" };
+  | { readonly type: "beaconatorSlew" }
+  | { readonly type: "saveAsPref"; readonly name?: string };
 
 /** Full callsign / numeric-tail / 4-digit squawk — duplicated, not `@pilot`. */
 const FULL_CALLSIGN = /^[A-Z]{3}[0-9]{1,4}[A-Z]?$/;
@@ -397,8 +405,9 @@ export function parseScopeDisplayCommand(buffer: string): PreviewCommandResult |
     }
     return invalid("invalid RR command");
   }
+  // Exact `*R` only. `startsWith("*RR")` above owns range rings; do not prefix-match.
   if (compact === "*R") {
-    return { kind: "incomplete" };
+    return { kind: "action", action: { type: "armPerTrackPtl" } };
   }
 
   return null;
@@ -709,6 +718,7 @@ const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
   "setLeaderDir",
   "resetLeaderDir",
   "beaconatorSlew",
+  "armPerTrackPtl",
 ]);
 
 function compactTrackingBuffer(buffer: string): string {
@@ -822,9 +832,79 @@ function trackingMnemonic(action: PreviewArmedAction): string {
       return "*0";
     case "beaconatorSlew":
       return "*B";
+    case "armPerTrackPtl":
+      return "*R";
+    case "saveAsPref":
+      return "PREF";
     default:
       return "";
   }
+}
+
+export function isPrefNameEntry(state: PreviewAreaState): boolean {
+  return state.phase === "entry" && state.armed?.type === "saveAsPref";
+}
+
+/**
+ * Analog: CRC STARS PREF SAVE AS name prompt (R07). Trainer delta: preview
+ * buffer / status-line chord, not a proprietary dialog or HTML field.
+ */
+export function beginPrefNameEntry(state: PreviewAreaState, nowMs: number): void {
+  state.phase = "entry";
+  state.buffer = "";
+  state.mnemonic = "PREF";
+  state.flid = null;
+  state.rejection = null;
+  state.armed = { type: "saveAsPref" };
+  state.lastKeyAtMs = nowMs;
+}
+
+function prefNameInvalidReadout(buffer: string): string {
+  return buffer.length > 0 ? `PREF ${buffer} INV` : "PREF INV";
+}
+
+function handlePrefNameKey(
+  state: PreviewAreaState,
+  key: string,
+  nowMs: number,
+  code?: string,
+): PreviewKeyOutcome {
+  if (key === "Escape") {
+    return { consumed: false, action: null };
+  }
+  if (key === "Backspace") {
+    state.rejection = null;
+    if (state.buffer.length > 0) {
+      state.buffer = state.buffer.slice(0, -1);
+    }
+    state.lastKeyAtMs = nowMs;
+    return { consumed: true, action: null };
+  }
+  if (key === "Enter" || key === "NumpadEnter") {
+    const parsed = parseDcbPrefName(state.buffer);
+    if (parsed.ok) {
+      cancelPreviewArea(state);
+      return { consumed: true, action: { type: "saveAsPref", name: parsed.name } };
+    }
+    state.rejection = prefNameInvalidReadout(state.buffer);
+    state.lastKeyAtMs = nowMs;
+    return { consumed: true, action: null };
+  }
+  const ch = previewBufferCharFromKey(key, code);
+  if (ch !== null && /^[A-Z0-9]$/.test(ch)) {
+    state.rejection = null;
+    if (state.buffer.length < DCB_PREF_NAME_MAX_CHARS) {
+      state.buffer += ch;
+    }
+    state.lastKeyAtMs = nowMs;
+    return { consumed: true, action: null };
+  }
+  if (ch !== null) {
+    state.rejection = null;
+    state.lastKeyAtMs = nowMs;
+    return { consumed: true, action: null };
+  }
+  return { consumed: false, action: null };
 }
 
 /** Arm a command-then-slew tracking chord. INIT/TERM mnemonic is never `"F3"` / `"F4"`. */
@@ -1205,6 +1285,9 @@ export function handlePreviewBufferKey(
   maps?: readonly LoadedVideoMap[],
   layout?: VideoMapTokenLayout,
 ): PreviewKeyOutcome {
+  if (isPrefNameEntry(state)) {
+    return handlePrefNameKey(state, key, nowMs, code);
+  }
   if (isBeaconPreviewEntry(state)) {
     return handlePreviewBeaconKey(state, key, nowMs, code);
   }

@@ -514,6 +514,69 @@ test("T02-65 — *F readout, *LA bounds, *BCN □ paint; *B / idle F / B45 uncha
   expect(tpa.preview.rejection).toBeNull();
 });
 
+test("T02-74 — *R Enter plus click toggles one track; miss keeps arm; *RR and F7 stay global", () => {
+  const dal = makeTestAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    xNm: 8,
+    yNm: 0,
+    headingDeg: 90,
+    speedKt: 180,
+  });
+  const aal = makeTestAircraft({
+    id: "ac-aal",
+    callsign: "AAL456",
+    xNm: -8,
+    yNm: 0,
+    headingDeg: 90,
+    speedKt: 180,
+  });
+  const world = createWorld({ aircraft: [dal, aal] });
+  const view = createScopeView();
+
+  typeKeys(view, world, ["*", "R", "Enter"], "scope");
+  expect(view.preview.armed).toEqual({ type: "armPerTrackPtl" });
+  expect(formatPreviewReadout(view.preview)).toBe("*R");
+
+  const miss = nmToScreen(0, 8, view.camera, VIEW);
+  handlePpiLeftClick(view, world, miss.x, miss.y, CSS, CSS);
+  expect(view.ptlByAircraftId.size).toBe(0);
+  expect(view.preview.armed).toEqual({ type: "armPerTrackPtl" });
+  expect(world.selectedAircraftId).toBeNull();
+
+  const dalTick = nmToScreen(dal.xNm, dal.yNm, view.camera, VIEW);
+  handlePpiLeftClick(view, world, dalTick.x, dalTick.y, CSS, CSS);
+  expect(view.ptlByAircraftId.get(dal.id)).toBe(true);
+  expect(view.ptlByAircraftId.has(aal.id)).toBe(false);
+  expect(view.preview.armed).toBeNull();
+  expect(world.selectedAircraftId).toBeNull();
+  expect(view.ptlOn).toBe(false);
+  expect(view.ptlMinutes).toBe(1);
+
+  const aalTick = nmToScreen(aal.xNm, aal.yNm, view.camera, VIEW);
+  handlePpiLeftClick(view, world, aalTick.x, aalTick.y, CSS, CSS);
+  expect(view.ptlByAircraftId.has(aal.id)).toBe(false);
+
+  handleScopeKeyDown(keyEvent("F7"), view, "scope", world, 400);
+  expect(view.ptlOn).toBe(true);
+  expect(view.ptlByAircraftId.get(dal.id)).toBe(true);
+
+  typeKeys(view, world, ["*", "R", "Enter"], "scope", 500);
+  handlePpiLeftClick(view, world, dalTick.x, dalTick.y, CSS, CSS);
+  expect(view.ptlByAircraftId.get(dal.id)).toBe(false);
+  expect(view.ptlOn).toBe(true);
+  expect(view.ptlMinutes).toBe(1);
+
+  typeKeys(view, world, ["*", "P", "T", "L", "3", "Enter"], "scope", 700);
+  expect(view.ptlMinutes).toBe(3);
+  expect(view.ptlByAircraftId.get(dal.id)).toBe(false);
+
+  typeKeys(view, world, ["*", "R", "R", "5", "Enter"], "scope", 900);
+  expect(view.ringIntervalNm).toBe(5);
+  expect(view.showRings).toBe(true);
+  expect(view.ptlByAircraftId.get(dal.id)).toBe(false);
+});
+
 function vip1Mosaic() {
   const rgba = new Uint8Array(2 * 2 * 4);
   for (let i = 0; i < 4; i++) {

@@ -19,6 +19,21 @@ test("JOIN DEM1 is JOIN_PROCEDURE; DCT NELBO JOIN DEM1 is direct then join", () 
   ]);
 });
 
+test("VIA DEM1 WN and JOIN DEM1 WN attach transitionId; VIA DEM1 stays transition-less", () => {
+  expectOk("DAL123 VIA DEM1", [{ type: "DESCEND_VIA", procedureId: "DEM1" }]);
+  expectOk("DAL123 VIA DEM1 WN", [
+    { type: "DESCEND_VIA", procedureId: "DEM1", transitionId: "WN" },
+  ]);
+  expectOk("DAL123 JOIN DEM1 WN", [
+    { type: "JOIN_PROCEDURE", procedureId: "DEM1", transitionId: "WN" },
+  ]);
+  expectOk("DAL123 VIA DEM1 S", [{ type: "DESCEND_VIA", procedureId: "DEM1", transitionId: "S" }]);
+  expectOk("DAL123 VIA DEM1 D30", [
+    { type: "DESCEND_VIA", procedureId: "DEM1" },
+    { type: "ALTITUDE", altitudeFt: 3000, verb: "DESCEND" },
+  ]);
+});
+
 test("CVIA DEM1 is CLIMB_VIA; mixed case uppercases", () => {
   const result = parseRadioText("cvia dem1");
   expect(result.ok).toBe(true);
@@ -27,6 +42,20 @@ test("CVIA DEM1 is CLIMB_VIA; mixed case uppercases", () => {
   }
   expect(result.callsignToken).toBeNull();
   expect(result.instructions).toEqual([{ type: "CLIMB_VIA", procedureId: "DEM1" }]);
+});
+
+test("CVIA BAY1 NORMA and JOIN BAY1 NORMA attach transitionId; CVIA BAY1 stays transition-less", () => {
+  expectOk("DAL123 CVIA BAY1", [{ type: "CLIMB_VIA", procedureId: "BAY1" }]);
+  expectOk("DAL123 CVIA BAY1 NORMA", [
+    { type: "CLIMB_VIA", procedureId: "BAY1", transitionId: "NORMA" },
+  ]);
+  expectOk("DAL123 JOIN BAY1 NORMA", [
+    { type: "JOIN_PROCEDURE", procedureId: "BAY1", transitionId: "NORMA" },
+  ]);
+  expectOk("DAL123 CVIA BAY1 C30", [
+    { type: "CLIMB_VIA", procedureId: "BAY1" },
+    { type: "ALTITUDE", altitudeFt: 3000, verb: "CLIMB" },
+  ]);
 });
 
 test("D remains descend; VIA is the only descend-via token", () => {

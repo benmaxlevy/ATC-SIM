@@ -32,7 +32,9 @@ import {
   installAlwaysOnScopeKeys,
   scopeFocusFromDocument,
   focusRadioCommandLine,
+  clearPerTrackPtl,
   parseDigitalMap,
+  applyRadarSites,
   type ScopeView,
 } from "@scope";
 import type { AppHandles } from "../app/create-app";
@@ -247,8 +249,14 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             ),
           );
           scopeView.tracks.clear();
+          clearPerTrackPtl(scopeView);
           scopeView.giTextLines = nextScenario.giTextLines;
           scopeView.digitalMap = parseDigitalMap(nextScenario.maps);
+          // Session apply uses the same generic site bind as boot (T02-77).
+          // CRC R07 SITE analog; R05 FOA display data; R01 radar-identification
+          // wording. Unknown stored SITE id → FUSED. Trainer fixtures; not live
+          // sensors. No airport-id branch.
+          applyRadarSites(scopeView, nextScenario.radarSites);
           if (typeof document !== "undefined") {
             document.title = `ATC-SIM — ${nextScenario.name}`;
           }

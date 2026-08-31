@@ -99,5 +99,25 @@
     "NKS600 OFF FINAL",
     "WARN LASTS 21 SEC",
     ""
+  ],
+  "radarSites": [
+    {
+      "id": "KDEM-APT",
+      "name": "Demo Field airport",
+      "kind": "airport",
+      "xNm": 0,
+      "yNm": 0,
+      "rangeNm": 60,
+      "periodMs": 4800
+    },
+    {
+      "id": "KDEM-REMOTE",
+      "name": "Demo Field remote ASR",
+      "kind": "asr",
+      "xNm": 40,
+      "yNm": 10,
+      "rangeNm": 60,
+      "periodMs": 4800
+    }
   ]
 }

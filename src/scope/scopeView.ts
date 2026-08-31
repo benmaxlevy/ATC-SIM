@@ -9,11 +9,12 @@
  * is L1–L9; length is a discrete px set (0/24/36/48) on this view. CHAR SIZE is
  * per-subsystem Plex/system mono (DATA BLOCKS / LISTS / DCB / TOOLS / POS), not
  * a font picker. BRITE is per drawn channel (0–100 multiply); WX/WXC tint VIP
- * paint; BKC is a stored no-op. History is 5 s sim /
- * 5 dots, no phosphor; AUX HISTORY spinner shows 0–5 of those dots (F8 / H
- * toggles 0 ↔ last non-zero). PTL is a straight predicted track line (default
+ * paint; BKC is a stored no-op. History records on each surveillance report, cap 5 dots, no
+ * phosphor; AUX HISTORY spinner shows 0–5 of those dots (F8 / H
+ * toggles 0 ↔ last non-zero). Default SITE mode is FUSED. PTL is a straight predicted track line (default
  * 1.0 min; AUX spinner 0.5/1/2/4). F7 toggles PTL ALL. PTL OWN is F3-owned
- * tracks; ALL wins if both are on. TPA J-rings: DCB 2/3/5/10 NM about the
+ * tracks; ALL wins if both are on. Per-track PTL is `*R` plus click
+ * (`ptlByAircraftId`, session, not PREF). TPA J-rings: DCB 2/3/5/10 NM about the
  * selected track (or owned tracks if none selected), plus per-track `*J` /
  * `*P` session graphics (1–30 NM, not PREF). ATPA master plus four DCB latches
  * (A/TPA Mileage, Intrail Distance, Alert Cones, Monitor Cones) gate cones and
@@ -58,7 +59,13 @@ import {
 } from "./fonts";
 import type { HistoryDotCount } from "./history";
 import { stepHistoryDotCount } from "./history";
-import { PTL_MINUTES, stepPtlMinutes, type PtlMinutes } from "./ptl";
+import {
+  PTL_MINUTES,
+  clearPtlByAircraftId,
+  stepPtlMinutes,
+  togglePtlByAircraftId,
+  type PtlMinutes,
+} from "./ptl";
 import {
   defaultGiVisibility,
   defaultSsaVisibility,
@@ -84,6 +91,13 @@ import {
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
 import { cloneBrite, type BriteState } from "./palette";
 import type { TrackDisplay } from "./trackDisplay";
+import type { RadarSite } from "@scenario";
+import {
+  defaultSurveillanceMode,
+  effectiveSurveillanceMode,
+  surveillanceModesEqual,
+  type SurveillanceMode,
+} from "./surveillance";
 import { cloneWxLevels, emptyWxMosaic, type WxLevels, type WxMosaic } from "./wx";
 
 import {
@@ -117,7 +131,8 @@ export interface ScopeView {
   charSizePx: CharSizePx;
   /**
    * DCB BRITE per drawn channel (0–100). Hue stays T02-08 green/white/blue.
-   * WX/WXC tint VIP fills and contours. BKC/CMP/BCN stay stored; paint channels tint draw.
+   * WX/WXC tint VIP fills and contours. PRI tints the position mark.
+   * BKC/CMP/BCN stay stored; paint channels tint draw.
    */
   brite: BriteState;
   /** PLACE CNTR: next PPI click sets view **center**. */
@@ -171,6 +186,11 @@ export interface ScopeView {
   ptlOwn: boolean;
   /** PTL length in minutes. Default 1.0 (T02-07). AUX spinner 0.5/1/2/4; keyboard 0–15. */
   ptlMinutes: PtlMinutes;
+  /**
+   * Per-track PTL override (`*R` plus click). Session map, not PREF.
+   * `true` forces the line; `false` hides it under PTL ALL.
+   */
+  ptlByAircraftId: Map<string, boolean>;
   /**
    * TPA. DCB `{ on, radiusNm }` is the toggle + 2/3/5/10 spinner (PREF).
    * Per-track `*J` / `*P` graphics live on `TrackDisplay` (session, not PREF).
@@ -245,8 +265,16 @@ export interface ScopeView {
    */
   beaconatorActive: boolean;
   /**
+   * SITE display mode. Default FUSED. Empty `radarSites` is implicit FUSED.
+   * T02-76 owns the DCB SITE caps; this field is the sampler input.
+   * T02-77 binds authored scenario rows onto the live view.
+   */
+  surveillanceMode: SurveillanceMode;
+  /** Trainer-authored sites from the loaded scenario. `[]` = implicit FUSED. */
+  radarSites: RadarSite[];
+  /**
    * STARS VIP 1–6 display latches. Default all false.
-   * Display only — T02-70 DCB later. Paint is weatherLayer. Does not steer aircraft.
+   * Display only. Paint is weatherLayer. Does not steer aircraft.
    */
   wxLevels: WxLevels;
   /**
@@ -264,6 +292,8 @@ export function createScopeView(
     digitalMap?: DigitalMap;
     showCoastline?: boolean;
     giTextLines?: readonly string[];
+    radarSites?: readonly RadarSite[];
+    surveillanceMode?: SurveillanceMode;
     arp?: LatLon;
   },
 ): ScopeView {
@@ -319,6 +349,7 @@ export function createScopeView(
     ptlOn: false,
     ptlOwn: false,
     ptlMinutes: PTL_MINUTES,
+    ptlByAircraftId: new Map(),
     tpa: { ...DEFAULT_TPA_STATE },
     atpa: { ...DEFAULT_ATPA_STATE },
     altitudeFilter: { ...DEFAULT_ALTITUDE_FILTER },
@@ -338,10 +369,44 @@ export function createScopeView(
     pendingChord: null,
     helpOpen: false,
     beaconatorActive: false,
+    surveillanceMode: options?.surveillanceMode ?? defaultSurveillanceMode(),
+    radarSites: options?.radarSites ? [...options.radarSites] : [],
     wxLevels: cloneWxLevels(),
     wxMosaic: emptyWxMosaic(),
     arp,
   };
+}
+
+/**
+ * Bind authored scenario `radarSites` onto the live view (T02-77).
+ *
+ * Analog: CRC / vNAS STARS SITE FUSED / MULTI / single-site (R07);
+ * FOA STARS display-data / radar coverage (R05); JO 7110.65 radar
+ * identification display wording (R01). Trainer delta: sites are fixture
+ * rows, not live sensors. Unknown stored site id → FUSED. Empty catalog
+ * stays implicit FUSED. No 30 s coast. No airport-id branch. Not NAS STARS.
+ */
+export function applyRadarSites(view: ScopeView, sites: readonly RadarSite[]): void {
+  view.radarSites = [...sites];
+  view.surveillanceMode = effectiveSurveillanceMode(view.surveillanceMode, view.radarSites);
+  clearLastSurveillanceReports(view);
+}
+
+/** SITE / catalog change resamples immediately. Trainer delta: no 30 s coast. */
+function clearLastSurveillanceReports(view: ScopeView): void {
+  for (const td of view.tracks.values()) {
+    delete td.lastReport;
+  }
+}
+
+/** Bind SITE DCB / PREF to the T02-75 sampler. Unknown site id → FUSED. */
+export function setSurveillanceMode(view: ScopeView, mode: SurveillanceMode): void {
+  const next = effectiveSurveillanceMode(mode, view.radarSites);
+  if (surveillanceModesEqual(view.surveillanceMode, next)) {
+    return;
+  }
+  view.surveillanceMode = next;
+  clearLastSurveillanceReports(view);
 }
 
 export function setBeaconatorActive(view: ScopeView, active: boolean): void {
@@ -403,6 +468,20 @@ export function togglePtlOn(view: ScopeView): void {
 
 export function togglePtlOwn(view: ScopeView): void {
   view.ptlOwn = !view.ptlOwn;
+}
+
+/** `*R` click: flip this track’s session PTL override. Length stays global. */
+export function togglePerTrackPtl(
+  view: ScopeView,
+  aircraftId: string,
+  currentlyDrawn: boolean,
+): boolean {
+  return togglePtlByAircraftId(view.ptlByAircraftId, aircraftId, currentlyDrawn);
+}
+
+/** Session / map reset. Does not touch PREF, F7, or `*PTL` minutes. */
+export function clearPerTrackPtl(view: ScopeView): void {
+  clearPtlByAircraftId(view.ptlByAircraftId);
 }
 
 export function stepPtlLength(view: ScopeView, delta: -1 | 1): void {

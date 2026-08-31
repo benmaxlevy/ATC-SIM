@@ -1,10 +1,10 @@
 /**
  * Analog: CRC STARS HISTORY (docs.virtualnas.net/crc/stars — R07).
- * Trainer delta: analog CRC **history**; we sample 5 s sim / 5 dots, no phosphor
- * snake. Discrete 2–3 px dots in FAA history-blue (independent of FDB
- * ownership), newest brighter than oldest. AUX HISTORY spinner shows 0–5 of
- * those dots (0 skips draw like historyEnabled === false). Not a grey website
- * fade. Not NAS STARS.
+ * Trainer delta: analog CRC **history**; we record on each surveillance report
+ * (FUSED 1000 ms / site periodMs), cap 5 dots, no phosphor snake. Discrete
+ * 2–3 px dots in FAA history-blue (independent of FDB ownership), newest
+ * brighter than oldest. AUX HISTORY spinner shows 0–5 of those dots (0 skips
+ * draw like historyEnabled === false). Not a grey website fade. Not NAS STARS.
  */
 
 export const HISTORY_SAMPLE_MS = 5000;
@@ -25,9 +25,36 @@ export function createHistoryBuf(): HistoryBuf {
 }
 
 /**
+ * Record one history dot when a surveillance report arrives. Caps at
+ * `HISTORY_MAX_DOTS`. Live path — not the 5 s `maybeSampleHistory` gate.
+ * Call from the display sampler — not from kinematics / `stepWorld`.
+ */
+export function recordHistoryOnReport(
+  buf: HistoryBuf,
+  simTimeMs: number,
+  eastNm: number,
+  northNm: number,
+): boolean {
+  const last = buf.timesSimMs.length === 0 ? null : buf.timesSimMs[buf.timesSimMs.length - 1];
+  if (last === simTimeMs) {
+    return false;
+  }
+  buf.timesSimMs.push(simTimeMs);
+  buf.eastNm.push(eastNm);
+  buf.northNm.push(northNm);
+  while (buf.timesSimMs.length > HISTORY_MAX_DOTS) {
+    buf.timesSimMs.shift();
+    buf.eastNm.shift();
+    buf.northNm.shift();
+  }
+  return true;
+}
+
+/**
  * Sample current position when the buffer is empty (first paint) or when
  * `simTimeMs - lastSample >= 5000`. Caps at 5, dropping the oldest.
- * Call from the display sampler — not from kinematics / `stepWorld`.
+ * Kept for unit tests of the old 5 s gate. Live history uses
+ * `recordHistoryOnReport`.
  */
 export function maybeSampleHistory(
   buf: HistoryBuf,

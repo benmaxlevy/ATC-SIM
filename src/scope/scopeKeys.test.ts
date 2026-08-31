@@ -14,7 +14,8 @@ import { DEFAULT_ALTITUDE_FILTER, formatFilterReadout } from "./altitudeFilter";
 import { isVideoMapOn } from "./dcbFunctions";
 import { CHORD_TIMEOUT_MS, SCOPE_CHORD_WINDOW_MS } from "./keymap";
 import { parseDigitalMap } from "./mapLayers";
-import { formatPreviewReadout } from "./previewArea";
+import { beginPrefNameEntry, formatPreviewReadout } from "./previewArea";
+import { beginDcbPrefSaveAs } from "./dcbPref";
 import { createScopeView } from "./scopeView";
 import { syncTrackDisplays } from "./trackDisplay";
 
@@ -1430,4 +1431,33 @@ test("T02-66 — *F is T02-65 display; incomplete *LA/*BCN INV; F3/F4 and L+digi
   handleScopeKeyDown(keyEvent("L"), view, "scope", world, 600);
   handleScopeKeyDown(keyEvent("6"), view, "scope", world, 700);
   expect(view.tracks.get(dal.id)!.leaderDir).toBe(6);
+});
+
+test("PREF SAVE AS name chord: Enter writes, Esc and digit-only do not", () => {
+  const view = createScopeView();
+  beginDcbPrefSaveAs(view);
+  beginPrefNameEntry(view.preview, 0);
+  expect(formatPreviewReadout(view.preview)).toBe("PREF");
+  typeScopeKeys(view, ["N", "I", "G", "H", "T", "Enter"], 10);
+  expect(view.dcbPref.slots[0]?.name).toBe("NIGHT");
+  expect(view.dcbPref.activeIndex).toBe(0);
+  expect(view.dcbPref.pendingSaveAs).toBe(false);
+  expect(view.preview.phase).toBe("idle");
+
+  const cancel = createScopeView();
+  beginDcbPrefSaveAs(cancel);
+  beginPrefNameEntry(cancel.preview, 0);
+  typeScopeKeys(cancel, ["D", "A", "Y"], 10);
+  handleScopeKeyDown(keyEvent("Escape"), cancel, "scope", undefined, 400);
+  expect(cancel.dcbPref.pendingSaveAs).toBe(false);
+  expect(cancel.dcbPref.slots[0]).toBeNull();
+  expect(cancel.preview.phase).toBe("idle");
+
+  const digits = createScopeView();
+  beginDcbPrefSaveAs(digits);
+  beginPrefNameEntry(digits.preview, 0);
+  typeScopeKeys(digits, ["1", "2", "3", "Enter"], 10);
+  expect(digits.dcbPref.pendingSaveAs).toBe(true);
+  expect(digits.dcbPref.slots[0]).toBeNull();
+  expect(formatPreviewReadout(digits.preview)).toBe("PREF 123 INV");
 });

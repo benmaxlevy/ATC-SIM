@@ -153,10 +153,12 @@ export function isLegalInstruction(value: unknown): value is Instruction {
     );
   }
   if (type === "DESCEND_VIA" || type === "CLIMB_VIA" || type === "JOIN_PROCEDURE") {
+    const trans = obj.transitionId;
     return (
-      keysOk(obj, ["type", "procedureId"]) &&
+      keysOk(obj, ["type", "procedureId"], ["transitionId"]) &&
       typeof obj.procedureId === "string" &&
-      obj.procedureId.length > 0
+      obj.procedureId.length > 0 &&
+      (trans === undefined || (typeof trans === "string" && trans.length > 0))
     );
   }
   if (type === "CROSS") {

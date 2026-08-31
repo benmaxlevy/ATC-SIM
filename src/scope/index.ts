@@ -33,7 +33,7 @@
  * altitude filter / video maps (docs.virtualnas.net/crc/stars — R07). PCG datablock / Mode C (R02).
  * FOA STARS display data / altitude filters (R05).
  * Trainer delta: PageUp/Down + wheel; no extra CRC presets; right-drag slew
- * (middle-drag still works) is not CRC. History is 5 s sim / 5 dots, no phosphor. PTL is straight
+ * (middle-drag still works) is not CRC. History records on each surveillance report, cap 5 dots, no phosphor. PTL is straight
  * 1.0 min, default off. Trainer-authored JSON maps, not OSM / tiles (R12).
  * IBM Plex Mono, not a STARS face. Not NAS STARS.
  */
@@ -123,6 +123,8 @@ export {
   SSA_ALTIMETER_STUB,
   SSA_FILTER_FIELDS,
   SSA_FUSED_STUB,
+  SSA_NETWORK_HEALTH_STUB,
+  formatSsaRadarStatus,
   buildGiLines,
   buildSsaLines,
   buildSsaRenderLines,
@@ -191,6 +193,7 @@ export {
   armPreviewCntl,
   armPreviewRelocateList,
   armPreviewSlewAction,
+  beginPrefNameEntry,
   beginPreviewBeaconEntry,
   beginPreviewBufferEntry,
   cancelPreviewArea,
@@ -203,6 +206,7 @@ export {
   handlePreviewFlidKey,
   idlePreviewArea,
   isBeaconPreviewEntry,
+  isPrefNameEntry,
   isPreviewBufferStartChar,
   parsePreviewCommand,
   parseTrackingCommand,
@@ -280,7 +284,9 @@ export {
   centerOnAirport,
   centerOnLastClick,
   centerOnWorld,
+  applyRadarSites,
   createScopeView,
+  setSurveillanceMode,
   beginAltitudeFilterChord,
   isCoastlineToggleEnabled,
   isRangeRingOffViewCenter,
@@ -303,6 +309,8 @@ export {
   toggleMapLayer,
   toggleModeCVisible,
   toggleGiFilter,
+  clearPerTrackPtl,
+  togglePerTrackPtl,
   togglePtlOn,
   togglePtlOwn,
   toggleSsaFilter,
@@ -347,6 +355,7 @@ export {
 } from "./dcbCursorTrap";
 export type { DcbCursorTrapKind, DcbTrapPoint, DcbTrapRect } from "./dcbCursorTrap";
 export {
+  DCB_PREF_NAME_MAX_CHARS,
   DCB_PREF_READABLE_VERSIONS,
   DCB_PREF_READOUT_MAX_CHARS,
   DCB_PREF_SLOT_COUNT,
@@ -355,17 +364,22 @@ export {
   activeDcbPrefName,
   applyDcbPref,
   applyDcbPrefDefaults,
+  beginDcbPrefSaveAs,
   beginDcbPrefSession,
   browserDcbPrefStorage,
+  cancelDcbPrefSaveAs,
+  commitDcbPrefSaveAs,
   dcbPrefStorageKey,
   deleteDcbPref,
   drawablePpiSize,
   formatDcbPrefReadout,
+  isDcbPrefSaveAsPending,
   isVerticalDcbDock,
   loadDcbPrefFromStorage,
+  nextDcbPrefSaveAsIndex,
+  parseDcbPrefName,
   persistDcbPref,
   restoreDcbPrefSession,
-  saveAsDcbPref,
   saveDcbPref,
   selectDcbPrefSlot,
   serializeDcbPref,
@@ -435,9 +449,50 @@ export {
   createHistoryBuf,
   historyDotsToDraw,
   maybeSampleHistory,
+  recordHistoryOnReport,
   stepHistoryDotCount,
 } from "./history";
 export type { HistoryBuf, HistoryDotCount } from "./history";
+export {
+  FUSED_PERIOD_MS,
+  MULTI_RECT_COLOR,
+  MULTI_RECT_LENGTH_PX,
+  MULTI_RECT_THICKNESS_PX,
+  SITE_FAR_LINE_COLOR,
+  SITE_FAR_LINE_LENGTH_SCALE,
+  SITE_FAR_LINE_STROKE_PX,
+  SITE_RECT_MAX_LENGTH_PX,
+  SITE_RECT_MIN_LENGTH_PX,
+  SITE_RECT_OUTLINE_RANGE_FRACTION,
+  aircraftAtReport,
+  createSurveillanceSampler,
+  defaultSurveillanceMode,
+  displayReportFor,
+  effectiveSurveillanceMode,
+  formatDcbSiteLabel,
+  parseSurveillanceMode,
+  resolveSurveillancePref,
+  siteDcbChoices,
+  surveillanceModeWord,
+  surveillanceModesEqual,
+  isInSurveillanceCoverage,
+  multiRectCorners,
+  nearestCoveringSite,
+  reportPeriodMs,
+  siteCovers,
+  siteRectMark,
+  stepSurveillanceSampler,
+  surveillancePaintFor,
+} from "./surveillance";
+export type {
+  SurveillanceClock,
+  SurveillanceMode,
+  SurveillancePaint,
+  SurveillanceReport,
+  SiteRectMark,
+  SurveillanceSampler,
+  SurveillanceWorldPose,
+} from "./surveillance";
 export {
   HEADING_TICK_PX,
   HISTORY_DOT_SIZE_PX,
@@ -469,11 +524,13 @@ export {
   PTL_MINUTES,
   PTL_MINUTE_PRESETS,
   PTL_STROKE_PX,
+  clearPtlByAircraftId,
   drawPredictedTrackLine,
   ptlEndpoint,
   shouldDrawPtl,
   shouldDrawPtlForTrack,
   stepPtlMinutes,
+  togglePtlByAircraftId,
 } from "./ptl";
 export type { PtlMinutes } from "./ptl";
 export {

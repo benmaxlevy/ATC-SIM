@@ -4,6 +4,7 @@
  */
 import { expect, test } from "vitest";
 import { PARSE_ERROR } from "../tokens";
+import type { CatalogProcedure } from "./catalog-ground";
 import { parseSpokenGrammar } from "./grammar";
 import { normalizeSpoken } from "./normalizer";
 import { groundCallsignToRoster } from "./telephony";
@@ -13,7 +14,7 @@ function spoken(
   text: string,
   selected?: string | null,
   catalog?: readonly string[],
-  procedures?: ReadonlyArray<{ id: string; name?: string }>,
+  procedures?: readonly CatalogProcedure[],
 ) {
   return parseSpokenGrammar(normalizeSpoken(text), selected ?? null, text, catalog, procedures);
 }
@@ -323,6 +324,76 @@ test("descend via demo 1 snaps onto catalog DEM1", () => {
   expect(viaOnly.ok).toBe(true);
   if (viaOnly.ok) {
     expect(viaOnly.instructions).toEqual([{ type: "DESCEND_VIA", procedureId: "DEM1" }]);
+  }
+});
+
+test("descend via SYN ONE north / runway niner transition normalizes catalog transition ids", () => {
+  const procedures = [
+    {
+      id: "SYN1",
+      name: "SYN ONE",
+      transitions: [
+        { id: "N", name: "NORTH" },
+        { id: "S", name: "SOUTH" },
+        { id: "RW09", name: "RUNWAY NINE", runwayId: "09" },
+      ],
+    },
+  ];
+  const bare = spoken("descend via syn one", "DAL123", undefined, procedures);
+  expect(bare.ok).toBe(true);
+  if (bare.ok) {
+    expect(bare.instructions).toEqual([{ type: "DESCEND_VIA", procedureId: "SYN1" }]);
+  }
+  const north = spoken("descend via SYN ONE, north transition", "DAL123", undefined, procedures);
+  expect(north.ok).toBe(true);
+  if (north.ok) {
+    expect(north.instructions).toEqual([
+      { type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "N" },
+    ]);
+  }
+  const rwy = spoken(
+    "descend via SYN ONE, runway niner transition",
+    "DAL123",
+    undefined,
+    procedures,
+  );
+  expect(rwy.ok).toBe(true);
+  if (rwy.ok) {
+    expect(rwy.instructions).toEqual([
+      { type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "RW09" },
+    ]);
+  }
+  const join = spoken("join the syn one arrival north transition", "DAL123", undefined, procedures);
+  expect(join.ok).toBe(true);
+  if (join.ok) {
+    expect(join.instructions).toEqual([
+      { type: "JOIN_PROCEDURE", procedureId: "SYN1", transitionId: "N" },
+    ]);
+  }
+});
+
+test("climb via BAY ONE NORMA transition normalizes catalog transition id", () => {
+  const procedures = [
+    {
+      id: "BAY1",
+      name: "BAY ONE DEPARTURE",
+      transitions: [
+        { id: "NORMA", name: "NORMA" },
+        { id: "OCTTA", name: "OCTTA" },
+      ],
+    },
+  ];
+  const bare = spoken("climb via bay one", "DAL123", undefined, procedures);
+  expect(bare.ok).toBe(true);
+  if (bare.ok) {
+    expect(bare.instructions).toEqual([{ type: "CLIMB_VIA", procedureId: "BAY1" }]);
+  }
+  const named = spoken("climb via BAY ONE, NORMA transition", "DAL123", undefined, procedures);
+  expect(named.ok).toBe(true);
+  if (named.ok) {
+    expect(named.instructions).toEqual([
+      { type: "CLIMB_VIA", procedureId: "BAY1", transitionId: "NORMA" },
+    ]);
   }
 });
 

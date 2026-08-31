@@ -185,6 +185,7 @@ function msawInhibitFromScenario(scenario: Scenario): MsawInhibitGeom | null {
 function worldFromScenario(scenario: Scenario): World {
   return createWorld({
     catalog: scenario.catalog,
+    activeRunwayId: scenario.activeRunwayId,
     mvaChart: scenario.mva,
     msawInhibit: msawInhibitFromScenario(scenario),
     sessionLog: new SessionLog(),

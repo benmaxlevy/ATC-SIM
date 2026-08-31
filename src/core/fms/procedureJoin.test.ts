@@ -1,5 +1,11 @@
 import { expect, test } from "vitest";
-import { joinNamedProcedure, procedureRouteContainingFix } from "./procedureJoin";
+import {
+  joinNamedProcedure,
+  joinProcedureTransition,
+  joinSidTransition,
+  joinStarTransition,
+  procedureRouteContainingFix,
+} from "./procedureJoin";
 import type { CatalogSid, CatalogStar } from "./vertical";
 import proceduresJson from "../../scenario/data/kdem/procedures.json";
 import sidsJson from "../../scenario/data/kdem/sids.json";
@@ -183,4 +189,277 @@ test("procedureRouteContainingFix finds SID fixes across transitions", () => {
   expect(bayseJoin?.starId).toBe("BAY1");
   expect(bayseJoin?.toFixIndex).toBe(1);
   expect(bayseJoin?.routeFixIds).toEqual(["BAYES", "BAYSE", "OCTTA"]);
+});
+
+/** Synthetic STAR: two enroute transitions plus one runway-tagged. Not facility data. */
+const synStar: CatalogStar = {
+  id: "SYN1",
+  name: "SYN ONE",
+  common: [{ fixId: "MERGE" }],
+  transitions: [
+    { id: "N", name: "NORTH", legs: [{ fixId: "NA" }, { fixId: "NB" }] },
+    { id: "S", name: "SOUTH", legs: [{ fixId: "SA" }, { fixId: "SB" }] },
+    { id: "RW09", name: "RUNWAY NINE", runwayId: "09", legs: [{ fixId: "RA" }] },
+  ],
+};
+
+const branchStar: CatalogStar = {
+  id: "BRN1",
+  transitions: [
+    { id: "E", legs: [{ fixId: "E1" }, { fixId: "JOIN" }, { fixId: "EASTEND" }] },
+    { id: "W", legs: [{ fixId: "W1" }, { fixId: "JOIN" }, { fixId: "WESTEND" }] },
+  ],
+};
+
+test("joinStarTransition rebuilds remaining route at the shared MERGE fix", () => {
+  expect(
+    joinStarTransition({
+      catalog: { stars: [synStar] },
+      procedureId: "SYN1",
+      transitionId: "S",
+      remainingFixIds: ["NB", "MERGE"],
+    }),
+  ).toEqual({
+    ok: true,
+    join: { starId: "SYN1", routeFixIds: ["MERGE"], toFixIndex: 0 },
+  });
+});
+
+test("joinStarTransition permits a runway-tagged transition only on the matching runway", () => {
+  expect(
+    joinStarTransition({
+      catalog: { stars: [synStar] },
+      procedureId: "SYN1",
+      transitionId: "RW09",
+      activeRunwayId: "09",
+      remainingFixIds: ["NB", "MERGE"],
+    }),
+  ).toEqual({
+    ok: true,
+    join: { starId: "SYN1", routeFixIds: ["MERGE"], toFixIndex: 0 },
+  });
+  expect(
+    joinStarTransition({
+      catalog: { stars: [synStar] },
+      procedureId: "SYN1",
+      transitionId: "RW09",
+      activeRunwayId: "27",
+      remainingFixIds: ["NB", "MERGE"],
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_TRANSITION" });
+});
+
+test("joinStarTransition rejects unknown STAR, unknown transition, and past-branch", () => {
+  expect(
+    joinStarTransition({
+      catalog: { stars: [synStar] },
+      procedureId: "NOPE",
+      transitionId: "N",
+      remainingFixIds: ["NA", "NB", "MERGE"],
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_PROCEDURE" });
+  expect(
+    joinStarTransition({
+      catalog: { stars: [synStar] },
+      procedureId: "SYN1",
+      transitionId: "ZZ",
+      remainingFixIds: ["NA", "NB", "MERGE"],
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_TRANSITION" });
+  expect(
+    joinStarTransition({
+      catalog: { stars: [branchStar] },
+      procedureId: "BRN1",
+      transitionId: "W",
+      remainingFixIds: ["E1", "JOIN", "EASTEND"],
+    }),
+  ).toEqual({
+    ok: true,
+    join: { starId: "BRN1", routeFixIds: ["JOIN", "WESTEND"], toFixIndex: 0 },
+  });
+  expect(
+    joinStarTransition({
+      catalog: { stars: [branchStar] },
+      procedureId: "BRN1",
+      transitionId: "W",
+      remainingFixIds: ["EASTEND"],
+    }),
+  ).toEqual({ ok: false, reason: "NOT_ON_COURSE" });
+});
+
+test("joinNamedProcedure with transitionId does not keep the current route or guess", () => {
+  expect(
+    joinNamedProcedure({
+      catalog: { stars: [synStar] },
+      procedureId: "SYN1",
+      transitionId: "S",
+      current: {
+        type: "PROCEDURE",
+        starId: "SYN1",
+        routeFixIds: ["NA", "NB", "MERGE"],
+        toFixIndex: 1,
+      },
+    }),
+  ).toEqual({ starId: "SYN1", routeFixIds: ["MERGE"], toFixIndex: 0 });
+  expect(
+    joinNamedProcedure({
+      catalog: { stars: [synStar] },
+      procedureId: "SYN1",
+    }),
+  ).toBeUndefined();
+});
+
+/** Synthetic SID: runway legs, two enroute transitions, shared JOIN common fix. */
+const synSid: CatalogSid = {
+  id: "SYNDEP",
+  name: "SYN DEP",
+  runwayTransitions: [
+    { runwayId: "27", legs: [{ fixId: "R27A" }, { fixId: "R27B" }] },
+    { runwayId: "09", legs: [{ fixId: "R09A" }] },
+  ],
+  common: [{ fixId: "JOIN" }],
+  enrouteTransitions: [
+    { id: "NORMA", name: "NORMA", legs: [{ fixId: "N1" }, { fixId: "NORMA" }] },
+    { id: "OCTTA", name: "OCTTA", legs: [{ fixId: "O1" }, { fixId: "OCTTA" }] },
+  ],
+};
+
+test("joinSidTransition keeps the runway transition and switches at JOIN", () => {
+  expect(
+    joinSidTransition({
+      catalog: { sids: [synSid] },
+      procedureId: "SYNDEP",
+      transitionId: "OCTTA",
+      remainingFixIds: ["R27A", "R27B", "JOIN", "N1", "NORMA"],
+      currentRouteFixIds: ["R27A", "R27B", "JOIN", "N1", "NORMA"],
+    }),
+  ).toEqual({
+    ok: true,
+    join: { starId: "SYNDEP", routeFixIds: ["R27A", "R27B", "JOIN", "O1", "OCTTA"], toFixIndex: 0 },
+  });
+  expect(
+    joinSidTransition({
+      catalog: { sids: [synSid] },
+      procedureId: "SYNDEP",
+      transitionId: "OCTTA",
+      remainingFixIds: ["JOIN", "N1", "NORMA"],
+      currentRouteFixIds: ["R27A", "R27B", "JOIN", "N1", "NORMA"],
+    }),
+  ).toEqual({
+    ok: true,
+    join: { starId: "SYNDEP", routeFixIds: ["JOIN", "O1", "OCTTA"], toFixIndex: 0 },
+  });
+});
+
+test("joinSidTransition permits a runway change only while still on runway legs", () => {
+  expect(
+    joinSidTransition({
+      catalog: { sids: [synSid] },
+      procedureId: "SYNDEP",
+      transitionId: "RW09",
+      remainingFixIds: ["R27A", "R27B", "JOIN", "N1", "NORMA"],
+      currentRouteFixIds: ["R27A", "R27B", "JOIN", "N1", "NORMA"],
+    }),
+  ).toEqual({
+    ok: true,
+    join: { starId: "SYNDEP", routeFixIds: ["JOIN", "N1", "NORMA"], toFixIndex: 0 },
+  });
+  expect(
+    joinSidTransition({
+      catalog: { sids: [synSid] },
+      procedureId: "SYNDEP",
+      transitionId: "RW09",
+      remainingFixIds: ["JOIN", "N1", "NORMA"],
+      currentRouteFixIds: ["R27A", "R27B", "JOIN", "N1", "NORMA"],
+    }),
+  ).toEqual({ ok: false, reason: "NOT_ON_COURSE" });
+});
+
+test("joinSidTransition rejects unknown SID, unknown transition, and past-branch", () => {
+  expect(
+    joinSidTransition({
+      catalog: { sids: [synSid] },
+      procedureId: "NOPE",
+      transitionId: "NORMA",
+      remainingFixIds: ["R27A", "JOIN", "N1", "NORMA"],
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_PROCEDURE" });
+  expect(
+    joinSidTransition({
+      catalog: { sids: [synSid] },
+      procedureId: "SYNDEP",
+      transitionId: "ZZ",
+      remainingFixIds: ["R27A", "JOIN", "N1", "NORMA"],
+    }),
+  ).toEqual({ ok: false, reason: "UNKNOWN_TRANSITION" });
+  expect(
+    joinSidTransition({
+      catalog: { sids: [synSid] },
+      procedureId: "SYNDEP",
+      transitionId: "OCTTA",
+      remainingFixIds: ["NORMA"],
+      currentRouteFixIds: ["R27A", "R27B", "JOIN", "N1", "NORMA"],
+    }),
+  ).toEqual({ ok: false, reason: "NOT_ON_COURSE" });
+});
+
+test("joinNamedProcedure SID transition does not flatten catalog legs into extra TF fixes", () => {
+  expect(
+    joinNamedProcedure({
+      catalog: { sids: [synSid] },
+      procedureId: "SYNDEP",
+      transitionId: "OCTTA",
+      current: {
+        type: "PROCEDURE",
+        sidId: "SYNDEP",
+        starId: "SYNDEP",
+        routeFixIds: ["R27A", "R27B", "JOIN", "N1", "NORMA"],
+        toFixIndex: 2,
+      },
+    }),
+  ).toEqual({ starId: "SYNDEP", routeFixIds: ["JOIN", "O1", "OCTTA"], toFixIndex: 0 });
+});
+
+test("joinProcedureTransition routes STAR and SID ids without guessing the other kind", () => {
+  expect(
+    joinProcedureTransition({
+      catalog: { stars: [synStar], sids: [synSid] },
+      procedureId: "SYN1",
+      transitionId: "S",
+      remainingFixIds: ["NB", "MERGE"],
+    }),
+  ).toEqual({
+    ok: true,
+    join: { starId: "SYN1", routeFixIds: ["MERGE"], toFixIndex: 0 },
+  });
+  expect(
+    joinProcedureTransition({
+      catalog: { stars: [synStar], sids: [synSid] },
+      procedureId: "SYNDEP",
+      transitionId: "OCTTA",
+      remainingFixIds: ["JOIN", "N1", "NORMA"],
+      currentRouteFixIds: ["R27A", "R27B", "JOIN", "N1", "NORMA"],
+    }),
+  ).toEqual({
+    ok: true,
+    join: { starId: "SYNDEP", routeFixIds: ["JOIN", "O1", "OCTTA"], toFixIndex: 0 },
+  });
+});
+
+test("joinStarTransition rejects ambiguous duplicate transition ids", () => {
+  const dup: CatalogStar = {
+    id: "SYN1",
+    transitions: [
+      { id: "N", legs: [{ fixId: "NA" }, { fixId: "MERGE" }] },
+      { id: "N", legs: [{ fixId: "NB" }, { fixId: "MERGE" }] },
+    ],
+  };
+  expect(
+    joinStarTransition({
+      catalog: { stars: [dup] },
+      procedureId: "SYN1",
+      transitionId: "N",
+      remainingFixIds: ["MERGE"],
+    }),
+  ).toEqual({ ok: false, reason: "AMBIGUOUS_TRANSITION" });
 });

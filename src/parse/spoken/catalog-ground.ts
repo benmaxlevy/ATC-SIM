@@ -8,6 +8,7 @@
 
 import type { Instruction } from "@core";
 import { snapFix, type RankedCatalogHit } from "./catalog-snap";
+import { singleDigit } from "./numbers";
 
 /**
  * Local snap needs the full facility (CIFP packs are hundreds of fixes).
@@ -36,9 +37,17 @@ const WORD_DIGIT: Readonly<Record<string, string>> = {
   NINE: "9",
 };
 
+export interface CatalogStarTransitionVocab {
+  id: string;
+  name?: string;
+  runwayId?: string;
+  runways?: readonly string[];
+}
+
 export interface CatalogProcedure {
   id: string;
   name?: string;
+  transitions?: readonly CatalogStarTransitionVocab[];
 }
 
 export function levenshtein(a: string, b: string): number {
@@ -241,7 +250,12 @@ export function sanitizeCatalogProcedures(
     }
     seen.add(id);
     const name = item.name?.trim();
-    out.push(name ? { id, name } : { id });
+    const transitions = sanitizeStarTransitions(item.transitions);
+    const entry: CatalogProcedure = name ? { id, name } : { id };
+    if (transitions.length > 0) {
+      entry.transitions = transitions;
+    }
+    out.push(entry);
     if (out.length >= MAX_CATALOG_PROCEDURES) {
       break;
     }
@@ -323,19 +337,289 @@ export function groundInstructionProcedures(
   });
 }
 
+function sidTransitionVocab(sid: {
+  enrouteTransitions?: ReadonlyArray<{ id: string; name?: string }>;
+  runwayTransitions?: ReadonlyArray<{ runwayId: string }>;
+}): CatalogStarTransitionVocab[] {
+  const out: CatalogStarTransitionVocab[] = [];
+  for (const et of sid.enrouteTransitions ?? []) {
+    const id = et.id.trim().toUpperCase();
+    if (!id) {
+      continue;
+    }
+    const name = et.name?.trim();
+    out.push(name ? { id, name } : { id });
+  }
+  for (const rt of sid.runwayTransitions ?? []) {
+    const runwayId = rt.runwayId.trim();
+    if (!runwayId) {
+      continue;
+    }
+    const padded = padRunwayId(runwayId);
+    out.push({ id: `RW${padded}`, runwayId: padded });
+  }
+  return out;
+}
+
 export function proceduresFromCatalog(
   catalog?: {
-    stars?: ReadonlyArray<{ id: string; name?: string }>;
-    sids?: ReadonlyArray<{ id: string; name?: string }>;
+    stars?: ReadonlyArray<{
+      id: string;
+      name?: string;
+      transitions?: ReadonlyArray<CatalogStarTransitionVocab>;
+    }>;
+    sids?: ReadonlyArray<{
+      id: string;
+      name?: string;
+      enrouteTransitions?: ReadonlyArray<{ id: string; name?: string }>;
+      runwayTransitions?: ReadonlyArray<{ runwayId: string }>;
+    }>;
   } | null,
 ): CatalogProcedure[] {
   if (!catalog) {
     return [];
   }
   return sanitizeCatalogProcedures([
-    ...(catalog.stars ?? []).map((item) => ({ id: item.id, name: item.name })),
-    ...(catalog.sids ?? []).map((item) => ({ id: item.id, name: item.name })),
+    ...(catalog.stars ?? []).map((item) => ({
+      id: item.id,
+      name: item.name,
+      transitions: item.transitions,
+    })),
+    ...(catalog.sids ?? []).map((item) => ({
+      id: item.id,
+      name: item.name,
+      transitions: sidTransitionVocab(item),
+    })),
   ]);
+}
+
+const TRANSITION_ID = /^[A-Z]{1,8}[0-9]{0,2}$/;
+const TRANSITION_STOP = new Set([
+  "and",
+  "then",
+  "turn",
+  "fly",
+  "climb",
+  "descend",
+  "maintain",
+  "proceed",
+  "direct",
+  "join",
+  "via",
+  "ident",
+  "say",
+  "cleared",
+  "intercept",
+  "heading",
+  "cross",
+  "reduce",
+  "increase",
+  "slow",
+  "expedite",
+]);
+
+function sanitizeStarTransitions(
+  raw: readonly CatalogStarTransitionVocab[] | undefined | null,
+): CatalogStarTransitionVocab[] {
+  const out: CatalogStarTransitionVocab[] = [];
+  const seen = new Set<string>();
+  for (const item of raw ?? []) {
+    const id = item.id.trim().toUpperCase();
+    if (!id || seen.has(id) || !TRANSITION_ID.test(id)) {
+      continue;
+    }
+    seen.add(id);
+    const name = item.name?.trim();
+    const runwayId = item.runwayId?.trim();
+    const runways = item.runways?.map((r) => r.trim()).filter((r) => r.length > 0);
+    const entry: CatalogStarTransitionVocab = { id };
+    if (name) {
+      entry.name = name;
+    }
+    if (runwayId) {
+      entry.runwayId = runwayId;
+    }
+    if (runways && runways.length > 0) {
+      entry.runways = runways;
+    }
+    out.push(entry);
+  }
+  return out;
+}
+
+function padRunwayId(runwayId: string): string {
+  const clean = runwayId.replace(/^RW/i, "").trim().toUpperCase();
+  const side = /[LRC]$/.test(clean) ? clean.slice(-1) : "";
+  const num = side ? clean.slice(0, -1) : clean;
+  return `${num.padStart(2, "0")}${side}`;
+}
+
+function transitionRunwayMatches(
+  transition: CatalogStarTransitionVocab,
+  runwayId: string,
+): boolean {
+  const want = padRunwayId(runwayId);
+  if (transition.runwayId !== undefined && padRunwayId(transition.runwayId) === want) {
+    return true;
+  }
+  return transition.runways?.some((id) => padRunwayId(id) === want) ?? false;
+}
+
+function runwaySide(tok: string | undefined): string | null {
+  if (tok === "left" || tok === "lima") {
+    return "L";
+  }
+  if (tok === "right" || tok === "romeo") {
+    return "R";
+  }
+  if (tok === "center" || tok === "centre" || tok === "charlie") {
+    return "C";
+  }
+  return null;
+}
+
+function takeSpokenRunway(
+  tokens: readonly string[],
+  i: number,
+): { id: string; next: number } | null {
+  const tok = tokens[i];
+  if (tok !== undefined && /^\d{1,2}[lrc]?$/i.test(tok)) {
+    const match = tok.match(/^(\d{1,2})([lrc])?$/i);
+    if (match) {
+      const num = match[1]!.padStart(2, "0");
+      const side = match[2]?.toUpperCase() ?? "";
+      const extra = !match[2] ? runwaySide(tokens[i + 1]) : null;
+      if (extra) {
+        return { id: `${num}${extra}`, next: i + 2 };
+      }
+      return { id: `${num}${side}`, next: i + 1 };
+    }
+  }
+  const d1 = singleDigit(tok);
+  const d2 = singleDigit(tokens[i + 1]);
+  if (d1 !== null && d2 !== null) {
+    const side = runwaySide(tokens[i + 2]);
+    if (side) {
+      return { id: `${d1}${d2}${side}`, next: i + 3 };
+    }
+    return { id: `${d1}${d2}`, next: i + 2 };
+  }
+  if (d1 !== null) {
+    const side = runwaySide(tokens[i + 1]);
+    if (side) {
+      return { id: `0${d1}${side}`, next: i + 2 };
+    }
+    return { id: `0${d1}`, next: i + 1 };
+  }
+  return null;
+}
+
+function matchTransitionPhrase(
+  phrase: string,
+  transitions: readonly CatalogStarTransitionVocab[],
+): CatalogStarTransitionVocab[] {
+  const key = compactProcedureKey(phrase);
+  if (!key) {
+    return [];
+  }
+  return transitions.filter((item) => {
+    if (compactProcedureKey(item.id) === key) {
+      return true;
+    }
+    return item.name !== undefined && compactProcedureKey(item.name) === key;
+  });
+}
+
+export type SpokenTransitionMatch =
+  | { kind: "hit"; id: string; next: number }
+  | { kind: "ambiguous"; next: number }
+  | { kind: "none" };
+
+/** True when leftover tokens look like a named STAR transition phrase. */
+export function looksLikeSpokenTransition(tokens: readonly string[], i: number): boolean {
+  const tok = tokens[i];
+  if (tok === undefined) {
+    return false;
+  }
+  if (tok === "the") {
+    return looksLikeSpokenTransition(tokens, i + 1);
+  }
+  if (tok === "runway" || tok === "transition") {
+    return true;
+  }
+  return tokens[i + 1] === "transition";
+}
+
+/**
+ * Unique catalog STAR transition id from spoken words, or none / ambiguous.
+ * Empty transition vocab → none (do not guess).
+ */
+export function matchSpokenStarTransition(
+  tokens: readonly string[],
+  i: number,
+  procedureId: string,
+  procedures: readonly CatalogProcedure[],
+): SpokenTransitionMatch {
+  const want = procedureId.trim().toUpperCase();
+  const proc = sanitizeCatalogProcedures(procedures).find((item) => item.id === want);
+  const transitions = proc?.transitions ?? [];
+  if (transitions.length === 0 || i >= tokens.length) {
+    return { kind: "none" };
+  }
+
+  let j = i;
+  if (tokens[j] === "the") {
+    j += 1;
+  }
+
+  if (tokens[j] === "runway") {
+    const rwy = takeSpokenRunway(tokens, j + 1);
+    if (rwy) {
+      let next = rwy.next;
+      if (tokens[next] === "transition") {
+        next += 1;
+      }
+      const hits = transitions.filter(
+        (item) =>
+          (item.runwayId !== undefined ||
+            (item.runways !== undefined && item.runways.length > 0)) &&
+          transitionRunwayMatches(item, rwy.id),
+      );
+      if (hits.length === 1) {
+        return { kind: "hit", id: hits[0]!.id, next };
+      }
+      if (hits.length > 1) {
+        return { kind: "ambiguous", next };
+      }
+      return { kind: "none" };
+    }
+  }
+
+  for (let n = Math.min(4, tokens.length - j); n >= 1; n -= 1) {
+    const slice = tokens.slice(j, j + n);
+    if (slice.some((tok) => TRANSITION_STOP.has(tok))) {
+      continue;
+    }
+    let phraseTokens = slice;
+    let next = j + n;
+    if (slice[slice.length - 1] === "transition") {
+      phraseTokens = slice.slice(0, -1);
+      if (phraseTokens.length === 0) {
+        continue;
+      }
+    } else if (tokens[j + n] === "transition") {
+      next = j + n + 1;
+    }
+    const hits = matchTransitionPhrase(phraseTokens.join(" "), transitions);
+    if (hits.length === 1) {
+      return { kind: "hit", id: hits[0]!.id, next };
+    }
+    if (hits.length > 1) {
+      return { kind: "ambiguous", next };
+    }
+  }
+
+  return { kind: "none" };
 }
 
 export interface CatalogApproach {

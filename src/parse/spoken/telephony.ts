@@ -90,6 +90,7 @@ export const RESERVED_SPOKEN: ReadonlySet<string> = new Set([
   "miles",
   "mile",
   "airport",
+  "transition",
 ]);
 
 const TABLE = telephonyTable as Record<string, string>;

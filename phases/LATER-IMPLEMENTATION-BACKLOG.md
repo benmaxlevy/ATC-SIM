@@ -6,6 +6,46 @@ been started.
 
 ## Scope and display
 
+### Authored radar sites — live SITE/SSA chrome, no live sensors (T04-45 / T02-75 / T02-76 / T02-77)
+
+Visible now: scenario JSON may declare trainer-authored `radarSites` (`id`,
+`name`, `kind` `asr`|`airport`, ENU or lat/lon, `rangeNm` default 60,
+`periodMs` default 4800). The loader validates rows and normalizes position
+to local NM via `latLonToNm` and the scenario ARP. Omitted or empty
+`radarSites` loads as `[]`, which is implicit FUSED (no site-selection
+entries, not “no surveillance”). KDEM and KATL ship airport-at-ARP plus one
+remote ASR using invented trainer ids (`KDEM-APT` / `KDEM-REMOTE`,
+`KATL-APT` / `KATL-REMOTE`). T02-75 samples FUSED / MULTI / `{ siteId }`
+display reports, freezes PPI / datablock / PTL / ATPA pose on the last
+report, records history on report arrival, and paints the FUSED puck,
+MULTI rectangle perpendicular to PTL / history, and single-site range-sized
+rectangle (green far-side line ~30% longer than the block; outline when very
+far). T02-77 binds those rows onto the
+live view at boot and session apply (`radarSites` from the loaded scenario;
+unknown stored SITE id → FUSED). MAIN SITE is enabled: submenu FUSED /
+MULTI / one cap per adapted site; MAIN text is `SITE FUSED`, `SITE MULTI`,
+or `SITE <id>`; SSA radar word follows that live mode. PREF persists SITE
+display mode only and falls back to FUSED for an unknown stored site id.
+PREF named sets (T02-73) and per-track PTL (T02-74) are shipped.
+
+Deliberately missing:
+
+- live sensor / network-health telemetry. SSA keeps the `OK/OK/NA` stub.
+- 30-second coast after a missed report. Out of coverage drops immediately.
+- aural ATPA (CA remains the only conflict audio).
+
+WX mosaic stays the other swarm (T02-68–72). Do not fold weather paint or
+IEM/mosaic work into SITE follow-ups.
+
+Constraints later work must keep:
+
+- sites stay trainer fixtures, not NAS adaptation or official FAA ids;
+- no `src/` import of `tools/cifp-import`; no airport-id site branch;
+- empty `[]` remains implicit FUSED; range checks at report time belong
+  to the sampler, not a KDEM-only fallback;
+- World / FMS / CA / MSAW stay 20 Hz truth; display consumers keep last
+  report pose. No 30 s coast.
+
 ### Real ATPA pairing and predicted geometry
 
 Live now: catalog volumes walked by `approachId` (T02-43), in-trail pairing
@@ -194,15 +234,16 @@ silently introduce a metered vendor dependency.
 
 ### PTL targeting
 
-The predicted track line is currently global, with OWN/ALL display controls.
-Possible follow-ups are per-track PTL selection, additional duration presets,
-and richer prediction geometry.
+Per-track PTL is shipped (`*R` plus click, session map, not PREF). Global ALL /
+OWN / LNTH / `*PTL` minutes and F7 stay as they are. Remaining follow-ups are
+additional duration presets and richer prediction geometry.
 
 ### DCB capabilities currently represented as disabled chrome
 
-The trainer DCB now includes live MAIN WX1–6 latches and live BRITE WX/WXC
-spinners. VOL, MODE, SITE, and BRITE BKC stay disabled, as do unpopulated
-map slots. Later implementations may give the remaining cells real behavior:
+The trainer DCB now includes live MAIN WX1–6 latches, live BRITE WX/WXC
+spinners, and live SITE (FUSED / MULTI / adapted sites). VOL, MODE FSL, and
+BRITE BKC stay disabled, as do unpopulated map slots. Later implementations
+may give the remaining cells real behavior:
 
 - BRITE BKC and weather-data lifecycle chrome (SSA WX HIST);
 - audio/display mode controls that remain separate from OS volume;
@@ -246,16 +287,15 @@ BRITE / cached paint. Do not invent a visual pass.
 
 ### PREF SAVE AS named sets
 
-SAVE AS currently auto-names the first empty slot `PREF n` and forbids
-`window.prompt` / HTML `<input>`. CRC STARS prompts for a preference-set name,
-then writes the first available slot.
+Shipped: SAVE AS collects a short alphanumeric name through the preview-area /
+status-line buffer (CRC analog, R07). Enter writes the first empty slot, or the
+last slot when the 32-slot table is full. Esc cancels with no write. Digit-only
+names are rejected (FIL reserved). MAIN shows the active set name; slot caps
+show the stored name. No `window.prompt`, no HTML `<input>`.
 
-Later: after SAVE AS, collect a short name via a PPI/status-line chord (same
-grammar as the altitude FILTER `FIL` prompt). Enter commits to the first empty
-slot (slot 8 if all eight are full). Esc cancels. Do not use a browser dialog
-or an HTML text field. Slot caps should show the stored name once it exists.
-
-MAIN already shows the active set name on the PREF cap.
+Still not a NAS preference host. Slash names such as `22/27` are not typeable
+(alphanumeric only). Per-track PTL and TPA stay session state and are not
+persisted in PREF. WX `wxLevels` stay the other swarm.
 
 ### Manual Inhibit Commands and Safety Inhibit Glyphs
 
@@ -316,7 +356,7 @@ Deferred to future simulation phases:
 
 ### SSA Multi-Sensor Fusion Telemetry and Network Health
 
-Visible now: SSA header layout rendering alert indicator `[▼]`, subset `(1)`, Zulu time + altimeter, network status + radar mode (`OK/OK/NA FUSED`), beacon blocks, red SPC alerts, range + PTL, dual altitude filters, and satellite airport altimeters.
+Visible now: SSA header layout rendering alert indicator `[▼]`, subset `(1)`, Zulu time + altimeter, network-health stub plus live radar word (`OK/OK/NA FUSED` / `MULTI` / selected site id), beacon blocks, red SPC alerts, range + PTL, dual altitude filters, and satellite airport altimeters. Network health is still the `OK/OK/NA` stub, not live sensors.
 
 Deferred to future simulation phases:
 - **Live Multi-Sensor Radar Health Telemetry**: Dynamic degradation to `NA/NA/NA` with sensor-specific failover when individual radar heads disconnect.

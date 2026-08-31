@@ -77,9 +77,14 @@ window.addEventListener("pagehide", () => {
   handles.caAlertTone.dispose();
 });
 
+// T02-77: authored radarSites ride the same generic scenario bind as MAPS /
+// GI TEXT. Empty catalog stays implicit FUSED. CRC R07 SITE analog; R05 FOA
+// display data; R01 radar-identification wording. Trainer fixtures, not live
+// sensors. No airport-id branch.
 const scopeView = createScopeView(scenario.arpNm.xNm, scenario.arpNm.yNm, {
   digitalMap: parseDigitalMap(scenario.maps),
   giTextLines: scenario.giTextLines,
+  radarSites: scenario.radarSites,
   arp: scenario.arp,
 });
 const prefStore = browserDcbPrefStorage();

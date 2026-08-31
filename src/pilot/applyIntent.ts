@@ -8,6 +8,7 @@ import type { Aircraft, Instruction, MissedCatalog, ProcedureJoinCatalog, Sessio
 import {
   beginMissedApproach,
   joinNamedProcedure,
+  joinProcedureTransition,
   missedApproachId,
   missedSpecFor,
   normalizeHeading,
@@ -20,6 +21,8 @@ export interface ApplyIntentOpts {
   catalog?: (MissedCatalog & ProcedureJoinCatalog) | null;
   log?: SessionLog | null;
   fixXy?: ((id: string) => { xNm: number; yNm: number } | undefined) | null;
+  /** Scenario active runway; runway-tagged STAR transitions must match. */
+  activeRunwayId?: string | null;
 }
 
 export function applyIntent(
@@ -91,6 +94,7 @@ function joinPublishedLateral(
   aircraft: Aircraft,
   procedureId: string,
   opts?: ApplyIntentOpts,
+  transitionId?: string,
 ): void {
   if (shouldKeepPublishedLateral(aircraft)) {
     return;
@@ -98,6 +102,8 @@ function joinPublishedLateral(
   const joined = joinNamedProcedure({
     catalog: opts?.catalog,
     procedureId,
+    transitionId,
+    activeRunwayId: opts?.activeRunwayId,
     current: publishedLateralHint(aircraft),
     xNm: aircraft.xNm,
     yNm: aircraft.yNm,
@@ -114,12 +120,72 @@ function joinPublishedLateral(
   };
 }
 
+function applyStarTransitionLateral(
+  aircraft: Aircraft,
+  procedureId: string,
+  transitionId: string,
+  opts?: ApplyIntentOpts,
+): boolean {
+  if (shouldKeepPublishedLateral(aircraft)) {
+    return true;
+  }
+  const current = publishedLateralHint(aircraft);
+  const want = procedureId.trim().toUpperCase();
+  const onThisProc =
+    current?.type === "PROCEDURE" &&
+    ((current.starId && current.starId.trim().toUpperCase() === want) ||
+      (current.sidId && current.sidId.trim().toUpperCase() === want));
+  const remainingFixIds = onThisProc ? current.routeFixIds.slice(current.toFixIndex) : undefined;
+  const currentRouteFixIds = onThisProc ? current.routeFixIds : undefined;
+  const resolved = joinProcedureTransition({
+    catalog: opts?.catalog,
+    procedureId,
+    transitionId,
+    activeRunwayId: opts?.activeRunwayId,
+    remainingFixIds,
+    currentRouteFixIds,
+  });
+  if (!resolved.ok) {
+    return false;
+  }
+  const sidMatch = (opts?.catalog?.sids ?? []).some(
+    (sid) => sid.id.trim().toUpperCase() === resolved.join.starId.trim().toUpperCase(),
+  );
+  aircraft.intent.lateral = {
+    type: "PROCEDURE",
+    starId: resolved.join.starId,
+    ...(sidMatch ? { sidId: resolved.join.starId } : {}),
+    toFixIndex: resolved.join.toFixIndex,
+    routeFixIds: resolved.join.routeFixIds,
+  };
+  return true;
+}
+
+/**
+ * Analog: JO 7110.65 Climb Via / Descend Via amendments (R01); AIM phraseology
+ * (R03). Trainer delta: named transition is catalog JSON, not NAS. Prove the
+ * join before mutating VIA or assignedAltitudeFt.
+ */
 function applyVia(
   aircraft: Aircraft,
   procedureId: string,
   sense: "DESCEND" | "CLIMB",
   opts?: ApplyIntentOpts,
+  transitionId?: string,
 ): void {
+  if (transitionId) {
+    if (!applyStarTransitionLateral(aircraft, procedureId, transitionId, opts)) {
+      return;
+    }
+    const normId = procedureId.trim().toUpperCase();
+    aircraft.intent.vertical =
+      sense === "CLIMB"
+        ? { type: "VIA_SID", sidId: normId }
+        : { type: "VIA_STAR", starId: normId, sense };
+    aircraft.intent.controllerAssignedAltitudeFt = undefined;
+    aircraft.intent.controllerAssignedSpeedKt = undefined;
+    return;
+  }
   const normId = procedureId.trim().toUpperCase();
   aircraft.intent.vertical =
     sense === "CLIMB"
@@ -127,7 +193,7 @@ function applyVia(
       : { type: "VIA_STAR", starId: normId, sense };
   aircraft.intent.controllerAssignedAltitudeFt = undefined;
   aircraft.intent.controllerAssignedSpeedKt = undefined;
-  joinPublishedLateral(aircraft, procedureId, opts);
+  joinPublishedLateral(aircraft, procedureId, opts, transitionId);
 }
 
 /**
@@ -202,12 +268,21 @@ function applyOne(
       aircraft.intent.lateral = { type: "DIRECT", fixId: instruction.fixId.trim().toUpperCase() };
       return;
     case "DESCEND_VIA":
-      applyVia(aircraft, instruction.procedureId, "DESCEND", opts);
+      applyVia(aircraft, instruction.procedureId, "DESCEND", opts, instruction.transitionId);
       return;
     case "CLIMB_VIA":
-      applyVia(aircraft, instruction.procedureId, "CLIMB", opts);
+      applyVia(aircraft, instruction.procedureId, "CLIMB", opts, instruction.transitionId);
       return;
     case "JOIN_PROCEDURE":
+      if (instruction.transitionId) {
+        applyStarTransitionLateral(
+          aircraft,
+          instruction.procedureId,
+          instruction.transitionId,
+          opts,
+        );
+        return;
+      }
       joinPublishedLateral(aircraft, instruction.procedureId, opts);
       return;
     case "CROSS":

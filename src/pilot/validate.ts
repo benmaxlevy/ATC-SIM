@@ -10,7 +10,7 @@ import type {
   ProcedureJoinCatalog,
   VerticalCatalog,
 } from "@core";
-import { isOnCourseToFix } from "@core";
+import { isOnCourseToFix, joinProcedureTransition } from "@core";
 
 export const ALTITUDE_MIN_FT = 1000;
 export const ALTITUDE_MAX_FT = 18000;
@@ -28,6 +28,8 @@ export type ValidateReason =
   | "DESCEND_NOT_BELOW"
   | "UNKNOWN_FIX"
   | "UNKNOWN_PROCEDURE"
+  | "UNKNOWN_TRANSITION"
+  | "AMBIGUOUS_TRANSITION"
   | "NOT_ON_COURSE"
   | "UNKNOWN_APPROACH"
   | "NOT_ON_APPROACH";
@@ -37,6 +39,8 @@ export type ValidateResult = { ok: true } | { ok: false; reason: ValidateReason;
 export interface ValidateOpts {
   fixRegistry?: FixRegistry | null;
   catalog?: (VerticalCatalog & ProcedureJoinCatalog) | null;
+  /** Scenario active runway; runway-tagged STAR transitions must match. */
+  activeRunwayId?: string | null;
   /** When set (catalog loaded), CLEARED/EXPECT must match an approach id. */
   approachIds?: readonly string[] | null;
 }
@@ -111,7 +115,7 @@ function validateOne(
     case "DESCEND_VIA":
     case "CLIMB_VIA":
     case "JOIN_PROCEDURE":
-      return validateVia(instruction.procedureId, opts);
+      return validateDescendViaOrJoin(aircraft, instruction, opts);
     case "CROSS":
       return validateCross(aircraft, instruction, opts);
     case "GO_AROUND":
@@ -165,6 +169,61 @@ function validateAltitude(
   }
   if (instruction.verb === "DESCEND" && ft >= aircraft.altitudeFt) {
     return { ok: false, reason: "DESCEND_NOT_BELOW" };
+  }
+  return { ok: true };
+}
+
+function onPublishedProcedure(
+  aircraft: Aircraft,
+  procedureId: string,
+): Extract<Aircraft["intent"]["lateral"], { type: "PROCEDURE" }> | undefined {
+  const lateral = aircraft.intent.lateral;
+  if (lateral?.type !== "PROCEDURE") {
+    return undefined;
+  }
+  const want = procedureId.trim().toUpperCase();
+  const star = lateral.starId?.trim().toUpperCase();
+  const sid = lateral.sidId?.trim().toUpperCase();
+  if (star !== want && sid !== want) {
+    return undefined;
+  }
+  return lateral;
+}
+
+function remainingProcedureFixIds(aircraft: Aircraft, procedureId: string): string[] | undefined {
+  const lateral = onPublishedProcedure(aircraft, procedureId);
+  return lateral ? lateral.routeFixIds.slice(lateral.toFixIndex) : undefined;
+}
+
+function currentProcedureRouteFixIds(
+  aircraft: Aircraft,
+  procedureId: string,
+): readonly string[] | undefined {
+  return onPublishedProcedure(aircraft, procedureId)?.routeFixIds;
+}
+
+function validateDescendViaOrJoin(
+  aircraft: Aircraft,
+  instruction: Extract<Instruction, { type: "DESCEND_VIA" | "CLIMB_VIA" | "JOIN_PROCEDURE" }>,
+  opts?: ValidateOpts,
+): ValidateResult {
+  const known = validateVia(instruction.procedureId, opts);
+  if (!known.ok) {
+    return known;
+  }
+  if (!instruction.transitionId) {
+    return { ok: true };
+  }
+  const resolved = joinProcedureTransition({
+    catalog: opts?.catalog,
+    procedureId: instruction.procedureId,
+    transitionId: instruction.transitionId,
+    activeRunwayId: opts?.activeRunwayId,
+    remainingFixIds: remainingProcedureFixIds(aircraft, instruction.procedureId),
+    currentRouteFixIds: currentProcedureRouteFixIds(aircraft, instruction.procedureId),
+  });
+  if (!resolved.ok) {
+    return { ok: false, reason: resolved.reason };
   }
   return { ok: true };
 }

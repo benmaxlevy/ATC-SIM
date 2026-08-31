@@ -18,6 +18,14 @@
 import { SCOPE_FONT_STACK } from "./fonts";
 import { PALETTE, historyTrailColor } from "./palette";
 import { ownershipStubChar, type TrackOwnership } from "./ownership";
+import {
+  MULTI_RECT_COLOR,
+  SITE_FAR_LINE_COLOR,
+  SITE_FAR_LINE_STROKE_PX,
+  multiRectCorners,
+  siteRectMark,
+  type SurveillancePaint,
+} from "./surveillance";
 
 /** Position-symbol shape for primary targets. Axis-aligned diamond, not heading-rotated. */
 export const TARGET_SHAPE = "diamond" as const;
@@ -63,6 +71,20 @@ export interface TargetSymbolOptions {
   beaconCode?: string;
   beaconSelect?: ReadonlySet<string> | ReadonlyArray<string>;
   sectorId?: string;
+  /** Default FUSED puck. MULTI / single-site replace the blue circle. */
+  surveillancePaint?: SurveillancePaint;
+  /** Ground-track heading for the MULTI rectangle (long axis ⊥ PTL, not leader). */
+  groundTrackDeg?: number;
+  reportXNm?: number;
+  reportYNm?: number;
+  antennaXNm?: number;
+  antennaYNm?: number;
+  /** Authored site range; scales single-site rect and outline threshold. */
+  siteRangeNm?: number;
+  /** BRITE PRI tint for the blue position mark. */
+  positionMarkColor?: string;
+  /** BRITE PRI tint for the single-site far-side green line. */
+  farLineColor?: string;
 }
 
 export interface TargetSymbolDescriptor {
@@ -301,6 +323,104 @@ function strokeDiamond(ctx: CanvasRenderingContext2D, x: number, y: number, size
   ctx.stroke();
 }
 
+function fillOrientedRect(
+  ctx: CanvasRenderingContext2D,
+  corners: ReadonlyArray<{ x: number; y: number }>,
+  color: string,
+  outlineOnly: boolean,
+): void {
+  ctx.beginPath();
+  ctx.moveTo(corners[0]!.x, corners[0]!.y);
+  ctx.lineTo(corners[1]!.x, corners[1]!.y);
+  ctx.lineTo(corners[2]!.x, corners[2]!.y);
+  ctx.lineTo(corners[3]!.x, corners[3]!.y);
+  ctx.closePath();
+  if (outlineOnly) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = TARGET_STROKE_PX;
+    ctx.stroke();
+    return;
+  }
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+/** Small blue MULTI rectangle centered on the glyph, long axis ⊥ PTL / history. */
+export function drawMultiSurveillanceRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  headingDeg: number,
+  color: string = MULTI_RECT_COLOR,
+): void {
+  fillOrientedRect(ctx, multiRectCorners(x, y, headingDeg), color, false);
+}
+
+/** Range-sized blue site rect facing the antenna, green line on the far side. */
+export function drawSiteSurveillanceRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  reportXNm: number,
+  reportYNm: number,
+  antennaXNm: number,
+  antennaYNm: number,
+  siteRangeNm: number,
+  markColor: string = MULTI_RECT_COLOR,
+  farLineColor: string = SITE_FAR_LINE_COLOR,
+): void {
+  const mark = siteRectMark(x, y, reportXNm, reportYNm, antennaXNm, antennaYNm, siteRangeNm);
+  fillOrientedRect(ctx, mark.corners, markColor, mark.outlineOnly);
+  ctx.strokeStyle = farLineColor;
+  ctx.lineWidth = SITE_FAR_LINE_STROKE_PX;
+  ctx.beginPath();
+  ctx.moveTo(mark.farLine.x1, mark.farLine.y1);
+  ctx.lineTo(mark.farLine.x2, mark.farLine.y2);
+  ctx.stroke();
+}
+
+function drawSurveillanceMark(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  options: TargetSymbolOptions,
+  paint: SurveillancePaint,
+): void {
+  const markColor = options.positionMarkColor ?? MULTI_RECT_COLOR;
+  if (paint === "multi-rect") {
+    drawMultiSurveillanceRect(ctx, x, y, options.groundTrackDeg ?? 0, markColor);
+    return;
+  }
+  if (paint === "site-rect") {
+    drawSiteSurveillanceRect(
+      ctx,
+      x,
+      y,
+      options.reportXNm ?? 0,
+      options.reportYNm ?? 0,
+      options.antennaXNm ?? 0,
+      options.antennaYNm ?? 0,
+      options.siteRangeNm ?? 60,
+      markColor,
+      options.farLineColor ?? SITE_FAR_LINE_COLOR,
+    );
+  }
+}
+
+function fillFusedPuck(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  sizePx: number,
+  color: string = TARGET_PUCK_BG,
+): void {
+  const radiusPx = Math.max(5, Math.round(sizePx * 0.65));
+  ctx.beginPath();
+  ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
 export function drawOwnershipStub(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -351,32 +471,29 @@ export function drawTargetSymbol(
   }
 
   const desc = targetSymbolDescriptor(options);
+  const paint = options.surveillancePaint ?? "fused-puck";
+  if (paint !== "fused-puck") {
+    drawSurveillanceMark(ctx, x, y, options, paint);
+  }
   if (desc.shape === "diamond") {
     ctx.strokeStyle = color;
     ctx.lineWidth = TARGET_STROKE_PX;
     const diamondSize = Math.max(PRIMARY_TARGET_SIZE_PX, Math.round(sizePx * 1.25));
     strokeDiamond(ctx, x, y, diamondSize);
   } else if (desc.shape === "square") {
-    // Solid blue circle background behind the square
-    const radiusPx = Math.max(5, Math.round(sizePx * 0.65));
-    ctx.beginPath();
-    ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
-    ctx.fillStyle = TARGET_PUCK_BG;
-    ctx.fill();
+    if (paint === "fused-puck") {
+      fillFusedPuck(ctx, x, y, sizePx, options.positionMarkColor ?? TARGET_PUCK_BG);
+    }
 
     ctx.strokeStyle = color;
     ctx.lineWidth = TARGET_STROKE_PX;
     const half = sizePx / 2;
     ctx.strokeRect(x - half, y - half, sizePx, sizePx);
   } else {
-    // 1. Draw solid blue background circle (#175dc7)
-    const radiusPx = Math.max(5, Math.round(sizePx * 0.65));
-    ctx.beginPath();
-    ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
-    ctx.fillStyle = TARGET_PUCK_BG;
-    ctx.fill();
+    if (paint === "fused-puck") {
+      fillFusedPuck(ctx, x, y, sizePx, options.positionMarkColor ?? TARGET_PUCK_BG);
+    }
 
-    // 2. Text color: White for owned aircraft (matching datablock), Green for others (matching datablock)
     let textColor = color;
     if (
       color === POSITION_SYMBOL_COLOR ||

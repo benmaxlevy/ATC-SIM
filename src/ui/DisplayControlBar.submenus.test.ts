@@ -9,12 +9,13 @@ import {
   stepCharSizeChannel,
   selectDcbPrefSlot,
   saveDcbPref,
-  saveAsDcbPref,
+  beginDcbPrefSaveAs,
+  commitDcbPrefSaveAs,
   deleteDcbPref,
 } from "@scope";
 
 describe("DCB submenus functional suite", () => {
-  it("opens and closes BRITE, CHAR SIZE, SSA FILTER, GI FILTER, MAPS, PREF, and TPA_ATPA submenus", () => {
+  it("opens and closes BRITE, CHAR SIZE, SSA FILTER, GI FILTER, MAPS, PREF, TPA_ATPA, and SITE submenus", () => {
     const view = createScopeView();
     expect(view.dcbMenu).toBe("MAIN");
 
@@ -50,6 +51,11 @@ describe("DCB submenus functional suite", () => {
 
     openDcbMenu(view, "TPA_ATPA");
     expect(view.dcbMenu).toBe("TPA_ATPA");
+    closeDcbMenu(view);
+    expect(view.dcbMenu).toBe("MAIN");
+
+    openDcbMenu(view, "SITE");
+    expect(view.dcbMenu).toBe("SITE");
     closeDcbMenu(view);
     expect(view.dcbMenu).toBe("MAIN");
   });
@@ -90,8 +96,9 @@ describe("DCB submenus functional suite", () => {
     saveDcbPref(view);
     expect(view.dcbPref.slots[0]).not.toBeNull();
 
-    saveAsDcbPref(view);
-    expect(view.dcbPref.slots[1]?.name).toBe("PREF 2");
+    beginDcbPrefSaveAs(view);
+    commitDcbPrefSaveAs(view, "DAY");
+    expect(view.dcbPref.slots[1]?.name).toBe("DAY");
 
     selectDcbPrefSlot(view, 0);
     deleteDcbPref(view);

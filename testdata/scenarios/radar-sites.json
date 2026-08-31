@@ -1,0 +1,20 @@
+{
+  "note": "Invented trainer ids, not official FAA/NAS site adaptation. R07/R04 supply SITE/FUSED vocabulary only.",
+  "arp": { "latDeg": 12, "lonDeg": -40 },
+  "radarSites": [
+    {
+      "id": "GEN-APT",
+      "name": "Generic airport",
+      "kind": "airport",
+      "xNm": 0,
+      "yNm": 0
+    },
+    {
+      "id": "GEN-REMOTE",
+      "name": "Generic remote ASR",
+      "kind": "asr",
+      "latDeg": 12.5,
+      "lonDeg": -40
+    }
+  ]
+}

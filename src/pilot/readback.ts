@@ -34,6 +34,8 @@ export type RejectReason =
   | "PARSE"
   | "UNKNOWN_FIX"
   | "UNKNOWN_PROCEDURE"
+  | "UNKNOWN_TRANSITION"
+  | "AMBIGUOUS_TRANSITION"
   | "NOT_ON_COURSE"
   | "UNKNOWN_APPROACH"
   | "NOT_ON_APPROACH";
@@ -54,6 +56,8 @@ const REJECT_AFTER_CALLSIGN: Record<string, string> = {
   DESCEND_NOT_BELOW: "unable altitude",
   UNKNOWN_FIX: "unable, unknown fix",
   UNKNOWN_PROCEDURE: "unable, unknown procedure",
+  UNKNOWN_TRANSITION: "unable, unknown transition",
+  AMBIGUOUS_TRANSITION: "unable, ambiguous transition",
   UNKNOWN_APPROACH: "unable, unknown approach",
   NOT_ON_APPROACH: "unable, not on approach",
 };
@@ -149,11 +153,11 @@ function formatInstructionClause(
     case "DIRECT":
       return `direct ${instruction.fixId}`;
     case "JOIN_PROCEDURE":
-      return `join ${procedureSpeech(instruction.procedureId, procedureNames)}`;
+      return `join ${procedureSpeech(instruction.procedureId, procedureNames)}${transitionSpeech(instruction.transitionId)}`;
     case "DESCEND_VIA":
-      return `descend via ${procedureSpeech(instruction.procedureId, procedureNames)}`;
+      return `descend via ${procedureSpeech(instruction.procedureId, procedureNames)}${transitionSpeech(instruction.transitionId)}`;
     case "CLIMB_VIA":
-      return `climb via ${procedureSpeech(instruction.procedureId, procedureNames)}`;
+      return `climb via ${procedureSpeech(instruction.procedureId, procedureNames)}${transitionSpeech(instruction.transitionId)}`;
     case "CROSS": {
       const alt = formatAltitude(instruction.altitudeFt);
       const fix = instruction.fixId;
@@ -179,6 +183,13 @@ function procedureSpeech(
   procedureNames?: Readonly<Record<string, string>>,
 ): string {
   return procedureNames?.[procedureId] ?? procedureId;
+}
+
+function transitionSpeech(transitionId?: string): string {
+  if (!transitionId) {
+    return "";
+  }
+  return `, ${transitionId} transition`;
 }
 
 /**

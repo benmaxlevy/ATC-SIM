@@ -563,9 +563,10 @@ function findPtlStroke(
   ac: { xNm: number; yNm: number; headingDeg: number; speedKt: number },
   view: ReturnType<typeof createScopeView>,
   css: number,
+  minutes: number = PTL_MINUTES,
 ): PathStroke | undefined {
   const size = { widthPx: css, heightPx: css };
-  const end = ptlEndpoint(ac.xNm, ac.yNm, ac.headingDeg, ac.speedKt, PTL_MINUTES);
+  const end = ptlEndpoint(ac.xNm, ac.yNm, ac.headingDeg, ac.speedKt, minutes);
   const from = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
   const to = nmToScreen(end.eastNm, end.northNm, view.camera, size);
   return pathStrokes.find((stroke) => {
@@ -621,6 +622,48 @@ test("AC4 — PTL is off by default; F7 on draws a ~1 min line per unfiltered tr
   for (const track of traffic.aircraft) {
     expect(findPtlStroke(allOn.pathStrokes, track, trafficView, css), track.callsign).toBeDefined();
   }
+});
+
+test("per-track ON PTL draws when ALL and OWN are off; OFF hides under ALL", () => {
+  const shown = makeTestAircraft({
+    id: "ac-on",
+    callsign: "DALON",
+    xNm: -4,
+    yNm: 0,
+    headingDeg: 90,
+    speedKt: 180,
+  });
+  const hidden = makeTestAircraft({
+    id: "ac-off",
+    callsign: "AALOFF",
+    xNm: 4,
+    yNm: 0,
+    headingDeg: 90,
+    speedKt: 180,
+  });
+  const world = createWorld({ aircraft: [shown, hidden] });
+  const view = createScopeView();
+  const css = 800;
+  view.ptlByAircraftId.set(shown.id, true);
+  const forced = createMockCtx();
+  renderScope(forced.ctx, world, view, css, css);
+  expect(view.ptlOn).toBe(false);
+  expect(view.ptlOwn).toBe(false);
+  expect(findPtlStroke(forced.pathStrokes, shown, view, css)).toBeDefined();
+  expect(findPtlStroke(forced.pathStrokes, hidden, view, css)).toBeUndefined();
+
+  view.ptlOn = true;
+  view.ptlByAircraftId.set(hidden.id, false);
+  const allOn = createMockCtx();
+  renderScope(allOn.ctx, world, view, css, css);
+  expect(findPtlStroke(allOn.pathStrokes, shown, view, css)).toBeDefined();
+  expect(findPtlStroke(allOn.pathStrokes, hidden, view, css)).toBeUndefined();
+
+  view.ptlMinutes = 2;
+  const long = createMockCtx();
+  renderScope(long.ctx, world, view, css, css);
+  expect(findPtlStroke(long.pathStrokes, shown, view, css, 2)).toBeDefined();
+  expect(findPtlStroke(long.pathStrokes, shown, view, css, 1)).toBeUndefined();
 });
 
 test("AC5 — altitude filter suppresses PTL; target symbol remains", () => {

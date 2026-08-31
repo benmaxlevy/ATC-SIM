@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import type { CatalogProcedure } from "./catalog-ground";
 import { normalizeSpoken } from "./normalizer";
 import { matchSpokenPatterns } from "./pattern-matcher";
 
@@ -19,7 +20,7 @@ describe("pattern-matcher (island parser)", () => {
     opts?: {
       selected?: string | null;
       fixes?: string[];
-      procedures?: typeof catalogProcedures;
+      procedures?: readonly CatalogProcedure[];
       approaches?: typeof catalogApproaches;
     },
   ) {
@@ -229,11 +230,54 @@ describe("pattern-matcher (island parser)", () => {
       expect(res.instructions).toEqual([{ type: "DESCEND_VIA", procedureId: "DEM1" }]);
     });
 
+    test("descend via SYN ONE north transition", () => {
+      const res = parse("descend via SYN ONE, north transition", {
+        selected: "DAL123",
+        procedures: [
+          {
+            id: "SYN1",
+            name: "SYN ONE",
+            transitions: [
+              { id: "N", name: "NORTH" },
+              { id: "S", name: "SOUTH" },
+              { id: "RW09", runwayId: "09" },
+            ],
+          },
+        ],
+      });
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.instructions).toEqual([
+        { type: "DESCEND_VIA", procedureId: "SYN1", transitionId: "N" },
+      ]);
+    });
+
     test("climb via SID1 departure", () => {
       const res = parse("climb via SID1 departure", { selected: "DAL123" });
       expect(res.ok).toBe(true);
       if (!res.ok) return;
       expect(res.instructions).toEqual([{ type: "CLIMB_VIA", procedureId: "SID1" }]);
+    });
+
+    test("climb via BAY ONE NORMA transition", () => {
+      const res = parse("climb via BAY ONE, NORMA transition", {
+        selected: "DAL123",
+        procedures: [
+          {
+            id: "BAY1",
+            name: "BAY ONE",
+            transitions: [
+              { id: "NORMA", name: "NORMA" },
+              { id: "OCTTA", name: "OCTTA" },
+            ],
+          },
+        ],
+      });
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.instructions).toEqual([
+        { type: "CLIMB_VIA", procedureId: "BAY1", transitionId: "NORMA" },
+      ]);
     });
 
     test("cross SEMAX at 3000", () => {

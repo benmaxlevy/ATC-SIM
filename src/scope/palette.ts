@@ -120,8 +120,9 @@ export const HISTORY_TRAIL = ["#1E50C8", "#4646AA", "#323282", "#28286E", "#1E1E
  * Trainer delta: discrete 0–100 in steps of 10 applied as a multiply on the
  * existing palette hex (hue stays green/white/blue/gray). WX / WXC tint VIP
  * fills and band contours. BKC is a stored no-op — no CRC BKC. CMP is stored; we have no compass `N`
- * tick so the cell is disabled. BCN / PRI are stored no-ops: one fusion
- * position symbol uses POS. Not a brightness slider. Not NAS STARS.
+ * tick so the cell is disabled. BCN is a stored no-op (beacon symbol uses
+ * POS/OTH). PRI tints the FUSED puck and MULTI/single-site position
+ * rectangles. Not a brightness slider. Not NAS STARS.
  */
 export const BRITE_STEPS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100] as const;
 export type BriteLevel = (typeof BRITE_STEPS)[number];

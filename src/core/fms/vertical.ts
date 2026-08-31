@@ -37,10 +37,18 @@ export interface CatalogStarLeg {
   speedConstraint?: SpeedConstraint;
 }
 
+export interface CatalogStarTransition {
+  id: string;
+  name?: string;
+  runwayId?: string;
+  runways?: readonly string[];
+  legs: readonly CatalogStarLeg[];
+}
+
 export interface CatalogStar {
   id: string;
   name?: string;
-  transitions?: ReadonlyArray<{ id: string; legs: readonly CatalogStarLeg[] }>;
+  transitions?: ReadonlyArray<CatalogStarTransition>;
   common?: readonly CatalogStarLeg[];
 }
 
@@ -57,6 +65,7 @@ export interface CatalogSidRunwayTransition {
 
 export interface CatalogSidEnrouteTransition {
   id: string;
+  name?: string;
   legs?: readonly CatalogSidLeg[];
   runwayTransitions?: ReadonlyArray<CatalogSidRunwayTransition>;
 }
