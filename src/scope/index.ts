@@ -455,6 +455,8 @@ export {
   cycleModeFsl,
   formatDcbVolReadout,
   stepDcbVol,
+  stepModeFsl,
+  MODE_FSL_STEPS,
   videoMapByDcbNumber,
   videoMapTokenLayout,
 } from "./dcb/dcbFunctions";

@@ -43,7 +43,7 @@ export const MAIN_DCB_LAYOUT: readonly MainDcbLayoutCell[] = [
   { id: "ldr-dir", row: 1, column: 16, rowSpan: 1, kind: "spinner", label: "LDR DIR" },
   { id: "ldr-length", row: 2, column: 16, rowSpan: 1, kind: "spinner", label: "LDR" },
   { id: "char", row: 1, column: 17, rowSpan: 2, kind: "submenu", label: "CHAR SIZE" },
-  { id: "mode-fsl", row: 1, column: 18, rowSpan: 2, kind: "toggle", label: "MODE F" },
+  { id: "mode-fsl", row: 1, column: 18, rowSpan: 2, kind: "spinner", label: "MODE F" },
   { id: "pref", row: 1, column: 19, rowSpan: 2, kind: "submenu", label: "PREF" },
   { id: "site-fused", row: 1, column: 20, rowSpan: 2, kind: "submenu", label: "SITE FUSED" },
   { id: "ssa-filter", row: 1, column: 21, rowSpan: 1, kind: "submenu", label: "SSA FILTER" },

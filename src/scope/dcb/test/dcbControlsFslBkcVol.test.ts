@@ -2,7 +2,9 @@ import { describe, expect, test } from "vitest";
 import {
   createScopeView,
   cycleModeFsl,
+  stepModeFsl,
   formatDcbVolReadout,
+  formatDcbBriteReadout,
   getBackgroundColor,
   serializeDcbPref,
   applyDcbPref,
@@ -112,18 +114,33 @@ describe("T02-81 DCB VOL, MODE FSL, and BRITE BKC Controls", () => {
     tone.dispose();
   });
 
-  test("MODE FSL cycles between Full (F), Semi (S), and Limited (L)", () => {
+  test("MODE FSL spinner stepping and cycling between Full (F), Semi (S), and Limited (L)", () => {
     const view = createScopeView();
     expect(view.modeFsl).toBe("F");
 
-    expect(cycleModeFsl(view)).toBe("S");
+    expect(stepModeFsl(view, 1)).toBe("S");
     expect(view.modeFsl).toBe("S");
 
-    expect(cycleModeFsl(view)).toBe("L");
+    expect(stepModeFsl(view, 1)).toBe("L");
     expect(view.modeFsl).toBe("L");
 
-    expect(cycleModeFsl(view)).toBe("F");
+    // Clamps at L
+    expect(stepModeFsl(view, 1)).toBe("L");
+    expect(view.modeFsl).toBe("L");
+
+    expect(stepModeFsl(view, -1)).toBe("S");
+    expect(view.modeFsl).toBe("S");
+
+    expect(stepModeFsl(view, -1)).toBe("F");
     expect(view.modeFsl).toBe("F");
+
+    // Clamps at F
+    expect(stepModeFsl(view, -1)).toBe("F");
+
+    // Cycle helper
+    expect(cycleModeFsl(view)).toBe("S");
+    expect(cycleModeFsl(view)).toBe("L");
+    expect(cycleModeFsl(view)).toBe("F");
   });
 
   test("MODE FSL modifies default datablock presentation across unselected tracks", () => {
@@ -163,15 +180,22 @@ describe("T02-81 DCB VOL, MODE FSL, and BRITE BKC Controls", () => {
     expect(getDatablockVisualState(view, world, acUnowned).mode).toBe("full");
   });
 
-  test("BRITE BKC modulates background contrast color", () => {
+  test("BRITE BKC modulates background contrast color and formats OFF-100", () => {
     expect(getBackgroundColor(0)).toBe("#000000");
     expect(getBackgroundColor(100)).toBe("#141C2B");
     expect(getBackgroundColor(50)).toBe("#0A0E16");
+
+    expect(formatDcbBriteReadout(0)).toBe("OFF");
+    expect(formatDcbBriteReadout(50)).toBe("50");
+    expect(formatDcbBriteReadout(100)).toBe("100");
 
     const view = createScopeView();
     expect(view.brite.bkc).toBe(100);
     stepBriteChannel(view, "bkc", -1);
     expect(view.brite.bkc).toBe(90);
+    stepBriteChannel(view, "bkc", -9);
+    expect(view.brite.bkc).toBe(0);
+    expect(formatDcbBriteReadout(view.brite.bkc)).toBe("OFF");
   });
 
   test("PREF serializes and restores vol, modeFsl, and brite.bkc", () => {

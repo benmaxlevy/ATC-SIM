@@ -493,6 +493,9 @@ export function cycleMapBrite(view: ScopeView): void {
 }
 
 export function formatDcbBriteReadout(level: BriteLevel | number): string {
+  if (level === 0) {
+    return "OFF";
+  }
   return String(level);
 }
 
@@ -592,6 +595,17 @@ export function stepDcbVol(view: ScopeView, delta: number): void {
 
 export function formatDcbVolReadout(vol: VolLevel): string {
   return `${vol}`;
+}
+
+export const MODE_FSL_STEPS: readonly ModeFsl[] = ["F", "S", "L"];
+
+/**
+ * Step MODE FSL spinner ("F" <-> "S" <-> "L").
+ */
+export function stepModeFsl(view: ScopeView, delta: number): ModeFsl {
+  const next = stepFrozen(MODE_FSL_STEPS, view.modeFsl, delta);
+  view.modeFsl = next;
+  return next;
 }
 
 /**

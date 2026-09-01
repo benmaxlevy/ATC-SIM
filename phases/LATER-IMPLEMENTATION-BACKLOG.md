@@ -247,19 +247,22 @@ Per-track PTL is shipped (`*R` plus click, session map, not PREF). Global ALL /
 OWN / LNTH / `*PTL` minutes and F7 stay as they are. Remaining follow-ups are
 additional duration presets and richer prediction geometry.
 
-### DCB capabilities currently represented as disabled chrome
+### DCB capabilities and Weather Telemetry (T02-81 / T02-82 / T02-83)
 
-The trainer DCB now includes live MAIN WX1–6 latches, live BRITE WX/WXC
-spinners, and live SITE (FUSED / MULTI / adapted sites). VOL, MODE FSL, and
-BRITE BKC stay disabled, as do unpopulated map slots. Later implementations
-may give the remaining cells real behavior:
+The trainer DCB includes live MAIN WX1–6 latches, live BRITE WX/WXC spinners,
+live SITE (FUSED / MULTI / adapted sites), live DCB VOL spinner (modulating
+workstation CA alert tone gain linearly 0–5 with 0 = mute), live MAIN MODE FSL
+toggle (3-way latch cycling Full/Semi/Limited datablock presentation), live
+BRITE BKC spinner (adjusting background canvas contrast/clear color 0–100), and
+live SSA WX / WX HIST radar mosaic status & staleness telemetry (with DCB SSA
+FILTER WX toggle). All settings are persisted in PREF v3.
 
-- BRITE BKC and weather-data lifecycle chrome (SSA WX HIST);
-- audio/display mode controls that remain separate from OS volume;
+Remaining later implementations:
+- AVL 2×3 / half-height badge restyle;
 - additional catalog-backed maps and map management;
 - fuller CRC-style DCB workflows.
 
-Do not fill empty map slots with OSM or add weather paint as an incidental
+Do not fill empty map slots with OSM or add unvetted controls as an incidental
 change; each capability needs its own data and acceptance criteria.
 
 ### Weather Radar / DCB WX chrome
@@ -272,12 +275,14 @@ them in PREF v3. T02-71 ships scope-preview `*WX 1`–`6` / `ALL` / `OFF`
 (optional space after `*`) against the same bitmask. T02-72 ships live
 BRITE WX/WXC: fills tint with `brite.wx`, VIP band contours tint with
 `brite.wxc`. Vite `/wx-iem` proxies to IEM; CI uses `testdata/wx/` plus
-injected fetch.
+injected fetch. T02-82 ships live SSA WX status, timestamp, WX HIST age, and
+15-minute staleness alert indicator.
 
-### WX mosaic leftovers (T02-72)
+### WX mosaic leftovers (T02-72 / T02-82)
 
 Shipped display-only path: IEM N0Q VIP 1–6 fills, MAIN WX1–6, `*WX`, BRITE
-WX/WXC contours. `ensureWxMosaic` on the session rAF fetches one IEM N0Q
+WX/WXC contours, BRITE BKC background contrast, SSA WX / WX HIST telemetry, and
+SSA FILTER WX toggle. `ensureWxMosaic` on the session rAF fetches one IEM N0Q
 XYZ tile when any latch is on and the mosaic is empty or older than 5 min.
 Extra WX clicks do not refetch. Default levels remain off. Live tiles need
 Vite `/wx-iem` (`npm run dev`). Not WMS GetMap — IEM MapServer FILTER
@@ -285,14 +290,12 @@ rejects the `nexrad-n0q` layer group.
 
 Still later:
 
-- SSA WX / WX HIST
-- BRITE BKC
 - AVL 2×3 / half-height badge restyle
 - Pilot deviate via `vipAtNm` (query exists; does not steer aircraft)
 
 Manual leftover: Chrome KATL live IEM walk. skip-with-reason: no visual
 operator in this worker worktree. Automated tests cover DCB / `*WX` /
-BRITE / cached paint. Do not invent a visual pass.
+BRITE / cached paint / SSA WX telemetry. Do not invent a visual pass.
 
 ### PREF SAVE AS named sets
 

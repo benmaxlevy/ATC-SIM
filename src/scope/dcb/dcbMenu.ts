@@ -62,6 +62,7 @@ export type DcbSpinnerCell =
   | "PTL"
   | "TPA_MI"
   | "VOL"
+  | "MODE_FSL"
   | CharSizeSpinnerCell
   | BriteSpinnerCell;
 

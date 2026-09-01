@@ -46,9 +46,9 @@ Captain squash-merges ticket branches into **`feature/dcb-controls-ssa-wx`**, no
 
 **Ticket files / branches:**
 
-- `ticket/T02-81-dcb-vol-fsl-and-bkc-controls` ← `phases/02-scope/tickets/T02-81-dcb-vol-fsl-and-bkc-controls.md`
-- `ticket/T02-82-ssa-wx-history-status-telemetry` ← `phases/02-scope/tickets/T02-82-ssa-wx-history-status-telemetry.md`
-- `ticket/T02-83-dcb-controls-and-ssa-wx-acceptance` ← `phases/02-scope/tickets/T02-83-dcb-controls-and-ssa-wx-acceptance.md`
+- `ticket/T02-81-dcb-vol-fsl-and-bkc-controls` ← `phases/02-scope/tickets/T02-81-dcb-vol-fsl-and-bkc-controls.md` (MERGED)
+- `ticket/T02-82-ssa-wx-history-status-telemetry` ← `phases/02-scope/tickets/T02-82-ssa-wx-history-status-telemetry.md` (MERGED)
+- `ticket/T02-83-dcb-controls-and-ssa-wx-acceptance` ← `phases/02-scope/tickets/T02-83-dcb-controls-and-ssa-wx-acceptance.md` (MERGED)
 
 **Captain return:**
 

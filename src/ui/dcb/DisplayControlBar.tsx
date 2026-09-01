@@ -49,7 +49,6 @@ import {
   centerOnAirport,
   closeDcbMenu,
   commitDcbSpinner,
-  cycleModeFsl,
   dcbLeaderDirReadout,
   DCB_QUICK_MAP_COUNT,
   formatDcbLdrLengthReadout,
@@ -63,6 +62,7 @@ import {
   openDcbMenu,
   stepDcbLeaderDir,
   stepDcbLeaderLength,
+  stepModeFsl,
   stepRange,
   stepRrInterval,
   type ScopeView,
@@ -409,13 +409,18 @@ function renderPhysicalMain(
       case "mode-fsl":
         return (
           <DcbCell
-            kind="toggle"
+            kind="spinner"
             ariaLabel="Mode FSL"
             dataDcb="mode-fsl"
-            pressed={view.modeFsl !== "F"}
-            onClick={() => {
-              cancelFilterIfEntering(view);
-              cycleModeFsl(view);
+            pressed={spinnerArmed(view, "MODE_FSL")}
+            onClick={() => toggleSpinner(view, onChange, "MODE_FSL")}
+            onWheel={(event) =>
+              onSpinnerWheel(view, "MODE_FSL", event, (step) => stepModeFsl(view, step), onChange)
+            }
+            onDragDelta={(step) => {
+              for (let i = 0; i < Math.abs(step); i++) {
+                stepModeFsl(view, step > 0 ? 1 : -1);
+              }
               afterCell(onChange);
             }}
           >
