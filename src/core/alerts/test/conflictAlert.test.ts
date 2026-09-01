@@ -121,7 +121,7 @@ test("three aircraft yield two unique undirected pairs", () => {
     "AAL45|UAL100|alert",
   ]);
   expect(caSeverityForCallsign(alerts, "UAL100")).toBe("alert");
-  expect(caSeverityForCallsign(alerts, "NKS1")).toBeNull();
+  expect(caSeverityForCallsign(alerts, "SWA1")).toBeNull();
 });
 
 test("self pairs and a single aircraft produce no CA", () => {
