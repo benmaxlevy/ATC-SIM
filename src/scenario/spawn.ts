@@ -2,6 +2,7 @@ import {
   createAircraft,
   createWorld,
   MSAW_FAF_DISTANCE_NM,
+  mulberry32,
   normalizeHeadingDeg,
   SessionLog,
   offerInboundHandoff,
@@ -14,20 +15,24 @@ import {
 import type { ArrivalSpawn, Scenario } from "./types";
 import { assignStarRoutes, authoredStarToFixIndex, starRouteFixIds } from "./starSpawn";
 import { DEFAULT_SPAWN_SEED, type DepartureOptions } from "./trafficQuery";
-import { generateDepartureSchedule, spawnDueDepartures } from "./departureGenerator";
+import {
+  DEPARTURE_STREAM_XOR,
+  generateDepartureSchedule,
+  spawnDueDepartures,
+} from "./departureGenerator";
 import {
   createArrivalScheduler,
   type ArrivalScheduler,
   type ArrivalTrafficConfig,
 } from "./arrivalScheduler";
 import { resolveRunwayHeading, resolveRunwayThreshold } from "./departureSpawn";
+import { allocateCallsign, usedCallsignSet } from "./callsigns";
 
 export { starRouteFixIds };
 
 const ARC_RADIUS_NM = 12;
 const ARC_START_DEG = 20;
 const ARC_END_DEG = 160;
-const AIRLINES = ["DAL", "AAL", "UAL", "SWA", "JBU", "NKS", "ASA", "FFT", "SKW", "RPA"] as const;
 
 /**
  * Place `n` jets on a wide downwind arc so they do not sit in one pixel.
@@ -39,7 +44,6 @@ function downwindArcArrival(index: number, count: number, scenario?: Scenario): 
   const bearingDeg = ARC_START_DEG + t * (ARC_END_DEG - ARC_START_DEG);
   const rad = (bearingDeg * Math.PI) / 180;
   const radiusNm = ARC_RADIUS_NM + (index % 3) * 0.4;
-  const airline = AIRLINES[index % AIRLINES.length]!;
 
   const activeRunwayId = scenario?.activeRunwayId ?? "27";
   const catalog = scenario?.catalog;
@@ -48,7 +52,6 @@ function downwindArcArrival(index: number, count: number, scenario?: Scenario): 
   const downwindHeading = normalizeHeadingDeg(rwyHeading + 180);
 
   return {
-    callsign: `${airline}${200 + index}`,
     xNm: threshold.xNm + radiusNm * Math.sin(rad),
     yNm: threshold.yNm + radiusNm * Math.cos(rad),
     headingDeg: downwindHeading,
@@ -58,9 +61,14 @@ function downwindArcArrival(index: number, count: number, scenario?: Scenario): 
   };
 }
 
-function spawnArrival(world: World, arrival: ArrivalSpawn, scenario?: Scenario): void {
+function spawnArrival(
+  world: World,
+  arrival: ArrivalSpawn,
+  callsign: string,
+  scenario?: Scenario,
+): void {
   const ac = createAircraft({
-    callsign: arrival.callsign,
+    callsign,
     xNm: arrival.xNm,
     yNm: arrival.yNm,
     headingDeg: arrival.headingDeg,
@@ -117,11 +125,14 @@ function spawnStarInbound(world: World, scenario: Scenario, seed: number): void 
     seed,
     activeRunwayId: scenario.activeRunwayId,
   });
+  const rng = mulberry32((seed >>> 0) ^ 0xa24baed);
+  const used = usedCallsignSet(world.aircraft.map((a) => a.callsign));
   for (let i = 0; i < scenario.arrivals.length; i += 1) {
     const arrival = scenario.arrivals[i]!;
     const assigned = assignments[i]!;
+    const callsign = allocateCallsign(rng, used);
     const ac = createAircraft({
-      callsign: arrival.callsign,
+      callsign,
       xNm: assigned.pose.xNm,
       yNm: assigned.pose.yNm,
       headingDeg: assigned.pose.headingDeg,
@@ -141,12 +152,20 @@ function spawnStarInbound(world: World, scenario: Scenario, seed: number): void 
   }
 }
 
-function spawnDownwindArc(world: World, n: number, scenario?: Scenario): void {
+function spawnDownwindArc(
+  world: World,
+  n: number,
+  scenario?: Scenario,
+  seed: number = DEFAULT_SPAWN_SEED,
+): void {
   if (!Number.isInteger(n) || n < 1) {
     throw new Error(`spawnArrivals count must be a positive integer (got ${String(n)})`);
   }
+  const rng = mulberry32((seed >>> 0) ^ 0xa24baed);
+  const used = usedCallsignSet(world.aircraft.map((a) => a.callsign));
   for (let i = 0; i < n; i += 1) {
-    spawnArrival(world, downwindArcArrival(i, n, scenario));
+    const callsign = allocateCallsign(rng, used);
+    spawnArrival(world, downwindArcArrival(i, n, scenario), callsign, scenario);
   }
 }
 
@@ -158,19 +177,28 @@ function spawnDownwindArc(world: World, n: number, scenario?: Scenario): void {
  * `spawnArrivals(world, n, scenario?)` — bench helper: `n` jets on a wide downwind arc
  * (`?traffic=30`). Does not change Command IR.
  */
-export function spawnArrivals(world: World, n: number, scenario?: Scenario): void;
-export function spawnArrivals(world: World, scenario: Scenario): void;
+export function spawnArrivals(world: World, n: number, scenario?: Scenario, seed?: number): void;
+export function spawnArrivals(world: World, scenario: Scenario, seed?: number): void;
 export function spawnArrivals(
   world: World,
   source: number | Scenario,
-  scenarioOpt?: Scenario,
+  scenarioOrSeed?: Scenario | number,
+  seedOpt?: number,
 ): void {
   if (typeof source === "number") {
-    spawnDownwindArc(world, source, scenarioOpt);
+    const scenario = typeof scenarioOrSeed === "object" ? scenarioOrSeed : undefined;
+    const seed =
+      typeof scenarioOrSeed === "number" ? scenarioOrSeed : (seedOpt ?? DEFAULT_SPAWN_SEED);
+    spawnDownwindArc(world, source, scenario, seed);
     return;
   }
+  const seed =
+    typeof scenarioOrSeed === "number" ? scenarioOrSeed : (seedOpt ?? DEFAULT_SPAWN_SEED);
+  const rng = mulberry32((seed >>> 0) ^ 0xa24baed);
+  const used = usedCallsignSet(world.aircraft.map((a) => a.callsign));
   for (const arrival of source.arrivals) {
-    spawnArrival(world, arrival, source);
+    const callsign = allocateCallsign(rng, used);
+    spawnArrival(world, arrival, callsign, source);
   }
 }
 
@@ -202,6 +230,7 @@ function initDepartures(
   scenario: Scenario,
   seed: number,
   departureOptions?: DepartureOptions | null,
+  activeCallsigns?: Iterable<string>,
 ): void {
   const isQuerySpecified = departureOptions !== undefined && departureOptions !== null;
   const isEnabled = isQuerySpecified
@@ -212,6 +241,9 @@ function initDepartures(
     return;
   }
 
+  const depSeed = departureOptions?.seed ?? seed;
+  const usedCallsigns = usedCallsignSet(activeCallsigns ?? world.aircraft.map((a) => a.callsign));
+
   let schedule: ScheduledDeparture[];
   if (
     !isQuerySpecified &&
@@ -219,8 +251,9 @@ function initDepartures(
     scenario.departureConfig.departures &&
     scenario.departureConfig.departures.length > 0
   ) {
+    const depRng = mulberry32((depSeed >>> 0) ^ DEPARTURE_STREAM_XOR);
     schedule = scenario.departureConfig.departures.map((d) => ({
-      callsign: d.callsign,
+      callsign: allocateCallsign(depRng, usedCallsigns),
       sidId: d.sidId,
       transitionId: d.transitionId,
       runwayId: scenario.activeRunwayId,
@@ -230,14 +263,13 @@ function initDepartures(
       spawned: false,
     }));
   } else {
-    const depSeed = departureOptions?.seed ?? seed;
     schedule = generateDepartureSchedule({
       catalog: scenario.catalog,
       seed: depSeed,
       ratePerHour: departureOptions?.ratePerHour ?? scenario.departureConfig?.ratePerHour,
       count: departureOptions?.count,
       runwayId: scenario.activeRunwayId,
-      activeCallsigns: world.aircraft.map((a) => a.callsign),
+      activeCallsigns: usedCallsigns,
       startSimMs: world.simTimeMs,
     });
   }
@@ -273,9 +305,15 @@ export function createWorldFromScenario(
   if (scenario.spawnPolicy === "star-inbound") {
     spawnStarInbound(world, scenario, seed);
   } else {
-    spawnArrivals(world, scenario);
+    spawnArrivals(world, scenario, seed);
   }
-  initDepartures(world, scenario, seed, null);
+  initDepartures(
+    world,
+    scenario,
+    seed,
+    null,
+    world.aircraft.map((a) => a.callsign),
+  );
   return world;
 }
 
@@ -292,33 +330,34 @@ export function createWorldForSession(
   arrivalTraffic?: ArrivalTrafficConfig,
 ): World {
   let world: World;
+  let arrivalScheduler: ArrivalScheduler | undefined;
   if (scenario.spawnPolicy === "star-inbound" && trafficCount !== null) {
     world = worldFromScenario(scenario);
-    spawnArrivals(world, trafficCount, scenario);
+    spawnArrivals(world, trafficCount, scenario, seed);
   } else {
     world = worldFromScenario(scenario);
     if (scenario.spawnPolicy === "star-inbound") {
-      const scheduler: ArrivalScheduler = createArrivalScheduler(
+      arrivalScheduler = createArrivalScheduler(
         scenario.catalog,
         {
           ...arrivalTraffic,
           seed: arrivalTraffic?.seed ?? seed,
           activeRunwayId: scenario.activeRunwayId,
         },
-        scenario.arrivals.map((arrival) => arrival.callsign),
+        world.aircraft.map((arrival) => arrival.callsign),
         world.simTimeMs,
         scenario.activeRunwayId,
       );
-      world.arrivalScheduler = scheduler;
-      scheduler.drain(world);
+      world.arrivalScheduler = arrivalScheduler;
+      arrivalScheduler.drain(world);
     } else {
-      spawnArrivals(world, scenario);
+      spawnArrivals(world, scenario, seed);
       if (
         (scenario.catalog?.stars?.length ?? 0) > 0 &&
         arrivalTraffic?.arrivalsPerHour !== undefined &&
         arrivalTraffic.arrivalsPerHour > 0
       ) {
-        const scheduler = createArrivalScheduler(
+        arrivalScheduler = createArrivalScheduler(
           scenario.catalog,
           {
             ...arrivalTraffic,
@@ -326,14 +365,25 @@ export function createWorldForSession(
             seed: arrivalTraffic.seed ?? seed,
             activeRunwayId: scenario.activeRunwayId,
           },
-          scenario.arrivals.map((arrival) => arrival.callsign),
+          world.aircraft.map((arrival) => arrival.callsign),
           world.simTimeMs,
           scenario.activeRunwayId,
         );
-        world.arrivalScheduler = scheduler;
+        world.arrivalScheduler = arrivalScheduler;
       }
     }
   }
-  initDepartures(world, scenario, seed, departureOptions);
+
+  const activeCallsigns = new Set<string>();
+  for (const ac of world.aircraft) {
+    activeCallsigns.add(ac.callsign);
+  }
+  if (arrivalScheduler) {
+    for (const arr of arrivalScheduler.schedule) {
+      activeCallsigns.add(arr.callsign);
+    }
+  }
+
+  initDepartures(world, scenario, seed, departureOptions, activeCallsigns);
   return world;
 }

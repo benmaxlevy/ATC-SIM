@@ -1,6 +1,7 @@
 import { createAircraft, offerInboundHandoff, mulberry32, type Aircraft, type World } from "@core";
 import { assignStarRoutes, type StarRouteAssignment } from "./starSpawn";
 import type { ProcedureCatalog } from "./procedures/types";
+import { allocateCallsign, usedCallsignSet } from "./callsigns";
 
 /** Trainer traffic-density bounds; arrivals/hour is not a radio frequency. */
 export const ARRIVALS_PER_HOUR_MIN = 0;
@@ -68,34 +69,6 @@ export function validateArrivalTrafficConfig(
   };
 }
 
-const AIRLINES = ["DAL", "AAL", "UAL", "SWA", "JBU", "NKS", "ASA", "FFT", "SKW", "RPA"] as const;
-
-function callsignSequence(count: number, seed: number, reserved: readonly string[]): string[] {
-  const used = new Set(reserved.map((callsign) => callsign.toUpperCase()));
-  const preferred = reserved.slice(0, count).map((callsign) => callsign.toUpperCase());
-  const rng = mulberry32(seed >>> 0);
-  const result: string[] = [];
-  let index = 0;
-  while (result.length < count) {
-    const preferredCallsign = preferred[result.length];
-    if (preferredCallsign && !result.includes(preferredCallsign)) {
-      used.add(preferredCallsign);
-      result.push(preferredCallsign);
-      continue;
-    }
-    const candidate = `${AIRLINES[Math.floor(rng() * AIRLINES.length)]}${200 + Math.floor(rng() * 800)}`;
-    index += 1;
-    const callsign = used.has(candidate)
-      ? `${AIRLINES[index % AIRLINES.length]}${100 + index}`
-      : candidate;
-    if (!used.has(callsign)) {
-      used.add(callsign);
-      result.push(callsign);
-    }
-  }
-  return result;
-}
-
 function spawnScheduledArrival(world: World, arrival: ScheduledArrival): Aircraft {
   const { pose } = arrival.assignment;
   const aircraft = createAircraft({
@@ -126,7 +99,7 @@ function spawnScheduledArrival(world: World, arrival: ScheduledArrival): Aircraf
 export function createArrivalScheduler(
   catalog: ProcedureCatalog,
   config: ArrivalTrafficConfig = {},
-  reservedCallsigns: readonly string[] = [],
+  activeCallsigns: Iterable<string> | readonly string[] = [],
   startSimMs = 0,
   activeRunwayId?: string,
 ): ArrivalScheduler {
@@ -143,11 +116,13 @@ export function createArrivalScheduler(
     seed: validated.seed,
     activeRunwayId: effectiveRunwayId,
   });
-  const callsigns = callsignSequence(
-    initialCount + futureCount,
-    validated.seed ^ 0xa24baed,
-    reservedCallsigns,
-  );
+  const rng = mulberry32((validated.seed >>> 0) ^ 0xa24baed);
+  const used = usedCallsignSet(activeCallsigns);
+  const totalCount = initialCount + futureCount;
+  const callsigns: string[] = [];
+  for (let i = 0; i < totalCount; i += 1) {
+    callsigns.push(allocateCallsign(rng, used));
+  }
   const intervalMs =
     validated.arrivalsPerHour === 0
       ? Number.POSITIVE_INFINITY
