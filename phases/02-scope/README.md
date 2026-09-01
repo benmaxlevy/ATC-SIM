@@ -714,9 +714,9 @@ DCB AUX `H_RATE` (history update interval scan rate spinner), `DWELL` (OFF/ON/LO
 
 | ID | Title | Pri | Size | Depends on | Status |
 | --- | --- | --- | --- | --- | --- |
-| [T02-84](tickets/T02-84-dcb-aux-hrate-dwell-and-cursor-controls.md) | DCB AUX H_RATE, DWELL, and cursor controls | P0 | M | none | Planned |
-| [T02-85](tickets/T02-85-dcb-brite-cmp-bcn-channel-spinners.md) | DCB BRITE CMP and BCN channel spinners | P0 | M | T02-84 | Planned |
-| [T02-86](tickets/T02-86-dcb-aux-and-brite-acceptance.md) | DCB AUX and BRITE controls acceptance | P0 | S | T02-84, T02-85 | Planned |
+| [T02-84](tickets/T02-84-dcb-aux-hrate-dwell-and-cursor-controls.md) | DCB AUX H_RATE, DWELL, and cursor controls | P0 | M | none | Shipped |
+| [T02-85](tickets/T02-85-dcb-brite-cmp-bcn-channel-spinners.md) | DCB BRITE CMP and BCN channel spinners | P0 | M | T02-84 | Shipped |
+| [T02-86](tickets/T02-86-dcb-aux-and-brite-acceptance.md) | DCB AUX and BRITE controls acceptance | P0 | S | T02-84, T02-85 | Shipped |
 
 ## Launching an agent
 

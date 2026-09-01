@@ -30,10 +30,10 @@ T02-84 and T02-85 enable live interactive controls on the AUX DCB and BRITE subm
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Automated integration test suite covers all new AUX and BRITE controls.
-- [ ] **AC2 —** PREF serialization/deserialization round-trips all new parameters cleanly.
-- [ ] **AC3 —** Full test suite (`npm test`) passes with zero failures or regressions.
-- [ ] **AC4 —** Phase 2 documentation accurately describes all active DCB controls.
+- [x] **AC1 —** Automated integration test suite covers all new AUX and BRITE controls.
+- [x] **AC2 —** PREF serialization/deserialization round-trips all new parameters cleanly.
+- [x] **AC3 —** Full test suite (`npm test`) passes with zero failures or regressions.
+- [x] **AC4 —** Phase 2 documentation accurately describes all active DCB controls.
 
 ## Test plan
 
