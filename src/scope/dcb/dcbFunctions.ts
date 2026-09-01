@@ -473,7 +473,7 @@ export function stepCharSizeChannel(
   }
 }
 
-const MAP_CACHE_BRITE_CHANNELS: ReadonlySet<BriteChannel> = new Set(["mpa", "mpb", "rr"]);
+const MAP_CACHE_BRITE_CHANNELS: ReadonlySet<BriteChannel> = new Set(["mpa", "mpb", "rr", "cmp"]);
 
 export function stepBriteChannel(view: ScopeView, channel: BriteChannel, delta: number): void {
   view.brite[channel] = stepFrozen(BRITE_STEPS, view.brite[channel], delta);

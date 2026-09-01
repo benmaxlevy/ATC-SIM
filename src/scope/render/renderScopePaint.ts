@@ -126,7 +126,8 @@ export function drawMapLayers(
 ): void {
   const mpa = applyBrite(PALETTE.map, view.brite.mpa);
   const mpb = applyBrite(PALETTE.mapDim, view.brite.mpb);
-  const rr = applyBrite(PALETTE.mapDim, view.brite.rr);
+  const rrBrite = Math.round((view.brite.rr * (view.brite.cmp ?? 100)) / 100);
+  const rr = applyBrite(PALETTE.mapDim, rrBrite);
   ctx.strokeStyle = rr;
   ctx.lineWidth = RING_STROKE_PX;
   if (cache.ringsPath) {
@@ -613,7 +614,10 @@ export function drawTracks(
     const ownership: TrackOwnership = td?.ownership ?? "unowned";
     const ho = handoffFor(world, ac.id);
     const isTracked = isTrackedTarget(view, world, ac);
-    const posBrite = isPrimary ? view.brite.pri : isTracked ? view.brite.pos : view.brite.oth;
+    const bcnMult = (view.brite.bcn ?? 100) / 100;
+    const posBrite = isPrimary
+      ? view.brite.pri
+      : Math.round((isTracked ? view.brite.pos : view.brite.oth) * bcnMult);
     const priMark = applyBrite(TARGET_PUCK_BG, view.brite.pri);
     const squawk = td?.squawk ?? ac.squawk;
     let sectorId = td?.sectorId;

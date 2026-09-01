@@ -39,12 +39,12 @@ Currently, `CMP` is rendered as static disabled text `"45"` and `BCN` as static 
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** `CMP` is an active spinner on the `BRITE` submenu cycling 0–100% in steps of 10.
-- [ ] **AC2 —** `CMP` brightness modulates range ring ticks / compass markings on the PPI.
-- [ ] **AC3 —** `BCN` is an active spinner on the `BRITE` submenu cycling 0–100% in steps of 10.
-- [ ] **AC4 —** `BCN` brightness modulates secondary radar beacon target symbol rendering on the PPI.
-- [ ] **AC5 —** Both channels persist and restore via PREF slot profiles.
-- [ ] **AC6 —** Unit and integration tests verify stepping, rendering, and persistence.
+- [x] **AC1 —** `CMP` is an active spinner on the `BRITE` submenu cycling 0–100% in steps of 10.
+- [x] **AC2 —** `CMP` brightness modulates range ring ticks / compass markings on the PPI.
+- [x] **AC3 —** `BCN` is an active spinner on the `BRITE` submenu cycling 0–100% in steps of 10.
+- [x] **AC4 —** `BCN` brightness modulates secondary radar beacon target symbol rendering on the PPI.
+- [x] **AC5 —** Both channels persist and restore via PREF slot profiles.
+- [x] **AC6 —** Unit and integration tests verify stepping, rendering, and persistence.
 
 ## Test plan
 
