@@ -98,11 +98,23 @@ describe("T02-83 DCB Controls and SSA Weather Telemetry Acceptance Suite", () =>
     expect(getDatablockVisualState(view, world, acOwned).mode).toBe("partial");
     expect(getDatablockVisualState(view, world, acUnowned).mode).toBe("partial");
 
+    // Clicking / selecting an owned track in Mode S expands it to FDB
+    world.selectedAircraftId = "ac1";
+    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("full");
+    world.selectedAircraftId = null;
+    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("partial");
+
     // MODE L (Limited) via stepModeFsl
     stepModeFsl(view, 1);
     expect(view.modeFsl).toBe("L");
-    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("partial");
+    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("limited");
     expect(getDatablockVisualState(view, world, acUnowned).mode).toBe("limited");
+
+    // Clicking / selecting an owned track in Mode L expands it to FDB
+    world.selectedAircraftId = "ac1";
+    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("full");
+    world.selectedAircraftId = null;
+    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("limited");
 
     // Forced FDB override persists in MODE L
     view.tracks.get("ac2")!.forcedFdb = true;

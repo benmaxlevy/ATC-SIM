@@ -367,6 +367,8 @@ export function getDatablockVisualState(
     }
   }
 
+  const isSelected = world.selectedAircraftId === ac.id;
+
   function computeBaseDatablockMode(
     view: ScopeView,
     td?: TrackDisplay,
@@ -376,12 +378,23 @@ export function getDatablockVisualState(
     }
     const ownership = td?.ownership ?? "unowned";
     if (view.modeFsl === "S") {
-      return "partial";
+      // Semi Mode: selected/clicked owned track expands to FDB; unselected tracks show PDB
+      if (isSelected && ownership === "owned") {
+        return "full";
+      }
+      return td?.unassociated ? "limited" : "partial";
     }
     if (view.modeFsl === "L") {
-      return ownership === "owned" ? "partial" : "limited";
+      // Limited Mode: selected/clicked owned track expands to FDB; unselected tracks show LDB
+      if (isSelected && ownership === "owned") {
+        return "full";
+      }
+      return "limited";
     }
-    return td?.datablockMode ?? (ownership === "owned" ? "full" : "partial");
+    return (
+      td?.datablockMode ??
+      (ownership === "owned" ? "full" : td?.unassociated ? "limited" : "partial")
+    );
   }
 
   // 7. Track highlight (Cyan #00FFFF)

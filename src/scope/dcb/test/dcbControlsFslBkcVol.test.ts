@@ -165,15 +165,27 @@ describe("T02-81 DCB VOL, MODE FSL, and BRITE BKC Controls", () => {
     expect(getDatablockVisualState(view, world, acOwned).mode).toBe("full");
     expect(getDatablockVisualState(view, world, acUnowned).mode).toBe("partial");
 
-    // Mode S: owned = partial, unowned = partial
+    // Mode S: owned unselected = partial, unowned = partial
     view.modeFsl = "S";
     expect(getDatablockVisualState(view, world, acOwned).mode).toBe("partial");
     expect(getDatablockVisualState(view, world, acUnowned).mode).toBe("partial");
 
-    // Mode L: owned = partial, unowned = limited
-    view.modeFsl = "L";
+    // Mode S: selected/clicked owned track expands to Full Data Block (FDB)
+    world.selectedAircraftId = "ac1";
+    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("full");
+    world.selectedAircraftId = null;
     expect(getDatablockVisualState(view, world, acOwned).mode).toBe("partial");
+
+    // Mode L: owned unselected = limited, unowned = limited
+    view.modeFsl = "L";
+    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("limited");
     expect(getDatablockVisualState(view, world, acUnowned).mode).toBe("limited");
+
+    // Mode L: selected owned track expands to FDB
+    world.selectedAircraftId = "ac1";
+    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("full");
+    world.selectedAircraftId = null;
+    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("limited");
 
     // Forced FDB overrides global Mode FSL
     view.tracks.get("ac2")!.forcedFdb = true;
