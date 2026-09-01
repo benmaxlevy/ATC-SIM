@@ -14,7 +14,8 @@
     "ils": "ils.json",
     "fixes": "fixes.json",
     "procedures": "procedures.json",
-    "sids": "sids.json"
+    "sids": "sids.json",
+    "atpaVolumes": "atpa-volumes.json"
   },
   "originNote": "Trainer catalog pack imported through the generic CIFP pack CLI (not a national dump). Local tangent NM from ARP using the phase 0 projector. Heading-only vector SID ATL2 omitted: remaining CIFP legs were unsupported path terminators with no named-fix TF/IF/CF/DF legs. KDEM remains the sim default. Video maps are not part of this pack."
 }

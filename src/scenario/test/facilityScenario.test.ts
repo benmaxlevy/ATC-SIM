@@ -20,6 +20,11 @@ test("committed catalog directory loads through loadCatalog without a facility-i
   expect(catalog.stars.length).toBeGreaterThan(0);
   expect(catalog.sids.length).toBeGreaterThan(0);
   expect(catalog.approaches.length).toBeGreaterThan(0);
+  expect(catalog.atpaVolumes.length).toBeGreaterThan(0);
+  const approachIds = new Set(catalog.approaches.map((row) => row.id));
+  for (const volume of catalog.atpaVolumes) {
+    expect(approachIds.has(volume.approachId)).toBe(true);
+  }
   for (const sid of catalog.sids) {
     const namedLegs =
       sid.common.length +
