@@ -53,7 +53,7 @@ test("AC5 — leaving the low-altitude region emits alert.msaw.clear once", () =
   expect(log.byType("alert.msaw.clear")).toHaveLength(1);
 });
 
-test("stepWorld integration: heading descent in the inner box cautions then alerts", () => {
+test("stepWorld integration: heading descent in the inner box alerts below the floor", () => {
   const dal = makeTestAircraft({
     id: "ac-dal",
     callsign: "DAL123",
@@ -72,21 +72,17 @@ test("stepWorld integration: heading descent in the inner box cautions then aler
   expect(world.alerts.msaw).toEqual([]);
 
   const steps = Math.ceil((innerFloor + 50 - 1000) / (CLIMB_RATE_FT_PER_MIN / 60) / SIM_DT_S) + 5;
-  let sawCaution = false;
   let sawAlert = false;
   for (let i = 0; i < steps; i += 1) {
     stepWorld(world, SIM_DT_S);
-    if (world.alerts.msaw[0]?.severity === "caution") {
-      sawCaution = true;
-    }
     if (world.alerts.msaw[0]?.severity === "alert") {
       sawAlert = true;
+      expect(dal.altitudeFt).toBeLessThan(innerFloor);
       break;
     }
   }
-  expect(sawCaution).toBe(true);
   expect(sawAlert).toBe(true);
-  expect(log.byType("alert.msaw.caution")).toHaveLength(1);
+  expect(log.byType("alert.msaw.caution")).toHaveLength(0);
   expect(log.byType("alert.msaw.alert")).toHaveLength(1);
 });
 

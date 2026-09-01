@@ -498,7 +498,7 @@ export function drawDatablock(
     alertTagX += ctx.measureText("CA ").width;
   }
   if (msawSeverity) {
-    ctx.fillStyle = applyBrite(msawSeverity === "alert" ? PALETTE.alert : PALETTE.caution, briteCh);
+    ctx.fillStyle = applyBrite(PALETTE.alert, briteCh);
     ctx.fillText("MSAW", alertTagX, alertTagY);
   }
 

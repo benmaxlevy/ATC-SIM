@@ -91,7 +91,7 @@ function aircraftAt(
   return ac;
 }
 
-test("MSAW_RED_BELOW_FT is the frozen 300 ft band", () => {
+test("MSAW_RED_BELOW_FT is the unused T04-10 300 ft band", () => {
   expect(MSAW_RED_BELOW_FT).toBe(300);
 });
 
@@ -138,7 +138,7 @@ test("overlapping polygons use the maximum minAltitudeFt", () => {
   expect(msawFloorFt(50, 50, chart)).toBe(1000);
 });
 
-test("AC1 — KDEM JSON floors: F-100 caution, F-400 alert (no hard-coded 2500)", () => {
+test("AC1 — KDEM JSON floors: below F is alert (no hard-coded 2500)", () => {
   expect(inner).toBeDefined();
   expect(outerEast).toBeDefined();
   const innerF = inner!.minAltitudeFt;
@@ -147,30 +147,30 @@ test("AC1 — KDEM JSON floors: F-100 caution, F-400 alert (no hard-coded 2500)"
   expect(msawFloorFt(20, 0, kdem)).toBe(outerF);
   expect(msawFloorFt(50, 0, kdem)).toBe(kdem.defaultMinAltitudeFt);
 
-  expect(msawSeverityForAltitude(innerF - 100, innerF)).toBe("caution");
+  expect(msawSeverityForAltitude(innerF - 100, innerF)).toBe("alert");
   expect(msawSeverityForAltitude(innerF - 400, innerF)).toBe("alert");
-  expect(msawSeverityForAltitude(outerF - 100, outerF)).toBe("caution");
+  expect(msawSeverityForAltitude(outerF - 100, outerF)).toBe("alert");
   expect(msawSeverityForAltitude(outerF - 400, outerF)).toBe("alert");
   expect(msawSeverityForAltitude(innerF, innerF)).toBeNull();
 
-  const caution = evaluateMsaw([aircraftAt({ xNm: 0, yNm: 0, altitudeFt: innerF - 100 })], kdem);
-  expect(caution).toEqual([
-    { callsign: "DAL123", severity: "caution", altFt: innerF - 100, floorFt: innerF },
+  const justBelow = evaluateMsaw([aircraftAt({ xNm: 0, yNm: 0, altitudeFt: innerF - 100 })], kdem);
+  expect(justBelow).toEqual([
+    { callsign: "DAL123", severity: "alert", altFt: innerF - 100, floorFt: innerF },
   ]);
-  const alert = evaluateMsaw([aircraftAt({ xNm: 0, yNm: 0, altitudeFt: innerF - 400 })], kdem);
-  expect(alert[0]?.severity).toBe("alert");
-  expect(alert[0]?.floorFt).toBe(innerF);
+  const deep = evaluateMsaw([aircraftAt({ xNm: 0, yNm: 0, altitudeFt: innerF - 400 })], kdem);
+  expect(deep[0]?.severity).toBe("alert");
+  expect(deep[0]?.floorFt).toBe(innerF);
 });
 
-test("AC2 — inner polygon floor 1500: 1400 caution, 1000 alert", () => {
+test("AC2 — inner polygon floor 1500: 1400 and 1000 are both alert", () => {
   expect(inner!.minAltitudeFt).toBe(1500);
   expect(msawFloorFt(0, 0, kdem)).toBe(1500);
-  const caution = evaluateMsaw([aircraftAt({ xNm: 2, yNm: 2, altitudeFt: 1400 })], kdem);
-  expect(caution[0]?.severity).toBe("caution");
-  expect(caution[0]?.floorFt).toBe(1500);
-  const alert = evaluateMsaw([aircraftAt({ xNm: 2, yNm: 2, altitudeFt: 1000 })], kdem);
-  expect(alert[0]?.severity).toBe("alert");
-  expect(alert[0]?.altFt).toBe(1000);
+  const justBelow = evaluateMsaw([aircraftAt({ xNm: 2, yNm: 2, altitudeFt: 1400 })], kdem);
+  expect(justBelow[0]?.severity).toBe("alert");
+  expect(justBelow[0]?.floorFt).toBe(1500);
+  const deep = evaluateMsaw([aircraftAt({ xNm: 2, yNm: 2, altitudeFt: 1000 })], kdem);
+  expect(deep[0]?.severity).toBe("alert");
+  expect(deep[0]?.altFt).toBe(1000);
 });
 
 test("AC3 — LOC or GS inside 6 NM at 1200 ft is inhibited", () => {
@@ -195,7 +195,7 @@ test("AC4 — same point/alt on HEADING fires MSAW; DIRECT/STAR/MISSED never inh
     expect(isMsawInhibited(ac, inhibit)).toBe(false);
     const alerts = evaluateMsaw([ac], kdem, inhibit);
     expect(alerts).toHaveLength(1);
-    expect(alerts[0]?.severity).toBe("caution");
+    expect(alerts[0]?.severity).toBe("alert");
     expect(alerts[0]?.floorFt).toBe(1500);
   }
 });

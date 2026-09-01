@@ -74,7 +74,7 @@ test("loadKdem attaches the MVA chart and RW27 / 6 NM inhibit", () => {
   });
 });
 
-test("AC1/AC2 — loaded KDEM MVA floors drive caution then alert", () => {
+test("AC1/AC2 — loaded KDEM MVA floors drive alert below the floor", () => {
   const chart = loadMva("KDEM")!;
   const innerF = chart.polygons.find((poly) => poly.id === "inner")!.minAltitudeFt;
   const dal = makeTestAircraft({
@@ -86,12 +86,14 @@ test("AC1/AC2 — loaded KDEM MVA floors drive caution then alert", () => {
     altitudeFt: innerF - 100,
     speedKt: 0,
   });
-  expect(evaluateMsaw([dal], chart)[0]?.severity).toBe("caution");
+  expect(evaluateMsaw([dal], chart)[0]?.severity).toBe("alert");
   dal.altitudeFt = innerF - 400;
   expect(evaluateMsaw([dal], chart)[0]?.severity).toBe("alert");
   dal.altitudeFt = 1400;
   expect(innerF).toBe(1500);
-  expect(evaluateMsaw([dal], chart)[0]?.severity).toBe("caution");
+  expect(evaluateMsaw([dal], chart)[0]?.severity).toBe("alert");
   dal.altitudeFt = 1000;
   expect(evaluateMsaw([dal], chart)[0]?.severity).toBe("alert");
+  dal.altitudeFt = innerF;
+  expect(evaluateMsaw([dal], chart)).toEqual([]);
 });

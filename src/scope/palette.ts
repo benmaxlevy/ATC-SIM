@@ -3,8 +3,8 @@
  * 2008 STARS TCW RGB table + CRC STARS TCW (docs.virtualnas.net/crc/stars — R07)
  * + vice STARS monitor (Boston Approach screenshot; not ERAM).
  * CRC STARS STCA (R07) — static `CA` in the datablock + aural tone.
- * FOA STARS / 7110.65 name the alert (R01, R05). MSAW indicator uses caution
- * yellow then alert red; it does not tint the datablock, leader, or target.
+ * FOA STARS / 7110.65 name the alert (R01, R05). MSAW paints a red `MSAW`
+ * tag when MSL is below the MVA floor; it does not tint the datablock, leader, or target.
  * Not certified. Do not label “STARS CA” or “MSAW
  * certified.” UI word is **MSAW**, not GPWS / TAWS.
  *
@@ -21,8 +21,8 @@
  * - Owned FDB white after F3; unowned / other-TCP FDB green
  * - Search/fusion position symbol blue; history trail blue (not track-tinted)
  * - PTL white; TLS/tools blue for TPA J-rings and ATPA monitor cones; SSA / DCB / lists phosphor green
- * - Phase 4: CA and MSAW are colored indicator text above the FDB (alert red /
- *   caution yellow). They do not tint the block, leader, or target.
+ * - Phase 4: CA and MSAW are colored indicator text above the FDB (alert red).
+ *   They do not tint the block, leader, or target.
  * - ATPA owns its own warning/alert hues (`atpaWarning`, `atpaAlert`) so its
  *   cones never borrow CA/MSAW `caution` or `alert`.
  */
@@ -71,8 +71,8 @@ export const PALETTE = {
    */
   tools: "#134767",
   /**
-   * CA/MSAW caution (yellow). Lite 3 NM / 1000 ft trainer, not NAS parameters.
-   * Do not label “STARS CA.”
+   * CA caution (yellow). Predicted CA leftover in the tint helper; live CA
+   * is alert-only. Do not label “STARS CA.”
    */
   caution: "#FFFF00",
   /** CA/MSAW alert (red). Lite trainer, not NAS-certified. Never ATPA. */

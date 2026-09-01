@@ -3,13 +3,18 @@ import type { Aircraft } from "../aircraft";
 /**
  * Analog: JO 7110.65 / FOA STARS **MSAW** (R01, R02, R05) — aircraft below a
  * minimum-vectoring-altitude floor. UI word is **MSAW**, not GPWS / TAWS /
- * “terrain alarm.”
+ * “terrain alarm.” NAS color displays show flashing red **LA**; CRC R07 lists
+ * MSAW as Low-Altitude alert (not implemented there). This trainer paints a
+ * red `MSAW` tag. No yellow caution band.
  *
  * Trainer delta: lite MVA polygons in NM, MSL only (no radar altitude). Not
- * NAS parameters. Not certified MSAW.
+ * NAS parameters. Not certified MSAW. No look-ahead / predicted MSAW.
  */
 
-/** Red when MSL is strictly below `floorFt - MSAW_RED_BELOW_FT`. */
+/**
+ * T04-10 yellow band (ft below floor). Unused — MSAW is alert-only when MSL
+ * is strictly below the floor. Kept so tests can cite the old constant.
+ */
 export const MSAW_RED_BELOW_FT = 300;
 
 /**
@@ -98,15 +103,12 @@ export function msawFloorFt(xNm: number, yNm: number, chart: MvaChart): number {
 }
 
 /**
- * Yellow: `alt < floor` and `alt >= floor - 300`. Red: `alt < floor - 300`.
- * At or above the floor: no MSAW.
+ * Alert when MSL is strictly below the floor. At or above the floor: no MSAW.
+ * T04-10 also had a 300 ft yellow caution band; that is unused (NAS LA is red).
  */
 export function msawSeverityForAltitude(altFt: number, floorFt: number): MsawSeverity | null {
   if (altFt >= floorFt) {
     return null;
-  }
-  if (altFt >= floorFt - MSAW_RED_BELOW_FT) {
-    return "caution";
   }
   return "alert";
 }

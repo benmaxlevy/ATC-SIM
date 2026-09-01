@@ -20,7 +20,7 @@
  * (display only). SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
  * FILTER, RANGE, OFF CNTR, `OK/OK/NA` plus live SITE radar word) — not world-fixed. Live `*` TPA/ATPA chord
  * buffer paints next to FILTER in SSA/preview green (same FIL-prompt grammar).
- * Current CA displays static `CA` + tone from `world.alerts` and paints red. T04-10 MSAW paints a yellow then red `MSAW` tag the same way; neither tints the block, leader, or target. CA halo is
+ * Current CA displays static `CA` + tone from `world.alerts` and paints red. T04-10 MSAW paints a red `MSAW` tag when MSL is below the MVA floor; neither tints the block, leader, or target. CA halo is
  * **not** drawn: CRC conflict-alert CA is static `CA` text + tone, not a 3 NM circle
  * (circles are TPA J-rings or ERAM DRI). Not OSM / tiles (R12). Not a
  * sprite. Not an airplane. Not a label. Not NAS STARS.
