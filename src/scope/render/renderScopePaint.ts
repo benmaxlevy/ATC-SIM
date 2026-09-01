@@ -4,6 +4,7 @@
 import {
   caSeverityForCallsign,
   handoffFor,
+  MSAW_DATABLOCK_TAG,
   msawSeverityForCallsign,
   type Aircraft,
   type World,
@@ -499,7 +500,7 @@ export function drawDatablock(
   }
   if (msawSeverity) {
     ctx.fillStyle = applyBrite(PALETTE.alert, briteCh);
-    ctx.fillText("MSAW", alertTagX, alertTagY);
+    ctx.fillText(MSAW_DATABLOCK_TAG, alertTagX, alertTagY);
   }
 
   ctx.fillStyle = applyBrite(visual.color, briteCh);

@@ -3,6 +3,7 @@ import { makeTestAircraft } from "../../aircraft";
 import type { LateralMode, VerticalMode } from "../../aircraft";
 import kdemMvaJson from "../../../scenario/data/kdem-mva.json";
 import {
+  MSAW_DATABLOCK_TAG,
   MSAW_FAF_DISTANCE_NM,
   MSAW_RED_BELOW_FT,
   evaluateMsaw,
@@ -93,6 +94,10 @@ function aircraftAt(
 
 test("MSAW_RED_BELOW_FT is the unused T04-10 300 ft band", () => {
   expect(MSAW_RED_BELOW_FT).toBe(300);
+});
+
+test("FDB glyph is NAS LA, not the letters MSAW", () => {
+  expect(MSAW_DATABLOCK_TAG).toBe("LA");
 });
 
 test("PIP: triangle has a clear interior and an outside vertex", () => {

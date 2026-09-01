@@ -145,6 +145,7 @@ export type {
 } from "./alerts/msaw";
 export {
   DEFAULT_MSAW_INHIBIT,
+  MSAW_DATABLOCK_TAG,
   MSAW_FAF_DISTANCE_NM,
   MSAW_RED_BELOW_FT,
   evaluateMsaw,

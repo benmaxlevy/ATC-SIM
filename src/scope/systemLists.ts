@@ -4,7 +4,7 @@
  * drag-and-drop lifecycle, collision overlap detection, and show-all-frames preview.
  */
 
-import type { World, Aircraft } from "@core";
+import { MSAW_DATABLOCK_TAG, type Aircraft, type World } from "@core";
 import { formatAltitudeHundreds } from "./datablock";
 import { buildSystemListLines, rewriteFixForList, type ListFormatter } from "./listFormatter";
 import type { ScopeView } from "./scopeView";
@@ -435,7 +435,7 @@ export function buildAlertList(world: World, maxLines: number = 50): string[] {
     if (world.alerts.msaw) {
       for (const alert of world.alerts.msaw) {
         const callsign = alert.callsign.padEnd(16, " ");
-        lines.push(`${callsign} LA`);
+        lines.push(`${callsign} ${MSAW_DATABLOCK_TAG}`);
       }
     }
   }

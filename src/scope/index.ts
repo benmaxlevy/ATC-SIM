@@ -12,7 +12,7 @@
  * F1 help overlay (`TRAINER KEYS — NOT CRC`), Tab cycle focus, `/` radio focus.
  * Scope-focus `*` TPA/ATPA slew chords (R07 Table 36) parse and prompt on the PPI.
  * T04-09 CA displays static `CA` + tone (no yellow). T04-10 MSAW paints a
- * red `MSAW` tag when MSL is below the MVA floor; neither tints the block. CA is raised only for current conflicts. The PPI does
+ * red `LA` tag when MSL is below the MVA floor; neither tints the block. CA is raised only for current conflicts. The PPI does
  * not compute pair distance.
  *
  * DCB (T02-16/T02-17/T02-22/T02-25) is a green cell grid on the PPI glass; it calls these same

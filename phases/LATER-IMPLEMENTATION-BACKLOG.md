@@ -49,18 +49,19 @@ Constraints later work must keep:
 ### MSAW tag is alert-only
 
 Visible now: `evaluateMsaw` raises when MSL is strictly below the MVA
-polygon floor (T04-10). The PPI paints a red `MSAW` tag. T04-10 also shipped
-a 300 ft yellow caution band (`alt < floor` but `>= floor - 300`); that
-band is unused.
+polygon floor (T04-10). The PPI paints a red **LA** tag (NAS STARS /
+CRC Low-Altitude glyph). The LA/CA/MCI list already used `LA`. T04-10 also
+shipped a 300 ft yellow caution band (`alt < floor` but `>= floor - 300`);
+that band is unused.
 
 NAS/STARS color displays use flashing red **LA** (NTSB A-06-44; JO 7110.65
-5-14). CRC R07 names Low-Altitude / MSAW alert status and does not
-implement a yellow MSAW stage. Predicted MSAW (look-ahead still showing
-**LA** in red) is still not modeled.
+5-14). CRC R07 names Low-Altitude / MSAW alert status. Predicted MSAW
+(look-ahead still showing **LA** in red) is still not modeled. Flashing
+**LA** is not modeled (tag is static, like CA).
 
-Later work must keep: UI word **MSAW**; no GPWS/TAWS; no datablock/target
-tint from MSAW; CA remains the only conflict audio. Do not restore yellow
-MSAW without a cited STARS two-color MSAW rule.
+Later work must keep: FDB glyph **LA** (not the letters MSAW); no GPWS/TAWS;
+no datablock/target tint from MSAW; CA remains the only conflict audio. Do
+not restore yellow MSAW without a cited STARS two-color MSAW rule.
 
 ### Real ATPA pairing and predicted geometry
 

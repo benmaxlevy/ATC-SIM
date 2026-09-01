@@ -3,7 +3,7 @@
  * 2008 STARS TCW RGB table + CRC STARS TCW (docs.virtualnas.net/crc/stars — R07)
  * + vice STARS monitor (Boston Approach screenshot; not ERAM).
  * CRC STARS STCA (R07) — static `CA` in the datablock + aural tone.
- * FOA STARS / 7110.65 name the alert (R01, R05). MSAW paints a red `MSAW`
+ * FOA STARS / 7110.65 name the alert (R01, R05). MSAW paints a red `LA`
  * tag when MSL is below the MVA floor; it does not tint the datablock, leader, or target.
  * Not certified. Do not label “STARS CA” or “MSAW
  * certified.” UI word is **MSAW**, not GPWS / TAWS.

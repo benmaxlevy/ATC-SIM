@@ -148,4 +148,13 @@ test("CA tag is static (does not blink); MSAW tag is not GPWS/TAWS", () => {
   expect(src).not.toMatch(/evaluateMsaw/);
   expect(src).toMatch(/Do not label/);
   expect(src).toMatch(/not GPWS/);
+  const paint = (
+    import.meta.glob("../render/renderScopePaint.ts", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>
+  )["../render/renderScopePaint.ts"]!;
+  expect(paint).toMatch(/MSAW_DATABLOCK_TAG/);
+  expect(paint).not.toMatch(/fillText\("MSAW"/);
 });

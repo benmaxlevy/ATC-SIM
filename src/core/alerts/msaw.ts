@@ -2,10 +2,10 @@ import type { Aircraft } from "../aircraft";
 
 /**
  * Analog: JO 7110.65 / FOA STARS **MSAW** (R01, R02, R05) — aircraft below a
- * minimum-vectoring-altitude floor. UI word is **MSAW**, not GPWS / TAWS /
- * “terrain alarm.” NAS color displays show flashing red **LA**; CRC R07 lists
- * MSAW as Low-Altitude alert (not implemented there). This trainer paints a
- * red `MSAW` tag. No yellow caution band.
+ * minimum-vectoring-altitude floor. NAS color displays paint flashing red
+ * **LA** (low altitude) above the FDB, not the letters MSAW. CRC R07 lists
+ * MSAW as Low-Altitude alert on the LA/CA/MCI list. This trainer paints a red
+ * `LA` tag. No yellow caution band. Not GPWS / TAWS.
  *
  * Trainer delta: lite MVA polygons in NM, MSL only (no radar altitude). Not
  * NAS parameters. Not certified MSAW. No look-ahead / predicted MSAW.
@@ -16,6 +16,9 @@ import type { Aircraft } from "../aircraft";
  * is strictly below the floor. Kept so tests can cite the old constant.
  */
 export const MSAW_RED_BELOW_FT = 300;
+
+/** FDB / list glyph for an MSAW alert. NAS STARS / CRC: **LA**, not MSAW. */
+export const MSAW_DATABLOCK_TAG = "LA";
 
 /**
  * KDEM ILS 27 FAF distance (NM). Inhibit uses planar distance to RW27 when
