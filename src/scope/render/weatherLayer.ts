@@ -18,6 +18,8 @@ import { WX_VIP_FILL_HEX } from "./wxStarsFill";
 
 export { WX_VIP_FILL_HEX } from "./wxStarsFill";
 
+export const DEFAULT_WX_ALPHA = 255;
+
 export function wxVipFillHex(level: 1 | 2 | 3 | 4 | 5 | 6, briteWx: number): string {
   return applyBrite(WX_VIP_FILL_HEX[level - 1]!, briteWx);
 }
@@ -253,26 +255,16 @@ function rebuildComposite(
       if (!fill) {
         continue;
       }
-      const outline =
-        vipAtScreen(mosaic, levels, x - 1, y, nwPx, dw, dh) !== vip ||
-        vipAtScreen(mosaic, levels, x + 1, y, nwPx, dw, dh) !== vip ||
-        vipAtScreen(mosaic, levels, x, y - 1, nwPx, dw, dh) !== vip ||
-        vipAtScreen(mosaic, levels, x, y + 1, nwPx, dw, dh) !== vip;
-      const style = wxScreenStyle(outline);
       let rgb = fill;
-      if (style === "contour") {
-        rgb = contours[vip - 1] ?? fill;
-      } else {
-        const sampled = sampleWxLevelTile(vip as 1 | 2 | 3 | 4 | 5 | 6, x, y);
-        if (sampled) {
-          rgb = tintRgb(sampled, briteWx);
-        }
+      const sampled = sampleWxLevelTile(vip as 1 | 2 | 3 | 4 | 5 | 6, x, y);
+      if (sampled) {
+        rgb = tintRgb(sampled, briteWx);
       }
       const o = (y * width + x) * 4;
       pixels[o] = rgb[0];
       pixels[o + 1] = rgb[1];
       pixels[o + 2] = rgb[2];
-      pixels[o + 3] = 255;
+      pixels[o + 3] = DEFAULT_WX_ALPHA;
     }
   }
   const canvas = acquireCanvas(width, height);

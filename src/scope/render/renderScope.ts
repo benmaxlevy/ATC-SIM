@@ -71,9 +71,9 @@ export function renderScope(
     sites: view.radarSites,
   });
 
+  drawWeatherLayer(ctx, view, size);
   view.mapCache = reuseOrBuildMapCache(view.mapCache, toMapCacheInput(view, size));
   drawMapLayers(ctx, view.mapCache, view);
-  drawWeatherLayer(ctx, view, size);
   drawTracks(ctx, world, view, size);
 
   const ssaBottomY = drawSsa(ctx, world, view);

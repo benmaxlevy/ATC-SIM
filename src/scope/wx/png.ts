@@ -175,21 +175,9 @@ function nodeZlibInflate(data: Uint8Array): Uint8Array | null {
 
 async function inflateViaDecompressionStream(data: Uint8Array): Promise<Uint8Array> {
   const stream = new DecompressionStream("deflate");
-  const writer = stream.writable.getWriter();
-  const copy = new Uint8Array(data.byteLength);
-  copy.set(data);
-  await writer.write(copy);
-  await writer.close();
-  const reader = stream.readable.getReader();
-  const chunks: Uint8Array[] = [];
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (done) {
-      break;
-    }
-    chunks.push(value);
-  }
-  return concat(chunks);
+  const response = new Response(new Response(data as BodyInit).body!.pipeThrough(stream));
+  const buffer = await response.arrayBuffer();
+  return new Uint8Array(buffer);
 }
 
 async function inflateZlib(data: Uint8Array): Promise<Uint8Array> {
