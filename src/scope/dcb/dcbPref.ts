@@ -29,7 +29,16 @@ import { type HistoryDotCount } from "../history";
 import { LEADER_LENGTH_STEPS_PX, type LeaderDir, type LeaderLengthPx } from "../leader";
 import { cloneBrite, type BriteState } from "../palette";
 import { PTL_MINUTE_PRESETS, type PtlMinutes } from "../ptl";
-import { createScopeView, setDcbDock, setSurveillanceMode, type ScopeView } from "../scopeView";
+import {
+  createScopeView,
+  DEFAULT_MODE_FSL,
+  DEFAULT_VOL_LEVEL,
+  setDcbDock,
+  setSurveillanceMode,
+  type ModeFsl,
+  type ScopeView,
+  type VolLevel,
+} from "../scopeView";
 import { GI_SLOT_COUNT, SSA_FILTER_FIELDS, type SsaVisibility } from "../ssa";
 import {
   DEFAULT_ATPA_STATE,
@@ -120,6 +129,8 @@ export interface DcbPrefBody {
   /** SITE display mode only. Per-track PTL / TPA are not stored. */
   surveillanceMode: SurveillanceMode;
   wxLevels: WxLevels;
+  vol?: VolLevel;
+  modeFsl?: ModeFsl;
 }
 
 export interface DcbPrefSlot {
@@ -312,6 +323,8 @@ export function serializeDcbPref(view: ScopeView): DcbPrefBody {
     },
     surveillanceMode: view.surveillanceMode,
     wxLevels: cloneWxLevels(view.wxLevels),
+    vol: view.vol ?? DEFAULT_VOL_LEVEL,
+    modeFsl: view.modeFsl ?? DEFAULT_MODE_FSL,
   };
 }
 
@@ -385,6 +398,14 @@ export function applyDcbPref(view: ScopeView, body: DcbPrefBody): void {
   };
   setSurveillanceMode(view, resolveSurveillancePref(body.surveillanceMode, view.radarSites));
   view.wxLevels = parseWxLevels(body.wxLevels);
+  view.vol =
+    body.vol !== undefined && body.vol >= 0 && body.vol <= 5
+      ? (body.vol as VolLevel)
+      : DEFAULT_VOL_LEVEL;
+  view.modeFsl =
+    body.modeFsl === "F" || body.modeFsl === "S" || body.modeFsl === "L"
+      ? body.modeFsl
+      : DEFAULT_MODE_FSL;
   view.mapCache = null;
 }
 

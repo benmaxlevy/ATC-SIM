@@ -133,6 +133,7 @@ function onFrame(nowMs: number): void {
   lastFrameMs = nowMs;
   // Physics: wall Δt feeds the accumulator. Never pass this dt into stepWorld.
   advanceWorld(handles.world, wallDtS, acc);
+  handles.caAlertTone.setVolume(scopeView.vol ?? 2);
   handles.afterPhysicsTick();
   void ensureWxLevelTiles();
   void ensureWxMosaic(scopeView, { nowMs });

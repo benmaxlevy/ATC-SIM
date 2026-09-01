@@ -94,6 +94,7 @@ export {
   applyBrite,
   caDatablockTagVisible,
   cloneBrite,
+  getBackgroundColor,
   historyTrailColor,
   mapBriteColors,
   snapBriteLevel,
@@ -321,8 +322,11 @@ export {
   toggleAtpaInTrailDistance,
   toggleAtpaMonitorCones,
   formatDcbTpaMiReadout,
+  VOL_STEPS,
+  DEFAULT_VOL_LEVEL,
+  DEFAULT_MODE_FSL,
 } from "./scopeView";
-export type { MapLayerId, ScopeView } from "./scopeView";
+export type { MapLayerId, ScopeView, VolLevel, ModeFsl } from "./scopeView";
 export {
   WX_VIP_CONTOUR_HEX,
   WX_VIP_FILL_HEX,
@@ -444,6 +448,9 @@ export {
   toggleGeoMapsList,
   toggleVideoMap,
   toggleWxLevel,
+  cycleModeFsl,
+  formatDcbVolReadout,
+  stepDcbVol,
   videoMapByDcbNumber,
   videoMapTokenLayout,
 } from "./dcb/dcbFunctions";

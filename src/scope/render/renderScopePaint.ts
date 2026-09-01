@@ -367,9 +367,26 @@ export function getDatablockVisualState(
     }
   }
 
+  function computeBaseDatablockMode(
+    view: ScopeView,
+    td?: TrackDisplay,
+  ): "full" | "partial" | "limited" {
+    if (td?.forcedFdb) {
+      return "full";
+    }
+    const ownership = td?.ownership ?? "unowned";
+    if (view.modeFsl === "S") {
+      return "partial";
+    }
+    if (view.modeFsl === "L") {
+      return ownership === "owned" ? "partial" : "limited";
+    }
+    return td?.datablockMode ?? (ownership === "owned" ? "full" : "partial");
+  }
+
   // 7. Track highlight (Cyan #00FFFF)
   if (td?.highlighted) {
-    const baseMode = td.datablockMode ?? (td.ownership === "owned" ? "full" : "partial");
+    const baseMode = computeBaseDatablockMode(view, td);
     const mode =
       isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs) && baseMode === "partial"
         ? "full"
@@ -384,7 +401,7 @@ export function getDatablockVisualState(
 
   // 8. Base ownership
   const ownership = td?.ownership ?? "unowned";
-  const baseMode = td?.datablockMode ?? (ownership === "owned" ? "full" : "partial");
+  const baseMode = computeBaseDatablockMode(view, td);
   const mode =
     isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs) && baseMode === "partial"
       ? "full"

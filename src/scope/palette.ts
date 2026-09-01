@@ -165,17 +165,13 @@ export const BRITE_PAINT_CHANNELS = [
   "pri",
   "wx",
   "wxc",
+  "bkc",
 ] as const satisfies readonly BriteChannel[];
 
 /**
  * CMP: no compass `N` tick. BCN: secondary beacon symbol uses POS/OTH.
- * BKC: no CRC BKC paint.
  */
-export const BRITE_DISABLED_CHANNELS = [
-  "cmp",
-  "bcn",
-  "bkc",
-] as const satisfies readonly BriteChannel[];
+export const BRITE_DISABLED_CHANNELS = ["cmp", "bcn"] as const satisfies readonly BriteChannel[];
 
 export const DEFAULT_BRITE: BriteState = {
   dcb: DEFAULT_BRITE_LEVEL,
@@ -237,6 +233,22 @@ export function applyBrite(hex: string, channel: number): string {
   const t = snapBriteLevel(channel) / 100;
   const { r, g, b } = parseHexRgb(hex);
   return `#${toHex2(Math.round(r * t))}${toHex2(Math.round(g * t))}${toHex2(Math.round(b * t))}`;
+}
+
+/**
+ * Background clear color modulated by BRITE BKC (0–100%).
+ * Scales from pure black `#000000` (at 0%) to subtle dark slate `#141C2B` (at 100%).
+ */
+export function getBackgroundColor(bkcLevel: number): string {
+  const level = snapBriteLevel(bkcLevel);
+  const maxR = 0x14;
+  const maxG = 0x1c;
+  const maxB = 0x2b;
+  const t = level / 100;
+  const r = Math.round(maxR * t);
+  const g = Math.round(maxG * t);
+  const b = Math.round(maxB * t);
+  return `#${toHex2(r)}${toHex2(g)}${toHex2(b)}`;
 }
 
 /** @deprecated T02-26: per-channel `applyBrite`. Kept so T02-17 tests can migrate. */

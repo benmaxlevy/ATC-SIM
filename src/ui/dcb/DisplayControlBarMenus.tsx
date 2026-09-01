@@ -24,6 +24,7 @@ import {
   formatDcbHistoryReadout,
   formatDcbPtlMinutesReadout,
   formatDcbTpaMiReadout,
+  formatDcbVolReadout,
   openDcbMenu,
   persistDcbPref,
   restoreDcbPrefSession,
@@ -34,6 +35,7 @@ import {
   setDcbDock,
   stepBriteChannel,
   stepCharSizeChannel,
+  stepDcbVol,
   stepHistoryDots,
   stepPtlLength,
   stepTpaRadius,
@@ -77,6 +79,7 @@ import {
 } from "./dcbChrome";
 
 export function renderAux(view: ScopeView, onChange: () => void) {
+  const volArmed = spinnerArmed(view, "VOL");
   const historyArmed = historySpinnerArmed(view);
   const ptlArmed = ptlSpinnerArmed(view);
   return (
@@ -91,14 +94,31 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         style={{ gridColumn: 1, gridRow: "1 / span 2" }}
       >
         <DcbCell
-          kind="disabled"
+          kind="spinner"
           ariaLabel="Volume"
           dataDcb="vol"
-          disabled
-          onClick={() => undefined}
+          pressed={volArmed}
+          onClick={() => {
+            cancelFilterIfEntering(view);
+            if (volArmed) {
+              commitDcbSpinner(view);
+            } else {
+              armDcbSpinner(view, "VOL");
+            }
+            afterCell(onChange);
+          }}
+          onWheel={(event) =>
+            onSpinnerWheel(view, "VOL", event, (step) => stepDcbVol(view, step), onChange)
+          }
+          onDragDelta={(step) => {
+            for (let i = 0; i < Math.abs(step); i++) {
+              stepDcbVol(view, step > 0 ? 1 : -1);
+            }
+            afterCell(onChange);
+          }}
         >
           <span className="dcb-cell-line">VOL</span>
-          <span className="dcb-cell-line">2</span>
+          <span className="dcb-cell-line">{formatDcbVolReadout(view.vol ?? 2)}</span>
         </DcbCell>
       </div>
 
@@ -1506,7 +1526,7 @@ export const BRITE_GRID_LAYOUT: {
   staticVal?: string;
 }[] = [
   { id: "dcb", col: 1, row: 1, rowSpan: 1, channel: "dcb", label: "DCB" },
-  { id: "bkc", col: 1, row: 2, rowSpan: 1, label: "BKC", disabled: true, staticVal: "100" },
+  { id: "bkc", col: 1, row: 2, rowSpan: 1, channel: "bkc", label: "BKC" },
   { id: "mpa", col: 2, row: 1, rowSpan: 1, channel: "mpa", label: "MPA" },
   { id: "mpb", col: 2, row: 2, rowSpan: 1, channel: "mpb", label: "MPB" },
   { id: "fdb", col: 3, row: 1, rowSpan: 1, channel: "fdb", label: "FDB" },

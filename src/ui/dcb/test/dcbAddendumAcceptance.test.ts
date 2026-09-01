@@ -309,7 +309,8 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, WX latches / disab
   const auxText = visibleText(aux);
   expect(auxText).toMatch(/VOL/);
   expect(aux).toMatch(/data-dcb-cell="vol"/);
-  expect(aux).toMatch(/aria-label="Volume"[^>]*\bdisabled\b/);
+  expect(aux).toMatch(/aria-label="Volume"[^>]*data-dcb-kind="spinner"/);
+  expect(aux).not.toMatch(/aria-label="Volume"[^>]*\bdisabled\b/);
   expect(auxText).toMatch(/HISTORY/);
   expect(auxText).toMatch(/PTL/);
   expect(auxText).toMatch(/OWN/);
@@ -351,12 +352,12 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, WX latches / disab
   const brite = dcbHtml(view);
   expect(brite).toMatch(/aria-label="WX"[^>]*data-dcb-kind="spinner"/);
   expect(brite).toMatch(/aria-label="WXC"[^>]*data-dcb-kind="spinner"/);
+  expect(brite).toMatch(/aria-label="BKC"[^>]*data-dcb-kind="spinner"/);
   expect(brite).not.toMatch(/aria-label="WX"[^>]*\bdisabled\b/);
   expect(brite).not.toMatch(/aria-label="WXC"[^>]*\bdisabled\b/);
-  expect(brite).toMatch(/aria-label="BKC"[^>]*\bdisabled\b/);
-  expect(BRITE_PAINT_CHANNELS).toEqual(expect.arrayContaining(["wx", "wxc"]));
-  expect(BRITE_DISABLED_CHANNELS).toEqual(expect.arrayContaining(["bkc"]));
-  expect(BRITE_DISABLED_CHANNELS).not.toEqual(expect.arrayContaining(["wx", "wxc"]));
+  expect(brite).not.toMatch(/aria-label="BKC"[^>]*\bdisabled\b/);
+  expect(BRITE_PAINT_CHANNELS).toEqual(expect.arrayContaining(["wx", "wxc", "bkc"]));
+  expect(BRITE_DISABLED_CHANNELS).not.toEqual(expect.arrayContaining(["wx", "wxc", "bkc"]));
   closeDcbMenu(view);
 
   openDcbMenu(view, "SSA_FILTER");

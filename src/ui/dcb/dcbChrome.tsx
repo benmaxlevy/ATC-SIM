@@ -448,6 +448,7 @@ export interface DcbCellProps {
     | "site-multi"
     | "site-choice"
     | "pref"
+    | "mode-fsl"
     | `pref-${number}`
     | "pref-default"
     | "pref-restore"

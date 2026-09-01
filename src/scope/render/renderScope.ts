@@ -38,7 +38,7 @@
 import { reuseOrBuildMapCache, toMapCacheInput } from "../mapLayers";
 import { type ScopeView } from "../scopeView";
 import { type World } from "@core";
-import { PALETTE } from "../palette";
+import { getBackgroundColor } from "../palette";
 import { type ScopeViewSize } from "../camera";
 import { syncTrackDisplays } from "../trackDisplay";
 import { drawWeatherLayer } from "./weatherLayer";
@@ -59,7 +59,7 @@ export function renderScope(
   cssHeight: number,
 ): void {
   const size: ScopeViewSize = { widthPx: cssWidth, heightPx: cssHeight };
-  ctx.fillStyle = PALETTE.background;
+  ctx.fillStyle = getBackgroundColor(view.brite?.bkc ?? 100);
   ctx.fillRect(0, 0, cssWidth, cssHeight);
 
   if (cssWidth <= 0 || cssHeight <= 0) {

@@ -49,6 +49,7 @@ import {
   centerOnAirport,
   closeDcbMenu,
   commitDcbSpinner,
+  cycleModeFsl,
   dcbLeaderDirReadout,
   DCB_QUICK_MAP_COUNT,
   formatDcbLdrLengthReadout,
@@ -405,6 +406,23 @@ function renderPhysicalMain(
             <span className="dcb-cell-line">FILTER</span>
           </DcbCell>
         );
+      case "mode-fsl":
+        return (
+          <DcbCell
+            kind="toggle"
+            ariaLabel="Mode FSL"
+            dataDcb="mode-fsl"
+            pressed={view.modeFsl !== "F"}
+            onClick={() => {
+              cancelFilterIfEntering(view);
+              cycleModeFsl(view);
+              afterCell(onChange);
+            }}
+          >
+            <span className="dcb-cell-line">MODE</span>
+            <span className="dcb-cell-line">{view.modeFsl}</span>
+          </DcbCell>
+        );
       case "shift":
         return renderShift(view, onChange);
       default:
@@ -417,7 +435,7 @@ function renderPhysicalMain(
             return renderWxCell(view, onChange, n as 1 | 2 | 3 | 4 | 5 | 6);
           }
         }
-        return disabled(id, id === "mode-fsl" ? "MODE FSL" : id.toUpperCase());
+        return disabled(id, id.toUpperCase());
     }
   };
   return (

@@ -50,7 +50,8 @@ export type BriteSpinnerCell =
   | "BRITE_RR"
   | "BRITE_HST"
   | "BRITE_WX"
-  | "BRITE_WXC";
+  | "BRITE_WXC"
+  | "BRITE_BKC";
 
 export type DcbSpinnerCell =
   | "RANGE"
@@ -60,6 +61,7 @@ export type DcbSpinnerCell =
   | "HISTORY"
   | "PTL"
   | "TPA_MI"
+  | "VOL"
   | CharSizeSpinnerCell
   | BriteSpinnerCell;
 
