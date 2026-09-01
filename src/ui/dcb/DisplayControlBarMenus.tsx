@@ -212,13 +212,7 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         data-dcb-row-span={2}
         style={{ gridColumn: 3, gridRow: "1 / span 2" }}
       >
-        <DcbCell
-          kind="toggle"
-          ariaLabel="Cursor home"
-          dataDcb="cursor-home"
-          pressed={view.cursorHome}
-          onClick={() => runAuxCell(view, onChange, () => toggleCursorHome(view))}
-        >
+        <DcbCell kind="disabled" ariaLabel="Cursor home" disabled onClick={() => undefined}>
           <span className="dcb-cell-line">CURSOR</span>
           <span className="dcb-cell-line">HOME</span>
         </DcbCell>
@@ -233,26 +227,9 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         data-dcb-row-span={2}
         style={{ gridColumn: 4, gridRow: "1 / span 2" }}
       >
-        <DcbCell
-          kind="spinner"
-          ariaLabel="Cursor speed"
-          dataDcb="csr-spd"
-          pressed={spinnerArmed(view, "CSR_SPD")}
-          onClick={() => toggleSpinner(view, onChange, "CSR_SPD")}
-          onWheel={(event) =>
-            onSpinnerWheel(view, "CSR_SPD", event, (step) => stepCursorSpeed(view, step), onChange)
-          }
-          onDragDelta={(step) => {
-            for (let i = 0; i < Math.abs(step); i++) {
-              stepCursorSpeed(view, step > 0 ? 1 : -1);
-            }
-            afterCell(onChange);
-          }}
-        >
+        <DcbCell kind="disabled" ariaLabel="Cursor speed" disabled onClick={() => undefined}>
           <span className="dcb-cell-line">CSR SPD</span>
-          <span id={DCB_CURSOR_SPEED_READOUT_ID} className="dcb-cell-line">
-            {formatDcbCursorSpeedReadout(view.cursorSpeed)}
-          </span>
+          <span className="dcb-cell-line">4</span>
         </DcbCell>
       </div>
 

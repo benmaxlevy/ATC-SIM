@@ -316,11 +316,9 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, WX latches / disab
   expect(aux).toMatch(/data-dcb-cell="h-rate"/);
   expect(aux).toMatch(/aria-label="History rate"[^>]*data-dcb-kind="spinner"/);
   expect(auxText).toMatch(/CURSOR HOME/);
-  expect(aux).toMatch(/data-dcb-cell="cursor-home"/);
-  expect(aux).toMatch(/aria-label="Cursor home"[^>]*data-dcb-kind="toggle"/);
+  expect(aux).toMatch(/aria-label="Cursor home"[^>]*\bdisabled\b/);
   expect(auxText).toMatch(/CSR SPD/);
-  expect(aux).toMatch(/data-dcb-cell="csr-spd"/);
-  expect(aux).toMatch(/aria-label="Cursor speed"[^>]*data-dcb-kind="spinner"/);
+  expect(aux).toMatch(/aria-label="Cursor speed"[^>]*\bdisabled\b/);
   expect(auxText).toMatch(/DWELL/);
   expect(aux).toMatch(/data-dcb-cell="dwell"/);
   expect(aux).toMatch(/aria-label="Dwell mode"[^>]*data-dcb-kind="spinner"/);
