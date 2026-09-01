@@ -498,27 +498,6 @@ Constraints later work must keep:
   `tools/cifp-import/out/`);
 - `src/` never imports this tool.
 
-### STAR descend-via transition selection
-
-Visible now: STAR arrivals follow catalog enroute legs and, when an active
-runway is available, the generic route builder joins a matching runway
-transition at the common fix. This keeps ATL arrivals on their published feeder
-paths without a facility-specific branch.
-
-Deliberately missing: controller command support to say **descend via
-<STAR>**, then select or amend a transition—primarily a runway transition—or
-to change that transition while the aircraft is already on the STAR. Current
-`PROCEDURE` / `VIA_STAR` state carries one STAR transition reference from the
-scenario or spawn assignment.
-
-Later work must keep:
-
-- transition lookup data-driven through the loaded catalog;
-- enroute/common/runway legs joined only at matching common fixes;
-- existing authored routes, runway-aware spawning, vectors, and KDEM behavior;
-- no airport-id branch, chart scrape, or silent straight-line substitute for
-  unsupported procedure legs.
-
 ### CIFP pack integration acceptance (T04-35)
 
 Visible now: every listed playable scenario loads its catalog through
