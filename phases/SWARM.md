@@ -1,8 +1,66 @@
-# ATC-SIM swarm orchestrator — Twenty-fourth swarm (DCB VOL, MODE FSL, BRITE BKC and SSA WX Telemetry)
+# ATC-SIM swarm orchestrator — Twenty-fifth swarm (DCB AUX H_RATE, DWELL, Cursor Controls, and BRITE CMP/BCN)
 
-Twenty-third (METAR weather and SSA altimeter T02-78–80) planned/landed.
-This file keeps that history, then the twenty-fourth addendum on
-**`feature/dcb-controls-ssa-wx`**.
+Twenty-fourth (DCB VOL, MODE FSL, BRITE BKC, SSA WX telemetry T02-81–83) planned/landed.
+This file keeps that history, then the twenty-fifth addendum on
+**`feature/dcb-aux-and-brite-controls`**.
+
+## Twenty-fifth swarm planned — 2026-09-01 (DCB AUX H_RATE, DWELL, Cursor Controls, and BRITE CMP/BCN)
+
+This configuration enables previously disabled/stubbed DCB controls on AUX (`H_RATE`, `DWELL`, `CURSOR HOME`, `CSR SPD`) and BRITE (`CMP`, `BCN`) on **`feature/dcb-aux-and-brite-controls`**, cut from current `master`.
+Captain squash-merges ticket branches into **`feature/dcb-aux-and-brite-controls`**, not `master`. Do not push. Existing swarm history stays intact.
+
+| Key | Value |
+| --- | --- |
+| Goal | Enable DCB AUX H_RATE (history update interval scan rate spinner), DWELL (OFF/ON/LOCK datablock hover brightening mode), CURSOR HOME toggle, CSR SPD (cursor speed multiplier spinner), and BRITE CMP (compass rose tick marks) & BCN (secondary radar beacon symbol) brightness spinners with PREF persistence. |
+| Include | **T02-84**, **T02-85**, **T02-86** |
+| Source | STARS DCB physical layout specifications (R07), Vice `stars/dcb.go`, Scope canvas renderer, and history buffer sampling. |
+| Skip | SSA filter submenu overhaul; TSAS / Time Line complex scheduling; Beacon Mode 2 / RTQC / UNCOR / MCP inert hardware diagnostic simulations; paid vendors. |
+| Stop | After T02-86 acceptance. No next phase. |
+| Max workers | 3 |
+| Merge lock | captain squash to `feature/dcb-aux-and-brite-controls`, then `npm test` / `npm run ci` |
+| Model | **cursor-grok-4.6-high only, non-fast** on captain and every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law (twenty-fifth swarm — DCB AUX & BRITE controls):**
+
+- **H_RATE authentic history scan rate.** DCB `H_RATE` spinner modulates the history dot update interval (presets: `1.0`, `2.0`, `3.0`, `4.0`, `4.5`, `5.0`, `6.0`, `8.0`, `10.0` s, default `4.5` s). New history samples are gated by this interval.
+- **DWELL mode authentic hover brightening.** AUX `DWELL` cycles `OFF` -> `ON` -> `LOCK`. In `ON` mode, datablocks brighten on mouse hover over the target. In `LOCK` mode, datablock stays brightened on the last hovered target until moving near another target. In `OFF` mode, standard datablock brightness applies.
+- **CURSOR HOME & CSR SPD controls.** `CURSOR HOME` is an active toggle button on AUX DCB. `CSR SPD` is an active spinner (1–10, default 4).
+- **BRITE CMP & BCN active channels.** `CMP` (compass rose / range ring tick mark brightness) and `BCN` (secondary radar beacon symbol brightness) are enabled as live spinners (0–100%) on the BRITE submenu.
+- **PREF persistence.** Active settings for `historyRateSec`, `dwellMode`, `cursorHome`, `cursorSpeed`, `brite.cmp`, and `brite.bcn` are serialized and restored via PREF save/restore.
+- **Zero simulation regressions.** Scope camera, radar tracking, datablocks, DCB submenus, system lists, and radio parsing stay 100% operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-84 | `feature/dcb-aux-and-brite-controls` + planning commit |
+| B | T02-85 | T02-84 |
+| C | T02-86 | T02-85 |
+
+**Ticket ownership:**
+
+- T02-84 owns DCB AUX `H_RATE` history scan rate spinner, `DWELL` mode OFF/ON/LOCK, `CURSOR HOME` toggle, `CSR SPD` spinner, and PREF persistence.
+- T02-85 owns DCB BRITE `CMP` and `BCN` brightness spinners and canvas rendering integration.
+- T02-86 owns end-to-end automated integration tests, documentation updates, and backlog sync.
+
+**Ticket files / branches:**
+
+- `ticket/T02-84-dcb-aux-hrate-dwell-and-cursor-controls` ← `phases/02-scope/tickets/T02-84-dcb-aux-hrate-dwell-and-cursor-controls.md`
+- `ticket/T02-85-dcb-brite-cmp-bcn-channel-spinners` ← `phases/02-scope/tickets/T02-85-dcb-brite-cmp-bcn-channel-spinners.md`
+- `ticket/T02-86-dcb-aux-and-brite-acceptance` ← `phases/02-scope/tickets/T02-86-dcb-aux-and-brite-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope addendum (T02-84–86 DCB AUX & BRITE controls)
+Merge target: `feature/dcb-aux-and-brite-controls`
+Merged: T02-84, T02-85, T02-86
+Tests: npm test / npm run ci exit 0
+```
+
+---
 
 ## Twenty-fourth swarm planned — 2026-09-01 (DCB VOL, MODE FSL, BRITE BKC and SSA WX Telemetry)
 
