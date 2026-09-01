@@ -65,7 +65,9 @@ export type {
 export {
   AUTO_TTS_VOICE_ID,
   PILOT_VOICE_IDS,
+  RANDOM_TTS_VOICE_ID,
   isAutoTtsVoice,
+  randomPilotVoice,
   voiceIdForCallsign,
 } from "./pilot-voices";
 export {

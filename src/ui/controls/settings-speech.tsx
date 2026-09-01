@@ -337,7 +337,7 @@ export function SpeechSettingsPanel({ controller, speechId, onChange }: SpeechSe
             <input
               type="text"
               value={prefs.voiceId}
-              placeholder="auto (per callsign)"
+              placeholder="auto (per callsign) or random"
               onChange={(event) => {
                 controller.setVoiceId(event.target.value);
                 refresh();
