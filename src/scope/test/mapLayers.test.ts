@@ -9,6 +9,7 @@ import {
   activeRingRadiiNm,
   buildLocalizerFeather,
   buildMapCache,
+  buildMapCacheKey,
   headingOffsetNm,
   nmDistance,
   parseDigitalMap,
@@ -18,6 +19,7 @@ import {
   type MapCacheInput,
   type MapCacheView,
 } from "../mapLayers";
+import { createScopeView, toggleMapLayer } from "../scopeView";
 
 const VIEW: ScopeViewSize = { widthPx: 800, heightPx: 800 };
 
@@ -43,6 +45,7 @@ function viewFromInput(input: MapCacheInput): MapCacheView {
     showLocalizer: input.layers.showLocalizer,
     showRings: input.layers.showRings,
     showCoastline: input.layers.showCoastline,
+    showCompassRose: input.layers.showCompassRose,
     airportEastNm: input.airportEastNm,
     airportNorthNm: input.airportNorthNm,
     mapVisibility: input.mapVisibility,
@@ -306,3 +309,77 @@ test("AC4 — range rings draw about PLACE RR origin, not only airport ref", () 
   const airport = nmToScreen(0, 0, DEFAULT_SCOPE_CAMERA, VIEW);
   expect(cache.ringCircles[0]!.x).not.toBeCloseTo(airport.x, 0);
 });
+
+test("AC2 — buildMapCache computes compass rose ticks and labels on outermost ring", () => {
+  const cache = buildMapCache(kdemInput());
+  expect(cache.compassRose).not.toBeNull();
+  expect(cache.compassRose!.ticks).toHaveLength(72);
+  expect(cache.compassRose!.labels).toHaveLength(12);
+  expect(cache.compassRoseLabels).toHaveLength(12);
+
+  const outermostCircle = cache.ringCircles[cache.ringCircles.length - 1]!;
+  expect(cache.compassRose!.radiusPx).toBeCloseTo(outermostCircle.radiusPx, 5);
+  expect(cache.compassRose!.origin.x).toBeCloseTo(outermostCircle.x, 5);
+  expect(cache.compassRose!.origin.y).toBeCloseTo(outermostCircle.y, 5);
+
+  // When Path2D is polyfilled / available in browser environment
+  class MockPath2D {
+    moveTo = vi.fn();
+    lineTo = vi.fn();
+    arc = vi.fn();
+    closePath = vi.fn();
+  }
+  const originalPath2D = (globalThis as unknown as { Path2D?: unknown }).Path2D;
+  try {
+    (globalThis as unknown as { Path2D: unknown }).Path2D = MockPath2D;
+    const cacheWithPaths = buildMapCache(kdemInput());
+    expect(cacheWithPaths.compassRosePath).toBeInstanceOf(MockPath2D);
+    expect(cacheWithPaths.ringsPath).toBeInstanceOf(MockPath2D);
+  } finally {
+    if (originalPath2D === undefined) {
+      delete (globalThis as unknown as { Path2D?: unknown }).Path2D;
+    } else {
+      (globalThis as unknown as { Path2D: unknown }).Path2D = originalPath2D;
+    }
+  }
+});
+
+test("AC2 & AC4 — showCompassRose=false or showRings=false disables compass rose in cache", () => {
+  const noRose = buildMapCache(
+    kdemInput({
+      layers: { ...DEFAULT_MAP_LAYER_FLAGS, showCompassRose: false },
+    }),
+  );
+  expect(noRose.compassRose).toBeNull();
+  expect(noRose.compassRosePath).toBeNull();
+  expect(noRose.compassRoseLabels).toHaveLength(0);
+
+  const noRings = buildMapCache(
+    kdemInput({
+      layers: { ...DEFAULT_MAP_LAYER_FLAGS, showRings: false },
+    }),
+  );
+  expect(noRings.compassRose).toBeNull();
+  expect(noRings.compassRosePath).toBeNull();
+  expect(noRings.compassRoseLabels).toHaveLength(0);
+});
+
+test("AC3 & AC4 — buildMapCacheKey differentiates showCompassRose and ScopeView defaults/toggles", () => {
+  const inputWithRose = kdemInput({ layers: { ...DEFAULT_MAP_LAYER_FLAGS, showCompassRose: true } });
+  const inputWithoutRose = kdemInput({ layers: { ...DEFAULT_MAP_LAYER_FLAGS, showCompassRose: false } });
+
+  const key1 = buildMapCacheKey(inputWithRose);
+  const key2 = buildMapCacheKey(inputWithoutRose);
+  expect(key1).not.toBe(key2);
+
+  const view = createScopeView(0, 0);
+  expect(view.showCompassRose).toBe(true);
+
+  toggleMapLayer(view, "compassRose");
+  expect(view.showCompassRose).toBe(false);
+  expect(view.mapCache).toBeNull();
+
+  toggleMapLayer(view, "compassRose");
+  expect(view.showCompassRose).toBe(true);
+});
+

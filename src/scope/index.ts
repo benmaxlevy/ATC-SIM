@@ -116,6 +116,21 @@ export {
   reuseOrBuildMapCache,
 } from "./mapLayers";
 export type { DigitalMap, MapCache, MapLayerFlags, NmPoint } from "./mapLayers";
+export {
+  COMPASS_ROSE_TICK_INTERVAL_DEG,
+  COMPASS_ROSE_MINOR_TICK_PX,
+  COMPASS_ROSE_MEDIUM_TICK_PX,
+  COMPASS_ROSE_MAJOR_TICK_PX,
+  COMPASS_ROSE_LABEL_OFFSET_PX,
+  formatCompassRoseHeading,
+  generateCompassRoseGeometry,
+} from "./compassRose";
+export type {
+  CompassRoseGeometry,
+  CompassRoseLabel,
+  CompassRoseTick,
+  CompassRoseTickKind,
+} from "./compassRose";
 export { getDatablockVisualState, isTrackedTarget, renderScope } from "./render";
 export type { DatablockVisualState } from "./render";
 export {

@@ -49,10 +49,10 @@ On FAA STARS TCW displays (docs.virtualnas.net/crc/stars — R07 and FAA 7110.65
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** `generateCompassRoseGeometry` produces 72 accurate 5°/10°/30° radial ticks and twelve 3-digit heading labels (`360`..`330`).
-- [ ] **AC2 —** `MapCache` and `buildMapCache` correctly construct and cache compass rose tick geometry and label coordinates.
-- [ ] **AC3 —** `ScopeView` provides `showCompassRose: boolean` defaulting to `true`.
-- [ ] **AC4 —** Unit tests verify trigonometric accuracy, tick lengths, label angles, and cache invalidation.
+- [x] **AC1 —** `generateCompassRoseGeometry` produces 72 accurate 5°/10°/30° radial ticks and twelve 3-digit heading labels (`360`..`330`).
+- [x] **AC2 —** `MapCache` and `buildMapCache` correctly construct and cache compass rose tick geometry and label coordinates.
+- [x] **AC3 —** `ScopeView` provides `showCompassRose: boolean` defaulting to `true`.
+- [x] **AC4 —** Unit tests verify trigonometric accuracy, tick lengths, label angles, and cache invalidation.
 
 ## Test plan
 
