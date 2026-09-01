@@ -113,16 +113,16 @@ test("authored catalog-facility arrivals spawn inside 50 NM of ARP with procedur
     const world = createWorldFromScenario(scenario, 1);
     const registry = buildFixRegistry(scenario.catalog);
     expect(world.aircraft).toHaveLength(arrivals.length);
-    for (const arrival of arrivals) {
-      const ac = world.aircraft.find((row) => row.callsign === arrival.callsign);
-      expect(ac).toBeDefined();
-      expect(Math.hypot(ac!.xNm, ac!.yNm)).toBeLessThanOrEqual(authoredMaxNm);
-      expect(ac!.intent.lateral?.type).toBe("PROCEDURE");
-      if (ac!.intent.lateral?.type !== "PROCEDURE") {
+    for (let i = 0; i < world.aircraft.length; i += 1) {
+      const ac = world.aircraft[i]!;
+      const arrival = arrivals[i]!;
+      expect(Math.hypot(ac.xNm, ac.yNm)).toBeLessThanOrEqual(authoredMaxNm);
+      expect(ac.intent.lateral?.type).toBe("PROCEDURE");
+      if (ac.intent.lateral?.type !== "PROCEDURE") {
         continue;
       }
-      expect(ac!.intent.lateral.starId).toBe(arrival.starId);
-      const targetId = ac!.intent.lateral.routeFixIds[ac!.intent.lateral.toFixIndex];
+      expect(ac.intent.lateral.starId).toBe(arrival.starId);
+      const targetId = ac.intent.lateral.routeFixIds[ac.intent.lateral.toFixIndex];
       expect(targetId).toBeDefined();
       const target = registry.require(targetId!);
       expect(Math.hypot(target.xNm, target.yNm)).toBeLessThanOrEqual(rangeMaxNm);

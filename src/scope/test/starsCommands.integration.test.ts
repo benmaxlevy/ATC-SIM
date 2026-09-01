@@ -305,7 +305,7 @@ test("AC1 — *F flashes FILTER; *LA writes hundreds; *BCN add/DEL; incomplete I
 
 test("AC1 — + / Enter * chords mutate tracks; / DB toggles PDB↔FDB; F3/F4 apply vs arm", () => {
   const hoWorld = createWorldFromScenario(loadKdem(), 1);
-  const hoDal = hoWorld.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  const hoDal = hoWorld.aircraft[0]!;
   const hoView = createScopeView();
   syncTrackDisplays(hoView.tracks, hoWorld);
   expect(handoffFor(hoWorld, hoDal.id).kind).toBe("inbound");

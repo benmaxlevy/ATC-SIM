@@ -396,7 +396,12 @@ class PiperTts:
             self._voices[voice_id] = PiperVoice.load(str(onnx))
 
     def synthesize(self, text: str, voice_id: str) -> bytes:
-        vid = (voice_id or "").strip() or self._default_voice
+        vid = (voice_id or "").strip()
+        if not vid or vid.lower() in ("auto", "default"):
+            vid = self._default_voice
+        elif vid.lower() == "random":
+            import random
+            vid = random.choice(list(self._voices.keys()) or [self._default_voice])
         if vid not in self._voices:
             self._load(vid)
         voice = self._voices[vid]

@@ -222,9 +222,9 @@ test("AC5 — selectAircraftAt does not import the radio pipeline or write inten
   }
 });
 
-test("T04-17 AC1 — click pending inbound DAL123 accepts, owns white, logs once", () => {
+test("T04-17 AC1 — click pending inbound arrival accepts, owns white, logs once", () => {
   const world = createWorldFromScenario(loadKdem(), 1);
-  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  const dal = world.aircraft[0]!;
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
   expect(handoffFor(world, dal.id).kind).toBe("inbound");
@@ -247,7 +247,7 @@ test("T04-17 AC1 — click pending inbound DAL123 accepts, owns white, logs once
 
 test("T04-17 AC4 — ils27 click is select-only and does not log accepted", () => {
   const world = createWorldFromScenario(loadKdemIls27());
-  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  const dal = world.aircraft[0]!;
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
   const before = world.sessionLog?.byType("handoff.inbound.accepted")?.length ?? 0;

@@ -160,7 +160,6 @@
   ],
   "arrivals": [
     {
-      "callsign": "DAL123",
       "xNm": -29.970345,
       "yNm": 34.234901,
       "headingDeg": 142,
@@ -171,7 +170,6 @@
       "aircraftType": "B738"
     },
     {
-      "callsign": "AAL45",
       "xNm": -37.821894,
       "yNm": 26.878696,
       "headingDeg": 107,
@@ -182,7 +180,6 @@
       "aircraftType": "A320"
     },
     {
-      "callsign": "UAL200",
       "xNm": -34.685342,
       "yNm": -32.159246,
       "headingDeg": 47,
@@ -193,7 +190,6 @@
       "aircraftType": "B739"
     },
     {
-      "callsign": "SWA88",
       "xNm": 26.342187,
       "yNm": 40.36495,
       "headingDeg": 208,
@@ -204,7 +200,6 @@
       "aircraftType": "B737"
     },
     {
-      "callsign": "JBU17",
       "xNm": 35.391919,
       "yNm": 34.032662,
       "headingDeg": 222,
@@ -215,7 +210,6 @@
       "aircraftType": "A321"
     },
     {
-      "callsign": "NKS310",
       "xNm": -36.820493,
       "yNm": 33.678796,
       "headingDeg": 108,

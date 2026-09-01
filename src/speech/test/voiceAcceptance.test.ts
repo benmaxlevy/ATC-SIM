@@ -140,19 +140,19 @@ test("E14 — http adapter source does not call vendor STT/TTS", async () => {
   expect(src).not.toMatch(/openai|deepgram|groq|elevenlabs|api-inference\.huggingface\.co/i);
 });
 
-test("E13 — typed DAL123 H270 still assigns heading 270 with source text", async () => {
+test("E13 — typed callsign H270 still assigns heading 270 with source text", async () => {
   const world = createWorldFromScenario(loadKdemIls27());
-  const result = await submitCommand(world, "DAL123 H270", new SessionLog());
+  const ac = world.aircraft[0]!;
+  const result = await submitCommand(world, `${ac.callsign} H270`, new SessionLog());
   expect(result.accepted).toBe(true);
   expect(result.command?.source).toBe("text");
   expect(result.command?.parseStage).toBe("typed");
-  expect(world.aircraft.find((ac) => ac.callsign === "DAL123")?.intent.assignedHeadingDeg).toBe(
-    270,
-  );
+  expect(ac.intent.assignedHeadingDeg).toBe(270);
 });
 
 test("typed accepted readback uses the same TTS player as PTT", async () => {
   const world = createWorldFromScenario(loadKdemIls27());
+  const ac = world.aircraft[0]!;
   const synth = vi.fn(async (): Promise<AudioClip> => {
     return { sampleRate: 16000, channels: 1, pcm16: new Int16Array(1600) };
   });
@@ -178,7 +178,7 @@ test("typed accepted readback uses the same TTS player as PTT", async () => {
       setFxEnabled() {},
     },
   });
-  const result = await submitCommand(world, "DAL123 H270", new SessionLog());
+  const result = await submitCommand(world, `${ac.callsign} H270`, new SessionLog());
   expect(result.accepted).toBe(true);
   await handles.voiceLoop.playReadback(result.readback, result.command?.callsign);
   expect(synth).toHaveBeenCalledTimes(1);
@@ -190,7 +190,7 @@ test("typed accepted readback uses the same TTS player as PTT", async () => {
 
 test("E13 — Path A English in the command line turns left 270", async () => {
   const world = createWorldFromScenario(loadKdemIls27());
-  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  const dal = world.aircraft[0]!;
   world.selectedAircraftId = dal.id;
   const result = await submitCommand(world, "turn left heading two seven zero", new SessionLog());
   expect(result.accepted).toBe(true);
@@ -202,7 +202,7 @@ test("E13 — Path A English in the command line turns left 270", async () => {
 
 test("E3 — fake-port voice loop sets source voice and turns left 270", async () => {
   const world = createWorldFromScenario(loadKdemIls27());
-  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  const dal = world.aircraft[0]!;
   world.selectedAircraftId = dal.id;
   const handles = createApp({
     speech: fakePort("turn left heading two seven zero"),

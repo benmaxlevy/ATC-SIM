@@ -246,21 +246,23 @@ function assertSpawn(value: unknown, index: number): Spawn {
   };
 }
 
+function rejectForbiddenField(value: Record<string, unknown>, field: string, path: string): void {
+  if (Object.prototype.hasOwnProperty.call(value, field)) {
+    throw new Error(`Scenario ${path} must not include ${field}`);
+  }
+}
+
 function assertArrival(value: unknown, index: number): ArrivalSpawn {
   if (!isRecord(value)) {
     throw new Error(`Scenario arrivals[${index}] must be an object`);
   }
-  const callsign = assertString(value.callsign, `arrivals[${index}].callsign`).toUpperCase();
-  if (callsign.length === 0) {
-    throw new Error(`Scenario arrivals[${index}].callsign must be non-empty`);
-  }
+  rejectForbiddenField(value, "callsign", `arrivals[${index}]`);
   const aircraftType = parseOptionalAircraftType(
     value.aircraftType,
     `arrivals[${index}].aircraftType`,
   );
   const star = parseOptionalStarSpawn(value, index);
   return {
-    callsign,
     xNm: assertNumber(value.xNm, `arrivals[${index}].xNm`),
     yNm: assertNumber(value.yNm, `arrivals[${index}].yNm`),
     headingDeg: assertNumber(value.headingDeg, `arrivals[${index}].headingDeg`),
@@ -323,13 +325,6 @@ function assertArrivals(
     );
   }
   const arrivals = raw.map(assertArrival);
-  const seen = new Set<string>();
-  for (const arrival of arrivals) {
-    if (seen.has(arrival.callsign)) {
-      throw new Error(`Scenario arrivals have duplicate callsign ${arrival.callsign}`);
-    }
-    seen.add(arrival.callsign);
-  }
   return arrivals;
 }
 
@@ -399,13 +394,7 @@ function parseDepartureSpawn(value: unknown, index: number): DepartureSpawn {
   if (!isRecord(value)) {
     throw new Error(`Scenario departureConfig.departures[${index}] must be an object`);
   }
-  const callsign = assertString(
-    value.callsign,
-    `departureConfig.departures[${index}].callsign`,
-  ).toUpperCase();
-  if (callsign.length === 0) {
-    throw new Error(`Scenario departureConfig.departures[${index}].callsign must be non-empty`);
-  }
+  rejectForbiddenField(value, "callsign", `departureConfig.departures[${index}]`);
   const aircraftType = parseOptionalAircraftType(
     value.aircraftType,
     `departureConfig.departures[${index}].aircraftType`,
@@ -415,7 +404,6 @@ function parseDepartureSpawn(value: unknown, index: number): DepartureSpawn {
       ? undefined
       : assertNumber(value.scheduledSimMs, `departureConfig.departures[${index}].scheduledSimMs`);
   return {
-    callsign,
     sidId: assertString(value.sidId, `departureConfig.departures[${index}].sidId`).toUpperCase(),
     transitionId: assertString(
       value.transitionId,
@@ -526,12 +514,12 @@ export function loadKdem09(): Scenario {
   return assertScenario(kdem09Json);
 }
 
-/** Phase 4 playable slice: DAL123 on DEM1 north + AAL45 on DEM1 south at SEMAX. */
+/** Phase 4 playable slice: DEM1 north + south at SEMAX. */
 export function loadKdemIls27(): Scenario {
   return assertScenario(kdemIls27Json, { arrivalCountMin: 1, arrivalCountMax: ARRIVAL_COUNT_MAX });
 }
 
-/** Phase 4 playable slice: DAL123 on DEM1 west-north + AAL45 on DEM1 west-south at WSMAX. */
+/** Phase 4 playable slice: DEM1 west-north + west-south. */
 export function loadKdemIls09(): Scenario {
   return assertScenario(kdemIls09Json, { arrivalCountMin: 1, arrivalCountMax: ARRIVAL_COUNT_MAX });
 }

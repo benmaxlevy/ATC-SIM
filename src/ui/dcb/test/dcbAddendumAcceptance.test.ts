@@ -9,7 +9,13 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, expectTypeOf, test, vi } from "vitest";
-import { INSTRUCTION_TYPES, SessionLog, type Command, type Instruction } from "@core";
+import {
+  INSTRUCTION_TYPES,
+  SessionLog,
+  acceptInboundHandoff,
+  type Command,
+  type Instruction,
+} from "@core";
 import { createWorldFromScenario, loadKdem, loadKdemIls27 } from "@scenario";
 import {
   BRITE_DISABLED_CHANNELS,
@@ -112,9 +118,10 @@ test("AC2 — Command IR stays the frozen fields and 17 instruction types", () =
   expectTypeOf<Instruction["type"]>().toEqualTypeOf<(typeof INSTRUCTION_TYPES)[number]>();
 });
 
-test("AC2 — DAL123 H270 still readbacks heading and assigns 270", async () => {
+test("AC2 — callsign H270 still readbacks heading and assigns 270", async () => {
   const world = createWorldFromScenario(loadKdemIls27());
-  const result = await submitCommand(world, "DAL123 H270", new SessionLog());
+  const ac = world.aircraft[0]!;
+  const result = await submitCommand(world, `${ac.callsign} H270`, new SessionLog());
   expect(result.accepted).toBe(true);
   expect(result.command?.instructions[0]).toEqual({
     type: "FLY_HEADING",
@@ -122,12 +129,10 @@ test("AC2 — DAL123 H270 still readbacks heading and assigns 270", async () => 
     turn: "SHORTEST",
   });
   expect(result.readback).toContain("heading 270");
-  expect(world.aircraft.find((ac) => ac.callsign === "DAL123")?.intent.assignedHeadingDeg).toBe(
-    270,
-  );
+  expect(ac.intent.assignedHeadingDeg).toBe(270);
 });
 
-test("AC3 — DCB/scope addendum clicks emit zero Command IR until radio DAL123 H270", async () => {
+test("AC3 — DCB/scope addendum clicks emit zero Command IR until radio accepted command", async () => {
   expect(barSrc()).not.toMatch(/from\s+["']@parse["']/);
   expect(barSrc()).not.toMatch(/from\s+["']@pilot["']/);
   expect(barSrc()).not.toMatch(/handleRadioText|submitCommand|parseRadioText/);
@@ -136,9 +141,9 @@ test("AC3 — DCB/scope addendum clicks emit zero Command IR until radio DAL123 
   expect(barSrc()).not.toMatch(/\bprompt\s*\(/);
 
   const world = createWorldFromScenario(loadKdem());
-  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123");
+  const dal = world.aircraft[0]!;
   expect(dal).toBeDefined();
-  world.selectedAircraftId = dal!.id;
+  world.selectedAircraftId = dal.id;
   const view = createScopeView(0, 0, { giTextLines: loadKdem().giTextLines });
   syncTrackDisplays(view.tracks, world);
   const log = new SessionLog();
@@ -174,13 +179,14 @@ test("AC3 — DCB/scope addendum clicks emit zero Command IR until radio DAL123 
 
   expect(log.byType("command.accepted")).toHaveLength(0);
   expect(log.byType("command.rejected")).toHaveLength(0);
-  expect(dal!.intent.assignedHeadingDeg).not.toBe(270);
+  expect(dal.intent.assignedHeadingDeg).not.toBe(270);
 
-  const result = await submitCommand(world, "DAL123 H270", log);
+  acceptInboundHandoff(world, dal.id);
+  const result = await submitCommand(world, `${dal.callsign} H270`, log);
   expect(result.accepted).toBe(true);
   expect(log.byType("command.accepted")).toHaveLength(1);
   expect(log.byType("command.rejected")).toHaveLength(0);
-  expect(dal!.intent.assignedHeadingDeg).toBe(270);
+  expect(dal.intent.assignedHeadingDeg).toBe(270);
 });
 
 test("AC4 — DCB has SHIFT / PREF / WX latches; no CSA/FMA/OSM; no input/Apply; no licensed typeface file", () => {

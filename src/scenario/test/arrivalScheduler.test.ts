@@ -73,6 +73,18 @@ describe("T04-25 configurable arrival traffic", () => {
     expect(a.schedule).toEqual(b.schedule);
   });
 
+  test("unique full callsigns and unique numeric tails across schedule", () => {
+    const scheduler = createArrivalScheduler(loadKdem().catalog, {
+      initialArrivalCount: 6,
+      arrivalsPerHour: 20,
+      seed: 12345,
+    });
+    const callsigns = scheduler.schedule.map((item) => item.callsign);
+    expect(new Set(callsigns).size).toBe(callsigns.length);
+    const tails = callsigns.map((cs) => cs.replace(/^[A-Z]{3}/, ""));
+    expect(new Set(tails).size).toBe(tails.length);
+  });
+
   test("paused and authored sessions do not schedule arrivals", () => {
     const paused = createWorldForSession(loadKdem(), null, 1, null, {
       initialArrivalCount: 4,

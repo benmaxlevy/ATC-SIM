@@ -3,15 +3,15 @@ import { SessionLog, acceptInboundHandoff, handoffFor } from "@core";
 import { handleRadioText } from "../handleRadioText";
 import { createWorldFromScenario, loadKdem, loadKdemIls27 } from "@scenario";
 
-test("T04-16 AC2 — DAL123 H270 on pending inbound is rejected; heading unchanged", async () => {
+test("T04-16 AC2 — callsign H270 on pending inbound is rejected; heading unchanged", async () => {
   const world = createWorldFromScenario(loadKdem(), 1);
-  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  const dal = world.aircraft[0]!;
   const headingBefore = dal.headingDeg;
   const assignedBefore = dal.intent.assignedHeadingDeg;
   const lateralBefore = dal.intent.lateral;
   const log = new SessionLog();
 
-  const result = await handleRadioText(world, "DAL123 H270", log);
+  const result = await handleRadioText(world, `${dal.callsign} H270`, log);
 
   expect(result.accepted).toBe(false);
   expect(result.reason).toBe("handoff-pending");
@@ -26,13 +26,13 @@ test("T04-16 AC2 — DAL123 H270 on pending inbound is rejected; heading unchang
 
 test("T04-16 AC3 — after acceptInboundHandoff, H270 applies and cancels FMS", async () => {
   const world = createWorldFromScenario(loadKdem(), 1);
-  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  const dal = world.aircraft[0]!;
   expect(dal.intent.lateral?.type).toBe("PROCEDURE");
   expect(acceptInboundHandoff(world, dal.id)).toBe(true);
   expect(handoffFor(world, dal.id)).toEqual({ kind: "none" });
 
   const log = new SessionLog();
-  const result = await handleRadioText(world, "DAL123 H270", log);
+  const result = await handleRadioText(world, `${dal.callsign} H270`, log);
 
   expect(result.accepted).toBe(true);
   expect(dal.intent.assignedHeadingDeg).toBe(270);
@@ -43,15 +43,15 @@ test("T04-16 AC3 — after acceptInboundHandoff, H270 applies and cancels FMS", 
   expect(world.sessionLog?.byType("handoff.inbound.accepted")).toHaveLength(1);
 });
 
-test("T04-16 AC4 — kdem-ils27 DAL123 H270 still applies without accept", async () => {
+test("T04-16 AC4 — kdem-ils27 callsign H270 still applies without accept", async () => {
   const world = createWorldFromScenario(loadKdemIls27());
-  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
-  const aal = world.aircraft.find((ac) => ac.callsign === "AAL45")!;
+  const dal = world.aircraft[0]!;
+  const aal = world.aircraft[1]!;
   expect(handoffFor(world, dal.id)).toEqual({ kind: "none" });
   expect(handoffFor(world, aal.id)).toEqual({ kind: "none" });
 
   const log = new SessionLog();
-  const result = await handleRadioText(world, "DAL123 H270", log);
+  const result = await handleRadioText(world, `${dal.callsign} H270`, log);
 
   expect(result.accepted).toBe(true);
   expect(dal.intent.assignedHeadingDeg).toBe(270);

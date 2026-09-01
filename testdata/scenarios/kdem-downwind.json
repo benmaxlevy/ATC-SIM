@@ -4,7 +4,10 @@
   "icao": "KDEM",
   "magVarDeg": 0,
   "fieldElevFt": 0,
-  "arp": { "latDeg": 0, "lonDeg": 0 },
+  "arp": {
+    "latDeg": 0,
+    "lonDeg": 0
+  },
   "activeRunwayId": "27",
   "spawnPolicy": "authored",
   "runways": [
@@ -13,10 +16,19 @@
       "headingTrueDeg": 270,
       "headingMagDeg": 270,
       "lengthFt": 10000,
-      "thresholdLatLon": { "latDeg": 0, "lonDeg": 0 }
+      "thresholdLatLon": {
+        "latDeg": 0,
+        "lonDeg": 0
+      }
     }
   ],
-  "approaches": [{ "id": "ILS27", "runwayId": "27", "type": "ILS" }],
+  "approaches": [
+    {
+      "id": "ILS27",
+      "runwayId": "27",
+      "type": "ILS"
+    }
+  ],
   "fixes": [],
   "maps": {
     "videoMapSet": "KDEM",
@@ -30,12 +42,14 @@
       "id": "downwind",
       "kind": "downwind",
       "runwayId": "27",
-      "offsetNm": { "xNm": 0, "yNm": 8 }
+      "offsetNm": {
+        "xNm": 0,
+        "yNm": 8
+      }
     }
   ],
   "arrivals": [
     {
-      "callsign": "DAL123",
       "xNm": 16,
       "yNm": 8,
       "headingDeg": 100,
@@ -44,7 +58,6 @@
       "aircraftType": "B738"
     },
     {
-      "callsign": "AAL45",
       "xNm": 12,
       "yNm": 5,
       "headingDeg": 90,
@@ -53,7 +66,6 @@
       "aircraftType": "A320"
     },
     {
-      "callsign": "UAL200",
       "xNm": 18,
       "yNm": 10,
       "headingDeg": 85,
@@ -62,7 +74,6 @@
       "aircraftType": "B739"
     },
     {
-      "callsign": "SWA88",
       "xNm": 14,
       "yNm": 4,
       "headingDeg": 95,
@@ -71,7 +82,6 @@
       "aircraftType": "B737"
     },
     {
-      "callsign": "JBU17",
       "xNm": 20,
       "yNm": 11,
       "headingDeg": 80,
@@ -80,7 +90,6 @@
       "aircraftType": "A321"
     },
     {
-      "callsign": "NKS310",
       "xNm": 22,
       "yNm": 6,
       "headingDeg": 88,

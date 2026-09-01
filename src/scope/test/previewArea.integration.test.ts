@@ -122,7 +122,7 @@ function starNear(
 
 test("AC1 — F3 slew paints INIT CNTL; click unowned arrival owns white FDB; empty click keeps the arm", () => {
   const world = createWorldFromScenario(loadKdem(), 1);
-  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
+  const dal = world.aircraft[0]!;
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
   expect(handoffFor(world, dal.id).kind).toBe("inbound");
@@ -151,7 +151,7 @@ test("AC1 — F3 slew paints INIT CNTL; click unowned arrival owns white FDB; em
   expect(world.selectedAircraftId).toBe(dal.id);
 
   const ownedPaint = paint(world, view);
-  expect(ownedPaint.fillTexts.find((t) => t.text === "DAL123")?.fillStyle).toBe(PALETTE.owned);
+  expect(ownedPaint.fillTexts.find((t) => t.text === dal.callsign)?.fillStyle).toBe(PALETTE.owned);
   expect(PALETTE.owned).toBe("#FFFFFF");
 });
 

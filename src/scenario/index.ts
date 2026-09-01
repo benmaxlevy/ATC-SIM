@@ -148,6 +148,13 @@ export {
   listDepartureSlots,
   spawnDueDepartures,
 } from "./departureGenerator";
+export type { TrafficAirline } from "./callsigns";
+export {
+  TRAFFIC_AIRLINES,
+  allocateCallsign,
+  callsignNumericTail,
+  usedCallsignSet,
+} from "./callsigns";
 export {
   DEFAULT_SPAWN_SEED,
   parseDepartureOptions,

@@ -9,9 +9,11 @@ export const AIRLINE_TELEPHONY: Readonly<Record<string, string>> = {
   UAL: "United",
   SWA: "Southwest",
   JBU: "JetBlue",
-  NKS: "Spirit",
   FFT: "Frontier",
   ASA: "Alaska",
+  SKW: "Skywest",
+  EDV: "Endeavor",
+  RPA: "Brickyard",
   FDX: "FedEx",
   UPS: "UPS",
 };

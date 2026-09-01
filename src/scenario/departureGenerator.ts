@@ -8,24 +8,14 @@
 import { mulberry32, type Aircraft, type ScheduledDeparture, type World } from "@core";
 import type { ProcedureCatalog } from "./procedures/types";
 import { spawnDeparture } from "./departureSpawn";
+import { TRAFFIC_AIRLINES, allocateCallsign, usedCallsignSet } from "./callsigns";
 
 export const DEFAULT_DEPARTURE_RATE_PER_HOUR = 10;
 export const DEFAULT_DEPARTURE_COUNT = 10;
 export const MIN_DEPARTURE_INTERVAL_S = 90;
 export const DEPARTURE_STREAM_XOR = 0x51d5;
 
-export const DEPARTURE_AIRLINES = [
-  "AAL",
-  "DAL",
-  "UAL",
-  "SWA",
-  "JBU",
-  "NKS",
-  "ASA",
-  "FFT",
-  "SKW",
-  "RPA",
-] as const;
+export const DEPARTURE_AIRLINES = TRAFFIC_AIRLINES;
 
 export const DEPARTURE_AIRCRAFT_TYPES = ["B738", "A320", "B737", "A321", "E75L"] as const;
 
@@ -116,10 +106,7 @@ export function generateDepartureSchedule(
   }
 
   const rng = mulberry32((seed >>> 0) ^ DEPARTURE_STREAM_XOR);
-  const usedCallsigns = new Set<string>();
-  for (const cs of activeCallsigns) {
-    usedCallsigns.add(cs.trim().toUpperCase());
-  }
+  const usedCallsigns = usedCallsignSet(activeCallsigns);
 
   const avgIntervalS = 3600 / Math.max(0.1, ratePerHour);
   const schedule: ScheduledDeparture[] = [];
@@ -136,14 +123,7 @@ export function generateDepartureSchedule(
     }
 
     // 2. Pick non-colliding callsign
-    const airline = DEPARTURE_AIRLINES[Math.floor(rng() * DEPARTURE_AIRLINES.length)]!;
-    let flightNum = 100 + Math.floor(rng() * 900);
-    let callsign = `${airline}${flightNum}`;
-    while (usedCallsigns.has(callsign)) {
-      flightNum = 100 + ((flightNum - 100 + 1) % 900);
-      callsign = `${airline}${flightNum}`;
-    }
-    usedCallsigns.add(callsign);
+    const callsign = allocateCallsign(rng, usedCallsigns);
 
     // 3. Pick aircraft type and assigned top altitude
     const aircraftType =
