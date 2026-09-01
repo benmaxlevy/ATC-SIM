@@ -33,9 +33,13 @@ import {
   createScopeView,
   DEFAULT_MODE_FSL,
   DEFAULT_VOL_LEVEL,
+  DEFAULT_DWELL_MODE,
+  DEFAULT_HISTORY_RATE_SEC,
+  DEFAULT_CURSOR_SPEED,
   setDcbDock,
   setSurveillanceMode,
   type ModeFsl,
+  type DwellMode,
   type ScopeView,
   type VolLevel,
 } from "../scopeView";
@@ -131,6 +135,10 @@ export interface DcbPrefBody {
   wxLevels: WxLevels;
   vol?: VolLevel;
   modeFsl?: ModeFsl;
+  historyRateSec?: number;
+  dwellMode?: DwellMode;
+  cursorHome?: boolean;
+  cursorSpeed?: number;
 }
 
 export interface DcbPrefSlot {
@@ -325,6 +333,10 @@ export function serializeDcbPref(view: ScopeView): DcbPrefBody {
     wxLevels: cloneWxLevels(view.wxLevels),
     vol: view.vol ?? DEFAULT_VOL_LEVEL,
     modeFsl: view.modeFsl ?? DEFAULT_MODE_FSL,
+    historyRateSec: view.historyRateSec ?? DEFAULT_HISTORY_RATE_SEC,
+    dwellMode: view.dwellMode ?? DEFAULT_DWELL_MODE,
+    cursorHome: view.cursorHome ?? false,
+    cursorSpeed: view.cursorSpeed ?? DEFAULT_CURSOR_SPEED,
   };
 }
 
@@ -406,6 +418,19 @@ export function applyDcbPref(view: ScopeView, body: DcbPrefBody): void {
     body.modeFsl === "F" || body.modeFsl === "S" || body.modeFsl === "L"
       ? body.modeFsl
       : DEFAULT_MODE_FSL;
+  view.historyRateSec =
+    typeof body.historyRateSec === "number" && body.historyRateSec > 0
+      ? body.historyRateSec
+      : DEFAULT_HISTORY_RATE_SEC;
+  view.dwellMode =
+    body.dwellMode === "OFF" || body.dwellMode === "ON" || body.dwellMode === "LOCK"
+      ? body.dwellMode
+      : DEFAULT_DWELL_MODE;
+  view.cursorHome = body.cursorHome === true;
+  view.cursorSpeed =
+    typeof body.cursorSpeed === "number" && body.cursorSpeed >= 1 && body.cursorSpeed <= 10
+      ? body.cursorSpeed
+      : DEFAULT_CURSOR_SPEED;
   view.mapCache = null;
 }
 

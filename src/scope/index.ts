@@ -62,6 +62,7 @@ export {
   fitCanvasToCss,
   handlePpiCanvasClick,
   handlePpiCanvasMiddleClick,
+  handlePpiCanvasPointerHover,
   handlePpiDoubleClick,
   handlePpiLeftClick,
   handlePpiMiddleClick,
@@ -329,8 +330,11 @@ export {
   VOL_STEPS,
   DEFAULT_VOL_LEVEL,
   DEFAULT_MODE_FSL,
+  DEFAULT_DWELL_MODE,
+  DEFAULT_HISTORY_RATE_SEC,
+  DEFAULT_CURSOR_SPEED,
 } from "./scopeView";
-export type { MapLayerId, ScopeView, VolLevel, ModeFsl } from "./scopeView";
+export type { MapLayerId, ScopeView, VolLevel, ModeFsl, DwellMode } from "./scopeView";
 export {
   WX_VIP_CONTOUR_HEX,
   WX_VIP_FILL_HEX,
@@ -457,6 +461,17 @@ export {
   stepDcbVol,
   stepModeFsl,
   MODE_FSL_STEPS,
+  HISTORY_RATE_STEPS,
+  stepHistoryRate,
+  formatDcbHistoryRateReadout,
+  DWELL_MODES,
+  stepDwellMode,
+  cycleDwellMode,
+  formatDcbDwellReadout,
+  toggleCursorHome,
+  CURSOR_SPEED_STEPS,
+  stepCursorSpeed,
+  formatDcbCursorSpeedReadout,
   videoMapByDcbNumber,
   videoMapTokenLayout,
 } from "./dcb/dcbFunctions";

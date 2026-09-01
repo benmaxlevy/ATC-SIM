@@ -8,6 +8,14 @@ import {
   isVideoMapOn,
   toggleVideoMap,
   toggleWxLevel,
+  stepHistoryRate,
+  formatDcbHistoryRateReadout,
+  stepDwellMode,
+  cycleDwellMode,
+  formatDcbDwellReadout,
+  toggleCursorHome,
+  stepCursorSpeed,
+  formatDcbCursorSpeedReadout,
 } from "../dcbFunctions";
 
 const VIEW = { widthPx: 800, heightPx: 800 };
@@ -41,4 +49,57 @@ test("WX1–6 toggle independent bits", () => {
   toggleWxLevel(view, 1);
   toggleWxLevel(view, 6);
   expect(view.wxLevels).toEqual([true, false, false, false, false, true]);
+});
+
+test("H_RATE spinner cycles through presets", () => {
+  const view = createScopeView();
+  expect(view.historyRateSec).toBe(4.5);
+  expect(formatDcbHistoryRateReadout(view.historyRateSec)).toBe("4.5");
+  stepHistoryRate(view, 1);
+  expect(view.historyRateSec).toBe(5.0);
+  stepHistoryRate(view, -1);
+  expect(view.historyRateSec).toBe(4.5);
+  stepHistoryRate(view, -10);
+  expect(view.historyRateSec).toBe(1.0);
+  stepHistoryRate(view, 20);
+  expect(view.historyRateSec).toBe(10.0);
+});
+
+test("DWELL mode spinner and cycle", () => {
+  const view = createScopeView();
+  expect(view.dwellMode).toBe("OFF");
+  expect(formatDcbDwellReadout(view.dwellMode)).toBe("OFF");
+  cycleDwellMode(view);
+  expect(view.dwellMode).toBe("ON");
+  cycleDwellMode(view);
+  expect(view.dwellMode).toBe("LOCK");
+  cycleDwellMode(view);
+  expect(view.dwellMode).toBe("OFF");
+
+  stepDwellMode(view, 1);
+  expect(view.dwellMode).toBe("ON");
+  stepDwellMode(view, 1);
+  expect(view.dwellMode).toBe("LOCK");
+  stepDwellMode(view, 1);
+  expect(view.dwellMode).toBe("LOCK");
+  stepDwellMode(view, -1);
+  expect(view.dwellMode).toBe("ON");
+});
+
+test("CURSOR HOME toggle and CSR SPD spinner", () => {
+  const view = createScopeView();
+  expect(view.cursorHome).toBe(false);
+  toggleCursorHome(view);
+  expect(view.cursorHome).toBe(true);
+  toggleCursorHome(view);
+  expect(view.cursorHome).toBe(false);
+
+  expect(view.cursorSpeed).toBe(4);
+  expect(formatDcbCursorSpeedReadout(view.cursorSpeed)).toBe("4");
+  stepCursorSpeed(view, 1);
+  expect(view.cursorSpeed).toBe(5);
+  stepCursorSpeed(view, -10);
+  expect(view.cursorSpeed).toBe(1);
+  stepCursorSpeed(view, 20);
+  expect(view.cursorSpeed).toBe(10);
 });

@@ -50,12 +50,12 @@ On the physical STARS AUX Display Control Bar (docs.virtualnas.net/crc/stars —
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** `H_RATE` is an active spinner on AUX DCB cycling presets (`1.0`–`10.0` s) and gates history dot recording interval.
-- [ ] **AC2 —** `DWELL` is an active spinner/toggle on AUX DCB cycling `OFF`, `ON`, `LOCK` and brightens datablocks under mouse hover according to selected mode.
-- [ ] **AC3 —** `CURSOR HOME` is an active toggle button on AUX DCB.
-- [ ] **AC4 —** `CSR SPD` is an active spinner (1–10) on AUX DCB.
-- [ ] **AC5 —** All settings persist and restore via DCB PREF slots.
-- [ ] **AC6 —** Unit and integration tests cover all four controls with zero regressions.
+- [x] **AC1 —** `H_RATE` is an active spinner on AUX DCB cycling presets (`1.0`–`10.0` s) and gates history dot recording interval.
+- [x] **AC2 —** `DWELL` is an active spinner/toggle on AUX DCB cycling `OFF`, `ON`, `LOCK` and brightens datablocks under mouse hover according to selected mode.
+- [x] **AC3 —** `CURSOR HOME` is an active toggle button on AUX DCB.
+- [x] **AC4 —** `CSR SPD` is an active spinner (1–10) on AUX DCB.
+- [x] **AC5 —** All settings persist and restore via DCB PREF slots.
+- [x] **AC6 —** Unit and integration tests cover all four controls with zero regressions.
 
 ## Test plan
 

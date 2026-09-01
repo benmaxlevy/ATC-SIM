@@ -301,6 +301,22 @@ export interface ScopeView {
    * Default "F". Selected tracks retain full datablocks.
    */
   modeFsl: ModeFsl;
+  /**
+   * AUX H_RATE: History dot scan rate interval in seconds (default 4.5).
+   * New history dots are sampled when elapsed time >= historyRateSec * 1000.
+   */
+  historyRateSec: number;
+  /**
+   * AUX DWELL mode: "OFF", "ON", "LOCK" (default "OFF").
+   * ON brightens datablock on hover; LOCK keeps last hovered track brightened.
+   */
+  dwellMode: DwellMode;
+  /** Track ID currently locked by DWELL LOCK mode. */
+  dwellLockedAircraftId: string | null;
+  /** AUX CURSOR HOME toggle state. */
+  cursorHome: boolean;
+  /** AUX CSR SPD spinner (1–10, default 4). */
+  cursorSpeed: number;
 }
 
 export const VOL_STEPS = [0, 1, 2, 3, 4, 5] as const;
@@ -309,6 +325,12 @@ export const DEFAULT_VOL_LEVEL: VolLevel = 2;
 
 export type ModeFsl = "F" | "S" | "L";
 export const DEFAULT_MODE_FSL: ModeFsl = "F";
+
+export type DwellMode = "OFF" | "ON" | "LOCK";
+export const DEFAULT_DWELL_MODE: DwellMode = "OFF";
+
+export const DEFAULT_HISTORY_RATE_SEC = 4.5;
+export const DEFAULT_CURSOR_SPEED = 4;
 
 export function createScopeView(
   airportEastNm: number = AIRPORT_REF_EAST_NM,
@@ -325,6 +347,10 @@ export function createScopeView(
     airportAltimeters?: readonly SsaAirportAltimeter[];
     vol?: VolLevel;
     modeFsl?: ModeFsl;
+    historyRateSec?: number;
+    dwellMode?: DwellMode;
+    cursorHome?: boolean;
+    cursorSpeed?: number;
   },
 ): ScopeView {
   const digitalMap = options?.digitalMap ?? DEFAULT_DIGITAL_MAP;
@@ -409,6 +435,11 @@ export function createScopeView(
     arp,
     vol: options?.vol ?? DEFAULT_VOL_LEVEL,
     modeFsl: options?.modeFsl ?? DEFAULT_MODE_FSL,
+    historyRateSec: options?.historyRateSec ?? DEFAULT_HISTORY_RATE_SEC,
+    dwellMode: options?.dwellMode ?? DEFAULT_DWELL_MODE,
+    dwellLockedAircraftId: null,
+    cursorHome: options?.cursorHome ?? false,
+    cursorSpeed: options?.cursorSpeed ?? DEFAULT_CURSOR_SPEED,
   };
 }
 

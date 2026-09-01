@@ -655,7 +655,7 @@ export function noteIdentAccepted(td: TrackDisplay, ac: Aircraft, simTimeMs: num
 export function syncTrackDisplays(
   tracks: Map<string, TrackDisplay>,
   world: World,
-  surveillance?: { mode?: SurveillanceMode; sites?: readonly RadarSite[] },
+  surveillance?: { mode?: SurveillanceMode; sites?: readonly RadarSite[]; historyRateSec?: number },
 ): void {
   const living = new Set(world.aircraft.map((ac) => ac.id));
   for (const id of [...tracks.keys()]) {
@@ -682,13 +682,23 @@ export function syncTrackDisplays(
       (report) => report.aircraftId,
     ),
   );
+  const minHistoryIntervalMs =
+    surveillance?.historyRateSec !== undefined && surveillance.historyRateSec > 0
+      ? surveillance.historyRateSec * 1000
+      : 0;
   for (const ac of world.aircraft) {
     const td = tracks.get(ac.id)!;
     const report = sampler.reports.get(ac.id);
     if (report) {
       td.lastReport = report;
       if (issued.has(ac.id)) {
-        recordHistoryOnReport(td.history, report.reportedAtSimMs, report.xNm, report.yNm);
+        recordHistoryOnReport(
+          td.history,
+          report.reportedAtSimMs,
+          report.xNm,
+          report.yNm,
+          minHistoryIntervalMs,
+        );
       }
     } else {
       delete td.lastReport;

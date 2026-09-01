@@ -49,3 +49,26 @@ test("parseDcbPrefName rejects empty, non-alnum, and digit-only text", () => {
   expect(parseDcbPrefName("22/27")).toEqual({ ok: false, reason: "non-alnum" });
   expect(parseDcbPrefName("123")).toEqual({ ok: false, reason: "digit-only" });
 });
+
+test("SAVE then reload restores historyRateSec, dwellMode, cursorHome, cursorSpeed", () => {
+  const store = memoryStorage();
+  const view = kdemView();
+  view.dcbPref.icao = "KDEM";
+  view.historyRateSec = 6.0;
+  view.dwellMode = "LOCK";
+  view.cursorHome = true;
+  view.cursorSpeed = 8;
+  saveDcbPref(view, store);
+
+  const boot = kdemView();
+  expect(boot.historyRateSec).toBe(4.5);
+  expect(boot.dwellMode).toBe("OFF");
+  expect(boot.cursorHome).toBe(false);
+  expect(boot.cursorSpeed).toBe(4);
+
+  loadDcbPrefFromStorage(boot, "KDEM", store);
+  expect(boot.historyRateSec).toBe(6.0);
+  expect(boot.dwellMode).toBe("LOCK");
+  expect(boot.cursorHome).toBe(true);
+  expect(boot.cursorSpeed).toBe(8);
+});

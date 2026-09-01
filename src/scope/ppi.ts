@@ -433,6 +433,29 @@ export function handlePpiCanvasMiddleClick(
   handlePpiMiddleClick(view, world, x, y, rect.width, rect.height);
 }
 
+/**
+ * Handle pointer movement over canvas for Dwell mode hover highlighting.
+ */
+export function handlePpiCanvasPointerHover(
+  canvas: HTMLCanvasElement,
+  world: World,
+  clientX: number,
+  clientY: number,
+  view: ScopeView,
+): void {
+  if (view.dwellMode === "OFF") {
+    return;
+  }
+  const rect = canvas.getBoundingClientRect();
+  const { x, y } = cssPointFromClient(clientX, clientY, rect);
+  const hit = pickAircraftHitAt(world, x, y, viewSize(rect.width, rect.height), view);
+  if (hit) {
+    view.dwellLockedAircraftId = hit.aircraft.id;
+  } else if (view.dwellMode === "ON") {
+    view.dwellLockedAircraftId = null;
+  }
+}
+
 /** Resize to device pixels, scale to CSS pixels, then draw the clipped PPI. */
 export function paintPpi(
   canvas: HTMLCanvasElement,

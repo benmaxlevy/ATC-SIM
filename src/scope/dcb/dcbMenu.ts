@@ -51,7 +51,10 @@ export type BriteSpinnerCell =
   | "BRITE_HST"
   | "BRITE_WX"
   | "BRITE_WXC"
-  | "BRITE_BKC";
+  | "BRITE_BKC"
+  | "BRITE_CMP"
+  | "BRITE_BCN"
+  | "BRITE_PRI";
 
 export type DcbSpinnerCell =
   | "RANGE"
@@ -59,6 +62,9 @@ export type DcbSpinnerCell =
   | "LDR_DIR"
   | "LDR_LENGTH"
   | "HISTORY"
+  | "H_RATE"
+  | "DWELL"
+  | "CSR_SPD"
   | "PTL"
   | "TPA_MI"
   | "VOL"

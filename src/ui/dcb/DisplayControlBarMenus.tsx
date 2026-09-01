@@ -22,6 +22,9 @@ import {
   formatDcbBriteReadout,
   formatDcbCharReadout,
   formatDcbHistoryReadout,
+  formatDcbHistoryRateReadout,
+  formatDcbCursorSpeedReadout,
+  formatDcbDwellReadout,
   formatDcbPtlMinutesReadout,
   formatDcbTpaMiReadout,
   formatDcbVolReadout,
@@ -37,6 +40,11 @@ import {
   stepCharSizeChannel,
   stepDcbVol,
   stepHistoryDots,
+  stepHistoryRate,
+  stepCursorSpeed,
+  stepDwellMode,
+  cycleDwellMode,
+  toggleCursorHome,
   stepPtlLength,
   stepTpaRadius,
   toggleAtpaAlertCones,
@@ -59,6 +67,9 @@ import {
 } from "@scope";
 import {
   DCB_HISTORY_READOUT_ID,
+  DCB_HISTORY_RATE_READOUT_ID,
+  DCB_CURSOR_SPEED_READOUT_ID,
+  DCB_DWELL_READOUT_ID,
   DCB_PTL_MINUTES_READOUT_ID,
   DCB_TPA_MI_READOUT_ID,
   DcbCell,
@@ -169,9 +180,26 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         data-dcb-row-span={1}
         style={{ gridColumn: 2, gridRow: "2 / span 1" }}
       >
-        <DcbCell kind="disabled" ariaLabel="History rate" disabled onClick={() => undefined}>
+        <DcbCell
+          kind="spinner"
+          ariaLabel="History rate"
+          dataDcb="h-rate"
+          pressed={spinnerArmed(view, "H_RATE")}
+          onClick={() => toggleSpinner(view, onChange, "H_RATE")}
+          onWheel={(event) =>
+            onSpinnerWheel(view, "H_RATE", event, (step) => stepHistoryRate(view, step), onChange)
+          }
+          onDragDelta={(step) => {
+            for (let i = 0; i < Math.abs(step); i++) {
+              stepHistoryRate(view, step > 0 ? 1 : -1);
+            }
+            afterCell(onChange);
+          }}
+        >
           <span className="dcb-cell-line">H_RATE</span>
-          <span className="dcb-cell-line">4.5</span>
+          <span id={DCB_HISTORY_RATE_READOUT_ID} className="dcb-cell-line">
+            {formatDcbHistoryRateReadout(view.historyRateSec)}
+          </span>
         </DcbCell>
       </div>
 
@@ -184,7 +212,13 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         data-dcb-row-span={2}
         style={{ gridColumn: 3, gridRow: "1 / span 2" }}
       >
-        <DcbCell kind="disabled" ariaLabel="Cursor home" disabled onClick={() => undefined}>
+        <DcbCell
+          kind="toggle"
+          ariaLabel="Cursor home"
+          dataDcb="cursor-home"
+          pressed={view.cursorHome}
+          onClick={() => runAuxCell(view, onChange, () => toggleCursorHome(view))}
+        >
           <span className="dcb-cell-line">CURSOR</span>
           <span className="dcb-cell-line">HOME</span>
         </DcbCell>
@@ -199,9 +233,26 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         data-dcb-row-span={2}
         style={{ gridColumn: 4, gridRow: "1 / span 2" }}
       >
-        <DcbCell kind="disabled" ariaLabel="Cursor speed" disabled onClick={() => undefined}>
+        <DcbCell
+          kind="spinner"
+          ariaLabel="Cursor speed"
+          dataDcb="csr-spd"
+          pressed={spinnerArmed(view, "CSR_SPD")}
+          onClick={() => toggleSpinner(view, onChange, "CSR_SPD")}
+          onWheel={(event) =>
+            onSpinnerWheel(view, "CSR_SPD", event, (step) => stepCursorSpeed(view, step), onChange)
+          }
+          onDragDelta={(step) => {
+            for (let i = 0; i < Math.abs(step); i++) {
+              stepCursorSpeed(view, step > 0 ? 1 : -1);
+            }
+            afterCell(onChange);
+          }}
+        >
           <span className="dcb-cell-line">CSR SPD</span>
-          <span className="dcb-cell-line">4</span>
+          <span id={DCB_CURSOR_SPEED_READOUT_ID} className="dcb-cell-line">
+            {formatDcbCursorSpeedReadout(view.cursorSpeed)}
+          </span>
         </DcbCell>
       </div>
 
@@ -446,9 +497,26 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         data-dcb-row-span={2}
         style={{ gridColumn: 14, gridRow: "1 / span 2" }}
       >
-        <DcbCell kind="disabled" ariaLabel="Dwell on" disabled onClick={() => undefined}>
+        <DcbCell
+          kind="spinner"
+          ariaLabel="Dwell mode"
+          dataDcb="dwell"
+          pressed={spinnerArmed(view, "DWELL")}
+          onClick={() => toggleSpinner(view, onChange, "DWELL")}
+          onWheel={(event) =>
+            onSpinnerWheel(view, "DWELL", event, (step) => stepDwellMode(view, step), onChange)
+          }
+          onDragDelta={(step) => {
+            for (let i = 0; i < Math.abs(step); i++) {
+              stepDwellMode(view, step > 0 ? 1 : -1);
+            }
+            afterCell(onChange);
+          }}
+        >
           <span className="dcb-cell-line">DWELL</span>
-          <span className="dcb-cell-line">ON</span>
+          <span id={DCB_DWELL_READOUT_ID} className="dcb-cell-line">
+            {formatDcbDwellReadout(view.dwellMode)}
+          </span>
         </DcbCell>
       </div>
 

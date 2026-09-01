@@ -397,8 +397,10 @@ export function getDatablockVisualState(
     );
   }
 
-  // 7. Track highlight (Cyan #00FFFF)
-  if (td?.highlighted) {
+  // 7. Track highlight (Cyan #00FFFF) or Dwell highlight
+  const isDwellHighlighted =
+    view.dwellMode !== "OFF" && view.dwellLockedAircraftId === ac.id;
+  if (td?.highlighted || isDwellHighlighted) {
     const baseMode = computeBaseDatablockMode(view, td);
     const mode =
       isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs) && baseMode === "partial"

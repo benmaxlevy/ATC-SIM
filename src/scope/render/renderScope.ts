@@ -69,6 +69,7 @@ export function renderScope(
   syncTrackDisplays(view.tracks, world, {
     mode: view.surveillanceMode,
     sites: view.radarSites,
+    historyRateSec: view.historyRateSec,
   });
 
   drawWeatherLayer(ctx, view, size);
