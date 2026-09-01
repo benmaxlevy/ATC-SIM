@@ -4,7 +4,10 @@
   "icao": "KDEM",
   "magVarDeg": 0,
   "fieldElevFt": 0,
-  "arp": { "latDeg": 0, "lonDeg": 0 },
+  "arp": {
+    "latDeg": 0,
+    "lonDeg": 0
+  },
   "activeRunwayId": "27",
   "runways": [
     {
@@ -12,10 +15,19 @@
       "headingTrueDeg": 270,
       "headingMagDeg": 270,
       "lengthFt": 10000,
-      "thresholdLatLon": { "latDeg": 0, "lonDeg": 0 }
+      "thresholdLatLon": {
+        "latDeg": 0,
+        "lonDeg": 0
+      }
     }
   ],
-  "approaches": [{ "id": "ILS27", "runwayId": "27", "type": "ILS" }],
+  "approaches": [
+    {
+      "id": "ILS27",
+      "runwayId": "27",
+      "type": "ILS"
+    }
+  ],
   "fixes": [],
   "maps": {
     "videoMapSet": "KDEM",
@@ -29,12 +41,14 @@
       "id": "atpa-final",
       "kind": "star",
       "runwayId": "27",
-      "offsetNm": { "xNm": 14.4, "yNm": 0 }
+      "offsetNm": {
+        "xNm": 14.4,
+        "yNm": 0
+      }
     }
   ],
   "arrivals": [
     {
-      "callsign": "DAL500",
       "xNm": 3.4,
       "yNm": 0,
       "headingDeg": 270,
@@ -43,7 +57,6 @@
       "aircraftType": "A320"
     },
     {
-      "callsign": "JBU400",
       "xNm": 6,
       "yNm": 0,
       "headingDeg": 270,
@@ -52,7 +65,6 @@
       "aircraftType": "A321"
     },
     {
-      "callsign": "UAL300",
       "xNm": 8.4,
       "yNm": 0,
       "headingDeg": 270,
@@ -61,7 +73,6 @@
       "aircraftType": "B744"
     },
     {
-      "callsign": "SWA200",
       "xNm": 11.6,
       "yNm": 0,
       "headingDeg": 270,
@@ -70,7 +81,6 @@
       "aircraftType": "B738"
     },
     {
-      "callsign": "AAL100",
       "xNm": 14.9,
       "yNm": 0,
       "headingDeg": 270,
@@ -79,7 +89,6 @@
       "aircraftType": "B739"
     },
     {
-      "callsign": "NKS600",
       "xNm": 8,
       "yNm": 5,
       "headingDeg": 90,
@@ -93,10 +102,10 @@
     "RWY 27",
     "ILS 27 IN USE",
     "ATPA BENCH",
-    "ALERT UAL300 2.4/2.5",
-    "WARN SWA200 CLOSING",
-    "MON JBU400 AAL100",
-    "NKS600 OFF FINAL",
+    "ALERT PAIR 2.4/2.5",
+    "WARN TRAIL CLOSING",
+    "MONITOR SPACING",
+    "OFF FINAL INHIBITED",
     "WARN LASTS 21 SEC",
     ""
   ],

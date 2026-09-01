@@ -4,7 +4,10 @@
   "icao": "KDEM",
   "magVarDeg": 0,
   "fieldElevFt": 0,
-  "arp": { "latDeg": 0, "lonDeg": 0 },
+  "arp": {
+    "latDeg": 0,
+    "lonDeg": 0
+  },
   "activeRunwayId": "09",
   "runways": [
     {
@@ -12,10 +15,19 @@
       "headingTrueDeg": 90,
       "headingMagDeg": 90,
       "lengthFt": 10000,
-      "thresholdLatLon": { "latDeg": 0, "lonDeg": 0 }
+      "thresholdLatLon": {
+        "latDeg": 0,
+        "lonDeg": 0
+      }
     }
   ],
-  "approaches": [{ "id": "ILS09", "runwayId": "09", "type": "ILS" }],
+  "approaches": [
+    {
+      "id": "ILS09",
+      "runwayId": "09",
+      "type": "ILS"
+    }
+  ],
   "fixes": [],
   "maps": {
     "videoMapSet": "KDEM",
@@ -29,12 +41,14 @@
       "id": "dem1-west-north",
       "kind": "star",
       "runwayId": "09",
-      "offsetNm": { "xNm": -18.5, "yNm": 13.5 }
+      "offsetNm": {
+        "xNm": -18.5,
+        "yNm": 13.5
+      }
     }
   ],
   "arrivals": [
     {
-      "callsign": "DAL123",
       "xNm": -18.5,
       "yNm": 13.5,
       "headingDeg": 135,
@@ -45,7 +59,6 @@
       "transitionId": "WN"
     },
     {
-      "callsign": "AAL45",
       "xNm": -17,
       "yNm": -12,
       "headingDeg": 11,

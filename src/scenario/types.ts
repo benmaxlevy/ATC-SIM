@@ -92,15 +92,15 @@ export const ARRIVAL_COUNT_MAX = 8;
 export const GI_TEXT_LINE_COUNT = 10;
 
 /**
- * Explicit arrival aircraft. Count must be 4–8 (default KDEM has 6).
+ * Explicit arrival routes/poses. Count must be 4–8 (default KDEM has 6).
+ * Callsigns are assigned at spawn, not stored in JSON.
  * Playable default (`spawnPolicy: "star-inbound"`) takes pose from
  * `assignStarRoutes`, not JSON xy. The T01-04 downwind box (xNm [+10, +22],
  * yNm [+3, +12], headingDeg [80, 100], altitudeFt [6000, 10000] multiple of
- * 100, speedKt [210, 250], DAL123 heading 100) lives on
+ * 100, speedKt [210, 250]) lives on
  * `testdata/scenarios/kdem-downwind.json` (`spawnPolicy: "authored"`).
  */
 export interface ArrivalSpawn {
-  callsign: string;
   xNm: number;
   yNm: number;
   headingDeg: number;
@@ -118,7 +118,6 @@ export interface ArrivalSpawn {
 }
 
 export interface DepartureSpawn {
-  callsign: string;
   sidId: string;
   transitionId: string;
   assignedAltitudeFt: number;
