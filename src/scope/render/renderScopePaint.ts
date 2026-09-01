@@ -1055,6 +1055,7 @@ export function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: Scope
 
   const ssaLines = buildSsaRenderLines({
     simTimeMs: world.simTimeMs,
+    nowMs: world.simTimeMs,
     rangeNm: view.camera.rangeNm,
     offCenter: isViewOffAirport(view),
     filter: view.altitudeFilter,
@@ -1065,6 +1066,8 @@ export function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: Scope
     airportCode: airportId,
     primaryAltimeter: view.primaryAltimeter ?? SSA_ALTIMETER_STUB,
     airportAltimeters: view.airportAltimeters,
+    wxLevels: view.wxLevels,
+    wxMosaic: view.wxMosaic,
     crdaRpcStatus,
     systemStatus: SSA_NETWORK_HEALTH_STUB,
     surveillanceMode: surveillanceModeWord(

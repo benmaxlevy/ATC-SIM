@@ -717,7 +717,17 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         data-dcb-row-span={1}
         style={{ gridColumn: 1, gridRow: "2 / span 1" }}
       >
-        <DcbCell kind="disabled" ariaLabel="SSA WX" disabled onClick={() => undefined}>
+        <DcbCell
+          kind="toggle"
+          ariaLabel="SSA WX"
+          dataDcb="ssa-wx"
+          pressed={view.ssaFilter.WX}
+          onClick={() => {
+            cancelFilterIfEntering(view);
+            toggleSsaFilter(view, "WX");
+            afterCell(onChange);
+          }}
+        >
           <span className="dcb-cell-line">WX</span>
         </DcbCell>
       </div>

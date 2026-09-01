@@ -125,7 +125,9 @@ export {
   SSA_FILTER_FIELDS,
   SSA_FUSED_STUB,
   SSA_NETWORK_HEALTH_STUB,
+  WX_STALE_THRESHOLD_MINUTES,
   formatSsaRadarStatus,
+  formatSsaWxTelemetry,
   buildGiLines,
   buildSsaLines,
   buildSsaRenderLines,
@@ -142,6 +144,7 @@ export type {
   SsaLineStyle,
   SsaRenderLine,
   SsaVisibility,
+  SsaWxTelemetry,
 } from "./ssa";
 export {
   DEFAULT_ALTITUDE_FILTER,
@@ -154,6 +157,7 @@ export {
   formatFilterHundreds,
   formatFilterReadout,
   handleFilterEntryKey,
+  idleFilterEntry,
   inAltitudeFilter,
   parseFilterHundreds,
   parseStrictFilterHundreds,

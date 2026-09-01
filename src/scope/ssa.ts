@@ -53,6 +53,7 @@ export const SSA_FILTER_FIELDS = [
   "OFF_CNTR",
   "STATUS",
   "PTL",
+  "WX",
 ] as const;
 export type SsaFilterField = (typeof SSA_FILTER_FIELDS)[number];
 
@@ -67,6 +68,7 @@ export function defaultSsaVisibility(): SsaVisibility {
     OFF_CNTR: true,
     STATUS: true,
     PTL: true,
+    WX: true,
   };
 }
 
@@ -94,6 +96,47 @@ export function formatSsaPtl(minutes: number): string {
 export interface SsaAirportAltimeter {
   airportCode: string;
   altimeter: string;
+}
+
+export const WX_STALE_THRESHOLD_MINUTES = 15;
+
+export interface SsaWxTelemetry {
+  text: string;
+  isStale: boolean;
+}
+
+export function formatSsaWxTelemetry(
+  wxLevels?: readonly boolean[],
+  wxMosaic?: { fetchedAtMs?: number; source?: string },
+  nowMs?: number,
+): SsaWxTelemetry {
+  const isAnyLevelOn = wxLevels ? wxLevels.some(Boolean) : false;
+  if (!isAnyLevelOn && (!wxMosaic || !wxMosaic.fetchedAtMs)) {
+    return { text: "WX OFF", isStale: false };
+  }
+  if (!isAnyLevelOn) {
+    return { text: "WX OFF", isStale: false };
+  }
+
+  const fetchedAtMs = wxMosaic?.fetchedAtMs ?? 0;
+  if (fetchedAtMs <= 0) {
+    return { text: "WX ON", isStale: false };
+  }
+
+  const d = new Date(fetchedAtMs);
+  const hh = pad2(d.getUTCHours());
+  const mm = pad2(d.getUTCMinutes());
+  const timeStr = `${hh}${mm}Z`;
+
+  const currentMs = nowMs ?? Date.now();
+  const ageMs = Math.max(0, currentMs - fetchedAtMs);
+  const ageMinutes = Math.floor(ageMs / 60000);
+
+  const isStale = ageMinutes >= WX_STALE_THRESHOLD_MINUTES;
+  const staleTag = isStale ? " STALE" : "";
+  const text = `WX ${timeStr}  WX HIST ${ageMinutes}M${staleTag}`;
+
+  return { text, isStale };
 }
 
 export interface SsaInput {
@@ -133,6 +176,14 @@ export interface SsaInput {
   crdaRpcStatus?: string;
   /** Whether an active alert (MSAW / CA / system) exists for top alert indicator ▼. */
   hasAlert?: boolean;
+  /** DCB WX level latches. */
+  wxLevels?: readonly boolean[];
+  /** Weather radar mosaic composite metadata. */
+  wxMosaic?: { fetchedAtMs?: number; source?: string };
+  /** Explicit weather status string override (e.g. "WX OFF"). */
+  wxStatus?: string;
+  /** Current time for weather staleness calculation. */
+  nowMs?: number;
 }
 
 /** Sim clock as `HHMM/SS` (CRC SSA analog). Wall clock is unused. */
@@ -214,6 +265,26 @@ export function buildSsaRenderLines(input: SsaInput): SsaRenderLine[] {
       text: `${netStatus} ${mode}`,
       style: netStatus.includes("NA/NA/NA") ? "alert" : "normal",
     });
+  }
+
+  // 5. Weather Radar Mosaic Telemetry: WX 1432Z  WX HIST 3M / WX OFF
+  if (vis.WX) {
+    if (input.wxStatus) {
+      result.push({
+        text: input.wxStatus,
+        style: input.wxStatus.includes("STALE") ? "alert" : "normal",
+      });
+    } else {
+      const tel = formatSsaWxTelemetry(
+        input.wxLevels,
+        input.wxMosaic,
+        input.nowMs ?? input.simTimeMs,
+      );
+      result.push({
+        text: tel.text,
+        style: tel.isStale ? "alert" : "normal",
+      });
+    }
   }
 
   // 5. Beacon Code Selection Blocks: 2364  56  12
