@@ -718,6 +718,16 @@ DCB AUX `H_RATE` (history update interval scan rate spinner), `DWELL` (OFF/ON/LO
 | [T02-85](tickets/T02-85-dcb-brite-cmp-bcn-channel-spinners.md) | DCB BRITE CMP and BCN channel spinners | P0 | M | T02-84 | Shipped |
 | [T02-86](tickets/T02-86-dcb-aux-and-brite-acceptance.md) | DCB AUX and BRITE controls acceptance | P0 | S | T02-84, T02-85 | Shipped |
 
+### Phase 2 addendum (T02-87–89 STARS Compass Rose)
+
+STARS Compass Rose heading vectoring ring with 72 radial tick marks (5° minor, 10° medium, 30° major), twelve 3-digit heading labels (`360`..`330`), BRITE `CMP` brightness modulation, `CHAR SIZE TOOLS` font sizing, and PREF persistence.
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-87](tickets/T02-87-compass-rose-geometry-and-cache.md) | Compass Rose geometry, ticks, and map cache | P0 | M | none | Planned |
+| [T02-88](tickets/T02-88-compass-rose-canvas-rendering-and-brite.md) | Compass Rose canvas rendering and BRITE CMP | P0 | M | T02-87 | Planned |
+| [T02-89](tickets/T02-89-compass-rose-acceptance.md) | Compass Rose integration and acceptance | P0 | S | T02-87, T02-88 | Planned |
+
 ## Launching an agent
 
 1. Confirm phase 1 README exit is green.
@@ -733,6 +743,7 @@ DCB AUX `H_RATE` (history update interval scan rate spinner), `DWELL` (OFF/ON/LO
 11. METAR weather & SSA altimeter addendum T02-78 → T02-80 (AviationWeather API, SSA Line 3 primary altimeter, satellite matrix rows, GI weather slot, offline fallback). Wind-in-SSA and paid weather stay deferred.
 12. DCB controls & SSA WX addendum T02-81 → T02-83 (DCB VOL, MODE FSL, BRITE BKC, SSA WX/WX HIST telemetry).
 13. DCB AUX & BRITE controls addendum T02-84 → T02-86 (H_RATE, DWELL, CURSOR HOME, CSR SPD, BRITE CMP/BCN).
+14. STARS Compass Rose addendum T02-87 → T02-89 (Compass Rose geometry, ticks, 3-digit headings, BRITE CMP, CHAR SIZE TOOLS).
 
 ## Glossary reminders
 

@@ -1,8 +1,67 @@
-# ATC-SIM swarm orchestrator — Twenty-fifth swarm (DCB AUX H_RATE, DWELL, Cursor Controls, and BRITE CMP/BCN)
+# ATC-SIM swarm orchestrator — Twenty-sixth swarm (STARS Compass Rose Heading Overlay)
 
-Twenty-fourth (DCB VOL, MODE FSL, BRITE BKC, SSA WX telemetry T02-81–83) planned/landed.
-This file keeps that history, then the twenty-fifth addendum on
-**`feature/dcb-aux-and-brite-controls`**.
+Twenty-fifth (DCB AUX H_RATE, DWELL, and BRITE CMP/BCN T02-84–86) planned/landed.
+This file keeps that history, then the twenty-sixth addendum on
+**`feature/compass-rose-headings`**.
+
+## Twenty-sixth swarm planned — 2026-09-01 (STARS Compass Rose Heading Overlay)
+
+This configuration implements the STARS Radar Scope Compass Rose overlay with radial tick marks (5° minor, 10° medium, 30° major) and 3-digit heading numerals (`360`, `030`, `060`, `090`, `120`, `150`, `180`, `210`, `240`, `270`, `300`, `330`), `BRITE CMP` brightness modulation, `CHAR SIZE TOOLS` font sizing, and PREF persistence on **`feature/compass-rose-headings`**, cut from current `master`.
+Captain squash-merges ticket branches into **`feature/compass-rose-headings`**, not `master`. Do not push. Existing swarm history stays intact.
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement the STARS Compass Rose overlay around the radar scope for rapid vector heading reference, complete with 72 radial tick marks (5° minor, 10° medium, 30° major), twelve 3-digit heading labels (`360`..`330`), BRITE CMP brightness modulation, CHAR SIZE TOOLS font scaling, map cache integration, and PREF persistence. |
+| Include | **T02-87**, **T02-88**, **T02-89** |
+| Source | FAA STARS TCW radar display standard, CRC STARS specifications (R07), Scope canvas renderer, and MapCache architecture. |
+| Skip | Paid vendors; audio synth; unrelated UI redesigns. |
+| Stop | After T02-89 acceptance. No next phase. |
+| Max workers | 3 |
+| Merge lock | captain squash to `feature/compass-rose-headings`, then `npm test` / `npm run ci` |
+| Model | **cursor-grok-4.6-high only, non-fast** on captain and every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law (twenty-sixth swarm — STARS Compass Rose Heading Overlay):**
+
+- **Authentic STARS Compass Rose geometry.** The compass rose circular ring is rendered at the outer range ring boundary / scope radius. Radial tick marks are generated every 5° (minor inward tick), 10° (medium inward tick), and 30° (major inward tick).
+- **3-digit heading numeral labels.** Twelve 3-digit numerals (`360`, `030`, `060`, `090`, `120`, `150`, `180`, `210`, `240`, `270`, `300`, `330`) are positioned radially inside each 30° major tick line.
+- **BRITE CMP modulation.** Compass rose ring, tick marks, and heading labels are stroked and painted using `PALETTE.mapDim` modulated by `applyBrite(PALETTE.mapDim, view.brite.cmp)`. When `BRITE CMP` is `0` / `OFF`, the compass rose is completely dimmed.
+- **CHAR SIZE TOOLS font scaling.** Compass rose numerals are rendered using `datablockFontCss(view.charSizes.tools)` in IBM Plex Mono.
+- **Map cache performance.** Compass rose geometry and labels are cached in `MapCache` and invalidated whenever `view.brite.cmp`, `view.charSizes.tools`, range, or camera change.
+- **PREF persistence.** `showCompassRose` and `brite.cmp` serialize and restore cleanly in DCB PREF slot profiles.
+- **Zero simulation regressions.** Scope camera, radar tracking, datablocks, DCB submenus, and radio parsing stay 100% operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-87 | `feature/compass-rose-headings` + planning commit |
+| B | T02-88 | T02-87 |
+| C | T02-89 | T02-88 |
+
+**Ticket ownership:**
+
+- T02-87 owns Compass Rose mathematical geometry generator, 72 tick marks, 12 heading labels, `showCompassRose` flag, and `MapCache` integration.
+- T02-88 owns canvas rendering in `drawMapLayers`, `BRITE CMP` modulation, `CHAR SIZE TOOLS` font scaling, and PREF persistence.
+- T02-89 owns end-to-end automated integration acceptance tests, documentation updates, and backlog sync.
+
+**Ticket files / branches:**
+
+- `ticket/T02-87-compass-rose-geometry-and-cache` ← `phases/02-scope/tickets/T02-87-compass-rose-geometry-and-cache.md`
+- `ticket/T02-88-compass-rose-canvas-rendering-and-brite` ← `phases/02-scope/tickets/T02-88-compass-rose-canvas-rendering-and-brite.md`
+- `ticket/T02-89-compass-rose-acceptance` ← `phases/02-scope/tickets/T02-89-compass-rose-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope addendum (T02-87–89 STARS Compass Rose)
+Merge target: `feature/compass-rose-headings`
+Merged: T02-87, T02-88, T02-89
+Tests: npm test / npm run ci exit 0
+```
+
+---
 
 ## Twenty-fifth swarm planned — 2026-09-01 (DCB AUX H_RATE, DWELL, Cursor Controls, and BRITE CMP/BCN)
 
