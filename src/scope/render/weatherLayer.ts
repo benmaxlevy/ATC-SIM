@@ -150,25 +150,6 @@ function highestVipAt(mosaic: WxMosaic, levels: WxLevels, index: number): number
   return vip;
 }
 
-function vipAtScreen(
-  mosaic: WxMosaic,
-  levels: WxLevels,
-  x: number,
-  y: number,
-  nwPx: { x: number; y: number },
-  dw: number,
-  dh: number,
-): number {
-  const v = (y + 0.5 - nwPx.y) / dh;
-  const u = (x + 0.5 - nwPx.x) / dw;
-  if (v < 0 || v >= 1 || u < 0 || u >= 1) {
-    return 0;
-  }
-  const row = Math.min(mosaic.heightPx - 1, Math.max(0, Math.floor(v * mosaic.heightPx)));
-  const col = Math.min(mosaic.widthPx - 1, Math.max(0, Math.floor(u * mosaic.widthPx)));
-  return highestVipAt(mosaic, levels, row * mosaic.widthPx + col);
-}
-
 /** Tile / fallback fill / 1px screen outline. Not a mosaic-bin flood. */
 export function wxScreenStyle(outline: boolean): "fill" | "contour" {
   return outline ? "contour" : "fill";
@@ -193,7 +174,6 @@ function rebuildComposite(
   mosaic: WxMosaic,
   levels: WxLevels,
   briteWx: number,
-  briteWxc: number,
   view: ScopeView,
   size: ScopeViewSize,
 ): WxCompositeCanvas {
@@ -207,14 +187,6 @@ function rebuildComposite(
     levels[3] ? parseHexRgb(wxVipFillHex(4, briteWx)) : null,
     levels[4] ? parseHexRgb(wxVipFillHex(5, briteWx)) : null,
     levels[5] ? parseHexRgb(wxVipFillHex(6, briteWx)) : null,
-  ];
-  const contours: Array<[number, number, number] | null> = [
-    levels[0] ? parseHexRgb(wxVipContourHex(1, briteWxc)) : null,
-    levels[1] ? parseHexRgb(wxVipContourHex(2, briteWxc)) : null,
-    levels[2] ? parseHexRgb(wxVipContourHex(3, briteWxc)) : null,
-    levels[3] ? parseHexRgb(wxVipContourHex(4, briteWxc)) : null,
-    levels[4] ? parseHexRgb(wxVipContourHex(5, briteWxc)) : null,
-    levels[5] ? parseHexRgb(wxVipContourHex(6, briteWxc)) : null,
   ];
   const arp = resolveArp(view);
   const nw = latLonToNm({ latDeg: mosaic.northLat, lonDeg: mosaic.westLon }, arp);
@@ -295,7 +267,7 @@ function reuseOrRebuildComposite(
   ) {
     return cachedCanvas;
   }
-  const canvas = rebuildComposite(mosaic, levels, briteWx, briteWxc, view, size);
+  const canvas = rebuildComposite(mosaic, levels, briteWx, view, size);
   cachedMosaic = mosaic;
   cachedLevels = levels;
   cachedBriteWx = briteWx;
