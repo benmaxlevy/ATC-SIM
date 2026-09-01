@@ -100,6 +100,21 @@ export function isLeaderLengthPx(n: number): n is LeaderLengthPx {
   return (LEADER_LENGTH_STEPS_PX as readonly number[]).includes(n);
 }
 
+export function isLeaderStep(step: number): boolean {
+  return Number.isInteger(step) && step >= 0 && step <= 7;
+}
+
+/**
+ * STARS leader length step (0–7, typically 0–5) to pixels.
+ * Step 0 = 0 px (overlay), step 2 = 24 px, step 3 = 36 px (default), step 4 = 48 px.
+ */
+export function leaderLengthPxFromStep(step: number): number {
+  if (step <= 0) {
+    return 0;
+  }
+  return step * 12;
+}
+
 /**
  * Effective stroke length. Dir 5 is always overlay (0) even when the spinner
  * default is 36. Length 0 is overlay analog for every dir.

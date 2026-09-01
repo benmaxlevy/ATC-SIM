@@ -7,7 +7,9 @@ import {
   LEADER_LENGTH_STEPS_PX,
   datablockTopLeft,
   isLeaderDir,
+  isLeaderStep,
   leaderDirFromStarsClock,
+  leaderLengthPxFromStep,
   leaderOffsetPx,
   leaderSegmentPx,
   type LeaderDir,
@@ -125,4 +127,19 @@ test("T02-66 — STARS *1–*8 is NE clockwise, not the numpad L compass", () =>
   expect(leaderDirFromStarsClock(2)).toBe(6);
   expect(leaderDirFromStarsClock(8)).toBe(8);
   expect(leaderDirFromStarsClock(5)).toBe(1);
+});
+
+test("STARS leader length step conversion (0–7 steps)", () => {
+  expect(isLeaderStep(0)).toBe(true);
+  expect(isLeaderStep(3)).toBe(true);
+  expect(isLeaderStep(7)).toBe(true);
+  expect(isLeaderStep(-1)).toBe(false);
+  expect(isLeaderStep(8)).toBe(false);
+
+  expect(leaderLengthPxFromStep(0)).toBe(0);
+  expect(leaderLengthPxFromStep(1)).toBe(12);
+  expect(leaderLengthPxFromStep(2)).toBe(24);
+  expect(leaderLengthPxFromStep(3)).toBe(36);
+  expect(leaderLengthPxFromStep(4)).toBe(48);
+  expect(leaderLengthPxFromStep(5)).toBe(60);
 });

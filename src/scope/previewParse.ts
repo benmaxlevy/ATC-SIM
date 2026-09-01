@@ -7,7 +7,13 @@ import type { LoadedVideoMap } from "@scenario";
 import { parseStrictFilterHundreds } from "./altitudeFilter";
 import { resolveVideoMapToken, type VideoMapTokenLayout } from "./dcb/dcbFunctions";
 import { digitFromKey } from "./keymap";
-import { isStarsLeaderClock, type StarsLeaderClock } from "./leader";
+import {
+  isStarsLeaderClock,
+  leaderDirFromStarsClock,
+  leaderLengthPxFromStep,
+  type LeaderDir,
+  type StarsLeaderClock,
+} from "./leader";
 import type { VipLevel } from "./wx";
 
 /**
@@ -55,8 +61,32 @@ export type PreviewArmedAction =
   | { readonly type: "removeBeaconCodeFilter"; readonly code: string }
   | { readonly type: "acceptHandoff" }
   | { readonly type: "ackPointout" }
-  | { readonly type: "setLeaderDir"; readonly starsDir: StarsLeaderClock }
+  | {
+      readonly type: "setLeaderDir";
+      readonly dir?: LeaderDir;
+      readonly starsDir?: StarsLeaderClock;
+      readonly flid?: string;
+      readonly scope?: "single" | "allOwned" | "allUnowned" | "allUnassociated";
+    }
   | { readonly type: "resetLeaderDir" }
+  | {
+      readonly type: "setLeaderLength";
+      readonly lengthStep: number;
+      readonly lengthPx: number;
+      readonly flid?: string;
+    }
+  | {
+      readonly type: "setLeaderDirAndLength";
+      readonly dir: LeaderDir;
+      readonly lengthStep: number;
+      readonly lengthPx: number;
+      readonly flid?: string;
+    }
+  | {
+      readonly type: "setDefaultLeaderLength";
+      readonly lengthStep: number;
+      readonly lengthPx: number;
+    }
   | { readonly type: "beaconatorSlew" }
   | { readonly type: "saveAsPref"; readonly name?: string };
 
@@ -512,6 +542,8 @@ const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
   "ackPointout",
   "setLeaderDir",
   "resetLeaderDir",
+  "setLeaderLength",
+  "setLeaderDirAndLength",
   "beaconatorSlew",
   "armPerTrackPtl",
 ]);
@@ -545,8 +577,8 @@ function parseTrackFlidRest(kind: "initCntl" | "termCntl", rest: string): Previe
 }
 
 /**
- * T02-66 tracking / datablock chords. `* P1` is a tower list (parseListCommand).
- * Bare `*` and `*B` stay incomplete so Enter falls through to starsChord TPA.
+ * T02-66 tracking / datablock chords + Table 24/25 leader line direction and length.
+ * `* P1` is a tower list (parseListCommand). Bare `*` and `*B` stay incomplete.
  * `*F` / `*LA` / `*BCN` stay unparsed for T02-65. `+HOLD` / `/ALL` are INV.
  */
 export function parseTrackingCommand(buffer: string): PreviewCommandResult | null {
@@ -555,8 +587,159 @@ export function parseTrackingCommand(buffer: string): PreviewCommandResult | nul
     return parseTrackFlidRest("initCntl", compact.slice(1));
   }
   if (compact.startsWith("/")) {
+    const lenMatch = /^\/([0-7])(.*)$/.exec(compact);
+    if (lenMatch) {
+      const step = Number(lenMatch[1]);
+      const rest = lenMatch[2];
+      const lengthPx = leaderLengthPxFromStep(step);
+      if (rest.length === 0) {
+        return { kind: "action", action: { type: "setLeaderLength", lengthStep: step, lengthPx } };
+      }
+      if (isCompleteFlidToken(rest)) {
+        return {
+          kind: "action",
+          action: { type: "setLeaderLength", lengthStep: step, lengthPx, flid: rest },
+        };
+      }
+      if (isFlidPrefixToken(rest)) {
+        return { kind: "incomplete" };
+      }
+      return invalid("unknown FLID");
+    }
     return parseTrackFlidRest("termCntl", compact.slice(1));
   }
+
+  // Direct position digits 1–9 / length 0–7 (Table 25 & Table 8)
+  const dirMatch = /^([1-9])(?:\/([0-7])?)?(.*)$/.exec(compact);
+  if (dirMatch && !compact.startsWith("*")) {
+    const dir = Number(dirMatch[1]) as LeaderDir;
+    if (compact.includes("/")) {
+      const dirLenMatch = /^([1-9])\/([0-7])(.*)$/.exec(compact);
+      if (dirLenMatch) {
+        const step = Number(dirLenMatch[2]);
+        const rest = dirLenMatch[3];
+        const lengthPx = leaderLengthPxFromStep(step);
+        if (rest.length === 0) {
+          return {
+            kind: "action",
+            action: { type: "setLeaderDirAndLength", dir, lengthStep: step, lengthPx },
+          };
+        }
+        if (isCompleteFlidToken(rest)) {
+          return {
+            kind: "action",
+            action: { type: "setLeaderDirAndLength", dir, lengthStep: step, lengthPx, flid: rest },
+          };
+        }
+        if (isFlidPrefixToken(rest)) {
+          return { kind: "incomplete" };
+        }
+        return invalid("unknown FLID");
+      }
+      if (compact.endsWith("/")) {
+        return { kind: "incomplete" };
+      }
+      return invalid("invalid leader length");
+    }
+    const rest = dirMatch[3];
+    if (rest.length === 0) {
+      return { kind: "action", action: { type: "setLeaderDir", dir } };
+    }
+    if (isCompleteFlidToken(rest)) {
+      return { kind: "action", action: { type: "setLeaderDir", dir, flid: rest } };
+    }
+    if (isFlidPrefixToken(rest)) {
+      return { kind: "incomplete" };
+    }
+    return invalid("unknown FLID");
+  }
+
+  if (compact.startsWith("*L")) {
+    if (compact === "*L") {
+      return { kind: "incomplete" };
+    }
+    if (compact.startsWith("*LA")) {
+      return null;
+    }
+    if (compact === "*LD") {
+      return { kind: "incomplete" };
+    }
+    if (compact.startsWith("*LDR")) {
+      const rest = compact.slice(4);
+      if (rest.length === 0) {
+        return { kind: "incomplete" };
+      }
+      if (/^[0-7]$/.test(rest)) {
+        const step = Number(rest);
+        return {
+          kind: "action",
+          action: {
+            type: "setDefaultLeaderLength",
+            lengthStep: step,
+            lengthPx: leaderLengthPxFromStep(step),
+          },
+        };
+      }
+      return invalid("invalid LDR length");
+    }
+
+    const starLDirLenMatch = /^\*L([1-9])\/([0-7])(.*)$/.exec(compact);
+    if (starLDirLenMatch) {
+      const dir = Number(starLDirLenMatch[1]) as LeaderDir;
+      const step = Number(starLDirLenMatch[2]);
+      const rest = starLDirLenMatch[3];
+      const lengthPx = leaderLengthPxFromStep(step);
+      if (rest.length === 0) {
+        return {
+          kind: "action",
+          action: { type: "setLeaderDirAndLength", dir, lengthStep: step, lengthPx },
+        };
+      }
+      if (isCompleteFlidToken(rest)) {
+        return {
+          kind: "action",
+          action: { type: "setLeaderDirAndLength", dir, lengthStep: step, lengthPx, flid: rest },
+        };
+      }
+      if (isFlidPrefixToken(rest)) {
+        return { kind: "incomplete" };
+      }
+      return invalid("unknown FLID");
+    }
+
+    if (/^\*L[1-9]\/$/.test(compact)) {
+      return { kind: "incomplete" };
+    }
+
+    const starLMatch = /^\*L([1-9])(.*)$/.exec(compact);
+    if (starLMatch) {
+      const dir = Number(starLMatch[1]) as LeaderDir;
+      const rest = starLMatch[2];
+      if (rest.length === 0) {
+        return { kind: "action", action: { type: "setLeaderDir", dir, scope: "allOwned" } };
+      }
+      if (rest === "*") {
+        return { kind: "action", action: { type: "setLeaderDir", dir, scope: "allUnowned" } };
+      }
+      if (rest === "U") {
+        return { kind: "action", action: { type: "setLeaderDir", dir, scope: "allUnassociated" } };
+      }
+      if (rest === String(dir)) {
+        return { kind: "action", action: { type: "setLeaderDir", dir } };
+      }
+      if (rest.startsWith(String(dir)) && isCompleteFlidToken(rest.slice(1))) {
+        return { kind: "action", action: { type: "setLeaderDir", dir, flid: rest.slice(1) } };
+      }
+      if (isCompleteFlidToken(rest)) {
+        return { kind: "action", action: { type: "setLeaderDir", dir, flid: rest } };
+      }
+      if (isFlidPrefixToken(rest)) {
+        return { kind: "incomplete" };
+      }
+      return invalid("unknown leader command");
+    }
+  }
+
   if (!compact.startsWith("*") || compact === "*" || compact === "") {
     return null;
   }
@@ -567,7 +750,11 @@ export function parseTrackingCommand(buffer: string): PreviewCommandResult | nul
   if (/^[1-8]$/.test(rest) && isStarsLeaderClock(Number(rest))) {
     return {
       kind: "action",
-      action: { type: "setLeaderDir", starsDir: Number(rest) as StarsLeaderClock },
+      action: {
+        type: "setLeaderDir",
+        starsDir: Number(rest) as StarsLeaderClock,
+        dir: leaderDirFromStarsClock(Number(rest) as StarsLeaderClock),
+      },
     };
   }
   return null;

@@ -39,6 +39,7 @@ export interface DatablockPickView {
     {
       datablockMode: DatablockMode;
       leaderDir?: LeaderDir;
+      leaderLengthPx?: number;
       scratchpad?: string;
       queriedUntilSimMs?: number;
       beaconatorUntilSimMs?: number;
@@ -117,7 +118,8 @@ function pickDatablockAt(
     }
     const lines = { ...base, line1 };
     const lineH = datablockLineHeightPx(view.charSizePx ?? DATABLOCK_LINE_HEIGHT_PX);
-    const rect = datablockRect(p.x, p.y, lines, cell, lineH, dir, view.leaderLengthPx);
+    const leaderLen = td?.leaderLengthPx ?? view.leaderLengthPx;
+    const rect = datablockRect(p.x, p.y, lines, cell, lineH, dir, leaderLen);
     if (!pointInDatablock(cssX, cssY, rect)) {
       continue;
     }

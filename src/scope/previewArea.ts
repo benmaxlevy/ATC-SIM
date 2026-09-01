@@ -243,9 +243,23 @@ function trackingMnemonic(action: PreviewArmedAction): string {
     case "ackPointout":
       return "*";
     case "setLeaderDir":
-      return `*${action.starsDir}`;
+      if (action.flid) {
+        return `*L${action.dir ?? action.starsDir ?? 8} ${action.flid}`;
+      }
+      if (action.starsDir) {
+        return `*${action.starsDir}`;
+      }
+      return `*L${action.dir ?? 8}`;
     case "resetLeaderDir":
       return "*0";
+    case "setLeaderLength":
+      return action.flid ? `/${action.lengthStep} ${action.flid}` : `/${action.lengthStep}`;
+    case "setLeaderDirAndLength":
+      return action.flid
+        ? `${action.dir}/${action.lengthStep} ${action.flid}`
+        : `${action.dir}/${action.lengthStep}`;
+    case "setDefaultLeaderLength":
+      return `*LDR ${action.lengthStep}`;
     case "beaconatorSlew":
       return "*B";
     case "armPerTrackPtl":

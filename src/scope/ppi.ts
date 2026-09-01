@@ -43,7 +43,9 @@ import {
   applyDropTrackToId,
   applyInitiateTrackToId,
   ensureTrackDisplay,
+  setLeaderDirAndLengthForId,
   setLeaderDirForId,
+  setLeaderLengthForId,
   toggleTrackHighlight,
   toggleTrackPdbFdb,
 } from "./trackDisplay";
@@ -135,13 +137,27 @@ function applyTrackingSlewHit(
       clearTrackingSlew(view);
       return true;
     }
-    case "setLeaderDir":
-      setLeaderDirForId(view.tracks, world, id, leaderDirFromStarsClock(action.starsDir));
+    case "setLeaderDir": {
+      const dir =
+        action.dir ??
+        (action.starsDir ? leaderDirFromStarsClock(action.starsDir) : DEFAULT_LEADER_DIR);
+      setLeaderDirForId(view.tracks, world, id, dir);
       setSelectedAircraft(world, id);
       clearTrackingSlew(view);
       return true;
+    }
     case "resetLeaderDir":
       setLeaderDirForId(view.tracks, world, id, view.defaultLeaderDir ?? DEFAULT_LEADER_DIR);
+      setSelectedAircraft(world, id);
+      clearTrackingSlew(view);
+      return true;
+    case "setLeaderLength":
+      setLeaderLengthForId(view.tracks, world, id, action.lengthPx);
+      setSelectedAircraft(world, id);
+      clearTrackingSlew(view);
+      return true;
+    case "setLeaderDirAndLength":
+      setLeaderDirAndLengthForId(view.tracks, world, id, action.dir, action.lengthPx);
       setSelectedAircraft(world, id);
       clearTrackingSlew(view);
       return true;

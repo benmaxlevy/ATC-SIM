@@ -473,3 +473,75 @@ test("AC2 — invalid *XYZ *T 999 *D 99 flash buffer INV and do not mutate", () 
   expect(isVideoMapOn(maps, "RWY")).toBe(rwy);
   expect(isVideoMapOn(maps, "LOC27")).toBe(loc);
 });
+
+test("CRC STARS Table 24/25 — leader length and direction per target (slew, FLID, and scope)", () => {
+  const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", xNm: 10, yNm: 10 });
+  const ual = makeTestAircraft({ id: "ac-ual", callsign: "UAL456", xNm: -10, yNm: -10 });
+  const world = createWorld({ aircraft: [dal, ual] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  // Own DAL123, keep UAL456 unowned
+  view.tracks.get(dal.id)!.ownership = "owned";
+  view.tracks.get(ual.id)!.ownership = "unowned";
+
+  // 1. /<0-7> slew sets leader length on clicked aircraft
+  typeKeys(view, world, ["/", "2"]);
+  expect(view.preview.phase).toBe("entry");
+  clickAt(view, world, dal.xNm, dal.yNm);
+  expect(view.tracks.get(dal.id)!.leaderLengthPx).toBe(24);
+  expect(view.preview.phase).toBe("idle");
+
+  // 2. /<0-7> <FLID> Enter sets leader length directly
+  typeKeys(view, world, ["/", "0", " ", "U", "A", "L", "4", "5", "6", "Enter"], "scope", 200);
+  expect(view.tracks.get(ual.id)!.leaderLengthPx).toBe(0);
+
+  // 3. <1-9> slew sets leader direction on clicked aircraft
+  typeKeys(view, world, ["6"], "scope", 400);
+  clickAt(view, world, dal.xNm, dal.yNm);
+  expect(view.tracks.get(dal.id)!.leaderDir).toBe(6);
+
+  // 4. <1-9> <FLID> Enter sets leader direction
+  typeKeys(view, world, ["4", " ", "U", "A", "L", "4", "5", "6", "Enter"], "scope", 600);
+  expect(view.tracks.get(ual.id)!.leaderDir).toBe(4);
+
+  // 5. <1-9>/<0-7> slew sets both direction and length on clicked aircraft
+  typeKeys(view, world, ["8", "/", "4"], "scope", 800);
+  clickAt(view, world, dal.xNm, dal.yNm);
+  expect(view.tracks.get(dal.id)!.leaderDir).toBe(8);
+  expect(view.tracks.get(dal.id)!.leaderLengthPx).toBe(48);
+
+  // 6. <1-9>/<0-7> <FLID> Enter sets both direction and length
+  typeKeys(view, world, ["2", "/", "1", " ", "D", "A", "L", "1", "2", "3", "Enter"], "scope", 1000);
+  expect(view.tracks.get(dal.id)!.leaderDir).toBe(2);
+  expect(view.tracks.get(dal.id)!.leaderLengthPx).toBe(12);
+
+  // 7. *L(1-9) slew sets leader direction
+  typeKeys(view, world, ["*", "L", "9"], "scope", 1200);
+  clickAt(view, world, dal.xNm, dal.yNm);
+  expect(view.tracks.get(dal.id)!.leaderDir).toBe(9);
+
+  // 8. *L(1-9) <FLID> Enter sets leader direction
+  typeKeys(view, world, ["*", "L", "1", " ", "D", "A", "L", "1", "2", "3", "Enter"], "scope", 1400);
+  expect(view.tracks.get(dal.id)!.leaderDir).toBe(1);
+
+  // 9. *L(1-9) Enter sets leader direction for all owned tracks
+  typeKeys(view, world, ["*", "L", "7", "Enter"], "scope", 1600);
+  expect(view.tracks.get(dal.id)!.leaderDir).toBe(7);
+  expect(view.tracks.get(ual.id)!.leaderDir).toBe(4); // unowned untouched
+
+  // 10. *L(1-9)* Enter sets leader direction for all unowned tracks
+  typeKeys(view, world, ["*", "L", "3", "*", "Enter"], "scope", 1800);
+  expect(view.tracks.get(dal.id)!.leaderDir).toBe(7); // owned untouched
+  expect(view.tracks.get(ual.id)!.leaderDir).toBe(3); // unowned updated
+
+  // 11. *L(1-9)/<0-7> slew sets direction and length
+  typeKeys(view, world, ["*", "L", "8", "/", "0"], "scope", 2000);
+  clickAt(view, world, dal.xNm, dal.yNm);
+  expect(view.tracks.get(dal.id)!.leaderDir).toBe(8);
+  expect(view.tracks.get(dal.id)!.leaderLengthPx).toBe(0);
+
+  // 12. *LDR <0-7> Enter sets global default leader length
+  typeKeys(view, world, ["*", "L", "D", "R", " ", "4", "Enter"], "scope", 2200);
+  expect(view.leaderLengthPx).toBe(48);
+});

@@ -190,6 +190,20 @@ Idle `F` (no star) starts the altitude-filter chord (`F` → min hundreds → En
 | `+ [FLID]` Enter then click | `+DAL123` Enter, then click | Associates that FLID to the clicked track (`resolveScopeFlid`). |
 | `/` then click **symbol** | Scope-focus `/`, click the target symbol | Arms `TERM CNTL`; click drops an owned track. |
 | `/` then click **datablock** | Scope-focus `/`, click the datablock (not the symbol) | Toggles PDB ↔ FDB. |
+| `/<0-7>` then click | `/<0-7>` then click a target | Sets leader line length for that track (`0`=overlay 0px, `1`=12px, `2`=24px, `3`=36px default, `4`=48px, etc.). |
+| `/<0-7> [FLID]` Enter | `/2 DAL123` or `/0 123` Enter | Sets leader line length directly on that aircraft. |
+| `<1-9>` then click | Scope-focus `1`–`9` then click a target | Sets data block position / leader line direction on that track (numpad compass positions). |
+| `<1-9> [FLID]` Enter | `8 DAL123` or `6 123` Enter | Sets data block position directly on that aircraft. |
+| `<1-9>/<0-7>` then click | `8/2` then click a target | Sets both leader line direction and length on that track. |
+| `<1-9>/<0-7> [FLID]` Enter | `8/2 DAL123` Enter | Sets both leader line direction and length directly on that aircraft. |
+| `*L(1-9)` then click | `*L8` then click a target | Sets leader line direction on that track. |
+| `*L(1-9) [FLID]` Enter | `*L8 DAL123` Enter | Sets leader line direction directly on that aircraft. |
+| `*L(1-9)` Enter | `*L8` Enter | Sets leader line direction for all owned tracks. |
+| `*L(1-9)*` Enter | `*L8*` Enter | Sets leader line direction for all unowned tracks. |
+| `*L(1-9)U` Enter | `*L8U` Enter | Sets leader line direction for all unassociated tracks. |
+| `*L(1-9)/<0-7>` then click / `*L(1-9)/<0-7> [FLID]` Enter | `*L8/2` click or `*L8/2 DAL123` Enter | Sets both leader line direction and length. |
+| `*LDR <0-7>` Enter | `*LDR 4` Enter | Sets global default leader line length (`view.leaderLengthPx`). |
+| `*R` then click | `*R` Enter (or live `*R`), click a track | Toggles Predicted Track Line (PTL) for that track only (overriding global ALL/OWN). |
 | Idle Enter then click | Empty scope buffer, `Enter`, click inbound | Arms `HO ACCEPT`; click accepts the inbound handoff. Live `*T` / `*D LOC27` Enter still commit those commands instead. |
 | `*` then click | Scope-focus `*`, click a target | Acks a pending pointout, or toggles cyan highlight. Bare `*` Enter still goes to TPA (`starsChord`). |
 | `*1`–`*8` then click | `*3` then click a datablock | STARS leader clock (1 = NE clockwise through 8 = N). Idle `L` then `1`–`9` is the old keypad compass and is unchanged. |

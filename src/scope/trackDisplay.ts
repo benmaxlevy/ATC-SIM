@@ -41,6 +41,8 @@ export interface TrackDisplay {
   lastAircraftIdentDeadlineMs: number;
   datablockMode: DatablockMode;
   leaderDir: LeaderDir;
+  /** Per-target leader length override (in px). Null/undefined falls back to global ScopeView.leaderLengthPx. */
+  leaderLengthPx?: number;
   ownership: TrackOwnership;
   /** Display-only 0–4 A–Z0–9. Never Aircraft.intent. */
   scratchpad: string;
@@ -560,6 +562,53 @@ export function setLeaderDirForId(
   }
   ensureTrackDisplay(tracks, aircraftId).leaderDir = dir;
   return true;
+}
+
+export function setLeaderLengthForId(
+  tracks: Map<string, TrackDisplay>,
+  world: World,
+  aircraftId: string,
+  lengthPx: number,
+): boolean {
+  if (!world.aircraft.some((ac) => ac.id === aircraftId)) {
+    return false;
+  }
+  ensureTrackDisplay(tracks, aircraftId).leaderLengthPx = lengthPx;
+  return true;
+}
+
+export function setLeaderDirAndLengthForId(
+  tracks: Map<string, TrackDisplay>,
+  world: World,
+  aircraftId: string,
+  dir: LeaderDir,
+  lengthPx: number,
+): boolean {
+  if (!world.aircraft.some((ac) => ac.id === aircraftId)) {
+    return false;
+  }
+  const td = ensureTrackDisplay(tracks, aircraftId);
+  td.leaderDir = dir;
+  td.leaderLengthPx = lengthPx;
+  return true;
+}
+
+export function setLeaderDirForScope(
+  tracks: Map<string, TrackDisplay>,
+  world: World,
+  dir: LeaderDir,
+  scope: "allOwned" | "allUnowned" | "allUnassociated",
+): void {
+  for (const ac of world.aircraft) {
+    const td = ensureTrackDisplay(tracks, ac.id);
+    if (scope === "allOwned" && td.ownership === "owned") {
+      td.leaderDir = dir;
+    } else if (scope === "allUnowned" && td.ownership === "unowned") {
+      td.leaderDir = dir;
+    } else if (scope === "allUnassociated" && td.unassociated) {
+      td.leaderDir = dir;
+    }
+  }
 }
 
 /**

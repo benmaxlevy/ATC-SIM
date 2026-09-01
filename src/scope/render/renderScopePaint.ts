@@ -403,6 +403,10 @@ function trackLeaderDir(view: ScopeView, aircraftId: string): LeaderDir {
   return view.tracks.get(aircraftId)?.leaderDir ?? DEFAULT_LEADER_DIR;
 }
 
+function trackLeaderLength(view: ScopeView, aircraftId: string): number {
+  return view.tracks.get(aircraftId)?.leaderLengthPx ?? view.leaderLengthPx;
+}
+
 function trackOwnership(view: ScopeView, aircraftId: string) {
   return view.tracks.get(aircraftId)?.ownership ?? "unowned";
 }
@@ -483,7 +487,11 @@ export function drawDatablock(
   const lines = { ...base, line1 };
   const lineH = datablockLineHeightPx(view.charSizes.dataBlocks);
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
-  const origin = datablockTopLeft(trackLeaderDir(view, ac.id), metrics, view.leaderLengthPx);
+  const origin = datablockTopLeft(
+    trackLeaderDir(view, ac.id),
+    metrics,
+    trackLeaderLength(view, ac.id),
+  );
   const briteCh = mode === "limited" || mode === "partial" ? view.brite.ldb : view.brite.fdb;
 
   const isTracked = isTrackedTarget(view, world, ac);
@@ -650,7 +658,7 @@ export function drawTracks(
         p.y,
         trackLeaderDir(view, ac.id),
         leaderColor,
-        view.leaderLengthPx,
+        trackLeaderLength(view, ac.id),
         view.charSizes.pos,
       );
     }

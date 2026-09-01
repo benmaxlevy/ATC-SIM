@@ -101,6 +101,10 @@ import {
 } from "./scopeView";
 import {
   setLeaderDirForSelection,
+  setLeaderDirForId,
+  setLeaderLengthForId,
+  setLeaderDirAndLengthForId,
+  setLeaderDirForScope,
   toggleDatablockModeForSelection,
   applyDropTrackToId,
   applyDropTrackToSelection,
@@ -108,6 +112,8 @@ import {
   applyInitiateTrackToSelection,
   selectedTrackId,
 } from "./trackDisplay";
+import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock, type LeaderLengthPx } from "./leader";
+import { resolveScopeFlid } from "./previewArea";
 import { applyHandoffToSelection } from "./ownership";
 import { setSystemListMaxLines, toggleSystemList } from "./systemLists";
 import type { HistoryDotCount } from "./history";
@@ -258,7 +264,12 @@ function startPreviewBuffer(view: ScopeView, ch: string, nowMs: number): void {
   }
 }
 
-function applyPreviewArmedAction(view: ScopeView, action: PreviewArmedAction, nowMs: number): void {
+function applyPreviewArmedAction(
+  view: ScopeView,
+  action: PreviewArmedAction,
+  nowMs: number,
+  world?: World,
+): void {
   if (applyPreviewBeaconAction(view.beaconSelectCodes, action)) {
     return;
   }
@@ -338,11 +349,79 @@ function applyPreviewArmedAction(view: ScopeView, action: PreviewArmedAction, no
     case "setAltitudeFilterLimits":
       tryApplyAltitudeFilter(view.altitudeFilter, action.floorHundreds, action.ceilingHundreds);
       return;
+    case "setDefaultLeaderLength":
+      view.leaderLengthPx = action.lengthPx as LeaderLengthPx;
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      return;
+    case "setLeaderDir": {
+      const dir =
+        action.dir ??
+        (action.starsDir ? leaderDirFromStarsClock(action.starsDir) : DEFAULT_LEADER_DIR);
+      if (action.flid && world) {
+        const resolved = resolveScopeFlid(action.flid, world);
+        if (resolved.ok) {
+          setLeaderDirForId(view.tracks, world, resolved.aircraftId, dir);
+          cancelStarsChordEntry(view.starsChordEntry);
+          view.starsChordArmed = null;
+          return;
+        }
+        rejectPreviewArea(view.preview, nowMs);
+        return;
+      }
+      if (action.scope && action.scope !== "single" && world) {
+        setLeaderDirForScope(view.tracks, world, dir, action.scope);
+        cancelStarsChordEntry(view.starsChordEntry);
+        view.starsChordArmed = null;
+        return;
+      }
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      armPreviewSlewAction(view.preview, action, nowMs);
+      return;
+    }
+    case "setLeaderLength":
+      if (action.flid && world) {
+        const resolved = resolveScopeFlid(action.flid, world);
+        if (resolved.ok) {
+          setLeaderLengthForId(view.tracks, world, resolved.aircraftId, action.lengthPx);
+          cancelStarsChordEntry(view.starsChordEntry);
+          view.starsChordArmed = null;
+          return;
+        }
+        rejectPreviewArea(view.preview, nowMs);
+        return;
+      }
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      armPreviewSlewAction(view.preview, action, nowMs);
+      return;
+    case "setLeaderDirAndLength":
+      if (action.flid && world) {
+        const resolved = resolveScopeFlid(action.flid, world);
+        if (resolved.ok) {
+          setLeaderDirAndLengthForId(
+            view.tracks,
+            world,
+            resolved.aircraftId,
+            action.dir,
+            action.lengthPx,
+          );
+          cancelStarsChordEntry(view.starsChordEntry);
+          view.starsChordArmed = null;
+          return;
+        }
+        rejectPreviewArea(view.preview, nowMs);
+        return;
+      }
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      armPreviewSlewAction(view.preview, action, nowMs);
+      return;
     case "initCntl":
     case "termCntl":
     case "acceptHandoff":
     case "ackPointout":
-    case "setLeaderDir":
     case "resetLeaderDir":
     case "beaconatorSlew":
     case "armPerTrackPtl":
@@ -367,7 +446,7 @@ function applyPreviewBufferOutcome(
   outcome: PreviewKeyOutcome,
 ): void {
   if (outcome.action) {
-    applyPreviewArmedAction(view, outcome.action, nowMs);
+    applyPreviewArmedAction(view, outcome.action, nowMs, world);
   }
   if (outcome.starsBuffer) {
     const stars = commitStarsChord(outcome.starsBuffer);
