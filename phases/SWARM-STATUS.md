@@ -1,6 +1,40 @@
 # Swarm status
 
-## TWENTY-THIRD SWARM COMPLETE — Real METAR weather and SSA altimeter display (T02-78–80)
+## TWENTY-FIFTH SWARM COMPLETE — DCB AUX & BRITE controls (T02-84–86)
+
+T02-84–86 are squash-merged on `feature/dcb-aux-and-brite-controls` (not `master`). Full test suite `npm test`: **162 test files passed, 1138 tests passed, 4 skipped, 0 failures**. DCB AUX `H_RATE`, `DWELL`, `CURSOR HOME`, `CSR SPD`, and BRITE `CMP`, `BCN` spinners with PREF persistence on `feature/dcb-aux-and-brite-controls`. Did not push.
+
+- **DCB AUX H_RATE, DWELL, and cursor controls (T02-84):**
+  - `H_RATE`: Active scan rate spinner presets (`[1.0, 2.0, 3.0, 4.0, 4.5, 5.0, 6.0, 8.0, 10.0]` s, default `4.5` s) gating history dot recording intervals in `recordHistoryOnReport` / `syncTrackDisplays`.
+  - `DWELL`: Active 3-state spinner/toggle (`OFF` / `ON` / `LOCK`). Under `ON`, hovering pointer over position symbol temporarily brightens datablock to `PALETTE.highlight`. Under `LOCK`, brightness remains highlighted on the last hovered target.
+  - `CURSOR HOME`: Active toggle state on AUX DCB.
+  - `CSR SPD`: Active spinner (1–10, default 4).
+  - All 4 settings serialize and restore cleanly in PREF slots.
+- **DCB BRITE CMP and BCN channel spinners (T02-85):**
+  - `CMP`: Active brightness spinner (0–100%) modulating range ring tick marks and compass markings (`mapLayers.ts` / `renderScopePaint.ts`).
+  - `BCN`: Active brightness spinner (0–100%) modulating secondary radar beacon target symbols (`targetSymbol.ts` / `renderScopePaint.ts`).
+  - `cmp` and `bcn` promoted to `BRITE_PAINT_CHANNELS`; PREF slot persistence verified.
+- **DCB AUX & BRITE controls acceptance (T02-86):**
+  - Comprehensive end-to-end integration test suite `src/scope/test/dcbAuxAndBriteAcceptance.test.ts`.
+  - Full test suite verified with zero regressions (162 files passed).
+  - Documentation updated across `phases/02-scope/README.md` and `docs/USER.md`.
+
+**Merged (squash-merged, captain only, onto `feature/dcb-aux-and-brite-controls`):** T02-84 (`1758424`), T02-85 (`7ac2e69`), T02-86 (`a4c47bd`). Planning `f2a845e`.
+
+**Captain judgement calls:**
+- Merge target was `feature/dcb-aux-and-brite-controls`.
+- `H_RATE` interval gating evaluates against last recorded history dot sim time.
+- DWELL mode hover highlighting utilizes standard canvas hit-testing without adding DOM elements.
+- `stepFrozen` helper clamped to list bounds [0, length - 1] to cleanly support large drag deltas across all DCB spinners.
+
+**Product law held:**
+- Active DCB spinners preserve STARS FAA/CRC presets and values.
+- PREF round-tripping persists all new channels.
+- Zero visual or kinesthetic regressions.
+- No external paid APIs or out-of-scope submenus.
+
+**Remaining work (next swarm):** merge `feature/dcb-aux-and-brite-controls` to `master` when requested.
+
 
 T02-78–80 are squash-merged on `feature/metar-weather-altimeter` (not `master`). Captain `npm test` / `npm run ci`: **177 test files passed, 2053 tests passed, 4 skipped, 0 failures**. Real-time METAR weather, SSA primary and satellite altimeter matrix, and GI text on `feature/metar-weather-altimeter`. No phase 5. Did not push.
 
