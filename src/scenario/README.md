@@ -35,6 +35,13 @@ session-visible; video maps stay empty until a KATL map set is authored. Do
 not point KATL at KDEM maps. Do not delete or move these files without
 updating their manifest, loader, tests, and compatibility exports.
 
+Scenario JSON files define **route templates** (e.g. `starId`, `transitionId`,
+`aircraftType`, authored pose coordinates) and must **not** contain `callsign`
+keys on arrivals or authored departures. Callsigns are assigned dynamically at
+spawn/schedule time from the shared session allocator (`callsigns.ts`), ensuring
+unique airline codes and numeric tails across active arrivals, future scheduled
+arrivals, and scheduled departures.
+
 ## Radar sites
 
 Optional `radarSites` rows are trainer-authored display fixtures (R07 SITE /

@@ -43,21 +43,19 @@ test("AC1 — DAL123 H270 readback contains heading 270, not the raw token as th
   expect(dal.intent.assignedHeadingDeg).toBe(270);
 });
 
-test("spawned KDEM DAL123 rejects H270 until inbound HO is accepted (no PPI)", async () => {
+test("spawned KDEM arrival rejects H270 until inbound HO is accepted (no PPI)", async () => {
   const world = createWorldFromScenario(loadKdem());
-  const rejected = await submitCommand(world, "DAL123 H270", new SessionLog());
+  const ac = world.aircraft[0]!;
+  const rejected = await submitCommand(world, `${ac.callsign} H270`, new SessionLog());
   expect(rejected.accepted).toBe(false);
   expect(rejected.reason).toBe("handoff-pending");
-  expect(world.aircraft.find((ac) => ac.callsign === "DAL123")?.intent.assignedHeadingDeg).not.toBe(
-    270,
-  );
+  expect(ac.intent.assignedHeadingDeg).not.toBe(270);
 
-  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123")!;
-  acceptInboundHandoff(world, dal.id);
-  const result = await submitCommand(world, "DAL123 H270", new SessionLog());
+  acceptInboundHandoff(world, ac.id);
+  const result = await submitCommand(world, `${ac.callsign} H270`, new SessionLog());
   expect(result.accepted).toBe(true);
   expect(result.readback).toContain("heading 270");
-  expect(dal.intent.assignedHeadingDeg).toBe(270);
+  expect(ac.intent.assignedHeadingDeg).toBe(270);
 });
 
 test("AC3 — XYZ H270 is unable; existing aircraft keep prior intent", async () => {

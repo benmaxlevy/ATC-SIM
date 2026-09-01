@@ -59,21 +59,26 @@ describe("departureGenerator", () => {
     }
   });
 
-  test("AC3 — Generated departures never duplicate callsigns of active arrivals or other departures", () => {
-    const arrivalCallsigns = scenario.arrivals.map((a) => a.callsign);
+  test("AC3 — Generated departures never duplicate callsigns or tails of active/scheduled arrivals or other departures", () => {
+    const activeCallsigns = ["DAL101", "AAL202", "UAL303", "SWA404", "JBU505", "SKW606"];
     const schedule = generateDepartureSchedule({
       catalog: scenario.catalog,
       seed: 1,
       ratePerHour: 12,
       count: 30,
       runwayId: "27",
-      activeCallsigns: arrivalCallsigns,
+      activeCallsigns,
     });
 
-    const seen = new Set<string>(arrivalCallsigns.map((cs) => cs.toUpperCase()));
+    const seenCallsigns = new Set<string>(activeCallsigns.map((cs) => cs.toUpperCase()));
+    const seenTails = new Set<string>(activeCallsigns.map((cs) => cs.replace(/^[A-Z]{3}/, "")));
     for (const dep of schedule) {
-      expect(seen.has(dep.callsign.toUpperCase())).toBe(false);
-      seen.add(dep.callsign.toUpperCase());
+      const callsign = dep.callsign.toUpperCase();
+      const tail = callsign.replace(/^[A-Z]{3}/, "");
+      expect(seenCallsigns.has(callsign)).toBe(false);
+      expect(seenTails.has(tail)).toBe(false);
+      seenCallsigns.add(callsign);
+      seenTails.add(tail);
     }
   });
 

@@ -30,12 +30,9 @@ function spawnAssignSources(): string {
   return Object.values(sources).map(String).join("\n");
 }
 
-test("default KDEM JSON lists 6 arrivals including DAL123 (AC1)", () => {
+test("default KDEM JSON lists 6 arrivals (AC1)", () => {
   expect(kdemJson.arrivals).toHaveLength(6);
   expect(kdemJson.spawnPolicy).toBe("star-inbound");
-  const callsigns = kdemJson.arrivals.map((a) => a.callsign.toUpperCase());
-  expect(callsigns).toContain("DAL123");
-  expect(callsigns.filter((c) => c.endsWith("123"))).toEqual(["DAL123"]);
 });
 
 test("T04-14 AC1 — loadKdem seed 1 arms VIA on catalog STAR slots", () => {
@@ -46,22 +43,10 @@ test("T04-14 AC1 — loadKdem seed 1 arms VIA on catalog STAR slots", () => {
 
   const callsigns = world.aircraft.map((ac) => ac.callsign);
   expect(new Set(callsigns).size).toBe(6);
-  expect(callsigns).toContain("DAL123");
   for (const callsign of callsigns) {
     expect(callsign).toBe(callsign.toUpperCase());
+    expect(callsign).toMatch(/^[A-Z]{3}\d+$/);
   }
-
-  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123");
-  expect(dal).toBeDefined();
-  expect(dal!.intent.lateral?.type).toBe("PROCEDURE");
-  if (dal!.intent.lateral?.type === "PROCEDURE") {
-    expect(dal!.intent.lateral.starId).toBe("DEM1");
-    expect(dal!.intent.lateral.toFixIndex).toBe(0);
-    expect(dal!.intent.lateral.routeFixIds[0]).toBeDefined();
-  }
-  expect(dal!.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
-  expect(dal!.altitudeFt).toBeGreaterThanOrEqual(10000);
-  expect(dal!.speedKt).toBeLessThanOrEqual(250);
 
   for (const ac of world.aircraft) {
     expect(ac.intent.lateral?.type).toBe("PROCEDURE");
@@ -184,14 +169,14 @@ test("T04-14 AC4 — createWorldForSession(kdem, 30) stays on the downwind arc",
 test("T04-14 AC5 — ils27 authored pack ignores trafficCount and seed", () => {
   const world = createWorldForSession(loadKdemIls27(), 30, 99);
   expect(world.aircraft).toHaveLength(2);
-  const dal = world.aircraft.find((ac) => ac.callsign === "DAL123");
-  const aal = world.aircraft.find((ac) => ac.callsign === "AAL45");
-  expect(dal?.intent.lateral).toMatchObject({ type: "PROCEDURE", starId: "DEM1", toFixIndex: 0 });
-  expect(dal?.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
-  expect(dal?.yNm).toBeGreaterThan(12);
-  expect(aal?.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
-  expect(aal?.yNm).toBe(-12);
-  expect(aal?.xNm).toBe(17);
+  const first = world.aircraft[0]!;
+  const second = world.aircraft[1]!;
+  expect(first.intent.lateral).toMatchObject({ type: "PROCEDURE", starId: "DEM1", toFixIndex: 0 });
+  expect(first.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
+  expect(first.yNm).toBeGreaterThan(12);
+  expect(second.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
+  expect(second.yNm).toBe(-12);
+  expect(second.xNm).toBe(17);
 });
 
 test("T04-14 AC6 — testdata downwind fixture keeps the T01-04 box", () => {
@@ -201,21 +186,11 @@ test("T04-14 AC6 — testdata downwind fixture keeps the T01-04 box", () => {
 
   expect(world.aircraft).toHaveLength(6);
 
-  const dal123 = world.aircraft.find((ac) => ac.callsign === "DAL123");
-  expect(dal123).toBeDefined();
-  expect(dal123!.xNm).toBeGreaterThanOrEqual(10);
-  expect(dal123!.headingDeg).toBe(100);
-  expect(dal123!.aircraftType).toBe("B738");
-  expect(dal123!.altitudeFt).toBeGreaterThanOrEqual(SPAWN_ALT_FT.min);
-  expect(dal123!.altitudeFt).toBeLessThanOrEqual(SPAWN_ALT_FT.max);
-  expect(dal123!.speedKt).toBeGreaterThanOrEqual(SPAWN_SPEED_KT.min);
-  expect(dal123!.speedKt).toBeLessThanOrEqual(SPAWN_SPEED_KT.max);
-  expect(dal123!.intent.lateral?.type === "PROCEDURE").toBe(false);
-
   const callsigns = world.aircraft.map((ac) => ac.callsign);
   expect(new Set(callsigns).size).toBe(callsigns.length);
   for (const callsign of callsigns) {
     expect(callsign).toBe(callsign.toUpperCase());
+    expect(callsign).toMatch(/^[A-Z]{3}\d+$/);
   }
 
   for (const ac of world.aircraft) {
@@ -245,14 +220,32 @@ test("loader rejects a fixture with 3 aircraft (AC7)", () => {
   expect(() => assertScenario(three)).toThrow(/arrivals must have 4-8/);
 });
 
-test("loader rejects a fixture with duplicate callsigns (AC7)", () => {
-  const dup = {
+test("loader rejects a fixture with callsign key on arrival (AC7)", () => {
+  const withCallsign = {
     ...kdemJson,
     arrivals: kdemJson.arrivals.map((arrival, index) =>
-      index === 1 ? { ...arrival, callsign: kdemJson.arrivals[0]!.callsign } : arrival,
+      index === 0 ? { ...arrival, callsign: "DAL123" } : arrival,
     ),
   };
-  expect(() => assertScenario(dup)).toThrow(/duplicate callsign/);
+  expect(() => assertScenario(withCallsign)).toThrow(/must not include callsign/);
+});
+
+test("loader rejects a fixture with callsign key on departure", () => {
+  const withDepCallsign = {
+    ...kdemJson,
+    departureConfig: {
+      policy: "authored",
+      departures: [
+        {
+          callsign: "DAL123",
+          sidId: "BAY1",
+          transitionId: "NORMA",
+          assignedAltitudeFt: 10000,
+        },
+      ],
+    },
+  };
+  expect(() => assertScenario(withDepCallsign)).toThrow(/must not include callsign/);
 });
 
 test("omitted spawnPolicy is authored so ils27 stays bit-stable", () => {
@@ -331,12 +324,10 @@ test("T04-16 AC5 — ?traffic=30 downwind replacement has handoff none", () => {
 
 test("T04-16 AC4/AC6 — authored ils27 is none; STAR inbound emits one offered each", () => {
   const authored = createWorldFromScenario(loadKdemIls27());
-  const dal = authored.aircraft.find((ac) => ac.callsign === "DAL123");
-  const aal = authored.aircraft.find((ac) => ac.callsign === "AAL45");
-  expect(dal).toBeDefined();
-  expect(aal).toBeDefined();
-  expect(handoffFor(authored, dal!.id)).toEqual({ kind: "none" });
-  expect(handoffFor(authored, aal!.id)).toEqual({ kind: "none" });
+  expect(authored.aircraft).toHaveLength(2);
+  for (const ac of authored.aircraft) {
+    expect(handoffFor(authored, ac.id)).toEqual({ kind: "none" });
+  }
   expect(authored.sessionLog?.byType("handoff.inbound.offered") ?? []).toHaveLength(0);
 
   const inbound = createWorldFromScenario(loadKdem(), 1);

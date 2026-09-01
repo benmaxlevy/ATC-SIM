@@ -127,7 +127,7 @@ Callsign := Telephony FlightNumber
           | SpokenIcao  (delta alpha lima one two three)
 ```
 
-- **Telephony table** (data, not code): `Delta`→`DAL`, `American`→`AAL`, `United`→`UAL`, `Southwest`→`SWA`, `JetBlue`→`JBU`, `Alaska`→`ASA`, `Frontier`→`FFT`, `Spirit`→`NKS`, `FedEx`→`FDX`, `UPS`→`UPS`. Ship ~10–20 rows as JSON under `src/parse` or `src/scenario`. Unknown telephony → parse miss with reason `unknown_telephony`, not a guessed ICAO.
+- **Telephony table** (data, not code): `Delta`→`DAL`, `American`→`AAL`, `United`→`UAL`, `Southwest`→`SWA`, `JetBlue`→`JBU`, `Alaska`→`ASA`, `Frontier`→`FFT`, `Skywest`→`SKW`, `Endeavor`→`EDV`, `Brickyard`→`RPA`, `FedEx`→`FDX`, `UPS`→`UPS`. Ship ~10–20 rows as JSON under `src/parse` or `src/scenario`. Unknown telephony → parse miss with reason `unknown_telephony`, not a guessed ICAO.
 - **Flight number:** digit-by-digit required (`one two three` → `123`). Grouped forms (`twelve`, `twenty three`) are best-effort, not phase-exit blockers.
 - **Selected track:** if the parser receives a selected callsign from the session (phase 1/2 selection) and the utterance has **no** callsign, attach the selected track’s callsign — same rule as typed. If neither selected nor spoken → reject.
 - Ambiguous numeric suffix (`123` matches two strips) is **pilot** validation, not the grammar.

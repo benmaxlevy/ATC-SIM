@@ -30,26 +30,26 @@ function spawnDownwindWorld(): World {
   return createWorldFromScenario(assertScenario(kdemDownwindJson));
 }
 
-function requireDal123(world: World): Aircraft {
-  const ac = world.aircraft.find((a) => a.callsign === "DAL123");
+function requireTarget(world: World): Aircraft {
+  const ac = world.aircraft[0];
   if (!ac) {
-    throw new Error("KDEM spawn must include DAL123");
+    throw new Error("KDEM spawn must include at least one aircraft");
   }
   return ac;
 }
 
-async function issueHeading270(world: World) {
+async function issueHeading270(world: World, callsign: string) {
   const log = new SessionLog();
-  const result = await handleRadioText(world, "DAL123 H270", log);
+  const result = await handleRadioText(world, `${callsign} H270`, log);
   return { result, log };
 }
 
 test("DAL123 H270 is accepted with assigned 270 SHORTEST and heading readback (AC2)", async () => {
   const world = spawnDownwindWorld();
-  const dal = requireDal123(world);
+  const dal = requireTarget(world);
   expect(Math.abs(dal.headingDeg - 100)).toBeLessThanOrEqual(1);
 
-  const { result, log } = await issueHeading270(world);
+  const { result, log } = await issueHeading270(world, dal.callsign);
 
   expect(result.accepted).toBe(true);
   expect(dal.intent.assignedHeadingDeg).toBe(270);
@@ -70,7 +70,7 @@ test("DAL123 H270 is accepted with assigned 270 SHORTEST and heading readback (A
 
 test("after 2.0 sim seconds heading is ~106 and closer to 270 by ~6 deg (AC3)", async () => {
   const world = spawnDownwindWorld();
-  const dal = requireDal123(world);
+  const dal = requireTarget(world);
   expect(Math.abs(dal.headingDeg - 100)).toBeLessThanOrEqual(1);
 
   const startHeading = dal.headingDeg;
@@ -78,7 +78,7 @@ test("after 2.0 sim seconds heading is ~106 and closer to 270 by ~6 deg (AC3)", 
   const startSpeedKt = dal.speedKt;
   const distBefore = Math.abs(shortestDeltaDeg(startHeading, 270));
 
-  const { result } = await issueHeading270(world);
+  const { result } = await issueHeading270(world, dal.callsign);
   expect(result.accepted).toBe(true);
 
   for (let i = 0; i < STEPS_FOR_2S; i += 1) {
@@ -97,11 +97,11 @@ test("after 2.0 sim seconds heading is ~106 and closer to 270 by ~6 deg (AC3)", 
 
 test("one SIM_DT_S step after accept starts the turn by ~0.15 deg (AC4)", async () => {
   const world = spawnDownwindWorld();
-  const dal = requireDal123(world);
+  const dal = requireTarget(world);
   expect(Math.abs(dal.headingDeg - 100)).toBeLessThanOrEqual(1);
 
   const startHeading = dal.headingDeg;
-  const { result } = await issueHeading270(world);
+  const { result } = await issueHeading270(world, dal.callsign);
   expect(result.accepted).toBe(true);
   expect(dal.headingDeg).toBe(startHeading);
 
@@ -114,12 +114,12 @@ test("one SIM_DT_S step after accept starts the turn by ~0.15 deg (AC4)", async 
 
 test("T04-14 — DAL123 H270 on the default STAR pack cancels FMS after HO accept", async () => {
   const world = createWorldFromScenario(loadKdem(), 1);
-  const dal = requireDal123(world);
+  const dal = requireTarget(world);
   expect(dal.intent.lateral?.type).toBe("PROCEDURE");
   expect(dal.intent.vertical?.type).toBe("VIA_STAR");
 
   expect(acceptInboundHandoff(world, dal.id)).toBe(true);
-  const { result } = await issueHeading270(world);
+  const { result } = await issueHeading270(world, dal.callsign);
   expect(result.accepted).toBe(true);
   expect(dal.intent.assignedHeadingDeg).toBe(270);
   expect(dal.intent.lateral).toEqual({ type: "HEADING", headingDeg: 270 });
