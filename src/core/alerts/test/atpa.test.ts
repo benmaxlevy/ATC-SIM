@@ -132,20 +132,22 @@ test("requiredSeparationNm follows whatever the volume row says", () => {
   expect(requiredSeparationNm(6, 5, custom)).toBe(custom.reducedSeparationNm);
 });
 
-test("T02-44 AC3 — closing in 40 s warns, 20 s alerts, already inside alerts, opening stays monitor", () => {
+test("T02-44 AC3 — closing in 40 s or 20 s warns; alert only when already inside required NM", () => {
   const gapNm = 4 - volume27.basicSeparationNm;
   const warnKt = (gapNm / 40) * 3600;
-  const alertKt = (gapNm / 20) * 3600;
+  const predictedAlertKt = (gapNm / 20) * 3600;
 
   const warnLeader = arrival("AAL45", geom27, 11, { speedKt: 160 });
   const warnTrailer = arrival("DAL123", geom27, 15, { speedKt: 160 + warnKt });
   expect(pairClosureKt(warnTrailer, warnLeader)).toBeCloseTo(warnKt, 6);
   expect(evaluateAtpa([warnLeader, warnTrailer], [volume27], geometry)[0]?.status).toBe("warning");
 
-  const alertLeader = arrival("AAL45", geom27, 11, { speedKt: 70 });
-  const alertTrailer = arrival("DAL123", geom27, 15, { speedKt: 70 + alertKt });
-  expect(pairClosureKt(alertTrailer, alertLeader)).toBeCloseTo(alertKt, 6);
-  expect(evaluateAtpa([alertLeader, alertTrailer], [volume27], geometry)[0]?.status).toBe("alert");
+  const predictedLeader = arrival("AAL45", geom27, 11, { speedKt: 70 });
+  const predictedTrailer = arrival("DAL123", geom27, 15, { speedKt: 70 + predictedAlertKt });
+  expect(pairClosureKt(predictedTrailer, predictedLeader)).toBeCloseTo(predictedAlertKt, 6);
+  expect(evaluateAtpa([predictedLeader, predictedTrailer], [volume27], geometry)[0]?.status).toBe(
+    "warning",
+  );
 
   const insideLeader = arrival("AAL45", geom27, 11, { speedKt: 180 });
   const insideTrailer = arrival("DAL123", geom27, 13, { speedKt: 180 });
@@ -159,9 +161,10 @@ test("T02-44 AC3 — closing in 40 s warns, 20 s alerts, already inside alerts, 
   expect(evaluateAtpa([openLeader, openTrailer], [volume27], geometry)[0]?.status).toBe("monitor");
 });
 
-test("atpaStatus: parallel or opening never warn; already inside still alerts", () => {
+test("atpaStatus: parallel or opening never warn; predicted 24 s stays warning; already inside alerts", () => {
   expect(atpaStatus(4, volume27.basicSeparationNm, 0)).toBe("monitor");
   expect(atpaStatus(4, volume27.basicSeparationNm, -50)).toBe("monitor");
+  expect(atpaStatus(3.2, volume27.basicSeparationNm, (0.2 / 20) * 3600)).toBe("warning");
   expect(atpaStatus(2, volume27.basicSeparationNm, -50)).toBe("alert");
 });
 

@@ -75,8 +75,11 @@ T02-44 ships in-trail pairing and predicted monitor/warning/alert status
 `evaluateAtpa` reads `basicSeparationNm` / `reducedSeparationNm` /
 `reducedWithinNm` from each catalog volume, pairs eligible tracks inside an
 enabled volume, and classifies status from current distance plus linear
-closure (R07 45 s warning / 24 s alert). Cone length is therefore identical
-for a heavy leader and a light leader.
+closure. Warning is predicted violation within **45 s** (R07). Alert is
+**only** `distanceNm < requiredNm` (actual in-trail / lateral radar loss).
+R07 also paints Alert for a predicted violation within **24 s**; that band
+stays Warning here so a still-legal pair does not go ATPA-red. Cone length
+is therefore identical for a heavy leader and a light leader.
 
 Deliberately missing, each of which later work must keep the JSON-minima
 path and must **not** invent numbers from model recall:
@@ -99,6 +102,10 @@ path and must **not** invent numbers from model recall:
 - **TDW white monitor variant.** The tower display workstation paints the
   monitor cone white; this trainer has no TDW. Scope ATPA monitor stays
   TPA blue until a TDW surface exists.
+- **R07 24 s predicted Alert.** CRC paints the Alert cone when already
+  inside the required NM **or** predicted to lose it within 24 s. This
+  trainer keeps 24 s as Warning. Restoring predicted Alert must keep Alert
+  as actual loss plus that timer — do not invent a third color.
 - **Aural ATPA alerting.** No ATPA tone. CA (T04-09) remains the only
   conflict audio; do not reuse the CA tone for in-trail ATPA.
 - **Volumes as authored trainer geometry** rather than imported NAS

@@ -11,7 +11,8 @@
  * **Supersession (R07 prose):** Alert supersedes all other ATPA and TPA cones.
  * Warning supersedes a manual TPA cone and the Monitor cone, but is not shown
  * when an Alert cone is shown. Monitor is the base state. This module paints
- * **one ATPA cone per trailing track — the highest status only.**
+ * **one ATPA cone per trailing track — the highest status only.** Alert status
+ * itself is actual in-trail loss only (T02-44 trainer delta vs R07 24 s).
  *
  * **Fig 39 discrepancy (known, not implemented):** the Alert Cone figure
  * appears to show a blue cone and an orange cone anchored at the same target

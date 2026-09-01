@@ -1,7 +1,9 @@
 /**
  * Analog: CRC STARS **ATPA** in-trail pairing (R07 “ATPA” overview — Monitor
- * Cone, Warning Cone, Alert Cone). Warning at **45 s** and alert at **24 s**
- * predicted violation are R07 values.
+ * Cone, Warning Cone, Alert Cone). Warning at **45 s** predicted violation is
+ * the R07 value. R07 also paints Alert for a predicted violation within
+ * **24 s**; this trainer does **not** — Alert is only an actual in-trail loss
+ * (`distanceNm < requiredNm`). The 24 s band stays Warning.
  *
  * Minima are basic radar separation only, read from each volume’s JSON
  * (`basicSeparationNm`, `reducedSeparationNm`, `reducedWithinNm`). R07 says
@@ -19,7 +21,10 @@ import { alongTrackNm, courseChangeDeg, DEG2RAD, normalizeHeadingDeg } from "../
 
 /** R07 predicted-warning horizon (seconds). */
 export const ATPA_WARNING_S = 45;
-/** R07 predicted-alert horizon (seconds). */
+/**
+ * R07 predicted-alert horizon (seconds). Cited only — `atpaStatus` does not
+ * promote to alert on this timer. Alert is actual loss of required NM.
+ */
 export const ATPA_ALERT_S = 24;
 
 const KT_TO_NM_PER_S = 1 / 3600;
@@ -171,9 +176,6 @@ export function atpaStatus(distanceNm: number, requiredNm: number, closureKt: nu
   }
   const gapNm = distanceNm - requiredNm;
   const timeToViolationS = gapNm / (closureKt * KT_TO_NM_PER_S);
-  if (timeToViolationS <= ATPA_ALERT_S) {
-    return "alert";
-  }
   if (timeToViolationS <= ATPA_WARNING_S) {
     return "warning";
   }

@@ -274,8 +274,7 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
       expect(alerted.status).toBe("alert");
       expect(alerted.trailingCallsign).toBe("DAL123");
       expect(world.alerts.atpa).toHaveLength(1);
-      expect(alerted.distanceNm).toBeGreaterThanOrEqual(CA_LATERAL_NM);
-      expect(world.alerts.ca).toEqual([]);
+      expect(alerted.distanceNm).toBeLessThan(alerted.requiredNm);
 
       const inside = stepUntil(
         world,
@@ -326,16 +325,16 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
 
   describe("AC2: cone strokes, colors, mileage, and fill", () => {
     test("monitor / warning / alert paint one unfilled wedge at the trailer; mileage is 3; PALETTE.alert unused", () => {
-      const colors: [AtpaStatus, number, number, string][] = [
-        ["monitor", 180, 180, PALETTE.tools],
-        ["warning", 180, 270, PALETTE.atpaWarning],
-        ["alert", 70, 250, PALETTE.atpaAlert],
+      const colors: [AtpaStatus, number, number, number, string][] = [
+        ["monitor", 180, 180, 15, PALETTE.tools],
+        ["warning", 180, 270, 15, PALETTE.atpaWarning],
+        ["alert", 180, 180, 13, PALETTE.atpaAlert],
       ];
-      for (const [status, leadKt, trailKt, color] of colors) {
+      for (const [status, leadKt, trailKt, trailerAlongNm, color] of colors) {
         const { world, trailer, volume } = finalPairWorld({
           volumeId: "ATPA27",
           leaderAlongNm: 11,
-          trailerAlongNm: 15,
+          trailerAlongNm,
           leaderSpeedKt: leadKt,
           trailerSpeedKt: trailKt,
         });
@@ -420,9 +419,9 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
       const alerted = finalPairWorld({
         volumeId: "ATPA27",
         leaderAlongNm: 11,
-        trailerAlongNm: 15,
-        leaderSpeedKt: 70,
-        trailerSpeedKt: 250,
+        trailerAlongNm: 13,
+        leaderSpeedKt: 180,
+        trailerSpeedKt: 180,
       });
       stepWorld(alerted.world, 0);
       expect(alerted.world.alerts.atpa[0]?.status).toBe("alert");
