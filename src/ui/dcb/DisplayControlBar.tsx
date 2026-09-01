@@ -766,8 +766,8 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
       data-dcb-cursor-trap={trap.kind}
       data-dcb-dock={view.dcbDock}
       style={{
-        height: vertical ? undefined : DCB_HEIGHT_PX,
-        width: vertical ? DCB_HEIGHT_PX : undefined,
+        height: vertical ? "100%" : DCB_HEIGHT_PX,
+        width: vertical ? DCB_HEIGHT_PX : "100%",
         fontFamily: SCOPE_FONT_STACK,
         fontSize: dcbPx,
         backgroundColor: PALETTE.background,

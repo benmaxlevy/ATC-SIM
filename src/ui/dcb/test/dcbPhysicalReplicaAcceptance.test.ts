@@ -133,3 +133,26 @@ test("AC5 — copy and typography remain a STARS-like trainer approximation", ()
   expect(PALETTE.unowned).toBe("#00FF00");
   expect(PALETTE.owned).toBe("#FFFFFF");
 });
+
+test("AC6 — DCB on LEFT and RIGHT docks renders with dcb-vertical class and 2-column vertical grid", () => {
+  const viewLeft = createScopeView();
+  viewLeft.dcbDock = "LEFT";
+  const htmlLeft = renderToStaticMarkup(
+    createElement(DisplayControlBar, { view: viewLeft, onChange: () => undefined }),
+  );
+  expect(htmlLeft).toContain('class="dcb dcb-vertical"');
+  expect(htmlLeft).toContain('data-dcb-dock="LEFT"');
+
+  const viewRight = createScopeView();
+  viewRight.dcbDock = "RIGHT";
+  const htmlRight = renderToStaticMarkup(
+    createElement(DisplayControlBar, { view: viewRight, onChange: () => undefined }),
+  );
+  expect(htmlRight).toContain('class="dcb dcb-vertical"');
+  expect(htmlRight).toContain('data-dcb-dock="RIGHT"');
+
+  const css = cssSource();
+  expect(css).toMatch(/\.dcb-vertical\s*\{[^}]*flex-direction:\s*column;/);
+  expect(css).toMatch(/\.dcb-vertical\s+\.dcb-main-grid/);
+  expect(css).toMatch(/grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+});
