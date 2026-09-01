@@ -19,6 +19,7 @@
 
 import type { World } from "@core";
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
+import { resolveScopeFlid } from "./previewArea";
 import type { ScopeView } from "./scopeView";
 import { ensureTrackDisplay, selectedTrackId } from "./trackDisplay";
 
@@ -34,6 +35,8 @@ export type StarsChordAction =
   | { type: "jRingClear"; target: StarsChordTarget }
   | { type: "cone"; target: "slewed"; lengthNm: number }
   | { type: "coneClear"; target: StarsChordTarget }
+  | { type: "forceFdb"; target: StarsChordTarget; flid?: string }
+  | { type: "forceFdbClear"; target: StarsChordTarget }
   | { type: "tpaSizeReadout"; mode: StarsChordToggleMode }
   | { type: "atpaWarningAlert"; mode: StarsChordEnableMode }
   | { type: "atpaMonitor"; mode: StarsChordEnableMode }
@@ -119,6 +122,9 @@ export function parseStarsChord(buffer: string): StarsChordResult {
     if (buffer === "**P") {
       return { kind: "action", action: { type: "coneClear", target: "all" } };
     }
+    if (buffer === "**F") {
+      return { kind: "action", action: { type: "forceFdbClear", target: "all" } };
+    }
     return invalid("unknown ** chord");
   }
 
@@ -127,6 +133,13 @@ export function parseStarsChord(buffer: string): StarsChordResult {
   }
   if (buffer.startsWith("*P")) {
     return parseJpMileage("P", buffer.slice(2));
+  }
+  if (buffer.startsWith("*F")) {
+    const rest = buffer.slice(2).trim();
+    if (rest === "") {
+      return { kind: "action", action: { type: "forceFdb", target: "slewed" } };
+    }
+    return { kind: "action", action: { type: "forceFdb", target: "slewed", flid: rest } };
   }
 
   const fixed = FIXED_ACTIONS[buffer];
@@ -232,7 +245,16 @@ export function formatStarsChordAction(action: StarsChordAction): string {
   if (action.type === "atpaMonitor") {
     return action.mode === "enable" ? "*BE" : "*BI";
   }
-  return action.mode === "enable" ? "*DE" : "*DI";
+  if (action.type === "forceFdbClear") {
+    return action.target === "all" ? "**F" : "*F";
+  }
+  if (action.type === "forceFdb") {
+    return action.flid ? `*F ${action.flid}` : "*F";
+  }
+  if (action.type === "inTrailDistance") {
+    return action.mode === "enable" ? "*DE" : "*DI";
+  }
+  return "*";
 }
 
 /** Live `*J2.5`, armed `*J3`, or `*D INV` after a rejected commit. Null when idle. */
@@ -329,11 +351,12 @@ export function handleStarsChordEntryKey(
 export type StarsChordApplyResult = "applied" | "unsupported";
 export type StarsChordArmOrApplyResult = "applied" | "armed" | "unsupported";
 
-/** Track-scoped J-ring / cone actions that wait for a slew when nothing is selected. */
+/** Track-scoped J-ring / cone / FDB actions that wait for a slew when nothing is selected. */
 export function starsChordActionNeedsSlew(action: StarsChordAction): boolean {
   return (
     action.type === "jRing" ||
     action.type === "cone" ||
+    (action.type === "forceFdb" && !action.flid) ||
     ((action.type === "jRingClear" || action.type === "coneClear") && action.target === "slewed")
   );
 }
@@ -447,6 +470,35 @@ export function applyStarsChordAction(
       td.atpaMonitorEnabled = applyEnableMode(td.atpaMonitorEnabled !== false, action.mode);
     } else {
       view.atpa.monitorCones = applyEnableMode(view.atpa.monitorCones, action.mode);
+    }
+    return "applied";
+  }
+  if (action.type === "forceFdbClear") {
+    if (action.target === "all") {
+      for (const td of view.tracks.values()) {
+        td.forcedFdb = false;
+      }
+      return "applied";
+    }
+    if (slewedId) {
+      ensureTrackDisplay(view.tracks, slewedId).forcedFdb = false;
+    }
+    return "applied";
+  }
+  if (action.type === "forceFdb") {
+    if (action.flid && world) {
+      const resolved = resolveScopeFlid(action.flid, world);
+      if (resolved.ok) {
+        const td = ensureTrackDisplay(view.tracks, resolved.aircraftId);
+        td.forcedFdb = !td.forcedFdb;
+        return "applied";
+      }
+      return "unsupported";
+    }
+    if (slewedId) {
+      const td = ensureTrackDisplay(view.tracks, slewedId);
+      td.forcedFdb = !td.forcedFdb;
+      return "applied";
     }
     return "applied";
   }

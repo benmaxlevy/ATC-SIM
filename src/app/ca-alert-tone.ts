@@ -11,7 +11,8 @@ export const CA_TONE_GAIN = 0.05;
 
 export interface CaAlertTone {
   /** Start/stop the beep from the sim tick. Safe with no AudioContext. */
-  sync(active: boolean): void;
+  sync(active: boolean, volumeMultiplier?: number): void;
+  setVolume(vol: number): void;
   dispose(): void;
 }
 
@@ -43,6 +44,7 @@ export function createCaAlertTone(options: CaAlertToneOptions = {}): CaAlertTone
   let osc: OscillatorNode | null = null;
   let gain: GainNode | null = null;
   let disposed = false;
+  let currentVolumeMultiplier = 1.0;
 
   function tryContext(): AudioContext | null {
     if (options.getAudioContext) {
@@ -96,15 +98,27 @@ export function createCaAlertTone(options: CaAlertToneOptions = {}): CaAlertTone
   }
 
   return {
-    sync(nextActive: boolean) {
+    setVolume(vol: number) {
+      const clamped = Math.max(0, vol);
+      currentVolumeMultiplier = clamped <= 5 ? clamped / 5 : Math.min(100, clamped) / 100;
+      if (gain && gain.gain.value > 0) {
+        gain.gain.value = CA_TONE_GAIN * currentVolumeMultiplier;
+      }
+    },
+    sync(nextActive: boolean, volumeMultiplier?: number) {
       if (disposed) {
         return;
       }
-      if (!nextActive) {
+      if (volumeMultiplier !== undefined) {
+        currentVolumeMultiplier = Math.max(0, volumeMultiplier);
+      }
+      if (!nextActive || currentVolumeMultiplier === 0) {
         if (gain) {
           gain.gain.value = 0;
         }
-        stopGraph();
+        if (!nextActive) {
+          stopGraph();
+        }
         return;
       }
       const audio = tryContext();
@@ -116,7 +130,7 @@ export function createCaAlertTone(options: CaAlertToneOptions = {}): CaAlertTone
       }
       ensureGraph(audio);
       if (gain) {
-        gain.gain.value = caToneBeepOn(now()) ? CA_TONE_GAIN : 0;
+        gain.gain.value = caToneBeepOn(now()) ? CA_TONE_GAIN * currentVolumeMultiplier : 0;
       }
     },
     dispose() {

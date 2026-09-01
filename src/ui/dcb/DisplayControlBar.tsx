@@ -62,6 +62,7 @@ import {
   openDcbMenu,
   stepDcbLeaderDir,
   stepDcbLeaderLength,
+  stepModeFsl,
   stepRange,
   stepRrInterval,
   type ScopeView,
@@ -405,6 +406,28 @@ function renderPhysicalMain(
             <span className="dcb-cell-line">FILTER</span>
           </DcbCell>
         );
+      case "mode-fsl":
+        return (
+          <DcbCell
+            kind="spinner"
+            ariaLabel="Mode FSL"
+            dataDcb="mode-fsl"
+            pressed={spinnerArmed(view, "MODE_FSL")}
+            onClick={() => toggleSpinner(view, onChange, "MODE_FSL")}
+            onWheel={(event) =>
+              onSpinnerWheel(view, "MODE_FSL", event, (step) => stepModeFsl(view, step), onChange)
+            }
+            onDragDelta={(step) => {
+              for (let i = 0; i < Math.abs(step); i++) {
+                stepModeFsl(view, step > 0 ? 1 : -1);
+              }
+              afterCell(onChange);
+            }}
+          >
+            <span className="dcb-cell-line">MODE</span>
+            <span className="dcb-cell-line">{view.modeFsl}</span>
+          </DcbCell>
+        );
       case "shift":
         return renderShift(view, onChange);
       default:
@@ -417,7 +440,7 @@ function renderPhysicalMain(
             return renderWxCell(view, onChange, n as 1 | 2 | 3 | 4 | 5 | 6);
           }
         }
-        return disabled(id, id === "mode-fsl" ? "MODE FSL" : id.toUpperCase());
+        return disabled(id, id.toUpperCase());
     }
   };
   return (
@@ -743,8 +766,8 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
       data-dcb-cursor-trap={trap.kind}
       data-dcb-dock={view.dcbDock}
       style={{
-        height: vertical ? undefined : DCB_HEIGHT_PX,
-        width: vertical ? DCB_HEIGHT_PX : undefined,
+        height: vertical ? "100%" : DCB_HEIGHT_PX,
+        width: vertical ? DCB_HEIGHT_PX : "100%",
         fontFamily: SCOPE_FONT_STACK,
         fontSize: dcbPx,
         backgroundColor: PALETTE.background,

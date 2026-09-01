@@ -367,9 +367,39 @@ export function getDatablockVisualState(
     }
   }
 
+  const isSelected = world.selectedAircraftId === ac.id;
+
+  function computeBaseDatablockMode(
+    view: ScopeView,
+    td?: TrackDisplay,
+  ): "full" | "partial" | "limited" {
+    if (td?.forcedFdb) {
+      return "full";
+    }
+    const ownership = td?.ownership ?? "unowned";
+    if (view.modeFsl === "S") {
+      // Semi Mode: selected/clicked owned track expands to FDB; unselected tracks show PDB
+      if (isSelected && ownership === "owned") {
+        return "full";
+      }
+      return td?.unassociated ? "limited" : "partial";
+    }
+    if (view.modeFsl === "L") {
+      // Limited Mode: selected/clicked owned track expands to FDB; unselected tracks show LDB
+      if (isSelected && ownership === "owned") {
+        return "full";
+      }
+      return "limited";
+    }
+    return (
+      td?.datablockMode ??
+      (ownership === "owned" ? "full" : td?.unassociated ? "limited" : "partial")
+    );
+  }
+
   // 7. Track highlight (Cyan #00FFFF)
   if (td?.highlighted) {
-    const baseMode = td.datablockMode ?? (td.ownership === "owned" ? "full" : "partial");
+    const baseMode = computeBaseDatablockMode(view, td);
     const mode =
       isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs) && baseMode === "partial"
         ? "full"
@@ -384,7 +414,7 @@ export function getDatablockVisualState(
 
   // 8. Base ownership
   const ownership = td?.ownership ?? "unowned";
-  const baseMode = td?.datablockMode ?? (ownership === "owned" ? "full" : "partial");
+  const baseMode = computeBaseDatablockMode(view, td);
   const mode =
     isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs) && baseMode === "partial"
       ? "full"
@@ -1038,6 +1068,7 @@ export function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: Scope
 
   const ssaLines = buildSsaRenderLines({
     simTimeMs: world.simTimeMs,
+    nowMs: world.simTimeMs,
     rangeNm: view.camera.rangeNm,
     offCenter: isViewOffAirport(view),
     filter: view.altitudeFilter,
@@ -1048,6 +1079,8 @@ export function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: Scope
     airportCode: airportId,
     primaryAltimeter: view.primaryAltimeter ?? SSA_ALTIMETER_STUB,
     airportAltimeters: view.airportAltimeters,
+    wxLevels: view.wxLevels,
+    wxMosaic: view.wxMosaic,
     crdaRpcStatus,
     systemStatus: SSA_NETWORK_HEALTH_STUB,
     surveillanceMode: surveillanceModeWord(

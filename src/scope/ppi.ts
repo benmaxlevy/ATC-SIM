@@ -113,6 +113,13 @@ function applyTrackingSlewHit(
       clearTrackingSlew(view);
       return true;
     }
+    case "forceFdb": {
+      const td = ensureTrackDisplay(view.tracks, id);
+      td.forcedFdb = !td.forcedFdb;
+      setSelectedAircraft(world, id);
+      clearTrackingSlew(view);
+      return true;
+    }
     case "acceptHandoff": {
       const ho = handoffFor(world, id);
       if (ho.kind !== "inbound") {

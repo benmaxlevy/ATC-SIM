@@ -18,6 +18,9 @@ test("table-driven STARS TPA/ATPA chords", () => {
     { buffer: "**J", result: action({ type: "jRingClear", target: "all" }) },
     { buffer: "*P2.5", result: action({ type: "cone", target: "slewed", lengthNm: 2.5 }) },
     { buffer: "*AE", result: action({ type: "atpaWarningAlert", mode: "enable" }) },
+    { buffer: "*F", result: action({ type: "forceFdb", target: "slewed" }) },
+    { buffer: "*F AAL123", result: action({ type: "forceFdb", target: "slewed", flid: "AAL123" }) },
+    { buffer: "**F", result: action({ type: "forceFdbClear", target: "all" }) },
     { buffer: "*T", result: { kind: "invalid", reason: "unknown * chord" } },
   ];
   for (const row of table) {

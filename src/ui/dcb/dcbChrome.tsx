@@ -256,6 +256,8 @@ export function ssaFilterCellId(field: SsaFilterField): NonNullable<DcbCellProps
       return "ssa-status";
     case "PTL":
       return "ssa-ptl";
+    case "WX":
+      return "ssa-wx";
   }
 }
 
@@ -426,6 +428,7 @@ export interface DcbCellProps {
     | "ssa-filter"
     | "gi-text"
     | "ssa-all"
+    | "ssa-wx"
     | "ssa-time"
     | "ssa-altstg"
     | "ssa-filter-line"
@@ -448,6 +451,7 @@ export interface DcbCellProps {
     | "site-multi"
     | "site-choice"
     | "pref"
+    | "mode-fsl"
     | `pref-${number}`
     | "pref-default"
     | "pref-restore"

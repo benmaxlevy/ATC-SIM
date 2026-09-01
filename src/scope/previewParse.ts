@@ -87,6 +87,8 @@ export type PreviewArmedAction =
       readonly lengthStep: number;
       readonly lengthPx: number;
     }
+  | { readonly type: "forceFdb"; readonly flid?: string }
+  | { readonly type: "clearAllForcedFdb" }
   | { readonly type: "beaconatorSlew" }
   | { readonly type: "saveAsPref"; readonly name?: string };
 
@@ -538,6 +540,7 @@ function parseVideoMapCommand(
 const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
   "initCntl",
   "termCntl",
+  "forceFdb",
   "acceptHandoff",
   "ackPointout",
   "setLeaderDir",
@@ -579,10 +582,26 @@ function parseTrackFlidRest(kind: "initCntl" | "termCntl", rest: string): Previe
 /**
  * T02-66 tracking / datablock chords + Table 24/25 leader line direction and length.
  * `* P1` is a tower list (parseListCommand). Bare `*` and `*B` stay incomplete.
- * `*F` / `*LA` / `*BCN` stay unparsed for T02-65. `+HOLD` / `/ALL` are INV.
+ * `*F` / `*LA` / `*BCN` — `*F` forces Full Data Block on slewed track or target acid.
  */
 export function parseTrackingCommand(buffer: string): PreviewCommandResult | null {
   const compact = compactTrackingBuffer(buffer);
+  if (compact === "**F") {
+    return { kind: "action", action: { type: "clearAllForcedFdb" } };
+  }
+  if (compact.startsWith("*F")) {
+    const rest = compact.slice(2);
+    if (rest.length === 0) {
+      return { kind: "action", action: { type: "forceFdb" } };
+    }
+    if (isCompleteFlidToken(rest)) {
+      return { kind: "action", action: { type: "forceFdb", flid: rest } };
+    }
+    if (isFlidPrefixToken(rest)) {
+      return { kind: "incomplete" };
+    }
+    return invalid("unknown FLID");
+  }
   if (compact.startsWith("+")) {
     return parseTrackFlidRest("initCntl", compact.slice(1));
   }

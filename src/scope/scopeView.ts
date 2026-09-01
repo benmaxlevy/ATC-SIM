@@ -291,7 +291,24 @@ export interface ScopeView {
   wxMosaic: WxMosaic;
   /** Scenario ARP for mosaic placement. Default 0,0. Not an airport-id switch. */
   arp: LatLon;
+  /**
+   * STARS TCW alert tone volume (0–5 spinner). Default 2.
+   * Modulates CA alert tone volume without affecting pilot radio line.
+   */
+  vol: VolLevel;
+  /**
+   * Global datablock display mode: "F" (Full), "S" (Semi/Partial), "L" (Limited).
+   * Default "F". Selected tracks retain full datablocks.
+   */
+  modeFsl: ModeFsl;
 }
+
+export const VOL_STEPS = [0, 1, 2, 3, 4, 5] as const;
+export type VolLevel = (typeof VOL_STEPS)[number];
+export const DEFAULT_VOL_LEVEL: VolLevel = 2;
+
+export type ModeFsl = "F" | "S" | "L";
+export const DEFAULT_MODE_FSL: ModeFsl = "F";
 
 export function createScopeView(
   airportEastNm: number = AIRPORT_REF_EAST_NM,
@@ -306,6 +323,8 @@ export function createScopeView(
     ssaWeatherAirports?: readonly string[];
     primaryAltimeter?: string;
     airportAltimeters?: readonly SsaAirportAltimeter[];
+    vol?: VolLevel;
+    modeFsl?: ModeFsl;
   },
 ): ScopeView {
   const digitalMap = options?.digitalMap ?? DEFAULT_DIGITAL_MAP;
@@ -388,6 +407,8 @@ export function createScopeView(
     wxLevels: cloneWxLevels(),
     wxMosaic: emptyWxMosaic(),
     arp,
+    vol: options?.vol ?? DEFAULT_VOL_LEVEL,
+    modeFsl: options?.modeFsl ?? DEFAULT_MODE_FSL,
   };
 }
 

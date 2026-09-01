@@ -33,8 +33,13 @@ import {
   type LeaderLengthPx,
 } from "../leader";
 import { BRITE_STEPS, type BriteChannel, type BriteLevel } from "../palette";
-import type { ScopeView } from "../scopeView";
-import { snapRangeRingToViewCenter } from "../scopeView";
+import {
+  snapRangeRingToViewCenter,
+  VOL_STEPS,
+  type VolLevel,
+  type ModeFsl,
+  type ScopeView,
+} from "../scopeView";
 import { setLeaderDirForSelection } from "../trackDisplay";
 import { cloneWxLevels, type VipLevel } from "../wx";
 
@@ -488,6 +493,9 @@ export function cycleMapBrite(view: ScopeView): void {
 }
 
 export function formatDcbBriteReadout(level: BriteLevel | number): string {
+  if (level === 0) {
+    return "OFF";
+  }
   return String(level);
 }
 
@@ -576,4 +584,36 @@ export function toggleWxLevel(view: ScopeView, level: VipLevel): void {
   ];
   next[i] = !next[i];
   view.wxLevels = next;
+}
+
+/**
+ * AUX VOL spinner (0–5). Modulates workstation CA alert tone volume.
+ */
+export function stepDcbVol(view: ScopeView, delta: number): void {
+  view.vol = stepFrozen(VOL_STEPS, view.vol, delta);
+}
+
+export function formatDcbVolReadout(vol: VolLevel): string {
+  return `${vol}`;
+}
+
+export const MODE_FSL_STEPS: readonly ModeFsl[] = ["F", "S", "L"];
+
+/**
+ * Step MODE FSL spinner ("F" <-> "S" <-> "L").
+ */
+export function stepModeFsl(view: ScopeView, delta: number): ModeFsl {
+  const next = stepFrozen(MODE_FSL_STEPS, view.modeFsl, delta);
+  view.modeFsl = next;
+  return next;
+}
+
+/**
+ * MAIN MODE FSL 3-state toggle latch.
+ * Cycles "F" (Full) -> "S" (Semi/Partial) -> "L" (Limited) -> "F".
+ */
+export function cycleModeFsl(view: ScopeView): ModeFsl {
+  const next: ModeFsl = view.modeFsl === "F" ? "S" : view.modeFsl === "S" ? "L" : "F";
+  view.modeFsl = next;
+  return next;
 }

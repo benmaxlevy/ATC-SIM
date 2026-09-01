@@ -545,3 +545,29 @@ test("CRC STARS Table 24/25 — leader length and direction per target (slew, FL
   typeKeys(view, world, ["*", "L", "D", "R", " ", "4", "Enter"], "scope", 2200);
   expect(view.leaderLengthPx).toBe(48);
 });
+
+test("T02-67 — *F and **F force Full Data Block via slew or ACID", () => {
+  const dal = makeTestAircraft({ id: "ac1", callsign: "DAL123", xNm: 10, yNm: 10 });
+  const ual = makeTestAircraft({ id: "ac2", callsign: "UAL456", xNm: -15, yNm: 5 });
+  const world = createWorld({ aircraft: [dal, ual] });
+  const view = kdemView();
+  syncTrackDisplays(view.tracks, world);
+
+  // Initial state: not forced
+  expect(view.tracks.get(dal.id)!.forcedFdb).toBe(false);
+  expect(view.tracks.get(ual.id)!.forcedFdb).toBe(false);
+
+  // 1. *F + slew (target click) forces FDB
+  typeKeys(view, world, ["*", "F"], "scope", 100);
+  clickAt(view, world, dal.xNm, dal.yNm);
+  expect(view.tracks.get(dal.id)!.forcedFdb).toBe(true);
+
+  // 2. *F <acid> Enter forces FDB for specified aircraft
+  typeKeys(view, world, ["*", "F", " ", "U", "A", "L", "4", "5", "6", "Enter"], "scope", 300);
+  expect(view.tracks.get(ual.id)!.forcedFdb).toBe(true);
+
+  // 3. **F Enter clears all forced FDBs
+  typeKeys(view, world, ["*", "*", "F", "Enter"], "scope", 500);
+  expect(view.tracks.get(dal.id)!.forcedFdb).toBe(false);
+  expect(view.tracks.get(ual.id)!.forcedFdb).toBe(false);
+});

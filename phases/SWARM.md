@@ -1,8 +1,67 @@
-# ATC-SIM swarm orchestrator — Twenty-third swarm (Real METAR weather and SSA altimeter display)
+# ATC-SIM swarm orchestrator — Twenty-fourth swarm (DCB VOL, MODE FSL, BRITE BKC and SSA WX Telemetry)
 
-Twenty-second (PREF / PTL / VIA / radar sites T02-73–77, T04-43–45) planned/landed.
-This file keeps that history, then the twenty-third addendum on
-**`feature/metar-weather-altimeter`**.
+Twenty-third (METAR weather and SSA altimeter T02-78–80) planned/landed.
+This file keeps that history, then the twenty-fourth addendum on
+**`feature/dcb-controls-ssa-wx`**.
+
+## Twenty-fourth swarm planned — 2026-09-01 (DCB VOL, MODE FSL, BRITE BKC and SSA WX Telemetry)
+
+This configuration enables previously disabled/stubbed DCB controls (`VOL`, `MODE FSL`, `BRITE BKC`) and adds live SSA weather mosaic telemetry (`WX`, `WX HIST`) on **`feature/dcb-controls-ssa-wx`**, cut from current `master`.
+Captain squash-merges ticket branches into **`feature/dcb-controls-ssa-wx`**, not `master`. Do not push. Existing swarm history stays intact.
+
+| Key | Value |
+| --- | --- |
+| Goal | Enable DCB VOL (aural alert tone gain), MODE FSL (3-way datablock mode latch), BRITE BKC (background contrast), and SSA WX/WX HIST status telemetry with DCB SSA FILTER support and PREF persistence. |
+| Include | **T02-81**, **T02-82**, **T02-83** |
+| Source | STARS DCB physical layout specifications, Web Audio CA alert tone graph, Scope canvas renderer, and IEM NEXRAD mosaic timestamp telemetry. |
+| Skip | Paid weather APIs; OSM; pilot aircraft kinematic deviation; voice synthesis of ATIS audio; manual keyboard altimeter editing prompts. |
+| Stop | After T02-83 acceptance. No next phase. |
+| Max workers | 3 |
+| Merge lock | captain squash to `feature/dcb-controls-ssa-wx`, then `npm test` / `npm run ci` |
+| Model | **cursor-grok-4.6-high only, non-fast** on captain and every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law (twenty-fourth swarm — DCB controls & SSA weather telemetry):**
+
+- **VOL spinner authentic semantics.** DCB `VOL` spinner modulates the workstation aural alert tone gain (`caAlertTone.ts`) linearly from 0.0 (silent) to 1.0. Pilot voice readback playback level remains independent on the radio line.
+- **MODE FSL 3-way toggle latch.** MAIN DCB `MODE FSL` replaces the disabled cell with an active 3-state toggle cycling `MODE F` -> `MODE S` -> `MODE L`. When in `MODE S`, unselected associated tracks show Partial Data Blocks (PDB); when in `MODE L`, unassociated tracks show Limited Data Blocks (LDB). Selected tracks retain FDB.
+- **BRITE BKC background contrast.** `BRITE BKC` spinner modulates canvas background darkness/contrast level from pure black to higher contrast slate.
+- **SSA WX and WX HIST telemetry.** SSA renders live radar weather status (`WX ON/OFF`) and mosaic age (`WX HIST <age>M`). Exceeding 15 minutes flags data as stale. DCB `SSA FILTER` `WX` toggle controls visibility.
+- **PREF persistence.** Active settings for `vol`, `modeFsl`, and `brite.bkc` are serialized and restored via PREF save/restore.
+- **Zero simulation regressions.** Scope camera, radar tracking, datablocks, DCB submenus, system lists, and radio parsing stay 100% operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-81 | `feature/dcb-controls-ssa-wx` + planning commit |
+| B | T02-82 | T02-81 |
+| C | T02-83 | T02-82 |
+
+**Ticket ownership:**
+
+- T02-81 owns DCB `VOL` audio gain wiring, `MODE FSL` datablock mode latch, `BRITE BKC` canvas background contrast, and PREF persistence.
+- T02-82 owns SSA `WX` and `WX HIST` telemetry rendering, age calculation, stale-data flagging, and `SSA FILTER` `WX` visibility toggling.
+- T02-83 owns end-to-end automated integration tests, documentation updates, and backlog sync.
+
+**Ticket files / branches:**
+
+- `ticket/T02-81-dcb-vol-fsl-and-bkc-controls` ← `phases/02-scope/tickets/T02-81-dcb-vol-fsl-and-bkc-controls.md` (MERGED)
+- `ticket/T02-82-ssa-wx-history-status-telemetry` ← `phases/02-scope/tickets/T02-82-ssa-wx-history-status-telemetry.md` (MERGED)
+- `ticket/T02-83-dcb-controls-and-ssa-wx-acceptance` ← `phases/02-scope/tickets/T02-83-dcb-controls-and-ssa-wx-acceptance.md` (MERGED)
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope addendum (T02-81–83 DCB controls & SSA WX telemetry)
+Merge target: `feature/dcb-controls-ssa-wx`
+Merged: T02-81, T02-82, T02-83
+Tests: npm test / npm run ci exit 0
+```
+
+---
+
 
 ## Twenty-third swarm planned — 2026-08-31 (Live METAR weather, SSA primary/satellite altimeters, GI text)
 

@@ -100,6 +100,7 @@ import {
   type ScopeView,
 } from "./scopeView";
 import {
+  ensureTrackDisplay,
   setLeaderDirForSelection,
   setLeaderDirForId,
   setLeaderLengthForId,
@@ -413,6 +414,40 @@ function applyPreviewArmedAction(
         }
         rejectPreviewArea(view.preview, nowMs);
         return;
+      }
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      armPreviewSlewAction(view.preview, action, nowMs);
+      return;
+    case "clearAllForcedFdb":
+      for (const td of view.tracks.values()) {
+        td.forcedFdb = false;
+      }
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      return;
+    case "forceFdb":
+      if (action.flid && world) {
+        const resolved = resolveScopeFlid(action.flid, world);
+        if (resolved.ok) {
+          const td = ensureTrackDisplay(view.tracks, resolved.aircraftId);
+          td.forcedFdb = !td.forcedFdb;
+          cancelStarsChordEntry(view.starsChordEntry);
+          view.starsChordArmed = null;
+          return;
+        }
+        rejectPreviewArea(view.preview, nowMs);
+        return;
+      }
+      if (world) {
+        const slewedId = selectedTrackId(world);
+        if (slewedId) {
+          const td = ensureTrackDisplay(view.tracks, slewedId);
+          td.forcedFdb = !td.forcedFdb;
+          cancelStarsChordEntry(view.starsChordEntry);
+          view.starsChordArmed = null;
+          return;
+        }
       }
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;
