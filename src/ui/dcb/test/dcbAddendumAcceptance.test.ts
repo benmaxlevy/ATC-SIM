@@ -312,6 +312,16 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, WX latches / disab
   expect(aux).toMatch(/aria-label="Volume"[^>]*data-dcb-kind="spinner"/);
   expect(aux).not.toMatch(/aria-label="Volume"[^>]*\bdisabled\b/);
   expect(auxText).toMatch(/HISTORY/);
+  expect(auxText).toMatch(/H_RATE/);
+  expect(aux).toMatch(/data-dcb-cell="h-rate"/);
+  expect(aux).toMatch(/aria-label="History rate"[^>]*data-dcb-kind="spinner"/);
+  expect(auxText).toMatch(/CURSOR HOME/);
+  expect(aux).toMatch(/aria-label="Cursor home"[^>]*\bdisabled\b/);
+  expect(auxText).toMatch(/CSR SPD/);
+  expect(aux).toMatch(/aria-label="Cursor speed"[^>]*\bdisabled\b/);
+  expect(auxText).toMatch(/DWELL/);
+  expect(aux).toMatch(/data-dcb-cell="dwell"/);
+  expect(aux).toMatch(/aria-label="Dwell mode"[^>]*data-dcb-kind="spinner"/);
   expect(auxText).toMatch(/PTL/);
   expect(auxText).toMatch(/OWN/);
   expect(auxText).toMatch(/ALL/);
@@ -353,11 +363,17 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, WX latches / disab
   expect(brite).toMatch(/aria-label="WX"[^>]*data-dcb-kind="spinner"/);
   expect(brite).toMatch(/aria-label="WXC"[^>]*data-dcb-kind="spinner"/);
   expect(brite).toMatch(/aria-label="BKC"[^>]*data-dcb-kind="spinner"/);
+  expect(brite).toMatch(/aria-label="CMP"[^>]*data-dcb-kind="spinner"/);
+  expect(brite).toMatch(/aria-label="BCN"[^>]*data-dcb-kind="spinner"/);
   expect(brite).not.toMatch(/aria-label="WX"[^>]*\bdisabled\b/);
   expect(brite).not.toMatch(/aria-label="WXC"[^>]*\bdisabled\b/);
   expect(brite).not.toMatch(/aria-label="BKC"[^>]*\bdisabled\b/);
-  expect(BRITE_PAINT_CHANNELS).toEqual(expect.arrayContaining(["wx", "wxc", "bkc"]));
-  expect(BRITE_DISABLED_CHANNELS).not.toEqual(expect.arrayContaining(["wx", "wxc", "bkc"]));
+  expect(brite).not.toMatch(/aria-label="CMP"[^>]*\bdisabled\b/);
+  expect(brite).not.toMatch(/aria-label="BCN"[^>]*\bdisabled\b/);
+  expect(BRITE_PAINT_CHANNELS).toEqual(expect.arrayContaining(["wx", "wxc", "bkc", "cmp", "bcn"]));
+  expect(BRITE_DISABLED_CHANNELS).not.toEqual(
+    expect.arrayContaining(["wx", "wxc", "bkc", "cmp", "bcn"]),
+  );
   closeDcbMenu(view);
 
   openDcbMenu(view, "SSA_FILTER");

@@ -38,6 +38,7 @@ import {
   VOL_STEPS,
   type VolLevel,
   type ModeFsl,
+  type DwellMode,
   type ScopeView,
 } from "../scopeView";
 import { setLeaderDirForSelection } from "../trackDisplay";
@@ -400,10 +401,7 @@ function stepFrozen<T>(list: readonly T[], current: T, delta: number): T {
   if (i < 0) {
     return list[0]!;
   }
-  const next = i + Math.trunc(delta);
-  if (next < 0 || next >= list.length) {
-    return current;
-  }
+  const next = Math.max(0, Math.min(list.length - 1, i + Math.trunc(delta)));
   return list[next]!;
 }
 
@@ -475,7 +473,7 @@ export function stepCharSizeChannel(
   }
 }
 
-const MAP_CACHE_BRITE_CHANNELS: ReadonlySet<BriteChannel> = new Set(["mpa", "mpb", "rr"]);
+const MAP_CACHE_BRITE_CHANNELS: ReadonlySet<BriteChannel> = new Set(["mpa", "mpb", "rr", "cmp"]);
 
 export function stepBriteChannel(view: ScopeView, channel: BriteChannel, delta: number): void {
   view.brite[channel] = stepFrozen(BRITE_STEPS, view.brite[channel], delta);
@@ -616,4 +614,73 @@ export function cycleModeFsl(view: ScopeView): ModeFsl {
   const next: ModeFsl = view.modeFsl === "F" ? "S" : view.modeFsl === "S" ? "L" : "F";
   view.modeFsl = next;
   return next;
+}
+
+export const HISTORY_RATE_STEPS = [1.0, 2.0, 3.0, 4.0, 4.5, 5.0, 6.0, 8.0, 10.0] as const;
+
+/**
+ * Step AUX H_RATE spinner.
+ */
+export function stepHistoryRate(view: ScopeView, delta: number): number {
+  const next = stepFrozen(HISTORY_RATE_STEPS, view.historyRateSec, delta);
+  view.historyRateSec = next;
+  return next;
+}
+
+export function formatDcbHistoryRateReadout(rate: number): string {
+  return Number(rate).toFixed(1);
+}
+
+export const DWELL_MODES: readonly DwellMode[] = ["OFF", "ON", "LOCK"];
+
+/**
+ * Step AUX DWELL mode spinner ("OFF" <-> "ON" <-> "LOCK").
+ */
+export function stepDwellMode(view: ScopeView, delta: number): DwellMode {
+  const next = stepFrozen(DWELL_MODES, view.dwellMode, delta);
+  view.dwellMode = next;
+  if (next === "OFF") {
+    view.dwellLockedAircraftId = null;
+  }
+  return next;
+}
+
+/**
+ * Cycle AUX DWELL mode ("OFF" -> "ON" -> "LOCK" -> "OFF").
+ */
+export function cycleDwellMode(view: ScopeView): DwellMode {
+  const next: DwellMode =
+    view.dwellMode === "OFF" ? "ON" : view.dwellMode === "ON" ? "LOCK" : "OFF";
+  view.dwellMode = next;
+  if (next === "OFF") {
+    view.dwellLockedAircraftId = null;
+  }
+  return next;
+}
+
+export function formatDcbDwellReadout(mode: DwellMode): string {
+  return mode;
+}
+
+/**
+ * Toggle AUX CURSOR HOME button.
+ */
+export function toggleCursorHome(view: ScopeView): boolean {
+  view.cursorHome = !view.cursorHome;
+  return view.cursorHome;
+}
+
+export const CURSOR_SPEED_STEPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+
+/**
+ * Step AUX CSR SPD spinner (1–10).
+ */
+export function stepCursorSpeed(view: ScopeView, delta: number): number {
+  const next = stepFrozen(CURSOR_SPEED_STEPS, view.cursorSpeed, delta);
+  view.cursorSpeed = next;
+  return next;
+}
+
+export function formatDcbCursorSpeedReadout(speed: number): string {
+  return `${speed}`;
 }

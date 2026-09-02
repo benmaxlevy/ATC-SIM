@@ -4,13 +4,14 @@ import { applyIntent } from "@pilot";
 import { createWorldFromScenario, loadKdem } from "@scenario";
 import { nmToScreen } from "../../camera";
 import { parseDigitalMap } from "../../mapLayers";
-import { PALETTE } from "../../palette";
+import { PALETTE, applyBrite } from "../../palette";
 import { PTL_MINUTES, ptlEndpoint } from "../../ptl";
 import { renderScope } from "../renderScope";
+import { drawMapLayers } from "../renderScopePaint";
 import { createScopeView } from "../../scopeView";
 import { SELECTED_ACCENT_COLOR } from "../targetSymbol";
 import { deriveScratchpads, isIdentFlashing, syncTrackDisplays } from "../../trackDisplay";
-import { DATABLOCK_FONT } from "../../fonts";
+import { DATABLOCK_FONT, datablockFontCss } from "../../fonts";
 import { formatPartialDatablock } from "../../datablock";
 import { createMockCtx, type MockPathStroke } from "../../test/mockCanvas";
 
@@ -195,4 +196,194 @@ test("altitude filter keeps the target and drops the datablock", () => {
   expect(symbolCount(fillTexts)).toBe(2);
   expect(fillTexts.some((t) => t.text === "UAL60")).toBe(false);
   expect(fillTexts.some((t) => t.text === "DAL80")).toBe(true);
+});
+
+test("AC1, AC2, AC3 — compass rose ticks and heading labels render with BRITE CMP and CHAR SIZE TOOLS", () => {
+  const world = createWorld();
+  const view = createScopeView(0, 0, { digitalMap: parseDigitalMap(loadKdem().maps) });
+  view.showRings = true;
+  view.showCompassRose = true;
+  view.brite.cmp = 100;
+  view.charSizes.tools = 12;
+
+  const mock = createMockCtx();
+  renderScope(mock.ctx, world, view, 800, 800);
+
+  // Check 36 heading labels
+  const headingLabels = Array.from({ length: 36 }, (_, i) => {
+    const deg = i * 10;
+    return deg === 0 ? "360" : String(deg).padStart(3, "0");
+  });
+  const renderedHeadingTexts = mock.fillTexts.filter(
+    (t) => t.textBaseline === "middle" && headingLabels.includes(t.text),
+  );
+  expect(renderedHeadingTexts).toHaveLength(36);
+
+  const cmpColor100 = applyBrite(PALETTE.mapDim, 100);
+  for (const label of renderedHeadingTexts) {
+    expect(label.fillStyle).toBe(cmpColor100);
+    expect(label.font).toBe(datablockFontCss(12));
+    expect(label.textAlign).toBe("center");
+    expect(label.textBaseline).toBe("middle");
+  }
+
+  // Check ticks stroked with cmpColor (in node without Path2D, stroked via fallback pathStrokes)
+  const tickStrokes = mock.pathStrokes.filter(
+    (s) => s.strokeStyle === cmpColor100 && s.lineWidth === 1,
+  );
+  expect(tickStrokes).toHaveLength(1);
+  expect(tickStrokes[0]!.points).toHaveLength(148); // 4 border points + 72 ticks * 2 points
+
+  // When BRITE CMP is dimmed to 50
+  view.brite.cmp = 50;
+  view.mapCache = null;
+  const mock50 = createMockCtx();
+  renderScope(mock50.ctx, world, view, 800, 800);
+  const cmpColor50 = applyBrite(PALETTE.mapDim, 50);
+  const labels50 = mock50.fillTexts.filter(
+    (t) => t.textBaseline === "middle" && headingLabels.includes(t.text),
+  );
+  expect(labels50).toHaveLength(36);
+  for (const label of labels50) {
+    expect(label.fillStyle).toBe(cmpColor50);
+  }
+  const tickStrokes50 = mock50.pathStrokes.filter(
+    (s) => s.strokeStyle === cmpColor50 && s.lineWidth === 1,
+  );
+  expect(tickStrokes50).toHaveLength(1);
+  expect(tickStrokes50[0]!.points).toHaveLength(148);
+
+  // When BRITE CMP is 0 (OFF)
+  view.brite.cmp = 0;
+  view.mapCache = null;
+  const mock0 = createMockCtx();
+  renderScope(mock0.ctx, world, view, 800, 800);
+  const cmpColor0 = applyBrite(PALETTE.mapDim, 0);
+  const labels0 = mock0.fillTexts.filter(
+    (t) => t.textBaseline === "middle" && headingLabels.includes(t.text),
+  );
+  expect(labels0).toHaveLength(36);
+  for (const label of labels0) {
+    expect(label.fillStyle).toBe(cmpColor0);
+  }
+  const tickStrokes0 = mock0.pathStrokes.filter(
+    (s) => s.strokeStyle === cmpColor0 && s.lineWidth === 1,
+  );
+  expect(tickStrokes0).toHaveLength(1);
+  expect(tickStrokes0[0]!.points).toHaveLength(148);
+
+  // When charSizes.tools changes
+  view.charSizes.tools = 13;
+  view.mapCache = null;
+  const mockFont = createMockCtx();
+  renderScope(mockFont.ctx, world, view, 800, 800);
+  const labelsFont = mockFont.fillTexts.filter(
+    (t) => t.textBaseline === "middle" && headingLabels.includes(t.text),
+  );
+  for (const label of labelsFont) {
+    expect(label.font).toBe(datablockFontCss(13));
+  }
+
+  // When showCompassRose is false, no ticks or labels render
+  view.showCompassRose = false;
+  view.mapCache = null;
+  const mockOff = createMockCtx();
+  renderScope(mockOff.ctx, world, view, 800, 800);
+  const labelsOff = mockOff.fillTexts.filter(
+    (t) => t.textBaseline === "middle" && headingLabels.includes(t.text),
+  );
+  expect(labelsOff).toHaveLength(0);
+  const tickStrokesOff = mockOff.pathStrokes.filter(
+    (s) => s.strokeStyle === cmpColor0 && s.lineWidth === 1,
+  );
+  expect(tickStrokesOff).toHaveLength(0);
+});
+
+test("drawMapLayers strokes compassRosePath when Path2D is present in cache", () => {
+  const view = createScopeView(0, 0, { digitalMap: parseDigitalMap(loadKdem().maps) });
+  view.showRings = true;
+  view.showCompassRose = true;
+  view.brite.cmp = 80;
+
+  const mockPath = {} as Path2D;
+  const strokedPaths: unknown[] = [];
+  const baseCtx = createMockCtx().ctx;
+  const mockCtx = Object.assign(baseCtx, {
+    stroke(path?: unknown) {
+      if (path) {
+        strokedPaths.push(path);
+      }
+    },
+  });
+
+  const cache = {
+    key: "test",
+    ringRadiiNm: [5, 10, 15],
+    ringCircles: [{ x: 400, y: 400, radiusPx: 300 }],
+    coastline: null,
+    runway: null,
+    localizer: null,
+    localizers: [],
+    runwayLabels: [],
+    videoStrokes: [],
+    videoLabels: [],
+    ringsPath: null,
+    coastlinePath: null,
+    runwayPath: null,
+    localizerPath: null,
+    compassRose: null,
+    compassRosePath: mockPath,
+    compassRoseLabels: [{ text: "360", x: 400, y: 100, deg: 0 }],
+  };
+
+  drawMapLayers(mockCtx, cache, view);
+  expect(strokedPaths).toContain(mockPath);
+});
+
+test("drawMapLayers strokes rectangular bounds and ticks when compassRosePath is null", () => {
+  const view = createScopeView(0, 0, { digitalMap: parseDigitalMap(loadKdem().maps) });
+  view.showRings = true;
+  view.showCompassRose = true;
+  view.brite.cmp = 100;
+
+  const mock = createMockCtx();
+  const cache = {
+    key: "test",
+    ringRadiiNm: [5, 10, 15],
+    ringCircles: [{ x: 400, y: 400, radiusPx: 300 }],
+    coastline: null,
+    runway: null,
+    localizer: null,
+    localizers: [],
+    runwayLabels: [],
+    videoStrokes: [],
+    videoLabels: [],
+    ringsPath: null,
+    coastlinePath: null,
+    runwayPath: null,
+    localizerPath: null,
+    compassRose: {
+      origin: { x: 400, y: 400 },
+      bounds: { minX: 1, minY: 1, maxX: 799, maxY: 799 },
+      ticks: [{ x1: 400, y1: 1, x2: 400, y2: 15, deg: 0, kind: "major" as const }],
+      labels: [{ text: "360", x: 400, y: 23, deg: 0 }],
+    },
+    compassRosePath: null,
+    compassRoseLabels: [{ text: "360", x: 400, y: 23, deg: 0 }],
+  };
+
+  drawMapLayers(mock.ctx, cache, view);
+
+  const cmpColor = applyBrite(PALETTE.mapDim, 100);
+  const stroke = mock.pathStrokes.find((s) => s.strokeStyle === cmpColor && s.lineWidth === 1);
+  expect(stroke).toBeDefined();
+  // Points should include border (1,1) -> (799,1) -> ... and tick (400,1) -> (400,15)
+  expect(stroke?.points).toContainEqual({ x: 1, y: 1 });
+  expect(stroke?.points).toContainEqual({ x: 799, y: 1 });
+  expect(stroke?.points).toContainEqual({ x: 400, y: 15 });
+
+  const label = mock.fillTexts.find((t) => t.text === "360");
+  expect(label).toBeDefined();
+  expect(label?.x).toBe(400);
+  expect(label?.y).toBe(23);
 });

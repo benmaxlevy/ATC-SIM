@@ -62,6 +62,7 @@ export {
   fitCanvasToCss,
   handlePpiCanvasClick,
   handlePpiCanvasMiddleClick,
+  handlePpiCanvasPointerHover,
   handlePpiDoubleClick,
   handlePpiLeftClick,
   handlePpiMiddleClick,
@@ -115,6 +116,24 @@ export {
   reuseOrBuildMapCache,
 } from "./mapLayers";
 export type { DigitalMap, MapCache, MapLayerFlags, NmPoint } from "./mapLayers";
+export {
+  COMPASS_ROSE_TICK_INTERVAL_DEG,
+  COMPASS_ROSE_MINOR_TICK_PX,
+  COMPASS_ROSE_MEDIUM_TICK_PX,
+  COMPASS_ROSE_MAJOR_TICK_PX,
+  COMPASS_ROSE_LABEL_OFFSET_PX,
+  formatCompassRoseHeading,
+  generateCompassRoseGeometry,
+  normalizeCompassRoseBounds,
+} from "./compassRose";
+export type {
+  CompassRoseBoundsInput,
+  CompassRoseGeometry,
+  CompassRoseLabel,
+  CompassRoseRectBounds,
+  CompassRoseTick,
+  CompassRoseTickKind,
+} from "./compassRose";
 export { getDatablockVisualState, isTrackedTarget, renderScope } from "./render";
 export type { DatablockVisualState } from "./render";
 export {
@@ -329,8 +348,11 @@ export {
   VOL_STEPS,
   DEFAULT_VOL_LEVEL,
   DEFAULT_MODE_FSL,
+  DEFAULT_DWELL_MODE,
+  DEFAULT_HISTORY_RATE_SEC,
+  DEFAULT_CURSOR_SPEED,
 } from "./scopeView";
-export type { MapLayerId, ScopeView, VolLevel, ModeFsl } from "./scopeView";
+export type { MapLayerId, ScopeView, VolLevel, ModeFsl, DwellMode } from "./scopeView";
 export {
   WX_VIP_CONTOUR_HEX,
   WX_VIP_FILL_HEX,
@@ -457,6 +479,17 @@ export {
   stepDcbVol,
   stepModeFsl,
   MODE_FSL_STEPS,
+  HISTORY_RATE_STEPS,
+  stepHistoryRate,
+  formatDcbHistoryRateReadout,
+  DWELL_MODES,
+  stepDwellMode,
+  cycleDwellMode,
+  formatDcbDwellReadout,
+  toggleCursorHome,
+  CURSOR_SPEED_STEPS,
+  stepCursorSpeed,
+  formatDcbCursorSpeedReadout,
   videoMapByDcbNumber,
   videoMapTokenLayout,
 } from "./dcb/dcbFunctions";

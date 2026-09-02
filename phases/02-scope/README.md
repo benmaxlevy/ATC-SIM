@@ -698,15 +698,35 @@ shipped without weather paint.
 | [T02-71](tickets/T02-71-preview-wx-commands.md) | Preview WX commands | P0 | S | T02-69 | Shipped |
 | [T02-72](tickets/T02-72-brite-wx-wxc-and-acceptance.md) | BRITE WX/WXC and acceptance | P0 | M | T02-70, T02-71 | Shipped |
 
-### Phase 2 addendum (T02-78–80 Real METAR weather and SSA altimeter)
+### Phase 2 addendum (T02-81–83 DCB controls & SSA WX telemetry)
 
-AviationWeather METAR JSON fetch, decode, and cache; SSA Line 3 primary altimeter (`HHMM/SS  XX.XX`); multi-airport satellite altimeter matrix in 3-airport rows; GI TEXT live surface conditions; SSA/GI filter compliance.
+DCB `VOL` audio gain wiring, `MODE FSL` datablock mode latch, `BRITE BKC` canvas background contrast, and live SSA `WX` / `WX HIST` telemetry.
 
 | ID | Title | Pri | Size | Depends on | Status |
 | --- | --- | --- | --- | --- | --- |
-| [T02-78](tickets/T02-78-metar-weather-fetch-and-decode.md) | METAR weather fetch and decode | P0 | M | none | Shipped |
-| [T02-79](tickets/T02-79-ssa-primary-and-satellite-altimeter-display.md) | SSA primary and satellite altimeter display | P0 | M | T02-78 | Shipped |
-| [T02-80](tickets/T02-80-weather-gi-text-and-acceptance.md) | Weather GI text and integration acceptance | P0 | M | T02-78, T02-79 | Shipped |
+| [T02-81](tickets/T02-81-dcb-vol-fsl-and-bkc-controls.md) | DCB VOL, MODE FSL, and BRITE BKC controls | P0 | M | none | Shipped |
+| [T02-82](tickets/T02-82-ssa-wx-history-status-telemetry.md) | SSA WX and WX HIST status telemetry | P0 | M | T02-81 | Shipped |
+| [T02-83](tickets/T02-83-dcb-controls-and-ssa-wx-acceptance.md) | DCB controls and SSA WX acceptance | P0 | S | T02-81, T02-82 | Shipped |
+
+### Phase 2 addendum (T02-84–86 DCB AUX & BRITE controls)
+
+DCB AUX `H_RATE` (history update interval scan rate spinner), `DWELL` (OFF/ON/LOCK datablock hover brightening mode), `CURSOR HOME` toggle, `CSR SPD` spinner, and BRITE `CMP` & `BCN` brightness spinners with PREF persistence.
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-84](tickets/T02-84-dcb-aux-hrate-dwell-and-cursor-controls.md) | DCB AUX H_RATE, DWELL, and cursor controls | P0 | M | none | Shipped |
+| [T02-85](tickets/T02-85-dcb-brite-cmp-bcn-channel-spinners.md) | DCB BRITE CMP and BCN channel spinners | P0 | M | T02-84 | Shipped |
+| [T02-86](tickets/T02-86-dcb-aux-and-brite-acceptance.md) | DCB AUX and BRITE controls acceptance | P0 | S | T02-84, T02-85 | Shipped |
+
+### Phase 2 addendum (T02-87–89 STARS Compass Rose)
+
+STARS Compass Rose heading vectoring ring with 72 radial tick marks (5° minor, 10° medium, 30° major), twelve 3-digit heading labels (`360`..`330`), BRITE `CMP` brightness modulation, `CHAR SIZE TOOLS` font sizing, and PREF persistence.
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-87](tickets/T02-87-compass-rose-geometry-and-cache.md) | Compass Rose geometry, ticks, and map cache | P0 | M | none | Shipped |
+| [T02-88](tickets/T02-88-compass-rose-canvas-rendering-and-brite.md) | Compass Rose canvas rendering and BRITE CMP | P0 | M | T02-87 | Shipped |
+| [T02-89](tickets/T02-89-compass-rose-acceptance.md) | Compass Rose integration and acceptance | P0 | S | T02-87, T02-88 | Shipped |
 
 ## Launching an agent
 
@@ -721,6 +741,9 @@ AviationWeather METAR JSON fetch, decode, and cache; SSA Line 3 primary altimete
 9. Preview Area addendum T02-51 → T02-54 (buffer + INV, INIT/TERM command-then-slew and FLID Enter, `B##`/`B####` beacon select, integration acceptance). Pointouts, TERM CNTL ALL, and MULTIFUNC stay deferred.
 10. Radar sites / PREF / PTL addendum T02-73 → T02-77 (named PREF sets, per-track PTL, RadarSite fixtures, sampler, SITE DCB + SSA word, integration acceptance). WX mosaic stays T02-68–72. Live sensor health, 30 s coast, and aural ATPA stay deferred.
 11. METAR weather & SSA altimeter addendum T02-78 → T02-80 (AviationWeather API, SSA Line 3 primary altimeter, satellite matrix rows, GI weather slot, offline fallback). Wind-in-SSA and paid weather stay deferred.
+12. DCB controls & SSA WX addendum T02-81 → T02-83 (DCB VOL, MODE FSL, BRITE BKC, SSA WX/WX HIST telemetry).
+13. DCB AUX & BRITE controls addendum T02-84 → T02-86 (H_RATE, DWELL, CURSOR HOME, CSR SPD, BRITE CMP/BCN).
+14. STARS Compass Rose addendum T02-87 → T02-89 (Compass Rose geometry, ticks, 3-digit headings, BRITE CMP, CHAR SIZE TOOLS).
 
 ## Glossary reminders
 

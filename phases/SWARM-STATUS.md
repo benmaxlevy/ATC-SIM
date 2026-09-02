@@ -1,6 +1,72 @@
 # Swarm status
 
-## TWENTY-THIRD SWARM COMPLETE — Real METAR weather and SSA altimeter display (T02-78–80)
+## TWENTY-SIXTH SWARM COMPLETE — STARS Compass Rose & Dwell Fix (T02-87–89)
+
+T02-87–89 are squash-merged on `feature/compass-rose-headings`. Full test suite `npm test`: **164 test files passed, 1161 tests passed, 4 skipped, 0 failures**. STARS Compass Rose heading overlay along rectangular scope border (72 radial ticks, 12 3-digit headings, BRITE CMP modulation, CHAR SIZE TOOLS scaling, PREF persistence) and Dwell mode pointer hover fix on `feature/compass-rose-headings`.
+
+- **Compass Rose geometry & map cache (T02-87):**
+  - Mathematical ray-box intersection against rectangular scope border `[1, widthPx - 1] x [1, heightPx - 1]`.
+  - Generates 72 radial tick marks along rectangular border: 5° minor (4px inward), 10° medium (8px inward), 30° major (14px inward).
+  - Generates twelve 3-digit heading numerals ("360", "030", "060", "090", "120", "150", "180", "210", "240", "270", "300", "330") radially inward by 22px.
+  - Added `showCompassRose: boolean` (default `true`) to `ScopeView` and `MapCache`.
+- **Canvas rendering & BRITE CMP (T02-88):**
+  - In `drawMapLayers`, strokes outer rectangular boundary line and inward radial ticks with `applyBrite(PALETTE.mapDim, view.brite.cmp)` and `RING_STROKE_PX`.
+  - Centered heading labels rendered with `datablockFontCss(view.charSizes.tools)` in `PALETTE.mapDim` modulated by `BRITE CMP`.
+  - PREF serialization and restore for `showCompassRose` and `brite.cmp`.
+- **Integration acceptance & Dwell fix (T02-89):**
+  - Fixed argument mapping bug in `handlePpiCanvasPointerHover` where `{ widthPx, heightPx }` and `view` were passed into `cam` parameter of `pickAircraftHitAt`.
+  - Added unit tests for pointer hover datablock brightening under `ON`, `LOCK`, and `OFF` dwell modes.
+  - Comprehensive acceptance test suite `src/scope/test/compassRoseAcceptance.test.ts`.
+  - Updated `phases/02-scope/README.md` and `docs/USER.md`.
+
+**Merged (squash-merged, captain only, onto `feature/compass-rose-headings`):** T02-87 (`10fcfe9`), T02-88 (`4eabf70`), T02-89 (`a939462`). Planning `15377a8`.
+
+**Captain judgement calls:**
+- Compass rose tick and heading geometry computes ray-box intersection with rectangular scope bounds to align flush with the scope window edges.
+- Dwell mode hit-testing correctly uses `view.camera`, `rect.width`, `rect.height`, `HIT_RADIUS_CSS_PX`, and `view`.
+
+**Product law held:**
+- Compass rose follows authentic STARS TCW perimeter heading indicators.
+- Modulated by `BRITE CMP` and sized with `CHAR SIZE TOOLS`.
+- Zero visual or kinematic regressions.
+
+**Remaining work:** merge and push feature branch per user request.
+
+## TWENTY-FIFTH SWARM COMPLETE — DCB AUX & BRITE controls (T02-84–86)
+
+T02-84–86 are squash-merged on `feature/dcb-aux-and-brite-controls` (not `master`). Full test suite `npm test`: **162 test files passed, 1138 tests passed, 4 skipped, 0 failures**. DCB AUX `H_RATE`, `DWELL`, `CURSOR HOME`, `CSR SPD`, and BRITE `CMP`, `BCN` spinners with PREF persistence on `feature/dcb-aux-and-brite-controls`. Did not push.
+
+- **DCB AUX H_RATE, DWELL, and cursor controls (T02-84):**
+  - `H_RATE`: Active scan rate spinner presets (`[1.0, 2.0, 3.0, 4.0, 4.5, 5.0, 6.0, 8.0, 10.0]` s, default `4.5` s) gating history dot recording intervals in `recordHistoryOnReport` / `syncTrackDisplays`.
+  - `DWELL`: Active 3-state spinner/toggle (`OFF` / `ON` / `LOCK`). Under `ON`, hovering pointer over position symbol temporarily brightens datablock to `PALETTE.highlight`. Under `LOCK`, brightness remains highlighted on the last hovered target.
+  - `CURSOR HOME`: Active toggle state on AUX DCB.
+  - `CSR SPD`: Active spinner (1–10, default 4).
+  - All 4 settings serialize and restore cleanly in PREF slots.
+- **DCB BRITE CMP and BCN channel spinners (T02-85):**
+  - `CMP`: Active brightness spinner (0–100%) modulating range ring tick marks and compass markings (`mapLayers.ts` / `renderScopePaint.ts`).
+  - `BCN`: Active brightness spinner (0–100%) modulating secondary radar beacon target symbols (`targetSymbol.ts` / `renderScopePaint.ts`).
+  - `cmp` and `bcn` promoted to `BRITE_PAINT_CHANNELS`; PREF slot persistence verified.
+- **DCB AUX & BRITE controls acceptance (T02-86):**
+  - Comprehensive end-to-end integration test suite `src/scope/test/dcbAuxAndBriteAcceptance.test.ts`.
+  - Full test suite verified with zero regressions (162 files passed).
+  - Documentation updated across `phases/02-scope/README.md` and `docs/USER.md`.
+
+**Merged (squash-merged, captain only, onto `feature/dcb-aux-and-brite-controls`):** T02-84 (`1758424`), T02-85 (`7ac2e69`), T02-86 (`a4c47bd`). Planning `f2a845e`.
+
+**Captain judgement calls:**
+- Merge target was `feature/dcb-aux-and-brite-controls`.
+- `H_RATE` interval gating evaluates against last recorded history dot sim time.
+- DWELL mode hover highlighting utilizes standard canvas hit-testing without adding DOM elements.
+- `stepFrozen` helper clamped to list bounds [0, length - 1] to cleanly support large drag deltas across all DCB spinners.
+
+**Product law held:**
+- Active DCB spinners preserve STARS FAA/CRC presets and values.
+- PREF round-tripping persists all new channels.
+- Zero visual or kinesthetic regressions.
+- No external paid APIs or out-of-scope submenus.
+
+**Remaining work (next swarm):** merge `feature/dcb-aux-and-brite-controls` to `master` when requested.
+
 
 T02-78–80 are squash-merged on `feature/metar-weather-altimeter` (not `master`). Captain `npm test` / `npm run ci`: **177 test files passed, 2053 tests passed, 4 skipped, 0 failures**. Real-time METAR weather, SSA primary and satellite altimeter matrix, and GI text on `feature/metar-weather-altimeter`. No phase 5. Did not push.
 

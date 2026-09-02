@@ -24,6 +24,7 @@ import {
   cssPointFromClient,
   handlePpiCanvasClick,
   handlePpiCanvasMiddleClick,
+  handlePpiCanvasPointerHover,
   handlePpiDoubleClick,
   handlePpiPanDelta,
   isPpiSlewButton,
@@ -171,6 +172,13 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           }}
           onCanvasPointerMove={(event: PointerEvent<HTMLCanvasElement>) => {
             if (!panRef.current || !isPpiSlewHeld(event.buttons)) {
+              handlePpiCanvasPointerHover(
+                event.currentTarget,
+                app.world,
+                event.clientX,
+                event.clientY,
+                scopeView,
+              );
               return;
             }
             const rect = event.currentTarget.getBoundingClientRect();

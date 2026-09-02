@@ -19,6 +19,11 @@ import type {
   VideoMapGroupSet,
 } from "@scenario";
 import { nmToScreen, pxPerNm, type ScopeCamera, type ScopeViewSize } from "./camera";
+import {
+  generateCompassRoseGeometry,
+  type CompassRoseGeometry,
+  type CompassRoseLabel,
+} from "./compassRose";
 
 export interface NmPoint {
   eastNm: number;
@@ -45,6 +50,7 @@ export interface MapLayerFlags {
   showLocalizer: boolean;
   showRings: boolean;
   showCoastline: boolean;
+  showCompassRose?: boolean;
 }
 
 export interface MapCacheView {
@@ -54,6 +60,7 @@ export interface MapCacheView {
   showLocalizer: boolean;
   showRings: boolean;
   showCoastline: boolean;
+  showCompassRose?: boolean;
   airportEastNm: number;
   airportNorthNm: number;
   mapVisibility?: ReadonlyMap<string, boolean>;
@@ -105,6 +112,9 @@ export interface MapCache {
   coastlinePath: Path2D | null;
   runwayPath: Path2D | null;
   localizerPath: Path2D | null;
+  compassRose: CompassRoseGeometry | null;
+  compassRosePath: Path2D | null;
+  compassRoseLabels: CompassRoseLabel[];
 }
 
 export const DEFAULT_RANGE_RINGS: DigitalMapRangeRings = { intervalNm: 5, maxNm: 60 };
@@ -119,6 +129,7 @@ export const DEFAULT_MAP_LAYER_FLAGS: MapLayerFlags = {
   showLocalizer: true,
   showRings: true,
   showCoastline: false,
+  showCompassRose: true,
 };
 
 export const FEATHER_NM_TOLERANCE = 0.05;
@@ -265,6 +276,7 @@ export function toMapCacheInput(view: MapCacheView, viewSize: ScopeViewSize): Ma
       showLocalizer: view.showLocalizer,
       showRings: view.showRings,
       showCoastline: view.showCoastline,
+      showCompassRose: view.showCompassRose !== false,
     },
     airportEastNm: view.airportEastNm,
     airportNorthNm: view.airportNorthNm,
@@ -297,6 +309,7 @@ export function buildMapCacheKey(input: MapCacheInput): string {
     layers.showLocalizer ? 1 : 0,
     layers.showRings ? 1 : 0,
     layers.showCoastline ? 1 : 0,
+    layers.showCompassRose !== false ? 1 : 0,
     input.airportEastNm,
     input.airportNorthNm,
     input.ringIntervalNm,
@@ -360,6 +373,25 @@ function pathFromRings(circles: MapCache["ringCircles"]): Path2D | null {
   for (const circle of circles) {
     path.moveTo(circle.x + circle.radiusPx, circle.y);
     path.arc(circle.x, circle.y, circle.radiusPx, 0, Math.PI * 2);
+  }
+  return path;
+}
+
+function pathFromCompassRose(rose: CompassRoseGeometry | null): Path2D | null {
+  if (typeof Path2D !== "function" || !rose) {
+    return null;
+  }
+  const path = new Path2D();
+  const { minX, minY, maxX, maxY } = rose.bounds;
+  path.moveTo(minX, minY);
+  path.lineTo(maxX, minY);
+  path.lineTo(maxX, maxY);
+  path.lineTo(minX, maxY);
+  path.closePath();
+
+  for (const tick of rose.ticks) {
+    path.moveTo(tick.x1, tick.y1);
+    path.lineTo(tick.x2, tick.y2);
   }
   return path;
 }
@@ -652,6 +684,13 @@ export function buildMapCache(
     input.mapVisibility,
   );
 
+  const showCompassRose = layers.showCompassRose !== false && layers.showRings;
+  const compassRose: CompassRoseGeometry | null = showCompassRose
+    ? generateCompassRoseGeometry(viewSize)
+    : null;
+  const compassRosePath = pathFromCompassRose(compassRose);
+  const compassRoseLabels = compassRose?.labels ?? [];
+
   return {
     key,
     ringRadiiNm,
@@ -667,6 +706,9 @@ export function buildMapCache(
     coastlinePath: coastline ? pathFromPolyline(coastline, false) : null,
     runwayPath: runway ? pathFromPolyline(runway, true) : null,
     localizerPath: pathFromClosedShapes(localizers),
+    compassRose,
+    compassRosePath,
+    compassRoseLabels,
   };
 }
 

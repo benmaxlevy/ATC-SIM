@@ -120,6 +120,7 @@ export interface ScopeView {
   showLocalizer: boolean;
   showRings: boolean;
   showCoastline: boolean;
+  showCompassRose: boolean;
   /** MAPS on/off keyed by video-map catalog id. Not on Aircraft. */
   mapVisibility: Map<string, boolean>;
   /** Frozen RR interval (2 / 5 / 10 / 20 NM). DCB spinner is 2/5/10. */
@@ -301,6 +302,22 @@ export interface ScopeView {
    * Default "F". Selected tracks retain full datablocks.
    */
   modeFsl: ModeFsl;
+  /**
+   * AUX H_RATE: History dot scan rate interval in seconds (default 4.5).
+   * New history dots are sampled when elapsed time >= historyRateSec * 1000.
+   */
+  historyRateSec: number;
+  /**
+   * AUX DWELL mode: "OFF", "ON", "LOCK" (default "OFF").
+   * ON brightens datablock on hover; LOCK keeps last hovered track brightened.
+   */
+  dwellMode: DwellMode;
+  /** Track ID currently locked by DWELL LOCK mode. */
+  dwellLockedAircraftId: string | null;
+  /** AUX CURSOR HOME toggle state. */
+  cursorHome: boolean;
+  /** AUX CSR SPD spinner (1–10, default 4). */
+  cursorSpeed: number;
 }
 
 export const VOL_STEPS = [0, 1, 2, 3, 4, 5] as const;
@@ -310,12 +327,19 @@ export const DEFAULT_VOL_LEVEL: VolLevel = 2;
 export type ModeFsl = "F" | "S" | "L";
 export const DEFAULT_MODE_FSL: ModeFsl = "F";
 
+export type DwellMode = "OFF" | "ON" | "LOCK";
+export const DEFAULT_DWELL_MODE: DwellMode = "OFF";
+
+export const DEFAULT_HISTORY_RATE_SEC = 4.5;
+export const DEFAULT_CURSOR_SPEED = 4;
+
 export function createScopeView(
   airportEastNm: number = AIRPORT_REF_EAST_NM,
   airportNorthNm: number = AIRPORT_REF_NORTH_NM,
   options?: {
     digitalMap?: DigitalMap;
     showCoastline?: boolean;
+    showCompassRose?: boolean;
     giTextLines?: readonly string[];
     radarSites?: readonly RadarSite[];
     surveillanceMode?: SurveillanceMode;
@@ -325,10 +349,15 @@ export function createScopeView(
     airportAltimeters?: readonly SsaAirportAltimeter[];
     vol?: VolLevel;
     modeFsl?: ModeFsl;
+    historyRateSec?: number;
+    dwellMode?: DwellMode;
+    cursorHome?: boolean;
+    cursorSpeed?: number;
   },
 ): ScopeView {
   const digitalMap = options?.digitalMap ?? DEFAULT_DIGITAL_MAP;
   const showCoastline = options?.showCoastline ?? digitalMap.coastline?.enabled === true;
+  const showCompassRose = options?.showCompassRose ?? true;
   const showRunway = true;
   const showLocalizer = true;
   const giTextLines = padGiTextLines(options?.giTextLines);
@@ -347,6 +376,7 @@ export function createScopeView(
     showLocalizer,
     showRings: true,
     showCoastline,
+    showCompassRose,
     mapVisibility: initialMapVisibility(
       digitalMap.loadedVideoMaps,
       showRunway,
@@ -409,6 +439,11 @@ export function createScopeView(
     arp,
     vol: options?.vol ?? DEFAULT_VOL_LEVEL,
     modeFsl: options?.modeFsl ?? DEFAULT_MODE_FSL,
+    historyRateSec: options?.historyRateSec ?? DEFAULT_HISTORY_RATE_SEC,
+    dwellMode: options?.dwellMode ?? DEFAULT_DWELL_MODE,
+    dwellLockedAircraftId: null,
+    cursorHome: options?.cursorHome ?? false,
+    cursorSpeed: options?.cursorSpeed ?? DEFAULT_CURSOR_SPEED,
   };
 }
 
@@ -592,7 +627,7 @@ export function toggleHelpOverlay(view: ScopeView): void {
 }
 
 /** MAP toggles on the DCB. Coastline JSON `enabled: false` is a no-op. */
-export type MapLayerId = "runway" | "localizer" | "rings" | "coastline";
+export type MapLayerId = "runway" | "localizer" | "rings" | "coastline" | "compassRose";
 
 export function isCoastlineToggleEnabled(view: ScopeView): boolean {
   return view.digitalMap.coastline?.enabled === true;
@@ -610,6 +645,10 @@ export function toggleMapLayer(view: ScopeView, layer: MapLayerId): void {
       return;
     case "rings":
       view.showRings = !view.showRings;
+      view.mapCache = null;
+      return;
+    case "compassRose":
+      view.showCompassRose = !view.showCompassRose;
       view.mapCache = null;
       return;
     case "coastline":

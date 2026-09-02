@@ -34,10 +34,16 @@ export function recordHistoryOnReport(
   simTimeMs: number,
   eastNm: number,
   northNm: number,
+  minIntervalMs: number = 0,
 ): boolean {
   const last = buf.timesSimMs.length === 0 ? null : buf.timesSimMs[buf.timesSimMs.length - 1];
-  if (last === simTimeMs) {
-    return false;
+  if (last !== null) {
+    if (last === simTimeMs) {
+      return false;
+    }
+    if (minIntervalMs > 0 && simTimeMs - last < minIntervalMs) {
+      return false;
+    }
   }
   buf.timesSimMs.push(simTimeMs);
   buf.eastNm.push(eastNm);

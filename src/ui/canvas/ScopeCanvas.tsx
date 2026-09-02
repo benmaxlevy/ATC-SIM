@@ -56,8 +56,8 @@ export function ScopeCanvas({
         onCanvasContextMenu={onCanvasContextMenu}
       >
         {children}
-        {footer}
       </PpiPlaceholder>
+      {footer}
     </div>
   );
 }

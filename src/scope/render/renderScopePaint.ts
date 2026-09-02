@@ -139,6 +139,38 @@ export function drawMapLayers(
     }
   }
 
+  const cmp = applyBrite(PALETTE.mapDim, view.brite.cmp);
+  if (cache.compassRosePath) {
+    ctx.strokeStyle = cmp;
+    ctx.lineWidth = RING_STROKE_PX;
+    ctx.stroke(cache.compassRosePath);
+  } else if (cache.compassRose) {
+    ctx.strokeStyle = cmp;
+    ctx.lineWidth = RING_STROKE_PX;
+    ctx.beginPath();
+    const { minX, minY, maxX, maxY } = cache.compassRose.bounds;
+    ctx.moveTo(minX, minY);
+    ctx.lineTo(maxX, minY);
+    ctx.lineTo(maxX, maxY);
+    ctx.lineTo(minX, maxY);
+    ctx.closePath();
+    for (const tick of cache.compassRose.ticks) {
+      ctx.moveTo(tick.x1, tick.y1);
+      ctx.lineTo(tick.x2, tick.y2);
+    }
+    ctx.stroke();
+  }
+
+  if (cache.compassRoseLabels.length > 0) {
+    ctx.font = datablockFontCss(view.charSizes.tools);
+    ctx.fillStyle = cmp;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (const label of cache.compassRoseLabels) {
+      ctx.fillText(label.text, label.x, label.y);
+    }
+  }
+
   ctx.lineWidth = MAP_STROKE_PX;
   for (const stroke of cache.videoStrokes) {
     ctx.strokeStyle = stroke.color === "mapDim" ? mpb : mpa;
@@ -397,8 +429,9 @@ export function getDatablockVisualState(
     );
   }
 
-  // 7. Track highlight (Cyan #00FFFF)
-  if (td?.highlighted) {
+  // 7. Track highlight (Cyan #00FFFF) or Dwell highlight
+  const isDwellHighlighted = view.dwellMode !== "OFF" && view.dwellLockedAircraftId === ac.id;
+  if (td?.highlighted || isDwellHighlighted) {
     const baseMode = computeBaseDatablockMode(view, td);
     const mode =
       isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs) && baseMode === "partial"
@@ -611,7 +644,10 @@ export function drawTracks(
     const ownership: TrackOwnership = td?.ownership ?? "unowned";
     const ho = handoffFor(world, ac.id);
     const isTracked = isTrackedTarget(view, world, ac);
-    const posBrite = isPrimary ? view.brite.pri : isTracked ? view.brite.pos : view.brite.oth;
+    const bcnMult = (view.brite.bcn ?? 100) / 100;
+    const posBrite = isPrimary
+      ? view.brite.pri
+      : Math.round((isTracked ? view.brite.pos : view.brite.oth) * bcnMult);
     const priMark = applyBrite(TARGET_PUCK_BG, view.brite.pri);
     const squawk = td?.squawk ?? ac.squawk;
     let sectorId = td?.sectorId;

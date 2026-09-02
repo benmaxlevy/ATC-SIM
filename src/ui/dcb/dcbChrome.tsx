@@ -18,6 +18,8 @@ import {
   dcbLeaderDirReadout,
   DCB_ACTION_FLASH_MS,
   HISTORY_DOT_COUNTS,
+  HISTORY_RATE_STEPS,
+  CURSOR_SPEED_STEPS,
   LEADER_LENGTH_STEPS_PX,
   PTL_MINUTE_PRESETS,
   RANGE_PRESETS_NM,
@@ -28,6 +30,9 @@ import {
   formatDcbBriteReadout,
   formatDcbCharReadout,
   formatDcbHistoryReadout,
+  formatDcbHistoryRateReadout,
+  formatDcbDwellReadout,
+  formatDcbCursorSpeedReadout,
   formatDcbLdrLengthReadout,
   formatDcbMapLabel,
   formatDcbPrefReadout,
@@ -83,6 +88,9 @@ export const DCB_LDR_LENGTH_READOUT_ID = "dcb-ldr-length-readout";
 export const DCB_CHAR_READOUT_ID = "dcb-char-readout";
 export const DCB_BRITE_READOUT_ID = "dcb-brite-readout";
 export const DCB_HISTORY_READOUT_ID = "dcb-history-readout";
+export const DCB_HISTORY_RATE_READOUT_ID = "dcb-history-rate-readout";
+export const DCB_CURSOR_SPEED_READOUT_ID = "dcb-cursor-speed-readout";
+export const DCB_DWELL_READOUT_ID = "dcb-dwell-readout";
 export const DCB_PTL_MINUTES_READOUT_ID = "dcb-ptl-minutes-readout";
 export const DCB_TPA_MI_READOUT_ID = "dcb-tpa-mi-readout";
 export const DCB_SITE_READOUT_ID = "dcb-site-readout";
@@ -199,6 +207,12 @@ export function applyDirectNumericInput(view: ScopeView, cell: DcbSpinnerCell, n
       break;
     case "HISTORY":
       setHistoryDotCount(view, nearestPreset(HISTORY_DOT_COUNTS, num));
+      break;
+    case "H_RATE":
+      view.historyRateSec = nearestPreset(HISTORY_RATE_STEPS, num);
+      break;
+    case "CSR_SPD":
+      view.cursorSpeed = nearestPreset(CURSOR_SPEED_STEPS, num);
       break;
     case "PTL":
       view.ptlMinutes = snapPtlToPreset(num);
@@ -355,6 +369,13 @@ export function syncDisplayControlBar(
   for (let i = 0; i < 6; i += 1) {
     setPressed(doc.querySelector(`[data-dcb-cell="wx${i + 1}"]`), view.wxLevels[i] === true);
   }
+  setText(DCB_HISTORY_RATE_READOUT_ID, formatDcbHistoryRateReadout(view.historyRateSec));
+  setText(DCB_CURSOR_SPEED_READOUT_ID, formatDcbCursorSpeedReadout(view.cursorSpeed));
+  setText(DCB_DWELL_READOUT_ID, formatDcbDwellReadout(view.dwellMode));
+  setPressed(doc.querySelector('[data-dcb-cell="h-rate"]'), spinnerArmed(view, "H_RATE"));
+  setPressed(doc.querySelector('[data-dcb-cell="cursor-home"]'), view.cursorHome);
+  setPressed(doc.querySelector('[data-dcb-cell="csr-spd"]'), spinnerArmed(view, "CSR_SPD"));
+  setPressed(doc.querySelector('[data-dcb-cell="dwell"]'), spinnerArmed(view, "DWELL"));
 }
 
 export interface DcbCellProps {
@@ -424,6 +445,10 @@ export interface DcbCellProps {
     | "dock-left"
     | "dock-right"
     | "dock-bottom"
+    | "h-rate"
+    | "cursor-home"
+    | "csr-spd"
+    | "dwell"
     | "tpa"
     | "ssa-filter"
     | "gi-text"

@@ -1,8 +1,125 @@
-# ATC-SIM swarm orchestrator — Twenty-fourth swarm (DCB VOL, MODE FSL, BRITE BKC and SSA WX Telemetry)
+# ATC-SIM swarm orchestrator — Twenty-sixth swarm (STARS Compass Rose Heading Overlay)
 
-Twenty-third (METAR weather and SSA altimeter T02-78–80) planned/landed.
-This file keeps that history, then the twenty-fourth addendum on
-**`feature/dcb-controls-ssa-wx`**.
+Twenty-fifth (DCB AUX H_RATE, DWELL, and BRITE CMP/BCN T02-84–86) planned/landed.
+This file keeps that history, then the twenty-sixth addendum on
+**`feature/compass-rose-headings`**.
+
+## Twenty-sixth swarm planned — 2026-09-01 (STARS Compass Rose Heading Overlay)
+
+This configuration implements the STARS Radar Scope Compass Rose overlay with radial tick marks (5° minor, 10° medium, 30° major) and 3-digit heading numerals (`360`, `030`, `060`, `090`, `120`, `150`, `180`, `210`, `240`, `270`, `300`, `330`), `BRITE CMP` brightness modulation, `CHAR SIZE TOOLS` font sizing, and PREF persistence on **`feature/compass-rose-headings`**, cut from current `master`.
+Captain squash-merges ticket branches into **`feature/compass-rose-headings`**, not `master`. Do not push. Existing swarm history stays intact.
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement the STARS Compass Rose overlay around the radar scope for rapid vector heading reference, complete with 72 radial tick marks (5° minor, 10° medium, 30° major), twelve 3-digit heading labels (`360`..`330`), BRITE CMP brightness modulation, CHAR SIZE TOOLS font scaling, map cache integration, and PREF persistence. |
+| Include | **T02-87**, **T02-88**, **T02-89** |
+| Source | FAA STARS TCW radar display standard, CRC STARS specifications (R07), Scope canvas renderer, and MapCache architecture. |
+| Skip | Paid vendors; audio synth; unrelated UI redesigns. |
+| Stop | After T02-89 acceptance. No next phase. |
+| Max workers | 3 |
+| Merge lock | captain squash to `feature/compass-rose-headings`, then `npm test` / `npm run ci` |
+| Model | **cursor-grok-4.6-high only, non-fast** on captain and every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law (twenty-sixth swarm — STARS Compass Rose Heading Overlay):**
+
+- **Authentic STARS Compass Rose geometry.** The compass rose circular ring is rendered at the outer range ring boundary / scope radius. Radial tick marks are generated every 5° (minor inward tick), 10° (medium inward tick), and 30° (major inward tick).
+- **3-digit heading numeral labels.** Twelve 3-digit numerals (`360`, `030`, `060`, `090`, `120`, `150`, `180`, `210`, `240`, `270`, `300`, `330`) are positioned radially inside each 30° major tick line.
+- **BRITE CMP modulation.** Compass rose ring, tick marks, and heading labels are stroked and painted using `PALETTE.mapDim` modulated by `applyBrite(PALETTE.mapDim, view.brite.cmp)`. When `BRITE CMP` is `0` / `OFF`, the compass rose is completely dimmed.
+- **CHAR SIZE TOOLS font scaling.** Compass rose numerals are rendered using `datablockFontCss(view.charSizes.tools)` in IBM Plex Mono.
+- **Map cache performance.** Compass rose geometry and labels are cached in `MapCache` and invalidated whenever `view.brite.cmp`, `view.charSizes.tools`, range, or camera change.
+- **PREF persistence.** `showCompassRose` and `brite.cmp` serialize and restore cleanly in DCB PREF slot profiles.
+- **Zero simulation regressions.** Scope camera, radar tracking, datablocks, DCB submenus, and radio parsing stay 100% operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-87 | `feature/compass-rose-headings` + planning commit |
+| B | T02-88 | T02-87 |
+| C | T02-89 | T02-88 |
+
+**Ticket ownership:**
+
+- T02-87 owns Compass Rose mathematical geometry generator, 72 tick marks, 12 heading labels, `showCompassRose` flag, and `MapCache` integration.
+- T02-88 owns canvas rendering in `drawMapLayers`, `BRITE CMP` modulation, `CHAR SIZE TOOLS` font scaling, and PREF persistence.
+- T02-89 owns end-to-end automated integration acceptance tests, documentation updates, and backlog sync.
+
+**Ticket files / branches:**
+
+- `ticket/T02-87-compass-rose-geometry-and-cache` ← `phases/02-scope/tickets/T02-87-compass-rose-geometry-and-cache.md`
+- `ticket/T02-88-compass-rose-canvas-rendering-and-brite` ← `phases/02-scope/tickets/T02-88-compass-rose-canvas-rendering-and-brite.md`
+- `ticket/T02-89-compass-rose-acceptance` ← `phases/02-scope/tickets/T02-89-compass-rose-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope addendum (T02-87–89 STARS Compass Rose)
+Merge target: `feature/compass-rose-headings`
+Merged: T02-87, T02-88, T02-89
+Tests: npm test / npm run ci exit 0
+```
+
+---
+
+## Twenty-fifth swarm planned — 2026-09-01 (DCB AUX H_RATE, DWELL, Cursor Controls, and BRITE CMP/BCN)
+
+This configuration enables previously disabled/stubbed DCB controls on AUX (`H_RATE`, `DWELL`, `CURSOR HOME`, `CSR SPD`) and BRITE (`CMP`, `BCN`) on **`feature/dcb-aux-and-brite-controls`**, cut from current `master`.
+Captain squash-merges ticket branches into **`feature/dcb-aux-and-brite-controls`**, not `master`. Do not push. Existing swarm history stays intact.
+
+| Key | Value |
+| --- | --- |
+| Goal | Enable DCB AUX H_RATE (history update interval scan rate spinner), DWELL (OFF/ON/LOCK datablock hover brightening mode), CURSOR HOME toggle, CSR SPD (cursor speed multiplier spinner), and BRITE CMP (compass rose tick marks) & BCN (secondary radar beacon symbol) brightness spinners with PREF persistence. |
+| Include | **T02-84**, **T02-85**, **T02-86** |
+| Source | STARS DCB physical layout specifications (R07), Vice `stars/dcb.go`, Scope canvas renderer, and history buffer sampling. |
+| Skip | SSA filter submenu overhaul; TSAS / Time Line complex scheduling; Beacon Mode 2 / RTQC / UNCOR / MCP inert hardware diagnostic simulations; paid vendors. |
+| Stop | After T02-86 acceptance. No next phase. |
+| Max workers | 3 |
+| Merge lock | captain squash to `feature/dcb-aux-and-brite-controls`, then `npm test` / `npm run ci` |
+| Model | **cursor-grok-4.6-high only, non-fast** on captain and every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law (twenty-fifth swarm — DCB AUX & BRITE controls):**
+
+- **H_RATE authentic history scan rate.** DCB `H_RATE` spinner modulates the history dot update interval (presets: `1.0`, `2.0`, `3.0`, `4.0`, `4.5`, `5.0`, `6.0`, `8.0`, `10.0` s, default `4.5` s). New history samples are gated by this interval.
+- **DWELL mode authentic hover brightening.** AUX `DWELL` cycles `OFF` -> `ON` -> `LOCK`. In `ON` mode, datablocks brighten on mouse hover over the target. In `LOCK` mode, datablock stays brightened on the last hovered target until moving near another target. In `OFF` mode, standard datablock brightness applies.
+- **CURSOR HOME & CSR SPD controls.** `CURSOR HOME` is an active toggle button on AUX DCB. `CSR SPD` is an active spinner (1–10, default 4).
+- **BRITE CMP & BCN active channels.** `CMP` (compass rose / range ring tick mark brightness) and `BCN` (secondary radar beacon symbol brightness) are enabled as live spinners (0–100%) on the BRITE submenu.
+- **PREF persistence.** Active settings for `historyRateSec`, `dwellMode`, `cursorHome`, `cursorSpeed`, `brite.cmp`, and `brite.bcn` are serialized and restored via PREF save/restore.
+- **Zero simulation regressions.** Scope camera, radar tracking, datablocks, DCB submenus, system lists, and radio parsing stay 100% operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-84 | `feature/dcb-aux-and-brite-controls` + planning commit |
+| B | T02-85 | T02-84 |
+| C | T02-86 | T02-85 |
+
+**Ticket ownership:**
+
+- T02-84 owns DCB AUX `H_RATE` history scan rate spinner, `DWELL` mode OFF/ON/LOCK, `CURSOR HOME` toggle, `CSR SPD` spinner, and PREF persistence.
+- T02-85 owns DCB BRITE `CMP` and `BCN` brightness spinners and canvas rendering integration.
+- T02-86 owns end-to-end automated integration tests, documentation updates, and backlog sync.
+
+**Ticket files / branches:**
+
+- `ticket/T02-84-dcb-aux-hrate-dwell-and-cursor-controls` ← `phases/02-scope/tickets/T02-84-dcb-aux-hrate-dwell-and-cursor-controls.md`
+- `ticket/T02-85-dcb-brite-cmp-bcn-channel-spinners` ← `phases/02-scope/tickets/T02-85-dcb-brite-cmp-bcn-channel-spinners.md`
+- `ticket/T02-86-dcb-aux-and-brite-acceptance` ← `phases/02-scope/tickets/T02-86-dcb-aux-and-brite-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope addendum (T02-84–86 DCB AUX & BRITE controls)
+Merge target: `feature/dcb-aux-and-brite-controls`
+Merged: T02-84, T02-85, T02-86
+Tests: npm test / npm run ci exit 0
+```
+
+---
 
 ## Twenty-fourth swarm planned — 2026-09-01 (DCB VOL, MODE FSL, BRITE BKC and SSA WX Telemetry)
 

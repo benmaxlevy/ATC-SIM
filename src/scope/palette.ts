@@ -162,6 +162,8 @@ export const BRITE_PAINT_CHANNELS = [
   "tls",
   "rr",
   "hst",
+  "cmp",
+  "bcn",
   "pri",
   "wx",
   "wxc",
@@ -169,9 +171,9 @@ export const BRITE_PAINT_CHANNELS = [
 ] as const satisfies readonly BriteChannel[];
 
 /**
- * CMP: no compass `N` tick. BCN: secondary beacon symbol uses POS/OTH.
+ * Disabled BRITE channels. All STARS channels are now live paint channels.
  */
-export const BRITE_DISABLED_CHANNELS = ["cmp", "bcn"] as const satisfies readonly BriteChannel[];
+export const BRITE_DISABLED_CHANNELS = [] as const satisfies readonly BriteChannel[];
 
 export const DEFAULT_BRITE: BriteState = {
   dcb: DEFAULT_BRITE_LEVEL,

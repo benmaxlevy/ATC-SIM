@@ -1,6 +1,9 @@
 import { expect, test } from "vitest";
 import { datablockAlertTint } from "@core";
 import {
+  BRITE_DISABLED_CHANNELS,
+  BRITE_PAINT_CHANNELS,
+  DEFAULT_BRITE,
   HISTORY_TRAIL,
   MAP_BRITE_STEPS,
   PALETTE,
@@ -157,4 +160,13 @@ test("CA tag is static (does not blink); MSAW tag is not GPWS/TAWS", () => {
   )["../render/renderScopePaint.ts"]!;
   expect(paint).toMatch(/MSAW_DATABLOCK_TAG/);
   expect(paint).not.toMatch(/fillText\("MSAW"/);
+});
+
+test("CMP and BCN are live BRITE channels", () => {
+  expect(BRITE_PAINT_CHANNELS).toContain("cmp");
+  expect(BRITE_PAINT_CHANNELS).toContain("bcn");
+  expect(BRITE_DISABLED_CHANNELS).not.toContain("cmp");
+  expect(BRITE_DISABLED_CHANNELS).not.toContain("bcn");
+  expect(DEFAULT_BRITE.cmp).toBe(100);
+  expect(DEFAULT_BRITE.bcn).toBe(100);
 });

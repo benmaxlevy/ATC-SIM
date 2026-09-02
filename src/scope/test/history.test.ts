@@ -6,6 +6,7 @@ import {
   createHistoryBuf,
   historyDotsToDraw,
   maybeSampleHistory,
+  recordHistoryOnReport,
   stepHistoryDotCount,
 } from "../history";
 
@@ -108,4 +109,14 @@ test("AC1 — HISTORY count 0 draws no dots; 5 is the full buffer; step clamps 0
   expect(stepHistoryDotCount(5, 1)).toBe(5);
   expect(stepHistoryDotCount(0, -1)).toBe(0);
   expect(stepHistoryDotCount(3, 1)).toBe(4);
+});
+
+test("recordHistoryOnReport respects minIntervalMs (historyRateSec)", () => {
+  const buf = createHistoryBuf();
+  // 4.5s interval = 4500ms
+  expect(recordHistoryOnReport(buf, 1000, 1, 1, 4500)).toBe(true);
+  expect(recordHistoryOnReport(buf, 3000, 2, 2, 4500)).toBe(false);
+  expect(recordHistoryOnReport(buf, 5499, 3, 3, 4500)).toBe(false);
+  expect(recordHistoryOnReport(buf, 5500, 4, 4, 4500)).toBe(true);
+  expect(buf.timesSimMs).toEqual([1000, 5500]);
 });
