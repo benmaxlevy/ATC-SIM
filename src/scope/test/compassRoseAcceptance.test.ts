@@ -59,23 +59,12 @@ const KDEM_DIGITAL_MAP: DigitalMap = {
   },
 };
 
-const HEADING_LABELS = [
-  "360",
-  "030",
-  "060",
-  "090",
-  "120",
-  "150",
-  "180",
-  "210",
-  "240",
-  "270",
-  "300",
-  "330",
-];
+const HEADING_LABELS = Array.from({ length: 36 }, (_, i) =>
+  formatCompassRoseHeading(i * 10),
+);
 
 describe("T02-89 Compass Rose Integration and Acceptance Suite", () => {
-  test("AC1 — Compass Rose geometry generation: 72 ticks, partition kinds, offsets, and 12 3-digit heading labels", () => {
+  test("AC1 — Compass Rose geometry generation: 72 ticks, partition kinds, offsets, and 36 3-digit heading labels", () => {
     const origin = { x: 500, y: 500 };
     const viewSize = { widthPx: 1000, heightPx: 1000 };
     const expectedBounds = { minX: 1, minY: 1, maxX: 999, maxY: 999 };
@@ -84,7 +73,7 @@ describe("T02-89 Compass Rose Integration and Acceptance Suite", () => {
     expect(geo.origin).toEqual(origin);
     expect(geo.bounds).toEqual(expectedBounds);
     expect(geo.ticks).toHaveLength(72);
-    expect(geo.labels).toHaveLength(12);
+    expect(geo.labels).toHaveLength(36);
 
     // Verify 5-degree interval from 0 to 355
     geo.ticks.forEach((tick, idx) => {
@@ -93,24 +82,16 @@ describe("T02-89 Compass Rose Integration and Acceptance Suite", () => {
     });
 
     const majorTicks = geo.ticks.filter((t) => t.kind === "major");
-    const mediumTicks = geo.ticks.filter((t) => t.kind === "medium");
     const minorTicks = geo.ticks.filter((t) => t.kind === "minor");
 
-    expect(majorTicks).toHaveLength(12); // Every 30°
-    expect(mediumTicks).toHaveLength(24); // Every 10° not 30°
+    expect(majorTicks).toHaveLength(36); // Every 10°
     expect(minorTicks).toHaveLength(36); // Every 5° not 10°
 
     // Verify lengths of all tick kinds
     for (const tick of majorTicks) {
-      expect(tick.deg % 30).toBe(0);
+      expect(tick.deg % 10).toBe(0);
       const len = Math.hypot(tick.x1 - tick.x2, tick.y1 - tick.y2);
       expect(len).toBeCloseTo(COMPASS_ROSE_MAJOR_TICK_PX, 5);
-    }
-    for (const tick of mediumTicks) {
-      expect(tick.deg % 10).toBe(0);
-      expect(tick.deg % 30).not.toBe(0);
-      const len = Math.hypot(tick.x1 - tick.x2, tick.y1 - tick.y2);
-      expect(len).toBeCloseTo(COMPASS_ROSE_MEDIUM_TICK_PX, 5);
     }
     for (const tick of minorTicks) {
       expect(tick.deg % 10).not.toBe(0);
@@ -119,11 +100,11 @@ describe("T02-89 Compass Rose Integration and Acceptance Suite", () => {
       expect(len).toBeCloseTo(COMPASS_ROSE_MINOR_TICK_PX, 5);
     }
 
-    // Verify 12 3-digit labels positioned inward by COMPASS_ROSE_LABEL_OFFSET_PX
+    // Verify 36 3-digit labels positioned inward by COMPASS_ROSE_LABEL_OFFSET_PX
     expect(geo.labels.map((l) => l.text)).toEqual(HEADING_LABELS);
-    for (let i = 0; i < 12; i += 1) {
+    for (let i = 0; i < 36; i += 1) {
       const label = geo.labels[i]!;
-      const expectedDeg = i * 30;
+      const expectedDeg = i * 10;
       expect(label.deg).toBe(expectedDeg);
       expect(label.text).toBe(formatCompassRoseHeading(expectedDeg));
 
@@ -174,14 +155,14 @@ describe("T02-89 Compass Rose Integration and Acceptance Suite", () => {
     expect(cache1).not.toBeNull();
     expect(cache1?.compassRose).not.toBeNull();
     expect(cache1?.compassRose?.ticks).toHaveLength(72);
-    expect(cache1?.compassRose?.labels).toHaveLength(12);
-    expect(cache1?.compassRoseLabels).toHaveLength(12);
+    expect(cache1?.compassRose?.labels).toHaveLength(36);
+    expect(cache1?.compassRoseLabels).toHaveLength(36);
 
     // Verify labels and ticks painted on canvas
     const renderedLabels1 = mockCtx1.fillTexts.filter(
       (t) => t.textBaseline === "middle" && HEADING_LABELS.includes(t.text),
     );
-    expect(renderedLabels1).toHaveLength(12);
+    expect(renderedLabels1).toHaveLength(36);
 
     // Dynamic Range preset change (e.g. 20 NM -> 40 NM) rebuilds cache and scales compass rose radius
     view.camera.rangeNm = 40;
@@ -219,7 +200,7 @@ describe("T02-89 Compass Rose Integration and Acceptance Suite", () => {
     const mockCtx5 = createMockCtx();
     renderScope(mockCtx5.ctx, world, view, 800, 800);
     expect(view.mapCache?.compassRose).not.toBeNull();
-    expect(view.mapCache?.compassRoseLabels).toHaveLength(12);
+    expect(view.mapCache?.compassRoseLabels).toHaveLength(36);
 
     // Turning off showRings also suppresses compass rose (rose attaches to range rings)
     toggleMapLayer(view, "rings");
@@ -249,7 +230,7 @@ describe("T02-89 Compass Rose Integration and Acceptance Suite", () => {
     const labels50 = mockCtx50.fillTexts.filter(
       (t) => t.textBaseline === "middle" && HEADING_LABELS.includes(t.text),
     );
-    expect(labels50).toHaveLength(12);
+    expect(labels50).toHaveLength(36);
     for (const label of labels50) {
       expect(label.fillStyle).toBe(cmpColor50);
     }
@@ -269,7 +250,7 @@ describe("T02-89 Compass Rose Integration and Acceptance Suite", () => {
     const labels0 = mockCtx0.fillTexts.filter(
       (t) => t.textBaseline === "middle" && HEADING_LABELS.includes(t.text),
     );
-    expect(labels0).toHaveLength(12);
+    expect(labels0).toHaveLength(36);
     for (const label of labels0) {
       expect(label.fillStyle).toBe(cmpColor0);
     }
@@ -286,7 +267,7 @@ describe("T02-89 Compass Rose Integration and Acceptance Suite", () => {
     const labelsFont11 = mockCtxFont11.fillTexts.filter(
       (t) => t.textBaseline === "middle" && HEADING_LABELS.includes(t.text),
     );
-    expect(labelsFont11).toHaveLength(12);
+    expect(labelsFont11).toHaveLength(36);
     for (const label of labelsFont11) {
       expect(label.font).toBe(datablockFontCss(11));
     }
@@ -297,7 +278,7 @@ describe("T02-89 Compass Rose Integration and Acceptance Suite", () => {
     const labelsFont15 = mockCtxFont15.fillTexts.filter(
       (t) => t.textBaseline === "middle" && HEADING_LABELS.includes(t.text),
     );
-    expect(labelsFont15).toHaveLength(12);
+    expect(labelsFont15).toHaveLength(36);
     for (const label of labelsFont15) {
       expect(label.font).toBe(datablockFontCss(15));
     }

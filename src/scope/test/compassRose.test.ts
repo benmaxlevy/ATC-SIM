@@ -27,27 +27,18 @@ describe("Compass Rose geometry generator on rectangular border", () => {
     }
   });
 
-  it("AC1 — partitions ticks into 12 major, 24 medium, and 36 minor ticks with exact lengths", () => {
+  it("AC1 — partitions ticks into 36 major (10°) and 36 minor (5°) ticks with exact lengths", () => {
     const geo = generateCompassRoseGeometry(origin, viewSize);
     const major = geo.ticks.filter((t) => t.kind === "major");
-    const medium = geo.ticks.filter((t) => t.kind === "medium");
     const minor = geo.ticks.filter((t) => t.kind === "minor");
 
-    expect(major).toHaveLength(12);
-    expect(medium).toHaveLength(24);
+    expect(major).toHaveLength(36);
     expect(minor).toHaveLength(36);
 
     for (const tick of major) {
-      expect(tick.deg % 30).toBe(0);
+      expect(tick.deg % 10).toBe(0);
       const len = Math.hypot(tick.x1 - tick.x2, tick.y1 - tick.y2);
       expect(len).toBeCloseTo(COMPASS_ROSE_MAJOR_TICK_PX, 5);
-    }
-
-    for (const tick of medium) {
-      expect(tick.deg % 10).toBe(0);
-      expect(tick.deg % 30).not.toBe(0);
-      const len = Math.hypot(tick.x1 - tick.x2, tick.y1 - tick.y2);
-      expect(len).toBeCloseTo(COMPASS_ROSE_MEDIUM_TICK_PX, 5);
     }
 
     for (const tick of minor) {
@@ -58,31 +49,17 @@ describe("Compass Rose geometry generator on rectangular border", () => {
     }
   });
 
-  it("AC1 — generates 12 3-digit heading labels radially offset inward by 22px from rectangular border", () => {
+  it("AC1 — generates 36 3-digit heading labels radially offset inward by 30px from rectangular border", () => {
     const geo = generateCompassRoseGeometry(origin, viewSize);
-    expect(geo.labels).toHaveLength(12);
+    expect(geo.labels).toHaveLength(36);
 
-    const expectedLabels = [
-      { deg: 0, text: "360" },
-      { deg: 30, text: "030" },
-      { deg: 60, text: "060" },
-      { deg: 90, text: "090" },
-      { deg: 120, text: "120" },
-      { deg: 150, text: "150" },
-      { deg: 180, text: "180" },
-      { deg: 210, text: "210" },
-      { deg: 240, text: "240" },
-      { deg: 270, text: "270" },
-      { deg: 300, text: "300" },
-      { deg: 330, text: "330" },
-    ];
+    for (let i = 0; i < 36; i += 1) {
+      const expectedDeg = i * 10;
+      expect(geo.labels[i]?.deg).toBe(expectedDeg);
+      expect(geo.labels[i]?.text).toBe(formatCompassRoseHeading(expectedDeg));
 
-    for (let i = 0; i < 12; i += 1) {
-      expect(geo.labels[i]?.deg).toBe(expectedLabels[i]!.deg);
-      expect(geo.labels[i]?.text).toBe(expectedLabels[i]!.text);
-
-      const tick = geo.ticks.find((t) => t.deg === expectedLabels[i]!.deg)!;
-      const rad = (expectedLabels[i]!.deg * Math.PI) / 180;
+      const tick = geo.ticks.find((t) => t.deg === expectedDeg)!;
+      const rad = (expectedDeg * Math.PI) / 180;
       const dx = Math.sin(rad);
       const dy = -Math.cos(rad);
 

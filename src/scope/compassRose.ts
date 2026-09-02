@@ -49,10 +49,10 @@ export interface CompassRoseGeometry {
 }
 
 export const COMPASS_ROSE_TICK_INTERVAL_DEG = 5;
-export const COMPASS_ROSE_MINOR_TICK_PX = 4;
-export const COMPASS_ROSE_MEDIUM_TICK_PX = 8;
-export const COMPASS_ROSE_MAJOR_TICK_PX = 14;
-export const COMPASS_ROSE_LABEL_OFFSET_PX = 22;
+export const COMPASS_ROSE_MINOR_TICK_PX = 18; // Same length as 10 deg marks
+export const COMPASS_ROSE_MEDIUM_TICK_PX = 18;
+export const COMPASS_ROSE_MAJOR_TICK_PX = 18;
+export const COMPASS_ROSE_LABEL_OFFSET_PX = 30; // Clear margin from the 18px tick lines
 
 export function formatCompassRoseHeading(deg: number): string {
   const normalized = ((deg % 360) + 360) % 360;
@@ -108,12 +108,9 @@ export function generateCompassRoseGeometry(
     let kind: CompassRoseTickKind;
     let tickLenPx: number;
 
-    if (deg % 30 === 0) {
+    if (deg % 10 === 0) {
       kind = "major";
       tickLenPx = COMPASS_ROSE_MAJOR_TICK_PX;
-    } else if (deg % 10 === 0) {
-      kind = "medium";
-      tickLenPx = COMPASS_ROSE_MEDIUM_TICK_PX;
     } else {
       kind = "minor";
       tickLenPx = COMPASS_ROSE_MINOR_TICK_PX;

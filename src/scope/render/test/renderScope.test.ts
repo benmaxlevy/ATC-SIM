@@ -209,12 +209,15 @@ test("AC1, AC2, AC3 — compass rose ticks and heading labels render with BRITE 
   const mock = createMockCtx();
   renderScope(mock.ctx, world, view, 800, 800);
 
-  // Check 12 heading labels
-  const headingLabels = ["360", "030", "060", "090", "120", "150", "180", "210", "240", "270", "300", "330"];
+  // Check 36 heading labels
+  const headingLabels = Array.from({ length: 36 }, (_, i) => {
+    const deg = i * 10;
+    return deg === 0 ? "360" : String(deg).padStart(3, "0");
+  });
   const renderedHeadingTexts = mock.fillTexts.filter(
     (t) => t.textBaseline === "middle" && headingLabels.includes(t.text),
   );
-  expect(renderedHeadingTexts).toHaveLength(12);
+  expect(renderedHeadingTexts).toHaveLength(36);
 
   const cmpColor100 = applyBrite(PALETTE.mapDim, 100);
   for (const label of renderedHeadingTexts) {
@@ -238,7 +241,7 @@ test("AC1, AC2, AC3 — compass rose ticks and heading labels render with BRITE 
   const labels50 = mock50.fillTexts.filter(
     (t) => t.textBaseline === "middle" && headingLabels.includes(t.text),
   );
-  expect(labels50).toHaveLength(12);
+  expect(labels50).toHaveLength(36);
   for (const label of labels50) {
     expect(label.fillStyle).toBe(cmpColor50);
   }
@@ -255,7 +258,7 @@ test("AC1, AC2, AC3 — compass rose ticks and heading labels render with BRITE 
   const labels0 = mock0.fillTexts.filter(
     (t) => t.textBaseline === "middle" && headingLabels.includes(t.text),
   );
-  expect(labels0).toHaveLength(12);
+  expect(labels0).toHaveLength(36);
   for (const label of labels0) {
     expect(label.fillStyle).toBe(cmpColor0);
   }

@@ -314,8 +314,8 @@ test("AC2 — buildMapCache computes compass rose ticks and labels on rectangula
   const cache = buildMapCache(kdemInput());
   expect(cache.compassRose).not.toBeNull();
   expect(cache.compassRose!.ticks).toHaveLength(72);
-  expect(cache.compassRose!.labels).toHaveLength(12);
-  expect(cache.compassRoseLabels).toHaveLength(12);
+  expect(cache.compassRose!.labels).toHaveLength(36);
+  expect(cache.compassRoseLabels).toHaveLength(36);
 
   expect(cache.compassRose!.bounds).toEqual({ minX: 1, minY: 1, maxX: 799, maxY: 799 });
   const airport = nmToScreen(0, 0, DEFAULT_SCOPE_CAMERA, VIEW);
