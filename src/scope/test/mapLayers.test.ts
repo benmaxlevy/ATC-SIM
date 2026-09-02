@@ -318,9 +318,8 @@ test("AC2 — buildMapCache computes compass rose ticks and labels on rectangula
   expect(cache.compassRoseLabels).toHaveLength(36);
 
   expect(cache.compassRose!.bounds).toEqual({ minX: 1, minY: 1, maxX: 799, maxY: 799 });
-  const airport = nmToScreen(0, 0, DEFAULT_SCOPE_CAMERA, VIEW);
-  expect(cache.compassRose!.origin.x).toBeCloseTo(airport.x, 5);
-  expect(cache.compassRose!.origin.y).toBeCloseTo(airport.y, 5);
+  expect(cache.compassRose!.origin.x).toBeCloseTo(VIEW.widthPx / 2, 5);
+  expect(cache.compassRose!.origin.y).toBeCloseTo(VIEW.heightPx / 2, 5);
 
   // When Path2D is polyfilled / available in browser environment
   class MockPath2D {
@@ -365,8 +364,12 @@ test("AC2 & AC4 — showCompassRose=false or showRings=false disables compass ro
 });
 
 test("AC3 & AC4 — buildMapCacheKey differentiates showCompassRose and ScopeView defaults/toggles", () => {
-  const inputWithRose = kdemInput({ layers: { ...DEFAULT_MAP_LAYER_FLAGS, showCompassRose: true } });
-  const inputWithoutRose = kdemInput({ layers: { ...DEFAULT_MAP_LAYER_FLAGS, showCompassRose: false } });
+  const inputWithRose = kdemInput({
+    layers: { ...DEFAULT_MAP_LAYER_FLAGS, showCompassRose: true },
+  });
+  const inputWithoutRose = kdemInput({
+    layers: { ...DEFAULT_MAP_LAYER_FLAGS, showCompassRose: false },
+  });
 
   const key1 = buildMapCacheKey(inputWithRose);
   const key2 = buildMapCacheKey(inputWithoutRose);
@@ -382,4 +385,3 @@ test("AC3 & AC4 — buildMapCacheKey differentiates showCompassRose and ScopeVie
   toggleMapLayer(view, "compassRose");
   expect(view.showCompassRose).toBe(true);
 });
-

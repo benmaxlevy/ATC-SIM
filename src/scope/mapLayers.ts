@@ -686,7 +686,7 @@ export function buildMapCache(
 
   const showCompassRose = layers.showCompassRose !== false && layers.showRings;
   const compassRose: CompassRoseGeometry | null = showCompassRose
-    ? generateCompassRoseGeometry(ringOriginScreen, viewSize)
+    ? generateCompassRoseGeometry(viewSize)
     : null;
   const compassRosePath = pathFromCompassRose(compassRose);
   const compassRoseLabels = compassRose?.labels ?? [];

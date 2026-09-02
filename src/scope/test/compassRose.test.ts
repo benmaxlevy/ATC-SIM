@@ -2,9 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   COMPASS_ROSE_LABEL_OFFSET_PX,
   COMPASS_ROSE_MAJOR_TICK_PX,
-  COMPASS_ROSE_MEDIUM_TICK_PX,
   COMPASS_ROSE_MINOR_TICK_PX,
-  COMPASS_ROSE_TICK_INTERVAL_DEG,
   formatCompassRoseHeading,
   generateCompassRoseGeometry,
   normalizeCompassRoseBounds,
@@ -149,12 +147,15 @@ describe("Compass Rose geometry generator on rectangular border", () => {
     expect(tick270.y1).toBeCloseTo(300, 5);
 
     // Explicit bounds
-    const explicitGeo = generateCompassRoseGeometry({ x: 250, y: 200 }, {
-      minX: 10,
-      minY: 20,
-      maxX: 500,
-      maxY: 400,
-    });
+    const explicitGeo = generateCompassRoseGeometry(
+      { x: 250, y: 200 },
+      {
+        minX: 10,
+        minY: 20,
+        maxX: 500,
+        maxY: 400,
+      },
+    );
     expect(explicitGeo.bounds).toEqual({ minX: 10, minY: 20, maxX: 500, maxY: 400 });
     expect(explicitGeo.ticks).toHaveLength(72);
   });
@@ -193,7 +194,12 @@ describe("Compass Rose geometry generator on rectangular border", () => {
     expect(smallGeo.ticks).toHaveLength(0);
     expect(smallGeo.labels).toHaveLength(0);
 
-    const invertedGeo = generateCompassRoseGeometry(origin, { minX: 100, minY: 100, maxX: 50, maxY: 50 });
+    const invertedGeo = generateCompassRoseGeometry(origin, {
+      minX: 100,
+      minY: 100,
+      maxX: 50,
+      maxY: 50,
+    });
     expect(invertedGeo.ticks).toHaveLength(0);
     expect(invertedGeo.labels).toHaveLength(0);
   });
@@ -221,5 +227,13 @@ describe("Compass Rose geometry generator on rectangular border", () => {
       maxX: 100,
       maxY: 200,
     });
+  });
+
+  it("defaults to fixed center of bounds when origin is omitted", () => {
+    const geo = generateCompassRoseGeometry(viewSize);
+    expect(geo.origin).toEqual({ x: 400, y: 400 });
+    expect(geo.bounds).toEqual(expectedBounds);
+    expect(geo.ticks).toHaveLength(72);
+    expect(geo.labels).toHaveLength(36);
   });
 });

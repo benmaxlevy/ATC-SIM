@@ -93,4 +93,3 @@ test("AC4 — SAVE then reload restores showCompassRose", () => {
   loadDcbPrefFromStorage(boot2, "KDEM", store);
   expect(boot2.showCompassRose).toBe(true);
 });
-

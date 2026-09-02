@@ -371,7 +371,9 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, WX latches / disab
   expect(brite).not.toMatch(/aria-label="CMP"[^>]*\bdisabled\b/);
   expect(brite).not.toMatch(/aria-label="BCN"[^>]*\bdisabled\b/);
   expect(BRITE_PAINT_CHANNELS).toEqual(expect.arrayContaining(["wx", "wxc", "bkc", "cmp", "bcn"]));
-  expect(BRITE_DISABLED_CHANNELS).not.toEqual(expect.arrayContaining(["wx", "wxc", "bkc", "cmp", "bcn"]));
+  expect(BRITE_DISABLED_CHANNELS).not.toEqual(
+    expect.arrayContaining(["wx", "wxc", "bkc", "cmp", "bcn"]),
+  );
   closeDcbMenu(view);
 
   openDcbMenu(view, "SSA_FILTER");

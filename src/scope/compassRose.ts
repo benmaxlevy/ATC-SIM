@@ -37,9 +37,7 @@ export interface CompassRoseRectBounds {
   maxY: number;
 }
 
-export type CompassRoseBoundsInput =
-  | { widthPx: number; heightPx: number }
-  | CompassRoseRectBounds;
+export type CompassRoseBoundsInput = { widthPx: number; heightPx: number } | CompassRoseRectBounds;
 
 export interface CompassRoseGeometry {
   origin: ScreenPoint;
@@ -79,11 +77,26 @@ export function normalizeCompassRoseBounds(bounds: CompassRoseBoundsInput): Comp
   };
 }
 
+export function generateCompassRoseGeometry(bounds: CompassRoseBoundsInput): CompassRoseGeometry;
 export function generateCompassRoseGeometry(
   origin: ScreenPoint,
   bounds: CompassRoseBoundsInput,
+): CompassRoseGeometry;
+export function generateCompassRoseGeometry(
+  originOrBounds: ScreenPoint | CompassRoseBoundsInput,
+  boundsInput?: CompassRoseBoundsInput,
 ): CompassRoseGeometry {
-  const rectBounds = normalizeCompassRoseBounds(bounds);
+  const rectBounds = normalizeCompassRoseBounds(
+    boundsInput !== undefined ? boundsInput : (originOrBounds as CompassRoseBoundsInput),
+  );
+
+  const origin: ScreenPoint =
+    boundsInput !== undefined
+      ? (originOrBounds as ScreenPoint)
+      : {
+          x: (rectBounds.minX + rectBounds.maxX) / 2,
+          y: (rectBounds.minY + rectBounds.maxY) / 2,
+        };
 
   if (
     !Number.isFinite(rectBounds.minX) ||

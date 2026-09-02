@@ -228,7 +228,9 @@ test("AC1, AC2, AC3 — compass rose ticks and heading labels render with BRITE 
   }
 
   // Check ticks stroked with cmpColor (in node without Path2D, stroked via fallback pathStrokes)
-  const tickStrokes = mock.pathStrokes.filter((s) => s.strokeStyle === cmpColor100 && s.lineWidth === 1);
+  const tickStrokes = mock.pathStrokes.filter(
+    (s) => s.strokeStyle === cmpColor100 && s.lineWidth === 1,
+  );
   expect(tickStrokes).toHaveLength(1);
   expect(tickStrokes[0]!.points).toHaveLength(148); // 4 border points + 72 ticks * 2 points
 
@@ -245,7 +247,9 @@ test("AC1, AC2, AC3 — compass rose ticks and heading labels render with BRITE 
   for (const label of labels50) {
     expect(label.fillStyle).toBe(cmpColor50);
   }
-  const tickStrokes50 = mock50.pathStrokes.filter((s) => s.strokeStyle === cmpColor50 && s.lineWidth === 1);
+  const tickStrokes50 = mock50.pathStrokes.filter(
+    (s) => s.strokeStyle === cmpColor50 && s.lineWidth === 1,
+  );
   expect(tickStrokes50).toHaveLength(1);
   expect(tickStrokes50[0]!.points).toHaveLength(148);
 
@@ -262,12 +266,14 @@ test("AC1, AC2, AC3 — compass rose ticks and heading labels render with BRITE 
   for (const label of labels0) {
     expect(label.fillStyle).toBe(cmpColor0);
   }
-  const tickStrokes0 = mock0.pathStrokes.filter((s) => s.strokeStyle === cmpColor0 && s.lineWidth === 1);
+  const tickStrokes0 = mock0.pathStrokes.filter(
+    (s) => s.strokeStyle === cmpColor0 && s.lineWidth === 1,
+  );
   expect(tickStrokes0).toHaveLength(1);
   expect(tickStrokes0[0]!.points).toHaveLength(148);
 
   // When charSizes.tools changes
-  view.charSizes.tools = 15;
+  view.charSizes.tools = 13;
   view.mapCache = null;
   const mockFont = createMockCtx();
   renderScope(mockFont.ctx, world, view, 800, 800);
@@ -275,7 +281,7 @@ test("AC1, AC2, AC3 — compass rose ticks and heading labels render with BRITE 
     (t) => t.textBaseline === "middle" && headingLabels.includes(t.text),
   );
   for (const label of labelsFont) {
-    expect(label.font).toBe(datablockFontCss(15));
+    expect(label.font).toBe(datablockFontCss(13));
   }
 
   // When showCompassRose is false, no ticks or labels render
@@ -287,7 +293,9 @@ test("AC1, AC2, AC3 — compass rose ticks and heading labels render with BRITE 
     (t) => t.textBaseline === "middle" && headingLabels.includes(t.text),
   );
   expect(labelsOff).toHaveLength(0);
-  const tickStrokesOff = mockOff.pathStrokes.filter((s) => s.strokeStyle === cmpColor0 && s.lineWidth === 1);
+  const tickStrokesOff = mockOff.pathStrokes.filter(
+    (s) => s.strokeStyle === cmpColor0 && s.lineWidth === 1,
+  );
   expect(tickStrokesOff).toHaveLength(0);
 });
 
@@ -357,9 +365,7 @@ test("drawMapLayers strokes rectangular bounds and ticks when compassRosePath is
     compassRose: {
       origin: { x: 400, y: 400 },
       bounds: { minX: 1, minY: 1, maxX: 799, maxY: 799 },
-      ticks: [
-        { x1: 400, y1: 1, x2: 400, y2: 15, deg: 0, kind: "major" as const },
-      ],
+      ticks: [{ x1: 400, y1: 1, x2: 400, y2: 15, deg: 0, kind: "major" as const }],
       labels: [{ text: "360", x: 400, y: 23, deg: 0 }],
     },
     compassRosePath: null,
@@ -381,5 +387,3 @@ test("drawMapLayers strokes rectangular bounds and ticks when compassRosePath is
   expect(label?.x).toBe(400);
   expect(label?.y).toBe(23);
 });
-
-

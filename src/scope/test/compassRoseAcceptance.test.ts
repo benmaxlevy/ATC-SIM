@@ -1,13 +1,11 @@
 import { describe, expect, test } from "vitest";
 import { createWorld } from "@core";
-import { type DigitalMap } from "@scenario";
 import {
   createScopeView,
   generateCompassRoseGeometry,
   formatCompassRoseHeading,
   COMPASS_ROSE_TICK_INTERVAL_DEG,
   COMPASS_ROSE_MINOR_TICK_PX,
-  COMPASS_ROSE_MEDIUM_TICK_PX,
   COMPASS_ROSE_MAJOR_TICK_PX,
   COMPASS_ROSE_LABEL_OFFSET_PX,
   toggleMapLayer,
@@ -22,6 +20,7 @@ import {
   applyBrite,
   datablockFontCss,
   type DcbPrefStorage,
+  type DigitalMap,
 } from "@scope";
 import { createMockCtx } from "./mockCanvas";
 
@@ -40,18 +39,18 @@ function memoryStorage(): DcbPrefStorage & { data: Map<string, string> } {
 
 const KDEM_DIGITAL_MAP: DigitalMap = {
   runway: {
+    id: "27",
     thresholdEastNm: 0,
     thresholdNorthNm: 0,
-    headingDeg: 270,
+    headingTrueDeg: 270,
     lengthNm: 2,
     widthNm: 0.1,
   },
   localizer: {
-    originEastNm: 0,
-    originNorthNm: 0,
-    headingDeg: 270,
-    lengthNm: 15,
-    widthNm: 1.5,
+    runwayId: "27",
+    courseTrueDeg: 270,
+    featherLengthNm: 15,
+    halfWidthDeg: 3,
   },
   rangeRings: {
     intervalNm: 5,
@@ -59,9 +58,7 @@ const KDEM_DIGITAL_MAP: DigitalMap = {
   },
 };
 
-const HEADING_LABELS = Array.from({ length: 36 }, (_, i) =>
-  formatCompassRoseHeading(i * 10),
-);
+const HEADING_LABELS = Array.from({ length: 36 }, (_, i) => formatCompassRoseHeading(i * 10));
 
 describe("T02-89 Compass Rose Integration and Acceptance Suite", () => {
   test("AC1 — Compass Rose geometry generation: 72 ticks, partition kinds, offsets, and 36 3-digit heading labels", () => {
@@ -173,14 +170,16 @@ describe("T02-89 Compass Rose Integration and Acceptance Suite", () => {
     expect(cache2?.compassRose).not.toBeNull();
     expect(cache2?.compassRose?.ticks).toHaveLength(72);
 
-    // Pan / Origin change (e.g. range ring center move)
+    // Range ring center move: compass rose remains fixed to scope center
     view.rangeRingEastNm = 10;
     view.rangeRingNorthNm = 5;
     const mockCtx3 = createMockCtx();
     renderScope(mockCtx3.ctx, world, view, 800, 800);
     const cache3 = view.mapCache;
     expect(cache3).not.toBe(cache2);
-    expect(cache3?.compassRose?.origin.x).not.toBeCloseTo(cache2!.compassRose!.origin.x, 1);
+    expect(cache3?.compassRose?.origin.x).toBeCloseTo(400, 5);
+    expect(cache3?.compassRose?.origin.y).toBeCloseTo(400, 5);
+    expect(cache3?.compassRose?.origin.x).toBeCloseTo(cache2!.compassRose!.origin.x, 5);
 
     // Layer toggle: turning off showCompassRose suppresses geometry and rendering
     toggleMapLayer(view, "compassRose");
@@ -272,15 +271,15 @@ describe("T02-89 Compass Rose Integration and Acceptance Suite", () => {
       expect(label.font).toBe(datablockFontCss(11));
     }
 
-    view.charSizes.tools = 15;
-    const mockCtxFont15 = createMockCtx();
-    renderScope(mockCtxFont15.ctx, world, view, 800, 800);
-    const labelsFont15 = mockCtxFont15.fillTexts.filter(
+    view.charSizes.tools = 13;
+    const mockCtxFont13 = createMockCtx();
+    renderScope(mockCtxFont13.ctx, world, view, 800, 800);
+    const labelsFont13 = mockCtxFont13.fillTexts.filter(
       (t) => t.textBaseline === "middle" && HEADING_LABELS.includes(t.text),
     );
-    expect(labelsFont15).toHaveLength(36);
-    for (const label of labelsFont15) {
-      expect(label.font).toBe(datablockFontCss(15));
+    expect(labelsFont13).toHaveLength(36);
+    for (const label of labelsFont13) {
+      expect(label.font).toBe(datablockFontCss(13));
     }
   });
 
@@ -293,13 +292,13 @@ describe("T02-89 Compass Rose Integration and Acceptance Suite", () => {
     // Mutate state away from defaults
     view1.showCompassRose = false;
     view1.brite.cmp = 30;
-    view1.charSizes.tools = 14;
+    view1.charSizes.tools = 13;
 
     // Serialize
     const serialized = serializeDcbPref(view1);
     expect(serialized.showCompassRose).toBe(false);
     expect(serialized.brite.cmp).toBe(30);
-    expect(serialized.charSizes.tools).toBe(14);
+    expect(serialized.charSizes.tools).toBe(13);
 
     // Save to PREF slot 0 in storage
     saveDcbPref(view1, storage);
@@ -314,7 +313,7 @@ describe("T02-89 Compass Rose Integration and Acceptance Suite", () => {
 
     expect(view2.showCompassRose).toBe(false);
     expect(view2.brite.cmp).toBe(30);
-    expect(view2.charSizes.tools).toBe(14);
+    expect(view2.charSizes.tools).toBe(13);
 
     // Mutate view2 to showCompassRose=true, brite.cmp=80, save to slot 1
     view2.showCompassRose = true;
