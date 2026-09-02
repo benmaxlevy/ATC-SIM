@@ -1,5 +1,37 @@
 # Swarm status
 
+## TWENTY-SIXTH SWARM COMPLETE — STARS Compass Rose & Dwell Fix (T02-87–89)
+
+T02-87–89 are squash-merged on `feature/compass-rose-headings`. Full test suite `npm test`: **164 test files passed, 1161 tests passed, 4 skipped, 0 failures**. STARS Compass Rose heading overlay along rectangular scope border (72 radial ticks, 12 3-digit headings, BRITE CMP modulation, CHAR SIZE TOOLS scaling, PREF persistence) and Dwell mode pointer hover fix on `feature/compass-rose-headings`.
+
+- **Compass Rose geometry & map cache (T02-87):**
+  - Mathematical ray-box intersection against rectangular scope border `[1, widthPx - 1] x [1, heightPx - 1]`.
+  - Generates 72 radial tick marks along rectangular border: 5° minor (4px inward), 10° medium (8px inward), 30° major (14px inward).
+  - Generates twelve 3-digit heading numerals ("360", "030", "060", "090", "120", "150", "180", "210", "240", "270", "300", "330") radially inward by 22px.
+  - Added `showCompassRose: boolean` (default `true`) to `ScopeView` and `MapCache`.
+- **Canvas rendering & BRITE CMP (T02-88):**
+  - In `drawMapLayers`, strokes outer rectangular boundary line and inward radial ticks with `applyBrite(PALETTE.mapDim, view.brite.cmp)` and `RING_STROKE_PX`.
+  - Centered heading labels rendered with `datablockFontCss(view.charSizes.tools)` in `PALETTE.mapDim` modulated by `BRITE CMP`.
+  - PREF serialization and restore for `showCompassRose` and `brite.cmp`.
+- **Integration acceptance & Dwell fix (T02-89):**
+  - Fixed argument mapping bug in `handlePpiCanvasPointerHover` where `{ widthPx, heightPx }` and `view` were passed into `cam` parameter of `pickAircraftHitAt`.
+  - Added unit tests for pointer hover datablock brightening under `ON`, `LOCK`, and `OFF` dwell modes.
+  - Comprehensive acceptance test suite `src/scope/test/compassRoseAcceptance.test.ts`.
+  - Updated `phases/02-scope/README.md` and `docs/USER.md`.
+
+**Merged (squash-merged, captain only, onto `feature/compass-rose-headings`):** T02-87 (`10fcfe9`), T02-88 (`4eabf70`), T02-89 (`a939462`). Planning `15377a8`.
+
+**Captain judgement calls:**
+- Compass rose tick and heading geometry computes ray-box intersection with rectangular scope bounds to align flush with the scope window edges.
+- Dwell mode hit-testing correctly uses `view.camera`, `rect.width`, `rect.height`, `HIT_RADIUS_CSS_PX`, and `view`.
+
+**Product law held:**
+- Compass rose follows authentic STARS TCW perimeter heading indicators.
+- Modulated by `BRITE CMP` and sized with `CHAR SIZE TOOLS`.
+- Zero visual or kinematic regressions.
+
+**Remaining work:** merge and push feature branch per user request.
+
 ## TWENTY-FIFTH SWARM COMPLETE — DCB AUX & BRITE controls (T02-84–86)
 
 T02-84–86 are squash-merged on `feature/dcb-aux-and-brite-controls` (not `master`). Full test suite `npm test`: **162 test files passed, 1138 tests passed, 4 skipped, 0 failures**. DCB AUX `H_RATE`, `DWELL`, `CURSOR HOME`, `CSR SPD`, and BRITE `CMP`, `BCN` spinners with PREF persistence on `feature/dcb-aux-and-brite-controls`. Did not push.
