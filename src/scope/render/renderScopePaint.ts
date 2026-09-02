@@ -148,6 +148,12 @@ export function drawMapLayers(
     ctx.strokeStyle = cmp;
     ctx.lineWidth = RING_STROKE_PX;
     ctx.beginPath();
+    const { minX, minY, maxX, maxY } = cache.compassRose.bounds;
+    ctx.moveTo(minX, minY);
+    ctx.lineTo(maxX, minY);
+    ctx.lineTo(maxX, maxY);
+    ctx.lineTo(minX, maxY);
+    ctx.closePath();
     for (const tick of cache.compassRose.ticks) {
       ctx.moveTo(tick.x1, tick.y1);
       ctx.lineTo(tick.x2, tick.y2);

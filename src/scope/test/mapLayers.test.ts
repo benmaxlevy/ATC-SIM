@@ -310,17 +310,17 @@ test("AC4 — range rings draw about PLACE RR origin, not only airport ref", () 
   expect(cache.ringCircles[0]!.x).not.toBeCloseTo(airport.x, 0);
 });
 
-test("AC2 — buildMapCache computes compass rose ticks and labels on outermost ring", () => {
+test("AC2 — buildMapCache computes compass rose ticks and labels on rectangular border", () => {
   const cache = buildMapCache(kdemInput());
   expect(cache.compassRose).not.toBeNull();
   expect(cache.compassRose!.ticks).toHaveLength(72);
   expect(cache.compassRose!.labels).toHaveLength(12);
   expect(cache.compassRoseLabels).toHaveLength(12);
 
-  const outermostCircle = cache.ringCircles[cache.ringCircles.length - 1]!;
-  expect(cache.compassRose!.radiusPx).toBeCloseTo(outermostCircle.radiusPx, 5);
-  expect(cache.compassRose!.origin.x).toBeCloseTo(outermostCircle.x, 5);
-  expect(cache.compassRose!.origin.y).toBeCloseTo(outermostCircle.y, 5);
+  expect(cache.compassRose!.bounds).toEqual({ minX: 1, minY: 1, maxX: 799, maxY: 799 });
+  const airport = nmToScreen(0, 0, DEFAULT_SCOPE_CAMERA, VIEW);
+  expect(cache.compassRose!.origin.x).toBeCloseTo(airport.x, 5);
+  expect(cache.compassRose!.origin.y).toBeCloseTo(airport.y, 5);
 
   // When Path2D is polyfilled / available in browser environment
   class MockPath2D {

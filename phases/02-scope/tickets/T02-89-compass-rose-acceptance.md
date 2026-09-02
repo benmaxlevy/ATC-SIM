@@ -31,10 +31,10 @@ T02-87 and T02-88 introduce the complete Compass Rose navigation aid for heading
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Automated integration test suite covers all compass rose features and edge cases.
-- [ ] **AC2 —** PREF serialization/deserialization round-trips all compass rose parameters cleanly.
-- [ ] **AC3 —** Full test suite (`npm test`) passes with zero failures or regressions.
-- [ ] **AC4 —** Phase 2 documentation accurately describes the Compass Rose overlay.
+- [x] **AC1 —** Automated integration test suite covers all compass rose features and edge cases.
+- [x] **AC2 —** PREF serialization/deserialization round-trips all compass rose parameters cleanly.
+- [x] **AC3 —** Full test suite (`npm test`) passes with zero failures or regressions.
+- [x] **AC4 —** Phase 2 documentation accurately describes the Compass Rose overlay.
 
 ## Test plan
 

@@ -724,9 +724,9 @@ STARS Compass Rose heading vectoring ring with 72 radial tick marks (5° minor, 
 
 | ID | Title | Pri | Size | Depends on | Status |
 | --- | --- | --- | --- | --- | --- |
-| [T02-87](tickets/T02-87-compass-rose-geometry-and-cache.md) | Compass Rose geometry, ticks, and map cache | P0 | M | none | Planned |
-| [T02-88](tickets/T02-88-compass-rose-canvas-rendering-and-brite.md) | Compass Rose canvas rendering and BRITE CMP | P0 | M | T02-87 | Planned |
-| [T02-89](tickets/T02-89-compass-rose-acceptance.md) | Compass Rose integration and acceptance | P0 | S | T02-87, T02-88 | Planned |
+| [T02-87](tickets/T02-87-compass-rose-geometry-and-cache.md) | Compass Rose geometry, ticks, and map cache | P0 | M | none | Shipped |
+| [T02-88](tickets/T02-88-compass-rose-canvas-rendering-and-brite.md) | Compass Rose canvas rendering and BRITE CMP | P0 | M | T02-87 | Shipped |
+| [T02-89](tickets/T02-89-compass-rose-acceptance.md) | Compass Rose integration and acceptance | P0 | S | T02-87, T02-88 | Shipped |
 
 ## Launching an agent
 

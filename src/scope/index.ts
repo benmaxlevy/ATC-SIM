@@ -124,10 +124,13 @@ export {
   COMPASS_ROSE_LABEL_OFFSET_PX,
   formatCompassRoseHeading,
   generateCompassRoseGeometry,
+  normalizeCompassRoseBounds,
 } from "./compassRose";
 export type {
+  CompassRoseBoundsInput,
   CompassRoseGeometry,
   CompassRoseLabel,
+  CompassRoseRectBounds,
   CompassRoseTick,
   CompassRoseTickKind,
 } from "./compassRose";

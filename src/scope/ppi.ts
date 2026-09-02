@@ -448,7 +448,16 @@ export function handlePpiCanvasPointerHover(
   }
   const rect = canvas.getBoundingClientRect();
   const { x, y } = cssPointFromClient(clientX, clientY, rect);
-  const hit = pickAircraftHitAt(world, x, y, viewSize(rect.width, rect.height), view);
+  const hit = pickAircraftHitAt(
+    world,
+    x,
+    y,
+    view.camera,
+    rect.width,
+    rect.height,
+    HIT_RADIUS_CSS_PX,
+    view,
+  );
   if (hit) {
     view.dwellLockedAircraftId = hit.aircraft.id;
   } else if (view.dwellMode === "ON") {

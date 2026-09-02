@@ -378,10 +378,17 @@ function pathFromRings(circles: MapCache["ringCircles"]): Path2D | null {
 }
 
 function pathFromCompassRose(rose: CompassRoseGeometry | null): Path2D | null {
-  if (typeof Path2D !== "function" || !rose || rose.ticks.length === 0) {
+  if (typeof Path2D !== "function" || !rose) {
     return null;
   }
   const path = new Path2D();
+  const { minX, minY, maxX, maxY } = rose.bounds;
+  path.moveTo(minX, minY);
+  path.lineTo(maxX, minY);
+  path.lineTo(maxX, maxY);
+  path.lineTo(minX, maxY);
+  path.closePath();
+
   for (const tick of rose.ticks) {
     path.moveTo(tick.x1, tick.y1);
     path.lineTo(tick.x2, tick.y2);
@@ -678,11 +685,9 @@ export function buildMapCache(
   );
 
   const showCompassRose = layers.showCompassRose !== false && layers.showRings;
-  let compassRose: CompassRoseGeometry | null = null;
-  if (showCompassRose && ringCircles.length > 0) {
-    const outermostCircle = ringCircles[ringCircles.length - 1]!;
-    compassRose = generateCompassRoseGeometry(ringOriginScreen, outermostCircle.radiusPx);
-  }
+  const compassRose: CompassRoseGeometry | null = showCompassRose
+    ? generateCompassRoseGeometry(ringOriginScreen, viewSize)
+    : null;
   const compassRosePath = pathFromCompassRose(compassRose);
   const compassRoseLabels = compassRose?.labels ?? [];
 

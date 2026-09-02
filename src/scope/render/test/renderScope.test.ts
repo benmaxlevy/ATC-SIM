@@ -227,7 +227,7 @@ test("AC1, AC2, AC3 — compass rose ticks and heading labels render with BRITE 
   // Check ticks stroked with cmpColor (in node without Path2D, stroked via fallback pathStrokes)
   const tickStrokes = mock.pathStrokes.filter((s) => s.strokeStyle === cmpColor100 && s.lineWidth === 1);
   expect(tickStrokes).toHaveLength(1);
-  expect(tickStrokes[0]!.points).toHaveLength(144); // 72 ticks * 2 points
+  expect(tickStrokes[0]!.points).toHaveLength(148); // 4 border points + 72 ticks * 2 points
 
   // When BRITE CMP is dimmed to 50
   view.brite.cmp = 50;
@@ -244,7 +244,7 @@ test("AC1, AC2, AC3 — compass rose ticks and heading labels render with BRITE 
   }
   const tickStrokes50 = mock50.pathStrokes.filter((s) => s.strokeStyle === cmpColor50 && s.lineWidth === 1);
   expect(tickStrokes50).toHaveLength(1);
-  expect(tickStrokes50[0]!.points).toHaveLength(144);
+  expect(tickStrokes50[0]!.points).toHaveLength(148);
 
   // When BRITE CMP is 0 (OFF)
   view.brite.cmp = 0;
@@ -261,7 +261,7 @@ test("AC1, AC2, AC3 — compass rose ticks and heading labels render with BRITE 
   }
   const tickStrokes0 = mock0.pathStrokes.filter((s) => s.strokeStyle === cmpColor0 && s.lineWidth === 1);
   expect(tickStrokes0).toHaveLength(1);
-  expect(tickStrokes0[0]!.points).toHaveLength(144);
+  expect(tickStrokes0[0]!.points).toHaveLength(148);
 
   // When charSizes.tools changes
   view.charSizes.tools = 15;
@@ -328,4 +328,55 @@ test("drawMapLayers strokes compassRosePath when Path2D is present in cache", ()
   drawMapLayers(mockCtx, cache, view);
   expect(strokedPaths).toContain(mockPath);
 });
+
+test("drawMapLayers strokes rectangular bounds and ticks when compassRosePath is null", () => {
+  const view = createScopeView(0, 0, { digitalMap: parseDigitalMap(loadKdem().maps) });
+  view.showRings = true;
+  view.showCompassRose = true;
+  view.brite.cmp = 100;
+
+  const mock = createMockCtx();
+  const cache = {
+    key: "test",
+    ringRadiiNm: [5, 10, 15],
+    ringCircles: [{ x: 400, y: 400, radiusPx: 300 }],
+    coastline: null,
+    runway: null,
+    localizer: null,
+    localizers: [],
+    runwayLabels: [],
+    videoStrokes: [],
+    videoLabels: [],
+    ringsPath: null,
+    coastlinePath: null,
+    runwayPath: null,
+    localizerPath: null,
+    compassRose: {
+      origin: { x: 400, y: 400 },
+      bounds: { minX: 1, minY: 1, maxX: 799, maxY: 799 },
+      ticks: [
+        { x1: 400, y1: 1, x2: 400, y2: 15, deg: 0, kind: "major" as const },
+      ],
+      labels: [{ text: "360", x: 400, y: 23, deg: 0 }],
+    },
+    compassRosePath: null,
+    compassRoseLabels: [{ text: "360", x: 400, y: 23, deg: 0 }],
+  };
+
+  drawMapLayers(mock.ctx, cache, view);
+
+  const cmpColor = applyBrite(PALETTE.mapDim, 100);
+  const stroke = mock.pathStrokes.find((s) => s.strokeStyle === cmpColor && s.lineWidth === 1);
+  expect(stroke).toBeDefined();
+  // Points should include border (1,1) -> (799,1) -> ... and tick (400,1) -> (400,15)
+  expect(stroke?.points).toContainEqual({ x: 1, y: 1 });
+  expect(stroke?.points).toContainEqual({ x: 799, y: 1 });
+  expect(stroke?.points).toContainEqual({ x: 400, y: 15 });
+
+  const label = mock.fillTexts.find((t) => t.text === "360");
+  expect(label).toBeDefined();
+  expect(label?.x).toBe(400);
+  expect(label?.y).toBe(23);
+});
+
 
