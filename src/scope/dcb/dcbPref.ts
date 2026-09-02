@@ -117,6 +117,7 @@ export interface DcbPrefBody {
   showLocalizer: boolean;
   showRings: boolean;
   showCoastline: boolean;
+  showCompassRose?: boolean;
   defaultLeaderDir: LeaderDir;
   leaderLengthPx: LeaderLengthPx;
   historyDotCount: HistoryDotCount;
@@ -310,6 +311,7 @@ export function serializeDcbPref(view: ScopeView): DcbPrefBody {
     showLocalizer: view.showLocalizer,
     showRings: view.showRings,
     showCoastline: view.showCoastline,
+    showCompassRose: view.showCompassRose,
     defaultLeaderDir: view.defaultLeaderDir,
     leaderLengthPx: view.leaderLengthPx,
     historyDotCount: view.historyDotCount,
@@ -373,6 +375,9 @@ export function applyDcbPref(view: ScopeView, body: DcbPrefBody): void {
   view.showLocalizer = body.showLocalizer === true;
   view.showRings = body.showRings === true;
   view.showCoastline = body.showCoastline === true;
+  if (body.showCompassRose !== undefined) {
+    view.showCompassRose = body.showCompassRose;
+  }
   if (isLeaderDir(body.defaultLeaderDir)) {
     view.defaultLeaderDir = body.defaultLeaderDir;
   }

@@ -38,11 +38,11 @@ Render the STARS Compass Rose overlay onto the radar scope canvas via `drawMapLa
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Compass rose ring and 72 radial tick marks render on the scope canvas with `PALETTE.mapDim` modulated by `BRITE CMP`.
-- [ ] **AC2 —** Heading labels (`360`..`330`) render in `TOOLS` character font size modulated by `BRITE CMP`.
-- [ ] **AC3 —** When `BRITE CMP` is set to `0` / `OFF`, compass rose ticks and labels are dimmed to 0.
-- [ ] **AC4 —** `showCompassRose` setting round-trips cleanly through PREF save and restore.
-- [ ] **AC5 —** Zero regressions across existing video maps, runways, localizers, and range rings.
+- [x] **AC1 —** Compass rose ring and 72 radial tick marks render on the scope canvas with `PALETTE.mapDim` modulated by `BRITE CMP`.
+- [x] **AC2 —** Heading labels (`360`..`330`) render in `TOOLS` character font size modulated by `BRITE CMP`.
+- [x] **AC3 —** When `BRITE CMP` is set to `0` / `OFF`, compass rose ticks and labels are dimmed to 0.
+- [x] **AC4 —** `showCompassRose` setting round-trips cleanly through PREF save and restore.
+- [x] **AC5 —** Zero regressions across existing video maps, runways, localizers, and range rings.
 
 ## Test plan
 

@@ -72,3 +72,25 @@ test("SAVE then reload restores historyRateSec, dwellMode, cursorHome, cursorSpe
   expect(boot.cursorHome).toBe(true);
   expect(boot.cursorSpeed).toBe(8);
 });
+
+test("AC4 — SAVE then reload restores showCompassRose", () => {
+  const store = memoryStorage();
+  const view = kdemView();
+  view.dcbPref.icao = "KDEM";
+  expect(view.showCompassRose).toBe(true);
+  view.showCompassRose = false;
+  saveDcbPref(view, store);
+
+  const boot = kdemView();
+  expect(boot.showCompassRose).toBe(true);
+  loadDcbPrefFromStorage(boot, "KDEM", store);
+  expect(boot.showCompassRose).toBe(false);
+
+  // Toggle back to true
+  view.showCompassRose = true;
+  saveDcbPref(view, store);
+  const boot2 = kdemView();
+  loadDcbPrefFromStorage(boot2, "KDEM", store);
+  expect(boot2.showCompassRose).toBe(true);
+});
+

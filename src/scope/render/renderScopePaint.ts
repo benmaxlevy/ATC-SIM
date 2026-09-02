@@ -126,8 +126,7 @@ export function drawMapLayers(
 ): void {
   const mpa = applyBrite(PALETTE.map, view.brite.mpa);
   const mpb = applyBrite(PALETTE.mapDim, view.brite.mpb);
-  const rrBrite = Math.round((view.brite.rr * (view.brite.cmp ?? 100)) / 100);
-  const rr = applyBrite(PALETTE.mapDim, rrBrite);
+  const rr = applyBrite(PALETTE.mapDim, view.brite.rr);
   ctx.strokeStyle = rr;
   ctx.lineWidth = RING_STROKE_PX;
   if (cache.ringsPath) {
@@ -137,6 +136,32 @@ export function drawMapLayers(
       ctx.beginPath();
       ctx.arc(ring.x, ring.y, ring.radiusPx, 0, Math.PI * 2);
       ctx.stroke();
+    }
+  }
+
+  const cmp = applyBrite(PALETTE.mapDim, view.brite.cmp);
+  if (cache.compassRosePath) {
+    ctx.strokeStyle = cmp;
+    ctx.lineWidth = RING_STROKE_PX;
+    ctx.stroke(cache.compassRosePath);
+  } else if (cache.compassRose) {
+    ctx.strokeStyle = cmp;
+    ctx.lineWidth = RING_STROKE_PX;
+    ctx.beginPath();
+    for (const tick of cache.compassRose.ticks) {
+      ctx.moveTo(tick.x1, tick.y1);
+      ctx.lineTo(tick.x2, tick.y2);
+    }
+    ctx.stroke();
+  }
+
+  if (cache.compassRoseLabels.length > 0) {
+    ctx.font = datablockFontCss(view.charSizes.tools);
+    ctx.fillStyle = cmp;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (const label of cache.compassRoseLabels) {
+      ctx.fillText(label.text, label.x, label.y);
     }
   }
 
