@@ -886,18 +886,16 @@ html[data-dcb-cursor-trap] * {
 }
 
 .command-line {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: relative;
+  flex: 0 0 24px;
+  width: 100%;
   z-index: 3;
-  height: 22px;
   box-sizing: border-box;
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  background: rgba(0, 0, 0, 0.72);
-  border-top: 1px solid #003300;
+  background: #061f0b;
+  border-top: 1px solid #005500;
   border-radius: 0;
   box-shadow: none;
   pointer-events: auto;
@@ -911,7 +909,7 @@ html[data-dcb-cursor-trap] * {
   white-space: nowrap;
   padding: 0 8px;
   font-size: 12px;
-  line-height: 21px;
+  line-height: 23px;
   color: #00ff00;
 }
 
