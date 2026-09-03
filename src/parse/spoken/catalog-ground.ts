@@ -409,6 +409,7 @@ const TRANSITION_STOP = new Set([
   "ident",
   "say",
   "cleared",
+  "clear",
   "intercept",
   "heading",
   "cross",

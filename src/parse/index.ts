@@ -15,7 +15,13 @@ export { PARSE_ERROR } from "./tokens";
 export type { ParseErrorCode } from "./tokens";
 export { parseCommand } from "./parse-command";
 export type { ParseCommandOpts } from "./parse-command";
-export { normalizeSpoken } from "./spoken/normalizer";
+export {
+  lemmatizeToken,
+  lemmatizeTokens,
+  normalizeOrthography,
+  normalizeOrthographyTokens,
+  normalizeSpoken,
+} from "./spoken/normalizer";
 export { matchSpokenPatterns } from "./spoken/pattern-matcher";
 export {
   approachesFromCatalog,

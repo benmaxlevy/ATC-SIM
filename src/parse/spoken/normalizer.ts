@@ -8,6 +8,14 @@
  */
 
 import { countNumberWordsFrom, isNumberish } from "./numbers";
+import {
+  lemmatizeToken,
+  lemmatizeTokens,
+  normalizeOrthography,
+  normalizeOrthographyTokens,
+} from "./lemmatizer";
+
+export { lemmatizeToken, lemmatizeTokens, normalizeOrthography, normalizeOrthographyTokens };
 
 const FILLERS = new Set(["uh", "um", "er", "ah", "please", "now"]);
 
@@ -112,7 +120,13 @@ function applyHomophones(tokens: string[]): string[] {
 }
 
 /** Canonical spoken string for Path A / B. Typed tokens like `H270` survive lowercased. */
-export function normalizeSpoken(text: string): string {
-  const tokens = applyHomophones(applyIcaoAliases(dropFillers(tokenize(text))));
+export function normalizeSpoken(
+  text: string,
+  options?: { catalogFixes?: ReadonlySet<string> | readonly string[] },
+): string {
+  const rawTokens = dropFillers(tokenize(text));
+  const orthoTokens = normalizeOrthographyTokens(rawTokens);
+  const lemmatizedTokens = lemmatizeTokens(orthoTokens, options?.catalogFixes);
+  const tokens = applyHomophones(applyIcaoAliases(lemmatizedTokens));
   return tokens.join(" ");
 }

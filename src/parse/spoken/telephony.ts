@@ -59,6 +59,7 @@ export const RESERVED_SPOKEN: ReadonlySet<string> = new Set([
   "squawk",
   "say",
   "cleared",
+  "clear",
   "intercept",
   "expedite",
   "iden",
