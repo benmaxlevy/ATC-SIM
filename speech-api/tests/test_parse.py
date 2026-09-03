@@ -583,3 +583,30 @@ def test_parse_n_gpu_layers_env_zero_forces_cpu(monkeypatch) -> None:
     monkeypatch.setattr("parse_engine._llama_supports_gpu_offload", lambda: True)
     assert _parse_n_gpu_layers() == 0
     assert _llm_device(0) == "cpu"
+
+
+def test_catalog_guard_rejects_callsign_in_slots() -> None:
+    from parse_engine import guard_catalog_ids
+
+    ctx = {
+        "callsigns": ["EDV9255", "UAL9953"],
+        "fixes": ["BLUFF"],
+        "approaches": [{"id": "I26R", "name": "ILS RWY 26R"}],
+    }
+
+    # Callsign copied into fixId -> rejected
+    bad_fix = ParseOutcome(
+        ok=True,
+        callsign_token="UAL9953",
+        instructions=[{"type": "DIRECT", "fixId": "UAL9953"}],
+    )
+    assert guard_catalog_ids("proceed direct fawger", ctx, bad_fix).error == "PARSE_MISS"
+
+    # Callsign copied into approachId -> rejected
+    bad_approach = ParseOutcome(
+        ok=True,
+        callsign_token="EDV9255",
+        instructions=[{"type": "CLEARED_APPROACH", "approachId": "EDV9255"}],
+    )
+    assert guard_catalog_ids("cleared approach two six right", ctx, bad_approach).error == "PARSE_MISS"
+

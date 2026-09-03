@@ -710,25 +710,26 @@ def guard_catalog_ids(
         token = None
     for instruction in outcome.instructions:
         kind = instruction["type"]
-        if kind in {"DIRECT", "CROSS"} and fixes and instruction.get("fixId") not in fixes:
-            return ParseOutcome(ok=False, error="PARSE_MISS")
-        if (
-            kind in {"DESCEND_VIA", "CLIMB_VIA", "JOIN_PROCEDURE"}
-            and procedures
-            and (
+        if kind in {"DIRECT", "CROSS"}:
+            if roster and instruction.get("fixId") in roster:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+            if fixes and instruction.get("fixId") not in fixes:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+        if kind in {"DESCEND_VIA", "CLIMB_VIA", "JOIN_PROCEDURE"}:
+            if roster and instruction.get("procedureId") in roster:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+            if procedures and (
                 instruction.get("procedureId") not in procedures
                 or not _procedure_spoken_overlap(
                     text, str(instruction.get("procedureId") or ""), ctx.get("procedures") or []
                 )
-            )
-        ):
-            return ParseOutcome(ok=False, error="PARSE_MISS")
-        if (
-            kind in {"EXPECT_APPROACH", "CLEARED_APPROACH", "INTERCEPT_LOCALIZER"}
-            and approaches
-            and instruction.get("approachId") not in approaches
-        ):
-            return ParseOutcome(ok=False, error="PARSE_MISS")
+            ):
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+        if kind in {"EXPECT_APPROACH", "CLEARED_APPROACH", "INTERCEPT_LOCALIZER"}:
+            if roster and instruction.get("approachId") in roster:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+            if approaches and instruction.get("approachId") not in approaches:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
     if token != outcome.callsign_token:
         return ParseOutcome(
             ok=True,
