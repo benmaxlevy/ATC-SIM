@@ -386,6 +386,41 @@ def test_semantic_guard_accepts_go_around_variants() -> None:
     assert guard_instruction_semantics("United 456 goin around", missed).ok
 
 
+def test_semantic_guard_lemmatization() -> None:
+    from parse_engine import (
+        _has_altitude_maintain_evidence,
+        guard_instruction_semantics,
+        normalize_evidence_text,
+    )
+
+    assert normalize_evidence_text("maintained") == "maintain"
+    assert normalize_evidence_text("climbed") == "climb"
+    assert normalize_evidence_text("descended") == "descend"
+    assert normalize_evidence_text("turned") == "turn"
+    assert normalize_evidence_text("intercepted") == "intercept"
+
+    assert _has_altitude_maintain_evidence("maintained 5000")
+    assert _has_altitude_maintain_evidence("maintain 5000")
+
+    maintain_outcome = ParseOutcome(
+        ok=True,
+        instructions=[{"type": "ALTITUDE", "altitudeFt": 5000, "verb": "MAINTAIN"}],
+    )
+    assert guard_instruction_semantics("maintained 5000", maintain_outcome).ok
+
+    climb_outcome = ParseOutcome(
+        ok=True,
+        instructions=[{"type": "ALTITUDE", "altitudeFt": 7000, "verb": "CLIMB"}],
+    )
+    assert guard_instruction_semantics("climbed to 7000", climb_outcome).ok
+
+    turn_outcome = ParseOutcome(
+        ok=True,
+        instructions=[{"type": "FLY_HEADING", "headingDeg": 180, "turn": "LEFT"}],
+    )
+    assert guard_instruction_semantics("turned left 180", turn_outcome).ok
+
+
 def test_catalog_guard_rejects_ids_outside_the_provided_lists() -> None:
     from parse_engine import guard_catalog_ids
 
@@ -548,3 +583,30 @@ def test_parse_n_gpu_layers_env_zero_forces_cpu(monkeypatch) -> None:
     monkeypatch.setattr("parse_engine._llama_supports_gpu_offload", lambda: True)
     assert _parse_n_gpu_layers() == 0
     assert _llm_device(0) == "cpu"
+
+
+def test_catalog_guard_rejects_callsign_in_slots() -> None:
+    from parse_engine import guard_catalog_ids
+
+    ctx = {
+        "callsigns": ["EDV9255", "UAL9953"],
+        "fixes": ["BLUFF"],
+        "approaches": [{"id": "I26R", "name": "ILS RWY 26R"}],
+    }
+
+    # Callsign copied into fixId -> rejected
+    bad_fix = ParseOutcome(
+        ok=True,
+        callsign_token="UAL9953",
+        instructions=[{"type": "DIRECT", "fixId": "UAL9953"}],
+    )
+    assert guard_catalog_ids("proceed direct fawger", ctx, bad_fix).error == "PARSE_MISS"
+
+    # Callsign copied into approachId -> rejected
+    bad_approach = ParseOutcome(
+        ok=True,
+        callsign_token="EDV9255",
+        instructions=[{"type": "CLEARED_APPROACH", "approachId": "EDV9255"}],
+    )
+    assert guard_catalog_ids("cleared approach two six right", ctx, bad_approach).error == "PARSE_MISS"
+

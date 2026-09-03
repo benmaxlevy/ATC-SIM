@@ -49,4 +49,59 @@ describe("pattern-matcher", () => {
     if (!res.ok) return;
     expect(res.instructions.some((i) => i.type === "DIRECT")).toBe(true);
   });
+
+  test("cross fix at and maintain altitude (FAA phraseology)", () => {
+    const res = parse("DAL123 cross SEMAX at and maintain three thousand");
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.callsignToken).toBe("DAL123");
+    expect(res.instructions).toEqual([
+      {
+        type: "CROSS",
+        fixId: "SEMAX",
+        altitudeFt: 3000,
+        restriction: "AT",
+      },
+    ]);
+  });
+
+  test("cross fix at and maintain flight level", () => {
+    const res = parse("DAL123 cross SEMAX at and maintain flight level one niner zero");
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.instructions).toEqual([
+      {
+        type: "CROSS",
+        fixId: "SEMAX",
+        altitudeFt: 19000,
+        restriction: "AT",
+      },
+    ]);
+  });
+
+  test("cross fix at or above / at or below", () => {
+    const resAbove = parse("DAL123 cross SEMAX at or above five thousand");
+    expect(resAbove.ok).toBe(true);
+    if (!resAbove.ok) return;
+    expect(resAbove.instructions).toEqual([
+      {
+        type: "CROSS",
+        fixId: "SEMAX",
+        altitudeFt: 5000,
+        restriction: "AT_OR_ABOVE",
+      },
+    ]);
+
+    const resBelow = parse("DAL123 cross SEMAX at or below four thousand");
+    expect(resBelow.ok).toBe(true);
+    if (!resBelow.ok) return;
+    expect(resBelow.instructions).toEqual([
+      {
+        type: "CROSS",
+        fixId: "SEMAX",
+        altitudeFt: 4000,
+        restriction: "AT_OR_BELOW",
+      },
+    ]);
+  });
 });

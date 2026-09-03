@@ -26,6 +26,7 @@ import {
   groundInstructionFixes,
   groundInstructionProcedures,
   groundProcedureToCatalog,
+  normalizeFixKey,
   sanitizeCatalogApproaches,
   sanitizeCatalogProcedures,
   sanitizeFixIds,
@@ -75,6 +76,7 @@ const IDENT_TRIGGERS = new Set([
   "from",
   "via",
   "cleared",
+  "clear",
   "ils",
   "dct",
   "x",
@@ -84,6 +86,20 @@ const IDENT_TRIGGERS = new Set([
   "exp",
   "cvia",
 ]);
+
+const APPROACH_CUES = new Set([
+  "ils",
+  "approach",
+  "localizer",
+  "runway",
+  "cleared",
+  "clear",
+  "intercept",
+]);
+
+function hasApproachCue(tokens: readonly string[]): boolean {
+  return tokens.some((tok) => APPROACH_CUES.has(tok.toLowerCase()));
+}
 
 const SLOT_SKIP = new Set([
   "to",
@@ -156,6 +172,9 @@ function identifierSlotTokens(normalized: string): string[] {
       continue;
     }
     push(parts.join(""));
+    for (const part of parts) {
+      push(part);
+    }
     if (parts.length > 1) {
       push(parts[parts.length - 1]!);
     }
@@ -203,27 +222,246 @@ function matchProceduresForTokens(
   return out;
 }
 
-function matchApproachesForTokens(
+const RUNWAY_ONES: Readonly<Record<string, number>> = {
+  zero: 0,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+};
+
+const RUNWAY_TEENS: Readonly<Record<string, number>> = {
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  thirteen: 13,
+  fourteen: 14,
+  fifteen: 15,
+  sixteen: 16,
+  seventeen: 17,
+  eighteen: 18,
+  nineteen: 19,
+};
+
+const RUNWAY_TENS: Readonly<Record<string, number>> = {
+  twenty: 20,
+  thirty: 30,
+};
+
+const RUNWAY_SIDES: Readonly<Record<string, string>> = {
+  left: "L",
+  l: "L",
+  lima: "L",
+  right: "R",
+  r: "R",
+  romeo: "R",
+  center: "C",
+  centre: "C",
+  c: "C",
+  charlie: "C",
+};
+
+function parseRunwaySide(tok: string | undefined): string | null {
+  if (!tok) return null;
+  return RUNWAY_SIDES[tok.toLowerCase()] ?? null;
+}
+
+interface ParsedSpokenRunway {
+  runway: string;
+  unpadded: string;
+}
+
+function parseSpokenRunwayTokens(tokens: readonly string[]): ParsedSpokenRunway[] {
+  const results: ParsedSpokenRunway[] = [];
+  const seen = new Set<string>();
+  const add = (num: number, side: string) => {
+    if (num < 1 || num > 36) return;
+    const padded = `${String(num).padStart(2, "0")}${side}`;
+    const unpadded = `${num}${side}`;
+    if (!seen.has(padded)) {
+      seen.add(padded);
+      results.push({ runway: padded, unpadded });
+    }
+  };
+
+  for (const token of tokens) {
+    const raw = token.trim();
+    const compact = raw.match(/^(?:RW|RWY|ILS|I|LOC)?(\d{1,2})([LRC])?$/i);
+    if (compact) {
+      add(Number(compact[1]), compact[2]?.toUpperCase() ?? "");
+    }
+    const upper = raw.toUpperCase();
+    const joined = upper.match(
+      /^(ZERO|ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|ELEVEN|TWELVE|THIRTEEN|FOURTEEN|FIFTEEN|SIXTEEN|SEVENTEEN|EIGHTEEN|NINETEEN|TWENTY|THIRTY)(ZERO|ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE)?(LEFT|RIGHT|CENTER|CENTRE|L|R|C)?$/,
+    );
+    if (joined) {
+      const p1 = joined[1]!.toLowerCase();
+      const p2 = joined[2]?.toLowerCase();
+      const p3 = joined[3]?.toLowerCase();
+      let num: number | null = null;
+      if (p1 in RUNWAY_TENS && (p2 || p3)) {
+        const base = RUNWAY_TENS[p1]!;
+        const addDigit = p2 && p2 in RUNWAY_ONES ? RUNWAY_ONES[p2]! : 0;
+        num = base + addDigit;
+      } else if (p1 in RUNWAY_ONES && p2 && p2 in RUNWAY_ONES) {
+        num = RUNWAY_ONES[p1]! * 10 + RUNWAY_ONES[p2]!;
+      } else if (p1 in RUNWAY_TEENS && (p2 || p3)) {
+        num = RUNWAY_TEENS[p1]!;
+      } else if (p1 in RUNWAY_ONES && p3) {
+        num = RUNWAY_ONES[p1]!;
+      }
+      if (num !== null) {
+        const side = p3 ? (RUNWAY_SIDES[p3] ?? "") : "";
+        add(num, side);
+      }
+    }
+  }
+
+  let i = 0;
+  while (i < tokens.length) {
+    let cursor = i;
+    const hasRunwayPrefix =
+      tokens[cursor]?.toLowerCase() === "runway" || tokens[cursor]?.toLowerCase() === "rwy";
+    if (hasRunwayPrefix) {
+      cursor += 1;
+    }
+    const t0 = tokens[cursor]?.toLowerCase();
+    const t1 = tokens[cursor + 1]?.toLowerCase();
+    const t2 = tokens[cursor + 2]?.toLowerCase();
+
+    // Guard against 3-digit headings (e.g. "two six zero")
+    if (t0 && t1 && t2 && t0 in RUNWAY_ONES && t1 in RUNWAY_ONES && t2 in RUNWAY_ONES) {
+      i = cursor + 3;
+      continue;
+    }
+
+    // Case 1: Two single digits: "two" + "six" (+ optional side)
+    if (t0 && t1 && t0 in RUNWAY_ONES && t1 in RUNWAY_ONES) {
+      const num = RUNWAY_ONES[t0]! * 10 + RUNWAY_ONES[t1]!;
+      const side = parseRunwaySide(t2) ?? "";
+      add(num, side);
+      i = cursor + 2 + (side ? 1 : 0);
+      continue;
+    }
+
+    // Case 2: Tens + single digit: "twenty" + "six" (+ optional side)
+    if (t0 && t0 in RUNWAY_TENS && t1 && t1 in RUNWAY_ONES && RUNWAY_ONES[t1]! > 0) {
+      const num = RUNWAY_TENS[t0]! + RUNWAY_ONES[t1]!;
+      const side = parseRunwaySide(t2) ?? "";
+      add(num, side);
+      i = cursor + 2 + (side ? 1 : 0);
+      continue;
+    }
+
+    // Case 3: Tens alone: "twenty" (+ optional side)
+    if (t0 && t0 in RUNWAY_TENS) {
+      const num = RUNWAY_TENS[t0]!;
+      const side = parseRunwaySide(t1) ?? "";
+      if (side !== "" || hasRunwayPrefix) {
+        add(num, side);
+        i = cursor + 1 + (side ? 1 : 0);
+        continue;
+      }
+    }
+
+    // Case 4: Teens: "ten" ... "nineteen" (+ optional side)
+    if (t0 && t0 in RUNWAY_TEENS) {
+      const num = RUNWAY_TEENS[t0]!;
+      const side = parseRunwaySide(t1) ?? "";
+      if (side !== "" || hasRunwayPrefix) {
+        add(num, side);
+        i = cursor + 1 + (side ? 1 : 0);
+        continue;
+      }
+    }
+
+    // Case 5: Single digit: "four" (+ optional side)
+    if (t0 && t0 in RUNWAY_ONES && RUNWAY_ONES[t0]! > 0) {
+      const side = parseRunwaySide(t1) ?? "";
+      if (side !== "" || hasRunwayPrefix) {
+        add(RUNWAY_ONES[t0]!, side);
+        i = cursor + 1 + (side ? 1 : 0);
+        continue;
+      }
+    }
+
+    i += 1;
+  }
+
+  return results;
+}
+
+export function matchApproachesForTokens(
   tokens: readonly string[],
   approaches: readonly CatalogApproach[],
 ): CatalogApproach[] {
   const out: CatalogApproach[] = [];
   const seen = new Set<string>();
-  for (const token of tokens) {
-    const id = groundApproachToCatalog(token, approaches);
+
+  const tryAdd = (id: string | null) => {
     if (id === null || seen.has(id)) {
-      continue;
+      return false;
     }
     const row = approaches.find((item) => item.id === id);
     if (row === undefined) {
-      continue;
+      return false;
     }
     seen.add(id);
     out.push({ ...row });
-    if (out.length >= MAX_PATH_C_FIXES) {
-      break;
+    return out.length >= MAX_PATH_C_FIXES;
+  };
+
+  // 1. Direct token match
+  for (const token of tokens) {
+    const id = groundApproachToCatalog(token, approaches);
+    if (tryAdd(id)) {
+      return out;
     }
   }
+
+  // 2. Map number words to runway numbers (e.g. "two six right" or "twenty six right" -> "26R")
+  const spokenRunways = parseSpokenRunwayTokens(tokens);
+  for (const { runway, unpadded } of spokenRunways) {
+    // First, check approaches that directly have this runway
+    for (const app of approaches) {
+      if (
+        (app.runway && normalizeFixKey(app.runway) === runway) ||
+        normalizeFixKey(app.id).endsWith(runway)
+      ) {
+        if (tryAdd(app.id)) {
+          return out;
+        }
+      }
+    }
+
+    const candidates = [
+      runway,
+      `ILS${runway}`,
+      `I${runway}`,
+      `RW${runway}`,
+      `RWY${runway}`,
+      `RUNWAY${runway}`,
+      unpadded,
+      `ILS${unpadded}`,
+      `I${unpadded}`,
+      `RW${unpadded}`,
+      `LOC${runway}`,
+      `RNAV${runway}`,
+      `GPS${runway}`,
+    ];
+    for (const cand of candidates) {
+      const id = groundApproachToCatalog(cand, approaches);
+      if (tryAdd(id)) {
+        return out;
+      }
+    }
+  }
+
   return out;
 }
 
@@ -285,7 +523,7 @@ function pathCProcedureList(
   return [];
 }
 
-function pathCApproachList(
+export function pathCApproachList(
   approaches: readonly CatalogApproach[],
   queryTokens: readonly string[],
 ): CatalogApproach[] {
@@ -299,10 +537,7 @@ function pathCApproachList(
     }
     return matched;
   }
-  if (queryTokens.length > 0) {
-    return [];
-  }
-  if (approaches.length <= MAX_PATH_C_FIXES) {
+  if (hasApproachCue(queryTokens) || approaches.length <= MAX_PATH_C_FIXES) {
     return cloneApproaches(approaches);
   }
   return [];

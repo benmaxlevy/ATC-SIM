@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from config import Settings
 from engines import SttEngine, TtsEngine, build_stt, build_tts, sanitize_stt_fixes, sanitize_stt_procedures
 from logconfig import configure_logging
+from normalizer import normalize_stt_text
 from parse_engine import ParseEngine, build_parse
 from wavutil import is_wave
 
@@ -124,7 +125,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(status_code=503, detail="STT_FAILED") from None
         if not isinstance(confidence, (int, float)) or confidence != confidence:
             confidence = 1.0
-        return {"text": str(text), "confidence": float(confidence)}
+        text = normalize_stt_text(str(text), recognized_fixes=fixes)
+        return {"text": text, "confidence": float(confidence)}
 
     @app.post("/tts")
     async def tts(payload: TtsRequest, request: Request) -> Response:

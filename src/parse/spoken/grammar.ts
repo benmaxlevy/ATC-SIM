@@ -496,7 +496,7 @@ function ilsApproachIdFromRunway(rwy: string): string {
 
 function tryCleared(c: Cursor): Instruction | null {
   const start = c.i;
-  if (!take(c, "cleared") || !take(c, "ils")) {
+  if ((!take(c, "clear") && !take(c, "cleared")) || !take(c, "ils")) {
     c.i = start;
     return null;
   }

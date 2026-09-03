@@ -55,7 +55,7 @@ SYSTEM_PROMPT = """Convert ATC radio into Command IR v0 JSON. Output JSON only; 
 
 Repair fused, slurred, and compact ASR when the intended clearance is clear. Normalize airline telephony to ICAO (Delta DAL, Southwest SWA, American AAL, United UAL, JetBlue JBU, Alaska ASA, Frontier FFT, Spirit NKS, FedEx FDX, UPS UPS), spoken digits to a callsign token, niner/tree/fife to 9/3/5, headings/altitudes to numbers, heading 360 to 0, and grouped thousands (one one thousand is 11000). Preserve a recognizable spoken callsign; use onFrequency only when its flight number uniquely repairs noisy audio. Never substitute selected or unrelated traffic.
 
-“turn left heading 270” is FLY_HEADING with LEFT, never TURN_DEGREES. ASR “turn leftening 360” and “turn leftening one five zero” mean “turn left heading …” and are FLY_HEADING with LEFT. “zero niner zero” is heading 90. “fly heading” with no left/right is SHORTEST; never invent LEFT or RIGHT. “turn 20 degrees right” is TURN_DEGREES with RIGHT and degrees 20, never FLY_HEADING. TURN_DEGREES requires “degrees” without a heading. “present heading” is PRESENT_HEADING. “descend and maintain 4000” and ASR “descent and maintain 4000” are ALTITUDE with DESCEND and altitudeFt 4000. “maintain 210 knots” is SPEED with MAINTAIN and speedKt 210, never FLY_HEADING or ALTITUDE. “increase speed to 250 knots” is SPEED INCREASE; “reduce speed” is REDUCE. “maintain five thousand, maintain two one zero knots” is both ALTITUDE MAINTAIN 5000 and SPEED MAINTAIN 210; never drop one instruction. DESCEND_VIA and CLIMB_VIA require the word “via” plus a listed procedure; never use VIA for an altitude assignment; never map an unmatched spoken name onto a different listed procedure. “without delay” means expedite, never untilEstablished; “until established” belongs on ALTITUDE. IDENT, go around, localizer intercept, and cleared/expect approach retain their normal instruction meanings. Position reports never imply DIRECT.
+“turn left heading 270” is FLY_HEADING with LEFT, never TURN_DEGREES. ASR “turn leftening 360” and “turn leftening one five zero” mean “turn left heading …” and are FLY_HEADING with LEFT. “zero niner zero” is heading 90. “fly heading” with no left/right is SHORTEST; never invent LEFT or RIGHT. “turn 20 degrees right” is TURN_DEGREES with RIGHT and degrees 20, never FLY_HEADING. TURN_DEGREES requires “degrees” without a heading. “present heading” is PRESENT_HEADING. “descend and maintain 4000” and ASR “descent and maintain 4000” are ALTITUDE with DESCEND and altitudeFt 4000. “cross <fix> at and maintain <altitude>” maps to {"type": "CROSS", "restriction": "AT"}. “maintain 210 knots” is SPEED with MAINTAIN and speedKt 210, never FLY_HEADING or ALTITUDE. “increase speed to 250 knots” is SPEED INCREASE; “reduce speed” is REDUCE. “maintain five thousand, maintain two one zero knots” is both ALTITUDE MAINTAIN 5000 and SPEED MAINTAIN 210; never drop one instruction. DESCEND_VIA and CLIMB_VIA require the word “via” plus a listed procedure; never use VIA for an altitude assignment; never map an unmatched spoken name onto a different listed procedure. “without delay” means expedite, never untilEstablished; “until established” belongs on ALTITUDE. IDENT, go around, localizer intercept, and cleared/expect approach retain their normal instruction meanings. Position reports never imply DIRECT.
 
 Position advisories are not commands, but never stop parsing later sentences. “You are 15 miles from a fix. Maintain 4000 until established on the localizer. Cleared ILS runway 09 approach.” has two instructions after the advisory: ALTITUDE with MAINTAIN, altitudeFt 4000, untilEstablished true; then CLEARED_APPROACH using the matching approaches= id. Preserve every independent instruction in spoken order. “Turn 40 degrees left. Intercept runway 09 localizer. Maintain 5000.” requires three instructions: TURN_DEGREES, INTERCEPT_LOCALIZER using the matching approaches= id, then ALTITUDE. Do not drop one instruction or combine it into another.
 
@@ -544,7 +544,7 @@ def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str)
     if instruction_type == "EXPECT_APPROACH":
         return has(r"\bexpect\b") and has(r"\b(approach|ils|localizer|runway)\b")
     if instruction_type == "CLEARED_APPROACH":
-        return has(r"\bcleared\b|\bclear\s+to\b") and has(r"\b(approach|ils|localizer|runway)\b")
+        return has(r"\b(?:cleared|clear)\b") and has(r"\b(approach|ils|localizer|runway)\b")
     if instruction_type == "INTERCEPT_LOCALIZER":
         return has(r"\bintercept\b") and has(r"\b(localizer|loc)\b")
     if instruction_type == "IDENT":
@@ -567,12 +567,42 @@ def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str)
 
 
 _ALTITUDE_LEX = re.compile(r"\b(thousand|thousands|feet|flight\s*level)\b")
-_MAINTAIN_COMPACT_FT = re.compile(r"\bmaintain\s+\d{3,5}\b(?!\s*(?:knots?|speed|mach))")
+_MAINTAIN_COMPACT_FT = re.compile(r"\bmaintain(?:ed)?\s+\d{3,5}\b(?!\s*(?:knots?|speed|mach))")
+
+_VERB_LEMMAS = {
+    "maintained": "maintain",
+    "maintaining": "maintain",
+    "descended": "descend",
+    "descending": "descend",
+    "climbed": "climb",
+    "climbing": "climb",
+    "turned": "turn",
+    "turning": "turn",
+    "intercepted": "intercept",
+    "intercepting": "intercept",
+    "proceeded": "proceed",
+    "proceeding": "proceed",
+    "expected": "expect",
+    "expecting": "expect",
+    "joined": "join",
+    "joining": "join",
+    "crossed": "cross",
+    "crossing": "cross",
+    "increased": "increase",
+    "increasing": "increase",
+    "reduced": "reduce",
+    "reducing": "reduce",
+    "slowed": "slow",
+    "slowing": "slow",
+    "squawked": "squawk",
+    "squawking": "squawk",
+}
+_LEMMA_RE = re.compile(r"\b(" + "|".join(_VERB_LEMMAS.keys()) + r")\b")
 
 
 def _has_altitude_maintain_evidence(text: str) -> bool:
     """True when a maintain-altitude phrase exists, even if knots also appear."""
-    if re.search(r"\bmaintain\b", text) is None:
+    if re.search(r"\bmaintain(?:ed)?\b", text) is None:
         return False
     if _ALTITUDE_LEX.search(text) is not None:
         return True
@@ -580,7 +610,9 @@ def _has_altitude_maintain_evidence(text: str) -> bool:
 
 
 def normalize_evidence_text(text: str) -> str:
-    return text.lower()
+    from normalizer import normalize_stt_text
+
+    return normalize_stt_text(text)
 
 
 def guard_instruction_semantics(text: str, outcome: ParseOutcome) -> ParseOutcome:
@@ -678,25 +710,26 @@ def guard_catalog_ids(
         token = None
     for instruction in outcome.instructions:
         kind = instruction["type"]
-        if kind in {"DIRECT", "CROSS"} and fixes and instruction.get("fixId") not in fixes:
-            return ParseOutcome(ok=False, error="PARSE_MISS")
-        if (
-            kind in {"DESCEND_VIA", "CLIMB_VIA", "JOIN_PROCEDURE"}
-            and procedures
-            and (
+        if kind in {"DIRECT", "CROSS"}:
+            if roster and instruction.get("fixId") in roster:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+            if fixes and instruction.get("fixId") not in fixes:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+        if kind in {"DESCEND_VIA", "CLIMB_VIA", "JOIN_PROCEDURE"}:
+            if roster and instruction.get("procedureId") in roster:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+            if procedures and (
                 instruction.get("procedureId") not in procedures
                 or not _procedure_spoken_overlap(
                     text, str(instruction.get("procedureId") or ""), ctx.get("procedures") or []
                 )
-            )
-        ):
-            return ParseOutcome(ok=False, error="PARSE_MISS")
-        if (
-            kind in {"EXPECT_APPROACH", "CLEARED_APPROACH", "INTERCEPT_LOCALIZER"}
-            and approaches
-            and instruction.get("approachId") not in approaches
-        ):
-            return ParseOutcome(ok=False, error="PARSE_MISS")
+            ):
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+        if kind in {"EXPECT_APPROACH", "CLEARED_APPROACH", "INTERCEPT_LOCALIZER"}:
+            if roster and instruction.get("approachId") in roster:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+            if approaches and instruction.get("approachId") not in approaches:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
     if token != outcome.callsign_token:
         return ParseOutcome(
             ok=True,
@@ -904,14 +937,18 @@ class LlamaParseEngine:
             return ParseOutcome(ok=False, error="SCHEMA")
         if not text.strip():
             return ParseOutcome(ok=False, error="PARSE_MISS")
-        user = build_parse_user_message(text, source, context)
+        from normalizer import normalize_stt_text
+
+        fixes = context.get("fixes") if isinstance(context, dict) else None
+        normalized_text = normalize_stt_text(text, recognized_fixes=fixes)
+        user = build_parse_user_message(normalized_text, source, context)
         kwargs: dict[str, Any] = {
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user},
             ],
             "temperature": 0.0,
-            "max_tokens": 512,
+            "max_tokens": 128,
         }
         if self._grammar is not None:
             kwargs["grammar"] = self._grammar
@@ -930,7 +967,7 @@ class LlamaParseEngine:
         if parsed is None:
             return ParseOutcome(ok=False, error="SCHEMA")
         outcome = validate_parse_json(parsed)
-        guarded = guard_catalog_ids(text, context, guard_instruction_semantics(text, outcome))
+        guarded = guard_catalog_ids(normalized_text, context, guard_instruction_semantics(normalized_text, outcome))
         if outcome.ok and not guarded.ok:
             log.info(
                 "parse guard miss types=%s",

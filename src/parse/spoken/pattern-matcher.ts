@@ -38,6 +38,7 @@ const COMMAND_TRIGGERS = new Set([
   "direct",
   "join",
   "cleared",
+  "clear",
   "intercept",
   "cross",
   "heading",
@@ -253,6 +254,9 @@ function matchCross(
     } else if (tokens[j + 1] === "or" && tokens[j + 2] === "below") {
       restriction = "AT_OR_BELOW";
       j += 3;
+    } else if (tokens[j + 1] === "and" && tokens[j + 2] === "maintain") {
+      restriction = "AT";
+      j += 3;
     } else {
       restriction = "AT";
       j += 1;
@@ -298,7 +302,7 @@ function matchClearedApproach(
   i: number,
   approaches: readonly CatalogApproach[],
 ): { instruction: Instruction; next: number } | null {
-  if (tokens[i] !== "cleared") {
+  if (tokens[i] !== "cleared" && tokens[i] !== "clear") {
     return null;
   }
   let j = i + 1;
@@ -688,7 +692,10 @@ function matchDirect(
   catalog: readonly string[],
 ): { instruction: Instruction; next: number } | null {
   let j = i;
-  if ((tokens[j] === "proceed" || tokens[j] === "cleared") && tokens[j + 1] === "direct") {
+  if (
+    (tokens[j] === "proceed" || tokens[j] === "cleared" || tokens[j] === "clear") &&
+    tokens[j + 1] === "direct"
+  ) {
     j += 2;
   } else if (tokens[j] === "direct") {
     j += 1;
