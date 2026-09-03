@@ -151,15 +151,12 @@ test("Path C payload context includes retained approaches for cleared approach p
     { id: "I04L", name: "ILS RWY 04L", runway: "04L" },
   ];
 
-  await parseCommand(
-    "Delta one two three join the localizer for runway two six right",
-    {
-      source: "voice",
-      pathC: true,
-      parsePathC,
-      approaches: facilityApproaches,
-    },
-  );
+  await parseCommand("Delta one two three join the localizer for runway two six right", {
+    source: "voice",
+    pathC: true,
+    parsePathC,
+    approaches: facilityApproaches,
+  });
 
   expect(capturedContext).toBeDefined();
   expect(capturedContext?.approaches).toBeDefined();

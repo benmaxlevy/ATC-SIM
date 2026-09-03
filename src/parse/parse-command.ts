@@ -489,7 +489,7 @@ function pathCFixIds(
     if (catalog.length <= MAX_PATH_C_FIXES) {
       return [...catalog];
     }
-    return retrieved;
+    return [...retrieved];
   }
   if (queryTokens.length > 0) {
     return [];
