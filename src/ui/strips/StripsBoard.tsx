@@ -98,7 +98,7 @@ function useSafeState<T>(initialValue: T | (() => T)): [T, (action: T | ((prev: 
 export function StripsBoard({
   departures = [],
   arrivals = [],
-  facilityTitle = DEFAULT_FACILITY_TITLE,
+  facilityTitle: _facilityTitle = DEFAULT_FACILITY_TITLE,
   onSelectStrip,
   selectedStripId,
   className,
@@ -186,34 +186,6 @@ export function StripsBoard({
 
   return (
     <div className={`strips-board ${className ?? ""}`.trim()} data-testid="strips-board">
-      {/* Facility Header Bar */}
-      <header className="board-header" data-testid="board-header">
-        <h1 className="board-title" data-testid="board-title">
-          {facilityTitle}
-        </h1>
-        <div className="board-header-meta" data-testid="board-header-meta">
-          <button
-            type="button"
-            className="strips-layout-toggle-btn"
-            data-testid="strips-layout-toggle-btn"
-            onClick={() => setLayoutMode((m) => (m === "horizontal" ? "vertical" : "horizontal"))}
-            title={
-              layoutMode === "horizontal"
-                ? "Switch to stacked vertical layout"
-                : "Switch to side-by-side columns layout"
-            }
-          >
-            {layoutMode === "horizontal" ? "[ ⬒ STACKED ]" : "[ ◫ COLUMNS ]"}
-          </button>
-          <span className="board-meta-item" data-testid="board-meta-departures">
-            DEP: {departuresList.length}
-          </span>
-          <span className="board-meta-item" data-testid="board-meta-arrivals">
-            ARR: {arrivalsList.length}
-          </span>
-        </div>
-      </header>
-
       {/* Two-Column / Two-Row Rack Bay Container */}
       <div
         className={`bay-container ${layoutMode === "vertical" ? "bay-vertical" : "bay-horizontal"}`}
@@ -235,27 +207,27 @@ export function StripsBoard({
             className="rack-header"
             data-testid="rack-header-departures"
             onClick={() => {
-              if (departuresCollapsed) {
-                setDeparturesCollapsed(false);
-              }
+              setDeparturesCollapsed((c) => !c);
             }}
           >
             <span className="rack-title">Departures</span>
-            <button
-              type="button"
-              className="rack-collapse-btn"
-              data-testid="collapse-departures-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                setDeparturesCollapsed((c) => !c);
-              }}
-              title={departuresCollapsed ? "Expand departures rack" : "Collapse departures rack"}
-              aria-label={
-                departuresCollapsed ? "Expand departures rack" : "Collapse departures rack"
-              }
-            >
-              {depIndicator}
-            </button>
+            <div className="rack-header-actions" data-testid="rack-header-actions-departures">
+              <button
+                type="button"
+                className="rack-collapse-btn"
+                data-testid="collapse-departures-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeparturesCollapsed((c) => !c);
+                }}
+                title={departuresCollapsed ? "Expand departures rack" : "Collapse departures rack"}
+                aria-label={
+                  departuresCollapsed ? "Expand departures rack" : "Collapse departures rack"
+                }
+              >
+                {depIndicator}
+              </button>
+            </div>
           </div>
           <div
             className="rack-strip-list"
@@ -296,25 +268,25 @@ export function StripsBoard({
             className="rack-header"
             data-testid="rack-header-arrivals"
             onClick={() => {
-              if (arrivalsCollapsed) {
-                setArrivalsCollapsed(false);
-              }
+              setArrivalsCollapsed((c) => !c);
             }}
           >
             <span className="rack-title">Arrivals</span>
-            <button
-              type="button"
-              className="rack-collapse-btn"
-              data-testid="collapse-arrivals-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                setArrivalsCollapsed((c) => !c);
-              }}
-              title={arrivalsCollapsed ? "Expand arrivals rack" : "Collapse arrivals rack"}
-              aria-label={arrivalsCollapsed ? "Expand arrivals rack" : "Collapse arrivals rack"}
-            >
-              {arrIndicator}
-            </button>
+            <div className="rack-header-actions" data-testid="rack-header-actions-arrivals">
+              <button
+                type="button"
+                className="rack-collapse-btn"
+                data-testid="collapse-arrivals-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setArrivalsCollapsed((c) => !c);
+                }}
+                title={arrivalsCollapsed ? "Expand arrivals rack" : "Collapse arrivals rack"}
+                aria-label={arrivalsCollapsed ? "Expand arrivals rack" : "Collapse arrivals rack"}
+              >
+                {arrIndicator}
+              </button>
+            </div>
           </div>
           <div
             className="rack-strip-list"
@@ -339,6 +311,23 @@ export function StripsBoard({
           </div>
         </section>
       </div>
+
+      {/* Strips Board Footer with Minimal Layout Toggle Button */}
+      <footer className="strips-board-footer" data-testid="strips-board-footer">
+        <button
+          type="button"
+          className="strips-layout-toggle-btn"
+          data-testid="strips-layout-toggle-btn"
+          onClick={() => setLayoutMode((m) => (m === "horizontal" ? "vertical" : "horizontal"))}
+          title={
+            layoutMode === "horizontal"
+              ? "Switch to stacked vertical layout"
+              : "Switch to side-by-side columns layout"
+          }
+        >
+          {layoutMode === "horizontal" ? "Stacked" : "Columns"}
+        </button>
+      </footer>
     </div>
   );
 }

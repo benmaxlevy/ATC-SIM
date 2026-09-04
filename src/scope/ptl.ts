@@ -149,18 +149,12 @@ export function drawPredictedTrackLine(
   toX: number,
   toY: number,
   color: string,
-  capTickPx: number = PTL_CAP_TICK_PX,
+  _capTickPx: number = PTL_CAP_TICK_PX,
 ): void {
   ctx.strokeStyle = color;
   ctx.lineWidth = PTL_STROKE_PX;
   ctx.beginPath();
   ctx.moveTo(fromX, fromY);
   ctx.lineTo(toX, toY);
-  ctx.stroke();
-
-  const cap = ptlCapTickOffsets(fromX, fromY, toX, toY, capTickPx);
-  ctx.beginPath();
-  ctx.moveTo(toX - cap.dx, toY - cap.dy);
-  ctx.lineTo(toX + cap.dx, toY + cap.dy);
   ctx.stroke();
 }

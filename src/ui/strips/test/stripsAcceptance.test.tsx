@@ -41,11 +41,11 @@ describe("T02-93 Flight Progress Strips Integration and Acceptance", () => {
         createElement(StripsBoard, { departures: mockDepartures, arrivals: mockArrivals }),
       );
 
-      // Root board element and header
+      // Root board element and racks
       expect(html).toContain('class="strips-board"');
       expect(html).toContain('data-testid="strips-board"');
-      expect(html).toContain('data-testid="board-header"');
-      expect(html).toContain("ATL — Flight Progress Strips");
+      expect(html).not.toContain('data-testid="board-header"');
+      expect(html).toContain('data-testid="strips-layout-toggle-btn"');
 
       // Two-column rack bay container
       expect(html).toContain('data-testid="bay-container"');
@@ -233,7 +233,9 @@ describe("T02-93 Flight Progress Strips Integration and Acceptance", () => {
       });
 
       // Navigate tree to first departure strip and select it
-      const bayContainer = tree.props.children[1];
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
       const departuresRack = bayContainer.props.children[0];
       const depStripList = departuresRack.props.children[1];
       const firstDepStrip = depStripList.props.children[0];

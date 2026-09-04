@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
 // @ts-expect-error tsconfig has no @types/node
 import { readFileSync } from "node:fs";
-import { DEFAULT_FACILITY_TITLE, StripsBoard } from "../StripsBoard";
+import { StripsBoard } from "../StripsBoard";
 import { mockAAL412, mockArrivals, mockDAL882, mockDepartures, mockN415SP } from "../mockFixture";
 import type { ArrivalStripData, DepartureStripData } from "../types";
 
@@ -13,30 +13,21 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
   // --------------------------------------------------------------------------
   // AC1: Header and 2-column rack container with Departures and Arrivals racks
   // --------------------------------------------------------------------------
-  describe("AC1 — Header and 2-column rack container structure", () => {
-    test("renders .strips-board root container and .board-header", () => {
+  describe("AC1 — 2-column rack container structure", () => {
+    test("renders .strips-board root container without top board-header", () => {
       const html = renderToStaticMarkup(createElement(StripsBoard));
 
       expect(html).toContain('class="strips-board"');
       expect(html).toContain('data-testid="strips-board"');
-      expect(html).toContain('class="board-header"');
-      expect(html).toContain('data-testid="board-header"');
+      expect(html).not.toContain('class="board-header"');
+      expect(html).not.toContain('data-testid="board-header"');
     });
 
-    test("renders default facility title ATL — Flight Progress Strips", () => {
+    test("does not render top facility title or board header", () => {
       const html = renderToStaticMarkup(createElement(StripsBoard));
 
-      expect(html).toContain('class="board-title"');
-      expect(html).toContain(DEFAULT_FACILITY_TITLE);
-      expect(html).toContain("ATL — Flight Progress Strips");
-    });
-
-    test("renders custom facility title when facilityTitle prop is provided", () => {
-      const customTitle = "KBOS_TWR — Tower Progress Bay";
-      const html = renderToStaticMarkup(createElement(StripsBoard, { facilityTitle: customTitle }));
-
-      expect(html).toContain(customTitle);
-      expect(html).not.toContain(DEFAULT_FACILITY_TITLE);
+      expect(html).not.toContain('class="board-title"');
+      expect(html).not.toContain("ATL — Flight Progress Strips");
     });
 
     test("renders .bay-container with departures and arrivals rack columns", () => {
@@ -115,7 +106,7 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
       expect(html).toContain("No arrival strips");
     });
 
-    test("board header meta displays DEP and ARR summary counts", () => {
+    test("does not render board header meta DEP and ARR summary counts", () => {
       const html = renderToStaticMarkup(
         createElement(StripsBoard, {
           departures: [mockDAL882],
@@ -123,10 +114,10 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
         }),
       );
 
-      expect(html).toContain('data-testid="board-meta-departures"');
-      expect(html).toContain("DEP: 1");
-      expect(html).toContain('data-testid="board-meta-arrivals"');
-      expect(html).toContain("ARR: 2");
+      expect(html).not.toContain('data-testid="board-meta-departures"');
+      expect(html).not.toContain('data-testid="board-meta-arrivals"');
+      expect(html).not.toContain("DEP:");
+      expect(html).not.toContain("ARR:");
     });
   });
 
@@ -141,10 +132,9 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
       expect(cssContent).toMatch(/\.strips-board\s*\{[^}]*overflow:\s*hidden;/i);
     });
 
-    test("strips.css defines .board-header with #000000, bottom border #222, and monospace font", () => {
-      expect(cssContent).toMatch(/\.board-header\s*\{[^}]*background-color:\s*#000000;/i);
-      expect(cssContent).toMatch(/\.board-header\s*\{[^}]*border-bottom:\s*1px solid #222;/i);
-      expect(cssContent).toMatch(/\.board-header\s*\{[^}]*font-family:[^}]*monospace;/i);
+    test("strips.css defines .rack-header-actions with flex display and gap 8px", () => {
+      expect(cssContent).toMatch(/\.rack-header-actions\s*\{[^}]*display:\s*flex;/i);
+      expect(cssContent).toMatch(/\.rack-header-actions\s*\{[^}]*gap:\s*8px;/i);
     });
 
     test("strips.css defines .bay-container with 2-column grid, gap 16px, padding 16px, overflow: hidden", () => {
@@ -199,8 +189,8 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
 
       expect(html).toContain("No departure strips");
       expect(html).toContain("No arrival strips");
-      expect(html).toContain("DEP: 0");
-      expect(html).toContain("ARR: 0");
+      expect(html).not.toContain("DEP:");
+      expect(html).not.toContain("ARR:");
     });
 
     test("renders departure strips for mock DAL882 and SWA1902 when departures prop is provided", () => {
@@ -250,8 +240,10 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
         onSelectStrip: onSelectStripMock,
       });
 
-      // Navigate tree: bay-container (index 1) -> rack-departures (index 0) -> rack-strip-list (index 1)
-      const bayContainer = tree.props.children[1];
+      // Navigate tree: bay-container (children[0]) -> rack-departures (index 0) -> rack-strip-list (index 1)
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
       const departuresRack = bayContainer.props.children[0];
       const depStripList = departuresRack.props.children[1];
       const firstDepStripElement = depStripList.props.children[0];
@@ -272,8 +264,10 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
         onSelectStrip: onSelectStripMock,
       });
 
-      // Navigate tree: bay-container (index 1) -> rack-arrivals (index 1) -> rack-strip-list (index 1)
-      const bayContainer = tree.props.children[1];
+      // Navigate tree: bay-container (children[0]) -> rack-arrivals (index 1) -> rack-strip-list (index 1)
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
       const arrivalsRack = bayContainer.props.children[1];
       const arrStripList = arrivalsRack.props.children[1];
       const firstArrStripElement = arrStripList.props.children[0];
@@ -362,19 +356,21 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
   // AC6: Layout orientation and collapsible rack sub-drawers
   // --------------------------------------------------------------------------
   describe("AC6 — Layout orientation switching and collapsible rack sub-drawers", () => {
-    test("renders layout toggle button in .board-header with [ ⬒ STACKED ] in default horizontal mode", () => {
+    test("renders layout toggle button in strips board footer with Stacked in default horizontal mode", () => {
       const html = renderToStaticMarkup(createElement(StripsBoard));
 
       expect(html).toContain('data-testid="strips-layout-toggle-btn"');
-      expect(html).toContain("[ ⬒ STACKED ]");
+      expect(html).toContain("Stacked");
+      expect(html).toContain('data-testid="strips-board-footer"');
       expect(html).toContain("bay-horizontal");
       expect(html).not.toContain("bay-vertical");
     });
 
-    test("renders [ ◫ COLUMNS ] and applies bay-vertical class when layoutMode is vertical", () => {
+    test("renders Columns in footer when layoutMode is vertical", () => {
       const html = renderToStaticMarkup(createElement(StripsBoard, { defaultLayout: "vertical" }));
 
-      expect(html).toContain("[ ◫ COLUMNS ]");
+      expect(html).toContain("Columns");
+      expect(html).toContain('data-testid="strips-board-footer"');
       expect(html).toContain("bay-vertical");
       expect(html).not.toContain("bay-horizontal");
     });
@@ -444,27 +440,28 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
       expect(htmlCollapsed).toContain("rack-column rack-arrivals collapsed");
     });
 
-    test("clicking layout toggle button invokes onLayoutModeChange with switched orientation", () => {
+    test("clicking layout toggle button in footer invokes onLayoutModeChange with switched orientation", () => {
       const onLayoutModeChange = vi.fn();
       const tree = StripsBoard({
         defaultLayout: "horizontal",
         onLayoutModeChange,
       });
 
-      // header is child 0, meta is child 1 of header, layout button is child 0 of meta
-      const header = tree.props.children[0];
-      const headerMeta = header.props.children[1];
-      const layoutBtn = headerMeta.props.children[0];
+      // tree.props.children has [bayContainer, footer]
+      const footer = Array.isArray(tree.props.children)
+        ? tree.props.children[1]
+        : tree.props.children;
+      const layoutBtn = footer.props.children;
 
       expect(layoutBtn.props["data-testid"]).toBe("strips-layout-toggle-btn");
-      expect(layoutBtn.props.children).toBe("[ ⬒ STACKED ]");
+      expect(layoutBtn.props.children).toBe("Stacked");
 
       layoutBtn.props.onClick();
       expect(onLayoutModeChange).toHaveBeenCalledTimes(1);
       expect(onLayoutModeChange).toHaveBeenCalledWith("vertical");
     });
 
-    test("clicking collapse buttons invokes respective change callbacks", () => {
+    test("clicking anywhere on rack header toggles collapse state", () => {
       const onDeparturesCollapsedChange = vi.fn();
       const onArrivalsCollapsedChange = vi.fn();
       const tree = StripsBoard({
@@ -474,14 +471,44 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
         onArrivalsCollapsedChange,
       });
 
-      const bayContainer = tree.props.children[1];
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
       const depRack = bayContainer.props.children[0];
       const arrRack = bayContainer.props.children[1];
 
       const depHeader = depRack.props.children[0];
-      const depBtn = depHeader.props.children[1];
+      depHeader.props.onClick();
+      expect(onDeparturesCollapsedChange).toHaveBeenCalledWith(true);
+
       const arrHeader = arrRack.props.children[0];
-      const arrBtn = arrHeader.props.children[1];
+      arrHeader.props.onClick();
+      expect(onArrivalsCollapsedChange).toHaveBeenCalledWith(true);
+    });
+
+    test("clicking collapse arrow button toggles collapse state and stops propagation", () => {
+      const onDeparturesCollapsedChange = vi.fn();
+      const onArrivalsCollapsedChange = vi.fn();
+      const tree = StripsBoard({
+        defaultDeparturesCollapsed: false,
+        defaultArrivalsCollapsed: false,
+        onDeparturesCollapsedChange,
+        onArrivalsCollapsedChange,
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const depRack = bayContainer.props.children[0];
+      const arrRack = bayContainer.props.children[1];
+
+      const depHeader = depRack.props.children[0];
+      const depActions = depHeader.props.children[1];
+      const depBtn = depActions.props.children;
+
+      const arrHeader = arrRack.props.children[0];
+      const arrActions = arrHeader.props.children[1];
+      const arrBtn = arrActions.props.children;
 
       const fakeEvent = { stopPropagation: vi.fn() };
       depBtn.props.onClick(fakeEvent);
@@ -494,7 +521,7 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
       expect(onArrivalsCollapsedChange).toHaveBeenCalledWith(true);
     });
 
-    test("clicking collapsed rack header or rail invokes callback to expand rack back", () => {
+    test("clicking collapsed rack column expands rack back", () => {
       const onDeparturesCollapsedChange = vi.fn();
       const onArrivalsCollapsedChange = vi.fn();
       const tree = StripsBoard({
@@ -504,16 +531,15 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
         onArrivalsCollapsedChange,
       });
 
-      const bayContainer = tree.props.children[1];
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
       const depRack = bayContainer.props.children[0];
       const arrRack = bayContainer.props.children[1];
 
-      // Clicking collapsed departures rack header
-      const depHeader = depRack.props.children[0];
-      depHeader.props.onClick();
+      depRack.props.onClick();
       expect(onDeparturesCollapsedChange).toHaveBeenCalledWith(false);
 
-      // Clicking collapsed arrivals rack column / rail
       arrRack.props.onClick();
       expect(onArrivalsCollapsedChange).toHaveBeenCalledWith(false);
     });
@@ -526,8 +552,10 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
       );
       expect(cssContent).toMatch(/writing-mode:\s*vertical-rl/i);
       expect(cssContent).toMatch(/transform:\s*rotate\(180deg\)/i);
+      expect(cssContent).toMatch(/\.strips-board-footer/i);
       expect(cssContent).toMatch(/\.strips-layout-toggle-btn/i);
       expect(cssContent).toMatch(/\.rack-collapse-btn/i);
+      expect(cssContent).toMatch(/\.rack-header\s*\{[^}]*cursor:\s*pointer;/i);
       expect(cssContent).toMatch(/#00ff00/i);
       expect(cssContent).toMatch(/#ffff00/i);
     });
