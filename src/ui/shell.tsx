@@ -42,6 +42,7 @@ import type { AppHandles } from "../app/create-app";
 import { CommandLine, submitCommand } from "./command/command-line";
 import { Disclaimer } from "./overlays/disclaimer";
 import { FlightStrips, focusPpi } from "./strips/FlightStrips";
+import { StripsBoard, selectTrackFromFlightStrip } from "./strips";
 import { FpsDebug, isFpsDebugEnabled } from "./controls/FpsDebug";
 import { ScopeCanvas } from "./canvas/ScopeCanvas";
 import { ScopeHelpOverlay } from "./overlays/ScopeHelpOverlay";
@@ -71,6 +72,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   const [readback, setReadback] = useState("");
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
   const [speechId, setSpeechId] = useState(app.speech.id);
+  const [stripsOpen, setStripsOpen] = useState(false);
   const [, setScopeUiTick] = useState(0);
   const panRef = useRef<{ lastX: number; lastY: number } | null>(null);
 
@@ -231,6 +233,76 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             listFontPx={scopeView.charSizes.lists}
             listBrite={scopeView.brite.lst}
           />
+          <div className="strips-toggle-bar">
+            <button
+              type="button"
+              className="strips-toggle-button"
+              data-testid="strips-toggle-btn"
+              onClick={() => setStripsOpen((open) => !open)}
+              title="Toggle flight progress strips bay"
+            >
+              STRIPS
+            </button>
+            <button
+              type="button"
+              className="strips-popout-button"
+              data-testid="strips-popout-btn"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.open("?view=strips", "_blank");
+                }
+              }}
+              title="Open flight progress strips in new window"
+            >
+              ↗
+            </button>
+          </div>
+          {stripsOpen ? (
+            <div
+              className="strips-overlay-modal"
+              data-testid="strips-overlay-modal"
+              role="dialog"
+              aria-modal="false"
+            >
+              <div
+                className="strips-overlay-backdrop"
+                data-testid="strips-overlay-backdrop"
+                onClick={() => setStripsOpen(false)}
+              />
+              <div className="strips-overlay-content">
+                <div className="strips-overlay-bar">
+                  <button
+                    type="button"
+                    className="strips-overlay-close-button"
+                    data-testid="strips-overlay-close"
+                    onClick={() => setStripsOpen(false)}
+                  >
+                    ✕ Close
+                  </button>
+                  <button
+                    type="button"
+                    className="strips-overlay-popout-button"
+                    data-testid="strips-overlay-new-window"
+                    onClick={() => {
+                      if (typeof window !== "undefined") {
+                        window.open("?view=strips", "_blank");
+                      }
+                    }}
+                  >
+                    Open in new window ↗
+                  </button>
+                </div>
+                <StripsBoard
+                  facilityTitle={`${activeScenario.icao}_TWR — Flight Progress Strips`}
+                  selectedStripId={app.world.selectedAircraftId ?? undefined}
+                  onSelectStrip={(strip) => {
+                    selectTrackFromFlightStrip(app.world, strip);
+                    refreshScopeUi();
+                  }}
+                />
+              </div>
+            </div>
+          ) : null}
         </ScopeCanvas>
       </div>
       <SessionSetupDialog

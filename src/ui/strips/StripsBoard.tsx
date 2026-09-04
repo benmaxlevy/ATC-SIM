@@ -1,3 +1,5 @@
+import type { World } from "@core";
+import { setSelectedAircraft } from "@core";
 import { ArrivalStrip } from "./ArrivalStrip";
 import { DepartureStrip } from "./DepartureStrip";
 import { mockArrivals, mockDepartures } from "./mockFixture";
@@ -5,6 +7,58 @@ import type { ArrivalStripData, DepartureStripData, FlightStrip } from "./types"
 import "./strips.css";
 
 export const DEFAULT_FACILITY_TITLE = "KATL_TWR — Flight Progress Strips";
+
+/**
+ * Detects whether standalone flight progress strips view (?view=strips) is active in search params.
+ */
+export function isStripsViewActive(search: string): boolean {
+  if (!search) {
+    return false;
+  }
+  try {
+    const params = new URLSearchParams(search);
+    return params.get("view") === "strips";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Selects an aircraft in World when it matches the given strip's callsign (ACID) or id.
+ * Shared selection state with PPI and flight strips list.
+ *
+ * @returns true if an aircraft was matched and selected, false otherwise.
+ */
+export function selectTrackFromFlightStrip(world: World, strip: FlightStrip): boolean {
+  const normAcid = strip.acid ? strip.acid.trim().toUpperCase() : "";
+  const normId = strip.id ? strip.id.trim().toUpperCase() : "";
+  const match = world.aircraft.find((ac) => {
+    const acId = ac.id ? ac.id.trim().toUpperCase() : "";
+    const acCallsign = ac.callsign ? ac.callsign.trim().toUpperCase() : "";
+    return (
+      (acId !== "" && (acId === normId || acId === normAcid)) ||
+      (acCallsign !== "" && (acCallsign === normAcid || acCallsign === normId))
+    );
+  });
+  if (match) {
+    setSelectedAircraft(world, match.id);
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Creates an onSelectStrip callback that synchronizes the clicked strip to World.selectedAircraftId.
+ */
+export function createStripSelectionHandler(
+  world: World,
+  onSelect?: (strip: FlightStrip) => void,
+): (strip: FlightStrip) => void {
+  return (strip: FlightStrip) => {
+    selectTrackFromFlightStrip(world, strip);
+    onSelect?.(strip);
+  };
+}
 
 export interface StripsBoardProps {
   /** Array of departure flight strips (defaults to mockDepartures). */
@@ -15,7 +69,7 @@ export interface StripsBoardProps {
   facilityTitle?: string;
   /** Selection callback fired when a strip is clicked or activated. */
   onSelectStrip?: (strip: FlightStrip) => void;
-  /** Optional ID of currently selected strip. */
+  /** Optional ID or ACID of currently selected strip. */
   selectedStripId?: string;
   /** Optional custom CSS class name for outer container. */
   className?: string;
@@ -36,6 +90,21 @@ export function StripsBoard({
 }: StripsBoardProps) {
   const departuresList = departures ?? mockDepartures;
   const arrivalsList = arrivals ?? mockArrivals;
+
+  const isStripSelected = (strip: FlightStrip): boolean => {
+    if (!selectedStripId) {
+      return false;
+    }
+    const normSelected = selectedStripId.trim().toUpperCase();
+    const normId = strip.id ? strip.id.trim().toUpperCase() : "";
+    const normAcid = strip.acid ? strip.acid.trim().toUpperCase() : "";
+    return (
+      selectedStripId === strip.id ||
+      selectedStripId === strip.acid ||
+      normSelected === normId ||
+      normSelected === normAcid
+    );
+  };
 
   return (
     <div className={`strips-board ${className ?? ""}`.trim()} data-testid="strips-board">
@@ -88,7 +157,7 @@ export function StripsBoard({
                 <DepartureStrip
                   key={strip.id}
                   strip={strip}
-                  selected={selectedStripId === strip.id}
+                  selected={isStripSelected(strip)}
                   onSelect={() => onSelectStrip?.(strip)}
                 />
               ))
@@ -128,7 +197,7 @@ export function StripsBoard({
                 <ArrivalStrip
                   key={strip.id}
                   strip={strip}
-                  selected={selectedStripId === strip.id}
+                  selected={isStripSelected(strip)}
                   onSelect={() => onSelectStrip?.(strip)}
                 />
               ))

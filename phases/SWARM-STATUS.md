@@ -895,3 +895,16 @@ Recovery resumed from `feature/session-setup`. T04-24 inventory (`93a7c10`), fre
 
 **Notes:** Picker options derive solely from playable inventory; normal arrival count/rate remains seeded STAR inbound/VIA; `?traffic=N` remains benchmark downwind; T04-21 owns departure rate. `atc-sim.session.v1` remains separate from trainer/DCB preferences. No scoring, replay, imperfect pilots, second position, DCB PREF, live traffic editing, second airport data, or radio-frequency IR. Initial T04-25 conflict was superseded by a fresh worker from the T04-24 feature base. Preserved untracked `.cursor/rules/caveman-ultra.mdc`, `e2e/`, and user-modified `speech-api/.env.example`.
 
+---
+
+## TWENTY-SEVENTH SWARM COMPLETE — Terminal Flight Progress Strips (T02-90–93)
+
+Feature base: `feature/flight-strips`.
+- T02-90: Terminal Flight Progress Strip domain models, formatters, and mock fixtures (`73b5d1c`).
+- T02-91: DepartureStrip and ArrivalStrip physical 4-column cardstock grid components (`aeeb8ae`).
+- T02-92: StripsBoard two-column bay rack layout with independent vertical scrolling (`10c71a9`).
+- T02-93: Standalone routing `?view=strips`, shell toggle modal integration, track selection synchronization with `World.selectedAircraftId`, and acceptance test suite `stripsAcceptance.test.tsx`.
+
+Full repository CI (`npm run ci`): zero errors, all tests pass.
+
+

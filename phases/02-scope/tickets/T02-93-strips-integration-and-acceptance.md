@@ -43,10 +43,10 @@ Flight progress strips must be accessible in two workflows:
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Loading with `?view=strips` renders the `StripsBoard` component in `#root`.
-- [ ] **AC2 —** Clicking a strip selects the matching aircraft in `World.selectedAircraftId`.
-- [ ] **AC3 —** End-to-end acceptance suite `stripsAcceptance.test.tsx` passes.
-- [ ] **AC4 —** Full repository CI (`npm run ci`) passes with zero errors and formatting verified.
+- [x] **AC1 —** Loading with `?view=strips` renders the `StripsBoard` component in `#root`.
+- [x] **AC2 —** Clicking a strip selects the matching aircraft in `World.selectedAircraftId`.
+- [x] **AC3 —** End-to-end acceptance suite `stripsAcceptance.test.tsx` passes.
+- [x] **AC4 —** Full repository CI (`npm run ci`) passes with zero errors and formatting verified.
 
 ## Test plan
 

@@ -587,6 +587,21 @@ Constraints later work must keep:
 - do not commit local CRC cache JSON/GeoJSON;
 - `src/` never imports `tools/crc-videomap-import`; no runtime vNAS fetch.
 
+### Terminal Flight Progress Strips follow-ups (T02-90–93)
+
+Visible now: 4-column physical flight progress strip layouts for Departures and Arrivals adhering to FAA Order 7110.65 Chapter 2 §3; pale buff cardstock styling (`#f5eedc`) with dark high-contrast text; CWT/wake formatting; route truncation; 2-column rack board (`StripsBoard`) with independent vertical scrolling; standalone URL routing (`?view=strips`); in-scope overlay modal with header toggle button (`STRIPS`); and track selection synchronization to `World.selectedAircraftId` via `selectTrackFromFlightStrip`.
+
+Deliberately missing:
+- **Real-time World normalization engine**: dynamically generating full 7110.65 terminal strip models from live `World.aircraft` states, flight plans, and scheduled departures (trainer currently defaults to representative seed fixtures).
+- **Handwritten canvas drawing / annotations**: freehand pen strokes or stylus drawings on strip annotation boxes.
+- **Drag-and-drop physical rack animation / reordering**: manual strip sequence rearranging or physical dragging between rack bays.
+- **Strip cocking**: offset angle/cocking visual state to indicate pending control instructions or non-standard clearances.
+
+Constraints later work must keep:
+- Flight progress strips remain an observational display and intent reflection; clicking or manipulating strips never emits Command IR or mutates pilot kinematics directly.
+- Dark controller cab theme (`#1a1e24`) and FAA 7110.65 box proportions (18% / 14% / 46% / 22%) must be preserved.
+- Standalone view `?view=strips` must remain decoupled from PPI WebGL/Canvas2D loops for second-monitor use.
+
 ## Voice
 
 ### Live Path C tie salvage (T03-20)

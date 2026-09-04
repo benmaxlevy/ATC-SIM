@@ -734,10 +734,10 @@ FAA/vNAS terminal flight progress strip system with 4-column physical grid layou
 
 | ID | Title | Pri | Size | Depends on | Status |
 | --- | --- | --- | --- | --- | --- |
-| [T02-90](tickets/T02-90-strips-data-models-and-formatter.md) | Strips data models and formatter | P0 | M | none | Planned |
-| [T02-91](tickets/T02-91-strips-departure-and-arrival-components.md) | Strips departure and arrival components | P0 | M | T02-90 | Planned |
-| [T02-92](tickets/T02-92-strips-two-column-board-and-layout.md) | Strips two-column board and bay layout | P0 | M | T02-91 | Planned |
-| [T02-93](tickets/T02-93-strips-integration-and-acceptance.md) | Strips integration and acceptance | P0 | S | T02-92 | Planned |
+| [T02-90](tickets/T02-90-strips-data-models-and-formatter.md) | Strips data models and formatter | P0 | M | none | Shipped |
+| [T02-91](tickets/T02-91-strips-departure-and-arrival-components.md) | Strips departure and arrival components | P0 | M | T02-90 | Shipped |
+| [T02-92](tickets/T02-92-strips-two-column-board-and-layout.md) | Strips two-column board and bay layout | P0 | M | T02-91 | Shipped |
+| [T02-93](tickets/T02-93-strips-integration-and-acceptance.md) | Strips integration and acceptance | P0 | S | T02-92 | Shipped |
 
 ## Launching an agent
 

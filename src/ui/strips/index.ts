@@ -56,5 +56,11 @@ export { ArrivalStrip } from "./ArrivalStrip";
 export type { ArrivalStripProps } from "./ArrivalStrip";
 
 // Strips board & bay layout
-export { StripsBoard, DEFAULT_FACILITY_TITLE } from "./StripsBoard";
+export {
+  DEFAULT_FACILITY_TITLE,
+  StripsBoard,
+  createStripSelectionHandler,
+  isStripsViewActive,
+  selectTrackFromFlightStrip,
+} from "./StripsBoard";
 export type { StripsBoardProps } from "./StripsBoard";
