@@ -728,6 +728,17 @@ STARS Compass Rose heading vectoring ring with 72 radial tick marks (5° minor, 
 | [T02-88](tickets/T02-88-compass-rose-canvas-rendering-and-brite.md) | Compass Rose canvas rendering and BRITE CMP | P0 | M | T02-87 | Shipped |
 | [T02-89](tickets/T02-89-compass-rose-acceptance.md) | Compass Rose integration and acceptance | P0 | S | T02-87, T02-88 | Shipped |
 
+### Phase 2 addendum (T02-90–93 Terminal Flight Progress Strips)
+
+FAA/vNAS terminal flight progress strip system with 4-column physical grid layouts, pale buff background, CWT/wake formatting, route truncation, and a 2-column rack board (Departures & Arrivals).
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-90](tickets/T02-90-strips-data-models-and-formatter.md) | Strips data models and formatter | P0 | M | none | Planned |
+| [T02-91](tickets/T02-91-strips-departure-and-arrival-components.md) | Strips departure and arrival components | P0 | M | T02-90 | Planned |
+| [T02-92](tickets/T02-92-strips-two-column-board-and-layout.md) | Strips two-column board and bay layout | P0 | M | T02-91 | Planned |
+| [T02-93](tickets/T02-93-strips-integration-and-acceptance.md) | Strips integration and acceptance | P0 | S | T02-92 | Planned |
+
 ## Launching an agent
 
 1. Confirm phase 1 README exit is green.
@@ -744,6 +755,7 @@ STARS Compass Rose heading vectoring ring with 72 radial tick marks (5° minor, 
 12. DCB controls & SSA WX addendum T02-81 → T02-83 (DCB VOL, MODE FSL, BRITE BKC, SSA WX/WX HIST telemetry).
 13. DCB AUX & BRITE controls addendum T02-84 → T02-86 (H_RATE, DWELL, CURSOR HOME, CSR SPD, BRITE CMP/BCN).
 14. STARS Compass Rose addendum T02-87 → T02-89 (Compass Rose geometry, ticks, 3-digit headings, BRITE CMP, CHAR SIZE TOOLS).
+15. Terminal Flight Progress Strips addendum T02-90 → T02-93 (Data models, formatters, departure/arrival grids, 2-column rack board).
 
 ## Glossary reminders
 

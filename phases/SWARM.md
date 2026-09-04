@@ -1,8 +1,70 @@
-# ATC-SIM swarm orchestrator — Twenty-sixth swarm (STARS Compass Rose Heading Overlay)
+# ATC-SIM swarm orchestrator — Twenty-seventh swarm (Terminal Flight Progress Strips)
 
-Twenty-fifth (DCB AUX H_RATE, DWELL, and BRITE CMP/BCN T02-84–86) planned/landed.
-This file keeps that history, then the twenty-sixth addendum on
-**`feature/compass-rose-headings`**.
+Twenty-sixth (STARS Compass Rose Heading Overlay T02-87–89) planned/landed.
+This file keeps that history, then the twenty-seventh addendum on
+**`feature/flight-strips`**.
+
+## Twenty-seventh swarm planned — 2026-09-04 (Terminal Flight Progress Strips)
+
+This configuration implements the FAA/vNAS terminal flight progress strip system, complete with 4-column physical grid layouts, pale buff cardstock background, CWT/wake formatting, route truncation, and a 2-column rack board (Departures & Arrivals) on **`feature/flight-strips`**, cut from current `master`.
+Captain squash-merges ticket branches into **`feature/flight-strips`**, not `master`. Do not push. Existing swarm history stays intact.
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement the FAA/vNAS Terminal Flight Progress Strip board with rigid physical proportions (800x140px), 4-column departure and arrival grid components, CWT/wake equipment formatting, route truncation with `***`, and a 2-column controller cab rack layout (Departures / Arrivals) supporting independent scrolling and radar target selection synchronization. |
+| Include | **T02-90**, **T02-91**, **T02-92**, **T02-93** |
+| Source | FAA Order 7110.65 Chapter 2 §3, virtual NAS flight strip specifications (vNAS / vStrips), and terminal radar display architecture. |
+| Skip | Paid speech/LLM APIs; drag-and-drop animations; handwritten signature OCR; external cloud sync. |
+| Stop | After T02-93 acceptance. No next phase. |
+| Max workers | 3 |
+| Merge lock | captain squash to `feature/flight-strips`, then `npm test` / `npm run ci` |
+| Model | **inherit** on captain and every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law (twenty-seventh swarm — Terminal Flight Progress Strips):**
+
+- **Authentic FAA / vNAS physical proportions and typography.** Strips use rigid aspect ratios (~800px × 140px), pale matte beige/buff background (`#F5EEDC`), dark holder border (`#222`), muted grid borders (`#333`), and uppercase monospaced machine-printed typography (`Consolas`, `Courier New`, monospace).
+- **Equipment string formatting (Box 3).** Prefix with CWT wake turbulence category (`A/` through `I/`) or `H/` for heavy aircraft when CWT is inactive, followed by type and optional equipment suffix (`/L`, `/G`).
+- **Route and remarks truncation.** Route and remarks fields exceeding fixed character thresholds append `***` on overflow.
+- **Two-column rack board layout.** Main bay organizes strips into two vertical rack columns ("Departures" on the left, "Arrivals" on the right) within a dark cab container (`#1A1E24`).
+- **Independent rack scrolling.** Racks scroll independently vertically while viewport height is locked (`100vh`, `overflow: hidden`).
+- **Radar track synchronization.** Clicking a strip's ACID selects the matching aircraft in `World.selectedAircraftId`.
+- **Zero simulation regressions.** Scope camera, radar tracking, datablocks, DCB submenus, system lists, and radio parsing stay 100% operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-90 | `feature/flight-strips` + planning commit |
+| B | T02-91 | T02-90 |
+| C | T02-92 | T02-91 |
+| D | T02-93 | T02-92 |
+
+**Ticket ownership:**
+
+- T02-90 owns domain types (`FlightRules`, `CWTCategory`, `FlightStrip`), strip transformation utilities (`formatEquipment`, `truncateField`, beacon padding, time formatting), static seed fixture, and unit tests.
+- T02-91 owns React components `DepartureStrip` and `ArrivalStrip` with 4-column physical CSS Grid layouts and styling.
+- T02-92 owns `StripsBoard` 2-column rack container (Departures / Arrivals), rack count headers, and scrollable bays.
+- T02-93 owns `?view=strips` routing, shell toggle integration, track selection synchronization, and end-to-end acceptance tests.
+
+**Ticket files / branches:**
+
+- `ticket/T02-90-strips-data-models-and-formatter` ← `phases/02-scope/tickets/T02-90-strips-data-models-and-formatter.md`
+- `ticket/T02-91-strips-departure-and-arrival-components` ← `phases/02-scope/tickets/T02-91-strips-departure-and-arrival-components.md`
+- `ticket/T02-92-strips-two-column-board-and-layout` ← `phases/02-scope/tickets/T02-92-strips-two-column-board-and-layout.md`
+- `ticket/T02-93-strips-integration-and-acceptance` ← `phases/02-scope/tickets/T02-93-strips-integration-and-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope addendum (T02-90–93 Terminal Flight Progress Strips)
+Merge target: `feature/flight-strips`
+Merged: T02-90, T02-91, T02-92, T02-93
+Tests: npm test / npm run ci exit 0
+```
+
+---
 
 ## Twenty-sixth swarm planned — 2026-09-01 (STARS Compass Rose Heading Overlay)
 
