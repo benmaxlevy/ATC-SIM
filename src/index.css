@@ -135,7 +135,9 @@ body,
 .dcb-main-grid,
 .dcb-grid {
   display: grid;
-  grid-template-columns: repeat(22, minmax(42px, 1fr));
+  grid-template-columns:
+    repeat(8, minmax(42px, 1fr)) repeat(6, minmax(21px, 0.5fr))
+    repeat(8, minmax(42px, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 1px;
   width: 100%;
@@ -151,7 +153,9 @@ body,
   width: 100%;
   height: 100%;
   gap: 1px;
-  grid-template-columns: repeat(22, minmax(42px, 1fr));
+  grid-template-columns:
+    repeat(8, minmax(42px, 1fr)) repeat(6, minmax(21px, 0.5fr))
+    repeat(8, minmax(42px, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
 }
 

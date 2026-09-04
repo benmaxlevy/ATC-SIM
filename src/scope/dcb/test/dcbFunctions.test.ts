@@ -16,6 +16,7 @@ import {
   toggleCursorHome,
   stepCursorSpeed,
   formatDcbCursorSpeedReadout,
+  formatDcbRrReadout,
 } from "../dcbFunctions";
 
 const VIEW = { widthPx: 800, heightPx: 800 };
@@ -102,4 +103,12 @@ test("CURSOR HOME toggle and CSR SPD spinner", () => {
   expect(view.cursorSpeed).toBe(1);
   stepCursorSpeed(view, 20);
   expect(view.cursorSpeed).toBe(10);
+});
+
+test("formatDcbRrReadout returns number without duplicate RR prefix", () => {
+  expect(formatDcbRrReadout(5, true)).toBe("5");
+  expect(formatDcbRrReadout(2, true)).toBe("2");
+  expect(formatDcbRrReadout(10, true)).toBe("10");
+  expect(formatDcbRrReadout(20, true)).toBe("20");
+  expect(formatDcbRrReadout(5, false)).toBe("OFF");
 });
