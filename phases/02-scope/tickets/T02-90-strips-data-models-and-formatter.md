@@ -50,13 +50,13 @@ FAA / vNAS terminal flight progress strips (7110.65 and virtual NAS specificatio
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** TypeScript models compile cleanly and express `DepartureStripData`, `ArrivalStripData`, and `FlightStrip`.
-- [ ] **AC2 —** `formatEquipment` produces correct prefixes for CWT (`F/A321/L`), Heavy (`H/B772/L`), and standard (`B738/G`) aircraft.
-- [ ] **AC3 —** `truncateField` leaves strings `<= maxLength` untouched, and trims with `***` when string exceeds `maxLength`.
-- [ ] **AC4 —** `formatRevisionIndex` returns empty string for `undefined` or `0`, and stringified integers for $\ge 1$.
-- [ ] **AC5 —** `formatBeaconCode` pads squawks to 4 digits.
-- [ ] **AC6 —** Static mock fixture contains valid departures and arrivals matching the specification.
-- [ ] **AC7 —** Unit tests in `src/ui/strips/test/stripFormatter.test.ts` pass 100%.
+- [x] **AC1 —** TypeScript models compile cleanly and express `DepartureStripData`, `ArrivalStripData`, and `FlightStrip`.
+- [x] **AC2 —** `formatEquipment` produces correct prefixes for CWT (`F/A321/L`), Heavy (`H/B772/L`), and standard (`B738/G`) aircraft.
+- [x] **AC3 —** `truncateField` leaves strings `<= maxLength` untouched, and trims with `***` when string exceeds `maxLength`.
+- [x] **AC4 —** `formatRevisionIndex` returns empty string for `undefined` or `0`, and stringified integers for $\ge 1$.
+- [x] **AC5 —** `formatBeaconCode` pads squawks to 4 digits.
+- [x] **AC6 —** Static mock fixture contains valid departures and arrivals matching the specification.
+- [x] **AC7 —** Unit tests in `src/ui/strips/test/stripFormatter.test.ts` pass 100%.
 
 ## Test plan
 
