@@ -376,6 +376,25 @@ Deferred to future simulation phases:
 
 ## Procedures
 
+### SID and STAR climb-via / descend-via and transition amendments (T04-19 / T04-43 / T04-44)
+
+Visible now:
+- **`CLIMB_VIA` (`VIA_SID`) and `DESCEND_VIA` (`VIA_STAR`)**: FMS vertical guidance climbs or descends through published crossing altitude and speed constraints (`AT`, `AT_OR_ABOVE`, `AT_OR_BELOW`), clamped by controller-assigned altitude or top altitude (T04-04, T04-19).
+- **STAR transition amendments**: `DESCEND_VIA [STAR] [TRANS]` and `JOIN [STAR] [TRANS]` (e.g. `VIA DEM1 NORTH`) resolve through `joinStarTransition` at shared common fixes (T04-43).
+- **SID transition amendments**: Controller commands `CVIA [SID] [TRANS]` (e.g. `CVIA BAY1 NORMA` or spoken "climb via BAY ONE, NORMA transition") resolve through `joinSidTransition`, preserving active runway transition legs and amending enroute transitions at shared common fixes (T04-44).
+- **Runway transition amendments**: `CVIA [SID] RW[XX]` allowed while the aircraft is still navigating runway-transition legs (T04-44).
+- **Departure spawning**: Runway centerline departure roll-out automatically arms `lateral: PROCEDURE` and `vertical: VIA_SID` via `departureSpawnPose` (T04-21 / T04-29).
+- **Heading cancellation**: Radar vector headings (`H###`) immediately cancel `VIA_SID` / `VIA_STAR` and revert vertical mode to `ASSIGNED`.
+
+Deliberately missing:
+- **Unsupported ARINC 424 leg types in real-world SIDs**: Heading-to-altitude vector legs (`VA`, `VI`, `VM`) and curved radius-to-fix (`RF`) legs are skipped by the CIFP importer. SIDs composed entirely of radar vectors (e.g., KATL's `ATL2`) have zero named-fix legs and are omitted from catalog packs.
+- **Scenario departure traffic for CIFP-imported airports**: Authored facilities (KDEM) include scripted departure schedules (`BAY1` to `NORMA`/`OCTTA`), but imported airports like KATL (`katl.json`) currently only script arrival streams and downwind benchmark spawns. Automated departure flows utilizing the 10+ imported KATL SIDs (`BANNG3`, `CUTTN2`, `GAIRY2`, etc.) are not yet scripted into playable scenarios.
+
+Constraints later work must keep:
+- Procedure transitions remain data-driven via catalog JSON common fixes; no facility-specific branches (no `if (icao === "KATL")`).
+- Unsupported ARINC path terminators must remain explicit skips/diagnostics, never silently flattened into straight-line TF legs.
+- Radar headings must continue to cancel `VIA_SID` and `VIA_STAR`.
+
 ### CIFP importer — unsupported ARINC behaviors (T04-31)
 
 Visible now: `tools/cifp-import` reads a **local** CIFP file (comma-separated
@@ -394,8 +413,10 @@ silent straight-line TF conversion:
   `VM`/`VR`, `FA`/`FC`/`FD`/`FM` are skipped the same way.
 - **Continuation-record payloads.** Primary records only; `*-CONT` rows are
   skip-counted.
-- **SID flying from imported CIFP.** Catalog `sids` may be non-empty. FMS
-  climb-via / SID route following for those imported rows is not this tool.
+- **CIFP tool boundary vs in-sim FMS.** Catalog `sids` may be non-empty. FMS
+  climb-via and transition amendments are implemented in-sim (T04-19 / T04-44),
+  but this offline tool only extracts and emits JSON catalog rows; verifying
+  active route-following for all imported rows is not this tool.
 - **Live FAA cycle download, chart scrape, vendor APIs.** Input stays a local
   path. Full CIFP/NASR cycles stay out of git (`.cifp/`).
 
@@ -491,7 +512,7 @@ Deliberately missing:
   box over the ±60 NM training area, not source sector minima.
 - **Heading-only vector SID flying (`ATL2`).** Unsupported CIFP path
   terminators stay skipped; empty named-fix SIDs are omitted from the pack.
-- **SID flying, RNAV / hold / RF FMS, live FAA download, chart scrape.**
+- **RNAV / hold / RF FMS, heading-vector leg guidance, live FAA download, chart scrape.** (Standard TF SID climb-via and transition amendments are already operational in-sim via T04-19/T04-44).
 
 Constraints later work must keep:
 
@@ -525,8 +546,10 @@ Deliberately missing:
   cycle regeneration was tested.
 - **RNAV / hold / RF flying** from imported CIFP. Unsupported path
   terminators stay diagnostics, not TF legs.
-- **SID flying from imported CIFP.** Catalog `sids` may be non-empty. FMS
-  climb-via for those imported rows is not this ticket.
+- **Scenario departure traffic on imported CIFP SIDs.** Playable KATL
+  scenarios script arrivals and downwind spawns only; automated departure
+  traffic flows on the 10+ imported KATL SIDs are not scripted. (Core FMS
+  climb-via and SID transition amendments are supported via T04-19/T04-44).
 - **Browser CIFP fetch, national dump in git, T04-11 wind, phase 5.**
 
 Constraints later work must keep:
@@ -554,8 +577,8 @@ Deliberately missing:
 - **Chrome visual leftover (T04-41 / T04-42).** Automated tests pass. The
   operator MAPS / GEO / BRITE walk is `test.skip` skip-with-reason (no
   visual operator). Do not invent a pass.
-- **`faa:update` live download, SID flying, RNAV / hold / RF FMS.** CIFP
-  catalog rows stay as T04-35. Unsupported path terminators stay diagnostics.
+- **`faa:update` live download, RNAV / hold / RF FMS.** CIFP catalog rows
+  stay as T04-35. Unsupported path terminators stay diagnostics.
 
 Constraints later work must keep:
 
