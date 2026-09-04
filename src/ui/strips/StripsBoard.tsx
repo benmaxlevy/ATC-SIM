@@ -1,3 +1,5 @@
+import * as React from "react";
+import { useState } from "react";
 import type { World } from "@core";
 import { setSelectedAircraft } from "@core";
 import { ArrivalStrip } from "./ArrivalStrip";
@@ -57,12 +59,41 @@ export interface StripsBoardProps {
   selectedStripId?: string;
   /** Optional custom CSS class name for outer container. */
   className?: string;
+  /** Layout orientation mode ("horizontal" | "vertical"). Defaults to "horizontal". */
+  layoutMode?: "horizontal" | "vertical";
+  /** Initial layout mode when uncontrolled (defaults to "horizontal"). */
+  defaultLayout?: "horizontal" | "vertical";
+  /** Collapsed state for departures rack. */
+  departuresCollapsed?: boolean;
+  /** Initial collapsed state for departures rack when uncontrolled (defaults to false). */
+  defaultDeparturesCollapsed?: boolean;
+  /** Collapsed state for arrivals rack. */
+  arrivalsCollapsed?: boolean;
+  /** Initial collapsed state for arrivals rack when uncontrolled (defaults to false). */
+  defaultArrivalsCollapsed?: boolean;
+  /** Callback fired when layout mode changes. */
+  onLayoutModeChange?: (mode: "horizontal" | "vertical") => void;
+  /** Callback fired when departures collapsed state changes. */
+  onDeparturesCollapsedChange?: (collapsed: boolean) => void;
+  /** Callback fired when arrivals collapsed state changes. */
+  onArrivalsCollapsedChange?: (collapsed: boolean) => void;
+}
+
+function useSafeState<T>(initialValue: T | (() => T)): [T, (action: T | ((prev: T) => T)) => void] {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dispatcher = (React as any)?.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED
+    ?.ReactCurrentDispatcher?.current;
+  if (!dispatcher) {
+    const val = typeof initialValue === "function" ? (initialValue as () => T)() : initialValue;
+    return [val, () => {}];
+  }
+  return useState(initialValue);
 }
 
 /**
  * StripsBoard: Terminal flight progress strips board with dark controller cab backdrop,
- * facility title header, and two independent vertically scrollable rack columns
- * (Departures on the left, Arrivals on the right).
+ * facility title header, layout orientation toggle, and collapsible rack columns
+ * (Departures and Arrivals).
  */
 export function StripsBoard({
   departures = [],
@@ -71,9 +102,60 @@ export function StripsBoard({
   onSelectStrip,
   selectedStripId,
   className,
+  layoutMode: layoutModeProp,
+  defaultLayout,
+  departuresCollapsed: departuresCollapsedProp,
+  defaultDeparturesCollapsed,
+  arrivalsCollapsed: arrivalsCollapsedProp,
+  defaultArrivalsCollapsed,
+  onLayoutModeChange,
+  onDeparturesCollapsedChange,
+  onArrivalsCollapsedChange,
 }: StripsBoardProps) {
   const departuresList = departures;
   const arrivalsList = arrivals;
+
+  const [internalLayout, setInternalLayout] = useSafeState<"horizontal" | "vertical">(
+    layoutModeProp ?? defaultLayout ?? "horizontal",
+  );
+  const layoutMode = layoutModeProp ?? internalLayout;
+
+  const setLayoutMode = (
+    next:
+      "horizontal" | "vertical" | ((prev: "horizontal" | "vertical") => "horizontal" | "vertical"),
+  ) => {
+    const resolved = typeof next === "function" ? next(layoutMode) : next;
+    if (layoutModeProp === undefined) {
+      setInternalLayout(resolved);
+    }
+    onLayoutModeChange?.(resolved);
+  };
+
+  const [internalDepCollapsed, setInternalDepCollapsed] = useSafeState<boolean>(
+    departuresCollapsedProp ?? defaultDeparturesCollapsed ?? false,
+  );
+  const departuresCollapsed = departuresCollapsedProp ?? internalDepCollapsed;
+
+  const setDeparturesCollapsed = (next: boolean | ((prev: boolean) => boolean)) => {
+    const resolved = typeof next === "function" ? next(departuresCollapsed) : next;
+    if (departuresCollapsedProp === undefined) {
+      setInternalDepCollapsed(resolved);
+    }
+    onDeparturesCollapsedChange?.(resolved);
+  };
+
+  const [internalArrCollapsed, setInternalArrCollapsed] = useSafeState<boolean>(
+    arrivalsCollapsedProp ?? defaultArrivalsCollapsed ?? false,
+  );
+  const arrivalsCollapsed = arrivalsCollapsedProp ?? internalArrCollapsed;
+
+  const setArrivalsCollapsed = (next: boolean | ((prev: boolean) => boolean)) => {
+    const resolved = typeof next === "function" ? next(arrivalsCollapsed) : next;
+    if (arrivalsCollapsedProp === undefined) {
+      setInternalArrCollapsed(resolved);
+    }
+    onArrivalsCollapsedChange?.(resolved);
+  };
 
   const isStripSelected = (strip: FlightStrip): boolean => {
     if (!selectedStripId) {
@@ -90,6 +172,18 @@ export function StripsBoard({
     );
   };
 
+  const depIndicator =
+    layoutMode === "horizontal"
+      ? departuresCollapsed
+        ? "▶"
+        : "◀"
+      : departuresCollapsed
+        ? "▼"
+        : "▲";
+
+  const arrIndicator =
+    layoutMode === "horizontal" ? (arrivalsCollapsed ? "◀" : "▶") : arrivalsCollapsed ? "▼" : "▲";
+
   return (
     <div className={`strips-board ${className ?? ""}`.trim()} data-testid="strips-board">
       {/* Facility Header Bar */}
@@ -98,6 +192,19 @@ export function StripsBoard({
           {facilityTitle}
         </h1>
         <div className="board-header-meta" data-testid="board-header-meta">
+          <button
+            type="button"
+            className="strips-layout-toggle-btn"
+            data-testid="strips-layout-toggle-btn"
+            onClick={() => setLayoutMode((m) => (m === "horizontal" ? "vertical" : "horizontal"))}
+            title={
+              layoutMode === "horizontal"
+                ? "Switch to stacked vertical layout"
+                : "Switch to side-by-side columns layout"
+            }
+          >
+            {layoutMode === "horizontal" ? "[ ⬒ STACKED ]" : "[ ◫ COLUMNS ]"}
+          </button>
           <span className="board-meta-item" data-testid="board-meta-departures">
             DEP: {departuresList.length}
           </span>
@@ -107,17 +214,48 @@ export function StripsBoard({
         </div>
       </header>
 
-      {/* Two-Column Rack Bay Container */}
-      <div className="bay-container" data-testid="bay-container">
-        {/* Left Rack Column: Departures */}
+      {/* Two-Column / Two-Row Rack Bay Container */}
+      <div
+        className={`bay-container ${layoutMode === "vertical" ? "bay-vertical" : "bay-horizontal"}`}
+        data-testid="bay-container"
+      >
+        {/* Left / Top Rack Column: Departures */}
         <section
-          className="rack-column rack-departures"
+          className={`rack-column rack-departures ${departuresCollapsed ? "collapsed" : ""}`.trim()}
           data-testid="rack-departures"
           data-rack="departures"
           aria-label="Departures rack"
+          onClick={() => {
+            if (departuresCollapsed) {
+              setDeparturesCollapsed(false);
+            }
+          }}
         >
-          <div className="rack-header" data-testid="rack-header-departures">
+          <div
+            className="rack-header"
+            data-testid="rack-header-departures"
+            onClick={() => {
+              if (departuresCollapsed) {
+                setDeparturesCollapsed(false);
+              }
+            }}
+          >
             <span className="rack-title">Departures</span>
+            <button
+              type="button"
+              className="rack-collapse-btn"
+              data-testid="collapse-departures-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeparturesCollapsed((c) => !c);
+              }}
+              title={departuresCollapsed ? "Expand departures rack" : "Collapse departures rack"}
+              aria-label={
+                departuresCollapsed ? "Expand departures rack" : "Collapse departures rack"
+              }
+            >
+              {depIndicator}
+            </button>
           </div>
           <div
             className="rack-strip-list"
@@ -142,15 +280,41 @@ export function StripsBoard({
           </div>
         </section>
 
-        {/* Right Rack Column: Arrivals */}
+        {/* Right / Bottom Rack Column: Arrivals */}
         <section
-          className="rack-column rack-arrivals"
+          className={`rack-column rack-arrivals ${arrivalsCollapsed ? "collapsed" : ""}`.trim()}
           data-testid="rack-arrivals"
           data-rack="arrivals"
           aria-label="Arrivals rack"
+          onClick={() => {
+            if (arrivalsCollapsed) {
+              setArrivalsCollapsed(false);
+            }
+          }}
         >
-          <div className="rack-header" data-testid="rack-header-arrivals">
+          <div
+            className="rack-header"
+            data-testid="rack-header-arrivals"
+            onClick={() => {
+              if (arrivalsCollapsed) {
+                setArrivalsCollapsed(false);
+              }
+            }}
+          >
             <span className="rack-title">Arrivals</span>
+            <button
+              type="button"
+              className="rack-collapse-btn"
+              data-testid="collapse-arrivals-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                setArrivalsCollapsed((c) => !c);
+              }}
+              title={arrivalsCollapsed ? "Expand arrivals rack" : "Collapse arrivals rack"}
+              aria-label={arrivalsCollapsed ? "Expand arrivals rack" : "Collapse arrivals rack"}
+            >
+              {arrIndicator}
+            </button>
           </div>
           <div
             className="rack-strip-list"

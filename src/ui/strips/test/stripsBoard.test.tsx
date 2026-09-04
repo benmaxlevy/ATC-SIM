@@ -42,7 +42,7 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
     test("renders .bay-container with departures and arrivals rack columns", () => {
       const html = renderToStaticMarkup(createElement(StripsBoard));
 
-      expect(html).toContain('class="bay-container"');
+      expect(html).toContain('class="bay-container bay-horizontal"');
       expect(html).toContain('data-testid="bay-container"');
       expect(html).toContain('data-rack="departures"');
       expect(html).toContain('data-rack="arrivals"');
@@ -355,6 +355,181 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
       expect(html).toContain("WOMEN");
       expect(html).not.toContain('data-testid="departures-count"');
       expect(html).not.toContain('data-testid="arrivals-count"');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // AC6: Layout orientation and collapsible rack sub-drawers
+  // --------------------------------------------------------------------------
+  describe("AC6 — Layout orientation switching and collapsible rack sub-drawers", () => {
+    test("renders layout toggle button in .board-header with [ ⬒ STACKED ] in default horizontal mode", () => {
+      const html = renderToStaticMarkup(createElement(StripsBoard));
+
+      expect(html).toContain('data-testid="strips-layout-toggle-btn"');
+      expect(html).toContain("[ ⬒ STACKED ]");
+      expect(html).toContain("bay-horizontal");
+      expect(html).not.toContain("bay-vertical");
+    });
+
+    test("renders [ ◫ COLUMNS ] and applies bay-vertical class when layoutMode is vertical", () => {
+      const html = renderToStaticMarkup(createElement(StripsBoard, { defaultLayout: "vertical" }));
+
+      expect(html).toContain("[ ◫ COLUMNS ]");
+      expect(html).toContain("bay-vertical");
+      expect(html).not.toContain("bay-horizontal");
+    });
+
+    test("renders correct arrow indicators in horizontal mode for expanded and collapsed states", () => {
+      // Both expanded in horizontal mode: Departures ◀, Arrivals ▶
+      const htmlExpanded = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          defaultLayout: "horizontal",
+          defaultDeparturesCollapsed: false,
+          defaultArrivalsCollapsed: false,
+        }),
+      );
+      expect(htmlExpanded).toContain('data-testid="collapse-departures-btn"');
+      expect(htmlExpanded).toContain('data-testid="collapse-arrivals-btn"');
+      expect(htmlExpanded).toContain(">◀</button>");
+      expect(htmlExpanded).toContain(">▶</button>");
+
+      // Departures collapsed in horizontal mode: Departures shows ▶
+      const htmlDepCollapsed = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          defaultLayout: "horizontal",
+          defaultDeparturesCollapsed: true,
+          defaultArrivalsCollapsed: false,
+        }),
+      );
+      expect(htmlDepCollapsed).toContain("rack-column rack-departures collapsed");
+      const matches = htmlDepCollapsed.match(/>▶<\/button>/g);
+      expect(matches?.length).toBe(2);
+
+      // Arrivals collapsed in horizontal mode: Arrivals shows ◀
+      const htmlArrCollapsed = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          defaultLayout: "horizontal",
+          defaultDeparturesCollapsed: false,
+          defaultArrivalsCollapsed: true,
+        }),
+      );
+      expect(htmlArrCollapsed).toContain("rack-column rack-arrivals collapsed");
+      const arrMatches = htmlArrCollapsed.match(/>◀<\/button>/g);
+      expect(arrMatches?.length).toBe(2);
+    });
+
+    test("renders correct arrow indicators in vertical mode for expanded and collapsed states", () => {
+      // Both expanded in vertical mode: Departures ▲, Arrivals ▲
+      const htmlExpanded = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          defaultLayout: "vertical",
+          defaultDeparturesCollapsed: false,
+          defaultArrivalsCollapsed: false,
+        }),
+      );
+      const upMatches = htmlExpanded.match(/>▲<\/button>/g);
+      expect(upMatches?.length).toBe(2);
+
+      // Both collapsed in vertical mode: Departures ▼, Arrivals ▼
+      const htmlCollapsed = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          defaultLayout: "vertical",
+          defaultDeparturesCollapsed: true,
+          defaultArrivalsCollapsed: true,
+        }),
+      );
+      const downMatches = htmlCollapsed.match(/>▼<\/button>/g);
+      expect(downMatches?.length).toBe(2);
+      expect(htmlCollapsed).toContain("rack-column rack-departures collapsed");
+      expect(htmlCollapsed).toContain("rack-column rack-arrivals collapsed");
+    });
+
+    test("clicking layout toggle button invokes onLayoutModeChange with switched orientation", () => {
+      const onLayoutModeChange = vi.fn();
+      const tree = StripsBoard({
+        defaultLayout: "horizontal",
+        onLayoutModeChange,
+      });
+
+      // header is child 0, meta is child 1 of header, layout button is child 0 of meta
+      const header = tree.props.children[0];
+      const headerMeta = header.props.children[1];
+      const layoutBtn = headerMeta.props.children[0];
+
+      expect(layoutBtn.props["data-testid"]).toBe("strips-layout-toggle-btn");
+      expect(layoutBtn.props.children).toBe("[ ⬒ STACKED ]");
+
+      layoutBtn.props.onClick();
+      expect(onLayoutModeChange).toHaveBeenCalledTimes(1);
+      expect(onLayoutModeChange).toHaveBeenCalledWith("vertical");
+    });
+
+    test("clicking collapse buttons invokes respective change callbacks", () => {
+      const onDeparturesCollapsedChange = vi.fn();
+      const onArrivalsCollapsedChange = vi.fn();
+      const tree = StripsBoard({
+        defaultDeparturesCollapsed: false,
+        defaultArrivalsCollapsed: false,
+        onDeparturesCollapsedChange,
+        onArrivalsCollapsedChange,
+      });
+
+      const bayContainer = tree.props.children[1];
+      const depRack = bayContainer.props.children[0];
+      const arrRack = bayContainer.props.children[1];
+
+      const depHeader = depRack.props.children[0];
+      const depBtn = depHeader.props.children[1];
+      const arrHeader = arrRack.props.children[0];
+      const arrBtn = arrHeader.props.children[1];
+
+      const fakeEvent = { stopPropagation: vi.fn() };
+      depBtn.props.onClick(fakeEvent);
+      expect(fakeEvent.stopPropagation).toHaveBeenCalled();
+      expect(onDeparturesCollapsedChange).toHaveBeenCalledWith(true);
+
+      const fakeEvent2 = { stopPropagation: vi.fn() };
+      arrBtn.props.onClick(fakeEvent2);
+      expect(fakeEvent2.stopPropagation).toHaveBeenCalled();
+      expect(onArrivalsCollapsedChange).toHaveBeenCalledWith(true);
+    });
+
+    test("clicking collapsed rack header or rail invokes callback to expand rack back", () => {
+      const onDeparturesCollapsedChange = vi.fn();
+      const onArrivalsCollapsedChange = vi.fn();
+      const tree = StripsBoard({
+        defaultDeparturesCollapsed: true,
+        defaultArrivalsCollapsed: true,
+        onDeparturesCollapsedChange,
+        onArrivalsCollapsedChange,
+      });
+
+      const bayContainer = tree.props.children[1];
+      const depRack = bayContainer.props.children[0];
+      const arrRack = bayContainer.props.children[1];
+
+      // Clicking collapsed departures rack header
+      const depHeader = depRack.props.children[0];
+      depHeader.props.onClick();
+      expect(onDeparturesCollapsedChange).toHaveBeenCalledWith(false);
+
+      // Clicking collapsed arrivals rack column / rail
+      arrRack.props.onClick();
+      expect(onArrivalsCollapsedChange).toHaveBeenCalledWith(false);
+    });
+
+    test("strips.css defines styles for bay-horizontal, bay-vertical, collapsed racks, and buttons", () => {
+      expect(cssContent).toMatch(/\.bay-horizontal/i);
+      expect(cssContent).toMatch(/\.bay-vertical/i);
+      expect(cssContent).toMatch(
+        /\.rack-column\.collapsed\s*\.rack-strip-list\s*\{[^}]*display:\s*none/i,
+      );
+      expect(cssContent).toMatch(/writing-mode:\s*vertical-rl/i);
+      expect(cssContent).toMatch(/transform:\s*rotate\(180deg\)/i);
+      expect(cssContent).toMatch(/\.strips-layout-toggle-btn/i);
+      expect(cssContent).toMatch(/\.rack-collapse-btn/i);
+      expect(cssContent).toMatch(/#00ff00/i);
+      expect(cssContent).toMatch(/#ffff00/i);
     });
   });
 });
