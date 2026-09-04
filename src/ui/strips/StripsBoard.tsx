@@ -2,26 +2,10 @@ import type { World } from "@core";
 import { setSelectedAircraft } from "@core";
 import { ArrivalStrip } from "./ArrivalStrip";
 import { DepartureStrip } from "./DepartureStrip";
-import { mockArrivals, mockDepartures } from "./mockFixture";
 import type { ArrivalStripData, DepartureStripData, FlightStrip } from "./types";
 import "./strips.css";
 
-export const DEFAULT_FACILITY_TITLE = "KATL_TWR — Flight Progress Strips";
-
-/**
- * Detects whether standalone flight progress strips view (?view=strips) is active in search params.
- */
-export function isStripsViewActive(search: string): boolean {
-  if (!search) {
-    return false;
-  }
-  try {
-    const params = new URLSearchParams(search);
-    return params.get("view") === "strips";
-  } catch {
-    return false;
-  }
-}
+export const DEFAULT_FACILITY_TITLE = "ATL — Flight Progress Strips";
 
 /**
  * Selects an aircraft in World when it matches the given strip's callsign (ACID) or id.
@@ -61,11 +45,11 @@ export function createStripSelectionHandler(
 }
 
 export interface StripsBoardProps {
-  /** Array of departure flight strips (defaults to mockDepartures). */
+  /** Array of departure flight strips (defaults to empty array). */
   departures?: DepartureStripData[];
-  /** Array of arrival flight strips (defaults to mockArrivals). */
+  /** Array of arrival flight strips (defaults to empty array). */
   arrivals?: ArrivalStripData[];
-  /** Facility header title (defaults to KATL_TWR — Flight Progress Strips). */
+  /** Facility header title (defaults to ATL — Flight Progress Strips). */
   facilityTitle?: string;
   /** Selection callback fired when a strip is clicked or activated. */
   onSelectStrip?: (strip: FlightStrip) => void;
@@ -81,15 +65,15 @@ export interface StripsBoardProps {
  * (Departures on the left, Arrivals on the right).
  */
 export function StripsBoard({
-  departures,
-  arrivals,
+  departures = [],
+  arrivals = [],
   facilityTitle = DEFAULT_FACILITY_TITLE,
   onSelectStrip,
   selectedStripId,
   className,
 }: StripsBoardProps) {
-  const departuresList = departures ?? mockDepartures;
-  const arrivalsList = arrivals ?? mockArrivals;
+  const departuresList = departures;
+  const arrivalsList = arrivals;
 
   const isStripSelected = (strip: FlightStrip): boolean => {
     if (!selectedStripId) {
@@ -134,13 +118,6 @@ export function StripsBoard({
         >
           <div className="rack-header" data-testid="rack-header-departures">
             <span className="rack-title">Departures</span>
-            <span
-              className="rack-badge rack-count"
-              data-testid="departures-count"
-              aria-label={`${departuresList.length} departures`}
-            >
-              {departuresList.length}
-            </span>
           </div>
           <div
             className="rack-strip-list"
@@ -174,13 +151,6 @@ export function StripsBoard({
         >
           <div className="rack-header" data-testid="rack-header-arrivals">
             <span className="rack-title">Arrivals</span>
-            <span
-              className="rack-badge rack-count"
-              data-testid="arrivals-count"
-              aria-label={`${arrivalsList.length} arrivals`}
-            >
-              {arrivalsList.length}
-            </span>
           </div>
           <div
             className="rack-strip-list"

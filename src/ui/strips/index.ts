@@ -28,8 +28,11 @@ export type {
 
 // Formatting utilities
 export {
+  formatArrivalTime,
   formatBeaconCode,
   formatEquipment,
+  formatFlightRules,
+  formatProposedDepartureTime,
   formatRevisionIndex,
   formatTimeZulu,
   truncateField,
@@ -60,7 +63,9 @@ export {
   DEFAULT_FACILITY_TITLE,
   StripsBoard,
   createStripSelectionHandler,
-  isStripsViewActive,
   selectTrackFromFlightStrip,
 } from "./StripsBoard";
 export type { StripsBoardProps } from "./StripsBoard";
+
+// Terminal strips derived from World
+export { terminalStripsFromWorld } from "./terminalStripsFromWorld";

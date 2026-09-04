@@ -12,21 +12,24 @@ const cssContent = readFileSync(new URL("../strips.css", import.meta.url), "utf8
 
 describe("T02-91 Flight Progress Strips Departure and Arrival Components", () => {
   // --------------------------------------------------------------------------
-  // AC1: DepartureStrip 4 columns with subgrids matching FAA layout
+  // --------------------------------------------------------------------------
+  // AC1: DepartureStrip 5 columns with subgrids matching FAA layout
   // --------------------------------------------------------------------------
   describe("AC1 — DepartureStrip layout and subgrids", () => {
-    test("renders 4 columns with proper column identifiers and classes", () => {
+    test("renders 5 columns with proper column identifiers and classes", () => {
       const html = renderToStaticMarkup(createElement(DepartureStrip, { strip: mockDAL882 }));
 
-      expect(html).toContain('class="departure-strip');
+      expect(html).toContain('class="strip departure-strip');
       expect(html).toContain('data-col="1"');
       expect(html).toContain('data-col="2"');
       expect(html).toContain('data-col="3"');
       expect(html).toContain('data-col="4"');
-      expect(html).toContain("strip-col-1");
-      expect(html).toContain("strip-col-2");
-      expect(html).toContain("strip-col-3");
-      expect(html).toContain("strip-col-4");
+      expect(html).toContain('data-col="5"');
+      expect(html).toContain("col-ident");
+      expect(html).toContain("col-fix-data");
+      expect(html).toContain("col-local");
+      expect(html).toContain("col-route");
+      expect(html).toContain("col-matrix");
     });
 
     test("renders Column 1 boxes: ACID (Box 1), Revision (Box 2), Equipment (Box 3), Computer ID (Box 4)", () => {
@@ -43,10 +46,8 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
       expect(html).toContain("101"); // Computer ID
 
       // Revision number 0 renders empty string
-      const revMatch = html.match(
-        /class="[^"]*box-2[^"]*"[^>]*>.*?<span class="box-value strip-rev">(.*?)<\/span>/s,
-      );
-      expect(revMatch?.[1]).toBe("");
+      const revMatch = html.match(/data-box="2"[^>]*>(.*?)<\/div>/s);
+      expect(revMatch?.[1]?.trim()).toBe("");
     });
 
     test("renders revision number >= 1 in Box 2 for revised departure", () => {
@@ -56,13 +57,11 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
       expect(html).toContain("E/B737/G");
       expect(html).toContain("102");
 
-      const revMatch = html.match(
-        /class="[^"]*box-2[^"]*"[^>]*>.*?<span class="box-value strip-rev">(.*?)<\/span>/s,
-      );
-      expect(revMatch?.[1]).toBe("1");
+      const revMatch = html.match(/data-box="2"[^>]*>(.*?)<\/div>/s);
+      expect(revMatch?.[1]?.trim()).toBe("1");
     });
 
-    test("renders Column 2 boxes: Beacon code (Box 5), Proposed time (Box 6), Requested altitude (Box 7)", () => {
+    test("renders Column 2 boxes: Beacon code (Box 5), Proposed time (Box 6 with P-prefix), Requested altitude (Box 7)", () => {
       const html = renderToStaticMarkup(createElement(DepartureStrip, { strip: mockDAL882 }));
 
       expect(html).toContain('data-box="5"');
@@ -70,7 +69,7 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
       expect(html).toContain('data-box="7"');
 
       expect(html).toContain("4215"); // Beacon squawk
-      expect(html).toContain("1430"); // Proposed departure time
+      expect(html).toContain("P1430"); // Proposed departure time
       expect(html).toContain("330"); // Requested altitude
     });
 
@@ -95,18 +94,20 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
   // AC2: ArrivalStrip layout, previous fix, coordination fix, ETA, split Col 4
   // --------------------------------------------------------------------------
   describe("AC2 — ArrivalStrip layout and fields", () => {
-    test("renders 4 columns with proper column identifiers and classes", () => {
+    test("renders 5 columns with proper column identifiers and classes", () => {
       const html = renderToStaticMarkup(createElement(ArrivalStrip, { strip: mockAAL412 }));
 
-      expect(html).toContain('class="arrival-strip');
+      expect(html).toContain('class="strip arrival-strip');
       expect(html).toContain('data-col="1"');
       expect(html).toContain('data-col="2"');
       expect(html).toContain('data-col="3"');
       expect(html).toContain('data-col="4"');
-      expect(html).toContain("strip-col-1");
-      expect(html).toContain("strip-col-2");
-      expect(html).toContain("strip-col-3");
-      expect(html).toContain("strip-col-4");
+      expect(html).toContain('data-col="5"');
+      expect(html).toContain("col-ident");
+      expect(html).toContain("col-fix-data");
+      expect(html).toContain("col-local");
+      expect(html).toContain("col-route");
+      expect(html).toContain("col-matrix");
     });
 
     test("renders Column 2 with beacon (Box 5), previous fix (Box 6), and coordination fix (Box 7)", () => {
@@ -121,35 +122,28 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
       expect(html).toContain("HONIE"); // Coordination fix
     });
 
-    test("renders Column 3 Box 8 displaying Estimated Time of Arrival (ETA)", () => {
+    test("renders Column 3 Box 8 displaying Estimated Time of Arrival (ETA) with A-prefix", () => {
       const html = renderToStaticMarkup(createElement(ArrivalStrip, { strip: mockAAL412 }));
 
       expect(html).toContain('data-box="8"');
-      expect(html).toContain("1440"); // ETA
+      expect(html).toContain("A1440"); // ETA
     });
 
-    test("renders Column 4 split into Box 9 (Flight Rules 'I'/'V') and Box 9A (Destination & remarks)", () => {
+    test("renders Column 4 split into Box 9 (Flight Rules 'IFR'/'VFR') and Box 9A (Destination & remarks)", () => {
       const ifrHtml = renderToStaticMarkup(createElement(ArrivalStrip, { strip: mockAAL412 }));
 
       expect(ifrHtml).toContain('data-box="9"');
       expect(ifrHtml).toContain('data-box="9A"');
-      expect(ifrHtml).toContain("box-9a");
-      expect(ifrHtml).toContain("strip-col-4-arrival");
+      expect(ifrHtml).toContain("col-route-arrival");
 
-      // IFR renders 'I'
-      const ifrMatch = ifrHtml.match(
-        /class="[^"]*box-rules[^"]*"[^>]*>.*?<span class="box-value strip-flight-rules">(.*?)<\/span>/s,
-      );
-      expect(ifrMatch?.[1]).toBe("I");
+      // IFR renders 'IFR'
+      expect(ifrHtml).toContain("IFR");
       expect(ifrHtml).toContain("KATL");
       expect(ifrHtml).toContain("RNAV STAR");
 
-      // VFR renders 'V'
+      // VFR renders 'VFR'
       const vfrHtml = renderToStaticMarkup(createElement(ArrivalStrip, { strip: mockN415SP }));
-      const vfrMatch = vfrHtml.match(
-        /class="[^"]*box-rules[^"]*"[^>]*>.*?<span class="box-value strip-flight-rules">(.*?)<\/span>/s,
-      );
-      expect(vfrMatch?.[1]).toBe("V");
+      expect(vfrHtml).toContain("VFR");
       expect(vfrHtml).toContain("KPDK");
       expect(vfrHtml).toContain("TOUCH AND GO");
     });
@@ -222,13 +216,16 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
   // --------------------------------------------------------------------------
   // AC4: Buff background (#F5EEDC), dark holder borders, uppercase monospace fonts
   // --------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // AC4: Buff background (#f5eedc), dark borders, uppercase monospace fonts
+  // --------------------------------------------------------------------------
   describe("AC4 — Styling and CSS specifications", () => {
-    test("strips.css defines pale buff background #F5EEDC", () => {
-      expect(cssContent).toMatch(/background-color:\s*#F5EEDC/i);
+    test("strips.css defines pale buff background #f5eedc", () => {
+      expect(cssContent).toMatch(/background-color:\s*#f5eedc/i);
     });
 
-    test("strips.css defines dark holder border 2px solid #222", () => {
-      expect(cssContent).toMatch(/border:\s*2px\s+solid\s+#222/i);
+    test("strips.css defines strip border 1px solid #333", () => {
+      expect(cssContent).toMatch(/border:\s*1px\s+solid\s+#333/i);
     });
 
     test("strips.css defines inner borders 1px solid #333", () => {
@@ -241,17 +238,19 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
     });
 
     test("strips.css defines bold font-weight and uppercase text-transform", () => {
-      expect(cssContent).toMatch(/font-weight:\s*bold/i);
+      expect(cssContent).toMatch(/font-weight:\s*(bold|700)/i);
       expect(cssContent).toMatch(/text-transform:\s*uppercase/i);
     });
 
-    test("strips.css defines dimensions height 140px and max-width 820px", () => {
-      expect(cssContent).toMatch(/height:\s*140px/);
-      expect(cssContent).toMatch(/max-width:\s*820px/);
+    test("strips.css defines dimensions height 120px and max-width 840px", () => {
+      expect(cssContent).toMatch(/height:\s*120px/);
+      expect(cssContent).toMatch(/max-width:\s*840px/);
     });
 
-    test("strips.css defines 4-column subgrid layout matching 18% 14% 46% 22%", () => {
-      expect(cssContent).toMatch(/grid-template-columns:\s*18%\s+14%\s+46%\s+22%/);
+    test("strips.css defines 5-column subgrid layout matching 1.4fr 0.7fr 0.9fr 2.2fr 1.1fr", () => {
+      expect(cssContent).toMatch(
+        /grid-template-columns:\s*1\.4fr\s+0\.7fr\s+0\.9fr\s+2\.2fr\s+1\.1fr/,
+      );
     });
   });
 
@@ -259,11 +258,14 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
   // AC5: Unit tests pass 100% including DOM structure, box labels, classes, click handlers
   // --------------------------------------------------------------------------
   describe("AC5 — DOM structure, box labels, classes, and click handlers", () => {
-    test("every box has a visible box label element indicating its box number", () => {
+    test("boxes have data-box attributes without rendering visible box-label elements", () => {
       const html = renderToStaticMarkup(createElement(DepartureStrip, { strip: mockDAL882 }));
 
+      // No visible box-label elements
+      expect(html).not.toContain("box-label");
+
       // Box 1 through 9, 8A, 8B, 10 through 18
-      const expectedLabels = [
+      const expectedBoxes = [
         "1",
         "2",
         "3",
@@ -285,15 +287,17 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
         "17",
         "18",
       ];
-      for (const label of expectedLabels) {
-        expect(html).toContain(`<span class="box-label">${label}</span>`);
+      for (const box of expectedBoxes) {
+        expect(html).toContain(`data-box="${box}"`);
       }
     });
 
-    test("ArrivalStrip has box labels 1 to 8, 8A, 8B, 9, 9A, 10 to 18", () => {
+    test("ArrivalStrip has data-box attributes 1 to 8, 8A, 8B, 9, 9A, 10 to 18 without box-label elements", () => {
       const html = renderToStaticMarkup(createElement(ArrivalStrip, { strip: mockAAL412 }));
 
-      const expectedLabels = [
+      expect(html).not.toContain("box-label");
+
+      const expectedBoxes = [
         "1",
         "2",
         "3",
@@ -316,8 +320,8 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
         "17",
         "18",
       ];
-      for (const label of expectedLabels) {
-        expect(html).toContain(`<span class="box-label">${label}</span>`);
+      for (const box of expectedBoxes) {
+        expect(html).toContain(`data-box="${box}"`);
       }
     });
 

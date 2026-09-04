@@ -77,3 +77,55 @@ export function formatRevisionIndex(rev?: number): string {
   }
   return Math.floor(rev).toString();
 }
+
+/**
+ * Formats Box 6 proposed departure time prefixed with "P" (e.g. "1430" -> "P1430").
+ * Preserves existing "P" prefix if present. Returns empty string if empty or invalid.
+ */
+export function formatProposedDepartureTime(time?: string | null): string {
+  if (!time) {
+    return "";
+  }
+  const trimmed = time.trim();
+  if (!trimmed) {
+    return "";
+  }
+  if (trimmed.toUpperCase().startsWith("P")) {
+    const stripped = trimmed.slice(1);
+    const zulu = formatTimeZulu(stripped);
+    return zulu ? `P${zulu}` : trimmed.toUpperCase();
+  }
+  const zulu = formatTimeZulu(trimmed);
+  return zulu ? `P${zulu}` : "";
+}
+
+/**
+ * Formats Box 8 estimated time of arrival (ETA) prefixed with "A" (e.g. "2254" -> "A2254").
+ * Preserves existing "A" prefix if present. Returns empty string if empty or invalid.
+ */
+export function formatArrivalTime(eta?: string | null): string {
+  if (!eta) {
+    return "";
+  }
+  const trimmed = eta.trim();
+  if (!trimmed) {
+    return "";
+  }
+  if (trimmed.toUpperCase().startsWith("A")) {
+    const stripped = trimmed.slice(1);
+    const zulu = formatTimeZulu(stripped);
+    return zulu ? `A${zulu}` : trimmed.toUpperCase();
+  }
+  const zulu = formatTimeZulu(trimmed);
+  return zulu ? `A${zulu}` : "";
+}
+
+/**
+ * Formats Box 9 flight rules: "VFR" if rules === "VFR", else "IFR" (spelled out).
+ */
+export function formatFlightRules(rules?: "IFR" | "VFR" | string): string {
+  if (!rules) {
+    return "IFR";
+  }
+  return rules.trim().toUpperCase() === "VFR" ? "VFR" : "IFR";
+}

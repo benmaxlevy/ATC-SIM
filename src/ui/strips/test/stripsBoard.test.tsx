@@ -23,12 +23,12 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
       expect(html).toContain('data-testid="board-header"');
     });
 
-    test("renders default facility title KATL_TWR — Flight Progress Strips", () => {
+    test("renders default facility title ATL — Flight Progress Strips", () => {
       const html = renderToStaticMarkup(createElement(StripsBoard));
 
       expect(html).toContain('class="board-title"');
       expect(html).toContain(DEFAULT_FACILITY_TITLE);
-      expect(html).toContain("KATL_TWR — Flight Progress Strips");
+      expect(html).toContain("ATL — Flight Progress Strips");
     });
 
     test("renders custom facility title when facilityTitle prop is provided", () => {
@@ -69,21 +69,22 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
   });
 
   // --------------------------------------------------------------------------
-  // AC2: Rack headers render counts matching departures and arrivals arrays
+  // AC2: Rack headers render clean title headers without count badges
   // --------------------------------------------------------------------------
-  describe("AC2 — Rack headers render counts matching strip arrays", () => {
-    test("renders departures and arrivals count badges matching default mockFixture lengths", () => {
+  describe("AC2 — Rack headers render clean title headers without count badges", () => {
+    test("renders departures and arrivals headers without count badges", () => {
       const html = renderToStaticMarkup(createElement(StripsBoard));
 
-      expect(html).toContain(
-        `data-testid="departures-count" aria-label="${mockDepartures.length} departures">${mockDepartures.length}</span>`,
-      );
-      expect(html).toContain(
-        `data-testid="arrivals-count" aria-label="${mockArrivals.length} arrivals">${mockArrivals.length}</span>`,
-      );
+      expect(html).toContain('data-testid="rack-header-departures"');
+      expect(html).toContain("Departures");
+      expect(html).not.toContain('data-testid="departures-count"');
+
+      expect(html).toContain('data-testid="rack-header-arrivals"');
+      expect(html).toContain("Arrivals");
+      expect(html).not.toContain('data-testid="arrivals-count"');
     });
 
-    test("renders custom counts matching provided departures and arrivals arrays", () => {
+    test("renders custom departures and arrivals lists without header count badges", () => {
       const singleDeparture: DepartureStripData[] = [mockDAL882];
       const html = renderToStaticMarkup(
         createElement(StripsBoard, {
@@ -92,11 +93,13 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
         }),
       );
 
-      expect(html).toContain('data-testid="departures-count" aria-label="1 departures">1</span>');
-      expect(html).toContain('data-testid="arrivals-count" aria-label="2 arrivals">2</span>');
+      expect(html).toContain('data-testid="rack-header-departures"');
+      expect(html).toContain('data-testid="rack-header-arrivals"');
+      expect(html).not.toContain('data-testid="departures-count"');
+      expect(html).not.toContain('data-testid="arrivals-count"');
     });
 
-    test("handles empty departures and arrivals arrays displaying 0 and empty placeholder", () => {
+    test("handles empty departures and arrivals arrays displaying empty placeholder", () => {
       const html = renderToStaticMarkup(
         createElement(StripsBoard, {
           departures: [],
@@ -104,8 +107,8 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
         }),
       );
 
-      expect(html).toContain('data-testid="departures-count" aria-label="0 departures">0</span>');
-      expect(html).toContain('data-testid="arrivals-count" aria-label="0 arrivals">0</span>');
+      expect(html).not.toContain('data-testid="departures-count"');
+      expect(html).not.toContain('data-testid="arrivals-count"');
       expect(html).toContain('data-testid="rack-empty-departures"');
       expect(html).toContain("No departure strips");
       expect(html).toContain('data-testid="rack-empty-arrivals"');
@@ -131,16 +134,16 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
   // AC3: Independent vertical scrolling and layout styling
   // --------------------------------------------------------------------------
   describe("AC3 — Independent vertical scrolling and layout styling in strips.css", () => {
-    test("strips.css defines .strips-board with 100vw, 100vh, #1A1E24, and overflow: hidden", () => {
+    test("strips.css defines .strips-board with 100vw, 100vh, #000000, and overflow: hidden", () => {
       expect(cssContent).toMatch(/\.strips-board\s*\{[^}]*width:\s*100vw;/i);
       expect(cssContent).toMatch(/\.strips-board\s*\{[^}]*height:\s*100vh;/i);
-      expect(cssContent).toMatch(/\.strips-board\s*\{[^}]*background-color:\s*#1A1E24;/i);
+      expect(cssContent).toMatch(/\.strips-board\s*\{[^}]*background-color:\s*#000000;/i);
       expect(cssContent).toMatch(/\.strips-board\s*\{[^}]*overflow:\s*hidden;/i);
     });
 
-    test("strips.css defines .board-header with #0D1117, bottom border #30363D, and monospace font", () => {
-      expect(cssContent).toMatch(/\.board-header\s*\{[^}]*background-color:\s*#0D1117;/i);
-      expect(cssContent).toMatch(/\.board-header\s*\{[^}]*border-bottom:\s*1px solid #30363D;/i);
+    test("strips.css defines .board-header with #000000, bottom border #222, and monospace font", () => {
+      expect(cssContent).toMatch(/\.board-header\s*\{[^}]*background-color:\s*#000000;/i);
+      expect(cssContent).toMatch(/\.board-header\s*\{[^}]*border-bottom:\s*1px solid #222;/i);
       expect(cssContent).toMatch(/\.board-header\s*\{[^}]*font-family:[^}]*monospace;/i);
     });
 
@@ -151,16 +154,23 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
       expect(cssContent).toMatch(/\.bay-container\s*\{[^}]*overflow:\s*hidden;/i);
     });
 
-    test("strips.css defines .rack-column with #24292E, border #444D56, and flex column", () => {
-      expect(cssContent).toMatch(/\.rack-column\s*\{[^}]*background-color:\s*#24292E;/i);
-      expect(cssContent).toMatch(/\.rack-column\s*\{[^}]*border:\s*1px solid #444D56;/i);
+    test("strips.css defines .rack-column with #000000, border #222, and flex column", () => {
+      expect(cssContent).toMatch(/\.rack-column\s*\{[^}]*background-color:\s*#000000;/i);
+      expect(cssContent).toMatch(/\.rack-column\s*\{[^}]*border:\s*1px solid #222;/i);
       expect(cssContent).toMatch(/\.rack-column\s*\{[^}]*flex-direction:\s*column;/i);
     });
 
-    test("strips.css defines .rack-header with #2F363D, border #444D56, and uppercase text", () => {
-      expect(cssContent).toMatch(/\.rack-header\s*\{[^}]*background-color:\s*#2F363D;/i);
-      expect(cssContent).toMatch(/\.rack-header\s*\{[^}]*border-bottom:\s*1px solid #444D56;/i);
+    test("strips.css defines .rack-header with #000000, border #222, uppercase text, white color, and IBM Plex Mono font", () => {
+      expect(cssContent).toMatch(/\.rack-header\s*\{[^}]*background-color:\s*#000000;/i);
+      expect(cssContent).toMatch(/\.rack-header\s*\{[^}]*border-bottom:\s*1px solid #222;/i);
       expect(cssContent).toMatch(/\.rack-header\s*\{[^}]*text-transform:\s*uppercase;/i);
+      expect(cssContent).toMatch(/\.rack-header\s*\{[^}]*color:\s*#ffffff;/i);
+      expect(cssContent).toMatch(/\.rack-header\s*\{[^}]*font-family:[^}]*"IBM Plex Mono"/i);
+    });
+
+    test("strips.css defines .strips-drawer with pure black background and 1px white border-left separator", () => {
+      expect(cssContent).toMatch(/\.strips-drawer\s*\{[^}]*background-color:\s*#000000;/i);
+      expect(cssContent).toMatch(/\.strips-drawer\s*\{[^}]*border-left:\s*1px solid #ffffff;/i);
     });
 
     test("strips.css defines .rack-strip-list with gap 4px, padding 8px, overflow-y: auto, flex: 1", () => {
@@ -181,11 +191,20 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
   });
 
   // --------------------------------------------------------------------------
-  // AC4: Default fallback loads mockFixture seed data seamlessly
+  // AC4: Empty defaults and passed mockFixture rendering
   // --------------------------------------------------------------------------
-  describe("AC4 — Default fallback loads mockFixture seed data seamlessly", () => {
-    test("renders departure strips for mock DAL882 and SWA1902 when departures is undefined", () => {
+  describe("AC4 — Empty defaults and passed mockFixture rendering", () => {
+    test("renders empty racks when departures and arrivals are undefined (defaults to empty arrays)", () => {
       const html = renderToStaticMarkup(createElement(StripsBoard));
+
+      expect(html).toContain("No departure strips");
+      expect(html).toContain("No arrival strips");
+      expect(html).toContain("DEP: 0");
+      expect(html).toContain("ARR: 0");
+    });
+
+    test("renders departure strips for mock DAL882 and SWA1902 when departures prop is provided", () => {
+      const html = renderToStaticMarkup(createElement(StripsBoard, { departures: mockDepartures }));
 
       expect(html).toContain("DAL882");
       expect(html).toContain("SWA1902");
@@ -195,8 +214,8 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
       expect(html).toContain("POUNC2 POUNC BNA STL");
     });
 
-    test("renders arrival strips for mock AAL412 and N415SP when arrivals is undefined", () => {
-      const html = renderToStaticMarkup(createElement(StripsBoard));
+    test("renders arrival strips for mock AAL412 and N415SP when arrivals prop is provided", () => {
+      const html = renderToStaticMarkup(createElement(StripsBoard, { arrivals: mockArrivals }));
 
       expect(html).toContain("AAL412");
       expect(html).toContain("N415SP");
@@ -206,8 +225,10 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
       expect(html).toContain("PDK");
     });
 
-    test("renders 4 total strips across the 2 racks under default mock props", () => {
-      const html = renderToStaticMarkup(createElement(StripsBoard));
+    test("renders 4 total strips across the 2 racks under mock props", () => {
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, { departures: mockDepartures, arrivals: mockArrivals }),
+      );
 
       const depMatches = html.match(/class="[^"]*departure-strip[^"]*"/g);
       const arrMatches = html.match(/class="[^"]*arrival-strip[^"]*"/g);
@@ -268,6 +289,8 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
     test("highlights selected strip when selectedStripId prop is specified", () => {
       const htmlSelectedDep = renderToStaticMarkup(
         createElement(StripsBoard, {
+          departures: mockDepartures,
+          arrivals: mockArrivals,
           selectedStripId: "DAL882",
         }),
       );
@@ -281,6 +304,8 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
 
       const htmlSelectedArr = renderToStaticMarkup(
         createElement(StripsBoard, {
+          departures: mockDepartures,
+          arrivals: mockArrivals,
           selectedStripId: "AAL412",
         }),
       );
@@ -328,8 +353,8 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
       expect(html).toContain("VRNNA DIRECT");
       expect(html).toContain("TEST200");
       expect(html).toContain("WOMEN");
-      expect(html).toContain('data-testid="departures-count" aria-label="1 departures">1</span>');
-      expect(html).toContain('data-testid="arrivals-count" aria-label="1 arrivals">1</span>');
+      expect(html).not.toContain('data-testid="departures-count"');
+      expect(html).not.toContain('data-testid="arrivals-count"');
     });
   });
 });

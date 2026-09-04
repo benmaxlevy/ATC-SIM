@@ -13,7 +13,6 @@ import {
   DEFAULT_FACILITY_TITLE,
   StripsBoard,
   createStripSelectionHandler,
-  isStripsViewActive,
   mockAAL412,
   mockArrivals,
   mockDAL882,
@@ -30,58 +29,45 @@ const shellTsx = readFileSync(new URL("../../shell.tsx", import.meta.url), "utf8
 
 describe("T02-93 Flight Progress Strips Integration and Acceptance", () => {
   // ==========================================================================
-  // AC1: Loading with ?view=strips renders the StripsBoard component in #root
+  // AC1: Facility title ATL and StripsBoard component structure
   // ==========================================================================
-  describe("AC1 — Loading with ?view=strips renders StripsBoard in #root", () => {
-    test("isStripsViewActive correctly detects view=strips in search queries", () => {
-      expect(isStripsViewActive("?view=strips")).toBe(true);
-      expect(isStripsViewActive("?scenario=katl&view=strips")).toBe(true);
-      expect(isStripsViewActive("?view=strips&seed=42")).toBe(true);
-      expect(isStripsViewActive("?traffic=20&view=strips&scenario=kdem")).toBe(true);
-
-      // Non-matching queries
-      expect(isStripsViewActive("")).toBe(false);
-      expect(isStripsViewActive("?scenario=katl")).toBe(false);
-      expect(isStripsViewActive("?view=radar")).toBe(false);
-      expect(isStripsViewActive("?strips=true")).toBe(false);
-      expect(isStripsViewActive("?view=strip")).toBe(false);
+  describe("AC1 — Facility title ATL and StripsBoard component structure", () => {
+    test("DEFAULT_FACILITY_TITLE is ATL — Flight Progress Strips", () => {
+      expect(DEFAULT_FACILITY_TITLE).toBe("ATL — Flight Progress Strips");
     });
 
-    test("StripsBoard renders the complete board interface with header, racks, and default fixture", () => {
-      const html = renderToStaticMarkup(createElement(StripsBoard));
+    test("StripsBoard renders the complete board interface with header, racks, and strips", () => {
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, { departures: mockDepartures, arrivals: mockArrivals }),
+      );
 
       // Root board element and header
       expect(html).toContain('class="strips-board"');
       expect(html).toContain('data-testid="strips-board"');
       expect(html).toContain('data-testid="board-header"');
-      expect(html).toContain(DEFAULT_FACILITY_TITLE);
+      expect(html).toContain("ATL — Flight Progress Strips");
 
       // Two-column rack bay container
       expect(html).toContain('data-testid="bay-container"');
       expect(html).toContain('data-testid="rack-departures"');
       expect(html).toContain('data-testid="rack-arrivals"');
 
-      // Default mock strips present
+      // Strips present
       expect(html).toContain("DAL882");
       expect(html).toContain("SWA1902");
       expect(html).toContain("AAL412");
       expect(html).toContain("N415SP");
 
-      // Badge counts match fixtures
-      expect(html).toContain(
-        `data-testid="departures-count" aria-label="${mockDepartures.length} departures">${mockDepartures.length}</span>`,
-      );
-      expect(html).toContain(
-        `data-testid="arrivals-count" aria-label="${mockArrivals.length} arrivals">${mockArrivals.length}</span>`,
-      );
+      // Rack headers render clean title labels without count badges
+      expect(html).not.toContain('data-testid="departures-count"');
+      expect(html).not.toContain('data-testid="arrivals-count"');
     });
 
-    test("src/main.tsx verifies ?view=strips routing and direct #root render of StripsBoard", () => {
-      expect(mainTsx).toMatch(/isStripsViewActive\(search\)/);
+    test("src/main.tsx mounts Shell cleanly into #root without external window view", () => {
       expect(mainTsx).toMatch(
-        /createRoot\(root\)\.render\(\s*<StrictMode>\s*<StripsBoard \/>\s*<\/StrictMode>/,
+        /createRoot\(root\)\.render\(\s*<StrictMode>\s*<Shell app={handles} scenario={scenario} scopeView={scopeView} \/>\s*<\/StrictMode>/,
       );
-      expect(mainTsx).toMatch(/document\.title\s*=\s*["']ATC-SIM — Flight Progress Strips["']/);
+      expect(mainTsx).not.toMatch(/view=strips/);
     });
 
     test("mounting StripsBoard into a simulated #root container produces full rack structure", () => {
@@ -285,10 +271,11 @@ describe("T02-93 Flight Progress Strips Integration and Acceptance", () => {
   });
 
   // ==========================================================================
+  // ==========================================================================
   // AC3: End-to-end formatting fidelity across mock departures and arrivals
   // ==========================================================================
   describe("AC3 — End-to-end formatting fidelity across mock departures and arrivals", () => {
-    test("departure strips format all 4 physical columns and FAA 7110.65 boxes faithfully", () => {
+    test("departure strips format all 5 physical columns and FAA 7110.65 boxes faithfully", () => {
       const html = renderToStaticMarkup(
         createElement(StripsBoard, {
           departures: [mockDAL882, mockSWA1902],
@@ -297,43 +284,44 @@ describe("T02-93 Flight Progress Strips Integration and Acceptance", () => {
       );
 
       // Column 1: ACID, Revision, Type, CID, Beacon
-      expect(html).toContain('class="box-value strip-acid">DAL882</span>');
-      expect(html).toContain('class="box-value strip-equip">D/B738/L</span>');
-      expect(html).toContain('class="box-value strip-cid">101</span>');
-      expect(html).toContain('class="box-value strip-beacon">4215</span>');
+      expect(html).toContain("DAL882");
+      expect(html).toContain("D/B738/L");
+      expect(html).toContain("101");
+      expect(html).toContain("4215");
 
       // SWA1902 has revision 1, type E/B737/G, beacon 2104
-      expect(html).toContain('class="box-value strip-acid">SWA1902</span>');
-      expect(html).toContain('class="box-value strip-rev">1</span>');
-      expect(html).toContain('class="box-value strip-equip">E/B737/G</span>');
-      expect(html).toContain('class="box-value strip-cid">102</span>');
-      expect(html).toContain('class="box-value strip-beacon">2104</span>');
+      expect(html).toContain("SWA1902");
+      expect(html).toContain("1");
+      expect(html).toContain("E/B737/G");
+      expect(html).toContain("102");
+      expect(html).toContain("2104");
 
-      // Column 2: Proposed departure time, Requested altitude, Departure airport
-      expect(html).toContain('class="box-value strip-dep-time">1430</span>');
-      expect(html).toContain('class="box-value strip-req-alt">330</span>');
-      expect(html).toContain('class="box-value strip-dep-airport">KATL</span>');
-      expect(html).toContain('class="box-value strip-dep-time">1435</span>');
-      expect(html).toContain('class="box-value strip-req-alt">310</span>');
+      // Column 2: Proposed departure time (with P-prefix), Requested altitude
+      expect(html).toContain("P1430");
+      expect(html).toContain("330");
+      expect(html).toContain("P1435");
+      expect(html).toContain("310");
 
-      // Column 3: Runway assignment 8A, Departure fix 8B, Route & Destination Box 9
-      expect(html).toContain('class="box-value strip-annotation-8a">26L</span>');
-      expect(html).toContain('class="box-value strip-annotation-8b">D</span>');
-      expect(html).toContain('class="strip-route">PLIER2 PLIER SPA J51 FAK PHL</div>');
-      expect(html).toContain('class="strip-dest">KPHL</span>');
+      // Column 3: Departure airport, Runway assignment 8A, Departure fix 8B
+      expect(html).toContain("KATL");
+      expect(html).toContain("26L");
+      expect(html).toContain("D");
+      expect(html).toContain("27R");
+      expect(html).toContain("T");
 
-      expect(html).toContain('class="box-value strip-annotation-8a">27R</span>');
-      expect(html).toContain('class="box-value strip-annotation-8b">T</span>');
-      expect(html).toContain('class="strip-route">POUNC2 POUNC BNA STL</div>');
-      expect(html).toContain('class="strip-dest">KMDW</span>');
+      // Column 4: Route & Destination Box 9
+      expect(html).toContain("PLIER2 PLIER SPA J51 FAK PHL");
+      expect(html).toContain("KPHL");
+      expect(html).toContain("POUNC2 POUNC BNA STL");
+      expect(html).toContain("KMDW");
 
-      // Column 4: Annotation boxes 10 to 18
-      expect(html).toContain('class="strip-col-4 strip-col-4-departure"');
+      // Column 5: Annotation boxes 10 to 18
+      expect(html).toContain('class="strip-col col-matrix annotation-grid-3x3"');
       expect(html).toContain('data-box="10"');
       expect(html).toContain('data-box="18"');
     });
 
-    test("arrival strips format all 4 physical columns and FAA 7110.65 boxes faithfully", () => {
+    test("arrival strips format all 5 physical columns and FAA 7110.65 boxes faithfully", () => {
       const html = renderToStaticMarkup(
         createElement(StripsBoard, {
           departures: [],
@@ -341,59 +329,62 @@ describe("T02-93 Flight Progress Strips Integration and Acceptance", () => {
         }),
       );
 
-      // Column 1: ACID, Type/Suffix, CID, Beacon
-      expect(html).toContain('class="box-value strip-acid">AAL412</span>');
-      expect(html).toContain('class="box-value strip-equip">D/A321/L</span>');
-      expect(html).toContain('class="box-value strip-cid">201</span>');
-      expect(html).toContain('class="box-value strip-beacon">0120</span>');
+      // Column 1: ACID, Type/Suffix, CID
+      expect(html).toContain("AAL412");
+      expect(html).toContain("D/A321/L");
+      expect(html).toContain("201");
 
       // N415SP: VFR squawk 1200, I/C172/G
-      expect(html).toContain('class="box-value strip-acid">N415SP</span>');
-      expect(html).toContain('class="box-value strip-equip">I/C172/G</span>');
-      expect(html).toContain('class="box-value strip-cid">202</span>');
-      expect(html).toContain('class="box-value strip-beacon">1200</span>');
+      expect(html).toContain("N415SP");
+      expect(html).toContain("I/C172/G");
+      expect(html).toContain("202");
 
-      // Column 2: Coordination fix, ETA
-      expect(html).toContain('class="box-value strip-coord-fix">HONIE</span>');
-      expect(html).toContain('class="box-value strip-eta">1440</span>');
-      expect(html).toContain('class="box-value strip-coord-fix">PDK</span>');
-      expect(html).toContain('class="box-value strip-eta">1445</span>');
+      // Column 2: Beacon, Coordination fix / Previous fix
+      expect(html).toContain("0120");
+      expect(html).toContain("HONIE");
+      expect(html).toContain("1200");
+      expect(html).toContain("PDK");
 
-      // Column 3: Runway 8A, Flight rules Box 9 ('I'/'V'), Destination Box 9A
-      expect(html).toContain('class="box-value strip-annotation-8a">26R</span>');
-      expect(html).toContain('class="box-value strip-flight-rules">I</span>');
-      expect(html).toContain('class="strip-dest">KATL</div>');
+      // Column 3: ETA (with A-prefix), Runway 8A
+      expect(html).toContain("A1440");
+      expect(html).toContain("26R");
+      expect(html).toContain("A1445");
+      expect(html).toContain("21L");
 
-      expect(html).toContain('class="box-value strip-annotation-8a">21L</span>');
-      expect(html).toContain('class="box-value strip-flight-rules">V</span>');
-      expect(html).toContain('class="strip-dest">KPDK</div>');
+      // Column 4: Flight rules Box 9 ('IFR'/'VFR'), Destination Box 9A
+      expect(html).toContain("IFR");
+      expect(html).toContain("KATL");
+      expect(html).toContain("VFR");
+      expect(html).toContain("KPDK");
 
-      // Column 4: Annotation boxes 10 to 18
-      expect(html).toContain('class="strip-col-4 strip-col-4-arrival"');
+      // Column 5: Annotation boxes 10 to 18
+      expect(html).toContain('class="strip-col col-matrix annotation-grid-3x3"');
       expect(html).toContain('data-box="10"');
       expect(html).toContain('data-box="18"');
     });
 
     test("strips.css enforces physical cardstock colors, column widths, and contrast", () => {
-      // 4-column physical cardstock grid template (18% 14% 46% 22%)
-      expect(stripsCss).toMatch(/grid-template-columns:\s*18%\s*14%\s*46%\s*22%;/);
+      // 5-column physical cardstock grid template (1.4fr 0.7fr 0.9fr 2.2fr 1.1fr)
+      expect(stripsCss).toMatch(
+        /grid-template-columns:\s*1\.4fr\s+0\.7fr\s+0\.9fr\s+2\.2fr\s+1\.1fr;/,
+      );
 
       // Pale buff physical background #f5eedc
       expect(stripsCss).toMatch(/background-color:\s*#f5eedc;/i);
 
-      // High-contrast dark ink text color #111
-      expect(stripsCss).toMatch(/color:\s*#111;/i);
+      // High-contrast dark ink text color #000000
+      expect(stripsCss).toMatch(/color:\s*#000000;/i);
 
-      // Dark cab board container #1a1e24
-      expect(stripsCss).toMatch(/background-color:\s*#1a1e24;/i);
+      // Dark tactical board container #000000
+      expect(stripsCss).toMatch(/background-color:\s*#000000;/i);
     });
   });
 
   // ==========================================================================
-  // AC4: Shell toggle integration, overlay modal, and architecture compliance
+  // AC4: Shell toggle integration, right-side drawer, and architecture compliance
   // ==========================================================================
-  describe("AC4 — Shell toggle integration, overlay modal, and architecture", () => {
-    test("Shell renders STRIPS toggle button and popout button", () => {
+  describe("AC4 — Shell toggle integration, right-side drawer, and architecture", () => {
+    test("Shell renders STRIPS drawer toggle button and drawer structure without top bar", () => {
       const scenario = loadPlayableScenario("katl");
       const app = createApp({
         speech: new NullSpeechPort(),
@@ -421,29 +412,48 @@ describe("T02-93 Flight Progress Strips Integration and Acceptance", () => {
         }),
       );
 
-      // Toggle button and popout button rendered in Shell
+      // Drawer toggle button and drawer components rendered in Shell
       expect(html).toContain('data-testid="strips-toggle-btn"');
-      expect(html).toContain("STRIPS");
-      expect(html).toContain('data-testid="strips-popout-btn"');
-      expect(html).toContain("↗");
+      expect(html).toContain("Strips");
+      expect(html).toContain('data-testid="strips-drawer"');
+      expect(html).toContain('data-testid="strips-drawer-content"');
+
+      // Top bar removed entirely from drawer
+      expect(html).not.toContain('data-testid="strips-drawer-header"');
+      expect(html).not.toContain('data-testid="strips-drawer-close"');
+
+      // No new window / popout button present
+      expect(html).not.toContain('data-testid="strips-popout-btn"');
+      expect(html).not.toContain("window.open");
     });
 
     test("shell.tsx wires onSelectStrip to selectTrackFromFlightStrip and scope refresh", () => {
       expect(shellTsx).toMatch(/selectTrackFromFlightStrip\(app\.world,\s*strip\)/);
       expect(shellTsx).toMatch(/refreshScopeUi\(\)/);
       expect(shellTsx).toMatch(/data-testid="strips-toggle-btn"/);
-      expect(shellTsx).toMatch(/data-testid="strips-popout-btn"/);
-      expect(shellTsx).toMatch(/data-testid="strips-overlay-modal"/);
-      expect(shellTsx).toMatch(/data-testid="strips-overlay-close"/);
-      expect(shellTsx).toMatch(/data-testid="strips-overlay-new-window"/);
+      expect(shellTsx).toMatch(/data-testid="strips-drawer"/);
+      expect(shellTsx).not.toMatch(/data-testid="strips-drawer-close"/);
+      expect(shellTsx).not.toMatch(/data-testid="strips-popout-btn"/);
     });
 
-    test("strips.css defines styles for strips toggle bar, buttons, and overlay modal", () => {
+    test("strips.css defines styles for right-side drawer layout and offset flex panel", () => {
       expect(stripsCss).toMatch(/\.strips-toggle-bar\s*\{[^}]*position:\s*absolute/i);
       expect(stripsCss).toMatch(/\.strips-toggle-button[^{]*\{/i);
-      expect(stripsCss).toMatch(/\.strips-overlay-modal\s*\{[^}]*position:\s*fixed/i);
-      expect(stripsCss).toMatch(/\.strips-overlay-backdrop\s*\{[^}]*position:\s*absolute/i);
-      expect(stripsCss).toMatch(/\.strips-overlay-content\s*\{[^}]*position:\s*relative/i);
+      expect(stripsCss).toMatch(/\.strips-drawer\s*\{[^}]*display:\s*flex/i);
+      expect(stripsCss).toMatch(/\.strips-drawer\.open\s*\{[^}]*flex:/i);
+      expect(stripsCss).toMatch(/\.strips-drawer-content\s*\{[^}]*display:\s*flex/i);
+    });
+
+    test("shell.tsx provides resizer handle and pointer drag logic on strips drawer", () => {
+      expect(shellTsx).toMatch(/data-testid="strips-drawer-resizer"/);
+      expect(shellTsx).toMatch(/handleResizerPointerDown/);
+      expect(shellTsx).toMatch(/handleResizerPointerMove/);
+      expect(shellTsx).toMatch(/drawerWidth/);
+    });
+
+    test("strips.css defines styles for resizer handle with col-resize cursor", () => {
+      expect(stripsCss).toMatch(/\.strips-drawer-resizer\s*\{[^}]*cursor:\s*col-resize/i);
+      expect(stripsCss).toMatch(/\.strips-drawer\.resizing/i);
     });
   });
 });

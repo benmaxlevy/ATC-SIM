@@ -1,7 +1,10 @@
 import { describe, expect, test } from "vitest";
 import {
+  formatArrivalTime,
   formatBeaconCode,
   formatEquipment,
+  formatFlightRules,
+  formatProposedDepartureTime,
   formatRevisionIndex,
   formatTimeZulu,
   truncateField,
@@ -136,6 +139,43 @@ describe("formatTimeZulu", () => {
     expect(formatTimeZulu("1435z")).toBe("1435");
     expect(formatTimeZulu("0800")).toBe("0800");
     expect(formatTimeZulu("")).toBe("");
+  });
+});
+
+describe("formatProposedDepartureTime", () => {
+  test("formats proposed departure time with P prefix and 4-digit Zulu time", () => {
+    expect(formatProposedDepartureTime("1430")).toBe("P1430");
+    expect(formatProposedDepartureTime("930")).toBe("P0930");
+    expect(formatProposedDepartureTime("14:30")).toBe("P1430");
+    expect(formatProposedDepartureTime("P1430")).toBe("P1430");
+    expect(formatProposedDepartureTime("p0930")).toBe("P0930");
+    expect(formatProposedDepartureTime("")).toBe("");
+    expect(formatProposedDepartureTime(undefined)).toBe("");
+    expect(formatProposedDepartureTime(null)).toBe("");
+  });
+});
+
+describe("formatArrivalTime", () => {
+  test("formats arrival ETA with A prefix and 4-digit Zulu time", () => {
+    expect(formatArrivalTime("2254")).toBe("A2254");
+    expect(formatArrivalTime("930")).toBe("A0930");
+    expect(formatArrivalTime("22:54")).toBe("A2254");
+    expect(formatArrivalTime("A2254")).toBe("A2254");
+    expect(formatArrivalTime("a1440")).toBe("A1440");
+    expect(formatArrivalTime("")).toBe("");
+    expect(formatArrivalTime(undefined)).toBe("");
+    expect(formatArrivalTime(null)).toBe("");
+  });
+});
+
+describe("formatFlightRules", () => {
+  test("returns spelled-out IFR or VFR", () => {
+    expect(formatFlightRules("IFR")).toBe("IFR");
+    expect(formatFlightRules("VFR")).toBe("VFR");
+    expect(formatFlightRules("vfr")).toBe("VFR");
+    expect(formatFlightRules("ifr")).toBe("IFR");
+    expect(formatFlightRules(undefined)).toBe("IFR");
+    expect(formatFlightRules("")).toBe("IFR");
   });
 });
 
