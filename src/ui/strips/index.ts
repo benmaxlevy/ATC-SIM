@@ -48,3 +48,9 @@ export {
   mockN415SP,
   mockSWA1902,
 } from "./mockFixture";
+
+// Strip components
+export { DepartureStrip } from "./DepartureStrip";
+export type { DepartureStripProps } from "./DepartureStrip";
+export { ArrivalStrip } from "./ArrivalStrip";
+export type { ArrivalStripProps } from "./ArrivalStrip";

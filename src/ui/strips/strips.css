@@ -1,0 +1,333 @@
+/**
+ * Terminal Flight Progress Strips CSS
+ * FAA Order 7110.65 Chapter 2 §3; 4-column physical cardstock layout.
+ */
+
+.departure-strip,
+.arrival-strip {
+  display: grid;
+  grid-template-columns: 18% 14% 46% 22%;
+  height: 140px;
+  max-width: 820px;
+  width: 100%;
+  box-sizing: border-box;
+  background-color: #f5eedc;
+  border: 2px solid #222;
+  color: #111;
+  font-family: Consolas, "Courier New", monospace;
+  font-weight: bold;
+  text-transform: uppercase;
+  user-select: none;
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+}
+
+.departure-strip:hover,
+.arrival-strip:hover {
+  filter: brightness(0.98);
+}
+
+.departure-strip:focus-visible,
+.arrival-strip:focus-visible {
+  outline: 2px solid #0056b3;
+  outline-offset: 1px;
+}
+
+.departure-strip.strip-selected,
+.arrival-strip.strip-selected {
+  outline: 2px solid #2563eb;
+  box-shadow: 0 0 0 2px #2563eb;
+}
+
+/* Base box styles */
+.strip-box {
+  position: relative;
+  box-sizing: border-box;
+  padding: 2px 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.strip-box .box-label {
+  position: absolute;
+  top: 1px;
+  left: 2px;
+  font-size: 8px;
+  line-height: 1;
+  color: #777;
+  font-weight: normal;
+  pointer-events: none;
+}
+
+.strip-box .box-value {
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: bold;
+  color: #111;
+  text-align: center;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   Column 1: ACID, Revision, Equipment, Computer ID (~18%)
+   ========================================================================== */
+.strip-col-1 {
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  border-right: 1px solid #333;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.strip-col-1-row-1 {
+  display: grid;
+  grid-template-columns: 3fr 1fr;
+  border-bottom: 1px solid #333;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.strip-col-1 .box-1 {
+  border-right: 1px solid #333;
+}
+
+.strip-col-1 .box-1 .box-value {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-align: left;
+  padding-left: 2px;
+}
+
+.strip-col-1 .box-2 .box-value {
+  font-size: 13px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.strip-col-1 .box-3 {
+  border-bottom: 1px solid #333;
+}
+
+.strip-col-1 .box-3 .box-value {
+  font-size: 12px;
+  font-weight: bold;
+  text-align: left;
+  padding-left: 2px;
+}
+
+.strip-col-1 .box-4 .box-value {
+  font-size: 12px;
+  font-weight: normal;
+  text-align: left;
+  padding-left: 2px;
+}
+
+/* ==========================================================================
+   Column 2: Beacon, Time/PrevFix, Altitude/CoordFix (~14%)
+   ========================================================================== */
+.strip-col-2 {
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  border-right: 1px solid #333;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.strip-col-2 .box-5 {
+  border-bottom: 1px solid #333;
+}
+
+.strip-col-2 .box-5 .box-value {
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.strip-col-2 .box-6 {
+  border-bottom: 1px solid #333;
+}
+
+.strip-col-2 .box-6 .box-value {
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.strip-col-2 .box-7 .box-value {
+  font-size: 13px;
+  font-weight: bold;
+}
+
+/* ==========================================================================
+   Column 3: Airport/ETA, Upper Annotations (8A/8B), Lower Annotations (10-18) (~46%)
+   ========================================================================== */
+.strip-col-3 {
+  display: grid;
+  grid-template-rows: 2fr 1fr;
+  border-right: 1px solid #333;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.strip-col-3-upper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  border-bottom: 1px solid #333;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.strip-col-3-upper .box-8 {
+  grid-row: 1 / span 2;
+  grid-column: 1;
+  border-right: 1px solid #333;
+}
+
+.strip-col-3-upper .box-8 .box-value {
+  font-size: 15px;
+  font-weight: bold;
+}
+
+.strip-col-3-upper .box-8a {
+  grid-row: 1;
+  grid-column: 2;
+  border-bottom: 1px solid #333;
+}
+
+.strip-col-3-upper .box-8a .box-value {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.strip-col-3-upper .box-8b {
+  grid-row: 2;
+  grid-column: 2;
+}
+
+.strip-col-3-upper .box-8b .box-value {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.strip-col-3-lower {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.strip-col-3-lower .box-annotation {
+  border-right: 1px solid #333;
+}
+
+.strip-col-3-lower .box-annotation:last-child {
+  border-right: none;
+}
+
+.strip-col-3-lower .box-annotation .box-value {
+  font-size: 11px;
+  font-weight: bold;
+}
+
+/* ==========================================================================
+   Column 4: Route, Destination, Remarks (~22%)
+   ========================================================================== */
+.strip-col-4 {
+  box-sizing: border-box;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Departure Strip Column 4 */
+.strip-col-4-departure {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.strip-col-4-departure .box-9 {
+  height: 100%;
+  white-space: normal;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 3px 6px;
+}
+
+.strip-col-4-departure .strip-route {
+  font-size: 11px;
+  line-height: 1.25;
+  font-weight: bold;
+  word-break: break-word;
+  overflow: hidden;
+  max-height: 75px;
+}
+
+.strip-col-4-departure .strip-dest-remarks {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 2px;
+  overflow: hidden;
+}
+
+.strip-col-4-departure .strip-dest {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.strip-col-4-departure .strip-remarks {
+  font-size: 10px;
+  font-weight: normal;
+  color: #333;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+/* Arrival Strip Column 4 */
+.strip-col-4-arrival {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.strip-col-4-arrival .box-9 {
+  border-right: 1px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.strip-col-4-arrival .box-9 .box-value {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.strip-col-4-arrival .box-9a {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  white-space: normal;
+  padding: 3px 6px;
+}
+
+.strip-col-4-arrival .strip-dest {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.strip-col-4-arrival .strip-remarks {
+  font-size: 10px;
+  font-weight: normal;
+  color: #333;
+  margin-top: 4px;
+  word-break: break-word;
+}

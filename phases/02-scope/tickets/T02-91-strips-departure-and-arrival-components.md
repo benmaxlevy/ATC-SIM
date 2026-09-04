@@ -51,11 +51,11 @@ Flight progress strips adhere to rigid geometric proportions (approximately 7.5"
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** `DepartureStrip` renders 4 columns with subgrids matching the FAA departure layout.
-- [ ] **AC2 —** `ArrivalStrip` renders 4 columns with previous fix, coordination fix, ETA, and split Col 4 (Box 9 rules + Box 9A destination/remarks).
-- [ ] **AC3 —** Lower annotation rows render 9 equal-width boxes (10 to 18) and upper annotation rows render 8A and 8B.
-- [ ] **AC4 —** Strips apply buff background (`#F5EEDC`), dark holder borders, and uppercase monospace fonts.
-- [ ] **AC5 —** Unit tests in `src/ui/strips/test/stripComponents.test.tsx` pass 100%.
+- [x] **AC1 —** `DepartureStrip` renders 4 columns with subgrids matching the FAA departure layout.
+- [x] **AC2 —** `ArrivalStrip` renders 4 columns with previous fix, coordination fix, ETA, and split Col 4 (Box 9 rules + Box 9A destination/remarks).
+- [x] **AC3 —** Lower annotation rows render 9 equal-width boxes (10 to 18) and upper annotation rows render 8A and 8B.
+- [x] **AC4 —** Strips apply buff background (`#F5EEDC`), dark holder borders, and uppercase monospace fonts.
+- [x] **AC5 —** Unit tests in `src/ui/strips/test/stripComponents.test.tsx` pass 100%.
 
 ## Test plan
 
