@@ -242,8 +242,8 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
       expect(cssContent).toMatch(/text-transform:\s*uppercase/i);
     });
 
-    test("strips.css defines dimensions height 120px and max-width 840px", () => {
-      expect(cssContent).toMatch(/height:\s*120px/);
+    test("strips.css defines dimensions height 96px and max-width 840px", () => {
+      expect(cssContent).toMatch(/height:\s*96px/);
       expect(cssContent).toMatch(/max-width:\s*840px/);
     });
 
