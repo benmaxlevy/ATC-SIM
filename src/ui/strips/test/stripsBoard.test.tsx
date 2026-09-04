@@ -1,0 +1,335 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, test, vi } from "vitest";
+// @ts-expect-error tsconfig has no @types/node
+import { readFileSync } from "node:fs";
+import { DEFAULT_FACILITY_TITLE, StripsBoard } from "../StripsBoard";
+import { mockAAL412, mockArrivals, mockDAL882, mockDepartures, mockN415SP } from "../mockFixture";
+import type { ArrivalStripData, DepartureStripData } from "../types";
+
+const cssContent = readFileSync(new URL("../strips.css", import.meta.url), "utf8");
+
+describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => {
+  // --------------------------------------------------------------------------
+  // AC1: Header and 2-column rack container with Departures and Arrivals racks
+  // --------------------------------------------------------------------------
+  describe("AC1 — Header and 2-column rack container structure", () => {
+    test("renders .strips-board root container and .board-header", () => {
+      const html = renderToStaticMarkup(createElement(StripsBoard));
+
+      expect(html).toContain('class="strips-board"');
+      expect(html).toContain('data-testid="strips-board"');
+      expect(html).toContain('class="board-header"');
+      expect(html).toContain('data-testid="board-header"');
+    });
+
+    test("renders default facility title KATL_TWR — Flight Progress Strips", () => {
+      const html = renderToStaticMarkup(createElement(StripsBoard));
+
+      expect(html).toContain('class="board-title"');
+      expect(html).toContain(DEFAULT_FACILITY_TITLE);
+      expect(html).toContain("KATL_TWR — Flight Progress Strips");
+    });
+
+    test("renders custom facility title when facilityTitle prop is provided", () => {
+      const customTitle = "KBOS_TWR — Tower Progress Bay";
+      const html = renderToStaticMarkup(createElement(StripsBoard, { facilityTitle: customTitle }));
+
+      expect(html).toContain(customTitle);
+      expect(html).not.toContain(DEFAULT_FACILITY_TITLE);
+    });
+
+    test("renders .bay-container with departures and arrivals rack columns", () => {
+      const html = renderToStaticMarkup(createElement(StripsBoard));
+
+      expect(html).toContain('class="bay-container"');
+      expect(html).toContain('data-testid="bay-container"');
+      expect(html).toContain('data-rack="departures"');
+      expect(html).toContain('data-rack="arrivals"');
+      expect(html).toContain("rack-column rack-departures");
+      expect(html).toContain("rack-column rack-arrivals");
+    });
+
+    test("renders rack headers with Departures and Arrivals titles", () => {
+      const html = renderToStaticMarkup(createElement(StripsBoard));
+
+      expect(html).toContain('data-testid="rack-header-departures"');
+      expect(html).toContain('data-testid="rack-header-arrivals"');
+      expect(html).toContain('<span class="rack-title">Departures</span>');
+      expect(html).toContain('<span class="rack-title">Arrivals</span>');
+    });
+
+    test("applies custom className to outer container when passed", () => {
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, { className: "custom-board-theme" }),
+      );
+
+      expect(html).toContain('class="strips-board custom-board-theme"');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // AC2: Rack headers render counts matching departures and arrivals arrays
+  // --------------------------------------------------------------------------
+  describe("AC2 — Rack headers render counts matching strip arrays", () => {
+    test("renders departures and arrivals count badges matching default mockFixture lengths", () => {
+      const html = renderToStaticMarkup(createElement(StripsBoard));
+
+      expect(html).toContain(
+        `data-testid="departures-count" aria-label="${mockDepartures.length} departures">${mockDepartures.length}</span>`,
+      );
+      expect(html).toContain(
+        `data-testid="arrivals-count" aria-label="${mockArrivals.length} arrivals">${mockArrivals.length}</span>`,
+      );
+    });
+
+    test("renders custom counts matching provided departures and arrivals arrays", () => {
+      const singleDeparture: DepartureStripData[] = [mockDAL882];
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: singleDeparture,
+          arrivals: [mockAAL412, mockN415SP],
+        }),
+      );
+
+      expect(html).toContain('data-testid="departures-count" aria-label="1 departures">1</span>');
+      expect(html).toContain('data-testid="arrivals-count" aria-label="2 arrivals">2</span>');
+    });
+
+    test("handles empty departures and arrivals arrays displaying 0 and empty placeholder", () => {
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: [],
+          arrivals: [],
+        }),
+      );
+
+      expect(html).toContain('data-testid="departures-count" aria-label="0 departures">0</span>');
+      expect(html).toContain('data-testid="arrivals-count" aria-label="0 arrivals">0</span>');
+      expect(html).toContain('data-testid="rack-empty-departures"');
+      expect(html).toContain("No departure strips");
+      expect(html).toContain('data-testid="rack-empty-arrivals"');
+      expect(html).toContain("No arrival strips");
+    });
+
+    test("board header meta displays DEP and ARR summary counts", () => {
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: [mockDAL882],
+          arrivals: [mockAAL412, mockN415SP],
+        }),
+      );
+
+      expect(html).toContain('data-testid="board-meta-departures"');
+      expect(html).toContain("DEP: 1");
+      expect(html).toContain('data-testid="board-meta-arrivals"');
+      expect(html).toContain("ARR: 2");
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // AC3: Independent vertical scrolling and layout styling
+  // --------------------------------------------------------------------------
+  describe("AC3 — Independent vertical scrolling and layout styling in strips.css", () => {
+    test("strips.css defines .strips-board with 100vw, 100vh, #1A1E24, and overflow: hidden", () => {
+      expect(cssContent).toMatch(/\.strips-board\s*\{[^}]*width:\s*100vw;/i);
+      expect(cssContent).toMatch(/\.strips-board\s*\{[^}]*height:\s*100vh;/i);
+      expect(cssContent).toMatch(/\.strips-board\s*\{[^}]*background-color:\s*#1A1E24;/i);
+      expect(cssContent).toMatch(/\.strips-board\s*\{[^}]*overflow:\s*hidden;/i);
+    });
+
+    test("strips.css defines .board-header with #0D1117, bottom border #30363D, and monospace font", () => {
+      expect(cssContent).toMatch(/\.board-header\s*\{[^}]*background-color:\s*#0D1117;/i);
+      expect(cssContent).toMatch(/\.board-header\s*\{[^}]*border-bottom:\s*1px solid #30363D;/i);
+      expect(cssContent).toMatch(/\.board-header\s*\{[^}]*font-family:[^}]*monospace;/i);
+    });
+
+    test("strips.css defines .bay-container with 2-column grid, gap 16px, padding 16px, overflow: hidden", () => {
+      expect(cssContent).toMatch(/\.bay-container\s*\{[^}]*grid-template-columns:\s*1fr 1fr;/i);
+      expect(cssContent).toMatch(/\.bay-container\s*\{[^}]*gap:\s*16px;/i);
+      expect(cssContent).toMatch(/\.bay-container\s*\{[^}]*padding:\s*16px;/i);
+      expect(cssContent).toMatch(/\.bay-container\s*\{[^}]*overflow:\s*hidden;/i);
+    });
+
+    test("strips.css defines .rack-column with #24292E, border #444D56, and flex column", () => {
+      expect(cssContent).toMatch(/\.rack-column\s*\{[^}]*background-color:\s*#24292E;/i);
+      expect(cssContent).toMatch(/\.rack-column\s*\{[^}]*border:\s*1px solid #444D56;/i);
+      expect(cssContent).toMatch(/\.rack-column\s*\{[^}]*flex-direction:\s*column;/i);
+    });
+
+    test("strips.css defines .rack-header with #2F363D, border #444D56, and uppercase text", () => {
+      expect(cssContent).toMatch(/\.rack-header\s*\{[^}]*background-color:\s*#2F363D;/i);
+      expect(cssContent).toMatch(/\.rack-header\s*\{[^}]*border-bottom:\s*1px solid #444D56;/i);
+      expect(cssContent).toMatch(/\.rack-header\s*\{[^}]*text-transform:\s*uppercase;/i);
+    });
+
+    test("strips.css defines .rack-strip-list with gap 4px, padding 8px, overflow-y: auto, flex: 1", () => {
+      expect(cssContent).toMatch(/\.rack-strip-list\s*\{[^}]*gap:\s*4px;/i);
+      expect(cssContent).toMatch(/\.rack-strip-list\s*\{[^}]*padding:\s*8px;/i);
+      expect(cssContent).toMatch(/\.rack-strip-list\s*\{[^}]*overflow-y:\s*auto;/i);
+      expect(cssContent).toMatch(/\.rack-strip-list\s*\{[^}]*flex:\s*1;/i);
+    });
+
+    test("both rack columns render independent scrollable .rack-strip-list regions", () => {
+      const html = renderToStaticMarkup(createElement(StripsBoard));
+
+      expect(html).toContain('data-testid="rack-strip-list-departures"');
+      expect(html).toContain('role="region" aria-label="Departures strip list"');
+      expect(html).toContain('data-testid="rack-strip-list-arrivals"');
+      expect(html).toContain('role="region" aria-label="Arrivals strip list"');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // AC4: Default fallback loads mockFixture seed data seamlessly
+  // --------------------------------------------------------------------------
+  describe("AC4 — Default fallback loads mockFixture seed data seamlessly", () => {
+    test("renders departure strips for mock DAL882 and SWA1902 when departures is undefined", () => {
+      const html = renderToStaticMarkup(createElement(StripsBoard));
+
+      expect(html).toContain("DAL882");
+      expect(html).toContain("SWA1902");
+      expect(html).toContain('data-strip-acid="DAL882"');
+      expect(html).toContain('data-strip-acid="SWA1902"');
+      expect(html).toContain("PLIER2 PLIER SPA J51 FAK PHL");
+      expect(html).toContain("POUNC2 POUNC BNA STL");
+    });
+
+    test("renders arrival strips for mock AAL412 and N415SP when arrivals is undefined", () => {
+      const html = renderToStaticMarkup(createElement(StripsBoard));
+
+      expect(html).toContain("AAL412");
+      expect(html).toContain("N415SP");
+      expect(html).toContain('data-strip-acid="AAL412"');
+      expect(html).toContain('data-strip-acid="N415SP"');
+      expect(html).toContain("HONIE");
+      expect(html).toContain("PDK");
+    });
+
+    test("renders 4 total strips across the 2 racks under default mock props", () => {
+      const html = renderToStaticMarkup(createElement(StripsBoard));
+
+      const depMatches = html.match(/class="[^"]*departure-strip[^"]*"/g);
+      const arrMatches = html.match(/class="[^"]*arrival-strip[^"]*"/g);
+
+      expect(depMatches?.length).toBe(2);
+      expect(arrMatches?.length).toBe(2);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // AC5: Interactivity, selection, and unit test pass coverage
+  // --------------------------------------------------------------------------
+  describe("AC5 — Interactivity, strip selection callbacks, and controlled selection", () => {
+    test("calls onSelectStrip with DepartureStripData when a departure strip is selected", () => {
+      const onSelectStripMock = vi.fn();
+      const tree = StripsBoard({
+        departures: mockDepartures,
+        arrivals: mockArrivals,
+        onSelectStrip: onSelectStripMock,
+      });
+
+      // Navigate tree: bay-container (index 1) -> rack-departures (index 0) -> rack-strip-list (index 1)
+      const bayContainer = tree.props.children[1];
+      const departuresRack = bayContainer.props.children[0];
+      const depStripList = departuresRack.props.children[1];
+      const firstDepStripElement = depStripList.props.children[0];
+
+      expect(firstDepStripElement.props.strip.acid).toBe("DAL882");
+      // Trigger onSelect callback
+      firstDepStripElement.props.onSelect("DAL882");
+
+      expect(onSelectStripMock).toHaveBeenCalledTimes(1);
+      expect(onSelectStripMock).toHaveBeenCalledWith(mockDAL882);
+    });
+
+    test("calls onSelectStrip with ArrivalStripData when an arrival strip is selected", () => {
+      const onSelectStripMock = vi.fn();
+      const tree = StripsBoard({
+        departures: mockDepartures,
+        arrivals: mockArrivals,
+        onSelectStrip: onSelectStripMock,
+      });
+
+      // Navigate tree: bay-container (index 1) -> rack-arrivals (index 1) -> rack-strip-list (index 1)
+      const bayContainer = tree.props.children[1];
+      const arrivalsRack = bayContainer.props.children[1];
+      const arrStripList = arrivalsRack.props.children[1];
+      const firstArrStripElement = arrStripList.props.children[0];
+
+      expect(firstArrStripElement.props.strip.acid).toBe("AAL412");
+      // Trigger onSelect callback
+      firstArrStripElement.props.onSelect("AAL412");
+
+      expect(onSelectStripMock).toHaveBeenCalledTimes(1);
+      expect(onSelectStripMock).toHaveBeenCalledWith(mockAAL412);
+    });
+
+    test("highlights selected strip when selectedStripId prop is specified", () => {
+      const htmlSelectedDep = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          selectedStripId: "DAL882",
+        }),
+      );
+
+      // DAL882 should be selected, SWA1902 not selected
+      expect(htmlSelectedDep).toContain('data-strip-acid="DAL882"');
+      const dalMatch = htmlSelectedDep.match(
+        /class="[^"]*departure-strip[^"]*strip-selected[^"]*"[^>]*data-strip-acid="DAL882"/,
+      );
+      expect(dalMatch).toBeTruthy();
+
+      const htmlSelectedArr = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          selectedStripId: "AAL412",
+        }),
+      );
+
+      const aalMatch = htmlSelectedArr.match(
+        /class="[^"]*arrival-strip[^"]*strip-selected[^"]*"[^>]*data-strip-acid="AAL412"/,
+      );
+      expect(aalMatch).toBeTruthy();
+    });
+
+    test("renders custom strip objects accurately without errors", () => {
+      const customDep: DepartureStripData = {
+        id: "TEST100",
+        stripType: "DEPARTURE",
+        acid: "TEST100",
+        rawType: "A320",
+        beaconCode: "4501",
+        proposedDepartureTime: "1800",
+        requestedAltitude: "360",
+        departureAirport: "KATL",
+        route: "VRNNA DIRECT",
+        destinationAirport: "KJFK",
+      };
+
+      const customArr: ArrivalStripData = {
+        id: "TEST200",
+        stripType: "ARRIVAL",
+        acid: "TEST200",
+        rawType: "B772",
+        beaconCode: "1234",
+        coordinationFix: "WOMEN",
+        estimatedTimeOfArrival: "1820",
+        flightRules: "IFR",
+        destinationAirport: "KATL",
+      };
+
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: [customDep],
+          arrivals: [customArr],
+        }),
+      );
+
+      expect(html).toContain("TEST100");
+      expect(html).toContain("VRNNA DIRECT");
+      expect(html).toContain("TEST200");
+      expect(html).toContain("WOMEN");
+      expect(html).toContain('data-testid="departures-count" aria-label="1 departures">1</span>');
+      expect(html).toContain('data-testid="arrivals-count" aria-label="1 arrivals">1</span>');
+    });
+  });
+});

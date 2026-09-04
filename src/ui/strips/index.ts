@@ -54,3 +54,7 @@ export { DepartureStrip } from "./DepartureStrip";
 export type { DepartureStripProps } from "./DepartureStrip";
 export { ArrivalStrip } from "./ArrivalStrip";
 export type { ArrivalStripProps } from "./ArrivalStrip";
+
+// Strips board & bay layout
+export { StripsBoard, DEFAULT_FACILITY_TITLE } from "./StripsBoard";
+export type { StripsBoardProps } from "./StripsBoard";

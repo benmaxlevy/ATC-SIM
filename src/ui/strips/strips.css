@@ -331,3 +331,136 @@
   margin-top: 4px;
   word-break: break-word;
 }
+
+/* ==========================================================================
+   StripsBoard & Two-Column Rack Bay Layout (T02-92)
+   ========================================================================== */
+
+.strips-board {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  box-sizing: border-box;
+  background-color: #1a1e24;
+  color: #e6edf3;
+  overflow: hidden;
+  font-family: Consolas, "Courier New", monospace;
+}
+
+.board-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background-color: #0d1117;
+  border-bottom: 1px solid #30363d;
+  font-family: Consolas, "Courier New", monospace;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.board-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #c9d1d9;
+  margin: 0;
+}
+
+.board-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  color: #8b949e;
+}
+
+.board-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bay-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+  overflow: hidden;
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+}
+
+.rack-column {
+  display: flex;
+  flex-direction: column;
+  background-color: #24292e;
+  border: 1px solid #444d56;
+  border-radius: 4px;
+  box-sizing: border-box;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.rack-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background-color: #2f363d;
+  border-bottom: 1px solid #444d56;
+  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #e6edf3;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.rack-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rack-badge,
+.rack-count {
+  background-color: #0d1117;
+  color: #58a6ff;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 18px;
+  text-align: center;
+}
+
+.rack-strip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  box-sizing: border-box;
+  min-height: 0;
+}
+
+.rack-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 120px;
+  color: #8b949e;
+  font-size: 13px;
+  font-style: italic;
+  letter-spacing: 0.5px;
+  border: 1px dashed #30363d;
+  border-radius: 4px;
+  margin: 8px 0;
+}
