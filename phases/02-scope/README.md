@@ -739,6 +739,16 @@ FAA/vNAS terminal flight progress strip system with 4-column physical grid layou
 | [T02-92](tickets/T02-92-strips-two-column-board-and-layout.md) | Strips two-column board and bay layout | P0 | M | T02-91 | Shipped |
 | [T02-93](tickets/T02-93-strips-integration-and-acceptance.md) | Strips integration and acceptance | P0 | S | T02-92 | Shipped |
 
+### Phase 2 addendum (T02-94–96 Flight Progress Strips Drag Reordering & Indentation)
+
+Drag-and-drop strip reordering constrained within Departures and Arrivals rack sections, real-time visual drop insertion indicator line, single right-click horizontal strip indentation ("cocking") with browser context-menu suppression, and dynamic telemetry reconciliation.
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-94](tickets/T02-94-strips-right-click-indentation.md) | Strips right-click indentation and cocking state | P0 | M | none | Ready |
+| [T02-95](tickets/T02-95-strips-drag-reorder-and-drop-indicator.md) | Strips intra-section drag reordering and drop indicator | P0 | M | T02-94 | Ready |
+| [T02-96](tickets/T02-96-strips-reorder-and-indent-acceptance.md) | Strips reorder and indent integration and acceptance | P0 | S | T02-95 | Ready |
+
 ## Launching an agent
 
 1. Confirm phase 1 README exit is green.
@@ -756,8 +766,10 @@ FAA/vNAS terminal flight progress strip system with 4-column physical grid layou
 13. DCB AUX & BRITE controls addendum T02-84 → T02-86 (H_RATE, DWELL, CURSOR HOME, CSR SPD, BRITE CMP/BCN).
 14. STARS Compass Rose addendum T02-87 → T02-89 (Compass Rose geometry, ticks, 3-digit headings, BRITE CMP, CHAR SIZE TOOLS).
 15. Terminal Flight Progress Strips addendum T02-90 → T02-93 (Data models, formatters, departure/arrival grids, 2-column rack board).
+16. Flight Progress Strips Reordering & Indentation addendum T02-94 → T02-96 (Right-click indentation, intra-section drag reordering, drop indicator line, telemetry reconciliation).
 
 ## Glossary reminders
 
 Use `phases/_shared/glossary.md` terms: **scope**, **PPI**, **datablock**, **track**, **CRC keys**. Distances NM, altitudes feet MSL, speed knots. Do not invent “zoom level,” “labels,” or “sprites” in user-facing UI copy — say **range**, **datablock**, **target**. Forbidden/required list: `phases/_shared/references.md`.
+
 

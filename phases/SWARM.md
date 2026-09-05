@@ -1,8 +1,66 @@
-# ATC-SIM swarm orchestrator — Twenty-seventh swarm (Terminal Flight Progress Strips)
+# ATC-SIM swarm orchestrator — Twenty-eighth swarm (Flight Progress Strips Drag Reordering & Indentation)
 
-Twenty-sixth (STARS Compass Rose Heading Overlay T02-87–89) planned/landed.
-This file keeps that history, then the twenty-seventh addendum on
+Twenty-seventh (Terminal Flight Progress Strips T02-90–93) planned/landed.
+This file keeps that history, then the twenty-eighth addendum on
 **`feature/flight-strips`**.
+
+## Twenty-eighth swarm planned — 2026-09-05 (Flight Progress Strips Drag Reordering & Indentation)
+
+This configuration implements drag-and-drop strip reordering constrained within rack sections (Departures and Arrivals), real-time visual drop insertion indicator lines, and single right-click horizontal strip indentation ("cocking") with browser context-menu suppression on **`feature/flight-strips`**.
+Captain squash-merges ticket branches into **`feature/flight-strips`**, not `master`. Do not push. Existing swarm history stays intact.
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement intra-section drag-and-drop reordering for Departures and Arrivals racks in `StripsBoard`, render a real-time insertion indicator line showing target drop position, enable single right-click indentation/cocking (~28px horizontal offset) with context menu suppression, and maintain custom sequence and indent state across dynamic simulation telemetry updates. |
+| Include | **T02-94**, **T02-95**, **T02-96** |
+| Source | FAA Order 7110.65 Chapter 2 §3, virtual NAS flight strip specifications (vNAS / vStrips), and terminal radar workstation UI architecture. |
+| Skip | Paid speech/LLM APIs; freehand stylus/pen drawings; cross-rack moves (moving departures into arrivals or vice versa); external cloud sync. |
+| Stop | After T02-96 acceptance. No next phase. |
+| Max workers | 3 |
+| Merge lock | captain squash to `feature/flight-strips`, then `npm test` / `npm run ci` |
+| Model | **inherit** on captain and every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law (twenty-eighth swarm — Flight Progress Strips Drag Reordering & Indentation):**
+
+- **Authentic right-click strip indentation ("cocking").** Right-clicking once on a departure or arrival strip card intercepts `contextmenu`, calls `e.preventDefault()`, and indents the strip horizontally (~28px) to visually mark pending actions. Subsequent right-clicking toggles back to normal unindented alignment.
+- **Strict intra-section drag reordering.** Strips are draggable exclusively within their own section (Departures within Departures, Arrivals within Arrivals). Cross-section drags (e.g. dragging a departure over the arrivals rack) are disallowed and ignored.
+- **Real-time drop insertion indicator line.** While dragging over an eligible rack, an insertion indicator line clearly previews the exact drop index between strips where the dragged strip will land upon release.
+- **Dynamic telemetry state reconciliation.** When live simulation ticks update flight plans or spawn/remove aircraft via `terminalStripsFromWorld`, custom user-ordered sequence and strip indentation states are preserved.
+- **Radar track synchronization preservation.** Left-clicking a strip continues to select the matching aircraft in `World.selectedAircraftId` and update radar datablock highlighting without conflict with drag or right-click.
+- **Zero simulation regressions.** Scope canvas, radar tracking, datablocks, DCB submenus, system lists, and radio parsing stay 100% operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-94 | `feature/flight-strips` + planning commit |
+| B | T02-95 | T02-94 |
+| C | T02-96 | T02-95 |
+
+**Ticket ownership:**
+
+- T02-94 owns right-click indentation, `indented?: boolean` type support, `.strip-indented` CSS offset styling, context menu suppression, and unit tests.
+- T02-95 owns intra-section drag-and-drop mechanics, drag events, `.strip-drop-indicator` line rendering, drop reordering in `StripsBoard`, and rack boundary checks.
+- T02-96 owns live simulation telemetry reconciliation in `shell.tsx`, persistence across World updates, and end-to-end acceptance tests.
+
+**Ticket files / branches:**
+
+- `ticket/T02-94-strips-right-click-indentation` ← `phases/02-scope/tickets/T02-94-strips-right-click-indentation.md`
+- `ticket/T02-95-strips-drag-reorder-and-drop-indicator` ← `phases/02-scope/tickets/T02-95-strips-drag-reorder-and-drop-indicator.md`
+- `ticket/T02-96-strips-reorder-and-indent-acceptance` ← `phases/02-scope/tickets/T02-96-strips-reorder-and-indent-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope addendum (T02-94–96 Flight Progress Strips Drag Reordering & Indentation)
+Merge target: `feature/flight-strips`
+Merged: T02-94, T02-95, T02-96
+Tests: npm test / npm run ci exit 0
+```
+
+---
 
 ## Twenty-seventh swarm planned — 2026-09-04 (Terminal Flight Progress Strips)
 
