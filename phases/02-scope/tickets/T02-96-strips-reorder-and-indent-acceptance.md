@@ -55,13 +55,13 @@ In the live simulation, `terminalStripsFromWorld(world)` derives fresh strip dat
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** In-scope strips drawer and standalone `?view=strips` support drag-and-drop reordering within Departures and Arrivals racks.
-- [ ] **AC2 —** Visual drop indicator line shows candidate insertion position during drag.
-- [ ] **AC3 —** Right-clicking once toggles strip indentation (~28px offset) with native browser menu suppressed.
-- [ ] **AC4 —** Left-clicking a strip selects the matching aircraft in `World.selectedAircraftId` without triggering drag or indent.
-- [ ] **AC5 —** Custom sequence order and indentation persist across dynamic `World` telemetry ticks.
-- [ ] **AC6 —** End-to-end acceptance suite `stripsAcceptance.test.tsx` passes 100%.
-- [ ] **AC7 —** CI (`npm run ci` or test suite) passes with zero regressions.
+- [x] **AC1 —** In-scope strips drawer and standalone `?view=strips` support drag-and-drop reordering within Departures and Arrivals racks.
+- [x] **AC2 —** Visual drop indicator line shows candidate insertion position during drag.
+- [x] **AC3 —** Right-clicking once toggles strip indentation (~28px offset) with native browser menu suppressed.
+- [x] **AC4 —** Left-clicking a strip selects the matching aircraft in `World.selectedAircraftId` without triggering drag or indent.
+- [x] **AC5 —** Custom sequence order and indentation persist across dynamic `World` telemetry ticks.
+- [x] **AC6 —** End-to-end acceptance suite `stripsAcceptance.test.tsx` passes 100%.
+- [x] **AC7 —** CI (`npm run ci` or test suite) passes with zero regressions.
 
 ## Test plan
 

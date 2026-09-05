@@ -135,6 +135,43 @@ function useSafeRef<T>(initialValue: T): { current: T } {
   return useRef(initialValue);
 }
 
+function arraysEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+function setsEqual(a: Set<string>, b: Set<string>): boolean {
+  if (a.size !== b.size) return false;
+  for (const item of a) {
+    if (!b.has(item)) return false;
+  }
+  return true;
+}
+
+export function reconcileOrder(strips: FlightStrip[], currentOrder: string[]): string[] {
+  if (!strips || strips.length === 0) return [];
+  const stripMap = new Map(strips.map((s) => [s.id, s]));
+  const reconciled: string[] = [];
+  // 1. Keep IDs from currentOrder that still exist in incoming strips (preserves custom order, prunes removed)
+  for (const id of currentOrder) {
+    if (stripMap.has(id)) {
+      reconciled.push(id);
+      stripMap.delete(id);
+    }
+  }
+  // 2. Append any newly added strip IDs that were not in currentOrder
+  for (const strip of strips) {
+    if (stripMap.has(strip.id)) {
+      reconciled.push(strip.id);
+      stripMap.delete(strip.id);
+    }
+  }
+  return reconciled;
+}
+
 function applyOrder<T extends FlightStrip>(strips: T[], order: string[]): T[] {
   if (!order || order.length === 0) return strips;
   const stripMap = new Map(strips.map((s) => [s.id, s]));
@@ -186,6 +223,8 @@ export function StripsBoard({
   onArrivalsCollapsedChange,
   onToggleIndent,
 }: StripsBoardProps) {
+  const seenStripIdsRef = useSafeRef<Set<string>>(new Set());
+
   const [internalDepOrder, setInternalDepOrder] = useSafeState<string[]>(
     () => defaultDepartureOrder ?? departures.map((d) => d.id),
   );
@@ -212,9 +251,27 @@ export function StripsBoard({
     arrivalOrder: defaultArrivalOrder ?? null,
   });
 
+  const rawDepOrder = departureOrderProp ?? dragRef.current.departureOrder ?? internalDepOrder;
   const effectiveDepOrder =
-    departureOrderProp ?? dragRef.current.departureOrder ?? internalDepOrder;
-  const effectiveArrOrder = arrivalOrderProp ?? dragRef.current.arrivalOrder ?? internalArrOrder;
+    departureOrderProp !== undefined ? departureOrderProp : reconcileOrder(departures, rawDepOrder);
+
+  if (departureOrderProp === undefined) {
+    dragRef.current.departureOrder = effectiveDepOrder;
+    if (!arraysEqual(internalDepOrder, effectiveDepOrder)) {
+      setInternalDepOrder(effectiveDepOrder);
+    }
+  }
+
+  const rawArrOrder = arrivalOrderProp ?? dragRef.current.arrivalOrder ?? internalArrOrder;
+  const effectiveArrOrder =
+    arrivalOrderProp !== undefined ? arrivalOrderProp : reconcileOrder(arrivals, rawArrOrder);
+
+  if (arrivalOrderProp === undefined) {
+    dragRef.current.arrivalOrder = effectiveArrOrder;
+    if (!arraysEqual(internalArrOrder, effectiveArrOrder)) {
+      setInternalArrOrder(effectiveArrOrder);
+    }
+  }
 
   const orderedDepartures = applyOrder(departures, effectiveDepOrder);
   const orderedArrivals = applyOrder(arrivals, effectiveArrOrder);
@@ -516,7 +573,41 @@ export function StripsBoard({
     }
     return initial;
   });
-  const indentedStripIds = indentedStripIdsProp ?? internalIndentedStripIds;
+
+  // Reconcile active and indented strip IDs across telemetry updates
+  const activeIds = new Set<string>([...departures.map((d) => d.id), ...arrivals.map((a) => a.id)]);
+
+  const reconciledIndented = new Set<string>();
+  // Retain active indented strips (pruning removed aircraft IDs)
+  for (const id of internalIndentedStripIds) {
+    if (activeIds.has(id)) {
+      reconciledIndented.add(id);
+    }
+  }
+  // Register newly seen strips and include those with strip.indented === true
+  for (const strip of [...departures, ...arrivals]) {
+    if (!seenStripIdsRef.current.has(strip.id)) {
+      seenStripIdsRef.current.add(strip.id);
+      if (strip.indented) {
+        reconciledIndented.add(strip.id);
+      }
+    }
+  }
+  // Prune removed aircraft from seen set
+  for (const id of Array.from(seenStripIdsRef.current)) {
+    if (!activeIds.has(id)) {
+      seenStripIdsRef.current.delete(id);
+    }
+  }
+
+  if (
+    indentedStripIdsProp === undefined &&
+    !setsEqual(internalIndentedStripIds, reconciledIndented)
+  ) {
+    setInternalIndentedStripIds(reconciledIndented);
+  }
+
+  const indentedStripIds = indentedStripIdsProp ?? reconciledIndented;
 
   const handleToggleIndent = (stripId: string) => {
     const isCurrentlyIndented = indentedStripIds.has(stripId);

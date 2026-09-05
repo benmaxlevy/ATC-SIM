@@ -747,7 +747,7 @@ Drag-and-drop strip reordering constrained within Departures and Arrivals rack s
 | --- | --- | --- | --- | --- | --- |
 | [T02-94](tickets/T02-94-strips-right-click-indentation.md) | Strips right-click indentation and cocking state | P0 | M | none | Shipped |
 | [T02-95](tickets/T02-95-strips-drag-reorder-and-drop-indicator.md) | Strips intra-section drag reordering and drop indicator | P0 | M | T02-94 | Shipped |
-| [T02-96](tickets/T02-96-strips-reorder-and-indent-acceptance.md) | Strips reorder and indent integration and acceptance | P0 | S | T02-95 | Ready |
+| [T02-96](tickets/T02-96-strips-reorder-and-indent-acceptance.md) | Strips reorder and indent integration and acceptance | P0 | S | T02-95 | Shipped |
 
 ## Launching an agent
 

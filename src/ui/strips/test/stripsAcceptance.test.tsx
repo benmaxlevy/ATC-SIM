@@ -11,6 +11,8 @@ import { createApp } from "../../../app/create-app";
 import { Shell } from "../../shell";
 import {
   DEFAULT_FACILITY_TITLE,
+  DepartureStrip,
+  ArrivalStrip,
   StripsBoard,
   createStripSelectionHandler,
   mockAAL412,
@@ -19,7 +21,9 @@ import {
   mockDepartures,
   mockN415SP,
   mockSWA1902,
+  reconcileOrder,
   selectTrackFromFlightStrip,
+  terminalStripsFromWorld,
 } from "../index";
 import type { DepartureStripData } from "../types";
 
@@ -456,6 +460,728 @@ describe("T02-93 Flight Progress Strips Integration and Acceptance", () => {
     test("strips.css defines styles for resizer handle with col-resize cursor", () => {
       expect(stripsCss).toMatch(/\.strips-drawer-resizer\s*\{[^}]*cursor:\s*col-resize/i);
       expect(stripsCss).toMatch(/\.strips-drawer\.resizing/i);
+    });
+  });
+});
+
+describe("T02-96 Flight Progress Strips Reordering and Indentation Integration and Acceptance", () => {
+  function createMockDragEvent(overrides: Record<string, unknown> = {}) {
+    const dataTransfer: Record<string, unknown> = {
+      setData: vi.fn(),
+      getData: vi.fn(),
+      effectAllowed: "uninitialized",
+      dropEffect: "none",
+      ...((overrides.dataTransfer as Record<string, unknown> | undefined) ?? {}),
+    };
+    return {
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+      dataTransfer,
+      clientX: 0,
+      clientY: 0,
+      currentTarget: null,
+      target: null,
+      ...overrides,
+    };
+  }
+
+  // ==========================================================================
+  // AC1: Intra-section drag reordering within Departures & Arrivals racks & cross-rack rejection
+  // ==========================================================================
+  describe("AC1 — Intra-section drag reordering within Departures and Arrivals racks & cross-rack rejection", () => {
+    test("reordering departure strips via HTML5 drag-and-drop updates order in Departures rack", () => {
+      const onReorderMock = vi.fn();
+      const tree = StripsBoard({
+        departures: mockDepartures, // [DAL882, SWA1902]
+        arrivals: mockArrivals,
+        onReorderStrips: onReorderMock,
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const depRack = bayContainer.props.children[0];
+      const depStripList = depRack.props.children[1];
+      const firstDep = depStripList.props.children[0];
+      const secondDep = depStripList.props.children[1];
+
+      // Drag DAL882 (index 0) over lower half of SWA1902 (hoverIndex 1 -> targetIndex 2)
+      const dragStartEvent = createMockDragEvent();
+      firstDep.props.onDragStart(dragStartEvent);
+      expect(dragStartEvent.dataTransfer.setData).toHaveBeenCalledWith("text/plain", "DAL882");
+      expect(dragStartEvent.dataTransfer.effectAllowed).toBe("move");
+
+      const fakeRect = {
+        getBoundingClientRect: () => ({ top: 0, height: 100, bottom: 100, left: 0, right: 100 }),
+      };
+      const dragOverEvent = createMockDragEvent({
+        clientY: 80,
+        currentTarget: fakeRect,
+      });
+      secondDep.props.onDragOver(dragOverEvent);
+      expect(dragOverEvent.preventDefault).toHaveBeenCalled();
+      expect(dragOverEvent.dataTransfer.dropEffect).toBe("move");
+
+      const dropEvent = createMockDragEvent();
+      secondDep.props.onDrop(dropEvent);
+      expect(dropEvent.preventDefault).toHaveBeenCalled();
+
+      expect(onReorderMock).toHaveBeenCalledTimes(1);
+      expect(onReorderMock).toHaveBeenCalledWith("departures", [mockSWA1902, mockDAL882]);
+    });
+
+    test("reordering arrival strips via HTML5 drag-and-drop updates order in Arrivals rack", () => {
+      const onReorderMock = vi.fn();
+      const tree = StripsBoard({
+        departures: mockDepartures,
+        arrivals: mockArrivals, // [AAL412, N415SP]
+        onReorderStrips: onReorderMock,
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const arrRack = bayContainer.props.children[1];
+      const arrStripList = arrRack.props.children[1];
+      const firstArr = arrStripList.props.children[0];
+      const secondArr = arrStripList.props.children[1];
+
+      // Drag N415SP (index 1) over top half of AAL412 (hoverIndex 0 -> targetIndex 0)
+      const dragStartEvent = createMockDragEvent();
+      secondArr.props.onDragStart(dragStartEvent);
+      expect(dragStartEvent.dataTransfer.setData).toHaveBeenCalledWith("text/plain", "N415SP");
+      expect(dragStartEvent.dataTransfer.effectAllowed).toBe("move");
+
+      const fakeRect = {
+        getBoundingClientRect: () => ({ top: 0, height: 100, bottom: 100, left: 0, right: 100 }),
+      };
+      const dragOverEvent = createMockDragEvent({
+        clientY: 20,
+        currentTarget: fakeRect,
+      });
+      firstArr.props.onDragOver(dragOverEvent);
+      expect(dragOverEvent.preventDefault).toHaveBeenCalled();
+      expect(dragOverEvent.dataTransfer.dropEffect).toBe("move");
+
+      const dropEvent = createMockDragEvent();
+      firstArr.props.onDrop(dropEvent);
+      expect(dropEvent.preventDefault).toHaveBeenCalled();
+
+      expect(onReorderMock).toHaveBeenCalledTimes(1);
+      expect(onReorderMock).toHaveBeenCalledWith("arrivals", [mockN415SP, mockAAL412]);
+    });
+
+    test("cross-rack dragging is strictly rejected: departure cannot drop into arrivals rack", () => {
+      const onReorderMock = vi.fn();
+      const tree = StripsBoard({
+        departures: mockDepartures,
+        arrivals: mockArrivals,
+        onReorderStrips: onReorderMock,
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const depRack = bayContainer.props.children[0];
+      const firstDep = depRack.props.children[1].props.children[0];
+      const arrRack = bayContainer.props.children[1];
+      const firstArr = arrRack.props.children[1].props.children[0];
+
+      // Start drag departure strip DAL882
+      firstDep.props.onDragStart(createMockDragEvent());
+
+      // Hover over arrival strip AAL412
+      const dragOverArrStrip = createMockDragEvent({ clientY: 20 });
+      firstArr.props.onDragOver(dragOverArrStrip);
+      expect(dragOverArrStrip.dataTransfer.dropEffect).toBe("none");
+      expect(dragOverArrStrip.preventDefault).not.toHaveBeenCalled();
+
+      // Hover over arrivals rack-column container
+      const dragOverArrRack = createMockDragEvent();
+      arrRack.props.onDragOver(dragOverArrRack);
+      expect(dragOverArrRack.dataTransfer.dropEffect).toBe("none");
+
+      // Attempt drop on arrival strip
+      const dropEvent = createMockDragEvent();
+      firstArr.props.onDrop(dropEvent);
+      expect(onReorderMock).not.toHaveBeenCalled();
+    });
+
+    test("cross-rack dragging is strictly rejected: arrival cannot drop into departures rack", () => {
+      const onReorderMock = vi.fn();
+      const tree = StripsBoard({
+        departures: mockDepartures,
+        arrivals: mockArrivals,
+        onReorderStrips: onReorderMock,
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const arrRack = bayContainer.props.children[1];
+      const firstArr = arrRack.props.children[1].props.children[0];
+      const depRack = bayContainer.props.children[0];
+      const firstDep = depRack.props.children[1].props.children[0];
+
+      // Start drag arrival strip AAL412
+      firstArr.props.onDragStart(createMockDragEvent());
+
+      // Hover over departure strip DAL882
+      const dragOverDepStrip = createMockDragEvent({ clientY: 30 });
+      firstDep.props.onDragOver(dragOverDepStrip);
+      expect(dragOverDepStrip.dataTransfer.dropEffect).toBe("none");
+      expect(dragOverDepStrip.preventDefault).not.toHaveBeenCalled();
+
+      // Attempt drop on departure strip
+      const dropEvent = createMockDragEvent();
+      firstDep.props.onDrop(dropEvent);
+      expect(onReorderMock).not.toHaveBeenCalled();
+    });
+  });
+
+  // ==========================================================================
+  // AC2: Visual drop indicator line previews candidate drop index
+  // ==========================================================================
+  describe("AC2 — Visual drop indicator line previews candidate drop index", () => {
+    test("drop indicator renders before target strip when cursor is in upper half", () => {
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          dropIndicator: { section: "departures", targetIndex: 0 },
+        }),
+      );
+
+      expect(html).toContain('class="strip-drop-indicator"');
+      expect(html).toContain('data-testid="strip-drop-indicator"');
+
+      const indicatorPos = html.indexOf('data-testid="strip-drop-indicator"');
+      const dalPos = html.indexOf('data-strip-acid="DAL882"');
+      expect(indicatorPos).toBeLessThan(dalPos);
+    });
+
+    test("drop indicator renders between strips when cursor is in lower half of first strip", () => {
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          dropIndicator: { section: "departures", targetIndex: 1 },
+        }),
+      );
+
+      const dalPos = html.indexOf('data-strip-acid="DAL882"');
+      const indicatorPos = html.indexOf('data-testid="strip-drop-indicator"');
+      const swaPos = html.indexOf('data-strip-acid="SWA1902"');
+
+      expect(dalPos).toBeLessThan(indicatorPos);
+      expect(indicatorPos).toBeLessThan(swaPos);
+    });
+
+    test("strips.css defines .strip-drop-indicator with 3px height, #ffff00 glow, and pointer-events: none", () => {
+      expect(stripsCss).toMatch(/\.strip-drop-indicator\s*\{[^}]*height:\s*3px;/i);
+      expect(stripsCss).toMatch(/\.strip-drop-indicator\s*\{[^}]*background-color:\s*#ffff00;/i);
+      expect(stripsCss).toMatch(/\.strip-drop-indicator\s*\{[^}]*box-shadow:\s*0 0 6px #ffff00;/i);
+      expect(stripsCss).toMatch(/\.strip-drop-indicator\s*\{[^}]*pointer-events:\s*none;/i);
+    });
+
+    test("drop indicator line disappears on dragEnd and onDragLeave", () => {
+      const tree = StripsBoard({
+        departures: mockDepartures,
+        arrivals: mockArrivals,
+        defaultDropIndicator: { section: "departures", targetIndex: 1 },
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const depRack = bayContainer.props.children[0];
+      const firstDep = depRack.props.children[1].props.children[0];
+
+      // onDragEnd resets drag state
+      firstDep.props.onDragEnd(createMockDragEvent());
+    });
+  });
+
+  // ==========================================================================
+  // AC3: Right-clicking toggles strip indentation with contextmenu suppressed
+  // ==========================================================================
+  describe("AC3 — Right-clicking toggles strip indentation (~28px offset) with native browser menu suppressed", () => {
+    test("single right-click on departure strip calls preventDefault and triggers onToggleIndent", () => {
+      const onToggleMock = vi.fn();
+      const tree = StripsBoard({
+        departures: mockDepartures,
+        arrivals: mockArrivals,
+        onToggleIndent: onToggleMock,
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const depRack = bayContainer.props.children[0];
+      const firstDep = depRack.props.children[1].props.children[0];
+
+      expect(firstDep.props.indented).toBe(false);
+      firstDep.props.onToggleIndent("DAL882");
+
+      expect(onToggleMock).toHaveBeenCalledWith("DAL882", true);
+    });
+
+    test("single right-click on DepartureStrip component prevents browser contextmenu", () => {
+      const onToggleMock = vi.fn();
+      const rendered = DepartureStrip({
+        strip: mockDAL882,
+        onToggleIndent: onToggleMock,
+      });
+
+      const fakeContextMenu = { preventDefault: vi.fn() } as unknown as React.MouseEvent;
+      rendered.props.onContextMenu?.(fakeContextMenu);
+
+      expect(fakeContextMenu.preventDefault).toHaveBeenCalledTimes(1);
+      expect(onToggleMock).toHaveBeenCalledWith("DAL882");
+    });
+
+    test("single right-click on ArrivalStrip component prevents browser contextmenu", () => {
+      const onToggleMock = vi.fn();
+      const rendered = ArrivalStrip({
+        strip: mockAAL412,
+        onToggleIndent: onToggleMock,
+      });
+
+      const fakeContextMenu = { preventDefault: vi.fn() } as unknown as React.MouseEvent;
+      rendered.props.onContextMenu?.(fakeContextMenu);
+
+      expect(fakeContextMenu.preventDefault).toHaveBeenCalledTimes(1);
+      expect(onToggleMock).toHaveBeenCalledWith("AAL412");
+    });
+
+    test("second right-click toggles indentation back off", () => {
+      const onToggleMock = vi.fn();
+      const tree = StripsBoard({
+        departures: mockDepartures,
+        arrivals: mockArrivals,
+        indentedStripIds: new Set(["DAL882"]),
+        onToggleIndent: onToggleMock,
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const depRack = bayContainer.props.children[0];
+      const firstDep = depRack.props.children[1].props.children[0];
+
+      expect(firstDep.props.indented).toBe(true);
+      firstDep.props.onToggleIndent("DAL882");
+
+      expect(onToggleMock).toHaveBeenCalledWith("DAL882", false);
+    });
+
+    test("strips.css defines .strip-indented with ~28px offset and box-shadow", () => {
+      expect(stripsCss).toMatch(/\.strip-indented/i);
+      expect(stripsCss).toMatch(/transform:\s*translateX\(28px\)/i);
+      expect(stripsCss).toMatch(/width:\s*calc\(100% - 28px\)/i);
+      expect(stripsCss).toMatch(/box-shadow:\s*-4px 0 0 #1a1e24/i);
+    });
+
+    test("keyboard Shift+Enter or Shift+Space toggles indentation with preventDefault", () => {
+      const onToggleMock = vi.fn();
+      const rendered = DepartureStrip({
+        strip: mockDAL882,
+        onToggleIndent: onToggleMock,
+      });
+
+      const shiftEnter = {
+        key: "Enter",
+        shiftKey: true,
+        preventDefault: vi.fn(),
+      } as unknown as React.KeyboardEvent;
+      rendered.props.onKeyDown?.(shiftEnter);
+
+      expect(shiftEnter.preventDefault).toHaveBeenCalledTimes(1);
+      expect(onToggleMock).toHaveBeenCalledWith("DAL882");
+    });
+  });
+
+  // ==========================================================================
+  // AC4: Left-clicking strip selects matching aircraft without triggering drag or indent
+  // ==========================================================================
+  describe("AC4 — Left-clicking a strip selects matching aircraft in World.selectedAircraftId without triggering drag or indent", () => {
+    test("left-clicking an indented strip selects track in World and preserves indentation", () => {
+      const acDal = createAircraft({
+        id: "ac-dal882",
+        callsign: "DAL882",
+        xNm: 0,
+        yNm: 0,
+        headingDeg: 270,
+        altitudeFt: 5000,
+        speedKt: 210,
+      });
+      const world = createWorld({ aircraft: [acDal] });
+      const onSelectMock = vi.fn();
+      const onToggleMock = vi.fn();
+
+      const tree = StripsBoard({
+        departures: [mockDAL882],
+        arrivals: [],
+        indentedStripIds: new Set(["DAL882"]),
+        onSelectStrip: createStripSelectionHandler(world, onSelectMock),
+        onToggleIndent: onToggleMock,
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const depRack = bayContainer.props.children[0];
+      const firstDep = depRack.props.children[1].props.children[0];
+
+      // Strip is indented
+      expect(firstDep.props.indented).toBe(true);
+
+      // Perform left click
+      firstDep.props.onSelect("DAL882");
+
+      expect(world.selectedAircraftId).toBe("ac-dal882");
+      expect(onSelectMock).toHaveBeenCalledWith(mockDAL882);
+      expect(onToggleMock).not.toHaveBeenCalled();
+    });
+
+    test("left-clicking a reordered strip selects track in World without resetting order", () => {
+      const acSwa = createAircraft({
+        id: "ac-swa1902",
+        callsign: "SWA1902",
+        xNm: 0,
+        yNm: 0,
+        headingDeg: 180,
+        altitudeFt: 3000,
+        speedKt: 180,
+      });
+      const world = createWorld({ aircraft: [acSwa] });
+
+      const tree = StripsBoard({
+        departures: mockDepartures,
+        arrivals: mockArrivals,
+        departureOrder: ["SWA1902", "DAL882"],
+        onSelectStrip: createStripSelectionHandler(world),
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const depRack = bayContainer.props.children[0];
+      const firstDep = depRack.props.children[1].props.children[0];
+
+      expect(firstDep.props.strip.acid).toBe("SWA1902");
+      firstDep.props.onSelect("SWA1902");
+
+      expect(world.selectedAircraftId).toBe("ac-swa1902");
+    });
+
+    test("StripsBoard applies strip-selected with yellow outline when selectedStripId matches", () => {
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          selectedStripId: "DAL882",
+          indentedStripIds: new Set(["DAL882"]),
+        }),
+      );
+
+      expect(html).toMatch(
+        /class="[^"]*strip-selected[^"]*strip-indented[^"]*"[^>]*data-strip-acid="DAL882"/,
+      );
+      expect(stripsCss).toMatch(/\.strip-selected[^{]*\{[^}]*outline:\s*3px solid #ffff00;/i);
+    });
+  });
+
+  // ==========================================================================
+  // AC5: Custom sequence order and indentation persist across dynamic World telemetry updates
+  // ==========================================================================
+  describe("AC5 — Custom sequence order and indentation persist across dynamic World telemetry ticks", () => {
+    test("reconcileOrder preserves existing manual sequence, prunes removed, and appends newly spawned", () => {
+      const customOrder = ["SWA1902", "DAL882"];
+
+      // Telemetry update 1: new aircraft UAL450 spawns
+      const spawnedDep: DepartureStripData = {
+        id: "UAL450",
+        stripType: "DEPARTURE",
+        acid: "UAL450",
+        rawType: "B738",
+        beaconCode: "3312",
+        proposedDepartureTime: "1500",
+        requestedAltitude: "310",
+        departureAirport: "KATL",
+        route: "DIR",
+        destinationAirport: "KORD",
+      };
+      const updatedStrips = [mockDAL882, mockSWA1902, spawnedDep];
+
+      const reconciled = reconcileOrder(updatedStrips, customOrder);
+      // SWA1902 is 1st, DAL882 is 2nd, UAL450 is appended at 3rd
+      expect(reconciled).toEqual(["SWA1902", "DAL882", "UAL450"]);
+
+      // Telemetry update 2: DAL882 departs and is pruned
+      const prunedStrips = [mockSWA1902, spawnedDep];
+      const reconciledPruned = reconcileOrder(prunedStrips, reconciled);
+      expect(reconciledPruned).toEqual(["SWA1902", "UAL450"]);
+    });
+
+    test("StripsBoard preserves custom sequence and indentation when new aircraft spawn in World", () => {
+      // Step 1: Initial World with 2 departures and 1 arrival
+      const acDal = createAircraft({
+        id: "ac-dal882",
+        callsign: "DAL882",
+        xNm: 0,
+        yNm: 0,
+        headingDeg: 270,
+        altitudeFt: 5000,
+        speedKt: 210,
+      });
+      acDal.intent.vertical = { type: "VIA_SID", sidId: "PLIER2" };
+
+      const acSwa = createAircraft({
+        id: "ac-swa1902",
+        callsign: "SWA1902",
+        xNm: 0,
+        yNm: 0,
+        headingDeg: 180,
+        altitudeFt: 3000,
+        speedKt: 180,
+      });
+      acSwa.intent.vertical = { type: "VIA_SID", sidId: "POUNC2" };
+
+      const acAal = createAircraft({
+        id: "ac-aal412",
+        callsign: "AAL412",
+        xNm: 10,
+        yNm: 10,
+        headingDeg: 90,
+        altitudeFt: 8000,
+        speedKt: 250,
+      });
+      const world = createWorld({ aircraft: [acDal, acSwa, acAal] });
+      const initialStrips = terminalStripsFromWorld(world);
+
+      // Render initial board with custom order (SWA1902 first) and SWA1902 indented
+      const tree1 = StripsBoard({
+        departures: initialStrips.departures,
+        arrivals: initialStrips.arrivals,
+        departureOrder: [initialStrips.departures[1].id, initialStrips.departures[0].id],
+        indentedStripIds: new Set([initialStrips.departures[1].id]),
+      });
+
+      const bay1 = Array.isArray(tree1.props.children)
+        ? tree1.props.children[0]
+        : tree1.props.children;
+      const depStrips1 = bay1.props.children[0].props.children[1].props.children;
+      expect(depStrips1[0].props.strip.acid).toBe("SWA1902");
+      expect(depStrips1[0].props.indented).toBe(true);
+      expect(depStrips1[1].props.strip.acid).toBe("DAL882");
+      expect(depStrips1[1].props.indented).toBe(false);
+
+      // Step 2: Telemetry tick — newly spawned aircraft appears in World
+      const acUal = createAircraft({
+        id: "ac-ual450",
+        callsign: "UAL450",
+        xNm: -10,
+        yNm: -10,
+        headingDeg: 360,
+        altitudeFt: 4000,
+        speedKt: 220,
+      });
+      acUal.intent.vertical = { type: "VIA_SID", sidId: "PLIER2" };
+      world.aircraft.push(acUal);
+      const updatedStrips = terminalStripsFromWorld(world);
+
+      // StripsBoard receives updated departures containing 3 aircraft
+      const customKnownOrder = [initialStrips.departures[1].id, initialStrips.departures[0].id];
+      const reconciledOrder = reconcileOrder(updatedStrips.departures, customKnownOrder);
+
+      const tree2 = StripsBoard({
+        departures: updatedStrips.departures,
+        arrivals: updatedStrips.arrivals,
+        departureOrder: reconciledOrder,
+        indentedStripIds: new Set([initialStrips.departures[1].id]),
+      });
+
+      const bay2 = Array.isArray(tree2.props.children)
+        ? tree2.props.children[0]
+        : tree2.props.children;
+      const depStrips2 = bay2.props.children[0].props.children[1].props.children;
+
+      // Order preserved: SWA1902 (0), DAL882 (1), newly spawned UAL450 (2)
+      expect(depStrips2.length).toBe(3);
+      expect(depStrips2[0].props.strip.acid).toBe("SWA1902");
+      expect(depStrips2[0].props.indented).toBe(true);
+      expect(depStrips2[1].props.strip.acid).toBe("DAL882");
+      expect(depStrips2[1].props.indented).toBe(false);
+      expect(depStrips2[2].props.strip.acid).toBe("UAL450");
+      expect(depStrips2[2].props.indented).toBe(false);
+    });
+
+    test("terminated aircraft are pruned from custom order and indented state across telemetry updates", () => {
+      const depA: DepartureStripData = { ...mockDAL882, id: "DEP_A", acid: "DAL882" };
+      const depB: DepartureStripData = { ...mockSWA1902, id: "DEP_B", acid: "SWA1902" };
+      const initialDepartures = [depB, depA];
+      expect(initialDepartures).toHaveLength(2);
+
+      // Initial: [DEP_B, DEP_A] both active, DEP_A is indented
+      const initialCustomOrder = ["DEP_B", "DEP_A"];
+      const initialIndented = new Set(["DEP_A"]);
+
+      // Simulation event: DEP_A is handed off / terminated and pruned from departures prop
+      const remainingDepartures = [depB];
+      const reconciledOrder = reconcileOrder(remainingDepartures, initialCustomOrder);
+
+      // Reconciled order prunes DEP_A cleanly
+      expect(reconciledOrder).toEqual(["DEP_B"]);
+
+      const tree = StripsBoard({
+        departures: remainingDepartures,
+        arrivals: [],
+        defaultDepartureOrder: reconciledOrder,
+        defaultIndentedStripIds: initialIndented,
+      });
+
+      const bay = Array.isArray(tree.props.children) ? tree.props.children[0] : tree.props.children;
+      const depStrips = bay.props.children[0].props.children[1].props.children;
+
+      expect(depStrips.length).toBe(1);
+      expect(depStrips[0].props.strip.id).toBe("DEP_B");
+      expect(depStrips[0].props.indented).toBe(false);
+    });
+
+    test("arrivals rack preserves custom sequence and indentation when new arrival spawns in World", () => {
+      const ac1 = createAircraft({
+        id: "ac-aal412",
+        callsign: "AAL412",
+        xNm: 15,
+        yNm: 15,
+        headingDeg: 270,
+        altitudeFt: 7000,
+        speedKt: 240,
+      });
+      const ac2 = createAircraft({
+        id: "ac-n415sp",
+        callsign: "N415SP",
+        xNm: 10,
+        yNm: 8,
+        headingDeg: 260,
+        altitudeFt: 3500,
+        speedKt: 120,
+      });
+      const world = createWorld({ aircraft: [ac1, ac2] });
+      const initialStrips = terminalStripsFromWorld(world);
+
+      // Custom arrival order: [N415SP, AAL412], N415SP indented
+      const customArrOrder = [initialStrips.arrivals[1].id, initialStrips.arrivals[0].id];
+      const tree1 = StripsBoard({
+        departures: [],
+        arrivals: initialStrips.arrivals,
+        arrivalOrder: customArrOrder,
+        indentedStripIds: new Set([initialStrips.arrivals[1].id]),
+      });
+
+      const bay1 = Array.isArray(tree1.props.children)
+        ? tree1.props.children[0]
+        : tree1.props.children;
+      const arrStrips1 = bay1.props.children[1].props.children[1].props.children;
+      expect(arrStrips1[0].props.strip.acid).toBe("N415SP");
+      expect(arrStrips1[0].props.indented).toBe(true);
+      expect(arrStrips1[1].props.strip.acid).toBe("AAL412");
+      expect(arrStrips1[1].props.indented).toBe(false);
+
+      // New arrival DL220 spawns
+      const ac3 = createAircraft({
+        id: "ac-dl220",
+        callsign: "DAL220",
+        xNm: 25,
+        yNm: 20,
+        headingDeg: 260,
+        altitudeFt: 10000,
+        speedKt: 250,
+      });
+      world.aircraft.push(ac3);
+      const updatedStrips = terminalStripsFromWorld(world);
+
+      const reconciledArrOrder = reconcileOrder(updatedStrips.arrivals, customArrOrder);
+      const tree2 = StripsBoard({
+        departures: [],
+        arrivals: updatedStrips.arrivals,
+        arrivalOrder: reconciledArrOrder,
+        indentedStripIds: new Set([initialStrips.arrivals[1].id]),
+      });
+
+      const bay2 = Array.isArray(tree2.props.children)
+        ? tree2.props.children[0]
+        : tree2.props.children;
+      const arrStrips2 = bay2.props.children[1].props.children[1].props.children;
+
+      // Order preserved: N415SP (0), AAL412 (1), new DAL220 appended at (2)
+      expect(arrStrips2.length).toBe(3);
+      expect(arrStrips2[0].props.strip.acid).toBe("N415SP");
+      expect(arrStrips2[0].props.indented).toBe(true);
+      expect(arrStrips2[1].props.strip.acid).toBe("AAL412");
+      expect(arrStrips2[1].props.indented).toBe(false);
+      expect(arrStrips2[2].props.strip.acid).toBe("DAL220");
+      expect(arrStrips2[2].props.indented).toBe(false);
+    });
+  });
+
+  // ==========================================================================
+  // AC6 & AC7: End-to-end acceptance suite & regression-free Shell integration
+  // ==========================================================================
+  describe("AC6 & AC7 — End-to-end acceptance suite & regression-free Shell integration", () => {
+    test("Shell renders strips drawer with dynamic traffic from app.world and handles selection", () => {
+      const scenario = loadPlayableScenario("katl");
+      const ac1 = createAircraft({
+        id: "ac-dal882",
+        callsign: "DAL882",
+        xNm: 0,
+        yNm: 0,
+        headingDeg: 270,
+        altitudeFt: 5000,
+        speedKt: 210,
+      });
+      const world = createWorld({ aircraft: [ac1] });
+      const app = createApp({
+        speech: new NullSpeechPort(),
+        world,
+      });
+      const scopeView = createScopeView(scenario.arpNm.xNm, scenario.arpNm.yNm);
+
+      const html = renderToStaticMarkup(createElement(Shell, { app, scenario, scopeView }));
+
+      expect(html).toContain('data-testid="strips-drawer"');
+      expect(html).toContain('data-testid="strips-drawer-content"');
+      expect(html).toContain("DAL882");
+    });
+
+    test("standalone StripsBoard view supports full drag reordering and right-click indent markup", () => {
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          departureOrder: ["SWA1902", "DAL882"],
+          indentedStripIds: new Set(["SWA1902"]),
+          draggedStrip: { id: "DAL882", section: "departures", sourceIndex: 1 },
+          dropIndicator: { section: "departures", targetIndex: 0 },
+        }),
+      );
+
+      // Reordered departure sequence: SWA1902 before DAL882
+      const swaIndex = html.indexOf('data-strip-acid="SWA1902"');
+      const dalIndex = html.indexOf('data-strip-acid="DAL882"');
+      expect(swaIndex).toBeLessThan(dalIndex);
+
+      // Indented SWA1902
+      expect(html).toMatch(
+        /departure-strip[^"]*strip-indented[^"]*"[^>]*data-strip-acid="SWA1902"/,
+      );
+
+      // Dragging DAL882 has strip-dragging
+      expect(html).toMatch(/departure-strip[^"]*strip-dragging[^"]*"[^>]*data-strip-acid="DAL882"/);
+
+      // Drop indicator rendered
+      expect(html).toContain('data-testid="strip-drop-indicator"');
     });
   });
 });

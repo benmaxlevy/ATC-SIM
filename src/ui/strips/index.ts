@@ -63,6 +63,7 @@ export {
   DEFAULT_FACILITY_TITLE,
   StripsBoard,
   createStripSelectionHandler,
+  reconcileOrder,
   selectTrackFromFlightStrip,
 } from "./StripsBoard";
 export type { DraggedStripState, DropIndicatorState, StripsBoardProps } from "./StripsBoard";

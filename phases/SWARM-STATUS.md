@@ -1,5 +1,44 @@
 # Swarm status
 
+## TWENTY-EIGHTH SWARM COMPLETE — Flight Progress Strips Drag Reordering & Indentation (T02-94–96)
+
+T02-94–96 are implemented on `feature/flight-strips` (not `master`). Full test suite `npm test` and `npm run ci`: intra-section drag-and-drop strip reordering constrained within Departures and Arrivals racks in `StripsBoard`, dynamic `.strip-drop-indicator` line previews at candidate insertion indices, single right-click horizontal strip indentation ("cocking", ~28px offset) with browser context menu suppression, and telemetry reconciliation preserving manual order and indentation across live simulation updates.
+
+- **Strips right-click indentation & cocking state (T02-94):**
+  - Added `indented?: boolean` to `FlightStrip`, `DepartureStrip`, and `ArrivalStrip`.
+  - Added `.strip-indented` CSS class applying `transform: translateX(28px)` and smooth transition.
+  - Implemented single right-click `onContextMenu` handler suppressing native browser context menu (`e.preventDefault()`) and toggling strip indentation state.
+  - Implemented `terminalStripsFromWorld(world)` dynamically normalizing live `World.aircraft`, flights, and intents into 7110.65 terminal strip models.
+  - Unit tests in `stripComponents.test.tsx` and `stripsBoard.test.tsx`.
+- **Intra-section drag reordering & drop indicator (T02-95):**
+  - Implemented intra-section HTML5 drag-and-drop mechanics in `StripsBoard`: `draggable`, `onDragStart`, `onDragOver`, `onDragLeave`, `onDrop`, `onDragEnd`.
+  - Added `.strip-drop-indicator` visual insertion line preview (3px `#ffff00` with box shadow) rendering between strips during drag over eligible racks.
+  - Enforced strict intra-section containment: cross-section drops (departures onto arrivals or vice versa) are ignored.
+  - Dropping a strip onto its own position is a no-op; drops at new target indices reorder the section rack.
+  - Unit tests in `stripsBoard.test.tsx`.
+- **Reorder & indent integration & acceptance (T02-96):**
+  - Implemented dynamic telemetry reconciliation (`reconcileOrder`) in `StripsBoard` ensuring manual sequence ordering and indentation states persist across simulation ticks.
+  - Newly spawned aircraft append cleanly to the end of their respective section.
+  - Terminated or removed flights are pruned from custom order and indentation sets.
+  - Exposed optional `onReorderStrips` and `onToggleIndent` callbacks on `StripsBoard`.
+  - Preserved radar track selection synchronization (`World.selectedAircraftId`) on strip left-click.
+  - Comprehensive end-to-end acceptance test suite `src/ui/strips/test/stripsAcceptance.test.tsx` (42 tests covering AC1–AC7).
+
+**Merged (squash-merged, captain only, onto `feature/flight-strips`):** T02-94 (`012fb1b`), T02-95 (`82bcec4`), T02-96 (`pending`). Planning `d255ece`.
+
+**Captain judgement calls:**
+- Reconcile order function appends newly spawned aircraft to the bottom of the section and prunes terminated aircraft without resetting controller's custom order.
+- Right-click indentation state tracks aircraft by strip ID / callsign and persists across telemetry updates.
+- Drop indicator line previews insertion index precisely and cleans up on drag leave / end / drop.
+
+**Product law held:**
+- Authentic right-click strip indentation (~28px horizontal offset) with context menu suppression.
+- Strict intra-section drag reordering with visual drop indicator line preview.
+- Dynamic telemetry state reconciliation preserving custom order and indentation.
+- Zero simulation regressions across radar tracking, datablocks, and phraseology.
+
+---
+
 ## TWENTY-SEVENTH SWARM COMPLETE — Terminal Flight Progress Strips (T02-90–93)
 
 T02-90–93 are squash-merged on `feature/flight-strips` (not `master`). Full test suite `npm test` and `npm run ci`: **168 test files passed, 1258 tests passed, 3 skipped, 0 failures**. Terminal flight progress strips adhering to FAA Order 7110.65 Chapter 2 §3 and vNAS physical cardstock grid specifications, pale buff background (`#F5EEDC`), CWT/wake formatting, route truncation with `***`, two-column rack board (Departures / Arrivals) with independent scrolling, standalone `?view=strips` routing, in-scope shell toggle overlay modal, and `World.selectedAircraftId` track synchronization.
