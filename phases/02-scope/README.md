@@ -749,6 +749,16 @@ Drag-and-drop strip reordering constrained within Departures and Arrivals rack s
 | [T02-95](tickets/T02-95-strips-drag-reorder-and-drop-indicator.md) | Strips intra-section drag reordering and drop indicator | P0 | M | T02-94 | Shipped |
 | [T02-96](tickets/T02-96-strips-reorder-and-indent-acceptance.md) | Strips reorder and indent integration and acceptance | P0 | S | T02-95 | Shipped |
 
+### Phase 2 addendum (T02-97–99 Flight Progress Strips Bay Separators & Custom Context Menus)
+
+Interactive flight progress strip bay separators, direct in-place text editing, custom context menu on empty bay space ("Add Separator") and on separators ("Delete"), intra-section drag-and-drop reordering alongside flight strips, and telemetry reconciliation.
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-97](tickets/T02-97-strips-separator-component-and-text-editing.md) | Strips separator domain model, component, and direct text editing | P0 | M | none | Ready |
+| [T02-98](tickets/T02-98-strips-custom-context-menus.md) | Strip bay custom context menus | P0 | M | T02-97 | Ready |
+| [T02-99](tickets/T02-99-strips-separator-drag-reorder-and-acceptance.md) | Strips separator drag reorder, reconciliation, and acceptance | P0 | S | T02-98 | Ready |
+
 ## Launching an agent
 
 1. Confirm phase 1 README exit is green.
@@ -767,6 +777,7 @@ Drag-and-drop strip reordering constrained within Departures and Arrivals rack s
 14. STARS Compass Rose addendum T02-87 → T02-89 (Compass Rose geometry, ticks, 3-digit headings, BRITE CMP, CHAR SIZE TOOLS).
 15. Terminal Flight Progress Strips addendum T02-90 → T02-93 (Data models, formatters, departure/arrival grids, 2-column rack board).
 16. Flight Progress Strips Reordering & Indentation addendum T02-94 → T02-96 (Right-click indentation, intra-section drag reordering, drop indicator line, telemetry reconciliation).
+17. Flight Progress Strips Bay Separators & Custom Context Menus addendum T02-97 → T02-99 (Bay separator dividers, direct in-place text editing, custom context menu on empty bay and separator, drag reordering, telemetry reconciliation).
 
 ## Glossary reminders
 

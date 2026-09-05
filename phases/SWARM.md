@@ -1,8 +1,67 @@
-# ATC-SIM swarm orchestrator — Twenty-eighth swarm (Flight Progress Strips Drag Reordering & Indentation)
+# ATC-SIM swarm orchestrator — Twenty-ninth swarm (Flight Progress Strips Bay Separators & Custom Context Menus)
 
-Twenty-seventh (Terminal Flight Progress Strips T02-90–93) planned/landed.
-This file keeps that history, then the twenty-eighth addendum on
+Twenty-eighth (Flight Progress Strips Drag Reordering & Indentation T02-94–96) landed.
+This file keeps that history, then the twenty-ninth addendum on
 **`feature/flight-strips`**.
+
+## Twenty-ninth swarm planned — 2026-09-05 (Flight Progress Strips Bay Separators & Custom Context Menus)
+
+This configuration implements user-created strip bay separators with direct in-place text editing, custom context menu on empty bay space ("Add Separator") and on separators ("Delete"), intra-section drag-and-drop reordering alongside flight strips with visual insertion indicator lines, and telemetry reconciliation on **`feature/flight-strips`**.
+Captain squash-merges ticket branches into **`feature/flight-strips`**, not `master`. Do not push. Existing swarm history stays intact.
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement interactive flight progress strip bay separators that controllers can create by right-clicking empty space in either rack, type text directly on the separator bar, drag and drop to reorder as though it were a strip, and right-click to delete via a custom context menu, preserving separator positions across dynamic telemetry updates. |
+| Include | **T02-97**, **T02-98**, **T02-99** |
+| Source | FAA Order 7110.65 Chapter 2 §3, virtual NAS flight strip specifications (vNAS / vStrips divider bars / strip spacers), and terminal radar workstation UI architecture. |
+| Skip | Paid speech/LLM APIs; multi-rack bulk selection; server-side database persistence; freehand pen drawing. |
+| Stop | After T02-99 acceptance. No next phase. |
+| Max workers | 3 |
+| Merge lock | captain squash to `feature/flight-strips`, then `npm test` / `npm run ci` |
+| Model | **inherit** on captain and every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law (twenty-ninth swarm — Flight Progress Strips Bay Separators & Custom Context Menus):**
+
+- **Authentic bay separator dividers.** Separators render as distinct horizontal divider bars across the rack width with high-contrast cab styling, bold uppercase monospace typography, and clear visual differentiation from flight cards.
+- **Direct in-place text editing.** New separators allow typing text directly (auto-focused input upon creation; editable on click/double-click), saving changes on Enter or blur, and escaping to cancel without losing position.
+- **Custom right-click context menus with native menu suppression.** Right-clicking empty space in a bay intercepts `contextmenu`, calls `e.preventDefault()`, and displays a custom context menu with "Add Separator". Right-clicking a separator displays a custom context menu with "Delete". Right-clicking normal flight strips retains authentic cocking/indentation (~28px horizontal offset).
+- **Seamless drag-and-drop reordering with flight strips.** Separators are draggable within their rack section (Departures or Arrivals), participate in candidate drop indicator lines, and can be positioned above, between, or below flight strips.
+- **Dynamic telemetry state reconciliation.** When live simulation ticks update flight plans or spawn/remove aircraft via `terminalStripsFromWorld`, user-created separators retain their positions, labels, and order without being pruned or reset.
+- **Radar track synchronization preservation.** Left-clicking flight strips continues to select the matching aircraft in `World.selectedAircraftId` without interference from separator interactions.
+- **Zero simulation regressions.** Scope canvas, radar tracking, datablocks, DCB submenus, system lists, and radio parsing stay 100% operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-97 | `feature/flight-strips` + planning commit |
+| B | T02-98 | T02-97 |
+| C | T02-99 | T02-98 |
+
+**Ticket ownership:**
+
+- T02-97 owns `StripSeparator` domain model, component, inline direct text editing, and visual styling.
+- T02-98 owns custom context menu component, empty bay space right-click "Add Separator", separator right-click "Delete", and auto-dismissal.
+- T02-99 owns drag-and-drop reordering of separators alongside flight strips, telemetry reconciliation across live World ticks, and acceptance tests.
+
+**Ticket files / branches:**
+
+- `ticket/T02-97-strips-separator-component-and-text-editing` ← `phases/02-scope/tickets/T02-97-strips-separator-component-and-text-editing.md`
+- `ticket/T02-98-strips-custom-context-menus` ← `phases/02-scope/tickets/T02-98-strips-custom-context-menus.md`
+- `ticket/T02-99-strips-separator-drag-reorder-and-acceptance` ← `phases/02-scope/tickets/T02-99-strips-separator-drag-reorder-and-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope addendum (T02-97–99 Flight Progress Strips Bay Separators & Custom Context Menus)
+Merge target: `feature/flight-strips`
+Merged: T02-97, T02-98, T02-99
+Tests: npm test / npm run ci exit 0
+```
+
+---
 
 ## Twenty-eighth swarm planned — 2026-09-05 (Flight Progress Strips Drag Reordering & Indentation)
 
