@@ -4,7 +4,16 @@ import type { World } from "@core";
 import { setSelectedAircraft } from "@core";
 import { ArrivalStrip } from "./ArrivalStrip";
 import { DepartureStrip } from "./DepartureStrip";
-import type { ArrivalStripData, DepartureStripData, FlightStrip } from "./types";
+import { StripSeparator } from "./StripSeparator";
+import { StripsContextMenu } from "./StripsContextMenu";
+import type {
+  ArrivalStripData,
+  DepartureStripData,
+  FlightStrip,
+  RackStripItem,
+  StripSeparator as StripSeparatorModel,
+} from "./types";
+import { isStripSeparator } from "./types";
 import "./strips.css";
 
 export const DEFAULT_FACILITY_TITLE = "ATL — Flight Progress Strips";
@@ -104,6 +113,20 @@ export interface StripsBoardProps {
   defaultArrivalOrder?: string[];
   /** Callback fired when strips within a rack section are reordered. */
   onReorderStrips?: (section: "departures" | "arrivals", orderedStrips: FlightStrip[]) => void;
+  /** Callback fired when any rack items (strips or separators) within a section are reordered. */
+  onReorderRack?: (section: "departures" | "arrivals", orderedItems: RackStripItem[]) => void;
+  /** Controlled separators list. */
+  separators?: StripSeparatorModel[];
+  /** Initial separators list when uncontrolled. */
+  defaultSeparators?: StripSeparatorModel[];
+  /** Callback fired when separators collection changes (add, delete, edit). */
+  onSeparatorsChange?: (separators: StripSeparatorModel[]) => void;
+  /** Controlled active editing separator ID. */
+  editingSeparatorId?: string | null;
+  /** Initial active editing separator ID when uncontrolled. */
+  defaultEditingSeparatorId?: string | null;
+  /** Callback fired when active editing separator ID changes. */
+  onEditingSeparatorChange?: (id: string | null) => void;
   /** Controlled dragged strip state. */
   draggedStrip?: DraggedStripState | null;
   /** Initial dragged strip state when uncontrolled. */
@@ -151,15 +174,21 @@ function setsEqual(a: Set<string>, b: Set<string>): boolean {
   return true;
 }
 
-export function reconcileOrder(strips: FlightStrip[], currentOrder: string[]): string[] {
-  if (!strips || strips.length === 0) return [];
+export function reconcileOrder(
+  strips: FlightStrip[],
+  currentOrder: string[],
+  validExtraIds?: Set<string>,
+): string[] {
+  if ((!strips || strips.length === 0) && (!validExtraIds || validExtraIds.size === 0)) return [];
   const stripMap = new Map(strips.map((s) => [s.id, s]));
   const reconciled: string[] = [];
-  // 1. Keep IDs from currentOrder that still exist in incoming strips (preserves custom order, prunes removed)
+  // 1. Keep IDs from currentOrder that still exist in incoming strips or are valid extra IDs (separators)
   for (const id of currentOrder) {
     if (stripMap.has(id)) {
       reconciled.push(id);
       stripMap.delete(id);
+    } else if (validExtraIds?.has(id)) {
+      reconciled.push(id);
     }
   }
   // 2. Append any newly added strip IDs that were not in currentOrder
@@ -169,22 +198,47 @@ export function reconcileOrder(strips: FlightStrip[], currentOrder: string[]): s
       stripMap.delete(strip.id);
     }
   }
+  // 3. Append any extra valid IDs (e.g. newly created separators) not yet in currentOrder
+  if (validExtraIds) {
+    const inReconciled = new Set(reconciled);
+    for (const extraId of validExtraIds) {
+      if (!inReconciled.has(extraId)) {
+        reconciled.push(extraId);
+      }
+    }
+  }
   return reconciled;
 }
 
-function applyOrder<T extends FlightStrip>(strips: T[], order: string[]): T[] {
-  if (!order || order.length === 0) return strips;
+function applyRackOrder<T extends FlightStrip>(
+  strips: T[],
+  separators: StripSeparatorModel[],
+  section: "departures" | "arrivals",
+  order: string[],
+): RackStripItem[] {
   const stripMap = new Map(strips.map((s) => [s.id, s]));
-  const ordered: T[] = [];
-  for (const id of order) {
-    const strip = stripMap.get(id);
-    if (strip) {
-      ordered.push(strip);
-      stripMap.delete(id);
+  const sepMap = new Map(separators.filter((s) => s.section === section).map((s) => [s.id, s]));
+  const ordered: RackStripItem[] = [];
+  if (order && order.length > 0) {
+    for (const id of order) {
+      const strip = stripMap.get(id);
+      if (strip) {
+        ordered.push(strip);
+        stripMap.delete(id);
+        continue;
+      }
+      const sep = sepMap.get(id);
+      if (sep) {
+        ordered.push(sep);
+        sepMap.delete(id);
+      }
     }
   }
   for (const strip of stripMap.values()) {
     ordered.push(strip);
+  }
+  for (const sep of sepMap.values()) {
+    ordered.push(sep);
   }
   return ordered;
 }
@@ -214,6 +268,13 @@ export function StripsBoard({
   arrivalOrder: arrivalOrderProp,
   defaultArrivalOrder,
   onReorderStrips,
+  onReorderRack,
+  separators: separatorsProp,
+  defaultSeparators,
+  onSeparatorsChange,
+  editingSeparatorId: editingSeparatorIdProp,
+  defaultEditingSeparatorId,
+  onEditingSeparatorChange,
   draggedStrip: draggedStripProp,
   defaultDraggedStrip,
   dropIndicator: dropIndicatorProp,
@@ -224,6 +285,42 @@ export function StripsBoard({
   onToggleIndent,
 }: StripsBoardProps) {
   const seenStripIdsRef = useSafeRef<Set<string>>(new Set());
+
+  const [internalSeparators, setInternalSeparators] = useSafeState<StripSeparatorModel[]>(
+    defaultSeparators ?? [],
+  );
+  const separators = separatorsProp ?? internalSeparators;
+
+  const setSeparators = (
+    next: StripSeparatorModel[] | ((prev: StripSeparatorModel[]) => StripSeparatorModel[]),
+  ) => {
+    const resolved = typeof next === "function" ? next(separators) : next;
+    if (separatorsProp === undefined) {
+      setInternalSeparators(resolved);
+    }
+    onSeparatorsChange?.(resolved);
+  };
+
+  const [internalEditingId, setInternalEditingId] = useSafeState<string | null>(
+    defaultEditingSeparatorId ?? null,
+  );
+  const editingSeparatorId = editingSeparatorIdProp ?? internalEditingId;
+
+  const setEditingSeparatorId = (next: string | null) => {
+    if (editingSeparatorIdProp === undefined) {
+      setInternalEditingId(next);
+    }
+    onEditingSeparatorChange?.(next);
+  };
+
+  const [contextMenu, setContextMenu] = useSafeState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    section: "departures" | "arrivals";
+    type: "empty-space" | "separator";
+    separatorId?: string;
+  } | null>(null);
 
   const [internalDepOrder, setInternalDepOrder] = useSafeState<string[]>(
     () => defaultDepartureOrder ?? departures.map((d) => d.id),
@@ -251,9 +348,18 @@ export function StripsBoard({
     arrivalOrder: defaultArrivalOrder ?? null,
   });
 
+  const depSeparatorIds = new Set(
+    separators.filter((s) => s.section === "departures").map((s) => s.id),
+  );
+  const arrSeparatorIds = new Set(
+    separators.filter((s) => s.section === "arrivals").map((s) => s.id),
+  );
+
   const rawDepOrder = departureOrderProp ?? dragRef.current.departureOrder ?? internalDepOrder;
   const effectiveDepOrder =
-    departureOrderProp !== undefined ? departureOrderProp : reconcileOrder(departures, rawDepOrder);
+    departureOrderProp !== undefined
+      ? departureOrderProp
+      : reconcileOrder(departures, rawDepOrder, depSeparatorIds);
 
   if (departureOrderProp === undefined) {
     dragRef.current.departureOrder = effectiveDepOrder;
@@ -264,7 +370,9 @@ export function StripsBoard({
 
   const rawArrOrder = arrivalOrderProp ?? dragRef.current.arrivalOrder ?? internalArrOrder;
   const effectiveArrOrder =
-    arrivalOrderProp !== undefined ? arrivalOrderProp : reconcileOrder(arrivals, rawArrOrder);
+    arrivalOrderProp !== undefined
+      ? arrivalOrderProp
+      : reconcileOrder(arrivals, rawArrOrder, arrSeparatorIds);
 
   if (arrivalOrderProp === undefined) {
     dragRef.current.arrivalOrder = effectiveArrOrder;
@@ -273,8 +381,8 @@ export function StripsBoard({
     }
   }
 
-  const orderedDepartures = applyOrder(departures, effectiveDepOrder);
-  const orderedArrivals = applyOrder(arrivals, effectiveArrOrder);
+  const orderedDepartures = applyRackOrder(departures, separators, "departures", effectiveDepOrder);
+  const orderedArrivals = applyRackOrder(arrivals, separators, "arrivals", effectiveArrOrder);
 
   const draggedStrip =
     draggedStripProp !== undefined
@@ -306,18 +414,108 @@ export function StripsBoard({
     }
   };
 
+  const handleAddSeparator = (section: "departures" | "arrivals") => {
+    const newId = `sep-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const newSep: StripSeparatorModel = {
+      id: newId,
+      stripType: "SEPARATOR",
+      label: "",
+      section,
+      createdAt: Date.now(),
+    };
+    const nextSeps = [...separators, newSep];
+    setSeparators(nextSeps);
+
+    if (section === "departures") {
+      const nextOrder = [...effectiveDepOrder, newId];
+      dragRef.current.departureOrder = nextOrder;
+      if (departureOrderProp === undefined) {
+        setInternalDepOrder(nextOrder);
+      }
+    } else {
+      const nextOrder = [...effectiveArrOrder, newId];
+      dragRef.current.arrivalOrder = nextOrder;
+      if (arrivalOrderProp === undefined) {
+        setInternalArrOrder(nextOrder);
+      }
+    }
+
+    setEditingSeparatorId(newId);
+    setContextMenu(null);
+  };
+
+  const handleDeleteSeparator = (id: string) => {
+    const nextSeps = separators.filter((s) => s.id !== id);
+    setSeparators(nextSeps);
+
+    const nextDepOrder = effectiveDepOrder.filter((item) => item !== id);
+    dragRef.current.departureOrder = nextDepOrder;
+    if (departureOrderProp === undefined) {
+      setInternalDepOrder(nextDepOrder);
+    }
+
+    const nextArrOrder = effectiveArrOrder.filter((item) => item !== id);
+    dragRef.current.arrivalOrder = nextArrOrder;
+    if (arrivalOrderProp === undefined) {
+      setInternalArrOrder(nextArrOrder);
+    }
+
+    if (editingSeparatorId === id) {
+      setEditingSeparatorId(null);
+    }
+    setContextMenu(null);
+  };
+
+  const handleUpdateSeparatorLabel = (id: string, newLabel: string) => {
+    const nextSeps = separators.map((s) => (s.id === id ? { ...s, label: newLabel } : s));
+    setSeparators(nextSeps);
+  };
+
+  const handleRackContextMenu = (e: React.MouseEvent, section: "departures" | "arrivals") => {
+    const target = e.target as HTMLElement | null;
+    if (
+      target &&
+      typeof target.closest === "function" &&
+      target.closest(".strip, .departure-strip, .arrival-strip, .strip-separator")
+    ) {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      section,
+      type: "empty-space",
+    });
+  };
+
+  const handleSeparatorContextMenu = (e: React.MouseEvent, separator: StripSeparatorModel) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      section: separator.section,
+      type: "separator",
+      separatorId: separator.id,
+    });
+  };
+
   const handleDragStart = (
     e: React.DragEvent,
-    strip: FlightStrip,
+    item: RackStripItem,
     section: "departures" | "arrivals",
     index: number,
   ) => {
     if (e.dataTransfer) {
-      e.dataTransfer.setData?.("text/plain", strip.id);
+      e.dataTransfer.setData?.("text/plain", item.id);
       e.dataTransfer.effectAllowed = "move";
     }
     setDraggedStrip({
-      id: strip.id,
+      id: item.id,
       section,
       sourceIndex: index,
     });
@@ -415,27 +613,35 @@ export function StripsBoard({
       const currentList = [...orderedDepartures];
       if (sourceIndex >= 0 && sourceIndex < currentList.length) {
         const insertIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
-        const [movedStrip] = currentList.splice(sourceIndex, 1);
-        currentList.splice(insertIndex, 0, movedStrip);
+        const [movedItem] = currentList.splice(sourceIndex, 1);
+        currentList.splice(insertIndex, 0, movedItem);
         const newOrder = currentList.map((s) => s.id);
         dragRef.current.departureOrder = newOrder;
         if (departureOrderProp === undefined) {
           setInternalDepOrder(newOrder);
         }
-        onReorderStrips?.("departures", currentList);
+        onReorderStrips?.(
+          "departures",
+          currentList.filter((s): s is FlightStrip => !isStripSeparator(s)),
+        );
+        onReorderRack?.("departures", currentList);
       }
     } else {
       const currentList = [...orderedArrivals];
       if (sourceIndex >= 0 && sourceIndex < currentList.length) {
         const insertIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
-        const [movedStrip] = currentList.splice(sourceIndex, 1);
-        currentList.splice(insertIndex, 0, movedStrip);
+        const [movedItem] = currentList.splice(sourceIndex, 1);
+        currentList.splice(insertIndex, 0, movedItem);
         const newOrder = currentList.map((s) => s.id);
         dragRef.current.arrivalOrder = newOrder;
         if (arrivalOrderProp === undefined) {
           setInternalArrOrder(newOrder);
         }
-        onReorderStrips?.("arrivals", currentList);
+        onReorderStrips?.(
+          "arrivals",
+          currentList.filter((s): s is FlightStrip => !isStripSeparator(s)),
+        );
+        onReorderRack?.("arrivals", currentList);
       }
     }
 
@@ -443,10 +649,14 @@ export function StripsBoard({
     setDropIndicator(null);
   };
 
-  const renderStripList = (section: "departures" | "arrivals", strips: FlightStrip[]) => {
-    if (strips.length === 0) {
+  const renderStripList = (section: "departures" | "arrivals", items: RackStripItem[]) => {
+    if (items.length === 0) {
       return (
-        <div className="rack-empty" data-testid={`rack-empty-${section}`}>
+        <div
+          className="rack-empty"
+          data-testid={`rack-empty-${section}`}
+          onContextMenu={(e) => handleRackContextMenu(e, section)}
+        >
           {section === "departures" ? "No departure strips" : "No arrival strips"}
         </div>
       );
@@ -456,7 +666,7 @@ export function StripsBoard({
     const showIndicator = dropIndicator?.section === section;
     const targetIdx = dropIndicator?.targetIndex ?? -1;
 
-    strips.forEach((strip, index) => {
+    items.forEach((item, index) => {
       if (showIndicator && targetIdx === index) {
         elements.push(
           <div
@@ -467,8 +677,29 @@ export function StripsBoard({
         );
       }
 
-      if (section === "departures") {
-        const depStrip = strip as DepartureStripData;
+      if (isStripSeparator(item)) {
+        elements.push(
+          <StripSeparator
+            key={item.id}
+            separator={item}
+            isEditing={editingSeparatorId === item.id}
+            isDragging={draggedStrip?.id === item.id}
+            onUpdateLabel={handleUpdateSeparatorLabel}
+            onStartEdit={(id) => setEditingSeparatorId(id)}
+            onEndEdit={(id) => {
+              if (editingSeparatorId === id) {
+                setEditingSeparatorId(null);
+              }
+            }}
+            onContextMenu={handleSeparatorContextMenu}
+            onDragStart={(e) => handleDragStart(e, item, section, index)}
+            onDragEnd={handleDragEnd}
+            onDragOver={(e) => handleDragOver(e, section, index)}
+            onDrop={(e) => handleDrop(e, section)}
+          />,
+        );
+      } else if (section === "departures") {
+        const depStrip = item as DepartureStripData;
         elements.push(
           <DepartureStrip
             key={depStrip.id}
@@ -485,7 +716,7 @@ export function StripsBoard({
           />,
         );
       } else {
-        const arrStrip = strip as ArrivalStripData;
+        const arrStrip = item as ArrivalStripData;
         elements.push(
           <ArrivalStrip
             key={arrStrip.id}
@@ -504,7 +735,7 @@ export function StripsBoard({
       }
     });
 
-    if (showIndicator && targetIdx >= strips.length) {
+    if (showIndicator && targetIdx >= items.length) {
       elements.push(
         <div
           className="strip-drop-indicator"
@@ -712,6 +943,7 @@ export function StripsBoard({
             data-testid="rack-strip-list-departures"
             role="region"
             aria-label="Departures strip list"
+            onContextMenu={(e) => handleRackContextMenu(e, "departures")}
             onDragOver={(e) => {
               const current =
                 draggedStripProp !== undefined ? draggedStripProp : dragRef.current.draggedStrip;
@@ -791,6 +1023,7 @@ export function StripsBoard({
             data-testid="rack-strip-list-arrivals"
             role="region"
             aria-label="Arrivals strip list"
+            onContextMenu={(e) => handleRackContextMenu(e, "arrivals")}
             onDragOver={(e) => {
               const current =
                 draggedStripProp !== undefined ? draggedStripProp : dragRef.current.draggedStrip;
@@ -837,6 +1070,46 @@ export function StripsBoard({
           {layoutMode === "horizontal" ? "Stacked" : "Columns"}
         </button>
       </footer>
+
+      {/* Custom Context Menu */}
+      {contextMenu && contextMenu.visible && (
+        <StripsContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          items={
+            contextMenu.type === "empty-space"
+              ? [
+                  {
+                    label: "Add Separator",
+                    action: () => handleAddSeparator(contextMenu.section),
+                    testId: `context-menu-add-separator-${contextMenu.section}`,
+                  },
+                ]
+              : [
+                  {
+                    label: "Delete",
+                    action: () => {
+                      if (contextMenu.separatorId) {
+                        handleDeleteSeparator(contextMenu.separatorId);
+                      }
+                    },
+                    danger: true,
+                    testId: "context-menu-delete-separator",
+                  },
+                  {
+                    label: "Edit Text",
+                    action: () => {
+                      if (contextMenu.separatorId) {
+                        setEditingSeparatorId(contextMenu.separatorId);
+                      }
+                    },
+                    testId: "context-menu-edit-separator",
+                  },
+                ]
+          }
+        />
+      )}
     </div>
   );
 }

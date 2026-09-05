@@ -74,3 +74,30 @@ export interface ArrivalStripData extends BaseStripData {
 }
 
 export type FlightStrip = DepartureStripData | ArrivalStripData;
+
+/**
+ * Interactive Strip Bay Separator / Divider bar.
+ * Used by controllers to segregate flight strips within rack bays.
+ */
+export interface StripSeparator {
+  /** Unique separator identifier. */
+  id: string;
+  /** Fixed separator type tag. */
+  stripType: "SEPARATOR";
+  /** Text label displayed on the separator bar (e.g. 'RWY 27L', 'DEPARTURES'). */
+  label: string;
+  /** Section rack where the separator resides ('departures' or 'arrivals'). */
+  section: "departures" | "arrivals";
+  /** Creation timestamp for sorting/debugging. */
+  createdAt?: number;
+}
+
+export type RackStripItem = FlightStrip | StripSeparator;
+
+export function isStripSeparator(item: unknown): item is StripSeparator {
+  return (
+    typeof item === "object" &&
+    item !== null &&
+    (item as { stripType?: string }).stripType === "SEPARATOR"
+  );
+}

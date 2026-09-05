@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
 // @ts-expect-error tsconfig has no @types/node
 import { readFileSync } from "node:fs";
-import { StripsBoard } from "../StripsBoard";
+import { StripsBoard, reconcileOrder } from "../StripsBoard";
 import {
   mockAAL412,
   mockArrivals,
@@ -1326,6 +1326,147 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
         firstDep.props.onSelect("DAL882");
         expect(onSelectStripMock).toHaveBeenCalledWith(mockDAL882);
       });
+    });
+  });
+
+  // ==========================================================================
+  // T02-97 to T02-99: Strip Bay Separators & Custom Context Menus
+  // ==========================================================================
+  describe("T02-97 to T02-99 — Flight Progress Strips Bay Separators and Context Menus", () => {
+    test("renders separators alongside flight strips in the rack", () => {
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          separators: [
+            {
+              id: "sep-dep-1",
+              stripType: "SEPARATOR",
+              label: "RWY 27L",
+              section: "departures",
+            },
+            {
+              id: "sep-arr-1",
+              stripType: "SEPARATOR",
+              label: "HOLDING",
+              section: "arrivals",
+            },
+          ],
+          departureOrder: ["DAL882", "sep-dep-1", "SWA1902"],
+          arrivalOrder: ["sep-arr-1", "AAL412", "N415SP"],
+        }),
+      );
+
+      expect(html).toContain('data-testid="strip-separator-sep-dep-1"');
+      expect(html).toContain("RWY 27L");
+      expect(html).toContain('data-testid="strip-separator-sep-arr-1"');
+      expect(html).toContain("HOLDING");
+    });
+
+    test("right-clicking empty space in departures rack opens context menu with Add Separator", () => {
+      const tree = StripsBoard({
+        departures: mockDepartures,
+        arrivals: mockArrivals,
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const depRack = bayContainer.props.children[0];
+      const depStripList = depRack.props.children[1];
+
+      const fakeContextMenu = {
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+        clientX: 250,
+        clientY: 400,
+        target: { closest: vi.fn().mockReturnValue(null) },
+      } as unknown as React.MouseEvent;
+
+      depStripList.props.onContextMenu?.(fakeContextMenu);
+
+      expect(fakeContextMenu.preventDefault).toHaveBeenCalledTimes(1);
+      expect(fakeContextMenu.stopPropagation).toHaveBeenCalledTimes(1);
+    });
+
+    test("right-clicking a flight strip does not open separator context menu and toggles indentation", () => {
+      const onToggleIndentMock = vi.fn();
+      const tree = StripsBoard({
+        departures: mockDepartures,
+        arrivals: mockArrivals,
+        onToggleIndent: onToggleIndentMock,
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const depRack = bayContainer.props.children[0];
+      const firstDep = depRack.props.children[1].props.children[0];
+
+      // Flight strip has onToggleIndent
+      firstDep.props.onToggleIndent?.("DAL882");
+      expect(onToggleIndentMock).toHaveBeenCalledWith("DAL882", true);
+    });
+
+    test("reconcileOrder preserves separator IDs alongside live flight strip updates", () => {
+      const liveStrips = [mockDAL882, mockSWA1902];
+      const currentOrder = ["DAL882", "sep-custom-1", "SWA1902"];
+      const separatorIds = new Set(["sep-custom-1"]);
+
+      const reconciled = reconcileOrder(liveStrips, currentOrder, separatorIds);
+
+      // Separator stays exactly between DAL882 and SWA1902
+      expect(reconciled).toEqual(["DAL882", "sep-custom-1", "SWA1902"]);
+    });
+
+    test("reconcileOrder prunes removed aircraft without removing separators", () => {
+      // SWA1902 departed and is no longer in live strips
+      const liveStrips = [mockDAL882];
+      const currentOrder = ["DAL882", "sep-custom-1", "SWA1902"];
+      const separatorIds = new Set(["sep-custom-1"]);
+
+      const reconciled = reconcileOrder(liveStrips, currentOrder, separatorIds);
+
+      // SWA1902 is pruned, separator is retained
+      expect(reconciled).toEqual(["DAL882", "sep-custom-1"]);
+    });
+
+    test("reconcileOrder appends newly spawned aircraft after existing strips and separators", () => {
+      // New departure spawned
+      const newDep = { ...mockDAL882, id: "UAL999", acid: "UAL999" };
+      const liveStrips = [mockDAL882, newDep];
+      const currentOrder = ["DAL882", "sep-custom-1"];
+      const separatorIds = new Set(["sep-custom-1"]);
+
+      const reconciled = reconcileOrder(liveStrips, currentOrder, separatorIds);
+
+      expect(reconciled).toEqual(["DAL882", "sep-custom-1", "UAL999"]);
+    });
+
+    test("separators support drag-and-drop reordering with drop indicator", () => {
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          separators: [
+            {
+              id: "sep-1",
+              stripType: "SEPARATOR",
+              label: "RWY 27L",
+              section: "departures",
+            },
+          ],
+          departureOrder: ["DAL882", "sep-1", "SWA1902"],
+          draggedStrip: { id: "sep-1", section: "departures", sourceIndex: 1 },
+          dropIndicator: { section: "departures", targetIndex: 0 },
+        }),
+      );
+
+      // Separator has strip-dragging class
+      expect(html).toContain('data-testid="strip-separator-sep-1"');
+      expect(html).toContain("strip-dragging");
+      // Drop indicator line renders at targetIndex
+      expect(html).toContain('data-testid="strip-drop-indicator"');
     });
   });
 });

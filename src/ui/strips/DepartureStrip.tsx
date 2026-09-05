@@ -47,6 +47,7 @@ export function DepartureStrip({
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation?.();
     onToggleIndent?.(strip.id);
   };
 

@@ -23,8 +23,11 @@ export type {
   DepartureStripData,
   FlightRules,
   FlightStrip,
+  RackStripItem,
   StripAnnotationBoxes,
+  StripSeparator as StripSeparatorType,
 } from "./types";
+export { isStripSeparator } from "./types";
 
 // Formatting utilities
 export {
@@ -57,6 +60,10 @@ export { DepartureStrip } from "./DepartureStrip";
 export type { DepartureStripProps } from "./DepartureStrip";
 export { ArrivalStrip } from "./ArrivalStrip";
 export type { ArrivalStripProps } from "./ArrivalStrip";
+export { StripSeparator } from "./StripSeparator";
+export type { StripSeparatorProps } from "./StripSeparator";
+export { StripsContextMenu } from "./StripsContextMenu";
+export type { ContextMenuItem, StripsContextMenuProps } from "./StripsContextMenu";
 
 // Strips board & bay layout
 export {

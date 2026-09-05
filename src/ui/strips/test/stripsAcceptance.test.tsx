@@ -1184,4 +1184,142 @@ describe("T02-96 Flight Progress Strips Reordering and Indentation Integration a
       expect(html).toContain('data-testid="strip-drop-indicator"');
     });
   });
+
+  // ==========================================================================
+  // AC8 to AC12: T02-97 to T02-99 Separators, Context Menus, and Drag Acceptance
+  // ==========================================================================
+  describe("AC8 to AC12 — Flight Progress Strips Bay Separators and Context Menus Acceptance", () => {
+    test("AC8: Renders bay separators alongside flight progress strips in rack columns", () => {
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          separators: [
+            {
+              id: "sep-dep-rwy27l",
+              stripType: "SEPARATOR",
+              label: "RWY 27L DEPARTURES",
+              section: "departures",
+            },
+            {
+              id: "sep-arr-ils",
+              stripType: "SEPARATOR",
+              label: "ILS 26R INBOUNDS",
+              section: "arrivals",
+            },
+          ],
+          departureOrder: ["sep-dep-rwy27l", "DAL882", "SWA1902"],
+          arrivalOrder: ["sep-arr-ils", "AAL412", "N415SP"],
+        }),
+      );
+
+      expect(html).toContain('data-testid="strip-separator-sep-dep-rwy27l"');
+      expect(html).toContain("RWY 27L DEPARTURES");
+      expect(html).toContain('data-testid="strip-separator-sep-arr-ils"');
+      expect(html).toContain("ILS 26R INBOUNDS");
+    });
+
+    test("AC9: Separator supports in-place text editing mode with input element", () => {
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          separators: [
+            {
+              id: "sep-1",
+              stripType: "SEPARATOR",
+              label: "RWY 27L",
+              section: "departures",
+            },
+          ],
+          editingSeparatorId: "sep-1",
+        }),
+      );
+
+      expect(html).toContain('class="strip-separator-input"');
+      expect(html).toContain('data-testid="strip-separator-input-sep-1"');
+      expect(html).toContain('value="RWY 27L"');
+    });
+
+    test("AC10: Separator participates in drag-and-drop reordering with drop indicator", () => {
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          separators: [
+            {
+              id: "sep-1",
+              stripType: "SEPARATOR",
+              label: "RWY 27L",
+              section: "departures",
+            },
+          ],
+          departureOrder: ["sep-1", "DAL882", "SWA1902"],
+          draggedStrip: { id: "sep-1", section: "departures", sourceIndex: 0 },
+          dropIndicator: { section: "departures", targetIndex: 2 },
+        }),
+      );
+
+      // Dragged separator has strip-dragging class
+      expect(html).toContain('data-testid="strip-separator-sep-1"');
+      expect(html).toContain("strip-dragging");
+      // Drop indicator line renders at target index
+      expect(html).toContain('data-testid="strip-drop-indicator"');
+    });
+
+    test("AC11: Live simulation telemetry updates preserve user-created separators and custom order", () => {
+      const ac1 = createAircraft({
+        id: "DAL882",
+        callsign: "DAL882",
+        xNm: 0,
+        yNm: 0,
+        altitudeFt: 5000,
+        headingDeg: 270,
+        speedKt: 210,
+      });
+      ac1.intent.vertical = { type: "VIA_SID", sidId: "PLIER2" };
+      const world = createWorld({ aircraft: [ac1] });
+      const initialStrips = terminalStripsFromWorld(world);
+
+      const customOrder = ["sep-custom-1", "DAL882"];
+      const separatorIds = new Set(["sep-custom-1"]);
+
+      const reconciledOrder = reconcileOrder(initialStrips.departures, customOrder, separatorIds);
+      expect(reconciledOrder).toEqual(["sep-custom-1", "DAL882"]);
+
+      // Telemetry update: second aircraft spawns
+      const ac2 = createAircraft({
+        id: "SWA1902",
+        callsign: "SWA1902",
+        xNm: 10,
+        yNm: 10,
+        altitudeFt: 4000,
+        headingDeg: 90,
+        speedKt: 200,
+      });
+      ac2.intent.vertical = { type: "VIA_SID", sidId: "PLIER2" };
+      world.aircraft.push(ac2);
+      const updatedStrips = terminalStripsFromWorld(world);
+
+      const updatedOrder = reconcileOrder(updatedStrips.departures, reconciledOrder, separatorIds);
+      // Preserves separator in place and appends new spawn cleanly
+      expect(updatedOrder).toEqual(["sep-custom-1", "DAL882", "SWA1902"]);
+    });
+
+    test("AC12: Radar track selection and strip cocking remain operational without regressions", () => {
+      const ac1 = createAircraft({
+        id: "DAL882",
+        callsign: "DAL882",
+        xNm: 0,
+        yNm: 0,
+        altitudeFt: 5000,
+        headingDeg: 270,
+        speedKt: 210,
+      });
+      const world = createWorld({ aircraft: [ac1] });
+
+      expect(selectTrackFromFlightStrip(world, mockDAL882)).toBe(true);
+      expect(world.selectedAircraftId).toBe("DAL882");
+    });
+  });
 });

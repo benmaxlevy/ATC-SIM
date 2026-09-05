@@ -52,6 +52,7 @@ export function ArrivalStrip({
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation?.();
     onToggleIndent?.(strip.id);
   };
 
