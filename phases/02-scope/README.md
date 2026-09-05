@@ -728,6 +728,47 @@ STARS Compass Rose heading vectoring ring with 72 radial tick marks (5° minor, 
 | [T02-88](tickets/T02-88-compass-rose-canvas-rendering-and-brite.md) | Compass Rose canvas rendering and BRITE CMP | P0 | M | T02-87 | Shipped |
 | [T02-89](tickets/T02-89-compass-rose-acceptance.md) | Compass Rose integration and acceptance | P0 | S | T02-87, T02-88 | Shipped |
 
+### Phase 2 addendum (T02-90–93 Terminal Flight Progress Strips)
+
+FAA/vNAS terminal flight progress strip system with 4-column physical grid layouts, pale buff background, CWT/wake formatting, route truncation, and a 2-column rack board (Departures & Arrivals).
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-90](tickets/T02-90-strips-data-models-and-formatter.md) | Strips data models and formatter | P0 | M | none | Shipped |
+| [T02-91](tickets/T02-91-strips-departure-and-arrival-components.md) | Strips departure and arrival components | P0 | M | T02-90 | Shipped |
+| [T02-92](tickets/T02-92-strips-two-column-board-and-layout.md) | Strips two-column board and bay layout | P0 | M | T02-91 | Shipped |
+| [T02-93](tickets/T02-93-strips-integration-and-acceptance.md) | Strips integration and acceptance | P0 | S | T02-92 | Shipped |
+
+### Phase 2 addendum (T02-94–96 Flight Progress Strips Drag Reordering & Indentation)
+
+Drag-and-drop strip reordering constrained within Departures and Arrivals rack sections, real-time visual drop insertion indicator line, single right-click horizontal strip indentation ("cocking") with browser context-menu suppression, and dynamic telemetry reconciliation.
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-94](tickets/T02-94-strips-right-click-indentation.md) | Strips right-click indentation and cocking state | P0 | M | none | Shipped |
+| [T02-95](tickets/T02-95-strips-drag-reorder-and-drop-indicator.md) | Strips intra-section drag reordering and drop indicator | P0 | M | T02-94 | Shipped |
+| [T02-96](tickets/T02-96-strips-reorder-and-indent-acceptance.md) | Strips reorder and indent integration and acceptance | P0 | S | T02-95 | Shipped |
+
+### Phase 2 addendum (T02-97–99 Flight Progress Strips Bay Separators & Custom Context Menus)
+
+Interactive flight progress strip bay separators, direct in-place text editing, custom context menu on empty bay space ("Add Separator") and on separators ("Delete"), intra-section drag-and-drop reordering alongside flight strips, and telemetry reconciliation.
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-97](tickets/T02-97-strips-separator-component-and-text-editing.md) | Strips separator domain model, component, and direct text editing | P0 | M | none | Shipped |
+| [T02-98](tickets/T02-98-strips-custom-context-menus.md) | Strip bay custom context menus | P0 | M | T02-97 | Shipped |
+| [T02-99](tickets/T02-99-strips-separator-drag-reorder-and-acceptance.md) | Strips separator drag reorder, reconciliation, and acceptance | P0 | S | T02-98 | Shipped |
+
+### Phase 2 addendum (T02-100–102 Flight Progress Strips Interactive Freeform Box Annotations)
+
+Direct in-place text annotations on flight progress strips, supporting double-click inline micro-inputs for Boxes 10–18 (3×3 coordination matrix) and Boxes 8A/8B with authentic black text, keyboard commit/cancel, interaction isolation from strip drag and selection, and telemetry state persistence across live World ticks.
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-100](tickets/T02-100-strips-freeform-box-annotations-component.md) | Strips freeform box annotations component and inline editing | P0 | M | none | Ready |
+| [T02-101](tickets/T02-101-strips-annotation-state-and-telemetry-persistence.md) | Strips annotation state and telemetry persistence | P0 | M | T02-100 | Ready |
+| [T02-102](tickets/T02-102-strips-box-annotations-acceptance-and-styling.md) | Strips box annotations acceptance, unit tests, and styling | P0 | S | T02-101 | Ready |
+
 ## Launching an agent
 
 1. Confirm phase 1 README exit is green.
@@ -744,8 +785,13 @@ STARS Compass Rose heading vectoring ring with 72 radial tick marks (5° minor, 
 12. DCB controls & SSA WX addendum T02-81 → T02-83 (DCB VOL, MODE FSL, BRITE BKC, SSA WX/WX HIST telemetry).
 13. DCB AUX & BRITE controls addendum T02-84 → T02-86 (H_RATE, DWELL, CURSOR HOME, CSR SPD, BRITE CMP/BCN).
 14. STARS Compass Rose addendum T02-87 → T02-89 (Compass Rose geometry, ticks, 3-digit headings, BRITE CMP, CHAR SIZE TOOLS).
+15. Terminal Flight Progress Strips addendum T02-90 → T02-93 (Data models, formatters, departure/arrival grids, 2-column rack board).
+16. Flight Progress Strips Reordering & Indentation addendum T02-94 → T02-96 (Right-click indentation, intra-section drag reordering, drop indicator line, telemetry reconciliation).
+17. Flight Progress Strips Bay Separators & Custom Context Menus addendum T02-97 → T02-99 (Bay separator dividers, direct in-place text editing, custom context menu on empty bay and separator, drag reordering, telemetry reconciliation).
+18. Flight Progress Strips Interactive Freeform Box Annotations addendum T02-100 → T02-102 (Freeform inline annotations on Boxes 10–18 and 8A/8B, double-click editing, black text, telemetry persistence, interaction isolation).
 
 ## Glossary reminders
 
 Use `phases/_shared/glossary.md` terms: **scope**, **PPI**, **datablock**, **track**, **CRC keys**. Distances NM, altitudes feet MSL, speed knots. Do not invent “zoom level,” “labels,” or “sprites” in user-facing UI copy — say **range**, **datablock**, **target**. Forbidden/required list: `phases/_shared/references.md`.
+
 

@@ -1,0 +1,759 @@
+/**
+ * Terminal Flight Progress Strips CSS
+ * FAA / vNAS 5-column physical cardstock layout.
+ */
+
+.strip,
+.departure-strip,
+.arrival-strip {
+  display: grid;
+  grid-template-columns: 1.4fr 0.7fr 0.9fr 2.2fr 1.1fr;
+  width: 100%;
+  max-width: 840px;
+  height: 80px;
+  background-color: #f5eedc;
+  border: 1px solid #333;
+  font-family: Consolas, "Courier New", monospace;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #000000;
+  box-sizing: border-box;
+  user-select: none;
+  cursor: pointer;
+  position: relative;
+  transition:
+    transform 0.15s ease,
+    margin-left 0.15s ease;
+}
+
+.departure-strip:hover,
+.arrival-strip:hover {
+  filter: brightness(0.98);
+}
+
+.departure-strip:focus-visible,
+.arrival-strip:focus-visible {
+  outline: 3px solid #ffff00;
+  outline-offset: 1px;
+}
+
+.strip-selected,
+.departure-strip.strip-selected,
+.arrival-strip.strip-selected {
+  outline: 3px solid #ffff00;
+  outline-offset: 1px;
+  z-index: 2;
+}
+
+.strip-indented,
+.strip.strip-indented,
+.departure-strip.strip-indented,
+.arrival-strip.strip-indented {
+  transform: translateX(28px);
+  width: calc(100% - 28px);
+  box-shadow: -4px 0 0 #1a1e24;
+}
+
+.strip.strip-dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.strip-dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+/* ==========================================================================
+   Strip Separator / Bay Divider (T02-97)
+   ========================================================================== */
+
+.strip-separator {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 840px;
+  height: 38px;
+  background-color: #22252a;
+  border: 1px solid #3a3f47;
+  border-top: 1px solid #4e5560;
+  border-bottom: 1px solid #181a1d;
+  border-radius: 2px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.35);
+  font-family: Consolas, "Courier New", monospace;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #eef1f4;
+  box-sizing: border-box;
+  user-select: none;
+  cursor: pointer;
+  position: relative;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+  padding: 0 10px;
+}
+
+.strip-separator:hover {
+  background-color: #2a2e34;
+  border-color: #555d68;
+}
+
+.strip-separator:focus-visible {
+  outline: 2px solid #ffff00;
+  outline-offset: 1px;
+}
+
+.strip-separator-accent {
+  display: none;
+}
+
+.strip-separator-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.strip-separator-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  color: #eef1f4;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90%;
+}
+
+.strip-separator-input {
+  width: 90%;
+  max-width: 400px;
+  height: 26px;
+  background-color: #121417;
+  border: 1px solid #ffff00;
+  border-radius: 2px;
+  color: #ffff00;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 2px 8px;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.strip-separator-input:focus {
+  border-color: #ffff00;
+  box-shadow: 0 0 4px rgba(255, 255, 0, 0.4);
+}
+
+/* ==========================================================================
+   Strip Bay Custom Context Menu (T02-98)
+   ========================================================================== */
+
+.strips-context-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 160px;
+  background-color: #161b22;
+  border: 1px solid #383c44;
+  border-radius: 3px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.75);
+  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  user-select: none;
+}
+
+.strips-context-menu-item {
+  background: transparent;
+  border: none;
+  color: #d1d5db;
+  font: inherit;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 6px 14px;
+  cursor: pointer;
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  transition:
+    background-color 0.1s ease,
+    color 0.1s ease;
+}
+
+.strips-context-menu-item:hover,
+.strips-context-menu-item:focus-visible {
+  background-color: #21262d;
+  color: #ffff00;
+  outline: none;
+}
+
+.strips-context-menu-item.danger {
+  color: #f85149;
+}
+
+.strips-context-menu-item.danger:hover,
+.strips-context-menu-item.danger:focus-visible {
+  background-color: rgba(248, 81, 73, 0.15);
+  color: #ff7b72;
+}
+
+.strip-drop-indicator {
+  height: 3px;
+  background-color: #ffff00;
+  box-shadow: 0 0 6px #ffff00;
+  border-radius: 1.5px;
+  width: 100%;
+  margin: 2px 0;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.strip-col {
+  border-right: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.strip-col:last-child {
+  border-right: none;
+}
+
+/* Col 1 */
+.col-ident {
+  padding: 2px 5px;
+  justify-content: space-between;
+}
+
+.col-ident .acid {
+  font-size: 0.77rem;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+}
+
+.col-ident .rev {
+  font-size: 0.555rem;
+  min-height: 1em;
+}
+
+.col-ident .type {
+  font-size: 0.62rem;
+}
+
+.cid-row {
+  display: flex;
+  align-items: center;
+}
+
+.cid-row .cid {
+  font-size: 0.62rem;
+}
+
+/* Col 2 & Col 3 Three-Tier Stacks */
+.col-fix-data .cell,
+.col-local .cell {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 0 5px;
+  border-bottom: 1px solid #333;
+  font-size: 0.62rem;
+  box-sizing: border-box;
+}
+
+.col-fix-data .cell:last-child,
+.col-local .cell:last-child {
+  border-bottom: none;
+}
+
+/* Col 4 */
+.col-route {
+  padding: 2px 5px;
+  font-size: 0.605rem;
+  line-height: 1.15;
+  word-break: break-word;
+  white-space: normal;
+  overflow: hidden;
+}
+
+.col-route-arrival {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.col-route-arrival .flight-rules {
+  padding: 2px 5px;
+  font-size: 0.62rem;
+  border-bottom: 1px solid #333;
+}
+
+.col-route-arrival .dest-remarks {
+  flex: 1;
+  padding: 2px 5px;
+  font-size: 0.605rem;
+  line-height: 1.15;
+  word-break: break-word;
+  white-space: normal;
+}
+
+/* Col 5: 3x3 Matrix */
+.col-matrix,
+.annotation-grid-3x3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.matrix-cell,
+.annotation-cell {
+  border-right: 1px solid #333;
+  border-bottom: 1px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.555rem;
+  box-sizing: border-box;
+}
+
+.matrix-cell:nth-child(3n),
+.annotation-cell:nth-child(3n) {
+  border-right: none;
+}
+
+.matrix-cell:nth-child(n + 7),
+.annotation-cell:nth-child(n + 7) {
+  border-bottom: none;
+}
+
+/* ==========================================================================
+   Strip Freeform Box Annotations (T02-100, T02-101, T02-102)
+   ========================================================================== */
+
+.annotation-cell,
+.matrix-cell,
+.box-8a,
+.box-8b,
+.cell.box-8a,
+.cell.box-8b {
+  cursor: text;
+  position: relative;
+  transition: background-color 0.1s ease;
+}
+
+.annotation-cell:hover,
+.matrix-cell:hover,
+.box-8a:hover,
+.box-8b:hover,
+.cell.box-8a:hover,
+.cell.box-8b:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.cell.box-8a:has(.strip-annotation-input),
+.cell.box-8b:has(.strip-annotation-input) {
+  padding: 0;
+}
+
+.strip-annotation-input {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  background-color: #f5eedc;
+  color: #000000;
+  font-family: Consolas, "IBM Plex Mono", "Courier New", monospace;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 0 2px;
+  border: 1px solid #000000;
+  outline: none;
+  border-radius: 1px;
+}
+
+.strip-annotation-input:focus {
+  border-color: #000000;
+  box-shadow: inset 0 0 0 1px #000000;
+}
+
+.strip-annotation-lower,
+.strip-annotation-8a,
+.strip-annotation-8b {
+  color: #000000;
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   StripsBoard & Two-Column Rack Bay Layout (T02-92)
+   ========================================================================== */
+
+.strips-board {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  box-sizing: border-box;
+  background-color: #000000;
+  color: #00ff00;
+  overflow: hidden;
+  font-family:
+    "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+}
+
+.bay-container {
+  display: flex;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+  overflow: hidden;
+  box-sizing: border-box;
+  background-color: #000000;
+  flex: 1;
+  min-height: 0;
+}
+
+.bay-container.bay-horizontal,
+.bay-horizontal {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+}
+
+.bay-container.bay-vertical,
+.bay-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rack-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.strips-board-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 4px 10px;
+  background-color: #000000;
+  border-top: 1px solid #1a1a1a;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.strips-layout-toggle-btn {
+  border: 0;
+  background: transparent;
+  color: #00ff00;
+  font: inherit;
+  font-family:
+    "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  padding: 2px 4px;
+  cursor: pointer;
+  border-radius: 0;
+  box-shadow: none;
+  transition: color 0.15s ease;
+}
+
+.strips-layout-toggle-btn:hover,
+.strips-layout-toggle-btn:focus-visible {
+  outline: none;
+  color: #ffff00;
+  background: transparent;
+}
+
+.rack-collapse-btn {
+  background: transparent;
+  color: #00ff00;
+  border: 1px solid transparent;
+  padding: 2px 4px;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.rack-collapse-btn:hover,
+.rack-collapse-btn:focus-visible {
+  color: #ffff00;
+  border-color: #ffff00;
+  background-color: rgba(255, 255, 0, 0.08);
+  outline: none;
+}
+
+.rack-column {
+  display: flex;
+  flex-direction: column;
+  background-color: #000000;
+  border: 1px solid #222;
+  border-radius: 2px;
+  box-sizing: border-box;
+  overflow: hidden;
+  min-height: 0;
+  flex: 1 1 0;
+  transition:
+    flex-basis 0.2s ease,
+    width 0.2s ease,
+    min-width 0.2s ease;
+}
+
+.bay-horizontal .rack-column {
+  min-width: 0;
+}
+
+.bay-vertical .rack-column {
+  min-height: 0;
+}
+
+/* Collapsed rack column */
+.bay-horizontal .rack-column.collapsed {
+  flex: 0 0 36px;
+  width: 36px;
+  min-width: 36px;
+  max-width: 36px;
+  cursor: pointer;
+}
+
+.bay-horizontal .rack-column.collapsed .rack-header {
+  flex-direction: column;
+  height: 100%;
+  padding: 10px 4px;
+  justify-content: flex-start;
+  gap: 14px;
+  border-bottom: none;
+  cursor: pointer;
+}
+
+.bay-horizontal .rack-column.collapsed .rack-title {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  letter-spacing: 1.5px;
+  white-space: nowrap;
+}
+
+.bay-vertical .rack-column.collapsed {
+  flex: 0 0 auto;
+  min-height: auto;
+  height: auto;
+  cursor: pointer;
+}
+
+.bay-vertical .rack-column.collapsed .rack-header {
+  border-bottom: none;
+  cursor: pointer;
+}
+
+.rack-column.collapsed .rack-strip-list {
+  display: none;
+}
+
+.rack-column.collapsed .rack-header:hover {
+  background-color: #081208;
+}
+
+.rack-column.collapsed .rack-header:hover .rack-title {
+  color: #ffff00;
+}
+
+.rack-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background-color: #000000;
+  border-bottom: 1px solid #222;
+  text-transform: uppercase;
+  font-family:
+    "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.rack-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rack-badge,
+.rack-count {
+  display: none;
+}
+
+.rack-strip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  box-sizing: border-box;
+  min-height: 0;
+}
+
+.rack-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80px;
+  color: #888888;
+  font-family:
+    "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  font-style: italic;
+  letter-spacing: 0.5px;
+  border: 1px dashed #222;
+  border-radius: 2px;
+  margin: 8px 0;
+}
+
+/* ==========================================================================
+   Strips Toggle & Right-Side Expandable Drawer
+   ========================================================================== */
+.strips-toggle-bar {
+  position: absolute;
+  right: 8px;
+  bottom: 44px;
+  z-index: 4;
+  font-size: 11px;
+  color: #00ff00;
+  box-shadow: none;
+}
+
+.strips-toggle-button {
+  border: 0;
+  background: transparent;
+  color: #00ff00;
+  font: inherit;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 0 2px;
+  cursor: pointer;
+  border-radius: 0;
+  box-shadow: none;
+  transition: color 0.15s ease;
+}
+
+.strips-toggle-button:hover,
+.strips-toggle-button:focus-visible,
+.strips-toggle-button.open {
+  outline: none;
+  color: #ffff00;
+  background: transparent;
+}
+
+.strips-drawer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  background-color: #000000;
+  border-left: 1px solid #ffffff;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition:
+    width 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    flex-basis 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.strips-drawer.open {
+  flex: 0 0 min(820px, 48vw);
+  width: min(820px, 48vw);
+  min-width: 380px;
+}
+
+.strips-drawer.collapsed {
+  flex: 0 0 0px;
+  width: 0px;
+  min-width: 0px;
+  border-left: none;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.strips-drawer.resizing {
+  user-select: none;
+  transition: none !important;
+}
+
+.strips-drawer-resizer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 20;
+  background: transparent;
+  user-select: none;
+  touch-action: none;
+  transition: background-color 0.15s;
+}
+
+.strips-drawer-resizer:hover,
+.strips-drawer-resizer:active,
+.strips-drawer.resizing .strips-drawer-resizer {
+  background-color: #00ff00;
+  box-shadow: 0 0 6px rgba(0, 255, 0, 0.6);
+}
+
+.strips-drawer-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+}
+
+.strips-drawer-content .strips-board {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+}

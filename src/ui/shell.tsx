@@ -42,6 +42,7 @@ import type { AppHandles } from "../app/create-app";
 import { CommandLine, submitCommand } from "./command/command-line";
 import { Disclaimer } from "./overlays/disclaimer";
 import { FlightStrips, focusPpi } from "./strips/FlightStrips";
+import { StripsBoard, selectTrackFromFlightStrip, terminalStripsFromWorld } from "./strips";
 import { FpsDebug, isFpsDebugEnabled } from "./controls/FpsDebug";
 import { ScopeCanvas } from "./canvas/ScopeCanvas";
 import { ScopeHelpOverlay } from "./overlays/ScopeHelpOverlay";
@@ -71,8 +72,55 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   const [readback, setReadback] = useState("");
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
   const [speechId, setSpeechId] = useState(app.speech.id);
+  const [stripsOpen, setStripsOpen] = useState(false);
+  const [, setStripsTick] = useState(0);
+  const [drawerWidth, setDrawerWidth] = useState(720);
+  const [isResizingDrawer, setIsResizingDrawer] = useState(false);
+  const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [, setScopeUiTick] = useState(0);
   const panRef = useRef<{ lastX: number; lastY: number } | null>(null);
+
+  useEffect(() => {
+    if (!stripsOpen) {
+      return;
+    }
+    const interval = setInterval(() => {
+      setStripsTick((t) => t + 1);
+    }, 500);
+    return () => clearInterval(interval);
+  }, [stripsOpen]);
+
+  function handleResizerPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    resizeRef.current = { startX: event.clientX, startWidth: drawerWidth };
+    setIsResizingDrawer(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleResizerPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    if (!resizeRef.current) {
+      return;
+    }
+    const deltaX = resizeRef.current.startX - event.clientX;
+    const minWidth = 360;
+    const maxWidth =
+      typeof window !== "undefined" ? Math.max(minWidth, window.innerWidth - 320) : 1400;
+    const nextWidth = Math.min(maxWidth, Math.max(minWidth, resizeRef.current.startWidth + deltaX));
+    setDrawerWidth(nextWidth);
+  }
+
+  function handleResizerPointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    if (resizeRef.current) {
+      resizeRef.current = null;
+      setIsResizingDrawer(false);
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      } catch {
+        // Pointer capture release may fail if pointer was lost.
+      }
+    }
+  }
 
   function refreshScopeUi(): void {
     setScopeUiTick((n) => n + 1);
@@ -102,6 +150,9 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   }, [scopeView, app.world]);
 
   const fpsDebug = typeof window !== "undefined" && isFpsDebugEnabled(window.location.search);
+  const facilityDisplay = activeScenario.icao.replace(/^K/, "");
+  const facilityTitle = `${facilityDisplay} — Flight Progress Strips`;
+  const { departures, arrivals } = terminalStripsFromWorld(app.world);
 
   return (
     <div
@@ -231,7 +282,58 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             listFontPx={scopeView.charSizes.lists}
             listBrite={scopeView.brite.lst}
           />
+          <div className="strips-toggle-bar">
+            <button
+              type="button"
+              className={`strips-toggle-button ${stripsOpen ? "open" : ""}`}
+              data-testid="strips-toggle-btn"
+              onClick={() => setStripsOpen((open) => !open)}
+              title={
+                stripsOpen
+                  ? "Collapse flight progress strips drawer"
+                  : "Expand flight progress strips drawer"
+              }
+            >
+              Strips
+            </button>
+          </div>
         </ScopeCanvas>
+        <aside
+          className={`strips-drawer ${stripsOpen ? "open" : "collapsed"} ${isResizingDrawer ? "resizing" : ""}`}
+          data-testid="strips-drawer"
+          role="region"
+          aria-label="Flight progress strips drawer"
+          aria-hidden={!stripsOpen}
+          style={
+            stripsOpen ? { width: `${drawerWidth}px`, flexBasis: `${drawerWidth}px` } : undefined
+          }
+        >
+          {stripsOpen ? (
+            <div
+              className="strips-drawer-resizer"
+              data-testid="strips-drawer-resizer"
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize flight progress strips drawer"
+              onPointerDown={handleResizerPointerDown}
+              onPointerMove={handleResizerPointerMove}
+              onPointerUp={handleResizerPointerUp}
+              onPointerCancel={handleResizerPointerUp}
+            />
+          ) : null}
+          <div className="strips-drawer-content" data-testid="strips-drawer-content">
+            <StripsBoard
+              departures={departures}
+              arrivals={arrivals}
+              facilityTitle={facilityTitle}
+              selectedStripId={app.world.selectedAircraftId ?? undefined}
+              onSelectStrip={(strip) => {
+                selectTrackFromFlightStrip(app.world, strip);
+                refreshScopeUi();
+              }}
+            />
+          </div>
+        </aside>
       </div>
       <SessionSetupDialog
         open={setupOpen}

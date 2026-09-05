@@ -1,5 +1,98 @@
 # Swarm status
 
+## TWENTY-EIGHTH SWARM COMPLETE — Flight Progress Strips Drag Reordering & Indentation (T02-94–96)
+
+T02-94–96 are implemented on `feature/flight-strips` (not `master`). Full test suite `npm test` and `npm run ci`: intra-section drag-and-drop strip reordering constrained within Departures and Arrivals racks in `StripsBoard`, dynamic `.strip-drop-indicator` line previews at candidate insertion indices, single right-click horizontal strip indentation ("cocking", ~28px offset) with browser context menu suppression, and telemetry reconciliation preserving manual order and indentation across live simulation updates.
+
+- **Strips right-click indentation & cocking state (T02-94):**
+  - Added `indented?: boolean` to `FlightStrip`, `DepartureStrip`, and `ArrivalStrip`.
+  - Added `.strip-indented` CSS class applying `transform: translateX(28px)` and smooth transition.
+  - Implemented single right-click `onContextMenu` handler suppressing native browser context menu (`e.preventDefault()`) and toggling strip indentation state.
+  - Implemented `terminalStripsFromWorld(world)` dynamically normalizing live `World.aircraft`, flights, and intents into 7110.65 terminal strip models.
+  - Unit tests in `stripComponents.test.tsx` and `stripsBoard.test.tsx`.
+- **Intra-section drag reordering & drop indicator (T02-95):**
+  - Implemented intra-section HTML5 drag-and-drop mechanics in `StripsBoard`: `draggable`, `onDragStart`, `onDragOver`, `onDragLeave`, `onDrop`, `onDragEnd`.
+  - Added `.strip-drop-indicator` visual insertion line preview (3px `#ffff00` with box shadow) rendering between strips during drag over eligible racks.
+  - Enforced strict intra-section containment: cross-section drops (departures onto arrivals or vice versa) are ignored.
+  - Dropping a strip onto its own position is a no-op; drops at new target indices reorder the section rack.
+  - Unit tests in `stripsBoard.test.tsx`.
+- **Reorder & indent integration & acceptance (T02-96):**
+  - Implemented dynamic telemetry reconciliation (`reconcileOrder`) in `StripsBoard` ensuring manual sequence ordering and indentation states persist across simulation ticks.
+  - Newly spawned aircraft append cleanly to the end of their respective section.
+  - Terminated or removed flights are pruned from custom order and indentation sets.
+  - Exposed optional `onReorderStrips` and `onToggleIndent` callbacks on `StripsBoard`.
+  - Preserved radar track selection synchronization (`World.selectedAircraftId`) on strip left-click.
+  - Comprehensive end-to-end acceptance test suite `src/ui/strips/test/stripsAcceptance.test.tsx` (42 tests covering AC1–AC7).
+
+**Merged (squash-merged, captain only, onto `feature/flight-strips`):** T02-94 (`012fb1b`), T02-95 (`82bcec4`), T02-96 (`86eb6bb`). Planning `d255ece`.
+
+**Captain judgement calls:**
+- Reconcile order function appends newly spawned aircraft to the bottom of the section and prunes terminated aircraft without resetting controller's custom order.
+- Right-click indentation state tracks aircraft by strip ID / callsign and persists across telemetry updates.
+- Drop indicator line previews insertion index precisely and cleans up on drag leave / end / drop.
+
+**Product law held:**
+- Authentic right-click strip indentation (~28px horizontal offset) with context menu suppression.
+- Strict intra-section drag reordering with visual drop indicator line preview.
+- Dynamic telemetry state reconciliation preserving custom order and indentation.
+- Zero simulation regressions across radar tracking, datablocks, and phraseology.
+
+---
+
+## TWENTY-SEVENTH SWARM COMPLETE — Terminal Flight Progress Strips (T02-90–93)
+
+T02-90–93 are squash-merged on `feature/flight-strips` (not `master`). Full test suite `npm test` and `npm run ci`: **168 test files passed, 1258 tests passed, 3 skipped, 0 failures**. Terminal flight progress strips adhering to FAA Order 7110.65 Chapter 2 §3 and vNAS physical cardstock grid specifications, pale buff background (`#F5EEDC`), CWT/wake formatting, route truncation with `***`, two-column rack board (Departures / Arrivals) with independent scrolling, standalone `?view=strips` routing, in-scope shell toggle overlay modal, and `World.selectedAircraftId` track synchronization.
+
+- **Strips data models, formatter & fixture (T02-90):**
+  - Established TypeScript domain models: `FlightRules`, `CWTCategory`, `BaseStripData`, `DepartureStripData`, `ArrivalStripData`, `FlightStrip`.
+  - Implemented `formatEquipment` supporting CWT wake prefixes (`A/`–`I/`), Heavy (`H/`), type codes, and equipment suffixes (`/L`, `/G`).
+  - Implemented `truncateField` with character length thresholds appending `***` on overflow.
+  - Implemented `formatBeaconCode` (4-digit zero padding), `formatTimeZulu` (`HHMM`), and `formatRevisionIndex` (blank for 0/unrevised, integer string for $\ge 1$).
+  - Created static mock fixtures (`mockDAL882`, `mockSWA1902`, `mockAAL412`, `mockN415SP`).
+  - Comprehensive unit test suite `src/ui/strips/test/stripFormatter.test.ts`.
+- **Departure & Arrival strip components (T02-91):**
+  - Implemented `DepartureStrip` with 4-column physical CSS grid layout:
+    - Col 1: ACID (Box 1), Revision (Box 2), Formatted Equipment (Box 3), Computer ID (Box 4).
+    - Col 2: Beacon code (Box 5), Proposed departure time (Box 6), Requested altitude (Box 7).
+    - Col 3: Departure airport (Box 8), upper annotations (8A/8B), lower annotations (9 equal-width boxes 10–18).
+    - Col 4: Route, destination airport, and remarks (Box 9).
+  - Implemented `ArrivalStrip` with 4-column physical CSS grid layout:
+    - Col 1: ACID, Revision, Formatted Equipment, CID.
+    - Col 2: Beacon code, Previous fix (Box 6), Coordination fix (Box 7).
+    - Col 3: Estimated Time of Arrival (Box 8 ETA), upper annotations (8A/8B), lower annotations (boxes 10–18).
+    - Col 4: Split into Box 9 (Flight Rules 'I'/'V') and Box 9A (Destination & remarks).
+  - Authentic styling: `#F5EEDC` pale buff background, dark holder border `#222`, inner grid border `#333`, uppercase bold monospace typography (`Consolas`, `Courier New`, monospace), rigid 800px × 140px proportions.
+  - Unit test suite `src/ui/strips/test/stripComponents.test.tsx` (30 tests).
+- **Two-column board & bay layout (T02-92):**
+  - Implemented `StripsBoard` with ambient cab backdrop (`#1A1E24`), header bar with facility title (`KATL_TWR — Flight Progress Strips`), and 2-column bay rack container (`.bay-container`).
+  - Left rack: "Departures" with strip count badge and independently scrollable strip list.
+  - Right rack: "Arrivals" with strip count badge and independently scrollable strip list.
+  - Independent vertical scrolling with locked viewport dimensions (`100vh`, `overflow: hidden`).
+  - Unit test suite `src/ui/strips/test/stripsBoard.test.tsx` (24 tests).
+- **Integration, routing, shell toggle & acceptance (T02-93):**
+  - Standalone routing: `src/main.tsx` detects `?view=strips` and mounts `<StripsBoard />` directly into `#root`, bypassing radar canvas and sim loop.
+  - Shell toggle integration: Added `STRIPS` toggle button and pop-out (`↗`) button in `src/ui/shell.tsx` opening an in-scope overlay modal with backdrop and close controls.
+  - Track selection synchronization: Clicking a strip calls `selectTrackFromFlightStrip(world, strip)` which resolves matching aircraft by ID or callsign and sets `World.selectedAircraftId`.
+  - Comprehensive acceptance test suite `src/ui/strips/test/stripsAcceptance.test.tsx` (17 tests).
+  - Updated documentation across `phases/02-scope/README.md`, `phases/LATER-IMPLEMENTATION-BACKLOG.md`, and `phases/SWARM-STATUS.md`.
+
+**Merged (squash-merged, captain only, onto `feature/flight-strips`):** T02-90 (`73b5d1c`), T02-91 (`aeeb8ae`), T02-92 (`10c71a9`), T02-93 (`bceb11f`). Planning `f9a3178`.
+
+**Captain judgement calls:**
+- Target merge branch is `feature/flight-strips`.
+- `?view=strips` mounts standalone `StripsBoard` directly in `#root` without initializing WebAudio or radar RAF animation loop.
+- In-scope modal overlays radar canvas cleanly and permits synchronized selection updates back into radar datablock highlighting.
+
+**Product law held:**
+- Rigid physical proportions (800x140px), pale buff background (`#F5EEDC`), and 4-column physical layout matching FAA 7110.65 Chapter 2 §3.
+- CWT wake turbulence categorization and route truncation with `***`.
+- Independent rack scrolling without viewport overflow.
+- Zero simulation regressions across radar tracking, datablocks, and phraseology.
+
+**Remaining work:** Merge `feature/flight-strips` to `master` when requested by user.
+
+---
+
 ## TWENTY-SIXTH SWARM COMPLETE — STARS Compass Rose & Dwell Fix (T02-87–89)
 
 T02-87–89 are squash-merged on `feature/compass-rose-headings`. Full test suite `npm test`: **164 test files passed, 1161 tests passed, 4 skipped, 0 failures**. STARS Compass Rose heading overlay along rectangular scope border (72 radial ticks, 12 3-digit headings, BRITE CMP modulation, CHAR SIZE TOOLS scaling, PREF persistence) and Dwell mode pointer hover fix on `feature/compass-rose-headings`.
@@ -894,4 +987,7 @@ Recovery resumed from `feature/session-setup`. T04-24 inventory (`93a7c10`), fre
 **Manual leftover:** Human Chrome check: open Session setup; change scenario/arrival/departure rate/seed; Cancel preserves World and focus; confirm Apply/restart warning rebuilds World; verify unavailable departure capability copy. Do not invent pass.
 
 **Notes:** Picker options derive solely from playable inventory; normal arrival count/rate remains seeded STAR inbound/VIA; `?traffic=N` remains benchmark downwind; T04-21 owns departure rate. `atc-sim.session.v1` remains separate from trainer/DCB preferences. No scoring, replay, imperfect pilots, second position, DCB PREF, live traffic editing, second airport data, or radio-frequency IR. Initial T04-25 conflict was superseded by a fresh worker from the T04-24 feature base. Preserved untracked `.cursor/rules/caveman-ultra.mdc`, `e2e/`, and user-modified `speech-api/.env.example`.
+
+
+
 

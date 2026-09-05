@@ -393,7 +393,7 @@ export function formatDcbRrReadout(intervalNm: RrIntervalNm, showRings: boolean 
   if (!showRings) {
     return "OFF";
   }
-  return `RR ${intervalNm}`;
+  return `${intervalNm}`;
 }
 
 function stepFrozen<T>(list: readonly T[], current: T, delta: number): T {

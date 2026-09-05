@@ -1,8 +1,252 @@
-# ATC-SIM swarm orchestrator — Twenty-sixth swarm (STARS Compass Rose Heading Overlay)
+# ATC-SIM swarm orchestrator — Thirtieth swarm (Flight Progress Strips Interactive Freeform Box Annotations)
 
-Twenty-fifth (DCB AUX H_RATE, DWELL, and BRITE CMP/BCN T02-84–86) planned/landed.
-This file keeps that history, then the twenty-sixth addendum on
-**`feature/compass-rose-headings`**.
+Twenty-ninth (Flight Progress Strips Bay Separators & Custom Context Menus T02-97–99) landed on `feature/flight-strips`.
+This file keeps that history, then the thirtieth addendum on
+**`feature/flight-strips`**.
+
+## Thirtieth swarm planned — 2026-09-05 (Flight Progress Strips Interactive Freeform Box Annotations)
+
+This configuration implements interactive freeform box annotations on flight progress strips, supporting double-click inline editing on Boxes 10–18 (3×3 coordination matrix) and Boxes 8A/8B with authentic black text, keyboard commit/cancel, isolation from strip dragging/selection, and telemetry persistence on **`feature/flight-strips`**.
+Captain squash-merges ticket branches into **`feature/flight-strips`**, not `master`. Do not push. Existing swarm history stays intact.
+
+| Key | Value |
+| --- | --- |
+| Goal | Enable controllers to double-click any cell in Boxes 10–18 or Boxes 8A/8B on Departure and Arrival strips to edit freeform text annotations directly inline with authentic black text, commit on Enter/blur, cancel on Escape, prevent accidental strip dragging or radar track selection, and persist annotations across live World telemetry ticks. |
+| Include | **T02-100**, **T02-101**, **T02-102** |
+| Source | FAA Order 7110.65 Chapter 2 §3 & Appendix A, virtual NAS terminal flight strip scratchpad specifications, and terminal radar workstation UI architecture. |
+| Skip | Paid speech/LLM APIs; server-side database storage; freehand canvas pen drawing; multi-selection bulk annotations. |
+| Stop | After T02-102 acceptance. No next phase. |
+| Max workers | 3 |
+| Merge lock | captain squash to `feature/flight-strips`, then `npm test` / `npm run ci` |
+| Model | **inherit** on captain and every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law (thirtieth swarm — Flight Progress Strips Interactive Freeform Box Annotations):**
+
+- **Authentic strip annotation appearance.** Annotations render in authentic black text (`color: #000000;`) on the pale buff strip cardstock (`#f5eedc`), with bold uppercase monospace typography (`Consolas`, `IBM Plex Mono`).
+- **Direct double-click inline editing.** Double-clicking an annotatable box (10–18 or 8A/8B) immediately mounts an inline micro-input fitted to that cell with auto-focus and text selection.
+- **Keyboard navigation & commit.** Pressing `Enter` or blurring commits changes; pressing `Escape` reverts to previous text.
+- **Interaction isolation.** Clicking or double-clicking an annotation cell stops propagation (`e.stopPropagation()`) so it never triggers radar track selection (`World.selectedAircraftId`) or initiates an HTML5 drag reorder.
+- **Telemetry persistence.** When live simulation ticks stream updated traffic via `terminalStripsFromWorld`, controller-written annotations for active aircraft are merged and preserved without reset.
+- **Zero regressions.** Strip cocking (~28px right-click indent), bay separators, custom context menus, and intra-rack drag reordering remain 100% operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-100 | `feature/flight-strips` + planning commit |
+| B | T02-101 | T02-100 |
+| C | T02-102 | T02-101 |
+
+**Ticket ownership:**
+
+- T02-100 owns `StripAnnotationBoxes` model extensions, double-click inline micro-input cell component, keyboard commit/cancel, and event isolation in `DepartureStrip` and `ArrivalStrip`.
+- T02-101 owns `StripsBoard` annotation state tracking, merging with live `terminalStripsFromWorld` telemetry updates, and update callbacks.
+- T02-102 owns CSS styling (`.strip-annotation-input`, hover cues), unit tests, and acceptance test suite (AC13–AC16).
+
+**Ticket files / branches:**
+
+- `ticket/T02-100-strips-freeform-box-annotations-component` ← `phases/02-scope/tickets/T02-100-strips-freeform-box-annotations-component.md`
+- `ticket/T02-101-strips-annotation-state-and-telemetry-persistence` ← `phases/02-scope/tickets/T02-101-strips-annotation-state-and-telemetry-persistence.md`
+- `ticket/T02-102-strips-box-annotations-acceptance-and-styling` ← `phases/02-scope/tickets/T02-102-strips-box-annotations-acceptance-and-styling.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope addendum (T02-100–102 Flight Progress Strips Interactive Freeform Box Annotations)
+Merge target: `feature/flight-strips`
+Merged: T02-100, T02-101, T02-102
+Tests: npm test / npm run ci exit 0
+Notes: <Double-click inline freeform annotations; black text; telemetry persistence; zero regressions>
+```
+
+---
+
+# ATC-SIM swarm orchestrator — Twenty-ninth swarm (Flight Progress Strips Bay Separators & Custom Context Menus)
+
+Twenty-eighth (Flight Progress Strips Drag Reordering & Indentation T02-94–96) landed.
+This file keeps that history, then the twenty-ninth addendum on
+**`feature/flight-strips`**.
+
+## Twenty-ninth swarm planned — 2026-09-05 (Flight Progress Strips Bay Separators & Custom Context Menus)
+
+This configuration implements user-created strip bay separators with direct in-place text editing, custom context menu on empty bay space ("Add Separator") and on separators ("Delete"), intra-section drag-and-drop reordering alongside flight strips with visual insertion indicator lines, and telemetry reconciliation on **`feature/flight-strips`**.
+Captain squash-merges ticket branches into **`feature/flight-strips`**, not `master`. Do not push. Existing swarm history stays intact.
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement interactive flight progress strip bay separators that controllers can create by right-clicking empty space in either rack, type text directly on the separator bar, drag and drop to reorder as though it were a strip, and right-click to delete via a custom context menu, preserving separator positions across dynamic telemetry updates. |
+| Include | **T02-97**, **T02-98**, **T02-99** |
+| Source | FAA Order 7110.65 Chapter 2 §3, virtual NAS flight strip specifications (vNAS / vStrips divider bars / strip spacers), and terminal radar workstation UI architecture. |
+| Skip | Paid speech/LLM APIs; multi-rack bulk selection; server-side database persistence; freehand pen drawing. |
+| Stop | After T02-99 acceptance. No next phase. |
+| Max workers | 3 |
+| Merge lock | captain squash to `feature/flight-strips`, then `npm test` / `npm run ci` |
+| Model | **inherit** on captain and every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law (twenty-ninth swarm — Flight Progress Strips Bay Separators & Custom Context Menus):**
+
+- **Authentic bay separator dividers.** Separators render as distinct horizontal divider bars across the rack width with high-contrast cab styling, bold uppercase monospace typography, and clear visual differentiation from flight cards.
+- **Direct in-place text editing.** New separators allow typing text directly (auto-focused input upon creation; editable on click/double-click), saving changes on Enter or blur, and escaping to cancel without losing position.
+- **Custom right-click context menus with native menu suppression.** Right-clicking empty space in a bay intercepts `contextmenu`, calls `e.preventDefault()`, and displays a custom context menu with "Add Separator". Right-clicking a separator displays a custom context menu with "Delete". Right-clicking normal flight strips retains authentic cocking/indentation (~28px horizontal offset).
+- **Seamless drag-and-drop reordering with flight strips.** Separators are draggable within their rack section (Departures or Arrivals), participate in candidate drop indicator lines, and can be positioned above, between, or below flight strips.
+- **Dynamic telemetry state reconciliation.** When live simulation ticks update flight plans or spawn/remove aircraft via `terminalStripsFromWorld`, user-created separators retain their positions, labels, and order without being pruned or reset.
+- **Radar track synchronization preservation.** Left-clicking flight strips continues to select the matching aircraft in `World.selectedAircraftId` without interference from separator interactions.
+- **Zero simulation regressions.** Scope canvas, radar tracking, datablocks, DCB submenus, system lists, and radio parsing stay 100% operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-97 | `feature/flight-strips` + planning commit |
+| B | T02-98 | T02-97 |
+| C | T02-99 | T02-98 |
+
+**Ticket ownership:**
+
+- T02-97 owns `StripSeparator` domain model, component, inline direct text editing, and visual styling.
+- T02-98 owns custom context menu component, empty bay space right-click "Add Separator", separator right-click "Delete", and auto-dismissal.
+- T02-99 owns drag-and-drop reordering of separators alongside flight strips, telemetry reconciliation across live World ticks, and acceptance tests.
+
+**Ticket files / branches:**
+
+- `ticket/T02-97-strips-separator-component-and-text-editing` ← `phases/02-scope/tickets/T02-97-strips-separator-component-and-text-editing.md`
+- `ticket/T02-98-strips-custom-context-menus` ← `phases/02-scope/tickets/T02-98-strips-custom-context-menus.md`
+- `ticket/T02-99-strips-separator-drag-reorder-and-acceptance` ← `phases/02-scope/tickets/T02-99-strips-separator-drag-reorder-and-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope addendum (T02-97–99 Flight Progress Strips Bay Separators & Custom Context Menus)
+Merge target: `feature/flight-strips`
+Merged: T02-97, T02-98, T02-99
+Tests: npm test / npm run ci exit 0
+```
+
+---
+
+## Twenty-eighth swarm planned — 2026-09-05 (Flight Progress Strips Drag Reordering & Indentation)
+
+This configuration implements drag-and-drop strip reordering constrained within rack sections (Departures and Arrivals), real-time visual drop insertion indicator lines, and single right-click horizontal strip indentation ("cocking") with browser context-menu suppression on **`feature/flight-strips`**.
+Captain squash-merges ticket branches into **`feature/flight-strips`**, not `master`. Do not push. Existing swarm history stays intact.
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement intra-section drag-and-drop reordering for Departures and Arrivals racks in `StripsBoard`, render a real-time insertion indicator line showing target drop position, enable single right-click indentation/cocking (~28px horizontal offset) with context menu suppression, and maintain custom sequence and indent state across dynamic simulation telemetry updates. |
+| Include | **T02-94**, **T02-95**, **T02-96** |
+| Source | FAA Order 7110.65 Chapter 2 §3, virtual NAS flight strip specifications (vNAS / vStrips), and terminal radar workstation UI architecture. |
+| Skip | Paid speech/LLM APIs; freehand stylus/pen drawings; cross-rack moves (moving departures into arrivals or vice versa); external cloud sync. |
+| Stop | After T02-96 acceptance. No next phase. |
+| Max workers | 3 |
+| Merge lock | captain squash to `feature/flight-strips`, then `npm test` / `npm run ci` |
+| Model | **inherit** on captain and every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law (twenty-eighth swarm — Flight Progress Strips Drag Reordering & Indentation):**
+
+- **Authentic right-click strip indentation ("cocking").** Right-clicking once on a departure or arrival strip card intercepts `contextmenu`, calls `e.preventDefault()`, and indents the strip horizontally (~28px) to visually mark pending actions. Subsequent right-clicking toggles back to normal unindented alignment.
+- **Strict intra-section drag reordering.** Strips are draggable exclusively within their own section (Departures within Departures, Arrivals within Arrivals). Cross-section drags (e.g. dragging a departure over the arrivals rack) are disallowed and ignored.
+- **Real-time drop insertion indicator line.** While dragging over an eligible rack, an insertion indicator line clearly previews the exact drop index between strips where the dragged strip will land upon release.
+- **Dynamic telemetry state reconciliation.** When live simulation ticks update flight plans or spawn/remove aircraft via `terminalStripsFromWorld`, custom user-ordered sequence and strip indentation states are preserved.
+- **Radar track synchronization preservation.** Left-clicking a strip continues to select the matching aircraft in `World.selectedAircraftId` and update radar datablock highlighting without conflict with drag or right-click.
+- **Zero simulation regressions.** Scope canvas, radar tracking, datablocks, DCB submenus, system lists, and radio parsing stay 100% operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-94 | `feature/flight-strips` + planning commit |
+| B | T02-95 | T02-94 |
+| C | T02-96 | T02-95 |
+
+**Ticket ownership:**
+
+- T02-94 owns right-click indentation, `indented?: boolean` type support, `.strip-indented` CSS offset styling, context menu suppression, and unit tests.
+- T02-95 owns intra-section drag-and-drop mechanics, drag events, `.strip-drop-indicator` line rendering, drop reordering in `StripsBoard`, and rack boundary checks.
+- T02-96 owns live simulation telemetry reconciliation in `shell.tsx`, persistence across World updates, and end-to-end acceptance tests.
+
+**Ticket files / branches:**
+
+- `ticket/T02-94-strips-right-click-indentation` ← `phases/02-scope/tickets/T02-94-strips-right-click-indentation.md`
+- `ticket/T02-95-strips-drag-reorder-and-drop-indicator` ← `phases/02-scope/tickets/T02-95-strips-drag-reorder-and-drop-indicator.md`
+- `ticket/T02-96-strips-reorder-and-indent-acceptance` ← `phases/02-scope/tickets/T02-96-strips-reorder-and-indent-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope addendum (T02-94–96 Flight Progress Strips Drag Reordering & Indentation)
+Merge target: `feature/flight-strips`
+Merged: T02-94, T02-95, T02-96
+Tests: npm test / npm run ci exit 0
+```
+
+---
+
+## Twenty-seventh swarm planned — 2026-09-04 (Terminal Flight Progress Strips)
+
+This configuration implements the FAA/vNAS terminal flight progress strip system, complete with 4-column physical grid layouts, pale buff cardstock background, CWT/wake formatting, route truncation, and a 2-column rack board (Departures & Arrivals) on **`feature/flight-strips`**, cut from current `master`.
+Captain squash-merges ticket branches into **`feature/flight-strips`**, not `master`. Do not push. Existing swarm history stays intact.
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement the FAA/vNAS Terminal Flight Progress Strip board with rigid physical proportions (800x140px), 4-column departure and arrival grid components, CWT/wake equipment formatting, route truncation with `***`, and a 2-column controller cab rack layout (Departures / Arrivals) supporting independent scrolling and radar target selection synchronization. |
+| Include | **T02-90**, **T02-91**, **T02-92**, **T02-93** |
+| Source | FAA Order 7110.65 Chapter 2 §3, virtual NAS flight strip specifications (vNAS / vStrips), and terminal radar display architecture. |
+| Skip | Paid speech/LLM APIs; drag-and-drop animations; handwritten signature OCR; external cloud sync. |
+| Stop | After T02-93 acceptance. No next phase. |
+| Max workers | 3 |
+| Merge lock | captain squash to `feature/flight-strips`, then `npm test` / `npm run ci` |
+| Model | **inherit** on captain and every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law (twenty-seventh swarm — Terminal Flight Progress Strips):**
+
+- **Authentic FAA / vNAS physical proportions and typography.** Strips use rigid aspect ratios (~800px × 140px), pale matte beige/buff background (`#F5EEDC`), dark holder border (`#222`), muted grid borders (`#333`), and uppercase monospaced machine-printed typography (`Consolas`, `Courier New`, monospace).
+- **Equipment string formatting (Box 3).** Prefix with CWT wake turbulence category (`A/` through `I/`) or `H/` for heavy aircraft when CWT is inactive, followed by type and optional equipment suffix (`/L`, `/G`).
+- **Route and remarks truncation.** Route and remarks fields exceeding fixed character thresholds append `***` on overflow.
+- **Two-column rack board layout.** Main bay organizes strips into two vertical rack columns ("Departures" on the left, "Arrivals" on the right) within a dark cab container (`#1A1E24`).
+- **Independent rack scrolling.** Racks scroll independently vertically while viewport height is locked (`100vh`, `overflow: hidden`).
+- **Radar track synchronization.** Clicking a strip's ACID selects the matching aircraft in `World.selectedAircraftId`.
+- **Zero simulation regressions.** Scope camera, radar tracking, datablocks, DCB submenus, system lists, and radio parsing stay 100% operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-90 | `feature/flight-strips` + planning commit |
+| B | T02-91 | T02-90 |
+| C | T02-92 | T02-91 |
+| D | T02-93 | T02-92 |
+
+**Ticket ownership:**
+
+- T02-90 owns domain types (`FlightRules`, `CWTCategory`, `FlightStrip`), strip transformation utilities (`formatEquipment`, `truncateField`, beacon padding, time formatting), static seed fixture, and unit tests.
+- T02-91 owns React components `DepartureStrip` and `ArrivalStrip` with 4-column physical CSS Grid layouts and styling.
+- T02-92 owns `StripsBoard` 2-column rack container (Departures / Arrivals), rack count headers, and scrollable bays.
+- T02-93 owns `?view=strips` routing, shell toggle integration, track selection synchronization, and end-to-end acceptance tests.
+
+**Ticket files / branches:**
+
+- `ticket/T02-90-strips-data-models-and-formatter` ← `phases/02-scope/tickets/T02-90-strips-data-models-and-formatter.md`
+- `ticket/T02-91-strips-departure-and-arrival-components` ← `phases/02-scope/tickets/T02-91-strips-departure-and-arrival-components.md`
+- `ticket/T02-92-strips-two-column-board-and-layout` ← `phases/02-scope/tickets/T02-92-strips-two-column-board-and-layout.md`
+- `ticket/T02-93-strips-integration-and-acceptance` ← `phases/02-scope/tickets/T02-93-strips-integration-and-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope addendum (T02-90–93 Terminal Flight Progress Strips)
+Merge target: `feature/flight-strips`
+Merged: T02-90, T02-91, T02-92, T02-93
+Tests: npm test / npm run ci exit 0
+```
+
+---
 
 ## Twenty-sixth swarm planned — 2026-09-01 (STARS Compass Rose Heading Overlay)
 

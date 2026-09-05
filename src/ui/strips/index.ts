@@ -1,0 +1,81 @@
+// Existing FlightStrips component and scope list utilities
+export {
+  FlightStrips,
+  STRIP_BAY_EMPTY,
+  STRIP_BAY_HEADING,
+  compareCallsigns,
+  focusPpi,
+  formatAssignedAltitudeHundreds,
+  formatAssignedHeading,
+  formatAssignedSpeed,
+  selectTrackFromStrip,
+  sortStripsByCallsign,
+  stripsFromWorld,
+  syncStripCallsignColors,
+} from "./FlightStrips";
+export type { FlightStripView, FlightStripsProps } from "./FlightStrips";
+
+// Domain models & types
+export type {
+  AnnotationBoxKey,
+  ArrivalStripData,
+  BaseStripData,
+  CWTCategory,
+  DepartureStripData,
+  FlightRules,
+  FlightStrip,
+  RackStripItem,
+  StripAnnotationBoxes,
+  StripSeparator as StripSeparatorType,
+} from "./types";
+export { isStripSeparator } from "./types";
+
+// Formatting utilities
+export {
+  formatArrivalTime,
+  formatBeaconCode,
+  formatEquipment,
+  formatFlightRules,
+  formatProposedDepartureTime,
+  formatRevisionIndex,
+  formatTimeZulu,
+  truncateField,
+} from "./stripFormatter";
+
+// Mock fixtures
+export {
+  MOCK_ARRIVALS,
+  MOCK_DEPARTURES,
+  MOCK_FLIGHT_STRIPS,
+  mockAAL412,
+  mockArrivals,
+  mockDAL882,
+  mockDepartures,
+  mockFlightStrips,
+  mockN415SP,
+  mockSWA1902,
+} from "./mockFixture";
+
+// Strip components
+export { DepartureStrip } from "./DepartureStrip";
+export type { DepartureStripProps } from "./DepartureStrip";
+export { ArrivalStrip } from "./ArrivalStrip";
+export type { ArrivalStripProps } from "./ArrivalStrip";
+export { StripSeparator } from "./StripSeparator";
+export type { StripSeparatorProps } from "./StripSeparator";
+export { StripsContextMenu } from "./StripsContextMenu";
+export type { ContextMenuItem, StripsContextMenuProps } from "./StripsContextMenu";
+
+// Strips board & bay layout
+export {
+  DEFAULT_FACILITY_TITLE,
+  StripsBoard,
+  createStripSelectionHandler,
+  mergeStripAnnotations,
+  reconcileOrder,
+  selectTrackFromFlightStrip,
+} from "./StripsBoard";
+export type { DraggedStripState, DropIndicatorState, StripsBoardProps } from "./StripsBoard";
+
+// Terminal strips derived from World
+export { terminalStripsFromWorld } from "./terminalStripsFromWorld";
