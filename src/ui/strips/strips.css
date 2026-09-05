@@ -21,6 +21,7 @@
   user-select: none;
   cursor: pointer;
   position: relative;
+  transition: transform 0.15s ease, margin-left 0.15s ease;
 }
 
 .departure-strip:hover,
@@ -40,6 +41,15 @@
   outline: 3px solid #ffff00;
   outline-offset: 1px;
   z-index: 2;
+}
+
+.strip-indented,
+.strip.strip-indented,
+.departure-strip.strip-indented,
+.arrival-strip.strip-indented {
+  transform: translateX(28px);
+  width: calc(100% - 28px);
+  box-shadow: -4px 0 0 #1a1e24;
 }
 
 .strip-col {

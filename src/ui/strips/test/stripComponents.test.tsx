@@ -432,4 +432,179 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
       expect(arrHtml).toContain("WAYPT");
     });
   });
+
+  // --------------------------------------------------------------------------
+  // T02-94: Right-click indentation, keyboard shortcuts, and .strip-indented CSS
+  // --------------------------------------------------------------------------
+  describe("T02-94 — Right-click indentation, context menu prevention, and CSS offset", () => {
+    test("DepartureStrip applies .strip-indented class when indented prop is true", () => {
+      const indentedHtml = renderToStaticMarkup(
+        createElement(DepartureStrip, { strip: mockDAL882, indented: true }),
+      );
+      expect(indentedHtml).toContain("strip-indented");
+
+      const unindentedHtml = renderToStaticMarkup(
+        createElement(DepartureStrip, { strip: mockDAL882, indented: false }),
+      );
+      expect(unindentedHtml).not.toContain("strip-indented");
+    });
+
+    test("ArrivalStrip applies .strip-indented class when indented prop is true", () => {
+      const indentedHtml = renderToStaticMarkup(
+        createElement(ArrivalStrip, { strip: mockAAL412, indented: true }),
+      );
+      expect(indentedHtml).toContain("strip-indented");
+
+      const unindentedHtml = renderToStaticMarkup(
+        createElement(ArrivalStrip, { strip: mockAAL412, indented: false }),
+      );
+      expect(unindentedHtml).not.toContain("strip-indented");
+    });
+
+    test("DepartureStrip applies .strip-indented when strip.indented is true and prop omitted", () => {
+      const stripData: DepartureStripData = { ...mockDAL882, indented: true };
+      const html = renderToStaticMarkup(createElement(DepartureStrip, { strip: stripData }));
+      expect(html).toContain("strip-indented");
+    });
+
+    test("ArrivalStrip applies .strip-indented when strip.indented is true and prop omitted", () => {
+      const stripData: ArrivalStripData = { ...mockAAL412, indented: true };
+      const html = renderToStaticMarkup(createElement(ArrivalStrip, { strip: stripData }));
+      expect(html).toContain("strip-indented");
+    });
+
+    test("DepartureStrip onContextMenu calls preventDefault and onToggleIndent", () => {
+      const onToggleMock = vi.fn();
+      const rendered = DepartureStrip({
+        strip: mockDAL882,
+        onToggleIndent: onToggleMock,
+      });
+
+      const fakeContextMenu = { preventDefault: vi.fn() } as unknown as React.MouseEvent;
+      rendered.props.onContextMenu?.(fakeContextMenu);
+
+      expect(fakeContextMenu.preventDefault).toHaveBeenCalledTimes(1);
+      expect(onToggleMock).toHaveBeenCalledTimes(1);
+      expect(onToggleMock).toHaveBeenCalledWith("DAL882");
+    });
+
+    test("ArrivalStrip onContextMenu calls preventDefault and onToggleIndent", () => {
+      const onToggleMock = vi.fn();
+      const rendered = ArrivalStrip({
+        strip: mockAAL412,
+        onToggleIndent: onToggleMock,
+      });
+
+      const fakeContextMenu = { preventDefault: vi.fn() } as unknown as React.MouseEvent;
+      rendered.props.onContextMenu?.(fakeContextMenu);
+
+      expect(fakeContextMenu.preventDefault).toHaveBeenCalledTimes(1);
+      expect(onToggleMock).toHaveBeenCalledTimes(1);
+      expect(onToggleMock).toHaveBeenCalledWith("AAL412");
+    });
+
+    test("DepartureStrip keyboard Shift+Enter and Shift+Space call onToggleIndent and preventDefault", () => {
+      const onToggleMock = vi.fn();
+      const onSelectMock = vi.fn();
+      const rendered = DepartureStrip({
+        strip: mockDAL882,
+        onToggleIndent: onToggleMock,
+        onSelect: onSelectMock,
+      });
+
+      const shiftEnter = {
+        key: "Enter",
+        shiftKey: true,
+        preventDefault: vi.fn(),
+      } as unknown as React.KeyboardEvent;
+      rendered.props.onKeyDown?.(shiftEnter);
+
+      expect(shiftEnter.preventDefault).toHaveBeenCalledTimes(1);
+      expect(onToggleMock).toHaveBeenCalledWith("DAL882");
+      expect(onSelectMock).not.toHaveBeenCalled();
+
+      const shiftSpace = {
+        key: " ",
+        shiftKey: true,
+        preventDefault: vi.fn(),
+      } as unknown as React.KeyboardEvent;
+      rendered.props.onKeyDown?.(shiftSpace);
+
+      expect(shiftSpace.preventDefault).toHaveBeenCalledTimes(1);
+      expect(onToggleMock).toHaveBeenCalledTimes(2);
+      expect(onSelectMock).not.toHaveBeenCalled();
+    });
+
+    test("ArrivalStrip keyboard Shift+Enter and Shift+Space call onToggleIndent and preventDefault", () => {
+      const onToggleMock = vi.fn();
+      const onSelectMock = vi.fn();
+      const rendered = ArrivalStrip({
+        strip: mockAAL412,
+        onToggleIndent: onToggleMock,
+        onSelect: onSelectMock,
+      });
+
+      const shiftEnter = {
+        key: "Enter",
+        shiftKey: true,
+        preventDefault: vi.fn(),
+      } as unknown as React.KeyboardEvent;
+      rendered.props.onKeyDown?.(shiftEnter);
+
+      expect(shiftEnter.preventDefault).toHaveBeenCalledTimes(1);
+      expect(onToggleMock).toHaveBeenCalledWith("AAL412");
+      expect(onSelectMock).not.toHaveBeenCalled();
+
+      const shiftSpace = {
+        key: " ",
+        shiftKey: true,
+        preventDefault: vi.fn(),
+      } as unknown as React.KeyboardEvent;
+      rendered.props.onKeyDown?.(shiftSpace);
+
+      expect(shiftSpace.preventDefault).toHaveBeenCalledTimes(1);
+      expect(onToggleMock).toHaveBeenCalledTimes(2);
+      expect(onSelectMock).not.toHaveBeenCalled();
+    });
+
+    test("left-click on DepartureStrip calls onSelect without calling onToggleIndent", () => {
+      const onSelectMock = vi.fn();
+      const onToggleMock = vi.fn();
+      const rendered = DepartureStrip({
+        strip: mockDAL882,
+        onSelect: onSelectMock,
+        onToggleIndent: onToggleMock,
+        indented: true,
+      });
+
+      rendered.props.onClick?.();
+
+      expect(onSelectMock).toHaveBeenCalledTimes(1);
+      expect(onSelectMock).toHaveBeenCalledWith("DAL882");
+      expect(onToggleMock).not.toHaveBeenCalled();
+    });
+
+    test("left-click on ArrivalStrip calls onSelect without calling onToggleIndent", () => {
+      const onSelectMock = vi.fn();
+      const onToggleMock = vi.fn();
+      const rendered = ArrivalStrip({
+        strip: mockAAL412,
+        onSelect: onSelectMock,
+        onToggleIndent: onToggleMock,
+        indented: true,
+      });
+
+      rendered.props.onClick?.();
+
+      expect(onSelectMock).toHaveBeenCalledTimes(1);
+      expect(onSelectMock).toHaveBeenCalledWith("AAL412");
+      expect(onToggleMock).not.toHaveBeenCalled();
+    });
+
+    test("strips.css defines .strip-indented rule with horizontal offset (~28px) and smooth transition", () => {
+      expect(cssContent).toMatch(/\.strip-indented/);
+      expect(cssContent).toMatch(/transform:\s*translateX\(28px\)/);
+      expect(cssContent).toMatch(/transition:[^}]*0\.15s/i);
+    });
+  });
 });

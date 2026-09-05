@@ -4,7 +4,14 @@ import { describe, expect, test, vi } from "vitest";
 // @ts-expect-error tsconfig has no @types/node
 import { readFileSync } from "node:fs";
 import { StripsBoard } from "../StripsBoard";
-import { mockAAL412, mockArrivals, mockDAL882, mockDepartures, mockN415SP } from "../mockFixture";
+import {
+  mockAAL412,
+  mockArrivals,
+  mockDAL882,
+  mockDepartures,
+  mockN415SP,
+  mockSWA1902,
+} from "../mockFixture";
 import type { ArrivalStripData, DepartureStripData } from "../types";
 
 const cssContent = readFileSync(new URL("../strips.css", import.meta.url), "utf8");
@@ -558,6 +565,183 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
       expect(cssContent).toMatch(/\.rack-header\s*\{[^}]*cursor:\s*pointer;/i);
       expect(cssContent).toMatch(/#00ff00/i);
       expect(cssContent).toMatch(/#ffff00/i);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // T02-94: StripsBoard right-click indentation state and independent tracking
+  // --------------------------------------------------------------------------
+  describe("T02-94 — StripsBoard right-click indentation state & independent tracking", () => {
+    test("right-clicking a departure strip triggers onToggleIndent with next indented=true", () => {
+      const onToggleIndentMock = vi.fn();
+      const tree = StripsBoard({
+        departures: mockDepartures,
+        arrivals: mockArrivals,
+        onToggleIndent: onToggleIndentMock,
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const depRack = bayContainer.props.children[0];
+      const depStripList = depRack.props.children[1];
+      const firstDep = depStripList.props.children[0];
+
+      expect(firstDep.props.indented).toBe(false);
+      firstDep.props.onToggleIndent("DAL882");
+
+      expect(onToggleIndentMock).toHaveBeenCalledTimes(1);
+      expect(onToggleIndentMock).toHaveBeenCalledWith("DAL882", true);
+    });
+
+    test("right-clicking an already indented departure strip triggers onToggleIndent with next indented=false", () => {
+      const onToggleIndentMock = vi.fn();
+      const tree = StripsBoard({
+        departures: mockDepartures,
+        arrivals: mockArrivals,
+        indentedStripIds: new Set(["DAL882"]),
+        onToggleIndent: onToggleIndentMock,
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const depRack = bayContainer.props.children[0];
+      const depStripList = depRack.props.children[1];
+      const firstDep = depStripList.props.children[0];
+
+      expect(firstDep.props.indented).toBe(true);
+      firstDep.props.onToggleIndent("DAL882");
+
+      expect(onToggleIndentMock).toHaveBeenCalledTimes(1);
+      expect(onToggleIndentMock).toHaveBeenCalledWith("DAL882", false);
+    });
+
+    test("right-clicking an arrival strip toggles its indentation independently", () => {
+      const onToggleIndentMock = vi.fn();
+      const tree = StripsBoard({
+        departures: mockDepartures,
+        arrivals: mockArrivals,
+        onToggleIndent: onToggleIndentMock,
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const arrRack = bayContainer.props.children[1];
+      const arrStripList = arrRack.props.children[1];
+      const firstArr = arrStripList.props.children[0];
+
+      expect(firstArr.props.indented).toBe(false);
+      firstArr.props.onToggleIndent("AAL412");
+
+      expect(onToggleIndentMock).toHaveBeenCalledTimes(1);
+      expect(onToggleIndentMock).toHaveBeenCalledWith("AAL412", true);
+    });
+
+    test("tracks indentation state independently per strip across both departures and arrivals", () => {
+      const tree = StripsBoard({
+        departures: mockDepartures,
+        arrivals: mockArrivals,
+        indentedStripIds: new Set(["DAL882", "N415SP"]),
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const depRack = bayContainer.props.children[0];
+      const depStripList = depRack.props.children[1];
+      const dep1 = depStripList.props.children[0]; // DAL882
+      const dep2 = depStripList.props.children[1]; // SWA1902
+
+      const arrRack = bayContainer.props.children[1];
+      const arrStripList = arrRack.props.children[1];
+      const arr1 = arrStripList.props.children[0]; // AAL412
+      const arr2 = arrStripList.props.children[1]; // N415SP
+
+      expect(dep1.props.indented).toBe(true);
+      expect(dep2.props.indented).toBe(false);
+      expect(arr1.props.indented).toBe(false);
+      expect(arr2.props.indented).toBe(true);
+    });
+
+    test("renders .strip-indented class in rendered markup for only indented strips", () => {
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          indentedStripIds: new Set(["DAL882", "AAL412"]),
+        }),
+      );
+
+      // DAL882 should be indented
+      const dalMatch = html.match(
+        /class="[^"]*departure-strip[^"]*strip-indented[^"]*"[^>]*data-strip-acid="DAL882"/,
+      );
+      expect(dalMatch).toBeTruthy();
+
+      // SWA1902 should not be indented
+      const swaMatch = html.match(
+        /class="[^"]*departure-strip[^"]*"[^>]*data-strip-acid="SWA1902"/,
+      );
+      expect(swaMatch?.[0]).not.toContain("strip-indented");
+
+      // AAL412 should be indented
+      const aalMatch = html.match(
+        /class="[^"]*arrival-strip[^"]*strip-indented[^"]*"[^>]*data-strip-acid="AAL412"/,
+      );
+      expect(aalMatch).toBeTruthy();
+
+      // N415SP should not be indented
+      const n415Match = html.match(
+        /class="[^"]*arrival-strip[^"]*"[^>]*data-strip-acid="N415SP"/,
+      );
+      expect(n415Match?.[0]).not.toContain("strip-indented");
+    });
+
+    test("initializes indented strips from defaultIndentedStripIds or strip.indented property", () => {
+      const depWithIndent: DepartureStripData = { ...mockDAL882, indented: true };
+      const tree = StripsBoard({
+        departures: [depWithIndent, mockSWA1902],
+        arrivals: mockArrivals,
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const depRack = bayContainer.props.children[0];
+      const depStripList = depRack.props.children[1];
+      const dep1 = depStripList.props.children[0];
+      const dep2 = depStripList.props.children[1];
+
+      expect(dep1.props.indented).toBe(true);
+      expect(dep2.props.indented).toBe(false);
+    });
+
+    test("left-clicking an indented strip invokes onSelectStrip without toggling indent", () => {
+      const onSelectStripMock = vi.fn();
+      const onToggleIndentMock = vi.fn();
+      const tree = StripsBoard({
+        departures: mockDepartures,
+        arrivals: mockArrivals,
+        indentedStripIds: new Set(["DAL882"]),
+        onSelectStrip: onSelectStripMock,
+        onToggleIndent: onToggleIndentMock,
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const depRack = bayContainer.props.children[0];
+      const depStripList = depRack.props.children[1];
+      const firstDep = depStripList.props.children[0];
+
+      expect(firstDep.props.indented).toBe(true);
+      firstDep.props.onSelect("DAL882");
+
+      expect(onSelectStripMock).toHaveBeenCalledTimes(1);
+      expect(onSelectStripMock).toHaveBeenCalledWith(mockDAL882);
+      expect(onToggleIndentMock).not.toHaveBeenCalled();
     });
   });
 });

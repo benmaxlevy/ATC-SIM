@@ -64,12 +64,12 @@ In the web interface:
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Right-clicking once on a departure or arrival strip intercepts `contextmenu`, calls `e.preventDefault()`, and indents the strip.
-- [ ] **AC2 —** Right-clicking an already-indented strip toggles it back to unindented.
-- [ ] **AC3 —** Indented strips apply `.strip-indented` CSS styling with a horizontal offset (~28px) inside the rack list.
-- [ ] **AC4 —** Left-clicking an indented strip selects the strip and updates `World.selectedAircraftId` without resetting or toggling the indent.
-- [ ] **AC5 —** Keyboard accessibility supports toggling indent on focused strips via `Shift+Enter`.
-- [ ] **AC6 —** Unit tests in `stripComponents.test.tsx` and `stripsBoard.test.tsx` pass 100%.
+- [x] **AC1 —** Right-clicking once on a departure or arrival strip intercepts `contextmenu`, calls `e.preventDefault()`, and indents the strip.
+- [x] **AC2 —** Right-clicking an already-indented strip toggles it back to unindented.
+- [x] **AC3 —** Indented strips apply `.strip-indented` CSS styling with a horizontal offset (~28px) inside the rack list.
+- [x] **AC4 —** Left-clicking an indented strip selects the strip and updates `World.selectedAircraftId` without resetting or toggling the indent.
+- [x] **AC5 —** Keyboard accessibility supports toggling indent on focused strips via `Shift+Enter`.
+- [x] **AC6 —** Unit tests in `stripComponents.test.tsx` and `stripsBoard.test.tsx` pass 100%.
 
 ## Test plan
 

@@ -13,11 +13,21 @@ export interface ArrivalStripProps {
   onSelect?: (stripId: string) => void;
   selected?: boolean;
   className?: string;
+  indented?: boolean;
+  onToggleIndent?: (stripId: string) => void;
 }
 
 const LOWER_BOX_NUMBERS = [10, 11, 12, 13, 14, 15, 16, 17, 18] as const;
 
-export function ArrivalStrip({ strip, onSelect, selected, className }: ArrivalStripProps) {
+export function ArrivalStrip({
+  strip,
+  onSelect,
+  selected,
+  className,
+  indented,
+  onToggleIndent,
+}: ArrivalStripProps) {
+  const isIndented = indented ?? strip.indented ?? false;
   const formattedEquipment = formatEquipment(strip.rawType, strip.equipmentSuffix, {
     isHeavy: strip.isHeavy,
     cwtCategory: strip.cwtCategory,
@@ -28,16 +38,25 @@ export function ArrivalStrip({ strip, onSelect, selected, className }: ArrivalSt
     onSelect?.(strip.id);
   };
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    onToggleIndent?.(strip.id);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      onSelect?.(strip.id);
+      if (e.shiftKey) {
+        onToggleIndent?.(strip.id);
+      } else {
+        onSelect?.(strip.id);
+      }
     }
   };
 
   return (
     <div
-      className={`strip arrival-strip ${selected ? "strip-selected" : ""} ${className ?? ""}`.trim()}
+      className={`strip arrival-strip ${selected ? "strip-selected" : ""} ${isIndented ? "strip-indented" : ""} ${className ?? ""}`.trim()}
       role="button"
       tabIndex={0}
       data-strip-id={strip.id}
@@ -46,6 +65,7 @@ export function ArrivalStrip({ strip, onSelect, selected, className }: ArrivalSt
       data-testid="arrival-strip"
       aria-label={`Arrival strip ${strip.acid}`}
       onClick={handleClick}
+      onContextMenu={handleContextMenu}
       onKeyDown={handleKeyDown}
     >
       {/* Column 1 (~22%): Identification */}

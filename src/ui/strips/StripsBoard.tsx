@@ -77,6 +77,12 @@ export interface StripsBoardProps {
   onDeparturesCollapsedChange?: (collapsed: boolean) => void;
   /** Callback fired when arrivals collapsed state changes. */
   onArrivalsCollapsedChange?: (collapsed: boolean) => void;
+  /** Set of strip IDs that are indented (controlled mode). */
+  indentedStripIds?: Set<string>;
+  /** Initial set of indented strip IDs when uncontrolled. */
+  defaultIndentedStripIds?: Set<string>;
+  /** Callback fired when a strip's indentation state changes. */
+  onToggleIndent?: (stripId: string, indented: boolean) => void;
 }
 
 function useSafeState<T>(initialValue: T | (() => T)): [T, (action: T | ((prev: T) => T)) => void] {
@@ -108,9 +114,12 @@ export function StripsBoard({
   defaultDeparturesCollapsed,
   arrivalsCollapsed: arrivalsCollapsedProp,
   defaultArrivalsCollapsed,
+  indentedStripIds: indentedStripIdsProp,
+  defaultIndentedStripIds,
   onLayoutModeChange,
   onDeparturesCollapsedChange,
   onArrivalsCollapsedChange,
+  onToggleIndent,
 }: StripsBoardProps) {
   const departuresList = departures;
   const arrivalsList = arrivals;
@@ -155,6 +164,41 @@ export function StripsBoard({
       setInternalArrCollapsed(resolved);
     }
     onArrivalsCollapsedChange?.(resolved);
+  };
+
+  const [internalIndentedStripIds, setInternalIndentedStripIds] = useSafeState<Set<string>>(
+    () => {
+      const initial = new Set<string>(defaultIndentedStripIds);
+      for (const dep of departures) {
+        if (dep.indented) {
+          initial.add(dep.id);
+        }
+      }
+      for (const arr of arrivals) {
+        if (arr.indented) {
+          initial.add(arr.id);
+        }
+      }
+      return initial;
+    },
+  );
+  const indentedStripIds = indentedStripIdsProp ?? internalIndentedStripIds;
+
+  const handleToggleIndent = (stripId: string) => {
+    const isCurrentlyIndented = indentedStripIds.has(stripId);
+    const nextIndented = !isCurrentlyIndented;
+    if (indentedStripIdsProp === undefined) {
+      setInternalIndentedStripIds((prev) => {
+        const next = new Set(prev);
+        if (nextIndented) {
+          next.add(stripId);
+        } else {
+          next.delete(stripId);
+        }
+        return next;
+      });
+    }
+    onToggleIndent?.(stripId, nextIndented);
   };
 
   const isStripSelected = (strip: FlightStrip): boolean => {
@@ -245,7 +289,9 @@ export function StripsBoard({
                   key={strip.id}
                   strip={strip}
                   selected={isStripSelected(strip)}
+                  indented={indentedStripIds.has(strip.id)}
                   onSelect={() => onSelectStrip?.(strip)}
+                  onToggleIndent={handleToggleIndent}
                 />
               ))
             )}
@@ -304,7 +350,9 @@ export function StripsBoard({
                   key={strip.id}
                   strip={strip}
                   selected={isStripSelected(strip)}
+                  indented={indentedStripIds.has(strip.id)}
                   onSelect={() => onSelectStrip?.(strip)}
+                  onToggleIndent={handleToggleIndent}
                 />
               ))
             )}

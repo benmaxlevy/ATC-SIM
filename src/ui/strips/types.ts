@@ -37,6 +37,8 @@ export interface BaseStripData {
   beaconCode: string;
   /** Upper (8A, 8B) and lower (10–18) annotation boxes. */
   annotationBoxes?: StripAnnotationBoxes;
+  /** Whether the strip is visually indented (cocked) horizontally. */
+  indented?: boolean;
 }
 
 export interface DepartureStripData extends BaseStripData {
