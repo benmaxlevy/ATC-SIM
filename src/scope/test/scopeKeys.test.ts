@@ -47,3 +47,17 @@ test("F7 toggles PTL ALL", () => {
   handleScopeKeyDown(keyEvent("F7"), view);
   expect(view.ptlOn).toBe(false);
 });
+
+test("Escape closes DCB submenu without hiding map lists (ML)", () => {
+  const view = createScopeView();
+  view.dcbMenu = "MAPS";
+  view.systemLists.ML.visible = true;
+  view.geoMapsListOn = true;
+  view.mapListMode = "GEO";
+
+  const res = handleScopeKeyDown(keyEvent("Escape"), view);
+  expect(res).toBe(true);
+  expect(view.dcbMenu).toBe("MAIN");
+  expect(view.systemLists.ML.visible).toBe(true);
+  expect(view.geoMapsListOn).toBe(true);
+});

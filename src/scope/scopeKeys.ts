@@ -79,7 +79,6 @@ import {
   applyRrCenter,
   armPlaceCenter,
   armPlaceRangeRing,
-  hideMapLists,
   loadedCatalogMaps,
   resolveVideoMapToken,
   setAllVideoMaps,
@@ -631,7 +630,6 @@ export function handleScopeKeyDown(
     const starsBusy =
       focus === "scope" && (view.starsChordEntry.phase !== "idle" || view.starsChordArmed != null);
     if (!filterBusy && !leaderBusy && !starsBusy && handleDcbEscape(view)) {
-      hideMapLists(view);
       consume(event);
       ui?.onHandled?.();
       return true;

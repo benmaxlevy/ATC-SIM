@@ -12,16 +12,21 @@ import {
   findOverlappingLists,
   handleListMiddleClick,
   handleListMouseMove,
+  hideMapLists,
   idleListDragState,
   openDcbMenu,
   closeDcbMenu,
   releaseSingleDeparture,
   stepBriteChannel,
   stepCharSizeChannel,
+  toggleCurrentMapsList,
+  toggleGeoMapsList,
   toggleGiFilter,
   toggleSsaFilter,
   type ListRect,
 } from "../index";
+import { handleScopeKeyDown } from "../scopeKeys";
+import { clickDone } from "../../ui/dcb/dcbChrome";
 
 function makeArrival(id: string, callsign: string, xNm: number, yNm: number, gs: number): Aircraft {
   return {
@@ -182,5 +187,81 @@ describe("STARS System Lists & DCB Integration Acceptance", () => {
 
     closeDcbMenu(view);
     expect(view.dcbMenu).toBe("MAIN");
+  });
+
+  it("AC4 — video map lists (ML) stay visible when DCB submenu closes via DONE or Esc", () => {
+    const view = createScopeView();
+    let changeCount = 0;
+    const onChange = () => {
+      changeCount += 1;
+    };
+
+    // 1. GEO MAPS toggled on, closed via clickDone
+    openDcbMenu(view, "MAPS");
+    expect(view.dcbMenu).toBe("MAPS");
+    toggleGeoMapsList(view);
+    expect(view.systemLists.ML.visible).toBe(true);
+    expect(view.geoMapsListOn).toBe(true);
+    expect(view.mapListMode).toBe("GEO");
+
+    clickDone(view, onChange);
+    expect(view.dcbMenu).toBe("MAIN");
+    expect(view.systemLists.ML.visible).toBe(true);
+    expect(view.geoMapsListOn).toBe(true);
+    expect(view.mapListMode).toBe("GEO");
+    expect(changeCount).toBe(1);
+
+    // 2. CURRENT maps toggled on, closed via clickDone
+    openDcbMenu(view, "MAPS");
+    expect(view.dcbMenu).toBe("MAPS");
+    toggleCurrentMapsList(view);
+    expect(view.systemLists.ML.visible).toBe(true);
+    expect(view.currentMapsListOn).toBe(true);
+    expect(view.geoMapsListOn).toBe(false);
+    expect(view.mapListMode).toBe("CURRENT");
+
+    clickDone(view, onChange);
+    expect(view.dcbMenu).toBe("MAIN");
+    expect(view.systemLists.ML.visible).toBe(true);
+    expect(view.currentMapsListOn).toBe(true);
+    expect(view.mapListMode).toBe("CURRENT");
+    expect(changeCount).toBe(2);
+
+    // 3. GEO MAPS toggled on, closed via Esc
+    openDcbMenu(view, "MAPS");
+    expect(view.dcbMenu).toBe("MAPS");
+    toggleGeoMapsList(view);
+    expect(view.systemLists.ML.visible).toBe(true);
+    expect(view.geoMapsListOn).toBe(true);
+
+    const escEvent = {
+      key: "Escape",
+      preventDefault: () => {},
+      stopPropagation: () => {},
+    };
+    const handledEsc = handleScopeKeyDown(escEvent, view);
+    expect(handledEsc).toBe(true);
+    expect(view.dcbMenu).toBe("MAIN");
+    expect(view.systemLists.ML.visible).toBe(true);
+    expect(view.geoMapsListOn).toBe(true);
+
+    // 4. CURRENT maps toggled on, closed via Esc
+    openDcbMenu(view, "MAPS");
+    expect(view.dcbMenu).toBe("MAPS");
+    toggleCurrentMapsList(view);
+    expect(view.systemLists.ML.visible).toBe(true);
+    expect(view.currentMapsListOn).toBe(true);
+
+    const handledEsc2 = handleScopeKeyDown(escEvent, view);
+    expect(handledEsc2).toBe(true);
+    expect(view.dcbMenu).toBe("MAIN");
+    expect(view.systemLists.ML.visible).toBe(true);
+    expect(view.currentMapsListOn).toBe(true);
+
+    // 5. Explicit hideMapLists still hides the lists
+    hideMapLists(view);
+    expect(view.systemLists.ML.visible).toBe(false);
+    expect(view.geoMapsListOn).toBe(false);
+    expect(view.currentMapsListOn).toBe(false);
   });
 });

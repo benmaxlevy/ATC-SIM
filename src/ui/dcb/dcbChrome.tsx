@@ -41,7 +41,6 @@ import {
   formatDcbSiteLabel,
   formatDcbTpaMiReadout,
   formatFilterBand,
-  hideMapLists,
   isDcbMapSlotEnabled,
   isLeaderDir,
   isRangeRingOffViewCenter,
@@ -824,7 +823,6 @@ export function runAuxCell(view: ScopeView, onChange: () => void, fn: () => void
 
 export function clickDone(view: ScopeView, onChange: () => void): void {
   cancelFilterIfEntering(view);
-  hideMapLists(view);
   closeDcbMenu(view);
   afterCell(onChange);
 }
