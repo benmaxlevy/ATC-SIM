@@ -693,9 +693,7 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
       expect(aalMatch).toBeTruthy();
 
       // N415SP should not be indented
-      const n415Match = html.match(
-        /class="[^"]*arrival-strip[^"]*"[^>]*data-strip-acid="N415SP"/,
-      );
+      const n415Match = html.match(/class="[^"]*arrival-strip[^"]*"[^>]*data-strip-acid="N415SP"/);
       expect(n415Match?.[0]).not.toContain("strip-indented");
     });
 
@@ -742,6 +740,592 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
       expect(onSelectStripMock).toHaveBeenCalledTimes(1);
       expect(onSelectStripMock).toHaveBeenCalledWith(mockDAL882);
       expect(onToggleIndentMock).not.toHaveBeenCalled();
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // T02-95: Strips intra-section drag-and-drop reordering and drop indicator
+  // --------------------------------------------------------------------------
+  describe("T02-95 — Strips Intra-Section Drag Reordering and Drop Indicator Line", () => {
+    function createMockDragEvent(overrides: Record<string, unknown> = {}) {
+      const dataTransfer: Record<string, unknown> = {
+        setData: vi.fn(),
+        getData: vi.fn(),
+        effectAllowed: "uninitialized",
+        dropEffect: "none",
+        ...((overrides.dataTransfer as Record<string, unknown> | undefined) ?? {}),
+      };
+      return {
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+        dataTransfer,
+        clientX: 0,
+        clientY: 0,
+        currentTarget: null,
+        target: null,
+        ...overrides,
+      };
+    }
+
+    // ------------------------------------------------------------------------
+    // AC1: Draggable within rack column using mouse drag
+    // ------------------------------------------------------------------------
+    describe("AC1 — Strips are draggable within their rack column using HTML5 drag", () => {
+      test("renders departure and arrival strips with draggable=true attribute in DOM markup", () => {
+        const html = renderToStaticMarkup(
+          createElement(StripsBoard, {
+            departures: mockDepartures,
+            arrivals: mockArrivals,
+          }),
+        );
+
+        const depMatches = html.match(/class="[^"]*departure-strip[^"]*"[^>]*draggable="true"/g);
+        const arrMatches = html.match(/class="[^"]*arrival-strip[^"]*"[^>]*draggable="true"/g);
+
+        expect(depMatches?.length).toBe(2);
+        expect(arrMatches?.length).toBe(2);
+      });
+
+      test("onDragStart sets dataTransfer format 'text/plain' and effectAllowed='move'", () => {
+        const tree = StripsBoard({
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+        });
+
+        const bayContainer = Array.isArray(tree.props.children)
+          ? tree.props.children[0]
+          : tree.props.children;
+        const depRack = bayContainer.props.children[0];
+        const depStripList = depRack.props.children[1];
+        const firstDep = depStripList.props.children[0];
+
+        const dragEvent = createMockDragEvent();
+        firstDep.props.onDragStart(dragEvent);
+
+        expect(dragEvent.dataTransfer.setData).toHaveBeenCalledWith("text/plain", "DAL882");
+        expect(dragEvent.dataTransfer.effectAllowed).toBe("move");
+      });
+
+      test("onDragStart on an arrival strip sets dataTransfer with arrival strip ID", () => {
+        const tree = StripsBoard({
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+        });
+
+        const bayContainer = Array.isArray(tree.props.children)
+          ? tree.props.children[0]
+          : tree.props.children;
+        const arrRack = bayContainer.props.children[1];
+        const arrStripList = arrRack.props.children[1];
+        const firstArr = arrStripList.props.children[0];
+
+        const dragEvent = createMockDragEvent();
+        firstArr.props.onDragStart(dragEvent);
+
+        expect(dragEvent.dataTransfer.setData).toHaveBeenCalledWith("text/plain", "AAL412");
+        expect(dragEvent.dataTransfer.effectAllowed).toBe("move");
+      });
+    });
+
+    // ------------------------------------------------------------------------
+    // AC2: Visual drop indicator line previewing insertion destination
+    // ------------------------------------------------------------------------
+    describe("AC2 — Prominent .strip-drop-indicator line indicates candidate drop index", () => {
+      test("strips.css defines .strip-drop-indicator with yellow glow, 3px height, and pointer-events: none", () => {
+        expect(cssContent).toMatch(/\.strip-drop-indicator\s*\{[^}]*height:\s*3px;/i);
+        expect(cssContent).toMatch(/\.strip-drop-indicator\s*\{[^}]*background-color:\s*#ffff00;/i);
+        expect(cssContent).toMatch(
+          /\.strip-drop-indicator\s*\{[^}]*box-shadow:\s*0 0 6px #ffff00;/i,
+        );
+        expect(cssContent).toMatch(/\.strip-drop-indicator\s*\{[^}]*border-radius:\s*1\.5px;/i);
+        expect(cssContent).toMatch(/\.strip-drop-indicator\s*\{[^}]*width:\s*100%;/i);
+        expect(cssContent).toMatch(/\.strip-drop-indicator\s*\{[^}]*margin:\s*2px 0;/i);
+        expect(cssContent).toMatch(/\.strip-drop-indicator\s*\{[^}]*pointer-events:\s*none;/i);
+      });
+
+      test("dragging over upper half of strip calculates targetIndex equal to hoverIndex", () => {
+        const tree = StripsBoard({
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+        });
+
+        const bayContainer = Array.isArray(tree.props.children)
+          ? tree.props.children[0]
+          : tree.props.children;
+        const depRack = bayContainer.props.children[0];
+        const depStripList = depRack.props.children[1];
+        const firstDep = depStripList.props.children[0];
+        const secondDep = depStripList.props.children[1];
+
+        // Start drag on first strip
+        firstDep.props.onDragStart(createMockDragEvent());
+
+        // Drag over upper half of second strip (hoverIndex = 1, midY = 50, clientY = 20)
+        const fakeElement = {
+          getBoundingClientRect: () => ({ top: 0, height: 100, bottom: 100, left: 0, right: 100 }),
+        };
+        const overEvent = createMockDragEvent({
+          clientY: 20,
+          currentTarget: fakeElement,
+        });
+        secondDep.props.onDragOver(overEvent);
+
+        expect(overEvent.preventDefault).toHaveBeenCalled();
+        expect(overEvent.dataTransfer.dropEffect).toBe("move");
+      });
+
+      test("dragging over lower half of strip calculates targetIndex equal to hoverIndex + 1", () => {
+        const tree = StripsBoard({
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+        });
+
+        const bayContainer = Array.isArray(tree.props.children)
+          ? tree.props.children[0]
+          : tree.props.children;
+        const depRack = bayContainer.props.children[0];
+        const depStripList = depRack.props.children[1];
+        const firstDep = depStripList.props.children[0];
+
+        firstDep.props.onDragStart(createMockDragEvent());
+
+        // Drag over lower half of first strip (hoverIndex = 0, midY = 50, clientY = 80)
+        const fakeElement = {
+          getBoundingClientRect: () => ({ top: 0, height: 100, bottom: 100, left: 0, right: 100 }),
+        };
+        const overEvent = createMockDragEvent({
+          clientY: 80,
+          currentTarget: fakeElement,
+        });
+        firstDep.props.onDragOver(overEvent);
+
+        expect(overEvent.preventDefault).toHaveBeenCalled();
+        expect(overEvent.dataTransfer.dropEffect).toBe("move");
+      });
+
+      test("renders .strip-drop-indicator line at targetIndex 0 (before all strips)", () => {
+        const html = renderToStaticMarkup(
+          createElement(StripsBoard, {
+            departures: mockDepartures,
+            arrivals: mockArrivals,
+            dropIndicator: { section: "departures", targetIndex: 0 },
+          }),
+        );
+
+        expect(html).toContain('class="strip-drop-indicator"');
+        expect(html).toContain('data-testid="strip-drop-indicator"');
+
+        // Drop indicator should appear before DAL882
+        const indicatorIndex = html.indexOf('data-testid="strip-drop-indicator"');
+        const dalIndex = html.indexOf('data-strip-acid="DAL882"');
+        expect(indicatorIndex).toBeLessThan(dalIndex);
+      });
+
+      test("renders .strip-drop-indicator line at targetIndex 1 (between first and second strip)", () => {
+        const html = renderToStaticMarkup(
+          createElement(StripsBoard, {
+            departures: mockDepartures,
+            arrivals: mockArrivals,
+            dropIndicator: { section: "departures", targetIndex: 1 },
+          }),
+        );
+
+        const dalIndex = html.indexOf('data-strip-acid="DAL882"');
+        const indicatorIndex = html.indexOf('data-testid="strip-drop-indicator"');
+        const swaIndex = html.indexOf('data-strip-acid="SWA1902"');
+
+        expect(dalIndex).toBeLessThan(indicatorIndex);
+        expect(indicatorIndex).toBeLessThan(swaIndex);
+      });
+
+      test("renders .strip-drop-indicator line at targetIndex 2 (after all departure strips)", () => {
+        const html = renderToStaticMarkup(
+          createElement(StripsBoard, {
+            departures: mockDepartures,
+            arrivals: mockArrivals,
+            dropIndicator: { section: "departures", targetIndex: 2 },
+          }),
+        );
+
+        const swaIndex = html.indexOf('data-strip-acid="SWA1902"');
+        const indicatorIndex = html.indexOf('data-testid="strip-drop-indicator"');
+
+        expect(swaIndex).toBeLessThan(indicatorIndex);
+      });
+    });
+
+    // ------------------------------------------------------------------------
+    // AC3: Dropping commits reordered list within that section
+    // ------------------------------------------------------------------------
+    describe("AC3 — Dropping commits reordered strip sequence within section", () => {
+      test("dropping departure strip at targetIndex reorders departures and calls onReorderStrips", () => {
+        const onReorderStripsMock = vi.fn();
+        const tree = StripsBoard({
+          departures: mockDepartures, // [DAL882 (0), SWA1902 (1)]
+          arrivals: mockArrivals,
+          onReorderStrips: onReorderStripsMock,
+        });
+
+        const bayContainer = Array.isArray(tree.props.children)
+          ? tree.props.children[0]
+          : tree.props.children;
+        const depRack = bayContainer.props.children[0];
+        const depStripList = depRack.props.children[1];
+        const firstDep = depStripList.props.children[0];
+        const secondDep = depStripList.props.children[1];
+
+        // 1. Drag start on first strip (DAL882, sourceIndex = 0)
+        firstDep.props.onDragStart(createMockDragEvent());
+
+        // 2. Drag over lower half of second strip (targetIndex = 2, i.e. move to end)
+        const fakeElement = {
+          getBoundingClientRect: () => ({ top: 0, height: 100, bottom: 100, left: 0, right: 100 }),
+        };
+        secondDep.props.onDragOver(
+          createMockDragEvent({
+            clientY: 80,
+            currentTarget: fakeElement,
+          }),
+        );
+
+        // 3. Drop
+        const dropEvent = createMockDragEvent();
+        secondDep.props.onDrop(dropEvent);
+
+        expect(dropEvent.preventDefault).toHaveBeenCalled();
+        expect(onReorderStripsMock).toHaveBeenCalledTimes(1);
+        expect(onReorderStripsMock).toHaveBeenCalledWith("departures", [mockSWA1902, mockDAL882]);
+      });
+
+      test("dropping arrival strip at targetIndex reorders arrivals and calls onReorderStrips", () => {
+        const onReorderStripsMock = vi.fn();
+        const tree = StripsBoard({
+          departures: mockDepartures,
+          arrivals: mockArrivals, // [AAL412 (0), N415SP (1)]
+          onReorderStrips: onReorderStripsMock,
+        });
+
+        const bayContainer = Array.isArray(tree.props.children)
+          ? tree.props.children[0]
+          : tree.props.children;
+        const arrRack = bayContainer.props.children[1];
+        const arrStripList = arrRack.props.children[1];
+        const firstArr = arrStripList.props.children[0];
+        const secondArr = arrStripList.props.children[1];
+
+        // Drag second arrival (N415SP, sourceIndex = 1) over top half of first arrival (targetIndex = 0)
+        secondArr.props.onDragStart(createMockDragEvent());
+
+        const fakeElement = {
+          getBoundingClientRect: () => ({ top: 0, height: 100, bottom: 100, left: 0, right: 100 }),
+        };
+        firstArr.props.onDragOver(
+          createMockDragEvent({
+            clientY: 20,
+            currentTarget: fakeElement,
+          }),
+        );
+
+        const dropEvent = createMockDragEvent();
+        firstArr.props.onDrop(dropEvent);
+
+        expect(dropEvent.preventDefault).toHaveBeenCalled();
+        expect(onReorderStripsMock).toHaveBeenCalledTimes(1);
+        expect(onReorderStripsMock).toHaveBeenCalledWith("arrivals", [mockN415SP, mockAAL412]);
+      });
+
+      test("dropping on rack-strip-list container commits reorder to end of list", () => {
+        const onReorderStripsMock = vi.fn();
+        const tree = StripsBoard({
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          onReorderStrips: onReorderStripsMock,
+        });
+
+        const bayContainer = Array.isArray(tree.props.children)
+          ? tree.props.children[0]
+          : tree.props.children;
+        const depRack = bayContainer.props.children[0];
+        const depStripList = depRack.props.children[1];
+        const firstDep = depStripList.props.children[0];
+
+        // Start drag on first strip
+        firstDep.props.onDragStart(createMockDragEvent());
+
+        // Drag over rack-strip-list container empty area
+        const containerFake = { isContainer: true };
+        const overEvent = createMockDragEvent({
+          target: containerFake,
+          currentTarget: containerFake,
+        });
+        depStripList.props.onDragOver(overEvent);
+
+        expect(overEvent.preventDefault).toHaveBeenCalled();
+        expect(overEvent.dataTransfer.dropEffect).toBe("move");
+
+        // Drop on rack-strip-list container
+        const dropEvent = createMockDragEvent();
+        depStripList.props.onDrop(dropEvent);
+
+        expect(onReorderStripsMock).toHaveBeenCalledWith("departures", [mockSWA1902, mockDAL882]);
+      });
+
+      test("renders departure strips according to departureOrder prop when provided", () => {
+        const html = renderToStaticMarkup(
+          createElement(StripsBoard, {
+            departures: mockDepartures,
+            arrivals: mockArrivals,
+            departureOrder: ["SWA1902", "DAL882"],
+          }),
+        );
+
+        const swaIndex = html.indexOf('data-strip-acid="SWA1902"');
+        const dalIndex = html.indexOf('data-strip-acid="DAL882"');
+
+        expect(swaIndex).toBeLessThan(dalIndex);
+      });
+    });
+
+    // ------------------------------------------------------------------------
+    // AC4: Cross-section drag is rejected (dropEffect = none, no indicator, no drop)
+    // ------------------------------------------------------------------------
+    describe("AC4 — Cross-section drag is rejected", () => {
+      test("dragging a departure strip over an arrival strip sets dropEffect='none' and prevents indicator", () => {
+        const tree = StripsBoard({
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+        });
+
+        const bayContainer = Array.isArray(tree.props.children)
+          ? tree.props.children[0]
+          : tree.props.children;
+        const depRack = bayContainer.props.children[0];
+        const depStripList = depRack.props.children[1];
+        const firstDep = depStripList.props.children[0];
+
+        const arrRack = bayContainer.props.children[1];
+        const arrStripList = arrRack.props.children[1];
+        const firstArr = arrStripList.props.children[0];
+
+        // Start dragging a departure strip
+        firstDep.props.onDragStart(createMockDragEvent());
+
+        // Hover over an arrival strip
+        const overEvent = createMockDragEvent({
+          clientY: 30,
+        });
+        firstArr.props.onDragOver(overEvent);
+
+        expect(overEvent.dataTransfer.dropEffect).toBe("none");
+        expect(overEvent.preventDefault).not.toHaveBeenCalled();
+      });
+
+      test("dragging a departure strip over arrivals rack-column sets dropEffect='none'", () => {
+        const tree = StripsBoard({
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+        });
+
+        const bayContainer = Array.isArray(tree.props.children)
+          ? tree.props.children[0]
+          : tree.props.children;
+        const depRack = bayContainer.props.children[0];
+        const firstDep = depRack.props.children[1].props.children[0];
+        const arrRack = bayContainer.props.children[1];
+
+        firstDep.props.onDragStart(createMockDragEvent());
+
+        const overEvent = createMockDragEvent();
+        arrRack.props.onDragOver(overEvent);
+
+        expect(overEvent.dataTransfer.dropEffect).toBe("none");
+      });
+
+      test("dropping a departure strip on arrivals rack is ignored without reordering", () => {
+        const onReorderStripsMock = vi.fn();
+        const tree = StripsBoard({
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          onReorderStrips: onReorderStripsMock,
+        });
+
+        const bayContainer = Array.isArray(tree.props.children)
+          ? tree.props.children[0]
+          : tree.props.children;
+        const depRack = bayContainer.props.children[0];
+        const firstDep = depRack.props.children[1].props.children[0];
+        const arrRack = bayContainer.props.children[1];
+        const arrStripList = arrRack.props.children[1];
+        const firstArr = arrStripList.props.children[0];
+
+        // Start drag departure
+        firstDep.props.onDragStart(createMockDragEvent());
+
+        // Attempt drop on arrivals strip
+        const dropEvent = createMockDragEvent();
+        firstArr.props.onDrop(dropEvent);
+
+        expect(onReorderStripsMock).not.toHaveBeenCalled();
+      });
+
+      test("dragging an arrival strip over departures rack sets dropEffect='none' and ignores drop", () => {
+        const onReorderStripsMock = vi.fn();
+        const tree = StripsBoard({
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          onReorderStrips: onReorderStripsMock,
+        });
+
+        const bayContainer = Array.isArray(tree.props.children)
+          ? tree.props.children[0]
+          : tree.props.children;
+        const arrRack = bayContainer.props.children[1];
+        const firstArr = arrRack.props.children[1].props.children[0];
+        const depRack = bayContainer.props.children[0];
+        const firstDep = depRack.props.children[1].props.children[0];
+
+        // Start drag arrival
+        firstArr.props.onDragStart(createMockDragEvent());
+
+        // Drag over departure strip
+        const overEvent = createMockDragEvent();
+        firstDep.props.onDragOver(overEvent);
+
+        expect(overEvent.dataTransfer.dropEffect).toBe("none");
+        expect(overEvent.preventDefault).not.toHaveBeenCalled();
+
+        // Attempt drop on departure
+        const dropEvent = createMockDragEvent();
+        firstDep.props.onDrop(dropEvent);
+
+        expect(onReorderStripsMock).not.toHaveBeenCalled();
+      });
+    });
+
+    // ------------------------------------------------------------------------
+    // AC5: While dragging, source strip applies .strip-dragging (reduced opacity)
+    // ------------------------------------------------------------------------
+    describe("AC5 — Source strip applies .strip-dragging with reduced opacity", () => {
+      test("strips.css defines .strip.strip-dragging with opacity: 0.4 and cursor: grabbing", () => {
+        expect(cssContent).toMatch(/\.strip\.strip-dragging\s*\{[^}]*opacity:\s*0\.4;/i);
+        expect(cssContent).toMatch(/\.strip\.strip-dragging\s*\{[^}]*cursor:\s*grabbing;/i);
+      });
+
+      test("applies .strip-dragging class to only the actively dragged strip", () => {
+        const html = renderToStaticMarkup(
+          createElement(StripsBoard, {
+            departures: mockDepartures,
+            arrivals: mockArrivals,
+            draggedStrip: { id: "DAL882", section: "departures", sourceIndex: 0 },
+          }),
+        );
+
+        // DAL882 should have strip-dragging
+        const dalMatch = html.match(
+          /class="[^"]*departure-strip[^"]*strip-dragging[^"]*"[^>]*data-strip-acid="DAL882"/,
+        );
+        expect(dalMatch).toBeTruthy();
+
+        // SWA1902 should NOT have strip-dragging
+        const swaMatch = html.match(
+          /class="[^"]*departure-strip[^"]*"[^>]*data-strip-acid="SWA1902"/,
+        );
+        expect(swaMatch?.[0]).not.toContain("strip-dragging");
+
+        // AAL412 should NOT have strip-dragging
+        const aalMatch = html.match(/class="[^"]*arrival-strip[^"]*"[^>]*data-strip-acid="AAL412"/);
+        expect(aalMatch?.[0]).not.toContain("strip-dragging");
+      });
+    });
+
+    // ------------------------------------------------------------------------
+    // AC6: Drag cancellation, cleanup, and state preservation
+    // ------------------------------------------------------------------------
+    describe("AC6 — Drag cancellation and state preservation", () => {
+      test("onDragLeave clearing indicator when leaving rack container", () => {
+        const tree = StripsBoard({
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          dropIndicator: { section: "departures", targetIndex: 1 },
+        });
+
+        const bayContainer = Array.isArray(tree.props.children)
+          ? tree.props.children[0]
+          : tree.props.children;
+        const depRack = bayContainer.props.children[0];
+        const depStripList = depRack.props.children[1];
+
+        // Leave event with relatedTarget outside rack
+        const leaveEvent = createMockDragEvent({
+          relatedTarget: null,
+          currentTarget: { contains: () => false },
+        });
+        depStripList.props.onDragLeave(leaveEvent);
+      });
+
+      test("onDragEnd resets drag state without mutating strip order", () => {
+        const onReorderStripsMock = vi.fn();
+        const tree = StripsBoard({
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          onReorderStrips: onReorderStripsMock,
+        });
+
+        const bayContainer = Array.isArray(tree.props.children)
+          ? tree.props.children[0]
+          : tree.props.children;
+        const depRack = bayContainer.props.children[0];
+        const firstDep = depRack.props.children[1].props.children[0];
+
+        // Start drag then cancel with onDragEnd
+        firstDep.props.onDragStart(createMockDragEvent());
+        firstDep.props.onDragEnd(createMockDragEvent());
+
+        // Order remains untouched
+        expect(onReorderStripsMock).not.toHaveBeenCalled();
+      });
+
+      test("preserves existing indentation state while dragging other strips", () => {
+        const html = renderToStaticMarkup(
+          createElement(StripsBoard, {
+            departures: mockDepartures,
+            arrivals: mockArrivals,
+            indentedStripIds: new Set(["SWA1902"]),
+            draggedStrip: { id: "DAL882", section: "departures", sourceIndex: 0 },
+            dropIndicator: { section: "departures", targetIndex: 1 },
+          }),
+        );
+
+        // DAL882 has strip-dragging
+        expect(html).toContain("DAL882");
+        expect(html).toMatch(/departure-strip[^"]*strip-dragging/);
+
+        // SWA1902 retains strip-indented
+        expect(html).toMatch(
+          /departure-strip[^"]*strip-indented[^"]*"[^>]*data-strip-acid="SWA1902"/,
+        );
+
+        // Drop indicator is rendered
+        expect(html).toContain('data-testid="strip-drop-indicator"');
+      });
+
+      test("preserves left-click selection without regressions", () => {
+        const onSelectStripMock = vi.fn();
+        const tree = StripsBoard({
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          onSelectStrip: onSelectStripMock,
+        });
+
+        const bayContainer = Array.isArray(tree.props.children)
+          ? tree.props.children[0]
+          : tree.props.children;
+        const depRack = bayContainer.props.children[0];
+        const firstDep = depRack.props.children[1].props.children[0];
+
+        firstDep.props.onSelect("DAL882");
+        expect(onSelectStripMock).toHaveBeenCalledWith(mockDAL882);
+      });
     });
   });
 });

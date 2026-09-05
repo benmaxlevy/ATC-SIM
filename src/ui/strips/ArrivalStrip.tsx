@@ -15,6 +15,12 @@ export interface ArrivalStripProps {
   className?: string;
   indented?: boolean;
   onToggleIndent?: (stripId: string) => void;
+  draggable?: boolean;
+  isDragging?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragEnd?: (e: React.DragEvent) => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
 }
 
 const LOWER_BOX_NUMBERS = [10, 11, 12, 13, 14, 15, 16, 17, 18] as const;
@@ -26,6 +32,12 @@ export function ArrivalStrip({
   className,
   indented,
   onToggleIndent,
+  draggable,
+  isDragging,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDrop,
 }: ArrivalStripProps) {
   const isIndented = indented ?? strip.indented ?? false;
   const formattedEquipment = formatEquipment(strip.rawType, strip.equipmentSuffix, {
@@ -56,9 +68,10 @@ export function ArrivalStrip({
 
   return (
     <div
-      className={`strip arrival-strip ${selected ? "strip-selected" : ""} ${isIndented ? "strip-indented" : ""} ${className ?? ""}`.trim()}
+      className={`strip arrival-strip ${selected ? "strip-selected" : ""} ${isIndented ? "strip-indented" : ""} ${isDragging ? "strip-dragging" : ""} ${className ?? ""}`.trim()}
       role="button"
       tabIndex={0}
+      draggable={draggable ?? true}
       data-strip-id={strip.id}
       data-strip-type="ARRIVAL"
       data-strip-acid={strip.acid}
@@ -67,6 +80,10 @@ export function ArrivalStrip({
       onClick={handleClick}
       onContextMenu={handleContextMenu}
       onKeyDown={handleKeyDown}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
     >
       {/* Column 1 (~22%): Identification */}
       <div className="strip-col col-ident" data-col="1">

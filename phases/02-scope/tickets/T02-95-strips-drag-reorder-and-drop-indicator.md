@@ -71,12 +71,12 @@ Tower and radar controllers organize strips vertically within each bay to establ
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Strips are draggable within their rack column using mouse drag.
-- [ ] **AC2 —** While dragging over a valid rack, a prominent `.strip-drop-indicator` line indicates the exact drop destination between strips.
-- [ ] **AC3 —** Releasing the mouse button over a valid insertion point places the dragged strip at that position.
-- [ ] **AC4 —** Strips cannot be dragged or dropped into the opposite rack (cross-section drag is rejected; no indicator is shown; order is untouched).
-- [ ] **AC5 —** While actively dragging, the source strip applies `.strip-dragging` (reduced opacity).
-- [ ] **AC6 —** Unit tests in `src/ui/strips/test/stripsBoard.test.tsx` pass 100%.
+- [x] **AC1 —** Strips are draggable within their rack column using mouse drag.
+- [x] **AC2 —** While dragging over a valid rack, a prominent `.strip-drop-indicator` line indicates the exact drop destination between strips.
+- [x] **AC3 —** Releasing the mouse button over a valid insertion point places the dragged strip at that position.
+- [x] **AC4 —** Strips cannot be dragged or dropped into the opposite rack (cross-section drag is rejected; no indicator is shown; order is untouched).
+- [x] **AC5 —** While actively dragging, the source strip applies `.strip-dragging` (reduced opacity).
+- [x] **AC6 —** Unit tests in `src/ui/strips/test/stripsBoard.test.tsx` pass 100%.
 
 ## Test plan
 

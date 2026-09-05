@@ -21,7 +21,9 @@
   user-select: none;
   cursor: pointer;
   position: relative;
-  transition: transform 0.15s ease, margin-left 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    margin-left 0.15s ease;
 }
 
 .departure-strip:hover,
@@ -50,6 +52,27 @@
   transform: translateX(28px);
   width: calc(100% - 28px);
   box-shadow: -4px 0 0 #1a1e24;
+}
+
+.strip.strip-dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.strip-dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.strip-drop-indicator {
+  height: 3px;
+  background-color: #ffff00;
+  box-shadow: 0 0 6px #ffff00;
+  border-radius: 1.5px;
+  width: 100%;
+  margin: 2px 0;
+  pointer-events: none;
+  box-sizing: border-box;
 }
 
 .strip-col {

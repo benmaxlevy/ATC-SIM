@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { World } from "@core";
 import { setSelectedAircraft } from "@core";
 import { ArrivalStrip } from "./ArrivalStrip";
@@ -8,6 +8,17 @@ import type { ArrivalStripData, DepartureStripData, FlightStrip } from "./types"
 import "./strips.css";
 
 export const DEFAULT_FACILITY_TITLE = "ATL — Flight Progress Strips";
+
+export interface DraggedStripState {
+  id: string;
+  section: "departures" | "arrivals";
+  sourceIndex: number;
+}
+
+export interface DropIndicatorState {
+  section: "departures" | "arrivals";
+  targetIndex: number;
+}
 
 /**
  * Selects an aircraft in World when it matches the given strip's callsign (ACID) or id.
@@ -83,6 +94,24 @@ export interface StripsBoardProps {
   defaultIndentedStripIds?: Set<string>;
   /** Callback fired when a strip's indentation state changes. */
   onToggleIndent?: (stripId: string, indented: boolean) => void;
+  /** Controlled ordered strip IDs for departures. */
+  departureOrder?: string[];
+  /** Initial ordered strip IDs for departures when uncontrolled. */
+  defaultDepartureOrder?: string[];
+  /** Controlled ordered strip IDs for arrivals. */
+  arrivalOrder?: string[];
+  /** Initial ordered strip IDs for arrivals when uncontrolled. */
+  defaultArrivalOrder?: string[];
+  /** Callback fired when strips within a rack section are reordered. */
+  onReorderStrips?: (section: "departures" | "arrivals", orderedStrips: FlightStrip[]) => void;
+  /** Controlled dragged strip state. */
+  draggedStrip?: DraggedStripState | null;
+  /** Initial dragged strip state when uncontrolled. */
+  defaultDraggedStrip?: DraggedStripState | null;
+  /** Controlled drop indicator state. */
+  dropIndicator?: DropIndicatorState | null;
+  /** Initial drop indicator state when uncontrolled. */
+  defaultDropIndicator?: DropIndicatorState | null;
 }
 
 function useSafeState<T>(initialValue: T | (() => T)): [T, (action: T | ((prev: T) => T)) => void] {
@@ -94,6 +123,33 @@ function useSafeState<T>(initialValue: T | (() => T)): [T, (action: T | ((prev: 
     return [val, () => {}];
   }
   return useState(initialValue);
+}
+
+function useSafeRef<T>(initialValue: T): { current: T } {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dispatcher = (React as any)?.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED
+    ?.ReactCurrentDispatcher?.current;
+  if (!dispatcher) {
+    return { current: initialValue };
+  }
+  return useRef(initialValue);
+}
+
+function applyOrder<T extends FlightStrip>(strips: T[], order: string[]): T[] {
+  if (!order || order.length === 0) return strips;
+  const stripMap = new Map(strips.map((s) => [s.id, s]));
+  const ordered: T[] = [];
+  for (const id of order) {
+    const strip = stripMap.get(id);
+    if (strip) {
+      ordered.push(strip);
+      stripMap.delete(id);
+    }
+  }
+  for (const strip of stripMap.values()) {
+    ordered.push(strip);
+  }
+  return ordered;
 }
 
 /**
@@ -116,13 +172,293 @@ export function StripsBoard({
   defaultArrivalsCollapsed,
   indentedStripIds: indentedStripIdsProp,
   defaultIndentedStripIds,
+  departureOrder: departureOrderProp,
+  defaultDepartureOrder,
+  arrivalOrder: arrivalOrderProp,
+  defaultArrivalOrder,
+  onReorderStrips,
+  draggedStrip: draggedStripProp,
+  defaultDraggedStrip,
+  dropIndicator: dropIndicatorProp,
+  defaultDropIndicator,
   onLayoutModeChange,
   onDeparturesCollapsedChange,
   onArrivalsCollapsedChange,
   onToggleIndent,
 }: StripsBoardProps) {
-  const departuresList = departures;
-  const arrivalsList = arrivals;
+  const [internalDepOrder, setInternalDepOrder] = useSafeState<string[]>(
+    () => defaultDepartureOrder ?? departures.map((d) => d.id),
+  );
+  const [internalArrOrder, setInternalArrOrder] = useSafeState<string[]>(
+    () => defaultArrivalOrder ?? arrivals.map((a) => a.id),
+  );
+
+  const [internalDraggedStrip, setInternalDraggedStrip] = useSafeState<DraggedStripState | null>(
+    defaultDraggedStrip ?? null,
+  );
+  const [internalDropIndicator, setInternalDropIndicator] = useSafeState<DropIndicatorState | null>(
+    defaultDropIndicator ?? null,
+  );
+
+  const dragRef = useSafeRef<{
+    draggedStrip: DraggedStripState | null;
+    dropIndicator: DropIndicatorState | null;
+    departureOrder: string[] | null;
+    arrivalOrder: string[] | null;
+  }>({
+    draggedStrip: defaultDraggedStrip ?? null,
+    dropIndicator: defaultDropIndicator ?? null,
+    departureOrder: defaultDepartureOrder ?? null,
+    arrivalOrder: defaultArrivalOrder ?? null,
+  });
+
+  const effectiveDepOrder =
+    departureOrderProp ?? dragRef.current.departureOrder ?? internalDepOrder;
+  const effectiveArrOrder = arrivalOrderProp ?? dragRef.current.arrivalOrder ?? internalArrOrder;
+
+  const orderedDepartures = applyOrder(departures, effectiveDepOrder);
+  const orderedArrivals = applyOrder(arrivals, effectiveArrOrder);
+
+  const draggedStrip =
+    draggedStripProp !== undefined
+      ? draggedStripProp
+      : (dragRef.current.draggedStrip ?? internalDraggedStrip);
+  const dropIndicator =
+    dropIndicatorProp !== undefined
+      ? dropIndicatorProp
+      : (dragRef.current.dropIndicator ?? internalDropIndicator);
+
+  const setDraggedStrip = (
+    next: DraggedStripState | null | ((prev: DraggedStripState | null) => DraggedStripState | null),
+  ) => {
+    const resolved = typeof next === "function" ? next(dragRef.current.draggedStrip) : next;
+    dragRef.current.draggedStrip = resolved;
+    if (draggedStripProp === undefined) {
+      setInternalDraggedStrip(resolved);
+    }
+  };
+
+  const setDropIndicator = (
+    next:
+      DropIndicatorState | null | ((prev: DropIndicatorState | null) => DropIndicatorState | null),
+  ) => {
+    const resolved = typeof next === "function" ? next(dragRef.current.dropIndicator) : next;
+    dragRef.current.dropIndicator = resolved;
+    if (dropIndicatorProp === undefined) {
+      setInternalDropIndicator(resolved);
+    }
+  };
+
+  const handleDragStart = (
+    e: React.DragEvent,
+    strip: FlightStrip,
+    section: "departures" | "arrivals",
+    index: number,
+  ) => {
+    if (e.dataTransfer) {
+      e.dataTransfer.setData?.("text/plain", strip.id);
+      e.dataTransfer.effectAllowed = "move";
+    }
+    setDraggedStrip({
+      id: strip.id,
+      section,
+      sourceIndex: index,
+    });
+  };
+
+  const handleDragOver = (
+    e: React.DragEvent,
+    section: "departures" | "arrivals",
+    hoverIndex: number,
+    targetElement?: HTMLElement,
+  ) => {
+    const currentDragged =
+      draggedStripProp !== undefined ? draggedStripProp : dragRef.current.draggedStrip;
+    if (!currentDragged || currentDragged.section !== section) {
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = "none";
+      }
+      return;
+    }
+    e.preventDefault();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = "move";
+    }
+    e.stopPropagation?.();
+
+    const el =
+      targetElement ??
+      (e.currentTarget as HTMLElement | undefined) ??
+      (e.target as HTMLElement | undefined);
+    let isUpper = true;
+
+    const customEvent = e as unknown as { isLowerHalf?: boolean; isUpperHalf?: boolean };
+    if (el && typeof el.getBoundingClientRect === "function") {
+      const rect = el.getBoundingClientRect();
+      if (rect.height > 0) {
+        const midY = rect.top + rect.height / 2;
+        isUpper = e.clientY < midY;
+      } else if (customEvent.isLowerHalf !== undefined) {
+        isUpper = !customEvent.isLowerHalf;
+      } else if (customEvent.isUpperHalf !== undefined) {
+        isUpper = !!customEvent.isUpperHalf;
+      } else if (typeof e.clientY === "number") {
+        isUpper = e.clientY < 48;
+      }
+    } else if (customEvent.isLowerHalf !== undefined) {
+      isUpper = !customEvent.isLowerHalf;
+    } else if (customEvent.isUpperHalf !== undefined) {
+      isUpper = !!customEvent.isUpperHalf;
+    } else if (typeof e.clientY === "number") {
+      isUpper = e.clientY < 48;
+    }
+
+    const targetIndex = isUpper ? hoverIndex : hoverIndex + 1;
+    setDropIndicator({ section, targetIndex });
+  };
+
+  const handleDragLeave = (e: React.DragEvent, section: "departures" | "arrivals") => {
+    const related = e.relatedTarget as Node | null;
+    const current = e.currentTarget as HTMLElement | null;
+    if (current && related && typeof current.contains === "function" && current.contains(related)) {
+      return;
+    }
+    const currentIndicator =
+      dropIndicatorProp !== undefined ? dropIndicatorProp : dragRef.current.dropIndicator;
+    if (currentIndicator?.section === section) {
+      setDropIndicator(null);
+    }
+  };
+
+  const handleDragEnd = (_e?: React.DragEvent) => {
+    setDraggedStrip(null);
+    setDropIndicator(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, section: "departures" | "arrivals") => {
+    const currentDragged =
+      draggedStripProp !== undefined ? draggedStripProp : dragRef.current.draggedStrip;
+    if (!currentDragged || currentDragged.section !== section) {
+      return;
+    }
+    e.preventDefault();
+
+    const currentIndicator =
+      dropIndicatorProp !== undefined ? dropIndicatorProp : dragRef.current.dropIndicator;
+    if (!currentIndicator || currentIndicator.section !== section) {
+      setDraggedStrip(null);
+      setDropIndicator(null);
+      return;
+    }
+
+    const sourceIndex = currentDragged.sourceIndex;
+    const targetIndex = currentIndicator.targetIndex;
+
+    if (section === "departures") {
+      const currentList = [...orderedDepartures];
+      if (sourceIndex >= 0 && sourceIndex < currentList.length) {
+        const insertIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+        const [movedStrip] = currentList.splice(sourceIndex, 1);
+        currentList.splice(insertIndex, 0, movedStrip);
+        const newOrder = currentList.map((s) => s.id);
+        dragRef.current.departureOrder = newOrder;
+        if (departureOrderProp === undefined) {
+          setInternalDepOrder(newOrder);
+        }
+        onReorderStrips?.("departures", currentList);
+      }
+    } else {
+      const currentList = [...orderedArrivals];
+      if (sourceIndex >= 0 && sourceIndex < currentList.length) {
+        const insertIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+        const [movedStrip] = currentList.splice(sourceIndex, 1);
+        currentList.splice(insertIndex, 0, movedStrip);
+        const newOrder = currentList.map((s) => s.id);
+        dragRef.current.arrivalOrder = newOrder;
+        if (arrivalOrderProp === undefined) {
+          setInternalArrOrder(newOrder);
+        }
+        onReorderStrips?.("arrivals", currentList);
+      }
+    }
+
+    setDraggedStrip(null);
+    setDropIndicator(null);
+  };
+
+  const renderStripList = (section: "departures" | "arrivals", strips: FlightStrip[]) => {
+    if (strips.length === 0) {
+      return (
+        <div className="rack-empty" data-testid={`rack-empty-${section}`}>
+          {section === "departures" ? "No departure strips" : "No arrival strips"}
+        </div>
+      );
+    }
+
+    const elements: React.ReactNode[] = [];
+    const showIndicator = dropIndicator?.section === section;
+    const targetIdx = dropIndicator?.targetIndex ?? -1;
+
+    strips.forEach((strip, index) => {
+      if (showIndicator && targetIdx === index) {
+        elements.push(
+          <div
+            className="strip-drop-indicator"
+            data-testid="strip-drop-indicator"
+            key="drop-indicator"
+          />,
+        );
+      }
+
+      if (section === "departures") {
+        const depStrip = strip as DepartureStripData;
+        elements.push(
+          <DepartureStrip
+            key={depStrip.id}
+            strip={depStrip}
+            selected={isStripSelected(depStrip)}
+            indented={indentedStripIds.has(depStrip.id)}
+            isDragging={draggedStrip?.id === depStrip.id}
+            onSelect={() => onSelectStrip?.(depStrip)}
+            onToggleIndent={handleToggleIndent}
+            onDragStart={(e) => handleDragStart(e, depStrip, "departures", index)}
+            onDragEnd={handleDragEnd}
+            onDragOver={(e) => handleDragOver(e, "departures", index)}
+            onDrop={(e) => handleDrop(e, "departures")}
+          />,
+        );
+      } else {
+        const arrStrip = strip as ArrivalStripData;
+        elements.push(
+          <ArrivalStrip
+            key={arrStrip.id}
+            strip={arrStrip}
+            selected={isStripSelected(arrStrip)}
+            indented={indentedStripIds.has(arrStrip.id)}
+            isDragging={draggedStrip?.id === arrStrip.id}
+            onSelect={() => onSelectStrip?.(arrStrip)}
+            onToggleIndent={handleToggleIndent}
+            onDragStart={(e) => handleDragStart(e, arrStrip, "arrivals", index)}
+            onDragEnd={handleDragEnd}
+            onDragOver={(e) => handleDragOver(e, "arrivals", index)}
+            onDrop={(e) => handleDrop(e, "arrivals")}
+          />,
+        );
+      }
+    });
+
+    if (showIndicator && targetIdx >= strips.length) {
+      elements.push(
+        <div
+          className="strip-drop-indicator"
+          data-testid="strip-drop-indicator"
+          key="drop-indicator"
+        />,
+      );
+    }
+
+    return elements;
+  };
 
   const [internalLayout, setInternalLayout] = useSafeState<"horizontal" | "vertical">(
     layoutModeProp ?? defaultLayout ?? "horizontal",
@@ -166,22 +502,20 @@ export function StripsBoard({
     onArrivalsCollapsedChange?.(resolved);
   };
 
-  const [internalIndentedStripIds, setInternalIndentedStripIds] = useSafeState<Set<string>>(
-    () => {
-      const initial = new Set<string>(defaultIndentedStripIds);
-      for (const dep of departures) {
-        if (dep.indented) {
-          initial.add(dep.id);
-        }
+  const [internalIndentedStripIds, setInternalIndentedStripIds] = useSafeState<Set<string>>(() => {
+    const initial = new Set<string>(defaultIndentedStripIds);
+    for (const dep of departures) {
+      if (dep.indented) {
+        initial.add(dep.id);
       }
-      for (const arr of arrivals) {
-        if (arr.indented) {
-          initial.add(arr.id);
-        }
+    }
+    for (const arr of arrivals) {
+      if (arr.indented) {
+        initial.add(arr.id);
       }
-      return initial;
-    },
-  );
+    }
+    return initial;
+  });
   const indentedStripIds = indentedStripIdsProp ?? internalIndentedStripIds;
 
   const handleToggleIndent = (stripId: string) => {
@@ -246,6 +580,15 @@ export function StripsBoard({
               setDeparturesCollapsed(false);
             }
           }}
+          onDragOver={(e) => {
+            const current =
+              draggedStripProp !== undefined ? draggedStripProp : dragRef.current.draggedStrip;
+            if (current && current.section !== "departures") {
+              if (e.dataTransfer) {
+                e.dataTransfer.dropEffect = "none";
+              }
+            }
+          }}
         >
           <div
             className="rack-header"
@@ -278,23 +621,32 @@ export function StripsBoard({
             data-testid="rack-strip-list-departures"
             role="region"
             aria-label="Departures strip list"
+            onDragOver={(e) => {
+              const current =
+                draggedStripProp !== undefined ? draggedStripProp : dragRef.current.draggedStrip;
+              if (!current || current.section !== "departures") {
+                if (e.dataTransfer) {
+                  e.dataTransfer.dropEffect = "none";
+                }
+                return;
+              }
+              if (e.target === e.currentTarget) {
+                e.preventDefault();
+                if (e.dataTransfer) {
+                  e.dataTransfer.dropEffect = "move";
+                }
+                const nextIndicator: DropIndicatorState = {
+                  section: "departures",
+                  targetIndex: orderedDepartures.length,
+                };
+                dragRef.current.dropIndicator = nextIndicator;
+                setDropIndicator(nextIndicator);
+              }
+            }}
+            onDragLeave={(e) => handleDragLeave(e, "departures")}
+            onDrop={(e) => handleDrop(e, "departures")}
           >
-            {departuresList.length === 0 ? (
-              <div className="rack-empty" data-testid="rack-empty-departures">
-                No departure strips
-              </div>
-            ) : (
-              departuresList.map((strip) => (
-                <DepartureStrip
-                  key={strip.id}
-                  strip={strip}
-                  selected={isStripSelected(strip)}
-                  indented={indentedStripIds.has(strip.id)}
-                  onSelect={() => onSelectStrip?.(strip)}
-                  onToggleIndent={handleToggleIndent}
-                />
-              ))
-            )}
+            {renderStripList("departures", orderedDepartures)}
           </div>
         </section>
 
@@ -307,6 +659,15 @@ export function StripsBoard({
           onClick={() => {
             if (arrivalsCollapsed) {
               setArrivalsCollapsed(false);
+            }
+          }}
+          onDragOver={(e) => {
+            const current =
+              draggedStripProp !== undefined ? draggedStripProp : dragRef.current.draggedStrip;
+            if (current && current.section !== "arrivals") {
+              if (e.dataTransfer) {
+                e.dataTransfer.dropEffect = "none";
+              }
             }
           }}
         >
@@ -339,23 +700,32 @@ export function StripsBoard({
             data-testid="rack-strip-list-arrivals"
             role="region"
             aria-label="Arrivals strip list"
+            onDragOver={(e) => {
+              const current =
+                draggedStripProp !== undefined ? draggedStripProp : dragRef.current.draggedStrip;
+              if (!current || current.section !== "arrivals") {
+                if (e.dataTransfer) {
+                  e.dataTransfer.dropEffect = "none";
+                }
+                return;
+              }
+              if (e.target === e.currentTarget) {
+                e.preventDefault();
+                if (e.dataTransfer) {
+                  e.dataTransfer.dropEffect = "move";
+                }
+                const nextIndicator: DropIndicatorState = {
+                  section: "arrivals",
+                  targetIndex: orderedArrivals.length,
+                };
+                dragRef.current.dropIndicator = nextIndicator;
+                setDropIndicator(nextIndicator);
+              }
+            }}
+            onDragLeave={(e) => handleDragLeave(e, "arrivals")}
+            onDrop={(e) => handleDrop(e, "arrivals")}
           >
-            {arrivalsList.length === 0 ? (
-              <div className="rack-empty" data-testid="rack-empty-arrivals">
-                No arrival strips
-              </div>
-            ) : (
-              arrivalsList.map((strip) => (
-                <ArrivalStrip
-                  key={strip.id}
-                  strip={strip}
-                  selected={isStripSelected(strip)}
-                  indented={indentedStripIds.has(strip.id)}
-                  onSelect={() => onSelectStrip?.(strip)}
-                  onToggleIndent={handleToggleIndent}
-                />
-              ))
-            )}
+            {renderStripList("arrivals", orderedArrivals)}
           </div>
         </section>
       </div>

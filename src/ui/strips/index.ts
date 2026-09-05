@@ -65,7 +65,7 @@ export {
   createStripSelectionHandler,
   selectTrackFromFlightStrip,
 } from "./StripsBoard";
-export type { StripsBoardProps } from "./StripsBoard";
+export type { DraggedStripState, DropIndicatorState, StripsBoardProps } from "./StripsBoard";
 
 // Terminal strips derived from World
 export { terminalStripsFromWorld } from "./terminalStripsFromWorld";
