@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
 // @ts-expect-error tsconfig has no @types/node
 import { readFileSync } from "node:fs";
-import { StripsBoard, reconcileOrder } from "../StripsBoard";
+import { StripsBoard, mergeStripAnnotations, reconcileOrder } from "../StripsBoard";
 import {
   mockAAL412,
   mockArrivals,
@@ -1467,6 +1467,195 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
       expect(html).toContain("strip-dragging");
       // Drop indicator line renders at targetIndex
       expect(html).toContain('data-testid="strip-drop-indicator"');
+    });
+  });
+
+  // ==========================================================================
+  // T02-101: StripsBoard Annotation State & Telemetry Persistence
+  // ==========================================================================
+  describe("AC10 — StripsBoard Annotation State & Telemetry Persistence (T02-101)", () => {
+    test("mergeStripAnnotations overrides default annotations with user entries", () => {
+      const baseStrip: DepartureStripData = {
+        ...mockDAL882,
+        annotationBoxes: {
+          box8A: "INITIAL_8A",
+          box8B: "INITIAL_8B",
+          boxes10to18: ["A", "B", "C", "", "", "", "", "", ""],
+        },
+      };
+
+      const userAnnotations = {
+        box8A: "27R",
+        boxes10to18: ["A", "UPDATED_B", "C", "NEW_13", "", "", "", "", ""],
+      };
+
+      const merged = mergeStripAnnotations(baseStrip, userAnnotations);
+      expect(merged.annotationBoxes?.box8A).toBe("27R");
+      expect(merged.annotationBoxes?.box8B).toBe("INITIAL_8B");
+      expect(merged.annotationBoxes?.boxes10to18?.[1]).toBe("UPDATED_B");
+      expect(merged.annotationBoxes?.boxes10to18?.[3]).toBe("NEW_13");
+    });
+
+    test("mergeStripAnnotations preserves empty string cleared by user", () => {
+      const baseStrip: DepartureStripData = {
+        ...mockDAL882,
+        annotationBoxes: {
+          box8A: "27L",
+          boxes10to18: ["NOTE", "", "", "", "", "", "", "", ""],
+        },
+      };
+
+      const userAnnotations = {
+        box8A: "",
+        boxes10to18: ["", "", "", "", "", "", "", "", ""],
+      };
+
+      const merged = mergeStripAnnotations(baseStrip, userAnnotations);
+      expect(merged.annotationBoxes?.box8A).toBe("");
+      expect(merged.annotationBoxes?.boxes10to18?.[0]).toBe("");
+    });
+
+    test("StripsBoard renders with controlled annotations prop", () => {
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          annotations: {
+            DAL882: {
+              box8A: "27L",
+              boxes10to18: ["HDG 270", "FL240", "", "", "", "", "", "", ""],
+            },
+          },
+        }),
+      );
+
+      expect(html).toContain("27L");
+      expect(html).toContain("HDG 270");
+      expect(html).toContain("FL240");
+    });
+
+    test("StripsBoard renders with defaultAnnotations prop", () => {
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          defaultAnnotations: {
+            AAL412: {
+              box8A: "09R",
+              box8B: "FIX-B",
+            },
+          },
+        }),
+      );
+
+      expect(html).toContain("09R");
+      expect(html).toContain("FIX-B");
+    });
+
+    test("StripsBoard passes onUpdateAnnotation to departure and arrival strips", () => {
+      const onUpdateAnnotationMock = vi.fn();
+      const tree = StripsBoard({
+        departures: mockDepartures,
+        arrivals: mockArrivals,
+        onUpdateAnnotation: onUpdateAnnotationMock,
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const departuresRack = bayContainer.props.children[0];
+      const depStripList = departuresRack.props.children[1];
+      const firstDepStripElement = depStripList.props.children[0];
+
+      expect(firstDepStripElement.props.onUpdateAnnotation).toBeDefined();
+
+      // Trigger annotation update on Box 8A
+      firstDepStripElement.props.onUpdateAnnotation("DAL882", "8A", "26R");
+
+      expect(onUpdateAnnotationMock).toHaveBeenCalledTimes(1);
+      expect(onUpdateAnnotationMock).toHaveBeenCalledWith("DAL882", "8A", "26R");
+
+      // Trigger annotation update on Box 11 (heading)
+      firstDepStripElement.props.onUpdateAnnotation("DAL882", "11", "HDG 260");
+      expect(onUpdateAnnotationMock).toHaveBeenCalledTimes(2);
+      expect(onUpdateAnnotationMock).toHaveBeenCalledWith("DAL882", "11", "HDG 260");
+    });
+
+    test("StripsBoard handles 'box8A' and 'box8B' aliases seamlessly", () => {
+      const onUpdateAnnotationMock = vi.fn();
+      const tree = StripsBoard({
+        departures: mockDepartures,
+        arrivals: mockArrivals,
+        onUpdateAnnotation: onUpdateAnnotationMock,
+      });
+
+      const bayContainer = Array.isArray(tree.props.children)
+        ? tree.props.children[0]
+        : tree.props.children;
+      const departuresRack = bayContainer.props.children[0];
+      const depStripList = departuresRack.props.children[1];
+      const firstDepStripElement = depStripList.props.children[0];
+
+      firstDepStripElement.props.onUpdateAnnotation("DAL882", "box8A", "27L");
+      expect(onUpdateAnnotationMock).toHaveBeenCalledWith("DAL882", "box8A", "27L");
+
+      firstDepStripElement.props.onUpdateAnnotation("DAL882", "box8B", "FIX-Z");
+      expect(onUpdateAnnotationMock).toHaveBeenCalledWith("DAL882", "box8B", "FIX-Z");
+    });
+
+    test("telemetry update simulation preserves controller annotations", () => {
+      // Step 1: User enters annotations into StripsBoard
+      const annotationsState = {
+        DAL882: {
+          box8A: "27L",
+          boxes10to18: ["HDG 300", "", "", "", "", "", "", "", ""],
+        },
+      };
+
+      // Step 2: Telemetry tick arrives — fresh strip data generated with NO annotations
+      const freshDeparturesFromTick: DepartureStripData[] = [
+        {
+          ...mockDAL882,
+          // Incoming strip has blank/default annotationBoxes
+          annotationBoxes: undefined,
+          // Altitude or other kinematics updated by telemetry
+          requestedAltitude: "350",
+        },
+      ];
+
+      // Step 3: Render StripsBoard with fresh telemetry + persistent annotations
+      const html = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: freshDeparturesFromTick,
+          arrivals: mockArrivals,
+          annotations: annotationsState,
+        }),
+      );
+
+      // Verify user's annotations are preserved and rendered
+      expect(html).toContain("27L");
+      expect(html).toContain("HDG 300");
+      // And updated telemetry field is rendered
+      expect(html).toContain("350");
+    });
+
+    test("removed aircraft annotations do not throw or cause errors", () => {
+      const staleAnnotations = {
+        LANDED_AIRCRAFT_999: {
+          box8A: "27L",
+          boxes10to18: ["DONE"],
+        },
+      };
+
+      expect(() => {
+        renderToStaticMarkup(
+          createElement(StripsBoard, {
+            departures: mockDepartures,
+            arrivals: mockArrivals,
+            annotations: staleAnnotations,
+          }),
+        );
+      }).not.toThrow();
     });
   });
 });

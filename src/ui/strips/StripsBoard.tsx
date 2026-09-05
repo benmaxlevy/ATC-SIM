@@ -11,10 +11,46 @@ import type {
   DepartureStripData,
   FlightStrip,
   RackStripItem,
+  StripAnnotationBoxes,
   StripSeparator as StripSeparatorModel,
 } from "./types";
 import { isStripSeparator } from "./types";
 import "./strips.css";
+
+/**
+ * Merges user-entered annotation boxes into a strip object, preserving base values
+ * when user annotations have not modified them.
+ */
+export function mergeStripAnnotations<T extends FlightStrip>(
+  strip: T,
+  userBoxes?: StripAnnotationBoxes,
+): T {
+  if (!userBoxes) return strip;
+  const baseBoxes = strip.annotationBoxes;
+
+  let mergedBoxes10to18: string[] | undefined = undefined;
+  if (userBoxes.boxes10to18 !== undefined || baseBoxes?.boxes10to18 !== undefined) {
+    mergedBoxes10to18 = Array(9).fill("");
+    for (let i = 0; i < 9; i++) {
+      const userVal = userBoxes.boxes10to18?.[i];
+      const baseVal = baseBoxes?.boxes10to18?.[i] ?? "";
+      mergedBoxes10to18[i] = userVal !== undefined ? userVal : baseVal;
+    }
+  }
+
+  const merged: StripAnnotationBoxes = {
+    ...baseBoxes,
+    ...userBoxes,
+    box8A: userBoxes.box8A !== undefined ? userBoxes.box8A : baseBoxes?.box8A,
+    box8B: userBoxes.box8B !== undefined ? userBoxes.box8B : baseBoxes?.box8B,
+    boxes10to18: mergedBoxes10to18 ?? baseBoxes?.boxes10to18,
+  };
+
+  return {
+    ...strip,
+    annotationBoxes: merged,
+  };
+}
 
 export const DEFAULT_FACILITY_TITLE = "ATL — Flight Progress Strips";
 
@@ -135,6 +171,12 @@ export interface StripsBoardProps {
   dropIndicator?: DropIndicatorState | null;
   /** Initial drop indicator state when uncontrolled. */
   defaultDropIndicator?: DropIndicatorState | null;
+  /** Controlled annotations map keyed by strip ID. */
+  annotations?: Record<string, StripAnnotationBoxes>;
+  /** Initial annotations map when uncontrolled. */
+  defaultAnnotations?: Record<string, StripAnnotationBoxes>;
+  /** Callback fired when a strip annotation box is updated. */
+  onUpdateAnnotation?: (stripId: string, boxKey: string, value: string) => void;
 }
 
 function useSafeState<T>(initialValue: T | (() => T)): [T, (action: T | ((prev: T) => T)) => void] {
@@ -279,12 +321,72 @@ export function StripsBoard({
   defaultDraggedStrip,
   dropIndicator: dropIndicatorProp,
   defaultDropIndicator,
+  annotations: annotationsProp,
+  defaultAnnotations,
+  onUpdateAnnotation,
   onLayoutModeChange,
   onDeparturesCollapsedChange,
   onArrivalsCollapsedChange,
   onToggleIndent,
 }: StripsBoardProps) {
   const seenStripIdsRef = useSafeRef<Set<string>>(new Set());
+
+  const [internalAnnotations, setInternalAnnotations] = useSafeState<
+    Record<string, StripAnnotationBoxes>
+  >(defaultAnnotations ?? {});
+
+  const annotationsRef = useSafeRef<Record<string, StripAnnotationBoxes>>(defaultAnnotations ?? {});
+
+  const annotations = annotationsProp ?? annotationsRef.current ?? internalAnnotations;
+
+  const handleUpdateAnnotation = (stripId: string, boxKey: string, value: string) => {
+    const normKey = boxKey.toUpperCase();
+    const currentMap = annotationsProp ?? annotationsRef.current ?? internalAnnotations;
+    const existing = currentMap[stripId] ?? {};
+    const currentStrip = [...departures, ...arrivals].find((s) => s.id === stripId);
+    const baseBoxes = currentStrip?.annotationBoxes;
+
+    const currentBoxes10to18 = existing.boxes10to18
+      ? [...existing.boxes10to18]
+      : baseBoxes?.boxes10to18
+        ? [...baseBoxes.boxes10to18]
+        : Array(9).fill("");
+
+    while (currentBoxes10to18.length < 9) {
+      currentBoxes10to18.push("");
+    }
+
+    const updated: StripAnnotationBoxes = {
+      ...baseBoxes,
+      ...existing,
+      box8A: existing.box8A !== undefined ? existing.box8A : baseBoxes?.box8A,
+      box8B: existing.box8B !== undefined ? existing.box8B : baseBoxes?.box8B,
+      boxes10to18: [...currentBoxes10to18],
+    };
+
+    if (normKey === "8A" || normKey === "BOX8A") {
+      updated.box8A = value;
+    } else if (normKey === "8B" || normKey === "BOX8B") {
+      updated.box8B = value;
+    } else {
+      const boxNum = parseInt(boxKey, 10);
+      if (!isNaN(boxNum) && boxNum >= 10 && boxNum <= 18) {
+        const idx = boxNum - 10;
+        updated.boxes10to18![idx] = value;
+      }
+    }
+
+    const nextAnnotations = {
+      ...currentMap,
+      [stripId]: updated,
+    };
+
+    annotationsRef.current = nextAnnotations;
+    if (annotationsProp === undefined) {
+      setInternalAnnotations(nextAnnotations);
+    }
+    onUpdateAnnotation?.(stripId, boxKey, value);
+  };
 
   const [internalSeparators, setInternalSeparators] = useSafeState<StripSeparatorModel[]>(
     defaultSeparators ?? [],
@@ -355,11 +457,16 @@ export function StripsBoard({
     separators.filter((s) => s.section === "arrivals").map((s) => s.id),
   );
 
+  const departuresWithAnnotations = departures.map((d) =>
+    mergeStripAnnotations(d, annotations[d.id]),
+  );
+  const arrivalsWithAnnotations = arrivals.map((a) => mergeStripAnnotations(a, annotations[a.id]));
+
   const rawDepOrder = departureOrderProp ?? dragRef.current.departureOrder ?? internalDepOrder;
   const effectiveDepOrder =
     departureOrderProp !== undefined
       ? departureOrderProp
-      : reconcileOrder(departures, rawDepOrder, depSeparatorIds);
+      : reconcileOrder(departuresWithAnnotations, rawDepOrder, depSeparatorIds);
 
   if (departureOrderProp === undefined) {
     dragRef.current.departureOrder = effectiveDepOrder;
@@ -372,7 +479,7 @@ export function StripsBoard({
   const effectiveArrOrder =
     arrivalOrderProp !== undefined
       ? arrivalOrderProp
-      : reconcileOrder(arrivals, rawArrOrder, arrSeparatorIds);
+      : reconcileOrder(arrivalsWithAnnotations, rawArrOrder, arrSeparatorIds);
 
   if (arrivalOrderProp === undefined) {
     dragRef.current.arrivalOrder = effectiveArrOrder;
@@ -381,8 +488,18 @@ export function StripsBoard({
     }
   }
 
-  const orderedDepartures = applyRackOrder(departures, separators, "departures", effectiveDepOrder);
-  const orderedArrivals = applyRackOrder(arrivals, separators, "arrivals", effectiveArrOrder);
+  const orderedDepartures = applyRackOrder(
+    departuresWithAnnotations,
+    separators,
+    "departures",
+    effectiveDepOrder,
+  );
+  const orderedArrivals = applyRackOrder(
+    arrivalsWithAnnotations,
+    separators,
+    "arrivals",
+    effectiveArrOrder,
+  );
 
   const draggedStrip =
     draggedStripProp !== undefined
@@ -713,6 +830,7 @@ export function StripsBoard({
             onDragEnd={handleDragEnd}
             onDragOver={(e) => handleDragOver(e, "departures", index)}
             onDrop={(e) => handleDrop(e, "departures")}
+            onUpdateAnnotation={handleUpdateAnnotation}
           />,
         );
       } else {
@@ -730,6 +848,7 @@ export function StripsBoard({
             onDragEnd={handleDragEnd}
             onDragOver={(e) => handleDragOver(e, "arrivals", index)}
             onDrop={(e) => handleDrop(e, "arrivals")}
+            onUpdateAnnotation={handleUpdateAnnotation}
           />,
         );
       }

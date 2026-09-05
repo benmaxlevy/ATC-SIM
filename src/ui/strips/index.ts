@@ -17,6 +17,7 @@ export type { FlightStripView, FlightStripsProps } from "./FlightStrips";
 
 // Domain models & types
 export type {
+  AnnotationBoxKey,
   ArrivalStripData,
   BaseStripData,
   CWTCategory,
@@ -70,6 +71,7 @@ export {
   DEFAULT_FACILITY_TITLE,
   StripsBoard,
   createStripSelectionHandler,
+  mergeStripAnnotations,
   reconcileOrder,
   selectTrackFromFlightStrip,
 } from "./StripsBoard";

@@ -1322,4 +1322,249 @@ describe("T02-96 Flight Progress Strips Reordering and Indentation Integration a
       expect(world.selectedAircraftId).toBe("DAL882");
     });
   });
+
+  // ==========================================================================
+  // T02-102: Strips Freeform Box Annotations Acceptance Suite (AC13–AC16)
+  // ==========================================================================
+  describe("T02-102 — Strips Freeform Box Annotations Acceptance Suite (AC13–AC16)", () => {
+    // ------------------------------------------------------------------------
+    // AC13: Double-Click Inline Annotation
+    // ------------------------------------------------------------------------
+    test("AC13: Double-clicking an annotation cell enters edit mode, mounts input, and commits on Enter", () => {
+      const onUpdateMock = vi.fn();
+      const onEditBoxChangeMock = vi.fn();
+
+      const tree = DepartureStrip({
+        strip: mockDAL882,
+        onUpdateAnnotation: onUpdateMock,
+        onEditingBoxChange: onEditBoxChangeMock,
+      });
+
+      // 1. Double click Box 8A
+      const col3 = tree.props.children[2];
+      const box8a = col3.props.children[1];
+      const fakeDblClick = {
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as React.MouseEvent;
+
+      box8a.props.onDoubleClick(fakeDblClick);
+      expect(fakeDblClick.preventDefault).toHaveBeenCalledTimes(1);
+      expect(fakeDblClick.stopPropagation).toHaveBeenCalledTimes(1);
+      expect(onEditBoxChangeMock).toHaveBeenCalledWith("8A");
+
+      // 2. Render in editing mode
+      const editingTree = DepartureStrip({
+        strip: mockDAL882,
+        editingBox: "8A",
+        onUpdateAnnotation: onUpdateMock,
+        onEditingBoxChange: onEditBoxChangeMock,
+      });
+
+      const editingCol3 = editingTree.props.children[2];
+      const editingBox8a = editingCol3.props.children[1];
+      const input = editingBox8a.props.children;
+
+      expect(input.props.className).toBe("strip-annotation-input");
+      expect(input.props["data-testid"]).toBe("annotation-input-8A");
+
+      // 3. Commit on Enter
+      const fakeEnter = {
+        key: "Enter",
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as React.KeyboardEvent<HTMLInputElement>;
+
+      input.props.onKeyDown(fakeEnter);
+      expect(onUpdateMock).toHaveBeenCalledWith("DAL882", "8A", expect.any(String));
+      expect(onEditBoxChangeMock).toHaveBeenCalledWith(null);
+
+      // 4. Render committed state
+      const committedHtml = renderToStaticMarkup(
+        createElement(DepartureStrip, {
+          strip: {
+            ...mockDAL882,
+            annotationBoxes: { box8A: "27R" },
+          },
+        }),
+      );
+      expect(committedHtml).toContain("27R");
+      expect(committedHtml).toContain("strip-annotation-8a");
+    });
+
+    // ------------------------------------------------------------------------
+    // AC14: Multi-Box Coordination
+    // ------------------------------------------------------------------------
+    test("AC14: Allows annotating multiple distinct cells (8A, 11, 12, 16) on the same strip", () => {
+      // Annotate runway (8A), vector heading (Box 11), interim altitude (Box 12), and speed (Box 16)
+      const stripWithCoordination: DepartureStripData = {
+        ...mockDAL882,
+        annotationBoxes: {
+          box8A: "27L",
+          box8B: "FIX-A",
+          boxes10to18: [
+            "", // Box 10
+            "HDG 260", // Box 11
+            "FL240", // Box 12
+            "", // Box 13
+            "", // Box 14
+            "", // Box 15
+            "250KT", // Box 16
+            "", // Box 17
+            "", // Box 18
+          ],
+        },
+      };
+
+      const html = renderToStaticMarkup(
+        createElement(DepartureStrip, { strip: stripWithCoordination }),
+      );
+
+      // Verify all annotations are present simultaneously
+      expect(html).toContain("27L");
+      expect(html).toContain("FIX-A");
+      expect(html).toContain("HDG 260");
+      expect(html).toContain("FL240");
+      expect(html).toContain("250KT");
+
+      // Verify authentic CSS styling rules for annotations
+      expect(stripsCss).toContain(".strip-annotation-input");
+      expect(stripsCss).toContain("color: #000000;");
+      expect(stripsCss).toContain("background-color: #f5eedc;");
+      expect(stripsCss).toContain(".annotation-cell");
+      expect(stripsCss).toContain("cursor: text;");
+    });
+
+    // ------------------------------------------------------------------------
+    // AC15: Telemetry Persistence Across Simulation Ticks
+    // ------------------------------------------------------------------------
+    test("AC15: Controller annotations are seamlessly preserved across live simulation ticks from terminalStripsFromWorld", () => {
+      // 1. Initial simulation world with DAL882
+      const acDal = createAircraft({
+        id: "DAL882",
+        callsign: "DAL882",
+        xNm: -5,
+        yNm: 10,
+        headingDeg: 270,
+        altitudeFt: 5000,
+        speedKt: 210,
+      });
+      acDal.intent.vertical = { type: "VIA_SID", sidId: "PLIER2" };
+
+      const world = createWorld({ aircraft: [acDal] });
+      const initialStrips = terminalStripsFromWorld(world);
+      expect(initialStrips.departures.length).toBe(1);
+
+      // 2. Controller enters annotations on DAL882 in StripsBoard
+      const controllerAnnotations = {
+        DAL882: {
+          box8A: "27L",
+          boxes10to18: ["", "HDG 270", "FL180", "", "", "", "", "", ""],
+        },
+      };
+
+      // 3. Telemetry ticks occur: DAL882 climbs to 12000ft and accelerates to 250kt
+      acDal.altitudeFt = 12000;
+      acDal.speedKt = 250;
+      acDal.xNm = -15;
+
+      // Telemetry generates fresh strips from world without user annotations
+      const tickStrips = terminalStripsFromWorld(world);
+      expect(tickStrips.departures[0].annotationBoxes?.boxes10to18?.[1]).toBe("");
+
+      // 4. Render StripsBoard with fresh telemetry strips and controller annotations
+      const boardHtml = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: tickStrips.departures,
+          arrivals: tickStrips.arrivals,
+          annotations: controllerAnnotations,
+        }),
+      );
+
+      // User-entered annotations persist intact
+      expect(boardHtml).toContain("27L");
+      expect(boardHtml).toContain("HDG 270");
+      expect(boardHtml).toContain("FL180");
+      // Strip identification persists
+      expect(boardHtml).toContain("DAL882");
+    });
+
+    // ------------------------------------------------------------------------
+    // AC16: Interaction Isolation & No Regressions
+    // ------------------------------------------------------------------------
+    test("AC16: Annotation clicks do NOT select aircraft track; strip body click selects track; right-click cocks strip; separators and reordering intact", () => {
+      const acDal = createAircraft({
+        id: "DAL882",
+        callsign: "DAL882",
+        xNm: 0,
+        yNm: 0,
+        altitudeFt: 5000,
+        headingDeg: 270,
+        speedKt: 210,
+      });
+      const world = createWorld({ aircraft: [acDal] });
+
+      const onSelectMock = vi.fn();
+      const onToggleIndentMock = vi.fn();
+
+      const tree = DepartureStrip({
+        strip: mockDAL882,
+        onSelect: onSelectMock,
+        onToggleIndent: onToggleIndentMock,
+      });
+
+      // 1. Clicking an annotation cell stops propagation and does NOT select track
+      const col3 = tree.props.children[2];
+      const box8a = col3.props.children[1];
+      const fakeCellClick = { stopPropagation: vi.fn() } as unknown as React.MouseEvent;
+
+      box8a.props.onClick(fakeCellClick);
+      expect(fakeCellClick.stopPropagation).toHaveBeenCalledTimes(1);
+      expect(onSelectMock).not.toHaveBeenCalled();
+      expect(world.selectedAircraftId).toBeNull();
+
+      // 2. Clicking the strip element outside annotation cells selects track in World
+      const handleSelect = createStripSelectionHandler(world, onSelectMock);
+      handleSelect(mockDAL882);
+
+      expect(onSelectMock).toHaveBeenCalledWith(mockDAL882);
+      expect(world.selectedAircraftId).toBe("DAL882");
+
+      // 3. Right-clicking the strip toggles cocking/indentation
+      const fakeRightClick = {
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as React.MouseEvent;
+
+      tree.props.onContextMenu(fakeRightClick);
+      expect(fakeRightClick.preventDefault).toHaveBeenCalledTimes(1);
+      expect(onToggleIndentMock).toHaveBeenCalledWith("DAL882");
+
+      // 4. Render cocked/indented strip with .strip-indented (~28px horizontal offset)
+      const indentedHtml = renderToStaticMarkup(
+        createElement(DepartureStrip, { strip: mockDAL882, indented: true }),
+      );
+      expect(indentedHtml).toContain("strip-indented");
+      expect(stripsCss).toContain(".strip-indented");
+      expect(stripsCss).toContain("transform: translateX(28px);");
+
+      // 5. Separator creation and reordering remain fully functional
+      const boardHtml = renderToStaticMarkup(
+        createElement(StripsBoard, {
+          departures: mockDepartures,
+          arrivals: mockArrivals,
+          separators: [
+            {
+              id: "sep-1",
+              stripType: "SEPARATOR",
+              label: "RWY 27L DEPARTURES",
+              section: "departures",
+            },
+          ],
+        }),
+      );
+      expect(boardHtml).toContain("RWY 27L DEPARTURES");
+      expect(boardHtml).toContain('data-testid="strip-separator-sep-1"');
+    });
+  });
 });

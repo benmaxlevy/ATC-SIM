@@ -347,6 +347,65 @@
 }
 
 /* ==========================================================================
+   Strip Freeform Box Annotations (T02-100, T02-101, T02-102)
+   ========================================================================== */
+
+.annotation-cell,
+.matrix-cell,
+.box-8a,
+.box-8b,
+.cell.box-8a,
+.cell.box-8b {
+  cursor: text;
+  position: relative;
+  transition: background-color 0.1s ease;
+}
+
+.annotation-cell:hover,
+.matrix-cell:hover,
+.box-8a:hover,
+.box-8b:hover,
+.cell.box-8a:hover,
+.cell.box-8b:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.cell.box-8a:has(.strip-annotation-input),
+.cell.box-8b:has(.strip-annotation-input) {
+  padding: 0;
+}
+
+.strip-annotation-input {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  background-color: #f5eedc;
+  color: #000000;
+  font-family: Consolas, "IBM Plex Mono", "Courier New", monospace;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 0 2px;
+  border: 1px solid #000000;
+  outline: none;
+  border-radius: 1px;
+}
+
+.strip-annotation-input:focus {
+  border-color: #000000;
+  box-shadow: inset 0 0 0 1px #000000;
+}
+
+.strip-annotation-lower,
+.strip-annotation-8a,
+.strip-annotation-8b {
+  color: #000000;
+  font-weight: 700;
+}
+
+/* ==========================================================================
    StripsBoard & Two-Column Rack Bay Layout (T02-92)
    ========================================================================== */
 

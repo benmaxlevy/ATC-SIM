@@ -16,6 +16,9 @@ export interface StripAnnotationBoxes {
   boxes10to18?: string[];
 }
 
+export type AnnotationBoxKey =
+  "8A" | "8B" | "10" | "11" | "12" | "13" | "14" | "15" | "16" | "17" | "18";
+
 export interface BaseStripData {
   /** Unique strip identifier. */
   id: string;
