@@ -69,8 +69,8 @@ Separators act as full-width divider items within the strip list:
   - Style `.strip-separator`:
     - Full width matching strip rack dimensions (`max-width: 840px`).
     - Compact divider height (~36px–40px) or strip height.
-    - Dark slate background (`#21262d` or `#2b313c`) with distinct border (`#484f58`).
-    - Colored left accent bar or border (e.g. `#58a6ff`, `#00ff00`, or `#e5a93c`).
+    - Authentic dark charcoal matte plastic divider styling (`#22252a`) with subtle beveled borders (`#3a3f47`, `#4e5560`).
+    - Full-width clean divider without blue lines.
     - Uppercase bold monospace font (`"IBM Plex Mono"`, `Consolas`, monospace).
   - Style `.strip-separator-input`:
     - Transparent or dark background, high-contrast text (`#ffffff`), no awkward default borders, uppercase typing.

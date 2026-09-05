@@ -106,8 +106,9 @@ describe("T02-97 Strip Separator Component and Direct Text Editing", () => {
     test("defines .strip-separator with compact height 38px and distinct styling", () => {
       expect(cssContent).toContain(".strip-separator");
       expect(cssContent).toContain("height: 38px;");
-      expect(cssContent).toContain("background-color: #1f242d;");
-      expect(cssContent).toContain("border-left: 4px solid #58a6ff;");
+      expect(cssContent).toContain("background-color: #22252a;");
+      expect(cssContent).toContain("border: 1px solid #3a3f47;");
+      expect(cssContent).not.toContain("#58a6ff");
     });
 
     test("defines .strip-separator-input for direct in-place editing", () => {
