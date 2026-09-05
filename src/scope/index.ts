@@ -758,6 +758,7 @@ export type { CharSizeChannel, CharSizePx, CharSizes, DcbCharSizePx, PosSizePx }
 export { buildSystemListLines, formatListEntry, rewriteFixForList } from "./listFormatter";
 export type { ListFormatter } from "./listFormatter";
 export {
+  DEFAULT_ADAPTATION_ANCHORS,
   DEFAULT_COAST_ENTRIES,
   DEFAULT_CRDA_CONFIGS,
   DEFAULT_SYSTEM_LIST_PLACEMENTS,
@@ -770,14 +771,19 @@ export {
   buildTowerArrivalList,
   buildVfrList,
   cancelListDrag,
+  canonicalSystemListId,
+  commitListDrag,
   findOverlappingLists,
   handleListMiddleClick,
   handleListMouseMove,
+  handleListTitleDragStart,
+  hitTestSystemListTitle,
   idleListDragState,
   normalizedClickAnchor,
   pointInsideRect,
   rectsOverlap,
   relocateSystemList,
+  resetSystemListToDefault,
   setAllSystemListsVisible,
   setSystemListMaxLines,
   toggleAllSystemLists,

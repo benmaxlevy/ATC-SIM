@@ -7,14 +7,23 @@ import {
 } from "../listFormatter";
 import {
   cancelListDrag,
+  canonicalSystemListId,
+  commitListDrag,
+  DEFAULT_ADAPTATION_ANCHORS,
   findOverlappingLists,
   handleListMiddleClick,
   handleListMouseMove,
+  handleListTitleDragStart,
+  hitTestSystemListTitle,
   idleListDragState,
   pointInsideRect,
   rectsOverlap,
+  relocateSystemList,
+  resetSystemListToDefault,
   type ListRect,
 } from "../systemLists";
+import { createScopeView } from "../scopeView";
+import { applyDcbPref, serializeDcbPref } from "../dcb/dcbPref";
 
 describe("listFormatter", () => {
   it("compresses and pads fix names to 3 characters", () => {
@@ -126,4 +135,105 @@ describe("systemLists window manager", () => {
     state = cancelListDrag(state);
     expect(state.movingListId).toBeNull();
   });
+
+  it("canonicalizes list IDs and preserves adaptation defaults", () => {
+    expect(canonicalSystemListId("FL")).toBe("FL");
+    expect(canonicalSystemListId("TAB")).toBe("FL");
+    expect(canonicalSystemListId("T")).toBe("FL");
+    expect(canonicalSystemListId("TL")).toBe("TL");
+    expect(canonicalSystemListId("TOWER_1")).toBe("TL");
+    expect(canonicalSystemListId("P1")).toBe("TL");
+    expect(canonicalSystemListId("VL")).toBe("VL");
+    expect(canonicalSystemListId("VFR")).toBe("VL");
+    expect(canonicalSystemListId("TV")).toBe("VL");
+    expect(canonicalSystemListId("ML")).toBe("ML");
+    expect(canonicalSystemListId("MAPS")).toBe("ML");
+    expect(canonicalSystemListId("TX")).toBe("ML");
+    expect(canonicalSystemListId("AL")).toBe("AL");
+    expect(canonicalSystemListId("ALERT")).toBe("AL");
+    expect(canonicalSystemListId("TM")).toBe("AL");
+    expect(canonicalSystemListId("SO")).toBe("SIGN_ON");
+    expect(canonicalSystemListId("CS")).toBe("COAST");
+    expect(canonicalSystemListId("CR")).toBe("CRDA");
+
+    expect(DEFAULT_ADAPTATION_ANCHORS.FL).toEqual({ x: 0.02, y: 0.4, maxLines: 10 });
+    expect(DEFAULT_ADAPTATION_ANCHORS.TL).toEqual({ x: 0.75, y: 0.02, maxLines: 10 });
+    expect(DEFAULT_ADAPTATION_ANCHORS.VL).toEqual({ x: 0.02, y: 0.7, maxLines: 10 });
+    expect(DEFAULT_ADAPTATION_ANCHORS.ML).toEqual({ x: 0.25, y: 0.02, maxLines: 20 });
+    expect(DEFAULT_ADAPTATION_ANCHORS.AL).toEqual({ x: 0.75, y: 0.7, maxLines: 50 });
+  });
+
+  it("resets a moved system list back to its adaptation default coordinates", () => {
+    const view = createScopeView();
+    relocateSystemList(view, "FL", 0.88, 0.88);
+    expect(view.systemLists.FL.x).toBe(0.88);
+    expect(view.systemLists.FL.y).toBe(0.88);
+
+    const resetOk = resetSystemListToDefault(view, "FL");
+    expect(resetOk).toBe(true);
+    expect(view.systemLists.FL.x).toBe(DEFAULT_ADAPTATION_ANCHORS.FL.x);
+    expect(view.systemLists.FL.y).toBe(DEFAULT_ADAPTATION_ANCHORS.FL.y);
+    expect(view.systemLists.TAB.x).toBe(DEFAULT_ADAPTATION_ANCHORS.FL.x);
+  });
+
+  it("handles title header drag initiation and commit", () => {
+    let state = idleListDragState();
+    const lists = [
+      { id: "FL", bounds: { x: 50, y: 100, width: 200, height: 120 } },
+      { id: "TL", bounds: { x: 400, y: 100, width: 200, height: 120 } },
+    ];
+    const paneExtent = { width: 1000, height: 800 };
+
+    // Click outside title header (e.g. at y = 140, while header is top 16px [100..116])
+    const miss = hitTestSystemListTitle({ x: 70, y: 140 }, lists, 16);
+    expect(miss).toBeNull();
+
+    // Click inside title header (y = 105)
+    const hit = hitTestSystemListTitle({ x: 70, y: 105 }, lists, 16);
+    expect(hit).toBe("FL");
+
+    const startRes = handleListTitleDragStart(state, { x: 70, y: 105 }, lists, 16);
+    expect(startRes.started).toBe(true);
+    state = startRes.nextState;
+    expect(state.movingListId).toBe("FL");
+    expect(state.movingOffset).toEqual({ x: 20, y: 5 });
+
+    // Move to new point
+    state = handleListMouseMove(state, { x: 250, y: 300 });
+
+    // Commit drag
+    const commitRes = commitListDrag(state, { x: 250, y: 300 }, paneExtent);
+    expect(commitRes.nextState.movingListId).toBeNull();
+    expect(commitRes.updatedPlacement).toEqual({
+      id: "FL",
+      x: (250 - 20) / 1000, // 0.23
+      y: (300 - 5) / 800,  // 0.36875
+    });
+  });
+
+  it("persists and restores system list state across DCB PREF snapshots", () => {
+    const view1 = createScopeView();
+    view1.systemLists.FL.visible = true;
+    view1.systemLists.FL.maxLines = 25;
+    relocateSystemList(view1, "FL", 0.33, 0.44);
+
+    const serialized = serializeDcbPref(view1);
+    expect(serialized.systemLists).toBeDefined();
+    expect(serialized.systemLists?.FL?.visible).toBe(true);
+    expect(serialized.systemLists?.FL?.x).toBe(0.33);
+    expect(serialized.systemLists?.FL?.y).toBe(0.44);
+    expect(serialized.systemLists?.FL?.maxLines).toBe(25);
+
+    const view2 = createScopeView();
+    expect(view2.systemLists.FL.visible).toBe(false);
+    expect(view2.systemLists.FL.maxLines).toBe(10);
+
+    applyDcbPref(view2, serialized);
+    expect(view2.systemLists.FL.visible).toBe(true);
+    expect(view2.systemLists.FL.x).toBe(0.33);
+    expect(view2.systemLists.FL.y).toBe(0.44);
+    expect(view2.systemLists.FL.maxLines).toBe(25);
+    expect(view2.systemLists.TAB.visible).toBe(true);
+  });
 });
+

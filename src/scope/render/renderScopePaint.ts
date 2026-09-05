@@ -87,6 +87,7 @@ import {
   buildTabFlightPlanList,
   buildTowerArrivalList,
   buildVfrList,
+  canonicalSystemListId,
   findOverlappingLists,
   type ListRect,
 } from "../systemLists";
@@ -1248,24 +1249,31 @@ export function drawSystemLists(
 
   const activeRects: { id: string; bounds: ListRect }[] = [];
   const airportId = world.catalog?.airportId ?? "KDEM";
+  const seenCanonical = new Set<string>();
 
   for (const [id, placement] of Object.entries(view.systemLists)) {
-    if (!placement.visible && id !== "ALERT") {
+    const canonical = canonicalSystemListId(id);
+    if (seenCanonical.has(canonical) && !id.startsWith("TL_")) {
+      continue;
+    }
+    seenCanonical.add(canonical);
+
+    if (!placement.visible && canonical !== "ALERT" && canonical !== "AL") {
       continue;
     }
 
     let lines: string[] = [];
-    switch (id) {
+    switch (canonical) {
       case "SIGN_ON":
         lines = buildSignOnList();
         break;
-      case "TAB":
+      case "FL":
         lines = buildTabFlightPlanList(world, placement.maxLines);
         break;
-      case "VFR":
+      case "VL":
         lines = buildVfrList(world, placement.maxLines);
         break;
-      case "TOWER_1":
+      case "TL":
         lines = buildTowerArrivalList(
           world,
           view.towerAirports?.[0] ?? airportId,
@@ -1292,7 +1300,7 @@ export function drawSystemLists(
           placement.maxLines,
         );
         break;
-      case "ALERT":
+      case "AL":
         lines = buildAlertList(world, placement.maxLines);
         break;
       case "COAST":
@@ -1301,10 +1309,14 @@ export function drawSystemLists(
       case "CRDA":
         lines = buildCrdaStatusList(view.crdaRpcConfigs, placement.maxLines, airportId);
         break;
-      case "MAPS":
+      case "ML":
         lines = buildVideoMapsListLines(view, "ALL", placement.maxLines);
         break;
       default:
+        if (id.startsWith("TL_")) {
+          const satId = id.slice(3);
+          lines = buildTowerArrivalList(world, satId, 0, 0, placement.maxLines);
+        }
         break;
     }
 
@@ -1340,6 +1352,8 @@ export function drawSystemLists(
       ctx.fillText(`[${placement.frameTitle}]`, x, y - lineH);
     }
   }
+
+  view.activeListRects = activeRects;
 
   // Check and draw overlapping warning boxes
   const overlapping = findOverlappingLists(activeRects);

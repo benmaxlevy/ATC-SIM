@@ -104,9 +104,11 @@ import { cloneWxLevels, emptyWxMosaic, type WxLevels, type WxMosaic } from "./wx
 
 import {
   DEFAULT_SYSTEM_LIST_PLACEMENTS,
+  cloneSystemListPlacements,
   idleListDragState,
   type CrdaRpcConfig,
   type ListDragState,
+  type ListRect,
   type SystemListPlacement,
 } from "./systemLists";
 
@@ -250,6 +252,8 @@ export interface ScopeView {
   crdaRpcConfigs?: CrdaRpcConfig[];
   /** In-scope system list active middle-click drag state. */
   listDrag: ListDragState;
+  /** Active system list pixel bounding rectangles from the latest render frame. */
+  activeListRects?: { id: string; bounds: ListRect }[];
   /**
    * DCB PREF runtime (T02-29). Eight named local display snapshots.
    * Analog CRC PREF; trainer localStorage, not a NAS preference host.
@@ -423,7 +427,7 @@ export function createScopeView(
     primaryAltimeter: options?.primaryAltimeter ?? SSA_ALTIMETER_STUB,
     airportAltimeters: options?.airportAltimeters ? [...options.airportAltimeters] : [],
     ssaWeatherAirports: options?.ssaWeatherAirports ? [...options.ssaWeatherAirports] : undefined,
-    systemLists: { ...DEFAULT_SYSTEM_LIST_PLACEMENTS },
+    systemLists: cloneSystemListPlacements(),
     listDrag: idleListDragState(),
     dcbPref: emptyDcbPrefRuntime(),
     sectorId: "D",

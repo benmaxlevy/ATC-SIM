@@ -115,9 +115,12 @@ import {
 } from "./trackDisplay";
 import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock, type LeaderLengthPx } from "./leader";
 import { resolveScopeFlid } from "./previewArea";
-import { applyHandoffToSelection } from "./ownership";
-import { setSystemListMaxLines, toggleSystemList } from "./systemLists";
-import type { HistoryDotCount } from "./history";
+import {
+  cancelListDrag,
+  resetSystemListToDefault,
+  setSystemListMaxLines,
+  toggleSystemList,
+} from "./systemLists";
 
 export const ALWAYS_ON_SCOPE_KEYS = [
   "PageUp",
@@ -294,6 +297,11 @@ function applyPreviewArmedAction(
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;
       armPreviewRelocateList(view.preview, action.listId, nowMs);
+      return;
+    case "resetListPosition":
+      resetSystemListToDefault(view, action.listId);
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
       return;
     case "armRecenterScope":
       if (!view.placeCenterArmed) {
@@ -649,6 +657,12 @@ export function handleScopeKeyDown(
         }
         return true;
       }
+    }
+    if (event.key === "Escape" && view.listDrag?.movingListId) {
+      consume(event);
+      view.listDrag = cancelListDrag(view.listDrag);
+      ui?.onHandled?.();
+      return true;
     }
     if (event.key === "Escape" && view.starsChordArmed) {
       consume(event);

@@ -45,6 +45,25 @@ export function idleListDragState(): ListDragState {
   };
 }
 
+export const DEFAULT_ADAPTATION_ANCHORS: Readonly<
+  Record<string, { x: number; y: number; maxLines: number }>
+> = {
+  FL: { x: 0.02, y: 0.4, maxLines: 10 },
+  TL: { x: 0.75, y: 0.02, maxLines: 10 },
+  VL: { x: 0.02, y: 0.7, maxLines: 10 },
+  ML: { x: 0.25, y: 0.02, maxLines: 20 },
+  AL: { x: 0.75, y: 0.7, maxLines: 50 },
+  SSA: { x: 0.02, y: 0.02, maxLines: 15 },
+  PREVIEW: { x: 0.02, y: 0.28, maxLines: 10 },
+  SIGN_ON: { x: 0.02, y: 0.22, maxLines: 10 },
+  COAST: { x: 0.4, y: 0.75, maxLines: 10 },
+  CRDA: { x: 0.4, y: 0.02, maxLines: 10 },
+  COORD: { x: 0.5, y: 0.02, maxLines: 10 },
+  TOWER_1: { x: 0.75, y: 0.02, maxLines: 10 },
+  TOWER_2: { x: 0.75, y: 0.25, maxLines: 10 },
+  TOWER_3: { x: 0.75, y: 0.48, maxLines: 10 },
+};
+
 export const DEFAULT_SYSTEM_LIST_PLACEMENTS: Record<string, SystemListPlacement> = {
   SSA: {
     id: "SSA",
@@ -70,25 +89,25 @@ export const DEFAULT_SYSTEM_LIST_PLACEMENTS: Record<string, SystemListPlacement>
     visible: true,
     maxLines: 10,
   },
-  TAB: {
-    id: "TAB",
-    frameTitle: "FLIGHT PLAN (T)",
+  FL: {
+    id: "FL",
+    frameTitle: "FLIGHT PLAN (FL)",
     x: 0.02,
-    y: 0.45,
+    y: 0.4,
     visible: false,
     maxLines: 10,
   },
-  VFR: {
-    id: "VFR",
-    frameTitle: "VFR LIST (TV)",
+  VL: {
+    id: "VL",
+    frameTitle: "VFR LIST (VL)",
     x: 0.02,
     y: 0.7,
     visible: false,
     maxLines: 10,
   },
-  TOWER_1: {
-    id: "TOWER_1",
-    frameTitle: "TOWER 1 (P1)",
+  TL: {
+    id: "TL",
+    frameTitle: "TOWER (TL)",
     x: 0.75,
     y: 0.02,
     visible: false,
@@ -110,9 +129,9 @@ export const DEFAULT_SYSTEM_LIST_PLACEMENTS: Record<string, SystemListPlacement>
     visible: false,
     maxLines: 10,
   },
-  ALERT: {
-    id: "ALERT",
-    frameTitle: "LA/CA/MCI (TM)",
+  AL: {
+    id: "AL",
+    frameTitle: "LA/CA/MCI (AL)",
     x: 0.75,
     y: 0.7,
     visible: true,
@@ -142,9 +161,9 @@ export const DEFAULT_SYSTEM_LIST_PLACEMENTS: Record<string, SystemListPlacement>
     visible: false,
     maxLines: 10,
   },
-  MAPS: {
-    id: "MAPS",
-    frameTitle: "GEOGRAPHIC MAPS (TX)",
+  ML: {
+    id: "ML",
+    frameTitle: "VIDEO MAPS (ML)",
     x: 0.25,
     y: 0.02,
     visible: false,
@@ -152,32 +171,136 @@ export const DEFAULT_SYSTEM_LIST_PLACEMENTS: Record<string, SystemListPlacement>
   },
 };
 
-function cloneSystemListPlacements(): Record<string, SystemListPlacement> {
+// Aliases mapped to the same placement instances for backward compatibility
+DEFAULT_SYSTEM_LIST_PLACEMENTS.TAB = DEFAULT_SYSTEM_LIST_PLACEMENTS.FL!;
+DEFAULT_SYSTEM_LIST_PLACEMENTS.VFR = DEFAULT_SYSTEM_LIST_PLACEMENTS.VL!;
+DEFAULT_SYSTEM_LIST_PLACEMENTS.TOWER_1 = DEFAULT_SYSTEM_LIST_PLACEMENTS.TL!;
+DEFAULT_SYSTEM_LIST_PLACEMENTS.ALERT = DEFAULT_SYSTEM_LIST_PLACEMENTS.AL!;
+DEFAULT_SYSTEM_LIST_PLACEMENTS.MAPS = DEFAULT_SYSTEM_LIST_PLACEMENTS.ML!;
+DEFAULT_SYSTEM_LIST_PLACEMENTS.SO = DEFAULT_SYSTEM_LIST_PLACEMENTS.SIGN_ON!;
+DEFAULT_SYSTEM_LIST_PLACEMENTS.CS = DEFAULT_SYSTEM_LIST_PLACEMENTS.COAST!;
+DEFAULT_SYSTEM_LIST_PLACEMENTS.CR = DEFAULT_SYSTEM_LIST_PLACEMENTS.CRDA!;
+
+export function canonicalSystemListId(listId: string): string {
+  const upper = listId.toUpperCase();
+  switch (upper) {
+    case "TAB":
+    case "T":
+      return "FL";
+    case "VFR":
+    case "TV":
+      return "VL";
+    case "TOWER":
+    case "TOWER_1":
+    case "P1":
+      return "TL";
+    case "TOWER_2":
+    case "P2":
+      return "TOWER_2";
+    case "TOWER_3":
+    case "P3":
+      return "TOWER_3";
+    case "ALERT":
+    case "TM":
+      return "AL";
+    case "MAPS":
+    case "TX":
+      return "ML";
+    case "SIGN_ON":
+    case "TS":
+      return "SIGN_ON";
+    case "SO":
+      return "SIGN_ON";
+    case "COAST":
+    case "TC":
+      return "COAST";
+    case "CS":
+      return "COAST";
+    case "CRDA":
+    case "TN":
+      return "CRDA";
+    case "CR":
+      return "CRDA";
+    default:
+      return upper;
+  }
+}
+
+const ALIAS_MAP: Record<string, string[]> = {
+  FL: ["TAB"],
+  TL: ["TOWER_1"],
+  VL: ["VFR"],
+  ML: ["MAPS"],
+  AL: ["ALERT"],
+  SIGN_ON: ["SO"],
+  COAST: ["CS"],
+  CRDA: ["CR"],
+};
+
+function assignPlacementToView(
+  view: ScopeView,
+  canonical: string,
+  placement: SystemListPlacement,
+): void {
+  view.systemLists[canonical] = placement;
+  const aliases = ALIAS_MAP[canonical];
+  if (aliases) {
+    for (const a of aliases) {
+      view.systemLists[a] = placement;
+    }
+  }
+}
+
+export function cloneSystemListPlacements(): Record<string, SystemListPlacement> {
   const out: Record<string, SystemListPlacement> = {};
   for (const [id, placement] of Object.entries(DEFAULT_SYSTEM_LIST_PLACEMENTS)) {
     out[id] = { ...placement };
   }
+  // Setup shared references for aliases so mutations reflect in both keys
+  if (out.FL) out.TAB = out.FL;
+  if (out.TL) out.TOWER_1 = out.TL;
+  if (out.VL) out.VFR = out.VL;
+  if (out.ML) out.MAPS = out.ML;
+  if (out.AL) out.ALERT = out.AL;
+  if (out.SIGN_ON) out.SO = out.SIGN_ON;
+  if (out.COAST) out.CS = out.COAST;
+  if (out.CRDA) out.CR = out.CRDA;
   return out;
 }
 
-function ensureSystemListPlacement(
+export function ensureSystemListPlacement(
   view: ScopeView,
   listId: string,
 ): SystemListPlacement | undefined {
   if (!view.systemLists) {
     view.systemLists = cloneSystemListPlacements();
   }
-  const existing = view.systemLists[listId];
+  const canonical = canonicalSystemListId(listId);
+  const existing = view.systemLists[canonical] ?? view.systemLists[listId];
   if (!existing) {
     return undefined;
   }
-  const shared = DEFAULT_SYSTEM_LIST_PLACEMENTS[listId];
+  const shared = DEFAULT_SYSTEM_LIST_PLACEMENTS[canonical] ?? DEFAULT_SYSTEM_LIST_PLACEMENTS[listId];
   if (shared && existing === shared) {
     const copy = { ...existing };
+    assignPlacementToView(view, canonical, copy);
     view.systemLists[listId] = copy;
     return copy;
   }
+  assignPlacementToView(view, canonical, existing);
+  view.systemLists[listId] = existing;
   return existing;
+}
+
+export function resetSystemListToDefault(view: ScopeView, listId: string): boolean {
+  const placement = ensureSystemListPlacement(view, listId);
+  if (!placement) return false;
+  const canonical = canonicalSystemListId(listId);
+  const def = DEFAULT_ADAPTATION_ANCHORS[canonical] ?? DEFAULT_ADAPTATION_ANCHORS[listId];
+  if (!def) return false;
+  placement.x = def.x;
+  placement.y = def.y;
+  return true;
 }
 
 export function toggleSystemList(view: ScopeView, listId: string): void {
@@ -594,8 +717,86 @@ export function handleListMouseMove(
 }
 
 /**
+ * Checks if a click pos is within the title header of a system list (the top line of the bounding rect).
+ */
+export function hitTestSystemListTitle(
+  clickPos: { x: number; y: number },
+  activeLists: { id: string; bounds: ListRect }[],
+  headerHeightPx: number = 16,
+): string | null {
+  for (const list of activeLists) {
+    const headerRect: ListRect = {
+      x: list.bounds.x,
+      y: list.bounds.y,
+      width: list.bounds.width,
+      height: headerHeightPx,
+    };
+    if (pointInsideRect(clickPos.x, clickPos.y, headerRect)) {
+      return list.id;
+    }
+  }
+  return null;
+}
+
+/**
+ * Initiates drag directly from title header click (left-click or middle-click).
+ */
+export function handleListTitleDragStart(
+  state: ListDragState,
+  clickPos: { x: number; y: number },
+  activeLists: { id: string; bounds: ListRect }[],
+  headerHeightPx: number = 16,
+): { nextState: ListDragState; started: boolean } {
+  for (const list of activeLists) {
+    const headerRect: ListRect = {
+      x: list.bounds.x,
+      y: list.bounds.y,
+      width: list.bounds.width,
+      height: headerHeightPx,
+    };
+    if (pointInsideRect(clickPos.x, clickPos.y, headerRect)) {
+      return {
+        started: true,
+        nextState: {
+          movingListId: list.id,
+          movingAnchorRect: { ...list.bounds },
+          movingCurrentPos: { ...clickPos },
+          movingOffset: {
+            x: clickPos.x - list.bounds.x,
+            y: clickPos.y - list.bounds.y,
+          },
+          showAllFrames: false,
+        },
+      };
+    }
+  }
+  return { nextState: state, started: false };
+}
+
+/**
+ * Commits an active list drag to final normalized coordinates [0, 1].
+ */
+export function commitListDrag(
+  state: ListDragState,
+  currentPos: { x: number; y: number },
+  paneExtent: { width: number; height: number },
+): { nextState: ListDragState; updatedPlacement?: { id: string; x: number; y: number } } {
+  if (!state.movingListId || !state.movingOffset) {
+    return { nextState: state };
+  }
+  const listId = state.movingListId;
+  const newX = Math.max(0, Math.min(1, (currentPos.x - state.movingOffset.x) / paneExtent.width));
+  const newY = Math.max(0, Math.min(1, (currentPos.y - state.movingOffset.y) / paneExtent.height));
+  return {
+    nextState: idleListDragState(),
+    updatedPlacement: { id: listId, x: newX, y: newY },
+  };
+}
+
+/**
  * Cancels active list dragging.
  */
 export function cancelListDrag(_state: ListDragState): ListDragState {
   return idleListDragState();
 }
+

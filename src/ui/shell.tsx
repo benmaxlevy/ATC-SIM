@@ -21,16 +21,22 @@ import {
   type SessionSetup,
 } from "@scenario";
 import {
+  commitListDrag,
   cssPointFromClient,
+  handleListMouseMove,
+  handleListTitleDragStart,
   handlePpiCanvasClick,
   handlePpiCanvasMiddleClick,
   handlePpiCanvasPointerHover,
   handlePpiDoubleClick,
   handlePpiPanDelta,
+  handleScopeWheel,
+  hitTestSystemListTitle,
+  installAlwaysOnScopeKeys,
   isPpiSlewButton,
   isPpiSlewHeld,
-  handleScopeWheel,
-  installAlwaysOnScopeKeys,
+  relocateSystemList,
+  resetSystemListToDefault,
   scopeFocusFromDocument,
   focusRadioCommandLine,
   clearPerTrackPtl,
@@ -80,6 +86,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   const [, setScopeUiTick] = useState(0);
   const [selectionToken, setSelectionToken] = useState(0);
   const panRef = useRef<{ lastX: number; lastY: number } | null>(null);
+  const didListDragRef = useRef(false);
 
   useEffect(() => {
     if (!stripsOpen) {
@@ -172,6 +179,10 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           world={app.world}
           onScopeChange={refreshScopeUi}
           onCanvasClick={(event) => {
+            if (didListDragRef.current) {
+              didListDragRef.current = false;
+              return;
+            }
             const cmdInput = document.getElementById(
               "command-line-input",
             ) as HTMLInputElement | null;
@@ -207,6 +218,46 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             handleScopeWheel(event, scopeView);
           }}
           onCanvasPointerDown={(event: PointerEvent<HTMLCanvasElement>) => {
+            const rect = event.currentTarget.getBoundingClientRect();
+            const cssX = event.clientX - rect.left;
+            const cssY = event.clientY - rect.top;
+
+            // Check if pointer is on any visible system list title header
+            if (scopeView.activeListRects && scopeView.activeListRects.length > 0) {
+              const lineH = 16;
+              const hitListId = hitTestSystemListTitle(
+                { x: cssX, y: cssY },
+                scopeView.activeListRects,
+                lineH,
+              );
+              if (hitListId) {
+                if (event.shiftKey) {
+                  // Shift + Left-Click resets list to its adaptation default anchor
+                  event.preventDefault();
+                  resetSystemListToDefault(scopeView, hitListId);
+                  refreshScopeUi();
+                  return;
+                }
+                if (event.button === 0 || event.button === 1) {
+                  // Left-click or middle-click on title header initiates window dragging
+                  event.preventDefault();
+                  const dragRes = handleListTitleDragStart(
+                    scopeView.listDrag,
+                    { x: cssX, y: cssY },
+                    scopeView.activeListRects,
+                    lineH,
+                  );
+                  if (dragRes.started) {
+                    scopeView.listDrag = dragRes.nextState;
+                    didListDragRef.current = true;
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                    refreshScopeUi();
+                    return;
+                  }
+                }
+              }
+            }
+
             if (event.button === 1) {
               // Middle click: toggle Cyan highlight
               event.preventDefault();
@@ -228,6 +279,14 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             event.currentTarget.setPointerCapture(event.pointerId);
           }}
           onCanvasPointerMove={(event: PointerEvent<HTMLCanvasElement>) => {
+            if (scopeView.listDrag?.movingListId) {
+              const rect = event.currentTarget.getBoundingClientRect();
+              const cssX = event.clientX - rect.left;
+              const cssY = event.clientY - rect.top;
+              scopeView.listDrag = handleListMouseMove(scopeView.listDrag, { x: cssX, y: cssY });
+              refreshScopeUi();
+              return;
+            }
             if (!panRef.current || !isPpiSlewHeld(event.buttons)) {
               handlePpiCanvasPointerHover(
                 event.currentTarget,
@@ -248,7 +307,27 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             );
             panRef.current = { lastX: event.clientX, lastY: event.clientY };
           }}
-          onCanvasPointerUp={() => {
+          onCanvasPointerUp={(event: PointerEvent<HTMLCanvasElement>) => {
+            if (scopeView.listDrag?.movingListId) {
+              const rect = event.currentTarget.getBoundingClientRect();
+              const cssX = event.clientX - rect.left;
+              const cssY = event.clientY - rect.top;
+              const commitRes = commitListDrag(scopeView.listDrag, { x: cssX, y: cssY }, {
+                width: rect.width,
+                height: rect.height,
+              });
+              if (commitRes.updatedPlacement) {
+                relocateSystemList(
+                  scopeView,
+                  commitRes.updatedPlacement.id,
+                  commitRes.updatedPlacement.x,
+                  commitRes.updatedPlacement.y,
+                );
+              }
+              scopeView.listDrag = commitRes.nextState;
+              refreshScopeUi();
+              return;
+            }
             panRef.current = null;
           }}
           onCanvasContextMenu={(event) => event.preventDefault()}

@@ -39,6 +39,7 @@ export type PreviewArmedAction =
   | { readonly type: "toggleList"; readonly listId: string }
   | { readonly type: "resizeList"; readonly listId: string; readonly maxLines: number }
   | { readonly type: "armRelocateList"; readonly listId: string }
+  | { readonly type: "resetListPosition"; readonly listId: string }
   | { readonly type: "armRecenterScope" }
   | { readonly type: "resetScopeCenter" }
   | { readonly type: "setRangeRingInterval"; readonly intervalNm: number }
@@ -395,14 +396,22 @@ function parseBeaconSelect(buffer: string): PreviewCommandResult | null {
 
 /** Longest-first so `TAB` / `TV` win over `T`. */
 const LIST_TOGGLE_TOKENS: ReadonlyArray<{ token: string; listId: string }> = [
-  { token: "TAB", listId: "TAB" },
-  { token: "TV", listId: "VFR" },
+  { token: "TAB", listId: "FL" },
+  { token: "FL", listId: "FL" },
+  { token: "TV", listId: "VL" },
+  { token: "VL", listId: "VL" },
+  { token: "TL", listId: "TL" },
   { token: "TC", listId: "COAST" },
+  { token: "CS", listId: "COAST" },
   { token: "TS", listId: "SIGN_ON" },
-  { token: "TM", listId: "ALERT" },
-  { token: "TX", listId: "MAPS" },
+  { token: "SO", listId: "SIGN_ON" },
+  { token: "TM", listId: "AL" },
+  { token: "AL", listId: "AL" },
+  { token: "TX", listId: "ML" },
+  { token: "ML", listId: "ML" },
   { token: "TN", listId: "CRDA" },
-  { token: "T", listId: "TAB" },
+  { token: "CR", listId: "CRDA" },
+  { token: "T", listId: "FL" },
 ];
 
 const TOWER_LIST_IDS: Readonly<Record<"1" | "2" | "3", string>> = {
@@ -438,6 +447,19 @@ function parseListCommand(buffer: string): PreviewCommandResult | null {
     return null;
   }
 
+  // Check for *[ID] D or *[ID]D reset default anchor command (e.g. *FLD, *TL D, *MLD, *S D)
+  const resetMatch = /^\*\s*([A-Z0-9_]+)\s*D$/i.exec(buffer);
+  if (resetMatch) {
+    const token = resetMatch[1]!.toUpperCase();
+    if (token === "S") {
+      return { kind: "action", action: { type: "resetListPosition", listId: "SSA" } };
+    }
+    const matched = LIST_TOGGLE_TOKENS.find((row) => row.token === token);
+    if (matched) {
+      return { kind: "action", action: { type: "resetListPosition", listId: matched.listId } };
+    }
+  }
+
   // Require a space after `*` so `*P3` is a 3 NM cone, not TOWER_3.
   const tower = /^\*\s+P([123])(?:\s+(\d{1,3}))?$/.exec(buffer);
   if (tower) {
@@ -446,6 +468,19 @@ function parseListCommand(buffer: string): PreviewCommandResult | null {
       return listResizeAction(listId, tower[2]);
     }
     return { kind: "action", action: { type: "toggleList", listId } };
+  }
+
+  // Satellite tower e.g. *TLBOS, *TLBED, *TL1
+  const satTowerMatch = /^\*\s*TL\s*([A-Z0-9]+)$/i.exec(buffer);
+  if (satTowerMatch) {
+    const satId = satTowerMatch[1]!.toUpperCase();
+    if (satId === "D") {
+      return { kind: "action", action: { type: "resetListPosition", listId: "TL" } };
+    }
+    if (/^\d+$/.test(satId)) {
+      return listResizeAction("TL", satId);
+    }
+    return { kind: "action", action: { type: "toggleList", listId: `TL_${satId}` } };
   }
 
   const rest = compact.slice(1);
