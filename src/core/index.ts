@@ -106,6 +106,7 @@ export type {
   AlertTintTrack,
   CaAlert,
   CaSeverity,
+  MciAlert,
   WorldAlerts,
 } from "./alerts/conflictAlert";
 export {

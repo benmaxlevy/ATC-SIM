@@ -91,7 +91,7 @@ import {
   findOverlappingLists,
   type ListRect,
 } from "../systemLists";
-import { buildVideoMapsListLines } from "../coordinationList";
+import { buildVideoMapsListLines, getVideoMapsEntries } from "../coordinationList";
 
 const RING_STROKE_PX = 1;
 const RUNWAY_STROKE_PX = 2;
@@ -1192,42 +1192,15 @@ export function drawChordHint(
 }
 
 /**
- * GEO MAPS / CURRENT lists: screen-fixed video-map inventory (CRC analog).
- * Map-green mono like SSA. Canvas text is not a hit target, so empty-PPI
- * deselect is unchanged. No HTML select. Not OSM / precipitation.
+ * GEO MAPS / CURRENT lists: Video Map Lists are drawn by drawSystemLists
+ * as the interactive system list 'ML' (T02-106).
  */
 export function drawMapLists(
-  ctx: CanvasRenderingContext2D,
-  view: ScopeView,
-  cssWidth: number,
+  _ctx: CanvasRenderingContext2D,
+  _view: ScopeView,
+  _cssWidth: number,
 ): void {
-  if (!view.geoMapsListOn && !view.currentMapsListOn) {
-    return;
-  }
-  const lineH = datablockLineHeightPx(view.charSizes.lists);
-  ctx.font = datablockFontCss(view.charSizes.lists);
-  ctx.textBaseline = "top";
-  ctx.textAlign = "left";
-  ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
-  const x = Math.max(cssWidth - 220, 200);
-  let y = SSA_TOP_PX;
-  if (view.geoMapsListOn) {
-    ctx.fillText("GEO MAPS", x, y);
-    y += lineH;
-    for (const line of buildMapListLines(view, "geo")) {
-      ctx.fillText(line, x, y);
-      y += lineH;
-    }
-    y += lineH / 2;
-  }
-  if (view.currentMapsListOn) {
-    ctx.fillText("CURRENT", x, y);
-    y += lineH;
-    for (const line of buildMapListLines(view, "current")) {
-      ctx.fillText(line, x, y);
-      y += lineH;
-    }
-  }
+  // Handled by drawSystemLists (ML)
 }
 
 export function drawSystemLists(
@@ -1305,7 +1278,7 @@ export function drawSystemLists(
         );
         break;
       case "AL":
-        lines = buildAlertList(world, placement.maxLines);
+        lines = buildAlertList(world, placement.maxLines, view);
         break;
       case "COAST":
         lines = buildCoastSuspendList([], placement.maxLines);
@@ -1313,9 +1286,11 @@ export function drawSystemLists(
       case "CRDA":
         lines = buildCrdaStatusList(view.crdaRpcConfigs, placement.maxLines, airportId);
         break;
-      case "ML":
-        lines = buildVideoMapsListLines(view, "ALL", placement.maxLines);
+      case "ML": {
+        const cat = view.mapListMode === "CURRENT" ? "CURRENT" : "ALL";
+        lines = buildVideoMapsListLines(view, cat, placement.maxLines);
         break;
+      }
       default:
         if (id.startsWith("TL_")) {
           const satId = id.slice(3);
@@ -1347,23 +1322,60 @@ export function drawSystemLists(
     const bounds: ListRect = { x, y, width, height };
     activeRects.push({ id, bounds });
 
+    const isMl = canonical === "ML";
+    const isAl = canonical === "AL";
+    const mlCategory = view.mapListMode === "CURRENT" ? "CURRENT" : "ALL";
+    const mlEntries = isMl ? getVideoMapsEntries(view, mlCategory) : [];
+    const isAlertBlinkOn = Math.floor(world.simTimeMs / BLINK_HALF_PERIOD_MS) % 2 === 0;
+
     // Draw text lines and record entry hitboxes
-    ctx.fillStyle = textColor;
     let textY = y;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]!;
+      if (isAl && i > 0) {
+        ctx.fillStyle = isAlertBlinkOn ? applyBrite(PALETTE.alert, view.brite.lst) : textColor;
+      } else {
+        ctx.fillStyle = textColor;
+      }
       ctx.fillText(line, x, textY);
       if (i > 0 && !line.startsWith("MORE:")) {
-        const parts = line.trim().split(/\s+/);
-        // If first token is numeric index, callsign is second token, else first token
-        const callsign = (/^\d+$/.test(parts[0] ?? "") ? parts[1] : parts[0]) ?? "";
-        if (callsign.length > 0) {
-          activeListEntries.push({
-            listId: id,
-            rowIndex: i,
-            callsign: callsign.replace(/^\*/, ""),
-            bounds: { x, y: textY, width, height: lineH },
-          });
+        if (isMl) {
+          const hasMore = lines[1]?.startsWith("MORE:");
+          const entryIdx = hasMore ? i - 2 : i - 1;
+          const targetEntry = mlEntries[entryIdx];
+          if (targetEntry) {
+            activeListEntries.push({
+              listId: id,
+              rowIndex: i,
+              callsign: targetEntry.mapId,
+              mapId: targetEntry.mapId,
+              mapIndex: targetEntry.id,
+              bounds: { x, y: textY, width, height: lineH },
+            });
+          }
+        } else if (isAl) {
+          const parts = line.trim().split(/\s+/);
+          const callsign = parts[1] ?? "";
+          if (callsign.length > 0) {
+            activeListEntries.push({
+              listId: id,
+              rowIndex: i,
+              callsign,
+              bounds: { x, y: textY, width, height: lineH },
+            });
+          }
+        } else {
+          const parts = line.trim().split(/\s+/);
+          // If first token is numeric index, callsign is second token, else first token
+          const callsign = (/^\d+$/.test(parts[0] ?? "") ? parts[1] : parts[0]) ?? "";
+          if (callsign.length > 0) {
+            activeListEntries.push({
+              listId: id,
+              rowIndex: i,
+              callsign: callsign.replace(/^\*/, ""),
+              bounds: { x, y: textY, width, height: lineH },
+            });
+          }
         }
       }
       textY += lineH;
@@ -1381,19 +1393,6 @@ export function drawSystemLists(
   view.activeListRects = activeRects;
   view.activeListEntries = activeListEntries;
 
-  // Staged candidate list anchor ghost frame
-  if (view.stagedListAnchor) {
-    const stagedX = Math.round(view.stagedListAnchor.x * cssWidth);
-    const stagedY = Math.round(view.stagedListAnchor.y * cssHeight);
-    ctx.save();
-    ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = "#FFFFFF";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(stagedX, stagedY, 140, 70);
-    ctx.fillStyle = textColor;
-    ctx.fillText(`[${view.stagedListAnchor.listId}]`, stagedX + 4, stagedY + 4);
-    ctx.restore();
-  }
 
   // Check and draw overlapping warning boxes
   const overlapping = findOverlappingLists(activeRects);

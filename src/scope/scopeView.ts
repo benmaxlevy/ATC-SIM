@@ -158,6 +158,13 @@ export interface ScopeView {
   geoMapsListOn: boolean;
   /** CURRENT on-PPI list of video maps that are on. Display only. */
   currentMapsListOn: boolean;
+  /** Video maps list mode: GEO (all maps) or CURRENT (active only). */
+  mapListMode?: "GEO" | "CURRENT";
+  /**
+   * Mode C Intruder (MCI) alerting enabled. When false, no MCI rows are added
+   * to the AL list. Toggled by `*MCI Enter`.
+   */
+  mciEnabled: boolean;
   /**
    * Selected DCB map group id. Trainer is a single TCP. Defaults to the first
    * group (`sourceIndex` 0). Data-driven; never an A80 hardcode.
@@ -257,7 +264,14 @@ export interface ScopeView {
   /** Active system list pixel bounding rectangles from the latest render frame. */
   activeListRects?: { id: string; bounds: ListRect }[];
   /** Active system list entry bounding rectangles from the latest render frame for hit-testing. */
-  activeListEntries?: { listId: string; rowIndex: number; callsign: string; bounds: ListRect }[];
+  activeListEntries?: {
+    listId: string;
+    rowIndex: number;
+    callsign: string;
+    mapId?: string;
+    mapIndex?: number;
+    bounds: ListRect;
+  }[];
   /** Dropped callsigns manually removed from Tower lists. */
   towerListDroppedCallsigns?: Set<string>;
   /** Dropped callsigns manually removed from VFR list. */
@@ -415,6 +429,8 @@ export function createScopeView(
     dcbSpinner: idleDcbSpinner(),
     geoMapsListOn: false,
     currentMapsListOn: false,
+    mapListMode: "GEO",
+    mciEnabled: true,
     selectedMapGroupId: defaultSelectedMapGroupId(digitalMap.videoMapGroups),
     dcbDock: "TOP",
     digitalMap,

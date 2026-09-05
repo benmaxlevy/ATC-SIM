@@ -1,6 +1,6 @@
 # ATC-SIM
 
-In-browser **STARS-like** terminal radar **simulator**: Canvas2D PPI, typed and spoken ATC commands, FMS procedures, simulated-pilot readbacks, Conflict Alert and MSAW.
+In-browser **STARS-like** terminal radar **simulator**: Canvas2D PPI, on-scope system lists, typed and spoken ATC commands, FMS procedures, simulated-pilot readbacks, Conflict Alert and MSAW.
 
 ## Quick start
 

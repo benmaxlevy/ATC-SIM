@@ -94,7 +94,7 @@ describe("STARS System Lists & DCB Integration Acceptance", () => {
     };
     const alertLines = buildAlertList(world, 50);
     expect(alertLines[0]).toBe("LA/CA/MCI");
-    expect(alertLines.some((l) => l.includes("AAL101*DAL202"))).toBe(true);
+    expect(alertLines.some((l) => l.includes("CA AAL101 DAL202"))).toBe(true);
     expect(alertLines.some((l) => l.includes("AAL101"))).toBe(true);
 
     // 5. Coordination departures with release lifecycle
@@ -120,7 +120,7 @@ describe("STARS System Lists & DCB Integration Acceptance", () => {
     // 6. Video Maps list
     const view = createScopeView();
     const mapLines = buildVideoMapsListLines(view, "ALL");
-    expect(mapLines[0]).toContain("GEOGRAPHIC MAPS");
+    expect(mapLines[0]).toContain("VIDEO MAPS");
   });
 
   it("AC2 — drives middle-click list dragging and detects overlapping collision frames", () => {

@@ -42,12 +42,14 @@ import {
   dropTowerListEntry,
   dropVfrListEntry,
   handleFlightPlanListClick,
+  handleVideoMapsListClick,
   hitTestSystemListEntry,
   normalizedClickAnchor,
   pointInsideRect,
   promoteVfrListEntry,
   relocateSystemList,
 } from "./systemLists";
+import { toggleVideoMap } from "./dcb/dcbFunctions";
 import { datablockLineHeightPx } from "./fonts";
 import {
   acceptInboundOnClick,
@@ -233,6 +235,20 @@ function applyTrackingSlewHit(
       clearTrackingSlew(view);
       return true;
     }
+    case "inhibitCa": {
+      const td = ensureTrackDisplay(view.tracks, id);
+      td.caInhibited = true;
+      setSelectedAircraft(world, id);
+      clearTrackingSlew(view);
+      return true;
+    }
+    case "inhibitMsaw": {
+      const td = ensureTrackDisplay(view.tracks, id);
+      td.msawInhibited = true;
+      setSelectedAircraft(world, id);
+      clearTrackingSlew(view);
+      return true;
+    }
     default:
       return false;
   }
@@ -274,6 +290,33 @@ export function handlePpiLeftClick(
     }
   }
 
+  // Check if click was on Video Maps list (ML) entry for layer toggling (via activeListEntries)
+  if (!previewRelocateListId(view.preview)) {
+    const hitEntry = hitTestSystemListEntry(view, cssX, cssY);
+    if (hitEntry && canonicalSystemListId(hitEntry.listId) === "ML") {
+      toggleVideoMap(view, hitEntry.mapId ?? hitEntry.callsign);
+      return;
+    }
+  }
+
+  // Check if click was inside Video Maps list (ML) for row toggling
+  if (view.activeListRects && !previewRelocateListId(view.preview)) {
+    const mlItem = view.activeListRects.find(
+      (r) => canonicalSystemListId(r.id) === "ML",
+    );
+    if (mlItem && pointInsideRect(cssX, cssY, mlItem.bounds)) {
+      const lineH = datablockLineHeightPx(view.charSizes.lists);
+      const clickedLine = Math.floor((cssY - mlItem.bounds.y) / lineH);
+      if (handleVideoMapsListClick(view, clickedLine)) {
+        if (view.f1DropArmed || view.beaconatorActive) {
+          view.f1DropArmed = false;
+          view.beaconatorActive = false;
+        }
+        return;
+      }
+    }
+  }
+
   // Check if click was inside Flight Plan list (FL) for MORE pagination or F1 row deletion
   if (view.activeListRects) {
     const flItem = view.activeListRects.find(
@@ -298,6 +341,7 @@ export function handlePpiLeftClick(
     view.stagedListAnchor = { listId: relocateId, x: anchor.x, y: anchor.y };
     if (relocateId === "FL" || relocateId === "TAB" || relocateId === "SSA") {
       if (relocateSystemList(view, relocateId, anchor.x, anchor.y)) {
+        view.stagedListAnchor = null;
         cancelPreviewArea(view.preview);
         cancelStarsChordEntry(view.starsChordEntry);
         view.starsChordArmed = null;

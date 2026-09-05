@@ -51,6 +51,7 @@ Service-side env, models, and Path C: [`speech-api/README.md`](../speech-api/REA
 - **Compass Rose heading vectoring ring**: Outermost range ring overlay with 72 radial tick marks (5° minor, 10° medium, 30° major) and twelve 3-digit heading numerals (`360`, `030`, `060`, `090`, `120`, `150`, `180`, `210`, `240`, `270`, `300`, `330`) radially inward for rapid heading assignment and vectoring. Brightness is controlled via `BRITE CMP` (0% / OFF to 100%) and numeral font sizing follows `CHAR SIZE TOOLS` (11–15 px).
 - **Display Control Bar (DCB)**: Green physical button matrix with MAIN and AUX menu switching, interactive wheel spinners (RANGE, RR, LDR DIR, LDR LEN, BRITE channels including CMP and BCN, CHAR SIZE including TOOLS, H_RATE, DWELL hover brightening, CURSOR HOME, CSR SPD, VOL alert volume, MODE FSL), altitude filters, and persistent local PREF slots stored in `localStorage`.
 - **System Status Area (SSA)**: Top-left status showing UTC/sim time, altimeter setting (29.92), active altitude filter limits, and sensor mode.
+- **On-Scope System Lists**: Movable, draggable operational data windows including Flight Plan (`FL` / `TAB`), Tower Lists (`TL`), VFR List (`VL`), Video Maps Directory (`ML`), Alert Status Box (`AL`), CRDA Status (`CR`), Coast/Suspend (`CS`), and Sign-On (`SO`). All lists feature click-and-drag title headers, Shift+click default reset, collision warning frames, and persistent layout retention via DCB `PREF`.
 
 ### Flight kinematics & FMS
 
@@ -214,21 +215,43 @@ Idle `F` (no star) starts the altitude-filter chord (`F` → min hundreds → En
 
 #### System lists
 
-Spaces optional (`*T` = `* T`). Line limit is `1`–`100`.
+System lists provide interactive on-screen operational data windows (Flight Plan, Tower, VFR, Video Maps, Alert Status, CRDA, Sign-On).
+Spaces in commands are optional (`*T` = `* T`). Line limits clamp to `1`–`100`.
 
-| Command | What the operator does | What happens |
-| --- | --- | --- |
-| `*T` / `*TAB` Enter | Scope-focus `*T` Enter | Toggles TAB flight-plan list. |
-| `*TV` Enter | | Toggles VFR list. |
-| `*TC` Enter | | Toggles Coast/Suspend list. |
-| `*TS` Enter | | Toggles Sign-On list. |
-| `* P1` / `* P2` / `* P3` Enter | Space after `*` | Toggles Tower lists 1–3. Compact `*P3` is a 3 NM cone, not this list. |
-| `*TM` Enter | | Toggles Alert list. |
-| `*TX` Enter | | Toggles Maps directory list. |
-| `*TN` Enter | | Toggles CRDA status list (the list window, not CRDA geometry). |
-| `*T 15` Enter | `*T` `1` `5` Enter | Sets TAB visible-line limit to 15. `*T 0` / `*T 999` → `INV`, no mutation. |
-| Live `*T` then click | Type `*T`, click the PPI (no Enter) | Relocates TAB to the click. |
-| `*S` then click | Type `*S` (Enter optional), click | Relocates SSA. Does not toggle SSA off. |
+##### Window Manager & Interaction Standards
+- **Move List**: Type `*[ID]` + Left-Click new scope location + `Enter` (e.g. `*FL` click `Enter`).
+- **Reset to Adaptation Default**: Type `*[ID] D Enter` or `*[ID]D Enter` (e.g. `*FLD Enter`, `*TL D Enter`, `*ML D Enter`, `*AL D Enter`). Alternatively, Shift+Left-Click the list title header.
+- **Drag Repositioning**: Click and drag any list title header using Left-Click or Middle-Click. Holding middle-click draws bounding frame outlines for all active lists.
+- **Collision Detection**: If repositioned lists overlap, a warning box renders around colliding lists until separated.
+- **State Persistence**: On-screen visibility, coordinate anchors, and display limits persist across sessions via DCB `PREF` slots.
+
+| List ID | Key / Command | Directory / Name | Description & Interactive Actions |
+|---|---|---|---|
+| `FL` / `TAB` | `*FL` / `*T` / `*TAB` or `FPL` key | Flight Plan List (`FLIGHT PLAN`) | Buffers pending departures and unassociated tracks. Supports `MORE: X/Y` pagination (`PageUp`/`PageDown` or click header). Type `[Index#]` + click radar target to correlate. Press `F1` + click row (or `*DEL [Index#] Enter`) to drop/delete entry. |
+| `TL` | `*TL` / `* P1` / `* P2` / `* P3` | Tower List (`[AIRPORT] TOWER`) | Inbound arrivals and staged departures for local tower or satellites (e.g. `*TLBED Enter` for `BED TOWER`). `F1` + click row manually drops entry from list. |
+| `VL` | `*VL` / `*TV` or `VFR` key | VFR List (`VFR LIST`) | Tracks active VFR aircraft with callsign, beacon code, and altitude (`040`). Type `[Index#]` + click radar target to promote. `F1` + click row drops entry. |
+| `ML` | `*ML` / `*TX` | Video Maps Directory (`VIDEO MAPS` / `ACTIVE MAPS`) | Displays adapted map catalog with numeric slots and `> ` active indicator. Left-clicking any map name toggles that layer on/off immediately. DCB `MAPS -> CURRENT` toggles `ACTIVE MAPS` mode. |
+| `AL` | `*AL` / `*TM` | Alert Status Box (`LA/CA/MCI`) | Safety alerts notification window. Displays header `LA/CA/MCI` when idle; dynamically unfurls flashing `CA`, `LA`, and `MCI` rows when alerts trip. |
+| `CR` | `*CR` / `*TN` | CRDA Status List (`CRDA STATUS`) | Converging Runway Display Aid stagger pairing status. |
+| `CS` | `*CS` / `*TC` | Coast / Suspend (`COAST/SUSPEND`) | Suspended and coasting tracks. |
+| `SO` | `*SO` / `*TS` | Sign-On List (`SIGN-ON`) | Active workstation sector sign-on roster. |
+
+##### System List Commands
+
+| Command | Syntax | What happens |
+|---|---|---|
+| Toggle List Visibility | `*[ID] Enter` (e.g. `*FL`, `*TL`, `*VL`, `*ML`, `*AL`) | Toggles specified list on or off. |
+| Set Visible Line Limit | `*[ID] [Lines] Enter` (e.g. `*FL 15`, `*TL 5`) | Sets visible line limit (clamped `1`–`100`). |
+| Reposition List Anchor | `*[ID]` click scope `Enter` | Stages coordinates on click and moves list anchor on Enter. |
+| Reset List to Default | `*[ID] D Enter` or `*[ID]D Enter` | Snaps list to its adaptation default coordinate anchor. |
+| Delete Flight Plan Entry | `*DEL [Index#] Enter` | Purges flight plan entry at specified numeric index from FL queue. |
+| Associate Flight Plan | `[Index#]` then click radar target | Correlates flight plan from FL to the targeted uncorrelated radar track. |
+| Promote VFR Entry | `[Index#]` then click radar target | Associates VFR entry from VL to the targeted radar track. |
+| Drop List Row Entry | `F1` then click list entry row | Manually drops entry from Tower List (`TL`), VFR List (`VL`), or Flight Plan List (`FL`). |
+| Inhibit Conflict Alert | `*CA` then click radar target | Inhibits/acknowledges Conflict Alert (`CA`) for targeted track. |
+| Inhibit Low Altitude (MSAW) | `*LA` then click radar target | Inhibits Low Altitude (`LA`) alert for targeted track. |
+| Toggle Mode C Intruder Alerting | `*MCI Enter` | Toggles Mode C Intruder (`MCI`) alerting on/off (`view.mciEnabled`). |
+| Relocate SSA | `*S` then click scope (Enter optional) | Repositions System Status Area anchor (SSA cannot be toggled off). |
 
 #### Video maps
 
@@ -236,11 +259,13 @@ Maps match catalog **slot** `1`–`32` or **id** (`LOC27`, `RWY`, `DEM1_27`, …
 
 | Command | What the operator does | What happens |
 | --- | --- | --- |
-| `*D 1` / `*D LOC27` Enter | | Toggles that map. |
+| `*D 1` / `*D LOC27` Enter | | Toggles that map layer. |
+| `MAP [Map ID#] Enter` | `MAP 2` or `MAP4` Enter | Toggles specified video map layer directly. |
 | `*D OFF LOC27` Enter | | Forces that map off. |
 | `*D ALL` / `*D NONE` Enter | | All maps on / all off. |
+| `MAP ALL OFF Enter` | Scope typing | Disables all active video map layers (same as DCB `MAPS -> CLR ALL`). |
 | Bare `*D` Enter | `*D` with no token | Stays TPA (`*D` / `*DE` / `*DI` / `*D+` are incomplete prefixes of TPA, not a map toggle). Unknown id / slot `99` → `INV`. |
-| Tap `M` | Single `M` with scope focus | Still toggles Mode C. |
+| Tap `M` | Single `M` with scope focus | Toggles Mode C. |
 | `M DEM1_27` Enter | `M` then a map id (within the chord window) | Toggles that map. Not assign-code `M ####`. |
 
 #### Scope display

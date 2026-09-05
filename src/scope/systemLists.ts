@@ -10,6 +10,8 @@ import { buildSystemListLines, rewriteFixForList, type ListFormatter } from "./l
 import type { ScopeView } from "./scopeView";
 import { applyInitiateTrackToId, ensureTrackDisplay, type TrackDisplay } from "./trackDisplay";
 import { datablockLineHeightPx } from "./fonts";
+import { getVideoMapsEntries } from "./coordinationList";
+import { toggleVideoMap } from "./dcb/dcbFunctions";
 
 export interface SystemListPlacement {
   id: string;
@@ -328,6 +330,18 @@ export function toggleSystemList(view: ScopeView, listId: string): void {
   const placement = ensureSystemListPlacement(view, listId);
   if (placement) {
     placement.visible = !placement.visible;
+    const canonical = canonicalSystemListId(listId);
+    if (canonical === "ML") {
+      if (placement.visible) {
+        view.mapListMode = "GEO";
+        view.geoMapsListOn = true;
+        view.currentMapsListOn = false;
+        placement.frameTitle = "VIDEO MAPS (ML)";
+      } else {
+        view.geoMapsListOn = false;
+        view.currentMapsListOn = false;
+      }
+    }
   }
 }
 
@@ -380,6 +394,13 @@ export function setAllSystemListsVisible(view: ScopeView, visible: boolean): voi
   const placements = Object.values(view.systemLists) as SystemListPlacement[];
   for (const placement of placements) {
     placement.visible = visible;
+  }
+  if (!visible) {
+    view.geoMapsListOn = false;
+    view.currentMapsListOn = false;
+  } else {
+    view.geoMapsListOn = true;
+    view.mapListMode = "GEO";
   }
 }
 
@@ -763,6 +784,32 @@ export function handleFlightPlanListClick(
   return true;
 }
 
+export function handleVideoMapsListClick(
+  view: ScopeView,
+  clickedLine: number,
+): boolean {
+  if (clickedLine < 0) return false;
+  if (clickedLine === 0) return true;
+
+  const maxLines = view.systemLists?.ML?.maxLines ?? 20;
+  const category = view.mapListMode === "CURRENT" ? "CURRENT" : "ALL";
+  const entries = getVideoMapsEntries(view, category);
+  const hasMoreHeader = entries.length > maxLines;
+
+  if (hasMoreHeader && clickedLine === 1) {
+    return true;
+  }
+
+  const visibleRow = hasMoreHeader ? clickedLine - 2 : clickedLine - 1;
+  if (visibleRow >= 0 && visibleRow < entries.length) {
+    const targetMap = entries[visibleRow]!;
+    toggleVideoMap(view, targetMap.mapId);
+    return true;
+  }
+
+  return true;
+}
+
 export function buildTabFlightPlanList(
   world: World,
   maxLines: number = 10,
@@ -1063,6 +1110,8 @@ export interface ActiveListEntryHit {
   rowIndex: number;
   callsign: string;
   bounds: ListRect;
+  mapId?: string;
+  mapIndex?: number;
 }
 
 export function hitTestSystemListEntry(
@@ -1087,23 +1136,48 @@ export function hitTestSystemListEntry(
  * DAL111*UAE124    CA
  * ========================================================================= */
 
-export function buildAlertList(world: World, maxLines: number = 50): string[] {
+export function buildAlertList(world: World, maxLines: number = 50, view?: ScopeView): string[] {
   const lines: string[] = [];
   if (world.alerts) {
     if (world.alerts.ca) {
       for (const alert of world.alerts.ca) {
-        const pair = `${alert.callsignA}*${alert.callsignB}`.padEnd(16, " ");
-        lines.push(`${pair} CA`);
+        const acA = world.aircraft.find((a) => a.callsign === alert.callsignA);
+        const acB = world.aircraft.find((a) => a.callsign === alert.callsignB);
+        const tdA = acA ? view?.tracks.get(acA.id) : undefined;
+        const tdB = acB ? view?.tracks.get(acB.id) : undefined;
+        if (tdA?.caInhibited || tdB?.caInhibited) continue;
+        lines.push(`CA ${alert.callsignA} ${alert.callsignB}`);
       }
     }
     if (world.alerts.msaw) {
       for (const alert of world.alerts.msaw) {
-        const callsign = alert.callsign.padEnd(16, " ");
-        lines.push(`${callsign} ${MSAW_DATABLOCK_TAG}`);
+        const ac = world.aircraft.find((a) => a.callsign === alert.callsign);
+        const td = ac ? view?.tracks.get(ac.id) : undefined;
+        if (td?.msawInhibited) continue;
+        const altStr = formatAltitudeHundreds(alert.altFt);
+        lines.push(`LA ${alert.callsign} ${altStr}`);
+      }
+    }
+    if (view?.mciEnabled !== false && (world.alerts as any).mci) {
+      for (const alert of (world.alerts as any).mci) {
+        const intruder =
+          alert.intruderSquawkOrCallsign ??
+          alert.intruder ??
+          alert.intruderSquawk ??
+          alert.squawk ??
+          alert.callsignA ??
+          "";
+        const protectedFlight =
+          alert.protectedCallsign ??
+          alert.protectedFlight ??
+          alert.callsignB ??
+          alert.callsign ??
+          "";
+        lines.push(`MCI ${intruder} ${protectedFlight}`);
       }
     }
   }
-  if (lines.length === 0) return [];
+  // Always render header; unfurl rows only when alerts are active.
   const formatter: ListFormatter = {
     title: "LA/CA/MCI",
     frameTitle: "LA/CA/MCI (TM)",
@@ -1113,6 +1187,22 @@ export function buildAlertList(world: World, maxLines: number = 50): string[] {
   };
   return buildSystemListLines(formatter);
 }
+
+/**
+ * Returns true when there is at least one active, uninhibited Conflict Alert.
+ */
+export function hasActiveUninhibitedConflict(world: World, view?: ScopeView): boolean {
+  if (!world.alerts?.ca || world.alerts.ca.length === 0) return false;
+  if (!view) return world.alerts.ca.length > 0;
+  return world.alerts.ca.some((alert) => {
+    const acA = world.aircraft.find((a) => a.callsign === alert.callsignA);
+    const acB = world.aircraft.find((a) => a.callsign === alert.callsignB);
+    const tdA = acA ? view.tracks.get(acA.id) : undefined;
+    const tdB = acB ? view.tracks.get(acB.id) : undefined;
+    return !tdA?.caInhibited && !tdB?.caInhibited;
+  });
+}
+
 
 /* =========================================================================
  * 9. CRDA Status List

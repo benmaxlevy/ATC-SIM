@@ -104,6 +104,8 @@ export type PreviewAreaState = {
   rejection: string | null;
   /** Generic armed-action discriminator. Null when none. */
   armed: PreviewArmedAction | null;
+  /** Slew action alias for armed tracking/inhibit actions. */
+  slewAction?: PreviewArmedAction | null;
 };
 
 export function idlePreviewArea(): PreviewAreaState {
@@ -115,6 +117,7 @@ export function idlePreviewArea(): PreviewAreaState {
     lastKeyAtMs: 0,
     rejection: null,
     armed: null,
+    slewAction: null,
   };
 }
 
@@ -131,6 +134,7 @@ export function cancelPreviewArea(state: PreviewAreaState): void {
   state.lastKeyAtMs = idle.lastKeyAtMs;
   state.rejection = idle.rejection;
   state.armed = idle.armed;
+  state.slewAction = idle.slewAction;
 }
 
 /**
@@ -353,6 +357,7 @@ export function armPreviewSlewAction(
   state.flid = null;
   state.rejection = null;
   state.armed = action;
+  state.slewAction = action;
   state.lastKeyAtMs = nowMs;
 }
 
@@ -378,6 +383,7 @@ export function armPreviewRelocateList(
   state.flid = null;
   state.rejection = null;
   state.armed = { type: "armRelocateList", listId };
+  state.slewAction = { type: "armRelocateList", listId };
   state.lastKeyAtMs = nowMs;
 }
 
@@ -394,6 +400,7 @@ export function armPreviewCntl(
   state.flid = flid && flid.length > 0 ? flid : null;
   state.rejection = null;
   state.armed = { type: kind };
+  state.slewAction = { type: kind };
   state.lastKeyAtMs = nowMs;
 }
 

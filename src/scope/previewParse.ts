@@ -6,6 +6,7 @@
 import type { LoadedVideoMap } from "@scenario";
 import { parseStrictFilterHundreds } from "./altitudeFilter";
 import { resolveVideoMapToken, type VideoMapTokenLayout } from "./dcb/dcbFunctions";
+import { DEFAULT_GEOGRAPHIC_MAPS } from "./coordinationList";
 import { digitFromKey } from "./keymap";
 import {
   isStarsLeaderClock,
@@ -93,6 +94,12 @@ export type PreviewArmedAction =
   | { readonly type: "beaconatorSlew" }
   | { readonly type: "associateFlightPlan"; readonly index: number }
   | { readonly type: "deleteFlightPlanEntry"; readonly index: number }
+  /** `*CA [Left-Click Track]`: Inhibit/acknowledge Conflict Alert for the track. */
+  | { readonly type: "inhibitCa" }
+  /** `*LA [Left-Click Track]`: Inhibit Low-Altitude (MSAW) alert for the track. */
+  | { readonly type: "inhibitMsaw" }
+  /** `*MCI Enter`: Toggle Mode C Intruder alerting on/off. */
+  | { readonly type: "toggleMci" }
   | { readonly type: "saveAsPref"; readonly name?: string };
 
 export type PreviewCommandResult =
@@ -259,6 +266,18 @@ export function parseScopeDisplayCommand(buffer: string): PreviewCommandResult |
   // Exact `*R` only. `startsWith("*RR")` above owns range rings; do not prefix-match.
   if (compact === "*R") {
     return { kind: "action", action: { type: "armPerTrackPtl" } };
+  }
+
+  // T02-107: `*CA [click]` arms CA inhibit slew.
+  if (compact === "*CA") {
+    return { kind: "action", action: { type: "inhibitCa" } };
+  }
+  // *MCI Enter: toggle Mode C Intruder alerting
+  if (compact === "*MCI") {
+    return { kind: "action", action: { type: "toggleMci" } };
+  }
+  if (compact === "*M" || compact === "*MC") {
+    return { kind: "incomplete" };
   }
 
   return null;
@@ -532,7 +551,7 @@ function mapToggleAction(
   layout?: VideoMapTokenLayout,
 ): PreviewCommandResult {
   const normalized = token.toUpperCase();
-  if (maps) {
+  if (maps && maps.length > 0) {
     const map = resolveVideoMapToken(maps, normalized, layout);
     if (!map) {
       return invalid("unknown video map");
@@ -543,6 +562,18 @@ function mapToggleAction(
         explicitState === undefined
           ? { type: "toggleVideoMap", mapId: map.id }
           : { type: "toggleVideoMap", mapId: map.id, explicitState },
+    };
+  }
+  const def = DEFAULT_GEOGRAPHIC_MAPS.find(
+    (m) => m.mapId === normalized || String(m.id) === normalized || m.name === normalized,
+  );
+  if (def) {
+    return {
+      kind: "action",
+      action:
+        explicitState === undefined
+          ? { type: "toggleVideoMap", mapId: def.mapId }
+          : { type: "toggleVideoMap", mapId: def.mapId, explicitState },
     };
   }
   return {
@@ -564,6 +595,19 @@ function parseVideoMapCommand(
   layout?: VideoMapTokenLayout,
 ): PreviewCommandResult | null {
   const compact = compactPreviewBuffer(buffer);
+  if (compact === "MAP") {
+    return { kind: "incomplete" };
+  }
+  if (compact === "MAPALLOFF") {
+    return { kind: "action", action: { type: "setAllVideoMaps", enabled: false } };
+  }
+  if (compact.startsWith("MAP")) {
+    const rest = compact.slice(3);
+    if (rest.length === 0) {
+      return { kind: "incomplete" };
+    }
+    return mapToggleAction(rest, maps, undefined, layout);
+  }
   if (/^M[A-Z0-9_]/.test(compact)) {
     return mapToggleAction(compact.slice(1), maps, undefined, layout);
   }
@@ -599,6 +643,8 @@ const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
   "beaconatorSlew",
   "armPerTrackPtl",
   "associateFlightPlan",
+  "inhibitCa",
+  "inhibitMsaw",
 ]);
 
 function compactTrackingBuffer(buffer: string): string {
@@ -840,6 +886,12 @@ export function parseTrackingSlewBuffer(buffer: string): PreviewArmedAction | nu
   }
   if (compact === "*B") {
     return { type: "beaconatorSlew" };
+  }
+  if (compact === "*CA") {
+    return { type: "inhibitCa" };
+  }
+  if (compact === "*LA") {
+    return { type: "inhibitMsaw" };
   }
   const parsed = parseTrackingCommand(buffer);
   if (parsed?.kind === "action") {

@@ -352,6 +352,8 @@ function applyPreviewArmedAction(
       );
       if (map) {
         toggleVideoMap(view, map.id, action.explicitState);
+      } else {
+        toggleVideoMap(view, action.mapId, action.explicitState);
       }
       return;
     }
@@ -478,9 +480,16 @@ function applyPreviewArmedAction(
     case "resetLeaderDir":
     case "beaconatorSlew":
     case "armPerTrackPtl":
+    case "inhibitCa":
+    case "inhibitMsaw":
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;
       armPreviewSlewAction(view.preview, action, nowMs);
+      return;
+    case "toggleMci":
+      view.mciEnabled = !view.mciEnabled;
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
       return;
     case "saveAsPref":
       if (action.name) {

@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { createAircraft, createWorld, type Aircraft, type World } from "@core";
 import { createScopeView, type ScopeView } from "../scopeView";
 import {
+  DEFAULT_ADAPTATION_ANCHORS,
   associateFlightPlanToTrack,
+  buildAlertList,
+  hasActiveUninhibitedConflict,
   buildTabFlightPlanList,
   buildTowerArrivalList,
   buildVfrList,
@@ -14,6 +17,7 @@ import {
   ensureSystemListPlacement,
   getFlightPlanEntries,
   handleFlightPlanListClick,
+  handleVideoMapsListClick,
   hitTestSystemListEntry,
   promoteVfrListEntry,
   relocateSystemList,
@@ -22,11 +26,19 @@ import {
   setSystemListMaxLines,
   toggleSystemList,
 } from "../systemLists";
+import { buildVideoMapsListLines, getVideoMapsEntries } from "../coordinationList";
+import {
+  toggleVideoMap,
+  isVideoMapOn,
+  toggleGeoMapsList,
+  toggleCurrentMapsList,
+  clearAllVideoMaps,
+} from "../dcb/dcbFunctions";
 import { ensureTrackDisplay } from "../trackDisplay";
 import { handlePpiLeftClick } from "../ppi";
 import { handleScopeKeyDown, handleScopeKeyUp } from "../scopeKeys";
 import { parsePreviewCommand } from "../previewParse";
-import { beginPreviewBufferEntry } from "../previewArea";
+import { beginPreviewBufferEntry, previewTrackingSlew } from "../previewArea";
 
 function makeTestAircraft(
   partial: Partial<Aircraft> & { id: string; callsign: string; flightRules?: string },
@@ -879,5 +891,440 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(entries.some((e) => e.callsign === "DAL456")).toBe(true);
     });
   });
+
+  describe("T02-106: Video Map Lists (ML) Active Indicators & Interactive Scope Toggling", () => {
+    it("1. formats VIDEO MAPS header with > active indicators and two blank spaces for inactive", () => {
+      const view = createScopeView();
+      // Default: map 1 and map 4 are active
+      const lines = buildVideoMapsListLines(view, "ALL");
+      expect(lines[0]).toBe("VIDEO MAPS");
+      expect(lines[1]).toContain(">  1 BOS AIRSPACE");
+      expect(lines[2]).toContain("   2 FINAL 4R/4L");
+      expect(lines[3]).toContain("   3 FINAL 22L/27");
+      expect(lines[4]).toContain(">  4 MVA SECTORS");
+      expect(lines[5]).toContain("   5 VFR REPORTING");
+    });
+
+    it("2. formats ACTIVE MAPS directory header displaying only currently enabled maps", () => {
+      const view = createScopeView();
+      const lines = buildVideoMapsListLines(view, "CURRENT");
+      expect(lines[0]).toBe("ACTIVE MAPS");
+      expect(lines.some((l) => l.includes("1 BOS AIRSPACE"))).toBe(true);
+      expect(lines.some((l) => l.includes("4 MVA SECTORS"))).toBe(true);
+      expect(lines.some((l) => l.includes("2 FINAL"))).toBe(false);
+    });
+
+    it("3. commands: *ML Enter toggles ML visibility and MAP [ID] toggles map layer", () => {
+      const view = createScopeView();
+      expect(view.systemLists.ML.visible).toBe(false);
+
+      const parsedToggle = parsePreviewCommand("*ML");
+      expect(parsedToggle).toEqual({
+        kind: "action",
+        action: { type: "toggleList", listId: "ML" },
+      });
+
+      const parsedMap = parsePreviewCommand("MAP 2");
+      expect(parsedMap).toEqual({
+        kind: "action",
+        action: { type: "toggleVideoMap", mapId: "2" },
+      });
+
+      const parsedAllOff = parsePreviewCommand("MAP ALL OFF");
+      expect(parsedAllOff).toEqual({
+        kind: "action",
+        action: { type: "setAllVideoMaps", enabled: false },
+      });
+    });
+
+    it("4. *ML D Enter resets ML placement anchor to adaptation default", () => {
+      const view = createScopeView();
+      relocateSystemList(view, "ML", 0.1, 0.2);
+      expect(view.systemLists.ML.x).toBe(0.1);
+
+      const parsed = parsePreviewCommand("*ML D");
+      expect(parsed).toEqual({
+        kind: "action",
+        action: { type: "resetListPosition", listId: "ML" },
+      });
+
+      resetSystemListToDefault(view, "ML");
+      expect(view.systemLists.ML.x).toBe(DEFAULT_ADAPTATION_ANCHORS.ML.x);
+      expect(view.systemLists.ML.y).toBe(DEFAULT_ADAPTATION_ANCHORS.ML.y);
+    });
+
+    it("5. interactive scope canvas layer toggling: left-clicking map row toggles map layer ON/OFF and updates > indicator", () => {
+      const view = createScopeView();
+      const world = createWorld();
+
+      // Ensure map 2 is initially inactive
+      expect(isVideoMapOn(view, "2")).toBe(false);
+      let lines = buildVideoMapsListLines(view, "ALL");
+      expect(lines[2]).toContain("   2 FINAL 4R/4L");
+
+      // Configure active entry and rect hitboxes as renderScopePaint would
+      view.systemLists.ML.visible = true;
+      view.activeListEntries = [
+        {
+          listId: "ML",
+          rowIndex: 1,
+          callsign: "1",
+          mapId: "1",
+          bounds: { x: 250, y: 36, width: 150, height: 16 },
+        },
+        {
+          listId: "ML",
+          rowIndex: 2,
+          callsign: "2",
+          mapId: "2",
+          bounds: { x: 250, y: 52, width: 150, height: 16 },
+        },
+      ];
+      view.activeListRects = [
+        {
+          id: "ML",
+          bounds: { x: 250, y: 20, width: 150, height: 100 },
+        },
+      ];
+
+      // Left-click on row 2 (map 2) -> toggles ON
+      handlePpiLeftClick(view, world, 260, 54, 1000, 1000);
+      expect(isVideoMapOn(view, "2")).toBe(true);
+
+      // Rebuilding list shows > indicator on map 2
+      lines = buildVideoMapsListLines(view, "ALL");
+      expect(lines[2]).toContain(">  2 FINAL 4R/4L");
+
+      // Left-click on row 2 again -> toggles OFF
+      handlePpiLeftClick(view, world, 260, 54, 1000, 1000);
+      expect(isVideoMapOn(view, "2")).toBe(false);
+
+      // > indicator clears
+      lines = buildVideoMapsListLines(view, "ALL");
+      expect(lines[2]).toContain("   2 FINAL 4R/4L");
+
+      // Also verify direct handleVideoMapsListClick
+      handleVideoMapsListClick(view, 2);
+      expect(isVideoMapOn(view, "2")).toBe(true);
+      handleVideoMapsListClick(view, 2);
+      expect(isVideoMapOn(view, "2")).toBe(false);
+      // Clicking header (line 0) does nothing
+      expect(handleVideoMapsListClick(view, 0)).toBe(true);
+      expect(isVideoMapOn(view, "2")).toBe(false);
+    });
+
+    it("6. *ML [Click] Enter repositions map list anchor", () => {
+      const view = createScopeView();
+      const world = createWorld();
+
+      // Start typing *ML into preview buffer
+      beginPreviewBufferEntry(view.preview, "*ML", Date.now());
+      expect(view.preview.buffer).toBe("*ML");
+
+      // Click scope canvas at (300, 400) on 1000x1000 canvas -> stages candidate (0.3, 0.4)
+      handlePpiLeftClick(view, world, 300, 400, 1000, 1000);
+      expect(view.stagedListAnchor).toEqual({ listId: "ML", x: 0.3, y: 0.4 });
+      // Live coordinates not mutated yet
+      expect(view.systemLists.ML.x).toBe(0.25);
+
+      // Press Enter to commit staged anchor
+      handleScopeKeyDown(keyEvent("Enter"), view, "scope", world, Date.now());
+      expect(view.systemLists.ML.x).toBe(0.3);
+      expect(view.systemLists.ML.y).toBe(0.4);
+      expect(view.stagedListAnchor).toBeNull();
+      expect(view.preview.phase).toBe("idle");
+    });
+
+    it("7. DCB MAPS menu controls toggle GEO MAPS, CURRENT, and CLR ALL", () => {
+      const view = createScopeView();
+
+      // Initial: ML hidden
+      expect(view.systemLists.ML.visible).toBe(false);
+      expect(view.geoMapsListOn).toBe(false);
+
+      // DCB MAPS -> GEO MAPS toggles VIDEO MAPS directory ON
+      toggleGeoMapsList(view);
+      expect(view.systemLists.ML.visible).toBe(true);
+      expect(view.mapListMode).toBe("GEO");
+      expect(view.geoMapsListOn).toBe(true);
+      expect(view.currentMapsListOn).toBe(false);
+      expect(view.systemLists.ML.frameTitle).toBe("VIDEO MAPS (ML)");
+
+      // Second click toggles it OFF
+      toggleGeoMapsList(view);
+      expect(view.systemLists.ML.visible).toBe(false);
+      expect(view.geoMapsListOn).toBe(false);
+
+      // DCB MAPS -> CURRENT toggles ACTIVE MAPS directory ON
+      toggleCurrentMapsList(view);
+      expect(view.systemLists.ML.visible).toBe(true);
+      expect(view.mapListMode).toBe("CURRENT");
+      expect(view.currentMapsListOn).toBe(true);
+      expect(view.geoMapsListOn).toBe(false);
+      expect(view.systemLists.ML.frameTitle).toBe("ACTIVE MAPS (ML)");
+
+      // Second click toggles it OFF
+      toggleCurrentMapsList(view);
+      expect(view.systemLists.ML.visible).toBe(false);
+      expect(view.currentMapsListOn).toBe(false);
+
+      // DCB MAPS -> CLR ALL clears all active map layers
+      expect(isVideoMapOn(view, "1")).toBe(true);
+      clearAllVideoMaps(view);
+      expect(isVideoMapOn(view, "1")).toBe(false);
+      expect(isVideoMapOn(view, "4")).toBe(false);
+      const currentLines = buildVideoMapsListLines(view, "CURRENT");
+      expect(currentLines.length).toBe(1);
+      expect(currentLines[0]).toBe("ACTIVE MAPS");
+    });
+
+    it("8. keyboard commands MAP [ID] and MAP ALL OFF execute via handleScopeKeyDown", () => {
+      const view = createScopeView();
+      const world = createWorld();
+
+      // Map 2 is off initially
+      expect(isVideoMapOn(view, "2")).toBe(false);
+
+      // Enter "MAP 2"
+      beginPreviewBufferEntry(view.preview, "MAP 2", Date.now());
+      handleScopeKeyDown(keyEvent("Enter"), view, "scope", world, Date.now());
+      expect(isVideoMapOn(view, "2")).toBe(true);
+
+      // Enter "MAP4" toggles map 4 from on to off
+      expect(isVideoMapOn(view, "4")).toBe(true);
+      beginPreviewBufferEntry(view.preview, "MAP4", Date.now());
+      handleScopeKeyDown(keyEvent("Enter"), view, "scope", world, Date.now());
+      expect(isVideoMapOn(view, "4")).toBe(false);
+
+      // Enter "MAP ALL OFF"
+      beginPreviewBufferEntry(view.preview, "MAP ALL OFF", Date.now());
+      handleScopeKeyDown(keyEvent("Enter"), view, "scope", world, Date.now());
+      expect(isVideoMapOn(view, "1")).toBe(false);
+      expect(isVideoMapOn(view, "2")).toBe(false);
+      expect(isVideoMapOn(view, "4")).toBe(false);
+    });
+  });
+
+  describe("T02-107: Alert Status Box (AL) Dynamic Alerts & Controls", () => {
+    it("1. renders idle header LA/CA/MCI with no rows when no active alerts", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      const lines = buildAlertList(world, 50, view);
+      expect(lines.length).toBe(1);
+      expect(lines[0]).toBe("LA/CA/MCI");
+    });
+
+    it("2. dynamically unfurls CA and LA rows with correct formatting", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      world.aircraft = [
+        makeTestAircraft({ id: "ac1", callsign: "AAL100", altitudeFt: 3000 }),
+        makeTestAircraft({ id: "ac2", callsign: "DAL628", altitudeFt: 3000 }),
+        makeTestAircraft({ id: "ac3", callsign: "JBU389", altitudeFt: 1500 }),
+      ];
+      world.alerts = {
+        ca: [
+          { callsignA: "AAL100", callsignB: "DAL628", severity: "alert", distNm: 1.5, deltaAltFt: 0 },
+        ],
+        msaw: [
+          { callsign: "JBU389", altFt: 1500 },
+        ],
+        atpa: [],
+      };
+
+      const lines = buildAlertList(world, 50, view);
+      expect(lines[0]).toBe("LA/CA/MCI");
+      expect(lines).toContain("CA AAL100 DAL628");
+      expect(lines).toContain("LA JBU389 015");
+    });
+
+    it("3. *CA [Left-Click Target] inhibits CA for targeted track", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      const ac1 = makeTestAircraft({ id: "ac1", callsign: "AAL100", xNm: 5, yNm: 5 });
+      const ac2 = makeTestAircraft({ id: "ac2", callsign: "DAL628", xNm: 5.5, yNm: 5.5 });
+      world.aircraft = [ac1, ac2];
+      world.alerts = {
+        ca: [
+          { callsignA: "AAL100", callsignB: "DAL628", severity: "alert", distNm: 0.5, deltaAltFt: 0 },
+        ],
+        msaw: [],
+        atpa: [],
+      };
+
+      // Ensure alert shows initially
+      let lines = buildAlertList(world, 50, view);
+      expect(lines).toContain("CA AAL100 DAL628");
+
+      // Enter *CA command
+      beginPreviewBufferEntry(view.preview, "*CA", 1000);
+      handleScopeKeyDown(keyEvent("Enter"), view, "scope", world);
+      expect(view.preview.slewAction?.type).toBe("inhibitCa");
+
+      // Click on target ac1
+      const td = ensureTrackDisplay(view.tracks, "ac1");
+      td.caInhibited = true; // Slew click would set this
+
+      // Verify alert is now inhibited in AL list
+      lines = buildAlertList(world, 50, view);
+      expect(lines.some((l) => l.includes("CA AAL100"))).toBe(false);
+    });
+
+    it("4. *LA [Left-Click Target] inhibits MSAW for targeted track", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      const ac = makeTestAircraft({ id: "ac3", callsign: "JBU389", altitudeFt: 1500 });
+      world.aircraft = [ac];
+      world.alerts = {
+        ca: [],
+        msaw: [{ callsign: "JBU389", altFt: 1500 }],
+        atpa: [],
+      };
+
+      let lines = buildAlertList(world, 50, view);
+      expect(lines).toContain("LA JBU389 015");
+
+      // Inhibit via trackDisplay
+      const td = ensureTrackDisplay(view.tracks, "ac3");
+      td.msawInhibited = true;
+
+      lines = buildAlertList(world, 50, view);
+      expect(lines.some((l) => l.includes("LA JBU389"))).toBe(false);
+    });
+
+    it("5. *MCI Enter toggles mciEnabled boolean on view", () => {
+      const view = createScopeView();
+      expect(view.mciEnabled).toBe(true);
+
+      const parsed = parsePreviewCommand("*MCI");
+      expect(parsed).toEqual({
+        kind: "action",
+        action: { type: "toggleMci" },
+      });
+
+      beginPreviewBufferEntry(view.preview, "*MCI", 1000);
+      handleScopeKeyDown(keyEvent("Enter"), view, "scope");
+      expect(view.mciEnabled).toBe(false);
+
+      beginPreviewBufferEntry(view.preview, "*MCI", 2000);
+      handleScopeKeyDown(keyEvent("Enter"), view, "scope");
+      expect(view.mciEnabled).toBe(true);
+    });
+
+    it("6. *AL [Click] Enter repositions alert box and *AL D Enter resets", () => {
+      const view = createScopeView();
+      relocateSystemList(view, "AL", 0.35, 0.45);
+      expect(view.systemLists.AL.x).toBe(0.35);
+
+      const parsed = parsePreviewCommand("*AL D");
+      expect(parsed).toEqual({
+        kind: "action",
+        action: { type: "resetListPosition", listId: "AL" },
+      });
+
+      resetSystemListToDefault(view, "AL");
+      expect(view.systemLists.AL.x).toBe(DEFAULT_ADAPTATION_ANCHORS.AL.x);
+      expect(view.systemLists.AL.y).toBe(DEFAULT_ADAPTATION_ANCHORS.AL.y);
+    });
+
+    it("7. *AL [Click] Enter repositions alert box via interactive scope click and Enter commit", () => {
+      const view = createScopeView();
+      const world = createWorld();
+
+      beginPreviewBufferEntry(view.preview, "*AL", 1000);
+      expect(view.preview.buffer).toBe("*AL");
+
+      // Click on canvas at (300, 400) on 1000x800 display -> normalized (0.3, 0.5)
+      handlePpiLeftClick(view, world, 300, 400, 1000, 800, "");
+      expect(view.stagedListAnchor).toEqual({
+        listId: "AL",
+        x: 0.3,
+        y: 0.5,
+      });
+
+      // Press Enter commits relocation
+      handleScopeKeyDown(keyEvent("Enter"), view, "scope", world, 1500);
+      expect(view.systemLists.AL.x).toBeCloseTo(0.3);
+      expect(view.systemLists.AL.y).toBeCloseTo(0.5);
+      expect(view.stagedListAnchor).toBeNull();
+    });
+
+    it("8. dynamically unfurls MCI rows and obeys mciEnabled toggle", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      world.alerts = {
+        ca: [],
+        msaw: [],
+        atpa: [],
+        mci: [
+          { intruderSquawkOrCallsign: "1200", protectedCallsign: "UAL856" },
+        ],
+      };
+
+      let lines = buildAlertList(world, 50, view);
+      expect(lines[0]).toBe("LA/CA/MCI");
+      expect(lines).toContain("MCI 1200 UAL856");
+
+      // Toggle MCI off
+      view.mciEnabled = false;
+      lines = buildAlertList(world, 50, view);
+      expect(lines.length).toBe(1);
+      expect(lines[0]).toBe("LA/CA/MCI");
+      expect(lines.slice(1).some((l) => l.includes("MCI"))).toBe(false);
+    });
+
+    it("9. hasActiveUninhibitedConflict correctly signals audible conflict alert state", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      const ac1 = makeTestAircraft({ id: "ac1", callsign: "AAL100" });
+      const ac2 = makeTestAircraft({ id: "ac2", callsign: "DAL628" });
+      world.aircraft = [ac1, ac2];
+      world.alerts = {
+        ca: [
+          { callsignA: "AAL100", callsignB: "DAL628", severity: "alert", distNm: 1.0, deltaAltFt: 200 },
+        ],
+        msaw: [],
+        atpa: [],
+      };
+
+      // Uninhibited -> audible active
+      expect(hasActiveUninhibitedConflict(world, view)).toBe(true);
+
+      // Inhibit via trackDisplay for ac1
+      const td1 = ensureTrackDisplay(view.tracks, "ac1");
+      td1.caInhibited = true;
+      expect(hasActiveUninhibitedConflict(world, view)).toBe(false);
+
+      // Reset ac1 and inhibit ac2
+      td1.caInhibited = false;
+      expect(hasActiveUninhibitedConflict(world, view)).toBe(true);
+      const td2 = ensureTrackDisplay(view.tracks, "ac2");
+      td2.caInhibited = true;
+      expect(hasActiveUninhibitedConflict(world, view)).toBe(false);
+    });
+
+    it("10. *LA [Left-Click Target] inhibits MSAW for targeted track via live preview slew buffer", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      const target = makeTestAircraft({ id: "ac-low", callsign: "N12345", altitudeFt: 800, xNm: 0, yNm: 0 });
+      world.aircraft = [target];
+      world.alerts = {
+        ca: [],
+        msaw: [{ callsign: "N12345", altFt: 800 }],
+        atpa: [],
+      };
+
+      // Type *LA into preview buffer
+      beginPreviewBufferEntry(view.preview, "*LA", 1000);
+      expect(previewTrackingSlew(view.preview)?.type).toBe("inhibitMsaw");
+
+      // Left-click radar target
+      handlePpiLeftClick(view, world, 500, 400, 1000, 800, "");
+      const td = ensureTrackDisplay(view.tracks, "ac-low");
+      expect(td.msawInhibited).toBe(true);
+      expect(view.preview.phase).toBe("idle");
+    });
+  });
 });
+
 

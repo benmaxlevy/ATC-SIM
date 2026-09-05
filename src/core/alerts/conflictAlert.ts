@@ -27,6 +27,11 @@ export interface CaAlert {
   deltaAltFt: number;
 }
 
+export interface MciAlert {
+  intruderSquawkOrCallsign: string;
+  protectedCallsign: string;
+}
+
 export interface WorldAlerts {
   /** Active CA pairs. Scope reads this; it must not recompute CA. */
   ca: CaAlert[];
@@ -34,10 +39,12 @@ export interface WorldAlerts {
   msaw: MsawAlert[];
   /** Active ATPA in-trail pairs. Scope reads this; it must not recompute pairing. */
   atpa: AtpaPair[];
+  /** Active Mode C Intruder alerts. */
+  mci?: MciAlert[];
 }
 
 export function emptyWorldAlerts(): WorldAlerts {
-  return { ca: [], msaw: [], atpa: [] };
+  return { ca: [], msaw: [], atpa: [], mci: [] };
 }
 
 export function caPairKey(callsignA: string, callsignB: string): string {

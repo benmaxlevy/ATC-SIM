@@ -765,6 +765,7 @@ export {
   areAllSystemListsVisible,
   associateFlightPlanToTrack,
   buildAlertList,
+  hasActiveUninhibitedConflict,
   buildCoastSuspendList,
   buildCrdaStatusList,
   buildSignOnList,
@@ -785,6 +786,7 @@ export {
   handleListMiddleClick,
   handleListMouseMove,
   handleListTitleDragStart,
+  handleVideoMapsListClick,
   hitTestSystemListEntry,
   hitTestSystemListTitle,
   idleFlightPlanListState,
@@ -819,11 +821,18 @@ export {
   buildCoordinationListLines,
   buildVideoMapsListLines,
   createCoordinationList,
+  getVideoMapsEntries,
   releaseDepartureByCallsign,
   releaseSingleDeparture,
   setCoordinationAutoRelease,
 } from "./coordinationList";
-export type { CoordinationListState, ReleaseDeparture, ReleaseResult } from "./coordinationList";
+export type {
+  CoordinationListState,
+  DefaultVideoMapEntry,
+  ReleaseDeparture,
+  ReleaseResult,
+  VideoMapListEntry,
+} from "./coordinationList";
 export {
   DEFAULT_WX_LEVELS,
   DEFAULT_WX_PAD_NM,
