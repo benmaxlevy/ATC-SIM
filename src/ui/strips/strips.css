@@ -10,7 +10,7 @@
   grid-template-columns: 1.4fr 0.7fr 0.9fr 2.2fr 1.1fr;
   width: 100%;
   max-width: 840px;
-  height: 96px;
+  height: 80px;
   background-color: #f5eedc;
   border: 1px solid #333;
   font-family: Consolas, "Courier New", monospace;
@@ -94,18 +94,18 @@
 }
 
 .col-ident .acid {
-  font-size: 1.05rem;
+  font-size: 0.77rem;
   letter-spacing: 0.05em;
   line-height: 1.1;
 }
 
 .col-ident .rev {
-  font-size: 0.75rem;
+  font-size: 0.555rem;
   min-height: 1em;
 }
 
 .col-ident .type {
-  font-size: 0.82rem;
+  font-size: 0.62rem;
 }
 
 .cid-row {
@@ -114,7 +114,7 @@
 }
 
 .cid-row .cid {
-  font-size: 0.82rem;
+  font-size: 0.62rem;
 }
 
 /* Col 2 & Col 3 Three-Tier Stacks */
@@ -125,7 +125,7 @@
   align-items: center;
   padding: 0 5px;
   border-bottom: 1px solid #333;
-  font-size: 0.82rem;
+  font-size: 0.62rem;
   box-sizing: border-box;
 }
 
@@ -136,8 +136,8 @@
 
 /* Col 4 */
 .col-route {
-  padding: 3px 5px;
-  font-size: 0.72rem;
+  padding: 2px 5px;
+  font-size: 0.605rem;
   line-height: 1.15;
   word-break: break-word;
   white-space: normal;
@@ -151,15 +151,15 @@
 }
 
 .col-route-arrival .flight-rules {
-  padding: 3px 5px;
-  font-size: 0.82rem;
+  padding: 2px 5px;
+  font-size: 0.62rem;
   border-bottom: 1px solid #333;
 }
 
 .col-route-arrival .dest-remarks {
   flex: 1;
-  padding: 3px 5px;
-  font-size: 0.72rem;
+  padding: 2px 5px;
+  font-size: 0.605rem;
   line-height: 1.15;
   word-break: break-word;
   white-space: normal;
@@ -182,7 +182,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
+  font-size: 0.555rem;
   box-sizing: border-box;
 }
 
@@ -426,7 +426,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 96px;
+  height: 80px;
   color: #888888;
   font-family:
     "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
