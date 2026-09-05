@@ -1,3 +1,79 @@
+# ATC-SIM swarm orchestrator — Thirty-first swarm (STARS In-Scope System Lists Architecture & Interactive Lists)
+
+Thirtieth (Flight Progress Strips Interactive Freeform Box Annotations T02-100–102) landed.
+This file keeps that history, then the thirty-first addendum on
+**`feature/system-lists`** (cut from `master`).
+
+## Thirty-first swarm planned — 2026-09-05 (STARS In-Scope System Lists Architecture & Interactive Lists)
+
+This configuration implements the full FAA STARS in-scope System Lists suite on the radar display:
+standard list IDs (`FL`, `TL`, `VL`, `ML`, `AL`), adaptation default anchors, title header left/middle-click dragging,
+Shift-Click default reset, keyboard relocation and reset (`*ID D Enter`), DCB PREF profile persistence,
+Flight Plan List (`FL`) buffering and auto-correlation, Tower List (`TL`) and VFR List (`VL`) sequences,
+Video Map Lists (`ML`) with active `> ` caret indicators and direct canvas row toggling, and the dynamic
+LA/CA/MCI Status Box (`AL`) with flashing/audio alerts, on **`feature/system-lists`**.
+Captain squash-merges ticket branches into **`feature/system-lists`**, not `master`. Do not push. Existing swarm history stays intact.
+
+| Key | Value |
+| --- | --- |
+| Goal | Establish the FAA STARS in-scope system list window architecture, complete with title header dragging, default anchor resets, DCB PREF persistence, and interactive implementations for FL, TL, VL, ML, and AL on the scope canvas. |
+| Include | **T02-103**, **T02-104**, **T02-105**, **T02-106**, **T02-107** |
+| Source | FAA STARS R07 System Lists specifications, CRC STARS Command Reference (Tables 31/32), and virtual NAS terminal radar workstation standards. |
+| Skip | CRDA Status List (`CR`), Coast/Suspend List (`CS`), and Sign-On List (`SO`) for now (deferred per request); paid speech/LLM APIs. |
+| Stop | After T02-107 acceptance. No next phase. |
+| Max workers | 3 |
+| Merge lock | captain squash to `feature/system-lists`, then `npm test` / `npm run ci` |
+| Model | **inherit** on captain and every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law (thirty-first swarm — STARS In-Scope System Lists Architecture & Interactive Lists):**
+
+- **Authentic STARS list architecture & IDs.** Active lists use official identifiers: `FL` (Flight Plan), `TL` (Tower), `VL` (VFR), `ML` (Video Maps), and `AL` (LA/CA/MCI), alongside `SSA`. Legacy tokens (`TAB`, `T`, `TV`, `TM`, `TX`, `P1`–`P3`) are preserved as aliases.
+- **Direct title header repositioning & default resets.** Holding left-click or middle-click on any list title header initiates dragging with green anchor and white ghost frames. Shift-left-clicking the title bar or typing `* [List ID] D Enter` instantly resets the window to its adaptation default coordinates.
+- **Workstation PREF profile persistence.** Active list visibility, normalized coordinates `(x, y)`, and capacity `maxLines` persist seamlessly across profile save/recall via DCB PREF runtime.
+- **Flight Plan List (`FL`) buffering & correlation.** Buffers unassociated tracks and pending departures with quick-action indices and `MORE: X/Y` pagination. Squawk-matching automatically converts tracks to FDB and purges entries from `FL`. Direct track pairing via `[Index#] [Click]` and manual deletion via `*DEL [Index#]` / `F1` + row click are fully supported.
+- **Tower (`TL`) & VFR (`VL`) sequences.** Multi-tower support (`*TL`, `*TL [Tower ID]`) displays staged departures and arrivals formatted as `[Callsign] [Type]`. VFR list displays advisory targets formatted as `[Callsign] [Beacon] [AltitudeHundreds]`. Both support `F1` + click entry dropping.
+- **Interactive Video Maps List (`ML`) with active caret indicators.** Geographic maps directory (`VIDEO MAPS`) indicates active maps with a **`>`** followed by a space to the left of the map identifier/name (`>  1 BOS AIRSPACE`), while inactive maps show spaces. Active maps directory (`CURRENT`) lists enabled layers. Left-clicking any map row directly on the scope toggles the layer without navigating DCB submenus.
+- **Dynamic Safety Alert Box (`AL`).** Renders idle header `LA/CA/MCI` when normal, dynamically unfurling alert rows (`CA`, `LA`, `MCI`) when triggered, flashing synchronously at 1 Hz with radar datablocks and sounding audible warnings until acknowledged (`*CA [Click]`, `*LA [Click]`) or resolved.
+- **Zero regressions.** Scope navigation, radar tracking, datablocks, flight strips, DCB submenus, and radio parsing stay 100% operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-103 | `feature/system-lists` + planning commit |
+| B | T02-104, T02-105 | T02-103 |
+| C | T02-106, T02-107 | T02-103 |
+
+**Ticket ownership:**
+
+- T02-103 owns standard list registry, adaptation default anchors, title header drag state machine, `Shift+Click` & `*ID D` reset, slew staging, and DCB PREF persistence.
+- T02-104 owns Flight Plan List (`FL`) buffering, quick-action index, `MORE: X/Y` pagination, auto-correlation/purging, `*DEL`, and `F1` deletion.
+- T02-105 owns Tower List (`TL`) multi-tower handling, VFR List (`VL`), formatting (`[ACID] [TYPE]` and `[ACID] [BEACON] [ALT]`), and `F1` drop entry interactions.
+- T02-106 owns Video Map Lists (`ML`) directory formatting (`> ` active indicators), `CURRENT` list, interactive canvas row toggling, and `MAP [ID]` commands.
+- T02-107 owns LA/CA/MCI Status Box (`AL`) dynamic unfurling, alert target formatting, 1 Hz datablock flash sync, audio chime, and `*CA`/`*LA`/`*MCI` inhibit commands.
+
+**Ticket files / branches:**
+
+- `ticket/T02-103-system-lists-core-architecture-and-window-manager` ← `phases/02-scope/tickets/T02-103-system-lists-core-architecture-and-window-manager.md`
+- `ticket/T02-104-flight-plan-list-buffering-and-correlation` ← `phases/02-scope/tickets/T02-104-flight-plan-list-buffering-and-correlation.md`
+- `ticket/T02-105-tower-and-vfr-lists-sequences-and-drop` ← `phases/02-scope/tickets/T02-105-tower-and-vfr-lists-sequences-and-drop.md`
+- `ticket/T02-106-video-map-lists-active-indicators-and-scope-toggling` ← `phases/02-scope/tickets/T02-106-video-map-lists-active-indicators-and-scope-toggling.md`
+- `ticket/T02-107-alert-status-box-dynamic-unfurling-and-controls` ← `phases/02-scope/tickets/T02-107-alert-status-box-dynamic-unfurling-and-controls.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope addendum (T02-103–107 STARS In-Scope System Lists Architecture & Interactive Lists)
+Merge target: `feature/system-lists`
+Merged: T02-103, T02-104, T02-105, T02-106, T02-107
+Tests: npm test / npm run ci exit 0
+Notes: <STARS list IDs; title drag & default reset; PREF persistence; FL/TL/VL/ML/AL operational lists; active map > indicators; dynamic alerts>
+```
+
+---
+
 # ATC-SIM swarm orchestrator — Thirtieth swarm (Flight Progress Strips Interactive Freeform Box Annotations)
 
 Twenty-ninth (Flight Progress Strips Bay Separators & Custom Context Menus T02-97–99) landed on `feature/flight-strips`.
