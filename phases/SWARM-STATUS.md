@@ -24,7 +24,7 @@ T02-94–96 are implemented on `feature/flight-strips` (not `master`). Full test
   - Preserved radar track selection synchronization (`World.selectedAircraftId`) on strip left-click.
   - Comprehensive end-to-end acceptance test suite `src/ui/strips/test/stripsAcceptance.test.tsx` (42 tests covering AC1–AC7).
 
-**Merged (squash-merged, captain only, onto `feature/flight-strips`):** T02-94 (`012fb1b`), T02-95 (`82bcec4`), T02-96 (`pending`). Planning `d255ece`.
+**Merged (squash-merged, captain only, onto `feature/flight-strips`):** T02-94 (`012fb1b`), T02-95 (`82bcec4`), T02-96 (`86eb6bb`). Planning `d255ece`.
 
 **Captain judgement calls:**
 - Reconcile order function appends newly spawned aircraft to the bottom of the section and prunes terminated aircraft without resetting controller's custom order.
