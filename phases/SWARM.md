@@ -1,3 +1,68 @@
+# ATC-SIM swarm orchestrator — Thirtieth swarm (Flight Progress Strips Interactive Freeform Box Annotations)
+
+Twenty-ninth (Flight Progress Strips Bay Separators & Custom Context Menus T02-97–99) landed on `feature/flight-strips`.
+This file keeps that history, then the thirtieth addendum on
+**`feature/flight-strips`**.
+
+## Thirtieth swarm planned — 2026-09-05 (Flight Progress Strips Interactive Freeform Box Annotations)
+
+This configuration implements interactive freeform box annotations on flight progress strips, supporting double-click inline editing on Boxes 10–18 (3×3 coordination matrix) and Boxes 8A/8B with authentic black text, keyboard commit/cancel, isolation from strip dragging/selection, and telemetry persistence on **`feature/flight-strips`**.
+Captain squash-merges ticket branches into **`feature/flight-strips`**, not `master`. Do not push. Existing swarm history stays intact.
+
+| Key | Value |
+| --- | --- |
+| Goal | Enable controllers to double-click any cell in Boxes 10–18 or Boxes 8A/8B on Departure and Arrival strips to edit freeform text annotations directly inline with authentic black text, commit on Enter/blur, cancel on Escape, prevent accidental strip dragging or radar track selection, and persist annotations across live World telemetry ticks. |
+| Include | **T02-100**, **T02-101**, **T02-102** |
+| Source | FAA Order 7110.65 Chapter 2 §3 & Appendix A, virtual NAS terminal flight strip scratchpad specifications, and terminal radar workstation UI architecture. |
+| Skip | Paid speech/LLM APIs; server-side database storage; freehand canvas pen drawing; multi-selection bulk annotations. |
+| Stop | After T02-102 acceptance. No next phase. |
+| Max workers | 3 |
+| Merge lock | captain squash to `feature/flight-strips`, then `npm test` / `npm run ci` |
+| Model | **inherit** on captain and every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law (thirtieth swarm — Flight Progress Strips Interactive Freeform Box Annotations):**
+
+- **Authentic strip annotation appearance.** Annotations render in authentic black text (`color: #000000;`) on the pale buff strip cardstock (`#f5eedc`), with bold uppercase monospace typography (`Consolas`, `IBM Plex Mono`).
+- **Direct double-click inline editing.** Double-clicking an annotatable box (10–18 or 8A/8B) immediately mounts an inline micro-input fitted to that cell with auto-focus and text selection.
+- **Keyboard navigation & commit.** Pressing `Enter` or blurring commits changes; pressing `Escape` reverts to previous text.
+- **Interaction isolation.** Clicking or double-clicking an annotation cell stops propagation (`e.stopPropagation()`) so it never triggers radar track selection (`World.selectedAircraftId`) or initiates an HTML5 drag reorder.
+- **Telemetry persistence.** When live simulation ticks stream updated traffic via `terminalStripsFromWorld`, controller-written annotations for active aircraft are merged and preserved without reset.
+- **Zero regressions.** Strip cocking (~28px right-click indent), bay separators, custom context menus, and intra-rack drag reordering remain 100% operational.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-100 | `feature/flight-strips` + planning commit |
+| B | T02-101 | T02-100 |
+| C | T02-102 | T02-101 |
+
+**Ticket ownership:**
+
+- T02-100 owns `StripAnnotationBoxes` model extensions, double-click inline micro-input cell component, keyboard commit/cancel, and event isolation in `DepartureStrip` and `ArrivalStrip`.
+- T02-101 owns `StripsBoard` annotation state tracking, merging with live `terminalStripsFromWorld` telemetry updates, and update callbacks.
+- T02-102 owns CSS styling (`.strip-annotation-input`, hover cues), unit tests, and acceptance test suite (AC13–AC16).
+
+**Ticket files / branches:**
+
+- `ticket/T02-100-strips-freeform-box-annotations-component` ← `phases/02-scope/tickets/T02-100-strips-freeform-box-annotations-component.md`
+- `ticket/T02-101-strips-annotation-state-and-telemetry-persistence` ← `phases/02-scope/tickets/T02-101-strips-annotation-state-and-telemetry-persistence.md`
+- `ticket/T02-102-strips-box-annotations-acceptance-and-styling` ← `phases/02-scope/tickets/T02-102-strips-box-annotations-acceptance-and-styling.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope addendum (T02-100–102 Flight Progress Strips Interactive Freeform Box Annotations)
+Merge target: `feature/flight-strips`
+Merged: T02-100, T02-101, T02-102
+Tests: npm test / npm run ci exit 0
+Notes: <Double-click inline freeform annotations; black text; telemetry persistence; zero regressions>
+```
+
+---
+
 # ATC-SIM swarm orchestrator — Twenty-ninth swarm (Flight Progress Strips Bay Separators & Custom Context Menus)
 
 Twenty-eighth (Flight Progress Strips Drag Reordering & Indentation T02-94–96) landed.

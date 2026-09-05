@@ -755,9 +755,19 @@ Interactive flight progress strip bay separators, direct in-place text editing, 
 
 | ID | Title | Pri | Size | Depends on | Status |
 | --- | --- | --- | --- | --- | --- |
-| [T02-97](tickets/T02-97-strips-separator-component-and-text-editing.md) | Strips separator domain model, component, and direct text editing | P0 | M | none | Ready |
-| [T02-98](tickets/T02-98-strips-custom-context-menus.md) | Strip bay custom context menus | P0 | M | T02-97 | Ready |
-| [T02-99](tickets/T02-99-strips-separator-drag-reorder-and-acceptance.md) | Strips separator drag reorder, reconciliation, and acceptance | P0 | S | T02-98 | Ready |
+| [T02-97](tickets/T02-97-strips-separator-component-and-text-editing.md) | Strips separator domain model, component, and direct text editing | P0 | M | none | Shipped |
+| [T02-98](tickets/T02-98-strips-custom-context-menus.md) | Strip bay custom context menus | P0 | M | T02-97 | Shipped |
+| [T02-99](tickets/T02-99-strips-separator-drag-reorder-and-acceptance.md) | Strips separator drag reorder, reconciliation, and acceptance | P0 | S | T02-98 | Shipped |
+
+### Phase 2 addendum (T02-100–102 Flight Progress Strips Interactive Freeform Box Annotations)
+
+Direct in-place text annotations on flight progress strips, supporting double-click inline micro-inputs for Boxes 10–18 (3×3 coordination matrix) and Boxes 8A/8B with authentic black text, keyboard commit/cancel, interaction isolation from strip drag and selection, and telemetry state persistence across live World ticks.
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-100](tickets/T02-100-strips-freeform-box-annotations-component.md) | Strips freeform box annotations component and inline editing | P0 | M | none | Ready |
+| [T02-101](tickets/T02-101-strips-annotation-state-and-telemetry-persistence.md) | Strips annotation state and telemetry persistence | P0 | M | T02-100 | Ready |
+| [T02-102](tickets/T02-102-strips-box-annotations-acceptance-and-styling.md) | Strips box annotations acceptance, unit tests, and styling | P0 | S | T02-101 | Ready |
 
 ## Launching an agent
 
@@ -778,6 +788,7 @@ Interactive flight progress strip bay separators, direct in-place text editing, 
 15. Terminal Flight Progress Strips addendum T02-90 → T02-93 (Data models, formatters, departure/arrival grids, 2-column rack board).
 16. Flight Progress Strips Reordering & Indentation addendum T02-94 → T02-96 (Right-click indentation, intra-section drag reordering, drop indicator line, telemetry reconciliation).
 17. Flight Progress Strips Bay Separators & Custom Context Menus addendum T02-97 → T02-99 (Bay separator dividers, direct in-place text editing, custom context menu on empty bay and separator, drag reordering, telemetry reconciliation).
+18. Flight Progress Strips Interactive Freeform Box Annotations addendum T02-100 → T02-102 (Freeform inline annotations on Boxes 10–18 and 8A/8B, double-click editing, black text, telemetry persistence, interaction isolation).
 
 ## Glossary reminders
 
