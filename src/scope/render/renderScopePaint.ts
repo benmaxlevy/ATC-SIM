@@ -1248,6 +1248,7 @@ export function drawSystemLists(
   const textColor = applyBrite(PALETTE.ssa, view.brite.lst);
 
   const activeRects: { id: string; bounds: ListRect }[] = [];
+  const activeListEntries: { listId: string; rowIndex: number; callsign: string; bounds: ListRect }[] = [];
   const airportId = world.catalog?.airportId ?? "KDEM";
   const seenCanonical = new Set<string>();
 
@@ -1268,10 +1269,10 @@ export function drawSystemLists(
         lines = buildSignOnList();
         break;
       case "FL":
-        lines = buildTabFlightPlanList(world, placement.maxLines);
+        lines = buildTabFlightPlanList(world, placement.maxLines, view);
         break;
       case "VL":
-        lines = buildVfrList(world, placement.maxLines);
+        lines = buildVfrList(world, placement.maxLines, view.vfrListDroppedCallsigns, view.tracks);
         break;
       case "TL":
         lines = buildTowerArrivalList(
@@ -1280,6 +1281,7 @@ export function drawSystemLists(
           0,
           0,
           placement.maxLines,
+          view.towerListDroppedCallsigns,
         );
         break;
       case "TOWER_2":
@@ -1289,6 +1291,7 @@ export function drawSystemLists(
           0,
           0,
           placement.maxLines,
+          view.towerListDroppedCallsigns,
         );
         break;
       case "TOWER_3":
@@ -1298,6 +1301,7 @@ export function drawSystemLists(
           0,
           0,
           placement.maxLines,
+          view.towerListDroppedCallsigns,
         );
         break;
       case "AL":
@@ -1315,7 +1319,14 @@ export function drawSystemLists(
       default:
         if (id.startsWith("TL_")) {
           const satId = id.slice(3);
-          lines = buildTowerArrivalList(world, satId, 0, 0, placement.maxLines);
+          lines = buildTowerArrivalList(
+            world,
+            satId,
+            0,
+            0,
+            placement.maxLines,
+            view.towerListDroppedCallsigns,
+          );
         }
         break;
     }
@@ -1336,11 +1347,25 @@ export function drawSystemLists(
     const bounds: ListRect = { x, y, width, height };
     activeRects.push({ id, bounds });
 
-    // Draw text lines
+    // Draw text lines and record entry hitboxes
     ctx.fillStyle = textColor;
     let textY = y;
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]!;
       ctx.fillText(line, x, textY);
+      if (i > 0 && !line.startsWith("MORE:")) {
+        const parts = line.trim().split(/\s+/);
+        // If first token is numeric index, callsign is second token, else first token
+        const callsign = (/^\d+$/.test(parts[0] ?? "") ? parts[1] : parts[0]) ?? "";
+        if (callsign.length > 0) {
+          activeListEntries.push({
+            listId: id,
+            rowIndex: i,
+            callsign: callsign.replace(/^\*/, ""),
+            bounds: { x, y: textY, width, height: lineH },
+          });
+        }
+      }
       textY += lineH;
     }
 
@@ -1354,6 +1379,21 @@ export function drawSystemLists(
   }
 
   view.activeListRects = activeRects;
+  view.activeListEntries = activeListEntries;
+
+  // Staged candidate list anchor ghost frame
+  if (view.stagedListAnchor) {
+    const stagedX = Math.round(view.stagedListAnchor.x * cssWidth);
+    const stagedY = Math.round(view.stagedListAnchor.y * cssHeight);
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(stagedX, stagedY, 140, 70);
+    ctx.fillStyle = textColor;
+    ctx.fillText(`[${view.stagedListAnchor.listId}]`, stagedX + 4, stagedY + 4);
+    ctx.restore();
+  }
 
   // Check and draw overlapping warning boxes
   const overlapping = findOverlappingLists(activeRects);

@@ -36,7 +36,19 @@ import {
   togglePerTrackPtl,
   type ScopeView,
 } from "./scopeView";
-import { normalizedClickAnchor, relocateSystemList } from "./systemLists";
+import {
+  associateFlightPlanToTrack,
+  canonicalSystemListId,
+  dropTowerListEntry,
+  dropVfrListEntry,
+  handleFlightPlanListClick,
+  hitTestSystemListEntry,
+  normalizedClickAnchor,
+  pointInsideRect,
+  promoteVfrListEntry,
+  relocateSystemList,
+} from "./systemLists";
+import { datablockLineHeightPx } from "./fonts";
 import {
   acceptInboundOnClick,
   applyBeaconatorSlewToId,
@@ -120,6 +132,18 @@ function applyTrackingSlewHit(
       clearTrackingSlew(view);
       return true;
     }
+    case "associateFlightPlan": {
+      const associated = associateFlightPlanToTrack(world, view, action.index, id);
+      if (!associated) {
+        rejectPreviewCntl(view.preview, Date.now());
+        cancelStarsChordEntry(view.starsChordEntry);
+        view.starsChordArmed = null;
+        return true;
+      }
+      setSelectedAircraft(world, id);
+      clearTrackingSlew(view);
+      return true;
+    }
     case "acceptHandoff": {
       const ho = handoffFor(world, id);
       if (ho.kind !== "inbound") {
@@ -145,6 +169,24 @@ function applyTrackingSlewHit(
       return true;
     }
     case "setLeaderDir": {
+      const td = ensureTrackDisplay(view.tracks, id);
+      const isUncorrelated =
+        td.unassociated === true ||
+        (td.ownership !== "owned" && td.datablockMode !== "full");
+      const num = action.dir ?? (action.starsDir ? Number(action.starsDir) : undefined);
+      if (isUncorrelated && num !== undefined) {
+        if (associateFlightPlanToTrack(world, view, num, id)) {
+          setSelectedAircraft(world, id);
+          clearTrackingSlew(view);
+          return true;
+        }
+        if (promoteVfrListEntry(view, world, num, id)) {
+          setSelectedAircraft(world, id);
+          clearTrackingSlew(view);
+          return true;
+        }
+        return false;
+      }
       const dir =
         action.dir ??
         (action.starsDir ? leaderDirFromStarsClock(action.starsDir) : DEFAULT_LEADER_DIR);
@@ -217,15 +259,52 @@ export function handlePpiLeftClick(
   const size = viewSize(cssWidth, cssHeight);
   const nm = screenToNm(cssX, cssY, view.camera, size);
   recordLastClick(view, nm.eastNm, nm.northNm);
+  // Check if click was on a system list entry while F1 drop mode is active
+  if (view.f1DropArmed || view.beaconatorActive) {
+    const hitEntry = hitTestSystemListEntry(view, cssX, cssY);
+    if (hitEntry) {
+      if (hitEntry.listId === "TL" || hitEntry.listId.startsWith("TL_")) {
+        dropTowerListEntry(view, hitEntry.callsign);
+      } else if (hitEntry.listId === "VL") {
+        dropVfrListEntry(view, hitEntry.callsign);
+      }
+      view.f1DropArmed = false;
+      view.beaconatorActive = false;
+      return;
+    }
+  }
+
+  // Check if click was inside Flight Plan list (FL) for MORE pagination or F1 row deletion
+  if (view.activeListRects) {
+    const flItem = view.activeListRects.find(
+      (r) => canonicalSystemListId(r.id) === "FL",
+    );
+    if (flItem && pointInsideRect(cssX, cssY, flItem.bounds)) {
+      const lineH = datablockLineHeightPx(view.charSizes.lists);
+      const clickedLine = Math.floor((cssY - flItem.bounds.y) / lineH);
+      if (handleFlightPlanListClick(view, world, clickedLine)) {
+        if (view.f1DropArmed || view.beaconatorActive) {
+          view.f1DropArmed = false;
+          view.beaconatorActive = false;
+        }
+        return;
+      }
+    }
+  }
+
   const relocateId = previewRelocateListId(view.preview);
   if (relocateId) {
     const anchor = normalizedClickAnchor(cssX, cssY, cssWidth, cssHeight);
-    if (relocateSystemList(view, relocateId, anchor.x, anchor.y)) {
-      cancelPreviewArea(view.preview);
-      cancelStarsChordEntry(view.starsChordEntry);
-      view.starsChordArmed = null;
-      return;
+    view.stagedListAnchor = { listId: relocateId, x: anchor.x, y: anchor.y };
+    if (relocateId === "FL" || relocateId === "TAB" || relocateId === "SSA") {
+      if (relocateSystemList(view, relocateId, anchor.x, anchor.y)) {
+        cancelPreviewArea(view.preview);
+        cancelStarsChordEntry(view.starsChordEntry);
+        view.starsChordArmed = null;
+        return;
+      }
     }
+    return;
   }
   if (view.placeCenterArmed) {
     centerOnWorld(view, nm.eastNm, nm.northNm);
@@ -286,6 +365,25 @@ export function handlePpiLeftClick(
           return;
         }
       }
+    }
+  }
+  if (view.preview.phase === "entry" && /^\d{1,2}$/.test(view.preview.buffer.trim())) {
+    const numIdx = Number(view.preview.buffer.trim());
+    const hit = pickAircraftAt(
+      world,
+      cssX,
+      cssY,
+      view.camera,
+      cssWidth,
+      cssHeight,
+      HIT_RADIUS_CSS_PX,
+      view,
+    );
+    if (hit && promoteVfrListEntry(view, world, numIdx, hit.id)) {
+      cancelPreviewArea(view.preview);
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      return;
     }
   }
   selectOrAcceptAircraftAt(

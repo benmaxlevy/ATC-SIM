@@ -117,7 +117,10 @@ import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock, type LeaderLengthPx } from
 import { resolveScopeFlid } from "./previewArea";
 import {
   cancelListDrag,
+  deleteFlightPlanEntry,
+  relocateSystemList,
   resetSystemListToDefault,
+  scrollFlightPlanList,
   setSystemListMaxLines,
   toggleSystemList,
 } from "./systemLists";
@@ -290,6 +293,13 @@ function applyPreviewArmedAction(
       return;
     case "resizeList":
       setSystemListMaxLines(view, action.listId, action.maxLines);
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      return;
+    case "deleteFlightPlanEntry":
+      if (world) {
+        deleteFlightPlanEntry(world, view, action.index);
+      }
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;
       return;
@@ -489,6 +499,15 @@ function applyPreviewBufferOutcome(
   outcome: PreviewKeyOutcome,
 ): void {
   if (outcome.action) {
+    if (view.stagedListAnchor && outcome.action.type === "toggleList") {
+      const staged = view.stagedListAnchor;
+      view.stagedListAnchor = null;
+      relocateSystemList(view, staged.listId, staged.x, staged.y);
+      cancelPreviewArea(view.preview);
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      return;
+    }
     applyPreviewArmedAction(view, outcome.action, nowMs, world);
   }
   if (outcome.starsBuffer) {
@@ -554,6 +573,19 @@ export function handleScopeKeyDown(
   if (event.key === "F1") {
     consume(event);
     view.beaconatorActive = true;
+    view.f1DropArmed = true;
+    ui?.onHandled?.();
+    return true;
+  }
+  if (event.key === "FPL" || event.code === "FPL") {
+    consume(event);
+    toggleSystemList(view, "FL");
+    ui?.onHandled?.();
+    return true;
+  }
+  if (event.key === "VFR" || event.code === "VFR") {
+    consume(event);
+    toggleSystemList(view, "VL");
     ui?.onHandled?.();
     return true;
   }
@@ -572,6 +604,8 @@ export function handleScopeKeyDown(
   }
 
   if (event.key === "Escape") {
+    view.f1DropArmed = false;
+    view.stagedListAnchor = null;
     const previewStar = view.preview.phase !== "idle" && view.preview.buffer.startsWith("*");
     if (handlePreviewEscape(view.preview)) {
       cancelDcbPrefSaveAs(view);
@@ -831,10 +865,20 @@ export function handleScopeKeyDown(
     return true;
   }
   if (event.key === "PageUp") {
+    const flPlacement = view.systemLists?.FL;
+    if (flPlacement?.visible && scrollFlightPlanList(view, -1, world)) {
+      ui?.onHandled?.();
+      return true;
+    }
     stepRange(view.camera, -1);
     return true;
   }
   if (event.key === "PageDown") {
+    const flPlacement = view.systemLists?.FL;
+    if (flPlacement?.visible && scrollFlightPlanList(view, 1, world)) {
+      ui?.onHandled?.();
+      return true;
+    }
     stepRange(view.camera, 1);
     return true;
   }

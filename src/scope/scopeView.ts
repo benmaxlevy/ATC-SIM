@@ -105,8 +105,10 @@ import { cloneWxLevels, emptyWxMosaic, type WxLevels, type WxMosaic } from "./wx
 import {
   DEFAULT_SYSTEM_LIST_PLACEMENTS,
   cloneSystemListPlacements,
+  idleFlightPlanListState,
   idleListDragState,
   type CrdaRpcConfig,
+  type FlightPlanListState,
   type ListDragState,
   type ListRect,
   type SystemListPlacement,
@@ -254,6 +256,18 @@ export interface ScopeView {
   listDrag: ListDragState;
   /** Active system list pixel bounding rectangles from the latest render frame. */
   activeListRects?: { id: string; bounds: ListRect }[];
+  /** Active system list entry bounding rectangles from the latest render frame for hit-testing. */
+  activeListEntries?: { listId: string; rowIndex: number; callsign: string; bounds: ListRect }[];
+  /** Dropped callsigns manually removed from Tower lists. */
+  towerListDroppedCallsigns?: Set<string>;
+  /** Dropped callsigns manually removed from VFR list. */
+  vfrListDroppedCallsigns?: Set<string>;
+  /** Flight plan list (FL) pagination and purge state. */
+  flightPlanList?: FlightPlanListState;
+  /** F1 drop mode armed: next left-click on a system list entry drops it. */
+  f1DropArmed?: boolean;
+  /** Staged candidate list anchor position before Enter commits it. */
+  stagedListAnchor?: { listId: string; x: number; y: number } | null;
   /**
    * DCB PREF runtime (T02-29). Eight named local display snapshots.
    * Analog CRC PREF; trainer localStorage, not a NAS preference host.
@@ -436,6 +450,12 @@ export function createScopeView(
     pendingChord: null,
     helpOpen: false,
     beaconatorActive: false,
+    towerListDroppedCallsigns: new Set(),
+    vfrListDroppedCallsigns: new Set(),
+    flightPlanList: idleFlightPlanListState(),
+    f1DropArmed: false,
+    stagedListAnchor: null,
+    activeListEntries: [],
     surveillanceMode: options?.surveillanceMode ?? defaultSurveillanceMode(),
     radarSites: options?.radarSites ? [...options.radarSites] : [],
     wxLevels: cloneWxLevels(),

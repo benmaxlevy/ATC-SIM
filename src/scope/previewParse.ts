@@ -91,6 +91,8 @@ export type PreviewArmedAction =
   | { readonly type: "forceFdb"; readonly flid?: string }
   | { readonly type: "clearAllForcedFdb" }
   | { readonly type: "beaconatorSlew" }
+  | { readonly type: "associateFlightPlan"; readonly index: number }
+  | { readonly type: "deleteFlightPlanEntry"; readonly index: number }
   | { readonly type: "saveAsPref"; readonly name?: string };
 
 export type PreviewCommandResult =
@@ -447,8 +449,10 @@ function parseListCommand(buffer: string): PreviewCommandResult | null {
     return null;
   }
 
-  // Check for *[ID] D or *[ID]D reset default anchor command (e.g. *FLD, *TL D, *MLD, *S D)
-  const resetMatch = /^\*\s*([A-Z0-9_]+)\s*D$/i.exec(buffer);
+  // Check for *[ID] D or *[ID]D reset default anchor command (e.g. *FLD, *TL D, *MLD, *S D, *TLBED D)
+  const resetMatch =
+    /^\*\s*([A-Z0-9_]+)\s+D$/i.exec(buffer) ??
+    /^\*\s*(FL|TL|VL|ML|AL|SSA|S|TAB|TC|CS|CR|CRDA|TX|TM|TV)D$/i.exec(buffer);
   if (resetMatch) {
     const token = resetMatch[1]!.toUpperCase();
     if (token === "S") {
@@ -457,6 +461,11 @@ function parseListCommand(buffer: string): PreviewCommandResult | null {
     const matched = LIST_TOGGLE_TOKENS.find((row) => row.token === token);
     if (matched) {
       return { kind: "action", action: { type: "resetListPosition", listId: matched.listId } };
+    }
+    if (token.startsWith("TL")) {
+      const sat = token.slice(2);
+      const listId = sat.length > 0 ? `TL_${sat}` : "TL";
+      return { kind: "action", action: { type: "resetListPosition", listId } };
     }
   }
 
@@ -470,17 +479,22 @@ function parseListCommand(buffer: string): PreviewCommandResult | null {
     return { kind: "action", action: { type: "toggleList", listId } };
   }
 
-  // Satellite tower e.g. *TLBOS, *TLBED, *TL1
-  const satTowerMatch = /^\*\s*TL\s*([A-Z0-9]+)$/i.exec(buffer);
+  // Satellite tower e.g. *TLBOS, *TLBED, *TL1, *TLBED 10
+  const satTowerMatch = /^\*\s*TL\s*([A-Z0-9]+)(?:\s+(\d{1,3}))?$/i.exec(buffer);
   if (satTowerMatch) {
     const satId = satTowerMatch[1]!.toUpperCase();
+    const sizeDigits = satTowerMatch[2];
     if (satId === "D") {
       return { kind: "action", action: { type: "resetListPosition", listId: "TL" } };
     }
     if (/^\d+$/.test(satId)) {
       return listResizeAction("TL", satId);
     }
-    return { kind: "action", action: { type: "toggleList", listId: `TL_${satId}` } };
+    const listId = `TL_${satId}`;
+    if (sizeDigits !== undefined) {
+      return listResizeAction(listId, sizeDigits);
+    }
+    return { kind: "action", action: { type: "toggleList", listId } };
   }
 
   const rest = compact.slice(1);
@@ -584,6 +598,7 @@ const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
   "setLeaderDirAndLength",
   "beaconatorSlew",
   "armPerTrackPtl",
+  "associateFlightPlan",
 ]);
 
 function compactTrackingBuffer(buffer: string): string {
@@ -830,11 +845,31 @@ export function parseTrackingSlewBuffer(buffer: string): PreviewArmedAction | nu
   if (parsed?.kind === "action") {
     return parsed.action;
   }
+  if (/^\d{1,2}$/.test(compact)) {
+    return { type: "associateFlightPlan", index: Number(compact) };
+  }
   return null;
 }
 
 export function isTrackingSlewAction(action: PreviewArmedAction | null): boolean {
   return action != null && TRACKING_SLEW_TYPES.has(action.type);
+}
+
+function parseDeleteCommand(buffer: string): PreviewCommandResult | null {
+  const upper = buffer.toUpperCase().trim();
+  if (!upper.startsWith("*DEL") && !upper.startsWith("* DEL")) {
+    return null;
+  }
+  const matchBare = /^\*\s*DEL\s*$/i.exec(buffer);
+  if (matchBare) {
+    return { kind: "incomplete" };
+  }
+  const match = /^\*\s*DEL\s*(\d{1,2})$/i.exec(buffer);
+  if (match) {
+    const idx = Number(match[1]);
+    return { kind: "action", action: { type: "deleteFlightPlanEntry", index: idx } };
+  }
+  return invalid("invalid flight plan delete command");
 }
 
 export function parsePreviewCommand(
@@ -844,6 +879,10 @@ export function parsePreviewCommand(
 ): PreviewCommandResult {
   if (buffer === "") {
     return { kind: "incomplete" };
+  }
+  const del = parseDeleteCommand(buffer);
+  if (del) {
+    return del;
   }
   const exact = PREVIEW_TABLE[buffer];
   if (exact) {
