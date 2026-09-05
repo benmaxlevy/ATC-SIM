@@ -31,18 +31,17 @@
   filter: brightness(0.98);
 }
 
+.departure-strip:focus,
+.arrival-strip:focus,
 .departure-strip:focus-visible,
 .arrival-strip:focus-visible {
-  outline: 3px solid #ffff00;
-  outline-offset: 1px;
+  outline: none;
 }
 
 .strip-selected,
 .departure-strip.strip-selected,
 .arrival-strip.strip-selected {
-  outline: 3px solid #ffff00;
-  outline-offset: 1px;
-  z-index: 2;
+  outline: none;
 }
 
 .strip-indented,

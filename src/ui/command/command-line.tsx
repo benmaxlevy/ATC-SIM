@@ -4,7 +4,7 @@
  * Submit runs shared radio pipeline (typed, Path A/B, then health-gated Path C). Not NAS STARS.
  */
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { SessionLog, World } from "@core";
 import { handleRadioText, type PilotResult } from "@pilot";
 import { displayCommandLineStatus } from "./voice-status";
@@ -53,6 +53,10 @@ export interface CommandLineProps {
   onSubmit: (value: string) => void | Promise<void>;
   onPttPress?: () => void | Promise<void>;
   onPttRelease?: () => void;
+  /** Callsign of currently selected aircraft, if any. Sets input value on selection. */
+  selectedCallsign?: string | null;
+  /** Incrementing token/nonce to re-trigger populating callsign on repeated selection. */
+  selectionToken?: number;
 }
 
 /** Return key focus after a PPI click so the next keys are a radio command. */
@@ -69,14 +73,65 @@ export function CommandLine({
   onSubmit,
   onPttPress,
   onPttRelease,
+  selectedCallsign = null,
+  selectionToken = 0,
 }: CommandLineProps) {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(selectedCallsign ?? "");
   const [pttHeld, setPttHeld] = useState(false);
+  const [showingReadback, setShowingReadback] = useState(Boolean(voiceStatus));
+  const prevCallsignRef = useRef<string | null>(selectedCallsign ?? null);
+  const isFirstMount = useRef(true);
+
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      if (selectedCallsign) {
+        setValue(selectedCallsign);
+        prevCallsignRef.current = selectedCallsign;
+      }
+      return;
+    }
+
+    if (selectedCallsign) {
+      setValue(selectedCallsign);
+      prevCallsignRef.current = selectedCallsign;
+      setShowingReadback(false);
+    } else if (selectedCallsign === null && prevCallsignRef.current !== null) {
+      setValue((current) => (current === prevCallsignRef.current ? "" : current));
+      prevCallsignRef.current = null;
+    }
+  }, [selectedCallsign, selectionToken]);
+
+  useEffect(() => {
+    if (voiceStatus) {
+      setShowingReadback(true);
+    }
+  }, [voiceStatus]);
+
+  useEffect(() => {
+    if (!showingReadback) {
+      const el = globalThis.document?.getElementById(COMMAND_LINE_INPUT_ID);
+      const active = globalThis.document?.activeElement;
+      if (
+        el instanceof HTMLInputElement &&
+        active?.getAttribute("id") !== "ppi-placeholder" &&
+        active !== el
+      ) {
+        el.focus();
+      }
+      return;
+    }
+    const timer = setTimeout(() => {
+      setShowingReadback(false);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [showingReadback, readback, voiceStatus]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     onSubmit(value);
     setValue("");
+    setShowingReadback(true);
   }
 
   function releasePtt(): void {
@@ -89,38 +144,61 @@ export function CommandLine({
 
   return (
     <form className="command-line" onSubmit={handleSubmit}>
-      <div className="command-readback" aria-live="polite">
-        {displayCommandLineStatus(readback, voiceStatus)}
-      </div>
-      <input
-        id={COMMAND_LINE_INPUT_ID}
-        type="text"
-        autoFocus
-        spellCheck={false}
-        autoComplete="off"
-        autoCapitalize="off"
-        autoCorrect="off"
-        aria-label="Command line"
-        placeholder="DAL123 H270"
-        value={value}
-        onKeyDown={(event) => {
-          if (
-            event.key === "PageUp" ||
-            event.key === "PageDown" ||
-            event.key === "Home" ||
-            event.key === "End" ||
-            event.key === "F1" ||
-            event.key === "F3" ||
-            event.key === "F4" ||
-            event.key === "F7" ||
-            event.key === "F8" ||
-            (event.shiftKey && (event.key === "H" || event.key === "h"))
-          ) {
-            event.preventDefault();
-          }
-        }}
-        onChange={(event) => setValue(event.target.value)}
-      />
+      {showingReadback ? (
+        <div
+          className="command-readback"
+          aria-live="polite"
+          tabIndex={0}
+          role="status"
+          title="Click to enter command"
+          onClick={() => setShowingReadback(false)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape" || event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              setShowingReadback(false);
+            } else if (
+              event.key.length === 1 &&
+              !event.ctrlKey &&
+              !event.metaKey &&
+              !event.altKey
+            ) {
+              setShowingReadback(false);
+              setValue(event.key.toUpperCase());
+            }
+          }}
+        >
+          {displayCommandLineStatus(readback, voiceStatus)}
+        </div>
+      ) : (
+        <input
+          id={COMMAND_LINE_INPUT_ID}
+          type="text"
+          autoFocus
+          spellCheck={false}
+          autoComplete="off"
+          autoCapitalize="off"
+          autoCorrect="off"
+          aria-label="Command line"
+          value={value}
+          onKeyDown={(event) => {
+            if (
+              event.key === "PageUp" ||
+              event.key === "PageDown" ||
+              event.key === "Home" ||
+              event.key === "End" ||
+              event.key === "F1" ||
+              event.key === "F3" ||
+              event.key === "F4" ||
+              event.key === "F7" ||
+              event.key === "F8" ||
+              (event.shiftKey && (event.key === "H" || event.key === "h"))
+            ) {
+              event.preventDefault();
+            }
+          }}
+          onChange={(event) => setValue(event.target.value)}
+        />
+      )}
       {onPttPress && onPttRelease ? (
         <button
           type="button"

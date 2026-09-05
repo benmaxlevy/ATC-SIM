@@ -122,7 +122,7 @@ test("AC5 — command strip does not call parseCommand; typed English wins at Pa
   const commandLine = uiSources["../command/command-line.tsx"]!;
   expect(commandLine).not.toMatch(/parseCommand/);
   expect(commandLine).not.toMatch(/spoken_a/);
-  expect(commandLine).toMatch(/placeholder="DAL123 H270"/);
+  expect(commandLine).not.toMatch(/placeholder=/);
   expect(commandLine).toMatch(/handleRadioText/);
 
   const dal = sample();
@@ -145,7 +145,7 @@ test("AC6 — shell analog+delta; no user-facing HUD / zoom / toolbar", () => {
   const controls = uiSources["../controls/sim-controls.tsx"]!;
   const disclaimer = uiSources["../overlays/disclaimer.tsx"]!;
   expect(commandLine).toMatch(/aria-label="Command line"/);
-  expect(commandLine).toMatch(/placeholder="DAL123 H270"/);
+  expect(commandLine).not.toMatch(/placeholder=/);
   expect(commandLine.toLowerCase()).not.toMatch(/aria-label="[^"]*\b(hud|zoom|toolbar)\b/);
   expect(commandLine.toLowerCase()).not.toMatch(/placeholder="[^"]*\b(hud|zoom|toolbar)\b/);
   expect(controls).toMatch(/aria-label="Sim rate"/);

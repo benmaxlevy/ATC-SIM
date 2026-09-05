@@ -1,7 +1,14 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
 import { SessionLog, acceptInboundHandoff, createAircraft, createWorld } from "@core";
 import { createWorldFromScenario, loadKdem } from "@scenario";
-import { echoCommandLine, submitCommand, submitCommandLine } from "../command-line";
+import {
+  CommandLine,
+  echoCommandLine,
+  submitCommand,
+  submitCommandLine,
+} from "../command-line";
 
 function sample(callsign: string, extras: Partial<Parameters<typeof createAircraft>[0]> = {}) {
   return createAircraft({
@@ -158,4 +165,63 @@ test("AC5 — command line stays at the bottom of the PPI column; disclaimer is 
   expect(commandLineIdx).toBeGreaterThan(shell.indexOf("footer="));
   expect(canvas).toMatch(/footer\?:/);
   expect(canvas).toMatch(/\{footer\}/);
+});
+
+test("CommandLine renders with no placeholder on input element", () => {
+  const html = renderToStaticMarkup(
+    createElement(CommandLine, {
+      readback: "",
+      onSubmit: () => undefined,
+    }),
+  );
+  expect(html).not.toMatch(/placeholder=/);
+});
+
+test("CommandLine renders input value with selectedCallsign when provided", () => {
+  const html = renderToStaticMarkup(
+    createElement(CommandLine, {
+      readback: "",
+      onSubmit: () => undefined,
+      selectedCallsign: "DAL123",
+    }),
+  );
+  expect(html).toContain('value="DAL123"');
+  expect(html).not.toMatch(/placeholder=/);
+});
+
+test("CommandLine renders empty input value when selectedCallsign is null", () => {
+  const html = renderToStaticMarkup(
+    createElement(CommandLine, {
+      readback: "",
+      onSubmit: () => undefined,
+      selectedCallsign: null,
+    }),
+  );
+  expect(html).toContain('value=""');
+});
+
+test("CommandLine inlines input and readback one at a time", () => {
+  const initialHtml = renderToStaticMarkup(
+    createElement(CommandLine, {
+      readback: "DAL123, fly heading 270",
+      onSubmit: () => undefined,
+      selectedCallsign: "DAL123",
+    }),
+  );
+
+  // Initially: input is rendered, readback box is not rendered
+  expect(initialHtml).toContain('id="command-line-input"');
+  expect(initialHtml).not.toContain('class="command-readback"');
+
+  // When voiceStatus is present, readback/status box is rendered instead of input
+  const statusHtml = renderToStaticMarkup(
+    createElement(CommandLine, {
+      readback: "DAL123, fly heading 270",
+      voiceStatus: "Radio busy — standby",
+      onSubmit: () => undefined,
+    }),
+  );
+  expect(statusHtml).toContain('class="command-readback"');
+  expect(statusHtml).toContain("Radio busy — standby");
+  expect(statusHtml).not.toContain('id="command-line-input"');
 });

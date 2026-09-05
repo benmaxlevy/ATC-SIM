@@ -78,6 +78,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   const [isResizingDrawer, setIsResizingDrawer] = useState(false);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [, setScopeUiTick] = useState(0);
+  const [selectionToken, setSelectionToken] = useState(0);
   const panRef = useRef<{ lastX: number; lastY: number } | null>(null);
 
   useEffect(() => {
@@ -153,6 +154,10 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   const facilityDisplay = activeScenario.icao.replace(/^K/, "");
   const facilityTitle = `${facilityDisplay} — Flight Progress Strips`;
   const { departures, arrivals } = terminalStripsFromWorld(app.world);
+  const selectedAircraft = app.world.aircraft.find(
+    (ac) => ac.id === app.world.selectedAircraftId,
+  );
+  const selectedCallsign = selectedAircraft?.callsign ?? null;
 
   return (
     <div
@@ -189,6 +194,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
                 cmdInput.value = "";
               }
             }
+            setSelectionToken((t) => t + 1);
             refreshScopeUi();
             event.currentTarget.focus();
           }}
@@ -250,6 +256,8 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             <CommandLine
               readback={readback}
               voiceStatus={voiceStatus}
+              selectedCallsign={selectedCallsign}
+              selectionToken={selectionToken}
               onPttPress={() => app.ptt.pressFromPointer()}
               onPttRelease={() => app.ptt.releaseFromPointer()}
               onSubmit={(input) => {
@@ -278,7 +286,10 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           <FlightStrips
             world={app.world}
             tracks={scopeView.tracks}
-            onSelectionChange={refreshScopeUi}
+            onSelectionChange={() => {
+              setSelectionToken((t) => t + 1);
+              refreshScopeUi();
+            }}
             listFontPx={scopeView.charSizes.lists}
             listBrite={scopeView.brite.lst}
           />
@@ -329,6 +340,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
               selectedStripId={app.world.selectedAircraftId ?? undefined}
               onSelectStrip={(strip) => {
                 selectTrackFromFlightStrip(app.world, strip);
+                setSelectionToken((t) => t + 1);
                 refreshScopeUi();
               }}
             />

@@ -142,6 +142,51 @@ describe("T02-100 & T02-102 Flight Progress Strips Freeform Box Annotations", ()
       expect(fakeDblClick.stopPropagation).toHaveBeenCalledTimes(1);
       expect(onEditingBoxChangeMock).toHaveBeenCalledWith("8B");
     });
+
+    test("single-clicking Box 8A cell on DepartureStrip starts edit", () => {
+      const onEditingBoxChangeMock = vi.fn();
+      const tree = DepartureStrip({
+        strip: mockDAL882,
+        onEditingBoxChange: onEditingBoxChangeMock,
+      });
+
+      const col3 = tree.props.children[2];
+      const box8aCell = col3.props.children[1];
+      expect(box8aCell.props["data-box"]).toBe("8A");
+
+      const fakeClick = {
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as React.MouseEvent;
+
+      box8aCell.props.onClick(fakeClick);
+      expect(fakeClick.preventDefault).toHaveBeenCalledTimes(1);
+      expect(fakeClick.stopPropagation).toHaveBeenCalledTimes(1);
+      expect(onEditingBoxChangeMock).toHaveBeenCalledWith("8A");
+    });
+
+    test("single-clicking matrix cell on ArrivalStrip starts edit", () => {
+      const onEditingBoxChangeMock = vi.fn();
+      const tree = ArrivalStrip({
+        strip: mockAAL412,
+        onEditingBoxChange: onEditingBoxChangeMock,
+      });
+
+      const col5 = tree.props.children[4];
+      const matrixCells = col5.props.children;
+      const box10Cell = matrixCells[0];
+      expect(box10Cell.props["data-box"]).toBe("10");
+
+      const fakeClick = {
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as React.MouseEvent;
+
+      box10Cell.props.onClick(fakeClick);
+      expect(fakeClick.preventDefault).toHaveBeenCalledTimes(1);
+      expect(fakeClick.stopPropagation).toHaveBeenCalledTimes(1);
+      expect(onEditingBoxChangeMock).toHaveBeenCalledWith("10");
+    });
   });
 
   // ==========================================================================

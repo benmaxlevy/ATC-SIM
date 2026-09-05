@@ -875,7 +875,7 @@ describe("T02-96 Flight Progress Strips Reordering and Indentation Integration a
       expect(world.selectedAircraftId).toBe("ac-swa1902");
     });
 
-    test("StripsBoard applies strip-selected with yellow outline when selectedStripId matches", () => {
+    test("StripsBoard applies strip-selected without yellow outline when selectedStripId matches", () => {
       const html = renderToStaticMarkup(
         createElement(StripsBoard, {
           departures: mockDepartures,
@@ -888,7 +888,7 @@ describe("T02-96 Flight Progress Strips Reordering and Indentation Integration a
       expect(html).toMatch(
         /class="[^"]*strip-selected[^"]*strip-indented[^"]*"[^>]*data-strip-acid="DAL882"/,
       );
-      expect(stripsCss).toMatch(/\.strip-selected[^{]*\{[^}]*outline:\s*3px solid #ffff00;/i);
+      expect(stripsCss).not.toMatch(/\.strip-selected[^{]*\{[^}]*#ffff00/i);
     });
   });
 

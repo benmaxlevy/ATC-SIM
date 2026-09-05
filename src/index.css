@@ -685,9 +685,8 @@ html[data-dcb-cursor-trap] * {
 }
 
 .flight-strip-selected {
-  border-left-color: #ffff00;
-  outline: 1px solid #ffff00;
-  outline-offset: -1px;
+  border-left-color: transparent;
+  outline: none;
 }
 
 .flight-strip-callsign {
@@ -906,7 +905,7 @@ html[data-dcb-cursor-trap] * {
 }
 
 .command-readback {
-  flex: 1 1 40%;
+  flex: 1 1 100%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -915,10 +914,13 @@ html[data-dcb-cursor-trap] * {
   font-size: 12px;
   line-height: 23px;
   color: #00ff00;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
 }
 
 .command-line input {
-  flex: 1 1 60%;
+  flex: 1 1 100%;
   min-width: 0;
   width: auto;
   box-sizing: border-box;

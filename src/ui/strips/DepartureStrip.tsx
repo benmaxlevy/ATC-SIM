@@ -113,8 +113,8 @@ export function DepartureStrip({
   }, [editingBox]);
 
   const startEditing = (e: React.MouseEvent, boxKey: string, initialVal: string) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault?.();
+    e.stopPropagation?.();
     if (editingBoxProp === undefined) {
       setInternalEditingBox(boxKey);
     }
@@ -228,7 +228,7 @@ export function DepartureStrip({
           className="cell box-8a strip-annotation-8a"
           data-box="8A"
           data-testid="box-8a"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => startEditing(e, "8A", strip.annotationBoxes?.box8A ?? "")}
           onDoubleClick={(e) => startEditing(e, "8A", strip.annotationBoxes?.box8A ?? "")}
           onMouseDown={(e) => e.stopPropagation()}
         >
@@ -258,7 +258,7 @@ export function DepartureStrip({
           className="cell box-8b strip-annotation-8b"
           data-box="8B"
           data-testid="box-8b"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => startEditing(e, "8B", strip.annotationBoxes?.box8B ?? "")}
           onDoubleClick={(e) => startEditing(e, "8B", strip.annotationBoxes?.box8B ?? "")}
           onMouseDown={(e) => e.stopPropagation()}
         >
@@ -307,7 +307,7 @@ export function DepartureStrip({
               className={`matrix-cell annotation-cell box-${boxNum}`}
               data-box={boxKey}
               data-testid={`box-${boxNum}`}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => startEditing(e, boxKey, currentVal)}
               onDoubleClick={(e) => startEditing(e, boxKey, currentVal)}
               onMouseDown={(e) => e.stopPropagation()}
             >
