@@ -43,6 +43,8 @@ import {
 } from "../scopeView";
 import { setLeaderDirForSelection } from "../trackDisplay";
 import { cloneWxLevels, type VipLevel } from "../wx";
+import { DEFAULT_GEOGRAPHIC_MAPS, buildVideoMapsListLines } from "../coordinationList";
+import { ensureSystemListPlacement } from "../systemLists";
 
 type VideoMapRole = NonNullable<LoadedVideoMap["role"]>;
 
@@ -195,6 +197,21 @@ export function videoMapByRole(view: ScopeView, role: VideoMapRole): LoadedVideo
 export function isVideoMapOn(view: ScopeView, mapId: string): boolean {
   const map = view.digitalMap.loadedVideoMaps?.find((item) => item.id === mapId);
   if (!map) {
+    if (view.mapVisibility.has(mapId)) {
+      return view.mapVisibility.get(mapId)!;
+    }
+    const def = DEFAULT_GEOGRAPHIC_MAPS.find(
+      (m) => m.mapId === mapId || String(m.id) === mapId || m.name === mapId,
+    );
+    if (def) {
+      if (view.mapVisibility.has(def.mapId)) {
+        return view.mapVisibility.get(def.mapId)!;
+      }
+      if (view.mapVisibility.has(String(def.id))) {
+        return view.mapVisibility.get(String(def.id))!;
+      }
+      return def.active;
+    }
     return false;
   }
   return view.mapVisibility.get(mapId) ?? map.defaultOn;
@@ -259,16 +276,17 @@ export function resolveVideoMapToken(
       }
     }
   }
-  return maps.find((map) => map.dcbLabel.toUpperCase() === normalized);
+  const byLabel = maps.find((map) => map.dcbLabel.toUpperCase() === normalized);
+  if (byLabel) {
+    return byLabel;
+  }
+  return maps.find((map) => map.name && map.name.toUpperCase() === normalized);
 }
 
 /** MAPS submenu toggle keyed by catalog id. Role maps share RWY/LOC/CST flags. */
 export function toggleVideoMap(view: ScopeView, mapId: string, explicitState?: boolean): void {
   const map = view.digitalMap.loadedVideoMaps?.find((item) => item.id === mapId);
-  if (!map) {
-    return;
-  }
-  if (map.role === "coastline" && view.digitalMap.coastline?.enabled !== true) {
+  if (map && map.role === "coastline" && view.digitalMap.coastline?.enabled !== true) {
     return;
   }
   const currentlyOn = isVideoMapOn(view, mapId);
@@ -277,7 +295,16 @@ export function toggleVideoMap(view: ScopeView, mapId: string, explicitState?: b
     return;
   }
   view.mapVisibility.set(mapId, next);
-  syncRoleFlag(view, map);
+  const def = DEFAULT_GEOGRAPHIC_MAPS.find(
+    (m) => m.mapId === mapId || String(m.id) === mapId || m.name === mapId,
+  );
+  if (def) {
+    view.mapVisibility.set(def.mapId, next);
+    view.mapVisibility.set(String(def.id), next);
+  }
+  if (map) {
+    syncRoleFlag(view, map);
+  }
   invalidateMapCache(view);
 }
 
@@ -324,16 +351,24 @@ export function clearAllVideoMaps(view: ScopeView): void {
 }
 
 /**
- * Bulk catalog on/off (`*D ALL` / `*D NONE`). Same coastline JSON-off skip as CLR ALL.
+ * Bulk catalog on/off (`*D ALL` / `*D NONE` / `MAP ALL OFF`). Same coastline JSON-off skip as CLR ALL.
  * Syncs RWY/LOC/CST role flags and drops the map stroke cache.
  */
 export function setAllVideoMaps(view: ScopeView, enabled: boolean): void {
-  for (const map of loadedCatalogMaps(view)) {
-    if (map.role === "coastline" && view.digitalMap.coastline?.enabled !== true) {
-      continue;
+  const maps = loadedCatalogMaps(view);
+  if (maps.length > 0) {
+    for (const map of maps) {
+      if (map.role === "coastline" && view.digitalMap.coastline?.enabled !== true) {
+        continue;
+      }
+      view.mapVisibility.set(map.id, enabled);
+      syncRoleFlag(view, map);
     }
-    view.mapVisibility.set(map.id, enabled);
-    syncRoleFlag(view, map);
+  } else {
+    for (const m of DEFAULT_GEOGRAPHIC_MAPS) {
+      view.mapVisibility.set(m.mapId, enabled);
+      view.mapVisibility.set(String(m.id), enabled);
+    }
   }
   invalidateMapCache(view);
 }
@@ -342,27 +377,52 @@ export type MapListKind = "geo" | "current";
 
 /** GEO MAPS = every loaded video map + ON/OFF. CURRENT = maps that are on. */
 export function buildMapListLines(view: ScopeView, kind: MapListKind): string[] {
-  const maps = loadedCatalogMaps(view);
-  if (kind === "geo") {
-    return maps.map((map) => {
-      const state = isVideoMapOn(view, map.id) ? "ON" : "OFF";
-      return `${formatDcbMapLabel(map)} ${state}`;
-    });
-  }
-  return maps.filter((map) => isVideoMapOn(view, map.id)).map((map) => formatDcbMapLabel(map));
+  return buildVideoMapsListLines(view, kind === "geo" ? "GEO" : "CURRENT");
 }
 
 export function toggleGeoMapsList(view: ScopeView): void {
-  view.geoMapsListOn = !view.geoMapsListOn;
+  const placement = ensureSystemListPlacement(view, "ML");
+  if (!placement) {
+    view.geoMapsListOn = !view.geoMapsListOn;
+    return;
+  }
+  if (placement.visible && view.mapListMode === "GEO") {
+    placement.visible = false;
+    view.geoMapsListOn = false;
+  } else {
+    placement.visible = true;
+    view.mapListMode = "GEO";
+    view.geoMapsListOn = true;
+    view.currentMapsListOn = false;
+    placement.frameTitle = "VIDEO MAPS (ML)";
+  }
 }
 
 export function toggleCurrentMapsList(view: ScopeView): void {
-  view.currentMapsListOn = !view.currentMapsListOn;
+  const placement = ensureSystemListPlacement(view, "ML");
+  if (!placement) {
+    view.currentMapsListOn = !view.currentMapsListOn;
+    return;
+  }
+  if (placement.visible && view.mapListMode === "CURRENT") {
+    placement.visible = false;
+    view.currentMapsListOn = false;
+  } else {
+    placement.visible = true;
+    view.mapListMode = "CURRENT";
+    view.currentMapsListOn = true;
+    view.geoMapsListOn = false;
+    placement.frameTitle = "ACTIVE MAPS (ML)";
+  }
 }
 
 export function hideMapLists(view: ScopeView): void {
   view.geoMapsListOn = false;
   view.currentMapsListOn = false;
+  const placement = ensureSystemListPlacement(view, "ML");
+  if (placement) {
+    placement.visible = false;
+  }
 }
 
 /**

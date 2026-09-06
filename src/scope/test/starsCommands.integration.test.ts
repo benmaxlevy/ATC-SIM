@@ -118,7 +118,7 @@ function datablockCenter(
   return { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
 }
 
-test("AC1 — *T *TV * P1 toggle lists; *T 15 resizes; live *T/*S click relocates", () => {
+test("AC1 — *T *TV * P1 *P1 *P3 toggle lists; *T 15 resizes; live *T/*S click relocates", () => {
   const world = createWorld();
   const view = createScopeView();
   expect(view.systemLists.TAB.visible).toBe(false);
@@ -133,15 +133,22 @@ test("AC1 — *T *TV * P1 toggle lists; *T 15 resizes; live *T/*S click relocate
   expect(view.systemLists.VFR.visible).toBe(true);
   expect(view.systemLists.TAB.visible).toBe(true);
 
+  // Spaced form: * P1 Enter toggles Tower List 1
   const tpaBefore = view.starsChordArmed;
   typeKeys(view, world, ["*", " ", "P", "1", "Enter"], "scope", 400);
   expect(view.systemLists.TOWER_1.visible).toBe(true);
   expect(view.systemLists.TAB.visible).toBe(true);
   expect(view.starsChordArmed).toBe(tpaBefore);
 
+  // Toggle it off with compact *P1 Enter (no space) — new behavior for Item 1
+  typeKeys(view, world, ["*", "P", "1", "Enter"], "scope", 450);
+  expect(view.systemLists.TOWER_1.visible).toBe(false);
+  expect(view.starsChordArmed).toBe(tpaBefore);
+
+  // Compact *P3 + Enter (no aircraft slewed) = toggle Tower List 3 — new behavior for Item 1
   typeKeys(view, world, ["*", "P", "3", "Enter"], "scope", 500);
-  expect(view.starsChordArmed).toEqual({ type: "cone", target: "slewed", lengthNm: 3 });
-  expect(view.systemLists.TOWER_3.visible).toBe(false);
+  expect(view.systemLists.TOWER_3.visible).toBe(true);
+  expect(view.starsChordArmed).toBeNull();
 
   typeKeys(view, world, ["*", "T", " ", "1", "5", "Enter"], "scope", 600);
   expect(view.systemLists.TAB.maxLines).toBe(15);
@@ -303,17 +310,29 @@ test("AC1 — *F flashes FILTER; *LA writes hundreds; *BCN add/DEL; incomplete I
   expect(chord.preview.phase).toBe("idle");
 });
 
-test("AC1 — + / Enter * chords mutate tracks; / DB toggles PDB↔FDB; F3/F4 apply vs arm", () => {
+test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; / DB toggles PDB↔FDB; F3/F4 apply vs arm", () => {
   const hoWorld = createWorldFromScenario(loadKdem(), 1);
   const hoDal = hoWorld.aircraft[0]!;
   const hoView = createScopeView();
   syncTrackDisplays(hoView.tracks, hoWorld);
   expect(handoffFor(hoWorld, hoDal.id).kind).toBe("inbound");
   typeKeys(hoView, hoWorld, ["Enter"]);
-  expect(hoView.preview.armed).toEqual({ type: "acceptHandoff" });
+  expect(hoView.preview.phase).toBe("idle");
+  expect(hoView.preview.armed).toBeNull();
   clickAt(hoView, hoWorld, hoDal.xNm, hoDal.yNm);
   expect(handoffFor(hoWorld, hoDal.id).kind).not.toBe("inbound");
   expect(hoView.tracks.get(hoDal.id)!.ownership).toBe("owned");
+
+  const hoWorld2 = createWorldFromScenario(loadKdem(), 1);
+  const hoDal2 = hoWorld2.aircraft[0]!;
+  const hoView2 = createScopeView();
+  syncTrackDisplays(hoView2.tracks, hoWorld2);
+  expect(handoffFor(hoWorld2, hoDal2.id).kind).toBe("inbound");
+  handleScopeKeyDown(keyEvent("F3"), hoView2, "scope", hoWorld2, 100);
+  expect(hoView2.preview.armed).toEqual({ type: "initCntl" });
+  clickAt(hoView2, hoWorld2, hoDal2.xNm, hoDal2.yNm);
+  expect(handoffFor(hoWorld2, hoDal2.id).kind).not.toBe("inbound");
+  expect(hoView2.tracks.get(hoDal2.id)!.ownership).toBe("owned");
 
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", xNm: 16, yNm: 8 });
   const world = createWorld({ aircraft: [dal] });
@@ -570,4 +589,80 @@ test("T02-67 — *F and **F force Full Data Block via slew or ACID", () => {
   typeKeys(view, world, ["*", "*", "F", "Enter"], "scope", 500);
   expect(view.tracks.get(dal.id)!.forcedFdb).toBe(false);
   expect(view.tracks.get(ual.id)!.forcedFdb).toBe(false);
+});
+
+test("STARS system list commands: only authorized commands work; aliases rejected", () => {
+  const world = createWorld();
+  const view = createScopeView();
+
+  // Test toggling AL via *TM
+  expect(view.systemLists.AL.visible).toBe(true);
+  typeKeys(view, world, ["*", "T", "M", "Enter"], "scope", 100);
+  expect(view.systemLists.AL.visible).toBe(false);
+  typeKeys(view, world, ["*", "T", "M", "Enter"], "scope", 200);
+  expect(view.systemLists.AL.visible).toBe(true);
+
+  // Test toggling COAST via *TC and resizing via *TC 15
+  expect(view.systemLists.COAST.visible).toBe(false);
+  typeKeys(view, world, ["*", "T", "C", "Enter"], "scope", 300);
+  expect(view.systemLists.COAST.visible).toBe(true);
+  typeKeys(view, world, ["*", "T", "C", " ", "1", "5", "Enter"], "scope", 400);
+  expect(view.systemLists.COAST.maxLines).toBe(15);
+
+  // Test toggling SIGN_ON via *TS
+  expect(view.systemLists.SIGN_ON.visible).toBe(false);
+  typeKeys(view, world, ["*", "T", "S", "Enter"], "scope", 500);
+  expect(view.systemLists.SIGN_ON.visible).toBe(true);
+
+  // Test toggling VIDEO MAPS via *TX
+  expect(view.systemLists.ML.visible).toBe(false);
+  typeKeys(view, world, ["*", "T", "X", "Enter"], "scope", 600);
+  expect(view.systemLists.ML.visible).toBe(true);
+
+  // Test toggling CRDA via *TN
+  expect(view.systemLists.CRDA.visible).toBe(false);
+  typeKeys(view, world, ["*", "T", "N", "Enter"], "scope", 700);
+  expect(view.systemLists.CRDA.visible).toBe(true);
+
+  // Test that old aliases are rejected and do not toggle lists
+  // Record current visibility states
+  const beforeStates = {
+    FL: view.systemLists.FL.visible,
+    VL: view.systemLists.VL.visible,
+    TL: view.systemLists.TL.visible,
+    ML: view.systemLists.ML.visible,
+    AL: view.systemLists.AL.visible,
+    COAST: view.systemLists.COAST.visible,
+    SIGN_ON: view.systemLists.SIGN_ON.visible,
+    CRDA: view.systemLists.CRDA.visible,
+  };
+
+  const rejectedAliases = [
+    ["*", "F", "L", "Enter"],
+    ["*", "T", "A", "B", "Enter"],
+    ["*", "V", "L", "Enter"],
+    ["*", "T", "L", "Enter"],
+    ["*", "M", "L", "Enter"],
+    ["*", "A", "L", "Enter"],
+    ["*", "C", "R", "Enter"],
+    ["*", "C", "S", "Enter"],
+    ["*", "S", "O", "Enter"],
+    ["*", "S", "S", "A", "Enter"],
+  ];
+
+  let time = 800;
+  for (const seq of rejectedAliases) {
+    typeKeys(view, world, seq, "scope", time);
+    time += 100;
+  }
+
+  // Verify none of the lists changed state
+  expect(view.systemLists.FL.visible).toBe(beforeStates.FL);
+  expect(view.systemLists.VL.visible).toBe(beforeStates.VL);
+  expect(view.systemLists.TL.visible).toBe(beforeStates.TL);
+  expect(view.systemLists.ML.visible).toBe(beforeStates.ML);
+  expect(view.systemLists.AL.visible).toBe(beforeStates.AL);
+  expect(view.systemLists.COAST.visible).toBe(beforeStates.COAST);
+  expect(view.systemLists.SIGN_ON.visible).toBe(beforeStates.SIGN_ON);
+  expect(view.systemLists.CRDA.visible).toBe(beforeStates.CRDA);
 });

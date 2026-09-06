@@ -12,16 +12,21 @@ import {
   findOverlappingLists,
   handleListMiddleClick,
   handleListMouseMove,
+  hideMapLists,
   idleListDragState,
   openDcbMenu,
   closeDcbMenu,
   releaseSingleDeparture,
   stepBriteChannel,
   stepCharSizeChannel,
+  toggleCurrentMapsList,
+  toggleGeoMapsList,
   toggleGiFilter,
   toggleSsaFilter,
   type ListRect,
 } from "../index";
+import { handleScopeKeyDown } from "../scopeKeys";
+import { clickDone } from "../../ui/dcb/dcbChrome";
 
 function makeArrival(id: string, callsign: string, xNm: number, yNm: number, gs: number): Aircraft {
   return {
@@ -64,19 +69,19 @@ describe("STARS System Lists & DCB Integration Acceptance", () => {
     // 1. TAB Flight Plan list
     const tabLines = buildTabFlightPlanList(world, 10);
     expect(tabLines[0]).toBe("FLIGHT PLAN");
-    expect(tabLines[1]).toContain("01 AAL101");
-    expect(tabLines[2]).toContain("02 DAL202");
+    expect(tabLines[1]).toContain(" 1 AAL101");
+    expect(tabLines[2]).toContain(" 2 DAL202");
 
     // 2. VFR list
     const vfrLines = buildVfrList(world, 10);
     expect(vfrLines[0]).toBe("VFR LIST");
-    expect(vfrLines[1]).toContain("14  *N789V");
+    expect(vfrLines[1]).toContain("N789V   1200  040");
 
     // 3. Tower arrival sequence (sorted ascending by distance to threshold)
     const towerLines = buildTowerArrivalList(world, "KDEM", 0, 0, 10);
     expect(towerLines[0]).toBe("KDEM TOWER");
-    expect(towerLines[1]).toContain("DAL202    B738");
-    expect(towerLines[2]).toContain("AAL101    B738");
+    expect(towerLines[1]).toContain("DAL202   B738");
+    expect(towerLines[2]).toContain("AAL101   B738");
 
     // 4. Alert list with active MSAW and CA
     world.alerts = {
@@ -94,7 +99,7 @@ describe("STARS System Lists & DCB Integration Acceptance", () => {
     };
     const alertLines = buildAlertList(world, 50);
     expect(alertLines[0]).toBe("LA/CA/MCI");
-    expect(alertLines.some((l) => l.includes("AAL101*DAL202"))).toBe(true);
+    expect(alertLines.some((l) => l.includes("CA AAL101 DAL202"))).toBe(true);
     expect(alertLines.some((l) => l.includes("AAL101"))).toBe(true);
 
     // 5. Coordination departures with release lifecycle
@@ -120,7 +125,7 @@ describe("STARS System Lists & DCB Integration Acceptance", () => {
     // 6. Video Maps list
     const view = createScopeView();
     const mapLines = buildVideoMapsListLines(view, "ALL");
-    expect(mapLines[0]).toContain("GEOGRAPHIC MAPS");
+    expect(mapLines[0]).toContain("VIDEO MAPS");
   });
 
   it("AC2 — drives middle-click list dragging and detects overlapping collision frames", () => {
@@ -182,5 +187,81 @@ describe("STARS System Lists & DCB Integration Acceptance", () => {
 
     closeDcbMenu(view);
     expect(view.dcbMenu).toBe("MAIN");
+  });
+
+  it("AC4 — video map lists (ML) stay visible when DCB submenu closes via DONE or Esc", () => {
+    const view = createScopeView();
+    let changeCount = 0;
+    const onChange = () => {
+      changeCount += 1;
+    };
+
+    // 1. GEO MAPS toggled on, closed via clickDone
+    openDcbMenu(view, "MAPS");
+    expect(view.dcbMenu).toBe("MAPS");
+    toggleGeoMapsList(view);
+    expect(view.systemLists.ML.visible).toBe(true);
+    expect(view.geoMapsListOn).toBe(true);
+    expect(view.mapListMode).toBe("GEO");
+
+    clickDone(view, onChange);
+    expect(view.dcbMenu).toBe("MAIN");
+    expect(view.systemLists.ML.visible).toBe(true);
+    expect(view.geoMapsListOn).toBe(true);
+    expect(view.mapListMode).toBe("GEO");
+    expect(changeCount).toBe(1);
+
+    // 2. CURRENT maps toggled on, closed via clickDone
+    openDcbMenu(view, "MAPS");
+    expect(view.dcbMenu).toBe("MAPS");
+    toggleCurrentMapsList(view);
+    expect(view.systemLists.ML.visible).toBe(true);
+    expect(view.currentMapsListOn).toBe(true);
+    expect(view.geoMapsListOn).toBe(false);
+    expect(view.mapListMode).toBe("CURRENT");
+
+    clickDone(view, onChange);
+    expect(view.dcbMenu).toBe("MAIN");
+    expect(view.systemLists.ML.visible).toBe(true);
+    expect(view.currentMapsListOn).toBe(true);
+    expect(view.mapListMode).toBe("CURRENT");
+    expect(changeCount).toBe(2);
+
+    // 3. GEO MAPS toggled on, closed via Esc
+    openDcbMenu(view, "MAPS");
+    expect(view.dcbMenu).toBe("MAPS");
+    toggleGeoMapsList(view);
+    expect(view.systemLists.ML.visible).toBe(true);
+    expect(view.geoMapsListOn).toBe(true);
+
+    const escEvent = {
+      key: "Escape",
+      preventDefault: () => {},
+      stopPropagation: () => {},
+    };
+    const handledEsc = handleScopeKeyDown(escEvent, view);
+    expect(handledEsc).toBe(true);
+    expect(view.dcbMenu).toBe("MAIN");
+    expect(view.systemLists.ML.visible).toBe(true);
+    expect(view.geoMapsListOn).toBe(true);
+
+    // 4. CURRENT maps toggled on, closed via Esc
+    openDcbMenu(view, "MAPS");
+    expect(view.dcbMenu).toBe("MAPS");
+    toggleCurrentMapsList(view);
+    expect(view.systemLists.ML.visible).toBe(true);
+    expect(view.currentMapsListOn).toBe(true);
+
+    const handledEsc2 = handleScopeKeyDown(escEvent, view);
+    expect(handledEsc2).toBe(true);
+    expect(view.dcbMenu).toBe("MAIN");
+    expect(view.systemLists.ML.visible).toBe(true);
+    expect(view.currentMapsListOn).toBe(true);
+
+    // 5. Explicit hideMapLists still hides the lists
+    hideMapLists(view);
+    expect(view.systemLists.ML.visible).toBe(false);
+    expect(view.geoMapsListOn).toBe(false);
+    expect(view.currentMapsListOn).toBe(false);
   });
 });

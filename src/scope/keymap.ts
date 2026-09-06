@@ -26,8 +26,8 @@ export interface KeyBinding {
 /** Help overlay footer — phase README keyboard-feel freeze. */
 export const HELP_FOOTER = "TRAINER KEYS — NOT CRC";
 
-/** One-line in-app pointer (T02-13). Overlay itself is F1; this is how you find it. */
-export const HELP_KEYS_POINTER = "F1 lists keys.";
+/** One-line in-app pointer (T02-13). Overlay is ? / Shift+/ (or Alt+F1); this is how you find it. */
+export const HELP_KEYS_POINTER = "? lists keys.";
 
 /** Radio vs scope pipeline. Overlay must include this; never a CRC cheat sheet. */
 export const RADIO_CONFLICT_WARNING =
@@ -73,9 +73,17 @@ export const KEY_BINDINGS: KeyBinding[] = [
   {
     id: "help",
     focus: "always",
-    windowsKeys: "F1",
-    action: "Toggle this help overlay. Not CRC F1. preventDefault so Chrome help does not open.",
-    crcAnalog: "CRC F1 hold = beacon-code readout (beaconator)",
+    windowsKeys: "? / Shift+/ (or Alt+F1)",
+    action: "Toggle this help overlay. Not browser help.",
+    crcAnalog: "Trainer help (? / Shift+/ / Alt+F1; plain F1 is beaconator)",
+  },
+  {
+    id: "beacon-readout",
+    focus: "always",
+    windowsKeys: "F1 (hold)",
+    action:
+      "Beacon Code Readout (Beaconator): momentary readout in place of callsign and forces PDB to FDB.",
+    crcAnalog: "F1 <BCN CODE RD OUT>",
   },
   {
     id: "initiate-track",
@@ -94,18 +102,109 @@ export const KEY_BINDINGS: KeyBinding[] = [
     crcAnalog: "F4 TERM CNTL / <TERM CNTL><SLEW> / <TERM CNTL><FLID><ENTER>",
   },
   {
-    id: "ptl",
+    id: "tower-handoff",
+    focus: "always",
+    windowsKeys: "F5 (or Shift+H)",
+    action: "Initiate handoff: Tower (if on approach) or Center (if climbing outbound)",
+    crcAnalog: "F5 <HND OFF> (or Shift+H)",
+  },
+  {
+    id: "multi-func",
     focus: "always",
     windowsKeys: "F7",
-    action: "Toggle PTL ALL (predicted track line). If OWN and ALL are off, F7 turns ALL on.",
-    crcAnalog: "DCB PTL OWN / PTL ALL (CRC F7 is MULTIFUNC)",
+    action: "STARS multi-func preview buffer: inputs * into preview buffer or appends to buffer.",
+    crcAnalog: "F7 <MULTI FUNC>",
   },
   {
     id: "history",
     focus: "always",
     windowsKeys: "F8",
     action: "Toggle history dots (0 ↔ last non-zero count).",
-    crcAnalog: "DCB HISTORY (dot count 0–5)",
+    crcAnalog: "F8 <HIST>",
+  },
+  {
+    id: "ptl",
+    focus: "always",
+    windowsKeys: "F10",
+    action: "Toggle PTL ALL (predicted track line).",
+    crcAnalog: "F10 <PTL>",
+  },
+  {
+    id: "ca-inhibit",
+    focus: "always",
+    windowsKeys: "F11",
+    action: "Initiate Conflict Alert (CA) inhibit action (*CA command-then-slew).",
+    crcAnalog: "F11 <CA>",
+  },
+  {
+    id: "dcb-maps",
+    focus: "always",
+    windowsKeys: "Ctrl+F2",
+    action: "Open DCB MAPS submenu.",
+    crcAnalog: "Ctrl+F2 <MAPS>",
+  },
+  {
+    id: "dcb-brite",
+    focus: "always",
+    windowsKeys: "Ctrl+F3",
+    action: "Open DCB BRITE submenu.",
+    crcAnalog: "Ctrl+F3 <BRITE>",
+  },
+  {
+    id: "dcb-ldr",
+    focus: "always",
+    windowsKeys: "Ctrl+F4",
+    action: "Open DCB LDR submenu.",
+    crcAnalog: "Ctrl+F4 <LDR>",
+  },
+  {
+    id: "dcb-char-size",
+    focus: "always",
+    windowsKeys: "Ctrl+F5",
+    action: "Open DCB CHAR SIZE submenu.",
+    crcAnalog: "Ctrl+F5 <CHAR SIZE>",
+  },
+  {
+    id: "dcb-shift",
+    focus: "always",
+    windowsKeys: "Ctrl+F7",
+    action: "Toggle DCB MAIN and AUX menus.",
+    crcAnalog: "Ctrl+F7 <SHIFT>",
+  },
+  {
+    id: "dcb-toggle",
+    focus: "always",
+    windowsKeys: "Ctrl+F8",
+    action: "Toggle DCB display visibility.",
+    crcAnalog: "Ctrl+F8 <DCB>",
+  },
+  {
+    id: "dcb-rng-ring",
+    focus: "always",
+    windowsKeys: "Ctrl+F9",
+    action: "Arm DCB range ring (RR) spinner.",
+    crcAnalog: "Ctrl+F9 <RNG RING>",
+  },
+  {
+    id: "dcb-range",
+    focus: "always",
+    windowsKeys: "Ctrl+F10",
+    action: "Arm DCB RANGE spinner.",
+    crcAnalog: "Ctrl+F10 <RANGE>",
+  },
+  {
+    id: "dcb-wx",
+    focus: "always",
+    windowsKeys: "Ctrl+F11",
+    action: "Toggle WX layers on/off.",
+    crcAnalog: "Ctrl+F11 <WX>",
+  },
+  {
+    id: "dcb-pref",
+    focus: "always",
+    windowsKeys: "Insert (Ins)",
+    action: "Initiate DCB PREF submenu.",
+    crcAnalog: "Ins <PREF SET>",
   },
   {
     id: "cycle-focus",
@@ -205,13 +304,6 @@ export const KEY_BINDINGS: KeyBinding[] = [
     windowsKeys: "H",
     action: "History dots (same as F8: 0 ↔ last non-zero) when the PPI is focused.",
     crcAnalog: "DCB history (always-on duplicate is F8)",
-  },
-  {
-    id: "tower-handoff",
-    focus: "always",
-    windowsKeys: "Shift+H",
-    action: "Initiate handoff: Tower (if on approach) or Center (if climbing outbound)",
-    crcAnalog: "CRC handoff / HO — we do not initiate/accept a second facility",
   },
   {
     id: "radio-focus",
@@ -342,9 +434,22 @@ export function isStarsChordPrefixKey(key: string): boolean {
   return key === "*" || key === "Multiply";
 }
 
-/** F1 is always-on help. Not CRC F1. */
-export function isHelpToggleKey(key: string): boolean {
-  return key === "F1";
+/**
+ * Help overlay toggle: ? / Shift+/ (or Alt+F1). Plain F1 is Beacon Code Readout.
+ */
+export function isHelpToggleKey(
+  event: { key: string; shiftKey?: boolean; altKey?: boolean; ctrlKey?: boolean } | string,
+): boolean {
+  if (typeof event === "string") {
+    return event === "?" || event === "Help";
+  }
+  if (event.key === "?" || (event.key === "/" && event.shiftKey === true) || event.key === "Help") {
+    return true;
+  }
+  if (event.key === "F1" && event.altKey === true) {
+    return true;
+  }
+  return false;
 }
 
 /** Tab cycles command line ↔ PPI. Always-on except help overlay inputs. */
@@ -366,10 +471,17 @@ export function isPreviewPlusKey(key: string): boolean {
 }
 
 /**
- * Always-on handoff action. Shift+H — not scope-focus H (history) and not radio H270.
+ * Always-on handoff action. F5 (Table 18) or legacy Shift+H.
  * Auto-detects Tower (for arrivals on final) vs Center (for climbing departures).
  */
-export function isHandoffKey(event: { key: string; shiftKey?: boolean }): boolean {
+export function isHandoffKey(event: {
+  key: string;
+  shiftKey?: boolean;
+  ctrlKey?: boolean;
+}): boolean {
+  if (event.key === "F5" && !event.ctrlKey) {
+    return true;
+  }
   return event.shiftKey === true && (event.key === "H" || event.key === "h");
 }
 

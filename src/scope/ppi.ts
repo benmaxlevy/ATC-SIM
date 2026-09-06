@@ -36,9 +36,25 @@ import {
   togglePerTrackPtl,
   type ScopeView,
 } from "./scopeView";
-import { normalizedClickAnchor, relocateSystemList } from "./systemLists";
 import {
-  acceptInboundOnClick,
+  associateFlightPlanToTrack,
+  canonicalSystemListId,
+  dropTowerListEntry,
+  dropVfrListEntry,
+  getFlightPlanEntries,
+  isVfrAircraft,
+  handleFlightPlanListClick,
+  handleVideoMapsListClick,
+  hitTestSystemListEntry,
+  normalizedClickAnchor,
+  pointInsideRect,
+  promoteVfrListEntry,
+  relocateSystemList,
+  scrollSystemList,
+} from "./systemLists";
+import { toggleVideoMap } from "./dcb/dcbFunctions";
+import { datablockLineHeightPx } from "./fonts";
+import {
   applyBeaconatorSlewToId,
   applyDropTrackToId,
   applyInitiateTrackToId,
@@ -63,14 +79,57 @@ function trackingFlidMatches(
   if (action.type !== "initCntl" && action.type !== "termCntl") {
     return true;
   }
+  const flid = action.flid ?? view.preview.flid;
+  if (!flid) {
+    return true;
+  }
+  if (/^\d{1,2}$/.test(flid.trim())) {
+    const idx = Number(flid.trim());
+    const entries = getFlightPlanEntries(world, view);
+    const entry = entries.find((e) => e.index === idx);
+    if (entry) {
+      if (entry.aircraftId === aircraftId) {
+        return true;
+      }
+      const ac = world.aircraft.find((a) => a.id === aircraftId);
+      if (ac && ac.callsign === entry.callsign) {
+        return true;
+      }
+      const td = view.tracks?.get(aircraftId);
+      const isUncorrelated =
+        !td ||
+        td.unassociated === true ||
+        (td.ownership !== "owned" && td.datablockMode !== "full");
+      if (isUncorrelated) {
+        return true;
+      }
+      return false;
+    }
+    const droppedSet = view.vfrListDroppedCallsigns ?? new Set();
+    const vfrFlights = world.aircraft.filter(
+      (ac) => isVfrAircraft(ac, view.tracks) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
+    );
+    const vfrIdx = idx >= 14 ? idx - 14 : idx - 1;
+    if (vfrFlights[vfrIdx]) {
+      const td = view.tracks?.get(aircraftId);
+      const isUncorrelated =
+        !td ||
+        td.unassociated === true ||
+        (td.ownership !== "owned" && td.datablockMode !== "full");
+      if (isUncorrelated) {
+        return true;
+      }
+    }
+    return false;
+  }
   if (action.flid) {
     const saved = view.preview.flid;
     view.preview.flid = action.flid;
-    const ok = previewFlidMatchesSlew(view.preview, aircraftId, world);
+    const ok = previewFlidMatchesSlew(view.preview, aircraftId, world, view);
     view.preview.flid = saved;
     return ok;
   }
-  return previewFlidMatchesSlew(view.preview, aircraftId, world);
+  return previewFlidMatchesSlew(view.preview, aircraftId, world, view);
 }
 
 function clearTrackingSlew(view: ScopeView): void {
@@ -97,11 +156,35 @@ function applyTrackingSlewHit(
     return true;
   }
   switch (action.type) {
-    case "initCntl":
+    case "initCntl": {
+      const flid = action.flid ?? view.preview.flid;
+      if (flid) {
+        const num = Number(flid.trim());
+        const entries = getFlightPlanEntries(world, view);
+        const entryByIndex = !Number.isNaN(num) ? entries.find((e) => e.index === num) : undefined;
+        if (entryByIndex) {
+          const associated = associateFlightPlanToTrack(world, view, entryByIndex.index, id);
+          if (!associated) {
+            rejectPreviewCntl(view.preview, Date.now());
+            cancelStarsChordEntry(view.starsChordEntry);
+            view.starsChordArmed = null;
+            return true;
+          }
+          setSelectedAircraft(world, id);
+          clearTrackingSlew(view);
+          return true;
+        }
+        if (!Number.isNaN(num) && promoteVfrListEntry(view, world, num, id)) {
+          setSelectedAircraft(world, id);
+          clearTrackingSlew(view);
+          return true;
+        }
+      }
       applyInitiateTrackToId(view.tracks, world, id);
       setSelectedAircraft(world, id);
       clearTrackingSlew(view);
       return true;
+    }
     case "termCntl": {
       const td = ensureTrackDisplay(view.tracks, id);
       if (hit.region === "datablock") {
@@ -120,12 +203,14 @@ function applyTrackingSlewHit(
       clearTrackingSlew(view);
       return true;
     }
-    case "acceptHandoff": {
-      const ho = handoffFor(world, id);
-      if (ho.kind !== "inbound") {
-        return false;
+    case "associateFlightPlan": {
+      const associated = associateFlightPlanToTrack(world, view, action.index, id);
+      if (!associated) {
+        rejectPreviewCntl(view.preview, Date.now());
+        cancelStarsChordEntry(view.starsChordEntry);
+        view.starsChordArmed = null;
+        return true;
       }
-      acceptInboundOnClick(view.tracks, world, id);
       setSelectedAircraft(world, id);
       clearTrackingSlew(view);
       return true;
@@ -191,6 +276,20 @@ function applyTrackingSlewHit(
       clearTrackingSlew(view);
       return true;
     }
+    case "inhibitCa": {
+      const td = ensureTrackDisplay(view.tracks, id);
+      td.caInhibited = true;
+      setSelectedAircraft(world, id);
+      clearTrackingSlew(view);
+      return true;
+    }
+    case "inhibitMsaw": {
+      const td = ensureTrackDisplay(view.tracks, id);
+      td.msawInhibited = true;
+      setSelectedAircraft(world, id);
+      clearTrackingSlew(view);
+      return true;
+    }
     default:
       return false;
   }
@@ -217,15 +316,108 @@ export function handlePpiLeftClick(
   const size = viewSize(cssWidth, cssHeight);
   const nm = screenToNm(cssX, cssY, view.camera, size);
   recordLastClick(view, nm.eastNm, nm.northNm);
-  const relocateId = previewRelocateListId(view.preview);
-  if (relocateId) {
-    const anchor = normalizedClickAnchor(cssX, cssY, cssWidth, cssHeight);
-    if (relocateSystemList(view, relocateId, anchor.x, anchor.y)) {
-      cancelPreviewArea(view.preview);
-      cancelStarsChordEntry(view.starsChordEntry);
-      view.starsChordArmed = null;
+  let relocateId = previewRelocateListId(view.preview);
+  // The same P commands address lists on empty scope and TPA cones on aircraft.
+  if (
+    relocateId &&
+    view.preview.phase === "entry" &&
+    /^\*\s*P[123]?$/i.test(view.preview.buffer) &&
+    pickAircraftAt(world, cssX, cssY, view.camera, cssWidth, cssHeight, HIT_RADIUS_CSS_PX, view)
+  ) {
+    relocateId = null;
+  }
+  // Check if click was on a system list entry while F1 drop mode is active
+  if (view.f1DropArmed || view.beaconatorActive) {
+    const hitEntry = hitTestSystemListEntry(view, cssX, cssY);
+    if (hitEntry) {
+      if (hitEntry.listId === "TL" || hitEntry.listId.startsWith("TL_")) {
+        dropTowerListEntry(view, hitEntry.callsign);
+      } else if (hitEntry.listId === "VL") {
+        dropVfrListEntry(view, hitEntry.callsign);
+      }
+      view.f1DropArmed = false;
+      view.beaconatorActive = false;
       return;
     }
+  }
+
+  // Check if click was inside ANY system list at line 1 (header MORE: X/Y line) for page scrolling
+  if (view.activeListRects && !relocateId) {
+    const clickedRect = view.activeListRects.find((r) => pointInsideRect(cssX, cssY, r.bounds));
+    if (clickedRect) {
+      const lineH = datablockLineHeightPx(view.charSizes.lists);
+      const clickedLine = Math.floor((cssY - clickedRect.bounds.y) / lineH);
+      if (clickedLine === 1) {
+        if (scrollSystemList(view, clickedRect.id, 1, world)) {
+          if (view.f1DropArmed || view.beaconatorActive) {
+            view.f1DropArmed = false;
+            view.beaconatorActive = false;
+          }
+          return;
+        }
+      }
+    }
+  }
+
+  // Check if click was on Video Maps list (ML) entry for layer toggling (via activeListEntries)
+  if (!relocateId) {
+    const hitEntry = hitTestSystemListEntry(view, cssX, cssY);
+    if (hitEntry && canonicalSystemListId(hitEntry.listId) === "ML") {
+      toggleVideoMap(view, hitEntry.mapId ?? hitEntry.callsign);
+      return;
+    }
+  }
+
+  // Check if click was inside Video Maps list (ML) for row toggling
+  if (view.activeListRects && !relocateId) {
+    const mlItem = view.activeListRects.find((r) => canonicalSystemListId(r.id) === "ML");
+    if (mlItem && pointInsideRect(cssX, cssY, mlItem.bounds)) {
+      const lineH = datablockLineHeightPx(view.charSizes.lists);
+      const clickedLine = Math.floor((cssY - mlItem.bounds.y) / lineH);
+      if (handleVideoMapsListClick(view, clickedLine)) {
+        if (view.f1DropArmed || view.beaconatorActive) {
+          view.f1DropArmed = false;
+          view.beaconatorActive = false;
+        }
+        return;
+      }
+    }
+  }
+
+  // Check if click was inside Flight Plan list (FL) for MORE pagination or F1 row deletion
+  if (view.activeListRects && !relocateId) {
+    const flItem = view.activeListRects.find((r) => canonicalSystemListId(r.id) === "FL");
+    if (flItem && pointInsideRect(cssX, cssY, flItem.bounds)) {
+      const lineH = datablockLineHeightPx(view.charSizes.lists);
+      const clickedLine = Math.floor((cssY - flItem.bounds.y) / lineH);
+      if (handleFlightPlanListClick(view, world, clickedLine)) {
+        if (view.f1DropArmed || view.beaconatorActive) {
+          view.f1DropArmed = false;
+          view.beaconatorActive = false;
+        }
+        return;
+      }
+    }
+  }
+
+  if (relocateId) {
+    const anchor = normalizedClickAnchor(cssX, cssY, cssWidth, cssHeight);
+    view.stagedListAnchor = { listId: relocateId, x: anchor.x, y: anchor.y };
+    if (
+      relocateId === "FL" ||
+      relocateId === "TAB" ||
+      relocateId === "SSA" ||
+      relocateId === "PREVIEW"
+    ) {
+      if (relocateSystemList(view, relocateId, anchor.x, anchor.y)) {
+        view.stagedListAnchor = null;
+        cancelPreviewArea(view.preview);
+        cancelStarsChordEntry(view.starsChordEntry);
+        view.starsChordArmed = null;
+        return;
+      }
+    }
+    return;
   }
   if (view.placeCenterArmed) {
     centerOnWorld(view, nm.eastNm, nm.northNm);
@@ -286,6 +478,25 @@ export function handlePpiLeftClick(
           return;
         }
       }
+    }
+  }
+  if (view.preview.phase === "entry" && /^\d{1,2}$/.test(view.preview.buffer.trim())) {
+    const numIdx = Number(view.preview.buffer.trim());
+    const hit = pickAircraftAt(
+      world,
+      cssX,
+      cssY,
+      view.camera,
+      cssWidth,
+      cssHeight,
+      HIT_RADIUS_CSS_PX,
+      view,
+    );
+    if (hit && promoteVfrListEntry(view, world, numIdx, hit.id)) {
+      cancelPreviewArea(view.preview);
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      return;
     }
   }
   selectOrAcceptAircraftAt(
@@ -443,11 +654,12 @@ export function handlePpiCanvasPointerHover(
   clientY: number,
   view: ScopeView,
 ): void {
+  const rect = canvas.getBoundingClientRect();
+  const { x, y } = cssPointFromClient(clientX, clientY, rect);
+  view.cursorHoverPos = { x, y };
   if (view.dwellMode === "OFF") {
     return;
   }
-  const rect = canvas.getBoundingClientRect();
-  const { x, y } = cssPointFromClient(clientX, clientY, rect);
   const hit = pickAircraftHitAt(
     world,
     x,

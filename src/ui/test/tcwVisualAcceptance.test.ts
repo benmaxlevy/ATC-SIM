@@ -142,7 +142,7 @@ test("AC3 — DCB/scope mutations emit zero Command IR; only radio accepted comm
 });
 
 test("AC4 — T00-01 disclaimer is first-run and inside F1; HELP_KEYS_POINTER stays off the glass", () => {
-  expect(HELP_KEYS_POINTER).toBe("F1 lists keys.");
+  expect(HELP_KEYS_POINTER).toBe("? lists keys.");
   const shell = uiSources["../shell.tsx"]!;
   expect(shell).toMatch(/ScopeHelpOverlay/);
   expect(shell).not.toMatch(/HELP_KEYS_POINTER/);

@@ -31,7 +31,6 @@ import {
   isFpsDebugEnabled,
   loadAndResolveSpeechBoot,
   syncDisplayControlBar,
-  syncStripCallsignColors,
 } from "@ui";
 import { bootSession, createApp } from "./app/create-app";
 import "./index.css";
@@ -90,6 +89,7 @@ const scopeView = createScopeView(scenario.arpNm.xNm, scenario.arpNm.yNm, {
   radarSites: scenario.radarSites,
   arp: scenario.arp,
   ssaWeatherAirports: scenario.ssaWeatherAirports,
+  towerAirports: scenario.towerAirports ?? scenario.ssaWeatherAirports,
 });
 const stopMetarPolling = startMetarPolling(scopeView, {
   primaryIcao: scenario.icao,
@@ -124,7 +124,6 @@ function paintCurrentPpi(): void {
   if (canvas instanceof HTMLCanvasElement) {
     paintPpi(canvas, handles.world, scopeView);
   }
-  syncStripCallsignColors(scopeView.tracks);
   syncDisplayControlBar(scopeView, handles.world);
 }
 

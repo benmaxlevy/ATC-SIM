@@ -129,6 +129,9 @@ export interface ScheduledDeparture {
   aircraftType?: string;
   scheduledSimMs: number;
   spawned?: boolean;
+  assignedSquawk?: string;
+  squawk?: string;
+  index?: number;
 }
 
 function catalogToFixSource(catalog: NonNullable<World["catalog"]>): FixRegistrySource | null {

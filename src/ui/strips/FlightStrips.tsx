@@ -116,6 +116,9 @@ export interface FlightStripsProps {
 
 /** After a list click, scope focus so the next L-chord is a leader, not radio. */
 export function focusPpi(): void {
+  if (typeof HTMLElement === "undefined") {
+    return;
+  }
   const el = globalThis.document?.getElementById(PpiPlaceholderId);
   if (el instanceof HTMLElement) {
     el.focus();

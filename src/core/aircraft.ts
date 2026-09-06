@@ -121,6 +121,27 @@ export interface Aircraft {
   pilotReportedAltitude?: boolean;
   /** ATPA in-trail distance readout (Fig 38/39 two decimals, e.g. "2.40"). */
   atpaDistance?: string;
+  /** Optional flight plan data (e.g. destination airport, rules). */
+  flightPlan?: {
+    destination?: string;
+    rules?: string;
+    departure?: string;
+    route?: string;
+    [key: string]: unknown;
+  };
+  /** Optional compact flight plan alias. */
+  fp?: {
+    destination?: string;
+    rules?: string;
+    departure?: string;
+    route?: string;
+    [key: string]: unknown;
+  };
+  /** Destination airport code if authored directly on aircraft. */
+  destination?: string;
+  destinationAirport?: string;
+  /** Flight rules: e.g. "IFR" or "VFR". */
+  flightRules?: string;
 }
 
 export interface AircraftInit {
@@ -143,6 +164,23 @@ export interface AircraftInit {
   reportedSquawk?: string;
   pilotReportedAltitude?: boolean;
   atpaDistance?: string;
+  flightPlan?: {
+    destination?: string;
+    rules?: string;
+    departure?: string;
+    route?: string;
+    [key: string]: unknown;
+  };
+  fp?: {
+    destination?: string;
+    rules?: string;
+    departure?: string;
+    route?: string;
+    [key: string]: unknown;
+  };
+  destination?: string;
+  destinationAirport?: string;
+  flightRules?: string;
 }
 
 let aircraftSeq = 0;
@@ -193,6 +231,11 @@ export function createAircraft(init: AircraftInit): Aircraft {
       ? { pilotReportedAltitude: init.pilotReportedAltitude }
       : {}),
     ...(init.atpaDistance ? { atpaDistance: init.atpaDistance } : {}),
+    ...(init.flightPlan ? { flightPlan: init.flightPlan } : {}),
+    ...(init.fp ? { fp: init.fp } : {}),
+    ...(init.destination ? { destination: init.destination } : {}),
+    ...(init.destinationAirport ? { destinationAirport: init.destinationAirport } : {}),
+    ...(init.flightRules ? { flightRules: init.flightRules } : {}),
   };
 }
 

@@ -57,8 +57,8 @@ import {
   type CharSizePx,
   type CharSizes,
 } from "./fonts";
-import type { HistoryDotCount } from "./history";
-import { stepHistoryDotCount } from "./history";
+import { stepHistoryDotCount, type HistoryDotCount } from "./history";
+export type { HistoryDotCount };
 import {
   PTL_MINUTES,
   clearPtlByAircraftId,
@@ -103,10 +103,13 @@ import {
 import { cloneWxLevels, emptyWxMosaic, type WxLevels, type WxMosaic } from "./wx";
 
 import {
-  DEFAULT_SYSTEM_LIST_PLACEMENTS,
+  cloneSystemListPlacements,
+  idleFlightPlanListState,
   idleListDragState,
   type CrdaRpcConfig,
+  type FlightPlanListState,
   type ListDragState,
+  type ListRect,
   type SystemListPlacement,
 } from "./systemLists";
 
@@ -154,6 +157,13 @@ export interface ScopeView {
   geoMapsListOn: boolean;
   /** CURRENT on-PPI list of video maps that are on. Display only. */
   currentMapsListOn: boolean;
+  /** Video maps list mode: GEO (all maps) or CURRENT (active only). */
+  mapListMode?: "GEO" | "CURRENT";
+  /**
+   * Mode C Intruder (MCI) alerting enabled. When false, no MCI rows are added
+   * to the AL list. Toggled by `*MCI Enter`.
+   */
+  mciEnabled: boolean;
   /**
    * Selected DCB map group id. Trainer is a single TCP. Defaults to the first
    * group (`sourceIndex` 0). Data-driven; never an A80 hardcode.
@@ -250,6 +260,31 @@ export interface ScopeView {
   crdaRpcConfigs?: CrdaRpcConfig[];
   /** In-scope system list active middle-click drag state. */
   listDrag: ListDragState;
+  /** Active system list pixel bounding rectangles from the latest render frame. */
+  activeListRects?: { id: string; bounds: ListRect; handleBounds?: ListRect }[];
+  /** Active system list entry bounding rectangles from the latest render frame for hit-testing. */
+  activeListEntries?: {
+    listId: string;
+    rowIndex: number;
+    callsign: string;
+    mapId?: string;
+    mapIndex?: number;
+    bounds: ListRect;
+  }[];
+  /** Dropped callsigns manually removed from Tower lists. */
+  towerListDroppedCallsigns?: Set<string>;
+  /** Dropped callsigns manually removed from VFR list. */
+  vfrListDroppedCallsigns?: Set<string>;
+  /** Flight plan list (FL) pagination and purge state. */
+  flightPlanList?: FlightPlanListState;
+  /** Alias for flightPlanList matching STARS specification. */
+  flightPlanListState?: FlightPlanListState;
+  /** Active pointer hover coordinate on scope canvas. */
+  cursorHoverPos?: { x: number; y: number } | null;
+  /** F1 drop mode armed: next left-click on a system list entry drops it. */
+  f1DropArmed?: boolean;
+  /** Staged candidate list anchor position before Enter commits it. */
+  stagedListAnchor?: { listId: string; x: number; y: number } | null;
   /**
    * DCB PREF runtime (T02-29). Eight named local display snapshots.
    * Analog CRC PREF; trainer localStorage, not a NAS preference host.
@@ -268,6 +303,10 @@ export interface ScopeView {
    * CRC F1 is beaconator; ours is trainer help.
    */
   helpOpen: boolean;
+  /**
+   * DCB display / dock visibility. Default true.
+   */
+  dcbVisible?: boolean;
   /**
    * F1 Beaconator (Beacon Code Readout) active state.
    * When active, displays beacon code in place of callsign and forces PDBs to FDBs.
@@ -345,6 +384,7 @@ export function createScopeView(
     surveillanceMode?: SurveillanceMode;
     arp?: LatLon;
     ssaWeatherAirports?: readonly string[];
+    towerAirports?: readonly string[];
     primaryAltimeter?: string;
     airportAltimeters?: readonly SsaAirportAltimeter[];
     vol?: VolLevel;
@@ -397,6 +437,8 @@ export function createScopeView(
     dcbSpinner: idleDcbSpinner(),
     geoMapsListOn: false,
     currentMapsListOn: false,
+    mapListMode: "GEO",
+    mciEnabled: true,
     selectedMapGroupId: defaultSelectedMapGroupId(digitalMap.videoMapGroups),
     dcbDock: "TOP",
     digitalMap,
@@ -423,7 +465,12 @@ export function createScopeView(
     primaryAltimeter: options?.primaryAltimeter ?? SSA_ALTIMETER_STUB,
     airportAltimeters: options?.airportAltimeters ? [...options.airportAltimeters] : [],
     ssaWeatherAirports: options?.ssaWeatherAirports ? [...options.ssaWeatherAirports] : undefined,
-    systemLists: { ...DEFAULT_SYSTEM_LIST_PLACEMENTS },
+    towerAirports: options?.towerAirports
+      ? [...options.towerAirports]
+      : options?.ssaWeatherAirports
+        ? [...options.ssaWeatherAirports]
+        : undefined,
+    systemLists: cloneSystemListPlacements(),
     listDrag: idleListDragState(),
     dcbPref: emptyDcbPrefRuntime(),
     sectorId: "D",
@@ -431,7 +478,21 @@ export function createScopeView(
     tracks: new Map(),
     pendingChord: null,
     helpOpen: false,
+    dcbVisible: true,
     beaconatorActive: false,
+    towerListDroppedCallsigns: new Set(),
+    vfrListDroppedCallsigns: new Set(),
+    flightPlanList: idleFlightPlanListState(),
+    get flightPlanListState() {
+      return this.flightPlanList;
+    },
+    set flightPlanListState(val) {
+      this.flightPlanList = val;
+    },
+    cursorHoverPos: null,
+    f1DropArmed: false,
+    stagedListAnchor: null,
+    activeListEntries: [],
     surveillanceMode: options?.surveillanceMode ?? defaultSurveillanceMode(),
     radarSites: options?.radarSites ? [...options.radarSites] : [],
     wxLevels: cloneWxLevels(),
@@ -621,9 +682,22 @@ export function setDcbDock(view: ScopeView, dock: DcbDock): void {
   view.mapCache = null;
 }
 
-/** F1 always-on. Does not pause kinematics. Never a Command. */
+/** Help overlay toggle. Display only — never a Command. */
 export function toggleHelpOverlay(view: ScopeView): void {
   view.helpOpen = !view.helpOpen;
+}
+
+/** Ctrl+F8 DCB visibility toggle. */
+export function toggleDcbVisible(view: ScopeView): void {
+  view.dcbVisible = view.dcbVisible === undefined ? false : !view.dcbVisible;
+}
+
+/** Ctrl+F11 WX layer toggle: if any active, turn all off; otherwise turn all on. */
+export function toggleWxLevels(view: ScopeView): void {
+  const anyOn = view.wxLevels.some(Boolean);
+  view.wxLevels = anyOn
+    ? [false, false, false, false, false, false]
+    : [true, true, true, true, true, true];
 }
 
 /** MAP toggles on the DCB. Coastline JSON `enabled: false` is a no-op. */

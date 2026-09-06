@@ -38,6 +38,7 @@ import {
   isBeaconSelectKey,
   isCycleFocusKey,
   isFilterChordKey,
+  isHelpToggleKey,
   isLeaderPrefixKey,
   isPreviewPlusKey,
   isRadioFocusSlashKey,
@@ -74,12 +75,11 @@ import {
   type PreviewKeyOutcome,
 } from "./previewArea";
 import { browserDcbPrefStorage, cancelDcbPrefSaveAs, commitDcbPrefSaveAs } from "./dcb/dcbPref";
-import { handleDcbEscape } from "./dcb/dcbMenu";
+import { applyDcbShift, armDcbSpinner, handleDcbEscape, openDcbMenu } from "./dcb/dcbMenu";
 import {
   applyRrCenter,
   armPlaceCenter,
   armPlaceRangeRing,
-  hideMapLists,
   loadedCatalogMaps,
   resolveVideoMapToken,
   setAllVideoMaps,
@@ -94,9 +94,13 @@ import {
   centerOnLastClick,
   setHistoryDotCount,
   setPtlMinutes,
+  toggleDcbVisible,
+  toggleHelpOverlay,
   toggleHistoryEnabled,
   toggleModeCVisible,
   togglePtlOn,
+  toggleWxLevels,
+  type HistoryDotCount,
   type ScopeView,
 } from "./scopeView";
 import {
@@ -113,11 +117,21 @@ import {
   applyInitiateTrackToSelection,
   selectedTrackId,
 } from "./trackDisplay";
+import { applyHandoffToSelection } from "./ownership";
 import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock, type LeaderLengthPx } from "./leader";
 import { resolveScopeFlid } from "./previewArea";
-import { applyHandoffToSelection } from "./ownership";
-import { setSystemListMaxLines, toggleSystemList } from "./systemLists";
-import type { HistoryDotCount } from "./history";
+import {
+  canonicalSystemListId,
+  cancelListDrag,
+  deleteFlightPlanEntry,
+  isSystemListMultiPage,
+  pointInsideRect,
+  relocateSystemList,
+  resetSystemListToDefault,
+  scrollSystemList,
+  setSystemListMaxLines,
+  toggleSystemList,
+} from "./systemLists";
 
 export const ALWAYS_ON_SCOPE_KEYS = [
   "PageUp",
@@ -125,10 +139,18 @@ export const ALWAYS_ON_SCOPE_KEYS = [
   "Home",
   "End",
   "F1",
+  "F2",
   "F3",
   "F4",
+  "F5",
   "F7",
   "F8",
+  "F9",
+  "F10",
+  "F11",
+  "Insert",
+  "Ins",
+  "?",
 ] as const;
 
 /** Command line input id (owned by `@ui`; duplicated so `@scope` does not import `@ui`). */
@@ -142,6 +164,8 @@ export interface ScopeKeyEvent {
   key: string;
   code?: string;
   shiftKey?: boolean;
+  ctrlKey?: boolean;
+  altKey?: boolean;
   target?: EventTarget | null;
   preventDefault(): void;
   stopPropagation(): void;
@@ -290,10 +314,22 @@ function applyPreviewArmedAction(
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;
       return;
+    case "deleteFlightPlanEntry":
+      if (world) {
+        deleteFlightPlanEntry(world, view, action.index);
+      }
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      return;
     case "armRelocateList":
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;
       armPreviewRelocateList(view.preview, action.listId, nowMs);
+      return;
+    case "resetListPosition":
+      resetSystemListToDefault(view, action.listId);
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
       return;
     case "armRecenterScope":
       if (!view.placeCenterArmed) {
@@ -334,6 +370,8 @@ function applyPreviewArmedAction(
       );
       if (map) {
         toggleVideoMap(view, map.id, action.explicitState);
+      } else {
+        toggleVideoMap(view, action.mapId, action.explicitState);
       }
       return;
     }
@@ -455,14 +493,20 @@ function applyPreviewArmedAction(
       return;
     case "initCntl":
     case "termCntl":
-    case "acceptHandoff":
     case "ackPointout":
     case "resetLeaderDir":
     case "beaconatorSlew":
     case "armPerTrackPtl":
+    case "inhibitCa":
+    case "inhibitMsaw":
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;
       armPreviewSlewAction(view.preview, action, nowMs);
+      return;
+    case "toggleMci":
+      view.mciEnabled = !view.mciEnabled;
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
       return;
     case "saveAsPref":
       if (action.name) {
@@ -481,6 +525,15 @@ function applyPreviewBufferOutcome(
   outcome: PreviewKeyOutcome,
 ): void {
   if (outcome.action) {
+    if (view.stagedListAnchor && outcome.action.type === "toggleList") {
+      const staged = view.stagedListAnchor;
+      view.stagedListAnchor = null;
+      relocateSystemList(view, staged.listId, staged.x, staged.y);
+      cancelPreviewArea(view.preview);
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      return;
+    }
     applyPreviewArmedAction(view, outcome.action, nowMs, world);
   }
   if (outcome.starsBuffer) {
@@ -543,9 +596,140 @@ export function handleScopeKeyDown(
   nowMs: number = Date.now(),
   ui?: ScopeKeyUi,
 ): boolean {
-  if (event.key === "F1") {
+  if (isHelpToggleKey(event)) {
+    consume(event);
+    toggleHelpOverlay(view);
+    ui?.onHandled?.();
+    return true;
+  }
+  if (event.key === "Escape" && view.helpOpen) {
+    consume(event);
+    view.helpOpen = false;
+    ui?.onHandled?.();
+    return true;
+  }
+
+  // STARS Key Mappings (Table 18): Ctrl+F1 to Ctrl+F11
+  if (event.ctrlKey) {
+    switch (event.key) {
+      case "F1":
+        consume(event);
+        centerOnAirport(view);
+        ui?.onHandled?.();
+        return true;
+      case "F2":
+        consume(event);
+        openDcbMenu(view, "MAPS");
+        ui?.onHandled?.();
+        return true;
+      case "F3":
+        consume(event);
+        openDcbMenu(view, "BRITE");
+        ui?.onHandled?.();
+        return true;
+      case "F4":
+        consume(event);
+        openDcbMenu(view, "LDR");
+        ui?.onHandled?.();
+        return true;
+      case "F5":
+        consume(event);
+        openDcbMenu(view, "CHAR_SIZE");
+        ui?.onHandled?.();
+        return true;
+      case "F7":
+        consume(event);
+        applyDcbShift(view);
+        ui?.onHandled?.();
+        return true;
+      case "F8":
+        consume(event);
+        toggleDcbVisible(view);
+        ui?.onHandled?.();
+        return true;
+      case "F9":
+        consume(event);
+        armDcbSpinner(view, "RR");
+        ui?.onHandled?.();
+        return true;
+      case "F10":
+        consume(event);
+        armDcbSpinner(view, "RANGE");
+        ui?.onHandled?.();
+        return true;
+      case "F11":
+        consume(event);
+        toggleWxLevels(view);
+        ui?.onHandled?.();
+        return true;
+    }
+  }
+
+  // STARS Table 18: Ins / Insert -> <PREF SET>
+  if (event.key === "Insert" || event.key === "Ins") {
+    consume(event);
+    openDcbMenu(view, "PREF");
+    ui?.onHandled?.();
+    return true;
+  }
+
+  // STARS Table 18: F1 -> <BCN CODE RD OUT> (momentary Beaconator)
+  if (event.key === "F1" && !event.ctrlKey && !event.altKey) {
     consume(event);
     view.beaconatorActive = true;
+    view.f1DropArmed = true;
+    ui?.onHandled?.();
+    return true;
+  }
+
+  // STARS Table 18: F5 -> <HND OFF>
+  if (event.key === "F5" && !event.ctrlKey) {
+    consume(event);
+    if (world) {
+      applyHandoffToSelection(view.tracks, world);
+    }
+    ui?.onHandled?.();
+    return true;
+  }
+
+  // STARS Table 18: F7 -> <MULTI FUNC>
+  if (event.key === "F7" && !event.ctrlKey) {
+    consume(event);
+    if (view.preview.phase === "entry") {
+      view.preview.buffer += "*";
+      view.preview.lastKeyAtMs = nowMs;
+      syncStarsChordMirror(view, nowMs);
+    } else {
+      startPreviewBuffer(view, "*", nowMs);
+    }
+    ui?.onHandled?.();
+    return true;
+  }
+
+  // STARS Table 18: F10 -> <PTL>
+  if (event.key === "F10" && !event.ctrlKey) {
+    consume(event);
+    togglePtlOn(view);
+    ui?.onHandled?.();
+    return true;
+  }
+
+  // STARS Table 18: F11 -> <CA>
+  if (event.key === "F11" && !event.ctrlKey) {
+    consume(event);
+    armPreviewSlewAction(view.preview, { type: "inhibitCa" }, nowMs);
+    ui?.onHandled?.();
+    return true;
+  }
+  if (event.key === "FPL" || event.code === "FPL") {
+    consume(event);
+    toggleSystemList(view, "FL");
+    ui?.onHandled?.();
+    return true;
+  }
+  if (event.key === "VFR" || event.code === "VFR") {
+    consume(event);
+    toggleSystemList(view, "VL");
     ui?.onHandled?.();
     return true;
   }
@@ -564,6 +748,8 @@ export function handleScopeKeyDown(
   }
 
   if (event.key === "Escape") {
+    view.f1DropArmed = false;
+    view.stagedListAnchor = null;
     const previewStar = view.preview.phase !== "idle" && view.preview.buffer.startsWith("*");
     if (handlePreviewEscape(view.preview)) {
       cancelDcbPrefSaveAs(view);
@@ -580,14 +766,13 @@ export function handleScopeKeyDown(
     const starsBusy =
       focus === "scope" && (view.starsChordEntry.phase !== "idle" || view.starsChordArmed != null);
     if (!filterBusy && !leaderBusy && !starsBusy && handleDcbEscape(view)) {
-      hideMapLists(view);
       consume(event);
       ui?.onHandled?.();
       return true;
     }
   }
 
-  const previewFlid = handlePreviewFlidKey(view.preview, event.key, nowMs, world);
+  const previewFlid = handlePreviewFlidKey(view.preview, event.key, nowMs, world, view);
   if (previewFlid.consumed) {
     consume(event);
     if (previewFlid.apply && world) {
@@ -649,6 +834,12 @@ export function handleScopeKeyDown(
         }
         return true;
       }
+    }
+    if (event.key === "Escape" && view.listDrag?.movingListId) {
+      consume(event);
+      view.listDrag = cancelListDrag(view.listDrag);
+      ui?.onHandled?.();
+      return true;
     }
     if (event.key === "Escape" && view.starsChordArmed) {
       consume(event);
@@ -727,14 +918,6 @@ export function handleScopeKeyDown(
         return true;
       }
     }
-    if ((event.key === "Enter" || event.key === "NumpadEnter") && view.preview.phase === "idle") {
-      consume(event);
-      cancelStarsChordEntry(view.starsChordEntry);
-      view.starsChordArmed = null;
-      armPreviewSlewAction(view.preview, { type: "acceptHandoff" }, nowMs);
-      ui?.onHandled?.();
-      return true;
-    }
   } else {
     if (view.preview.phase === "entry") {
       cancelPreviewArea(view.preview);
@@ -808,7 +991,7 @@ export function handleScopeKeyDown(
     }
     return true;
   }
-  if (event.key === "F7") {
+  if (event.key === "F10") {
     togglePtlOn(view);
     return true;
   }
@@ -816,12 +999,49 @@ export function handleScopeKeyDown(
     toggleHistoryEnabled(view);
     return true;
   }
-  if (event.key === "PageUp") {
-    stepRange(view.camera, -1);
-    return true;
-  }
-  if (event.key === "PageDown") {
-    stepRange(view.camera, 1);
+  if (event.key === "PageUp" || event.key === "PageDown") {
+    const direction: 1 | -1 = event.key === "PageDown" ? 1 : -1;
+    if (focus === "scope") {
+      // 1. Check if cursor is over a list displaying MORE: X/Y
+      if (view.cursorHoverPos && view.activeListRects) {
+        const hovered = view.activeListRects.find((r) =>
+          pointInsideRect(view.cursorHoverPos!.x, view.cursorHoverPos!.y, r.bounds),
+        );
+        if (hovered && isSystemListMultiPage(view, hovered.id, world)) {
+          if (scrollSystemList(view, hovered.id, direction, world)) {
+            ui?.onHandled?.();
+            return true;
+          }
+        }
+      }
+
+      // 2. If cursor is not hovering over a specific paged list, check if any visible list has multiple pages
+      const flPlacement = view.systemLists?.FL;
+      if (flPlacement?.visible && isSystemListMultiPage(view, "FL", world)) {
+        if (scrollSystemList(view, "FL", direction, world)) {
+          ui?.onHandled?.();
+          return true;
+        }
+      }
+
+      if (view.systemLists) {
+        const seenCanonical = new Set<string>(["FL"]);
+        for (const [id, placement] of Object.entries(view.systemLists)) {
+          const canonical = canonicalSystemListId(id);
+          if (seenCanonical.has(canonical)) continue;
+          seenCanonical.add(canonical);
+          if (placement.visible && isSystemListMultiPage(view, id, world)) {
+            if (scrollSystemList(view, id, direction, world)) {
+              ui?.onHandled?.();
+              return true;
+            }
+          }
+        }
+      }
+    }
+
+    // 3. If NO visible list has multiple pages, fall back to stepRange
+    stepRange(view.camera, direction);
     return true;
   }
   if (event.key === "Home") {

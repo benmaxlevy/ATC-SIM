@@ -109,7 +109,7 @@ describe("coordinationList", () => {
   it("formats Video Maps list with active > indicators", () => {
     const view = createScopeView();
     const lines = buildVideoMapsListLines(view, "ALL");
-    expect(lines[0]).toContain("GEOGRAPHIC MAPS");
+    expect(lines[0]).toContain("VIDEO MAPS");
   });
 
   it("T04-40 — GEOGRAPHIC MAPS lists complete KATL inventory by starsId", () => {

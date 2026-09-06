@@ -63,6 +63,7 @@ export interface TrackDisplay {
   outboundFlashUntilSimMs?: number;
   beaconatorUntilSimMs?: number;
   outboundClickStep?: number;
+  flightRules?: string;
   pointoutAccepted?: boolean;
   pointoutRejected?: boolean;
   /**
@@ -99,6 +100,16 @@ export interface TrackDisplay {
    * `*D+I` / inhibit via `*D+` hides digits and keeps the stroke.
    */
   tpaSizeReadoutEnabled?: boolean;
+  /**
+   * Conflict Alert inhibited for this track (`*CA [Left-Click]`). Suppresses
+   * CA alert row in the AL list and datablock CA tag for this aircraft.
+   */
+  caInhibited?: boolean;
+  /**
+   * MSAW (Low Altitude / LA) inhibited for this track (`*LA [Left-Click]`).
+   * Suppresses LA alert row in the AL list and datablock LA tag.
+   */
+  msawInhibited?: boolean;
   /**
    * Last surveillance report. Display consumers use this pose; missing means
    * out of coverage (no paint, no 30 s coast).

@@ -13,6 +13,8 @@ export interface ListFormatter {
   maxLines: number;
   /** Total number of entries available. */
   entries: number;
+  /** Starting index offset for pagination scrolling (defaults to 0). */
+  offset?: number;
   /** Function producing line content for entry at given index. */
   formatLine: (idx: number) => string;
 }
@@ -55,15 +57,16 @@ export function buildSystemListLines(formatter: ListFormatter): string[] {
   if (formatter.title) {
     lines.push(formatter.title);
   }
+  const offset = formatter.offset ?? 0;
+  const remaining = Math.max(0, formatter.entries - offset);
+  const count = Math.min(remaining, formatter.maxLines > 0 ? formatter.maxLines : remaining);
   if (formatter.entries > formatter.maxLines && formatter.maxLines > 0) {
-    lines.push(`MORE: ${formatter.maxLines}/${formatter.entries}`);
+    const currentPage = Math.floor(offset / formatter.maxLines) + 1;
+    const totalPages = Math.ceil(formatter.entries / formatter.maxLines);
+    lines.push(`MORE: ${currentPage}/${totalPages}`);
   }
-  const count = Math.min(
-    formatter.entries,
-    formatter.maxLines > 0 ? formatter.maxLines : formatter.entries,
-  );
   for (let i = 0; i < count; i++) {
-    const line = formatter.formatLine(i);
+    const line = formatter.formatLine(offset + i);
     if (line.length > 0) {
       lines.push(line);
     }

@@ -7,6 +7,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { SessionLog, World } from "@core";
 import { handleRadioText, type PilotResult } from "@pilot";
+import { isAlwaysOnScopeKey, isHandoffKey } from "@scope";
 import { displayCommandLineStatus } from "./voice-status";
 
 export type { PilotResult };
@@ -81,6 +82,8 @@ export function CommandLine({
   const [showingReadback, setShowingReadback] = useState(Boolean(voiceStatus));
   const prevCallsignRef = useRef<string | null>(selectedCallsign ?? null);
   const isFirstMount = useRef(true);
+  /** Set to true when readback is dismissed by an a/c click — prevents focus-stealing. */
+  const skipNextFocusRef = useRef(false);
 
   useEffect(() => {
     if (isFirstMount.current) {
@@ -95,6 +98,8 @@ export function CommandLine({
     if (selectedCallsign) {
       setValue(selectedCallsign);
       prevCallsignRef.current = selectedCallsign;
+      // Don't steal focus from the PPI when filling the callsign via a/c click.
+      skipNextFocusRef.current = true;
       setShowingReadback(false);
     } else if (selectedCallsign === null && prevCallsignRef.current !== null) {
       setValue((current) => (current === prevCallsignRef.current ? "" : current));
@@ -110,6 +115,10 @@ export function CommandLine({
 
   useEffect(() => {
     if (!showingReadback) {
+      if (skipNextFocusRef.current) {
+        skipNextFocusRef.current = false;
+        return;
+      }
       const el = globalThis.document?.getElementById(COMMAND_LINE_INPUT_ID);
       const active = globalThis.document?.activeElement;
       if (
@@ -173,7 +182,6 @@ export function CommandLine({
         <input
           id={COMMAND_LINE_INPUT_ID}
           type="text"
-          autoFocus
           spellCheck={false}
           autoComplete="off"
           autoCapitalize="off"
@@ -182,16 +190,9 @@ export function CommandLine({
           value={value}
           onKeyDown={(event) => {
             if (
-              event.key === "PageUp" ||
-              event.key === "PageDown" ||
-              event.key === "Home" ||
-              event.key === "End" ||
-              event.key === "F1" ||
-              event.key === "F3" ||
-              event.key === "F4" ||
-              event.key === "F7" ||
-              event.key === "F8" ||
-              (event.shiftKey && (event.key === "H" || event.key === "h"))
+              isAlwaysOnScopeKey(event.key) ||
+              (event.ctrlKey && /^F\d+$/.test(event.key)) ||
+              isHandoffKey(event)
             ) {
               event.preventDefault();
             }

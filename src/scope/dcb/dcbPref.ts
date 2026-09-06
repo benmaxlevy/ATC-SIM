@@ -54,6 +54,7 @@ import {
 } from "../tpa";
 import { resolveSurveillancePref, type SurveillanceMode } from "../surveillance";
 import { cloneWxLevels, type WxLevels } from "../wx";
+import { ensureSystemListPlacement } from "../systemLists";
 
 export type DcbDock = "TOP" | "LEFT" | "RIGHT" | "BOTTOM";
 
@@ -140,6 +141,7 @@ export interface DcbPrefBody {
   dwellMode?: DwellMode;
   cursorHome?: boolean;
   cursorSpeed?: number;
+  systemLists?: Record<string, { visible: boolean; x: number; y: number; maxLines: number }>;
 }
 
 export interface DcbPrefSlot {
@@ -339,6 +341,14 @@ export function serializeDcbPref(view: ScopeView): DcbPrefBody {
     dwellMode: view.dwellMode ?? DEFAULT_DWELL_MODE,
     cursorHome: view.cursorHome ?? false,
     cursorSpeed: view.cursorSpeed ?? DEFAULT_CURSOR_SPEED,
+    systemLists: view.systemLists
+      ? Object.fromEntries(
+          Object.entries(view.systemLists).map(([id, p]) => [
+            id,
+            { visible: p.visible, x: p.x, y: p.y, maxLines: p.maxLines },
+          ]),
+        )
+      : undefined,
   };
 }
 
@@ -436,6 +446,17 @@ export function applyDcbPref(view: ScopeView, body: DcbPrefBody): void {
     typeof body.cursorSpeed === "number" && body.cursorSpeed >= 1 && body.cursorSpeed <= 10
       ? body.cursorSpeed
       : DEFAULT_CURSOR_SPEED;
+  if (body.systemLists && typeof body.systemLists === "object") {
+    for (const [id, saved] of Object.entries(body.systemLists)) {
+      const p = ensureSystemListPlacement(view, id);
+      if (p && saved) {
+        if (typeof saved.visible === "boolean") p.visible = saved.visible;
+        if (typeof saved.x === "number") p.x = saved.x;
+        if (typeof saved.y === "number") p.y = saved.y;
+        if (typeof saved.maxLines === "number") p.maxLines = saved.maxLines;
+      }
+    }
+  }
   view.mapCache = null;
 }
 

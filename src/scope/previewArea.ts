@@ -1,6 +1,5 @@
 /**
- * Analog: CRC STARS Preview Area + Command Reference
- * (docs.virtualnas.net/crc/stars — R07). Typed scope commands paint under the
+ * Preview Area + Command Reference. Typed scope commands paint in the
  * SSA; Tracking Aircraft Table 18/19 names INIT CNTL / TERM CNTL; Table 30
  * names beacon-code select (`B##` CODE BLOCK / `B####` discrete).
  *
@@ -19,6 +18,8 @@ import { DCB_PREF_NAME_MAX_CHARS, parseDcbPrefName } from "./dcb/dcbPref";
 import { type VideoMapTokenLayout } from "./dcb/dcbFunctions";
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
 import { cloneWxLevels, type WxLevels } from "./wx";
+import type { ScopeView } from "./scopeView";
+import { getFlightPlanEntries } from "./systemLists";
 import {
   FULL_CALLSIGN,
   SQUAWK_CODE,
@@ -57,10 +58,22 @@ export type ScopeFlidResult =
  * Resolve a Preview Area FLID: full callsign, numeric tail, or unique 4-digit
  * squawk. Two tails, two squawks, or tail vs squawk → ambiguous.
  */
-export function resolveScopeFlid(token: string, world: World): ScopeFlidResult {
+export function resolveScopeFlid(token: string, world: World, view?: ScopeView): ScopeFlidResult {
   const normalized = token.trim().toUpperCase();
   if (normalized.length === 0) {
     return { ok: false, reason: "unknown" };
+  }
+  if (view && /^\d{1,2}$/.test(normalized)) {
+    const idx = Number(normalized);
+    const entries = getFlightPlanEntries(world, view);
+    const entry = entries.find((e) => e.index === idx);
+    if (entry) {
+      const ac = world.aircraft.find(
+        (a) => a.callsign === entry.callsign || (entry.aircraftId && a.id === entry.aircraftId),
+      );
+      const aircraftId = entry.aircraftId ?? ac?.id ?? entry.callsign;
+      return { ok: true, aircraftId };
+    }
   }
   const ids = new Set<string>();
   if (FULL_CALLSIGN.test(normalized)) {
@@ -95,7 +108,7 @@ export type PreviewAreaState = {
   phase: PreviewPhase;
   /** Live typed buffer. Empty when idle. */
   buffer: string;
-  /** CRC mnemonic painted under the SSA, e.g. `INIT CNTL`. Never `"F3"`. */
+  /** CRC mnemonic painted in the Preview Area, e.g. `INIT CNTL`. Never `"F3"`. */
   mnemonic: string;
   /** Optional FLID / ACID typed after a function key. */
   flid: string | null;
@@ -104,6 +117,8 @@ export type PreviewAreaState = {
   rejection: string | null;
   /** Generic armed-action discriminator. Null when none. */
   armed: PreviewArmedAction | null;
+  /** Slew action alias for armed tracking/inhibit actions. */
+  slewAction?: PreviewArmedAction | null;
 };
 
 export function idlePreviewArea(): PreviewAreaState {
@@ -115,6 +130,7 @@ export function idlePreviewArea(): PreviewAreaState {
     lastKeyAtMs: 0,
     rejection: null,
     armed: null,
+    slewAction: null,
   };
 }
 
@@ -131,6 +147,7 @@ export function cancelPreviewArea(state: PreviewAreaState): void {
   state.lastKeyAtMs = idle.lastKeyAtMs;
   state.rejection = idle.rejection;
   state.armed = idle.armed;
+  state.slewAction = idle.slewAction;
 }
 
 /**
@@ -198,8 +215,9 @@ export function formatPreviewReadout(state: PreviewAreaState): string | null {
   return null;
 }
 /**
- * Live `*T` / `*S` (no size) or armed `armRelocateList` → list id to slew.
- * Resize buffers (`*T10`) do not relocate.
+ * Live list commands (`*T`, `*TV`, `*TM`, `*TC`, `*TS`, `*TX`, `*TN`, `*P1`–`*P3`, `*S`, `*P`)
+ * or armed `armRelocateList` → list id to slew.
+ * Resize buffers (`*T10`, `*P1 10`, etc.) do not relocate.
  */
 export function previewRelocateListId(state: PreviewAreaState): string | null {
   if (state.armed?.type === "armRelocateList") {
@@ -207,6 +225,10 @@ export function previewRelocateListId(state: PreviewAreaState): string | null {
   }
   if (state.phase !== "entry") {
     return null;
+  }
+  // Bare *P relocates Preview on empty scope; Enter and aircraft clicks retain TPA semantics.
+  if (/^\*\s*P$/i.test(state.buffer)) {
+    return "PREVIEW";
   }
   const parsed = parsePreviewCommand(state.buffer);
   if (parsed.kind !== "action") {
@@ -238,8 +260,6 @@ function trackingMnemonic(action: PreviewArmedAction): string {
       return "INIT CNTL";
     case "termCntl":
       return "TERM CNTL";
-    case "acceptHandoff":
-      return "HO ACCEPT";
     case "ackPointout":
       return "*";
     case "setLeaderDir":
@@ -264,6 +284,8 @@ function trackingMnemonic(action: PreviewArmedAction): string {
       return "*B";
     case "armPerTrackPtl":
       return "*R";
+    case "inhibitCa":
+      return "*CA";
     case "saveAsPref":
       return "PREF";
     default:
@@ -353,6 +375,7 @@ export function armPreviewSlewAction(
   state.flid = null;
   state.rejection = null;
   state.armed = action;
+  state.slewAction = action;
   state.lastKeyAtMs = nowMs;
 }
 
@@ -378,6 +401,7 @@ export function armPreviewRelocateList(
   state.flid = null;
   state.rejection = null;
   state.armed = { type: "armRelocateList", listId };
+  state.slewAction = { type: "armRelocateList", listId };
   state.lastKeyAtMs = nowMs;
 }
 
@@ -394,6 +418,7 @@ export function armPreviewCntl(
   state.flid = flid && flid.length > 0 ? flid : null;
   state.rejection = null;
   state.armed = { type: kind };
+  state.slewAction = { type: kind };
   state.lastKeyAtMs = nowMs;
 }
 
@@ -432,6 +457,7 @@ export function handlePreviewFlidKey(
   key: string,
   nowMs: number,
   world?: World,
+  view?: ScopeView,
 ): PreviewFlidKeyResult {
   if (!previewCntlArmed(state)) {
     return { consumed: false };
@@ -458,7 +484,7 @@ export function handlePreviewFlidKey(
       rejectPreviewCntl(state, nowMs);
       return { consumed: true };
     }
-    const resolved = resolveScopeFlid(flid, world);
+    const resolved = resolveScopeFlid(flid, world, view);
     if (!resolved.ok) {
       rejectPreviewCntl(state, nowMs);
       return { consumed: true };
@@ -481,12 +507,13 @@ export function previewFlidMatchesSlew(
   state: PreviewAreaState,
   aircraftId: string,
   world: World,
+  view?: ScopeView,
 ): boolean {
   const flid = state.flid;
   if (!flid) {
     return true;
   }
-  const resolved = resolveScopeFlid(flid, world);
+  const resolved = resolveScopeFlid(flid, world, view);
   return resolved.ok && resolved.aircraftId === aircraftId;
 }
 

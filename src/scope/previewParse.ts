@@ -1,11 +1,12 @@
 /**
- * Analog: CRC STARS Preview Area command grammar (R07). Pure string parsers.
+ * Preview Area command grammar. Pure string parsers.
  * Preview never emits Command, readback, or intent. Not NAS STARS.
  */
 
 import type { LoadedVideoMap } from "@scenario";
 import { parseStrictFilterHundreds } from "./altitudeFilter";
 import { resolveVideoMapToken, type VideoMapTokenLayout } from "./dcb/dcbFunctions";
+import { DEFAULT_GEOGRAPHIC_MAPS } from "./coordinationList";
 import { digitFromKey } from "./keymap";
 import {
   isStarsLeaderClock,
@@ -39,6 +40,7 @@ export type PreviewArmedAction =
   | { readonly type: "toggleList"; readonly listId: string }
   | { readonly type: "resizeList"; readonly listId: string; readonly maxLines: number }
   | { readonly type: "armRelocateList"; readonly listId: string }
+  | { readonly type: "resetListPosition"; readonly listId: string }
   | { readonly type: "armRecenterScope" }
   | { readonly type: "resetScopeCenter" }
   | { readonly type: "setRangeRingInterval"; readonly intervalNm: number }
@@ -59,7 +61,6 @@ export type PreviewArmedAction =
     }
   | { readonly type: "addBeaconCodeFilter"; readonly code: string }
   | { readonly type: "removeBeaconCodeFilter"; readonly code: string }
-  | { readonly type: "acceptHandoff" }
   | { readonly type: "ackPointout" }
   | {
       readonly type: "setLeaderDir";
@@ -90,6 +91,14 @@ export type PreviewArmedAction =
   | { readonly type: "forceFdb"; readonly flid?: string }
   | { readonly type: "clearAllForcedFdb" }
   | { readonly type: "beaconatorSlew" }
+  | { readonly type: "associateFlightPlan"; readonly index: number }
+  | { readonly type: "deleteFlightPlanEntry"; readonly index: number }
+  /** `*CA [Left-Click Track]`: Inhibit/acknowledge Conflict Alert for the track. */
+  | { readonly type: "inhibitCa" }
+  /** `*LA [Left-Click Track]`: Inhibit Low-Altitude (MSAW) alert for the track. */
+  | { readonly type: "inhibitMsaw" }
+  /** `*MCI Enter`: Toggle Mode C Intruder alerting on/off. */
+  | { readonly type: "toggleMci" }
   | { readonly type: "saveAsPref"; readonly name?: string };
 
 export type PreviewCommandResult =
@@ -258,6 +267,18 @@ export function parseScopeDisplayCommand(buffer: string): PreviewCommandResult |
     return { kind: "action", action: { type: "armPerTrackPtl" } };
   }
 
+  // T02-107: `*CA [click]` arms CA inhibit slew.
+  if (compact === "*CA") {
+    return { kind: "action", action: { type: "inhibitCa" } };
+  }
+  // *MCI Enter: toggle Mode C Intruder alerting
+  if (compact === "*MCI") {
+    return { kind: "action", action: { type: "toggleMci" } };
+  }
+  if (compact === "*M" || compact === "*MC") {
+    return { kind: "incomplete" };
+  }
+
   return null;
 }
 
@@ -393,16 +414,18 @@ function parseBeaconSelect(buffer: string): PreviewCommandResult | null {
   return { kind: "incomplete" };
 }
 
-/** Longest-first so `TAB` / `TV` win over `T`. */
-const LIST_TOGGLE_TOKENS: ReadonlyArray<{ token: string; listId: string }> = [
-  { token: "TAB", listId: "TAB" },
-  { token: "TV", listId: "VFR" },
-  { token: "TC", listId: "COAST" },
-  { token: "TS", listId: "SIGN_ON" },
-  { token: "TM", listId: "ALERT" },
-  { token: "TX", listId: "MAPS" },
-  { token: "TN", listId: "CRDA" },
-  { token: "T", listId: "TAB" },
+const LIST_TOGGLE_TOKENS: ReadonlyArray<{
+  token: string;
+  listId: string;
+  allowResize: boolean;
+}> = [
+  { token: "TV", listId: "VL", allowResize: true },
+  { token: "TC", listId: "COAST", allowResize: true },
+  { token: "TS", listId: "SIGN_ON", allowResize: false },
+  { token: "TM", listId: "AL", allowResize: false },
+  { token: "TX", listId: "ML", allowResize: false },
+  { token: "TN", listId: "CRDA", allowResize: false },
+  { token: "T", listId: "FL", allowResize: true },
 ];
 
 const TOWER_LIST_IDS: Readonly<Record<"1" | "2" | "3", string>> = {
@@ -410,6 +433,13 @@ const TOWER_LIST_IDS: Readonly<Record<"1" | "2" | "3", string>> = {
   "2": "TOWER_2",
   "3": "TOWER_3",
 };
+
+/**
+ * Removed list aliases that must be rejected / invalid.
+ * STARS strictly authorizes only: *S, *T, *TV, *TM, *TC, *TS, *TX, *TN, *P1-*P3.
+ */
+const REMOVED_LIST_ALIASES =
+  /^\*\s*(FL|TAB|FPL|VL|VFR|TL[A-Z0-9]*|ML|AL|CR|CRDA|CS|COAST|SO|SIGN_ON|SSA)(?:\s*.*)?$/i;
 
 function compactPreviewStars(buffer: string): string {
   return buffer.replace(/ /g, "");
@@ -424,10 +454,20 @@ function listResizeAction(listId: string, digits: string): PreviewCommandResult 
 }
 
 /**
- * Table 31/32 system lists. Spaces optional (`*T` = `* T`). Tower lists are
- * the spaced CRC form `* P1`/`* P2`/`* P3`; compact `*P1`/`*P3`/`*P10` stay
- * TPA cones. `*PTL` stays incomplete (T02-64). `*S` arms SSA relocate and
- * does not toggle SSA.
+ * Table 31/32 system lists. Spaces optional (`*T` = `* T`).
+ * Authorized commands only:
+ * - *S: relocate SSA (*S + click), reset (*S D / *SD)
+ * - *T: toggle TAB list (*T Enter), relocate (*T + click), resize (*T 15 Enter), reset (*T D)
+ * - *TV: toggle VFR list (*TV Enter), relocate (*TV + click), resize (*TV 15 Enter), reset (*TV D)
+ * - *TM: toggle LA/CA/MCI list (*TM Enter), relocate (*TM + click), reset (*TM D)
+ * - *TC: toggle COAST list (*TC Enter), relocate (*TC + click), resize (*TC 15 Enter), reset (*TC D)
+ * - *TS: toggle SIGN ON list (*TS Enter), relocate (*TS + click), reset (*TS D)
+ * - *TX: toggle VIDEO MAPS list (*TX Enter), relocate (*TX + click), reset (*TX D)
+ * - *TN: toggle CRDA list (*TN Enter), relocate (*TN + click), reset (*TN D)
+ * - *P1-*P3: toggle Tower list (*P1 Enter), relocate (*P1 + click), resize (*P1 10 Enter), reset (*P1 D)
+ * - *P: Preview relocation is resolved on slew by previewRelocateListId; Enter remains TPA.
+ *
+ * All aliases (*FL, *TAB, *VL, *TL, *ML, *AL, *CR, *CS, *SO, *SSA, *TL<ID>) are rejected.
  */
 function parseListCommand(buffer: string): PreviewCommandResult | null {
   if (!buffer.startsWith("*")) {
@@ -438,14 +478,44 @@ function parseListCommand(buffer: string): PreviewCommandResult | null {
     return null;
   }
 
-  // Require a space after `*` so `*P3` is a 3 NM cone, not TOWER_3.
-  const tower = /^\*\s+P([123])(?:\s+(\d{1,3}))?$/.exec(buffer);
-  if (tower) {
-    const listId = TOWER_LIST_IDS[tower[1] as "1" | "2" | "3"];
-    if (tower[2] !== undefined) {
-      return listResizeAction(listId, tower[2]);
+  // Strictly reject removed command aliases
+  if (REMOVED_LIST_ALIASES.test(buffer)) {
+    return invalid("unknown preview command");
+  }
+
+  // Reset default anchor: *<ID> D or *<ID>D (only authorized tokens: T, TV, TM, TC, TS, TX, TN, P1, P2, P3, S)
+  const resetMatch = /^\*\s*(TV|TC|TS|TM|TX|TN|P1|P2|P3|T|S)\s*D$/i.exec(buffer);
+  if (resetMatch) {
+    const token = resetMatch[1]!.toUpperCase();
+    if (token === "S") {
+      return { kind: "action", action: { type: "resetListPosition", listId: "SSA" } };
     }
-    return { kind: "action", action: { type: "toggleList", listId } };
+    if (token === "P1") {
+      return { kind: "action", action: { type: "resetListPosition", listId: "TOWER_1" } };
+    }
+    if (token === "P2") {
+      return { kind: "action", action: { type: "resetListPosition", listId: "TOWER_2" } };
+    }
+    if (token === "P3") {
+      return { kind: "action", action: { type: "resetListPosition", listId: "TOWER_3" } };
+    }
+    const matched = LIST_TOGGLE_TOKENS.find((row) => row.token === token);
+    if (matched) {
+      return { kind: "action", action: { type: "resetListPosition", listId: matched.listId } };
+    }
+  }
+
+  // Tower lists *P1, *P2, *P3 (with optional space and optional size 1-100)
+  if (/^\*\s*[Pp][123]/i.test(buffer)) {
+    const tower = /^\*\s*[Pp]([123])(?:\s*(\d{1,3}))?$/i.exec(buffer);
+    if (tower) {
+      const listId = TOWER_LIST_IDS[tower[1] as "1" | "2" | "3"];
+      if (tower[2] !== undefined) {
+        return listResizeAction(listId, tower[2]);
+      }
+      return { kind: "action", action: { type: "toggleList", listId } };
+    }
+    return invalid("malformed tower list command");
   }
 
   const rest = compact.slice(1);
@@ -460,6 +530,9 @@ function parseListCommand(buffer: string): PreviewCommandResult | null {
     if (rest.startsWith(row.token)) {
       const suffix = rest.slice(row.token.length);
       if (/^\d+$/.test(suffix)) {
+        if (!row.allowResize) {
+          return invalid("list cannot be resized");
+        }
         return listResizeAction(row.listId, suffix);
       }
       return invalid("malformed list command");
@@ -483,7 +556,7 @@ function mapToggleAction(
   layout?: VideoMapTokenLayout,
 ): PreviewCommandResult {
   const normalized = token.toUpperCase();
-  if (maps) {
+  if (maps && maps.length > 0) {
     const map = resolveVideoMapToken(maps, normalized, layout);
     if (!map) {
       return invalid("unknown video map");
@@ -494,6 +567,18 @@ function mapToggleAction(
         explicitState === undefined
           ? { type: "toggleVideoMap", mapId: map.id }
           : { type: "toggleVideoMap", mapId: map.id, explicitState },
+    };
+  }
+  const def = DEFAULT_GEOGRAPHIC_MAPS.find(
+    (m) => m.mapId === normalized || String(m.id) === normalized || m.name === normalized,
+  );
+  if (def) {
+    return {
+      kind: "action",
+      action:
+        explicitState === undefined
+          ? { type: "toggleVideoMap", mapId: def.mapId }
+          : { type: "toggleVideoMap", mapId: def.mapId, explicitState },
     };
   }
   return {
@@ -515,6 +600,19 @@ function parseVideoMapCommand(
   layout?: VideoMapTokenLayout,
 ): PreviewCommandResult | null {
   const compact = compactPreviewBuffer(buffer);
+  if (compact === "MAP") {
+    return { kind: "incomplete" };
+  }
+  if (compact === "MAPALLOFF") {
+    return { kind: "action", action: { type: "setAllVideoMaps", enabled: false } };
+  }
+  if (compact.startsWith("MAP")) {
+    const rest = compact.slice(3);
+    if (rest.length === 0) {
+      return { kind: "incomplete" };
+    }
+    return mapToggleAction(rest, maps, undefined, layout);
+  }
   if (/^M[A-Z0-9_]/.test(compact)) {
     return mapToggleAction(compact.slice(1), maps, undefined, layout);
   }
@@ -541,7 +639,6 @@ const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
   "initCntl",
   "termCntl",
   "forceFdb",
-  "acceptHandoff",
   "ackPointout",
   "setLeaderDir",
   "resetLeaderDir",
@@ -549,6 +646,9 @@ const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
   "setLeaderDirAndLength",
   "beaconatorSlew",
   "armPerTrackPtl",
+  "associateFlightPlan",
+  "inhibitCa",
+  "inhibitMsaw",
 ]);
 
 function compactTrackingBuffer(buffer: string): string {
@@ -791,15 +891,41 @@ export function parseTrackingSlewBuffer(buffer: string): PreviewArmedAction | nu
   if (compact === "*B") {
     return { type: "beaconatorSlew" };
   }
+  if (compact === "*CA") {
+    return { type: "inhibitCa" };
+  }
+  if (compact === "*LA") {
+    return { type: "inhibitMsaw" };
+  }
   const parsed = parseTrackingCommand(buffer);
   if (parsed?.kind === "action") {
     return parsed.action;
+  }
+  if (/^\d{1,2}$/.test(compact)) {
+    return { type: "associateFlightPlan", index: Number(compact) };
   }
   return null;
 }
 
 export function isTrackingSlewAction(action: PreviewArmedAction | null): boolean {
   return action != null && TRACKING_SLEW_TYPES.has(action.type);
+}
+
+function parseDeleteCommand(buffer: string): PreviewCommandResult | null {
+  const upper = buffer.toUpperCase().trim();
+  if (!upper.startsWith("*DEL") && !upper.startsWith("* DEL")) {
+    return null;
+  }
+  const matchBare = /^\*\s*DEL\s*$/i.exec(buffer);
+  if (matchBare) {
+    return { kind: "incomplete" };
+  }
+  const match = /^\*\s*DEL\s*(\d{1,2})$/i.exec(buffer);
+  if (match) {
+    const idx = Number(match[1]);
+    return { kind: "action", action: { type: "deleteFlightPlanEntry", index: idx } };
+  }
+  return invalid("invalid flight plan delete command");
 }
 
 export function parsePreviewCommand(
@@ -809,6 +935,10 @@ export function parsePreviewCommand(
 ): PreviewCommandResult {
   if (buffer === "") {
     return { kind: "incomplete" };
+  }
+  const del = parseDeleteCommand(buffer);
+  if (del) {
+    return del;
   }
   const exact = PREVIEW_TABLE[buffer];
   if (exact) {

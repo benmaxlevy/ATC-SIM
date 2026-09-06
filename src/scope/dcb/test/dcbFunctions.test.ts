@@ -17,6 +17,9 @@ import {
   stepCursorSpeed,
   formatDcbCursorSpeedReadout,
   formatDcbRrReadout,
+  hideMapLists,
+  toggleCurrentMapsList,
+  toggleGeoMapsList,
 } from "../dcbFunctions";
 
 const VIEW = { widthPx: 800, heightPx: 800 };
@@ -111,4 +114,25 @@ test("formatDcbRrReadout returns number without duplicate RR prefix", () => {
   expect(formatDcbRrReadout(10, true)).toBe("10");
   expect(formatDcbRrReadout(20, true)).toBe("20");
   expect(formatDcbRrReadout(5, false)).toBe("OFF");
+});
+
+test("toggleGeoMapsList, toggleCurrentMapsList, and hideMapLists control ML visibility", () => {
+  const view = createScopeView();
+  expect(view.systemLists.ML.visible).toBe(false);
+
+  toggleGeoMapsList(view);
+  expect(view.systemLists.ML.visible).toBe(true);
+  expect(view.geoMapsListOn).toBe(true);
+  expect(view.mapListMode).toBe("GEO");
+
+  toggleCurrentMapsList(view);
+  expect(view.systemLists.ML.visible).toBe(true);
+  expect(view.currentMapsListOn).toBe(true);
+  expect(view.geoMapsListOn).toBe(false);
+  expect(view.mapListMode).toBe("CURRENT");
+
+  hideMapLists(view);
+  expect(view.systemLists.ML.visible).toBe(false);
+  expect(view.geoMapsListOn).toBe(false);
+  expect(view.currentMapsListOn).toBe(false);
 });

@@ -24,7 +24,7 @@ Single Vite app. Folders under `src/`, not a monorepo.
 | `src/core` | Sim clock, aircraft, kinematics, Command IR types |
 | `src/parse` | String → `Command` (one stage list; Path C fetch injected) |
 | `src/pilot` | Validation, readback templates, intent apply |
-| `src/scope` | Canvas PPI, maps, datablocks, scope keys |
+| `src/scope` | Canvas PPI, maps, datablocks, system lists window manager, scope keys |
 | `src/speech` | SpeechPort impls, capture, radio graph |
 | `speech-api/` | Local HTTP STT/TTS and Path C `/parse` |
 | `src/scenario` | Airport, spawn, maps JSON — see [`src/scenario/README.md`](../src/scenario/README.md) |

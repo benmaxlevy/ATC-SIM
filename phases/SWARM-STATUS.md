@@ -1,5 +1,48 @@
 # Swarm status
 
+## THIRTY-FIRST SWARM COMPLETE — STARS In-Scope System Lists Architecture & Interactive Lists (T02-103–107)
+
+T02-103–107 are implemented and squash-merged onto `feature/system-lists` (not `master`). Full test suite `npm test` passes completely: **173 test files passed, 1450 passed, 4 skipped, 0 failures**. The full FAA STARS System Lists suite is operational on the radar PPI canvas: standard list identifiers (`FL`, `TL`, `VL`, `ML`, `AL`), adaptation default coordinate anchors, interactive window dragging with collision warning boxes, Shift-Click default reset, keyboard relocation and reset commands, DCB PREF profile persistence, Flight Plan List (`FL`) buffering with `MORE: X/Y` pagination and auto-correlation, Tower (`TL`) and VFR (`VL`) sequences with `F1` entry drop, Video Map Lists (`ML`) with active `> ` caret indicators and direct canvas row toggling, and the dynamic Alert Status Box (`AL`) with 1 Hz flashing and acknowledge/inhibit controls.
+
+- **System Lists Window Manager Architecture & PREF Persistence (T02-103):**
+  - Standardized list identifier registry (`FL`, `TL`, `VL`, `ML`, `AL`, `SSA`, `SIGN_ON`, `COAST`, `CRDA`, `COORD`) with backward compatibility for legacy aliases (`TAB`, `TV`, `TM`, `TX`, `P1`–`P3`).
+  - Added `DEFAULT_ADAPTATION_ANCHORS` and `DEFAULT_SYSTEM_LIST_PLACEMENTS` establishing standard initial screen positions.
+  - Implemented left-click and middle-click title header dragging with live ghost frames, green anchor frames, and overlapping collision warning boxes (`findOverlappingLists`).
+  - Implemented Shift+Left-Click title reset and typed `*[ID] D Enter` / `*[ID]D Enter` instant adaptation default resets.
+  - Added full workstation persistence to DCB `PREF` slots (`systemLists` serialized and restored).
+  - Tests in `systemLists.test.ts`.
+- **Flight Plan List (FL) Buffering, Correlation & Pagination (T02-104):**
+  - Dynamic buffer merging unassociated radar tracks and pending scheduled departures with numeric quick-action indices.
+  - Implemented authentic `MORE: X/Y` pagination header (`scrollFlightPlanList`), advancing via `PageDown`/`PageUp` or clicking the header.
+  - Automated squawk-matching correlating tracks to FDB and removing correlated entries from the list.
+  - Direct track association via `[Index#]` + left-clicking target, and manual queue deletion via `*DEL [Index#] Enter` or `F1` + row click.
+  - Tests in `systemLists.operational.test.ts`.
+- **Tower List (TL) & VFR List (VL) Sequences and Drop Interactions (T02-105):**
+  - Tower List formats local and satellite arrivals and departures (`[ACID] [TYPE]`), auto-populated from staged departures and approach handoffs.
+  - Multi-tower support via `*TL`, `*TL [Tower ID] Enter` (e.g. `*TLBED Enter` for `BED TOWER`).
+  - VFR List formats advisory targets (`[ACID] [BEACON] [ALT]`) e.g. `N789V   1200  040`.
+  - Manual entry drops via `F1` then left-clicking the list entry row.
+  - Tests in `systemLists.operational.test.ts`.
+- **Video Map Lists (ML) Active Indicators & Interactive Scope Toggling (T02-106):**
+  - Geographic directory (`VIDEO MAPS` / `GEO MAPS`) renders active maps with `> ` (caret + space) to the left of the map ID/name, and inactive with spaces (`  `).
+  - Active displayed directory (`ACTIVE MAPS` / `CURRENT`) renders only enabled map layers.
+  - Direct scope canvas layer toggling: left-clicking any map row in the on-screen list toggles that map layer ON or OFF immediately.
+  - Commands: `*ML Enter`, `MAP [Map ID#] Enter` (e.g. `MAP 2 Enter` or `MAP4 Enter`), and `MAP ALL OFF Enter` / DCB `MAPS -> CLR ALL`.
+  - Tests in `coordinationList.test.ts` and `systemLists.operational.test.ts`.
+- **Alert Status Box (AL) Dynamic Alerts & Visual/Audio Controls (T02-107):**
+  - Idle state renders single header line `LA/CA/MCI`.
+  - Active alert state dynamically unfurls rows beneath header: `CA [Callsign1] [Callsign2]`, `LA [Callsign] [AltitudeHundreds]`, and `MCI [IntruderSquawk/Callsign] [ProtectedCallsign]`.
+  - Active alert text flashes synchronously with target data blocks using STARS 1 Hz blink phase (`BLINK_HALF_PERIOD_MS`).
+  - Added Conflict Alert inhibit (`*CA [Left-Click Radar Target]`), Low Altitude inhibit (`*LA [Left-Click Radar Target]`), and Mode C Intruder alerting toggle (`*MCI Enter`).
+  - Tests in `systemLists.operational.test.ts` and `systemListsAndDcb.integration.test.ts`.
+
+**Merged (squash-merged, captain only, onto `feature/system-lists`):**
+- T02-103: `557d23d`
+- T02-104 & T02-105: `fe89359`
+- T02-106 & T02-107: `b12780f`
+
+---
+
 ## TWENTY-EIGHTH SWARM COMPLETE — Flight Progress Strips Drag Reordering & Indentation (T02-94–96)
 
 T02-94–96 are implemented on `feature/flight-strips` (not `master`). Full test suite `npm test` and `npm run ci`: intra-section drag-and-drop strip reordering constrained within Departures and Arrivals racks in `StripsBoard`, dynamic `.strip-drop-indicator` line previews at candidate insertion indices, single right-click horizontal strip indentation ("cocking", ~28px offset) with browser context menu suppression, and telemetry reconciliation preserving manual order and indentation across live simulation updates.
