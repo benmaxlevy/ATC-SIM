@@ -801,7 +801,7 @@ export function drawTracks(
   const preferredById = new Map(layoutItems.map((item) => [item.aircraftId, item.preferredRect]));
   const hasDensity = layouts.some((layout) => layout.unplaced);
   if (hasDensity) {
-    ctx.fillStyle = applyBrite(PALETTE.caution, view.brite.ssa);
+    ctx.fillStyle = applyBrite(PALETTE.caution, view.brite.fdb);
     ctx.font = datablockFontCss(view.charSizes.tools);
     ctx.textAlign = "left";
     ctx.textBaseline = "top";

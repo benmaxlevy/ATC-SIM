@@ -9,8 +9,24 @@ import { syncTrackDisplays } from "../trackDisplay";
 
 test("resolved overlap rectangles are the pick regions", () => {
   const aircraft = [
-    createAircraft({ id: "a", callsign: "DAL123", xNm: 0, yNm: 0, altitudeFt: 8000, speedKt: 220 }),
-    createAircraft({ id: "b", callsign: "AAL456", xNm: 0, yNm: 0, altitudeFt: 8000, speedKt: 220 }),
+    createAircraft({
+      id: "a",
+      callsign: "DAL123",
+      xNm: 0,
+      yNm: 0,
+      headingDeg: 0,
+      altitudeFt: 8000,
+      speedKt: 220,
+    }),
+    createAircraft({
+      id: "b",
+      callsign: "AAL456",
+      xNm: 0,
+      yNm: 0,
+      headingDeg: 0,
+      altitudeFt: 8000,
+      speedKt: 220,
+    }),
   ];
   const world = createWorld({ aircraft });
   const view = createScopeView();

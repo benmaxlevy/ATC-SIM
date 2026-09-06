@@ -45,6 +45,7 @@ export interface DatablockPickView {
       scratchpad?: string;
       queriedUntilSimMs?: number;
       beaconatorUntilSimMs?: number;
+      lastReport?: TrackDisplay["lastReport"];
       squawk?: string;
       ownership?: string;
     }
