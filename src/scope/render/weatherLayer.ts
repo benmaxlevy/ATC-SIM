@@ -18,6 +18,8 @@ import { WX_VIP_FILL_HEX } from "./wxStarsFill";
 export { WX_VIP_FILL_HEX } from "./wxStarsFill";
 
 export const DEFAULT_WX_ALPHA = 255;
+/** Extra raster density keeps procedural stipple marks below one screen pixel. */
+export const WX_TEXTURE_SCALE = 3;
 
 const WX_BACKGROUND_HEX = [
   "#132727",
@@ -186,26 +188,21 @@ export function wxProceduralTextureRgb(
 }
 
 function rebuildComposite(mosaic: WxMosaic, levels: WxLevels, briteWx: number): WxCompositeCanvas {
-  const width = Math.max(1, Math.round(mosaic.widthPx));
-  const height = Math.max(1, Math.round(mosaic.heightPx));
+  const width = Math.max(1, Math.round(mosaic.widthPx * WX_TEXTURE_SCALE));
+  const height = Math.max(1, Math.round(mosaic.heightPx * WX_TEXTURE_SCALE));
   const pixels = new Uint8ClampedArray(width * height * 4);
   const mw = mosaic.widthPx;
   const mh = mosaic.heightPx;
   for (let row = 0; row < height; row++) {
-    const mosaicRow = Math.min(mh - 1, row);
+    const mosaicRow = Math.min(mh - 1, Math.floor(row / WX_TEXTURE_SCALE));
     for (let col = 0; col < width; col++) {
-      const mosaicCol = Math.min(mw - 1, col);
+      const mosaicCol = Math.min(mw - 1, Math.floor(col / WX_TEXTURE_SCALE));
       const index = mosaicRow * mw + mosaicCol;
       const vip = highestVipAt(mosaic, levels, index);
       if (vip === 0) {
         continue;
       }
-      const rgb = wxProceduralTextureRgb(
-        vip as 1 | 2 | 3 | 4 | 5 | 6,
-        mosaicCol,
-        mosaicRow,
-        briteWx,
-      );
+      const rgb = wxProceduralTextureRgb(vip as 1 | 2 | 3 | 4 | 5 | 6, col, row, briteWx);
       const o = (row * width + col) * 4;
       pixels[o] = rgb[0];
       pixels[o + 1] = rgb[1];
@@ -231,8 +228,8 @@ function reuseOrRebuildComposite(
     levelsMatch(cachedLevels, levels) &&
     cachedBriteWx === briteWx &&
     cachedBriteWxc === briteWxc &&
-    cachedWidth === Math.round(mosaic.widthPx) &&
-    cachedHeight === Math.round(mosaic.heightPx)
+    cachedWidth === Math.round(mosaic.widthPx * WX_TEXTURE_SCALE) &&
+    cachedHeight === Math.round(mosaic.heightPx * WX_TEXTURE_SCALE)
   ) {
     return cachedCanvas;
   }
