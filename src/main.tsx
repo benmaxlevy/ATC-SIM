@@ -31,7 +31,6 @@ import {
   isFpsDebugEnabled,
   loadAndResolveSpeechBoot,
   syncDisplayControlBar,
-  syncStripCallsignColors,
 } from "@ui";
 import { bootSession, createApp } from "./app/create-app";
 import "./index.css";
@@ -125,7 +124,6 @@ function paintCurrentPpi(): void {
   if (canvas instanceof HTMLCanvasElement) {
     paintPpi(canvas, handles.world, scopeView);
   }
-  syncStripCallsignColors(scopeView.tracks);
   syncDisplayControlBar(scopeView, handles.world);
 }
 

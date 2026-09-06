@@ -3,8 +3,7 @@
  * Browser ATC anti-pattern is a header banner, tutorial footer, and game HUD (R12).
  * Trainer delta: T00-01 disclaimer is first-run / F1, not a bar over the DCB.
  * Pause / 1× / 2× is a map-green corner readout (not a CRC analog).
- * DCB is a green cell grid on the PPI glass (T02-16). SSA and the
- * flight-strip list live on the PPI (T02-20), not a labeled right dock.
+ * DCB is a green cell grid on the PPI glass (T02-16). SSA lives on the PPI (T02-20).
  * Command line overlays the bottom of the rectangular PPI.
  * Not NAS STARS.
  */
@@ -47,7 +46,7 @@ import {
 import type { AppHandles } from "../app/create-app";
 import { CommandLine, submitCommand } from "./command/command-line";
 import { Disclaimer } from "./overlays/disclaimer";
-import { FlightStrips, focusPpi } from "./strips/FlightStrips";
+import { focusPpi } from "./strips/FlightStrips";
 import { StripsBoard, selectTrackFromFlightStrip, terminalStripsFromWorld } from "./strips";
 import { FpsDebug, isFpsDebugEnabled } from "./controls/FpsDebug";
 import { ScopeCanvas } from "./canvas/ScopeCanvas";
@@ -365,16 +364,6 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           />
           <Disclaimer />
           <ScopeHelpOverlay open={scopeView.helpOpen} />
-          <FlightStrips
-            world={app.world}
-            tracks={scopeView.tracks}
-            onSelectionChange={() => {
-              setSelectionToken((t) => t + 1);
-              refreshScopeUi();
-            }}
-            listFontPx={scopeView.charSizes.lists}
-            listBrite={scopeView.brite.lst}
-          />
           <div className="strips-toggle-bar">
             <button
               type="button"
