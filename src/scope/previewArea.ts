@@ -59,11 +59,7 @@ export type ScopeFlidResult =
  * Resolve a Preview Area FLID: full callsign, numeric tail, or unique 4-digit
  * squawk. Two tails, two squawks, or tail vs squawk → ambiguous.
  */
-export function resolveScopeFlid(
-  token: string,
-  world: World,
-  view?: ScopeView,
-): ScopeFlidResult {
+export function resolveScopeFlid(token: string, world: World, view?: ScopeView): ScopeFlidResult {
   const normalized = token.trim().toUpperCase();
   if (normalized.length === 0) {
     return { ok: false, reason: "unknown" };
@@ -284,6 +280,8 @@ function trackingMnemonic(action: PreviewArmedAction): string {
       return "*B";
     case "armPerTrackPtl":
       return "*R";
+    case "inhibitCa":
+      return "*CA";
     case "saveAsPref":
       return "PREF";
     default:

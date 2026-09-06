@@ -59,10 +59,7 @@ export function buildSystemListLines(formatter: ListFormatter): string[] {
   }
   const offset = formatter.offset ?? 0;
   const remaining = Math.max(0, formatter.entries - offset);
-  const count = Math.min(
-    remaining,
-    formatter.maxLines > 0 ? formatter.maxLines : remaining,
-  );
+  const count = Math.min(remaining, formatter.maxLines > 0 ? formatter.maxLines : remaining);
   if (formatter.entries > formatter.maxLines && formatter.maxLines > 0) {
     const currentPage = Math.floor(offset / formatter.maxLines) + 1;
     const totalPages = Math.ceil(formatter.entries / formatter.maxLines);

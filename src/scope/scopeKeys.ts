@@ -38,6 +38,7 @@ import {
   isBeaconSelectKey,
   isCycleFocusKey,
   isFilterChordKey,
+  isHelpToggleKey,
   isLeaderPrefixKey,
   isPreviewPlusKey,
   isRadioFocusSlashKey,
@@ -74,7 +75,7 @@ import {
   type PreviewKeyOutcome,
 } from "./previewArea";
 import { browserDcbPrefStorage, cancelDcbPrefSaveAs, commitDcbPrefSaveAs } from "./dcb/dcbPref";
-import { handleDcbEscape } from "./dcb/dcbMenu";
+import { applyDcbShift, armDcbSpinner, handleDcbEscape, openDcbMenu } from "./dcb/dcbMenu";
 import {
   applyRrCenter,
   armPlaceCenter,
@@ -93,9 +94,13 @@ import {
   centerOnLastClick,
   setHistoryDotCount,
   setPtlMinutes,
+  toggleDcbVisible,
+  toggleHelpOverlay,
   toggleHistoryEnabled,
   toggleModeCVisible,
   togglePtlOn,
+  toggleWxLevels,
+  type HistoryDotCount,
   type ScopeView,
 } from "./scopeView";
 import {
@@ -112,6 +117,7 @@ import {
   applyInitiateTrackToSelection,
   selectedTrackId,
 } from "./trackDisplay";
+import { applyHandoffToSelection } from "./ownership";
 import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock, type LeaderLengthPx } from "./leader";
 import { resolveScopeFlid } from "./previewArea";
 import {
@@ -130,10 +136,18 @@ export const ALWAYS_ON_SCOPE_KEYS = [
   "Home",
   "End",
   "F1",
+  "F2",
   "F3",
   "F4",
+  "F5",
   "F7",
   "F8",
+  "F9",
+  "F10",
+  "F11",
+  "Insert",
+  "Ins",
+  "?",
 ] as const;
 
 /** Command line input id (owned by `@ui`; duplicated so `@scope` does not import `@ui`). */
@@ -147,6 +161,8 @@ export interface ScopeKeyEvent {
   key: string;
   code?: string;
   shiftKey?: boolean;
+  ctrlKey?: boolean;
+  altKey?: boolean;
   target?: EventTarget | null;
   preventDefault(): void;
   stopPropagation(): void;
@@ -577,10 +593,128 @@ export function handleScopeKeyDown(
   nowMs: number = Date.now(),
   ui?: ScopeKeyUi,
 ): boolean {
-  if (event.key === "F1") {
+  if (isHelpToggleKey(event)) {
+    consume(event);
+    toggleHelpOverlay(view);
+    ui?.onHandled?.();
+    return true;
+  }
+  if (event.key === "Escape" && view.helpOpen) {
+    consume(event);
+    view.helpOpen = false;
+    ui?.onHandled?.();
+    return true;
+  }
+
+  // STARS Key Mappings (Table 18): Ctrl+F1 to Ctrl+F11
+  if (event.ctrlKey) {
+    switch (event.key) {
+      case "F1":
+        consume(event);
+        centerOnAirport(view);
+        ui?.onHandled?.();
+        return true;
+      case "F2":
+        consume(event);
+        openDcbMenu(view, "MAPS");
+        ui?.onHandled?.();
+        return true;
+      case "F3":
+        consume(event);
+        openDcbMenu(view, "BRITE");
+        ui?.onHandled?.();
+        return true;
+      case "F4":
+        consume(event);
+        openDcbMenu(view, "LDR");
+        ui?.onHandled?.();
+        return true;
+      case "F5":
+        consume(event);
+        openDcbMenu(view, "CHAR_SIZE");
+        ui?.onHandled?.();
+        return true;
+      case "F7":
+        consume(event);
+        applyDcbShift(view);
+        ui?.onHandled?.();
+        return true;
+      case "F8":
+        consume(event);
+        toggleDcbVisible(view);
+        ui?.onHandled?.();
+        return true;
+      case "F9":
+        consume(event);
+        armDcbSpinner(view, "RR");
+        ui?.onHandled?.();
+        return true;
+      case "F10":
+        consume(event);
+        armDcbSpinner(view, "RANGE");
+        ui?.onHandled?.();
+        return true;
+      case "F11":
+        consume(event);
+        toggleWxLevels(view);
+        ui?.onHandled?.();
+        return true;
+    }
+  }
+
+  // STARS Table 18: Ins / Insert -> <PREF SET>
+  if (event.key === "Insert" || event.key === "Ins") {
+    consume(event);
+    openDcbMenu(view, "PREF");
+    ui?.onHandled?.();
+    return true;
+  }
+
+  // STARS Table 18: F1 -> <BCN CODE RD OUT> (momentary Beaconator)
+  if (event.key === "F1" && !event.ctrlKey && !event.altKey) {
     consume(event);
     view.beaconatorActive = true;
     view.f1DropArmed = true;
+    ui?.onHandled?.();
+    return true;
+  }
+
+  // STARS Table 18: F5 -> <HND OFF>
+  if (event.key === "F5" && !event.ctrlKey) {
+    consume(event);
+    if (world) {
+      applyHandoffToSelection(view.tracks, world);
+    }
+    ui?.onHandled?.();
+    return true;
+  }
+
+  // STARS Table 18: F7 -> <MULTI FUNC>
+  if (event.key === "F7" && !event.ctrlKey) {
+    consume(event);
+    if (view.preview.phase === "entry") {
+      view.preview.buffer += "*";
+      view.preview.lastKeyAtMs = nowMs;
+      syncStarsChordMirror(view, nowMs);
+    } else {
+      startPreviewBuffer(view, "*", nowMs);
+    }
+    ui?.onHandled?.();
+    return true;
+  }
+
+  // STARS Table 18: F10 -> <PTL>
+  if (event.key === "F10" && !event.ctrlKey) {
+    consume(event);
+    togglePtlOn(view);
+    ui?.onHandled?.();
+    return true;
+  }
+
+  // STARS Table 18: F11 -> <CA>
+  if (event.key === "F11" && !event.ctrlKey) {
+    consume(event);
+    armPreviewSlewAction(view.preview, { type: "inhibitCa" }, nowMs);
     ui?.onHandled?.();
     return true;
   }
@@ -854,7 +988,7 @@ export function handleScopeKeyDown(
     }
     return true;
   }
-  if (event.key === "F7") {
+  if (event.key === "F10") {
     togglePtlOn(view);
     return true;
   }

@@ -46,7 +46,11 @@ export function ScopeCanvas({
     <div className="ppi-column">
       <PpiPlaceholder
         dock={scopeView.dcbDock}
-        header={<DisplayControlBar view={scopeView} world={world} onChange={onScopeChange} />}
+        header={
+          scopeView.dcbVisible !== false ? (
+            <DisplayControlBar view={scopeView} world={world} onChange={onScopeChange} />
+          ) : null
+        }
         onCanvasClick={onCanvasClick}
         onCanvasDoubleClick={onCanvasDoubleClick}
         onCanvasWheel={onCanvasWheel}

@@ -90,6 +90,7 @@ const scopeView = createScopeView(scenario.arpNm.xNm, scenario.arpNm.yNm, {
   radarSites: scenario.radarSites,
   arp: scenario.arp,
   ssaWeatherAirports: scenario.ssaWeatherAirports,
+  towerAirports: scenario.towerAirports ?? scenario.ssaWeatherAirports,
 });
 const stopMetarPolling = startMetarPolling(scopeView, {
   primaryIcao: scenario.icao,

@@ -79,6 +79,11 @@ function spawnScheduledArrival(world: World, arrival: ScheduledArrival): Aircraf
     altitudeFt: pose.altitudeFt,
     speedKt: pose.speedKt,
     aircraftType: "B738",
+    destination: world.catalog?.airportId,
+    flightPlan: {
+      destination: world.catalog?.airportId,
+      rules: "IFR",
+    },
   });
   aircraft.intent.lateral = {
     type: "PROCEDURE",

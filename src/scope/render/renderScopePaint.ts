@@ -61,7 +61,6 @@ import {
   effectiveSurveillanceMode,
   surveillanceModeWord,
 } from "../surveillance";
-import { buildMapListLines } from "../dcb/dcbFunctions";
 import type { TrackOwnership } from "../ownership";
 import { BLINK_HALF_PERIOD_MS, PALETTE, applyBrite, caDatablockTagVisible } from "../palette";
 import {
@@ -80,6 +79,7 @@ import {
   type TrackDisplay,
 } from "../trackDisplay";
 import {
+  DEFAULT_SYSTEM_LIST_PLACEMENTS,
   buildAlertList,
   buildCoastSuspendList,
   buildCrdaStatusList,
@@ -89,6 +89,8 @@ import {
   buildVfrList,
   canonicalSystemListId,
   findOverlappingLists,
+  resolveAirportCoordinates,
+  resolveTowerAirport,
   type ListRect,
 } from "../systemLists";
 import { buildVideoMapsListLines, getVideoMapsEntries } from "../coordinationList";
@@ -1074,15 +1076,33 @@ export function drawAtpaCones(
   }
 }
 
-const SSA_LEFT_PX = 8;
-const SSA_TOP_PX = 8;
+export interface SsaDrawResult {
+  bottomY: number;
+  bounds: ListRect;
+  handleBounds: ListRect;
+}
 
 /**
  * Screen-fixed SSA + GI TEXT (CRC R07 analog). Phosphor-green mono. Never a Command.
  * FILTER / RANGE live here so the lower-left stays clear for the on-PPI list.
  * GI TEXT is authored facility lines (not a METAR panel / HUD). Empty slots never paint.
  */
-export function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: ScopeView): number {
+export function drawSsa(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  view: ScopeView,
+  cssWidth: number = 800,
+  cssHeight: number = 600,
+): SsaDrawResult {
+  const placement = view.systemLists?.SSA ?? DEFAULT_SYSTEM_LIST_PLACEMENTS.SSA;
+  if (!placement.visible) {
+    return {
+      bottomY: 0,
+      bounds: { x: 0, y: 0, width: 0, height: 0 },
+      handleBounds: { x: 0, y: 0, width: 0, height: 0 },
+    };
+  }
+
   const hasAlert =
     (world.alerts?.msaw && world.alerts.msaw.length > 0) ||
     (world.alerts?.ca && world.alerts.ca.length > 0);
@@ -1133,40 +1153,62 @@ export function drawSsa(ctx: CanvasRenderingContext2D, world: World, view: Scope
   const defaultColor = applyBrite(PALETTE.ssa, view.brite.lst);
   const alertColor = applyBrite(PALETTE.alert, view.brite.lst);
 
-  let y = SSA_TOP_PX;
+  const ssaX = Math.round(placement.x * cssWidth);
+  const ssaY = Math.round(placement.y * cssHeight);
+  let y = ssaY;
+  let maxLineW = 0;
+  let triW = 0;
+  let triH = 0;
+
   for (const item of ssaLines) {
     if (item.text === "▼") {
       const listSize = view.charSizes.lists;
       const triFontSize = Math.round(listSize * 1.25);
       ctx.font = datablockFontCss(triFontSize);
       const metrics = ctx.measureText(item.text);
-      const triW = metrics.width > 0 ? metrics.width : Math.round(triFontSize * 0.85);
-      const triH = Math.round(triFontSize * 0.9);
+      triW = metrics.width > 0 ? metrics.width : Math.round(triFontSize * 0.85);
+      triH = Math.round(triFontSize * 0.9);
+      if (triW > maxLineW) maxLineW = triW;
       ctx.fillStyle = alertColor;
-      ctx.fillText(item.text, SSA_LEFT_PX, y);
+      ctx.fillText(item.text, ssaX, y);
       ctx.strokeStyle = defaultColor;
       ctx.lineWidth = 1;
-      ctx.strokeRect(SSA_LEFT_PX, y, triW, triH);
+      ctx.strokeRect(ssaX, y, triW, triH);
       ctx.font = datablockFontCss(view.charSizes.lists);
       y += triH + Math.round(lineH * 0.25);
     } else {
+      const w = ctx.measureText(item.text).width;
+      if (w > maxLineW) maxLineW = w;
       ctx.fillStyle = item.style === "alert" || item.style === "spc" ? alertColor : defaultColor;
-      ctx.fillText(item.text, SSA_LEFT_PX, y);
+      ctx.fillText(item.text, ssaX, y);
       y += lineH;
     }
   }
   for (const line of giLines) {
+    const w = ctx.measureText(line).width;
+    if (w > maxLineW) maxLineW = w;
     ctx.fillStyle = defaultColor;
-    ctx.fillText(line, SSA_LEFT_PX, y);
+    ctx.fillText(line, ssaX, y);
     y += lineH;
   }
-  return y;
+
+  const width = Math.max(maxLineW + 8, 80);
+  const height = y - ssaY + 4;
+  const bounds: ListRect = { x: ssaX, y: ssaY, width, height };
+  const handleBounds: ListRect = {
+    x: ssaX,
+    y: ssaY,
+    width,
+    height: Math.max(triH + 4, 18),
+  };
+  return { bottomY: y, bounds, handleBounds };
 }
 
 export function drawChordHint(
   ctx: CanvasRenderingContext2D,
   view: ScopeView,
   ssaBottomY: number,
+  ssaLeftX?: number,
 ): void {
   const stars = formatStarsChordReadout(view.starsChordEntry, view.starsChordArmed);
   const preview = formatPreviewReadout(view.preview);
@@ -1174,21 +1216,26 @@ export function drawChordHint(
   if (!stars && !preview && !hint) {
     return;
   }
+  const x =
+    ssaLeftX ??
+    Math.round(
+      (view.systemLists?.SSA?.x ?? 0.02) * (ctx.canvas.width > 0 ? ctx.canvas.width : 800),
+    );
   ctx.font = datablockFontCss(view.charSizes.lists);
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
   if (stars) {
     ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
-    ctx.fillText(stars, SSA_LEFT_PX, ssaBottomY + 4);
+    ctx.fillText(stars, x, ssaBottomY + 4);
     return;
   }
   if (preview) {
     ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
-    ctx.fillText(preview, SSA_LEFT_PX, ssaBottomY + 4);
+    ctx.fillText(preview, x, ssaBottomY + 4);
     return;
   }
   ctx.fillStyle = PALETTE.uiChrome;
-  ctx.fillText(hint ?? "", SSA_LEFT_PX, ssaBottomY + 4);
+  ctx.fillText(hint ?? "", x, ssaBottomY + 4);
 }
 
 /**
@@ -1209,6 +1256,7 @@ export function drawSystemLists(
   view: ScopeView,
   cssWidth: number,
   cssHeight: number,
+  ssaInfo?: SsaDrawResult,
 ): void {
   if (!view.systemLists) {
     return;
@@ -1220,10 +1268,37 @@ export function drawSystemLists(
   ctx.textAlign = "left";
   const textColor = applyBrite(PALETTE.ssa, view.brite.lst);
 
-  const activeRects: { id: string; bounds: ListRect }[] = [];
-  const activeListEntries: { listId: string; rowIndex: number; callsign: string; bounds: ListRect }[] = [];
+  const activeRects: { id: string; bounds: ListRect; handleBounds?: ListRect }[] = [];
+  const activeListEntries: {
+    listId: string;
+    rowIndex: number;
+    callsign: string;
+    mapId?: string;
+    mapIndex?: number;
+    bounds: ListRect;
+  }[] = [];
   const airportId = world.catalog?.airportId ?? "KDEM";
   const seenCanonical = new Set<string>();
+
+  if (ssaInfo && (view.systemLists?.SSA?.visible ?? true)) {
+    activeRects.push({
+      id: "SSA",
+      bounds: ssaInfo.bounds,
+      handleBounds: ssaInfo.handleBounds,
+    });
+    if (view.listDrag?.showAllFrames) {
+      const placement = view.systemLists?.SSA ?? DEFAULT_SYSTEM_LIST_PLACEMENTS.SSA;
+      ctx.strokeStyle = "#00FF00";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(
+        ssaInfo.bounds.x - 2,
+        ssaInfo.bounds.y - 2,
+        ssaInfo.bounds.width + 4,
+        ssaInfo.bounds.height + 4,
+      );
+      ctx.fillText(`[${placement.frameTitle}]`, ssaInfo.bounds.x, ssaInfo.bounds.y - lineH);
+    }
+  }
 
   for (const [id, placement] of Object.entries(view.systemLists)) {
     const canonical = canonicalSystemListId(id);
@@ -1247,36 +1322,45 @@ export function drawSystemLists(
       case "VL":
         lines = buildVfrList(world, placement.maxLines, view.vfrListDroppedCallsigns, view.tracks);
         break;
-      case "TL":
+      case "TL": {
+        const apCode0 = resolveTowerAirport(view, world, 0, airportId);
+        const apXy0 = resolveAirportCoordinates(apCode0, view, world);
         lines = buildTowerArrivalList(
           world,
-          view.towerAirports?.[0] ?? airportId,
-          0,
-          0,
+          apCode0,
+          apXy0.xNm,
+          apXy0.yNm,
           placement.maxLines,
           view.towerListDroppedCallsigns,
         );
         break;
-      case "TOWER_2":
+      }
+      case "TOWER_2": {
+        const apCode1 = resolveTowerAirport(view, world, 1, airportId);
+        const apXy1 = resolveAirportCoordinates(apCode1, view, world);
         lines = buildTowerArrivalList(
           world,
-          view.towerAirports?.[1] ?? airportId,
-          0,
-          0,
+          apCode1,
+          apXy1.xNm,
+          apXy1.yNm,
           placement.maxLines,
           view.towerListDroppedCallsigns,
         );
         break;
-      case "TOWER_3":
+      }
+      case "TOWER_3": {
+        const apCode2 = resolveTowerAirport(view, world, 2, airportId);
+        const apXy2 = resolveAirportCoordinates(apCode2, view, world);
         lines = buildTowerArrivalList(
           world,
-          view.towerAirports?.[2] ?? airportId,
-          0,
-          0,
+          apCode2,
+          apXy2.xNm,
+          apXy2.yNm,
           placement.maxLines,
           view.towerListDroppedCallsigns,
         );
         break;
+      }
       case "AL":
         lines = buildAlertList(world, placement.maxLines, view);
         break;
@@ -1294,11 +1378,12 @@ export function drawSystemLists(
       default:
         if (id.startsWith("TL_")) {
           const satId = id.slice(3);
+          const satXy = resolveAirportCoordinates(satId, view, world);
           lines = buildTowerArrivalList(
             world,
             satId,
-            0,
-            0,
+            satXy.xNm,
+            satXy.yNm,
             placement.maxLines,
             view.towerListDroppedCallsigns,
           );
@@ -1392,7 +1477,6 @@ export function drawSystemLists(
 
   view.activeListRects = activeRects;
   view.activeListEntries = activeListEntries;
-
 
   // Check and draw overlapping warning boxes
   const overlapping = findOverlappingLists(activeRects);

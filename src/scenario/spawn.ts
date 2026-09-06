@@ -75,6 +75,11 @@ function spawnArrival(
     altitudeFt: arrival.altitudeFt,
     speedKt: arrival.speedKt,
     aircraftType: arrival.aircraftType,
+    destination: scenario?.icao ?? world.catalog?.airportId,
+    flightPlan: {
+      destination: scenario?.icao ?? world.catalog?.airportId,
+      rules: "IFR",
+    },
   });
   if (scenario) {
     armStarVia(ac, scenario, arrival);
@@ -139,6 +144,11 @@ function spawnStarInbound(world: World, scenario: Scenario, seed: number): void 
       altitudeFt: assigned.pose.altitudeFt,
       speedKt: assigned.pose.speedKt,
       aircraftType: arrival.aircraftType,
+      destination: scenario.icao,
+      flightPlan: {
+        destination: scenario.icao,
+        rules: "IFR",
+      },
     });
     ac.intent.lateral = {
       type: "PROCEDURE",

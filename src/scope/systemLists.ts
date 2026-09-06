@@ -4,12 +4,11 @@
  * drag-and-drop lifecycle, collision overlap detection, and show-all-frames preview.
  */
 
-import { MSAW_DATABLOCK_TAG, type Aircraft, type ScheduledDeparture, type World } from "@core";
+import type { Aircraft, ScheduledDeparture, World } from "@core";
 import { formatAltitudeHundreds } from "./datablock";
-import { buildSystemListLines, rewriteFixForList, type ListFormatter } from "./listFormatter";
+import { buildSystemListLines, type ListFormatter } from "./listFormatter";
 import type { ScopeView } from "./scopeView";
 import { applyInitiateTrackToId, ensureTrackDisplay, type TrackDisplay } from "./trackDisplay";
-import { datablockLineHeightPx } from "./fonts";
 import { getVideoMapsEntries } from "./coordinationList";
 import { toggleVideoMap } from "./dcb/dcbFunctions";
 
@@ -57,7 +56,7 @@ export const DEFAULT_ADAPTATION_ANCHORS: Readonly<
   VL: { x: 0.02, y: 0.7, maxLines: 10 },
   ML: { x: 0.25, y: 0.02, maxLines: 20 },
   AL: { x: 0.75, y: 0.7, maxLines: 50 },
-  SSA: { x: 0.02, y: 0.02, maxLines: 15 },
+  SSA: { x: 0.01, y: 0.01, maxLines: 15 },
   PREVIEW: { x: 0.02, y: 0.28, maxLines: 10 },
   SIGN_ON: { x: 0.02, y: 0.22, maxLines: 10 },
   COAST: { x: 0.4, y: 0.75, maxLines: 10 },
@@ -72,8 +71,8 @@ export const DEFAULT_SYSTEM_LIST_PLACEMENTS: Record<string, SystemListPlacement>
   SSA: {
     id: "SSA",
     frameTitle: "SYSTEM STATUS AREA (S)",
-    x: 0.02,
-    y: 0.02,
+    x: 0.01,
+    y: 0.01,
     visible: true,
     maxLines: 15,
   },
@@ -280,7 +279,7 @@ export function ensureSystemListPlacement(
     view.systemLists = cloneSystemListPlacements();
   }
   const canonical = canonicalSystemListId(listId);
-  let existing = view.systemLists[canonical] ?? view.systemLists[listId];
+  const existing = view.systemLists[canonical] ?? view.systemLists[listId];
   if (!existing && (canonical.startsWith("TL_") || listId.startsWith("TL_"))) {
     const idKey = canonical.startsWith("TL_") ? canonical : listId;
     const satId = idKey.slice(3).toUpperCase();
@@ -298,7 +297,8 @@ export function ensureSystemListPlacement(
   if (!existing) {
     return undefined;
   }
-  const shared = DEFAULT_SYSTEM_LIST_PLACEMENTS[canonical] ?? DEFAULT_SYSTEM_LIST_PLACEMENTS[listId];
+  const shared =
+    DEFAULT_SYSTEM_LIST_PLACEMENTS[canonical] ?? DEFAULT_SYSTEM_LIST_PLACEMENTS[listId];
   if (shared && existing === shared) {
     const copy = { ...existing };
     assignPlacementToView(view, canonical, copy);
@@ -636,10 +636,7 @@ export function purgeFlightPlanEntry(
   }
 }
 
-export function correlateFlightPlans(
-  world: World,
-  view: ScopeView,
-): FlightPlanEntry[] {
+export function correlateFlightPlans(world: World, view: ScopeView): FlightPlanEntry[] {
   const entries = getFlightPlanEntries(world, view);
   const correlated: FlightPlanEntry[] = [];
 
@@ -647,8 +644,7 @@ export function correlateFlightPlans(
     for (const ac of world.aircraft) {
       const td = ensureTrackDisplay(view.tracks, ac.id);
       const isUncorrelated =
-        td.unassociated === true ||
-        (td.ownership !== "owned" && td.datablockMode !== "full");
+        td.unassociated === true || (td.ownership !== "owned" && td.datablockMode !== "full");
       if (!isUncorrelated) {
         continue;
       }
@@ -687,8 +683,7 @@ export function associateFlightPlanToTrack(
 ): boolean {
   const td = ensureTrackDisplay(view.tracks, aircraftId);
   const isUncorrelated =
-    td.unassociated === true ||
-    (td.ownership !== "owned" && td.datablockMode !== "full");
+    td.unassociated === true || (td.ownership !== "owned" && td.datablockMode !== "full");
   if (!isUncorrelated) {
     return false;
   }
@@ -717,11 +712,7 @@ export function associateFlightPlanToTrack(
   return true;
 }
 
-export function deleteFlightPlanEntry(
-  world: World,
-  view: ScopeView,
-  index: number,
-): boolean {
+export function deleteFlightPlanEntry(world: World, view: ScopeView, index: number): boolean {
   const entries = getFlightPlanEntries(world, view);
   const entry = entries.find((e) => e.index === index);
   if (!entry) {
@@ -731,11 +722,7 @@ export function deleteFlightPlanEntry(
   return true;
 }
 
-export function scrollFlightPlanList(
-  view: ScopeView,
-  direction: 1 | -1,
-  world?: World,
-): boolean {
+export function scrollFlightPlanList(view: ScopeView, direction: 1 | -1, world?: World): boolean {
   const state = ensureFlightPlanListState(view);
   const maxLines = view.systemLists?.FL?.maxLines ?? 10;
   const entriesCount = world ? getFlightPlanEntries(world, view).length : 0;
@@ -784,10 +771,7 @@ export function handleFlightPlanListClick(
   return true;
 }
 
-export function handleVideoMapsListClick(
-  view: ScopeView,
-  clickedLine: number,
-): boolean {
+export function handleVideoMapsListClick(view: ScopeView, clickedLine: number): boolean {
   if (clickedLine < 0) return false;
   if (clickedLine === 0) return true;
 
@@ -854,6 +838,86 @@ export interface TowerListEntryItem {
   distNm: number;
 }
 
+export function airportCodesMatch(a?: string, b?: string): boolean {
+  if (!a || !b) return false;
+  const normA = a.trim().toUpperCase();
+  const normB = b.trim().toUpperCase();
+  if (normA === normB) return true;
+  const stripA = normA.startsWith("K") && normA.length === 4 ? normA.slice(1) : normA;
+  const stripB = normB.startsWith("K") && normB.length === 4 ? normB.slice(1) : normB;
+  return stripA === stripB;
+}
+
+export function getAircraftDestination(ac: Aircraft): string | undefined {
+  const fp = ac.flightPlan ?? ac.fp;
+  const fpExtra = fp as Record<string, unknown> | undefined;
+  const raw =
+    fp?.destination ??
+    (typeof fpExtra?.dest === "string" ? fpExtra.dest : undefined) ??
+    (typeof fpExtra?.arrivalAirport === "string" ? fpExtra.arrivalAirport : undefined) ??
+    ac.destinationAirport ??
+    ac.destination;
+  return typeof raw === "string" && raw.trim().length > 0 ? raw.trim().toUpperCase() : undefined;
+}
+
+export function resolveTowerAirport(
+  view: ScopeView,
+  world: World,
+  index: 0 | 1 | 2,
+  defaultAirportId: string = "BOS",
+): string {
+  if (view.towerAirports && view.towerAirports[index]) {
+    return view.towerAirports[index]!;
+  }
+  const catalog = world.catalog as
+    | {
+        towerAirports?: readonly string[];
+        ssaWeatherAirports?: readonly string[];
+        airportId?: string;
+        satelliteAirports?: readonly string[];
+      }
+    | undefined;
+  if (catalog?.towerAirports && catalog.towerAirports[index]) {
+    return catalog.towerAirports[index];
+  }
+  if (view.ssaWeatherAirports && view.ssaWeatherAirports[index]) {
+    return view.ssaWeatherAirports[index]!;
+  }
+  if (index === 0) {
+    return catalog?.airportId ?? defaultAirportId;
+  }
+  if (catalog?.satelliteAirports && catalog.satelliteAirports[index - 1]) {
+    return catalog.satelliteAirports[index - 1];
+  }
+  return catalog?.airportId ?? defaultAirportId;
+}
+
+export function resolveAirportCoordinates(
+  airportCode: string,
+  view: ScopeView,
+  world: World,
+): { xNm: number; yNm: number } {
+  const primaryId = world.catalog?.airportId ?? "BOS";
+  if (airportCodesMatch(airportCode, primaryId)) {
+    return { xNm: view.airportEastNm, yNm: view.airportNorthNm };
+  }
+  const fix =
+    world.fixRegistry?.get(airportCode) ??
+    (airportCode.startsWith("K") && airportCode.length === 4
+      ? world.fixRegistry?.get(airportCode.slice(1))
+      : world.fixRegistry?.get(`K${airportCode}`));
+  if (fix) {
+    return { xNm: fix.xNm, yNm: fix.yNm };
+  }
+  const site = view.radarSites?.find(
+    (s) => s.kind === "airport" && airportCodesMatch(s.id, airportCode),
+  );
+  if (site) {
+    return { xNm: site.xNm, yNm: site.yNm };
+  }
+  return { xNm: view.airportEastNm, yNm: view.airportNorthNm };
+}
+
 export function buildTowerArrivalList(
   world: World,
   airportCode: string = "BOS",
@@ -862,6 +926,7 @@ export function buildTowerArrivalList(
   maxLines: number = 10,
   droppedCallsigns?: Set<string> | string[],
 ): string[] {
+  const cleanAirport = airportCode.trim().toUpperCase();
   const droppedSet =
     droppedCallsigns instanceof Set ? droppedCallsigns : new Set(droppedCallsigns ?? []);
 
@@ -875,11 +940,13 @@ export function buildTowerArrivalList(
       const cleanCallsign = dep.callsign.trim().toUpperCase();
       if (droppedSet.has(cleanCallsign) || seenCallsigns.has(cleanCallsign)) continue;
 
+      const depAirport = (dep as { airportId?: string }).airportId?.toUpperCase();
       const matchesAirport =
-        !dep.runwayId ||
-        dep.runwayId.toUpperCase().startsWith(airportCode.toUpperCase()) ||
-        airportCode.toUpperCase() === "BOS" ||
-        (dep as any).airportId?.toUpperCase() === airportCode.toUpperCase();
+        (depAirport && airportCodesMatch(depAirport, cleanAirport)) ||
+        dep.runwayId?.toUpperCase().startsWith(cleanAirport) ||
+        dep.runwayId?.toUpperCase().startsWith(cleanAirport.replace(/^K/, "")) ||
+        airportCodesMatch(cleanAirport, "BOS") ||
+        airportCodesMatch(cleanAirport, world.catalog?.airportId);
 
       if (matchesAirport) {
         seenCallsigns.add(cleanCallsign);
@@ -892,40 +959,97 @@ export function buildTowerArrivalList(
     }
   }
 
-  // 2. Active world aircraft (departures under tower or arrivals handed off / inbound)
+  // 2. Active world aircraft (departures under tower or arrivals with flight plan to this airport)
   for (const ac of world.aircraft) {
     const cleanCallsign = ac.callsign.trim().toUpperCase();
     if (droppedSet.has(cleanCallsign) || seenCallsigns.has(cleanCallsign)) continue;
 
-    const handoff = world.handoffs?.get(ac.id);
-    const distNm = Math.hypot(ac.xNm - airportXNm, ac.yNm - airportYNm);
-
-    // Departure roll-out / climbout: if handoff accepted to radar (handoff.kind === "none") and altitude > 2500, cleared
-    const isDepartureHandoff =
-      handoff?.kind === "departure" || (ac.intent as any)?.departure === true;
-    if (isDepartureHandoff) {
-      seenCallsigns.add(cleanCallsign);
-      items.push({
-        callsign: cleanCallsign,
-        aircraftType: ac.aircraftType || "B738",
-        distNm: 0,
-      });
-      continue;
-    }
-
-    // Handed off arrivals or aircraft inbound within 30 NM
     // Clears on touchdown / landed (altitude <= 50 or landed intent)
-    const isLanded = ac.altitudeFt <= 50 || (ac.intent?.lateral as any)?.type === "LANDED";
+    const isLanded =
+      ac.altitudeFt <= 50 ||
+      (ac.intent?.lateral as unknown as { type?: string })?.type === "LANDED";
     if (isLanded) {
       continue;
     }
 
-    const isRelevantArrival =
-      distNm <= 30 ||
-      ac.intent?.landingCleared === true ||
-      ac.intent?.lateral?.type === "LANDING";
+    const handoff = world.handoffs?.get(ac.id);
+    const distNm = Math.hypot(ac.xNm - airportXNm, ac.yNm - airportYNm);
 
-    if (isRelevantArrival) {
+    const isDepartureHandoff =
+      handoff?.kind === "departure" ||
+      Boolean((ac.intent as unknown as { departure?: boolean })?.departure);
+    const isDepartureProcedure =
+      ac.intent?.vertical?.type === "VIA_SID" ||
+      (ac.intent?.lateral?.type === "PROCEDURE" && Boolean(ac.intent.lateral.sidId));
+    const isSpawnedDeparture = Boolean(
+      world.scheduledDepartures?.some(
+        (sd) => sd.callsign.toUpperCase() === cleanCallsign && sd.spawned,
+      ),
+    );
+    const isDeparture = isDepartureHandoff || isDepartureProcedure || isSpawnedDeparture;
+
+    if (isDepartureHandoff) {
+      const acRecord = ac as unknown as Record<string, unknown>;
+      const depAirport =
+        (typeof acRecord.departureAirport === "string" ? acRecord.departureAirport : undefined) ??
+        (typeof acRecord.originAirport === "string" ? acRecord.originAirport : undefined) ??
+        (typeof acRecord.origin === "string" ? acRecord.origin : undefined);
+      const matchesDepAirport =
+        !depAirport ||
+        airportCodesMatch(depAirport, cleanAirport) ||
+        airportCodesMatch(cleanAirport, world.catalog?.airportId) ||
+        airportCodesMatch(cleanAirport, "BOS");
+      if (matchesDepAirport) {
+        seenCallsigns.add(cleanCallsign);
+        items.push({
+          callsign: cleanCallsign,
+          aircraftType: ac.aircraftType || "B738",
+          distNm: 0,
+        });
+      }
+      continue;
+    }
+
+    if (isDeparture) {
+      // Outbound departure not under tower control
+      continue;
+    }
+
+    // Aircraft is an arrival track. Check if its flight plan indicates an arrival at cleanAirport.
+    const explicitDest = getAircraftDestination(ac);
+    let isArrivalAtThisAirport = false;
+
+    if (explicitDest) {
+      isArrivalAtThisAirport = airportCodesMatch(explicitDest, cleanAirport);
+    } else {
+      const isPrimaryAirport =
+        airportCodesMatch(cleanAirport, world.catalog?.airportId) ||
+        airportCodesMatch(cleanAirport, "BOS") ||
+        !world.catalog?.airportId;
+
+      if (isPrimaryAirport) {
+        // Without an explicit other destination, in-facility arrival tracks are bound for primary airport
+        isArrivalAtThisAirport = true;
+      } else {
+        // Satellite airport: verify approach or terminal landing intent
+        const approachId =
+          ac.intent?.clearedApproachId ??
+          ac.intent?.expectedApproachId ??
+          ac.intent?.locInterceptApproachId;
+        const matchesApproach =
+          approachId != null &&
+          (airportCodesMatch(approachId, cleanAirport) ||
+            approachId.toUpperCase().includes(cleanAirport) ||
+            approachId.toUpperCase().includes(cleanAirport.replace(/^K/, "")));
+        const isLandingIntent =
+          ac.intent?.landingCleared === true || ac.intent?.lateral?.type === "LANDING";
+        if (matchesApproach || (isLandingIntent && distNm <= 30)) {
+          isArrivalAtThisAirport = true;
+        }
+      }
+    }
+
+    if (isArrivalAtThisAirport) {
       seenCallsigns.add(cleanCallsign);
       items.push({
         callsign: cleanCallsign,
@@ -935,12 +1059,17 @@ export function buildTowerArrivalList(
     }
   }
 
-  // Sort by distance (departures with distNm 0 first, then nearest arrivals)
-  items.sort((a, b) => a.distNm - b.distNm);
+  // Sort by distance (departures with distNm 0 first, then nearest arrivals ascending)
+  items.sort((a, b) => {
+    if (Math.abs(a.distNm - b.distNm) > 0.001) {
+      return a.distNm - b.distNm;
+    }
+    return a.callsign.localeCompare(b.callsign);
+  });
 
   const formatter: ListFormatter = {
-    title: `${airportCode.toUpperCase()} TOWER`,
-    frameTitle: `TOWER (${airportCode.toUpperCase()})`,
+    title: `${cleanAirport} TOWER`,
+    frameTitle: `TOWER (${cleanAirport})`,
     maxLines,
     entries: items.length,
     formatLine: (idx) => {
@@ -1018,7 +1147,7 @@ export function isVfrAircraft(ac: Aircraft, tracks?: Map<string, TrackDisplay>):
   if (ac.squawk === "1200" || ac.assignedSquawk === "1200") {
     return true;
   }
-  if ((ac as any).flightRules === "VFR" || ac.flightPlan?.rules === "VFR") {
+  if (ac.flightRules === "VFR" || ac.flightPlan?.rules === "VFR") {
     return true;
   }
   const track = tracks?.get(ac.id);
@@ -1158,8 +1287,9 @@ export function buildAlertList(world: World, maxLines: number = 50, view?: Scope
         lines.push(`LA ${alert.callsign} ${altStr}`);
       }
     }
-    if (view?.mciEnabled !== false && (world.alerts as any).mci) {
-      for (const alert of (world.alerts as any).mci) {
+    const mciAlerts = (world.alerts as { mci?: Record<string, string | undefined>[] }).mci;
+    if (view?.mciEnabled !== false && mciAlerts) {
+      for (const alert of mciAlerts) {
         const intruder =
           alert.intruderSquawkOrCallsign ??
           alert.intruder ??
@@ -1202,7 +1332,6 @@ export function hasActiveUninhibitedConflict(world: World, view?: ScopeView): bo
     return !tdA?.caInhibited && !tdB?.caInhibited;
   });
 }
-
 
 /* =========================================================================
  * 9. CRDA Status List
@@ -1352,11 +1481,11 @@ export function handleListMouseMove(
  */
 export function hitTestSystemListTitle(
   clickPos: { x: number; y: number },
-  activeLists: { id: string; bounds: ListRect }[],
+  activeLists: { id: string; bounds: ListRect; handleBounds?: ListRect }[],
   headerHeightPx: number = 16,
 ): string | null {
   for (const list of activeLists) {
-    const headerRect: ListRect = {
+    const headerRect: ListRect = list.handleBounds ?? {
       x: list.bounds.x,
       y: list.bounds.y,
       width: list.bounds.width,
@@ -1375,11 +1504,11 @@ export function hitTestSystemListTitle(
 export function handleListTitleDragStart(
   state: ListDragState,
   clickPos: { x: number; y: number },
-  activeLists: { id: string; bounds: ListRect }[],
+  activeLists: { id: string; bounds: ListRect; handleBounds?: ListRect }[],
   headerHeightPx: number = 16,
 ): { nextState: ListDragState; started: boolean } {
   for (const list of activeLists) {
-    const headerRect: ListRect = {
+    const headerRect: ListRect = list.handleBounds ?? {
       x: list.bounds.x,
       y: list.bounds.y,
       width: list.bounds.width,
@@ -1430,4 +1559,3 @@ export function commitListDrag(
 export function cancelListDrag(_state: ListDragState): ListDragState {
   return idleListDragState();
 }
-

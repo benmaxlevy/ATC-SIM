@@ -139,11 +139,46 @@ export interface DefaultVideoMapEntry {
  * Matches STARS adaptation slots (1-30).
  */
 export const DEFAULT_GEOGRAPHIC_MAPS: DefaultVideoMapEntry[] = [
-  { id: 1, mapId: "1", name: "BOS AIRSPACE", shortName: "BOS", fullName: "BOS AIRSPACE", active: true },
-  { id: 2, mapId: "2", name: "FINAL 4R/4L", shortName: "4R/4L", fullName: "FINAL 4R/4L", active: false },
-  { id: 3, mapId: "3", name: "FINAL 22L/27", shortName: "22L/27", fullName: "FINAL 22L/27", active: false },
-  { id: 4, mapId: "4", name: "MVA SECTORS", shortName: "MVA", fullName: "MVA SECTORS", active: true },
-  { id: 5, mapId: "5", name: "VFR REPORTING", shortName: "VFR", fullName: "VFR REPORTING", active: false },
+  {
+    id: 1,
+    mapId: "1",
+    name: "BOS AIRSPACE",
+    shortName: "BOS",
+    fullName: "BOS AIRSPACE",
+    active: true,
+  },
+  {
+    id: 2,
+    mapId: "2",
+    name: "FINAL 4R/4L",
+    shortName: "4R/4L",
+    fullName: "FINAL 4R/4L",
+    active: false,
+  },
+  {
+    id: 3,
+    mapId: "3",
+    name: "FINAL 22L/27",
+    shortName: "22L/27",
+    fullName: "FINAL 22L/27",
+    active: false,
+  },
+  {
+    id: 4,
+    mapId: "4",
+    name: "MVA SECTORS",
+    shortName: "MVA",
+    fullName: "MVA SECTORS",
+    active: true,
+  },
+  {
+    id: 5,
+    mapId: "5",
+    name: "VFR REPORTING",
+    shortName: "VFR",
+    fullName: "VFR REPORTING",
+    active: false,
+  },
 ];
 
 export interface VideoMapListEntry {

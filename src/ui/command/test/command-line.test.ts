@@ -3,12 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
 import { SessionLog, acceptInboundHandoff, createAircraft, createWorld } from "@core";
 import { createWorldFromScenario, loadKdem } from "@scenario";
-import {
-  CommandLine,
-  echoCommandLine,
-  submitCommand,
-  submitCommandLine,
-} from "../command-line";
+import { CommandLine, echoCommandLine, submitCommand, submitCommandLine } from "../command-line";
 
 function sample(callsign: string, extras: Partial<Parameters<typeof createAircraft>[0]> = {}) {
   return createAircraft({

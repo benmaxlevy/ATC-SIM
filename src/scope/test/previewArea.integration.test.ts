@@ -343,7 +343,7 @@ test("AC4 — *J3 still arms/slews; live * hint wins over idle preview; F1 beaco
   handleScopeKeyDown(keyEvent("Escape"), view, "scope", world, 800);
   handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 900);
   expect(view.beaconatorActive).toBe(true);
-  handleScopeKeyDown(keyEvent("F7"), view, "scope", world, 1000);
+  handleScopeKeyDown(keyEvent("F10"), view, "scope", world, 1000);
   expect(view.ptlOn).toBe(true);
 });
 
@@ -557,7 +557,7 @@ test("T02-74 — *R Enter plus click toggles one track; miss keeps arm; *RR and 
   handlePpiLeftClick(view, world, aalTick.x, aalTick.y, CSS, CSS);
   expect(view.ptlByAircraftId.has(aal.id)).toBe(false);
 
-  handleScopeKeyDown(keyEvent("F7"), view, "scope", world, 400);
+  handleScopeKeyDown(keyEvent("F10"), view, "scope", world, 400);
   expect(view.ptlOn).toBe(true);
   expect(view.ptlByAircraftId.get(dal.id)).toBe(true);
 

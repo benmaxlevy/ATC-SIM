@@ -77,10 +77,10 @@ export function renderScope(
   drawMapLayers(ctx, view.mapCache, view);
   drawTracks(ctx, world, view, size);
 
-  const ssaBottomY = drawSsa(ctx, world, view);
-  drawChordHint(ctx, view, ssaBottomY);
+  const ssaInfo = drawSsa(ctx, world, view, cssWidth, cssHeight);
+  drawChordHint(ctx, view, ssaInfo.bottomY, ssaInfo.bounds.x);
   drawMapLists(ctx, view, cssWidth);
-  drawSystemLists(ctx, world, view, cssWidth, cssHeight);
+  drawSystemLists(ctx, world, view, cssWidth, cssHeight, ssaInfo);
 }
 
 export { getDatablockVisualState, isTrackedTarget } from "./renderScopePaint";

@@ -57,8 +57,8 @@ import {
   type CharSizePx,
   type CharSizes,
 } from "./fonts";
-import type { HistoryDotCount } from "./history";
-import { stepHistoryDotCount } from "./history";
+import { stepHistoryDotCount, type HistoryDotCount } from "./history";
+export type { HistoryDotCount };
 import {
   PTL_MINUTES,
   clearPtlByAircraftId,
@@ -103,7 +103,6 @@ import {
 import { cloneWxLevels, emptyWxMosaic, type WxLevels, type WxMosaic } from "./wx";
 
 import {
-  DEFAULT_SYSTEM_LIST_PLACEMENTS,
   cloneSystemListPlacements,
   idleFlightPlanListState,
   idleListDragState,
@@ -262,7 +261,7 @@ export interface ScopeView {
   /** In-scope system list active middle-click drag state. */
   listDrag: ListDragState;
   /** Active system list pixel bounding rectangles from the latest render frame. */
-  activeListRects?: { id: string; bounds: ListRect }[];
+  activeListRects?: { id: string; bounds: ListRect; handleBounds?: ListRect }[];
   /** Active system list entry bounding rectangles from the latest render frame for hit-testing. */
   activeListEntries?: {
     listId: string;
@@ -300,6 +299,10 @@ export interface ScopeView {
    * CRC F1 is beaconator; ours is trainer help.
    */
   helpOpen: boolean;
+  /**
+   * DCB display / dock visibility. Default true.
+   */
+  dcbVisible?: boolean;
   /**
    * F1 Beaconator (Beacon Code Readout) active state.
    * When active, displays beacon code in place of callsign and forces PDBs to FDBs.
@@ -377,6 +380,7 @@ export function createScopeView(
     surveillanceMode?: SurveillanceMode;
     arp?: LatLon;
     ssaWeatherAirports?: readonly string[];
+    towerAirports?: readonly string[];
     primaryAltimeter?: string;
     airportAltimeters?: readonly SsaAirportAltimeter[];
     vol?: VolLevel;
@@ -457,6 +461,11 @@ export function createScopeView(
     primaryAltimeter: options?.primaryAltimeter ?? SSA_ALTIMETER_STUB,
     airportAltimeters: options?.airportAltimeters ? [...options.airportAltimeters] : [],
     ssaWeatherAirports: options?.ssaWeatherAirports ? [...options.ssaWeatherAirports] : undefined,
+    towerAirports: options?.towerAirports
+      ? [...options.towerAirports]
+      : options?.ssaWeatherAirports
+        ? [...options.ssaWeatherAirports]
+        : undefined,
     systemLists: cloneSystemListPlacements(),
     listDrag: idleListDragState(),
     dcbPref: emptyDcbPrefRuntime(),
@@ -465,6 +474,7 @@ export function createScopeView(
     tracks: new Map(),
     pendingChord: null,
     helpOpen: false,
+    dcbVisible: true,
     beaconatorActive: false,
     towerListDroppedCallsigns: new Set(),
     vfrListDroppedCallsigns: new Set(),
@@ -661,9 +671,22 @@ export function setDcbDock(view: ScopeView, dock: DcbDock): void {
   view.mapCache = null;
 }
 
-/** F1 always-on. Does not pause kinematics. Never a Command. */
+/** Help overlay toggle. Display only — never a Command. */
 export function toggleHelpOverlay(view: ScopeView): void {
   view.helpOpen = !view.helpOpen;
+}
+
+/** Ctrl+F8 DCB visibility toggle. */
+export function toggleDcbVisible(view: ScopeView): void {
+  view.dcbVisible = view.dcbVisible === undefined ? false : !view.dcbVisible;
+}
+
+/** Ctrl+F11 WX layer toggle: if any active, turn all off; otherwise turn all on. */
+export function toggleWxLevels(view: ScopeView): void {
+  const anyOn = view.wxLevels.some(Boolean);
+  view.wxLevels = anyOn
+    ? [false, false, false, false, false, false]
+    : [true, true, true, true, true, true];
 }
 
 /** MAP toggles on the DCB. Coastline JSON `enabled: false` is a no-op. */

@@ -363,6 +363,18 @@ function parseSsaWeatherAirports(value: unknown): string[] | undefined {
   );
 }
 
+function parseTowerAirports(value: unknown): string[] | undefined {
+  if (value == null) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    throw new Error("Scenario towerAirports must be an array of strings");
+  }
+  return value.map((code, i) =>
+    assertString(code, `towerAirports[${i}]`, "Scenario", { nonEmpty: true }),
+  );
+}
+
 function parseSsaWeatherGiSlot(value: unknown): number | undefined {
   if (value == null) {
     return undefined;
@@ -493,6 +505,9 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
     giTextLines: parseGiTextLines(s.giTextLines),
     ...(parseSsaWeatherAirports(s.ssaWeatherAirports)
       ? { ssaWeatherAirports: parseSsaWeatherAirports(s.ssaWeatherAirports) }
+      : {}),
+    ...(parseTowerAirports(s.towerAirports)
+      ? { towerAirports: parseTowerAirports(s.towerAirports) }
       : {}),
     ...(parseSsaWeatherGiSlot(s.ssaWeatherGiSlot) !== undefined
       ? { ssaWeatherGiSlot: parseSsaWeatherGiSlot(s.ssaWeatherGiSlot) }

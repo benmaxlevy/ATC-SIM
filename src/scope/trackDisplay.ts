@@ -63,6 +63,7 @@ export interface TrackDisplay {
   outboundFlashUntilSimMs?: number;
   beaconatorUntilSimMs?: number;
   outboundClickStep?: number;
+  flightRules?: string;
   pointoutAccepted?: boolean;
   pointoutRejected?: boolean;
   /**

@@ -20,6 +20,7 @@ export {
   drawSystemLists,
   displayAircraft,
   tracePolyline,
+  type SsaDrawResult,
 } from "./renderScopePaint";
 
 export {

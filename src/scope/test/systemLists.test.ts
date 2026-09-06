@@ -207,7 +207,7 @@ describe("systemLists window manager", () => {
     expect(commitRes.updatedPlacement).toEqual({
       id: "FL",
       x: (250 - 20) / 1000, // 0.23
-      y: (300 - 5) / 800,  // 0.36875
+      y: (300 - 5) / 800, // 0.36875
     });
   });
 
@@ -235,5 +235,73 @@ describe("systemLists window manager", () => {
     expect(view2.systemLists.FL.maxLines).toBe(25);
     expect(view2.systemLists.TAB.visible).toBe(true);
   });
-});
 
+  it("relocates and resets SSA anchor position", () => {
+    const view = createScopeView();
+    expect(view.systemLists.SSA.x).toBe(DEFAULT_ADAPTATION_ANCHORS.SSA.x);
+    expect(view.systemLists.SSA.y).toBe(DEFAULT_ADAPTATION_ANCHORS.SSA.y);
+
+    const ok = relocateSystemList(view, "SSA", 0.45, 0.65);
+    expect(ok).toBe(true);
+    expect(view.systemLists.SSA.x).toBe(0.45);
+    expect(view.systemLists.SSA.y).toBe(0.65);
+
+    const resetOk = resetSystemListToDefault(view, "SSA");
+    expect(resetOk).toBe(true);
+    expect(view.systemLists.SSA.x).toBe(DEFAULT_ADAPTATION_ANCHORS.SSA.x);
+    expect(view.systemLists.SSA.y).toBe(DEFAULT_ADAPTATION_ANCHORS.SSA.y);
+  });
+
+  it("drags SSA by clicking and holding the top line (triangle and all the way over)", () => {
+    let state = idleListDragState();
+    const ssaBounds: ListRect = { x: 100, y: 50, width: 250, height: 180 };
+    const ssaHandleBounds: ListRect = { x: 100, y: 50, width: 250, height: 18 };
+    const lists = [{ id: "SSA", bounds: ssaBounds, handleBounds: ssaHandleBounds }];
+    const paneExtent = { width: 1000, height: 800 };
+
+    // Clicking the upside-down triangle at (110, 58) hits SSA
+    const hitTriangle = hitTestSystemListTitle({ x: 110, y: 58 }, lists, 16);
+    expect(hitTriangle).toBe("SSA");
+
+    // Clicking to the right on the top line at (200, 58) also hits SSA (triangle and all the way over)
+    const hitRight = hitTestSystemListTitle({ x: 200, y: 58 }, lists, 16);
+    expect(hitRight).toBe("SSA");
+
+    // Clicking past the right edge of SSA at (360, 58) misses
+    const missPastRight = hitTestSystemListTitle({ x: 360, y: 58 }, lists, 16);
+    expect(missPastRight).toBeNull();
+
+    // Clicking below the top line at (110, 90) misses
+    const missBelow = hitTestSystemListTitle({ x: 110, y: 90 }, lists, 16);
+    expect(missBelow).toBeNull();
+
+    // Click and hold top line (e.g. at 200, 58) starts dragging
+    const startRes = handleListTitleDragStart(state, { x: 200, y: 58 }, lists, 16);
+    expect(startRes.started).toBe(true);
+    state = startRes.nextState;
+    expect(state.movingListId).toBe("SSA");
+    expect(state.movingOffset).toEqual({ x: 100, y: 8 });
+
+    // Drag mouse to (400, 300)
+    state = handleListMouseMove(state, { x: 400, y: 300 });
+
+    // Releasing pointer commits new position
+    const commitRes = commitListDrag(state, { x: 400, y: 300 }, paneExtent);
+    expect(commitRes.nextState.movingListId).toBeNull();
+    expect(commitRes.updatedPlacement).toEqual({
+      id: "SSA",
+      x: (400 - 100) / 1000, // 0.3
+      y: (300 - 8) / 800, // 0.365
+    });
+
+    const view = createScopeView();
+    relocateSystemList(
+      view,
+      commitRes.updatedPlacement!.id,
+      commitRes.updatedPlacement!.x,
+      commitRes.updatedPlacement!.y,
+    );
+    expect(view.systemLists.SSA.x).toBe(0.3);
+    expect(view.systemLists.SSA.y).toBe(0.365);
+  });
+});

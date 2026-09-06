@@ -205,6 +205,11 @@ export interface Scenario {
    */
   ssaWeatherAirports?: string[];
   /**
+   * Configured airports for Tower 1-3 arrival lists ([0]=Tower 1, [1]=Tower 2, [2]=Tower 3).
+   * When omitted, defaults to ssaWeatherAirports or [icao].
+   */
+  towerAirports?: string[];
+  /**
    * Optional 0-indexed slot (0–9) in giTextLines to populate with live surface METAR summary.
    * When omitted, no GI slot is dynamically overwritten by weather.
    */

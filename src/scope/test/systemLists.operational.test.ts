@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createAircraft, createWorld, type Aircraft, type World } from "@core";
-import { createScopeView, type ScopeView } from "../scopeView";
+import { createAircraft, createWorld, type Aircraft } from "@core";
+import { createScopeView } from "../scopeView";
 import {
   DEFAULT_ADAPTATION_ANCHORS,
   associateFlightPlanToTrack,
@@ -11,24 +11,18 @@ import {
   buildVfrList,
   correlateFlightPlans,
   deleteFlightPlanEntry,
-  dropTowerListEntry,
-  dropVfrListEntry,
-  ensureFlightPlanListState,
-  ensureSystemListPlacement,
   getFlightPlanEntries,
   handleFlightPlanListClick,
   handleVideoMapsListClick,
-  hitTestSystemListEntry,
-  promoteVfrListEntry,
   relocateSystemList,
   resetSystemListToDefault,
   scrollFlightPlanList,
   setSystemListMaxLines,
   toggleSystemList,
+  resolveTowerAirport,
 } from "../systemLists";
-import { buildVideoMapsListLines, getVideoMapsEntries } from "../coordinationList";
+import { buildVideoMapsListLines } from "../coordinationList";
 import {
-  toggleVideoMap,
   isVideoMapOn,
   toggleGeoMapsList,
   toggleCurrentMapsList,
@@ -38,10 +32,20 @@ import { ensureTrackDisplay } from "../trackDisplay";
 import { handlePpiLeftClick } from "../ppi";
 import { handleScopeKeyDown, handleScopeKeyUp } from "../scopeKeys";
 import { parsePreviewCommand } from "../previewParse";
-import { beginPreviewBufferEntry, previewTrackingSlew } from "../previewArea";
+import {
+  beginPreviewBufferEntry,
+  previewTrackingSlew,
+  previewRelocateListId,
+} from "../previewArea";
+import { renderScope } from "../render/renderScope";
 
 function makeTestAircraft(
-  partial: Partial<Aircraft> & { id: string; callsign: string; flightRules?: string },
+  partial: Omit<Partial<Aircraft>, "intent"> & {
+    id: string;
+    callsign: string;
+    flightRules?: string;
+    intent?: Partial<Aircraft["intent"]>;
+  },
 ): Aircraft {
   return {
     id: partial.id,
@@ -69,7 +73,7 @@ function makeTestAircraft(
   } as Aircraft;
 }
 
-function keyEvent(key: string, code = key): any {
+function keyEvent(key: string, code = key): KeyboardEvent {
   return {
     key,
     code,
@@ -80,7 +84,7 @@ function keyEvent(key: string, code = key): any {
     target: null,
     preventDefault: () => {},
     stopPropagation: () => {},
-  };
+  } as unknown as KeyboardEvent;
 }
 
 describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactions", () => {
@@ -189,6 +193,140 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
       lines = buildTowerArrivalList(world, "BOS", 0, 0, 10, dropped);
       expect(lines).not.toContain("EDV461   CRJ2");
     });
+
+    it("filters arrivals by flight plan destination (fp.destination or flightPlan.destination) and sorts ascending by distance", () => {
+      const world = createWorld();
+      world.aircraft.push(
+        createAircraft({
+          id: "ac-far",
+          callsign: "DAL450",
+          aircraftType: "A321",
+          xNm: 0,
+          yNm: 45,
+          headingDeg: 180,
+          altitudeFt: 10000,
+          speedKt: 250,
+          flightPlan: { destination: "KATL" },
+        }),
+        createAircraft({
+          id: "ac-near",
+          callsign: "SWA210",
+          aircraftType: "B738",
+          xNm: 0,
+          yNm: 15,
+          headingDeg: 180,
+          altitudeFt: 5000,
+          speedKt: 210,
+          fp: { destination: "KATL" },
+        }),
+        createAircraft({
+          id: "ac-mid",
+          callsign: "AAL300",
+          aircraftType: "B772",
+          xNm: 0,
+          yNm: 30,
+          headingDeg: 180,
+          altitudeFt: 8000,
+          speedKt: 240,
+          destinationAirport: "KATL",
+        }),
+        createAircraft({
+          id: "ac-other",
+          callsign: "SKW551",
+          aircraftType: "CRJ9",
+          xNm: 0,
+          yNm: 10,
+          headingDeg: 180,
+          altitudeFt: 3000,
+          speedKt: 190,
+          flightPlan: { destination: "KPDK" },
+        }),
+      );
+
+      // KATL Tower list: includes DAL450, SWA210, AAL300; excludes SKW551 (destination KPDK)
+      const katlLines = buildTowerArrivalList(world, "KATL", 0, 0, 10);
+      expect(katlLines[0]).toBe("KATL TOWER");
+      // Sorted ascending by distance from (0,0): SWA210 (15 NM) -> AAL300 (30 NM) -> DAL450 (45 NM)
+      expect(katlLines[1]).toBe("SWA210   B738");
+      expect(katlLines[2]).toBe("AAL300   B772");
+      expect(katlLines[3]).toBe("DAL450   A321");
+      expect(katlLines).not.toContain(expect.stringContaining("SKW551"));
+
+      // KPDK Tower list: includes SKW551
+      const kpdkLines = buildTowerArrivalList(world, "KPDK", 0, 10, 10);
+      expect(kpdkLines[0]).toBe("KPDK TOWER");
+      expect(kpdkLines[1]).toBe("SKW551   CRJ9");
+      expect(kpdkLines).not.toContain(expect.stringContaining("DAL450"));
+    });
+
+    it("displays arrival tracks > 30 NM away when destination matches", () => {
+      const world = createWorld();
+      world.aircraft.push(
+        createAircraft({
+          id: "ac-55nm",
+          callsign: "JBU882",
+          aircraftType: "A320",
+          xNm: 40,
+          yNm: 38, // ~55.17 NM away
+          headingDeg: 220,
+          altitudeFt: 12000,
+          speedKt: 250,
+          fp: { destination: "KATL" },
+        }),
+      );
+
+      const lines = buildTowerArrivalList(world, "KATL", 0, 0, 10);
+      expect(lines).toContain("JBU882   A320");
+    });
+
+    it("resolves Tower 1, 2, and 3 arrival airports with sensible fallbacks to facility and satellite airports", () => {
+      const world = createWorld();
+      (world as unknown as { catalog: unknown }).catalog = {
+        airportId: "KATL",
+        satelliteAirports: ["KFTY", "KPDK"],
+      };
+
+      // Case 1: Explicit towerAirports on ScopeView
+      const viewWithExplicit = createScopeView(0, 0, {
+        towerAirports: ["KATL", "KFTY", "KMGE"],
+      });
+      expect(resolveTowerAirport(viewWithExplicit, world, 0, "KATL")).toBe("KATL");
+      expect(resolveTowerAirport(viewWithExplicit, world, 1, "KATL")).toBe("KFTY");
+      expect(resolveTowerAirport(viewWithExplicit, world, 2, "KATL")).toBe("KMGE");
+
+      // Case 2: Inferred from ssaWeatherAirports
+      const viewWithWeather = createScopeView(0, 0, {
+        ssaWeatherAirports: ["KATL", "KFTY", "KPDK", "KMGE", "KRYY"],
+      });
+      expect(resolveTowerAirport(viewWithWeather, world, 0, "KATL")).toBe("KATL");
+      expect(resolveTowerAirport(viewWithWeather, world, 1, "KATL")).toBe("KFTY");
+      expect(resolveTowerAirport(viewWithWeather, world, 2, "KATL")).toBe("KPDK");
+
+      // Case 3: Fallback to catalog primary and satellite airports
+      const viewDefault = createScopeView();
+      expect(resolveTowerAirport(viewDefault, world, 0, "KATL")).toBe("KATL");
+      expect(resolveTowerAirport(viewDefault, world, 1, "KATL")).toBe("KFTY");
+      expect(resolveTowerAirport(viewDefault, world, 2, "KATL")).toBe("KPDK");
+    });
+
+    it("Tower 1, 2, and 3 can be independently positioned and configured", () => {
+      const view = createScopeView();
+      expect(view.systemLists.TL).toBeDefined();
+      expect(view.systemLists.TOWER_2).toBeDefined();
+      expect(view.systemLists.TOWER_3).toBeDefined();
+
+      // Independent initial positions
+      expect(view.systemLists.TL.y).toBe(0.02);
+      expect(view.systemLists.TOWER_2.y).toBe(0.25);
+      expect(view.systemLists.TOWER_3.y).toBe(0.48);
+
+      // Relocate Tower 2 independently
+      relocateSystemList(view, "TOWER_2", 0.5, 0.5);
+      expect(view.systemLists.TOWER_2.x).toBe(0.5);
+      expect(view.systemLists.TOWER_2.y).toBe(0.5);
+      expect(view.systemLists.TL.x).toBe(0.75);
+      expect(view.systemLists.TL.y).toBe(0.02);
+    });
   });
 
   describe("2. Tower List Commands", () => {
@@ -198,8 +336,7 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
 
       const parsed = parsePreviewCommand("*TL");
       expect(parsed.kind).toBe("action");
-      if (parsed.kind === "action") {
-        expect(parsed.action.type).toBe("toggleList");
+      if (parsed.kind === "action" && parsed.action.type === "toggleList") {
         expect(parsed.action.listId).toBe("TL");
       }
 
@@ -214,8 +351,7 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
       const view = createScopeView();
       const parsed = parsePreviewCommand("*TLBED");
       expect(parsed.kind).toBe("action");
-      if (parsed.kind === "action") {
-        expect(parsed.action.type).toBe("toggleList");
+      if (parsed.kind === "action" && parsed.action.type === "toggleList") {
         expect(parsed.action.listId).toBe("TL_BED");
       }
 
@@ -251,8 +387,7 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
       // 4. *TL D Enter resets to adaptation default
       const resetParsed = parsePreviewCommand("*TL D");
       expect(resetParsed.kind).toBe("action");
-      if (resetParsed.kind === "action") {
-        expect(resetParsed.action.type).toBe("resetListPosition");
+      if (resetParsed.kind === "action" && resetParsed.action.type === "resetListPosition") {
         expect(resetParsed.action.listId).toBe("TL");
       }
       resetSystemListToDefault(view, "TL");
@@ -342,8 +477,7 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
       // *VL Enter
       const parsed = parsePreviewCommand("*VL");
       expect(parsed.kind).toBe("action");
-      if (parsed.kind === "action") {
-        expect(parsed.action.type).toBe("toggleList");
+      if (parsed.kind === "action" && parsed.action.type === "toggleList") {
         expect(parsed.action.listId).toBe("VL");
       }
 
@@ -411,8 +545,8 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
       expect(view.preview.buffer).toBe("+1");
 
       // Scope view camera centered at (0, 0)
-      view.camera.centerNm = { eastNm: 0, northNm: 0 };
-      view.camera.zoom = 1;
+      view.camera.centerEastNm = 0;
+      view.camera.centerNorthNm = 0;
 
       // Click on target at center of 1000x1000 canvas (500, 500)
       handlePpiLeftClick(view, world, 500, 500, 1000, 1000);
@@ -545,18 +679,96 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       const view = createScopeView();
 
       world.scheduledDepartures = [
-        { callsign: "AAL123", runwayId: "27", sidId: "BOS1", assignedSquawk: "7022", scheduledSimMs: 1000, index: 1 },
-        { callsign: "AAL456", runwayId: "27", sidId: "BOS1", assignedSquawk: "6412", scheduledSimMs: 2000, index: 2 },
-        { callsign: "DAL623", runwayId: "27", sidId: "BOS1", assignedSquawk: "2374", scheduledSimMs: 3000, index: 4 },
-        { callsign: "DAL660", runwayId: "27", sidId: "BOS1", assignedSquawk: "2374", scheduledSimMs: 4000, index: 9 },
-        { callsign: "JBU301", runwayId: "27", sidId: "BOS1", assignedSquawk: "4611", scheduledSimMs: 5000, index: 11 },
-        { callsign: "JBU393", runwayId: "27", sidId: "BOS1", assignedSquawk: "1660", scheduledSimMs: 6000, index: 0 },
-        { callsign: "EXTRA1", runwayId: "27", sidId: "BOS1", assignedSquawk: "5501", scheduledSimMs: 7000 },
-        { callsign: "EXTRA2", runwayId: "27", sidId: "BOS1", assignedSquawk: "5502", scheduledSimMs: 8000 },
-        { callsign: "EXTRA3", runwayId: "27", sidId: "BOS1", assignedSquawk: "5503", scheduledSimMs: 9000 },
-        { callsign: "EXTRA4", runwayId: "27", sidId: "BOS1", assignedSquawk: "5504", scheduledSimMs: 10000 },
-        { callsign: "EXTRA5", runwayId: "27", sidId: "BOS1", assignedSquawk: "5505", scheduledSimMs: 11000 },
-        { callsign: "EXTRA6", runwayId: "27", sidId: "BOS1", assignedSquawk: "5506", scheduledSimMs: 12000 },
+        {
+          callsign: "AAL123",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "7022",
+          scheduledSimMs: 1000,
+          index: 1,
+        },
+        {
+          callsign: "AAL456",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "6412",
+          scheduledSimMs: 2000,
+          index: 2,
+        },
+        {
+          callsign: "DAL623",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "2374",
+          scheduledSimMs: 3000,
+          index: 4,
+        },
+        {
+          callsign: "DAL660",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "2374",
+          scheduledSimMs: 4000,
+          index: 9,
+        },
+        {
+          callsign: "JBU301",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "4611",
+          scheduledSimMs: 5000,
+          index: 11,
+        },
+        {
+          callsign: "JBU393",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "1660",
+          scheduledSimMs: 6000,
+          index: 0,
+        },
+        {
+          callsign: "EXTRA1",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "5501",
+          scheduledSimMs: 7000,
+        },
+        {
+          callsign: "EXTRA2",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "5502",
+          scheduledSimMs: 8000,
+        },
+        {
+          callsign: "EXTRA3",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "5503",
+          scheduledSimMs: 9000,
+        },
+        {
+          callsign: "EXTRA4",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "5504",
+          scheduledSimMs: 10000,
+        },
+        {
+          callsign: "EXTRA5",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "5505",
+          scheduledSimMs: 11000,
+        },
+        {
+          callsign: "EXTRA6",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "5506",
+          scheduledSimMs: 12000,
+        },
       ];
 
       // Render with maxLines = 6
@@ -578,8 +790,22 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       const view = createScopeView();
 
       world.scheduledDepartures = [
-        { callsign: "AAL123", runwayId: "27", sidId: "BOS1", assignedSquawk: "7022", scheduledSimMs: 1000, index: 1 },
-        { callsign: "AAL456", runwayId: "27", sidId: "BOS1", assignedSquawk: "6412", scheduledSimMs: 2000, index: 2 },
+        {
+          callsign: "AAL123",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "7022",
+          scheduledSimMs: 1000,
+          index: 1,
+        },
+        {
+          callsign: "AAL456",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "6412",
+          scheduledSimMs: 2000,
+          index: 2,
+        },
       ];
 
       const lines = buildTabFlightPlanList(world, 10, view);
@@ -735,10 +961,38 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       setSystemListMaxLines(view, "FL", 2);
 
       world.scheduledDepartures = [
-        { callsign: "AAL101", runwayId: "27", sidId: "BOS1", assignedSquawk: "7001", scheduledSimMs: 1000, index: 1 },
-        { callsign: "AAL102", runwayId: "27", sidId: "BOS1", assignedSquawk: "7002", scheduledSimMs: 2000, index: 2 },
-        { callsign: "AAL103", runwayId: "27", sidId: "BOS1", assignedSquawk: "7003", scheduledSimMs: 3000, index: 3 },
-        { callsign: "AAL104", runwayId: "27", sidId: "BOS1", assignedSquawk: "7004", scheduledSimMs: 4000, index: 4 },
+        {
+          callsign: "AAL101",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "7001",
+          scheduledSimMs: 1000,
+          index: 1,
+        },
+        {
+          callsign: "AAL102",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "7002",
+          scheduledSimMs: 2000,
+          index: 2,
+        },
+        {
+          callsign: "AAL103",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "7003",
+          scheduledSimMs: 3000,
+          index: 3,
+        },
+        {
+          callsign: "AAL104",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "7004",
+          scheduledSimMs: 4000,
+          index: 4,
+        },
       ];
 
       // Page 1: AAL101, AAL102
@@ -822,7 +1076,14 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       const view = createScopeView();
 
       world.scheduledDepartures = [
-        { callsign: "AAL123", runwayId: "27", sidId: "BOS1", assignedSquawk: "7022", scheduledSimMs: 1000, index: 1 },
+        {
+          callsign: "AAL123",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "7022",
+          scheduledSimMs: 1000,
+          index: 1,
+        },
       ];
 
       const target = makeTestAircraft({
@@ -838,8 +1099,8 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       td.unassociated = true;
       td.leaderDir = 7;
 
-      view.camera.centerNm = { eastNm: 0, northNm: 0 };
-      view.camera.zoom = 1;
+      view.camera.centerEastNm = 0;
+      view.camera.centerNorthNm = 0;
 
       // Type +1 into preview buffer
       beginPreviewBufferEntry(view.preview, "+1", Date.now());
@@ -862,7 +1123,14 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       const view = createScopeView();
 
       world.scheduledDepartures = [
-        { callsign: "AAL123", runwayId: "27", sidId: "BOS1", assignedSquawk: "7022", scheduledSimMs: 1000, index: 1 },
+        {
+          callsign: "AAL123",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "7022",
+          scheduledSimMs: 1000,
+          index: 1,
+        },
       ];
 
       const target = makeTestAircraft({
@@ -878,8 +1146,8 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       td.unassociated = true;
       td.leaderDir = 7;
 
-      view.camera.centerNm = { eastNm: 0, northNm: 0 };
-      view.camera.zoom = 1;
+      view.camera.centerEastNm = 0;
+      view.camera.centerNorthNm = 0;
 
       // Press F3 then type 1
       handleScopeKeyDown(keyEvent("F3"), view, "scope", world, 1000);
@@ -905,7 +1173,14 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
 
       // Flight plan entry with index 1 exists in the system
       world.scheduledDepartures = [
-        { callsign: "AAL123", runwayId: "27", sidId: "BOS1", assignedSquawk: "7022", scheduledSimMs: 1000, index: 1 },
+        {
+          callsign: "AAL123",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "7022",
+          scheduledSimMs: 1000,
+          index: 1,
+        },
       ];
 
       const unassociated = makeTestAircraft({
@@ -933,8 +1208,8 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       tdOwned.datablockMode = "full";
       tdOwned.leaderDir = 7;
 
-      view.camera.centerNm = { eastNm: 0, northNm: 0 };
-      view.camera.zoom = 1;
+      view.camera.centerEastNm = 0;
+      view.camera.centerNorthNm = 0;
 
       // Type "1" into preview buffer and click unassociated target
       beginPreviewBufferEntry(view.preview, "1", Date.now());
@@ -958,7 +1233,14 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       const view = createScopeView();
 
       world.scheduledDepartures = [
-        { callsign: "AAL123", runwayId: "27", sidId: "BOS1", assignedSquawk: "7022", scheduledSimMs: 1000, index: 1 },
+        {
+          callsign: "AAL123",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "7022",
+          scheduledSimMs: 1000,
+          index: 1,
+        },
       ];
 
       const target = makeTestAircraft({
@@ -981,8 +1263,22 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       const view = createScopeView();
 
       world.scheduledDepartures = [
-        { callsign: "AAL123", runwayId: "27", sidId: "BOS1", assignedSquawk: "7022", scheduledSimMs: 1000, index: 1 },
-        { callsign: "DAL456", runwayId: "27", sidId: "BOS1", assignedSquawk: "6412", scheduledSimMs: 2000, index: 2 },
+        {
+          callsign: "AAL123",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "7022",
+          scheduledSimMs: 1000,
+          index: 1,
+        },
+        {
+          callsign: "DAL456",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "6412",
+          scheduledSimMs: 2000,
+          index: 2,
+        },
       ];
 
       const parsed = parsePreviewCommand("*DEL 1");
@@ -1005,8 +1301,22 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       toggleSystemList(view, "FL");
 
       world.scheduledDepartures = [
-        { callsign: "AAL123", runwayId: "27", sidId: "BOS1", assignedSquawk: "7022", scheduledSimMs: 1000, index: 1 },
-        { callsign: "DAL456", runwayId: "27", sidId: "BOS1", assignedSquawk: "6412", scheduledSimMs: 2000, index: 2 },
+        {
+          callsign: "AAL123",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "7022",
+          scheduledSimMs: 1000,
+          index: 1,
+        },
+        {
+          callsign: "DAL456",
+          runwayId: "27",
+          sidId: "BOS1",
+          assignedSquawk: "6412",
+          scheduledSimMs: 2000,
+          index: 2,
+        },
       ];
 
       buildTabFlightPlanList(world, 10, view);
@@ -1256,11 +1566,15 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       ];
       world.alerts = {
         ca: [
-          { callsignA: "AAL100", callsignB: "DAL628", severity: "alert", distNm: 1.5, deltaAltFt: 0 },
+          {
+            callsignA: "AAL100",
+            callsignB: "DAL628",
+            severity: "alert",
+            distNm: 1.5,
+            deltaAltFt: 0,
+          },
         ],
-        msaw: [
-          { callsign: "JBU389", altFt: 1500 },
-        ],
+        msaw: [{ callsign: "JBU389", altFt: 1500, severity: "alert", floorFt: 2000 }],
         atpa: [],
       };
 
@@ -1278,7 +1592,13 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       world.aircraft = [ac1, ac2];
       world.alerts = {
         ca: [
-          { callsignA: "AAL100", callsignB: "DAL628", severity: "alert", distNm: 0.5, deltaAltFt: 0 },
+          {
+            callsignA: "AAL100",
+            callsignB: "DAL628",
+            severity: "alert",
+            distNm: 0.5,
+            deltaAltFt: 0,
+          },
         ],
         msaw: [],
         atpa: [],
@@ -1309,7 +1629,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       world.aircraft = [ac];
       world.alerts = {
         ca: [],
-        msaw: [{ callsign: "JBU389", altFt: 1500 }],
+        msaw: [{ callsign: "JBU389", altFt: 1500, severity: "alert", floorFt: 2000 }],
         atpa: [],
       };
 
@@ -1412,9 +1732,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
         ca: [],
         msaw: [],
         atpa: [],
-        mci: [
-          { intruderSquawkOrCallsign: "1200", protectedCallsign: "UAL856" },
-        ],
+        mci: [{ intruderSquawkOrCallsign: "1200", protectedCallsign: "UAL856" }],
       };
 
       let lines = buildAlertList(world, 50, view);
@@ -1437,7 +1755,13 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       world.aircraft = [ac1, ac2];
       world.alerts = {
         ca: [
-          { callsignA: "AAL100", callsignB: "DAL628", severity: "alert", distNm: 1.0, deltaAltFt: 200 },
+          {
+            callsignA: "AAL100",
+            callsignB: "DAL628",
+            severity: "alert",
+            distNm: 1.0,
+            deltaAltFt: 200,
+          },
         ],
         msaw: [],
         atpa: [],
@@ -1462,11 +1786,17 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
     it("10. *LA [Left-Click Target] inhibits MSAW for targeted track via live preview slew buffer", () => {
       const world = createWorld();
       const view = createScopeView();
-      const target = makeTestAircraft({ id: "ac-low", callsign: "N12345", altitudeFt: 800, xNm: 0, yNm: 0 });
+      const target = makeTestAircraft({
+        id: "ac-low",
+        callsign: "N12345",
+        altitudeFt: 800,
+        xNm: 0,
+        yNm: 0,
+      });
       world.aircraft = [target];
       world.alerts = {
         ca: [],
-        msaw: [{ callsign: "N12345", altFt: 800 }],
+        msaw: [{ callsign: "N12345", altFt: 800, severity: "alert", floorFt: 2000 }],
         atpa: [],
       };
 
@@ -1481,6 +1811,122 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(view.preview.phase).toBe("idle");
     });
   });
+
+  describe("7. SSA Relocation and Dragging", () => {
+    it("1. <MULTI FUNC>S<SLEW LOCATION> relocates SSA anchor immediately without requiring Enter", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      expect(view.systemLists.SSA.x).toBe(DEFAULT_ADAPTATION_ANCHORS.SSA.x);
+      expect(view.systemLists.SSA.y).toBe(DEFAULT_ADAPTATION_ANCHORS.SSA.y);
+
+      // Type *S into preview buffer
+      beginPreviewBufferEntry(view.preview, "*S", 1000);
+      expect(previewRelocateListId(view.preview)).toBe("SSA");
+
+      // Left-click scope at (300, 200) on a 1000x1000 viewport
+      handlePpiLeftClick(view, world, 300, 200, 1000, 1000, "");
+      expect(view.systemLists.SSA.x).toBe(0.3);
+      expect(view.systemLists.SSA.y).toBe(0.2);
+      expect(view.preview.phase).toBe("idle");
+    });
+
+    it("2. <MULTI FUNC>S Enter <SLEW LOCATION> relocates SSA anchor when armed", () => {
+      const world = createWorld();
+      const view = createScopeView();
+
+      beginPreviewBufferEntry(view.preview, "*S", 1000);
+      handleScopeKeyDown(
+        { key: "Enter", preventDefault() {}, stopPropagation() {} },
+        view,
+        "scope",
+        world,
+        1100,
+      );
+      expect(view.preview.phase).toBe("armed");
+      expect(view.preview.armed?.type).toBe("armRelocateList");
+      expect(previewRelocateListId(view.preview)).toBe("SSA");
+
+      // Left-click scope at (600, 400)
+      handlePpiLeftClick(view, world, 600, 400, 1000, 1000, "");
+      expect(view.systemLists.SSA.x).toBe(0.6);
+      expect(view.systemLists.SSA.y).toBe(0.4);
+      expect(view.preview.phase).toBe("idle");
+    });
+
+    it("3. *SD and *SSA D resets SSA placement anchor to adaptation default", () => {
+      const view = createScopeView();
+      relocateSystemList(view, "SSA", 0.5, 0.5);
+      expect(view.systemLists.SSA.x).toBe(0.5);
+
+      const parsed1 = parsePreviewCommand("*SD");
+      expect(parsed1).toEqual({
+        kind: "action",
+        action: { type: "resetListPosition", listId: "SSA" },
+      });
+
+      const parsed2 = parsePreviewCommand("*SSA D");
+      expect(parsed2).toEqual({
+        kind: "action",
+        action: { type: "resetListPosition", listId: "SSA" },
+      });
+
+      resetSystemListToDefault(view, "SSA");
+      expect(view.systemLists.SSA.x).toBe(DEFAULT_ADAPTATION_ANCHORS.SSA.x);
+      expect(view.systemLists.SSA.y).toBe(DEFAULT_ADAPTATION_ANCHORS.SSA.y);
+    });
+
+    it("4. renderScope paints SSA at relocated position and records activeListRect with handleBounds", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      relocateSystemList(view, "SSA", 0.25, 0.35);
+
+      const fillTexts: { text: string; x: number; y: number }[] = [];
+      const strokeRects: { x: number; y: number; w: number; h: number }[] = [];
+      const mockCtx = {
+        save() {},
+        restore() {},
+        beginPath() {},
+        closePath() {},
+        arc() {},
+        clip() {},
+        rect() {},
+        fillRect() {},
+        stroke() {},
+        fill() {},
+        moveTo() {},
+        lineTo() {},
+        setTransform() {},
+        measureText(text: string) {
+          return { width: text.length * 8 };
+        },
+        fillText(text: string, x: number, y: number) {
+          fillTexts.push({ text, x, y });
+        },
+        strokeRect(x: number, y: number, w: number, h: number) {
+          strokeRects.push({ x, y, w, h });
+        },
+        font: "12px monospace",
+        textBaseline: "top",
+        textAlign: "left",
+        lineWidth: 1,
+      } as unknown as CanvasRenderingContext2D;
+
+      renderScope(mockCtx, world, view, 1000, 1000);
+
+      // SSA should paint at x = 250, y = 350
+      const triText = fillTexts.find((t) => t.text === "▼");
+      expect(triText).toBeDefined();
+      expect(triText?.x).toBe(250);
+      expect(triText?.y).toBe(350);
+
+      // Active list rects should include SSA
+      const ssaRect = view.activeListRects?.find((r) => r.id === "SSA");
+      expect(ssaRect).toBeDefined();
+      expect(ssaRect?.bounds.x).toBe(250);
+      expect(ssaRect?.bounds.y).toBe(350);
+      expect(ssaRect?.handleBounds).toBeDefined();
+      expect(ssaRect?.handleBounds?.x).toBe(250);
+      expect(ssaRect?.handleBounds?.y).toBe(350);
+    });
+  });
 });
-
-

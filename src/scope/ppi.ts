@@ -341,9 +341,7 @@ export function handlePpiLeftClick(
 
   // Check if click was inside Video Maps list (ML) for row toggling
   if (view.activeListRects && !previewRelocateListId(view.preview)) {
-    const mlItem = view.activeListRects.find(
-      (r) => canonicalSystemListId(r.id) === "ML",
-    );
+    const mlItem = view.activeListRects.find((r) => canonicalSystemListId(r.id) === "ML");
     if (mlItem && pointInsideRect(cssX, cssY, mlItem.bounds)) {
       const lineH = datablockLineHeightPx(view.charSizes.lists);
       const clickedLine = Math.floor((cssY - mlItem.bounds.y) / lineH);
@@ -359,9 +357,7 @@ export function handlePpiLeftClick(
 
   // Check if click was inside Flight Plan list (FL) for MORE pagination or F1 row deletion
   if (view.activeListRects) {
-    const flItem = view.activeListRects.find(
-      (r) => canonicalSystemListId(r.id) === "FL",
-    );
+    const flItem = view.activeListRects.find((r) => canonicalSystemListId(r.id) === "FL");
     if (flItem && pointInsideRect(cssX, cssY, flItem.bounds)) {
       const lineH = datablockLineHeightPx(view.charSizes.lists);
       const clickedLine = Math.floor((cssY - flItem.bounds.y) / lineH);

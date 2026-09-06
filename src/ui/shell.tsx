@@ -161,9 +161,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   const facilityDisplay = activeScenario.icao.replace(/^K/, "");
   const facilityTitle = `${facilityDisplay} — Flight Progress Strips`;
   const { departures, arrivals } = terminalStripsFromWorld(app.world);
-  const selectedAircraft = app.world.aircraft.find(
-    (ac) => ac.id === app.world.selectedAircraftId,
-  );
+  const selectedAircraft = app.world.aircraft.find((ac) => ac.id === app.world.selectedAircraftId);
   const selectedCallsign = selectedAircraft?.callsign ?? null;
 
   return (
@@ -312,10 +310,14 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
               const rect = event.currentTarget.getBoundingClientRect();
               const cssX = event.clientX - rect.left;
               const cssY = event.clientY - rect.top;
-              const commitRes = commitListDrag(scopeView.listDrag, { x: cssX, y: cssY }, {
-                width: rect.width,
-                height: rect.height,
-              });
+              const commitRes = commitListDrag(
+                scopeView.listDrag,
+                { x: cssX, y: cssY },
+                {
+                  width: rect.width,
+                  height: rect.height,
+                },
+              );
               if (commitRes.updatedPlacement) {
                 relocateSystemList(
                   scopeView,

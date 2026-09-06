@@ -453,10 +453,11 @@ function listResizeAction(listId: string, digits: string): PreviewCommandResult 
 }
 
 /**
- * Table 31/32 system lists. Spaces optional (`*T` = `* T`). Tower lists are
- * the spaced CRC form `* P1`/`* P2`/`* P3`; compact `*P1`/`*P3`/`*P10` stay
- * TPA cones. `*PTL` stays incomplete (T02-64). `*S` arms SSA relocate and
- * does not toggle SSA.
+ * Table 31/32 system lists. Spaces optional (`*T` = `* T`). Tower lists match
+ * `* P1`/`*P1`/`*p1` (space optional, case-insensitive); both spaced and compact
+ * forms toggle Tower Lists 1/2/3 on Enter. Compact `*P3` + slew-click (not Enter)
+ * still goes to the starsChord/ppi path as a TPA cone. `*PTL` stays incomplete
+ * (T02-64). `*S` arms SSA relocate and does not toggle SSA.
  */
 function parseListCommand(buffer: string): PreviewCommandResult | null {
   if (!buffer.startsWith("*")) {
@@ -473,7 +474,7 @@ function parseListCommand(buffer: string): PreviewCommandResult | null {
     /^\*\s*(FL|TL|VL|ML|AL|SSA|S|TAB|TC|CS|CR|CRDA|TX|TM|TV)D$/i.exec(buffer);
   if (resetMatch) {
     const token = resetMatch[1]!.toUpperCase();
-    if (token === "S") {
+    if (token === "S" || token === "SSA") {
       return { kind: "action", action: { type: "resetListPosition", listId: "SSA" } };
     }
     const matched = LIST_TOGGLE_TOKENS.find((row) => row.token === token);
@@ -487,8 +488,10 @@ function parseListCommand(buffer: string): PreviewCommandResult | null {
     }
   }
 
-  // Require a space after `*` so `*P3` is a 3 NM cone, not TOWER_3.
-  const tower = /^\*\s+P([123])(?:\s+(\d{1,3}))?$/.exec(buffer);
+  // Allow optional space after `*` so both `* P3` and `*P3` toggle Tower List 3 on Enter.
+  // Compact `*P3` + slew-click on an aircraft target = TPA 3 NM cone (starsChord / ppi path).
+  // Compact `*P3` + Enter (no aircraft slewed) = toggle Tower List 3 (this path).
+  const tower = /^\*\s*[Pp]([123])(?:\s+(\d{1,3}))?$/.exec(buffer);
   if (tower) {
     const listId = TOWER_LIST_IDS[tower[1] as "1" | "2" | "3"];
     if (tower[2] !== undefined) {
@@ -516,7 +519,7 @@ function parseListCommand(buffer: string): PreviewCommandResult | null {
   }
 
   const rest = compact.slice(1);
-  if (rest === "S") {
+  if (rest === "S" || rest === "SSA") {
     return { kind: "action", action: { type: "armRelocateList", listId: "SSA" } };
   }
 

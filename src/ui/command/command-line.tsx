@@ -7,6 +7,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { SessionLog, World } from "@core";
 import { handleRadioText, type PilotResult } from "@pilot";
+import { isAlwaysOnScopeKey, isHandoffKey } from "@scope";
 import { displayCommandLineStatus } from "./voice-status";
 
 export type { PilotResult };
@@ -182,16 +183,9 @@ export function CommandLine({
           value={value}
           onKeyDown={(event) => {
             if (
-              event.key === "PageUp" ||
-              event.key === "PageDown" ||
-              event.key === "Home" ||
-              event.key === "End" ||
-              event.key === "F1" ||
-              event.key === "F3" ||
-              event.key === "F4" ||
-              event.key === "F7" ||
-              event.key === "F8" ||
-              (event.shiftKey && (event.key === "H" || event.key === "h"))
+              isAlwaysOnScopeKey(event.key) ||
+              (event.ctrlKey && /^F\d+$/.test(event.key)) ||
+              isHandoffKey(event)
             ) {
               event.preventDefault();
             }
