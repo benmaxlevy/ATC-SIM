@@ -82,6 +82,8 @@ export function CommandLine({
   const [showingReadback, setShowingReadback] = useState(Boolean(voiceStatus));
   const prevCallsignRef = useRef<string | null>(selectedCallsign ?? null);
   const isFirstMount = useRef(true);
+  /** Set to true when readback is dismissed by an a/c click — prevents focus-stealing. */
+  const skipNextFocusRef = useRef(false);
 
   useEffect(() => {
     if (isFirstMount.current) {
@@ -96,6 +98,8 @@ export function CommandLine({
     if (selectedCallsign) {
       setValue(selectedCallsign);
       prevCallsignRef.current = selectedCallsign;
+      // Don't steal focus from the PPI when filling the callsign via a/c click.
+      skipNextFocusRef.current = true;
       setShowingReadback(false);
     } else if (selectedCallsign === null && prevCallsignRef.current !== null) {
       setValue((current) => (current === prevCallsignRef.current ? "" : current));
@@ -111,6 +115,10 @@ export function CommandLine({
 
   useEffect(() => {
     if (!showingReadback) {
+      if (skipNextFocusRef.current) {
+        skipNextFocusRef.current = false;
+        return;
+      }
       const el = globalThis.document?.getElementById(COMMAND_LINE_INPUT_ID);
       const active = globalThis.document?.activeElement;
       if (
@@ -174,7 +182,6 @@ export function CommandLine({
         <input
           id={COMMAND_LINE_INPUT_ID}
           type="text"
-          autoFocus
           spellCheck={false}
           autoComplete="off"
           autoCapitalize="off"
