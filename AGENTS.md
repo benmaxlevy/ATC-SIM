@@ -24,6 +24,24 @@ artifacts. Start each ticket from current `master` on a dedicated
 one commit on `master`, verify status, and delete the local branch. Stop on
 conflicts; never force or skip hooks. In a swarm, workers never merge.
 
+## Feature research and planning skills
+
+Use the two user skills in order for a new feature:
+
+1. `atc-sim-research` is read-only. Given a request such as “implement VOR
+   approaches,” it researches repository architecture and authoritative domain
+   references, then proposes tickets, dependencies, acceptance criteria, and a
+   draft `phases/SWARM.md` addendum. It must not edit files, create branches,
+   or commit.
+2. After the user approves or adjusts that proposal, `atc-sim-plan-tickets`
+   creates the approved ticket files and appends the new SWARM configuration.
+   It must not implement code or start the swarm.
+3. Invoke `run-swarm` only after ticket/SWARM planning is approved and written.
+
+Planning skills must preserve SWARM history, use the target phase’s existing
+ticket format, keep IDs/dependencies/merge target explicit, and never infer
+approval for mutations from a research request.
+
 ## Data-first extensibility
 
 KDEM / DEMO ONE / ILS 27 are shipped fixtures, not the type system. A second
@@ -113,4 +131,3 @@ record manual leftovers, and stop at the configured boundary. Do not start a
 later phase without new SWARM configuration. Worker handoff is exactly
 `READY TO MERGE` or `BLOCKED`; captain handoff is exactly `PHASE EXIT GREEN`
 or `PHASE EXIT BLOCKED`.
-
