@@ -29,7 +29,11 @@ import {
 } from "./fonts";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
 import { handleTrackClick, handleTrackMiddleClick, type TrackDisplay } from "./trackDisplay";
-import { solveDatablockLayout, type DatablockLayoutInput } from "./datablockLayout";
+import {
+  pointInLayoutBounds,
+  solveDatablockLayout,
+  type DatablockLayoutInput,
+} from "./datablockLayout";
 import { aircraftAtReport } from "./surveillance";
 
 /** Frozen hit radius in CSS pixels (T01-11). Pixel-space so range presets stay stable. */
@@ -81,6 +85,9 @@ function pickDatablockAt(
       continue;
     }
     const p = nmToScreen(shown.xNm, shown.yNm, cam, size);
+    if (!pointInLayoutBounds(p, { x: 0, y: 0, width: cssWidth, height: cssHeight })) {
+      continue;
+    }
     const ho = handoffFor(world, ac.id);
     let mode = td?.datablockMode ?? (td?.ownership === "owned" ? "full" : "partial");
     if (ho.kind === "inbound" || ho.kind === "departure") {

@@ -86,6 +86,16 @@ function inBounds(rect: LayoutRect, bounds: LayoutBounds): boolean {
   );
 }
 
+/** A datablock is laid out only while its target symbol is on the PPI. */
+export function pointInLayoutBounds(point: LayoutPoint, bounds: LayoutBounds): boolean {
+  return (
+    point.x >= bounds.x &&
+    point.x <= bounds.x + bounds.width &&
+    point.y >= bounds.y &&
+    point.y <= bounds.y + bounds.height
+  );
+}
+
 /** Rectangles touching at an edge do not overlap. */
 export function datablockRectsOverlap(a: LayoutRect, b: LayoutRect): boolean {
   return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;

@@ -21,6 +21,7 @@ import {
 } from "../datablock";
 import { datablockFontCss, datablockLineHeightPx, measureDatablockCellWidth } from "../fonts";
 import {
+  pointInLayoutBounds,
   solveDatablockLayout,
   type DatablockLayoutInput,
   type ResolvedDatablockLayout,
@@ -768,6 +769,9 @@ export function drawTracks(
     }
     const lines = { ...base, line1 };
     const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
+    if (!pointInLayoutBounds(p, { x: 0, y: 0, width: size.widthPx, height: size.heightPx })) {
+      return [];
+    }
     const metrics = datablockMetrics(
       lines,
       view.datablockCellWidthPx,
@@ -868,7 +872,7 @@ export function drawTracks(
     }
     const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
     const layout = layoutById.get(ac.id);
-    if (layout?.unplaced) continue;
+    if (!layout || layout.unplaced) continue;
     drawDatablock(ctx, shown, p.x, p.y, view, world, layout);
   }
 
