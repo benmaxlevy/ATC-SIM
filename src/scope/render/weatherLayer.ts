@@ -18,8 +18,10 @@ import { WX_VIP_FILL_HEX } from "./wxStarsFill";
 export { WX_VIP_FILL_HEX } from "./wxStarsFill";
 
 export const DEFAULT_WX_ALPHA = 255;
-/** Raster density per mosaic cell; higher makes one-pixel rectangles thinner on screen. */
-export const WX_TEXTURE_SCALE = 18;
+/** Small backing raster; stipple comes from reusable generated pattern tiles. */
+export const WX_TEXTURE_SCALE = 2;
+const WX_PATTERN_TILE_SIZE = 64;
+const WX_PATTERN_VARIANTS = 4;
 
 const WX_BACKGROUND_HEX = [
   "#132727",
@@ -168,28 +170,76 @@ function textureHash(level: number, col: number, row: number): number {
   return value >>> 0;
 }
 
-function hasProceduralMark(level: 2 | 3 | 5 | 6, col: number, row: number): boolean {
-  if (level === 2 || level === 5) {
-    return textureHash(level, col, row) % 16 === 0;
+type WxPatternKind = "square" | "rectangle";
+
+function patternIndex(col: number, row: number): number {
+  return (row % WX_PATTERN_TILE_SIZE) * WX_PATTERN_TILE_SIZE + (col % WX_PATTERN_TILE_SIZE);
+}
+
+function canPlaceMark(
+  marks: Uint8Array,
+  col: number,
+  row: number,
+  width: number,
+  height: number,
+): boolean {
+  if (
+    col < 2 ||
+    row < 2 ||
+    col + width > WX_PATTERN_TILE_SIZE - 2 ||
+    row + height > WX_PATTERN_TILE_SIZE - 2
+  ) {
+    return false;
   }
-  for (let rowOffset = 0; rowOffset <= 1; rowOffset++) {
-    for (let colOffset = 0; colOffset <= 1; colOffset++) {
-      const anchorCol = col - colOffset;
-      const anchorRow = row - rowOffset;
-      const hash = textureHash(level, anchorCol, anchorRow);
-      if (hash % 8 !== 0) {
-        continue;
-      }
-      const vertical = (hash & 1) === 0;
-      if (vertical && colOffset === 0) {
-        return true;
-      }
-      if (!vertical && rowOffset === 0) {
-        return true;
+  for (let checkRow = row - 1; checkRow <= row + height; checkRow++) {
+    for (let checkCol = col - 1; checkCol <= col + width; checkCol++) {
+      if (marks[patternIndex(checkCol, checkRow)] !== 0) {
+        return false;
       }
     }
   }
-  return false;
+  return true;
+}
+
+function createPatternTile(kind: WxPatternKind, variant: number): Uint8Array {
+  const marks = new Uint8Array(WX_PATTERN_TILE_SIZE * WX_PATTERN_TILE_SIZE);
+  for (let row = 2; row < WX_PATTERN_TILE_SIZE - 2; row++) {
+    for (let col = 2; col < WX_PATTERN_TILE_SIZE - 2; col++) {
+      const hash = textureHash(variant + (kind === "rectangle" ? 100 : 0), col, row);
+      if (hash % (kind === "square" ? 5 : 3) !== 0) {
+        continue;
+      }
+      const vertical = (hash & 1) === 0;
+      const width = kind === "square" ? 1 : vertical ? 1 : 2;
+      const height = kind === "square" ? 1 : vertical ? 2 : 1;
+      if (!canPlaceMark(marks, col, row, width, height)) {
+        continue;
+      }
+      for (let markRow = row; markRow < row + height; markRow++) {
+        for (let markCol = col; markCol < col + width; markCol++) {
+          marks[patternIndex(markCol, markRow)] = 1;
+        }
+      }
+    }
+  }
+  return marks;
+}
+
+const WX_PATTERN_TILES: Record<WxPatternKind, Uint8Array[]> = {
+  square: Array.from({ length: WX_PATTERN_VARIANTS }, (_, variant) =>
+    createPatternTile("square", variant),
+  ),
+  rectangle: Array.from({ length: WX_PATTERN_VARIANTS }, (_, variant) =>
+    createPatternTile("rectangle", variant),
+  ),
+};
+
+function hasProceduralMark(level: 2 | 3 | 5 | 6, col: number, row: number): boolean {
+  const kind = level === 2 || level === 5 ? "square" : "rectangle";
+  const tileX = Math.floor(col / WX_PATTERN_TILE_SIZE);
+  const tileY = Math.floor(row / WX_PATTERN_TILE_SIZE);
+  const variant = textureHash(level, tileX, tileY) % WX_PATTERN_VARIANTS;
+  return WX_PATTERN_TILES[kind][variant]![patternIndex(col, row)] === 1;
 }
 
 /** Deterministic mosaic-anchored WX background and stipple. */
