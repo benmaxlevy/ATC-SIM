@@ -474,7 +474,6 @@ function applyPreviewArmedAction(
       return;
     case "initCntl":
     case "termCntl":
-    case "acceptHandoff":
     case "ackPointout":
     case "resetLeaderDir":
     case "beaconatorSlew":
@@ -781,14 +780,6 @@ export function handleScopeKeyDown(
         ui?.onHandled?.();
         return true;
       }
-    }
-    if ((event.key === "Enter" || event.key === "NumpadEnter") && view.preview.phase === "idle") {
-      consume(event);
-      cancelStarsChordEntry(view.starsChordEntry);
-      view.starsChordArmed = null;
-      armPreviewSlewAction(view.preview, { type: "acceptHandoff" }, nowMs);
-      ui?.onHandled?.();
-      return true;
     }
   } else {
     if (view.preview.phase === "entry") {

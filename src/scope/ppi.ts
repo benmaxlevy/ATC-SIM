@@ -54,7 +54,6 @@ import {
 import { toggleVideoMap } from "./dcb/dcbFunctions";
 import { datablockLineHeightPx } from "./fonts";
 import {
-  acceptInboundOnClick,
   applyBeaconatorSlewToId,
   applyDropTrackToId,
   applyInitiateTrackToId,
@@ -211,16 +210,6 @@ function applyTrackingSlewHit(
         view.starsChordArmed = null;
         return true;
       }
-      setSelectedAircraft(world, id);
-      clearTrackingSlew(view);
-      return true;
-    }
-    case "acceptHandoff": {
-      const ho = handoffFor(world, id);
-      if (ho.kind !== "inbound") {
-        return false;
-      }
-      acceptInboundOnClick(view.tracks, world, id);
       setSelectedAircraft(world, id);
       clearTrackingSlew(view);
       return true;

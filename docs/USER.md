@@ -72,7 +72,7 @@ Service-side env, models, and Path C: [`speech-api/README.md`](../speech-api/REA
   - STAR arrivals: *"Approach, Delta 123, descending via DEMO ONE arrival through one-one thousand (11000)"*.
   - SID departures: *"Departure, American 100, passing seven hundred climbing via the BAY ONE departure"*.
 - **Inbound & departure handoff workflow**:
-  - Inbound arrivals spawn in pending handoff state from Center (unowned green FDB) → Controller left-clicks the track, uses Preview Area `F3` INIT CNTL, **or** idle scope `Enter` then click (`HO ACCEPT`) to accept → Track becomes owned (white FDB) → Radio frequency unlocked → Pilot checks in.
+  - Inbound arrivals spawn in pending handoff state from Center (unowned green FDB) → Controller left-clicks the track (slew to accept) or uses Preview Area `F3` INIT CNTL to accept → Track becomes owned (white FDB) → Radio frequency unlocked → Pilot checks in.
   - Rolling departures spawn off the active runway (~0.8 NM, 700 ft, 180 kt) under Tower handoff → Pilot checks in on departure frequency → Flies published SID climb profile.
 - **Smart Shift+H handoff**: Context-sensitive handoff initiator:
   - Selected arrival on approach (< 5 NM from threshold): executes Tower handoff (sets `LANDING` mode and tower ownership cyan tint).
@@ -85,7 +85,7 @@ Commands can be entered via the bottom command line prompt or spoken over Push-t
 
 ### Typed command syntax
 
-Typed commands below are radio Command IR (command line or PTT). Inbound accept is scope: left-click the track, Preview Area `F3` INIT CNTL, or idle scope `Enter` then click.
+Typed commands below are radio Command IR (command line or PTT). Inbound accept is scope: left-click the track (slew to accept) or Preview Area `F3` INIT CNTL.
 
 | Category | Typed Syntax | Example | Description |
 |---|---|---|---|
@@ -164,7 +164,7 @@ The Preview Area is the typed **scope** buffer under the SSA. With PPI focus, `*
 
 Unknown or incomplete commit flashes `<buffer> INV`. Backspace edits; Esc cancels to idle (live preview > live `*` chord > DCB). Empty PPI click does not consume an armed tracking command.
 
-F3 owns (unowned green FDB → owned white FDB). F4 drops. Pending inbound + INIT CNTL or idle `Enter` then click accepts the handoff.
+F3 owns (unowned green FDB → owned white FDB). F4 drops. Slew (left-click) or INIT CNTL (F3) accepts an inbound handoff.
 
 #### INIT / TERM / beacon select
 
@@ -206,7 +206,6 @@ Idle `F` (no star) starts the altitude-filter chord (`F` → min hundreds → En
 | `*L(1-9)/<0-7>` then click / `*L(1-9)/<0-7> [FLID]` Enter | `*L8/2` click or `*L8/2 DAL123` Enter | Sets both leader line direction and length. |
 | `*LDR <0-7>` Enter | `*LDR 4` Enter | Sets global default leader line length (`view.leaderLengthPx`). |
 | `*R` then click | `*R` Enter (or live `*R`), click a track | Toggles Predicted Track Line (PTL) for that track only (overriding global ALL/OWN). |
-| Idle Enter then click | Empty scope buffer, `Enter`, click inbound | Arms `HO ACCEPT`; click accepts the inbound handoff. Live `*T` / `*D LOC27` Enter still commit those commands instead. |
 | `*` then click | Scope-focus `*`, click a target | Acks a pending pointout, or toggles cyan highlight. Bare `*` Enter still goes to TPA (`starsChord`). |
 | `*1`–`*8` then click | `*3` then click a datablock | STARS leader clock (1 = NE clockwise through 8 = N). Idle `L` then `1`–`9` is the old keypad compass and is unchanged. |
 | `*0` then click | `*0` then click | Resets leader direction to the facility default. |

@@ -303,17 +303,29 @@ test("AC1 — *F flashes FILTER; *LA writes hundreds; *BCN add/DEL; incomplete I
   expect(chord.preview.phase).toBe("idle");
 });
 
-test("AC1 — + / Enter * chords mutate tracks; / DB toggles PDB↔FDB; F3/F4 apply vs arm", () => {
+test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; / DB toggles PDB↔FDB; F3/F4 apply vs arm", () => {
   const hoWorld = createWorldFromScenario(loadKdem(), 1);
   const hoDal = hoWorld.aircraft[0]!;
   const hoView = createScopeView();
   syncTrackDisplays(hoView.tracks, hoWorld);
   expect(handoffFor(hoWorld, hoDal.id).kind).toBe("inbound");
   typeKeys(hoView, hoWorld, ["Enter"]);
-  expect(hoView.preview.armed).toEqual({ type: "acceptHandoff" });
+  expect(hoView.preview.phase).toBe("idle");
+  expect(hoView.preview.armed).toBeNull();
   clickAt(hoView, hoWorld, hoDal.xNm, hoDal.yNm);
   expect(handoffFor(hoWorld, hoDal.id).kind).not.toBe("inbound");
   expect(hoView.tracks.get(hoDal.id)!.ownership).toBe("owned");
+
+  const hoWorld2 = createWorldFromScenario(loadKdem(), 1);
+  const hoDal2 = hoWorld2.aircraft[0]!;
+  const hoView2 = createScopeView();
+  syncTrackDisplays(hoView2.tracks, hoWorld2);
+  expect(handoffFor(hoWorld2, hoDal2.id).kind).toBe("inbound");
+  handleScopeKeyDown(keyEvent("F3"), hoView2, "scope", hoWorld2, 100);
+  expect(hoView2.preview.armed).toEqual({ type: "initCntl" });
+  clickAt(hoView2, hoWorld2, hoDal2.xNm, hoDal2.yNm);
+  expect(handoffFor(hoWorld2, hoDal2.id).kind).not.toBe("inbound");
+  expect(hoView2.tracks.get(hoDal2.id)!.ownership).toBe("owned");
 
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", xNm: 16, yNm: 8 });
   const world = createWorld({ aircraft: [dal] });

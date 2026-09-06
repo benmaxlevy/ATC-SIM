@@ -61,7 +61,6 @@ export type PreviewArmedAction =
     }
   | { readonly type: "addBeaconCodeFilter"; readonly code: string }
   | { readonly type: "removeBeaconCodeFilter"; readonly code: string }
-  | { readonly type: "acceptHandoff" }
   | { readonly type: "ackPointout" }
   | {
       readonly type: "setLeaderDir";
@@ -634,7 +633,6 @@ const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
   "initCntl",
   "termCntl",
   "forceFdb",
-  "acceptHandoff",
   "ackPointout",
   "setLeaderDir",
   "resetLeaderDir",

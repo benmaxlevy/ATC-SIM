@@ -260,8 +260,6 @@ function trackingMnemonic(action: PreviewArmedAction): string {
       return "INIT CNTL";
     case "termCntl":
       return "TERM CNTL";
-    case "acceptHandoff":
-      return "HO ACCEPT";
     case "ackPointout":
       return "*";
     case "setLeaderDir":
