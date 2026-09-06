@@ -316,6 +316,16 @@ export function handlePpiLeftClick(
   const size = viewSize(cssWidth, cssHeight);
   const nm = screenToNm(cssX, cssY, view.camera, size);
   recordLastClick(view, nm.eastNm, nm.northNm);
+  let relocateId = previewRelocateListId(view.preview);
+  // The same P commands address lists on empty scope and TPA cones on aircraft.
+  if (
+    relocateId &&
+    view.preview.phase === "entry" &&
+    /^\*\s*P[123]?$/i.test(view.preview.buffer) &&
+    pickAircraftAt(world, cssX, cssY, view.camera, cssWidth, cssHeight, HIT_RADIUS_CSS_PX, view)
+  ) {
+    relocateId = null;
+  }
   // Check if click was on a system list entry while F1 drop mode is active
   if (view.f1DropArmed || view.beaconatorActive) {
     const hitEntry = hitTestSystemListEntry(view, cssX, cssY);
@@ -332,7 +342,7 @@ export function handlePpiLeftClick(
   }
 
   // Check if click was inside ANY system list at line 1 (header MORE: X/Y line) for page scrolling
-  if (view.activeListRects && !previewRelocateListId(view.preview)) {
+  if (view.activeListRects && !relocateId) {
     const clickedRect = view.activeListRects.find((r) => pointInsideRect(cssX, cssY, r.bounds));
     if (clickedRect) {
       const lineH = datablockLineHeightPx(view.charSizes.lists);
@@ -350,7 +360,7 @@ export function handlePpiLeftClick(
   }
 
   // Check if click was on Video Maps list (ML) entry for layer toggling (via activeListEntries)
-  if (!previewRelocateListId(view.preview)) {
+  if (!relocateId) {
     const hitEntry = hitTestSystemListEntry(view, cssX, cssY);
     if (hitEntry && canonicalSystemListId(hitEntry.listId) === "ML") {
       toggleVideoMap(view, hitEntry.mapId ?? hitEntry.callsign);
@@ -359,7 +369,7 @@ export function handlePpiLeftClick(
   }
 
   // Check if click was inside Video Maps list (ML) for row toggling
-  if (view.activeListRects && !previewRelocateListId(view.preview)) {
+  if (view.activeListRects && !relocateId) {
     const mlItem = view.activeListRects.find((r) => canonicalSystemListId(r.id) === "ML");
     if (mlItem && pointInsideRect(cssX, cssY, mlItem.bounds)) {
       const lineH = datablockLineHeightPx(view.charSizes.lists);
@@ -375,7 +385,7 @@ export function handlePpiLeftClick(
   }
 
   // Check if click was inside Flight Plan list (FL) for MORE pagination or F1 row deletion
-  if (view.activeListRects) {
+  if (view.activeListRects && !relocateId) {
     const flItem = view.activeListRects.find((r) => canonicalSystemListId(r.id) === "FL");
     if (flItem && pointInsideRect(cssX, cssY, flItem.bounds)) {
       const lineH = datablockLineHeightPx(view.charSizes.lists);
@@ -390,7 +400,6 @@ export function handlePpiLeftClick(
     }
   }
 
-  const relocateId = previewRelocateListId(view.preview);
   if (relocateId) {
     const anchor = normalizedClickAnchor(cssX, cssY, cssWidth, cssHeight);
     view.stagedListAnchor = { listId: relocateId, x: anchor.x, y: anchor.y };

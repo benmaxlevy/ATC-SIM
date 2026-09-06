@@ -31,6 +31,7 @@ import {
   handlePpiPanDelta,
   handleScopeWheel,
   hitTestSystemListTitle,
+  previewRelocateListId,
   installAlwaysOnScopeKeys,
   isPpiSlewButton,
   isPpiSlewHeld,
@@ -218,6 +219,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             const rect = event.currentTarget.getBoundingClientRect();
             const cssX = event.clientX - rect.left;
             const cssY = event.clientY - rect.top;
+            const relocationActive = previewRelocateListId(scopeView.preview) !== null;
 
             // Check if pointer is on any visible system list title header
             if (scopeView.activeListRects && scopeView.activeListRects.length > 0) {
@@ -228,14 +230,17 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
                 lineH,
               );
               if (hitListId) {
-                if (event.shiftKey) {
+                if (event.shiftKey && !(relocationActive && event.button === 0)) {
                   // Shift + Left-Click resets list to its adaptation default anchor
                   event.preventDefault();
                   resetSystemListToDefault(scopeView, hitListId);
                   refreshScopeUi();
                   return;
                 }
-                if (event.button === 0 || event.button === 1) {
+                if (
+                  (event.button === 0 || event.button === 1) &&
+                  !(relocationActive && event.button === 0)
+                ) {
                   // Left-click or middle-click on title header initiates window dragging
                   event.preventDefault();
                   const dragRes = handleListTitleDragStart(
