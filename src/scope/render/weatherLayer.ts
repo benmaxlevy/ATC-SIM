@@ -171,16 +171,16 @@ export function wxProceduralTextureRgb(
   }
   const inStipple =
     level === 2 || level === 5
-      ? col % 24 >= 8 && col % 24 < 16 && row % 24 >= 8 && row % 24 < 16
+      ? col % 8 === 3 && row % 8 === 3
       : (() => {
-          const cellX = Math.floor(col / 8);
-          const cellY = Math.floor(row / 8);
-          const localX = col % 8;
-          const localY = row % 8;
+          const cellX = Math.floor(col / 4);
+          const cellY = Math.floor(row / 4);
+          const localX = col % 4;
+          const localY = row % 4;
           if ((cellX + cellY) % 2 === 0) {
-            return localX >= 3 && localX < 5 && localY >= 1 && localY < 7;
+            return localX === 1 && localY >= 0 && localY < 3;
           }
-          return localY >= 3 && localY < 5 && localX >= 1 && localX < 7;
+          return localY === 1 && localX >= 0 && localX < 3;
         })();
   return inStipple ? parseHexRgb(applyBrite(WX_STIPPLE_HEX, briteWx)) : fill;
 }

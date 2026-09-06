@@ -73,16 +73,16 @@ test("WXC contours are six distinct hues tinted by brite.wxc, not IEM rainbow", 
 test("procedural WX uses exact brite-tinted backgrounds and level patterns", () => {
   expect(wxProceduralTextureRgb(1, 0, 0, 100)).toEqual([19, 39, 39]);
   expect(wxProceduralTextureRgb(4, 0, 0, 100)).toEqual([50, 50, 26]);
-  expect(wxProceduralTextureRgb(2, 8, 8, 100)).toEqual([255, 255, 255]);
+  expect(wxProceduralTextureRgb(2, 3, 3, 100)).toEqual([255, 255, 255]);
   expect(wxProceduralTextureRgb(2, 0, 0, 100)).toEqual([19, 39, 39]);
-  expect(wxProceduralTextureRgb(3, 3, 1, 100)).toEqual([255, 255, 255]);
-  expect(wxProceduralTextureRgb(3, 9, 3, 100)).toEqual([255, 255, 255]);
-  expect(wxProceduralTextureRgb(5, 8, 8, 100)).toEqual([255, 255, 255]);
-  expect(wxProceduralTextureRgb(6, 3, 1, 100)).toEqual([255, 255, 255]);
-  expect(wxProceduralTextureRgb(6, 9, 3, 100)).toEqual([255, 255, 255]);
-  expect(wxProceduralTextureRgb(2, 8, 8, 100)).toEqual(wxProceduralTextureRgb(2, 8, 8, 100));
-  expect(wxProceduralTextureRgb(2, 0, 0, 100)).not.toEqual(wxProceduralTextureRgb(2, 8, 8, 100));
-  expect(wxProceduralTextureRgb(2, 8, 8, 50)).toEqual([128, 128, 128]);
+  expect(wxProceduralTextureRgb(3, 1, 1, 100)).toEqual([255, 255, 255]);
+  expect(wxProceduralTextureRgb(3, 6, 1, 100)).toEqual([255, 255, 255]);
+  expect(wxProceduralTextureRgb(5, 3, 3, 100)).toEqual([255, 255, 255]);
+  expect(wxProceduralTextureRgb(6, 1, 1, 100)).toEqual([255, 255, 255]);
+  expect(wxProceduralTextureRgb(6, 6, 1, 100)).toEqual([255, 255, 255]);
+  expect(wxProceduralTextureRgb(2, 3, 3, 100)).toEqual(wxProceduralTextureRgb(2, 3, 3, 100));
+  expect(wxProceduralTextureRgb(2, 0, 0, 100)).not.toEqual(wxProceduralTextureRgb(2, 3, 3, 100));
+  expect(wxProceduralTextureRgb(2, 3, 3, 50)).toEqual([128, 128, 128]);
 });
 
 test("all-off or empty mosaic does not drawImage", () => {
