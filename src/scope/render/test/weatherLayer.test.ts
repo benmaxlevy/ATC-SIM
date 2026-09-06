@@ -8,6 +8,7 @@ import {
   wxScreenStyle,
   wxVipContourHex,
   wxVipFillHex,
+  wxProceduralTextureRgb,
 } from "../weatherLayer";
 import { bboxFromArp, decodeRgbaToVipMasks, emptyWxMosaic } from "../../wx";
 
@@ -67,6 +68,21 @@ test("WXC contours are six distinct hues tinted by brite.wxc, not IEM rainbow", 
   expect(wxVipContourHex(1, 100)).toBe(applyBrite(WX_VIP_CONTOUR_HEX[0], 100));
   expect(wxVipContourHex(4, 50)).toBe(applyBrite(WX_VIP_CONTOUR_HEX[3], 50));
   expect(wxVipContourHex(1, 50)).not.toBe(wxVipFillHex(1, 50));
+});
+
+test("procedural WX uses exact brite-tinted backgrounds and level patterns", () => {
+  expect(wxProceduralTextureRgb(1, 0, 0, 100)).toEqual([19, 39, 39]);
+  expect(wxProceduralTextureRgb(4, 0, 0, 100)).toEqual([50, 50, 26]);
+  expect(wxProceduralTextureRgb(2, 8, 8, 100)).toEqual([255, 255, 255]);
+  expect(wxProceduralTextureRgb(2, 0, 0, 100)).toEqual([19, 39, 39]);
+  expect(wxProceduralTextureRgb(3, 3, 1, 100)).toEqual([255, 255, 255]);
+  expect(wxProceduralTextureRgb(3, 9, 3, 100)).toEqual([255, 255, 255]);
+  expect(wxProceduralTextureRgb(5, 8, 8, 100)).toEqual([255, 255, 255]);
+  expect(wxProceduralTextureRgb(6, 3, 1, 100)).toEqual([255, 255, 255]);
+  expect(wxProceduralTextureRgb(6, 9, 3, 100)).toEqual([255, 255, 255]);
+  expect(wxProceduralTextureRgb(2, 8, 8, 100)).toEqual(wxProceduralTextureRgb(2, 8, 8, 100));
+  expect(wxProceduralTextureRgb(2, 0, 0, 100)).not.toEqual(wxProceduralTextureRgb(2, 8, 8, 100));
+  expect(wxProceduralTextureRgb(2, 8, 8, 50)).toEqual([128, 128, 128]);
 });
 
 test("all-off or empty mosaic does not drawImage", () => {

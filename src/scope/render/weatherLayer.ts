@@ -2,24 +2,32 @@
  * Composite enabled VIP masks into one cached canvas and draw it under tracks.
  * Decode / fetch stay in `wx/`. Display only — does not steer aircraft.
  *
- * Per-level tiles from `testdata/wx/levels/wx1.png` … `wx6.png`, sampled in
- * mosaic space from one origin. Fallback solids if a tile is missing. Not the
- * IEM NWS rainbow. `view.brite.wx` tints fills; `view.brite.wxc` tints a 1px
- * outline. Rebuild when mosaic, levels, brite, or tiles change. Camera changes
- * only update the destination rectangle for the cached geographic raster.
+ * Deterministic per-level texture is generated in mosaic space over the
+ * authoritative VIP fills. Not the IEM NWS rainbow. `view.brite.wx` tints
+ * fills; `view.brite.wxc` tints a 1px outline. Camera changes only update the
+ * destination rectangle for the cached geographic raster.
  */
 
 import { latLonToNm, nmToLatLon, type LatLon } from "@core";
 import { nmToScreen, type ScopeViewSize } from "../camera";
-import { applyBrite, snapBriteLevel } from "../palette";
+import { applyBrite } from "../palette";
 import type { ScopeView } from "../scopeView";
 import type { WxLevels, WxMosaic } from "../wx";
-import { getWxLevelTile, sampleWxLevelTile, wxLevelTilesGeneration } from "../wx/levelTiles";
 import { WX_VIP_FILL_HEX } from "./wxStarsFill";
 
 export { WX_VIP_FILL_HEX } from "./wxStarsFill";
 
 export const DEFAULT_WX_ALPHA = 255;
+
+const WX_BACKGROUND_HEX = [
+  "#132727",
+  "#132727",
+  "#132727",
+  "#32321a",
+  "#32321a",
+  "#32321a",
+] as const;
+const WX_STIPPLE_HEX = "#FFFFFF";
 
 export function wxVipFillHex(level: 1 | 2 | 3 | 4 | 5 | 6, briteWx: number): string {
   return applyBrite(WX_VIP_FILL_HEX[level - 1]!, briteWx);
@@ -92,7 +100,6 @@ let cachedBriteWxc = -1;
 let cachedCanvas: WxCompositeCanvas | null = null;
 let cachedWidth = 0;
 let cachedHeight = 0;
-let cachedTilesGen = -1;
 
 function acquireCanvas(width: number, height: number): WxCompositeCanvas {
   if (cachedCanvas && cachedWidth === width && cachedHeight === height) {
@@ -146,28 +153,42 @@ function highestVipAt(mosaic: WxMosaic, levels: WxLevels, index: number): number
   return vip;
 }
 
-/** Tile / fallback fill / 1px outline. Not a mosaic-bin flood. */
+/** Procedural fill / 1px outline. Not a mosaic-bin flood. */
 export function wxScreenStyle(outline: boolean): "fill" | "contour" {
   return outline ? "contour" : "fill";
 }
 
-function tintRgb(rgb: [number, number, number], brite: number): [number, number, number] {
-  const t = snapBriteLevel(brite) / 100;
-  return [Math.round(rgb[0] * t), Math.round(rgb[1] * t), Math.round(rgb[2] * t)];
+/** Deterministic mosaic-anchored WX background and stipple. */
+export function wxProceduralTextureRgb(
+  level: 1 | 2 | 3 | 4 | 5 | 6,
+  col: number,
+  row: number,
+  briteWx: number,
+): [number, number, number] {
+  const fill = parseHexRgb(applyBrite(WX_BACKGROUND_HEX[level - 1]!, briteWx));
+  if (level === 1 || level === 4) {
+    return fill;
+  }
+  const inStipple =
+    level === 2 || level === 5
+      ? col % 24 >= 8 && col % 24 < 16 && row % 24 >= 8 && row % 24 < 16
+      : (() => {
+          const cellX = Math.floor(col / 8);
+          const cellY = Math.floor(row / 8);
+          const localX = col % 8;
+          const localY = row % 8;
+          if ((cellX + cellY) % 2 === 0) {
+            return localX >= 3 && localX < 5 && localY >= 1 && localY < 7;
+          }
+          return localY >= 3 && localY < 5 && localX >= 1 && localX < 7;
+        })();
+  return inStipple ? parseHexRgb(applyBrite(WX_STIPPLE_HEX, briteWx)) : fill;
 }
 
 function rebuildComposite(mosaic: WxMosaic, levels: WxLevels, briteWx: number): WxCompositeCanvas {
   const width = Math.max(1, Math.round(mosaic.widthPx));
   const height = Math.max(1, Math.round(mosaic.heightPx));
   const pixels = new Uint8ClampedArray(width * height * 4);
-  const fills: Array<[number, number, number] | null> = [
-    levels[0] ? parseHexRgb(wxVipFillHex(1, briteWx)) : null,
-    levels[1] ? parseHexRgb(wxVipFillHex(2, briteWx)) : null,
-    levels[2] ? parseHexRgb(wxVipFillHex(3, briteWx)) : null,
-    levels[3] ? parseHexRgb(wxVipFillHex(4, briteWx)) : null,
-    levels[4] ? parseHexRgb(wxVipFillHex(5, briteWx)) : null,
-    levels[5] ? parseHexRgb(wxVipFillHex(6, briteWx)) : null,
-  ];
   const mw = mosaic.widthPx;
   const mh = mosaic.heightPx;
   for (let row = 0; row < height; row++) {
@@ -179,22 +200,12 @@ function rebuildComposite(mosaic: WxMosaic, levels: WxLevels, briteWx: number): 
       if (vip === 0) {
         continue;
       }
-      const fill = fills[vip - 1];
-      if (!fill) {
-        continue;
-      }
-      let rgb = fill;
-      const sampledTile = getWxLevelTile(vip as 1 | 2 | 3 | 4 | 5 | 6);
-      const sampled = sampledTile
-        ? sampleWxLevelTile(
-            vip as 1 | 2 | 3 | 4 | 5 | 6,
-            Math.floor((col * sampledTile.width) / width),
-            Math.floor((row * sampledTile.height) / height),
-          )
-        : null;
-      if (sampled) {
-        rgb = tintRgb(sampled, briteWx);
-      }
+      const rgb = wxProceduralTextureRgb(
+        vip as 1 | 2 | 3 | 4 | 5 | 6,
+        mosaicCol,
+        mosaicRow,
+        briteWx,
+      );
       const o = (row * width + col) * 4;
       pixels[o] = rgb[0];
       pixels[o + 1] = rgb[1];
@@ -220,7 +231,6 @@ function reuseOrRebuildComposite(
     levelsMatch(cachedLevels, levels) &&
     cachedBriteWx === briteWx &&
     cachedBriteWxc === briteWxc &&
-    cachedTilesGen === wxLevelTilesGeneration() &&
     cachedWidth === Math.round(mosaic.widthPx) &&
     cachedHeight === Math.round(mosaic.heightPx)
   ) {
@@ -232,7 +242,6 @@ function reuseOrRebuildComposite(
   cachedBriteWx = briteWx;
   cachedBriteWxc = briteWxc;
   cachedCanvas = canvas;
-  cachedTilesGen = wxLevelTilesGeneration();
   return canvas;
 }
 
