@@ -277,6 +277,10 @@ export interface ScopeView {
   vfrListDroppedCallsigns?: Set<string>;
   /** Flight plan list (FL) pagination and purge state. */
   flightPlanList?: FlightPlanListState;
+  /** Alias for flightPlanList matching STARS specification. */
+  flightPlanListState?: FlightPlanListState;
+  /** Active pointer hover coordinate on scope canvas. */
+  cursorHoverPos?: { x: number; y: number } | null;
   /** F1 drop mode armed: next left-click on a system list entry drops it. */
   f1DropArmed?: boolean;
   /** Staged candidate list anchor position before Enter commits it. */
@@ -479,6 +483,13 @@ export function createScopeView(
     towerListDroppedCallsigns: new Set(),
     vfrListDroppedCallsigns: new Set(),
     flightPlanList: idleFlightPlanListState(),
+    get flightPlanListState() {
+      return this.flightPlanList;
+    },
+    set flightPlanListState(val) {
+      this.flightPlanList = val;
+    },
+    cursorHoverPos: null,
     f1DropArmed: false,
     stagedListAnchor: null,
     activeListEntries: [],

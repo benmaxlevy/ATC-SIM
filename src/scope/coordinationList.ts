@@ -255,6 +255,7 @@ export function buildVideoMapsListLines(
   view: ScopeView,
   category: "ALL" | "GEO" | "SYS" | "CURRENT" = "ALL",
   maxLines: number = 20,
+  offset?: number,
 ): string[] {
   const entries = getVideoMapsEntries(view, category);
   const isCurrent = category === "CURRENT";
@@ -265,6 +266,7 @@ export function buildVideoMapsListLines(
     title,
     frameTitle,
     maxLines,
+    offset,
     entries: entries.length,
     formatLine: (idx) => {
       const e = entries[idx]!;

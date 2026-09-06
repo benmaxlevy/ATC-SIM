@@ -34,6 +34,7 @@ import { handleScopeKeyDown, handleScopeKeyUp } from "../scopeKeys";
 import { parsePreviewCommand } from "../previewParse";
 import {
   beginPreviewBufferEntry,
+  commitPreviewCommand,
   previewTrackingSlew,
   previewRelocateListId,
 } from "../previewArea";
@@ -330,14 +331,14 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
   });
 
   describe("2. Tower List Commands", () => {
-    it("*TL Enter toggles primary tower list", () => {
+    it("*P1 Enter toggles primary tower list", () => {
       const view = createScopeView();
       expect(view.systemLists.TL.visible).toBe(false);
 
-      const parsed = parsePreviewCommand("*TL");
+      const parsed = parsePreviewCommand("*P1");
       expect(parsed.kind).toBe("action");
       if (parsed.kind === "action" && parsed.action.type === "toggleList") {
-        expect(parsed.action.listId).toBe("TL");
+        expect(parsed.action.listId).toBe("TOWER_1");
       }
 
       toggleSystemList(view, "TL");
@@ -347,33 +348,51 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
       expect(view.systemLists.TL.visible).toBe(false);
     });
 
-    it("*TL [Tower ID] Enter toggles specific satellite tower list", () => {
-      const view = createScopeView();
-      const parsed = parsePreviewCommand("*TLBED");
-      expect(parsed.kind).toBe("action");
-      if (parsed.kind === "action" && parsed.action.type === "toggleList") {
-        expect(parsed.action.listId).toBe("TL_BED");
-      }
+    it("*P1, *P2, *P3 Enter toggle tower lists and support resize", () => {
+      const parsedP1 = parsePreviewCommand("*P1");
+      expect(parsedP1).toEqual({
+        kind: "action",
+        action: { type: "toggleList", listId: "TOWER_1" },
+      });
+      const parsedP2 = parsePreviewCommand("*P2");
+      expect(parsedP2).toEqual({
+        kind: "action",
+        action: { type: "toggleList", listId: "TOWER_2" },
+      });
+      const parsedP3 = parsePreviewCommand("*P3");
+      expect(parsedP3).toEqual({
+        kind: "action",
+        action: { type: "toggleList", listId: "TOWER_3" },
+      });
 
-      toggleSystemList(view, "TL_BED");
-      expect(view.systemLists.TL_BED).toBeDefined();
-      expect(view.systemLists.TL_BED.visible).toBe(true);
-
-      toggleSystemList(view, "TL_BED");
-      expect(view.systemLists.TL_BED.visible).toBe(false);
+      const parsedP1Resize = parsePreviewCommand("*P1 10");
+      expect(parsedP1Resize).toEqual({
+        kind: "action",
+        action: { type: "resizeList", listId: "TOWER_1", maxLines: 10 },
+      });
+      const parsedP2Resize = parsePreviewCommand("*P2 20");
+      expect(parsedP2Resize).toEqual({
+        kind: "action",
+        action: { type: "resizeList", listId: "TOWER_2", maxLines: 20 },
+      });
+      const parsedP3Resize = parsePreviewCommand("*P3 15");
+      expect(parsedP3Resize).toEqual({
+        kind: "action",
+        action: { type: "resizeList", listId: "TOWER_3", maxLines: 15 },
+      });
     });
 
-    it("*TL [Click] Enter repositions tower list anchor and *TL D Enter resets", () => {
+    it("*P1 [Click] Enter repositions tower list anchor and *P1 D Enter resets", () => {
       const view = createScopeView();
       const world = createWorld();
 
-      // 1. Type *TL into preview
-      beginPreviewBufferEntry(view.preview, "*TL", Date.now());
-      expect(view.preview.buffer).toBe("*TL");
+      // 1. Type *P1 into preview
+      beginPreviewBufferEntry(view.preview, "*P1", Date.now());
+      expect(view.preview.buffer).toBe("*P1");
 
       // 2. Click scope canvas at (600, 400) on 1000x1000 canvas -> stages candidate (0.6, 0.4)
       handlePpiLeftClick(view, world, 600, 400, 1000, 1000);
-      expect(view.stagedListAnchor).toEqual({ listId: "TL", x: 0.6, y: 0.4 });
+      expect(view.stagedListAnchor).toEqual({ listId: "TOWER_1", x: 0.6, y: 0.4 });
       // Live coordinates are not mutated yet
       expect(view.systemLists.TL.x).toBe(0.75);
 
@@ -384,11 +403,11 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
       expect(view.stagedListAnchor).toBeNull();
       expect(view.preview.phase).toBe("idle");
 
-      // 4. *TL D Enter resets to adaptation default
-      const resetParsed = parsePreviewCommand("*TL D");
+      // 4. *P1 D Enter resets to adaptation default
+      const resetParsed = parsePreviewCommand("*P1 D");
       expect(resetParsed.kind).toBe("action");
       if (resetParsed.kind === "action" && resetParsed.action.type === "resetListPosition") {
-        expect(resetParsed.action.listId).toBe("TL");
+        expect(resetParsed.action.listId).toBe("TOWER_1");
       }
       resetSystemListToDefault(view, "TL");
       expect(view.systemLists.TL.x).toBe(0.75);
@@ -470,12 +489,12 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
   });
 
   describe("4. VFR List Commands", () => {
-    it("*VL Enter and dedicated VFR key toggle VFR list visibility", () => {
+    it("*TV Enter and dedicated VFR key toggle VFR list visibility", () => {
       const view = createScopeView();
       expect(view.systemLists.VL.visible).toBe(false);
 
-      // *VL Enter
-      const parsed = parsePreviewCommand("*VL");
+      // *TV Enter
+      const parsed = parsePreviewCommand("*TV");
       expect(parsed.kind).toBe("action");
       if (parsed.kind === "action" && parsed.action.type === "toggleList") {
         expect(parsed.action.listId).toBe("VL");
@@ -490,13 +509,13 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
       expect(view.systemLists.VL.visible).toBe(false);
     });
 
-    it("*VL [Click] Enter repositions VFR list anchor and *VL D Enter resets", () => {
+    it("*TV [Click] Enter repositions VFR list anchor and *TV D Enter resets", () => {
       const view = createScopeView();
       const world = createWorld();
 
-      // 1. Type *VL into preview
-      beginPreviewBufferEntry(view.preview, "*VL", Date.now());
-      expect(view.preview.buffer).toBe("*VL");
+      // 1. Type *TV into preview
+      beginPreviewBufferEntry(view.preview, "*TV", Date.now());
+      expect(view.preview.buffer).toBe("*TV");
 
       // 2. Click scope canvas at (200, 500) on 1000x1000 canvas -> stages (0.2, 0.5)
       handlePpiLeftClick(view, world, 200, 500, 1000, 1000);
@@ -509,7 +528,12 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
       expect(view.systemLists.VL.y).toBe(0.5);
       expect(view.stagedListAnchor).toBeNull();
 
-      // 4. *VL D resets to default (0.02, 0.70)
+      // 4. *TV D resets to default (0.02, 0.70)
+      const resetParsed = parsePreviewCommand("*TV D");
+      expect(resetParsed).toEqual({
+        kind: "action",
+        action: { type: "resetListPosition", listId: "VL" },
+      });
       resetSystemListToDefault(view, "VL");
       expect(view.systemLists.VL.x).toBe(0.02);
       expect(view.systemLists.VL.y).toBe(0.7);
@@ -900,11 +924,11 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
   });
 
   describe("4. Commands & Interactive Controls", () => {
-    it("*FL Enter toggles FL visibility", () => {
+    it("*T Enter toggles FL visibility", () => {
       const view = createScopeView();
       expect(view.systemLists.FL?.visible).toBe(false);
 
-      const parsedToggle = parsePreviewCommand("*FL");
+      const parsedToggle = parsePreviewCommand("*T");
       expect(parsedToggle).toEqual({
         kind: "action",
         action: { type: "toggleList", listId: "FL" },
@@ -928,16 +952,16 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(view.systemLists.FL?.visible).toBe(false);
     });
 
-    it("*FL [Number] Enter sets visible capacity clamped to [1, 100]", () => {
+    it("*T [Number] Enter sets visible capacity clamped to [1, 100]", () => {
       const view = createScopeView();
 
-      const parsed10 = parsePreviewCommand("*FL10");
+      const parsed10 = parsePreviewCommand("*T10");
       expect(parsed10).toEqual({
         kind: "action",
         action: { type: "resizeList", listId: "FL", maxLines: 10 },
       });
 
-      const parsedSpaced = parsePreviewCommand("*FL 25");
+      const parsedSpaced = parsePreviewCommand("*T 25");
       expect(parsedSpaced).toEqual({
         kind: "action",
         action: { type: "resizeList", listId: "FL", maxLines: 25 },
@@ -1356,11 +1380,11 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(lines.some((l) => l.includes("2 FINAL"))).toBe(false);
     });
 
-    it("3. commands: *ML Enter toggles ML visibility and MAP [ID] toggles map layer", () => {
+    it("3. commands: *TX Enter toggles ML visibility and MAP [ID] toggles map layer", () => {
       const view = createScopeView();
       expect(view.systemLists.ML.visible).toBe(false);
 
-      const parsedToggle = parsePreviewCommand("*ML");
+      const parsedToggle = parsePreviewCommand("*TX");
       expect(parsedToggle).toEqual({
         kind: "action",
         action: { type: "toggleList", listId: "ML" },
@@ -1379,12 +1403,12 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       });
     });
 
-    it("4. *ML D Enter resets ML placement anchor to adaptation default", () => {
+    it("4. *TX D Enter resets ML placement anchor to adaptation default", () => {
       const view = createScopeView();
       relocateSystemList(view, "ML", 0.1, 0.2);
       expect(view.systemLists.ML.x).toBe(0.1);
 
-      const parsed = parsePreviewCommand("*ML D");
+      const parsed = parsePreviewCommand("*TX D");
       expect(parsed).toEqual({
         kind: "action",
         action: { type: "resetListPosition", listId: "ML" },
@@ -1455,13 +1479,13 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(isVideoMapOn(view, "2")).toBe(false);
     });
 
-    it("6. *ML [Click] Enter repositions map list anchor", () => {
+    it("6. *TX [Click] Enter repositions map list anchor", () => {
       const view = createScopeView();
       const world = createWorld();
 
-      // Start typing *ML into preview buffer
-      beginPreviewBufferEntry(view.preview, "*ML", Date.now());
-      expect(view.preview.buffer).toBe("*ML");
+      // Start typing *TX into preview buffer
+      beginPreviewBufferEntry(view.preview, "*TX", Date.now());
+      expect(view.preview.buffer).toBe("*TX");
 
       // Click scope canvas at (300, 400) on 1000x1000 canvas -> stages candidate (0.3, 0.4)
       handlePpiLeftClick(view, world, 300, 400, 1000, 1000);
@@ -1644,28 +1668,23 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(lines.some((l) => l.includes("LA JBU389"))).toBe(false);
     });
 
-    it("*AL Enter and *TM Enter toggle AL list visibility on and off", () => {
+    it("*TM Enter toggles AL list visibility on and off", () => {
       const view = createScopeView();
       expect(view.systemLists.AL.visible).toBe(true);
 
-      const parsed = parsePreviewCommand("*AL");
+      const parsed = parsePreviewCommand("*TM");
       expect(parsed).toEqual({
         kind: "action",
         action: { type: "toggleList", listId: "AL" },
       });
 
-      beginPreviewBufferEntry(view.preview, "*AL", 1000);
+      beginPreviewBufferEntry(view.preview, "*TM", 1000);
       handleScopeKeyDown(keyEvent("Enter"), view, "scope");
       expect(view.systemLists.AL.visible).toBe(false);
 
-      beginPreviewBufferEntry(view.preview, "*AL", 2000);
+      beginPreviewBufferEntry(view.preview, "*TM", 2000);
       handleScopeKeyDown(keyEvent("Enter"), view, "scope");
       expect(view.systemLists.AL.visible).toBe(true);
-
-      // *TM alias
-      beginPreviewBufferEntry(view.preview, "*TM", 3000);
-      handleScopeKeyDown(keyEvent("Enter"), view, "scope");
-      expect(view.systemLists.AL.visible).toBe(false);
     });
 
     it("5. *MCI Enter toggles mciEnabled boolean on view", () => {
@@ -1687,12 +1706,12 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(view.mciEnabled).toBe(true);
     });
 
-    it("6. *AL [Click] Enter repositions alert box and *AL D Enter resets", () => {
+    it("6. *TM [Click] Enter repositions alert box and *TM D Enter resets", () => {
       const view = createScopeView();
       relocateSystemList(view, "AL", 0.35, 0.45);
       expect(view.systemLists.AL.x).toBe(0.35);
 
-      const parsed = parsePreviewCommand("*AL D");
+      const parsed = parsePreviewCommand("*TM D");
       expect(parsed).toEqual({
         kind: "action",
         action: { type: "resetListPosition", listId: "AL" },
@@ -1703,12 +1722,12 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(view.systemLists.AL.y).toBe(DEFAULT_ADAPTATION_ANCHORS.AL.y);
     });
 
-    it("7. *AL [Click] Enter repositions alert box via interactive scope click and Enter commit", () => {
+    it("7. *TM [Click] Enter repositions alert box via interactive scope click and Enter commit", () => {
       const view = createScopeView();
       const world = createWorld();
 
-      beginPreviewBufferEntry(view.preview, "*AL", 1000);
-      expect(view.preview.buffer).toBe("*AL");
+      beginPreviewBufferEntry(view.preview, "*TM", 1000);
+      expect(view.preview.buffer).toBe("*TM");
 
       // Click on canvas at (300, 400) on 1000x800 display -> normalized (0.3, 0.5)
       handlePpiLeftClick(view, world, 300, 400, 1000, 800, "");
@@ -1853,7 +1872,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(view.preview.phase).toBe("idle");
     });
 
-    it("3. *SD and *SSA D resets SSA placement anchor to adaptation default", () => {
+    it("3. *SD and *S D resets SSA placement anchor to adaptation default", () => {
       const view = createScopeView();
       relocateSystemList(view, "SSA", 0.5, 0.5);
       expect(view.systemLists.SSA.x).toBe(0.5);
@@ -1864,7 +1883,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
         action: { type: "resetListPosition", listId: "SSA" },
       });
 
-      const parsed2 = parsePreviewCommand("*SSA D");
+      const parsed2 = parsePreviewCommand("*S D");
       expect(parsed2).toEqual({
         kind: "action",
         action: { type: "resetListPosition", listId: "SSA" },
@@ -1927,6 +1946,343 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(ssaRect?.handleBounds).toBeDefined();
       expect(ssaRect?.handleBounds?.x).toBe(250);
       expect(ssaRect?.handleBounds?.y).toBe(350);
+    });
+  });
+
+  describe("Strict Command Alias Removal (Only Authorized List Commands Allowed)", () => {
+    const REMOVED_ALIASES = [
+      "*FL",
+      "*FL10",
+      "*FL 25",
+      "*FL D",
+      "*FLD",
+      "*TAB",
+      "*TAB 10",
+      "*TAB D",
+      "*FPL",
+      "*VL",
+      "*VL10",
+      "*VL 25",
+      "*VL D",
+      "*VLD",
+      "*VFR",
+      "*TL",
+      "*TL D",
+      "*TLD",
+      "*TL1",
+      "*TLBED",
+      "*TLBED 10",
+      "*TLBOS",
+      "*ML",
+      "*ML D",
+      "*MLD",
+      "*AL",
+      "*AL D",
+      "*ALD",
+      "*CR",
+      "*CR D",
+      "*CRD",
+      "*CRDA",
+      "*CRDA D",
+      "*CS",
+      "*CS D",
+      "*CSD",
+      "*COAST",
+      "*COAST D",
+      "*SO",
+      "*SO D",
+      "*SOD",
+      "*SIGN_ON",
+      "*SIGN_ON D",
+      "*SSA",
+      "*SSA D",
+      "*SSAD",
+    ];
+
+    it("rejects all removed list command aliases in parsePreviewCommand and commitPreviewCommand", () => {
+      for (const cmd of REMOVED_ALIASES) {
+        const parsed = parsePreviewCommand(cmd);
+        expect(parsed.kind, `Command ${cmd} should be invalid in parsePreviewCommand`).toBe(
+          "invalid",
+        );
+
+        const committed = commitPreviewCommand(cmd);
+        expect(committed.kind, `Command ${cmd} should be invalid in commitPreviewCommand`).toBe(
+          "invalid",
+        );
+      }
+    });
+
+    it("does not allow slew relocation for removed list aliases", () => {
+      const view = createScopeView();
+      for (const cmd of [
+        "*FL",
+        "*TAB",
+        "*VL",
+        "*TL",
+        "*ML",
+        "*AL",
+        "*CR",
+        "*CS",
+        "*SO",
+        "*SSA",
+        "*TLBED",
+      ]) {
+        beginPreviewBufferEntry(view.preview, cmd, Date.now());
+        expect(
+          previewRelocateListId(view.preview),
+          `previewRelocateListId should be null for ${cmd}`,
+        ).toBeNull();
+      }
+    });
+
+    it("pressing Enter on removed aliases does not toggle or resize lists and rejects preview", () => {
+      const view = createScopeView();
+      const world = createWorld();
+
+      // Check initial states
+      expect(view.systemLists.FL.visible).toBe(false);
+      expect(view.systemLists.VL.visible).toBe(false);
+      expect(view.systemLists.TL.visible).toBe(false);
+      expect(view.systemLists.ML.visible).toBe(false);
+
+      for (const cmd of [
+        "*FL",
+        "*TAB",
+        "*VL",
+        "*TL",
+        "*TLBED",
+        "*ML",
+        "*AL",
+        "*CR",
+        "*CS",
+        "*SO",
+        "*SSA",
+      ]) {
+        beginPreviewBufferEntry(view.preview, cmd, 1000);
+        handleScopeKeyDown(keyEvent("Enter"), view, "scope", world, 1000);
+        // Should not toggle any list
+        expect(view.systemLists.FL.visible).toBe(false);
+        expect(view.systemLists.VL.visible).toBe(false);
+        expect(view.systemLists.TL.visible).toBe(false);
+        expect(view.systemLists.ML.visible).toBe(false);
+      }
+    });
+
+    it("allows only authorized commands for list toggle, resize, and relocation", () => {
+      // *T
+      expect(parsePreviewCommand("*T")).toEqual({
+        kind: "action",
+        action: { type: "toggleList", listId: "FL" },
+      });
+      expect(parsePreviewCommand("*T 15")).toEqual({
+        kind: "action",
+        action: { type: "resizeList", listId: "FL", maxLines: 15 },
+      });
+      expect(parsePreviewCommand("*T15")).toEqual({
+        kind: "action",
+        action: { type: "resizeList", listId: "FL", maxLines: 15 },
+      });
+      expect(parsePreviewCommand("*T D")).toEqual({
+        kind: "action",
+        action: { type: "resetListPosition", listId: "FL" },
+      });
+
+      // *TV
+      expect(parsePreviewCommand("*TV")).toEqual({
+        kind: "action",
+        action: { type: "toggleList", listId: "VL" },
+      });
+      expect(parsePreviewCommand("*TV 15")).toEqual({
+        kind: "action",
+        action: { type: "resizeList", listId: "VL", maxLines: 15 },
+      });
+      expect(parsePreviewCommand("*TV15")).toEqual({
+        kind: "action",
+        action: { type: "resizeList", listId: "VL", maxLines: 15 },
+      });
+      expect(parsePreviewCommand("*TV D")).toEqual({
+        kind: "action",
+        action: { type: "resetListPosition", listId: "VL" },
+      });
+
+      // *TM
+      expect(parsePreviewCommand("*TM")).toEqual({
+        kind: "action",
+        action: { type: "toggleList", listId: "AL" },
+      });
+      expect(parsePreviewCommand("*TM D")).toEqual({
+        kind: "action",
+        action: { type: "resetListPosition", listId: "AL" },
+      });
+
+      // *TC
+      expect(parsePreviewCommand("*TC")).toEqual({
+        kind: "action",
+        action: { type: "toggleList", listId: "COAST" },
+      });
+      expect(parsePreviewCommand("*TC 15")).toEqual({
+        kind: "action",
+        action: { type: "resizeList", listId: "COAST", maxLines: 15 },
+      });
+      expect(parsePreviewCommand("*TC D")).toEqual({
+        kind: "action",
+        action: { type: "resetListPosition", listId: "COAST" },
+      });
+
+      // *TS
+      expect(parsePreviewCommand("*TS")).toEqual({
+        kind: "action",
+        action: { type: "toggleList", listId: "SIGN_ON" },
+      });
+      expect(parsePreviewCommand("*TS D")).toEqual({
+        kind: "action",
+        action: { type: "resetListPosition", listId: "SIGN_ON" },
+      });
+
+      // *TX
+      expect(parsePreviewCommand("*TX")).toEqual({
+        kind: "action",
+        action: { type: "toggleList", listId: "ML" },
+      });
+      expect(parsePreviewCommand("*TX D")).toEqual({
+        kind: "action",
+        action: { type: "resetListPosition", listId: "ML" },
+      });
+
+      // *TN
+      expect(parsePreviewCommand("*TN")).toEqual({
+        kind: "action",
+        action: { type: "toggleList", listId: "CRDA" },
+      });
+      expect(parsePreviewCommand("*TN D")).toEqual({
+        kind: "action",
+        action: { type: "resetListPosition", listId: "CRDA" },
+      });
+
+      // *P1, *P2, *P3
+      expect(parsePreviewCommand("*P1")).toEqual({
+        kind: "action",
+        action: { type: "toggleList", listId: "TOWER_1" },
+      });
+      expect(parsePreviewCommand("*P2")).toEqual({
+        kind: "action",
+        action: { type: "toggleList", listId: "TOWER_2" },
+      });
+      expect(parsePreviewCommand("*P3")).toEqual({
+        kind: "action",
+        action: { type: "toggleList", listId: "TOWER_3" },
+      });
+      expect(parsePreviewCommand("*P1 10")).toEqual({
+        kind: "action",
+        action: { type: "resizeList", listId: "TOWER_1", maxLines: 10 },
+      });
+      expect(parsePreviewCommand("*P2 20")).toEqual({
+        kind: "action",
+        action: { type: "resizeList", listId: "TOWER_2", maxLines: 20 },
+      });
+      expect(parsePreviewCommand("*P3 15")).toEqual({
+        kind: "action",
+        action: { type: "resizeList", listId: "TOWER_3", maxLines: 15 },
+      });
+      expect(parsePreviewCommand("*P1 D")).toEqual({
+        kind: "action",
+        action: { type: "resetListPosition", listId: "TOWER_1" },
+      });
+
+      // *S
+      expect(parsePreviewCommand("*S")).toEqual({
+        kind: "action",
+        action: { type: "armRelocateList", listId: "SSA" },
+      });
+      expect(parsePreviewCommand("*S D")).toEqual({
+        kind: "action",
+        action: { type: "resetListPosition", listId: "SSA" },
+      });
+
+      // Relocation list IDs
+      const view = createScopeView();
+      for (const [cmd, expectedId] of [
+        ["*T", "FL"],
+        ["*TV", "VL"],
+        ["*TM", "AL"],
+        ["*TC", "COAST"],
+        ["*TS", "SIGN_ON"],
+        ["*TX", "ML"],
+        ["*TN", "CRDA"],
+        ["*P1", "TOWER_1"],
+        ["*P2", "TOWER_2"],
+        ["*P3", "TOWER_3"],
+        ["*S", "SSA"],
+      ]) {
+        beginPreviewBufferEntry(view.preview, cmd, Date.now());
+        expect(previewRelocateListId(view.preview), `Relocate listId for ${cmd}`).toBe(expectedId);
+      }
+    });
+
+    it("ensures non-list commands remain working properly", () => {
+      // *CA inhibit CA
+      expect(parsePreviewCommand("*CA")).toEqual({ kind: "action", action: { type: "inhibitCa" } });
+      // *LA inhibit MSAW / set altitude filter limits
+      expect(parsePreviewCommand("*LA")).toEqual({ kind: "incomplete" });
+      expect(parsePreviewCommand("*LA010050")).toEqual({
+        kind: "action",
+        action: { type: "setAltitudeFilterLimits", floorHundreds: 10, ceilingHundreds: 50 },
+      });
+      // *MCI Mode C Intruder
+      expect(parsePreviewCommand("*MCI")).toEqual({
+        kind: "action",
+        action: { type: "toggleMci" },
+      });
+      // *C recenter scope
+      expect(parsePreviewCommand("*C")).toEqual({
+        kind: "action",
+        action: { type: "armRecenterScope" },
+      });
+      // *RR range rings
+      expect(parsePreviewCommand("*RR 5")).toEqual({
+        kind: "action",
+        action: { type: "setRangeRingInterval", intervalNm: 5 },
+      });
+      // *PTL minutes
+      expect(parsePreviewCommand("*PTL 5")).toEqual({
+        kind: "action",
+        action: { type: "setPtlMinutes", minutes: 5 },
+      });
+      // *HIST history dots
+      expect(parsePreviewCommand("*HIST 3")).toEqual({
+        kind: "action",
+        action: { type: "setHistoryDots", count: 3 },
+      });
+      // *WX weather
+      expect(parsePreviewCommand("*WX ALL")).toEqual({
+        kind: "action",
+        action: { type: "setWxLevelsAll", enabled: true },
+      });
+      // *D video maps
+      expect(parsePreviewCommand("*D ALL")).toEqual({
+        kind: "action",
+        action: { type: "setAllVideoMaps", enabled: true },
+      });
+      // *F display filters / force FDB
+      expect(parsePreviewCommand("*F")).toEqual({
+        kind: "action",
+        action: { type: "displayFilters" },
+      });
+      // *BCN beacon filter
+      expect(parsePreviewCommand("*BCN 1200")).toEqual({
+        kind: "action",
+        action: { type: "addBeaconCodeFilter", code: "1200" },
+      });
+      // *0 - *8 leader clock
+      expect(parsePreviewCommand("*0")).toEqual({
+        kind: "action",
+        action: { type: "resetLeaderDir" },
+      });
+      expect(parsePreviewCommand("*8")).toEqual({
+        kind: "action",
+        action: { type: "setLeaderDir", starsDir: 8, dir: 8 },
+      });
     });
   });
 });

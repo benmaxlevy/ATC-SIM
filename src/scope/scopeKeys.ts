@@ -121,11 +121,14 @@ import { applyHandoffToSelection } from "./ownership";
 import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock, type LeaderLengthPx } from "./leader";
 import { resolveScopeFlid } from "./previewArea";
 import {
+  canonicalSystemListId,
   cancelListDrag,
   deleteFlightPlanEntry,
+  isSystemListMultiPage,
+  pointInsideRect,
   relocateSystemList,
   resetSystemListToDefault,
-  scrollFlightPlanList,
+  scrollSystemList,
   setSystemListMaxLines,
   toggleSystemList,
 } from "./systemLists";
@@ -996,22 +999,49 @@ export function handleScopeKeyDown(
     toggleHistoryEnabled(view);
     return true;
   }
-  if (event.key === "PageUp") {
-    const flPlacement = view.systemLists?.FL;
-    if (flPlacement?.visible && scrollFlightPlanList(view, -1, world)) {
-      ui?.onHandled?.();
-      return true;
+  if (event.key === "PageUp" || event.key === "PageDown") {
+    const direction: 1 | -1 = event.key === "PageDown" ? 1 : -1;
+    if (focus === "scope") {
+      // 1. Check if cursor is over a list displaying MORE: X/Y
+      if (view.cursorHoverPos && view.activeListRects) {
+        const hovered = view.activeListRects.find((r) =>
+          pointInsideRect(view.cursorHoverPos!.x, view.cursorHoverPos!.y, r.bounds),
+        );
+        if (hovered && isSystemListMultiPage(view, hovered.id, world)) {
+          if (scrollSystemList(view, hovered.id, direction, world)) {
+            ui?.onHandled?.();
+            return true;
+          }
+        }
+      }
+
+      // 2. If cursor is not hovering over a specific paged list, check if any visible list has multiple pages
+      const flPlacement = view.systemLists?.FL;
+      if (flPlacement?.visible && isSystemListMultiPage(view, "FL", world)) {
+        if (scrollSystemList(view, "FL", direction, world)) {
+          ui?.onHandled?.();
+          return true;
+        }
+      }
+
+      if (view.systemLists) {
+        const seenCanonical = new Set<string>(["FL"]);
+        for (const [id, placement] of Object.entries(view.systemLists)) {
+          const canonical = canonicalSystemListId(id);
+          if (seenCanonical.has(canonical)) continue;
+          seenCanonical.add(canonical);
+          if (placement.visible && isSystemListMultiPage(view, id, world)) {
+            if (scrollSystemList(view, id, direction, world)) {
+              ui?.onHandled?.();
+              return true;
+            }
+          }
+        }
+      }
     }
-    stepRange(view.camera, -1);
-    return true;
-  }
-  if (event.key === "PageDown") {
-    const flPlacement = view.systemLists?.FL;
-    if (flPlacement?.visible && scrollFlightPlanList(view, 1, world)) {
-      ui?.onHandled?.();
-      return true;
-    }
-    stepRange(view.camera, 1);
+
+    // 3. If NO visible list has multiple pages, fall back to stepRange
+    stepRange(view.camera, direction);
     return true;
   }
   if (event.key === "Home") {

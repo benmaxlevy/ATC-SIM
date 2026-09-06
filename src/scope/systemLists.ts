@@ -21,6 +21,7 @@ export interface SystemListPlacement {
   y: number;
   visible: boolean;
   maxLines: number;
+  offset?: number;
 }
 
 export interface ListRect {
@@ -722,20 +723,140 @@ export function deleteFlightPlanEntry(world: World, view: ScopeView, index: numb
   return true;
 }
 
-export function scrollFlightPlanList(view: ScopeView, direction: 1 | -1, world?: World): boolean {
-  const state = ensureFlightPlanListState(view);
-  const maxLines = view.systemLists?.FL?.maxLines ?? 10;
-  const entriesCount = world ? getFlightPlanEntries(world, view).length : 0;
-  if (entriesCount <= maxLines) {
+export function getSystemListTotalEntries(view: ScopeView, listId: string, world?: World): number {
+  const canonical = canonicalSystemListId(listId);
+  switch (canonical) {
+    case "FL": {
+      return world ? getFlightPlanEntries(world, view).length : 0;
+    }
+    case "ML": {
+      const category = view.mapListMode === "CURRENT" ? "CURRENT" : "ALL";
+      return getVideoMapsEntries(view, category).length;
+    }
+    case "VL": {
+      if (!world) return 0;
+      const droppedSet =
+        view.vfrListDroppedCallsigns instanceof Set
+          ? view.vfrListDroppedCallsigns
+          : new Set(view.vfrListDroppedCallsigns ?? []);
+      return world.aircraft.filter(
+        (ac) => isVfrAircraft(ac, view.tracks) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
+      ).length;
+    }
+    case "TL": {
+      if (!world) return 0;
+      const apCode0 = resolveTowerAirport(view, world, 0);
+      const apXy0 = resolveAirportCoordinates(apCode0, view, world);
+      return getTowerArrivalEntries(
+        world,
+        apCode0,
+        apXy0.xNm,
+        apXy0.yNm,
+        view.towerListDroppedCallsigns,
+      ).length;
+    }
+    case "TOWER_2": {
+      if (!world) return 0;
+      const apCode1 = resolveTowerAirport(view, world, 1);
+      const apXy1 = resolveAirportCoordinates(apCode1, view, world);
+      return getTowerArrivalEntries(
+        world,
+        apCode1,
+        apXy1.xNm,
+        apXy1.yNm,
+        view.towerListDroppedCallsigns,
+      ).length;
+    }
+    case "TOWER_3": {
+      if (!world) return 0;
+      const apCode2 = resolveTowerAirport(view, world, 2);
+      const apXy2 = resolveAirportCoordinates(apCode2, view, world);
+      return getTowerArrivalEntries(
+        world,
+        apCode2,
+        apXy2.xNm,
+        apXy2.yNm,
+        view.towerListDroppedCallsigns,
+      ).length;
+    }
+    case "COAST": {
+      return DEFAULT_COAST_ENTRIES.length;
+    }
+    case "CRDA": {
+      const airportId = world?.catalog?.airportId ?? "BOS";
+      const items =
+        view.crdaRpcConfigs && view.crdaRpcConfigs.length > 0
+          ? view.crdaRpcConfigs
+          : defaultCrdaConfigsForAirport(airportId);
+      return items.length;
+    }
+    case "AL": {
+      if (!world) return 0;
+      return getAlertEntries(world, view).length;
+    }
+    default: {
+      if (canonical.startsWith("TL_") || listId.startsWith("TL_")) {
+        if (!world) return 0;
+        const satId = (canonical.startsWith("TL_") ? canonical : listId).slice(3);
+        const satXy = resolveAirportCoordinates(satId, view, world);
+        return getTowerArrivalEntries(
+          world,
+          satId,
+          satXy.xNm,
+          satXy.yNm,
+          view.towerListDroppedCallsigns,
+        ).length;
+      }
+      return 0;
+    }
+  }
+}
+
+export function isSystemListMultiPage(view: ScopeView, listId: string, world?: World): boolean {
+  const placement = ensureSystemListPlacement(view, listId);
+  if (!placement) return false;
+  const totalEntries = getSystemListTotalEntries(view, listId, world);
+  return totalEntries > placement.maxLines;
+}
+
+export function scrollSystemList(
+  view: ScopeView,
+  listId: string,
+  direction: 1 | -1,
+  world?: World,
+): boolean {
+  const placement = ensureSystemListPlacement(view, listId);
+  if (!placement) return false;
+  const maxLines = placement.maxLines;
+  const totalEntries = getSystemListTotalEntries(view, listId, world);
+  if (totalEntries <= maxLines) {
     return false;
   }
 
+  const canonical = canonicalSystemListId(listId);
+  const currentOffset =
+    placement.offset ?? (canonical === "FL" ? (view.flightPlanList?.offset ?? 0) : 0);
+
+  let newOffset: number;
   if (direction === 1) {
-    state.offset = state.offset + maxLines >= entriesCount ? 0 : state.offset + maxLines;
+    newOffset = currentOffset + maxLines >= totalEntries ? 0 : currentOffset + maxLines;
   } else {
-    state.offset = Math.max(0, state.offset - maxLines);
+    newOffset = Math.max(0, currentOffset - maxLines);
+  }
+
+  placement.offset = newOffset;
+  if (canonical === "FL") {
+    const state = ensureFlightPlanListState(view);
+    state.offset = newOffset;
+    if (view.flightPlanListState) {
+      view.flightPlanListState.offset = newOffset;
+    }
   }
   return true;
+}
+
+export function scrollFlightPlanList(view: ScopeView, direction: 1 | -1, world?: World): boolean {
+  return scrollSystemList(view, "FL", direction, world);
 }
 
 export function handleFlightPlanListClick(
@@ -757,7 +878,9 @@ export function handleFlightPlanListClick(
 
   const visibleRow = hasMoreHeader ? clickedLine - 2 : clickedLine - 1;
   const state = ensureFlightPlanListState(view);
-  const targetIdx = state.offset + visibleRow;
+  const placement = view.systemLists?.FL;
+  const offset = placement?.offset ?? state.offset;
+  const targetIdx = offset + visibleRow;
 
   if (targetIdx >= 0 && targetIdx < entries.length) {
     const entry = entries[targetIdx]!;
@@ -781,12 +904,16 @@ export function handleVideoMapsListClick(view: ScopeView, clickedLine: number): 
   const hasMoreHeader = entries.length > maxLines;
 
   if (hasMoreHeader && clickedLine === 1) {
+    scrollSystemList(view, "ML", 1);
     return true;
   }
 
   const visibleRow = hasMoreHeader ? clickedLine - 2 : clickedLine - 1;
-  if (visibleRow >= 0 && visibleRow < entries.length) {
-    const targetMap = entries[visibleRow]!;
+  const placement = ensureSystemListPlacement(view, "ML");
+  const offset = placement?.offset ?? 0;
+  const targetIdx = offset + visibleRow;
+  if (targetIdx >= 0 && targetIdx < entries.length) {
+    const targetMap = entries[targetIdx]!;
     toggleVideoMap(view, targetMap.mapId);
     return true;
   }
@@ -798,14 +925,24 @@ export function buildTabFlightPlanList(
   world: World,
   maxLines: number = 10,
   view?: ScopeView,
+  offset?: number,
 ): string[] {
   if (view) {
     correlateFlightPlans(world, view);
   }
   const entries = getFlightPlanEntries(world, view);
   const state = ensureFlightPlanListState(view);
+  const effectiveOffset =
+    offset !== undefined ? offset : (view?.systemLists?.FL?.offset ?? state.offset);
+  state.offset = effectiveOffset;
+  if (view?.systemLists?.FL) {
+    view.systemLists.FL.offset = state.offset;
+  }
   if (state.offset >= entries.length && entries.length > 0) {
     state.offset = 0;
+    if (view?.systemLists?.FL) {
+      view.systemLists.FL.offset = 0;
+    }
   }
 
   const formatter: ListFormatter = {
@@ -918,14 +1055,13 @@ export function resolveAirportCoordinates(
   return { xNm: view.airportEastNm, yNm: view.airportNorthNm };
 }
 
-export function buildTowerArrivalList(
+export function getTowerArrivalEntries(
   world: World,
   airportCode: string = "BOS",
   airportXNm: number = 0,
   airportYNm: number = 0,
-  maxLines: number = 10,
   droppedCallsigns?: Set<string> | string[],
-): string[] {
+): TowerListEntryItem[] {
   const cleanAirport = airportCode.trim().toUpperCase();
   const droppedSet =
     droppedCallsigns instanceof Set ? droppedCallsigns : new Set(droppedCallsigns ?? []);
@@ -1067,10 +1203,32 @@ export function buildTowerArrivalList(
     return a.callsign.localeCompare(b.callsign);
   });
 
+  return items;
+}
+
+export function buildTowerArrivalList(
+  world: World,
+  airportCode: string = "BOS",
+  airportXNm: number = 0,
+  airportYNm: number = 0,
+  maxLines: number = 10,
+  droppedCallsigns?: Set<string> | string[],
+  offset?: number,
+): string[] {
+  const cleanAirport = airportCode.trim().toUpperCase();
+  const items = getTowerArrivalEntries(
+    world,
+    cleanAirport,
+    airportXNm,
+    airportYNm,
+    droppedCallsigns,
+  );
+
   const formatter: ListFormatter = {
     title: `${cleanAirport} TOWER`,
     frameTitle: `TOWER (${cleanAirport})`,
     maxLines,
+    offset,
     entries: items.length,
     formatLine: (idx) => {
       const item = items[idx]!;
@@ -1105,6 +1263,7 @@ export const DEFAULT_COAST_ENTRIES: CoastTrackEntry[] = [
 export function buildCoastSuspendList(
   suspendedAc?: (CoastTrackEntry | Aircraft)[],
   maxLines: number = 10,
+  offset?: number,
 ): string[] {
   const items = suspendedAc && suspendedAc.length > 0 ? suspendedAc : DEFAULT_COAST_ENTRIES;
 
@@ -1112,6 +1271,7 @@ export function buildCoastSuspendList(
     title: "COAST/SUSPEND",
     frameTitle: "COAST/SUSPEND (TC)",
     maxLines,
+    offset,
     entries: items.length,
     formatLine: (idx) => {
       const item = items[idx]!;
@@ -1162,6 +1322,7 @@ export function buildVfrList(
   maxLines: number = 10,
   droppedCallsigns?: Set<string> | string[],
   tracks?: Map<string, TrackDisplay>,
+  offset?: number,
 ): string[] {
   const droppedSet =
     droppedCallsigns instanceof Set ? droppedCallsigns : new Set(droppedCallsigns ?? []);
@@ -1173,6 +1334,7 @@ export function buildVfrList(
     title: "VFR LIST",
     frameTitle: "VFR LIST (VL)",
     maxLines,
+    offset,
     entries: vfrFlights.length,
     formatLine: (idx) => {
       const ac = vfrFlights[idx]!;
@@ -1265,7 +1427,7 @@ export function hitTestSystemListEntry(
  * DAL111*UAE124    CA
  * ========================================================================= */
 
-export function buildAlertList(world: World, maxLines: number = 50, view?: ScopeView): string[] {
+export function getAlertEntries(world: World, view?: ScopeView): string[] {
   const lines: string[] = [];
   if (world.alerts) {
     if (world.alerts.ca) {
@@ -1307,11 +1469,22 @@ export function buildAlertList(world: World, maxLines: number = 50, view?: Scope
       }
     }
   }
+  return lines;
+}
+
+export function buildAlertList(
+  world: World,
+  maxLines: number = 50,
+  view?: ScopeView,
+  offset?: number,
+): string[] {
+  const lines = getAlertEntries(world, view);
   // Always render header; unfurl rows only when alerts are active.
   const formatter: ListFormatter = {
     title: "LA/CA/MCI",
     frameTitle: "LA/CA/MCI (TM)",
     maxLines,
+    offset,
     entries: lines.length,
     formatLine: (idx) => lines[idx]!,
   };
@@ -1370,12 +1543,14 @@ export function buildCrdaStatusList(
   configs?: CrdaRpcConfig[],
   maxLines: number = 10,
   airportCode: string = "BOS",
+  offset?: number,
 ): string[] {
   const items = configs && configs.length > 0 ? configs : defaultCrdaConfigsForAirport(airportCode);
   const formatter: ListFormatter = {
     title: "CRDA STATUS",
     frameTitle: "CRDA STATUS (CR)",
     maxLines,
+    offset,
     entries: items.length,
     formatLine: (idx) => {
       const cfg = items[idx]!;

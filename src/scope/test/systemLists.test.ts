@@ -24,6 +24,7 @@ import {
 } from "../systemLists";
 import { createScopeView } from "../scopeView";
 import { applyDcbPref, serializeDcbPref } from "../dcb/dcbPref";
+import { parsePreviewCommand } from "../previewParse";
 
 describe("listFormatter", () => {
   it("compresses and pads fix names to 3 characters", () => {
@@ -303,5 +304,71 @@ describe("systemLists window manager", () => {
     );
     expect(view.systemLists.SSA.x).toBe(0.3);
     expect(view.systemLists.SSA.y).toBe(0.365);
+  });
+
+  it("strictly rejects old command aliases for system lists while supporting canonical commands", () => {
+    // Canonical commands must work
+    expect(parsePreviewCommand("*T")).toEqual({
+      kind: "action",
+      action: { type: "toggleList", listId: "FL" },
+    });
+    expect(parsePreviewCommand("*TV")).toEqual({
+      kind: "action",
+      action: { type: "toggleList", listId: "VL" },
+    });
+    expect(parsePreviewCommand("*TM")).toEqual({
+      kind: "action",
+      action: { type: "toggleList", listId: "AL" },
+    });
+    expect(parsePreviewCommand("*TC")).toEqual({
+      kind: "action",
+      action: { type: "toggleList", listId: "COAST" },
+    });
+    expect(parsePreviewCommand("*TS")).toEqual({
+      kind: "action",
+      action: { type: "toggleList", listId: "SIGN_ON" },
+    });
+    expect(parsePreviewCommand("*TX")).toEqual({
+      kind: "action",
+      action: { type: "toggleList", listId: "ML" },
+    });
+    expect(parsePreviewCommand("*TN")).toEqual({
+      kind: "action",
+      action: { type: "toggleList", listId: "CRDA" },
+    });
+    expect(parsePreviewCommand("*P1")).toEqual({
+      kind: "action",
+      action: { type: "toggleList", listId: "TOWER_1" },
+    });
+    expect(parsePreviewCommand("*P2")).toEqual({
+      kind: "action",
+      action: { type: "toggleList", listId: "TOWER_2" },
+    });
+    expect(parsePreviewCommand("*P3")).toEqual({
+      kind: "action",
+      action: { type: "toggleList", listId: "TOWER_3" },
+    });
+    expect(parsePreviewCommand("*S")).toEqual({
+      kind: "action",
+      action: { type: "armRelocateList", listId: "SSA" },
+    });
+
+    // Removed aliases must be rejected
+    const removedAliases = [
+      "*FL",
+      "*TAB",
+      "*VL",
+      "*TL",
+      "*ML",
+      "*AL",
+      "*CR",
+      "*CS",
+      "*SO",
+      "*SSA",
+      "*TLBED",
+    ];
+    for (const alias of removedAliases) {
+      expect(parsePreviewCommand(alias).kind).toBe("invalid");
+    }
   });
 });

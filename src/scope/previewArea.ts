@@ -216,8 +216,9 @@ export function formatPreviewReadout(state: PreviewAreaState): string | null {
   return null;
 }
 /**
- * Live `*T` / `*S` (no size) or armed `armRelocateList` → list id to slew.
- * Resize buffers (`*T10`) do not relocate.
+ * Live list commands (`*T`, `*TV`, `*TM`, `*TC`, `*TS`, `*TX`, `*TN`, `*P1`–`*P3`, `*S` without size)
+ * or armed `armRelocateList` → list id to slew.
+ * Resize buffers (`*T10`, `*P1 10`, etc.) do not relocate.
  */
 export function previewRelocateListId(state: PreviewAreaState): string | null {
   if (state.armed?.type === "armRelocateList") {

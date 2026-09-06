@@ -281,6 +281,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
               const rect = event.currentTarget.getBoundingClientRect();
               const cssX = event.clientX - rect.left;
               const cssY = event.clientY - rect.top;
+              scopeView.cursorHoverPos = { x: cssX, y: cssY };
               scopeView.listDrag = handleListMouseMove(scopeView.listDrag, { x: cssX, y: cssY });
               refreshScopeUi();
               return;

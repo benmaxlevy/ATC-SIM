@@ -1317,10 +1317,16 @@ export function drawSystemLists(
         lines = buildSignOnList();
         break;
       case "FL":
-        lines = buildTabFlightPlanList(world, placement.maxLines, view);
+        lines = buildTabFlightPlanList(world, placement.maxLines, view, placement.offset ?? 0);
         break;
       case "VL":
-        lines = buildVfrList(world, placement.maxLines, view.vfrListDroppedCallsigns, view.tracks);
+        lines = buildVfrList(
+          world,
+          placement.maxLines,
+          view.vfrListDroppedCallsigns,
+          view.tracks,
+          placement.offset ?? 0,
+        );
         break;
       case "TL": {
         const apCode0 = resolveTowerAirport(view, world, 0, airportId);
@@ -1332,6 +1338,7 @@ export function drawSystemLists(
           apXy0.yNm,
           placement.maxLines,
           view.towerListDroppedCallsigns,
+          placement.offset ?? 0,
         );
         break;
       }
@@ -1345,6 +1352,7 @@ export function drawSystemLists(
           apXy1.yNm,
           placement.maxLines,
           view.towerListDroppedCallsigns,
+          placement.offset ?? 0,
         );
         break;
       }
@@ -1358,21 +1366,27 @@ export function drawSystemLists(
           apXy2.yNm,
           placement.maxLines,
           view.towerListDroppedCallsigns,
+          placement.offset ?? 0,
         );
         break;
       }
       case "AL":
-        lines = buildAlertList(world, placement.maxLines, view);
+        lines = buildAlertList(world, placement.maxLines, view, placement.offset ?? 0);
         break;
       case "COAST":
-        lines = buildCoastSuspendList([], placement.maxLines);
+        lines = buildCoastSuspendList([], placement.maxLines, placement.offset ?? 0);
         break;
       case "CRDA":
-        lines = buildCrdaStatusList(view.crdaRpcConfigs, placement.maxLines, airportId);
+        lines = buildCrdaStatusList(
+          view.crdaRpcConfigs,
+          placement.maxLines,
+          airportId,
+          placement.offset ?? 0,
+        );
         break;
       case "ML": {
         const cat = view.mapListMode === "CURRENT" ? "CURRENT" : "ALL";
-        lines = buildVideoMapsListLines(view, cat, placement.maxLines);
+        lines = buildVideoMapsListLines(view, cat, placement.maxLines, placement.offset ?? 0);
         break;
       }
       default:
@@ -1386,6 +1400,7 @@ export function drawSystemLists(
             satXy.yNm,
             placement.maxLines,
             view.towerListDroppedCallsigns,
+            placement.offset ?? 0,
           );
         }
         break;
@@ -1424,14 +1439,15 @@ export function drawSystemLists(
       }
       ctx.fillText(line, x, textY);
       if (i > 0 && !line.startsWith("MORE:")) {
+        const hasMore = lines[1]?.startsWith("MORE:");
+        const visibleRow = hasMore ? i - 2 : i - 1;
+        const entryIdx = (placement.offset ?? 0) + visibleRow;
         if (isMl) {
-          const hasMore = lines[1]?.startsWith("MORE:");
-          const entryIdx = hasMore ? i - 2 : i - 1;
           const targetEntry = mlEntries[entryIdx];
           if (targetEntry) {
             activeListEntries.push({
               listId: id,
-              rowIndex: i,
+              rowIndex: entryIdx,
               callsign: targetEntry.mapId,
               mapId: targetEntry.mapId,
               mapIndex: targetEntry.id,
@@ -1444,7 +1460,7 @@ export function drawSystemLists(
           if (callsign.length > 0) {
             activeListEntries.push({
               listId: id,
-              rowIndex: i,
+              rowIndex: entryIdx,
               callsign,
               bounds: { x, y: textY, width, height: lineH },
             });
@@ -1456,7 +1472,7 @@ export function drawSystemLists(
           if (callsign.length > 0) {
             activeListEntries.push({
               listId: id,
-              rowIndex: i,
+              rowIndex: entryIdx,
               callsign: callsign.replace(/^\*/, ""),
               bounds: { x, y: textY, width, height: lineH },
             });

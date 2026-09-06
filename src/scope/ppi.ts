@@ -50,6 +50,7 @@ import {
   pointInsideRect,
   promoteVfrListEntry,
   relocateSystemList,
+  scrollSystemList,
 } from "./systemLists";
 import { toggleVideoMap } from "./dcb/dcbFunctions";
 import { datablockLineHeightPx } from "./fonts";
@@ -327,6 +328,24 @@ export function handlePpiLeftClick(
       view.f1DropArmed = false;
       view.beaconatorActive = false;
       return;
+    }
+  }
+
+  // Check if click was inside ANY system list at line 1 (header MORE: X/Y line) for page scrolling
+  if (view.activeListRects && !previewRelocateListId(view.preview)) {
+    const clickedRect = view.activeListRects.find((r) => pointInsideRect(cssX, cssY, r.bounds));
+    if (clickedRect) {
+      const lineH = datablockLineHeightPx(view.charSizes.lists);
+      const clickedLine = Math.floor((cssY - clickedRect.bounds.y) / lineH);
+      if (clickedLine === 1) {
+        if (scrollSystemList(view, clickedRect.id, 1, world)) {
+          if (view.f1DropArmed || view.beaconatorActive) {
+            view.f1DropArmed = false;
+            view.beaconatorActive = false;
+          }
+          return;
+        }
+      }
     }
   }
 
@@ -621,11 +640,12 @@ export function handlePpiCanvasPointerHover(
   clientY: number,
   view: ScopeView,
 ): void {
+  const rect = canvas.getBoundingClientRect();
+  const { x, y } = cssPointFromClient(clientX, clientY, rect);
+  view.cursorHoverPos = { x, y };
   if (view.dwellMode === "OFF") {
     return;
   }
-  const rect = canvas.getBoundingClientRect();
-  const { x, y } = cssPointFromClient(clientX, clientY, rect);
   const hit = pickAircraftHitAt(
     world,
     x,

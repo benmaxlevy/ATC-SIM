@@ -590,3 +590,79 @@ test("T02-67 — *F and **F force Full Data Block via slew or ACID", () => {
   expect(view.tracks.get(dal.id)!.forcedFdb).toBe(false);
   expect(view.tracks.get(ual.id)!.forcedFdb).toBe(false);
 });
+
+test("STARS system list commands: only authorized commands work; aliases rejected", () => {
+  const world = createWorld();
+  const view = createScopeView();
+
+  // Test toggling AL via *TM
+  expect(view.systemLists.AL.visible).toBe(true);
+  typeKeys(view, world, ["*", "T", "M", "Enter"], "scope", 100);
+  expect(view.systemLists.AL.visible).toBe(false);
+  typeKeys(view, world, ["*", "T", "M", "Enter"], "scope", 200);
+  expect(view.systemLists.AL.visible).toBe(true);
+
+  // Test toggling COAST via *TC and resizing via *TC 15
+  expect(view.systemLists.COAST.visible).toBe(false);
+  typeKeys(view, world, ["*", "T", "C", "Enter"], "scope", 300);
+  expect(view.systemLists.COAST.visible).toBe(true);
+  typeKeys(view, world, ["*", "T", "C", " ", "1", "5", "Enter"], "scope", 400);
+  expect(view.systemLists.COAST.maxLines).toBe(15);
+
+  // Test toggling SIGN_ON via *TS
+  expect(view.systemLists.SIGN_ON.visible).toBe(false);
+  typeKeys(view, world, ["*", "T", "S", "Enter"], "scope", 500);
+  expect(view.systemLists.SIGN_ON.visible).toBe(true);
+
+  // Test toggling VIDEO MAPS via *TX
+  expect(view.systemLists.ML.visible).toBe(false);
+  typeKeys(view, world, ["*", "T", "X", "Enter"], "scope", 600);
+  expect(view.systemLists.ML.visible).toBe(true);
+
+  // Test toggling CRDA via *TN
+  expect(view.systemLists.CRDA.visible).toBe(false);
+  typeKeys(view, world, ["*", "T", "N", "Enter"], "scope", 700);
+  expect(view.systemLists.CRDA.visible).toBe(true);
+
+  // Test that old aliases are rejected and do not toggle lists
+  // Record current visibility states
+  const beforeStates = {
+    FL: view.systemLists.FL.visible,
+    VL: view.systemLists.VL.visible,
+    TL: view.systemLists.TL.visible,
+    ML: view.systemLists.ML.visible,
+    AL: view.systemLists.AL.visible,
+    COAST: view.systemLists.COAST.visible,
+    SIGN_ON: view.systemLists.SIGN_ON.visible,
+    CRDA: view.systemLists.CRDA.visible,
+  };
+
+  const rejectedAliases = [
+    ["*", "F", "L", "Enter"],
+    ["*", "T", "A", "B", "Enter"],
+    ["*", "V", "L", "Enter"],
+    ["*", "T", "L", "Enter"],
+    ["*", "M", "L", "Enter"],
+    ["*", "A", "L", "Enter"],
+    ["*", "C", "R", "Enter"],
+    ["*", "C", "S", "Enter"],
+    ["*", "S", "O", "Enter"],
+    ["*", "S", "S", "A", "Enter"],
+  ];
+
+  let time = 800;
+  for (const seq of rejectedAliases) {
+    typeKeys(view, world, seq, "scope", time);
+    time += 100;
+  }
+
+  // Verify none of the lists changed state
+  expect(view.systemLists.FL.visible).toBe(beforeStates.FL);
+  expect(view.systemLists.VL.visible).toBe(beforeStates.VL);
+  expect(view.systemLists.TL.visible).toBe(beforeStates.TL);
+  expect(view.systemLists.ML.visible).toBe(beforeStates.ML);
+  expect(view.systemLists.AL.visible).toBe(beforeStates.AL);
+  expect(view.systemLists.COAST.visible).toBe(beforeStates.COAST);
+  expect(view.systemLists.SIGN_ON.visible).toBe(beforeStates.SIGN_ON);
+  expect(view.systemLists.CRDA.visible).toBe(beforeStates.CRDA);
+});

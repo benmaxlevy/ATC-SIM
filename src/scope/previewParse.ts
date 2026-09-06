@@ -414,24 +414,18 @@ function parseBeaconSelect(buffer: string): PreviewCommandResult | null {
   return { kind: "incomplete" };
 }
 
-/** Longest-first so `TAB` / `TV` win over `T`. */
-const LIST_TOGGLE_TOKENS: ReadonlyArray<{ token: string; listId: string }> = [
-  { token: "TAB", listId: "FL" },
-  { token: "FL", listId: "FL" },
-  { token: "TV", listId: "VL" },
-  { token: "VL", listId: "VL" },
-  { token: "TL", listId: "TL" },
-  { token: "TC", listId: "COAST" },
-  { token: "CS", listId: "COAST" },
-  { token: "TS", listId: "SIGN_ON" },
-  { token: "SO", listId: "SIGN_ON" },
-  { token: "TM", listId: "AL" },
-  { token: "AL", listId: "AL" },
-  { token: "TX", listId: "ML" },
-  { token: "ML", listId: "ML" },
-  { token: "TN", listId: "CRDA" },
-  { token: "CR", listId: "CRDA" },
-  { token: "T", listId: "FL" },
+const LIST_TOGGLE_TOKENS: ReadonlyArray<{
+  token: string;
+  listId: string;
+  allowResize: boolean;
+}> = [
+  { token: "TV", listId: "VL", allowResize: true },
+  { token: "TC", listId: "COAST", allowResize: true },
+  { token: "TS", listId: "SIGN_ON", allowResize: false },
+  { token: "TM", listId: "AL", allowResize: false },
+  { token: "TX", listId: "ML", allowResize: false },
+  { token: "TN", listId: "CRDA", allowResize: false },
+  { token: "T", listId: "FL", allowResize: true },
 ];
 
 const TOWER_LIST_IDS: Readonly<Record<"1" | "2" | "3", string>> = {
@@ -439,6 +433,13 @@ const TOWER_LIST_IDS: Readonly<Record<"1" | "2" | "3", string>> = {
   "2": "TOWER_2",
   "3": "TOWER_3",
 };
+
+/**
+ * Removed list aliases that must be rejected / invalid.
+ * STARS strictly authorizes only: *S, *T, *TV, *TM, *TC, *TS, *TX, *TN, *P1-*P3.
+ */
+const REMOVED_LIST_ALIASES =
+  /^\*\s*(FL|TAB|FPL|VL|VFR|TL[A-Z0-9]*|ML|AL|CR|CRDA|CS|COAST|SO|SIGN_ON|SSA)(?:\s*.*)?$/i;
 
 function compactPreviewStars(buffer: string): string {
   return buffer.replace(/ /g, "");
@@ -453,11 +454,19 @@ function listResizeAction(listId: string, digits: string): PreviewCommandResult 
 }
 
 /**
- * Table 31/32 system lists. Spaces optional (`*T` = `* T`). Tower lists match
- * `* P1`/`*P1`/`*p1` (space optional, case-insensitive); both spaced and compact
- * forms toggle Tower Lists 1/2/3 on Enter. Compact `*P3` + slew-click (not Enter)
- * still goes to the starsChord/ppi path as a TPA cone. `*PTL` stays incomplete
- * (T02-64). `*S` arms SSA relocate and does not toggle SSA.
+ * Table 31/32 system lists. Spaces optional (`*T` = `* T`).
+ * Authorized commands only:
+ * - *S: relocate SSA (*S + click), reset (*S D / *SD)
+ * - *T: toggle TAB list (*T Enter), relocate (*T + click), resize (*T 15 Enter), reset (*T D)
+ * - *TV: toggle VFR list (*TV Enter), relocate (*TV + click), resize (*TV 15 Enter), reset (*TV D)
+ * - *TM: toggle LA/CA/MCI list (*TM Enter), relocate (*TM + click), reset (*TM D)
+ * - *TC: toggle COAST list (*TC Enter), relocate (*TC + click), resize (*TC 15 Enter), reset (*TC D)
+ * - *TS: toggle SIGN ON list (*TS Enter), relocate (*TS + click), reset (*TS D)
+ * - *TX: toggle VIDEO MAPS list (*TX Enter), relocate (*TX + click), reset (*TX D)
+ * - *TN: toggle CRDA list (*TN Enter), relocate (*TN + click), reset (*TN D)
+ * - *P1-*P3: toggle Tower list (*P1 Enter), relocate (*P1 + click), resize (*P1 10 Enter), reset (*P1 D)
+ *
+ * All aliases (*FL, *TAB, *VL, *TL, *ML, *AL, *CR, *CS, *SO, *SSA, *TL<ID>) are rejected.
  */
 function parseListCommand(buffer: string): PreviewCommandResult | null {
   if (!buffer.startsWith("*")) {
@@ -468,58 +477,48 @@ function parseListCommand(buffer: string): PreviewCommandResult | null {
     return null;
   }
 
-  // Check for *[ID] D or *[ID]D reset default anchor command (e.g. *FLD, *TL D, *MLD, *S D, *TLBED D)
-  const resetMatch =
-    /^\*\s*([A-Z0-9_]+)\s+D$/i.exec(buffer) ??
-    /^\*\s*(FL|TL|VL|ML|AL|SSA|S|TAB|TC|CS|CR|CRDA|TX|TM|TV)D$/i.exec(buffer);
+  // Strictly reject removed command aliases
+  if (REMOVED_LIST_ALIASES.test(buffer)) {
+    return invalid("unknown preview command");
+  }
+
+  // Reset default anchor: *<ID> D or *<ID>D (only authorized tokens: T, TV, TM, TC, TS, TX, TN, P1, P2, P3, S)
+  const resetMatch = /^\*\s*(TV|TC|TS|TM|TX|TN|P1|P2|P3|T|S)\s*D$/i.exec(buffer);
   if (resetMatch) {
     const token = resetMatch[1]!.toUpperCase();
-    if (token === "S" || token === "SSA") {
+    if (token === "S") {
       return { kind: "action", action: { type: "resetListPosition", listId: "SSA" } };
+    }
+    if (token === "P1") {
+      return { kind: "action", action: { type: "resetListPosition", listId: "TOWER_1" } };
+    }
+    if (token === "P2") {
+      return { kind: "action", action: { type: "resetListPosition", listId: "TOWER_2" } };
+    }
+    if (token === "P3") {
+      return { kind: "action", action: { type: "resetListPosition", listId: "TOWER_3" } };
     }
     const matched = LIST_TOGGLE_TOKENS.find((row) => row.token === token);
     if (matched) {
       return { kind: "action", action: { type: "resetListPosition", listId: matched.listId } };
     }
-    if (token.startsWith("TL")) {
-      const sat = token.slice(2);
-      const listId = sat.length > 0 ? `TL_${sat}` : "TL";
-      return { kind: "action", action: { type: "resetListPosition", listId } };
-    }
   }
 
-  // Allow optional space after `*` so both `* P3` and `*P3` toggle Tower List 3 on Enter.
-  // Compact `*P3` + slew-click on an aircraft target = TPA 3 NM cone (starsChord / ppi path).
-  // Compact `*P3` + Enter (no aircraft slewed) = toggle Tower List 3 (this path).
-  const tower = /^\*\s*[Pp]([123])(?:\s+(\d{1,3}))?$/.exec(buffer);
-  if (tower) {
-    const listId = TOWER_LIST_IDS[tower[1] as "1" | "2" | "3"];
-    if (tower[2] !== undefined) {
-      return listResizeAction(listId, tower[2]);
+  // Tower lists *P1, *P2, *P3 (with optional space and optional size 1-100)
+  if (/^\*\s*[Pp][123]/i.test(buffer)) {
+    const tower = /^\*\s*[Pp]([123])(?:\s*(\d{1,3}))?$/i.exec(buffer);
+    if (tower) {
+      const listId = TOWER_LIST_IDS[tower[1] as "1" | "2" | "3"];
+      if (tower[2] !== undefined) {
+        return listResizeAction(listId, tower[2]);
+      }
+      return { kind: "action", action: { type: "toggleList", listId } };
     }
-    return { kind: "action", action: { type: "toggleList", listId } };
-  }
-
-  // Satellite tower e.g. *TLBOS, *TLBED, *TL1, *TLBED 10
-  const satTowerMatch = /^\*\s*TL\s*([A-Z0-9]+)(?:\s+(\d{1,3}))?$/i.exec(buffer);
-  if (satTowerMatch) {
-    const satId = satTowerMatch[1]!.toUpperCase();
-    const sizeDigits = satTowerMatch[2];
-    if (satId === "D") {
-      return { kind: "action", action: { type: "resetListPosition", listId: "TL" } };
-    }
-    if (/^\d+$/.test(satId)) {
-      return listResizeAction("TL", satId);
-    }
-    const listId = `TL_${satId}`;
-    if (sizeDigits !== undefined) {
-      return listResizeAction(listId, sizeDigits);
-    }
-    return { kind: "action", action: { type: "toggleList", listId } };
+    return invalid("malformed tower list command");
   }
 
   const rest = compact.slice(1);
-  if (rest === "S" || rest === "SSA") {
+  if (rest === "S") {
     return { kind: "action", action: { type: "armRelocateList", listId: "SSA" } };
   }
 
@@ -530,6 +529,9 @@ function parseListCommand(buffer: string): PreviewCommandResult | null {
     if (rest.startsWith(row.token)) {
       const suffix = rest.slice(row.token.length);
       if (/^\d+$/.test(suffix)) {
+        if (!row.allowResize) {
+          return invalid("list cannot be resized");
+        }
         return listResizeAction(row.listId, suffix);
       }
       return invalid("malformed list command");
