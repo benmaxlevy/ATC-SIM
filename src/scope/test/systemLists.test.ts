@@ -54,7 +54,7 @@ describe("listFormatter", () => {
       formatLine: (idx) => `LINE ${idx + 1}`,
     };
     const lines = buildSystemListLines(formatter);
-    expect(lines).toEqual(["FLIGHT PLAN", "MORE: 2/5", "LINE 1", "LINE 2"]);
+    expect(lines).toEqual(["FLIGHT PLAN", "MORE: 1/3", "LINE 1", "LINE 2"]);
   });
 
   it("omits MORE header when entries fit within maxLines", () => {

@@ -1232,7 +1232,7 @@ export function drawSystemLists(
     }
     seenCanonical.add(canonical);
 
-    if (!placement.visible && canonical !== "ALERT" && canonical !== "AL") {
+    if (!placement.visible) {
       continue;
     }
 

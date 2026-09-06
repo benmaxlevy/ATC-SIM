@@ -381,7 +381,7 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
       expect(view.systemLists.VL.y).toBe(0.7);
     });
 
-    it("[Index#] [Left-Click Radar Target] promotes / associates VFR entry to radar target", () => {
+    it("+[Index#] [Left-Click Radar Target] promotes / associates VFR entry to radar target", () => {
       const view = createScopeView();
       const world = createWorld();
 
@@ -406,9 +406,9 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
       });
       world.aircraft.push(vfrAc, target);
 
-      // Type "1" into preview buffer
-      beginPreviewBufferEntry(view.preview, "1", Date.now());
-      expect(view.preview.buffer).toBe("1");
+      // Type "+1" into preview buffer
+      beginPreviewBufferEntry(view.preview, "+1", Date.now());
+      expect(view.preview.buffer).toBe("+1");
 
       // Scope view camera centered at (0, 0)
       view.camera.centerNm = { eastNm: 0, northNm: 0 };
@@ -563,7 +563,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       const lines = buildTabFlightPlanList(world, 6, view);
 
       expect(lines[0]).toBe("FLIGHT PLAN");
-      expect(lines[1]).toBe("MORE: 6/12");
+      expect(lines[1]).toBe("MORE: 1/2");
       expect(lines[2]).toBe(" 1 AAL123  7022");
       expect(lines[3]).toBe(" 2 AAL456  6412");
       expect(lines[4]).toBe(" 4 DAL623  2374");
@@ -743,7 +743,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
 
       // Page 1: AAL101, AAL102
       let lines = buildTabFlightPlanList(world, 2, view);
-      expect(lines[1]).toBe("MORE: 2/4");
+      expect(lines[1]).toBe("MORE: 1/2");
       expect(lines[2]).toContain("AAL101");
       expect(lines[3]).toContain("AAL102");
 
@@ -751,7 +751,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       const scrolledDown = scrollFlightPlanList(view, 1, world);
       expect(scrolledDown).toBe(true);
       lines = buildTabFlightPlanList(world, 2, view);
-      expect(lines[1]).toBe("MORE: 2/4");
+      expect(lines[1]).toBe("MORE: 2/2");
       expect(lines[2]).toContain("AAL103");
       expect(lines[3]).toContain("AAL104");
 
@@ -773,7 +773,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(lines[2]).toContain("AAL101");
     });
 
-    it("direct track association: typing [Index#] and left-clicking uncorrelated target associates it", () => {
+    it("direct track association: associateFlightPlanToTrack associates flight plan to target", () => {
       const world = createWorld();
       const view = createScopeView();
       toggleSystemList(view, "FL");
@@ -789,7 +789,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
         },
       ];
 
-      // Uncorrelated radar target on scope at (10, 10)
+      // Uncorrelated radar target on scope at (0, 0)
       const target = makeTestAircraft({
         id: "ac-tgt-1",
         callsign: "1234",
@@ -801,11 +801,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       const td = ensureTrackDisplay(view.tracks, target.id);
       td.unassociated = true;
 
-      // Type "1" in preview buffer
-      handleScopeKeyDown(keyEvent("1"), view, "scope");
-      expect(view.preview.buffer).toBe("1");
-
-      // Associate with target
+      // Associate with target directly
       const success = associateFlightPlanToTrack(world, view, 1, target.id);
       expect(success).toBe(true);
 
@@ -819,6 +815,142 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       // Entry immediately purged from FL
       const remaining = getFlightPlanEntries(world, view);
       expect(remaining.some((e) => e.callsign === "AAL123")).toBe(false);
+    });
+
+    it("+1 <click target> associates flight plan from list to target without changing leader direction", () => {
+      const world = createWorld();
+      const view = createScopeView();
+
+      world.scheduledDepartures = [
+        { callsign: "AAL123", runwayId: "27", sidId: "BOS1", assignedSquawk: "7022", scheduledSimMs: 1000, index: 1 },
+      ];
+
+      const target = makeTestAircraft({
+        id: "target-1",
+        callsign: "UNTRK",
+        xNm: 0,
+        yNm: 0,
+        squawk: "1200",
+        altitudeFt: 4500,
+      });
+      world.aircraft.push(target);
+      const td = ensureTrackDisplay(view.tracks, target.id);
+      td.unassociated = true;
+      td.leaderDir = 7;
+
+      view.camera.centerNm = { eastNm: 0, northNm: 0 };
+      view.camera.zoom = 1;
+
+      // Type +1 into preview buffer
+      beginPreviewBufferEntry(view.preview, "+1", Date.now());
+      expect(view.preview.buffer).toBe("+1");
+
+      // Click target at (500, 500)
+      handlePpiLeftClick(view, world, 500, 500, 1000, 1000);
+
+      expect(target.callsign).toBe("AAL123");
+      expect(target.assignedSquawk).toBe("7022");
+      expect(td.unassociated).toBe(false);
+      expect(td.datablockMode).toBe("full");
+      expect(td.ownership).toBe("owned");
+      expect(td.leaderDir).toBe(7); // Leader direction preserved!
+      expect(view.preview.phase).toBe("idle");
+    });
+
+    it("F3 1 <click target> associates flight plan from list to target without changing leader direction", () => {
+      const world = createWorld();
+      const view = createScopeView();
+
+      world.scheduledDepartures = [
+        { callsign: "AAL123", runwayId: "27", sidId: "BOS1", assignedSquawk: "7022", scheduledSimMs: 1000, index: 1 },
+      ];
+
+      const target = makeTestAircraft({
+        id: "target-1",
+        callsign: "UNTRK",
+        xNm: 0,
+        yNm: 0,
+        squawk: "1200",
+        altitudeFt: 4500,
+      });
+      world.aircraft.push(target);
+      const td = ensureTrackDisplay(view.tracks, target.id);
+      td.unassociated = true;
+      td.leaderDir = 7;
+
+      view.camera.centerNm = { eastNm: 0, northNm: 0 };
+      view.camera.zoom = 1;
+
+      // Press F3 then type 1
+      handleScopeKeyDown(keyEvent("F3"), view, "scope", world, 1000);
+      expect(view.preview.armed?.type).toBe("initCntl");
+      handleScopeKeyDown(keyEvent("1"), view, "scope", world, 1050);
+      expect(view.preview.flid).toBe("1");
+
+      // Click target
+      handlePpiLeftClick(view, world, 500, 500, 1000, 1000);
+
+      expect(target.callsign).toBe("AAL123");
+      expect(target.assignedSquawk).toBe("7022");
+      expect(td.unassociated).toBe(false);
+      expect(td.datablockMode).toBe("full");
+      expect(td.ownership).toBe("owned");
+      expect(td.leaderDir).toBe(7);
+      expect(view.preview.phase).toBe("idle");
+    });
+
+    it("<1-9><click target> sets leader direction reliably on all targets (uncorrelated and owned)", () => {
+      const world = createWorld();
+      const view = createScopeView();
+
+      // Flight plan entry with index 1 exists in the system
+      world.scheduledDepartures = [
+        { callsign: "AAL123", runwayId: "27", sidId: "BOS1", assignedSquawk: "7022", scheduledSimMs: 1000, index: 1 },
+      ];
+
+      const unassociated = makeTestAircraft({
+        id: "uncorr-1",
+        callsign: "UNTRK",
+        xNm: 0,
+        yNm: 0,
+        squawk: "1200",
+      });
+      const owned = makeTestAircraft({
+        id: "owned-1",
+        callsign: "DAL456",
+        xNm: 10,
+        yNm: 10,
+        squawk: "2345",
+      });
+      world.aircraft.push(unassociated, owned);
+
+      const tdUncorr = ensureTrackDisplay(view.tracks, unassociated.id);
+      tdUncorr.unassociated = true;
+      tdUncorr.leaderDir = 7;
+
+      const tdOwned = ensureTrackDisplay(view.tracks, owned.id);
+      tdOwned.ownership = "owned";
+      tdOwned.datablockMode = "full";
+      tdOwned.leaderDir = 7;
+
+      view.camera.centerNm = { eastNm: 0, northNm: 0 };
+      view.camera.zoom = 1;
+
+      // Type "1" into preview buffer and click unassociated target
+      beginPreviewBufferEntry(view.preview, "1", Date.now());
+      handlePpiLeftClick(view, world, 500, 500, 1000, 1000);
+
+      // Should set leaderDir to 1 (SW), NOT associate the flight plan!
+      expect(tdUncorr.leaderDir).toBe(1);
+      expect(unassociated.callsign).toBe("UNTRK"); // Not associated to AAL123
+      expect(tdUncorr.unassociated).toBe(true);
+
+      // Center camera on owned target and type "3"
+      view.camera.centerEastNm = 10;
+      view.camera.centerNorthNm = 10;
+      beginPreviewBufferEntry(view.preview, "3", Date.now());
+      handlePpiLeftClick(view, world, 500, 500, 1000, 1000);
+      expect(tdOwned.leaderDir).toBe(3);
     });
 
     it("direct track association rejects if target is already correlated/owned", () => {
@@ -1190,6 +1322,30 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
 
       lines = buildAlertList(world, 50, view);
       expect(lines.some((l) => l.includes("LA JBU389"))).toBe(false);
+    });
+
+    it("*AL Enter and *TM Enter toggle AL list visibility on and off", () => {
+      const view = createScopeView();
+      expect(view.systemLists.AL.visible).toBe(true);
+
+      const parsed = parsePreviewCommand("*AL");
+      expect(parsed).toEqual({
+        kind: "action",
+        action: { type: "toggleList", listId: "AL" },
+      });
+
+      beginPreviewBufferEntry(view.preview, "*AL", 1000);
+      handleScopeKeyDown(keyEvent("Enter"), view, "scope");
+      expect(view.systemLists.AL.visible).toBe(false);
+
+      beginPreviewBufferEntry(view.preview, "*AL", 2000);
+      handleScopeKeyDown(keyEvent("Enter"), view, "scope");
+      expect(view.systemLists.AL.visible).toBe(true);
+
+      // *TM alias
+      beginPreviewBufferEntry(view.preview, "*TM", 3000);
+      handleScopeKeyDown(keyEvent("Enter"), view, "scope");
+      expect(view.systemLists.AL.visible).toBe(false);
     });
 
     it("5. *MCI Enter toggles mciEnabled boolean on view", () => {

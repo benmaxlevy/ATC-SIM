@@ -19,6 +19,8 @@ import { DCB_PREF_NAME_MAX_CHARS, parseDcbPrefName } from "./dcb/dcbPref";
 import { type VideoMapTokenLayout } from "./dcb/dcbFunctions";
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
 import { cloneWxLevels, type WxLevels } from "./wx";
+import type { ScopeView } from "./scopeView";
+import { getFlightPlanEntries } from "./systemLists";
 import {
   FULL_CALLSIGN,
   SQUAWK_CODE,
@@ -57,10 +59,26 @@ export type ScopeFlidResult =
  * Resolve a Preview Area FLID: full callsign, numeric tail, or unique 4-digit
  * squawk. Two tails, two squawks, or tail vs squawk → ambiguous.
  */
-export function resolveScopeFlid(token: string, world: World): ScopeFlidResult {
+export function resolveScopeFlid(
+  token: string,
+  world: World,
+  view?: ScopeView,
+): ScopeFlidResult {
   const normalized = token.trim().toUpperCase();
   if (normalized.length === 0) {
     return { ok: false, reason: "unknown" };
+  }
+  if (view && /^\d{1,2}$/.test(normalized)) {
+    const idx = Number(normalized);
+    const entries = getFlightPlanEntries(world, view);
+    const entry = entries.find((e) => e.index === idx);
+    if (entry) {
+      const ac = world.aircraft.find(
+        (a) => a.callsign === entry.callsign || (entry.aircraftId && a.id === entry.aircraftId),
+      );
+      const aircraftId = entry.aircraftId ?? ac?.id ?? entry.callsign;
+      return { ok: true, aircraftId };
+    }
   }
   const ids = new Set<string>();
   if (FULL_CALLSIGN.test(normalized)) {
@@ -439,6 +457,7 @@ export function handlePreviewFlidKey(
   key: string,
   nowMs: number,
   world?: World,
+  view?: ScopeView,
 ): PreviewFlidKeyResult {
   if (!previewCntlArmed(state)) {
     return { consumed: false };
@@ -465,7 +484,7 @@ export function handlePreviewFlidKey(
       rejectPreviewCntl(state, nowMs);
       return { consumed: true };
     }
-    const resolved = resolveScopeFlid(flid, world);
+    const resolved = resolveScopeFlid(flid, world, view);
     if (!resolved.ok) {
       rejectPreviewCntl(state, nowMs);
       return { consumed: true };
@@ -488,12 +507,13 @@ export function previewFlidMatchesSlew(
   state: PreviewAreaState,
   aircraftId: string,
   world: World,
+  view?: ScopeView,
 ): boolean {
   const flid = state.flid;
   if (!flid) {
     return true;
   }
-  const resolved = resolveScopeFlid(flid, world);
+  const resolved = resolveScopeFlid(flid, world, view);
   return resolved.ok && resolved.aircraftId === aircraftId;
 }
 

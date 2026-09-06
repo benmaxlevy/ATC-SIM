@@ -636,7 +636,7 @@ export function handleScopeKeyDown(
     }
   }
 
-  const previewFlid = handlePreviewFlidKey(view.preview, event.key, nowMs, world);
+  const previewFlid = handlePreviewFlidKey(view.preview, event.key, nowMs, world, view);
   if (previewFlid.consumed) {
     consume(event);
     if (previewFlid.apply && world) {

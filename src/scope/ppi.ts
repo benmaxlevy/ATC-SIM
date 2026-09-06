@@ -41,6 +41,8 @@ import {
   canonicalSystemListId,
   dropTowerListEntry,
   dropVfrListEntry,
+  getFlightPlanEntries,
+  isVfrAircraft,
   handleFlightPlanListClick,
   handleVideoMapsListClick,
   hitTestSystemListEntry,
@@ -77,14 +79,57 @@ function trackingFlidMatches(
   if (action.type !== "initCntl" && action.type !== "termCntl") {
     return true;
   }
+  const flid = action.flid ?? view.preview.flid;
+  if (!flid) {
+    return true;
+  }
+  if (/^\d{1,2}$/.test(flid.trim())) {
+    const idx = Number(flid.trim());
+    const entries = getFlightPlanEntries(world, view);
+    const entry = entries.find((e) => e.index === idx);
+    if (entry) {
+      if (entry.aircraftId === aircraftId) {
+        return true;
+      }
+      const ac = world.aircraft.find((a) => a.id === aircraftId);
+      if (ac && ac.callsign === entry.callsign) {
+        return true;
+      }
+      const td = view.tracks?.get(aircraftId);
+      const isUncorrelated =
+        !td ||
+        td.unassociated === true ||
+        (td.ownership !== "owned" && td.datablockMode !== "full");
+      if (isUncorrelated) {
+        return true;
+      }
+      return false;
+    }
+    const droppedSet = view.vfrListDroppedCallsigns ?? new Set();
+    const vfrFlights = world.aircraft.filter(
+      (ac) => isVfrAircraft(ac, view.tracks) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
+    );
+    const vfrIdx = idx >= 14 ? idx - 14 : idx - 1;
+    if (vfrFlights[vfrIdx]) {
+      const td = view.tracks?.get(aircraftId);
+      const isUncorrelated =
+        !td ||
+        td.unassociated === true ||
+        (td.ownership !== "owned" && td.datablockMode !== "full");
+      if (isUncorrelated) {
+        return true;
+      }
+    }
+    return false;
+  }
   if (action.flid) {
     const saved = view.preview.flid;
     view.preview.flid = action.flid;
-    const ok = previewFlidMatchesSlew(view.preview, aircraftId, world);
+    const ok = previewFlidMatchesSlew(view.preview, aircraftId, world, view);
     view.preview.flid = saved;
     return ok;
   }
-  return previewFlidMatchesSlew(view.preview, aircraftId, world);
+  return previewFlidMatchesSlew(view.preview, aircraftId, world, view);
 }
 
 function clearTrackingSlew(view: ScopeView): void {
@@ -111,11 +156,35 @@ function applyTrackingSlewHit(
     return true;
   }
   switch (action.type) {
-    case "initCntl":
+    case "initCntl": {
+      const flid = action.flid ?? view.preview.flid;
+      if (flid) {
+        const num = Number(flid.trim());
+        const entries = getFlightPlanEntries(world, view);
+        const entryByIndex = !Number.isNaN(num) ? entries.find((e) => e.index === num) : undefined;
+        if (entryByIndex) {
+          const associated = associateFlightPlanToTrack(world, view, entryByIndex.index, id);
+          if (!associated) {
+            rejectPreviewCntl(view.preview, Date.now());
+            cancelStarsChordEntry(view.starsChordEntry);
+            view.starsChordArmed = null;
+            return true;
+          }
+          setSelectedAircraft(world, id);
+          clearTrackingSlew(view);
+          return true;
+        }
+        if (!Number.isNaN(num) && promoteVfrListEntry(view, world, num, id)) {
+          setSelectedAircraft(world, id);
+          clearTrackingSlew(view);
+          return true;
+        }
+      }
       applyInitiateTrackToId(view.tracks, world, id);
       setSelectedAircraft(world, id);
       clearTrackingSlew(view);
       return true;
+    }
     case "termCntl": {
       const td = ensureTrackDisplay(view.tracks, id);
       if (hit.region === "datablock") {
@@ -171,24 +240,6 @@ function applyTrackingSlewHit(
       return true;
     }
     case "setLeaderDir": {
-      const td = ensureTrackDisplay(view.tracks, id);
-      const isUncorrelated =
-        td.unassociated === true ||
-        (td.ownership !== "owned" && td.datablockMode !== "full");
-      const num = action.dir ?? (action.starsDir ? Number(action.starsDir) : undefined);
-      if (isUncorrelated && num !== undefined) {
-        if (associateFlightPlanToTrack(world, view, num, id)) {
-          setSelectedAircraft(world, id);
-          clearTrackingSlew(view);
-          return true;
-        }
-        if (promoteVfrListEntry(view, world, num, id)) {
-          setSelectedAircraft(world, id);
-          clearTrackingSlew(view);
-          return true;
-        }
-        return false;
-      }
       const dir =
         action.dir ??
         (action.starsDir ? leaderDirFromStarsClock(action.starsDir) : DEFAULT_LEADER_DIR);
