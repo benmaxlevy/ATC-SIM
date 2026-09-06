@@ -51,15 +51,6 @@ export {
 } from "./fixture";
 export { anyWxLevelOn, ensureWxMosaic } from "./ensure";
 export type { EnsureWxMosaicOpts } from "./ensure";
-export {
-  WX_LEVEL_TILE_URLS,
-  ensureWxLevelTiles,
-  getWxLevelTile,
-  sampleWxLevelTile,
-  setWxLevelTiles,
-  wxLevelTilesGeneration,
-} from "./levelTiles";
-export type { EnsureWxLevelTilesOpts, WxLevelTile } from "./levelTiles";
 export type { FetchMetarOptions, MetarObservation } from "./metarClient";
 export {
   DEFAULT_ALTIMETER_STUB,

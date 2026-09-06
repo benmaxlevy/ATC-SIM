@@ -1,6 +1,6 @@
 /**
- * Fallback VIP solids when a level tile has not loaded.
- * Live paint prefers `testdata/wx/levels/wx1.png` … `wx6.png`.
+ * Six distinct trainer VIP fill colors. Procedural weather texture uses its
+ * own palette, but these remain authoritative VIP color constants.
  */
 
 export const WX_VIP_FILL_HEX = [

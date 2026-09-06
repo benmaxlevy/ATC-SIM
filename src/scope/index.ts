@@ -864,7 +864,6 @@ export {
   decodeMetarObservation,
   decodePngToVipMasks,
   emptyWxMosaic,
-  ensureWxLevelTiles,
   ensureWxMosaic,
   fetchMetar,
   fetchWxMosaic,

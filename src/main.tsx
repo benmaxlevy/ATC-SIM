@@ -15,7 +15,6 @@ import {
   PpiPlaceholderId,
   browserDcbPrefStorage,
   createScopeView,
-  ensureWxLevelTiles,
   ensureWxMosaic,
   loadDcbPrefFromStorage,
   paintPpi,
@@ -134,7 +133,6 @@ function onFrame(nowMs: number): void {
   advanceWorld(handles.world, wallDtS, acc);
   handles.caAlertTone.setVolume(scopeView.vol ?? 2);
   handles.afterPhysicsTick();
-  void ensureWxLevelTiles();
   void ensureWxMosaic(scopeView, { nowMs });
   paintCurrentPpi();
   const hud = document.getElementById(SIM_HUD_ID);
