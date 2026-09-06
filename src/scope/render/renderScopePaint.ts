@@ -1207,8 +1207,8 @@ export function drawSsa(
 export function drawChordHint(
   ctx: CanvasRenderingContext2D,
   view: ScopeView,
-  ssaBottomY: number,
-  ssaLeftX?: number,
+  cssWidth = 800,
+  cssHeight = 600,
 ): void {
   const stars = formatStarsChordReadout(view.starsChordEntry, view.starsChordArmed);
   const preview = formatPreviewReadout(view.preview);
@@ -1216,26 +1216,27 @@ export function drawChordHint(
   if (!stars && !preview && !hint) {
     return;
   }
-  const x =
-    ssaLeftX ??
-    Math.round(
-      (view.systemLists?.SSA?.x ?? 0.02) * (ctx.canvas.width > 0 ? ctx.canvas.width : 800),
-    );
+  const placement = view.systemLists?.PREVIEW ?? DEFAULT_SYSTEM_LIST_PLACEMENTS.PREVIEW;
+  if (!placement.visible) {
+    return;
+  }
+  const x = Math.round(placement.x * (cssWidth > 0 ? cssWidth : 800));
+  const y = Math.round(placement.y * (cssHeight > 0 ? cssHeight : 600));
   ctx.font = datablockFontCss(view.charSizes.lists);
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
   if (stars) {
     ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
-    ctx.fillText(stars, x, ssaBottomY + 4);
+    ctx.fillText(stars, x, y);
     return;
   }
   if (preview) {
     ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
-    ctx.fillText(preview, x, ssaBottomY + 4);
+    ctx.fillText(preview, x, y);
     return;
   }
   ctx.fillStyle = PALETTE.uiChrome;
-  ctx.fillText(hint ?? "", x, ssaBottomY + 4);
+  ctx.fillText(hint ?? "", x, y);
 }
 
 /**
@@ -1279,6 +1280,26 @@ export function drawSystemLists(
   }[] = [];
   const airportId = world.catalog?.airportId ?? "KDEM";
   const seenCanonical = new Set<string>();
+
+  const previewReadout =
+    formatPreviewReadout(view.preview) ??
+    formatStarsChordReadout(view.starsChordEntry, view.starsChordArmed) ??
+    view.pendingChord?.hint;
+  const previewPlacement = view.systemLists?.PREVIEW ?? DEFAULT_SYSTEM_LIST_PLACEMENTS.PREVIEW;
+  if (previewReadout && previewPlacement.visible) {
+    const x = Math.round(previewPlacement.x * cssWidth);
+    const y = Math.round(previewPlacement.y * cssHeight);
+    const width = Math.max(ctx.measureText(previewReadout).width + 8, 80);
+    const height = lineH + 4;
+    const bounds: ListRect = { x, y, width, height };
+    activeRects.push({ id: "PREVIEW", bounds, handleBounds: bounds });
+    if (view.listDrag?.showAllFrames) {
+      ctx.strokeStyle = "#00FF00";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x - 2, y - 2, width + 4, height + 4);
+      ctx.fillText(`[${previewPlacement.frameTitle}]`, x, y - lineH);
+    }
+  }
 
   if (ssaInfo && (view.systemLists?.SSA?.visible ?? true)) {
     activeRects.push({

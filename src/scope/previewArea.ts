@@ -1,6 +1,5 @@
 /**
- * Analog: CRC STARS Preview Area + Command Reference
- * (docs.virtualnas.net/crc/stars — R07). Typed scope commands paint under the
+ * Preview Area + Command Reference. Typed scope commands paint in the
  * SSA; Tracking Aircraft Table 18/19 names INIT CNTL / TERM CNTL; Table 30
  * names beacon-code select (`B##` CODE BLOCK / `B####` discrete).
  *
@@ -109,7 +108,7 @@ export type PreviewAreaState = {
   phase: PreviewPhase;
   /** Live typed buffer. Empty when idle. */
   buffer: string;
-  /** CRC mnemonic painted under the SSA, e.g. `INIT CNTL`. Never `"F3"`. */
+  /** CRC mnemonic painted in the Preview Area, e.g. `INIT CNTL`. Never `"F3"`. */
   mnemonic: string;
   /** Optional FLID / ACID typed after a function key. */
   flid: string | null;
@@ -216,7 +215,7 @@ export function formatPreviewReadout(state: PreviewAreaState): string | null {
   return null;
 }
 /**
- * Live list commands (`*T`, `*TV`, `*TM`, `*TC`, `*TS`, `*TX`, `*TN`, `*P1`–`*P3`, `*S` without size)
+ * Live list commands (`*T`, `*TV`, `*TM`, `*TC`, `*TS`, `*TX`, `*TN`, `*P1`–`*P3`, `*S`, `* P`)
  * or armed `armRelocateList` → list id to slew.
  * Resize buffers (`*T10`, `*P1 10`, etc.) do not relocate.
  */

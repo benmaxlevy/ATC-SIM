@@ -1,5 +1,5 @@
 /**
- * Analog: CRC STARS Preview Area command grammar (R07). Pure string parsers.
+ * Preview Area command grammar. Pure string parsers.
  * Preview never emits Command, readback, or intent. Not NAS STARS.
  */
 
@@ -465,12 +465,16 @@ function listResizeAction(listId: string, digits: string): PreviewCommandResult 
  * - *TX: toggle VIDEO MAPS list (*TX Enter), relocate (*TX + click), reset (*TX D)
  * - *TN: toggle CRDA list (*TN Enter), relocate (*TN + click), reset (*TN D)
  * - *P1-*P3: toggle Tower list (*P1 Enter), relocate (*P1 + click), resize (*P1 10 Enter), reset (*P1 D)
+ * - * P: relocate Preview Area (* P + click). The space distinguishes it from TPA *P.
  *
  * All aliases (*FL, *TAB, *VL, *TL, *ML, *AL, *CR, *CS, *SO, *SSA, *TL<ID>) are rejected.
  */
 function parseListCommand(buffer: string): PreviewCommandResult | null {
   if (!buffer.startsWith("*")) {
     return null;
+  }
+  if (/^\*\s+P$/i.test(buffer)) {
+    return { kind: "action", action: { type: "armRelocateList", listId: "PREVIEW" } };
   }
   const compact = compactPreviewStars(buffer);
   if (compact === "*" || compact === "") {

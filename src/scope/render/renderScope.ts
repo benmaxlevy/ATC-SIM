@@ -1,6 +1,6 @@
 /**
- * Analog: CRC STARS video map + RANGE / HISTORY / FDB-LDB / PTL / altitude
- * filter / MAPS / RR / LDR / CHAR SIZE / BRITE / SSA PPI (docs.virtualnas.net/crc/stars — R07).
+ * Video map + RANGE / HISTORY / FDB-LDB / PTL / altitude filter / MAPS / RR /
+ * LDR / CHAR SIZE / BRITE / SSA PPI display stages.
  * PCG datablock / Mode C (R02). FOA STARS altitude filters (R05).
  * Trainer delta: Canvas2D north-up; digital map from KDEM JSON (runway,
  * localizer feather, generated range rings, optional coastline); rectangular PPI
@@ -78,7 +78,7 @@ export function renderScope(
   drawTracks(ctx, world, view, size);
 
   const ssaInfo = drawSsa(ctx, world, view, cssWidth, cssHeight);
-  drawChordHint(ctx, view, ssaInfo.bottomY, ssaInfo.bounds.x);
+  drawChordHint(ctx, view, cssWidth, cssHeight);
   drawMapLists(ctx, view, cssWidth);
   drawSystemLists(ctx, world, view, cssWidth, cssHeight, ssaInfo);
 }

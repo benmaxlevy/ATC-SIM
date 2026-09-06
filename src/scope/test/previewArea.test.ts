@@ -84,6 +84,13 @@ test("CRC STARS leader length and direction command parsing", () => {
 });
 
 test("STARS authorized system list commands parse correctly", () => {
+  expect(parsePreviewCommand("* P")).toEqual({
+    kind: "action",
+    action: { type: "armRelocateList", listId: "PREVIEW" },
+  });
+
+  expect(parsePreviewCommand("*P").kind).toBe("incomplete");
+
   // *S relocate SSA
   expect(parsePreviewCommand("*S")).toEqual({
     kind: "action",

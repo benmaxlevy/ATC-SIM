@@ -336,7 +336,7 @@ test("AC4 — *J3 still arms/slews; live * hint wins over idle preview; F1 beaco
   handleScopeKeyDown(keyEvent("*"), view, "scope", world, 600);
   expect(formatStarsChordReadout(view.starsChordEntry, view.starsChordArmed)).toBe("*");
   const starred = paint(world, view);
-  expect(starred.fillTexts.some((t) => t.text === "*" && t.x === 8)).toBe(true);
+  expect(starred.fillTexts.some((t) => t.text === "*" && t.x === 16)).toBe(true);
   expect(starred.fillTexts.some((t) => t.text === "INIT CNTL")).toBe(false);
 
   handleScopeKeyDown(keyEvent("Escape"), view, "scope", world, 700);

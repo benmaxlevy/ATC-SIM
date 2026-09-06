@@ -394,7 +394,12 @@ export function handlePpiLeftClick(
   if (relocateId) {
     const anchor = normalizedClickAnchor(cssX, cssY, cssWidth, cssHeight);
     view.stagedListAnchor = { listId: relocateId, x: anchor.x, y: anchor.y };
-    if (relocateId === "FL" || relocateId === "TAB" || relocateId === "SSA") {
+    if (
+      relocateId === "FL" ||
+      relocateId === "TAB" ||
+      relocateId === "SSA" ||
+      relocateId === "PREVIEW"
+    ) {
       if (relocateSystemList(view, relocateId, anchor.x, anchor.y)) {
         view.stagedListAnchor = null;
         cancelPreviewArea(view.preview);

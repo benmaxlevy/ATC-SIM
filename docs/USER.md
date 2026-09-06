@@ -233,7 +233,7 @@ Keys below are divided into **Always-On** shortcuts (which work regardless of wh
 
 ## STARS Preview Area commands
 
-The **Preview Area** is the primary typed command buffer of the STARS terminal radar display, located directly below the System Status Area (SSA) in the upper-left corner of the scope.
+The **Preview Area** is the primary typed command buffer of the STARS terminal radar display. It defaults below the System Status Area (SSA), but has its own movable anchor.
 
 ### Operational conventions
 
@@ -323,6 +323,7 @@ System list commands in STARS do not accept aliases and use the exact prefix syn
 | Command Syntax | Example / Operator Action | System Result |
 |---|---|---|
 | `<MULTI FUNC>S<SLEW LOCATION>` | `*S` then click scope | Relocates System Status Area (SSA) anchor (*SSA cannot be toggled off*). |
+| `<MULTI FUNC>P<SLEW LOCATION>` | `* P` then click scope | Relocates Preview Area anchor. The space distinguishes it from TPA `*P`. |
 | `<MULTI FUNC>T<ENTER>` | `*T Enter` | Toggles display of TAB list. |
 | `<MULTI FUNC>T<SLEW LOCATION>` | `*T` then click scope | Relocates TAB list anchor. |
 | `<MULTI FUNC>T(1-100)<ENTER>` | `*T 15` or `*T15 Enter` | Sets TAB list size (visible line limit clamped `1`–`100`). |
@@ -423,6 +424,7 @@ Incomplete `*` prefixes (`*J`, `*P`, `*P3`, `*P5`, `*P10`, `*AI`, `*AE`, `*BE`, 
 | `**J Enter` | Type `**J` Enter | Clears all active J-rings across all tracks. |
 | `*P<miles>` | `*P3`, `*P5`, `*P10`, or `*P2.5` click target | Sets ground-track TPA predictive lookahead cone (1 to 30 NM). |
 | `*P` then click | Type `*P` Enter, click target | Clears the TPA cone from clicked target. |
+| `<MULTI FUNC>P<SLEW LOCATION>` | Type `* P`, click empty scope | Relocates Preview Area. `*P` remains TPA; `*P1`–`*P3` remain Tower Lists. |
 | `*AI` click / `*AE` Enter | Slew click or Enter | Automated Terminal Proximity Alert (ATPA) inhibit / enable toggle. |
 
 ---
@@ -435,6 +437,7 @@ To prevent operator confusion between similar keyboard inputs, the simulator adh
 - **Tower Lists vs TPA Cones**:
   - `<MULTI FUNC>P(1-3)<ENTER>` (`*P1`, `*P2`, or `*P3 Enter`) toggles Tower Lists 1, 2, and 3.
   - Compact `*P3` followed by **slew-click on an aircraft target** activates a 3 NM TPA cone.
+  - Spaced `* P` is Preview Area relocation; it never parses as a cone or Tower List command.
 - **Video Maps vs TPA**: `*D <id>` toggles video maps. Bare `*D` stays with TPA (`*D` / `*DE` / `*DI` / `*D+`).
 - **Altitude Filters**: Scope-focus `F` begins the altitude filter entry chord. `*F Enter` flashes the filter limits readout. `*F then click` toggles forced FDB.
 - **Beacon Commands**: Scope-focus `B##` toggles beacon select blocks. `*BCN ##` adds beacon filters. `*B then click` activates the 5-second Beaconator.
