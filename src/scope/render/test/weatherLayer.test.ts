@@ -104,6 +104,12 @@ test("one enabled level draws one cached composite", () => {
   expect(second.drawImages).toHaveLength(1);
   expect(second.drawImages[0]!.image).toBe(first.drawImages[0]!.image);
 
+  view.camera.centerEastNm = 2;
+  const panned = mockDrawCtx();
+  drawWeatherLayer(panned.ctx, view, size);
+  expect(panned.drawImages[0]!.image).toBe(first.drawImages[0]!.image);
+  expect(panned.drawImages[0]!.dx).not.toBe(first.drawImages[0]!.dx);
+
   view.brite.wx = 50;
   const dim = mockDrawCtx();
   drawWeatherLayer(dim.ctx, view, size);

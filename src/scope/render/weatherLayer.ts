@@ -3,13 +3,14 @@
  * Decode / fetch stay in `wx/`. Display only — does not steer aircraft.
  *
  * Per-level tiles from `testdata/wx/levels/wx1.png` … `wx6.png`, sampled in
- * screen space from one origin. Fallback solids if a tile is missing. Not the
+ * mosaic space from one origin. Fallback solids if a tile is missing. Not the
  * IEM NWS rainbow. `view.brite.wx` tints fills; `view.brite.wxc` tints a 1px
- * outline. Rebuild when mosaic, levels, brite, camera, size, or tiles change.
+ * outline. Rebuild when mosaic, levels, brite, or tiles change. Camera changes
+ * only update the destination rectangle for the cached geographic raster.
  */
 
 import { latLonToNm, nmToLatLon, type LatLon } from "@core";
-import { nmToScreen, type ScopeCamera, type ScopeViewSize } from "../camera";
+import { nmToScreen, type ScopeViewSize } from "../camera";
 import { applyBrite, snapBriteLevel } from "../palette";
 import type { ScopeView } from "../scopeView";
 import type { WxLevels, WxMosaic } from "../wx";
@@ -91,11 +92,6 @@ let cachedBriteWxc = -1;
 let cachedCanvas: WxCompositeCanvas | null = null;
 let cachedWidth = 0;
 let cachedHeight = 0;
-let cachedRangeNm = -1;
-let cachedCenterEastNm = Number.NaN;
-let cachedCenterNorthNm = Number.NaN;
-let cachedArpLat = Number.NaN;
-let cachedArpLon = Number.NaN;
 let cachedTilesGen = -1;
 
 function acquireCanvas(width: number, height: number): WxCompositeCanvas {
@@ -150,7 +146,7 @@ function highestVipAt(mosaic: WxMosaic, levels: WxLevels, index: number): number
   return vip;
 }
 
-/** Tile / fallback fill / 1px screen outline. Not a mosaic-bin flood. */
+/** Tile / fallback fill / 1px outline. Not a mosaic-bin flood. */
 export function wxScreenStyle(outline: boolean): "fill" | "contour" {
   return outline ? "contour" : "fill";
 }
@@ -160,25 +156,9 @@ function tintRgb(rgb: [number, number, number], brite: number): [number, number,
   return [Math.round(rgb[0] * t), Math.round(rgb[1] * t), Math.round(rgb[2] * t)];
 }
 
-function cameraMatches(cam: ScopeCamera, arp: LatLon): boolean {
-  return (
-    cachedRangeNm === cam.rangeNm &&
-    cachedCenterEastNm === cam.centerEastNm &&
-    cachedCenterNorthNm === cam.centerNorthNm &&
-    cachedArpLat === arp.latDeg &&
-    cachedArpLon === arp.lonDeg
-  );
-}
-
-function rebuildComposite(
-  mosaic: WxMosaic,
-  levels: WxLevels,
-  briteWx: number,
-  view: ScopeView,
-  size: ScopeViewSize,
-): WxCompositeCanvas {
-  const width = Math.max(1, Math.round(size.widthPx));
-  const height = Math.max(1, Math.round(size.heightPx));
+function rebuildComposite(mosaic: WxMosaic, levels: WxLevels, briteWx: number): WxCompositeCanvas {
+  const width = Math.max(1, Math.round(mosaic.widthPx));
+  const height = Math.max(1, Math.round(mosaic.heightPx));
   const pixels = new Uint8ClampedArray(width * height * 4);
   const fills: Array<[number, number, number] | null> = [
     levels[0] ? parseHexRgb(wxVipFillHex(1, briteWx)) : null,
@@ -188,36 +168,10 @@ function rebuildComposite(
     levels[4] ? parseHexRgb(wxVipFillHex(5, briteWx)) : null,
     levels[5] ? parseHexRgb(wxVipFillHex(6, briteWx)) : null,
   ];
-  const arp = resolveArp(view);
-  const nw = latLonToNm({ latDeg: mosaic.northLat, lonDeg: mosaic.westLon }, arp);
-  const se = latLonToNm({ latDeg: mosaic.southLat, lonDeg: mosaic.eastLon }, arp);
-  const nwPx = nmToScreen(nw.xNm, nw.yNm, view.camera, size);
-  const sePx = nmToScreen(se.xNm, se.yNm, view.camera, size);
-  const dw = sePx.x - nwPx.x;
-  const dh = sePx.y - nwPx.y;
-  if (dw === 0 || dh === 0) {
-    const canvas = acquireCanvas(width, height);
-    writeCompositePixels(canvas, pixels);
-    return canvas;
-  }
-  const x0 = Math.max(0, Math.floor(Math.min(nwPx.x, sePx.x)));
-  const x1 = Math.min(width, Math.ceil(Math.max(nwPx.x, sePx.x)));
-  const y0 = Math.max(0, Math.floor(Math.min(nwPx.y, sePx.y)));
-  const y1 = Math.min(height, Math.ceil(Math.max(nwPx.y, sePx.y)));
   const mw = mosaic.widthPx;
   const mh = mosaic.heightPx;
-  for (let y = y0; y < y1; y++) {
-    const v = (y + 0.5 - nwPx.y) / dh;
-    if (v < 0 || v >= 1) {
-      continue;
-    }
-    const row = Math.min(mh - 1, Math.max(0, Math.floor(v * mh)));
-    for (let x = x0; x < x1; x++) {
-      const u = (x + 0.5 - nwPx.x) / dw;
-      if (u < 0 || u >= 1) {
-        continue;
-      }
-      const col = Math.min(mw - 1, Math.max(0, Math.floor(u * mw)));
+  for (let row = 0; row < mh; row++) {
+    for (let col = 0; col < mw; col++) {
       const index = row * mw + col;
       const vip = highestVipAt(mosaic, levels, index);
       if (vip === 0) {
@@ -228,11 +182,11 @@ function rebuildComposite(
         continue;
       }
       let rgb = fill;
-      const sampled = sampleWxLevelTile(vip as 1 | 2 | 3 | 4 | 5 | 6, x, y);
+      const sampled = sampleWxLevelTile(vip as 1 | 2 | 3 | 4 | 5 | 6, col, row);
       if (sampled) {
         rgb = tintRgb(sampled, briteWx);
       }
-      const o = (y * width + x) * 4;
+      const o = (row * width + col) * 4;
       pixels[o] = rgb[0];
       pixels[o + 1] = rgb[1];
       pixels[o + 2] = rgb[2];
@@ -249,10 +203,7 @@ function reuseOrRebuildComposite(
   levels: WxLevels,
   briteWx: number,
   briteWxc: number,
-  view: ScopeView,
-  size: ScopeViewSize,
 ): WxCompositeCanvas {
-  const arp = resolveArp(view);
   if (
     cachedCanvas &&
     cachedMosaic === mosaic &&
@@ -260,24 +211,18 @@ function reuseOrRebuildComposite(
     levelsMatch(cachedLevels, levels) &&
     cachedBriteWx === briteWx &&
     cachedBriteWxc === briteWxc &&
-    cachedWidth === Math.round(size.widthPx) &&
-    cachedHeight === Math.round(size.heightPx) &&
     cachedTilesGen === wxLevelTilesGeneration() &&
-    cameraMatches(view.camera, arp)
+    cachedWidth === Math.round(mosaic.widthPx) &&
+    cachedHeight === Math.round(mosaic.heightPx)
   ) {
     return cachedCanvas;
   }
-  const canvas = rebuildComposite(mosaic, levels, briteWx, view, size);
+  const canvas = rebuildComposite(mosaic, levels, briteWx);
   cachedMosaic = mosaic;
   cachedLevels = levels;
   cachedBriteWx = briteWx;
   cachedBriteWxc = briteWxc;
   cachedCanvas = canvas;
-  cachedRangeNm = view.camera.rangeNm;
-  cachedCenterEastNm = view.camera.centerEastNm;
-  cachedCenterNorthNm = view.camera.centerNorthNm;
-  cachedArpLat = arp.latDeg;
-  cachedArpLon = arp.lonDeg;
   cachedTilesGen = wxLevelTilesGeneration();
   return canvas;
 }
@@ -294,13 +239,11 @@ export function drawWeatherLayer(
   if (!mosaic || mosaic.widthPx <= 0 || mosaic.heightPx <= 0) {
     return;
   }
-  const canvas = reuseOrRebuildComposite(
-    mosaic,
-    view.wxLevels,
-    view.brite.wx,
-    view.brite.wxc,
-    view,
-    size,
-  );
-  ctx.drawImage(canvas as CanvasImageSource, 0, 0, size.widthPx, size.heightPx);
+  const canvas = reuseOrRebuildComposite(mosaic, view.wxLevels, view.brite.wx, view.brite.wxc);
+  const arp = resolveArp(view);
+  const nw = latLonToNm({ latDeg: mosaic.northLat, lonDeg: mosaic.westLon }, arp);
+  const se = latLonToNm({ latDeg: mosaic.southLat, lonDeg: mosaic.eastLon }, arp);
+  const nwPx = nmToScreen(nw.xNm, nw.yNm, view.camera, size);
+  const sePx = nmToScreen(se.xNm, se.yNm, view.camera, size);
+  ctx.drawImage(canvas as CanvasImageSource, nwPx.x, nwPx.y, sePx.x - nwPx.x, sePx.y - nwPx.y);
 }
