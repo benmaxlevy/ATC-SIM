@@ -16,9 +16,15 @@ import {
   datablockMetrics,
   fullDatablockLine3Parts,
   linesForDatablock,
+  withInboundHandoffCue,
   type DatablockMode,
 } from "../datablock";
 import { datablockFontCss, datablockLineHeightPx, measureDatablockCellWidth } from "../fonts";
+import {
+  solveDatablockLayout,
+  type DatablockLayoutInput,
+  type ResolvedDatablockLayout,
+} from "../datablockLayout";
 import { datablockTopLeft, DEFAULT_LEADER_DIR, drawLeaderLine, type LeaderDir } from "../leader";
 import { type MapCache } from "../mapLayers";
 import { historyDotsToDraw } from "../history";
@@ -495,6 +501,7 @@ export function drawDatablock(
   targetY: number,
   view: ScopeView,
   world: World,
+  resolved?: ResolvedDatablockLayout,
 ): void {
   const visual = getDatablockVisualState(view, world, ac);
   if (!visual.visible) {
@@ -559,14 +566,16 @@ export function drawDatablock(
     trackLeaderLength(view, ac.id),
   );
   const briteCh = mode === "limited" || mode === "partial" ? view.brite.ldb : view.brite.fdb;
+  const textX = resolved?.rect ? resolved.rect.x : targetX + origin.x;
+  const textY = resolved?.rect ? resolved.rect.y : targetY + origin.y;
 
   const isTracked = isTrackedTarget(view, world, ac);
   const caSeverity = caSeverityForCallsign(world.alerts.ca, ac.callsign);
   const showCa =
     isTracked && caSeverity && mode === "full" && caDatablockTagVisible(world.simTimeMs);
   const msawSeverity = msawSeverityForCallsign(world.alerts.msaw, ac.callsign);
-  let alertTagX = targetX + origin.x;
-  const alertTagY = targetY + origin.y - lineH;
+  let alertTagX = textX;
+  const alertTagY = textY - lineH;
   if (showCa) {
     ctx.fillStyle = applyBrite(PALETTE.alert, view.brite.fdb);
     ctx.fillText("CA", alertTagX, alertTagY);
@@ -578,13 +587,13 @@ export function drawDatablock(
   }
 
   ctx.fillStyle = applyBrite(visual.color, briteCh);
-  ctx.fillText(lines.line1, targetX + origin.x, targetY + origin.y);
+  ctx.fillText(lines.line1, textX, textY);
   if (lines.line2 != null) {
-    ctx.fillText(lines.line2, targetX + origin.x, targetY + origin.y + lineH);
+    ctx.fillText(lines.line2, textX, textY + lineH);
   }
   if (lines.line3 != null) {
-    const line3X = targetX + origin.x;
-    const line3Y = targetY + origin.y + 2 * lineH;
+    const line3X = textX;
+    const line3Y = textY + 2 * lineH;
     if (atpaReadout) {
       const parts = fullDatablockLine3Parts(datablockSource);
       const prefix = [parts.assignedField, parts.squawkField]
@@ -704,6 +713,101 @@ export function drawTracks(
   ctx.textBaseline = "top";
   view.datablockCellWidthPx = measureDatablockCellWidth(ctx);
 
+  const layoutItems: DatablockLayoutInput[] = world.aircraft.flatMap((ac) => {
+    const td = view.tracks.get(ac.id);
+    const shown = displayAircraft(ac, td);
+    if (
+      !shown ||
+      isPrimaryTarget(ac, td) ||
+      !inAltitudeFilter(shown.altitudeFt, view.altitudeFilter)
+    ) {
+      return [];
+    }
+    const visual = getDatablockVisualState(view, world, ac);
+    if (!visual.visible) return [];
+    const mode = visual.mode;
+    const derived = deriveScratchpads(ac, td);
+    const handoff = handoffFor(world, ac.id);
+    const handoffSectorId =
+      handoff.kind === "inbound" || handoff.kind === "departure"
+        ? handoff.kind === "departure" && handoff.fromSectorId === "TWR"
+          ? "T"
+          : handoff.fromSectorId
+        : handoff.kind === "outbound" || handoff.kind === "pointout_outbound"
+          ? handoff.toSectorId
+          : handoff.kind === "pointout_inbound"
+            ? handoff.fromSectorId
+            : undefined;
+    const squawk = td?.squawk ?? ac.squawk;
+    const beaconCodeReadout = isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs);
+    const callsign = beaconCodeReadout && squawk ? squawk : ac.callsign;
+    const atpaReadout =
+      mode === "full"
+        ? atpaInTrailDatablockReadout(world.alerts.atpa, ac.callsign, {
+            globalEnabled: view.atpa.inTrailDistance,
+            trackEnabled: td?.atpaInTrailDistanceEnabled !== false,
+          })
+        : null;
+    const base = linesForDatablock(
+      { ...shown, callsign, squawk, atpaDistance: atpaReadout?.text },
+      mode,
+      {
+        modeCVisible: view.modeCVisible,
+        scratchpad: derived.sp1,
+        sp1: derived.sp1,
+        sp2: derived.sp2,
+        handoffSectorId,
+        queried: td ? isTrackQueried(td, world.simTimeMs) : false,
+        simTimeMs: world.simTimeMs,
+        beaconVisible: true,
+      },
+    );
+    let line1 = visual.line1Tag ? `${base.line1} ${visual.line1Tag}` : base.line1;
+    if (!visual.line1Tag && mode !== "limited" && mode !== "partial") {
+      line1 = withInboundHandoffCue(line1, handoff);
+    }
+    const lines = { ...base, line1 };
+    const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
+    const metrics = datablockMetrics(
+      lines,
+      view.datablockCellWidthPx,
+      datablockLineHeightPx(view.charSizes.dataBlocks),
+    );
+    const dir = trackLeaderDir(view, ac.id);
+    const length = trackLeaderLength(view, ac.id);
+    const origin = datablockTopLeft(dir, metrics, length);
+    return [
+      {
+        aircraftId: ac.id,
+        targetPoint: p,
+        preferredRect: {
+          x: p.x + origin.x,
+          y: p.y + origin.y,
+          width: metrics.widthPx,
+          height: metrics.heightPx,
+        },
+        metrics,
+        leaderDir: dir,
+        leaderLengthPx: length,
+        displayPriority: mode === "full" ? "full" : mode === "partial" ? "partial" : "limited",
+        selected: world.selectedAircraftId === ac.id,
+      },
+    ];
+  });
+  const layouts = solveDatablockLayout(layoutItems, {
+    bounds: { x: 0, y: 0, width: size.widthPx, height: size.heightPx },
+  });
+  const layoutById = new Map(layouts.map((layout) => [layout.aircraftId, layout]));
+  const preferredById = new Map(layoutItems.map((item) => [item.aircraftId, item.preferredRect]));
+  const hasDensity = layouts.some((layout) => layout.unplaced);
+  if (hasDensity) {
+    ctx.fillStyle = applyBrite(PALETTE.caution, view.brite.ssa);
+    ctx.font = datablockFontCss(view.charSizes.tools);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText("DATABLOCK DENSITY", 8, 8);
+  }
+
   for (const ac of world.aircraft) {
     const td = view.tracks.get(ac.id);
     const shown = displayAircraft(ac, td);
@@ -721,15 +825,35 @@ export function drawTracks(
       const briteCh =
         visual.mode === "limited" || visual.mode === "partial" ? view.brite.ldb : view.brite.fdb;
       const leaderColor = applyBrite(visual.leaderColor, briteCh);
-      drawLeaderLine(
-        ctx,
-        p.x,
-        p.y,
-        trackLeaderDir(view, ac.id),
-        leaderColor,
-        trackLeaderLength(view, ac.id),
-        view.charSizes.pos,
-      );
+      const layout = layoutById.get(ac.id);
+      const preferred = preferredById.get(ac.id);
+      if (
+        layout?.rect &&
+        preferred &&
+        (layout.rect.x !== preferred.x || layout.rect.y !== preferred.y)
+      ) {
+        const r = layout.rect;
+        const ex = Math.max(r.x, Math.min(p.x, r.x + r.width));
+        const ey = Math.max(r.y, Math.min(p.y, r.y + r.height));
+        if (Math.hypot(ex - p.x, ey - p.y) > 1) {
+          ctx.strokeStyle = leaderColor;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(ex, ey);
+          ctx.stroke();
+        }
+      } else if (layout?.rect) {
+        drawLeaderLine(
+          ctx,
+          p.x,
+          p.y,
+          trackLeaderDir(view, ac.id),
+          leaderColor,
+          trackLeaderLength(view, ac.id),
+          view.charSizes.pos,
+        );
+      }
     }
   }
 
@@ -743,7 +867,9 @@ export function drawTracks(
       continue;
     }
     const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
-    drawDatablock(ctx, shown, p.x, p.y, view, world);
+    const layout = layoutById.get(ac.id);
+    if (layout?.unplaced) continue;
+    drawDatablock(ctx, shown, p.x, p.y, view, world, layout);
   }
 
   drawAtpaConeMileage(ctx, world, view, size);

@@ -29,6 +29,8 @@ import {
 } from "./fonts";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
 import { handleTrackClick, handleTrackMiddleClick, type TrackDisplay } from "./trackDisplay";
+import { solveDatablockLayout, type DatablockLayoutInput } from "./datablockLayout";
+import { aircraftAtReport } from "./surveillance";
 
 /** Frozen hit radius in CSS pixels (T01-11). Pixel-space so range presets stay stable. */
 export const HIT_RADIUS_CSS_PX = 12;
@@ -70,12 +72,14 @@ function pickDatablockAt(
     view.datablockCellWidthPx > 0 ? view.datablockCellWidthPx : DEFAULT_DATABLOCK_CELL_PX;
   let nearest: Aircraft | null = null;
   let nearestDist = Infinity;
+  const candidates: DatablockLayoutInput[] = [];
   for (const ac of world.aircraft) {
-    if (!inAltitudeFilter(ac.altitudeFt, view.altitudeFilter)) {
+    const td = view.tracks.get(ac.id);
+    const shown = td?.lastReport ? aircraftAtReport(ac, td.lastReport) : ac;
+    if (!inAltitudeFilter(shown.altitudeFt, view.altitudeFilter)) {
       continue;
     }
-    const p = nmToScreen(ac.xNm, ac.yNm, cam, size);
-    const td = view.tracks.get(ac.id);
+    const p = nmToScreen(shown.xNm, shown.yNm, cam, size);
     const ho = handoffFor(world, ac.id);
     let mode = td?.datablockMode ?? (td?.ownership === "owned" ? "full" : "partial");
     if (ho.kind === "inbound" || ho.kind === "departure") {
@@ -101,7 +105,7 @@ function pickDatablockAt(
     } else if (ho.kind === "pointout_outbound") {
       handoffSectorId = ho.toSectorId;
     }
-    const base = linesForDatablock({ ...ac, callsign, squawk }, mode, {
+    const base = linesForDatablock({ ...shown, callsign, squawk }, mode, {
       modeCVisible: view.modeCVisible,
       scratchpad: td?.scratchpad ?? "",
       handoffSectorId,
@@ -120,9 +124,35 @@ function pickDatablockAt(
     const lineH = datablockLineHeightPx(view.charSizePx ?? DATABLOCK_LINE_HEIGHT_PX);
     const leaderLen = td?.leaderLengthPx ?? view.leaderLengthPx;
     const rect = datablockRect(p.x, p.y, lines, cell, lineH, dir, leaderLen);
-    if (!pointInDatablock(cssX, cssY, rect)) {
+    candidates.push({
+      aircraftId: ac.id,
+      targetPoint: p,
+      preferredRect: { x: rect.x, y: rect.y, width: rect.w, height: rect.h },
+      metrics: { widthPx: rect.w, heightPx: rect.h },
+      leaderDir: dir,
+      leaderLengthPx: leaderLen ?? 36,
+      displayPriority: mode === "full" ? "full" : mode === "partial" ? "partial" : "limited",
+      selected: world.selectedAircraftId === ac.id,
+    });
+  }
+  const layouts = solveDatablockLayout(candidates, {
+    bounds: { x: 0, y: 0, width: cssWidth, height: cssHeight },
+  });
+  const layoutById = new Map(layouts.map((layout) => [layout.aircraftId, layout]));
+  for (const ac of world.aircraft) {
+    const layout = layoutById.get(ac.id);
+    if (
+      !layout?.rect ||
+      !pointInDatablock(cssX, cssY, {
+        x: layout.rect.x,
+        y: layout.rect.y,
+        w: layout.rect.width,
+        h: layout.rect.height,
+      })
+    ) {
       continue;
     }
+    const p = nmToScreen(ac.xNm, ac.yNm, cam, size);
     const dist = Math.hypot(p.x - cssX, p.y - cssY);
     if (dist < nearestDist) {
       nearest = ac;
