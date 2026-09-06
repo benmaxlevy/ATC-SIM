@@ -245,5 +245,8 @@ export function drawWeatherLayer(
   const se = latLonToNm({ latDeg: mosaic.southLat, lonDeg: mosaic.eastLon }, arp);
   const nwPx = nmToScreen(nw.xNm, nw.yNm, view.camera, size);
   const sePx = nmToScreen(se.xNm, se.yNm, view.camera, size);
+  const imageSmoothingEnabled = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = false;
   ctx.drawImage(canvas as CanvasImageSource, nwPx.x, nwPx.y, sePx.x - nwPx.x, sePx.y - nwPx.y);
+  ctx.imageSmoothingEnabled = imageSmoothingEnabled;
 }
