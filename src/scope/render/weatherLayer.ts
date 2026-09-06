@@ -77,16 +77,6 @@ function parseHexRgb(hex: string): [number, number, number] {
   ];
 }
 
-function blendRgb(
-  base: [number, number, number],
-  overlay: [number, number, number],
-  amount: number,
-): [number, number, number] {
-  return base.map((channel, index) =>
-    Math.round(channel + (overlay[index]! - channel) * amount),
-  ) as [number, number, number];
-}
-
 const GEO_ORIGIN: LatLon = { latDeg: 0, lonDeg: 0 };
 
 /**
@@ -179,7 +169,7 @@ function textureHash(level: number, col: number, row: number): number {
 }
 
 function hasProceduralMark(level: 2 | 3 | 5 | 6, col: number, row: number): boolean {
-  if (level === 2 || level === 5 || level === 6) {
+  if (level === 2 || level === 5) {
     return textureHash(level, col, row) % 16 === 0;
   }
   for (let rowOffset = 0; rowOffset <= 1; rowOffset++) {
@@ -217,8 +207,7 @@ export function wxProceduralTextureRgb(
   if (!inStipple) {
     return fill;
   }
-  const stipple = parseHexRgb(applyBrite(WX_STIPPLE_HEX, briteWx));
-  return level === 3 ? blendRgb(fill, stipple, 1 / 3) : stipple;
+  return parseHexRgb(applyBrite(WX_STIPPLE_HEX, briteWx));
 }
 
 function rebuildComposite(mosaic: WxMosaic, levels: WxLevels, briteWx: number): WxCompositeCanvas {

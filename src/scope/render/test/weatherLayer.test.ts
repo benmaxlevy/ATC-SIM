@@ -90,10 +90,10 @@ test("procedural WX uses exact brite-tinted backgrounds and level patterns", () 
   expect(wxProceduralTextureRgb(1, 0, 0, 100)).toEqual([19, 39, 39]);
   expect(wxProceduralTextureRgb(4, 0, 0, 100)).toEqual([50, 50, 26]);
   expect(wxProceduralTextureRgb(2, 0, 0, 100)).toEqual([19, 39, 39]);
-  expect(findMark(2)).toBeDefined();
-  expect(findMark(3)).toBeDefined();
-  expect(findMark(5)).toBeDefined();
-  expect(findMark(6)).toBeDefined();
+  for (const level of [2, 3, 5, 6] as const) {
+    const [col, row] = findMark(level);
+    expect(wxProceduralTextureRgb(level, col, row, 100)).toEqual([255, 255, 255]);
+  }
   expect(wxProceduralTextureRgb(2, 17, 23, 100)).toEqual(wxProceduralTextureRgb(2, 17, 23, 100));
   expect(wxProceduralTextureRgb(2, 0, 0, 100)).not.toEqual(
     wxProceduralTextureRgb(2, findMark(2)[0], findMark(2)[1], 100),
