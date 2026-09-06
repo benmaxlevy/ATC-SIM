@@ -19,7 +19,7 @@ export { WX_VIP_FILL_HEX } from "./wxStarsFill";
 
 export const DEFAULT_WX_ALPHA = 255;
 /** Extra raster density keeps procedural stipple marks below one screen pixel. */
-export const WX_TEXTURE_SCALE = 3;
+export const WX_TEXTURE_SCALE = 6;
 
 const WX_BACKGROUND_HEX = [
   "#132727",
@@ -160,6 +160,38 @@ export function wxScreenStyle(outline: boolean): "fill" | "contour" {
   return outline ? "contour" : "fill";
 }
 
+function textureHash(level: number, col: number, row: number): number {
+  let value = Math.imul(col + 1, 0x45d9f3b);
+  value = Math.imul(value ^ Math.imul(row + 1, 0x119de1f3), 0x45d9f3b);
+  value = Math.imul(value ^ Math.imul(level, 0x27d4eb2d), 0x45d9f3b);
+  value ^= value >>> 16;
+  return value >>> 0;
+}
+
+function hasProceduralMark(level: 2 | 3 | 5 | 6, col: number, row: number): boolean {
+  if (level === 2 || level === 5 || level === 6) {
+    return textureHash(level, col, row) % 16 === 0;
+  }
+  for (let rowOffset = 0; rowOffset <= 1; rowOffset++) {
+    for (let colOffset = 0; colOffset <= 1; colOffset++) {
+      const anchorCol = col - colOffset;
+      const anchorRow = row - rowOffset;
+      const hash = textureHash(level, anchorCol, anchorRow);
+      if (hash % 8 !== 0) {
+        continue;
+      }
+      const vertical = (hash & 1) === 0;
+      if (vertical && colOffset === 0) {
+        return true;
+      }
+      if (!vertical && rowOffset === 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 /** Deterministic mosaic-anchored WX background and stipple. */
 export function wxProceduralTextureRgb(
   level: 1 | 2 | 3 | 4 | 5 | 6,
@@ -171,19 +203,7 @@ export function wxProceduralTextureRgb(
   if (level === 1 || level === 4) {
     return fill;
   }
-  const inStipple =
-    level === 2 || level === 5
-      ? col % 8 === 3 && row % 8 === 3
-      : (() => {
-          const cellX = Math.floor(col / 4);
-          const cellY = Math.floor(row / 4);
-          const localX = col % 4;
-          const localY = row % 4;
-          if ((cellX + cellY) % 2 === 0) {
-            return localX === 1 && localY >= 0 && localY < 3;
-          }
-          return localY === 1 && localX >= 0 && localX < 3;
-        })();
+  const inStipple = hasProceduralMark(level, col, row);
   return inStipple ? parseHexRgb(applyBrite(WX_STIPPLE_HEX, briteWx)) : fill;
 }
 
