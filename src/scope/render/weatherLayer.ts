@@ -14,13 +14,12 @@ import { nmToScreen, type ScopeViewSize } from "../camera";
 import { applyBrite, snapBriteLevel } from "../palette";
 import type { ScopeView } from "../scopeView";
 import type { WxLevels, WxMosaic } from "../wx";
-import { sampleWxLevelTile, wxLevelTilesGeneration } from "../wx/levelTiles";
+import { getWxLevelTile, sampleWxLevelTile, wxLevelTilesGeneration } from "../wx/levelTiles";
 import { WX_VIP_FILL_HEX } from "./wxStarsFill";
 
 export { WX_VIP_FILL_HEX } from "./wxStarsFill";
 
 export const DEFAULT_WX_ALPHA = 255;
-export const WX_RENDER_SCALE = 3;
 
 export function wxVipFillHex(level: 1 | 2 | 3 | 4 | 5 | 6, briteWx: number): string {
   return applyBrite(WX_VIP_FILL_HEX[level - 1]!, briteWx);
@@ -158,8 +157,8 @@ function tintRgb(rgb: [number, number, number], brite: number): [number, number,
 }
 
 function rebuildComposite(mosaic: WxMosaic, levels: WxLevels, briteWx: number): WxCompositeCanvas {
-  const width = Math.max(1, Math.round(mosaic.widthPx * WX_RENDER_SCALE));
-  const height = Math.max(1, Math.round(mosaic.heightPx * WX_RENDER_SCALE));
+  const width = Math.max(1, Math.round(mosaic.widthPx));
+  const height = Math.max(1, Math.round(mosaic.heightPx));
   const pixels = new Uint8ClampedArray(width * height * 4);
   const fills: Array<[number, number, number] | null> = [
     levels[0] ? parseHexRgb(wxVipFillHex(1, briteWx)) : null,
@@ -172,9 +171,9 @@ function rebuildComposite(mosaic: WxMosaic, levels: WxLevels, briteWx: number): 
   const mw = mosaic.widthPx;
   const mh = mosaic.heightPx;
   for (let row = 0; row < height; row++) {
-    const mosaicRow = Math.min(mh - 1, Math.floor(row / WX_RENDER_SCALE));
+    const mosaicRow = Math.min(mh - 1, row);
     for (let col = 0; col < width; col++) {
-      const mosaicCol = Math.min(mw - 1, Math.floor(col / WX_RENDER_SCALE));
+      const mosaicCol = Math.min(mw - 1, col);
       const index = mosaicRow * mw + mosaicCol;
       const vip = highestVipAt(mosaic, levels, index);
       if (vip === 0) {
@@ -185,7 +184,14 @@ function rebuildComposite(mosaic: WxMosaic, levels: WxLevels, briteWx: number): 
         continue;
       }
       let rgb = fill;
-      const sampled = sampleWxLevelTile(vip as 1 | 2 | 3 | 4 | 5 | 6, col, row);
+      const sampledTile = getWxLevelTile(vip as 1 | 2 | 3 | 4 | 5 | 6);
+      const sampled = sampledTile
+        ? sampleWxLevelTile(
+            vip as 1 | 2 | 3 | 4 | 5 | 6,
+            Math.floor((col * sampledTile.width) / width),
+            Math.floor((row * sampledTile.height) / height),
+          )
+        : null;
       if (sampled) {
         rgb = tintRgb(sampled, briteWx);
       }
@@ -215,8 +221,8 @@ function reuseOrRebuildComposite(
     cachedBriteWx === briteWx &&
     cachedBriteWxc === briteWxc &&
     cachedTilesGen === wxLevelTilesGeneration() &&
-    cachedWidth === Math.round(mosaic.widthPx * WX_RENDER_SCALE) &&
-    cachedHeight === Math.round(mosaic.heightPx * WX_RENDER_SCALE)
+    cachedWidth === Math.round(mosaic.widthPx) &&
+    cachedHeight === Math.round(mosaic.heightPx)
   ) {
     return cachedCanvas;
   }
