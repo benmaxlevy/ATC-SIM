@@ -77,6 +77,16 @@ function parseHexRgb(hex: string): [number, number, number] {
   ];
 }
 
+function blendRgb(
+  base: [number, number, number],
+  overlay: [number, number, number],
+  amount: number,
+): [number, number, number] {
+  return base.map((channel, index) =>
+    Math.round(channel + (overlay[index]! - channel) * amount),
+  ) as [number, number, number];
+}
+
 const GEO_ORIGIN: LatLon = { latDeg: 0, lonDeg: 0 };
 
 /**
@@ -204,7 +214,11 @@ export function wxProceduralTextureRgb(
     return fill;
   }
   const inStipple = hasProceduralMark(level, col, row);
-  return inStipple ? parseHexRgb(applyBrite(WX_STIPPLE_HEX, briteWx)) : fill;
+  if (!inStipple) {
+    return fill;
+  }
+  const stipple = parseHexRgb(applyBrite(WX_STIPPLE_HEX, briteWx));
+  return level === 3 ? blendRgb(fill, stipple, 1 / 3) : stipple;
 }
 
 function rebuildComposite(mosaic: WxMosaic, levels: WxLevels, briteWx: number): WxCompositeCanvas {

@@ -71,10 +71,15 @@ test("WXC contours are six distinct hues tinted by brite.wxc, not IEM rainbow", 
 });
 
 test("procedural WX uses exact brite-tinted backgrounds and level patterns", () => {
-  const findWhite = (level: 2 | 3 | 5 | 6): [number, number] => {
+  const findMark = (level: 2 | 3 | 5 | 6): [number, number] => {
+    const fill = level === 5 || level === 6 ? [50, 50, 26] : [19, 39, 39];
     for (let row = 0; row < 64; row++) {
       for (let col = 0; col < 64; col++) {
-        if (wxProceduralTextureRgb(level, col, row, 100).every((channel) => channel === 255)) {
+        if (
+          !wxProceduralTextureRgb(level, col, row, 100).every(
+            (channel, index) => channel === fill[index],
+          )
+        ) {
           return [col, row];
         }
       }
@@ -85,13 +90,13 @@ test("procedural WX uses exact brite-tinted backgrounds and level patterns", () 
   expect(wxProceduralTextureRgb(1, 0, 0, 100)).toEqual([19, 39, 39]);
   expect(wxProceduralTextureRgb(4, 0, 0, 100)).toEqual([50, 50, 26]);
   expect(wxProceduralTextureRgb(2, 0, 0, 100)).toEqual([19, 39, 39]);
-  expect(findWhite(2)).toBeDefined();
-  expect(findWhite(3)).toBeDefined();
-  expect(findWhite(5)).toBeDefined();
-  expect(findWhite(6)).toBeDefined();
+  expect(findMark(2)).toBeDefined();
+  expect(findMark(3)).toBeDefined();
+  expect(findMark(5)).toBeDefined();
+  expect(findMark(6)).toBeDefined();
   expect(wxProceduralTextureRgb(2, 17, 23, 100)).toEqual(wxProceduralTextureRgb(2, 17, 23, 100));
   expect(wxProceduralTextureRgb(2, 0, 0, 100)).not.toEqual(
-    wxProceduralTextureRgb(2, findWhite(2)[0], findWhite(2)[1], 100),
+    wxProceduralTextureRgb(2, findMark(2)[0], findMark(2)[1], 100),
   );
 });
 
