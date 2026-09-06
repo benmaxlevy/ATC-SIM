@@ -114,21 +114,18 @@ test("procedural WX uses exact brite-tinted backgrounds and level patterns", () 
   expect(WX_BACKGROUND_HEX[5]).toBe("#32321a");
   expect(WX_STIPPLE_HEX).toBe("#6c7070");
 
-  // WX1 is solid blue-green across all coordinates
   for (let r = 0; r < 32; r++) {
     for (let c = 0; c < 32; c++) {
       expect(wxProceduralTextureRgb(1, c, r, 100)).toEqual([19, 39, 39]);
     }
   }
 
-  // WX4 is solid mustard across all coordinates
   for (let r = 0; r < 32; r++) {
     for (let c = 0; c < 32; c++) {
       expect(wxProceduralTextureRgb(4, c, r, 100)).toEqual([50, 50, 26]);
     }
   }
 
-  // Helper to find a mark in a pattern level
   const findMark = (level: 2 | 3 | 5 | 6): [number, number] => {
     const fill = level === 5 || level === 6 ? [50, 50, 26] : [19, 39, 39];
     for (let row = 0; row < WX_PATTERN_TILE_SIZE; row++) {
@@ -148,7 +145,6 @@ test("procedural WX uses exact brite-tinted backgrounds and level patterns", () 
     expect(mark).toEqual([108, 112, 112]);
   }
 
-  // WX5 uses the exact same square pattern as WX2
   for (let row = 0; row < WX_PATTERN_TILE_SIZE; row++) {
     for (let col = 0; col < WX_PATTERN_TILE_SIZE; col++) {
       const isMark2 = wxProceduralTextureRgb(2, col, row, 100)[0] === 108;
@@ -157,7 +153,6 @@ test("procedural WX uses exact brite-tinted backgrounds and level patterns", () 
     }
   }
 
-  // WX6 uses the exact same rectangle pattern as WX3
   for (let row = 0; row < WX_PATTERN_TILE_SIZE; row++) {
     for (let col = 0; col < WX_PATTERN_TILE_SIZE; col++) {
       const isMark3 = wxProceduralTextureRgb(3, col, row, 100)[0] === 108;
@@ -166,7 +161,6 @@ test("procedural WX uses exact brite-tinted backgrounds and level patterns", () 
     }
   }
 
-  // brite.wx dimming modulates both backgrounds and marks
   expect(wxLevelBackgroundHex(1, 50)).toBe(applyBrite("#132727", 50));
   expect(wxLevelBackgroundHex(4, 50)).toBe(applyBrite("#32321a", 50));
   expect(wxStippleHex(50)).toBe(applyBrite("#6c7070", 50));
@@ -186,7 +180,6 @@ test("authentic STARS pattern geometries and densities meet specification", () =
   }
 
   const rectangleMarks = getPatternMarks("rectangle");
-  // Rectangles are quite dense - 4x more dense than squares in WX2 (32 marks vs 8)
   expect(rectangleMarks.length).toBe(32);
   expect(rectangleMarks.length).toBeGreaterThan(squareMarks.length * 2.5);
   let hasHorizontal = false;
@@ -204,7 +197,6 @@ test("authentic STARS pattern geometries and densities meet specification", () =
   expect(hasHorizontal).toBe(true);
   expect(hasVertical).toBe(true);
 
-  // Mask sizes match pattern tile size
   const squareMask = getPatternTileMask("square");
   const rectMask = getPatternTileMask("rectangle");
   expect(squareMask.length).toBe(WX_PATTERN_TILE_SIZE * WX_PATTERN_TILE_SIZE);
@@ -272,7 +264,6 @@ test("one enabled level draws one cached composite", () => {
 test("compositing screen-space patterns for WX2, WX3, WX5, and WX6 over VIP regions", () => {
   const size = { widthPx: 800, heightPx: 800 };
 
-  // WX1 (solid blue-green): only baseCanvas drawn (length 1)
   {
     const view = createScopeView();
     view.wxMosaic = syntheticLevelMosaic(1);
@@ -282,7 +273,6 @@ test("compositing screen-space patterns for WX2, WX3, WX5, and WX6 over VIP regi
     expect(draw.drawImages).toHaveLength(1);
   }
 
-  // WX2 (squares): baseCanvas + scratchCanvas with squares (length 2)
   {
     const view = createScopeView();
     view.wxMosaic = syntheticLevelMosaic(2);
@@ -290,16 +280,13 @@ test("compositing screen-space patterns for WX2, WX3, WX5, and WX6 over VIP regi
     const draw = mockDrawCtx();
     drawWeatherLayer(draw.ctx, view, size);
     expect(draw.drawImages).toHaveLength(2);
-    // Base canvas drawn with destination rect
     expect(draw.drawImages[0]!.dw).toBeGreaterThan(0);
-    // Scratch canvas drawn at (0, 0, 800, 800)
     expect(draw.drawImages[1]!.dx).toBe(0);
     expect(draw.drawImages[1]!.dy).toBe(0);
     expect(draw.drawImages[1]!.dw).toBe(800);
     expect(draw.drawImages[1]!.dh).toBe(800);
   }
 
-  // WX3 (rectangles): baseCanvas + scratchCanvas with rectangles (length 2)
   {
     const view = createScopeView();
     view.wxMosaic = syntheticLevelMosaic(3);
@@ -309,7 +296,6 @@ test("compositing screen-space patterns for WX2, WX3, WX5, and WX6 over VIP regi
     expect(draw.drawImages).toHaveLength(2);
   }
 
-  // WX4 (solid mustard): only baseCanvas drawn (length 1)
   {
     const view = createScopeView();
     view.wxMosaic = syntheticLevelMosaic(4);
@@ -319,7 +305,6 @@ test("compositing screen-space patterns for WX2, WX3, WX5, and WX6 over VIP regi
     expect(draw.drawImages).toHaveLength(1);
   }
 
-  // WX5 (mustard + squares): baseCanvas + scratchCanvas (length 2)
   {
     const view = createScopeView();
     view.wxMosaic = syntheticLevelMosaic(5);
@@ -329,7 +314,6 @@ test("compositing screen-space patterns for WX2, WX3, WX5, and WX6 over VIP regi
     expect(draw.drawImages).toHaveLength(2);
   }
 
-  // WX6 (mustard + rectangles): baseCanvas + scratchCanvas (length 2)
   {
     const view = createScopeView();
     view.wxMosaic = syntheticLevelMosaic(6);
@@ -364,14 +348,12 @@ test("pattern origin translates with camera pan so marks do not parallax", () =>
   expect(translations).toHaveLength(1);
   const firstTranslation = { ...translations[0]! };
 
-  // Pan camera east
   view.camera.centerEastNm = 10;
   const draw2 = mockDrawCtx();
   drawWeatherLayer(draw2.ctx, view, size);
   expect(translations).toHaveLength(2);
   const pannedTranslation = translations[1]!;
 
-  // Panning shifted the translation origin in lockstep with the weather mask
   expect(pannedTranslation.x).not.toBe(firstTranslation.x);
 
   if (origGetContext) {
@@ -385,20 +367,17 @@ test("WXC in brite controls stipple brightness: off = no stipple, 100% = #6c7070
   view.wxMosaic = syntheticLevelMosaic(2);
   view.wxLevels = [false, true, false, false, false, false];
 
-  // Full brite WXC = 100 -> stipple hex is #6c7070, scratch canvas drawn
   view.brite.wxc = 100;
   expect(wxStippleHex(100)).toBe(applyBrite("#6c7070", 100));
   const draw100 = mockDrawCtx();
   drawWeatherLayer(draw100.ctx, view, size);
   expect(draw100.drawImages).toHaveLength(2);
 
-  // WXC = 0 (OFF) -> no stipple drawn, only baseCanvas (length 1)
   view.brite.wxc = 0;
   const drawOff = mockDrawCtx();
   drawWeatherLayer(drawOff.ctx, view, size);
   expect(drawOff.drawImages).toHaveLength(1);
 
-  // WX procedural texture also returns fill when WXC is 0
   let foundCol = 0;
   let foundRow = 0;
   for (let r = 0; r < WX_PATTERN_TILE_SIZE; r++) {
@@ -411,7 +390,7 @@ test("WXC in brite controls stipple brightness: off = no stipple, 100% = #6c7070
     }
   }
   expect(wxProceduralTextureRgb(2, foundCol, foundRow, 100, 100)).toEqual([108, 112, 112]);
-  expect(wxProceduralTextureRgb(2, foundCol, foundRow, 100, 0)).toEqual([19, 39, 39]); // no stipple when WXC=0
+  expect(wxProceduralTextureRgb(2, foundCol, foundRow, 100, 0)).toEqual([19, 39, 39]);
 });
 
 test("weatherLayer has no airport-id branch, fetch, or JSON.parse", () => {

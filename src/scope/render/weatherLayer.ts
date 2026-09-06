@@ -1,16 +1,6 @@
 /**
  * Composite enabled VIP masks into a cached base canvas and screen-space patterns.
  * Decode / fetch stay in `wx/`. Display only — does not steer aircraft.
- *
- * Solution 2 (Screen-Space Pattern):
- * - Solid weather fills (WX1-WX3 blue-green, WX4-WX6 mustard) are drawn from a
- *   cached base mosaic canvas with imageSmoothingEnabled = false.
- * - Screen-space repeating patterns (3x3 squares for WX2/WX5, 1px-thick rectangles
- *   for WX3/WX6) are composited over the corresponding VIP regions via an offscreen
- *   scratch canvas.
- * - Stipple marks are tinted with view.brite.wx (#FFFFFF tinted with brite.wx).
- * - Zero lag during pan, zoom, and render loop: geometry, patterns, and base mosaic
- *   are cached.
  */
 
 import { latLonToNm, nmToLatLon, type LatLon } from "@core";
