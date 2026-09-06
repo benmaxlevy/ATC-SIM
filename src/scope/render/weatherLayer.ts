@@ -18,8 +18,8 @@ import { WX_VIP_FILL_HEX } from "./wxStarsFill";
 export { WX_VIP_FILL_HEX } from "./wxStarsFill";
 
 export const DEFAULT_WX_ALPHA = 255;
-/** Extra raster density keeps procedural stipple marks below one screen pixel. */
-export const WX_TEXTURE_SCALE = 6;
+/** Raster density per mosaic cell; higher makes one-pixel rectangles thinner on screen. */
+export const WX_TEXTURE_SCALE = 18;
 
 const WX_BACKGROUND_HEX = [
   "#132727",
