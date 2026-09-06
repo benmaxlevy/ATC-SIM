@@ -1,16 +1,21 @@
 /**
- * Composite enabled VIP masks into one cached canvas and draw it under tracks.
+ * Composite enabled VIP masks into a cached base canvas and screen-space patterns.
  * Decode / fetch stay in `wx/`. Display only — does not steer aircraft.
  *
- * Deterministic per-level texture is generated in mosaic space over the
- * authoritative VIP fills. Not the IEM NWS rainbow. `view.brite.wx` tints
- * fills; `view.brite.wxc` tints a 1px outline. Camera changes only update the
- * destination rectangle for the cached geographic raster.
+ * Solution 2 (Screen-Space Pattern):
+ * - Solid weather fills (WX1-WX3 blue-green, WX4-WX6 mustard) are drawn from a
+ *   cached base mosaic canvas with imageSmoothingEnabled = false.
+ * - Screen-space repeating patterns (3x3 squares for WX2/WX5, 1px-thick rectangles
+ *   for WX3/WX6) are composited over the corresponding VIP regions via an offscreen
+ *   scratch canvas.
+ * - Stipple marks are tinted with view.brite.wx (#FFFFFF tinted with brite.wx).
+ * - Zero lag during pan, zoom, and render loop: geometry, patterns, and base mosaic
+ *   are cached.
  */
 
 import { latLonToNm, nmToLatLon, type LatLon } from "@core";
 import { nmToScreen, type ScopeViewSize } from "../camera";
-import { applyBrite } from "../palette";
+import { applyBrite, snapBriteLevel } from "../palette";
 import type { ScopeView } from "../scopeView";
 import type { WxLevels, WxMosaic } from "../wx";
 import { WX_VIP_FILL_HEX } from "./wxStarsFill";
@@ -18,12 +23,11 @@ import { WX_VIP_FILL_HEX } from "./wxStarsFill";
 export { WX_VIP_FILL_HEX } from "./wxStarsFill";
 
 export const DEFAULT_WX_ALPHA = 255;
-/** Small backing raster; stipple comes from reusable generated pattern tiles. */
-export const WX_TEXTURE_SCALE = 2;
-const WX_PATTERN_TILE_SIZE = 64;
-const WX_PATTERN_VARIANTS = 4;
+/** Backing base mosaic scale (1x native mosaic bins). */
+export const WX_TEXTURE_SCALE = 1;
+export const WX_PATTERN_TILE_SIZE = 32;
 
-const WX_BACKGROUND_HEX = [
+export const WX_BACKGROUND_HEX = [
   "#132727",
   "#132727",
   "#132727",
@@ -31,10 +35,18 @@ const WX_BACKGROUND_HEX = [
   "#32321a",
   "#32321a",
 ] as const;
-const WX_STIPPLE_HEX = "#FFFFFF";
+export const WX_STIPPLE_HEX = "#6c7070";
 
 export function wxVipFillHex(level: 1 | 2 | 3 | 4 | 5 | 6, briteWx: number): string {
   return applyBrite(WX_VIP_FILL_HEX[level - 1]!, briteWx);
+}
+
+export function wxLevelBackgroundHex(level: 1 | 2 | 3 | 4 | 5 | 6, briteWx: number): string {
+  return applyBrite(WX_BACKGROUND_HEX[level - 1]!, briteWx);
+}
+
+export function wxStippleHex(briteWxc: number): string {
+  return applyBrite(WX_STIPPLE_HEX, briteWxc);
 }
 
 /** VIP 1–6 band-edge contours. Brighter than fills; not IEM NWS ramp stops. */
@@ -92,59 +104,93 @@ function resolveArp(view: ScopeView): LatLon {
   return nmToLatLon({ xNm: view.airportEastNm, yNm: view.airportNorthNm }, GEO_ORIGIN);
 }
 
-type WxCompositeCanvas = {
+export type WxImageData = {
   width: number;
   height: number;
+  data: Uint8ClampedArray;
+  colorSpace?: PredefinedColorSpace;
 };
 
-let cachedMosaic: WxMosaic | null = null;
-let cachedLevels: WxLevels | null = null;
-let cachedBriteWx = -1;
-let cachedBriteWxc = -1;
-let cachedCanvas: WxCompositeCanvas | null = null;
-let cachedWidth = 0;
-let cachedHeight = 0;
+export type Wx2dContext = {
+  globalCompositeOperation?: string;
+  imageSmoothingEnabled?: boolean;
+  fillStyle?: string | CanvasPattern | CanvasGradient;
+  save?(): void;
+  restore?(): void;
+  translate?(x: number, y: number): void;
+  clearRect?(x: number, y: number, w: number, h: number): void;
+  fillRect?(x: number, y: number, w: number, h: number): void;
+  drawImage?(image: CanvasImageSource, dx: number, dy: number, dw?: number, dh?: number): void;
+  createPattern?(image: CanvasImageSource, repetition: string): CanvasPattern | null;
+  createImageData?(width: number, height: number): ImageData | WxImageData;
+  putImageData?(imageData: ImageData | WxImageData, dx: number, dy: number): void;
+};
 
-function acquireCanvas(width: number, height: number): WxCompositeCanvas {
-  if (cachedCanvas && cachedWidth === width && cachedHeight === height) {
-    return cachedCanvas;
-  }
-  if (typeof document !== "undefined") {
+export type WxCanvas = {
+  width: number;
+  height: number;
+  getContext?(contextId: string): Wx2dContext | null;
+  _pixels?: Uint8ClampedArray;
+};
+
+export function createOffscreenCanvas(width: number, height: number): WxCanvas {
+  if (typeof document !== "undefined" && typeof document.createElement === "function") {
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
-    cachedWidth = width;
-    cachedHeight = height;
-    return canvas;
+    return canvas as unknown as WxCanvas;
   }
   if (typeof OffscreenCanvas === "function") {
-    cachedWidth = width;
-    cachedHeight = height;
-    return new OffscreenCanvas(width, height);
+    return new OffscreenCanvas(width, height) as unknown as WxCanvas;
   }
-  cachedWidth = width;
-  cachedHeight = height;
-  return { width, height };
+  return {
+    width,
+    height,
+    getContext(_id: string) {
+      return {
+        globalCompositeOperation: "source-over",
+        imageSmoothingEnabled: false,
+        fillStyle: "",
+        save() {},
+        restore() {},
+        translate() {},
+        clearRect() {},
+        fillRect() {},
+        drawImage() {},
+        createPattern() {
+          return { setTransform() {} };
+        },
+        createImageData(w: number, h: number): WxImageData {
+          return {
+            width: w,
+            height: h,
+            data: new Uint8ClampedArray(w * h * 4),
+            colorSpace: "srgb",
+          };
+        },
+        putImageData() {},
+      };
+    },
+  };
 }
 
-type Wx2dContext = {
-  createImageData(width: number, height: number): ImageData;
-  putImageData(imageData: ImageData, dx: number, dy: number): void;
-};
-
-function writeCompositePixels(canvas: WxCompositeCanvas, pixels: Uint8ClampedArray): void {
+function writeCompositePixels(canvas: WxCanvas, pixels: Uint8ClampedArray): void {
+  canvas._pixels = pixels;
+  if (!canvas || typeof canvas.getContext !== "function") {
+    return;
+  }
+  const ctx = canvas.getContext("2d");
+  if (!ctx || typeof ctx.putImageData !== "function") {
+    return;
+  }
   const width = canvas.width;
   const height = canvas.height;
-  if (!("getContext" in canvas)) {
-    return;
-  }
-  const maybeCtx = (canvas as { getContext(id: "2d"): Wx2dContext | null }).getContext("2d");
-  if (!maybeCtx) {
-    return;
-  }
-  const imageData = maybeCtx.createImageData(width, height);
+  const imageData: ImageData | WxImageData =
+    typeof ctx.createImageData === "function"
+      ? ctx.createImageData(width, height)
+      : { width, height, data: new Uint8ClampedArray(width * height * 4), colorSpace: "srgb" };
   imageData.data.set(pixels);
-  maybeCtx.putImageData(imageData, 0, 0);
+  ctx.putImageData(imageData as ImageData, 0, 0);
 }
 
 function highestVipAt(mosaic: WxMosaic, levels: WxLevels, index: number): number {
@@ -162,130 +208,322 @@ export function wxScreenStyle(outline: boolean): "fill" | "contour" {
   return outline ? "contour" : "fill";
 }
 
-function textureHash(level: number, col: number, row: number): number {
-  let value = Math.imul(col + 1, 0x45d9f3b);
-  value = Math.imul(value ^ Math.imul(row + 1, 0x119de1f3), 0x45d9f3b);
-  value = Math.imul(value ^ Math.imul(level, 0x27d4eb2d), 0x45d9f3b);
-  value ^= value >>> 16;
-  return value >>> 0;
+export type WxPatternKind = "square" | "rectangle";
+
+export interface PatternMark {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
-type WxPatternKind = "square" | "rectangle";
-
-function patternIndex(col: number, row: number): number {
-  return (row % WX_PATTERN_TILE_SIZE) * WX_PATTERN_TILE_SIZE + (col % WX_PATTERN_TILE_SIZE);
+interface PatternInfo {
+  kind: WxPatternKind;
+  mask: Uint8Array;
+  marks: PatternMark[];
 }
 
-function canPlaceMark(
-  marks: Uint8Array,
-  col: number,
-  row: number,
-  width: number,
-  height: number,
-): boolean {
-  if (
-    col < 2 ||
-    row < 2 ||
-    col + width > WX_PATTERN_TILE_SIZE - 2 ||
-    row + height > WX_PATTERN_TILE_SIZE - 2
-  ) {
-    return false;
-  }
-  for (let checkRow = row - 1; checkRow <= row + height; checkRow++) {
-    for (let checkCol = col - 1; checkCol <= col + width; checkCol++) {
-      if (marks[patternIndex(checkCol, checkRow)] !== 0) {
-        return false;
+/**
+ * Authentic STARS 32x32 stipple bitmasks from Vice (radar/weather.go).
+ * wxStippleLight: 2x2 scattered squares.
+ * wxStippleDense: 16x16 basis of 1x2 and 2x1 1px-thin lines, repeated 2x2.
+ */
+const WX_STIPPLE_LIGHT_BITS: readonly number[] = [
+  0b00000000000000000000000000000000, 0b00000000000000000000000000000000,
+  0b00000000000011000000000000000000, 0b00000000000011000000000000000000,
+  0b00000000000000000000000000000000, 0b00000000000000000000000000000000,
+  0b00000000000000000000000000000000, 0b00000000000000000000001100000000,
+  0b00000000000000000000001100000000, 0b00000000000000000000000000000000,
+  0b00000000000000000000000000000000, 0b00000001100000000000000000000000,
+  0b00000001100000000000000000000000, 0b00000000000000000000000000000000,
+  0b00000000000000000000000000000000, 0b00000000000000110000000000000000,
+  0b00000000000000110000000000000000, 0b00000000000000000000000000001100,
+  0b00000000000000000000000000001100, 0b00000000000000000000000000000000,
+  0b00000000000000000000000000000000, 0b00000000000000000000000000000000,
+  0b00000000110000000000000000000000, 0b00000000110000000000000000000000,
+  0b00000000000000000000000000000000, 0b00000000000000000011000000000000,
+  0b00000000000000000011000000000000, 0b00000000000000000000000000000000,
+  0b00000000000000000000000000000000, 0b00000000000000000000000000000000,
+  0b11000000000000000000000000000000, 0b11000000000000000000000000000000,
+];
+
+const WX_STIPPLE_DENSE_BITS: readonly number[] = [
+  0b00000000000000000000000000000000, 0b00000000000000000000000000000000,
+  0b00001000000000000000100000000000, 0b00001000000000000000100000000000,
+  0b00000000000110000000000000011000, 0b01000000000000000100000000000000,
+  0b01000000000000000100000000000000, 0b00000001100000000000000110000000,
+  0b00000000000000000000000000000000, 0b00000000000000110000000000000011,
+  0b00000000000000000000000000000000, 0b00011000000000000001100000000000,
+  0b00000000000000000000000000000000, 0b00000000001000000000000000100000,
+  0b00000000001000000000000000100000, 0b11000000000000001100000000000000,
+  0b00000000000000000000000000000000, 0b00000000000000000000000000000000,
+  0b00001000000000000000100000000000, 0b00001000000000000000100000000000,
+  0b00000000000110000000000000011000, 0b01000000000000000100000000000000,
+  0b01000000000000000100000000000000, 0b00000001100000000000000110000000,
+  0b00000000000000000000000000000000, 0b00000000000000110000000000000011,
+  0b00000000000000000000000000000000, 0b00011000000000000001100000000000,
+  0b00000000000000000000000000000000, 0b00000000001000000000000000100000,
+  0b00000000001000000000000000100000, 0b11000000000000001100000000000000,
+];
+
+function buildBitmapPattern(bits: readonly number[], kind: WxPatternKind): PatternInfo {
+  const size = WX_PATTERN_TILE_SIZE;
+  const mask = new Uint8Array(size * size);
+  for (let r = 0; r < size; r++) {
+    const rowBits = bits[r]!;
+    for (let c = 0; c < size; c++) {
+      if (((rowBits >>> (31 - c)) & 1) !== 0) {
+        mask[r * size + c] = 1;
       }
     }
   }
-  return true;
-}
 
-function createPatternTile(kind: WxPatternKind, variant: number): Uint8Array {
-  const marks = new Uint8Array(WX_PATTERN_TILE_SIZE * WX_PATTERN_TILE_SIZE);
-  for (let row = 2; row < WX_PATTERN_TILE_SIZE - 2; row++) {
-    for (let col = 2; col < WX_PATTERN_TILE_SIZE - 2; col++) {
-      const hash = textureHash(variant + (kind === "rectangle" ? 100 : 0), col, row);
-      if (hash % (kind === "square" ? 5 : 3) !== 0) {
-        continue;
-      }
-      const vertical = (hash & 1) === 0;
-      const width = kind === "square" ? 1 : vertical ? 1 : 2;
-      const height = kind === "square" ? 1 : vertical ? 2 : 1;
-      if (!canPlaceMark(marks, col, row, width, height)) {
-        continue;
-      }
-      for (let markRow = row; markRow < row + height; markRow++) {
-        for (let markCol = col; markCol < col + width; markCol++) {
-          marks[patternIndex(markCol, markRow)] = 1;
+  const visited = new Uint8Array(size * size);
+  const marks: PatternMark[] = [];
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (mask[r * size + c] === 1 && visited[r * size + c] === 0) {
+        let w = 0;
+        while (
+          c + w < size &&
+          mask[r * size + (c + w)] === 1 &&
+          visited[r * size + (c + w)] === 0
+        ) {
+          w++;
         }
+        let h = 1;
+        while (r + h < size) {
+          let fullRow = true;
+          for (let i = 0; i < w; i++) {
+            if (mask[(r + h) * size + (c + i)] !== 1 || visited[(r + h) * size + (c + i)] !== 0) {
+              fullRow = false;
+              break;
+            }
+          }
+          if (!fullRow) break;
+          h++;
+        }
+        for (let dy = 0; dy < h; dy++) {
+          for (let dx = 0; dx < w; dx++) {
+            visited[(r + dy) * size + (c + dx)] = 1;
+          }
+        }
+        marks.push({ x: c, y: r, width: w, height: h });
       }
     }
   }
-  return marks;
+
+  return { kind, mask, marks };
 }
 
-const WX_PATTERN_TILES: Record<WxPatternKind, Uint8Array[]> = {
-  square: Array.from({ length: WX_PATTERN_VARIANTS }, (_, variant) =>
-    createPatternTile("square", variant),
-  ),
-  rectangle: Array.from({ length: WX_PATTERN_VARIANTS }, (_, variant) =>
-    createPatternTile("rectangle", variant),
-  ),
+const PATTERN_DEFINITIONS: Record<WxPatternKind, PatternInfo> = {
+  square: buildBitmapPattern(WX_STIPPLE_LIGHT_BITS, "square"),
+  rectangle: buildBitmapPattern(WX_STIPPLE_DENSE_BITS, "rectangle"),
 };
 
-function hasProceduralMark(level: 2 | 3 | 5 | 6, col: number, row: number): boolean {
-  const kind = level === 2 || level === 5 ? "square" : "rectangle";
-  const tileX = Math.floor(col / WX_PATTERN_TILE_SIZE);
-  const tileY = Math.floor(row / WX_PATTERN_TILE_SIZE);
-  const variant = textureHash(level, tileX, tileY) % WX_PATTERN_VARIANTS;
-  return WX_PATTERN_TILES[kind][variant]![patternIndex(col, row)] === 1;
+export function getPatternTileMask(kind: WxPatternKind): Uint8Array {
+  return PATTERN_DEFINITIONS[kind].mask;
 }
 
-/** Deterministic mosaic-anchored WX background and stipple. */
+export function getPatternMarks(kind: WxPatternKind): readonly PatternMark[] {
+  return PATTERN_DEFINITIONS[kind].marks;
+}
+
+const patternTileCanvasCache = new Map<string, WxCanvas>();
+const patternCache = new Map<string, CanvasPattern | null>();
+
+export function getOrCreatePatternTileCanvas(kind: WxPatternKind, briteWxc: number): WxCanvas {
+  const key = `${kind}:${snapBriteLevel(briteWxc)}`;
+  const existing = patternTileCanvasCache.get(key);
+  if (existing) {
+    return existing;
+  }
+  const canvas = createOffscreenCanvas(WX_PATTERN_TILE_SIZE, WX_PATTERN_TILE_SIZE);
+  const mask = getPatternTileMask(kind);
+  const [r, g, b] = parseHexRgb(applyBrite(WX_STIPPLE_HEX, briteWxc));
+  const pixels = new Uint8ClampedArray(WX_PATTERN_TILE_SIZE * WX_PATTERN_TILE_SIZE * 4);
+  for (let i = 0; i < mask.length; i++) {
+    if (mask[i] !== 0) {
+      const o = i * 4;
+      pixels[o] = r;
+      pixels[o + 1] = g;
+      pixels[o + 2] = b;
+      pixels[o + 3] = DEFAULT_WX_ALPHA;
+    }
+  }
+  writeCompositePixels(canvas, pixels);
+  patternTileCanvasCache.set(key, canvas);
+  return canvas;
+}
+
+export function getOrCreatePattern(
+  ctx: CanvasRenderingContext2D | Wx2dContext | null | undefined,
+  kind: WxPatternKind,
+  briteWxc: number,
+): CanvasPattern | null {
+  const key = `${kind}:${snapBriteLevel(briteWxc)}`;
+  if (patternCache.has(key)) {
+    return patternCache.get(key)!;
+  }
+  const tileCanvas = getOrCreatePatternTileCanvas(kind, briteWxc);
+  let pattern: CanvasPattern | null = null;
+  if (ctx && typeof ctx.createPattern === "function") {
+    try {
+      pattern = ctx.createPattern(tileCanvas as unknown as CanvasImageSource, "repeat");
+    } catch {
+      pattern = null;
+    }
+  }
+  patternCache.set(key, pattern);
+  return pattern;
+}
+
+let cachedScratchCanvas: WxCanvas | null = null;
+let cachedScratchWidth = 0;
+let cachedScratchHeight = 0;
+
+export function acquireScratchCanvas(width: number, height: number): WxCanvas {
+  if (cachedScratchCanvas && cachedScratchWidth === width && cachedScratchHeight === height) {
+    return cachedScratchCanvas;
+  }
+  cachedScratchWidth = width;
+  cachedScratchHeight = height;
+  cachedScratchCanvas = createOffscreenCanvas(width, height);
+  return cachedScratchCanvas;
+}
+
+/** Deterministic screen-space WX background and stipple mark colors. */
 export function wxProceduralTextureRgb(
   level: 1 | 2 | 3 | 4 | 5 | 6,
   col: number,
   row: number,
   briteWx: number,
+  briteWxc: number = briteWx,
 ): [number, number, number] {
-  const fill = parseHexRgb(applyBrite(WX_BACKGROUND_HEX[level - 1]!, briteWx));
+  const bgHex = WX_BACKGROUND_HEX[level - 1]!;
+  const fill = parseHexRgb(applyBrite(bgHex, briteWx));
   if (level === 1 || level === 4) {
     return fill;
   }
-  const inStipple = hasProceduralMark(level, col, row);
-  if (!inStipple) {
+  if (snapBriteLevel(briteWxc) <= 0) {
     return fill;
   }
-  return parseHexRgb(applyBrite(WX_STIPPLE_HEX, briteWx));
+  const kind: WxPatternKind = level === 2 || level === 5 ? "square" : "rectangle";
+  const mask = getPatternTileMask(kind);
+  const size = WX_PATTERN_TILE_SIZE;
+  const x = ((col % size) + size) % size;
+  const y = ((row % size) + size) % size;
+  if (mask[y * size + x] !== 0) {
+    return parseHexRgb(applyBrite(WX_STIPPLE_HEX, briteWxc));
+  }
+  return fill;
 }
 
-function rebuildComposite(mosaic: WxMosaic, levels: WxLevels, briteWx: number): WxCompositeCanvas {
-  const width = Math.max(1, Math.round(mosaic.widthPx * WX_TEXTURE_SCALE));
-  const height = Math.max(1, Math.round(mosaic.heightPx * WX_TEXTURE_SCALE));
-  const pixels = new Uint8ClampedArray(width * height * 4);
+export interface WxCompositeLayers {
+  baseCanvas: WxCanvas;
+  squaresMask: WxCanvas | null;
+  rectanglesMask: WxCanvas | null;
+}
+
+interface CachedMosaicState extends WxCompositeLayers {
+  mosaic: WxMosaic;
+  levels: WxLevels;
+  briteWx: number;
+  briteWxc: number;
+  scale: number;
+}
+
+let cachedMosaicState: CachedMosaicState | null = null;
+
+export function resetWeatherLayerCache(): void {
+  cachedMosaicState = null;
+  cachedScratchCanvas = null;
+  cachedScratchWidth = 0;
+  cachedScratchHeight = 0;
+  patternTileCanvasCache.clear();
+  patternCache.clear();
+}
+
+function rebuildComposite(
+  mosaic: WxMosaic,
+  levels: WxLevels,
+  briteWx: number,
+  scale: number = WX_TEXTURE_SCALE,
+): WxCompositeLayers {
+  const width = Math.max(1, Math.round(mosaic.widthPx * scale));
+  const height = Math.max(1, Math.round(mosaic.heightPx * scale));
+  const totalPixels = width * height;
+  const basePixels = new Uint8ClampedArray(totalPixels * 4);
   const mw = mosaic.widthPx;
   const mh = mosaic.heightPx;
+
+  const squaresActive = levels[1] || levels[4];
+  const rectanglesActive = levels[2] || levels[5];
+
+  let squaresMaskPixels: Uint8ClampedArray | null = null;
+  let rectanglesMaskPixels: Uint8ClampedArray | null = null;
+
+  if (squaresActive) {
+    squaresMaskPixels = new Uint8ClampedArray(totalPixels * 4);
+  }
+  if (rectanglesActive) {
+    rectanglesMaskPixels = new Uint8ClampedArray(totalPixels * 4);
+  }
+
+  let hasSquareMarks = false;
+  let hasRectangleMarks = false;
+
   for (let row = 0; row < height; row++) {
-    const mosaicRow = Math.min(mh - 1, Math.floor(row / WX_TEXTURE_SCALE));
+    const mosaicRow = Math.min(mh - 1, Math.floor(row / scale));
     for (let col = 0; col < width; col++) {
-      const mosaicCol = Math.min(mw - 1, Math.floor(col / WX_TEXTURE_SCALE));
+      const mosaicCol = Math.min(mw - 1, Math.floor(col / scale));
       const index = mosaicRow * mw + mosaicCol;
       const vip = highestVipAt(mosaic, levels, index);
       if (vip === 0) {
         continue;
       }
-      const rgb = wxProceduralTextureRgb(vip as 1 | 2 | 3 | 4 | 5 | 6, col, row, briteWx);
       const o = (row * width + col) * 4;
-      pixels[o] = rgb[0];
-      pixels[o + 1] = rgb[1];
-      pixels[o + 2] = rgb[2];
-      pixels[o + 3] = DEFAULT_WX_ALPHA;
+      const bgHex = WX_BACKGROUND_HEX[vip - 1]!;
+      const [r, g, b] = parseHexRgb(applyBrite(bgHex, briteWx));
+      basePixels[o] = r;
+      basePixels[o + 1] = g;
+      basePixels[o + 2] = b;
+      basePixels[o + 3] = DEFAULT_WX_ALPHA;
+
+      if (squaresActive && (vip === 2 || vip === 5)) {
+        squaresMaskPixels![o] = 255;
+        squaresMaskPixels![o + 1] = 255;
+        squaresMaskPixels![o + 2] = 255;
+        squaresMaskPixels![o + 3] = 255;
+        hasSquareMarks = true;
+      }
+
+      if (rectanglesActive && (vip === 3 || vip === 6)) {
+        rectanglesMaskPixels![o] = 255;
+        rectanglesMaskPixels![o + 1] = 255;
+        rectanglesMaskPixels![o + 2] = 255;
+        rectanglesMaskPixels![o + 3] = 255;
+        hasRectangleMarks = true;
+      }
     }
   }
-  const canvas = acquireCanvas(width, height);
-  writeCompositePixels(canvas, pixels);
-  return canvas;
+
+  const baseCanvas = createOffscreenCanvas(width, height);
+  writeCompositePixels(baseCanvas, basePixels);
+
+  let squaresMask: WxCanvas | null = null;
+  if (squaresActive && hasSquareMarks && squaresMaskPixels) {
+    squaresMask = createOffscreenCanvas(width, height);
+    writeCompositePixels(squaresMask, squaresMaskPixels);
+  }
+
+  let rectanglesMask: WxCanvas | null = null;
+  if (rectanglesActive && hasRectangleMarks && rectanglesMaskPixels) {
+    rectanglesMask = createOffscreenCanvas(width, height);
+    writeCompositePixels(rectanglesMask, rectanglesMaskPixels);
+  }
+
+  return { baseCanvas, squaresMask, rectanglesMask };
 }
 
 function reuseOrRebuildComposite(
@@ -293,26 +531,86 @@ function reuseOrRebuildComposite(
   levels: WxLevels,
   briteWx: number,
   briteWxc: number,
-): WxCompositeCanvas {
+): WxCompositeLayers {
   if (
-    cachedCanvas &&
-    cachedMosaic === mosaic &&
-    cachedLevels !== null &&
-    levelsMatch(cachedLevels, levels) &&
-    cachedBriteWx === briteWx &&
-    cachedBriteWxc === briteWxc &&
-    cachedWidth === Math.round(mosaic.widthPx * WX_TEXTURE_SCALE) &&
-    cachedHeight === Math.round(mosaic.heightPx * WX_TEXTURE_SCALE)
+    cachedMosaicState &&
+    cachedMosaicState.mosaic === mosaic &&
+    levelsMatch(cachedMosaicState.levels, levels) &&
+    cachedMosaicState.briteWx === briteWx &&
+    cachedMosaicState.briteWxc === briteWxc &&
+    cachedMosaicState.scale === WX_TEXTURE_SCALE
   ) {
-    return cachedCanvas;
+    return cachedMosaicState;
   }
-  const canvas = rebuildComposite(mosaic, levels, briteWx);
-  cachedMosaic = mosaic;
-  cachedLevels = levels;
-  cachedBriteWx = briteWx;
-  cachedBriteWxc = briteWxc;
-  cachedCanvas = canvas;
-  return canvas;
+  const layers = rebuildComposite(mosaic, levels, briteWx, WX_TEXTURE_SCALE);
+  cachedMosaicState = {
+    ...layers,
+    mosaic,
+    levels,
+    briteWx,
+    briteWxc,
+    scale: WX_TEXTURE_SCALE,
+  };
+  return cachedMosaicState;
+}
+
+function drawScreenPattern(
+  ctx: CanvasRenderingContext2D,
+  maskCanvas: WxCanvas,
+  kind: WxPatternKind,
+  briteWxc: number,
+  destX: number,
+  destY: number,
+  destW: number,
+  destH: number,
+  size: ScopeViewSize,
+): void {
+  if (snapBriteLevel(briteWxc) <= 0) {
+    return;
+  }
+  const scratchCanvas = acquireScratchCanvas(size.widthPx, size.heightPx);
+  if (!scratchCanvas || typeof scratchCanvas.getContext !== "function") {
+    return;
+  }
+  const scratchCtx = scratchCanvas.getContext("2d");
+  if (!scratchCtx) {
+    return;
+  }
+
+  const pattern = getOrCreatePattern(scratchCtx, kind, briteWxc);
+
+  if (typeof scratchCtx.clearRect === "function") {
+    scratchCtx.clearRect(0, 0, size.widthPx, size.heightPx);
+  }
+
+  scratchCtx.globalCompositeOperation = "source-over";
+  scratchCtx.imageSmoothingEnabled = false;
+
+  if (typeof scratchCtx.drawImage === "function") {
+    scratchCtx.drawImage(maskCanvas as unknown as CanvasImageSource, destX, destY, destW, destH);
+  }
+
+  scratchCtx.globalCompositeOperation = "source-in";
+  const originX = Math.round(destX);
+  const originY = Math.round(destY);
+  if (typeof scratchCtx.save === "function") {
+    scratchCtx.save();
+  }
+  if (typeof scratchCtx.translate === "function") {
+    scratchCtx.translate(originX, originY);
+  }
+  if (pattern) {
+    scratchCtx.fillStyle = pattern;
+  }
+  if (typeof scratchCtx.fillRect === "function") {
+    scratchCtx.fillRect(-originX, -originY, size.widthPx, size.heightPx);
+  }
+  if (typeof scratchCtx.restore === "function") {
+    scratchCtx.restore();
+  }
+
+  scratchCtx.globalCompositeOperation = "source-over";
+  ctx.drawImage(scratchCanvas as unknown as CanvasImageSource, 0, 0, size.widthPx, size.heightPx);
 }
 
 export function drawWeatherLayer(
@@ -327,14 +625,46 @@ export function drawWeatherLayer(
   if (!mosaic || mosaic.widthPx <= 0 || mosaic.heightPx <= 0) {
     return;
   }
-  const canvas = reuseOrRebuildComposite(mosaic, view.wxLevels, view.brite.wx, view.brite.wxc);
+  const { baseCanvas, squaresMask, rectanglesMask } = reuseOrRebuildComposite(
+    mosaic,
+    view.wxLevels,
+    view.brite.wx,
+    view.brite.wxc,
+  );
   const arp = resolveArp(view);
   const nw = latLonToNm({ latDeg: mosaic.northLat, lonDeg: mosaic.westLon }, arp);
   const se = latLonToNm({ latDeg: mosaic.southLat, lonDeg: mosaic.eastLon }, arp);
   const nwPx = nmToScreen(nw.xNm, nw.yNm, view.camera, size);
   const sePx = nmToScreen(se.xNm, se.yNm, view.camera, size);
+  const destX = nwPx.x;
+  const destY = nwPx.y;
+  const destW = sePx.x - nwPx.x;
+  const destH = sePx.y - nwPx.y;
+
   const imageSmoothingEnabled = ctx.imageSmoothingEnabled;
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(canvas as CanvasImageSource, nwPx.x, nwPx.y, sePx.x - nwPx.x, sePx.y - nwPx.y);
+
+  ctx.drawImage(baseCanvas as unknown as CanvasImageSource, destX, destY, destW, destH);
+
+  const briteWxc = view.brite.wxc ?? 100;
+  if (snapBriteLevel(briteWxc) > 0) {
+    if (squaresMask) {
+      drawScreenPattern(ctx, squaresMask, "square", briteWxc, destX, destY, destW, destH, size);
+    }
+    if (rectanglesMask) {
+      drawScreenPattern(
+        ctx,
+        rectanglesMask,
+        "rectangle",
+        briteWxc,
+        destX,
+        destY,
+        destW,
+        destH,
+        size,
+      );
+    }
+  }
+
   ctx.imageSmoothingEnabled = imageSmoothingEnabled;
 }
