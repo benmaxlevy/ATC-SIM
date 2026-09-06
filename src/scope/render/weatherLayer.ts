@@ -20,6 +20,7 @@ import { WX_VIP_FILL_HEX } from "./wxStarsFill";
 export { WX_VIP_FILL_HEX } from "./wxStarsFill";
 
 export const DEFAULT_WX_ALPHA = 255;
+export const WX_RENDER_SCALE = 3;
 
 export function wxVipFillHex(level: 1 | 2 | 3 | 4 | 5 | 6, briteWx: number): string {
   return applyBrite(WX_VIP_FILL_HEX[level - 1]!, briteWx);
@@ -157,8 +158,8 @@ function tintRgb(rgb: [number, number, number], brite: number): [number, number,
 }
 
 function rebuildComposite(mosaic: WxMosaic, levels: WxLevels, briteWx: number): WxCompositeCanvas {
-  const width = Math.max(1, Math.round(mosaic.widthPx));
-  const height = Math.max(1, Math.round(mosaic.heightPx));
+  const width = Math.max(1, Math.round(mosaic.widthPx * WX_RENDER_SCALE));
+  const height = Math.max(1, Math.round(mosaic.heightPx * WX_RENDER_SCALE));
   const pixels = new Uint8ClampedArray(width * height * 4);
   const fills: Array<[number, number, number] | null> = [
     levels[0] ? parseHexRgb(wxVipFillHex(1, briteWx)) : null,
@@ -170,9 +171,11 @@ function rebuildComposite(mosaic: WxMosaic, levels: WxLevels, briteWx: number): 
   ];
   const mw = mosaic.widthPx;
   const mh = mosaic.heightPx;
-  for (let row = 0; row < mh; row++) {
-    for (let col = 0; col < mw; col++) {
-      const index = row * mw + col;
+  for (let row = 0; row < height; row++) {
+    const mosaicRow = Math.min(mh - 1, Math.floor(row / WX_RENDER_SCALE));
+    for (let col = 0; col < width; col++) {
+      const mosaicCol = Math.min(mw - 1, Math.floor(col / WX_RENDER_SCALE));
+      const index = mosaicRow * mw + mosaicCol;
       const vip = highestVipAt(mosaic, levels, index);
       if (vip === 0) {
         continue;
@@ -212,8 +215,8 @@ function reuseOrRebuildComposite(
     cachedBriteWx === briteWx &&
     cachedBriteWxc === briteWxc &&
     cachedTilesGen === wxLevelTilesGeneration() &&
-    cachedWidth === Math.round(mosaic.widthPx) &&
-    cachedHeight === Math.round(mosaic.heightPx)
+    cachedWidth === Math.round(mosaic.widthPx * WX_RENDER_SCALE) &&
+    cachedHeight === Math.round(mosaic.heightPx * WX_RENDER_SCALE)
   ) {
     return cachedCanvas;
   }
