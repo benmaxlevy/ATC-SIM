@@ -9,8 +9,8 @@ scope presentation.
 
 1. `CA` two-slew and `CA P` pair inhibits suppress red Line 0 `CA`, CA audio,
    and that pair's LA/CA/MCI-list row for both member tracks.
-2. Both member datablocks show the normal inline upright `Δ` immediately after
-   the ACID while that pair inhibit is active.
+2. Pair suppression has no datablock inhibit glyph; upright `Δ` remains only
+   for `CA K` track-level alert disable.
 3. A shared track's separate active pair remains visible, listed, and audible.
 4. `CA E` or toggling the pair off restores CA presentation if the alert still
    exists.

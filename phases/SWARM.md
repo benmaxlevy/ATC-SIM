@@ -12,7 +12,7 @@ after acceptance. Do not push.
 | Goal | Make CA pair inhibits disable the same alert presentation as a track inhibit. |
 | Include | **T02-117** only. |
 | Source | TI 6191.409 §2.16.3/Table 2-26: disabled CA alert presentation; §2.15.3 alert list. |
-| Acceptance | For an inhibited pair only: no red Line 0 `CA` on either member, no CA AL-list row, and no CA tone; both member datablocks show normal inline `Δ`. Other active pairs sharing either aircraft remain alerting. Re-enable restores the pair alert if the condition persists. |
+| Acceptance | For an inhibited pair only: no red Line 0 `CA` on either member, no CA AL-list row, and no CA tone. `Δ` remains exclusively the track-level CA-disabled symbol; pair suppression has no separate datablock glyph. Other active pairs sharing either aircraft remain alerting. Re-enable restores the pair alert if the condition persists. |
 | Skip | CA detection thresholds, MSAW/MCI semantics, command grammar, broad alert-list redesign, and unrelated dirty work. |
 | Stop | After T02-117 acceptance. |
 | Max workers | 1 |
@@ -21,6 +21,11 @@ after acceptance. Do not push.
 
 **Ticket:** `phases/02-scope/tickets/T02-117-ca-pair-inhibit-presentation.md` on
 `ticket/T02-117-ca-pair-inhibit-presentation`.
+
+**Manual clarification:** TI 6191.409 §2.16.3/Table 2-26 defines `Δ` only as
+“CA alerts disabled for this track.” The manual preserves CA pair-suppression
+settings (p. 7-14) but specifies no pair-only glyph. Therefore pair suppression
+does not borrow the track-level `Δ` symbol.
 
 **Captain return:**
 
