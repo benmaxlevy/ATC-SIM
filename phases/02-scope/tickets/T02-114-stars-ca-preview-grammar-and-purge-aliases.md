@@ -23,11 +23,12 @@ Invented Aliases to Purge:
 - Remove `*CA [Left-Click]` and `*LA [Left-Click]` from `previewParse.ts` and system list handling.
 - Remove non-standard keyboard shortcuts or supervisor commands (`CA A`, `CA M`, `CA Q`).
 
-## Scope
-
+- In `src/scope/keymap.ts` & `src/scope/scopeKeys.ts`:
+  - Authentic STARS keyboard mapping (Table 18): `F11` is the `<CA>` functional key.
+  - Pressing `F11` buffers `CA` into the preview area (displaying `CA ` in preview area), rather than an invented `*CA` action.
 - In `src/scope/previewParse.ts`:
   - Purge `*CA` / `*LA` preview parse patterns.
-  - Implement tokenization and parsing for:
+  - Implement tokenization and parsing for commands with `CA` prefix:
     - `CA K <trk>`
     - `CA P <trk1> [<trk2>]`
     - `CA E <trk1> [<trk2>]`
