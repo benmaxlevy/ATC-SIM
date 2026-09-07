@@ -23,13 +23,20 @@ import { datablockFontCss, datablockLineHeightPx, measureDatablockCellWidth } fr
 import {
   pointInLayoutBounds,
   solveDatablockLayout,
+  type ProtectedGeometry,
   type DatablockLayoutInput,
   type ResolvedDatablockLayout,
 } from "../datablockLayout";
-import { datablockTopLeft, DEFAULT_LEADER_DIR, drawLeaderLine, type LeaderDir } from "../leader";
+import {
+  datablockTopLeft,
+  DEFAULT_LEADER_DIR,
+  drawLeaderLine,
+  leaderSegmentPx,
+  type LeaderDir,
+} from "../leader";
 import { type MapCache } from "../mapLayers";
 import { historyDotsToDraw } from "../history";
-import { drawPredictedTrackLine, ptlEndpoint, shouldDrawPtlForTrack } from "../ptl";
+import { drawPredictedTrackLine, ptlEndpoint, shouldDrawPtlForTrack, PTL_STROKE_PX } from "../ptl";
 import { isViewOffAirport, type ScopeView } from "../scopeView";
 import { formatPreviewReadout } from "../previewArea";
 import { formatStarsChordReadout } from "../starsChord";
@@ -105,6 +112,117 @@ import { buildVideoMapsListLines, getVideoMapsEntries } from "../coordinationLis
 const RING_STROKE_PX = 1;
 const RUNWAY_STROKE_PX = 2;
 const MAP_STROKE_PX = 1;
+
+/** Collects only target-owned, visible geometry. Shared by layout callers. */
+export function collectDatablockProtectedGeometry(
+  world: World,
+  view: ScopeView,
+  size: ScopeViewSize,
+): ProtectedGeometry[] {
+  const out: ProtectedGeometry[] = [];
+  const point = (ac: Aircraft) => {
+    const shown = displayAircraft(ac, view.tracks.get(ac.id));
+    return shown ? nmToScreen(shown.xNm, shown.yNm, view.camera, size) : null;
+  };
+  for (const ac of world.aircraft) {
+    const p = point(ac);
+    if (!p) continue;
+    const td = view.tracks.get(ac.id);
+    out.push({
+      kind: "circle",
+      aircraftId: ac.id,
+      center: p,
+      radius: Math.max(7, view.charSizes.pos / 2 + 2),
+    });
+    if (view.historyEnabled && td)
+      for (const h of [historyDotsToDraw(td.history, view.historyDotCount)])
+        for (let i = 0; i < h.eastNm.length; i += 1) {
+          const q = nmToScreen(h.eastNm[i]!, h.northNm[i]!, view.camera, size);
+          out.push({ kind: "circle", aircraftId: ac.id, center: q, radius: 2 });
+        }
+    const shown = displayAircraft(ac, td)!;
+    const filtered = !inAltitudeFilter(shown.altitudeFt, view.altitudeFilter);
+    if (
+      shouldDrawPtlForTrack(
+        shown.speedKt,
+        filtered,
+        td?.ownership === "owned",
+        view.ptlOn,
+        view.ptlOwn,
+        view.ptlByAircraftId.get(ac.id),
+      )
+    ) {
+      const e = ptlEndpoint(shown.xNm, shown.yNm, shown.headingDeg, shown.speedKt, view.ptlMinutes);
+      out.push({
+        kind: "segment",
+        aircraftId: ac.id,
+        from: p,
+        to: nmToScreen(e.eastNm, e.northNm, view.camera, size),
+        strokePx: PTL_STROKE_PX,
+      });
+    }
+    const dir = trackLeaderDir(view, ac.id),
+      len = trackLeaderLength(view, ac.id);
+    const segment = leaderSegmentPx(dir, len, view.charSizes.pos);
+    if (segment)
+      out.push({
+        kind: "segment",
+        aircraftId: ac.id,
+        from: { x: p.x + segment.x0, y: p.y + segment.y0 },
+        to: { x: p.x + segment.x1, y: p.y + segment.y1 },
+        strokePx: 1,
+      });
+  }
+  for (const { aircraft: ac, radiusNm } of tpaRingsToPaint(
+    view.tpa.on,
+    world.selectedAircraftId,
+    world.aircraft,
+    view.tracks,
+    view.tpa.radiusNm,
+  )) {
+    const shown = displayAircraft(ac, view.tracks.get(ac.id));
+    if (!shown) continue;
+    const pts = tpaRingPoints(shown.xNm, shown.yNm, radiusNm).map((q) =>
+      nmToScreen(q.eastNm, q.northNm, view.camera, size),
+    );
+    out.push({ kind: "polyline", aircraftId: ac.id, points: pts, strokePx: TPA_STROKE_PX });
+  }
+  for (const { aircraft: ac, lengthNm } of tpaConesToPaint(
+    world.aircraft,
+    view.tracks,
+    world.alerts.atpa,
+    view.atpa,
+  )) {
+    const shown = displayAircraft(ac, view.tracks.get(ac.id));
+    if (!shown) continue;
+    const pts = manualTpaConePoints(shown.xNm, shown.yNm, shown.headingDeg, lengthNm).map((q) =>
+      nmToScreen(q.eastNm, q.northNm, view.camera, size),
+    );
+    out.push({ kind: "polygon", aircraftId: ac.id, points: pts, strokePx: TPA_STROKE_PX });
+  }
+  const byCallsign = new Map(world.aircraft.map((ac) => [ac.callsign, ac]));
+  for (const pair of selectAtpaConesToPaint(world.alerts.atpa)) {
+    const trailing = byCallsign.get(pair.trailingCallsign),
+      leading = byCallsign.get(pair.leadingCallsign);
+    if (!trailing || !leading) continue;
+    const td = view.tracks.get(trailing.id);
+    if (!shouldPaintAtpaGeometry(pair.status, atpaConePaintFlags(view, td))) continue;
+    const a = displayAircraft(trailing, td),
+      b = displayAircraft(leading, view.tracks.get(leading.id));
+    if (!a || !b) continue;
+    const pts = atpaConePoints(a.xNm, a.yNm, b.xNm, b.yNm, pair.requiredNm).map((q) =>
+      nmToScreen(q.eastNm, q.northNm, view.camera, size),
+    );
+    out.push({
+      kind: "polygon",
+      aircraftId: trailing.id,
+      aircraftIds: [trailing.id, leading.id],
+      points: pts,
+      strokePx: TPA_STROKE_PX,
+    });
+  }
+  return out;
+}
 
 export function displayAircraft(ac: Aircraft, td: TrackDisplay | undefined): Aircraft | null {
   return td?.lastReport ? aircraftAtReport(ac, td.lastReport) : null;
@@ -800,6 +918,7 @@ export function drawTracks(
   });
   const layouts = solveDatablockLayout(layoutItems, {
     bounds: { x: 0, y: 0, width: size.widthPx, height: size.heightPx },
+    protectedGeometry: collectDatablockProtectedGeometry(world, view, size),
   });
   const layoutById = new Map(layouts.map((layout) => [layout.aircraftId, layout]));
   const preferredById = new Map(layoutItems.map((item) => [item.aircraftId, item.preferredRect]));

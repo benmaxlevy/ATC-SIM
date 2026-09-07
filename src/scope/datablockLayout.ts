@@ -27,6 +27,18 @@ export interface LayoutBounds {
   height: number;
 }
 
+export type ProtectedGeometry =
+  | { kind: "rect"; aircraftId: string; rect: LayoutRect }
+  | { kind: "circle"; aircraftId: string; center: LayoutPoint; radius: number }
+  | { kind: "segment"; aircraftId: string; from: LayoutPoint; to: LayoutPoint; strokePx?: number }
+  | {
+      kind: "polyline" | "polygon";
+      aircraftId: string;
+      aircraftIds?: readonly string[];
+      points: LayoutPoint[];
+      strokePx?: number;
+    };
+
 export type DatablockDisplayPriority = "full" | "partial" | "limited";
 
 export interface DatablockLayoutInput {
@@ -51,6 +63,7 @@ export interface DatablockLayoutOptions {
   bounds: LayoutBounds;
   /** Grid spacing used only after all compass candidates are exhausted. */
   gridStepPx?: number;
+  protectedGeometry?: readonly ProtectedGeometry[];
 }
 
 const PRIORITY: Record<DatablockDisplayPriority, number> = {
@@ -105,6 +118,119 @@ function free(rect: LayoutRect, accepted: readonly LayoutRect[], bounds: LayoutB
   return inBounds(rect, bounds) && accepted.every((other) => !datablockRectsOverlap(rect, other));
 }
 
+/** CSS-pixel obstacle tests. Own-target geometry is ignored by the solver. */
+export function protectedGeometryOverlaps(rect: LayoutRect, obstacle: ProtectedGeometry): boolean {
+  const r = { x: rect.x - 1, y: rect.y - 1, width: rect.width + 2, height: rect.height + 2 };
+  if (obstacle.kind === "rect") return datablockRectsOverlap(r, obstacle.rect);
+  if (obstacle.kind === "circle") {
+    const x = Math.max(r.x, Math.min(obstacle.center.x, r.x + r.width));
+    const y = Math.max(r.y, Math.min(obstacle.center.y, r.y + r.height));
+    return Math.hypot(x - obstacle.center.x, y - obstacle.center.y) <= obstacle.radius;
+  }
+  const pts = obstacle.kind === "segment" ? [obstacle.from, obstacle.to] : obstacle.points;
+  const stroke = (obstacle.strokePx ?? 1) / 2 + 1;
+  const orient = (a: LayoutPoint, b: LayoutPoint, c: LayoutPoint) =>
+    (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+  const on = (a: LayoutPoint, b: LayoutPoint, p: LayoutPoint) =>
+    Math.min(a.x, b.x) <= p.x &&
+    p.x <= Math.max(a.x, b.x) &&
+    Math.min(a.y, b.y) <= p.y &&
+    p.y <= Math.max(a.y, b.y);
+  const intersects = (a: LayoutPoint, b: LayoutPoint, c: LayoutPoint, d: LayoutPoint) =>
+    (orient(a, b, c) === 0 && on(a, b, c)) ||
+    (orient(a, b, d) === 0 && on(a, b, d)) ||
+    (orient(c, d, a) === 0 && on(c, d, a)) ||
+    (orient(c, d, b) === 0 && on(c, d, b)) ||
+    (orient(a, b, c) > 0 !== orient(a, b, d) > 0 && orient(c, d, a) > 0 !== orient(c, d, b) > 0);
+  const distance = (p: LayoutPoint, a: LayoutPoint, b: LayoutPoint) => {
+    const dx = b.x - a.x,
+      dy = b.y - a.y;
+    const d = dx * dx + dy * dy;
+    const t = d === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / d));
+    return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
+  };
+  const segmentDistance = (a: LayoutPoint, b: LayoutPoint, c: LayoutPoint, d: LayoutPoint) =>
+    intersects(a, b, c, d)
+      ? 0
+      : Math.min(distance(a, c, d), distance(b, c, d), distance(c, a, b), distance(d, a, b));
+  const edges: [LayoutPoint, LayoutPoint][] = [
+    [
+      { x: r.x, y: r.y },
+      { x: r.x + r.width, y: r.y },
+    ],
+    [
+      { x: r.x + r.width, y: r.y },
+      { x: r.x + r.width, y: r.y + r.height },
+    ],
+    [
+      { x: r.x + r.width, y: r.y + r.height },
+      { x: r.x, y: r.y + r.height },
+    ],
+    [
+      { x: r.x, y: r.y + r.height },
+      { x: r.x, y: r.y },
+    ],
+  ];
+  for (let i = 1; i < pts.length; i += 1) {
+    const a = pts[i - 1]!,
+      b = pts[i]!;
+    if (edges.some(([c, d]) => segmentDistance(a, b, c, d) <= stroke)) return true;
+  }
+  if (obstacle.kind === "polygon") {
+    const p = { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    let inside = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const a = pts[i]!,
+        b = pts[j]!;
+      if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x)
+        inside = !inside;
+    }
+    if (inside) return true;
+    for (let i = 0; i < pts.length; i += 1) {
+      if (
+        segmentDistance(pts[i]!, pts[(i + 1) % pts.length]!, edges[0]![0], edges[0]![1]) <=
+          stroke ||
+        edges.some(([a, b]) => segmentDistance(pts[i]!, pts[(i + 1) % pts.length]!, a, b) <= stroke)
+      )
+        return true;
+    }
+  }
+  return false;
+}
+
+function freeWithObstacles(
+  rect: LayoutRect,
+  accepted: readonly LayoutRect[],
+  bounds: LayoutBounds,
+  obstacles: readonly ProtectedGeometry[],
+  aircraftId: string,
+): boolean {
+  return (
+    free(rect, accepted, bounds) &&
+    obstacles.every(
+      (o) =>
+        o.aircraftId === aircraftId ||
+        ("aircraftIds" in o && o.aircraftIds?.includes(aircraftId)) ||
+        !protectedGeometryOverlaps(rect, o),
+    )
+  );
+}
+
+export function resolvedLeaderObstacle(
+  item: DatablockLayoutInput,
+  rect: LayoutRect,
+): ProtectedGeometry {
+  const x = Math.max(rect.x, Math.min(item.targetPoint.x, rect.x + rect.width));
+  const y = Math.max(rect.y, Math.min(item.targetPoint.y, rect.y + rect.height));
+  return {
+    kind: "segment",
+    aircraftId: item.aircraftId,
+    from: item.targetPoint,
+    to: { x, y },
+    strokePx: 1,
+  };
+}
+
 function candidateFor(item: DatablockLayoutInput, dir: LeaderDir): LayoutRect {
   const origin = datablockTopLeft(dir, item.metrics, item.leaderLengthPx);
   return makeRect(
@@ -151,6 +277,7 @@ export function solveDatablockLayout(
       a.aircraftId.localeCompare(b.aircraftId),
   );
   const accepted: LayoutRect[] = [];
+  const resolvedLeaderObstacles: ProtectedGeometry[] = [];
   const results = new Map<string, ResolvedDatablockLayout>();
   const step = Math.max(1, options.gridStepPx ?? 4);
 
@@ -162,7 +289,10 @@ export function solveDatablockLayout(
       ...candidateDirections(item.leaderDir).map((dir) => candidateFor(item, dir)),
       ...radialCandidates(item),
     ];
-    let resolved = candidates.find((candidate) => free(candidate, accepted, options.bounds));
+    const obstacles = [...(options.protectedGeometry ?? []), ...resolvedLeaderObstacles];
+    let resolved = candidates.find((candidate) =>
+      freeWithObstacles(candidate, accepted, options.bounds, obstacles, item.aircraftId),
+    );
 
     if (!resolved) {
       for (
@@ -176,7 +306,7 @@ export function solveDatablockLayout(
           x += step
         ) {
           const candidate = makeRect(x, y, size.width, size.height);
-          if (free(candidate, accepted, options.bounds)) {
+          if (freeWithObstacles(candidate, accepted, options.bounds, obstacles, item.aircraftId)) {
             resolved = candidate;
             break;
           }
@@ -186,6 +316,7 @@ export function solveDatablockLayout(
 
     if (resolved) {
       accepted.push(resolved);
+      resolvedLeaderObstacles.push(resolvedLeaderObstacle(item, resolved));
       results.set(item.aircraftId, {
         aircraftId: item.aircraftId,
         rect: resolved,

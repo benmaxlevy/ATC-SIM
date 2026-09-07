@@ -35,6 +35,8 @@ import {
   type DatablockLayoutInput,
 } from "./datablockLayout";
 import { aircraftAtReport } from "./surveillance";
+import { collectDatablockProtectedGeometry } from "./render/renderScopePaint";
+import type { ScopeView } from "./scopeView";
 
 /** Frozen hit radius in CSS pixels (T01-11). Pixel-space so range presets stay stable. */
 export const HIT_RADIUS_CSS_PX = 12;
@@ -143,8 +145,15 @@ function pickDatablockAt(
       selected: world.selectedAircraftId === ac.id,
     });
   }
+  const obstacleView = isFullScopeView(view) ? view : undefined;
   const layouts = solveDatablockLayout(candidates, {
     bounds: { x: 0, y: 0, width: cssWidth, height: cssHeight },
+    protectedGeometry: obstacleView
+      ? collectDatablockProtectedGeometry(world, obstacleView, {
+          widthPx: cssWidth,
+          heightPx: cssHeight,
+        })
+      : undefined,
   });
   const layoutById = new Map(layouts.map((layout) => [layout.aircraftId, layout]));
   for (const ac of world.aircraft) {
@@ -168,6 +177,11 @@ function pickDatablockAt(
     }
   }
   return nearest;
+}
+
+function isFullScopeView(view: DatablockPickView): view is DatablockPickView & ScopeView {
+  const candidate = view as DatablockPickView & Partial<ScopeView>;
+  return Boolean(candidate.camera && candidate.tpa && candidate.atpa && candidate.charSizes);
 }
 
 export type AircraftPickRegion = "datablock" | "symbol";

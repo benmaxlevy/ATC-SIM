@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   datablockRectsOverlap,
+  protectedGeometryOverlaps,
   solveDatablockLayout,
   type DatablockLayoutInput,
 } from "./datablockLayout";
@@ -76,5 +77,46 @@ describe("datablock layout", () => {
     });
     expect(result.find((item) => item.aircraftId === "A")?.unplaced).toBe(false);
     expect(result.find((item) => item.aircraftId === "B")?.unplaced).toBe(true);
+  });
+
+  test("avoids other-target geometry while exempting own geometry", () => {
+    const item = base("A", 20, 20);
+    const obstacle = {
+      kind: "circle" as const,
+      aircraftId: "B",
+      center: { x: 40, y: 30 },
+      radius: 16,
+    };
+    const own = { ...obstacle, aircraftId: "A" };
+    expect(protectedGeometryOverlaps({ x: 20, y: 20, width: 40, height: 20 }, obstacle)).toBe(true);
+    expect(protectedGeometryOverlaps({ x: 20, y: 20, width: 40, height: 20 }, own)).toBe(true);
+    const result = solveDatablockLayout([item], { bounds, protectedGeometry: [obstacle] });
+    expect(result[0]!.rect).not.toMatchObject({ x: 20, y: 20 });
+    expect(
+      solveDatablockLayout([item], { bounds, protectedGeometry: [own] })[0]!.rect,
+    ).toMatchObject({ x: 20, y: 20 });
+  });
+
+  test("uses 1 px clearance around segments and polygons", () => {
+    const rect = { x: 20, y: 20, width: 40, height: 20 };
+    expect(
+      protectedGeometryOverlaps(rect, {
+        kind: "segment",
+        aircraftId: "B",
+        from: { x: 0, y: 19 },
+        to: { x: 100, y: 19 },
+      }),
+    ).toBe(true);
+    expect(
+      protectedGeometryOverlaps(rect, {
+        kind: "polygon",
+        aircraftId: "B",
+        points: [
+          { x: 25, y: 25 },
+          { x: 30, y: 25 },
+          { x: 30, y: 30 },
+        ],
+      }),
+    ).toBe(true);
   });
 });
