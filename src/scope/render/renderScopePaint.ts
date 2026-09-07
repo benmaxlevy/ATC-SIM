@@ -899,6 +899,9 @@ export function drawDatablock(
       ctx.fillStyle = applyBrite(PALETTE.alert, briteCh);
       ctx.fillText(line0, textX, textY - lineH);
     }
+    // Line 0 is the only red safety-alert field. Restore the normal datablock
+    // color before painting Lines 2–3 so canvas state cannot bleed downward.
+    ctx.fillStyle = applyBrite(visual.color, briteCh);
   }
   if (lines.line2 != null) {
     ctx.fillText(lines.line2, textX, textY + lineH);

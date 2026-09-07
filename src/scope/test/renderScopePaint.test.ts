@@ -428,7 +428,7 @@ describe("Datablock inline alert glyphs", () => {
     test("shows slash-separated LA/CA when both alerts apply", () => {
       const world = createWorld();
       const view = createScopeView();
-      const ac = makeTestAircraft({ id: "ac-la-ca", callsign: "AAL123" });
+      const ac = makeTestAircraft({ id: "ac-la-ca", callsign: "AAL123", altitudeFt: 1000 });
       world.aircraft = [ac];
       const td = createTrackDisplay("owned");
       view.tracks.set(ac.id, td);
@@ -449,6 +449,19 @@ describe("Datablock inline alert glyphs", () => {
       const on = createMockCtx();
       drawDatablock(on.ctx, ac, 100, 100, view, world);
       expect(on.fillTexts.some((fill) => fill.text === "LA/CA")).toBe(true);
+      const acid = on.fillTexts.find((fill) => fill.text.startsWith("AAL123"));
+      expect(acid).toBeDefined();
+      const acidY = acid?.y;
+      expect(acidY).toBeDefined();
+      const lowerDatablockLines = on.fillTexts.filter(
+        (fill) => fill.y != null && acidY != null && fill.y > acidY,
+      );
+      expect(lowerDatablockLines.length).toBeGreaterThan(0);
+      expect(
+        lowerDatablockLines.every(
+          (fill) => fill.fillStyle === applyBrite(PALETTE.owned, view.brite.fdb),
+        ),
+      ).toBe(true);
 
       world.simTimeMs = 800;
       const off = createMockCtx();
