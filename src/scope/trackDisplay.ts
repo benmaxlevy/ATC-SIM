@@ -736,7 +736,7 @@ export function toggleDatablockModeForSelection(
 }
 
 /**
- * Scope-focus `L` then 1–9: selected track leader direction; no selection → all.
+ * DCB / explicit Preview leader direction: selected track direction; no selection → all.
  * Display state only — never a Command.
  */
 export function setLeaderDirForSelection(

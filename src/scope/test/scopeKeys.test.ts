@@ -39,6 +39,19 @@ test("always-on keys include PageUp, Home, F1-F5, F7-F11, Insert, ?; H and T are
   expect(isAlwaysOnScopeKey("T")).toBe(false);
 });
 
+test("scope L and a digit stay in Preview Area; they never apply a leader direction", () => {
+  const ac = makeTestAircraft({ id: "ac1", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  const before = view.tracks.get(ac.id)?.leaderDir;
+
+  expect(handleScopeKeyDown(keyEvent("L"), view, "scope", world)).toBe(true);
+  expect(view.preview.buffer).toBe("L");
+  expect(handleScopeKeyDown(keyEvent("1"), view, "scope", world)).toBe(true);
+  expect(view.preview.buffer).toBe("L1");
+  expect(view.tracks.get(ac.id)?.leaderDir).toBe(before);
+});
+
 test("PageUp five times from 20 NM is 5 NM; center unchanged", () => {
   const view = createScopeView();
   view.camera.centerEastNm = 2;

@@ -18,7 +18,7 @@ export type KeyFocus = "always" | "scope";
 export interface KeyBinding {
   id: string;
   focus: KeyFocus;
-  windowsKeys: string; // e.g. "PageUp" | "L then 1–9"
+  windowsKeys: string; // e.g. "PageUp" | "Ctrl+F1"
   action: string;
   crcAnalog: string;
 }
@@ -271,13 +271,6 @@ export const KEY_BINDINGS: KeyBinding[] = [
     crcAnalog: "DCB PLACE RR then click",
   },
   {
-    id: "leader",
-    focus: "scope",
-    windowsKeys: "L then 1–9",
-    action: "Leader direction (L1–L9). Top-row or numpad. Selected track, or all if none selected.",
-    crcAnalog: "CRC L1–L9 leader (keyboard `/` is not length; DCB LDR spinner has 0/24/36/48 px)",
-  },
-  {
     id: "datablock",
     focus: "scope",
     windowsKeys: "T",
@@ -402,21 +395,6 @@ export function digitFromKey(key: string, code?: string): number | null {
     return Number(fromCode[1]);
   }
   return null;
-}
-
-export function leaderDigitFromKey(
-  key: string,
-  code?: string,
-): 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | null {
-  const n = digitFromKey(key, code);
-  if (n == null || n < 1 || n > 9) {
-    return null;
-  }
-  return n as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
-}
-
-export function isLeaderPrefixKey(key: string): boolean {
-  return key === "L" || key === "l";
 }
 
 /** Scope-focus altitude filter chord. Never always-on. */

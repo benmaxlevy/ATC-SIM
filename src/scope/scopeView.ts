@@ -300,7 +300,7 @@ export interface ScopeView {
   caInhibitedPairs: Set<string>;
   /** Acknowledged CA alert pair canonical keys. */
   acknowledgedAlertPairs: Set<string>;
-  /** Scope-focus letter chord (`L` leader; T02-06 `F` filter). Null when idle. */
+  /** Scope-focus letter chord (`F` filter). Null when idle. */
   pendingChord: ScopeChord | null;
   /**
    * F1 help overlay. Display only — never pauses the sim or writes intent.

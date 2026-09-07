@@ -117,7 +117,6 @@ One physical keyboard, two foci.
 
 | Action | Sequence | CRC / vice analog |
 | --- | --- | --- |
-| Leader direction | `L` then `1`–`9` within 1.5 s | L1–L9. Top-row **or** numpad. |
 | Full ↔ limited datablock | `T` | Tag/untag analog. Selected track; if none selected, **all** tracks. |
 | Mode C field on/off | `M` | Hide/show reported altitude on **full** blocks. Assigned + GS remain. |
 | Altitude filter | `F`, then 3-digit min, `Enter`, 3-digit max, `Enter` | Hundreds of feet. `Esc` cancels the chord. |
@@ -258,7 +257,7 @@ Numpad compass, **including 5 = overlay**:
 - Phase 2 leader length is **fixed**: **36 px** at the current canvas (T02-19; was 24), **or** 0.35 NM world — pick **pixel-constant** (36 px) so length does not explode at 5 NM range. Documented in T02-05 / T02-19. T02-17 LDR DIR is direction only (no length menu).
 - L5: length 0; datablock top-left at the target (with a 4 px gap so the symbol stays visible).
 - Per-track direction stored on display state, not on `Aircraft`.
-- Changing `L`+digit applies to the **selected** track; if none selected, apply to **all**.
+- Change direction with the DCB LDR DIR control or explicit `*L` Preview commands; bare `L` remains Preview text.
 
 ### 9. Altitude filter
 
