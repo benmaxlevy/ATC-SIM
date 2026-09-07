@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { createWorld, makeTestAircraft, type CaAlert, type MsawAlert } from "@core";
 import { createScopeView } from "../scopeView";
-import { createTrackDisplay, syncTrackDisplays } from "../trackDisplay";
+import { createTrackDisplay, setCaPairInhibited, syncTrackDisplays } from "../trackDisplay";
 import {
   PALETTE,
   applyBrite,
@@ -99,6 +99,51 @@ describe("Datablock inline alert glyphs", () => {
       // Callsigns still render in both phases
       expect(mockOff.fillTexts.some((f) => f.text.startsWith("DAL100"))).toBe(true);
       expect(mockOff.fillTexts.some((f) => f.text.startsWith("UAL200"))).toBe(true);
+    });
+
+    test("pair inhibit removes Line 0 CA for only that pair, without a Δ glyph", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      const acA = makeTestAircraft({ id: "pair-a", callsign: "AAL100" });
+      const acB = makeTestAircraft({ id: "pair-b", callsign: "DAL200" });
+      const acC = makeTestAircraft({ id: "pair-c", callsign: "JBU300" });
+      world.aircraft = [acA, acB, acC];
+      for (const ac of world.aircraft) {
+        const td = createTrackDisplay("owned");
+        td.datablockMode = "full";
+        view.tracks.set(ac.id, td);
+      }
+      world.alerts.ca = [
+        {
+          callsignA: "AAL100",
+          callsignB: "DAL200",
+          severity: "alert",
+          distNm: 1,
+          deltaAltFt: 0,
+        },
+        {
+          callsignA: "DAL200",
+          callsignB: "JBU300",
+          severity: "alert",
+          distNm: 1,
+          deltaAltFt: 0,
+        },
+      ];
+
+      setCaPairInhibited(view, acA.id, acB.id, true);
+      world.simTimeMs = 0;
+      const inhibited = createMockCtx();
+      drawDatablock(inhibited.ctx, acA, 100, 100, view, world);
+      drawDatablock(inhibited.ctx, acB, 200, 200, view, world);
+      drawDatablock(inhibited.ctx, acC, 300, 300, view, world);
+      expect(inhibited.fillTexts.filter((fill) => fill.text === "CA")).toHaveLength(2);
+      expect(inhibited.fillTexts.filter((fill) => fill.text === "Δ")).toHaveLength(0);
+
+      setCaPairInhibited(view, acA.id, acB.id, false);
+      const restored = createMockCtx();
+      drawDatablock(restored.ctx, acA, 100, 100, view, world);
+      drawDatablock(restored.ctx, acB, 200, 200, view, world);
+      expect(restored.fillTexts.filter((fill) => fill.text === "CA")).toHaveLength(2);
     });
   });
 

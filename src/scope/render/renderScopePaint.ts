@@ -87,6 +87,7 @@ import {
 } from "./targetSymbol";
 import {
   deriveScratchpads,
+  filterActiveCaAlerts,
   isBeaconatorReadout,
   isIdentFlashing,
   isTrackQueried,
@@ -108,6 +109,11 @@ import {
   type ListRect,
 } from "../systemLists";
 import { buildVideoMapsListLines, getVideoMapsEntries } from "../coordinationList";
+
+/** CA severity after track and pair inhibits, preserving other active pairs. */
+function caSeverityForVisibleTrack(view: ScopeView, world: World, callsign: string) {
+  return caSeverityForCallsign(filterActiveCaAlerts(world.alerts.ca, world, view), callsign);
+}
 
 const RING_STROKE_PX = 1;
 const RUNWAY_STROKE_PX = 2;
@@ -517,7 +523,7 @@ export function getDatablockVisualState(
   // 1. Conflict Alert: only shown for tracked targets (full datablock in white)
   const isTracked = isTrackedTarget(view, world, ac);
   const isCaInhibited = isCaInhibitedForTrack(ac, td, view);
-  const caSeverity = !isCaInhibited ? caSeverityForCallsign(world.alerts.ca, ac.callsign) : null;
+  const caSeverity = !isCaInhibited ? caSeverityForVisibleTrack(view, world, ac.callsign) : null;
   if (isTracked && caSeverity) {
     return {
       color: PALETTE.owned,
@@ -713,7 +719,7 @@ function trackColor(view: ScopeView, world: World, ac: Aircraft): string {
   const isTracked = isTrackedTarget(view, world, ac);
   const td = view.tracks.get(ac.id);
   const isCaInhibited = isCaInhibitedForTrack(ac, td, view);
-  const caSeverity = !isCaInhibited ? caSeverityForCallsign(world.alerts.ca, ac.callsign) : null;
+  const caSeverity = !isCaInhibited ? caSeverityForVisibleTrack(view, world, ac.callsign) : null;
   if (isTracked && caSeverity) {
     return PALETTE.owned;
   }
@@ -837,7 +843,7 @@ export function drawDatablock(
   const lineH = datablockLineHeightPx(view.charSizes.dataBlocks);
 
   const isCaInhibited = isCaInhibitedForTrack(ac, td, view);
-  const caSeverity = !isCaInhibited ? caSeverityForCallsign(world.alerts.ca, ac.callsign) : null;
+  const caSeverity = !isCaInhibited ? caSeverityForVisibleTrack(view, world, ac.callsign) : null;
   const isMsawInhibited = Boolean(
     td?.msawInhibited ||
     (td as { inhibitMSAW?: boolean } | undefined)?.inhibitMSAW ||
