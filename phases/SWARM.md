@@ -1,3 +1,81 @@
+# ATC-SIM swarm orchestrator — Thirty-fourth swarm (STARS Conflict Alert Alignment)
+
+Thirty-third (Datablock Other-Target Geometry Avoidance T02-110) landed on
+`feature/datablock-overlap-fixing`. This file keeps that history, then this
+new swarm on `feature/stars-ca-alignment`.
+
+## Thirty-fourth swarm planned — 2026-09-06 (STARS Conflict Alert Alignment)
+
+This configuration aligns Conflict Alert (CA) detection, prediction, data block
+Line 0 display, cadence, pair/track inhibits, audio gating, and preview commands
+with the Raytheon STARS manual (TI 6191.409). It implements 4 Airspace Type Areas,
+kinematic Closest Point of Approach (CPA) lookahead, genuine 800 ms ON / 800 ms OFF
+blink clock, solid vs flashing red Line 0 alert state, Line 0 `▲` inhibit symbol,
+pair inhibit isolation, and authentic STARS keyboard commands (`CA K`, `CA P`,
+`CA E`, `CA` + 2-click, implied slew-to-ack), while purging all non-standard invented
+aliases (`*CA`, `*LA`). Captain squash-merges into **`feature/stars-ca-alignment`**,
+not `master`. Do not push.
+
+| Key | Value |
+| --- | --- |
+| Goal | Full STARS alignment of Conflict Alert kinematic prediction, 4-tier airspace areas, 800ms blink cadence, pair/track inhibits, and authentic preview commands. |
+| Include | **T02-111**, **T02-112**, **T02-113**, **T02-114**, **T02-115** |
+| Source | Raytheon STARS System Manual TI 6191.409 (Sections 2.15.3, 2.16, 2.16.3, 7.3, 7.9, 7.10, 7.11, 7.12). |
+| Skip | Supervisor commands (`CA A`, `CA M`, `CA Q`); Mode C unverified / pilot-reported altitude suppression exclusions; invented aliases (`*CA`, `*LA`). |
+| Stop | After T02-115 acceptance. No next phase. |
+| Max workers | 2 |
+| Merge lock | captain squash to `feature/stars-ca-alignment`, then `npm test` / `npm run ci` |
+| Model | `gpt-5.6-luna`, medium reasoning, every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law:**
+
+- Airspace Type Area separation standards: Type 1: 0.5 NM / 100 ft / 15 s; Type 2: 2.5 NM / 500 ft / 25 s; Type 3: 3.0 NM / 1000 ft / 35 s; Type 4: 3.0 NM / 1000 ft / 45 s.
+- A pair of tracks $(A, B)$ evaluates conflict based on $\min(\text{Tier}(A), \text{Tier}(B))$.
+- Kinematic CPA lookahead projects relative velocity vectors; diverging tracks ($t_{\text{CPA}} \le 0$) do not trigger predictive alerts.
+- Alert display cadence is exactly 800 ms ON / 800 ms OFF (0.625 Hz). Line 0 renders blinking red `CA` when unacknowledged, solid red `CA` when acknowledged.
+- Inhibited track displays white/normal `▲` triangle glyph on Line 0.
+- Pairwise inhibits isolate between $(A, B)$ without suppressing $(A, C)$ or $(B, C)$; auto-purged on track drop, termination, or handoff.
+- Only authentic STARS commands (`CA K`, `CA P`, `CA E`, `CA`, Slew-to-Ack) are supported. Non-standard aliases (`*CA`, `*LA`) are completely purged.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-111 | planning commit |
+| B | T02-112, T02-113 | Wave A merge |
+| C | T02-114 | Wave B merge |
+| D | T02-115 | Wave C merge |
+
+**Ticket ownership:**
+
+- T02-111: Kinematic CPA engine, 4 airspace type areas, lookahead projection, pure detection math.
+- T02-112: 800 ms square-wave blink clock, Line 0 blinking/solid red CA, `▲` inhibit glyph.
+- T02-113: Pair inhibit table (`Set<PairKey>`), acknowledgment state, lifecycle pruning.
+- T02-114: Preview grammar for `CA K`, `CA P`, `CA E`, `CA` + 2-click, slew-to-ack; purge `*CA`/`*LA`.
+- T02-115: Audio tone gating, dynamic list sync, and end-to-end integration acceptance tests.
+
+**Ticket files / branches:**
+
+- `ticket/T02-111-kinematic-cpa-engine-and-type-areas` ← `phases/02-scope/tickets/T02-111-kinematic-cpa-engine-and-type-areas.md`
+- `ticket/T02-112-alert-blinking-line0-render-and-inhibit-glyph` ← `phases/02-scope/tickets/T02-112-alert-blinking-line0-render-and-inhibit-glyph.md`
+- `ticket/T02-113-pair-inhibit-table-and-ack-state` ← `phases/02-scope/tickets/T02-113-pair-inhibit-table-and-ack-state.md`
+- `ticket/T02-114-stars-ca-preview-grammar-and-purge-aliases` ← `phases/02-scope/tickets/T02-114-stars-ca-preview-grammar-and-purge-aliases.md`
+- `ticket/T02-115-audio-tone-integ-and-ca-acceptance` ← `phases/02-scope/tickets/T02-115-audio-tone-integ-and-ca-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope follow-up (STARS Conflict Alert Alignment T02-111–115)
+Merge target: `feature/stars-ca-alignment`
+Merged: T02-111, T02-112, T02-113, T02-114, T02-115
+Tests: npm test / npm run ci exit 0
+Notes: <kinematic CPA 4 type areas; 800ms blink; Line 0 steady/flashing red CA and ▲; pair inhibit table; CA K/P/E/ack commands; audio gating>
+```
+
+---
+
 # ATC-SIM swarm orchestrator — Thirty-third swarm (Datablock Other-Target Geometry Avoidance)
 
 Thirty-second (Automatic Datablock Overlap Avoidance T02-108–109) landed on
