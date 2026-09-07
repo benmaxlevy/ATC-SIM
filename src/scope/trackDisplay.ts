@@ -105,8 +105,22 @@ export interface TrackDisplay {
    * CA alert row in the AL list and datablock CA tag for this aircraft.
    */
   caInhibited?: boolean;
-  /** Alias for Conflict Alert inhibit per STARS specifications (TI 6191.409). */
+  /** Conflict Alert inhibit per STARS specifications (TI 6191.409 Section 2.16 & 7.9). */
   inhibitCA?: boolean;
+  /**
+   * Conflict Alert acknowledged for this track.
+   * When acknowledged, Line 0 CA alert renders solid red instead of blinking.
+   */
+  caAcknowledged?: boolean;
+  /**
+   * MSAW acknowledged for this track.
+   * When acknowledged, Line 0 LA alert renders solid red instead of blinking.
+   */
+  msawAcknowledged?: boolean;
+  /**
+   * Generic alert acknowledged flag for this track.
+   */
+  alertAcknowledged?: boolean;
   /**
    * MSAW (Low Altitude / LA) inhibited for this track (`*LA [Left-Click]`).
    * Suppresses LA alert row in the AL list and datablock LA tag.
