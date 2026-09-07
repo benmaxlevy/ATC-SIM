@@ -26,8 +26,27 @@ function alert(a: string, b: string, areaTier: 1 | 2 | 3 | 4): CaAlert {
 test("kdem-ca is registered as a playable conflict-alert bench", () => {
   const scenario = loadPlayableScenario("kdem-ca");
   expect(scenario.name).toContain("Conflict Alert Bench");
+  expect(scenario.spawnPolicy).toBe("authored");
   expect(scenario.arrivals).toHaveLength(6);
-  expect(scenario.giTextLines.join(" ")).toContain("TYPE 4 / 3 / 2 / 1 PAIRS");
+  expect(scenario.giTextLines.join(" ")).toContain("START INNER ACTIVE");
+  expect(scenario.giTextLines.join(" ")).toContain("CA K TRACK INHIBIT");
+});
+
+test("kdem-ca keeps three deterministic opposing pair stages", () => {
+  const arrivals = loadPlayableScenario("kdem-ca").arrivals;
+  expect(arrivals.map(({ xNm, yNm }) => [xNm, yNm])).toEqual([
+    [15, 8],
+    [15, -8],
+    [8, 4],
+    [8, -4],
+    [4, 0.4],
+    [4, -0.4],
+  ]);
+  expect(arrivals.map(({ headingDeg }) => headingDeg)).toEqual([270, 90, 270, 90, 270, 90]);
+  expect(arrivals.map(({ altitudeFt }) => altitudeFt)).toEqual([
+    8000, 8000, 4000, 4200, 1000, 1050,
+  ]);
+  expect(arrivals.map(({ speedKt }) => speedKt)).toEqual([210, 210, 180, 180, 150, 150]);
 });
 
 test("CA integration gates audio and AL rows by active unacknowledged uninhibited pairs", () => {
