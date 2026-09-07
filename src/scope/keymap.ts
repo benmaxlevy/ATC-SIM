@@ -133,7 +133,7 @@ export const KEY_BINDINGS: KeyBinding[] = [
     id: "ca-inhibit",
     focus: "always",
     windowsKeys: "F11",
-    action: "Initiate Conflict Alert (CA) inhibit action (*CA command-then-slew).",
+    action: 'Input "CA " into preview area (STARS Table 18 <CA>)',
     crcAnalog: "F11 <CA>",
   },
   {

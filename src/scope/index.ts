@@ -256,6 +256,13 @@ export {
   addBeaconSelectCode,
   removeBeaconSelectCode,
   toggleBeaconSelectCode,
+  executeCaSingleTrackInhibit,
+  executeCaPairInhibit,
+  executeCaPairEnable,
+  executeCaPairSlew,
+  handleCaSlewClick,
+  handleImpliedCaAcknowledge,
+  parseCaCommand,
 } from "./previewArea";
 export type {
   PreviewArmedAction,
@@ -696,6 +703,7 @@ export {
   getAlertVisualStatus,
   syncConflictAcknowledgmentState,
   createTrackDisplayState,
+  toggleTrackCaInhibited,
 } from "./trackDisplay";
 export type {
   TrackDisplay,

@@ -71,6 +71,10 @@ import {
   previewAreaIsLive,
   previewBufferCharFromKey,
   rejectPreviewArea,
+  executeCaSingleTrackInhibit,
+  executeCaPairInhibit,
+  executeCaPairEnable,
+  executeCaPairSlew,
   type PreviewArmedAction,
   type PreviewKeyOutcome,
 } from "./previewArea";
@@ -497,11 +501,21 @@ function applyPreviewArmedAction(
     case "resetLeaderDir":
     case "beaconatorSlew":
     case "armPerTrackPtl":
-    case "inhibitCa":
-    case "inhibitMsaw":
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;
       armPreviewSlewAction(view.preview, action, nowMs);
+      return;
+    case "caSingleTrackInhibit":
+      executeCaSingleTrackInhibit(view, action.trk, world, nowMs);
+      return;
+    case "caPairInhibit":
+      executeCaPairInhibit(view, action.trk1, action.trk2, world, nowMs);
+      return;
+    case "caPairEnable":
+      executeCaPairEnable(view, action.trk1, action.trk2, world, nowMs);
+      return;
+    case "caPairSlew":
+      executeCaPairSlew(view, nowMs);
       return;
     case "toggleMci":
       view.mciEnabled = !view.mciEnabled;
@@ -717,7 +731,12 @@ export function handleScopeKeyDown(
   // STARS Table 18: F11 -> <CA>
   if (event.key === "F11" && !event.ctrlKey) {
     consume(event);
-    armPreviewSlewAction(view.preview, { type: "inhibitCa" }, nowMs);
+    if (view.preview.phase === "entry") {
+      view.preview.buffer += "CA ";
+      view.preview.lastKeyAtMs = nowMs;
+    } else {
+      startPreviewBuffer(view, "CA ", nowMs);
+    }
     ui?.onHandled?.();
     return true;
   }

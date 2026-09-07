@@ -3,6 +3,9 @@ import { expireFilterEntry, inAltitudeFilter } from "./altitudeFilter";
 import {
   cancelPreviewArea,
   expirePreviewArea,
+  handleCaSlewClick,
+  handleImpliedCaAcknowledge,
+  previewAreaIsLive,
   previewFlidMatchesSlew,
   previewRelocateListId,
   previewTrackingSlew,
@@ -278,19 +281,10 @@ function applyTrackingSlewHit(
       clearTrackingSlew(view);
       return true;
     }
-    case "inhibitCa": {
-      const td = ensureTrackDisplay(view.tracks, id);
-      td.caInhibited = true;
-      td.inhibitCA = true;
-      setSelectedAircraft(world, id);
-      clearTrackingSlew(view);
-      return true;
-    }
-    case "inhibitMsaw": {
-      const td = ensureTrackDisplay(view.tracks, id);
-      td.msawInhibited = true;
-      setSelectedAircraft(world, id);
-      clearTrackingSlew(view);
+    case "caPairSlew":
+    case "caPairInhibit":
+    case "caPairEnable": {
+      handleCaSlewClick(view, world, id);
       return true;
     }
     default:
@@ -500,6 +494,21 @@ export function handlePpiLeftClick(
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;
       return;
+    }
+  }
+  if (!previewAreaIsLive(view.preview) || view.preview.buffer.trim() === "") {
+    const hit = pickAircraftHitAt(
+      world,
+      cssX,
+      cssY,
+      view.camera,
+      cssWidth,
+      cssHeight,
+      HIT_RADIUS_CSS_PX,
+      view,
+    );
+    if (hit) {
+      handleImpliedCaAcknowledge(view, world, hit.aircraft.id);
     }
   }
   selectOrAcceptAircraftAt(

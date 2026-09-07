@@ -188,6 +188,21 @@ export function toggleCaPairInhibited(state: TrackDisplayState, idA: string, idB
   }
 }
 
+/**
+ * Toggle Conflict Alert inhibit for a single track (TI 6191.409 Section 7.9).
+ */
+export function toggleTrackCaInhibited(
+  view: { tracks?: Map<string, TrackDisplay> } | Map<string, TrackDisplay>,
+  trkId: string,
+): boolean {
+  const tracks = view instanceof Map ? view : (view.tracks ?? new Map());
+  const td = ensureTrackDisplay(tracks, trkId);
+  const next = !(td.inhibitCA || td.caInhibited);
+  td.inhibitCA = next;
+  td.caInhibited = next;
+  return next;
+}
+
 export function isAlertAcknowledged(state: TrackDisplayState, idA: string, idB: string): boolean {
   return state.acknowledgedAlertPairs.has(makeCaPairKey(idA, idB));
 }

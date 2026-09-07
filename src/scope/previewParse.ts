@@ -93,10 +93,14 @@ export type PreviewArmedAction =
   | { readonly type: "beaconatorSlew" }
   | { readonly type: "associateFlightPlan"; readonly index: number }
   | { readonly type: "deleteFlightPlanEntry"; readonly index: number }
-  /** `*CA [Left-Click Track]`: Inhibit/acknowledge Conflict Alert for the track. */
-  | { readonly type: "inhibitCa" }
-  /** `*LA [Left-Click Track]`: Inhibit Low-Altitude (MSAW) alert for the track. */
-  | { readonly type: "inhibitMsaw" }
+  /** Single-track CA inhibit toggle (`CA K <trk>`). */
+  | { readonly type: "caSingleTrackInhibit"; readonly trk: string }
+  /** Explicit pair CA inhibit (`CA P <trk1> [<trk2>]`). */
+  | { readonly type: "caPairInhibit"; readonly trk1: string; readonly trk2?: string }
+  /** Explicit pair CA enable (`CA E <trk1> [<trk2>]`). */
+  | { readonly type: "caPairEnable"; readonly trk1: string; readonly trk2?: string }
+  /** Pair CA inhibit slew toggle (`CA [ENTER]`). */
+  | { readonly type: "caPairSlew"; readonly trk1?: string }
   /** `*MCI Enter`: Toggle Mode C Intruder alerting on/off. */
   | { readonly type: "toggleMci" }
   | { readonly type: "saveAsPref"; readonly name?: string };
@@ -267,10 +271,11 @@ export function parseScopeDisplayCommand(buffer: string): PreviewCommandResult |
     return { kind: "action", action: { type: "armPerTrackPtl" } };
   }
 
-  // T02-107: `*CA [click]` arms CA inhibit slew.
+  // Purged *CA alias is strictly rejected
   if (compact === "*CA") {
-    return { kind: "action", action: { type: "inhibitCa" } };
+    return invalid("unknown preview command");
   }
+
   // *MCI Enter: toggle Mode C Intruder alerting
   if (compact === "*MCI") {
     return { kind: "action", action: { type: "toggleMci" } };
@@ -647,8 +652,9 @@ const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
   "beaconatorSlew",
   "armPerTrackPtl",
   "associateFlightPlan",
-  "inhibitCa",
-  "inhibitMsaw",
+  "caPairSlew",
+  "caPairInhibit",
+  "caPairEnable",
 ]);
 
 function compactTrackingBuffer(buffer: string): string {
@@ -891,12 +897,6 @@ export function parseTrackingSlewBuffer(buffer: string): PreviewArmedAction | nu
   if (compact === "*B") {
     return { type: "beaconatorSlew" };
   }
-  if (compact === "*CA") {
-    return { type: "inhibitCa" };
-  }
-  if (compact === "*LA") {
-    return { type: "inhibitMsaw" };
-  }
   const parsed = parseTrackingCommand(buffer);
   if (parsed?.kind === "action") {
     return parsed.action;
@@ -928,6 +928,90 @@ function parseDeleteCommand(buffer: string): PreviewCommandResult | null {
   return invalid("invalid flight plan delete command");
 }
 
+/**
+ * Authentic Raytheon STARS Conflict Alert preview grammar (TI 6191.409 Sections 7.3, 7.9–7.12).
+ * - `CA K <trk>`: Single-track inhibit toggle.
+ * - `CA P <trk1> [<trk2>]`: Explicit pair inhibit. If trk2 omitted, waits for slew click on track 2.
+ * - `CA E <trk1> [<trk2>]`: Explicit pair enable. If trk2 omitted, waits for slew click on track 2.
+ * - `CA [ENTER]`: Enters two-click pending pair-inhibit slew mode.
+ * - Disallowed supervisor commands / non-standard aliases (CA A, CA M, CA Q) are strictly rejected.
+ */
+export function parseCaCommand(buffer: string): PreviewCommandResult | null {
+  const trimmed = buffer.trim();
+  if (trimmed === "C") {
+    return { kind: "incomplete" };
+  }
+  const upper = trimmed.toUpperCase();
+  if (upper === "CA") {
+    return { kind: "action", action: { type: "caPairSlew" } };
+  }
+  if (!upper.startsWith("CA")) {
+    return null;
+  }
+
+  const afterCa = upper.slice(2);
+  let sub = "";
+  let restTokens: string[] = [];
+
+  if (afterCa.startsWith(" ")) {
+    const tokens = afterCa.trim().split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) {
+      return { kind: "action", action: { type: "caPairSlew" } };
+    }
+    sub = tokens[0];
+    restTokens = tokens.slice(1);
+  } else {
+    const firstChar = afterCa[0];
+    sub = firstChar;
+    const remaining = afterCa.slice(1).trim();
+    restTokens = remaining.length > 0 ? remaining.split(/\s+/).filter(Boolean) : [];
+  }
+
+  if (sub === "K") {
+    if (restTokens.length === 0) {
+      return { kind: "incomplete" };
+    }
+    if (restTokens.length === 1) {
+      return { kind: "action", action: { type: "caSingleTrackInhibit", trk: restTokens[0] } };
+    }
+    return invalid("invalid CA K command");
+  }
+
+  if (sub === "P") {
+    if (restTokens.length === 0) {
+      return { kind: "incomplete" };
+    }
+    if (restTokens.length === 1) {
+      return { kind: "action", action: { type: "caPairInhibit", trk1: restTokens[0] } };
+    }
+    if (restTokens.length === 2) {
+      return {
+        kind: "action",
+        action: { type: "caPairInhibit", trk1: restTokens[0], trk2: restTokens[1] },
+      };
+    }
+    return invalid("invalid CA P command");
+  }
+
+  if (sub === "E") {
+    if (restTokens.length === 0) {
+      return { kind: "incomplete" };
+    }
+    if (restTokens.length === 1) {
+      return { kind: "action", action: { type: "caPairEnable", trk1: restTokens[0] } };
+    }
+    if (restTokens.length === 2) {
+      return {
+        kind: "action",
+        action: { type: "caPairEnable", trk1: restTokens[0], trk2: restTokens[1] },
+      };
+    }
+    return invalid("invalid CA E command");
+  }
+
+  return invalid("unknown CA command");
+}
+
 export function parsePreviewCommand(
   buffer: string,
   maps?: readonly LoadedVideoMap[],
@@ -939,6 +1023,10 @@ export function parsePreviewCommand(
   const del = parseDeleteCommand(buffer);
   if (del) {
     return del;
+  }
+  const ca = parseCaCommand(buffer);
+  if (ca) {
+    return ca;
   }
   const exact = PREVIEW_TABLE[buffer];
   if (exact) {

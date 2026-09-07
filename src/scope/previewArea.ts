@@ -21,6 +21,13 @@ import { cloneWxLevels, type WxLevels } from "./wx";
 import type { ScopeView } from "./scopeView";
 import { getFlightPlanEntries } from "./systemLists";
 import {
+  ensureTrackDisplay,
+  setCaPairInhibited,
+  toggleCaPairInhibited,
+  acknowledgeAlert,
+  toggleTrackCaInhibited,
+} from "./trackDisplay";
+import {
   FULL_CALLSIGN,
   SQUAWK_CODE,
   SUFFIX_CALLSIGN,
@@ -38,6 +45,7 @@ export {
   isTrackingSlewAction,
   parseAltitudeFilterCommand,
   parseBeaconFilterCommand,
+  parseCaCommand,
   parsePreviewCommand,
   parseScopeDisplayCommand,
   parseTrackingCommand,
@@ -284,8 +292,12 @@ function trackingMnemonic(action: PreviewArmedAction): string {
       return "*B";
     case "armPerTrackPtl":
       return "*R";
-    case "inhibitCa":
-      return "*CA";
+    case "caPairSlew":
+      return action.trk1 ? `CA ${action.trk1}` : "CA";
+    case "caPairInhibit":
+      return `CA P ${action.trk1}`;
+    case "caPairEnable":
+      return `CA E ${action.trk1}`;
     case "saveAsPref":
       return "PREF";
     default:
@@ -595,6 +607,228 @@ export function applyPreviewWxAction(
     return action.enabled ? WX_LEVELS_ALL_ON : WX_LEVELS_ALL_OFF;
   }
   return null;
+}
+
+export function executeCaSingleTrackInhibit(
+  view: ScopeView,
+  trk: string,
+  world?: World,
+  nowMs: number = Date.now(),
+): boolean {
+  let aircraftId = trk;
+  if (world) {
+    const resolved = resolveScopeFlid(trk, world, view);
+    if (!resolved.ok) {
+      view.preview.buffer = `CA K ${trk}`;
+      rejectPreviewArea(view.preview, nowMs);
+      return false;
+    }
+    aircraftId = resolved.aircraftId;
+  }
+  toggleTrackCaInhibited(view, aircraftId);
+  if (world) {
+    const ac = world.aircraft.find((a) => a.id === aircraftId);
+    if (ac && ac.callsign && ac.callsign !== aircraftId) {
+      const tdCallsign = view.tracks.get(ac.callsign);
+      if (tdCallsign) {
+        tdCallsign.inhibitCA = view.tracks.get(aircraftId)?.inhibitCA;
+        tdCallsign.caInhibited = view.tracks.get(aircraftId)?.caInhibited;
+      }
+    }
+  }
+  cancelPreviewArea(view.preview);
+  return true;
+}
+
+export function executeCaPairInhibit(
+  view: ScopeView,
+  trk1: string,
+  trk2?: string,
+  world?: World,
+  nowMs: number = Date.now(),
+): boolean {
+  let id1 = trk1;
+  let id2 = trk2;
+  if (world) {
+    const res1 = resolveScopeFlid(trk1, world, view);
+    if (!res1.ok) {
+      view.preview.buffer = trk2 ? `CA P ${trk1} ${trk2}` : `CA P ${trk1}`;
+      rejectPreviewArea(view.preview, nowMs);
+      return false;
+    }
+    id1 = res1.aircraftId;
+    if (trk2 !== undefined) {
+      const res2 = resolveScopeFlid(trk2, world, view);
+      if (!res2.ok) {
+        view.preview.buffer = `CA P ${trk1} ${trk2}`;
+        rejectPreviewArea(view.preview, nowMs);
+        return false;
+      }
+      id2 = res2.aircraftId;
+    }
+  }
+
+  if (id2 !== undefined) {
+    setCaPairInhibited(view, id1, id2, true);
+    if (world) {
+      const ac1 = world.aircraft.find((a) => a.id === id1);
+      const ac2 = world.aircraft.find((a) => a.id === id2);
+      if (ac1 && ac2) {
+        setCaPairInhibited(view, ac1.callsign, ac2.callsign, true);
+      }
+    }
+    cancelPreviewArea(view.preview);
+    return true;
+  }
+
+  // trk2 omitted: wait for slew click on track 2
+  armPreviewSlewAction(view.preview, { type: "caPairInhibit", trk1: id1 }, nowMs);
+  return true;
+}
+
+export function executeCaPairEnable(
+  view: ScopeView,
+  trk1: string,
+  trk2?: string,
+  world?: World,
+  nowMs: number = Date.now(),
+): boolean {
+  let id1 = trk1;
+  let id2 = trk2;
+  if (world) {
+    const res1 = resolveScopeFlid(trk1, world, view);
+    if (!res1.ok) {
+      view.preview.buffer = trk2 ? `CA E ${trk1} ${trk2}` : `CA E ${trk1}`;
+      rejectPreviewArea(view.preview, nowMs);
+      return false;
+    }
+    id1 = res1.aircraftId;
+    if (trk2 !== undefined) {
+      const res2 = resolveScopeFlid(trk2, world, view);
+      if (!res2.ok) {
+        view.preview.buffer = `CA E ${trk1} ${trk2}`;
+        rejectPreviewArea(view.preview, nowMs);
+        return false;
+      }
+      id2 = res2.aircraftId;
+    }
+  }
+
+  if (id2 !== undefined) {
+    setCaPairInhibited(view, id1, id2, false);
+    if (world) {
+      const ac1 = world.aircraft.find((a) => a.id === id1);
+      const ac2 = world.aircraft.find((a) => a.id === id2);
+      if (ac1 && ac2) {
+        setCaPairInhibited(view, ac1.callsign, ac2.callsign, false);
+      }
+    }
+    cancelPreviewArea(view.preview);
+    return true;
+  }
+
+  // trk2 omitted: wait for slew click on track 2
+  armPreviewSlewAction(view.preview, { type: "caPairEnable", trk1: id1 }, nowMs);
+  return true;
+}
+
+export function executeCaPairSlew(view: ScopeView, nowMs: number = Date.now()): void {
+  armPreviewSlewAction(view.preview, { type: "caPairSlew" }, nowMs);
+}
+
+export function handleCaSlewClick(
+  view: ScopeView,
+  world: World,
+  clickedTrackId: string,
+  nowMs: number = Date.now(),
+): boolean {
+  const armed = view.preview.armed;
+  if (!armed) return false;
+
+  if (armed.type === "caPairSlew") {
+    if (!armed.trk1) {
+      // Step 1: record Track 1
+      view.preview.armed = { type: "caPairSlew", trk1: clickedTrackId };
+      view.preview.slewAction = view.preview.armed;
+      const ac = world.aircraft.find((a) => a.id === clickedTrackId);
+      view.preview.mnemonic = `CA ${ac?.callsign ?? clickedTrackId}`;
+      view.preview.lastKeyAtMs = nowMs;
+      return true;
+    }
+    // Step 2: toggle pairwise inhibit between Track 1 and Track 2
+    const trk1 = armed.trk1;
+    const trk2 = clickedTrackId;
+    toggleCaPairInhibited(view, trk1, trk2);
+    const ac1 = world.aircraft.find((a) => a.id === trk1);
+    const ac2 = world.aircraft.find((a) => a.id === trk2);
+    if (ac1 && ac2) {
+      toggleCaPairInhibited(view, ac1.callsign, ac2.callsign);
+    }
+    cancelPreviewArea(view.preview);
+    return true;
+  }
+
+  if (armed.type === "caPairInhibit") {
+    const trk1 = armed.trk1;
+    const trk2 = clickedTrackId;
+    setCaPairInhibited(view, trk1, trk2, true);
+    const ac1 = world.aircraft.find((a) => a.id === trk1);
+    const ac2 = world.aircraft.find((a) => a.id === trk2);
+    if (ac1 && ac2) {
+      setCaPairInhibited(view, ac1.callsign, ac2.callsign, true);
+    }
+    cancelPreviewArea(view.preview);
+    return true;
+  }
+
+  if (armed.type === "caPairEnable") {
+    const trk1 = armed.trk1;
+    const trk2 = clickedTrackId;
+    setCaPairInhibited(view, trk1, trk2, false);
+    const ac1 = world.aircraft.find((a) => a.id === trk1);
+    const ac2 = world.aircraft.find((a) => a.id === trk2);
+    if (ac1 && ac2) {
+      setCaPairInhibited(view, ac1.callsign, ac2.callsign, false);
+    }
+    cancelPreviewArea(view.preview);
+    return true;
+  }
+
+  return false;
+}
+
+export function handleImpliedCaAcknowledge(
+  view: ScopeView,
+  world: World,
+  clickedTrackId: string,
+): boolean {
+  if (previewAreaIsLive(view.preview) && view.preview.buffer.trim().length > 0) {
+    return false;
+  }
+  if (!world.alerts?.ca || world.alerts.ca.length === 0) {
+    return false;
+  }
+  const ac = world.aircraft.find((a) => a.id === clickedTrackId || a.callsign === clickedTrackId);
+  if (!ac) {
+    return false;
+  }
+  let acknowledged = false;
+  for (const alert of world.alerts.ca) {
+    if (alert.callsignA === ac.callsign || alert.callsignB === ac.callsign) {
+      acknowledgeAlert(view, alert.callsignA, alert.callsignB);
+      const otherCallsign = alert.callsignA === ac.callsign ? alert.callsignB : alert.callsignA;
+      const otherAc = world.aircraft.find((a) => a.callsign === otherCallsign);
+      if (otherAc) {
+        acknowledgeAlert(view, ac.id, otherAc.id);
+        const tdOther = ensureTrackDisplay(view.tracks, otherAc.id);
+        tdOther.caAcknowledged = true;
+      }
+      const tdThis = ensureTrackDisplay(view.tracks, ac.id);
+      tdThis.caAcknowledged = true;
+      acknowledged = true;
+    }
+  }
+  return acknowledged;
 }
 
 export type PreviewKeyOutcome = {

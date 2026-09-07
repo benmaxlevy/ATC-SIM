@@ -225,12 +225,12 @@ test("Table 18: F10 <PTL> toggles PTL ALL", () => {
   expect(view.ptlOn).toBe(false);
 });
 
-test("Table 18: F11 <CA> initiates Conflict Alert inhibit action (*CA)", () => {
+test("Table 18: F11 <CA> functional key buffers CA into preview area", () => {
   const view = createScopeView();
   expect(view.preview.phase).toBe("idle");
   handleScopeKeyDown(keyEvent("F11"), view);
-  expect(view.preview.phase).toBe("armed");
-  expect(view.preview.slewAction?.type).toBe("inhibitCa");
+  expect(view.preview.phase).toBe("entry");
+  expect(view.preview.buffer).toBe("CA ");
 });
 
 test("Escape closes DCB submenu without hiding map lists (ML)", () => {
