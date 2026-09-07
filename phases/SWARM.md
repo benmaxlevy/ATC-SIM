@@ -1,5 +1,38 @@
 # ATC-SIM swarm orchestrator — Thirty-fourth swarm (STARS Conflict Alert Alignment)
 
+## Thirty-fifth swarm planned — 2026-09-07 (CA Pair-Inhibit Presentation)
+
+Follow-up to the completed Thirty-fourth swarm. The merge target remains
+`feature/stars-ca-alignment`; no work starts a later phase. One Luna worker
+owns T02-117 in an isolated ticket branch/worktree; captain squash-merges only
+after acceptance. Do not push.
+
+| Key | Value |
+| --- | --- |
+| Goal | Make CA pair inhibits disable the same alert presentation as a track inhibit. |
+| Include | **T02-117** only. |
+| Source | TI 6191.409 §2.16.3/Table 2-26: disabled CA alert presentation; §2.15.3 alert list. |
+| Acceptance | For an inhibited pair only: no red Line 0 `CA` on either member, no CA AL-list row, and no CA tone; both member datablocks show normal inline `Δ`. Other active pairs sharing either aircraft remain alerting. Re-enable restores the pair alert if the condition persists. |
+| Skip | CA detection thresholds, MSAW/MCI semantics, command grammar, broad alert-list redesign, and unrelated dirty work. |
+| Stop | After T02-117 acceptance. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `feature/stars-ca-alignment`, then runs focused tests and `npm run ci`. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Ticket:** `phases/02-scope/tickets/T02-117-ca-pair-inhibit-presentation.md` on
+`ticket/T02-117-ca-pair-inhibit-presentation`.
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope CA pair-inhibit presentation T02-117
+Merge target: feature/stars-ca-alignment
+Merged: T02-117
+Tests: <focused tests and npm run ci result>
+Notes: <pair suppression for Line 0/list/tone; Δ shown; other pairs preserved>
+```
+
 ## Thirty-fourth swarm resumed — 2026-09-07
 
 User requested continuation at Wave D. This resume retains the existing
