@@ -1,5 +1,40 @@
 # ATC-SIM swarm orchestrator — Thirty-fourth swarm (STARS Conflict Alert Alignment)
 
+## Thirty-sixth swarm planned — 2026-09-07 (CA Pair-Inhibit Manual Correction)
+
+Manual review of TI 6191.409 §7.10–7.11 corrected the prior T02-117 display
+interpretation. `CA` is a one-slew toggle for an existing conflict/pairwise
+inhibit; `CA P` accepts two selected tracks, each by ACID entry or slew. Both
+commands remove CA presentation for the pair and show normal inline `Δ` on both
+member datablocks. One Luna worker owns T02-118 in an isolated worktree; captain
+squash-merges to `feature/stars-ca-alignment`. Do not push.
+
+| Key | Value |
+| --- | --- |
+| Goal | Restore manual-correct pair-inhibit `Δ` presentation and verify `CA P` two-slew behavior. |
+| Include | **T02-118** only. |
+| Source | TI 6191.409 §7.10 pp. 7-19–7-20; §7.11 p. 7-21; §2.16.3/Table 2-26. |
+| Acceptance | `CA` one-slew and `CA P` two-slew both suppress only that pair's CA Line 0/list/tone and show normal inline `Δ` on both pair members. A separate active pair sharing a track remains visible/listed/audible. `CA E` restores presentation. |
+| Skip | CA detection, MSAW/MCI behavior, list layout redesign, and unrelated fixes. |
+| Stop | After T02-118 acceptance. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `feature/stars-ca-alignment`, then runs focused tests and `npm run ci`. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Ticket:** `phases/02-scope/tickets/T02-118-ca-pair-inhibit-manual-correction.md`
+on `ticket/T02-118-ca-pair-inhibit-manual-correction`.
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope CA pair-inhibit manual correction T02-118
+Merge target: feature/stars-ca-alignment
+Merged: T02-118
+Tests: <focused tests and npm run ci result>
+Notes: <CA / CA P slew behavior; pair Δ; shared-pair isolation>
+```
+
 ## Thirty-fifth swarm planned — 2026-09-07 (CA Pair-Inhibit Presentation)
 
 Follow-up to the completed Thirty-fourth swarm. The merge target remains
