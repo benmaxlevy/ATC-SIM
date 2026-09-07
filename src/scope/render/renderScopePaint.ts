@@ -5,7 +5,6 @@ import {
   caPairKey,
   caSeverityForCallsign,
   handoffFor,
-  MSAW_DATABLOCK_TAG,
   msawSeverityForCallsign,
   type Aircraft,
   type World,
@@ -722,6 +721,67 @@ function trackColor(view: ScopeView, world: World, ac: Aircraft): string {
   return targetStrokeColor(trackOwnership(view, ac.id), identActive);
 }
 
+type AlertGlyph = {
+  text: "Δ" | "*" | "+";
+  color: string;
+  visible: boolean;
+};
+
+/** MCI records are deliberately tolerant of the adapted alert row shape. */
+function hasMciAlertForTrack(world: World, ac: Aircraft): boolean {
+  const alerts = (world.alerts as { mci?: Array<Record<string, string | undefined>> }).mci;
+  return Boolean(
+    alerts?.some((alert) =>
+      [
+        alert.intruderSquawkOrCallsign,
+        alert.intruder,
+        alert.intruderSquawk,
+        alert.squawk,
+        alert.callsignA,
+        alert.protectedCallsign,
+        alert.protectedFlight,
+        alert.callsignB,
+        alert.callsign,
+      ].includes(ac.callsign),
+    ),
+  );
+}
+
+/**
+ * STARS Line 1 alert symbols sit immediately after the ACID, never above the
+ * datablock. CA/MCI inhibit is the normal upright delta; MSAW inhibit is `*`;
+ * an active MSAW, CA, or MCI alert is `+`.
+ */
+function alertGlyphsForTrack(args: {
+  caInhibited: boolean;
+  caActive: boolean;
+  caAcknowledged: boolean;
+  msawInhibited: boolean;
+  msawActive: boolean;
+  msawAcknowledged: boolean;
+  mciInhibited: boolean;
+  mciActive: boolean;
+  blinkOn: boolean;
+  normalColor: string;
+  alertColor: string;
+}): AlertGlyph[] {
+  const glyphs: AlertGlyph[] = [];
+  if (args.caInhibited || args.mciInhibited) {
+    glyphs.push({ text: "Δ", color: args.normalColor, visible: true });
+  }
+  if (args.msawInhibited) {
+    glyphs.push({ text: "*", color: args.normalColor, visible: true });
+  }
+  if (args.caActive || args.msawActive || args.mciActive) {
+    glyphs.push({
+      text: "+",
+      color: args.alertColor,
+      visible: args.mciActive || args.caAcknowledged || args.msawAcknowledged || args.blinkOn,
+    });
+  }
+  return glyphs;
+}
+
 export function drawDatablock(
   ctx: CanvasRenderingContext2D,
   ac: Aircraft,
@@ -782,21 +842,11 @@ export function drawDatablock(
     beaconVisible: true,
     simTimeMs: world.simTimeMs,
   });
-  let line1 = base.line1;
+  let line1WithoutAlert = base.line1;
   if (visual.line1Tag) {
-    line1 = `${line1} ${visual.line1Tag}`;
+    line1WithoutAlert = `${line1WithoutAlert} ${visual.line1Tag}`;
   }
-  const lines = { ...base, line1 };
   const lineH = datablockLineHeightPx(view.charSizes.dataBlocks);
-  const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
-  const origin = datablockTopLeft(
-    trackLeaderDir(view, ac.id),
-    metrics,
-    trackLeaderLength(view, ac.id),
-  );
-  const briteCh = mode === "limited" || mode === "partial" ? view.brite.ldb : view.brite.fdb;
-  const textX = resolved?.rect ? resolved.rect.x : targetX + origin.x;
-  const textY = resolved?.rect ? resolved.rect.y : targetY + origin.y;
 
   const isCaInhibited = isCaInhibitedForTrack(ac, td, view);
   const caSeverity = !isCaInhibited ? caSeverityForCallsign(world.alerts.ca, ac.callsign) : null;
@@ -809,38 +859,48 @@ export function drawDatablock(
   const msawSeverity = !isMsawInhibited
     ? msawSeverityForCallsign(world.alerts.msaw, ac.callsign)
     : null;
-
-  if (mode === "full" || mode === "partial") {
-    let alertTagX = textX;
-    const alertTagY = textY - lineH;
-
-    if (isCaInhibited) {
-      ctx.fillStyle = applyBrite(PALETTE.owned, briteCh);
-      ctx.fillText("▲", alertTagX, alertTagY);
-      alertTagX += ctx.measureText("▲ ").width;
-    } else if (caSeverity) {
-      const isAck = isCaAlertAcknowledged(ac, td, view, world);
-      const isBlinkOn = isAlertBlinkOn(world.simTimeMs);
-      if (isAck || isBlinkOn) {
-        ctx.fillStyle = applyBrite(PALETTE.alert, view.brite.fdb);
-        ctx.fillText("CA", alertTagX, alertTagY);
-      }
-      alertTagX += ctx.measureText("CA ").width;
-    }
-
-    if (msawSeverity) {
-      const isAck = isMsawAlertAcknowledged(ac, td, view, world);
-      const isBlinkOn = isAlertBlinkOn(world.simTimeMs);
-      if (isAck || isBlinkOn) {
-        ctx.fillStyle = applyBrite(PALETTE.alert, briteCh);
-        ctx.fillText(MSAW_DATABLOCK_TAG, alertTagX, alertTagY);
-      }
-      alertTagX += ctx.measureText(`${MSAW_DATABLOCK_TAG} `).width;
-    }
-  }
+  const mciActive = hasMciAlertForTrack(world, ac);
+  const mciInhibited = mciActive && view.mciEnabled === false;
+  const briteCh = mode === "limited" || mode === "partial" ? view.brite.ldb : view.brite.fdb;
+  const alertGlyphs =
+    mode === "full" || mode === "partial"
+      ? alertGlyphsForTrack({
+          caInhibited: isCaInhibited,
+          caActive: caSeverity != null,
+          caAcknowledged: isCaAlertAcknowledged(ac, td, view, world),
+          msawInhibited: isMsawInhibited,
+          msawActive: msawSeverity != null,
+          msawAcknowledged: isMsawAlertAcknowledged(ac, td, view, world),
+          mciInhibited,
+          mciActive: mciActive && !mciInhibited,
+          blinkOn: isAlertBlinkOn(world.simTimeMs),
+          normalColor: applyBrite(PALETTE.owned, briteCh),
+          alertColor: applyBrite(PALETTE.alert, briteCh),
+        })
+      : [];
+  // Reserve the inline cells while a `+` is in its OFF blink phase.
+  const line1 = [line1WithoutAlert, ...alertGlyphs.map((glyph) => glyph.text)].join(" ");
+  const lines = { ...base, line1 };
+  const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
+  const origin = datablockTopLeft(
+    trackLeaderDir(view, ac.id),
+    metrics,
+    trackLeaderLength(view, ac.id),
+  );
+  const textX = resolved?.rect ? resolved.rect.x : targetX + origin.x;
+  const textY = resolved?.rect ? resolved.rect.y : targetY + origin.y;
 
   ctx.fillStyle = applyBrite(visual.color, briteCh);
-  ctx.fillText(lines.line1, textX, textY);
+  ctx.fillText(line1WithoutAlert, textX, textY);
+  let alertGlyphX = textX + ctx.measureText(line1WithoutAlert).width;
+  for (const glyph of alertGlyphs) {
+    alertGlyphX += ctx.measureText(" ").width;
+    if (glyph.visible) {
+      ctx.fillStyle = glyph.color;
+      ctx.fillText(glyph.text, alertGlyphX, textY);
+    }
+    alertGlyphX += ctx.measureText(glyph.text).width;
+  }
   if (lines.line2 != null) {
     ctx.fillText(lines.line2, textX, textY + lineH);
   }

@@ -60,11 +60,15 @@ describe("T02-114: Preview Grammar for Conflict Alert (CA) & Purge Invented Alia
       });
     });
 
-    it("marks incomplete CA K without track as incomplete and invalid on commit", () => {
-      expect(parsePreviewCommand("CA K")).toEqual({ kind: "incomplete" });
-      expect(commitPreviewCommand("CA K").kind).toBe("invalid");
-      expect(parsePreviewCommand("CAK")).toEqual({ kind: "incomplete" });
-      expect(commitPreviewCommand("CAK").kind).toBe("invalid");
+    it("parses CA K without a track as a single-track slew action", () => {
+      expect(parsePreviewCommand("CA K")).toEqual({
+        kind: "action",
+        action: { type: "caSingleTrackInhibit" },
+      });
+      expect(commitPreviewCommand("CAK")).toEqual({
+        kind: "action",
+        action: { type: "caSingleTrackInhibit" },
+      });
     });
 
     it("rejects CA K with excess arguments", () => {
@@ -96,11 +100,15 @@ describe("T02-114: Preview Grammar for Conflict Alert (CA) & Purge Invented Alia
       });
     });
 
-    it("marks incomplete CA P without track as incomplete and invalid on commit", () => {
-      expect(parsePreviewCommand("CA P")).toEqual({ kind: "incomplete" });
-      expect(commitPreviewCommand("CA P").kind).toBe("invalid");
-      expect(parsePreviewCommand("CAP")).toEqual({ kind: "incomplete" });
-      expect(commitPreviewCommand("CAP").kind).toBe("invalid");
+    it("parses CA P without tracks as a two-track inhibit slew action", () => {
+      expect(parsePreviewCommand("CA P")).toEqual({
+        kind: "action",
+        action: { type: "caPairInhibit" },
+      });
+      expect(commitPreviewCommand("CAP")).toEqual({
+        kind: "action",
+        action: { type: "caPairInhibit" },
+      });
     });
 
     it("rejects CA P with more than 2 track arguments", () => {
@@ -124,11 +132,15 @@ describe("T02-114: Preview Grammar for Conflict Alert (CA) & Purge Invented Alia
       });
     });
 
-    it("marks incomplete CA E without track as incomplete and invalid on commit", () => {
-      expect(parsePreviewCommand("CA E")).toEqual({ kind: "incomplete" });
-      expect(commitPreviewCommand("CA E").kind).toBe("invalid");
-      expect(parsePreviewCommand("CAE")).toEqual({ kind: "incomplete" });
-      expect(commitPreviewCommand("CAE").kind).toBe("invalid");
+    it("parses CA E without tracks as a two-track enable slew action", () => {
+      expect(parsePreviewCommand("CA E")).toEqual({
+        kind: "action",
+        action: { type: "caPairEnable" },
+      });
+      expect(commitPreviewCommand("CAE")).toEqual({
+        kind: "action",
+        action: { type: "caPairEnable" },
+      });
     });
 
     it("rejects CA E with more than 2 track arguments", () => {

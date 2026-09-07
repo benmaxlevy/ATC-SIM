@@ -63,7 +63,7 @@ Service-side env, models, and Path C: [`speech-api/README.md`](../speech-api/REA
 
 ### Safety alerting (CA, MSAW, MCI)
 
-- **Conflict Alert (CA)**: Kinematic CPA prediction uses the active pair's lower airspace type (Type 1–4). Unacknowledged alerts blink red at 800 ms on / 800 ms off and sound the warning tone; acknowledged alerts stay solid red. Use the `CA` commands below; `F11` buffers `CA `.
+- **Conflict Alert (CA)**: Kinematic CPA prediction uses the active pair's lower airspace type (Type 1–4). An active unacknowledged CA, MSAW, or MCI displays a red inline `+` beside the ACID at 800 ms on / 800 ms off; acknowledged CA/MSAW stays solid. CA/MCI inhibit displays the normal upright `Δ`; MSAW inhibit displays `*`. Use the `CA` commands below; `F11` buffers `CA `.
 - **Minimum Safe Altitude Warning (MSAW)**: Polygon-based Minimum Vectoring Altitude (MVA) floor checks that alert when aircraft descend below safe sector altitudes. `*LA` is only the altitude-filter command, not an MSAW inhibit.
 - **Mode C Intruder (MCI)**: Alerts when an untracked VFR/Mode C transponder target penetrates protected airspace around tracked flights. Toggled on/off globally via `*MCI`.
 
@@ -360,11 +360,11 @@ System list commands in STARS do not accept aliases and use the exact prefix syn
 
 | Command Syntax | Operator Action | System Result |
 |---|---|---|
-| `CA K <track> Enter` | `CA K DAL123` Enter | Toggles CA inhibit for one track; its Line 0 shows the normal white `▲` inhibit glyph. |
+| `CA K [track] Enter` | `CA K DAL123` Enter, or `CA K` Enter then slew-click | Toggles CA inhibit for one track; a normal upright `Δ` appears inline beside its ACID. |
 | `CA Enter`, then two target clicks | Type `CA` Enter; click Track A then Track B | Toggles the pair-specific CA inhibit. Other pairs involving either track still alert. |
-| `CA P <track1> [<track2>] Enter` | `CA P DAL123 AAL456` Enter, or omit Track 2 then slew-click it | Adds the pair-specific CA inhibit. |
-| `CA E <track1> [<track2>] Enter` | `CA E DAL123 AAL456` Enter, or omit Track 2 then slew-click it | Removes the pair-specific CA inhibit. |
-| Empty Preview Area, click active CA target | Slew-click the alerted target | Acknowledges that pair immediately: the tone stops when no other unacknowledged CA remains and the red `CA` becomes steady. |
+| `CA P [track1] [track2] Enter` | `CA P DAL123 AAL456` Enter; omit Track 2 to slew it; omit both to slew both | Adds the pair-specific CA inhibit. |
+| `CA E [track1] [track2] Enter` | `CA E DAL123 AAL456` Enter; omit Track 2 to slew it; omit both to slew both | Removes the pair-specific CA inhibit. |
+| Empty Preview Area, click active CA target | Slew-click the alerted target | Acknowledges that pair immediately: the tone stops when no other unacknowledged CA remains and the red inline `+` becomes steady. |
 | `*MCI Enter` | Type `*MCI` Enter | **Toggle Mode C Intruder Alerting**: Globally toggles Mode C Intruder alerting on or off (`view.mciEnabled`). |
 
 ---

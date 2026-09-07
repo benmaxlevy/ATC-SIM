@@ -18,7 +18,7 @@ import {
 } from "../render/renderScopePaint";
 import { renderScope } from "../render/renderScope";
 
-describe("T02-112: Datablock Line 0 Alert Rendering, Blinking Clock & Inhibit Glyph", () => {
+describe("Datablock inline alert glyphs", () => {
   describe("Blink clock & period", () => {
     test("square-wave blink cadence operates at 800ms ON / 800ms OFF (1600ms period)", () => {
       expect(ALERT_BLINK_HALF_PERIOD_MS).toBe(800);
@@ -44,7 +44,7 @@ describe("T02-112: Datablock Line 0 Alert Rendering, Blinking Clock & Inhibit Gl
   });
 
   describe("Active unacknowledged Conflict Alert (CA)", () => {
-    test("displays red CA flashing at 800ms cadence on Line 0 of both conflicting tracks", () => {
+    test("displays red + flashing at 800ms cadence beside both conflicting ACIDs", () => {
       const world = createWorld();
       const view = createScopeView();
 
@@ -76,24 +76,24 @@ describe("T02-112: Datablock Line 0 Alert Rendering, Blinking Clock & Inhibit Gl
       };
       world.alerts.ca = [caAlert];
 
-      // At simTimeMs = 0 (blink ON): both tracks render "CA" in PALETTE.alert red
+      // At simTimeMs = 0 (blink ON): both tracks render "+" in PALETTE.alert red.
       world.simTimeMs = 0;
       const mockOn = createMockCtx();
       drawDatablock(mockOn.ctx, ac1, 100, 100, view, world);
       drawDatablock(mockOn.ctx, ac2, 200, 200, view, world);
 
-      const caFillsOn = mockOn.fillTexts.filter((f) => f.text === "CA");
+      const caFillsOn = mockOn.fillTexts.filter((f) => f.text === "+");
       expect(caFillsOn).toHaveLength(2);
       expect(caFillsOn[0]?.fillStyle).toBe(applyBrite(PALETTE.alert, view.brite.fdb));
       expect(caFillsOn[1]?.fillStyle).toBe(applyBrite(PALETTE.alert, view.brite.fdb));
 
-      // At simTimeMs = 800 (blink OFF): neither track renders "CA"
+      // At simTimeMs = 800 (blink OFF): neither track renders "+".
       world.simTimeMs = 800;
       const mockOff = createMockCtx();
       drawDatablock(mockOff.ctx, ac1, 100, 100, view, world);
       drawDatablock(mockOff.ctx, ac2, 200, 200, view, world);
 
-      const caFillsOff = mockOff.fillTexts.filter((f) => f.text === "CA");
+      const caFillsOff = mockOff.fillTexts.filter((f) => f.text === "+");
       expect(caFillsOff).toHaveLength(0);
 
       // Callsigns still render in both phases
@@ -103,7 +103,7 @@ describe("T02-112: Datablock Line 0 Alert Rendering, Blinking Clock & Inhibit Gl
   });
 
   describe("Acknowledged Conflict Alert (CA)", () => {
-    test("displays solid red CA continuously on Line 0 (does not flash)", () => {
+    test("displays solid red + continuously beside the ACID (does not flash)", () => {
       const world = createWorld();
       const view = createScopeView();
 
@@ -137,7 +137,7 @@ describe("T02-112: Datablock Line 0 Alert Rendering, Blinking Clock & Inhibit Gl
         const mock = createMockCtx();
         drawDatablock(mock.ctx, ac1, 150, 150, view, world);
 
-        const caFills = mock.fillTexts.filter((f) => f.text === "CA");
+        const caFills = mock.fillTexts.filter((f) => f.text === "+");
         expect(caFills).toHaveLength(1);
         expect(caFills[0]?.fillStyle).toBe(applyBrite(PALETTE.alert, view.brite.fdb));
       }
@@ -178,8 +178,8 @@ describe("T02-112: Datablock Line 0 Alert Rendering, Blinking Clock & Inhibit Gl
     });
   });
 
-  describe("CA Inhibit triangle glyph (▲)", () => {
-    test("displays white/normal ▲ triangle glyph preceding callsign on Line 0 when inhibited", () => {
+  describe("CA/MCI inhibit upright-delta glyph (Δ)", () => {
+    test("displays normal Δ immediately after the ACID when CA is inhibited", () => {
       const world = createWorld();
       const view = createScopeView();
 
@@ -200,15 +200,15 @@ describe("T02-112: Datablock Line 0 Alert Rendering, Blinking Clock & Inhibit Gl
       const mock = createMockCtx();
       drawDatablock(mock.ctx, ac, 100, 100, view, world);
 
-      const triangleFills = mock.fillTexts.filter((f) => f.text === "▲");
+      const triangleFills = mock.fillTexts.filter((f) => f.text === "Δ");
       expect(triangleFills).toHaveLength(1);
       expect(triangleFills[0]?.fillStyle).toBe(applyBrite(PALETTE.owned, view.brite.fdb));
 
-      // Glyph is placed on Line 0 (y = textY - lineH)
+      // Glyph is inline after the ACID, not on a separate line above it.
       const callsignFill = mock.fillTexts.find((f) => f.text.startsWith("JBU700"));
       expect(callsignFill).toBeDefined();
-      expect(triangleFills[0]!.y!).toBeLessThan(callsignFill!.y!);
-      expect(triangleFills[0]!.x).toBe(callsignFill!.x);
+      expect(triangleFills[0]!.y).toBe(callsignFill!.y);
+      expect(triangleFills[0]!.x!).toBeGreaterThan(callsignFill!.x!);
     });
 
     test("inhibitCA alias is supported and suppresses CA alert from showing 'CA'", () => {
@@ -244,14 +244,14 @@ describe("T02-112: Datablock Line 0 Alert Rendering, Blinking Clock & Inhibit Gl
       const mock = createMockCtx();
       drawDatablock(mock.ctx, ac, 120, 120, view, world);
 
-      // Renders "▲", but NOT "CA"
-      expect(mock.fillTexts.some((f) => f.text === "▲")).toBe(true);
-      expect(mock.fillTexts.some((f) => f.text === "CA")).toBe(false);
+      // Renders "Δ", but not active "+".
+      expect(mock.fillTexts.some((f) => f.text === "Δ")).toBe(true);
+      expect(mock.fillTexts.some((f) => f.text === "+")).toBe(false);
     });
   });
 
-  describe("MSAW (LA) Line 0 alert rendering", () => {
-    test("unacknowledged MSAW flashes red LA at 800ms cadence", () => {
+  describe("MSAW inline glyph rendering", () => {
+    test("unacknowledged MSAW flashes red + at 800ms cadence", () => {
       const world = createWorld();
       const view = createScopeView();
 
@@ -274,20 +274,20 @@ describe("T02-112: Datablock Line 0 Alert Rendering, Blinking Clock & Inhibit Gl
       };
       world.alerts.msaw = [msawAlert];
 
-      // At 0ms (ON): renders "LA"
+      // At 0ms (ON): renders "+".
       world.simTimeMs = 0;
       const mockOn = createMockCtx();
       drawDatablock(mockOn.ctx, ac, 100, 100, view, world);
-      expect(mockOn.fillTexts.some((f) => f.text === "LA")).toBe(true);
+      expect(mockOn.fillTexts.some((f) => f.text === "+")).toBe(true);
 
-      // At 800ms (OFF): does NOT render "LA"
+      // At 800ms (OFF): does not render "+".
       world.simTimeMs = 800;
       const mockOff = createMockCtx();
       drawDatablock(mockOff.ctx, ac, 100, 100, view, world);
-      expect(mockOff.fillTexts.some((f) => f.text === "LA")).toBe(false);
+      expect(mockOff.fillTexts.some((f) => f.text === "+")).toBe(false);
     });
 
-    test("acknowledged MSAW displays solid red LA", () => {
+    test("acknowledged MSAW displays solid red +", () => {
       const world = createWorld();
       const view = createScopeView();
 
@@ -318,7 +318,44 @@ describe("T02-112: Datablock Line 0 Alert Rendering, Blinking Clock & Inhibit Gl
       world.simTimeMs = 800;
       const mock = createMockCtx();
       drawDatablock(mock.ctx, ac, 100, 100, view, world);
-      expect(mock.fillTexts.some((f) => f.text === "LA")).toBe(true);
+      expect(mock.fillTexts.some((f) => f.text === "+")).toBe(true);
+    });
+
+    test("displays normal * immediately after the ACID when MSAW is inhibited", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      const ac = makeTestAircraft({ id: "ac-msaw-inhibit", callsign: "N12345" });
+      const td = createTrackDisplay("owned");
+      td.msawInhibited = true;
+      world.aircraft = [ac];
+      world.alerts.msaw = [
+        { callsign: ac.callsign, severity: "alert", altFt: 1500, floorFt: 2000 },
+      ];
+      view.tracks.set(ac.id, td);
+
+      const mock = createMockCtx();
+      drawDatablock(mock.ctx, ac, 100, 100, view, world);
+      expect(mock.fillTexts.some((fill) => fill.text === "*")).toBe(true);
+      expect(mock.fillTexts.some((fill) => fill.text === "+")).toBe(false);
+    });
+
+    test("uses + for active MCI and Δ when its global MCI inhibit is on", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      const ac = makeTestAircraft({ id: "ac-mci", callsign: "UAL123" });
+      world.aircraft = [ac];
+      view.tracks.set(ac.id, createTrackDisplay("owned"));
+      (world.alerts as { mci?: Array<Record<string, string>> }).mci = [{ callsign: ac.callsign }];
+
+      const active = createMockCtx();
+      drawDatablock(active.ctx, ac, 100, 100, view, world);
+      expect(active.fillTexts.some((fill) => fill.text === "+")).toBe(true);
+
+      view.mciEnabled = false;
+      const inhibited = createMockCtx();
+      drawDatablock(inhibited.ctx, ac, 100, 100, view, world);
+      expect(inhibited.fillTexts.some((fill) => fill.text === "Δ")).toBe(true);
+      expect(inhibited.fillTexts.some((fill) => fill.text === "+")).toBe(false);
     });
   });
 
@@ -343,12 +380,12 @@ describe("T02-112: Datablock Line 0 Alert Rendering, Blinking Clock & Inhibit Gl
       const mock = createMockCtx();
       drawDatablock(mock.ctx, ac, 80, 80, view, world);
 
-      expect(mock.fillTexts.some((f) => f.text === "▲")).toBe(true);
+      expect(mock.fillTexts.some((f) => f.text === "Δ")).toBe(true);
       // PDB format renders Mode C / GS line
       expect(mock.fillTexts.some((f) => f.text.includes("035"))).toBe(true);
     });
 
-    test("renders both ▲ and LA tags sequentially without overlap", () => {
+    test("renders CA Δ and MSAW * inline without overlap", () => {
       const world = createWorld();
       const view = createScopeView();
 
@@ -362,7 +399,7 @@ describe("T02-112: Datablock Line 0 Alert Rendering, Blinking Clock & Inhibit Gl
 
       const td = createTrackDisplay("owned");
       td.caInhibited = true;
-      td.msawAcknowledged = true;
+      td.msawInhibited = true;
       view.tracks.set(ac.id, td);
 
       world.alerts.msaw = [
@@ -377,18 +414,18 @@ describe("T02-112: Datablock Line 0 Alert Rendering, Blinking Clock & Inhibit Gl
       const mock = createMockCtx();
       drawDatablock(mock.ctx, ac, 100, 100, view, world);
 
-      const triangleFill = mock.fillTexts.find((f) => f.text === "▲");
-      const laFill = mock.fillTexts.find((f) => f.text === "LA");
+      const triangleFill = mock.fillTexts.find((f) => f.text === "Δ");
+      const msawFill = mock.fillTexts.find((f) => f.text === "*");
 
       expect(triangleFill).toBeDefined();
-      expect(laFill).toBeDefined();
-      expect(triangleFill!.y).toBe(laFill!.y); // Same Line 0
-      expect(laFill!.x!).toBeGreaterThan(triangleFill!.x!); // LA follows ▲ horizontally
+      expect(msawFill).toBeDefined();
+      expect(triangleFill!.y).toBe(msawFill!.y);
+      expect(msawFill!.x!).toBeGreaterThan(triangleFill!.x!);
     });
   });
 
   describe("End-to-End renderScope integration", () => {
-    test("renderScope integrates blinking Line 0 CA across frame renders", () => {
+    test("renderScope integrates blinking inline CA + across frame renders", () => {
       const world = createWorld();
       const view = createScopeView();
 
@@ -424,17 +461,17 @@ describe("T02-112: Datablock Line 0 Alert Rendering, Blinking Clock & Inhibit Gl
         },
       ];
 
-      // Frame at simTimeMs = 400 (ON): paints CA
+      // Frame at simTimeMs = 400 (ON): paints +
       world.simTimeMs = 400;
       const mock1 = createMockCtx();
       renderScope(mock1.ctx, world, view, 800, 600);
-      expect(mock1.fillTexts.filter((f) => f.text === "CA").length).toBeGreaterThanOrEqual(1);
+      expect(mock1.fillTexts.filter((f) => f.text === "+").length).toBeGreaterThanOrEqual(1);
 
-      // Frame at simTimeMs = 1000 (OFF): does not paint CA
+      // Frame at simTimeMs = 1000 (OFF): does not paint +
       world.simTimeMs = 1000;
       const mock2 = createMockCtx();
       renderScope(mock2.ctx, world, view, 800, 600);
-      expect(mock2.fillTexts.filter((f) => f.text === "CA")).toHaveLength(0);
+      expect(mock2.fillTexts.filter((f) => f.text === "+")).toHaveLength(0);
     });
   });
 });

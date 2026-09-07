@@ -188,7 +188,7 @@ test("CA and MSAW alert blinking follows authentic 800ms cadence; acknowledged i
       eager: true,
     }) as Record<string, string>
   )["../render/renderScopePaint.ts"]!;
-  expect(paint).toMatch(/MSAW_DATABLOCK_TAG/);
+  expect(paint).toMatch(/alertGlyphsForTrack/);
   expect(paint).not.toMatch(/fillText\("MSAW"/);
 });
 

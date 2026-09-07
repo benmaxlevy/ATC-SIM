@@ -281,6 +281,7 @@ function applyTrackingSlewHit(
       clearTrackingSlew(view);
       return true;
     }
+    case "caSingleTrackInhibit":
     case "caPairSlew":
     case "caPairInhibit":
     case "caPairEnable": {

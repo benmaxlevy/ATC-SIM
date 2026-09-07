@@ -294,10 +294,12 @@ function trackingMnemonic(action: PreviewArmedAction): string {
       return "*R";
     case "caPairSlew":
       return action.trk1 ? `CA ${action.trk1}` : "CA";
+    case "caSingleTrackInhibit":
+      return action.trk ? `CA K ${action.trk}` : "CA K";
     case "caPairInhibit":
-      return `CA P ${action.trk1}`;
+      return action.trk1 ? `CA P ${action.trk1}` : "CA P";
     case "caPairEnable":
-      return `CA E ${action.trk1}`;
+      return action.trk1 ? `CA E ${action.trk1}` : "CA E";
     case "saveAsPref":
       return "PREF";
     default:
@@ -611,10 +613,14 @@ export function applyPreviewWxAction(
 
 export function executeCaSingleTrackInhibit(
   view: ScopeView,
-  trk: string,
+  trk: string | undefined,
   world?: World,
   nowMs: number = Date.now(),
 ): boolean {
+  if (trk === undefined) {
+    armPreviewSlewAction(view.preview, { type: "caSingleTrackInhibit" }, nowMs);
+    return true;
+  }
   let aircraftId = trk;
   if (world) {
     const resolved = resolveScopeFlid(trk, world, view);
@@ -642,11 +648,15 @@ export function executeCaSingleTrackInhibit(
 
 export function executeCaPairInhibit(
   view: ScopeView,
-  trk1: string,
+  trk1: string | undefined,
   trk2?: string,
   world?: World,
   nowMs: number = Date.now(),
 ): boolean {
+  if (trk1 === undefined) {
+    armPreviewSlewAction(view.preview, { type: "caPairInhibit" }, nowMs);
+    return true;
+  }
   let id1 = trk1;
   let id2 = trk2;
   if (world) {
@@ -688,11 +698,15 @@ export function executeCaPairInhibit(
 
 export function executeCaPairEnable(
   view: ScopeView,
-  trk1: string,
+  trk1: string | undefined,
   trk2?: string,
   world?: World,
   nowMs: number = Date.now(),
 ): boolean {
+  if (trk1 === undefined) {
+    armPreviewSlewAction(view.preview, { type: "caPairEnable" }, nowMs);
+    return true;
+  }
   let id1 = trk1;
   let id2 = trk2;
   if (world) {
@@ -768,7 +782,18 @@ export function handleCaSlewClick(
     return true;
   }
 
+  if (armed.type === "caSingleTrackInhibit") {
+    toggleTrackCaInhibited(view, clickedTrackId);
+    cancelPreviewArea(view.preview);
+    return true;
+  }
+
   if (armed.type === "caPairInhibit") {
+    if (!armed.trk1) {
+      view.preview.armed = { type: "caPairInhibit", trk1: clickedTrackId };
+      view.preview.slewAction = view.preview.armed;
+      return true;
+    }
     const trk1 = armed.trk1;
     const trk2 = clickedTrackId;
     setCaPairInhibited(view, trk1, trk2, true);
@@ -782,6 +807,11 @@ export function handleCaSlewClick(
   }
 
   if (armed.type === "caPairEnable") {
+    if (!armed.trk1) {
+      view.preview.armed = { type: "caPairEnable", trk1: clickedTrackId };
+      view.preview.slewAction = view.preview.armed;
+      return true;
+    }
     const trk1 = armed.trk1;
     const trk2 = clickedTrackId;
     setCaPairInhibited(view, trk1, trk2, false);

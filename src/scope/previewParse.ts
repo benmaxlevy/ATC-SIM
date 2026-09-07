@@ -94,11 +94,11 @@ export type PreviewArmedAction =
   | { readonly type: "associateFlightPlan"; readonly index: number }
   | { readonly type: "deleteFlightPlanEntry"; readonly index: number }
   /** Single-track CA inhibit toggle (`CA K <trk>`). */
-  | { readonly type: "caSingleTrackInhibit"; readonly trk: string }
+  | { readonly type: "caSingleTrackInhibit"; readonly trk?: string }
   /** Explicit pair CA inhibit (`CA P <trk1> [<trk2>]`). */
-  | { readonly type: "caPairInhibit"; readonly trk1: string; readonly trk2?: string }
+  | { readonly type: "caPairInhibit"; readonly trk1?: string; readonly trk2?: string }
   /** Explicit pair CA enable (`CA E <trk1> [<trk2>]`). */
-  | { readonly type: "caPairEnable"; readonly trk1: string; readonly trk2?: string }
+  | { readonly type: "caPairEnable"; readonly trk1?: string; readonly trk2?: string }
   /** Pair CA inhibit slew toggle (`CA [ENTER]`). */
   | { readonly type: "caPairSlew"; readonly trk1?: string }
   /** `*MCI Enter`: Toggle Mode C Intruder alerting on/off. */
@@ -652,6 +652,7 @@ const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
   "beaconatorSlew",
   "armPerTrackPtl",
   "associateFlightPlan",
+  "caSingleTrackInhibit",
   "caPairSlew",
   "caPairInhibit",
   "caPairEnable",
@@ -969,7 +970,7 @@ export function parseCaCommand(buffer: string): PreviewCommandResult | null {
 
   if (sub === "K") {
     if (restTokens.length === 0) {
-      return { kind: "incomplete" };
+      return { kind: "action", action: { type: "caSingleTrackInhibit" } };
     }
     if (restTokens.length === 1) {
       return { kind: "action", action: { type: "caSingleTrackInhibit", trk: restTokens[0] } };
@@ -979,7 +980,7 @@ export function parseCaCommand(buffer: string): PreviewCommandResult | null {
 
   if (sub === "P") {
     if (restTokens.length === 0) {
-      return { kind: "incomplete" };
+      return { kind: "action", action: { type: "caPairInhibit" } };
     }
     if (restTokens.length === 1) {
       return { kind: "action", action: { type: "caPairInhibit", trk1: restTokens[0] } };
@@ -995,7 +996,7 @@ export function parseCaCommand(buffer: string): PreviewCommandResult | null {
 
   if (sub === "E") {
     if (restTokens.length === 0) {
-      return { kind: "incomplete" };
+      return { kind: "action", action: { type: "caPairEnable" } };
     }
     if (restTokens.length === 1) {
       return { kind: "action", action: { type: "caPairEnable", trk1: restTokens[0] } };

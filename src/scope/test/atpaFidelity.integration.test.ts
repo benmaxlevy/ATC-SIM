@@ -285,7 +285,7 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
       expect(world.alerts.ca).toHaveLength(1);
       const view = ownedView(world);
       const mixed = paint(world, view);
-      expect(mixed.fillTexts.find((t) => t.text === "CA")?.fillStyle).toBe(PALETTE.alert);
+      expect(mixed.fillTexts.find((t) => t.text === "+")?.fillStyle).toBe(PALETTE.alert);
       expect(atpaConeStrokes(mixed.pathStrokes)[0]?.strokeStyle).toBe(PALETTE.atpaAlert);
       expect(mixed.pathStrokes.every((s) => s.strokeStyle !== PALETTE.alert)).toBe(true);
     });
@@ -702,7 +702,7 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
 
       const view = ownedView(world);
       const painted = paint(world, view);
-      expect(painted.fillTexts.find((t) => t.text === "CA")?.fillStyle).toBe(PALETTE.alert);
+      expect(painted.fillTexts.find((t) => t.text === "+")?.fillStyle).toBe(PALETTE.alert);
       expect(jRingStrokes(painted.pathStrokes)).toHaveLength(0);
       expect(painted.pathStrokes.filter((s) => s.strokeStyle === PALETTE.alert)).toHaveLength(0);
 
