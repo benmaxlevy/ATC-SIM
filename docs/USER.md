@@ -222,7 +222,6 @@ Keys below are divided into **Always-On** shortcuts (which work regardless of wh
 | `T` | Datablock Tag | Toggles Full Datablock (FDB) ↔ Limited Datablock (LDB) on selected track (or all if none selected). |
 | `M` | Mode C Toggle / Map Prefix | Tap `M` toggles Mode C reported altitude field on FDBs. Typing a map id afterwards (e.g. `M DEM1_27`) starts a video map buffer. |
 | `H` | History Toggle | Toggles history dots (same as `F8`). |
-| `L` then `1`–`9` | Leader Line Direction | 1.5 s chord window: sets datablock leader direction (1–9 numpad compass layout) on selected track. |
 | `F` then `<floor>` Enter `<ceiling>` Enter | Altitude Filter Chord | 1.5 s chord window: enters altitude filter limits in 3-digit hundreds (e.g. `F` → `000` Enter → `150` Enter). |
 | `B` then `<digits>` | Beacon Code Select | Table 30 beacon select chord (e.g. `B45` Enter for block 45; `B4501` for discrete). |
 | `/` | Slew / Drop Prefix | Buffers `/` into Preview Area (drop track `TERM CNTL`, set leader length, or toggle PDB ↔ FDB). |
@@ -241,6 +240,7 @@ The **Preview Area** is the primary typed command buffer of the STARS terminal r
 2. **Rejection (`INV`)**: Unrecognized commands, out-of-range parameters, or illegal syntax immediately flash `<buffer> INV` for 2 seconds.
 3. **Cancellation**: Pressing `Escape` clears active entry buffers, disarms slew modes, and cancels list repositioning.
 4. **Target Slew Actions**: Commands that require a target (e.g. `CA`, `CA P <track>`, `CA E <track>`, `+`, `/`, `*1`–`*8`, `[Index#]`) arm a slew state and wait for a left-click on an aircraft target. Clicking an active CA target with an empty Preview Area acknowledges it; clicking empty scope background does **not** consume or cancel an armed command.
+5. **No bare L chord**: `L` and `L1`–`L9` remain Preview Area text. They never change leader direction or auto-submit a command. Use DCB LDR DIR or explicit `*L` leader commands.
 
 ---
 
@@ -360,10 +360,10 @@ System list commands in STARS do not accept aliases and use the exact prefix syn
 
 | Command Syntax | Operator Action | System Result |
 |---|---|---|
-| `CA K [track] Enter` | `CA K DAL123` Enter, or `CA K` Enter then slew-click | Toggles CA inhibit for one track; a normal upright `Δ` appears inline beside its ACID. |
-| `CA Enter`, then two target clicks | Type `CA` Enter; click Track A then Track B | Toggles the pair-specific CA inhibit. Other pairs involving either track still alert. |
-| `CA P [track1] [track2] Enter` | `CA P DAL123 AAL456` Enter; omit Track 2 to slew it; omit both to slew both | Adds the pair-specific CA inhibit. |
-| `CA E [track1] [track2] Enter` | `CA E DAL123 AAL456` Enter; omit Track 2 to slew it; omit both to slew both | Removes the pair-specific CA inhibit. |
+| `CA K [track]` | `CA K DAL123` Enter, or type `CA K` then slew-click | Toggles CA inhibit for one track; a normal upright `Δ` appears inline beside its ACID. |
+| `CA`, then two target clicks | Type `CA`; slew-click Track A then Track B | Toggles the pair-specific CA inhibit. Other pairs involving either track still alert. |
+| `CA P [track1] [track2]` | `CA P DAL123 AAL456` Enter; omit Track 2 to slew it; omit both to slew both | Adds the pair-specific CA inhibit. |
+| `CA E [track1] [track2]` | `CA E DAL123 AAL456` Enter; omit Track 2 to slew it; omit both to slew both | Removes the pair-specific CA inhibit. |
 | Empty Preview Area, click active CA target | Slew-click the alerted target | Acknowledges that pair immediately: the tone stops when no other unacknowledged CA remains and the red inline `+` becomes steady. |
 | `*MCI Enter` | Type `*MCI` Enter | **Toggle Mode C Intruder Alerting**: Globally toggles Mode C Intruder alerting on or off (`view.mciEnabled`). |
 
