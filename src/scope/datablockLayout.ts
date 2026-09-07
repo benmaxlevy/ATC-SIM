@@ -177,6 +177,10 @@ export function protectedGeometryOverlaps(rect: LayoutRect, obstacle: ProtectedG
     if (edges.some(([c, d]) => segmentDistance(a, b, c, d) <= stroke)) return true;
   }
   if (obstacle.kind === "polygon") {
+    // A polygon may be wholly contained by the datablock, so no polygon edge
+    // crosses the rectangle and the rectangle center need not be inside it.
+    // The expanded rectangle preserves the one-pixel clearance requirement.
+    if (pts.some((point) => pointInLayoutBounds(point, r))) return true;
     const p = { x: r.x + r.width / 2, y: r.y + r.height / 2 };
     let inside = false;
     for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {

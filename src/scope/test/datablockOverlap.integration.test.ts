@@ -4,6 +4,7 @@ import { DEFAULT_SCOPE_CAMERA, nmToScreen } from "../camera";
 import { datablockRect, linesForDatablock } from "../datablock";
 import { solveDatablockLayout } from "../datablockLayout";
 import { pickAircraftAt } from "../pick";
+import { collectDatablockProtectedGeometry } from "../render/renderScopePaint";
 import { createScopeView } from "../scopeView";
 import { syncTrackDisplays } from "../trackDisplay";
 
@@ -47,7 +48,13 @@ test("resolved overlap rectangles are the pick regions", () => {
       displayPriority: "partial" as const,
     };
   });
-  const layouts = solveDatablockLayout(inputs, { bounds: { x: 0, y: 0, width: 800, height: 800 } });
+  const layouts = solveDatablockLayout(inputs, {
+    bounds: { x: 0, y: 0, width: 800, height: 800 },
+    protectedGeometry: collectDatablockProtectedGeometry(world, view, {
+      widthPx: size.width,
+      heightPx: size.height,
+    }),
+  });
   const moved = layouts.find(
     (item) =>
       item.rect &&
