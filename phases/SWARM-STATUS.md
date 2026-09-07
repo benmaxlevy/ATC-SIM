@@ -1,5 +1,26 @@
 # Swarm status
 
+## THIRTY-FIFTH SWARM EXIT BLOCKED — CA Pair-Inhibit Presentation (T02-117)
+
+T02-117 is squash-merged on `feature/stars-ca-alignment` as `e82d50b`.
+Pair-specific CA inhibits now suppress Line 0 CA presentation for that pair,
+the CA tone, and the AL-list row, while a separate active pair sharing either
+track remains visible. Pair suppression has no datablock marker: TI 6191.409
+§2.16.3/Table 2-26 reserves upright `Δ` for CA disabled **for a track**.
+
+Focused verification passed: **5 files, 102 tests** (`renderScopePaint`, CA
+integration, preview area, AL list, CA tone), plus typecheck, lint, and format.
+Final full `npm test` reached **178 passed files, 1,594 passed tests, 4 skipped**
+but remains blocked by unrelated existing failures: two
+`tools/cifp-import/pack.integration.test.ts` dry-run stdout assertions and the
+stale `ScopeHelpOverlay.test.ts` leader-key assertion. No unrelated fixes made.
+
+**Manual leftovers:** verify `CA` two-slew / `CA P` on `kdem-ca`: the inhibited
+pair loses CA presentation/list/tone, a separately conflicting pair stays
+alerting, and `CA E` restores the inhibited pair when conflict persists.
+
+---
+
 ## THIRTY-FOURTH SWARM EXIT BLOCKED — STARS Conflict Alert Alignment (T02-111–115)
 
 T02-111 through T02-115 are squash-merged on `feature/stars-ca-alignment`.
@@ -1050,6 +1071,5 @@ Recovery resumed from `feature/session-setup`. T04-24 inventory (`93a7c10`), fre
 **Manual leftover:** Human Chrome check: open Session setup; change scenario/arrival/departure rate/seed; Cancel preserves World and focus; confirm Apply/restart warning rebuilds World; verify unavailable departure capability copy. Do not invent pass.
 
 **Notes:** Picker options derive solely from playable inventory; normal arrival count/rate remains seeded STAR inbound/VIA; `?traffic=N` remains benchmark downwind; T04-21 owns departure rate. `atc-sim.session.v1` remains separate from trainer/DCB preferences. No scoring, replay, imperfect pilots, second position, DCB PREF, live traffic editing, second airport data, or radio-frequency IR. Initial T04-25 conflict was superseded by a fresh worker from the T04-24 feature base. Preserved untracked `.cursor/rules/caveman-ultra.mdc`, `e2e/`, and user-modified `speech-api/.env.example`.
-
 
 
