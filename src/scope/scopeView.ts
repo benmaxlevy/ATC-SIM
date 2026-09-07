@@ -296,6 +296,10 @@ export interface ScopeView {
   beaconSelectCodes: string[];
   /** Per-track display state (history, IDENT flash, datablock, leader, ownership). Keyed by aircraft id. */
   tracks: Map<string, TrackDisplay>;
+  /** Pairwise CA inhibited canonical keys ("idA|idB" or "callsignA|callsignB"). */
+  caInhibitedPairs: Set<string>;
+  /** Acknowledged CA alert pair canonical keys. */
+  acknowledgedAlertPairs: Set<string>;
   /** Scope-focus letter chord (`L` leader; T02-06 `F` filter). Null when idle. */
   pendingChord: ScopeChord | null;
   /**
@@ -476,6 +480,8 @@ export function createScopeView(
     sectorId: "D",
     beaconSelectCodes: [],
     tracks: new Map(),
+    caInhibitedPairs: new Set(),
+    acknowledgedAlertPairs: new Set(),
     pendingChord: null,
     helpOpen: false,
     dcbVisible: true,

@@ -7,7 +7,7 @@
  * or intent. Not NAS STARS.
  */
 
-import type { Aircraft, World } from "@core";
+import type { Aircraft, CaAlert, World } from "@core";
 import {
   acceptInboundHandoff,
   acceptPointout,
@@ -105,6 +105,8 @@ export interface TrackDisplay {
    * CA alert row in the AL list and datablock CA tag for this aircraft.
    */
   caInhibited?: boolean;
+  /** Alias for Conflict Alert inhibit per STARS specifications (TI 6191.409). */
+  inhibitCA?: boolean;
   /**
    * MSAW (Low Altitude / LA) inhibited for this track (`*LA [Left-Click]`).
    * Suppresses LA alert row in the AL list and datablock LA tag.
@@ -115,6 +117,162 @@ export interface TrackDisplay {
    * out of coverage (no paint, no 30 s coast).
    */
   lastReport?: SurveillanceReport;
+}
+
+export type TrackDisplayItem = TrackDisplay;
+
+export interface TrackDisplayState {
+  tracks?: Map<string, TrackDisplay>;
+  /** Pairwise CA inhibited canonical keys ("idA|idB" or "callsignA|callsignB"). */
+  caInhibitedPairs: Set<string>;
+  /** Acknowledged CA alert pair canonical keys. */
+  acknowledgedAlertPairs: Set<string>;
+}
+
+export function createTrackDisplayState(tracks?: Map<string, TrackDisplay>): TrackDisplayState {
+  return {
+    tracks: tracks ?? new Map(),
+    caInhibitedPairs: new Set(),
+    acknowledgedAlertPairs: new Set(),
+  };
+}
+
+/**
+ * Canonical pair key for Conflict Alert inhibits and acknowledgments.
+ * Sorted lexicographically ("idA|idB" or "callsignA|callsignB").
+ */
+export function makeCaPairKey(idA: string, idB: string): string {
+  return idA < idB ? `${idA}|${idB}` : `${idB}|${idA}`;
+}
+
+export function isCaPairInhibited(state: TrackDisplayState, idA: string, idB: string): boolean {
+  return state.caInhibitedPairs.has(makeCaPairKey(idA, idB));
+}
+
+export function setCaPairInhibited(
+  state: TrackDisplayState,
+  idA: string,
+  idB: string,
+  inhibited: boolean,
+): void {
+  const key = makeCaPairKey(idA, idB);
+  if (inhibited) {
+    state.caInhibitedPairs.add(key);
+  } else {
+    state.caInhibitedPairs.delete(key);
+  }
+}
+
+export function toggleCaPairInhibited(state: TrackDisplayState, idA: string, idB: string): boolean {
+  const key = makeCaPairKey(idA, idB);
+  if (state.caInhibitedPairs.has(key)) {
+    state.caInhibitedPairs.delete(key);
+    return false;
+  } else {
+    state.caInhibitedPairs.add(key);
+    return true;
+  }
+}
+
+export function isAlertAcknowledged(state: TrackDisplayState, idA: string, idB: string): boolean {
+  return state.acknowledgedAlertPairs.has(makeCaPairKey(idA, idB));
+}
+
+export function acknowledgeAlert(state: TrackDisplayState, idA: string, idB: string): void {
+  state.acknowledgedAlertPairs.add(makeCaPairKey(idA, idB));
+}
+
+export function clearAcknowledgedAlert(state: TrackDisplayState, idA: string, idB: string): void {
+  state.acknowledgedAlertPairs.delete(makeCaPairKey(idA, idB));
+}
+
+export function pruneCaPairInhibitsForTrack(
+  state: TrackDisplayState,
+  trackIdOrCallsign: string,
+): void {
+  for (const key of state.caInhibitedPairs) {
+    const parts = key.split("|");
+    if (parts.includes(trackIdOrCallsign)) {
+      state.caInhibitedPairs.delete(key);
+    }
+  }
+  for (const key of state.acknowledgedAlertPairs) {
+    const parts = key.split("|");
+    if (parts.includes(trackIdOrCallsign)) {
+      state.acknowledgedAlertPairs.delete(key);
+    }
+  }
+}
+
+export type AlertVisualStatus = "none" | "alert" | "acknowledged" | "inhibited";
+
+export function getAlertVisualStatus(
+  state: TrackDisplayState,
+  idA: string,
+  idB: string,
+  options?: { isAlertActive?: boolean; trackAInhibited?: boolean; trackBInhibited?: boolean },
+): AlertVisualStatus {
+  if (options?.trackAInhibited || options?.trackBInhibited || isCaPairInhibited(state, idA, idB)) {
+    return "inhibited";
+  }
+  if (isAlertAcknowledged(state, idA, idB)) {
+    return "acknowledged";
+  }
+  if (options?.isAlertActive !== false) {
+    return "alert";
+  }
+  return "none";
+}
+
+export function syncConflictAcknowledgmentState(
+  state: TrackDisplayState,
+  activeAlerts: readonly { callsignA: string; callsignB: string }[],
+  world?: World,
+): void {
+  const activeKeys = new Set<string>();
+  for (const alert of activeAlerts) {
+    activeKeys.add(makeCaPairKey(alert.callsignA, alert.callsignB));
+    if (world) {
+      const acA = world.aircraft.find((a) => a.callsign === alert.callsignA);
+      const acB = world.aircraft.find((a) => a.callsign === alert.callsignB);
+      if (acA && acB) {
+        activeKeys.add(makeCaPairKey(acA.id, acB.id));
+      }
+    }
+  }
+  for (const key of state.acknowledgedAlertPairs) {
+    if (!activeKeys.has(key)) {
+      state.acknowledgedAlertPairs.delete(key);
+    }
+  }
+}
+
+export function filterActiveCaAlerts(
+  alerts: readonly CaAlert[],
+  world: World,
+  state: TrackDisplayState,
+  options?: { forTone?: boolean },
+): CaAlert[] {
+  const tracks = state.tracks;
+  return alerts.filter((alert) => {
+    const acA = world.aircraft.find((a) => a.callsign === alert.callsignA);
+    const acB = world.aircraft.find((a) => a.callsign === alert.callsignB);
+    const tdA = acA && tracks ? tracks.get(acA.id) : undefined;
+    const tdB = acB && tracks ? tracks.get(acB.id) : undefined;
+
+    if (tdA?.inhibitCA === true || tdA?.caInhibited === true) return false;
+    if (tdB?.inhibitCA === true || tdB?.caInhibited === true) return false;
+
+    if (isCaPairInhibited(state, alert.callsignA, alert.callsignB)) return false;
+    if (acA && acB && isCaPairInhibited(state, acA.id, acB.id)) return false;
+
+    if (options?.forTone) {
+      if (isAlertAcknowledged(state, alert.callsignA, alert.callsignB)) return false;
+      if (acA && acB && isAlertAcknowledged(state, acA.id, acB.id)) return false;
+    }
+
+    return true;
+  });
 }
 
 export function createTrackDisplay(ownership: TrackOwnership = "unowned"): TrackDisplay {
@@ -497,6 +655,7 @@ export function applyDropTrackToId(
   tracks: Map<string, TrackDisplay>,
   world: World,
   aircraftId: string,
+  caState?: TrackDisplayState,
 ): { applied: boolean; hint: string | null } {
   if (!world.aircraft.some((ac) => ac.id === aircraftId)) {
     return { applied: false, hint: NO_SEL_HINT };
@@ -505,18 +664,22 @@ export function applyDropTrackToId(
   td.ownership = applyDropTrack(td.ownership);
   td.datablockMode = "partial";
   td.forcedFdb = false;
+  if (caState) {
+    pruneCaPairInhibitsForTrack(caState, aircraftId);
+  }
   return { applied: true, hint: null };
 }
 
 export function applyDropTrackToSelection(
   tracks: Map<string, TrackDisplay>,
   world: World,
+  caState?: TrackDisplayState,
 ): { applied: boolean; hint: string | null } {
   const id = selectedTrackId(world);
   if (!id) {
     return { applied: false, hint: NO_SEL_HINT };
   }
-  return applyDropTrackToId(tracks, world, id);
+  return applyDropTrackToId(tracks, world, id, caState);
 }
 
 function flipDatablockMode(mode: DatablockMode): DatablockMode {
@@ -667,12 +830,19 @@ export function syncTrackDisplays(
   tracks: Map<string, TrackDisplay>,
   world: World,
   surveillance?: { mode?: SurveillanceMode; sites?: readonly RadarSite[]; historyRateSec?: number },
+  caState?: TrackDisplayState,
 ): void {
   const living = new Set(world.aircraft.map((ac) => ac.id));
   for (const id of [...tracks.keys()]) {
     if (!living.has(id)) {
       tracks.delete(id);
+      if (caState) {
+        pruneCaPairInhibitsForTrack(caState, id);
+      }
     }
+  }
+  if (caState && world.alerts?.ca) {
+    syncConflictAcknowledgmentState(caState, world.alerts.ca, world);
   }
   const sampler = createSurveillanceSampler({
     mode: surveillance?.mode,

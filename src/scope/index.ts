@@ -679,8 +679,25 @@ export {
   toggleDatablockModeForSelection,
   toggleTrackHighlight,
   toggleTrackPdbFdb,
+  makeCaPairKey,
+  isCaPairInhibited,
+  setCaPairInhibited,
+  toggleCaPairInhibited,
+  isAlertAcknowledged,
+  acknowledgeAlert,
+  clearAcknowledgedAlert,
+  pruneCaPairInhibitsForTrack,
+  filterActiveCaAlerts,
+  getAlertVisualStatus,
+  syncConflictAcknowledgmentState,
+  createTrackDisplayState,
 } from "./trackDisplay";
-export type { TrackDisplay } from "./trackDisplay";
+export type {
+  TrackDisplay,
+  TrackDisplayItem,
+  TrackDisplayState,
+  AlertVisualStatus,
+} from "./trackDisplay";
 export {
   DROP_TRACK_HELP,
   INITIATE_TRACK_HELP,

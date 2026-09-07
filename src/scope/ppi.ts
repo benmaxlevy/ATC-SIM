@@ -59,6 +59,7 @@ import {
   applyDropTrackToId,
   applyInitiateTrackToId,
   ensureTrackDisplay,
+  pruneCaPairInhibitsForTrack,
   setLeaderDirAndLengthForId,
   setLeaderDirForId,
   setLeaderLengthForId,
@@ -190,7 +191,8 @@ function applyTrackingSlewHit(
       if (hit.region === "datablock") {
         toggleTrackPdbFdb(td);
       } else {
-        applyDropTrackToId(view.tracks, world, id);
+        applyDropTrackToId(view.tracks, world, id, view);
+        pruneCaPairInhibitsForTrack(view, id);
       }
       setSelectedAircraft(world, id);
       clearTrackingSlew(view);
@@ -279,6 +281,7 @@ function applyTrackingSlewHit(
     case "inhibitCa": {
       const td = ensureTrackDisplay(view.tracks, id);
       td.caInhibited = true;
+      td.inhibitCA = true;
       setSelectedAircraft(world, id);
       clearTrackingSlew(view);
       return true;
@@ -698,3 +701,21 @@ export function paintPpi(
   expirePreviewArea(view.preview, Date.now());
   renderScope(ctx, world, view, cssWidth, cssHeight);
 }
+
+export {
+  makeCaPairKey,
+  isCaPairInhibited,
+  setCaPairInhibited,
+  toggleCaPairInhibited,
+  isAlertAcknowledged,
+  acknowledgeAlert,
+  clearAcknowledgedAlert,
+  pruneCaPairInhibitsForTrack,
+  filterActiveCaAlerts,
+  getAlertVisualStatus,
+  syncConflictAcknowledgmentState,
+  createTrackDisplayState,
+  type TrackDisplayState,
+  type TrackDisplayItem,
+  type AlertVisualStatus,
+} from "./trackDisplay";

@@ -8,7 +8,12 @@ import type { Aircraft, ScheduledDeparture, World } from "@core";
 import { formatAltitudeHundreds } from "./datablock";
 import { buildSystemListLines, type ListFormatter } from "./listFormatter";
 import type { ScopeView } from "./scopeView";
-import { applyInitiateTrackToId, ensureTrackDisplay, type TrackDisplay } from "./trackDisplay";
+import {
+  applyInitiateTrackToId,
+  ensureTrackDisplay,
+  filterActiveCaAlerts,
+  type TrackDisplay,
+} from "./trackDisplay";
 import { getVideoMapsEntries } from "./coordinationList";
 import { toggleVideoMap } from "./dcb/dcbFunctions";
 
@@ -1431,12 +1436,8 @@ export function getAlertEntries(world: World, view?: ScopeView): string[] {
   const lines: string[] = [];
   if (world.alerts) {
     if (world.alerts.ca) {
-      for (const alert of world.alerts.ca) {
-        const acA = world.aircraft.find((a) => a.callsign === alert.callsignA);
-        const acB = world.aircraft.find((a) => a.callsign === alert.callsignB);
-        const tdA = acA ? view?.tracks.get(acA.id) : undefined;
-        const tdB = acB ? view?.tracks.get(acB.id) : undefined;
-        if (tdA?.caInhibited || tdB?.caInhibited) continue;
+      const caAlerts = view ? filterActiveCaAlerts(world.alerts.ca, world, view) : world.alerts.ca;
+      for (const alert of caAlerts) {
         lines.push(`CA ${alert.callsignA} ${alert.callsignB}`);
       }
     }
@@ -1497,13 +1498,7 @@ export function buildAlertList(
 export function hasActiveUninhibitedConflict(world: World, view?: ScopeView): boolean {
   if (!world.alerts?.ca || world.alerts.ca.length === 0) return false;
   if (!view) return world.alerts.ca.length > 0;
-  return world.alerts.ca.some((alert) => {
-    const acA = world.aircraft.find((a) => a.callsign === alert.callsignA);
-    const acB = world.aircraft.find((a) => a.callsign === alert.callsignB);
-    const tdA = acA ? view.tracks.get(acA.id) : undefined;
-    const tdB = acB ? view.tracks.get(acB.id) : undefined;
-    return !tdA?.caInhibited && !tdB?.caInhibited;
-  });
+  return filterActiveCaAlerts(world.alerts.ca, world, view, { forTone: true }).length > 0;
 }
 
 /* =========================================================================

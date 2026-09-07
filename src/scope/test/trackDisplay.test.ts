@@ -1,22 +1,35 @@
 import { expect, test } from "vitest";
-import { createWorld, makeTestAircraft, stepWorld } from "@core";
+import { type CaAlert, createWorld, makeTestAircraft, stepWorld } from "@core";
 import { applyIntent } from "@pilot";
 import {
   IDENT_DISPLAY_FLASH_MS,
-  createTrackDisplay,
+  acknowledgeAlert,
+  applyDropTrackToId,
+  clearAcknowledgedAlert,
   clearScratchpad1,
   clearScratchpad2,
+  createTrackDisplay,
+  createTrackDisplayState,
   deriveScratchpads,
+  filterActiveCaAlerts,
   formatApproachShorthand,
+  getAlertVisualStatus,
   handleTrackClick,
+  isAlertAcknowledged,
+  isCaPairInhibited,
   isIdentFlashing,
   isTrackQueried,
+  makeCaPairKey,
   noteIdentAccepted,
+  pruneCaPairInhibitsForTrack,
+  setCaPairInhibited,
   setLeaderDirForSelection,
   setScratchpad,
   setScratchpad1,
   setScratchpad2,
+  syncConflictAcknowledgmentState,
   syncTrackDisplays,
+  toggleCaPairInhibited,
   toggleDatablockModeForSelection,
 } from "../trackDisplay";
 import { sanitizeScratchpad, SCRATCHPAD_MAX_LEN } from "../datablock";
@@ -279,4 +292,235 @@ test("T02-39: manual scratchpads take precedence over auto-derivation and cleari
   derived = deriveScratchpads(ac, td);
   expect(derived.sp1).toBe("040");
   expect(derived.sp2).toBe("S21");
+});
+
+test("T02-113: makeCaPairKey canonicalizes pair keys in lexicographical order", () => {
+  expect(makeCaPairKey("ac1", "ac2")).toBe("ac1|ac2");
+  expect(makeCaPairKey("ac2", "ac1")).toBe("ac1|ac2");
+  expect(makeCaPairKey("DAL2", "AAL1")).toBe("AAL1|DAL2");
+  expect(makeCaPairKey("AAL1", "DAL2")).toBe("AAL1|DAL2");
+  expect(makeCaPairKey("same", "same")).toBe("same|same");
+});
+
+test("T02-113: set/toggle/remove pair inhibits updates caInhibitedPairs correctly", () => {
+  const state = createTrackDisplayState();
+  expect(isCaPairInhibited(state, "AAL1", "DAL2")).toBe(false);
+
+  // Set inhibit
+  setCaPairInhibited(state, "DAL2", "AAL1", true);
+  expect(isCaPairInhibited(state, "AAL1", "DAL2")).toBe(true);
+  expect(isCaPairInhibited(state, "DAL2", "AAL1")).toBe(true);
+  expect(state.caInhibitedPairs.has("AAL1|DAL2")).toBe(true);
+
+  // Toggle off
+  const toggledOff = toggleCaPairInhibited(state, "AAL1", "DAL2");
+  expect(toggledOff).toBe(false);
+  expect(isCaPairInhibited(state, "AAL1", "DAL2")).toBe(false);
+
+  // Toggle on
+  const toggledOn = toggleCaPairInhibited(state, "DAL2", "AAL1");
+  expect(toggledOn).toBe(true);
+  expect(isCaPairInhibited(state, "AAL1", "DAL2")).toBe(true);
+
+  // Explicit remove
+  setCaPairInhibited(state, "AAL1", "DAL2", false);
+  expect(isCaPairInhibited(state, "AAL1", "DAL2")).toBe(false);
+  expect(state.caInhibitedPairs.has("AAL1|DAL2")).toBe(false);
+});
+
+test("T02-113: acknowledge / clear acknowledge updates state and transitions visual status", () => {
+  const state = createTrackDisplayState();
+
+  expect(isAlertAcknowledged(state, "AAL1", "DAL2")).toBe(false);
+  expect(getAlertVisualStatus(state, "AAL1", "DAL2")).toBe("alert");
+
+  // Acknowledge alert
+  acknowledgeAlert(state, "DAL2", "AAL1");
+  expect(isAlertAcknowledged(state, "AAL1", "DAL2")).toBe(true);
+  expect(isAlertAcknowledged(state, "DAL2", "AAL1")).toBe(true);
+  expect(getAlertVisualStatus(state, "AAL1", "DAL2")).toBe("acknowledged");
+
+  // If pair is also inhibited, visual status is inhibited
+  setCaPairInhibited(state, "AAL1", "DAL2", true);
+  expect(getAlertVisualStatus(state, "AAL1", "DAL2")).toBe("inhibited");
+  setCaPairInhibited(state, "AAL1", "DAL2", false);
+
+  // Clear acknowledge
+  clearAcknowledgedAlert(state, "AAL1", "DAL2");
+  expect(isAlertAcknowledged(state, "AAL1", "DAL2")).toBe(false);
+  expect(getAlertVisualStatus(state, "AAL1", "DAL2")).toBe("alert");
+});
+
+test("T02-113: pairwise inhibit isolation — inhibiting (A, B) does not suppress (A, C) or (B, C)", () => {
+  const acA = makeTestAircraft({ id: "acA", callsign: "AAL1" });
+  const acB = makeTestAircraft({ id: "acB", callsign: "DAL2" });
+  const acC = makeTestAircraft({ id: "acC", callsign: "UAL3" });
+  const world = createWorld({ aircraft: [acA, acB, acC] });
+
+  const state = createTrackDisplayState();
+  const tdA = createTrackDisplay("owned");
+  const tdB = createTrackDisplay("owned");
+  const tdC = createTrackDisplay("owned");
+  state.tracks!.set(acA.id, tdA);
+  state.tracks!.set(acB.id, tdB);
+  state.tracks!.set(acC.id, tdC);
+
+  const alerts: CaAlert[] = [
+    { callsignA: "AAL1", callsignB: "DAL2", severity: "alert", distNm: 1.0, deltaAltFt: 200 },
+    { callsignA: "AAL1", callsignB: "UAL3", severity: "alert", distNm: 1.5, deltaAltFt: 300 },
+    { callsignA: "DAL2", callsignB: "UAL3", severity: "alert", distNm: 2.0, deltaAltFt: 400 },
+  ];
+
+  // Inhibit pair (AAL1, DAL2)
+  setCaPairInhibited(state, "acA", "acB", true);
+
+  const filtered = filterActiveCaAlerts(alerts, world, state);
+  expect(filtered).toHaveLength(2);
+  expect(filtered.some((a) => a.callsignA === "AAL1" && a.callsignB === "DAL2")).toBe(false);
+  expect(filtered.some((a) => a.callsignA === "AAL1" && a.callsignB === "UAL3")).toBe(true);
+  expect(filtered.some((a) => a.callsignA === "DAL2" && a.callsignB === "UAL3")).toBe(true);
+});
+
+test("T02-113: single-track inhibit suppresses all alerts involving that track", () => {
+  const acA = makeTestAircraft({ id: "acA", callsign: "AAL1" });
+  const acB = makeTestAircraft({ id: "acB", callsign: "DAL2" });
+  const acC = makeTestAircraft({ id: "acC", callsign: "UAL3" });
+  const world = createWorld({ aircraft: [acA, acB, acC] });
+
+  const state = createTrackDisplayState();
+  const tdA = createTrackDisplay("owned");
+  const tdB = createTrackDisplay("owned");
+  const tdC = createTrackDisplay("owned");
+  state.tracks!.set(acA.id, tdA);
+  state.tracks!.set(acB.id, tdB);
+  state.tracks!.set(acC.id, tdC);
+
+  const alerts: CaAlert[] = [
+    { callsignA: "AAL1", callsignB: "DAL2", severity: "alert", distNm: 1.0, deltaAltFt: 200 },
+    { callsignA: "AAL1", callsignB: "UAL3", severity: "alert", distNm: 1.5, deltaAltFt: 300 },
+    { callsignA: "DAL2", callsignB: "UAL3", severity: "alert", distNm: 2.0, deltaAltFt: 400 },
+  ];
+
+  // Set single-track inhibit on acA using inhibitCA
+  tdA.inhibitCA = true;
+
+  const filtered = filterActiveCaAlerts(alerts, world, state);
+  // Both (AAL1, DAL2) and (AAL1, UAL3) must be suppressed; (DAL2, UAL3) remains active
+  expect(filtered).toHaveLength(1);
+  expect(filtered[0]!.callsignA).toBe("DAL2");
+  expect(filtered[0]!.callsignB).toBe("UAL3");
+});
+
+test("T02-113: dropping or deleting a track prunes its pairwise inhibits and acknowledgments", () => {
+  const state = createTrackDisplayState();
+  setCaPairInhibited(state, "acA", "acB", true);
+  setCaPairInhibited(state, "acA", "acC", true);
+  setCaPairInhibited(state, "acB", "acC", true);
+  acknowledgeAlert(state, "acA", "acB");
+  acknowledgeAlert(state, "acB", "acC");
+
+  expect(state.caInhibitedPairs.size).toBe(3);
+  expect(state.acknowledgedAlertPairs.size).toBe(2);
+
+  // Prune for track acA
+  pruneCaPairInhibitsForTrack(state, "acA");
+
+  expect(isCaPairInhibited(state, "acA", "acB")).toBe(false);
+  expect(isCaPairInhibited(state, "acA", "acC")).toBe(false);
+  expect(isCaPairInhibited(state, "acB", "acC")).toBe(true);
+  expect(isAlertAcknowledged(state, "acA", "acB")).toBe(false);
+  expect(isAlertAcknowledged(state, "acB", "acC")).toBe(true);
+});
+
+test("T02-113: applyDropTrackToId with caState automatically prunes pairwise inhibits", () => {
+  const acA = makeTestAircraft({ id: "acA", callsign: "AAL1" });
+  const acB = makeTestAircraft({ id: "acB", callsign: "DAL2" });
+  const world = createWorld({ aircraft: [acA, acB] });
+
+  const state = createTrackDisplayState();
+  const tdA = createTrackDisplay("owned");
+  const tdB = createTrackDisplay("owned");
+  state.tracks!.set(acA.id, tdA);
+  state.tracks!.set(acB.id, tdB);
+
+  setCaPairInhibited(state, "acA", "acB", true);
+  expect(isCaPairInhibited(state, "acA", "acB")).toBe(true);
+
+  // Drop track acA with caState passed
+  const result = applyDropTrackToId(state.tracks!, world, "acA", state);
+  expect(result.applied).toBe(true);
+  expect(tdA.ownership).toBe("unowned");
+  expect(isCaPairInhibited(state, "acA", "acB")).toBe(false);
+});
+
+test("T02-113: syncTrackDisplays prunes inhibits when a track despawns", () => {
+  const acA = makeTestAircraft({ id: "acA", callsign: "AAL1" });
+  const acB = makeTestAircraft({ id: "acB", callsign: "DAL2" });
+  const world = createWorld({ aircraft: [acA, acB] });
+
+  const state = createTrackDisplayState();
+  setCaPairInhibited(state, "acA", "acB", true);
+  syncTrackDisplays(state.tracks!, world, undefined, state);
+  expect(isCaPairInhibited(state, "acA", "acB")).toBe(true);
+
+  // Despawn acA
+  world.aircraft = [acB];
+  syncTrackDisplays(state.tracks!, world, undefined, state);
+  expect(state.tracks!.has("acA")).toBe(false);
+  expect(isCaPairInhibited(state, "acA", "acB")).toBe(false);
+});
+
+test("T02-113: clearing conflict state automatically resets acknowledgment when separation is restored", () => {
+  const acA = makeTestAircraft({ id: "acA", callsign: "AAL1" });
+  const acB = makeTestAircraft({ id: "acB", callsign: "DAL2" });
+  const world = createWorld({ aircraft: [acA, acB] });
+  const state = createTrackDisplayState();
+
+  const activeAlert: CaAlert = {
+    callsignA: "AAL1",
+    callsignB: "DAL2",
+    severity: "alert",
+    distNm: 1.0,
+    deltaAltFt: 200,
+  };
+  world.alerts.ca = [activeAlert];
+
+  // Acknowledge alert
+  acknowledgeAlert(state, "AAL1", "DAL2");
+  expect(isAlertAcknowledged(state, "AAL1", "DAL2")).toBe(true);
+
+  // Separation restored -> alerts list empty
+  world.alerts.ca = [];
+  syncConflictAcknowledgmentState(state, world.alerts.ca, world);
+
+  // Acknowledgment reset
+  expect(isAlertAcknowledged(state, "AAL1", "DAL2")).toBe(false);
+
+  // Fresh alert trips unacknowledged
+  world.alerts.ca = [activeAlert];
+  expect(isAlertAcknowledged(state, "AAL1", "DAL2")).toBe(false);
+  expect(getAlertVisualStatus(state, "AAL1", "DAL2")).toBe("alert");
+});
+
+test("T02-113: filterActiveCaAlerts with forTone suppresses acknowledged alerts for audio", () => {
+  const acA = makeTestAircraft({ id: "acA", callsign: "AAL1" });
+  const acB = makeTestAircraft({ id: "acB", callsign: "DAL2" });
+  const world = createWorld({ aircraft: [acA, acB] });
+  const state = createTrackDisplayState();
+
+  const alerts: CaAlert[] = [
+    { callsignA: "AAL1", callsignB: "DAL2", severity: "alert", distNm: 1.0, deltaAltFt: 200 },
+  ];
+
+  // Without ack, alert passes for display and tone
+  expect(filterActiveCaAlerts(alerts, world, state)).toHaveLength(1);
+  expect(filterActiveCaAlerts(alerts, world, state, { forTone: true })).toHaveLength(1);
+
+  // Acknowledge alert
+  acknowledgeAlert(state, "AAL1", "DAL2");
+
+  // Still active for display
+  expect(filterActiveCaAlerts(alerts, world, state)).toHaveLength(1);
+  // Suppressed for audible tone
+  expect(filterActiveCaAlerts(alerts, world, state, { forTone: true })).toHaveLength(0);
 });
