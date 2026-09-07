@@ -32,6 +32,19 @@ test("resolved overlap rectangles are the pick regions", () => {
   const world = createWorld({ aircraft });
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
+  for (const ac of aircraft) {
+    view.tracks.get(ac.id)!.lastReport = {
+      aircraftId: ac.id,
+      xNm: ac.xNm,
+      yNm: ac.yNm,
+      headingDeg: ac.headingDeg,
+      speedKt: ac.speedKt,
+      altitudeFt: ac.altitudeFt,
+      reportedAtSimMs: world.simTimeMs,
+      sourceSiteId: null,
+      paint: "fused-puck",
+    };
+  }
   view.datablockCellWidthPx = 7.2;
   const size = { widthPx: 800, heightPx: 800 };
   const inputs = aircraft.map((ac) => {
@@ -48,12 +61,13 @@ test("resolved overlap rectangles are the pick regions", () => {
       displayPriority: "partial" as const,
     };
   });
+  const protectedGeometry = collectDatablockProtectedGeometry(world, view, {
+    widthPx: size.widthPx,
+    heightPx: size.heightPx,
+  });
   const layouts = solveDatablockLayout(inputs, {
     bounds: { x: 0, y: 0, width: 800, height: 800 },
-    protectedGeometry: collectDatablockProtectedGeometry(world, view, {
-      widthPx: size.width,
-      heightPx: size.height,
-    }),
+    protectedGeometry,
   });
   const moved = layouts.find(
     (item) =>

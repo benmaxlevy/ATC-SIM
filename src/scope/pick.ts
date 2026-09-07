@@ -82,7 +82,10 @@ function pickDatablockAt(
   const candidates: DatablockLayoutInput[] = [];
   for (const ac of world.aircraft) {
     const td = view.tracks.get(ac.id);
-    const shown = td?.lastReport ? aircraftAtReport(ac, td.lastReport) : ac;
+    if (!td?.lastReport) {
+      continue;
+    }
+    const shown = aircraftAtReport(ac, td.lastReport);
     if (!inAltitudeFilter(shown.altitudeFt, view.altitudeFilter)) {
       continue;
     }
@@ -146,14 +149,15 @@ function pickDatablockAt(
     });
   }
   const obstacleView = isFullScopeView(view) ? view : undefined;
+  const protectedGeometry = obstacleView
+    ? collectDatablockProtectedGeometry(world, obstacleView, {
+        widthPx: cssWidth,
+        heightPx: cssHeight,
+      })
+    : undefined;
   const layouts = solveDatablockLayout(candidates, {
     bounds: { x: 0, y: 0, width: cssWidth, height: cssHeight },
-    protectedGeometry: obstacleView
-      ? collectDatablockProtectedGeometry(world, obstacleView, {
-          widthPx: cssWidth,
-          heightPx: cssHeight,
-        })
-      : undefined,
+    protectedGeometry,
   });
   const layoutById = new Map(layouts.map((layout) => [layout.aircraftId, layout]));
   for (const ac of world.aircraft) {
