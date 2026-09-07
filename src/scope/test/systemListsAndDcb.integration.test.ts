@@ -99,7 +99,7 @@ describe("STARS System Lists & DCB Integration Acceptance", () => {
     };
     const alertLines = buildAlertList(world, 50);
     expect(alertLines[0]).toBe("LA/CA/MCI");
-    expect(alertLines.some((l) => l.includes("CA AAL101* DAL202"))).toBe(true);
+    expect(alertLines.some((l) => l.includes("CA AAL101*DAL202"))).toBe(true);
     expect(alertLines.some((l) => l.includes("AAL101"))).toBe(true);
 
     // 5. Coordination departures with release lifecycle

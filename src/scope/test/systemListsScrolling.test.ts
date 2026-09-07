@@ -199,11 +199,11 @@ describe("System Lists Multi-Page Scrolling & Pagination", () => {
       const page1 = buildAlertList(world, 2, undefined, 0);
       expect(page1[0]).toBe("LA/CA/MCI");
       expect(page1[1]).toBe("MORE: 1/2");
-      expect(page1[2]).toContain("AAL1* DAL2");
+      expect(page1[2]).toContain("AAL1*DAL2");
 
       const page2 = buildAlertList(world, 2, undefined, 2);
       expect(page2[1]).toBe("MORE: 2/2");
-      expect(page2[2]).toContain("JBU5* FFT6");
+      expect(page2[2]).toContain("JBU5*FFT6");
     });
   });
 

@@ -1429,7 +1429,7 @@ export function hitTestSystemListEntry(
  * 7. LA/CA/MCI List
  * Format:
  * LA/CA/MCI
- * CA DAL111* UAE124
+ * CA DAL111*UAE124
  * ========================================================================= */
 
 export function getAlertEntries(world: World, view?: ScopeView): string[] {
@@ -1438,7 +1438,7 @@ export function getAlertEntries(world: World, view?: ScopeView): string[] {
     if (world.alerts.ca) {
       const caAlerts = view ? filterActiveCaAlerts(world.alerts.ca, world, view) : world.alerts.ca;
       for (const alert of caAlerts) {
-        lines.push(`CA ${alert.callsignA}* ${alert.callsignB}`);
+        lines.push(`CA ${alert.callsignA}*${alert.callsignB}`);
       }
     }
     if (world.alerts.msaw) {

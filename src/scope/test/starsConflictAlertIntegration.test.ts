@@ -60,10 +60,7 @@ test("CA integration gates audio and AL rows by active unacknowledged uninhibite
   world.alerts.ca = [pairAB, pairBC];
 
   expect(filterActiveCaAlerts(world.alerts.ca, world, state, { forTone: true })).toHaveLength(2);
-  expect(getAlertEntries(world, state as never)).toEqual([
-    "CA AAL100* DAL200",
-    "CA DAL200* JBU300",
-  ]);
+  expect(getAlertEntries(world, state as never)).toEqual(["CA AAL100*DAL200", "CA DAL200*JBU300"]);
 
   acknowledgeAlert(state, "AAL100", "DAL200");
   expect(filterActiveCaAlerts(world.alerts.ca, world, state, { forTone: true })).toEqual([pairBC]);

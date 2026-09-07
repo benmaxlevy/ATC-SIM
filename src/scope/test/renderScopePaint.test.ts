@@ -569,7 +569,7 @@ describe("Datablock inline alert glyphs", () => {
         world.simTimeMs = simTimeMs;
         const mock = createMockCtx();
         renderScope(mock.ctx, world, view, 800, 600);
-        const alertRow = mock.fillTexts.find((fill) => fill.text === "CA AAL101* DAL202");
+        const alertRow = mock.fillTexts.find((fill) => fill.text === "CA AAL101*DAL202");
         expect(alertRow?.fillStyle).toBe(applyBrite(PALETTE.ssa, view.brite.lst));
       }
     });
