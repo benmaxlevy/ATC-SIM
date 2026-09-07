@@ -1,3 +1,128 @@
+# ATC-SIM swarm orchestrator — Thirty-third swarm (Datablock Other-Target Geometry Avoidance)
+
+Thirty-second (Automatic Datablock Overlap Avoidance T02-108–109) landed on
+`feature/datablock-overlap-fixing`. This file keeps that history, then this
+follow-up on the same branch.
+
+## Thirty-third swarm planned — 2026-09-06 (Datablock Other-Target Geometry Avoidance)
+
+This configuration makes datablocks move when their boundaries intersect
+scope geometry belonging to another target: symbols, PTLs, leaders, history,
+A/TPA cones, and TPA J-rings. Geometry belonging to the datablock's own target
+is intentionally exempt. Captain squash-merges into
+**`feature/datablock-overlap-fixing`**, not `master`. Do not push.
+
+| Key | Value |
+| --- | --- |
+| Goal | Keep visible datablocks clear of every other target's protected scope geometry, without system-list avoidance or simulation-state mutation. |
+| Include | **T02-110** |
+| Source | FAA PCG R02 terminology; CRC/vNAS STARS R07 data-block positioning / leader controls. |
+| Skip | System lists; SSA/DCB/preview/maps/weather avoidance; own-target geometry; graphics rerouting; manual placement; new keys/DCB; World/Command IR/radio/aircraft/parser/speech changes. |
+| Stop | After T02-110 acceptance. No next phase. |
+| Max workers | 1 |
+| Merge lock | captain squash to `feature/datablock-overlap-fixing`, then `npm test` / `npm run ci` |
+| Model | `gpt-5.6-luna`, medium reasoning, every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law:**
+
+- A datablock treats another target's symbol, PTL, leader, history, A/TPA cone, and TPA J-ring as protected geometry. It never treats its own target's geometry as an obstacle.
+- System lists are never inputs to this solver.
+- Protected geometry and datablock candidates use DOM-free, CSS-pixel intersection math with documented clearance; placement remains deterministic and priority-preserving.
+- Accepted datablocks do not intersect other-target protected geometry or other accepted datablocks when capacity exists. `DATABLOCK DENSITY` is the only no-slot fallback.
+- Paint and pick consume the same resolved layout. No TrackDisplay/World/Command IR/readback/intent/kinematics mutation; trainer-only, not NAS STARS.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-110 | planning commit |
+
+**Ticket ownership:**
+
+- T02-110 owns obstacle model/intersection math, render and pick obstacle collection, shared layout integration, all tests, performance, README wording, and manual acceptance.
+
+**Ticket file / branch:**
+
+- `ticket/T02-110-datablock-other-target-geometry-avoidance` ← `phases/02-scope/tickets/T02-110-datablock-other-target-geometry-avoidance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope follow-up (T02-110 Datablock Other-Target Geometry Avoidance)
+Merge target: `feature/datablock-overlap-fixing`
+Merged: T02-110
+Tests: npm test / npm run ci exit 0
+Notes: <other-target symbols/PTLs/leaders/history/cones/J-rings protected; own-target exemption; no lists; shared paint/pick layout>
+```
+
+---
+
+# ATC-SIM swarm orchestrator — Thirty-second swarm (Automatic Datablock Overlap Avoidance)
+
+Thirty-first (STARS In-Scope System Lists Architecture & Interactive Lists
+T02-103–107) landed. This file keeps that history, then this addendum on
+**`feature/datablock-overlap-fixing`** (cut from `master`).
+
+## Thirty-second swarm planned — 2026-09-06 (Automatic Datablock Overlap Avoidance)
+
+This configuration lifts Phase 2's documented datablock-overlap limitation. It
+adds a deterministic display-only screen-space resolver: retain configured
+leader placement if possible, then relocate only conflicting later datablocks.
+Captain squash-merges ticket branches into **`feature/datablock-overlap-fixing`**,
+not `master`. Do not push. Existing swarm history stays intact.
+
+| Key | Value |
+| --- | --- |
+| Goal | Automatic non-overlapping visible datablock layout shared by Canvas2D paint and pointer hit-testing, without leader-preference or simulation-state mutation. |
+| Include | **T02-108**, **T02-109** |
+| Source | FAA PCG R02 terminology; CRC/vNAS STARS R07 data-block positioning and leader controls. |
+| Skip | Manual dragging; system-list layout; new DCB/keys; leader-line obstacle routing; World, Command IR, radio, aircraft, parser, or speech changes. |
+| Stop | After T02-109 acceptance. No next phase. |
+| Max workers | 2 |
+| Merge lock | captain squash to `feature/datablock-overlap-fixing`, then `npm test` / `npm run ci` |
+| Model | `gpt-5.6-luna`, medium reasoning, every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law:**
+
+- One resolved rectangle/leader anchor is shared by paint and picking.
+- Configured `leaderDir` / `leaderLengthPx` is first-choice input only; automatic layout never writes TrackDisplay or World.
+- Stable priority: selected, FDB, PDB, LDB, aircraft ID. Identical inputs yield identical placements.
+- Accepted rectangles are wholly in-bounds and pairwise non-overlapping. No free slot means explicit unplaced lower-priority block plus `DATABLOCK DENSITY`, never silent overpaint.
+- Canvas2D/display-only: no new keys/DCB, no Command IR/readback/intent/kinematics mutation; automatic avoidance is trainer-only, not NAS STARS.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-108 | planning commit |
+| B | T02-109 | T02-108 |
+
+**Ticket ownership:**
+
+- T02-108: pure layout contract/candidates/priority/no-slot result/synthetic tests.
+- T02-109: paint/pick integration, resolved leaders, density indicator, docs, performance, integration/manual acceptance.
+
+**Ticket files / branches:**
+
+- `ticket/T02-108-datablock-overlap-layout-solver` ← `phases/02-scope/tickets/T02-108-datablock-overlap-layout-solver.md`
+- `ticket/T02-109-datablock-overlap-render-pick-and-acceptance` ← `phases/02-scope/tickets/T02-109-datablock-overlap-render-pick-and-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope addendum (T02-108–109 Automatic Datablock Overlap Avoidance)
+Merge target: `feature/datablock-overlap-fixing`
+Merged: T02-108, T02-109
+Tests: npm test / npm run ci exit 0
+Notes: <shared paint/pick layout; no intersecting placed datablocks; density fallback; no controller/simulation-state mutation>
+```
+
+---
+
 # ATC-SIM swarm orchestrator — Thirty-first swarm (STARS In-Scope System Lists Architecture & Interactive Lists)
 
 Thirtieth (Flight Progress Strips Interactive Freeform Box Annotations T02-100–102) landed.

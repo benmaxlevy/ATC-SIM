@@ -29,6 +29,14 @@ import {
 } from "./fonts";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
 import { handleTrackClick, handleTrackMiddleClick, type TrackDisplay } from "./trackDisplay";
+import {
+  pointInLayoutBounds,
+  solveDatablockLayout,
+  type DatablockLayoutInput,
+} from "./datablockLayout";
+import { aircraftAtReport } from "./surveillance";
+import { collectDatablockProtectedGeometry } from "./render/renderScopePaint";
+import type { ScopeView } from "./scopeView";
 
 /** Frozen hit radius in CSS pixels (T01-11). Pixel-space so range presets stay stable. */
 export const HIT_RADIUS_CSS_PX = 12;
@@ -43,6 +51,7 @@ export interface DatablockPickView {
       scratchpad?: string;
       queriedUntilSimMs?: number;
       beaconatorUntilSimMs?: number;
+      lastReport?: TrackDisplay["lastReport"];
       squawk?: string;
       ownership?: string;
     }
@@ -70,12 +79,20 @@ function pickDatablockAt(
     view.datablockCellWidthPx > 0 ? view.datablockCellWidthPx : DEFAULT_DATABLOCK_CELL_PX;
   let nearest: Aircraft | null = null;
   let nearestDist = Infinity;
+  const candidates: DatablockLayoutInput[] = [];
   for (const ac of world.aircraft) {
-    if (!inAltitudeFilter(ac.altitudeFt, view.altitudeFilter)) {
+    const td = view.tracks.get(ac.id);
+    if (!td?.lastReport) {
       continue;
     }
-    const p = nmToScreen(ac.xNm, ac.yNm, cam, size);
-    const td = view.tracks.get(ac.id);
+    const shown = aircraftAtReport(ac, td.lastReport);
+    if (!inAltitudeFilter(shown.altitudeFt, view.altitudeFilter)) {
+      continue;
+    }
+    const p = nmToScreen(shown.xNm, shown.yNm, cam, size);
+    if (!pointInLayoutBounds(p, { x: 0, y: 0, width: cssWidth, height: cssHeight })) {
+      continue;
+    }
     const ho = handoffFor(world, ac.id);
     let mode = td?.datablockMode ?? (td?.ownership === "owned" ? "full" : "partial");
     if (ho.kind === "inbound" || ho.kind === "departure") {
@@ -101,7 +118,7 @@ function pickDatablockAt(
     } else if (ho.kind === "pointout_outbound") {
       handoffSectorId = ho.toSectorId;
     }
-    const base = linesForDatablock({ ...ac, callsign, squawk }, mode, {
+    const base = linesForDatablock({ ...shown, callsign, squawk }, mode, {
       modeCVisible: view.modeCVisible,
       scratchpad: td?.scratchpad ?? "",
       handoffSectorId,
@@ -120,16 +137,60 @@ function pickDatablockAt(
     const lineH = datablockLineHeightPx(view.charSizePx ?? DATABLOCK_LINE_HEIGHT_PX);
     const leaderLen = td?.leaderLengthPx ?? view.leaderLengthPx;
     const rect = datablockRect(p.x, p.y, lines, cell, lineH, dir, leaderLen);
-    if (!pointInDatablock(cssX, cssY, rect)) {
+    candidates.push({
+      aircraftId: ac.id,
+      targetPoint: p,
+      preferredRect: { x: rect.x, y: rect.y, width: rect.w, height: rect.h },
+      metrics: { widthPx: rect.w, heightPx: rect.h },
+      leaderDir: dir,
+      leaderLengthPx: leaderLen ?? 36,
+      displayPriority: mode === "full" ? "full" : mode === "partial" ? "partial" : "limited",
+      selected: world.selectedAircraftId === ac.id,
+    });
+  }
+  const obstacleView = isFullScopeView(view) ? view : undefined;
+  const protectedGeometry = obstacleView
+    ? collectDatablockProtectedGeometry(world, obstacleView, {
+        widthPx: cssWidth,
+        heightPx: cssHeight,
+      })
+    : undefined;
+  const layouts = solveDatablockLayout(candidates, {
+    bounds: { x: 0, y: 0, width: cssWidth, height: cssHeight },
+    protectedGeometry,
+  });
+  const layoutById = new Map(layouts.map((layout) => [layout.aircraftId, layout]));
+  for (const ac of world.aircraft) {
+    const layout = layoutById.get(ac.id);
+    if (
+      !layout?.rect ||
+      !pointInDatablock(cssX, cssY, {
+        x: layout.rect.x,
+        y: layout.rect.y,
+        w: layout.rect.width,
+        h: layout.rect.height,
+      })
+    ) {
       continue;
     }
-    const dist = Math.hypot(p.x - cssX, p.y - cssY);
+    // Layout rectangles can be displaced from their target. Score the hit by
+    // the resolved datablock itself; using the target point makes coincident
+    // targets always select the first aircraft when displaced rectangles touch.
+    const dist = Math.hypot(
+      layout.rect.x + layout.rect.width / 2 - cssX,
+      layout.rect.y + layout.rect.height / 2 - cssY,
+    );
     if (dist < nearestDist) {
       nearest = ac;
       nearestDist = dist;
     }
   }
   return nearest;
+}
+
+function isFullScopeView(view: DatablockPickView): view is DatablockPickView & ScopeView {
+  const candidate = view as DatablockPickView & Partial<ScopeView>;
+  return Boolean(candidate.camera && candidate.tpa && candidate.atpa && candidate.charSizes);
 }
 
 export type AircraftPickRegion = "datablock" | "symbol";

@@ -62,7 +62,7 @@ Lift nothing from `phases/_shared/non-goals.md`. In addition, **do not** build:
 | Real STARS bitmap font or any licensed NAS typeface | Metric-similar **monospace** only. |
 | CRC-compatible full keyboard | Subset below is frozen; document every difference. Local PREF slots are T02-29, not a NAS pref host. |
 | Handoff, point-out, quick-look other facility, scratchpad, beacon code | F3 only recolors ownership. |
-| Auto-deconflict of overlapping datablocks | Known limitation; log if asked. |
+| Auto-deconflict of overlapping datablocks | Trainer auto-layout is enabled when viewport capacity exists; impossible density keeps higher-priority blocks and reports `DATABLOCK DENSITY`. |
 | WebGL phosphor bloom, afterglow trails | Canvas2D. History dots are discrete samples, not a phosphor sim. |
 | Map editor, CIFP maps, real coastlines | KDEM JSON only. |
 | Touch-first mobile layout | Desktop Chrome/Edge. |
@@ -399,7 +399,7 @@ Implementers will be tempted to “just copy CRC.” Freeze this delta in the he
 | --- | --- |
 | Scope `L`/`T`/`H` steal radio tokens | Focus model + always-on only on F-keys/Page/Home; tests that radio focus still parses `L090` |
 | Continuous zoom / zoom-to-cursor sneaks in | T02-01 ACs forbid it |
-| Datablock overlap at 30 tracks | Accept; do not auto-layout |
+| Datablock overlap at 30 tracks | Auto-layout resolves visible blocks when capacity exists; no-free-slot density is reported and lower-priority blocks are omitted. |
 | Per-frame map rebuild / string alloc | Cache Path2D; format datablocks only when alt/GS change (or once per render is OK if bench passes) |
 | Font licensing | IBM Plex Mono OFL or system monospace; no STARS dump |
 | “Make it look exactly like CRC” | AGENT.md + this README; visual acceptance script scores *grammar* not pixels |
@@ -793,5 +793,4 @@ Direct in-place text annotations on flight progress strips, supporting double-cl
 ## Glossary reminders
 
 Use `phases/_shared/glossary.md` terms: **scope**, **PPI**, **datablock**, **track**, **CRC keys**. Distances NM, altitudes feet MSL, speed knots. Do not invent “zoom level,” “labels,” or “sprites” in user-facing UI copy — say **range**, **datablock**, **target**. Forbidden/required list: `phases/_shared/references.md`.
-
 

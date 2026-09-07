@@ -717,6 +717,20 @@ export {
 } from "./leader";
 export type { DatablockMetrics, LeaderDir, LeaderLengthPx, StarsLeaderClock } from "./leader";
 export {
+  datablockRectsOverlap,
+  resolveDatablockLayout,
+  solveDatablockLayout,
+} from "./datablockLayout";
+export type {
+  DatablockDisplayPriority,
+  DatablockLayoutInput,
+  DatablockLayoutOptions,
+  LayoutBounds,
+  LayoutPoint,
+  LayoutRect,
+  ResolvedDatablockLayout,
+} from "./datablockLayout";
+export {
   SCRATCHPAD_MAX_LEN,
   DATABLOCK_FIELD_GAP,
   datablockMetrics,
