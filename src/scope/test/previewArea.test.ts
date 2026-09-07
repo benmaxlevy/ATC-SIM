@@ -424,6 +424,59 @@ describe("T02-114: Conflict Alert (CA) preview grammar & slew execution", () => 
     expect(view.caInhibitedPairs.has("AAL100|DAL200")).toBe(false);
   });
 
+  it("CA [ENTER] plus one slew toggles the selected active CA pair", () => {
+    const world = createWorld();
+    const view = createScopeView();
+    const ac1 = makeTestAircraft({ id: "ac1", callsign: "AAL100", xNm: 0, yNm: 0 });
+    const ac2 = makeTestAircraft({ id: "ac2", callsign: "DAL200", xNm: 2, yNm: 0 });
+    world.aircraft = [ac1, ac2];
+    world.alerts.ca = [
+      { callsignA: "AAL100", callsignB: "DAL200", severity: "alert", distNm: 1, deltaAltFt: 0 },
+    ];
+
+    beginPreviewBufferEntry(view.preview, "CA", 1000);
+    handleScopeKeyDown(keyEvent("Enter"), view, "scope", world);
+    handlePpiLeftClick(view, world, 500, 400, 1000, 800);
+    expect(view.preview.phase).toBe("idle");
+    expect(view.caInhibitedPairs.has("AAL100|DAL200")).toBe(true);
+
+    beginPreviewBufferEntry(view.preview, "CA", 2000);
+    handleScopeKeyDown(keyEvent("Enter"), view, "scope", world);
+    handlePpiLeftClick(view, world, 500, 400, 1000, 800);
+    expect(view.caInhibitedPairs.has("AAL100|DAL200")).toBe(false);
+  });
+
+  it("CA [ENTER] does not choose arbitrarily when MULT CONFL has two partners", () => {
+    const world = createWorld();
+    const view = createScopeView();
+    const acA = makeTestAircraft({ id: "acA", callsign: "AAL100", xNm: 0, yNm: 0 });
+    const acB = makeTestAircraft({ id: "acB", callsign: "DAL200", xNm: 2, yNm: 0 });
+    const acC = makeTestAircraft({ id: "acC", callsign: "UAL300", xNm: -2, yNm: 0 });
+    world.aircraft = [acA, acB, acC];
+    world.alerts.ca = [
+      {
+        callsignA: "AAL100",
+        callsignB: "DAL200",
+        severity: "alert",
+        distNm: 1,
+        deltaAltFt: 0,
+      },
+      {
+        callsignA: "AAL100",
+        callsignB: "UAL300",
+        severity: "alert",
+        distNm: 1,
+        deltaAltFt: 0,
+      },
+    ];
+
+    beginPreviewBufferEntry(view.preview, "CA", 1000);
+    handleScopeKeyDown(keyEvent("Enter"), view, "scope", world);
+    handlePpiLeftClick(view, world, 500, 400, 1000, 800);
+    expect(view.preview.phase).toBe("armed");
+    expect(view.caInhibitedPairs.size).toBe(0);
+  });
+
   it("CA P <trk1> <trk2> directly adds pairwise inhibit", () => {
     const world = createWorld();
     const view = createScopeView();

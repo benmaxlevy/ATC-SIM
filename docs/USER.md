@@ -361,8 +361,8 @@ System list commands in STARS do not accept aliases and use the exact prefix syn
 | Command Syntax | Operator Action | System Result |
 |---|---|---|
 | `CA K [track]` | `CA K DAL123` Enter, or type `CA K` then slew-click | Toggles CA inhibit for one track; a normal upright `Δ` appears inline beside its ACID. |
-| `CA`, then two target clicks | Type `CA`; slew-click Track A then Track B | Toggles the pair-specific CA inhibit. Other pairs involving either track still alert. |
-| `CA P [track1] [track2]` | `CA P DAL123 AAL456` Enter; omit Track 2 to slew it; omit both to slew both | Adds the pair-specific CA inhibit. |
+| `CA [track]` | Type `CA`; slew-click one member of an existing CA pair | Toggles that pair-specific CA inhibit. Both members show inline `Δ`; other pairs involving either track still alert. With multiple active partners and no existing inhibit, use `CA P` and slew both tracks. |
+| `CA P [track1] [track2]` | `CA P`; slew-click Track 1 then Track 2 (or enter both ACIDs) | Adds the pair-specific CA inhibit; both members show inline `Δ`. |
 | `CA E [track1] [track2]` | `CA E DAL123 AAL456` Enter; omit Track 2 to slew it; omit both to slew both | Removes the pair-specific CA inhibit. |
 | Empty Preview Area, click active LA/CA target | Slew-click the alerted target | Acknowledges active CA/MSAW for that track: the affected red Line 0 indicator becomes steady; CA tone stops when no other unacknowledged CA remains. |
 | `*MCI Enter` | Type `*MCI` Enter | **Toggle Mode C Intruder Alerting**: Globally toggles Mode C Intruder alerting on or off (`view.mciEnabled`). |

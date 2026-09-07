@@ -17,6 +17,7 @@ import {
   isMsawAlertAcknowledged,
 } from "../render/renderScopePaint";
 import { renderScope } from "../render/renderScope";
+import { getAlertEntries } from "../systemLists";
 
 describe("Datablock inline alert glyphs", () => {
   describe("Blink clock & period", () => {
@@ -137,7 +138,7 @@ describe("Datablock inline alert glyphs", () => {
       drawDatablock(inhibited.ctx, acB, 200, 200, view, world);
       drawDatablock(inhibited.ctx, acC, 300, 300, view, world);
       expect(inhibited.fillTexts.filter((fill) => fill.text === "CA")).toHaveLength(2);
-      expect(inhibited.fillTexts.filter((fill) => fill.text === "Δ")).toHaveLength(0);
+      expect(inhibited.fillTexts.filter((fill) => fill.text === "Δ")).toHaveLength(2);
 
       setCaPairInhibited(view, acA.id, acB.id, false);
       const restored = createMockCtx();
@@ -254,6 +255,34 @@ describe("Datablock inline alert glyphs", () => {
       expect(callsignFill).toBeDefined();
       expect(triangleFills[0]!.y).toBe(callsignFill!.y);
       expect(triangleFills[0]!.x!).toBeGreaterThan(callsignFill!.x!);
+    });
+
+    test("pair inhibit shows Δ on both members without affecting a shared active pair", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      const acA = makeTestAircraft({ id: "acA", callsign: "AAL100" });
+      const acB = makeTestAircraft({ id: "acB", callsign: "DAL200" });
+      const acC = makeTestAircraft({ id: "acC", callsign: "UAL300" });
+      world.aircraft = [acA, acB, acC];
+      world.alerts.ca = [
+        { callsignA: "AAL100", callsignB: "DAL200", severity: "alert", distNm: 1, deltaAltFt: 0 },
+        { callsignA: "AAL100", callsignB: "UAL300", severity: "alert", distNm: 1, deltaAltFt: 0 },
+      ];
+      for (const ac of world.aircraft) view.tracks.set(ac.id, createTrackDisplay("owned"));
+      setCaPairInhibited(view, acA.id, acB.id, true);
+
+      const paints = world.aircraft.map((ac) => {
+        const mock = createMockCtx();
+        drawDatablock(mock.ctx, ac, 100, 100, view, world);
+        return mock.fillTexts.filter((f) => f.text === "Δ");
+      });
+      expect(paints[0]).toHaveLength(1);
+      expect(paints[1]).toHaveLength(1);
+      expect(paints[2]).toHaveLength(0);
+      const caPaint = createMockCtx();
+      drawDatablock(caPaint.ctx, acA, 100, 100, view, world);
+      expect(caPaint.fillTexts.filter((f) => f.text === "CA")).toHaveLength(1);
+      expect(getAlertEntries(world, view)).toEqual(["CA AAL100*UAL300"]);
     });
 
     test("inhibitCA alias is supported and suppresses CA alert from showing 'CA'", () => {

@@ -91,6 +91,7 @@ import {
   isBeaconatorReadout,
   isIdentFlashing,
   isTrackQueried,
+  isCaPairInhibited,
   type TrackDisplay,
 } from "../trackDisplay";
 import {
@@ -113,6 +114,17 @@ import { buildVideoMapsListLines, getVideoMapsEntries } from "../coordinationLis
 /** CA severity after track and pair inhibits, preserving other active pairs. */
 function caSeverityForVisibleTrack(view: ScopeView, world: World, callsign: string) {
   return caSeverityForCallsign(filterActiveCaAlerts(world.alerts.ca, world, view), callsign);
+}
+
+/** Pair inhibit Δ is shown only for a member of an inhibited active CA pair. */
+function isCaPairInhibitedForTrack(view: ScopeView, world: World, ac: Aircraft): boolean {
+  return world.alerts.ca.some((alert) => {
+    if (alert.callsignA !== ac.callsign && alert.callsignB !== ac.callsign) return false;
+    if (isCaPairInhibited(view, alert.callsignA, alert.callsignB)) return true;
+    const a = world.aircraft.find((candidate) => candidate.callsign === alert.callsignA);
+    const b = world.aircraft.find((candidate) => candidate.callsign === alert.callsignB);
+    return Boolean(a && b && isCaPairInhibited(view, a.id, b.id));
+  });
 }
 
 const RING_STROKE_PX = 1;
@@ -843,6 +855,7 @@ export function drawDatablock(
   const lineH = datablockLineHeightPx(view.charSizes.dataBlocks);
 
   const isCaInhibited = isCaInhibitedForTrack(ac, td, view);
+  const isCaPairInhibited = isCaPairInhibitedForTrack(view, world, ac);
   const caSeverity = !isCaInhibited ? caSeverityForVisibleTrack(view, world, ac.callsign) : null;
   const isMsawInhibited = Boolean(
     td?.msawInhibited ||
@@ -859,7 +872,7 @@ export function drawDatablock(
   const alertGlyphs =
     mode === "full" || mode === "partial"
       ? alertGlyphsForTrack({
-          caInhibited: isCaInhibited,
+          caInhibited: isCaInhibited || isCaPairInhibited,
           msawInhibited: isMsawInhibited,
           mciInhibited,
           normalColor: applyBrite(PALETTE.owned, briteCh),

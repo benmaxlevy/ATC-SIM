@@ -775,8 +775,34 @@ export function handleCaSlewClick(
   if (!armed) return false;
 
   if (armed.type === "caPairSlew") {
+    const selected = world.aircraft.find((a) => a.id === clickedTrackId);
+    const selectedNames = selected ? [selected.id, selected.callsign] : [clickedTrackId];
+    const pairFromKey = [...view.caInhibitedPairs]
+      .map((key) => key.split("|"))
+      .find((parts) => parts.some((part) => selectedNames.includes(part)) && parts.length === 2);
+    const otherName = pairFromKey?.find((part) => !selectedNames.includes(part));
+    const activePartners = world.alerts.ca
+      .filter(
+        (alert) => alert.callsignA === selected?.callsign || alert.callsignB === selected?.callsign,
+      )
+      .map((alert) => (alert.callsignA === selected?.callsign ? alert.callsignB : alert.callsignA));
+    // MULT CONFL: without an existing inhibit, a one-slew CA is unambiguous
+    // only when exactly one current CA partner exists.
+    const otherAlertCallsign = activePartners.length === 1 ? activePartners[0] : undefined;
+    const other = world.aircraft.find(
+      (a) => a.id === otherName || a.callsign === otherName || a.callsign === otherAlertCallsign,
+    );
+
+    // §7.10: one slew toggles the selected current/pairwise-inhibited pair.
+    if (selected && other) {
+      toggleCaPairInhibited(view, selected.id, other.id);
+      toggleCaPairInhibited(view, selected.callsign, other.callsign);
+      cancelPreviewArea(view.preview);
+      return true;
+    }
+
+    // Keep the two-slew fallback when no current pair identifies a partner.
     if (!armed.trk1) {
-      // Step 1: record Track 1
       view.preview.armed = { type: "caPairSlew", trk1: clickedTrackId };
       view.preview.slewAction = view.preview.armed;
       const ac = world.aircraft.find((a) => a.id === clickedTrackId);
@@ -784,15 +810,12 @@ export function handleCaSlewClick(
       view.preview.lastKeyAtMs = nowMs;
       return true;
     }
-    // Step 2: toggle pairwise inhibit between Track 1 and Track 2
     const trk1 = armed.trk1;
     const trk2 = clickedTrackId;
     toggleCaPairInhibited(view, trk1, trk2);
     const ac1 = world.aircraft.find((a) => a.id === trk1);
     const ac2 = world.aircraft.find((a) => a.id === trk2);
-    if (ac1 && ac2) {
-      toggleCaPairInhibited(view, ac1.callsign, ac2.callsign);
-    }
+    if (ac1 && ac2) toggleCaPairInhibited(view, ac1.callsign, ac2.callsign);
     cancelPreviewArea(view.preview);
     return true;
   }
