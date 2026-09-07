@@ -32,6 +32,7 @@ import {
   SQUAWK_CODE,
   SUFFIX_CALLSIGN,
   isTrackingSlewAction,
+  parseCaCommand,
   parsePreviewCommand,
   parseTrackingSlewBuffer,
   previewBufferCharFromKey,
@@ -258,6 +259,20 @@ export function previewTrackingSlew(state: PreviewAreaState): PreviewArmedAction
   }
   if (state.phase !== "entry") {
     return null;
+  }
+  // STARS CA commands may slew directly from the live Preview Area; Enter is
+  // only required when every target is supplied as a typed ACID.
+  const ca = parseCaCommand(state.buffer);
+  if (ca?.kind === "action" && isTrackingSlewAction(ca.action)) {
+    const action = ca.action;
+    if (
+      action.type === "caPairSlew" ||
+      (action.type === "caSingleTrackInhibit" && action.trk === undefined) ||
+      ((action.type === "caPairInhibit" || action.type === "caPairEnable") &&
+        action.trk2 === undefined)
+    ) {
+      return action;
+    }
   }
   return parseTrackingSlewBuffer(state.buffer);
 }

@@ -1,6 +1,7 @@
 import { acceptPointout, handoffFor, setSelectedAircraft, type World } from "@core";
 import { expireFilterEntry, inAltitudeFilter } from "./altitudeFilter";
 import {
+  armPreviewSlewAction,
   cancelPreviewArea,
   expirePreviewArea,
   handleCaSlewClick,
@@ -285,6 +286,9 @@ function applyTrackingSlewHit(
     case "caPairSlew":
     case "caPairInhibit":
     case "caPairEnable": {
+      if (view.preview.phase !== "armed") {
+        armPreviewSlewAction(view.preview, action, Date.now());
+      }
       handleCaSlewClick(view, world, id);
       return true;
     }
@@ -314,6 +318,31 @@ export function handlePpiLeftClick(
   const size = viewSize(cssWidth, cssHeight);
   const nm = screenToNm(cssX, cssY, view.camera, size);
   recordLastClick(view, nm.eastNm, nm.northNm);
+  // A live CA command is a target-slew command, not a list interaction.
+  // Handle it before any movable-list hit testing can consume the click.
+  const liveTracking = previewTrackingSlew(view.preview);
+  if (
+    view.preview.phase === "entry" &&
+    liveTracking &&
+    (liveTracking.type === "caSingleTrackInhibit" ||
+      liveTracking.type === "caPairSlew" ||
+      liveTracking.type === "caPairInhibit" ||
+      liveTracking.type === "caPairEnable")
+  ) {
+    const hit = pickAircraftHitAt(
+      world,
+      cssX,
+      cssY,
+      view.camera,
+      cssWidth,
+      cssHeight,
+      HIT_RADIUS_CSS_PX,
+      view,
+    );
+    if (hit && applyTrackingSlewHit(view, world, hit, liveTracking)) {
+      return;
+    }
+  }
   let relocateId = previewRelocateListId(view.preview);
   // The same P commands address lists on empty scope and TPA cones on aircraft.
   if (
