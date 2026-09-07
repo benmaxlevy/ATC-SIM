@@ -102,21 +102,39 @@ export type {
 } from "./aircraft";
 export { createAircraft, makeTestAircraft, nextAircraftId } from "./aircraft";
 export type {
+  AirspaceAreaTier,
   AlertTint,
   AlertTintTrack,
+  AreaTierParameters,
   CaAlert,
+  CaApproachGeometry,
+  CaContext,
+  CaRunwayGeometry,
   CaSeverity,
+  CaTrackKinematics,
+  CaTrackPose,
+  CpaResult,
   MciAlert,
   WorldAlerts,
 } from "./alerts/conflictAlert";
 export {
+  AREA_TIER_PARAMETERS,
+  CA_DEFAULT_CLIMB_RATE_FT_PER_MIN,
   CA_LATERAL_NM,
   CA_VERTICAL_FT,
   caPairKey,
   caSeverityForCallsign,
+  classifyAirspaceTier,
+  computeKinematicCpa,
   datablockAlertTint,
+  detectPairConflict,
   emptyWorldAlerts,
   evaluateConflictAlert,
+  getAreaTierParameters,
+  getVerticalRateFps,
+  pairAirspaceTier,
+  predictAltitudeFt,
+  resolveCaContextFromCatalog,
 } from "./alerts/conflictAlert";
 export type {
   AtpaGeometryByVolumeId,
