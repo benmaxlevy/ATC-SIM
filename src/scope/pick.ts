@@ -169,8 +169,13 @@ function pickDatablockAt(
     ) {
       continue;
     }
-    const p = nmToScreen(ac.xNm, ac.yNm, cam, size);
-    const dist = Math.hypot(p.x - cssX, p.y - cssY);
+    // Layout rectangles can be displaced from their target. Score the hit by
+    // the resolved datablock itself; using the target point makes coincident
+    // targets always select the first aircraft when displaced rectangles touch.
+    const dist = Math.hypot(
+      layout.rect.x + layout.rect.width / 2 - cssX,
+      layout.rect.y + layout.rect.height / 2 - cssY,
+    );
     if (dist < nearestDist) {
       nearest = ac;
       nearestDist = dist;
