@@ -1604,7 +1604,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
 
       const lines = buildAlertList(world, 50, view);
       expect(lines[0]).toBe("LA/CA/MCI");
-      expect(lines).toContain("CA AAL100 DAL628");
+      expect(lines).toContain("CA AAL100 * DAL628");
       expect(lines).toContain("LA JBU389 015");
     });
 
@@ -1630,7 +1630,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
 
       // Ensure alert shows initially
       let lines = buildAlertList(world, 50, view);
-      expect(lines).toContain("CA AAL100 DAL628");
+      expect(lines).toContain("CA AAL100 * DAL628");
 
       // Invented *CA is rejected
       expect(parsePreviewCommand("*CA").kind).toBe("invalid");

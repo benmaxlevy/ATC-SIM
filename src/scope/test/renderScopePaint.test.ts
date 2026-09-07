@@ -278,7 +278,8 @@ describe("Datablock inline alert glyphs", () => {
       world.simTimeMs = 0;
       const mockOn = createMockCtx();
       drawDatablock(mockOn.ctx, ac, 100, 100, view, world);
-      expect(mockOn.fillTexts.some((f) => f.text === "LA")).toBe(true);
+      const laOn = mockOn.fillTexts.find((f) => f.text === "LA");
+      expect(laOn?.fillStyle).toBe(applyBrite(PALETTE.alert, view.brite.fdb));
 
       // At 800ms (OFF): does not render "LA".
       world.simTimeMs = 800;
@@ -318,7 +319,8 @@ describe("Datablock inline alert glyphs", () => {
       world.simTimeMs = 800;
       const mock = createMockCtx();
       drawDatablock(mock.ctx, ac, 100, 100, view, world);
-      expect(mock.fillTexts.some((f) => f.text === "LA")).toBe(true);
+      const la = mock.fillTexts.find((f) => f.text === "LA");
+      expect(la?.fillStyle).toBe(applyBrite(PALETTE.alert, view.brite.fdb));
     });
 
     test("displays normal * immediately after the ACID when MSAW is inhibited", () => {
@@ -452,6 +454,24 @@ describe("Datablock inline alert glyphs", () => {
       drawDatablock(off.ctx, ac, 100, 100, view, world);
       expect(off.fillTexts.some((fill) => fill.text === "LA/CA")).toBe(false);
     });
+
+    test("does not blink ACIDs or Field 2 inhibit marks", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      const ac = makeTestAircraft({ id: "ac-steady-fields", callsign: "SWA789" });
+      const td = createTrackDisplay("owned");
+      td.caInhibited = true;
+      world.aircraft = [ac];
+      view.tracks.set(ac.id, td);
+
+      for (const simTimeMs of [0, 800]) {
+        world.simTimeMs = simTimeMs;
+        const mock = createMockCtx();
+        drawDatablock(mock.ctx, ac, 100, 100, view, world);
+        expect(mock.fillTexts.some((fill) => fill.text.startsWith("SWA789"))).toBe(true);
+        expect(mock.fillTexts.some((fill) => fill.text === "Δ")).toBe(true);
+      }
+    });
   });
 
   describe("End-to-End renderScope integration", () => {
@@ -522,7 +542,7 @@ describe("Datablock inline alert glyphs", () => {
         world.simTimeMs = simTimeMs;
         const mock = createMockCtx();
         renderScope(mock.ctx, world, view, 800, 600);
-        const alertRow = mock.fillTexts.find((fill) => fill.text === "CA AAL101 DAL202");
+        const alertRow = mock.fillTexts.find((fill) => fill.text === "CA AAL101 * DAL202");
         expect(alertRow?.fillStyle).toBe(applyBrite(PALETTE.ssa, view.brite.lst));
       }
     });

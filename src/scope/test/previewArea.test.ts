@@ -529,6 +529,32 @@ describe("T02-114: Conflict Alert (CA) preview grammar & slew execution", () => 
     expect(hasActiveUninhibitedConflict(world, view)).toBe(false);
   });
 
+  it("clicking an LA/CA track with empty preview buffer acknowledges both indicators", () => {
+    const world = createWorld();
+    const view = createScopeView();
+    const ac1 = makeTestAircraft({ id: "ac1", callsign: "AAL100", xNm: 0, yNm: 0 });
+    const ac2 = makeTestAircraft({ id: "ac2", callsign: "DAL200", xNm: 2, yNm: 0 });
+    world.aircraft = [ac1, ac2];
+    world.alerts = {
+      ca: [
+        {
+          callsignA: "AAL100",
+          callsignB: "DAL200",
+          severity: "alert",
+          distNm: 0.5,
+          deltaAltFt: 0,
+        },
+      ],
+      msaw: [{ callsign: "AAL100", severity: "alert", altFt: 1500, floorFt: 2000 }],
+      atpa: [],
+    };
+
+    handlePpiLeftClick(view, world, 500, 400, 1000, 800);
+
+    expect(view.tracks.get(ac1.id)?.caAcknowledged).toBe(true);
+    expect(view.tracks.get(ac1.id)?.msawAcknowledged).toBe(true);
+  });
+
   it("clicking an alerted track when preview buffer is NOT empty does not acknowledge alert", () => {
     const world = createWorld();
     const view = createScopeView();

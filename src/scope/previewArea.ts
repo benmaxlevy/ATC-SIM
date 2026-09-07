@@ -850,7 +850,7 @@ export function handleImpliedCaAcknowledge(
   if (previewAreaIsLive(view.preview) && view.preview.buffer.trim().length > 0) {
     return false;
   }
-  if (!world.alerts?.ca || world.alerts.ca.length === 0) {
+  if ((world.alerts?.ca?.length ?? 0) === 0 && (world.alerts?.msaw?.length ?? 0) === 0) {
     return false;
   }
   const ac = world.aircraft.find((a) => a.id === clickedTrackId || a.callsign === clickedTrackId);
@@ -870,6 +870,12 @@ export function handleImpliedCaAcknowledge(
       }
       const tdThis = ensureTrackDisplay(view.tracks, ac.id);
       tdThis.caAcknowledged = true;
+      acknowledged = true;
+    }
+  }
+  for (const alert of world.alerts.msaw ?? []) {
+    if (alert.callsign === ac.callsign) {
+      ensureTrackDisplay(view.tracks, ac.id).msawAcknowledged = true;
       acknowledged = true;
     }
   }
