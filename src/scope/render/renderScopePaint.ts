@@ -748,36 +748,24 @@ function hasMciAlertForTrack(world: World, ac: Aircraft): boolean {
 }
 
 /**
- * STARS Line 1 alert symbols sit immediately after the ACID, never above the
- * datablock. CA/MCI inhibit is the normal upright delta; MSAW inhibit is `*`;
- * an active MSAW, CA, or MCI alert is `+`.
+ * STARS Field 2 inhibit symbols sit immediately after the ACID. `*` is MSAW,
+ * `Δ` is CA/MCI, and `+` is both inhibited. Field 0 above the datablock shows
+ * active `LA`, `CA`, or slash-separated `LA/CA` indicators.
  */
 function alertGlyphsForTrack(args: {
   caInhibited: boolean;
-  caActive: boolean;
-  caAcknowledged: boolean;
   msawInhibited: boolean;
-  msawActive: boolean;
-  msawAcknowledged: boolean;
   mciInhibited: boolean;
-  mciActive: boolean;
-  blinkOn: boolean;
   normalColor: string;
-  alertColor: string;
 }): AlertGlyph[] {
   const glyphs: AlertGlyph[] = [];
-  if (args.caInhibited || args.mciInhibited) {
+  const caOrMciInhibited = args.caInhibited || args.mciInhibited;
+  if (args.msawInhibited && caOrMciInhibited) {
+    glyphs.push({ text: "+", color: args.normalColor, visible: true });
+  } else if (caOrMciInhibited) {
     glyphs.push({ text: "Δ", color: args.normalColor, visible: true });
-  }
-  if (args.msawInhibited) {
+  } else if (args.msawInhibited) {
     glyphs.push({ text: "*", color: args.normalColor, visible: true });
-  }
-  if (args.caActive || args.msawActive || args.mciActive) {
-    glyphs.push({
-      text: "+",
-      color: args.alertColor,
-      visible: args.mciActive || args.caAcknowledged || args.msawAcknowledged || args.blinkOn,
-    });
   }
   return glyphs;
 }
@@ -866,19 +854,12 @@ export function drawDatablock(
     mode === "full" || mode === "partial"
       ? alertGlyphsForTrack({
           caInhibited: isCaInhibited,
-          caActive: caSeverity != null,
-          caAcknowledged: isCaAlertAcknowledged(ac, td, view, world),
           msawInhibited: isMsawInhibited,
-          msawActive: msawSeverity != null,
-          msawAcknowledged: isMsawAlertAcknowledged(ac, td, view, world),
           mciInhibited,
-          mciActive: mciActive && !mciInhibited,
-          blinkOn: isAlertBlinkOn(world.simTimeMs),
           normalColor: applyBrite(PALETTE.owned, briteCh),
-          alertColor: applyBrite(PALETTE.alert, briteCh),
         })
       : [];
-  // Reserve the inline cells while a `+` is in its OFF blink phase.
+  // Field 2 inhibit symbols occupy inline cells immediately after the ACID.
   const line1 = [line1WithoutAlert, ...alertGlyphs.map((glyph) => glyph.text)].join(" ");
   const lines = { ...base, line1 };
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
@@ -900,6 +881,20 @@ export function drawDatablock(
       ctx.fillText(glyph.text, alertGlyphX, textY);
     }
     alertGlyphX += ctx.measureText(glyph.text).width;
+  }
+  if (mode === "full" || mode === "partial") {
+    const caAcknowledged = isCaAlertAcknowledged(ac, td, view, world);
+    const msawAcknowledged = isMsawAlertAcknowledged(ac, td, view, world);
+    const blinkOn = isAlertBlinkOn(world.simTimeMs);
+    const showLa = msawSeverity != null && (msawAcknowledged || blinkOn);
+    const showCa =
+      (caSeverity != null && (caAcknowledged || blinkOn)) ||
+      (mciActive && !mciInhibited && blinkOn);
+    const line0 = [showLa ? "LA" : null, showCa ? "CA" : null].filter(Boolean).join("/");
+    if (line0.length > 0) {
+      ctx.fillStyle = applyBrite(PALETTE.alert, briteCh);
+      ctx.fillText(line0, textX, textY - lineH);
+    }
   }
   if (lines.line2 != null) {
     ctx.fillText(lines.line2, textX, textY + lineH);
@@ -1890,17 +1885,13 @@ export function drawSystemLists(
     const isAl = canonical === "AL";
     const mlCategory = view.mapListMode === "CURRENT" ? "CURRENT" : "ALL";
     const mlEntries = isMl ? getVideoMapsEntries(view, mlCategory) : [];
-    const alertBlinkActive = isAlertBlinkOn(world.simTimeMs);
-
     // Draw text lines and record entry hitboxes
     let textY = y;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]!;
-      if (isAl && i > 0) {
-        ctx.fillStyle = alertBlinkActive ? applyBrite(PALETTE.alert, view.brite.lst) : textColor;
-      } else {
-        ctx.fillStyle = textColor;
-      }
+      // AL is a stable green operational list; alert state is conveyed by
+      // datablock indicators and audio, never list-row flashing or red text.
+      ctx.fillStyle = textColor;
       ctx.fillText(line, x, textY);
       if (i > 0 && !line.startsWith("MORE:")) {
         const hasMore = lines[1]?.startsWith("MORE:");

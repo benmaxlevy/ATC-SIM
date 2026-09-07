@@ -25,8 +25,8 @@ airline or tail number; select the two visible tracks in the pair.
    selected track's CA inhibit state should toggle without Enter; this is not
    an acknowledgement command.
 2. Raise or wait for another active pair, then use `CA P` and slew both tracks
-   to inhibit that pair. Confirm the `Δ` inhibit mark and that the alert tone
-   and AL row are suppressed for the pair.
+   to inhibit that pair. Confirm the upright `Δ` immediately beside each ACID
+   and that the alert tone and AL row are suppressed for the pair.
 3. Use `CA E` and slew the same pair. Confirm the inhibit mark is removed and
    the alert presentation/tone can return when the pair remains active.
 4. Use the explicit forms `CA K <ACID>`, `CA P <ACID> <ACID>`, and
