@@ -60,7 +60,11 @@ export interface AppHandles {
    * Drain STAR check-ins after physics. Call once per frame after `advanceWorld`.
    * Does not import SpeechPort into `@core`.
    */
-  afterPhysicsTick(): void;
+  /**
+   * Drain check-ins and synchronize CA audio after physics. The scope passes
+   * its filtered alert state so acknowledged/inhibited pairs stay silent.
+   */
+  afterPhysicsTick(caAlertActive?: boolean): void;
   /** Command-line copy (formatted) or `null` to clear. */
   subscribeVoiceStatus(listener: (status: string | null) => void): () => void;
   caAlertTone: CaAlertTone;
@@ -217,7 +221,7 @@ export function createApp(deps: AppDeps): AppHandles {
   checkInQueue.scheduleFromWorld(world);
   const caAlertTone = deps.caAlertTone ?? createCaAlertTone();
 
-  function afterPhysicsTick(): void {
+  function afterPhysicsTick(caAlertActive?: boolean): void {
     // Newly scheduled STAR arrivals enter the same check-in queue as initial traffic.
     checkInQueue.scheduleFromWorld(world);
     checkInQueue.drain({
@@ -230,7 +234,14 @@ export function createApp(deps: AppDeps): AppHandles {
       setStatus: emitVoiceStatus,
       nowWallMs: () => Date.now(),
     });
-    caAlertTone.sync(world.alerts.ca.length > 0);
+    // Scope owns acknowledgement and inhibit state; callers that have that
+    // state pass the filtered result. Keep the world-only fallback for
+    // headless callers and backwards-compatible app tests.
+    if (caAlertActive === undefined) {
+      caAlertTone.sync(world.alerts.ca.length > 0);
+    } else {
+      caAlertTone.sync(caAlertActive);
+    }
   }
 
   return {

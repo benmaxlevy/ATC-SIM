@@ -62,6 +62,15 @@ test("T04-24/T04-28/T05-14 AC1/AC2 — shipped inventory lists and loads KDEM sc
       source: "scenarios/kdem-atpa",
     },
     {
+      id: "kdem-ca",
+      airportIcao: "KDEM",
+      airportName: "Demo Field",
+      label: "Demo Field — Conflict Alert Bench",
+      default: false,
+      sessionSetupVisible: false,
+      source: "scenarios/kdem-ca",
+    },
+    {
       id: "katl",
       airportIcao: "KATL",
       airportName: "Hartsfield-Jackson Atlanta Intl",
