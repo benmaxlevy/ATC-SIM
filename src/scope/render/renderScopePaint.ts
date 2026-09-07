@@ -886,12 +886,16 @@ export function drawDatablock(
     const caAcknowledged = isCaAlertAcknowledged(ac, td, view, world);
     const msawAcknowledged = isMsawAlertAcknowledged(ac, td, view, world);
     const blinkOn = isAlertBlinkOn(world.simTimeMs);
-    const showLa = msawSeverity != null && (msawAcknowledged || blinkOn);
-    const showCa =
-      (caSeverity != null && (caAcknowledged || blinkOn)) ||
-      (mciActive && !mciInhibited && blinkOn);
-    const line0 = [showLa ? "LA" : null, showCa ? "CA" : null].filter(Boolean).join("/");
-    if (line0.length > 0) {
+    const hasLa = msawSeverity != null;
+    const hasCa = caSeverity != null || (mciActive && !mciInhibited);
+    const requiresBlink =
+      (hasLa && !msawAcknowledged) ||
+      (caSeverity != null && !caAcknowledged) ||
+      (mciActive && !mciInhibited);
+    const line0 = [hasLa ? "LA" : null, hasCa ? "CA" : null].filter(Boolean).join("/");
+    // LA/CA is one Field 0 indication. If either condition remains unacknowledged,
+    // blink the complete indication rather than alternating LA/CA and CA.
+    if (line0.length > 0 && (!requiresBlink || blinkOn)) {
       ctx.fillStyle = applyBrite(PALETTE.alert, briteCh);
       ctx.fillText(line0, textX, textY - lineH);
     }

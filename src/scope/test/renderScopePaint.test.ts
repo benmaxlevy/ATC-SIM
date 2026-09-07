@@ -430,7 +430,8 @@ describe("Datablock inline alert glyphs", () => {
       const view = createScopeView();
       const ac = makeTestAircraft({ id: "ac-la-ca", callsign: "AAL123" });
       world.aircraft = [ac];
-      view.tracks.set(ac.id, createTrackDisplay("owned"));
+      const td = createTrackDisplay("owned");
+      view.tracks.set(ac.id, td);
       world.alerts.ca = [
         {
           callsignA: ac.callsign,
@@ -453,6 +454,18 @@ describe("Datablock inline alert glyphs", () => {
       const off = createMockCtx();
       drawDatablock(off.ctx, ac, 100, 100, view, world);
       expect(off.fillTexts.some((fill) => fill.text === "LA/CA")).toBe(false);
+
+      // Acknowledging only CA must not make Line 0 alternate LA/CA and CA.
+      td.caAcknowledged = true;
+      const caAckOnly = createMockCtx();
+      drawDatablock(caAckOnly.ctx, ac, 100, 100, view, world);
+      expect(caAckOnly.fillTexts.some((fill) => fill.text === "LA/CA")).toBe(false);
+      expect(caAckOnly.fillTexts.some((fill) => fill.text === "CA")).toBe(false);
+
+      td.msawAcknowledged = true;
+      const bothAck = createMockCtx();
+      drawDatablock(bothAck.ctx, ac, 100, 100, view, world);
+      expect(bothAck.fillTexts.some((fill) => fill.text === "LA/CA")).toBe(true);
     });
 
     test("does not blink ACIDs or Field 2 inhibit marks", () => {
@@ -468,7 +481,8 @@ describe("Datablock inline alert glyphs", () => {
         world.simTimeMs = simTimeMs;
         const mock = createMockCtx();
         drawDatablock(mock.ctx, ac, 100, 100, view, world);
-        expect(mock.fillTexts.some((fill) => fill.text.startsWith("SWA789"))).toBe(true);
+        const acid = mock.fillTexts.find((fill) => fill.text.startsWith("SWA789"));
+        expect(acid?.fillStyle).toBe(applyBrite(PALETTE.owned, view.brite.fdb));
         expect(mock.fillTexts.some((fill) => fill.text === "Δ")).toBe(true);
       }
     });
@@ -542,7 +556,7 @@ describe("Datablock inline alert glyphs", () => {
         world.simTimeMs = simTimeMs;
         const mock = createMockCtx();
         renderScope(mock.ctx, world, view, 800, 600);
-        const alertRow = mock.fillTexts.find((fill) => fill.text === "CA AAL101 * DAL202");
+        const alertRow = mock.fillTexts.find((fill) => fill.text === "CA AAL101* DAL202");
         expect(alertRow?.fillStyle).toBe(applyBrite(PALETTE.ssa, view.brite.lst));
       }
     });

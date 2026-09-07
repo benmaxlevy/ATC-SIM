@@ -63,7 +63,7 @@ Service-side env, models, and Path C: [`speech-api/README.md`](../speech-api/REA
 
 ### Safety alerting (CA, MSAW, MCI)
 
-- **Conflict Alert (CA)**: Kinematic CPA prediction uses the active pair's lower airspace type (Type 1–4). Only Line 0 indicators blink: unacknowledged CA and MSAW flash red `CA` and `LA` at 800 ms on / 800 ms off; each stays solid after an empty-Preview slew-click acknowledgement. Concurrent MSAW and CA displays `LA/CA`. Field 2 inhibit marks sit beside the ACID: upright `Δ` for CA/MCI, `*` for MSAW, and `+` when both are inhibited. The LA/CA/MCI list always remains green; CA rows read `CA <ACID> * <ACID>`. Use the `CA` commands below; `F11` buffers `CA `.
+- **Conflict Alert (CA)**: Kinematic CPA prediction uses the active pair's lower airspace type (Type 1–4). Only Line 0 indicators blink: unacknowledged CA and MSAW flash red `CA` and `LA` at 800 ms on / 800 ms off; each stays solid after an empty-Preview slew-click acknowledgement. Concurrent MSAW and CA is one `LA/CA` indication and blinks as one unit until both conditions are acknowledged. Field 2 inhibit marks sit beside the ACID: upright `Δ` for CA/MCI, `*` for MSAW, and `+` when both are inhibited. The LA/CA/MCI list always remains green; CA rows read `CA <ACID>* <ACID>`. Use the `CA` commands below; `F11` buffers `CA `.
 - **Minimum Safe Altitude Warning (MSAW)**: Polygon-based Minimum Vectoring Altitude (MVA) floor checks that alert when aircraft descend below safe sector altitudes. `*LA` is only the altitude-filter command, not an MSAW inhibit.
 - **Mode C Intruder (MCI)**: Alerts when an untracked VFR/Mode C transponder target penetrates protected airspace around tracked flights. Toggled on/off globally via `*MCI`.
 
