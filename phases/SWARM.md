@@ -1,5 +1,16 @@
 # ATC-SIM swarm orchestrator — Thirty-fourth swarm (STARS Conflict Alert Alignment)
 
+## Thirty-fourth swarm resumed — 2026-09-07
+
+User requested continuation at Wave D. This resume retains the existing
+Thirty-fourth-swarm contract unchanged: merge target remains
+`feature/stars-ca-alignment`, scope is only T02-115 after confirmed Wave C,
+maximum active workers is 2, and every worker uses `gpt-5.6-luna` at medium
+reasoning. The captain will verify the completed-wave ancestry and all ticket
+status before spawning T02-115. Stop after its acceptance; do not push.
+
+---
+
 Thirty-third (Datablock Other-Target Geometry Avoidance T02-110) landed on
 `feature/datablock-overlap-fixing`. This file keeps that history, then this
 new swarm on `feature/stars-ca-alignment`.
