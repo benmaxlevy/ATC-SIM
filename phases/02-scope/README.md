@@ -615,7 +615,7 @@ Completed TPA / ATPA addendum matching [CRC STARS](https://docs.virtualnas.net/c
 - [x] Four live AUX TPA/ATPA cells plus master (`atpa-mileage`, `atpa-intrail`, `atpa-alert`, `atpa-monitor`); `effective = atpa.on && atpa[feature]`; Alert Cones gates warning and alert; PREF schema `v: 2` round-trips all five `AtpaState` fields; `v: 1` migrates (T02-47).
 - [x] Per-track `*J` / `*P` rings and ground-track cones (1–30 NM, session state not PREF); `**J` / `**P` clear-all; size-readout inhibit; J-rings are never suppressed by ATPA; a manual `*P` cone is suppressed only on warning/alert (T02-48).
 - [x] STARS slew-chord parser for `*J` / `*P` / `*A` / `*B` / `*D` (and doubles); chords are scope-only and never emit Command IR; `DAL123 H270` still turns (T02-49).
-- [x] Conflict alert stays T04-09 `CA` datablock text plus tone; still **no** 3 NM CA halo; circles on this scope are TPA J-rings only.
+- [x] Conflict Alert uses kinematic CPA and the lower pair airspace type (Type 1–4); Line 0 flashes red `CA` at 800 ms on / 800 ms off until acknowledged, then stays red. `CA K`, `CA`, `CA P`, and `CA E` replace the rejected `*CA` alias; `kdem-ca` is the manual bench. Still **no** 3 NM CA halo; circles on this scope are TPA J-rings only.
 - [x] Comprehensive end-to-end integration and acceptance test suite in `src/scope/atpaFidelity.integration.test.ts` (T02-50).
 
 ### Preview Area addendum (T02-51–54)
@@ -793,4 +793,3 @@ Direct in-place text annotations on flight progress strips, supporting double-cl
 ## Glossary reminders
 
 Use `phases/_shared/glossary.md` terms: **scope**, **PPI**, **datablock**, **track**, **CRC keys**. Distances NM, altitudes feet MSL, speed knots. Do not invent “zoom level,” “labels,” or “sprites” in user-facing UI copy — say **range**, **datablock**, **target**. Forbidden/required list: `phases/_shared/references.md`.
-
