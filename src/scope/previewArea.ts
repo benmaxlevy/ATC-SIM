@@ -24,7 +24,6 @@ import {
   ensureTrackDisplay,
   isCaPairInhibited,
   setCaPairInhibited,
-  toggleCaPairInhibited,
   acknowledgeAlert,
   toggleTrackCaInhibited,
 } from "./trackDisplay";
@@ -694,15 +693,7 @@ export function executeCaPairToggle(
   }
 
   if (id2 !== undefined) {
-    const inhibited = !isCaPairInhibited(view, id1, id2);
-    setCaPairInhibited(view, id1, id2, inhibited);
-    if (world) {
-      const ac1 = world.aircraft.find((a) => a.id === id1);
-      const ac2 = world.aircraft.find((a) => a.id === id2);
-      if (ac1 && ac2) {
-        setCaPairInhibited(view, ac1.callsign, ac2.callsign, inhibited);
-      }
-    }
+    toggleCaPairInhibitedForWorld(view, world, id1, id2);
     cancelPreviewArea(view.preview);
     return true;
   }
@@ -710,6 +701,33 @@ export function executeCaPairToggle(
   // trk2 omitted: wait for slew click on track 2
   armPreviewSlewAction(view.preview, { type: "caPairToggle", trk1: id1 }, nowMs);
   return true;
+}
+
+/** Toggle one logical pair while keeping its id and callsign keys in sync. */
+function toggleCaPairInhibitedForWorld(
+  view: ScopeView,
+  world: World | undefined,
+  idA: string,
+  idB: string,
+): boolean {
+  const acA = world?.aircraft.find((ac) => ac.id === idA || ac.callsign === idA);
+  const acB = world?.aircraft.find((ac) => ac.id === idB || ac.callsign === idB);
+  const namesA = [
+    ...new Set([idA, acA?.id, acA?.callsign].filter((name): name is string => !!name)),
+  ];
+  const namesB = [
+    ...new Set([idB, acB?.id, acB?.callsign].filter((name): name is string => !!name)),
+  ];
+  const currentlyInhibited = namesA.some((nameA) =>
+    namesB.some((nameB) => isCaPairInhibited(view, nameA, nameB)),
+  );
+  const next = !currentlyInhibited;
+  for (const nameA of namesA) {
+    for (const nameB of namesB) {
+      setCaPairInhibited(view, nameA, nameB, next);
+    }
+  }
+  return next;
 }
 
 export function executeCaPairSlew(view: ScopeView, nowMs: number = Date.now()): void {
@@ -771,8 +789,7 @@ export function handleCaSlewClick(
 
     // §7.10: one slew toggles the selected current/pairwise-inhibited pair.
     if (selected && other) {
-      toggleCaPairInhibited(view, selected.id, other.id);
-      toggleCaPairInhibited(view, selected.callsign, other.callsign);
+      toggleCaPairInhibitedForWorld(view, world, selected.id, other.id);
       cancelPreviewArea(view.preview);
       return true;
     }
@@ -788,10 +805,7 @@ export function handleCaSlewClick(
     }
     const trk1 = armed.trk1;
     const trk2 = clickedTrackId;
-    toggleCaPairInhibited(view, trk1, trk2);
-    const ac1 = world.aircraft.find((a) => a.id === trk1);
-    const ac2 = world.aircraft.find((a) => a.id === trk2);
-    if (ac1 && ac2) toggleCaPairInhibited(view, ac1.callsign, ac2.callsign);
+    toggleCaPairInhibitedForWorld(view, world, trk1, trk2);
     cancelPreviewArea(view.preview);
     return true;
   }
@@ -810,13 +824,7 @@ export function handleCaSlewClick(
     }
     const trk1 = armed.trk1;
     const trk2 = clickedTrackId;
-    const inhibited = !isCaPairInhibited(view, trk1, trk2);
-    setCaPairInhibited(view, trk1, trk2, inhibited);
-    const ac1 = world.aircraft.find((a) => a.id === trk1);
-    const ac2 = world.aircraft.find((a) => a.id === trk2);
-    if (ac1 && ac2) {
-      setCaPairInhibited(view, ac1.callsign, ac2.callsign, inhibited);
-    }
+    toggleCaPairInhibitedForWorld(view, world, trk1, trk2);
     cancelPreviewArea(view.preview);
     return true;
   }
