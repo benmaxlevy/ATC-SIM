@@ -66,6 +66,17 @@ Tests: <focused tests and npm run ci result>
 Notes: <magnetic controller contract; true ENU geometry; KATL 26R capture; KDEM 0-degree regression>
 ```
 
+## Forty-first swarm started — 2026-09-08
+
+User authorized implementation. The prior completed ILS guidance swarm makes
+`feature/ils-guidance` the required merge target and base; do not reset or
+rebase it onto `master`. One `gpt-5.6-luna` worker runs in an isolated ticket
+worktree at a time: T04-48, focused gate and captain squash merge; then T04-49;
+then T04-50. Captain owns every merge and runs `npm run ci` after each merge.
+No push, no later phase, and no work outside these tickets. Workers return only
+`READY TO MERGE` or `BLOCKED`; captain returns only `PHASE EXIT GREEN` or
+`PHASE EXIT BLOCKED`.
+
 # ATC-SIM swarm orchestrator — Fortieth swarm (ILS Signal Envelopes and Lead Capture)
 
 ## Fortieth swarm planned — 2026-09-08 (ILS Signal Envelopes and Lead Capture)
