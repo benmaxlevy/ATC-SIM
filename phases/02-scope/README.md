@@ -239,7 +239,7 @@ Mode C hundreds only, shorter leader allowed (same direction, half length).
 
 `T` / `M` behavior is unchanged (scope-focus only; radio `T20L` still parses).
 
-Default **leader** length is **36 CSS px** (pixel-constant, L8). L5 overlay remains length 0. DCB LDR length menu is T02-17.
+Default **leader** length is **36 CSS px** (pixel-constant, L8; LDR LEN step 3). L5 overlay remains length 0. DCB LDR LEN uses steps 0–7, adding 12 px (1/4 in) per step.
 
 Font: IBM Plex Mono or system monospace — not a STARS face.
 
@@ -254,7 +254,7 @@ Numpad compass, **including 5 = overlay**:
 ```
 
 - Default at spawn: **L8** (north). Same for all tracks until changed.
-- Phase 2 leader length is **fixed**: **36 px** at the current canvas (T02-19; was 24), **or** 0.35 NM world — pick **pixel-constant** (36 px) so length does not explode at 5 NM range. Documented in T02-05 / T02-19. T02-17 LDR DIR is direction only (no length menu).
+- Phase 2 leader length defaults to **36 px** at the current canvas. DCB LDR LEN and `*LDR` expose steps **0–7**, each adding **12 px / 1/4 in**. Pixel-constant length prevents leaders exploding at 5 NM range.
 - L5: length 0; datablock top-left at the target (with a 4 px gap so the symbol stays visible).
 - Per-track direction stored on display state, not on `Aircraft`.
 - Change direction with the DCB LDR DIR control or explicit `*L` Preview commands; bare `L` remains Preview text.
@@ -387,7 +387,7 @@ Implementers will be tempted to “just copy CRC.” Freeze this delta in the he
 | CENTER then click | `Home` / `End` / double-click / DCB PLACE CNTR then PPI click / middle-drag pan |
 | Full DCB | Green cell grid (T02-16); MAPS/RR/LDR/BRITE in T02-17; trainer MAIN/AUX/submenus in T02-22–30. Disabled WX; local PREF 1–8. Not NAS |
 | F3 Initiate Track (NAS associate) | F3 color stub |
-| Leader length + direction menus | Direction L1–L9; fixed **36 px** (T02-19). T02-17 LDR DIR is direction only (no length menu) |
+| Leader length + direction menus | Compass-named direction readouts; LDR LEN steps **0–7**, 12 px / 1/4 in each |
 | Pref sets, brightness, charsize | T02-26 CHAR SIZE per subsystem + BRITE channels (Plex/system mono). T02-29 local PREF 1–8. Not a NAS pref host |
 | F1 as a STARS function | F1 = help |
 | Radio is a headset | Radio is the phase 1 command line |

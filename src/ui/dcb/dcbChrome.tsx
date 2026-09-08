@@ -185,7 +185,8 @@ function snapPtlToPreset(num: number): PtlMinutes {
 }
 
 function snapLeaderLength(num: number): LeaderLengthPx {
-  return nearestPreset(LEADER_LENGTH_STEPS_PX, num);
+  const step = Math.max(0, Math.min(7, Math.round(num)));
+  return LEADER_LENGTH_STEPS_PX[step] ?? LEADER_LENGTH_STEPS_PX[0];
 }
 
 export function applyDirectNumericInput(view: ScopeView, cell: DcbSpinnerCell, num: number): void {
@@ -280,7 +281,7 @@ export function tpaMiSpinnerArmed(view: ScopeView): boolean {
 }
 
 /**
- * Keep RANGE / MAPS / RR / LDR DIR / LDR / CHAR / BRITE / HISTORY / PTL in sync
+ * Keep RANGE / MAPS / RR / LDR DIR / LDR LEN / CHAR / BRITE / HISTORY / PTL in sync
  * with keyboard chords.
  */
 export function syncDisplayControlBar(

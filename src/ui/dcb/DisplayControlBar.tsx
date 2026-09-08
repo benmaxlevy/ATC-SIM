@@ -1,9 +1,9 @@
 /**
  * Analog: CRC STARS DCB RANGE / PLACE CNTR / OFF CNTR / RR / PLACE RR / RR CNTR /
- * LDR DIR / LDR / MAPS / WX / CHAR SIZE / BRITE / AUX HISTORY / PTL / DCB position (R07).
+ * LDR DIR / LDR LEN / MAPS / WX / CHAR SIZE / BRITE / AUX HISTORY / PTL / DCB position (R07).
  * Trainer delta: separated dark-olive physical caps with CSS bevels; SHIFT swaps MAIN and AUX.
  * MAPS / TPA-ATPA / CHAR SIZE / BRITE / SSA FILTER / GI TEXT / PREF submenus replace the
- * bar; DONE / Esc return to MAIN. RANGE / RR / LDR DIR / LDR length are spinners
+ * bar; DONE / Esc return to MAIN. RANGE / RR / LDR DIR / LDR LEN are spinners
  * (arm, wheel steps frozen presets, second click / Esc commits; cursor stays in
  * that cell). An open submenu (PREF, MAPS, …) keeps the cursor in the DCB boxes.
  * CHAR SIZE and
@@ -345,7 +345,7 @@ function renderPhysicalMain(
               afterCell(onChange);
             }}
           >
-            <span className="dcb-cell-line">LDR</span>
+            <span className="dcb-cell-line">LDR LEN</span>
             <span id={DCB_LDR_LENGTH_READOUT_ID} className="dcb-cell-line">
               {formatDcbLdrLengthReadout(view.leaderLengthPx)}
             </span>
@@ -603,7 +603,7 @@ export function renderMainLegacy(
           )
         }
       >
-        <span className="dcb-cell-line">LDR</span>
+        <span className="dcb-cell-line">LDR LEN</span>
         <span id={DCB_LDR_LENGTH_READOUT_ID} className="dcb-cell-line">
           {formatDcbLdrLengthReadout(view.leaderLengthPx)}
         </span>

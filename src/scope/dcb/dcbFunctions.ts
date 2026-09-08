@@ -5,7 +5,7 @@
  * layout. GEO MAPS / CURRENT / *D ALL iterate the complete loaded inventory,
  * including maps absent from DCB groups. Empty DCB slots stay disabled. WX1–6
  * latch `view.wxLevels` (VIP 1–6). Generated **range rings** (2/5/10 NM, PLACE RR origin in world NM),
- * **leader** L1–L9 direction spinner plus discrete length 0/24/36/48 px,
+ * **leader** compass direction spinner plus LDR LEN steps 0–7 (12 px / ¼ in),
  * CHAR SIZE per subsystem (DATA BLOCKS / LISTS / DCB / TOOLS / POS) on IBM
  * Plex Mono so FDB/LDB **datablock** cells stay character-cell. BRITE per
  * drawn channel as a 0–100 multiply. TPA J-rings 2/3/5/10 NM (selected or
@@ -27,6 +27,7 @@ import {
 } from "../fonts";
 import {
   DEFAULT_LEADER_DIR,
+  LEADER_DIR_LABELS,
   LEADER_LENGTH_STEPS_PX,
   isLeaderDir,
   type LeaderDir,
@@ -54,7 +55,7 @@ export const RR_KEYBOARD_INTERVALS_NM = [2, 5, 10, 20] as const;
 export type RrIntervalNm = (typeof RR_KEYBOARD_INTERVALS_NM)[number];
 export const DEFAULT_RR_INTERVAL_NM: RrIntervalNm = 5;
 
-/** Numpad compass dirs offered by DCB LDR DIR — same as scope-focus L+digit. */
+/** Compass dirs offered by DCB LDR DIR — same as scope-focus L+digit. */
 export const DCB_LEADER_DIRS: LeaderDir[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 /** CRC analog numbered MAPS slots. Trainer catalog binds dcbNumber; unused stay empty. */
@@ -576,8 +577,8 @@ export function applyRrCenter(view: ScopeView): void {
 }
 
 /**
- * DCB LDR DIR: same L1–L9 as scope-focus `L`+digit via `setLeaderDirForSelection`.
- * Spinner steps 1–9 (no wrap). Radio-focus `L090` is still a left turn.
+ * DCB LDR DIR: same compass positions as scope-focus `L`+digit via `setLeaderDirForSelection`.
+ * Spinner steps SW through NE (no wrap). Radio-focus `L090` is still a left turn.
  */
 export function applyDcbLeaderDir(view: ScopeView, world: World, dir: LeaderDir): void {
   if (!isLeaderDir(dir)) {
@@ -613,11 +614,11 @@ export function dcbLeaderDirReadout(
   view: ScopeView,
   world?: { selectedAircraftId: string | null } | null,
 ): string {
-  return `L${dcbLeaderDirValue(view, world)}`;
+  return LEADER_DIR_LABELS[dcbLeaderDirValue(view, world)];
 }
 
 export function formatDcbLdrLengthReadout(lengthPx: LeaderLengthPx): string {
-  return `${lengthPx}`;
+  return `${LEADER_LENGTH_STEPS_PX.indexOf(lengthPx)}`;
 }
 
 export function stepDcbLeaderLength(view: ScopeView, delta: number): void {

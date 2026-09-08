@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import {
   DEFAULT_LEADER_DIR,
+  LEADER_DIR_LABELS,
   L5_OVERLAY_GAP_PX,
   LEADER_BLOCK_GAP_PX,
   LEADER_LENGTH_PX,
@@ -45,6 +46,20 @@ test("AC1 — nine offsets; L8 is −Y (north), L6 is +X, L5 is ~0 length", () =
   const overlay = leaderOffsetPx(5);
   expect(Math.hypot(overlay.dx, overlay.dy)).toBeLessThanOrEqual(1);
   expect(leaderSegmentPx(5)).toBeNull();
+});
+
+test("DCB leader direction readouts use compass names", () => {
+  expect(LEADER_DIR_LABELS).toEqual({
+    1: "SW",
+    2: "S",
+    3: "SE",
+    4: "W",
+    5: "CTR",
+    6: "E",
+    7: "NW",
+    8: "N",
+    9: "NE",
+  });
 });
 
 test("compass diagonals keep a 36 px Euclidean leader length", () => {
@@ -104,7 +119,7 @@ test("AC8 — module says leader, cites CRC L1–L9, and names the discrete leng
   const src = sources["../leader.ts"] ?? "";
   expect(src).toMatch(/leader/);
   expect(src).toMatch(/L1–L9/);
-  expect(src).toMatch(/0\/24\/36\/48/);
+  expect(src).toMatch(/0–7/);
   expect(src).toMatch(/CRC STARS/);
   expect(src).not.toMatch(/\bstem\b/);
   expect(src).not.toMatch(/\bstick\b/);
@@ -112,7 +127,7 @@ test("AC8 — module says leader, cites CRC L1–L9, and names the discrete leng
 });
 
 test("AC7 — LDR length 0 is overlay analog; dir 5 stays overlay at 36 and 48", () => {
-  expect(LEADER_LENGTH_STEPS_PX).toEqual([0, 24, 36, 48]);
+  expect(LEADER_LENGTH_STEPS_PX).toEqual([0, 12, 24, 36, 48, 60, 72, 84]);
   expect(LEADER_LENGTH_PX).toBe(36);
   expect(leaderSegmentPx(8, 0)).toBeNull();
   expect(leaderOffsetPx(8, 0)).toEqual({ dx: 0, dy: 0 });
@@ -142,4 +157,5 @@ test("STARS leader length step conversion (0–7 steps)", () => {
   expect(leaderLengthPxFromStep(3)).toBe(36);
   expect(leaderLengthPxFromStep(4)).toBe(48);
   expect(leaderLengthPxFromStep(5)).toBe(60);
+  expect(leaderLengthPxFromStep(7)).toBe(84);
 });
