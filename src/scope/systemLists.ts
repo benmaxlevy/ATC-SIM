@@ -1511,7 +1511,12 @@ export function hasActiveUninhibitedSafetyAlert(world: World, view?: ScopeView):
   return world.alerts.msaw.some((alert) => {
     const ac = world.aircraft.find((item) => item.callsign === alert.callsign);
     const td = ac ? view.tracks.get(ac.id) : undefined;
-    return !td?.msawInhibited && !td?.msawCurrentAlertInhibited && !td?.msawProcessingInhibited;
+    return (
+      !td?.msawInhibited &&
+      !td?.msawCurrentAlertInhibited &&
+      !td?.msawProcessingInhibited &&
+      !td?.msawAcknowledged
+    );
   });
 }
 
