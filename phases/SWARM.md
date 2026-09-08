@@ -1,3 +1,57 @@
+# ATC-SIM swarm orchestrator — Thirty-ninth swarm (MSAW MULTI FUNC Q/V)
+
+## Thirty-ninth swarm planned — 2026-09-07 (MSAW MULTI FUNC Q/V)
+
+T02-120 resumes after its prior CI gate was repaired. User clarified the
+existing MULTI FUNC entry: `*` is MULTI FUNC, so `*Q` and `*V`, followed by a
+slew/click, are required. They remain Preview-area scope controls, never radio
+commands. One worker owns T02-120 and captain squash-merges into
+`feature/stars-ca-alignment`. Do not push.
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement `*Q` current-alert-only and `*V` persistent MSAW inhibition. |
+| Include | **T02-120** only, with this exact input clarification. |
+| Source | TI 6191.409 Rev. 30 §§7.14–7.15; R01/R02/R05/R07. |
+| Skip | Other MULTI FUNC grammar; MCI; supervisor/facility controls; MSAW geometry; Command IR. |
+| Stop | After T02-120 acceptance. No later phase. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `feature/stars-ca-alignment`, then runs focused tests and `npm run ci`. |
+| Model | Session default model. |
+
+**Product law:**
+
+- `*Q` / `*V` are exact MULTI FUNC Preview inputs, then selected-track slew;
+  no literal-radio command or unrelated shorthand is added.
+- `*Q` suppresses only current selected MSAW alert and clears with it. `*V`
+  persistently toggles selected-track MSAW processing. Neither acknowledges.
+- Generic ScopeView-local trainer state only; no certified MSAW claim, no
+  facility branch, no Command IR.
+
+**Wave:** A — T02-120 after planning commit.
+
+**Ticket / branch:**
+
+- `ticket/T02-120-msaw-multifunc-q-v` ← `phases/02-scope/tickets/T02-120-msaw-multifunc-q-v.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope MSAW MULTI FUNC Q/V T02-120
+Merge target: feature/stars-ca-alignment
+Merged: T02-120
+Tests: <focused tests and npm run ci result>
+Notes: <*Q current-only; *V persistent; no Command IR>
+```
+
+## Thirty-ninth swarm started — 2026-09-07
+
+Planning frozen: one worker, T02-120 only, exact `*Q`/`*V` Preview grammar,
+merge target `feature/stars-ca-alignment`, no push. Worker uses an isolated
+worktree and returns only `READY TO MERGE` or `BLOCKED`; captain gates merge
+with focused tests and `npm run ci`.
+
 # ATC-SIM swarm orchestrator — Thirty-eighth swarm (WX VIP Availability)
 
 ## Thirty-eighth swarm planned — 2026-09-07 (WX VIP Availability)

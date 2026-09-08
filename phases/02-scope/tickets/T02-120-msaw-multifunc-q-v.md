@@ -9,8 +9,8 @@
 
 ## Goal
 
-Implement the normal-controller MSAW controls `MULTI FUNC Q` and `MULTI FUNC
-V` as distinct, correctly-lived actions; neither is an alert acknowledgement
+Implement the normal-controller MSAW controls `*Q` and `*V` as distinct,
+correctly-lived actions; neither is an alert acknowledgement
 nor the altitude-filter command `*LA`.
 
 ## Context
@@ -18,10 +18,10 @@ nor the altitude-filter command `*LA`.
 The trainer evaluates MSAW and renders `LA`, acknowledgement, and `*`
 scaffolding, but has no operator path that sets MSAW inhibition. TI 6191.409
 distinguishes a current-alert-only inhibit (`Q`) from persistent per-track
-MSAW processing toggle (`V`). The prior Scope implementation must not map the
-user's requested `*Q` / `*V` shorthand to literal Preview `*Q` / `*V` aliases:
-the authentic input is the `<MULTI FUNC>` functional key followed by `Q` or
-`V`, then slew/click.
+MSAW processing toggle (`V`). In this trainer, `*` is the existing `<MULTI
+FUNC>` input, so `*Q` and `*V` are the required Preview buffer inputs, followed
+by a slew/click. They are not independent radio commands or aliases outside
+the MULTI FUNC path.
 
 ## Research
 
@@ -37,8 +37,8 @@ the authentic input is the `<MULTI FUNC>` functional key followed by `Q` or
 
 ## Scope
 
-- Add a minimal generic `<MULTI FUNC>` input path for this ticket's `Q` and
-  `V` chord plus slew/click target selection. Do not add unrelated F7 grammar.
+- Add `*Q` and `*V` to existing `<MULTI FUNC>` Preview buffer grammar plus
+  slew/click target selection. Do not add unrelated F7 grammar.
 - Model current-alert-only MSAW inhibit separately from persistent per-track
   MSAW processing inhibit. `Q` must clear automatically with that alert;
   `V` remains until toggled off or the existing lifecycle cleanup applies.
@@ -56,8 +56,7 @@ the authentic input is the `<MULTI FUNC>` functional key followed by `Q` or
 ## Out of scope
 
 - Supervisor §8.3 `V GI/GE/MI/ME`, approach-monitor controls, MCI, `CA M`,
-  MCI lists, CA behavior, literal Preview `*Q` / `*V` aliases, and all other
-  `<MULTI FUNC>` commands.
+  MCI lists, CA behavior, and all other `<MULTI FUNC>` commands.
 - MSAW geometry/threshold changes, new facilities, Command IR, speech, or
   external services.
 
@@ -75,15 +74,15 @@ the authentic input is the `<MULTI FUNC>` functional key followed by `Q` or
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** `<MULTI FUNC> Q` then valid owned active-MSAW track
+- [ ] **AC1 —** `*Q` then valid owned active-MSAW track
   slew/click suppresses only that current alert's MSAW presentation/tone and
   shows the documented ACID `*`; a future alert after clear is active again.
-- [ ] **AC2 —** `<MULTI FUNC> V` then valid owned track slew/click toggles
+- [ ] **AC2 —** `*V` then valid owned track slew/click toggles
   persistent MSAW processing and ACID `*`; toggling it back restores alerting
   when terrain criteria persist.
-- [ ] **AC3 —** `Q` and `V` are not acknowledgements; empty-preview click
-  acknowledgement remains a separate behavior, and `*LA` remains altitude
-  filter only.
+- [ ] **AC3 —** `*Q` and `*V` are MULTI FUNC Preview grammar, not radio
+  commands or acknowledgements; empty-preview click acknowledgement remains a
+  separate behavior, and `*LA` remains altitude filter only.
 - [ ] **AC4 —** Invalid, unowned, frozen, or non-alerting selections leave
   state unchanged and expose deterministic scope error feedback.
 - [ ] **AC5 —** Synthetic parser, lifecycle, list/datablock, and audio tests
@@ -95,8 +94,8 @@ the authentic input is the `<MULTI FUNC>` functional key followed by `Q` or
 
 - Unit: chord parser; state transitions/lifetime; invalid-selection guards.
 - Integration: MSAW evaluator plus presentation/tone and concurrent CA.
-- Manual: `kdem-ca`/MVA scenario walk of Q current-alert clear/re-alert and V
-  toggle; verify ACID `*` and no literal `*Q` / `*V` Preview alias.
+- Manual: `kdem-ca`/MVA scenario walk of `*Q` current-alert clear/re-alert and
+  `*V` toggle; verify ACID `*`.
 
 ## Suggested files
 
