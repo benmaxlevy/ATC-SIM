@@ -107,7 +107,7 @@ export function createEventSounds(options: EventSoundsOptions = {}): EventSounds
   }
 
   return {
-    sync(log, msawActive = true) {
+    sync(log, msawActive = false) {
       if (disposed) {
         return;
       }
@@ -117,7 +117,7 @@ export function createEventSounds(options: EventSoundsOptions = {}): EventSounds
         if (event.type === "alert.msaw.caution" || event.type === "alert.msaw.alert") {
           const wasActive = activeMsawCallsigns.size > 0;
           activeMsawCallsigns.add(event.callsign);
-          if (!wasActive) {
+          if (msawActive && !wasActive) {
             sound("msaw").play(true);
             msawPlaying = true;
           }

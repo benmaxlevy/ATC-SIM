@@ -11,7 +11,7 @@ export const CA_TONE_GAIN = 0.05;
 
 export interface CaAlertTone {
   /** Start/stop the beep from the sim tick. Safe with no AudioContext. */
-  sync(active: boolean, volumeMultiplier?: number): void;
+  sync(caActive: boolean, msawActiveOrVolume?: boolean | number, volumeMultiplier?: number): void;
   setVolume(vol: number): void;
   dispose(): void;
 }
@@ -22,6 +22,7 @@ export interface CaAlertToneOptions {
 }
 
 const CONFLICT_ALERT_URL = "/sounds/ConflictAlert.wav";
+const MSAW_ALERT_URL = "/sounds/Msaw.wav";
 export const ALERT_TONE_GAP_MS = 250;
 
 function audioContextConstructor(): typeof AudioContext | undefined {
@@ -46,8 +47,10 @@ export function createCaAlertTone(options: CaAlertToneOptions = {}): CaAlertTone
   let ctx: AudioContext | null = null;
   let osc: OscillatorNode | null = null;
   let gain: GainNode | null = null;
-  let element: HTMLAudioElement | null = null;
-  let elementLooping = false;
+  const elements = new Map<"ca" | "msaw", HTMLAudioElement>();
+  let currentElement: "ca" | "msaw" | null = null;
+  let browserCaActive = false;
+  let browserMsawActive = false;
   let elementRestartTimer: ReturnType<typeof setTimeout> | null = null;
   let disposed = false;
   let currentVolumeMultiplier = 1.0;
@@ -88,15 +91,47 @@ export function createCaAlertTone(options: CaAlertToneOptions = {}): CaAlertTone
   }
 
   function stopElement(): void {
-    elementLooping = false;
+    currentElement = null;
     if (elementRestartTimer !== null) {
       clearTimeout(elementRestartTimer);
       elementRestartTimer = null;
     }
-    element?.pause();
-    if (element) {
+    for (const element of elements.values()) {
+      element.pause();
       element.currentTime = 0;
     }
+  }
+
+  function activeElement(kind: "ca" | "msaw"): boolean {
+    return kind === "ca" ? browserCaActive : browserMsawActive;
+  }
+
+  function nextElement(): "ca" | "msaw" | null {
+    if (browserCaActive && browserMsawActive) return currentElement === "ca" ? "msaw" : "ca";
+    if (browserCaActive) return "ca";
+    if (browserMsawActive) return "msaw";
+    return null;
+  }
+
+  function startBrowserElement(kind: "ca" | "msaw"): void {
+    if (typeof Audio === "undefined") return;
+    let element = elements.get(kind);
+    if (!element) {
+      element = new Audio(kind === "ca" ? CONFLICT_ALERT_URL : MSAW_ALERT_URL);
+      element.addEventListener("ended", () => {
+        if (currentElement !== kind || !activeElement(kind)) return;
+        elementRestartTimer = setTimeout(() => {
+          elementRestartTimer = null;
+          const next = nextElement();
+          if (next) startBrowserElement(next);
+        }, ALERT_TONE_GAP_MS);
+      });
+      elements.set(kind, element);
+    }
+    currentElement = kind;
+    element.volume = Math.min(1, currentVolumeMultiplier);
+    element.currentTime = 0;
+    void element.play().catch(() => undefined);
   }
 
   function ensureGraph(audio: AudioContext): void {
@@ -123,51 +158,41 @@ export function createCaAlertTone(options: CaAlertToneOptions = {}): CaAlertTone
         gain.gain.value = CA_TONE_GAIN * currentVolumeMultiplier;
       }
     },
-    sync(nextActive: boolean, volumeMultiplier?: number) {
+    sync(
+      nextCaActive: boolean,
+      msawActiveOrVolume: boolean | number = false,
+      volumeMultiplier?: number,
+    ) {
       if (disposed) {
         return;
       }
-      if (volumeMultiplier !== undefined) {
-        currentVolumeMultiplier = Math.max(0, volumeMultiplier);
+      const nextMsawActive = typeof msawActiveOrVolume === "boolean" ? msawActiveOrVolume : false;
+      const nextVolume =
+        typeof msawActiveOrVolume === "number" ? msawActiveOrVolume : volumeMultiplier;
+      if (nextVolume !== undefined) {
+        currentVolumeMultiplier = Math.max(0, nextVolume);
       }
-      if (!nextActive || currentVolumeMultiplier === 0) {
-        if (options.getAudioContext === undefined) {
+      if (options.getAudioContext === undefined) {
+        browserCaActive = nextCaActive && currentVolumeMultiplier > 0;
+        browserMsawActive = nextMsawActive && currentVolumeMultiplier > 0;
+        if (!browserCaActive && !browserMsawActive) {
           stopElement();
+          return;
         }
-        if (gain) {
-          gain.gain.value = 0;
-        }
-        if (!nextActive) {
-          stopGraph();
+        if (!currentElement || !activeElement(currentElement)) {
+          stopElement();
+          const next = nextElement();
+          if (next) startBrowserElement(next);
         }
         return;
       }
-      if (options.getAudioContext === undefined) {
-        if (typeof Audio === "undefined") {
-          return;
+      if (!nextCaActive || currentVolumeMultiplier === 0) {
+        if (gain) {
+          gain.gain.value = 0;
         }
-        if (elementLooping) {
-          element!.volume = Math.min(1, currentVolumeMultiplier);
-          return;
+        if (!nextCaActive) {
+          stopGraph();
         }
-        const nextElement = element ?? new Audio(CONFLICT_ALERT_URL);
-        if (!element) {
-          element = nextElement;
-          nextElement.addEventListener("ended", () => {
-            if (!elementLooping || elementRestartTimer !== null) {
-              return;
-            }
-            elementRestartTimer = setTimeout(() => {
-              elementRestartTimer = null;
-              if (elementLooping) {
-                void element?.play().catch(() => undefined);
-              }
-            }, ALERT_TONE_GAP_MS);
-          });
-        }
-        elementLooping = true;
-        nextElement.volume = Math.min(1, currentVolumeMultiplier);
-        void nextElement.play().catch(() => undefined);
         return;
       }
       const audio = tryContext();
@@ -186,7 +211,7 @@ export function createCaAlertTone(options: CaAlertToneOptions = {}): CaAlertTone
       disposed = true;
       stopGraph();
       stopElement();
-      element = null;
+      elements.clear();
       if (ctx && !options.getAudioContext) {
         void ctx.close().catch(() => undefined);
       }

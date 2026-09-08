@@ -24,16 +24,11 @@ test("plays the shipped WAV for each alert and handoff edge", () => {
   });
   const log = new SessionLog();
 
-  for (const type of [
-    "alert.msaw.caution",
-    "handoff.inbound.offered",
-    "handoff.outbound.accepted",
-  ] as const) {
+  for (const type of ["handoff.inbound.offered", "handoff.outbound.accepted"] as const) {
     log.append(event(type));
   }
   sounds.sync(log);
 
-  expect(created[EVENT_SOUND_URLS.msaw]?.play).toHaveBeenCalledWith(true);
   expect(created[EVENT_SOUND_URLS.handoffRequest]?.play).toHaveBeenCalledOnce();
   expect(created[EVENT_SOUND_URLS.handoffAccepted]?.play).toHaveBeenCalledOnce();
   sounds.dispose();
@@ -54,17 +49,4 @@ test("does not replay old events or process events after disposal", () => {
   log.append(event("alert.msaw.alert"));
   sounds.sync(log);
   expect(play).toHaveBeenCalledOnce();
-});
-
-test("loops MSAW until every active MSAW clears", () => {
-  const play = vi.fn();
-  const stop = vi.fn();
-  const sounds = createEventSounds({ createSound: () => ({ play, stop, dispose: vi.fn() }) });
-  const log = new SessionLog();
-  log.append(event("alert.msaw.alert"));
-  sounds.sync(log);
-  log.append(event("alert.msaw.clear"));
-  sounds.sync(log);
-  expect(play).toHaveBeenCalledWith(true);
-  expect(stop).toHaveBeenCalledOnce();
 });

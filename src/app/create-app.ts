@@ -239,14 +239,14 @@ export function createApp(deps: AppDeps): AppHandles {
       setStatus: emitVoiceStatus,
       nowWallMs: () => Date.now(),
     });
-    eventSounds.sync(log, msawAlertActive);
+    eventSounds.sync(log);
     // Scope owns acknowledgement and inhibit state; callers that have that
     // state pass the filtered result. Keep the world-only fallback for
     // headless callers and backwards-compatible app tests.
     if (caAlertActive === undefined) {
-      caAlertTone.sync(world.alerts.ca.length > 0);
+      caAlertTone.sync(world.alerts.ca.length > 0, world.alerts.msaw.length > 0);
     } else {
-      caAlertTone.sync(caAlertActive);
+      caAlertTone.sync(caAlertActive, msawAlertActive ?? false);
     }
   }
 
