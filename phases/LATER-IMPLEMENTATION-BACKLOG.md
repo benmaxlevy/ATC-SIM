@@ -63,6 +63,18 @@ Later work must keep: FDB glyph **LA** (not the letters MSAW); no GPWS/TAWS;
 no datablock/target tint from MSAW; CA remains the only conflict audio. Do
 not restore yellow MSAW without a cited STARS two-color MSAW rule.
 
+### MCI is display scaffolding, not Conflict Alert
+
+Visible now: CA is a distinct live alert system with per-track and per-pair
+inhibit state. `WorldAlerts.mci` and MCI list/render paths exist, and `*MCI`
+only gates that scope display.
+
+Still missing: no MCI evaluator populates `WorldAlerts.mci` during world
+steps; no per-track or beacon-scoped MCI suppression state; and no controller
+`CA M` command. Do not represent MCI as a CA alias: later work must add its
+own detection, suppression, and command semantics while retaining CA's
+independent alert and inhibit behavior.
+
 ### Real ATPA pairing and predicted geometry
 
 Live now: catalog volumes walked by `approachId` (T02-43), in-trail pairing
