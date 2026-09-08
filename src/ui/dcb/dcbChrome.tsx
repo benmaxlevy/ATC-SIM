@@ -51,6 +51,7 @@ import {
   snapBriteLevel,
   toggleVideoMap,
   toggleWxLevel,
+  vipMaskHasPixels,
   videoMapByDcbNumber,
   effectiveSurveillanceMode,
   setSurveillanceMode,
@@ -793,6 +794,7 @@ export function renderSite(view: ScopeView, onChange: () => void) {
 }
 
 export function renderWxCell(view: ScopeView, onChange: () => void, n: 1 | 2 | 3 | 4 | 5 | 6) {
+  const available = vipMaskHasPixels(view.wxMosaic, n);
   return (
     <DcbCell
       key={n}
@@ -803,6 +805,7 @@ export function renderWxCell(view: ScopeView, onChange: () => void, n: 1 | 2 | 3
       onClick={() => runCell(view, onChange, () => toggleWxLevel(view, n))}
     >
       <span className="dcb-cell-line">{`WX${n}`}</span>
+      {available && <span className="dcb-cell-line">AVL</span>}
     </DcbCell>
   );
 }

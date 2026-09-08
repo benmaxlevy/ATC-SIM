@@ -1,7 +1,7 @@
 /**
- * Session-loop hook: fetch IEM N0Q when any VIP latch is on and the mosaic
- * is missing or older than WX_REFRESH_MS (5 min). Extra WX clicks do not
- * refetch. All-off skips the network and keeps the last mosaic.
+ * Session-loop hook: fetch IEM N0Q when the mosaic is missing or older than
+ * WX_REFRESH_MS (5 min). WX latches control paint only; they never control
+ * data availability or refresh cadence.
  */
 
 import type { LatLon } from "@core";
@@ -35,9 +35,6 @@ export function ensureWxMosaic(
   view: WxEnsureTarget,
   opts: EnsureWxMosaicOpts,
 ): Promise<void> | undefined {
-  if (!anyWxLevelOn(view.wxLevels)) {
-    return undefined;
-  }
   const pending = inFlight.get(view);
   if (pending) {
     return pending;

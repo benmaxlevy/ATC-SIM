@@ -16,6 +16,7 @@ import {
   rgbToDbz,
   shouldRefetch,
   vipAtNm,
+  vipMaskHasPixels,
 } from "../index";
 import { N0Q_RGB_DBZ_RAMP } from "../n0qRamp";
 
@@ -70,6 +71,29 @@ test("vipAtNm is 0 for empty mosaic and out-of-bounds NM", async () => {
   const arp = { latDeg: 0, lonDeg: 0 };
   const outside = latLonToNm({ latDeg: 2, lonDeg: 2 }, arp);
   expect(vipAtNm(mosaic, outside.xNm, outside.yNm, arp)).toBe(0);
+});
+
+test("vipMaskHasPixels is isolated by level and ignores packed padding", () => {
+  const mosaic = {
+    ...emptyWxMosaic(),
+    widthPx: 3,
+    heightPx: 1,
+    vipMasks: [
+      new Uint8Array([0]),
+      new Uint8Array([0b010]),
+      new Uint8Array([0]),
+      new Uint8Array([0b1000]),
+      new Uint8Array([0]),
+      new Uint8Array([0b100]),
+    ] as const,
+  };
+  expect(vipMaskHasPixels(emptyWxMosaic(), 1)).toBe(false);
+  expect(vipMaskHasPixels(mosaic, 1)).toBe(false);
+  expect(vipMaskHasPixels(mosaic, 2)).toBe(true);
+  expect(vipMaskHasPixels(mosaic, 3)).toBe(false);
+  expect(vipMaskHasPixels(mosaic, 4)).toBe(false);
+  expect(vipMaskHasPixels(mosaic, 5)).toBe(false);
+  expect(vipMaskHasPixels(mosaic, 6)).toBe(true);
 });
 
 test("shouldRefetch is 5 min, in-pad ARP stays, never-fetched empty refetches", () => {

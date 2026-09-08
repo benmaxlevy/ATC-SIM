@@ -67,13 +67,12 @@ test("ensureWxMosaic fixtureUrl replaces a stale empty IEM mosaic", async () => 
   expect(view.wxMosaic.widthPx).toBe(8);
 });
 
-test("ensureWxMosaic skips fetch when all levels are off", async () => {
+test("ensureWxMosaic fetches at boot when all levels are off", async () => {
   const view = createScopeView(0, 0, { arp: { latDeg: 33.6, lonDeg: -84.4 } });
   const calls: string[] = [];
-  const result = ensureWxMosaic(view, { nowMs: 1_000, fetchImpl: mockFetch(calls) });
-  expect(result).toBeUndefined();
-  expect(calls).toEqual([]);
-  expect(view.wxMosaic.widthPx).toBe(0);
+  await ensureWxMosaic(view, { nowMs: 1_000, fetchImpl: mockFetch(calls) });
+  expect(calls.length).toBeGreaterThanOrEqual(1);
+  expect(view.wxMosaic.widthPx).toBeGreaterThan(0);
 });
 
 test("ensureWxMosaic fetches once when a level is on and mosaic is empty", async () => {
@@ -113,13 +112,17 @@ test("ensureWxMosaic shares one in-flight tile fetch and refetches after 5 min",
   expect(view.wxMosaic.fetchedAtMs).toBe(WX_REFRESH_MS);
 });
 
-test("ensureWxMosaic leaves last mosaic when all levels turn off", async () => {
+test("ensureWxMosaic refreshes after five minutes while all levels are off", async () => {
   const view = createScopeView(0, 0, { arp: { latDeg: 33.6, lonDeg: -84.4 } });
-  view.wxLevels = [true, false, false, false, false, false];
-  await ensureWxMosaic(view, { nowMs: 1, fetchImpl: mockFetch([]) });
+  const calls: string[] = [];
+  const fetchImpl = mockFetch(calls);
+  await ensureWxMosaic(view, { nowMs: 1, fetchImpl });
   const kept = view.wxMosaic;
-  view.wxLevels = [false, false, false, false, false, false];
-  expect(ensureWxMosaic(view, { nowMs: 2, fetchImpl: mockFetch([]) })).toBeUndefined();
+  expect(ensureWxMosaic(view, { nowMs: 2, fetchImpl })).toBeUndefined();
   expect(view.wxMosaic).toBe(kept);
+  const firstBatch = calls.length;
+  await ensureWxMosaic(view, { nowMs: WX_REFRESH_MS + 1, fetchImpl });
+  expect(calls).toHaveLength(firstBatch * 2);
+  expect(view.wxMosaic.fetchedAtMs).toBe(WX_REFRESH_MS + 1);
   expect(emptyWxMosaic().widthPx).toBe(0);
 });

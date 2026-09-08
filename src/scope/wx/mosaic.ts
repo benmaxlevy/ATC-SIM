@@ -47,6 +47,26 @@ function maskBit(mask: Uint8Array, index: number): boolean {
   return ((mask[index >> 3] ?? 0) & (1 << (index & 7))) !== 0;
 }
 
+/**
+ * True when this VIP plane has a set bit for a real mosaic pixel. Packed
+ * padding bits after `widthPx * heightPx` never make a level available.
+ */
+export function vipMaskHasPixels(mosaic: WxMosaic, level: VipLevel): boolean {
+  const pixelCount = mosaic.widthPx * mosaic.heightPx;
+  if (pixelCount <= 0) {
+    return false;
+  }
+  const mask = mosaic.vipMasks[level - 1];
+  const fullBytes = Math.floor(pixelCount / 8);
+  for (let i = 0; i < fullBytes; i++) {
+    if ((mask[i] ?? 0) !== 0) {
+      return true;
+    }
+  }
+  const remainingBits = pixelCount % 8;
+  return remainingBits > 0 && ((mask[fullBytes] ?? 0) & ((1 << remainingBits) - 1)) !== 0;
+}
+
 export function emptyWxMosaic(
   bounds?: Partial<WxBbox> & { fetchedAtMs?: number; source?: WxMosaic["source"] },
 ): WxMosaic {

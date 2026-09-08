@@ -918,6 +918,7 @@ export {
   shouldRefetch,
   startMetarPolling,
   vipAtNm,
+  vipMaskHasPixels,
 } from "./wx";
 export type {
   EnsureWxMosaicOpts,

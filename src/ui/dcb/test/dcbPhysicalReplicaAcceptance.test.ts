@@ -94,6 +94,38 @@ test("AC1 — MAIN renders six WX latches, enabled SITE, enabled MODE FSL spinne
   expect(html).toContain('data-dcb-layout-id="map-6"');
 });
 
+test("T02-121 — WX caps show AVL only for their own populated VIP masks", () => {
+  const view = createScopeView();
+  view.wxMosaic = {
+    ...view.wxMosaic,
+    widthPx: 3,
+    heightPx: 1,
+    vipMasks: [
+      new Uint8Array([0]),
+      new Uint8Array([0b010]),
+      new Uint8Array([0]),
+      new Uint8Array([0]),
+      new Uint8Array([0]),
+      new Uint8Array([0b100]),
+    ],
+  };
+  const html = renderToStaticMarkup(
+    createElement(DisplayControlBar, { view, onChange: () => undefined }),
+  );
+  const wxCap = (n: number) =>
+    html.match(new RegExp(`<button[^>]*data-dcb-cell="wx${n}"[^>]*>[\\s\\S]*?</button>`))?.[0] ??
+    "";
+
+  expect(wxCap(1)).toContain("WX1");
+  expect(wxCap(1)).not.toContain("AVL");
+  expect(wxCap(2)).toContain("WX2");
+  expect(wxCap(2)).toContain("AVL");
+  expect(wxCap(3)).not.toContain("AVL");
+  expect(wxCap(4)).not.toContain("AVL");
+  expect(wxCap(5)).not.toContain("AVL");
+  expect(wxCap(6)).toContain("AVL");
+});
+
 test("AC2 — normal, pressed, and disabled caps have distinct physical tokens", () => {
   const normal = dcbHtml();
   expect(normal).toMatch(/data-dcb-kind="spinner"/);
