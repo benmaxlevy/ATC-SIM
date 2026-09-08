@@ -9,6 +9,7 @@ import {
   aircraftForTpaRings,
   formatDcbTpaMiReadout,
   stepTpaRadiusNm,
+  tpaConeDigitPlacement,
   tpaScreenRadiusPx,
 } from "../tpa";
 import { syncTrackDisplays } from "../trackDisplay";
@@ -41,4 +42,15 @@ test("with no selection, TPA rings owned tracks only", () => {
       (ac) => ac.id,
     ),
   ).toEqual([dal.id]);
+});
+
+test("tpaConeDigitPlacement centers digits on cone axis under magnetic variation", () => {
+  const headingDeg = 90;
+  const magVarDeg = -5;
+  const lengthNm = 3;
+  const digit = tpaConeDigitPlacement(0, 0, headingDeg, lengthNm, magVarDeg);
+  const trueRad = ((headingDeg + magVarDeg) * Math.PI) / 180;
+  expect(digit.text).toBe("3");
+  expect(digit.eastNm).toBeCloseTo(1.5 * Math.sin(trueRad), 6);
+  expect(digit.northNm).toBeCloseTo(1.5 * Math.cos(trueRad), 6);
 });

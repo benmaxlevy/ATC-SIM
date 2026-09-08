@@ -1465,7 +1465,13 @@ export function drawManualTpaCones(
     }
     const pts = worldPts.map((p) => nmToScreen(p.eastNm, p.northNm, view.camera, size));
     if (tpaSizeReadoutEnabled(view.tracks.get(ac.id))) {
-      const digit = tpaConeDigitPlacement(shown.xNm, shown.yNm, shown.headingDeg, lengthNm);
+      const digit = tpaConeDigitPlacement(
+        shown.xNm,
+        shown.yNm,
+        shown.headingDeg,
+        lengthNm,
+        world.navigation.magVarDeg,
+      );
       const p = nmToScreen(digit.eastNm, digit.northNm, view.camera, size);
       const gap = coneDigitGapBox(ctx, digit.text, p.x, p.y, view.charSizes.tools);
       strokeConeAroundDigits(ctx, pts, gap, size);

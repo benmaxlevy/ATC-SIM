@@ -243,8 +243,9 @@ export function tpaConeDigitPlacement(
   northNm: number,
   headingDeg: number,
   lengthNm: number,
+  magVarDeg = 0,
 ): TpaSizeDigitPlacement {
-  const tip = groundTrackPointNm(eastNm, northNm, headingDeg, lengthNm);
+  const tip = groundTrackPointNm(eastNm, northNm, headingDeg, lengthNm, magVarDeg);
   const placed = atpaConeMileagePlacement({
     trailing: { xNm: eastNm, yNm: northNm },
     leading: { xNm: tip.eastNm, yNm: tip.northNm },
