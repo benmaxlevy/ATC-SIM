@@ -22,6 +22,7 @@ import type { ScopeView } from "./scopeView";
 import { getFlightPlanEntries } from "./systemLists";
 import {
   ensureTrackDisplay,
+  isCaPairInhibited,
   setCaPairInhibited,
   toggleCaPairInhibited,
   acknowledgeAlert,
@@ -268,7 +269,7 @@ export function previewTrackingSlew(state: PreviewAreaState): PreviewArmedAction
     if (
       action.type === "caPairSlew" ||
       (action.type === "caSingleTrackInhibit" && action.trk === undefined) ||
-      ((action.type === "caPairInhibit" || action.type === "caPairEnable") &&
+      (action.type === "caPairToggle" &&
         action.trk2 === undefined)
     ) {
       return action;
@@ -311,10 +312,10 @@ function trackingMnemonic(action: PreviewArmedAction): string {
       return action.trk1 ? `CA ${action.trk1}` : "CA";
     case "caSingleTrackInhibit":
       return action.trk ? `CA K ${action.trk}` : "CA K";
-    case "caPairInhibit":
+    case "caPairToggle":
       return action.trk1 ? `CA P ${action.trk1}` : "CA P";
-    case "caPairEnable":
-      return action.trk1 ? `CA E ${action.trk1}` : "CA E";
+    case "caControllerPairs":
+      return action.mode === "toggle" ? "CA C" : `CA C ${action.mode === "enable" ? "E" : "I"}`;
     case "saveAsPref":
       return "PREF";
     default:
@@ -661,7 +662,7 @@ export function executeCaSingleTrackInhibit(
   return true;
 }
 
-export function executeCaPairInhibit(
+export function executeCaPairToggle(
   view: ScopeView,
   trk1: string | undefined,
   trk2?: string,
@@ -669,7 +670,7 @@ export function executeCaPairInhibit(
   nowMs: number = Date.now(),
 ): boolean {
   if (trk1 === undefined) {
-    armPreviewSlewAction(view.preview, { type: "caPairInhibit" }, nowMs);
+    armPreviewSlewAction(view.preview, { type: "caPairToggle" }, nowMs);
     return true;
   }
   let id1 = trk1;
@@ -694,12 +695,13 @@ export function executeCaPairInhibit(
   }
 
   if (id2 !== undefined) {
-    setCaPairInhibited(view, id1, id2, true);
+    const inhibited = !isCaPairInhibited(view, id1, id2);
+    setCaPairInhibited(view, id1, id2, inhibited);
     if (world) {
       const ac1 = world.aircraft.find((a) => a.id === id1);
       const ac2 = world.aircraft.find((a) => a.id === id2);
       if (ac1 && ac2) {
-        setCaPairInhibited(view, ac1.callsign, ac2.callsign, true);
+        setCaPairInhibited(view, ac1.callsign, ac2.callsign, inhibited);
       }
     }
     cancelPreviewArea(view.preview);
@@ -707,62 +709,35 @@ export function executeCaPairInhibit(
   }
 
   // trk2 omitted: wait for slew click on track 2
-  armPreviewSlewAction(view.preview, { type: "caPairInhibit", trk1: id1 }, nowMs);
-  return true;
-}
-
-export function executeCaPairEnable(
-  view: ScopeView,
-  trk1: string | undefined,
-  trk2?: string,
-  world?: World,
-  nowMs: number = Date.now(),
-): boolean {
-  if (trk1 === undefined) {
-    armPreviewSlewAction(view.preview, { type: "caPairEnable" }, nowMs);
-    return true;
-  }
-  let id1 = trk1;
-  let id2 = trk2;
-  if (world) {
-    const res1 = resolveScopeFlid(trk1, world, view);
-    if (!res1.ok) {
-      view.preview.buffer = trk2 ? `CA E ${trk1} ${trk2}` : `CA E ${trk1}`;
-      rejectPreviewArea(view.preview, nowMs);
-      return false;
-    }
-    id1 = res1.aircraftId;
-    if (trk2 !== undefined) {
-      const res2 = resolveScopeFlid(trk2, world, view);
-      if (!res2.ok) {
-        view.preview.buffer = `CA E ${trk1} ${trk2}`;
-        rejectPreviewArea(view.preview, nowMs);
-        return false;
-      }
-      id2 = res2.aircraftId;
-    }
-  }
-
-  if (id2 !== undefined) {
-    setCaPairInhibited(view, id1, id2, false);
-    if (world) {
-      const ac1 = world.aircraft.find((a) => a.id === id1);
-      const ac2 = world.aircraft.find((a) => a.id === id2);
-      if (ac1 && ac2) {
-        setCaPairInhibited(view, ac1.callsign, ac2.callsign, false);
-      }
-    }
-    cancelPreviewArea(view.preview);
-    return true;
-  }
-
-  // trk2 omitted: wait for slew click on track 2
-  armPreviewSlewAction(view.preview, { type: "caPairEnable", trk1: id1 }, nowMs);
+  armPreviewSlewAction(view.preview, { type: "caPairToggle", trk1: id1 }, nowMs);
   return true;
 }
 
 export function executeCaPairSlew(view: ScopeView, nowMs: number = Date.now()): void {
   armPreviewSlewAction(view.preview, { type: "caPairSlew" }, nowMs);
+}
+
+/** Analog: TI 6191.409 §7.13 controller-owned CA control; trainer delta: local
+ * single-player owned-pair state only, with no network or supervisor scope. */
+export function executeCaControllerPairs(
+  view: ScopeView,
+  mode: "toggle" | "enable" | "inhibit",
+  world: World | undefined,
+): boolean {
+  if (!world) return false;
+  const inhibited = mode === "toggle" ? !view.caControllerOwnedPairsInhibited : mode === "inhibit";
+  view.caControllerOwnedPairsInhibited = inhibited;
+  const owned = world.aircraft.filter((ac) => ensureTrackDisplay(view.tracks, ac.id).ownership === "owned");
+  for (let i = 0; i < owned.length; i += 1) {
+    for (let j = i + 1; j < owned.length; j += 1) {
+      const a = owned[i]!;
+      const b = owned[j]!;
+      setCaPairInhibited(view, a.id, b.id, inhibited);
+      setCaPairInhibited(view, a.callsign, b.callsign, inhibited);
+    }
+  }
+  cancelPreviewArea(view.preview);
+  return true;
 }
 
 export function handleCaSlewClick(
@@ -826,37 +801,20 @@ export function handleCaSlewClick(
     return true;
   }
 
-  if (armed.type === "caPairInhibit") {
+  if (armed.type === "caPairToggle") {
     if (!armed.trk1) {
-      view.preview.armed = { type: "caPairInhibit", trk1: clickedTrackId };
+      view.preview.armed = { type: "caPairToggle", trk1: clickedTrackId };
       view.preview.slewAction = view.preview.armed;
       return true;
     }
     const trk1 = armed.trk1;
     const trk2 = clickedTrackId;
-    setCaPairInhibited(view, trk1, trk2, true);
+    const inhibited = !isCaPairInhibited(view, trk1, trk2);
+    setCaPairInhibited(view, trk1, trk2, inhibited);
     const ac1 = world.aircraft.find((a) => a.id === trk1);
     const ac2 = world.aircraft.find((a) => a.id === trk2);
     if (ac1 && ac2) {
-      setCaPairInhibited(view, ac1.callsign, ac2.callsign, true);
-    }
-    cancelPreviewArea(view.preview);
-    return true;
-  }
-
-  if (armed.type === "caPairEnable") {
-    if (!armed.trk1) {
-      view.preview.armed = { type: "caPairEnable", trk1: clickedTrackId };
-      view.preview.slewAction = view.preview.armed;
-      return true;
-    }
-    const trk1 = armed.trk1;
-    const trk2 = clickedTrackId;
-    setCaPairInhibited(view, trk1, trk2, false);
-    const ac1 = world.aircraft.find((a) => a.id === trk1);
-    const ac2 = world.aircraft.find((a) => a.id === trk2);
-    if (ac1 && ac2) {
-      setCaPairInhibited(view, ac1.callsign, ac2.callsign, false);
+      setCaPairInhibited(view, ac1.callsign, ac2.callsign, inhibited);
     }
     cancelPreviewArea(view.preview);
     return true;

@@ -284,8 +284,7 @@ function applyTrackingSlewHit(
     }
     case "caSingleTrackInhibit":
     case "caPairSlew":
-    case "caPairInhibit":
-    case "caPairEnable": {
+    case "caPairToggle": {
       if (view.preview.phase !== "armed") {
         armPreviewSlewAction(view.preview, action, Date.now());
       }
@@ -326,8 +325,7 @@ export function handlePpiLeftClick(
     liveTracking &&
     (liveTracking.type === "caSingleTrackInhibit" ||
       liveTracking.type === "caPairSlew" ||
-      liveTracking.type === "caPairInhibit" ||
-      liveTracking.type === "caPairEnable")
+      liveTracking.type === "caPairToggle")
   ) {
     const hit = pickAircraftHitAt(
       world,

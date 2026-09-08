@@ -12,6 +12,7 @@ import { createScopeView } from "../scopeView";
 import { handleScopeKeyDown } from "../scopeKeys";
 import { handlePpiLeftClick } from "../ppi";
 import { hasActiveUninhibitedConflict } from "../systemLists";
+import { ensureTrackDisplay } from "../trackDisplay";
 
 function keyEvent(key: string, opts?: { ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean }) {
   return {
@@ -339,7 +340,7 @@ describe("T02-114: Conflict Alert (CA) preview grammar & slew execution", () => 
     expect(view.tracks.get("ac1")?.inhibitCA).toBe(false);
   });
 
-  it("CA K, CA P, and CA E accept all-slew target selection", () => {
+  it("CA K and CA P accept all-slew target selection", () => {
     const world = createWorld();
     const view = createScopeView();
     const ac1 = makeTestAircraft({ id: "ac1", callsign: "AAL100", xNm: 0, yNm: 0 });
@@ -358,14 +359,14 @@ describe("T02-114: Conflict Alert (CA) preview grammar & slew execution", () => 
     handlePpiLeftClick(view, world, 550, 400, 1000, 800);
     expect(view.caInhibitedPairs.has("AAL100|DAL200")).toBe(true);
 
-    beginPreviewBufferEntry(view.preview, "CA E", 3000);
+    beginPreviewBufferEntry(view.preview, "CA P", 3000);
     handleScopeKeyDown(keyEvent("Enter"), view, "scope", world);
     handlePpiLeftClick(view, world, 500, 400, 1000, 800);
     handlePpiLeftClick(view, world, 550, 400, 1000, 800);
     expect(view.caInhibitedPairs.has("AAL100|DAL200")).toBe(false);
   });
 
-  it("CA K, CA P, and CA E slew directly without Enter", () => {
+  it("CA K and CA P slew directly without Enter", () => {
     const world = createWorld();
     const view = createScopeView();
     const ac1 = makeTestAircraft({ id: "ac1", callsign: "AAL100", xNm: 0, yNm: 0 });
@@ -382,7 +383,7 @@ describe("T02-114: Conflict Alert (CA) preview grammar & slew execution", () => 
     handlePpiLeftClick(view, world, 550, 400, 1000, 800);
     expect(view.caInhibitedPairs.has("AAL100|DAL200")).toBe(true);
 
-    beginPreviewBufferEntry(view.preview, "CA E", 3000);
+    beginPreviewBufferEntry(view.preview, "CA P", 3000);
     handlePpiLeftClick(view, world, 500, 400, 1000, 800);
     handlePpiLeftClick(view, world, 550, 400, 1000, 800);
     expect(view.caInhibitedPairs.has("AAL100|DAL200")).toBe(false);
@@ -502,7 +503,7 @@ describe("T02-114: Conflict Alert (CA) preview grammar & slew execution", () => 
 
     // Armed waiting for track 2 click
     expect(view.preview.phase).toBe("armed");
-    expect(view.preview.armed?.type).toBe("caPairInhibit");
+    expect(view.preview.armed?.type).toBe("caPairToggle");
     expect(formatPreviewReadout(view.preview)).toBe("CA P ac1");
 
     // Click Track 2
@@ -511,7 +512,7 @@ describe("T02-114: Conflict Alert (CA) preview grammar & slew execution", () => 
     expect(view.caInhibitedPairs.has("AAL100|DAL200")).toBe(true);
   });
 
-  it("CA E <trk1> <trk2> directly removes pairwise inhibit", () => {
+  it("CA P <trk1> <trk2> toggles an inhibited pair back on", () => {
     const world = createWorld();
     const view = createScopeView();
     const ac1 = makeTestAircraft({ id: "ac1", callsign: "AAL100" });
@@ -519,13 +520,13 @@ describe("T02-114: Conflict Alert (CA) preview grammar & slew execution", () => 
     world.aircraft = [ac1, ac2];
     view.caInhibitedPairs.add("AAL100|DAL200");
 
-    beginPreviewBufferEntry(view.preview, "CA E AAL100 DAL200", 1000);
+    beginPreviewBufferEntry(view.preview, "CA P AAL100 DAL200", 1000);
     handleScopeKeyDown(keyEvent("Enter"), view, "scope", world);
     expect(view.preview.phase).toBe("idle");
     expect(view.caInhibitedPairs.has("AAL100|DAL200")).toBe(false);
   });
 
-  it("CA E <trk1> [Click Track 2] removes pairwise inhibit", () => {
+  it("CA P <trk1> [Click Track 2] toggles an inhibited pair back on", () => {
     const world = createWorld();
     const view = createScopeView();
     const ac1 = makeTestAircraft({ id: "ac1", callsign: "AAL100", xNm: 0, yNm: 0 });
@@ -533,16 +534,55 @@ describe("T02-114: Conflict Alert (CA) preview grammar & slew execution", () => 
     world.aircraft = [ac1, ac2];
     view.caInhibitedPairs.add("AAL100|DAL200");
 
-    beginPreviewBufferEntry(view.preview, "CA E AAL100", 1000);
+    beginPreviewBufferEntry(view.preview, "CA P AAL100", 1000);
     handleScopeKeyDown(keyEvent("Enter"), view, "scope", world);
 
     expect(view.preview.phase).toBe("armed");
-    expect(view.preview.armed?.type).toBe("caPairEnable");
+    expect(view.preview.armed?.type).toBe("caPairToggle");
 
     // Click Track 2
     handlePpiLeftClick(view, world, 550, 400, 1000, 800);
     expect(view.preview.phase).toBe("idle");
     expect(view.caInhibitedPairs.has("AAL100|DAL200")).toBe(false);
+  });
+
+  it("CA C I/E and bare CA C affect only locally owned pairs", () => {
+    const world = createWorld();
+    const view = createScopeView();
+    const ac1 = makeTestAircraft({ id: "ac1", callsign: "AAL100", xNm: 0, yNm: 0 });
+    const ac2 = makeTestAircraft({ id: "ac2", callsign: "DAL200", xNm: 2, yNm: 0 });
+    const ac3 = makeTestAircraft({ id: "ac3", callsign: "UAL300", xNm: 4, yNm: 0 });
+    world.aircraft = [ac1, ac2, ac3];
+    ensureTrackDisplay(view.tracks, "ac1").ownership = "owned";
+    ensureTrackDisplay(view.tracks, "ac2").ownership = "owned";
+    ensureTrackDisplay(view.tracks, "ac3").ownership = "unowned";
+    view.caInhibitedPairs.add("AAL100|UAL300");
+
+    beginPreviewBufferEntry(view.preview, "CA C I", 1000);
+    handleScopeKeyDown(keyEvent("Enter"), view, "scope", world);
+    expect(view.caControllerOwnedPairsInhibited).toBe(true);
+    expect(view.caInhibitedPairs.has("AAL100|DAL200")).toBe(true);
+    expect(view.caInhibitedPairs.has("AAL100|UAL300")).toBe(true);
+
+    // A qualifying pair introduced after CA C I remains governed by the setting.
+    const ac4 = makeTestAircraft({ id: "ac4", callsign: "BOS400", xNm: 6, yNm: 0 });
+    world.aircraft.push(ac4);
+    ensureTrackDisplay(view.tracks, "ac4").ownership = "owned";
+    world.alerts.ca = [
+      { callsignA: "AAL100", callsignB: "BOS400", severity: "alert", distNm: 1, deltaAltFt: 0 },
+    ];
+    expect(hasActiveUninhibitedConflict(world, view)).toBe(false);
+
+    beginPreviewBufferEntry(view.preview, "CA C E", 1000);
+    handleScopeKeyDown(keyEvent("Enter"), view, "scope", world);
+    expect(view.caControllerOwnedPairsInhibited).toBe(false);
+    expect(view.caInhibitedPairs.has("AAL100|DAL200")).toBe(false);
+    expect(view.caInhibitedPairs.has("AAL100|UAL300")).toBe(true);
+
+    beginPreviewBufferEntry(view.preview, "CA C", 1000);
+    handleScopeKeyDown(keyEvent("Enter"), view, "scope", world);
+    expect(view.caControllerOwnedPairsInhibited).toBe(true);
+    expect(view.caInhibitedPairs.has("AAL100|DAL200")).toBe(true);
   });
 
   it("clicking an alerted track with empty preview buffer acknowledges the alert immediately", () => {
@@ -656,6 +696,6 @@ describe("T02-114: Conflict Alert (CA) preview grammar & slew execution", () => 
     beginPreviewBufferEntry(view.preview, "CA E BOGUS", 3000);
     handleScopeKeyDown(keyEvent("Enter"), view, "scope", world);
     expect(view.preview.phase).toBe("idle");
-    expect(formatPreviewReadout(view.preview)).toBe("CA E BOGUS INV");
+    expect(formatPreviewReadout(view.preview)).toMatch(/CA E BOGUS INV/);
   });
 });

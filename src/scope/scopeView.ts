@@ -298,6 +298,8 @@ export interface ScopeView {
   tracks: Map<string, TrackDisplay>;
   /** Pairwise CA inhibited canonical keys ("idA|idB" or "callsignA|callsignB"). */
   caInhibitedPairs: Set<string>;
+  /** CA C controller-wide setting for pairs whose two tracks are locally owned. */
+  caControllerOwnedPairsInhibited: boolean;
   /** Acknowledged CA alert pair canonical keys. */
   acknowledgedAlertPairs: Set<string>;
   /** Scope-focus letter chord (`F` filter). Null when idle. */
@@ -481,6 +483,7 @@ export function createScopeView(
     beaconSelectCodes: [],
     tracks: new Map(),
     caInhibitedPairs: new Set(),
+    caControllerOwnedPairsInhibited: false,
     acknowledgedAlertPairs: new Set(),
     pendingChord: null,
     helpOpen: false,

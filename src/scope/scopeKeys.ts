@@ -70,8 +70,8 @@ import {
   previewBufferCharFromKey,
   rejectPreviewArea,
   executeCaSingleTrackInhibit,
-  executeCaPairInhibit,
-  executeCaPairEnable,
+  executeCaPairToggle,
+  executeCaControllerPairs,
   executeCaPairSlew,
   type PreviewArmedAction,
   type PreviewKeyOutcome,
@@ -504,11 +504,11 @@ function applyPreviewArmedAction(
     case "caSingleTrackInhibit":
       executeCaSingleTrackInhibit(view, action.trk, world, nowMs);
       return;
-    case "caPairInhibit":
-      executeCaPairInhibit(view, action.trk1, action.trk2, world, nowMs);
+    case "caPairToggle":
+      executeCaPairToggle(view, action.trk1, action.trk2, world, nowMs);
       return;
-    case "caPairEnable":
-      executeCaPairEnable(view, action.trk1, action.trk2, world, nowMs);
+    case "caControllerPairs":
+      executeCaControllerPairs(view, action.mode, world);
       return;
     case "caPairSlew":
       executeCaPairSlew(view, nowMs);

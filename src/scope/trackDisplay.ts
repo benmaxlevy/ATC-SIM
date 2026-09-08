@@ -141,6 +141,8 @@ export interface TrackDisplayState {
   caInhibitedPairs: Set<string>;
   /** Acknowledged CA alert pair canonical keys. */
   acknowledgedAlertPairs: Set<string>;
+  /** CA C setting applies to current and later pairs with two locally owned tracks. */
+  caControllerOwnedPairsInhibited?: boolean;
 }
 
 export function createTrackDisplayState(tracks?: Map<string, TrackDisplay>): TrackDisplayState {
@@ -148,6 +150,7 @@ export function createTrackDisplayState(tracks?: Map<string, TrackDisplay>): Tra
     tracks: tracks ?? new Map(),
     caInhibitedPairs: new Set(),
     acknowledgedAlertPairs: new Set(),
+    caControllerOwnedPairsInhibited: false,
   };
 }
 
@@ -291,6 +294,14 @@ export function filterActiveCaAlerts(
 
     if (tdA?.inhibitCA === true || tdA?.caInhibited === true) return false;
     if (tdB?.inhibitCA === true || tdB?.caInhibited === true) return false;
+
+    if (
+      state.caControllerOwnedPairsInhibited === true &&
+      tdA?.ownership === "owned" &&
+      tdB?.ownership === "owned"
+    ) {
+      return false;
+    }
 
     if (isCaPairInhibited(state, alert.callsignA, alert.callsignB)) return false;
     if (acA && acB && isCaPairInhibited(state, acA.id, acB.id)) return false;

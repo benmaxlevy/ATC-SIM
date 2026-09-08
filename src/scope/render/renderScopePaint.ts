@@ -120,10 +120,19 @@ function caSeverityForVisibleTrack(view: ScopeView, world: World, callsign: stri
 function isCaPairInhibitedForTrack(view: ScopeView, world: World, ac: Aircraft): boolean {
   return world.alerts.ca.some((alert) => {
     if (alert.callsignA !== ac.callsign && alert.callsignB !== ac.callsign) return false;
+    const trackA = world.aircraft.find((candidate) => candidate.callsign === alert.callsignA);
+    const trackB = world.aircraft.find((candidate) => candidate.callsign === alert.callsignB);
+    if (
+      view.caControllerOwnedPairsInhibited &&
+      trackA &&
+      trackB &&
+      view.tracks.get(trackA.id)?.ownership === "owned" &&
+      view.tracks.get(trackB.id)?.ownership === "owned"
+    ) {
+      return true;
+    }
     if (isCaPairInhibited(view, alert.callsignA, alert.callsignB)) return true;
-    const a = world.aircraft.find((candidate) => candidate.callsign === alert.callsignA);
-    const b = world.aircraft.find((candidate) => candidate.callsign === alert.callsignB);
-    return Boolean(a && b && isCaPairInhibited(view, a.id, b.id));
+    return Boolean(trackA && trackB && isCaPairInhibited(view, trackA.id, trackB.id));
   });
 }
 

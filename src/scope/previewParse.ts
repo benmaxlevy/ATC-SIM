@@ -95,10 +95,13 @@ export type PreviewArmedAction =
   | { readonly type: "deleteFlightPlanEntry"; readonly index: number }
   /** Single-track CA inhibit toggle (`CA K <trk>`). */
   | { readonly type: "caSingleTrackInhibit"; readonly trk?: string }
-  /** Explicit pair CA inhibit (`CA P <trk1> [<trk2>]`). */
-  | { readonly type: "caPairInhibit"; readonly trk1?: string; readonly trk2?: string }
-  /** Explicit pair CA enable (`CA E <trk1> [<trk2>]`). */
-  | { readonly type: "caPairEnable"; readonly trk1?: string; readonly trk2?: string }
+  /** Pair CA inhibit/enable toggle (`CA P <trk1> [<trk2>]`). */
+  | { readonly type: "caPairToggle"; readonly trk1?: string; readonly trk2?: string }
+  /** Controller-owned pair CA setting (`CA C [E|I]`). */
+  | {
+      readonly type: "caControllerPairs";
+      readonly mode: "toggle" | "enable" | "inhibit";
+    }
   /** Pair CA inhibit slew toggle (`CA [ENTER]`). */
   | { readonly type: "caPairSlew"; readonly trk1?: string }
   /** `*MCI Enter`: Toggle Mode C Intruder alerting on/off. */
@@ -654,8 +657,7 @@ const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
   "associateFlightPlan",
   "caSingleTrackInhibit",
   "caPairSlew",
-  "caPairInhibit",
-  "caPairEnable",
+  "caPairToggle",
 ]);
 
 function compactTrackingBuffer(buffer: string): string {
@@ -932,10 +934,10 @@ function parseDeleteCommand(buffer: string): PreviewCommandResult | null {
 /**
  * Authentic Raytheon STARS Conflict Alert preview grammar (TI 6191.409 Sections 7.3, 7.9–7.12).
  * - `CA K <trk>`: Single-track inhibit toggle.
- * - `CA P <trk1> [<trk2>]`: Explicit pair inhibit. If trk2 omitted, waits for slew click on track 2.
- * - `CA E <trk1> [<trk2>]`: Explicit pair enable. If trk2 omitted, waits for slew click on track 2.
+ * - `CA P <trk1> [<trk2>]`: Pair inhibit/enable toggle. If trk2 omitted, waits for slew click on track 2.
+ * - `CA C [E|I]`: Toggle, force enable, or force inhibit CA for qualifying owned pairs.
  * - `CA [ENTER]`: Enters two-click pending pair-inhibit slew mode.
- * - Disallowed supervisor commands / non-standard aliases (CA A, CA M, CA Q) are strictly rejected.
+ * - Disallowed supervisor commands / non-standard aliases (CA A, CA E, CA M, CA Q) are strictly rejected.
  */
 export function parseCaCommand(buffer: string): PreviewCommandResult | null {
   const trimmed = buffer.trim();
@@ -980,34 +982,31 @@ export function parseCaCommand(buffer: string): PreviewCommandResult | null {
 
   if (sub === "P") {
     if (restTokens.length === 0) {
-      return { kind: "action", action: { type: "caPairInhibit" } };
+      return { kind: "action", action: { type: "caPairToggle" } };
     }
     if (restTokens.length === 1) {
-      return { kind: "action", action: { type: "caPairInhibit", trk1: restTokens[0] } };
+      return { kind: "action", action: { type: "caPairToggle", trk1: restTokens[0] } };
     }
     if (restTokens.length === 2) {
       return {
         kind: "action",
-        action: { type: "caPairInhibit", trk1: restTokens[0], trk2: restTokens[1] },
+        action: { type: "caPairToggle", trk1: restTokens[0], trk2: restTokens[1] },
       };
     }
     return invalid("invalid CA P command");
   }
 
-  if (sub === "E") {
+  if (sub === "C") {
     if (restTokens.length === 0) {
-      return { kind: "action", action: { type: "caPairEnable" } };
+      return { kind: "action", action: { type: "caControllerPairs", mode: "toggle" } };
     }
-    if (restTokens.length === 1) {
-      return { kind: "action", action: { type: "caPairEnable", trk1: restTokens[0] } };
-    }
-    if (restTokens.length === 2) {
+    if (restTokens.length === 1 && (restTokens[0] === "E" || restTokens[0] === "I")) {
       return {
         kind: "action",
-        action: { type: "caPairEnable", trk1: restTokens[0], trk2: restTokens[1] },
+        action: { type: "caControllerPairs", mode: restTokens[0] === "E" ? "enable" : "inhibit" },
       };
     }
-    return invalid("invalid CA E command");
+    return invalid("invalid CA C command");
   }
 
   return invalid("unknown CA command");

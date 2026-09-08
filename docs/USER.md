@@ -239,7 +239,7 @@ The **Preview Area** is the primary typed command buffer of the STARS terminal r
 1. **Activation**: Focus the radar PPI (via `Tab` or by clicking empty scope background). Typing `*`, `+`, `/`, letters, digits, and spaces buffers into `view.preview`.
 2. **Rejection (`INV`)**: Unrecognized commands, out-of-range parameters, or illegal syntax immediately flash `<buffer> INV` for 2 seconds.
 3. **Cancellation**: Pressing `Escape` clears active entry buffers, disarms slew modes, and cancels list repositioning.
-4. **Target Slew Actions**: Commands that require a target (e.g. `CA`, `CA P <track>`, `CA E <track>`, `+`, `/`, `*1`–`*8`, `[Index#]`) arm a slew state and wait for a left-click on an aircraft target. Clicking an active CA target with an empty Preview Area acknowledges it; clicking empty scope background does **not** consume or cancel an armed command.
+4. **Target Slew Actions**: Commands that require a target (e.g. `CA`, `CA P <track>`, `+`, `/`, `*1`–`*8`, `[Index#]`) arm a slew state and wait for a left-click on an aircraft target. Clicking an active CA target with an empty Preview Area acknowledges it; clicking empty scope background does **not** consume or cancel an armed command.
 5. **No bare L chord**: `L` and `L1`–`L9` remain Preview Area text. They never change leader direction or auto-submit a command. Use DCB LDR DIR or explicit `*L` leader commands.
 
 ---
@@ -362,8 +362,8 @@ System list commands in STARS do not accept aliases and use the exact prefix syn
 |---|---|---|
 | `CA K [track]` | `CA K DAL123` Enter, or type `CA K` then slew-click | Toggles CA inhibit for one track; a normal upright `Δ` appears inline beside its ACID. |
 | `CA [track]` | Type `CA`; slew-click one member of an existing CA pair | Toggles that pair-specific CA inhibit. Both members show inline `Δ`; other pairs involving either track still alert. With multiple active partners and no existing inhibit, use `CA P` and slew both tracks. |
-| `CA P [track1] [track2]` | `CA P`; slew-click Track 1 then Track 2 (or enter both ACIDs) | Adds the pair-specific CA inhibit; both members show inline `Δ`. |
-| `CA E [track1] [track2]` | `CA E DAL123 AAL456` Enter; omit Track 2 to slew it; omit both to slew both | Removes the pair-specific CA inhibit. |
+| `CA P [track1] [track2]` | `CA P`; slew-click Track 1 then Track 2 (or enter both ACIDs) | Toggles the pair-specific CA inhibit; both members show inline `Δ` while inhibited. |
+| `CA C [E\|I]` | Enter after `CA C`, `CA C E`, or `CA C I` | Toggles, enables, or inhibits CA for every pair whose two tracks are locally owned. Does not change `CA K` or nonqualifying pairs. |
 | Empty Preview Area, click active LA/CA target | Slew-click the alerted target | Acknowledges active CA/MSAW for that track: the affected red Line 0 indicator becomes steady; CA tone stops when no other unacknowledged CA remains. |
 | `*MCI Enter` | Type `*MCI` Enter | **Toggle Mode C Intruder Alerting**: Globally toggles Mode C Intruder alerting on or off (`view.mciEnabled`). |
 
@@ -445,7 +445,7 @@ To prevent operator confusion between similar keyboard inputs, the simulator adh
 - **Altitude Filters**: Scope-focus `F` begins the altitude filter entry chord. `*F Enter` flashes the filter limits readout. `*F then click` toggles forced FDB.
 - **Beacon Commands**: Scope-focus `B##` toggles beacon select blocks. `*BCN ##` adds beacon filters. `*B then click` activates the 5-second Beaconator.
 - **Mode C vs Video Maps**: Tap `M` toggles the Mode C altitude readout on FDBs. Typing `M` followed by a map name (e.g. `M DEM1_27`) toggles that map layer.
-- **Alert Controls**: `CA K`, `CA`, `CA P`, and `CA E` control Conflict Alert inhibits; an empty-preview slew-click acknowledges CA. `*LA <floor><ceiling> Enter` sets altitude filter bounds only. `*MCI Enter` toggles Mode C Intruder alerting.
+- **Alert Controls**: `CA K`, `CA`, `CA P`, and `CA C [E|I]` control Conflict Alert inhibits; an empty-preview slew-click acknowledges CA. `CA E` is rejected. `*LA <floor><ceiling> Enter` sets altitude filter bounds only. `*MCI Enter` toggles Mode C Intruder alerting.
 
 ### Deferred commands backlog
 

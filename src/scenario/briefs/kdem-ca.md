@@ -27,10 +27,10 @@ airline or tail number; select the two visible tracks in the pair.
 2. Raise or wait for another active pair, then use `CA P` and slew both tracks
    to inhibit that pair. Confirm the upright `Δ` immediately beside each ACID
    and that the alert tone and AL row are suppressed for the pair.
-3. Use `CA E` and slew the same pair. Confirm the inhibit mark is removed and
+3. Use `CA P` and slew the same pair. Confirm the inhibit mark is removed and
    the alert presentation/tone can return when the pair remains active.
 4. Use the explicit forms `CA K <ACID>`, `CA P <ACID> <ACID>`, and
-   `CA E <ACID> <ACID>` to repeat the same operations without track slews.
+   `CA P <ACID> <ACID>` to repeat the same operations without track slews.
 
 This is a trainer fixture, not certified STARS adaptation. The CA engine owns
 the live alert state; this scenario only supplies deterministic traffic.
