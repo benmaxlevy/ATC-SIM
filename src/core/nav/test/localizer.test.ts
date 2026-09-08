@@ -30,7 +30,13 @@ test("LOC signed cross-track and front-course envelope are reciprocal-course saf
   expect(north.crossTrackNm).toBeGreaterThan(0);
   expect(locEnvelope(locDeviation({ xNm: -1, yNm: 0 }, ils27), ils27)).toBeUndefined();
 
-  const reciprocal = { ...ils27, approachId: "ILS09", courseDeg: 90 };
+  const reciprocal = {
+    ...ils27,
+    approachId: "ILS09",
+    publishedCourseMagneticDeg: 90,
+    geometricCourseTrueDeg: 90,
+    courseDeg: 90,
+  };
   const south = locDeviation({ xNm: -6, yNm: 1 }, reciprocal);
   expect(south.alongTrackNm).toBeCloseTo(6, 5);
   expect(south.crossTrackNm).toBeLessThan(0);

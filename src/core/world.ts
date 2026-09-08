@@ -501,7 +501,10 @@ export function stepWorld(world: World, dtS: number): World {
   }
   despawnLandedAircraft(world);
   despawnDepartedAircraft(world);
-  syncConflictAlerts(world, evaluateConflictAlert(world.aircraft, undefined, world.navigation.magVarDeg));
+  syncConflictAlerts(
+    world,
+    evaluateConflictAlert(world.aircraft, undefined, world.navigation.magVarDeg),
+  );
   syncAtpaPairs(world, evaluateWorldAtpa(world));
   if (world.mvaChart) {
     syncMsawAlerts(

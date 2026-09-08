@@ -122,7 +122,10 @@ export function isInsideAtpaVolume(
   if (track.altitudeFt < volume.floorFt || track.altitudeFt > volume.ceilingFt) {
     return false;
   }
-  return courseChangeDeg(magneticToTrueDeg(track.headingDeg, magVarDeg), geometry.courseDeg) <= volume.courseToleranceDeg;
+  return (
+    courseChangeDeg(magneticToTrueDeg(track.headingDeg, magVarDeg), geometry.courseDeg) <=
+    volume.courseToleranceDeg
+  );
 }
 
 function isPrimaryOnlyTarget(track: AtpaTrack): boolean {
@@ -196,7 +199,12 @@ export function atpaPairKey(
  */
 export function resolveAtpaGeometry(
   catalog: {
-    approaches: ReadonlyArray<{ id: string; courseDeg?: number; publishedCourseMagneticDeg?: number; thresholdFixId?: string }>;
+    approaches: ReadonlyArray<{
+      id: string;
+      courseDeg?: number;
+      publishedCourseMagneticDeg?: number;
+      thresholdFixId?: string;
+    }>;
     fixes: ReadonlyArray<{ id: string; xNm?: number; yNm?: number }>;
   },
   volumes: ReadonlyArray<{ id: string; approachId: string }>,
@@ -221,7 +229,11 @@ export function resolveAtpaGeometry(
     ) {
       continue;
     }
-    out[volume.id] = { xNm: threshold.xNm, yNm: threshold.yNm, courseDeg: magneticToTrueDeg(publishedCourse, magVarDeg) };
+    out[volume.id] = {
+      xNm: threshold.xNm,
+      yNm: threshold.yNm,
+      courseDeg: magneticToTrueDeg(publishedCourse, magVarDeg),
+    };
   }
   return out;
 }

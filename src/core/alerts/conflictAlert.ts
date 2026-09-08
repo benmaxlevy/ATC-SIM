@@ -509,22 +509,25 @@ export function evaluateConflictAlert(
 /**
  * Resolve generic CaContext from scenario / facility procedure catalog data.
  */
-export function resolveCaContextFromCatalog(catalog?: {
-  airportId?: string;
-  fieldElevFt?: number;
-  arp?: { latDeg?: number; lonDeg?: number };
-  originXNm?: number;
-  originYNm?: number;
-  fixes?: ReadonlyArray<{ id: string; xNm?: number; yNm?: number }>;
-  approaches?: ReadonlyArray<{
-    id: string;
-    runway?: string;
-    courseDeg?: number;
-    publishedCourseMagneticDeg?: number;
-    thresholdFixId?: string;
-    lengthNm?: number;
-  }>;
-}, magVarDeg = 0): CaContext {
+export function resolveCaContextFromCatalog(
+  catalog?: {
+    airportId?: string;
+    fieldElevFt?: number;
+    arp?: { latDeg?: number; lonDeg?: number };
+    originXNm?: number;
+    originYNm?: number;
+    fixes?: ReadonlyArray<{ id: string; xNm?: number; yNm?: number }>;
+    approaches?: ReadonlyArray<{
+      id: string;
+      runway?: string;
+      courseDeg?: number;
+      publishedCourseMagneticDeg?: number;
+      thresholdFixId?: string;
+      lengthNm?: number;
+    }>;
+  },
+  magVarDeg = 0,
+): CaContext {
   if (!catalog) {
     return {
       originXNm: 0,

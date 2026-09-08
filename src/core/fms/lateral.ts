@@ -175,7 +175,10 @@ function guideProcedure(
   const nextId = lateral.routeFixIds[lateral.toFixIndex + 1];
   const nextFix = nextId === undefined ? undefined : registry.get(nextId);
   const inboundTrue = courseDeg(ac, current);
-  const nextCourseTrue = nextFix === undefined ? magneticToTrueDeg(ac.headingDeg, ctx.magVarDeg ?? 0) : courseDeg(current, nextFix);
+  const nextCourseTrue =
+    nextFix === undefined
+      ? magneticToTrueDeg(ac.headingDeg, ctx.magVarDeg ?? 0)
+      : courseDeg(current, nextFix);
   const inbound = trueToMagneticDeg(inboundTrue, ctx.magVarDeg ?? 0);
   const nextCourse = trueToMagneticDeg(nextCourseTrue, ctx.magVarDeg ?? 0);
   const startNm = flyByStartNm(ac.speedKt, courseChangeDeg(inbound, nextCourse));
@@ -204,7 +207,12 @@ function guideProcedure(
   return ac.headingDeg;
 }
 
-function shouldSequenceFlyOver(ac: Aircraft, fix: RegisteredFix, dtS: number, magVarDeg: number): boolean {
+function shouldSequenceFlyOver(
+  ac: Aircraft,
+  fix: RegisteredFix,
+  dtS: number,
+  magVarDeg: number,
+): boolean {
   const dist = distanceNm(ac, fix);
   if (dist < flyOverSequenceNm(ac.speedKt, dtS)) {
     return true;

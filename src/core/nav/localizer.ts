@@ -100,7 +100,8 @@ export function locShouldCapture(args: {
   if (!envelope || Math.abs(envelope.normalizedError) > LOC_CAPTURE_NORMALIZED_ERROR) return false;
   return (
     args.requireInterceptHeading === false ||
-    courseChangeDeg(args.headingDeg, args.axis.publishedCourseMagneticDeg ?? args.axis.courseDeg) <= LOC_INTERCEPT_HEADING_MAX_DEG ||
+    courseChangeDeg(args.headingDeg, args.axis.publishedCourseMagneticDeg ?? args.axis.courseDeg) <=
+      LOC_INTERCEPT_HEADING_MAX_DEG ||
     Math.abs(envelope.normalizedError) <= LOC_CAPTURE_NORMALIZED_ERROR
   );
 }
@@ -133,8 +134,7 @@ export function locAxisForApproach(
   const want = approachId.trim().toUpperCase();
   const approach = catalog.approaches.find((item) => item.id.trim().toUpperCase() === want);
   const published = approach?.publishedCourseMagneticDeg ?? approach?.courseDeg;
-  if (!approach || published === undefined || approach.lengthNm === undefined)
-    return undefined;
+  if (!approach || published === undefined || approach.lengthNm === undefined) return undefined;
   const threshold = approach.thresholdFixId ? registry?.get(approach.thresholdFixId) : undefined;
   return {
     approachId: approach.id,

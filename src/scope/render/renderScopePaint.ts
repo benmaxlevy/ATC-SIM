@@ -179,7 +179,14 @@ export function collectDatablockProtectedGeometry(
         view.ptlByAircraftId.get(ac.id),
       )
     ) {
-      const e = ptlEndpoint(shown.xNm, shown.yNm, shown.headingDeg, shown.speedKt, view.ptlMinutes, world.navigation.magVarDeg);
+      const e = ptlEndpoint(
+        shown.xNm,
+        shown.yNm,
+        shown.headingDeg,
+        shown.speedKt,
+        view.ptlMinutes,
+        world.navigation.magVarDeg,
+      );
       out.push({
         kind: "segment",
         aircraftId: ac.id,
@@ -222,9 +229,13 @@ export function collectDatablockProtectedGeometry(
   )) {
     const shown = displayAircraft(ac, view.tracks.get(ac.id));
     if (!shown) continue;
-    const pts = manualTpaConePoints(shown.xNm, shown.yNm, shown.headingDeg, lengthNm, world.navigation.magVarDeg).map((q) =>
-      nmToScreen(q.eastNm, q.northNm, view.camera, size),
-    );
+    const pts = manualTpaConePoints(
+      shown.xNm,
+      shown.yNm,
+      shown.headingDeg,
+      lengthNm,
+      world.navigation.magVarDeg,
+    ).map((q) => nmToScreen(q.eastNm, q.northNm, view.camera, size));
     out.push({ kind: "polygon", aircraftId: ac.id, points: pts, strokePx: TPA_STROKE_PX });
   }
   const byCallsign = new Map(world.aircraft.map((ac) => [ac.callsign, ac]));
@@ -1344,7 +1355,14 @@ export function drawPredictedTrackLines(
     ) {
       continue;
     }
-    const end = ptlEndpoint(shown.xNm, shown.yNm, shown.headingDeg, shown.speedKt, view.ptlMinutes, world.navigation.magVarDeg);
+    const end = ptlEndpoint(
+      shown.xNm,
+      shown.yNm,
+      shown.headingDeg,
+      shown.speedKt,
+      view.ptlMinutes,
+      world.navigation.magVarDeg,
+    );
     const from = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
     const to = nmToScreen(end.eastNm, end.northNm, view.camera, size);
     const td = view.tracks.get(ac.id);
@@ -1435,7 +1453,13 @@ export function drawManualTpaCones(
     if (!shown) {
       continue;
     }
-    const worldPts = manualTpaConePoints(shown.xNm, shown.yNm, shown.headingDeg, lengthNm, world.navigation.magVarDeg);
+    const worldPts = manualTpaConePoints(
+      shown.xNm,
+      shown.yNm,
+      shown.headingDeg,
+      lengthNm,
+      world.navigation.magVarDeg,
+    );
     if (worldPts.length < 2) {
       continue;
     }
