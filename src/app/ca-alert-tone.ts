@@ -1,7 +1,7 @@
 /**
  * Analog: CRC STARS STCA aural (R07) — a tone while CA is active.
- * Trainer delta: square-wave beep on the Web Audio destination. Not NAS.
- * No vendor TTS/STT. Silent when AudioContext is missing or suspended.
+ * Trainer delta: shipped ConflictAlert.wav loop on the browser audio output.
+ * Injected AudioContext instances retain the testable oscillator path.
  */
 
 export const CA_TONE_HZ = 880;
@@ -20,6 +20,9 @@ export interface CaAlertToneOptions {
   getAudioContext?: () => AudioContext | null;
   now?: () => number;
 }
+
+const CONFLICT_ALERT_URL = "/sounds/ConflictAlert.wav";
+export const ALERT_TONE_GAP_MS = 250;
 
 function audioContextConstructor(): typeof AudioContext | undefined {
   const g = globalThis as typeof globalThis & { webkitAudioContext?: typeof AudioContext };
@@ -43,6 +46,9 @@ export function createCaAlertTone(options: CaAlertToneOptions = {}): CaAlertTone
   let ctx: AudioContext | null = null;
   let osc: OscillatorNode | null = null;
   let gain: GainNode | null = null;
+  let element: HTMLAudioElement | null = null;
+  let elementLooping = false;
+  let elementRestartTimer: ReturnType<typeof setTimeout> | null = null;
   let disposed = false;
   let currentVolumeMultiplier = 1.0;
 
@@ -81,6 +87,18 @@ export function createCaAlertTone(options: CaAlertToneOptions = {}): CaAlertTone
     gain = null;
   }
 
+  function stopElement(): void {
+    elementLooping = false;
+    if (elementRestartTimer !== null) {
+      clearTimeout(elementRestartTimer);
+      elementRestartTimer = null;
+    }
+    element?.pause();
+    if (element) {
+      element.currentTime = 0;
+    }
+  }
+
   function ensureGraph(audio: AudioContext): void {
     if (osc && gain) {
       return;
@@ -113,12 +131,43 @@ export function createCaAlertTone(options: CaAlertToneOptions = {}): CaAlertTone
         currentVolumeMultiplier = Math.max(0, volumeMultiplier);
       }
       if (!nextActive || currentVolumeMultiplier === 0) {
+        if (options.getAudioContext === undefined) {
+          stopElement();
+        }
         if (gain) {
           gain.gain.value = 0;
         }
         if (!nextActive) {
           stopGraph();
         }
+        return;
+      }
+      if (options.getAudioContext === undefined) {
+        if (typeof Audio === "undefined") {
+          return;
+        }
+        if (elementLooping) {
+          element!.volume = Math.min(1, currentVolumeMultiplier);
+          return;
+        }
+        const nextElement = element ?? new Audio(CONFLICT_ALERT_URL);
+        if (!element) {
+          element = nextElement;
+          nextElement.addEventListener("ended", () => {
+            if (!elementLooping || elementRestartTimer !== null) {
+              return;
+            }
+            elementRestartTimer = setTimeout(() => {
+              elementRestartTimer = null;
+              if (elementLooping) {
+                void element?.play().catch(() => undefined);
+              }
+            }, ALERT_TONE_GAP_MS);
+          });
+        }
+        elementLooping = true;
+        nextElement.volume = Math.min(1, currentVolumeMultiplier);
+        void nextElement.play().catch(() => undefined);
         return;
       }
       const audio = tryContext();
@@ -136,6 +185,8 @@ export function createCaAlertTone(options: CaAlertToneOptions = {}): CaAlertTone
     dispose() {
       disposed = true;
       stopGraph();
+      stopElement();
+      element = null;
       if (ctx && !options.getAudioContext) {
         void ctx.close().catch(() => undefined);
       }

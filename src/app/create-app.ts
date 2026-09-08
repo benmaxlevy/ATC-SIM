@@ -67,7 +67,7 @@ export interface AppHandles {
    * Drain check-ins and synchronize CA audio after physics. The scope passes
    * its filtered alert state so acknowledged/inhibited pairs stay silent.
    */
-  afterPhysicsTick(caAlertActive?: boolean): void;
+  afterPhysicsTick(caAlertActive?: boolean, msawAlertActive?: boolean): void;
   /** Command-line copy (formatted) or `null` to clear. */
   subscribeVoiceStatus(listener: (status: string | null) => void): () => void;
   caAlertTone: CaAlertTone;
@@ -226,7 +226,7 @@ export function createApp(deps: AppDeps): AppHandles {
   const caAlertTone = deps.caAlertTone ?? createCaAlertTone();
   const eventSounds = deps.eventSounds ?? createEventSounds();
 
-  function afterPhysicsTick(caAlertActive?: boolean): void {
+  function afterPhysicsTick(caAlertActive?: boolean, msawAlertActive?: boolean): void {
     // Newly scheduled STAR arrivals enter the same check-in queue as initial traffic.
     checkInQueue.scheduleFromWorld(world);
     checkInQueue.drain({
@@ -239,7 +239,7 @@ export function createApp(deps: AppDeps): AppHandles {
       setStatus: emitVoiceStatus,
       nowWallMs: () => Date.now(),
     });
-    eventSounds.sync(log);
+    eventSounds.sync(log, msawAlertActive);
     // Scope owns acknowledgement and inhibit state; callers that have that
     // state pass the filtered result. Keep the world-only fallback for
     // headless callers and backwards-compatible app tests.

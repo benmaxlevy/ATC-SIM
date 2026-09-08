@@ -1,4 +1,5 @@
 import type { SessionEvent, SessionLog } from "@core";
+import { ALERT_TONE_GAP_MS } from "./ca-alert-tone";
 
 export const EVENT_SOUND_URLS = {
   conflictAlert: "/sounds/ConflictAlert.wav",
@@ -10,12 +11,13 @@ export const EVENT_SOUND_URLS = {
 export type EventSoundName = keyof typeof EVENT_SOUND_URLS;
 
 export interface EventSound {
-  play(): void;
+  play(loop?: boolean): void;
+  stop(): void;
   dispose(): void;
 }
 
 export interface EventSounds {
-  sync(log: SessionLog): void;
+  sync(log: SessionLog, msawActive?: boolean): void;
   dispose(): void;
 }
 
@@ -26,15 +28,42 @@ export interface EventSoundsOptions {
 function browserSound(url: string): EventSound {
   let audio: HTMLAudioElement | null = null;
   let disposed = false;
+  let looping = false;
+  let restartTimer: ReturnType<typeof setTimeout> | null = null;
 
   return {
-    play() {
+    play(loop = false) {
       if (disposed || typeof Audio === "undefined") {
         return;
       }
       audio ??= new Audio(url);
+      looping = loop;
+      if (loop) {
+        audio.addEventListener("ended", () => {
+          if (!looping || restartTimer !== null) {
+            return;
+          }
+          restartTimer = setTimeout(() => {
+            restartTimer = null;
+            if (looping) {
+              void audio?.play().catch(() => undefined);
+            }
+          }, ALERT_TONE_GAP_MS);
+        });
+      }
       audio.currentTime = 0;
       void audio.play().catch(() => undefined);
+    },
+    stop() {
+      looping = false;
+      if (restartTimer !== null) {
+        clearTimeout(restartTimer);
+        restartTimer = null;
+      }
+      audio?.pause();
+      if (audio) {
+        audio.currentTime = 0;
+      }
     },
     dispose() {
       disposed = true;
@@ -46,9 +75,6 @@ function browserSound(url: string): EventSound {
 
 function soundForEvent(event: SessionEvent): EventSoundName | null {
   switch (event.type) {
-    case "alert.ca.caution":
-    case "alert.ca.alert":
-      return "conflictAlert";
     case "alert.msaw.caution":
     case "alert.msaw.alert":
       return "msaw";
@@ -66,6 +92,8 @@ function soundForEvent(event: SessionEvent): EventSoundName | null {
 export function createEventSounds(options: EventSoundsOptions = {}): EventSounds {
   const createSound = options.createSound ?? browserSound;
   const sounds = new Map<EventSoundName, EventSound>();
+  const activeMsawCallsigns = new Set<string>();
+  let msawPlaying = false;
   let cursor = 0;
   let disposed = false;
 
@@ -79,21 +107,47 @@ export function createEventSounds(options: EventSoundsOptions = {}): EventSounds
   }
 
   return {
-    sync(log) {
+    sync(log, msawActive = true) {
       if (disposed) {
         return;
       }
       const events = log.all();
       for (; cursor < events.length; cursor += 1) {
-        const name = soundForEvent(events[cursor]!);
+        const event = events[cursor]!;
+        if (event.type === "alert.msaw.caution" || event.type === "alert.msaw.alert") {
+          const wasActive = activeMsawCallsigns.size > 0;
+          activeMsawCallsigns.add(event.callsign);
+          if (!wasActive) {
+            sound("msaw").play(true);
+            msawPlaying = true;
+          }
+          continue;
+        }
+        if (event.type === "alert.msaw.clear") {
+          activeMsawCallsigns.delete(event.callsign);
+          if (activeMsawCallsigns.size === 0) {
+            sounds.get("msaw")?.stop();
+            msawPlaying = false;
+          }
+          continue;
+        }
+        const name = soundForEvent(event);
         if (name) {
           sound(name).play();
         }
+      }
+      if (!msawActive) {
+        sounds.get("msaw")?.stop();
+        msawPlaying = false;
+      } else if (activeMsawCallsigns.size > 0 && !msawPlaying) {
+        sound("msaw").play(true);
+        msawPlaying = true;
       }
     },
     dispose() {
       disposed = true;
       for (const value of sounds.values()) {
+        value.stop();
         value.dispose();
       }
       sounds.clear();

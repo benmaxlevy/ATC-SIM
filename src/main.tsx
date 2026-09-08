@@ -16,7 +16,8 @@ import {
   browserDcbPrefStorage,
   createScopeView,
   ensureWxMosaic,
-  hasActiveUninhibitedSafetyAlert,
+  hasActiveUninhibitedConflict,
+  hasActiveUninhibitedMsaw,
   loadDcbPrefFromStorage,
   paintPpi,
   parseDigitalMap,
@@ -134,7 +135,10 @@ function onFrame(nowMs: number): void {
   // Physics: wall Δt feeds the accumulator. Never pass this dt into stepWorld.
   advanceWorld(handles.world, wallDtS, acc);
   handles.caAlertTone.setVolume(scopeView.vol ?? 2);
-  handles.afterPhysicsTick(hasActiveUninhibitedSafetyAlert(handles.world, scopeView));
+  handles.afterPhysicsTick(
+    hasActiveUninhibitedConflict(handles.world, scopeView),
+    hasActiveUninhibitedMsaw(handles.world, scopeView),
+  );
   void ensureWxMosaic(scopeView, { nowMs });
   paintCurrentPpi();
   const hud = document.getElementById(SIM_HUD_ID);

@@ -9,11 +9,15 @@ function event(type: SessionEvent["type"]): SessionEvent {
 test("plays the shipped WAV for each alert and handoff edge", () => {
   const created: Record<
     string,
-    { play: ReturnType<typeof vi.fn>; dispose: ReturnType<typeof vi.fn> }
+    {
+      play: ReturnType<typeof vi.fn>;
+      stop: ReturnType<typeof vi.fn>;
+      dispose: ReturnType<typeof vi.fn>;
+    }
   > = {};
   const sounds = createEventSounds({
     createSound: (url) => {
-      const value = { play: vi.fn(), dispose: vi.fn() };
+      const value = { play: vi.fn(), stop: vi.fn(), dispose: vi.fn() };
       created[url] = value;
       return value;
     },
@@ -21,7 +25,6 @@ test("plays the shipped WAV for each alert and handoff edge", () => {
   const log = new SessionLog();
 
   for (const type of [
-    "alert.ca.alert",
     "alert.msaw.caution",
     "handoff.inbound.offered",
     "handoff.outbound.accepted",
@@ -30,8 +33,7 @@ test("plays the shipped WAV for each alert and handoff edge", () => {
   }
   sounds.sync(log);
 
-  expect(created[EVENT_SOUND_URLS.conflictAlert]?.play).toHaveBeenCalledOnce();
-  expect(created[EVENT_SOUND_URLS.msaw]?.play).toHaveBeenCalledOnce();
+  expect(created[EVENT_SOUND_URLS.msaw]?.play).toHaveBeenCalledWith(true);
   expect(created[EVENT_SOUND_URLS.handoffRequest]?.play).toHaveBeenCalledOnce();
   expect(created[EVENT_SOUND_URLS.handoffAccepted]?.play).toHaveBeenCalledOnce();
   sounds.dispose();
@@ -40,9 +42,11 @@ test("plays the shipped WAV for each alert and handoff edge", () => {
 
 test("does not replay old events or process events after disposal", () => {
   const play = vi.fn();
-  const sounds = createEventSounds({ createSound: () => ({ play, dispose: vi.fn() }) });
+  const sounds = createEventSounds({
+    createSound: () => ({ play, stop: vi.fn(), dispose: vi.fn() }),
+  });
   const log = new SessionLog();
-  log.append(event("alert.ca.alert"));
+  log.append(event("handoff.inbound.offered"));
   sounds.sync(log);
   sounds.sync(log);
   expect(play).toHaveBeenCalledOnce();
@@ -50,4 +54,17 @@ test("does not replay old events or process events after disposal", () => {
   log.append(event("alert.msaw.alert"));
   sounds.sync(log);
   expect(play).toHaveBeenCalledOnce();
+});
+
+test("loops MSAW until every active MSAW clears", () => {
+  const play = vi.fn();
+  const stop = vi.fn();
+  const sounds = createEventSounds({ createSound: () => ({ play, stop, dispose: vi.fn() }) });
+  const log = new SessionLog();
+  log.append(event("alert.msaw.alert"));
+  sounds.sync(log);
+  log.append(event("alert.msaw.clear"));
+  sounds.sync(log);
+  expect(play).toHaveBeenCalledWith(true);
+  expect(stop).toHaveBeenCalledOnce();
 });
