@@ -1,14 +1,14 @@
 /**
  * Analog: CRC STARS L1–L9 **leader** direction and length (docs.virtualnas.net/crc/stars — R07).
- * Trainer delta: DCB LDR DIR spinner is 1–9 (same dirs as scope-focus L+digit).
- * Length is a discrete px set 0/24/36/48 (0 = overlay analog; 36 = T02-19 default).
+ * Trainer delta: DCB LDR DIR shows compass names; numeric L+digit commands remain supported.
+ * Length is a discrete 0–7 step set, each step 12 px (¼ in at 48 px/in).
  * Numpad 5 = overlay (length 0) even when the default length is 36. Pixel-constant
  * so length does not explode at 5 NM range. Always named **leader**. Not NAS STARS.
  *
  * Numpad compass (canvas −Y is north):
  * ```
  * 7 NW   8 N   9 NE
- * 4 W    5 CTR 6 E
+ * 4 W    5 OVERLAY 6 E
  * 1 SW   2 S   3 SE
  * ```
  *
@@ -25,6 +25,18 @@
 import { TARGET_SIZE_PX } from "./render";
 
 export type LeaderDir = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+
+export const LEADER_DIR_LABELS: Record<LeaderDir, string> = {
+  1: "SW",
+  2: "S",
+  3: "SE",
+  4: "W",
+  5: "OVERLAY",
+  6: "E",
+  7: "NW",
+  8: "N",
+  9: "NE",
+};
 
 /**
  * STARS `*1`–`*8` leader clock (R07 Table 20): 1 = NE clockwise through 8 = N.
@@ -55,11 +67,11 @@ export function leaderDirFromStarsClock(clock: StarsLeaderClock): LeaderDir {
 /** Numpad 8 = north. Default at spawn for every track. */
 export const DEFAULT_LEADER_DIR: LeaderDir = 8;
 
-/** Frozen DCB LDR length steps (px). Includes overlay analog 0 and T02-19 default 36. */
-export const LEADER_LENGTH_STEPS_PX = [0, 24, 36, 48] as const;
+/** DCB LDR LEN steps in px: 0–7, with each step adding ¼ in (12 px). */
+export const LEADER_LENGTH_STEPS_PX = [0, 12, 24, 36, 48, 60, 72, 84] as const;
 export type LeaderLengthPx = (typeof LEADER_LENGTH_STEPS_PX)[number];
 
-/** Pixel-constant default **leader** length (phase README decision 8, T02-19 36 px). Not NM. */
+/** Pixel-constant default **leader** length (step 3, 36 px). Not NM. */
 export const DEFAULT_LEADER_LENGTH_PX: LeaderLengthPx = 36;
 export const LEADER_LENGTH_PX = DEFAULT_LEADER_LENGTH_PX;
 
@@ -105,14 +117,11 @@ export function isLeaderStep(step: number): boolean {
 }
 
 /**
- * STARS leader length step (0–7, typically 0–5) to pixels.
- * Step 0 = 0 px (overlay), step 2 = 24 px, step 3 = 36 px (default), step 4 = 48 px.
+ * STARS leader length step (0–7) to pixels. Each step adds 12 px.
  */
 export function leaderLengthPxFromStep(step: number): number {
-  if (step <= 0) {
-    return 0;
-  }
-  return step * 12;
+  const clamped = Math.max(0, Math.min(7, Math.round(step)));
+  return LEADER_LENGTH_STEPS_PX[clamped] ?? 0;
 }
 
 /**

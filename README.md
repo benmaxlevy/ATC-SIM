@@ -59,4 +59,4 @@ Speech service test suite (mocked): `SPEECH_API_MOCK=1 pytest` in [`speech-api/`
 
 ## License
 
-MIT. See the repository license file.
+GNU Affero General Public License v3.0 only (`AGPL-3.0-only`). See [LICENSE](LICENSE).

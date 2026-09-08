@@ -3,7 +3,13 @@
  *  The solver never changes a track's configured leader direction or length.
  */
 
-import { datablockTopLeft, type DatablockMetrics, type LeaderDir } from "./leader";
+import {
+  datablockTopLeft,
+  effectiveLeaderLengthPx,
+  LEADER_LENGTH_STEPS_PX,
+  type DatablockMetrics,
+  type LeaderDir,
+} from "./leader";
 
 export interface LayoutPoint {
   x: number;
@@ -56,6 +62,10 @@ export interface ResolvedDatablockLayout {
   aircraftId: string;
   rect?: LayoutRect;
   leaderAnchor?: LayoutPoint;
+  leaderDir?: LeaderDir;
+  leaderLengthPx?: number;
+  /** True when rect follows leader geometry; false for radial/grid fallback. */
+  leaderAligned?: boolean;
   unplaced: boolean;
 }
 
@@ -220,10 +230,30 @@ function freeWithObstacles(
   );
 }
 
+function leaderClearOfAcceptedBlocks(
+  item: DatablockLayoutInput,
+  rect: LayoutRect,
+  accepted: readonly LayoutRect[],
+): boolean {
+  const leader = resolvedLeaderObstacle(item, rect);
+  return (
+    leader === null ||
+    accepted.every(
+      (other) =>
+        // Co-located targets can put the line origin inside an earlier block;
+        // only reject crossings beyond that shared target origin.
+        pointInLayoutBounds(item.targetPoint, other) || !protectedGeometryOverlaps(other, leader),
+    )
+  );
+}
+
 export function resolvedLeaderObstacle(
   item: DatablockLayoutInput,
   rect: LayoutRect,
-): ProtectedGeometry {
+): ProtectedGeometry | null {
+  if (effectiveLeaderLengthPx(item.leaderDir, item.leaderLengthPx) <= 0) {
+    return null;
+  }
   const x = Math.max(rect.x, Math.min(item.targetPoint.x, rect.x + rect.width));
   const y = Math.max(rect.y, Math.min(item.targetPoint.y, rect.y + rect.height));
   return {
@@ -236,7 +266,15 @@ export function resolvedLeaderObstacle(
 }
 
 function candidateFor(item: DatablockLayoutInput, dir: LeaderDir): LayoutRect {
-  const origin = datablockTopLeft(dir, item.metrics, item.leaderLengthPx);
+  return candidateForLength(item, dir, item.leaderLengthPx);
+}
+
+function candidateForLength(
+  item: DatablockLayoutInput,
+  dir: LeaderDir,
+  lengthPx: number,
+): LayoutRect {
+  const origin = datablockTopLeft(dir, item.metrics, lengthPx);
   return makeRect(
     item.targetPoint.x + origin.x,
     item.targetPoint.y + origin.y,
@@ -245,8 +283,46 @@ function candidateFor(item: DatablockLayoutInput, dir: LeaderDir): LayoutRect {
   );
 }
 
+interface LayoutCandidate {
+  rect: LayoutRect;
+  dir: LeaderDir;
+  lengthPx: number;
+  leaderAligned: boolean;
+}
+
 function candidateDirections(preferred: LeaderDir): LeaderDir[] {
   return [preferred, ...COMPASS_ORDER.filter((dir) => dir !== preferred)];
+}
+
+function rectClearance(a: LayoutRect, b: LayoutRect): number {
+  const dx = Math.max(b.x - (a.x + a.width), a.x - (b.x + b.width), 0);
+  const dy = Math.max(b.y - (a.y + a.height), a.y - (b.y + b.height), 0);
+  return Math.hypot(dx, dy);
+}
+
+function circleClearance(
+  rect: LayoutRect,
+  obstacle: Extract<ProtectedGeometry, { kind: "circle" }>,
+): number {
+  const x = Math.max(rect.x, Math.min(obstacle.center.x, rect.x + rect.width));
+  const y = Math.max(rect.y, Math.min(obstacle.center.y, rect.y + rect.height));
+  return Math.max(0, Math.hypot(x - obstacle.center.x, y - obstacle.center.y) - obstacle.radius);
+}
+
+function candidateClearance(
+  rect: LayoutRect,
+  accepted: readonly LayoutRect[],
+  obstacles: readonly ProtectedGeometry[],
+): number {
+  const clearances = accepted.map((other) => rectClearance(rect, other));
+  for (const obstacle of obstacles) {
+    if (obstacle.kind === "rect") {
+      clearances.push(rectClearance(rect, obstacle.rect));
+    } else if (obstacle.kind === "circle") {
+      clearances.push(circleClearance(rect, obstacle));
+    }
+  }
+  return clearances.length > 0 ? Math.min(...clearances) : Number.POSITIVE_INFINITY;
 }
 
 /** Radial offsets preserve the configured leader geometry while moving the box farther from the target. */
@@ -263,6 +339,49 @@ function radialCandidates(item: DatablockLayoutInput): LayoutRect[] {
       item.metrics.heightPx,
     ),
   );
+}
+
+function candidateIsFree(
+  item: DatablockLayoutInput,
+  candidate: LayoutCandidate,
+  accepted: readonly LayoutRect[],
+  bounds: LayoutBounds,
+  obstacles: readonly ProtectedGeometry[],
+): boolean {
+  return (
+    freeWithObstacles(candidate.rect, accepted, bounds, obstacles, item.aircraftId) &&
+    leaderClearOfAcceptedBlocks(
+      { ...item, leaderDir: candidate.dir, leaderLengthPx: candidate.lengthPx },
+      candidate.rect,
+      accepted,
+    )
+  );
+}
+
+function chooseBestCandidate(
+  item: DatablockLayoutInput,
+  candidates: readonly LayoutCandidate[],
+  accepted: readonly LayoutRect[],
+  bounds: LayoutBounds,
+  obstacles: readonly ProtectedGeometry[],
+): LayoutCandidate | undefined {
+  let best: LayoutCandidate | undefined;
+  let bestClearance = -1;
+  for (const candidate of candidates) {
+    if (!candidateIsFree(item, candidate, accepted, bounds, obstacles)) {
+      continue;
+    }
+    const clearance = candidateClearance(candidate.rect, accepted, obstacles);
+    if (
+      best === undefined ||
+      clearance > bestClearance ||
+      (clearance === bestClearance && candidate.lengthPx < best.lengthPx)
+    ) {
+      best = candidate;
+      bestClearance = clearance;
+    }
+  }
+  return best;
 }
 
 /**
@@ -288,20 +407,70 @@ export function solveDatablockLayout(
   for (const item of ordered) {
     const size = dimensions(item.preferredRect);
     const preferred = makeRect(item.preferredRect.x, item.preferredRect.y, size.width, size.height);
-    const candidates = [
-      preferred,
-      ...candidateDirections(item.leaderDir).map((dir) => candidateFor(item, dir)),
-      ...radialCandidates(item),
-    ];
     const obstacles = [...(options.protectedGeometry ?? []), ...resolvedLeaderObstacles];
-    let resolved = candidates.find((candidate) =>
-      freeWithObstacles(candidate, accepted, options.bounds, obstacles, item.aircraftId),
-    );
+    const preferredCandidate: LayoutCandidate = {
+      rect: preferred,
+      dir: item.leaderDir,
+      lengthPx: item.leaderLengthPx,
+      leaderAligned: true,
+    };
+    let resolvedCandidate = candidateIsFree(
+      item,
+      preferredCandidate,
+      accepted,
+      options.bounds,
+      obstacles,
+    )
+      ? preferredCandidate
+      : chooseBestCandidate(
+          item,
+          candidateDirections(item.leaderDir).map((dir) => ({
+            rect: candidateFor(item, dir),
+            dir,
+            lengthPx: item.leaderLengthPx,
+            leaderAligned: true,
+          })),
+          accepted,
+          options.bounds,
+          obstacles,
+        );
 
-    if (!resolved) {
+    if (!resolvedCandidate) {
+      resolvedCandidate = chooseBestCandidate(
+        item,
+        candidateDirections(item.leaderDir).flatMap((dir) =>
+          LEADER_LENGTH_STEPS_PX.map((lengthPx) => ({
+            rect: candidateForLength(item, dir, lengthPx),
+            dir,
+            lengthPx,
+            leaderAligned: true,
+          })),
+        ),
+        accepted,
+        options.bounds,
+        obstacles,
+      );
+    }
+
+    if (!resolvedCandidate) {
+      resolvedCandidate = chooseBestCandidate(
+        item,
+        radialCandidates(item).map((rect) => ({
+          rect,
+          dir: item.leaderDir,
+          lengthPx: item.leaderLengthPx,
+          leaderAligned: false,
+        })),
+        accepted,
+        options.bounds,
+        obstacles,
+      );
+    }
+
+    if (!resolvedCandidate) {
       for (
         let y = options.bounds.y;
-        y <= options.bounds.y + options.bounds.height - size.height && !resolved;
+        y <= options.bounds.y + options.bounds.height - size.height && !resolvedCandidate;
         y += step
       ) {
         for (
@@ -309,22 +478,36 @@ export function solveDatablockLayout(
           x <= options.bounds.x + options.bounds.width - size.width;
           x += step
         ) {
-          const candidate = makeRect(x, y, size.width, size.height);
-          if (freeWithObstacles(candidate, accepted, options.bounds, obstacles, item.aircraftId)) {
-            resolved = candidate;
+          const candidate: LayoutCandidate = {
+            rect: makeRect(x, y, size.width, size.height),
+            dir: item.leaderDir,
+            lengthPx: item.leaderLengthPx,
+            leaderAligned: false,
+          };
+          if (candidateIsFree(item, candidate, accepted, options.bounds, obstacles)) {
+            resolvedCandidate = candidate;
             break;
           }
         }
       }
     }
 
-    if (resolved) {
-      accepted.push(resolved);
-      resolvedLeaderObstacles.push(resolvedLeaderObstacle(item, resolved));
+    if (resolvedCandidate) {
+      accepted.push(resolvedCandidate.rect);
+      const leaderObstacle = resolvedLeaderObstacle(
+        { ...item, leaderDir: resolvedCandidate.dir, leaderLengthPx: resolvedCandidate.lengthPx },
+        resolvedCandidate.rect,
+      );
+      if (leaderObstacle) {
+        resolvedLeaderObstacles.push(leaderObstacle);
+      }
       results.set(item.aircraftId, {
         aircraftId: item.aircraftId,
-        rect: resolved,
+        rect: resolvedCandidate.rect,
         leaderAnchor: item.targetPoint,
+        leaderDir: resolvedCandidate.dir,
+        leaderLengthPx: resolvedCandidate.lengthPx,
+        leaderAligned: resolvedCandidate.leaderAligned,
         unplaced: false,
       });
     } else {

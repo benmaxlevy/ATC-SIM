@@ -413,6 +413,9 @@ describe("Datablock inline alert glyphs", () => {
       drawDatablock(mock.ctx, ac, 100, 100, view, world);
       expect(mock.fillTexts.some((fill) => fill.text === "*")).toBe(true);
       expect(mock.fillTexts.some((fill) => fill.text === "+")).toBe(false);
+      const acid = mock.fillTexts.find((fill) => fill.text === ac.callsign);
+      const glyph = mock.fillTexts.find((fill) => fill.text === "*");
+      expect(glyph?.x).toBeCloseTo((acid?.x ?? 0) + mock.ctx.measureText(ac.callsign).width);
     });
 
     test("uses CA for active MCI and Δ when its global MCI inhibit is on", () => {

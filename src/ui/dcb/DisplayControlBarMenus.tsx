@@ -16,6 +16,7 @@ import {
   commitDcbSpinner,
   clearAllVideoMaps,
   DCB_LEADER_DIRS,
+  LEADER_DIR_LABELS,
   dcbLeaderDirReadout,
   dcbMapsPageSlotNumbers,
   deleteDcbPref,
@@ -1421,8 +1422,8 @@ export function renderLdr(
         <DcbCell
           key={dir}
           kind="action"
-          ariaLabel={`Leader L${dir}`}
-          pressed={dcbLeaderDirReadout(view, world) === `L${dir}`}
+          ariaLabel={`Leader ${LEADER_DIR_LABELS[dir]}`}
+          pressed={dcbLeaderDirReadout(view, world) === LEADER_DIR_LABELS[dir]}
           onClick={() => {
             cancelFilterIfEntering(view);
             if (world) {
@@ -1432,7 +1433,7 @@ export function renderLdr(
             afterCell(onChange);
           }}
         >
-          <span className="dcb-cell-line">{`L${dir}`}</span>
+          <span className="dcb-cell-line">{LEADER_DIR_LABELS[dir]}</span>
         </DcbCell>
       ))}
     </>

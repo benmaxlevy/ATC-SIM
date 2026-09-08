@@ -890,7 +890,9 @@ export function drawDatablock(
         })
       : [];
   // Field 2 inhibit symbols occupy inline cells immediately after the ACID.
-  const line1 = [line1WithoutAlert, ...alertGlyphs.map((glyph) => glyph.text)].join(" ");
+  const inlineGlyphs = alertGlyphs.map((glyph) => glyph.text).join("");
+  const line1Prefix = line1WithoutAlert.startsWith(callsign) ? callsign : line1WithoutAlert;
+  const line1 = `${line1Prefix}${inlineGlyphs}${line1WithoutAlert.slice(line1Prefix.length)}`;
   const lines = { ...base, line1 };
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
   const origin = datablockTopLeft(
@@ -902,15 +904,22 @@ export function drawDatablock(
   const textY = resolved?.rect ? resolved.rect.y : targetY + origin.y;
 
   ctx.fillStyle = applyBrite(visual.color, briteCh);
-  ctx.fillText(line1WithoutAlert, textX, textY);
-  let alertGlyphX = textX + ctx.measureText(line1WithoutAlert).width;
-  for (const glyph of alertGlyphs) {
-    alertGlyphX += ctx.measureText(" ").width;
-    if (glyph.visible) {
-      ctx.fillStyle = glyph.color;
-      ctx.fillText(glyph.text, alertGlyphX, textY);
+  let alertGlyphX: number;
+  if (alertGlyphs.length === 0) {
+    ctx.fillText(line1WithoutAlert, textX, textY);
+    alertGlyphX = textX + ctx.measureText(line1WithoutAlert).width;
+  } else {
+    const line1Suffix = line1WithoutAlert.slice(line1Prefix.length);
+    ctx.fillText(line1Prefix, textX, textY);
+    alertGlyphX = textX + ctx.measureText(line1Prefix).width;
+    for (const glyph of alertGlyphs) {
+      if (glyph.visible) {
+        ctx.fillStyle = glyph.color;
+        ctx.fillText(glyph.text, alertGlyphX, textY);
+      }
+      alertGlyphX += ctx.measureText(glyph.text).width;
     }
-    alertGlyphX += ctx.measureText(glyph.text).width;
+    ctx.fillText(line1Suffix, alertGlyphX, textY);
   }
   if (mode === "full" || mode === "partial") {
     const caAcknowledged = isCaAlertAcknowledged(ac, td, view, world);
@@ -1107,7 +1116,30 @@ export function drawTracks(
         beaconVisible: true,
       },
     );
-    let line1 = visual.line1Tag ? `${base.line1} ${visual.line1Tag}` : base.line1;
+    const isCaInhibited = isCaInhibitedForTrack(ac, td, view);
+    const isCaPairInhibited = isCaPairInhibitedForTrack(view, world, ac);
+    const isMsawInhibited = Boolean(
+      td?.msawInhibited ||
+      td?.msawCurrentAlertInhibited ||
+      td?.msawProcessingInhibited ||
+      (td as { inhibitMSAW?: boolean } | undefined)?.inhibitMSAW ||
+      (td as { inhibitMsaw?: boolean } | undefined)?.inhibitMsaw ||
+      (ac as { msawInhibited?: boolean }).msawInhibited,
+    );
+    const mciInhibited = hasMciAlertForTrack(world, ac) && view.mciEnabled === false;
+    const inhibitGlyph =
+      mode === "full" || mode === "partial"
+        ? isMsawInhibited && (isCaInhibited || isCaPairInhibited || mciInhibited)
+          ? "+"
+          : isCaInhibited || isCaPairInhibited || mciInhibited
+            ? "Δ"
+            : isMsawInhibited
+              ? "*"
+              : ""
+        : "";
+    const line1Base = visual.line1Tag ? `${base.line1} ${visual.line1Tag}` : base.line1;
+    const line1Prefix = line1Base.startsWith(callsign) ? callsign : line1Base;
+    let line1 = `${line1Prefix}${inhibitGlyph}${line1Base.slice(line1Prefix.length)}`;
     if (!visual.line1Tag && mode !== "limited" && mode !== "partial") {
       line1 = withInboundHandoffCue(line1, handoff);
     }
@@ -1176,32 +1208,31 @@ export function drawTracks(
       const leaderColor = applyBrite(visual.leaderColor, briteCh);
       const layout = layoutById.get(ac.id);
       const preferred = preferredById.get(ac.id);
+      const leaderDir = layout?.leaderDir ?? trackLeaderDir(view, ac.id);
+      const leaderLength = layout?.leaderLengthPx ?? trackLeaderLength(view, ac.id);
       if (
         layout?.rect &&
         preferred &&
         (layout.rect.x !== preferred.x || layout.rect.y !== preferred.y)
       ) {
-        const r = layout.rect;
-        const ex = Math.max(r.x, Math.min(p.x, r.x + r.width));
-        const ey = Math.max(r.y, Math.min(p.y, r.y + r.height));
-        if (Math.hypot(ex - p.x, ey - p.y) > 1) {
-          ctx.strokeStyle = leaderColor;
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(ex, ey);
-          ctx.stroke();
+        if (layout.leaderAligned !== false) {
+          drawLeaderLine(ctx, p.x, p.y, leaderDir, leaderColor, leaderLength, view.charSizes.pos);
+        } else {
+          const r = layout.rect;
+          const ex = Math.max(r.x, Math.min(p.x, r.x + r.width));
+          const ey = Math.max(r.y, Math.min(p.y, r.y + r.height));
+          const hasLeader = leaderSegmentPx(leaderDir, leaderLength, view.charSizes.pos) !== null;
+          if (hasLeader && Math.hypot(ex - p.x, ey - p.y) > 1) {
+            ctx.strokeStyle = leaderColor;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(ex, ey);
+            ctx.stroke();
+          }
         }
       } else if (layout?.rect) {
-        drawLeaderLine(
-          ctx,
-          p.x,
-          p.y,
-          trackLeaderDir(view, ac.id),
-          leaderColor,
-          trackLeaderLength(view, ac.id),
-          view.charSizes.pos,
-        );
+        drawLeaderLine(ctx, p.x, p.y, leaderDir, leaderColor, leaderLength, view.charSizes.pos);
       }
     }
   }

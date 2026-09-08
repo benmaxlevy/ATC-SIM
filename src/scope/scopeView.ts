@@ -6,7 +6,7 @@
  * visibility is keyed by catalog id (RWY/LOC/CST share role flags). Range rings
  * default about airport ref; PLACE RR sets a world-NM origin (not glued to the
  * airport). RR CNTR lights when that origin ≠ view **center**. Leader direction
- * is L1–L9; length is a discrete px set (0/24/36/48) on this view. CHAR SIZE is
+ * is L1–L9; length is a discrete 0–7 step set (12 px per step) on this view. CHAR SIZE is
  * per-subsystem Plex/system mono (DATA BLOCKS / LISTS / DCB / TOOLS / POS), not
  * a font picker. BRITE is per drawn channel (0–100 multiply); WX/WXC tint VIP
  * paint; BKC is a stored no-op. History records on each surveillance report, cap 5 dots, no
@@ -145,7 +145,7 @@ export interface ScopeView {
   placeCenterArmed: boolean;
   /** PLACE RR: next PPI click sets range-ring origin. */
   placeRangeRingArmed: boolean;
-  /** Last DCB LDR DIR (L1–L9). Per-track dir from T02-05 still wins when selected. */
+  /** Last DCB LDR DIR compass position. Per-track dir from T02-05 still wins when selected. */
   defaultLeaderDir: LeaderDir;
   /** Scope-global **leader** length (DCB LDR spinner). Dir 5 stays overlay. */
   leaderLengthPx: LeaderLengthPx;

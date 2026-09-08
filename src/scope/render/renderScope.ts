@@ -7,7 +7,7 @@
  * filling the canvas (RANGE is still the nearest-edge NM; corners show extra);
  * **target** diamond + optional **history** dots (report arrival, cap 5, no phosphor);
  * full/limited **datablock** in IBM Plex Mono (not a STARS face); L1–L9 **leader**
- * (pixel-constant default 36 CSS px; DCB LDR length 0/24/36/48); **predicted track line** (PTL)
+ * (pixel-constant default 36 CSS px; DCB LDR LEN 0–7 at 12 px per step); **predicted track line** (PTL)
  * straight 1.0 min GS along ground track by default (AUX spinner 0.5/1/2/4),
  * default off, F7 toggles PTL ALL. CRC may offer extra minute presets / turn
  * curves — we do not. Extra CRC presets omitted.

@@ -7,7 +7,7 @@
  * target diamond + history dots (F8 / scope-focus H), full/limited datablocks
  * (scope-focus T / M; Mode C hundreds + assigned + GS), predicted track line
  * (PTL, F7 always-on, default off), L1–L9 **leader** lines (scope-focus `L`
- * then 1–9; pixel-constant default 36 CSS px; DCB LDR length 0/24/36/48), altitude filter
+ * then 1–9; pixel-constant default 36 CSS px; DCB LDR LEN 0–7 at 12 px per step), altitude filter
  * (scope-focus `F`, default 000–180), F3/F4 ownership color stub (not NAS),
  * F1 help overlay (`TRAINER KEYS — NOT CRC`), Tab cycle focus, `/` radio focus.
  * Scope-focus `*` TPA/ATPA slew chords (R07 Table 36) parse and prompt on the PPI.
@@ -726,6 +726,7 @@ export {
 export type { HandoffResult, TrackOwnership } from "./ownership";
 export {
   DEFAULT_LEADER_DIR,
+  LEADER_DIR_LABELS,
   DEFAULT_LEADER_LENGTH_PX,
   L5_OVERLAY_GAP_PX,
   LEADER_BLOCK_GAP_PX,
