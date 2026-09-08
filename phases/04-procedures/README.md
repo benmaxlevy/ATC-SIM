@@ -489,6 +489,8 @@ Implement in this order unless a ticket says it can parallel. Do not start a tic
 | T04-40 | Videomap identity and GEO reachability | P0 | M | T04-39 | T04-42 |
 | T04-41 | Videomap rendering and performance | P0 | M | T04-39 | T04-42 |
 | T04-42 | A80 videomap integration and acceptance | P0 | M | T04-40, T04-41 | none |
+| T04-46 | ILS signal-envelope geometry | P0 | L | T04-05, T04-06 | T04-47 |
+| T04-47 | Lead-turn localizer capture and tracking | P0 | L | T04-46 | none |
 
 **Parallelism:** After T04-01, T04-08 and T04-10 can proceed beside T04-02. T04-09 can start immediately. T04-04 ∥ T04-05 after T04-03. T04-11 can land anytime after kinematics; prefer after T04-05 so loc tests include a wind case if the ticket is pulled.
 
@@ -574,6 +576,18 @@ npm run crc:videomaps -- pack --metadata C:\Users\Ben\AppData\Local\CRC\ARTCCs\Z
 ```
 
 Wave: **T04-36** → **T04-37 ∥ T04-38** → **T04-39** → **T04-40 ∥ T04-41** → **T04-42**.
+
+### Post-exit addendum (T04-46–47 ILS signal envelopes and lead capture)
+
+T04-46 replaces fixed localizer/GS capture windows with generic ILS full-scale
+geometry: 350 ft localizer half-width at threshold (700 ft total), widening by
+range, and a 1.4-deg total GS beam centered on catalog glidepath angle. T04-47
+uses that geometry for rate-limited lead turns and bounded cross-track tracking.
+No ILS implementation may snap heading at capture or special-case KDEM, ILS 27,
+ILS 09, or a compass side.
+
+Wave: **T04-46** → **T04-47**. T04-46 supersedes T04-05/T04-06 hard capture
+and loss thresholds; T04-47 supersedes T04-05 centerline-only LOC command.
 
 ---
 

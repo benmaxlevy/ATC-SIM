@@ -1,3 +1,64 @@
+# ATC-SIM swarm orchestrator — Fortieth swarm (ILS Signal Envelopes and Lead Capture)
+
+## Fortieth swarm planned — 2026-09-08 (ILS Signal Envelopes and Lead Capture)
+
+User-approved procedures follow-up: replace fixed localizer/glidepath capture
+windows with data-driven ILS full-scale envelopes, then remove rate-limited
+localizer fly-through with predictive lead capture and cross-track tracking.
+Captain squash-merges ticket branches into `master`. Do not push.
+
+| Key | Value |
+| --- | --- |
+| Goal | Full-scale ILS signal geometry and non-fly-through LOC intercept/tracking. |
+| Include | **T04-46**, then **T04-47** only. |
+| Source | FAA AIM 1-1-9; FAA JO 7110.65 5-9-2; R01. |
+| Skip | Wind/crab, ILS instruments/needles, false lobes, autoland/flare, RNAV, parser/readback changes, runway/facility branches. |
+| Stop | After T04-47 acceptance. No later phase. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `master`, then runs focused tests and `npm run ci` after each ticket. |
+| Model | Session default model. |
+
+**Product law:**
+
+- Localizer full scale is 700 ft total / 350 ft per side at threshold and
+  widens by range. GS full scale is 1.4 deg total / plus-or-minus 0.7 deg
+  about catalog centerline, normally 3.0 deg. Both are data-driven trainer
+  guidance envelopes, not certified radio-propagation models.
+- Existing angular `beamHalfWidthDeg` remains compatible catalog data; no
+  video-map feather becomes navigation truth and no airport/runway branch is allowed.
+- Lead turn uses existing rate-limited kinematics. No direct heading snap at
+  LOC capture. LOC-first, GS-from-below, and heading-cancels-APP remain.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T04-46 | planning commit |
+| B | T04-47 | T04-46 merge and focused gate |
+
+**Ticket ownership:**
+
+- T04-46: generic schema/defaults, LOC/GS full-scale geometry, FMS envelope
+  policy, data contracts, and focused DOM-free tests.
+- T04-47: rate-limited lead prediction, bounded LOC cross-track tracking,
+  breakout/re-arm behavior, full-world synthetic vector acceptance, and README wording.
+
+**Ticket files / branches:**
+
+- `ticket/T04-46-ils-signal-envelope-geometry` ← `phases/04-procedures/tickets/T04-46-ils-signal-envelope-geometry.md`
+- `ticket/T04-47-lead-turn-localizer-capture-and-tracking` ← `phases/04-procedures/tickets/T04-47-lead-turn-localizer-capture-and-tracking.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 4 procedures ILS signal envelopes and lead capture T04-46–47
+Merge target: master
+Merged: T04-46, T04-47
+Tests: <focused tests and npm run ci result>
+Notes: <700-ft LOC / 1.4-deg GS envelopes; rate-limited lead capture; no facility branch>
+```
+
 # ATC-SIM swarm orchestrator — Thirty-ninth swarm (MSAW MULTI FUNC Q/V)
 
 ## Thirty-ninth swarm planned — 2026-09-07 (MSAW MULTI FUNC Q/V)
