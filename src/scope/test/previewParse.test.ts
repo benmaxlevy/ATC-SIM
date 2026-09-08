@@ -116,9 +116,18 @@ describe("T02-114: Preview Grammar for Conflict Alert (CA) & Purge Invented Alia
     });
 
     it("parses CA C toggle and force forms", () => {
-      expect(parsePreviewCommand("CA C")).toEqual({ kind: "action", action: { type: "caControllerPairs", mode: "toggle" } });
-      expect(parsePreviewCommand("CA C E")).toEqual({ kind: "action", action: { type: "caControllerPairs", mode: "enable" } });
-      expect(parsePreviewCommand("CA C I")).toEqual({ kind: "action", action: { type: "caControllerPairs", mode: "inhibit" } });
+      expect(parsePreviewCommand("CA C")).toEqual({
+        kind: "action",
+        action: { type: "caControllerPairs", mode: "toggle" },
+      });
+      expect(parsePreviewCommand("CA C E")).toEqual({
+        kind: "action",
+        action: { type: "caControllerPairs", mode: "enable" },
+      });
+      expect(parsePreviewCommand("CA C I")).toEqual({
+        kind: "action",
+        action: { type: "caControllerPairs", mode: "inhibit" },
+      });
       expect(parsePreviewCommand("CA E").kind).toBe("invalid");
       expect(commitPreviewCommand("CAE").kind).toBe("invalid");
     });
