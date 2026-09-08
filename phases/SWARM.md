@@ -1,3 +1,358 @@
+# ATC-SIM swarm orchestrator — Thirty-ninth swarm (MSAW MULTI FUNC Q/V)
+
+## Thirty-ninth swarm planned — 2026-09-07 (MSAW MULTI FUNC Q/V)
+
+T02-120 resumes after its prior CI gate was repaired. User clarified the
+existing MULTI FUNC entry: `*` is MULTI FUNC, so `*Q` and `*V`, followed by a
+slew/click, are required. They remain Preview-area scope controls, never radio
+commands. One worker owns T02-120 and captain squash-merges into
+`feature/stars-ca-alignment`. Do not push.
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement `*Q` current-alert-only and `*V` persistent MSAW inhibition. |
+| Include | **T02-120** only, with this exact input clarification. |
+| Source | TI 6191.409 Rev. 30 §§7.14–7.15; R01/R02/R05/R07. |
+| Skip | Other MULTI FUNC grammar; MCI; supervisor/facility controls; MSAW geometry; Command IR. |
+| Stop | After T02-120 acceptance. No later phase. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `feature/stars-ca-alignment`, then runs focused tests and `npm run ci`. |
+| Model | Session default model. |
+
+**Product law:**
+
+- `*Q` / `*V` are exact MULTI FUNC Preview inputs, then selected-track slew;
+  no literal-radio command or unrelated shorthand is added.
+- `*Q` suppresses only current selected MSAW alert and clears with it. `*V`
+  persistently toggles selected-track MSAW processing. Neither acknowledges.
+- Generic ScopeView-local trainer state only; no certified MSAW claim, no
+  facility branch, no Command IR.
+
+**Wave:** A — T02-120 after planning commit.
+
+**Ticket / branch:**
+
+- `ticket/T02-120-msaw-multifunc-q-v` ← `phases/02-scope/tickets/T02-120-msaw-multifunc-q-v.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope MSAW MULTI FUNC Q/V T02-120
+Merge target: feature/stars-ca-alignment
+Merged: T02-120
+Tests: <focused tests and npm run ci result>
+Notes: <*Q current-only; *V persistent; no Command IR>
+```
+
+## Thirty-ninth swarm started — 2026-09-07
+
+Planning frozen: one worker, T02-120 only, exact `*Q`/`*V` Preview grammar,
+merge target `feature/stars-ca-alignment`, no push. Worker uses an isolated
+worktree and returns only `READY TO MERGE` or `BLOCKED`; captain gates merge
+with focused tests and `npm run ci`.
+
+# ATC-SIM swarm orchestrator — Thirty-eighth swarm (WX VIP Availability)
+
+## Thirty-eighth swarm planned — 2026-09-07 (WX VIP Availability)
+
+User-approved follow-up: MAIN `WX1`–`WX6` show bottom-line `AVL` exactly when
+the current N0Q mosaic has one or more pixels in that corresponding VIP mask.
+N0Q fetches at boot and every five minutes even while all WX display latches
+are off. One worker owns this small integrated WX/DCB ticket; captain
+squash-merges into `feature/stars-ca-alignment`. Do not push.
+
+| Key | Value |
+| --- | --- |
+| Goal | Truthful per-VIP `AVL` DCB indication with unconditional five-minute N0Q refresh. |
+| Include | **T02-121** only. |
+| Source | R07 CRC/vNAS STARS DCB BRITE WX; T02-68 N0Q/VIP architecture. |
+| Skip | NEXRAD source/proxy/decoding changes; WX paint/BRITE/WXC/history/wind/deviation; PREF; Command IR; DCB redesign. |
+| Stop | After T02-121 acceptance. No later phase. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `feature/stars-ca-alignment`, then runs focused tests and `npm run ci`. |
+| Model | Session default model. |
+
+**Product law:**
+
+- `AVL` is per packed VIP mask: displayed iff that level has at least one
+  pixel; it is never inferred from WX latch state or another level.
+- N0Q fetch/refresh is independent of WX display latches, remains one
+  in-flight request per view, non-blocking, failure-safe, and CI-fixture-only.
+- WX latches remain display-only and DCB never emits Command IR. No airport or
+  facility branch.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-121 | planning update |
+
+**Ticket ownership:** T02-121 owns unconditional N0Q cadence, pure VIP-mask
+availability, WX cap second-line rendering, and focused generic tests.
+
+**Ticket / branch:**
+
+- `ticket/T02-121-wx-vip-availability-and-unconditional-refresh` ← `phases/02-scope/tickets/T02-121-wx-vip-availability-and-unconditional-refresh.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope WX VIP availability T02-121
+Merge target: feature/stars-ca-alignment
+Merged: T02-121
+Tests: <focused tests and npm run ci result>
+Notes: <all-off five-minute fetch; per-mask AVL; latches/Command IR unchanged>
+```
+
+## Thirty-eighth swarm started — 2026-09-07
+
+Planning is frozen: T02-121 is the only ticket, uses one worker, merges only
+to `feature/stars-ca-alignment`, and does not push. The worker starts from the
+planning commit on that merge target, works in its isolated ticket worktree,
+and returns only `READY TO MERGE` or `BLOCKED`. Captain runs focused WX/DCB
+tests and `npm run ci` after squash merge; existing unrelated test failures
+must be reported, not repaired outside this ticket.
+
+# ATC-SIM swarm orchestrator — Thirty-seventh swarm (Controller CA/MSAW Controls)
+
+## Thirty-seventh swarm planned — 2026-09-07 (Controller CA/MSAW Controls)
+
+User-approved normal-controller follow-up: retire non-manual `CA E`, make
+`CA P` state-dependent, add `CA C` / `CA C E|I`, and implement the manual
+`<MULTI FUNC> Q/V` MSAW slew controls. This is not authorization for MCI or
+supervisor/facility commands. One Luna worker runs one ticket at a time because
+both tickets touch Scope preview grammar and state. Captain squash-merges into
+`feature/stars-ca-alignment`; do not push.
+
+| Key | Value |
+| --- | --- |
+| Goal | Manual-correct controller CA pair controls and MSAW Q/V controls. |
+| Include | **T02-119**, then **T02-120**. |
+| Source | TI 6191.409 Rev. 30 §§7.11–7.15, pp. 7-21–7-26; R01/R02/R05/R07. |
+| Skip | `CA M`; MCI detection/lists; §8.1 and §8.3 supervisor/facility controls; all other MULTI FUNC grammar; CA/MSAW detection thresholds. |
+| Stop | After T02-120 acceptance. No later phase. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `feature/stars-ca-alignment`; after each merge runs focused tests and `npm run ci`. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Product law:**
+
+- `CA P` is the sole explicit pair operation: absent pair inhibition becomes
+  inhibited; present pair inhibition becomes enabled. `CA E` is rejected.
+- Bare `CA C` toggles, and `CA C I` / `CA C E` force, the qualifying-pair
+  state where both tracks are owned by the entering controller. They never
+  alter `CA K` state or nonqualifying pairs.
+- `<MULTI FUNC> Q` suppresses only the current selected MSAW alert and clears
+  with it. `<MULTI FUNC> V` persistently toggles selected-track MSAW
+  processing. Neither is an acknowledgement or literal `*Q` / `*V` Preview
+  alias; `*LA` remains altitude filter only.
+- This is trainer-local state, never certified NAS/system-wide MSAW or CA.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-119 | planning update |
+| B | T02-120 | T02-119 merge and gate |
+
+**Ticket ownership:**
+
+- T02-119: CA P grammar migration, CA E retirement, controller-owned-pair
+  `CA C` / `CA C E|I` state/action/tests plus `docs/USER.md` and Phase 2
+  README updates where command wording changed.
+- T02-120: minimal MULTI FUNC Q/V grammar, MSAW current/persistent inhibit
+  state/lifecycle/presentation/tests, `docs/USER.md` and Phase 2 README
+  updates where command wording changed, and backlog correction.
+
+**Ticket files / branches:**
+
+- `ticket/T02-119-ca-p-grammar-and-controller-pair-controls` ← `phases/02-scope/tickets/T02-119-ca-p-grammar-and-controller-pair-controls.md`
+- `ticket/T02-120-msaw-multifunc-q-v` ← `phases/02-scope/tickets/T02-120-msaw-multifunc-q-v.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope controller CA/MSAW controls T02-119–120
+Merge target: feature/stars-ca-alignment
+Merged: T02-119, T02-120
+Tests: <focused tests and npm run ci result>
+Notes: <CA P toggle/CA E rejection; CA C/C E/I scope; Q current-only and V persistent lifecycle; README updates>
+```
+
+## Thirty-seventh swarm started — 2026-09-07
+
+Configuration amended before launch: bare `CA C Enter` is in scope as the
+manual §7.13 toggle; `CA C E/I` are its force-state forms. Both tickets must
+update `docs/USER.md` and the applicable Phase 2 README command/checklist
+wording where their observable grammar changes. This start record freezes the
+approved scope, wave order, Luna model, single-worker limit, merge target, and
+no-push rule above. Planning commit precedes all ticket branches/worktrees.
+
+# ATC-SIM swarm orchestrator — Thirty-fourth swarm (STARS Conflict Alert Alignment)
+
+## Thirty-sixth swarm planned — 2026-09-07 (CA Pair-Inhibit Manual Correction)
+
+Manual review of TI 6191.409 §7.10–7.11 corrected the prior T02-117 display
+interpretation. `CA` is a one-slew toggle for an existing conflict/pairwise
+inhibit; `CA P` accepts two selected tracks, each by ACID entry or slew. Both
+commands remove CA presentation for the pair and show normal inline `Δ` on both
+member datablocks. One Luna worker owns T02-118 in an isolated worktree; captain
+squash-merges to `feature/stars-ca-alignment`. Do not push.
+
+| Key | Value |
+| --- | --- |
+| Goal | Restore manual-correct pair-inhibit `Δ` presentation and verify `CA P` two-slew behavior. |
+| Include | **T02-118** only. |
+| Source | TI 6191.409 §7.10 pp. 7-19–7-20; §7.11 p. 7-21; §2.16.3/Table 2-26. |
+| Acceptance | `CA` one-slew and `CA P` two-slew both suppress only that pair's CA Line 0/list/tone and show normal inline `Δ` on both pair members. A separate active pair sharing a track remains visible/listed/audible. `CA E` restores presentation. |
+| Skip | CA detection, MSAW/MCI behavior, list layout redesign, and unrelated fixes. |
+| Stop | After T02-118 acceptance. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `feature/stars-ca-alignment`, then runs focused tests and `npm run ci`. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Ticket:** `phases/02-scope/tickets/T02-118-ca-pair-inhibit-manual-correction.md`
+on `ticket/T02-118-ca-pair-inhibit-manual-correction`.
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope CA pair-inhibit manual correction T02-118
+Merge target: feature/stars-ca-alignment
+Merged: T02-118
+Tests: <focused tests and npm run ci result>
+Notes: <CA / CA P slew behavior; pair Δ; shared-pair isolation>
+```
+
+## Thirty-fifth swarm planned — 2026-09-07 (CA Pair-Inhibit Presentation)
+
+Follow-up to the completed Thirty-fourth swarm. The merge target remains
+`feature/stars-ca-alignment`; no work starts a later phase. One Luna worker
+owns T02-117 in an isolated ticket branch/worktree; captain squash-merges only
+after acceptance. Do not push.
+
+| Key | Value |
+| --- | --- |
+| Goal | Make CA pair inhibits disable the same alert presentation as a track inhibit. |
+| Include | **T02-117** only. |
+| Source | TI 6191.409 §2.16.3/Table 2-26: disabled CA alert presentation; §2.15.3 alert list. |
+| Acceptance | For an inhibited pair only: no red Line 0 `CA` on either member, no CA AL-list row, and no CA tone. `Δ` remains exclusively the track-level CA-disabled symbol; pair suppression has no separate datablock glyph. Other active pairs sharing either aircraft remain alerting. Re-enable restores the pair alert if the condition persists. |
+| Skip | CA detection thresholds, MSAW/MCI semantics, command grammar, broad alert-list redesign, and unrelated dirty work. |
+| Stop | After T02-117 acceptance. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `feature/stars-ca-alignment`, then runs focused tests and `npm run ci`. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Ticket:** `phases/02-scope/tickets/T02-117-ca-pair-inhibit-presentation.md` on
+`ticket/T02-117-ca-pair-inhibit-presentation`.
+
+**Manual clarification:** TI 6191.409 §2.16.3/Table 2-26 defines `Δ` only as
+“CA alerts disabled for this track.” The manual preserves CA pair-suppression
+settings (p. 7-14) but specifies no pair-only glyph. Therefore pair suppression
+does not borrow the track-level `Δ` symbol.
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope CA pair-inhibit presentation T02-117
+Merge target: feature/stars-ca-alignment
+Merged: T02-117
+Tests: <focused tests and npm run ci result>
+Notes: <pair suppression for Line 0/list/tone; Δ shown; other pairs preserved>
+```
+
+## Thirty-fourth swarm resumed — 2026-09-07
+
+User requested continuation at Wave D. This resume retains the existing
+Thirty-fourth-swarm contract unchanged: merge target remains
+`feature/stars-ca-alignment`, scope is only T02-115 after confirmed Wave C,
+maximum active workers is 2, and every worker uses `gpt-5.6-luna` at medium
+reasoning. The captain will verify the completed-wave ancestry and all ticket
+status before spawning T02-115. Stop after its acceptance; do not push.
+
+---
+
+Thirty-third (Datablock Other-Target Geometry Avoidance T02-110) landed on
+`feature/datablock-overlap-fixing`. This file keeps that history, then this
+new swarm on `feature/stars-ca-alignment`.
+
+## Thirty-fourth swarm planned — 2026-09-06 (STARS Conflict Alert Alignment)
+
+This configuration aligns Conflict Alert (CA) detection, prediction, data block
+Line 0 display, cadence, pair/track inhibits, audio gating, and preview commands
+with the Raytheon STARS manual (TI 6191.409). It implements 4 Airspace Type Areas,
+kinematic Closest Point of Approach (CPA) lookahead, genuine 800 ms ON / 800 ms OFF
+blink clock, solid vs flashing red Line 0 alert state, Line 0 `▲` inhibit symbol,
+pair inhibit isolation, and authentic STARS keyboard commands (`CA K`, `CA P`,
+`CA E`, `CA` + 2-click, implied slew-to-ack), while purging all non-standard invented
+aliases (`*CA`, `*LA`). Captain squash-merges into **`feature/stars-ca-alignment`**,
+not `master`. Do not push.
+
+| Key | Value |
+| --- | --- |
+| Goal | Full STARS alignment of Conflict Alert kinematic prediction, 4-tier airspace areas, 800ms blink cadence, pair/track inhibits, and authentic preview commands. |
+| Include | **T02-111**, **T02-112**, **T02-113**, **T02-114**, **T02-115** |
+| Source | Raytheon STARS System Manual TI 6191.409 (Sections 2.15.3, 2.16, 2.16.3, 7.3, 7.9, 7.10, 7.11, 7.12). |
+| Skip | Supervisor commands (`CA A`, `CA M`, `CA Q`); Mode C unverified / pilot-reported altitude suppression exclusions; invented aliases (`*CA`, `*LA`). |
+| Stop | After T02-115 acceptance. No next phase. |
+| Max workers | 2 |
+| Merge lock | captain squash to `feature/stars-ca-alignment`, then `npm test` / `npm run ci` |
+| Model | `gpt-5.6-luna`, medium reasoning, every worker |
+| Paid STT/TTS/LLM | Forbidden |
+
+**Product law:**
+
+- Airspace Type Area separation standards: Type 1: 0.5 NM / 100 ft / 15 s; Type 2: 2.5 NM / 500 ft / 25 s; Type 3: 3.0 NM / 1000 ft / 35 s; Type 4: 3.0 NM / 1000 ft / 45 s.
+- A pair of tracks $(A, B)$ evaluates conflict based on $\min(\text{Tier}(A), \text{Tier}(B))$.
+- Kinematic CPA lookahead projects relative velocity vectors; diverging tracks ($t_{\text{CPA}} \le 0$) do not trigger predictive alerts.
+- Alert display cadence is exactly 800 ms ON / 800 ms OFF (0.625 Hz). Line 0 renders blinking red `CA` when unacknowledged, solid red `CA` when acknowledged.
+- Inhibited track displays white/normal `▲` triangle glyph on Line 0.
+- Pairwise inhibits isolate between $(A, B)$ without suppressing $(A, C)$ or $(B, C)$; auto-purged on track drop, termination, or handoff.
+- Only authentic STARS commands (`CA K`, `CA P`, `CA E`, `CA`, Slew-to-Ack) are supported. Non-standard aliases (`*CA`, `*LA`) are completely purged.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-111 | planning commit |
+| B | T02-112, T02-113 | Wave A merge |
+| C | T02-114 | Wave B merge |
+| D | T02-115 | Wave C merge |
+
+**Ticket ownership:**
+
+- T02-111: Kinematic CPA engine, 4 airspace type areas, lookahead projection, pure detection math.
+- T02-112: 800 ms square-wave blink clock, Line 0 blinking/solid red CA, `▲` inhibit glyph.
+- T02-113: Pair inhibit table (`Set<PairKey>`), acknowledgment state, lifecycle pruning.
+- T02-114: Preview grammar for `CA K`, `CA P`, `CA E`, `CA` + 2-click, slew-to-ack; purge `*CA`/`*LA`.
+- T02-115: Audio tone gating, dynamic list sync, and end-to-end integration acceptance tests.
+
+**Ticket files / branches:**
+
+- `ticket/T02-111-kinematic-cpa-engine-and-type-areas` ← `phases/02-scope/tickets/T02-111-kinematic-cpa-engine-and-type-areas.md`
+- `ticket/T02-112-alert-blinking-line0-render-and-inhibit-glyph` ← `phases/02-scope/tickets/T02-112-alert-blinking-line0-render-and-inhibit-glyph.md`
+- `ticket/T02-113-pair-inhibit-table-and-ack-state` ← `phases/02-scope/tickets/T02-113-pair-inhibit-table-and-ack-state.md`
+- `ticket/T02-114-stars-ca-preview-grammar-and-purge-aliases` ← `phases/02-scope/tickets/T02-114-stars-ca-preview-grammar-and-purge-aliases.md`
+- `ticket/T02-115-audio-tone-integ-and-ca-acceptance` ← `phases/02-scope/tickets/T02-115-audio-tone-integ-and-ca-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope follow-up (STARS Conflict Alert Alignment T02-111–115)
+Merge target: `feature/stars-ca-alignment`
+Merged: T02-111, T02-112, T02-113, T02-114, T02-115
+Tests: npm test / npm run ci exit 0
+Notes: <kinematic CPA 4 type areas; 800ms blink; Line 0 steady/flashing red CA and ▲; pair inhibit table; CA K/P/E/ack commands; audio gating>
+```
+
+---
+
 # ATC-SIM swarm orchestrator — Thirty-third swarm (Datablock Other-Target Geometry Avoidance)
 
 Thirty-second (Automatic Datablock Overlap Avoidance T02-108–109) landed on

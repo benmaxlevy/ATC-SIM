@@ -117,7 +117,6 @@ One physical keyboard, two foci.
 
 | Action | Sequence | CRC / vice analog |
 | --- | --- | --- |
-| Leader direction | `L` then `1`–`9` within 1.5 s | L1–L9. Top-row **or** numpad. |
 | Full ↔ limited datablock | `T` | Tag/untag analog. Selected track; if none selected, **all** tracks. |
 | Mode C field on/off | `M` | Hide/show reported altitude on **full** blocks. Assigned + GS remain. |
 | Altitude filter | `F`, then 3-digit min, `Enter`, 3-digit max, `Enter` | Hundreds of feet. `Esc` cancels the chord. |
@@ -258,7 +257,7 @@ Numpad compass, **including 5 = overlay**:
 - Phase 2 leader length is **fixed**: **36 px** at the current canvas (T02-19; was 24), **or** 0.35 NM world — pick **pixel-constant** (36 px) so length does not explode at 5 NM range. Documented in T02-05 / T02-19. T02-17 LDR DIR is direction only (no length menu).
 - L5: length 0; datablock top-left at the target (with a 4 px gap so the symbol stays visible).
 - Per-track direction stored on display state, not on `Aircraft`.
-- Changing `L`+digit applies to the **selected** track; if none selected, apply to **all**.
+- Change direction with the DCB LDR DIR control or explicit `*L` Preview commands; bare `L` remains Preview text.
 
 ### 9. Altitude filter
 
@@ -615,7 +614,7 @@ Completed TPA / ATPA addendum matching [CRC STARS](https://docs.virtualnas.net/c
 - [x] Four live AUX TPA/ATPA cells plus master (`atpa-mileage`, `atpa-intrail`, `atpa-alert`, `atpa-monitor`); `effective = atpa.on && atpa[feature]`; Alert Cones gates warning and alert; PREF schema `v: 2` round-trips all five `AtpaState` fields; `v: 1` migrates (T02-47).
 - [x] Per-track `*J` / `*P` rings and ground-track cones (1–30 NM, session state not PREF); `**J` / `**P` clear-all; size-readout inhibit; J-rings are never suppressed by ATPA; a manual `*P` cone is suppressed only on warning/alert (T02-48).
 - [x] STARS slew-chord parser for `*J` / `*P` / `*A` / `*B` / `*D` (and doubles); chords are scope-only and never emit Command IR; `DAL123 H270` still turns (T02-49).
-- [x] Conflict alert stays T04-09 `CA` datablock text plus tone; still **no** 3 NM CA halo; circles on this scope are TPA J-rings only.
+- [x] Conflict Alert uses kinematic CPA and the lower pair airspace type (Type 1–4); only unacknowledged Line 0 CA/MSAW indicators flash red (`CA`, `LA`, or `LA/CA`) at 800 ms on / 800 ms off, then stay solid after an empty-Preview slew-click acknowledgement. A concurrent `LA/CA` blinks as one unit until both conditions are acknowledged. Field 2 inhibits beside the ACID are upright `Δ` for CA/MCI and pair-inhibited CA members, `*` for MSAW, and `+` for both; pair suppression is isolated, so both members of an inhibited pair show `Δ`, while a separate shared active partner remains visible/listed/audible without gaining `Δ`. LA/CA/MCI list rows stay green and never flash, with CA rows `CA <ACID>*<ACID>`. `CA` plus one slew toggles an existing pair; `CA P` toggles a selected pair; `CA C`, `CA C E`, and `CA C I` toggle/enable/inhibit qualifying locally owned pairs; `CA E` is rejected. `<MULTI FUNC>Q` (`*Q`) suppresses only the selected active LA alert and clears when that alert clears; `<MULTI FUNC>V` (`*V`) toggles persistent MSAW processing for the selected owned track. Both are scope-local trainer controls, never Command IR or certified MSAW; `*LA` remains altitude filtering. These commands replace the rejected `*CA` alias; `kdem-ca` is the manual bench. Still **no** 3 NM CA halo; circles on this scope are TPA J-rings only.
 - [x] Comprehensive end-to-end integration and acceptance test suite in `src/scope/atpaFidelity.integration.test.ts` (T02-50).
 
 ### Preview Area addendum (T02-51–54)
@@ -793,4 +792,3 @@ Direct in-place text annotations on flight progress strips, supporting double-cl
 ## Glossary reminders
 
 Use `phases/_shared/glossary.md` terms: **scope**, **PPI**, **datablock**, **track**, **CRC keys**. Distances NM, altitudes feet MSL, speed knots. Do not invent “zoom level,” “labels,” or “sprites” in user-facing UI copy — say **range**, **datablock**, **target**. Forbidden/required list: `phases/_shared/references.md`.
-

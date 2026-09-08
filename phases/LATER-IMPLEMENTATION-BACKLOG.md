@@ -63,6 +63,18 @@ Later work must keep: FDB glyph **LA** (not the letters MSAW); no GPWS/TAWS;
 no datablock/target tint from MSAW; CA remains the only conflict audio. Do
 not restore yellow MSAW without a cited STARS two-color MSAW rule.
 
+### MCI is display scaffolding, not Conflict Alert
+
+Visible now: CA is a distinct live alert system with per-track and per-pair
+inhibit state. `WorldAlerts.mci` and MCI list/render paths exist, and `*MCI`
+only gates that scope display.
+
+Still missing: no MCI evaluator populates `WorldAlerts.mci` during world
+steps; no per-track or beacon-scoped MCI suppression state; and no controller
+`CA M` command. Do not represent MCI as a CA alias: later work must add its
+own detection, suppression, and command semantics while retaining CA's
+independent alert and inhibit behavior.
+
 ### Real ATPA pairing and predicted geometry
 
 Live now: catalog volumes walked by `approachId` (T02-43), in-trail pairing
@@ -314,10 +326,10 @@ persisted in PREF. WX `wxLevels` stay the other swarm.
 STARS CRC supports manual per-track inhibition commands via the `<MULTI FUNC>` (F7) keypad interface:
 - `<MULTI FUNC>M<SLEW>`: Toggles display of Mode C altitude for a specific track.
 - `<MULTI FUNC>C<SLEW>`: Inhibits Conflict Alert for a specific track (rendering `▲` after the aircraft callsign).
-- `<MULTI FUNC>...`: Inhibits MSAW for a specific track (rendering `*` after the aircraft callsign).
+- `<MULTI FUNC>Q` / `<MULTI FUNC>V` are shipped as scope-local trainer controls: Q suppresses only a current LA alert and V toggles persistent per-track MSAW processing; both render the ACID `*`. They are not certified MSAW.
 - `<MULTI FUNC>Y(###)<SLEW>`: Enters a pilot-reported altitude (rendering `*` after altitude numbers).
 
-These manual invocation commands and the corresponding `▲` and `*` Line 1 glyphs are skipped for now and preserved for later implementation when a full STARS `<MULTI FUNC>` keyboard chord parser is introduced. Typed Preview Area holes that include these chords are listed under **STARS preview area — commands not parsed** rather than duplicated here.
+The remaining manual invocation commands and corresponding glyph extensions are skipped for now and preserved for later implementation when a full STARS `<MULTI FUNC>` keyboard chord parser is introduced. Typed Preview Area holes that include those chords are listed under **STARS preview area — commands not parsed** rather than duplicated here. Later work must preserve the distinct Q current-alert lifetime and V persistent per-track lifetime.
 
 ### Tactical and Expanded Special Purpose Codes (SPCs)
 

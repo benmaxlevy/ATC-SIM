@@ -63,8 +63,8 @@ Service-side env, models, and Path C: [`speech-api/README.md`](../speech-api/REA
 
 ### Safety alerting (CA, MSAW, MCI)
 
-- **Conflict Alert (CA)**: Continuous evaluation of lateral (< 3.0 NM) and vertical (< 1,000 ft) aircraft separation. Triggers visual flashing in datablocks, red target highlighting, continuous Web Audio square-wave warning beeps, and dynamic row unfurling in the Alert Status box (`LA/CA/MCI` / `*TM`). Inhibitable per track via `*CA` or `F11`.
-- **Minimum Safe Altitude Warning (MSAW)**: Polygon-based Minimum Vectoring Altitude (MVA) floor checks that alert when aircraft descend below safe sector altitudes. Inhibitable per track via `*LA`.
+- **Conflict Alert (CA)**: Kinematic CPA prediction uses the active pair's lower airspace type (Type 1–4). Only Line 0 indicators blink: unacknowledged CA and MSAW flash red `CA` and `LA` at 800 ms on / 800 ms off; each stays solid after an empty-Preview slew-click acknowledgement. Concurrent MSAW and CA is one `LA/CA` indication and blinks as one unit until both conditions are acknowledged. Field 2 inhibit marks sit beside the ACID: upright `Δ` for CA/MCI, `*` for MSAW, and `+` when both are inhibited. The LA/CA/MCI list always remains green; CA rows read `CA <ACID>*<ACID>`. Use the `CA` commands below; `F11` buffers `CA `.
+- **Minimum Safe Altitude Warning (MSAW)**: Polygon-based Minimum Vectoring Altitude (MVA) floor checks that alert when aircraft descend below safe sector altitudes. `<MULTI FUNC>Q` (`*Q`, then owned alerting-track slew) suppresses only that current LA alert; `<MULTI FUNC>V` (`*V`, then owned-track slew) toggles persistent per-track MSAW processing. Both display the ACID `*`, are scope-local trainer controls, and are not certified MSAW. `*LA` remains only the altitude-filter command.
 - **Mode C Intruder (MCI)**: Alerts when an untracked VFR/Mode C transponder target penetrates protected airspace around tracked flights. Toggled on/off globally via `*MCI`.
 
 ### Simulated pilot & handoffs
@@ -193,7 +193,7 @@ Keys below are divided into **Always-On** shortcuts (which work regardless of wh
 | `F7` | `<MULTI FUNC>` Multi-Function | Types or appends `*` into the STARS Preview Area buffer. |
 | `F8` | `<HIST>` History Dots | Toggles radar history trail dots (0 ↔ last non-zero dot count). |
 | `F10` | `<PTL>` Predicted Track Line | Toggles global Predicted Track Line (`PTL ALL`). |
-| `F11` | `<CA>` Conflict Alert Inhibit | Arms Conflict Alert inhibit slew action (`*CA` command-then-slew). |
+| `F11` | `<CA>` Conflict Alert | Buffers `CA ` in the Preview Area. Complete a CA command or press Enter for two-track slew inhibit. |
 | `Insert` / `Ins` | `<PREF SET>` Preference Menu | Opens the DCB `PREF` configuration submenu. |
 | `Tab` | Cycle Focus | Cycles keyboard focus between `#command-line-input` and radar scope PPI. |
 | `Escape` | Cancel / Disarm | Cancels active Preview buffer, disarms slew actions, cancels list drag, closes DCB menus, or closes help. |
@@ -222,7 +222,6 @@ Keys below are divided into **Always-On** shortcuts (which work regardless of wh
 | `T` | Datablock Tag | Toggles Full Datablock (FDB) ↔ Limited Datablock (LDB) on selected track (or all if none selected). |
 | `M` | Mode C Toggle / Map Prefix | Tap `M` toggles Mode C reported altitude field on FDBs. Typing a map id afterwards (e.g. `M DEM1_27`) starts a video map buffer. |
 | `H` | History Toggle | Toggles history dots (same as `F8`). |
-| `L` then `1`–`9` | Leader Line Direction | 1.5 s chord window: sets datablock leader direction (1–9 numpad compass layout) on selected track. |
 | `F` then `<floor>` Enter `<ceiling>` Enter | Altitude Filter Chord | 1.5 s chord window: enters altitude filter limits in 3-digit hundreds (e.g. `F` → `000` Enter → `150` Enter). |
 | `B` then `<digits>` | Beacon Code Select | Table 30 beacon select chord (e.g. `B45` Enter for block 45; `B4501` for discrete). |
 | `/` | Slew / Drop Prefix | Buffers `/` into Preview Area (drop track `TERM CNTL`, set leader length, or toggle PDB ↔ FDB). |
@@ -240,7 +239,8 @@ The **Preview Area** is the primary typed command buffer of the STARS terminal r
 1. **Activation**: Focus the radar PPI (via `Tab` or by clicking empty scope background). Typing `*`, `+`, `/`, letters, digits, and spaces buffers into `view.preview`.
 2. **Rejection (`INV`)**: Unrecognized commands, out-of-range parameters, or illegal syntax immediately flash `<buffer> INV` for 2 seconds.
 3. **Cancellation**: Pressing `Escape` clears active entry buffers, disarms slew modes, and cancels list repositioning.
-4. **Target Slew Actions**: Commands that require a target (e.g. `*CA`, `*LA`, `+`, `/`, `*1`–`*8`, `[Index#]`) arm a slew state and wait for a left-click on an aircraft target. Clicking empty scope background does **not** consume or cancel the armed slew command.
+4. **Target Slew Actions**: Commands that require a target (e.g. `CA`, `CA P <track>`, `+`, `/`, `*1`–`*8`, `[Index#]`) arm a slew state and wait for a left-click on an aircraft target. Clicking an active CA target with an empty Preview Area acknowledges it; clicking empty scope background does **not** consume or cancel an armed command.
+5. **No bare L chord**: `L` and `L1`–`L9` remain Preview Area text. They never change leader direction or auto-submit a command. Use DCB LDR DIR or explicit `*L` leader commands.
 
 ---
 
@@ -299,7 +299,7 @@ System lists are operational data windows rendered directly on the radar scope.
 | Tower List 2 | `<MULTI FUNC>P2` (`*P2`) | `TOWER 2 (P2)` | Auxiliary Tower List 2. |
 | Tower List 3 | `<MULTI FUNC>P3` (`*P3`) | `TOWER 3 (P3)` | Auxiliary Tower List 3. |
 | VFR List | `<MULTI FUNC>TV` (`*TV`) | `VFR LIST (TV)` | Active 1200 / VFR tracks with callsign, beacon code, and altitude. Type `[Index#]` + click target to promote. `F1` + click row drops entry. |
-| LA/CA/MCI List | `<MULTI FUNC>TM` (`*TM`) | `LA/CA/MCI (TM)` | Safety alert notifications. Displays header `LA/CA/MCI` when idle; dynamically unfurls flashing `CA`, `LA`, and `MCI` rows when alerts trip. |
+| LA/CA/MCI List | `<MULTI FUNC>TM` (`*TM`) | `LA/CA/MCI (TM)` | Safety alert notifications. Displays header `LA/CA/MCI` when idle; alert rows appear in stable green (never flash). |
 | COAST/SUSPEND List | `<MULTI FUNC>TC` (`*TC`) | `COAST/SUSPEND (TC)` | Tracks in coasting or suspended surveillance state with status indicator (`C`), squawk, and altitude. |
 | SIGN ON List | `<MULTI FUNC>TS` (`*TS`) | `SIGN-ON (TS)` | Workstation sector sign-on roster and operating configuration. |
 | VIDEO MAPS List | `<MULTI FUNC>TX` (`*TX`) | `VIDEO MAPS (TX)` / `ACTIVE MAPS` | Adapted video map directory with numeric slots and `> ` active indicator. Left-clicking any map row immediately toggles that map layer. DCB `MAPS -> CURRENT` switches between all maps and active maps. |
@@ -356,12 +356,15 @@ System list commands in STARS do not accept aliases and use the exact prefix syn
 
 ---
 
-### Safety alert inhibits & control
+### Conflict Alert controls
 
 | Command Syntax | Operator Action | System Result |
 |---|---|---|
-| `*CA` then click target | Type `*CA` Enter, click target symbol | **Inhibit Conflict Alert (CA)**: Inhibits / acknowledges visual flashing, audio alarm, and LA/CA/MCI (`*TM`) alert listing for the selected aircraft pair. *(Can also be armed via shortcut key `F11`).* |
-| `*LA` then click target | Type `*LA` Enter, click target symbol | **Inhibit Low Altitude (MSAW)**: Inhibits Low Altitude / MSAW alert for the clicked aircraft. *(Note: bare `*LA` click is MSAW inhibit; `*LA <floor><ceiling>` Enter sets altitude filter limits).* |
+| `CA K [track]` | `CA K DAL123` Enter, or type `CA K` then slew-click | Toggles CA inhibit for one track; a normal upright `Δ` appears inline beside its ACID. |
+| `CA [track]` | Type `CA`; slew-click one member of an existing CA pair | Toggles that pair-specific CA inhibit. Both members show inline `Δ`; other pairs involving either track still alert. With multiple active partners and no existing inhibit, use `CA P` and slew both tracks. |
+| `CA P [track1] [track2]` | `CA P`; slew-click Track 1 then Track 2 (or enter both ACIDs) | Toggles the pair-specific CA inhibit; both members show inline `Δ` while inhibited. |
+| `CA C [E\|I]` | Enter after `CA C`, `CA C E`, or `CA C I` | Toggles, enables, or inhibits CA for every pair whose two tracks are locally owned. Does not change `CA K` or nonqualifying pairs. |
+| Empty Preview Area, click active LA/CA target | Slew-click the alerted target | Acknowledges active CA/MSAW for that track: the affected red Line 0 indicator becomes steady; CA tone stops when no other unacknowledged CA remains. |
 | `*MCI Enter` | Type `*MCI` Enter | **Toggle Mode C Intruder Alerting**: Globally toggles Mode C Intruder alerting on or off (`view.mciEnabled`). |
 
 ---
@@ -442,7 +445,7 @@ To prevent operator confusion between similar keyboard inputs, the simulator adh
 - **Altitude Filters**: Scope-focus `F` begins the altitude filter entry chord. `*F Enter` flashes the filter limits readout. `*F then click` toggles forced FDB.
 - **Beacon Commands**: Scope-focus `B##` toggles beacon select blocks. `*BCN ##` adds beacon filters. `*B then click` activates the 5-second Beaconator.
 - **Mode C vs Video Maps**: Tap `M` toggles the Mode C altitude readout on FDBs. Typing `M` followed by a map name (e.g. `M DEM1_27`) toggles that map layer.
-- **Alert Inhibits**: `*CA then click` inhibits Conflict Alert. `*LA then click` inhibits Low Altitude / MSAW alert. `*LA <floor><ceiling> Enter` sets altitude filter bounds. `*MCI Enter` toggles Mode C Intruder alerting.
+- **Alert Controls**: `CA K`, `CA`, `CA P`, and `CA C [E|I]` control Conflict Alert inhibits; an empty-preview slew-click acknowledges CA. `CA E` is rejected. `*Q` then an owned active-LA track suppresses only its current alert; `*V` then an owned track toggles its persistent MSAW processing. `*LA <floor><ceiling> Enter` sets altitude filter bounds only. `*MCI Enter` toggles Mode C Intruder alerting.
 
 ### Deferred commands backlog
 

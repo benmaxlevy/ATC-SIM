@@ -296,7 +296,13 @@ export interface ScopeView {
   beaconSelectCodes: string[];
   /** Per-track display state (history, IDENT flash, datablock, leader, ownership). Keyed by aircraft id. */
   tracks: Map<string, TrackDisplay>;
-  /** Scope-focus letter chord (`L` leader; T02-06 `F` filter). Null when idle. */
+  /** Pairwise CA inhibited canonical keys ("idA|idB" or "callsignA|callsignB"). */
+  caInhibitedPairs: Set<string>;
+  /** CA C controller-wide setting for pairs whose two tracks are locally owned. */
+  caControllerOwnedPairsInhibited: boolean;
+  /** Acknowledged CA alert pair canonical keys. */
+  acknowledgedAlertPairs: Set<string>;
+  /** Scope-focus letter chord (`F` filter). Null when idle. */
   pendingChord: ScopeChord | null;
   /**
    * F1 help overlay. Display only — never pauses the sim or writes intent.
@@ -476,6 +482,9 @@ export function createScopeView(
     sectorId: "D",
     beaconSelectCodes: [],
     tracks: new Map(),
+    caInhibitedPairs: new Set(),
+    caControllerOwnedPairsInhibited: false,
+    acknowledgedAlertPairs: new Set(),
     pendingChord: null,
     helpOpen: false,
     dcbVisible: true,

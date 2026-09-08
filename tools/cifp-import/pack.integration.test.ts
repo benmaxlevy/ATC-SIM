@@ -5,8 +5,6 @@
  */
 import { expect, test } from "vitest";
 // @ts-expect-error tsconfig has no @types/node
-import { spawnSync } from "node:child_process";
-// @ts-expect-error tsconfig has no @types/node
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 // @ts-expect-error tsconfig has no @types/node
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -15,9 +13,8 @@ import { tmpdir } from "node:os";
 // @ts-expect-error tsconfig has no @types/node
 import { dirname, join } from "node:path";
 // @ts-expect-error tsconfig has no @types/node
-import { execPath } from "node:process";
-// @ts-expect-error tsconfig has no @types/node
 import { fileURLToPath } from "node:url";
+import { runCli } from "./cli.ts";
 import { parseCatalogFiles } from "../../src/scenario/procedures/loadCatalog.ts";
 import { catalogDctIds } from "../../src/scenario/procedures/types.ts";
 import { listStarSlots, starRouteFixIds } from "../../src/scenario/starSpawn.ts";
@@ -283,12 +280,9 @@ test("cifp:pack --dry-run on FAA-column fixture reaches pack selection", () => {
   const inPath = join(dir, "faa-layout-subset.cifp");
   writeFileSync(inPath, buildFaaLayoutSubset(), "utf8");
   try {
-    const result = spawnSync(
-      execPath,
+    let report = "";
+    runCli(
       [
-        "--experimental-strip-types",
-        "--disable-warning=ExperimentalWarning",
-        join(here, "cli.ts"),
         "pack",
         "--in",
         inPath,
@@ -300,10 +294,20 @@ test("cifp:pack --dry-run on FAA-column fixture reaches pack selection", () => {
         join(dir, "out"),
         "--dry-run",
       ],
-      { encoding: "utf8", cwd: repoRoot },
+      {
+        readFile: (path) => readFileSync(path, "utf8"),
+        writeFile: () => {
+          throw new Error("dry-run must not write");
+        },
+        stdout: () => {
+          throw new Error("pack dry-run should not use stdout");
+        },
+        stderr: (body) => {
+          report += body;
+        },
+      },
     );
-    expect(result.status).toBe(0);
-    const combined = `${result.stdout ?? ""}${result.stderr ?? ""}`;
+    const combined = report;
     expect(combined).toMatch(/cifp-pack: dry-run/);
     expect(combined).toMatch(/airport: KSYN/);
     expect(combined).toMatch(/seed: /);
@@ -316,12 +320,9 @@ test("cifp:pack --dry-run on FAA-column fixture reaches pack selection", () => {
 test("cifp:pack --dry-run reads committed FAA-column testdata fixture", () => {
   const fixture = join(repoRoot, "testdata/cifp/faa-layout-subset.cifp");
   expect(existsSync(fixture)).toBe(true);
-  const result = spawnSync(
-    execPath,
+  let report = "";
+  runCli(
     [
-      "--experimental-strip-types",
-      "--disable-warning=ExperimentalWarning",
-      join(here, "cli.ts"),
       "pack",
       "--in",
       fixture,
@@ -333,10 +334,20 @@ test("cifp:pack --dry-run reads committed FAA-column testdata fixture", () => {
       join(tmpdir(), "cifp-faa-out"),
       "--dry-run",
     ],
-    { encoding: "utf8", cwd: repoRoot },
+    {
+      readFile: (path) => readFileSync(path, "utf8"),
+      writeFile: () => {
+        throw new Error("dry-run must not write");
+      },
+      stdout: () => {
+        throw new Error("pack dry-run should not use stdout");
+      },
+      stderr: (body) => {
+        report += body;
+      },
+    },
   );
-  expect(result.status).toBe(0);
-  expect(`${result.stdout ?? ""}${result.stderr ?? ""}`).toMatch(/cifp-pack: dry-run/);
+  expect(report).toMatch(/cifp-pack: dry-run/);
 });
 
 test("grouped 26B/27B/08B/09B pack expands to concrete L/R SID transitions", () => {

@@ -1,17 +1,22 @@
 import { expect, test } from "vitest";
 import { datablockAlertTint } from "@core";
 import {
+  ALERT_BLINK_HALF_PERIOD_MS,
+  ALERT_BLINK_PERIOD_MS,
+  ALERT_RED,
   BRITE_DISABLED_CHANNELS,
   BRITE_PAINT_CHANNELS,
   DEFAULT_BRITE,
   HISTORY_TRAIL,
   MAP_BRITE_STEPS,
   PALETTE,
+  STARS_ALERT_RED,
   alertOrOwnershipColor,
   alertTintPaintColor,
   applyBrite,
   caDatablockTagVisible,
   historyTrailColor,
+  isAlertBlinkOn,
   mapBriteColors,
   snapBriteLevel,
   withCaDatablockTag,
@@ -131,10 +136,35 @@ test("AC5 — predicted CA is not yellow; CA and MSAW do not paint block/target"
   expect(PALETTE.atpaAlert).not.toBe(PALETTE.alert);
 });
 
-test("CA tag is static (does not blink); MSAW tag is not GPWS/TAWS", () => {
-  expect(caDatablockTagVisible(0)).toBe(true);
-  expect(caDatablockTagVisible(799)).toBe(true);
-  expect(caDatablockTagVisible(800)).toBe(true);
+test("CA and MSAW alert blinking follows authentic 800ms cadence; acknowledged is steady", () => {
+  expect(ALERT_BLINK_HALF_PERIOD_MS).toBe(800);
+  expect(ALERT_BLINK_PERIOD_MS).toBe(1600);
+  expect(ALERT_RED).toBe(PALETTE.alert);
+  expect(STARS_ALERT_RED).toMatch(/^#(ff3b30|FF0000)$/i);
+
+  // Synchronized square-wave clock (800ms ON / 800ms OFF)
+  expect(isAlertBlinkOn(0)).toBe(true);
+  expect(isAlertBlinkOn(400)).toBe(true);
+  expect(isAlertBlinkOn(799)).toBe(true);
+  expect(isAlertBlinkOn(800)).toBe(false);
+  expect(isAlertBlinkOn(1200)).toBe(false);
+  expect(isAlertBlinkOn(1599)).toBe(false);
+  expect(isAlertBlinkOn(1600)).toBe(true);
+  expect(isAlertBlinkOn(2399)).toBe(true);
+  expect(isAlertBlinkOn(2400)).toBe(false);
+
+  // Negative and fractional milliseconds
+  expect(isAlertBlinkOn(0.5)).toBe(true);
+  expect(isAlertBlinkOn(800.5)).toBe(false);
+
+  // caDatablockTagVisible: unacknowledged alternates, acknowledged is steady
+  expect(caDatablockTagVisible(0, false)).toBe(true);
+  expect(caDatablockTagVisible(799, false)).toBe(true);
+  expect(caDatablockTagVisible(800, false)).toBe(false);
+  expect(caDatablockTagVisible(1200, false)).toBe(false);
+  expect(caDatablockTagVisible(800, true)).toBe(true);
+  expect(caDatablockTagVisible(1200, true)).toBe(true);
+
   expect(withCaDatablockTag("DAL123", "ca-caution", 0)).toBe("DAL123");
   expect(withCaDatablockTag("DAL123", "ca-alert", 800)).toBe("DAL123");
   expect(withCaDatablockTag("DAL123", "msaw-caution")).toBe("DAL123");
@@ -158,7 +188,7 @@ test("CA tag is static (does not blink); MSAW tag is not GPWS/TAWS", () => {
       eager: true,
     }) as Record<string, string>
   )["../render/renderScopePaint.ts"]!;
-  expect(paint).toMatch(/MSAW_DATABLOCK_TAG/);
+  expect(paint).toMatch(/alertGlyphsForTrack/);
   expect(paint).not.toMatch(/fillText\("MSAW"/);
 });
 

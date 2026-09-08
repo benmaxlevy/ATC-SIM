@@ -1,5 +1,108 @@
 # Swarm status
 
+## THIRTY-NINTH SWARM COMPLETE — MSAW MULTI FUNC Q/V (T02-120)
+
+T02-120 is squash-merged on `feature/stars-ca-alignment` as `cd1f120`.
+`*` is the existing MULTI FUNC input: `*Q` then slew/click on an owned active
+LA track suppresses only its current MSAW presentation/tone/list entry and
+clears with that alert; `*V` then slew/click on an owned track persistently
+toggles its MSAW processing presentation/tone/list suppression. Both retain
+the ACID `*`, never create Command IR, and `*LA` remains altitude filtering.
+
+Worker and captain `npm run ci` passed: typecheck, lint, format, **180 test
+files / 1,605 tests passed / 4 skipped**. Documentation and deferred-backlog
+wording now record Q/V as shipped trainer-local behavior.
+
+**Merged:** T02-120 (`cd1f120`) after planning clarification `a3a605e`.
+
+## THIRTY-EIGHTH SWARM COMPLETE — WX VIP Availability (T02-121)
+
+T02-121 is squash-merged on `feature/stars-ca-alignment` as `2a34a61`.
+N0Q now fetches at boot and refreshes every five minutes even when every WX
+display latch is off. Each MAIN WX cap shows bottom-line `AVL` only when its
+own current packed VIP mask has one or more real (non-padding) pixels. Empty,
+failed, and never-fetched mosaics show no `AVL`; WX latch state and Command IR
+isolation are unchanged.
+
+Focused worker tests: **3 files, 19 tests passed**. Captain post-merge
+`npm run ci` passed: typecheck, lint, format, **180 test files / 1,602 tests
+passed / 4 skipped**. No manual UI leftover: automated markup coverage proves
+per-level `AVL`; no Chrome-only assertion was added.
+
+**Merged:** T02-121 (`2a34a61`) after planning commit `e3a7d3b`.
+
+## THIRTY-SEVENTH SWARM EXIT BLOCKED — Controller CA/MSAW Controls (T02-119–120)
+
+T02-119 is squash-merged on `feature/stars-ca-alignment` as `b409c6c`, with
+follow-up formatting commits `cd33c4f` / `d594eba` and the reviewed CA P alias
+toggle repair `9d25f4c`. `CA P` now toggles pair state; `CA E` rejects; `CA C`,
+`CA C E`, and `CA C I` persistently govern qualifying locally owned pairs.
+Command documentation was updated in root/USER/Phase 2 README locations.
+
+Focused CA parser/interaction tests: **2 files, 35 tests passed**. Full test
+gate still has the same unrelated failures already recorded for the prior
+swarm: two `tools/cifp-import/pack.integration.test.ts` dry-run stdout
+assertions and stale `ScopeHelpOverlay.test.ts` `L then 1–9` expectation.
+Per swarm gate, T02-120 did not start. User-modified
+`phases/LATER-IMPLEMENTATION-BACKLOG.md` remains untouched.
+
+## THIRTY-SIXTH SWARM EXIT BLOCKED — CA Pair-Inhibit Manual Correction (T02-118)
+
+T02-118 is squash-merged on `feature/stars-ca-alignment` as `4185028`,
+superseding the T02-117 interpretation recorded below. TI 6191.409 §7.10–7.11
+now governs the implementation: bare `CA` with one slew toggles an unambiguous
+existing/current pair; `CA P` selects two tracks by slews or ACIDs. Pair
+inhibition suppresses only that pair's Line 0 CA, list row, and tone, while
+both inhibited members show upright inline `Δ`. A shared, uninhibited CA pair
+remains visible, listed, and audible; its uninhibited member has no `Δ`.
+
+Focused CA scope tests: **5 files, 105 tests passed**. Typecheck, lint, and
+format checks passed. Required `npm run ci` remains blocked by three unrelated
+pre-existing test failures: two `tools/cifp-import/pack.integration.test.ts`
+dry-run stdout assertions and the stale `ScopeHelpOverlay.test.ts` `L then
+1–9` expectation. No later swarm phase started.
+
+## THIRTY-FIFTH SWARM EXIT BLOCKED — CA Pair-Inhibit Presentation (T02-117)
+
+T02-117 is squash-merged on `feature/stars-ca-alignment` as `e82d50b`.
+Pair-specific CA inhibits now suppress Line 0 CA presentation for that pair,
+the CA tone, and the AL-list row, while a separate active pair sharing either
+track remains visible. Pair suppression has no datablock marker: TI 6191.409
+§2.16.3/Table 2-26 reserves upright `Δ` for CA disabled **for a track**.
+
+Focused verification passed: **5 files, 102 tests** (`renderScopePaint`, CA
+integration, preview area, AL list, CA tone), plus typecheck, lint, and format.
+Final full `npm test` reached **178 passed files, 1,594 passed tests, 4 skipped**
+but remains blocked by unrelated existing failures: two
+`tools/cifp-import/pack.integration.test.ts` dry-run stdout assertions and the
+stale `ScopeHelpOverlay.test.ts` leader-key assertion. No unrelated fixes made.
+
+**Manual leftovers:** verify `CA` two-slew / `CA P` on `kdem-ca`: the inhibited
+pair loses CA presentation/list/tone, a separately conflicting pair stays
+alerting, and `CA E` restores the inhibited pair when conflict persists.
+
+---
+
+## THIRTY-FOURTH SWARM EXIT BLOCKED — STARS Conflict Alert Alignment (T02-111–115)
+
+T02-111 through T02-115 are squash-merged on `feature/stars-ca-alignment`.
+T02-115 completed the CA audio gate, `kdem-ca` playable fixture, and CA
+integration acceptance coverage. Post-merge `npm test` reached **179 passed
+files, 1,584 passed tests, 4 skipped**, but failed two existing
+`tools/cifp-import/pack.integration.test.ts` dry-run assertions: their spawned
+subprocesses return status 0 with empty stdout/stderr where the tests expect
+`cifp-pack: dry-run`. The worker reproduced the same two failures before merge.
+No CIFP code is in this swarm's scope, so no unrelated fix was made.
+
+**Merged (captain squash-merge onto `feature/stars-ca-alignment`):**
+T02-111 (`61d7a3e`), T02-112 (`8a37fe2`), T02-113 (`9c7995f`),
+T02-114 (`3ded64c`), T02-115 (`6e26e2a`). Planning resume (`a83d89b`).
+
+**Manual leftovers:** launch `kdem-ca` in Chrome and verify blink, tone,
+slew-acknowledge, and CA K/P/E behavior.
+
+---
+
 ## THIRTY-FIRST SWARM COMPLETE — STARS In-Scope System Lists Architecture & Interactive Lists (T02-103–107)
 
 T02-103–107 are implemented and squash-merged onto `feature/system-lists` (not `master`). Full test suite `npm test` passes completely: **173 test files passed, 1450 passed, 4 skipped, 0 failures**. The full FAA STARS System Lists suite is operational on the radar PPI canvas: standard list identifiers (`FL`, `TL`, `VL`, `ML`, `AL`), adaptation default coordinate anchors, interactive window dragging with collision warning boxes, Shift-Click default reset, keyboard relocation and reset commands, DCB PREF profile persistence, Flight Plan List (`FL`) buffering with `MORE: X/Y` pagination and auto-correlation, Tower (`TL`) and VFR (`VL`) sequences with `F1` entry drop, Video Map Lists (`ML`) with active `> ` caret indicators and direct canvas row toggling, and the dynamic Alert Status Box (`AL`) with 1 Hz flashing and acknowledge/inhibit controls.
@@ -1030,7 +1133,3 @@ Recovery resumed from `feature/session-setup`. T04-24 inventory (`93a7c10`), fre
 **Manual leftover:** Human Chrome check: open Session setup; change scenario/arrival/departure rate/seed; Cancel preserves World and focus; confirm Apply/restart warning rebuilds World; verify unavailable departure capability copy. Do not invent pass.
 
 **Notes:** Picker options derive solely from playable inventory; normal arrival count/rate remains seeded STAR inbound/VIA; `?traffic=N` remains benchmark downwind; T04-21 owns departure rate. `atc-sim.session.v1` remains separate from trainer/DCB preferences. No scoring, replay, imperfect pilots, second position, DCB PREF, live traffic editing, second airport data, or radio-frequency IR. Initial T04-25 conflict was superseded by a fresh worker from the T04-24 feature base. Preserved untracked `.cursor/rules/caveman-ultra.mdc`, `e2e/`, and user-modified `speech-api/.env.example`.
-
-
-
-

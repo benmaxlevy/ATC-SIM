@@ -1,8 +1,13 @@
 import { acceptPointout, handoffFor, setSelectedAircraft, type World } from "@core";
 import { expireFilterEntry, inAltitudeFilter } from "./altitudeFilter";
 import {
+  armPreviewSlewAction,
   cancelPreviewArea,
   expirePreviewArea,
+  handleCaSlewClick,
+  handleMsawSlewClick,
+  handleImpliedCaAcknowledge,
+  previewAreaIsLive,
   previewFlidMatchesSlew,
   previewRelocateListId,
   previewTrackingSlew,
@@ -59,6 +64,7 @@ import {
   applyDropTrackToId,
   applyInitiateTrackToId,
   ensureTrackDisplay,
+  pruneCaPairInhibitsForTrack,
   setLeaderDirAndLengthForId,
   setLeaderDirForId,
   setLeaderLengthForId,
@@ -190,7 +196,8 @@ function applyTrackingSlewHit(
       if (hit.region === "datablock") {
         toggleTrackPdbFdb(td);
       } else {
-        applyDropTrackToId(view.tracks, world, id);
+        applyDropTrackToId(view.tracks, world, id, view);
+        pruneCaPairInhibitsForTrack(view, id);
       }
       setSelectedAircraft(world, id);
       clearTrackingSlew(view);
@@ -276,20 +283,21 @@ function applyTrackingSlewHit(
       clearTrackingSlew(view);
       return true;
     }
-    case "inhibitCa": {
-      const td = ensureTrackDisplay(view.tracks, id);
-      td.caInhibited = true;
-      setSelectedAircraft(world, id);
-      clearTrackingSlew(view);
+    case "caSingleTrackInhibit":
+    case "caPairSlew":
+    case "caPairToggle": {
+      if (view.preview.phase !== "armed") {
+        armPreviewSlewAction(view.preview, action, Date.now());
+      }
+      handleCaSlewClick(view, world, id);
       return true;
     }
-    case "inhibitMsaw": {
-      const td = ensureTrackDisplay(view.tracks, id);
-      td.msawInhibited = true;
-      setSelectedAircraft(world, id);
-      clearTrackingSlew(view);
-      return true;
-    }
+    case "msawCurrentAlertInhibit":
+    case "toggleMsawProcessing":
+      if (view.preview.phase !== "armed") {
+        armPreviewSlewAction(view.preview, action, Date.now());
+      }
+      return handleMsawSlewClick(view, world, id);
     default:
       return false;
   }
@@ -316,6 +324,30 @@ export function handlePpiLeftClick(
   const size = viewSize(cssWidth, cssHeight);
   const nm = screenToNm(cssX, cssY, view.camera, size);
   recordLastClick(view, nm.eastNm, nm.northNm);
+  // A live CA command is a target-slew command, not a list interaction.
+  // Handle it before any movable-list hit testing can consume the click.
+  const liveTracking = previewTrackingSlew(view.preview);
+  if (
+    view.preview.phase === "entry" &&
+    liveTracking &&
+    (liveTracking.type === "caSingleTrackInhibit" ||
+      liveTracking.type === "caPairSlew" ||
+      liveTracking.type === "caPairToggle")
+  ) {
+    const hit = pickAircraftHitAt(
+      world,
+      cssX,
+      cssY,
+      view.camera,
+      cssWidth,
+      cssHeight,
+      HIT_RADIUS_CSS_PX,
+      view,
+    );
+    if (hit && applyTrackingSlewHit(view, world, hit, liveTracking)) {
+      return;
+    }
+  }
   let relocateId = previewRelocateListId(view.preview);
   // The same P commands address lists on empty scope and TPA cones on aircraft.
   if (
@@ -497,6 +529,21 @@ export function handlePpiLeftClick(
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;
       return;
+    }
+  }
+  if (!previewAreaIsLive(view.preview) || view.preview.buffer.trim() === "") {
+    const hit = pickAircraftHitAt(
+      world,
+      cssX,
+      cssY,
+      view.camera,
+      cssWidth,
+      cssHeight,
+      HIT_RADIUS_CSS_PX,
+      view,
+    );
+    if (hit) {
+      handleImpliedCaAcknowledge(view, world, hit.aircraft.id);
     }
   }
   selectOrAcceptAircraftAt(
@@ -698,3 +745,21 @@ export function paintPpi(
   expirePreviewArea(view.preview, Date.now());
   renderScope(ctx, world, view, cssWidth, cssHeight);
 }
+
+export {
+  makeCaPairKey,
+  isCaPairInhibited,
+  setCaPairInhibited,
+  toggleCaPairInhibited,
+  isAlertAcknowledged,
+  acknowledgeAlert,
+  clearAcknowledgedAlert,
+  pruneCaPairInhibitsForTrack,
+  filterActiveCaAlerts,
+  getAlertVisualStatus,
+  syncConflictAcknowledgmentState,
+  createTrackDisplayState,
+  type TrackDisplayState,
+  type TrackDisplayItem,
+  type AlertVisualStatus,
+} from "./trackDisplay";

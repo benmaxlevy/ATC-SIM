@@ -2,9 +2,9 @@
  * PPI paint stages. Draw order is owned by renderScope().
  */
 import {
+  caPairKey,
   caSeverityForCallsign,
   handoffFor,
-  MSAW_DATABLOCK_TAG,
   msawSeverityForCallsign,
   type Aircraft,
   type World,
@@ -76,7 +76,7 @@ import {
   surveillanceModeWord,
 } from "../surveillance";
 import type { TrackOwnership } from "../ownership";
-import { BLINK_HALF_PERIOD_MS, PALETTE, applyBrite, caDatablockTagVisible } from "../palette";
+import { BLINK_HALF_PERIOD_MS, PALETTE, applyBrite, isAlertBlinkOn } from "../palette";
 import {
   TARGET_PUCK_BG,
   drawHistoryDot,
@@ -87,9 +87,11 @@ import {
 } from "./targetSymbol";
 import {
   deriveScratchpads,
+  filterActiveCaAlerts,
   isBeaconatorReadout,
   isIdentFlashing,
   isTrackQueried,
+  isCaPairInhibited,
   type TrackDisplay,
 } from "../trackDisplay";
 import {
@@ -108,6 +110,31 @@ import {
   type ListRect,
 } from "../systemLists";
 import { buildVideoMapsListLines, getVideoMapsEntries } from "../coordinationList";
+
+/** CA severity after track and pair inhibits, preserving other active pairs. */
+function caSeverityForVisibleTrack(view: ScopeView, world: World, callsign: string) {
+  return caSeverityForCallsign(filterActiveCaAlerts(world.alerts.ca, world, view), callsign);
+}
+
+/** Pair inhibit Δ is shown only for a member of an inhibited active CA pair. */
+function isCaPairInhibitedForTrack(view: ScopeView, world: World, ac: Aircraft): boolean {
+  return world.alerts.ca.some((alert) => {
+    if (alert.callsignA !== ac.callsign && alert.callsignB !== ac.callsign) return false;
+    const trackA = world.aircraft.find((candidate) => candidate.callsign === alert.callsignA);
+    const trackB = world.aircraft.find((candidate) => candidate.callsign === alert.callsignB);
+    if (
+      view.caControllerOwnedPairsInhibited &&
+      trackA &&
+      trackB &&
+      view.tracks.get(trackA.id)?.ownership === "owned" &&
+      view.tracks.get(trackB.id)?.ownership === "owned"
+    ) {
+      return true;
+    }
+    if (isCaPairInhibited(view, alert.callsignA, alert.callsignB)) return true;
+    return Boolean(trackA && trackB && isCaPairInhibited(view, trackA.id, trackB.id));
+  });
+}
 
 const RING_STROKE_PX = 1;
 const RUNWAY_STROKE_PX = 2;
@@ -400,6 +427,112 @@ export function isTrackedTarget(view: ScopeView, world: World, ac: Aircraft): bo
   );
 }
 
+export function isCaInhibitedForTrack(
+  ac: Aircraft,
+  td: TrackDisplay | undefined,
+  view?: ScopeView,
+): boolean {
+  if (
+    td?.caInhibited ||
+    td?.inhibitCA ||
+    (td as { caInhibit?: boolean } | undefined)?.caInhibit ||
+    (td as { inhibitCa?: boolean } | undefined)?.inhibitCa ||
+    (ac as { caInhibited?: boolean }).caInhibited ||
+    (ac as { inhibitCA?: boolean }).inhibitCA
+  ) {
+    return true;
+  }
+  if (
+    (view as { caInhibitedTracks?: Set<string> } | undefined)?.caInhibitedTracks?.has(ac.id) ||
+    (view as { caInhibitedTracks?: Set<string> } | undefined)?.caInhibitedTracks?.has(ac.callsign)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function isCaAlertAcknowledged(
+  ac: Aircraft,
+  td: TrackDisplay | undefined,
+  view: ScopeView,
+  world: World,
+): boolean {
+  if (
+    td?.caAcknowledged ||
+    td?.alertAcknowledged ||
+    (td as { acknowledged?: boolean } | undefined)?.acknowledged ||
+    (td as { isAck?: boolean } | undefined)?.isAck ||
+    (ac as { caAcknowledged?: boolean }).caAcknowledged ||
+    (ac as { acknowledged?: boolean }).acknowledged
+  ) {
+    return true;
+  }
+  const caAlerts = world.alerts?.ca;
+  if (caAlerts) {
+    for (const alert of caAlerts) {
+      if (alert.callsignA === ac.callsign || alert.callsignB === ac.callsign) {
+        if (
+          (alert as { acknowledged?: boolean }).acknowledged ||
+          (alert as { isAck?: boolean }).isAck
+        ) {
+          return true;
+        }
+        const pairKey = caPairKey(alert.callsignA, alert.callsignB);
+        if (
+          (view as { acknowledgedAlertPairs?: Set<string> }).acknowledgedAlertPairs?.has(pairKey) ||
+          (view as { acknowledgedAlerts?: Set<string> }).acknowledgedAlerts?.has(pairKey)
+        ) {
+          return true;
+        }
+      }
+    }
+  }
+  if (
+    (view as { acknowledgedAlerts?: Set<string> }).acknowledgedAlerts?.has(ac.callsign) ||
+    (view as { acknowledgedAlerts?: Set<string> }).acknowledgedAlerts?.has(ac.id)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function isMsawAlertAcknowledged(
+  ac: Aircraft,
+  td: TrackDisplay | undefined,
+  view: ScopeView,
+  world: World,
+): boolean {
+  if (
+    td?.msawAcknowledged ||
+    (td as { laAcknowledged?: boolean } | undefined)?.laAcknowledged ||
+    td?.alertAcknowledged ||
+    (td as { acknowledged?: boolean } | undefined)?.acknowledged ||
+    (td as { isAck?: boolean } | undefined)?.isAck ||
+    (ac as { msawAcknowledged?: boolean }).msawAcknowledged ||
+    (ac as { acknowledged?: boolean }).acknowledged
+  ) {
+    return true;
+  }
+  const msawAlerts = world.alerts?.msaw;
+  if (msawAlerts) {
+    for (const alert of msawAlerts) {
+      if (
+        alert.callsign === ac.callsign &&
+        ((alert as { acknowledged?: boolean }).acknowledged || (alert as { isAck?: boolean }).isAck)
+      ) {
+        return true;
+      }
+    }
+  }
+  if (
+    (view as { acknowledgedAlerts?: Set<string> }).acknowledgedAlerts?.has(ac.callsign) ||
+    (view as { acknowledgedAlerts?: Set<string> }).acknowledgedAlerts?.has(ac.id)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function getDatablockVisualState(
   view: ScopeView,
   world: World,
@@ -410,7 +543,8 @@ export function getDatablockVisualState(
 
   // 1. Conflict Alert: only shown for tracked targets (full datablock in white)
   const isTracked = isTrackedTarget(view, world, ac);
-  const caSeverity = caSeverityForCallsign(world.alerts.ca, ac.callsign);
+  const isCaInhibited = isCaInhibitedForTrack(ac, td, view);
+  const caSeverity = !isCaInhibited ? caSeverityForVisibleTrack(view, world, ac.callsign) : null;
   if (isTracked && caSeverity) {
     return {
       color: PALETTE.owned,
@@ -422,7 +556,7 @@ export function getDatablockVisualState(
 
   // 2. Inbound / Departure pending handoff: Blinking white FDB
   if (ho.kind === "inbound" || ho.kind === "departure") {
-    const isBlinkOn = Math.floor(world.simTimeMs / BLINK_HALF_PERIOD_MS) % 2 === 0;
+    const isBlinkOn = isAlertBlinkOn(world.simTimeMs);
     return {
       color: PALETTE.owned,
       visible: isBlinkOn,
@@ -443,7 +577,7 @@ export function getDatablockVisualState(
         td?.outboundFlashUntilSimMs ??
         (ho.kind === "outbound" ? (ho.acceptedAtSimMs ?? 0) + 5000 : 0);
       const isFlashing = world.simTimeMs < flashDeadline;
-      const isBlinkOn = Math.floor(world.simTimeMs / BLINK_HALF_PERIOD_MS) % 2 === 0;
+      const isBlinkOn = isAlertBlinkOn(world.simTimeMs);
       return {
         color: PALETTE.owned,
         visible: isFlashing ? isBlinkOn : true,
@@ -604,13 +738,63 @@ function trackOwnership(view: ScopeView, aircraftId: string) {
 
 function trackColor(view: ScopeView, world: World, ac: Aircraft): string {
   const isTracked = isTrackedTarget(view, world, ac);
-  const caSeverity = caSeverityForCallsign(world.alerts.ca, ac.callsign);
+  const td = view.tracks.get(ac.id);
+  const isCaInhibited = isCaInhibitedForTrack(ac, td, view);
+  const caSeverity = !isCaInhibited ? caSeverityForVisibleTrack(view, world, ac.callsign) : null;
   if (isTracked && caSeverity) {
     return PALETTE.owned;
   }
-  const td = view.tracks.get(ac.id);
   const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
   return targetStrokeColor(trackOwnership(view, ac.id), identActive);
+}
+
+type AlertGlyph = {
+  text: "Δ" | "*" | "+";
+  color: string;
+  visible: boolean;
+};
+
+/** MCI records are deliberately tolerant of the adapted alert row shape. */
+function hasMciAlertForTrack(world: World, ac: Aircraft): boolean {
+  const alerts = (world.alerts as { mci?: Array<Record<string, string | undefined>> }).mci;
+  return Boolean(
+    alerts?.some((alert) =>
+      [
+        alert.intruderSquawkOrCallsign,
+        alert.intruder,
+        alert.intruderSquawk,
+        alert.squawk,
+        alert.callsignA,
+        alert.protectedCallsign,
+        alert.protectedFlight,
+        alert.callsignB,
+        alert.callsign,
+      ].includes(ac.callsign),
+    ),
+  );
+}
+
+/**
+ * STARS Field 2 inhibit symbols sit immediately after the ACID. `*` is MSAW,
+ * `Δ` is CA/MCI, and `+` is both inhibited. Field 0 above the datablock shows
+ * active `LA`, `CA`, or slash-separated `LA/CA` indicators.
+ */
+function alertGlyphsForTrack(args: {
+  caInhibited: boolean;
+  msawInhibited: boolean;
+  mciInhibited: boolean;
+  normalColor: string;
+}): AlertGlyph[] {
+  const glyphs: AlertGlyph[] = [];
+  const caOrMciInhibited = args.caInhibited || args.mciInhibited;
+  if (args.msawInhibited && caOrMciInhibited) {
+    glyphs.push({ text: "+", color: args.normalColor, visible: true });
+  } else if (caOrMciInhibited) {
+    glyphs.push({ text: "Δ", color: args.normalColor, visible: true });
+  } else if (args.msawInhibited) {
+    glyphs.push({ text: "*", color: args.normalColor, visible: true });
+  }
+  return glyphs;
 }
 
 export function drawDatablock(
@@ -626,6 +810,7 @@ export function drawDatablock(
   if (!visual.visible) {
     return;
   }
+  ctx.font = datablockFontCss(view.charSizes.dataBlocks);
   const td = view.tracks.get(ac.id);
   const derived = deriveScratchpads(ac, td);
   const mode = visual.mode;
@@ -672,41 +857,82 @@ export function drawDatablock(
     beaconVisible: true,
     simTimeMs: world.simTimeMs,
   });
-  let line1 = base.line1;
+  let line1WithoutAlert = base.line1;
   if (visual.line1Tag) {
-    line1 = `${line1} ${visual.line1Tag}`;
+    line1WithoutAlert = `${line1WithoutAlert} ${visual.line1Tag}`;
   }
-  const lines = { ...base, line1 };
   const lineH = datablockLineHeightPx(view.charSizes.dataBlocks);
+
+  const isCaInhibited = isCaInhibitedForTrack(ac, td, view);
+  const isCaPairInhibited = isCaPairInhibitedForTrack(view, world, ac);
+  const caSeverity = !isCaInhibited ? caSeverityForVisibleTrack(view, world, ac.callsign) : null;
+  const isMsawInhibited = Boolean(
+    td?.msawInhibited ||
+    td?.msawCurrentAlertInhibited ||
+    td?.msawProcessingInhibited ||
+    (td as { inhibitMSAW?: boolean } | undefined)?.inhibitMSAW ||
+    (td as { inhibitMsaw?: boolean } | undefined)?.inhibitMsaw ||
+    (ac as { msawInhibited?: boolean }).msawInhibited,
+  );
+  const msawSeverity = !isMsawInhibited
+    ? msawSeverityForCallsign(world.alerts.msaw, ac.callsign)
+    : null;
+  const mciActive = hasMciAlertForTrack(world, ac);
+  const mciInhibited = mciActive && view.mciEnabled === false;
+  const briteCh = mode === "limited" || mode === "partial" ? view.brite.ldb : view.brite.fdb;
+  const alertGlyphs =
+    mode === "full" || mode === "partial"
+      ? alertGlyphsForTrack({
+          caInhibited: isCaInhibited || isCaPairInhibited,
+          msawInhibited: isMsawInhibited,
+          mciInhibited,
+          normalColor: applyBrite(PALETTE.owned, briteCh),
+        })
+      : [];
+  // Field 2 inhibit symbols occupy inline cells immediately after the ACID.
+  const line1 = [line1WithoutAlert, ...alertGlyphs.map((glyph) => glyph.text)].join(" ");
+  const lines = { ...base, line1 };
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
   const origin = datablockTopLeft(
     trackLeaderDir(view, ac.id),
     metrics,
     trackLeaderLength(view, ac.id),
   );
-  const briteCh = mode === "limited" || mode === "partial" ? view.brite.ldb : view.brite.fdb;
   const textX = resolved?.rect ? resolved.rect.x : targetX + origin.x;
   const textY = resolved?.rect ? resolved.rect.y : targetY + origin.y;
 
-  const isTracked = isTrackedTarget(view, world, ac);
-  const caSeverity = caSeverityForCallsign(world.alerts.ca, ac.callsign);
-  const showCa =
-    isTracked && caSeverity && mode === "full" && caDatablockTagVisible(world.simTimeMs);
-  const msawSeverity = msawSeverityForCallsign(world.alerts.msaw, ac.callsign);
-  let alertTagX = textX;
-  const alertTagY = textY - lineH;
-  if (showCa) {
-    ctx.fillStyle = applyBrite(PALETTE.alert, view.brite.fdb);
-    ctx.fillText("CA", alertTagX, alertTagY);
-    alertTagX += ctx.measureText("CA ").width;
-  }
-  if (msawSeverity) {
-    ctx.fillStyle = applyBrite(PALETTE.alert, briteCh);
-    ctx.fillText(MSAW_DATABLOCK_TAG, alertTagX, alertTagY);
-  }
-
   ctx.fillStyle = applyBrite(visual.color, briteCh);
-  ctx.fillText(lines.line1, textX, textY);
+  ctx.fillText(line1WithoutAlert, textX, textY);
+  let alertGlyphX = textX + ctx.measureText(line1WithoutAlert).width;
+  for (const glyph of alertGlyphs) {
+    alertGlyphX += ctx.measureText(" ").width;
+    if (glyph.visible) {
+      ctx.fillStyle = glyph.color;
+      ctx.fillText(glyph.text, alertGlyphX, textY);
+    }
+    alertGlyphX += ctx.measureText(glyph.text).width;
+  }
+  if (mode === "full" || mode === "partial") {
+    const caAcknowledged = isCaAlertAcknowledged(ac, td, view, world);
+    const msawAcknowledged = isMsawAlertAcknowledged(ac, td, view, world);
+    const blinkOn = isAlertBlinkOn(world.simTimeMs);
+    const hasLa = msawSeverity != null;
+    const hasCa = caSeverity != null || (mciActive && !mciInhibited);
+    const requiresBlink =
+      (hasLa && !msawAcknowledged) ||
+      (caSeverity != null && !caAcknowledged) ||
+      (mciActive && !mciInhibited);
+    const line0 = [hasLa ? "LA" : null, hasCa ? "CA" : null].filter(Boolean).join("/");
+    // LA/CA is one Field 0 indication. If either condition remains unacknowledged,
+    // blink the complete indication rather than alternating LA/CA and CA.
+    if (line0.length > 0 && (!requiresBlink || blinkOn)) {
+      ctx.fillStyle = applyBrite(PALETTE.alert, briteCh);
+      ctx.fillText(line0, textX, textY - lineH);
+    }
+    // Line 0 is the only red safety-alert field. Restore the normal datablock
+    // color before painting Lines 2–3 so canvas state cannot bleed downward.
+    ctx.fillStyle = applyBrite(visual.color, briteCh);
+  }
   if (lines.line2 != null) {
     ctx.fillText(lines.line2, textX, textY + lineH);
   }
@@ -1696,17 +1922,13 @@ export function drawSystemLists(
     const isAl = canonical === "AL";
     const mlCategory = view.mapListMode === "CURRENT" ? "CURRENT" : "ALL";
     const mlEntries = isMl ? getVideoMapsEntries(view, mlCategory) : [];
-    const isAlertBlinkOn = Math.floor(world.simTimeMs / BLINK_HALF_PERIOD_MS) % 2 === 0;
-
     // Draw text lines and record entry hitboxes
     let textY = y;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]!;
-      if (isAl && i > 0) {
-        ctx.fillStyle = isAlertBlinkOn ? applyBrite(PALETTE.alert, view.brite.lst) : textColor;
-      } else {
-        ctx.fillStyle = textColor;
-      }
+      // AL is a stable green operational list; alert state is conveyed by
+      // datablock indicators and audio, never list-row flashing or red text.
+      ctx.fillStyle = textColor;
       ctx.fillText(line, x, textY);
       if (i > 0 && !line.startsWith("MORE:")) {
         const hasMore = lines[1]?.startsWith("MORE:");

@@ -1604,7 +1604,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
 
       const lines = buildAlertList(world, 50, view);
       expect(lines[0]).toBe("LA/CA/MCI");
-      expect(lines).toContain("CA AAL100 DAL628");
+      expect(lines).toContain("CA AAL100*DAL628");
       expect(lines).toContain("LA JBU389 015");
     });
 
@@ -1630,16 +1630,14 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
 
       // Ensure alert shows initially
       let lines = buildAlertList(world, 50, view);
-      expect(lines).toContain("CA AAL100 DAL628");
+      expect(lines).toContain("CA AAL100*DAL628");
 
-      // Enter *CA command
-      beginPreviewBufferEntry(view.preview, "*CA", 1000);
+      // Invented *CA is rejected
+      expect(parsePreviewCommand("*CA").kind).toBe("invalid");
+
+      // Enter authentic CA K command
+      beginPreviewBufferEntry(view.preview, "CA K AAL100", 1000);
       handleScopeKeyDown(keyEvent("Enter"), view, "scope", world);
-      expect(view.preview.slewAction?.type).toBe("inhibitCa");
-
-      // Click on target ac1
-      const td = ensureTrackDisplay(view.tracks, "ac1");
-      td.caInhibited = true; // Slew click would set this
 
       // Verify alert is now inhibited in AL list
       lines = buildAlertList(world, 50, view);
@@ -1819,15 +1817,10 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
         atpa: [],
       };
 
-      // Type *LA into preview buffer
+      // Purged alias *LA does not arm inhibitMsaw tracking slew
       beginPreviewBufferEntry(view.preview, "*LA", 1000);
-      expect(previewTrackingSlew(view.preview)?.type).toBe("inhibitMsaw");
-
-      // Left-click radar target
-      handlePpiLeftClick(view, world, 500, 400, 1000, 800, "");
-      const td = ensureTrackDisplay(view.tracks, "ac-low");
-      expect(td.msawInhibited).toBe(true);
-      expect(view.preview.phase).toBe("idle");
+      expect(previewTrackingSlew(view.preview)).toBeNull();
+      expect(commitPreviewCommand("*LA").kind).toBe("invalid");
     });
   });
 
@@ -2221,8 +2214,13 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
     });
 
     it("ensures non-list commands remain working properly", () => {
-      // *CA inhibit CA
-      expect(parsePreviewCommand("*CA")).toEqual({ kind: "action", action: { type: "inhibitCa" } });
+      // *CA is strictly rejected (purged alias)
+      expect(parsePreviewCommand("*CA").kind).toBe("invalid");
+      // Authentic CA K command
+      expect(parsePreviewCommand("CA K AAL100")).toEqual({
+        kind: "action",
+        action: { type: "caSingleTrackInhibit", trk: "AAL100" },
+      });
       // *LA inhibit MSAW / set altitude filter limits
       expect(parsePreviewCommand("*LA")).toEqual({ kind: "incomplete" });
       expect(parsePreviewCommand("*LA010050")).toEqual({

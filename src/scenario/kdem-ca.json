@@ -1,0 +1,97 @@
+{
+  "id": "kdem-ca",
+  "name": "Demo Field — Conflict Alert Bench",
+  "icao": "KDEM",
+  "magVarDeg": 0,
+  "fieldElevFt": 0,
+  "arp": { "latDeg": 0, "lonDeg": 0 },
+  "activeRunwayId": "27",
+  "runways": [
+    {
+      "id": "27",
+      "headingTrueDeg": 270,
+      "headingMagDeg": 270,
+      "lengthFt": 10000,
+      "thresholdLatLon": { "latDeg": 0, "lonDeg": 0 }
+    }
+  ],
+  "approaches": [{ "id": "ILS27", "runwayId": "27", "type": "ILS" }],
+  "fixes": [],
+  "maps": { "videoMapSet": "KDEM", "rangeRings": { "intervalNm": 5, "maxNm": 60 } },
+  "spawns": [
+    { "id": "ca-bench", "kind": "star", "runwayId": "27", "offsetNm": { "xNm": 14, "yNm": 0 } }
+  ],
+  "arrivals": [
+    {
+      "xNm": 15,
+      "yNm": 8,
+      "headingDeg": 270,
+      "altitudeFt": 8000,
+      "speedKt": 210,
+      "aircraftType": "B738"
+    },
+    {
+      "xNm": 15,
+      "yNm": -8,
+      "headingDeg": 90,
+      "altitudeFt": 8000,
+      "speedKt": 210,
+      "aircraftType": "A320"
+    },
+    {
+      "xNm": 8,
+      "yNm": 4,
+      "headingDeg": 270,
+      "altitudeFt": 4000,
+      "speedKt": 180,
+      "aircraftType": "B739"
+    },
+    {
+      "xNm": 8,
+      "yNm": -4,
+      "headingDeg": 90,
+      "altitudeFt": 4200,
+      "speedKt": 180,
+      "aircraftType": "A321"
+    },
+    {
+      "xNm": 4,
+      "yNm": 0.4,
+      "headingDeg": 270,
+      "altitudeFt": 1000,
+      "speedKt": 150,
+      "aircraftType": "B737"
+    },
+    {
+      "xNm": 4,
+      "yNm": -0.4,
+      "headingDeg": 90,
+      "altitudeFt": 1050,
+      "speedKt": 150,
+      "aircraftType": "CRJ9"
+    }
+  ],
+  "giTextLines": [
+    "ATIS A",
+    "RWY 27",
+    "CONFLICT ALERT BENCH",
+    "6 TRACKS / 3 PAIRS",
+    "START INNER ACTIVE",
+    "CA K TRACK INHIBIT",
+    "CA P REENABLE",
+    "",
+    "",
+    ""
+  ],
+  "radarSites": [
+    {
+      "id": "KDEM-APT",
+      "name": "Demo Field airport",
+      "kind": "airport",
+      "xNm": 0,
+      "yNm": 0,
+      "rangeNm": 60,
+      "periodMs": 4800
+    }
+  ]
+}

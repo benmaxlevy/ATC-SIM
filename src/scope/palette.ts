@@ -278,6 +278,22 @@ export function historyTrailColor(indexFromOldest: number, count: number): strin
 /** Half-period for scope blinking/flashing animations (sim time). Slower, authentic STARS cadence (800ms ON / 800ms OFF). */
 export const BLINK_HALF_PERIOD_MS = 800;
 export const CA_BLINK_HALF_MS = BLINK_HALF_PERIOD_MS;
+export const ALERT_BLINK_PERIOD_MS = 1600;
+export const ALERT_BLINK_HALF_PERIOD_MS = BLINK_HALF_PERIOD_MS;
+
+/** Authentic STARS alert red matching terminal display standards (#ff3b30 or existing palette alert red). */
+export const STARS_ALERT_RED = "#ff3b30";
+export const ALERT_RED = PALETTE.alert;
+
+/**
+ * Synchronized square-wave blink phase evaluator for all scope alerts (0.625 Hz, 800ms ON / 800ms OFF).
+ * TI 6191.409 Section 2.16 & 2.16.3: (timeMs % 1600) < 800.
+ */
+export function isAlertBlinkOn(timeMs: number): boolean {
+  const norm =
+    ((Math.floor(timeMs) % ALERT_BLINK_PERIOD_MS) + ALERT_BLINK_PERIOD_MS) % ALERT_BLINK_PERIOD_MS;
+  return norm < ALERT_BLINK_HALF_PERIOD_MS;
+}
 
 export function trackAlertTint(world: World, callsign: string): AlertTint {
   return datablockAlertTint({
@@ -304,8 +320,11 @@ export function alertOrOwnershipColor(ownership: TrackOwnership, tint: AlertTint
   return alertColor ?? PALETTE[ownership];
 }
 
-export function caDatablockTagVisible(_simTimeMs = 0): boolean {
-  return true;
+export function caDatablockTagVisible(simTimeMs = 0, acknowledged = false): boolean {
+  if (acknowledged) {
+    return true;
+  }
+  return isAlertBlinkOn(simTimeMs);
 }
 
 export function withCaDatablockTag(line1: string, _tint: AlertTint, _simTimeMs = 0): string {

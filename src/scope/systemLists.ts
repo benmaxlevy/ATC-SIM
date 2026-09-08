@@ -8,7 +8,12 @@ import type { Aircraft, ScheduledDeparture, World } from "@core";
 import { formatAltitudeHundreds } from "./datablock";
 import { buildSystemListLines, type ListFormatter } from "./listFormatter";
 import type { ScopeView } from "./scopeView";
-import { applyInitiateTrackToId, ensureTrackDisplay, type TrackDisplay } from "./trackDisplay";
+import {
+  applyInitiateTrackToId,
+  ensureTrackDisplay,
+  filterActiveCaAlerts,
+  type TrackDisplay,
+} from "./trackDisplay";
 import { getVideoMapsEntries } from "./coordinationList";
 import { toggleVideoMap } from "./dcb/dcbFunctions";
 
@@ -1424,27 +1429,25 @@ export function hitTestSystemListEntry(
  * 7. LA/CA/MCI List
  * Format:
  * LA/CA/MCI
- * DAL111*UAE124    CA
+ * CA DAL111*UAE124
  * ========================================================================= */
 
 export function getAlertEntries(world: World, view?: ScopeView): string[] {
   const lines: string[] = [];
   if (world.alerts) {
     if (world.alerts.ca) {
-      for (const alert of world.alerts.ca) {
-        const acA = world.aircraft.find((a) => a.callsign === alert.callsignA);
-        const acB = world.aircraft.find((a) => a.callsign === alert.callsignB);
-        const tdA = acA ? view?.tracks.get(acA.id) : undefined;
-        const tdB = acB ? view?.tracks.get(acB.id) : undefined;
-        if (tdA?.caInhibited || tdB?.caInhibited) continue;
-        lines.push(`CA ${alert.callsignA} ${alert.callsignB}`);
+      const caAlerts = view ? filterActiveCaAlerts(world.alerts.ca, world, view) : world.alerts.ca;
+      for (const alert of caAlerts) {
+        lines.push(`CA ${alert.callsignA}*${alert.callsignB}`);
       }
     }
     if (world.alerts.msaw) {
       for (const alert of world.alerts.msaw) {
         const ac = world.aircraft.find((a) => a.callsign === alert.callsign);
         const td = ac ? view?.tracks.get(ac.id) : undefined;
-        if (td?.msawInhibited) continue;
+        if (td?.msawInhibited || td?.msawCurrentAlertInhibited || td?.msawProcessingInhibited) {
+          continue;
+        }
         const altStr = formatAltitudeHundreds(alert.altFt);
         lines.push(`LA ${alert.callsign} ${altStr}`);
       }
@@ -1497,12 +1500,18 @@ export function buildAlertList(
 export function hasActiveUninhibitedConflict(world: World, view?: ScopeView): boolean {
   if (!world.alerts?.ca || world.alerts.ca.length === 0) return false;
   if (!view) return world.alerts.ca.length > 0;
-  return world.alerts.ca.some((alert) => {
-    const acA = world.aircraft.find((a) => a.callsign === alert.callsignA);
-    const acB = world.aircraft.find((a) => a.callsign === alert.callsignB);
-    const tdA = acA ? view.tracks.get(acA.id) : undefined;
-    const tdB = acB ? view.tracks.get(acB.id) : undefined;
-    return !tdA?.caInhibited && !tdB?.caInhibited;
+  return filterActiveCaAlerts(world.alerts.ca, world, view, { forTone: true }).length > 0;
+}
+
+/** CA or visible MSAW needs the workstation safety tone. */
+export function hasActiveUninhibitedSafetyAlert(world: World, view?: ScopeView): boolean {
+  if (hasActiveUninhibitedConflict(world, view)) return true;
+  if (!world.alerts?.msaw || world.alerts.msaw.length === 0) return false;
+  if (!view) return true;
+  return world.alerts.msaw.some((alert) => {
+    const ac = world.aircraft.find((item) => item.callsign === alert.callsign);
+    const td = ac ? view.tracks.get(ac.id) : undefined;
+    return !td?.msawInhibited && !td?.msawCurrentAlertInhibited && !td?.msawProcessingInhibited;
   });
 }
 

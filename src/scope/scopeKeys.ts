@@ -11,8 +11,9 @@
  * buffer and undoes that Mode C tap. F7 always-on predicted track line (PTL)
  * toggle — even with the command line focused. F1 always-on help overlay (not CRC F1 / beaconator);
  * Tab cycles radio ↔ PPI; `/` when scope-focused buffers into the Preview Area
- * (slew/drop prefix, not radio focus). Scope-focus `L` then 1–9 is leader direction (no length
- * menu); radio `L090` stays FLY_HEADING left. Scope-focus `F` then hundreds is
+ * (slew/drop prefix, not radio focus). Leader direction stays on the DCB or
+ * explicit `*L` Preview commands; bare `L` is Preview text. Radio `L090` stays
+ * FLY_HEADING left. Scope-focus `F` then hundreds is
  * the altitude filter (never always-on — radio `F` stays a command-line
  * character). Scope-focus `*` is TPA/ATPA slew chords (R07 Table 36) via the
  * unified Preview Area buffer; radio `*`
@@ -34,18 +35,15 @@ import {
 import { stepRange } from "./camera";
 import {
   beginScopeChord,
-  isArrowKey,
   isBeaconSelectKey,
   isCycleFocusKey,
   isFilterChordKey,
   isHelpToggleKey,
-  isLeaderPrefixKey,
   isPreviewPlusKey,
   isRadioFocusSlashKey,
   isScopeChordLive,
   isStarsChordPrefixKey,
   isHandoffKey,
-  leaderDigitFromKey,
 } from "./keymap";
 import {
   beginStarsChordEntry,
@@ -71,6 +69,10 @@ import {
   previewAreaIsLive,
   previewBufferCharFromKey,
   rejectPreviewArea,
+  executeCaSingleTrackInhibit,
+  executeCaPairToggle,
+  executeCaControllerPairs,
+  executeCaPairSlew,
   type PreviewArmedAction,
   type PreviewKeyOutcome,
 } from "./previewArea";
@@ -105,7 +107,6 @@ import {
 } from "./scopeView";
 import {
   ensureTrackDisplay,
-  setLeaderDirForSelection,
   setLeaderDirForId,
   setLeaderLengthForId,
   setLeaderDirAndLengthForId,
@@ -260,7 +261,6 @@ function isReservedScopeLetterShortcut(key: string): boolean {
     isDatablockToggleKey(key) ||
     isModeCToggleKey(key) ||
     isHistoryToggleKey(key) ||
-    isLeaderPrefixKey(key) ||
     isFilterChordKey(key) ||
     isBeaconSelectKey(key)
   );
@@ -497,10 +497,25 @@ function applyPreviewArmedAction(
     case "resetLeaderDir":
     case "beaconatorSlew":
     case "armPerTrackPtl":
-    case "inhibitCa":
-    case "inhibitMsaw":
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;
+      armPreviewSlewAction(view.preview, action, nowMs);
+      return;
+    case "caSingleTrackInhibit":
+      executeCaSingleTrackInhibit(view, action.trk, world, nowMs);
+      return;
+    case "caPairToggle":
+      executeCaPairToggle(view, action.trk1, action.trk2, world, nowMs);
+      return;
+    case "caControllerPairs":
+      executeCaControllerPairs(view, action.mode, world);
+      return;
+    case "caPairSlew":
+      executeCaPairSlew(view, nowMs);
+      return;
+    case "msawCurrentAlertInhibit":
+    case "toggleMsawProcessing":
+      // Q/V always require a target slew/click; never dispatch Command IR.
       armPreviewSlewAction(view.preview, action, nowMs);
       return;
     case "toggleMci":
@@ -575,16 +590,6 @@ function applyPreviewCntl(
   } else {
     applyDropTrackToId(view.tracks, world, apply.aircraftId);
   }
-}
-
-function liveLeaderChord(view: ScopeView, nowMs: number) {
-  if (!isScopeChordLive(view.pendingChord, nowMs) || view.pendingChord?.prefix !== "L") {
-    if (view.pendingChord && !isScopeChordLive(view.pendingChord, nowMs)) {
-      view.pendingChord = null;
-    }
-    return null;
-  }
-  return view.pendingChord;
 }
 
 /** Mutates camera / history / datablock / PTL / leader / altitude filter / help. Returns true when consumed. */
@@ -717,7 +722,12 @@ export function handleScopeKeyDown(
   // STARS Table 18: F11 -> <CA>
   if (event.key === "F11" && !event.ctrlKey) {
     consume(event);
-    armPreviewSlewAction(view.preview, { type: "inhibitCa" }, nowMs);
+    if (view.preview.phase === "entry") {
+      view.preview.buffer += "CA ";
+      view.preview.lastKeyAtMs = nowMs;
+    } else {
+      startPreviewBuffer(view, "CA ", nowMs);
+    }
     ui?.onHandled?.();
     return true;
   }
@@ -762,10 +772,9 @@ export function handleScopeKeyDown(
       return true;
     }
     const filterBusy = focus === "scope" && view.filterEntry.phase !== "idle";
-    const leaderBusy = focus === "scope" && liveLeaderChord(view, nowMs) != null;
     const starsBusy =
       focus === "scope" && (view.starsChordEntry.phase !== "idle" || view.starsChordArmed != null);
-    if (!filterBusy && !leaderBusy && !starsBusy && handleDcbEscape(view)) {
+    if (!filterBusy && !starsBusy && handleDcbEscape(view)) {
       consume(event);
       ui?.onHandled?.();
       return true;
@@ -880,33 +889,6 @@ export function handleScopeKeyDown(
     }
     if (handleFilterEntryKey(view.filterEntry, view.altitudeFilter, event.key, nowMs)) {
       consume(event);
-      return true;
-    }
-    const chord = liveLeaderChord(view, nowMs);
-    if (chord) {
-      if (event.key === "Escape") {
-        consume(event);
-        view.pendingChord = null;
-        return true;
-      }
-      const digit = leaderDigitFromKey(event.key, event.code);
-      if (digit != null) {
-        consume(event);
-        view.pendingChord = null;
-        if (world) {
-          setLeaderDirForSelection(view.tracks, world, digit);
-        }
-        return true;
-      }
-      if (isArrowKey(event.key)) {
-        consume(event);
-        return true;
-      }
-      view.pendingChord = null;
-    }
-    if (isLeaderPrefixKey(event.key)) {
-      consume(event);
-      view.pendingChord = beginScopeChord("L", nowMs, "L_");
       return true;
     }
     if (!event.shiftKey && !isReservedScopeLetterShortcut(event.key)) {

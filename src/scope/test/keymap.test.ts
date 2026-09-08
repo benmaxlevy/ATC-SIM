@@ -40,7 +40,6 @@ const REQUIRED_BINDING_IDS = [
   "mouse-center",
   "mouse-place-cntr",
   "mouse-place-rr",
-  "leader",
   "datablock",
   "mode-c",
   "altitude-filter",
@@ -64,5 +63,4 @@ test("KEY_BINDINGS cover the frozen Windows subset", () => {
   expect(ids).toHaveLength(REQUIRED_BINDING_IDS.length);
   expect(bindingById("range-in")?.windowsKeys).toBe("PageUp");
   expect(bindingById("initiate-track")?.focus).toBe("always");
-  expect(bindingById("leader")?.focus).toBe("scope");
 });

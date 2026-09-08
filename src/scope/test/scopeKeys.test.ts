@@ -39,6 +39,19 @@ test("always-on keys include PageUp, Home, F1-F5, F7-F11, Insert, ?; H and T are
   expect(isAlwaysOnScopeKey("T")).toBe(false);
 });
 
+test("scope L and a digit stay in Preview Area; they never apply a leader direction", () => {
+  const ac = makeTestAircraft({ id: "ac1", callsign: "DAL123" });
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  const before = view.tracks.get(ac.id)?.leaderDir;
+
+  expect(handleScopeKeyDown(keyEvent("L"), view, "scope", world)).toBe(true);
+  expect(view.preview.buffer).toBe("L");
+  expect(handleScopeKeyDown(keyEvent("1"), view, "scope", world)).toBe(true);
+  expect(view.preview.buffer).toBe("L1");
+  expect(view.tracks.get(ac.id)?.leaderDir).toBe(before);
+});
+
 test("PageUp five times from 20 NM is 5 NM; center unchanged", () => {
   const view = createScopeView();
   view.camera.centerEastNm = 2;
@@ -225,12 +238,12 @@ test("Table 18: F10 <PTL> toggles PTL ALL", () => {
   expect(view.ptlOn).toBe(false);
 });
 
-test("Table 18: F11 <CA> initiates Conflict Alert inhibit action (*CA)", () => {
+test("Table 18: F11 <CA> functional key buffers CA into preview area", () => {
   const view = createScopeView();
   expect(view.preview.phase).toBe("idle");
   handleScopeKeyDown(keyEvent("F11"), view);
-  expect(view.preview.phase).toBe("armed");
-  expect(view.preview.slewAction?.type).toBe("inhibitCa");
+  expect(view.preview.phase).toBe("entry");
+  expect(view.preview.buffer).toBe("CA ");
 });
 
 test("Escape closes DCB submenu without hiding map lists (ML)", () => {
