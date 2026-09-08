@@ -868,6 +868,8 @@ export function drawDatablock(
   const caSeverity = !isCaInhibited ? caSeverityForVisibleTrack(view, world, ac.callsign) : null;
   const isMsawInhibited = Boolean(
     td?.msawInhibited ||
+    td?.msawCurrentAlertInhibited ||
+    td?.msawProcessingInhibited ||
     (td as { inhibitMSAW?: boolean } | undefined)?.inhibitMSAW ||
     (td as { inhibitMsaw?: boolean } | undefined)?.inhibitMsaw ||
     (ac as { msawInhibited?: boolean }).msawInhibited,

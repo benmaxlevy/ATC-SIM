@@ -815,6 +815,7 @@ export {
   associateFlightPlanToTrack,
   buildAlertList,
   hasActiveUninhibitedConflict,
+  hasActiveUninhibitedSafetyAlert,
   buildCoastSuspendList,
   buildCrdaStatusList,
   buildSignOnList,

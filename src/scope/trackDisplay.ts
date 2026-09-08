@@ -126,6 +126,10 @@ export interface TrackDisplay {
    * Suppresses LA alert row in the AL list and datablock LA tag.
    */
   msawInhibited?: boolean;
+  /** `<MULTI FUNC> Q`: hides only the current alert; cleared when it clears. */
+  msawCurrentAlertInhibited?: boolean;
+  /** `<MULTI FUNC> V`: persistent per-track MSAW processing inhibit. */
+  msawProcessingInhibited?: boolean;
   /**
    * Last surveillance report. Display consumers use this pose; missing means
    * out of coverage (no paint, no 30 s coast).
@@ -879,6 +883,15 @@ export function syncTrackDisplays(
       if (caState) {
         pruneCaPairInhibitsForTrack(caState, id);
       }
+    }
+  }
+  // TI 6191.409 §7.14 analog: Q belongs to one live LA alert, not the track.
+  // Scope-local trainer state only; world alert truth remains untouched.
+  const activeMsaw = new Set(world.alerts.msaw.map((alert) => alert.callsign));
+  for (const [id, td] of tracks) {
+    const ac = world.aircraft.find((item) => item.id === id);
+    if (!ac || !activeMsaw.has(ac.callsign)) {
+      td.msawCurrentAlertInhibited = false;
     }
   }
   if (caState && world.alerts?.ca) {

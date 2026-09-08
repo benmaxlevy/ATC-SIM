@@ -106,6 +106,10 @@ export type PreviewArmedAction =
   | { readonly type: "caPairSlew"; readonly trk1?: string }
   /** `*MCI Enter`: Toggle Mode C Intruder alerting on/off. */
   | { readonly type: "toggleMci" }
+  /** `<MULTI FUNC> Q <SLEW>`: suppress only the selected current LA alert. */
+  | { readonly type: "msawCurrentAlertInhibit" }
+  /** `<MULTI FUNC> V <SLEW>`: toggle selected-track MSAW processing. */
+  | { readonly type: "toggleMsawProcessing" }
   | { readonly type: "saveAsPref"; readonly name?: string };
 
 export type PreviewCommandResult =
@@ -156,6 +160,19 @@ function compactStarCommand(buffer: string): string {
     return buffer;
   }
   return `*${buffer.slice(1).replace(/ /g, "")}`;
+}
+
+/**
+ * TI 6191.409 §§7.14–7.15 analog. `*` is this trainer's existing MULTI
+ * FUNC entry; Q/V are Preview-only slew controls, never radio commands.
+ * This remains controller-local trainer behavior, not certified MSAW.
+ */
+function parseMsawMultiFuncCommand(buffer: string): PreviewCommandResult | null {
+  if (!buffer.startsWith("*")) return null;
+  const compact = compactStarCommand(buffer);
+  if (compact === "*Q") return { kind: "action", action: { type: "msawCurrentAlertInhibit" } };
+  if (compact === "*V") return { kind: "action", action: { type: "toggleMsawProcessing" } };
+  return null;
 }
 
 /**
@@ -658,6 +675,8 @@ const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
   "caSingleTrackInhibit",
   "caPairSlew",
   "caPairToggle",
+  "msawCurrentAlertInhibit",
+  "toggleMsawProcessing",
 ]);
 
 function compactTrackingBuffer(buffer: string): string {
@@ -1042,6 +1061,10 @@ export function parsePreviewCommand(
   const display = parseScopeDisplayCommand(buffer);
   if (display) {
     return display;
+  }
+  const msawMultiFunc = parseMsawMultiFuncCommand(buffer);
+  if (msawMultiFunc) {
+    return msawMultiFunc;
   }
   const altitude = parseAltitudeFilterCommand(buffer);
   if (altitude) {

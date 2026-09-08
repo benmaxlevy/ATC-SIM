@@ -64,7 +64,7 @@ Service-side env, models, and Path C: [`speech-api/README.md`](../speech-api/REA
 ### Safety alerting (CA, MSAW, MCI)
 
 - **Conflict Alert (CA)**: Kinematic CPA prediction uses the active pair's lower airspace type (Type 1–4). Only Line 0 indicators blink: unacknowledged CA and MSAW flash red `CA` and `LA` at 800 ms on / 800 ms off; each stays solid after an empty-Preview slew-click acknowledgement. Concurrent MSAW and CA is one `LA/CA` indication and blinks as one unit until both conditions are acknowledged. Field 2 inhibit marks sit beside the ACID: upright `Δ` for CA/MCI, `*` for MSAW, and `+` when both are inhibited. The LA/CA/MCI list always remains green; CA rows read `CA <ACID>*<ACID>`. Use the `CA` commands below; `F11` buffers `CA `.
-- **Minimum Safe Altitude Warning (MSAW)**: Polygon-based Minimum Vectoring Altitude (MVA) floor checks that alert when aircraft descend below safe sector altitudes. `*LA` is only the altitude-filter command, not an MSAW inhibit.
+- **Minimum Safe Altitude Warning (MSAW)**: Polygon-based Minimum Vectoring Altitude (MVA) floor checks that alert when aircraft descend below safe sector altitudes. `<MULTI FUNC>Q` (`*Q`, then owned alerting-track slew) suppresses only that current LA alert; `<MULTI FUNC>V` (`*V`, then owned-track slew) toggles persistent per-track MSAW processing. Both display the ACID `*`, are scope-local trainer controls, and are not certified MSAW. `*LA` remains only the altitude-filter command.
 - **Mode C Intruder (MCI)**: Alerts when an untracked VFR/Mode C transponder target penetrates protected airspace around tracked flights. Toggled on/off globally via `*MCI`.
 
 ### Simulated pilot & handoffs
@@ -445,7 +445,7 @@ To prevent operator confusion between similar keyboard inputs, the simulator adh
 - **Altitude Filters**: Scope-focus `F` begins the altitude filter entry chord. `*F Enter` flashes the filter limits readout. `*F then click` toggles forced FDB.
 - **Beacon Commands**: Scope-focus `B##` toggles beacon select blocks. `*BCN ##` adds beacon filters. `*B then click` activates the 5-second Beaconator.
 - **Mode C vs Video Maps**: Tap `M` toggles the Mode C altitude readout on FDBs. Typing `M` followed by a map name (e.g. `M DEM1_27`) toggles that map layer.
-- **Alert Controls**: `CA K`, `CA`, `CA P`, and `CA C [E|I]` control Conflict Alert inhibits; an empty-preview slew-click acknowledges CA. `CA E` is rejected. `*LA <floor><ceiling> Enter` sets altitude filter bounds only. `*MCI Enter` toggles Mode C Intruder alerting.
+- **Alert Controls**: `CA K`, `CA`, `CA P`, and `CA C [E|I]` control Conflict Alert inhibits; an empty-preview slew-click acknowledges CA. `CA E` is rejected. `*Q` then an owned active-LA track suppresses only its current alert; `*V` then an owned track toggles its persistent MSAW processing. `*LA <floor><ceiling> Enter` sets altitude filter bounds only. `*MCI Enter` toggles Mode C Intruder alerting.
 
 ### Deferred commands backlog
 

@@ -5,6 +5,7 @@ import {
   cancelPreviewArea,
   expirePreviewArea,
   handleCaSlewClick,
+  handleMsawSlewClick,
   handleImpliedCaAcknowledge,
   previewAreaIsLive,
   previewFlidMatchesSlew,
@@ -291,6 +292,12 @@ function applyTrackingSlewHit(
       handleCaSlewClick(view, world, id);
       return true;
     }
+    case "msawCurrentAlertInhibit":
+    case "toggleMsawProcessing":
+      if (view.preview.phase !== "armed") {
+        armPreviewSlewAction(view.preview, action, Date.now());
+      }
+      return handleMsawSlewClick(view, world, id);
     default:
       return false;
   }

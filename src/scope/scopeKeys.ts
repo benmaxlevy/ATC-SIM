@@ -513,6 +513,11 @@ function applyPreviewArmedAction(
     case "caPairSlew":
       executeCaPairSlew(view, nowMs);
       return;
+    case "msawCurrentAlertInhibit":
+    case "toggleMsawProcessing":
+      // Q/V always require a target slew/click; never dispatch Command IR.
+      armPreviewSlewAction(view.preview, action, nowMs);
+      return;
     case "toggleMci":
       view.mciEnabled = !view.mciEnabled;
       cancelStarsChordEntry(view.starsChordEntry);

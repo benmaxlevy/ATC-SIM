@@ -273,6 +273,16 @@ export function previewTrackingSlew(state: PreviewAreaState): PreviewArmedAction
       return action;
     }
   }
+  // TI 6191.409 §§7.14–7.15: MULTI FUNC Q/V arm directly for the slew;
+  // Enter is optional in the Preview buffer and never invokes radio parsing.
+  const multiFunc = parsePreviewCommand(state.buffer);
+  if (
+    multiFunc.kind === "action" &&
+    (multiFunc.action.type === "msawCurrentAlertInhibit" ||
+      multiFunc.action.type === "toggleMsawProcessing")
+  ) {
+    return multiFunc.action;
+  }
   return parseTrackingSlewBuffer(state.buffer);
 }
 
@@ -312,6 +322,10 @@ function trackingMnemonic(action: PreviewArmedAction): string {
       return action.trk ? `CA K ${action.trk}` : "CA K";
     case "caPairToggle":
       return action.trk1 ? `CA P ${action.trk1}` : "CA P";
+    case "msawCurrentAlertInhibit":
+      return "*Q";
+    case "toggleMsawProcessing":
+      return "*V";
     case "caControllerPairs":
       return action.mode === "toggle" ? "CA C" : `CA C ${action.mode === "enable" ? "E" : "I"}`;
     case "saveAsPref":
@@ -732,6 +746,36 @@ function toggleCaPairInhibitedForWorld(
 
 export function executeCaPairSlew(view: ScopeView, nowMs: number = Date.now()): void {
   armPreviewSlewAction(view.preview, { type: "caPairSlew" }, nowMs);
+}
+
+/** Apply Q/V only to owned targets; Q also requires a currently active LA alert. */
+export function handleMsawSlewClick(
+  view: ScopeView,
+  world: World,
+  clickedTrackId: string,
+  nowMs: number = Date.now(),
+): boolean {
+  const action = view.preview.armed;
+  if (action?.type !== "msawCurrentAlertInhibit" && action?.type !== "toggleMsawProcessing") {
+    return false;
+  }
+  const ac = world.aircraft.find((item) => item.id === clickedTrackId);
+  const td = ac ? ensureTrackDisplay(view.tracks, ac.id) : undefined;
+  const owned = td?.ownership === "owned";
+  const hasActiveMsaw = Boolean(
+    ac && world.alerts.msaw.some((alert) => alert.callsign === ac.callsign),
+  );
+  if (!ac || !owned || (action.type === "msawCurrentAlertInhibit" && !hasActiveMsaw)) {
+    rejectPreviewCntl(view.preview, nowMs);
+    return true;
+  }
+  if (action.type === "msawCurrentAlertInhibit") {
+    td.msawCurrentAlertInhibited = true;
+  } else {
+    td.msawProcessingInhibited = !td.msawProcessingInhibited;
+  }
+  cancelPreviewArea(view.preview);
+  return true;
 }
 
 /** Analog: TI 6191.409 §7.13 controller-owned CA control; trainer delta: local

@@ -12,7 +12,7 @@ import { createScopeView } from "../scopeView";
 import { handleScopeKeyDown } from "../scopeKeys";
 import { handlePpiLeftClick } from "../ppi";
 import { hasActiveUninhibitedConflict } from "../systemLists";
-import { ensureTrackDisplay } from "../trackDisplay";
+import { ensureTrackDisplay, syncTrackDisplays } from "../trackDisplay";
 
 function keyEvent(key: string, opts?: { ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean }) {
   return {
@@ -29,6 +29,17 @@ test("idle preview is not live", () => {
   const idle = idlePreviewArea();
   expect(idle.phase).toBe("idle");
   expect(previewAreaIsLive(idle)).toBe(false);
+});
+
+test("T02-120: *Q and *V are MULTI FUNC Preview slew actions", () => {
+  expect(parsePreviewCommand("*Q")).toEqual({
+    kind: "action",
+    action: { type: "msawCurrentAlertInhibit" },
+  });
+  expect(parsePreviewCommand("*V")).toEqual({
+    kind: "action",
+    action: { type: "toggleMsawProcessing" },
+  });
 });
 
 test("parsePreviewCommand: empty is incomplete; unknown is invalid", () => {
@@ -646,6 +657,48 @@ describe("T02-114: Conflict Alert (CA) preview grammar & slew execution", () => 
 
     expect(view.tracks.get(ac1.id)?.caAcknowledged).toBe(true);
     expect(view.tracks.get(ac1.id)?.msawAcknowledged).toBe(true);
+  });
+
+  it("T02-120: *Q suppresses only this LA alert and *V persistently toggles processing", () => {
+    const world = createWorld();
+    const view = createScopeView();
+    const ac = makeTestAircraft({ id: "ac-qv", callsign: "AAL100", xNm: 0, yNm: 0 });
+    world.aircraft = [ac];
+    world.alerts = {
+      ca: [],
+      msaw: [{ callsign: ac.callsign, severity: "alert", altFt: 1500, floorFt: 2000 }],
+      atpa: [],
+    };
+    ensureTrackDisplay(view.tracks, ac.id).ownership = "owned";
+
+    beginPreviewBufferEntry(view.preview, "*Q", 1000);
+    expect(previewTrackingSlew(view.preview)?.type).toBe("msawCurrentAlertInhibit");
+    handlePpiLeftClick(view, world, 500, 400, 1000, 800);
+    expect(view.tracks.get(ac.id)?.msawCurrentAlertInhibited).toBe(true);
+
+    // A clear releases Q; a later alert is therefore visible again.
+    world.alerts.msaw = [];
+    syncTrackDisplays(view.tracks, world);
+    expect(view.tracks.get(ac.id)?.msawCurrentAlertInhibited).toBe(false);
+
+    beginPreviewBufferEntry(view.preview, "*V", 2000);
+    handlePpiLeftClick(view, world, 500, 400, 1000, 800);
+    expect(view.tracks.get(ac.id)?.msawProcessingInhibited).toBe(true);
+    beginPreviewBufferEntry(view.preview, "*V", 3000);
+    handlePpiLeftClick(view, world, 500, 400, 1000, 800);
+    expect(view.tracks.get(ac.id)?.msawProcessingInhibited).toBe(false);
+  });
+
+  it("T02-120: Q rejects an unowned or non-alerting selection without mutation", () => {
+    const world = createWorld();
+    const view = createScopeView();
+    const ac = makeTestAircraft({ id: "ac-invalid-q", callsign: "AAL100", xNm: 0, yNm: 0 });
+    world.aircraft = [ac];
+    world.alerts = { ca: [], msaw: [], atpa: [] };
+    beginPreviewBufferEntry(view.preview, "*Q", 1000);
+    handlePpiLeftClick(view, world, 500, 400, 1000, 800);
+    expect(view.tracks.get(ac.id)?.msawCurrentAlertInhibited).toBeUndefined();
+    expect(view.preview.rejection).toBe("*Q INV");
   });
 
   it("clicking an alerted track when preview buffer is NOT empty does not acknowledge alert", () => {

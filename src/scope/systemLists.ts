@@ -1445,7 +1445,9 @@ export function getAlertEntries(world: World, view?: ScopeView): string[] {
       for (const alert of world.alerts.msaw) {
         const ac = world.aircraft.find((a) => a.callsign === alert.callsign);
         const td = ac ? view?.tracks.get(ac.id) : undefined;
-        if (td?.msawInhibited) continue;
+        if (td?.msawInhibited || td?.msawCurrentAlertInhibited || td?.msawProcessingInhibited) {
+          continue;
+        }
         const altStr = formatAltitudeHundreds(alert.altFt);
         lines.push(`LA ${alert.callsign} ${altStr}`);
       }
@@ -1499,6 +1501,18 @@ export function hasActiveUninhibitedConflict(world: World, view?: ScopeView): bo
   if (!world.alerts?.ca || world.alerts.ca.length === 0) return false;
   if (!view) return world.alerts.ca.length > 0;
   return filterActiveCaAlerts(world.alerts.ca, world, view, { forTone: true }).length > 0;
+}
+
+/** CA or visible MSAW needs the workstation safety tone. */
+export function hasActiveUninhibitedSafetyAlert(world: World, view?: ScopeView): boolean {
+  if (hasActiveUninhibitedConflict(world, view)) return true;
+  if (!world.alerts?.msaw || world.alerts.msaw.length === 0) return false;
+  if (!view) return true;
+  return world.alerts.msaw.some((alert) => {
+    const ac = world.aircraft.find((item) => item.callsign === alert.callsign);
+    const td = ac ? view.tracks.get(ac.id) : undefined;
+    return !td?.msawInhibited && !td?.msawCurrentAlertInhibited && !td?.msawProcessingInhibited;
+  });
 }
 
 /* =========================================================================
