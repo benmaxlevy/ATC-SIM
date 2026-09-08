@@ -1,3 +1,79 @@
+# ATC-SIM swarm orchestrator — Thirty-seventh swarm (Controller CA/MSAW Controls)
+
+## Thirty-seventh swarm planned — 2026-09-07 (Controller CA/MSAW Controls)
+
+User-approved normal-controller follow-up: retire non-manual `CA E`, make
+`CA P` state-dependent, add `CA C` / `CA C E|I`, and implement the manual
+`<MULTI FUNC> Q/V` MSAW slew controls. This is not authorization for MCI or
+supervisor/facility commands. One Luna worker runs one ticket at a time because
+both tickets touch Scope preview grammar and state. Captain squash-merges into
+`feature/stars-ca-alignment`; do not push.
+
+| Key | Value |
+| --- | --- |
+| Goal | Manual-correct controller CA pair controls and MSAW Q/V controls. |
+| Include | **T02-119**, then **T02-120**. |
+| Source | TI 6191.409 Rev. 30 §§7.11–7.15, pp. 7-21–7-26; R01/R02/R05/R07. |
+| Skip | `CA M`; MCI detection/lists; §8.1 and §8.3 supervisor/facility controls; all other MULTI FUNC grammar; CA/MSAW detection thresholds. |
+| Stop | After T02-120 acceptance. No later phase. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `feature/stars-ca-alignment`; after each merge runs focused tests and `npm run ci`. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Product law:**
+
+- `CA P` is the sole explicit pair operation: absent pair inhibition becomes
+  inhibited; present pair inhibition becomes enabled. `CA E` is rejected.
+- Bare `CA C` toggles, and `CA C I` / `CA C E` force, the qualifying-pair
+  state where both tracks are owned by the entering controller. They never
+  alter `CA K` state or nonqualifying pairs.
+- `<MULTI FUNC> Q` suppresses only the current selected MSAW alert and clears
+  with it. `<MULTI FUNC> V` persistently toggles selected-track MSAW
+  processing. Neither is an acknowledgement or literal `*Q` / `*V` Preview
+  alias; `*LA` remains altitude filter only.
+- This is trainer-local state, never certified NAS/system-wide MSAW or CA.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-119 | planning update |
+| B | T02-120 | T02-119 merge and gate |
+
+**Ticket ownership:**
+
+- T02-119: CA P grammar migration, CA E retirement, controller-owned-pair
+  `CA C` / `CA C E|I` state/action/tests plus `docs/USER.md` and Phase 2
+  README updates where command wording changed.
+- T02-120: minimal MULTI FUNC Q/V grammar, MSAW current/persistent inhibit
+  state/lifecycle/presentation/tests, `docs/USER.md` and Phase 2 README
+  updates where command wording changed, and backlog correction.
+
+**Ticket files / branches:**
+
+- `ticket/T02-119-ca-p-grammar-and-controller-pair-controls` ← `phases/02-scope/tickets/T02-119-ca-p-grammar-and-controller-pair-controls.md`
+- `ticket/T02-120-msaw-multifunc-q-v` ← `phases/02-scope/tickets/T02-120-msaw-multifunc-q-v.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope controller CA/MSAW controls T02-119–120
+Merge target: feature/stars-ca-alignment
+Merged: T02-119, T02-120
+Tests: <focused tests and npm run ci result>
+Notes: <CA P toggle/CA E rejection; CA C/C E/I scope; Q current-only and V persistent lifecycle; README updates>
+```
+
+## Thirty-seventh swarm started — 2026-09-07
+
+Configuration amended before launch: bare `CA C Enter` is in scope as the
+manual §7.13 toggle; `CA C E/I` are its force-state forms. Both tickets must
+update `docs/USER.md` and the applicable Phase 2 README command/checklist
+wording where their observable grammar changes. This start record freezes the
+approved scope, wave order, Luna model, single-worker limit, merge target, and
+no-push rule above. Planning commit precedes all ticket branches/worktrees.
+
 # ATC-SIM swarm orchestrator — Thirty-fourth swarm (STARS Conflict Alert Alignment)
 
 ## Thirty-sixth swarm planned — 2026-09-07 (CA Pair-Inhibit Manual Correction)
