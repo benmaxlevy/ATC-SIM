@@ -54,7 +54,7 @@ test("DCB leader direction readouts use compass names", () => {
     2: "S",
     3: "SE",
     4: "W",
-    5: "CTR",
+    5: "OVERLAY",
     6: "E",
     7: "NW",
     8: "N",

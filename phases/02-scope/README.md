@@ -249,7 +249,7 @@ Numpad compass, **including 5 = overlay**:
 
 ```
 7 NW    8 N    9 NE
-4 W     5 CTR  6 E
+4 W     5 OVERLAY  6 E
 1 SW    2 S    3 SE
 ```
 

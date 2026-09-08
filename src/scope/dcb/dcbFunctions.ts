@@ -55,8 +55,8 @@ export const RR_KEYBOARD_INTERVALS_NM = [2, 5, 10, 20] as const;
 export type RrIntervalNm = (typeof RR_KEYBOARD_INTERVALS_NM)[number];
 export const DEFAULT_RR_INTERVAL_NM: RrIntervalNm = 5;
 
-/** Compass dirs offered by DCB LDR DIR — same as scope-focus L+digit. */
-export const DCB_LEADER_DIRS: LeaderDir[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+/** Eight compass dirs offered by DCB LDR DIR; L5 overlay is not a DCB position. */
+export const DCB_LEADER_DIRS: LeaderDir[] = [1, 2, 3, 4, 6, 7, 8, 9];
 
 /** CRC analog numbered MAPS slots. Trainer catalog binds dcbNumber; unused stay empty. */
 export const DCB_MAP_SLOT_COUNT = 32;

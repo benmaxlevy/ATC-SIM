@@ -8,7 +8,7 @@
  * Numpad compass (canvas −Y is north):
  * ```
  * 7 NW   8 N   9 NE
- * 4 W    5 CTR 6 E
+ * 4 W    5 OVERLAY 6 E
  * 1 SW   2 S   3 SE
  * ```
  *
@@ -31,7 +31,7 @@ export const LEADER_DIR_LABELS: Record<LeaderDir, string> = {
   2: "S",
   3: "SE",
   4: "W",
-  5: "CTR",
+  5: "OVERLAY",
   6: "E",
   7: "NW",
   8: "N",

@@ -43,7 +43,7 @@ Service-side env, models, and Path C: [`speech-api/README.md`](../speech-api/REA
 - **Datablocks**:
   - **Full datablocks (FDB)**: 3-line layout showing callsign/CID, Mode C reported altitude (hundreds of ft) & assigned altitude, ground speed (tens of kt), scratchpad, and climb/descent arrows.
   - **Limited datablocks (LDB)**: Compact track display for unowned or filtered targets.
-  - **Leader lines**: 9 compass positions (`SW`, `S`, `SE`, `W`, `CTR`, `E`, `NW`, `N`, `NE`), STARS leader clock directions (`*1`–`*8`), track-specific and fleet-wide leader direction commands (`*L(1-9)` / `*L(1-9)*` / `*L(1-9)U`), and 0–7 length steps (`/<0-7>`, `*LDR <0-7>`), each adding 1/4 in.
+  - **Leader lines**: 8 DCB compass positions (`SW`, `S`, `SE`, `W`, `E`, `NW`, `N`, `NE`); L5 remains an internal overlay mode. STARS leader clock directions (`*1`–`*8`), track-specific and fleet-wide leader direction commands (`*L(1-9)` / `*L(1-9)*` / `*L(1-9)U`), and 0–7 length steps (`/<0-7>`, `*LDR <0-7>`), each adding 1/4 in.
 - **Target history & prediction**:
   - Discrete radar history dots (0–9 dots sampled at 5-second intervals, set via `F8` or `*HIST <count>`).
   - Predicted Track Line (PTL): 0.5 to 15.0 minute forward ground track lookahead vector with global toggle (`F10` / `*PTL <min>`) and per-track PTL toggle (`*R`).
