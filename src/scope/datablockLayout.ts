@@ -3,7 +3,12 @@
  *  The solver never changes a track's configured leader direction or length.
  */
 
-import { datablockTopLeft, type DatablockMetrics, type LeaderDir } from "./leader";
+import {
+  datablockTopLeft,
+  effectiveLeaderLengthPx,
+  type DatablockMetrics,
+  type LeaderDir,
+} from "./leader";
 
 export interface LayoutPoint {
   x: number;
@@ -220,10 +225,30 @@ function freeWithObstacles(
   );
 }
 
+function leaderClearOfAcceptedBlocks(
+  item: DatablockLayoutInput,
+  rect: LayoutRect,
+  accepted: readonly LayoutRect[],
+): boolean {
+  const leader = resolvedLeaderObstacle(item, rect);
+  return (
+    leader === null ||
+    accepted.every(
+      (other) =>
+        // Co-located targets can put the line origin inside an earlier block;
+        // only reject crossings beyond that shared target origin.
+        pointInLayoutBounds(item.targetPoint, other) || !protectedGeometryOverlaps(other, leader),
+    )
+  );
+}
+
 export function resolvedLeaderObstacle(
   item: DatablockLayoutInput,
   rect: LayoutRect,
-): ProtectedGeometry {
+): ProtectedGeometry | null {
+  if (effectiveLeaderLengthPx(item.leaderDir, item.leaderLengthPx) <= 0) {
+    return null;
+  }
   const x = Math.max(rect.x, Math.min(item.targetPoint.x, rect.x + rect.width));
   const y = Math.max(rect.y, Math.min(item.targetPoint.y, rect.y + rect.height));
   return {
@@ -294,8 +319,10 @@ export function solveDatablockLayout(
       ...radialCandidates(item),
     ];
     const obstacles = [...(options.protectedGeometry ?? []), ...resolvedLeaderObstacles];
-    let resolved = candidates.find((candidate) =>
-      freeWithObstacles(candidate, accepted, options.bounds, obstacles, item.aircraftId),
+    let resolved = candidates.find(
+      (candidate) =>
+        freeWithObstacles(candidate, accepted, options.bounds, obstacles, item.aircraftId) &&
+        leaderClearOfAcceptedBlocks(item, candidate, accepted),
     );
 
     if (!resolved) {
@@ -310,7 +337,10 @@ export function solveDatablockLayout(
           x += step
         ) {
           const candidate = makeRect(x, y, size.width, size.height);
-          if (freeWithObstacles(candidate, accepted, options.bounds, obstacles, item.aircraftId)) {
+          if (
+            freeWithObstacles(candidate, accepted, options.bounds, obstacles, item.aircraftId) &&
+            leaderClearOfAcceptedBlocks(item, candidate, accepted)
+          ) {
             resolved = candidate;
             break;
           }
@@ -320,7 +350,10 @@ export function solveDatablockLayout(
 
     if (resolved) {
       accepted.push(resolved);
-      resolvedLeaderObstacles.push(resolvedLeaderObstacle(item, resolved));
+      const leaderObstacle = resolvedLeaderObstacle(item, resolved);
+      if (leaderObstacle) {
+        resolvedLeaderObstacles.push(leaderObstacle);
+      }
       results.set(item.aircraftId, {
         aircraftId: item.aircraftId,
         rect: resolved,

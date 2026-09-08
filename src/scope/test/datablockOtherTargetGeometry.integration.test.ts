@@ -46,8 +46,46 @@ describe("datablock other-target geometry", () => {
       leaderLengthPx: 36,
       displayPriority: "full" as const,
     };
-    const leader = resolvedLeaderObstacle(item, { x: 40, y: 40, width: 20, height: 20 });
+    const leader = resolvedLeaderObstacle(item, { x: 40, y: 40, width: 20, height: 20 })!;
     expect(protectedGeometryOverlaps({ x: 20, y: 48, width: 20, height: 10 }, leader)).toBe(true);
+  });
+
+  test("zero-length leader creates no obstacle", () => {
+    const item = {
+      aircraftId: "A",
+      targetPoint: { x: 10, y: 50 },
+      preferredRect: { x: 40, y: 40, width: 20, height: 20 },
+      metrics: { widthPx: 20, heightPx: 20 },
+      leaderDir: 6 as const,
+      leaderLengthPx: 0,
+      displayPriority: "full" as const,
+    };
+    expect(resolvedLeaderObstacle(item, { x: 40, y: 40, width: 20, height: 20 })).toBeNull();
+  });
+
+  test("current leader cannot cross an accepted datablock", () => {
+    const first = {
+      aircraftId: "A",
+      targetPoint: { x: 10, y: 50 },
+      preferredRect: { x: 40, y: 40, width: 20, height: 20 },
+      metrics: { widthPx: 20, heightPx: 20 },
+      leaderDir: 6 as const,
+      leaderLengthPx: 36,
+      displayPriority: "full" as const,
+    };
+    const second = {
+      aircraftId: "B",
+      targetPoint: { x: 20, y: 50 },
+      preferredRect: { x: 70, y: 40, width: 20, height: 20 },
+      metrics: { widthPx: 20, heightPx: 20 },
+      leaderDir: 6 as const,
+      leaderLengthPx: 36,
+      displayPriority: "full" as const,
+    };
+    const layouts = solveDatablockLayout([first, second], {
+      bounds: { x: 0, y: 0, width: 120, height: 100 },
+    });
+    expect(layouts[1]!.rect).not.toMatchObject(second.preferredRect);
   });
 
   test("rejects polygons containing or crossing a datablock", () => {

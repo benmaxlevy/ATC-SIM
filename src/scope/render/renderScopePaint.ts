@@ -1216,7 +1216,13 @@ export function drawTracks(
         const r = layout.rect;
         const ex = Math.max(r.x, Math.min(p.x, r.x + r.width));
         const ey = Math.max(r.y, Math.min(p.y, r.y + r.height));
-        if (Math.hypot(ex - p.x, ey - p.y) > 1) {
+        const hasLeader =
+          leaderSegmentPx(
+            trackLeaderDir(view, ac.id),
+            trackLeaderLength(view, ac.id),
+            view.charSizes.pos,
+          ) !== null;
+        if (hasLeader && Math.hypot(ex - p.x, ey - p.y) > 1) {
           ctx.strokeStyle = leaderColor;
           ctx.lineWidth = 1;
           ctx.beginPath();
