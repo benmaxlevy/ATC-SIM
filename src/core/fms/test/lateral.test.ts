@@ -8,6 +8,7 @@ import {
   createAircraft,
   createWorld,
   distanceNm,
+  locDeviation,
   stepWorld,
 } from "@core";
 import type { FixRegistrySource } from "@core";
@@ -146,4 +147,85 @@ test("AC5 — DEMO ONE north PROCEDURE fly-bys then vectors", () => {
 test("AC6 — FMS tests are DOM-free", () => {
   expect(typeof document).toBe("undefined");
   expect(typeof window).toBe("undefined");
+});
+
+function axisPosition(courseDeg: number, alongNm: number, crossNm: number) {
+  const rad = (courseDeg * Math.PI) / 180;
+  return {
+    xNm: -alongNm * Math.sin(rad) + crossNm * Math.cos(rad),
+    yNm: -alongNm * Math.cos(rad) - crossNm * Math.sin(rad),
+  };
+}
+
+test("AC1/2/3/5 — rate-one lead turn captures reciprocal localizers without crossing", () => {
+  for (const courseDeg of [0, 180]) {
+    for (const speedKt of [180, 250, 300]) {
+      for (const interceptDeg of [20, 30]) {
+        for (const side of [-1, 1]) {
+          const crossNm = side * 6 * Math.tan((interceptDeg * Math.PI) / 180);
+          const position = axisPosition(courseDeg, 12, crossNm);
+          const dal = createAircraft({
+            id: `ac-${courseDeg}-${speedKt}-${interceptDeg}-${side}`,
+            callsign: "DAL123",
+            ...position,
+            headingDeg: courseDeg - side * interceptDeg,
+            altitudeFt: 4000,
+            speedKt,
+          });
+          dal.intent.lateral = { type: "INTERCEPT_LOC", approachId: "TEST" };
+          const log = new SessionLog();
+          const world = createWorld({
+            aircraft: [dal],
+            sessionLog: log,
+            catalog: {
+              airportId: "TEST",
+              navaids: [],
+              fixes: [{ id: "RWY", xNm: 0, yNm: 0 }],
+              stars: [],
+              sids: [],
+              approaches: [{ id: "TEST", courseDeg, lengthNm: 18, thresholdFixId: "RWY" }],
+            },
+          });
+          let previousHeading = dal.headingDeg;
+          let crossed = false;
+          for (let i = 0; i < Math.round(360 / SIM_DT_S); i += 1) {
+            stepWorld(world, SIM_DT_S);
+            const deviation = locDeviation(
+              { xNm: dal.xNm, yNm: dal.yNm },
+              {
+                approachId: "TEST",
+                thresholdXNm: 0,
+                thresholdYNm: 0,
+                courseDeg,
+                lengthNm: 18,
+                beamHalfWidthDeg: 2.5,
+                locFullScaleHalfWidthFtAtThreshold: 350,
+              },
+            );
+            crossed ||= deviation.crossTrackNm * side < -1e-5;
+            const headingStep = Math.abs(((dal.headingDeg - previousHeading + 540) % 360) - 180);
+            expect(headingStep).toBeLessThanOrEqual(3 * SIM_DT_S + 1e-6);
+            previousHeading = dal.headingDeg;
+            if (deviation.alongTrackNm <= 3) break;
+          }
+          const finalDeviation = locDeviation(
+            { xNm: dal.xNm, yNm: dal.yNm },
+            {
+              approachId: "TEST",
+              thresholdXNm: 0,
+              thresholdYNm: 0,
+              courseDeg,
+              lengthNm: 18,
+              beamHalfWidthDeg: 2.5,
+              locFullScaleHalfWidthFtAtThreshold: 350,
+            },
+          );
+          expect(log.byType("nav.loc.captured")).toHaveLength(1);
+          expect(dal.intent.lateral?.type).toBe("LOC");
+          expect(crossed, `${courseDeg}/${speedKt}/${interceptDeg}/${side}`).toBe(false);
+          expect(Math.abs(finalDeviation.crossTrackNm)).toBeLessThanOrEqual(0.05);
+        }
+      }
+    }
+  }
 });

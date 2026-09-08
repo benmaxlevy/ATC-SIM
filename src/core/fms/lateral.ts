@@ -24,12 +24,12 @@ import {
 import type { LocAxis } from "../nav/localizer";
 import {
   LOC_BREAKOUT_S,
-  LOC_INTERCEPT_HEADING_MAX_DEG,
   locDeviation,
   locEnvelope,
   locShouldBreakout,
   locShouldCapture,
 } from "../nav/localizer";
+import { TURN_RATE_DEG_PER_S, shortestDeltaDeg } from "../kinematics";
 import { clearViaOnVectors, onFixSequenced, type VerticalCatalog } from "./vertical";
 
 /** DEMO ONE north transition then MERGE (ids only; xy from the registry). */
@@ -61,10 +61,10 @@ export function applyLateralFms(
     return undefined;
   }
   if (lateral.type === "INTERCEPT_LOC") {
-    return ac.intent.assignedHeadingDeg;
+    return guideArmedLoc(ac, dtS, lateral.approachId, ctx);
   }
   if (lateral.type === "LOC") {
-    return guideLoc(ac, lateral, ctx);
+    return guideLoc(ac, dtS, lateral, ctx);
   }
   if (lateral.type === "LANDING") {
     return guideLanding(ac, lateral, ctx);
@@ -288,16 +288,6 @@ function tryArmedLocCapture(ac: Aircraft, ctx: LateralFmsContext): number | unde
   locBreakoutSinceMs.delete(ac);
   ac.intent.lateral = { type: "LOC", approachId };
   ac.intent.locInterceptApproachId = null;
-  // Steep DIRECT/STAR joins would fly through the beam during a rate-one
-  // turn onto inbound; snap heading so loc-guided track starts on course.
-  if (
-    onPublishedPath &&
-    courseChangeDeg(ac.headingDeg, axis.courseDeg) > LOC_INTERCEPT_HEADING_MAX_DEG
-  ) {
-    ac.headingDeg = axis.courseDeg;
-    ac.intent.assignedHeadingDeg = axis.courseDeg;
-    ac.intent.turn = "SHORTEST";
-  }
   ctx.log?.append({
     type: "nav.loc.captured",
     atSimMs: ctx.simTimeMs,
@@ -308,8 +298,84 @@ function tryArmedLocCapture(ac: Aircraft, ctx: LateralFmsContext): number | unde
   return axis.courseDeg;
 }
 
+const LOC_TRACK_MAX_INTERCEPT_DEG = 12;
+const LOC_TRACK_MIN_INTERCEPT_DEG = 2;
+
+/**
+ * Predict rate-one lateral travel before rolling out on final. FAA JO 7110.65
+ * 5-9-2 constrains controller intercept vectors; this is trainer guidance,
+ * not certified autopilot or radio-propagation behavior.
+ */
+function leadTurnCrossTrackNm(speedKt: number, headingErrorDeg: number): number {
+  const omegaRadS = (TURN_RATE_DEG_PER_S * Math.PI) / 180;
+  if (!(speedKt > 0) || !(omegaRadS > 0)) return 0;
+  const radiusNm = speedKt / 3600 / omegaRadS;
+  return radiusNm * (1 - Math.cos((Math.abs(headingErrorDeg) * Math.PI) / 180));
+}
+
+/** Keep the assigned vector until its rate-one rollout must begin. */
+function guideArmedLoc(
+  ac: Aircraft,
+  dtS: number,
+  approachId: string,
+  ctx: LateralFmsContext,
+): number {
+  const axis = ctx.locAxisFor?.(approachId);
+  if (!axis) return ac.intent.assignedHeadingDeg;
+  const deviation = locDeviation({ xNm: ac.xNm, yNm: ac.yNm }, axis);
+  if (!(deviation.alongTrackNm > 0 && deviation.alongTrackNm < axis.lengthNm)) {
+    return ac.intent.assignedHeadingDeg;
+  }
+  const headingErrorDeg = shortestDeltaDeg(axis.courseDeg, ac.headingDeg);
+  // cross-track rate has heading-error sign: negative closes positive/right error.
+  const closing = deviation.crossTrackNm * Math.sin((headingErrorDeg * Math.PI) / 180) < 0;
+  // Two ticks of margin keeps discrete SIM_DT_S integration from carrying the
+  // aircraft across centerline after the predicted continuous rollout.
+  const stepNm = (2 * Math.max(0, ac.speedKt) * dtS) / 3600;
+  if (
+    closing &&
+    Math.abs(deviation.crossTrackNm) <= leadTurnCrossTrackNm(ac.speedKt, headingErrorDeg) + stepNm
+  ) {
+    return axis.courseDeg;
+  }
+  // A vector that is already moving away from the centerline cannot reach a
+  // later lead point. Once inside the retained trainer envelope, begin the
+  // same bounded recovery guidance but keep INTERCEPT_LOC until signal capture.
+  const envelope = locEnvelope(deviation, axis);
+  if (!closing && envelope && !locShouldBreakout(envelope.normalizedError)) {
+    return locTrackingHeading(ac, dtS, deviation, axis);
+  }
+  return ac.intent.assignedHeadingDeg;
+}
+
+function locTrackingHeading(
+  ac: Aircraft,
+  dtS: number,
+  deviation: ReturnType<typeof locDeviation>,
+  axis: LocAxis,
+): number {
+  const crossTrack = deviation.crossTrackNm;
+  if (Math.abs(crossTrack) < 1e-6) return axis.courseDeg;
+  const headingErrorDeg = shortestDeltaDeg(axis.courseDeg, ac.headingDeg);
+  const towardCenter = -Math.sign(crossTrack);
+  const movingTowardCenter = headingErrorDeg * towardCenter > 0;
+  const rolloutLeadNm = leadTurnCrossTrackNm(ac.speedKt, headingErrorDeg);
+  const discreteMarginNm = (2 * Math.max(0, ac.speedKt) * dtS) / 3600;
+  if (movingTowardCenter && Math.abs(crossTrack) <= rolloutLeadNm + discreteMarginNm) {
+    return axis.courseDeg;
+  }
+  const envelope = locEnvelope(deviation, axis);
+  const normalized = Math.abs(envelope?.normalizedError ?? 1);
+  const correctionDeg = Math.min(
+    LOC_TRACK_MAX_INTERCEPT_DEG,
+    Math.max(LOC_TRACK_MIN_INTERCEPT_DEG, normalized * LOC_TRACK_MAX_INTERCEPT_DEG),
+  );
+  return axis.courseDeg + towardCenter * correctionDeg;
+}
+
 function guideLoc(
   ac: Aircraft,
+  dtS: number,
   lateral: Extract<Aircraft["intent"]["lateral"], { type: "LOC" }>,
   ctx: LateralFmsContext,
 ): number {
@@ -336,7 +402,7 @@ function guideLoc(
   } else {
     locBreakoutSinceMs.delete(ac);
   }
-  return axis.courseDeg;
+  return locTrackingHeading(ac, dtS, deviation, axis);
 }
 
 /** LANDING keeps the loc inbound course. No breakout — they are going to land. */

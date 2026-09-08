@@ -337,7 +337,13 @@ function interceptGsFromAboveAltitudeFt(
 ): number {
   if (gsAltFt >= currentAltFt) return currentAltFt;
   const geoVs = Math.abs(gsGeometricVsFpm(gsAngleDeg, groundSpeedKt));
-  const vsFpm = currentAltFt - gsAltFt > 20 ? Math.min(CLIMB_RATE_FT_PER_MIN, geoVs * 1.5) : geoVs;
+  const abovePathFt = currentAltFt - gsAltFt;
+  // Cross the last 20 ft from above by one tick of margin. Exact geometric VS
+  // can parallel the beam indefinitely after a rate-limited LOC intercept.
+  const vsFpm =
+    abovePathFt > 20
+      ? Math.min(CLIMB_RATE_FT_PER_MIN, geoVs * 1.5)
+      : Math.min(CLIMB_RATE_FT_PER_MIN, geoVs * 1.1);
   return currentAltFt - (vsFpm / 60) * dtS;
 }
 

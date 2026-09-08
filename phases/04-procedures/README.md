@@ -50,7 +50,7 @@ If that loop is not fun with a keyboard, CIFP import and wind will not save it. 
 - `DIRECT` to a named fix on that catalog actually tracks the fix (fly-by).
 - `EXPECT_APPROACH` and `CLEARED_APPROACH` change intent (expect is arming/scratchpad; cleared starts intercept).
 - **Phraseology = fly-through.** Canonical ILS transmission is heading + *maintain (alt) until established* + *cleared ILS approach runway 27*. Same `Command` (three instructions). Aircraft: fly heading, **hold altitude until established on the localizer**, then GS from below. Bare `APP ILS27` still arms intercept from the current heading and holds the already-assigned altitude until established.
-- Vector-to-intercept: assigned heading until localizer capture, then inbound course.
+- Vector-to-intercept: assigned heading until rate-one lead turn, then bounded signed cross-track guidance captures and tracks inbound without a heading snap.
 - After loc capture (**established**), intercept glidepath from below; then follow GS. Do not start GS before loc capture.
 - Missed approach stub at DA if not handed to the tower stub.
 - CA lite: pair `< 3 NM` **and** `< 1000 ft` — yellow (predicted), then red (current).
