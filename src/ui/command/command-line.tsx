@@ -110,8 +110,10 @@ export function CommandLine({
   useEffect(() => {
     if (voiceStatus) {
       setShowingReadback(true);
+    } else if (readback === "") {
+      setShowingReadback(false);
     }
-  }, [voiceStatus]);
+  }, [readback, voiceStatus]);
 
   useEffect(() => {
     if (!showingReadback) {
@@ -130,11 +132,7 @@ export function CommandLine({
       }
       return;
     }
-    const timer = setTimeout(() => {
-      setShowingReadback(false);
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, [showingReadback, readback, voiceStatus]);
+  }, [showingReadback]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -148,6 +146,7 @@ export function CommandLine({
       return;
     }
     setPttHeld(false);
+    setShowingReadback(false);
     onPttRelease?.();
   }
 

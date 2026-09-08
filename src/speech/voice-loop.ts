@@ -480,6 +480,7 @@ class VoiceLoopImpl implements VoiceLoop {
       this.emitStatus({ code: "tts_failed" });
     } finally {
       this.syncLock("play-ended");
+      this.emitStatus(null);
     }
   }
 
