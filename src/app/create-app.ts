@@ -25,6 +25,7 @@ import {
   type SpeechSettingsController,
 } from "../ui/controls/settings-speech";
 import { createCaAlertTone, type CaAlertTone } from "./ca-alert-tone";
+import { createEventSounds, type EventSounds } from "./event-sounds";
 
 export interface AppDeps {
   speech: SpeechPort;
@@ -46,6 +47,8 @@ export interface AppDeps {
   getVoiceId?: (callsign?: string) => string;
   /** Injected in tests. Browser default is a square-wave CA beep. */
   caAlertTone?: CaAlertTone;
+  /** Injected in tests. Browser default plays shipped event WAVs. */
+  eventSounds?: EventSounds;
 }
 
 export interface AppHandles {
@@ -68,6 +71,7 @@ export interface AppHandles {
   /** Command-line copy (formatted) or `null` to clear. */
   subscribeVoiceStatus(listener: (status: string | null) => void): () => void;
   caAlertTone: CaAlertTone;
+  eventSounds: EventSounds;
   /** Replace the session world after explicit setup confirmation. */
   replaceWorld(next: World): void;
 }
@@ -220,6 +224,7 @@ export function createApp(deps: AppDeps): AppHandles {
   const checkInQueue = createCheckInQueue({ seed: deps.checkInSeed ?? 1 });
   checkInQueue.scheduleFromWorld(world);
   const caAlertTone = deps.caAlertTone ?? createCaAlertTone();
+  const eventSounds = deps.eventSounds ?? createEventSounds();
 
   function afterPhysicsTick(caAlertActive?: boolean): void {
     // Newly scheduled STAR arrivals enter the same check-in queue as initial traffic.
@@ -234,6 +239,7 @@ export function createApp(deps: AppDeps): AppHandles {
       setStatus: emitVoiceStatus,
       nowWallMs: () => Date.now(),
     });
+    eventSounds.sync(log);
     // Scope owns acknowledgement and inhibit state; callers that have that
     // state pass the filtered result. Keep the world-only fallback for
     // headless callers and backwards-compatible app tests.
@@ -264,6 +270,7 @@ export function createApp(deps: AppDeps): AppHandles {
     },
     afterPhysicsTick,
     caAlertTone,
+    eventSounds,
     replaceWorld(next) {
       world = next;
       world.sessionLog = log;

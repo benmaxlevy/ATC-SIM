@@ -75,6 +75,7 @@ window.addEventListener("pagehide", () => {
   }
   handles.ptt.dispose();
   handles.caAlertTone.dispose();
+  handles.eventSounds.dispose();
   stopMetarPolling();
 });
 
