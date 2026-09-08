@@ -1,5 +1,20 @@
 # Swarm status
 
+## THIRTY-NINTH SWARM COMPLETE — MSAW MULTI FUNC Q/V (T02-120)
+
+T02-120 is squash-merged on `feature/stars-ca-alignment` as `cd1f120`.
+`*` is the existing MULTI FUNC input: `*Q` then slew/click on an owned active
+LA track suppresses only its current MSAW presentation/tone/list entry and
+clears with that alert; `*V` then slew/click on an owned track persistently
+toggles its MSAW processing presentation/tone/list suppression. Both retain
+the ACID `*`, never create Command IR, and `*LA` remains altitude filtering.
+
+Worker and captain `npm run ci` passed: typecheck, lint, format, **180 test
+files / 1,605 tests passed / 4 skipped**. Documentation and deferred-backlog
+wording now record Q/V as shipped trainer-local behavior.
+
+**Merged:** T02-120 (`cd1f120`) after planning clarification `a3a605e`.
+
 ## THIRTY-EIGHTH SWARM COMPLETE — WX VIP Availability (T02-121)
 
 T02-121 is squash-merged on `feature/stars-ca-alignment` as `2a34a61`.
