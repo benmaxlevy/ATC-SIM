@@ -591,6 +591,17 @@ ILS 09, or a compass side.
 Wave: **T04-46** → **T04-47**. T04-46 supersedes T04-05/T04-06 hard capture
 and loss thresholds; T04-47 supersedes T04-05 centerline-only LOC command.
 
+### Post-exit addendum (T04-48–50 magnetic heading frames)
+
+Controller-facing commands, parser/speech/readback, displayed aircraft
+headings, and published procedure courses are magnetic. ENU x/y geometry,
+runway and map lines, LOC/GS axes, procedure turns, predicted motion, and
+conflict/ATPA geometry are true. The generic world navigation context carries
+`magVarDeg`; the canonical relationship is `true = magnetic + magVarDeg`.
+Use the named `magneticToTrueDeg` and `trueToMagneticDeg` helpers at frame
+boundaries. KDEM's `magVarDeg: 0` is fixture data, not a coordinate-system
+assumption; other catalogs (including KATL's `-5`) use the same plumbing.
+
 ---
 
 ## Phase exit checklist

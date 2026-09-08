@@ -40,6 +40,12 @@ import {
 import { locAxisForApproach } from "./nav/localizer";
 import { gsParamsForApproach } from "./nav/glidepath";
 
+/** Generic world navigation context. Variation is never facility-special-cased. */
+export interface WorldNavigationContext {
+  /** Magnetic degrees east-positive: true = magnetic + magVarDeg. */
+  magVarDeg: number;
+}
+
 export type SimRate = 1 | 2;
 
 /**
@@ -50,6 +56,7 @@ export interface World {
   simTimeMs: number;
   paused: boolean;
   simRate: SimRate;
+  navigation: WorldNavigationContext;
   aircraft: Aircraft[];
   selectedAircraftId: string | null;
   /**
@@ -59,6 +66,7 @@ export interface World {
    */
   catalog?: {
     airportId: string;
+    magVarDeg?: number;
     navaids: ReadonlyArray<{ id: string; xNm?: number; yNm?: number; kind?: string }>;
     fixes: ReadonlyArray<{ id: string; xNm?: number; yNm?: number; kind?: string }>;
     stars: ReadonlyArray<CatalogStar>;
@@ -67,6 +75,8 @@ export interface World {
       id: string;
       runway?: string;
       runwayId?: string;
+      /** Published inbound course, magnetic. `courseDeg` is loader compatibility only. */
+      publishedCourseMagneticDeg?: number;
       courseDeg?: number;
       lengthNm?: number;
       beamHalfWidthDeg?: number;
@@ -177,10 +187,12 @@ function fixRegistryFromPartial(partial?: Partial<World>): FixRegistry | null {
 }
 
 export function createWorld(partial?: Partial<World>): World {
+  const magVarDeg = partial?.navigation?.magVarDeg ?? partial?.catalog?.magVarDeg ?? 0;
   return {
     simTimeMs: partial?.simTimeMs ?? 0,
     paused: partial?.paused ?? false,
     simRate: partial?.simRate ?? 1,
+    navigation: { magVarDeg },
     aircraft: partial?.aircraft ?? [],
     selectedAircraftId: partial?.selectedAircraftId ?? null,
     catalog: partial?.catalog,

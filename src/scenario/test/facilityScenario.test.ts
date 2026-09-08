@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { buildFixRegistry } from "@core";
+import { buildFixRegistry, createWorld } from "@core";
 import {
   assertScenario,
   createWorldForSession,
@@ -8,11 +8,25 @@ import {
   listDepartureSlots,
   listPlayableScenarios,
   loadCatalog,
+  loadKdem,
   loadPlayableScenario,
   starRouteFixIds,
 } from "@scenario";
 import katl08Json from "../katl-08.json";
 import katlJson from "../katl.json";
+
+test("world navigation context carries generic magnetic variation", () => {
+  const kdem = loadKdem();
+  expect(createWorldFromScenario(kdem).navigation.magVarDeg).toBe(0);
+
+  const katl = assertScenario(katlJson);
+  expect(createWorldFromScenario(katl).navigation.magVarDeg).toBe(-5);
+
+  const syntheticPlusFive = createWorld({
+    catalog: { ...katl.catalog, airportId: "SYNTH", magVarDeg: 5 },
+  });
+  expect(syntheticPlusFive.navigation.magVarDeg).toBe(5);
+});
 
 test("committed catalog directory loads through loadCatalog without a facility-id branch", () => {
   const catalog = loadCatalog("katl");

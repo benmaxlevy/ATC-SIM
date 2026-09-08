@@ -1,3 +1,5 @@
+import type { MagneticHeadingDeg } from "@core";
+
 /**
  * Facility-generic procedure catalog (ICAO folder under `src/scenario/data/`).
  * Runtime geometry is local ENU NM (+x east, +y north of ARP). Optional
@@ -133,6 +135,9 @@ export interface ApproachProcedure {
   gsNavaidId?: string;
   fafFixId?: string;
   thresholdFixId?: string;
+  /** Published inbound course; magnetic, never an ENU/world axis. */
+  publishedCourseMagneticDeg?: MagneticHeadingDeg;
+  /** Legacy JSON spelling accepted only at the loader boundary. */
   courseDeg?: number;
   lengthNm?: number;
   beamHalfWidthDeg?: number;

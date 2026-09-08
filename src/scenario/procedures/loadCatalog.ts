@@ -394,6 +394,8 @@ function parseApproach(value: unknown, index: number): ApproachProcedure {
   const daFt = optionalNumber(value.daFt, `${path}.daFt`);
   if (courseDeg !== undefined) {
     approach.courseDeg = courseDeg;
+    approach.publishedCourseMagneticDeg =
+      courseDeg as ApproachProcedure["publishedCourseMagneticDeg"];
   }
   if (lengthNm !== undefined) {
     approach.lengthNm = lengthNm;

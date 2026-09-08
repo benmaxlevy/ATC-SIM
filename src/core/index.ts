@@ -1,7 +1,7 @@
 /**
  * Public API for `@core`.
  *
- * Legal now: `World` (`simTimeMs`, `paused`, `simRate` 1|2, empty `aircraft`,
+ * Legal now: `World` (`simTimeMs`, `paused`, `simRate` 1|2, `navigation.magVarDeg`, empty `aircraft`,
  * `selectedAircraftId`, optional facility `catalog`, `fixRegistry`, `alerts`, `mvaChart`,
  * `msawInhibit`, `sessionLog`, `handoffs`); `createWorld`; `setSelectedAircraft`; `stepWorld`;
  * `createAccumulator` / `advanceWorld`; clock constants (`PHYSICS_HZ`,
@@ -24,7 +24,13 @@
  *
  * Import rule: `@core` depends on nothing in `src/*` except itself.
  */
-export type { World, SimRate, Accumulator, ScheduledDeparture } from "./world";
+export type {
+  World,
+  WorldNavigationContext,
+  SimRate,
+  Accumulator,
+  ScheduledDeparture,
+} from "./world";
 export {
   TRACON_BOUNDARY_RADIUS_NM,
   createWorld,
@@ -69,6 +75,8 @@ export {
 } from "./kinematics";
 
 export type { LatLon, NmEastNorth, NmPoint } from "./nav/geometry";
+export type { MagneticHeadingDeg, TrueHeadingDeg } from "./nav/headingFrames";
+export { magneticToTrueDeg, trueToMagneticDeg } from "./nav/headingFrames";
 export {
   DEG2RAD,
   DIRECT_SEQUENCE_NM,
