@@ -1,6 +1,7 @@
 import type { Aircraft } from "./aircraft";
 import type { TurnDir } from "./command/types";
 import { DEG2RAD, normalizeHeadingDeg } from "./nav/geometry";
+import { magneticToTrueDeg } from "./nav/headingFrames";
 
 export { PHYSICS_HZ, SIM_DT_S } from "./clock";
 
@@ -76,6 +77,7 @@ export function stepAircraft(
   commandedHeadingDeg?: number,
   commandedAltitudeFt?: number,
   commandedSpeedKt?: number,
+  magVarDeg = 0,
 ): void {
   const headingFrom = normalizeHeading(ac.headingDeg);
   const headingTo = normalizeHeading(
@@ -98,7 +100,8 @@ export function stepAircraft(
   const speedTo = commandedSpeedKt ?? ac.intent.assignedSpeedKt;
   ac.speedKt = Math.max(0, toward(ac.speedKt, speedTo, maxSpeedKt));
 
-  const headingRad = ac.headingDeg * DEG2RAD;
+  // Aircraft/controller heading remains magnetic; only ENU displacement uses true.
+  const headingRad = magneticToTrueDeg(ac.headingDeg, magVarDeg) * DEG2RAD;
   ac.xNm += ac.speedKt * Math.sin(headingRad) * (dtS / 3600);
   ac.yNm += ac.speedKt * Math.cos(headingRad) * (dtS / 3600);
 }

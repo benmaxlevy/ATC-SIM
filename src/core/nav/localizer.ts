@@ -9,6 +9,7 @@ import { DEFAULT_LOC_FULL_SCALE_HALF_WIDTH_FT_AT_THRESHOLD } from "../../scenari
 import type { FixRegistry } from "./fixRegistry";
 import { courseChangeDeg } from "./geometry";
 import type { NmPoint } from "./geometry";
+import { magneticToTrueDeg } from "./headingFrames";
 
 export const LOC_ALONG_MIN_NM = 0.5;
 export const LOC_INTERCEPT_HEADING_MAX_DEG = 45;
@@ -23,6 +24,11 @@ export interface LocAxis {
   approachId: string;
   thresholdXNm: number;
   thresholdYNm: number;
+  /** Published/controller inbound course, magnetic. */
+  publishedCourseMagneticDeg?: number;
+  /** Geometric inbound axis, true degrees. */
+  geometricCourseTrueDeg?: number;
+  /** @deprecated use publishedCourseMagneticDeg. */
   courseDeg: number;
   lengthNm: number;
   beamHalfWidthDeg: number;
@@ -44,6 +50,7 @@ export interface LocEnvelope {
 export interface LocCatalogApproach {
   id: string;
   courseDeg?: number;
+  publishedCourseMagneticDeg?: number;
   lengthNm?: number;
   beamHalfWidthDeg?: number;
   locFullScaleHalfWidthFtAtThreshold?: number;
@@ -55,7 +62,7 @@ export interface LocCatalog {
 }
 
 export function locDeviation(pos: NmPoint, axis: LocAxis): LocDeviation {
-  const rad = (axis.courseDeg * Math.PI) / 180;
+  const rad = ((axis.geometricCourseTrueDeg ?? axis.courseDeg) * Math.PI) / 180;
   const inboundEast = Math.sin(rad);
   const inboundNorth = Math.cos(rad);
   const dx = pos.xNm - axis.thresholdXNm;
@@ -93,7 +100,7 @@ export function locShouldCapture(args: {
   if (!envelope || Math.abs(envelope.normalizedError) > LOC_CAPTURE_NORMALIZED_ERROR) return false;
   return (
     args.requireInterceptHeading === false ||
-    courseChangeDeg(args.headingDeg, args.axis.courseDeg) <= LOC_INTERCEPT_HEADING_MAX_DEG ||
+    courseChangeDeg(args.headingDeg, args.axis.publishedCourseMagneticDeg ?? args.axis.courseDeg) <= LOC_INTERCEPT_HEADING_MAX_DEG ||
     Math.abs(envelope.normalizedError) <= LOC_CAPTURE_NORMALIZED_ERROR
   );
 }
@@ -107,6 +114,8 @@ export function kdemIls27LocAxis(): LocAxis {
     approachId: "ILS27",
     thresholdXNm: 0,
     thresholdYNm: 0,
+    publishedCourseMagneticDeg: 270,
+    geometricCourseTrueDeg: 270,
     courseDeg: 270,
     lengthNm: LOC_DEFAULT_LENGTH_NM,
     beamHalfWidthDeg: LOC_DEFAULT_BEAM_HALF_WIDTH_DEG,
@@ -118,18 +127,22 @@ export function locAxisForApproach(
   approachId: string,
   catalog: LocCatalog | null | undefined,
   registry: FixRegistry | null | undefined,
+  magVarDeg = 0,
 ): LocAxis | undefined {
   if (!catalog) return undefined;
   const want = approachId.trim().toUpperCase();
   const approach = catalog.approaches.find((item) => item.id.trim().toUpperCase() === want);
-  if (!approach || approach.courseDeg === undefined || approach.lengthNm === undefined)
+  const published = approach?.publishedCourseMagneticDeg ?? approach?.courseDeg;
+  if (!approach || published === undefined || approach.lengthNm === undefined)
     return undefined;
   const threshold = approach.thresholdFixId ? registry?.get(approach.thresholdFixId) : undefined;
   return {
     approachId: approach.id,
     thresholdXNm: threshold?.xNm ?? 0,
     thresholdYNm: threshold?.yNm ?? 0,
-    courseDeg: approach.courseDeg,
+    publishedCourseMagneticDeg: published,
+    geometricCourseTrueDeg: magneticToTrueDeg(published, magVarDeg),
+    courseDeg: published,
     lengthNm: approach.lengthNm,
     beamHalfWidthDeg: approach.beamHalfWidthDeg ?? LOC_DEFAULT_BEAM_HALF_WIDTH_DEG,
     locFullScaleHalfWidthFtAtThreshold:

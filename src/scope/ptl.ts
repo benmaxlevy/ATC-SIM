@@ -32,9 +32,10 @@ export function ptlEndpoint(
   headingTrueDeg: number,
   gsKt: number,
   minutes: number,
+  magVarDeg = 0,
 ): { eastNm: number; northNm: number } {
   const distNm = ptlDistanceNm(gsKt, minutes);
-  const rad = (headingTrueDeg * Math.PI) / 180;
+  const rad = ((headingTrueDeg + magVarDeg) * Math.PI) / 180;
   return {
     eastNm: eastNm + distNm * Math.sin(rad),
     northNm: northNm + distNm * Math.cos(rad),

@@ -18,6 +18,7 @@
 
 import type { Aircraft } from "../aircraft";
 import { alongTrackNm, courseChangeDeg, DEG2RAD, normalizeHeadingDeg } from "../nav/geometry";
+import { magneticToTrueDeg } from "../nav/headingFrames";
 
 /** R07 predicted-warning horizon (seconds). */
 export const ATPA_WARNING_S = 45;
@@ -109,6 +110,7 @@ export function isInsideAtpaVolume(
   geometry: AtpaVolumeGeometry,
   volume: AtpaVolumeParams,
   track: Pick<AtpaTrack, "xNm" | "yNm" | "headingDeg" | "altitudeFt">,
+  magVarDeg = 0,
 ): boolean {
   const alongNm = alongCourseDistanceNm(geometry, track.xNm, track.yNm);
   if (alongNm < 0 || alongNm > volume.lengthNm) {
@@ -120,7 +122,7 @@ export function isInsideAtpaVolume(
   if (track.altitudeFt < volume.floorFt || track.altitudeFt > volume.ceilingFt) {
     return false;
   }
-  return courseChangeDeg(track.headingDeg, geometry.courseDeg) <= volume.courseToleranceDeg;
+  return courseChangeDeg(magneticToTrueDeg(track.headingDeg, magVarDeg), geometry.courseDeg) <= volume.courseToleranceDeg;
 }
 
 function isPrimaryOnlyTarget(track: AtpaTrack): boolean {
@@ -132,22 +134,22 @@ function isPrimaryOnlyTarget(track: AtpaTrack): boolean {
   );
 }
 
-function groundVelocityNmPerS(track: AtpaTrack): { vx: number; vy: number } {
-  const rad = track.headingDeg * DEG2RAD;
+function groundVelocityNmPerS(track: AtpaTrack, magVarDeg = 0): { vx: number; vy: number } {
+  const rad = magneticToTrueDeg(track.headingDeg, magVarDeg) * DEG2RAD;
   const nmPerS = track.speedKt * KT_TO_NM_PER_S;
   return { vx: nmPerS * Math.sin(rad), vy: nmPerS * Math.cos(rad) };
 }
 
 /** Positive = closing (NM/h). Opening or parallel is ≤ 0. */
-export function pairClosureKt(trailing: AtpaTrack, leading: AtpaTrack): number {
+export function pairClosureKt(trailing: AtpaTrack, leading: AtpaTrack, magVarDeg = 0): number {
   const dx = trailing.xNm - leading.xNm;
   const dy = trailing.yNm - leading.yNm;
   const distNm = Math.hypot(dx, dy);
   if (distNm === 0) {
     return 0;
   }
-  const tv = groundVelocityNmPerS(trailing);
-  const lv = groundVelocityNmPerS(leading);
+  const tv = groundVelocityNmPerS(trailing, magVarDeg);
+  const lv = groundVelocityNmPerS(leading, magVarDeg);
   const rangeRateNmPerS = (dx * (tv.vx - lv.vx) + dy * (tv.vy - lv.vy)) / distNm;
   return -rangeRateNmPerS / KT_TO_NM_PER_S;
 }
@@ -194,15 +196,17 @@ export function atpaPairKey(
  */
 export function resolveAtpaGeometry(
   catalog: {
-    approaches: ReadonlyArray<{ id: string; courseDeg?: number; thresholdFixId?: string }>;
+    approaches: ReadonlyArray<{ id: string; courseDeg?: number; publishedCourseMagneticDeg?: number; thresholdFixId?: string }>;
     fixes: ReadonlyArray<{ id: string; xNm?: number; yNm?: number }>;
   },
   volumes: ReadonlyArray<{ id: string; approachId: string }>,
+  magVarDeg = 0,
 ): Record<string, AtpaVolumeGeometry> {
   const out: Record<string, AtpaVolumeGeometry> = {};
   for (const volume of volumes) {
     const approach = catalog.approaches.find((item) => item.id === volume.approachId);
-    if (approach === undefined || approach.courseDeg === undefined) {
+    const publishedCourse = approach?.publishedCourseMagneticDeg ?? approach?.courseDeg;
+    if (approach === undefined || publishedCourse === undefined) {
       continue;
     }
     const thresholdFixId = approach.thresholdFixId;
@@ -217,7 +221,7 @@ export function resolveAtpaGeometry(
     ) {
       continue;
     }
-    out[volume.id] = { xNm: threshold.xNm, yNm: threshold.yNm, courseDeg: approach.courseDeg };
+    out[volume.id] = { xNm: threshold.xNm, yNm: threshold.yNm, courseDeg: magneticToTrueDeg(publishedCourse, magVarDeg) };
   }
   return out;
 }
@@ -236,6 +240,7 @@ export function evaluateAtpa(
   aircraft: readonly AtpaTrack[],
   volumes: readonly AtpaVolumeParams[],
   geometry: AtpaGeometryByVolumeId,
+  magVarDeg = 0,
 ): AtpaPair[] {
   const out: AtpaPair[] = [];
   for (const volume of volumes) {
@@ -251,7 +256,7 @@ export function evaluateAtpa(
       if (isPrimaryOnlyTarget(track)) {
         continue;
       }
-      if (!isInsideAtpaVolume(geom, volume, track)) {
+      if (!isInsideAtpaVolume(geom, volume, track, magVarDeg)) {
         continue;
       }
       eligible.push({ track, alongNm: alongCourseDistanceNm(geom, track.xNm, track.yNm) });
@@ -267,7 +272,7 @@ export function evaluateAtpa(
         trailing.track.yNm - leading.track.yNm,
       );
       const requiredNm = requiredSeparationNm(trailing.alongNm, leading.alongNm, volume);
-      const closureKt = pairClosureKt(trailing.track, leading.track);
+      const closureKt = pairClosureKt(trailing.track, leading.track, magVarDeg);
       out.push({
         trailingCallsign: trailing.track.callsign,
         leadingCallsign: leading.track.callsign,
