@@ -24,6 +24,7 @@ export interface CaAlertToneOptions {
 const CONFLICT_ALERT_URL = "/sounds/ConflictAlert.wav";
 const MSAW_ALERT_URL = "/sounds/Msaw.wav";
 export const ALERT_TONE_GAP_MS = 250;
+export const COMBINED_ALERT_TONE_GAP_MS = 80;
 
 function audioContextConstructor(): typeof AudioContext | undefined {
   const g = globalThis as typeof globalThis & { webkitAudioContext?: typeof AudioContext };
@@ -120,11 +121,14 @@ export function createCaAlertTone(options: CaAlertToneOptions = {}): CaAlertTone
       element = new Audio(kind === "ca" ? CONFLICT_ALERT_URL : MSAW_ALERT_URL);
       element.addEventListener("ended", () => {
         if (currentElement !== kind || !activeElement(kind)) return;
-        elementRestartTimer = setTimeout(() => {
-          elementRestartTimer = null;
-          const next = nextElement();
-          if (next) startBrowserElement(next);
-        }, ALERT_TONE_GAP_MS);
+        elementRestartTimer = setTimeout(
+          () => {
+            elementRestartTimer = null;
+            const next = nextElement();
+            if (next) startBrowserElement(next);
+          },
+          browserCaActive && browserMsawActive ? COMBINED_ALERT_TONE_GAP_MS : ALERT_TONE_GAP_MS,
+        );
       });
       elements.set(kind, element);
     }
