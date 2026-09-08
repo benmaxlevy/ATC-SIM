@@ -1,3 +1,66 @@
+# ATC-SIM swarm orchestrator — Thirty-eighth swarm (WX VIP Availability)
+
+## Thirty-eighth swarm planned — 2026-09-07 (WX VIP Availability)
+
+User-approved follow-up: MAIN `WX1`–`WX6` show bottom-line `AVL` exactly when
+the current N0Q mosaic has one or more pixels in that corresponding VIP mask.
+N0Q fetches at boot and every five minutes even while all WX display latches
+are off. One worker owns this small integrated WX/DCB ticket; captain
+squash-merges into `feature/stars-ca-alignment`. Do not push.
+
+| Key | Value |
+| --- | --- |
+| Goal | Truthful per-VIP `AVL` DCB indication with unconditional five-minute N0Q refresh. |
+| Include | **T02-121** only. |
+| Source | R07 CRC/vNAS STARS DCB BRITE WX; T02-68 N0Q/VIP architecture. |
+| Skip | NEXRAD source/proxy/decoding changes; WX paint/BRITE/WXC/history/wind/deviation; PREF; Command IR; DCB redesign. |
+| Stop | After T02-121 acceptance. No later phase. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `feature/stars-ca-alignment`, then runs focused tests and `npm run ci`. |
+| Model | Session default model. |
+
+**Product law:**
+
+- `AVL` is per packed VIP mask: displayed iff that level has at least one
+  pixel; it is never inferred from WX latch state or another level.
+- N0Q fetch/refresh is independent of WX display latches, remains one
+  in-flight request per view, non-blocking, failure-safe, and CI-fixture-only.
+- WX latches remain display-only and DCB never emits Command IR. No airport or
+  facility branch.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-121 | planning update |
+
+**Ticket ownership:** T02-121 owns unconditional N0Q cadence, pure VIP-mask
+availability, WX cap second-line rendering, and focused generic tests.
+
+**Ticket / branch:**
+
+- `ticket/T02-121-wx-vip-availability-and-unconditional-refresh` ← `phases/02-scope/tickets/T02-121-wx-vip-availability-and-unconditional-refresh.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 scope WX VIP availability T02-121
+Merge target: feature/stars-ca-alignment
+Merged: T02-121
+Tests: <focused tests and npm run ci result>
+Notes: <all-off five-minute fetch; per-mask AVL; latches/Command IR unchanged>
+```
+
+## Thirty-eighth swarm started — 2026-09-07
+
+Planning is frozen: T02-121 is the only ticket, uses one worker, merges only
+to `feature/stars-ca-alignment`, and does not push. The worker starts from the
+planning commit on that merge target, works in its isolated ticket worktree,
+and returns only `READY TO MERGE` or `BLOCKED`. Captain runs focused WX/DCB
+tests and `npm run ci` after squash merge; existing unrelated test failures
+must be reported, not repaired outside this ticket.
+
 # ATC-SIM swarm orchestrator — Thirty-seventh swarm (Controller CA/MSAW Controls)
 
 ## Thirty-seventh swarm planned — 2026-09-07 (Controller CA/MSAW Controls)
