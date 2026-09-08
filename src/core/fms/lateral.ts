@@ -26,6 +26,7 @@ import {
   LOC_BREAKOUT_S,
   LOC_INTERCEPT_HEADING_MAX_DEG,
   locDeviation,
+  locEnvelope,
   locShouldBreakout,
   locShouldCapture,
 } from "../nav/localizer";
@@ -320,7 +321,8 @@ function guideLoc(
     return ac.intent.assignedHeadingDeg;
   }
   const deviation = locDeviation({ xNm: ac.xNm, yNm: ac.yNm }, axis);
-  if (locShouldBreakout(deviation.deviationDeg)) {
+  const envelope = locEnvelope(deviation, axis);
+  if (envelope && locShouldBreakout(envelope.normalizedError)) {
     const since = locBreakoutSinceMs.get(ac) ?? ctx.simTimeMs;
     if (!locBreakoutSinceMs.has(ac)) {
       locBreakoutSinceMs.set(ac, ctx.simTimeMs);

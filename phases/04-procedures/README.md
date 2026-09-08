@@ -581,8 +581,10 @@ Wave: **T04-36** → **T04-37 ∥ T04-38** → **T04-39** → **T04-40 ∥ T04-4
 
 T04-46 replaces fixed localizer/GS capture windows with generic ILS full-scale
 geometry: 350 ft localizer half-width at threshold (700 ft total), widening by
-range, and a 1.4-deg total GS beam centered on catalog glidepath angle. T04-47
-uses that geometry for rate-limited lead turns and bounded cross-track tracking.
+range, and a 1.4-deg total GS beam centered on catalog glidepath angle. Capture
+is inside 0.25 normalized full scale; LOC retains to 1.0 for 5 s and GS drops
+only above 1.0. T04-47 uses that geometry for rate-limited lead turns and
+bounded cross-track tracking.
 No ILS implementation may snap heading at capture or special-case KDEM, ILS 27,
 ILS 09, or a compass side.
 

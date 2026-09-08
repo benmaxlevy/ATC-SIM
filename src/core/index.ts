@@ -177,35 +177,40 @@ export {
 export type { FixRegistry, FixRegistrySource, RegisteredFix } from "./nav/fixRegistry";
 export { UnknownFixError, buildFixRegistry } from "./nav/fixRegistry";
 
-export type { LocAxis, LocCatalog, LocCatalogApproach, LocDeviation } from "./nav/localizer";
+export type {
+  LocAxis,
+  LocCatalog,
+  LocCatalogApproach,
+  LocDeviation,
+  LocEnvelope,
+} from "./nav/localizer";
 export {
   LOC_ALONG_MIN_NM,
-  LOC_BREAKOUT_DEV_DEG,
   LOC_BREAKOUT_S,
-  LOC_CAPTURE_CROSS_NM,
-  LOC_CAPTURE_DEV_DEG,
+  LOC_CAPTURE_NORMALIZED_ERROR,
   LOC_DEFAULT_BEAM_HALF_WIDTH_DEG,
   LOC_DEFAULT_LENGTH_NM,
   LOC_INTERCEPT_HEADING_MAX_DEG,
+  LOC_RETAIN_NORMALIZED_ERROR,
   kdemIls27LocAxis,
   locAxisForApproach,
   locDeviation,
+  locEnvelope,
   locShouldBreakout,
   locShouldCapture,
 } from "./nav/localizer";
-export type { GsCatalog, GsCatalogApproach, GsParams } from "./nav/glidepath";
+export type { GsCatalog, GsCatalogApproach, GsDeviation, GsParams } from "./nav/glidepath";
 export {
   FT_PER_NM,
-  GS_CAPTURE_ABOVE_FT,
   GS_CAPTURE_ALONG_MAX_NM,
   GS_CAPTURE_ALONG_MIN_NM,
-  GS_CAPTURE_BELOW_FT,
+  GS_CAPTURE_NORMALIZED_ERROR,
   GS_DEFAULT_ANGLE_DEG,
   GS_DEFAULT_FIELD_ELEV_FT,
   GS_DEFAULT_TCH_FT,
-  GS_DROP_ABOVE_FT,
-  GS_WAS_BELOW_FT,
+  GS_RETAIN_NORMALIZED_ERROR,
   gsAltitudeFt,
+  gsDeviation,
   gsGeometricVsFpm,
   gsParamsForApproach,
   gsShouldCapture,

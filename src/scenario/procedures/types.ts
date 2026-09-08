@@ -12,6 +12,10 @@ export type NavFixKind = "WAYPOINT" | "INTERSECTION" | "FAF" | "MAPT" | "THRESHO
 /** ILS is the KDEM demo; the union is so later RNAV/VOR/LOC rows parse. */
 export type ApproachType = "ILS" | "LOC" | "RNAV" | "VOR" | "NDB";
 
+/** FAA AIM 1-1-9 full-scale trainer defaults; not certified receiver limits. */
+export const DEFAULT_LOC_FULL_SCALE_HALF_WIDTH_FT_AT_THRESHOLD = 350;
+export const DEFAULT_GS_BEAM_FULL_WIDTH_DEG = 1.4;
+
 export interface GeoPoint {
   xNm: number;
   yNm: number;
@@ -31,7 +35,11 @@ export interface Navaid extends GeoPoint {
   courseDeg?: number;
   lengthNm?: number;
   beamHalfWidthDeg?: number;
+  /** 350 ft per side at threshold by default (FAA AIM 1-1-9 trainer envelope). */
+  locFullScaleHalfWidthFtAtThreshold?: number;
   gsAngleDeg?: number;
+  /** 1.4° total by default (FAA AIM 1-1-9 trainer envelope). */
+  gsBeamFullWidthDeg?: number;
   tchFt?: number;
   pairedWith?: string;
   note?: string;
@@ -128,7 +136,11 @@ export interface ApproachProcedure {
   courseDeg?: number;
   lengthNm?: number;
   beamHalfWidthDeg?: number;
+  /** 350 ft per side at threshold by default (FAA AIM 1-1-9 trainer envelope). */
+  locFullScaleHalfWidthFtAtThreshold?: number;
   gsAngleDeg?: number;
+  /** 1.4° total by default (FAA AIM 1-1-9 trainer envelope). */
+  gsBeamFullWidthDeg?: number;
   tchFt?: number;
   fafDistanceNm?: number;
   gsInterceptAltFt?: number;

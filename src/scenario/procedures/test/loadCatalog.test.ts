@@ -26,6 +26,46 @@ test("parseCatalogFiles accepts the committed KDEM set", () => {
   const catalog = parseCatalogFiles(kdemFiles());
   expect(catalog.airportId).toBe("KDEM");
   expect(catalog.sids[0]?.id).toBe("BAY1");
+  expect(catalog.approaches.find((approach) => approach.id === "ILS27")).toMatchObject({
+    locFullScaleHalfWidthFtAtThreshold: 350,
+    gsBeamFullWidthDeg: 1.4,
+  });
+  expect(catalog.approaches.find((approach) => approach.id === "ILS09")).toMatchObject({
+    locFullScaleHalfWidthFtAtThreshold: 350,
+    gsBeamFullWidthDeg: 1.4,
+  });
+});
+
+test("omitted ILS envelope fields normalize for a second airport", () => {
+  const files = kdemFiles();
+  const catalog = files.catalog as { airportId: string; name: string };
+  const procedures = files.procedures as {
+    airportId: string;
+    approaches: Array<Record<string, unknown>>;
+  };
+  catalog.airportId = "KBBB";
+  catalog.name = "Bravo";
+  for (const file of [
+    files.vors,
+    files.ndbs,
+    files.ils,
+    files.fixes,
+    files.procedures,
+    files.sids,
+  ]) {
+    (file as { airportId: string }).airportId = "KBBB";
+  }
+  (files.atpaVolumes as { airportId: string }).airportId = "KBBB";
+  for (const approach of procedures.approaches) {
+    delete approach.locFullScaleHalfWidthFtAtThreshold;
+    delete approach.gsBeamFullWidthDeg;
+  }
+  const parsed = parseCatalogFiles(files);
+  expect(parsed.airportId).toBe("KBBB");
+  expect(parsed.approaches[0]).toMatchObject({
+    locFullScaleHalfWidthFtAtThreshold: 350,
+    gsBeamFullWidthDeg: 1.4,
+  });
 });
 
 test("dangling STAR fixId throws", () => {

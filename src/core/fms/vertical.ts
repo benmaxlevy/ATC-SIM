@@ -10,10 +10,8 @@ import type { Aircraft, CrossConstraint, VerticalMode } from "../aircraft";
 import type { SessionLog } from "../events/session-log";
 import { CLIMB_RATE_FT_PER_MIN } from "../kinematics";
 import {
-  GS_CAPTURE_ABOVE_FT,
-  GS_CAPTURE_BELOW_FT,
-  GS_WAS_BELOW_FT,
   gsAltitudeFt,
+  gsDeviation,
   gsGeometricVsFpm,
   gsShouldCapture,
   gsShouldDropCapture,
@@ -98,7 +96,7 @@ export interface GlidepathFmsContext {
   simTimeMs: number;
 }
 
-/** True after a tick with `alt < gsAlt - 20` while established on loc. */
+/** True after a tick below the angular GS centerline while established on loc. */
 const gsWasBelow = new WeakMap<Aircraft, boolean>();
 
 export function isOnCourseToFix(ac: Aircraft, fixId: string): boolean {
@@ -275,6 +273,7 @@ export function applyGlidepathFms(
 
   const alongTrackNm = locDeviation({ xNm: ac.xNm, yNm: ac.yNm }, axis).alongTrackNm;
   const gsAlt = Math.max(params.fieldElevFt, gsAltitudeFt(alongTrackNm, params));
+  const deviation = gsDeviation(alongTrackNm, ac.altitudeFt, params);
 
   if (!ac.intent.clearedApproachId) {
     if (ac.intent.vertical?.type === "GS") {
@@ -284,7 +283,7 @@ export function applyGlidepathFms(
   }
 
   if (ac.intent.vertical?.type === "GS") {
-    if (gsShouldDropCapture(ac.altitudeFt, gsAlt)) {
+    if (deviation && gsShouldDropCapture(deviation.normalizedError)) {
       gsWasBelow.delete(ac);
       ac.intent.vertical = { type: "ASSIGNED" };
       return undefined;
@@ -292,19 +291,16 @@ export function applyGlidepathFms(
     return followGsAltitudeFt(ac.altitudeFt, gsAlt, params.gsAngleDeg, ac.speedKt, dtS);
   }
 
-  if (ac.altitudeFt < gsAlt - GS_WAS_BELOW_FT) {
+  if (deviation && deviation.normalizedError < 0) {
     gsWasBelow.set(ac, true);
   }
-  const onSlope =
-    ac.altitudeFt >= gsAlt - GS_CAPTURE_BELOW_FT && ac.altitudeFt <= gsAlt + GS_CAPTURE_ABOVE_FT;
   if (
+    deviation &&
     gsShouldCapture({
       alongTrackNm,
-      altFt: ac.altitudeFt,
-      gsAltFt: gsAlt,
+      normalizedError: deviation.normalizedError,
       wasBelow: gsWasBelow.get(ac) === true,
-    }) ||
-    (onSlope && alongTrackNm > 0)
+    })
   ) {
     gsWasBelow.delete(ac);
     ac.intent.vertical = { type: "GS", approachId: lateral.approachId };
@@ -320,10 +316,29 @@ export function applyGlidepathFms(
 
   // Established and cleared but still above the beam: descend onto the GS.
   // Do not climb to meet it (below GS, hold present / assigned until intercept).
-  if (alongTrackNm > 0 && ac.altitudeFt > gsAlt + GS_CAPTURE_ABOVE_FT) {
-    return followGsAltitudeFt(ac.altitudeFt, gsAlt, params.gsAngleDeg, ac.speedKt, dtS);
+  if (
+    alongTrackNm > 0 &&
+    deviation &&
+    deviation.normalizedError >= 0 &&
+    gsWasBelow.get(ac) !== true
+  ) {
+    return interceptGsFromAboveAltitudeFt(ac.altitudeFt, gsAlt, params.gsAngleDeg, ac.speedKt, dtS);
   }
   return undefined;
+}
+
+/** Descend through the centerline once so capture remains strictly from below. */
+function interceptGsFromAboveAltitudeFt(
+  currentAltFt: number,
+  gsAltFt: number,
+  gsAngleDeg: number,
+  groundSpeedKt: number,
+  dtS: number,
+): number {
+  if (gsAltFt >= currentAltFt) return currentAltFt;
+  const geoVs = Math.abs(gsGeometricVsFpm(gsAngleDeg, groundSpeedKt));
+  const vsFpm = currentAltFt - gsAltFt > 20 ? Math.min(CLIMB_RATE_FT_PER_MIN, geoVs * 1.5) : geoVs;
+  return currentAltFt - (vsFpm / 60) * dtS;
 }
 
 /** Geometric GS rate; extra VS only to recapture from slightly above. Never climb. */
