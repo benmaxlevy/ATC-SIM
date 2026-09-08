@@ -1,5 +1,22 @@
 # Swarm status
 
+## FORTIETH SWARM COMPLETE — ILS Signal Envelopes and Lead Capture (T04-46–47)
+
+T04-46 and T04-47 are squash-merged on `feature/ils-guidance`. ILS approaches
+now expose generic 350-ft localizer full-scale half-width at threshold and a
+1.4-degree total glidepath beam. Localizer guidance uses a rate-limited lead
+turn and bounded signed cross-track recovery, so normal 20/30-degree vectors do
+not fly through centerline before turning inbound. GS remains LOC-first and
+from-below; its final near-centerline descent crosses safely rather than
+asymptotically paralleling the beam.
+
+Focused T04-46 tests: **21 passed**. T04-47 focused tests: **17 passed**,
+including 24 reciprocal/side/intercept-angle/speed cases. Final `npm run ci`
+passed: typecheck, lint, format, and Vitest. No manual visual assertion was
+claimed; KDEM ILS 27/09 full-clearance observation remains optional manual QA.
+
+**Merged:** T04-46 (`929e7c4`), T04-47 (`9d0b371`) on `feature/ils-guidance`.
+
 ## THIRTY-NINTH SWARM COMPLETE — MSAW MULTI FUNC Q/V (T02-120)
 
 T02-120 is squash-merged on `feature/stars-ca-alignment` as `cd1f120`.
