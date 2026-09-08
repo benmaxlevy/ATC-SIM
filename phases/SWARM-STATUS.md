@@ -1,5 +1,20 @@
 # Swarm status
 
+## THIRTY-SEVENTH SWARM EXIT BLOCKED — Controller CA/MSAW Controls (T02-119–120)
+
+T02-119 is squash-merged on `feature/stars-ca-alignment` as `b409c6c`, with
+follow-up formatting commits `cd33c4f` / `d594eba` and the reviewed CA P alias
+toggle repair `9d25f4c`. `CA P` now toggles pair state; `CA E` rejects; `CA C`,
+`CA C E`, and `CA C I` persistently govern qualifying locally owned pairs.
+Command documentation was updated in root/USER/Phase 2 README locations.
+
+Focused CA parser/interaction tests: **2 files, 35 tests passed**. Full test
+gate still has the same unrelated failures already recorded for the prior
+swarm: two `tools/cifp-import/pack.integration.test.ts` dry-run stdout
+assertions and stale `ScopeHelpOverlay.test.ts` `L then 1–9` expectation.
+Per swarm gate, T02-120 did not start. User-modified
+`phases/LATER-IMPLEMENTATION-BACKLOG.md` remains untouched.
+
 ## THIRTY-SIXTH SWARM EXIT BLOCKED — CA Pair-Inhibit Manual Correction (T02-118)
 
 T02-118 is squash-merged on `feature/stars-ca-alignment` as `4185028`,
@@ -1087,4 +1102,3 @@ Recovery resumed from `feature/session-setup`. T04-24 inventory (`93a7c10`), fre
 **Manual leftover:** Human Chrome check: open Session setup; change scenario/arrival/departure rate/seed; Cancel preserves World and focus; confirm Apply/restart warning rebuilds World; verify unavailable departure capability copy. Do not invent pass.
 
 **Notes:** Picker options derive solely from playable inventory; normal arrival count/rate remains seeded STAR inbound/VIA; `?traffic=N` remains benchmark downwind; T04-21 owns departure rate. `atc-sim.session.v1` remains separate from trainer/DCB preferences. No scoring, replay, imperfect pilots, second position, DCB PREF, live traffic editing, second airport data, or radio-frequency IR. Initial T04-25 conflict was superseded by a fresh worker from the T04-24 feature base. Preserved untracked `.cursor/rules/caveman-ultra.mdc`, `e2e/`, and user-modified `speech-api/.env.example`.
-
