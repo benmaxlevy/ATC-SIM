@@ -59,6 +59,16 @@ Tests: <focused tests and npm run ci result>
 Notes: <700-ft LOC / 1.4-deg GS envelopes; rate-limited lead capture; no facility branch>
 ```
 
+## Fortieth swarm started — 2026-09-08
+
+Execution is user-authorized on `feature/ils-guidance`, cut from planning
+commit `42cd7dc`; this start record overrides the planned `master` merge target.
+One worker operates at a time in an isolated worktree. The captain squash-merges
+T04-46, runs its focused tests plus `npm run ci`, then starts T04-47 from the
+updated feature branch. No push, no later phase, and no work outside these two
+tickets. Worker handoff is exactly `READY TO MERGE` or `BLOCKED`; captain
+handoff is exactly `PHASE EXIT GREEN` or `PHASE EXIT BLOCKED`.
+
 # ATC-SIM swarm orchestrator — Thirty-ninth swarm (MSAW MULTI FUNC Q/V)
 
 ## Thirty-ninth swarm planned — 2026-09-07 (MSAW MULTI FUNC Q/V)
