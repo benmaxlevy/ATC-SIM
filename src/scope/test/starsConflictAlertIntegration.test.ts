@@ -6,10 +6,16 @@ import { createApp } from "../../app/create-app";
 import {
   acknowledgeAlert,
   createTrackDisplayState,
+  ensureTrackDisplay,
   filterActiveCaAlerts,
   setCaPairInhibited,
 } from "../trackDisplay";
-import { getAlertEntries, hasActiveUninhibitedConflict } from "../systemLists";
+import {
+  getAlertEntries,
+  hasActiveUninhibitedConflict,
+  hasActiveUninhibitedSafetyAlert,
+} from "../systemLists";
+import { createScopeView } from "../scopeView";
 
 function alert(a: string, b: string, areaTier: 1 | 2 | 3 | 4): CaAlert {
   return {
@@ -85,4 +91,20 @@ test("CA integration gates audio and AL rows by active unacknowledged uninhibite
   setCaPairInhibited(state, "DAL200", "JBU300", false);
   app.afterPhysicsTick(hasActiveUninhibitedConflict(world, state as never));
   expect(toneStates).toEqual([false, true]);
+});
+
+test("MSAW ack (slew) silences the aural safety tone", () => {
+  const ac = makeTestAircraft({ id: "ac-la", callsign: "AAL100" });
+  const world = createWorld({ aircraft: [ac] });
+  world.alerts.msaw = [{ callsign: "AAL100", severity: "alert", altFt: 1500, floorFt: 2000 }];
+  const view = createScopeView();
+
+  // Before ack: tone active.
+  expect(hasActiveUninhibitedSafetyAlert(world, view)).toBe(true);
+
+  // Slew acks the MSAW alert on the track.
+  ensureTrackDisplay(view.tracks, ac.id).msawAcknowledged = true;
+
+  // After ack: tone silenced.
+  expect(hasActiveUninhibitedSafetyAlert(world, view)).toBe(false);
 });

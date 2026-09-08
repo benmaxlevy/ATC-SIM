@@ -50,7 +50,7 @@ If that loop is not fun with a keyboard, CIFP import and wind will not save it. 
 - `DIRECT` to a named fix on that catalog actually tracks the fix (fly-by).
 - `EXPECT_APPROACH` and `CLEARED_APPROACH` change intent (expect is arming/scratchpad; cleared starts intercept).
 - **Phraseology = fly-through.** Canonical ILS transmission is heading + *maintain (alt) until established* + *cleared ILS approach runway 27*. Same `Command` (three instructions). Aircraft: fly heading, **hold altitude until established on the localizer**, then GS from below. Bare `APP ILS27` still arms intercept from the current heading and holds the already-assigned altitude until established.
-- Vector-to-intercept: assigned heading until localizer capture, then inbound course.
+- Vector-to-intercept: assigned heading until rate-one lead turn, then bounded signed cross-track guidance captures and tracks inbound without a heading snap.
 - After loc capture (**established**), intercept glidepath from below; then follow GS. Do not start GS before loc capture.
 - Missed approach stub at DA if not handed to the tower stub.
 - CA lite: pair `< 3 NM` **and** `< 1000 ft` — yellow (predicted), then red (current).
@@ -489,6 +489,8 @@ Implement in this order unless a ticket says it can parallel. Do not start a tic
 | T04-40 | Videomap identity and GEO reachability | P0 | M | T04-39 | T04-42 |
 | T04-41 | Videomap rendering and performance | P0 | M | T04-39 | T04-42 |
 | T04-42 | A80 videomap integration and acceptance | P0 | M | T04-40, T04-41 | none |
+| T04-46 | ILS signal-envelope geometry | P0 | L | T04-05, T04-06 | T04-47 |
+| T04-47 | Lead-turn localizer capture and tracking | P0 | L | T04-46 | none |
 
 **Parallelism:** After T04-01, T04-08 and T04-10 can proceed beside T04-02. T04-09 can start immediately. T04-04 ∥ T04-05 after T04-03. T04-11 can land anytime after kinematics; prefer after T04-05 so loc tests include a wind case if the ticket is pulled.
 
@@ -574,6 +576,31 @@ npm run crc:videomaps -- pack --metadata C:\Users\Ben\AppData\Local\CRC\ARTCCs\Z
 ```
 
 Wave: **T04-36** → **T04-37 ∥ T04-38** → **T04-39** → **T04-40 ∥ T04-41** → **T04-42**.
+
+### Post-exit addendum (T04-46–47 ILS signal envelopes and lead capture)
+
+T04-46 replaces fixed localizer/GS capture windows with generic ILS full-scale
+geometry: 350 ft localizer half-width at threshold (700 ft total), widening by
+range, and a 1.4-deg total GS beam centered on catalog glidepath angle. Capture
+is inside 0.25 normalized full scale; LOC retains to 1.0 for 5 s and GS drops
+only above 1.0. T04-47 uses that geometry for rate-limited lead turns and
+bounded cross-track tracking.
+No ILS implementation may snap heading at capture or special-case KDEM, ILS 27,
+ILS 09, or a compass side.
+
+Wave: **T04-46** → **T04-47**. T04-46 supersedes T04-05/T04-06 hard capture
+and loss thresholds; T04-47 supersedes T04-05 centerline-only LOC command.
+
+### Post-exit addendum (T04-48–50 magnetic heading frames)
+
+Controller-facing commands, parser/speech/readback, displayed aircraft
+headings, and published procedure courses are magnetic. ENU x/y geometry,
+runway and map lines, LOC/GS axes, procedure turns, predicted motion, and
+conflict/ATPA geometry are true. The generic world navigation context carries
+`magVarDeg`; the canonical relationship is `true = magnetic + magVarDeg`.
+Use the named `magneticToTrueDeg` and `trueToMagneticDeg` helpers at frame
+boundaries. KDEM's `magVarDeg: 0` is fixture data, not a coordinate-system
+assumption; other catalogs (including KATL's `-5`) use the same plumbing.
 
 ---
 

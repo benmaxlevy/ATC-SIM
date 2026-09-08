@@ -188,8 +188,9 @@ export function groundTrackPointNm(
   northNm: number,
   headingDeg: number,
   lengthNm: number,
+  magVarDeg = 0,
 ): { eastNm: number; northNm: number } {
-  const rad = (headingDeg * Math.PI) / 180;
+  const rad = ((headingDeg + magVarDeg) * Math.PI) / 180;
   return {
     eastNm: eastNm + lengthNm * Math.sin(rad),
     northNm: northNm + lengthNm * Math.cos(rad),
@@ -206,8 +207,9 @@ export function manualTpaConePoints(
   northNm: number,
   headingDeg: number,
   lengthNm: number,
+  magVarDeg = 0,
 ): { eastNm: number; northNm: number }[] {
-  const tip = groundTrackPointNm(eastNm, northNm, headingDeg, lengthNm);
+  const tip = groundTrackPointNm(eastNm, northNm, headingDeg, lengthNm, magVarDeg);
   return atpaConePoints(eastNm, northNm, tip.eastNm, tip.northNm, lengthNm);
 }
 
@@ -241,8 +243,9 @@ export function tpaConeDigitPlacement(
   northNm: number,
   headingDeg: number,
   lengthNm: number,
+  magVarDeg = 0,
 ): TpaSizeDigitPlacement {
-  const tip = groundTrackPointNm(eastNm, northNm, headingDeg, lengthNm);
+  const tip = groundTrackPointNm(eastNm, northNm, headingDeg, lengthNm, magVarDeg);
   const placed = atpaConeMileagePlacement({
     trailing: { xNm: eastNm, yNm: northNm },
     leading: { xNm: tip.eastNm, yNm: tip.northNm },

@@ -144,6 +144,15 @@ test("northbound 180 kt gains 0.05 NM north in 1 sim second (post-heading, post-
   expect(ac.yNm).toBeCloseTo(0.05, 5);
 });
 
+test.each([0, 5, -5])("magnetic heading uses true ENU motion at %d° variation", (magVarDeg) => {
+  const ac = makeTestAircraft({ headingDeg: 90, speedKt: 360, xNm: 0, yNm: 0 });
+  stepAircraft(ac, 1, undefined, undefined, undefined, magVarDeg);
+  const trueRad = ((90 + magVarDeg) * Math.PI) / 180;
+  expect(ac.xNm).toBeCloseTo(Math.sin(trueRad) * 0.1, 6);
+  expect(ac.yNm).toBeCloseTo(Math.cos(trueRad) * 0.1, 6);
+  expect(ac.headingDeg).toBe(90);
+});
+
 test("LEFT from 000 to 090 takes the long way, not shortest", () => {
   const ac = makeTestAircraft({ headingDeg: 0 });
   assignHeading(ac, 90, "LEFT");

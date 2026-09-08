@@ -1,3 +1,5 @@
+import type { MagneticHeadingDeg } from "@core";
+
 /**
  * Facility-generic procedure catalog (ICAO folder under `src/scenario/data/`).
  * Runtime geometry is local ENU NM (+x east, +y north of ARP). Optional
@@ -11,6 +13,10 @@ export type NavFixKind = "WAYPOINT" | "INTERSECTION" | "FAF" | "MAPT" | "THRESHO
 
 /** ILS is the KDEM demo; the union is so later RNAV/VOR/LOC rows parse. */
 export type ApproachType = "ILS" | "LOC" | "RNAV" | "VOR" | "NDB";
+
+/** FAA AIM 1-1-9 full-scale trainer defaults; not certified receiver limits. */
+export const DEFAULT_LOC_FULL_SCALE_HALF_WIDTH_FT_AT_THRESHOLD = 350;
+export const DEFAULT_GS_BEAM_FULL_WIDTH_DEG = 1.4;
 
 export interface GeoPoint {
   xNm: number;
@@ -31,7 +37,11 @@ export interface Navaid extends GeoPoint {
   courseDeg?: number;
   lengthNm?: number;
   beamHalfWidthDeg?: number;
+  /** 350 ft per side at threshold by default (FAA AIM 1-1-9 trainer envelope). */
+  locFullScaleHalfWidthFtAtThreshold?: number;
   gsAngleDeg?: number;
+  /** 1.4° total by default (FAA AIM 1-1-9 trainer envelope). */
+  gsBeamFullWidthDeg?: number;
   tchFt?: number;
   pairedWith?: string;
   note?: string;
@@ -125,10 +135,17 @@ export interface ApproachProcedure {
   gsNavaidId?: string;
   fafFixId?: string;
   thresholdFixId?: string;
+  /** Published inbound course; magnetic, never an ENU/world axis. */
+  publishedCourseMagneticDeg?: MagneticHeadingDeg;
+  /** Legacy JSON spelling accepted only at the loader boundary. */
   courseDeg?: number;
   lengthNm?: number;
   beamHalfWidthDeg?: number;
+  /** 350 ft per side at threshold by default (FAA AIM 1-1-9 trainer envelope). */
+  locFullScaleHalfWidthFtAtThreshold?: number;
   gsAngleDeg?: number;
+  /** 1.4° total by default (FAA AIM 1-1-9 trainer envelope). */
+  gsBeamFullWidthDeg?: number;
   tchFt?: number;
   fafDistanceNm?: number;
   gsInterceptAltFt?: number;

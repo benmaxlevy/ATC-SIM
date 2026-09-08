@@ -1,3 +1,153 @@
+# ATC-SIM swarm orchestrator — Forty-first swarm (Magnetic Heading Frames)
+
+## Forty-first swarm planned — 2026-09-08 (Magnetic Heading Frames)
+
+User-approved heading-frame migration follows the ILS lead-capture swarm.
+Controller-facing headings and published courses are magnetic; all ENU/world
+geometry is true. This plan only creates tickets and freezes their order. It
+does not launch workers or start implementation.
+
+| Key | Value |
+| --- | --- |
+| Goal | Make magnetic command/published-heading data and true ENU geometry explicit, generic, and testable. |
+| Include | **T04-48**, then **T04-49**, then **T04-50** only. |
+| Source | User-approved heading-frame contract; existing Phase 4 catalog/FMS architecture. |
+| Skip | Wind/crab, new parser grammar or phraseology, ILS signal-envelope redesign, map-art changes, facility-specific behavior, CIFP import changes. |
+| Stop | After T04-50 acceptance. No later phase. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `feature/ils-guidance`, then runs focused tests and `npm run ci` after each ticket. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Heading-frame law:**
+
+- Commands, parser, speech/readback, displayed aircraft heading, and published
+  procedure courses are magnetic degrees. `true = magnetic + magVarDeg`.
+- ENU x/y, runway and map line geometry, LOC/GS math, PTL, predicted motion,
+  conflict/ATPA geometry, and all bearing calculations used for geometry are
+  true degrees.
+- `magVarDeg` belongs to generic core world navigation context, never an
+  implicit KDEM-zero assumption or airport/facility branch. KDEM at 0 degrees
+  remains behaviorally unchanged.
+- True/magnetic conversions are named helpers. Geometry and command fields
+  must not retain an ambiguous bare `courseDeg` when both frames exist.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T04-48 | planning commit |
+| B | T04-49 | T04-48 merge and focused gate |
+| C | T04-50 | T04-49 merge and focused gate |
+
+**Ticket ownership:**
+
+- T04-48: contract, typed conversions, generic world/catalog `magVarDeg`
+  plumbing, and zero/plus/minus variation unit coverage.
+- T04-49: magnetic-command-to-true-motion, direct/procedure bearings, LOC/GS
+  dual-axis migration, PTL and alert prediction migration, generic behavior
+  tests.
+- T04-50: KATL ILS 26R scenario-level intercept regression and KDEM
+  non-regression acceptance only.
+
+**Ticket files / branches:**
+
+- `ticket/T04-48-heading-frame-contract-and-world-magvar` ← `phases/04-procedures/tickets/T04-48-heading-frame-contract-and-world-magvar.md`
+- `ticket/T04-49-heading-frame-navigation-migration` ← `phases/04-procedures/tickets/T04-49-heading-frame-navigation-migration.md`
+- `ticket/T04-50-katl-ils26r-heading-frame-acceptance` ← `phases/04-procedures/tickets/T04-50-katl-ils26r-heading-frame-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 4 procedures magnetic heading frames T04-48–50
+Merge target: feature/ils-guidance
+Merged: T04-48, T04-49, T04-50
+Tests: <focused tests and npm run ci result>
+Notes: <magnetic controller contract; true ENU geometry; KATL 26R capture; KDEM 0-degree regression>
+```
+
+## Forty-first swarm started — 2026-09-08
+
+User authorized implementation. The prior completed ILS guidance swarm makes
+`feature/ils-guidance` the required merge target and base; do not reset or
+rebase it onto `master`. One `gpt-5.6-luna` worker runs in an isolated ticket
+worktree at a time: T04-48, focused gate and captain squash merge; then T04-49;
+then T04-50. Captain owns every merge and runs `npm run ci` after each merge.
+No push, no later phase, and no work outside these tickets. Workers return only
+`READY TO MERGE` or `BLOCKED`; captain returns only `PHASE EXIT GREEN` or
+`PHASE EXIT BLOCKED`.
+
+# ATC-SIM swarm orchestrator — Fortieth swarm (ILS Signal Envelopes and Lead Capture)
+
+## Fortieth swarm planned — 2026-09-08 (ILS Signal Envelopes and Lead Capture)
+
+User-approved procedures follow-up: replace fixed localizer/glidepath capture
+windows with data-driven ILS full-scale envelopes, then remove rate-limited
+localizer fly-through with predictive lead capture and cross-track tracking.
+Captain squash-merges ticket branches into `master`. Do not push.
+
+| Key | Value |
+| --- | --- |
+| Goal | Full-scale ILS signal geometry and non-fly-through LOC intercept/tracking. |
+| Include | **T04-46**, then **T04-47** only. |
+| Source | FAA AIM 1-1-9; FAA JO 7110.65 5-9-2; R01. |
+| Skip | Wind/crab, ILS instruments/needles, false lobes, autoland/flare, RNAV, parser/readback changes, runway/facility branches. |
+| Stop | After T04-47 acceptance. No later phase. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `master`, then runs focused tests and `npm run ci` after each ticket. |
+| Model | Session default model. |
+
+**Product law:**
+
+- Localizer full scale is 700 ft total / 350 ft per side at threshold and
+  widens by range. GS full scale is 1.4 deg total / plus-or-minus 0.7 deg
+  about catalog centerline, normally 3.0 deg. Both are data-driven trainer
+  guidance envelopes, not certified radio-propagation models.
+- Existing angular `beamHalfWidthDeg` remains compatible catalog data; no
+  video-map feather becomes navigation truth and no airport/runway branch is allowed.
+- Lead turn uses existing rate-limited kinematics. No direct heading snap at
+  LOC capture. LOC-first, GS-from-below, and heading-cancels-APP remain.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T04-46 | planning commit |
+| B | T04-47 | T04-46 merge and focused gate |
+
+**Ticket ownership:**
+
+- T04-46: generic schema/defaults, LOC/GS full-scale geometry, FMS envelope
+  policy, data contracts, and focused DOM-free tests.
+- T04-47: rate-limited lead prediction, bounded LOC cross-track tracking,
+  breakout/re-arm behavior, full-world synthetic vector acceptance, and README wording.
+
+**Ticket files / branches:**
+
+- `ticket/T04-46-ils-signal-envelope-geometry` ← `phases/04-procedures/tickets/T04-46-ils-signal-envelope-geometry.md`
+- `ticket/T04-47-lead-turn-localizer-capture-and-tracking` ← `phases/04-procedures/tickets/T04-47-lead-turn-localizer-capture-and-tracking.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 4 procedures ILS signal envelopes and lead capture T04-46–47
+Merge target: master
+Merged: T04-46, T04-47
+Tests: <focused tests and npm run ci result>
+Notes: <700-ft LOC / 1.4-deg GS envelopes; rate-limited lead capture; no facility branch>
+```
+
+## Fortieth swarm started — 2026-09-08
+
+Execution is user-authorized on `feature/ils-guidance`, cut from planning
+commit `42cd7dc`; this start record overrides the planned `master` merge target.
+One worker operates at a time in an isolated worktree. The captain squash-merges
+T04-46, runs its focused tests plus `npm run ci`, then starts T04-47 from the
+updated feature branch. No push, no later phase, and no work outside these two
+tickets. Worker handoff is exactly `READY TO MERGE` or `BLOCKED`; captain
+handoff is exactly `PHASE EXIT GREEN` or `PHASE EXIT BLOCKED`.
+
 # ATC-SIM swarm orchestrator — Thirty-ninth swarm (MSAW MULTI FUNC Q/V)
 
 ## Thirty-ninth swarm planned — 2026-09-07 (MSAW MULTI FUNC Q/V)

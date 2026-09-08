@@ -1,87 +1,70 @@
 import { expect, test } from "vitest";
 import { buildFixRegistry } from "../fixRegistry";
 import {
+  FT_PER_NM,
+  LOC_CAPTURE_NORMALIZED_ERROR,
+  LOC_RETAIN_NORMALIZED_ERROR,
+  kdemIls27LocAxis,
   locAxisForApproach,
   locDeviation,
+  locEnvelope,
   locShouldBreakout,
   locShouldCapture,
-  kdemIls27LocAxis,
-  LOC_BREAKOUT_DEV_DEG,
-  LOC_CAPTURE_CROSS_NM,
 } from "../localizer";
 
 const ils27 = kdemIls27LocAxis();
 
-test("positive deviation is north of course (KDEM ILS 27)", () => {
-  const north = locDeviation({ xNm: 12, yNm: 4 }, ils27);
-  expect(north.alongTrackNm).toBeCloseTo(12, 5);
-  expect(north.crossTrackNm).toBeCloseTo(4, 5);
-  expect(north.deviationDeg).toBeGreaterThan(0);
-  expect(north.deviationDeg).toBeCloseTo((Math.atan2(4, 12) * 180) / Math.PI, 5);
-
-  const south = locDeviation({ xNm: 12, yNm: -2 }, ils27);
-  expect(south.crossTrackNm).toBeCloseTo(-2, 5);
-  expect(south.deviationDeg).toBeLessThan(0);
-
-  const onCourse = locDeviation({ xNm: 6, yNm: 0 }, ils27);
-  expect(onCourse.crossTrackNm).toBeCloseTo(0, 5);
-  expect(onCourse.deviationDeg).toBeCloseTo(0, 5);
+test("LOC full scale is 350 ft per side at threshold and widens by range", () => {
+  const threshold = locEnvelope(locDeviation({ xNm: 0, yNm: 0 }, ils27), ils27)!;
+  expect(threshold.fullScaleHalfWidthNm * FT_PER_NM).toBeCloseTo(350, 5);
+  const atSix = locEnvelope(locDeviation({ xNm: 6, yNm: 0 }, ils27), ils27)!;
+  expect(atSix.fullScaleHalfWidthNm).toBeGreaterThan(threshold.fullScaleHalfWidthNm);
+  expect(atSix.fullScaleHalfWidthNm).toBeCloseTo(
+    350 / FT_PER_NM + 6 * Math.tan((2.5 * Math.PI) / 180),
+    8,
+  );
 });
 
-test("capture table: on course, too far north, behind threshold, outside 18 NM", () => {
-  const onCourse = locDeviation({ xNm: 6, yNm: 0 }, ils27);
-  expect(locShouldCapture({ deviation: onCourse, headingDeg: 270, axis: ils27 })).toBe(true);
-  expect(locShouldCapture({ deviation: onCourse, headingDeg: 90, axis: ils27 })).toBe(true);
+test("LOC signed cross-track and front-course envelope are reciprocal-course safe", () => {
+  const north = locDeviation({ xNm: 6, yNm: 1 }, ils27);
+  expect(north.crossTrackNm).toBeGreaterThan(0);
+  expect(locEnvelope(locDeviation({ xNm: -1, yNm: 0 }, ils27), ils27)).toBeUndefined();
 
-  const intercept = locDeviation({ xNm: 12, yNm: 4 }, ils27);
-  expect(locShouldCapture({ deviation: intercept, headingDeg: 240, axis: ils27 })).toBe(false);
-  expect(Math.abs(intercept.crossTrackNm)).toBeGreaterThan(LOC_CAPTURE_CROSS_NM);
+  const reciprocal = {
+    ...ils27,
+    approachId: "ILS09",
+    publishedCourseMagneticDeg: 90,
+    geometricCourseTrueDeg: 90,
+    courseDeg: 90,
+  };
+  const south = locDeviation({ xNm: -6, yNm: 1 }, reciprocal);
+  expect(south.alongTrackNm).toBeCloseTo(6, 5);
+  expect(south.crossTrackNm).toBeLessThan(0);
+  expect(locEnvelope(locDeviation({ xNm: 1, yNm: 0 }, reciprocal), reciprocal)).toBeUndefined();
+});
 
-  const behind = locDeviation({ xNm: -1, yNm: 0 }, ils27);
-  expect(behind.alongTrackNm).toBeLessThanOrEqual(0);
-  expect(locShouldCapture({ deviation: behind, headingDeg: 270, axis: ils27 })).toBe(false);
-
-  const outside = locDeviation({ xNm: 19, yNm: 0 }, ils27);
-  expect(outside.alongTrackNm).toBeGreaterThanOrEqual(ils27.lengthNm);
+test("LOC capture and retain use normalized full-scale error", () => {
+  const atSix = locEnvelope(locDeviation({ xNm: 6, yNm: 0 }, ils27), ils27)!;
+  const inside = locDeviation({ xNm: 6, yNm: atSix.fullScaleHalfWidthNm * 0.25 }, ils27);
+  const outside = locDeviation({ xNm: 6, yNm: atSix.fullScaleHalfWidthNm * 0.251 }, ils27);
+  expect(locShouldCapture({ deviation: inside, headingDeg: 270, axis: ils27 })).toBe(true);
   expect(locShouldCapture({ deviation: outside, headingDeg: 270, axis: ils27 })).toBe(false);
-
-  const tooClose = locDeviation({ xNm: 0.4, yNm: 0 }, ils27);
-  expect(tooClose.alongTrackNm).toBeLessThanOrEqual(0.5);
-  expect(locShouldCapture({ deviation: tooClose, headingDeg: 270, axis: ils27 })).toBe(false);
+  expect(locShouldBreakout(LOC_RETAIN_NORMALIZED_ERROR)).toBe(false);
+  expect(locShouldBreakout(LOC_RETAIN_NORMALIZED_ERROR + 0.01)).toBe(true);
+  expect(LOC_CAPTURE_NORMALIZED_ERROR).toBe(0.25);
 });
 
-test("breakout is |δ| > 2.5°", () => {
-  expect(locShouldBreakout(LOC_BREAKOUT_DEV_DEG)).toBe(false);
-  expect(locShouldBreakout(LOC_BREAKOUT_DEV_DEG + 0.01)).toBe(true);
-  expect(locShouldBreakout(-(LOC_BREAKOUT_DEV_DEG + 0.01))).toBe(true);
-});
-
-test("locAxisForApproach reads catalog course/length and threshold fix", () => {
+test("locAxisForApproach applies generic defaults without a facility branch", () => {
   const registry = buildFixRegistry({
     navaids: [],
-    fixes: [{ id: "RW27", xNm: 0, yNm: 0, kind: "THRESHOLD" }],
+    fixes: [{ id: "RW11", xNm: 2, yNm: 3, kind: "THRESHOLD" }],
   });
   const axis = locAxisForApproach(
-    "ILS27",
-    {
-      approaches: [
-        {
-          id: "ILS27",
-          courseDeg: 270,
-          lengthNm: 18,
-          beamHalfWidthDeg: 2.5,
-          thresholdFixId: "RW27",
-        },
-      ],
-    },
+    "ILS11",
+    { approaches: [{ id: "ILS11", courseDeg: 110, lengthNm: 18, thresholdFixId: "RW11" }] },
     registry,
   );
-  expect(axis).toEqual(kdemIls27LocAxis());
-  expect(
-    locAxisForApproach(
-      "ILS99",
-      { approaches: [{ id: "ILS27", courseDeg: 270, lengthNm: 18 }] },
-      registry,
-    ),
-  ).toBeUndefined();
+  expect(axis?.locFullScaleHalfWidthFtAtThreshold).toBe(350);
+  expect(axis?.thresholdXNm).toBe(2);
+  expect(axis?.thresholdYNm).toBe(3);
 });

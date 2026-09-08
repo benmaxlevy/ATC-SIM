@@ -35,7 +35,12 @@ function locAxisForAircraft(ac: Aircraft, world: World): LocAxis | undefined {
   if (!approachId) {
     return undefined;
   }
-  return locAxisForApproach(approachId, world.catalog, world.fixRegistry);
+  return locAxisForApproach(
+    approachId,
+    world.catalog,
+    world.fixRegistry,
+    world.navigation.magVarDeg,
+  );
 }
 
 /**

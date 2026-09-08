@@ -143,7 +143,7 @@ test("AC3 — above GS at 6 NM / 4000 does not capture in 30 s but descends towa
   expect(dal.altitudeFt).toBeGreaterThan(gsAt(dal) + 50);
 });
 
-test("APP + loc above GS captures and tracks down toward field elev 0", () => {
+test("APP + loc well above GS stays assigned until it reaches from below", () => {
   const { dal, world, log } = worldOnLoc(onLoc({ xNm: 12, altitudeFt: 4000 }));
   expect(gsParams.fieldElevFt).toBe(0);
   const found = (() => {
@@ -153,15 +153,8 @@ test("APP + loc above GS captures and tracks down toward field elev 0", () => {
     }
     return log.byType("nav.gs.captured").length > 0;
   })();
-  expect(found).toBe(true);
-  expect(dal.intent.vertical?.type).toBe("GS");
-  while (world.simTimeMs < 10 * 60 * 1000 && dal.altitudeFt > 800) {
-    expect(dal.intent.vertical?.type).toBe("GS");
-    expect(dal.altitudeFt).toBeGreaterThanOrEqual(gsParams.fieldElevFt);
-    stepWorld(world, SIM_DT_S);
-  }
-  expect(dal.altitudeFt).toBeLessThanOrEqual(800);
-  expect(dal.altitudeFt).toBeGreaterThan(200);
+  expect(found).toBe(false);
+  expect(dal.intent.vertical?.type).not.toBe("GS");
 });
 
 test("LOC without APP (no clearedApproachId) holds altitude — no GS", () => {
@@ -222,16 +215,20 @@ test("H270 after GS still cancels FMS including GS", () => {
   expect(alongTrack(dal)).toBeLessThan(6);
 });
 
-test("more than 150 ft above GS after capture drops to ASSIGNED", () => {
+test("more than one full-scale beam above GS after capture drops to ASSIGNED", () => {
   const { dal, world, log } = worldOnLoc(onLoc({ xNm: 8, altitudeFt: 2000 }));
   while (world.simTimeMs < 3 * 60 * 1000 && log.byType("nav.gs.captured").length === 0) {
     stepWorld(world, SIM_DT_S);
   }
   expect(dal.intent.vertical?.type).toBe("GS");
-  dal.altitudeFt = gsAt(dal) + 200;
+  const along = alongTrack(dal);
+  dal.altitudeFt =
+    gsParams.fieldElevFt +
+    gsParams.tchFt +
+    Math.tan(((gsParams.gsAngleDeg + 0.71) * Math.PI) / 180) * along * 6076.12;
   stepWorld(world, SIM_DT_S);
   expect(dal.intent.vertical).toEqual({ type: "ASSIGNED" });
-  expect(dal.altitudeFt).toBeGreaterThan(gsAt(dal) + 150);
+  expect(dal.altitudeFt).toBeGreaterThan(gsAt(dal));
 });
 
 test("AC5 — approach GS tests are DOM-free", () => {

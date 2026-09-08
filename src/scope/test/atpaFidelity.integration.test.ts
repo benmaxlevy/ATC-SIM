@@ -717,7 +717,9 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
           eager: true,
         }) as Record<string, string>
       )["../../app/create-app.ts"]!;
-      expect(appSrc).toMatch(/caAlertTone\.sync\(world\.alerts\.ca\.length > 0\)/);
+      expect(appSrc).toMatch(
+        /caAlertTone\.sync\(world\.alerts\.ca\.length > 0, world\.alerts\.msaw\.length > 0\)/,
+      );
       expect(liveAtpaSources()).not.toMatch(/createCaAlertTone|ca-alert-tone/);
     });
   });

@@ -1,5 +1,48 @@
 # Swarm status
 
+## FORTY-FIRST SWARM COMPLETE — Magnetic Heading Frames (T04-48–50)
+
+T04-48 through T04-50 are squash-merged on `feature/ils-guidance`. Commands,
+parser/speech/readback, displayed aircraft heading, and published procedure
+courses remain magnetic. ENU movement, bearings, LOC/GS axes, PTL/TPA, and
+CA/ATPA predictions now use true geometry, with `true = magnetic + magVarDeg`.
+Generic world navigation context carries variation without a facility branch.
+
+KATL I26R acceptance proves the shipped `magVarDeg: -5` scenario accepts and
+displays magnetic `275` while tracking true `270` final geometry. It observes
+one bounded, non-fly-through LOC capture, LOC-before-GS/from-below behavior,
+true-frame prediction wiring, and a reciprocal guard. KDEM zero variation
+retains its `270` command/display/track behavior and approach flow.
+
+T04-49's first gate found a reciprocal LOC fixture still using an ambiguous
+course value; one narrow Luna fix worker made its magnetic/true values explicit
+and formatted the changed files. No production facility branch was added.
+
+Focused T04-48: **17 passed**. T04-49 gate: reciprocal LOC **4 passed**.
+T04-50 acceptance: **2 passed**. Final `npm run ci` passed: typecheck, lint,
+format, **182 files / 1,624 tests passed / 3 skipped**. No manual Chrome
+assertion was claimed.
+
+**Merged:** T04-48 (`3d4be3b`), T04-49 (`8f70adf`), T04-49 gate fix
+(`d2c6c94`), T04-50 (`1746723`) on `feature/ils-guidance`.
+
+## FORTIETH SWARM COMPLETE — ILS Signal Envelopes and Lead Capture (T04-46–47)
+
+T04-46 and T04-47 are squash-merged on `feature/ils-guidance`. ILS approaches
+now expose generic 350-ft localizer full-scale half-width at threshold and a
+1.4-degree total glidepath beam. Localizer guidance uses a rate-limited lead
+turn and bounded signed cross-track recovery, so normal 20/30-degree vectors do
+not fly through centerline before turning inbound. GS remains LOC-first and
+from-below; its final near-centerline descent crosses safely rather than
+asymptotically paralleling the beam.
+
+Focused T04-46 tests: **21 passed**. T04-47 focused tests: **17 passed**,
+including 24 reciprocal/side/intercept-angle/speed cases. Final `npm run ci`
+passed: typecheck, lint, format, and Vitest. No manual visual assertion was
+claimed; KDEM ILS 27/09 full-clearance observation remains optional manual QA.
+
+**Merged:** T04-46 (`929e7c4`), T04-47 (`9d0b371`) on `feature/ils-guidance`.
+
 ## THIRTY-NINTH SWARM COMPLETE — MSAW MULTI FUNC Q/V (T02-120)
 
 T02-120 is squash-merged on `feature/stars-ca-alignment` as `cd1f120`.

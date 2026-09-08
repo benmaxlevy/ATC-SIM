@@ -1,6 +1,7 @@
 import type { Aircraft } from "../aircraft";
 import type { AtpaPair } from "./atpa";
 import type { MsawAlert } from "./msaw";
+import { magneticToTrueDeg } from "../nav/headingFrames";
 
 /**
  * STARS Conflict Alert (CA) per Raytheon STARS manual (TI 6191.409 Section 2.16 & 2.16.3).
@@ -348,6 +349,7 @@ export function predictAltitudeFt(
 export function computeKinematicCpa(
   trackA: CaTrackKinematics,
   trackB: CaTrackKinematics,
+  magVarDeg = 0,
 ): CpaResult {
   const dx = trackB.xNm - trackA.xNm;
   const dy = trackB.yNm - trackA.yNm;
@@ -355,11 +357,11 @@ export function computeKinematicCpa(
   const currentDeltaAltFt = Math.abs(trackB.altitudeFt - trackA.altitudeFt);
 
   // Convert speed in knots to NM/s (1 kt = 1 NM / 3600 s)
-  const radA = (trackA.headingDeg * Math.PI) / 180;
+  const radA = (magneticToTrueDeg(trackA.headingDeg, magVarDeg) * Math.PI) / 180;
   const vAx = (trackA.speedKt / 3600) * Math.sin(radA);
   const vAy = (trackA.speedKt / 3600) * Math.cos(radA);
 
-  const radB = (trackB.headingDeg * Math.PI) / 180;
+  const radB = (magneticToTrueDeg(trackB.headingDeg, magVarDeg) * Math.PI) / 180;
   const vBx = (trackB.speedKt / 3600) * Math.sin(radB);
   const vBy = (trackB.speedKt / 3600) * Math.cos(radB);
 
@@ -440,6 +442,7 @@ export function detectPairConflict(
   trackA: Aircraft,
   trackB: Aircraft,
   context?: CaContext,
+  magVarDeg = 0,
 ): CaAlert | null {
   const tierA = classifyAirspaceTier(trackA, context);
   const tierB = classifyAirspaceTier(trackB, context);
@@ -451,7 +454,7 @@ export function detectPairConflict(
 
   const isCurrentlyViolating = currentDistNm < params.dSepNm && currentDeltaAltFt < params.hSepFt;
 
-  const cpa = computeKinematicCpa(trackA, trackB);
+  const cpa = computeKinematicCpa(trackA, trackB, magVarDeg);
 
   const isApproachingViolation =
     cpa.isConverging &&
@@ -484,13 +487,14 @@ export function detectPairConflict(
 export function evaluateConflictAlert(
   aircraft: readonly Aircraft[],
   context?: CaContext,
+  magVarDeg = 0,
 ): CaAlert[] {
   const out: CaAlert[] = [];
   for (let i = 0; i < aircraft.length; i += 1) {
     const a = aircraft[i]!;
     for (let j = i + 1; j < aircraft.length; j += 1) {
       const b = aircraft[j]!;
-      const alert = detectPairConflict(a, b, context);
+      const alert = detectPairConflict(a, b, context, magVarDeg);
       if (alert) {
         out.push(alert);
       }
@@ -505,21 +509,25 @@ export function evaluateConflictAlert(
 /**
  * Resolve generic CaContext from scenario / facility procedure catalog data.
  */
-export function resolveCaContextFromCatalog(catalog?: {
-  airportId?: string;
-  fieldElevFt?: number;
-  arp?: { latDeg?: number; lonDeg?: number };
-  originXNm?: number;
-  originYNm?: number;
-  fixes?: ReadonlyArray<{ id: string; xNm?: number; yNm?: number }>;
-  approaches?: ReadonlyArray<{
-    id: string;
-    runway?: string;
-    courseDeg?: number;
-    thresholdFixId?: string;
-    lengthNm?: number;
-  }>;
-}): CaContext {
+export function resolveCaContextFromCatalog(
+  catalog?: {
+    airportId?: string;
+    fieldElevFt?: number;
+    arp?: { latDeg?: number; lonDeg?: number };
+    originXNm?: number;
+    originYNm?: number;
+    fixes?: ReadonlyArray<{ id: string; xNm?: number; yNm?: number }>;
+    approaches?: ReadonlyArray<{
+      id: string;
+      runway?: string;
+      courseDeg?: number;
+      publishedCourseMagneticDeg?: number;
+      thresholdFixId?: string;
+      lengthNm?: number;
+    }>;
+  },
+  magVarDeg = 0,
+): CaContext {
   if (!catalog) {
     return {
       originXNm: 0,
@@ -538,14 +546,15 @@ export function resolveCaContextFromCatalog(catalog?: {
 
   if (catalog.approaches && catalog.fixes) {
     for (const app of catalog.approaches) {
-      if (app.thresholdFixId && app.courseDeg !== undefined) {
+      const publishedCourse = app.publishedCourseMagneticDeg ?? app.courseDeg;
+      if (app.thresholdFixId && publishedCourse !== undefined) {
         const fix = catalog.fixes.find((f) => f.id === app.thresholdFixId);
         if (fix && typeof fix.xNm === "number" && typeof fix.yNm === "number") {
           approaches.push({
             id: app.id,
             thresholdXNm: fix.xNm,
             thresholdYNm: fix.yNm,
-            courseDeg: app.courseDeg,
+            courseDeg: magneticToTrueDeg(publishedCourse, magVarDeg),
             lengthNm: 6.0,
             halfWidthNm: 1.0,
             maxAltFt: 2500 + fieldElevFt,
@@ -555,7 +564,7 @@ export function resolveCaContextFromCatalog(catalog?: {
             id: app.runway ?? app.id,
             thresholdXNm: fix.xNm,
             thresholdYNm: fix.yNm,
-            headingDeg: app.courseDeg,
+            headingDeg: magneticToTrueDeg(publishedCourse, magVarDeg),
             lengthNm: 2.5,
             elevationFt: fieldElevFt,
           });

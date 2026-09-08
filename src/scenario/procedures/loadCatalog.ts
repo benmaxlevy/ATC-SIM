@@ -27,6 +27,10 @@ import type {
   StarProcedure,
   StarTransition,
 } from "./types";
+import {
+  DEFAULT_GS_BEAM_FULL_WIDTH_DEG,
+  DEFAULT_LOC_FULL_SCALE_HALF_WIDTH_FT_AT_THRESHOLD,
+} from "./types";
 
 const DATA_JSON = import.meta.glob<unknown>("../data/*/*.json", {
   eager: true,
@@ -355,6 +359,14 @@ function parseApproach(value: unknown, index: number): ApproachProcedure {
     type: type as ApproachType,
     runway: assertString(value.runway, `${path}.runway`),
     name: assertString(value.name, `${path}.name`),
+    locFullScaleHalfWidthFtAtThreshold:
+      optionalNumber(
+        value.locFullScaleHalfWidthFtAtThreshold,
+        `${path}.locFullScaleHalfWidthFtAtThreshold`,
+      ) ?? DEFAULT_LOC_FULL_SCALE_HALF_WIDTH_FT_AT_THRESHOLD,
+    gsBeamFullWidthDeg:
+      optionalNumber(value.gsBeamFullWidthDeg, `${path}.gsBeamFullWidthDeg`) ??
+      DEFAULT_GS_BEAM_FULL_WIDTH_DEG,
   };
   const locNavaidId = optionalString(value.locNavaidId, `${path}.locNavaidId`);
   const gsNavaidId = optionalString(value.gsNavaidId, `${path}.gsNavaidId`);
@@ -382,6 +394,8 @@ function parseApproach(value: unknown, index: number): ApproachProcedure {
   const daFt = optionalNumber(value.daFt, `${path}.daFt`);
   if (courseDeg !== undefined) {
     approach.courseDeg = courseDeg;
+    approach.publishedCourseMagneticDeg =
+      courseDeg as ApproachProcedure["publishedCourseMagneticDeg"];
   }
   if (lengthNm !== undefined) {
     approach.lengthNm = lengthNm;

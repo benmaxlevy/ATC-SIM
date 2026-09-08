@@ -1503,16 +1503,26 @@ export function hasActiveUninhibitedConflict(world: World, view?: ScopeView): bo
   return filterActiveCaAlerts(world.alerts.ca, world, view, { forTone: true }).length > 0;
 }
 
-/** CA or visible MSAW needs the workstation safety tone. */
-export function hasActiveUninhibitedSafetyAlert(world: World, view?: ScopeView): boolean {
-  if (hasActiveUninhibitedConflict(world, view)) return true;
+/** Returns true when at least one active, uninhibited MSAW remains audible. */
+export function hasActiveUninhibitedMsaw(world: World, view?: ScopeView): boolean {
   if (!world.alerts?.msaw || world.alerts.msaw.length === 0) return false;
   if (!view) return true;
   return world.alerts.msaw.some((alert) => {
     const ac = world.aircraft.find((item) => item.callsign === alert.callsign);
     const td = ac ? view.tracks.get(ac.id) : undefined;
-    return !td?.msawInhibited && !td?.msawCurrentAlertInhibited && !td?.msawProcessingInhibited;
+    return (
+      !td?.msawInhibited &&
+      !td?.msawCurrentAlertInhibited &&
+      !td?.msawProcessingInhibited &&
+      !td?.msawAcknowledged
+    );
   });
+}
+
+/** CA or visible MSAW needs the workstation safety tone. */
+export function hasActiveUninhibitedSafetyAlert(world: World, view?: ScopeView): boolean {
+  if (hasActiveUninhibitedConflict(world, view)) return true;
+  return hasActiveUninhibitedMsaw(world, view);
 }
 
 /* =========================================================================

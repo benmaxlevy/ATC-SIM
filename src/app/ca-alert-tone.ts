@@ -1,7 +1,7 @@
 /**
  * Analog: CRC STARS STCA aural (R07) — a tone while CA is active.
- * Trainer delta: square-wave beep on the Web Audio destination. Not NAS.
- * No vendor TTS/STT. Silent when AudioContext is missing or suspended.
+ * Trainer delta: shipped ConflictAlert.wav loop on the browser audio output.
+ * Injected AudioContext instances retain the testable oscillator path.
  */
 
 export const CA_TONE_HZ = 880;
@@ -11,7 +11,7 @@ export const CA_TONE_GAIN = 0.05;
 
 export interface CaAlertTone {
   /** Start/stop the beep from the sim tick. Safe with no AudioContext. */
-  sync(active: boolean, volumeMultiplier?: number): void;
+  sync(caActive: boolean, msawActiveOrVolume?: boolean | number, volumeMultiplier?: number): void;
   setVolume(vol: number): void;
   dispose(): void;
 }
@@ -20,6 +20,11 @@ export interface CaAlertToneOptions {
   getAudioContext?: () => AudioContext | null;
   now?: () => number;
 }
+
+const CONFLICT_ALERT_URL = "/sounds/ConflictAlert.wav";
+const MSAW_ALERT_URL = "/sounds/Msaw.wav";
+export const ALERT_TONE_GAP_MS = 250;
+export const COMBINED_ALERT_TONE_GAP_MS = 80;
 
 function audioContextConstructor(): typeof AudioContext | undefined {
   const g = globalThis as typeof globalThis & { webkitAudioContext?: typeof AudioContext };
@@ -43,6 +48,11 @@ export function createCaAlertTone(options: CaAlertToneOptions = {}): CaAlertTone
   let ctx: AudioContext | null = null;
   let osc: OscillatorNode | null = null;
   let gain: GainNode | null = null;
+  const elements = new Map<"ca" | "msaw", HTMLAudioElement>();
+  let currentElement: "ca" | "msaw" | null = null;
+  let browserCaActive = false;
+  let browserMsawActive = false;
+  let elementRestartTimer: ReturnType<typeof setTimeout> | null = null;
   let disposed = false;
   let currentVolumeMultiplier = 1.0;
 
@@ -81,6 +91,53 @@ export function createCaAlertTone(options: CaAlertToneOptions = {}): CaAlertTone
     gain = null;
   }
 
+  function stopElement(): void {
+    currentElement = null;
+    if (elementRestartTimer !== null) {
+      clearTimeout(elementRestartTimer);
+      elementRestartTimer = null;
+    }
+    for (const element of elements.values()) {
+      element.pause();
+      element.currentTime = 0;
+    }
+  }
+
+  function activeElement(kind: "ca" | "msaw"): boolean {
+    return kind === "ca" ? browserCaActive : browserMsawActive;
+  }
+
+  function nextElement(): "ca" | "msaw" | null {
+    if (browserCaActive && browserMsawActive) return currentElement === "ca" ? "msaw" : "ca";
+    if (browserCaActive) return "ca";
+    if (browserMsawActive) return "msaw";
+    return null;
+  }
+
+  function startBrowserElement(kind: "ca" | "msaw"): void {
+    if (typeof Audio === "undefined") return;
+    let element = elements.get(kind);
+    if (!element) {
+      element = new Audio(kind === "ca" ? CONFLICT_ALERT_URL : MSAW_ALERT_URL);
+      element.addEventListener("ended", () => {
+        if (currentElement !== kind || !activeElement(kind)) return;
+        elementRestartTimer = setTimeout(
+          () => {
+            elementRestartTimer = null;
+            const next = nextElement();
+            if (next) startBrowserElement(next);
+          },
+          browserCaActive && browserMsawActive ? COMBINED_ALERT_TONE_GAP_MS : ALERT_TONE_GAP_MS,
+        );
+      });
+      elements.set(kind, element);
+    }
+    currentElement = kind;
+    element.volume = Math.min(1, currentVolumeMultiplier);
+    element.currentTime = 0;
+    void element.play().catch(() => undefined);
+  }
+
   function ensureGraph(audio: AudioContext): void {
     if (osc && gain) {
       return;
@@ -105,18 +162,39 @@ export function createCaAlertTone(options: CaAlertToneOptions = {}): CaAlertTone
         gain.gain.value = CA_TONE_GAIN * currentVolumeMultiplier;
       }
     },
-    sync(nextActive: boolean, volumeMultiplier?: number) {
+    sync(
+      nextCaActive: boolean,
+      msawActiveOrVolume: boolean | number = false,
+      volumeMultiplier?: number,
+    ) {
       if (disposed) {
         return;
       }
-      if (volumeMultiplier !== undefined) {
-        currentVolumeMultiplier = Math.max(0, volumeMultiplier);
+      const nextMsawActive = typeof msawActiveOrVolume === "boolean" ? msawActiveOrVolume : false;
+      const nextVolume =
+        typeof msawActiveOrVolume === "number" ? msawActiveOrVolume : volumeMultiplier;
+      if (nextVolume !== undefined) {
+        currentVolumeMultiplier = Math.max(0, nextVolume);
       }
-      if (!nextActive || currentVolumeMultiplier === 0) {
+      if (options.getAudioContext === undefined) {
+        browserCaActive = nextCaActive && currentVolumeMultiplier > 0;
+        browserMsawActive = nextMsawActive && currentVolumeMultiplier > 0;
+        if (!browserCaActive && !browserMsawActive) {
+          stopElement();
+          return;
+        }
+        if (!currentElement || !activeElement(currentElement)) {
+          stopElement();
+          const next = nextElement();
+          if (next) startBrowserElement(next);
+        }
+        return;
+      }
+      if (!nextCaActive || currentVolumeMultiplier === 0) {
         if (gain) {
           gain.gain.value = 0;
         }
-        if (!nextActive) {
+        if (!nextCaActive) {
           stopGraph();
         }
         return;
@@ -136,6 +214,8 @@ export function createCaAlertTone(options: CaAlertToneOptions = {}): CaAlertTone
     dispose() {
       disposed = true;
       stopGraph();
+      stopElement();
+      elements.clear();
       if (ctx && !options.getAudioContext) {
         void ctx.close().catch(() => undefined);
       }
