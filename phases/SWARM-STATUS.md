@@ -1,5 +1,21 @@
 # Swarm status
 
+## THIRTY-EIGHTH SWARM COMPLETE — WX VIP Availability (T02-121)
+
+T02-121 is squash-merged on `feature/stars-ca-alignment` as `2a34a61`.
+N0Q now fetches at boot and refreshes every five minutes even when every WX
+display latch is off. Each MAIN WX cap shows bottom-line `AVL` only when its
+own current packed VIP mask has one or more real (non-padding) pixels. Empty,
+failed, and never-fetched mosaics show no `AVL`; WX latch state and Command IR
+isolation are unchanged.
+
+Focused worker tests: **3 files, 19 tests passed**. Captain post-merge
+`npm run ci` passed: typecheck, lint, format, **180 test files / 1,602 tests
+passed / 4 skipped**. No manual UI leftover: automated markup coverage proves
+per-level `AVL`; no Chrome-only assertion was added.
+
+**Merged:** T02-121 (`2a34a61`) after planning commit `e3a7d3b`.
+
 ## THIRTY-SEVENTH SWARM EXIT BLOCKED — Controller CA/MSAW Controls (T02-119–120)
 
 T02-119 is squash-merged on `feature/stars-ca-alignment` as `b409c6c`, with
