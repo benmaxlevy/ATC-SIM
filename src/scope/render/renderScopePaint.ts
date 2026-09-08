@@ -1208,38 +1208,31 @@ export function drawTracks(
       const leaderColor = applyBrite(visual.leaderColor, briteCh);
       const layout = layoutById.get(ac.id);
       const preferred = preferredById.get(ac.id);
+      const leaderDir = layout?.leaderDir ?? trackLeaderDir(view, ac.id);
+      const leaderLength = layout?.leaderLengthPx ?? trackLeaderLength(view, ac.id);
       if (
         layout?.rect &&
         preferred &&
         (layout.rect.x !== preferred.x || layout.rect.y !== preferred.y)
       ) {
-        const r = layout.rect;
-        const ex = Math.max(r.x, Math.min(p.x, r.x + r.width));
-        const ey = Math.max(r.y, Math.min(p.y, r.y + r.height));
-        const hasLeader =
-          leaderSegmentPx(
-            trackLeaderDir(view, ac.id),
-            trackLeaderLength(view, ac.id),
-            view.charSizes.pos,
-          ) !== null;
-        if (hasLeader && Math.hypot(ex - p.x, ey - p.y) > 1) {
-          ctx.strokeStyle = leaderColor;
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(ex, ey);
-          ctx.stroke();
+        if (layout.leaderAligned !== false) {
+          drawLeaderLine(ctx, p.x, p.y, leaderDir, leaderColor, leaderLength, view.charSizes.pos);
+        } else {
+          const r = layout.rect;
+          const ex = Math.max(r.x, Math.min(p.x, r.x + r.width));
+          const ey = Math.max(r.y, Math.min(p.y, r.y + r.height));
+          const hasLeader = leaderSegmentPx(leaderDir, leaderLength, view.charSizes.pos) !== null;
+          if (hasLeader && Math.hypot(ex - p.x, ey - p.y) > 1) {
+            ctx.strokeStyle = leaderColor;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(ex, ey);
+            ctx.stroke();
+          }
         }
       } else if (layout?.rect) {
-        drawLeaderLine(
-          ctx,
-          p.x,
-          p.y,
-          trackLeaderDir(view, ac.id),
-          leaderColor,
-          trackLeaderLength(view, ac.id),
-          view.charSizes.pos,
-        );
+        drawLeaderLine(ctx, p.x, p.y, leaderDir, leaderColor, leaderLength, view.charSizes.pos);
       }
     }
   }

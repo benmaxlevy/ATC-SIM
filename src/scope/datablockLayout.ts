@@ -62,6 +62,10 @@ export interface ResolvedDatablockLayout {
   aircraftId: string;
   rect?: LayoutRect;
   leaderAnchor?: LayoutPoint;
+  leaderDir?: LeaderDir;
+  leaderLengthPx?: number;
+  /** True when rect follows leader geometry; false for radial/grid fallback. */
+  leaderAligned?: boolean;
   unplaced: boolean;
 }
 
@@ -283,6 +287,7 @@ interface LayoutCandidate {
   rect: LayoutRect;
   dir: LeaderDir;
   lengthPx: number;
+  leaderAligned: boolean;
 }
 
 function candidateDirections(preferred: LeaderDir): LeaderDir[] {
@@ -407,6 +412,7 @@ export function solveDatablockLayout(
       rect: preferred,
       dir: item.leaderDir,
       lengthPx: item.leaderLengthPx,
+      leaderAligned: true,
     };
     let resolvedCandidate = candidateIsFree(
       item,
@@ -422,6 +428,7 @@ export function solveDatablockLayout(
             rect: candidateFor(item, dir),
             dir,
             lengthPx: item.leaderLengthPx,
+            leaderAligned: true,
           })),
           accepted,
           options.bounds,
@@ -436,6 +443,7 @@ export function solveDatablockLayout(
             rect: candidateForLength(item, dir, lengthPx),
             dir,
             lengthPx,
+            leaderAligned: true,
           })),
         ),
         accepted,
@@ -451,6 +459,7 @@ export function solveDatablockLayout(
           rect,
           dir: item.leaderDir,
           lengthPx: item.leaderLengthPx,
+          leaderAligned: false,
         })),
         accepted,
         options.bounds,
@@ -473,6 +482,7 @@ export function solveDatablockLayout(
             rect: makeRect(x, y, size.width, size.height),
             dir: item.leaderDir,
             lengthPx: item.leaderLengthPx,
+            leaderAligned: false,
           };
           if (candidateIsFree(item, candidate, accepted, options.bounds, obstacles)) {
             resolvedCandidate = candidate;
@@ -495,6 +505,9 @@ export function solveDatablockLayout(
         aircraftId: item.aircraftId,
         rect: resolvedCandidate.rect,
         leaderAnchor: item.targetPoint,
+        leaderDir: resolvedCandidate.dir,
+        leaderLengthPx: resolvedCandidate.lengthPx,
+        leaderAligned: resolvedCandidate.leaderAligned,
         unplaced: false,
       });
     } else {
