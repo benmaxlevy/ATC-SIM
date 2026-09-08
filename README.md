@@ -21,6 +21,7 @@ In-browser **STARS-like** terminal radar **simulator**: high-fidelity Canvas2D P
 git clone https://github.com/benmaxlevy/ATC-SIM.git
 cd ATC-SIM
 npm install
+npm run hooks:install
 npm run dev
 ```
 
@@ -54,6 +55,11 @@ npm test
 # Run full continuous integration check (typecheck, lint, formatting, tests)
 npm run ci
 ```
+
+`npm run hooks:install` enables the repository pre-push hook. It blocks pushes
+when `npm run ci` fails and runs the mocked speech API tests when pushed
+changes include `speech-api/`. Remote branch protection should still require
+the GitHub Actions `check` and `speech-api` jobs before merging.
 
 Speech service test suite (mocked): `SPEECH_API_MOCK=1 pytest` in [`speech-api/`](speech-api/README.md).
 

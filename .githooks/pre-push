@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+
+speech_changed=false
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+    changed_files=$(git diff-tree --no-commit-id --name-only -r "$local_sha")
+  else
+    changed_files=$(git diff --name-only "$remote_sha" "$local_sha")
+  fi
+
+  case "$changed_files" in
+    *speech-api/*) speech_changed=true ;;
+  esac
+done
+
+npm run ci
+
+if [ "$speech_changed" = true ]; then
+  (
+    cd speech-api
+    SPEECH_API_MOCK=1 pytest
+  )
+fi
