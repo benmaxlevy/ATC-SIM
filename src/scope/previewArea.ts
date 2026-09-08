@@ -269,8 +269,7 @@ export function previewTrackingSlew(state: PreviewAreaState): PreviewArmedAction
     if (
       action.type === "caPairSlew" ||
       (action.type === "caSingleTrackInhibit" && action.trk === undefined) ||
-      (action.type === "caPairToggle" &&
-        action.trk2 === undefined)
+      (action.type === "caPairToggle" && action.trk2 === undefined)
     ) {
       return action;
     }
@@ -727,7 +726,9 @@ export function executeCaControllerPairs(
   if (!world) return false;
   const inhibited = mode === "toggle" ? !view.caControllerOwnedPairsInhibited : mode === "inhibit";
   view.caControllerOwnedPairsInhibited = inhibited;
-  const owned = world.aircraft.filter((ac) => ensureTrackDisplay(view.tracks, ac.id).ownership === "owned");
+  const owned = world.aircraft.filter(
+    (ac) => ensureTrackDisplay(view.tracks, ac.id).ownership === "owned",
+  );
   for (let i = 0; i < owned.length; i += 1) {
     for (let j = i + 1; j < owned.length; j += 1) {
       const a = owned[i]!;
