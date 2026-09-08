@@ -1,3 +1,71 @@
+# ATC-SIM swarm orchestrator — Forty-first swarm (Magnetic Heading Frames)
+
+## Forty-first swarm planned — 2026-09-08 (Magnetic Heading Frames)
+
+User-approved heading-frame migration follows the ILS lead-capture swarm.
+Controller-facing headings and published courses are magnetic; all ENU/world
+geometry is true. This plan only creates tickets and freezes their order. It
+does not launch workers or start implementation.
+
+| Key | Value |
+| --- | --- |
+| Goal | Make magnetic command/published-heading data and true ENU geometry explicit, generic, and testable. |
+| Include | **T04-48**, then **T04-49**, then **T04-50** only. |
+| Source | User-approved heading-frame contract; existing Phase 4 catalog/FMS architecture. |
+| Skip | Wind/crab, new parser grammar or phraseology, ILS signal-envelope redesign, map-art changes, facility-specific behavior, CIFP import changes. |
+| Stop | After T04-50 acceptance. No later phase. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `feature/ils-guidance`, then runs focused tests and `npm run ci` after each ticket. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Heading-frame law:**
+
+- Commands, parser, speech/readback, displayed aircraft heading, and published
+  procedure courses are magnetic degrees. `true = magnetic + magVarDeg`.
+- ENU x/y, runway and map line geometry, LOC/GS math, PTL, predicted motion,
+  conflict/ATPA geometry, and all bearing calculations used for geometry are
+  true degrees.
+- `magVarDeg` belongs to generic core world navigation context, never an
+  implicit KDEM-zero assumption or airport/facility branch. KDEM at 0 degrees
+  remains behaviorally unchanged.
+- True/magnetic conversions are named helpers. Geometry and command fields
+  must not retain an ambiguous bare `courseDeg` when both frames exist.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T04-48 | planning commit |
+| B | T04-49 | T04-48 merge and focused gate |
+| C | T04-50 | T04-49 merge and focused gate |
+
+**Ticket ownership:**
+
+- T04-48: contract, typed conversions, generic world/catalog `magVarDeg`
+  plumbing, and zero/plus/minus variation unit coverage.
+- T04-49: magnetic-command-to-true-motion, direct/procedure bearings, LOC/GS
+  dual-axis migration, PTL and alert prediction migration, generic behavior
+  tests.
+- T04-50: KATL ILS 26R scenario-level intercept regression and KDEM
+  non-regression acceptance only.
+
+**Ticket files / branches:**
+
+- `ticket/T04-48-heading-frame-contract-and-world-magvar` ← `phases/04-procedures/tickets/T04-48-heading-frame-contract-and-world-magvar.md`
+- `ticket/T04-49-heading-frame-navigation-migration` ← `phases/04-procedures/tickets/T04-49-heading-frame-navigation-migration.md`
+- `ticket/T04-50-katl-ils26r-heading-frame-acceptance` ← `phases/04-procedures/tickets/T04-50-katl-ils26r-heading-frame-acceptance.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 4 procedures magnetic heading frames T04-48–50
+Merge target: feature/ils-guidance
+Merged: T04-48, T04-49, T04-50
+Tests: <focused tests and npm run ci result>
+Notes: <magnetic controller contract; true ENU geometry; KATL 26R capture; KDEM 0-degree regression>
+```
+
 # ATC-SIM swarm orchestrator — Fortieth swarm (ILS Signal Envelopes and Lead Capture)
 
 ## Fortieth swarm planned — 2026-09-08 (ILS Signal Envelopes and Lead Capture)
