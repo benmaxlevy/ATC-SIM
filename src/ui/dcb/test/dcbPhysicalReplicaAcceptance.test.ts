@@ -163,6 +163,12 @@ test("AC2 — normal, pressed, and disabled caps have distinct physical tokens",
       ),
     );
   }
+  expect(css).toMatch(
+    /\[data-dcb-layout="SITE"\][\s\S]*?grid-template-columns:\s*repeat\(auto-fit,\s*72px\)[\s\S]*?grid-template-rows:\s*repeat\(1,\s*72px\)/,
+  );
+  expect(css).toMatch(
+    /\[data-dcb-layout="SITE"\] \.dcb-main-grid-cell > \.dcb-cell[\s\S]*?width:\s*72px;[\s\S]*?height:\s*72px;/,
+  );
   expect(css).toMatch(/\.dcb-vertical\s+\.dcb-cell[\s\S]*?border-bottom:\s*2px solid #555555/);
   expect(css).toMatch(
     /\.dcb-main-grid-cell\[data-dcb-row="1"\]:not\(\[data-dcb-row-span="2"\]\) > \.dcb-cell[\s\S]*?border-bottom:\s*2px solid #555555/,
