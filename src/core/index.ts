@@ -110,6 +110,22 @@ export type {
 } from "./aircraft";
 export { createAircraft, makeTestAircraft, nextAircraftId } from "./aircraft";
 export type {
+  AircraftPerformanceProfile,
+  AircraftProfileDataset,
+  PerformanceProvenance,
+  PerformanceRegime,
+  PerformanceRegimeLimits,
+  PerformanceSource,
+} from "./performance/types";
+export {
+  AircraftPerformanceRegistry,
+  DEFAULT_PROFILE,
+  isAircraftProfileDataset,
+  performanceRegistry,
+} from "./performance/registry";
+export type { RegimeResolutionOptions } from "./performance/regime";
+export { resolvePerformanceRegime } from "./performance/regime";
+export type {
   AirspaceAreaTier,
   AlertTint,
   AlertTintTrack,
