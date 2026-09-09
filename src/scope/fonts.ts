@@ -12,24 +12,27 @@ export const SCOPE_FONT_STACK =
 /** Frozen 12 px on a 1080p PPI (phase README decision 6). Default CHAR SIZE. */
 export const DATABLOCK_FONT_PX = 12;
 
-/** DCB CHAR SIZE steps for FDB/LDB, SSA/lists, and PTL-adjacent tools text. */
-export const CHAR_SIZE_STEPS_PX = [11, 12, 13] as const;
+/**
+ * CHAR SIZE DATA BLOCKS/LISTS/TOOLS levels 0–6, mapped to usable font px.
+ * Readouts show trainer levels; state keeps actual render sizes.
+ */
+export const CHAR_SIZE_STEPS_PX = [8, 9, 10, 11, 12, 13, 14] as const;
 export type CharSizePx = (typeof CHAR_SIZE_STEPS_PX)[number];
 export const DEFAULT_CHAR_SIZE_PX: CharSizePx = 12;
 
 /**
  * DCB cell text. Two lines must still fit the 36 px bar (T02-16).
- * Seeded from the T02-17 11/12/13 map (10/11/12).
+ * CHAR SIZE DCB levels 0–2, mapped to 10/11/12 px so two lines fit the bar.
  */
 export const DCB_CHAR_SIZE_STEPS_PX = [10, 11, 12] as const;
 export type DcbCharSizePx = (typeof DCB_CHAR_SIZE_STEPS_PX)[number];
 export const DEFAULT_DCB_CHAR_SIZE_PX: DcbCharSizePx = 11;
 
 /**
- * Position-symbol diamond size (CHAR SIZE POS). Discrete CSS px, not a sprite
- * scale. Default 8 matches T02-18.
+ * CHAR SIZE POS levels 0–6, mapped to discrete CSS px, not a sprite scale.
+ * Default level 4 keeps existing 8 px symbols.
  */
-export const POS_SIZE_STEPS_PX = [6, 8, 10] as const;
+export const POS_SIZE_STEPS_PX = [4, 5, 6, 7, 8, 9, 10] as const;
 export type PosSizePx = (typeof POS_SIZE_STEPS_PX)[number];
 export const DEFAULT_POS_SIZE_PX: PosSizePx = 8;
 

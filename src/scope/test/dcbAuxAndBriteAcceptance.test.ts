@@ -82,7 +82,7 @@ describe("T02-86 DCB AUX and BRITE Controls Acceptance Suite", () => {
     // Default OFF
     expect(view.dwellMode).toBe("OFF");
     expect(formatDcbDwellReadout(view.dwellMode)).toBe("OFF");
-    expect(getDatablockVisualState(view, world, ac1).color).toBe(PALETTE.unowned);
+    expect(getDatablockVisualState(view, world, ac1).color).toBe(PALETTE.targetGreen);
 
     // Cycle to ON
     cycleDwellMode(view);
@@ -92,11 +92,11 @@ describe("T02-86 DCB AUX and BRITE Controls Acceptance Suite", () => {
     // When hovered under ON mode, datablock color brightens to PALETTE.highlight
     view.dwellLockedAircraftId = "ac1";
     expect(getDatablockVisualState(view, world, ac1).color).toBe(PALETTE.highlight);
-    expect(getDatablockVisualState(view, world, ac2).color).toBe(PALETTE.unowned);
+    expect(getDatablockVisualState(view, world, ac2).color).toBe(PALETTE.targetGreen);
 
     // Hover removed under ON mode
     view.dwellLockedAircraftId = null;
-    expect(getDatablockVisualState(view, world, ac1).color).toBe(PALETTE.unowned);
+    expect(getDatablockVisualState(view, world, ac1).color).toBe(PALETTE.targetGreen);
 
     // Cycle to LOCK mode
     cycleDwellMode(view);

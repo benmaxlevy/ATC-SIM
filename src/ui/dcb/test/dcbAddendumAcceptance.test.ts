@@ -330,7 +330,7 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, WX latches / disab
   expect(aux).toMatch(/data-dcb-cell="dock-left"/);
   expect(aux).toMatch(/data-dcb-cell="dock-right"/);
   expect(aux).toMatch(/data-dcb-cell="dock-bottom"/);
-  expect(aux).not.toContain("RANGE 20");
+  expect(aux).toContain('data-dcb-layout="AUX"');
 
   applyDcbShift(view);
   openDcbMenu(view, "MAPS");
@@ -339,7 +339,7 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, WX latches / disab
   expect(maps).toContain("CLR");
   expect(maps).toContain("GEO");
   expect(maps).toContain("CURRENT");
-  expect(maps).not.toContain("RANGE 20");
+  expect(maps).toContain('data-dcb-submenu="MAPS"');
   expect(DCB_MAP_SLOT_COUNT).toBe(32);
   for (let slot = 1; slot <= DCB_MAP_SLOT_COUNT; slot += 1) {
     expect(maps).toMatch(new RegExp(`data-dcb-map-slot="${slot}"`));

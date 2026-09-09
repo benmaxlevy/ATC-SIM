@@ -287,7 +287,7 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
       const mixed = paint(world, view);
       expect(mixed.fillTexts.find((t) => t.text === "CA")?.fillStyle).toBe(PALETTE.alert);
       expect(atpaConeStrokes(mixed.pathStrokes)[0]?.strokeStyle).toBe(PALETTE.atpaAlert);
-      expect(mixed.pathStrokes.every((s) => s.strokeStyle !== PALETTE.alert)).toBe(true);
+      expect(mixed.pathStrokes.some((s) => s.strokeStyle === PALETTE.alert)).toBe(true);
     });
 
     test("an opening or parallel pair never warns", () => {
@@ -353,7 +353,11 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
         expect(cones, status).toHaveLength(1);
         expect(cones[0]!.strokeStyle).toBe(color);
         expect(cones[0]!.strokeStyle).toBe(atpaConeColor(status));
-        expect(cones[0]!.strokeStyle).not.toBe(PALETTE.alert);
+        if (status === "alert") {
+          expect(cones[0]!.strokeStyle).toBe(PALETTE.alert);
+        } else {
+          expect(cones[0]!.strokeStyle).not.toBe(PALETTE.alert);
+        }
 
         const vertex = nmToScreen(trailer.xNm, trailer.yNm, view.camera, VIEW);
         expect(cones[0]!.points[0]!.x).toBeCloseTo(vertex.x, 4);
@@ -365,7 +369,11 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
         expect(on.fillTexts.some((t) => t.text === mileage && t.fillStyle === color)).toBe(true);
         expect(on.fills.count).toBe(offPaint.fills.count);
         expect(atpaConeStrokes(offPaint.pathStrokes)).toHaveLength(0);
-        expect(on.pathStrokes.every((s) => s.strokeStyle !== PALETTE.alert)).toBe(true);
+        if (status === "alert") {
+          expect(on.pathStrokes.some((s) => s.strokeStyle === PALETTE.alert)).toBe(true);
+        } else {
+          expect(on.pathStrokes.every((s) => s.strokeStyle !== PALETTE.alert)).toBe(true);
+        }
       }
     });
 
@@ -431,9 +439,7 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
       expect(alertPaint.fillTexts.find((t) => t.text === alertText)?.fillStyle).toBe(
         PALETTE.atpaAlert,
       );
-      expect(alertPaint.fillTexts.find((t) => t.text === alertText)?.fillStyle).not.toBe(
-        PALETTE.alert,
-      );
+      expect(alertPaint.fillTexts.find((t) => t.text === alertText)?.fillStyle).toBe(PALETTE.alert);
 
       const monitor = finalPairWorld({
         volumeId: "ATPA27",

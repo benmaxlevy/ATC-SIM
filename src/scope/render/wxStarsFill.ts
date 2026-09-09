@@ -7,7 +7,7 @@ export const WX_VIP_FILL_HEX = [
   "#146414",
   "#C8C800",
   "#E67800",
-  "#C80000",
+  "#BF0000",
   "#C800C8",
   "#FFFFFF",
 ] as const;

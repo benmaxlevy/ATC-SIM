@@ -511,8 +511,19 @@ export function cycleCharSize(view: ScopeView): void {
   view.charSizePx = view.charSizes.dataBlocks;
 }
 
-export function formatDcbCharReadout(sizePx: CharSizePx | number): string {
-  return String(sizePx);
+export function formatDcbCharReadout(
+  sizePx: CharSizePx | number,
+  channel: CharSizeChannel = "dataBlocks",
+): string {
+  if (channel === "dcb") {
+    return String(
+      DCB_CHAR_SIZE_STEPS_PX.indexOf(sizePx as (typeof DCB_CHAR_SIZE_STEPS_PX)[number]),
+    );
+  }
+  if (channel === "pos") {
+    return String(POS_SIZE_STEPS_PX.indexOf(sizePx as (typeof POS_SIZE_STEPS_PX)[number]));
+  }
+  return String(CHAR_SIZE_STEPS_PX.indexOf(sizePx as CharSizePx));
 }
 
 export function stepCharSizeChannel(

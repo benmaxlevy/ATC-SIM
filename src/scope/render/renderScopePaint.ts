@@ -421,6 +421,10 @@ export interface DatablockVisualState {
   leaderColor: string;
 }
 
+function targetTextColor(ownership: TrackOwnership): string {
+  return ownership === "unowned" ? PALETTE.targetGreen : PALETTE[ownership];
+}
+
 export function isTrackedTarget(view: ScopeView, world: World, ac: Aircraft): boolean {
   const td = view.tracks.get(ac.id);
   const ownership: TrackOwnership = td?.ownership ?? "unowned";
@@ -606,18 +610,18 @@ export function getDatablockVisualState(
     }
     if (step === 2) {
       return {
-        color: PALETTE.unowned,
+        color: PALETTE.targetGreen,
         visible: true,
         mode: "full",
-        leaderColor: PALETTE.unowned,
+        leaderColor: PALETTE.targetGreen,
       };
     }
     if (step === 3) {
       return {
-        color: PALETTE.unowned,
+        color: PALETTE.targetGreen,
         visible: true,
         mode: "partial",
-        leaderColor: PALETTE.unowned,
+        leaderColor: PALETTE.targetGreen,
       };
     }
   }
@@ -650,7 +654,7 @@ export function getDatablockVisualState(
   // 6. Pointout outbound
   if (ho.kind === "pointout_outbound") {
     if (ho.status === "pending") {
-      const baseColor = td?.ownership ? PALETTE[td.ownership] : PALETTE.unowned;
+      const baseColor = targetTextColor(td?.ownership ?? "unowned");
       return {
         color: td?.highlighted ? PALETTE.highlight : baseColor,
         visible: true,
@@ -661,7 +665,7 @@ export function getDatablockVisualState(
     }
     if (ho.status === "rejected") {
       const isUnOn = Math.floor(world.simTimeMs / 500) % 2 === 0;
-      const baseColor = td?.ownership ? PALETTE[td.ownership] : PALETTE.unowned;
+      const baseColor = targetTextColor(td?.ownership ?? "unowned");
       return {
         color: td?.highlighted ? PALETTE.highlight : baseColor,
         visible: true,
@@ -725,7 +729,7 @@ export function getDatablockVisualState(
     isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs) && baseMode === "partial"
       ? "full"
       : baseMode;
-  const baseColor = PALETTE[ownership];
+  const baseColor = targetTextColor(ownership);
 
   return {
     color: baseColor,
@@ -1019,6 +1023,7 @@ export function drawTracks(
     const color = trackColor(view, world, ac);
     const isPrimary = isPrimaryTarget(ac, td);
     const ownership: TrackOwnership = td?.ownership ?? "unowned";
+    const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
     const ho = handoffFor(world, ac.id);
     const isTracked = isTrackedTarget(view, world, ac);
     const bcnMult = (view.brite.bcn ?? 100) / 100;
@@ -1026,6 +1031,7 @@ export function drawTracks(
       ? view.brite.pri
       : Math.round((isTracked ? view.brite.pos : view.brite.oth) * bcnMult);
     const priMark = applyBrite(TARGET_PUCK_BG, view.brite.pri);
+    const targetSymbolColor = ownership === "unowned" && !identActive ? PALETTE.targetGreen : color;
     const squawk = td?.squawk ?? ac.squawk;
     let sectorId = td?.sectorId;
     if (!sectorId) {
@@ -1051,7 +1057,7 @@ export function drawTracks(
       ctx,
       p.x,
       p.y,
-      applyBrite(isPrimary ? PALETTE.positionSymbol : color, posBrite),
+      applyBrite(isPrimary ? PALETTE.positionSymbol : targetSymbolColor, posBrite),
       {
         isPrimary,
         ownership,
@@ -1830,7 +1836,7 @@ export function drawSystemLists(
     const bounds: ListRect = { x, y, width, height };
     activeRects.push({ id: "PREVIEW", bounds, handleBounds: bounds });
     if (view.listDrag?.showAllFrames) {
-      ctx.strokeStyle = "#00FF00";
+      ctx.strokeStyle = "#259925";
       ctx.lineWidth = 1;
       ctx.strokeRect(x - 2, y - 2, width + 4, height + 4);
       ctx.fillText(`[${previewPlacement.frameTitle}]`, x, y - lineH);
@@ -1845,7 +1851,7 @@ export function drawSystemLists(
     });
     if (view.listDrag?.showAllFrames) {
       const placement = view.systemLists?.SSA ?? DEFAULT_SYSTEM_LIST_PLACEMENTS.SSA;
-      ctx.strokeStyle = "#00FF00";
+      ctx.strokeStyle = "#259925";
       ctx.lineWidth = 1;
       ctx.strokeRect(
         ssaInfo.bounds.x - 2,
@@ -2037,7 +2043,7 @@ export function drawSystemLists(
 
     // If showAllFrames is enabled, draw frame title
     if (view.listDrag?.showAllFrames) {
-      ctx.strokeStyle = "#00FF00";
+      ctx.strokeStyle = "#259925";
       ctx.lineWidth = 1;
       ctx.strokeRect(x - 2, y - 2, width + 4, height + 4);
       ctx.fillText(`[${placement.frameTitle}]`, x, y - lineH);
@@ -2050,7 +2056,7 @@ export function drawSystemLists(
   // Check and draw overlapping warning boxes
   const overlapping = findOverlappingLists(activeRects);
   if (overlapping.size > 0 && !view.listDrag?.movingListId) {
-    ctx.strokeStyle = "#00FF00";
+    ctx.strokeStyle = "#259925";
     ctx.lineWidth = 1;
     for (const item of activeRects) {
       if (overlapping.has(item.id)) {
@@ -2072,7 +2078,7 @@ export function drawSystemLists(
     view.listDrag.movingOffset
   ) {
     // Green anchor box
-    ctx.strokeStyle = "#00FF00";
+    ctx.strokeStyle = "#259925";
     ctx.lineWidth = 1;
     const anchor = view.listDrag.movingAnchorRect;
     ctx.strokeRect(anchor.x - 2, anchor.y - 2, anchor.width + 4, anchor.height + 4);

@@ -20,7 +20,7 @@ test("monitor/warning/alert colors; warning suppresses manual TPA cones", () => 
   expect(atpaConeColor("monitor")).toBe(PALETTE.tools);
   expect(atpaConeColor("warning")).toBe(PALETTE.atpaWarning);
   expect(atpaConeColor("alert")).toBe(PALETTE.atpaAlert);
-  expect(atpaConeColor("alert")).not.toBe(PALETTE.alert);
+  expect(atpaConeColor("alert")).toBe(PALETTE.alert);
   expect(atpaSuppressesManualTpaCone("monitor")).toBe(false);
   expect(atpaSuppressesManualTpaCone("warning")).toBe(true);
 });

@@ -94,6 +94,20 @@ test("AC1 — MAIN renders six WX latches, enabled SITE, enabled MODE FSL spinne
   expect(html).toContain('data-dcb-layout-id="map-6"');
 });
 
+test("submenu overlays the MAIN DCB in place", () => {
+  const view = createScopeView();
+  view.dcbMenu = "BRITE";
+  const html = renderToStaticMarkup(
+    createElement(DisplayControlBar, { view, onChange: () => undefined }),
+  );
+
+  expect(html).toContain('class="dcb-base"');
+  expect(html).toContain('data-dcb-layout="MAIN"');
+  expect(html).toContain('class="dcb-submenu"');
+  expect(html).toContain('data-dcb-submenu="BRITE"');
+  expect(html).toContain('data-dcb-layout="BRITE"');
+});
+
 test("T02-121 — WX caps show AVL only for their own populated VIP masks", () => {
   const view = createScopeView();
   view.wxMosaic = {
@@ -145,10 +159,38 @@ test("AC2 — normal, pressed, and disabled caps have distinct physical tokens",
 
   const css = cssSource();
   expect(css).toMatch(/\.dcb-cell:not\(:disabled\):not\(\[aria-disabled="true"\]\)/);
-  expect(css).toMatch(/inset 1px 1px var\(--dcb-highlight/);
-  expect(css).toMatch(/inset -2px -2px var\(--dcb-shadow/);
-  expect(css).toMatch(/inset 2px 2px var\(--dcb-pressed-shadow/);
-  expect(css).toMatch(/inset -1px -1px var\(--dcb-pressed-highlight/);
+  expect(css).toMatch(/border-right:\s*2px solid #555555/);
+  expect(css).toMatch(/\.dcb-cell[\s\S]*?border-bottom:\s*2px solid #555555/);
+  expect(css).toMatch(/\.dcb-cell:not\(:disabled\)[\s\S]*?inset 0 -2px var\(--dcb-cap/);
+  expect(css).toMatch(/\.dcb-main-grid,[\s\S]*?gap:\s*1px !important;/);
+  for (const [layout, columns] of [
+    ["AUX", 17],
+    ["MAPS", 18],
+    ["BRITE", 10],
+    ["CHAR_SIZE", 6],
+    ["PREF", 20],
+    ["SSA_FILTER", 13],
+    ["GI_FILTER", 6],
+    ["TPA_ATPA", 7],
+  ] as const) {
+    expect(css).toMatch(
+      new RegExp(
+        `\\[data-dcb-layout="${layout}"\\][\\s\\S]*?grid-template-columns:\\s*repeat\\(${columns},\\s*72px\\)`,
+      ),
+    );
+  }
+  expect(css).toMatch(
+    /\[data-dcb-layout="SITE"\][\s\S]*?grid-template-columns:\s*repeat\(auto-fit,\s*72px\)[\s\S]*?grid-template-rows:\s*repeat\(1,\s*minmax\(0,\s*1fr\)\)/,
+  );
+  expect(css).toMatch(
+    /\[data-dcb-layout="SITE"\] \.dcb-main-grid-cell > \.dcb-cell[\s\S]*?width:\s*72px;[\s\S]*?height:\s*100%;/,
+  );
+  expect(css).toMatch(/\.dcb-vertical\s+\.dcb-cell[\s\S]*?border-bottom:\s*2px solid #555555/);
+  expect(css).toMatch(
+    /\.dcb-main-grid-cell\[data-dcb-row="1"\]:not\(\[data-dcb-row-span="2"\]\) > \.dcb-cell[\s\S]*?border-bottom:\s*2px solid #555555/,
+  );
+  expect(css).toMatch(/\.dcb-cell[\s\S]*?font-weight:\s*500;/);
+  expect(css).toMatch(/\.dcb-cell[\s\S]*?inset 0 1px var\(--dcb-highlight/);
   expect(css).toMatch(/var\(--dcb-disabled-text,\s*#4c604c\)/i);
   expect(css).not.toMatch(/repeating-linear-gradient|raster|stripe/i);
 });
@@ -162,7 +204,7 @@ test("AC5 — copy and typography remain a STARS-like trainer approximation", ()
   expect(source).not.toMatch(/from\s+["']@pilot["']/);
   expect(PALETTE.background).toBe("#000000");
   expect(PALETTE.map).toBe("#8C8C8C");
-  expect(PALETTE.unowned).toBe("#00FF00");
+  expect(PALETTE.unowned).toBe("#259925");
   expect(PALETTE.owned).toBe("#FFFFFF");
 });
 
@@ -187,4 +229,24 @@ test("AC6 — DCB on LEFT and RIGHT docks renders with dcb-vertical class and 2-
   expect(css).toMatch(/\.dcb-vertical\s*\{[^}]*flex-direction:\s*column;/);
   expect(css).toMatch(/\.dcb-vertical\s+\.dcb-main-grid/);
   expect(css).toMatch(/grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+});
+
+test("AC7 — DCB follows fixed button widths without horizontal width cap", () => {
+  const css = cssSource();
+  const source = readFileSync(new URL("../DisplayControlBar.tsx", import.meta.url), "utf8");
+  expect(css).toMatch(/\.dcb\s*\{[^}]*width:\s*max-content;/);
+  expect(css).toMatch(/\.dcb\s*\{[^}]*flex:\s*0 0 80px;/);
+  expect(css).toMatch(/\.dcb\s*\{[^}]*overflow:\s*visible;/);
+  expect(css).toMatch(/\.dcb-submenu\s*\{[^}]*width:\s*max-content;/);
+  expect(css).toMatch(/\.dcb-submenu\s*>\s*\.dcb-main-grid,[\s\S]*?width:\s*max-content/);
+  expect(source).toContain("buttonEdges");
+  expect(source).toContain("snappedLeft");
+  expect(css).toMatch(/\.dcb-main-grid,[\s\S]*?min-width:\s*0;/);
+  expect(css).toMatch(/\.dcb-vertical\s*\{[^}]*width:\s*80px;/);
+  expect(css).toMatch(/\.dcb-vertical\s*\{[^}]*height:\s*1290px;/);
+  expect(css).toMatch(
+    /grid-template-columns:\s*repeat\(8,\s*72px\)\s*repeat\(6,\s*45px\)\s*repeat\(8,\s*72px\)/,
+  );
+  expect(source).toContain("height: vertical ? DCB_WIDTH_PX : DCB_HEIGHT_PX");
+  expect(source).toContain('width: vertical ? DCB_HEIGHT_PX : "max-content"');
 });

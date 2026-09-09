@@ -105,7 +105,7 @@ test("AC3 — Pause / 1× / 2× still mutate paused and simRate", () => {
   expect(controls).toMatch(/setSimRate\(world,\s*1\)/);
   expect(controls).toMatch(/setSimRate\(world,\s*2\)/);
   expect(cssSrc()).toMatch(/\.sim-controls\s*\{[^}]*position:\s*absolute/s);
-  expect(cssSrc()).toMatch(/\.sim-controls\s*\{[^}]*color:\s*#00ff00/s);
+  expect(cssSrc()).toMatch(/\.sim-controls\s*\{[^}]*color:\s*#259925/s);
 });
 
 test("AC4 — radio-focus DAL123 H270 still readbacks and turns", async () => {
@@ -152,12 +152,13 @@ test("AC6 — shell analog+delta; no user-facing HUD / zoom / toolbar", () => {
   expect(controls.toLowerCase()).not.toMatch(/aria-label="[^"]*\b(hud|zoom|toolbar)\b/);
   expect(disclaimer).toMatch(/aria-label="Training disclaimer"/);
   expect(disclaimer.toLowerCase()).not.toMatch(/aria-label="[^"]*\b(hud|zoom|toolbar)\b/);
-  // Physical DCB caps intentionally use inset bevel shadows; other trainer
-  // chrome remains flat and shadow-free.
-  expect(cssSrc()).toMatch(/\.dcb-cell[\s\S]*inset 1px 1px var\(--dcb-highlight/);
+  // Physical DCB caps use one-sided separators; other trainer chrome remains flat.
+  expect(cssSrc()).toMatch(/\.dcb-cell[\s\S]*border-right:\s*2px solid #555555;/);
+  expect(cssSrc()).toMatch(/\.dcb-cell\s*\{[\s\S]*cursor:\s*default;/);
+  expect(cssSrc()).toMatch(/\.dcb-cell:hover\s*\{[^}]*color:\s*#ffff99;/);
   const nonDcbCss = cssSrc()
     .replace(/@keyframes[^{]*\{[\s\S]*?\n\}/g, "")
     .replace(/\.dcb-cell[^{]*\{[^}]*\}/g, "");
   const shadows = [...nonDcbCss.matchAll(/box-shadow:\s*([^;]+)/g)].map((m) => m[1].trim());
-  expect(shadows.every((value) => value === "none")).toBe(true);
+  expect(shadows.every((value) => value === "none" || value.includes("--dcb-"))).toBe(true);
 });

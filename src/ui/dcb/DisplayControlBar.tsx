@@ -34,8 +34,10 @@
  * Never a Command, readback, or intent.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 import {
   PALETTE,
   SCOPE_FONT_STACK,
@@ -73,6 +75,7 @@ import {
   DCB_FILTER_BAND_ID,
   DCB_HEIGHT_PX,
   DCB_ID,
+  DCB_WIDTH_PX,
   DCB_LDR_LENGTH_READOUT_ID,
   DCB_LDR_READOUT_ID,
   DCB_RANGE_READOUT_ID,
@@ -128,6 +131,7 @@ export {
   DCB_RR_READOUT_ID,
   DCB_SITE_READOUT_ID,
   DCB_TPA_MI_READOUT_ID,
+  DCB_WIDTH_PX,
   type DisplayControlBarProps,
 } from "./dcbChrome";
 export { BRITE_GRID_LAYOUT, CHAR_SIZE_DCB_LAYOUT } from "./DisplayControlBarMenus";
@@ -345,7 +349,7 @@ function renderPhysicalMain(
               afterCell(onChange);
             }}
           >
-            <span className="dcb-cell-line">LDR LEN</span>
+            <span className="dcb-cell-line">LDR</span>
             <span id={DCB_LDR_LENGTH_READOUT_ID} className="dcb-cell-line">
               {formatDcbLdrLengthReadout(view.leaderLengthPx)}
             </span>
@@ -603,7 +607,7 @@ export function renderMainLegacy(
           )
         }
       >
-        <span className="dcb-cell-line">LDR LEN</span>
+        <span className="dcb-cell-line">LDR</span>
         <span id={DCB_LDR_LENGTH_READOUT_ID} className="dcb-cell-line">
           {formatDcbLdrLengthReadout(view.leaderLengthPx)}
         </span>
@@ -695,8 +699,72 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
   const dcbHighlight = applyBrite(PALETTE.dcbHighlight, view.brite.dcb);
   const menu = view.dcbMenu;
   const vertical = isVerticalDcbDock(view.dcbDock);
+  const showSubmenuOverlay = menu !== "MAIN" && menu !== "AUX";
+  const submenuTrigger =
+    menu === "MAPS"
+      ? "maps"
+      : menu === "LDR"
+        ? "ldr-dir"
+        : menu === "TPA_ATPA"
+          ? "tpa"
+          : menu === "CHAR_SIZE"
+            ? "char"
+            : menu === "BRITE"
+              ? "brite"
+              : menu === "SSA_FILTER"
+                ? "ssa-filter"
+                : menu === "GI_FILTER"
+                  ? "gi-text"
+                  : menu === "PREF"
+                    ? "pref"
+                    : menu === "SITE"
+                      ? "site-fused"
+                      : undefined;
 
   const typedBuffer = useRef<string>("");
+  const submenuRef = useRef<HTMLDivElement>(null);
+  const [submenuLeft, setSubmenuLeft] = useState<number | null>(null);
+
+  useIsomorphicLayoutEffect(() => {
+    if (!showSubmenuOverlay || vertical) {
+      setSubmenuLeft(null);
+      return;
+    }
+
+    const measureSubmenu = () => {
+      const submenu = submenuRef.current;
+      const dcb = dcbRef.current;
+      if (!submenu || !dcb) return;
+
+      const dcbRect = dcb.getBoundingClientRect();
+      const trigger = submenuTrigger
+        ? dcb.querySelector<HTMLElement>(`[data-dcb-cell="${submenuTrigger}"]`)
+        : null;
+      const anchorLeft = trigger
+        ? trigger.getBoundingClientRect().right - dcbRect.left
+        : submenu.offsetLeft;
+      const submenuWidth = submenu.offsetWidth;
+      const overflowPx = dcbRect.left + anchorLeft + submenuWidth - 2 - window.innerWidth;
+      if (overflowPx <= 0) {
+        setSubmenuLeft(anchorLeft);
+        return;
+      }
+
+      const maxLeft = window.innerWidth - dcbRect.left - submenuWidth + 2;
+      const buttonEdges = Array.from(dcb.querySelectorAll<HTMLElement>(".dcb-base .dcb-cell"))
+        .flatMap((button) => {
+          const rect = button.getBoundingClientRect();
+          return [rect.left - dcbRect.left, rect.right - dcbRect.left];
+        })
+        .filter((edge) => edge <= maxLeft);
+      const snappedLeft = Math.max(0, ...buttonEdges);
+      setSubmenuLeft(snappedLeft);
+    };
+
+    measureSubmenu();
+    window.addEventListener("resize", measureSubmenu);
+    return () => window.removeEventListener("resize", measureSubmenu);
+  }, [showSubmenuOverlay, submenuTrigger, vertical]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -766,8 +834,8 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
       data-dcb-cursor-trap={trap.kind}
       data-dcb-dock={view.dcbDock}
       style={{
-        height: vertical ? "100%" : DCB_HEIGHT_PX,
-        width: vertical ? DCB_HEIGHT_PX : "100%",
+        height: vertical ? DCB_WIDTH_PX : DCB_HEIGHT_PX,
+        width: vertical ? DCB_HEIGHT_PX : "max-content",
         fontFamily: SCOPE_FONT_STACK,
         fontSize: dcbPx,
         backgroundColor: PALETTE.background,
@@ -785,27 +853,39 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
         ["--dcb-pressed-highlight" as string]: dcbHighlight,
       }}
     >
-      {menu === "AUX"
-        ? renderAux(view, onChange)
-        : menu === "MAPS"
-          ? renderMaps(view, onChange)
-          : menu === "LDR"
-            ? renderLdr(view, onChange, world)
-            : menu === "TPA_ATPA"
-              ? renderTpaAtpa(view, onChange)
-              : menu === "CHAR_SIZE"
-                ? renderCharSize(view, onChange)
-                : menu === "BRITE"
-                  ? renderBrite(view, onChange)
-                  : menu === "SSA_FILTER"
-                    ? renderSsaFilter(view, onChange)
-                    : menu === "GI_FILTER"
-                      ? renderGiFilter(view, onChange)
-                      : menu === "PREF"
-                        ? renderPref(view, onChange)
-                        : menu === "SITE"
-                          ? renderSite(view, onChange)
-                          : renderPhysicalMain(view, onChange, world)}
+      <div
+        className="dcb-base"
+        aria-hidden={false}
+        data-dcb-submenu-open={showSubmenuOverlay ? "true" : undefined}
+      >
+        {menu === "AUX" ? renderAux(view, onChange) : renderPhysicalMain(view, onChange, world)}
+      </div>
+      {showSubmenuOverlay ? (
+        <div
+          ref={submenuRef}
+          className="dcb-submenu"
+          data-dcb-submenu={menu}
+          style={submenuLeft === null ? undefined : { left: submenuLeft }}
+        >
+          {menu === "MAPS"
+            ? renderMaps(view, onChange)
+            : menu === "LDR"
+              ? renderLdr(view, onChange, world)
+              : menu === "TPA_ATPA"
+                ? renderTpaAtpa(view, onChange)
+                : menu === "CHAR_SIZE"
+                  ? renderCharSize(view, onChange)
+                  : menu === "BRITE"
+                    ? renderBrite(view, onChange)
+                    : menu === "SSA_FILTER"
+                      ? renderSsaFilter(view, onChange)
+                      : menu === "GI_FILTER"
+                        ? renderGiFilter(view, onChange)
+                        : menu === "PREF"
+                          ? renderPref(view, onChange)
+                          : renderSite(view, onChange)}
+        </div>
+      ) : null}
       {trap.cursor ? (
         <div
           className="dcb-trapped-cursor"
