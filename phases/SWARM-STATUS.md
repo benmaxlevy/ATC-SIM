@@ -1,5 +1,15 @@
 # Swarm status
 
+## FORTY-SECOND SWARM EXIT BLOCKED — Aircraft Performance Profiles (T04-51–54)
+
+No ticket worker started. The configured captain could not access collaboration
+worker-spawn capability, so it could not create the required isolated
+`gpt-5.6-luna` medium worker for T04-51. Per swarm contract, do not substitute
+or widen roles. No application, generated-data, or ticket-worktree changes
+exist; no test gate ran. Planning commit `45e205c` and branch
+`feature/aircraft-performance` remain ready to resume after worker capability
+is restored or swarm configuration is changed.
+
 ## FORTY-FIRST SWARM COMPLETE — Magnetic Heading Frames (T04-48–50)
 
 T04-48 through T04-50 are squash-merged on `feature/ils-guidance`. Commands,
