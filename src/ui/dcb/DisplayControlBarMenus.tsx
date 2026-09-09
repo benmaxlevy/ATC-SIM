@@ -1547,7 +1547,7 @@ export function renderCharSize(view: ScopeView, onChange: () => void) {
             >
               <span className="dcb-cell-line">{item.line1}</span>
               {item.line2 ? <span className="dcb-cell-line">{item.line2}</span> : null}
-              <span className="dcb-cell-line">{formatDcbCharReadout(size)}</span>
+              <span className="dcb-cell-line">{formatDcbCharReadout(size, item.channel)}</span>
             </DcbCell>
           </div>
         );
