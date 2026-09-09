@@ -1,3 +1,92 @@
+# ATC-SIM swarm orchestrator — Forty-second swarm (Aircraft Performance Profiles)
+
+## Forty-second swarm planned — 2026-09-09 (Aircraft Performance Profiles)
+
+User-approved aircraft-performance follow-up: build a pinned offline
+Python/OpenAP profile generator, commit immutable generated profile JSON, then
+consume it through generic deterministic kinematics. This plan creates tickets
+and freezes execution order; it does not launch workers.
+
+| Key | Value |
+| --- | --- |
+| Goal | Per-ICAO, auditable aircraft-performance profiles generated offline and consumed by generic 20 Hz kinematics. |
+| Include | **T04-51**, **T04-52**, **T04-53**, **T04-54** only. |
+| Source | User-approved data contract; OpenAP WRAP handbook and repository. |
+| Skip | Runtime Python/OpenAP/network fetch; per-engine runtime variants; mass/fuel/flaps/stall; wind; wake separation; profile-aware alerts; parser/UI/scenario branches. |
+| Stop | After T04-54 acceptance and final CI. No later phase. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `feature/aircraft-performance`, then runs focused gates and `npm run ci` after each ticket. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Product law:**
+
+- Runtime imports committed JSON plus a TypeScript `DEFAULT_PROFILE`; it never
+  imports Python/OpenAP, parses source datasets, or fetches a network resource.
+- `Aircraft.aircraftType` is the sole runtime lookup key. Scenario data never
+  provides engines or performance values. Missing, unknown, and `UNRESOLVED`
+  types use only the explicit default profile.
+- One mapping row selects one representative airframe/engine per ICAO key.
+  Initial preset `terminal-v1` includes B737/B738/B739/B752/B753/B744/B788/B789/B78X,
+  A320/A321/A20N/A21N/A333, E135/E140/E145/E170/E175/E190/E195/E290/E295,
+  CRJ1/CRJ2/CRJ7/CRJ9/CRJX, and B38M/B39M/B763/B772/B77W. CLI `--types`
+  supports any mapped, caller-supplied ICAO set.
+- OpenAP measurements/statistical envelopes, transformations, and simulator
+  policy retain separate field-level provenance. No profile claims certification.
+- Profile/regime resolution and kinematics/FMS behavior are generic: no
+  airport, runway, procedure, scenario, callsign, or aircraft-type conditional
+  outside the data registry.
+- The physical turn, fly-by radius, and localizer lead calculation use one
+  resolved turn constraint. Alert prediction remains its existing conservative
+  policy until a later explicit ticket.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T04-51 | planning commit |
+| B | T04-52 | T04-51 merge and focused gate |
+| C | T04-53 | T04-52 merge and focused gate |
+| D | T04-54 | T04-53 merge and focused gate |
+
+**Ticket ownership:**
+
+- T04-51: pinned offline generator, mappings/policies, provenance, generated
+  artifact, CLI, and generator tests.
+- T04-52: strict runtime types, registry/default fallback, generic regime
+  resolver, and tests.
+- T04-53: profile-driven kinematics plus FMS turn/vertical plumbing and tests.
+- T04-54: reproducibility/CI/data-contract/world acceptance and documentation.
+
+**Ticket files / branches:**
+
+- `ticket/T04-51-openap-profile-generator-and-data-contract` ← `phases/04-procedures/tickets/T04-51-openap-profile-generator-and-data-contract.md`
+- `ticket/T04-52-performance-registry-and-regime-resolution` ← `phases/04-procedures/tickets/T04-52-performance-registry-and-regime-resolution.md`
+- `ticket/T04-53-profile-driven-kinematics-and-fms-turns` ← `phases/04-procedures/tickets/T04-53-profile-driven-kinematics-and-fms-turns.md`
+- `ticket/T04-54-performance-pipeline-acceptance-and-ci` ← `phases/04-procedures/tickets/T04-54-performance-pipeline-acceptance-and-ci.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 4 procedures aircraft performance profiles T04-51–54
+Merge target: feature/aircraft-performance
+Merged: T04-51, T04-52, T04-53, T04-54
+Tests: <focused tests and npm run ci result>
+Notes: <OpenAP version; initial-preset support/unresolved rows; provenance/license review; manual leftovers>
+```
+
+## Forty-second swarm started — 2026-09-09
+
+User authorized execution on a new `feature/aircraft-performance` merge target
+cut from the planning commit. One `gpt-5.6-luna` worker at medium reasoning
+runs in an isolated ticket worktree at a time: T04-51, focused gate and captain
+squash merge; then T04-52; then T04-53; then T04-54. Captain owns every merge,
+runs `npm run ci` after every ticket, and runs the pinned Python profile gate
+when its dependencies are available. No push, no profile-aware alert work, no
+later phase, and no work outside these four tickets. Workers return only
+`READY TO MERGE` or `BLOCKED`; captain returns only `PHASE EXIT GREEN` or
+`PHASE EXIT BLOCKED`.
+
 # ATC-SIM swarm orchestrator — Forty-first swarm (Magnetic Heading Frames)
 
 ## Forty-first swarm planned — 2026-09-08 (Magnetic Heading Frames)
