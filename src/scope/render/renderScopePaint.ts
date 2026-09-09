@@ -1023,6 +1023,7 @@ export function drawTracks(
     const color = trackColor(view, world, ac);
     const isPrimary = isPrimaryTarget(ac, td);
     const ownership: TrackOwnership = td?.ownership ?? "unowned";
+    const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
     const ho = handoffFor(world, ac.id);
     const isTracked = isTrackedTarget(view, world, ac);
     const bcnMult = (view.brite.bcn ?? 100) / 100;
@@ -1030,6 +1031,7 @@ export function drawTracks(
       ? view.brite.pri
       : Math.round((isTracked ? view.brite.pos : view.brite.oth) * bcnMult);
     const priMark = applyBrite(TARGET_PUCK_BG, view.brite.pri);
+    const targetSymbolColor = ownership === "unowned" && !identActive ? PALETTE.targetGreen : color;
     const squawk = td?.squawk ?? ac.squawk;
     let sectorId = td?.sectorId;
     if (!sectorId) {
@@ -1055,7 +1057,7 @@ export function drawTracks(
       ctx,
       p.x,
       p.y,
-      applyBrite(isPrimary ? PALETTE.positionSymbol : color, posBrite),
+      applyBrite(isPrimary ? PALETTE.positionSymbol : targetSymbolColor, posBrite),
       {
         isPrimary,
         ownership,
