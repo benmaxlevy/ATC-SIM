@@ -20,7 +20,7 @@ function trapHost(root: HTMLElement, kind: DcbCursorTrapKind): HTMLElement | nul
     return root.querySelector(DCB_CURSOR_TRAP_CELL_SELECTOR);
   }
   if (kind === "submenu") {
-    return root.querySelector(".dcb-main-grid, .dcb-grid") ?? root;
+    return root.querySelector(".dcb-submenu .dcb-main-grid, .dcb-submenu .dcb-grid") ?? root;
   }
   return null;
 }

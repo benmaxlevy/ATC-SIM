@@ -94,6 +94,20 @@ test("AC1 — MAIN renders six WX latches, enabled SITE, enabled MODE FSL spinne
   expect(html).toContain('data-dcb-layout-id="map-6"');
 });
 
+test("submenu overlays the MAIN DCB in place", () => {
+  const view = createScopeView();
+  view.dcbMenu = "BRITE";
+  const html = renderToStaticMarkup(
+    createElement(DisplayControlBar, { view, onChange: () => undefined }),
+  );
+
+  expect(html).toContain('class="dcb-base"');
+  expect(html).toContain('data-dcb-layout="MAIN"');
+  expect(html).toContain('class="dcb-submenu"');
+  expect(html).toContain('data-dcb-submenu="BRITE"');
+  expect(html).toContain('data-dcb-layout="BRITE"');
+});
+
 test("T02-121 — WX caps show AVL only for their own populated VIP masks", () => {
   const view = createScopeView();
   view.wxMosaic = {
@@ -220,7 +234,11 @@ test("AC7 — DCB follows fixed button widths without horizontal width cap", () 
   const source = readFileSync(new URL("../DisplayControlBar.tsx", import.meta.url), "utf8");
   expect(css).toMatch(/\.dcb\s*\{[^}]*width:\s*max-content;/);
   expect(css).toMatch(/\.dcb\s*\{[^}]*flex:\s*0 0 80px;/);
-  expect(css).toMatch(/\.dcb\s*\{[^}]*overflow:\s*hidden;/);
+  expect(css).toMatch(/\.dcb\s*\{[^}]*overflow:\s*visible;/);
+  expect(css).toMatch(/\.dcb-submenu\s*\{[^}]*width:\s*max-content;/);
+  expect(css).toMatch(/\.dcb-submenu\s*>\s*\.dcb-main-grid,[\s\S]*?width:\s*max-content/);
+  expect(source).toContain("buttonEdges");
+  expect(source).toContain("snappedLeft");
   expect(css).toMatch(/\.dcb-main-grid,[\s\S]*?min-width:\s*0;/);
   expect(css).toMatch(/\.dcb-vertical\s*\{[^}]*width:\s*80px;/);
   expect(css).toMatch(/\.dcb-vertical\s*\{[^}]*height:\s*1290px;/);
