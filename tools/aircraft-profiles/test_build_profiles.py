@@ -1,4 +1,8 @@
 import importlib.util
+import json
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -10,6 +14,20 @@ spec.loader.exec_module(builder)
 
 
 class ProfileBuilderTests(unittest.TestCase):
+    def test_cli_accepts_arbitrary_types_without_changing_preset(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "profiles.json"
+            result = subprocess.run(
+                [sys.executable, str(MODULE), "--types", "a320", "--out", str(output)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            dataset = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual([p["icaoType"] for p in dataset["profiles"]], ["A320"])
+            self.assertEqual(builder.parse_types([], "terminal-v1"), builder.PRESETS["terminal-v1"])
+
     def test_types_are_normalized_deduplicated_and_sorted_in_output(self):
         self.assertEqual(builder.parse_types(["a320,b738", "A320"], None), ["A320", "B738"])
 

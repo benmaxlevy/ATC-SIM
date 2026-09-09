@@ -13,6 +13,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run ci
+      - name: Check aircraft profile generator
+        run: npm run aircraft:profiles:test && npm run aircraft:profiles:check
   speech-api:
     runs-on: ubuntu-latest
     defaults:
