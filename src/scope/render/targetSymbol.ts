@@ -225,7 +225,7 @@ export function targetTextColor(
   if (identFlashing) {
     return SELECTED_ACCENT_COLOR;
   }
-  return ownership === "owned" ? PALETTE.owned : PALETTE.unowned;
+  return ownership === "owned" ? PALETTE.owned : PALETTE.targetGreen;
 }
 
 /** North / east / south / west vertices of the axis-aligned diamond. */
@@ -500,7 +500,7 @@ export function drawTargetSymbol(
       color === PALETTE.positionSymbol ||
       color === TARGET_PUCK_BG
     ) {
-      textColor = options.ownership === "owned" ? PALETTE.owned : PALETTE.unowned;
+      textColor = options.ownership === "owned" ? PALETTE.owned : PALETTE.targetGreen;
     }
 
     ctx.font = `${sizePx}px ${SCOPE_FONT_STACK}`;
