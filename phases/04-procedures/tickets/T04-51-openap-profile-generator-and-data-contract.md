@@ -11,7 +11,7 @@
 
 An offline, pinned Python/OpenAP generator emits one deterministic, reviewable
 performance-profile JSON dataset for any caller-supplied ICAO type list. The
-initial preset covers 35 common terminal aircraft types.
+initial preset covers 33 common terminal aircraft types.
 
 ## Context
 
