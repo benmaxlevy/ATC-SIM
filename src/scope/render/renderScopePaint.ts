@@ -421,6 +421,10 @@ export interface DatablockVisualState {
   leaderColor: string;
 }
 
+function targetTextColor(ownership: TrackOwnership): string {
+  return ownership === "unowned" ? PALETTE.targetGreen : PALETTE[ownership];
+}
+
 export function isTrackedTarget(view: ScopeView, world: World, ac: Aircraft): boolean {
   const td = view.tracks.get(ac.id);
   const ownership: TrackOwnership = td?.ownership ?? "unowned";
@@ -606,18 +610,18 @@ export function getDatablockVisualState(
     }
     if (step === 2) {
       return {
-        color: PALETTE.unowned,
+        color: PALETTE.targetGreen,
         visible: true,
         mode: "full",
-        leaderColor: PALETTE.unowned,
+        leaderColor: PALETTE.targetGreen,
       };
     }
     if (step === 3) {
       return {
-        color: PALETTE.unowned,
+        color: PALETTE.targetGreen,
         visible: true,
         mode: "partial",
-        leaderColor: PALETTE.unowned,
+        leaderColor: PALETTE.targetGreen,
       };
     }
   }
@@ -650,7 +654,7 @@ export function getDatablockVisualState(
   // 6. Pointout outbound
   if (ho.kind === "pointout_outbound") {
     if (ho.status === "pending") {
-      const baseColor = td?.ownership ? PALETTE[td.ownership] : PALETTE.unowned;
+      const baseColor = targetTextColor(td?.ownership ?? "unowned");
       return {
         color: td?.highlighted ? PALETTE.highlight : baseColor,
         visible: true,
@@ -661,7 +665,7 @@ export function getDatablockVisualState(
     }
     if (ho.status === "rejected") {
       const isUnOn = Math.floor(world.simTimeMs / 500) % 2 === 0;
-      const baseColor = td?.ownership ? PALETTE[td.ownership] : PALETTE.unowned;
+      const baseColor = targetTextColor(td?.ownership ?? "unowned");
       return {
         color: td?.highlighted ? PALETTE.highlight : baseColor,
         visible: true,
@@ -725,7 +729,7 @@ export function getDatablockVisualState(
     isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs) && baseMode === "partial"
       ? "full"
       : baseMode;
-  const baseColor = PALETTE[ownership];
+  const baseColor = targetTextColor(ownership);
 
   return {
     color: baseColor,

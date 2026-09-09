@@ -247,7 +247,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       renderScope(fdbCtx.ctx, world, view, 800, 800);
       const callsignText = fdbCtx.fillTexts.find((t) => t.text === "SWA555");
       expect(callsignText).toBeDefined();
-      expect(callsignText?.fillStyle).toBe(PALETTE.unowned); // Green #259925
+      expect(callsignText?.fillStyle).toBe(PALETTE.targetGreen); // Target green #00FF00
       expect(fdbCtx.fillTexts.some((t) => t.text === "080  25")).toBe(true);
 
       // Click again toggles back to PDB
@@ -411,7 +411,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       const step2Ctx = createMockCtx();
       renderScope(step2Ctx.ctx, world, view, 800, 800);
       const greenCallsign = step2Ctx.fillTexts.find((t) => t.text === "UAL888");
-      expect(greenCallsign?.fillStyle).toBe(PALETTE.unowned);
+      expect(greenCallsign?.fillStyle).toBe(PALETTE.targetGreen);
 
       // Click 3: Transitions to unowned Green PDB (Line 2 only)
       handleTrackClick(view.tracks, world, ac.id);

@@ -44,6 +44,8 @@ export const PALETTE = {
   mapDim: "#606060",
   /** Unowned / other-TCP full or limited datablock — FAA/CRC green (0,255,0). */
   unowned: "#259925",
+  /** Target datablock text exception: bright green; other global green stays dim. */
+  targetGreen: "#00FF00",
   /** Owned datablock after F3 INIT CNTL — CRC/FAA white. */
   owned: "#FFFFFF",
   /**
