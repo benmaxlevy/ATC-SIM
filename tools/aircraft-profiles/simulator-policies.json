@@ -1,0 +1,75 @@
+{
+  "limits": { "minControlledSpeedKt": 100, "maxControlledSpeedKt": 340, "serviceCeilingFt": 41000 },
+  "regimes": {
+    "initialClimb": {
+      "minSpeedKt": 145,
+      "maxSpeedKt": 230,
+      "nominalClimbFpm": 2600,
+      "nominalDescentFpm": 0,
+      "accelKtPerS": 1.5,
+      "decelKtPerS": 1,
+      "maxBankDeg": 20,
+      "openap": {}
+    },
+    "climb": {
+      "minSpeedKt": 175,
+      "maxSpeedKt": 280,
+      "nominalClimbFpm": 2000,
+      "nominalDescentFpm": 0,
+      "accelKtPerS": 1,
+      "decelKtPerS": 0.8,
+      "maxBankDeg": 25,
+      "openap": {}
+    },
+    "enroute": {
+      "minSpeedKt": 185,
+      "maxSpeedKt": 340,
+      "nominalClimbFpm": 1000,
+      "nominalDescentFpm": 1800,
+      "accelKtPerS": 0.8,
+      "decelKtPerS": 0.8,
+      "maxBankDeg": 25,
+      "openap": {}
+    },
+    "arrival": {
+      "minSpeedKt": 190,
+      "maxSpeedKt": 280,
+      "nominalClimbFpm": 0,
+      "nominalDescentFpm": 2200,
+      "accelKtPerS": 0.8,
+      "decelKtPerS": 1,
+      "maxBankDeg": 25,
+      "openap": {}
+    },
+    "approach": {
+      "minSpeedKt": 120,
+      "maxSpeedKt": 210,
+      "nominalClimbFpm": 0,
+      "nominalDescentFpm": 1200,
+      "accelKtPerS": 0.8,
+      "decelKtPerS": 1.2,
+      "maxBankDeg": 25,
+      "openap": {}
+    },
+    "missedApproach": {
+      "minSpeedKt": 140,
+      "maxSpeedKt": 230,
+      "nominalClimbFpm": 2200,
+      "nominalDescentFpm": 0,
+      "accelKtPerS": 1.2,
+      "decelKtPerS": 1,
+      "maxBankDeg": 20,
+      "openap": {}
+    },
+    "landing": {
+      "minSpeedKt": 120,
+      "maxSpeedKt": 170,
+      "nominalClimbFpm": 0,
+      "nominalDescentFpm": 750,
+      "accelKtPerS": 0.8,
+      "decelKtPerS": 3.8,
+      "maxBankDeg": 15,
+      "openap": {}
+    }
+  }
+}
