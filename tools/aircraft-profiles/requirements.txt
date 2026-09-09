@@ -1,2 +1,2 @@
 # Pinned build-time dependency.  OpenAP is LGPL-3.0; review before updating.
-openap==0.7.2
+openap==2.6.0

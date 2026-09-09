@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import generated from "./aircraft-profiles.generated.json";
 import type { AircraftProfileDataset, PerformanceRegime } from "./types";
 
-const dataset = generated as AircraftProfileDataset;
+const dataset = generated as unknown as AircraftProfileDataset;
 const regimes: PerformanceRegime[] = [
   "initialClimb",
   "climb",

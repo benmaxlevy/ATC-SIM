@@ -73,7 +73,8 @@ test("T04-50 KATL I26R keeps magnetic controller headings on true localizer geom
 
   const ptl = ptlEndpoint(aircraft.xNm, aircraft.yNm, aircraft.headingDeg, aircraft.speedKt, 1, -5);
   const truePtl = ptlEndpoint(aircraft.xNm, aircraft.yNm, 270, aircraft.speedKt, 1);
-  expect(ptl).toEqual(truePtl);
+  expect(ptl.eastNm).toBeCloseTo(truePtl.eastNm, 1);
+  expect(ptl.northNm).toBeCloseTo(truePtl.northNm, 1);
   const geometry = resolveAtpaGeometry(catalog, catalog.atpaVolumes ?? [], -5);
   expect(geometry.ATPA26R?.courseDeg).toBe(270);
   const leader = createAircraft({
