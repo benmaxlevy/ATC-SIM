@@ -41,7 +41,7 @@ export const MAIN_DCB_LAYOUT: readonly MainDcbLayoutCell[] = [
   })),
   { id: "brite", row: 1, column: 15, rowSpan: 2, kind: "submenu", label: "BRITE" },
   { id: "ldr-dir", row: 1, column: 16, rowSpan: 1, kind: "spinner", label: "LDR DIR" },
-  { id: "ldr-length", row: 2, column: 16, rowSpan: 1, kind: "spinner", label: "LDR LEN" },
+  { id: "ldr-length", row: 2, column: 16, rowSpan: 1, kind: "spinner", label: "LDR" },
   { id: "char", row: 1, column: 17, rowSpan: 2, kind: "submenu", label: "CHAR SIZE" },
   { id: "mode-fsl", row: 1, column: 18, rowSpan: 2, kind: "spinner", label: "MODE F" },
   { id: "pref", row: 1, column: 19, rowSpan: 2, kind: "submenu", label: "PREF" },

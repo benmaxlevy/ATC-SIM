@@ -528,7 +528,7 @@ body,
   font-weight: 500;
   line-height: 1;
   letter-spacing: 0.02em;
-  cursor: pointer;
+  cursor: default;
 }
 
 .dcb-cell-stack {
@@ -582,7 +582,10 @@ body,
   animation: dcb-cap-spring 70ms ease-out;
 }
 
-.dcb-cell:hover,
+.dcb-cell:hover {
+  color: #ffff99;
+}
+
 .dcb-cell:focus-visible {
   outline: none;
 }

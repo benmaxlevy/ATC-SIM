@@ -349,7 +349,7 @@ function renderPhysicalMain(
               afterCell(onChange);
             }}
           >
-            <span className="dcb-cell-line">LDR LEN</span>
+            <span className="dcb-cell-line">LDR</span>
             <span id={DCB_LDR_LENGTH_READOUT_ID} className="dcb-cell-line">
               {formatDcbLdrLengthReadout(view.leaderLengthPx)}
             </span>
@@ -607,7 +607,7 @@ export function renderMainLegacy(
           )
         }
       >
-        <span className="dcb-cell-line">LDR LEN</span>
+        <span className="dcb-cell-line">LDR</span>
         <span id={DCB_LDR_LENGTH_READOUT_ID} className="dcb-cell-line">
           {formatDcbLdrLengthReadout(view.leaderLengthPx)}
         </span>

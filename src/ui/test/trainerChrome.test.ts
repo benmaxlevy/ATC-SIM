@@ -154,6 +154,8 @@ test("AC6 — shell analog+delta; no user-facing HUD / zoom / toolbar", () => {
   expect(disclaimer.toLowerCase()).not.toMatch(/aria-label="[^"]*\b(hud|zoom|toolbar)\b/);
   // Physical DCB caps use one-sided separators; other trainer chrome remains flat.
   expect(cssSrc()).toMatch(/\.dcb-cell[\s\S]*border-right:\s*2px solid #555555;/);
+  expect(cssSrc()).toMatch(/\.dcb-cell\s*\{[\s\S]*cursor:\s*default;/);
+  expect(cssSrc()).toMatch(/\.dcb-cell:hover\s*\{[^}]*color:\s*#ffff99;/);
   const nonDcbCss = cssSrc()
     .replace(/@keyframes[^{]*\{[\s\S]*?\n\}/g, "")
     .replace(/\.dcb-cell[^{]*\{[^}]*\}/g, "");
