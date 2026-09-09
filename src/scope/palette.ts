@@ -43,7 +43,7 @@ export const PALETTE = {
   /** Range rings — FAA dark gray (96,96,96). Dimmer than maps. */
   mapDim: "#606060",
   /** Unowned / other-TCP full or limited datablock — FAA/CRC green (0,255,0). */
-  unowned: "#00FF00",
+  unowned: "#259925",
   /** Owned datablock after F3 INIT CNTL — CRC/FAA white. */
   owned: "#FFFFFF",
   /**
@@ -76,7 +76,7 @@ export const PALETTE = {
    */
   caution: "#FFFF00",
   /** CA/MSAW alert (red). Lite trainer, not NAS-certified. Never ATPA. */
-  alert: "#FF0000",
+  alert: "#BF0000",
   /**
    * ATPA warning cone and in-trail readout (R07 Warning Cone). ATPA's own
    * yellow, dimmer than CA/MSAW `caution` so a warning cone never reads as a
@@ -88,9 +88,9 @@ export const PALETTE = {
    * CA/MSAW red (`alert`) and from caution yellow. R07 names the color, not
    * the RGB.
    */
-  atpaAlert: "#6A0800",
+  atpaAlert: "#BF0000",
   /** SSA and list text — FAA list/preview green. Not map gray. */
-  ssa: "#00FF00",
+  ssa: "#259925",
   /**
    * DCB physical caps (T02-31/32). CRC-style physical-button analog:
    * trainer CSS bevels replace proprietary hardware/bitmap details.
@@ -281,8 +281,8 @@ export const CA_BLINK_HALF_MS = BLINK_HALF_PERIOD_MS;
 export const ALERT_BLINK_PERIOD_MS = 1600;
 export const ALERT_BLINK_HALF_PERIOD_MS = BLINK_HALF_PERIOD_MS;
 
-/** Authentic STARS alert red matching terminal display standards (#ff3b30 or existing palette alert red). */
-export const STARS_ALERT_RED = "#ff3b30";
+/** Shared alert red for CA, LA, MSAW, ATPA, and STARS display alerts. */
+export const STARS_ALERT_RED = "#BF0000";
 export const ALERT_RED = PALETTE.alert;
 
 /**

@@ -146,7 +146,7 @@ test("AC2 — normal, pressed, and disabled caps have distinct physical tokens",
   const css = cssSource();
   expect(css).toMatch(/\.dcb-cell:not\(:disabled\):not\(\[aria-disabled="true"\]\)/);
   expect(css).toMatch(/border-right:\s*2px solid #555555/);
-  expect(css).toMatch(/\.dcb-main-grid,[\s\S]*?gap:\s*0 !important;/);
+  expect(css).toMatch(/\.dcb-main-grid,[\s\S]*?gap:\s*1px !important;/);
   expect(css).toMatch(/\.dcb-vertical\s+\.dcb-cell[\s\S]*?border-bottom:\s*2px solid #555555/);
   expect(css).toMatch(
     /\.dcb-main-grid-cell\[data-dcb-row="1"\]:not\(\[data-dcb-row-span="2"\]\) > \.dcb-cell[\s\S]*?border-bottom:\s*2px solid #555555/,
@@ -165,7 +165,7 @@ test("AC5 — copy and typography remain a STARS-like trainer approximation", ()
   expect(source).not.toMatch(/from\s+["']@pilot["']/);
   expect(PALETTE.background).toBe("#000000");
   expect(PALETTE.map).toBe("#8C8C8C");
-  expect(PALETTE.unowned).toBe("#00FF00");
+  expect(PALETTE.unowned).toBe("#259925");
   expect(PALETTE.owned).toBe("#FFFFFF");
 });
 

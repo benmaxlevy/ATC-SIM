@@ -1830,7 +1830,7 @@ export function drawSystemLists(
     const bounds: ListRect = { x, y, width, height };
     activeRects.push({ id: "PREVIEW", bounds, handleBounds: bounds });
     if (view.listDrag?.showAllFrames) {
-      ctx.strokeStyle = "#00FF00";
+      ctx.strokeStyle = "#259925";
       ctx.lineWidth = 1;
       ctx.strokeRect(x - 2, y - 2, width + 4, height + 4);
       ctx.fillText(`[${previewPlacement.frameTitle}]`, x, y - lineH);
@@ -1845,7 +1845,7 @@ export function drawSystemLists(
     });
     if (view.listDrag?.showAllFrames) {
       const placement = view.systemLists?.SSA ?? DEFAULT_SYSTEM_LIST_PLACEMENTS.SSA;
-      ctx.strokeStyle = "#00FF00";
+      ctx.strokeStyle = "#259925";
       ctx.lineWidth = 1;
       ctx.strokeRect(
         ssaInfo.bounds.x - 2,
@@ -2037,7 +2037,7 @@ export function drawSystemLists(
 
     // If showAllFrames is enabled, draw frame title
     if (view.listDrag?.showAllFrames) {
-      ctx.strokeStyle = "#00FF00";
+      ctx.strokeStyle = "#259925";
       ctx.lineWidth = 1;
       ctx.strokeRect(x - 2, y - 2, width + 4, height + 4);
       ctx.fillText(`[${placement.frameTitle}]`, x, y - lineH);
@@ -2050,7 +2050,7 @@ export function drawSystemLists(
   // Check and draw overlapping warning boxes
   const overlapping = findOverlappingLists(activeRects);
   if (overlapping.size > 0 && !view.listDrag?.movingListId) {
-    ctx.strokeStyle = "#00FF00";
+    ctx.strokeStyle = "#259925";
     ctx.lineWidth = 1;
     for (const item of activeRects) {
       if (overlapping.has(item.id)) {
@@ -2072,7 +2072,7 @@ export function drawSystemLists(
     view.listDrag.movingOffset
   ) {
     // Green anchor box
-    ctx.strokeStyle = "#00FF00";
+    ctx.strokeStyle = "#259925";
     ctx.lineWidth = 1;
     const anchor = view.listDrag.movingAnchorRect;
     ctx.strokeRect(anchor.x - 2, anchor.y - 2, anchor.width + 4, anchor.height + 4);

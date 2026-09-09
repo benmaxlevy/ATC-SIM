@@ -204,13 +204,13 @@
 }
 
 .strips-context-menu-item.danger {
-  color: #f85149;
+  color: #bf0000;
 }
 
 .strips-context-menu-item.danger:hover,
 .strips-context-menu-item.danger:focus-visible {
   background-color: rgba(248, 81, 73, 0.15);
-  color: #ff7b72;
+  color: #bf0000;
 }
 
 .strip-drop-indicator {
@@ -415,7 +415,7 @@
   height: 100vh;
   box-sizing: border-box;
   background-color: #000000;
-  color: #00ff00;
+  color: #259925;
   overflow: hidden;
   font-family:
     "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
@@ -467,7 +467,7 @@
 .strips-layout-toggle-btn {
   border: 0;
   background: transparent;
-  color: #00ff00;
+  color: #259925;
   font: inherit;
   font-family:
     "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
@@ -488,7 +488,7 @@
 
 .rack-collapse-btn {
   background: transparent;
-  color: #00ff00;
+  color: #259925;
   border: 1px solid transparent;
   padding: 2px 4px;
   font-family: inherit;
@@ -655,14 +655,14 @@
   bottom: 44px;
   z-index: 4;
   font-size: 11px;
-  color: #00ff00;
+  color: #259925;
   box-shadow: none;
 }
 
 .strips-toggle-button {
   border: 0;
   background: transparent;
-  color: #00ff00;
+  color: #259925;
   font: inherit;
   font-family: inherit;
   font-size: 11px;

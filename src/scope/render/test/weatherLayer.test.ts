@@ -77,7 +77,7 @@ test("trainer fills are six distinct STARS-like colors, not IEM rainbow", () => 
     "#146414",
     "#C8C800",
     "#E67800",
-    "#C80000",
+    "#BF0000",
     "#C800C8",
     "#FFFFFF",
   ]);

@@ -105,7 +105,7 @@ test("AC3 — Pause / 1× / 2× still mutate paused and simRate", () => {
   expect(controls).toMatch(/setSimRate\(world,\s*1\)/);
   expect(controls).toMatch(/setSimRate\(world,\s*2\)/);
   expect(cssSrc()).toMatch(/\.sim-controls\s*\{[^}]*position:\s*absolute/s);
-  expect(cssSrc()).toMatch(/\.sim-controls\s*\{[^}]*color:\s*#00ff00/s);
+  expect(cssSrc()).toMatch(/\.sim-controls\s*\{[^}]*color:\s*#259925/s);
 });
 
 test("AC4 — radio-focus DAL123 H270 still readbacks and turns", async () => {

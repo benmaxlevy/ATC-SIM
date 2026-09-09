@@ -247,7 +247,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       renderScope(fdbCtx.ctx, world, view, 800, 800);
       const callsignText = fdbCtx.fillTexts.find((t) => t.text === "SWA555");
       expect(callsignText).toBeDefined();
-      expect(callsignText?.fillStyle).toBe(PALETTE.unowned); // Green #00FF00
+      expect(callsignText?.fillStyle).toBe(PALETTE.unowned); // Green #259925
       expect(fdbCtx.fillTexts.some((t) => t.text === "080  25")).toBe(true);
 
       // Click again toggles back to PDB

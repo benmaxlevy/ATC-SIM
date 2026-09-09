@@ -27,7 +27,7 @@ test("TCW palette follows FAA/CRC/vice grammar, not a green CRT game map", () =>
   expect(PALETTE.map.toUpperCase()).toBe("#8C8C8C");
   expect(PALETTE.mapDim.toUpperCase()).toBe("#606060");
   expect(PALETTE.map.toLowerCase()).not.toBe("#00aa00");
-  expect(PALETTE.unowned).toBe("#00FF00");
+  expect(PALETTE.unowned).toBe("#259925");
   expect(PALETTE.unowned.toUpperCase()).not.toBe("#B8E0D0");
   expect(PALETTE.unowned.toUpperCase()).not.toBe("#DDDDDD");
   expect(PALETTE.owned).toBe("#FFFFFF");
@@ -35,7 +35,7 @@ test("TCW palette follows FAA/CRC/vice grammar, not a green CRT game map", () =>
   expect(PALETTE.positionSymbol.toUpperCase()).toBe("#1E78FF");
   expect(PALETTE.history.toUpperCase()).toBe("#1E50C8");
   expect(PALETTE.ptl).toBe("#FFFFFF");
-  expect(PALETTE.ssa).toBe("#00FF00");
+  expect(PALETTE.ssa).toBe("#259925");
   expect(PALETTE.dcbCap).toBe("#002C00");
   expect(PALETTE.dcbCell).toBe("#061F0B");
   expect(PALETTE.dcbText).toBe("#DCE0DC");
@@ -46,20 +46,20 @@ test("TCW palette follows FAA/CRC/vice grammar, not a green CRT game map", () =>
   expect(PALETTE.dcbPressedText).toBe("#E0E0E0");
   expect(PALETTE.selected).toBe("#FFFF00");
   expect(PALETTE.caution).toBe("#FFFF00");
-  expect(PALETTE.alert).toBe("#FF0000");
+  expect(PALETTE.alert).toBe("#BF0000");
   expect(PALETTE.atpaWarning).toBe("#636300");
-  expect(PALETTE.atpaAlert).toBe("#6A0800");
-  expect(PALETTE.atpaAlert.toLowerCase()).not.toBe(PALETTE.alert.toLowerCase());
+  expect(PALETTE.atpaAlert).toBe("#BF0000");
+  expect(PALETTE.atpaAlert.toLowerCase()).toBe(PALETTE.alert.toLowerCase());
   expect(PALETTE.owned.toLowerCase()).not.toBe("#ff0000");
   expect(PALETTE.unowned.toLowerCase()).not.toBe("#ff0000");
 });
 
 test("ATPA owns its warning and alert hues; CA/MSAW caution and alert are untouched", () => {
-  expect(PALETTE.atpaAlert).toBe("#6A0800");
+  expect(PALETTE.atpaAlert).toBe("#BF0000");
   expect(PALETTE.atpaWarning).toBe("#636300");
-  expect(PALETTE.atpaAlert).not.toBe(PALETTE.alert);
+  expect(PALETTE.atpaAlert).toBe(PALETTE.alert);
   expect(PALETTE.atpaWarning).not.toBe(PALETTE.caution);
-  expect(PALETTE.alert).toBe("#FF0000");
+  expect(PALETTE.alert).toBe("#BF0000");
   expect(PALETTE.caution).toBe("#FFFF00");
   expect(PALETTE.tools).toBe("#134767");
 });
@@ -76,12 +76,11 @@ test("history trail is independent blue, newest brighter than oldest", () => {
 
 test("BRITE multiply keeps T02-08 hues; 100 is the palette color", () => {
   expect(applyBrite(PALETTE.map, 100)).toBe(PALETTE.map.toUpperCase());
-  expect(applyBrite(PALETTE.unowned, 100)).toBe("#00FF00");
+  expect(applyBrite(PALETTE.unowned, 100)).toBe("#259925");
   expect(applyBrite(PALETTE.owned, 100)).toBe("#FFFFFF");
   expect(applyBrite(PALETTE.positionSymbol, 100).toUpperCase()).toBe("#1E78FF");
   const dimFdb = applyBrite(PALETTE.unowned, 50);
-  expect(dimFdb).not.toBe("#00FF00");
-  expect(dimFdb.startsWith("#00")).toBe(true);
+  expect(dimFdb).not.toBe("#259925");
   expect(dimFdb.toLowerCase()).not.toBe("#00ee00");
   const dimMap = applyBrite(PALETTE.map, 40);
   expect(dimMap).not.toBe(applyBrite(PALETTE.map, 100));
@@ -95,7 +94,7 @@ test("BRITE multiply keeps T02-08 hues; 100 is the palette color", () => {
   expect(snapBriteLevel(-4)).toBe(0);
   expect(MAP_BRITE_STEPS.length).toBe(3);
   expect(mapBriteColors(1).map).toBe(PALETTE.map);
-  expect(PALETTE.unowned).toBe("#00FF00");
+  expect(PALETTE.unowned).toBe("#259925");
   expect(PALETTE.owned).toBe("#FFFFFF");
 });
 
@@ -130,16 +129,16 @@ test("AC5 — predicted CA is not yellow; CA and MSAW do not paint block/target"
   expect(alertOrOwnershipColor("owned", null)).toBe(PALETTE.owned);
   expect(alertOrOwnershipColor("unowned", null)).toBe(PALETTE.unowned);
   expect(PALETTE.caution).toBe("#FFFF00");
-  expect(PALETTE.alert).toBe("#FF0000");
-  expect(PALETTE.atpaAlert).toBe("#6A0800");
-  expect(PALETTE.atpaAlert).not.toBe(PALETTE.alert);
+  expect(PALETTE.alert).toBe("#BF0000");
+  expect(PALETTE.atpaAlert).toBe("#BF0000");
+  expect(PALETTE.atpaAlert).toBe(PALETTE.alert);
 });
 
 test("CA and MSAW alert blinking follows authentic 800ms cadence; acknowledged is steady", () => {
   expect(ALERT_BLINK_HALF_PERIOD_MS).toBe(800);
   expect(ALERT_BLINK_PERIOD_MS).toBe(1600);
   expect(ALERT_RED).toBe(PALETTE.alert);
-  expect(STARS_ALERT_RED).toMatch(/^#(ff3b30|FF0000)$/i);
+  expect(STARS_ALERT_RED).toBe("#BF0000");
 
   // Synchronized square-wave clock (800ms ON / 800ms OFF)
   expect(isAlertBlinkOn(0)).toBe(true);

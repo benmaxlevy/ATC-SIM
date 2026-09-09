@@ -44,7 +44,7 @@ export const WX_VIP_CONTOUR_HEX = [
   "#3CC83C",
   "#FFFF64",
   "#FFA028",
-  "#FF3C3C",
+  "#BF0000",
   "#FF3CFF",
   "#FFFFFF",
 ] as const;

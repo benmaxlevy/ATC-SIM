@@ -563,7 +563,7 @@ describe("T02-92 Flight Progress Strips Two-Column Board and Bay Layout", () => 
       expect(cssContent).toMatch(/\.strips-layout-toggle-btn/i);
       expect(cssContent).toMatch(/\.rack-collapse-btn/i);
       expect(cssContent).toMatch(/\.rack-header\s*\{[^}]*cursor:\s*pointer;/i);
-      expect(cssContent).toMatch(/#00ff00/i);
+      expect(cssContent).toMatch(/#259925/i);
       expect(cssContent).toMatch(/#ffff00/i);
     });
   });

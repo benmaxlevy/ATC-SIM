@@ -249,7 +249,7 @@ test("AC4/AC5 — MULTI rect is perpendicular to PTL; site far line is 30% longe
   );
 
   expect(MULTI_RECT_COLOR).toBe("#175dc7");
-  expect(SITE_FAR_LINE_COLOR).toBe("#00FF00");
+  expect(SITE_FAR_LINE_COLOR).toBe("#259925");
 });
 
 test("AC9 — comment names R07/R05 and frozen trainer paint/period delta", () => {
