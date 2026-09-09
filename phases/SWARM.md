@@ -1,3 +1,11 @@
+# ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
+
+## Forty-fourth swarm planned — 2026-09-09
+
+One Luna-medium worker owns T04-56 only. Merge target: `feature/aircraft-performance`.
+Arrival policy is `random|authored`; departure policy is `none|random|authored`.
+KATL scenarios use arrival `random`. Stop after T04-56 CI; no compatibility aliases.
+
 # ATC-SIM swarm orchestrator — Forty-third swarm (Random Airline Aircraft Traffic)
 
 ## Forty-third swarm planned — 2026-09-09
