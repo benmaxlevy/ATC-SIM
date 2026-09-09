@@ -1,3 +1,21 @@
+# ATC-SIM swarm orchestrator — Forty-third swarm (Random Airline Aircraft Traffic)
+
+## Forty-third swarm planned — 2026-09-09
+
+| Key | Value |
+| --- | --- |
+| Goal | Generated scenario traffic uses deterministic valid airline/aircraft pairs. |
+| Include | **T04-55** only. |
+| Skip | Fleet sources, provenance, APIs, per-engine variants, authored scenario changes, parser/UI/profile changes. |
+| Stop | After T04-55 and CI. |
+| Max workers | 1 |
+| Merge lock | Orchestrator squash-merges to `feature/aircraft-performance`. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Product law:** roster rows contain only airline ICAO/name and exact valid
+types. Seeded generation chooses one eligible pair before allocating a callsign;
+no independent airline/type sampling. Authored scenarios stay authored.
+
 # ATC-SIM swarm orchestrator — Forty-second swarm (Aircraft Performance Profiles)
 
 ## Forty-second swarm planned — 2026-09-09 (Aircraft Performance Profiles)
