@@ -2,12 +2,26 @@ import type { Aircraft } from "./aircraft";
 import type { TurnDir } from "./command/types";
 import { DEG2RAD, normalizeHeadingDeg } from "./nav/geometry";
 import { magneticToTrueDeg } from "./nav/headingFrames";
+import type { PerformanceRegimeLimits } from "./performance/types";
 
 export { PHYSICS_HZ, SIM_DT_S } from "./clock";
 
 export const TURN_RATE_DEG_PER_S = 3;
 export const CLIMB_RATE_FT_PER_MIN = 1800;
 export const ACCEL_KT_PER_S = 1;
+
+/** Convert a coordinated-turn bank constraint and speed into deg/s. */
+export function turnRateDegPerSForSpeed(speedKt: number, maxBankDeg: number): number {
+  if (
+    !(speedKt > 0) ||
+    !(maxBankDeg > 0) ||
+    !Number.isFinite(speedKt) ||
+    !Number.isFinite(maxBankDeg)
+  )
+    return 0;
+  const speedMps = speedKt * 0.514444;
+  return (9.80665 * Math.tan(maxBankDeg * DEG2RAD)) / speedMps / DEG2RAD;
+}
 
 export const normalizeHeading = normalizeHeadingDeg;
 
@@ -78,6 +92,7 @@ export function stepAircraft(
   commandedAltitudeFt?: number,
   commandedSpeedKt?: number,
   magVarDeg = 0,
+  limits?: PerformanceRegimeLimits,
 ): void {
   const headingFrom = normalizeHeading(ac.headingDeg);
   const headingTo = normalizeHeading(
@@ -85,19 +100,30 @@ export function stepAircraft(
   );
   const turn = commandedHeadingDeg !== undefined ? "SHORTEST" : ac.intent.turn;
   const { remainingDeg, sign } = remainingTurn(headingFrom, headingTo, turn);
-  const maxTurnDeg = TURN_RATE_DEG_PER_S * dtS;
+  const turnRate =
+    limits?.turnRateDegPerS ??
+    (limits ? turnRateDegPerSForSpeed(ac.speedKt, limits.maxBankDeg) : TURN_RATE_DEG_PER_S);
+  const maxTurnDeg = turnRate * dtS;
   if (remainingDeg <= maxTurnDeg + 1e-9) {
     ac.headingDeg = headingTo;
   } else {
     ac.headingDeg = normalizeHeading(headingFrom + sign * maxTurnDeg);
   }
 
-  const maxAltFt = (CLIMB_RATE_FT_PER_MIN / 60) * dtS;
   const altitudeTo = commandedAltitudeFt ?? ac.intent.assignedAltitudeFt;
+  const altitudeRate =
+    altitudeTo >= ac.altitudeFt
+      ? (limits?.nominalClimbFpm ?? CLIMB_RATE_FT_PER_MIN)
+      : (limits?.nominalDescentFpm ?? CLIMB_RATE_FT_PER_MIN);
+  const maxAltFt = (altitudeRate / 60) * dtS;
   ac.altitudeFt = toward(ac.altitudeFt, altitudeTo, maxAltFt);
 
-  const maxSpeedKt = ACCEL_KT_PER_S * dtS;
   const speedTo = commandedSpeedKt ?? ac.intent.assignedSpeedKt;
+  const speedRate =
+    speedTo >= ac.speedKt
+      ? (limits?.accelKtPerS ?? ACCEL_KT_PER_S)
+      : (limits?.decelKtPerS ?? ACCEL_KT_PER_S);
+  const maxSpeedKt = speedRate * dtS;
   ac.speedKt = Math.max(0, toward(ac.speedKt, speedTo, maxSpeedKt));
 
   // Aircraft/controller heading remains magnetic; only ENU displacement uses true.

@@ -72,6 +72,7 @@ export {
   normalizeHeading,
   shortestDeltaDeg,
   stepAircraft,
+  turnRateDegPerSForSpeed,
 } from "./kinematics";
 
 export type { LatLon, NmEastNorth, NmPoint } from "./nav/geometry";

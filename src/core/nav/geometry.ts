@@ -76,10 +76,14 @@ export function courseChangeDeg(fromCourseDeg: number, toCourseDeg: number): num
   return Math.abs(shortestDeltaDeg(fromCourseDeg, toCourseDeg));
 }
 
-export function flyByStartNm(tasKt: number, courseChangeAbsDeg: number): number {
+export function flyByStartNm(
+  tasKt: number,
+  courseChangeAbsDeg: number,
+  turnRateDegPerS: number = TURN_RATE_DEG_PER_S,
+): number {
   const thetaDeg = Math.max(FLYBY_MIN_TURN_DEG, Math.abs(courseChangeAbsDeg));
   const thetaRad = thetaDeg * DEG2RAD;
-  const d = turnRadiusNm(tasKt) * Math.tan(thetaRad / 2);
+  const d = turnRadiusNm(tasKt, turnRateDegPerS) * Math.tan(thetaRad / 2);
   if (!Number.isFinite(d) || d < 0) {
     return FLYBY_FLOOR_NM;
   }

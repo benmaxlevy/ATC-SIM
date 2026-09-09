@@ -39,6 +39,8 @@ import {
 } from "./fms/vertical";
 import { locAxisForApproach } from "./nav/localizer";
 import { gsParamsForApproach } from "./nav/glidepath";
+import { performanceRegistry } from "./performance/registry";
+import { resolvePerformanceRegime } from "./performance/regime";
 
 /** Generic world navigation context. Variation is never facility-special-cased. */
 export interface WorldNavigationContext {
@@ -472,6 +474,9 @@ export function stepWorld(world: World, dtS: number): World {
       log: world.sessionLog,
       simTimeMs: world.simTimeMs,
     });
+    const profile = performanceRegistry.getProfile(ac.aircraftType);
+    const regime = profile.regimes ? resolvePerformanceRegime(ac) : undefined;
+    const performance = regime && profile.regimes ? profile.regimes[regime] : undefined;
     const commandedHeadingDeg = applyLateralFms(ac, dtS, {
       registry: world.fixRegistry,
       log: world.sessionLog,
@@ -479,12 +484,14 @@ export function stepWorld(world: World, dtS: number): World {
       catalog: world.catalog,
       locAxisFor,
       magVarDeg: world.navigation.magVarDeg,
+      performance,
     });
     const gsCommandedFt = applyGlidepathFms(ac, dtS, {
       locAxisFor,
       gsParamsFor: (approachId) => gsParamsForApproach(approachId, world.catalog),
       log: world.sessionLog,
       simTimeMs: world.simTimeMs,
+      maxDescentFpm: performance?.nominalDescentFpm,
     });
     const vertical = applyVerticalFms(ac, world.catalog);
     stepAircraft(
@@ -494,6 +501,7 @@ export function stepWorld(world: World, dtS: number): World {
       gsCommandedFt ?? vertical.altitudeFt,
       vertical.speedKt,
       world.navigation.magVarDeg,
+      performance,
     );
     if (ac.identUntilSimMs > 0 && world.simTimeMs >= ac.identUntilSimMs) {
       ac.identUntilSimMs = 0;
