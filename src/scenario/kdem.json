@@ -9,7 +9,7 @@
     "lonDeg": 0
   },
   "activeRunwayId": "27",
-  "spawnPolicy": "star-inbound",
+  "spawnPolicy": "random",
   "runways": [
     {
       "id": "27",

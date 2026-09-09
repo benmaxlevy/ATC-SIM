@@ -21,8 +21,8 @@ test("T04-14 AC7 — spawn seed parser source has no unseeded PRNG", () => {
 });
 
 test("T04-21 AC1 — parseDepartureOptions handles params and defaults", () => {
-  // AC1: parseDepartureOptions("?departures=auto&dep_rate=12&seed=5") returns { enabled: true, ratePerHour: 12, seed: 5 }
-  expect(parseDepartureOptions("?departures=auto&dep_rate=12&seed=5")).toEqual({
+  // Random departures are enabled explicitly and remain seedable.
+  expect(parseDepartureOptions("?departures=random&dep_rate=12&seed=5")).toEqual({
     enabled: true,
     ratePerHour: 12,
     seed: 5,
@@ -37,14 +37,13 @@ test("T04-21 AC1 — parseDepartureOptions handles params and defaults", () => {
   expect(parseDepartureOptions("?departures=false")).toEqual({ enabled: false });
   expect(parseDepartureOptions("?departures=0")).toEqual({ enabled: false });
 
-  // Explicit on / true / auto / 1
-  expect(parseDepartureOptions("?departures=true")).toEqual({ enabled: true });
-  expect(parseDepartureOptions("?departures=1")).toEqual({ enabled: true });
-  expect(parseDepartureOptions("?departures=auto")).toEqual({ enabled: true });
-  expect(parseDepartureOptions("?departures")).toEqual({ enabled: true });
+  expect(parseDepartureOptions("?departures=random")).toEqual({ enabled: true });
+  expect(() => parseDepartureOptions("?departures=auto")).toThrow(/expected "random" or "off"/);
+  expect(() => parseDepartureOptions("?departures=true")).toThrow(/expected "random" or "off"/);
+  expect(() => parseDepartureOptions("?departures=1")).toThrow(/expected "random" or "off"/);
 
   // Custom rate and count
-  expect(parseDepartureOptions("?departures=auto&dep_rate=15&dep_count=8&seed=42")).toEqual({
+  expect(parseDepartureOptions("?departures=random&dep_rate=15&dep_count=8&seed=42")).toEqual({
     enabled: true,
     ratePerHour: 15,
     count: 8,

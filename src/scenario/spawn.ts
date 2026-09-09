@@ -308,7 +308,7 @@ function initDepartures(
 }
 
 /**
- * Build a World from the scenario. `star-inbound` uses `assignStarRoutes`
+ * Build a World from the scenario. `random` uses `assignStarRoutes`
  * (seeded catalog pose). `authored` copies JSON xy (ils27 / T01-04 fixture).
  */
 export function createWorldFromScenario(
@@ -316,7 +316,7 @@ export function createWorldFromScenario(
   seed: number = DEFAULT_SPAWN_SEED,
 ): World {
   const world = worldFromScenario(scenario);
-  if (scenario.spawnPolicy === "star-inbound") {
+  if (scenario.spawnPolicy === "random") {
     spawnStarInbound(world, scenario, seed);
   } else {
     spawnArrivals(world, scenario, seed);
@@ -333,7 +333,7 @@ export function createWorldFromScenario(
 
 /**
  * Default student world follows `spawnPolicy`. `trafficCount` (`?traffic=30`)
- * replaces a **star-inbound** list with the downwind-arc FPS bench.
+ * replaces a **random** list with the downwind-arc FPS bench.
  * `authored` (ils27) ignores trafficCount and seed for pose.
  */
 export function createWorldForSession(
@@ -345,12 +345,12 @@ export function createWorldForSession(
 ): World {
   let world: World;
   let arrivalScheduler: ArrivalScheduler | undefined;
-  if (scenario.spawnPolicy === "star-inbound" && trafficCount !== null) {
+  if (scenario.spawnPolicy === "random" && trafficCount !== null) {
     world = worldFromScenario(scenario);
     spawnArrivals(world, trafficCount, scenario, seed);
   } else {
     world = worldFromScenario(scenario);
-    if (scenario.spawnPolicy === "star-inbound") {
+    if (scenario.spawnPolicy === "random") {
       arrivalScheduler = createArrivalScheduler(
         scenario.catalog,
         {

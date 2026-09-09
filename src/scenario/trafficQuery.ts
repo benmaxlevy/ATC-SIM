@@ -3,7 +3,7 @@
  * Enable with `?traffic=30` (any positive integer). Does not change Command IR.
  *
  * `?scenario=` resolves through playable scenario inventory.
- * STAR inbound mix: `?seed=` (T04-14). Missing / invalid → 1. Integer 0 is legal.
+ * Random arrival mix: `?seed=`. Missing / invalid → 1. Integer 0 is legal.
  */
 
 /** Default `?seed=` when missing or invalid. Integer 0 is a legal override. */
@@ -63,7 +63,7 @@ export interface DepartureOptions {
 /**
  * Parse departure options from URL query string.
  * Supports:
- * - `?departures=auto|off|true|false|1|0`
+ * - `?departures=random|off`
  * - `?dep_rate=<per_hour>` (positive number)
  * - `?dep_count=<n>` (positive integer)
  * - `?seed=<n>` (non-negative integer)
@@ -76,8 +76,10 @@ export function parseDepartureOptions(search: string): DepartureOptions {
   if (rawDep !== undefined) {
     if (rawDep === "off" || rawDep === "false" || rawDep === "0" || rawDep === "no") {
       enabled = false;
-    } else {
+    } else if (rawDep === "random") {
       enabled = true;
+    } else {
+      throw new Error('Invalid departures policy; expected "random" or "off"');
     }
   }
 

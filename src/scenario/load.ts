@@ -396,10 +396,10 @@ function parseSpawnPolicy(value: unknown): SpawnPolicy {
   if (value == null) {
     return "authored";
   }
-  if (value === "authored" || value === "star-inbound") {
+  if (value === "authored" || value === "random") {
     return value;
   }
-  throw new Error('Scenario spawnPolicy must be "authored" or "star-inbound"');
+  throw new Error('Scenario spawnPolicy must be "authored" or "random"');
 }
 
 function parseDepartureSpawn(value: unknown, index: number): DepartureSpawn {
@@ -438,8 +438,8 @@ function parseDepartureConfig(value: unknown): DepartureConfig | undefined {
     throw new Error("Scenario departureConfig must be an object");
   }
   const policy = value.policy;
-  if (policy !== "none" && policy !== "auto" && policy !== "authored") {
-    throw new Error('Scenario departureConfig.policy must be "none", "auto", or "authored"');
+  if (policy !== "none" && policy !== "random" && policy !== "authored") {
+    throw new Error('Scenario departureConfig.policy must be "none", "random", or "authored"');
   }
   const config: DepartureConfig = { policy };
   if (value.ratePerHour !== undefined) {

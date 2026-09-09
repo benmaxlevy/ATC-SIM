@@ -32,12 +32,12 @@ function spawnAssignSources(): string {
 
 test("default KDEM JSON lists 6 arrivals (AC1)", () => {
   expect(kdemJson.arrivals).toHaveLength(6);
-  expect(kdemJson.spawnPolicy).toBe("star-inbound");
+  expect(kdemJson.spawnPolicy).toBe("random");
 });
 
 test("T04-14 AC1 — loadKdem seed 1 arms VIA on catalog STAR slots", () => {
   const scenario = loadKdem();
-  expect(scenario.spawnPolicy).toBe("star-inbound");
+  expect(scenario.spawnPolicy).toBe("random");
   const world = createWorldFromScenario(scenario, 1);
   expect(world.aircraft).toHaveLength(6);
 
@@ -251,6 +251,18 @@ test("loader rejects a fixture with callsign key on departure", () => {
 test("omitted spawnPolicy is authored so ils27 stays bit-stable", () => {
   expect(loadKdemIls27().spawnPolicy).toBe("authored");
   expect(assertScenario({ ...kdemJson, spawnPolicy: undefined }).spawnPolicy).toBe("authored");
+});
+
+test("loader rejects legacy arrival and departure policy names", () => {
+  expect(() => assertScenario({ ...kdemJson, spawnPolicy: "star-inbound" })).toThrow(
+    /must be "authored" or "random"/,
+  );
+  expect(() =>
+    assertScenario({
+      ...kdemJson,
+      departureConfig: { policy: "auto" },
+    }),
+  ).toThrow(/must be "none", "random", or "authored"/);
 });
 
 test("T02-12 AC1/AC5 — spawnArrivals(world, 30) spreads unique tracks on a downwind arc", () => {

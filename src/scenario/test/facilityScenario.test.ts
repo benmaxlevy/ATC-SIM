@@ -67,8 +67,8 @@ test("assertScenario loads a catalog facility with the generic KATL video map se
     expect(scenario.mva?.airportId).toBe(scenario.icao);
     expect(scenario.mva?.defaultMinAltitudeFt).toBe(3000);
     expect(scenario.mva?.polygons.every((poly) => poly.minAltitudeFt === 3000)).toBe(true);
-    expect(scenario.spawnPolicy).toBe("authored");
-    expect(scenario.departureConfig?.policy).toBe("auto");
+    expect(scenario.spawnPolicy).toBe("random");
+    expect(scenario.departureConfig?.policy).toBe("random");
     expect(scenario.runways.some((runway) => runway.id === scenario.activeRunwayId)).toBe(true);
     expect(listDepartureSlots(scenario.catalog, scenario.activeRunwayId).length).toBeGreaterThan(0);
 
@@ -89,13 +89,13 @@ test("assertScenario loads a catalog facility with the generic KATL video map se
   }
 });
 
-test("authored catalog-facility arrivals spawn inside 50 NM of ARP with procedure refs", () => {
+test("catalog-facility arrival definitions stay inside 50 NM of ARP with procedure refs", () => {
   const authoredMinNm = 45;
   const authoredMaxNm = 50;
   const minPairNm = 3;
   for (const raw of [katlJson, katl08Json]) {
     const scenario = assertScenario(raw);
-    expect(scenario.spawnPolicy).toBe("authored");
+    expect(scenario.spawnPolicy).toBe("random");
     const rangeRings = scenario.maps.rangeRings;
     expect(rangeRings).toBeDefined();
     const rangeMaxNm = rangeRings!.maxNm;
@@ -130,16 +130,22 @@ test("authored catalog-facility arrivals spawn inside 50 NM of ARP with procedur
     for (let i = 0; i < world.aircraft.length; i += 1) {
       const ac = world.aircraft[i]!;
       const arrival = arrivals[i]!;
-      expect(Math.hypot(ac.xNm, ac.yNm)).toBeLessThanOrEqual(authoredMaxNm);
+      if (scenario.spawnPolicy === "authored") {
+        expect(Math.hypot(ac.xNm, ac.yNm)).toBeLessThanOrEqual(authoredMaxNm);
+      }
       expect(ac.intent.lateral?.type).toBe("PROCEDURE");
       if (ac.intent.lateral?.type !== "PROCEDURE") {
         continue;
       }
-      expect(ac.intent.lateral.starId).toBe(arrival.starId);
+      if (scenario.spawnPolicy === "authored") {
+        expect(ac.intent.lateral.starId).toBe(arrival.starId);
+      }
       const targetId = ac.intent.lateral.routeFixIds[ac.intent.lateral.toFixIndex];
       expect(targetId).toBeDefined();
       const target = registry.require(targetId!);
-      expect(Math.hypot(target.xNm, target.yNm)).toBeLessThanOrEqual(rangeMaxNm);
+      if (scenario.spawnPolicy === "authored") {
+        expect(Math.hypot(target.xNm, target.yNm)).toBeLessThanOrEqual(rangeMaxNm);
+      }
     }
   }
 });

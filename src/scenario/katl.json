@@ -9,7 +9,7 @@
     "lonDeg": -84.4278638888889
   },
   "activeRunwayId": "26R",
-  "spawnPolicy": "authored",
+  "spawnPolicy": "random",
   "runways": [
     {
       "id": "08L",
@@ -221,7 +221,7 @@
     }
   ],
   "departureConfig": {
-    "policy": "auto",
+    "policy": "random",
     "ratePerHour": 12
   },
   "ssaWeatherAirports": ["KATL", "KFTY", "KPDK", "KMGE", "KRYY"],

@@ -51,7 +51,7 @@ npx vitest run src/scenario/departureSpawn.test.ts \
   ```
 - **Launch URL**:
   ```
-  http://localhost:5173/?departures=auto&dep_rate=15&seed=1
+  http://localhost:5173/?departures=random&dep_rate=15&seed=1
   ```
 - **Optional Local Speech API**:
   If testing spoken ATC voice inputs and TTS pilot readbacks, launch `speech-api` on `http://127.0.0.1:8090`. (Typed radio commands work fully out-of-the-box without `speech-api`).
@@ -61,7 +61,7 @@ npx vitest run src/scenario/departureSpawn.test.ts \
 ## 4. Step-by-Step Manual Test Script
 
 ### Step 1: Workstation Boot & Video Map Verification
-1. Navigate to `http://localhost:5173/?departures=auto&dep_rate=15&seed=1`.
+1. Navigate to `http://localhost:5173/?departures=random&dep_rate=15&seed=1`.
 2. Observe radar scope canvas (PPI):
    - KDEM runway 27 and localizer feather are visible.
    - STAR arrivals appear inbound towards NEMAX/NELBO with green unowned datablocks (`*` CSI stub).

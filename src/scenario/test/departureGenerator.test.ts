@@ -102,7 +102,7 @@ describe("departureGenerator", () => {
   });
 
   test("AC5 — Dynamic departure spawning during live session with active SID navigation", () => {
-    const options = parseDepartureOptions("?departures=auto&dep_rate=12&seed=1");
+    const options = parseDepartureOptions("?departures=random&dep_rate=12&seed=1");
     const world = createWorldForSession(scenario, null, 1, options);
 
     expect(world.scheduledDepartures).toBeDefined();
@@ -157,7 +157,7 @@ describe("departureGenerator", () => {
   });
 
   test("Full 600s session simulation with multiple departures spawning and flying SIDs", () => {
-    const options = parseDepartureOptions("?departures=auto&dep_rate=15&seed=7");
+    const options = parseDepartureOptions("?departures=random&dep_rate=15&seed=7");
     const world = createWorldForSession(scenario, null, 7, options);
 
     // Step world for 600 seconds in 1s increments
