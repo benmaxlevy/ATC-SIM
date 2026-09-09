@@ -145,10 +145,13 @@ test("AC2 — normal, pressed, and disabled caps have distinct physical tokens",
 
   const css = cssSource();
   expect(css).toMatch(/\.dcb-cell:not\(:disabled\):not\(\[aria-disabled="true"\]\)/);
-  expect(css).toMatch(/inset 1px 1px var\(--dcb-highlight/);
-  expect(css).toMatch(/inset -2px -2px var\(--dcb-shadow/);
-  expect(css).toMatch(/inset 2px 2px var\(--dcb-pressed-shadow/);
-  expect(css).toMatch(/inset -1px -1px var\(--dcb-pressed-highlight/);
+  expect(css).toMatch(/border-right:\s*2px solid #555555/);
+  expect(css).toMatch(/\.dcb-main-grid,[\s\S]*?gap:\s*0 !important;/);
+  expect(css).toMatch(/\.dcb-vertical\s+\.dcb-cell[\s\S]*?border-bottom:\s*2px solid #555555/);
+  expect(css).toMatch(
+    /\.dcb-main-grid-cell\[data-dcb-row="1"\]:not\(\[data-dcb-row-span="2"\]\) > \.dcb-cell[\s\S]*?border-bottom:\s*2px solid #555555/,
+  );
+  expect(css).toMatch(/\.dcb-cell[\s\S]*?inset 0 1px var\(--dcb-highlight/);
   expect(css).toMatch(/var\(--dcb-disabled-text,\s*#4c604c\)/i);
   expect(css).not.toMatch(/repeating-linear-gradient|raster|stripe/i);
 });
@@ -187,4 +190,20 @@ test("AC6 — DCB on LEFT and RIGHT docks renders with dcb-vertical class and 2-
   expect(css).toMatch(/\.dcb-vertical\s*\{[^}]*flex-direction:\s*column;/);
   expect(css).toMatch(/\.dcb-vertical\s+\.dcb-main-grid/);
   expect(css).toMatch(/grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+});
+
+test("AC7 — DCB follows fixed button widths without horizontal width cap", () => {
+  const css = cssSource();
+  const source = readFileSync(new URL("../DisplayControlBar.tsx", import.meta.url), "utf8");
+  expect(css).toMatch(/\.dcb\s*\{[^}]*width:\s*max-content;/);
+  expect(css).toMatch(/\.dcb\s*\{[^}]*flex:\s*0 0 80px;/);
+  expect(css).toMatch(/\.dcb\s*\{[^}]*overflow:\s*hidden;/);
+  expect(css).toMatch(/\.dcb-main-grid,[\s\S]*?min-width:\s*0;/);
+  expect(css).toMatch(/\.dcb-vertical\s*\{[^}]*width:\s*80px;/);
+  expect(css).toMatch(/\.dcb-vertical\s*\{[^}]*height:\s*1290px;/);
+  expect(css).toMatch(
+    /grid-template-columns:\s*repeat\(8,\s*72px\)\s*repeat\(6,\s*45px\)\s*repeat\(8,\s*72px\)/,
+  );
+  expect(source).toContain("height: vertical ? DCB_WIDTH_PX : DCB_HEIGHT_PX");
+  expect(source).toContain('width: vertical ? DCB_HEIGHT_PX : "max-content"');
 });

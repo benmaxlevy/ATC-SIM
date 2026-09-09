@@ -71,7 +71,8 @@ import type { DcbCellKind } from "./dcbLayouts";
 import { focusPpi } from "../strips/FlightStrips";
 
 /** Two physical rows with room for centered two-line caps, flush on the PPI. */
-export const DCB_HEIGHT_PX = 75;
+export const DCB_WIDTH_PX = 1290;
+export const DCB_HEIGHT_PX = 80;
 export const DCB_FONT_PX = 11;
 /** @deprecated T02-10 name; same as DCB_HEIGHT_PX. */
 export const DCB_LITE_HEIGHT_PX = DCB_HEIGHT_PX;

@@ -37,7 +37,9 @@ body,
   color: #00ff00;
   border: 1px solid #00ff00;
   border-radius: 0;
-  box-shadow: none;
+  box-shadow:
+    inset 0 1px var(--dcb-highlight, #7a8a7a),
+    inset 0 -2px var(--dcb-shadow, #000000);
   font-size: 12px;
   line-height: 1.4;
 }
@@ -114,17 +116,17 @@ body,
 }
 
 .dcb {
-  /* Keep the 75 px physical-cap height; flex basis otherwise compresses the inline height. */
-  flex: 0 0 75px;
+  /* Fixed cap geometry; horizontal width follows fixed button columns. */
+  flex: 0 0 80px;
   box-sizing: border-box;
-  width: 100%;
+  width: max-content;
   position: relative;
   display: flex;
   flex-direction: row;
   align-items: stretch;
   gap: 1px;
   padding: 0;
-  overflow: visible;
+  overflow: hidden;
   background: #000000;
   color: #00ff00;
   font-size: 11px;
@@ -135,14 +137,12 @@ body,
 .dcb-main-grid,
 .dcb-grid {
   display: grid;
-  grid-template-columns:
-    repeat(8, minmax(42px, 1fr)) repeat(6, minmax(21px, 0.5fr))
-    repeat(8, minmax(42px, 1fr));
+  grid-template-columns: repeat(8, 72px) repeat(6, 45px) repeat(8, 72px);
   grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 1px;
   width: 100%;
   height: 100%;
-  min-width: max-content;
+  min-width: 0;
   background: #000000;
 }
 
@@ -153,9 +153,7 @@ body,
   width: 100%;
   height: 100%;
   gap: 1px;
-  grid-template-columns:
-    repeat(8, minmax(42px, 1fr)) repeat(6, minmax(21px, 0.5fr))
-    repeat(8, minmax(42px, 1fr));
+  grid-template-columns: repeat(8, 72px) repeat(6, 45px) repeat(8, 72px);
   grid-template-rows: repeat(2, minmax(0, 1fr));
 }
 
@@ -273,9 +271,10 @@ body,
 }
 
 .dcb-vertical {
-  flex: 0 0 75px;
+  flex: 0 0 80px;
   flex-direction: column;
-  width: 75px;
+  width: 80px;
+  height: 1290px;
   height: 100%;
   align-self: stretch;
   overflow-y: auto;
@@ -480,6 +479,13 @@ body,
   min-height: 0;
   width: 100%;
   height: 100%;
+  border-right: 0;
+  border-bottom: 2px solid #555555;
+}
+
+.dcb-main-grid,
+.dcb-grid {
+  gap: 0 !important;
 }
 
 .dcb-cell {
@@ -499,9 +505,10 @@ body,
      and the 1px/2px bevel so the glyph block is optically centered. */
   padding: 3px 2px 1px;
   border: 0;
+  border-right: 2px solid #555555;
   border-radius: 0;
   box-shadow: none;
-  background: var(--dcb-cap, #061f0b);
+  background: var(--dcb-cap, #002c00);
   color: var(--dcb-text, #dce0dc);
   font: inherit;
   font-size: 11px;
@@ -521,6 +528,10 @@ body,
   line-height: 1;
 }
 
+.dcb-main-grid-cell[data-dcb-row="1"]:not([data-dcb-row-span="2"]) > .dcb-cell {
+  border-bottom: 2px solid #555555;
+}
+
 .dcb-cell-line {
   display: block;
   max-width: 100%;
@@ -538,18 +549,18 @@ body,
 @keyframes dcb-cap-spring {
   0%,
   100% {
-    background: var(--dcb-cap, #061f0b);
+    background: var(--dcb-cap, #002c00);
     box-shadow:
-      inset 1px 1px var(--dcb-highlight, #7a8a7a),
-      inset -2px -2px var(--dcb-shadow, #000000);
+      inset 0 1px var(--dcb-highlight, #7a8a7a),
+      inset 0 -2px var(--dcb-shadow, #000000);
   }
 
   35%,
   55% {
-    background: var(--dcb-pressed, #005500);
+    background: var(--dcb-pressed, #004e00);
     box-shadow:
-      inset 2px 2px var(--dcb-pressed-shadow, #000000),
-      inset -1px -1px var(--dcb-pressed-highlight, #7a8a7a);
+      inset 0 2px var(--dcb-pressed-shadow, #000000),
+      inset 0 -1px var(--dcb-pressed-highlight, #7a8a7a);
   }
 }
 
@@ -564,17 +575,17 @@ body,
 
 .dcb-cell[aria-pressed="true"],
 .dcb-cell:not(:disabled):not([aria-disabled="true"]):active {
-  background: var(--dcb-pressed, #005500);
+  background: var(--dcb-pressed, #004e00);
   color: var(--dcb-pressed-text, #e0e0e0);
   box-shadow:
-    inset 2px 2px var(--dcb-pressed-shadow, #000000),
-    inset -1px -1px var(--dcb-pressed-highlight, #7a8a7a);
+    inset 0 2px var(--dcb-pressed-shadow, #000000),
+    inset 0 -1px var(--dcb-pressed-highlight, #7a8a7a);
 }
 
 .dcb-cell:not(:disabled):not([aria-disabled="true"]):not([aria-pressed="true"]):not(:active) {
   box-shadow:
-    inset 1px 1px var(--dcb-highlight, #7a8a7a),
-    inset -2px -2px var(--dcb-shadow, #000000);
+    inset 0 1px var(--dcb-highlight, #7a8a7a),
+    inset 0 -2px var(--dcb-shadow, #000000);
 }
 
 html[data-dcb-cursor-trap],
@@ -596,11 +607,11 @@ html[data-dcb-cursor-trap] * {
 .dcb-cell:disabled,
 .dcb-cell[aria-disabled="true"] {
   cursor: default;
-  background: var(--dcb-cap, #061f0b);
+  background: var(--dcb-cap, #002c00);
   color: var(--dcb-disabled-text, #4c604c);
   box-shadow:
-    inset 1px 1px var(--dcb-highlight, #7a8a7a),
-    inset -2px -2px var(--dcb-shadow, #000000);
+    inset 0 1px var(--dcb-highlight, #7a8a7a),
+    inset 0 -2px var(--dcb-shadow, #000000);
 }
 
 .dcb-submenu {
@@ -612,8 +623,8 @@ html[data-dcb-cursor-trap] * {
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  gap: 1px;
-  height: 75px;
+  gap: 0;
+  height: 80px;
   background: #000000;
 }
 

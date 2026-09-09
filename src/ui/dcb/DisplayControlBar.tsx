@@ -73,6 +73,7 @@ import {
   DCB_FILTER_BAND_ID,
   DCB_HEIGHT_PX,
   DCB_ID,
+  DCB_WIDTH_PX,
   DCB_LDR_LENGTH_READOUT_ID,
   DCB_LDR_READOUT_ID,
   DCB_RANGE_READOUT_ID,
@@ -128,6 +129,7 @@ export {
   DCB_RR_READOUT_ID,
   DCB_SITE_READOUT_ID,
   DCB_TPA_MI_READOUT_ID,
+  DCB_WIDTH_PX,
   type DisplayControlBarProps,
 } from "./dcbChrome";
 export { BRITE_GRID_LAYOUT, CHAR_SIZE_DCB_LAYOUT } from "./DisplayControlBarMenus";
@@ -766,8 +768,8 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
       data-dcb-cursor-trap={trap.kind}
       data-dcb-dock={view.dcbDock}
       style={{
-        height: vertical ? "100%" : DCB_HEIGHT_PX,
-        width: vertical ? DCB_HEIGHT_PX : "100%",
+        height: vertical ? DCB_WIDTH_PX : DCB_HEIGHT_PX,
+        width: vertical ? DCB_HEIGHT_PX : "max-content",
         fontFamily: SCOPE_FONT_STACK,
         fontSize: dcbPx,
         backgroundColor: PALETTE.background,

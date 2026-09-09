@@ -95,13 +95,13 @@ export const PALETTE = {
    * DCB physical caps (T02-31/32). CRC-style physical-button analog:
    * trainer CSS bevels replace proprietary hardware/bitmap details.
    */
-  dcbCap: "#061F0B",
+  dcbCap: "#002C00",
   dcbCell: "#061F0B",
   dcbText: "#DCE0DC",
   dcbDisabledText: "#4C604C",
   dcbHighlight: "#7A8A7A",
   dcbShadow: "#000000",
-  dcbPressed: "#005500",
+  dcbPressed: "#004E00",
   dcbPressedText: "#E0E0E0",
   uiChrome: "#9AA0A6",
   uiChromeBg: "#111111",
