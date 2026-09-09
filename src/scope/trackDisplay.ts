@@ -313,6 +313,9 @@ export function filterActiveCaAlerts(
     if (options?.forTone) {
       if (isAlertAcknowledged(state, alert.callsignA, alert.callsignB)) return false;
       if (acA && acB && isAlertAcknowledged(state, acA.id, acB.id)) return false;
+      // Acknowledging one aircraft must not silence the pair's remaining
+      // aircraft. Pair tone ends only after both sides are acknowledged.
+      if (tdA?.caAcknowledged === true && tdB?.caAcknowledged === true) return false;
     }
 
     return true;

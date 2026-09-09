@@ -15,6 +15,7 @@ import {
   formatApproachShorthand,
   getAlertVisualStatus,
   handleTrackClick,
+  ensureTrackDisplay,
   isAlertAcknowledged,
   isCaPairInhibited,
   isIdentFlashing,
@@ -522,5 +523,21 @@ test("T02-113: filterActiveCaAlerts with forTone suppresses acknowledged alerts 
   // Still active for display
   expect(filterActiveCaAlerts(alerts, world, state)).toHaveLength(1);
   // Suppressed for audible tone
+  expect(filterActiveCaAlerts(alerts, world, state, { forTone: true })).toHaveLength(0);
+});
+
+test("CA tone remains active when only one aircraft side is acknowledged", () => {
+  const acA = makeTestAircraft({ id: "acA", callsign: "AAL1" });
+  const acB = makeTestAircraft({ id: "acB", callsign: "DAL2" });
+  const world = createWorld({ aircraft: [acA, acB] });
+  const state = createTrackDisplayState();
+  const alerts: CaAlert[] = [
+    { callsignA: "AAL1", callsignB: "DAL2", severity: "alert", distNm: 1, deltaAltFt: 200 },
+  ];
+
+  ensureTrackDisplay(state.tracks!, acA.id).caAcknowledged = true;
+  expect(filterActiveCaAlerts(alerts, world, state, { forTone: true })).toHaveLength(1);
+
+  ensureTrackDisplay(state.tracks!, acB.id).caAcknowledged = true;
   expect(filterActiveCaAlerts(alerts, world, state, { forTone: true })).toHaveLength(0);
 });

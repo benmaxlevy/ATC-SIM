@@ -624,12 +624,15 @@ describe("T02-114: Conflict Alert (CA) preview grammar & slew execution", () => 
     expect(view.preview.phase).toBe("idle");
     handlePpiLeftClick(view, world, 500, 400, 1000, 800);
 
-    // Conflict alert is acknowledged
-    expect(view.acknowledgedAlertPairs.has("AAL100|DAL200")).toBe(true);
+    // Only clicked aircraft side is acknowledged; other side remains audible.
+    expect(view.acknowledgedAlertPairs.has("AAL100|DAL200")).toBe(false);
     expect(view.tracks.get("ac1")?.caAcknowledged).toBe(true);
-    expect(view.tracks.get("ac2")?.caAcknowledged).toBe(true);
+    expect(view.tracks.get("ac2")?.caAcknowledged).toBeUndefined();
 
-    // Audio alert tone is silenced
+    // Other side keeps CA tone active.
+    expect(hasActiveUninhibitedConflict(world, view)).toBe(true);
+
+    ensureTrackDisplay(view.tracks, ac2.id).caAcknowledged = true;
     expect(hasActiveUninhibitedConflict(world, view)).toBe(false);
   });
 

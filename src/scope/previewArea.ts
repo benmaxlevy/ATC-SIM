@@ -24,7 +24,6 @@ import {
   ensureTrackDisplay,
   isCaPairInhibited,
   setCaPairInhibited,
-  acknowledgeAlert,
   toggleTrackCaInhibited,
 } from "./trackDisplay";
 import {
@@ -894,14 +893,8 @@ export function handleImpliedCaAcknowledge(
   let acknowledged = false;
   for (const alert of world.alerts.ca) {
     if (alert.callsignA === ac.callsign || alert.callsignB === ac.callsign) {
-      acknowledgeAlert(view, alert.callsignA, alert.callsignB);
-      const otherCallsign = alert.callsignA === ac.callsign ? alert.callsignB : alert.callsignA;
-      const otherAc = world.aircraft.find((a) => a.callsign === otherCallsign);
-      if (otherAc) {
-        acknowledgeAlert(view, ac.id, otherAc.id);
-        const tdOther = ensureTrackDisplay(view.tracks, otherAc.id);
-        tdOther.caAcknowledged = true;
-      }
+      // A slew acknowledges this target's side of the CA. Keep the pair
+      // audible for the other aircraft until its side is acknowledged too.
       const tdThis = ensureTrackDisplay(view.tracks, ac.id);
       tdThis.caAcknowledged = true;
       acknowledged = true;
