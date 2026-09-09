@@ -1,5 +1,39 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Forty-fifth swarm planned — 2026-09-09 (Scenario random route pools)
+
+| Key | Value |
+| --- | --- |
+| Goal | Make scenario-declared arrival/departure route pools and first-load traffic defaults authoritative for random traffic. |
+| Include | **T04-57** only. |
+| Skip | Live schedules/airline data, procedure imports, parser/UI redesign, OpenAP, compatibility aliases, facility branches. |
+| Stop | After T04-57 CI. |
+| Max workers | 1 |
+| Merge lock | Orchestrator squash-merges to `feature/aircraft-performance`. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Product law:** A random scenario samples only its declared STAR/SID pools;
+the catalog validates and executes those routes but never becomes an implicit
+all-procedure pool. On a clean boot, selected scenario defaults apply before
+global fallbacks. Stored user setup and valid URL overrides remain explicit
+higher-precedence intent. No airport-specific code paths.
+
+**Wave:** A — T04-57 after T04-56.
+
+**Ticket:** `ticket/T04-57-scenario-random-route-pools-and-boot-defaults` ←
+`phases/04-procedures/tickets/T04-57-scenario-random-route-pools-and-boot-defaults.md`.
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 4 scenario random route pools T04-57
+Merge target: feature/aircraft-performance
+Merged: T04-57
+Tests: <focused gates and npm run ci result>
+Notes: <first-load and route-pool contract; manual browser result>
+```
+
 ## Forty-fourth swarm planned — 2026-09-09
 
 One Luna-medium worker owns T04-56 only. Merge target: `feature/aircraft-performance`.
