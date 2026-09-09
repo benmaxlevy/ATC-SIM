@@ -147,6 +147,22 @@ test("AC2 — normal, pressed, and disabled caps have distinct physical tokens",
   expect(css).toMatch(/\.dcb-cell:not\(:disabled\):not\(\[aria-disabled="true"\]\)/);
   expect(css).toMatch(/border-right:\s*2px solid #555555/);
   expect(css).toMatch(/\.dcb-main-grid,[\s\S]*?gap:\s*1px !important;/);
+  for (const [layout, columns] of [
+    ["AUX", 17],
+    ["MAPS", 18],
+    ["BRITE", 10],
+    ["CHAR_SIZE", 6],
+    ["PREF", 20],
+    ["SSA_FILTER", 13],
+    ["GI_FILTER", 6],
+    ["TPA_ATPA", 7],
+  ] as const) {
+    expect(css).toMatch(
+      new RegExp(
+        `\\[data-dcb-layout="${layout}"\\][\\s\\S]*?grid-template-columns:\\s*repeat\\(${columns},\\s*72px\\)`,
+      ),
+    );
+  }
   expect(css).toMatch(/\.dcb-vertical\s+\.dcb-cell[\s\S]*?border-bottom:\s*2px solid #555555/);
   expect(css).toMatch(
     /\.dcb-main-grid-cell\[data-dcb-row="1"\]:not\(\[data-dcb-row-span="2"\]\) > \.dcb-cell[\s\S]*?border-bottom:\s*2px solid #555555/,
