@@ -1,5 +1,38 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Forty-sixth swarm planned — 2026-09-09 (Random arrival entry fixes)
+
+| Key | Value |
+| --- | --- |
+| Goal | Make random arrival entry fixes scenario-defined and terminal-visible. |
+| Include | **T04-58** only. |
+| Skip | Camera auto-range, arbitrary coordinate spawn, live traffic, departure changes, parser/UI, facility branches. |
+| Stop | After T04-58 CI. |
+| Max workers | 1 |
+| Merge lock | Orchestrator squash-merges to `feature/aircraft-performance`. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Product law:** A scenario owns the eligible STAR, transition, and entry fix.
+Random generation starts on the remaining published route at that fix; it does
+not infer a terminal spawn from a facility-wide catalog or fly outward to an
+earlier fix.
+
+**Wave:** A — T04-58 after T04-57.
+
+**Ticket:** `ticket/T04-58-random-arrival-entry-fixes` ←
+`phases/04-procedures/tickets/T04-58-random-arrival-entry-fixes.md`.
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 4 random arrival entry fixes T04-58
+Merge target: feature/aircraft-performance
+Merged: T04-58
+Tests: <focused gates and npm run ci result>
+Notes: <KATL initial-route visibility result>
+```
+
 ## Forty-fifth swarm planned — 2026-09-09 (Scenario random route pools)
 
 | Key | Value |
