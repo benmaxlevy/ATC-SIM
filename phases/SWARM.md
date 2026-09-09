@@ -87,6 +87,16 @@ later phase, and no work outside these four tickets. Workers return only
 `READY TO MERGE` or `BLOCKED`; captain returns only `PHASE EXIT GREEN` or
 `PHASE EXIT BLOCKED`.
 
+## Forty-second swarm resumed — 2026-09-09
+
+User explicitly authorized a fresh orchestration attempt after the prior
+worker-spawn capability report. The same approved tickets, merge target,
+single-worker limit, waves, `gpt-5.6-luna` medium model, and stop boundary
+remain unchanged. This resume supersedes only the capability block: the
+orchestrator will create one captain; the captain must create one isolated
+ticket worker at a time. If that worker capability is unavailable again, stop
+without substituting an unisolated implementation.
+
 # ATC-SIM swarm orchestrator — Forty-first swarm (Magnetic Heading Frames)
 
 ## Forty-first swarm planned — 2026-09-08 (Magnetic Heading Frames)
