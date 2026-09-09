@@ -1,5 +1,29 @@
 # Swarm status
 
+## FORTY-SECOND SWARM COMPLETE — Aircraft Performance Profiles (T04-51–54)
+
+T04-51 through T04-54 are squash-merged on `feature/aircraft-performance`.
+An offline Python generator uses pinned OpenAP 2.6.0 only at build/CI time;
+runtime imports committed JSON plus `DEFAULT_PROFILE` and never fetches data.
+`terminal-v1` contains 33 explicit ICAO rows: 22 currently resolve through
+OpenAP and 11 retain explicit `UNRESOLVED` fallback records, rather than a
+silent family substitution. The CLI accepts arbitrary repeated/comma-separated
+`--types` from reviewed mappings.
+
+Resolved profile/regime limits now drive deterministic movement, fly-by radius,
+and LOC lead calculation through one shared bank-derived turn constraint. GS
+vertical caps use the same profile contract. Alert prediction remains its
+existing conservative policy. CI installs pinned Python/OpenAP before the
+offline generator check; normal app runtime has no Python dependency.
+
+Final gates passed: profile unit tests (6), generated-artifact check under the
+pinned OpenAP environment, and `npm run ci` (**186 files / 1,648 tests passed /
+4 skipped**). No manual browser assertion was claimed. OpenAP is LGPL-3.0 and
+the generated-data provenance/license review remains a release responsibility.
+
+**Merged:** T04-51 (`7d27021`), T04-52 (`e35c7a8`), T04-53 (`69fb66e`), T04-54
+(`9812a89`), narrow OpenAP/acceptance repair (`eabd4a1`).
+
 ## FORTY-SECOND SWARM RESUME EXIT BLOCKED — Aircraft Performance Profiles (T04-51–54)
 
 After explicit user authorization, a fresh `gpt-5.6-luna` medium captain was
