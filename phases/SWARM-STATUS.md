@@ -1,5 +1,16 @@
 # Swarm status
 
+## FORTY-SECOND SWARM RESUME EXIT BLOCKED — Aircraft Performance Profiles (T04-51–54)
+
+After explicit user authorization, a fresh `gpt-5.6-luna` medium captain was
+started from resume commit `48b37a5`. It again had no collaboration
+`spawn_agent` capability, so no isolated T04-51 worker could be created.
+No ticket, worktree, application, generated-data, or test change occurred.
+Per the active swarm role law, the orchestrator did not substitute itself or
+directly launch an unowned worker. Resume requires a session where captains can
+spawn workers, or a user-approved swarm configuration that explicitly permits
+orchestrator-owned workers.
+
 ## FORTY-SECOND SWARM EXIT BLOCKED — Aircraft Performance Profiles (T04-51–54)
 
 No ticket worker started. The configured captain could not access collaboration
