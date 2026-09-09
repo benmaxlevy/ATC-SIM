@@ -97,6 +97,17 @@ orchestrator will create one captain; the captain must create one isolated
 ticket worker at a time. If that worker capability is unavailable again, stop
 without substituting an unisolated implementation.
 
+## Forty-second swarm orchestration override — 2026-09-09
+
+User clarified that the root orchestrator may directly spawn the configured
+isolated `gpt-5.6-luna` medium ticket workers because child captains lack the
+collaboration-spawn capability in this session. The orchestrator holds the
+merge lock for `feature/aircraft-performance`, creates at most one ticket
+worktree/worker at a time, squash-merges only completed worker branches, runs
+the required gates after each merge, and updates status. All ticket scope,
+waves, stop boundary, no-push rule, and worker leaf restrictions remain
+unchanged. This is a session capability routing override only.
+
 # ATC-SIM swarm orchestrator — Forty-first swarm (Magnetic Heading Frames)
 
 ## Forty-first swarm planned — 2026-09-08 (Magnetic Heading Frames)
