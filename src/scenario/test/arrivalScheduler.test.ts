@@ -73,6 +73,17 @@ describe("T04-25 configurable arrival traffic", () => {
     expect(a.schedule).toEqual(b.schedule);
   });
 
+  test("random arrivals use only the supplied scenario route pool", () => {
+    const scheduler = createArrivalScheduler(loadKdem().catalog, {
+      initialArrivalCount: 4,
+      arrivalsPerHour: 0,
+      seed: 7,
+      activeRunwayId: "27",
+      routePool: [{ starId: "DEM1", transitionId: "S" }],
+    });
+    expect(scheduler.schedule.every((item) => item.assignment.transitionId === "S")).toBe(true);
+  });
+
   test("unique full callsigns and unique numeric tails across schedule", () => {
     const scheduler = createArrivalScheduler(loadKdem().catalog, {
       initialArrivalCount: 6,

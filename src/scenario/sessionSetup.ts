@@ -101,9 +101,12 @@ export function defaultSessionSetup(
   scenarioId = listPlayableScenarios().find((entry) => entry.default)?.id ?? "",
   departureCapability = true,
 ): SessionSetup {
-  const scenario = scenarioId ? loadPlayableScenario(scenarioId) : undefined;
+  const selectedId = listPlayableScenarios().some((entry) => entry.id === scenarioId)
+    ? scenarioId
+    : (listPlayableScenarios().find((entry) => entry.default)?.id ?? scenarioId);
+  const scenario = selectedId ? loadPlayableScenario(selectedId) : undefined;
   return {
-    scenarioId,
+    scenarioId: selectedId,
     arrivalCount: scenario?.arrivals.length ?? DEFAULT_INITIAL_ARRIVAL_COUNT,
     arrivalsPerHour: DEFAULT_ARRIVALS_PER_HOUR,
     departuresPerHour:

@@ -44,6 +44,15 @@ describe("T05-13 / T05-14 session setup", () => {
     expect(resolved.setup.scenarioId).toBe("kdem-09");
   });
 
+  test("scenario defaults are selected before query resolution", () => {
+    const katl = defaultSessionSetup("katl");
+    expect(katl.scenarioId).toBe("katl");
+    expect(katl.arrivalCount).toBe(6);
+    expect(katl.departuresPerHour).toBe(12);
+    const resolved = resolveSessionSetup("?scenario=katl", katl, null);
+    expect(resolved.setup.departuresPerHour).toBe(12);
+  });
+
   test("invalid query values do not replace draft", () => {
     expect(resolveSessionSetup("?seed=-1&traffic=no", defaultSessionSetup(), setup)).toEqual({
       setup,

@@ -24,6 +24,7 @@ export interface ValidatedArrivalTrafficConfig {
   arrivalsPerHour: number;
   seed: number;
   activeRunwayId?: string;
+  routePool?: readonly StarSlot[];
 }
 
 export interface ScheduledArrival {
@@ -69,6 +70,7 @@ export function validateArrivalTrafficConfig(
     arrivalsPerHour: boundedRate(config.arrivalsPerHour ?? DEFAULT_ARRIVALS_PER_HOUR),
     seed: boundedInteger(config.seed ?? 1, 0, 0xffffffff, "seed"),
     activeRunwayId: config.activeRunwayId,
+    routePool: config.routePool,
   };
 }
 
@@ -124,7 +126,7 @@ export function createArrivalScheduler(
     count: initialCount + futureCount,
     seed: validated.seed,
     activeRunwayId: effectiveRunwayId,
-    routePool,
+    routePool: routePool ?? validated.routePool,
   });
   const rng = mulberry32((validated.seed >>> 0) ^ 0xa24baed);
   const used = usedCallsignSet(activeCallsigns);

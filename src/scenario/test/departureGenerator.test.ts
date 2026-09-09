@@ -23,6 +23,19 @@ describe("departureGenerator", () => {
     );
   });
 
+  test("random schedule uses only the supplied route pool", () => {
+    const schedule = generateDepartureSchedule({
+      catalog: scenario.catalog,
+      seed: 4,
+      count: 4,
+      runwayId: "27",
+      routePool: [{ sidId: "BAY1", transitionId: "NORMA" }],
+    });
+    expect(schedule.every((item) => item.sidId === "BAY1" && item.transitionId === "NORMA")).toBe(
+      true,
+    );
+  });
+
   test("AC2 — Given seed 1 and rate 10, generator produces identical schedules; seed 2 produces different mix", () => {
     const schedule1A = generateDepartureSchedule({
       catalog: scenario.catalog,

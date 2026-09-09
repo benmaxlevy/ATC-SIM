@@ -37,7 +37,8 @@ import { bootSession, createApp } from "./app/create-app";
 import "./index.css";
 
 const search = window.location.search;
-const sessionFallback = defaultSessionSetup();
+const requestedScenario = new URLSearchParams(search).get("scenario")?.trim().toLowerCase();
+const sessionFallback = defaultSessionSetup(requestedScenario || undefined);
 const sessionDraft = loadSessionSetup(window.localStorage, sessionFallback);
 const sessionResolution = resolveSessionSetup(search, sessionFallback, sessionDraft);
 const scenario = loadPlayableScenario(sessionResolution.setup.scenarioId);
