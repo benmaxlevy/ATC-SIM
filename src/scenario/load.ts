@@ -23,6 +23,8 @@ import type {
 } from "./types";
 import { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN, GI_TEXT_LINE_COUNT } from "./types";
 import { loadCatalog } from "./procedures/loadCatalog";
+import { sidRouteFixIds } from "./procedures/loadCatalog";
+import { starRouteFixIds } from "./starSpawn";
 import { loadMva } from "./mva";
 import { parseRadarSites } from "./radarSites";
 import {
@@ -445,12 +447,67 @@ function parseDepartureConfig(value: unknown): DepartureConfig | undefined {
   if (value.ratePerHour !== undefined) {
     config.ratePerHour = assertNumber(value.ratePerHour, "departureConfig.ratePerHour");
   }
+  if (value.routePool !== undefined) {
+    config.routePool = assertArray(value.routePool, "departureConfig.routePool").map((route, i) => {
+      if (!isRecord(route))
+        throw new Error(`Scenario departureConfig.routePool[${i}] must be an object`);
+      return {
+        sidId: assertString(route.sidId, `departureConfig.routePool[${i}].sidId`).toUpperCase(),
+        transitionId: assertString(
+          route.transitionId,
+          `departureConfig.routePool[${i}].transitionId`,
+        ).toUpperCase(),
+      };
+    });
+  }
   if (value.departures !== undefined) {
     config.departures = assertArray(value.departures, "departureConfig.departures").map(
       parseDepartureSpawn,
     );
   }
   return config;
+}
+
+function validateRandomRoutePools(
+  spawnPolicy: SpawnPolicy,
+  arrivals: ArrivalSpawn[],
+  departureConfig: DepartureConfig | undefined,
+  catalog: ReturnType<typeof loadCatalog>,
+  runwayId: string,
+): void {
+  if (spawnPolicy === "random") {
+    if (
+      arrivals.length === 0 ||
+      arrivals.some((arrival) => !arrival.starId || !arrival.transitionId)
+    ) {
+      throw new Error(
+        "Scenario random arrivals must declare starId and transitionId route-pool entries",
+      );
+    }
+    arrivals.forEach((arrival, index) => {
+      try {
+        starRouteFixIds(catalog, arrival.starId!, arrival.transitionId!, runwayId);
+      } catch (error) {
+        throw new Error(`Scenario arrivals[${index}] route is invalid: ${String(error)}`);
+      }
+    });
+  }
+  if (departureConfig?.policy === "random") {
+    if (!departureConfig.routePool || departureConfig.routePool.length === 0) {
+      throw new Error("Scenario random departureConfig must declare a non-empty routePool");
+    }
+    departureConfig.routePool.forEach((route, index) => {
+      try {
+        if (sidRouteFixIds(catalog, route.sidId, runwayId, route.transitionId).length === 0) {
+          throw new Error("route has no fixes");
+        }
+      } catch (error) {
+        throw new Error(
+          `Scenario departureConfig.routePool[${index}] is invalid: ${String(error)}`,
+        );
+      }
+    });
+  }
 }
 
 export interface AssertScenarioOptions {
@@ -482,6 +539,18 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
 
   const catalog = loadCatalog(icao.toLowerCase());
   const departureConfig = parseDepartureConfig(s.departureConfig);
+  const spawnPolicy = parseSpawnPolicy(s.spawnPolicy);
+  const arrivals = assertArrivals(s.arrivals, {
+    min: options?.arrivalCountMin ?? ARRIVAL_COUNT_MIN,
+    max: options?.arrivalCountMax ?? ARRIVAL_COUNT_MAX,
+  });
+  validateRandomRoutePools(
+    spawnPolicy,
+    arrivals,
+    departureConfig,
+    catalog,
+    assertString(s.activeRunwayId, "activeRunwayId"),
+  );
 
   return {
     id: assertString(s.id, "id"),
@@ -497,11 +566,8 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
     fixes: assertArray(s.fixes, "fixes").map(assertFix),
     maps: parseScenarioMaps(maps),
     spawns: assertArray(s.spawns, "spawns").map(assertSpawn),
-    arrivals: assertArrivals(s.arrivals, {
-      min: options?.arrivalCountMin ?? ARRIVAL_COUNT_MIN,
-      max: options?.arrivalCountMax ?? ARRIVAL_COUNT_MAX,
-    }),
-    spawnPolicy: parseSpawnPolicy(s.spawnPolicy),
+    arrivals,
+    spawnPolicy,
     giTextLines: parseGiTextLines(s.giTextLines),
     ...(parseSsaWeatherAirports(s.ssaWeatherAirports)
       ? { ssaWeatherAirports: parseSsaWeatherAirports(s.ssaWeatherAirports) }

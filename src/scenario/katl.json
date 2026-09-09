@@ -222,7 +222,11 @@
   ],
   "departureConfig": {
     "policy": "random",
-    "ratePerHour": 12
+    "ratePerHour": 12,
+    "routePool": [
+      { "sidId": "BANNG3", "transitionId": "LUCKK" },
+      { "sidId": "NASSA2", "transitionId": "CHOOK" }
+    ]
   },
   "ssaWeatherAirports": ["KATL", "KFTY", "KPDK", "KMGE", "KRYY"],
   "ssaWeatherGiSlot": 9,

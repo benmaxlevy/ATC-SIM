@@ -125,11 +125,19 @@ export interface DepartureSpawn {
   scheduledSimMs?: number;
 }
 
+/** A published SID/transition eligible for scenario random departures. */
+export interface DepartureRoute {
+  sidId: string;
+  transitionId: string;
+}
+
 export type DeparturePolicy = "none" | "random" | "authored";
 
 export interface DepartureConfig {
   policy: DeparturePolicy;
   ratePerHour?: number;
+  /** Explicit pool used only when policy is random. */
+  routePool?: DepartureRoute[];
   departures?: DepartureSpawn[];
 }
 

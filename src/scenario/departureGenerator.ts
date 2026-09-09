@@ -7,6 +7,7 @@
 
 import { mulberry32, type Aircraft, type ScheduledDeparture, type World } from "@core";
 import type { ProcedureCatalog } from "./procedures/types";
+import type { DepartureRoute } from "./types";
 import { spawnDeparture } from "./departureSpawn";
 import { TRAFFIC_AIRLINES, allocateTrafficPair, usedCallsignSet } from "./callsigns";
 
@@ -36,6 +37,7 @@ export interface GenerateDepartureScheduleOptions {
   runwayId?: string;
   activeCallsigns?: Iterable<string> | readonly string[];
   startSimMs?: number;
+  routePool?: readonly DepartureRoute[];
 }
 
 /**
@@ -102,7 +104,7 @@ export function generateDepartureSchedule(
     return [];
   }
 
-  const slots = listDepartureSlots(catalog, runwayId);
+  const slots = options.routePool ? [...options.routePool] : listDepartureSlots(catalog, runwayId);
   if (slots.length === 0) {
     throw new Error(`No SID departure slots found for runway ${runwayId}`);
   }

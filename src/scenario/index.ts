@@ -21,6 +21,7 @@ export type {
   Approach,
   ArrivalSpawn,
   DepartureConfig,
+  DepartureRoute,
   DeparturePolicy,
   DepartureSpawn,
   DigitalMapCoastline,

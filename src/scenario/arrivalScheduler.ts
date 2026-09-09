@@ -1,6 +1,7 @@
 import { createAircraft, offerInboundHandoff, mulberry32, type Aircraft, type World } from "@core";
 import { assignStarRoutes, type StarRouteAssignment } from "./starSpawn";
 import type { ProcedureCatalog } from "./procedures/types";
+import type { StarSlot } from "./starSpawn";
 import { allocateTrafficPair, usedCallsignSet } from "./callsigns";
 
 /** Trainer traffic-density bounds; arrivals/hour is not a radio frequency. */
@@ -15,6 +16,7 @@ export interface ArrivalTrafficConfig {
   arrivalsPerHour?: number;
   seed?: number;
   activeRunwayId?: string;
+  routePool?: readonly StarSlot[];
 }
 
 export interface ValidatedArrivalTrafficConfig {
@@ -108,6 +110,7 @@ export function createArrivalScheduler(
   activeCallsigns: Iterable<string> | readonly string[] = [],
   startSimMs = 0,
   activeRunwayId?: string,
+  routePool?: readonly StarSlot[],
 ): ArrivalScheduler {
   const validated = validateArrivalTrafficConfig(config);
   const effectiveRunwayId = activeRunwayId ?? validated.activeRunwayId;
@@ -121,6 +124,7 @@ export function createArrivalScheduler(
     count: initialCount + futureCount,
     seed: validated.seed,
     activeRunwayId: effectiveRunwayId,
+    routePool,
   });
   const rng = mulberry32((validated.seed >>> 0) ^ 0xa24baed);
   const used = usedCallsignSet(activeCallsigns);

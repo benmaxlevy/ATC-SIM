@@ -435,6 +435,8 @@ export interface AssignStarRoutesArgs {
   count: number;
   seed: number;
   activeRunwayId?: string;
+  /** Scenario-owned eligible pool; prevents implicit catalog-wide sampling. */
+  routePool?: readonly StarSlot[];
 }
 
 /**
@@ -449,7 +451,7 @@ export function assignStarRoutes(args: AssignStarRoutesArgs): StarRouteAssignmen
   if (!Number.isInteger(count) || count < 0) {
     throw new Error(`assignStarRoutes count must be a non-negative integer (got ${String(count)})`);
   }
-  const slots = listStarSlots(catalog, activeRunwayId);
+  const slots = args.routePool ? [...args.routePool] : listStarSlots(catalog, activeRunwayId);
   if (count > 0 && slots.length === 0) {
     throw new Error("assignStarRoutes needs at least one STAR transition slot");
   }

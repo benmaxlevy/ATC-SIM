@@ -124,11 +124,16 @@ function armStarVia(ac: Aircraft, scenario: Scenario, arrival: ArrivalSpawn): vo
  * Trainer delta: pose from catalog + seeded slot mix; JSON xy is a placeholder.
  */
 function spawnStarInbound(world: World, scenario: Scenario, seed: number): void {
+  const routePool = scenario.arrivals.map((arrival) => ({
+    starId: arrival.starId!,
+    transitionId: arrival.transitionId!,
+  }));
   const assignments = assignStarRoutes({
     catalog: scenario.catalog,
     count: scenario.arrivals.length,
     seed,
     activeRunwayId: scenario.activeRunwayId,
+    routePool,
   });
   const rng = mulberry32((seed >>> 0) ^ 0xa24baed);
   const used = usedCallsignSet(world.aircraft.map((a) => a.callsign));
@@ -283,6 +288,7 @@ function initDepartures(
       ratePerHour: departureOptions?.ratePerHour ?? scenario.departureConfig?.ratePerHour,
       count: departureOptions?.count,
       runwayId: scenario.activeRunwayId,
+      routePool: scenario.departureConfig?.routePool,
       activeCallsigns: usedCallsigns,
       startSimMs: world.simTimeMs,
     });
@@ -361,6 +367,10 @@ export function createWorldForSession(
         world.aircraft.map((arrival) => arrival.callsign),
         world.simTimeMs,
         scenario.activeRunwayId,
+        scenario.arrivals.map((arrival) => ({
+          starId: arrival.starId!,
+          transitionId: arrival.transitionId!,
+        })),
       );
       world.arrivalScheduler = arrivalScheduler;
       arrivalScheduler.drain(world);
@@ -382,6 +392,10 @@ export function createWorldForSession(
           world.aircraft.map((arrival) => arrival.callsign),
           world.simTimeMs,
           scenario.activeRunwayId,
+          scenario.arrivals.map((arrival) => ({
+            starId: arrival.starId!,
+            transitionId: arrival.transitionId!,
+          })),
         );
         world.arrivalScheduler = arrivalScheduler;
       }
