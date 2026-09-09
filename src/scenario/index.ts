@@ -152,6 +152,8 @@ export type { TrafficAirline } from "./callsigns";
 export {
   TRAFFIC_AIRLINES,
   allocateCallsign,
+  allocateTrafficPair,
+  allocateTrafficPairForType,
   callsignNumericTail,
   usedCallsignSet,
 } from "./callsigns";

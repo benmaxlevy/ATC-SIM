@@ -8,7 +8,7 @@
 import { mulberry32, type Aircraft, type ScheduledDeparture, type World } from "@core";
 import type { ProcedureCatalog } from "./procedures/types";
 import { spawnDeparture } from "./departureSpawn";
-import { TRAFFIC_AIRLINES, allocateCallsign, usedCallsignSet } from "./callsigns";
+import { TRAFFIC_AIRLINES, allocateTrafficPair, usedCallsignSet } from "./callsigns";
 
 export const DEFAULT_DEPARTURE_RATE_PER_HOUR = 10;
 export const DEFAULT_DEPARTURE_COUNT = 10;
@@ -17,7 +17,9 @@ export const DEPARTURE_STREAM_XOR = 0x51d5;
 
 export const DEPARTURE_AIRLINES = TRAFFIC_AIRLINES;
 
-export const DEPARTURE_AIRCRAFT_TYPES = ["B738", "A320", "B737", "A321", "E75L"] as const;
+export const DEPARTURE_AIRCRAFT_TYPES = [
+  ...new Set(TRAFFIC_AIRLINES.flatMap((a) => a.aircraftTypes)),
+];
 
 export const DEPARTURE_ASSIGNED_ALTITUDES_FT = [10000, 12000, 14000, 16000] as const;
 
@@ -123,11 +125,10 @@ export function generateDepartureSchedule(
     }
 
     // 2. Pick non-colliding callsign
-    const callsign = allocateCallsign(rng, usedCallsigns);
+    const traffic = allocateTrafficPair(rng, usedCallsigns);
 
     // 3. Pick aircraft type and assigned top altitude
-    const aircraftType =
-      DEPARTURE_AIRCRAFT_TYPES[Math.floor(rng() * DEPARTURE_AIRCRAFT_TYPES.length)]!;
+    const { callsign, aircraftType } = traffic;
     const assignedAltitudeFt =
       DEPARTURE_ASSIGNED_ALTITUDES_FT[Math.floor(rng() * DEPARTURE_ASSIGNED_ALTITUDES_FT.length)]!;
 

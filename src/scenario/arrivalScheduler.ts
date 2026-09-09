@@ -1,7 +1,7 @@
 import { createAircraft, offerInboundHandoff, mulberry32, type Aircraft, type World } from "@core";
 import { assignStarRoutes, type StarRouteAssignment } from "./starSpawn";
 import type { ProcedureCatalog } from "./procedures/types";
-import { allocateCallsign, usedCallsignSet } from "./callsigns";
+import { allocateTrafficPair, usedCallsignSet } from "./callsigns";
 
 /** Trainer traffic-density bounds; arrivals/hour is not a radio frequency. */
 export const ARRIVALS_PER_HOUR_MIN = 0;
@@ -26,6 +26,7 @@ export interface ValidatedArrivalTrafficConfig {
 
 export interface ScheduledArrival {
   callsign: string;
+  aircraftType: string;
   assignment: StarRouteAssignment;
   scheduledSimMs: number;
   spawned: boolean;
@@ -78,7 +79,7 @@ function spawnScheduledArrival(world: World, arrival: ScheduledArrival): Aircraf
     headingDeg: pose.headingDeg,
     altitudeFt: pose.altitudeFt,
     speedKt: pose.speedKt,
-    aircraftType: "B738",
+    aircraftType: arrival.aircraftType,
     destination: world.catalog?.airportId,
     flightPlan: {
       destination: world.catalog?.airportId,
@@ -124,16 +125,18 @@ export function createArrivalScheduler(
   const rng = mulberry32((validated.seed >>> 0) ^ 0xa24baed);
   const used = usedCallsignSet(activeCallsigns);
   const totalCount = initialCount + futureCount;
-  const callsigns: string[] = [];
+  const traffic: Array<{ callsign: string; aircraftType: string }> = [];
   for (let i = 0; i < totalCount; i += 1) {
-    callsigns.push(allocateCallsign(rng, used));
+    const pair = allocateTrafficPair(rng, used);
+    traffic.push({ callsign: pair.callsign, aircraftType: pair.aircraftType });
   }
   const intervalMs =
     validated.arrivalsPerHour === 0
       ? Number.POSITIVE_INFINITY
       : 3_600_000 / validated.arrivalsPerHour;
   const schedule = assignments.map((assignment, index) => ({
-    callsign: callsigns[index]!,
+    callsign: traffic[index]!.callsign,
+    aircraftType: traffic[index]!.aircraftType,
     assignment,
     scheduledSimMs:
       index < initialCount ? startSimMs : startSimMs + (index - initialCount + 1) * intervalMs,

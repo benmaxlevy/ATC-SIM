@@ -26,7 +26,7 @@ import {
   type ArrivalTrafficConfig,
 } from "./arrivalScheduler";
 import { resolveRunwayHeading, resolveRunwayThreshold } from "./departureSpawn";
-import { allocateCallsign, usedCallsignSet } from "./callsigns";
+import { allocateTrafficPair, allocateTrafficPairForType, usedCallsignSet } from "./callsigns";
 
 export { starRouteFixIds };
 
@@ -133,17 +133,16 @@ function spawnStarInbound(world: World, scenario: Scenario, seed: number): void 
   const rng = mulberry32((seed >>> 0) ^ 0xa24baed);
   const used = usedCallsignSet(world.aircraft.map((a) => a.callsign));
   for (let i = 0; i < scenario.arrivals.length; i += 1) {
-    const arrival = scenario.arrivals[i]!;
     const assigned = assignments[i]!;
-    const callsign = allocateCallsign(rng, used);
+    const traffic = allocateTrafficPair(rng, used);
     const ac = createAircraft({
-      callsign,
+      callsign: traffic.callsign,
       xNm: assigned.pose.xNm,
       yNm: assigned.pose.yNm,
       headingDeg: assigned.pose.headingDeg,
       altitudeFt: assigned.pose.altitudeFt,
       speedKt: assigned.pose.speedKt,
-      aircraftType: arrival.aircraftType,
+      aircraftType: traffic.aircraftType,
       destination: scenario.icao,
       flightPlan: {
         destination: scenario.icao,
@@ -174,8 +173,10 @@ function spawnDownwindArc(
   const rng = mulberry32((seed >>> 0) ^ 0xa24baed);
   const used = usedCallsignSet(world.aircraft.map((a) => a.callsign));
   for (let i = 0; i < n; i += 1) {
-    const callsign = allocateCallsign(rng, used);
-    spawnArrival(world, downwindArcArrival(i, n, scenario), callsign, scenario);
+    const traffic = allocateTrafficPair(rng, used);
+    const arrival = downwindArcArrival(i, n, scenario);
+    arrival.aircraftType = traffic.aircraftType;
+    spawnArrival(world, arrival, traffic.callsign, scenario);
   }
 }
 
@@ -207,8 +208,8 @@ export function spawnArrivals(
   const rng = mulberry32((seed >>> 0) ^ 0xa24baed);
   const used = usedCallsignSet(world.aircraft.map((a) => a.callsign));
   for (const arrival of source.arrivals) {
-    const callsign = allocateCallsign(rng, used);
-    spawnArrival(world, arrival, callsign, source);
+    const traffic = allocateTrafficPairForType(rng, used, arrival.aircraftType ?? "B738");
+    spawnArrival(world, arrival, traffic.callsign, source);
   }
 }
 
@@ -263,7 +264,10 @@ function initDepartures(
   ) {
     const depRng = mulberry32((depSeed >>> 0) ^ DEPARTURE_STREAM_XOR);
     schedule = scenario.departureConfig.departures.map((d) => ({
-      callsign: allocateCallsign(depRng, usedCallsigns),
+      callsign: (() => {
+        const type = d.aircraftType ?? "B738";
+        return allocateTrafficPairForType(depRng, usedCallsigns, type).callsign;
+      })(),
       sidId: d.sidId,
       transitionId: d.transitionId,
       runwayId: scenario.activeRunwayId,
