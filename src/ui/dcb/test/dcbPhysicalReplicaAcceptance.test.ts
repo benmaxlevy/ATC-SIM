@@ -160,6 +160,8 @@ test("AC2 — normal, pressed, and disabled caps have distinct physical tokens",
   const css = cssSource();
   expect(css).toMatch(/\.dcb-cell:not\(:disabled\):not\(\[aria-disabled="true"\]\)/);
   expect(css).toMatch(/border-right:\s*2px solid #555555/);
+  expect(css).toMatch(/\.dcb-cell[\s\S]*?border-bottom:\s*2px solid #555555/);
+  expect(css).toMatch(/\.dcb-cell:not\(:disabled\)[\s\S]*?inset 0 -2px var\(--dcb-cap/);
   expect(css).toMatch(/\.dcb-main-grid,[\s\S]*?gap:\s*1px !important;/);
   for (const [layout, columns] of [
     ["AUX", 17],
