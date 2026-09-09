@@ -1,5 +1,18 @@
 # Swarm status
 
+## FORTY-FIFTH SWARM COMPLETE — Scenario random route pools (T04-57)
+
+T04-57 is merged on `feature/aircraft-performance` as `07fe011` and
+`6ca6ba4`. Random scenario traffic now samples only scenario-declared STAR and
+SID route pools. KDEM, KDEM east flow, and both KATL configurations provide
+valid active-runway pools. A clean boot, including `?scenario=katl`, derives
+initial traffic defaults from the selected scenario; stored setup still wins.
+
+Final gates: focused route/default gate **28 passed**; `npm run ci` **187
+files, 1,654 passed, 4 skipped**. Manual leftover: refresh
+`http://localhost:5173/` and visually confirm initial KDEM arrivals and
+scheduled KDEM departures.
+
 ## FORTY-SECOND SWARM COMPLETE — Aircraft Performance Profiles (T04-51–54)
 
 T04-51 through T04-54 are squash-merged on `feature/aircraft-performance`.
