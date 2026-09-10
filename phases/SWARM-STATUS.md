@@ -1,5 +1,17 @@
 # Swarm status
 
+## FORTY-SIXTH SWARM COMPLETE — Random arrival entry fixes (T04-58)
+
+T04-58 is merged on `feature/aircraft-performance` as `ff7ddea`. Random
+arrival rows now declare and validate an `entryFixId`; generated traffic starts
+immediately before that fix and flies only the remaining STAR legs. KATL west
+and east initial entries are terminal-visible (about 50–58 NM), rather than
+the former 70–120 NM outer gates.
+
+Final gates: focused STAR/world gate **25 passed**; worker `npm run ci`:
+**1,655 passed, 4 skipped**. Manual leftover: refresh KATL at 60 NM and
+confirm six inbound tracks are visible without a fly-back turn.
+
 ## FORTY-FIFTH SWARM COMPLETE — Scenario random route pools (T04-57)
 
 T04-57 is merged on `feature/aircraft-performance` as `07fe011` and
