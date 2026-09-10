@@ -15,10 +15,10 @@ unavailable category produces `NOWGT` and a `10 NM` minimum.
 
 ## Research
 
-- [FAA JO 7110.65 §5-5-4](https://www.faa.gov/air_traffic/publications/atpubs/atc_html/chap5_section_5.html): terminal wake application, TBL 5-5-1, `NOWGT`, and reduced-final conditions.
+- [FAA JO 7110.65 §5-5-4](https://www.faa.gov/air_traffic/publications/atpubs/atc_html/chap5_section_5.html): terminal wake application, TBL 5-5-4 (On Approach), `NOWGT`, and reduced-final conditions.
 - [FAA JO 7110.65BB current PDF](https://www.faa.gov/documentLibrary/media/Order/7110.65BB_Bsc_w_Chg_1_and_2_dtd_1-22-26_Final.pdf): current order text and category terminology.
 
-The table orientation is **leader row × follower column**. Blank table cells
+The on-approach table orientation is **leader row × follower column**. Blank table cells
 are not zero separation. Under this trainer policy, a blank or unavailable
 required wake relationship produces `NOWGT` and `10 NM`.
 

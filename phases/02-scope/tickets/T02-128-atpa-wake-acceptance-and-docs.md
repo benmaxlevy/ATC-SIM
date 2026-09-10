@@ -38,13 +38,13 @@ documentation/tests with the new FAA-backed behavior.
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Synthetic heavy/light and category-pair fixtures prove matrix lookup and leader/follower orientation.
-- [ ] **AC2 —** Missing/blank wake data visibly remains available for later `NOWGT` formatting and uses `10 NM` in world state.
-- [ ] **AC3 —** Wake minimum dominates reduced `2.5 NM` radar separation.
-- [ ] **AC4 —** KDEM and KATL authored volume rows remain generic and no facility branch is added.
-- [ ] **AC5 —** Existing ATPA cone/readout integration consumes `requiredNm` without recalculating separation in scope.
-- [ ] **AC6 —** Documentation no longer claims that JO 7110.65 lacks a wake matrix.
-- [ ] **AC7 —** Focused ATPA tests and `npm run ci` pass.
+- [x] **AC1 —** Synthetic heavy/light and category-pair fixtures prove matrix lookup and leader/follower orientation.
+- [x] **AC2 —** Missing/blank wake data visibly remains available for later `NOWGT` formatting and uses `10 NM` in world state.
+- [x] **AC3 —** Wake minimum dominates reduced `2.5 NM` radar separation.
+- [x] **AC4 —** KDEM and KATL authored volume rows remain generic and no facility branch is added.
+- [x] **AC5 —** Existing ATPA cone/readout integration consumes `requiredNm` without recalculating separation in scope.
+- [x] **AC6 —** Documentation no longer claims that JO 7110.65 lacks a wake matrix.
+- [x] **AC7 —** Focused ATPA tests and `npm run ci` pass.
 
 ## Test plan
 

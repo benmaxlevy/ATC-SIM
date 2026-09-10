@@ -19,16 +19,16 @@ Nothing is drawn here. This ticket produces the state that T02-45 and T02-46 ren
 
 T02-43 supplies volumes and `isInsideAtpaVolume` / `alongCourseDistanceNm`.
 
-## Separation minima — frozen, and deliberately incomplete
+## Separation minima — superseded by T02-125–128
 
-Required in-trail minimum is **basic radar separation only**:
+The original T02-44 implementation used **basic radar separation only**:
 
 - `volume.basicSeparationNm` (3 NM) by default;
 - `volume.reducedSeparationNm` (2.5 NM) when **both** tracks of the pair are inside `volume.reducedWithinNm` (10 NM) of the threshold along the final.
 
-Cone length therefore never varies by aircraft type. R07 says the length is "the distance required by wake category or basic radar separation", but the reference publishes **no separation matrix** — its CWT A–I table gives only the datablock category letter and a weight range. `Aircraft.wakeCategory` exists and is already rendered as the FDB category letter; this engine must **not** read it. Do not substitute recalled 7110.65 wake minima: a trainer must not present unsourced separation numbers as fact.
+T02-125–128 now add an explicit `cwtWakeCategory` contract and reviewed FAA JO 7110.65 §5-5-4 wake adaptation. The evaluator reads only that operational field, uses leader-row/follower-column data, and returns `NOWGT`/10 NM for an unavailable category or blank relationship. The existing `wakeCategory` remains a display indicator and is not read. Basic/reduced radar minima remain the floor when wake adaptation is enabled.
 
-This ticket ships the backlog entry recording that gap (see Scope).
+This ticket shipped the original basic-only engine; the remaining trainer deltas are recorded in `phases/LATER-IMPLEMENTATION-BACKLOG.md`.
 
 ## Research
 
@@ -62,7 +62,7 @@ Read **R07** `docs.virtualnas.net/crc/stars` — "ATPA" overview, Monitor Cone, 
 ## Out of scope
 
 - Cones, colors, datablock text, DCB wiring (T02-45 to T02-47).
-- Reading `wakeCategory` on any live path.
+- Reading display-only `wakeCategory` on any ATPA live path.
 - Changing conflict alert (T04-09) in any way.
 
 ## Implementation criteria
@@ -74,16 +74,16 @@ A track that leaves the volume must drop out of the pair set on the next tick wi
 ## Acceptance criteria
 
 - [ ] **AC1 —** Two tracks on the RW27 final 4 NM apart, both outside 10 NM from the threshold, produce one pair: trailing follows leading, `requiredNm` 3, status `monitor`.
-- [ ] **AC2 —** The same pair inside 10 NM of the threshold produces `requiredNm` 2.5, sourced from the volume JSON and not from a literal in code.
+- [ ] **AC2 —** The same pair inside 10 NM of the threshold produces the adapted radar minimum unless an applicable wake minimum is larger; values remain sourced from the volume JSON and wake adaptation data.
 - [ ] **AC3 —** Status transitions: closing at a rate that reaches the minimum in 40 s gives `warning`; in 20 s gives `alert`; already inside the minimum gives `alert`; an opening pair stays `monitor`.
 - [ ] **AC4 —** Sequencing with three tracks yields two pairs, each track paired to the one immediately ahead; the frontmost track produces no pair. Tracks in different volumes never pair with each other.
-- [ ] **AC5 —** `requiredNm` is identical for a heavy leader and a light leader at the same geometry, and a grep proves `wakeCategory` appears nowhere in `src/core/alerts/atpa.ts`.
+- [ ] **AC5 —** Without wake adaptation, `requiredNm` is identical for differing display categories at the same geometry; with wake adaptation, explicit CWT categories may change it, and a grep proves `.wakeCategory` appears nowhere in `src/core/alerts/atpa.ts`.
 - [ ] **AC6 —** A track leaving the volume clears its pair on the next `stepWorld`, and existing CA / MSAW tests stay green.
 - [ ] **AC7 — Research:** module comment cites R07 for 45 s / 24 s and states the minima limitation; the backlog subsection listed above exists in the same commit.
 
 ## Test plan
 
-- Unit: `src/core/alerts/atpa.test.ts` — eligibility, ordering, pairing, required minimum, four status cases, wake-independence.
+- Unit: `src/core/alerts/atpa.test.ts` — eligibility, ordering, pairing, radar minima, status cases, and explicit CWT wake behavior.
 - Unit: `src/core/world.atpa.test.ts` — `stepWorld` attach and clear, session log.
 - Regression: `src/core/alerts/conflictAlert.test.ts`, `src/core/world.ca.test.ts`.
 - `npm test`.

@@ -93,33 +93,33 @@ Later work must keep:
 - no aural ATPA tone (CA remains the only conflict audio);
 - TPA J-rings and the `TPA_MI` spinner frozen as T02-28 (2 / 3 / 5 / 10 NM).
 
-Wake-category minima, adapted 2.5 NM extras, per-position adaptation, TDW
-white monitor, and authored-vs-NAS volumes stay in **ATPA separation
-criteria not yet modeled** below.
+Wake-category minima are now shipped by T02-125–128. Adapted 2.5 NM extras,
+per-position adaptation, TDW white monitor, and authored-vs-NAS volumes stay in
+**ATPA separation criteria not yet modeled** below.
 
 ### ATPA separation criteria not yet modeled
 
 T02-44 ships in-trail pairing and predicted monitor/warning/alert status
-(`world.alerts.atpa`) using **basic radar separation only**. Visible now:
+(`world.alerts.atpa`). Visible now:
 `evaluateAtpa` reads `basicSeparationNm` / `reducedSeparationNm` /
 `reducedWithinNm` from each catalog volume, pairs eligible tracks inside an
 enabled volume, and classifies status from current distance plus linear
-closure. Warning is predicted violation within **45 s** (R07). Alert is
+closure. Wake-enabled volumes optionally apply explicit FAA CWT adaptation.
+Warning is predicted violation within **45 s** (R07). Alert is
 **only** `distanceNm < requiredNm` (actual in-trail / lateral radar loss).
 R07 also paints Alert for a predicted violation within **24 s**; that band
 stays Warning here so a still-legal pair does not go ATPA-red. Cone length
-is therefore identical for a heavy leader and a light leader.
+when wake adaptation is enabled, cone length follows the explicit
+leader-row/follower-column matrix; otherwise it follows the authored radar
+minimum.
 
-Deliberately missing, each of which later work must keep the JSON-minima
-path and must **not** invent numbers from model recall:
+Shipped wake contract: `cwtWakeCategory` is separate from the display-only
+`wakeCategory`; reviewed JO 7110.65 §5-5-4 adaptation data is loaded from JSON,
+and missing categories or blank relationships produce `NOWGT` with a 10 NM
+minimum. Later work must keep the JSON-minima path and must **not** infer
+categories from aircraft type or display text.
 
-- **Wake-category in-trail minima.** R07 says cone length is "the distance
-  required by wake category or basic radar separation" but publishes no
-  matrix — its CWT A–I table is only the datablock category letter with a
-  weight range. `Aircraft.wakeCategory` is already the FDB letter; do not
-  let `requiredSeparationNm` read it until a cited table (JO 7110.65 or
-  facility adaptation) is in-repo. T02-50 greps `src/core/alerts/atpa.ts`
-  and live ATPA paths for `wakeCategory`; keep that gate.
+Deliberately missing, each of which later work must keep the JSON-minima path:
 - **Adapted 2.5 NM eligibility** beyond "both tracks inside
   `reducedWithinNm` of the threshold along the final." Real STARS reduces
   only under extra conditions (leader type, runway occupancy, facility
@@ -151,11 +151,12 @@ values below are formatter-capable but have no complete live backing logic.
 
 Deliberately missing:
 
-- **Wake-aware ATPA output.** `Aircraft.wakeCategory` exists and is displayed
-  as a category indicator, but ATPA still uses basic radar minima. Add a
-  cited/adapted leader-by-follower wake table, derive required spacing, emit
-  `NOWGT` when a required category is unavailable, and recompute on sequence,
-  approach, or category changes. Do not invent a wake matrix from memory.
+- **Wake-aware ATPA datablock output.** The evaluator now exposes explicit
+  wake/`NOWGT` source state and required spacing, but the live Field 6 adapter
+  does not yet render `NOWGT` or recompute a complete datablock source model on
+  sequence, approach, or category changes. Preserve the explicit
+  `cwtWakeCategory`/display `wakeCategory` boundary and the JO 7110.65-backed
+  matrix; do not parse display text or infer categories.
 - **Departure exit gate/fix.** Field 3 accepts an explicit `exitGate` or
   `exitFix`, but no runtime adapter resolves the value from the departure,
   SID/route, facility adaptation, and excluded-fix rules. Keep procedure and

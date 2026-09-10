@@ -611,7 +611,7 @@ Completed datablock & scratchpad fidelity addendum matching [CRC STARS Specifica
 
 ### TPA / ATPA Addendum (T02-43–50)
 
-Completed TPA / ATPA addendum matching [CRC STARS](https://docs.virtualnas.net/crc/stars/) ATPA / TPA ATPA submenu / Table 36, with trainer deltas stated in every ticket (single TCP, no TDW white monitor, no aural ATPA tone, authored volumes, basic radar minima only):
+Completed TPA / ATPA addendum matching [CRC STARS](https://docs.virtualnas.net/crc/stars/) ATPA / TPA ATPA submenu / Table 36. T02-125–128 add explicit FAA JO 7110.65 §5-5-4 CWT wake adaptation with leader-row/follower-column lookup and `NOWGT`/10 NM for unavailable or blank relationships. Trainer deltas remain: single TCP, no TDW white monitor, no aural ATPA tone, and authored volumes.
 
 | ID | Title | Pri | Size | Depends on | Status |
 | --- | --- | --- | --- | --- | --- |
@@ -627,7 +627,7 @@ Completed TPA / ATPA addendum matching [CRC STARS](https://docs.virtualnas.net/c
 ### Phase 2 TPA / ATPA checklist (T02-43–50)
 
 - [x] ATPA approach volumes are catalog data walked by `approachId` (KDEM `ATPA27` / `ATPA09`); a third runway adds JSON, never an `if` (T02-43).
-- [x] In-trail pairing and predicted monitor / warning (45 s) / alert (24 s) status on `world.alerts.atpa` via `stepWorld`; minima from volume JSON (`basicSeparationNm` 3 NM, `reducedSeparationNm` 2.5 NM inside `reducedWithinNm` 10 NM); cone length identical for a heavy or light leader (T02-44).
+- [x] In-trail pairing and predicted monitor / warning (45 s) / alert (24 s) status on `world.alerts.atpa` via `stepWorld`; radar minima from volume JSON (`basicSeparationNm` 3 NM, `reducedSeparationNm` 2.5 NM inside `reducedWithinNm` 10 NM) plus optional explicit CWT wake minima (T02-44, T02-125–127).
 - [x] Trailing track paints one unfilled wedge (vertex on the trailer, axis toward the leader, length = `requiredNm`); monitor TPA blue, warning `atpaWarning` yellow, alert `atpaAlert` red — never CA red `PALETTE.alert` (T02-45).
 - [x] Trailing FDB line 3 shows two-decimal in-trail distance on warning / alert; cone mileage digits sit alongside (`"3"` / `"2.5"`); monitor omits the datablock field (T02-46).
 - [x] Four live AUX TPA/ATPA cells plus master (`atpa-mileage`, `atpa-intrail`, `atpa-alert`, `atpa-monitor`); `effective = atpa.on && atpa[feature]`; Alert Cones gates warning and alert; PREF schema `v: 2` round-trips all five `AtpaState` fields; `v: 1` migrates (T02-47).
@@ -635,6 +635,14 @@ Completed TPA / ATPA addendum matching [CRC STARS](https://docs.virtualnas.net/c
 - [x] STARS slew-chord parser for `*J` / `*P` / `*A` / `*B` / `*D` (and doubles); chords are scope-only and never emit Command IR; `DAL123 H270` still turns (T02-49).
 - [x] Conflict Alert uses kinematic CPA and the lower pair airspace type (Type 1–4); only unacknowledged Line 0 CA/MSAW indicators flash red (`CA`, `LA`, or `LA/CA`) at 800 ms on / 800 ms off, then stay solid after an empty-Preview slew-click acknowledgement. A concurrent `LA/CA` blinks as one unit until both conditions are acknowledged. Field 2 inhibits beside the ACID are upright `Δ` for CA/MCI and pair-inhibited CA members, `*` for MSAW, and `+` for both; pair suppression is isolated, so both members of an inhibited pair show `Δ`, while a separate shared active partner remains visible/listed/audible without gaining `Δ`. LA/CA/MCI list rows stay green and never flash, with CA rows `CA <ACID>*<ACID>`. `CA` plus one slew toggles an existing pair; `CA P` toggles a selected pair; `CA C`, `CA C E`, and `CA C I` toggle/enable/inhibit qualifying locally owned pairs; `CA E` is rejected. `<MULTI FUNC>Q` (`*Q`) suppresses only the selected active LA alert and clears when that alert clears; `<MULTI FUNC>V` (`*V`) toggles persistent MSAW processing for the selected owned track. Both are scope-local trainer controls, never Command IR or certified MSAW; `*LA` remains altitude filtering. These commands replace the rejected `*CA` alias; `kdem-ca` is the manual bench. Still **no** 3 NM CA halo; circles on this scope are TPA J-rings only.
 - [x] Comprehensive end-to-end integration and acceptance test suite in `src/scope/atpaFidelity.integration.test.ts` (T02-50).
+
+### ATPA CWT wake criteria addendum (T02-125–128)
+
+- [x] `CwtWakeCategory` / `cwtWakeCategory` is explicit operational data and remains separate from the display-only `wakeCategory` indicator (T02-125).
+- [x] Catalog JSON carries reviewed FAA JO 7110.65 §5-5-4 leader-row/follower-column wake adaptation; blank or unavailable required relationships resolve to `NOWGT` and 10 NM (T02-126).
+- [x] `stepWorld` and the pure evaluator expose `wakeSource`, apply wake minima without dropping below the applicable radar minimum, and preserve generic `approachId`/volume loading (T02-127–128).
+- [x] Synthetic ATPA acceptance covers orientation, populated wake data, `NOWGT`, 10 NM, and wake precedence over reduced 2.5 NM radar separation (T02-128).
+- [ ] Remaining: per-position adaptation, TDW white monitor variant, aural ATPA, and additional 2.5 NM authorization semantics. Volumes remain authored trainer geometry.
 
 ### Preview Area addendum (T02-51–54)
 

@@ -113,7 +113,7 @@ test("stepWorld without ATPA volumes leaves atpa empty", () => {
   expect(world.alerts.atpa).toEqual([]);
 });
 
-test("T02-127 AC7 — stepWorld exposes wake source and NOWGT required distance", () => {
+test("T02-128 AC1/2/3 — stepWorld applies wake matrix orientation and NOWGT", () => {
   const leader = arrival("AAL45", 5);
   leader.cwtWakeCategory = "A";
   const trailer = arrival("DAL123", 9);
@@ -132,6 +132,8 @@ test("T02-127 AC7 — stepWorld exposes wake source and NOWGT required distance"
 
   stepWorld(world, 0);
   expect(world.alerts.atpa[0]).toMatchObject({
+    trailingCallsign: "DAL123",
+    leadingCallsign: "AAL45",
     requiredNm: 10,
     wakeSource: "nowgt",
     status: "alert",
@@ -140,10 +142,13 @@ test("T02-127 AC7 — stepWorld exposes wake source and NOWGT required distance"
   trailer.cwtWakeCategory = "I";
   stepWorld(world, 0);
   expect(world.alerts.atpa[0]).toMatchObject({
+    trailingCallsign: "DAL123",
+    leadingCallsign: "AAL45",
     requiredNm: 8,
     wakeSource: "wake",
     status: "alert",
   });
+  expect(world.alerts.atpa[0]?.requiredNm).toBeGreaterThan(volume.reducedSeparationNm);
 });
 
 test("status upgrade logs the new status without a clear", () => {
