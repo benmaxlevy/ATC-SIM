@@ -150,6 +150,8 @@ export interface PartialDatablockOpts {
   simTimeMs?: number;
   /** Explicit time-share phase override (step index 0, 1, 2, ...). */
   timeSharePhase?: number;
+  /** Figure 2-20 Field 4 TCP; one or two adapted characters. */
+  tcp?: string;
   /** Suppress ground speed display in PDB mode. */
   suppressPdbSpeed?: boolean;
 }
@@ -375,8 +377,17 @@ function formatEarlyLate(
   return `${value.status}${minutes}${Math.min(value.seconds, 59).toString().padStart(2, "0")}`;
 }
 
-function formatTcp(value: string | undefined): string | undefined {
-  const tcp = normalizeDisplayField(value, 2);
+/**
+ * Format the adapted owning TCP as a stable one- or two-cell value.
+ * Analog: CRC STARS TCP subset + sector ID (R07). Trainer delta: this is
+ * format-only input; it does not implement handoff or inter-facility state.
+ */
+export function formatTcp(value: string | undefined): string | undefined {
+  const tcp = (value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 2);
   return tcp.length > 0 ? tcp : undefined;
 }
 
@@ -481,7 +492,7 @@ export function formatDatablockFields(
     // Field 2 is deliberately exposed but not populated by this ticket.
     field2: "",
     field3: select([modeC, scratchpad1, scratchpad2, exitGate, exitFix]),
-    field4: [normalizeDisplayField(opts.field4Indicator, 1), normalizeDisplayField(opts.tcp, 2)]
+    field4: [normalizeDisplayField(opts.field4Indicator, 1), formatTcp(opts.tcp)]
       .filter(Boolean)
       .join(""),
     field5: select([gs, duplicateBeacon, rules, category, count, type, requested]),
@@ -761,6 +772,7 @@ export function linesForDatablock(
       sp1: opts.sp1,
       sp2: opts.sp2,
       handoffSectorId: opts.handoffSectorId,
+      tcp: opts.tcp,
       suppressPdbSpeed: opts.suppressPdbSpeed,
       timeSharePhase: opts.timeSharePhase,
       simTimeMs: opts.simTimeMs,

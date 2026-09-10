@@ -769,6 +769,7 @@ export {
   formatFullDatablock,
   formatGroundSpeedKt,
   formatGroundSpeedTens,
+  formatTcp,
   formatLimitedDatablock,
   formatPartialDatablock,
   fullDatablockLine3Parts,

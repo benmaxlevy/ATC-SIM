@@ -4,7 +4,9 @@ import {
   datablockRect,
   formatAltitudeHundreds,
   formatDatablockFields,
+  formatTcp,
   formatLimitedDatablock,
+  formatPartialDatablock,
   linesForDatablock,
   pointInDatablock,
 } from "../datablock";
@@ -77,6 +79,26 @@ test("explicit field alternatives time-share without inventing absent values", (
   expect(formatDatablockFields(ac, { exitGate: "G", timeSharePhase: 2 }).field3).toBe("030");
   expect(formatDatablockFields(ac, { timeSharePhase: 0 }).field4).toBe("");
   expect(formatDatablockFields(ac, { timeSharePhase: 0 }).field0).toBe("");
+});
+
+test.each([
+  ["n", "N"],
+  [" 1n ", "1N"],
+  ["1-n!", "1N"],
+  ["abc", "AB"],
+  ["...", undefined],
+  ["", undefined],
+] as const)("TCP adaptation normalizes %j to %j", (raw, expected) => {
+  expect(formatTcp(raw)).toBe(expected);
+});
+
+test("TCP remains intact in Field 4 for full and partial datablocks", () => {
+  const ac = makeTestAircraft({ callsign: "TCP1", altitudeFt: 3000, speedKt: 180 });
+
+  expect(formatDatablockFields(ac, { tcp: "1n" }).field4).toBe("1N");
+  expect(formatDatablockFields(ac, { tcp: "n" }).field4).toBe("N");
+  expect(formatPartialDatablock(ac, { tcp: "1n" }).line1).toContain("030");
+  expect(formatPartialDatablock(ac, { tcp: "1n" }).fields.field4).toBe("1N");
 });
 
 test("Fields 6–8 format documented optional values with per-field priority", () => {
