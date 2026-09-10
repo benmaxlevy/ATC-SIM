@@ -19,6 +19,21 @@ and 2-69. Primary review PASS after fixes. Independent review attempt returned
 the same PASS findings but reported its required nested verifier unavailable;
 no conflicting FAIL remained. No CRC or substitute source used.
 
+T02-132 is captain-committed on `fix/datablocks` as `1390592` after worker
+`.git` permissions blocked a worker commit. LDB now renders a separate Field 0
+row for existing `EM`, `RF`, `HJ`, and `CA` only; arbitrary SPC, `LA`, `MI`, and
+`LL` remain excluded. Normal beacon/Mode C, queried Mode C/speed, beacon
+inhibition, and Field 0 geometry remain intact.
+
+Captain gate: `npm run ci` passed — **189 test files, 1,720 tests passed, 4
+skipped**. Worker focused gate: **48 passed** after the final fix; typecheck,
+lint, and format checks passed.
+
+Manual review: supplied `full_manual.pdf`, §2.12, pp. 2-59–60 and Figure 2-23,
+p. 2-70. Primary review PASS after removing unsupported `LA` and arbitrary
+SPC leakage. Independent review attempt returned no further conflict but
+reported its nested verifier unavailable. No CRC or substitute source used.
+
 ## FIFTIETH SWARM COMPLETE — Pending inbound datablock fidelity (T02-129–130)
 
 Pending inbound handoffs now separate originating facility/sector from the
