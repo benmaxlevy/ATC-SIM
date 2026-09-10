@@ -17,6 +17,7 @@ import { parseRadioText, type ParseResult } from "./parseRadioText";
 import { formatParseError, PARSE_ERROR } from "./tokens";
 import { parseSpokenGrammar, repairHeadingVsTurnDegrees } from "./spoken/grammar";
 import { normalizeSpoken } from "./spoken/normalizer";
+import { repairSpokenLexemes } from "./spoken/lexical-repair";
 import { groundCallsignToRoster, spokenCallsignToken } from "./spoken/telephony";
 import { rewriteSpokenToTyped } from "./spoken/typed-fuzzy";
 import { matchSpokenPatterns } from "./spoken/pattern-matcher";
@@ -755,7 +756,7 @@ export async function parseCommand(
   const catalog = sanitizeFixIds(opts.fixes);
   const procedures = sanitizeCatalogProcedures(opts.procedures);
   const approaches = sanitizeCatalogApproaches(opts.approaches);
-  const normalized = normalizeSpoken(sourceText);
+  const normalized = repairSpokenLexemes(normalizeSpoken(sourceText));
   const extraTokens: string[] = [];
 
   const typed = tryGroundedLocal(
