@@ -1,5 +1,37 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Forty-seventh swarm planned — 2026-09-09 (Balanced random arrival packs)
+
+| Key | Value |
+| --- | --- |
+| Goal | Seeded random arrival packs traverse scenario route pools before repeating. |
+| Include | **T04-59** only. |
+| Skip | New route data, camera/UI, entry geometry, departure logic, facility branches. |
+| Stop | After T04-59 CI. |
+| Max workers | 1 |
+| Merge lock | Orchestrator squash-merges to `feature/aircraft-performance`. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Product law:** Random means deterministic seed variation over scenario-owned
+choices, not accidental concentration on a primary route. Each route-pool
+entry is used before a pack repeats any entry.
+
+**Wave:** A — T04-59 after T04-58.
+
+**Ticket:** `ticket/T04-59-balanced-random-arrival-route-packs` ←
+`phases/04-procedures/tickets/T04-59-balanced-random-arrival-route-packs.md`.
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 4 balanced random arrival packs T04-59
+Merge target: feature/aircraft-performance
+Merged: T04-59
+Tests: <focused gates and npm run ci result>
+Notes: <KATL pack route spread>
+```
+
 ## Forty-sixth swarm planned — 2026-09-09 (Random arrival entry fixes)
 
 | Key | Value |
