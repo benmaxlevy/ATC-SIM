@@ -40,18 +40,18 @@ proprietary STARS software or a NAS-compatible implementation.
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** Physical lines are derived from logical Fields 0–8 without a
+- [x] **AC1 —** Physical lines are derived from logical Fields 0–8 without a
   separate handoff-only formatter path.
-- [ ] **AC2 —** Field 4 appears identically in the logical result and physical
+- [x] **AC2 —** Field 4 appears identically in the logical result and physical
   center slot for `N` and `1N`.
-- [ ] **AC3 —** FDB and PDB synthetic fixtures cover pending inbound and
+- [x] **AC3 —** FDB and PDB synthetic fixtures cover pending inbound and
   accepted inbound handoff states.
-- [ ] **AC4 —** Field 5 aircraft type placement follows the selected strict
+- [x] **AC4 —** Field 5 aircraft type placement follows the selected strict
   PDF alignment or is explicitly documented as a trainer delta; no silent
   contradiction remains.
-- [ ] **AC5 —** Existing pointout, ATPA, alert, limited-block, and Mode C
+- [x] **AC5 —** Existing pointout, ATPA, alert, limited-block, and Mode C
   behavior remains green.
-- [ ] **AC6 —** One acceptance/fidelity integration file covers the feature;
+- [x] **AC6 —** One acceptance/fidelity integration file covers the feature;
   generic unit tests remain minimal and parameterized.
 
 ## Tests

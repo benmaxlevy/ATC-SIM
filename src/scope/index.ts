@@ -772,6 +772,7 @@ export {
   formatTcp,
   formatLimitedDatablock,
   formatPartialDatablock,
+  physicalDatablockLines,
   fullDatablockLine3Parts,
   linesForDatablock,
   sanitizeScratchpad,
@@ -789,6 +790,7 @@ export type {
   LimitedDatablockOpts,
   PartialDatablock,
   PartialDatablockOpts,
+  PhysicalDatablockLines,
 } from "./datablock";
 export {
   CHAR_SIZE_STEPS_PX,

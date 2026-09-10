@@ -218,21 +218,21 @@ describe("STARS CRC Datablock & Scratchpad Fidelity Acceptance (T02-42)", () => 
         handoffSectorId: "D",
         timeSharePhase: 0,
       });
-      expect(fdbHandoff.line2).toBe("070  D  25");
+      expect(fdbHandoff.line2).toBe("070  D   25");
 
       const fdbPhase1 = formatFullDatablock(ac, {
         sp1: "I27",
         handoffSectorId: "D",
         timeSharePhase: 1,
       });
-      expect(fdbPhase1.line2).toBe("I27  D  B738");
+      expect(fdbPhase1.line2).toBe("I27  D   B738");
 
       const pdbHandoff = formatPartialDatablock(ac, {
         sp1: "I27",
         handoffSectorId: "C",
         timeSharePhase: 0,
       });
-      expect(pdbHandoff.line1).toBe("070  C  25");
+      expect(pdbHandoff.line1).toBe("070  C   25");
     });
 
     test("pending inbound keeps origin in Field 4 and removes the invented HO suffix", () => {
@@ -251,7 +251,7 @@ describe("STARS CRC Datablock & Scratchpad Fidelity Acceptance (T02-42)", () => 
 
       expect(fdb.line1).toBe("SYN129");
       expect(fdb.line1).not.toContain("HO");
-      expect(fdb.line2).toBe("070  C  22");
+      expect(fdb.line2).toBe("070  C   22");
       expect(fdb.fields.field4).toBe("C");
     });
 
@@ -264,9 +264,46 @@ describe("STARS CRC Datablock & Scratchpad Fidelity Acceptance (T02-42)", () => 
       });
 
       expect(fdb.fields.field4).toBe("1N");
-      // Physical center remains the existing one-cell presentation; Field 4
-      // carries the complete adapted two-character origin.
-      expect(fdb.line2).toBe("080  1  22");
+      expect(fdb.line2).toBe("080  1N  22");
+    });
+
+    test("FDB/PDB physical lines derive pending, accepted, outbound, and pointout fields", () => {
+      const ac = makeTestAircraft({
+        id: "synthetic-physical",
+        callsign: "SYN131",
+        altitudeFt: 7000,
+        speedKt: 220,
+        aircraftType: "C172",
+      });
+
+      const pendingInbound = formatFullDatablock(ac, {
+        tcp: "1N",
+        timeSharePhase: 1,
+      });
+      expect(pendingInbound.fields.field4).toBe("1N");
+      expect(pendingInbound.line2).toBe("070  1N  C172");
+
+      const acceptedInbound = formatPartialDatablock(ac, {
+        tcp: "N",
+        timeSharePhase: 0,
+      });
+      expect(acceptedInbound.fields.field4).toBe("N");
+      expect(acceptedInbound.line1).toBe("070  N   22");
+
+      const outbound = formatFullDatablock(ac, {
+        handoffSectorId: "E",
+        timeSharePhase: 0,
+      });
+      expect(outbound.fields.field4).toBe("E");
+      expect(outbound.line2).toBe("070  E   22");
+
+      const pointout = formatFullDatablock(ac, {
+        tcp: "2S",
+        pointoutReceiverTcp: "2S",
+        timeSharePhase: 0,
+      });
+      expect(pointout.fields.field4).toBe("2S");
+      expect(pointout.line3).toBe("PO 2S");
     });
   });
 
@@ -274,19 +311,22 @@ describe("STARS CRC Datablock & Scratchpad Fidelity Acceptance (T02-42)", () => 
     test("Squawk 7700 renders EM next to callsign on Line 1", () => {
       const ac = makeTestAircraft({ callsign: "EM1", squawk: "7700" });
       expect(getSpecialPurposeCode(ac)).toBe("EM");
-      expect(formatFullDatablock(ac).line1).toBe("EM1 EM");
+      expect(formatFullDatablock(ac).line1).toBe("EM1");
+      expect(formatFullDatablock(ac).fields.field0).toBe("EM");
     });
 
     test("Squawk 7600 renders RF next to callsign on Line 1", () => {
       const ac = makeTestAircraft({ callsign: "RF1", squawk: "7600" });
       expect(getSpecialPurposeCode(ac)).toBe("RF");
-      expect(formatFullDatablock(ac).line1).toBe("RF1 RF");
+      expect(formatFullDatablock(ac).line1).toBe("RF1");
+      expect(formatFullDatablock(ac).fields.field0).toBe("RF");
     });
 
     test("Squawk 7500 renders HJ next to callsign on Line 1", () => {
       const ac = makeTestAircraft({ callsign: "HJ1", squawk: "7500" });
       expect(getSpecialPurposeCode(ac)).toBe("HJ");
-      expect(formatFullDatablock(ac).line1).toBe("HJ1 HJ");
+      expect(formatFullDatablock(ac).line1).toBe("HJ1");
+      expect(formatFullDatablock(ac).fields.field0).toBe("HJ");
     });
   });
 

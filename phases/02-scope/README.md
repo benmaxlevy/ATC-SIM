@@ -231,9 +231,16 @@ Field rules:
 - **Field 7**: assigned altitude (`A###`), beacon mismatch, TSAS advised speed, or TSAS early/late value. Values time-share.
 - **Field 8**: pointout (`PO` plus receiver TCP, `UN`, or `RD`) or pointout accept count. Pointout status suppresses the accept count.
 
-The normal three-line block uses Field 1 on line 1, active Fields 0/3/4/5
-on line 2, and active Fields 6/7/8 on line 3. A slash joins multiple active
-values in one field. Field values remain aligned in character cells.
+The normal three-line block uses Field 0 on the physical line above the FDB,
+Field 1 on line 1, active Fields 3/4/5 on line 2, and active Fields 6/7/8 on
+line 3. A slash joins multiple active field values in one field. Field values
+remain aligned in character cells.
+
+The shipped formatter derives those physical lines from logical Fields 0–8
+for both FDB and PDB output. Field 4 owns a two-character center cell, so a
+one-character TCP keeps the same right-field position as a two-character TCP.
+Aircraft type follows the strict Field 5 / Line 2 placement; it is omitted
+from PDB output. This is a trainer display model, not a NAS-compatible clone.
 
 `M` hides Mode C in Field 3. Other active Field 3 values remain eligible for
 display. `T` toggles FDB and LDB. The FDB is fixed-width and uses a monospace

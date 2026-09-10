@@ -7,6 +7,7 @@ import {
   formatTcp,
   formatLimitedDatablock,
   formatPartialDatablock,
+  physicalDatablockLines,
   linesForDatablock,
   pointInDatablock,
 } from "../datablock";
@@ -99,6 +100,25 @@ test("TCP remains intact in Field 4 for full and partial datablocks", () => {
   expect(formatDatablockFields(ac, { tcp: "n" }).field4).toBe("N");
   expect(formatPartialDatablock(ac, { tcp: "1n" }).line1).toContain("030");
   expect(formatPartialDatablock(ac, { tcp: "1n" }).fields.field4).toBe("1N");
+});
+
+test.each([
+  ["N", "030  N   18"],
+  ["1N", "030  1N  18"],
+] as const)("physical Field 4 center slot keeps %s TCP stable", (tcp, expected) => {
+  const ac = makeTestAircraft({ callsign: "CELL1", altitudeFt: 3000, speedKt: 180 });
+  const full = formatDatablockFields(ac, { tcp, timeSharePhase: 0 });
+  expect(physicalDatablockLines(full).line2).toBe(expected);
+});
+
+test("Field 0 stays logical and is not duplicated on physical line 1", () => {
+  const ac = makeTestAircraft({ callsign: "FDB0", altitudeFt: 3000, speedKt: 180 });
+  const fields = formatDatablockFields(ac, { tsasSequence: 7, timeSharePhase: 0 });
+  const lines = physicalDatablockLines(fields);
+
+  expect(fields.field0).toBe("7");
+  expect(lines.line1).toBe("FDB0");
+  expect(lines.line1).not.toContain(fields.field0);
 });
 
 test("Fields 6–8 format documented optional values with per-field priority", () => {

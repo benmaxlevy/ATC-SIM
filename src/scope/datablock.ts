@@ -3,9 +3,8 @@
  * FOA STARS display data (R05). Altitude on the block is hundreds of feet, not
  * raw feet. CRC analog FDB line 2/3 (scratchpad, type) — trainer fields, not NAS FP.
  *
- * Trainer delta (v1, not a field-by-field STARS clone): full datablock is
- * callsign (line 1), Mode C / assigned / GS + optional scratchpad (line 2),
- * aircraft type (line 3). Scratchpad is TrackDisplay 0–4 A–Z0–9, not a host
+ * Trainer delta (v1, not a field-by-field STARS clone): aircraft type follows
+ * strict Field 5 / Line 2 placement. Scratchpad is TrackDisplay 0–4 A–Z0–9, not a host
  * flight-plan / runway assignment. Omitted: beacon code, CSI, CHARSIZE, NAS FP.
  * Limited datablock is Mode C hundreds only (no scratchpad, no type).
  * Leader geometry (L1–L9) lives in `leader.ts`.
@@ -198,6 +197,10 @@ export interface DatablockFields {
 }
 
 export interface DatablockFieldOptions {
+  /** Include aircraft type in Field 5; PDBs intentionally suppress it. */
+  aircraftTypeVisible?: boolean;
+  /** Include ground speed in Field 5; PDBs may suppress it. */
+  groundSpeedVisible?: boolean;
   tsasSequence?: string | number;
   exitGate?: string;
   exitFix?: string;
@@ -222,6 +225,34 @@ export interface DatablockFieldOptions {
   pointoutRd?: boolean;
   pointoutAcceptCount?: number;
   pointoutInhibited?: boolean;
+}
+
+/** Physical character-cell lines derived from logical Fields 0–8. */
+export interface PhysicalDatablockLines {
+  line1: string;
+  line2?: string;
+  line3?: string;
+}
+
+/**
+ * Project logical fields onto physical FDB/PDB lines. Field 4 owns a two-cell
+ * center slot, keeping one-character TCPs aligned with two-character TCPs.
+ */
+export function physicalDatablockLines(
+  fields: DatablockFields,
+  mode: "full" | "partial" = "full",
+): PhysicalDatablockLines {
+  const line1 = fields.field1;
+  const line2 = physicalFieldLine([fields.field3, fields.field4, fields.field5]);
+  const line3 = physicalFieldLine([fields.field6, fields.field7, fields.field8]);
+  if (mode === "partial") return { line1: line2 };
+  return line3 ? { line1, line2, line3 } : { line1, line2 };
+}
+
+function physicalFieldLine(values: string[]): string {
+  const [left, center, right] = values.map((value) => value.trim());
+  const parts = [left, center ? center.padEnd(2, " ") : "", right].filter(Boolean);
+  return parts.join(DATABLOCK_FIELD_GAP).trimEnd();
 }
 
 export interface LimitedDatablock {
@@ -425,16 +456,20 @@ export function formatDatablockFields(
   const exitGate = normalizeDisplayField(opts.exitGate, 4) || undefined;
   const exitFix = normalizeDisplayField(opts.exitFix, 5) || undefined;
 
-  const gs = formatGroundSpeedTens(track.speedKt, {
-    wakeCategory: track.wakeCategory,
-    flightRules: track.flightRules,
-    isOverflight: track.isOverflight,
-  });
+  const gs =
+    opts.groundSpeedVisible === false
+      ? undefined
+      : formatGroundSpeedTens(track.speedKt, {
+          wakeCategory: track.wakeCategory,
+          flightRules: track.flightRules,
+          isOverflight: track.isOverflight,
+        });
   const duplicateBeacon = normalizeDisplayField(opts.duplicateBeaconCode, 4) || undefined;
   const rules = normalizeDisplayField(track.flightRules, 3) || undefined;
   const category = formatWakeCategory(track.wakeCategory) || undefined;
   const count = formatAircraftCount(opts.aircraftCount);
-  const type = formatAircraftType(track.aircraftType);
+  const type =
+    opts.aircraftTypeVisible === false ? undefined : formatAircraftType(track.aircraftType);
   const requested = formatRequestedAltitude(
     track.requestedAltitudeFt ?? track.intent?.requestedAltitudeFt,
   );
@@ -512,74 +547,19 @@ function targetAssignedAltitude(track: DatablockSource): string | undefined {
 /**
  * Full datablock (STARS CRC):
  * - Line 1: Callsign + Special Purpose Code (SPC: EM, RF, HJ, etc.)
- * - Line 2: Dynamic multi-phase time-sharing (~2.5s cycle):
- *     Left field:  Mode C altitude <-> SP1 <-> SP2
- *     Center:      Transferring/receiving sector ID character during active handoff
- *     Right field: GS (tens) <-> Aircraft Type <-> Requested Altitude (R###)
- * - Line 3: Assigned altitude prefixed with A (e.g. A040) when |assigned - altitude| >= 100 ft,
- *           squawk mismatch, or ATPA distance. Omitted when none applies.
+ * - Line 2: Fields 3–5 (Mode C/scratchpad, TCP, GS/type/requested altitude).
+ * - Line 3: Fields 6–8 (ATPA/mismatch, assigned altitude, pointout).
  */
 export function formatFullDatablock(
   track: DatablockSource,
   opts: FullDatablockOpts = {},
 ): FullDatablock {
-  const modeCVisible = opts.modeCVisible !== false;
-  const spc = getSpecialPurposeCode(track);
-  const line1 = spc ? `${track.callsign} ${spc}` : track.callsign;
-
-  const phaseStep =
-    opts.timeSharePhase !== undefined
-      ? opts.timeSharePhase
-      : opts.simTimeMs != null
-        ? Math.floor(opts.simTimeMs / FDB_TIMESHARE_INTERVAL_MS)
-        : 0;
-
-  // Left-field queue: [Mode C, SP1, SP2] filtered to active/non-empty entries
-  const pilotReportStar = track.pilotReportedAltitude ? "*" : "";
-  const modeC = modeCVisible ? `${formatAltitudeHundreds(track.altitudeFt)}${pilotReportStar}` : "";
-  const rawSp1 = opts.sp1 ?? opts.scratchpad;
-  const sp1 = sanitizeScratchpad(rawSp1 ?? "");
-  const sp2 = sanitizeScratchpad(opts.sp2 ?? "");
-
-  const leftQueue = [modeC, sp1, sp2].filter((s) => s.length > 0);
-  const leftField =
-    leftQueue.length > 0
-      ? leftQueue[((phaseStep % leftQueue.length) + leftQueue.length) % leftQueue.length]
-      : "";
-
-  // Right-field queue: [GS, Type, Requested Altitude] filtered to active entries
-  const gs = formatGroundSpeedTens(track.speedKt, {
-    wakeCategory: track.wakeCategory,
-    flightRules: track.flightRules,
-    isOverflight: track.isOverflight,
+  const fields = formatDatablockFields(track, {
+    ...opts,
+    tcp: opts.tcp ?? opts.handoffSectorId,
   });
-  const type = formatAircraftType(track.aircraftType) ?? "";
-  const reqAltFt = track.requestedAltitudeFt ?? track.intent?.requestedAltitudeFt;
-  const reqAlt = formatRequestedAltitude(reqAltFt) ?? "";
-
-  const rightQueue = [gs, type, reqAlt].filter((s) => s.length > 0);
-  const rightField =
-    rightQueue.length > 0
-      ? rightQueue[((phaseStep % rightQueue.length) + rightQueue.length) % rightQueue.length]
-      : "";
-
-  // Center field: handoff sector ID
-  const centerField = opts.handoffSectorId
-    ? opts.handoffSectorId.trim().toUpperCase().slice(0, 1)
-    : "";
-
-  const line2Parts = [leftField, centerField, rightField].filter((s) => s.length > 0);
-  const line2 = line2Parts.join(DATABLOCK_FIELD_GAP);
-
-  const line3Fields = fullDatablockLine3Parts(track);
-  const line3Parts = [
-    line3Fields.assignedField,
-    line3Fields.squawkField,
-    line3Fields.atpaField,
-  ].filter((part): part is string => part != null && part.length > 0);
-  const line3 = line3Parts.length > 0 ? line3Parts.join(DATABLOCK_FIELD_GAP) : undefined;
-  const fields = formatDatablockFields(track, opts);
-  return line3 ? { line1, line2, line3, fields } : { line1, line2, fields };
+  const lines = physicalDatablockLines(fields);
+  return { ...lines, line1: lines.line1 || track.callsign, line2: lines.line2 ?? "", fields };
 }
 
 export interface FullDatablockLine3Parts {
@@ -605,58 +585,22 @@ export function fullDatablockLine3Parts(track: DatablockSource): FullDatablockLi
 }
 
 /**
- * Partial datablock (PDB): Line 2 only (Mode C altitude <-> SP1 <-> SP2, optional center handoff ID, ground speed),
- * suppressing callsign (Line 1) and aircraft type (Line 3).
+ * Partial datablock (PDB): physical Field 3/4/5 line only, suppressing the
+ * callsign and Field 5 aircraft type.
  * Used for associated tracks owned by another controller.
  */
 export function formatPartialDatablock(
   track: DatablockSource,
   opts: PartialDatablockOpts = {},
 ): PartialDatablock {
-  const modeCVisible = opts.modeCVisible !== false;
-  const phaseStep =
-    opts.timeSharePhase !== undefined
-      ? opts.timeSharePhase
-      : opts.simTimeMs != null
-        ? Math.floor(opts.simTimeMs / FDB_TIMESHARE_INTERVAL_MS)
-        : 0;
-
-  // Left queue: [Mode C, SP1, SP2]
-  const pilotReportStar = track.pilotReportedAltitude ? "*" : "";
-  const modeC = modeCVisible ? `${formatAltitudeHundreds(track.altitudeFt)}${pilotReportStar}` : "";
-  const rawSp1 = opts.sp1 ?? opts.scratchpad;
-  const sp1 = sanitizeScratchpad(rawSp1 ?? "");
-  const sp2 = sanitizeScratchpad(opts.sp2 ?? "");
-
-  const leftQueue = [modeC, sp1, sp2].filter((s) => s.length > 0);
-  const leftField =
-    leftQueue.length > 0
-      ? leftQueue[((phaseStep % leftQueue.length) + leftQueue.length) % leftQueue.length]
-      : "";
-
-  // Right queue: [GS] unless suppressed
-  const gs = opts.suppressPdbSpeed
-    ? ""
-    : formatGroundSpeedTens(track.speedKt, {
-        wakeCategory: track.wakeCategory,
-        flightRules: track.flightRules,
-        isOverflight: track.isOverflight,
-      });
-  const rightQueue = [gs].filter((s) => s.length > 0);
-  const rightField =
-    rightQueue.length > 0
-      ? rightQueue[((phaseStep % rightQueue.length) + rightQueue.length) % rightQueue.length]
-      : "";
-
-  // Center field: handoff sector ID
-  const centerField = opts.handoffSectorId
-    ? opts.handoffSectorId.trim().toUpperCase().slice(0, 1)
-    : "";
-
-  const line1Parts = [leftField, centerField, rightField].filter((s) => s.length > 0);
-  const line1 = line1Parts.join(DATABLOCK_FIELD_GAP);
-  const fields = formatDatablockFields(track, opts);
-  return { line1, fields };
+  const fields = formatDatablockFields(track, {
+    ...opts,
+    tcp: opts.tcp ?? opts.handoffSectorId,
+    aircraftTypeVisible: false,
+    groundSpeedVisible: !opts.suppressPdbSpeed,
+  });
+  const lines = physicalDatablockLines(fields, "partial");
+  return { line1: lines.line1, fields };
 }
 
 /**
