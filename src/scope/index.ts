@@ -766,6 +766,7 @@ export {
   datablockRect,
   formatAltitudeHundreds,
   formatDatablockFields,
+  formatPartialDatablockFields,
   formatFullDatablock,
   formatGroundSpeedKt,
   formatGroundSpeedTens,

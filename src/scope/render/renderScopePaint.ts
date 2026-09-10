@@ -895,6 +895,8 @@ export function drawDatablock(
     sp2: derived.sp2,
     handoffSectorId,
     tcp: handoff.kind === "inbound" ? view.sectorId : undefined,
+    identIndicator:
+      mode === "partial" && td && isIdentFlashing(td, world.simTimeMs) ? "ID" : undefined,
     queried: isQueried,
     beaconVisible: true,
     simTimeMs: world.simTimeMs,
@@ -943,7 +945,8 @@ export function drawDatablock(
     trackLeaderLength(view, ac.id),
   );
   const textX = resolved?.rect ? resolved.rect.x : targetX + origin.x;
-  const textY = resolved?.rect ? resolved.rect.y : targetY + origin.y;
+  const textY =
+    (resolved?.rect ? resolved.rect.y : targetY + origin.y) + (lines.line0 != null ? lineH : 0);
 
   ctx.fillStyle = applyBrite(visual.color, briteCh);
   let alertGlyphX: number;
@@ -964,6 +967,11 @@ export function drawDatablock(
     ctx.fillText(line1Suffix, alertGlyphX, textY);
   }
   if (mode === "full" || mode === "partial") {
+    if (lines.line0 != null) {
+      ctx.fillStyle = applyBrite(PALETTE.caution, briteCh);
+      ctx.fillText(lines.line0, textX, textY - lineH);
+      ctx.fillStyle = applyBrite(visual.color, briteCh);
+    }
     const caAcknowledged = isCaAlertAcknowledged(ac, td, view, world);
     const msawAcknowledged = isMsawAlertAcknowledged(ac, td, view, world);
     const blinkOn = isAlertBlinkOn(world.simTimeMs);
@@ -1154,6 +1162,8 @@ export function drawTracks(
         sp2: derived.sp2,
         handoffSectorId,
         tcp: handoff.kind === "inbound" ? view.sectorId : undefined,
+        identIndicator:
+          mode === "partial" && td && isIdentFlashing(td, world.simTimeMs) ? "ID" : undefined,
         queried: td ? isTrackQueried(td, world.simTimeMs) : false,
         simTimeMs: world.simTimeMs,
         beaconVisible: true,

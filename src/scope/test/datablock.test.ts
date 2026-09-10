@@ -2,8 +2,10 @@ import { expect, test } from "vitest";
 import { makeTestAircraft } from "@core";
 import {
   datablockRect,
+  datablockMetrics,
   formatAltitudeHundreds,
   formatDatablockFields,
+  formatPartialDatablockFields,
   formatTcp,
   formatLimitedDatablock,
   formatPartialDatablock,
@@ -100,6 +102,130 @@ test("TCP remains intact in Field 4 for full and partial datablocks", () => {
   expect(formatDatablockFields(ac, { tcp: "n" }).field4).toBe("N");
   expect(formatPartialDatablock(ac, { tcp: "1n" }).line1).toContain("030");
   expect(formatPartialDatablock(ac, { tcp: "1n" }).fields.field4).toBe("1N");
+});
+
+test("PDB projection follows Figure 2-22 and omits FDB-only values", () => {
+  const ac = makeTestAircraft({
+    callsign: "PDB1",
+    altitudeFt: 8500,
+    speedKt: 180,
+    aircraftType: "B738",
+    wakeCategory: "H",
+    requestedAltitudeFt: 12000,
+  });
+
+  const projection = formatPartialDatablockFields(ac, {
+    handoffSectorId: "N",
+    identIndicator: "id",
+  });
+
+  expect(projection).toEqual({
+    field0: "",
+    field1: "085",
+    field2: "N",
+    field3: "18H",
+    field4: "ID",
+    field5: "",
+    field6: "",
+    field7: "",
+    field8: "",
+  });
+  expect(formatPartialDatablock(ac, { handoffSectorId: "N", identIndicator: "ID" }).line1).toBe(
+    "085  N   18H  ID",
+  );
+});
+
+test("PDB projection preserves empty, hidden Mode C, and suppressed speed values", () => {
+  const ac = makeTestAircraft({ callsign: "PDB2", altitudeFt: 3500, speedKt: 120 });
+
+  expect(formatPartialDatablockFields(ac)).toMatchObject({
+    field0: "",
+    field1: "035",
+    field2: "",
+    field3: "12",
+    field4: "",
+    field5: "",
+    field6: "",
+    field7: "",
+    field8: "",
+  });
+  expect(formatPartialDatablockFields(ac, { modeCVisible: false, suppressPdbSpeed: true })).toEqual(
+    {
+      field0: "",
+      field1: "",
+      field2: "",
+      field3: "",
+      field4: "",
+      field5: "",
+      field6: "",
+      field7: "",
+      field8: "",
+    },
+  );
+});
+
+test("PDB Field 0 keeps supported cautions but never copies SPCs", () => {
+  const ac = makeTestAircraft({
+    callsign: "PDB3",
+    altitudeFt: 4000,
+    speedKt: 180,
+    squawk: "7700",
+  });
+
+  expect(formatPartialDatablock(ac).pdbFields.field0).toBe("");
+  expect(formatPartialDatablockFields(ac, { field0Indicators: ["TRK", "EM", "ISR"] }).field0).toBe(
+    "TRK/ISR",
+  );
+  expect(formatPartialDatablock(ac, { field0Indicators: ["TRK", "ISR"] }).line0).toBe("TRK/ISR");
+  expect(formatPartialDatablock(ac).line0).toBeUndefined();
+});
+
+test("PDB caution row participates in physical geometry while empty PDB geometry is unchanged", () => {
+  const ac = makeTestAircraft({ callsign: "PDB6", altitudeFt: 4000, speedKt: 180 });
+  const empty = linesForDatablock(ac, "partial", { modeCVisible: true });
+  const caution = linesForDatablock(ac, "partial", {
+    modeCVisible: true,
+    field0Indicators: ["TRK", "ISR"],
+  });
+  const emptyMetrics = datablockMetrics(empty);
+  const cautionMetrics = datablockMetrics(caution);
+
+  expect(empty.line0).toBeUndefined();
+  expect(caution.line0).toBe("TRK/ISR");
+  expect(
+    datablockMetrics(formatPartialDatablock(ac, { field0Indicators: ["TRK", "ISR"] })),
+  ).toEqual(cautionMetrics);
+  expect(cautionMetrics.heightPx).toBeGreaterThan(emptyMetrics.heightPx);
+  expect(cautionMetrics.widthPx).toBeGreaterThanOrEqual(emptyMetrics.widthPx);
+
+  const rect = datablockRect(100, 200, caution);
+  expect(pointInDatablock(rect.x + 1, rect.y + 1, rect)).toBe(true);
+  expect(rect.h).toBe(cautionMetrics.heightPx);
+});
+
+test("PDB physical output does not time-share FDB type or requested altitude", () => {
+  const ac = makeTestAircraft({
+    callsign: "PDB4",
+    altitudeFt: 8500,
+    speedKt: 180,
+    aircraftType: "B738",
+    requestedAltitudeFt: 12000,
+  });
+
+  const pdb = formatPartialDatablock(ac, { timeSharePhase: 1 });
+  expect(pdb.line1).toBe("085  18");
+  expect(pdb.line1).not.toContain("B738");
+  expect(pdb.line1).not.toContain("R120");
+  expect(pdb.fields.field5).toBe("R120");
+});
+
+test("PDB Field 1 excludes FDB exit gate and exit fix values", () => {
+  const ac = makeTestAircraft({ callsign: "PDB5", altitudeFt: 8500, speedKt: 180 });
+
+  expect(
+    formatPartialDatablockFields(ac, { exitGate: "G1", exitFix: "FIX01", timeSharePhase: 1 })
+      .field1,
+  ).toBe("085");
 });
 
 test.each([

@@ -151,8 +151,16 @@ export interface PartialDatablockOpts {
   timeSharePhase?: number;
   /** Figure 2-20 Field 4 TCP; one or two adapted characters. */
   tcp?: string;
+  /** Accepted for compatibility but not displayed in PDB Field 1. */
+  exitGate?: string;
+  /** Accepted for compatibility but not displayed in PDB Field 1. */
+  exitFix?: string;
   /** Suppress ground speed display in PDB mode. */
   suppressPdbSpeed?: boolean;
+  /** Existing PDB cautions only; unsupported alert/SPC values are omitted. */
+  field0Indicators?: string[];
+  /** Existing IDENT flash indicator; no new IDENT state is created here. */
+  identIndicator?: string;
 }
 
 export interface LimitedDatablockOpts {
@@ -174,7 +182,11 @@ export interface FullDatablock {
 }
 
 export interface PartialDatablock {
+  /** PDB Field 0 caution row; omitted when no supported caution is present. */
+  line0?: string;
   line1: string;
+  /** Manual Fig. 2-22 projection; `fields` remains the legacy compatibility view. */
+  pdbFields: DatablockFields;
   fields: DatablockFields;
 }
 
@@ -537,6 +549,52 @@ export function formatDatablockFields(
   };
 }
 
+/**
+ * Project existing formatter values into the manual's PDB field order.
+ *
+ * Source: supplied TI 6191.409 Rev. 30 Fig. 2-22. Trainer
+ * delta: only values already available to the formatter are projected; this
+ * does not create handoff, alert, surveillance, or IDENT state. No runtime
+ * adapter currently supplies PDB cautions, so absent inputs remain empty.
+ */
+export function formatPartialDatablockFields(
+  track: DatablockSource,
+  opts: PartialDatablockOpts = {},
+): DatablockFields {
+  const source = formatDatablockFields(track, {
+    ...opts,
+    tcp: undefined,
+    exitGate: undefined,
+    exitFix: undefined,
+    aircraftTypeVisible: false,
+    groundSpeedVisible: !opts.suppressPdbSpeed,
+  });
+  const tcp = formatTcp(opts.tcp ?? opts.handoffSectorId) ?? "";
+  const groundSpeed = opts.suppressPdbSpeed
+    ? ""
+    : formatGroundSpeedTens(track.speedKt, {
+        wakeCategory: track.wakeCategory,
+        flightRules: track.flightRules,
+        isOverflight: track.isOverflight,
+      });
+
+  return {
+    field0: (opts.field0Indicators ?? [])
+      .map((value) => normalizeDisplayField(value, 3))
+      .filter((value) => value === "NOM" || value === "ISR" || value === "TRK")
+      .join("/")
+      .slice(0, 12),
+    field1: source.field3,
+    field2: tcp,
+    field3: groundSpeed,
+    field4: normalizeDisplayField(opts.identIndicator, 2),
+    field5: "",
+    field6: "",
+    field7: "",
+    field8: "",
+  };
+}
+
 function targetAssignedAltitude(track: DatablockSource): string | undefined {
   const altitude = track.intent?.controllerAssignedAltitudeFt;
   return altitude != null && assignedDiffers(track.altitudeFt, altitude)
@@ -599,8 +657,23 @@ export function formatPartialDatablock(
     aircraftTypeVisible: false,
     groundSpeedVisible: !opts.suppressPdbSpeed,
   });
-  const lines = physicalDatablockLines(fields, "partial");
-  return { line1: lines.line1, fields };
+  const pdbFields = formatPartialDatablockFields(track, opts);
+  const lines = physicalDatablockLines(
+    {
+      ...pdbFields,
+      field3: pdbFields.field1,
+      field4: pdbFields.field2,
+      field5: pdbFields.field3,
+    },
+    "partial",
+  );
+  const ident = pdbFields.field4;
+  return {
+    line0: pdbFields.field0 || undefined,
+    line1: ident ? `${lines.line1}  ${ident}` : lines.line1,
+    fields,
+    pdbFields,
+  };
 }
 
 /**
@@ -629,6 +702,7 @@ export function formatLimitedDatablock(
 }
 
 export interface DatablockLines {
+  line0?: string;
   line1: string;
   line2?: string;
   line3?: string;
@@ -651,6 +725,7 @@ export interface DatablockRenderOpts {
   sp2?: string;
   handoffSectorId?: string;
   suppressPdbSpeed?: boolean;
+  identIndicator?: string;
   timeSharePhase?: number;
   simTimeMs?: number;
   queried?: boolean;
@@ -709,7 +784,7 @@ export function linesForDatablock(
     });
   }
   if (mode === "partial") {
-    return formatPartialDatablock(track, {
+    const partial = formatPartialDatablock(track, {
       modeCVisible: opts.modeCVisible,
       scratchpad: opts.scratchpad,
       sp1: opts.sp1,
@@ -717,9 +792,12 @@ export function linesForDatablock(
       handoffSectorId: opts.handoffSectorId,
       tcp: opts.tcp,
       suppressPdbSpeed: opts.suppressPdbSpeed,
+      field0Indicators: opts.field0Indicators,
+      identIndicator: opts.identIndicator,
       timeSharePhase: opts.timeSharePhase,
       simTimeMs: opts.simTimeMs,
     });
+    return partial;
   }
   return formatFullDatablock(track, {
     modeCVisible: opts.modeCVisible,
@@ -761,8 +839,14 @@ export function datablockMetrics(
   cellWidthPx: number = DEFAULT_DATABLOCK_CELL_PX,
   lineHeightPx: number = DATABLOCK_LINE_HEIGHT_PX,
 ): DatablockMetrics {
-  const cols = Math.max(lines.line1.length, lines.line2?.length ?? 0, lines.line3?.length ?? 0, 1);
-  const rows = lines.line3 != null ? 3 : lines.line2 != null ? 2 : 1;
+  const cols = Math.max(
+    lines.line0?.length ?? 0,
+    lines.line1.length,
+    lines.line2?.length ?? 0,
+    lines.line3?.length ?? 0,
+    1,
+  );
+  const rows = (lines.line3 != null ? 3 : lines.line2 != null ? 2 : 1) + (lines.line0 ? 1 : 0);
   return { widthPx: cols * cellWidthPx, heightPx: rows * lineHeightPx };
 }
 
