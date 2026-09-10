@@ -1,5 +1,14 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Fiftieth swarm worker started — 2026-09-10 (T02-129)
+
+Worker executes exactly T02-129 in isolated branch/worktree
+`ticket/T02-129-pending-inbound-handoff-tcp-semantics`, based on the captain
+target `fix/datablocks`. No merge or push. Scope is limited to separating
+inbound origin from local receiving TCP, target-symbol control, Field 4/TCP
+origin display, removal of inbound `HO`, and synthetic coverage for preserved
+PO/blink/filter/acceptance behavior.
+
 ## Fiftieth swarm planned — 2026-09-10 (Pending inbound datablock fidelity)
 
 User approved execution of the pending inbound datablock fidelity plan.
