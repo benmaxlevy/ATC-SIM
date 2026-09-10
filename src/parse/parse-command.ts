@@ -573,14 +573,27 @@ function pathCContext(
   };
 }
 
-function attachCallsign(parsed: ParseResult, selected: string | null): ParseResult {
-  if (!parsed.ok) {
+function groundLocalCallsign(
+  parsed: ParseResult,
+  normalized: string,
+  roster: readonly string[],
+  selected: string | null,
+): ParseResult {
+  if (!parsed.ok || !parsed.callsignToken) {
+    return parsed.ok ? { ...parsed, callsignToken: selected } : parsed;
+  }
+  if (roster.length === 0) {
     return parsed;
   }
-  return {
-    ...parsed,
-    callsignToken: parsed.callsignToken ?? selected,
-  };
+  const grounded = groundCallsignToRoster(parsed.callsignToken, normalized, roster);
+  if (grounded === null) {
+    return {
+      ok: false,
+      error: formatParseError(PARSE_ERROR.PARSE_MISS),
+      sourceText: parsed.sourceText,
+    };
+  }
+  return { ...parsed, callsignToken: grounded };
 }
 
 function ungroundedIdentifierTokens(
@@ -746,7 +759,7 @@ export async function parseCommand(
   const extraTokens: string[] = [];
 
   const typed = tryGroundedLocal(
-    attachCallsign(parseRadioText(normalized), selected),
+    groundLocalCallsign(parseRadioText(normalized), normalized, roster, selected),
     sourceText,
     "typed",
     opts.source,
@@ -762,9 +775,9 @@ export async function parseCommand(
     extraTokens.push(...typed.tokens);
   }
 
-  const spoken = parseSpokenGrammar(normalized, selected, sourceText, catalog, procedures);
+  const spoken = parseSpokenGrammar(normalized, null, sourceText, catalog, procedures);
   const pathA = tryGroundedLocal(
-    spoken,
+    groundLocalCallsign(spoken, normalized, roster, selected),
     sourceText,
     "spoken_a",
     opts.source,
@@ -783,7 +796,7 @@ export async function parseCommand(
   const rewritten = rewriteSpokenToTyped(normalized);
   if (rewritten !== null) {
     const pathB = tryGroundedLocal(
-      attachCallsign(parseRadioText(rewritten), selected),
+      groundLocalCallsign(parseRadioText(rewritten), normalized, roster, selected),
       sourceText,
       "spoken_b",
       opts.source,
@@ -802,14 +815,14 @@ export async function parseCommand(
 
   const islandParsed = matchSpokenPatterns(
     normalized,
-    selected,
+    null,
     sourceText,
     catalog,
     procedures,
     approaches,
   );
   const island = tryGroundedLocal(
-    islandParsed,
+    groundLocalCallsign(islandParsed, normalized, roster, selected),
     sourceText,
     "spoken_b",
     opts.source,
@@ -847,8 +860,8 @@ export async function parseCommand(
         context,
       });
       if (hit !== null && hit.instructions.length > 0) {
-        const rawCallsign = hit.callsignToken ?? spokenCallsignToken(normalized);
-        const grounded = groundCallsignToRoster(rawCallsign, normalized, roster, selected);
+        const rawCallsign = hit.callsignToken ?? spokenCallsignToken(normalized) ?? selected;
+        const grounded = groundCallsignToRoster(rawCallsign, normalized, roster);
         const callsignSafe =
           roster.length === 0 ||
           (grounded !== null && roster.includes(grounded)) ||
