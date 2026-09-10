@@ -71,7 +71,7 @@ export const PALETTE = {
    * TLS / tools — TPA J-rings and ATPA monitor geometry (CRC analog). Not CA red.
    * Distinct from PTL white so rings read as tools, not predicted track.
    */
-  tools: "#134767",
+  tools: "#6C6CD9",
   /**
    * CA caution (yellow). Predicted CA leftover in the tint helper; live CA
    * is alert-only. Do not label “STARS CA.”

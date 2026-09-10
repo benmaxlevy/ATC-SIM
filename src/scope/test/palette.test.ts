@@ -61,7 +61,7 @@ test("ATPA owns its warning and alert hues; CA/MSAW caution and alert are untouc
   expect(PALETTE.atpaWarning).not.toBe(PALETTE.caution);
   expect(PALETTE.alert).toBe("#BF0000");
   expect(PALETTE.caution).toBe("#FFFF00");
-  expect(PALETTE.tools).toBe("#134767");
+  expect(PALETTE.tools).toBe("#6C6CD9");
 });
 
 test("history trail is independent blue, newest brighter than oldest", () => {

@@ -1409,7 +1409,7 @@ export function drawPredictedTrackLines(
 /**
  * CRC TPA J-rings: world-NM mileage circles about selected (or owned) tracks
  * plus per-track `*J` rings. Stroke is TLS/tools (`TPA_STROKE_COLOR`), not CA
- * red. Radius digits sit inside the ring at lower-left unless inhibited.
+ * red. Radius digits sit inside the ring across both axes from the datablock unless inhibited.
  * Canvas bounds clip like range rings (no extra clip call). Manual `*P` cones
  * are `drawManualTpaCones`; ATPA cones are `drawAtpaCones`. CA remains
  * datablock text — not a 3 NM halo. Display only — never a Command.
@@ -1446,7 +1446,12 @@ export function drawTpaRings(
     tracePolyline(ctx, pts, false);
     ctx.stroke();
     if (tpaSizeReadoutEnabled(view.tracks.get(ac.id))) {
-      const digit = tpaRingDigitPlacement(shown.xNm, shown.yNm, radiusNm);
+      const digit = tpaRingDigitPlacement(
+        shown.xNm,
+        shown.yNm,
+        radiusNm,
+        trackLeaderDir(view, ac.id),
+      );
       const p = nmToScreen(digit.eastNm, digit.northNm, view.camera, size);
       ctx.fillText(digit.text, p.x, p.y);
     }

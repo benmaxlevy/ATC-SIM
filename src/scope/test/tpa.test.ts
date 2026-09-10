@@ -8,8 +8,9 @@ import {
   TPA_RADIUS_NM,
   aircraftForTpaRings,
   formatDcbTpaMiReadout,
-  stepTpaRadiusNm,
   tpaConeDigitPlacement,
+  stepTpaRadiusNm,
+  tpaRingDigitPlacement,
   tpaScreenRadiusPx,
 } from "../tpa";
 import { syncTrackDisplays } from "../trackDisplay";
@@ -53,4 +54,11 @@ test("tpaConeDigitPlacement centers digits on cone axis under magnetic variation
   expect(digit.text).toBe("3");
   expect(digit.eastNm).toBeCloseTo(1.5 * Math.sin(trueRad), 6);
   expect(digit.northNm).toBeCloseTo(1.5 * Math.cos(trueRad), 6);
+});
+
+test("TPA ring distance sits across from the datablock", () => {
+  const digit = tpaRingDigitPlacement(10, 20, 5, 9);
+  expect(digit.text).toBe("5");
+  expect(digit.eastNm).toBeCloseTo(10 - 5 * 0.72, 6);
+  expect(digit.northNm).toBeCloseTo(20 - 5 * 0.72, 6);
 });
