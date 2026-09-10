@@ -69,7 +69,7 @@ export const TPA_STROKE_PX = 1;
 export const TPA_STROKE_COLOR = PALETTE.tools;
 
 /** Near-circumference fraction; keeps the mileage immediately inside the ring. */
-export const TPA_RING_DIGIT_RADIUS_FRAC = 0.8;
+export const TPA_RING_DIGIT_RADIUS_FRAC = 0.75;
 
 export interface TpaState {
   on: boolean;
@@ -221,8 +221,9 @@ export function tpaRingDigitPlacement(
   northNm: number,
   radiusNm: number,
   datablockDir: LeaderDir = DEFAULT_LEADER_DIR,
+  radiusFrac = TPA_RING_DIGIT_RADIUS_FRAC,
 ): TpaSizeDigitPlacement {
-  const r = radiusNm * TPA_RING_DIGIT_RADIUS_FRAC;
+  const r = radiusNm * Math.max(0, Math.min(1, radiusFrac));
   const across = {
     1: { east: 1, north: 1 },
     2: { east: 0, north: 1 },
