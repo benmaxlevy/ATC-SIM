@@ -41,7 +41,9 @@ Service-side env, models, and Path C: [`speech-api/README.md`](../speech-api/REA
 
 - **Radar PPI & camera**: North-up display with discrete range presets (5, 10, 15, 20, 30, 40, 50, 60 NM), camera panning/slewing, and single-click or airport recentering.
 - **Datablocks**:
-  - **Full datablocks (FDB)**: 3-line layout showing callsign/CID, Mode C reported altitude (hundreds of ft) & assigned altitude, ground speed (tens of kt), scratchpad, and climb/descent arrows.
+  - **Full datablocks (FDB)**: an 8-field STARS block. Field 0 carries alerts and sequence data; Field 1 carries the aircraft identification; Field 2 carries inhibit indicators; Field 3 carries altitude, scratchpad, or exit data; Field 4 carries the owning TCP; Field 5 carries speed and flight data; Fields 6–8 carry conditional coordination, TSAS, and pointout data.
+  - **FDB physical layout**: the normal display has three lines. Line 1 shows the identification; line 2 shows the active altitude/data, TCP, and traffic-data fields; line 3 shows active coordination data. Values within a field time-share. Empty fields remain blank.
+  - **FDB data status**: live tracks supply identification, altitude, speed, type, requested altitude, assigned altitude, squawk mismatch, ATPA, ownership, alerts, and pointout state. Exit gate/fix, TSAS values, duplicate-beacon `DB`, and several coordination values display when supplied by the corresponding STARS data source.
   - **Limited datablocks (LDB)**: Compact track display for unowned or filtered targets.
   - **Leader lines**: 8 DCB compass positions (`SW`, `S`, `SE`, `W`, `E`, `NW`, `N`, `NE`); L5 remains an internal overlay mode. STARS leader clock directions (`*1`–`*8`), track-specific and fleet-wide leader direction commands (`*L(1-9)` / `*L(1-9)*` / `*L(1-9)U`), and 0–7 length steps (`/<0-7>`, `*LDR <0-7>`), each adding 1/4 in.
 - **Target history & prediction**:

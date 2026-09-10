@@ -43,7 +43,7 @@ When this phase exits, a controller sitting at Chrome on Windows can:
 1. See a **dark, north-up PPI** with a limited palette (black / dim-gray maps / green unowned FDB / white owned FDB / blue position symbol / yellow selected). Red is reserved for phase 4 alerts.
 2. Set **range 5–60 NM** in discrete presets, **center** on the airport or a clicked point, and pan without “zoom to cursor.”
 3. See **KDEM digital maps**: runway 27, ILS 27 localizer feather, range rings, optional coastline polyline from scenario JSON.
-4. Read a **full datablock** (callsign, altitude, ground speed) tied to the target with an **8-direction leader**.
+4. Read a **full datablock** (Fields 0–8: identification, altitude, traffic data, coordination, alerts, and pointouts) tied to the target with an **8-direction leader**.
 5. Toggle **limited datablocks**, **Mode C**, **history dots**, **predicted track line**, and an **altitude filter**.
 6. Use a **documented Windows keyboard subset** (and a mouse **DCB cell grid**) without colliding with typed radio (`L090` remains a left turn to 090 when the command line is focused).
 7. **F3-initiate** a track as a color/ownership stub only — no NAS handoff.
@@ -194,38 +194,50 @@ Use a **metric-similar monospace**, 11–13 px on a 1080p PPI (DCB **CHAR SIZE**
 
 Datablock layout is **character-cell based** (columns of hundreds vs GS). Proportional fonts are a bug.
 
-### 7. Datablock content (v1, amended T02-19)
+### 7. Full datablock content
 
-**Full datablock** (three lines, monospace, character-cell):
+The FDB is a fixed-width STARS datablock with Fields 0–8. The canvas presents
+those fields in three physical lines. Values in the same field time-share when
+more than one condition applies. Empty fields stay empty.
+
+```
+Field 0       Field 1       Field 2       Field 3       Field 4       Field 5       Field 6       Field 7       Field 8
+alerts/TSAS   ACID          inhibits      altitude/data  owning TCP    speed/data    coordination  assigned/TSAS pointout
+```
+
+Normal example:
+
+```
+CA/1          DAL123                      032           1N            21           120           A030          PO N
+```
+
+Physical presentation:
 
 ```
 DAL123
-030  210
-B738
+032  1N  21
+A030
 ```
 
-- Line 1: callsign as stored (no telephony here; that’s readback-only).
-- Line 2: **Mode C** in hundreds of feet, zero-padded to 3 (`Math.round(altFt / 100)`), then two spaces, then **ground speed** in knots, 3 digits (`210`).
-- If **assigned altitude** differs from Mode C by ≥ 100 ft, insert assigned hundreds between them:
+Field rules:
 
-```
-DAL123
-032  030  210
-B738
-```
+- **Field 0**: slash-separated special conditions, safety alerts, cautions, and TSAS sequence number.
+- **Field 1**: aircraft identification, normally 2–7 characters.
+- **Field 2**: alert-inhibit indicators: `*` MSAW, `Δ` CA/MCI, `+` both, `▼` FMA, `>` RNP enabled.
+- **Field 3**: Mode C altitude, pilot-reported altitude, scratchpad, exit gate, or exit fix. Mode C is three digits in hundreds of feet; `*` marks pilot-reported altitude. Values time-share.
+- **Field 4**: owning TCP, adapted to one or two characters. Adaptation indicators may prefix it (`Δ`, `*`, `+`, or `R`).
+- **Field 5**: ground speed in tens of knots, flight rules/category, aircraft count, aircraft type, or requested altitude (`R###`). Values time-share.
+- **Field 6**: ATPA in-trail distance, `NOWGT`, `*TPA`, `NO FP`, beacon/target warnings, MOA, CSMM, selected beacon, or TSAS runway (`A` plus runway ID). Values time-share.
+- **Field 7**: assigned altitude (`A###`), beacon mismatch, TSAS advised speed, or TSAS early/late value. Values time-share.
+- **Field 8**: pointout (`PO` plus receiver TCP, `UN`, or `RD`) or pointout accept count. Pointout status suppresses the accept count.
 
-Meaning: reported 3200, assigned 3000, GS 210. This is the phase-2 altitude contract — not a full STARS field-by-field clone (no beacon, no CSI, no NAS FP scratchpad).
-- Optional trainer **scratchpad** (TrackDisplay, 0–4 A–Z0–9, default empty) appends after GS with two spaces when non-empty. Not a host flight-plan / landing-runway assignment:
+The normal three-line block uses Field 1 on line 1, active Fields 0/3/4/5
+on line 2, and active Fields 6/7/8 on line 3. A slash joins multiple active
+values in one field. Field values remain aligned in character cells.
 
-```
-DAL123
-030  210  ABCD
-B738
-```
-
-- Line 3 (frozen extra line): aircraft **type** from scenario spawn (ICAO stub, e.g. `B738`). Display-only; does not affect kinematics. Omit line 3 when type is missing. **Not** assigned H/A/S — that would be a fourth field set, not a third line. No 4-line block.
-
-Line 2 columns (two-space gaps, left to right): Mode C hundreds (if `M` shows it) · assigned hundreds (if ≥100 ft off) · GS · scratchpad (if non-empty).
+`M` hides Mode C in Field 3. Other active Field 3 values remain eligible for
+display. `T` toggles FDB and LDB. The FDB is fixed-width and uses a monospace
+font so field alignment remains stable.
 
 **Limited datablock** (one line, no callsign, no scratchpad, no type):
 
@@ -233,15 +245,22 @@ Line 2 columns (two-space gaps, left to right): Mode C hundreds (if `M` shows it
 032
 ```
 
-Mode C hundreds only, shorter leader allowed (same direction, half length).
-
-**Mode C toggle (`M`)** hides the reported-altitude field on **full** blocks. If assigned differs, still show assigned + GS. If assigned equals Mode C and Mode C is hidden, show GS only on line 2. Type on line 3 is unchanged. Scratchpad still tails line 2 when set.
-
-`T` / `M` behavior is unchanged (scope-focus only; radio `T20L` still parses).
+Mode C hundreds only, with the current leader direction and a shorter leader.
 
 Default **leader** length is **36 CSS px** (pixel-constant, L8; LDR LEN step 3). L5 overlay remains length 0. DCB LDR LEN uses steps 0–7, adding 12 px (1/4 in) per step.
 
-Font: IBM Plex Mono or system monospace — not a STARS face.
+Font: IBM Plex Mono or system monospace.
+
+#### Runtime data status
+
+Live tracks provide the identification, Mode C altitude, ground speed, flight
+rules, aircraft type, requested and assigned altitude, squawk mismatch, ATPA,
+ownership, safety alerts, and pointout state used by the FDB.
+
+Exit gate/fix, TSAS sequence/runway/advised-speed/early-late values, duplicate
+beacon `DB`, selected beacon, `NO FP`, `DA`, `MOA`, `CSMM`, aircraft count, and
+some TCP/coordination values are accepted by the formatter and display when a
+STARS data source supplies them. They remain blank when no value is supplied.
 
 ### 8. Leader directions (L1–L9 analog)
 
@@ -464,7 +483,7 @@ Do not start phase 3 or 4 until every box is green. Phase 3 *may* overlap the ta
 - [x] Range presets 5–60 NM, PageUp/Down + wheel, **no zoom-to-cursor**, `Home` centers airport.
 - [x] KDEM runway 27, loc feather, rings; coastline optional from JSON.
 - [x] Target symbol + optional 5-dot / 5 s history.
-- [x] Full datablock: callsign, Mode C hundreds, assigned if different, GS. Limited + Mode C toggle.
+- [x] Full datablock: STARS Fields 0–8 with three-line physical presentation, time-sharing, limited mode, and Mode C toggle.
 - [x] Leaders L1–L9 (5 = overlay), 8 compass directions + center.
 - [x] Altitude filter suppresses datablocks outside min/max; symbols remain.
 - [x] PTL 1 min toggle.
