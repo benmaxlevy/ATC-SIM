@@ -3,6 +3,7 @@ import { createWorld, makeTestAircraft } from "@core";
 import { applyIntent } from "@pilot";
 import {
   formatFullDatablock,
+  formatLimitedDatablock,
   formatPartialDatablock,
   formatGroundSpeedTens,
   getSpecialPurposeCode,
@@ -23,6 +24,25 @@ import { PALETTE } from "../palette";
 import { createMockCtx } from "../test/mockCanvas";
 
 describe("STARS CRC Datablock & Scratchpad Fidelity Acceptance (T02-42)", () => {
+  test("LDB Field 0 keeps existing SPC and renderer safety alerts separate from Figure 2-23 data", () => {
+    const ac = makeTestAircraft({
+      callsign: "LDB132",
+      altitudeFt: 4500,
+      speedKt: 180,
+      squawk: "1200",
+      spc: "EM",
+    });
+
+    expect(formatLimitedDatablock(ac, { field0Indicators: ["LA", "CA"] })).toEqual({
+      line0: "EM/CA",
+      line1: "1200 045",
+    });
+    expect(formatLimitedDatablock(ac, { field0Indicators: ["MI", "LL"] })).toEqual({
+      line0: "EM",
+      line1: "1200 045",
+    });
+  });
+
   describe("AC1: Radio Clearances to Automatic Scratchpad Derivation (SP1 / SP2)", () => {
     test("Approach clearance derives standard shorthand in SP1 (e.g. ILS 27 -> I27)", () => {
       const ac = makeTestAircraft({

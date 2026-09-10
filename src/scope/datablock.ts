@@ -170,6 +170,8 @@ export interface LimitedDatablockOpts {
   queried?: boolean;
   /** Ground speed format when queried: "tens" (e.g. "18" for 180 kt) or "knots" (e.g. "180"). Default "tens". */
   speedFormat?: "tens" | "knots";
+  /** Existing Field 0 safety-alert indicators supplied by the renderer. */
+  field0Indicators?: string[];
 }
 
 export interface FullDatablock {
@@ -213,12 +215,12 @@ export interface DatablockFieldOptions {
   aircraftTypeVisible?: boolean;
   /** Include ground speed in Field 5; PDBs may suppress it. */
   groundSpeedVisible?: boolean;
+  field0Indicators?: string[];
   tsasSequence?: string | number;
   exitGate?: string;
   exitFix?: string;
   tcp?: string;
   field4Indicator?: string;
-  field0Indicators?: string[];
   duplicateBeaconCode?: string;
   aircraftCount?: number;
   atpaInTrailDistance?: string;
@@ -268,6 +270,8 @@ function physicalFieldLine(values: string[]): string {
 }
 
 export interface LimitedDatablock {
+  /** Field 0 row; omitted when no SPC or supplied safety alert is active. */
+  line0?: string;
   line1: string;
 }
 
@@ -686,19 +690,29 @@ export function formatLimitedDatablock(
   track: DatablockSource,
   opts: LimitedDatablockOpts = {},
 ): LimitedDatablock {
+  const spc = getSpecialPurposeCode(track);
+  const ldbSpc = spc === "EM" || spc === "RF" || spc === "HJ" ? spc : undefined;
+  const indicators = [ldbSpc, ...(opts.field0Indicators ?? []).filter((value) => value === "CA")]
+    .map((value) => normalizeDisplayField(value, 4))
+    .filter(Boolean)
+    .join("/")
+    .slice(0, 12);
+  const line0 = indicators.length > 0 ? indicators : undefined;
+  const withLine0 = (line1: string): LimitedDatablock =>
+    line0 == null ? { line1 } : { line0, line1 };
   const modeC = formatAltitudeHundreds(track.altitudeFt);
   if (opts.queried) {
     const gs =
       opts.speedFormat === "knots"
         ? formatGroundSpeedKt(track.speedKt)
         : formatGroundSpeedTens(track.speedKt);
-    return { line1: `${modeC} ${gs}` };
+    return withLine0(`${modeC} ${gs}`);
   }
   const squawk = track.squawk ?? track.beaconCode;
   if (opts.beaconVisible !== false && squawk && squawk.length > 0) {
-    return { line1: `${squawk} ${modeC}` };
+    return withLine0(`${squawk} ${modeC}`);
   }
-  return { line1: modeC };
+  return withLine0(modeC);
 }
 
 export interface DatablockLines {
@@ -781,6 +795,7 @@ export function linesForDatablock(
       beaconVisible: opts.beaconVisible,
       queried: opts.queried,
       speedFormat: opts.speedFormat,
+      field0Indicators: opts.field0Indicators,
     });
   }
   if (mode === "partial") {

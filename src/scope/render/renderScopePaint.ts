@@ -813,10 +813,30 @@ function hasMciAlertForTrack(world: World, ac: Aircraft): boolean {
   );
 }
 
+/** Project only existing CA renderer state into limited Field 0. */
+function ldbField0Indicators(
+  view: ScopeView,
+  world: World,
+  ac: Aircraft,
+  td: TrackDisplay | undefined,
+): string[] {
+  const caInhibited = isCaInhibitedForTrack(ac, td, view);
+  const caPairInhibited = isCaPairInhibitedForTrack(view, world, ac);
+  const mciActive = hasMciAlertForTrack(world, ac);
+  const mciInhibited = mciActive && view.mciEnabled === false;
+  const hasCa =
+    (!caInhibited &&
+      !caPairInhibited &&
+      caSeverityForVisibleTrack(view, world, ac.callsign) != null) ||
+    (mciActive && !mciInhibited);
+  return hasCa ? ["CA"] : [];
+}
+
 /**
  * STARS Field 2 inhibit symbols sit immediately after the ACID. `*` is MSAW,
  * `Δ` is CA/MCI, and `+` is both inhibited. Field 0 above the datablock shows
- * active `LA`, `CA`, or slash-separated `LA/CA` indicators.
+ * active `LA`, `CA`, or slash-separated `LA/CA` indicators on full/partial blocks.
+ * Limited blocks project only the existing `CA` state per Figure 2-23.
  */
 function alertGlyphsForTrack(args: {
   caInhibited: boolean;
@@ -899,6 +919,7 @@ export function drawDatablock(
       mode === "partial" && td && isIdentFlashing(td, world.simTimeMs) ? "ID" : undefined,
     queried: isQueried,
     beaconVisible: true,
+    field0Indicators: mode === "limited" ? ldbField0Indicators(view, world, ac, td) : undefined,
     simTimeMs: world.simTimeMs,
   });
   let line1WithoutAlert = base.line1;
@@ -966,12 +987,14 @@ export function drawDatablock(
     }
     ctx.fillText(line1Suffix, alertGlyphX, textY);
   }
-  if (mode === "full" || mode === "partial") {
+  if (mode === "full" || mode === "partial" || mode === "limited") {
     if (lines.line0 != null) {
-      ctx.fillStyle = applyBrite(PALETTE.caution, briteCh);
+      ctx.fillStyle = applyBrite(mode === "limited" ? PALETTE.alert : PALETTE.caution, briteCh);
       ctx.fillText(lines.line0, textX, textY - lineH);
       ctx.fillStyle = applyBrite(visual.color, briteCh);
     }
+  }
+  if (mode === "full" || mode === "partial") {
     const caAcknowledged = isCaAlertAcknowledged(ac, td, view, world);
     const msawAcknowledged = isMsawAlertAcknowledged(ac, td, view, world);
     const blinkOn = isAlertBlinkOn(world.simTimeMs);
@@ -1167,6 +1190,7 @@ export function drawTracks(
         queried: td ? isTrackQueried(td, world.simTimeMs) : false,
         simTimeMs: world.simTimeMs,
         beaconVisible: true,
+        field0Indicators: mode === "limited" ? ldbField0Indicators(view, world, ac, td) : undefined,
       },
     );
     const isCaInhibited = isCaInhibitedForTrack(ac, td, view);
