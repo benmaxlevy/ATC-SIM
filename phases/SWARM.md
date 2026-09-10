@@ -1,5 +1,14 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Fiftieth swarm worker started — 2026-09-10 (T02-130)
+
+Worker executes exactly T02-130 in isolated branch/worktree
+`ticket/T02-130-fdb-physical-field-alignment`, based on `fix/datablocks`. No
+merge or push. Scope is limited to logical-to-physical FDB/PDB Field 0–8
+alignment, Field 4 consistency, stable one-/two-character TCP cell positions,
+pending/accepted inbound plus outbound/pointout coverage, and the documented
+aircraft-type Line 3 delta.
+
 ## Fiftieth swarm worker started — 2026-09-10 (T02-129)
 
 Worker executes exactly T02-129 in isolated branch/worktree
