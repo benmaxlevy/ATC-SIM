@@ -1,5 +1,24 @@
 # Swarm status
 
+## FORTY-NINTH SWARM COMPLETE — ATPA CWT wake minima (T02-125–128)
+
+ATPA now carries an explicit `cwtWakeCategory` (`A`–`I`) separate from the
+display-only `wakeCategory`. Catalog ATPA volumes can opt into the FAA JO
+7110.65 §5-5-4 leader-row/follower-column wake matrix. Missing categories and
+blank required relationships produce `NOWGT` with a 10 NM minimum. Wake
+minimums never fall below the applicable authored radar minimum; existing
+pairing, 45-second Warning, current Alert policy, generic volume loading, and
+single-TCP trainer boundaries remain intact.
+
+Captain commits: T02-125 (`060d43a`), T02-126 (`6efab79`, `9dd44ae`,
+`4665e4b`), T02-127 (`46d7a34`, `a7810e2`), and T02-128 (`06bf308`). Planning
+commit: `7872fc3`.
+
+Final gate: `npm run ci` passed — **188 files, 1,692 tests passed, 4 skipped**.
+Remaining manual/future work: ICAO-type-to-CWT mapping, additional 2.5 NM
+authorization semantics, per-position adaptation, TDW monitor color, and
+aural ATPA remain deferred.
+
 ## FORTY-EIGHTH SWARM COMPLETE — Datablock field-format fidelity (T02-122–124)
 
 T02-122 through T02-124 completed on `fix/datablocks`. Datablock format logic
