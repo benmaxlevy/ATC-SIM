@@ -1,3 +1,5 @@
+import type { TranscriptMetadata } from "./types";
+
 /**
  * Wall-clock PTT utterance timing (`glossary.md`: sim time is the wrong clock).
  * Overlay display is T03-09. Audio-start is the source start (or speechSynthesis
@@ -14,8 +16,8 @@ export interface VoiceUtteranceMetrics {
   pttUpToTranscriptMs: number | null;
   /** PTT-up → first audible readback start. null if TTS never started. */
   pttUpToAudioStartMs: number | null;
-  /** `Transcript.confidence` when STT returned text; null if no transcript. */
-  sttConfidence: number | null;
+  /** Measurable STT facts; never used to gate parsing. */
+  sttMetadata: TranscriptMetadata | null;
 }
 
 /** Last utterance + session p50 of successful audio-start samples. */
@@ -33,7 +35,7 @@ export function markPttUp(nowMs: number): VoiceUtteranceMetrics {
     t0: nowMs,
     pttUpToTranscriptMs: null,
     pttUpToAudioStartMs: null,
-    sttConfidence: null,
+    sttMetadata: null,
   };
 }
 
@@ -50,8 +52,11 @@ export function recordAudioStart(metrics: VoiceUtteranceMetrics, nowMs: number):
 }
 
 /** Log ASR score. Does not skip parse (T03-15). */
-export function recordSttConfidence(metrics: VoiceUtteranceMetrics, confidence: number): void {
-  metrics.sttConfidence = confidence;
+export function recordTranscriptMetadata(
+  metrics: VoiceUtteranceMetrics,
+  metadata: TranscriptMetadata | undefined,
+): void {
+  metrics.sttMetadata = metadata ?? null;
 }
 
 /** Ticket T03-09 name for {@link recordTranscriptLatency}. */
@@ -82,7 +87,7 @@ export function snapshot(metrics: VoiceUtteranceMetrics): VoiceUtteranceMetrics 
     t0: metrics.t0,
     pttUpToTranscriptMs: metrics.pttUpToTranscriptMs,
     pttUpToAudioStartMs: metrics.pttUpToAudioStartMs,
-    sttConfidence: metrics.sttConfidence,
+    sttMetadata: metrics.sttMetadata,
   };
 }
 

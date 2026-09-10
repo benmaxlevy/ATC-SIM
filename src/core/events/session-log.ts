@@ -54,8 +54,14 @@ export type SessionEvent =
       /** PTT-up → first audible readback start. null if TTS never started. */
       pttUpToAudioStartMs: number | null;
       backendId: string;
-      /** ASR score when STT returned a transcript (T03-15). Omit/null if none. */
-      sttConfidence?: number | null;
+      /** Measurable STT facts; never a parser gate. */
+      sttMetadata?: {
+        model?: string;
+        audioDurationMs?: number;
+        inferenceLatencyMs?: number;
+        noSpeechProbability?: number;
+        emptySignal?: boolean;
+      } | null;
     }
   | {
       type: "alert.ca.caution";

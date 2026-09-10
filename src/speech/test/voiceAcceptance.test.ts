@@ -37,7 +37,7 @@ function fakePort(text: string): SpeechPort {
   return {
     id: "fake",
     async transcribe(): Promise<Transcript> {
-      return { text, confidence: 1, latencyMs: 3 };
+      return { text, latencyMs: 3 };
     },
     async synthesize(): Promise<AudioClip> {
       return { sampleRate: 16000, channels: 1, pcm16: new Int16Array(1600) };
@@ -160,7 +160,7 @@ test("typed accepted readback uses the same TTS player as PTT", async () => {
     speech: {
       id: "fake",
       async transcribe(): Promise<Transcript> {
-        return { text: "unused", confidence: 1, latencyMs: 1 };
+        return { text: "unused", latencyMs: 1 };
       },
       synthesize: synth,
     },
@@ -229,13 +229,10 @@ test("E4 — mocked http STT and TTS stay on our speech-api URLs", async () => {
     const href = String(url);
     if (href === DEFAULT_STT_URL) {
       expect(init?.method).toBe("POST");
-      return new Response(
-        JSON.stringify({ text: "turn left heading two seven zero", confidence: 0.92 }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
+      return new Response(JSON.stringify({ text: "turn left heading two seven zero" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     }
     expect(href).toBe(DEFAULT_TTS_URL);
     return new Response(uint8ToArrayBuffer(wav), {

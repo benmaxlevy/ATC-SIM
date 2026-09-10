@@ -9,7 +9,6 @@ const EXPECTED: Record<VoiceErrorCode, string> = {
   empty_clip: "No audio",
   stt_failed: "Radio failed — say again",
   voice_backend_unavailable: "Voice backend unavailable",
-  low_confidence: "Say again",
   parse_miss: "Unable to parse",
   tts_failed: "Readback audio failed",
   ptt_locked: "Radio busy — standby",
@@ -17,15 +16,10 @@ const EXPECTED: Record<VoiceErrorCode, string> = {
 };
 
 test("formatVoiceStatus covers every reason code (T03-08)", () => {
-  expect(VOICE_ERROR_CODES).toHaveLength(11);
+  expect(VOICE_ERROR_CODES).toHaveLength(10);
   for (const code of VOICE_ERROR_CODES) {
     expect(formatVoiceStatus({ code })).toBe(EXPECTED[code]);
   }
-});
-
-test("low confidence includes the score when present", () => {
-  expect(formatVoiceStatus({ code: "low_confidence", confidence: 0.41 })).toBe("Say again (0.41)");
-  expect(formatVoiceStatus({ code: "low_confidence", confidence: 0.5 })).toBe("Say again (0.50)");
 });
 
 test("displayCommandLineStatus prefers voice status over the last readback", () => {

@@ -17,6 +17,7 @@ export type {
   SpeechPort,
   SpeechPortErrorKind,
   Transcript,
+  TranscriptMetadata,
   TranscribeOpts,
   VoiceErrorCode,
   VoiceStatusEvent,
@@ -91,7 +92,7 @@ export {
   markTranscript,
   percentile50,
   recordAudioStart,
-  recordSttConfidence,
+  recordTranscriptMetadata,
   recordTranscriptLatency,
   snapshot,
 } from "./metrics";

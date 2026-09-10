@@ -19,7 +19,7 @@ import {
 import {
   markPttUp,
   recordAudioStart,
-  recordSttConfidence,
+  recordTranscriptMetadata,
   recordTranscriptLatency,
 } from "./metrics";
 import type { VoiceUtteranceMetrics } from "./metrics";
@@ -387,11 +387,10 @@ class VoiceLoopImpl implements VoiceLoop {
       return;
     }
     recordTranscriptLatency(metrics, this.now());
-    recordSttConfidence(metrics, transcript.confidence);
+    recordTranscriptMetadata(metrics, transcript.metadata);
     this.emitMetrics();
 
-    // R01 SAY AGAIN is unreadable radio; T03-15 does not skip parse on low ASR confidence.
-    // Trainer delta: Transcript.confidence is an ASR score, not unreadable radio.
+    // STT metadata is telemetry only; parser execution never depends on a score.
     const parsed = await this.parseCommand(transcript.text, {
       source: "voice",
       selectedCallsign: this.getSelectedCallsign(),

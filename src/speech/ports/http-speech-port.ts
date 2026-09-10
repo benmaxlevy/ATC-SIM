@@ -193,12 +193,12 @@ export class HttpSpeechPort implements SpeechPort {
       if (typeof textValue !== "string") {
         throw new SpeechPortError("invalid_response", "STT response missing text");
       }
-      const confidenceValue = (parsed as { confidence?: unknown }).confidence;
-      const confidence =
-        typeof confidenceValue === "number" && Number.isFinite(confidenceValue)
-          ? confidenceValue
-          : 1.0;
-      return { text: textValue, confidence, latencyMs };
+      const metadataValue = (parsed as { metadata?: unknown }).metadata;
+      const metadata =
+        typeof metadataValue === "object" && metadataValue !== null
+          ? (metadataValue as Transcript["metadata"])
+          : undefined;
+      return { text: textValue, metadata, latencyMs };
     } finally {
       this.#transcribeInFlight = false;
     }
