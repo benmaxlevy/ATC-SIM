@@ -1,5 +1,58 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Fiftieth swarm planned — 2026-09-10 (Pending inbound datablock fidelity)
+
+User approved execution of the pending inbound datablock fidelity plan.
+Captain owns `fix/datablocks`, runs one isolated worker at a time, squash-merges
+each completed ticket back onto `fix/datablocks`, commits throughout, pushes only
+after the final gate, and stops at T02-130.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align pending inbound handoff TCP/origin semantics and physical FDB/PDB field presentation with TI 6191.409 Rev. 30. |
+| Include | **T02-129**, **T02-130** only. |
+| Skip | Networking, multi-user positions, redirects, TSAS runtime, ADS-B, parser, Command IR, speech, DCB, scenario data, facility branches. |
+| Stop | After T02-130 acceptance and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | Captain pushes `fix/datablocks` after final CI and STATUS update. |
+
+**Product law:** Inbound origin and receiving TCP are separate values. The
+receiving TCP controls the target symbol; the originating value occupies Field
+4. Pending inbound status uses STARS-like FDB blinking and field placement,
+not an invented `HO` suffix. No NAS compatibility claim and no facility branch.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-129 | planning commit |
+| B | T02-130 | T02-129 merge and focused gate |
+
+**Ticket ownership:**
+
+- T02-129: inbound handoff origin/receiving TCP adapter, symbol, and pending
+  FDB behavior.
+- T02-130: logical-to-physical FDB/PDB mapping, aircraft-type placement
+  decision, fidelity acceptance, and documentation.
+
+**Ticket files / branches:**
+
+- `ticket/T02-129-pending-inbound-handoff-tcp-semantics` ← `phases/02-scope/tickets/T02-129-pending-inbound-handoff-tcp-semantics.md`
+- `ticket/T02-130-fdb-physical-field-alignment` ← `phases/02-scope/tickets/T02-130-fdb-physical-field-alignment.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 pending inbound datablock fidelity T02-129–130
+Merge target: fix/datablocks
+Merged: T02-129, T02-130
+Tests: <focused gates and npm run ci result>
+Notes: <aircraft-type placement decision; manual visual leftovers>
+```
+
 ## Forty-ninth swarm planned — 2026-09-10 (ATPA CWT wake minima)
 
 User approved the ATPA wake-only plan. Captain owns `fix/datablocks`, spawns
