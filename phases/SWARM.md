@@ -1,5 +1,70 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Forty-ninth swarm planned — 2026-09-10 (ATPA CWT wake minima)
+
+User approved the ATPA wake-only plan. Captain owns `fix/datablocks`, spawns
+one isolated worker at a time, squash-merges each completed ticket back onto
+`fix/datablocks`, runs the required focused gate after each merge, and stops
+after final `npm run ci`. No push.
+
+| Key | Value |
+| --- | --- |
+| Goal | Add FAA JO 7110.65 CWT wake categories, data-driven ATPA minima, and explicit NOWGT/10 NM behavior. |
+| Include | **T02-125**, **T02-126**, **T02-127**, **T02-128** only. |
+| Skip | ICAO-type inference, aircraft performance changes, TSAS, CRDA, networking, per-position adaptation, aural ATPA, UI redesign, live FAA downloads. |
+| Stop | After T02-128 acceptance and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+
+**Product law:** Operational CWT category data is separate from display
+category letters. The evaluator uses leader-row/follower-column adaptation
+data. Missing required category or blank required matrix cell produces
+`NOWGT` and `10 NM`. Wake minima never fall below applicable volume radar
+minima. No facility or ICAO-type branch.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-125 | planning commit |
+| B | T02-126 | T02-125 merge and focused gate |
+| C | T02-127 | T02-126 merge and focused gate |
+| D | T02-128 | T02-127 merge and focused gate |
+
+**Ticket ownership:**
+
+- T02-125: CWT category type and aircraft contract.
+- T02-126: FAA wake matrix data, schema, and NOWGT adaptation.
+- T02-127: pure wake-aware ATPA evaluator and world state.
+- T02-128: acceptance, regression updates, and documentation.
+
+**Ticket files / branches:**
+
+- `ticket/T02-125-atpa-cwt-category-contract` ← `phases/02-scope/tickets/T02-125-atpa-cwt-category-contract.md`
+- `ticket/T02-126-atpa-faa-wake-matrix-and-nowgt` ← `phases/02-scope/tickets/T02-126-atpa-faa-wake-matrix-and-nowgt.md`
+- `ticket/T02-127-atpa-wake-aware-evaluator` ← `phases/02-scope/tickets/T02-127-atpa-wake-aware-evaluator.md`
+- `ticket/T02-128-atpa-wake-acceptance-and-docs` ← `phases/02-scope/tickets/T02-128-atpa-wake-acceptance-and-docs.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 ATPA CWT wake minima T02-125–128
+Merge target: fix/datablocks
+Merged: T02-125, T02-126, T02-127, T02-128
+Tests: <focused gates and npm run ci result>
+Notes: <NOWGT policy; remaining manual leftovers>
+```
+
+## Forty-ninth swarm started — 2026-09-10 (ATPA CWT wake minima)
+
+Captain start/configuration confirmed after planning. This swarm runs
+T02-125 through T02-128 sequentially on `fix/datablocks`, with one isolated
+worker at a time and captain-owned squash merges. `NOWGT` plus `10 NM` is the
+approved policy for missing required categories and blank required matrix
+cells. No push.
+
 ## Forty-eighth swarm started — 2026-09-10 (Datablock field-format fidelity)
 
 User authorized execution using isolated subagents after the planning addendum
