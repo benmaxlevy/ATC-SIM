@@ -20,6 +20,23 @@ export interface AltitudeFilter {
   maxHundreds: number; // 0–180, >= min
 }
 
+/** Common datablock exception gate; ordinary slew/selection never qualifies. */
+export function shouldShowDatablockOutsideAltitudeFilter(args: {
+  inFilter: boolean;
+  ownership?: string;
+  retainedFdb?: boolean;
+  emergency?: boolean;
+}): boolean {
+  return (
+    args.inFilter ||
+    args.ownership === "owned" ||
+    args.ownership === "tower" ||
+    args.ownership === "center" ||
+    args.retainedFdb === true ||
+    args.emergency === true
+  );
+}
+
 export const FILTER_HUNDREDS_MIN = 0;
 export const FILTER_HUNDREDS_MAX = 180;
 
@@ -234,6 +251,7 @@ export function handleFilterEntryKey(
   filter: AltitudeFilter,
   key: string,
   nowMs: number,
+  onCommit?: () => void,
 ): boolean {
   if (expireFilterEntry(entry, filter, nowMs)) {
     return false;
@@ -251,7 +269,13 @@ export function handleFilterEntryKey(
     return true;
   }
   if (key === "Enter" || key === "NumpadEnter") {
+    const wasMax = entry.phase === "max";
+    const previousMin = filter.minHundreds;
+    const previousMax = filter.maxHundreds;
     commitFilterField(entry, filter, nowMs);
+    if (wasMax && (filter.minHundreds !== previousMin || filter.maxHundreds !== previousMax)) {
+      onCommit?.();
+    }
     return true;
   }
   const digit = digitFromKey(key);

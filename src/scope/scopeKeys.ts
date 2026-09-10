@@ -76,6 +76,7 @@ import {
   type PreviewArmedAction,
   type PreviewKeyOutcome,
 } from "./previewArea";
+import { retainFullDatablocksOutsideAltitudeFilter } from "./trackDisplay";
 import { browserDcbPrefStorage, cancelDcbPrefSaveAs, commitDcbPrefSaveAs } from "./dcb/dcbPref";
 import { applyDcbShift, armDcbSpinner, handleDcbEscape, openDcbMenu } from "./dcb/dcbMenu";
 import {
@@ -386,7 +387,11 @@ function applyPreviewArmedAction(
       view.preview.lastKeyAtMs = nowMs;
       return;
     case "setAltitudeFilterLimits":
-      tryApplyAltitudeFilter(view.altitudeFilter, action.floorHundreds, action.ceilingHundreds);
+      if (
+        tryApplyAltitudeFilter(view.altitudeFilter, action.floorHundreds, action.ceilingHundreds)
+      ) {
+        retainFullDatablocksOutsideAltitudeFilter(view.tracks);
+      }
       return;
     case "setDefaultLeaderLength":
       view.leaderLengthPx = action.lengthPx as LeaderLengthPx;
@@ -887,7 +892,11 @@ export function handleScopeKeyDown(
       beginFilterEntry(view.filterEntry, view.altitudeFilter, nowMs);
       return true;
     }
-    if (handleFilterEntryKey(view.filterEntry, view.altitudeFilter, event.key, nowMs)) {
+    if (
+      handleFilterEntryKey(view.filterEntry, view.altitudeFilter, event.key, nowMs, () =>
+        retainFullDatablocksOutsideAltitudeFilter(view.tracks),
+      )
+    ) {
       consume(event);
       return true;
     }

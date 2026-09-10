@@ -58,6 +58,8 @@ export interface TrackDisplay {
   tracked?: boolean;
   queriedUntilSimMs?: number;
   forcedFdb?: boolean;
+  /** Retains an FDB captured when altitude-filter limits changed. */
+  retainedFdbOutsideAltitudeFilter?: boolean;
   unassociated?: boolean;
   highlighted?: boolean;
   outboundFlashUntilSimMs?: number;
@@ -508,6 +510,7 @@ export function toggleTrackPdbFdb(td: TrackDisplay): DatablockMode {
   } else if (td.datablockMode === "full") {
     td.datablockMode = "partial";
     td.forcedFdb = false;
+    td.retainedFdbOutsideAltitudeFilter = false;
   }
   return td.datablockMode;
 }
@@ -616,6 +619,7 @@ export function handleTrackClick(
     }
     if (step === 2) {
       td.datablockMode = "partial";
+      td.retainedFdbOutsideAltitudeFilter = false;
       td.outboundClickStep = 3;
       world.handoffs.set(aircraftId, { kind: "none" });
       return;
@@ -711,6 +715,7 @@ export function applyDropTrackToId(
   td.ownership = applyDropTrack(td.ownership);
   td.datablockMode = "partial";
   td.forcedFdb = false;
+  td.retainedFdbOutsideAltitudeFilter = false;
   if (caState) {
     pruneCaPairInhibitsForTrack(caState, aircraftId);
   }
@@ -729,6 +734,13 @@ export function applyDropTrackToSelection(
   return applyDropTrackToId(tracks, world, id, caState);
 }
 
+/** Capture currently full datablocks before a new altitude filter is committed. */
+export function retainFullDatablocksOutsideAltitudeFilter(tracks: Map<string, TrackDisplay>): void {
+  for (const td of tracks.values()) {
+    td.retainedFdbOutsideAltitudeFilter = td.datablockMode === "full";
+  }
+}
+
 function flipDatablockMode(mode: DatablockMode): DatablockMode {
   return mode === "full" ? "limited" : "full";
 }
@@ -745,11 +757,13 @@ export function toggleDatablockModeForSelection(
   if (selected && world.aircraft.some((ac) => ac.id === selected)) {
     const td = ensureTrackDisplay(tracks, selected);
     td.datablockMode = flipDatablockMode(td.datablockMode);
+    if (td.datablockMode !== "full") td.retainedFdbOutsideAltitudeFilter = false;
     return;
   }
   for (const ac of world.aircraft) {
     const td = ensureTrackDisplay(tracks, ac.id);
     td.datablockMode = flipDatablockMode(td.datablockMode);
+    if (td.datablockMode !== "full") td.retainedFdbOutsideAltitudeFilter = false;
   }
 }
 

@@ -202,6 +202,44 @@ test("filtered track: datablock rectangle is not pickable; the target still sele
   expect(world.selectedAircraftId).toBe("ac-dal");
 });
 
+test("owned and retained out-of-filter datablocks are pickable; ordinary selection is not", () => {
+  const ac = sample("DAL123", "ac-dal", 0, 0);
+  ac.altitudeFt = 6000;
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  view.altitudeFilter = { minHundreds: 70, maxHundreds: 90 };
+  const td = view.tracks.get(ac.id)!;
+  const tick = nmToScreen(ac.xNm, ac.yNm, CAM, VIEW);
+  const block = datablockRect(
+    tick.x,
+    tick.y,
+    linesForDatablock(ac, "full", true),
+    view.datablockCellWidthPx,
+  );
+  const point = { x: block.x + block.w / 2, y: block.y + block.h / 2 };
+
+  expect(
+    pickAircraftAt(world, point.x, point.y, CAM, CSS_W, CSS_H, HIT_RADIUS_CSS_PX, view),
+  ).toBeNull();
+  td.ownership = "owned";
+  td.datablockMode = "full";
+  expect(pickAircraftAt(world, point.x, point.y, CAM, CSS_W, CSS_H, HIT_RADIUS_CSS_PX, view)).toBe(
+    ac,
+  );
+  td.ownership = "unowned";
+  td.datablockMode = "full";
+  td.retainedFdbOutsideAltitudeFilter = true;
+  expect(pickAircraftAt(world, point.x, point.y, CAM, CSS_W, CSS_H, HIT_RADIUS_CSS_PX, view)).toBe(
+    ac,
+  );
+  td.datablockMode = "partial";
+  td.retainedFdbOutsideAltitudeFilter = false;
+  expect(
+    pickAircraftAt(world, point.x, point.y, CAM, CSS_W, CSS_H, HIT_RADIUS_CSS_PX, view),
+  ).toBeNull();
+});
+
 test("AC5 — selectAircraftAt does not import the radio pipeline or write intent", () => {
   const sources = import.meta.glob("../*.{ts,tsx}", {
     query: "?raw",

@@ -289,7 +289,7 @@ interface AltitudeFilter {
 
 - Default `000–180` (show everything v1 can fly).
 - Compare against **Mode C hundreds**, inclusive.
-- Outside filter: still draw **target symbol + history**; **suppress datablock and leader**. This is STARS-ish “filtered” rather than deleting the blip (deleting blips feels like a bug).
+- Outside filter: still draw **target symbol + history**; suppress the datablock and leader for ordinary unowned/unassociated tracks. Current-position-owned tracks, qualifying emergency tracks, and tracks already showing an FDB when the filter changes retain their datablock and leader. Ordinary selection/slew alone does not override the filter; quicklook remains deferred. This is STARS-ish “filtered” rather than deleting the blip (deleting blips feels like a bug).
 - PTL: suppress when filtered.
 - Filter does not affect strips (strips always list all aircraft).
 

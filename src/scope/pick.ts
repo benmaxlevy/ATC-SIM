@@ -13,7 +13,11 @@
  */
 
 import { handoffFor, setSelectedAircraft, type Aircraft, type World } from "@core";
-import { inAltitudeFilter, type AltitudeFilter } from "./altitudeFilter";
+import {
+  inAltitudeFilter,
+  shouldShowDatablockOutsideAltitudeFilter,
+  type AltitudeFilter,
+} from "./altitudeFilter";
 import { nmToScreen, type ScopeCamera } from "./camera";
 import {
   datablockRect,
@@ -54,6 +58,7 @@ export interface DatablockPickView {
       lastReport?: TrackDisplay["lastReport"];
       squawk?: string;
       ownership?: string;
+      retainedFdbOutsideAltitudeFilter?: boolean;
     }
   >;
   modeCVisible: boolean;
@@ -86,7 +91,21 @@ function pickDatablockAt(
       continue;
     }
     const shown = aircraftAtReport(ac, td.lastReport);
-    if (!inAltitudeFilter(shown.altitudeFt, view.altitudeFilter)) {
+    const emergency = Boolean(
+      ac.spc ||
+      world.alerts.ca.some(
+        (alert) => alert.callsignA === ac.callsign || alert.callsignB === ac.callsign,
+      ) ||
+      world.alerts.msaw.some((alert) => alert.callsign === ac.callsign),
+    );
+    if (
+      !shouldShowDatablockOutsideAltitudeFilter({
+        inFilter: inAltitudeFilter(shown.altitudeFt, view.altitudeFilter),
+        ownership: td.ownership,
+        retainedFdb: td.retainedFdbOutsideAltitudeFilter,
+        emergency,
+      })
+    ) {
       continue;
     }
     const p = nmToScreen(shown.xNm, shown.yNm, cam, size);

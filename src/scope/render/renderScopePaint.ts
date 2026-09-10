@@ -9,7 +9,7 @@ import {
   type Aircraft,
   type World,
 } from "@core";
-import { inAltitudeFilter } from "../altitudeFilter";
+import { inAltitudeFilter, shouldShowDatablockOutsideAltitudeFilter } from "../altitudeFilter";
 import { nmToScreen, type ScopeViewSize } from "../camera";
 import {
   DATABLOCK_FIELD_GAP,
@@ -739,6 +739,25 @@ export function getDatablockVisualState(
   };
 }
 
+function isEmergencyDatablockException(world: World, ac: Aircraft): boolean {
+  return Boolean(
+    ac.spc ||
+    world.alerts.ca.some(
+      (alert) => alert.callsignA === ac.callsign || alert.callsignB === ac.callsign,
+    ) ||
+    world.alerts.msaw.some((alert) => alert.callsign === ac.callsign),
+  );
+}
+
+function shouldPaintDatablock(view: ScopeView, world: World, ac: Aircraft, td?: TrackDisplay) {
+  return shouldShowDatablockOutsideAltitudeFilter({
+    inFilter: inAltitudeFilter(ac.altitudeFt, view.altitudeFilter),
+    ownership: td?.ownership,
+    retainedFdb: td?.retainedFdbOutsideAltitudeFilter,
+    emergency: isEmergencyDatablockException(world, ac),
+  });
+}
+
 function trackLeaderDir(view: ScopeView, aircraftId: string): LeaderDir {
   return view.tracks.get(aircraftId)?.leaderDir ?? DEFAULT_LEADER_DIR;
 }
@@ -821,12 +840,15 @@ export function drawDatablock(
   world: World,
   resolved?: ResolvedDatablockLayout,
 ): void {
+  const td = view.tracks.get(ac.id);
+  if (!shouldPaintDatablock(view, world, ac, td)) {
+    return;
+  }
   const visual = getDatablockVisualState(view, world, ac);
   if (!visual.visible) {
     return;
   }
   ctx.font = datablockFontCss(view.charSizes.dataBlocks);
-  const td = view.tracks.get(ac.id);
   const derived = deriveScratchpads(ac, td);
   const mode = visual.mode;
   const isQueried = td ? isTrackQueried(td, world.simTimeMs) : false;
@@ -1087,11 +1109,7 @@ export function drawTracks(
   const layoutItems: DatablockLayoutInput[] = world.aircraft.flatMap((ac) => {
     const td = view.tracks.get(ac.id);
     const shown = displayAircraft(ac, td);
-    if (
-      !shown ||
-      isPrimaryTarget(ac, td) ||
-      !inAltitudeFilter(shown.altitudeFt, view.altitudeFilter)
-    ) {
+    if (!shown || isPrimaryTarget(ac, td) || !shouldPaintDatablock(view, world, ac, td)) {
       return [];
     }
     const visual = getDatablockVisualState(view, world, ac);
@@ -1214,7 +1232,7 @@ export function drawTracks(
     }
     // Outside the altitude filter: keep the target (and history above);
     // suppress datablock and leader. T02-05 draws the leader behind this same gate.
-    if (!inAltitudeFilter(shown.altitudeFt, view.altitudeFilter)) {
+    if (!shouldPaintDatablock(view, world, ac, td)) {
       continue;
     }
     const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
@@ -1260,7 +1278,7 @@ export function drawTracks(
     if (!shown || isPrimaryTarget(ac, td)) {
       continue;
     }
-    if (!inAltitudeFilter(shown.altitudeFt, view.altitudeFilter)) {
+    if (!shouldPaintDatablock(view, world, ac, td)) {
       continue;
     }
     const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
