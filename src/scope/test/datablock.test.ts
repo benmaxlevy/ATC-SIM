@@ -65,6 +65,9 @@ test("explicit datablock fields format Figure 2-20 Fields 0–5", () => {
     field3: "120",
     field4: "1N",
     field5: "18H",
+    field6: "1200",
+    field7: "",
+    field8: "",
   });
 });
 
@@ -74,4 +77,80 @@ test("explicit field alternatives time-share without inventing absent values", (
   expect(formatDatablockFields(ac, { exitGate: "G", timeSharePhase: 2 }).field3).toBe("030");
   expect(formatDatablockFields(ac, { timeSharePhase: 0 }).field4).toBe("");
   expect(formatDatablockFields(ac, { timeSharePhase: 0 }).field0).toBe("");
+});
+
+test("Fields 6–8 format documented optional values with per-field priority", () => {
+  const ac = makeTestAircraft({
+    callsign: "TEST1",
+    altitudeFt: 5000,
+    speedKt: 210,
+    squawk: "1200",
+  });
+  ac.intent.controllerAssignedAltitudeFt = 7000;
+  const options = {
+    atpaInTrailDistance: "2.40",
+    atpaNowgt: true,
+    atpaTpa: true,
+    noFlightPlan: true,
+    duplicateBeaconCode: "4321",
+    duplicateTargetAddress: true,
+    moaAssignment: "MOA1",
+    csmm: true,
+    selectedBeaconCode: "2468",
+    tsasRunwayId: "27",
+    tsasAdvisedSpeedKt: 180,
+    tsasEarlyLate: { status: "E" as const, minutes: 2, seconds: 5 },
+    pointoutReceiverTcp: "1n",
+    pointoutUn: true,
+    pointoutRd: true,
+    pointoutAcceptCount: 3,
+  };
+
+  expect(formatDatablockFields(ac, { ...options, timeSharePhase: 0 }).field6).toBe("2.40");
+  expect(formatDatablockFields(ac, { ...options, timeSharePhase: 3 }).field6).toBe("NO FP");
+  expect(formatDatablockFields(ac, { ...options, timeSharePhase: 6 }).field6).toBe("MOA1");
+  expect(formatDatablockFields(ac, { ...options, timeSharePhase: 7 }).field6).toBe("CSMM");
+  expect(formatDatablockFields(ac, { ...options, timeSharePhase: 8 }).field6).toBe("2468");
+  expect(formatDatablockFields(ac, { ...options, timeSharePhase: 9 }).field6).toBe("A27");
+
+  expect(formatDatablockFields(ac, { ...options, timeSharePhase: 0 }).field7).toBe("A070");
+  expect(formatDatablockFields(ac, { ...options, timeSharePhase: 1 }).field7).toBe("18");
+  expect(formatDatablockFields(ac, { ...options, timeSharePhase: 2 }).field7).toBe("E205");
+
+  expect(formatDatablockFields(ac, { ...options, timeSharePhase: 0 }).field8).toBe("PO 1N");
+  expect(formatDatablockFields(ac, { ...options, pointoutReceiverTcp: undefined }).field8).toBe(
+    "UN",
+  );
+  expect(
+    formatDatablockFields(ac, {
+      ...options,
+      pointoutReceiverTcp: undefined,
+      pointoutUn: false,
+      pointoutRd: false,
+      timeSharePhase: 0,
+    }).field8,
+  ).toBe("3");
+});
+
+test("duplicate beacon formatting is independent from squawk mismatch", () => {
+  const ac = makeTestAircraft({ callsign: "TEST2", altitudeFt: 4000, speedKt: 190 });
+  ac.assignedSquawk = "1200";
+  ac.reportedSquawk = "3400";
+
+  expect(formatDatablockFields(ac, { timeSharePhase: 0 }).field6).toBe("3400");
+  expect(formatDatablockFields(ac, { duplicateBeaconCode: "7788", timeSharePhase: 0 }).field6).toBe(
+    "3400",
+  );
+  expect(formatDatablockFields(ac, { duplicateBeaconCode: "7788", timeSharePhase: 1 }).field6).toBe(
+    "7788",
+  );
+  expect(formatDatablockFields(ac, { timeSharePhase: 0 }).field7).toBe("1200");
+});
+
+test("Fields 6–8 omit unsupported and absent values", () => {
+  const ac = makeTestAircraft({ callsign: "EMPTY", altitudeFt: 4000, speedKt: 190 });
+  expect(formatDatablockFields(ac)).toMatchObject({ field6: "", field7: "", field8: "" });
+  expect(
+    formatDatablockFields(ac, { pointoutAcceptCount: 4, pointoutInhibited: true }).field8,
+  ).toBe("");
 });

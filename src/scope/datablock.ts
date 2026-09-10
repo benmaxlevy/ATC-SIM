@@ -113,6 +113,26 @@ export interface FullDatablockOpts {
   duplicateBeaconCode?: string;
   /** Field 5 number of aircraft represented by the track. */
   aircraftCount?: number;
+  /** Field 6 ATPA in-trail distance, or its documented status literals. */
+  atpaInTrailDistance?: string;
+  atpaNowgt?: boolean;
+  atpaTpa?: boolean;
+  /** Field 6 optional documented indicators. */
+  noFlightPlan?: boolean;
+  duplicateTargetAddress?: boolean;
+  moaAssignment?: string;
+  csmm?: boolean;
+  selectedBeaconCode?: string;
+  tsasRunwayId?: string;
+  /** Field 7 TSAS and beacon-mismatch values. */
+  tsasAdvisedSpeedKt?: number;
+  tsasEarlyLate?: { status: "E" | "L"; minutes: number; seconds?: number };
+  /** Field 8 pointout values. Higher-priority status suppresses accept count. */
+  pointoutReceiverTcp?: string;
+  pointoutUn?: boolean;
+  pointoutRd?: boolean;
+  pointoutAcceptCount?: number;
+  pointoutInhibited?: boolean;
 }
 
 export interface PartialDatablockOpts {
@@ -170,6 +190,9 @@ export interface DatablockFields {
   field3: string;
   field4: string;
   field5: string;
+  field6: string;
+  field7: string;
+  field8: string;
 }
 
 export interface DatablockFieldOptions {
@@ -181,6 +204,22 @@ export interface DatablockFieldOptions {
   field0Indicators?: string[];
   duplicateBeaconCode?: string;
   aircraftCount?: number;
+  atpaInTrailDistance?: string;
+  atpaNowgt?: boolean;
+  atpaTpa?: boolean;
+  noFlightPlan?: boolean;
+  duplicateTargetAddress?: boolean;
+  moaAssignment?: string;
+  csmm?: boolean;
+  selectedBeaconCode?: string;
+  tsasRunwayId?: string;
+  tsasAdvisedSpeedKt?: number;
+  tsasEarlyLate?: { status: "E" | "L"; minutes: number; seconds?: number };
+  pointoutReceiverTcp?: string;
+  pointoutUn?: boolean;
+  pointoutRd?: boolean;
+  pointoutAcceptCount?: number;
+  pointoutInhibited?: boolean;
 }
 
 export interface LimitedDatablock {
@@ -301,7 +340,7 @@ function normalizeDisplayField(raw: string | undefined, maxLength: number): stri
   return (raw ?? "")
     .trim()
     .toUpperCase()
-    .replace(/[^A-Z0-9*/+Δ<>-]/g, "")
+    .replace(/[^A-Z0-9*/+Δ<>.-]/g, "")
     .slice(0, maxLength);
 }
 
@@ -314,6 +353,31 @@ function formatTsasSequence(value: string | number | undefined): string | undefi
 function formatAircraftCount(count: number | undefined): string | undefined {
   if (count == null || !Number.isInteger(count) || count < 1) return undefined;
   return `#${Math.min(count, 99)}`;
+}
+
+function formatTsasRunwayId(value: string | undefined): string | undefined {
+  const runway = normalizeDisplayField(value, 3);
+  return runway.length > 0 ? `A${runway}`.slice(0, 4) : undefined;
+}
+
+function formatAdvisedSpeed(speedKt: number | undefined): string | undefined {
+  if (speedKt == null || !Number.isFinite(speedKt)) return undefined;
+  return formatGroundSpeedTens(speedKt);
+}
+
+function formatEarlyLate(
+  value: { status: "E" | "L"; minutes: number; seconds?: number } | undefined,
+): string | undefined {
+  if (!value || !Number.isInteger(value.minutes) || value.minutes < 0) return undefined;
+  const minutes = Math.min(value.minutes, 99).toString();
+  if (value.seconds == null || value.minutes > 2) return `${value.status}${minutes}`;
+  if (!Number.isInteger(value.seconds) || value.seconds < 0) return undefined;
+  return `${value.status}${minutes}${Math.min(value.seconds, 59).toString().padStart(2, "0")}`;
+}
+
+function formatTcp(value: string | undefined): string | undefined {
+  const tcp = normalizeDisplayField(value, 2);
+  return tcp.length > 0 ? tcp : undefined;
 }
 
 /** Build the logical Fields 0–5 before any physical-line compatibility view. */
@@ -364,6 +428,53 @@ export function formatDatablockFields(
     track.requestedAltitudeFt ?? track.intent?.requestedAltitudeFt,
   );
 
+  // Fields 6–8 are independently time-shared. Priority follows Figure 2-20;
+  // this is an analog-plus-delta formatter contract, not a TSAS/coordination
+  // workflow. Absent inputs remain absent; no simulator state is inferred.
+  const reportedBeaconMismatch =
+    track.assignedSquawk && track.reportedSquawk && track.assignedSquawk !== track.reportedSquawk
+      ? normalizeDisplayField(track.reportedSquawk, 4)
+      : undefined;
+  const field6 = select([
+    normalizeDisplayField(opts.atpaInTrailDistance ?? track.atpaDistance, 5) || undefined,
+    opts.atpaNowgt ? "NOWGT" : undefined,
+    opts.atpaTpa ? "*TPA" : undefined,
+    opts.noFlightPlan ? "NO FP" : undefined,
+    reportedBeaconMismatch,
+    duplicateBeacon,
+    opts.duplicateTargetAddress ? "DA" : undefined,
+    normalizeDisplayField(opts.moaAssignment, 4) || undefined,
+    opts.csmm ? "CSMM" : undefined,
+    normalizeDisplayField(opts.selectedBeaconCode, 4) || undefined,
+    formatTsasRunwayId(opts.tsasRunwayId),
+  ]);
+  const mismatch =
+    track.assignedSquawk && track.reportedSquawk && track.assignedSquawk !== track.reportedSquawk
+      ? normalizeDisplayField(track.assignedSquawk, 4)
+      : undefined;
+  const field7 = select([
+    targetAssignedAltitude(track),
+    mismatch,
+    formatAdvisedSpeed(opts.tsasAdvisedSpeedKt),
+    formatEarlyLate(opts.tsasEarlyLate),
+  ]);
+  const pointout =
+    opts.pointoutReceiverTcp != null
+      ? `PO${formatTcp(opts.pointoutReceiverTcp) ? ` ${formatTcp(opts.pointoutReceiverTcp)}` : ""}`
+      : opts.pointoutUn
+        ? "UN"
+        : opts.pointoutRd
+          ? "RD"
+          : undefined;
+  const acceptCount =
+    !pointout &&
+    !opts.pointoutInhibited &&
+    opts.pointoutAcceptCount != null &&
+    Number.isInteger(opts.pointoutAcceptCount) &&
+    opts.pointoutAcceptCount >= 0
+      ? String(Math.min(opts.pointoutAcceptCount, 99))
+      : undefined;
+
   return {
     field0: indicators.filter(Boolean).join("/").slice(0, 12),
     field1: normalizeDisplayField(track.callsign, 7),
@@ -374,7 +485,17 @@ export function formatDatablockFields(
       .filter(Boolean)
       .join(""),
     field5: select([gs, duplicateBeacon, rules, category, count, type, requested]),
+    field6,
+    field7,
+    field8: pointout ?? acceptCount ?? "",
   };
+}
+
+function targetAssignedAltitude(track: DatablockSource): string | undefined {
+  const altitude = track.intent?.controllerAssignedAltitudeFt;
+  return altitude != null && assignedDiffers(track.altitudeFt, altitude)
+    ? `A${formatAltitudeHundreds(altitude)}`
+    : undefined;
 }
 
 /**
@@ -589,6 +710,22 @@ export interface DatablockRenderOpts {
   field0Indicators?: string[];
   duplicateBeaconCode?: string;
   aircraftCount?: number;
+  atpaInTrailDistance?: string;
+  atpaNowgt?: boolean;
+  atpaTpa?: boolean;
+  noFlightPlan?: boolean;
+  duplicateTargetAddress?: boolean;
+  moaAssignment?: string;
+  csmm?: boolean;
+  selectedBeaconCode?: string;
+  tsasRunwayId?: string;
+  tsasAdvisedSpeedKt?: number;
+  tsasEarlyLate?: { status: "E" | "L"; minutes: number; seconds?: number };
+  pointoutReceiverTcp?: string;
+  pointoutUn?: boolean;
+  pointoutRd?: boolean;
+  pointoutAcceptCount?: number;
+  pointoutInhibited?: boolean;
 }
 
 /** Resolve full vs partial vs limited lines for paint and hit-test. */
@@ -645,6 +782,22 @@ export function linesForDatablock(
     field0Indicators: opts.field0Indicators,
     duplicateBeaconCode: opts.duplicateBeaconCode,
     aircraftCount: opts.aircraftCount,
+    atpaInTrailDistance: opts.atpaInTrailDistance,
+    atpaNowgt: opts.atpaNowgt,
+    atpaTpa: opts.atpaTpa,
+    noFlightPlan: opts.noFlightPlan,
+    duplicateTargetAddress: opts.duplicateTargetAddress,
+    moaAssignment: opts.moaAssignment,
+    csmm: opts.csmm,
+    selectedBeaconCode: opts.selectedBeaconCode,
+    tsasRunwayId: opts.tsasRunwayId,
+    tsasAdvisedSpeedKt: opts.tsasAdvisedSpeedKt,
+    tsasEarlyLate: opts.tsasEarlyLate,
+    pointoutReceiverTcp: opts.pointoutReceiverTcp,
+    pointoutUn: opts.pointoutUn,
+    pointoutRd: opts.pointoutRd,
+    pointoutAcceptCount: opts.pointoutAcceptCount,
+    pointoutInhibited: opts.pointoutInhibited,
   });
 }
 
