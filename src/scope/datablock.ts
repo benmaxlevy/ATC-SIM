@@ -175,6 +175,8 @@ export interface LimitedDatablockOpts {
 }
 
 export interface FullDatablock {
+  /** Field 0 row above the callsign; omitted when no value is present. */
+  line0?: string;
   line1: string;
   line2: string;
   /** Line 3: Assigned altitude prefixed with A, squawk mismatch, or ATPA distance. */
@@ -243,6 +245,7 @@ export interface DatablockFieldOptions {
 
 /** Physical character-cell lines derived from logical Fields 0–8. */
 export interface PhysicalDatablockLines {
+  line0?: string;
   line1: string;
   line2?: string;
   line3?: string;
@@ -256,11 +259,13 @@ export function physicalDatablockLines(
   fields: DatablockFields,
   mode: "full" | "partial" = "full",
 ): PhysicalDatablockLines {
+  const line0 = fields.field0 || undefined;
   const line1 = fields.field1;
   const line2 = physicalFieldLine([fields.field3, fields.field4, fields.field5]);
   const line3 = physicalFieldLine([fields.field6, fields.field7, fields.field8]);
   if (mode === "partial") return { line1: line2 };
-  return line3 ? { line1, line2, line3 } : { line1, line2 };
+  const field0 = line0 ? { line0 } : {};
+  return line3 ? { ...field0, line1, line2, line3 } : { ...field0, line1, line2 };
 }
 
 function physicalFieldLine(values: string[]): string {
@@ -608,7 +613,8 @@ function targetAssignedAltitude(track: DatablockSource): string | undefined {
 
 /**
  * Full datablock (STARS CRC):
- * - Line 1: Callsign + Special Purpose Code (SPC: EM, RF, HJ, etc.)
+ * - Field 0: Special Purpose Code (SPC: EM, RF, HJ, etc.) and existing cues.
+ * - Line 1: Callsign.
  * - Line 2: Fields 3–5 (Mode C/scratchpad, TCP, GS/type/requested altitude).
  * - Line 3: Fields 6–8 (ATPA/mismatch, assigned altitude, pointout).
  */

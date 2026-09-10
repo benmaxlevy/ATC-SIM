@@ -856,6 +856,53 @@ function alertGlyphsForTrack(args: {
   return glyphs;
 }
 
+interface Field0AlertState {
+  text: string;
+  requiresBlink: boolean;
+}
+
+/** Existing renderer alert state projected into physical Field 0. */
+function field0AlertState(
+  ac: Aircraft,
+  td: TrackDisplay | undefined,
+  view: ScopeView,
+  world: World,
+  mode: DatablockMode,
+): Field0AlertState {
+  if (mode !== "full" && mode !== "partial") return { text: "", requiresBlink: false };
+  const caInhibited = isCaInhibitedForTrack(ac, td, view);
+  const caSeverity = !caInhibited ? caSeverityForVisibleTrack(view, world, ac.callsign) : null;
+  const msawInhibited = Boolean(
+    td?.msawInhibited ||
+    td?.msawCurrentAlertInhibited ||
+    td?.msawProcessingInhibited ||
+    (td as { inhibitMSAW?: boolean } | undefined)?.inhibitMSAW ||
+    (td as { inhibitMsaw?: boolean } | undefined)?.inhibitMsaw ||
+    (ac as { msawInhibited?: boolean }).msawInhibited,
+  );
+  const msawSeverity = !msawInhibited
+    ? msawSeverityForCallsign(world.alerts.msaw, ac.callsign)
+    : null;
+  const mciActive = hasMciAlertForTrack(world, ac);
+  const mciInhibited = mciActive && view.mciEnabled === false;
+  const hasLa = msawSeverity != null;
+  const hasCa = caSeverity != null || (mciActive && !mciInhibited);
+  return {
+    text: [hasLa ? "LA" : null, hasCa ? "CA" : null].filter(Boolean).join("/"),
+    requiresBlink:
+      (hasLa && !isMsawAlertAcknowledged(ac, td, view, world)) ||
+      (caSeverity != null && !isCaAlertAcknowledged(ac, td, view, world)) ||
+      (mciActive && !mciInhibited),
+  };
+}
+
+function field0WithAlerts(staticField0: string | undefined, alertText: string): string | undefined {
+  const values = [staticField0, alertText].filter(
+    (value): value is string => value != null && value.length > 0,
+  );
+  return values.length > 0 ? values.join("/") : undefined;
+}
+
 export function drawDatablock(
   ctx: CanvasRenderingContext2D,
   ac: Aircraft,
@@ -930,7 +977,6 @@ export function drawDatablock(
 
   const isCaInhibited = isCaInhibitedForTrack(ac, td, view);
   const isCaPairInhibited = isCaPairInhibitedForTrack(view, world, ac);
-  const caSeverity = !isCaInhibited ? caSeverityForVisibleTrack(view, world, ac.callsign) : null;
   const isMsawInhibited = Boolean(
     td?.msawInhibited ||
     td?.msawCurrentAlertInhibited ||
@@ -939,9 +985,6 @@ export function drawDatablock(
     (td as { inhibitMsaw?: boolean } | undefined)?.inhibitMsaw ||
     (ac as { msawInhibited?: boolean }).msawInhibited,
   );
-  const msawSeverity = !isMsawInhibited
-    ? msawSeverityForCallsign(world.alerts.msaw, ac.callsign)
-    : null;
   const mciActive = hasMciAlertForTrack(world, ac);
   const mciInhibited = mciActive && view.mciEnabled === false;
   const briteCh = mode === "limited" || mode === "partial" ? view.brite.ldb : view.brite.fdb;
@@ -959,6 +1002,8 @@ export function drawDatablock(
   const line1Prefix = line1WithoutAlert.startsWith(callsign) ? callsign : line1WithoutAlert;
   const line1 = `${line1Prefix}${inlineGlyphs}${line1WithoutAlert.slice(line1Prefix.length)}`;
   const lines = { ...base, line1 };
+  const field0Alerts = field0AlertState(ac, td, view, world, mode);
+  lines.line0 = field0WithAlerts(base.line0, field0Alerts.text);
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
   const origin = datablockTopLeft(
     trackLeaderDir(view, ac.id),
@@ -987,32 +1032,22 @@ export function drawDatablock(
     }
     ctx.fillText(line1Suffix, alertGlyphX, textY);
   }
-  if (mode === "full" || mode === "partial" || mode === "limited") {
-    if (lines.line0 != null) {
+  if (lines.line0 != null) {
+    const line0Y = textY - lineH;
+    const staticField0 = base.line0;
+    if (staticField0 != null) {
       ctx.fillStyle = applyBrite(mode === "limited" ? PALETTE.alert : PALETTE.caution, briteCh);
-      ctx.fillText(lines.line0, textX, textY - lineH);
-      ctx.fillStyle = applyBrite(visual.color, briteCh);
+      ctx.fillText(staticField0, textX, line0Y);
     }
-  }
-  if (mode === "full" || mode === "partial") {
-    const caAcknowledged = isCaAlertAcknowledged(ac, td, view, world);
-    const msawAcknowledged = isMsawAlertAcknowledged(ac, td, view, world);
-    const blinkOn = isAlertBlinkOn(world.simTimeMs);
-    const hasLa = msawSeverity != null;
-    const hasCa = caSeverity != null || (mciActive && !mciInhibited);
-    const requiresBlink =
-      (hasLa && !msawAcknowledged) ||
-      (caSeverity != null && !caAcknowledged) ||
-      (mciActive && !mciInhibited);
-    const line0 = [hasLa ? "LA" : null, hasCa ? "CA" : null].filter(Boolean).join("/");
-    // LA/CA is one Field 0 indication. If either condition remains unacknowledged,
-    // blink the complete indication rather than alternating LA/CA and CA.
-    if (line0.length > 0 && (!requiresBlink || blinkOn)) {
+    const showAlerts =
+      field0Alerts.text.length > 0 &&
+      (!field0Alerts.requiresBlink || isAlertBlinkOn(world.simTimeMs));
+    if (showAlerts) {
       ctx.fillStyle = applyBrite(PALETTE.alert, briteCh);
-      ctx.fillText(line0, textX, textY - lineH);
+      const separator = staticField0 == null ? "" : "/";
+      const alertX = textX + ctx.measureText(`${staticField0 ?? ""}${separator}`).width;
+      ctx.fillText(`${separator}${field0Alerts.text}`, alertX, line0Y);
     }
-    // Line 0 is the only red safety-alert field. Restore the normal datablock
-    // color before painting Lines 2–3 so canvas state cannot bleed downward.
     ctx.fillStyle = applyBrite(visual.color, briteCh);
   }
   if (lines.line2 != null) {
@@ -1220,7 +1255,11 @@ export function drawTracks(
     if (!visual.line1Tag && mode !== "limited" && mode !== "partial") {
       line1 = withInboundHandoffCue(line1, handoff);
     }
-    const lines = { ...base, line1 };
+    const lines = {
+      ...base,
+      line1,
+      line0: field0WithAlerts(base.line0, field0AlertState(ac, td, view, world, mode).text),
+    };
     const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
     if (!pointInLayoutBounds(p, { x: 0, y: 0, width: size.widthPx, height: size.heightPx })) {
       return [];

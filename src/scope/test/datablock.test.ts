@@ -8,6 +8,7 @@ import {
   formatPartialDatablockFields,
   formatTcp,
   formatLimitedDatablock,
+  formatFullDatablock,
   formatPartialDatablock,
   physicalDatablockLines,
   linesForDatablock,
@@ -26,6 +27,27 @@ test("limited datablock is Mode C hundreds only", () => {
   ac.intent.assignedAltitudeFt = 4000;
   expect(formatLimitedDatablock(ac)).toEqual({ line1: "033" });
   expect(linesForDatablock(ac, "limited", true, "ABCD")).toEqual({ line1: "033" });
+});
+
+test("FDB Field 0 stays above callsign and keeps TSAS sequence separate", () => {
+  const ac = makeTestAircraft({ callsign: "DAL133", altitudeFt: 4000, speedKt: 180, spc: "EM" });
+  const fdb = formatFullDatablock(ac, { tsasSequence: 7 });
+
+  expect(fdb.line0).toBe("EM/7");
+  expect(fdb.line1).toBe("DAL133");
+  expect(fdb.line1).not.toContain("EM");
+  expect(fdb.line1).not.toContain("7");
+  expect(datablockMetrics(fdb).heightPx).toBe(
+    datablockMetrics({ ...fdb, line0: undefined }).heightPx + 12,
+  );
+});
+
+test("empty FDB Field 0 preserves three-row physical geometry", () => {
+  const ac = makeTestAircraft({ callsign: "DAL134", altitudeFt: 4000, speedKt: 180 });
+  const fdb = formatFullDatablock(ac);
+
+  expect(fdb.line0).toBeUndefined();
+  expect(datablockMetrics(fdb).heightPx).toBe(2 * 12);
 });
 
 test.each(["EM", "RF", "HJ"] as const)("limited Field 0 preserves existing SPC %s", (spc) => {
