@@ -1,7 +1,8 @@
 import { createAircraft, offerInboundHandoff, mulberry32, type Aircraft, type World } from "@core";
 import { assignStarRoutes, type StarRouteAssignment } from "./starSpawn";
 import type { ProcedureCatalog } from "./procedures/types";
-import { allocateCallsign, usedCallsignSet } from "./callsigns";
+import type { StarSlot } from "./starSpawn";
+import { allocateTrafficPair, usedCallsignSet } from "./callsigns";
 
 /** Trainer traffic-density bounds; arrivals/hour is not a radio frequency. */
 export const ARRIVALS_PER_HOUR_MIN = 0;
@@ -15,6 +16,7 @@ export interface ArrivalTrafficConfig {
   arrivalsPerHour?: number;
   seed?: number;
   activeRunwayId?: string;
+  routePool?: readonly StarSlot[];
 }
 
 export interface ValidatedArrivalTrafficConfig {
@@ -22,10 +24,12 @@ export interface ValidatedArrivalTrafficConfig {
   arrivalsPerHour: number;
   seed: number;
   activeRunwayId?: string;
+  routePool?: readonly StarSlot[];
 }
 
 export interface ScheduledArrival {
   callsign: string;
+  aircraftType: string;
   assignment: StarRouteAssignment;
   scheduledSimMs: number;
   spawned: boolean;
@@ -66,6 +70,7 @@ export function validateArrivalTrafficConfig(
     arrivalsPerHour: boundedRate(config.arrivalsPerHour ?? DEFAULT_ARRIVALS_PER_HOUR),
     seed: boundedInteger(config.seed ?? 1, 0, 0xffffffff, "seed"),
     activeRunwayId: config.activeRunwayId,
+    routePool: config.routePool,
   };
 }
 
@@ -78,7 +83,7 @@ function spawnScheduledArrival(world: World, arrival: ScheduledArrival): Aircraf
     headingDeg: pose.headingDeg,
     altitudeFt: pose.altitudeFt,
     speedKt: pose.speedKt,
-    aircraftType: "B738",
+    aircraftType: arrival.aircraftType,
     destination: world.catalog?.airportId,
     flightPlan: {
       destination: world.catalog?.airportId,
@@ -107,6 +112,7 @@ export function createArrivalScheduler(
   activeCallsigns: Iterable<string> | readonly string[] = [],
   startSimMs = 0,
   activeRunwayId?: string,
+  routePool?: readonly StarSlot[],
 ): ArrivalScheduler {
   const validated = validateArrivalTrafficConfig(config);
   const effectiveRunwayId = activeRunwayId ?? validated.activeRunwayId;
@@ -120,20 +126,23 @@ export function createArrivalScheduler(
     count: initialCount + futureCount,
     seed: validated.seed,
     activeRunwayId: effectiveRunwayId,
+    routePool: routePool ?? validated.routePool,
   });
   const rng = mulberry32((validated.seed >>> 0) ^ 0xa24baed);
   const used = usedCallsignSet(activeCallsigns);
   const totalCount = initialCount + futureCount;
-  const callsigns: string[] = [];
+  const traffic: Array<{ callsign: string; aircraftType: string }> = [];
   for (let i = 0; i < totalCount; i += 1) {
-    callsigns.push(allocateCallsign(rng, used));
+    const pair = allocateTrafficPair(rng, used);
+    traffic.push({ callsign: pair.callsign, aircraftType: pair.aircraftType });
   }
   const intervalMs =
     validated.arrivalsPerHour === 0
       ? Number.POSITIVE_INFINITY
       : 3_600_000 / validated.arrivalsPerHour;
   const schedule = assignments.map((assignment, index) => ({
-    callsign: callsigns[index]!,
+    callsign: traffic[index]!.callsign,
+    aircraftType: traffic[index]!.aircraftType,
     assignment,
     scheduledSimMs:
       index < initialCount ? startSimMs : startSimMs + (index - initialCount + 1) * intervalMs,

@@ -1,5 +1,86 @@
 # Swarm status
 
+## FORTY-SEVENTH SWARM COMPLETE — Balanced random arrival packs (T04-59)
+
+T04-59 is merged on `feature/aircraft-performance` as `f6762e0`. A seeded
+random pack now shuffles the scenario route pool and uses every entry before
+repeating one. The six initial KATL tracks therefore spread across all six
+declared STAR/transition/entry-fix routes instead of stacking on one STAR.
+
+Final gates: focused STAR/KATL gate **27 passed**; worker `npm run ci`:
+**187 files, 1,657 passed, 4 skipped**. Manual leftover: refresh KATL and
+confirm six distinct inbound route entries at 60 NM.
+
+## FORTY-SIXTH SWARM COMPLETE — Random arrival entry fixes (T04-58)
+
+T04-58 is merged on `feature/aircraft-performance` as `ff7ddea`. Random
+arrival rows now declare and validate an `entryFixId`; generated traffic starts
+immediately before that fix and flies only the remaining STAR legs. KATL west
+and east initial entries are terminal-visible (about 50–58 NM), rather than
+the former 70–120 NM outer gates.
+
+Final gates: focused STAR/world gate **25 passed**; worker `npm run ci`:
+**1,655 passed, 4 skipped**. Manual leftover: refresh KATL at 60 NM and
+confirm six inbound tracks are visible without a fly-back turn.
+
+## FORTY-FIFTH SWARM COMPLETE — Scenario random route pools (T04-57)
+
+T04-57 is merged on `feature/aircraft-performance` as `07fe011` and
+`6ca6ba4`. Random scenario traffic now samples only scenario-declared STAR and
+SID route pools. KDEM, KDEM east flow, and both KATL configurations provide
+valid active-runway pools. A clean boot, including `?scenario=katl`, derives
+initial traffic defaults from the selected scenario; stored setup still wins.
+
+Final gates: focused route/default gate **28 passed**; `npm run ci` **187
+files, 1,654 passed, 4 skipped**. Manual leftover: refresh
+`http://localhost:5173/` and visually confirm initial KDEM arrivals and
+scheduled KDEM departures.
+
+## FORTY-SECOND SWARM COMPLETE — Aircraft Performance Profiles (T04-51–54)
+
+T04-51 through T04-54 are squash-merged on `feature/aircraft-performance`.
+An offline Python generator uses pinned OpenAP 2.6.0 only at build/CI time;
+runtime imports committed JSON plus `DEFAULT_PROFILE` and never fetches data.
+`terminal-v1` contains 33 explicit ICAO rows: 22 currently resolve through
+OpenAP and 11 retain explicit `UNRESOLVED` fallback records, rather than a
+silent family substitution. The CLI accepts arbitrary repeated/comma-separated
+`--types` from reviewed mappings.
+
+Resolved profile/regime limits now drive deterministic movement, fly-by radius,
+and LOC lead calculation through one shared bank-derived turn constraint. GS
+vertical caps use the same profile contract. Alert prediction remains its
+existing conservative policy. CI installs pinned Python/OpenAP before the
+offline generator check; normal app runtime has no Python dependency.
+
+Final gates passed: profile unit tests (6), generated-artifact check under the
+pinned OpenAP environment, and `npm run ci` (**186 files / 1,648 tests passed /
+4 skipped**). No manual browser assertion was claimed. OpenAP is LGPL-3.0 and
+the generated-data provenance/license review remains a release responsibility.
+
+**Merged:** T04-51 (`7d27021`), T04-52 (`e35c7a8`), T04-53 (`69fb66e`), T04-54
+(`9812a89`), narrow OpenAP/acceptance repair (`eabd4a1`).
+
+## FORTY-SECOND SWARM RESUME EXIT BLOCKED — Aircraft Performance Profiles (T04-51–54)
+
+After explicit user authorization, a fresh `gpt-5.6-luna` medium captain was
+started from resume commit `48b37a5`. It again had no collaboration
+`spawn_agent` capability, so no isolated T04-51 worker could be created.
+No ticket, worktree, application, generated-data, or test change occurred.
+Per the active swarm role law, the orchestrator did not substitute itself or
+directly launch an unowned worker. Resume requires a session where captains can
+spawn workers, or a user-approved swarm configuration that explicitly permits
+orchestrator-owned workers.
+
+## FORTY-SECOND SWARM EXIT BLOCKED — Aircraft Performance Profiles (T04-51–54)
+
+No ticket worker started. The configured captain could not access collaboration
+worker-spawn capability, so it could not create the required isolated
+`gpt-5.6-luna` medium worker for T04-51. Per swarm contract, do not substitute
+or widen roles. No application, generated-data, or ticket-worktree changes
+exist; no test gate ran. Planning commit `45e205c` and branch
+`feature/aircraft-performance` remain ready to resume after worker capability
+is restored or swarm configuration is changed.
+
 ## FORTY-FIRST SWARM COMPLETE — Magnetic Heading Frames (T04-48–50)
 
 T04-48 through T04-50 are squash-merged on `feature/ils-guidance`. Commands,

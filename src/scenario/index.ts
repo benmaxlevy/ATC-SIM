@@ -21,6 +21,7 @@ export type {
   Approach,
   ArrivalSpawn,
   DepartureConfig,
+  DepartureRoute,
   DeparturePolicy,
   DepartureSpawn,
   DigitalMapCoastline,
@@ -152,6 +153,8 @@ export type { TrafficAirline } from "./callsigns";
 export {
   TRAFFIC_AIRLINES,
   allocateCallsign,
+  allocateTrafficPair,
+  allocateTrafficPairForType,
   callsignNumericTail,
   usedCallsignSet,
 } from "./callsigns";

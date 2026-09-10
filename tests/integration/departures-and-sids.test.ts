@@ -353,7 +353,7 @@ describe("Departures and SIDs integration test suite (T04-23)", () => {
   });
 
   test("AC5 — Dynamic departure generator session spawns multiple departures with active SIDs alongside arrivals", () => {
-    const options = parseDepartureOptions("?departures=auto&dep_rate=15&seed=99");
+    const options = parseDepartureOptions("?departures=random&dep_rate=15&seed=99");
     const world = createWorldForSession(scenario, null, 99, options);
 
     expect(world.scheduledDepartures).toBeDefined();

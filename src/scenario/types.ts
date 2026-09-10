@@ -94,7 +94,7 @@ export const GI_TEXT_LINE_COUNT = 10;
 /**
  * Explicit arrival routes/poses. Count must be 4–8 (default KDEM has 6).
  * Callsigns are assigned at spawn, not stored in JSON.
- * Playable default (`spawnPolicy: "star-inbound"`) takes pose from
+ * Playable default (`spawnPolicy: "random"`) takes pose from
  * `assignStarRoutes`, not JSON xy. The T01-04 downwind box (xNm [+10, +22],
  * yNm [+3, +12], headingDeg [80, 100], altitudeFt [6000, 10000] multiple of
  * 100, speedKt [210, 250]) lives on
@@ -110,11 +110,13 @@ export interface ArrivalSpawn {
   aircraftType?: string;
   /**
    * Spawn on this STAR with VIA armed (T04-12). Positions stay in JSON.
-   * Requires `transitionId`. Ignored when `spawnPolicy` is `star-inbound`.
+   * Requires `transitionId`. Ignored when `spawnPolicy` is `random`.
    */
   starId?: string;
   /** STAR transition (`N` / `S` on DEM1). Required when `starId` is set. */
   transitionId?: string;
+  /** Required for random scenarios: terminal-visible fix where the route starts. */
+  entryFixId?: string;
 }
 
 export interface DepartureSpawn {
@@ -125,16 +127,24 @@ export interface DepartureSpawn {
   scheduledSimMs?: number;
 }
 
-export type DeparturePolicy = "none" | "auto" | "authored";
+/** A published SID/transition eligible for scenario random departures. */
+export interface DepartureRoute {
+  sidId: string;
+  transitionId: string;
+}
+
+export type DeparturePolicy = "none" | "random" | "authored";
 
 export interface DepartureConfig {
   policy: DeparturePolicy;
   ratePerHour?: number;
+  /** Explicit pool used only when policy is random. */
+  routePool?: DepartureRoute[];
   departures?: DepartureSpawn[];
 }
 
 /** How arrivals get pose. Omitted JSON → `authored` (ils27 bit-stable). */
-export type SpawnPolicy = "authored" | "star-inbound";
+export type SpawnPolicy = "authored" | "random";
 
 /** Trainer-authored site kind. Not a NAS sensor class. */
 export type RadarSiteKind = "asr" | "airport";
@@ -214,7 +224,7 @@ export interface Scenario {
    * When omitted, no GI slot is dynamically overwritten by weather.
    */
   ssaWeatherGiSlot?: number;
-  /** `authored` = JSON xy. `star-inbound` = seeded catalog pose. Default authored. */
+  /** `authored` = JSON xy. `random` = seeded catalog pose. Default authored. */
   spawnPolicy: SpawnPolicy;
   /** Facility navaids / fixes / STAR / approaches. Loaded from `data/<icao>/`. */
   catalog: ProcedureCatalog;

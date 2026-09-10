@@ -12,10 +12,11 @@ import { expect, test } from "vitest";
 import {
   SIM_DT_S,
   SessionLog,
-  TURN_RATE_DEG_PER_S,
   acceptInboundHandoff,
   shortestDeltaDeg,
   stepWorld,
+  performanceRegistry,
+  turnRateDegPerSForSpeed,
   type Aircraft,
   type World,
 } from "@core";
@@ -85,9 +86,11 @@ test("after 2.0 sim seconds heading is ~106 and closer to 270 by ~6 deg (AC3)", 
     stepWorld(world, SIM_DT_S);
   }
 
-  expect(dal.headingDeg).toBeCloseTo(106, 0);
+  const limits = performanceRegistry.getProfile(dal.aircraftType).regimes!.arrival;
+  const expectedTurn = turnRateDegPerSForSpeed(startSpeedKt, limits.maxBankDeg);
+  expect(dal.headingDeg).toBeCloseTo(startHeading + expectedTurn * 2, 0);
   const distAfter = Math.abs(shortestDeltaDeg(dal.headingDeg, 270));
-  expect(distBefore - distAfter).toBeCloseTo(6, 0);
+  expect(distBefore - distAfter).toBeCloseTo(expectedTurn * 2, 0);
 
   expect(Number.isFinite(dal.xNm)).toBe(true);
   expect(Number.isFinite(dal.yNm)).toBe(true);
@@ -107,7 +110,8 @@ test("one SIM_DT_S step after accept starts the turn by ~0.15 deg (AC4)", async 
 
   stepWorld(world, SIM_DT_S);
 
-  const expectedDelta = TURN_RATE_DEG_PER_S * SIM_DT_S;
+  const limits = performanceRegistry.getProfile(dal.aircraftType).regimes!.arrival;
+  const expectedDelta = turnRateDegPerSForSpeed(dal.speedKt, limits.maxBankDeg) * SIM_DT_S;
   expect(dal.headingDeg).not.toBe(startHeading);
   expect(dal.headingDeg).toBeCloseTo(startHeading + expectedDelta, 2);
 });

@@ -1,0 +1,233 @@
+[
+  {
+    "icaoType": "A20N",
+    "representativeVariant": "A320neo",
+    "representativeEngine": "CFM LEAP-1A26",
+    "openapType": "A20N",
+    "note": "ICAO/OpenAP alias"
+  },
+  {
+    "icaoType": "A21N",
+    "representativeVariant": "A321neo",
+    "representativeEngine": "CFM LEAP-1A32",
+    "openapType": "A21N",
+    "note": "ICAO/OpenAP alias"
+  },
+  {
+    "icaoType": "A320",
+    "representativeVariant": "A320-200",
+    "representativeEngine": "CFM56-5B4",
+    "openapType": "A320",
+    "note": "representative CFM variant"
+  },
+  {
+    "icaoType": "A321",
+    "representativeVariant": "A321-200",
+    "representativeEngine": "CFM56-5B3",
+    "openapType": "A321",
+    "note": "representative CFM variant"
+  },
+  {
+    "icaoType": "A333",
+    "representativeVariant": "A330-300",
+    "representativeEngine": "CFM56-5C4",
+    "openapType": "A333",
+    "note": "representative CFM variant"
+  },
+  {
+    "icaoType": "B737",
+    "representativeVariant": "737-700",
+    "representativeEngine": "CFM56-7B24",
+    "openapType": "B737",
+    "note": "legacy 737 representative"
+  },
+  {
+    "icaoType": "B738",
+    "representativeVariant": "737-800",
+    "representativeEngine": "CFM56-7B26",
+    "openapType": "B738",
+    "note": "representative CFM variant"
+  },
+  {
+    "icaoType": "B739",
+    "representativeVariant": "737-900ER",
+    "representativeEngine": "CFM56-7B27",
+    "openapType": "B739",
+    "note": "representative CFM variant"
+  },
+  {
+    "icaoType": "B744",
+    "representativeVariant": "747-400",
+    "representativeEngine": "CF6-80C2B1F",
+    "openapType": "B744",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "B752",
+    "representativeVariant": "757-200",
+    "representativeEngine": "RB211-535E4",
+    "openapType": "B752",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "B753",
+    "representativeVariant": "757-300",
+    "representativeEngine": "RB211-535E4B",
+    "openapType": "B753",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "B763",
+    "representativeVariant": "767-300ER",
+    "representativeEngine": "CF6-80C2B6F",
+    "openapType": "B763",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "B772",
+    "representativeVariant": "777-200ER",
+    "representativeEngine": "GE90-94B",
+    "openapType": "B772",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "B77W",
+    "representativeVariant": "777-300ER",
+    "representativeEngine": "GE90-115B",
+    "openapType": "B77W",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "B788",
+    "representativeVariant": "787-8",
+    "representativeEngine": "GEnx-1B70",
+    "openapType": "B788",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "B789",
+    "representativeVariant": "787-9",
+    "representativeEngine": "GEnx-1B74/75",
+    "openapType": "B789",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "B78X",
+    "representativeVariant": "787-10",
+    "representativeEngine": "GEnx-1B76",
+    "openapType": "B78X",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "B38M",
+    "representativeVariant": "737 MAX 8",
+    "representativeEngine": "LEAP-1B28",
+    "openapType": "B38M",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "B39M",
+    "representativeVariant": "737 MAX 9",
+    "representativeEngine": "LEAP-1B28",
+    "openapType": "B39M",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "CRJ1",
+    "representativeVariant": "CRJ-100",
+    "representativeEngine": "CF34-3A1",
+    "openapType": "CRJ1",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "CRJ2",
+    "representativeVariant": "CRJ-200",
+    "representativeEngine": "CF34-3B1",
+    "openapType": "CRJ2",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "CRJ7",
+    "representativeVariant": "CRJ-700",
+    "representativeEngine": "CF34-8C1",
+    "openapType": "CRJ7",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "CRJ9",
+    "representativeVariant": "CRJ-900",
+    "representativeEngine": "CF34-8C5",
+    "openapType": "CRJ9",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "CRJX",
+    "representativeVariant": "CRJ-1000",
+    "representativeEngine": "CF34-8C5",
+    "openapType": "CRJX",
+    "note": "ICAO/OpenAP alias"
+  },
+  {
+    "icaoType": "E135",
+    "representativeVariant": "ERJ-135",
+    "representativeEngine": "AE3007A1",
+    "openapType": "E135",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "E140",
+    "representativeVariant": "ERJ-140",
+    "representativeEngine": "AE3007A1",
+    "openapType": "E140",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "E145",
+    "representativeVariant": "ERJ-145",
+    "representativeEngine": "AE3007A1",
+    "openapType": "E145",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "E170",
+    "representativeVariant": "E170",
+    "representativeEngine": "CF34-8E5",
+    "openapType": "E170",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "E175",
+    "representativeVariant": "E175",
+    "representativeEngine": "CF34-8E5",
+    "openapType": "E175",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "E190",
+    "representativeVariant": "E190",
+    "representativeEngine": "CF34-10E6",
+    "openapType": "E190",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "E195",
+    "representativeVariant": "E195",
+    "representativeEngine": "CF34-10E7",
+    "openapType": "E195",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "E290",
+    "representativeVariant": "E190-E2",
+    "representativeEngine": "PW1919G",
+    "openapType": "E290",
+    "note": "representative variant"
+  },
+  {
+    "icaoType": "E295",
+    "representativeVariant": "E195-E2",
+    "representativeEngine": "PW1921G",
+    "openapType": "E295",
+    "note": "representative variant"
+  }
+]

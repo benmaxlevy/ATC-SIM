@@ -21,7 +21,10 @@
     "ci": "npm run typecheck && npm run lint && npm run format:check && npm test",
     "cifp:import": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/cifp-import/cli.ts",
     "cifp:pack": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/cifp-import/cli.ts pack",
-    "crc:videomaps": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/crc-videomap-import/cli.ts"
+    "crc:videomaps": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/crc-videomap-import/cli.ts",
+    "aircraft:profiles": "python3 tools/aircraft-profiles/build_profiles.py",
+    "aircraft:profiles:check": "python3 tools/aircraft-profiles/build_profiles.py --check --preset terminal-v1",
+    "aircraft:profiles:test": "python3 -m unittest discover -s tools/aircraft-profiles -p 'test_*.py'"
   },
   "dependencies": {
     "react": "^18.3.1",

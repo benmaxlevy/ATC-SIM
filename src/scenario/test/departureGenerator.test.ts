@@ -23,6 +23,19 @@ describe("departureGenerator", () => {
     );
   });
 
+  test("random schedule uses only the supplied route pool", () => {
+    const schedule = generateDepartureSchedule({
+      catalog: scenario.catalog,
+      seed: 4,
+      count: 4,
+      runwayId: "27",
+      routePool: [{ sidId: "BAY1", transitionId: "NORMA" }],
+    });
+    expect(schedule.every((item) => item.sidId === "BAY1" && item.transitionId === "NORMA")).toBe(
+      true,
+    );
+  });
+
   test("AC2 — Given seed 1 and rate 10, generator produces identical schedules; seed 2 produces different mix", () => {
     const schedule1A = generateDepartureSchedule({
       catalog: scenario.catalog,
@@ -102,7 +115,7 @@ describe("departureGenerator", () => {
   });
 
   test("AC5 — Dynamic departure spawning during live session with active SID navigation", () => {
-    const options = parseDepartureOptions("?departures=auto&dep_rate=12&seed=1");
+    const options = parseDepartureOptions("?departures=random&dep_rate=12&seed=1");
     const world = createWorldForSession(scenario, null, 1, options);
 
     expect(world.scheduledDepartures).toBeDefined();
@@ -157,7 +170,7 @@ describe("departureGenerator", () => {
   });
 
   test("Full 600s session simulation with multiple departures spawning and flying SIDs", () => {
-    const options = parseDepartureOptions("?departures=auto&dep_rate=15&seed=7");
+    const options = parseDepartureOptions("?departures=random&dep_rate=15&seed=7");
     const world = createWorldForSession(scenario, null, 7, options);
 
     // Step world for 600 seconds in 1s increments

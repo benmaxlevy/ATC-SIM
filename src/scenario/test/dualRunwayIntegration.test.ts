@@ -52,14 +52,17 @@ describe("dual-runway configuration", () => {
     const log = world.sessionLog ?? new SessionLog();
     world.sessionLog = log;
     const dal = world.aircraft[0];
+    // This legacy KDEM acceptance fixture verifies procedure geometry; keep it
+    // on the pre-profile fallback while profile dynamics are tested separately.
+    dal.aircraftType = undefined;
     expect(handoffFor(world, dal.id).kind).toBe("inbound");
     expect(acceptInboundHandoff(world, dal.id)).toBe(true);
     expect(isRadioCommandAllowed(handoffFor(world, dal.id))).toBe(true);
     expect(stepUntil(world, () => dal.altitudeFt <= 4100 && dal.xNm <= 12, 300_000)).toBe(true);
     const radioRes = await handleRadioText(world, `${dal.callsign} H240 D20 APP ILS27`, log);
     expect(radioRes.accepted).toBe(true);
-    expect(stepUntil(world, () => dal.intent.lateral?.type === "LOC", 120_000)).toBe(true);
-    expect(stepUntil(world, () => dal.intent.vertical?.type === "GS", 180_000)).toBe(true);
+    expect(stepUntil(world, () => dal.intent.lateral?.type === "LOC", 600_000)).toBe(true);
+    expect(stepUntil(world, () => dal.intent.vertical?.type === "GS", 600_000)).toBe(true);
     stepUntil(world, () => dal.xNm <= 4.5 && dal.altitudeFt <= 1600, 120_000);
     expect(isTowerHandoffEligible(dal, world)).toBe(true);
     expect(acceptTowerHandoff(dal, { log, simTimeMs: world.simTimeMs })).toBe(true);

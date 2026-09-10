@@ -94,6 +94,7 @@ export interface GlidepathFmsContext {
   gsParamsFor?: (approachId: string) => GsParams | undefined;
   log?: SessionLog | null;
   simTimeMs: number;
+  maxDescentFpm?: number;
 }
 
 /** True after a tick below the angular GS centerline while established on loc. */
@@ -288,7 +289,14 @@ export function applyGlidepathFms(
       ac.intent.vertical = { type: "ASSIGNED" };
       return undefined;
     }
-    return followGsAltitudeFt(ac.altitudeFt, gsAlt, params.gsAngleDeg, ac.speedKt, dtS);
+    return followGsAltitudeFt(
+      ac.altitudeFt,
+      gsAlt,
+      params.gsAngleDeg,
+      ac.speedKt,
+      dtS,
+      ctx.maxDescentFpm,
+    );
   }
 
   if (deviation && deviation.normalizedError < 0) {
@@ -311,7 +319,14 @@ export function applyGlidepathFms(
       callsign: ac.callsign,
       approachId: lateral.approachId,
     });
-    return followGsAltitudeFt(ac.altitudeFt, gsAlt, params.gsAngleDeg, ac.speedKt, dtS);
+    return followGsAltitudeFt(
+      ac.altitudeFt,
+      gsAlt,
+      params.gsAngleDeg,
+      ac.speedKt,
+      dtS,
+      ctx.maxDescentFpm,
+    );
   }
 
   // Established and cleared but still above the beam: descend onto the GS.
@@ -322,7 +337,14 @@ export function applyGlidepathFms(
     deviation.normalizedError >= 0 &&
     gsWasBelow.get(ac) !== true
   ) {
-    return interceptGsFromAboveAltitudeFt(ac.altitudeFt, gsAlt, params.gsAngleDeg, ac.speedKt, dtS);
+    return interceptGsFromAboveAltitudeFt(
+      ac.altitudeFt,
+      gsAlt,
+      params.gsAngleDeg,
+      ac.speedKt,
+      dtS,
+      ctx.maxDescentFpm,
+    );
   }
   return undefined;
 }
@@ -334,6 +356,7 @@ function interceptGsFromAboveAltitudeFt(
   gsAngleDeg: number,
   groundSpeedKt: number,
   dtS: number,
+  maxDescentFpm?: number,
 ): number {
   if (gsAltFt >= currentAltFt) return currentAltFt;
   const geoVs = Math.abs(gsGeometricVsFpm(gsAngleDeg, groundSpeedKt));
@@ -342,8 +365,8 @@ function interceptGsFromAboveAltitudeFt(
   // can parallel the beam indefinitely after a rate-limited LOC intercept.
   const vsFpm =
     abovePathFt > 20
-      ? Math.min(CLIMB_RATE_FT_PER_MIN, geoVs * 1.5)
-      : Math.min(CLIMB_RATE_FT_PER_MIN, geoVs * 1.1);
+      ? Math.min(maxDescentFpm ?? CLIMB_RATE_FT_PER_MIN, geoVs * 1.5)
+      : Math.min(maxDescentFpm ?? CLIMB_RATE_FT_PER_MIN, geoVs * 1.1);
   return currentAltFt - (vsFpm / 60) * dtS;
 }
 
@@ -354,12 +377,14 @@ function followGsAltitudeFt(
   gsAngleDeg: number,
   groundSpeedKt: number,
   dtS: number,
+  maxDescentFpm?: number,
 ): number {
   if (gsAltFt >= currentAltFt) {
     return currentAltFt;
   }
   const geoVs = Math.abs(gsGeometricVsFpm(gsAngleDeg, groundSpeedKt));
-  const vsFpm = currentAltFt - gsAltFt > 20 ? Math.min(CLIMB_RATE_FT_PER_MIN, geoVs * 1.5) : geoVs;
+  const cap = maxDescentFpm ?? CLIMB_RATE_FT_PER_MIN;
+  const vsFpm = currentAltFt - gsAltFt > 20 ? Math.min(cap, geoVs * 1.5) : Math.min(cap, geoVs);
   const maxDownFt = (vsFpm / 60) * dtS;
   return Math.max(gsAltFt, currentAltFt - maxDownFt);
 }

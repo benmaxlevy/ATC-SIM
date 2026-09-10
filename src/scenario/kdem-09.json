@@ -9,7 +9,7 @@
     "lonDeg": 0
   },
   "activeRunwayId": "09",
-  "spawnPolicy": "star-inbound",
+  "spawnPolicy": "random",
   "runways": [
     {
       "id": "09",
@@ -55,6 +55,9 @@
       "headingDeg": 280,
       "altitudeFt": 8000,
       "speedKt": 220,
+      "starId": "DEM1",
+      "transitionId": "WN",
+      "entryFixId": "WEMAX",
       "aircraftType": "B738"
     },
     {
@@ -63,6 +66,9 @@
       "headingDeg": 270,
       "altitudeFt": 7000,
       "speedKt": 230,
+      "starId": "DEM1",
+      "transitionId": "WS",
+      "entryFixId": "SAMAX",
       "aircraftType": "A320"
     },
     {
@@ -71,6 +77,9 @@
       "headingDeg": 265,
       "altitudeFt": 9000,
       "speedKt": 240,
+      "starId": "DEM1",
+      "transitionId": "WN",
+      "entryFixId": "WEMAX",
       "aircraftType": "B739"
     },
     {
@@ -79,6 +88,9 @@
       "headingDeg": 275,
       "altitudeFt": 6000,
       "speedKt": 210,
+      "starId": "DEM1",
+      "transitionId": "WS",
+      "entryFixId": "SAMAX",
       "aircraftType": "B737"
     },
     {
@@ -87,6 +99,9 @@
       "headingDeg": 260,
       "altitudeFt": 10000,
       "speedKt": 250,
+      "starId": "DEM1",
+      "transitionId": "WN",
+      "entryFixId": "WEMAX",
       "aircraftType": "A321"
     },
     {
@@ -95,6 +110,9 @@
       "headingDeg": 268,
       "altitudeFt": 8500,
       "speedKt": 225,
+      "starId": "DEM1",
+      "transitionId": "WS",
+      "entryFixId": "SAMAX",
       "aircraftType": "A320"
     }
   ],

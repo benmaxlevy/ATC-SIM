@@ -9,7 +9,7 @@
     "lonDeg": -84.4278638888889
   },
   "activeRunwayId": "08L",
-  "spawnPolicy": "authored",
+  "spawnPolicy": "random",
   "runways": [
     {
       "id": "08L",
@@ -167,6 +167,7 @@
       "speedKt": 250,
       "starId": "CHPPR1",
       "transitionId": "BBABE",
+      "entryFixId": "LEMKE",
       "aircraftType": "B738"
     },
     {
@@ -177,6 +178,7 @@
       "speedKt": 250,
       "starId": "GLAVN2",
       "transitionId": "JKSON",
+      "entryFixId": "MADDX",
       "aircraftType": "A320"
     },
     {
@@ -187,6 +189,7 @@
       "speedKt": 250,
       "starId": "GNDLF3",
       "transitionId": "BEORN",
+      "entryFixId": "SMAWG",
       "aircraftType": "B739"
     },
     {
@@ -197,6 +200,7 @@
       "speedKt": 250,
       "starId": "ONDRE1",
       "transitionId": "HIGGI",
+      "entryFixId": "STRWY",
       "aircraftType": "B737"
     },
     {
@@ -207,6 +211,7 @@
       "speedKt": 250,
       "starId": "OZZZI2",
       "transitionId": "DGESS",
+      "entryFixId": "WINNG",
       "aircraftType": "A321"
     },
     {
@@ -217,12 +222,17 @@
       "speedKt": 250,
       "starId": "SITTH3",
       "transitionId": "EEWOK",
+      "entryFixId": "SITTH",
       "aircraftType": "A320"
     }
   ],
   "departureConfig": {
-    "policy": "auto",
-    "ratePerHour": 12
+    "policy": "random",
+    "ratePerHour": 12,
+    "routePool": [
+      { "sidId": "BANNG3", "transitionId": "LUCKK" },
+      { "sidId": "NASSA2", "transitionId": "CHOOK" }
+    ]
   },
   "ssaWeatherAirports": ["KATL", "KFTY", "KPDK", "KMGE", "KRYY"],
   "ssaWeatherGiSlot": 9,

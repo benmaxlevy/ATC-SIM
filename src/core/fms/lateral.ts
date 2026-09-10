@@ -10,7 +10,12 @@
 
 import type { Aircraft, LateralMode } from "../aircraft";
 import type { SessionLog } from "../events/session-log";
-import { stepAircraft } from "../kinematics";
+import {
+  shortestDeltaDeg,
+  stepAircraft,
+  turnRateDegPerSForSpeed,
+  TURN_RATE_DEG_PER_S,
+} from "../kinematics";
 import type { FixRegistry, RegisteredFix } from "../nav/fixRegistry";
 import {
   alongTrackNm,
@@ -29,7 +34,7 @@ import {
   locShouldBreakout,
   locShouldCapture,
 } from "../nav/localizer";
-import { TURN_RATE_DEG_PER_S, shortestDeltaDeg } from "../kinematics";
+import type { PerformanceRegimeLimits } from "../performance/types";
 import { clearViaOnVectors, onFixSequenced, type VerticalCatalog } from "./vertical";
 import { trueToMagneticDeg, magneticToTrueDeg } from "../nav/headingFrames";
 
@@ -47,6 +52,7 @@ export interface LateralFmsContext {
   catalog?: VerticalCatalog | null;
   locAxisFor?: (approachId: string) => LocAxis | undefined;
   magVarDeg?: number;
+  performance?: PerformanceRegimeLimits;
 }
 
 /**
@@ -107,6 +113,7 @@ export function advanceStarLeg(
     simTimeMs?: number;
     catalog?: VerticalCatalog | null;
     magVarDeg?: number;
+    performance?: PerformanceRegimeLimits;
   },
 ): void {
   const routeFixIds = args.routeFixIds ?? DEMO_ONE_NORTH_FIX_IDS;
@@ -124,8 +131,9 @@ export function advanceStarLeg(
     log: args.log,
     simTimeMs: args.simTimeMs ?? 0,
     catalog: args.catalog,
+    performance: args.performance,
   });
-  stepAircraft(ac, dtS, heading, undefined, undefined, args.magVarDeg ?? 0);
+  stepAircraft(ac, dtS, heading, undefined, undefined, args.magVarDeg ?? 0, args.performance);
 }
 
 function guideDirect(
@@ -181,7 +189,11 @@ function guideProcedure(
       : courseDeg(current, nextFix);
   const inbound = trueToMagneticDeg(inboundTrue, ctx.magVarDeg ?? 0);
   const nextCourse = trueToMagneticDeg(nextCourseTrue, ctx.magVarDeg ?? 0);
-  const startNm = flyByStartNm(ac.speedKt, courseChangeDeg(inbound, nextCourse));
+  const startNm = flyByStartNm(
+    ac.speedKt,
+    courseChangeDeg(inbound, nextCourse),
+    turnRateFor(ac, ctx.performance),
+  );
   const dist = distanceNm(ac, current);
   if (dist > startNm && dist >= flyOverSequenceNm(ac.speedKt, dtS)) {
     return inbound;
@@ -323,11 +335,21 @@ const LOC_TRACK_MIN_INTERCEPT_DEG = 2;
  * 5-9-2 constrains controller intercept vectors; this is trainer guidance,
  * not certified autopilot or radio-propagation behavior.
  */
-function leadTurnCrossTrackNm(speedKt: number, headingErrorDeg: number): number {
-  const omegaRadS = (TURN_RATE_DEG_PER_S * Math.PI) / 180;
+function leadTurnCrossTrackNm(
+  speedKt: number,
+  headingErrorDeg: number,
+  turnRateDegPerS = TURN_RATE_DEG_PER_S,
+): number {
+  const omegaRadS = (turnRateDegPerS * Math.PI) / 180;
   if (!(speedKt > 0) || !(omegaRadS > 0)) return 0;
   const radiusNm = speedKt / 3600 / omegaRadS;
   return radiusNm * (1 - Math.cos((Math.abs(headingErrorDeg) * Math.PI) / 180));
+}
+
+function turnRateFor(ac: Aircraft, performance?: PerformanceRegimeLimits): number {
+  return performance
+    ? (performance.turnRateDegPerS ?? turnRateDegPerSForSpeed(ac.speedKt, performance.maxBankDeg))
+    : TURN_RATE_DEG_PER_S;
 }
 
 /** Keep the assigned vector until its rate-one rollout must begin. */
@@ -351,7 +373,8 @@ function guideArmedLoc(
   const stepNm = (2 * Math.max(0, ac.speedKt) * dtS) / 3600;
   if (
     closing &&
-    Math.abs(deviation.crossTrackNm) <= leadTurnCrossTrackNm(ac.speedKt, headingErrorDeg) + stepNm
+    Math.abs(deviation.crossTrackNm) <=
+      leadTurnCrossTrackNm(ac.speedKt, headingErrorDeg, turnRateFor(ac, ctx.performance)) + stepNm
   ) {
     return axisPublishedCourse(axis);
   }
@@ -360,7 +383,7 @@ function guideArmedLoc(
   // same bounded recovery guidance but keep INTERCEPT_LOC until signal capture.
   const envelope = locEnvelope(deviation, axis);
   if (!closing && envelope && !locShouldBreakout(envelope.normalizedError)) {
-    return locTrackingHeading(ac, dtS, deviation, axis);
+    return locTrackingHeading(ac, dtS, deviation, axis, ctx.performance);
   }
   return ac.intent.assignedHeadingDeg;
 }
@@ -370,13 +393,18 @@ function locTrackingHeading(
   dtS: number,
   deviation: ReturnType<typeof locDeviation>,
   axis: LocAxis,
+  performance?: PerformanceRegimeLimits,
 ): number {
   const crossTrack = deviation.crossTrackNm;
   if (Math.abs(crossTrack) < 1e-6) return axisPublishedCourse(axis);
   const headingErrorDeg = shortestDeltaDeg(axisPublishedCourse(axis), ac.headingDeg);
   const towardCenter = -Math.sign(crossTrack);
   const movingTowardCenter = headingErrorDeg * towardCenter > 0;
-  const rolloutLeadNm = leadTurnCrossTrackNm(ac.speedKt, headingErrorDeg);
+  const rolloutLeadNm = leadTurnCrossTrackNm(
+    ac.speedKt,
+    headingErrorDeg,
+    turnRateFor(ac, performance),
+  );
   const discreteMarginNm = (2 * Math.max(0, ac.speedKt) * dtS) / 3600;
   if (movingTowardCenter && Math.abs(crossTrack) <= rolloutLeadNm + discreteMarginNm) {
     return axisPublishedCourse(axis);
@@ -419,7 +447,7 @@ function guideLoc(
   } else {
     locBreakoutSinceMs.delete(ac);
   }
-  return locTrackingHeading(ac, dtS, deviation, axis);
+  return locTrackingHeading(ac, dtS, deviation, axis, ctx.performance);
 }
 
 /** LANDING keeps the loc inbound course. No breakout — they are going to land. */

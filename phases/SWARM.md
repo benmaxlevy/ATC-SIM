@@ -1,3 +1,238 @@
+# ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
+
+## Forty-seventh swarm planned — 2026-09-09 (Balanced random arrival packs)
+
+| Key | Value |
+| --- | --- |
+| Goal | Seeded random arrival packs traverse scenario route pools before repeating. |
+| Include | **T04-59** only. |
+| Skip | New route data, camera/UI, entry geometry, departure logic, facility branches. |
+| Stop | After T04-59 CI. |
+| Max workers | 1 |
+| Merge lock | Orchestrator squash-merges to `feature/aircraft-performance`. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Product law:** Random means deterministic seed variation over scenario-owned
+choices, not accidental concentration on a primary route. Each route-pool
+entry is used before a pack repeats any entry.
+
+**Wave:** A — T04-59 after T04-58.
+
+**Ticket:** `ticket/T04-59-balanced-random-arrival-route-packs` ←
+`phases/04-procedures/tickets/T04-59-balanced-random-arrival-route-packs.md`.
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 4 balanced random arrival packs T04-59
+Merge target: feature/aircraft-performance
+Merged: T04-59
+Tests: <focused gates and npm run ci result>
+Notes: <KATL pack route spread>
+```
+
+## Forty-sixth swarm planned — 2026-09-09 (Random arrival entry fixes)
+
+| Key | Value |
+| --- | --- |
+| Goal | Make random arrival entry fixes scenario-defined and terminal-visible. |
+| Include | **T04-58** only. |
+| Skip | Camera auto-range, arbitrary coordinate spawn, live traffic, departure changes, parser/UI, facility branches. |
+| Stop | After T04-58 CI. |
+| Max workers | 1 |
+| Merge lock | Orchestrator squash-merges to `feature/aircraft-performance`. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Product law:** A scenario owns the eligible STAR, transition, and entry fix.
+Random generation starts on the remaining published route at that fix; it does
+not infer a terminal spawn from a facility-wide catalog or fly outward to an
+earlier fix.
+
+**Wave:** A — T04-58 after T04-57.
+
+**Ticket:** `ticket/T04-58-random-arrival-entry-fixes` ←
+`phases/04-procedures/tickets/T04-58-random-arrival-entry-fixes.md`.
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 4 random arrival entry fixes T04-58
+Merge target: feature/aircraft-performance
+Merged: T04-58
+Tests: <focused gates and npm run ci result>
+Notes: <KATL initial-route visibility result>
+```
+
+## Forty-fifth swarm planned — 2026-09-09 (Scenario random route pools)
+
+| Key | Value |
+| --- | --- |
+| Goal | Make scenario-declared arrival/departure route pools and first-load traffic defaults authoritative for random traffic. |
+| Include | **T04-57** only. |
+| Skip | Live schedules/airline data, procedure imports, parser/UI redesign, OpenAP, compatibility aliases, facility branches. |
+| Stop | After T04-57 CI. |
+| Max workers | 1 |
+| Merge lock | Orchestrator squash-merges to `feature/aircraft-performance`. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Product law:** A random scenario samples only its declared STAR/SID pools;
+the catalog validates and executes those routes but never becomes an implicit
+all-procedure pool. On a clean boot, selected scenario defaults apply before
+global fallbacks. Stored user setup and valid URL overrides remain explicit
+higher-precedence intent. No airport-specific code paths.
+
+**Wave:** A — T04-57 after T04-56.
+
+**Ticket:** `ticket/T04-57-scenario-random-route-pools-and-boot-defaults` ←
+`phases/04-procedures/tickets/T04-57-scenario-random-route-pools-and-boot-defaults.md`.
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 4 scenario random route pools T04-57
+Merge target: feature/aircraft-performance
+Merged: T04-57
+Tests: <focused gates and npm run ci result>
+Notes: <first-load and route-pool contract; manual browser result>
+```
+
+## Forty-fourth swarm planned — 2026-09-09
+
+One Luna-medium worker owns T04-56 only. Merge target: `feature/aircraft-performance`.
+Arrival policy is `random|authored`; departure policy is `none|random|authored`.
+KATL scenarios use arrival `random`. Stop after T04-56 CI; no compatibility aliases.
+
+# ATC-SIM swarm orchestrator — Forty-third swarm (Random Airline Aircraft Traffic)
+
+## Forty-third swarm planned — 2026-09-09
+
+| Key | Value |
+| --- | --- |
+| Goal | Generated scenario traffic uses deterministic valid airline/aircraft pairs. |
+| Include | **T04-55** only. |
+| Skip | Fleet sources, provenance, APIs, per-engine variants, authored scenario changes, parser/UI/profile changes. |
+| Stop | After T04-55 and CI. |
+| Max workers | 1 |
+| Merge lock | Orchestrator squash-merges to `feature/aircraft-performance`. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Product law:** roster rows contain only airline ICAO/name and exact valid
+types. Seeded generation chooses one eligible pair before allocating a callsign;
+no independent airline/type sampling. Authored scenarios stay authored.
+
+# ATC-SIM swarm orchestrator — Forty-second swarm (Aircraft Performance Profiles)
+
+## Forty-second swarm planned — 2026-09-09 (Aircraft Performance Profiles)
+
+User-approved aircraft-performance follow-up: build a pinned offline
+Python/OpenAP profile generator, commit immutable generated profile JSON, then
+consume it through generic deterministic kinematics. This plan creates tickets
+and freezes execution order; it does not launch workers.
+
+| Key | Value |
+| --- | --- |
+| Goal | Per-ICAO, auditable aircraft-performance profiles generated offline and consumed by generic 20 Hz kinematics. |
+| Include | **T04-51**, **T04-52**, **T04-53**, **T04-54** only. |
+| Source | User-approved data contract; OpenAP WRAP handbook and repository. |
+| Skip | Runtime Python/OpenAP/network fetch; per-engine runtime variants; mass/fuel/flaps/stall; wind; wake separation; profile-aware alerts; parser/UI/scenario branches. |
+| Stop | After T04-54 acceptance and final CI. No later phase. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `feature/aircraft-performance`, then runs focused gates and `npm run ci` after each ticket. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Product law:**
+
+- Runtime imports committed JSON plus a TypeScript `DEFAULT_PROFILE`; it never
+  imports Python/OpenAP, parses source datasets, or fetches a network resource.
+- `Aircraft.aircraftType` is the sole runtime lookup key. Scenario data never
+  provides engines or performance values. Missing, unknown, and `UNRESOLVED`
+  types use only the explicit default profile.
+- One mapping row selects one representative airframe/engine per ICAO key.
+  Initial preset `terminal-v1` includes B737/B738/B739/B752/B753/B744/B788/B789/B78X,
+  A320/A321/A20N/A21N/A333, E135/E140/E145/E170/E175/E190/E195/E290/E295,
+  CRJ1/CRJ2/CRJ7/CRJ9/CRJX, and B38M/B39M/B763/B772/B77W. CLI `--types`
+  supports any mapped, caller-supplied ICAO set.
+- OpenAP measurements/statistical envelopes, transformations, and simulator
+  policy retain separate field-level provenance. No profile claims certification.
+- Profile/regime resolution and kinematics/FMS behavior are generic: no
+  airport, runway, procedure, scenario, callsign, or aircraft-type conditional
+  outside the data registry.
+- The physical turn, fly-by radius, and localizer lead calculation use one
+  resolved turn constraint. Alert prediction remains its existing conservative
+  policy until a later explicit ticket.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T04-51 | planning commit |
+| B | T04-52 | T04-51 merge and focused gate |
+| C | T04-53 | T04-52 merge and focused gate |
+| D | T04-54 | T04-53 merge and focused gate |
+
+**Ticket ownership:**
+
+- T04-51: pinned offline generator, mappings/policies, provenance, generated
+  artifact, CLI, and generator tests.
+- T04-52: strict runtime types, registry/default fallback, generic regime
+  resolver, and tests.
+- T04-53: profile-driven kinematics plus FMS turn/vertical plumbing and tests.
+- T04-54: reproducibility/CI/data-contract/world acceptance and documentation.
+
+**Ticket files / branches:**
+
+- `ticket/T04-51-openap-profile-generator-and-data-contract` ← `phases/04-procedures/tickets/T04-51-openap-profile-generator-and-data-contract.md`
+- `ticket/T04-52-performance-registry-and-regime-resolution` ← `phases/04-procedures/tickets/T04-52-performance-registry-and-regime-resolution.md`
+- `ticket/T04-53-profile-driven-kinematics-and-fms-turns` ← `phases/04-procedures/tickets/T04-53-profile-driven-kinematics-and-fms-turns.md`
+- `ticket/T04-54-performance-pipeline-acceptance-and-ci` ← `phases/04-procedures/tickets/T04-54-performance-pipeline-acceptance-and-ci.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 4 procedures aircraft performance profiles T04-51–54
+Merge target: feature/aircraft-performance
+Merged: T04-51, T04-52, T04-53, T04-54
+Tests: <focused tests and npm run ci result>
+Notes: <OpenAP version; initial-preset support/unresolved rows; provenance/license review; manual leftovers>
+```
+
+## Forty-second swarm started — 2026-09-09
+
+User authorized execution on a new `feature/aircraft-performance` merge target
+cut from the planning commit. One `gpt-5.6-luna` worker at medium reasoning
+runs in an isolated ticket worktree at a time: T04-51, focused gate and captain
+squash merge; then T04-52; then T04-53; then T04-54. Captain owns every merge,
+runs `npm run ci` after every ticket, and runs the pinned Python profile gate
+when its dependencies are available. No push, no profile-aware alert work, no
+later phase, and no work outside these four tickets. Workers return only
+`READY TO MERGE` or `BLOCKED`; captain returns only `PHASE EXIT GREEN` or
+`PHASE EXIT BLOCKED`.
+
+## Forty-second swarm resumed — 2026-09-09
+
+User explicitly authorized a fresh orchestration attempt after the prior
+worker-spawn capability report. The same approved tickets, merge target,
+single-worker limit, waves, `gpt-5.6-luna` medium model, and stop boundary
+remain unchanged. This resume supersedes only the capability block: the
+orchestrator will create one captain; the captain must create one isolated
+ticket worker at a time. If that worker capability is unavailable again, stop
+without substituting an unisolated implementation.
+
+## Forty-second swarm orchestration override — 2026-09-09
+
+User clarified that the root orchestrator may directly spawn the configured
+isolated `gpt-5.6-luna` medium ticket workers because child captains lack the
+collaboration-spawn capability in this session. The orchestrator holds the
+merge lock for `feature/aircraft-performance`, creates at most one ticket
+worktree/worker at a time, squash-merges only completed worker branches, runs
+the required gates after each merge, and updates status. All ticket scope,
+waves, stop boundary, no-push rule, and worker leaf restrictions remain
+unchanged. This is a session capability routing override only.
+
 # ATC-SIM swarm orchestrator — Forty-first swarm (Magnetic Heading Frames)
 
 ## Forty-first swarm planned — 2026-09-08 (Magnetic Heading Frames)

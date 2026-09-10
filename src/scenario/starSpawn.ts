@@ -28,6 +28,8 @@ import type {
 export interface StarSlot {
   starId: string;
   transitionId: string;
+  /** Scenario-owned terminal entry fix. Omitted only for legacy direct callers. */
+  entryFixId?: string;
 }
 
 export interface OutermostStarFix {
@@ -53,6 +55,13 @@ export interface StarRouteAssignment {
   transitionId: string;
   stackIndex: number;
   pose: StarInboundPose;
+}
+
+function routeFromEntry(routeFixIds: string[], entryFixId?: string): string[] {
+  if (!entryFixId) return routeFixIds;
+  const index = routeFixIds.findIndex((id) => id.toUpperCase() === entryFixId.toUpperCase());
+  if (index < 0) throw new Error(`Entry fix ${entryFixId} is not on the STAR route`);
+  return routeFixIds.slice(index);
 }
 
 /** Extra NM before the gate so distance(gate) > 0 and heading is defined. */
@@ -395,19 +404,26 @@ export function starInboundPose(
   transitionId: string,
   alongTrackOffsetNm: number,
   activeRunwayId?: string,
+  entryFixId?: string,
 ): StarInboundPose {
   if (!Number.isFinite(alongTrackOffsetNm) || alongTrackOffsetNm < 0) {
     throw new Error(
       `alongTrackOffsetNm must be a finite non-negative number (got ${String(alongTrackOffsetNm)})`,
     );
   }
-  const gateLeg = requireGateLeg(catalog, starId, transitionId);
-  const routeFixIds = starRouteFixIds(catalog, starId, transitionId, activeRunwayId);
+  const fullRouteFixIds = starRouteFixIds(catalog, starId, transitionId, activeRunwayId);
+  const routeFixIds = routeFromEntry(fullRouteFixIds, entryFixId);
+  const gateFixId = routeFixIds[0];
+  if (!gateFixId) throw new Error(`STAR ${starId} ${transitionId} has no route fixes`);
+  const { star, transition } = findStarTransition(catalog, starId, transitionId);
+  const gateLeg = [...transition.legs, ...star.common].find(
+    (leg) => leg.fixId.toUpperCase() === gateFixId.toUpperCase(),
+  ) ?? { fixId: gateFixId };
   const nextFixId = routeFixIds[1];
   if (!nextFixId) {
     throw new Error(`STAR ${starId} ${transitionId} has no next fix after the gate`);
   }
-  const gate = fixXy(catalog, gateLeg.fixId);
+  const gate = fixXy(catalog, gateFixId);
   const next = fixXy(catalog, nextFixId);
   const headingDeg = courseDeg(gate, next);
   const backAzimuth = normalizeHeadingDeg(headingDeg + 180);
@@ -422,12 +438,22 @@ export function starInboundPose(
     speedKt: spawnSpeedKt(speedConstraint),
     routeFixIds,
     toFixIndex: 0,
-    gateFixId: gateLeg.fixId,
+    gateFixId,
   };
 }
 
 function slotKey(slot: StarSlot): string {
-  return `${slot.starId}\0${slot.transitionId}`;
+  return `${slot.starId}\0${slot.transitionId}\0${slot.entryFixId ?? ""}`;
+}
+
+/** Seeded Fisher-Yates order for one complete route-pool traversal. */
+function shuffledSlots(slots: readonly StarSlot[], rng: () => number): StarSlot[] {
+  const result = [...slots];
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const j = Math.min(Math.floor(rng() * (i + 1)), i);
+    [result[i], result[j]] = [result[j]!, result[i]!];
+  }
+  return result;
 }
 
 export interface AssignStarRoutesArgs {
@@ -435,36 +461,38 @@ export interface AssignStarRoutesArgs {
   count: number;
   seed: number;
   activeRunwayId?: string;
+  /** Scenario-owned eligible pool; prevents implicit catalog-wide sampling. */
+  routePool?: readonly StarSlot[];
 }
 
 /**
  * Analog: JO 7110.65 descend via / AIM Descend Via — spawned traffic already
  * complies with the published STAR (VIA armed; same as T04-12 spawn-on-VIA).
- * Trainer delta: seeded slot mix over catalog STAR transitions. Small packs
- * stack the first chosen transition so north/south STARs do not spawn as a
- * mirrored pair. Later remainder draws may still mix slots. Not NAS STARS.
+ * Trainer delta: seeded balanced traversal of scenario STAR transitions. Every
+ * eligible route-pool entry is used once before a route repeats; each later
+ * cycle gets a seeded reshuffle. Not NAS STARS.
  */
 export function assignStarRoutes(args: AssignStarRoutesArgs): StarRouteAssignment[] {
   const { catalog, count, seed, activeRunwayId } = args;
   if (!Number.isInteger(count) || count < 0) {
     throw new Error(`assignStarRoutes count must be a non-negative integer (got ${String(count)})`);
   }
-  const slots = listStarSlots(catalog, activeRunwayId);
+  const slots = args.routePool ? [...args.routePool] : listStarSlots(catalog, activeRunwayId);
+  if (args.routePool?.some((slot) => !slot.entryFixId)) {
+    throw new Error("Random arrival route-pool entries must declare entryFixId");
+  }
   if (count > 0 && slots.length === 0) {
     throw new Error("assignStarRoutes needs at least one STAR transition slot");
   }
   const rng = mulberry32(seed >>> 0);
   const stackNext = new Map<string, number>();
   const assignments: StarRouteAssignment[] = [];
-  const stackOnPrimary = Math.min(count, Math.max(2, Math.ceil(count / 2)));
-  const primaryIdx =
-    slots.length === 0 ? 0 : Math.min(Math.floor(rng() * slots.length), slots.length - 1);
+  let traversal = shuffledSlots(slots, rng);
   for (let i = 0; i < count; i += 1) {
-    const idx =
-      i < stackOnPrimary
-        ? primaryIdx
-        : Math.min(Math.floor(rng() * slots.length), slots.length - 1);
-    const slot = slots[idx]!;
+    if (i > 0 && i % traversal.length === 0) {
+      traversal = shuffledSlots(slots, rng);
+    }
+    const slot = traversal[i % traversal.length]!;
     const key = slotKey(slot);
     const stackIndex = stackNext.get(key) ?? 0;
     stackNext.set(key, stackIndex + 1);
@@ -482,6 +510,7 @@ export function assignStarRoutes(args: AssignStarRoutesArgs): StarRouteAssignmen
         slot.transitionId,
         alongTrackOffsetNm,
         activeRunwayId,
+        slot.entryFixId,
       ),
     });
   }

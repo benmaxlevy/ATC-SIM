@@ -10,6 +10,7 @@ import {
   shortestDeltaDeg,
   stepAircraft,
   stepWorld,
+  turnRateDegPerSForSpeed,
   type Aircraft,
   type TurnDir,
   type World,
@@ -165,6 +166,39 @@ test("speed clamps at 0 and does not go negative", () => {
   ac.intent.assignedSpeedKt = -10;
   stepAircraft(ac, 5);
   expect(ac.speedKt).toBe(0);
+});
+
+test("profile limits change deterministic turn, vertical, and speed motion", () => {
+  const slow = makeTestAircraft({ speedKt: 200, headingDeg: 0, altitudeFt: 10000 });
+  const fast = makeTestAircraft({ speedKt: 200, headingDeg: 0, altitudeFt: 10000 });
+  assignHeading(slow, 90, "SHORTEST");
+  assignHeading(fast, 90, "SHORTEST");
+  slow.intent.assignedAltitudeFt = 8000;
+  fast.intent.assignedAltitudeFt = 8000;
+  slow.intent.assignedSpeedKt = 240;
+  fast.intent.assignedSpeedKt = 240;
+  const slowLimits = {
+    minSpeedKt: 100,
+    maxSpeedKt: 300,
+    nominalClimbFpm: 1000,
+    nominalDescentFpm: 1000,
+    accelKtPerS: 0.5,
+    decelKtPerS: 0.5,
+    maxBankDeg: 15,
+  };
+  const fastLimits = {
+    ...slowLimits,
+    nominalDescentFpm: 2000,
+    accelKtPerS: 2,
+    decelKtPerS: 2,
+    maxBankDeg: 30,
+  };
+  stepAircraft(slow, 10, undefined, undefined, undefined, 0, slowLimits);
+  stepAircraft(fast, 10, undefined, undefined, undefined, 0, fastLimits);
+  expect(slow.headingDeg).toBeLessThan(fast.headingDeg);
+  expect(slow.altitudeFt).toBeGreaterThan(fast.altitudeFt);
+  expect(slow.speedKt).toBeLessThan(fast.speedKt);
+  expect(turnRateDegPerSForSpeed(200, 30)).toBeGreaterThan(turnRateDegPerSForSpeed(200, 15));
 });
 
 test("IDENT flash expires after simTimeMs crosses identUntilSimMs (time bumped first)", () => {

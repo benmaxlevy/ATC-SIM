@@ -9,7 +9,7 @@
     "lonDeg": 0
   },
   "activeRunwayId": "27",
-  "spawnPolicy": "star-inbound",
+  "spawnPolicy": "random",
   "runways": [
     {
       "id": "27",
@@ -55,6 +55,9 @@
       "headingDeg": 100,
       "altitudeFt": 8000,
       "speedKt": 220,
+      "starId": "DEM1",
+      "transitionId": "N",
+      "entryFixId": "NEMAX",
       "aircraftType": "B738"
     },
     {
@@ -63,6 +66,9 @@
       "headingDeg": 90,
       "altitudeFt": 7000,
       "speedKt": 230,
+      "starId": "DEM1",
+      "transitionId": "S",
+      "entryFixId": "SEMAX",
       "aircraftType": "A320"
     },
     {
@@ -71,6 +77,9 @@
       "headingDeg": 85,
       "altitudeFt": 9000,
       "speedKt": 240,
+      "starId": "DEM1",
+      "transitionId": "N",
+      "entryFixId": "NEMAX",
       "aircraftType": "B739"
     },
     {
@@ -79,6 +88,9 @@
       "headingDeg": 95,
       "altitudeFt": 6000,
       "speedKt": 210,
+      "starId": "DEM1",
+      "transitionId": "S",
+      "entryFixId": "SEMAX",
       "aircraftType": "B737"
     },
     {
@@ -87,6 +99,9 @@
       "headingDeg": 80,
       "altitudeFt": 10000,
       "speedKt": 250,
+      "starId": "DEM1",
+      "transitionId": "N",
+      "entryFixId": "NEMAX",
       "aircraftType": "A321"
     },
     {
@@ -95,9 +110,20 @@
       "headingDeg": 88,
       "altitudeFt": 8500,
       "speedKt": 225,
+      "starId": "DEM1",
+      "transitionId": "S",
+      "entryFixId": "SEMAX",
       "aircraftType": "A320"
     }
   ],
+  "departureConfig": {
+    "policy": "random",
+    "ratePerHour": 10,
+    "routePool": [
+      { "sidId": "BAY1", "transitionId": "NORMA" },
+      { "sidId": "BAY1", "transitionId": "OCTTA" }
+    ]
+  },
   "giTextLines": ["ATIS A", "RWY 27", "ILS 27 IN USE", "", "", "", "", "", "", ""],
   "radarSites": [
     {

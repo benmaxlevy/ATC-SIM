@@ -11,6 +11,7 @@ import {
   listPlayableAirports,
   listPlayableScenarios,
 } from "./playableScenarios";
+import { loadPlayableScenario } from "./playableScenarios";
 
 export { listPlayableAirports, listConfigurationsForAirport };
 
@@ -100,11 +101,18 @@ export function defaultSessionSetup(
   scenarioId = listPlayableScenarios().find((entry) => entry.default)?.id ?? "",
   departureCapability = true,
 ): SessionSetup {
+  const selectedId = listPlayableScenarios().some((entry) => entry.id === scenarioId)
+    ? scenarioId
+    : (listPlayableScenarios().find((entry) => entry.default)?.id ?? scenarioId);
+  const scenario = selectedId ? loadPlayableScenario(selectedId) : undefined;
   return {
-    scenarioId,
-    arrivalCount: DEFAULT_INITIAL_ARRIVAL_COUNT,
+    scenarioId: selectedId,
+    arrivalCount: scenario?.arrivals.length ?? DEFAULT_INITIAL_ARRIVAL_COUNT,
     arrivalsPerHour: DEFAULT_ARRIVALS_PER_HOUR,
-    departuresPerHour: departureCapability ? 0 : 0,
+    departuresPerHour:
+      departureCapability && scenario?.departureConfig?.policy !== "none"
+        ? (scenario?.departureConfig?.ratePerHour ?? 0)
+        : 0,
     seed: 1,
   };
 }

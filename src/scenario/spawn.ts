@@ -26,7 +26,7 @@ import {
   type ArrivalTrafficConfig,
 } from "./arrivalScheduler";
 import { resolveRunwayHeading, resolveRunwayThreshold } from "./departureSpawn";
-import { allocateCallsign, usedCallsignSet } from "./callsigns";
+import { allocateTrafficPair, allocateTrafficPairForType, usedCallsignSet } from "./callsigns";
 
 export { starRouteFixIds };
 
@@ -124,26 +124,31 @@ function armStarVia(ac: Aircraft, scenario: Scenario, arrival: ArrivalSpawn): vo
  * Trainer delta: pose from catalog + seeded slot mix; JSON xy is a placeholder.
  */
 function spawnStarInbound(world: World, scenario: Scenario, seed: number): void {
+  const routePool = scenario.arrivals.map((arrival) => ({
+    starId: arrival.starId!,
+    transitionId: arrival.transitionId!,
+    entryFixId: arrival.entryFixId!,
+  }));
   const assignments = assignStarRoutes({
     catalog: scenario.catalog,
     count: scenario.arrivals.length,
     seed,
     activeRunwayId: scenario.activeRunwayId,
+    routePool,
   });
   const rng = mulberry32((seed >>> 0) ^ 0xa24baed);
   const used = usedCallsignSet(world.aircraft.map((a) => a.callsign));
   for (let i = 0; i < scenario.arrivals.length; i += 1) {
-    const arrival = scenario.arrivals[i]!;
     const assigned = assignments[i]!;
-    const callsign = allocateCallsign(rng, used);
+    const traffic = allocateTrafficPair(rng, used);
     const ac = createAircraft({
-      callsign,
+      callsign: traffic.callsign,
       xNm: assigned.pose.xNm,
       yNm: assigned.pose.yNm,
       headingDeg: assigned.pose.headingDeg,
       altitudeFt: assigned.pose.altitudeFt,
       speedKt: assigned.pose.speedKt,
-      aircraftType: arrival.aircraftType,
+      aircraftType: traffic.aircraftType,
       destination: scenario.icao,
       flightPlan: {
         destination: scenario.icao,
@@ -174,8 +179,10 @@ function spawnDownwindArc(
   const rng = mulberry32((seed >>> 0) ^ 0xa24baed);
   const used = usedCallsignSet(world.aircraft.map((a) => a.callsign));
   for (let i = 0; i < n; i += 1) {
-    const callsign = allocateCallsign(rng, used);
-    spawnArrival(world, downwindArcArrival(i, n, scenario), callsign, scenario);
+    const traffic = allocateTrafficPair(rng, used);
+    const arrival = downwindArcArrival(i, n, scenario);
+    arrival.aircraftType = traffic.aircraftType;
+    spawnArrival(world, arrival, traffic.callsign, scenario);
   }
 }
 
@@ -207,8 +214,8 @@ export function spawnArrivals(
   const rng = mulberry32((seed >>> 0) ^ 0xa24baed);
   const used = usedCallsignSet(world.aircraft.map((a) => a.callsign));
   for (const arrival of source.arrivals) {
-    const callsign = allocateCallsign(rng, used);
-    spawnArrival(world, arrival, callsign, source);
+    const traffic = allocateTrafficPairForType(rng, used, arrival.aircraftType ?? "B738");
+    spawnArrival(world, arrival, traffic.callsign, source);
   }
 }
 
@@ -263,7 +270,10 @@ function initDepartures(
   ) {
     const depRng = mulberry32((depSeed >>> 0) ^ DEPARTURE_STREAM_XOR);
     schedule = scenario.departureConfig.departures.map((d) => ({
-      callsign: allocateCallsign(depRng, usedCallsigns),
+      callsign: (() => {
+        const type = d.aircraftType ?? "B738";
+        return allocateTrafficPairForType(depRng, usedCallsigns, type).callsign;
+      })(),
       sidId: d.sidId,
       transitionId: d.transitionId,
       runwayId: scenario.activeRunwayId,
@@ -279,6 +289,7 @@ function initDepartures(
       ratePerHour: departureOptions?.ratePerHour ?? scenario.departureConfig?.ratePerHour,
       count: departureOptions?.count,
       runwayId: scenario.activeRunwayId,
+      routePool: scenario.departureConfig?.routePool,
       activeCallsigns: usedCallsigns,
       startSimMs: world.simTimeMs,
     });
@@ -304,7 +315,7 @@ function initDepartures(
 }
 
 /**
- * Build a World from the scenario. `star-inbound` uses `assignStarRoutes`
+ * Build a World from the scenario. `random` uses `assignStarRoutes`
  * (seeded catalog pose). `authored` copies JSON xy (ils27 / T01-04 fixture).
  */
 export function createWorldFromScenario(
@@ -312,7 +323,7 @@ export function createWorldFromScenario(
   seed: number = DEFAULT_SPAWN_SEED,
 ): World {
   const world = worldFromScenario(scenario);
-  if (scenario.spawnPolicy === "star-inbound") {
+  if (scenario.spawnPolicy === "random") {
     spawnStarInbound(world, scenario, seed);
   } else {
     spawnArrivals(world, scenario, seed);
@@ -329,7 +340,7 @@ export function createWorldFromScenario(
 
 /**
  * Default student world follows `spawnPolicy`. `trafficCount` (`?traffic=30`)
- * replaces a **star-inbound** list with the downwind-arc FPS bench.
+ * replaces a **random** list with the downwind-arc FPS bench.
  * `authored` (ils27) ignores trafficCount and seed for pose.
  */
 export function createWorldForSession(
@@ -341,12 +352,12 @@ export function createWorldForSession(
 ): World {
   let world: World;
   let arrivalScheduler: ArrivalScheduler | undefined;
-  if (scenario.spawnPolicy === "star-inbound" && trafficCount !== null) {
+  if (scenario.spawnPolicy === "random" && trafficCount !== null) {
     world = worldFromScenario(scenario);
     spawnArrivals(world, trafficCount, scenario, seed);
   } else {
     world = worldFromScenario(scenario);
-    if (scenario.spawnPolicy === "star-inbound") {
+    if (scenario.spawnPolicy === "random") {
       arrivalScheduler = createArrivalScheduler(
         scenario.catalog,
         {
@@ -357,6 +368,11 @@ export function createWorldForSession(
         world.aircraft.map((arrival) => arrival.callsign),
         world.simTimeMs,
         scenario.activeRunwayId,
+        scenario.arrivals.map((arrival) => ({
+          starId: arrival.starId!,
+          transitionId: arrival.transitionId!,
+          entryFixId: arrival.entryFixId!,
+        })),
       );
       world.arrivalScheduler = arrivalScheduler;
       arrivalScheduler.drain(world);
@@ -378,6 +394,11 @@ export function createWorldForSession(
           world.aircraft.map((arrival) => arrival.callsign),
           world.simTimeMs,
           scenario.activeRunwayId,
+          scenario.arrivals.map((arrival) => ({
+            starId: arrival.starId!,
+            transitionId: arrival.transitionId!,
+            entryFixId: arrival.entryFixId!,
+          })),
         );
         world.arrivalScheduler = arrivalScheduler;
       }
