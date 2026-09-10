@@ -69,7 +69,7 @@ export const TPA_STROKE_PX = 1;
 export const TPA_STROKE_COLOR = PALETTE.tools;
 
 /** Near-circumference fraction; keeps the mileage immediately inside the ring. */
-export const TPA_RING_DIGIT_RADIUS_FRAC = 0.85;
+export const TPA_RING_DIGIT_RADIUS_FRAC = 0.8;
 
 export interface TpaState {
   on: boolean;
