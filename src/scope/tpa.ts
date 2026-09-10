@@ -68,8 +68,8 @@ export const TPA_STROKE_PX = 1;
 /** TLS/tools analog. Never CA/MSAW red. */
 export const TPA_STROKE_COLOR = PALETTE.tools;
 
-/** Fraction of ring radius so the digit stays inside the circle. */
-export const TPA_RING_DIGIT_RADIUS_FRAC = 0.72;
+/** Near-circumference fraction; keeps the mileage immediately inside the ring. */
+export const TPA_RING_DIGIT_RADIUS_FRAC = 0.85;
 
 export interface TpaState {
   on: boolean;
