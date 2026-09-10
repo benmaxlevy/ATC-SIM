@@ -1,5 +1,21 @@
 # Swarm status
 
+## FORTY-EIGHTH SWARM COMPLETE — Datablock field-format fidelity (T02-122–124)
+
+T02-122 through T02-124 completed on `fix/datablocks`. Datablock format logic
+now exposes explicit Fields 0–8, formats SPC/TSAS/exit-gate/exit-fix/Field 5
+alternatives, represents Fields 6–8 with optional generic inputs, distinguishes
+duplicate beacon state from squawk mismatch, and preserves one-/two-character
+TCPs. ADS-B markers, new Field 2 glyphs, TSAS scheduling, and missing runtime
+workflows remain excluded.
+
+Captain commits: T02-122 (`4c5c8e5`), T02-123 (`3cc2aed`), T02-124
+(`1da7b83`). Planning commit: `95ac1e1`.
+
+Final gate: `npm run ci` passed — **187 files, 1,673 tests passed, 4 skipped**.
+Manual leftover: format-only optional fields still require future runtime
+adapters; no live TSAS scheduler or indicator workflow was added.
+
 ## FORTY-SEVENTH SWARM COMPLETE — Balanced random arrival packs (T04-59)
 
 T04-59 is merged on `feature/aircraft-performance` as `f6762e0`. A seeded
