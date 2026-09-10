@@ -51,6 +51,46 @@ Tests: <focused gate, manual review, and npm run ci result>
 Notes: <manual visual leftovers; handoff logic unchanged>
 ```
 
+## Fifty-second swarm planned — 2026-09-10 (Accepted outbound handoff UI)
+
+User approved T02-134 after research against the supplied TI 6191.409 Rev. 30
+manual. The ticket changes visible accepted outbound handoff datablock UI only;
+existing handoff routing to Center sector `C`, acceptance state, logs, and
+aircraft lifecycle remain unchanged. Captain reviews the completed ticket with
+`check-stars-manual` using only
+`/home/ben/Documents/stars refs/full_manual.pdf` and its independent
+verification pass before final CI.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align accepted outbound handoff datablock UI with the manual. |
+| Include | **T02-134** only. |
+| Skip | Core handoff logic, C routing, multi-position simulation, new handoff types, pointouts, quicklook, networking, new SPCs, new alerts, parser, Command IR, speech, DCB, and facility branches. |
+| Stop | After T02-134 acceptance, manual review, and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Product law:** Existing handoff state remains authoritative. Accepted
+outbound handoffs render as white FDBs; sender-side receiver TCP remains for
+five seconds after acceptance, then disappears. The UI does not create a
+receiver position or alter core ownership/acceptance logic.
+
+**Wave:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-134 | T02-133 complete and current `fix/datablocks` clean |
+
+**Ticket ownership:**
+
+- T02-134: accepted outbound handoff datablock presentation and tests.
+
+**Ticket file / branch:**
+
+- `ticket/T02-134-accepted-outbound-handoff-ui` ← `phases/02-scope/tickets/T02-134-accepted-outbound-handoff-ui.md`
+
 ## Fifty-first swarm planned — 2026-09-10 (Existing datablock field alignment)
 
 User approved execution of T02-131 through T02-133 against the supplied
