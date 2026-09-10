@@ -1,5 +1,61 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Fifty-first swarm planned — 2026-09-10 (Existing datablock field alignment)
+
+User approved execution of T02-131 through T02-133 against the supplied
+TI 6191.409 Rev. 30 manual. After each ticket merge, captain must run
+`check-stars-manual` with the supplied PDF and an independent verification pass
+before starting the next ticket. No CRC or other substitute source may be used.
+No new SPCs or alert types are added.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align existing PDB, LDB, and FDB Field 0 presentation with the supplied STARS manual. |
+| Include | **T02-131**, **T02-132**, **T02-133** only. |
+| Skip | New SPCs, new alerts, MI, LL, FMA, RNP, ADS-B, pointout expansion, quicklook, TSAS runtime, networking, parser, Command IR, speech, DCB, facility branches. |
+| Stop | After T02-133 acceptance, manual review, and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Product law:** Existing datablock state maps to manual field positions.
+Formatter and renderer preserve absent values, never invent operational state,
+and add no new SPC or alert types. Field 0 renders separately above the
+callsign. PDB and LDB use their manual-defined reduced projections. Product
+remains STARS-like, not NAS-compatible.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-131 | T02-130 complete |
+| B | T02-132 | T02-131 merge, CI, and manual review |
+| C | T02-133 | T02-132 merge, CI, and manual review |
+
+**Ticket ownership:**
+
+- T02-131: PDB field projection and compatibility.
+- T02-132: existing LDB SPC/safety-alert Field 0 display.
+- T02-133: FDB Field 0 physical rendering and layout metrics.
+
+**Ticket files / branches:**
+
+- `ticket/T02-131-pdb-manual-field-projection` ← `phases/02-scope/tickets/T02-131-pdb-manual-field-projection.md`
+- `ticket/T02-132-ldb-existing-field0-display` ← `phases/02-scope/tickets/T02-132-ldb-existing-field0-display.md`
+- `ticket/T02-133-fdb-field0-physical-rendering` ← `phases/02-scope/tickets/T02-133-fdb-field0-physical-rendering.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 existing datablock field alignment T02-131–133
+Merge target: fix/datablocks
+Merged: T02-131, T02-132, T02-133
+Tests: <focused gates, manual reviews, and npm run ci result>
+Notes: <manual visual leftovers; no new SPC or alert types>
+```
+
 ## Fiftieth swarm worker started — 2026-09-10 (T02-130)
 
 Worker executes exactly T02-130 in isolated branch/worktree
