@@ -1,5 +1,66 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Forty-eighth swarm started — 2026-09-10 (Datablock field-format fidelity)
+
+User authorized execution using isolated subagents after the planning addendum
+below. Captain owns `fix/datablocks`, creates one isolated worker at a time,
+implements T02-122 then T02-123/T02-124, squash-merges each completed ticket,
+and stops at the configured boundary. No push.
+
+## Forty-eighth swarm planned — 2026-09-10 (Datablock field-format fidelity)
+
+User-approved format-model work follows Figure 2-20 supplied in chat. This
+swarm defines explicit Fields 0–8, Field 5 data grammar, TSAS/exit-gate/fix
+format inputs, duplicate-beacon formatting, and one-/two-character TCPs. It
+does not implement missing simulation subsystems.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align STARS-like FDB/PDB format logic with Figure 2-20 using a generic explicit field model. |
+| Include | **T02-122**, **T02-123**, **T02-124** only. |
+| Skip | Field 1 ADS-B markers, new Field 2 glyphs, TSAS scheduling, ADS-B detection, MOA/CSMM workflows, beacon selection, parser, Command IR, DCB, networking, facility branches. |
+| Stop | After T02-123 and T02-124 focused gates plus `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Product law:** Formatter consumes explicit generic datablock fields. It
+preserves documented literals, omits absent values, never guesses missing
+operational state, and never adds facility-specific branches. Synthetic fixtures
+may populate format-only values not yet produced by runtime logic.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-122 | planning commit |
+| B | T02-123, T02-124 | T02-122 merge and focused gate |
+
+**Ticket ownership:**
+
+- T02-122: explicit Fields 0–5, Field 5 alternatives, exit gate/fix input,
+  TSAS sequence input, tests.
+- T02-123: Fields 6–8, TSAS indicator inputs, duplicate-beacon distinction,
+  tests, runtime-gap documentation.
+- T02-124: one-/two-character TCP adaptation and tests.
+
+**Ticket files / branches:**
+
+- `ticket/T02-122-datablock-explicit-fields-0-5` ← `phases/02-scope/tickets/T02-122-datablock-explicit-fields-0-5.md`
+- `ticket/T02-123-datablock-fields-6-8-and-tsas` ← `phases/02-scope/tickets/T02-123-datablock-fields-6-8-and-tsas.md`
+- `ticket/T02-124-datablock-tcp-width` ← `phases/02-scope/tickets/T02-124-datablock-tcp-width.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 datablock field-format fidelity T02-122–124
+Merge target: fix/datablocks
+Merged: T02-122, T02-123, T02-124
+Tests: <focused gates and npm run ci result>
+Notes: <format-only fields; runtime-backed gaps; manual leftovers>
+```
+
 ## Forty-seventh swarm planned — 2026-09-09 (Balanced random arrival packs)
 
 | Key | Value |
