@@ -1,5 +1,24 @@
 # Swarm status
 
+## FIFTY-FIRST SWARM COMPLETE — T02-131–133 datablock field alignment
+
+T02-131 through T02-133 are complete on `fix/datablocks`: PDB, LDB, and FDB
+now expose existing Field 0 content as a separate optional row above the
+callsign. FDB Field 2 inhibit glyphs remain inline after the callsign; empty
+FDB Field 0 keeps the existing three-row geometry. No new SPC or alert values
+were added, and no deferred feature area was expanded.
+
+Captain commits: T02-131 (`128960b`), T02-132 (`1390592`), and T02-133
+(`9d3b073`).
+
+Final gate: `npm run ci` passed — **189 test files, 1,724 tests passed, 4
+skipped**.
+
+Manual review: supplied `full_manual.pdf`, Figure 2-20, pp. 2-66–67. Primary
+review PASS. Independent review PASS; its required nested verifier was
+unavailable. Direct manual check confirms Field 0 above Field 1, Fields 3–5
+on line 2, and Fields 6–8 on line 3. No CRC or substitute source used.
+
 ## FIFTY-FIRST SWARM — T02-131 COMPLETE / T02-132 READY
 
 T02-131 is squash-merged onto `fix/datablocks` as `128960b`. PDB formatting
