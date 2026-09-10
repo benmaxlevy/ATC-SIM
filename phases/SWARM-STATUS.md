@@ -1,5 +1,26 @@
 # Swarm status
 
+## FIFTIETH SWARM COMPLETE — Pending inbound datablock fidelity (T02-129–130)
+
+Pending inbound handoffs now separate originating facility/sector from the
+local receiving TCP. The receiving TCP controls the target symbol; the origin
+renders through Field 4. Inbound FDBs no longer add an invented `HO` suffix.
+FDB/PDB physical lines now derive from logical Fields 0–8, preserve stable
+one-/two-character TCP cells, keep Field 0 on the alert line, and place
+aircraft type in strict Field 5 / Line 2 position. Pointout, blink, filter,
+and acceptance behavior remain intact.
+
+Captain commits: T02-129 (`40289fd`), T02-130 (`8f3b873`). Planning commit:
+`ac5a304`.
+
+Final gate: `npm run ci` passed — **189 test files, 1,707 tests passed, 4 skipped**.
+Focused T02-129 gate: **61 tests passed**. T02-130 focused gate: **35 tests
+passed**. No push occurred before this STATUS update.
+
+Manual leftover: browser visual inspection of pending inbound origin `C` on a
+local receiving TCP remains recommended; no manual browser assertion was
+claimed.
+
 ## FORTY-NINTH SWARM COMPLETE — ATPA CWT wake minima (T02-125–128)
 
 ATPA now carries an explicit `cwtWakeCategory` (`A`–`I`) separate from the
