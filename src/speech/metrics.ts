@@ -20,6 +20,21 @@ export interface VoiceUtteranceMetrics {
   sttMetadata: TranscriptMetadata | null;
 }
 
+export type VoiceLatencyStage = "stt" | "parse" | "tts";
+
+export interface LatencyPercentiles {
+  sampleCount: number;
+  p50Ms: number | null;
+  p95Ms: number | null;
+}
+
+export interface VoiceStageLatencySnapshot {
+  cold: LatencyPercentiles;
+  warm: LatencyPercentiles;
+}
+
+export type VoiceStageLatencyStats = Record<VoiceLatencyStage, VoiceStageLatencySnapshot>;
+
 /** Last utterance + session p50 of successful audio-start samples. */
 export interface VoiceSessionSnapshot {
   backendId: string;
@@ -81,6 +96,28 @@ export function percentile50(values: readonly number[]): number | null {
   return (sorted[mid]! + sorted[mid + 1]!) / 2;
 }
 
+/** Inclusive nearest-rank p95; null means no completed samples. */
+export function percentile95(values: readonly number[]): number | null {
+  if (values.length === 0) {
+    return null;
+  }
+  const sorted = values.slice().sort((a, b) => a - b);
+  const index = Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1);
+  return sorted[index]!;
+}
+
+function emptyPercentiles(): LatencyPercentiles {
+  return { sampleCount: 0, p50Ms: null, p95Ms: null };
+}
+
+function summarize(values: readonly number[]): LatencyPercentiles {
+  return {
+    sampleCount: values.length,
+    p50Ms: percentile50(values),
+    p95Ms: percentile95(values),
+  };
+}
+
 /** Immutable copy of one utterance’s coordinator metrics (not adapter `latencyMs`). */
 export function snapshot(metrics: VoiceUtteranceMetrics): VoiceUtteranceMetrics {
   return {
@@ -100,12 +137,25 @@ export class VoiceLatencyTracker {
   private last: VoiceUtteranceMetrics | null = null;
   private readonly audioStartSamples: number[] = [];
   private readonly recordedAudioStartT0 = new Set<number>();
+  private readonly stageSamples: Record<VoiceLatencyStage, { cold: number[]; warm: number[] }> = {
+    stt: { cold: [], warm: [] },
+    parse: { cold: [], warm: [] },
+    tts: { cold: [], warm: [] },
+  };
+  private readonly stageSeen = new Set<VoiceLatencyStage>();
 
   constructor(backendId: string) {
     this.backendId = backendId;
   }
 
   setBackendId(backendId: string): void {
+    if (backendId !== this.backendId) {
+      this.stageSeen.clear();
+      for (const stage of ["stt", "parse", "tts"] as const) {
+        this.stageSamples[stage].cold.length = 0;
+        this.stageSamples[stage].warm.length = 0;
+      }
+    }
     this.backendId = backendId;
   }
 
@@ -120,6 +170,31 @@ export class VoiceLatencyTracker {
     }
     this.recordedAudioStartT0.add(metrics.t0);
     this.audioStartSamples.push(audioMs);
+  }
+
+  /** Record one completed local stage. The first sample per stage is cold. */
+  recordStage(stage: VoiceLatencyStage, latencyMs: number): void {
+    if (!Number.isFinite(latencyMs) || latencyMs < 0) {
+      return;
+    }
+    const bucket = this.stageSeen.has(stage) ? "warm" : "cold";
+    this.stageSeen.add(stage);
+    this.stageSamples[stage][bucket].push(Math.max(0, latencyMs));
+  }
+
+  stageSnapshot(): VoiceStageLatencyStats {
+    const stages = {} as VoiceStageLatencyStats;
+    for (const stage of ["stt", "parse", "tts"] as const) {
+      stages[stage] = {
+        cold: this.stageSamples[stage].cold.length
+          ? summarize(this.stageSamples[stage].cold)
+          : emptyPercentiles(),
+        warm: this.stageSamples[stage].warm.length
+          ? summarize(this.stageSamples[stage].warm)
+          : emptyPercentiles(),
+      };
+    }
+    return stages;
   }
 
   snapshot(): VoiceSessionSnapshot {

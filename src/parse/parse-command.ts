@@ -39,6 +39,7 @@ import {
   MAX_PATH_C_FIXES,
   PATH_C_SCHEMA_VERSION,
   fetchParsePathC,
+  pathCResultIsComplete,
   type ParsePathCFn,
   type PathCContext,
 } from "./path-c";
@@ -860,7 +861,11 @@ export async function parseCommand(
         schemaVersion: PATH_C_SCHEMA_VERSION,
         context,
       });
-      if (hit !== null && hit.instructions.length > 0) {
+      if (
+        hit !== null &&
+        hit.instructions.length > 0 &&
+        pathCResultIsComplete(sourceText, hit.instructions)
+      ) {
         const rawCallsign = hit.callsignToken ?? spokenCallsignToken(normalized) ?? selected;
         const grounded = groundCallsignToRoster(rawCallsign, normalized, roster);
         const callsignSafe =

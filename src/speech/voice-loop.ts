@@ -21,6 +21,7 @@ import {
   recordAudioStart,
   recordTranscriptMetadata,
   recordTranscriptLatency,
+  VoiceLatencyTracker,
 } from "./metrics";
 import type { VoiceUtteranceMetrics } from "./metrics";
 import {
@@ -36,6 +37,10 @@ export const DEFAULT_CONFIDENCE_THRESHOLD = 0.55;
 
 /** Default Piper voice id for `http` TTS. Settings (T03-10) may override. */
 export const DEFAULT_READBACK_VOICE_ID = "en_US-lessac-medium";
+/** A local parser miss is preferable to an unbounded radio wait. */
+export const DEFAULT_VOICE_PARSE_TIMEOUT_MS = 3500;
+export const DEFAULT_VOICE_STT_TIMEOUT_MS = 30000;
+export const DEFAULT_VOICE_TTS_TIMEOUT_MS = 30000;
 
 /**
  * Live STT hooks. Clip adapters omit them. Kept local so this
@@ -132,6 +137,7 @@ export interface VoiceLoop {
   readonly inFlight: boolean;
   /** True while capture, transcribe, parse, or playback holds the transmit gate. */
   readonly busy: boolean;
+  readonly latency: VoiceLatencyTracker;
   readonly readbackPlayer: ReadbackPlayer;
   readonly speechPortId: string;
   /**
@@ -187,6 +193,22 @@ function statusFromTranscribeError(err: unknown): VoiceStatusEvent {
   return { code: "stt_failed" };
 }
 
+async function softTimeout<T>(work: Promise<T>, timeoutMs: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), timeoutMs);
+  });
+  try {
+    return await Promise.race([work, timeout]);
+  } catch {
+    return null;
+  } finally {
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
+  }
+}
+
 export function createVoiceLoop(options: VoiceLoopOptions): VoiceLoop {
   return new VoiceLoopImpl(options);
 }
@@ -219,6 +241,8 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly onUtteranceComplete?: (metrics: VoiceUtteranceMetrics) => void;
   private readonly getVoiceId: (callsign?: string) => string;
   private readonly gate = new TransmitGate();
+  private readonly latencyTracker: VoiceLatencyTracker;
+  private readonly dispatchedCommandIds = new Set<string>();
   readonly readbackPlayer: ReadbackPlayer;
 
   constructor(options: VoiceLoopOptions) {
@@ -241,6 +265,7 @@ class VoiceLoopImpl implements VoiceLoop {
     this.onUtteranceComplete = options.onUtteranceComplete;
     this.getVoiceId = options.getVoiceId ?? (() => options.voiceId ?? DEFAULT_READBACK_VOICE_ID);
     this.readbackPlayer = options.readbackPlayer ?? createReadbackPlayer({ now: this.now });
+    this.latencyTracker = new VoiceLatencyTracker(this.speechPort.id);
   }
 
   get lastUtteranceMetrics(): VoiceUtteranceMetrics | null {
@@ -255,6 +280,10 @@ class VoiceLoopImpl implements VoiceLoop {
     return this.inFlightValue || this.gate.locked;
   }
 
+  get latency(): VoiceLatencyTracker {
+    return this.latencyTracker;
+  }
+
   get speechPortId(): string {
     return this.speechPort.id;
   }
@@ -264,6 +293,7 @@ class VoiceLoopImpl implements VoiceLoop {
       return false;
     }
     this.speechPort = port;
+    this.latencyTracker.setBackendId(port.id);
     return true;
   }
 
@@ -377,7 +407,11 @@ class VoiceLoopImpl implements VoiceLoop {
   private async transcribeAndParse(clip: AudioClip, metrics: VoiceUtteranceMetrics): Promise<void> {
     let transcript: Transcript;
     try {
-      transcript = await this.finishTranscript(clip);
+      const result = await softTimeout(this.finishTranscript(clip), DEFAULT_VOICE_STT_TIMEOUT_MS);
+      if (result === null) {
+        throw new Error("STT timeout");
+      }
+      transcript = result;
     } catch (err) {
       recordTranscriptLatency(metrics, this.now());
       this.emitStatus(statusFromTranscribeError(err));
@@ -388,18 +422,29 @@ class VoiceLoopImpl implements VoiceLoop {
     }
     recordTranscriptLatency(metrics, this.now());
     recordTranscriptMetadata(metrics, transcript.metadata);
+    this.latencyTracker.recordStage("stt", transcript.latencyMs);
     this.emitMetrics();
 
     // STT metadata is telemetry only; parser execution never depends on a score.
-    const parsed = await this.parseCommand(transcript.text, {
-      source: "voice",
-      selectedCallsign: this.getSelectedCallsign(),
-      callsigns: this.getOnFrequencyCallsigns(),
-      fixes: this.getCatalogFixIds(),
-      procedures: this.getCatalogProcedures(),
-      approaches: this.getCatalogApproaches(),
-      pathC: this.pathC,
-    });
+    const parseStartedAt = this.now();
+    const parsed = await softTimeout(
+      this.parseCommand(transcript.text, {
+        source: "voice",
+        selectedCallsign: this.getSelectedCallsign(),
+        callsigns: this.getOnFrequencyCallsigns(),
+        fixes: this.getCatalogFixIds(),
+        procedures: this.getCatalogProcedures(),
+        approaches: this.getCatalogApproaches(),
+        pathC: this.pathC,
+      }),
+      DEFAULT_VOICE_PARSE_TIMEOUT_MS,
+    );
+    if (parsed === null) {
+      this.emitStatus({ code: "parse_miss", sourceText: transcript.text });
+      await this.onParseMiss?.(transcript.text, "PARSE_TIMEOUT");
+      return;
+    }
+    this.latencyTracker.recordStage("parse", this.now() - parseStartedAt);
     if (this.disposed) {
       return;
     }
@@ -415,6 +460,12 @@ class VoiceLoopImpl implements VoiceLoop {
       `voice-cmd-${this.commandSeq}`,
       this.getIssuedAtSimMs(),
     );
+    if (this.dispatchedCommandIds.has(command.id)) {
+      this.emitStatus({ code: "parse_miss", sourceText: command.sourceText });
+      await this.onParseMiss?.(command.sourceText, "DUPLICATE_DISPATCH");
+      return;
+    }
+    this.dispatchedCommandIds.add(command.id);
     let dispatchResult: void | VoiceDispatchResult;
     try {
       dispatchResult = await this.dispatchCommand(command);
@@ -461,12 +512,21 @@ class VoiceLoopImpl implements VoiceLoop {
 
     try {
       let ttsClip: AudioClip;
+      const ttsStartedAt = this.now();
       try {
-        ttsClip = await this.speechPort.synthesize(text, voiceId);
+        const result = await softTimeout(
+          this.speechPort.synthesize(text, voiceId),
+          DEFAULT_VOICE_TTS_TIMEOUT_MS,
+        );
+        if (result === null) {
+          throw new Error("TTS timeout");
+        }
+        ttsClip = result;
       } catch {
         this.emitStatus({ code: "tts_failed" });
         return;
       }
+      this.latencyTracker.recordStage("tts", this.now() - ttsStartedAt);
       if (this.disposed) {
         return;
       }

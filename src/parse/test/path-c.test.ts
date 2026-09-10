@@ -5,6 +5,7 @@ import {
   DEFAULT_PARSE_URL,
   PATH_C_SCHEMA_VERSION,
   fetchParsePathC,
+  pathCResultIsComplete,
   type ParsePathCFn,
   type PathCRequest,
   type PathCSuccess,
@@ -48,6 +49,19 @@ test("pathC false never fetches", async () => {
   expect(parsePathC).not.toHaveBeenCalled();
   expect(fetchSpy).not.toHaveBeenCalled();
   vi.unstubAllGlobals();
+});
+
+test("Path C rejects a response that drops a supported clause", () => {
+  const transcript = "turn right heading two nine zero maintain one ninety knots";
+  expect(
+    pathCResultIsComplete(transcript, [{ type: "FLY_HEADING", headingDeg: 290, turn: "RIGHT" }]),
+  ).toBe(false);
+  expect(
+    pathCResultIsComplete(transcript, [
+      { type: "FLY_HEADING", headingDeg: 290, turn: "RIGHT" },
+      { type: "SPEED", speedKt: 190, verb: "MAINTAIN" },
+    ]),
+  ).toBe(true);
 });
 
 test("local miss + pathC true + legal FLY_HEADING is llm_c", async () => {

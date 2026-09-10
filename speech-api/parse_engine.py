@@ -21,6 +21,9 @@ log = logging.getLogger("speech-api")
 SCHEMA_VERSION = "command-ir-v0"
 # Shared browser/service safety contract. Bump when semantic guard behavior changes.
 PARSE_CONTRACT_VERSION = "command-ir-v0-safe-1"
+# Bounded increase over the original 128-token budget; remains below the
+# configured context window and is measured by the per-request timing log.
+PATH_C_MAX_OUTPUT_TOKENS = 192
 
 INSTRUCTION_TYPES = frozenset(
     {
@@ -906,6 +909,7 @@ class LlamaParseEngine:
             n_threads if n_threads is not None else "auto",
         )
         self._llm = Llama(**kwargs)
+        self._parse_seen = False
         self._grammar = _load_grammar()
         self.ready = True
         self._n_threads = getattr(self._llm, "n_threads", None) or (
@@ -941,6 +945,8 @@ class LlamaParseEngine:
             return ParseOutcome(ok=False, error="SCHEMA")
         if not text.strip():
             return ParseOutcome(ok=False, error="PARSE_MISS")
+        import time
+
         from normalizer import normalize_stt_text
 
         fixes = context.get("fixes") if isinstance(context, dict) else None
@@ -952,12 +958,20 @@ class LlamaParseEngine:
                 {"role": "user", "content": user},
             ],
             "temperature": 0.0,
-            "max_tokens": 128,
+            "max_tokens": PATH_C_MAX_OUTPUT_TOKENS,
         }
         if self._grammar is not None:
             kwargs["grammar"] = self._grammar
         try:
+            started = time.perf_counter()
             completion = self._llm.create_chat_completion(**kwargs)
+            log.info(
+                "parse inference warm=%s elapsed_ms=%s max_tokens=%s",
+                self._parse_seen,
+                elapsed_ms(started),
+                PATH_C_MAX_OUTPUT_TOKENS,
+            )
+            self._parse_seen = True
         except Exception:
             log.exception("parse inference failed")
             return ParseOutcome(ok=False, error="PARSE_MISS", http_status=200)
