@@ -143,6 +143,7 @@ function pickDatablockAt(
       modeCVisible: view.modeCVisible,
       scratchpad: td?.scratchpad ?? "",
       handoffSectorId,
+      tcp: ho.kind === "inbound" ? ho.fromSectorId : undefined,
       queried: isQueried,
       simTimeMs: world.simTimeMs,
     });

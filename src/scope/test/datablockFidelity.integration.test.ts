@@ -234,6 +234,40 @@ describe("STARS CRC Datablock & Scratchpad Fidelity Acceptance (T02-42)", () => 
       });
       expect(pdbHandoff.line1).toBe("070  C  25");
     });
+
+    test("pending inbound keeps origin in Field 4 and removes the invented HO suffix", () => {
+      const ac = makeTestAircraft({
+        id: "synthetic-inbound",
+        callsign: "SYN129",
+        altitudeFt: 7000,
+        speedKt: 220,
+      });
+
+      const fdb = formatFullDatablock(ac, {
+        handoffSectorId: "C",
+        tcp: "C",
+        timeSharePhase: 0,
+      });
+
+      expect(fdb.line1).toBe("SYN129");
+      expect(fdb.line1).not.toContain("HO");
+      expect(fdb.line2).toBe("070  C  22");
+      expect(fdb.fields.field4).toBe("C");
+    });
+
+    test("preserves a two-character inbound origin across handoff and Field 4 inputs", () => {
+      const ac = makeTestAircraft({ id: "synthetic-1n", callsign: "SYN130" });
+      const fdb = formatFullDatablock(ac, {
+        handoffSectorId: "1N",
+        tcp: "1N",
+        timeSharePhase: 0,
+      });
+
+      expect(fdb.fields.field4).toBe("1N");
+      // Physical center remains the existing one-cell presentation; Field 4
+      // carries the complete adapted two-character origin.
+      expect(fdb.line2).toBe("080  1  22");
+    });
   });
 
   describe("AC4: Special Purpose Transponder Emergency Codes (EM, RF, HJ)", () => {

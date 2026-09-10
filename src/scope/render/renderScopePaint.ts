@@ -873,6 +873,7 @@ export function drawDatablock(
   } else if (handoff.kind === "pointout_outbound") {
     handoffSectorId = handoff.toSectorId;
   }
+  const inboundOriginTcp = handoff.kind === "inbound" ? handoff.fromSectorId : undefined;
 
   const atpaReadout =
     mode === "full"
@@ -894,6 +895,7 @@ export function drawDatablock(
     sp1: derived.sp1,
     sp2: derived.sp2,
     handoffSectorId,
+    tcp: inboundOriginTcp,
     queried: isQueried,
     beaconVisible: true,
     simTimeMs: world.simTimeMs,
@@ -1062,7 +1064,9 @@ export function drawTracks(
     let sectorId = td?.sectorId;
     if (!sectorId) {
       if (ho.kind === "inbound") {
-        sectorId = ho.fromSectorId;
+        // Pending inbound origin is Field 4; the local receiving TCP owns the
+        // target symbol, including after the handoff is accepted.
+        sectorId = view.sectorId;
       } else if (ho.kind === "departure") {
         sectorId = ho.fromSectorId === "TWR" ? "T" : ho.fromSectorId;
       } else if (ho.kind === "outbound" && ho.status === "accepted") {
@@ -1131,6 +1135,7 @@ export function drawTracks(
           : handoff.kind === "pointout_inbound"
             ? handoff.fromSectorId
             : undefined;
+    const inboundOriginTcp = handoff.kind === "inbound" ? handoff.fromSectorId : undefined;
     const squawk = td?.squawk ?? ac.squawk;
     const beaconCodeReadout = isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs);
     const callsign = beaconCodeReadout && squawk ? squawk : ac.callsign;
@@ -1150,6 +1155,7 @@ export function drawTracks(
         sp1: derived.sp1,
         sp2: derived.sp2,
         handoffSectorId,
+        tcp: inboundOriginTcp,
         queried: td ? isTrackQueried(td, world.simTimeMs) : false,
         simTimeMs: world.simTimeMs,
         beaconVisible: true,

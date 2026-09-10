@@ -691,14 +691,13 @@ export interface DatablockLines {
 }
 
 /**
- * Pending inbound HO cue on FDB line 1 (CRC transferring-sector analog).
- * Limited and partial datablocks do not show this on their main lines.
+ * Compatibility adapter for callers that still pass a pending inbound handoff.
+ * The origin is rendered through Field 4/TCP; inbound FDB Line 1 has no
+ * invented `HO` suffix.
  */
 export function withInboundHandoffCue(line1: string, handoff: TrackHandoff): string {
-  if (handoff.kind !== "inbound") {
-    return line1;
-  }
-  return `${line1} HO`;
+  void handoff;
+  return line1;
 }
 
 export interface DatablockRenderOpts {
