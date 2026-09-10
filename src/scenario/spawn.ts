@@ -378,30 +378,6 @@ export function createWorldForSession(
       arrivalScheduler.drain(world);
     } else {
       spawnArrivals(world, scenario, seed);
-      if (
-        (scenario.catalog?.stars?.length ?? 0) > 0 &&
-        arrivalTraffic?.arrivalsPerHour !== undefined &&
-        arrivalTraffic.arrivalsPerHour > 0
-      ) {
-        arrivalScheduler = createArrivalScheduler(
-          scenario.catalog,
-          {
-            ...arrivalTraffic,
-            initialArrivalCount: 0,
-            seed: arrivalTraffic.seed ?? seed,
-            activeRunwayId: scenario.activeRunwayId,
-          },
-          world.aircraft.map((arrival) => arrival.callsign),
-          world.simTimeMs,
-          scenario.activeRunwayId,
-          scenario.arrivals.map((arrival) => ({
-            starId: arrival.starId!,
-            transitionId: arrival.transitionId!,
-            entryFixId: arrival.entryFixId!,
-          })),
-        );
-        world.arrivalScheduler = arrivalScheduler;
-      }
     }
   }
 

@@ -7,6 +7,7 @@ import {
   createWorldFromScenario,
   loadKdem,
   loadKdemIls27,
+  loadPlayableScenario,
   parseSpawnSeed,
   parseTrafficCount,
   spawnArrivals,
@@ -177,6 +178,17 @@ test("T04-14 AC5 — ils27 authored pack ignores trafficCount and seed", () => {
   expect(second.intent.vertical).toEqual({ type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" });
   expect(second.yNm).toBe(-12);
   expect(second.xNm).toBe(17);
+});
+
+test("authored KDEM-CA traffic does not enter the random STAR scheduler", () => {
+  const world = createWorldForSession(loadPlayableScenario("kdem-ca"), null, 1, null, {
+    initialArrivalCount: 6,
+    arrivalsPerHour: 8,
+    seed: 1,
+  });
+
+  expect(world.aircraft).toHaveLength(6);
+  expect(world.arrivalScheduler).toBeUndefined();
 });
 
 test("T04-14 AC6 — testdata downwind fixture keeps the T01-04 box", () => {
