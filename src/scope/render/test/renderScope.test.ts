@@ -68,7 +68,7 @@ test("spawned arrivals paint position symbols and datablocks", () => {
     const handoff = handoffFor(world, ac.id);
     const block = formatPartialDatablock(ac, {
       sp1: derived.sp1,
-      handoffSectorId: handoff.kind === "inbound" ? handoff.fromSectorId : undefined,
+      handoffSectorId: handoff.kind === "inbound" ? view.sectorId : undefined,
     });
     expect(fillTexts.some((t) => t.text === block.line1 && t.font === DATABLOCK_FONT)).toBe(true);
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
@@ -227,7 +227,7 @@ test("pending inbound handoff keeps its flashing FDB outside the altitude filter
   expect(fillTexts.some((t) => t.text === "UAL90")).toBe(true);
 });
 
-test("pending inbound uses local receiving TCP for symbol and origin for Field 4", () => {
+test("pending inbound uses origin for symbol and local receiving TCP for Field 4", () => {
   const ac = makeTestAircraft({
     id: "synthetic-inbound-render",
     callsign: "SYN129",
@@ -237,17 +237,18 @@ test("pending inbound uses local receiving TCP for symbol and origin for Field 4
     yNm: 0,
   });
   const world = createWorld({ aircraft: [ac], simTimeMs: 0 });
-  world.handoffs.set(ac.id, { kind: "inbound", fromSectorId: "C" });
+  world.handoffs.set(ac.id, { kind: "inbound", fromSectorId: "TWR" });
   const view = createScopeView();
-  view.sectorId = "AB";
+  view.sectorId = "D";
   syncTrackDisplays(view.tracks, world);
 
   const mock = createMockCtx();
   renderScope(mock.ctx, world, view, 800, 800);
 
-  expect(mock.fillTexts.some((t) => t.text === "AB")).toBe(true);
+  expect(mock.fillTexts.some((t) => t.text === "T")).toBe(true);
+  expect(mock.fillTexts.some((t) => t.text === "070  D   22")).toBe(true);
   expect(mock.fillTexts.some((t) => t.text === "SYN129 HO")).toBe(false);
-  expect(handoffFor(world, ac.id)).toEqual({ kind: "inbound", fromSectorId: "C" });
+  expect(handoffFor(world, ac.id)).toEqual({ kind: "inbound", fromSectorId: "TWR" });
 });
 
 test("accepted inbound remains a solid white FDB on the local TCP symbol", () => {

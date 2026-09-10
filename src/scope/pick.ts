@@ -65,6 +65,8 @@ export interface DatablockPickView {
   datablockCellWidthPx: number;
   /** Out-of-filter tracks have no datablock to hit; the target still picks. */
   altitudeFilter: AltitudeFilter;
+  /** Local receiving TCP used for inbound handoff Field 4 display. */
+  sectorId?: string;
   charSizePx?: number;
   leaderLengthPx?: number;
   beaconatorActive?: boolean;
@@ -115,6 +117,7 @@ function pickDatablockAt(
       continue;
     }
     const ho = handoff;
+    const receivingTcp = view.sectorId ?? "D";
     let mode = td?.datablockMode ?? (td?.ownership === "owned" ? "full" : "partial");
     if (ho.kind === "inbound" || ho.kind === "departure") {
       mode = "full";
@@ -129,9 +132,9 @@ function pickDatablockAt(
     const callsign = (view.beaconatorActive || trackBeaconator) && squawk ? squawk : ac.callsign;
     let handoffSectorId: string | undefined;
     if (ho.kind === "inbound") {
-      handoffSectorId = ho.fromSectorId;
+      handoffSectorId = receivingTcp;
     } else if (ho.kind === "departure") {
-      handoffSectorId = ho.fromSectorId === "TWR" ? "T" : ho.fromSectorId;
+      handoffSectorId = receivingTcp;
     } else if (ho.kind === "outbound") {
       handoffSectorId = ho.toSectorId;
     } else if (ho.kind === "pointout_inbound") {
@@ -143,7 +146,7 @@ function pickDatablockAt(
       modeCVisible: view.modeCVisible,
       scratchpad: td?.scratchpad ?? "",
       handoffSectorId,
-      tcp: ho.kind === "inbound" ? ho.fromSectorId : undefined,
+      tcp: ho.kind === "inbound" ? receivingTcp : undefined,
       queried: isQueried,
       simTimeMs: world.simTimeMs,
     });
