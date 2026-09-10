@@ -56,6 +56,14 @@ Tests: <focused gates, manual reviews, and npm run ci result>
 Notes: <manual visual leftovers; no new SPC or alert types>
 ```
 
+## Fifty-first swarm started — 2026-09-10 (Existing datablock field alignment)
+
+Captain owns `fix/datablocks`, creates one isolated worker at a time, and
+squash-merges each completed ticket after focused tests. After every merge,
+captain runs `check-stars-manual` against
+`/home/ben/Documents/stars refs/full_manual.pdf`, including its independent
+verification pass, before starting the next wave. No CRC or substitute source.
+
 ## Fiftieth swarm worker started — 2026-09-10 (T02-130)
 
 Worker executes exactly T02-130 in isolated branch/worktree
