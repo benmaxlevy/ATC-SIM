@@ -5,6 +5,7 @@ import {
   DEFAULT_PARSE_URL,
   PATH_C_SCHEMA_VERSION,
   fetchParsePathC,
+  pathCResultIsComplete,
   type ParsePathCFn,
   type PathCRequest,
   type PathCSuccess,
@@ -50,6 +51,19 @@ test("pathC false never fetches", async () => {
   vi.unstubAllGlobals();
 });
 
+test("Path C rejects a response that drops a supported clause", () => {
+  const transcript = "turn right heading two nine zero maintain one ninety knots";
+  expect(
+    pathCResultIsComplete(transcript, [{ type: "FLY_HEADING", headingDeg: 290, turn: "RIGHT" }]),
+  ).toBe(false);
+  expect(
+    pathCResultIsComplete(transcript, [
+      { type: "FLY_HEADING", headingDeg: 290, turn: "RIGHT" },
+      { type: "SPEED", speedKt: 190, verb: "MAINTAIN" },
+    ]),
+  ).toBe(true);
+});
+
 test("local miss + pathC true + legal FLY_HEADING is llm_c", async () => {
   const parsePathC = vi.fn<ParsePathCFn>(async () => HEADING);
   const result = await parseCommand("pizza the runway", {
@@ -64,6 +78,21 @@ test("local miss + pathC true + legal FLY_HEADING is llm_c", async () => {
   }
   expect(result.parseStage).toBe("llm_c");
   expect(result.instructions).toEqual([{ type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" }]);
+});
+
+test("Path C rejects a callsign that is not on frequency", async () => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: "GTI7908",
+    instructions: [{ type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" }],
+  }));
+  const result = await parseCommand("radio check", {
+    source: "voice",
+    callsigns: ["UAL8431"],
+    selectedCallsign: "UAL8431",
+    pathC: true,
+    parsePathC,
+  });
+  expect(result.ok).toBe(false);
 });
 
 test("fetch throw or 503 is a miss", async () => {

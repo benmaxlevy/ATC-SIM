@@ -1,5 +1,44 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Forty-eighth swarm planned — 2026-09-10 (HAR STT/parser safety)
+
+User-approved follow-up from `C:\Users\Ben\Downloads\fullrun.har`. The run
+showed seven `/parse` misses, unsafe catalog/heading outputs, incomplete
+multi-clause commands, hardcoded STT confidence, and sequential latency.
+
+| Key | Value |
+| --- | --- |
+| Goal | Make local STT/parser behavior safe, replayable, grounded, and measurable. |
+| Include | **T03-21**, **T03-22**, **T03-23**, **T03-24**, **T03-25**, **T03-26** |
+| Source | HAR replay evidence; FAA JO 7110.65 phraseology; local speech/parser contracts. |
+| Skip | ASR fine-tuning, paid vendors, always-on LLM, new facility branches, phase 5. |
+| Stop | After T03-26 CI and STATUS update. |
+| Max workers | 3 |
+| Merge lock | Captain squash-merges ticket commits onto `master`. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Product law:** deterministic parser stages remain primary. Path C is local,
+miss-only, schema-checked salvage. No guessed callsign, heading, or catalog
+identifier may reach pilot dispatch. Catalog repair is unique-and-grounded;
+ties remain misses or receive retrieved Path C candidates.
+
+**Waves:** A — T03-21; B — T03-22 ∥ T03-23; C — T03-24 ∥ T03-25; D — T03-26.
+
+**Dependencies:** T03-21 after T03-20; T03-22 and T03-23 after T03-21;
+T03-24 after T03-22 + T03-23; T03-25 after T03-22; T03-26 after T03-24 + T03-25.
+
+**Tickets:**
+
+- `ticket/T03-21-parser-safety-service-parity` ← `phases/03-voice/tickets/T03-21-parser-safety-service-parity.md`
+- `ticket/T03-22-har-replay-regression` ← `phases/03-voice/tickets/T03-22-har-replay-regression.md`
+- `ticket/T03-23-clause-callsign-preservation` ← `phases/03-voice/tickets/T03-23-clause-callsign-preservation.md`
+- `ticket/T03-24-catalog-aware-asr-repair` ← `phases/03-voice/tickets/T03-24-catalog-aware-asr-repair.md`
+- `ticket/T03-25-stt-quality-metadata` ← `phases/03-voice/tickets/T03-25-stt-quality-metadata.md`
+- `ticket/T03-26-latency-path-c-completeness` ← `phases/03-voice/tickets/T03-26-latency-path-c-completeness.md`
+
+**Captain return:** `PHASE EXIT GREEN` or `PHASE EXIT BLOCKED`, with merged
+tickets, per-merge CI, speech-api pytest where applicable, and manual leftovers.
+
 ## Forty-seventh swarm planned — 2026-09-09 (Balanced random arrival packs)
 
 | Key | Value |
@@ -2988,3 +3027,22 @@ Safety requirements for the captain:
 - After every worker completion: record the worker result, verify its worktree status, squash merge (one commit on `master`), run `npm test`, and confirm `master` before starting the next ticket.
 - Never background a worker and finish the captain turn. If a worker stalls, resume or replace that worker explicitly; do not leave a half-finished ticket silently.
 - After T02-30: run both `npm test` and `npm run ci`, append STATUS, and return `PHASE EXIT GREEN` only after all results are recorded. Do not start phase 5.
+## Forty-eighth swarm started â€” 2026-09-09
+
+User authorized execution of the approved HAR STT/parser safety swarm. The
+captain owns the merge lock and runs waves A through D only: T03-21; T03-22
+and T03-23 in parallel; T03-24 and T03-25 in parallel; then T03-26. Workers
+use isolated ticket branches, implement one ticket each, commit progressively,
+and never merge or spawn. Merge target: `master`; maximum workers: 3. No push,
+reset, clean, amend, paid speech or LLM vendors, phase 5, or unrelated file
+changes. Stop after T03-26 CI and STATUS update.
+
+Planning base required by this run: `d7752f0`.
+
+## Forty-eighth swarm worker start — 2026-09-09 (T03-26 only)
+
+Worker scope is exactly `T03-26` on `ticket/T03-26-latency-path-c-completeness`,
+started from current `master`. Implement only stage latency metrics, explicit
+soft timeouts, safe Path C output-budget/completeness validation, and duplicate
+dispatch protection. Preserve prior T03-21 through T03-25 changes and
+untracked user files. No merge, spawn, push, reset, clean, or unrelated work.

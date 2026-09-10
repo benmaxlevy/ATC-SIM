@@ -13,11 +13,11 @@ Paid or metered STT/TTS/LLM APIs, including: OpenAI, Deepgram, AssemblyAI, Groq,
 | Method | Path | In | Out |
 | --- | --- | --- | --- |
 | `GET` | `/health` | — | `{ "ok": true, "sttModel": "<hub id>", "ttsVoice": "<id>", "parse": "off" \| "ready" }` |
-| `POST` | `/stt` | body `audio/wav` (pcm16le mono, 16 kHz preferred). Optional `X-ATC-Fixes` and `X-ATC-Procedures` headers ground Qwen transcription in catalog spellings. | `{ "text": string, "confidence": number }` |
+| `POST` | `/stt` | body `audio/wav` (pcm16le mono, 16 kHz preferred). Optional `X-ATC-Fixes` and `X-ATC-Procedures` headers ground Qwen transcription in catalog spellings. | `{ "text": string, "metadata": { "model", "audioDurationMs", "inferenceLatencyMs", "emptySignal", "noSpeechProbability?" } }` |
 | `POST` | `/tts` | JSON `{ "text", "voiceId" }` | `audio/wav` (mono PCM) |
 | `POST` | `/parse` | JSON `{ "text", "source", "schemaVersion": "command-ir-v0", "context"? }` — no n-best, no confidence. Optional `context: { callsigns, selectedCallsign, fixes }` is live-strip + catalog prompt grounding. | `{ "ok": true, "callsignToken", "instructions" }` or `{ "ok": false, "error": "UNAVAILABLE" \| "PARSE_MISS" \| "SCHEMA" }` (200 or 503). Never 500-with-stack. |
 
-`confidence`: Qwen does not expose a calibrated confidence score; the API returns `1.0`. Command parsing remains responsible for rejecting invalid input.
+The STT response intentionally has no confidence score: Qwen does not expose a calibrated command-level score. Metadata is telemetry only; command parsing remains responsible for rejecting invalid input.
 
 CORS allows the Vite origin (`http://localhost:5173` and `http://127.0.0.1:5173`). Extra origins: comma-separated `CORS_ORIGINS`.
 

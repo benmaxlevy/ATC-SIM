@@ -7,8 +7,11 @@
 import { INSTRUCTION_TYPES, type Instruction, type TurnDir } from "@core";
 
 export const PATH_C_SCHEMA_VERSION = "command-ir-v0" as const;
+/** Browser/service semantic guard contract. Bump when Path C safety rules change. */
+export const PATH_C_CONTRACT_VERSION = "command-ir-v0-safe-1" as const;
 export const DEFAULT_PARSE_URL = "http://127.0.0.1:8090/parse";
-export const DEFAULT_PARSE_TIMEOUT_MS = 15000;
+/** Path C is optional salvage; it must not hold the radio loop indefinitely. */
+export const DEFAULT_PARSE_TIMEOUT_MS = 3000;
 /** Retrieved Path C `fixes=` / approaches / procedures cap. Not file-order 64. */
 export const MAX_PATH_C_FIXES = 16;
 
@@ -199,6 +202,46 @@ export function schemaCheckPathC(body: unknown): PathCSuccess | null {
     instructions.push(item);
   }
   return { callsignToken, instructions };
+}
+
+/**
+ * Reject a model result that silently drops an independent supported clause.
+ * This is intentionally conservative: it only requires an instruction when
+ * the transcript contains an unambiguous command cue for that instruction.
+ */
+export function pathCResultIsComplete(text: string, instructions: readonly Instruction[]): boolean {
+  const normalized = text.toLowerCase();
+  const has = (pattern: RegExp): boolean => pattern.test(normalized);
+  const hasType = (...types: Instruction["type"][]): boolean =>
+    instructions.some((instruction) => types.includes(instruction.type));
+  if (has(/\b(?:fly|turn|heading|vector)\b/) && !hasType("FLY_HEADING", "TURN_DEGREES")) {
+    return false;
+  }
+  if (
+    has(/\b(?:climb|descend|altitude|flight\s+level|feet|thousand)\b/) &&
+    !hasType("ALTITUDE", "DESCEND_VIA", "CLIMB_VIA")
+  ) {
+    return false;
+  }
+  if (has(/\b(?:speed|knots?)\b/) && !hasType("SPEED")) {
+    return false;
+  }
+  if (has(/\b(?:proceed\s+)?direct\b/) && !hasType("DIRECT")) {
+    return false;
+  }
+  if (has(/\b(?:cross|crossing)\b/) && !hasType("CROSS")) {
+    return false;
+  }
+  if (
+    has(/\b(?:approach|localizer|ils|cleared\s+(?:the\s+)?runway)\b/) &&
+    !hasType("EXPECT_APPROACH", "CLEARED_APPROACH", "INTERCEPT_LOCALIZER")
+  ) {
+    return false;
+  }
+  if (has(/\b(?:go\s+around|going\s+around)\b/) && !hasType("GO_AROUND")) {
+    return false;
+  }
+  return instructions.length > 0;
 }
 
 function defaultFetch():
