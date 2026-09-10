@@ -28,6 +28,8 @@ import type {
 export interface StarSlot {
   starId: string;
   transitionId: string;
+  /** Scenario-owned terminal entry fix. Omitted only for legacy direct callers. */
+  entryFixId?: string;
 }
 
 export interface OutermostStarFix {
@@ -53,6 +55,13 @@ export interface StarRouteAssignment {
   transitionId: string;
   stackIndex: number;
   pose: StarInboundPose;
+}
+
+function routeFromEntry(routeFixIds: string[], entryFixId?: string): string[] {
+  if (!entryFixId) return routeFixIds;
+  const index = routeFixIds.findIndex((id) => id.toUpperCase() === entryFixId.toUpperCase());
+  if (index < 0) throw new Error(`Entry fix ${entryFixId} is not on the STAR route`);
+  return routeFixIds.slice(index);
 }
 
 /** Extra NM before the gate so distance(gate) > 0 and heading is defined. */
@@ -395,19 +404,26 @@ export function starInboundPose(
   transitionId: string,
   alongTrackOffsetNm: number,
   activeRunwayId?: string,
+  entryFixId?: string,
 ): StarInboundPose {
   if (!Number.isFinite(alongTrackOffsetNm) || alongTrackOffsetNm < 0) {
     throw new Error(
       `alongTrackOffsetNm must be a finite non-negative number (got ${String(alongTrackOffsetNm)})`,
     );
   }
-  const gateLeg = requireGateLeg(catalog, starId, transitionId);
-  const routeFixIds = starRouteFixIds(catalog, starId, transitionId, activeRunwayId);
+  const fullRouteFixIds = starRouteFixIds(catalog, starId, transitionId, activeRunwayId);
+  const routeFixIds = routeFromEntry(fullRouteFixIds, entryFixId);
+  const gateFixId = routeFixIds[0];
+  if (!gateFixId) throw new Error(`STAR ${starId} ${transitionId} has no route fixes`);
+  const { star, transition } = findStarTransition(catalog, starId, transitionId);
+  const gateLeg = [...transition.legs, ...star.common].find(
+    (leg) => leg.fixId.toUpperCase() === gateFixId.toUpperCase(),
+  ) ?? { fixId: gateFixId };
   const nextFixId = routeFixIds[1];
   if (!nextFixId) {
     throw new Error(`STAR ${starId} ${transitionId} has no next fix after the gate`);
   }
-  const gate = fixXy(catalog, gateLeg.fixId);
+  const gate = fixXy(catalog, gateFixId);
   const next = fixXy(catalog, nextFixId);
   const headingDeg = courseDeg(gate, next);
   const backAzimuth = normalizeHeadingDeg(headingDeg + 180);
@@ -422,7 +438,7 @@ export function starInboundPose(
     speedKt: spawnSpeedKt(speedConstraint),
     routeFixIds,
     toFixIndex: 0,
-    gateFixId: gateLeg.fixId,
+    gateFixId,
   };
 }
 
@@ -452,6 +468,9 @@ export function assignStarRoutes(args: AssignStarRoutesArgs): StarRouteAssignmen
     throw new Error(`assignStarRoutes count must be a non-negative integer (got ${String(count)})`);
   }
   const slots = args.routePool ? [...args.routePool] : listStarSlots(catalog, activeRunwayId);
+  if (args.routePool?.some((slot) => !slot.entryFixId)) {
+    throw new Error("Random arrival route-pool entries must declare entryFixId");
+  }
   if (count > 0 && slots.length === 0) {
     throw new Error("assignStarRoutes needs at least one STAR transition slot");
   }
@@ -484,6 +503,7 @@ export function assignStarRoutes(args: AssignStarRoutesArgs): StarRouteAssignmen
         slot.transitionId,
         alongTrackOffsetNm,
         activeRunwayId,
+        slot.entryFixId,
       ),
     });
   }

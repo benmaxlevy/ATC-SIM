@@ -79,7 +79,7 @@ describe("T04-25 configurable arrival traffic", () => {
       arrivalsPerHour: 0,
       seed: 7,
       activeRunwayId: "27",
-      routePool: [{ starId: "DEM1", transitionId: "S" }],
+      routePool: [{ starId: "DEM1", transitionId: "S", entryFixId: "SELBO" }],
     });
     expect(scheduler.schedule.every((item) => item.assignment.transitionId === "S")).toBe(true);
   });

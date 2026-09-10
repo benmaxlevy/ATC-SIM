@@ -113,6 +113,16 @@ test("AC3 — starInboundPose(DEM1, N, 0.25) sits on the inbound extension", () 
   expect(pose.gateFixId).toBe(gate.fixId);
 });
 
+test("T04-58 — explicit entry starts inbound and discards outer STAR legs", () => {
+  const pose = starInboundPose(kdem, "DEM1", "N", 0.25, undefined, "NELBO");
+  expect(pose.routeFixIds).toEqual(["NELBO", "NJOIN", "MERGE"]);
+  expect(pose.gateFixId).toBe("NELBO");
+  expect(courseDeg(pose, { xNm: 12, yNm: 4 })).toBeCloseTo(pose.headingDeg, 6);
+  expect(() => starInboundPose(kdem, "DEM1", "N", 0.25, undefined, "NOPE")).toThrow(
+    /not on the STAR route/,
+  );
+});
+
 test("AC4 — testdata TST1/E gate is OUTER and heading is 270", () => {
   const catalog = twoStarCatalog();
   const gate = outermostStarFix(catalog, "TST1", "E");

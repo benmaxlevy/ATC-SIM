@@ -167,6 +167,7 @@
       "speedKt": 250,
       "starId": "CHPPR1",
       "transitionId": "BBABE",
+      "entryFixId": "LEMKE",
       "aircraftType": "B738"
     },
     {
@@ -177,6 +178,7 @@
       "speedKt": 250,
       "starId": "GLAVN2",
       "transitionId": "JKSON",
+      "entryFixId": "MADDX",
       "aircraftType": "A320"
     },
     {
@@ -187,6 +189,7 @@
       "speedKt": 250,
       "starId": "GNDLF3",
       "transitionId": "BEORN",
+      "entryFixId": "SMAWG",
       "aircraftType": "B739"
     },
     {
@@ -197,6 +200,7 @@
       "speedKt": 250,
       "starId": "ONDRE1",
       "transitionId": "HIGGI",
+      "entryFixId": "STRWY",
       "aircraftType": "B737"
     },
     {
@@ -207,6 +211,7 @@
       "speedKt": 250,
       "starId": "OZZZI2",
       "transitionId": "DGESS",
+      "entryFixId": "WINNG",
       "aircraftType": "A321"
     },
     {
@@ -217,6 +222,7 @@
       "speedKt": 250,
       "starId": "SITTH3",
       "transitionId": "EEWOK",
+      "entryFixId": "SITTH",
       "aircraftType": "A320"
     }
   ],

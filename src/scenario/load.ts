@@ -264,6 +264,12 @@ function assertArrival(value: unknown, index: number): ArrivalSpawn {
     `arrivals[${index}].aircraftType`,
   );
   const star = parseOptionalStarSpawn(value, index);
+  const entryFixId =
+    value.entryFixId === undefined
+      ? undefined
+      : assertString(value.entryFixId, `arrivals[${index}].entryFixId`, "Scenario", {
+          nonEmpty: true,
+        }).toUpperCase();
   return {
     xNm: assertNumber(value.xNm, `arrivals[${index}].xNm`),
     yNm: assertNumber(value.yNm, `arrivals[${index}].yNm`),
@@ -272,6 +278,7 @@ function assertArrival(value: unknown, index: number): ArrivalSpawn {
     speedKt: assertNumber(value.speedKt, `arrivals[${index}].speedKt`),
     ...(aircraftType ? { aircraftType } : {}),
     ...star,
+    ...(entryFixId !== undefined ? { entryFixId } : {}),
   };
 }
 
@@ -478,15 +485,18 @@ function validateRandomRoutePools(
   if (spawnPolicy === "random") {
     if (
       arrivals.length === 0 ||
-      arrivals.some((arrival) => !arrival.starId || !arrival.transitionId)
+      arrivals.some((arrival) => !arrival.starId || !arrival.transitionId || !arrival.entryFixId)
     ) {
       throw new Error(
-        "Scenario random arrivals must declare starId and transitionId route-pool entries",
+        "Scenario random arrivals must declare starId, transitionId, and entryFixId route-pool entries",
       );
     }
     arrivals.forEach((arrival, index) => {
       try {
-        starRouteFixIds(catalog, arrival.starId!, arrival.transitionId!, runwayId);
+        const route = starRouteFixIds(catalog, arrival.starId!, arrival.transitionId!, runwayId);
+        if (!route.some((fixId) => fixId.toUpperCase() === arrival.entryFixId!.toUpperCase())) {
+          throw new Error(`entryFixId ${arrival.entryFixId} is not on the STAR route`);
+        }
       } catch (error) {
         throw new Error(`Scenario arrivals[${index}] route is invalid: ${String(error)}`);
       }

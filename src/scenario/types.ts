@@ -115,6 +115,8 @@ export interface ArrivalSpawn {
   starId?: string;
   /** STAR transition (`N` / `S` on DEM1). Required when `starId` is set. */
   transitionId?: string;
+  /** Required for random scenarios: terminal-visible fix where the route starts. */
+  entryFixId?: string;
 }
 
 export interface DepartureSpawn {

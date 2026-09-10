@@ -127,6 +127,7 @@ function spawnStarInbound(world: World, scenario: Scenario, seed: number): void 
   const routePool = scenario.arrivals.map((arrival) => ({
     starId: arrival.starId!,
     transitionId: arrival.transitionId!,
+    entryFixId: arrival.entryFixId!,
   }));
   const assignments = assignStarRoutes({
     catalog: scenario.catalog,
@@ -370,6 +371,7 @@ export function createWorldForSession(
         scenario.arrivals.map((arrival) => ({
           starId: arrival.starId!,
           transitionId: arrival.transitionId!,
+          entryFixId: arrival.entryFixId!,
         })),
       );
       world.arrivalScheduler = arrivalScheduler;
@@ -395,6 +397,7 @@ export function createWorldForSession(
           scenario.arrivals.map((arrival) => ({
             starId: arrival.starId!,
             transitionId: arrival.transitionId!,
+            entryFixId: arrival.entryFixId!,
           })),
         );
         world.arrivalScheduler = arrivalScheduler;

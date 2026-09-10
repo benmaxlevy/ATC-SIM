@@ -57,6 +57,7 @@
       "speedKt": 220,
       "starId": "DEM1",
       "transitionId": "N",
+      "entryFixId": "NEMAX",
       "aircraftType": "B738"
     },
     {
@@ -67,6 +68,7 @@
       "speedKt": 230,
       "starId": "DEM1",
       "transitionId": "S",
+      "entryFixId": "SEMAX",
       "aircraftType": "A320"
     },
     {
@@ -77,6 +79,7 @@
       "speedKt": 240,
       "starId": "DEM1",
       "transitionId": "N",
+      "entryFixId": "NEMAX",
       "aircraftType": "B739"
     },
     {
@@ -87,6 +90,7 @@
       "speedKt": 210,
       "starId": "DEM1",
       "transitionId": "S",
+      "entryFixId": "SEMAX",
       "aircraftType": "B737"
     },
     {
@@ -97,6 +101,7 @@
       "speedKt": 250,
       "starId": "DEM1",
       "transitionId": "N",
+      "entryFixId": "NEMAX",
       "aircraftType": "A321"
     },
     {
@@ -107,6 +112,7 @@
       "speedKt": 225,
       "starId": "DEM1",
       "transitionId": "S",
+      "entryFixId": "SEMAX",
       "aircraftType": "A320"
     }
   ],
