@@ -34,15 +34,16 @@ test.each([
   });
 });
 
-test.each([[undefined, "I"], ["A", undefined], ["Z", "I"]] as const)(
-  "missing or invalid category resolves to NOWGT",
-  (leader, follower) => {
-    expect(lookupAtpaWakeMinimum(FAA_CWT_WAKE_ADAPTATION, leader, follower)).toMatchObject({
-      kind: "nowgt",
-      requiredNm: 10,
-    });
-  },
-);
+test.each([
+  [undefined, "I"],
+  ["A", undefined],
+  ["Z", "I"],
+] as const)("missing or invalid category resolves to NOWGT", (leader, follower) => {
+  expect(lookupAtpaWakeMinimum(FAA_CWT_WAKE_ADAPTATION, leader, follower)).toMatchObject({
+    kind: "nowgt",
+    requiredNm: 10,
+  });
+});
 
 test("disabled wake adaptation leaves volume eligible for basic/reduced policy", () => {
   expect(

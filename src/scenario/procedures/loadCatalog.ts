@@ -459,7 +459,9 @@ function parseAtpaWakeAdaptation(value: unknown, path: string): AtpaWakeAdaptati
     const row: Record<string, number> = {};
     for (const [follower, minimum] of Object.entries(rowValue)) {
       if (!CWT_WAKE_CATEGORIES.has(follower)) {
-        throw new Error(`Catalog ${path}.matrix.${leader} has invalid follower category ${follower}`);
+        throw new Error(
+          `Catalog ${path}.matrix.${leader} has invalid follower category ${follower}`,
+        );
       }
       const separationNm = assertNumber(minimum, `${path}.matrix.${leader}.${follower}`);
       if (separationNm <= 0) {

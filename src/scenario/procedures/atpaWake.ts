@@ -60,8 +60,7 @@ export function lookupAtpaWakeMinimum(
       ...(followerCategory !== undefined ? { followerCategory } : {}),
     };
   }
-  const requiredNm =
-    adaptation.matrix[leaderCategory]?.[followerCategory];
+  const requiredNm = adaptation.matrix[leaderCategory]?.[followerCategory];
   if (requiredNm === undefined) {
     return {
       kind: "nowgt",
