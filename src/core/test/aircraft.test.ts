@@ -85,6 +85,11 @@ test("aircraftType is copied from spawn and does not change kinematics fields", 
   expect(withType.intent).toEqual(without.intent);
 });
 
+test("B789 is classified as heavy", () => {
+  const ac = createAircraft(sampleInit({ aircraftType: "B789" }));
+  expect(ac.wakeCategory).toBe("H");
+});
+
 test("makeTestAircraft ids are stable only when passed in (AC5)", () => {
   const withIdA = makeTestAircraft({ callsign: "DAL123", id: "ac-fixed" });
   const withIdB = makeTestAircraft({ callsign: "DAL123", id: "ac-fixed" });

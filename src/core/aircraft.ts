@@ -185,7 +185,9 @@ export interface AircraftInit {
 
 /** ICAO heavy transport types used by generated and authored traffic. */
 export function isHeavyAircraftType(aircraftType?: string): boolean {
-  return new Set(["B744", "B748", "B763", "B77F"]).has(aircraftType?.trim().toUpperCase() ?? "");
+  return new Set(["B744", "B748", "B763", "B77F", "B789"]).has(
+    aircraftType?.trim().toUpperCase() ?? "",
+  );
 }
 
 let aircraftSeq = 0;
