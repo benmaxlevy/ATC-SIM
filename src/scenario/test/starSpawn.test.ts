@@ -201,20 +201,42 @@ test("T04-14 AC8 — three-slot catalog count=3 is seeded and catalog-backed", (
   expect(assignStarRoutes({ catalog, count: 3, seed: 1 })).toEqual(assigned);
 });
 
-test("T04-14 seed=1 n=6 snapshot: seeded slots and stagger avoid mirrored pairs", () => {
+test("T04-59 — supplied pool entries are each used before the first repeat", () => {
+  const catalog = twoStarCatalog();
+  const routePool = [
+    { starId: "DEM1", transitionId: "N", entryFixId: "NEMAX" },
+    { starId: "DEM1", transitionId: "S", entryFixId: "SEMAX" },
+    { starId: "TST1", transitionId: "E", entryFixId: "OUTER" },
+  ];
+  const assigned = assignStarRoutes({ catalog, count: 7, seed: 17, routePool });
+  const key = (row: (typeof assigned)[number]) =>
+    `${row.starId}/${row.transitionId}/${row.pose.gateFixId}`;
+  expect(new Set(assigned.slice(0, routePool.length).map(key)).size).toBe(routePool.length);
+  expect(new Set(assigned.slice(0, routePool.length).map(key))).toEqual(
+    new Set(routePool.map((slot) => `${slot.starId}/${slot.transitionId}/${slot.entryFixId}`)),
+  );
+  expect(assignStarRoutes({ catalog, count: 7, seed: 17, routePool })).toEqual(assigned);
+  expect(assignStarRoutes({ catalog, count: 7, seed: 18, routePool }).map(key)).not.toEqual(
+    assigned.map(key),
+  );
+});
+
+test("T04-59 — seeded six-pack traverses every route before repeating", () => {
   const assigned = assignStarRoutes({ catalog: kdem, count: 6, seed: 1 });
   expect(assigned).toHaveLength(6);
   expect(assigned[0]!.pose.toFixIndex).toBe(0);
   expect(assigned[0]!.pose.altitudeFt).toBe(11000);
   expect(assigned[0]!.pose.speedKt).toBe(250);
-  expect(new Set(assigned.slice(0, 3).map((row) => `${row.starId}/${row.transitionId}`)).size).toBe(
-    1,
+  expect(new Set(assigned.slice(0, 4).map((row) => `${row.starId}/${row.transitionId}`)).size).toBe(
+    4,
   );
 
   const two = assignStarRoutes({ catalog: kdem, count: 2, seed: 1 });
-  expect(two[0]!.starId).toBe(two[1]!.starId);
-  expect(two[0]!.transitionId).toBe(two[1]!.transitionId);
-  expect(two[1]!.stackIndex).toBe(1);
+  expect(`${two[0]!.starId}/${two[0]!.transitionId}`).not.toBe(
+    `${two[1]!.starId}/${two[1]!.transitionId}`,
+  );
+  expect(two[0]!.stackIndex).toBe(0);
+  expect(two[1]!.stackIndex).toBe(0);
 
   const again = assignStarRoutes({ catalog: kdem, count: 6, seed: 1 });
   expect(

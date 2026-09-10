@@ -443,7 +443,17 @@ export function starInboundPose(
 }
 
 function slotKey(slot: StarSlot): string {
-  return `${slot.starId}\0${slot.transitionId}`;
+  return `${slot.starId}\0${slot.transitionId}\0${slot.entryFixId ?? ""}`;
+}
+
+/** Seeded Fisher-Yates order for one complete route-pool traversal. */
+function shuffledSlots(slots: readonly StarSlot[], rng: () => number): StarSlot[] {
+  const result = [...slots];
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const j = Math.min(Math.floor(rng() * (i + 1)), i);
+    [result[i], result[j]] = [result[j]!, result[i]!];
+  }
+  return result;
 }
 
 export interface AssignStarRoutesArgs {
@@ -458,9 +468,9 @@ export interface AssignStarRoutesArgs {
 /**
  * Analog: JO 7110.65 descend via / AIM Descend Via — spawned traffic already
  * complies with the published STAR (VIA armed; same as T04-12 spawn-on-VIA).
- * Trainer delta: seeded slot mix over catalog STAR transitions. Small packs
- * stack the first chosen transition so north/south STARs do not spawn as a
- * mirrored pair. Later remainder draws may still mix slots. Not NAS STARS.
+ * Trainer delta: seeded balanced traversal of scenario STAR transitions. Every
+ * eligible route-pool entry is used once before a route repeats; each later
+ * cycle gets a seeded reshuffle. Not NAS STARS.
  */
 export function assignStarRoutes(args: AssignStarRoutesArgs): StarRouteAssignment[] {
   const { catalog, count, seed, activeRunwayId } = args;
@@ -477,15 +487,12 @@ export function assignStarRoutes(args: AssignStarRoutesArgs): StarRouteAssignmen
   const rng = mulberry32(seed >>> 0);
   const stackNext = new Map<string, number>();
   const assignments: StarRouteAssignment[] = [];
-  const stackOnPrimary = Math.min(count, Math.max(2, Math.ceil(count / 2)));
-  const primaryIdx =
-    slots.length === 0 ? 0 : Math.min(Math.floor(rng() * slots.length), slots.length - 1);
+  let traversal = shuffledSlots(slots, rng);
   for (let i = 0; i < count; i += 1) {
-    const idx =
-      i < stackOnPrimary
-        ? primaryIdx
-        : Math.min(Math.floor(rng() * slots.length), slots.length - 1);
-    const slot = slots[idx]!;
+    if (i > 0 && i % traversal.length === 0) {
+      traversal = shuffledSlots(slots, rng);
+    }
+    const slot = traversal[i % traversal.length]!;
     const key = slotKey(slot);
     const stackIndex = stackNext.get(key) ?? 0;
     stackNext.set(key, stackIndex + 1);

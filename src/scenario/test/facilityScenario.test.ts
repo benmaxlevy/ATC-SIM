@@ -196,3 +196,21 @@ test("createWorldForSession with KATL schedules arrivals without altitude constr
     expect(Number.isFinite(ac.yNm)).toBe(true);
   }
 });
+
+test("T04-59 — KATL six-track initial pack spreads across declared arrival routes", () => {
+  const scenario = assertScenario(katlJson);
+  const world = createWorldForSession(scenario, null, 1, null, {
+    initialArrivalCount: 6,
+    arrivalsPerHour: 0,
+    seed: 1,
+  });
+  const routeKeys = world.aircraft.map((ac) => {
+    if (ac.intent.lateral?.type !== "PROCEDURE") throw new Error("arrival is not on a STAR");
+    return `${ac.intent.lateral.starId}/${ac.intent.lateral.routeFixIds[0]}`;
+  });
+  const declared = new Set(
+    scenario.arrivals.map((arrival) => `${arrival.starId}/${arrival.entryFixId}`),
+  );
+  expect(routeKeys.every((key) => declared.has(key))).toBe(true);
+  expect(new Set(routeKeys).size).toBeGreaterThan(1);
+});
