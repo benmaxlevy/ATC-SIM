@@ -750,11 +750,13 @@ function isEmergencyDatablockException(world: World, ac: Aircraft): boolean {
 }
 
 function shouldPaintDatablock(view: ScopeView, world: World, ac: Aircraft, td?: TrackDisplay) {
+  const handoff = handoffFor(world, ac.id);
   return shouldShowDatablockOutsideAltitudeFilter({
     inFilter: inAltitudeFilter(ac.altitudeFt, view.altitudeFilter),
     ownership: td?.ownership,
     retainedFdb: td?.retainedFdbOutsideAltitudeFilter,
     emergency: isEmergencyDatablockException(world, ac),
+    pendingHandoff: handoff.kind === "inbound" || handoff.kind === "departure",
   });
 }
 

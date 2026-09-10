@@ -91,6 +91,7 @@ function pickDatablockAt(
       continue;
     }
     const shown = aircraftAtReport(ac, td.lastReport);
+    const handoff = handoffFor(world, ac.id);
     const emergency = Boolean(
       ac.spc ||
       world.alerts.ca.some(
@@ -104,6 +105,7 @@ function pickDatablockAt(
         ownership: td.ownership,
         retainedFdb: td.retainedFdbOutsideAltitudeFilter,
         emergency,
+        pendingHandoff: handoff.kind === "inbound" || handoff.kind === "departure",
       })
     ) {
       continue;
@@ -112,7 +114,7 @@ function pickDatablockAt(
     if (!pointInLayoutBounds(p, { x: 0, y: 0, width: cssWidth, height: cssHeight })) {
       continue;
     }
-    const ho = handoffFor(world, ac.id);
+    const ho = handoff;
     let mode = td?.datablockMode ?? (td?.ownership === "owned" ? "full" : "partial");
     if (ho.kind === "inbound" || ho.kind === "departure") {
       mode = "full";

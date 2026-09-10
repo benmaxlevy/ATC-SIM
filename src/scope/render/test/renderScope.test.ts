@@ -198,6 +198,26 @@ test("altitude filter keeps the target and drops the datablock", () => {
   expect(fillTexts.some((t) => t.text === "DAL80")).toBe(true);
 });
 
+test("pending inbound handoff keeps its flashing FDB outside the altitude filter", () => {
+  const ac = makeTestAircraft({
+    id: "ac-handoff-filtered",
+    callsign: "UAL90",
+    altitudeFt: 6000,
+    speedKt: 210,
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 90,
+  });
+  const world = createWorld({ aircraft: [ac] });
+  world.handoffs.set(ac.id, { kind: "inbound", fromSectorId: "C" });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  view.altitudeFilter = { minHundreds: 70, maxHundreds: 90 };
+  const { ctx, fillTexts } = createMockCtx();
+  renderScope(ctx, world, view, 800, 800);
+  expect(fillTexts.some((t) => t.text === "UAL90")).toBe(true);
+});
+
 test("AC1, AC2, AC3 — compass rose ticks and heading labels render with BRITE CMP and CHAR SIZE TOOLS", () => {
   const world = createWorld();
   const view = createScopeView(0, 0, { digitalMap: parseDigitalMap(loadKdem().maps) });

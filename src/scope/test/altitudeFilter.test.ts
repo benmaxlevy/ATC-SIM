@@ -44,6 +44,9 @@ test("datablock filter gate allows owned, retained, and emergency exceptions onl
     true,
   );
   expect(shouldShowDatablockOutsideAltitudeFilter({ inFilter: false, emergency: true })).toBe(true);
+  expect(shouldShowDatablockOutsideAltitudeFilter({ inFilter: false, pendingHandoff: true })).toBe(
+    true,
+  );
 });
 
 test("parse 1-3 digit hundreds; 50 Enter = 050; clamp 0-180", () => {

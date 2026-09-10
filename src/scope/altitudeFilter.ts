@@ -26,6 +26,7 @@ export function shouldShowDatablockOutsideAltitudeFilter(args: {
   ownership?: string;
   retainedFdb?: boolean;
   emergency?: boolean;
+  pendingHandoff?: boolean;
 }): boolean {
   return (
     args.inFilter ||
@@ -33,7 +34,8 @@ export function shouldShowDatablockOutsideAltitudeFilter(args: {
     args.ownership === "tower" ||
     args.ownership === "center" ||
     args.retainedFdb === true ||
-    args.emergency === true
+    args.emergency === true ||
+    args.pendingHandoff === true
   );
 }
 
