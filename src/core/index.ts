@@ -103,13 +103,19 @@ export { SessionLog } from "./events/session-log";
 export type {
   Aircraft,
   AircraftInit,
+  CwtWakeCategory,
   CrossConstraint,
   CrossRestriction,
   Intent,
   LateralMode,
   VerticalMode,
 } from "./aircraft";
-export { createAircraft, makeTestAircraft, nextAircraftId } from "./aircraft";
+export {
+  createAircraft,
+  makeTestAircraft,
+  nextAircraftId,
+  normalizeCwtWakeCategory,
+} from "./aircraft";
 export type {
   AircraftPerformanceProfile,
   AircraftProfileDataset,

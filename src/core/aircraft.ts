@@ -1,6 +1,28 @@
 import type { TurnDir } from "./command/types";
 import { normalizeHeadingDeg } from "./nav/geometry";
 
+/** FAA JO 7110.65BB terminal CWT categories used by later ATPA adaptation. */
+export type CwtWakeCategory = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I";
+
+const CWT_WAKE_CATEGORIES = new Set<CwtWakeCategory>(["A", "B", "C", "D", "E", "F", "G", "H", "I"]);
+
+/**
+ * Normalize the authored/runtime CWT value at the aircraft construction
+ * boundary. Invalid values remain unavailable; no category is inferred from
+ * aircraft type or display text. FAA JO 7110.65BB defines A-I as operational
+ * terminal CWT categories; the existing `wakeCategory` remains a separate
+ * CRC-style display indicator.
+ */
+export function normalizeCwtWakeCategory(value: unknown): CwtWakeCategory | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const normalized = value.trim().toUpperCase();
+  return CWT_WAKE_CATEGORIES.has(normalized as CwtWakeCategory)
+    ? (normalized as CwtWakeCategory)
+    : undefined;
+}
+
 /**
  * Phase 4 lateral FMS. MSAW inhibit keys on `LOC` | `LANDING` inside FAF.
  * `HEADING` | `DIRECT` | `PROCEDURE` | `MISSED` never inhibit.
@@ -109,6 +131,8 @@ export interface Aircraft {
   isPrimary?: boolean;
   /** Wake turbulence or RNAV / CWT category indicator letter (e.g. "H", "B", "R", "L", "A"-"I"). */
   wakeCategory?: string;
+  /** Explicit FAA JO 7110.65BB CWT category for ATPA; independent of display `wakeCategory`. */
+  cwtWakeCategory?: CwtWakeCategory;
   /** Special Purpose Code: "EM" (7700), "RF" (7600), "HJ" (7500), or explicit SPC tag. */
   spc?: string;
   /** Filed / requested cruise or entry altitude in feet MSL (e.g. 7000 for R070). */
@@ -158,6 +182,8 @@ export interface AircraftInit {
   primaryOnly?: boolean;
   isPrimary?: boolean;
   wakeCategory?: string;
+  /** Authored FAA JO 7110.65BB CWT category for ATPA; not inferred from aircraft type. */
+  cwtWakeCategory?: string;
   spc?: string;
   requestedAltitudeFt?: number;
   assignedSquawk?: string;
@@ -232,6 +258,9 @@ export function createAircraft(init: AircraftInit): Aircraft {
       : isHeavyAircraftType(init.aircraftType)
         ? { wakeCategory: "H" }
         : {}),
+    ...(normalizeCwtWakeCategory(init.cwtWakeCategory)
+      ? { cwtWakeCategory: normalizeCwtWakeCategory(init.cwtWakeCategory) }
+      : {}),
     ...(init.spc ? { spc: init.spc.toUpperCase() } : {}),
     ...(init.requestedAltitudeFt !== undefined
       ? { requestedAltitudeFt: init.requestedAltitudeFt }
