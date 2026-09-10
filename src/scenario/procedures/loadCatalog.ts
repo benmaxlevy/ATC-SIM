@@ -11,6 +11,8 @@ import type {
   AltConstraint,
   ApproachProcedure,
   ApproachType,
+  AtpaWakeAdaptation,
+  AtpaWakeMatrix,
   AtpaVolume,
   MissedApproach,
   Navaid,
@@ -436,6 +438,48 @@ function assertBoolean(value: unknown, path: string): boolean {
   return value;
 }
 
+const CWT_WAKE_CATEGORIES = new Set(["A", "B", "C", "D", "E", "F", "G", "H", "I"]);
+
+function parseAtpaWakeAdaptation(value: unknown, path: string): AtpaWakeAdaptation {
+  if (!isRecord(value)) {
+    throw new Error(`Catalog ${path} must be an object`);
+  }
+  const matrixValue = value.matrix;
+  if (!isRecord(matrixValue)) {
+    throw new Error(`Catalog ${path}.matrix must be an object`);
+  }
+  const matrix: Record<string, Record<string, number>> = {};
+  for (const [leader, rowValue] of Object.entries(matrixValue)) {
+    if (!CWT_WAKE_CATEGORIES.has(leader)) {
+      throw new Error(`Catalog ${path}.matrix has invalid leader category ${leader}`);
+    }
+    if (!isRecord(rowValue)) {
+      throw new Error(`Catalog ${path}.matrix.${leader} must be an object`);
+    }
+    const row: Record<string, number> = {};
+    for (const [follower, minimum] of Object.entries(rowValue)) {
+      if (!CWT_WAKE_CATEGORIES.has(follower)) {
+        throw new Error(`Catalog ${path}.matrix.${leader} has invalid follower category ${follower}`);
+      }
+      const separationNm = assertNumber(minimum, `${path}.matrix.${leader}.${follower}`);
+      if (separationNm <= 0) {
+        throw new Error(`Catalog ${path}.matrix.${leader}.${follower} must be positive`);
+      }
+      row[follower] = separationNm;
+    }
+    matrix[leader] = row;
+  }
+  const nowgtSeparationNm = assertNumber(value.nowgtSeparationNm, `${path}.nowgtSeparationNm`);
+  if (nowgtSeparationNm <= 0) {
+    throw new Error(`Catalog ${path}.nowgtSeparationNm must be positive`);
+  }
+  return {
+    enabled: assertBoolean(value.enabled, `${path}.enabled`),
+    nowgtSeparationNm,
+    matrix: matrix as AtpaWakeMatrix,
+  };
+}
+
 function parseAtpaVolume(value: unknown, index: number): AtpaVolume {
   const path = `atpaVolumes[${index}]`;
   if (!isRecord(value)) {
@@ -467,6 +511,10 @@ function parseAtpaVolume(value: unknown, index: number): AtpaVolume {
       ? DEFAULT_REDUCED_WITHIN_NM
       : assertNumber(value.reducedWithinNm, `${path}.reducedWithinNm`);
   const note = optionalString(value.note, `${path}.note`);
+  const wakeAdaptation =
+    value.wakeAdaptation === undefined
+      ? undefined
+      : parseAtpaWakeAdaptation(value.wakeAdaptation, `${path}.wakeAdaptation`);
   const volume: AtpaVolume = {
     id: assertId(value.id, `${path}.id`),
     approachId: assertString(value.approachId, `${path}.approachId`).toUpperCase(),
@@ -479,6 +527,7 @@ function parseAtpaVolume(value: unknown, index: number): AtpaVolume {
     basicSeparationNm,
     reducedSeparationNm,
     reducedWithinNm,
+    ...(wakeAdaptation !== undefined ? { wakeAdaptation } : {}),
   };
   if (note !== undefined) {
     volume.note = note;
