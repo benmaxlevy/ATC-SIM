@@ -440,32 +440,36 @@ function assertBoolean(value: unknown, path: string): boolean {
 
 const CWT_WAKE_CATEGORIES = new Set(["A", "B", "C", "D", "E", "F", "G", "H", "I"]);
 
-function parseAtpaWakeAdaptation(value: unknown, path: string): AtpaWakeAdaptation {
+export function parseAtpaWakeAdaptation(
+  value: unknown,
+  path: string,
+  prefix = "Catalog",
+): AtpaWakeAdaptation {
   if (!isRecord(value)) {
-    throw new Error(`Catalog ${path} must be an object`);
+    throw new Error(`${prefix} ${path} must be an object`);
   }
   const matrixValue = value.matrix;
   if (!isRecord(matrixValue)) {
-    throw new Error(`Catalog ${path}.matrix must be an object`);
+    throw new Error(`${prefix} ${path}.matrix must be an object`);
   }
   const matrix: Record<string, Record<string, number>> = {};
   for (const [leader, rowValue] of Object.entries(matrixValue)) {
     if (!CWT_WAKE_CATEGORIES.has(leader)) {
-      throw new Error(`Catalog ${path}.matrix has invalid leader category ${leader}`);
+      throw new Error(`${prefix} ${path}.matrix has invalid leader category ${leader}`);
     }
     if (!isRecord(rowValue)) {
-      throw new Error(`Catalog ${path}.matrix.${leader} must be an object`);
+      throw new Error(`${prefix} ${path}.matrix.${leader} must be an object`);
     }
     const row: Record<string, number> = {};
     for (const [follower, minimum] of Object.entries(rowValue)) {
       if (!CWT_WAKE_CATEGORIES.has(follower)) {
         throw new Error(
-          `Catalog ${path}.matrix.${leader} has invalid follower category ${follower}`,
+          `${prefix} ${path}.matrix.${leader} has invalid follower category ${follower}`,
         );
       }
       const separationNm = assertNumber(minimum, `${path}.matrix.${leader}.${follower}`);
       if (separationNm <= 0) {
-        throw new Error(`Catalog ${path}.matrix.${leader}.${follower} must be positive`);
+        throw new Error(`${prefix} ${path}.matrix.${leader}.${follower} must be positive`);
       }
       row[follower] = separationNm;
     }
@@ -473,7 +477,7 @@ function parseAtpaWakeAdaptation(value: unknown, path: string): AtpaWakeAdaptati
   }
   const nowgtSeparationNm = assertNumber(value.nowgtSeparationNm, `${path}.nowgtSeparationNm`);
   if (nowgtSeparationNm <= 0) {
-    throw new Error(`Catalog ${path}.nowgtSeparationNm must be positive`);
+    throw new Error(`${prefix} ${path}.nowgtSeparationNm must be positive`);
   }
   return {
     enabled: assertBoolean(value.enabled, `${path}.enabled`),

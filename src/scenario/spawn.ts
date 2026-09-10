@@ -75,6 +75,7 @@ function spawnArrival(
     altitudeFt: arrival.altitudeFt,
     speedKt: arrival.speedKt,
     aircraftType: arrival.aircraftType,
+    cwtWakeCategory: arrival.cwtWakeCategory,
     destination: scenario?.icao ?? world.catalog?.airportId,
     flightPlan: {
       destination: scenario?.icao ?? world.catalog?.airportId,

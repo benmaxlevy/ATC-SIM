@@ -20,6 +20,7 @@ export const SCENARIO_PACKAGE = "scenario";
 export type {
   Approach,
   ArrivalSpawn,
+  CwtWakeCategory,
   DepartureConfig,
   DepartureRoute,
   DeparturePolicy,
@@ -91,6 +92,7 @@ export {
 export {
   findSidProcedure,
   loadCatalog,
+  parseAtpaWakeAdaptation,
   parseCatalogFiles,
   sidRouteFixIds,
 } from "./procedures/loadCatalog";
