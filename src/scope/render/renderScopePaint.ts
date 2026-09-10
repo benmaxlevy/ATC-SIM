@@ -1460,6 +1460,9 @@ export function drawTpaRings(
       const radialNorthUnit = radialNorthPx / radialLengthNm;
       const halfTextRadialExtentPx =
         Math.abs(radialEastUnit) * halfTextWidthPx + Math.abs(radialNorthUnit) * halfTextHeightPx;
+      if (ringRadiusPx <= halfTextRadialExtentPx + 1) {
+        continue;
+      }
       const safeRadiusFrac =
         ringRadiusPx > 0
           ? Math.min(
