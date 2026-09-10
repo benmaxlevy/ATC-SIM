@@ -1,5 +1,16 @@
 # Swarm status
 
+## FORTY-SEVENTH SWARM COMPLETE — Balanced random arrival packs (T04-59)
+
+T04-59 is merged on `feature/aircraft-performance` as `f6762e0`. A seeded
+random pack now shuffles the scenario route pool and uses every entry before
+repeating one. The six initial KATL tracks therefore spread across all six
+declared STAR/transition/entry-fix routes instead of stacking on one STAR.
+
+Final gates: focused STAR/KATL gate **27 passed**; worker `npm run ci`:
+**187 files, 1,657 passed, 4 skipped**. Manual leftover: refresh KATL and
+confirm six distinct inbound route entries at 60 NM.
+
 ## FORTY-SIXTH SWARM COMPLETE — Random arrival entry fixes (T04-58)
 
 T04-58 is merged on `feature/aircraft-performance` as `ff7ddea`. Random
