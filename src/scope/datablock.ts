@@ -98,6 +98,21 @@ export interface FullDatablockOpts {
   simTimeMs?: number;
   /** Explicit time-share phase override (step index 0, 1, 2, ...). */
   timeSharePhase?: number;
+  /** Figure 2-20 Field 0 TSAS sequence number (format-only input). */
+  tsasSequence?: string | number;
+  /** Figure 2-20 Field 3 departure data (format-only inputs). */
+  exitGate?: string;
+  exitFix?: string;
+  /** Figure 2-20 Field 4 TCP; one or two adapted characters. */
+  tcp?: string;
+  /** Field 4 adaptation indicator (for example, `Δ`, `*`, `+`, or `R`). */
+  field4Indicator?: string;
+  /** Optional Field 0 indicators supplied by a display-state adapter. */
+  field0Indicators?: string[];
+  /** Field 5 duplicate beacon display condition, distinct from squawk mismatch. */
+  duplicateBeaconCode?: string;
+  /** Field 5 number of aircraft represented by the track. */
+  aircraftCount?: number;
 }
 
 export interface PartialDatablockOpts {
@@ -133,10 +148,39 @@ export interface FullDatablock {
   line2: string;
   /** Line 3: Assigned altitude prefixed with A, squawk mismatch, or ATPA distance. */
   line3?: string;
+  /** Logical Figure 2-20 fields. Physical lines remain for existing painters. */
+  fields: DatablockFields;
 }
 
 export interface PartialDatablock {
   line1: string;
+  fields: DatablockFields;
+}
+
+/**
+ * Explicit logical fields from Figure 2-20. Empty strings mean that the field
+ * has no current display value; formatters never manufacture operational data.
+ * Analog: CRC STARS FDB field grammar (R07). Trainer delta: this is a typed,
+ * format-only model and does not implement NAS scheduling or surveillance.
+ */
+export interface DatablockFields {
+  field0: string;
+  field1: string;
+  field2: string;
+  field3: string;
+  field4: string;
+  field5: string;
+}
+
+export interface DatablockFieldOptions {
+  tsasSequence?: string | number;
+  exitGate?: string;
+  exitFix?: string;
+  tcp?: string;
+  field4Indicator?: string;
+  field0Indicators?: string[];
+  duplicateBeaconCode?: string;
+  aircraftCount?: number;
 }
 
 export interface LimitedDatablock {
@@ -253,6 +297,86 @@ export function getSpecialPurposeCode(track: DatablockSource): string | undefine
   return undefined;
 }
 
+function normalizeDisplayField(raw: string | undefined, maxLength: number): string {
+  return (raw ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9*/+Δ<>-]/g, "")
+    .slice(0, maxLength);
+}
+
+function formatTsasSequence(value: string | number | undefined): string | undefined {
+  if (value == null || (typeof value === "string" && value.trim() === "")) return undefined;
+  const normalized = normalizeDisplayField(String(value), 2);
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function formatAircraftCount(count: number | undefined): string | undefined {
+  if (count == null || !Number.isInteger(count) || count < 1) return undefined;
+  return `#${Math.min(count, 99)}`;
+}
+
+/** Build the logical Fields 0–5 before any physical-line compatibility view. */
+export function formatDatablockFields(
+  track: DatablockSource,
+  opts: DatablockFieldOptions &
+    Pick<
+      FullDatablockOpts,
+      "modeCVisible" | "scratchpad" | "sp1" | "sp2" | "timeSharePhase" | "simTimeMs"
+    > = {},
+): DatablockFields {
+  const phaseStep =
+    opts.timeSharePhase !== undefined
+      ? opts.timeSharePhase
+      : opts.simTimeMs != null
+        ? Math.floor(opts.simTimeMs / FDB_TIMESHARE_INTERVAL_MS)
+        : 0;
+  const select = (values: Array<string | undefined>): string => {
+    const queue = values.filter((value): value is string => Boolean(value && value.length > 0));
+    return queue.length === 0
+      ? ""
+      : queue[((phaseStep % queue.length) + queue.length) % queue.length];
+  };
+
+  const indicators = (opts.field0Indicators ?? []).map((value) => normalizeDisplayField(value, 4));
+  const spc = getSpecialPurposeCode(track);
+  if (spc) indicators.unshift(normalizeDisplayField(spc, 4));
+  const tsas = formatTsasSequence(opts.tsasSequence);
+  if (tsas) indicators.push(tsas);
+
+  const modeC = opts.modeCVisible === false ? undefined : formatAltitudeHundreds(track.altitudeFt);
+  const scratchpad1 = sanitizeScratchpad(opts.sp1 ?? opts.scratchpad ?? "") || undefined;
+  const scratchpad2 = sanitizeScratchpad(opts.sp2 ?? "") || undefined;
+  const exitGate = normalizeDisplayField(opts.exitGate, 4) || undefined;
+  const exitFix = normalizeDisplayField(opts.exitFix, 5) || undefined;
+
+  const gs = formatGroundSpeedTens(track.speedKt, {
+    wakeCategory: track.wakeCategory,
+    flightRules: track.flightRules,
+    isOverflight: track.isOverflight,
+  });
+  const duplicateBeacon = normalizeDisplayField(opts.duplicateBeaconCode, 4) || undefined;
+  const rules = normalizeDisplayField(track.flightRules, 3) || undefined;
+  const category = formatWakeCategory(track.wakeCategory) || undefined;
+  const count = formatAircraftCount(opts.aircraftCount);
+  const type = formatAircraftType(track.aircraftType);
+  const requested = formatRequestedAltitude(
+    track.requestedAltitudeFt ?? track.intent?.requestedAltitudeFt,
+  );
+
+  return {
+    field0: indicators.filter(Boolean).join("/").slice(0, 12),
+    field1: normalizeDisplayField(track.callsign, 7),
+    // Field 2 is deliberately exposed but not populated by this ticket.
+    field2: "",
+    field3: select([modeC, scratchpad1, scratchpad2, exitGate, exitFix]),
+    field4: [normalizeDisplayField(opts.field4Indicator, 1), normalizeDisplayField(opts.tcp, 2)]
+      .filter(Boolean)
+      .join(""),
+    field5: select([gs, duplicateBeacon, rules, category, count, type, requested]),
+  };
+}
+
 /**
  * Full datablock (STARS CRC):
  * - Line 1: Callsign + Special Purpose Code (SPC: EM, RF, HJ, etc.)
@@ -322,8 +446,8 @@ export function formatFullDatablock(
     line3Fields.atpaField,
   ].filter((part): part is string => part != null && part.length > 0);
   const line3 = line3Parts.length > 0 ? line3Parts.join(DATABLOCK_FIELD_GAP) : undefined;
-
-  return line3 ? { line1, line2, line3 } : { line1, line2 };
+  const fields = formatDatablockFields(track, opts);
+  return line3 ? { line1, line2, line3, fields } : { line1, line2, fields };
 }
 
 export interface FullDatablockLine3Parts {
@@ -399,8 +523,8 @@ export function formatPartialDatablock(
 
   const line1Parts = [leftField, centerField, rightField].filter((s) => s.length > 0);
   const line1 = line1Parts.join(DATABLOCK_FIELD_GAP);
-
-  return { line1 };
+  const fields = formatDatablockFields(track, opts);
+  return { line1, fields };
 }
 
 /**
@@ -457,6 +581,14 @@ export interface DatablockRenderOpts {
   queried?: boolean;
   beaconVisible?: boolean;
   speedFormat?: "tens" | "knots";
+  tsasSequence?: string | number;
+  exitGate?: string;
+  exitFix?: string;
+  tcp?: string;
+  field4Indicator?: string;
+  field0Indicators?: string[];
+  duplicateBeaconCode?: string;
+  aircraftCount?: number;
 }
 
 /** Resolve full vs partial vs limited lines for paint and hit-test. */
@@ -505,6 +637,14 @@ export function linesForDatablock(
     handoffSectorId: opts.handoffSectorId,
     timeSharePhase: opts.timeSharePhase,
     simTimeMs: opts.simTimeMs,
+    tsasSequence: opts.tsasSequence,
+    exitGate: opts.exitGate,
+    exitFix: opts.exitFix,
+    tcp: opts.tcp,
+    field4Indicator: opts.field4Indicator,
+    field0Indicators: opts.field0Indicators,
+    duplicateBeaconCode: opts.duplicateBeaconCode,
+    aircraftCount: opts.aircraftCount,
   });
 }
 

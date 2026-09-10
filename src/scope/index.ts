@@ -765,6 +765,7 @@ export {
   datablockMetrics,
   datablockRect,
   formatAltitudeHundreds,
+  formatDatablockFields,
   formatFullDatablock,
   formatGroundSpeedKt,
   formatGroundSpeedTens,
@@ -777,6 +778,8 @@ export {
 } from "./datablock";
 export type {
   DatablockLines,
+  DatablockFields,
+  DatablockFieldOptions,
   DatablockMode,
   DatablockSource,
   FullDatablock,
