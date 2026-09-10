@@ -224,22 +224,24 @@ export function tpaRingDigitPlacement(
   radiusFrac = TPA_RING_DIGIT_RADIUS_FRAC,
 ): TpaSizeDigitPlacement {
   const r = radiusNm * Math.max(0, Math.min(1, radiusFrac));
-  const across = {
-    1: { east: 1, north: 1 },
-    2: { east: 0, north: 1 },
-    3: { east: -1, north: 1 },
-    4: { east: 1, north: 0 },
+  const datablockOffset = {
+    1: { east: -1, north: -1 },
+    2: { east: 0, north: -1 },
+    3: { east: 1, north: -1 },
+    4: { east: -1, north: 0 },
     // Overlay datablocks sit northeast/southeast of the target in practice;
-    // use the opposite quadrant for the ring distance.
-    5: { east: -1, north: 1 },
-    6: { east: -1, north: 0 },
-    7: { east: 1, north: -1 },
-    8: { east: 0, north: -1 },
-    9: { east: -1, north: -1 },
+    // use the opposite angle for the ring distance.
+    5: { east: 1, north: -1 },
+    6: { east: 1, north: 0 },
+    7: { east: -1, north: 1 },
+    8: { east: 0, north: 1 },
+    9: { east: 1, north: 1 },
   }[datablockDir];
+  const datablockAngle = Math.atan2(datablockOffset.east, datablockOffset.north);
+  const acrossAngle = datablockAngle + Math.PI;
   return {
-    eastNm: eastNm + r * across.east,
-    northNm: northNm + r * across.north,
+    eastNm: eastNm + r * Math.sin(acrossAngle),
+    northNm: northNm + r * Math.cos(acrossAngle),
     text: formatTpaSizeReadout(radiusNm),
   };
 }

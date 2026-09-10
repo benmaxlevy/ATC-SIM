@@ -1451,15 +1451,20 @@ export function drawTpaRings(
       const datablockDir = trackLeaderDir(view, ac.id);
       const initialDigit = tpaRingDigitPlacement(shown.xNm, shown.yNm, radiusNm, datablockDir);
       const ringRadiusPx = tpaScreenRadiusPx(radiusNm, view.camera, size);
-      const halfTextDiagonalPx = Math.hypot(
-        ctx.measureText(initialDigit.text).width / 2,
-        view.charSizes.tools / 2,
-      );
+      const halfTextWidthPx = ctx.measureText(initialDigit.text).width / 2;
+      const halfTextHeightPx = view.charSizes.tools / 2;
+      const radialEastPx = initialDigit.eastNm - shown.xNm;
+      const radialNorthPx = initialDigit.northNm - shown.yNm;
+      const radialLengthNm = Math.hypot(radialEastPx, radialNorthPx) || 1;
+      const radialEastUnit = radialEastPx / radialLengthNm;
+      const radialNorthUnit = radialNorthPx / radialLengthNm;
+      const halfTextRadialExtentPx =
+        Math.abs(radialEastUnit) * halfTextWidthPx + Math.abs(radialNorthUnit) * halfTextHeightPx;
       const safeRadiusFrac =
         ringRadiusPx > 0
           ? Math.min(
               TPA_RING_DIGIT_RADIUS_FRAC,
-              Math.max(0, (ringRadiusPx - halfTextDiagonalPx - 1) / ringRadiusPx),
+              Math.max(0, (ringRadiusPx - halfTextRadialExtentPx - 1) / ringRadiusPx),
             )
           : 0;
       const digit = tpaRingDigitPlacement(
