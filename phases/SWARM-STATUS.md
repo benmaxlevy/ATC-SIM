@@ -1,5 +1,24 @@
 # Swarm status
 
+## FIFTY-FIRST SWARM — T02-131 COMPLETE / T02-132 READY
+
+T02-131 is squash-merged onto `fix/datablocks` as `128960b`. PDB formatting
+now projects manual Figure 2-22 Fields 0–4: supported cautions, Mode C or
+existing SP1/status values, TCP, ground speed/category, and existing IDENT.
+Aircraft type, requested altitude, exit gate, and exit fix remain excluded
+from PDB output. Optional Field 0 row participates in rendering geometry;
+absent runtime caution sources remain empty. No new SPC or alert values were
+added.
+
+Captain gate: `npm run ci` passed — **189 test files, 1,713 tests passed, 4
+skipped**. Worker focused gate: **55 passed**; typecheck, lint, and format
+checks passed.
+
+Manual review: supplied `full_manual.pdf`, §2.12 and Figure 2-22, pp. 2-58–60
+and 2-69. Primary review PASS after fixes. Independent review attempt returned
+the same PASS findings but reported its required nested verifier unavailable;
+no conflicting FAIL remained. No CRC or substitute source used.
+
 ## FIFTIETH SWARM COMPLETE — Pending inbound datablock fidelity (T02-129–130)
 
 Pending inbound handoffs now separate originating facility/sector from the
