@@ -5,11 +5,11 @@
  * **24 s**; this trainer does **not** — Alert is only an actual in-trail loss
  * (`distanceNm < requiredNm`). The 24 s band stays Warning.
  *
- * Minima are basic radar separation only, read from each volume’s JSON
- * (`basicSeparationNm`, `reducedSeparationNm`, `reducedWithinNm`). R07 says
- * cone length is “the distance required by wake category or basic radar
- * separation” but publishes no matrix — this evaluator never reads aircraft
- * type. Documented in `phases/LATER-IMPLEMENTATION-BACKLOG.md`.
+ * Minima come from each volume’s JSON (`basicSeparationNm`,
+ * `reducedSeparationNm`, `reducedWithinNm`) plus optional FAA CWT wake
+ * adaptation. R07 says cone length is “the distance required by wake category
+ * or basic radar separation”; this evaluator uses only explicit CWT category
+ * data and never reads aircraft type or display category.
  *
  * Scope display only. World writes `alerts.atpa`; the scope must not recompute
  * pairing. Eligibility matches T02-43 `isInsideAtpaVolume` (geometry only);
@@ -38,6 +38,8 @@ export interface AtpaPair {
   volumeId: string;
   distanceNm: number;
   requiredNm: number;
+  /** Actual evaluator output; optional for compatibility with read-only fixtures. */
+  wakeSource?: "basic" | "wake" | "nowgt";
   closureKt: number;
   status: AtpaStatus;
 }
@@ -65,6 +67,19 @@ export interface AtpaVolumeParams {
   basicSeparationNm: number;
   reducedSeparationNm: number;
   reducedWithinNm: number;
+  wakeAdaptation?: AtpaWakeAdaptation;
+}
+
+type CwtWakeCategory = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I";
+type AtpaWakeMatrix = Readonly<
+  Partial<Record<CwtWakeCategory, Readonly<Partial<Record<CwtWakeCategory, number>>>>>
+>;
+
+/** Structural copy of the scenario adaptation contract; core stays scenario-independent. */
+export interface AtpaWakeAdaptation {
+  enabled: boolean;
+  nowgtSeparationNm: number;
+  matrix: AtpaWakeMatrix;
 }
 
 export type AtpaTrack = Pick<
@@ -78,6 +93,7 @@ export type AtpaTrack = Pick<
   | "primaryOnly"
   | "isPrimary"
   | "transponder"
+  | "cwtWakeCategory"
 >;
 
 export type AtpaGeometryByVolumeId = Readonly<Record<string, AtpaVolumeGeometry>>;
@@ -170,6 +186,54 @@ export function requiredSeparationNm(
     return volume.reducedSeparationNm;
   }
   return volume.basicSeparationNm;
+}
+
+function cwtWakeCategory(value: unknown): CwtWakeCategory | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const normalized = value.trim().toUpperCase();
+  return /^[A-I]$/.test(normalized) ? (normalized as CwtWakeCategory) : undefined;
+}
+
+/** Resolve the explicit leader/follower wake relationship for one volume. */
+export function wakeRequiredSeparationNm(
+  leaderCategory: unknown,
+  followerCategory: unknown,
+  adaptation: AtpaWakeAdaptation,
+): { requiredNm: number; wakeSource: "wake" | "nowgt" } {
+  const leader = cwtWakeCategory(leaderCategory);
+  const follower = cwtWakeCategory(followerCategory);
+  const minimum =
+    leader === undefined || follower === undefined
+      ? undefined
+      : adaptation.matrix[leader]?.[follower];
+  if (minimum === undefined) {
+    return { requiredNm: adaptation.nowgtSeparationNm, wakeSource: "nowgt" };
+  }
+  return { requiredNm: minimum, wakeSource: "wake" };
+}
+
+function requiredAtpaSeparation(
+  trailing: AtpaTrack,
+  leading: AtpaTrack,
+  trailingAlongNm: number,
+  leadingAlongNm: number,
+  volume: AtpaVolumeParams,
+): { requiredNm: number; wakeSource: "basic" | "wake" | "nowgt" } {
+  const radarMinimum = requiredSeparationNm(trailingAlongNm, leadingAlongNm, volume);
+  if (volume.wakeAdaptation?.enabled !== true) {
+    return { requiredNm: radarMinimum, wakeSource: "basic" };
+  }
+  const wake = wakeRequiredSeparationNm(
+    leading.cwtWakeCategory,
+    trailing.cwtWakeCategory,
+    volume.wakeAdaptation,
+  );
+  return {
+    requiredNm: Math.max(radarMinimum, wake.requiredNm),
+    wakeSource: wake.wakeSource,
+  };
 }
 
 export function atpaStatus(distanceNm: number, requiredNm: number, closureKt: number): AtpaStatus {
@@ -283,16 +347,23 @@ export function evaluateAtpa(
         trailing.track.xNm - leading.track.xNm,
         trailing.track.yNm - leading.track.yNm,
       );
-      const requiredNm = requiredSeparationNm(trailing.alongNm, leading.alongNm, volume);
+      const required = requiredAtpaSeparation(
+        trailing.track,
+        leading.track,
+        trailing.alongNm,
+        leading.alongNm,
+        volume,
+      );
       const closureKt = pairClosureKt(trailing.track, leading.track, magVarDeg);
       out.push({
         trailingCallsign: trailing.track.callsign,
         leadingCallsign: leading.track.callsign,
         volumeId: volume.id,
         distanceNm,
-        requiredNm,
+        requiredNm: required.requiredNm,
+        wakeSource: required.wakeSource,
         closureKt,
-        status: atpaStatus(distanceNm, requiredNm, closureKt),
+        status: atpaStatus(distanceNm, required.requiredNm, closureKt),
       });
     }
   }
