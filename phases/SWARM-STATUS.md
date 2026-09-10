@@ -1257,6 +1257,26 @@ Recovery resumed from `feature/session-setup`. T04-24 inventory (`93a7c10`), fre
 **Manual leftover:** Human Chrome check: open Session setup; change scenario/arrival/departure rate/seed; Cancel preserves World and focus; confirm Apply/restart warning rebuilds World; verify unavailable departure capability copy. Do not invent pass.
 
 **Notes:** Picker options derive solely from playable inventory; normal arrival count/rate remains seeded STAR inbound/VIA; `?traffic=N` remains benchmark downwind; T04-21 owns departure rate. `atc-sim.session.v1` remains separate from trainer/DCB preferences. No scoring, replay, imperfect pilots, second position, DCB PREF, live traffic editing, second airport data, or radio-frequency IR. Initial T04-25 conflict was superseded by a fresh worker from the T04-24 feature base. Preserved untracked `.cursor/rules/caveman-ultra.mdc`, `e2e/`, and user-modified `speech-api/.env.example`.
+
+## FORTY-EIGHTH SWARM EXIT GREEN — HAR STT/parser safety (T03-21–26)
+
+Merged onto `master`: T03-21 (`c46f833`), T03-22 (`6dcf92c`), T03-23
+(`eb3780d`), T03-24 (`a68dd3b`), T03-25 (`39b63eb`), and T03-26 (`b743a49`).
+The captain spawn was unavailable, so the main orchestrator ran one isolated
+ticket worker at a time and preserved the same worker/merge gates.
+
+Tests: final `npm run ci` passed — 189 test files, 1,681 passed, 3 skipped;
+`cd speech-api && SPEECH_API_MOCK=1 pytest -q` passed — 76 passed, one existing
+Starlette/httpx deprecation warning.
+
+Delivered: Path C safety/service parity, 30-case HAR replay with seven misses,
+callsign and multi-clause preservation, grounded ASR lexical repair, explicit
+STT quality metadata, bounded Path C latency/completeness, and duplicate-dispatch
+guards. Preserved unrelated `.agents/rules/` and `GEMINI.md`.
+
+Manual leftover: real Chrome/local speech-api run to record cold/warm
+PTT-up-to-audio-start p50/p95. No latency number invented. Stop at this swarm
+boundary; do not start a later phase without new SWARM configuration.
 ## FORTY-EIGHTH SWARM EXIT BLOCKED — HAR STT/parser safety (T03-21–26)
 
 Execution was authorized from planning commit `d7752f0`; the captain planning
