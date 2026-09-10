@@ -1257,3 +1257,15 @@ Recovery resumed from `feature/session-setup`. T04-24 inventory (`93a7c10`), fre
 **Manual leftover:** Human Chrome check: open Session setup; change scenario/arrival/departure rate/seed; Cancel preserves World and focus; confirm Apply/restart warning rebuilds World; verify unavailable departure capability copy. Do not invent pass.
 
 **Notes:** Picker options derive solely from playable inventory; normal arrival count/rate remains seeded STAR inbound/VIA; `?traffic=N` remains benchmark downwind; T04-21 owns departure rate. `atc-sim.session.v1` remains separate from trainer/DCB preferences. No scoring, replay, imperfect pilots, second position, DCB PREF, live traffic editing, second airport data, or radio-frequency IR. Initial T04-25 conflict was superseded by a fresh worker from the T04-24 feature base. Preserved untracked `.cursor/rules/caveman-ultra.mdc`, `e2e/`, and user-modified `speech-api/.env.example`.
+## FORTY-EIGHTH SWARM EXIT BLOCKED — HAR STT/parser safety (T03-21–26)
+
+Execution was authorized from planning commit `d7752f0`; the captain planning
+start was committed as `07e8afd`. Preflight verified `master` ancestry,
+T03-16–20 completion, all six ticket files, required dependencies, and only
+the preserved unrelated untracked `.agents/rules/` and `GEMINI.md` files.
+
+No ticket worker started: this session exposes no collaboration/subagent spawn
+capability. Per swarm law, the captain did not implement application work
+inline, create unowned worktrees, or substitute an unavailable model. No
+tickets merged; no application gates ran. Resume requires worker spawn
+capability. Stop boundary remains after T03-26 CI and this STATUS update.
