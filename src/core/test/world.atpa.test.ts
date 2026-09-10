@@ -113,6 +113,39 @@ test("stepWorld without ATPA volumes leaves atpa empty", () => {
   expect(world.alerts.atpa).toEqual([]);
 });
 
+test("T02-127 AC7 — stepWorld exposes wake source and NOWGT required distance", () => {
+  const leader = arrival("AAL45", 5);
+  leader.cwtWakeCategory = "A";
+  const trailer = arrival("DAL123", 9);
+  const volume = {
+    ...volume27,
+    wakeAdaptation: {
+      enabled: true,
+      nowgtSeparationNm: 10,
+      matrix: { A: { I: 8 } },
+    },
+  };
+  const world = createWorld({
+    aircraft: [leader, trailer],
+    catalog: { ...atpaCatalog(), atpaVolumes: [volume] },
+  });
+
+  stepWorld(world, 0);
+  expect(world.alerts.atpa[0]).toMatchObject({
+    requiredNm: 10,
+    wakeSource: "nowgt",
+    status: "alert",
+  });
+
+  trailer.cwtWakeCategory = "I";
+  stepWorld(world, 0);
+  expect(world.alerts.atpa[0]).toMatchObject({
+    requiredNm: 8,
+    wakeSource: "wake",
+    status: "alert",
+  });
+});
+
 test("status upgrade logs the new status without a clear", () => {
   const leader = arrival("AAL45", 11, 70);
   const trailer = arrival("DAL123", 15, 250);

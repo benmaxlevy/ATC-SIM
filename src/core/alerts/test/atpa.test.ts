@@ -54,6 +54,7 @@ function arrival(
     headingDeg?: number;
     altitudeFt?: number;
     wakeCategory?: string;
+    cwtWakeCategory?: string;
     primaryOnly?: boolean;
     isPrimary?: boolean;
     transponder?: "primary" | "mode_c" | "mode_a" | "mode_s" | "none";
@@ -75,6 +76,7 @@ function arrival(
     altitudeFt: pose.altitudeFt,
     speedKt: extras.speedKt ?? 180,
     ...(extras.wakeCategory !== undefined ? { wakeCategory: extras.wakeCategory } : {}),
+    ...(extras.cwtWakeCategory !== undefined ? { cwtWakeCategory: extras.cwtWakeCategory } : {}),
     ...(extras.primaryOnly !== undefined ? { primaryOnly: extras.primaryOnly } : {}),
     ...(extras.isPrimary !== undefined ? { isPrimary: extras.isPrimary } : {}),
     ...(extras.transponder !== undefined ? { transponder: extras.transponder } : {}),
@@ -199,18 +201,24 @@ test("T02-44 AC4 — tracks in different volumes never pair", () => {
   expect(pairs).toEqual([]);
 });
 
-test("T02-44 AC5 — requiredNm is identical for a heavy leader and a light leader", () => {
-  const lightLeader = arrival("AAL45", geom27, 11, { wakeCategory: "L", speedKt: 180 });
-  const heavyLeader = arrival("AAL45", geom27, 11, { wakeCategory: "H", speedKt: 180 });
-  const trailer = arrival("DAL123", geom27, 15, { wakeCategory: "B", speedKt: 180 });
-  const lightPairs = evaluateAtpa([lightLeader, trailer], [volume27], geometry);
-  const heavyPairs = evaluateAtpa([heavyLeader, trailer], [volume27], geometry);
-  expect(lightPairs[0]?.requiredNm).toBe(heavyPairs[0]?.requiredNm);
-  expect(lightPairs[0]?.requiredNm).toBe(volume27.basicSeparationNm);
-  expect(lightPairs[0]?.distanceNm).toBeCloseTo(heavyPairs[0]!.distanceNm, 9);
+test("T02-127 AC1 — explicit CWT leader/follower categories use the FAA matrix", () => {
+  const leader = arrival("AAL45", geom27, 11, { cwtWakeCategory: "A", speedKt: 180 });
+  const trailer = arrival("DAL123", geom27, 15, { cwtWakeCategory: "I", speedKt: 180 });
+  const pairs = evaluateAtpa(
+    [leader, trailer],
+    [
+      {
+        ...volume27,
+        wakeAdaptation: { enabled: true, nowgtSeparationNm: 10, matrix: { A: { I: 8 } } },
+      },
+    ],
+    geometry,
+  );
+  expect(pairs[0]).toMatchObject({ requiredNm: 8, wakeSource: "wake" });
+  expect(leader.cwtWakeCategory).toBe("A");
 });
 
-test("T02-44 AC5 — wakeCategory does not appear in the evaluator source", () => {
+test("T02-127 AC6 — evaluator does not read display wake category or aircraft type", () => {
   const sources = import.meta.glob("../atpa.ts", {
     query: "?raw",
     import: "default",
@@ -221,8 +229,54 @@ test("T02-44 AC5 — wakeCategory does not appear in the evaluator source", () =
   expect(src).toMatch(/45/);
   expect(src).toMatch(/24/);
   expect(src).toMatch(/basic radar/);
-  expect(src).not.toMatch(/wakeCategory/);
+  expect(src).not.toMatch(/\.wakeCategory/);
+  expect(src).not.toMatch(/\.aircraftType/);
   expect(src).not.toMatch(/2\.5/);
+});
+
+test("T02-127 AC2 — missing and blank matrix relationships produce NOWGT 10 NM", () => {
+  const adaptation = { enabled: true, nowgtSeparationNm: 10, matrix: { A: { I: 8 } } };
+  const leader = arrival("AAL45", geom27, 5, { cwtWakeCategory: "A" });
+  const missingFollower = arrival("DAL123", geom27, 9);
+  const blankPair = arrival("SWA88", geom27, 9, { cwtWakeCategory: "B" });
+  const blankLeader = arrival("JBU12", geom27, 5, { cwtWakeCategory: "B" });
+  expect(
+    evaluateAtpa(
+      [leader, missingFollower],
+      [{ ...volume27, wakeAdaptation: adaptation }],
+      geometry,
+    )[0],
+  ).toMatchObject({
+    requiredNm: 10,
+    wakeSource: "nowgt",
+  });
+  expect(
+    evaluateAtpa(
+      [blankLeader, blankPair],
+      [{ ...volume27, wakeAdaptation: adaptation }],
+      geometry,
+    )[0],
+  ).toMatchObject({
+    requiredNm: 10,
+    wakeSource: "nowgt",
+  });
+});
+
+test("T02-127 AC3/4 — wake dominates reduced radar minimum, radar dominates smaller wake", () => {
+  const adaptation = { enabled: true, nowgtSeparationNm: 10, matrix: { A: { I: 8 }, B: { I: 2 } } };
+  const volume = { ...volume27, wakeAdaptation: adaptation };
+  const wakeLeader = arrival("AAL45", geom27, 5, { cwtWakeCategory: "A" });
+  const wakeFollower = arrival("DAL123", geom27, 9, { cwtWakeCategory: "I" });
+  expect(evaluateAtpa([wakeLeader, wakeFollower], [volume], geometry)[0]).toMatchObject({
+    requiredNm: 8,
+    wakeSource: "wake",
+  });
+  const radarLeader = arrival("AAL45", geom27, 5, { cwtWakeCategory: "B" });
+  const radarFollower = arrival("DAL123", geom27, 9, { cwtWakeCategory: "I" });
+  expect(evaluateAtpa([radarLeader, radarFollower], [volume], geometry)[0]).toMatchObject({
+    requiredNm: volume27.reducedSeparationNm,
+    wakeSource: "wake",
+  });
 });
 
 test("disabled volumes and primary-only tracks produce no pairs", () => {
