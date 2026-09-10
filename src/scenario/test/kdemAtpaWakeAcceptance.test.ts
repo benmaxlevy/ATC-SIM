@@ -18,6 +18,8 @@ test("KDEM ATPA bench carries explicit CWT categories and scenario-local wake ad
     "E",
     "I",
   ]);
+  expect(world.aircraft.slice(0, 4).map((aircraft) => aircraft.xNm)).toEqual([2, 6.5, 11, 14.5]);
+  expect(world.aircraft.slice(0, 4).every((aircraft) => aircraft.yNm === 0)).toBe(true);
 });
 
 test("KDEM ATPA bench validates every FAA matrix relationship plus NOWGT fallback", () => {

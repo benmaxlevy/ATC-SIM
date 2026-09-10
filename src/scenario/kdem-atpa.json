@@ -60,7 +60,7 @@
   ],
   "arrivals": [
     {
-      "xNm": 3.4,
+      "xNm": 2,
       "yNm": 0,
       "headingDeg": 270,
       "altitudeFt": 1100,
@@ -69,7 +69,7 @@
       "cwtWakeCategory": "A"
     },
     {
-      "xNm": 6,
+      "xNm": 6.5,
       "yNm": 0,
       "headingDeg": 270,
       "altitudeFt": 2300,
@@ -78,7 +78,7 @@
       "cwtWakeCategory": "B"
     },
     {
-      "xNm": 8.4,
+      "xNm": 11,
       "yNm": 0,
       "headingDeg": 270,
       "altitudeFt": 3500,
@@ -87,7 +87,7 @@
       "cwtWakeCategory": "C"
     },
     {
-      "xNm": 11.6,
+      "xNm": 14.5,
       "yNm": 0,
       "headingDeg": 270,
       "altitudeFt": 4700,
@@ -96,9 +96,9 @@
       "cwtWakeCategory": "D"
     },
     {
-      "xNm": 14.9,
-      "yNm": 0,
-      "headingDeg": 270,
+      "xNm": 14,
+      "yNm": 5,
+      "headingDeg": 90,
       "altitudeFt": 5900,
       "speedKt": 150,
       "aircraftType": "B739",
@@ -106,7 +106,7 @@
     },
     {
       "xNm": 8,
-      "yNm": 5,
+      "yNm": 8,
       "headingDeg": 90,
       "altitudeFt": 3000,
       "speedKt": 210,
