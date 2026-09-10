@@ -3027,3 +3027,14 @@ Safety requirements for the captain:
 - After every worker completion: record the worker result, verify its worktree status, squash merge (one commit on `master`), run `npm test`, and confirm `master` before starting the next ticket.
 - Never background a worker and finish the captain turn. If a worker stalls, resume or replace that worker explicitly; do not leave a half-finished ticket silently.
 - After T02-30: run both `npm test` and `npm run ci`, append STATUS, and return `PHASE EXIT GREEN` only after all results are recorded. Do not start phase 5.
+## Forty-eighth swarm started â€” 2026-09-09
+
+User authorized execution of the approved HAR STT/parser safety swarm. The
+captain owns the merge lock and runs waves A through D only: T03-21; T03-22
+and T03-23 in parallel; T03-24 and T03-25 in parallel; then T03-26. Workers
+use isolated ticket branches, implement one ticket each, commit progressively,
+and never merge or spawn. Merge target: `master`; maximum workers: 3. No push,
+reset, clean, amend, paid speech or LLM vendors, phase 5, or unrelated file
+changes. Stop after T03-26 CI and STATUS update.
+
+Planning base required by this run: `d7752f0`.
