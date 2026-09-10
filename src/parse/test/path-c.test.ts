@@ -66,6 +66,21 @@ test("local miss + pathC true + legal FLY_HEADING is llm_c", async () => {
   expect(result.instructions).toEqual([{ type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" }]);
 });
 
+test("Path C rejects a callsign that is not on frequency", async () => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: "GTI7908",
+    instructions: [{ type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" }],
+  }));
+  const result = await parseCommand("radio check", {
+    source: "voice",
+    callsigns: ["UAL8431"],
+    selectedCallsign: "UAL8431",
+    pathC: true,
+    parsePathC,
+  });
+  expect(result.ok).toBe(false);
+});
+
 test("fetch throw or 503 is a miss", async () => {
   const throwing: ParsePathCFn = async () => {
     throw new Error("network down");

@@ -19,6 +19,8 @@ from logconfig import elapsed_ms
 log = logging.getLogger("speech-api")
 
 SCHEMA_VERSION = "command-ir-v0"
+# Shared browser/service safety contract. Bump when semantic guard behavior changes.
+PARSE_CONTRACT_VERSION = "command-ir-v0-safe-1"
 
 INSTRUCTION_TYPES = frozenset(
     {
@@ -706,8 +708,10 @@ def guard_catalog_ids(
     approaches = {row["id"] for row in ctx.get("approaches") or []}
     roster = set(ctx.get("callsigns") or [])
     token = outcome.callsign_token
-    if token and roster and token not in roster:
-        token = None
+    if token and roster and token.upper() not in roster:
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    if token:
+        token = token.upper()
     for instruction in outcome.instructions:
         kind = instruction["type"]
         if kind in {"DIRECT", "CROSS"}:
@@ -728,7 +732,7 @@ def guard_catalog_ids(
         if kind in {"EXPECT_APPROACH", "CLEARED_APPROACH", "INTERCEPT_LOCALIZER"}:
             if roster and instruction.get("approachId") in roster:
                 return ParseOutcome(ok=False, error="PARSE_MISS")
-            if approaches and instruction.get("approachId") not in approaches:
+            if approaches and str(instruction.get("approachId", "")).upper() not in approaches:
                 return ParseOutcome(ok=False, error="PARSE_MISS")
     if token != outcome.callsign_token:
         return ParseOutcome(

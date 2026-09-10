@@ -7,6 +7,8 @@
 import { INSTRUCTION_TYPES, type Instruction, type TurnDir } from "@core";
 
 export const PATH_C_SCHEMA_VERSION = "command-ir-v0" as const;
+/** Browser/service semantic guard contract. Bump when Path C safety rules change. */
+export const PATH_C_CONTRACT_VERSION = "command-ir-v0-safe-1" as const;
 export const DEFAULT_PARSE_URL = "http://127.0.0.1:8090/parse";
 export const DEFAULT_PARSE_TIMEOUT_MS = 15000;
 /** Retrieved Path C `fixes=` / approaches / procedures cap. Not file-order 64. */

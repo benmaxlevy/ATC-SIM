@@ -32,6 +32,7 @@ def test_health_ok_parse_ready(client: TestClient) -> None:
     assert isinstance(body["sttModel"], str) and body["sttModel"]
     assert isinstance(body["ttsVoice"], str) and body["ttsVoice"]
     assert body["parse"] == "ready"
+    assert body["parseContract"] == "command-ir-v0-safe-1"
 
 
 def test_parse_mock_ready_without_download(client: TestClient) -> None:

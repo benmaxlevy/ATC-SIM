@@ -847,36 +847,35 @@ export async function parseCommand(
         context,
       });
       if (hit !== null && hit.instructions.length > 0) {
-        const grounded =
-          groundCallsignToRoster(
-            hit.callsignToken ?? spokenCallsignToken(normalized),
-            normalized,
-            roster,
-            selected,
-          ) ??
-          hit.callsignToken ??
-          spokenCallsignToken(normalized);
-        const pathFixes = context?.fixes ?? [];
-        const pathProcedures = context?.procedures ?? [];
-        const pathApproaches = context?.approaches ?? [];
-        const salvaged = okStage(
-          {
-            ok: true,
-            callsignToken: grounded,
-            instructions: repairHeadingVsTurnDegrees(normalized, hit.instructions),
+        const rawCallsign = hit.callsignToken ?? spokenCallsignToken(normalized);
+        const grounded = groundCallsignToRoster(rawCallsign, normalized, roster, selected);
+        const callsignSafe =
+          roster.length === 0 ||
+          (grounded !== null && roster.includes(grounded)) ||
+          (rawCallsign === null && selected === null);
+        if (callsignSafe) {
+          const pathFixes = context?.fixes ?? [];
+          const pathProcedures = context?.procedures ?? [];
+          const pathApproaches = context?.approaches ?? [];
+          const salvaged = okStage(
+            {
+              ok: true,
+              callsignToken: grounded,
+              instructions: repairHeadingVsTurnDegrees(normalized, hit.instructions),
+              sourceText,
+            },
             sourceText,
-          },
-          sourceText,
-          "llm_c",
-          opts.source,
-          selected,
-          pathFixes,
-          pathProcedures,
-          pathApproaches,
-        );
-        const ungrounded = salvaged.ungroundedFixes ?? [];
-        if (ungrounded.length === 0 && pathCIdentifierListed(salvaged.instructions, context)) {
-          return salvaged;
+            "llm_c",
+            opts.source,
+            selected,
+            pathFixes,
+            pathProcedures,
+            pathApproaches,
+          );
+          const ungrounded = salvaged.ungroundedFixes ?? [];
+          if (ungrounded.length === 0 && pathCIdentifierListed(salvaged.instructions, context)) {
+            return salvaged;
+          }
         }
       }
     } catch {

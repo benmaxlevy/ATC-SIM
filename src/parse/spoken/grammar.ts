@@ -107,7 +107,7 @@ function tryTurnHeading(c: Cursor): Instruction | null {
     c.i = start;
     return null;
   }
-  return { type: "FLY_HEADING", headingDeg, turn };
+  return { type: "FLY_HEADING", headingDeg, turn: turn ?? "SHORTEST" };
 }
 
 function tryTurnDegrees(c: Cursor): Instruction | null {
