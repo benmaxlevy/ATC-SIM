@@ -24,6 +24,7 @@ export interface FormatCheckInArgs {
   callsign: string;
   starName: string;
   altitudeFt: number;
+  isHeavy?: boolean;
 }
 
 export interface StarNameCatalog {
@@ -35,7 +36,7 @@ export interface StarNameCatalog {
  * `starName` is the catalog spoken name (`DEMO ONE`), never `DEM1`.
  */
 export function formatCheckIn(args: FormatCheckInArgs): string {
-  const callsignSpeech = formatCallsignSpeech(args.callsign);
+  const callsignSpeech = formatCallsignSpeech(args.callsign, { isHeavy: args.isHeavy });
   const altitudeSpeech = formatAltitude(args.altitudeFt);
   return `Approach, ${callsignSpeech}, descending via ${args.starName} arrival through ${altitudeSpeech}`;
 }
@@ -256,6 +257,7 @@ export class CheckInQueue {
           callsign: aircraft.callsign,
           starName,
           altitudeFt: aircraft.altitudeFt,
+          isHeavy: aircraft.wakeCategory === "H",
         });
         next.state = "done";
         setStatus(text);
@@ -288,6 +290,7 @@ export class CheckInQueue {
           currentAltitudeFt: aircraft.altitudeFt,
           assignedAltitudeFt: aircraft.intent.assignedAltitudeFt,
           isClimbVia,
+          isHeavy: aircraft.wakeCategory === "H",
         });
         next.state = "done";
         setStatus(text);

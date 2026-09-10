@@ -19,7 +19,7 @@ import {
 
 export { formatCallsignSpeech } from "./telephony";
 
-export type ReadbackAircraft = Pick<Aircraft, "headingDeg" | "altitudeFt">;
+export type ReadbackAircraft = Pick<Aircraft, "headingDeg" | "altitudeFt" | "wakeCategory">;
 
 export type RejectReason =
   | "UNKNOWN_CALLSIGN"
@@ -203,7 +203,9 @@ export function formatReadback(args: {
   aircraft: ReadbackAircraft;
   procedureNames?: Readonly<Record<string, string>>;
 }): string {
-  const callsignSpeech = formatCallsignSpeech(args.callsign);
+  const callsignSpeech = formatCallsignSpeech(args.callsign, {
+    isHeavy: args.aircraft.wakeCategory === "H",
+  });
   const clauses = args.instructions.map((instruction) =>
     formatInstructionClause(instruction, args.aircraft, args.procedureNames),
   );
@@ -219,6 +221,7 @@ export function formatRejectReadback(args: {
   callsign?: string;
   reason: string;
   detail?: string;
+  isHeavy?: boolean;
 }): string {
   const reason = args.reason.trim().toUpperCase();
   const fixed = REJECT_FIXED[reason];
@@ -229,6 +232,6 @@ export function formatRejectReadback(args: {
   if (reason === "NOT_ON_COURSE") {
     after = args.detail ? `unable, not on course to ${args.detail}` : "unable, not on course";
   }
-  const cs = args.callsign ? formatCallsignSpeech(args.callsign) : "";
+  const cs = args.callsign ? formatCallsignSpeech(args.callsign, { isHeavy: args.isHeavy }) : "";
   return capitalizeFirst(cs ? `${cs} ${after}` : after);
 }

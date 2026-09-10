@@ -30,6 +30,9 @@ test("formatCheckIn golden string for DAL123 / DEMO ONE / 11000", () => {
   expect(formatCheckIn({ callsign: "DAL123", starName: "DEMO ONE", altitudeFt: 11000 })).toBe(
     GOLDEN,
   );
+  expect(
+    formatCheckIn({ callsign: "GTI123", starName: "DEMO ONE", altitudeFt: 11000, isHeavy: true }),
+  ).toContain("Giant 123 heavy,");
 });
 
 test("PROCEDURE+VIA_STAR is a STAR via arrival", () => {

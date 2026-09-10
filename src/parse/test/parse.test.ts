@@ -18,6 +18,23 @@ test("voice descend and maintain three thousand", async () => {
   expect(result.instructions).toEqual([{ type: "ALTITUDE", altitudeFt: 3000, verb: "DESCEND" }]);
 });
 
+test.each(["Giant 123 heading 270", "Giant 123 heavy heading 270"])(
+  "%s resolves the same callsign",
+  async (text) => {
+    const result = await parseCommand(text, {
+      source: "voice",
+      callsigns: ["GTI123"],
+      pathC: false,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.callsignToken).toBe("GTI123");
+    expect(result.instructions).toEqual([
+      { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+    ]);
+  },
+);
+
 test("typed H270 is parseStage typed", async () => {
   const result = await parseCommand("H270", { source: "text" });
   expect(result.ok).toBe(true);

@@ -114,6 +114,8 @@ describe("Altitude telephony helpers", () => {
     expect(formatCallsignSpeech("DAL123")).toBe("Delta 123");
     expect(formatCallsignSpeech("AAL1")).toBe("American 1");
     expect(formatCallsignSpeech("UAL999")).toBe("United 999");
+    expect(formatCallsignSpeech("GTI123")).toBe("Giant 123");
+    expect(formatCallsignSpeech("GTI123", { isHeavy: true })).toBe("Giant 123 heavy");
     expect(formatCallsignSpeech("")).toBe("");
   });
 });

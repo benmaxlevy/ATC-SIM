@@ -202,7 +202,7 @@ export function handleRadioCommand(
   log: SessionLog,
   atWallMs = 0,
 ): PilotResult {
-  function reject(reason: string, detail?: string, cmd?: Command): PilotResult {
+  function reject(reason: string, detail?: string, cmd?: Command, isHeavy?: boolean): PilotResult {
     const c = cmd ?? command;
     logRejected(log, world, atWallMs, {
       command: c,
@@ -215,6 +215,7 @@ export function handleRadioCommand(
         callsign: c.callsign || undefined,
         reason,
         detail,
+        isHeavy,
       }),
       command: c,
       reason,
@@ -239,7 +240,7 @@ export function handleRadioCommand(
 
   const gate = assertHandoffOwned(handoffFor(world, aircraft.id));
   if (!gate.ok) {
-    return reject(gate.reason, undefined, resolvedCommand);
+    return reject(gate.reason, undefined, resolvedCommand, aircraft.wakeCategory === "H");
   }
 
   const validated = validateInstructions(aircraft, resolvedCommand.instructions, {
@@ -249,7 +250,12 @@ export function handleRadioCommand(
     approachIds: world.catalog?.approaches.map((item) => item.id),
   });
   if (!validated.ok) {
-    return reject(validated.reason, validated.detail, resolvedCommand);
+    return reject(
+      validated.reason,
+      validated.detail,
+      resolvedCommand,
+      aircraft.wakeCategory === "H",
+    );
   }
 
   applyIntent(aircraft, resolvedCommand.instructions, world.simTimeMs, {

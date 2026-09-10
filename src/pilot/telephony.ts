@@ -16,6 +16,7 @@ export const AIRLINE_TELEPHONY: Readonly<Record<string, string>> = {
   RPA: "Brickyard",
   FDX: "FedEx",
   UPS: "UPS",
+  GTI: "Giant",
 };
 
 /** NATO/FAA phonetic (JO 7110.65). `X-ray` keeps the ticket hyphen. */
@@ -77,7 +78,7 @@ export function speakAlphanumeric(text: string): string {
 /**
  * `DAL123` → `Delta 123`. Unknown `XYZ99` → `X-ray Yankee Zulu 99`.
  */
-export function formatCallsignSpeech(callsign: string): string {
+export function formatCallsignSpeech(callsign: string, options?: { isHeavy?: boolean }): string {
   const cs = callsign.trim().toUpperCase();
   if (!cs) {
     return "";
@@ -87,9 +88,13 @@ export function formatCallsignSpeech(callsign: string): string {
     const rest = cs.slice(3);
     const head = AIRLINE_TELEPHONY[prefix] ?? speakAlphanumeric(prefix);
     const tail = speakAlphanumeric(rest);
-    return [head, tail].filter((part) => part.length > 0).join(" ");
+    return [head, tail, options?.isHeavy ? "heavy" : ""]
+      .filter((part) => part.length > 0)
+      .join(" ");
   }
-  return speakAlphanumeric(cs);
+  return [speakAlphanumeric(cs), options?.isHeavy ? "heavy" : ""]
+    .filter((part) => part.length > 0)
+    .join(" ");
 }
 
 export const DIGIT_WORDS = [
@@ -194,6 +199,7 @@ export interface FormatDepartureCheckInArgs {
   currentAltitudeFt: number;
   assignedAltitudeFt: number;
   isClimbVia: boolean;
+  isHeavy?: boolean;
 }
 
 /**
@@ -202,7 +208,7 @@ export interface FormatDepartureCheckInArgs {
  * Level / assigned: "Departure, Delta 123, leaving one thousand two hundred for one-zero thousand"
  */
 export function formatDepartureCheckIn(args: FormatDepartureCheckInArgs): string {
-  const callsignSpeech = formatCallsignSpeech(args.callsign);
+  const callsignSpeech = formatCallsignSpeech(args.callsign, { isHeavy: args.isHeavy });
   const altFt = roundAltitudeToHundreds(args.currentAltitudeFt);
   const altSpeech = altFt >= FLIGHT_LEVEL_FT ? `FL ${altFt / 100}` : speakAltitude(altFt);
 

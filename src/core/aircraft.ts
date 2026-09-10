@@ -183,6 +183,11 @@ export interface AircraftInit {
   flightRules?: string;
 }
 
+/** ICAO heavy transport types used by generated and authored traffic. */
+export function isHeavyAircraftType(aircraftType?: string): boolean {
+  return new Set(["B744", "B748", "B763", "B77F"]).has(aircraftType?.trim().toUpperCase() ?? "");
+}
+
 let aircraftSeq = 0;
 
 /** Deterministic `ac-n` ids so Vitest does not depend on `crypto.randomUUID`. */
@@ -220,7 +225,11 @@ export function createAircraft(init: AircraftInit): Aircraft {
     ...(init.transponder ? { transponder: init.transponder } : {}),
     ...(init.primaryOnly !== undefined ? { primaryOnly: init.primaryOnly } : {}),
     ...(init.isPrimary !== undefined ? { isPrimary: init.isPrimary } : {}),
-    ...(init.wakeCategory ? { wakeCategory: init.wakeCategory.toUpperCase() } : {}),
+    ...(init.wakeCategory
+      ? { wakeCategory: init.wakeCategory.toUpperCase() }
+      : isHeavyAircraftType(init.aircraftType)
+        ? { wakeCategory: "H" }
+        : {}),
     ...(init.spc ? { spc: init.spc.toUpperCase() } : {}),
     ...(init.requestedAltitudeFt !== undefined
       ? { requestedAltitudeFt: init.requestedAltitudeFt }

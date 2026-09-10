@@ -66,7 +66,7 @@ export const TRAFFIC_AIRLINES = [
   { icao: "EDV", name: "Endeavor Air", aircraftTypes: ["CRJ9"] },
   { icao: "RPA", name: "Republic Airways", aircraftTypes: ["E170", "E190"] },
   { icao: "UPS", name: "UPS Airlines", aircraftTypes: ["B744", "B752", "B763"] },
-  { icao: "GTI", name: "Atlas Air", aircraftTypes: ["B744", "B752", "B763", "B772", "B789"] },
+  { icao: "GTI", name: "Atlas Air", aircraftTypes: ["B744", "B748", "B77F", "B763"] },
 ] as const satisfies readonly TrafficAirline[];
 
 export const TRAFFIC_AIRLINE_CODES = TRAFFIC_AIRLINES.map((airline) => airline.icao);

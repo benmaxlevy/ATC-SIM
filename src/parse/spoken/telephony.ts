@@ -94,7 +94,7 @@ export const RESERVED_SPOKEN: ReadonlySet<string> = new Set([
   "transition",
 ]);
 
-const TABLE = telephonyTable as Record<string, string>;
+const TABLE = { ...telephonyTable, giant: "GTI" } as Record<string, string>;
 
 const TELEPHONY_ENTRIES = Object.entries(TABLE).sort(
   (a, b) => b[0].split(" ").length - a[0].split(" ").length,
@@ -358,6 +358,7 @@ function parseNovemberTail(
  * Glued ASR (`American201`) is the same mapping without a space.
  */
 export function parseSpokenCallsign(tokens: readonly string[], i: number): CallsignAttempt {
+  const afterCallsign = (next: number): number => (tokens[next] === "heavy" ? next + 1 : next);
   const first = tokens[i];
   if (first === undefined || RESERVED_SPOKEN.has(first)) {
     return { kind: "none" };
@@ -365,30 +366,38 @@ export function parseSpokenCallsign(tokens: readonly string[], i: number): Calls
 
   const compact = first.toUpperCase();
   if (FULL_CALLSIGN.test(compact) || SUFFIX_CALLSIGN.test(compact)) {
-    return { kind: "ok", callsign: compact, next: i + 1 };
+    return { kind: "ok", callsign: compact, next: afterCallsign(i + 1) };
   }
 
   const november = parseNovemberTail(tokens, i);
   if (november) {
-    return { kind: "ok", callsign: november.callsign, next: november.next };
+    return {
+      kind: "ok",
+      callsign: november.callsign,
+      next: afterCallsign(november.next),
+    };
   }
 
   const tel = matchTelephony(tokens, i);
   if (tel) {
     const flight = parseFlightNumber(tokens, tel.next);
     if (flight) {
-      return { kind: "ok", callsign: `${tel.icao}${flight.value}`, next: flight.next };
+      return {
+        kind: "ok",
+        callsign: `${tel.icao}${flight.value}`,
+        next: afterCallsign(flight.next),
+      };
     }
   }
 
   const glued = matchGluedTelephony(first);
   if (glued) {
-    return { kind: "ok", callsign: `${glued.icao}${glued.flight}`, next: i + 1 };
+    return { kind: "ok", callsign: `${glued.icao}${glued.flight}`, next: afterCallsign(i + 1) };
   }
 
   const icao = parseSpokenIcao(tokens, i);
   if (icao) {
-    return { kind: "ok", callsign: icao.callsign, next: icao.next };
+    return { kind: "ok", callsign: icao.callsign, next: afterCallsign(icao.next) };
   }
 
   const flightAfter = parseFlightNumber(tokens, i + 1);

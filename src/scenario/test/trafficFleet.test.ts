@@ -35,3 +35,8 @@ test("traffic pairing is deterministic and authored types keep a valid airline",
   expect(pair.callsign.startsWith(pair.airline.icao)).toBe(true);
   expect(TRAFFIC_AIRLINES.length).toBeGreaterThan(0);
 });
+
+test("GTI operates its freighter fleet", () => {
+  const gti = TRAFFIC_AIRLINES.find((airline) => airline.icao === "GTI");
+  expect(gti?.aircraftTypes).toEqual(["B744", "B748", "B77F", "B763"]);
+});
