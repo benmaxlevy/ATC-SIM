@@ -142,6 +142,57 @@ path and must **not** invent numbers from model recall:
   still adds a JSON row walked by `approachId`; do not special-case KDEM
   or invent an importer that silently fills unsourced sizes.
 
+### Datablock runtime sources not yet modeled
+
+The datablock formatter accepts explicit Figure 2-20 Fields 0–8 values, and
+the current scope already supplies basic aircraft data, alerts, handoffs,
+basic ATPA distance, TPA controls, and existing Field 5 values. The remaining
+values below are formatter-capable but have no complete live backing logic.
+
+Deliberately missing:
+
+- **Wake-aware ATPA output.** `Aircraft.wakeCategory` exists and is displayed
+  as a category indicator, but ATPA still uses basic radar minima. Add a
+  cited/adapted leader-by-follower wake table, derive required spacing, emit
+  `NOWGT` when a required category is unavailable, and recompute on sequence,
+  approach, or category changes. Do not invent a wake matrix from memory.
+- **Departure exit gate/fix.** Field 3 accepts an explicit `exitGate` or
+  `exitFix`, but no runtime adapter resolves the value from the departure,
+  SID/route, facility adaptation, and excluded-fix rules. Keep procedure and
+  fix lookup generic and data-first.
+- **TSAS runtime.** Field 6/7/8 formatting accepts TSAS values, but there is
+  no Terminal Sequencing and Spacing scheduler. Later work would need eligible
+  arrivals, runway assignment, sequence, target delivery time, advised speed,
+  early/late calculation, sequence number, enable/inhibit state, and live
+  updates. Do not imply TSAS exists merely because its literals format.
+- **Authoritative flight-plan association.** Optional flight-plan fields exist,
+  but the live track does not yet have a complete authoritative association
+  for filed aircraft ID, filed beacon, route, and flight-plan presence. This
+  blocks reliable `NO FP`, CSMM, beacon comparison, and procedure-derived
+  datablock values.
+- **CSMM detection.** Add an independent ADS-B Flight ID and compare it to the
+  filed aircraft identification. Emit `CSMM` only on an exact mismatch; do
+  not derive it from the displayed callsign.
+- **Duplicate beacon detection.** Existing beacon mismatch formatting is not
+  duplicate-code detection. Add world-level detection of two tracks using the
+  same Mode 3/A code, identify affected tracks, and provide `DB` plus the
+  reported code. Keep this separate from assigned-versus-reported mismatch.
+- **MOA and selected-beacon sources.** Field 6 accepts `MOA` and selected
+  beacon values, but no live MOA assignment or selected-beacon workflow feeds
+  them.
+- **Pointout-to-datablock binding.** Pointout/handoff lifecycle exists, but a
+  complete adapter still needs to expose `PO`, `UN`, `RD`, and accept-count /
+  inhibition state to Field 8 with documented priority.
+- **Central runtime field adapter.** Add one generic adapter that gathers
+  aircraft, world, ATPA, handoff, flight-plan, procedure, TSAS, beacon, and
+  coordination state and passes explicit values to the formatter. It must
+  preserve Field 0–8 priority and leave unsupported values empty rather than
+  guessing.
+
+Keep deferred: Field 1 ADS-B markers, ADS-B loss/duplicate-address (`DA`)
+workflow, and new Field 2 glyphs. Those remain out of scope until their
+underlying surveillance services exist.
+
 ### Richer TPA controls
 
 Shipped in T02-48 / T02-49: per-track `*J` / `*P` rings and ground-track cones
