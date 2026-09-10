@@ -1,5 +1,56 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Fifty-second swarm started — 2026-09-10 (Accepted outbound handoff UI)
+
+Captain owns `fix/datablocks` and will create one isolated worker for the
+approved T02-134 ticket. The ticket preserves existing handoff logic to the
+configured Center sector (`C`) and aligns only the visible accepted-handoff
+datablock UI with the supplied TI 6191.409 Rev. 30 manual. After completion,
+captain runs `check-stars-manual` against
+`/home/ben/Documents/stars refs/full_manual.pdf` with an independent
+verification pass, then runs final CI and stops.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align accepted outbound handoff datablock presentation with the supplied manual. |
+| Include | **T02-134** only. |
+| Skip | Handoff state/acceptance logic, multi-position simulation, new handoff types, pointouts, quicklook, networking, new SPCs, new alerts, parser, Command IR, speech, DCB, and facility branches. |
+| Stop | After T02-134 acceptance, manual review, and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Product law:** Existing outbound handoff logic remains authoritative. The
+UI shows the accepted handoff as a white FDB; the receiver TCP remains visible
+for five seconds after acceptance, then disappears. The UI does not invent a
+receiver position or alter ownership state.
+
+**Wave:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-134 | Current `fix/datablocks` is clean and T02-133 is complete |
+
+**Ticket ownership:**
+
+- T02-134: accepted outbound handoff datablock UI and rendering tests.
+
+**Ticket file / branch:**
+
+- `ticket/T02-134-accepted-outbound-handoff-ui` ← `phases/02-scope/tickets/T02-134-accepted-outbound-handoff-ui.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 accepted outbound handoff UI T02-134
+Merge target: fix/datablocks
+Merged: T02-134
+Tests: <focused gate, manual review, and npm run ci result>
+Notes: <manual visual leftovers; handoff logic unchanged>
+```
+
 ## Fifty-first swarm planned — 2026-09-10 (Existing datablock field alignment)
 
 User approved execution of T02-131 through T02-133 against the supplied
