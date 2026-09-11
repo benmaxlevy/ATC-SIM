@@ -15,6 +15,7 @@ import { nmToScreen, type ScopeViewSize } from "../camera";
 import {
   DATABLOCK_FIELD_GAP,
   datablockMetrics,
+  datablockSourceFromWorld,
   fullDatablockLine3Parts,
   getSpecialPurposeCode,
   handoffDatablockDisplay,
@@ -921,7 +922,7 @@ export function drawDatablock(
       : null;
 
   const datablockSource = {
-    ...ac,
+    ...datablockSourceFromWorld(world, ac, td),
     callsign,
     squawk,
     atpaDistance: atpaReadout?.text,
@@ -1181,7 +1182,12 @@ export function drawTracks(
           })
         : null;
     const base = linesForDatablock(
-      { ...shown, callsign, squawk, atpaDistance: atpaReadout?.text },
+      {
+        ...datablockSourceFromWorld(world, shown, td),
+        callsign,
+        squawk,
+        atpaDistance: atpaReadout?.text,
+      },
       mode,
       {
         modeCVisible: view.modeCVisible,

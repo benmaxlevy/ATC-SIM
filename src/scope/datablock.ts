@@ -11,7 +11,8 @@
  * Never a label, nametag, or tooltip. Not NAS STARS.
  */
 
-import type { TrackHandoff } from "@core";
+import type { Aircraft, TrackHandoff, World } from "@core";
+import type { TrackDisplay } from "./trackDisplay";
 import { DATABLOCK_LINE_HEIGHT_PX, DEFAULT_DATABLOCK_CELL_PX } from "./fonts";
 import {
   DEFAULT_LEADER_DIR,
@@ -80,6 +81,48 @@ export interface DatablockSource {
   flightRules?: "IFR" | "VFR" | string;
   /** True if aircraft is an overflight / enroute track. */
   isOverflight?: boolean;
+}
+
+/**
+ * Build the single runtime source used by FDB/LDB formatters.
+ * Analog: CRC/STARS datablock reads the operational flight data associated
+ * with the track (manual §§2.12, 5.6.17). Trainer delta: unsupported host
+ * fields stay empty; surveillance remains on Aircraft and no intent changes.
+ */
+export function datablockSourceFromWorld(
+  world: World,
+  aircraft: Aircraft,
+  track?: Pick<TrackDisplay, "squawk">,
+): DatablockSource {
+  const plan = world.flightPlans.find(
+    (candidate) =>
+      candidate.status !== "deleted" &&
+      (candidate.id === aircraft.flightPlanId || candidate.associatedAircraftId === aircraft.id),
+  );
+  const reportedSquawk =
+    plan?.reportedBeacon ?? track?.squawk ?? aircraft.reportedSquawk ?? aircraft.squawk;
+  const assignedSquawk = plan?.assignedBeacon ?? aircraft.assignedSquawk;
+  const assignedAltitudeFt =
+    plan?.assignedAltitudeFt ?? aircraft.intent.controllerAssignedAltitudeFt;
+  return {
+    ...aircraft,
+    callsign: plan?.acid ?? aircraft.callsign,
+    squawk: reportedSquawk,
+    assignedSquawk,
+    reportedSquawk,
+    aircraftType: plan?.aircraftType ?? aircraft.aircraftType,
+    requestedAltitudeFt: plan?.requestedAltitudeFt ?? aircraft.requestedAltitudeFt,
+    flightRules: plan?.flightRules ?? aircraft.flightRules,
+    intent: {
+      ...aircraft.intent,
+      ...(assignedAltitudeFt === undefined
+        ? {}
+        : { controllerAssignedAltitudeFt: assignedAltitudeFt }),
+      ...(plan?.requestedAltitudeFt === undefined
+        ? {}
+        : { requestedAltitudeFt: plan.requestedAltitudeFt }),
+    },
+  };
 }
 
 export interface FullDatablockOpts {

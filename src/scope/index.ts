@@ -771,6 +771,7 @@ export {
   formatDatablockFields,
   formatPartialDatablockFields,
   formatFullDatablock,
+  datablockSourceFromWorld,
   formatGroundSpeedKt,
   formatGroundSpeedTens,
   formatTcp,
