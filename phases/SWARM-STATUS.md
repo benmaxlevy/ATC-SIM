@@ -1,5 +1,23 @@
 # Swarm status
 
+## FIFTY-SECOND SWARM COMPLETE — T02-134 accepted outbound handoff UI
+
+T02-134 is squash-merged on `fix/datablocks` as `3d392e2`. Existing outbound
+handoff routing to Center sector `C`, acceptance state, logs, and aircraft
+lifecycle remain unchanged. Accepted outbound handoffs now keep a white FDB;
+the receiver TCP remains visible for five seconds after acceptance, then
+disappears. Normal selection no longer performs the old automatic green FDB /
+PDB progression; explicit trainer return control remains available.
+
+Final gate: `npm run ci` passed — **189 test files, 1,724 tests passed, 4
+skipped**. Focused gate: **18 passed**.
+
+Manual review: supplied `full_manual.pdf`, General Rules p. 5-4, §5.1.9
+pp. 5-18–19, and §5.1.10 p. 5-20. Initial review found and fixed an override
+of explicit return-to-unowned control. Re-review primary PASS; independent
+review reported the same PASS findings but its required nested verifier was
+unavailable. No core handoff logic changed. No new SPCs or alerts added.
+
 ## FIFTY-FIRST SWARM COMPLETE — T02-131–133 datablock field alignment
 
 T02-131 through T02-133 are complete on `fix/datablocks`: PDB, LDB, and FDB
