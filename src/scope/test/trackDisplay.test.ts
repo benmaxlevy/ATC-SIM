@@ -263,6 +263,14 @@ test("T02-39: deriveScratchpads auto-derives approach shorthand to SP1 and assig
   expect(td.scratchpad).toBe("I27");
 });
 
+test("plan scratchpads override derived track scratchpads after flight-plan modification", () => {
+  const ac = makeTestAircraft({ id: "ac-plan", callsign: "UAL123" });
+  ac.flightPlan = { scratchpads: ["HI", "WEST"] };
+  const td = createTrackDisplay();
+
+  expect(deriveScratchpads(ac, td)).toEqual({ sp1: "HI", sp2: "WEST" });
+});
+
 test("T02-39: deriveScratchpads derives interim altitude to SP1 when no approach is set", () => {
   const ac = makeTestAircraft({
     id: "ac-alt",

@@ -420,6 +420,9 @@ export function deriveScratchpads(
   aircraft: Aircraft,
   td?: TrackDisplay,
 ): { sp1: string; sp2: string } {
+  const planScratchpads = Array.isArray(aircraft.flightPlan?.scratchpads)
+    ? aircraft.flightPlan.scratchpads.filter((value): value is string => typeof value === "string")
+    : [];
   // Derive automatic SP1 (approach shorthand, or interim altitude if controller explicitly assigned one):
   const approachId =
     aircraft.intent?.clearedApproachId ??
@@ -439,13 +442,17 @@ export function deriveScratchpads(
   }
 
   let sp1 = autoSp1;
-  if (td?.manualSp1 != null && td.manualSp1.length > 0) {
+  if (planScratchpads[0] != null && planScratchpads[0].length > 0) {
+    sp1 = sanitizeScratchpad(planScratchpads[0]);
+  } else if (td?.manualSp1 != null && td.manualSp1.length > 0) {
     sp1 = sanitizeScratchpad(td.manualSp1);
   }
 
   // Derive automatic SP2 (only if controller explicitly gave a speed, not if locked by STAR/SID or default):
   let sp2 = "";
-  if (td?.manualSp2 != null && td.manualSp2.length > 0) {
+  if (planScratchpads[1] != null && planScratchpads[1].length > 0) {
+    sp2 = sanitizeScratchpad(planScratchpads[1]);
+  } else if (td?.manualSp2 != null && td.manualSp2.length > 0) {
     sp2 = sanitizeScratchpad(td.manualSp2);
   } else if (
     aircraft.intent?.controllerAssignedSpeedKt != null &&
