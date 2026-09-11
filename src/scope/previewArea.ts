@@ -564,6 +564,12 @@ export function handlePreviewFlidKey(
       rejectPreviewCntl(state, nowMs);
       return { consumed: true };
     }
+    // An unassociated authoritative plan has no aircraft identity to apply
+    // until the subsequent INIT CNTL slew/click supplies the target.
+    if (state.armed.type === "initCntl" && planIdentityMatches(flid, world, view).length === 1) {
+      state.lastKeyAtMs = nowMs;
+      return { consumed: true };
+    }
     const resolved = resolveScopeFlid(flid, world, view);
     if (!resolved.ok) {
       rejectPreviewCntl(state, nowMs);

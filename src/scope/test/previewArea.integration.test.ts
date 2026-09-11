@@ -6,7 +6,14 @@
  * shipped helpers; this file does not re-derive them.
  */
 import { expect, test } from "vitest";
-import { SessionLog, createWorld, handoffFor, makeTestAircraft, type World } from "@core";
+import {
+  SessionLog,
+  createFlightPlan,
+  createWorld,
+  handoffFor,
+  makeTestAircraft,
+  type World,
+} from "@core";
 import { handleRadioText } from "@pilot";
 import { createWorldFromScenario, loadKdem } from "@scenario";
 import { DEFAULT_ALTITUDE_FILTER, formatFilterReadout } from "../altitudeFilter";
@@ -119,6 +126,61 @@ function starNear(
     (t) => t.text === "*" && Math.abs(t.x - cx) <= 4 && Math.abs(t.y - cy) <= 4,
   );
 }
+
+test("T02-145 — explicit ACID slew associates the authoritative plan", () => {
+  const plan = createFlightPlan({
+    id: "fp-acid-slew",
+    acid: "DAL456",
+    assignedBeacon: "7024",
+    fixes: [],
+    scratchpads: [],
+  });
+  if (!plan.ok) throw new Error(plan.error.message);
+  const target = makeTestAircraft({ id: "ac-acid-slew", callsign: "1234", squawk: "1200" });
+  const world = createWorld({ flightPlans: [plan.value], aircraft: [target] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  typeKeys(view, world, ["F3", "D", "A", "L", "4", "5", "6", "Enter"], "radio");
+  const tick = nmToScreen(target.xNm, target.yNm, view.camera, VIEW);
+  handlePpiLeftClick(view, world, tick.x, tick.y, CSS, CSS);
+
+  expect(world.flightPlans).toHaveLength(1);
+  expect(world.flightPlans[0]).toMatchObject({
+    id: "fp-acid-slew",
+    status: "active",
+    associatedAircraftId: target.id,
+  });
+  expect(target.callsign).toBe("DAL456");
+  expect(target.flightPlanId).toBe("fp-acid-slew");
+});
+
+test("T02-145 — explicit beacon slew associates the authoritative plan", () => {
+  const plan = createFlightPlan({
+    id: "fp-beacon-slew",
+    acid: "AAL789",
+    assignedBeacon: "7025",
+    fixes: [],
+    scratchpads: [],
+  });
+  if (!plan.ok) throw new Error(plan.error.message);
+  const target = makeTestAircraft({ id: "ac-beacon-slew", callsign: "5678", squawk: "1200" });
+  const world = createWorld({ flightPlans: [plan.value], aircraft: [target] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  typeKeys(view, world, ["F3", "7", "0", "2", "5", "Enter"], "radio");
+  const tick = nmToScreen(target.xNm, target.yNm, view.camera, VIEW);
+  handlePpiLeftClick(view, world, tick.x, tick.y, CSS, CSS);
+
+  expect(world.flightPlans[0]).toMatchObject({
+    id: "fp-beacon-slew",
+    status: "active",
+    associatedAircraftId: target.id,
+  });
+  expect(target.callsign).toBe("AAL789");
+  expect(target.flightPlanId).toBe("fp-beacon-slew");
+});
 
 test("AC1 — F3 slew paints INIT CNTL; click unowned arrival owns white FDB; empty click keeps the arm", () => {
   const world = createWorldFromScenario(loadKdem(), 1);

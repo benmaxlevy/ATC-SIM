@@ -150,6 +150,25 @@ function clearTrackingSlew(view: ScopeView): void {
   view.starsChordArmed = null;
 }
 
+function explicitPlanEntryForFlid(
+  flid: string,
+  world: World,
+  view: ScopeView,
+): ReturnType<typeof getFlightPlanEntries>[number] | undefined {
+  const normalized = flid.trim().toUpperCase();
+  if (/^\d{1,2}$/.test(normalized)) {
+    return undefined;
+  }
+  const plans = world.flightPlans.filter(
+    (plan) =>
+      plan.status !== "deleted" && (plan.acid === normalized || plan.assignedBeacon === normalized),
+  );
+  if (plans.length !== 1) {
+    return undefined;
+  }
+  return getFlightPlanEntries(world, view).find((entry) => entry.planId === plans[0]!.id);
+}
+
 /**
  * Command-then-slew apply. Empty click does not call this. Returns true when
  * the arm/buffer is consumed (applied or INV). False keeps the arm.
@@ -176,6 +195,19 @@ function applyTrackingSlewHit(
         const entryByIndex = !Number.isNaN(num) ? entries.find((e) => e.index === num) : undefined;
         if (entryByIndex) {
           const associated = associateFlightPlanToTrack(world, view, entryByIndex.index, id);
+          if (!associated) {
+            rejectPreviewCntl(view.preview, Date.now());
+            cancelStarsChordEntry(view.starsChordEntry);
+            view.starsChordArmed = null;
+            return true;
+          }
+          setSelectedAircraft(world, id);
+          clearTrackingSlew(view);
+          return true;
+        }
+        const entryByIdentity = explicitPlanEntryForFlid(flid, world, view);
+        if (entryByIdentity) {
+          const associated = associateFlightPlanToTrack(world, view, entryByIdentity.index, id);
           if (!associated) {
             rejectPreviewCntl(view.preview, Date.now());
             cancelStarsChordEntry(view.starsChordEntry);
