@@ -1,5 +1,24 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Sixtieth swarm planned — 2026-09-11 (Manual MULTI FUNC altitude filter)
+
+One corrective worker will replace the F7-to-asterisk shortcut with a real
+MULTI FUNC arm. `F7` followed by `F` must enter the manual altitude-filter
+grammar, while existing Preview Area `*` commands remain available through
+their explicit prefix.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align F7/MULTI FUNC and altitude-filter commands with TI 6191.409. |
+| Include | Multi-function arm state, F7 → F filter entry, focused tests, and docs. |
+| Skip | New filter semantics, flight-plan semantics, radio, pilot execution, and unrelated F-key changes. |
+| Stop | After focused tests, `npm run ci`, supplied-manual review, and push. |
+| Max workers | 1 |
+| Merge target | `feat/flight-plan-lifecycle` |
+| Push | Authorized by user. |
+
+Manual anchors: Appendix D F7 = MULTI FUNC; §4.11.1–§4.11.2, pp. 4-77–4-79.
+
 ## Fifty-ninth swarm started — 2026-09-11 (F-prefix Preview routing)
 
 Captain is executing the single corrective ticket on
