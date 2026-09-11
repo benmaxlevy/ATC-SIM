@@ -307,11 +307,10 @@ export function associateFlightPlan(
       ),
     };
   }
-  // Manual §5.4.3–5.4.4: an identified pending or suspended plan becomes
-  // active when it is associated to a displayed target. An already-active
-  // plan stays active; association must not perform an unconditional status
-  // rewrite or silently restore a deleted plan.
-  if (plan.status === "pending" || plan.status === "suspended") {
+  // Manual §5.4.1: pending plans activate when associated. A plan suspended
+  // while inactive or without beacon mismatch remains suspended when the
+  // selected object is a track; explicit unsuspend is a separate operation.
+  if (plan.status === "pending") {
     const transitioned = transitionFlightPlan(plan, "active");
     if (!transitioned.ok) {
       return {

@@ -91,7 +91,7 @@ describe("T02-145 flight-plan activation and correlation", () => {
     expect(ac.assignedSquawk).toBe("7024");
   });
 
-  it("restores a suspended plan to active only when a target is associated", () => {
+  it("preserves a suspended plan when an inactive, non-mismatch target is associated", () => {
     const pending = plan("fp-suspended", "DAL457", "7025");
     const active = transitionFlightPlan(pending, "active");
     if (!active.ok) throw new Error(active.error.message);
@@ -102,7 +102,8 @@ describe("T02-145 flight-plan activation and correlation", () => {
 
     const result = associateFlightPlan(world, "fp-suspended", "ac-suspended");
 
-    expect(result).toMatchObject({ ok: true, plan: { status: "active" } });
+    expect(result).toMatchObject({ ok: true, plan: { status: "suspended" } });
+    expect(world.flightPlans[0]!.status).toBe("suspended");
     expect(world.flightPlans[0]!.associatedAircraftId).toBe("ac-suspended");
   });
 
