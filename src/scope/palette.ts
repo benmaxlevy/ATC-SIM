@@ -86,11 +86,11 @@ export const PALETTE = {
    */
   atpaWarning: "#636300",
   /**
-   * ATPA alert cone and in-trail readout (R07 Alert Cone). Distinct from
-   * CA/MSAW red (`alert`) and from caution yellow. R07 names the color, not
-   * the RGB.
+   * ATPA alert cone and in-trail readout. Known trainer divergence: use the
+   * adapted dark red `#760A00`, not the manual's orange, and keep it distinct
+   * from CA/MSAW red (`alert`).
    */
-  atpaAlert: "#FF8000",
+  atpaAlert: "#760A00",
   /** SSA and list text — FAA list/preview green. Not map gray. */
   ssa: "#259925",
   /**
