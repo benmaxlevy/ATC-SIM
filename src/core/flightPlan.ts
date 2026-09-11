@@ -195,14 +195,19 @@ export function transitionFlightPlan(
   plan: FlightPlan,
   status: Exclude<FlightPlanStatus, "deleted">,
 ): FlightPlanResult<FlightPlan> {
-  if (plan.status === "deleted") {
+  const allowedNextStatus: Partial<Record<FlightPlanStatus, FlightPlanStatus>> = {
+    pending: "active",
+    active: "suspended",
+    suspended: "active",
+  };
+  if (allowedNextStatus[plan.status] !== status) {
     return {
       ok: false,
       error: error(
         "INVALID_STATUS_TRANSITION",
         "status",
-        plan.status,
-        "deleted flight plans cannot transition to another state",
+        `${plan.status}->${status}`,
+        `unsupported flight-plan status transition ${plan.status}->${status}`,
       ),
     };
   }
@@ -210,5 +215,5 @@ export function transitionFlightPlan(
 }
 
 export function deleteFlightPlan(plan: FlightPlan): FlightPlan {
-  return { ...plan, status: "deleted" };
+  return { ...plan, status: "deleted", assignedBeacon: undefined, reportedBeacon: undefined };
 }

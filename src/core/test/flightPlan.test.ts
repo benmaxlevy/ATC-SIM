@@ -36,6 +36,33 @@ test("AC1 — plans support pending, active, suspended, and deleted states", () 
   expect(deleteFlightPlan(suspended.value).status).toBe("deleted");
 });
 
+test("lifecycle rejects unsupported status transitions", () => {
+  const made = createFlightPlan(plan());
+  expect(made.ok).toBe(true);
+  if (!made.ok) return;
+
+  const active = transitionFlightPlan(made.value, "active");
+  expect(active.ok).toBe(true);
+  if (!active.ok) return;
+  const suspended = transitionFlightPlan(active.value, "suspended");
+  expect(suspended.ok).toBe(true);
+  if (!suspended.ok) return;
+
+  for (const [current, next] of [
+    [made.value, "pending"],
+    [made.value, "suspended"],
+    [active.value, "active"],
+    [active.value, "pending"],
+    [suspended.value, "suspended"],
+    [suspended.value, "pending"],
+  ] as const) {
+    expect(transitionFlightPlan(current, next)).toMatchObject({
+      ok: false,
+      error: { code: "INVALID_STATUS_TRANSITION", field: "status" },
+    });
+  }
+});
+
 test("AC2 — invalid identities and duplicate active identities return typed errors", () => {
   expect(errorCode(createFlightPlan(plan({ acid: "bad acid" })))).toBe("INVALID_ACID");
   expect(errorCode(createFlightPlan(plan({ assignedBeacon: "1288" })))).toBe("INVALID_BEACON");
@@ -85,14 +112,20 @@ test("AC5 — validation accepts four-digit octal codes and ignores deleted iden
   expect(validateFlightPlan(plan({ acid: "UAL1", assignedBeacon: "7777" }), [deleted])).toEqual([]);
 });
 
-test("deleted plans do not occupy beacon allocation", () => {
-  const deleted = createFlightPlan(plan({ assignedBeacon: "0701", status: "deleted" }));
-  expect(deleted.ok).toBe(true);
-  if (!deleted.ok) return;
+test("deletion releases assigned and reported beacons for reuse", () => {
+  const made = createFlightPlan(plan({ assignedBeacon: "0701", reportedBeacon: "0702" }));
+  expect(made.ok).toBe(true);
+  if (!made.ok) return;
+  const deleted = deleteFlightPlan(made.value);
+  expect(deleted).toMatchObject({
+    status: "deleted",
+    assignedBeacon: undefined,
+    reportedBeacon: undefined,
+  });
   const candidate = createFlightPlan(plan({ acid: "UAL1" }));
   expect(candidate.ok).toBe(true);
   if (!candidate.ok) return;
-  const allocated = withAllocatedBeacon(candidate.value, ["0701"], [deleted.value]);
+  const allocated = withAllocatedBeacon(candidate.value, ["0701"], [deleted]);
   expect(allocated.ok).toBe(true);
   if (!allocated.ok) return;
   expect(allocated.value.assignedBeacon).toBe("0701");
