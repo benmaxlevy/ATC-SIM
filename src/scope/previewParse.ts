@@ -50,7 +50,12 @@ export type PreviewArmedAction =
       flightRules?: string;
     }
   | { readonly type: "initCntl"; readonly flid?: string }
-  | { readonly type: "termCntl"; readonly flid?: string }
+  | {
+      readonly type: "termCntl";
+      readonly flid?: string;
+      readonly flightType?: "A" | "P" | "E";
+      readonly coordinationTime?: string;
+    }
   | { readonly type: "releaseAssignedBeacon"; readonly flid: string }
   | {
       readonly type: "modifyFlightPlan";
@@ -845,7 +850,28 @@ function isFlidPrefixToken(token: string): boolean {
 }
 
 function isCompleteFlidToken(token: string): boolean {
-  return FULL_CALLSIGN.test(token) || SUFFIX_CALLSIGN.test(token) || SQUAWK_CODE.test(token);
+  return (
+    FULL_CALLSIGN.test(token) ||
+    SUFFIX_CALLSIGN.test(token) ||
+    SQUAWK_CODE.test(token) ||
+    /^\d{1,2}$/.test(token)
+  );
+}
+
+function parseTermIdentity(rest: string): PreviewCommandResult {
+  const match = /^(\S+?)(?:\/([APE]))?(?: ([0-2]\d[0-5]\d))?$/.exec(rest);
+  if (!match || (match[3] !== undefined && /^\d{1,2}$/.test(match[1]!))) return invalid("FORMAT");
+  const flid = match[1]!;
+  if (!isCompleteFlidToken(flid) || flid === "ALL") return invalid("FORMAT");
+  return {
+    kind: "action",
+    action: {
+      type: "termCntl",
+      flid,
+      ...(match[2] ? { flightType: match[2] as "A" | "P" | "E" } : {}),
+      ...(match[3] ? { coordinationTime: match[3] } : {}),
+    },
+  };
 }
 
 function parseTrackFlidRest(kind: "initCntl" | "termCntl", rest: string): PreviewCommandResult {
@@ -854,6 +880,9 @@ function parseTrackFlidRest(kind: "initCntl" | "termCntl", rest: string): Previe
   }
   if (kind === "termCntl" && rest === "ALL") {
     return invalid("TERM CNTL ALL");
+  }
+  if (kind === "termCntl" && (rest.includes("/") || rest.includes(" "))) {
+    return parseTermIdentity(rest);
   }
   if (isCompleteFlidToken(rest)) {
     return { kind: "action", action: { type: kind, flid: rest } };
@@ -871,6 +900,7 @@ function parseTrackFlidRest(kind: "initCntl" | "termCntl", rest: string): Previe
  */
 export function parseTrackingCommand(buffer: string): PreviewCommandResult | null {
   const compact = compactTrackingBuffer(buffer);
+  const spaced = buffer.trim().toUpperCase().replace(/\s+/g, " ");
   if (compact === "**F") {
     return { kind: "action", action: { type: "clearAllForcedFdb" } };
   }
@@ -891,6 +921,9 @@ export function parseTrackingCommand(buffer: string): PreviewCommandResult | nul
     return parseTrackFlidRest("initCntl", compact.slice(1));
   }
   if (compact.startsWith("/")) {
+    if (/^\/\S+(?:\/[APE])? \d{4}$/.test(spaced)) {
+      return parseTrackFlidRest("termCntl", spaced.slice(1));
+    }
     const lenMatch = /^\/([0-7])(.*)$/.exec(compact);
     if (lenMatch) {
       const step = Number(lenMatch[1]);

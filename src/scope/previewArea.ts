@@ -76,21 +76,37 @@ function unassociatedTrack(aircraftId: string, view?: ScopeView): boolean {
  * A plan without a track is intentionally a plan-only result: the subsequent
  * target click supplies the aircraft identity.
  */
-function planIdentityMatches(token: string, world: World, view?: ScopeView): World["flightPlans"] {
-  const normalized = token.trim().toUpperCase();
+function planIdentityMatches(
+  token: string,
+  world: World,
+  view?: ScopeView,
+  termOptions?: { flightType?: "A" | "P" | "E"; coordinationTime?: string },
+): World["flightPlans"] {
+  const identity = /^(\S+?)(?:\/([APE]))?(?:\s([0-2]\d[0-5]\d))?$/.exec(token.trim().toUpperCase());
+  const normalized = identity?.[1] ?? token.trim().toUpperCase();
+  const flightType = termOptions?.flightType ?? identity?.[2];
+  const coordinationTime = termOptions?.coordinationTime ?? identity?.[3];
+  const matchesOptions = (plan: World["flightPlans"][number]) =>
+    (!flightType ||
+      (flightType === "A" && plan.flightType === "IFR") ||
+      (flightType === "P" && plan.flightType === "VFR") ||
+      (flightType === "E" && plan.flightType === "DVFR")) &&
+    (!coordinationTime || plan.eta === coordinationTime || plan.ptd === coordinationTime);
   if (view && /^\d{1,2}$/.test(normalized)) {
     const entry = getFlightPlanEntries(world, view).find(
       (item) => item.index === Number(normalized),
     );
     if (entry?.planId) {
       const plan = world.flightPlans.find((item) => item.id === entry.planId);
-      return plan && plan.status !== "deleted" ? [plan] : [];
+      return plan && plan.status !== "deleted" && matchesOptions(plan) ? [plan] : [];
     }
     return [];
   }
   return world.flightPlans.filter(
     (plan) =>
-      plan.status !== "deleted" && (plan.acid === normalized || plan.assignedBeacon === normalized),
+      plan.status !== "deleted" &&
+      (plan.acid === normalized || plan.assignedBeacon === normalized) &&
+      matchesOptions(plan),
   );
 }
 
@@ -439,7 +455,7 @@ export function armPreviewSlewAction(
   nowMs: number,
 ): void {
   if (action.type === "initCntl" || action.type === "termCntl") {
-    armPreviewCntl(state, action.type, nowMs, action.flid);
+    armPreviewCntl(state, action.type, nowMs, action.flid, action);
     return;
   }
   state.phase = "armed";
@@ -484,14 +500,15 @@ export function armPreviewCntl(
   kind: "initCntl" | "termCntl",
   nowMs: number,
   flid?: string,
+  action?: Extract<PreviewArmedAction, { type: "initCntl" | "termCntl" }>,
 ): void {
   state.phase = "armed";
   state.mnemonic = kind === "initCntl" ? "INIT CNTL" : "TERM CNTL";
   state.buffer = "";
   state.flid = flid && flid.length > 0 ? flid : null;
   state.rejection = null;
-  state.armed = { type: kind };
-  state.slewAction = { type: kind };
+  state.armed = action ?? { type: kind };
+  state.slewAction = action ?? { type: kind };
   state.lastKeyAtMs = nowMs;
 }
 
@@ -567,7 +584,12 @@ export function handlePreviewFlidKey(
       rejectPreviewCntl(state, nowMs);
       return { consumed: true };
     }
-    const plans = planIdentityMatches(flid, world, view);
+    const plans = planIdentityMatches(
+      flid,
+      world,
+      view,
+      state.armed.type === "termCntl" ? state.armed : undefined,
+    );
     // An unassociated authoritative plan has no aircraft identity to apply
     // until the subsequent INIT CNTL slew/click supplies the target. TERM CNTL
     // can delete a plan-only identity directly, as required by §5.4.6.
@@ -592,7 +614,12 @@ export function handlePreviewFlidKey(
     cancelPreviewArea(state);
     return { consumed: true, apply: { type, aircraftId: resolved.aircraftId } };
   }
-  if (FLID_CHAR.test(key)) {
+  if (key === " " && state.armed.type === "termCntl" && state.flid) {
+    state.flid += key;
+    state.lastKeyAtMs = nowMs;
+    return { consumed: true };
+  }
+  if (FLID_CHAR.test(key) || (key === "/" && state.armed.type === "termCntl")) {
     const next = (state.flid ?? "") + key.toUpperCase();
     state.flid = next;
     state.lastKeyAtMs = nowMs;

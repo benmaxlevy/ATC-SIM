@@ -16,6 +16,7 @@ import { hasActiveUninhibitedConflict } from "../systemLists";
 import { associateFlightPlanToTrack, getFlightPlanEntries } from "../systemLists";
 import { ensureTrackDisplay, syncTrackDisplays } from "../trackDisplay";
 import { parsePreviewCommand as parsePreviewBuffer } from "../previewParse";
+import { parseTrackingCommand } from "../previewParse";
 
 function keyEvent(key: string, opts?: { ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean }) {
   return {
@@ -56,6 +57,21 @@ test("T02-146 corrective — parses beacon release and rejects invalid modify va
   expect(parsePreviewBuffer("*M DAL123 FIXES BOS")).toEqual({ kind: "invalid", reason: "FORMAT" });
   expect(parsePreviewBuffer("*M DAL123 SP ANAT")).toEqual({ kind: "invalid", reason: "ILL SCR" });
   expect(parsePreviewBuffer("*M DAL123 AALT A350")).toMatchObject({ kind: "action" });
+});
+
+test("T02-146 corrective — TERM CNTL accepts tab lines and disambiguation", () => {
+  expect(parseTrackingCommand("/DAL123/A 1430")).toEqual({
+    kind: "action",
+    action: { type: "termCntl", flid: "DAL123", flightType: "A", coordinationTime: "1430" },
+  });
+  expect(parseTrackingCommand("/DAL123/A 2460")).toEqual({ kind: "invalid", reason: "FORMAT" });
+  expect(parseTrackingCommand("/12 1430")).toEqual({ kind: "invalid", reason: "FORMAT" });
+});
+
+test("T02-146 corrective — FIXES requires an entry or exit fix", () => {
+  expect(parsePreviewBuffer("*M DAL123 FIXES **")).toEqual({ kind: "invalid", reason: "FORMAT" });
+  expect(parsePreviewBuffer("*M DAL123 FIXES BOS*")).toMatchObject({ kind: "action" });
+  expect(parsePreviewBuffer("*M DAL123 FIXES *BOS")).toMatchObject({ kind: "action" });
 });
 
 test("T02-145: INIT CNTL identity matches an unassociated authoritative plan", () => {

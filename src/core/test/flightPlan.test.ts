@@ -246,3 +246,19 @@ test("T02-146 corrective — release beacon preserves inactive plan and disassoc
   });
   expect(world.flightPlans[0]!.status).toBe("suspended");
 });
+
+test("T02-146 corrective — zero altitudes remove modification fields", () => {
+  const made = createFlightPlan(
+    plan({ requestedAltitudeFt: 5000, assignedAltitudeFt: 6000, status: "active" }),
+  );
+  if (!made.ok) throw new Error(made.error.message);
+  const world = createWorld({ flightPlans: [made.value] });
+  expect(modifyFlightPlan(world, made.value.id, "requestedAltitudeFt", undefined)).toMatchObject({
+    ok: true,
+  });
+  expect(modifyFlightPlan(world, made.value.id, "assignedAltitudeFt", undefined)).toMatchObject({
+    ok: true,
+  });
+  expect(made.value.requestedAltitudeFt).toBeUndefined();
+  expect(made.value.assignedAltitudeFt).toBeUndefined();
+});

@@ -421,10 +421,12 @@ function applyPreviewArmedAction(
         view.preview.rejection = uniquePlans.length === 0 ? "NO FLIGHT" : "FORMAT";
         return;
       }
-      let value: string | number | string[] = action.value;
+      let value: string | number | string[] | undefined = action.value;
       if (action.field === "scratchpads") value = [action.value.slice(1)];
       if (action.field === "requestedAltitudeFt" || action.field === "assignedAltitudeFt")
-        value = Number(action.value.replace(/^A/, "")) * 100;
+        value = /^A?000$/.test(action.value)
+          ? undefined
+          : Number(action.value.replace(/^A/, "")) * 100;
       if (action.field === "fixes") value = action.value;
       if (action.field === "assignedBeacon" && /^(?:\+|\/|\/[1-4])$/.test(action.value)) {
         const poolKey =
@@ -466,6 +468,15 @@ function applyPreviewArmedAction(
           plan.status !== "deleted" &&
           (plan.acid === action.flid || plan.assignedBeacon === action.flid),
       );
+      if (/^\d{1,2}$/.test(action.flid)) {
+        const entry = getFlightPlanEntries(world, view).find(
+          (item) => item.index === Number(action.flid),
+        );
+        const plan = entry?.planId
+          ? world.flightPlans.find((item) => item.id === entry.planId)
+          : undefined;
+        if (plan && plan.status !== "deleted") plans.push(plan);
+      }
       if (plans.length !== 1) {
         view.preview.rejection = plans.length === 0 ? "NO FLIGHT" : "DUP ID";
         return;
@@ -476,10 +487,12 @@ function applyPreviewArmedAction(
       if (result.ok && associatedAircraftId && plan.status === "suspended") {
         const aircraft = world.aircraft.find((item) => item.id === associatedAircraftId);
         if (aircraft) {
+          delete aircraft.assignedSquawk;
           delete aircraft.flightPlanId;
           delete aircraft.flightPlan;
           delete aircraft.fp;
           const td = ensureTrackDisplay(view.tracks, associatedAircraftId);
+          delete td.squawk;
           td.unassociated = true;
           td.datablockMode = "partial";
         }
