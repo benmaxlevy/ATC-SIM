@@ -201,10 +201,7 @@ export function initiateOutboundHandoff(
 ): boolean {
   if (ctx.world) {
     ctx.world.handoffs.set(ac.id, { kind: "outbound", toSectorId: toPositionId });
-    if (
-      toPositionId === DEFAULT_CENTER_SECTOR_ID ||
-      toPositionId === DEFAULT_TOWER_SECTOR_ID
-    ) {
+    if (toPositionId === DEFAULT_CENTER_SECTOR_ID || toPositionId === DEFAULT_TOWER_SECTOR_ID) {
       ctx.world.outboundHandoffInitiatedAtSimMs.set(ac.id, ctx.simTimeMs);
     } else {
       ctx.world.outboundHandoffInitiatedAtSimMs.delete(ac.id);
