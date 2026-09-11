@@ -135,11 +135,10 @@ import {
   setLeaderDirAndLengthForId,
   setLeaderDirForScope,
   toggleDatablockModeForSelection,
-  applyDropTrackToId,
-  applyDropTrackToSelection,
   applyInitiateTrackToId,
   applyInitiateTrackToSelection,
   selectedTrackId,
+  terminateTrackWithPlan,
 } from "./trackDisplay";
 import { applyHandoffToSelection } from "./ownership";
 import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock, type LeaderLengthPx } from "./leader";
@@ -773,20 +772,13 @@ function applyPreviewCntl(
   if (apply.type === "initCntl") {
     applyInitiateTrackToId(view.tracks, world, apply.aircraftId);
   } else {
-    const aircraft = apply.aircraftId
-      ? world.aircraft.find((item) => item.id === apply.aircraftId)
-      : undefined;
-    const planId = apply.planId ?? aircraft?.flightPlanId;
-    if (planId) {
-      deleteFlightPlanFromWorld(world, planId);
+    if (apply.aircraftId) {
+      terminateTrackWithPlan(view.tracks, world, apply.aircraftId);
+    } else if (apply.planId) {
+      // Plan-only TERM remains a plan deletion; there is no radar target to
+      // mark unassociated.
+      deleteFlightPlanFromWorld(world, apply.planId);
     }
-    if (aircraft) {
-      const td = ensureTrackDisplay(view.tracks, apply.aircraftId);
-      td.unassociated = true;
-      td.datablockMode = "partial";
-      td.tracked = true;
-    }
-    if (aircraft) applyDropTrackToId(view.tracks, world, apply.aircraftId);
   }
 }
 
@@ -1169,15 +1161,7 @@ export function handleScopeKeyDown(
   if (event.key === "F4") {
     if (world && selectedTrackId(world)) {
       const aircraftId = selectedTrackId(world)!;
-      const aircraft = world.aircraft.find((item) => item.id === aircraftId);
-      if (aircraft?.flightPlanId) {
-        deleteFlightPlanFromWorld(world, aircraft.flightPlanId);
-        const td = ensureTrackDisplay(view.tracks, aircraftId);
-        td.unassociated = true;
-        td.datablockMode = "partial";
-        td.tracked = true;
-      }
-      applyDropTrackToSelection(view.tracks, world);
+      terminateTrackWithPlan(view.tracks, world, aircraftId);
       cancelPreviewArea(view.preview);
     } else {
       armPreviewCntl(view.preview, "termCntl", nowMs);

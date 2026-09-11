@@ -1,7 +1,6 @@
 import {
   acceptPointout,
   createActiveFlightPlanFromTarget,
-  deleteFlightPlanFromWorld,
   handoffFor,
   setSelectedAircraft,
   type World,
@@ -68,7 +67,6 @@ import { toggleVideoMap } from "./dcb/dcbFunctions";
 import { datablockLineHeightPx } from "./fonts";
 import {
   applyBeaconatorSlewToId,
-  applyDropTrackToId,
   applyInitiateTrackToId,
   ensureTrackDisplay,
   pruneCaPairInhibitsForTrack,
@@ -76,6 +74,7 @@ import {
   setLeaderDirForId,
   setLeaderLengthForId,
   toggleTrackHighlight,
+  terminateTrackWithPlan,
 } from "./trackDisplay";
 
 function viewSize(widthPx: number, heightPx: number): ScopeViewSize {
@@ -243,22 +242,8 @@ function applyTrackingSlewHit(
       return true;
     }
     case "termCntl": {
-      const td = ensureTrackDisplay(view.tracks, id);
-      const target = world.aircraft.find((aircraft) => aircraft.id === id);
-      if (target?.flightPlanId) {
-        deleteFlightPlanFromWorld(world, target.flightPlanId);
-        td.unassociated = true;
-        td.datablockMode = "partial";
-        td.tracked = true;
-      }
-      if (hit.region === "datablock") {
-        // TERM CNTL removes an identified datablock; it must not toggle the
-        // deleted plan back into a displayed datablock mode.
-        td.datablockMode = "partial";
-      } else {
-        applyDropTrackToId(view.tracks, world, id, view);
-        pruneCaPairInhibitsForTrack(view, id);
-      }
+      terminateTrackWithPlan(view.tracks, world, id, view);
+      pruneCaPairInhibitsForTrack(view, id);
       setSelectedAircraft(world, id);
       clearTrackingSlew(view);
       return true;

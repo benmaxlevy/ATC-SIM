@@ -365,7 +365,7 @@ test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; 
   const dbHit = pickAircraftHitAt(world, db.x, db.y, CAM, CSS, CSS, 12, view);
   expect(dbHit?.region).toBe("datablock");
   handlePpiLeftClick(view, world, db.x, db.y, CSS, CSS);
-  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+  expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
   expect(view.tracks.get(dal.id)!.datablockMode).toBe("partial");
   expect(view.preview.phase).toBe("idle");
 

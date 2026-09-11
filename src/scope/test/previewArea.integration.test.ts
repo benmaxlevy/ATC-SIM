@@ -182,6 +182,49 @@ test("T02-145 — explicit beacon slew associates the authoritative plan", () =>
   expect(target.flightPlanId).toBe("fp-beacon-slew");
 });
 
+test("F4 and TERM CNTL share termination semantics", () => {
+  const makeCase = (id: string) => {
+    const plan = createFlightPlan({
+      id: `fp-term-${id}`,
+      acid: "DAL456",
+      assignedBeacon: "7024",
+      fixes: [],
+      scratchpads: [],
+    });
+    if (!plan.ok) throw new Error(plan.error.message);
+    const target = makeTestAircraft({ id: `ac-term-${id}`, callsign: "DAL456" });
+    target.flightPlanId = plan.value.id;
+    plan.value.status = "active";
+    plan.value.associatedAircraftId = target.id;
+    return { target, world: createWorld({ flightPlans: [plan.value], aircraft: [target] }) };
+  };
+  const direct = makeCase("direct");
+  const directView = createScopeView();
+  syncTrackDisplays(directView.tracks, direct.world);
+  direct.world.selectedAircraftId = direct.target.id;
+  handleScopeKeyDown(keyEvent("F4"), directView, "scope", direct.world, 0);
+
+  const typed = makeCase("typed");
+  const typedView = createScopeView();
+  syncTrackDisplays(typedView.tracks, typed.world);
+  handleScopeKeyDown(keyEvent("F4"), typedView, "scope", typed.world, 0);
+  typeKeys(typedView, typed.world, ["D", "A", "L", "4", "5", "6", "Enter"]);
+
+  for (const result of [direct, typed]) {
+    const td = (result === direct ? directView : typedView).tracks.get(result.target.id)!;
+    expect(result.world.flightPlans[0]?.status).toBe("deleted");
+    expect(result.world.aircraft[0]?.flightPlanId).toBeUndefined();
+    expect(td).toMatchObject({
+      ownership: "unowned",
+      datablockMode: "partial",
+      unassociated: true,
+      tracked: false,
+      forcedFdb: false,
+    });
+    expect(result.target.callsign).toBe("DAL456");
+  }
+});
+
 test("AC1 — F3 slew paints INIT CNTL; click unowned arrival owns white FDB; empty click keeps the arm", () => {
   const world = createWorldFromScenario(loadKdem(), 1);
   const dal = world.aircraft[0]!;

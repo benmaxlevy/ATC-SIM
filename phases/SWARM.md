@@ -1,5 +1,26 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Fifty-eighth swarm planned — 2026-09-11 (Unified TERM CNTL/F4)
+
+One corrective worker will route the F4 alias and typed TERM CNTL through the
+same termination behavior. The shared path must delete the associated flight
+plan, leave the radar track unassociated, and render the unassociated target
+symbol according to the supplied STARS manual.
+
+| Key | Value |
+| --- | --- |
+| Goal | Make F4 an alias of TERM CNTL with shared termination semantics. |
+| Include | Shared TERM handler, display-state cleanup, focused regression tests. |
+| Skip | New flight-plan semantics, pilot execution, radio, speech, kinematics, and unrelated F4 behavior. |
+| Stop | After focused tests, `npm run ci`, supplied-manual review, and push. |
+| Max workers | 1 |
+| Merge target | `feat/flight-plan-lifecycle` |
+| Push | Authorized by user. |
+
+Manual anchors: Appendix D equates F4 with TERM CNTL; §5.4.6 defines
+termination; §2.12 and Table 2-11 define the resulting unassociated LDB and
+position symbol.
+
 ## Fifty-seventh swarm planned — 2026-09-11 (Post-TERM datablock display fix)
 
 One corrective worker will fix the reported regression where a terminated

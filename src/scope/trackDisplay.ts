@@ -12,6 +12,7 @@ import {
   acceptInboundHandoff,
   acceptPointout,
   convertPointoutToHandoff,
+  deleteFlightPlanFromWorld,
   handoffFor,
   rejectPointout,
 } from "@core";
@@ -734,6 +735,37 @@ export function applyDropTrackToSelection(
     return { applied: false, hint: NO_SEL_HINT };
   }
   return applyDropTrackToId(tracks, world, id, caState);
+}
+
+/**
+ * Shared TERM CNTL implementation. F4 is the keyboard alias for this same
+ * operation: remove the authoritative plan association, leave the radar
+ * target moving, and show the unassociated LDB position symbol.
+ */
+export function terminateTrackWithPlan(
+  tracks: Map<string, TrackDisplay>,
+  world: World,
+  aircraftId: string,
+  caState?: TrackDisplayState,
+): { applied: boolean; hint: string | null } {
+  const aircraft = world.aircraft.find((item) => item.id === aircraftId);
+  if (!aircraft) {
+    return { applied: false, hint: NO_SEL_HINT };
+  }
+  const plan = world.flightPlans.find(
+    (item) => item.id === aircraft.flightPlanId || item.associatedAircraftId === aircraftId,
+  );
+  if (plan) {
+    deleteFlightPlanFromWorld(world, plan.id);
+  }
+  const result = applyDropTrackToId(tracks, world, aircraftId, caState);
+  const td = ensureTrackDisplay(tracks, aircraftId);
+  td.unassociated = true;
+  td.datablockMode = "partial";
+  td.tracked = false;
+  td.forcedFdb = false;
+  td.retainedFdbOutsideAltitudeFilter = false;
+  return result;
 }
 
 /** Capture currently full datablocks before a new altitude filter is committed. */
