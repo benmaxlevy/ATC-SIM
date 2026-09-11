@@ -127,6 +127,9 @@ function pickDatablockAt(
     if (ho.kind === "inbound" || ho.kind === "departure") {
       mode = "full";
     }
+    if (ho.kind === "outbound" && ho.status !== "accepted") {
+      mode = "full";
+    }
     if (ho.kind === "outbound" && ho.status === "accepted" && td?.ownership !== "unowned") {
       mode = "full";
     }

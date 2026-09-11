@@ -11,7 +11,9 @@ import {
 import {
   PALETTE,
   applyDropTrackToSelection,
+  applyHandoffToSelection,
   createScopeView,
+  getDatablockVisualState,
   handleTrackClick,
   handleTrackMiddleClick,
   isTargetDiamondPath,
@@ -433,6 +435,45 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       expect(returnedCtx.fillTexts.some((t) => t.text === "UAL888")).toBe(false);
       expect(returnedCtx.fillTexts.some((t) => t.text === "090  26")).toBe(true);
       expect(returnedCtx.fillTexts.some((t) => t.text === "*")).toBe(true);
+    });
+
+    test("pending outbound handoff keeps receiver TCP C on a white full datablock", () => {
+      const log = new SessionLog();
+      const ac = createAircraft({
+        id: "ac-pending-outbound",
+        callsign: "DAL456",
+        xNm: 15,
+        yNm: 10,
+        headingDeg: 45,
+        altitudeFt: 9000,
+        speedKt: 260,
+      });
+      const world = createWorld({ aircraft: [ac], sessionLog: log, simTimeMs: 1000 });
+      const view = createScopeView();
+      syncTrackDisplays(view.tracks, world);
+      world.selectedAircraftId = ac.id;
+
+      const result = applyHandoffToSelection(view.tracks, world);
+      expect(result).toEqual({ applied: true, target: "center", hint: null });
+      expect(handoffFor(world, ac.id)).toEqual({ kind: "outbound", toSectorId: "C" });
+      expect(log.byType("handoff.center")).toHaveLength(1);
+      expect(log.byType("handoff.outbound.initiated")).toHaveLength(1);
+
+      const visual = getDatablockVisualState(view, world, ac);
+      expect(visual).toMatchObject({
+        color: PALETTE.owned,
+        leaderColor: PALETTE.owned,
+        mode: "full",
+        visible: true,
+      });
+
+      const rendered = createMockCtx();
+      renderScope(rendered.ctx, world, view, 800, 800);
+      const callsign = rendered.fillTexts.find((entry) => entry.text === "DAL456");
+      expect(callsign?.fillStyle).toBe(PALETTE.owned);
+      expect(rendered.fillTexts.some((entry) => entry.text.includes(" C "))).toBe(true);
+      expect(view.tracks.get(ac.id)?.ownership).toBe("center");
+      expect(handoffFor(world, ac.id)).toEqual({ kind: "outbound", toSectorId: "C" });
     });
 
     test("pointout lifecycle: offer, accept, UN reject, ** convert, and F4 drop track", () => {

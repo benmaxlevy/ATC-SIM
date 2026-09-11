@@ -1,8 +1,16 @@
 import { expect, test } from "vitest";
-import { createAircraft, createWorld, handoffFor, setSelectedAircraft, type Intent } from "@core";
+import {
+  createAircraft,
+  createWorld,
+  handoffFor,
+  initiateCenterHandoff,
+  setSelectedAircraft,
+  type Intent,
+} from "@core";
 import { createWorldFromScenario, loadKdem, loadKdemIls27 } from "@scenario";
 import { DEFAULT_SCOPE_CAMERA, nmToScreen, type ScopeCamera } from "../camera";
-import { datablockRect, linesForDatablock } from "../datablock";
+import { datablockRect, linesForDatablock, pointInDatablock } from "../datablock";
+import { datablockLineHeightPx } from "../fonts";
 import { PALETTE } from "../palette";
 import {
   HIT_RADIUS_CSS_PX,
@@ -160,6 +168,63 @@ test("AC6 — clicking the datablock rectangle selects that track, not a nearby 
   expect(selected).toBe(dal);
   expect(world.selectedAircraftId).toBe("ac-dal");
   expect(dal.intent.assignedHeadingDeg).toBe(100);
+});
+
+test("pending outbound handoff hit-tests the renderer's full datablock geometry", () => {
+  const ac = sample("DAL456", "ac-pending-outbound", 0, 0);
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const td = view.tracks.get(ac.id)!;
+  td.ownership = "center";
+  initiateCenterHandoff(ac, { world, simTimeMs: world.simTimeMs }, "C");
+
+  const tick = nmToScreen(ac.xNm, ac.yNm, CAM, VIEW);
+  const lineHeight = datablockLineHeightPx(view.charSizePx);
+  const fullLines = linesForDatablock(ac, "full", {
+    modeCVisible: view.modeCVisible,
+    handoffSectorId: "C",
+    simTimeMs: world.simTimeMs,
+  });
+  const partialLines = linesForDatablock(ac, "partial", {
+    modeCVisible: view.modeCVisible,
+    handoffSectorId: "C",
+    simTimeMs: world.simTimeMs,
+  });
+  const fullRect = datablockRect(
+    tick.x,
+    tick.y,
+    fullLines,
+    view.datablockCellWidthPx,
+    lineHeight,
+    td.leaderDir,
+    td.leaderLengthPx ?? view.leaderLengthPx,
+  );
+  const partialRect = datablockRect(
+    tick.x,
+    tick.y,
+    partialLines,
+    view.datablockCellWidthPx,
+    lineHeight,
+    td.leaderDir,
+    td.leaderLengthPx ?? view.leaderLengthPx,
+  );
+  const fullOnlyPoint = { x: fullRect.x + 1, y: fullRect.y + lineHeight / 2 };
+
+  expect(pointInDatablock(fullOnlyPoint.x, fullOnlyPoint.y, fullRect)).toBe(true);
+  expect(pointInDatablock(fullOnlyPoint.x, fullOnlyPoint.y, partialRect)).toBe(false);
+  expect(
+    pickAircraftAt(
+      world,
+      fullOnlyPoint.x,
+      fullOnlyPoint.y,
+      CAM,
+      CSS_W,
+      CSS_H,
+      HIT_RADIUS_CSS_PX,
+      view,
+    ),
+  ).toBe(ac);
 });
 
 test("filtered track: datablock rectangle is not pickable; the target still selects", () => {

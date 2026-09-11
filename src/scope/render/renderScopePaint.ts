@@ -599,6 +599,17 @@ export function getDatablockVisualState(
     };
   }
 
+  // Manual §5.1.9 pp. 5-18–19: initiated handoff shows receiver TCP and uses
+  // Handoff Attention white; trainer Center ownership stub stays separate.
+  if (ho.kind === "outbound" && ho.status !== "accepted") {
+    return {
+      color: PALETTE.owned,
+      visible: true,
+      mode: "full",
+      leaderColor: PALETTE.owned,
+    };
+  }
+
   // 4. Pointout inbound pending: Blinking yellow FDB with PO tag
   if (ho.kind === "pointout_inbound" && ho.status === "pending") {
     const isBlinkOn = Math.floor(world.simTimeMs / BLINK_HALF_PERIOD_MS) % 2 === 0;
