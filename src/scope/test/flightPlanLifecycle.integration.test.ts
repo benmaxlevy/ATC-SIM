@@ -6,9 +6,10 @@ import {
   createWorld,
   deleteFlightPlanFromWorld,
   modifyFlightPlan,
+  updateAircraftSquawk,
 } from "@core";
 import { datablockSourceFromWorld, formatFullDatablock } from "../datablock";
-import { getFlightPlanEntries } from "../systemLists";
+import { buildTabFlightPlanList, getFlightPlanEntries } from "../systemLists";
 import { createScopeView } from "../scopeView";
 import { terminalStripsFromWorld } from "../../ui/strips/terminalStripsFromWorld";
 
@@ -131,5 +132,45 @@ describe("T02-147 authoritative flight-plan display lifecycle", () => {
       aircraft.altitudeFt,
       aircraft.speedKt,
     ]).toEqual(pose);
+  });
+
+  it("correlates only on the target squawk event, never on list reads", () => {
+    const made = createFlightPlan({
+      id: "fp-event",
+      acid: "UAL123",
+      assignedBeacon: "7052",
+      fixes: [],
+      scratchpads: [],
+    });
+    if (!made.ok) throw new Error(made.error.message);
+    const aircraft = createAircraft({
+      id: "ac-event",
+      callsign: "1234",
+      xNm: 1,
+      yNm: 1,
+      headingDeg: 90,
+      altitudeFt: 4000,
+      speedKt: 180,
+      squawk: "1200",
+    });
+    const world = createWorld({ flightPlans: [made.value], aircraft: [aircraft] });
+    const view = createScopeView();
+
+    buildTabFlightPlanList(world, 10, view);
+    buildTabFlightPlanList(world, 10, view);
+    expect(world.flightPlans[0]).toMatchObject({
+      status: "pending",
+    });
+    expect(world.flightPlans[0].associatedAircraftId).toBeUndefined();
+    expect(aircraft.callsign).toBe("1234");
+
+    const update = updateAircraftSquawk(world, aircraft.id, "7052");
+    expect(update?.correlation).toMatchObject({ ok: true, aircraftId: aircraft.id });
+    expect(world.flightPlans[0]).toMatchObject({
+      status: "active",
+      associatedAircraftId: aircraft.id,
+    });
+    expect(aircraft.squawk).toBe("7052");
+    expect(aircraft.callsign).toBe("1234");
   });
 });

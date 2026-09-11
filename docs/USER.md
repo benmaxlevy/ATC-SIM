@@ -133,7 +133,7 @@ read back or fly the change.
 |---|---|---|
 | `*T` | `*T` then Enter | Toggles the TAB flight-plan list. `*T 15` sets its visible row count. Use the displayed numeric row index for list operations. |
 | `ACID [fields]` | `UAL1234 2341 AT AAL B738` then Enter | Creates a pending plan. Creation accepts an ACID plus a four-digit beacon, `+` (IFR pool), `/` (VFR pool), `/1`–`/4` (general pools), TCP, flight type, scratchpads, altitude, rules, and aircraft data. |
-| `F3` / `+` | `F3`, then click a target; or `F3 UAL1234` then Enter | INIT CNTL: associates/activates a matching plan and owns the target. A pending inbound handoff can be accepted this way. `+` is the Preview Area equivalent. |
+| `F3` / `+` | `F3`, then click a target; or `F3 UAL1234` then Enter | INIT CNTL: explicitly associates/activates a matching plan and owns the target. A pending inbound handoff can be accepted this way. `+` is the Preview Area equivalent. Association is authoritative on the flight plan; the aircraft's reported squawk is not overwritten. |
 | `F4` / `TERM CNTL` / `/` | `F4`, then click a target; or `F4 UAL1234` then Enter | TERM CNTL: all three forms share one operation. The first use deletes the associated plan, removes association, clears ownership, and leaves a moving unassociated LDB (`*`). `TERM CNTL ALL` is invalid. |
 | `*M <identity> <data>` | `*M 14 5252` | Modifies one plan by ACID, beacon, or TAB-list index. Enter beacon data directly (`5252`, `+`, `/`, `/1`–`/4`, `A`) or scratchpad 1 with `Δ` / scratchpad 2 with `+`. |
 | `*B <identity>` | `*B UAL1234` or `*B 14` | Releases the assigned beacon for a plan when allowed. |
@@ -317,7 +317,7 @@ The **Preview Area** is the primary typed command buffer of the STARS terminal r
 | `*0` then click | Type `*0`, click target | Resets leader line direction to the facility default. |
 | `*` then click | Type `*`, click target | Acknowledges a pending pointout, or toggles cyan target highlight. |
 | `*B` then click | Type `*B`, click uncorrelated track | 5-second Mode 3/A beaconator readout on uncorrelated target symbol. |
-| `[Index#]` then click target | Type `1` or `02`, click target symbol | **Manual Flight Plan Correlation**: Correlates flight plan `Index#` from TAB List (`*T`) to clicked radar target, setting FDB, owned state, and removing entry from the TAB list. |
+| `[Index#]` then click target | Type `1` or `02`, click target symbol | **Explicit Flight Plan Association**: Associates flight plan `Index#` from TAB List (`*T`) to the clicked radar target, setting the FDB projection and removing the entry from the TAB list. It does not overwrite the target's reported squawk; association and ownership are separate. |
 | `[Index#]` then click target | Type `14`, click target symbol | **Promote VFR Entry**: Correlates VFR entry from VFR List (`*TV`) to clicked radar target. |
 | `*DEL [Index#] Enter` | Type `*DEL 1` or `*DEL 02` Enter | Purges and deletes flight plan entry at specified numeric index from the TAB List (`*T`). |
 
@@ -335,7 +335,7 @@ System lists are operational data windows rendered directly on the radar scope.
 | List Name | Authorized Command Prefix | Frame Title | Purpose & Operational Features |
 |---|---|---|---|
 | System Status Area | `<MULTI FUNC>S` (`*S`) | `SYSTEM STATUS AREA (S)` | System Status Area (sim time, altimeter, filter bounds). Cannot be toggled off; relocatable via `<MULTI FUNC>S<SLEW LOCATION>`. |
-| TAB List | `<MULTI FUNC>T` (`*T`) | `TAB` / `FLIGHT PLAN (TAB)` | Departure proposals and unassociated tracks with discrete squawks. Features `MORE: X/Y` pagination. Type `[Index#]` + click target to correlate. Press `F1` + click row (or `*DEL [Index#] Enter`) to drop entry. |
+| TAB List | `<MULTI FUNC>T` (`*T`) | `TAB` / `FLIGHT PLAN (TAB)` | Pending plans and unassociated tracks with discrete squawks. Features `MORE: X/Y` pagination. List construction and redraw are read-only: they never correlate or activate a plan. Type `[Index#]` + click target for explicit association; a reported squawk update may correlate one unique pending plan. Press `F1` + click row (or `*DEL [Index#] Enter`) to drop entry. |
 | Tower List 1 | `<MULTI FUNC>P1` (`*P1`) | `TOWER 1 (P1)` / `[AIRPORT] TOWER` | Primary tower inbound arrival list and staged departures. Sorted by distance (departures 0 NM first, nearest arrivals ascending). Clears automatically on landing. |
 | Tower List 2 | `<MULTI FUNC>P2` (`*P2`) | `TOWER 2 (P2)` | Auxiliary Tower List 2. |
 | Tower List 3 | `<MULTI FUNC>P3` (`*P3`) | `TOWER 3 (P3)` | Auxiliary Tower List 3. |
