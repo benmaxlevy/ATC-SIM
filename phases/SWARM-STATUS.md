@@ -1,5 +1,28 @@
 # Swarm status
 
+## FIFTY-THIRD SWARM COMPLETE — T02-135–136 outbound handoff alignment
+
+T02-135 and T02-136 are complete on `fix/datablocks`. Pending outbound
+handoffs to Center `C` now render a white FDB with `C` in Field 4; the blue
+center stub remains separate. Center `C` auto-accepts once after five
+simulated seconds using the existing acceptance path. Accepted sender FDBs
+blink white for five seconds, retain `C` for five seconds, then remain solid
+white. Explicit return-to-unowned remains available. No second sector or
+network model was added.
+
+Captain commits: T02-135 (`85358b8`) and T02-136 (`2323605`).
+
+Final gate: `npm run ci` passed — **189 test files, 1,729 tests passed, 4
+skipped**. T02-135 post-fix focused gate: **27 passed**. T02-136 focused gate:
+**38 passed**.
+
+Manual review: supplied `full_manual.pdf`, General Rules p. 5-4, §5.1.9
+pp. 5-18–19, and §5.1.10 p. 5-20. T02-135 initial review found a render/pick
+geometry mismatch; the fix was added before merge and primary re-review found
+no remaining FAIL. T02-136 primary review found no FAIL. Independent review
+attempts were made as required, but the available subagent verifier did not
+return a terminal result. No CRC or substitute source used.
+
 ## FIFTY-SECOND SWARM COMPLETE — T02-134 accepted outbound handoff UI
 
 T02-134 is squash-merged on `fix/datablocks` as `3d392e2`. Existing outbound
