@@ -703,6 +703,28 @@ test("T02-65 — *F readout, *LA bounds, *BCN □ paint; *B / idle F / B45 uncha
   expect(tpa.preview.rejection).toBeNull();
 });
 
+test("T02-148 — F-prefixed ACID cancels filter chord and reaches Preview", () => {
+  const view = createScopeView();
+  const world = createWorld();
+
+  typeKeys(view, world, ["F", "F", "T", "1", "2", "3", " ", "2", "3", "4", "1", "Enter"], "scope");
+
+  expect(view.filterEntry.phase).toBe("idle");
+  expect(view.preview.buffer).toBe("");
+  expect(world.flightPlans).toHaveLength(1);
+  expect(world.flightPlans[0]).toMatchObject({ acid: "FFT123", assignedBeacon: "2341" });
+});
+
+test("T02-148 — numeric filter entry still commits both limits", () => {
+  const view = createScopeView();
+  const world = createWorld();
+
+  typeKeys(view, world, ["F", "0", "5", "0", "Enter", "1", "2", "0", "Enter"], "scope");
+
+  expect(view.filterEntry.phase).toBe("idle");
+  expect(view.altitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 120 });
+});
+
 test("T02-74 — *R Enter plus click toggles one track; miss keeps arm; *RR and F7 stay global", () => {
   const dal = makeTestAircraft({
     id: "ac-dal",

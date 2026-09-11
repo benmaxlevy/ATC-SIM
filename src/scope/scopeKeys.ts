@@ -43,6 +43,7 @@ import {
 import { stepRange } from "./camera";
 import {
   beginScopeChord,
+  chordTimedOut,
   isBeaconSelectKey,
   isCycleFocusKey,
   isFilterChordKey,
@@ -1072,11 +1073,8 @@ export function handleScopeKeyDown(
       ui?.onHandled?.();
       return true;
     }
-    if (isFilterChordKey(event.key)) {
-      consume(event);
-      beginFilterEntry(view.filterEntry, view.altitudeFilter, nowMs);
-      return true;
-    }
+    let filterCancelled = false;
+    const filterWasActive = view.filterEntry.phase !== "idle";
     if (
       handleFilterEntryKey(view.filterEntry, view.altitudeFilter, event.key, nowMs, () =>
         retainFullDatablocksOutsideAltitudeFilter(view.tracks),
@@ -1085,7 +1083,32 @@ export function handleScopeKeyDown(
       consume(event);
       return true;
     }
-    if (!event.shiftKey && !isReservedScopeLetterShortcut(event.key)) {
+    if (filterWasActive) {
+      filterCancelled = true;
+      if (!chordTimedOut(view.filterEntry.lastKeyAtMs, nowMs)) {
+        startPreviewBuffer(view, "F", nowMs);
+        const preview = handlePreviewBufferKey(
+          view.preview,
+          event.key,
+          nowMs,
+          event.code,
+          loadedCatalogMaps(view),
+          videoMapTokenLayout(view),
+        );
+        if (preview.consumed) {
+          consume(event);
+          applyPreviewBufferOutcome(view, world, nowMs, preview);
+          ui?.onHandled?.();
+          return true;
+        }
+      }
+    }
+    if (!filterCancelled && isFilterChordKey(event.key)) {
+      consume(event);
+      beginFilterEntry(view.filterEntry, view.altitudeFilter, nowMs);
+      return true;
+    }
+    if (!event.shiftKey && (filterCancelled || !isReservedScopeLetterShortcut(event.key))) {
       const ch = previewBufferCharFromKey(event.key, event.code);
       if (ch !== null && isPreviewBufferStartChar(ch)) {
         consume(event);

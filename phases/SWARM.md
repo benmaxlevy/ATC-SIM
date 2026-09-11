@@ -1,5 +1,23 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Fifty-ninth swarm started — 2026-09-11 (F-prefix Preview routing)
+
+Captain is executing the single corrective ticket on
+`feat/flight-plan-lifecycle`. The filter retains its numeric-entry behavior;
+non-numeric continuation cancels filter mode and is reprocessed by Preview.
+
+| Key | Value |
+| --- | --- |
+| Goal | Prevent bare `F` filter handling from swallowing F-prefixed ACIDs. |
+| Include | Scope key routing and focused regression tests only. |
+| Skip | New altitude-filter grammar, flight-plan semantics, radio, pilot execution, and unrelated shortcuts. |
+| Stop | After focused tests, `npm run ci`, supplied-manual review, and push. |
+| Max workers | 1 |
+| Merge target | `feat/flight-plan-lifecycle` |
+| Push | Authorized by user. |
+
+Manual anchor: TI 6191.409 Rev. 30 §4.11.2, pp. 4-78–4-79.
+
 ## Fifty-ninth swarm planned — 2026-09-11 (F-prefix Preview routing)
 
 One corrective worker will preserve the altitude-filter chord while allowing
