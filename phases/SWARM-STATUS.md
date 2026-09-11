@@ -1440,3 +1440,20 @@ Recovery resumed from `feature/session-setup`. T04-24 inventory (`93a7c10`), fre
 **Manual leftover:** Human Chrome check: open Session setup; change scenario/arrival/departure rate/seed; Cancel preserves World and focus; confirm Apply/restart warning rebuilds World; verify unavailable departure capability copy. Do not invent pass.
 
 **Notes:** Picker options derive solely from playable inventory; normal arrival count/rate remains seeded STAR inbound/VIA; `?traffic=N` remains benchmark downwind; T04-21 owns departure rate. `atc-sim.session.v1` remains separate from trainer/DCB preferences. No scoring, replay, imperfect pilots, second position, DCB PREF, live traffic editing, second airport data, or radio-frequency IR. Initial T04-25 conflict was superseded by a fresh worker from the T04-24 feature base. Preserved untracked `.cursor/rules/caveman-ultra.mdc`, `e2e/`, and user-modified `speech-api/.env.example`.
+
+## FIFTY-SIXTH SWARM COMPLETE — flight-plan lifecycle (T02-143–T02-147)
+
+All approved tickets T02-143 through T02-147 were implemented on
+`feat/flight-plan-lifecycle`, with corrective passes applied after manual
+audits. Captain `npm run ci` passed after every merge; final result: **193
+files passed, 1777 passed, 4 skipped, 0 failures**. Each ticket received a
+post-merge audit against `/home/ben/Documents/stars refs/full_manual.pdf`.
+
+**Manual audit results:** T02-143 PASS (ACID/beacon domain and lifecycle),
+T02-144 PASS (creation grammar and pending plans), T02-145 PASS (activation,
+correlation, suspended/mismatch semantics), T02-146 PASS (modification,
+deletion, beacon release), T02-147 PASS (datablock/FL-TAB integration).
+
+**Scope boundary:** Radio clearances, readbacks, pilot execution, route/FMS
+conformance, and related speech/Command IR behavior remain in
+`phases/LATER-IMPLEMENTATION-BACKLOG.md`. No later phase was started.
