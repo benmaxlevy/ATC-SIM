@@ -1,5 +1,62 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Fifty-fourth swarm started — 2026-09-10 (Unified outbound handoff positions)
+
+Captain owns `fix/datablocks` and will run T02-137 through T02-139 with one
+isolated worker at a time. The swarm unifies current outbound handoff-to-C and
+handoff-to-Tower paths around one destination-aware initiation/acceptance
+function. No manual audit runs during implementation; user will audit after
+the swarm completes.
+
+| Key | Value |
+| --- | --- |
+| Goal | Unify supported outbound handoffs by receiving position and preserve shared accepted-handoff UI. |
+| Include | **T02-137**, **T02-138**, **T02-139** only. |
+| Skip | Pointouts, quicklook, inbound redesign, networking, second-sector model, new handoff types, new SPCs, new alerts, parser, Command IR, speech, DCB, and facility branches. |
+| Stop | After T02-139 acceptance and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+| Manual audit | Deferred until after swarm completion, per user instruction. |
+
+**Product law:** Supported outbound handoffs use one destination-aware path.
+The destination ID is data, not a branch-specific display convention. Center
+`C` and Tower use the same pending/accepted lifecycle; Tower-specific landing
+effects happen only after acceptance. Existing eligibility, logs, movement, and
+single-position trainer constraints remain intact.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-137 | T02-136 complete and current `fix/datablocks` clean |
+| B | T02-138 | T02-137 merge and CI |
+| C | T02-139 | T02-138 merge and CI |
+
+**Ticket ownership:**
+
+- T02-137: destination-aware outbound handoff initiation.
+- T02-138: shared five-second simulated acceptance and destination effects.
+- T02-139: shared accepted-handoff datablock UI for Center and Tower.
+
+**Ticket files / branches:**
+
+- `ticket/T02-137-unified-outbound-handoff-initiation` ← `phases/02-scope/tickets/T02-137-unified-outbound-handoff-initiation.md`
+- `ticket/T02-138-shared-outbound-handoff-acceptance` ← `phases/02-scope/tickets/T02-138-shared-outbound-handoff-acceptance.md`
+- `ticket/T02-139-shared-handoff-datablock-ui` ← `phases/02-scope/tickets/T02-139-shared-handoff-datablock-ui.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 unified outbound handoff positions T02-137–139
+Merge target: fix/datablocks
+Merged: T02-137, T02-138, T02-139
+Tests: <focused gates and npm run ci result>
+Notes: Manual audit deferred to user; C/Tower share destination-aware lifecycle
+```
+
 ## Fifty-third swarm started — 2026-09-10 (Outbound handoff UI/manual alignment)
 
 Captain owns `fix/datablocks` and will create one isolated worker at a time for
