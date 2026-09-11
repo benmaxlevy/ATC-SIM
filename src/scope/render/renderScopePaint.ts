@@ -1617,9 +1617,9 @@ function coneDigitGapBox(
 }
 
 /**
- * Stroke a cone so its lines stop at the mileage digits and pick up again on
- * the far side (Fig 38/39), instead of running through the numerals. The gap
- * is an even-odd clip hole, so the wedge stays one path and one stroke.
+ * Stroke either cone type so its lines stop at the mileage digits and pick up
+ * again on the far side (Fig 38/39), instead of running through the numerals.
+ * Both manual TPA and ATPA use this one path/stroke implementation.
  */
 function strokeConeAroundDigits(
   ctx: CanvasRenderingContext2D,

@@ -28,13 +28,26 @@ import type { AtpaPair, AtpaStatus } from "@core";
 import { PALETTE } from "./palette";
 
 /**
- * Half-angle of the ATPA / TPA cone needle. R07 Fig 36–39 show a few degrees
- * of wedge, not a pie slice. Pinned by tests; do not sprinkle a magic number
- * in the draw path. End-cap width is `2 * lengthNm * tan(halfAngle)`.
+ * Reference half-angle used to derive the fixed end-cap height. R07 Fig 36–39
+ * show a few degrees of wedge, not a pie slice. The 5 NM reference keeps the
+ * existing 3° shape while shorter and longer cones use the same end-cap size.
  */
 export const ATPA_CONE_HALF_ANGLE_DEG = 3;
+export const ATPA_CONE_REFERENCE_LENGTH_NM = 5;
 
-const ATPA_CONE_HALF_ANGLE_RAD = (ATPA_CONE_HALF_ANGLE_DEG * Math.PI) / 180;
+const ATPA_CONE_REFERENCE_HALF_ANGLE_RAD = (ATPA_CONE_HALF_ANGLE_DEG * Math.PI) / 180;
+
+/** World-NM height of the cone's flat end cap, fixed for every cone length. */
+export const ATPA_CONE_END_HEIGHT_NM =
+  2 * ATPA_CONE_REFERENCE_LENGTH_NM * Math.tan(ATPA_CONE_REFERENCE_HALF_ANGLE_RAD);
+
+/** Half-angle required to reach the fixed end-cap height at `lengthNm`. */
+export function atpaConeHalfAngleDeg(lengthNm: number): number {
+  if (!Number.isFinite(lengthNm) || lengthNm <= 0) {
+    return 0;
+  }
+  return (Math.atan(ATPA_CONE_END_HEIGHT_NM / 2 / lengthNm) * 180) / Math.PI;
+}
 
 const STATUS_RANK: Record<AtpaStatus, number> = {
   monitor: 0,
@@ -86,7 +99,8 @@ export function atpaConePoints(
   const headingRad = Math.atan2(dEast, dNorth);
   const axisEast = Math.sin(headingRad);
   const axisNorth = Math.cos(headingRad);
-  const halfWidthNm = lengthNm * Math.tan(ATPA_CONE_HALF_ANGLE_RAD);
+  const halfAngleRad = (atpaConeHalfAngleDeg(lengthNm) * Math.PI) / 180;
+  const halfWidthNm = lengthNm * Math.tan(halfAngleRad);
   const midEast = trailingEastNm + lengthNm * axisEast;
   const midNorth = trailingNorthNm + lengthNm * axisNorth;
   const perpEast = -axisNorth;

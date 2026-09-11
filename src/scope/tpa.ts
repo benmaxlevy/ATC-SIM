@@ -195,8 +195,8 @@ export function groundTrackPointNm(
 
 /**
  * Manual `*P` cone along ground track. Projects a point along velocity heading
- * and reuses T02-45 `atpaConePoints` — same named half-angle
- * (`ATPA_CONE_HALF_ANGLE_DEG`) and flat end cap. Not a second wedge.
+ * and reuses T02-45 `atpaConePoints` — the same fixed-height end cap and
+ * length-derived angle. Not a second wedge.
  */
 export function manualTpaConePoints(
   eastNm: number,

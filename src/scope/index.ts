@@ -632,8 +632,11 @@ export type {
   TpaState,
 } from "./tpa";
 export {
+  ATPA_CONE_END_HEIGHT_NM,
   ATPA_CONE_HALF_ANGLE_DEG,
+  ATPA_CONE_REFERENCE_LENGTH_NM,
   atpaConeColor,
+  atpaConeHalfAngleDeg,
   atpaConePoints,
   atpaSuppressesManualTpaCone,
   selectAtpaConesToPaint,

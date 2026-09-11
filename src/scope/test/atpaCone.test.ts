@@ -1,6 +1,13 @@
 import { expect, test } from "vitest";
 import { nmToScreen, pxPerNm, type ScopeCamera, type ScopeViewSize } from "../camera";
-import { atpaConeColor, atpaConePoints, atpaSuppressesManualTpaCone } from "../atpaCone";
+import {
+  ATPA_CONE_END_HEIGHT_NM,
+  ATPA_CONE_HALF_ANGLE_DEG,
+  atpaConeColor,
+  atpaConeHalfAngleDeg,
+  atpaConePoints,
+  atpaSuppressesManualTpaCone,
+} from "../atpaCone";
 import { PALETTE } from "../palette";
 
 const VIEW: ScopeViewSize = { widthPx: 800, heightPx: 800 };
@@ -14,6 +21,19 @@ test("cone vertex is the trailer; length matches camera scale", () => {
   expect(vertex.x).toBeCloseTo(trailer.x, 6);
   expect(atpaConePoints(1, 1, 1, 1, 3)).toEqual([]);
   expect(pxPerNm(CAMERA, VIEW)).toBeGreaterThan(0);
+});
+
+test("cone end-cap height stays fixed while its angle follows cone length", () => {
+  expect(atpaConeHalfAngleDeg(5)).toBeCloseTo(ATPA_CONE_HALF_ANGLE_DEG, 10);
+  expect(atpaConeHalfAngleDeg(3)).toBeGreaterThan(ATPA_CONE_HALF_ANGLE_DEG);
+  expect(atpaConeHalfAngleDeg(10)).toBeLessThan(ATPA_CONE_HALF_ANGLE_DEG);
+
+  for (const lengthNm of [3, 5, 10]) {
+    const pts = atpaConePoints(0, 0, 1, 0, lengthNm);
+    expect(
+      Math.hypot(pts[1]!.eastNm - pts[2]!.eastNm, pts[1]!.northNm - pts[2]!.northNm),
+    ).toBeCloseTo(ATPA_CONE_END_HEIGHT_NM, 10);
+  }
 });
 
 test("monitor/warning/alert colors; warning suppresses manual TPA cones", () => {
