@@ -361,8 +361,8 @@ function applyPreviewArmedAction(
           CREATION_BEACON_POOLS[action.beaconAllocation],
           world.flightPlans,
         );
-        if (!allocated.ok) {
-          view.preview.rejection = "FORMAT";
+        if (!allocated.ok || !allocated.value.assignedBeacon) {
+          view.preview.rejection = "CAPACITY — BCN";
           return;
         }
         plan = allocated.value;

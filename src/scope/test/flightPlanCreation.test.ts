@@ -106,6 +106,26 @@ describe("T02-144 flight-plan creation", () => {
     expect(invalidView.preview.rejection).toBe("ILL ACID");
   });
 
+  it("shows beacon capacity for abbreviated pool allocation exhaustion", () => {
+    const occupied = createFlightPlan({
+      id: "occupied-ifr",
+      acid: "O01",
+      assignedBeacon: "0000",
+      fixes: [],
+      scratchpads: [],
+    });
+    if (!occupied.ok) throw new Error("test fixture should be valid");
+    const world = createWorld({ flightPlans: [occupied.value] });
+    const view = createScopeView();
+
+    for (const ch of "NEW123") handleScopeKeyDown(key(ch), view, "scope", world);
+    // Isolate allocation handling from the existing pool-prefix key path.
+    view.preview.buffer += " +";
+    handleScopeKeyDown(key("Enter"), view, "scope", world);
+
+    expect(view.preview.rejection).toBe("CAPACITY — BCN");
+  });
+
   it("creates pending plans through scope Preview without mutating aircraft", () => {
     const world = createWorld();
     const view = createScopeView();
