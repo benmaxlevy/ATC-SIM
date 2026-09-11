@@ -4,6 +4,60 @@ This is the backlog of follow-ups implied by features that are already shipped.
 It is intentionally not a list of untouched phases or features that have never
 been started.
 
+## Priority order
+
+Priority is based on operational safety, dependency leverage, and simulator
+value. Items already shipped or limited to manual validation are excluded.
+
+### P0 — core safety and runtime truth
+
+1. Central datablock runtime field adapter.
+2. Authoritative flight-plan association.
+3. MCI evaluator, suppression state, and `CA M` command semantics.
+4. Predicted MSAW and flashing **LA** behavior.
+5. 30-second coast/suspend lifecycle, dead reckoning, and re-correlation.
+6. CSMM and duplicate-beacon world-level detection.
+7. Wake-aware live datablock output, including `NOWGT`.
+8. Manual Conflict Alert inhibit commands.
+
+### P1 — controller operations
+
+9. Departure exit-gate/fix resolution.
+10. Adapted 2.5 NM ATPA eligibility.
+11. Quicklook sector filtering and SSA status.
+12. Multi-controller networking and inter-facility handoffs.
+13. TCP sign-on/sign-off authentication and sector consolidation.
+14. Complete pointout-to-datablock binding.
+15. TSAS runtime.
+16. Flight-plan amendment modals and target-click deletion.
+17. Scratchpad and tactical altitude/heading/speed command chords.
+18. Advanced track states: `HOLD`, `UNS`, reposition, and `/ ALL`.
+
+### P2 — facility and display expansion
+
+19. Live multi-sensor radar health and beacon-bank exhaustion telemetry.
+20. CRDA ghost prediction, cones, tie lines, and keyboard grammar.
+21. Multi-airport tower slot sequencing and dynamic adaptation.
+22. Tower Display Mode and TDW-specific ATPA presentation.
+23. MOA and selected-beacon workflows.
+24. Expanded SPCs.
+25. Richer SSA/facility status, ATIS broadcasts, and weather source handling.
+26. Pilot barometric corrections and weather-driven deviation behavior.
+27. Additional PTL prediction geometry and presets.
+28. Additional catalog-backed maps, map management, and AVL restyle.
+29. Handwritten strip annotations and cross-rack/window strip movement.
+
+### P3 — procedure and voice follow-ups
+
+30. Unsupported ARINC leg flying: `RF`, holds, arcs, and vector legs.
+31. RNAV/hold/RF in-sim FMS guidance.
+32. FAA cycle update workflow; national source/index files remain local.
+33. KATL MAPS/GEO/BRITE visual operator validation.
+34. Live Path C tie salvage against real `speech-api` and Chrome PTT p50.
+
+The priority list is a planning view; detailed sections below are the source
+of truth for shipped behavior, constraints, and scope boundaries.
+
 ## Scope and display
 
 ### Authored radar sites — live SITE/SSA chrome, no live sensors (T04-45 / T02-75 / T02-76 / T02-77)
@@ -527,8 +581,6 @@ does not import this tool.
 
 Deliberately missing:
 
-- **Procedure-reference closure (T04-33).** Out-of-radius fixes named by a
-  selected SID/STAR/approach stay in the full source until closure pulls them.
 - **National CIFP / derived national index in git.** A full cycle or a
   nationwide source/index dump must stay on disk under gitignored `.cifp/`
   or `tools/cifp-import/out/`. Only synthetic fixtures under `testdata/cifp/`
@@ -558,9 +610,9 @@ procedure is excluded.
 
 Deliberately missing:
 
-- **Great-circle radius selection.** T04-32 owns `spatialIndex.ts`. This
-  ticket does not compute NM distance or drop points by radius. `radiusNm` on
-  the seed is metadata for later wiring.
+- **Great-circle radius selection.** T04-32 owns `spatialIndex.ts`; this
+  T04-33 closure module does not compute NM distance or select the seed.
+  The generic pack CLI already wires radius selection to closure.
 - **Radius-based deletion after closure.** Once a procedure is selected, its
   required fixes/navaids stay even when they sit outside the seed radius.
 - **Runtime national catalog or browser CIFP fetch.** Closure stays in the
