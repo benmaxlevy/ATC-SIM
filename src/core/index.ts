@@ -31,6 +31,24 @@ export type {
   Accumulator,
   ScheduledDeparture,
 } from "./world";
+export type {
+  FlightPlan,
+  FlightPlanError,
+  FlightPlanErrorCode,
+  FlightPlanResult,
+  FlightPlanStatus,
+  FlightType,
+} from "./flightPlan";
+export {
+  allocateBeaconCode,
+  createFlightPlan,
+  deleteFlightPlan,
+  isValidAcid,
+  isValidBeaconCode,
+  transitionFlightPlan,
+  validateFlightPlan,
+  withAllocatedBeacon,
+} from "./flightPlan";
 export {
   TRACON_BOUNDARY_RADIUS_NM,
   createWorld,
