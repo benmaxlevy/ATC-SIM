@@ -136,7 +136,10 @@ describe("T02-145 flight-plan activation and correlation", () => {
 
   it("correlates only when the aircraft squawk update is applied", () => {
     const ac = target("ac-update", "1234", "1200");
-    const world = createWorld({ flightPlans: [plan("fp-update", "AAL123", "7022")], aircraft: [ac] });
+    const world = createWorld({
+      flightPlans: [plan("fp-update", "AAL123", "7022")],
+      aircraft: [ac],
+    });
     expect(world.flightPlans[0]!.status).toBe("pending");
     const update = updateAircraftSquawk(world, ac.id, "7022");
     expect(update?.correlation).toMatchObject({ ok: true, aircraftId: ac.id });
