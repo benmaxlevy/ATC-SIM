@@ -13,10 +13,15 @@
  */
 
 import { handoffFor, setSelectedAircraft, type Aircraft, type World } from "@core";
-import { inAltitudeFilter, type AltitudeFilter } from "./altitudeFilter";
+import {
+  inAltitudeFilter,
+  shouldShowDatablockOutsideAltitudeFilter,
+  type AltitudeFilter,
+} from "./altitudeFilter";
 import { nmToScreen, type ScopeCamera } from "./camera";
 import {
   datablockRect,
+  handoffDatablockDisplay,
   linesForDatablock,
   pointInDatablock,
   withInboundHandoffCue,
@@ -54,12 +59,15 @@ export interface DatablockPickView {
       lastReport?: TrackDisplay["lastReport"];
       squawk?: string;
       ownership?: string;
+      retainedFdbOutsideAltitudeFilter?: boolean;
     }
   >;
   modeCVisible: boolean;
   datablockCellWidthPx: number;
   /** Out-of-filter tracks have no datablock to hit; the target still picks. */
   altitudeFilter: AltitudeFilter;
+  /** Local receiving TCP used for inbound handoff Field 4 display. */
+  sectorId?: string;
   charSizePx?: number;
   leaderLengthPx?: number;
   beaconatorActive?: boolean;
@@ -86,16 +94,39 @@ function pickDatablockAt(
       continue;
     }
     const shown = aircraftAtReport(ac, td.lastReport);
-    if (!inAltitudeFilter(shown.altitudeFt, view.altitudeFilter)) {
+    const handoff = handoffFor(world, ac.id);
+    const emergency = Boolean(
+      ac.spc ||
+      world.alerts.ca.some(
+        (alert) => alert.callsignA === ac.callsign || alert.callsignB === ac.callsign,
+      ) ||
+      world.alerts.msaw.some((alert) => alert.callsign === ac.callsign),
+    );
+    if (
+      !shouldShowDatablockOutsideAltitudeFilter({
+        inFilter: inAltitudeFilter(shown.altitudeFt, view.altitudeFilter),
+        ownership: td.ownership,
+        retainedFdb: td.retainedFdbOutsideAltitudeFilter,
+        emergency,
+        pendingHandoff: handoff.kind === "inbound" || handoff.kind === "departure",
+      })
+    ) {
       continue;
     }
     const p = nmToScreen(shown.xNm, shown.yNm, cam, size);
     if (!pointInLayoutBounds(p, { x: 0, y: 0, width: cssWidth, height: cssHeight })) {
       continue;
     }
-    const ho = handoffFor(world, ac.id);
+    const ho = handoff;
+    const receivingTcp = view.sectorId ?? "D";
     let mode = td?.datablockMode ?? (td?.ownership === "owned" ? "full" : "partial");
     if (ho.kind === "inbound" || ho.kind === "departure") {
+      mode = "full";
+    }
+    if (ho.kind === "outbound" && ho.status !== "accepted") {
+      mode = "full";
+    }
+    if (ho.kind === "outbound" && ho.status === "accepted" && td?.ownership !== "unowned") {
       mode = "full";
     }
     if (view.beaconatorActive && mode === "partial") {
@@ -106,22 +137,11 @@ function pickDatablockAt(
     const squawk = td?.squawk ?? ac.squawk;
     const trackBeaconator = (td?.beaconatorUntilSimMs ?? 0) > world.simTimeMs;
     const callsign = (view.beaconatorActive || trackBeaconator) && squawk ? squawk : ac.callsign;
-    let handoffSectorId: string | undefined;
-    if (ho.kind === "inbound") {
-      handoffSectorId = ho.fromSectorId;
-    } else if (ho.kind === "departure") {
-      handoffSectorId = ho.fromSectorId === "TWR" ? "T" : ho.fromSectorId;
-    } else if (ho.kind === "outbound") {
-      handoffSectorId = ho.toSectorId;
-    } else if (ho.kind === "pointout_inbound") {
-      handoffSectorId = ho.fromSectorId;
-    } else if (ho.kind === "pointout_outbound") {
-      handoffSectorId = ho.toSectorId;
-    }
+    const handoffDisplay = handoffDatablockDisplay(ho, receivingTcp, world.simTimeMs);
     const base = linesForDatablock({ ...shown, callsign, squawk }, mode, {
       modeCVisible: view.modeCVisible,
       scratchpad: td?.scratchpad ?? "",
-      handoffSectorId,
+      ...handoffDisplay,
       queried: isQueried,
       simTimeMs: world.simTimeMs,
     });

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { SessionLog, createAircraft, createWorld } from "../index";
+import { SIM_DT_S, SessionLog, createAircraft, createWorld, stepWorld } from "../index";
 import {
   DEFAULT_INBOUND_SECTOR_ID,
   HANDOFF_PENDING_REASON,
@@ -10,6 +10,7 @@ import {
   convertPointoutToHandoff,
   handoffFor,
   initiateCenterHandoff,
+  initiateOutboundHandoff,
   initiatePointout,
   isCenterHandoffEligible,
   isRadioCommandAllowed,
@@ -18,6 +19,24 @@ import {
   offerPointout,
   rejectPointout,
 } from "../handoff";
+
+const TOWER_CATALOG = {
+  airportId: "KDEM",
+  navaids: [],
+  fixes: [{ id: "RW27", xNm: 0, yNm: 0, kind: "THRESHOLD" }],
+  stars: [],
+  approaches: [
+    {
+      id: "ILS27",
+      courseDeg: 270,
+      lengthNm: 18,
+      beamHalfWidthDeg: 2.5,
+      thresholdFixId: "RW27",
+      daFt: 200,
+    },
+  ],
+  sids: [],
+} as const;
 
 test("isRadioCommandAllowed denies inbound pending and allows none", () => {
   expect(isRadioCommandAllowed({ kind: "none" })).toBe(true);
@@ -210,6 +229,27 @@ test("initiateCenterHandoff logs handoff.center and handoff.outbound.initiated a
   expect(isCenterHandoffEligible(ac, world)).toBe(false);
 });
 
+test("initiateOutboundHandoff uses the same pending state and destination log for Tower", () => {
+  const ac = createAircraft({
+    id: "ac-arr",
+    callsign: "DAL123",
+    xNm: 3,
+    yNm: 0,
+    headingDeg: 270,
+    altitudeFt: 1200,
+    speedKt: 150,
+  });
+  const log = new SessionLog();
+  const world = createWorld({ aircraft: [ac], sessionLog: log, simTimeMs: 9000 });
+
+  expect(initiateOutboundHandoff(ac, { world, log, simTimeMs: 9000 }, "TWR")).toBe(true);
+  expect(handoffFor(world, ac.id)).toEqual({ kind: "outbound", toSectorId: "TWR" });
+  expect(log.byType("handoff.outbound.initiated")).toMatchObject([
+    { callsign: "DAL123", toSectorId: "TWR", atSimMs: 9000 },
+  ]);
+  expect(log.byType("handoff.center")).toHaveLength(0);
+});
+
 test("T02-37 AC2 — acceptOutboundHandoff transitions outbound state to accepted and logs handoff.outbound.accepted", () => {
   const ac = createAircraft({
     id: "ac-dep",
@@ -240,6 +280,103 @@ test("T02-37 AC2 — acceptOutboundHandoff transitions outbound state to accepte
     atSimMs: 15000,
     atWallMs: 25,
   });
+});
+
+test("T02-136 auto-accepts initiated Center C handoff at five simulated seconds once", () => {
+  const ac = createAircraft({
+    id: "ac-auto-center",
+    callsign: "UAL136",
+    xNm: 15,
+    yNm: 10,
+    headingDeg: 45,
+    altitudeFt: 8000,
+    speedKt: 250,
+  });
+  const log = new SessionLog();
+  const world = createWorld({ aircraft: [ac], sessionLog: log, simTimeMs: 1000 });
+  initiateCenterHandoff(ac, { world, log, simTimeMs: world.simTimeMs }, "C");
+
+  stepWorld(world, 4.999);
+  expect(handoffFor(world, ac.id)).toEqual({ kind: "outbound", toSectorId: "C" });
+  expect(log.byType("handoff.outbound.accepted")).toHaveLength(0);
+
+  stepWorld(world, 0.001);
+  expect(world.simTimeMs).toBeCloseTo(6000, 8);
+  expect(handoffFor(world, ac.id)).toMatchObject({
+    kind: "outbound",
+    toSectorId: "C",
+    status: "accepted",
+    acceptedAtSimMs: 6000,
+  });
+  expect(log.byType("handoff.outbound.accepted")).toHaveLength(1);
+
+  stepWorld(world, SIM_DT_S);
+  expect(log.byType("handoff.outbound.accepted")).toHaveLength(1);
+  expect(world.aircraft).toHaveLength(1);
+});
+
+test("T02-136 does not auto-accept a non-C outbound handoff", () => {
+  const ac = createAircraft({
+    id: "ac-other-center",
+    callsign: "DAL136",
+    xNm: 15,
+    yNm: 10,
+    headingDeg: 45,
+    altitudeFt: 8000,
+    speedKt: 250,
+  });
+  const log = new SessionLog();
+  const world = createWorld({ aircraft: [ac], sessionLog: log });
+  initiateCenterHandoff(ac, { world, log, simTimeMs: world.simTimeMs }, "Z");
+
+  stepWorld(world, 5);
+  expect(handoffFor(world, ac.id)).toEqual({ kind: "outbound", toSectorId: "Z" });
+  expect(log.byType("handoff.outbound.accepted")).toHaveLength(0);
+});
+
+test("T02-138 auto-accepts Tower after five simulated seconds and applies landing once", () => {
+  const ac = createAircraft({
+    id: "ac-auto-tower",
+    callsign: "DAL138",
+    xNm: 3,
+    yNm: 0,
+    headingDeg: 270,
+    altitudeFt: 1200,
+    speedKt: 150,
+  });
+  ac.intent.lateral = { type: "LOC", approachId: "ILS27" };
+  ac.intent.vertical = { type: "GS", approachId: "ILS27" };
+  ac.intent.clearedApproachId = "ILS27";
+  const log = new SessionLog();
+  const world = createWorld({
+    aircraft: [ac],
+    catalog: TOWER_CATALOG,
+    sessionLog: log,
+    simTimeMs: 1000,
+  });
+  initiateOutboundHandoff(ac, { world, log, simTimeMs: world.simTimeMs }, "TWR");
+
+  stepWorld(world, 4.999);
+  expect(handoffFor(world, ac.id)).toEqual({ kind: "outbound", toSectorId: "TWR" });
+  expect(ac.intent.lateral).toEqual({ type: "LOC", approachId: "ILS27" });
+  expect(log.byType("handoff.outbound.accepted")).toHaveLength(0);
+  expect(log.byType("handoff.tower")).toHaveLength(0);
+
+  stepWorld(world, 0.001);
+  expect(handoffFor(world, ac.id)).toMatchObject({
+    kind: "outbound",
+    toSectorId: "TWR",
+    status: "accepted",
+    acceptedAtSimMs: 6000,
+  });
+  expect(ac.intent.landingCleared).toBe(true);
+  expect(ac.intent.lateral).toEqual({ type: "LANDING", approachId: "ILS27" });
+  expect(log.byType("handoff.outbound.accepted")).toHaveLength(1);
+  expect(log.byType("handoff.tower")).toHaveLength(1);
+
+  stepWorld(world, SIM_DT_S);
+  expect(log.byType("handoff.outbound.accepted")).toHaveLength(1);
+  expect(log.byType("handoff.tower")).toHaveLength(1);
 });
 
 test("T02-37 AC3 / AC4 — pointout lifecycle: offer, accept, reject, and convert to handoff", () => {

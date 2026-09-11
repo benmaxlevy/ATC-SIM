@@ -93,33 +93,32 @@ Later work must keep:
 - no aural ATPA tone (CA remains the only conflict audio);
 - TPA J-rings and the `TPA_MI` spinner frozen as T02-28 (2 / 3 / 5 / 10 NM).
 
-Wake-category minima, adapted 2.5 NM extras, per-position adaptation, TDW
-white monitor, and authored-vs-NAS volumes stay in **ATPA separation
-criteria not yet modeled** below.
+Wake-category minima are now shipped by T02-125–128. Adapted 2.5 NM extras,
+per-position adaptation, TDW white monitor, and authored-vs-NAS volumes stay in
+**ATPA separation criteria not yet modeled** below.
 
 ### ATPA separation criteria not yet modeled
 
 T02-44 ships in-trail pairing and predicted monitor/warning/alert status
-(`world.alerts.atpa`) using **basic radar separation only**. Visible now:
+(`world.alerts.atpa`). Visible now:
 `evaluateAtpa` reads `basicSeparationNm` / `reducedSeparationNm` /
 `reducedWithinNm` from each catalog volume, pairs eligible tracks inside an
 enabled volume, and classifies status from current distance plus linear
-closure. Warning is predicted violation within **45 s** (R07). Alert is
-**only** `distanceNm < requiredNm` (actual in-trail / lateral radar loss).
-R07 also paints Alert for a predicted violation within **24 s**; that band
-stays Warning here so a still-legal pair does not go ATPA-red. Cone length
-is therefore identical for a heavy leader and a light leader.
+closure. Wake-enabled volumes optionally apply explicit FAA CWT adaptation.
+Warning is predicted violation within **45 s** (R07). Alert is actual
+`distanceNm < requiredNm` or a predicted loss within **24 s** (T02-140).
+Cone length
+when wake adaptation is enabled, cone length follows the explicit
+leader-row/follower-column matrix; otherwise it follows the authored radar
+minimum.
 
-Deliberately missing, each of which later work must keep the JSON-minima
-path and must **not** invent numbers from model recall:
+Shipped wake contract: `cwtWakeCategory` is separate from the display-only
+`wakeCategory`; reviewed JO 7110.65 §5-5-4 adaptation data is loaded from JSON,
+and missing categories or blank relationships produce `NOWGT` with a 10 NM
+minimum. Later work must keep the JSON-minima path and must **not** infer
+categories from aircraft type or display text.
 
-- **Wake-category in-trail minima.** R07 says cone length is "the distance
-  required by wake category or basic radar separation" but publishes no
-  matrix — its CWT A–I table is only the datablock category letter with a
-  weight range. `Aircraft.wakeCategory` is already the FDB letter; do not
-  let `requiredSeparationNm` read it until a cited table (JO 7110.65 or
-  facility adaptation) is in-repo. T02-50 greps `src/core/alerts/atpa.ts`
-  and live ATPA paths for `wakeCategory`; keep that gate.
+Deliberately missing, each of which later work must keep the JSON-minima path:
 - **Adapted 2.5 NM eligibility** beyond "both tracks inside
   `reducedWithinNm` of the threshold along the final." Real STARS reduces
   only under extra conditions (leader type, runway occupancy, facility
@@ -131,16 +130,67 @@ path and must **not** invent numbers from model recall:
 - **TDW white monitor variant.** The tower display workstation paints the
   monitor cone white; this trainer has no TDW. Scope ATPA monitor stays
   TPA blue until a TDW surface exists.
-- **R07 24 s predicted Alert.** CRC paints the Alert cone when already
-  inside the required NM **or** predicted to lose it within 24 s. This
-  trainer keeps 24 s as Warning. Restoring predicted Alert must keep Alert
-  as actual loss plus that timer — do not invent a third color.
+- **R07 24 s predicted Alert.** Shipped in T02-140: ATPA Alert applies when
+  already inside the required NM or predicted to lose it within 24 s; 24–45 s
+  remains Warning. Do not invent a third color.
 - **Aural ATPA alerting.** No ATPA tone. CA (T04-09) remains the only
   conflict audio; do not reuse the CA tone for in-trail ATPA.
 - **Volumes as authored trainer geometry** rather than imported NAS
   adaptation. KDEM `atpa-volumes.json` is hand-authored. A second airport
   still adds a JSON row walked by `approachId`; do not special-case KDEM
   or invent an importer that silently fills unsourced sizes.
+
+### Datablock runtime sources not yet modeled
+
+The datablock formatter accepts explicit Figure 2-20 Fields 0–8 values, and
+the current scope already supplies basic aircraft data, alerts, handoffs,
+basic ATPA distance, TPA controls, and existing Field 5 values. The remaining
+values below are formatter-capable but have no complete live backing logic.
+
+Deliberately missing:
+
+- **Wake-aware ATPA datablock output.** The evaluator now exposes explicit
+  wake/`NOWGT` source state and required spacing, but the live Field 6 adapter
+  does not yet render `NOWGT` or recompute a complete datablock source model on
+  sequence, approach, or category changes. Preserve the explicit
+  `cwtWakeCategory`/display `wakeCategory` boundary and the JO 7110.65-backed
+  matrix; do not parse display text or infer categories.
+- **Departure exit gate/fix.** Field 3 accepts an explicit `exitGate` or
+  `exitFix`, but no runtime adapter resolves the value from the departure,
+  SID/route, facility adaptation, and excluded-fix rules. Keep procedure and
+  fix lookup generic and data-first.
+- **TSAS runtime.** Field 6/7/8 formatting accepts TSAS values, but there is
+  no Terminal Sequencing and Spacing scheduler. Later work would need eligible
+  arrivals, runway assignment, sequence, target delivery time, advised speed,
+  early/late calculation, sequence number, enable/inhibit state, and live
+  updates. Do not imply TSAS exists merely because its literals format.
+- **Authoritative flight-plan association.** Optional flight-plan fields exist,
+  but the live track does not yet have a complete authoritative association
+  for filed aircraft ID, filed beacon, route, and flight-plan presence. This
+  blocks reliable `NO FP`, CSMM, beacon comparison, and procedure-derived
+  datablock values.
+- **CSMM detection.** Add an independent ADS-B Flight ID and compare it to the
+  filed aircraft identification. Emit `CSMM` only on an exact mismatch; do
+  not derive it from the displayed callsign.
+- **Duplicate beacon detection.** Existing beacon mismatch formatting is not
+  duplicate-code detection. Add world-level detection of two tracks using the
+  same Mode 3/A code, identify affected tracks, and provide `DB` plus the
+  reported code. Keep this separate from assigned-versus-reported mismatch.
+- **MOA and selected-beacon sources.** Field 6 accepts `MOA` and selected
+  beacon values, but no live MOA assignment or selected-beacon workflow feeds
+  them.
+- **Pointout-to-datablock binding.** Pointout/handoff lifecycle exists, but a
+  complete adapter still needs to expose `PO`, `UN`, `RD`, and accept-count /
+  inhibition state to Field 8 with documented priority.
+- **Central runtime field adapter.** Add one generic adapter that gathers
+  aircraft, world, ATPA, handoff, flight-plan, procedure, TSAS, beacon, and
+  coordination state and passes explicit values to the formatter. It must
+  preserve Field 0–8 priority and leave unsupported values empty rather than
+  guessing.
+
+Keep deferred: Field 1 ADS-B markers, ADS-B loss/duplicate-address (`DA`)
+workflow, and new Field 2 glyphs. Those remain out of scope until their
+underlying surveillance services exist.
 
 ### Richer TPA controls
 
@@ -221,13 +271,41 @@ The STARS CRC Scope Fidelity Addendum (T02-34–38) shipped the complete radar
 display fidelity model: target symbol shapes (`◇`, `*`, `V`, `□`, Sector IDs),
 LDB with 5s ground speed queries, PDB for unowned associated tracks, FDB
 dynamic time-sharing (~2.5s cycle) and Line 3 assigned altitudes `A<alt>`,
-inbound/outbound handoff blinking and 3-click progression, pointout lifecycle
-(offer, accept, `UN` reject, `**` convert), and cyan track highlight.
+inbound/outbound handoff blinking, pointout lifecycle (offer, accept, `UN`
+reject, `**` convert), and cyan track highlight. T02-134–139 replaced the old
+outbound three-click progression with shared Center/Tower destination handling,
+five-second receiver-TCP retention, single-position auto-accept, and explicit
+F4 return-to-unowned.
 
 Possible future follow-ups:
 - multi-controller peer networking / live inter-facility handoffs across multiple browser sessions;
 - quick-look multi-facility track filters;
 - host automated flight-plan amendments and route conformance monitoring.
+
+#### Post-acceptance handoff ownership cue
+
+The supplied STARS manual (TI 6191.409 Rev. 30, General Rules p. 5-9;
+§§5.1.3–5.1.4 pp. 5-10–5-11; datablock colors p. 2-70) says that the
+former owner’s accepted handoff remains a white **Owned / Previously Owned**
+FDB until the controller explicitly uses **Return data block to Unowned color**.
+The position symbol identifies the controlling position; white alone does not
+mean the track is still controlled locally. CRC documents a different,
+VATSIM-oriented memory aid: after acceptance, clicks stop the white flash,
+turn the FDB green, and then change it to a PDB. vice separates track ownership
+from aircraft control and uses explicit `FC` to transfer communications, then
+turns the sender’s datablock green.
+
+ATC-SIM currently follows the manual’s white-FDB rule for accepted Center and
+Tower handoffs, retains the receiver TCP for five simulated seconds,
+auto-accepts supported destinations in the single-position trainer after five
+simulated seconds, and offers F4 as the explicit return-to-unowned action. It
+does not model a live receiving position,
+`FC`, or a separate communications-transfer state. Revisit whether the trainer
+needs a clearer persistent “transferred to Center” cue or a documented CRC-like
+confirmation interaction. Preserve the manual distinction between owned and
+previously owned, avoid implying that white proves local control, and do not
+claim real multi-controller or interfacility behavior without adding the
+underlying state model.
 
 ### SSA and GI data beyond trainer stubs
 

@@ -1,5 +1,551 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Fifty-fourth swarm started — 2026-09-10 (Unified outbound handoff positions)
+
+Captain owns `fix/datablocks` and will run T02-137 through T02-139 with one
+isolated worker at a time. The swarm unifies current outbound handoff-to-C and
+handoff-to-Tower paths around one destination-aware initiation/acceptance
+function. No manual audit runs during implementation; user will audit after
+the swarm completes.
+
+| Key | Value |
+| --- | --- |
+| Goal | Unify supported outbound handoffs by receiving position and preserve shared accepted-handoff UI. |
+| Include | **T02-137**, **T02-138**, **T02-139** only. |
+| Skip | Pointouts, quicklook, inbound redesign, networking, second-sector model, new handoff types, new SPCs, new alerts, parser, Command IR, speech, DCB, and facility branches. |
+| Stop | After T02-139 acceptance and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+| Manual audit | Deferred until after swarm completion, per user instruction. |
+
+**Product law:** Supported outbound handoffs use one destination-aware path.
+The destination ID is data, not a branch-specific display convention. Center
+`C` and Tower use the same pending/accepted lifecycle; Tower-specific landing
+effects happen only after acceptance. Existing eligibility, logs, movement, and
+single-position trainer constraints remain intact.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-137 | T02-136 complete and current `fix/datablocks` clean |
+| B | T02-138 | T02-137 merge and CI |
+| C | T02-139 | T02-138 merge and CI |
+
+**Ticket ownership:**
+
+- T02-137: destination-aware outbound handoff initiation.
+- T02-138: shared five-second simulated acceptance and destination effects.
+- T02-139: shared accepted-handoff datablock UI for Center and Tower.
+
+**Ticket files / branches:**
+
+- `ticket/T02-137-unified-outbound-handoff-initiation` ← `phases/02-scope/tickets/T02-137-unified-outbound-handoff-initiation.md`
+- `ticket/T02-138-shared-outbound-handoff-acceptance` ← `phases/02-scope/tickets/T02-138-shared-outbound-handoff-acceptance.md`
+- `ticket/T02-139-shared-handoff-datablock-ui` ← `phases/02-scope/tickets/T02-139-shared-handoff-datablock-ui.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 unified outbound handoff positions T02-137–139
+Merge target: fix/datablocks
+Merged: T02-137, T02-138, T02-139
+Tests: <focused gates and npm run ci result>
+Notes: Manual audit deferred to user; C/Tower share destination-aware lifecycle
+```
+
+## Fifty-third swarm started — 2026-09-10 (Outbound handoff UI/manual alignment)
+
+Captain owns `fix/datablocks` and will create one isolated worker at a time for
+T02-135 then T02-136. The swarm strictly aligns outbound handoff datablock UI
+with the supplied TI 6191.409 Rev. 30 manual, while T02-136 adds only the
+approved trainer simulation of Center `C` accepting after five simulated
+seconds. After each ticket, captain runs `check-stars-manual` against
+`/home/ben/Documents/stars refs/full_manual.pdf` with an independent pass.
+
+| Key | Value |
+| --- | --- |
+| Goal | Remove unsupported blue outbound handoff datablock UI and simulate Center C acceptance after five seconds. |
+| Include | **T02-135**, **T02-136** only. |
+| Skip | New handoff types, second-sector/network model, pointouts, quicklook, new SPCs, new alerts, parser, Command IR, speech, DCB, and facility branches. |
+| Stop | After T02-136 acceptance, manual review, and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Product law:** Manual display semantics win. Initiated outbound handoffs
+retain a white sender FDB with receiver TCP `C`; accepted handoffs blink white
+for five seconds, retain `C` for five seconds, then remain solid white without
+automatic PDB/LDB collapse. T02-136’s five-second Center acceptance is an
+explicit trainer delta and must call existing acceptance logic exactly once.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-135 | T02-134 complete and current `fix/datablocks` clean |
+| B | T02-136 | T02-135 merge, CI, and manual review |
+
+**Ticket ownership:**
+
+- T02-135: manual-aligned pending outbound handoff datablock color.
+- T02-136: simulated Center acceptance timing and post-acceptance UI.
+
+**Ticket files / branches:**
+
+- `ticket/T02-135-manual-outbound-handoff-color` ← `phases/02-scope/tickets/T02-135-manual-outbound-handoff-color.md`
+- `ticket/T02-136-simulated-center-handoff-acceptance` ← `phases/02-scope/tickets/T02-136-simulated-center-handoff-acceptance.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 outbound handoff UI/manual alignment T02-135–136
+Merge target: fix/datablocks
+Merged: T02-135, T02-136
+Tests: <focused gates, manual reviews, and npm run ci result>
+Notes: <manual visual leftovers; C acceptance trainer delta>
+```
+
+## Fifty-third swarm planned — 2026-09-10 (Outbound handoff UI/manual alignment)
+
+User approved T02-135 and T02-136. T02-135 removes the unsupported blue sender
+datablock while preserving handoff-to-C logic. T02-136 adds only a five-second
+simulated Center acceptance using existing acceptance logic; it does not add a
+second position or network model. Captain reviews each merged ticket with
+`check-stars-manual` against
+`/home/ben/Documents/stars refs/full_manual.pdf`, including independent
+verification, before the next wave.
+
+| Key | Value |
+| --- | --- |
+| Goal | Strictly align outbound handoff UI and simulate Center C acceptance. |
+| Include | **T02-135**, **T02-136** only. |
+| Skip | New handoff types, second-sector/network model, pointouts, quicklook, new SPCs, new alerts, parser, Command IR, speech, DCB, and facility branches. |
+| Stop | After T02-136 acceptance, manual review, and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Product law:** Manual display semantics are strict. Pending outbound sender
+datablocks use white FDB presentation with receiver TCP `C`. Simulated Center
+acceptance occurs once after five simulated seconds; accepted sender UI then
+uses the manual’s white five-second flash/TCP window and remains white until
+explicit return-to-unowned control.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-135 | T02-134 complete and current `fix/datablocks` clean |
+| B | T02-136 | T02-135 merge, CI, and manual review |
+
+**Ticket ownership:**
+
+- T02-135: pending outbound handoff datablock color.
+- T02-136: simulated Center acceptance timing and post-acceptance display.
+
+**Ticket files / branches:**
+
+- `ticket/T02-135-manual-outbound-handoff-color` ← `phases/02-scope/tickets/T02-135-manual-outbound-handoff-color.md`
+- `ticket/T02-136-simulated-center-handoff-acceptance` ← `phases/02-scope/tickets/T02-136-simulated-center-handoff-acceptance.md`
+
+## Fifty-second swarm started — 2026-09-10 (Accepted outbound handoff UI)
+
+Captain owns `fix/datablocks` and will create one isolated worker for the
+approved T02-134 ticket. The ticket preserves existing handoff logic to the
+configured Center sector (`C`) and aligns only the visible accepted-handoff
+datablock UI with the supplied TI 6191.409 Rev. 30 manual. After completion,
+captain runs `check-stars-manual` against
+`/home/ben/Documents/stars refs/full_manual.pdf` with an independent
+verification pass, then runs final CI and stops.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align accepted outbound handoff datablock presentation with the supplied manual. |
+| Include | **T02-134** only. |
+| Skip | Handoff state/acceptance logic, multi-position simulation, new handoff types, pointouts, quicklook, networking, new SPCs, new alerts, parser, Command IR, speech, DCB, and facility branches. |
+| Stop | After T02-134 acceptance, manual review, and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Product law:** Existing outbound handoff logic remains authoritative. The
+UI shows the accepted handoff as a white FDB; the receiver TCP remains visible
+for five seconds after acceptance, then disappears. The UI does not invent a
+receiver position or alter ownership state.
+
+**Wave:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-134 | Current `fix/datablocks` is clean and T02-133 is complete |
+
+**Ticket ownership:**
+
+- T02-134: accepted outbound handoff datablock UI and rendering tests.
+
+**Ticket file / branch:**
+
+- `ticket/T02-134-accepted-outbound-handoff-ui` ← `phases/02-scope/tickets/T02-134-accepted-outbound-handoff-ui.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 accepted outbound handoff UI T02-134
+Merge target: fix/datablocks
+Merged: T02-134
+Tests: <focused gate, manual review, and npm run ci result>
+Notes: <manual visual leftovers; handoff logic unchanged>
+```
+
+## Fifty-second swarm planned — 2026-09-10 (Accepted outbound handoff UI)
+
+User approved T02-134 after research against the supplied TI 6191.409 Rev. 30
+manual. The ticket changes visible accepted outbound handoff datablock UI only;
+existing handoff routing to Center sector `C`, acceptance state, logs, and
+aircraft lifecycle remain unchanged. Captain reviews the completed ticket with
+`check-stars-manual` using only
+`/home/ben/Documents/stars refs/full_manual.pdf` and its independent
+verification pass before final CI.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align accepted outbound handoff datablock UI with the manual. |
+| Include | **T02-134** only. |
+| Skip | Core handoff logic, C routing, multi-position simulation, new handoff types, pointouts, quicklook, networking, new SPCs, new alerts, parser, Command IR, speech, DCB, and facility branches. |
+| Stop | After T02-134 acceptance, manual review, and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Product law:** Existing handoff state remains authoritative. Accepted
+outbound handoffs render as white FDBs; sender-side receiver TCP remains for
+five seconds after acceptance, then disappears. The UI does not create a
+receiver position or alter core ownership/acceptance logic.
+
+**Wave:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-134 | T02-133 complete and current `fix/datablocks` clean |
+
+**Ticket ownership:**
+
+- T02-134: accepted outbound handoff datablock presentation and tests.
+
+**Ticket file / branch:**
+
+- `ticket/T02-134-accepted-outbound-handoff-ui` ← `phases/02-scope/tickets/T02-134-accepted-outbound-handoff-ui.md`
+
+## Fifty-first swarm planned — 2026-09-10 (Existing datablock field alignment)
+
+User approved execution of T02-131 through T02-133 against the supplied
+TI 6191.409 Rev. 30 manual. After each ticket merge, captain must run
+`check-stars-manual` with the supplied PDF and an independent verification pass
+before starting the next ticket. No CRC or other substitute source may be used.
+No new SPCs or alert types are added.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align existing PDB, LDB, and FDB Field 0 presentation with the supplied STARS manual. |
+| Include | **T02-131**, **T02-132**, **T02-133** only. |
+| Skip | New SPCs, new alerts, MI, LL, FMA, RNP, ADS-B, pointout expansion, quicklook, TSAS runtime, networking, parser, Command IR, speech, DCB, facility branches. |
+| Stop | After T02-133 acceptance, manual review, and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Product law:** Existing datablock state maps to manual field positions.
+Formatter and renderer preserve absent values, never invent operational state,
+and add no new SPC or alert types. Field 0 renders separately above the
+callsign. PDB and LDB use their manual-defined reduced projections. Product
+remains STARS-like, not NAS-compatible.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-131 | T02-130 complete |
+| B | T02-132 | T02-131 merge, CI, and manual review |
+| C | T02-133 | T02-132 merge, CI, and manual review |
+
+**Ticket ownership:**
+
+- T02-131: PDB field projection and compatibility.
+- T02-132: existing LDB SPC/safety-alert Field 0 display.
+- T02-133: FDB Field 0 physical rendering and layout metrics.
+
+**Ticket files / branches:**
+
+- `ticket/T02-131-pdb-manual-field-projection` ← `phases/02-scope/tickets/T02-131-pdb-manual-field-projection.md`
+- `ticket/T02-132-ldb-existing-field0-display` ← `phases/02-scope/tickets/T02-132-ldb-existing-field0-display.md`
+- `ticket/T02-133-fdb-field0-physical-rendering` ← `phases/02-scope/tickets/T02-133-fdb-field0-physical-rendering.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 existing datablock field alignment T02-131–133
+Merge target: fix/datablocks
+Merged: T02-131, T02-132, T02-133
+Tests: <focused gates, manual reviews, and npm run ci result>
+Notes: <manual visual leftovers; no new SPC or alert types>
+```
+
+## Fifty-first swarm started — 2026-09-10 (Existing datablock field alignment)
+
+Captain owns `fix/datablocks`, creates one isolated worker at a time, and
+squash-merges each completed ticket after focused tests. After every merge,
+captain runs `check-stars-manual` against
+`/home/ben/Documents/stars refs/full_manual.pdf`, including its independent
+verification pass, before starting the next wave. No CRC or substitute source.
+
+## Fiftieth swarm worker started — 2026-09-10 (T02-130)
+
+Worker executes exactly T02-130 in isolated branch/worktree
+`ticket/T02-130-fdb-physical-field-alignment`, based on `fix/datablocks`. No
+merge or push. Scope is limited to logical-to-physical FDB/PDB Field 0–8
+alignment, Field 4 consistency, stable one-/two-character TCP cell positions,
+pending/accepted inbound plus outbound/pointout coverage, and the documented
+aircraft-type Line 3 delta.
+
+## Fiftieth swarm worker started — 2026-09-10 (T02-129)
+
+Worker executes exactly T02-129 in isolated branch/worktree
+`ticket/T02-129-pending-inbound-handoff-tcp-semantics`, based on the captain
+target `fix/datablocks`. No merge or push. Scope is limited to separating
+inbound origin from local receiving TCP, target-symbol control, Field 4/TCP
+origin display, removal of inbound `HO`, and synthetic coverage for preserved
+PO/blink/filter/acceptance behavior.
+
+## Fiftieth swarm planned — 2026-09-10 (Pending inbound datablock fidelity)
+
+User approved execution of the pending inbound datablock fidelity plan.
+Captain owns `fix/datablocks`, runs one isolated worker at a time, squash-merges
+each completed ticket back onto `fix/datablocks`, commits throughout, pushes only
+after the final gate, and stops at T02-130.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align pending inbound handoff TCP/origin semantics and physical FDB/PDB field presentation with TI 6191.409 Rev. 30. |
+| Include | **T02-129**, **T02-130** only. |
+| Skip | Networking, multi-user positions, redirects, TSAS runtime, ADS-B, parser, Command IR, speech, DCB, scenario data, facility branches. |
+| Stop | After T02-130 acceptance and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | Captain pushes `fix/datablocks` after final CI and STATUS update. |
+
+**Product law:** Inbound origin and receiving TCP are separate values. The
+receiving TCP controls the target symbol; the originating value occupies Field
+4. Pending inbound status uses STARS-like FDB blinking and field placement,
+not an invented `HO` suffix. No NAS compatibility claim and no facility branch.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-129 | planning commit |
+| B | T02-130 | T02-129 merge and focused gate |
+
+**Ticket ownership:**
+
+- T02-129: inbound handoff origin/receiving TCP adapter, symbol, and pending
+  FDB behavior.
+- T02-130: logical-to-physical FDB/PDB mapping, aircraft-type placement
+  decision, fidelity acceptance, and documentation.
+
+**Ticket files / branches:**
+
+- `ticket/T02-129-pending-inbound-handoff-tcp-semantics` ← `phases/02-scope/tickets/T02-129-pending-inbound-handoff-tcp-semantics.md`
+- `ticket/T02-130-fdb-physical-field-alignment` ← `phases/02-scope/tickets/T02-130-fdb-physical-field-alignment.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 pending inbound datablock fidelity T02-129–130
+Merge target: fix/datablocks
+Merged: T02-129, T02-130
+Tests: <focused gates and npm run ci result>
+Notes: <aircraft-type placement decision; manual visual leftovers>
+```
+
+## Forty-ninth swarm planned — 2026-09-10 (ATPA CWT wake minima)
+
+User approved the ATPA wake-only plan. Captain owns `fix/datablocks`, spawns
+one isolated worker at a time, squash-merges each completed ticket back onto
+`fix/datablocks`, runs the required focused gate after each merge, and stops
+after final `npm run ci`. No push.
+
+| Key | Value |
+| --- | --- |
+| Goal | Add FAA JO 7110.65 CWT wake categories, data-driven ATPA minima, and explicit NOWGT/10 NM behavior. |
+| Include | **T02-125**, **T02-126**, **T02-127**, **T02-128** only. |
+| Skip | ICAO-type inference, aircraft performance changes, TSAS, CRDA, networking, per-position adaptation, aural ATPA, UI redesign, live FAA downloads. |
+| Stop | After T02-128 acceptance and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+
+**Product law:** Operational CWT category data is separate from display
+category letters. The evaluator uses leader-row/follower-column adaptation
+data. Missing required category or blank required matrix cell produces
+`NOWGT` and `10 NM`. Wake minima never fall below applicable volume radar
+minima. No facility or ICAO-type branch.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-125 | planning commit |
+| B | T02-126 | T02-125 merge and focused gate |
+| C | T02-127 | T02-126 merge and focused gate |
+| D | T02-128 | T02-127 merge and focused gate |
+
+**Ticket ownership:**
+
+- T02-125: CWT category type and aircraft contract.
+- T02-126: FAA wake matrix data, schema, and NOWGT adaptation.
+- T02-127: pure wake-aware ATPA evaluator and world state.
+- T02-128: acceptance, regression updates, and documentation.
+
+**Ticket files / branches:**
+
+- `ticket/T02-125-atpa-cwt-category-contract` ← `phases/02-scope/tickets/T02-125-atpa-cwt-category-contract.md`
+- `ticket/T02-126-atpa-faa-wake-matrix-and-nowgt` ← `phases/02-scope/tickets/T02-126-atpa-faa-wake-matrix-and-nowgt.md`
+- `ticket/T02-127-atpa-wake-aware-evaluator` ← `phases/02-scope/tickets/T02-127-atpa-wake-aware-evaluator.md`
+- `ticket/T02-128-atpa-wake-acceptance-and-docs` ← `phases/02-scope/tickets/T02-128-atpa-wake-acceptance-and-docs.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 ATPA CWT wake minima T02-125–128
+Merge target: fix/datablocks
+Merged: T02-125, T02-126, T02-127, T02-128
+Tests: <focused gates and npm run ci result>
+Notes: <NOWGT policy; remaining manual leftovers>
+```
+
+## Fifty-fourth swarm planned — 2026-09-10 (Unified outbound handoff positions)
+
+User approved the destination-aware C/Tower handoff plan. T02-137 unifies
+outbound initiation, T02-138 unifies five-simulated-second acceptance, and
+T02-139 shares the accepted/pending datablock UI. Manual review is explicitly
+deferred until after implementation; no `check-stars-manual` run is part of
+this swarm.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align the supported outbound C/Tower handoff lifecycle around the receiving position. |
+| Include | **T02-137**, **T02-138**, **T02-139** only. |
+| Skip | Pointouts, quicklook, inbound redesign, networking, second-sector model, new handoff types, new SPCs, new alerts, parser, Command IR, speech, DCB, and facility branches. |
+| Stop | After T02-139 acceptance and `npm run ci`; manual audit remains user follow-up. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-137 | T02-136 complete and current `fix/datablocks` clean |
+| B | T02-138 | T02-137 merge and CI |
+| C | T02-139 | T02-138 merge and CI |
+
+**Ticket ownership:**
+
+- T02-137: `phases/02-scope/tickets/T02-137-unified-outbound-handoff-initiation.md`
+- T02-138: `phases/02-scope/tickets/T02-138-shared-outbound-handoff-acceptance.md`
+- T02-139: `phases/02-scope/tickets/T02-139-shared-handoff-datablock-ui.md`
+
+**Branches:**
+
+- `ticket/T02-137-unified-outbound-handoff-initiation`
+- `ticket/T02-138-shared-outbound-handoff-acceptance`
+- `ticket/T02-139-shared-handoff-datablock-ui`
+
+## Forty-ninth swarm started — 2026-09-10 (ATPA CWT wake minima)
+
+Captain start/configuration confirmed after planning. This swarm runs
+T02-125 through T02-128 sequentially on `fix/datablocks`, with one isolated
+worker at a time and captain-owned squash merges. `NOWGT` plus `10 NM` is the
+approved policy for missing required categories and blank required matrix
+cells. No push.
+
+## Forty-eighth swarm started — 2026-09-10 (Datablock field-format fidelity)
+
+User authorized execution using isolated subagents after the planning addendum
+below. Captain owns `fix/datablocks`, creates one isolated worker at a time,
+implements T02-122 then T02-123/T02-124, squash-merges each completed ticket,
+and stops at the configured boundary. No push.
+
+## Forty-eighth swarm planned — 2026-09-10 (Datablock field-format fidelity)
+
+User-approved format-model work follows Figure 2-20 supplied in chat. This
+swarm defines explicit Fields 0–8, Field 5 data grammar, TSAS/exit-gate/fix
+format inputs, duplicate-beacon formatting, and one-/two-character TCPs. It
+does not implement missing simulation subsystems.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align STARS-like FDB/PDB format logic with Figure 2-20 using a generic explicit field model. |
+| Include | **T02-122**, **T02-123**, **T02-124** only. |
+| Skip | Field 1 ADS-B markers, new Field 2 glyphs, TSAS scheduling, ADS-B detection, MOA/CSMM workflows, beacon selection, parser, Command IR, DCB, networking, facility branches. |
+| Stop | After T02-123 and T02-124 focused gates plus `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Product law:** Formatter consumes explicit generic datablock fields. It
+preserves documented literals, omits absent values, never guesses missing
+operational state, and never adds facility-specific branches. Synthetic fixtures
+may populate format-only values not yet produced by runtime logic.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-122 | planning commit |
+| B | T02-123, T02-124 | T02-122 merge and focused gate |
+
+**Ticket ownership:**
+
+- T02-122: explicit Fields 0–5, Field 5 alternatives, exit gate/fix input,
+  TSAS sequence input, tests.
+- T02-123: Fields 6–8, TSAS indicator inputs, duplicate-beacon distinction,
+  tests, runtime-gap documentation.
+- T02-124: one-/two-character TCP adaptation and tests.
+
+**Ticket files / branches:**
+
+- `ticket/T02-122-datablock-explicit-fields-0-5` ← `phases/02-scope/tickets/T02-122-datablock-explicit-fields-0-5.md`
+- `ticket/T02-123-datablock-fields-6-8-and-tsas` ← `phases/02-scope/tickets/T02-123-datablock-fields-6-8-and-tsas.md`
+- `ticket/T02-124-datablock-tcp-width` ← `phases/02-scope/tickets/T02-124-datablock-tcp-width.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 datablock field-format fidelity T02-122–124
+Merge target: fix/datablocks
+Merged: T02-122, T02-123, T02-124
+Tests: <focused gates and npm run ci result>
+Notes: <format-only fields; runtime-backed gaps; manual leftovers>
+```
+
 ## Forty-seventh swarm planned — 2026-09-09 (Balanced random arrival packs)
 
 | Key | Value |

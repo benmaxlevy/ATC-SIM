@@ -20,6 +20,51 @@ import { renderScope } from "../render/renderScope";
 import { getAlertEntries } from "../systemLists";
 
 describe("Datablock inline alert glyphs", () => {
+  test("FDB Field 0 paints above callsign without duplicating SPC", () => {
+    const world = createWorld();
+    const view = createScopeView();
+    const ac = makeTestAircraft({ id: "ac-f0", callsign: "DAL133", spc: "EM" });
+    const td = createTrackDisplay("owned");
+    td.datablockMode = "full";
+    world.aircraft = [ac];
+    view.tracks.set(ac.id, td);
+
+    const mock = createMockCtx();
+    drawDatablock(mock.ctx, ac, 100, 100, view, world);
+
+    const field0 = mock.fillTexts.find((fill) => fill.text === "EM");
+    const callsign = mock.fillTexts.find((fill) => fill.text === "DAL133");
+    expect(field0).toBeDefined();
+    expect(callsign).toBeDefined();
+    expect(field0!.fillStyle).toBe(applyBrite(PALETTE.alert, view.brite.fdb));
+    expect(field0!.y).toBeLessThan(callsign!.y!);
+    expect(mock.fillTexts.filter((fill) => fill.text.includes("EM"))).toHaveLength(1);
+  });
+
+  test("existing CA Field 0 shares optional row geometry with static Field 0", () => {
+    const world = createWorld();
+    const view = createScopeView();
+    const ac = makeTestAircraft({ id: "ac-f0-ca", callsign: "DAL134", spc: "RF" });
+    const td = createTrackDisplay("owned");
+    td.datablockMode = "full";
+    td.caAcknowledged = true;
+    world.aircraft = [ac];
+    world.alerts.ca = [
+      { callsignA: ac.callsign, callsignB: "UAL999", severity: "alert", distNm: 1, deltaAltFt: 0 },
+    ];
+    view.tracks.set(ac.id, td);
+
+    const mock = createMockCtx();
+    drawDatablock(mock.ctx, ac, 100, 100, view, world);
+
+    const field0 = mock.fillTexts.find((fill) => fill.text === "RF");
+    const ca = mock.fillTexts.find((fill) => fill.text === "/CA");
+    const callsign = mock.fillTexts.find((fill) => fill.text === "DAL134");
+    expect(field0?.y).toBeLessThan(callsign!.y!);
+    expect(ca?.y).toBe(field0?.y);
+    expect(mock.fillTexts.some((fill) => fill.text === "DAL134RF")).toBe(false);
+  });
+
   describe("Blink clock & period", () => {
     test("square-wave blink cadence operates at 800ms ON / 800ms OFF (1600ms period)", () => {
       expect(ALERT_BLINK_HALF_PERIOD_MS).toBe(800);

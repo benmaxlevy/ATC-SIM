@@ -1,0 +1,4 @@
+interface:
+  display_name: ATC-SIM Research
+  short_description: Research a feature and draft tickets/SWARM plan
+  default_prompt: Research this ATC-SIM feature and propose tickets plus a SWARM addendum. Do not edit files.

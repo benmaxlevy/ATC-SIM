@@ -12,6 +12,7 @@ import {
   inAltitudeFilter,
   parseFilterHundreds,
   parseStrictFilterHundreds,
+  shouldShowDatablockOutsideAltitudeFilter,
   tryApplyAltitudeFilter,
   tryApplyAltitudeFilterDigits,
   type AltitudeFilter,
@@ -32,6 +33,20 @@ test("default altitude filter is 000-180; non-finite Mode C is outside", () => {
   expect(inAltitudeFilter(18000, DEFAULT_ALTITUDE_FILTER)).toBe(true);
   expect(inAltitudeFilter(18100, DEFAULT_ALTITUDE_FILTER)).toBe(false);
   expect(inAltitudeFilter(Number.NaN, DEFAULT_ALTITUDE_FILTER)).toBe(false);
+});
+
+test("datablock filter gate allows owned, retained, and emergency exceptions only", () => {
+  expect(shouldShowDatablockOutsideAltitudeFilter({ inFilter: false })).toBe(false);
+  expect(shouldShowDatablockOutsideAltitudeFilter({ inFilter: false, ownership: "owned" })).toBe(
+    true,
+  );
+  expect(shouldShowDatablockOutsideAltitudeFilter({ inFilter: false, retainedFdb: true })).toBe(
+    true,
+  );
+  expect(shouldShowDatablockOutsideAltitudeFilter({ inFilter: false, emergency: true })).toBe(true);
+  expect(shouldShowDatablockOutsideAltitudeFilter({ inFilter: false, pendingHandoff: true })).toBe(
+    true,
+  );
 });
 
 test("parse 1-3 digit hundreds; 50 Enter = 050; clamp 0-180", () => {
@@ -86,6 +101,34 @@ test("AC6 — max < min on commit leaves the previous filter; no throw", () => {
   expect(() => handleFilterEntryKey(entry, filter, "Enter", 80)).not.toThrow();
   expect(filter).toEqual({ minHundreds: 0, maxHundreds: 180 });
   expect(entry.phase).toBe("idle");
+});
+
+test("successful F commit invokes retention callback; rejected commit does not", () => {
+  const filter = { minHundreds: 0, maxHundreds: 180 };
+  const entry = idleFilterEntry(filter);
+  let commits = 0;
+  beginFilterEntry(entry, filter, 0);
+  for (const key of ["5", "0", "Enter", "1", "0", "0"]) {
+    handleFilterEntryKey(entry, filter, key, ++commits, () => {
+      commits += 100;
+    });
+  }
+  handleFilterEntryKey(entry, filter, "Enter", 20, () => {
+    commits += 1000;
+  });
+  expect(filter).toEqual({ minHundreds: 50, maxHundreds: 100 });
+  expect(commits).toBe(1006);
+
+  const rejected = idleFilterEntry({ minHundreds: 0, maxHundreds: 180 });
+  const rejectedFilter = { minHundreds: 0, maxHundreds: 180 };
+  let rejectedCommits = 0;
+  beginFilterEntry(rejected, rejectedFilter, 0);
+  for (const key of ["1", "0", "0", "Enter", "0", "5", "0", "Enter"]) {
+    handleFilterEntryKey(rejected, rejectedFilter, key, 1, () => {
+      rejectedCommits += 1;
+    });
+  }
+  expect(rejectedCommits).toBe(0);
 });
 
 test("AC5 — Esc during entry restores prior min/max", () => {

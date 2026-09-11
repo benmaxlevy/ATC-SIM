@@ -16,8 +16,8 @@
  */
 
 import {
-  acceptTowerHandoff,
   initiateCenterHandoff,
+  initiateOutboundHandoff,
   isCenterHandoffEligible,
   isTowerHandoffEligible,
   type World,
@@ -101,15 +101,18 @@ export function applyHandoffToSelection(
     return { applied: false, target: null, hint: null };
   }
   if (isTowerHandoffEligible(ac, world)) {
-    const ok = acceptTowerHandoff(ac, {
-      log: world.sessionLog,
-      simTimeMs: world.simTimeMs,
-    });
+    const ok = initiateOutboundHandoff(
+      ac,
+      {
+        world,
+        log: world.sessionLog,
+        simTimeMs: world.simTimeMs,
+      },
+      "TWR",
+    );
     if (!ok) {
       return { applied: false, target: null, hint: null };
     }
-    const td = ensureTrackDisplay(tracks, id);
-    td.ownership = applyTowerOwnership(td.ownership);
     return { applied: true, target: "tower", hint: null };
   }
   if (isCenterHandoffEligible(ac, world)) {

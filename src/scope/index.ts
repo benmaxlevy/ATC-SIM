@@ -632,8 +632,11 @@ export type {
   TpaState,
 } from "./tpa";
 export {
+  ATPA_CONE_END_HEIGHT_NM,
   ATPA_CONE_HALF_ANGLE_DEG,
+  ATPA_CONE_REFERENCE_LENGTH_NM,
   atpaConeColor,
+  atpaConeHalfAngleDeg,
   atpaConePoints,
   atpaSuppressesManualTpaCone,
   selectAtpaConesToPaint,
@@ -765,11 +768,15 @@ export {
   datablockMetrics,
   datablockRect,
   formatAltitudeHundreds,
+  formatDatablockFields,
+  formatPartialDatablockFields,
   formatFullDatablock,
   formatGroundSpeedKt,
   formatGroundSpeedTens,
+  formatTcp,
   formatLimitedDatablock,
   formatPartialDatablock,
+  physicalDatablockLines,
   fullDatablockLine3Parts,
   linesForDatablock,
   sanitizeScratchpad,
@@ -777,6 +784,8 @@ export {
 } from "./datablock";
 export type {
   DatablockLines,
+  DatablockFields,
+  DatablockFieldOptions,
   DatablockMode,
   DatablockSource,
   FullDatablock,
@@ -785,6 +794,7 @@ export type {
   LimitedDatablockOpts,
   PartialDatablock,
   PartialDatablockOpts,
+  PhysicalDatablockLines,
 } from "./datablock";
 export {
   CHAR_SIZE_STEPS_PX,

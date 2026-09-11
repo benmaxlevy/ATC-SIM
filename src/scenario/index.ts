@@ -20,6 +20,7 @@ export const SCENARIO_PACKAGE = "scenario";
 export type {
   Approach,
   ArrivalSpawn,
+  CwtWakeCategory,
   DepartureConfig,
   DepartureRoute,
   DeparturePolicy,
@@ -49,6 +50,8 @@ export type {
 export type {
   ApproachProcedure,
   ApproachType,
+  AtpaWakeAdaptation,
+  AtpaWakeMatrix,
   AtpaVolume,
   NavFix,
   Navaid,
@@ -60,6 +63,11 @@ export type {
   StarProcedure,
 } from "./procedures/types";
 export { catalogDctIds } from "./procedures/types";
+export {
+  FAA_CWT_WAKE_ADAPTATION,
+  FAA_CWT_WAKE_MATRIX,
+  lookupAtpaWakeMinimum,
+} from "./procedures/atpaWake";
 export {
   ARRIVAL_COUNT_MAX,
   ARRIVAL_COUNT_MIN,
@@ -84,6 +92,7 @@ export {
 export {
   findSidProcedure,
   loadCatalog,
+  parseAtpaWakeAdaptation,
   parseCatalogFiles,
   sidRouteFixIds,
 } from "./procedures/loadCatalog";

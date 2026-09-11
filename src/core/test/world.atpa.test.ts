@@ -113,6 +113,44 @@ test("stepWorld without ATPA volumes leaves atpa empty", () => {
   expect(world.alerts.atpa).toEqual([]);
 });
 
+test("T02-128 AC1/2/3 — stepWorld applies wake matrix orientation and NOWGT", () => {
+  const leader = arrival("AAL45", 5);
+  leader.cwtWakeCategory = "A";
+  const trailer = arrival("DAL123", 9);
+  const volume = {
+    ...volume27,
+    wakeAdaptation: {
+      enabled: true,
+      nowgtSeparationNm: 10,
+      matrix: { A: { I: 8 } },
+    },
+  };
+  const world = createWorld({
+    aircraft: [leader, trailer],
+    catalog: { ...atpaCatalog(), atpaVolumes: [volume] },
+  });
+
+  stepWorld(world, 0);
+  expect(world.alerts.atpa[0]).toMatchObject({
+    trailingCallsign: "DAL123",
+    leadingCallsign: "AAL45",
+    requiredNm: 10,
+    wakeSource: "nowgt",
+    status: "alert",
+  });
+
+  trailer.cwtWakeCategory = "I";
+  stepWorld(world, 0);
+  expect(world.alerts.atpa[0]).toMatchObject({
+    trailingCallsign: "DAL123",
+    leadingCallsign: "AAL45",
+    requiredNm: 8,
+    wakeSource: "wake",
+    status: "alert",
+  });
+  expect(world.alerts.atpa[0]?.requiredNm).toBeGreaterThan(volume.reducedSeparationNm);
+});
+
 test("status upgrade logs the new status without a clear", () => {
   const leader = arrival("AAL45", 11, 70);
   const trailer = arrival("DAL123", 15, 250);
@@ -128,7 +166,7 @@ test("status upgrade logs the new status without a clear", () => {
   expect(world.alerts.atpa[0]?.status).toBe("monitor");
   expect(log.byType("alert.atpa.monitor")).toHaveLength(1);
 
-  trailer.speedKt = 250;
+  trailer.speedKt = 180;
   stepWorld(world, 0);
   expect(world.alerts.atpa[0]?.status).toBe("warning");
   expect(log.byType("alert.atpa.warning")).toHaveLength(1);

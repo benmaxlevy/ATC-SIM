@@ -7,7 +7,7 @@
  * or intent. Not NAS STARS.
  */
 
-import type { Aircraft, CaAlert, World } from "@core";
+import type { Aircraft, CaAlert, TrackHandoff, World } from "@core";
 import {
   acceptInboundHandoff,
   acceptPointout,
@@ -58,11 +58,12 @@ export interface TrackDisplay {
   tracked?: boolean;
   queriedUntilSimMs?: number;
   forcedFdb?: boolean;
+  /** Retains an FDB captured when altitude-filter limits changed. */
+  retainedFdbOutsideAltitudeFilter?: boolean;
   unassociated?: boolean;
   highlighted?: boolean;
   outboundFlashUntilSimMs?: number;
   beaconatorUntilSimMs?: number;
-  outboundClickStep?: number;
   flightRules?: string;
   pointoutAccepted?: boolean;
   pointoutRejected?: boolean;
@@ -508,6 +509,7 @@ export function toggleTrackPdbFdb(td: TrackDisplay): DatablockMode {
   } else if (td.datablockMode === "full") {
     td.datablockMode = "partial";
     td.forcedFdb = false;
+    td.retainedFdbOutsideAltitudeFilter = false;
   }
   return td.datablockMode;
 }
@@ -533,10 +535,27 @@ export function handleTrackMiddleClick(
 }
 
 /**
+ * The sender keeps an accepted handoff receiver TCP in Field 4 for five
+ * seconds, then removes it while retaining the accepted white FDB.
+ */
+export function isOutboundReceiverTcpVisible(handoff: TrackHandoff, simTimeMs: number): boolean {
+  if (handoff.kind !== "outbound") {
+    return false;
+  }
+  if (handoff.status !== "accepted") {
+    return true;
+  }
+  return (
+    handoff.acceptedAtSimMs != null &&
+    simTimeMs < handoff.acceptedAtSimMs + OUTBOUND_ACCEPTED_FLASH_MS
+  );
+}
+
+/**
  * Handle clicking a track on the scope:
  * - Accept pending inbound handoff if present.
  * - Handle pointouts: UN rejects, ** converts to handoff, normal click accepts or reverts.
- * - Handle outbound accepted 3-click progression: 1) stop blinking, 2) green FDB, 3) PDB.
+ * - Keep an accepted outbound handoff as an accepted white FDB.
  * - If unassociated (LDB): query ground speed for 5 seconds.
  * - If unowned (PDB / forced FDB): toggle between PDB and Green FDB.
  */
@@ -595,31 +614,10 @@ export function handleTrackClick(
     }
   }
 
-  // Outbound accepted handoff 3-click progression
-  const isOutboundAccepted =
-    (ho.kind === "outbound" && ho.status === "accepted") ||
-    (td.outboundFlashUntilSimMs != null && td.outboundFlashUntilSimMs > 0) ||
-    td.outboundClickStep != null;
-
-  if (isOutboundAccepted) {
-    const step = td.outboundClickStep ?? 0;
-    if (step === 0) {
-      td.outboundFlashUntilSimMs = 0;
-      td.outboundClickStep = 1;
-      return;
-    }
-    if (step === 1) {
-      td.ownership = "unowned";
-      td.datablockMode = "full";
-      td.outboundClickStep = 2;
-      return;
-    }
-    if (step === 2) {
-      td.datablockMode = "partial";
-      td.outboundClickStep = 3;
-      world.handoffs.set(aircraftId, { kind: "none" });
-      return;
-    }
+  // Accepted outbound handoffs stay white until an explicit trainer control
+  // changes display ownership; normal selection does not progress them.
+  if (ho.kind === "outbound" && ho.status === "accepted") {
+    return;
   }
 
   if (td.datablockMode === "limited" || td.unassociated) {
@@ -711,6 +709,7 @@ export function applyDropTrackToId(
   td.ownership = applyDropTrack(td.ownership);
   td.datablockMode = "partial";
   td.forcedFdb = false;
+  td.retainedFdbOutsideAltitudeFilter = false;
   if (caState) {
     pruneCaPairInhibitsForTrack(caState, aircraftId);
   }
@@ -729,6 +728,13 @@ export function applyDropTrackToSelection(
   return applyDropTrackToId(tracks, world, id, caState);
 }
 
+/** Capture currently full datablocks before a new altitude filter is committed. */
+export function retainFullDatablocksOutsideAltitudeFilter(tracks: Map<string, TrackDisplay>): void {
+  for (const td of tracks.values()) {
+    td.retainedFdbOutsideAltitudeFilter = td.datablockMode === "full";
+  }
+}
+
 function flipDatablockMode(mode: DatablockMode): DatablockMode {
   return mode === "full" ? "limited" : "full";
 }
@@ -745,11 +751,13 @@ export function toggleDatablockModeForSelection(
   if (selected && world.aircraft.some((ac) => ac.id === selected)) {
     const td = ensureTrackDisplay(tracks, selected);
     td.datablockMode = flipDatablockMode(td.datablockMode);
+    if (td.datablockMode !== "full") td.retainedFdbOutsideAltitudeFilter = false;
     return;
   }
   for (const ac of world.aircraft) {
     const td = ensureTrackDisplay(tracks, ac.id);
     td.datablockMode = flipDatablockMode(td.datablockMode);
+    if (td.datablockMode !== "full") td.retainedFdbOutsideAltitudeFilter = false;
   }
 }
 
@@ -949,7 +957,6 @@ export function syncTrackDisplays(
     ) {
       td.outboundFlashUntilSimMs =
         (ho.acceptedAtSimMs ?? world.simTimeMs) + OUTBOUND_ACCEPTED_FLASH_MS;
-      td.outboundClickStep = td.outboundClickStep ?? 0;
     }
   }
 }

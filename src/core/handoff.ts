@@ -14,12 +14,16 @@
 import type { Aircraft } from "./aircraft";
 import type { SessionLog } from "./events/session-log";
 import { isLandingInhibited, isOnMissed } from "./fms/missed";
-import { isTowerHandoffEligible } from "./fms/landing";
+import { acceptTowerHandoff, isTowerHandoffEligible } from "./fms/landing";
 import type { World } from "./world";
 
 export const DEFAULT_INBOUND_SECTOR_ID = "C";
 export const DEFAULT_CENTER_SECTOR_ID = "C";
 export const DEFAULT_TOWER_SECTOR_ID = "TWR";
+export const CENTER_HANDOFF_AUTO_ACCEPT_DELAY_MS = 5000;
+export const OUTBOUND_HANDOFF_AUTO_ACCEPT_DELAY_MS = CENTER_HANDOFF_AUTO_ACCEPT_DELAY_MS;
+
+export type OutboundHandoffDestination = string;
 
 /** Stable `command.rejected` reason while inbound HO is pending. */
 export const HANDOFF_PENDING_REASON = "handoff-pending";
@@ -113,6 +117,7 @@ export function offerDepartureHandoff(
 /** Authored / downwind bench: commandable without HO. */
 export function setHandoffNone(world: World, aircraftId: string): void {
   world.handoffs.set(aircraftId, { kind: "none" });
+  world.outboundHandoffInitiatedAtSimMs.delete(aircraftId);
 }
 
 /**
@@ -175,39 +180,59 @@ export function isCenterHandoffEligible(ac: Aircraft, world: World): boolean {
   return false;
 }
 
-export interface CenterHandoffContext {
+export interface OutboundHandoffContext {
   world?: World;
   log?: SessionLog | null;
   simTimeMs: number;
 }
 
+/** Backwards-compatible name for Center callers. */
+export type CenterHandoffContext = OutboundHandoffContext;
+
 /**
- * Initiate outbound handoff to Enroute Center (sector C / Z).
- * Logs handoff.center and handoff.outbound.initiated, sets outbound handoff state.
+ * Initiate a supported outbound handoff to the selected receiving position.
+ * The receiving position is state data; acceptance and destination effects are
+ * handled separately. Center keeps its existing simulated acceptance deadline.
  */
-export function initiateCenterHandoff(
+export function initiateOutboundHandoff(
   ac: Aircraft,
-  ctx: CenterHandoffContext,
-  toSectorId: string = DEFAULT_CENTER_SECTOR_ID,
+  ctx: OutboundHandoffContext,
+  toPositionId: OutboundHandoffDestination = DEFAULT_CENTER_SECTOR_ID,
 ): boolean {
   if (ctx.world) {
-    ctx.world.handoffs.set(ac.id, { kind: "outbound", toSectorId });
+    ctx.world.handoffs.set(ac.id, { kind: "outbound", toSectorId: toPositionId });
+    if (toPositionId === DEFAULT_CENTER_SECTOR_ID || toPositionId === DEFAULT_TOWER_SECTOR_ID) {
+      ctx.world.outboundHandoffInitiatedAtSimMs.set(ac.id, ctx.simTimeMs);
+    } else {
+      ctx.world.outboundHandoffInitiatedAtSimMs.delete(ac.id);
+    }
   }
-  ctx.log?.append({
-    type: "handoff.center",
-    atSimMs: ctx.simTimeMs,
-    atWallMs: 0,
-    callsign: ac.callsign,
-    toSectorId,
-  });
+  if (toPositionId === DEFAULT_CENTER_SECTOR_ID) {
+    ctx.log?.append({
+      type: "handoff.center",
+      atSimMs: ctx.simTimeMs,
+      atWallMs: 0,
+      callsign: ac.callsign,
+      toSectorId: toPositionId,
+    });
+  }
   ctx.log?.append({
     type: "handoff.outbound.initiated",
     atSimMs: ctx.simTimeMs,
     atWallMs: 0,
     callsign: ac.callsign,
-    toSectorId,
+    toSectorId: toPositionId,
   });
   return true;
+}
+
+/** Backwards-compatible Center-specific entry point. */
+export function initiateCenterHandoff(
+  ac: Aircraft,
+  ctx: OutboundHandoffContext,
+  toSectorId: string = DEFAULT_CENTER_SECTOR_ID,
+): boolean {
+  return initiateOutboundHandoff(ac, ctx, toSectorId);
 }
 
 /**
@@ -216,7 +241,7 @@ export function initiateCenterHandoff(
  */
 export function acceptOutboundHandoff(world: World, aircraftId: string, atWallMs = 0): boolean {
   const current = handoffFor(world, aircraftId);
-  if (current.kind !== "outbound") {
+  if (current.kind !== "outbound" || current.status === "accepted") {
     return false;
   }
   const ac = world.aircraft.find((item) => item.id === aircraftId);
@@ -230,6 +255,7 @@ export function acceptOutboundHandoff(world: World, aircraftId: string, atWallMs
     acceptedAtSimMs: world.simTimeMs,
     clickCount: 0,
   });
+  world.outboundHandoffInitiatedAtSimMs.delete(aircraftId);
   world.sessionLog?.append({
     type: "handoff.outbound.accepted",
     atSimMs: world.simTimeMs,
@@ -237,6 +263,12 @@ export function acceptOutboundHandoff(world: World, aircraftId: string, atWallMs
     callsign: ac.callsign,
     toSectorId: current.toSectorId,
   });
+  if (current.toSectorId === DEFAULT_TOWER_SECTOR_ID) {
+    acceptTowerHandoff(ac, {
+      log: world.sessionLog,
+      simTimeMs: world.simTimeMs,
+    });
+  }
   return true;
 }
 

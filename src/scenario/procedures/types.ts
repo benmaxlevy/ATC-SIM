@@ -1,4 +1,4 @@
-import type { MagneticHeadingDeg } from "@core";
+import type { CwtWakeCategory, MagneticHeadingDeg } from "@core";
 
 /**
  * Facility-generic procedure catalog (ICAO folder under `src/scenario/data/`).
@@ -171,7 +171,21 @@ export interface AtpaVolume {
   basicSeparationNm: number;
   reducedSeparationNm: number;
   reducedWithinNm: number;
+  /** Optional wake adaptation; basic/reduced fields remain valid without it. */
+  wakeAdaptation?: AtpaWakeAdaptation;
   note?: string;
+}
+
+export type AtpaWakeMatrix = Readonly<
+  Partial<Record<CwtWakeCategory, Readonly<Partial<Record<CwtWakeCategory, number>>>>>
+>;
+
+export interface AtpaWakeAdaptation {
+  enabled: boolean;
+  /** Separation used when the required category relationship is unavailable. */
+  nowgtSeparationNm: number;
+  /** FAA leader-row/follower-column values; blank cells are intentionally omitted. */
+  matrix: AtpaWakeMatrix;
 }
 
 export interface ProcedureCatalog {

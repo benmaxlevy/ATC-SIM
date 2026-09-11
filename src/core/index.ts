@@ -40,8 +40,15 @@ export {
   createAccumulator,
   advanceWorld,
 } from "./world";
-export type { CenterHandoffContext, TrackHandoff } from "./handoff";
+export type {
+  CenterHandoffContext,
+  OutboundHandoffContext,
+  OutboundHandoffDestination,
+  TrackHandoff,
+} from "./handoff";
 export {
+  CENTER_HANDOFF_AUTO_ACCEPT_DELAY_MS,
+  OUTBOUND_HANDOFF_AUTO_ACCEPT_DELAY_MS,
   DEFAULT_CENTER_SECTOR_ID,
   DEFAULT_INBOUND_SECTOR_ID,
   DEFAULT_TOWER_SECTOR_ID,
@@ -54,6 +61,7 @@ export {
   convertPointoutToHandoff,
   handoffFor,
   initiateCenterHandoff,
+  initiateOutboundHandoff,
   initiatePointout,
   isCenterHandoffEligible,
   isRadioCommandAllowed,
@@ -103,13 +111,19 @@ export { SessionLog } from "./events/session-log";
 export type {
   Aircraft,
   AircraftInit,
+  CwtWakeCategory,
   CrossConstraint,
   CrossRestriction,
   Intent,
   LateralMode,
   VerticalMode,
 } from "./aircraft";
-export { createAircraft, makeTestAircraft, nextAircraftId } from "./aircraft";
+export {
+  createAircraft,
+  makeTestAircraft,
+  nextAircraftId,
+  normalizeCwtWakeCategory,
+} from "./aircraft";
 export type {
   AircraftPerformanceProfile,
   AircraftProfileDataset,

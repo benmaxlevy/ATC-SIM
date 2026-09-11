@@ -278,12 +278,16 @@ describe("Departures and SIDs integration test suite (T04-23)", () => {
     world.selectedAircraftId = arr.id;
     const arrHandoff = applyHandoffToSelection(tracks, world);
     expect(arrHandoff).toEqual({ applied: true, target: "tower", hint: null });
-    expect(arr.intent.lateral).toEqual({ type: "LANDING", approachId: "ILS27" });
-    expect(tracks.get(arr.id)?.ownership).toBe("tower");
+    expect(arr.intent.lateral).toEqual({ type: "LOC", approachId: "ILS27" });
+    expect(handoffFor(world, arr.id)).toEqual({ kind: "outbound", toSectorId: "TWR" });
+    expect(tracks.get(arr.id)?.ownership).not.toBe("tower");
     expect(ownershipStubChar("tower")).toBe("T");
     expect(trackPaintColor("tower")).toBe(PALETTE.tower);
-    expect(log.byType("handoff.tower")).toHaveLength(1);
-    expect(log.byType("handoff.tower")[0]?.callsign).toBe("DAL123");
+    expect(log.byType("handoff.tower")).toHaveLength(0);
+    expect(log.byType("handoff.outbound.initiated")[0]).toMatchObject({
+      callsign: "DAL123",
+      toSectorId: "TWR",
+    });
 
     // Test Departure Shift+H -> Center
     world.selectedAircraftId = dep.id;
@@ -295,7 +299,7 @@ describe("Departures and SIDs integration test suite (T04-23)", () => {
     expect(trackPaintColor("center")).toBe(PALETTE.center);
     expect(log.byType("handoff.center")).toHaveLength(1);
     expect(log.byType("handoff.center")[0]?.callsign).toBe("UAL777");
-    expect(log.byType("handoff.outbound.initiated")).toHaveLength(1);
+    expect(log.byType("handoff.outbound.initiated")).toHaveLength(2);
   });
 
   test("AC4 — Radar vector (H090 / H360) immediately transitions lateral mode to HEADING and cancels VIA_SID to ASSIGNED while maintaining climb", async () => {

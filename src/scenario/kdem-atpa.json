@@ -28,6 +28,17 @@
       "type": "ILS"
     }
   ],
+  "atpaWakeAdaptation": {
+    "enabled": true,
+    "nowgtSeparationNm": 10,
+    "matrix": {
+      "A": { "B": 5, "C": 6, "D": 6, "E": 7, "F": 7, "G": 7, "H": 8, "I": 8 },
+      "B": { "B": 3, "C": 4, "D": 4, "E": 5, "F": 5, "G": 5, "H": 5, "I": 5 },
+      "C": { "E": 3.5, "F": 3.5, "G": 3.5, "H": 5, "I": 5 },
+      "D": { "B": 3, "C": 4, "D": 4, "E": 5, "F": 5, "G": 5, "H": 5, "I": 5 },
+      "E": { "I": 4 }
+    }
+  },
   "fixes": [],
   "maps": {
     "videoMapSet": "KDEM",
@@ -49,52 +60,58 @@
   ],
   "arrivals": [
     {
-      "xNm": 3.4,
+      "xNm": 2,
       "yNm": 0,
       "headingDeg": 270,
       "altitudeFt": 1100,
       "speedKt": 150,
-      "aircraftType": "A320"
+      "aircraftType": "A320",
+      "cwtWakeCategory": "B"
     },
     {
-      "xNm": 6,
+      "xNm": 6.5,
       "yNm": 0,
       "headingDeg": 270,
       "altitudeFt": 2300,
-      "speedKt": 150,
-      "aircraftType": "A321"
+      "speedKt": 195,
+      "aircraftType": "A321",
+      "cwtWakeCategory": "C"
     },
     {
-      "xNm": 8.4,
+      "xNm": 11,
       "yNm": 0,
       "headingDeg": 270,
       "altitudeFt": 3500,
       "speedKt": 150,
-      "aircraftType": "B744"
+      "aircraftType": "B744",
+      "cwtWakeCategory": "E"
     },
     {
-      "xNm": 11.6,
+      "xNm": 14.5,
       "yNm": 0,
       "headingDeg": 270,
       "altitudeFt": 4700,
       "speedKt": 170,
-      "aircraftType": "B738"
+      "aircraftType": "B738",
+      "cwtWakeCategory": "I"
     },
     {
-      "xNm": 14.9,
-      "yNm": 0,
-      "headingDeg": 270,
+      "xNm": 14,
+      "yNm": 5,
+      "headingDeg": 90,
       "altitudeFt": 5900,
       "speedKt": 150,
-      "aircraftType": "B739"
+      "aircraftType": "B739",
+      "cwtWakeCategory": "E"
     },
     {
       "xNm": 8,
-      "yNm": 5,
+      "yNm": 8,
       "headingDeg": 90,
       "altitudeFt": 3000,
       "speedKt": 210,
-      "aircraftType": "CRJ9"
+      "aircraftType": "CRJ9",
+      "cwtWakeCategory": "I"
     }
   ],
   "giTextLines": [
@@ -102,11 +119,11 @@
     "RWY 27",
     "ILS 27 IN USE",
     "ATPA BENCH",
-    "ALERT PAIR 2.4/2.5",
-    "WARN TRAIL CLOSING",
-    "MONITOR SPACING",
+    "CWT WAKE MATRIX",
+    "B/C 4 NM; C/E 3.5 NM; E/I 4 NM",
+    "NOWGT 10 NM",
     "OFF FINAL INHIBITED",
-    "WARN LASTS 21 SEC",
+    "WARN 45 SEC; ALERT 24 SEC",
     ""
   ],
   "radarSites": [
