@@ -16,6 +16,7 @@ import {
   DATABLOCK_FIELD_GAP,
   datablockMetrics,
   fullDatablockLine3Parts,
+  getSpecialPurposeCode,
   handoffDatablockDisplay,
   linesForDatablock,
   withInboundHandoffCue,
@@ -1005,7 +1006,16 @@ export function drawDatablock(
     const line0Y = textY - lineH;
     const staticField0 = base.line0;
     if (staticField0 != null) {
-      ctx.fillStyle = applyBrite(mode === "limited" ? PALETTE.alert : PALETTE.caution, briteCh);
+      const primarySpc = getSpecialPurposeCode(datablockSource);
+      const field0Color =
+        mode === "limited" ||
+        primarySpc === "EM" ||
+        primarySpc === "RF" ||
+        primarySpc === "HJ" ||
+        primarySpc === "LL"
+          ? PALETTE.alert
+          : PALETTE.caution;
+      ctx.fillStyle = applyBrite(field0Color, briteCh);
       ctx.fillText(staticField0, textX, line0Y);
     }
     const showAlerts =

@@ -36,6 +36,7 @@ describe("Datablock inline alert glyphs", () => {
     const callsign = mock.fillTexts.find((fill) => fill.text === "DAL133");
     expect(field0).toBeDefined();
     expect(callsign).toBeDefined();
+    expect(field0!.fillStyle).toBe(applyBrite(PALETTE.alert, view.brite.fdb));
     expect(field0!.y).toBeLessThan(callsign!.y!);
     expect(mock.fillTexts.filter((fill) => fill.text.includes("EM"))).toHaveLength(1);
   });

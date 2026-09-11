@@ -166,7 +166,7 @@ test("status upgrade logs the new status without a clear", () => {
   expect(world.alerts.atpa[0]?.status).toBe("monitor");
   expect(log.byType("alert.atpa.monitor")).toHaveLength(1);
 
-  trailer.speedKt = 250;
+  trailer.speedKt = 180;
   stepWorld(world, 0);
   expect(world.alerts.atpa[0]?.status).toBe("warning");
   expect(log.byType("alert.atpa.warning")).toHaveLength(1);

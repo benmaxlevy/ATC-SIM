@@ -90,7 +90,7 @@ export const PALETTE = {
    * CA/MSAW red (`alert`) and from caution yellow. R07 names the color, not
    * the RGB.
    */
-  atpaAlert: "#BF0000",
+  atpaAlert: "#FF8000",
   /** SSA and list text — FAA list/preview green. Not map gray. */
   ssa: "#259925",
   /**
