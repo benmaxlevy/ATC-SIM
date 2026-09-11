@@ -29,8 +29,9 @@ import type { FixRegistry, FixRegistrySource } from "./nav/fixRegistry";
 import { buildFixRegistry } from "./nav/fixRegistry";
 import {
   acceptOutboundHandoff,
-  CENTER_HANDOFF_AUTO_ACCEPT_DELAY_MS,
   DEFAULT_CENTER_SECTOR_ID,
+  DEFAULT_TOWER_SECTOR_ID,
+  OUTBOUND_HANDOFF_AUTO_ACCEPT_DELAY_MS,
   handoffFor,
 } from "./handoff";
 import { applyLateralFms } from "./fms/lateral";
@@ -125,7 +126,7 @@ export interface World {
    * Radio rejects while `kind === "inbound"`. Not Command IR; not kinematics.
    */
   handoffs: Map<string, TrackHandoff>;
-  /** Simulated Center-C acceptance deadlines for initiated outbound handoffs. */
+  /** Simulated acceptance deadlines for supported outbound handoffs. */
   outboundHandoffInitiatedAtSimMs: Map<string, number>;
   /**
    * Scheduled departure traffic (T04-21). Evaluated each stepWorld tick.
@@ -457,23 +458,24 @@ function syncMsawAlerts(world: World, next: MsawAlert[]): void {
 }
 
 /**
- * Trainer delta: the single-position world has no receiving Center controller,
- * so Center C accepts an initiated outbound handoff after five simulated
- * seconds. This invokes the existing acceptance path once; it is not a
- * network or second-sector model.
+ * Trainer delta: the single-position world has no receiving controller, so the
+ * supported receiving positions accept an initiated outbound handoff after
+ * five simulated seconds. This invokes the existing acceptance path once; it
+ * is not a network or second-sector model.
  */
-function acceptDueCenterHandoffs(world: World): void {
+function acceptDueOutboundHandoffs(world: World): void {
   for (const [aircraftId, initiatedAtSimMs] of world.outboundHandoffInitiatedAtSimMs) {
     const handoff = handoffFor(world, aircraftId);
     if (
       handoff.kind !== "outbound" ||
-      handoff.toSectorId !== DEFAULT_CENTER_SECTOR_ID ||
+      (handoff.toSectorId !== DEFAULT_CENTER_SECTOR_ID &&
+        handoff.toSectorId !== DEFAULT_TOWER_SECTOR_ID) ||
       handoff.status === "accepted"
     ) {
       world.outboundHandoffInitiatedAtSimMs.delete(aircraftId);
       continue;
     }
-    if (world.simTimeMs - initiatedAtSimMs < CENTER_HANDOFF_AUTO_ACCEPT_DELAY_MS) {
+    if (world.simTimeMs - initiatedAtSimMs < OUTBOUND_HANDOFF_AUTO_ACCEPT_DELAY_MS) {
       continue;
     }
     world.outboundHandoffInitiatedAtSimMs.delete(aircraftId);
@@ -499,7 +501,7 @@ export function stepWorld(world: World, dtS: number): World {
   world.simTimeMs += dtS * 1000;
   world.arrivalScheduler?.drain(world);
   world.departureSpawner?.(world);
-  acceptDueCenterHandoffs(world);
+  acceptDueOutboundHandoffs(world);
   const locAxisFor = (approachId: string) =>
     locAxisForApproach(approachId, world.catalog, world.fixRegistry, world.navigation.magVarDeg);
   for (const ac of world.aircraft) {

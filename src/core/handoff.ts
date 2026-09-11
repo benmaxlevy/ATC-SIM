@@ -14,13 +14,14 @@
 import type { Aircraft } from "./aircraft";
 import type { SessionLog } from "./events/session-log";
 import { isLandingInhibited, isOnMissed } from "./fms/missed";
-import { isTowerHandoffEligible } from "./fms/landing";
+import { acceptTowerHandoff, isTowerHandoffEligible } from "./fms/landing";
 import type { World } from "./world";
 
 export const DEFAULT_INBOUND_SECTOR_ID = "C";
 export const DEFAULT_CENTER_SECTOR_ID = "C";
 export const DEFAULT_TOWER_SECTOR_ID = "TWR";
 export const CENTER_HANDOFF_AUTO_ACCEPT_DELAY_MS = 5000;
+export const OUTBOUND_HANDOFF_AUTO_ACCEPT_DELAY_MS = CENTER_HANDOFF_AUTO_ACCEPT_DELAY_MS;
 
 export type OutboundHandoffDestination = string;
 
@@ -200,7 +201,10 @@ export function initiateOutboundHandoff(
 ): boolean {
   if (ctx.world) {
     ctx.world.handoffs.set(ac.id, { kind: "outbound", toSectorId: toPositionId });
-    if (toPositionId === DEFAULT_CENTER_SECTOR_ID) {
+    if (
+      toPositionId === DEFAULT_CENTER_SECTOR_ID ||
+      toPositionId === DEFAULT_TOWER_SECTOR_ID
+    ) {
       ctx.world.outboundHandoffInitiatedAtSimMs.set(ac.id, ctx.simTimeMs);
     } else {
       ctx.world.outboundHandoffInitiatedAtSimMs.delete(ac.id);
@@ -240,7 +244,7 @@ export function initiateCenterHandoff(
  */
 export function acceptOutboundHandoff(world: World, aircraftId: string, atWallMs = 0): boolean {
   const current = handoffFor(world, aircraftId);
-  if (current.kind !== "outbound") {
+  if (current.kind !== "outbound" || current.status === "accepted") {
     return false;
   }
   const ac = world.aircraft.find((item) => item.id === aircraftId);
@@ -262,6 +266,12 @@ export function acceptOutboundHandoff(world: World, aircraftId: string, atWallMs
     callsign: ac.callsign,
     toSectorId: current.toSectorId,
   });
+  if (current.toSectorId === DEFAULT_TOWER_SECTOR_ID) {
+    acceptTowerHandoff(ac, {
+      log: world.sessionLog,
+      simTimeMs: world.simTimeMs,
+    });
+  }
   return true;
 }
 
