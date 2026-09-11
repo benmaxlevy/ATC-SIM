@@ -478,7 +478,6 @@ Visible now:
 
 Deliberately missing:
 - **Unsupported ARINC 424 leg types in real-world SIDs**: Heading-to-altitude vector legs (`VA`, `VI`, `VM`) and curved radius-to-fix (`RF`) legs are skipped by the CIFP importer. SIDs composed entirely of radar vectors (e.g., KATL's `ATL2`) have zero named-fix legs and are omitted from catalog packs.
-- **Scenario departure traffic for CIFP-imported airports**: Authored facilities (KDEM) include scripted departure schedules (`BAY1` to `NORMA`/`OCTTA`), but imported airports like KATL (`katl.json`) currently only script arrival streams and downwind benchmark spawns. Automated departure flows utilizing the 10+ imported KATL SIDs (`BANNG3`, `CUTTN2`, `GAIRY2`, etc.) are not yet scripted into playable scenarios.
 
 Constraints later work must keep:
 - Procedure transitions remain data-driven via catalog JSON common fixes; no facility-specific branches (no `if (icao === "KATL")`).
@@ -636,10 +635,6 @@ Deliberately missing:
   cycle regeneration was tested.
 - **RNAV / hold / RF flying** from imported CIFP. Unsupported path
   terminators stay diagnostics, not TF legs.
-- **Scenario departure traffic on imported CIFP SIDs.** Playable KATL
-  scenarios script arrivals and downwind spawns only; automated departure
-  traffic flows on the 10+ imported KATL SIDs are not scripted. (Core FMS
-  climb-via and SID transition amendments are supported via T04-19/T04-44).
 - **Browser CIFP fetch, national dump in git, T04-11 wind, phase 5.**
 
 Constraints later work must keep:
