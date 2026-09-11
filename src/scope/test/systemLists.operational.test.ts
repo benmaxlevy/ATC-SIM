@@ -1073,8 +1073,8 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(success).toBe(true);
 
       // Verify target updated to FDB with plan callsign and squawk
-      expect(target.callsign).toBe("AAL123");
-      expect(target.assignedSquawk).toBe("7022");
+      expect(target.callsign).toBe("1234");
+      expect(target.assignedSquawk).toBe("1200");
       expect(td.unassociated).toBe(false);
       expect(td.datablockMode).toBe("full");
       expect(td.ownership).toBe("owned");
@@ -1122,8 +1122,8 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       // Click target at (500, 500)
       handlePpiLeftClick(view, world, 500, 500, 1000, 1000);
 
-      expect(target.callsign).toBe("AAL123");
-      expect(target.assignedSquawk).toBe("7022");
+      expect(target.callsign).toBe("UNTRK");
+      expect(target.assignedSquawk).toBe("1200");
       expect(td.unassociated).toBe(false);
       expect(td.datablockMode).toBe("full");
       expect(td.ownership).toBe("owned");
@@ -1171,8 +1171,8 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       // Click target
       handlePpiLeftClick(view, world, 500, 500, 1000, 1000);
 
-      expect(target.callsign).toBe("AAL123");
-      expect(target.assignedSquawk).toBe("7022");
+      expect(target.callsign).toBe("UNTRK");
+      expect(target.assignedSquawk).toBe("1200");
       expect(td.unassociated).toBe(false);
       expect(td.datablockMode).toBe("full");
       expect(td.ownership).toBe("owned");

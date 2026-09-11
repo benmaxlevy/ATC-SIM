@@ -6,7 +6,9 @@
 
 import {
   associateFlightPlan as associateCoreFlightPlan,
+  createFlightPlan,
   deleteFlightPlanFromWorld,
+  updateAircraftSquawk,
   type Aircraft,
   type ScheduledDeparture,
   type World,
@@ -697,7 +699,33 @@ export function associateFlightPlanToTrack(
     return true;
   }
 
-  return false;
+  if (!entry.departureRef) return false;
+  const planId = `fp-departure-${entry.callsign}`;
+  let plan = world.flightPlans.find((item) => item.id === planId);
+  if (!plan) {
+    const created = createFlightPlan(
+      {
+        id: planId,
+        status: "pending",
+        acid: entry.callsign,
+        assignedBeacon: entry.squawk,
+        fixes: [],
+        scratchpads: [],
+        flightRules: "IFR",
+      },
+      world.flightPlans,
+    );
+    if (!created.ok) return false;
+    world.flightPlans.push(created.value);
+    plan = created.value;
+  }
+  const result = associateCoreFlightPlan(world, plan.id, aircraftId);
+  if (!result.ok) return false;
+  td.unassociated = false;
+  td.datablockMode = "full";
+  td.tracked = true;
+  purgeFlightPlanEntry(world, view, entry);
+  return true;
 }
 
 export function deleteFlightPlanEntry(world: World, view: ScopeView, index: number): boolean {
@@ -1368,7 +1396,7 @@ export function promoteVfrListEntry(
   const target = world.aircraft.find((a) => a.id === targetAircraftId);
   if (target) {
     target.callsign = entry.callsign;
-    target.squawk = entry.squawk;
+    updateAircraftSquawk(world, targetAircraftId, entry.squawk);
     target.assignedSquawk = entry.assignedSquawk;
   }
   applyInitiateTrackToId(view.tracks, world, targetAircraftId);
