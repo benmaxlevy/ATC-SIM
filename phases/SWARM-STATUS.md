@@ -1,5 +1,18 @@
 # Swarm status
 
+## FIFTY-FIFTH SWARM COMPLETE — T02-140–142 ATPA status/color closeout
+
+T02-140–142 are complete on `fix/datablocks`. ATPA Alert now includes
+predicted loss within 24 seconds and uses adapted `#760A00`; 24–45 seconds
+remains Warning. Primary FDB SPCs use CA/MSAW alert red while caution text
+remains yellow. The committed KDEM ATPA bench starts with monitor, warning, and
+alert pairs using wake-derived minima and leaves off-final arrivals outside the
+volume.
+
+Commits: T02-140 (`f10e72d`, `0a6c6e3`), T02-141 (`f10e72d`), and T02-142
+(`2887eaa`). Final branch gate remains `npm run ci`; the latest recorded gate
+passed with 189 test files, 1,733 tests, and 4 skipped.
+
 ## FIFTY-FOURTH SWARM COMPLETE — T02-137–139 unified outbound handoff positions
 
 T02-137 through T02-139 are complete on `fix/datablocks`. Supported outbound

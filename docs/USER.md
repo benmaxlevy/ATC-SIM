@@ -1,6 +1,7 @@
 # ATC-SIM user guide
 
-Press **`F1`** in the app for the keyboard overlay.
+Press **`?`** (or `Shift+/`) in the app for the keyboard overlay. `F1` is the
+momentary beacon readout / list-drop control.
 
 Voice: [`speech-api/README.md`](../speech-api/README.md) (local models).
 
@@ -41,9 +42,9 @@ Service-side env, models, and Path C: [`speech-api/README.md`](../speech-api/REA
 
 - **Radar PPI & camera**: North-up display with discrete range presets (5, 10, 15, 20, 30, 40, 50, 60 NM), camera panning/slewing, and single-click or airport recentering.
 - **Datablocks**:
-  - **Full datablocks (FDB)**: an 8-field STARS block. Field 0 carries alerts and sequence data; Field 1 carries the aircraft identification; Field 2 carries inhibit indicators; Field 3 carries altitude, scratchpad, or exit data; Field 4 carries the owning TCP; Field 5 carries speed and flight data; Fields 6–8 carry conditional coordination, TSAS, and pointout data.
-  - **FDB physical layout**: the normal display has three lines. Line 1 shows the identification; line 2 shows the active altitude/data, TCP, and traffic-data fields; line 3 shows active coordination data. Values within a field time-share. Empty fields remain blank.
-  - **FDB data status**: live tracks supply identification, altitude, speed, type, requested altitude, assigned altitude, squawk mismatch, ATPA, ownership, alerts, and pointout state. Exit gate/fix, TSAS values, duplicate-beacon `DB`, and several coordination values display when supplied by the corresponding STARS data source.
+  - **Full datablocks (FDB)**: a nine-field STARS-like block (Fields 0–8). Field 0 carries alerts and sequence data; Field 1 carries the aircraft identification; Field 2 carries inhibit indicators; Field 3 carries altitude, scratchpad, or exit data; Field 4 carries the owning TCP; Field 5 carries speed and flight data; Fields 6–8 carry conditional coordination, TSAS, and pointout data.
+  - **FDB physical layout**: the normal display has three data lines plus an optional Field 0 alert row. Line 1 shows the identification; line 2 shows the active altitude/data, TCP, and traffic-data fields; line 3 shows active coordination data. Values within a field time-share. Empty fields remain blank.
+  - **FDB data status**: live tracks supply identification, altitude, speed, type, requested and assigned altitude, squawk mismatch, ATPA in-trail distance, ownership, and safety alerts. Exit gate/fix, TSAS, duplicate-beacon `DB`, coordination, and pointout values are formatter inputs and remain blank without a corresponding runtime source.
   - **Limited datablocks (LDB)**: Compact track display for unowned or filtered targets.
   - **Leader lines**: 8 DCB compass positions (`SW`, `S`, `SE`, `W`, `E`, `NW`, `N`, `NE`); L5 remains an internal overlay mode. STARS leader clock directions (`*1`–`*8`), track-specific and fleet-wide leader direction commands (`*L(1-9)` / `*L(1-9)*` / `*L(1-9)U`), and 0–7 length steps (`/<0-7>`, `*LDR <0-7>`), each adding 1/4 in.
 - **Target history & prediction**:
@@ -78,9 +79,7 @@ Service-side env, models, and Path C: [`speech-api/README.md`](../speech-api/REA
 - **Inbound & departure handoff workflow**:
   - Inbound arrivals spawn in pending handoff state from Center (unowned green FDB) → Controller left-clicks the track (slew to accept) or uses `F3` (`INIT CNTL`) to accept → Track becomes owned (white FDB) → Radio frequency unlocked → Pilot checks in.
   - Rolling departures spawn off the active runway (~0.8 NM, 700 ft, 180 kt) under Tower handoff → Pilot checks in on departure frequency → Flies published SID climb profile.
-- **Smart Shift+H / F5 handoff**: Context-sensitive handoff initiator:
-  - Selected arrival on approach (< 5 NM from threshold): executes Tower handoff (sets `LANDING` mode and tower ownership cyan tint).
-  - Selected climbing departure (>= 5000 ft or >= 12 NM): executes Center handoff (logs `handoff.center` and sets outbound white state).
+- **Smart Shift+H / F5 handoff**: Context-sensitive shared outbound handoff. Eligible arrivals target Tower; eligible climbing departures target Center (`C`). Receiver TCP remains visible while pending and for five simulated seconds after acceptance. Single-position trainer auto-accepts supported destinations after five simulated seconds; Tower landing/ownership effects occur only after acceptance. F4 returns the track to unowned. No live second position or network is modeled.
 - **Readbacks**: FAA JO 7110.65 digit grouping (e.g. "climb and maintain five thousand, Delta one twenty-three"), plus "unable" for invalid clearances.
 
 ## ATC command reference
@@ -191,7 +190,7 @@ Keys below are divided into **Always-On** shortcuts (which work regardless of wh
 | `F1` (hold) | `<BCN CODE RD OUT>` / Drop Mode | Momentarily displays Mode 3/A beacon code in datablock line 1 (Beaconator) and arms list row drop (`f1DropArmed`). |
 | `F3` | `<INIT CNTL>` Initiate Track | If track selected: immediately initiates track / owns target. If none selected: arms `INIT CNTL` command-then-slew. |
 | `F4` | `<TERM CNTL>` Drop Track | If track selected: immediately drops track. If none selected: arms `TERM CNTL` command-then-slew. |
-| `F5` / `Shift + H` | `<HND OFF>` Smart Handoff | Initiates handoff: Tower (for arrivals inside 5 NM) or Center (for climbing departures). |
+| `F5` / `Shift + H` | `<HND OFF>` Smart Handoff | Initiates shared outbound handoff: Tower for eligible arrivals, Center (`C`) for eligible climbing departures. Supported destinations auto-accept after five simulated seconds. |
 | `F7` | `<MULTI FUNC>` Multi-Function | Types or appends `*` into the STARS Preview Area buffer. |
 | `F8` | `<HIST>` History Dots | Toggles radar history trail dots (0 ↔ last non-zero dot count). |
 | `F10` | `<PTL>` Predicted Track Line | Toggles global Predicted Track Line (`PTL ALL`). |

@@ -105,10 +105,9 @@ T02-44 ships in-trail pairing and predicted monitor/warning/alert status
 `reducedWithinNm` from each catalog volume, pairs eligible tracks inside an
 enabled volume, and classifies status from current distance plus linear
 closure. Wake-enabled volumes optionally apply explicit FAA CWT adaptation.
-Warning is predicted violation within **45 s** (R07). Alert is
-**only** `distanceNm < requiredNm` (actual in-trail / lateral radar loss).
-R07 also paints Alert for a predicted violation within **24 s**; that band
-stays Warning here so a still-legal pair does not go ATPA-red. Cone length
+Warning is predicted violation within **45 s** (R07). Alert is actual
+`distanceNm < requiredNm` or a predicted loss within **24 s** (T02-140).
+Cone length
 when wake adaptation is enabled, cone length follows the explicit
 leader-row/follower-column matrix; otherwise it follows the authored radar
 minimum.
@@ -131,10 +130,9 @@ Deliberately missing, each of which later work must keep the JSON-minima path:
 - **TDW white monitor variant.** The tower display workstation paints the
   monitor cone white; this trainer has no TDW. Scope ATPA monitor stays
   TPA blue until a TDW surface exists.
-- **R07 24 s predicted Alert.** CRC paints the Alert cone when already
-  inside the required NM **or** predicted to lose it within 24 s. This
-  trainer keeps 24 s as Warning. Restoring predicted Alert must keep Alert
-  as actual loss plus that timer — do not invent a third color.
+- **R07 24 s predicted Alert.** Shipped in T02-140: ATPA Alert applies when
+  already inside the required NM or predicted to lose it within 24 s; 24–45 s
+  remains Warning. Do not invent a third color.
 - **Aural ATPA alerting.** No ATPA tone. CA (T04-09) remains the only
   conflict audio; do not reuse the CA tone for in-trail ATPA.
 - **Volumes as authored trainer geometry** rather than imported NAS
@@ -273,8 +271,11 @@ The STARS CRC Scope Fidelity Addendum (T02-34–38) shipped the complete radar
 display fidelity model: target symbol shapes (`◇`, `*`, `V`, `□`, Sector IDs),
 LDB with 5s ground speed queries, PDB for unowned associated tracks, FDB
 dynamic time-sharing (~2.5s cycle) and Line 3 assigned altitudes `A<alt>`,
-inbound/outbound handoff blinking and 3-click progression, pointout lifecycle
-(offer, accept, `UN` reject, `**` convert), and cyan track highlight.
+inbound/outbound handoff blinking, pointout lifecycle (offer, accept, `UN`
+reject, `**` convert), and cyan track highlight. T02-134–139 replaced the old
+outbound three-click progression with shared Center/Tower destination handling,
+five-second receiver-TCP retention, single-position auto-accept, and explicit
+F4 return-to-unowned.
 
 Possible future follow-ups:
 - multi-controller peer networking / live inter-facility handoffs across multiple browser sessions;
@@ -294,10 +295,11 @@ turn the FDB green, and then change it to a PDB. vice separates track ownership
 from aircraft control and uses explicit `FC` to transfer communications, then
 turns the sender’s datablock green.
 
-ATC-SIM currently follows the manual’s white-FDB rule for accepted Center
-handoffs, retains the receiver TCP for five simulated seconds, auto-accepts in
-the single-position trainer after five simulated seconds, and offers F4 as the
-explicit return-to-unowned action. It does not model a live receiving position,
+ATC-SIM currently follows the manual’s white-FDB rule for accepted Center and
+Tower handoffs, retains the receiver TCP for five simulated seconds,
+auto-accepts supported destinations in the single-position trainer after five
+simulated seconds, and offers F4 as the explicit return-to-unowned action. It
+does not model a live receiving position,
 `FC`, or a separate communications-transfer state. Revisit whether the trainer
 needs a clearer persistent “transferred to Center” cue or a documented CRC-like
 confirmation interaction. Preserve the manual distinction between owned and

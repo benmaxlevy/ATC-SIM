@@ -40,7 +40,7 @@ Phase 2 **replaces** that crude PPI in `src/scope`. It must not break the comman
 
 When this phase exits, a controller sitting at Chrome on Windows can:
 
-1. See a **dark, north-up PPI** with a limited palette (black / dim-gray maps / green unowned FDB / white owned FDB / blue position symbol / yellow selected). Red is reserved for phase 4 alerts.
+1. See a **dark, north-up PPI** with a limited palette (black / dim-gray maps / green unowned FDB / white owned FDB / blue position symbol / yellow selected). Alert/SPC graphics use red; ATPA uses adapted dark red `#760A00`, distinct from CA/MSAW `#BF0000`.
 2. Set **range 5–60 NM** in discrete presets, **center** on the airport or a clicked point, and pan without “zoom to cursor.”
 3. See **KDEM digital maps**: runway 27, ILS 27 localizer feather, range rings, optional coastline polyline from scenario JSON.
 4. Read a **full datablock** (Fields 0–8: identification, altitude, traffic data, coordination, alerts, and pointouts) tied to the target with an **8-direction leader**.
@@ -61,7 +61,7 @@ Lift nothing from `phases/_shared/non-goals.md`. In addition, **do not** build:
 | Weather mosaic, precipitation, wind barbs | T02-68–72 VIP mosaic shipped (IEM N0Q fills + WXC contours, display only). Wind still later. |
 | Real STARS bitmap font or any licensed NAS typeface | Metric-similar **monospace** only. |
 | CRC-compatible full keyboard | Subset below is frozen; document every difference. Local PREF slots are T02-29, not a NAS pref host. |
-| Handoff, point-out, quick-look other facility, scratchpad, beacon code | F3 only recolors ownership. |
+| Full NAS multi-controller handoff, interfacility point-out, quick-look, authoritative flight-plan workflows | Trainer handoff/pointout display, scratchpads, and beacon-code display are implemented; full multi-controller semantics remain out. |
 | Auto-deconflict of overlapping datablocks | Trainer auto-layout is enabled when viewport capacity exists; impossible density keeps higher-priority blocks and reports `DATABLOCK DENSITY`. |
 | WebGL phosphor bloom, afterglow trails | Canvas2D. History dots are discrete samples, not a phosphor sim. |
 | Map editor, CIFP maps, real coastlines | KDEM JSON only. |
@@ -223,7 +223,7 @@ Field rules:
 
 - **Field 0**: slash-separated special conditions, safety alerts, cautions, and TSAS sequence number.
 - **Field 1**: aircraft identification, normally 2–7 characters.
-- **Field 2**: alert-inhibit indicators: `*` MSAW, `Δ` CA/MCI, `+` both, `▼` FMA, `>` RNP enabled.
+- **Field 2**: implemented alert-inhibit indicators: `*` MSAW, `Δ` CA/MCI, `+` both. FMA `▼` and RNP `>` remain out of scope and are not emitted.
 - **Field 3**: Mode C altitude, pilot-reported altitude, scratchpad, exit gate, or exit fix. Mode C is three digits in hundreds of feet; `*` marks pilot-reported altitude. Values time-share.
 - **Field 4**: owning TCP, adapted to one or two characters. Adaptation indicators may prefix it (`Δ`, `*`, `+`, or `R`).
 - **Field 5**: ground speed in tens of knots, flight rules/category, aircraft count, aircraft type, or requested altitude (`R###`). Values time-share.
@@ -231,16 +231,17 @@ Field rules:
 - **Field 7**: assigned altitude (`A###`), beacon mismatch, TSAS advised speed, or TSAS early/late value. Values time-share.
 - **Field 8**: pointout (`PO` plus receiver TCP, `UN`, or `RD`) or pointout accept count. Pointout status suppresses the accept count.
 
-The normal three-line block uses Field 0 on the physical line above the FDB,
-Field 1 on line 1, active Fields 3/4/5 on line 2, and active Fields 6/7/8 on
-line 3. A slash joins multiple active field values in one field. Field values
-remain aligned in character cells.
+The normal three-line block uses Field 0 on an optional physical row above the
+FDB, Field 1 on line 1, active Fields 3/4/5 on line 2, and active Fields 6/7/8
+on line 3. A slash joins multiple active field values in one field. Field
+values remain aligned in character cells.
 
-The shipped formatter derives those physical lines from logical Fields 0–8
-for both FDB and PDB output. Field 4 owns a two-character center cell, so a
-one-character TCP keeps the same right-field position as a two-character TCP.
-Aircraft type follows the strict Field 5 / Line 2 placement; it is omitted
-from PDB output. This is a trainer display model, not a NAS-compatible clone.
+The shipped formatter derives FDB physical lines from logical Fields 0–8. PDB
+projects only its supported Figure 2-22 Fields 0–4; Fields 5–8 remain empty.
+Field 4 owns a two-character center cell, so a one-character TCP keeps the
+same right-field position as a two-character TCP. Aircraft type follows the
+strict Field 5 / Line 2 placement and is omitted from PDB output. This is a
+trainer display model, not a NAS-compatible clone.
 
 `M` hides Mode C in Field 3. Other active Field 3 values remain eligible for
 display. `T` toggles FDB and LDB. The FDB is fixed-width and uses a monospace
@@ -260,14 +261,12 @@ Font: IBM Plex Mono or system monospace.
 
 #### Runtime data status
 
-Live tracks provide the identification, Mode C altitude, ground speed, flight
-rules, aircraft type, requested and assigned altitude, squawk mismatch, ATPA,
-ownership, safety alerts, and pointout state used by the FDB.
-
-Exit gate/fix, TSAS sequence/runway/advised-speed/early-late values, duplicate
-beacon `DB`, selected beacon, `NO FP`, `DA`, `MOA`, `CSMM`, aircraft count, and
-some TCP/coordination values are accepted by the formatter and display when a
-STARS data source supplies them. They remain blank when no value is supplied.
+Live tracks provide identification, Mode C altitude, ground speed, flight
+rules, aircraft type, requested and assigned altitude, squawk mismatch, ATPA
+distance, ownership, and safety alerts. Exit gate/fix, TSAS, duplicate beacon,
+`NO FP`, `DA`, `MOA`, `CSMM`, selected beacon, aircraft count, and Field 8
+pointout values are formatter inputs only; they remain blank without a runtime
+adapter.
 
 ### 8. Leader directions (L1–L9 analog)
 
@@ -585,7 +584,7 @@ Completed visual, interactive, and datablock fidelity pass matching [CRC STARS](
 - [x] FDB dynamic time-sharing: Line 2 alternates on ~2.5s cycle between Phase A (Mode C + GS) and Phase B (Scratchpad + Type / Requested Alt `R<alt>`) (T02-36).
 - [x] FDB Line 3 renders assigned altitude `A<alt>` when assigned altitude differs from Mode C altitude by >= 100 ft (T02-36).
 - [x] Inbound handoffs render as blinking white FDB; left-clicking accepts handoff to solid white FDB and sector ID (T02-37).
-- [x] Outbound accepted handoffs flash white for 5s and complete 3-click progression (solid white -> green FDB -> green PDB) (T02-37).
+- [x] Supported outbound handoffs share one destination-aware path. Pending and accepted handoffs show the receiver TCP; accepted state flashes white for 5s, the single-position trainer auto-accepts after 5 simulated seconds, and F4 explicitly returns to unowned. The old three-click green-FDB/PDB progression is not modeled (T02-134–139).
 - [x] Pointout lifecycle: incoming blinking yellow FDB with `PO` tag; click accepts; `UN` click rejects; `**` click converts to handoff; rejected outbound pointout flashes `UN` tag (T02-37).
 - [x] Datablocks support standard STARS Cyan highlight (`#00FFFF`) toggled via middle-click across LDB, PDB, and FDB (T02-37).
 - [x] F4 drops track to unowned green PDB with `*` position symbol (T02-37).
@@ -650,6 +649,25 @@ Completed TPA / ATPA addendum matching [CRC STARS](https://docs.virtualnas.net/c
 - [x] `stepWorld` and the pure evaluator expose `wakeSource`, apply wake minima without dropping below the applicable radar minimum, and preserve generic `approachId`/volume loading (T02-127–128).
 - [x] Synthetic ATPA acceptance covers orientation, populated wake data, `NOWGT`, 10 NM, and wake precedence over reduced 2.5 NM radar separation (T02-128).
 - [ ] Remaining: per-position adaptation, TDW white monitor variant, aural ATPA, and additional 2.5 NM authorization semantics. Volumes remain authored trainer geometry.
+
+### Phase 2 datablock, handoff, and ATPA closeout (T02-122–142)
+
+The latest scope addendum completes explicit Fields 0–8 formatting, physical
+FDB/PDB projection, one- or two-character TCP alignment, wake-aware ATPA
+evaluation, and shared outbound handoffs for Center and Tower. KDEM startup
+fixtures exercise monitor, warning, and alert ATPA pairs. Primary FDB SPCs use
+alert red; caution indicators remain yellow; ATPA Alert uses adapted `#760A00`,
+distinct from CA/MSAW red.
+
+| Tickets | Shipped contract |
+| --- | --- |
+| [T02-122–124](tickets/T02-122-datablock-explicit-fields-0-5.md) | Explicit Fields 0–5 grammar, Fields 6–8/TSAS formatter inputs, and stable one-/two-character TCP projection. |
+| [T02-125–128](tickets/T02-125-atpa-cwt-category-contract.md) | Separate `cwtWakeCategory`, data-driven FAA CWT minima, `NOWGT`/10 NM fallback, and generic wake-aware pairing. |
+| [T02-129–133](tickets/T02-129-pending-inbound-handoff-tcp-semantics.md) | Pending inbound origin/TCP semantics plus physical FDB/PDB Field 0–8 alignment. |
+| [T02-134–139](tickets/T02-134-accepted-outbound-handoff-ui.md) | Shared Center/Tower outbound initiation, five-second simulated acceptance, receiver-TCP display, and white accepted FDB behavior. |
+| [T02-140–142](tickets/T02-140-atpa-alert-threshold-and-color.md) | 24-second predicted ATPA Alert threshold/color, primary FDB SPC color, and KDEM monitor/warning/alert startup bench. |
+
+Runtime gaps remain documented in [LATER-IMPLEMENTATION-BACKLOG.md](../LATER-IMPLEMENTATION-BACKLOG.md); formatter support does not imply live TSAS, flight-plan, duplicate-beacon, pointout, or multi-controller sources.
 
 ### Preview Area addendum (T02-51–54)
 
