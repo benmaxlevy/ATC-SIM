@@ -775,8 +775,18 @@ connect those records to the radio/pilot pipeline:
 - pilot readback/validation and reported-squawk changes after a clearance;
 - controller clearances for assigned altitude, heading, speed, route, SID/STAR,
   and approach that execute through Command IR and pilot intent;
+- full route entry and amendment in the flight-plan editor, beyond the current
+  compact entry/exit `FIXES` pair;
+- route legs, airways, direct-to segments, and generic fix/procedure
+  validation backed by the loaded catalog;
+- SID/STAR selection and transitions linked from the authoritative flight plan
+  into the aircraft FMS, including runway and common/enroute legs;
+- synchronization from amended flight-plan route data into active aircraft
+  intent/FMS state, without facility-specific route branches;
 - authoritative filed route/procedure state driving the FMS after accepted
   amendments, including conformance and mismatch handling;
+- pilot route execution, deviation detection, and controller-visible
+  route-conformance status;
 - rejected or misunderstood clearances, explicit readback errors, and audit
   state linking the clearance to the plan.
 
