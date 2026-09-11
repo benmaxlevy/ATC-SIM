@@ -3691,3 +3691,44 @@ Safety requirements for the captain:
 - After every worker completion: record the worker result, verify its worktree status, squash merge (one commit on `master`), run `npm test`, and confirm `master` before starting the next ticket.
 - Never background a worker and finish the captain turn. If a worker stalls, resume or replace that worker explicitly; do not leave a half-finished ticket silently.
 - After T02-30: run both `npm test` and `npm run ci`, append STATUS, and return `PHASE EXIT GREEN` only after all results are recorded. Do not start phase 5.
+
+## Eighth swarm planned — canonical flight-plan association (2026-09-11)
+
+Human approved implementation of the authoritative target↔flight-plan model.
+The plan-side `FlightPlan.associatedAircraftId` is the only relationship
+authority. `Aircraft.flightPlanId` must be removed. Reported aircraft squawk
+remains surveillance evidence; assigned plan beacon remains plan data. A
+squawk update may trigger aircraft-scoped correlation against pending plans,
+but list building, rendering, ticks, and redraws must never auto-associate.
+This event-driven correlation is a trainer policy, not a claim that the STARS
+manual mandates automatic correlation. Missing future squawk mutation sources
+must be recorded in the later backlog.
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement canonical flight-plan association and event-driven squawk correlation |
+| Phase | `phases/02-scope/` |
+| Tickets | `T02-149` → `T02-150` → `T02-151` → `T02-152` → `T02-153` |
+| Merge target | `feat/flight-plan-lifecycle` |
+| Worker limit | 1 ticket worker; sequential waves |
+| Model | inherit available Codex worker model |
+| Required gate | `npm run ci` after every merged ticket |
+| Required review | `$check-stars-manual '/home/ben/Documents/stars refs/full_manual.pdf'` after every ticket |
+| Stop | Stop after T02-153; do not start another phase |
+
+Waves:
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-149 | planning commit |
+| B | T02-150 | A green and manual-reviewed |
+| C | T02-151 | B green and manual-reviewed |
+| D | T02-152 | C green and manual-reviewed |
+| E | T02-153 | D green and manual-reviewed |
+
+Captain requirements: use isolated worker worktrees; workers implement one
+ticket and never merge or spawn. After each worker returns `READY TO MERGE`,
+squash-merge one commit, run `npm run ci`, then run the independent
+`check-stars-manual` review against that ticket and the final diff before the
+next wave. If CI or manual review fails, stop the next wave and use one narrow
+fix worker only. Append swarm status history; do not delete prior entries.
