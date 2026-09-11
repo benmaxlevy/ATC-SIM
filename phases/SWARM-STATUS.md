@@ -1457,3 +1457,13 @@ deletion, beacon release), T02-147 PASS (datablock/FL-TAB integration).
 **Scope boundary:** Radio clearances, readbacks, pilot execution, route/FMS
 conformance, and related speech/Command IR behavior remain in
 `phases/LATER-IMPLEMENTATION-BACKLOG.md`. No later phase was started.
+
+## FIFTY-EIGHTH SWARM COMPLETE — unified TERM CNTL/F4
+
+Shared F4 and typed TERM CNTL termination through one scope helper. Both paths
+delete the associated authoritative plan on first invocation, preserve the
+moving radar target as unassociated, clear tracked display state, and produce
+the manual-aligned `*` position symbol/LDB without callsign or aircraft type.
+Focused tests and `npm run ci` passed: **193 files, 1780 passed, 4 skipped, 0
+failures**. Manual review passed against Appendix D, §5.4.6, §2.12, and Table
+2-11 of `/home/ben/Documents/stars refs/full_manual.pdf`.
