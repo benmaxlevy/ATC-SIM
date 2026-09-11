@@ -20,6 +20,24 @@ import {
   rejectPointout,
 } from "../handoff";
 
+const TOWER_CATALOG = {
+  airportId: "KDEM",
+  navaids: [],
+  fixes: [{ id: "RW27", xNm: 0, yNm: 0, kind: "THRESHOLD" }],
+  stars: [],
+  approaches: [
+    {
+      id: "ILS27",
+      courseDeg: 270,
+      lengthNm: 18,
+      beamHalfWidthDeg: 2.5,
+      thresholdFixId: "RW27",
+      daFt: 200,
+    },
+  ],
+  sids: [],
+} as const;
+
 test("isRadioCommandAllowed denies inbound pending and allows none", () => {
   expect(isRadioCommandAllowed({ kind: "none" })).toBe(true);
   expect(isRadioCommandAllowed({ kind: "inbound", fromSectorId: "C" })).toBe(false);
@@ -314,6 +332,51 @@ test("T02-136 does not auto-accept a non-C outbound handoff", () => {
   stepWorld(world, 5);
   expect(handoffFor(world, ac.id)).toEqual({ kind: "outbound", toSectorId: "Z" });
   expect(log.byType("handoff.outbound.accepted")).toHaveLength(0);
+});
+
+test("T02-138 auto-accepts Tower after five simulated seconds and applies landing once", () => {
+  const ac = createAircraft({
+    id: "ac-auto-tower",
+    callsign: "DAL138",
+    xNm: 3,
+    yNm: 0,
+    headingDeg: 270,
+    altitudeFt: 1200,
+    speedKt: 150,
+  });
+  ac.intent.lateral = { type: "LOC", approachId: "ILS27" };
+  ac.intent.vertical = { type: "GS", approachId: "ILS27" };
+  ac.intent.clearedApproachId = "ILS27";
+  const log = new SessionLog();
+  const world = createWorld({
+    aircraft: [ac],
+    catalog: TOWER_CATALOG,
+    sessionLog: log,
+    simTimeMs: 1000,
+  });
+  initiateOutboundHandoff(ac, { world, log, simTimeMs: world.simTimeMs }, "TWR");
+
+  stepWorld(world, 4.999);
+  expect(handoffFor(world, ac.id)).toEqual({ kind: "outbound", toSectorId: "TWR" });
+  expect(ac.intent.lateral).toEqual({ type: "LOC", approachId: "ILS27" });
+  expect(log.byType("handoff.outbound.accepted")).toHaveLength(0);
+  expect(log.byType("handoff.tower")).toHaveLength(0);
+
+  stepWorld(world, 0.001);
+  expect(handoffFor(world, ac.id)).toMatchObject({
+    kind: "outbound",
+    toSectorId: "TWR",
+    status: "accepted",
+    acceptedAtSimMs: 6000,
+  });
+  expect(ac.intent.landingCleared).toBe(true);
+  expect(ac.intent.lateral).toEqual({ type: "LANDING", approachId: "ILS27" });
+  expect(log.byType("handoff.outbound.accepted")).toHaveLength(1);
+  expect(log.byType("handoff.tower")).toHaveLength(1);
+
+  stepWorld(world, SIM_DT_S);
+  expect(log.byType("handoff.outbound.accepted")).toHaveLength(1);
+  expect(log.byType("handoff.tower")).toHaveLength(1);
 });
 
 test("T02-37 AC3 / AC4 — pointout lifecycle: offer, accept, reject, and convert to handoff", () => {
