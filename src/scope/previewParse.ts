@@ -859,7 +859,7 @@ function isCompleteFlidToken(token: string): boolean {
 }
 
 function parseTermIdentity(rest: string): PreviewCommandResult {
-  const match = /^(\S+?)(?:\/([APE]))?(?: ([0-2]\d[0-5]\d))?$/.exec(rest);
+  const match = /^(\S+?)(?:\/([APE]))?(?: ((?:[01]\d|2[0-3])[0-5]\d))?$/.exec(rest);
   if (!match || (match[3] !== undefined && /^\d{1,2}$/.test(match[1]!))) return invalid("FORMAT");
   const flid = match[1]!;
   if (!isCompleteFlidToken(flid) || flid === "ALL") return invalid("FORMAT");

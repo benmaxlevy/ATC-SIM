@@ -64,6 +64,12 @@ test("T02-146 corrective — TERM CNTL accepts tab lines and disambiguation", ()
     kind: "action",
     action: { type: "termCntl", flid: "DAL123", flightType: "A", coordinationTime: "1430" },
   });
+  expect(parseTrackingCommand("/DAL123 2359")).toMatchObject({
+    kind: "action",
+    action: { type: "termCntl", coordinationTime: "2359" },
+  });
+  expect(parseTrackingCommand("/DAL123 2400")).toEqual({ kind: "invalid", reason: "FORMAT" });
+  expect(parseTrackingCommand("/DAL123 2900")).toEqual({ kind: "invalid", reason: "FORMAT" });
   expect(parseTrackingCommand("/DAL123/A 2460")).toEqual({ kind: "invalid", reason: "FORMAT" });
   expect(parseTrackingCommand("/12 1430")).toEqual({ kind: "invalid", reason: "FORMAT" });
 });
