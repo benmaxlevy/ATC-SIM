@@ -33,7 +33,6 @@ import {
   type World,
 } from "@core";
 import {
-  beginFilterEntry,
   cancelFilterEntry,
   formatFilterReadout,
   handleFilterEntryKey,
@@ -43,10 +42,8 @@ import {
 import { stepRange } from "./camera";
 import {
   beginScopeChord,
-  chordTimedOut,
   isBeaconSelectKey,
   isCycleFocusKey,
-  isFilterChordKey,
   isHelpToggleKey,
   isPreviewPlusKey,
   isRadioFocusSlashKey,
@@ -285,7 +282,6 @@ function isReservedScopeLetterShortcut(key: string): boolean {
     isDatablockToggleKey(key) ||
     isModeCToggleKey(key) ||
     isHistoryToggleKey(key) ||
-    isFilterChordKey(key) ||
     isBeaconSelectKey(key)
   );
 }
@@ -560,16 +556,30 @@ function applyPreviewArmedAction(
       setAllVideoMaps(view, action.enabled);
       return;
     case "displayFilters":
-      view.preview.rejection = formatFilterReadout(
-        view.altitudeFilter,
-        idleFilterEntry(view.altitudeFilter),
-      );
+      view.preview.rejection = `FILTER ${formatFilterReadout(view.altitudeFilter, idleFilterEntry(view.altitudeFilter)).replace("FILTER ", "")} U ${formatFilterReadout(view.associatedAltitudeFilter, idleFilterEntry(view.associatedAltitudeFilter)).replace("FILTER ", "")} A`;
       view.preview.lastKeyAtMs = nowMs;
       return;
     case "setAltitudeFilterLimits":
-      if (
+      if (action.associatedOnly) {
+        tryApplyAltitudeFilter(
+          view.associatedAltitudeFilter,
+          action.floorHundreds,
+          action.ceilingHundreds,
+        );
+        retainFullDatablocksOutsideAltitudeFilter(view.tracks);
+      } else if (
         tryApplyAltitudeFilter(view.altitudeFilter, action.floorHundreds, action.ceilingHundreds)
       ) {
+        if (
+          action.associatedFloorHundreds !== undefined &&
+          action.associatedCeilingHundreds !== undefined
+        ) {
+          tryApplyAltitudeFilter(
+            view.associatedAltitudeFilter,
+            action.associatedFloorHundreds,
+            action.associatedCeilingHundreds,
+          );
+        }
         retainFullDatablocksOutsideAltitudeFilter(view.tracks);
       }
       return;
@@ -1073,8 +1083,6 @@ export function handleScopeKeyDown(
       ui?.onHandled?.();
       return true;
     }
-    let filterCancelled = false;
-    const filterWasActive = view.filterEntry.phase !== "idle";
     if (
       handleFilterEntryKey(view.filterEntry, view.altitudeFilter, event.key, nowMs, () =>
         retainFullDatablocksOutsideAltitudeFilter(view.tracks),
@@ -1083,32 +1091,7 @@ export function handleScopeKeyDown(
       consume(event);
       return true;
     }
-    if (filterWasActive) {
-      filterCancelled = true;
-      if (!chordTimedOut(view.filterEntry.lastKeyAtMs, nowMs)) {
-        startPreviewBuffer(view, "F", nowMs);
-        const preview = handlePreviewBufferKey(
-          view.preview,
-          event.key,
-          nowMs,
-          event.code,
-          loadedCatalogMaps(view),
-          videoMapTokenLayout(view),
-        );
-        if (preview.consumed) {
-          consume(event);
-          applyPreviewBufferOutcome(view, world, nowMs, preview);
-          ui?.onHandled?.();
-          return true;
-        }
-      }
-    }
-    if (!filterCancelled && isFilterChordKey(event.key)) {
-      consume(event);
-      beginFilterEntry(view.filterEntry, view.altitudeFilter, nowMs);
-      return true;
-    }
-    if (!event.shiftKey && (filterCancelled || !isReservedScopeLetterShortcut(event.key))) {
+    if (!event.shiftKey && !isReservedScopeLetterShortcut(event.key)) {
       const ch = previewBufferCharFromKey(event.key, event.code);
       if (ch !== null && isPreviewBufferStartChar(ch)) {
         consume(event);

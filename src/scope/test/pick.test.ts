@@ -288,6 +288,7 @@ test("filtered track: datablock rectangle is not pickable; the target still sele
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
   view.altitudeFilter = { minHundreds: 70, maxHundreds: 90 };
+  view.associatedAltitudeFilter = { minHundreds: 70, maxHundreds: 90 };
   const tick = nmToScreen(dal.xNm, dal.yNm, CAM, VIEW);
   const onBlock = { x: tick.x + 16, y: tick.y - 18 };
   expect(Math.hypot(onBlock.x - tick.x, onBlock.y - tick.y)).toBeGreaterThan(HIT_RADIUS_CSS_PX);
@@ -328,6 +329,7 @@ test("owned and retained out-of-filter datablocks are pickable; ordinary selecti
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
   view.altitudeFilter = { minHundreds: 70, maxHundreds: 90 };
+  view.associatedAltitudeFilter = { minHundreds: 70, maxHundreds: 90 };
   const td = view.tracks.get(ac.id)!;
   const tick = nmToScreen(ac.xNm, ac.yNm, CAM, VIEW);
   const block = datablockRect(

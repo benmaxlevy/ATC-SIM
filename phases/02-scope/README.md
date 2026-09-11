@@ -671,7 +671,7 @@ Runtime gaps remain documented in [LATER-IMPLEMENTATION-BACKLOG.md](../LATER-IMP
 
 ### Preview Area addendum (T02-51–54)
 
-Completed Preview Area addendum matching [CRC STARS](https://docs.virtualnas.net/crc/stars/) Preview Area / Tracking Aircraft / Table 30, with trainer deltas stated in every ticket (F3 is local plan/track association, not NAS handoff; F4/TERM CNTL share local termination, not multi-controller NAS semantics; F1 stays beaconator; F7 stays PTL ALL; no pointouts this swarm):
+Completed Preview Area addendum matching [CRC STARS](https://docs.virtualnas.net/crc/stars/) Preview Area / Tracking Aircraft / Table 30, with trainer deltas stated in every ticket (F3 is local plan/track association, not NAS handoff; F4/TERM CNTL share local termination, not multi-controller NAS semantics; F1 stays beaconator; F7 is MULTI FUNC/`*`; F10 is PTL ALL; no pointouts this swarm):
 
 | ID | Title | Pri | Size | Depends on | Status |
 | --- | --- | --- | --- | --- | --- |
@@ -711,7 +711,7 @@ Completed SITE integration addendum matching [CRC STARS](https://docs.virtualnas
 - [x] Generic synthetic-site tests in `src/scope/radarSites.integration.test.ts`; no KATL production map counts or geometry.
 - [ ] Manual Chrome SITE walk. skip-with-reason: no visual operator in this swarm; Chrome SITE walk not watched. Automated tests prove boot / SITE / SSA / paint; do not invent a visual pass.
 
-**Preview Area is not the radio command line.** Scope commands never emit Command IR / readback / intent. `DAL123 H270` still turns. `*J` / `*P` (and other T02-49 `*` chords) still arm/slew. A live `*` hint still wins over idle preview. Invalid/unknown commit flashes `INV`. Reject unknown; never parse-and-no-op. No `window.prompt`, no extra HTML `<input>`. F3 associates/owns a matching local plan/track but is not a NAS handoff. F4 is the TERM CNTL alias: it terminates the target, deletes its associated local plan, and leaves an unassociated `*` LDB. F1 stays beaconator. F7 stays PTL ALL. Flight-plan route edits are record-only; they do not issue clearances or drive pilot intent.
+**Preview Area is not the radio command line.** Scope commands never emit Command IR / readback / intent. `DAL123 H270` still turns. `*J` / `*P` (and other T02-49 `*` chords) still arm/slew. A live `*` hint still wins over idle preview. Invalid/unknown commit flashes `INV`. Reject unknown; never parse-and-no-op. No `window.prompt`, no extra HTML `<input>`. F3 associates/owns a matching local plan/track but is not a NAS handoff. F4 is the TERM CNTL alias: it terminates the target, deletes its associated local plan, and leaves an unassociated `*` LDB. F1 stays beaconator. F7 is MULTI FUNC and aliases `*`; F10 is PTL ALL. `*F` is altitude filtering, not forced FDB. Flight-plan route edits are record-only; they do not issue clearances or drive pilot intent.
 
 #### Shipped Preview Area commands (do not invent later CRC tables)
 

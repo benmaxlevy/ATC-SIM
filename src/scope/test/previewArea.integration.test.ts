@@ -661,7 +661,7 @@ test("T02-65 — *F readout, *LA bounds, *BCN □ paint; *B / idle F / B45 uncha
 
   typeKeys(view, world, ["*", "F", "Enter"], "scope");
   expect(view.altitudeFilter).toEqual(DEFAULT_ALTITUDE_FILTER);
-  expect(formatPreviewReadout(view.preview)).toBe("FILTER 000-180");
+  expect(formatPreviewReadout(view.preview)).toBe("FILTER 000-180 U 000-180 A");
 
   typeKeys(view, world, ["*", "L", "A", "0", "0", "0", "1", "2", "0", "Enter"], "scope", 200);
   expect(view.altitudeFilter).toEqual({ minHundreds: 0, maxHundreds: 120 });
@@ -692,8 +692,8 @@ test("T02-65 — *F readout, *LA bounds, *BCN □ paint; *B / idle F / B45 uncha
 
   const filterView = createScopeView();
   typeKeys(filterView, world, ["F"], "scope");
-  expect(filterView.filterEntry.phase).toBe("min");
-  expect(filterView.preview.phase).toBe("idle");
+  expect(filterView.filterEntry.phase).toBe("idle");
+  expect(filterView.preview.buffer).toBe("F");
 
   const tpa = createScopeView();
   tpa.atpa.monitorCones = false;
@@ -715,14 +715,20 @@ test("T02-148 — F-prefixed ACID cancels filter chord and reaches Preview", () 
   expect(world.flightPlans[0]).toMatchObject({ acid: "FFT123", assignedBeacon: "2341" });
 });
 
-test("T02-148 — numeric filter entry still commits both limits", () => {
+test("T02-148 — manual *F command commits both filter bands", () => {
   const view = createScopeView();
   const world = createWorld();
 
-  typeKeys(view, world, ["F", "0", "5", "0", "Enter", "1", "2", "0", "Enter"], "scope");
+  typeKeys(
+    view,
+    world,
+    ["*", "F", "0", "5", "0", "1", "2", "0", "0", "5", "0", "0", "9", "0", "Enter"],
+    "scope",
+  );
 
   expect(view.filterEntry.phase).toBe("idle");
   expect(view.altitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 120 });
+  expect(view.associatedAltitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 90 });
 });
 
 test("T02-74 — *R Enter plus click toggles one track; miss keeps arm; *RR and F7 stay global", () => {

@@ -314,7 +314,10 @@ function applyTrackingSlewHit(
       return true;
     case "armPerTrackPtl": {
       const ac = hit.aircraft;
-      const altitudeFiltered = !inAltitudeFilter(ac.altitudeFt, view.altitudeFilter);
+      const altitudeFiltered = !inAltitudeFilter(
+        ac.altitudeFt,
+        view.tracks.get(id)?.unassociated ? view.altitudeFilter : view.associatedAltitudeFilter,
+      );
       const owned = (view.tracks.get(id)?.ownership ?? "unowned") === "owned";
       const currentlyDrawn = shouldDrawPtlForTrack(
         ac.speedKt,

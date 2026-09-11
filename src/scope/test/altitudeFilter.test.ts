@@ -49,25 +49,25 @@ test("datablock filter gate allows owned, retained, and emergency exceptions onl
   );
 });
 
-test("parse 1-3 digit hundreds; 50 Enter = 050; clamp 0-180", () => {
+test("parse 1-3 digit hundreds; 50 Enter = 050; clamp 0-999", () => {
   expect(parseFilterHundreds("50")).toBe(50);
   expect(parseFilterHundreds("050")).toBe(50);
   expect(parseFilterHundreds("0")).toBe(0);
   expect(parseFilterHundreds("180")).toBe(180);
-  expect(parseFilterHundreds("181")).toBe(180);
-  expect(parseFilterHundreds("999")).toBe(180);
+  expect(parseFilterHundreds("181")).toBe(181);
+  expect(parseFilterHundreds("999")).toBe(999);
   expect(parseFilterHundreds("")).toBeNull();
   expect(parseFilterHundreds("12a")).toBeNull();
   expect(parseFilterHundreds("4")).toBe(4);
   expect(parseStrictFilterHundreds("000")).toBe(0);
   expect(parseStrictFilterHundreds("050")).toBe(50);
   expect(parseStrictFilterHundreds("180")).toBe(180);
-  expect(parseStrictFilterHundreds("181")).toBeNull();
-  expect(parseStrictFilterHundreds("999")).toBeNull();
+  expect(parseStrictFilterHundreds("181")).toBe(181);
+  expect(parseStrictFilterHundreds("999")).toBe(999);
   expect(parseStrictFilterHundreds("50")).toBeNull();
   expect(parseStrictFilterHundreds("")).toBeNull();
   expect(clampFilterHundreds(-3)).toBe(0);
-  expect(clampFilterHundreds(200)).toBe(180);
+  expect(clampFilterHundreds(200)).toBe(200);
   expect(clampFilterHundreds(Number.NaN)).toBe(0);
 });
 

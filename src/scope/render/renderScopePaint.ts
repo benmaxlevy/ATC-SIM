@@ -174,7 +174,10 @@ export function collectDatablockProtectedGeometry(
           out.push({ kind: "circle", aircraftId: ac.id, center: q, radius: 2 });
         }
     const shown = displayAircraft(ac, td)!;
-    const filtered = !inAltitudeFilter(shown.altitudeFt, view.altitudeFilter);
+    const filtered = !inAltitudeFilter(
+      shown.altitudeFt,
+      td?.unassociated ? view.altitudeFilter : view.associatedAltitudeFilter,
+    );
     if (
       shouldDrawPtlForTrack(
         shown.speedKt,
@@ -744,7 +747,10 @@ function isEmergencyDatablockException(world: World, ac: Aircraft): boolean {
 function shouldPaintDatablock(view: ScopeView, world: World, ac: Aircraft, td?: TrackDisplay) {
   const handoff = handoffFor(world, ac.id);
   return shouldShowDatablockOutsideAltitudeFilter({
-    inFilter: inAltitudeFilter(ac.altitudeFt, view.altitudeFilter),
+    inFilter: inAltitudeFilter(
+      ac.altitudeFt,
+      td?.unassociated ? view.altitudeFilter : view.associatedAltitudeFilter,
+    ),
     ownership: td?.ownership,
     retainedFdb: td?.retainedFdbOutsideAltitudeFilter,
     emergency: isEmergencyDatablockException(world, ac),
@@ -1423,11 +1429,15 @@ export function drawPredictedTrackLines(
   size: ScopeViewSize,
 ): void {
   for (const ac of world.aircraft) {
-    const shown = displayAircraft(ac, view.tracks.get(ac.id));
+    const td = view.tracks.get(ac.id);
+    const shown = displayAircraft(ac, td);
     if (!shown) {
       continue;
     }
-    const altitudeFiltered = !inAltitudeFilter(shown.altitudeFt, view.altitudeFilter);
+    const altitudeFiltered = !inAltitudeFilter(
+      shown.altitudeFt,
+      td?.unassociated ? view.altitudeFilter : view.associatedAltitudeFilter,
+    );
     const owned = (view.tracks.get(ac.id)?.ownership ?? "unowned") === "owned";
     if (
       !shouldDrawPtlForTrack(
@@ -1451,7 +1461,6 @@ export function drawPredictedTrackLines(
     );
     const from = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
     const to = nmToScreen(end.eastNm, end.northNm, view.camera, size);
-    const td = view.tracks.get(ac.id);
     const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
     const capTickPx = Math.max(2, view.charSizes.tools - 8);
     drawPredictedTrackLine(
@@ -1784,6 +1793,8 @@ export function drawSsa(
     offCenter: isViewOffAirport(view),
     filter: view.altitudeFilter,
     filterEntry: view.filterEntry,
+    unassociatedFilter: view.altitudeFilter,
+    associatedFilter: view.associatedAltitudeFilter,
     visibility: view.ssaFilter,
     ptlMinutes: view.ptlMinutes,
     hasAlert: Boolean(hasAlert),

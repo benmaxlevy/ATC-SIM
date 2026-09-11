@@ -96,6 +96,9 @@ export type PreviewArmedAction =
       readonly type: "setAltitudeFilterLimits";
       readonly floorHundreds: number;
       readonly ceilingHundreds: number;
+      readonly associatedOnly?: boolean;
+      readonly associatedFloorHundreds?: number;
+      readonly associatedCeilingHundreds?: number;
     }
   | { readonly type: "addBeaconCodeFilter"; readonly code: string }
   | { readonly type: "removeBeaconCodeFilter"; readonly code: string }
@@ -491,9 +494,7 @@ function parseBeaconFilterCode(
 }
 
 /**
- * Table 29 altitude filters. Exact `*F` displays current bounds; `*LA` sets
- * 3-digit hundreds 0–180. Spaces optional (`*F` = `* F`). `*FILTER` is not
- * ours. Null when this is not our family so other `*` rows stay intact.
+ * TI 6191.409 §4.11.1–4.11.2: `*F` displays or modifies both filter bands.
  */
 export function parseAltitudeFilterCommand(buffer: string): PreviewCommandResult | null {
   if (!buffer.startsWith("*")) {
@@ -503,6 +504,61 @@ export function parseAltitudeFilterCommand(buffer: string): PreviewCommandResult
 
   if (compact === "*F") {
     return { kind: "action", action: { type: "displayFilters" } };
+  }
+
+  if (compact.startsWith("*FC")) {
+    const rest = compact.slice(3);
+    if (!/^\d*$/.test(rest)) return invalid("invalid altitude filter limits");
+    if (rest.length < 6) return { kind: "incomplete" };
+    if (rest.length !== 6) return invalid("invalid altitude filter limits");
+    const first = parseStrictFilterHundreds(rest.slice(0, 3));
+    const second = parseStrictFilterHundreds(rest.slice(3, 6));
+    if (first === null || second === null) return invalid("altitude filter out of range");
+    return {
+      kind: "action",
+      action: {
+        type: "setAltitudeFilterLimits",
+        floorHundreds: Math.min(first, second),
+        ceilingHundreds: Math.max(first, second),
+        associatedOnly: true,
+      },
+    };
+  }
+
+  if (compact.startsWith("*F")) {
+    const rest = compact.slice(2);
+    if (!/^\d*$/.test(rest)) {
+      return invalid("invalid altitude filter limits");
+    }
+    if (!/^\d{6}(?:\d{6})?$/.test(rest)) {
+      return rest.length < 6 ? { kind: "incomplete" } : invalid("invalid altitude filter limits");
+    }
+    const floorHundreds = parseStrictFilterHundreds(rest.slice(0, 3));
+    const ceilingHundreds = parseStrictFilterHundreds(rest.slice(3, 6));
+    if (floorHundreds === null || ceilingHundreds === null) {
+      return invalid("altitude filter out of range");
+    }
+    const action = {
+      type: "setAltitudeFilterLimits" as const,
+      floorHundreds: Math.min(floorHundreds, ceilingHundreds),
+      ceilingHundreds: Math.max(floorHundreds, ceilingHundreds),
+    };
+    if (rest.length === 12) {
+      const associatedFloorHundreds = parseStrictFilterHundreds(rest.slice(6, 9));
+      const associatedCeilingHundreds = parseStrictFilterHundreds(rest.slice(9, 12));
+      if (associatedFloorHundreds === null || associatedCeilingHundreds === null) {
+        return invalid("altitude filter out of range");
+      }
+      return {
+        kind: "action",
+        action: {
+          ...action,
+          associatedFloorHundreds: Math.min(associatedFloorHundreds, associatedCeilingHundreds),
+          associatedCeilingHundreds: Math.max(associatedFloorHundreds, associatedCeilingHundreds),
+        },
+      };
+    }
+    return { kind: "action", action };
   }
 
   if (compact === "*L") {
@@ -530,12 +586,13 @@ export function parseAltitudeFilterCommand(buffer: string): PreviewCommandResult
   if (floorHundreds === null || ceilingHundreds === null) {
     return invalid("altitude filter out of range");
   }
-  if (floorHundreds > ceilingHundreds) {
-    return invalid("altitude filter floor above ceiling");
-  }
   return {
     kind: "action",
-    action: { type: "setAltitudeFilterLimits", floorHundreds, ceilingHundreds },
+    action: {
+      type: "setAltitudeFilterLimits",
+      floorHundreds: Math.min(floorHundreds, ceilingHundreds),
+      ceilingHundreds: Math.max(floorHundreds, ceilingHundreds),
+    },
   };
 }
 
@@ -897,26 +954,14 @@ function parseTrackFlidRest(kind: "initCntl" | "termCntl", rest: string): Previe
 /**
  * T02-66 tracking / datablock chords + Table 24/25 leader line direction and length.
  * `* P1` is a tower list (parseListCommand). Bare `*` and `*B` stay incomplete.
- * `*F` / `*LA` / `*BCN` — `*F` forces Full Data Block on slewed track or target acid.
+ * `*LA` / `*BCN` tracking and display commands. `*F` is handled by the
+ * altitude-filter parser above and is never a forced-FDB command.
  */
 export function parseTrackingCommand(buffer: string): PreviewCommandResult | null {
   const compact = compactTrackingBuffer(buffer);
   const spaced = buffer.trim().toUpperCase().replace(/\s+/g, " ");
   if (compact === "**F") {
     return { kind: "action", action: { type: "clearAllForcedFdb" } };
-  }
-  if (compact.startsWith("*F")) {
-    const rest = compact.slice(2);
-    if (rest.length === 0) {
-      return { kind: "action", action: { type: "forceFdb" } };
-    }
-    if (isCompleteFlidToken(rest)) {
-      return { kind: "action", action: { type: "forceFdb", flid: rest } };
-    }
-    if (isFlidPrefixToken(rest)) {
-      return { kind: "incomplete" };
-    }
-    return invalid("unknown FLID");
   }
   if (compact.startsWith("+")) {
     return parseTrackFlidRest("initCntl", compact.slice(1));

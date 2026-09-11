@@ -314,10 +314,6 @@ The **Preview Area** is the primary typed command buffer of the STARS terminal r
 | `*LDR <0-7> Enter` | Type `*LDR 3` or `*LDR 4` Enter | Sets global default leader line length (`view.leaderLengthPx`). |
 | `*1`–`*8` then click | Type `*3`, click datablock | STARS leader clock direction (1 = NE clockwise through 8 = N). |
 | `*0` then click | Type `*0`, click target | Resets leader line direction to the facility default. |
-| `*F` then click | Type `*F`, click target | Toggles forced Full Data Block (FDB) display on that track. |
-| `*F [FLID] Enter` | Type `*F DAL123` Enter | Toggles forced Full Data Block (FDB) on specified aircraft. |
-| `*F Enter` | Type `*F` Enter with track selected | Toggles forced Full Data Block (FDB) on currently selected track. |
-| `**F Enter` | Type `**F` Enter | Clears all forced Full Data Blocks across the entire airspace. |
 | `*` then click | Type `*`, click target | Acknowledges a pending pointout, or toggles cyan target highlight. |
 | `*B` then click | Type `*B`, click uncorrelated track | 5-second Mode 3/A beaconator readout on uncorrelated target symbol. |
 | `[Index#]` then click target | Type `1` or `02`, click target symbol | **Manual Flight Plan Correlation**: Correlates flight plan `Index#` from TAB List (`*T`) to clicked radar target, setting FDB, owned state, and removing entry from the TAB list. |
@@ -452,8 +448,10 @@ Video maps match adapted catalog numeric **slots** (`1`–`32`) or symbolic **ID
 
 | Command Syntax | Operator Action | System Result |
 |---|---|---|
-| `*F Enter` | Type `*F` Enter | Flashes current altitude filter bounds (`FILTER <floor> <ceiling>`) in Preview Area. Does not alter limits. |
-| `*LA <floor><ceiling> Enter` | `*LA 000 150` Enter | Sets altitude filter floor and ceiling in 3-digit Mode C hundreds (`000` to `180`, floor ≤ ceiling). E.g. `000 150` = SFC to 15,000 ft. |
+| `*F Enter` | Type `*F` Enter | Displays the unassociated and associated altitude-filter bounds in Preview Area (`FILTER <unassociated> U <associated> A`). Does not alter limits. |
+| `*F <unassociated floor><unassociated ceiling> [<associated floor><associated ceiling>] Enter` | `*F 000 150 050 120` Enter | Sets filter bounds in 3-digit Mode C hundreds. Six digits set the unassociated band; twelve digits set unassociated then associated bands. |
+| `*F C <associated floor><associated ceiling> Enter` | `*F C 100 350` Enter | Sets only the associated-track filter; the smaller entered value becomes the lower limit. |
+| `*LA <floor><ceiling> Enter` | `*LA 000 150` Enter | Legacy simulator alias: sets the unassociated altitude filter floor and ceiling. |
 | `*BCN <code> Enter` | `*BCN 45` or `*BCN 4501` Enter | Adds octal beacon code filter (2-digit block `00`–`77` or 4-digit discrete `0000`–`7777`). |
 | `*BCN DEL <code> Enter` | `*BCN DEL 45` Enter | Removes specified beacon code filter. |
 | Scope-focus `B<digits> Enter` | PPI focused, `B45` Enter | Toggles beacon code block `"45"`. Targets matching block paint □. Second entry removes it. |
@@ -486,7 +484,7 @@ To prevent operator confusion between similar keyboard inputs, the simulator adh
   - Compact `*P3` followed by **slew-click on an aircraft target** activates a 3 NM TPA cone.
   - Compact `*P` followed by a left-click on empty scope relocates Preview Area immediately. Clicking an aircraft clears its TPA cone; `*P Enter` arms cone clearing for the next aircraft click.
 - **Video Maps vs TPA**: `*D <id>` toggles video maps. Bare `*D` stays with TPA (`*D` / `*DE` / `*DI` / `*D+`).
-- **Altitude Filters**: Scope-focus `F` begins the altitude filter entry chord. `*F Enter` flashes the filter limits readout. `*F then click` toggles forced FDB.
+- **Altitude Filters**: `<MULTI FUNC>F` (`*F`) is the manual altitude-filter command. `*F Enter` displays both filter bands; append six or twelve digits and press Enter to set them. Bare `F` remains available for callsign/flight-plan entry and does not start a filter chord.
 - **Beacon Commands**: Scope-focus `B##` toggles beacon select blocks. `*BCN ##` adds beacon filters. `*B then click` activates the 5-second Beaconator.
 - **Mode C vs Video Maps**: Tap `M` toggles the Mode C altitude readout on FDBs. Typing `M` followed by a map name (e.g. `M DEM1_27`) toggles that map layer.
 - **Alert Controls**: `CA K`, `CA`, `CA P`, and `CA C [E|I]` control Conflict Alert inhibits; an empty-preview slew-click acknowledges CA. `CA E` is rejected. `*Q` then an owned active-LA track suppresses only its current alert; `*V` then an owned track toggles its persistent MSAW processing. `*LA <floor><ceiling> Enter` sets altitude filter bounds only. `*MCI Enter` toggles Mode C Intruder alerting.
@@ -494,7 +492,7 @@ To prevent operator confusion between similar keyboard inputs, the simulator adh
 ### Deferred commands backlog
 
 Commands strictly deferred to future milestones (not parsed in the current release):
-- Flight plan full edit modals: `*F [Callsign]`, `*V`, `*A`.
+- Flight plan full edit modals: `*V`, `*A`.
 - Scratchpad editing commands and assigned altitude/heading/speed direct data block amendments.
 - Multi-controller handoff chords and pointout TCP/consol/QL protocols (`+HOLD`, `+UNS`, `+R`, `/ALL`).
 - Target Demand Metering (TDM) `*G`.
