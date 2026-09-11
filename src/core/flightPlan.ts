@@ -61,7 +61,8 @@ export type FlightPlanCorrelationErrorCode =
   | "NO_MATCH"
   | "AMBIGUOUS_MATCH"
   | "TARGET_ALREADY_ASSOCIATED"
-  | "PLAN_ALREADY_ASSOCIATED";
+  | "PLAN_ALREADY_ASSOCIATED"
+  | "INVALID_SQUAWK";
 
 export interface FlightPlanCorrelationError {
   code: FlightPlanCorrelationErrorCode;
@@ -687,6 +688,16 @@ export function correlateFlightPlanForAircraft(
   const existing = flightPlanForAircraft(world, aircraftId);
   if (existing) return { ok: true, plan: existing, aircraftId };
   const squawk = reportedSquawk(aircraft);
+  if (squawk !== undefined && !isValidBeaconCode(squawk)) {
+    return {
+      ok: false,
+      error: correlationError(
+        "INVALID_SQUAWK",
+        planId,
+        `aircraft ${aircraftId} reports invalid squawk ${squawk}`,
+      ),
+    };
+  }
   const candidates = world.flightPlans.filter(
     (plan) =>
       plan.status === "pending" &&

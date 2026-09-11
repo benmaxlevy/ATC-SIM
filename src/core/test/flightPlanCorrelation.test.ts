@@ -145,4 +145,25 @@ describe("T02-145 flight-plan activation and correlation", () => {
     expect(update?.correlation).toMatchObject({ ok: true, aircraftId: ac.id });
     expect(world.flightPlans[0]).toMatchObject({ status: "active", associatedAircraftId: ac.id });
   });
+
+  it("leaves invalid reports and duplicate pending candidates unassociated", () => {
+    const invalid = target("ac-invalid", "1234", "78A1");
+    const invalidWorld = createWorld({ aircraft: [invalid] });
+    expect(correlateFlightPlanForAircraft(invalidWorld, invalid.id)).toMatchObject({
+      ok: false,
+      error: { code: "INVALID_SQUAWK" },
+    });
+
+    const a = plan("fp-a", "AAL100", "7022");
+    const b = plan("fp-b", "AAL101", "7022");
+    const ambiguous = createWorld({
+      flightPlans: [a, b],
+      aircraft: [target("ac-ambiguous", "1234", "7022")],
+    });
+    expect(correlateFlightPlanForAircraft(ambiguous, "ac-ambiguous")).toMatchObject({
+      ok: false,
+      error: { code: "AMBIGUOUS_MATCH", aircraftIds: ["fp-a", "fp-b"] },
+    });
+    expect(ambiguous.flightPlans.every((item) => item.status === "pending")).toBe(true);
+  });
 });

@@ -268,7 +268,7 @@ test("plan scratchpads override derived track scratchpads after flight-plan modi
   ac.flightPlan = { scratchpads: ["HI", "WEST"] };
   const td = createTrackDisplay();
 
-  expect(deriveScratchpads(ac, td)).toEqual({ sp1: "HI", sp2: "WEST" });
+  expect(deriveScratchpads(ac, td, ["HI", "WEST"])).toEqual({ sp1: "HI", sp2: "WEST" });
 });
 
 test("T02-39: deriveScratchpads derives interim altitude to SP1 when no approach is set", () => {
