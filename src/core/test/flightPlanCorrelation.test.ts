@@ -107,6 +107,25 @@ describe("T02-145 flight-plan activation and correlation", () => {
     expect(world.flightPlans[0]!.associatedAircraftId).toBe("ac-suspended");
   });
 
+  it("unsuspends a plan suspended for beacon mismatch when associated", () => {
+    const pending = plan("fp-mismatch", "DAL458", "7026");
+    const active = transitionFlightPlan(pending, "active");
+    if (!active.ok) throw new Error(active.error.message);
+    const suspended = transitionFlightPlan(active.value, "suspended", "beacon-mismatch");
+    if (!suspended.ok) throw new Error(suspended.error.message);
+    const ac = target("ac-mismatch", "1234", "7027");
+    const world = createWorld({ flightPlans: [suspended.value], aircraft: [ac] });
+
+    const result = associateFlightPlan(world, "fp-mismatch", "ac-mismatch");
+
+    expect(result).toMatchObject({ ok: true, plan: { status: "active" } });
+    expect(world.flightPlans[0]).toMatchObject({
+      status: "active",
+      associatedAircraftId: "ac-mismatch",
+    });
+    expect(world.flightPlans[0]!.suspensionReason).toBeUndefined();
+  });
+
   it("creates an active plan from an explicit target selection", () => {
     const ac = target("ac-3", "UAL789", "4312");
     const world = createWorld({ aircraft: [ac] });

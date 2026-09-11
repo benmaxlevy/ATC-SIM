@@ -5,6 +5,7 @@
  */
 
 export type FlightPlanStatus = "pending" | "active" | "suspended" | "deleted";
+export type FlightPlanSuspensionReason = "beacon-mismatch" | "inactive";
 
 export type FlightType = "IFR" | "VFR" | "DVFR" | "SVFR";
 
@@ -29,6 +30,8 @@ export interface FlightPlan {
   airportId?: string;
   flightRules?: string;
   source?: string;
+  /** Why the plan is suspended; drives STARS mismatch unsuspend behavior. */
+  suspensionReason?: FlightPlanSuspensionReason;
   /** Authoritative surveillance association; absent while pending/unassociated. */
   associatedAircraftId?: string;
 }
@@ -218,6 +221,7 @@ export function withAllocatedBeacon(
 export function transitionFlightPlan(
   plan: FlightPlan,
   status: Exclude<FlightPlanStatus, "deleted">,
+  suspensionReason?: FlightPlanSuspensionReason,
 ): FlightPlanResult<FlightPlan> {
   const allowedNextStatus: Partial<Record<FlightPlanStatus, readonly FlightPlanStatus[]>> = {
     pending: ["active"],
@@ -235,7 +239,13 @@ export function transitionFlightPlan(
       ),
     };
   }
-  return { ok: true, value: { ...plan, status } };
+  const value = { ...plan, status };
+  if (status === "suspended" && suspensionReason !== undefined) {
+    value.suspensionReason = suspensionReason;
+  } else if (status !== "suspended") {
+    delete value.suspensionReason;
+  }
+  return { ok: true, value };
 }
 
 export function deleteFlightPlan(plan: FlightPlan): FlightPlan {
@@ -309,8 +319,12 @@ export function associateFlightPlan(
   }
   // Manual §5.4.1: pending plans activate when associated. A plan suspended
   // while inactive or without beacon mismatch remains suspended when the
-  // selected object is a track; explicit unsuspend is a separate operation.
-  if (plan.status === "pending") {
+  // Manual §5.4.1: beacon-mismatch suspensions unsuspend on association;
+  // ordinary inactive suspensions remain suspended until explicitly unsuspended.
+  if (
+    plan.status === "pending" ||
+    (plan.status === "suspended" && plan.suspensionReason === "beacon-mismatch")
+  ) {
     const transitioned = transitionFlightPlan(plan, "active");
     if (!transitioned.ok) {
       return {
@@ -319,6 +333,7 @@ export function associateFlightPlan(
       };
     }
     plan.status = transitioned.value.status;
+    if (plan.status !== "suspended") delete plan.suspensionReason;
   }
   plan.associatedAircraftId = aircraftId;
   plan.reportedBeacon = reportedSquawk(target);
