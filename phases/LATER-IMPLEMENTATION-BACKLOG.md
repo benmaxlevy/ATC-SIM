@@ -764,3 +764,22 @@ Constraints later work must keep:
 This document does not pull in untouched phase work such as scoring/replay,
 constant-wind simulation, a licensed STARS typeface, or other
 features that have not been partially implemented in the shipped slices.
+
+### Pilot clearances and flight-plan execution remain later
+
+The flight-plan lifecycle swarm covers local scope-side plan creation,
+association, editing, deletion, and datablock projection only. Later work must
+connect those records to the radio/pilot pipeline:
+
+- controller-issued squawk assignments and amendments through radio phraseology;
+- pilot readback/validation and reported-squawk changes after a clearance;
+- controller clearances for assigned altitude, heading, speed, route, SID/STAR,
+  and approach that execute through Command IR and pilot intent;
+- authoritative filed route/procedure state driving the FMS after accepted
+  amendments, including conformance and mismatch handling;
+- rejected or misunderstood clearances, explicit readback errors, and audit
+  state linking the clearance to the plan.
+
+These later flows must preserve the boundary: scope plan editing does not emit
+Command IR or mutate kinematics; radio clearances do. Keep pilot execution
+self-hosted and do not add metered speech services.

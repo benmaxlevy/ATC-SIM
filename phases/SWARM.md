@@ -1,5 +1,67 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Fifty-sixth swarm planned — 2026-09-11 (Flight-plan lifecycle)
+
+Captain will run five sequential tickets on `feat/flight-plan-lifecycle` with
+one isolated worker at a time. This swarm adds local scope-side flight-plan
+creation, authoritative association, modification, deletion, beacon allocation,
+and datablock projection. Pilot clearance execution remains explicitly later
+backlog work.
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement the local authoritative flight-plan lifecycle and scope projections. |
+| Include | **T02-143**, **T02-144**, **T02-145**, **T02-146**, **T02-147** only. |
+| Skip | Radio, Command IR, pilot execution, speech, kinematics, TSAS, VFR/ARTCC messaging, interfacility networking, ASA, In-Out-In, Unsupported Data Blocks, and facility branches. |
+| Stop | After T02-147 acceptance, supplied-manual review, and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `feat/flight-plan-lifecycle`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Product law:** Flight plans are authoritative local operational records.
+Reported squawks are surveillance evidence used for correlation and mismatch
+detection. Association never guesses, never changes pilot kinematics, and
+never conflates plan association with controller ownership. Scope commands stay
+outside Command IR. Pilot clearance execution is a later feature.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-143 | `feat/flight-plan-lifecycle` clean and current `master` ancestry |
+| B | T02-144 | T02-143 merge and CI |
+| C | T02-145 | T02-144 merge and CI |
+| D | T02-146 | T02-145 merge and CI |
+| E | T02-147 | T02-146 merge and CI |
+
+**Ticket ownership:**
+
+- T02-143: domain model and deterministic beacon allocation.
+- T02-144: abbreviated and pending plan creation.
+- T02-145: active association and squawk correlation.
+- T02-146: plan modification and deletion.
+- T02-147: datablock adapter and lifecycle acceptance.
+
+**Ticket files / branches:**
+
+- `ticket/T02-143-flight-plan-domain-and-beacon-allocation` ← `phases/02-scope/tickets/T02-143-flight-plan-domain-and-beacon-allocation.md`
+- `ticket/T02-144-flight-plan-creation` ← `phases/02-scope/tickets/T02-144-flight-plan-creation.md`
+- `ticket/T02-145-flight-plan-activation-and-correlation` ← `phases/02-scope/tickets/T02-145-flight-plan-activation-and-correlation.md`
+- `ticket/T02-146-flight-plan-modification-and-deletion` ← `phases/02-scope/tickets/T02-146-flight-plan-modification-and-deletion.md`
+- `ticket/T02-147-flight-plan-datablock-integration` ← `phases/02-scope/tickets/T02-147-flight-plan-datablock-integration.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 flight-plan lifecycle T02-143–147
+Merge target: feat/flight-plan-lifecycle
+Merged: T02-143, T02-144, T02-145, T02-146, T02-147
+Tests: <focused gates, manual review, and npm run ci result>
+Notes: Pilot clearance execution remains backlog work
+```
+
 ## Fifty-fourth swarm started — 2026-09-10 (Unified outbound handoff positions)
 
 Captain owns `fix/datablocks` and will run T02-137 through T02-139 with one
