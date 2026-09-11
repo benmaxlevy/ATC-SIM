@@ -154,6 +154,7 @@ export interface Aircraft {
     [key: string]: unknown;
   };
   /** Optional compact flight plan alias. */
+  flightPlanId?: string;
   fp?: {
     destination?: string;
     rules?: string;
@@ -204,6 +205,7 @@ export interface AircraftInit {
     route?: string;
     [key: string]: unknown;
   };
+  flightPlanId?: string;
   destination?: string;
   destinationAirport?: string;
   flightRules?: string;
@@ -273,6 +275,7 @@ export function createAircraft(init: AircraftInit): Aircraft {
     ...(init.atpaDistance ? { atpaDistance: init.atpaDistance } : {}),
     ...(init.flightPlan ? { flightPlan: init.flightPlan } : {}),
     ...(init.fp ? { fp: init.fp } : {}),
+    ...(init.flightPlanId ? { flightPlanId: init.flightPlanId } : {}),
     ...(init.destination ? { destination: init.destination } : {}),
     ...(init.destinationAirport ? { destinationAirport: init.destinationAirport } : {}),
     ...(init.flightRules ? { flightRules: init.flightRules } : {}),

@@ -4,7 +4,13 @@
  * drag-and-drop lifecycle, collision overlap detection, and show-all-frames preview.
  */
 
-import type { Aircraft, ScheduledDeparture, World } from "@core";
+import {
+  associateFlightPlan as associateCoreFlightPlan,
+  correlateFlightPlans as correlateCoreFlightPlans,
+  type Aircraft,
+  type ScheduledDeparture,
+  type World,
+} from "@core";
 import { formatAltitudeHundreds } from "./datablock";
 import { buildSystemListLines, type ListFormatter } from "./listFormatter";
 import type { ScopeView } from "./scopeView";
@@ -456,6 +462,7 @@ export interface FlightPlanEntry {
   callsign: string;
   squawk: string;
   aircraftId?: string;
+  planId?: string;
   departureRef?: ScheduledDeparture;
 }
 
@@ -502,6 +509,7 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
     squawk: string;
     departureRef?: ScheduledDeparture;
     aircraftId?: string;
+    planId?: string;
     requestedIndex?: number;
   }[] = [];
 
@@ -509,11 +517,17 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
 
   // 1. Authoritative local plans. Deleted plans are not list entries.
   for (const plan of world.flightPlans) {
-    if (plan.status === "deleted" || seenCallsigns.has(plan.acid)) continue;
+    if (
+      plan.status === "deleted" ||
+      (plan.status === "active" && plan.associatedAircraftId) ||
+      seenCallsigns.has(plan.acid)
+    )
+      continue;
     seenCallsigns.add(plan.acid);
     rawItems.push({
       callsign: plan.acid,
       squawk: plan.assignedBeacon ?? plan.reportedBeacon ?? "1200",
+      planId: plan.id,
     });
   }
 
@@ -630,6 +644,7 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
       callsign: item.callsign,
       squawk: item.squawk,
       aircraftId: item.aircraftId,
+      planId: item.planId,
       departureRef: item.departureRef,
     });
   }
@@ -653,8 +668,32 @@ export function purgeFlightPlanEntry(
 }
 
 export function correlateFlightPlans(world: World, view: ScopeView): FlightPlanEntry[] {
-  const entries = getFlightPlanEntries(world, view);
   const correlated: FlightPlanEntry[] = [];
+
+  // Authoritative plans correlate in core. Association upgrades the FDB but
+  // does not claim controller ownership (F3 remains a separate trainer stub).
+  const authoritativeResults = correlateCoreFlightPlans(world);
+  for (const result of authoritativeResults) {
+    if (!result.ok) continue;
+    const td = ensureTrackDisplay(view.tracks, result.aircraftId);
+    td.unassociated = false;
+    td.datablockMode = "full";
+    td.tracked = true;
+    correlated.push({
+      index: 0,
+      callsign: result.plan.acid,
+      squawk: result.plan.assignedBeacon ?? result.plan.reportedBeacon ?? "1200",
+      aircraftId: result.aircraftId,
+      planId: result.plan.id,
+    });
+  }
+  // Existing scheduled-departure records predate authoritative flight plans.
+  // Keep their legacy adapter until that source is migrated.
+  if (world.flightPlans.some((plan) => plan.status === "pending") || correlated.length > 0) {
+    return correlated;
+  }
+
+  const entries = getFlightPlanEntries(world, view);
 
   for (const entry of entries) {
     for (const ac of world.aircraft) {
@@ -713,6 +752,16 @@ export function associateFlightPlanToTrack(
   const ac = world.aircraft.find((a) => a.id === aircraftId);
   if (!ac) {
     return false;
+  }
+
+  if (entry.planId) {
+    const result = associateCoreFlightPlan(world, entry.planId, aircraftId);
+    if (!result.ok) return false;
+    td.unassociated = false;
+    td.datablockMode = "full";
+    td.tracked = true;
+    purgeFlightPlanEntry(world, view, entry);
+    return true;
   }
 
   ac.callsign = entry.callsign;

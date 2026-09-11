@@ -35,12 +35,18 @@ export type {
   FlightPlan,
   FlightPlanError,
   FlightPlanErrorCode,
+  FlightPlanCorrelationError,
+  FlightPlanCorrelationErrorCode,
+  FlightPlanCorrelationResult,
   FlightPlanResult,
   FlightPlanStatus,
   FlightType,
 } from "./flightPlan";
 export {
   allocateBeaconCode,
+  associateFlightPlan,
+  correlateFlightPlans,
+  createActiveFlightPlanFromTarget,
   createFlightPlan,
   deleteFlightPlan,
   isValidAcid,

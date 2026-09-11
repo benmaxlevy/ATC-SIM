@@ -1,4 +1,10 @@
-import { acceptPointout, handoffFor, setSelectedAircraft, type World } from "@core";
+import {
+  acceptPointout,
+  createActiveFlightPlanFromTarget,
+  handoffFor,
+  setSelectedAircraft,
+  type World,
+} from "@core";
 import { expireFilterEntry, inAltitudeFilter } from "./altitudeFilter";
 import {
   armPreviewSlewAction,
@@ -186,7 +192,20 @@ function applyTrackingSlewHit(
           return true;
         }
       }
-      applyInitiateTrackToId(view.tracks, world, id);
+      const created = createActiveFlightPlanFromTarget(world, id);
+      if (created.ok) {
+        const td = ensureTrackDisplay(view.tracks, id);
+        td.unassociated = false;
+        td.datablockMode = "full";
+        td.tracked = true;
+        // Explicit INIT CNTL also performs the existing controller-ownership
+        // action; automatic squawk correlation above never does.
+        applyInitiateTrackToId(view.tracks, world, id);
+      } else {
+        // F3 remains the ownership-color trainer stub when no usable plan can
+        // be created; INIT CNTL itself stays display-only.
+        applyInitiateTrackToId(view.tracks, world, id);
+      }
       setSelectedAircraft(world, id);
       clearTrackingSlew(view);
       return true;

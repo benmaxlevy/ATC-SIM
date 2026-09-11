@@ -4,6 +4,8 @@ import { getFlightPlanEntries } from "../systemLists";
 import { createScopeView } from "../scopeView";
 import { handleScopeKeyDown } from "../scopeKeys";
 import { parseFlightPlanCreation, parsePreviewCommand } from "../previewArea";
+import { associateFlightPlanToTrack } from "../systemLists";
+import { makeTestAircraft } from "@core";
 
 const key = (key: string) => ({
   key,
@@ -12,6 +14,28 @@ const key = (key: string) => ({
 });
 
 describe("T02-144 flight-plan creation", () => {
+  it("T02-145 associates an authoritative plan and removes it from FL/TAB", () => {
+    const planResult = createFlightPlan({
+      id: "fp-associate",
+      acid: "DAL456",
+      assignedBeacon: "7024",
+      fixes: [],
+      scratchpads: [],
+    });
+    if (!planResult.ok) throw new Error("test fixture should be valid");
+    const target = makeTestAircraft({ id: "ac-associate", callsign: "1234", squawk: "1200" });
+    const world = createWorld({ flightPlans: [planResult.value], aircraft: [target] });
+    const view = createScopeView();
+    expect(associateFlightPlanToTrack(world, view, 1, target.id)).toBe(true);
+    expect(world.flightPlans[0]).toMatchObject({
+      status: "active",
+      associatedAircraftId: target.id,
+    });
+    expect(getFlightPlanEntries(world, view).some((entry) => entry.callsign === "DAL456")).toBe(
+      false,
+    );
+  });
+
   it("parses order-independent abbreviated fields", () => {
     expect(parseFlightPlanCreation("UAL1234 2341 1R AD ATST +ORH 4/F16/L 250 .E")).toEqual({
       kind: "action",
