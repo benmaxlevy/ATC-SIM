@@ -64,6 +64,36 @@ function numericTail(callsign: string): string {
 export type ScopeFlidResult =
   { ok: true; aircraftId: string } | { ok: false; reason: "unknown" | "ambiguous" };
 
+function unassociatedTrack(aircraftId: string, view?: ScopeView): boolean {
+  const td = view?.tracks.get(aircraftId);
+  return (
+    !td || td.unassociated === true || (td.ownership !== "owned" && td.datablockMode !== "full")
+  );
+}
+
+/**
+ * Resolve the authoritative plan identity used by INIT CNTL slew matching.
+ * A plan without a track is intentionally a plan-only result: the subsequent
+ * target click supplies the aircraft identity.
+ */
+function planIdentityMatches(token: string, world: World, view?: ScopeView): World["flightPlans"] {
+  const normalized = token.trim().toUpperCase();
+  if (view && /^\d{1,2}$/.test(normalized)) {
+    const entry = getFlightPlanEntries(world, view).find(
+      (item) => item.index === Number(normalized),
+    );
+    if (entry?.planId) {
+      const plan = world.flightPlans.find((item) => item.id === entry.planId);
+      return plan && plan.status !== "deleted" ? [plan] : [];
+    }
+    return [];
+  }
+  return world.flightPlans.filter(
+    (plan) =>
+      plan.status !== "deleted" && (plan.acid === normalized || plan.assignedBeacon === normalized),
+  );
+}
+
 /**
  * Resolve a Preview Area FLID: full callsign, numeric tail, or unique 4-digit
  * squawk. Two tails, two squawks, or tail vs squawk → ambiguous.
@@ -562,6 +592,16 @@ export function previewFlidMatchesSlew(
   const flid = state.flid;
   if (!flid) {
     return true;
+  }
+  const plans = planIdentityMatches(flid, world, view);
+  if (plans.length > 1) {
+    return false;
+  }
+  if (plans.length === 1) {
+    const plan = plans[0]!;
+    return plan.associatedAircraftId
+      ? plan.associatedAircraftId === aircraftId
+      : unassociatedTrack(aircraftId, view);
   }
   const resolved = resolveScopeFlid(flid, world, view);
   return resolved.ok && resolved.aircraftId === aircraftId;

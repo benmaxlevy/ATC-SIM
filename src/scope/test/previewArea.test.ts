@@ -1,5 +1,5 @@
 import { describe, expect, it, test, vi } from "vitest";
-import { createWorld, makeTestAircraft } from "@core";
+import { createFlightPlan, createWorld, makeTestAircraft } from "@core";
 import {
   parsePreviewCommand,
   idlePreviewArea,
@@ -7,11 +7,13 @@ import {
   beginPreviewBufferEntry,
   formatPreviewReadout,
   previewTrackingSlew,
+  previewFlidMatchesSlew,
 } from "../previewArea";
 import { createScopeView } from "../scopeView";
 import { handleScopeKeyDown } from "../scopeKeys";
 import { handlePpiLeftClick } from "../ppi";
 import { hasActiveUninhibitedConflict } from "../systemLists";
+import { associateFlightPlanToTrack, getFlightPlanEntries } from "../systemLists";
 import { ensureTrackDisplay, syncTrackDisplays } from "../trackDisplay";
 
 function keyEvent(key: string, opts?: { ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean }) {
@@ -29,6 +31,44 @@ test("idle preview is not live", () => {
   const idle = idlePreviewArea();
   expect(idle.phase).toBe("idle");
   expect(previewAreaIsLive(idle)).toBe(false);
+});
+
+test("T02-145: INIT CNTL identity matches an unassociated authoritative plan", () => {
+  const plan = createFlightPlan({
+    id: "fp-init",
+    acid: "AAL123",
+    assignedBeacon: "7022",
+    fixes: [],
+    scratchpads: [],
+  });
+  if (!plan.ok) throw new Error(plan.error.message);
+  const world = createWorld({
+    flightPlans: [plan.value],
+  });
+  const aircraft = makeTestAircraft({ id: "target-init", callsign: "1234", squawk: "1200" });
+  world.aircraft.push(aircraft);
+  const state = idlePreviewArea();
+  state.flid = "AAL123";
+  expect(previewFlidMatchesSlew(state, aircraft.id, world)).toBe(true);
+});
+
+test("T02-145: FL/TAB removes an associated plan but keeps pending plans", () => {
+  const pending = createFlightPlan({
+    id: "fp-list",
+    acid: "DAL456",
+    assignedBeacon: "7023",
+    fixes: [],
+    scratchpads: [],
+  });
+  if (!pending.ok) throw new Error(pending.error.message);
+  const world = createWorld({ flightPlans: [pending.value] });
+  const view = createScopeView();
+  const aircraft = makeTestAircraft({ id: "target-list", callsign: "1234", squawk: "1200" });
+  world.aircraft.push(aircraft);
+
+  expect(getFlightPlanEntries(world, view).map((entry) => entry.callsign)).toContain("DAL456");
+  expect(associateFlightPlanToTrack(world, view, 1, aircraft.id)).toBe(true);
+  expect(getFlightPlanEntries(world, view).map((entry) => entry.callsign)).not.toContain("DAL456");
 });
 
 test("T02-120: *Q and *V are MULTI FUNC Preview slew actions", () => {

@@ -307,7 +307,20 @@ export function associateFlightPlan(
       ),
     };
   }
-  plan.status = "active";
+  // Manual §5.4.3–5.4.4: an identified pending or suspended plan becomes
+  // active when it is associated to a displayed target. An already-active
+  // plan stays active; association must not perform an unconditional status
+  // rewrite or silently restore a deleted plan.
+  if (plan.status === "pending" || plan.status === "suspended") {
+    const transitioned = transitionFlightPlan(plan, "active");
+    if (!transitioned.ok) {
+      return {
+        ok: false,
+        error: correlationError("PLAN_NOT_FOUND", planId, transitioned.error.message),
+      };
+    }
+    plan.status = transitioned.value.status;
+  }
   plan.associatedAircraftId = aircraftId;
   plan.reportedBeacon = reportedSquawk(target);
   target.callsign = plan.acid;

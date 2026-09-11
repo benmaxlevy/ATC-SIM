@@ -5,6 +5,7 @@ import {
   correlateFlightPlans,
   createActiveFlightPlanFromTarget,
   createFlightPlan,
+  transitionFlightPlan,
 } from "../flightPlan";
 import { createWorld } from "../world";
 
@@ -88,6 +89,21 @@ describe("T02-145 flight-plan activation and correlation", () => {
     });
     expect(ac.squawk).toBe("1200");
     expect(ac.assignedSquawk).toBe("7024");
+  });
+
+  it("restores a suspended plan to active only when a target is associated", () => {
+    const pending = plan("fp-suspended", "DAL457", "7025");
+    const active = transitionFlightPlan(pending, "active");
+    if (!active.ok) throw new Error(active.error.message);
+    const suspended = transitionFlightPlan(active.value, "suspended");
+    if (!suspended.ok) throw new Error(suspended.error.message);
+    const ac = target("ac-suspended", "1234", "1200");
+    const world = createWorld({ flightPlans: [suspended.value], aircraft: [ac] });
+
+    const result = associateFlightPlan(world, "fp-suspended", "ac-suspended");
+
+    expect(result).toMatchObject({ ok: true, plan: { status: "active" } });
+    expect(world.flightPlans[0]!.associatedAircraftId).toBe("ac-suspended");
   });
 
   it("creates an active plan from an explicit target selection", () => {
