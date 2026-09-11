@@ -1,5 +1,59 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Fifty-third swarm started — 2026-09-10 (Outbound handoff UI/manual alignment)
+
+Captain owns `fix/datablocks` and will create one isolated worker at a time for
+T02-135 then T02-136. The swarm strictly aligns outbound handoff datablock UI
+with the supplied TI 6191.409 Rev. 30 manual, while T02-136 adds only the
+approved trainer simulation of Center `C` accepting after five simulated
+seconds. After each ticket, captain runs `check-stars-manual` against
+`/home/ben/Documents/stars refs/full_manual.pdf` with an independent pass.
+
+| Key | Value |
+| --- | --- |
+| Goal | Remove unsupported blue outbound handoff datablock UI and simulate Center C acceptance after five seconds. |
+| Include | **T02-135**, **T02-136** only. |
+| Skip | New handoff types, second-sector/network model, pointouts, quicklook, new SPCs, new alerts, parser, Command IR, speech, DCB, and facility branches. |
+| Stop | After T02-136 acceptance, manual review, and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Product law:** Manual display semantics win. Initiated outbound handoffs
+retain a white sender FDB with receiver TCP `C`; accepted handoffs blink white
+for five seconds, retain `C` for five seconds, then remain solid white without
+automatic PDB/LDB collapse. T02-136’s five-second Center acceptance is an
+explicit trainer delta and must call existing acceptance logic exactly once.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-135 | T02-134 complete and current `fix/datablocks` clean |
+| B | T02-136 | T02-135 merge, CI, and manual review |
+
+**Ticket ownership:**
+
+- T02-135: manual-aligned pending outbound handoff datablock color.
+- T02-136: simulated Center acceptance timing and post-acceptance UI.
+
+**Ticket files / branches:**
+
+- `ticket/T02-135-manual-outbound-handoff-color` ← `phases/02-scope/tickets/T02-135-manual-outbound-handoff-color.md`
+- `ticket/T02-136-simulated-center-handoff-acceptance` ← `phases/02-scope/tickets/T02-136-simulated-center-handoff-acceptance.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 outbound handoff UI/manual alignment T02-135–136
+Merge target: fix/datablocks
+Merged: T02-135, T02-136
+Tests: <focused gates, manual reviews, and npm run ci result>
+Notes: <manual visual leftovers; C acceptance trainer delta>
+```
+
 ## Fifty-second swarm started — 2026-09-10 (Accepted outbound handoff UI)
 
 Captain owns `fix/datablocks` and will create one isolated worker for the
