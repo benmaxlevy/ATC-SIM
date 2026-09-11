@@ -281,6 +281,30 @@ Possible future follow-ups:
 - quick-look multi-facility track filters;
 - host automated flight-plan amendments and route conformance monitoring.
 
+#### Post-acceptance handoff ownership cue
+
+The supplied STARS manual (TI 6191.409 Rev. 30, General Rules p. 5-9;
+§§5.1.3–5.1.4 pp. 5-10–5-11; datablock colors p. 2-70) says that the
+former owner’s accepted handoff remains a white **Owned / Previously Owned**
+FDB until the controller explicitly uses **Return data block to Unowned color**.
+The position symbol identifies the controlling position; white alone does not
+mean the track is still controlled locally. CRC documents a different,
+VATSIM-oriented memory aid: after acceptance, clicks stop the white flash,
+turn the FDB green, and then change it to a PDB. vice separates track ownership
+from aircraft control and uses explicit `FC` to transfer communications, then
+turns the sender’s datablock green.
+
+ATC-SIM currently follows the manual’s white-FDB rule for accepted Center
+handoffs, retains the receiver TCP for five simulated seconds, auto-accepts in
+the single-position trainer after five simulated seconds, and offers F4 as the
+explicit return-to-unowned action. It does not model a live receiving position,
+`FC`, or a separate communications-transfer state. Revisit whether the trainer
+needs a clearer persistent “transferred to Center” cue or a documented CRC-like
+confirmation interaction. Preserve the manual distinction between owned and
+previously owned, avoid implying that white proves local control, and do not
+claim real multi-controller or interfacility behavior without adding the
+underlying state model.
+
 ### SSA and GI data beyond trainer stubs
 
 SSA displays live primary altimeter settings on Line 3, multi-airport satellite altimeter matrix rows in 3-airport chunks (T02-79), and surface weather conditions in designated GI TEXT slots (T02-80), fetched from the AviationWeather METAR JSON API (T02-78). Airport list is defined in scenario JSON (`ssaWeatherAirports`).
