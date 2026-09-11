@@ -438,6 +438,45 @@ Tests: <focused gates and npm run ci result>
 Notes: <NOWGT policy; remaining manual leftovers>
 ```
 
+## Fifty-fourth swarm planned — 2026-09-10 (Unified outbound handoff positions)
+
+User approved the destination-aware C/Tower handoff plan. T02-137 unifies
+outbound initiation, T02-138 unifies five-simulated-second acceptance, and
+T02-139 shares the accepted/pending datablock UI. Manual review is explicitly
+deferred until after implementation; no `check-stars-manual` run is part of
+this swarm.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align the supported outbound C/Tower handoff lifecycle around the receiving position. |
+| Include | **T02-137**, **T02-138**, **T02-139** only. |
+| Skip | Pointouts, quicklook, inbound redesign, networking, second-sector model, new handoff types, new SPCs, new alerts, parser, Command IR, speech, DCB, and facility branches. |
+| Stop | After T02-139 acceptance and `npm run ci`; manual audit remains user follow-up. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-137 | T02-136 complete and current `fix/datablocks` clean |
+| B | T02-138 | T02-137 merge and CI |
+| C | T02-139 | T02-138 merge and CI |
+
+**Ticket ownership:**
+
+- T02-137: `phases/02-scope/tickets/T02-137-unified-outbound-handoff-initiation.md`
+- T02-138: `phases/02-scope/tickets/T02-138-shared-outbound-handoff-acceptance.md`
+- T02-139: `phases/02-scope/tickets/T02-139-shared-handoff-datablock-ui.md`
+
+**Branches:**
+
+- `ticket/T02-137-unified-outbound-handoff-initiation`
+- `ticket/T02-138-shared-outbound-handoff-acceptance`
+- `ticket/T02-139-shared-handoff-datablock-ui`
+
 ## Forty-ninth swarm started — 2026-09-10 (ATPA CWT wake minima)
 
 Captain start/configuration confirmed after planning. This swarm runs
