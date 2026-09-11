@@ -355,7 +355,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       expect(acceptedT1500.fillTexts.some((t) => t.text === "D")).toBe(true); // Owning sector ID
     });
 
-    test("outbound handoff accepted flashes white for 5s and completes 3-click progression", () => {
+    test("outbound handoff accepted flashes white for 5s, then removes receiver TCP", () => {
       const log = new SessionLog();
       const ac = createAircraft({
         id: "ac-outbound",
@@ -373,10 +373,15 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       });
       const view = createScopeView();
       syncTrackDisplays(view.tracks, world);
-      view.tracks.get(ac.id)!.ownership = "owned";
+      const trackDisplay = view.tracks.get(ac.id)!;
+      trackDisplay.ownership = "owned";
+      trackDisplay.datablockMode = "full";
 
       // Initiate outbound handoff and accept it
       initiateCenterHandoff(ac, { world, log, simTimeMs: 1000 }, "C");
+      const initiatedCtx = createMockCtx();
+      renderScope(initiatedCtx.ctx, world, view, 800, 800);
+      expect(initiatedCtx.fillTexts.some((t) => t.text.includes(" C "))).toBe(true);
       acceptOutboundHandoff(world, ac.id, 0);
       syncTrackDisplays(view.tracks, world);
 
@@ -388,40 +393,46 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       const flashOn = createMockCtx();
       renderScope(flashOn.ctx, world, view, 800, 800);
       expect(flashOn.fillTexts.some((t) => t.text === "UAL888")).toBe(true);
+      expect(flashOn.fillTexts.some((t) => t.text.includes(" C "))).toBe(true);
 
       world.simTimeMs = 2400;
       const flashOff = createMockCtx();
       renderScope(flashOff.ctx, world, view, 800, 800);
       expect(flashOff.fillTexts.some((t) => t.text === "UAL888")).toBe(false);
 
-      // 3-Click progression:
-      // Click 1: Stops flashing -> solid white FDB
+      // Normal selection does not return or recolor accepted handoff data.
       handleTrackClick(view.tracks, world, ac.id);
-      expect(td.outboundClickStep).toBe(1);
-      world.simTimeMs = 2500;
-      const step1Ctx = createMockCtx();
-      renderScope(step1Ctx.ctx, world, view, 800, 800);
-      expect(step1Ctx.fillTexts.some((t) => t.text === "UAL888")).toBe(true);
-
-      // Click 2: Transitions to unowned Green FDB
-      handleTrackClick(view.tracks, world, ac.id);
-      expect(td.outboundClickStep).toBe(2);
-      expect(td.ownership).toBe("unowned");
+      expect(td.outboundFlashUntilSimMs).toBe(1000 + 5000);
+      expect(td.ownership).toBe("owned");
       expect(td.datablockMode).toBe("full");
-      const step2Ctx = createMockCtx();
-      renderScope(step2Ctx.ctx, world, view, 800, 800);
-      const greenCallsign = step2Ctx.fillTexts.find((t) => t.text === "UAL888");
-      expect(greenCallsign?.fillStyle).toBe(PALETTE.targetGreen);
+      expect(handoffFor(world, ac.id)).toMatchObject({
+        kind: "outbound",
+        toSectorId: "C",
+        status: "accepted",
+      });
 
-      // Click 3: Transitions to unowned Green PDB (Line 2 only)
-      handleTrackClick(view.tracks, world, ac.id);
-      expect(td.outboundClickStep).toBe(3);
+      // After five seconds, receiver TCP is absent; accepted FDB stays white.
+      world.simTimeMs = 6000;
+      const settledCtx = createMockCtx();
+      renderScope(settledCtx.ctx, world, view, 800, 800);
+      const settledCallsign = settledCtx.fillTexts.find((t) => t.text === "UAL888");
+      expect(settledCallsign?.fillStyle).toBe(PALETTE.owned);
+      expect(settledCtx.fillTexts.some((t) => t.text.includes(" C "))).toBe(false);
+
+      // Explicit F4 return restores unowned partial display without changing core HO state.
+      world.selectedAircraftId = ac.id;
+      expect(applyDropTrackToSelection(view.tracks, world).applied).toBe(true);
+      expect(td.ownership).toBe("unowned");
       expect(td.datablockMode).toBe("partial");
-      world.simTimeMs = 5000;
-      const step3Ctx = createMockCtx();
-      renderScope(step3Ctx.ctx, world, view, 800, 800);
-      expect(step3Ctx.fillTexts.some((t) => t.text === "UAL888")).toBe(false);
-      expect(step3Ctx.fillTexts.some((t) => t.text === "090  26")).toBe(true);
+      expect(handoffFor(world, ac.id)).toMatchObject({
+        kind: "outbound",
+        status: "accepted",
+      });
+      const returnedCtx = createMockCtx();
+      renderScope(returnedCtx.ctx, world, view, 800, 800);
+      expect(returnedCtx.fillTexts.some((t) => t.text === "UAL888")).toBe(false);
+      expect(returnedCtx.fillTexts.some((t) => t.text === "090  26")).toBe(true);
+      expect(returnedCtx.fillTexts.some((t) => t.text === "*")).toBe(true);
     });
 
     test("pointout lifecycle: offer, accept, UN reject, ** convert, and F4 drop track", () => {

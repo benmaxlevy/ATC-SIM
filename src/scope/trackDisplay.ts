@@ -7,7 +7,7 @@
  * or intent. Not NAS STARS.
  */
 
-import type { Aircraft, CaAlert, World } from "@core";
+import type { Aircraft, CaAlert, TrackHandoff, World } from "@core";
 import {
   acceptInboundHandoff,
   acceptPointout,
@@ -64,7 +64,6 @@ export interface TrackDisplay {
   highlighted?: boolean;
   outboundFlashUntilSimMs?: number;
   beaconatorUntilSimMs?: number;
-  outboundClickStep?: number;
   flightRules?: string;
   pointoutAccepted?: boolean;
   pointoutRejected?: boolean;
@@ -536,10 +535,27 @@ export function handleTrackMiddleClick(
 }
 
 /**
+ * The sender keeps an accepted handoff receiver TCP in Field 4 for five
+ * seconds, then removes it while retaining the accepted white FDB.
+ */
+export function isOutboundReceiverTcpVisible(handoff: TrackHandoff, simTimeMs: number): boolean {
+  if (handoff.kind !== "outbound") {
+    return false;
+  }
+  if (handoff.status !== "accepted") {
+    return true;
+  }
+  return (
+    handoff.acceptedAtSimMs != null &&
+    simTimeMs < handoff.acceptedAtSimMs + OUTBOUND_ACCEPTED_FLASH_MS
+  );
+}
+
+/**
  * Handle clicking a track on the scope:
  * - Accept pending inbound handoff if present.
  * - Handle pointouts: UN rejects, ** converts to handoff, normal click accepts or reverts.
- * - Handle outbound accepted 3-click progression: 1) stop blinking, 2) green FDB, 3) PDB.
+ * - Keep an accepted outbound handoff as an accepted white FDB.
  * - If unassociated (LDB): query ground speed for 5 seconds.
  * - If unowned (PDB / forced FDB): toggle between PDB and Green FDB.
  */
@@ -598,32 +614,10 @@ export function handleTrackClick(
     }
   }
 
-  // Outbound accepted handoff 3-click progression
-  const isOutboundAccepted =
-    (ho.kind === "outbound" && ho.status === "accepted") ||
-    (td.outboundFlashUntilSimMs != null && td.outboundFlashUntilSimMs > 0) ||
-    td.outboundClickStep != null;
-
-  if (isOutboundAccepted) {
-    const step = td.outboundClickStep ?? 0;
-    if (step === 0) {
-      td.outboundFlashUntilSimMs = 0;
-      td.outboundClickStep = 1;
-      return;
-    }
-    if (step === 1) {
-      td.ownership = "unowned";
-      td.datablockMode = "full";
-      td.outboundClickStep = 2;
-      return;
-    }
-    if (step === 2) {
-      td.datablockMode = "partial";
-      td.retainedFdbOutsideAltitudeFilter = false;
-      td.outboundClickStep = 3;
-      world.handoffs.set(aircraftId, { kind: "none" });
-      return;
-    }
+  // Accepted outbound handoffs stay white until an explicit trainer control
+  // changes display ownership; normal selection does not progress them.
+  if (ho.kind === "outbound" && ho.status === "accepted") {
+    return;
   }
 
   if (td.datablockMode === "limited" || td.unassociated) {
@@ -963,7 +957,6 @@ export function syncTrackDisplays(
     ) {
       td.outboundFlashUntilSimMs =
         (ho.acceptedAtSimMs ?? world.simTimeMs) + OUTBOUND_ACCEPTED_FLASH_MS;
-      td.outboundClickStep = td.outboundClickStep ?? 0;
     }
   }
 }

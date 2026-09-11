@@ -32,7 +32,12 @@ import {
   datablockLineHeightPx,
 } from "./fonts";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
-import { handleTrackClick, handleTrackMiddleClick, type TrackDisplay } from "./trackDisplay";
+import {
+  handleTrackClick,
+  handleTrackMiddleClick,
+  isOutboundReceiverTcpVisible,
+  type TrackDisplay,
+} from "./trackDisplay";
 import {
   pointInLayoutBounds,
   solveDatablockLayout,
@@ -122,6 +127,9 @@ function pickDatablockAt(
     if (ho.kind === "inbound" || ho.kind === "departure") {
       mode = "full";
     }
+    if (ho.kind === "outbound" && ho.status === "accepted" && td?.ownership !== "unowned") {
+      mode = "full";
+    }
     if (view.beaconatorActive && mode === "partial") {
       mode = "full";
     }
@@ -135,7 +143,7 @@ function pickDatablockAt(
       handoffSectorId = receivingTcp;
     } else if (ho.kind === "departure") {
       handoffSectorId = receivingTcp;
-    } else if (ho.kind === "outbound") {
+    } else if (ho.kind === "outbound" && isOutboundReceiverTcpVisible(ho, world.simTimeMs)) {
       handoffSectorId = ho.toSectorId;
     } else if (ho.kind === "pointout_inbound") {
       handoffSectorId = ho.fromSectorId;

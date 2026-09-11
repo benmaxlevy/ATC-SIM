@@ -92,6 +92,7 @@ import {
   deriveScratchpads,
   filterActiveCaAlerts,
   isBeaconatorReadout,
+  isOutboundReceiverTcpVisible,
   isIdentFlashing,
   isTrackQueried,
   isCaPairInhibited,
@@ -439,7 +440,7 @@ export function isTrackedTarget(view: ScopeView, world: World, ac: Aircraft): bo
     td?.tracked === true ||
     ho.kind === "inbound" ||
     ho.kind === "departure" ||
-    (ho.kind === "outbound" && ho.status === "accepted") ||
+    (ho.kind === "outbound" && ho.status === "accepted" && ownership !== "unowned") ||
     ho.kind === "pointout_inbound" ||
     ho.kind === "pointout_outbound"
   );
@@ -583,50 +584,19 @@ export function getDatablockVisualState(
     };
   }
 
-  // 3. Outbound accepted handoff: Blinking white for 5s, settles to solid white
-  const isOutboundAccepted =
-    (ho.kind === "outbound" && ho.status === "accepted") ||
-    (td?.outboundFlashUntilSimMs != null && td.outboundFlashUntilSimMs > 0) ||
-    td?.outboundClickStep !== undefined;
-  if (isOutboundAccepted) {
-    const step = td?.outboundClickStep ?? 0;
-    if (step === 0) {
-      const flashDeadline =
-        td?.outboundFlashUntilSimMs ??
-        (ho.kind === "outbound" ? (ho.acceptedAtSimMs ?? 0) + 5000 : 0);
-      const isFlashing = world.simTimeMs < flashDeadline;
-      const isBlinkOn = isAlertBlinkOn(world.simTimeMs);
-      return {
-        color: PALETTE.owned,
-        visible: isFlashing ? isBlinkOn : true,
-        mode: "full",
-        leaderColor: PALETTE.owned,
-      };
-    }
-    if (step === 1) {
-      return {
-        color: PALETTE.owned,
-        visible: true,
-        mode: "full",
-        leaderColor: PALETTE.owned,
-      };
-    }
-    if (step === 2) {
-      return {
-        color: PALETTE.targetGreen,
-        visible: true,
-        mode: "full",
-        leaderColor: PALETTE.targetGreen,
-      };
-    }
-    if (step === 3) {
-      return {
-        color: PALETTE.targetGreen,
-        visible: true,
-        mode: "partial",
-        leaderColor: PALETTE.targetGreen,
-      };
-    }
+  // 3. Outbound accepted handoff: blink white for 5s, then stay solid white.
+  if (ho.kind === "outbound" && ho.status === "accepted" && td?.ownership !== "unowned") {
+    const flashDeadline =
+      td?.outboundFlashUntilSimMs ??
+      (ho.acceptedAtSimMs != null ? ho.acceptedAtSimMs + 5000 : undefined);
+    const isFlashing = flashDeadline != null && world.simTimeMs < flashDeadline;
+    const isBlinkOn = isAlertBlinkOn(world.simTimeMs);
+    return {
+      color: PALETTE.owned,
+      visible: isFlashing ? isBlinkOn : true,
+      mode: "full",
+      leaderColor: PALETTE.owned,
+    };
   }
 
   // 4. Pointout inbound pending: Blinking yellow FDB with PO tag
@@ -934,7 +904,10 @@ export function drawDatablock(
     handoffSectorId = view.sectorId;
   } else if (handoff.kind === "departure") {
     handoffSectorId = view.sectorId;
-  } else if (handoff.kind === "outbound") {
+  } else if (
+    handoff.kind === "outbound" &&
+    isOutboundReceiverTcpVisible(handoff, world.simTimeMs)
+  ) {
     handoffSectorId = handoff.toSectorId;
   } else if (handoff.kind === "pointout_inbound") {
     handoffSectorId = handoff.fromSectorId;
@@ -1134,7 +1107,7 @@ export function drawTracks(
         sectorId = ho.fromSectorId === DEFAULT_TOWER_SECTOR_ID ? "T" : ho.fromSectorId;
       } else if (ho.kind === "departure") {
         sectorId = ho.fromSectorId === "TWR" ? "T" : ho.fromSectorId;
-      } else if (ho.kind === "outbound" && ho.status === "accepted") {
+      } else if (ho.kind === "outbound" && ho.status === "accepted" && ownership !== "unowned") {
         sectorId = ho.toSectorId;
       } else if (ownership === "tower") {
         sectorId = "T";
@@ -1195,7 +1168,8 @@ export function drawTracks(
         ? handoff.kind === "inbound"
           ? view.sectorId
           : view.sectorId
-        : handoff.kind === "outbound" || handoff.kind === "pointout_outbound"
+        : (handoff.kind === "outbound" && isOutboundReceiverTcpVisible(handoff, world.simTimeMs)) ||
+            handoff.kind === "pointout_outbound"
           ? handoff.toSectorId
           : handoff.kind === "pointout_inbound"
             ? handoff.fromSectorId
