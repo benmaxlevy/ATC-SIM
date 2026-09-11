@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { stepWorld } from "@core";
 import { createWorldFromScenario } from "../spawn";
 import { FAA_CWT_WAKE_MATRIX, loadPlayableScenario, lookupAtpaWakeMinimum } from "..";
 
@@ -11,10 +12,10 @@ test("KDEM ATPA bench carries explicit CWT categories and scenario-local wake ad
 
   const world = createWorldFromScenario(scenario);
   expect(world.aircraft.map((aircraft) => aircraft.cwtWakeCategory)).toEqual([
-    "A",
     "B",
     "C",
-    "D",
+    "E",
+    "I",
     "E",
     "I",
   ]);
@@ -44,4 +45,25 @@ test("KDEM ATPA bench validates every FAA matrix relationship plus NOWGT fallbac
     kind: "nowgt",
     requiredNm: 10,
   });
+});
+
+test("KDEM ATPA bench starts with monitor, warning, and alert pairs", () => {
+  const scenario = loadPlayableScenario("kdem-atpa");
+  const world = createWorldFromScenario(scenario);
+
+  stepWorld(world, 0);
+
+  expect(world.alerts.atpa).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ status: "monitor", wakeSource: "wake", requiredNm: 3.5 }),
+      expect.objectContaining({ status: "warning", wakeSource: "wake", requiredNm: 4 }),
+      expect.objectContaining({ status: "alert", wakeSource: "wake", requiredNm: 4 }),
+    ]),
+  );
+  expect(world.alerts.atpa.map((pair) => pair.status).sort()).toEqual([
+    "alert",
+    "monitor",
+    "warning",
+  ]);
+  expect(world.alerts.atpa).toHaveLength(3);
 });

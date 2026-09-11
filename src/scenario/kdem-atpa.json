@@ -66,16 +66,16 @@
       "altitudeFt": 1100,
       "speedKt": 150,
       "aircraftType": "A320",
-      "cwtWakeCategory": "A"
+      "cwtWakeCategory": "B"
     },
     {
       "xNm": 6.5,
       "yNm": 0,
       "headingDeg": 270,
       "altitudeFt": 2300,
-      "speedKt": 150,
+      "speedKt": 195,
       "aircraftType": "A321",
-      "cwtWakeCategory": "B"
+      "cwtWakeCategory": "C"
     },
     {
       "xNm": 11,
@@ -84,7 +84,7 @@
       "altitudeFt": 3500,
       "speedKt": 150,
       "aircraftType": "B744",
-      "cwtWakeCategory": "C"
+      "cwtWakeCategory": "E"
     },
     {
       "xNm": 14.5,
@@ -93,7 +93,7 @@
       "altitudeFt": 4700,
       "speedKt": 170,
       "aircraftType": "B738",
-      "cwtWakeCategory": "D"
+      "cwtWakeCategory": "I"
     },
     {
       "xNm": 14,
@@ -120,10 +120,10 @@
     "ILS 27 IN USE",
     "ATPA BENCH",
     "CWT WAKE MATRIX",
-    "A/B 5 NM; B/C 4 NM",
+    "B/C 4 NM; C/E 3.5 NM; E/I 4 NM",
     "NOWGT 10 NM",
     "OFF FINAL INHIBITED",
-    "WARN LASTS 21 SEC",
+    "WARN 45 SEC; ALERT 24 SEC",
     ""
   ],
   "radarSites": [
