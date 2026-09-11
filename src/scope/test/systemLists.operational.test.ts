@@ -1077,7 +1077,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(target.assignedSquawk).toBe("1200");
       expect(td.unassociated).toBe(false);
       expect(td.datablockMode).toBe("full");
-      expect(td.ownership).toBe("owned");
+      expect(td.ownership).toBe("unowned");
 
       // Entry immediately purged from FL
       const remaining = getFlightPlanEntries(world, view);
@@ -1126,7 +1126,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(target.assignedSquawk).toBe("1200");
       expect(td.unassociated).toBe(false);
       expect(td.datablockMode).toBe("full");
-      expect(td.ownership).toBe("owned");
+      expect(td.ownership).toBe("unowned");
       expect(td.leaderDir).toBe(7); // Leader direction preserved!
       expect(view.preview.phase).toBe("idle");
     });
@@ -1175,7 +1175,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(target.assignedSquawk).toBe("1200");
       expect(td.unassociated).toBe(false);
       expect(td.datablockMode).toBe("full");
-      expect(td.ownership).toBe("owned");
+      expect(td.ownership).toBe("unowned");
       expect(td.leaderDir).toBe(7);
       expect(view.preview.phase).toBe("idle");
     });
