@@ -72,6 +72,11 @@ test("T02-146 corrective — TERM CNTL accepts tab lines and disambiguation", ()
   expect(parseTrackingCommand("/DAL123 2900")).toEqual({ kind: "invalid", reason: "FORMAT" });
   expect(parseTrackingCommand("/DAL123/A 2460")).toEqual({ kind: "invalid", reason: "FORMAT" });
   expect(parseTrackingCommand("/12 1430")).toEqual({ kind: "invalid", reason: "FORMAT" });
+  expect(parseTrackingCommand("/1289 0000")).toEqual({ kind: "invalid", reason: "FORMAT" });
+  expect(parseTrackingCommand("/7777 0000")).toMatchObject({
+    kind: "action",
+    action: { type: "termCntl", flid: "7777", coordinationTime: "0000" },
+  });
 });
 
 test("T02-146 corrective — FIXES requires an entry or exit fix", () => {
