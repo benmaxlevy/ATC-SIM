@@ -28,18 +28,23 @@ export interface FlightPlan {
 }
 
 export type FlightPlanErrorCode =
-  "INVALID_ACID" | "INVALID_BEACON" | "DUPLICATE_ACID" | "DUPLICATE_BEACON" | "NO_BEACON_AVAILABLE";
+  | "INVALID_ACID"
+  | "INVALID_BEACON"
+  | "DUPLICATE_ACID"
+  | "DUPLICATE_BEACON"
+  | "NO_BEACON_AVAILABLE"
+  | "INVALID_STATUS_TRANSITION";
 
 export interface FlightPlanError {
   code: FlightPlanErrorCode;
-  field: "acid" | "assignedBeacon" | "reportedBeacon";
+  field: "acid" | "assignedBeacon" | "reportedBeacon" | "status";
   value?: string;
   message: string;
 }
 
 export type FlightPlanResult<T> = { ok: true; value: T } | { ok: false; error: FlightPlanError };
 
-const ACID_PATTERN = /^[A-Z0-9]{2,8}$/;
+const ACID_PATTERN = /^[A-Z][A-Z0-9]{1,6}$/;
 const BEACON_PATTERN = /^[0-7]{4}$/;
 
 function normalized(value: string | undefined): string | undefined {
@@ -47,7 +52,8 @@ function normalized(value: string | undefined): string | undefined {
 }
 
 export function isValidAcid(value: string): boolean {
-  return ACID_PATTERN.test(value.trim().toUpperCase());
+  const acid = value.trim().toUpperCase();
+  return acid !== "ALL" && ACID_PATTERN.test(acid) && (acid.length !== 2 || /[0-9]$/.test(acid));
 }
 
 export function isValidBeaconCode(value: string): boolean {
@@ -77,7 +83,14 @@ export function validateFlightPlan(
   const errors: FlightPlanError[] = [];
 
   if (!acid || !isValidAcid(acid)) {
-    errors.push(error("INVALID_ACID", "acid", plan.acid, "ACID must be 2–8 letters or digits"));
+    errors.push(
+      error(
+        "INVALID_ACID",
+        "acid",
+        plan.acid,
+        "ACID must be one letter followed by 1–6 alphanumerics; two-character ACIDs end in a digit",
+      ),
+    );
   } else if (plansOf(existing).some((item) => item.acid === acid && item.status !== "deleted")) {
     errors.push(error("DUPLICATE_ACID", "acid", acid, `ACID ${acid} already exists`));
   }
@@ -170,7 +183,9 @@ export function withAllocatedBeacon(
   pool: readonly string[],
   existing: readonly FlightPlan[] = [],
 ): FlightPlanResult<FlightPlan> {
-  const occupied = existing.flatMap((item) => (item.assignedBeacon ? [item.assignedBeacon] : []));
+  const occupied = existing.flatMap((item) =>
+    item.status !== "deleted" && item.assignedBeacon ? [item.assignedBeacon] : [],
+  );
   const allocation = allocateBeaconCode(pool, occupied);
   if (!allocation.ok) return allocation;
   return { ok: true, value: { ...plan, assignedBeacon: allocation.value } };
@@ -179,8 +194,19 @@ export function withAllocatedBeacon(
 export function transitionFlightPlan(
   plan: FlightPlan,
   status: Exclude<FlightPlanStatus, "deleted">,
-): FlightPlan {
-  return { ...plan, status };
+): FlightPlanResult<FlightPlan> {
+  if (plan.status === "deleted") {
+    return {
+      ok: false,
+      error: error(
+        "INVALID_STATUS_TRANSITION",
+        "status",
+        plan.status,
+        "deleted flight plans cannot transition to another state",
+      ),
+    };
+  }
+  return { ok: true, value: { ...plan, status } };
 }
 
 export function deleteFlightPlan(plan: FlightPlan): FlightPlan {
