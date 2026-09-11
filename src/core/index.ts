@@ -40,7 +40,12 @@ export {
   createAccumulator,
   advanceWorld,
 } from "./world";
-export type { CenterHandoffContext, TrackHandoff } from "./handoff";
+export type {
+  CenterHandoffContext,
+  OutboundHandoffContext,
+  OutboundHandoffDestination,
+  TrackHandoff,
+} from "./handoff";
 export {
   CENTER_HANDOFF_AUTO_ACCEPT_DELAY_MS,
   DEFAULT_CENTER_SECTOR_ID,
@@ -55,6 +60,7 @@ export {
   convertPointoutToHandoff,
   handoffFor,
   initiateCenterHandoff,
+  initiateOutboundHandoff,
   initiatePointout,
   isCenterHandoffEligible,
   isRadioCommandAllowed,

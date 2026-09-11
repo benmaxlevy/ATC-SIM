@@ -10,6 +10,7 @@ import {
   convertPointoutToHandoff,
   handoffFor,
   initiateCenterHandoff,
+  initiateOutboundHandoff,
   initiatePointout,
   isCenterHandoffEligible,
   isRadioCommandAllowed,
@@ -208,6 +209,27 @@ test("initiateCenterHandoff logs handoff.center and handoff.outbound.initiated a
 
   // Once outbound, isCenterHandoffEligible becomes false
   expect(isCenterHandoffEligible(ac, world)).toBe(false);
+});
+
+test("initiateOutboundHandoff uses the same pending state and destination log for Tower", () => {
+  const ac = createAircraft({
+    id: "ac-arr",
+    callsign: "DAL123",
+    xNm: 3,
+    yNm: 0,
+    headingDeg: 270,
+    altitudeFt: 1200,
+    speedKt: 150,
+  });
+  const log = new SessionLog();
+  const world = createWorld({ aircraft: [ac], sessionLog: log, simTimeMs: 9000 });
+
+  expect(initiateOutboundHandoff(ac, { world, log, simTimeMs: 9000 }, "TWR")).toBe(true);
+  expect(handoffFor(world, ac.id)).toEqual({ kind: "outbound", toSectorId: "TWR" });
+  expect(log.byType("handoff.outbound.initiated")).toMatchObject([
+    { callsign: "DAL123", toSectorId: "TWR", atSimMs: 9000 },
+  ]);
+  expect(log.byType("handoff.center")).toHaveLength(0);
 });
 
 test("T02-37 AC2 — acceptOutboundHandoff transitions outbound state to accepted and logs handoff.outbound.accepted", () => {
