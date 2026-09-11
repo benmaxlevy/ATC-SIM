@@ -26,6 +26,7 @@
 import {
   createFlightPlan,
   deleteFlightPlanFromWorld,
+  disassociateFlightPlan,
   modifyFlightPlan,
   releaseAssignedBeacon,
   withAllocatedBeacon,
@@ -493,7 +494,7 @@ function applyPreviewArmedAction(
           td.unassociated = true;
           td.datablockMode = "partial";
         }
-        plan.associatedAircraftId = undefined;
+        disassociateFlightPlan(world, plan.id);
       }
       if (!result.ok)
         view.preview.rejection = result.error.code === "INVALID_FIELD" ? "ILL TRK" : "FORMAT";

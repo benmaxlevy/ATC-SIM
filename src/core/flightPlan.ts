@@ -560,6 +560,22 @@ export function deleteFlightPlanFromWorld(
   return { ok: true, plan };
 }
 
+/** Remove a plan association without deleting or changing the plan state. */
+export function disassociateFlightPlan(
+  world: { flightPlans: FlightPlan[] },
+  planId: string,
+): FlightPlanModificationResult {
+  const plan = world.flightPlans.find((item) => item.id === planId);
+  if (!plan || plan.status === "deleted") {
+    return {
+      ok: false,
+      error: modificationError("PLAN_NOT_FOUND", "plan", planId, `flight plan ${planId} not found`),
+    };
+  }
+  plan.associatedAircraftId = undefined;
+  return { ok: true, plan };
+}
+
 /** Resolve the only authoritative plan↔aircraft relationship. */
 export function flightPlanForAircraft(
   world: { flightPlans: readonly FlightPlan[] },
