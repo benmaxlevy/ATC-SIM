@@ -135,7 +135,7 @@ read back or fly the change.
 | `ACID [fields]` | `UAL1234 2341 AT AAL B738` then Enter | Creates a pending plan. Creation accepts an ACID plus a four-digit beacon, `+` (IFR pool), `/` (VFR pool), `/1`–`/4` (general pools), TCP, flight type, scratchpads, altitude, rules, and aircraft data. |
 | `F3` / `+` | `F3`, then click a target; or `F3 UAL1234` then Enter | INIT CNTL: associates/activates a matching plan and owns the target. A pending inbound handoff can be accepted this way. `+` is the Preview Area equivalent. |
 | `F4` / `TERM CNTL` / `/` | `F4`, then click a target; or `F4 UAL1234` then Enter | TERM CNTL: all three forms share one operation. The first use deletes the associated plan, removes association, clears ownership, and leaves a moving unassociated LDB (`*`). `TERM CNTL ALL` is invalid. |
-| `*M <identity> <field> <value>` | `*M 14 SP A5252` | Modifies one plan by ACID, beacon, or TAB-list index. Supported fields: `ACID`, `BCN`, `TCP`, `FIXES`, `TYPE`, `SP`, `RALT`, `AALT`, `ETA`, `PTD`. |
+| `*M <identity> <data>` | `*M 14 5252` | Modifies one plan by ACID, beacon, or TAB-list index. Enter beacon data directly (`5252`, `+`, `/`, `/1`–`/4`, `A`) or scratchpad 1 with `Δ` / scratchpad 2 with `+`. |
 | `*B <identity>` | `*B UAL1234` or `*B 14` | Releases the assigned beacon for a plan when allowed. |
 | `*DEL <index>` | `*DEL 14` | Deletes the plan at TAB-list index 14. |
 
@@ -143,12 +143,13 @@ Creation and edit examples:
 
 ```text
 UAL1234 2341 AT A B738 Enter
-*M UAL1234 SP A5252
-*M UAL1234 SP +WEST
+*M UAL1234 5252
+*M UAL1234 Δ5252
+*M UAL1234 +WEST
 *M UAL1234 RALT 350
 *M UAL1234 AALT A120
 *M UAL1234 FIXES NEMAX*MERGE
-*M UAL1234 BCN +
+*M UAL1234 +
 ```
 
 `RALT 350` means requested altitude 35,000 feet. `AALT A120` means assigned
@@ -158,7 +159,7 @@ fix, `*`, an optional four-character exit fix, and optional `*A`, `*P`, or
 
 Flight-plan beacons use octal digits only (`0`–`7`). For example, `2341` is
 valid but `1289` is invalid. A numeric identity such as `14` is a TAB-list
-index only when used in a complete command such as `*M 14 SP A5252`, `*B 14`,
+index only when used in a complete command such as `*M 14 5252`, `*B 14`,
 or `*DEL 14`; `14 5252` alone is not a flight-plan command.
 
 Routes are not executable from these plans yet. Editing `FIXES` stores plan

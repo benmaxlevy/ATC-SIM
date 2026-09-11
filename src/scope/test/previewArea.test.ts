@@ -44,6 +44,14 @@ test("T02-146 — MULTI FUNC M parses identity, field, and value", () => {
     kind: "action",
     action: { field: "assignedBeacon", value: "0701" },
   });
+  expect(parsePreviewBuffer("*M DAL123 0701")).toMatchObject({
+    kind: "action",
+    action: { field: "assignedBeacon", value: "0701" },
+  });
+  expect(parsePreviewBuffer("*M DAL123 Δ5252")).toMatchObject({
+    kind: "action",
+    action: { field: "scratchpads", value: "Δ5252" },
+  });
   expect(parsePreviewBuffer("*M DAL123 UNKNOWN X")).toEqual({ kind: "invalid", reason: "FORMAT" });
 });
 

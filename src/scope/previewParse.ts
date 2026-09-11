@@ -1199,6 +1199,25 @@ function parseFlightPlanModification(buffer: string): PreviewCommandResult | nul
     return { kind: "action", action: { type: "releaseAssignedBeacon", flid: tokens[1]! } };
   }
   if (tokens[0] !== "*M") return null;
+  // STARS §5.6.17 enters the field data directly after the identity.
+  // Keep the labelled form below as a compatibility path.
+  if (tokens.length === 3) {
+    const identity = tokens[1]!;
+    const value = tokens[2]!;
+    if (/^(?:[0-7]{4}|\+|\/|\/[1-4]|A)$/.test(value)) {
+      return {
+        kind: "action",
+        action: { type: "modifyFlightPlan", flid: identity, field: "assignedBeacon", value },
+      };
+    }
+    if (/^Δ[A-Z0-9+/. *]{0,4}$/.test(value) || /^\+[A-Z0-9+/. *]{1,4}$/.test(value)) {
+      return {
+        kind: "action",
+        action: { type: "modifyFlightPlan", flid: identity, field: "scratchpads", value },
+      };
+    }
+    return invalid("FORMAT");
+  }
   if (tokens.length < 4) return { kind: "incomplete" };
   const fields = new Set([
     "ACID",
@@ -1249,7 +1268,7 @@ function parseFlightPlanModification(buffer: string): PreviewCommandResult | nul
   } else if (tokens[2] === "SP") {
     const scratchpad = value.slice(1);
     if (
-      !/^[A+][A-Z0-9+/. *]{0,4}$/.test(value) ||
+      !/^[Δ+][A-Z0-9+/. *]{0,4}$/.test(value) ||
       /^(?:NAT|CST|AMB|RDR|ADB|XXX|\d{3})/.test(scratchpad)
     )
       return invalid("ILL SCR");
@@ -1441,6 +1460,9 @@ export function previewBufferCharFromKey(key: string, code?: string): string | n
   }
   if (key === "_") {
     return "_";
+  }
+  if (key === "`" || key === "Backquote") {
+    return "Δ";
   }
   const digit = digitFromKey(key, code);
   if (digit !== null) {
