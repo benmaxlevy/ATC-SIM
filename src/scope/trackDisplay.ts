@@ -503,6 +503,14 @@ export function isBeaconatorReadout(
  * Toggle an unowned track between PDB and Green FDB.
  */
 export function toggleTrackPdbFdb(td: TrackDisplay): DatablockMode {
+  // An unassociated target has no recoverable flight-plan callsign. Keep it
+  // partial even when a generic PDB/FDB toggle is invoked after TERM CNTL.
+  if (td.unassociated) {
+    td.datablockMode = "partial";
+    td.forcedFdb = false;
+    td.retainedFdbOutsideAltitudeFilter = false;
+    return td.datablockMode;
+  }
   if (td.datablockMode === "partial") {
     td.datablockMode = "full";
     td.forcedFdb = true;
@@ -750,12 +758,24 @@ export function toggleDatablockModeForSelection(
   const selected = world.selectedAircraftId;
   if (selected && world.aircraft.some((ac) => ac.id === selected)) {
     const td = ensureTrackDisplay(tracks, selected);
+    if (td.unassociated) {
+      td.datablockMode = "partial";
+      td.forcedFdb = false;
+      td.retainedFdbOutsideAltitudeFilter = false;
+      return;
+    }
     td.datablockMode = flipDatablockMode(td.datablockMode);
     if (td.datablockMode !== "full") td.retainedFdbOutsideAltitudeFilter = false;
     return;
   }
   for (const ac of world.aircraft) {
     const td = ensureTrackDisplay(tracks, ac.id);
+    if (td.unassociated) {
+      td.datablockMode = "partial";
+      td.forcedFdb = false;
+      td.retainedFdbOutsideAltitudeFilter = false;
+      continue;
+    }
     td.datablockMode = flipDatablockMode(td.datablockMode);
     if (td.datablockMode !== "full") td.retainedFdbOutsideAltitudeFilter = false;
   }

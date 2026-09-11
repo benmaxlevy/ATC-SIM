@@ -32,6 +32,7 @@ import {
   syncTrackDisplays,
   toggleCaPairInhibited,
   toggleDatablockModeForSelection,
+  toggleTrackPdbFdb,
 } from "../trackDisplay";
 import { sanitizeScratchpad, SCRATCHPAD_MAX_LEN } from "../datablock";
 
@@ -200,6 +201,23 @@ test("AC4 — clicking unowned track toggles between PDB and Green FDB", () => {
   expect(td.forcedFdb).toBe(true);
 
   handleTrackClick(tracks, world, ac.id);
+  expect(td.datablockMode).toBe("partial");
+  expect(td.forcedFdb).toBe(false);
+});
+
+test("post-TERM unassociated track cannot be expanded back to an FDB", () => {
+  const ac = makeTestAircraft({ id: "ac-terminated", callsign: "UAL999" });
+  const world = createWorld({ aircraft: [ac], selectedAircraftId: ac.id });
+  const tracks = new Map();
+  syncTrackDisplays(tracks, world);
+  const td = tracks.get(ac.id)!;
+  td.unassociated = true;
+  td.datablockMode = "partial";
+
+  expect(toggleTrackPdbFdb(td)).toBe("partial");
+  expect(td.forcedFdb).toBe(false);
+
+  toggleDatablockModeForSelection(tracks, world);
   expect(td.datablockMode).toBe("partial");
   expect(td.forcedFdb).toBe(false);
 });

@@ -668,6 +668,12 @@ export function getDatablockVisualState(
     view: ScopeView,
     td?: TrackDisplay,
   ): "full" | "partial" | "limited" {
+    // TERM CNTL leaves the radar target alive but removes its plan. Never
+    // allow selection, forced-FDB state, or an FSL mode to restore the plan
+    // callsign on an unassociated target.
+    if (td?.unassociated) {
+      return "limited";
+    }
     if (td?.forcedFdb) {
       return "full";
     }
