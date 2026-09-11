@@ -23,7 +23,7 @@
  * discrete range presets — no zoom-to-cursor (R12). Not NAS STARS.
  */
 
-import { createFlightPlan, type World } from "@core";
+import { createFlightPlan, withAllocatedBeacon, type FlightPlan, type World } from "@core";
 import {
   beginFilterEntry,
   cancelFilterEntry,
@@ -79,6 +79,20 @@ import {
 import { retainFullDatablocksOutsideAltitudeFilter } from "./trackDisplay";
 import { browserDcbPrefStorage, cancelDcbPrefSaveAs, commitDcbPrefSaveAs } from "./dcb/dcbPref";
 import { applyDcbShift, armDcbSpinner, handleDcbEscape, openDcbMenu } from "./dcb/dcbMenu";
+
+// TI 6191.409 Tables 5-3/5-9 pool selectors; deterministic trainer pools,
+// not a NAS beacon-allocation service. T02-144 keeps selectors at Scope.
+const CREATION_BEACON_POOLS: Record<
+  "ifr" | "vfr" | "general1" | "general2" | "general3" | "general4",
+  string[]
+> = {
+  ifr: ["0000"],
+  vfr: ["1000"],
+  general1: ["2000"],
+  general2: ["3000"],
+  general3: ["4000"],
+  general4: ["5000"],
+};
 import {
   applyRrCenter,
   armPlaceCenter,
@@ -340,11 +354,24 @@ function applyPreviewArmedAction(
               : "FORMAT";
         return;
       }
-      if (action.pendingDiscrete && !result.value.assignedBeacon) {
+      let plan: FlightPlan = result.value;
+      if (action.beaconAllocation) {
+        const allocated = withAllocatedBeacon(
+          plan,
+          CREATION_BEACON_POOLS[action.beaconAllocation],
+          world.flightPlans,
+        );
+        if (!allocated.ok) {
+          view.preview.rejection = "FORMAT";
+          return;
+        }
+        plan = allocated.value;
+      }
+      if (action.pendingDiscrete && !plan.assignedBeacon) {
         view.preview.rejection = "CAPACITY — BCN";
         return;
       }
-      world.flightPlans.push(result.value);
+      world.flightPlans.push(plan);
       return;
     }
     case "toggleList":

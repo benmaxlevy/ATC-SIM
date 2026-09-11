@@ -992,6 +992,15 @@ export function handlePreviewBufferKey(
       cancelPreviewArea(state);
       return { consumed: true, action: creation.action };
     }
+    if (
+      creation.kind === "invalid" &&
+      (state.armed?.type === "initCntl" ||
+        (/^[A-Z][A-Z0-9]{1,6}(?:\s|$)/.test(state.buffer) &&
+          !/^(?:CA|B|M)(?:\s|$)/.test(state.buffer)))
+    ) {
+      rejectPreviewAreaWithReason(state, nowMs, creation.reason);
+      return { consumed: true, action: null };
+    }
     if (parsed.kind === "invalid") {
       rejectPreviewArea(state, nowMs);
       return { consumed: true, action: null };
@@ -1009,6 +1018,16 @@ export function handlePreviewBufferKey(
     return { consumed: true, action: null };
   }
   return { consumed: false, action: null };
+}
+
+function rejectPreviewAreaWithReason(state: PreviewAreaState, nowMs: number, reason: string): void {
+  state.rejection = reason;
+  state.phase = "idle";
+  state.buffer = "";
+  state.mnemonic = "";
+  state.flid = null;
+  state.armed = null;
+  state.lastKeyAtMs = nowMs;
 }
 
 /**

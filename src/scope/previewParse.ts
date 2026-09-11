@@ -38,6 +38,7 @@ export type PreviewArmedAction =
       pendingDiscrete: boolean;
       acid: string;
       assignedBeacon?: string;
+      beaconAllocation?: "ifr" | "vfr" | "general1" | "general2" | "general3" | "general4";
       tcp?: string;
       flightType?: "A" | "P" | "E";
       airportId?: string;
@@ -163,6 +164,7 @@ const CREATION_ACID = /^[A-Z][A-Z0-9]{1,6}$/;
 const SCRATCHPAD = /^[A][A-Z0-9+/. *]{0,4}$/;
 const SCRATCHPAD_2 = /^\+[A-Z0-9+/. *]{0,4}$/;
 const AIRCRAFT = /^(?:(\d{1,2})\/)?([A-Z][A-Z0-9]{1,3})(?:\/([A-Z]))?$/;
+const FLIGHT_RULES = /^[A-Z]$/;
 
 export type FlightPlanCreationParse =
   | { kind: "incomplete" }
@@ -177,7 +179,7 @@ export function parseFlightPlanCreation(
   const tokens = buffer.trim().toUpperCase().split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return { kind: "incomplete" };
   const acid = tokens[0]!;
-  if (!CREATION_ACID.test(acid)) return { kind: "invalid", reason: "FORMAT" };
+  if (acid === "ALL" || !CREATION_ACID.test(acid)) return { kind: "invalid", reason: "ILL ACID" };
   if (tokens.length === 1 && pendingDiscrete) return { kind: "incomplete" };
   const fields: Extract<PreviewArmedAction, { type: "createFlightPlan" }> = {
     type: "createFlightPlan",
@@ -187,9 +189,21 @@ export function parseFlightPlanCreation(
   };
   const used = new Set<string>();
   for (const token of tokens.slice(1)) {
-    if (SQUAWK_CODE.test(token)) {
+    if (/^\d{4}$/.test(token)) {
+      if (!/^[0-7]{4}$/.test(token)) return { kind: "invalid", reason: "FORMAT" };
       if (used.has("beacon")) return { kind: "invalid", reason: "FORMAT" };
       fields.assignedBeacon = token;
+      used.add("beacon");
+      continue;
+    }
+    if (token === "+" || token === "/" || /^\/[1-4]$/.test(token)) {
+      if (used.has("beacon")) return { kind: "invalid", reason: "FORMAT" };
+      fields.beaconAllocation =
+        token === "+"
+          ? "ifr"
+          : token === "/"
+            ? "vfr"
+            : (`general${token.slice(1)}` as "general1" | "general2" | "general3" | "general4");
       used.add("beacon");
       continue;
     }
@@ -200,7 +214,15 @@ export function parseFlightPlanCreation(
       used.add("tcp");
       continue;
     }
-    if (/^[APE][A-Z0-9]?$/.test(token)) {
+    if (token === "A" && used.has("type") && !used.has("beacon")) {
+      fields.beaconAllocation = undefined;
+      used.add("beacon");
+      continue;
+    }
+    // E1 is not the manual's two-character flight-type form. Reserve this
+    // otherwise ambiguous token instead of letting it become an aircraft type.
+    if (/^E[A-Z0-9]$/.test(token)) return { kind: "invalid", reason: "FORMAT" };
+    if (/^[APE]$/.test(token) || /^[AP][A-Z0-9]$/.test(token)) {
       if (pendingDiscrete) return { kind: "invalid", reason: "FORMAT" };
       if (used.has("type")) return { kind: "invalid", reason: "FORMAT" };
       fields.flightType = token[0] as "A" | "P" | "E";
@@ -236,6 +258,8 @@ export function parseFlightPlanCreation(
     if (/^\.[A-Z]$/.test(token)) {
       if (pendingDiscrete) return { kind: "invalid", reason: "FORMAT" };
       if (used.has("rules")) return { kind: "invalid", reason: "ILL VALUE" };
+      if (!FLIGHT_RULES.test(token[1]!) || /[BFHLRJMX]/.test(token[1]!))
+        return { kind: "invalid", reason: "ILL VALUE" };
       fields.flightRules = token[1];
       used.add("rules");
       continue;
@@ -256,7 +280,8 @@ export function parseFlightPlanCreation(
     }
     return { kind: "invalid", reason: "FORMAT" };
   }
-  if (pendingDiscrete && !fields.assignedBeacon) return { kind: "invalid", reason: "FORMAT" };
+  if (pendingDiscrete && !fields.assignedBeacon && !fields.beaconAllocation)
+    return { kind: "invalid", reason: "FORMAT" };
   return { kind: "action", action: fields };
 }
 
