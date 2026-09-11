@@ -27,6 +27,7 @@ import {
   createFlightPlan,
   deleteFlightPlanFromWorld,
   modifyFlightPlan,
+  releaseAssignedBeacon,
   withAllocatedBeacon,
   type FlightPlan,
   type World,
@@ -147,6 +148,7 @@ import {
   canonicalSystemListId,
   cancelListDrag,
   deleteFlightPlanEntry,
+  getFlightPlanEntries,
   isSystemListMultiPage,
   pointInsideRect,
   relocateSystemList,
@@ -405,16 +407,44 @@ function applyPreviewArmedAction(
           plan.status !== "deleted" &&
           (plan.acid === action.flid || plan.assignedBeacon === action.flid),
       );
-      if (plans.length !== 1) {
-        view.preview.rejection = plans.length === 0 ? "NO FLIGHT" : "FORMAT";
+      if (/^\d{1,2}$/.test(action.flid)) {
+        const entry = getFlightPlanEntries(world, view).find(
+          (item) => item.index === Number(action.flid),
+        );
+        const plan = entry?.planId
+          ? world.flightPlans.find((item) => item.id === entry.planId)
+          : undefined;
+        if (plan && plan.status !== "deleted") plans.push(plan);
+      }
+      const uniquePlans = [...new Map(plans.map((plan) => [plan.id, plan])).values()];
+      if (uniquePlans.length !== 1) {
+        view.preview.rejection = uniquePlans.length === 0 ? "NO FLIGHT" : "FORMAT";
         return;
       }
       let value: string | number | string[] = action.value;
-      if (action.field === "fixes" || action.field === "scratchpads")
-        value = action.value.split("/");
+      if (action.field === "scratchpads") value = [action.value.slice(1)];
       if (action.field === "requestedAltitudeFt" || action.field === "assignedAltitudeFt")
-        value = Number(action.value) * 100;
-      const result = modifyFlightPlan(world, plans[0]!.id, action.field, value);
+        value = Number(action.value.replace(/^A/, "")) * 100;
+      if (action.field === "fixes") value = action.value;
+      if (action.field === "assignedBeacon" && /^(?:\+|\/|\/[1-4])$/.test(action.value)) {
+        const poolKey =
+          action.value === "+"
+            ? "ifr"
+            : action.value === "/"
+              ? "vfr"
+              : `general${action.value.slice(1)}`;
+        const allocated = withAllocatedBeacon(
+          uniquePlans[0]!,
+          CREATION_BEACON_POOLS[poolKey as keyof typeof CREATION_BEACON_POOLS],
+          world.flightPlans,
+        );
+        if (!allocated.ok || !allocated.value.assignedBeacon) {
+          view.preview.rejection = "CAPACITY — BCN";
+          return;
+        }
+        value = allocated.value.assignedBeacon;
+      }
+      const result = modifyFlightPlan(world, uniquePlans[0]!.id, action.field, value);
       if (!result.ok) {
         view.preview.rejection =
           result.error.code === "DUPLICATE_ACID"
@@ -427,6 +457,36 @@ function applyPreviewArmedAction(
       }
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;
+      return;
+    }
+    case "releaseAssignedBeacon": {
+      if (!world) return;
+      const plans = world.flightPlans.filter(
+        (plan) =>
+          plan.status !== "deleted" &&
+          (plan.acid === action.flid || plan.assignedBeacon === action.flid),
+      );
+      if (plans.length !== 1) {
+        view.preview.rejection = plans.length === 0 ? "NO FLIGHT" : "DUP ID";
+        return;
+      }
+      const plan = plans[0]!;
+      const associatedAircraftId = plan.associatedAircraftId;
+      const result = releaseAssignedBeacon(world, plan.id);
+      if (result.ok && associatedAircraftId && plan.status === "suspended") {
+        const aircraft = world.aircraft.find((item) => item.id === associatedAircraftId);
+        if (aircraft) {
+          delete aircraft.flightPlanId;
+          delete aircraft.flightPlan;
+          delete aircraft.fp;
+          const td = ensureTrackDisplay(view.tracks, associatedAircraftId);
+          td.unassociated = true;
+          td.datablockMode = "partial";
+        }
+        plan.associatedAircraftId = undefined;
+      }
+      if (!result.ok)
+        view.preview.rejection = result.error.code === "INVALID_FIELD" ? "ILL TRK" : "FORMAT";
       return;
     }
     case "armRelocateList":
@@ -695,20 +755,25 @@ function isVideoMapPreviewContinueKey(key: string, code?: string): boolean {
 function applyPreviewCntl(
   view: ScopeView,
   world: World,
-  apply: { type: "initCntl" | "termCntl"; aircraftId: string },
+  apply: { type: "initCntl" | "termCntl"; aircraftId: string; planId?: string },
 ): void {
   if (apply.type === "initCntl") {
     applyInitiateTrackToId(view.tracks, world, apply.aircraftId);
   } else {
-    const aircraft = world.aircraft.find((item) => item.id === apply.aircraftId);
-    if (aircraft?.flightPlanId) {
-      deleteFlightPlanFromWorld(world, aircraft.flightPlanId);
+    const aircraft = apply.aircraftId
+      ? world.aircraft.find((item) => item.id === apply.aircraftId)
+      : undefined;
+    const planId = apply.planId ?? aircraft?.flightPlanId;
+    if (planId) {
+      deleteFlightPlanFromWorld(world, planId);
+    }
+    if (aircraft) {
       const td = ensureTrackDisplay(view.tracks, apply.aircraftId);
       td.unassociated = true;
       td.datablockMode = "partial";
       td.tracked = true;
     }
-    applyDropTrackToId(view.tracks, world, apply.aircraftId);
+    if (aircraft) applyDropTrackToId(view.tracks, world, apply.aircraftId);
   }
 }
 

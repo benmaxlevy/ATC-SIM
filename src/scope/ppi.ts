@@ -76,7 +76,6 @@ import {
   setLeaderDirForId,
   setLeaderLengthForId,
   toggleTrackHighlight,
-  toggleTrackPdbFdb,
 } from "./trackDisplay";
 
 function viewSize(widthPx: number, heightPx: number): ScopeViewSize {
@@ -253,7 +252,9 @@ function applyTrackingSlewHit(
         td.tracked = true;
       }
       if (hit.region === "datablock") {
-        toggleTrackPdbFdb(td);
+        // TERM CNTL removes an identified datablock; it must not toggle the
+        // deleted plan back into a displayed datablock mode.
+        td.datablockMode = "partial";
       } else {
         applyDropTrackToId(view.tracks, world, id, view);
         pruneCaPairInhibitsForTrack(view, id);

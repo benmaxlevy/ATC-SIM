@@ -56,6 +56,7 @@ export {
   isValidAcid,
   isValidBeaconCode,
   modifyFlightPlan,
+  releaseAssignedBeacon,
   transitionFlightPlan,
   validateFlightPlan,
   withAllocatedBeacon,

@@ -46,6 +46,18 @@ test("T02-146 — MULTI FUNC M parses identity, field, and value", () => {
   expect(parsePreviewBuffer("*M DAL123 UNKNOWN X")).toEqual({ kind: "invalid", reason: "FORMAT" });
 });
 
+test("T02-146 corrective — parses beacon release and rejects invalid modify values", () => {
+  expect(parsePreviewBuffer("*B DAL123")).toEqual({
+    kind: "action",
+    action: { type: "releaseAssignedBeacon", flid: "DAL123" },
+  });
+  expect(parsePreviewBuffer("*M DAL123 BCN /3")).toMatchObject({ kind: "action" });
+  expect(parsePreviewBuffer("*M DAL123 ETA 2460E")).toEqual({ kind: "invalid", reason: "FORMAT" });
+  expect(parsePreviewBuffer("*M DAL123 FIXES BOS")).toEqual({ kind: "invalid", reason: "FORMAT" });
+  expect(parsePreviewBuffer("*M DAL123 SP ANAT")).toEqual({ kind: "invalid", reason: "ILL SCR" });
+  expect(parsePreviewBuffer("*M DAL123 AALT A350")).toMatchObject({ kind: "action" });
+});
+
 test("T02-145: INIT CNTL identity matches an unassociated authoritative plan", () => {
   const plan = createFlightPlan({
     id: "fp-init",

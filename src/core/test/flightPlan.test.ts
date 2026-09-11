@@ -7,6 +7,7 @@ import {
   deleteFlightPlanFromWorld,
   makeTestAircraft,
   modifyFlightPlan,
+  releaseAssignedBeacon,
   transitionFlightPlan,
   validateFlightPlan,
   withAllocatedBeacon,
@@ -201,4 +202,47 @@ test("deleting an associated plan releases identity and leaves target unassociat
   expect(aircraft.flightPlanId).toBeUndefined();
   expect(aircraft.flightPlan).toBeUndefined();
   expect({ x: aircraft.xNm, y: aircraft.yNm }).toEqual(pose);
+});
+
+test("T02-146 corrective — modification enforces Table 5-16 values", () => {
+  const made = createFlightPlan(plan({ assignedBeacon: "0701" }));
+  if (!made.ok) throw new Error(made.error.message);
+  const world = createWorld({ flightPlans: [made.value] });
+  expect(modifyFlightPlan(world, made.value.id, "eta", "2460E")).toMatchObject({
+    ok: false,
+    error: { code: "INVALID_VALUE" },
+  });
+  expect(modifyFlightPlan(world, made.value.id, "scratchpads", ["NAT"])).toMatchObject({
+    ok: false,
+    error: { code: "INVALID_VALUE" },
+  });
+  expect(modifyFlightPlan(world, made.value.id, "fixes", ["BOS"])).toMatchObject({
+    ok: false,
+    error: { code: "INVALID_VALUE" },
+  });
+  expect(modifyFlightPlan(world, made.value.id, "assignedAltitudeFt", 35000)).toMatchObject({
+    ok: false,
+    error: { code: "INVALID_FIELD" },
+  });
+  expect(modifyFlightPlan(world, made.value.id, "requestedAltitudeFt", 0)).toMatchObject({
+    ok: true,
+    plan: { requestedAltitudeFt: 0 },
+  });
+});
+
+test("T02-146 corrective — release beacon preserves inactive plan and disassociates suspended track", () => {
+  const made = createFlightPlan(plan({ assignedBeacon: "0701", status: "suspended" }));
+  if (!made.ok) throw new Error(made.error.message);
+  const aircraft = makeTestAircraft({
+    id: "ac-release",
+    callsign: "DAL123",
+    assignedSquawk: "0701",
+  });
+  made.value.associatedAircraftId = aircraft.id;
+  const world = createWorld({ flightPlans: [made.value], aircraft: [aircraft] });
+  expect(releaseAssignedBeacon(world, made.value.id)).toMatchObject({
+    ok: true,
+    plan: { status: "suspended", assignedBeacon: undefined },
+  });
+  expect(world.flightPlans[0]!.status).toBe("suspended");
 });

@@ -51,6 +51,7 @@ export type PreviewArmedAction =
     }
   | { readonly type: "initCntl"; readonly flid?: string }
   | { readonly type: "termCntl"; readonly flid?: string }
+  | { readonly type: "releaseAssignedBeacon"; readonly flid: string }
   | {
       readonly type: "modifyFlightPlan";
       readonly flid: string;
@@ -1113,6 +1114,11 @@ function parseDeleteCommand(buffer: string): PreviewCommandResult | null {
  */
 function parseFlightPlanModification(buffer: string): PreviewCommandResult | null {
   const tokens = buffer.trim().toUpperCase().split(/\s+/).filter(Boolean);
+  if (tokens[0] === "*B") {
+    if (tokens.length < 2) return { kind: "incomplete" };
+    if (tokens.length !== 2) return invalid("FORMAT");
+    return { kind: "action", action: { type: "releaseAssignedBeacon", flid: tokens[1]! } };
+  }
   if (tokens[0] !== "*M") return null;
   if (tokens.length < 4) return { kind: "incomplete" };
   const fields = new Set([
@@ -1152,13 +1158,33 @@ function parseFlightPlanModification(buffer: string): PreviewCommandResult | nul
     ETA: "eta",
     PTD: "ptd",
   };
+  const value = tokens.slice(3).join(" ");
+  if (tokens[2] === "ETA" || tokens[2] === "PTD") {
+    if (!/^(?:[01]\d|2[0-3])[0-5]\dE$/.test(value)) return invalid("FORMAT");
+  } else if (tokens[2] === "AALT") {
+    if (!/^A\d{3}$/.test(value)) return invalid("FORMAT");
+  } else if (tokens[2] === "RALT") {
+    if (!/^\d{3}$/.test(value)) return invalid("FORMAT");
+  } else if (tokens[2] === "BCN") {
+    if (!/^(?:[0-7]{4}|\+|\/|\/[1-4]|A)$/.test(value)) return invalid("FORMAT");
+  } else if (tokens[2] === "SP") {
+    const scratchpad = value.slice(1);
+    if (
+      !/^[A+][A-Z0-9+/. *]{0,4}$/.test(value) ||
+      /^(?:NAT|CST|AMB|RDR|ADB|XXX|\d{3})/.test(scratchpad)
+    )
+      return invalid("ILL SCR");
+  } else if (tokens[2] === "FIXES") {
+    if (!/^(?:[A-Z0-9]{1,4})?\*(?:[A-Z0-9]{1,4})?(?:\*[APE])?$/.test(value))
+      return invalid("FORMAT");
+  }
   return {
     kind: "action",
     action: {
       type: "modifyFlightPlan",
       flid: tokens[1]!,
       field: aliases[tokens[2]!]!,
-      value: tokens.slice(3).join(" "),
+      value,
     },
   };
 }

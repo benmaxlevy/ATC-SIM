@@ -518,7 +518,10 @@ const FLID_CHAR = /^[A-Za-z0-9]$/;
 
 export type PreviewFlidKeyResult =
   | { consumed: false }
-  | { consumed: true; apply?: { type: "initCntl" | "termCntl"; aircraftId: string } };
+  | {
+      consumed: true;
+      apply?: { type: "initCntl" | "termCntl"; aircraftId: string; planId?: string };
+    };
 
 /**
  * Typed ACID / Enter / Backspace while INIT CNTL or TERM CNTL is armed.
@@ -564,11 +567,21 @@ export function handlePreviewFlidKey(
       rejectPreviewCntl(state, nowMs);
       return { consumed: true };
     }
+    const plans = planIdentityMatches(flid, world, view);
     // An unassociated authoritative plan has no aircraft identity to apply
-    // until the subsequent INIT CNTL slew/click supplies the target.
-    if (state.armed.type === "initCntl" && planIdentityMatches(flid, world, view).length === 1) {
+    // until the subsequent INIT CNTL slew/click supplies the target. TERM CNTL
+    // can delete a plan-only identity directly, as required by §5.4.6.
+    if (state.armed.type === "initCntl" && plans.length === 1) {
       state.lastKeyAtMs = nowMs;
       return { consumed: true };
+    }
+    if (state.armed.type === "termCntl" && plans.length === 1) {
+      const plan = plans[0]!;
+      cancelPreviewArea(state);
+      return {
+        consumed: true,
+        apply: { type: "termCntl", aircraftId: plan.associatedAircraftId ?? "", planId: plan.id },
+      };
     }
     const resolved = resolveScopeFlid(flid, world, view);
     if (!resolved.ok) {

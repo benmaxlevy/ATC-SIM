@@ -110,6 +110,12 @@ export type FlightPlanModificationResult =
 
 const ACID_PATTERN = /^[A-Z][A-Z0-9]{1,6}$/;
 const BEACON_PATTERN = /^[0-7]{4}$/;
+const BEACON_SELECTOR_PATTERN = /^(?:\+|\/|\/[1-4]|A)$/;
+const ETA_PTD_PATTERN = /^(?:[01]\d|2[0-3])[0-5]\dE$/;
+const TCP_PATTERN = /^[A-Z0-9]{1,2}$/;
+const FIX_PAIR_PATTERN = /^(?:[A-Z0-9]{1,4})?\*(?:[A-Z0-9]{1,4})?(?:\*[APE])?$/;
+const SCRATCHPAD_PATTERN = /^[A-Z0-9+/. *]{0,4}$/;
+const SCRATCHPAD_FORBIDDEN = /^(?:NAT|CST|AMB|RDR|ADB|XXX|\d{3})/;
 
 function normalized(value: string | undefined): string | undefined {
   return value?.trim().toUpperCase();
@@ -122,6 +128,11 @@ export function isValidAcid(value: string): boolean {
 
 export function isValidBeaconCode(value: string): boolean {
   return BEACON_PATTERN.test(value.trim());
+}
+
+function isValidScratchpad(value: string): boolean {
+  const text = value.trim().toUpperCase();
+  return SCRATCHPAD_PATTERN.test(text) && !SCRATCHPAD_FORBIDDEN.test(text);
 }
 
 function error(
@@ -364,6 +375,17 @@ export function modifyFlightPlan(
       ),
     };
   }
+  if (plan.status !== "active" && field === "assignedAltitudeFt") {
+    return {
+      ok: false,
+      error: modificationError(
+        "INVALID_FIELD",
+        field,
+        undefined,
+        "assigned altitude requires an active flight",
+      ),
+    };
+  }
   const candidate: FlightPlan = {
     ...plan,
     fixes: [...plan.fixes],
@@ -378,39 +400,94 @@ export function modifyFlightPlan(
     }
     candidate.acid = value.trim().toUpperCase();
   } else if (field === "assignedBeacon") {
-    if (typeof value !== "string" || !isValidBeaconCode(value)) {
+    if (
+      typeof value !== "string" ||
+      (!isValidBeaconCode(value) && !BEACON_SELECTOR_PATTERN.test(value.trim().toUpperCase()))
+    ) {
       return {
         ok: false,
         error: modificationError("INVALID_BEACON", field, String(value), "invalid assigned beacon"),
       };
     }
-    candidate.assignedBeacon = value.trim();
-  } else if (field === "tcp" || field === "eta" || field === "ptd") {
+    const beacon = value.trim().toUpperCase();
+    candidate.assignedBeacon = BEACON_SELECTOR_PATTERN.test(beacon) ? undefined : beacon;
+  } else if (field === "tcp") {
     if (typeof value !== "string") {
       return {
         ok: false,
         error: modificationError("INVALID_VALUE", field, String(value), `invalid ${field}`),
       };
     }
+    const tcp = value.trim().toUpperCase();
+    if (!TCP_PATTERN.test(tcp)) {
+      return {
+        ok: false,
+        error: modificationError("INVALID_VALUE", field, tcp, "invalid controller position"),
+      };
+    }
+    candidate.tcp = tcp;
+  } else if (field === "eta" || field === "ptd") {
+    if (typeof value !== "string" || !ETA_PTD_PATTERN.test(value.trim().toUpperCase())) {
+      return {
+        ok: false,
+        error: modificationError("INVALID_VALUE", field, String(value), `invalid ${field}`),
+      };
+    }
     candidate[field] = value.trim().toUpperCase();
-  } else if (field === "fixes" || field === "scratchpads") {
+  } else if (field === "fixes") {
+    const values = typeof value === "string" ? [value] : value;
+    if (
+      !Array.isArray(values) ||
+      values.length !== 1 ||
+      typeof values[0] !== "string" ||
+      !FIX_PAIR_PATTERN.test(values[0].trim().toUpperCase())
+    ) {
+      return {
+        ok: false,
+        error: modificationError("INVALID_VALUE", field, String(value), "invalid entry/exit fixes"),
+      };
+    }
+    candidate.fixes = [values[0].trim().toUpperCase()];
+  } else if (field === "scratchpads") {
     if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
       return {
         ok: false,
         error: modificationError("INVALID_VALUE", field, String(value), `invalid ${field}`),
       };
     }
-    candidate[field] = value.map((item) => item.trim().toUpperCase());
+    const scratchpads = value.map((item) => item.trim().toUpperCase());
+    if (scratchpads.length > 2 || scratchpads.some((item) => !isValidScratchpad(item))) {
+      return {
+        ok: false,
+        error: modificationError("INVALID_VALUE", field, String(value), "invalid scratchpad"),
+      };
+    }
+    candidate.scratchpads = scratchpads;
   } else if (field === "flightType") {
-    if (value !== "IFR" && value !== "VFR" && value !== "DVFR" && value !== "SVFR") {
+    if (
+      value !== "IFR" &&
+      value !== "VFR" &&
+      value !== "DVFR" &&
+      value !== "SVFR" &&
+      value !== "A" &&
+      value !== "P" &&
+      value !== "E"
+    ) {
       return {
         ok: false,
         error: modificationError("INVALID_VALUE", field, String(value), "invalid flight type"),
       };
     }
-    candidate.flightType = value;
+    candidate.flightType =
+      value === "A" ? "IFR" : value === "P" ? "VFR" : value === "E" ? "DVFR" : value;
   } else if (field === "requestedAltitudeFt" || field === "assignedAltitudeFt") {
-    if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+    if (
+      typeof value !== "number" ||
+      !Number.isInteger(value) ||
+      value < 0 ||
+      value > 99000 ||
+      value % 100 !== 0
+    ) {
       return {
         ok: false,
         error: modificationError("INVALID_VALUE", field, String(value), `invalid ${field}`),
@@ -462,6 +539,33 @@ export function modifyFlightPlan(
     const target = world.aircraft.find((aircraft) => aircraft.id === plan.associatedAircraftId);
     if (target) syncAssociatedTarget(plan, target);
   }
+  return { ok: true, plan };
+}
+
+/** Release an assigned beacon without deleting the inactive/suspended plan. */
+export function releaseAssignedBeacon(
+  world: { flightPlans: FlightPlan[] },
+  planId: string,
+): FlightPlanModificationResult {
+  const plan = world.flightPlans.find((item) => item.id === planId);
+  if (!plan || plan.status === "deleted") {
+    return {
+      ok: false,
+      error: modificationError("PLAN_NOT_FOUND", "plan", planId, `flight plan ${planId} not found`),
+    };
+  }
+  if (plan.status === "active") {
+    return {
+      ok: false,
+      error: modificationError(
+        "INVALID_FIELD",
+        "assignedBeacon",
+        undefined,
+        "active flight beacon cannot be released",
+      ),
+    };
+  }
+  plan.assignedBeacon = undefined;
   return { ok: true, plan };
 }
 
