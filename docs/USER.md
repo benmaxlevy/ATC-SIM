@@ -79,7 +79,7 @@ Service-side env, models, and Path C: [`speech-api/README.md`](../speech-api/REA
 - **Inbound & departure handoff workflow**:
   - Inbound arrivals spawn in pending handoff state from Center (unowned green FDB) → Controller left-clicks the track (slew to accept) or uses `F3` (`INIT CNTL`) to accept → Track becomes owned (white FDB) → Radio frequency unlocked → Pilot checks in.
   - Rolling departures spawn off the active runway (~0.8 NM, 700 ft, 180 kt) under Tower handoff → Pilot checks in on departure frequency → Flies published SID climb profile.
-- **Smart Shift+H / F5 handoff**: Context-sensitive shared outbound handoff. Eligible arrivals target Tower; eligible climbing departures target Center (`C`). Receiver TCP remains visible while pending and for five simulated seconds after acceptance. Single-position trainer auto-accepts supported destinations after five simulated seconds; Tower landing/ownership effects occur only after acceptance. F4 returns the track to unowned. No live second position or network is modeled.
+- **Smart Shift+H / F5 handoff**: Context-sensitive shared outbound handoff. Eligible arrivals target Tower; eligible climbing departures target Center (`C`). Receiver TCP remains visible while pending and for five simulated seconds after acceptance. Single-position trainer auto-accepts supported destinations after five simulated seconds; Tower landing/ownership effects occur only after acceptance. F4 terminates the track and its associated local plan. No live second position or network is modeled.
 - **Readbacks**: FAA JO 7110.65 digit grouping (e.g. "climb and maintain five thousand, Delta one twenty-three"), plus "unable" for invalid clearances.
 
 ## ATC command reference
@@ -122,6 +122,49 @@ If an aircraft is already selected on the scope, the callsign prefix is automati
 | **Miscellaneous** | `GA` | `DAL123 GA` | Go around / execute published missed approach |
 | | `SH` | `DAL123 SH` | Say current heading |
 | | `SA` | `DAL123 SA` | Say current altitude |
+
+### Flight-plan commands
+
+Flight-plan commands are scope Preview Area commands, not radio clearances.
+They update the local authoritative flight-plan list and do not make a pilot
+read back or fly the change.
+
+| Command | Example | Result |
+|---|---|---|
+| `*T` | `*T` then Enter | Toggles the TAB flight-plan list. `*T 15` sets its visible row count. Use the displayed numeric row index for list operations. |
+| `ACID [fields]` | `UAL1234 2341 AT AAL B738` then Enter | Creates a pending plan. Creation accepts an ACID plus a four-digit beacon, `+` (IFR pool), `/` (VFR pool), `/1`–`/4` (general pools), TCP, flight type, scratchpads, altitude, rules, and aircraft data. |
+| `F3` / `+` | `F3`, then click a target; or `F3 UAL1234` then Enter | INIT CNTL: associates/activates a matching plan and owns the target. A pending inbound handoff can be accepted this way. `+` is the Preview Area equivalent. |
+| `F4` / `TERM CNTL` / `/` | `F4`, then click a target; or `F4 UAL1234` then Enter | TERM CNTL: all three forms share one operation. The first use deletes the associated plan, removes association, clears ownership, and leaves a moving unassociated LDB (`*`). `TERM CNTL ALL` is invalid. |
+| `*M <identity> <field> <value>` | `*M 14 SP A5252` | Modifies one plan by ACID, beacon, or TAB-list index. Supported fields: `ACID`, `BCN`, `TCP`, `FIXES`, `TYPE`, `SP`, `RALT`, `AALT`, `ETA`, `PTD`. |
+| `*B <identity>` | `*B UAL1234` or `*B 14` | Releases the assigned beacon for a plan when allowed. |
+| `*DEL <index>` | `*DEL 14` | Deletes the plan at TAB-list index 14. |
+
+Creation and edit examples:
+
+```text
+UAL1234 2341 AT A B738 Enter
+*M UAL1234 SP A5252
+*M UAL1234 SP +WEST
+*M UAL1234 RALT 350
+*M UAL1234 AALT A120
+*M UAL1234 FIXES NEMAX*MERGE
+*M UAL1234 BCN +
+```
+
+`RALT 350` means requested altitude 35,000 feet. `AALT A120` means assigned
+altitude 12,000 feet. `FIXES` is limited to an optional four-character entry
+fix, `*`, an optional four-character exit fix, and optional `*A`, `*P`, or
+`*E`; it is not a full route editor.
+
+Flight-plan beacons use octal digits only (`0`–`7`). For example, `2341` is
+valid but `1289` is invalid. A numeric identity such as `14` is a TAB-list
+index only when used in a complete command such as `*M 14 SP A5252`, `*B 14`,
+or `*DEL 14`; `14 5252` alone is not a flight-plan command.
+
+Routes are not executable from these plans yet. Editing `FIXES` stores plan
+data only; it does not update the aircraft FMS, route, heading, or pilot
+intent. Clearance delivery, pilot readback/execution, route conformance, and
+full route/SID/STAR amendment remain in the [later implementation backlog](../phases/LATER-IMPLEMENTATION-BACKLOG.md).
 
 > [!TIP]
 > Transponder beacon assignment and radar handoffs are handled directly via scope controls:
@@ -189,7 +232,7 @@ Keys below are divided into **Always-On** shortcuts (which work regardless of wh
 | `?` / `Shift + /` / `Alt + F1` | Help Overlay | Toggles the in-app STARS keyboard shortcut help overlay. |
 | `F1` (hold) | `<BCN CODE RD OUT>` / Drop Mode | Momentarily displays Mode 3/A beacon code in datablock line 1 (Beaconator) and arms list row drop (`f1DropArmed`). |
 | `F3` | `<INIT CNTL>` Initiate Track | If track selected: immediately initiates track / owns target. If none selected: arms `INIT CNTL` command-then-slew. |
-| `F4` | `<TERM CNTL>` Drop Track | If track selected: immediately drops track. If none selected: arms `TERM CNTL` command-then-slew. |
+| `F4` | `<TERM CNTL>` Terminate Track | Alias of `TERM CNTL`. If track selected: terminates immediately. If none selected: arms command-then-slew. Deletes the associated plan on first use and leaves an unassociated `*` LDB. |
 | `F5` / `Shift + H` | `<HND OFF>` Smart Handoff | Initiates shared outbound handoff: Tower for eligible arrivals, Center (`C`) for eligible climbing departures. Supported destinations auto-accept after five simulated seconds. |
 | `F7` | `<MULTI FUNC>` Multi-Function | Types or appends `*` into the STARS Preview Area buffer. |
 | `F8` | `<HIST>` History Dots | Toggles radar history trail dots (0 ↔ last non-zero dot count). |
@@ -252,9 +295,9 @@ The **Preview Area** is the primary typed command buffer of the STARS terminal r
 | `+` then click | Type `+`, click target symbol | Arms `INIT CNTL`; click initiates track / owns target (white FDB). Pending inbound: one-click accept+own. |
 | `+ [FLID] Enter` | Type `+DAL123` or `+123` Enter | Resolves flight ID and initiates track directly with nothing selected. |
 | `+ [FLID]` then click | Type `+DAL123`, click target | Correlates that FLID directly to the clicked radar target. |
-| `/` then click **symbol** | Type `/`, click target symbol | Arms `TERM CNTL`; drops track ownership. |
-| `/` then click **datablock** | Type `/`, click datablock text | Toggles Partial Data Block (PDB) ↔ Full Data Block (FDB). |
-| `/ [FLID] Enter` | Type `/DAL123` Enter | Drops track ownership for specified flight ID. (`/ALL` or `TERM CNTL ALL` is `INV`). |
+| `/` then click **symbol** | Type `/`, click target symbol | Arms `TERM CNTL`; same termination behavior as F4 and typed `TERM CNTL`. |
+| `/` then click **datablock** | Type `/`, click datablock text | Same TERM CNTL behavior as symbol click: deletes the associated plan, removes association, and leaves an unassociated `*` LDB. |
+| `/ [FLID] Enter` | Type `/DAL123` Enter | Terminates the specified flight ID. (`/ALL` or `TERM CNTL ALL` is `INV`). |
 | `/<0-7>` then click | Type `/2`, click target | Sets leader line length for clicked target (`0`=0px, `1`=12px, `2`=24px, `3`=36px default, `4`=48px, etc.). |
 | `/<0-7> [FLID] Enter` | Type `/2 DAL123` or `/0 123` Enter | Sets leader line length directly on specified aircraft. |
 | `<1-9>` then click | Type `8`, click target | Sets leader line direction on clicked target (1–9 numpad compass layout). |
