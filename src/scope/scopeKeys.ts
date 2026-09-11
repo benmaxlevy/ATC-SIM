@@ -418,7 +418,12 @@ function applyPreviewArmedAction(
         return;
       }
       let value: string | number | string[] | undefined = action.value;
-      if (action.field === "scratchpads") value = [action.value.slice(1)];
+      if (action.field === "scratchpads") {
+        const scratchpads = [...(uniquePlans[0]!.scratchpads ?? [])];
+        const slot = (action.scratchpadSlot ?? (action.value.startsWith("Δ") ? 1 : 2)) - 1;
+        scratchpads[slot] = action.value.slice(1);
+        value = scratchpads;
+      }
       if (action.field === "requestedAltitudeFt" || action.field === "assignedAltitudeFt")
         value = /^A?000$/.test(action.value)
           ? undefined

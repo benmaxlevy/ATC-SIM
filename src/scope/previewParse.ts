@@ -72,6 +72,7 @@ export type PreviewArmedAction =
         | "eta"
         | "ptd";
       readonly value: string;
+      readonly scratchpadSlot?: 1 | 2;
     }
   | { readonly type: "beaconBlock"; readonly digits: string }
   | { readonly type: "beaconDiscrete"; readonly digits: string }
@@ -1213,24 +1214,19 @@ function parseFlightPlanModification(buffer: string): PreviewCommandResult | nul
     if (/^Δ[A-Z0-9+/. *]{0,4}$/.test(value) || /^\+[A-Z0-9+/. *]{1,4}$/.test(value)) {
       return {
         kind: "action",
-        action: { type: "modifyFlightPlan", flid: identity, field: "scratchpads", value },
+        action: {
+          type: "modifyFlightPlan",
+          flid: identity,
+          field: "scratchpads",
+          value,
+          scratchpadSlot: value.startsWith("Δ") ? 1 : 2,
+        },
       };
     }
     return invalid("FORMAT");
   }
   if (tokens.length < 4) return { kind: "incomplete" };
-  const fields = new Set([
-    "ACID",
-    "BCN",
-    "TCP",
-    "FIXES",
-    "TYPE",
-    "SP",
-    "RALT",
-    "AALT",
-    "ETA",
-    "PTD",
-  ]);
+  const fields = new Set(["ACID", "TCP", "FIXES", "TYPE", "SP", "RALT", "AALT", "ETA", "PTD"]);
   if (!fields.has(tokens[2]!)) return invalid("FORMAT");
   const aliases: Record<
     string,
@@ -1246,7 +1242,6 @@ function parseFlightPlanModification(buffer: string): PreviewCommandResult | nul
     | "ptd"
   > = {
     ACID: "acid",
-    BCN: "assignedBeacon",
     TCP: "tcp",
     FIXES: "fixes",
     TYPE: "flightType",
@@ -1283,6 +1278,7 @@ function parseFlightPlanModification(buffer: string): PreviewCommandResult | nul
       flid: tokens[1]!,
       field: aliases[tokens[2]!]!,
       value,
+      ...(tokens[2] === "SP" ? { scratchpadSlot: value.startsWith("Δ") ? 1 : 2 } : {}),
     },
   };
 }

@@ -40,10 +40,7 @@ test("T02-146 — MULTI FUNC M parses identity, field, and value", () => {
     kind: "action",
     action: { type: "modifyFlightPlan", flid: "DAL123", field: "acid", value: "UAL456" },
   });
-  expect(parsePreviewBuffer("*M DAL123 BCN 0701")).toMatchObject({
-    kind: "action",
-    action: { field: "assignedBeacon", value: "0701" },
-  });
+  expect(parsePreviewBuffer("*M DAL123 BCN 0701").kind).toBe("invalid");
   expect(parsePreviewBuffer("*M DAL123 0701")).toMatchObject({
     kind: "action",
     action: { field: "assignedBeacon", value: "0701" },
@@ -60,7 +57,7 @@ test("T02-146 corrective — parses beacon release and rejects invalid modify va
     kind: "action",
     action: { type: "releaseAssignedBeacon", flid: "DAL123" },
   });
-  expect(parsePreviewBuffer("*M DAL123 BCN /3")).toMatchObject({ kind: "action" });
+  expect(parsePreviewBuffer("*M DAL123 /3")).toMatchObject({ kind: "action" });
   expect(parsePreviewBuffer("*M DAL123 ETA 2460E")).toEqual({ kind: "invalid", reason: "FORMAT" });
   expect(parsePreviewBuffer("*M DAL123 FIXES BOS")).toEqual({ kind: "invalid", reason: "FORMAT" });
   expect(parsePreviewBuffer("*M DAL123 SP ANAT")).toEqual({ kind: "invalid", reason: "ILL SCR" });
