@@ -191,7 +191,13 @@ test("deleting an associated plan releases identity and leaves target unassociat
   const made = createFlightPlan(plan({ assignedBeacon: "0701" }));
   expect(made.ok).toBe(true);
   if (!made.ok) return;
-  const aircraft = makeTestAircraft({ id: "ac-1", callsign: "DAL123", xNm: 4, yNm: 3 });
+  const aircraft = makeTestAircraft({
+    id: "ac-1",
+    callsign: "DAL123",
+    xNm: 4,
+    yNm: 3,
+    assignedSquawk: "0701",
+  });
   const world = createWorld({ flightPlans: [made.value], aircraft: [aircraft] });
   made.value.associatedAircraftId = aircraft.id;
   aircraft.flightPlanId = made.value.id;
@@ -201,6 +207,7 @@ test("deleting an associated plan releases identity and leaves target unassociat
   expect(result).toMatchObject({ ok: true, plan: { status: "deleted" } });
   expect(aircraft.flightPlanId).toBeUndefined();
   expect(aircraft.flightPlan).toBeUndefined();
+  expect(aircraft.assignedSquawk).toBeUndefined();
   expect({ x: aircraft.xNm, y: aircraft.yNm }).toEqual(pose);
 });
 
@@ -226,8 +233,8 @@ test("T02-146 corrective — modification enforces Table 5-16 values", () => {
   });
   expect(modifyFlightPlan(world, made.value.id, "requestedAltitudeFt", 0)).toMatchObject({
     ok: true,
-    plan: { requestedAltitudeFt: 0 },
   });
+  expect(made.value.requestedAltitudeFt).toBeUndefined();
 });
 
 test("T02-146 corrective — release beacon preserves inactive plan and disassociates suspended track", () => {
@@ -253,10 +260,18 @@ test("T02-146 corrective — zero altitudes remove modification fields", () => {
   );
   if (!made.ok) throw new Error(made.error.message);
   const world = createWorld({ flightPlans: [made.value] });
-  expect(modifyFlightPlan(world, made.value.id, "requestedAltitudeFt", undefined)).toMatchObject({
+  expect(modifyFlightPlan(world, made.value.id, "requestedAltitudeFt", 12000)).toMatchObject({
+    ok: true,
+    plan: { requestedAltitudeFt: 12000 },
+  });
+  expect(modifyFlightPlan(world, made.value.id, "assignedAltitudeFt", 13000)).toMatchObject({
+    ok: true,
+    plan: { assignedAltitudeFt: 13000 },
+  });
+  expect(modifyFlightPlan(world, made.value.id, "requestedAltitudeFt", 0)).toMatchObject({
     ok: true,
   });
-  expect(modifyFlightPlan(world, made.value.id, "assignedAltitudeFt", undefined)).toMatchObject({
+  expect(modifyFlightPlan(world, made.value.id, "assignedAltitudeFt", 0)).toMatchObject({
     ok: true,
   });
   expect(made.value.requestedAltitudeFt).toBeUndefined();

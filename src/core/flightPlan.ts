@@ -481,7 +481,7 @@ export function modifyFlightPlan(
     candidate.flightType =
       value === "A" ? "IFR" : value === "P" ? "VFR" : value === "E" ? "DVFR" : value;
   } else if (field === "requestedAltitudeFt" || field === "assignedAltitudeFt") {
-    if (value === undefined) {
+    if (value === undefined || value === 0) {
       delete candidate[field];
     } else {
       if (
@@ -540,7 +540,7 @@ export function modifyFlightPlan(
   }
   Object.assign(plan, candidate);
   if (field === "requestedAltitudeFt" || field === "assignedAltitudeFt") {
-    if (value === undefined) delete plan[field];
+    if (value === undefined || value === 0) delete plan[field];
   }
   if (plan.associatedAircraftId) {
     const target = world.aircraft.find((aircraft) => aircraft.id === plan.associatedAircraftId);
@@ -582,6 +582,7 @@ export function deleteFlightPlanFromWorld(
     flightPlans: FlightPlan[];
     aircraft: Array<{
       id: string;
+      assignedSquawk?: string;
       flightPlanId?: string;
       flightPlan?: Record<string, unknown>;
       fp?: Record<string, unknown>;
@@ -603,6 +604,7 @@ export function deleteFlightPlanFromWorld(
     delete aircraft.flightPlanId;
     delete aircraft.flightPlan;
     delete aircraft.fp;
+    delete aircraft.assignedSquawk;
   }
   plan.associatedAircraftId = undefined;
   Object.assign(plan, deleteFlightPlan(plan));
