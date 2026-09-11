@@ -12,7 +12,7 @@
  * slew apply, and key handling. Not NAS STARS.
  */
 
-import type { World } from "@core";
+import { flightPlanForAircraft, type World } from "@core";
 import type { LoadedVideoMap } from "@scenario";
 import { DCB_PREF_NAME_MAX_CHARS, parseDcbPrefName } from "./dcb/dcbPref";
 import { type VideoMapTokenLayout } from "./dcb/dcbFunctions";
@@ -134,7 +134,7 @@ export function resolveScopeFlid(token: string, world: World, view?: ScopeView):
   const ids = new Set<string>();
   if (FULL_CALLSIGN.test(normalized)) {
     for (const ac of world.aircraft) {
-      if (ac.callsign === normalized) {
+      if (ac.callsign === normalized || flightPlanForAircraft(world, ac.id)?.acid === normalized) {
         ids.add(ac.id);
       }
     }

@@ -922,7 +922,10 @@ export function drawDatablock(
   const isQueried = td ? isTrackQueried(td, world.simTimeMs) : false;
   const squawk = td?.squawk ?? ac.squawk;
   const beaconCodeReadout = isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs);
-  const callsign = beaconCodeReadout && squawk ? squawk : ac.callsign;
+  const callsign =
+    beaconCodeReadout && squawk
+      ? squawk
+      : (flightPlanForAircraft(world, ac.id)?.acid ?? ac.callsign);
 
   const handoff = handoffFor(world, ac.id);
   const handoffDisplay = handoffDatablockDisplay(handoff, view.sectorId, world.simTimeMs);
@@ -1186,7 +1189,10 @@ export function drawTracks(
     const handoffDisplay = handoffDatablockDisplay(handoff, view.sectorId, world.simTimeMs);
     const squawk = td?.squawk ?? ac.squawk;
     const beaconCodeReadout = isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs);
-    const callsign = beaconCodeReadout && squawk ? squawk : ac.callsign;
+    const callsign =
+      beaconCodeReadout && squawk
+        ? squawk
+        : (flightPlanForAircraft(world, ac.id)?.acid ?? ac.callsign);
     const atpaReadout =
       mode === "full"
         ? atpaInTrailDatablockReadout(world.alerts.atpa, ac.callsign, {
