@@ -1,5 +1,25 @@
 # Swarm status
 
+## FIFTY-FOURTH SWARM COMPLETE — T02-137–139 unified outbound handoff positions
+
+T02-137 through T02-139 are complete on `fix/datablocks`. Supported outbound
+handoffs to Center `C` and Tower now share destination-aware initiation,
+five-simulated-second acceptance, and pending/accepted datablock projection.
+Tower landing/ownership effects occur only after acceptance. Destination IDs
+remain data-driven; no new sector/network model, SPC, alert, or unrelated
+handoff type was added.
+
+Captain merge commits: T02-137 (`31c4997`, `8b68d92`), T02-138
+(`4893895`, `cd06b7f`, `e7b76c7`), and T02-139 squash (`60e7619`). Planning
+commit: `5ed9bf5`; swarm-start commit: `42403de`.
+
+Final gate: `npm run ci` passed — **189 test files, 1,733 tests passed, 4
+skipped**. Worker focused gates: T02-137 **22 passed**, T02-138 **17 passed**,
+and T02-139 **36 passed**.
+
+Manual audit: intentionally deferred per user instruction. No
+`check-stars-manual` review was run in this swarm.
+
 ## FIFTY-THIRD SWARM COMPLETE — T02-135–136 outbound handoff alignment
 
 T02-135 and T02-136 are complete on `fix/datablocks`. Pending outbound
