@@ -21,6 +21,7 @@ import {
 import { nmToScreen, type ScopeCamera } from "./camera";
 import {
   datablockRect,
+  handoffDatablockDisplay,
   linesForDatablock,
   pointInDatablock,
   withInboundHandoffCue,
@@ -32,12 +33,7 @@ import {
   datablockLineHeightPx,
 } from "./fonts";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
-import {
-  handleTrackClick,
-  handleTrackMiddleClick,
-  isOutboundReceiverTcpVisible,
-  type TrackDisplay,
-} from "./trackDisplay";
+import { handleTrackClick, handleTrackMiddleClick, type TrackDisplay } from "./trackDisplay";
 import {
   pointInLayoutBounds,
   solveDatablockLayout,
@@ -141,23 +137,11 @@ function pickDatablockAt(
     const squawk = td?.squawk ?? ac.squawk;
     const trackBeaconator = (td?.beaconatorUntilSimMs ?? 0) > world.simTimeMs;
     const callsign = (view.beaconatorActive || trackBeaconator) && squawk ? squawk : ac.callsign;
-    let handoffSectorId: string | undefined;
-    if (ho.kind === "inbound") {
-      handoffSectorId = receivingTcp;
-    } else if (ho.kind === "departure") {
-      handoffSectorId = receivingTcp;
-    } else if (ho.kind === "outbound" && isOutboundReceiverTcpVisible(ho, world.simTimeMs)) {
-      handoffSectorId = ho.toSectorId;
-    } else if (ho.kind === "pointout_inbound") {
-      handoffSectorId = ho.fromSectorId;
-    } else if (ho.kind === "pointout_outbound") {
-      handoffSectorId = ho.toSectorId;
-    }
+    const handoffDisplay = handoffDatablockDisplay(ho, receivingTcp, world.simTimeMs);
     const base = linesForDatablock({ ...shown, callsign, squawk }, mode, {
       modeCVisible: view.modeCVisible,
       scratchpad: td?.scratchpad ?? "",
-      handoffSectorId,
-      tcp: ho.kind === "inbound" ? receivingTcp : undefined,
+      ...handoffDisplay,
       queried: isQueried,
       simTimeMs: world.simTimeMs,
     });

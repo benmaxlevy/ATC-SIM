@@ -16,6 +16,7 @@ import {
   DATABLOCK_FIELD_GAP,
   datablockMetrics,
   fullDatablockLine3Parts,
+  handoffDatablockDisplay,
   linesForDatablock,
   withInboundHandoffCue,
   type DatablockMode,
@@ -92,7 +93,6 @@ import {
   deriveScratchpads,
   filterActiveCaAlerts,
   isBeaconatorReadout,
-  isOutboundReceiverTcpVisible,
   isIdentFlashing,
   isTrackQueried,
   isCaPairInhibited,
@@ -910,21 +910,7 @@ export function drawDatablock(
   const callsign = beaconCodeReadout && squawk ? squawk : ac.callsign;
 
   const handoff = handoffFor(world, ac.id);
-  let handoffSectorId: string | undefined;
-  if (handoff.kind === "inbound") {
-    handoffSectorId = view.sectorId;
-  } else if (handoff.kind === "departure") {
-    handoffSectorId = view.sectorId;
-  } else if (
-    handoff.kind === "outbound" &&
-    isOutboundReceiverTcpVisible(handoff, world.simTimeMs)
-  ) {
-    handoffSectorId = handoff.toSectorId;
-  } else if (handoff.kind === "pointout_inbound") {
-    handoffSectorId = handoff.fromSectorId;
-  } else if (handoff.kind === "pointout_outbound") {
-    handoffSectorId = handoff.toSectorId;
-  }
+  const handoffDisplay = handoffDatablockDisplay(handoff, view.sectorId, world.simTimeMs);
   const atpaReadout =
     mode === "full"
       ? atpaInTrailDatablockReadout(world.alerts.atpa, ac.callsign, {
@@ -944,8 +930,7 @@ export function drawDatablock(
     scratchpad: derived.sp1,
     sp1: derived.sp1,
     sp2: derived.sp2,
-    handoffSectorId,
-    tcp: handoff.kind === "inbound" ? view.sectorId : undefined,
+    ...handoffDisplay,
     identIndicator:
       mode === "partial" && td && isIdentFlashing(td, world.simTimeMs) ? "ID" : undefined,
     queried: isQueried,
@@ -1174,17 +1159,7 @@ export function drawTracks(
     const mode = visual.mode;
     const derived = deriveScratchpads(ac, td);
     const handoff = handoffFor(world, ac.id);
-    const handoffSectorId =
-      handoff.kind === "inbound" || handoff.kind === "departure"
-        ? handoff.kind === "inbound"
-          ? view.sectorId
-          : view.sectorId
-        : (handoff.kind === "outbound" && isOutboundReceiverTcpVisible(handoff, world.simTimeMs)) ||
-            handoff.kind === "pointout_outbound"
-          ? handoff.toSectorId
-          : handoff.kind === "pointout_inbound"
-            ? handoff.fromSectorId
-            : undefined;
+    const handoffDisplay = handoffDatablockDisplay(handoff, view.sectorId, world.simTimeMs);
     const squawk = td?.squawk ?? ac.squawk;
     const beaconCodeReadout = isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs);
     const callsign = beaconCodeReadout && squawk ? squawk : ac.callsign;
@@ -1203,8 +1178,7 @@ export function drawTracks(
         scratchpad: derived.sp1,
         sp1: derived.sp1,
         sp2: derived.sp2,
-        handoffSectorId,
-        tcp: handoff.kind === "inbound" ? view.sectorId : undefined,
+        ...handoffDisplay,
         identIndicator:
           mode === "partial" && td && isIdentFlashing(td, world.simTimeMs) ? "ID" : undefined,
         queried: td ? isTrackQueried(td, world.simTimeMs) : false,

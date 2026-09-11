@@ -1,15 +1,17 @@
 import { expect, test } from "vitest";
 import {
+  acceptOutboundHandoff,
   createAircraft,
   createWorld,
   handoffFor,
+  initiateOutboundHandoff,
   initiateCenterHandoff,
   setSelectedAircraft,
   type Intent,
 } from "@core";
 import { createWorldFromScenario, loadKdem, loadKdemIls27 } from "@scenario";
 import { DEFAULT_SCOPE_CAMERA, nmToScreen, type ScopeCamera } from "../camera";
-import { datablockRect, linesForDatablock, pointInDatablock } from "../datablock";
+import { datablockRect, formatTcp, linesForDatablock, pointInDatablock } from "../datablock";
 import { datablockLineHeightPx } from "../fonts";
 import { PALETTE } from "../palette";
 import {
@@ -22,6 +24,8 @@ import { handlePpiLeftClick } from "../ppi";
 import { trackPaintColor } from "../ownership";
 import { createScopeView } from "../scopeView";
 import { syncTrackDisplays } from "../trackDisplay";
+import { createMockCtx } from "./mockCanvas";
+import { drawDatablock } from "../render/renderScopePaint";
 
 const CAM: ScopeCamera = DEFAULT_SCOPE_CAMERA;
 const CSS_W = 800;
@@ -226,6 +230,56 @@ test("pending outbound handoff hit-tests the renderer's full datablock geometry"
     ),
   ).toBe(ac);
 });
+
+test.each(["C", "TWR"] as const)(
+  "outbound %s handoff shares Field 4 rendering and hit-test geometry",
+  (destination) => {
+    const displayedDestination = formatTcp(destination)!;
+    const ac = sample("DAL139", `ac-${destination}`, 0, 0);
+    const world = createWorld({ aircraft: [ac] });
+    const view = createScopeView();
+    syncTrackDisplays(view.tracks, world);
+    const td = view.tracks.get(ac.id)!;
+    td.ownership = destination === "TWR" ? "tower" : "center";
+    expect(initiateOutboundHandoff(ac, { world, simTimeMs: world.simTimeMs }, destination)).toBe(
+      true,
+    );
+
+    const rendered = createMockCtx();
+    drawDatablock(rendered.ctx, ac, 400, 400, view, world);
+    expect(rendered.fillTexts.some((fill) => fill.text.includes(displayedDestination))).toBe(true);
+
+    const tick = nmToScreen(ac.xNm, ac.yNm, CAM, VIEW);
+    const lines = linesForDatablock(ac, "full", {
+      modeCVisible: view.modeCVisible,
+      handoffSectorId: displayedDestination,
+      simTimeMs: world.simTimeMs,
+    });
+    const rect = datablockRect(
+      tick.x,
+      tick.y,
+      lines,
+      view.datablockCellWidthPx,
+      datablockLineHeightPx(view.charSizePx),
+      td.leaderDir,
+      td.leaderLengthPx ?? view.leaderLengthPx,
+    );
+    const point = { x: rect.x + 1, y: rect.y + datablockLineHeightPx(view.charSizePx) / 2 };
+    expect(
+      pickAircraftAt(world, point.x, point.y, CAM, CSS_W, CSS_H, HIT_RADIUS_CSS_PX, view),
+    ).toBe(ac);
+
+    expect(acceptOutboundHandoff(world, ac.id)).toBe(true);
+    const accepted = createMockCtx();
+    drawDatablock(accepted.ctx, ac, 400, 400, view, world);
+    expect(accepted.fillTexts.some((fill) => fill.text.includes(displayedDestination))).toBe(true);
+
+    world.simTimeMs += 5000;
+    const settled = createMockCtx();
+    drawDatablock(settled.ctx, ac, 400, 400, view, world);
+    expect(settled.fillTexts.some((fill) => fill.text.includes(displayedDestination))).toBe(false);
+  },
+);
 
 test("filtered track: datablock rectangle is not pickable; the target still selects", () => {
   const dal = sample("DAL123", "ac-dal", 0, 0);

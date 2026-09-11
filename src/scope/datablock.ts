@@ -738,6 +738,39 @@ export function withInboundHandoffCue(line1: string, handoff: TrackHandoff): str
   return line1;
 }
 
+/**
+ * Project the shared outbound handoff state into the existing Field 4/TCP
+ * display. Pending handoffs always show the destination; accepted handoffs
+ * retain it for the existing five-second receiver-TCP window. This keeps
+ * Center and Tower on the same datablock path without changing handoff state.
+ */
+export function handoffDatablockDisplay(
+  handoff: TrackHandoff,
+  localTcp: string,
+  simTimeMs: number,
+): Pick<DatablockRenderOpts, "handoffSectorId" | "tcp"> {
+  if (handoff.kind === "inbound" || handoff.kind === "departure") {
+    return {
+      handoffSectorId: localTcp,
+      tcp: handoff.kind === "inbound" ? localTcp : undefined,
+    };
+  }
+  if (
+    handoff.kind === "outbound" &&
+    (handoff.status !== "accepted" ||
+      (handoff.acceptedAtSimMs != null && simTimeMs < handoff.acceptedAtSimMs + 5000))
+  ) {
+    return { handoffSectorId: handoff.toSectorId };
+  }
+  if (handoff.kind === "pointout_inbound") {
+    return { handoffSectorId: handoff.fromSectorId };
+  }
+  if (handoff.kind === "pointout_outbound") {
+    return { handoffSectorId: handoff.toSectorId };
+  }
+  return {};
+}
+
 export interface DatablockRenderOpts {
   modeCVisible?: boolean;
   scratchpad?: string;
