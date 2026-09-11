@@ -1,5 +1,39 @@
 # Swarm status
 
+## EIGHTH SWARM EXIT BLOCKED — T02-149–153 canonical flight-plan association (2026-09-11)
+
+T02-149 through T02-153 are complete on `feat/flight-plan-lifecycle`. The
+flight plan's `associatedAircraftId` is now the sole plan/target relationship;
+reported aircraft squawks remain surveillance evidence; and correlation is
+aircraft-scoped, triggered only by a reported-squawk update. List construction,
+rendering, and periodic reads are association-read-only. Explicit F3/`+`,
+index, beacon, and ACID operations remain available. Lifecycle cleanup removes
+stale plan projections, while ownership remains separate from association.
+Pilot clearance execution, live transponder/surveillance input, replay/import
+adapters, and network/controller squawk feeds remain in
+`phases/LATER-IMPLEMENTATION-BACKLOG.md`.
+
+Captain fallback commits (the session had no callable worker-spawn tool, so
+these are not isolated-worker squash merges): T02-149 (`caa7ed8`, `9808f6b`,
+`85146bf`, `37e3e86`, `2868af8`), T02-150 (`0b2282c`), T02-151 (`c9851e7`),
+T02-152 (`a057a4f`), and T02-153 (`4fb906a`). Planning commits:
+`bf28c1b`, `5b2ba62`.
+
+Focused gates passed: T02-149 **46**, T02-150 **69**, T02-151 **39**,
+T02-152 **42**, and T02-153 **12** tests. Final `npm run ci` passed:
+**193 test files, 1,786 tests passed, 4 skipped**.
+
+Manual primary review: **PASS** against `/home/ben/Documents/stars refs/full_manual.pdf`:
+§2.12 pp. 2-58–2-70, §5.4.1 pp. 5-66–5-67, §5.5.7 pp. 5-116–5-119,
+§5.6.15 p. 5-164, §5.6.17 pp. 5-167–5-173, and Appendix D Table D-1 p. D-2.
+The aircraft-squawk event trigger is documented as an ATC-SIM trainer policy;
+the manual does not mandate background correlation.
+
+Independent manual verifier: **BLOCKED**. No callable subagent/independent
+verifier capability was available in this session, despite repeated attempts.
+No CRC or substitute source was used. Phase handoff remains blocked until the
+required independent verification can run.
+
 ## FIFTY-FIFTH SWARM COMPLETE — T02-140–142 ATPA status/color closeout
 
 T02-140–142 are complete on `fix/datablocks`. ATPA Alert now includes
