@@ -1467,3 +1467,17 @@ the manual-aligned `*` position symbol/LDB without callsign or aircraft type.
 Focused tests and `npm run ci` passed: **193 files, 1780 passed, 4 skipped, 0
 failures**. Manual review passed against Appendix D, §5.4.6, §2.12, and Table
 2-11 of `/home/ben/Documents/stars refs/full_manual.pdf`.
+
+## FIFTY-NINTH SWARM COMPLETE — F-prefix Preview routing
+
+Scope focus now treats the initial `F` as a tentative altitude-filter chord.
+Numeric continuation preserves the existing filter entry; a nonnumeric
+continuation cancels/restores the prior filter and reprocesses the chord plus
+continuation through Preview, allowing ACIDs such as `FFT123` to create
+pending plans. Added T02-148 focused coverage for F-prefixed creation and both
+filter limits.
+
+Focused tests passed: **34 passed**. Final `npm run ci` passed: **193 files,
+1782 passed, 4 skipped, 0 failures**. Manual primary review passed against
+TI 6191.409 Rev. 30 §4.11.2, pp. 4-78–4-79. No independent subagent was
+available in this session for the required second manual pass.
