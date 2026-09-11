@@ -11,7 +11,7 @@
  * Never a label, nametag, or tooltip. Not NAS STARS.
  */
 
-import type { Aircraft, TrackHandoff, World } from "@core";
+import { flightPlanForAircraft, type Aircraft, type TrackHandoff, type World } from "@core";
 import type { TrackDisplay } from "./trackDisplay";
 import { DATABLOCK_LINE_HEIGHT_PX, DEFAULT_DATABLOCK_CELL_PX } from "./fonts";
 import {
@@ -94,11 +94,7 @@ export function datablockSourceFromWorld(
   aircraft: Aircraft,
   track?: Pick<TrackDisplay, "squawk">,
 ): DatablockSource {
-  const plan = world.flightPlans.find(
-    (candidate) =>
-      candidate.status !== "deleted" &&
-      (candidate.id === aircraft.flightPlanId || candidate.associatedAircraftId === aircraft.id),
-  );
+  const plan = flightPlanForAircraft(world, aircraft.id);
   const reportedSquawk =
     plan?.reportedBeacon ?? track?.squawk ?? aircraft.reportedSquawk ?? aircraft.squawk;
   const assignedSquawk = plan?.assignedBeacon ?? aircraft.assignedSquawk;

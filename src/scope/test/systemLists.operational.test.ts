@@ -9,7 +9,6 @@ import {
   buildTabFlightPlanList,
   buildTowerArrivalList,
   buildVfrList,
-  correlateFlightPlans,
   deleteFlightPlanEntry,
   getFlightPlanEntries,
   handleFlightPlanListClick,
@@ -841,8 +840,8 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
     });
   });
 
-  describe("3. Automated Correlation & Purge", () => {
-    it("automatically correlates uncorrelated target when discrete squawk matches pending plan", () => {
+  describe("3. Event-driven Correlation & Purge", () => {
+    it("does not correlate while building or rendering the flight-plan list", () => {
       const world = createWorld();
       const view = createScopeView();
 
@@ -875,20 +874,11 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       td.datablockMode = "partial";
       td.ownership = "unowned";
 
-      // Correlate
-      const correlated = correlateFlightPlans(world, view);
-      expect(correlated).toHaveLength(1);
-      expect(correlated[0]!.callsign).toBe("AAL123");
-
-      // Target upgrades to Full Data Block (FDB)
-      expect(td.datablockMode).toBe("full");
-      expect(td.unassociated).toBe(false);
-      expect(td.ownership).toBe("owned");
-      expect(target.callsign).toBe("AAL123");
-
-      // Corresponding entry immediately purged from FL
-      const linesAfter = buildTabFlightPlanList(world, 10, view);
-      expect(linesAfter.some((l) => l.includes("AAL123"))).toBe(false);
+      buildTabFlightPlanList(world, 10, view);
+      expect(td.datablockMode).toBe("partial");
+      expect(td.unassociated).toBe(true);
+      expect(target.callsign).toBe("1234");
+      expect(buildTabFlightPlanList(world, 10, view).some((l) => l.includes("AAL123"))).toBe(true);
     });
 
     it("does not automatically correlate non-discrete (1200 VFR) squawks", () => {
@@ -917,8 +907,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       const td = ensureTrackDisplay(view.tracks, target.id);
       td.unassociated = true;
 
-      const correlated = correlateFlightPlans(world, view);
-      expect(correlated).toHaveLength(0);
+      buildTabFlightPlanList(world, 10, view);
       expect(td.unassociated).toBe(true);
     });
   });

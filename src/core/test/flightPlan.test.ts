@@ -161,11 +161,9 @@ test("modification updates the authoritative plan and associated datablock field
   const aircraft = makeTestAircraft({ id: "ac-1", callsign: "DAL123", assignedSquawk: "0701" });
   const world = createWorld({ flightPlans: [made.value], aircraft: [aircraft] });
   made.value.associatedAircraftId = aircraft.id;
-  aircraft.flightPlanId = made.value.id;
   const result = modifyFlightPlan(world, made.value.id, "acid", "UAL456");
   expect(result).toMatchObject({ ok: true, plan: { acid: "UAL456" } });
-  expect(aircraft.callsign).toBe("UAL456");
-  expect(aircraft.flightPlanId).toBe(made.value.id);
+  expect(aircraft.callsign).toBe("DAL123");
 });
 
 test("modification rejects duplicate beacon and active-only ETA", () => {
@@ -200,14 +198,11 @@ test("deleting an associated plan releases identity and leaves target unassociat
   });
   const world = createWorld({ flightPlans: [made.value], aircraft: [aircraft] });
   made.value.associatedAircraftId = aircraft.id;
-  aircraft.flightPlanId = made.value.id;
-  aircraft.flightPlan = { route: "FIXA" };
   const pose = { x: aircraft.xNm, y: aircraft.yNm };
   const result = deleteFlightPlanFromWorld(world, made.value.id);
   expect(result).toMatchObject({ ok: true, plan: { status: "deleted" } });
-  expect(aircraft.flightPlanId).toBeUndefined();
-  expect(aircraft.flightPlan).toBeUndefined();
-  expect(aircraft.assignedSquawk).toBeUndefined();
+  expect(world.flightPlans[0]!.associatedAircraftId).toBeUndefined();
+  expect(aircraft.assignedSquawk).toBe("0701");
   expect({ x: aircraft.xNm, y: aircraft.yNm }).toEqual(pose);
 });
 

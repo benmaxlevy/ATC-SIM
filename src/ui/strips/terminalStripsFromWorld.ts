@@ -1,4 +1,4 @@
-import { handoffFor, type Aircraft, type World } from "@core";
+import { flightPlanForAircraft, handoffFor, type Aircraft, type World } from "@core";
 import { compareCallsigns } from "./FlightStrips";
 import type { ArrivalStripData, CWTCategory, DepartureStripData } from "./types";
 
@@ -47,11 +47,7 @@ export function terminalStripsFromWorld(world: World): {
   const activeRunway = world.activeRunwayId ?? "";
 
   for (const ac of world.aircraft) {
-    const plan = world.flightPlans.find(
-      (candidate) =>
-        candidate.status !== "deleted" &&
-        (candidate.id === ac.flightPlanId || candidate.associatedAircraftId === ac.id),
-    );
+    const plan = flightPlanForAircraft(world, ac.id);
     const acid = plan?.acid ?? ac.callsign;
     const aircraftType = plan?.aircraftType ?? ac.aircraftType;
     const requestedAltitudeFt =

@@ -6,7 +6,6 @@
 
 import {
   associateFlightPlan as associateCoreFlightPlan,
-  correlateFlightPlans as correlateCoreFlightPlans,
   deleteFlightPlanFromWorld,
   type Aircraft,
   type ScheduledDeparture,
@@ -664,69 +663,6 @@ export function purgeFlightPlanEntry(
   }
 }
 
-export function correlateFlightPlans(world: World, view: ScopeView): FlightPlanEntry[] {
-  const correlated: FlightPlanEntry[] = [];
-
-  // Authoritative plans correlate in core. Association upgrades the FDB but
-  // does not claim controller ownership (F3 remains a separate trainer stub).
-  const authoritativeResults = correlateCoreFlightPlans(world);
-  for (const result of authoritativeResults) {
-    if (!result.ok) continue;
-    const td = ensureTrackDisplay(view.tracks, result.aircraftId);
-    td.unassociated = false;
-    td.datablockMode = "full";
-    td.tracked = true;
-    correlated.push({
-      index: 0,
-      callsign: result.plan.acid,
-      squawk: result.plan.assignedBeacon ?? result.plan.reportedBeacon ?? "1200",
-      aircraftId: result.aircraftId,
-      planId: result.plan.id,
-    });
-  }
-  // Existing scheduled-departure records predate authoritative flight plans.
-  // Keep their legacy adapter until that source is migrated.
-  if (world.flightPlans.some((plan) => plan.status === "pending") || correlated.length > 0) {
-    return correlated;
-  }
-
-  const entries = getFlightPlanEntries(world, view);
-
-  for (const entry of entries) {
-    for (const ac of world.aircraft) {
-      const td = ensureTrackDisplay(view.tracks, ac.id);
-      const isUncorrelated =
-        td.unassociated === true || (td.ownership !== "owned" && td.datablockMode !== "full");
-      if (!isUncorrelated) {
-        continue;
-      }
-
-      const acSquawk = (ac.squawk || td.squawk || "1200").padStart(4, "0");
-      const isDiscreteSquawk = acSquawk !== "1200";
-      const squawkMatches = isDiscreteSquawk && acSquawk === entry.squawk;
-      const callsignMatches = ac.callsign.toUpperCase() === entry.callsign.toUpperCase();
-
-      if (squawkMatches || (callsignMatches && isDiscreteSquawk)) {
-        // Upgrade target data block to Full Data Block (FDB) / associate
-        ac.callsign = entry.callsign;
-        ac.assignedSquawk = entry.squawk;
-        ac.squawk = entry.squawk;
-
-        td.unassociated = false;
-        td.datablockMode = "full";
-        td.ownership = "owned";
-        td.tracked = true;
-
-        purgeFlightPlanEntry(world, view, entry);
-        correlated.push(entry);
-        break;
-      }
-    }
-  }
-
-  return correlated;
-}
-
 export function associateFlightPlanToTrack(
   world: World,
   view: ScopeView,
@@ -761,17 +697,7 @@ export function associateFlightPlanToTrack(
     return true;
   }
 
-  ac.callsign = entry.callsign;
-  ac.assignedSquawk = entry.squawk;
-  ac.squawk = entry.squawk;
-
-  td.unassociated = false;
-  td.datablockMode = "full";
-  td.ownership = "owned";
-  td.tracked = true;
-
-  purgeFlightPlanEntry(world, view, entry);
-  return true;
+  return false;
 }
 
 export function deleteFlightPlanEntry(world: World, view: ScopeView, index: number): boolean {
@@ -992,9 +918,6 @@ export function buildTabFlightPlanList(
   view?: ScopeView,
   offset?: number,
 ): string[] {
-  if (view) {
-    correlateFlightPlans(world, view);
-  }
   const entries = getFlightPlanEntries(world, view);
   const state = ensureFlightPlanListState(view);
   const effectiveOffset =

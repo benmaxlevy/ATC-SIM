@@ -838,7 +838,6 @@ export {
   cancelListDrag,
   canonicalSystemListId,
   commitListDrag,
-  correlateFlightPlans,
   deleteFlightPlanEntry,
   dropTowerListEntry,
   dropVfrListEntry,

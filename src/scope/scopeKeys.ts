@@ -488,10 +488,6 @@ function applyPreviewArmedAction(
       if (result.ok && associatedAircraftId && plan.status === "suspended") {
         const aircraft = world.aircraft.find((item) => item.id === associatedAircraftId);
         if (aircraft) {
-          delete aircraft.assignedSquawk;
-          delete aircraft.flightPlanId;
-          delete aircraft.flightPlan;
-          delete aircraft.fp;
           const td = ensureTrackDisplay(view.tracks, associatedAircraftId);
           delete td.squawk;
           td.unassociated = true;

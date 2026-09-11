@@ -916,7 +916,11 @@ export function drawDatablock(
     return;
   }
   ctx.font = datablockFontCss(view.charSizes.dataBlocks);
-  const derived = deriveScratchpads(ac, td);
+  const derived = deriveScratchpads(
+    ac,
+    td,
+    world.flightPlans.find((plan) => plan.associatedAircraftId === ac.id)?.scratchpads,
+  );
   const mode = visual.mode;
   const isQueried = td ? isTrackQueried(td, world.simTimeMs) : false;
   const squawk = td?.squawk ?? ac.squawk;
@@ -1180,7 +1184,11 @@ export function drawTracks(
     const visual = getDatablockVisualState(view, world, ac);
     if (!visual.visible) return [];
     const mode = visual.mode;
-    const derived = deriveScratchpads(ac, td);
+    const derived = deriveScratchpads(
+      ac,
+      td,
+      world.flightPlans.find((plan) => plan.associatedAircraftId === ac.id)?.scratchpads,
+    );
     const handoff = handoffFor(world, ac.id);
     const handoffDisplay = handoffDatablockDisplay(handoff, view.sectorId, world.simTimeMs);
     const squawk = td?.squawk ?? ac.squawk;

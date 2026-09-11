@@ -38,6 +38,7 @@ export type {
   FlightPlanCorrelationError,
   FlightPlanCorrelationErrorCode,
   FlightPlanCorrelationResult,
+  AircraftSquawkUpdate,
   FlightPlanResult,
   FlightPlanModificationField,
   FlightPlanModificationValue,
@@ -48,11 +49,12 @@ export type {
 export {
   allocateBeaconCode,
   associateFlightPlan,
-  correlateFlightPlans,
+  correlateFlightPlanForAircraft,
   createActiveFlightPlanFromTarget,
   createFlightPlan,
   deleteFlightPlan,
   deleteFlightPlanFromWorld,
+  flightPlanForAircraft,
   isValidAcid,
   isValidBeaconCode,
   modifyFlightPlan,
@@ -60,6 +62,7 @@ export {
   transitionFlightPlan,
   validateFlightPlan,
   withAllocatedBeacon,
+  updateAircraftSquawk,
 } from "./flightPlan";
 export {
   TRACON_BOUNDARY_RADIUS_NM,

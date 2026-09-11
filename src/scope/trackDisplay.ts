@@ -13,6 +13,7 @@ import {
   acceptPointout,
   convertPointoutToHandoff,
   deleteFlightPlanFromWorld,
+  flightPlanForAircraft,
   handoffFor,
   rejectPointout,
 } from "@core";
@@ -419,9 +420,10 @@ export function formatApproachShorthand(approachId: string | null | undefined): 
 export function deriveScratchpads(
   aircraft: Aircraft,
   td?: TrackDisplay,
+  planScratchpads?: readonly string[],
 ): { sp1: string; sp2: string } {
-  const planScratchpads = Array.isArray(aircraft.flightPlan?.scratchpads)
-    ? aircraft.flightPlan.scratchpads.filter((value): value is string => typeof value === "string")
+  const filedScratchpads = Array.isArray(planScratchpads)
+    ? planScratchpads.filter((value): value is string => typeof value === "string")
     : [];
   // Derive automatic SP1 (approach shorthand, or interim altitude if controller explicitly assigned one):
   const approachId =
@@ -442,16 +444,16 @@ export function deriveScratchpads(
   }
 
   let sp1 = autoSp1;
-  if (planScratchpads[0] != null && planScratchpads[0].length > 0) {
-    sp1 = sanitizeScratchpad(planScratchpads[0]);
+  if (filedScratchpads[0] != null && filedScratchpads[0].length > 0) {
+    sp1 = sanitizeScratchpad(filedScratchpads[0]);
   } else if (td?.manualSp1 != null && td.manualSp1.length > 0) {
     sp1 = sanitizeScratchpad(td.manualSp1);
   }
 
   // Derive automatic SP2 (only if controller explicitly gave a speed, not if locked by STAR/SID or default):
   let sp2 = "";
-  if (planScratchpads[1] != null && planScratchpads[1].length > 0) {
-    sp2 = sanitizeScratchpad(planScratchpads[1]);
+  if (filedScratchpads[1] != null && filedScratchpads[1].length > 0) {
+    sp2 = sanitizeScratchpad(filedScratchpads[1]);
   } else if (td?.manualSp2 != null && td.manualSp2.length > 0) {
     sp2 = sanitizeScratchpad(td.manualSp2);
   } else if (
@@ -759,9 +761,7 @@ export function terminateTrackWithPlan(
   if (!aircraft) {
     return { applied: false, hint: NO_SEL_HINT };
   }
-  const plan = world.flightPlans.find(
-    (item) => item.id === aircraft.flightPlanId || item.associatedAircraftId === aircraftId,
-  );
+  const plan = flightPlanForAircraft(world, aircraftId);
   if (plan) {
     deleteFlightPlanFromWorld(world, plan.id);
   }

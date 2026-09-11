@@ -123,7 +123,7 @@ describe("T02-147 authoritative flight-plan display lifecycle", () => {
     ];
     expect(deleteFlightPlanFromWorld(world, made.value.id).ok).toBe(true);
     expect(world.flightPlans[0]?.status).toBe("deleted");
-    expect(aircraft.flightPlanId).toBeUndefined();
+    expect(world.flightPlans[0]?.associatedAircraftId).toBeUndefined();
     expect([
       aircraft.xNm,
       aircraft.yNm,

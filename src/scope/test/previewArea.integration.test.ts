@@ -151,8 +151,7 @@ test("T02-145 — explicit ACID slew associates the authoritative plan", () => {
     status: "active",
     associatedAircraftId: target.id,
   });
-  expect(target.callsign).toBe("DAL456");
-  expect(target.flightPlanId).toBe("fp-acid-slew");
+  expect(target.callsign).toBe("1234");
 });
 
 test("T02-145 — explicit beacon slew associates the authoritative plan", () => {
@@ -178,8 +177,7 @@ test("T02-145 — explicit beacon slew associates the authoritative plan", () =>
     status: "active",
     associatedAircraftId: target.id,
   });
-  expect(target.callsign).toBe("AAL789");
-  expect(target.flightPlanId).toBe("fp-beacon-slew");
+  expect(target.callsign).toBe("5678");
 });
 
 test("F4 and TERM CNTL share termination semantics", () => {
@@ -193,7 +191,6 @@ test("F4 and TERM CNTL share termination semantics", () => {
     });
     if (!plan.ok) throw new Error(plan.error.message);
     const target = makeTestAircraft({ id: `ac-term-${id}`, callsign: "DAL456" });
-    target.flightPlanId = plan.value.id;
     plan.value.status = "active";
     plan.value.associatedAircraftId = target.id;
     return { target, world: createWorld({ flightPlans: [plan.value], aircraft: [target] }) };
@@ -213,7 +210,7 @@ test("F4 and TERM CNTL share termination semantics", () => {
   for (const result of [direct, typed]) {
     const td = (result === direct ? directView : typedView).tracks.get(result.target.id)!;
     expect(result.world.flightPlans[0]?.status).toBe("deleted");
-    expect(result.world.aircraft[0]?.flightPlanId).toBeUndefined();
+    expect(result.world.flightPlans[0]?.associatedAircraftId).toBeUndefined();
     expect(td).toMatchObject({
       ownership: "unowned",
       datablockMode: "partial",
