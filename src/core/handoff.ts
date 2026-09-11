@@ -20,6 +20,7 @@ import type { World } from "./world";
 export const DEFAULT_INBOUND_SECTOR_ID = "C";
 export const DEFAULT_CENTER_SECTOR_ID = "C";
 export const DEFAULT_TOWER_SECTOR_ID = "TWR";
+export const CENTER_HANDOFF_AUTO_ACCEPT_DELAY_MS = 5000;
 
 /** Stable `command.rejected` reason while inbound HO is pending. */
 export const HANDOFF_PENDING_REASON = "handoff-pending";
@@ -113,6 +114,7 @@ export function offerDepartureHandoff(
 /** Authored / downwind bench: commandable without HO. */
 export function setHandoffNone(world: World, aircraftId: string): void {
   world.handoffs.set(aircraftId, { kind: "none" });
+  world.outboundHandoffInitiatedAtSimMs.delete(aircraftId);
 }
 
 /**
@@ -192,6 +194,11 @@ export function initiateCenterHandoff(
 ): boolean {
   if (ctx.world) {
     ctx.world.handoffs.set(ac.id, { kind: "outbound", toSectorId });
+    if (toSectorId === DEFAULT_CENTER_SECTOR_ID) {
+      ctx.world.outboundHandoffInitiatedAtSimMs.set(ac.id, ctx.simTimeMs);
+    } else {
+      ctx.world.outboundHandoffInitiatedAtSimMs.delete(ac.id);
+    }
   }
   ctx.log?.append({
     type: "handoff.center",
@@ -230,6 +237,7 @@ export function acceptOutboundHandoff(world: World, aircraftId: string, atWallMs
     acceptedAtSimMs: world.simTimeMs,
     clickCount: 0,
   });
+  world.outboundHandoffInitiatedAtSimMs.delete(aircraftId);
   world.sessionLog?.append({
     type: "handoff.outbound.accepted",
     atSimMs: world.simTimeMs,

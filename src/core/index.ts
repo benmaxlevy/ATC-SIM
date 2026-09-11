@@ -42,6 +42,7 @@ export {
 } from "./world";
 export type { CenterHandoffContext, TrackHandoff } from "./handoff";
 export {
+  CENTER_HANDOFF_AUTO_ACCEPT_DELAY_MS,
   DEFAULT_CENTER_SECTOR_ID,
   DEFAULT_INBOUND_SECTOR_ID,
   DEFAULT_TOWER_SECTOR_ID,

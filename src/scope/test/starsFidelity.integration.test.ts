@@ -7,6 +7,7 @@ import {
   initiateCenterHandoff,
   acceptOutboundHandoff,
   offerPointout,
+  stepWorld,
 } from "@core";
 import {
   PALETTE,
@@ -474,6 +475,55 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       expect(rendered.fillTexts.some((entry) => entry.text.includes(" C "))).toBe(true);
       expect(view.tracks.get(ac.id)?.ownership).toBe("center");
       expect(handoffFor(world, ac.id)).toEqual({ kind: "outbound", toSectorId: "C" });
+    });
+
+    test("T02-136 auto-accepts Center C after five simulated seconds and keeps the accepted UI", () => {
+      const log = new SessionLog();
+      const ac = createAircraft({
+        id: "ac-auto-center-ui",
+        callsign: "DAL136",
+        xNm: 15,
+        yNm: 10,
+        headingDeg: 45,
+        altitudeFt: 9000,
+        speedKt: 260,
+      });
+      const world = createWorld({ aircraft: [ac], sessionLog: log, simTimeMs: 1000 });
+      const view = createScopeView();
+      syncTrackDisplays(view.tracks, world);
+      world.selectedAircraftId = ac.id;
+
+      expect(applyHandoffToSelection(view.tracks, world)).toEqual({
+        applied: true,
+        target: "center",
+        hint: null,
+      });
+      stepWorld(world, 4.999);
+      expect(handoffFor(world, ac.id)).toEqual({ kind: "outbound", toSectorId: "C" });
+      expect(log.byType("handoff.outbound.accepted")).toHaveLength(0);
+
+      stepWorld(world, 0.001);
+      expect(handoffFor(world, ac.id)).toMatchObject({
+        kind: "outbound",
+        toSectorId: "C",
+        status: "accepted",
+        acceptedAtSimMs: 6000,
+      });
+      expect(log.byType("handoff.outbound.accepted")).toHaveLength(1);
+      expect(getDatablockVisualState(view, world, ac)).toMatchObject({
+        color: PALETTE.owned,
+        leaderColor: PALETTE.owned,
+        mode: "full",
+      });
+
+      world.simTimeMs = 6400;
+      expect(getDatablockVisualState(view, world, ac).visible).toBe(true);
+      world.simTimeMs = 11001;
+      const settled = createMockCtx();
+      renderScope(settled.ctx, world, view, 800, 800);
+      expect(settled.fillTexts.some((entry) => entry.text === "DAL136")).toBe(true);
+      expect(settled.fillTexts.some((entry) => entry.text.includes(" C "))).toBe(false);
+      expect(view.tracks.get(ac.id)?.ownership).toBe("center");
     });
 
     test("pointout lifecycle: offer, accept, UN reject, ** convert, and F4 drop track", () => {

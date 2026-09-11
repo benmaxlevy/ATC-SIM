@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { SessionLog, createAircraft, createWorld } from "../index";
+import { SIM_DT_S, SessionLog, createAircraft, createWorld, stepWorld } from "../index";
 import {
   DEFAULT_INBOUND_SECTOR_ID,
   HANDOFF_PENDING_REASON,
@@ -240,6 +240,58 @@ test("T02-37 AC2 — acceptOutboundHandoff transitions outbound state to accepte
     atSimMs: 15000,
     atWallMs: 25,
   });
+});
+
+test("T02-136 auto-accepts initiated Center C handoff at five simulated seconds once", () => {
+  const ac = createAircraft({
+    id: "ac-auto-center",
+    callsign: "UAL136",
+    xNm: 15,
+    yNm: 10,
+    headingDeg: 45,
+    altitudeFt: 8000,
+    speedKt: 250,
+  });
+  const log = new SessionLog();
+  const world = createWorld({ aircraft: [ac], sessionLog: log, simTimeMs: 1000 });
+  initiateCenterHandoff(ac, { world, log, simTimeMs: world.simTimeMs }, "C");
+
+  stepWorld(world, 4.999);
+  expect(handoffFor(world, ac.id)).toEqual({ kind: "outbound", toSectorId: "C" });
+  expect(log.byType("handoff.outbound.accepted")).toHaveLength(0);
+
+  stepWorld(world, 0.001);
+  expect(world.simTimeMs).toBeCloseTo(6000, 8);
+  expect(handoffFor(world, ac.id)).toMatchObject({
+    kind: "outbound",
+    toSectorId: "C",
+    status: "accepted",
+    acceptedAtSimMs: 6000,
+  });
+  expect(log.byType("handoff.outbound.accepted")).toHaveLength(1);
+
+  stepWorld(world, SIM_DT_S);
+  expect(log.byType("handoff.outbound.accepted")).toHaveLength(1);
+  expect(world.aircraft).toHaveLength(1);
+});
+
+test("T02-136 does not auto-accept a non-C outbound handoff", () => {
+  const ac = createAircraft({
+    id: "ac-other-center",
+    callsign: "DAL136",
+    xNm: 15,
+    yNm: 10,
+    headingDeg: 45,
+    altitudeFt: 8000,
+    speedKt: 250,
+  });
+  const log = new SessionLog();
+  const world = createWorld({ aircraft: [ac], sessionLog: log });
+  initiateCenterHandoff(ac, { world, log, simTimeMs: world.simTimeMs }, "Z");
+
+  stepWorld(world, 5);
+  expect(handoffFor(world, ac.id)).toEqual({ kind: "outbound", toSectorId: "Z" });
+  expect(log.byType("handoff.outbound.accepted")).toHaveLength(0);
 });
 
 test("T02-37 AC3 / AC4 — pointout lifecycle: offer, accept, reject, and convert to handoff", () => {
