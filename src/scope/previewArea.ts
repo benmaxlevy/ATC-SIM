@@ -32,6 +32,7 @@ import {
   SUFFIX_CALLSIGN,
   isTrackingSlewAction,
   parseCaCommand,
+  parseFlightPlanCreation,
   parsePreviewCommand,
   parseTrackingSlewBuffer,
   previewBufferCharFromKey,
@@ -46,6 +47,7 @@ export {
   parseAltitudeFilterCommand,
   parseBeaconFilterCommand,
   parseCaCommand,
+  parseFlightPlanCreation,
   parsePreviewCommand,
   parseScopeDisplayCommand,
   parseTrackingCommand,
@@ -508,6 +510,13 @@ export function handlePreviewFlidKey(
       const next = state.flid.slice(0, -1);
       state.flid = next.length > 0 ? next : null;
     }
+    state.lastKeyAtMs = nowMs;
+    return { consumed: true };
+  }
+  if (key === " " && state.armed.type === "initCntl" && state.flid) {
+    state.phase = "entry";
+    state.buffer = `${state.flid} `;
+    state.flid = null;
     state.lastKeyAtMs = nowMs;
     return { consumed: true };
   }
@@ -977,6 +986,11 @@ export function handlePreviewBufferKey(
     if (parsed.kind === "action") {
       cancelPreviewArea(state);
       return { consumed: true, action: parsed.action };
+    }
+    const creation = parseFlightPlanCreation(state.buffer, state.armed?.type === "initCntl");
+    if (creation.kind === "action") {
+      cancelPreviewArea(state);
+      return { consumed: true, action: creation.action };
     }
     if (parsed.kind === "invalid") {
       rejectPreviewArea(state, nowMs);

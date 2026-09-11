@@ -33,6 +33,21 @@ import type { VipLevel } from "./wx";
  * Do not put F3-specific field names on ScopeView.
  */
 export type PreviewArmedAction =
+  | {
+      readonly type: "createFlightPlan";
+      pendingDiscrete: boolean;
+      acid: string;
+      assignedBeacon?: string;
+      tcp?: string;
+      flightType?: "A" | "P" | "E";
+      airportId?: string;
+      scratchpads: string[];
+      aircraftType?: string;
+      aircraftCount?: number;
+      equipment?: string;
+      requestedAltitudeFt?: number;
+      flightRules?: string;
+    }
   | { readonly type: "initCntl"; readonly flid?: string }
   | { readonly type: "termCntl"; readonly flid?: string }
   | { readonly type: "beaconBlock"; readonly digits: string }
@@ -144,6 +159,102 @@ const PREVIEW_TABLE: Readonly<Record<string, PreviewTableEntry>> = {
 export const FULL_CALLSIGN = /^[A-Z]{3}[0-9]{1,4}[A-Z]?$/;
 export const SUFFIX_CALLSIGN = /^[0-9]{1,4}[A-Z]?$/;
 export const SQUAWK_CODE = /^[0-9]{4}$/;
+const CREATION_ACID = /^[A-Z][A-Z0-9]{1,6}$/;
+const SCRATCHPAD = /^[A][A-Z0-9+/. *]{0,4}$/;
+const SCRATCHPAD_2 = /^\+[A-Z0-9+/. *]{0,4}$/;
+const AIRCRAFT = /^(?:(\d{1,2})\/)?([A-Z][A-Z0-9]{1,3})(?:\/([A-Z]))?$/;
+
+export type FlightPlanCreationParse =
+  | { kind: "incomplete" }
+  | { kind: "invalid"; reason: string }
+  | { kind: "action"; action: Extract<PreviewArmedAction, { type: "createFlightPlan" }> };
+
+/** Keyboard-only abbreviated creation grammar from TI 6191.409 §§5.5.1/5.5.7. */
+export function parseFlightPlanCreation(
+  buffer: string,
+  pendingDiscrete = false,
+): FlightPlanCreationParse {
+  const tokens = buffer.trim().toUpperCase().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return { kind: "incomplete" };
+  const acid = tokens[0]!;
+  if (!CREATION_ACID.test(acid)) return { kind: "invalid", reason: "FORMAT" };
+  if (tokens.length === 1 && pendingDiscrete) return { kind: "incomplete" };
+  const fields: Extract<PreviewArmedAction, { type: "createFlightPlan" }> = {
+    type: "createFlightPlan",
+    pendingDiscrete,
+    acid,
+    scratchpads: [],
+  };
+  const used = new Set<string>();
+  for (const token of tokens.slice(1)) {
+    if (SQUAWK_CODE.test(token)) {
+      if (used.has("beacon")) return { kind: "invalid", reason: "FORMAT" };
+      fields.assignedBeacon = token;
+      used.add("beacon");
+      continue;
+    }
+    if (/^[A-Z0-9][A-Z0-9]$/.test(token) && !/^[APE]/.test(token)) {
+      if (used.has("tcp")) return { kind: "invalid", reason: "FORMAT" };
+      fields.tcp = token;
+      used.add("tcp");
+      continue;
+    }
+    if (/^[APE][A-Z0-9]?$/.test(token)) {
+      if (used.has("type")) return { kind: "invalid", reason: "FORMAT" };
+      fields.flightType = token[0] as "A" | "P" | "E";
+      fields.airportId = token.length === 2 ? token[1] : undefined;
+      used.add("type");
+      continue;
+    }
+    if (SCRATCHPAD.test(token)) {
+      if (used.has("sp1")) return { kind: "invalid", reason: "ILL SCR" };
+      const value = token.slice(1);
+      if (/^(NAT|CST|AMB|RDR|ADB|XXX|\d{3})/.test(value))
+        return { kind: "invalid", reason: "ILL SCR" };
+      fields.scratchpads = [value, ...fields.scratchpads.slice(1)];
+      used.add("sp1");
+      continue;
+    }
+    if (SCRATCHPAD_2.test(token)) {
+      if (used.has("sp2")) return { kind: "invalid", reason: "ILL SCR" };
+      const value = token.slice(1);
+      if (/^(NAT|CST|AMB|RDR|ADB|XXX|\d{3})/.test(value))
+        return { kind: "invalid", reason: "ILL SCR" };
+      fields.scratchpads = [fields.scratchpads[0] ?? "", value];
+      used.add("sp2");
+      continue;
+    }
+    if (/^\d{3}$/.test(token)) {
+      if (used.has("alt")) return { kind: "invalid", reason: "FORMAT" };
+      fields.requestedAltitudeFt = Number(token) * 100;
+      used.add("alt");
+      continue;
+    }
+    if (/^\.[A-Z]$/.test(token)) {
+      if (used.has("rules")) return { kind: "invalid", reason: "ILL VALUE" };
+      fields.flightRules = token[1];
+      used.add("rules");
+      continue;
+    }
+    const aircraft = AIRCRAFT.exec(token);
+    if (aircraft) {
+      if (used.has("aircraft")) return { kind: "invalid", reason: "FORMAT" };
+      fields.aircraftCount = aircraft[1] ? Number(aircraft[1]) : undefined;
+      if (
+        fields.aircraftCount !== undefined &&
+        (fields.aircraftCount < 2 || fields.aircraftCount > 99)
+      )
+        return { kind: "invalid", reason: "ILL NUM" };
+      fields.aircraftType = aircraft[2];
+      fields.equipment = aircraft[3];
+      used.add("aircraft");
+      continue;
+    }
+    return { kind: "invalid", reason: "FORMAT" };
+  }
+  if (pendingDiscrete && !fields.assignedBeacon) return { kind: "invalid", reason: "FORMAT" };
+  return { kind: "action", action: fields };
+}
 
 function invalid(reason: string): PreviewCommandResult {
   return { kind: "invalid", reason };

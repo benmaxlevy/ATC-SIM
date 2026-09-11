@@ -24,6 +24,10 @@ export interface FlightPlan {
   requestedAltitudeFt?: number;
   assignedAltitudeFt?: number;
   equipment?: string;
+  aircraftType?: string;
+  aircraftCount?: number;
+  airportId?: string;
+  flightRules?: string;
   source?: string;
 }
 

@@ -23,7 +23,7 @@
  * discrete range presets — no zoom-to-cursor (R12). Not NAS STARS.
  */
 
-import type { World } from "@core";
+import { createFlightPlan, type World } from "@core";
 import {
   beginFilterEntry,
   cancelFilterEntry,
@@ -305,6 +305,48 @@ function applyPreviewArmedAction(
     return;
   }
   switch (action.type) {
+    case "createFlightPlan": {
+      if (!world) return;
+      if (world.flightPlans.filter((plan) => plan.status !== "deleted").length >= 100) {
+        view.preview.rejection = "CAPACITY — FP";
+        return;
+      }
+      const result = createFlightPlan(
+        {
+          id: `fp-${world.simTimeMs}-${world.flightPlans.length}`,
+          status: "pending",
+          acid: action.acid,
+          assignedBeacon: action.assignedBeacon,
+          tcp: action.tcp,
+          flightType:
+            action.flightType === "A" ? "IFR" : action.flightType === "P" ? "IFR" : undefined,
+          airportId: action.airportId,
+          fixes: [],
+          scratchpads: action.scratchpads.filter((value) => value.length > 0),
+          aircraftType: action.aircraftType,
+          aircraftCount: action.aircraftCount,
+          equipment: action.equipment,
+          requestedAltitudeFt: action.requestedAltitudeFt,
+          flightRules: action.flightRules,
+        },
+        world.flightPlans,
+      );
+      if (!result.ok) {
+        view.preview.rejection =
+          result.error.code === "DUPLICATE_ACID"
+            ? "DUP ID"
+            : result.error.code === "DUPLICATE_BEACON"
+              ? "DUP BCN"
+              : "FORMAT";
+        return;
+      }
+      if (action.pendingDiscrete && !result.value.assignedBeacon) {
+        view.preview.rejection = "CAPACITY — BCN";
+        return;
+      }
+      world.flightPlans.push(result.value);
+      return;
+    }
     case "toggleList":
       toggleSystemList(view, action.listId);
       cancelStarsChordEntry(view.starsChordEntry);

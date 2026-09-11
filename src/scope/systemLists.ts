@@ -507,7 +507,17 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
 
   const seenCallsigns = new Set<string>();
 
-  // 1. Pending/proposed departures: world.scheduledDepartures where !spawned
+  // 1. Authoritative local plans. Deleted plans are not list entries.
+  for (const plan of world.flightPlans) {
+    if (plan.status === "deleted" || seenCallsigns.has(plan.acid)) continue;
+    seenCallsigns.add(plan.acid);
+    rawItems.push({
+      callsign: plan.acid,
+      squawk: plan.assignedBeacon ?? plan.reportedBeacon ?? "1200",
+    });
+  }
+
+  // 2. Pending/proposed departures: world.scheduledDepartures where !spawned
   if (world.scheduledDepartures) {
     for (let i = 0; i < world.scheduledDepartures.length; i++) {
       const dep = world.scheduledDepartures[i]!;
@@ -532,7 +542,7 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
     }
   }
 
-  // 2. Unassociated tracks: td.unassociated === true or untracked non-VFR aircraft
+  // 3. Unassociated tracks: td.unassociated === true or untracked non-VFR aircraft
   if (world.aircraft) {
     for (let i = 0; i < world.aircraft.length; i++) {
       const ac = world.aircraft[i]!;
@@ -586,7 +596,7 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
     }
   }
 
-  // 3. Assign stable quick-action indices
+  // 4. Assign stable quick-action indices
   const usedIndices = new Set<number>();
   for (const item of rawItems) {
     if (item.requestedIndex !== undefined) {
