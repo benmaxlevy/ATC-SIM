@@ -7,6 +7,7 @@
 import {
   associateFlightPlan as associateCoreFlightPlan,
   correlateFlightPlans as correlateCoreFlightPlans,
+  deleteFlightPlanFromWorld,
   type Aircraft,
   type ScheduledDeparture,
   type World,
@@ -778,6 +779,10 @@ export function deleteFlightPlanEntry(world: World, view: ScopeView, index: numb
   const entry = entries.find((e) => e.index === index);
   if (!entry) {
     return false;
+  }
+  if (entry.planId) {
+    const deleted = deleteFlightPlanFromWorld(world, entry.planId);
+    if (!deleted.ok) return false;
   }
   purgeFlightPlanEntry(world, view, entry);
   return true;

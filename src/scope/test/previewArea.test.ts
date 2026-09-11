@@ -15,6 +15,7 @@ import { handlePpiLeftClick } from "../ppi";
 import { hasActiveUninhibitedConflict } from "../systemLists";
 import { associateFlightPlanToTrack, getFlightPlanEntries } from "../systemLists";
 import { ensureTrackDisplay, syncTrackDisplays } from "../trackDisplay";
+import { parsePreviewCommand as parsePreviewBuffer } from "../previewParse";
 
 function keyEvent(key: string, opts?: { ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean }) {
   return {
@@ -31,6 +32,18 @@ test("idle preview is not live", () => {
   const idle = idlePreviewArea();
   expect(idle.phase).toBe("idle");
   expect(previewAreaIsLive(idle)).toBe(false);
+});
+
+test("T02-146 — MULTI FUNC M parses identity, field, and value", () => {
+  expect(parsePreviewBuffer("*M DAL123 ACID UAL456")).toEqual({
+    kind: "action",
+    action: { type: "modifyFlightPlan", flid: "DAL123", field: "acid", value: "UAL456" },
+  });
+  expect(parsePreviewBuffer("*M DAL123 BCN 0701")).toMatchObject({
+    kind: "action",
+    action: { field: "assignedBeacon", value: "0701" },
+  });
+  expect(parsePreviewBuffer("*M DAL123 UNKNOWN X")).toEqual({ kind: "invalid", reason: "FORMAT" });
 });
 
 test("T02-145: INIT CNTL identity matches an unassociated authoritative plan", () => {

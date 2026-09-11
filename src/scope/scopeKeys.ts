@@ -23,7 +23,14 @@
  * discrete range presets — no zoom-to-cursor (R12). Not NAS STARS.
  */
 
-import { createFlightPlan, withAllocatedBeacon, type FlightPlan, type World } from "@core";
+import {
+  createFlightPlan,
+  deleteFlightPlanFromWorld,
+  modifyFlightPlan,
+  withAllocatedBeacon,
+  type FlightPlan,
+  type World,
+} from "@core";
 import {
   beginFilterEntry,
   cancelFilterEntry,
@@ -391,6 +398,37 @@ function applyPreviewArmedAction(
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;
       return;
+    case "modifyFlightPlan": {
+      if (!world) return;
+      const plans = world.flightPlans.filter(
+        (plan) =>
+          plan.status !== "deleted" &&
+          (plan.acid === action.flid || plan.assignedBeacon === action.flid),
+      );
+      if (plans.length !== 1) {
+        view.preview.rejection = plans.length === 0 ? "NO FLIGHT" : "FORMAT";
+        return;
+      }
+      let value: string | number | string[] = action.value;
+      if (action.field === "fixes" || action.field === "scratchpads")
+        value = action.value.split("/");
+      if (action.field === "requestedAltitudeFt" || action.field === "assignedAltitudeFt")
+        value = Number(action.value) * 100;
+      const result = modifyFlightPlan(world, plans[0]!.id, action.field, value);
+      if (!result.ok) {
+        view.preview.rejection =
+          result.error.code === "DUPLICATE_ACID"
+            ? "DUP ID"
+            : result.error.code === "DUPLICATE_BEACON"
+              ? "DUP BCN"
+              : result.error.code === "NO_FLIGHT"
+                ? "NO FLIGHT"
+                : "FORMAT";
+      }
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      return;
+    }
     case "armRelocateList":
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;
@@ -662,6 +700,14 @@ function applyPreviewCntl(
   if (apply.type === "initCntl") {
     applyInitiateTrackToId(view.tracks, world, apply.aircraftId);
   } else {
+    const aircraft = world.aircraft.find((item) => item.id === apply.aircraftId);
+    if (aircraft?.flightPlanId) {
+      deleteFlightPlanFromWorld(world, aircraft.flightPlanId);
+      const td = ensureTrackDisplay(view.tracks, apply.aircraftId);
+      td.unassociated = true;
+      td.datablockMode = "partial";
+      td.tracked = true;
+    }
     applyDropTrackToId(view.tracks, world, apply.aircraftId);
   }
 }
@@ -1044,6 +1090,15 @@ export function handleScopeKeyDown(
   }
   if (event.key === "F4") {
     if (world && selectedTrackId(world)) {
+      const aircraftId = selectedTrackId(world)!;
+      const aircraft = world.aircraft.find((item) => item.id === aircraftId);
+      if (aircraft?.flightPlanId) {
+        deleteFlightPlanFromWorld(world, aircraft.flightPlanId);
+        const td = ensureTrackDisplay(view.tracks, aircraftId);
+        td.unassociated = true;
+        td.datablockMode = "partial";
+        td.tracked = true;
+      }
       applyDropTrackToSelection(view.tracks, world);
       cancelPreviewArea(view.preview);
     } else {

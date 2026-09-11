@@ -51,6 +51,22 @@ export type PreviewArmedAction =
     }
   | { readonly type: "initCntl"; readonly flid?: string }
   | { readonly type: "termCntl"; readonly flid?: string }
+  | {
+      readonly type: "modifyFlightPlan";
+      readonly flid: string;
+      readonly field:
+        | "acid"
+        | "assignedBeacon"
+        | "tcp"
+        | "fixes"
+        | "flightType"
+        | "scratchpads"
+        | "requestedAltitudeFt"
+        | "assignedAltitudeFt"
+        | "eta"
+        | "ptd";
+      readonly value: string;
+    }
   | { readonly type: "beaconBlock"; readonly digits: string }
   | { readonly type: "beaconDiscrete"; readonly digits: string }
   | { readonly type: "toggleList"; readonly listId: string }
@@ -1091,6 +1107,63 @@ function parseDeleteCommand(buffer: string): PreviewCommandResult | null {
 }
 
 /**
+ * Analog: CRC MULTI FUNC M flight-plan field edit (TI 6191.409 §5.6.17).
+ * Trainer delta: identity + field + value are committed in one typed preview
+ * row; no radio clearance, Command IR, or pilot intent is emitted.
+ */
+function parseFlightPlanModification(buffer: string): PreviewCommandResult | null {
+  const tokens = buffer.trim().toUpperCase().split(/\s+/).filter(Boolean);
+  if (tokens[0] !== "*M") return null;
+  if (tokens.length < 4) return { kind: "incomplete" };
+  const fields = new Set([
+    "ACID",
+    "BCN",
+    "TCP",
+    "FIXES",
+    "TYPE",
+    "SP",
+    "RALT",
+    "AALT",
+    "ETA",
+    "PTD",
+  ]);
+  if (!fields.has(tokens[2]!)) return invalid("FORMAT");
+  const aliases: Record<
+    string,
+    | "acid"
+    | "assignedBeacon"
+    | "tcp"
+    | "fixes"
+    | "flightType"
+    | "scratchpads"
+    | "requestedAltitudeFt"
+    | "assignedAltitudeFt"
+    | "eta"
+    | "ptd"
+  > = {
+    ACID: "acid",
+    BCN: "assignedBeacon",
+    TCP: "tcp",
+    FIXES: "fixes",
+    TYPE: "flightType",
+    SP: "scratchpads",
+    RALT: "requestedAltitudeFt",
+    AALT: "assignedAltitudeFt",
+    ETA: "eta",
+    PTD: "ptd",
+  };
+  return {
+    kind: "action",
+    action: {
+      type: "modifyFlightPlan",
+      flid: tokens[1]!,
+      field: aliases[tokens[2]!]!,
+      value: tokens.slice(3).join(" "),
+    },
+  };
+}
+
+/**
  * Authentic Raytheon STARS Conflict Alert preview grammar (TI 6191.409 Sections 7.3, 7.9–7.12).
  * - `CA K <trk>`: Single-track inhibit toggle.
  * - `CA P <trk1> [<trk2>]`: Pair inhibit/enable toggle. If trk2 omitted, waits for slew click on track 2.
@@ -1183,6 +1256,8 @@ export function parsePreviewCommand(
   if (del) {
     return del;
   }
+  const modification = parseFlightPlanModification(buffer);
+  if (modification) return modification;
   const ca = parseCaCommand(buffer);
   if (ca) {
     return ca;

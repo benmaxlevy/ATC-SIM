@@ -29,6 +29,8 @@ export interface FlightPlan {
   aircraftCount?: number;
   airportId?: string;
   flightRules?: string;
+  eta?: string;
+  ptd?: string;
   source?: string;
   /** Why the plan is suspended; drives STARS mismatch unsuspend behavior. */
   suspensionReason?: FlightPlanSuspensionReason;
@@ -70,6 +72,41 @@ export interface FlightPlanCorrelationError {
 export type FlightPlanCorrelationResult =
   | { ok: true; plan: FlightPlan; aircraftId: string }
   | { ok: false; error: FlightPlanCorrelationError };
+
+export type FlightPlanModificationField =
+  | "acid"
+  | "assignedBeacon"
+  | "tcp"
+  | "fixes"
+  | "flightType"
+  | "scratchpads"
+  | "requestedAltitudeFt"
+  | "assignedAltitudeFt"
+  | "eta"
+  | "ptd";
+
+export type FlightPlanModificationValue = string | number | string[] | undefined;
+
+export type FlightPlanModificationErrorCode =
+  | "PLAN_NOT_FOUND"
+  | "NO_FLIGHT"
+  | "DUPLICATE_ACID"
+  | "DUPLICATE_BEACON"
+  | "INVALID_ACID"
+  | "INVALID_BEACON"
+  | "INVALID_FIELD"
+  | "INVALID_VALUE"
+  | "TRACK_OWNERSHIP";
+
+export interface FlightPlanModificationError {
+  code: FlightPlanModificationErrorCode;
+  field: FlightPlanModificationField | "plan";
+  value?: string;
+  message: string;
+}
+
+export type FlightPlanModificationResult =
+  { ok: true; plan: FlightPlan } | { ok: false; error: FlightPlanModificationError };
 
 const ACID_PATTERN = /^[A-Z][A-Z0-9]{1,6}$/;
 const BEACON_PATTERN = /^[0-7]{4}$/;
@@ -250,6 +287,215 @@ export function transitionFlightPlan(
 
 export function deleteFlightPlan(plan: FlightPlan): FlightPlan {
   return { ...plan, status: "deleted", assignedBeacon: undefined, reportedBeacon: undefined };
+}
+
+function modificationError(
+  code: FlightPlanModificationErrorCode,
+  field: FlightPlanModificationError["field"],
+  value: string | undefined,
+  message: string,
+): FlightPlanModificationError {
+  return { code, field, ...(value === undefined ? {} : { value }), message };
+}
+
+function syncAssociatedTarget(
+  plan: FlightPlan,
+  target: {
+    callsign: string;
+    assignedSquawk?: string;
+    flightPlanId?: string;
+    flightPlan?: Record<string, unknown>;
+    fp?: Record<string, unknown>;
+    flightRules?: string;
+    requestedAltitudeFt?: number;
+    aircraftType?: string;
+  },
+): void {
+  target.callsign = plan.acid;
+  target.assignedSquawk = plan.assignedBeacon;
+  target.flightPlanId = plan.id;
+  target.flightPlan = {
+    ...(target.flightPlan ?? {}),
+    destination: plan.airportId,
+    route: plan.route,
+    rules: plan.flightRules,
+  };
+  target.fp = { ...(target.fp ?? {}), ...target.flightPlan };
+  target.flightRules = plan.flightRules ?? target.flightRules;
+  target.requestedAltitudeFt = plan.requestedAltitudeFt ?? target.requestedAltitudeFt;
+  target.aircraftType = plan.aircraftType ?? target.aircraftType;
+}
+
+/** Modify one authoritative plan field. Scope edits do not change kinematics or intent. */
+export function modifyFlightPlan(
+  world: {
+    flightPlans: FlightPlan[];
+    aircraft: Array<{
+      id: string;
+      callsign: string;
+      assignedSquawk?: string;
+      flightPlanId?: string;
+      flightPlan?: Record<string, unknown>;
+      fp?: Record<string, unknown>;
+      flightRules?: string;
+      requestedAltitudeFt?: number;
+      aircraftType?: string;
+    }>;
+  },
+  planId: string,
+  field: FlightPlanModificationField,
+  value: FlightPlanModificationValue,
+): FlightPlanModificationResult {
+  const plan = world.flightPlans.find((item) => item.id === planId);
+  if (!plan || plan.status === "deleted") {
+    return {
+      ok: false,
+      error: modificationError("PLAN_NOT_FOUND", "plan", planId, `flight plan ${planId} not found`),
+    };
+  }
+  if (plan.status === "active" && (field === "eta" || field === "ptd")) {
+    return {
+      ok: false,
+      error: modificationError(
+        "INVALID_FIELD",
+        field,
+        undefined,
+        `${field} is only valid for inactive plans`,
+      ),
+    };
+  }
+  const candidate: FlightPlan = {
+    ...plan,
+    fixes: [...plan.fixes],
+    scratchpads: [...plan.scratchpads],
+  };
+  if (field === "acid") {
+    if (typeof value !== "string" || !isValidAcid(value)) {
+      return {
+        ok: false,
+        error: modificationError("INVALID_ACID", field, String(value), "invalid ACID"),
+      };
+    }
+    candidate.acid = value.trim().toUpperCase();
+  } else if (field === "assignedBeacon") {
+    if (typeof value !== "string" || !isValidBeaconCode(value)) {
+      return {
+        ok: false,
+        error: modificationError("INVALID_BEACON", field, String(value), "invalid assigned beacon"),
+      };
+    }
+    candidate.assignedBeacon = value.trim();
+  } else if (field === "tcp" || field === "eta" || field === "ptd") {
+    if (typeof value !== "string") {
+      return {
+        ok: false,
+        error: modificationError("INVALID_VALUE", field, String(value), `invalid ${field}`),
+      };
+    }
+    candidate[field] = value.trim().toUpperCase();
+  } else if (field === "fixes" || field === "scratchpads") {
+    if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+      return {
+        ok: false,
+        error: modificationError("INVALID_VALUE", field, String(value), `invalid ${field}`),
+      };
+    }
+    candidate[field] = value.map((item) => item.trim().toUpperCase());
+  } else if (field === "flightType") {
+    if (value !== "IFR" && value !== "VFR" && value !== "DVFR" && value !== "SVFR") {
+      return {
+        ok: false,
+        error: modificationError("INVALID_VALUE", field, String(value), "invalid flight type"),
+      };
+    }
+    candidate.flightType = value;
+  } else if (field === "requestedAltitudeFt" || field === "assignedAltitudeFt") {
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+      return {
+        ok: false,
+        error: modificationError("INVALID_VALUE", field, String(value), `invalid ${field}`),
+      };
+    }
+    candidate[field] = value;
+  } else {
+    return {
+      ok: false,
+      error: modificationError("INVALID_FIELD", field, undefined, `unsupported field ${field}`),
+    };
+  }
+
+  const duplicate = world.flightPlans.find(
+    (item) => item.id !== plan.id && item.status !== "deleted" && item.acid === candidate.acid,
+  );
+  if (duplicate) {
+    return {
+      ok: false,
+      error: modificationError(
+        "DUPLICATE_ACID",
+        field,
+        candidate.acid,
+        `ACID ${candidate.acid} already exists`,
+      ),
+    };
+  }
+  if (candidate.assignedBeacon) {
+    const duplicateBeacon = world.flightPlans.find(
+      (item) =>
+        item.id !== plan.id &&
+        item.status !== "deleted" &&
+        item.assignedBeacon === candidate.assignedBeacon,
+    );
+    if (duplicateBeacon) {
+      return {
+        ok: false,
+        error: modificationError(
+          "DUPLICATE_BEACON",
+          field,
+          candidate.assignedBeacon,
+          `beacon ${candidate.assignedBeacon} already exists`,
+        ),
+      };
+    }
+  }
+  Object.assign(plan, candidate);
+  if (plan.associatedAircraftId) {
+    const target = world.aircraft.find((aircraft) => aircraft.id === plan.associatedAircraftId);
+    if (target) syncAssociatedTarget(plan, target);
+  }
+  return { ok: true, plan };
+}
+
+/** Delete an authoritative plan and unassociate its track without changing kinematics. */
+export function deleteFlightPlanFromWorld(
+  world: {
+    flightPlans: FlightPlan[];
+    aircraft: Array<{
+      id: string;
+      flightPlanId?: string;
+      flightPlan?: Record<string, unknown>;
+      fp?: Record<string, unknown>;
+    }>;
+  },
+  planId: string,
+): FlightPlanModificationResult {
+  const plan = world.flightPlans.find((item) => item.id === planId);
+  if (!plan || plan.status === "deleted") {
+    return {
+      ok: false,
+      error: modificationError("PLAN_NOT_FOUND", "plan", planId, `flight plan ${planId} not found`),
+    };
+  }
+  const aircraft = plan.associatedAircraftId
+    ? world.aircraft.find((item) => item.id === plan.associatedAircraftId)
+    : undefined;
+  if (aircraft) {
+    delete aircraft.flightPlanId;
+    delete aircraft.flightPlan;
+    delete aircraft.fp;
+  }
+  plan.associatedAircraftId = undefined;
+  Object.assign(plan, deleteFlightPlan(plan));
+  return { ok: true, plan };
 }
 
 function reportedSquawk(aircraft: {

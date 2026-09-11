@@ -1,6 +1,7 @@
 import {
   acceptPointout,
   createActiveFlightPlanFromTarget,
+  deleteFlightPlanFromWorld,
   handoffFor,
   setSelectedAircraft,
   type World,
@@ -244,6 +245,13 @@ function applyTrackingSlewHit(
     }
     case "termCntl": {
       const td = ensureTrackDisplay(view.tracks, id);
+      const target = world.aircraft.find((aircraft) => aircraft.id === id);
+      if (target?.flightPlanId) {
+        deleteFlightPlanFromWorld(world, target.flightPlanId);
+        td.unassociated = true;
+        td.datablockMode = "partial";
+        td.tracked = true;
+      }
       if (hit.region === "datablock") {
         toggleTrackPdbFdb(td);
       } else {

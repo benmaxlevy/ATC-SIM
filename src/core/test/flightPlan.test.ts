@@ -2,7 +2,11 @@ import { expect, test } from "vitest";
 import {
   allocateBeaconCode,
   createFlightPlan,
+  createWorld,
   deleteFlightPlan,
+  deleteFlightPlanFromWorld,
+  makeTestAircraft,
+  modifyFlightPlan,
   transitionFlightPlan,
   validateFlightPlan,
   withAllocatedBeacon,
@@ -147,4 +151,54 @@ test("deleted plans cannot transition to another state", () => {
     ok: false,
     error: { code: "INVALID_STATUS_TRANSITION", field: "status" },
   });
+});
+
+test("modification updates the authoritative plan and associated datablock fields", () => {
+  const made = createFlightPlan(plan({ assignedBeacon: "0701", route: "FIXA" }));
+  expect(made.ok).toBe(true);
+  if (!made.ok) return;
+  const aircraft = makeTestAircraft({ id: "ac-1", callsign: "DAL123", assignedSquawk: "0701" });
+  const world = createWorld({ flightPlans: [made.value], aircraft: [aircraft] });
+  made.value.associatedAircraftId = aircraft.id;
+  aircraft.flightPlanId = made.value.id;
+  const result = modifyFlightPlan(world, made.value.id, "acid", "UAL456");
+  expect(result).toMatchObject({ ok: true, plan: { acid: "UAL456" } });
+  expect(aircraft.callsign).toBe("UAL456");
+  expect(aircraft.flightPlanId).toBe(made.value.id);
+});
+
+test("modification rejects duplicate beacon and active-only ETA", () => {
+  const first = createFlightPlan(plan({ assignedBeacon: "0701" }));
+  const second = createFlightPlan(plan({ id: "fp-2", acid: "UAL456", assignedBeacon: "0702" }));
+  expect(first.ok && second.ok).toBe(true);
+  if (!first.ok || !second.ok) return;
+  const active = transitionFlightPlan(second.value, "active");
+  expect(active.ok).toBe(true);
+  if (!active.ok) return;
+  const world = createWorld({ flightPlans: [first.value, active.value] });
+  expect(modifyFlightPlan(world, active.value.id, "assignedBeacon", "0701")).toMatchObject({
+    ok: false,
+    error: { code: "DUPLICATE_BEACON" },
+  });
+  expect(modifyFlightPlan(world, active.value.id, "eta", "1200")).toMatchObject({
+    ok: false,
+    error: { code: "INVALID_FIELD" },
+  });
+});
+
+test("deleting an associated plan releases identity and leaves target unassociated", () => {
+  const made = createFlightPlan(plan({ assignedBeacon: "0701" }));
+  expect(made.ok).toBe(true);
+  if (!made.ok) return;
+  const aircraft = makeTestAircraft({ id: "ac-1", callsign: "DAL123", xNm: 4, yNm: 3 });
+  const world = createWorld({ flightPlans: [made.value], aircraft: [aircraft] });
+  made.value.associatedAircraftId = aircraft.id;
+  aircraft.flightPlanId = made.value.id;
+  aircraft.flightPlan = { route: "FIXA" };
+  const pose = { x: aircraft.xNm, y: aircraft.yNm };
+  const result = deleteFlightPlanFromWorld(world, made.value.id);
+  expect(result).toMatchObject({ ok: true, plan: { status: "deleted" } });
+  expect(aircraft.flightPlanId).toBeUndefined();
+  expect(aircraft.flightPlan).toBeUndefined();
+  expect({ x: aircraft.xNm, y: aircraft.yNm }).toEqual(pose);
 });
