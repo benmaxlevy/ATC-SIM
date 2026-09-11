@@ -24,8 +24,8 @@ test("cone vertex is the trailer; length matches camera scale", () => {
 });
 
 test("cone end-cap height stays fixed while its angle follows cone length", () => {
-  expect(atpaConeHalfAngleDeg(5)).toBeCloseTo(ATPA_CONE_HALF_ANGLE_DEG, 10);
-  expect(atpaConeHalfAngleDeg(3)).toBeGreaterThan(ATPA_CONE_HALF_ANGLE_DEG);
+  expect(atpaConeHalfAngleDeg(3)).toBeCloseTo(ATPA_CONE_HALF_ANGLE_DEG, 10);
+  expect(atpaConeHalfAngleDeg(1)).toBeGreaterThan(ATPA_CONE_HALF_ANGLE_DEG);
   expect(atpaConeHalfAngleDeg(10)).toBeLessThan(ATPA_CONE_HALF_ANGLE_DEG);
 
   for (const lengthNm of [3, 5, 10]) {

@@ -1635,8 +1635,12 @@ function strokeConeAroundDigits(
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, 0, size.widthPx, size.heightPx);
-  ctx.rect(gap.x, gap.y, gap.width, gap.height);
-  ctx.clip("evenodd");
+  ctx.moveTo(gap.x, gap.y);
+  ctx.lineTo(gap.x, gap.y + gap.height);
+  ctx.lineTo(gap.x + gap.width, gap.y + gap.height);
+  ctx.lineTo(gap.x + gap.width, gap.y);
+  ctx.closePath();
+  ctx.clip();
   tracePolyline(ctx, pts, false);
   ctx.stroke();
   ctx.restore();

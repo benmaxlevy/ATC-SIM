@@ -29,11 +29,11 @@ import { PALETTE } from "./palette";
 
 /**
  * Reference half-angle used to derive the fixed end-cap height. R07 Fig 36–39
- * show a few degrees of wedge, not a pie slice. The 5 NM reference keeps the
+ * show a few degrees of wedge, not a pie slice. The 3 NM reference keeps the
  * existing 3° shape while shorter and longer cones use the same end-cap size.
  */
 export const ATPA_CONE_HALF_ANGLE_DEG = 3;
-export const ATPA_CONE_REFERENCE_LENGTH_NM = 5;
+export const ATPA_CONE_REFERENCE_LENGTH_NM = 3;
 
 const ATPA_CONE_REFERENCE_HALF_ANGLE_RAD = (ATPA_CONE_HALF_ANGLE_DEG * Math.PI) / 180;
 
