@@ -1,5 +1,25 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Fifty-ninth swarm planned — 2026-09-11 (F-prefix Preview routing)
+
+One corrective worker will preserve the altitude-filter chord while allowing
+flight-plan/callsign entry beginning with `F` (for example `FFT123`) to reach
+the Preview Area. The filter entry must commit using its existing numeric
+grammar; a non-numeric continuation must cancel the filter chord and be
+reprocessed as Preview text.
+
+| Key | Value |
+| --- | --- |
+| Goal | Prevent bare `F` filter handling from swallowing F-prefixed ACIDs. |
+| Include | Scope key routing and focused regression tests only. |
+| Skip | New altitude-filter grammar, flight-plan semantics, radio, pilot execution, and unrelated shortcuts. |
+| Stop | After focused tests, `npm run ci`, supplied-manual review, and push. |
+| Max workers | 1 |
+| Merge target | `feat/flight-plan-lifecycle` |
+| Push | Authorized by user. |
+
+Manual anchor: TI 6191.409 Rev. 30 §4.11.2, pp. 4-78–4-79.
+
 ## Fifty-eighth swarm planned — 2026-09-11 (Unified TERM CNTL/F4)
 
 One corrective worker will route the F4 alias and typed TERM CNTL through the
