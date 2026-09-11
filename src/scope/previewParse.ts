@@ -194,12 +194,14 @@ export function parseFlightPlanCreation(
       continue;
     }
     if (/^[A-Z0-9][A-Z0-9]$/.test(token) && !/^[APE]/.test(token)) {
+      if (pendingDiscrete) return { kind: "invalid", reason: "FORMAT" };
       if (used.has("tcp")) return { kind: "invalid", reason: "FORMAT" };
       fields.tcp = token;
       used.add("tcp");
       continue;
     }
     if (/^[APE][A-Z0-9]?$/.test(token)) {
+      if (pendingDiscrete) return { kind: "invalid", reason: "FORMAT" };
       if (used.has("type")) return { kind: "invalid", reason: "FORMAT" };
       fields.flightType = token[0] as "A" | "P" | "E";
       fields.airportId = token.length === 2 ? token[1] : undefined;
@@ -225,12 +227,14 @@ export function parseFlightPlanCreation(
       continue;
     }
     if (/^\d{3}$/.test(token)) {
+      if (pendingDiscrete) return { kind: "invalid", reason: "FORMAT" };
       if (used.has("alt")) return { kind: "invalid", reason: "FORMAT" };
       fields.requestedAltitudeFt = Number(token) * 100;
       used.add("alt");
       continue;
     }
     if (/^\.[A-Z]$/.test(token)) {
+      if (pendingDiscrete) return { kind: "invalid", reason: "FORMAT" };
       if (used.has("rules")) return { kind: "invalid", reason: "ILL VALUE" };
       fields.flightRules = token[1];
       used.add("rules");
