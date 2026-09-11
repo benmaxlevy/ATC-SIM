@@ -517,11 +517,7 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
 
   // 1. Authoritative local plans. Deleted plans are not list entries.
   for (const plan of world.flightPlans) {
-    if (
-      plan.status === "deleted" ||
-      (plan.status === "active" && plan.associatedAircraftId) ||
-      seenCallsigns.has(plan.acid)
-    )
+    if (plan.status === "deleted" || plan.associatedAircraftId || seenCallsigns.has(plan.acid))
       continue;
     seenCallsigns.add(plan.acid);
     rawItems.push({

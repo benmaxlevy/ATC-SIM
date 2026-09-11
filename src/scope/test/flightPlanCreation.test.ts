@@ -36,6 +36,34 @@ describe("T02-144 flight-plan creation", () => {
     );
   });
 
+  it("T02-145 removes an associated suspended plan from FL/TAB", () => {
+    const planResult = createFlightPlan({
+      id: "fp-suspended-associate",
+      acid: "DAL457",
+      assignedBeacon: "7025",
+      status: "suspended",
+      fixes: [],
+      scratchpads: [],
+    });
+    if (!planResult.ok) throw new Error("test fixture should be valid");
+    const target = makeTestAircraft({
+      id: "ac-suspended-associate",
+      callsign: "1235",
+      squawk: "1200",
+    });
+    const world = createWorld({ flightPlans: [planResult.value], aircraft: [target] });
+    const view = createScopeView();
+
+    expect(associateFlightPlanToTrack(world, view, 1, target.id)).toBe(true);
+    expect(world.flightPlans[0]).toMatchObject({
+      status: "suspended",
+      associatedAircraftId: target.id,
+    });
+    expect(getFlightPlanEntries(world, view).some((entry) => entry.callsign === "DAL457")).toBe(
+      false,
+    );
+  });
+
   it("parses order-independent abbreviated fields", () => {
     expect(parseFlightPlanCreation("UAL1234 2341 1R AD ATST +ORH 4/F16/L 250 .E")).toEqual({
       kind: "action",
