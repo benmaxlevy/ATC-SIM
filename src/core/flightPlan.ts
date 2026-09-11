@@ -195,12 +195,12 @@ export function transitionFlightPlan(
   plan: FlightPlan,
   status: Exclude<FlightPlanStatus, "deleted">,
 ): FlightPlanResult<FlightPlan> {
-  const allowedNextStatus: Partial<Record<FlightPlanStatus, FlightPlanStatus>> = {
-    pending: "active",
-    active: "suspended",
-    suspended: "active",
+  const allowedNextStatus: Partial<Record<FlightPlanStatus, readonly FlightPlanStatus[]>> = {
+    pending: ["active"],
+    active: ["suspended"],
+    suspended: ["active", "pending"],
   };
-  if (allowedNextStatus[plan.status] !== status) {
+  if (!allowedNextStatus[plan.status]?.includes(status)) {
     return {
       ok: false,
       error: error(

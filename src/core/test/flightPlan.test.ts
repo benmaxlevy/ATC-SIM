@@ -33,6 +33,14 @@ test("AC1 — plans support pending, active, suspended, and deleted states", () 
   const suspended = transitionFlightPlan(active.value, "suspended");
   expect(suspended).toEqual({ ok: true, value: { ...active.value, status: "suspended" } });
   if (!suspended.ok) return;
+  expect(transitionFlightPlan(suspended.value, "active")).toEqual({
+    ok: true,
+    value: { ...suspended.value, status: "active" },
+  });
+  expect(transitionFlightPlan(suspended.value, "pending")).toEqual({
+    ok: true,
+    value: { ...suspended.value, status: "pending" },
+  });
   expect(deleteFlightPlan(suspended.value).status).toBe("deleted");
 });
 
@@ -54,7 +62,6 @@ test("lifecycle rejects unsupported status transitions", () => {
     [active.value, "active"],
     [active.value, "pending"],
     [suspended.value, "suspended"],
-    [suspended.value, "pending"],
   ] as const) {
     expect(transitionFlightPlan(current, next)).toMatchObject({
       ok: false,
