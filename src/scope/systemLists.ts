@@ -1396,7 +1396,7 @@ export function promoteVfrListEntry(
   const target = world.aircraft.find((a) => a.id === targetAircraftId);
   if (target) {
     target.callsign = entry.callsign;
-    updateAircraftSquawk(world, targetAircraftId, entry.squawk);
+    updateAircraftSquawk(world, targetAircraftId, entry.squawk ?? "1200");
     target.assignedSquawk = entry.assignedSquawk;
   }
   applyInitiateTrackToId(view.tracks, world, targetAircraftId);
