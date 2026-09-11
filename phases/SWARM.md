@@ -1,5 +1,22 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Fifty-seventh swarm planned — 2026-09-11 (Post-TERM datablock display fix)
+
+One corrective worker will fix the reported regression where a terminated
+flight-plan target can be expanded from PDB to FDB with the deleted plan ACID.
+The target must remain an unassociated radar track, without a recoverable plan
+FDB, while preserving motion and aircraft bookkeeping.
+
+| Key | Value |
+| --- | --- |
+| Goal | Prevent terminated plans from reappearing as FDB/callsign displays. |
+| Include | Corrective display guard and regression tests only. |
+| Skip | New flight-plan semantics, radio, Command IR, pilot execution, speech, and kinematics. |
+| Stop | After focused tests, `npm run ci`, supplied-manual review, and push. |
+| Max workers | 1 |
+| Merge target | `feat/flight-plan-lifecycle` |
+| Push | Authorized by user. |
+
 ## Fifty-sixth swarm planned — 2026-09-11 (Flight-plan lifecycle)
 
 Captain will run five sequential tickets on `feat/flight-plan-lifecycle` with
