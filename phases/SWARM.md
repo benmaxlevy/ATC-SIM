@@ -3732,3 +3732,12 @@ squash-merge one commit, run `npm run ci`, then run the independent
 `check-stars-manual` review against that ticket and the final diff before the
 next wave. If CI or manual review fails, stop the next wave and use one narrow
 fix worker only. Append swarm status history; do not delete prior entries.
+
+## Eighth swarm started — canonical flight-plan association (2026-09-11)
+
+Execution started after the approved planning commit `bf28c1b`. Captain runs
+T02-149 through T02-153 sequentially on `feat/flight-plan-lifecycle`, with one
+isolated worker at a time. Each completed ticket requires squash merge, full
+`npm run ci`, and independent `$check-stars-manual
+'/home/ben/Documents/stars refs/full_manual.pdf'` review before the next
+ticket. Stop on a failed gate or unresolved manual mismatch.
