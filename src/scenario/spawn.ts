@@ -26,7 +26,12 @@ import {
   type ArrivalTrafficConfig,
 } from "./arrivalScheduler";
 import { resolveRunwayHeading, resolveRunwayThreshold } from "./departureSpawn";
-import { allocateTrafficPair, allocateTrafficPairForType, usedCallsignSet } from "./callsigns";
+import {
+  allocateSquawkCode,
+  allocateTrafficPair,
+  allocateTrafficPairForType,
+  usedCallsignSet,
+} from "./callsigns";
 
 export { starRouteFixIds };
 
@@ -67,6 +72,13 @@ function spawnArrival(
   callsign: string,
   scenario?: Scenario,
 ): void {
+  const squawk = allocateSquawkCode(
+    world.aircraft.flatMap((aircraft) =>
+      [aircraft.squawk, aircraft.assignedSquawk, aircraft.reportedSquawk].filter(
+        (code): code is string => code !== undefined,
+      ),
+    ),
+  );
   const ac = createAircraft({
     callsign,
     xNm: arrival.xNm,
@@ -75,6 +87,9 @@ function spawnArrival(
     altitudeFt: arrival.altitudeFt,
     speedKt: arrival.speedKt,
     aircraftType: arrival.aircraftType,
+    assignedSquawk: squawk,
+    squawk,
+    reportedSquawk: squawk,
     cwtWakeCategory: arrival.cwtWakeCategory,
     destination: scenario?.icao ?? world.catalog?.airportId,
     flightPlan: {
@@ -142,6 +157,13 @@ function spawnStarInbound(world: World, scenario: Scenario, seed: number): void 
   for (let i = 0; i < scenario.arrivals.length; i += 1) {
     const assigned = assignments[i]!;
     const traffic = allocateTrafficPair(rng, used);
+    const squawk = allocateSquawkCode(
+      world.aircraft.flatMap((aircraft) =>
+        [aircraft.squawk, aircraft.assignedSquawk, aircraft.reportedSquawk].filter(
+          (code): code is string => code !== undefined,
+        ),
+      ),
+    );
     const ac = createAircraft({
       callsign: traffic.callsign,
       xNm: assigned.pose.xNm,
@@ -150,6 +172,9 @@ function spawnStarInbound(world: World, scenario: Scenario, seed: number): void 
       altitudeFt: assigned.pose.altitudeFt,
       speedKt: assigned.pose.speedKt,
       aircraftType: traffic.aircraftType,
+      assignedSquawk: squawk,
+      squawk,
+      reportedSquawk: squawk,
       destination: scenario.icao,
       flightPlan: {
         destination: scenario.icao,

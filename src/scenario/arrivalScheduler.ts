@@ -2,7 +2,7 @@ import { createAircraft, offerInboundHandoff, mulberry32, type Aircraft, type Wo
 import { assignStarRoutes, type StarRouteAssignment } from "./starSpawn";
 import type { ProcedureCatalog } from "./procedures/types";
 import type { StarSlot } from "./starSpawn";
-import { allocateTrafficPair, usedCallsignSet } from "./callsigns";
+import { allocateSquawkCode, allocateTrafficPair, usedCallsignSet } from "./callsigns";
 
 /** Trainer traffic-density bounds; arrivals/hour is not a radio frequency. */
 export const ARRIVALS_PER_HOUR_MIN = 0;
@@ -76,6 +76,13 @@ export function validateArrivalTrafficConfig(
 
 function spawnScheduledArrival(world: World, arrival: ScheduledArrival): Aircraft {
   const { pose } = arrival.assignment;
+  const squawk = allocateSquawkCode(
+    world.aircraft.flatMap((aircraft) =>
+      [aircraft.squawk, aircraft.assignedSquawk, aircraft.reportedSquawk].filter(
+        (code): code is string => code !== undefined,
+      ),
+    ),
+  );
   const aircraft = createAircraft({
     callsign: arrival.callsign,
     xNm: pose.xNm,
@@ -84,6 +91,9 @@ function spawnScheduledArrival(world: World, arrival: ScheduledArrival): Aircraf
     altitudeFt: pose.altitudeFt,
     speedKt: pose.speedKt,
     aircraftType: arrival.aircraftType,
+    assignedSquawk: squawk,
+    squawk,
+    reportedSquawk: squawk,
     destination: world.catalog?.airportId,
     flightPlan: {
       destination: world.catalog?.airportId,

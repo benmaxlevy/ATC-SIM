@@ -93,6 +93,9 @@ export function DepartureStrip({
     cwtCategory: strip.cwtCategory,
   });
   const formattedBeacon = formatBeaconCode(strip.beaconCode);
+  const routeTokens = strip.route.trim().split(/\s+/).filter(Boolean);
+  const standaloneProcedure =
+    routeTokens.length === 1 && /^[A-Z0-9]+\d[A-Z0-9]*$/i.test(routeTokens[0] ?? "");
 
   const [internalEditingBox, setInternalEditingBox] = useSafeState<string | null>(null);
   const editingBox = editingBoxProp !== undefined ? editingBoxProp : internalEditingBox;
@@ -289,13 +292,21 @@ export function DepartureStrip({
       {/* Column 4 (~36%): FAA departure Box 9 with 9A/9B/9C subspaces */}
       <div className="strip-col col-route col-route-departure" data-col="4">
         <div className="route-text" data-box="9">
-          <span className="strip-route">{strip.route}</span>{" "}
-          <span className="strip-dest">{strip.destinationAirport}</span>
-          {strip.remarks ? <span className="strip-remarks"> {strip.remarks}</span> : null}
+          {!standaloneProcedure ? (
+            <>
+              <span className="strip-route">{strip.route}</span>{" "}
+              <span className="strip-dest">{strip.destinationAirport}</span>
+              {strip.remarks ? <span className="strip-remarks"> {strip.remarks}</span> : null}
+            </>
+          ) : null}
         </div>
-        <div className="departure-box-9a" data-box="9A" aria-label="Departure box 9A" />
+        <div className="departure-box-9a" data-box="9A" aria-label="Departure box 9A">
+          {strip.destinationAirport}
+        </div>
         <div className="departure-box-9b" data-box="9B" aria-label="Departure box 9B" />
-        <div className="departure-box-9c" data-box="9C" aria-label="Departure box 9C" />
+        <div className="departure-box-9c" data-box="9C" aria-label="Departure box 9C">
+          {standaloneProcedure ? strip.route : ""}
+        </div>
       </div>
 
       {/* Column 5 (~18%): 3x3 Annotation Matrix (Boxes 10–18) */}

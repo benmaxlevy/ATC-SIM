@@ -239,27 +239,43 @@
 /* Col 1 */
 .col-ident {
   padding: 2px 5px;
-  justify-content: space-between;
+  justify-content: initial;
+  position: relative;
 }
 
 .col-ident .acid {
-  font-size: 0.77rem;
-  letter-spacing: 0.05em;
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  transform: none;
+  font-size: 0.62rem;
+  letter-spacing: 0;
   line-height: 1.1;
+  white-space: nowrap;
 }
 
 .col-ident .rev {
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  transform: translateY(-50%);
   font-size: 0.555rem;
   min-height: 1em;
 }
 
 .col-ident .type {
+  position: absolute;
+  left: 5px;
+  bottom: 23%;
   font-size: 0.62rem;
 }
 
 .cid-row {
+  position: absolute;
+  left: 5px;
+  bottom: 2px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
 }
 
 .cid-row .cid {
@@ -272,13 +288,21 @@
   flex: 1;
   display: flex;
   align-items: center;
+  justify-content: center;
   padding: 0 5px;
   border-bottom: 1px solid #333;
   font-size: 0.62rem;
+  text-align: center;
   box-sizing: border-box;
 }
 
 .col-fix-data .cell:last-child,
+.col-local .cell:last-child {
+  border-bottom: none;
+}
+
+/* Supplied terminal strip geometry keeps 8/8A/8B as one uninterrupted field. */
+.col-local .cell,
 .col-local .cell:last-child {
   border-bottom: none;
 }
@@ -322,6 +346,10 @@
 .col-route-departure [data-box="9A"] {
   left: 0;
   bottom: 0;
+  width: 66%;
+  height: auto;
+  padding: 2px 5px;
+  font-size: 0.605rem;
 }
 
 .col-route-departure [data-box="9B"] {
@@ -332,6 +360,11 @@
 .col-route-departure [data-box="9C"] {
   right: 0;
   bottom: 0;
+  width: 34%;
+  height: auto;
+  padding: 2px 5px;
+  font-size: 0.605rem;
+  text-align: right;
 }
 
 .col-route-arrival {

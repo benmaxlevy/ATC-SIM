@@ -100,9 +100,25 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
       const box9a = html.match(/data-box="9A"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
       const box9b = html.match(/data-box="9B"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
       const box9c = html.match(/data-box="9C"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
-      expect(box9a).toBe("");
+      expect(box9a).toContain("KPHL");
       expect(box9b).toBe("");
       expect(box9c).toBe("");
+    });
+
+    test("places a standalone departure procedure in Box 9C", () => {
+      const procedureStrip: DepartureStripData = {
+        ...mockDAL882,
+        route: "CHPPR1",
+        destinationAirport: "KATL",
+      };
+      const html = renderToStaticMarkup(createElement(DepartureStrip, { strip: procedureStrip }));
+
+      const box9 = html.match(/data-box="9"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      const box9a = html.match(/data-box="9A"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      const box9c = html.match(/data-box="9C"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      expect(box9).toBe("");
+      expect(box9a).toContain("KATL");
+      expect(box9c).toContain("CHPPR1");
     });
   });
 
@@ -264,6 +280,19 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
     test("strips.css defines bold font-weight and uppercase text-transform", () => {
       expect(cssContent).toMatch(/font-weight:\s*(bold|700)/i);
       expect(cssContent).toMatch(/text-transform:\s*uppercase/i);
+    });
+
+    test("strips.css keeps Column 3 continuous and positions Column 1 fields", () => {
+      expect(cssContent).toMatch(
+        /\.col-local \.cell,\s*\.col-local \.cell:last-child\s*\{[^}]*border-bottom:\s*none/is,
+      );
+      expect(cssContent).toMatch(
+        /\.col-ident \.acid\s*\{[^}]*left:\s*5px[^}]*top:\s*2px[^}]*font-size:\s*0\.62rem/is,
+      );
+      expect(cssContent).toMatch(/\.cid-row\s*\{[^}]*left:\s*5px[^}]*bottom:\s*2px/is);
+      expect(cssContent).toMatch(
+        /\.col-fix-data \.cell,\s*\.col-local \.cell\s*\{[^}]*justify-content:\s*center/is,
+      );
     });
 
     test("strips.css defines dimensions height 80px and max-width 840px", () => {
