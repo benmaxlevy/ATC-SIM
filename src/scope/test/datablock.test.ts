@@ -14,8 +14,204 @@ import {
   linesForDatablock,
   pointInDatablock,
   getSpecialPurposeCode,
+  buildDatablockRuntimeState,
 } from "../datablock";
+import { createWorld } from "@core";
 import { DEFAULT_LEADER_DIR, LEADER_LENGTH_PX } from "../leader";
+
+test("runtime adapter projects associated plan and preserves beacon provenance", () => {
+  const ac = makeTestAircraft({
+    id: "runtime-associated",
+    callsign: "RAW123",
+    squawk: "4321",
+    altitudeFt: 6000,
+    speedKt: 180,
+    aircraftType: "C172",
+  });
+  const world = createWorld({
+    aircraft: [ac],
+    flightPlans: [
+      {
+        id: "runtime-plan",
+        status: "active",
+        acid: "FILED123",
+        assignedBeacon: "1234",
+        requestedAltitudeFt: 9000,
+        assignedAltitudeFt: 8000,
+        aircraftType: "B738",
+        scratchpads: ["ILS 27", "S21"],
+        fixes: [],
+        associatedAircraftId: ac.id,
+      },
+    ],
+  });
+  const beforeIntent = structuredClone(ac.intent);
+  const track = {
+    ownership: "owned" as const,
+    datablockMode: "full" as const,
+    squawk: "4321",
+    queriedUntilSimMs: world.simTimeMs + 1000,
+    atpaInTrailDistanceEnabled: true,
+  };
+
+  const state = buildDatablockRuntimeState(world, ac, {
+    track,
+    modeCVisible: true,
+    localTcp: "D",
+    fieldInputs: { field0Indicators: ["CA"] },
+  });
+
+  expect(state.source.callsign).toBe("FILED123");
+  expect(state.source.assignedSquawk).toBe("1234");
+  expect(state.source.reportedSquawk).toBe("4321");
+  expect(state.source.aircraftType).toBe("B738");
+  expect(state.source.requestedAltitudeFt).toBe(9000);
+  expect(state.display.queried).toBe(true);
+  expect(state.display.scratchpads).toEqual({ sp1: "ILS2", sp2: "S21" });
+  expect(state.options.field0Indicators).toEqual(["CA"]);
+  expect(ac.intent).toEqual(beforeIntent);
+});
+
+test.each(["pending", "suspended"] as const)(
+  "runtime adapter does not project a non-associated %s plan",
+  (status) => {
+    const ac = makeTestAircraft({ id: `runtime-${status}`, callsign: "RAW456", squawk: "5678" });
+    const world = createWorld({
+      aircraft: [ac],
+      flightPlans: [
+        {
+          id: `runtime-${status}-plan`,
+          status,
+          acid: "FILED456",
+          assignedBeacon: "2468",
+          aircraftType: "B738",
+          scratchpads: ["BAD"],
+          fixes: [],
+        },
+      ],
+    });
+    const state = buildDatablockRuntimeState(world, ac, {
+      track: { ownership: "unowned", unassociated: true, squawk: "5678" },
+    });
+    expect(state.mode).toBe("limited");
+    expect(state.source.callsign).toBe("RAW456");
+    expect(state.source.assignedSquawk).toBe(ac.assignedSquawk);
+    expect(state.source.aircraftType).toBe(ac.aircraftType);
+    expect(state.display.scratchpads).toEqual({ sp1: "", sp2: "" });
+  },
+);
+
+test("runtime adapter centralizes handoff, beaconator, alert, and unsupported state", () => {
+  const ac = makeTestAircraft({ id: "runtime-handoff", callsign: "HAND1", squawk: "7000" });
+  const world = createWorld({ aircraft: [ac] });
+  world.handoffs.set(ac.id, { kind: "outbound", toSectorId: "C", status: "initiated" });
+  const state = buildDatablockRuntimeState(world, ac, {
+    track: {
+      ownership: "owned",
+      datablockMode: "full",
+      beaconatorUntilSimMs: world.simTimeMs + 1000,
+      queriedUntilSimMs: world.simTimeMs + 1000,
+      squawk: "7000",
+    },
+    localTcp: "D",
+    fieldInputs: { field0Indicators: [] },
+  });
+  expect(state.display.handoff).toEqual(world.handoffs.get(ac.id));
+  expect(state.display.beaconatorReadout).toBe(true);
+  expect(state.source.callsign).toBe("7000");
+  expect(state.options.handoffSectorId).toBe("C");
+  expect(state.options.queried).toBe(true);
+  expect(state.source).not.toHaveProperty("csmm");
+});
+
+test("runtime adapter carries the complete supported Field 0–8 contract", () => {
+  const ac = makeTestAircraft({ id: "runtime-fields", callsign: "FIELD1", squawk: "7001" });
+  const world = createWorld({ aircraft: [ac] });
+  world.alerts.atpa.push({
+    trailingCallsign: ac.callsign,
+    leadingCallsign: "LEAD1",
+    volumeId: "VOL1",
+    distanceNm: 2.4,
+    requiredNm: 3,
+    closureKt: 10,
+    status: "warning",
+  });
+  const state = buildDatablockRuntimeState(world, ac, {
+    track: { ownership: "owned", datablockMode: "full" },
+    modeCVisible: false,
+    localTcp: "D",
+    atpa: { enabled: true },
+    alertState: { field0Indicators: ["TSAS"], requiresBlink: true },
+    fieldInputs: {
+      field0Indicators: ["IGNORED"],
+      tsasSequence: 4,
+      exitGate: "G1",
+      exitFix: "FIX1",
+      tcp: "1N",
+      field4Indicator: "R",
+      duplicateBeaconCode: "7001",
+      aircraftCount: 2,
+      atpaNowgt: true,
+      atpaTpa: true,
+      noFlightPlan: false,
+      duplicateTargetAddress: true,
+      moaAssignment: "MOA1",
+      selectedBeaconCode: "7002",
+      tsasRunwayId: "27",
+      tsasAdvisedSpeedKt: 180,
+      tsasEarlyLate: { status: "E", minutes: 1, seconds: 30 },
+      pointoutReceiverTcp: "N",
+      pointoutUn: true,
+      pointoutRd: false,
+      pointoutAcceptCount: 2,
+      pointoutInhibited: false,
+    },
+  });
+
+  expect(state.mode).toBe("full");
+  expect(state.options).toMatchObject({
+    modeCVisible: false,
+    field0Indicators: ["TSAS"],
+    tsasSequence: 4,
+    exitGate: "G1",
+    exitFix: "FIX1",
+    tcp: "1N",
+    field4Indicator: "R",
+    duplicateBeaconCode: "7001",
+    aircraftCount: 2,
+    atpaNowgt: true,
+    atpaTpa: true,
+    duplicateTargetAddress: true,
+    moaAssignment: "MOA1",
+    selectedBeaconCode: "7002",
+    tsasRunwayId: "27",
+    tsasAdvisedSpeedKt: 180,
+    tsasEarlyLate: { status: "E", minutes: 1, seconds: 30 },
+    pointoutReceiverTcp: "N",
+    pointoutUn: true,
+    pointoutAcceptCount: 2,
+  });
+  expect(state.source.atpaDistance).toBe("2.40");
+  expect(state.display.alertState).toEqual({ requiresBlink: true });
+});
+
+test("runtime adapter leaves unsupported Field 0–8 values absent", () => {
+  const ac = makeTestAircraft({ id: "runtime-empty", callsign: "EMPTY1" });
+  const state = buildDatablockRuntimeState(createWorld({ aircraft: [ac] }), ac, {
+    track: { ownership: "unowned", unassociated: true },
+  });
+
+  expect(state.mode).toBe("limited");
+  expect(state.options.field0Indicators).toBeUndefined();
+  expect(state.options.exitGate).toBeUndefined();
+  expect(state.options.exitFix).toBeUndefined();
+  expect(state.options.pointoutReceiverTcp).toBeUndefined();
+  expect(state.options.atpaInTrailDistance).toBeUndefined();
+  expect(state.options.csmm).toBeUndefined();
+  expect(state.source.atpaDistance).toBeUndefined();
+  expect(state.display.field0Indicators).toEqual([]);
+  expect(state.display.alertState).toEqual({ requiresBlink: false });
+});
 
 test("limited datablock is Mode C hundreds only", () => {
   const ac = makeTestAircraft({
