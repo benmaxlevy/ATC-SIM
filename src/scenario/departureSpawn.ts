@@ -4,7 +4,6 @@
  */
 
 import {
-  createAircraft,
   normalizeHeadingDeg,
   offerDepartureHandoff,
   updateAircraftSquawk,
@@ -14,7 +13,7 @@ import {
 } from "@core";
 import type { ProcedureCatalog } from "./procedures/types";
 import { findSidProcedure, sidRouteFixIds } from "./procedures/sidHelpers";
-import { allocateSquawkCode } from "./callsigns";
+import { spawnAircraft } from "./spawnAircraft";
 
 /** Distance past the threshold along runway centerline for rolling departure spawn. */
 export const DEPARTURE_SPAWN_ROLL_OFFSET_NM = 0.8;
@@ -192,17 +191,7 @@ export function spawnDeparture(
     config.transitionId,
     config.assignedAltitudeFt,
   );
-  const assignedSquawk =
-    config.assignedSquawk ??
-    allocateSquawkCode(
-      world.aircraft.flatMap((aircraft) =>
-        [aircraft.squawk, aircraft.assignedSquawk, aircraft.reportedSquawk].filter(
-          (code): code is string => code !== undefined,
-        ),
-      ),
-    );
-  const squawk = config.squawk ?? assignedSquawk;
-  const ac = createAircraft({
+  const ac = spawnAircraft(world, {
     callsign: config.callsign,
     xNm: pose.xNm,
     yNm: pose.yNm,
@@ -210,12 +199,10 @@ export function spawnDeparture(
     altitudeFt: pose.altitudeFt,
     speedKt: pose.speedKt,
     aircraftType: config.aircraftType ?? "B738",
-    assignedSquawk,
-    squawk,
-    reportedSquawk: squawk,
+    assignedSquawk: config.assignedSquawk,
+    squawk: config.squawk,
   });
   ac.intent = pose.intent;
-  world.aircraft.push(ac);
   if (config.squawk !== undefined) {
     updateAircraftSquawk(world, ac.id, config.squawk);
   }

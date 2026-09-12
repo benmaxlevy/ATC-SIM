@@ -104,13 +104,19 @@ export function usedCallsignSet(callsigns: Iterable<string> = []): Set<string> {
 }
 
 /** Allocate an unused four-digit octal beacon, excluding emergency codes. */
-export function allocateSquawkCode(usedCodes: Iterable<string> = []): string {
+export function allocateSquawkCode(
+  usedCodes: Iterable<string> = [],
+  rng: () => number = () => 0,
+): string {
   const used = new Set<string>();
   for (const code of usedCodes) {
     const normalized = code.trim();
     if (normalized.length > 0) used.add(normalized);
   }
-  for (let value = SQUAWK_MIN; value <= SQUAWK_MAX; value += 1) {
+  const range = SQUAWK_MAX - SQUAWK_MIN + 1;
+  const start = Math.floor(Math.max(0, Math.min(0.999999, rng())) * range);
+  for (let offset = 0; offset < range; offset += 1) {
+    const value = SQUAWK_MIN + ((start + offset) % range);
     const code = value.toString(8).padStart(4, "0");
     if (!RESERVED_SQUAWKS.has(code) && !used.has(code)) return code;
   }

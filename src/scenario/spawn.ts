@@ -1,5 +1,4 @@
 import {
-  createAircraft,
   createWorld,
   MSAW_FAF_DISTANCE_NM,
   mulberry32,
@@ -26,12 +25,8 @@ import {
   type ArrivalTrafficConfig,
 } from "./arrivalScheduler";
 import { resolveRunwayHeading, resolveRunwayThreshold } from "./departureSpawn";
-import {
-  allocateSquawkCode,
-  allocateTrafficPair,
-  allocateTrafficPairForType,
-  usedCallsignSet,
-} from "./callsigns";
+import { allocateTrafficPair, allocateTrafficPairForType, usedCallsignSet } from "./callsigns";
+import { spawnAircraft } from "./spawnAircraft";
 
 export { starRouteFixIds };
 
@@ -70,16 +65,11 @@ function spawnArrival(
   world: World,
   arrival: ArrivalSpawn,
   callsign: string,
+  rng: () => number,
   scenario?: Scenario,
 ): void {
-  const squawk = allocateSquawkCode(
-    world.aircraft.flatMap((aircraft) =>
-      [aircraft.squawk, aircraft.assignedSquawk, aircraft.reportedSquawk].filter(
-        (code): code is string => code !== undefined,
-      ),
-    ),
-  );
-  const ac = createAircraft({
+  const ac = spawnAircraft(world, {
+    rng,
     callsign,
     xNm: arrival.xNm,
     yNm: arrival.yNm,
@@ -87,9 +77,6 @@ function spawnArrival(
     altitudeFt: arrival.altitudeFt,
     speedKt: arrival.speedKt,
     aircraftType: arrival.aircraftType,
-    assignedSquawk: squawk,
-    squawk,
-    reportedSquawk: squawk,
     cwtWakeCategory: arrival.cwtWakeCategory,
     destination: scenario?.icao ?? world.catalog?.airportId,
     flightPlan: {
@@ -106,7 +93,6 @@ function spawnArrival(
   } else {
     setHandoffNone(world, ac.id);
   }
-  world.aircraft.push(ac);
 }
 
 function armStarVia(ac: Aircraft, scenario: Scenario, arrival: ArrivalSpawn): void {
@@ -157,14 +143,8 @@ function spawnStarInbound(world: World, scenario: Scenario, seed: number): void 
   for (let i = 0; i < scenario.arrivals.length; i += 1) {
     const assigned = assignments[i]!;
     const traffic = allocateTrafficPair(rng, used);
-    const squawk = allocateSquawkCode(
-      world.aircraft.flatMap((aircraft) =>
-        [aircraft.squawk, aircraft.assignedSquawk, aircraft.reportedSquawk].filter(
-          (code): code is string => code !== undefined,
-        ),
-      ),
-    );
-    const ac = createAircraft({
+    const ac = spawnAircraft(world, {
+      rng,
       callsign: traffic.callsign,
       xNm: assigned.pose.xNm,
       yNm: assigned.pose.yNm,
@@ -172,9 +152,6 @@ function spawnStarInbound(world: World, scenario: Scenario, seed: number): void 
       altitudeFt: assigned.pose.altitudeFt,
       speedKt: assigned.pose.speedKt,
       aircraftType: traffic.aircraftType,
-      assignedSquawk: squawk,
-      squawk,
-      reportedSquawk: squawk,
       destination: scenario.icao,
       flightPlan: {
         destination: scenario.icao,
@@ -188,7 +165,6 @@ function spawnStarInbound(world: World, scenario: Scenario, seed: number): void 
       routeFixIds: assigned.pose.routeFixIds,
     };
     ac.intent.vertical = { type: "VIA_STAR", starId: assigned.starId, sense: "DESCEND" };
-    world.aircraft.push(ac);
     offerInboundHandoff(world, ac);
   }
 }
@@ -208,7 +184,7 @@ function spawnDownwindArc(
     const traffic = allocateTrafficPair(rng, used);
     const arrival = downwindArcArrival(i, n, scenario);
     arrival.aircraftType = traffic.aircraftType;
-    spawnArrival(world, arrival, traffic.callsign, scenario);
+    spawnArrival(world, arrival, traffic.callsign, rng, scenario);
   }
 }
 
@@ -241,7 +217,7 @@ export function spawnArrivals(
   const used = usedCallsignSet(world.aircraft.map((a) => a.callsign));
   for (const arrival of source.arrivals) {
     const traffic = allocateTrafficPairForType(rng, used, arrival.aircraftType ?? "B738");
-    spawnArrival(world, arrival, traffic.callsign, source);
+    spawnArrival(world, arrival, traffic.callsign, rng, source);
   }
 }
 
