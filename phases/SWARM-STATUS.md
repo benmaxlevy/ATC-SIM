@@ -1,5 +1,33 @@
 # Swarm status
 
+## SIXTY-FIRST SWARM COMPLETE — FAA terminal strip alignment (T02-158–162)
+
+T02-158 through T02-162 are complete on `feat/flight-plan-lifecycle`.
+Happy-path terminal departure and arrival strips now share the supplied
+five-column structure `1–4 | 5–7 | 8/8A/8B | 9/9A/9B/9C | 10–18`.
+Canonical plan projection uses plan equipment, CID, assigned beacon, PTD/ETA,
+airports, altitude, route, and remarks. Reported squawk remains separate.
+Arrival Box 9 now shows altitude/remarks rather than flight rules; departure
+Box 9 shows route/destination/remarks. Boxes 9A–9C remain present.
+
+Captain squash/import commits:
+
+- T02-158: `29daef1`
+- T02-159: `0da75c1`
+- T02-160: `6c922c3`
+- T02-161: `d33c6a7`
+- T02-162: `6387616`
+
+Focused gates passed after each ticket: T02-158 **22**, T02-159 **5**,
+T02-160 **42**, T02-161 **42**, and T02-162 **99** tests. Final `npm run ci`
+passed: **193 test files, 1,794 tests passed, 4 skipped**.
+
+FAA validation: **PASS after every ticket** against [JO 7110.65 §2-3-4](https://www.faa.gov/air_traffic/publications/atpubs/atc_html/chap2_section_3.html#para-2-3-4)
+and the supplied arrival/departure structure images. Recording/RA, FDIO,
+overflight, missing-data, and facility-policy behavior remain out of scope.
+
+No push performed. Phase boundary reached.
+
 ## NINTH SWARM IMPLEMENTATION COMPLETE — manual follow-up findings
 
 T02-154 through T02-157 are implemented on `feat/flight-plan-lifecycle`:
