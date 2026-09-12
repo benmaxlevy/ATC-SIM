@@ -340,11 +340,13 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
 
       // Left click to accept inbound handoff
       world.simTimeMs = 1600;
+      view.tracks.get(ac.id)!.unassociated = true;
       handleTrackClick(view.tracks, world, ac.id);
 
       const td = view.tracks.get(ac.id)!;
       expect(td.ownership).toBe("owned");
       expect(td.datablockMode).toBe("full");
+      expect(td.unassociated).toBe(false);
       expect(handoffFor(world, ac.id)).toEqual({ kind: "none" });
       expect(log.byType("handoff.inbound.accepted")).toHaveLength(1);
 

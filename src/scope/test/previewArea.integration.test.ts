@@ -193,7 +193,9 @@ test("F4 and TERM CNTL share termination semantics", () => {
     const target = makeTestAircraft({ id: `ac-term-${id}`, callsign: "DAL456" });
     plan.value.status = "active";
     plan.value.associatedAircraftId = target.id;
-    return { target, world: createWorld({ flightPlans: [plan.value], aircraft: [target] }) };
+    const world = createWorld({ flightPlans: [plan.value], aircraft: [target] });
+    world.handoffs.set(target.id, { kind: "inbound", fromSectorId: "C" });
+    return { target, world };
   };
   const direct = makeCase("direct");
   const directView = createScopeView();
@@ -218,6 +220,7 @@ test("F4 and TERM CNTL share termination semantics", () => {
       tracked: false,
       forcedFdb: false,
     });
+    expect(handoffFor(result.world, result.target.id)).toEqual({ kind: "none" });
     expect(result.target.callsign).toBe("DAL456");
   }
 });

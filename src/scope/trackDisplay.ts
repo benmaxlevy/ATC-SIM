@@ -16,6 +16,7 @@ import {
   flightPlanForAircraft,
   handoffFor,
   rejectPointout,
+  setHandoffNone,
 } from "@core";
 import { sanitizeScratchpad, type DatablockMode } from "./datablock";
 import { createHistoryBuf, recordHistoryOnReport, type HistoryBuf } from "./history";
@@ -673,6 +674,7 @@ export function acceptInboundOnClick(
   const td = ensureTrackDisplay(tracks, aircraftId);
   td.ownership = applyInitiateTrack(td.ownership);
   td.datablockMode = "full";
+  td.unassociated = false;
   td.forcedFdb = false;
   return true;
 }
@@ -692,9 +694,12 @@ export function applyInitiateTrackToId(
     return { applied: false, hint: NO_SEL_HINT };
   }
   const td = ensureTrackDisplay(tracks, aircraftId);
-  acceptInboundHandoff(world, aircraftId);
+  const accepted = acceptInboundHandoff(world, aircraftId);
   td.ownership = applyInitiateTrack(td.ownership);
   td.datablockMode = "full";
+  if (accepted) {
+    td.unassociated = false;
+  }
   td.forcedFdb = false;
   return { applied: true, hint: null };
 }
@@ -760,6 +765,10 @@ export function terminateTrackWithPlan(
   const aircraft = world.aircraft.find((item) => item.id === aircraftId);
   if (!aircraft) {
     return { applied: false, hint: NO_SEL_HINT };
+  }
+  const handoff = handoffFor(world, aircraftId);
+  if (handoff.kind === "inbound" || handoff.kind === "departure") {
+    setHandoffNone(world, aircraftId);
   }
   const plan = flightPlanForAircraft(world, aircraftId);
   if (plan) {
