@@ -1,5 +1,20 @@
 # Swarm status
 
+## NINTH SWARM IMPLEMENTATION COMPLETE — manual follow-up findings
+
+T02-154 through T02-157 are implemented on `feat/flight-plan-lifecycle`:
+live squawk wiring, canonical projections, manual F1/F3/F4/F7 meanings, and
+the bottom-right Help button below Voice Text. CI passed with 193 files,
+1,789 tests passed, and 4 skipped.
+
+Independent manual review passed the key mappings and INIT CNTL slew/click
+behavior against Appendix D Table D-1 p. D-2 and §5.4.1 p. 5-66. It found
+follow-up concerns: generic creation/radar inputs still bypass the squawk hook
+(documented future sources), a possible stale `TrackDisplay.squawk` precedence
+in datablock formatting, incomplete direct `MULTI FUNC M` field grammar, and
+stale active documentation claims. Exact button placement remains a browser
+visual check. No push was performed.
+
 ## EIGHTH SWARM EXIT BLOCKED — T02-149–153 canonical flight-plan association (2026-09-11)
 
 T02-149 through T02-153 are complete on `feat/flight-plan-lifecycle`. The
