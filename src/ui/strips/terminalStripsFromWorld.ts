@@ -52,7 +52,6 @@ export function terminalStripsFromWorld(world: World): {
     const aircraftType = plan?.aircraftType ?? ac.aircraftType;
     const requestedAltitudeFt =
       plan?.requestedAltitudeFt ?? ac.requestedAltitudeFt ?? ac.intent.requestedAltitudeFt;
-    const assignedBeacon = plan?.assignedBeacon ?? ac.assignedSquawk;
     const isDeparture =
       handoffFor(world, ac.id)?.kind === "departure" ||
       ac.intent.vertical?.type === "VIA_SID" ||
@@ -63,32 +62,32 @@ export function terminalStripsFromWorld(world: World): {
         ),
       );
 
-    const cwtCategory: CWTCategory | undefined =
-      ac.wakeCategory && /^[A-I]$/i.test(ac.wakeCategory)
-        ? (ac.wakeCategory.toUpperCase() as CWTCategory)
-        : undefined;
-    const isHeavy = ac.wakeCategory === "H";
-    const beaconCode = assignedBeacon ?? ac.squawk ?? "1200";
+    const cwtCategory: CWTCategory | undefined = ac.cwtWakeCategory;
+    const isHeavy = ac.wakeCategory?.toUpperCase() === "H";
+    const beaconCode = plan?.assignedBeacon ?? ac.assignedSquawk ?? ac.squawk ?? "";
+    const reportedSquawk = plan?.reportedBeacon ?? ac.reportedSquawk ?? ac.squawk;
 
     const cidDigits = acid.replace(/\D/g, "");
 
     if (isDeparture) {
-      const cid = cidDigits.length > 0 ? cidDigits.padStart(3, "0").slice(-3) : "101";
+      const cid = plan?.cid ?? (cidDigits.length > 0 ? cidDigits.padStart(3, "0").slice(-3) : "");
       const altFt = requestedAltitudeFt ?? ac.intent.assignedAltitudeFt;
       const requestedAltitude = String(Math.round(altFt / 100));
 
       const route =
-        ac.intent.lateral?.type === "PROCEDURE" && ac.intent.lateral.routeFixIds?.length
+        plan?.route ??
+        (ac.intent.lateral?.type === "PROCEDURE" && ac.intent.lateral.routeFixIds?.length
           ? ac.intent.lateral.routeFixIds.join(" ")
-          : (plan?.route ?? "DIRECT");
+          : "");
 
       const matchedSd = world.scheduledDepartures?.find(
         (sd) => sd.callsign.toUpperCase() === acid.toUpperCase() && sd.spawned,
       );
       const proposedTime =
-        matchedSd?.scheduledSimMs !== undefined
+        plan?.ptd ??
+        (matchedSd?.scheduledSimMs !== undefined
           ? formatSimZuluTime(matchedSd.scheduledSimMs)
-          : formatSimZuluTime(world.simTimeMs);
+          : formatSimZuluTime(world.simTimeMs));
 
       const depStrip: DepartureStripData = {
         id: ac.id,
@@ -96,20 +95,22 @@ export function terminalStripsFromWorld(world: World): {
         acid,
         revisionNumber: 0,
         rawType: aircraftType ?? "B738",
-        equipmentSuffix: "L",
+        aircraftCount: plan?.aircraftCount,
+        equipmentSuffix: plan?.equipment,
         isHeavy,
         cwtCategory,
         cid,
         beaconCode,
+        reportedSquawk,
         proposedDepartureTime: proposedTime,
         requestedAltitude,
-        departureAirport: airportId,
+        departureAirport: plan?.departureAirport ?? airportId,
         route,
         destinationAirport:
           plan?.airportId ??
           (ac as unknown as { destinationAirport?: string }).destinationAirport ??
-          "DEST",
-        remarks: "",
+          "",
+        remarks: plan?.remarks ?? "",
         annotationBoxes: {
           box8A: activeRunway,
           box8B: "",
@@ -118,25 +119,29 @@ export function terminalStripsFromWorld(world: World): {
       };
       departures.push(depStrip);
     } else {
-      const cid = cidDigits.length > 0 ? cidDigits.padStart(3, "0").slice(-3) : "201";
+      const cid = plan?.cid ?? (cidDigits.length > 0 ? cidDigits.padStart(3, "0").slice(-3) : "");
 
-      let previousFix: string | undefined = undefined;
-      let coordinationFix = "ENTRY";
+      let previousFix: string | undefined = plan?.previousFix;
+      let coordinationFix = plan?.coordinationFix ?? "";
 
       if (ac.intent.lateral?.type === "PROCEDURE") {
         const routeFixIds = ac.intent.lateral.routeFixIds ?? [];
         const toFixIndex = ac.intent.lateral.toFixIndex ?? 0;
-        if (toFixIndex > 0 && routeFixIds[toFixIndex - 1]) {
+        if (!previousFix && toFixIndex > 0 && routeFixIds[toFixIndex - 1]) {
           previousFix = routeFixIds[toFixIndex - 1];
         }
-        if (routeFixIds.length > 0) {
-          coordinationFix = routeFixIds[toFixIndex] ?? routeFixIds[0] ?? "ENTRY";
+        if (!coordinationFix && routeFixIds.length > 0) {
+          coordinationFix = routeFixIds[toFixIndex] ?? routeFixIds[0] ?? "";
         }
-      } else if (ac.intent.lateral?.type === "DIRECT" && ac.intent.lateral.fixId) {
+      } else if (
+        !coordinationFix &&
+        ac.intent.lateral?.type === "DIRECT" &&
+        ac.intent.lateral.fixId
+      ) {
         coordinationFix = ac.intent.lateral.fixId;
       }
 
-      const eta = formatSimZuluTime(world.simTimeMs, estimateArrivalMinutes(ac));
+      const eta = plan?.eta ?? formatSimZuluTime(world.simTimeMs, estimateArrivalMinutes(ac));
       const remarks =
         ac.intent.lateral?.type === "PROCEDURE" && ac.intent.lateral.starId
           ? ac.intent.lateral.starId
@@ -148,17 +153,28 @@ export function terminalStripsFromWorld(world: World): {
         acid,
         revisionNumber: 0,
         rawType: aircraftType ?? "A321",
-        equipmentSuffix: "L",
+        aircraftCount: plan?.aircraftCount,
+        equipmentSuffix: plan?.equipment,
         isHeavy,
         cwtCategory,
         cid,
         beaconCode,
+        reportedSquawk,
         previousFix,
         coordinationFix,
         estimatedTimeOfArrival: eta,
+        altitude:
+          plan?.assignedAltitudeFt === undefined && requestedAltitudeFt === undefined
+            ? undefined
+            : String(
+                Math.round((plan?.assignedAltitudeFt ?? requestedAltitudeFt ?? 0) / 100),
+              ).padStart(3, "0"),
+        altitudeRemarks: plan?.remarks,
         flightRules: plan?.flightRules === "VFR" ? "VFR" : "IFR",
+        minimumFuel: plan?.minimumFuel,
         destinationAirport: plan?.airportId ?? airportId,
-        remarks: plan?.route ?? remarks,
+        remarks: plan?.remarks ?? plan?.route ?? remarks,
+        box9A: plan?.airportId ?? airportId,
         annotationBoxes: {
           box8A: activeRunway,
           box8B: "",

@@ -14,6 +14,8 @@ export interface FlightPlan {
   status: FlightPlanStatus;
   /** Aircraft identification (ACID), independent of reported squawk. */
   acid: string;
+  /** Controller/automation computer identification number (Box 4). */
+  cid?: string;
   assignedBeacon?: string;
   reportedBeacon?: string;
   /** Local owning/controlling position, not an association result. */
@@ -27,10 +29,18 @@ export interface FlightPlan {
   equipment?: string;
   aircraftType?: string;
   aircraftCount?: number;
+  /** Filed departure airport for terminal strip Box 8. */
+  departureAirport?: string;
   airportId?: string;
   flightRules?: string;
   eta?: string;
   ptd?: string;
+  /** Filed operational remarks for terminal strip Box 9/9A. */
+  remarks?: string;
+  /** Authoritative arrival coordination data when filed. */
+  previousFix?: string;
+  coordinationFix?: string;
+  minimumFuel?: string;
   source?: string;
   /** Why the plan is suspended; drives STARS mismatch unsuspend behavior. */
   suspensionReason?: FlightPlanSuspensionReason;
