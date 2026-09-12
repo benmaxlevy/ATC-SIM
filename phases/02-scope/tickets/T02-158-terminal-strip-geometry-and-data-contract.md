@@ -25,13 +25,23 @@ Define the shared terminal flight-progress strip contract represented by the sup
 
 ## Acceptance criteria
 
-- [ ] Both strip types expose the shared five-column geometry contract.
-- [ ] Departure data represents Boxes 1–9 in FAA departure meaning.
-- [ ] Arrival data represents Boxes 1–9A in FAA arrival meaning.
-- [ ] Assigned beacon and reported squawk remain separate concepts.
-- [ ] Existing annotation support for 8A/8B and 10–18 remains compatible.
-- [ ] Synthetic type tests cover one departure and one arrival.
-- [ ] Manual validation after ticket compares field names and numbered-space meanings against FAA §2-3-4; handoff records PASS/FAIL.
+- [x] Both strip types expose the shared five-column geometry contract.
+- [x] Departure data represents Boxes 1–9 in FAA departure meaning.
+- [x] Arrival data represents Boxes 1–9A in FAA arrival meaning.
+- [x] Assigned beacon and reported squawk remain separate concepts.
+- [x] Existing annotation support for 8A/8B and 10–18 remains compatible.
+- [x] Synthetic type tests cover one departure and one arrival.
+- [x] Manual validation after ticket compares field names and numbered-space meanings against FAA §2-3-4; handoff records PASS/FAIL.
+
+## Validation record
+
+PASS — Compared `TERMINAL_STRIP_LAYOUT` and the departure/arrival fields with
+FAA JO 7110.65 §2-3-4. Boxes 1–5 share aircraft identity, revision, aircraft
+data, CID, and assigned beacon; departure Boxes 6–9 model proposed departure
+time, requested altitude, departure airport, route/destination/remarks; arrival
+Boxes 6–9A model previous fix, coordination fix, ETA, altitude/remarks, and
+minimum-fuel/destination data. Optional 8A/8B/9A–9C and 10–18 remain explicit.
+Source: https://www.faa.gov/air_traffic/publications/atpubs/atc_html/chap2_section_3.html#para-2-3-4
 
 ## Out of scope
 

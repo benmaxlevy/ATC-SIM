@@ -7,6 +7,24 @@ export type FlightRules = "IFR" | "VFR";
 
 export type CWTCategory = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I";
 
+/**
+ * Shared physical terminal flight progress strip layout.
+ *
+ * FAA JO 7110.65 §2-3-4 assigns arrival and departure data to these numbered
+ * spaces. The trainer keeps the optional spaces explicit so both strip types
+ * can share one geometry while later policy decides which values are shown.
+ */
+export const TERMINAL_STRIP_LAYOUT = [
+  ["1", "2", "3", "4"],
+  ["5", "6", "7"],
+  ["8", "8A", "8B"],
+  ["9", "9A", "9B", "9C"],
+  ["10", "11", "12", "13", "14", "15", "16", "17", "18"],
+] as const;
+
+export type TerminalStripColumn = (typeof TERMINAL_STRIP_LAYOUT)[number];
+export type TerminalStripBox = TerminalStripColumn[number];
+
 export interface StripAnnotationBoxes {
   /** Upper annotation box 8A (e.g. runway assignment). */
   box8A?: string;
@@ -28,6 +46,8 @@ export interface BaseStripData {
   revisionNumber?: number;
   /** Aircraft type designator, e.g. 'B738', 'A321', 'C172' (Box 3). */
   rawType: string;
+  /** Number of aircraft when the strip represents more than one aircraft (Box 3). */
+  aircraftCount?: number;
   /** Equipment suffix, e.g. 'L', 'G' (Box 3). */
   equipmentSuffix?: string;
   /** Heavy aircraft flag (Box 3 prefix 'H/' when CWT inactive). */
@@ -36,8 +56,14 @@ export interface BaseStripData {
   cwtCategory?: CWTCategory;
   /** Computer identification number / CID (Box 4). */
   cid?: string;
-  /** Transponder beacon code / squawk (Box 5). */
+  /** Assigned secondary-radar beacon code (Box 5). */
   beaconCode: string;
+  /** Reported surveillance squawk; kept separate from the assigned Box 5 code. */
+  reportedSquawk?: string;
+  /** Explicit terminal spaces retained for the shared strip contract. */
+  box9A?: string;
+  box9B?: string;
+  box9C?: string;
   /** Upper (8A, 8B) and lower (10–18) annotation boxes. */
   annotationBoxes?: StripAnnotationBoxes;
   /** Whether the strip is visually indented (cocked) horizontally. */
@@ -68,8 +94,14 @@ export interface ArrivalStripData extends BaseStripData {
   coordinationFix: string;
   /** Estimated time of arrival over coordination fix in Zulu HHMM (Box 8). */
   estimatedTimeOfArrival: string;
-  /** Flight rules: 'IFR' or 'VFR' (Box 9). */
+  /** Altitude in hundreds of feet or an authorized facility notation (Box 9). */
+  altitude?: string;
+  /** Altitude and operational remarks (Box 9). */
+  altitudeRemarks?: string;
+  /** Retained flight-plan classification; not a terminal Box 9 value. */
   flightRules: FlightRules;
+  /** Minimum fuel, destination, pointout, vector, or speed data (Box 9A). */
+  minimumFuel?: string;
   /** Destination airport ICAO/FAA code (Box 9A). */
   destinationAirport: string;
   /** Inbound remarks or arrival procedure notes (Box 9A). */
