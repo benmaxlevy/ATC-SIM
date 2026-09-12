@@ -325,8 +325,8 @@
   overflow: hidden;
 }
 
-/* Departure Box 9 is one large field.  9A/9B/9C are retained as empty
-   terminal subspaces at the corners shown on the supplied FAA layout. */
+/* Departure Box 9 is one large field.  9A/9B/9C are optional and stay empty
+   on the default happy path. */
 .col-route-departure {
   position: relative;
   padding: 0;
@@ -338,7 +338,7 @@
   font-size: 0.605rem;
   line-height: 1.15;
   word-break: break-word;
-  white-space: normal;
+  white-space: nowrap;
   overflow: hidden;
 }
 

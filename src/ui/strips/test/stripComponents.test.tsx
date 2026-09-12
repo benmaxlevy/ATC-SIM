@@ -97,15 +97,17 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
       expect(html).toContain('data-box="9B"');
       expect(html).toContain('data-box="9C"');
 
+      const box9 = html.match(/data-box="9"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
       const box9a = html.match(/data-box="9A"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
       const box9b = html.match(/data-box="9B"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
       const box9c = html.match(/data-box="9C"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
-      expect(box9a).toContain("KPHL");
+      expect(box9).toContain("KPHL");
+      expect(box9a).toBe("");
       expect(box9b).toBe("");
       expect(box9c).toBe("");
     });
 
-    test("places a standalone departure procedure in Box 9C", () => {
+    test("keeps a standalone departure procedure in required Box 9", () => {
       const procedureStrip: DepartureStripData = {
         ...mockDAL882,
         route: "CHPPR1",
@@ -114,11 +116,8 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
       const html = renderToStaticMarkup(createElement(DepartureStrip, { strip: procedureStrip }));
 
       const box9 = html.match(/data-box="9"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
-      const box9a = html.match(/data-box="9A"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
-      const box9c = html.match(/data-box="9C"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
-      expect(box9).toBe("");
-      expect(box9a).toContain("KATL");
-      expect(box9c).toContain("CHPPR1");
+      expect(box9).toContain("CHPPR1");
+      expect(box9).toContain("KATL");
     });
   });
 
