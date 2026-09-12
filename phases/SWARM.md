@@ -1,5 +1,69 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Sixty-second swarm started — 2026-09-12 (Datablock source unification)
+
+Captain executing T02-164–165 on `improvement/db-source-unification`.
+Ticket workers are sequential; each ticket is squash-merged into the
+improvement branch only. Datablock regression tests and `npm run ci` run after
+each merge. No merge or push to `master` is authorized.
+
+## Proposed sixty-second swarm — 2026-09-12 (Datablock source unification)
+
+One sequential worker will centralize the runtime datablock source and route
+paint, layout, and pick through the same projection. Datablock regression tests
+run after every ticket merge; the supplied STARS manual is used for review.
+
+| Key | Value |
+| --- | --- |
+| Goal | Make all datablock consumers use one explicit runtime source. |
+| Include | **T02-164**, **T02-165** only. |
+| Skip | New datablock semantics, new fields or alerts, TSAS scheduling, CSMM, duplicate-beacon world detection, DCB, radio, Command IR, pilot execution, speech, networking, kinematics, geometry redesign, and facility branches. |
+| Stop | After each ticket's datablock regression gate and `npm run ci`, final supplied-manual review, and phase acceptance. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges every ticket into `improvement/db-source-unification`. |
+| Merge target | `improvement/db-source-unification` |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push. Never merge or push to `master` unless separately authorized. |
+
+**Product law:** One target produces one explicit runtime datablock state.
+Paint, layout, and pick consume that same state. Plan data never overwrites
+surveillance evidence. Unsupported values stay empty. Datablock derivation
+never mutates World, aircraft, intent, kinematics, or Command IR. The feature
+remains STARS-like and preserves the existing Canvas2D/performance boundary.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-164 | `improvement/db-source-unification` clean and based on current `master` |
+| B | T02-165 | T02-164 squash merge, datablock regression tests, and `npm run ci` |
+
+**Ticket ownership:**
+
+- T02-164: runtime source contract and adapter tests.
+- T02-165: paint/layout/pick consumer migration and integration regressions.
+
+**Ticket branches:**
+
+- `ticket/T02-164-datablock-runtime-source-contract` ← `phases/02-scope/tickets/T02-164-datablock-runtime-source-contract.md`
+- `ticket/T02-165-datablock-consumer-unification` ← `phases/02-scope/tickets/T02-165-datablock-consumer-unification.md`
+
+**Manual review:** `/home/ben/Documents/stars refs/full_manual.pdf`; relevant
+anchors are §2.12 pp. 2-58–2-70, §5.4.1 pp. 5-66–5-67, and §5.6.17
+pp. 5-167–5-173. Each ticket must record manual PASS, concern, or explicit
+skip reason. No CRC substitute is required.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: Datablock source unification T02-164–165
+Merge target: improvement/db-source-unification
+Merged: T02-164, T02-165
+Tests: <datablock regression gates after each ticket, final npm run ci, and manual review>
+Notes: No master merge or push; user will open the pull request
+```
+
 ## Proposed sixty-first swarm — 2026-09-11 (FAA terminal strip alignment)
 
 One sequential worker will align happy-path terminal departure and arrival
