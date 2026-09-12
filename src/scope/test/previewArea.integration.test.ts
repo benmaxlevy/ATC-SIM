@@ -153,6 +153,32 @@ test("T02-145 — explicit ACID slew associates the authoritative plan", () => {
   expect(target.callsign).toBe("1234");
 });
 
+test("creation auto-associates a unique already-reporting beacon", () => {
+  const target = makeTestAircraft({
+    id: "ac-create-beacon",
+    callsign: "UNTRK",
+    squawk: "5066",
+  });
+  const world = createWorld({ aircraft: [target] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  typeKeys(view, world, ["S", "W", "A", "1", "2", "3", " ", "5", "0", "6", "6", "Enter"]);
+
+  expect(world.flightPlans).toHaveLength(1);
+  expect(world.flightPlans[0]).toMatchObject({
+    acid: "SWA123",
+    assignedBeacon: "5066",
+    status: "active",
+    associatedAircraftId: target.id,
+    reportedBeacon: "5066",
+  });
+  expect(view.tracks.get(target.id)).toMatchObject({
+    unassociated: false,
+    datablockMode: "full",
+  });
+});
+
 test("T02-145 — explicit beacon slew associates the authoritative plan", () => {
   const plan = createFlightPlan({
     id: "fp-beacon-slew",

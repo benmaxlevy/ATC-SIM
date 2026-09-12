@@ -312,7 +312,7 @@ test("AC1 — *F flashes FILTER; *LA writes hundreds; *BCN add/DEL; incomplete I
   expect(chord.preview.buffer).toBe("F");
 });
 
-test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; / DB toggles PDB↔FDB; F3/F4 apply vs arm", () => {
+test("AC1 — F1 / * chords mutate tracks; direct slew or F3 accepts inbound HO; / DB toggles PDB↔FDB; F3/F4 apply vs arm", () => {
   const hoWorld = createWorldFromScenario(loadKdem(), 1);
   const hoDal = hoWorld.aircraft[0]!;
   const hoView = createScopeView();
@@ -341,8 +341,8 @@ test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; 
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
 
-  typeKeys(view, world, ["+"]);
-  expect(view.preview.phase).toBe("entry");
+  typeKeys(view, world, ["F1"]);
+  expect(view.preview.phase).toBe("armed");
   clickAt(view, world, dal.xNm, dal.yNm);
   expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
   expect(view.preview.phase).toBe("idle");
@@ -399,8 +399,6 @@ test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; 
   expect(view.preview.armed).toEqual({ type: "termCntl" });
   handleScopeKeyDown(keyEvent("Escape"), view, "scope", world, 1100);
 
-  typeKeys(view, world, ["+"], "scope", 1200);
-  clickAt(view, world, dal.xNm, dal.yNm);
   typeKeys(view, world, ["*"], "scope", 1400);
   clickAt(view, world, dal.xNm, dal.yNm);
   expect(view.tracks.get(dal.id)!.highlighted).toBe(true);

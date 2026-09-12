@@ -9,7 +9,6 @@ import {
   createFlightPlan,
   deleteFlightPlanFromWorld,
   flightPlanForAircraft,
-  updateAircraftSquawk,
   type Aircraft,
   type ScheduledDeparture,
   type World,
@@ -17,12 +16,7 @@ import {
 import { formatAltitudeHundreds } from "./datablock";
 import { buildSystemListLines, type ListFormatter } from "./listFormatter";
 import type { ScopeView } from "./scopeView";
-import {
-  applyInitiateTrackToId,
-  ensureTrackDisplay,
-  filterActiveCaAlerts,
-  type TrackDisplay,
-} from "./trackDisplay";
+import { ensureTrackDisplay, filterActiveCaAlerts, type TrackDisplay } from "./trackDisplay";
 import { getVideoMapsEntries } from "./coordinationList";
 import { toggleVideoMap } from "./dcb/dcbFunctions";
 
@@ -1391,40 +1385,6 @@ export function dropVfrListEntry(view: ScopeView, callsign: string): boolean {
     view.vfrListDroppedCallsigns = new Set();
   }
   view.vfrListDroppedCallsigns.add(callsign.trim().toUpperCase());
-  return true;
-}
-
-export function promoteVfrListEntry(
-  view: ScopeView,
-  world: World,
-  index: number,
-  targetAircraftId: string,
-): boolean {
-  const droppedSet = view.vfrListDroppedCallsigns ?? new Set();
-  const vfrFlights = world.aircraft.filter(
-    (ac) =>
-      isVfrAircraft(ac, view.tracks, world) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
-  );
-  const idx = index >= 14 ? index - 14 : index - 1;
-  const entry = vfrFlights[idx];
-  if (!entry) return false;
-
-  const target = world.aircraft.find((a) => a.id === targetAircraftId);
-  if (target) {
-    target.callsign = entry.callsign;
-    updateAircraftSquawk(world, targetAircraftId, entry.squawk ?? "1200");
-    target.assignedSquawk = entry.assignedSquawk;
-  }
-  applyInitiateTrackToId(view.tracks, world, targetAircraftId);
-  const track = view.tracks.get(targetAircraftId);
-  if (track) {
-    track.datablockMode = "full";
-    track.ownership = "owned";
-    track.unassociated = false;
-    track.tracked = true;
-    track.flightRules = "VFR";
-  }
-  dropVfrListEntry(view, entry.callsign);
   return true;
 }
 

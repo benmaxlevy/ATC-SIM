@@ -870,11 +870,6 @@ export function isRadioFocusSlashKey(key: string): boolean {
   return key === "/";
 }
 
-/** Scope-focus Track Key `+`. Never always-on; radio `+` is literal. */
-export function isPreviewPlusKey(key: string): boolean {
-  return key === "+" || key === "Add";
-}
-
 /**
  * Always-on handoff action. F5 (Table 18) or legacy Shift+H.
  * Auto-detects Tower (for arrivals on final) vs Center (for climbing departures).

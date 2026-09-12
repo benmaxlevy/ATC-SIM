@@ -534,56 +534,6 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
       expect(view.systemLists.VL.y).toBe(0.7);
     });
 
-    it("+[Index#] [Left-Click Radar Target] promotes / associates VFR entry to radar target", () => {
-      const view = createScopeView();
-      const world = createWorld();
-
-      // Untracked radar target at (0, 0)
-      const target = makeTestAircraft({
-        id: "target-1",
-        callsign: "UNTRK",
-        xNm: 0,
-        yNm: 0,
-        squawk: "1200",
-        altitudeFt: 4500,
-      });
-
-      // VFR list entry #1 at distance
-      const vfrAc = makeTestAircraft({
-        id: "vfr-plane",
-        callsign: "N12345",
-        xNm: 50,
-        yNm: 50,
-        squawk: "1200",
-        altitudeFt: 4500,
-      });
-      world.aircraft.push(vfrAc, target);
-
-      // Type "+1" into preview buffer
-      beginPreviewBufferEntry(view.preview, "+1", Date.now());
-      expect(view.preview.buffer).toBe("+1");
-
-      // Scope view camera centered at (0, 0)
-      view.camera.centerEastNm = 0;
-      view.camera.centerNorthNm = 0;
-
-      // Click on target at center of 1000x1000 canvas (500, 500)
-      handlePpiLeftClick(view, world, 500, 500, 1000, 1000);
-
-      // Target promoted/associated to VFR entry
-      expect(target.callsign).toBe("N12345");
-      const track = view.tracks.get("target-1");
-      expect(track).toBeDefined();
-      expect(track?.datablockMode).toBe("full");
-      expect(track?.unassociated).toBe(false);
-      expect(view.preview.phase).toBe("idle");
-
-      // Entry removed from VFR list upon promotion
-      expect(view.vfrListDroppedCallsigns?.has("N12345")).toBe(true);
-      const lines = buildVfrList(world, 10, view.vfrListDroppedCallsigns, view.tracks);
-      expect(lines).not.toContain("N12345  1200  045");
-    });
-
     it("F1 then left-click list entry drops entry from the VFR list", () => {
       const view = createScopeView();
       const world = createWorld();
