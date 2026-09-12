@@ -594,6 +594,12 @@ export function handleTrackClick(
   const ho = handoffFor(world, aircraftId);
   const td = ensureTrackDisplay(tracks, aircraftId);
 
+  // LDB ground-speed readout belongs to the last slewed target only. A slew
+  // onto any other target clears the prior target before applying its action.
+  for (const [id, otherTd] of tracks) {
+    if (id !== aircraftId && otherTd.unassociated) clearTrackQuery(otherTd);
+  }
+
   // Pointout interactions
   if (ho.kind === "pointout_inbound") {
     if (normalizedCmd === "UN") {
