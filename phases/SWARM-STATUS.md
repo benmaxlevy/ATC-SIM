@@ -1,5 +1,51 @@
 # Swarm status
 
+## SIXTY-SECOND SWARM COMPLETE — Datablock source unification (T02-164–165)
+
+T02-164 and T02-165 are complete on `improvement/db-source-unification`.
+Datablock runtime state now centralizes supported plan, aircraft,
+TrackDisplay, handoff, ATPA, alert, scratchpad, and display inputs. Paint and
+layout share the exact per-target presentation; picking uses the rendered
+snapshot and resolved rectangle, rejecting missing/stale snapshots instead of
+rebuilding raw datablock state.
+
+Ticket squash commits:
+
+- T02-164: `a739e24`
+- T02-165: `c7a5488`
+
+Planning commit: `e04331f`. No push or merge to `master` performed; the user
+will open the pull request from `improvement/db-source-unification`.
+
+Datablock regression gates passed after every stage:
+
+- T02-164 worker/fix: **77** focused tests; CI **1,803 passed, 4 skipped**.
+- T02-164 integration squash: **77** focused tests; CI **1,803 passed, 4 skipped**.
+- T02-165 initial migration: **95** focused tests; CI **1,804 passed, 4 skipped**.
+- T02-165 presentation fix: **99** focused tests; CI **1,808 passed, 4 skipped**.
+- T02-165 rendered-pick snapshot fix: **100** focused tests; CI **1,809 passed, 4 skipped**.
+- T02-165 fallback removal: **111** focused tests; CI **1,809 passed, 4 skipped**.
+- Final post-squash gate: **115** focused tests; CI **1,809 passed, 4 skipped**.
+
+The final focused suite covered datablock formatting/fidelity, flight-plan
+lifecycle, overlap/layout, render paint, pick, and STARS command integration.
+
+Manual review: **PASS** against the supplied
+`/home/ben/Documents/stars refs/full_manual.pdf`, §2.12 pp. 2-58–2-70,
+§5.4.1 pp. 5-66–5-67, and §5.6.17 pp. 5-167–5-173. Independent review found
+no remaining FAIL. Non-blocking concerns: snapshot invalidation does not list
+every possible in-place mutable input, and no new dedicated 30-target
+benchmark was added; the existing Phase 2 render benchmark passed in CI.
+Unsupported NAS semantics remain out of scope.
+
+## SIXTY-SECOND SWARM EXIT — PHASE EXIT GREEN
+
+Phase: Datablock source unification T02-164–165
+Merge target: `improvement/db-source-unification`
+Merged: T02-164, T02-165
+Tests: Focused datablock regressions and final `npm run ci` green
+Notes: No `master` merge or push; user will open the pull request
+
 ## SIXTY-FIRST SWARM COMPLETE — FAA terminal strip alignment (T02-158–162)
 
 T02-158 through T02-162 are complete on `feat/flight-plan-lifecycle`.
