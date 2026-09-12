@@ -1,5 +1,57 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Proposed sixty-first swarm — 2026-09-11 (FAA terminal strip alignment)
+
+One sequential worker will align happy-path terminal departure and arrival
+strips with the supplied FAA JO 7110.65 §2-3-4 field meanings and supplied
+arrival/departure geometry. After every ticket, captain performs manual
+validation against §2-3-4 before the next wave begins.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align terminal strip data, projection, rendering, and acceptance coverage with FAA §2-3-4. |
+| Include | **T02-158**, **T02-159**, **T02-160**, **T02-161**, **T02-162** only. |
+| Skip | Recording/RA behavior, FDIO distinctions, overflight strips, manual correction workflow, missing-data handling, facility-specific optional-field policies, radio, speech, pilot execution, networking, and facility branches. |
+| Stop | After each ticket's FAA §2-3-4 validation, final acceptance, and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `feat/flight-plan-lifecycle`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Product law:** Both strip types use shared physical layout
+`1–4 | 5–7 | 8/8A/8B | 9/9A/9B/9C | 10–18`. Assigned beacon is plan data;
+reported squawk is surveillance data. Happy-path projection never fabricates
+operational values or uses airport-specific branches.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-158 | Current branch clean; T02-143–157 complete |
+| B | T02-159 | T02-158 merge, tests, FAA validation |
+| C | T02-160 | T02-159 merge, tests, FAA validation |
+| D | T02-161 | T02-159 merge, tests, FAA validation |
+| E | T02-162 | T02-160 and T02-161 merge, tests, FAA validation |
+
+**Ticket branches:**
+
+- `ticket/T02-158-terminal-strip-geometry-and-data-contract`
+- `ticket/T02-159-terminal-strip-world-projection`
+- `ticket/T02-160-departure-strip-rendering`
+- `ticket/T02-161-arrival-strip-rendering`
+- `ticket/T02-162-terminal-strips-acceptance`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 FAA terminal strips T02-158–162
+Merge target: feat/flight-plan-lifecycle
+Merged: T02-158, T02-159, T02-160, T02-161, T02-162
+Tests: <focused gates, FAA validation after each ticket, and npm run ci result>
+Notes: Happy-path terminal entries only; recording/RA and FDIO behavior remain out of scope
+```
+
 ## Sixtieth swarm planned — 2026-09-11 (Manual MULTI FUNC altitude filter)
 
 One corrective worker will replace the F7-to-asterisk shortcut with a real
