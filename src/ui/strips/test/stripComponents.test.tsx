@@ -305,7 +305,7 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
 
     test("strips.css defines 5-column subgrid layout matching 1.4fr 0.7fr 0.9fr 2.2fr 1.1fr", () => {
       expect(cssContent).toMatch(
-        /grid-template-columns:\s*minmax\(130px, max-content\)[\s\S]*minmax\(180px, max-content\)/,
+        /grid-template-columns:\s*minmax\(0, 1\.4fr\)[\s\S]*minmax\(0, 1\.1fr\)/,
       );
     });
   });

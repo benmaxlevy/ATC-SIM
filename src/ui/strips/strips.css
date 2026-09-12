@@ -7,14 +7,13 @@
 .departure-strip,
 .arrival-strip {
   display: grid;
-  /* Content-sized sections keep short fields compact and reserve space for
-     route/procedure text before the matrix. */
+  /* Zero-minimum tracks let every section contract with the strip bay. */
   grid-template-columns:
-    minmax(130px, max-content)
-    minmax(72px, max-content)
-    minmax(100px, max-content)
-    minmax(180px, 1fr)
-    minmax(180px, max-content);
+    minmax(0, 1.4fr)
+    minmax(0, 0.7fr)
+    minmax(0, 0.9fr)
+    minmax(0, 2.2fr)
+    minmax(0, 1.1fr);
   width: 100%;
   max-width: 840px;
   height: 80px;
