@@ -175,6 +175,25 @@ describe("T02-144 flight-plan creation", () => {
     });
   });
 
+  it("disambiguates a two-character F6 TCP from aircraft type data", () => {
+    expect(parseFlightPlanCreation("UAL1234 AT B738", false, true)).toMatchObject({
+      kind: "action",
+      action: {
+        creationMode: "fltData",
+        tcp: "AT",
+        aircraftType: "B738",
+      },
+    });
+    expect(parseFlightPlanCreation("UAL1234 F16", false, true)).toMatchObject({
+      kind: "action",
+      action: { creationMode: "fltData", aircraftType: "F16" },
+    });
+    expect(parseFlightPlanCreation("UAL1234 E2", false, true)).toMatchObject({
+      kind: "action",
+      action: { creationMode: "fltData", aircraftType: "E2" },
+    });
+  });
+
   it("classifies F6 time after later fix data", () => {
     expect(parseFlightPlanCreation("UAL1234 1630E KDEM*RW27*P B738", false, true)).toMatchObject({
       kind: "action",

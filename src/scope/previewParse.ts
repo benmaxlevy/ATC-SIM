@@ -202,6 +202,17 @@ function isCreationAcid(value: string): boolean {
   return /^[A-Z][A-Z0-9]{1,6}$/.test(value) && (value.length !== 2 || /\d$/.test(value));
 }
 
+function isDefiniteFltDataAircraft(token: string): boolean {
+  return (
+    token.length >= 3 &&
+    token.length <= 4 &&
+    AIRCRAFT.test(token) &&
+    !SCRATCHPAD.test(token) &&
+    !FIX_DATA.test(token) &&
+    !ETA_OR_PTD.test(token)
+  );
+}
+
 export type FlightPlanCreationParse =
   | { kind: "incomplete" }
   | { kind: "invalid"; reason: string }
@@ -227,6 +238,11 @@ export function parseFlightPlanCreation(
   };
   const used = new Set<string>();
   let etaOrPtd: string | undefined;
+  // Table 5-7 permits both one/two-character TCPs and two-to-four-character
+  // aircraft types. A two-character token is unambiguous only in context:
+  // once a definite aircraft field is present, it is the TCP field; otherwise
+  // it remains a valid two-character aircraft type.
+  const hasDefiniteAircraft = fltData && tokens.slice(1).some(isDefiniteFltDataAircraft);
   for (const token of tokens.slice(1)) {
     if (/^\d{4}$/.test(token)) {
       if (!/^[0-7]{4}$/.test(token)) return { kind: "invalid", reason: "FORMAT" };
@@ -250,13 +266,18 @@ export function parseFlightPlanCreation(
     // two-character letter/number value would otherwise be consumed by the
     // one/two-character TCP rule. Numeric-leading two-character values stay
     // TCPs (for example 1R); asterisk-shaped values are fix data below.
-    if (fltData && /^[A-Z][A-Z0-9]$/.test(token)) {
+    if (fltData && /^[A-Z][A-Z0-9]$/.test(token) && !hasDefiniteAircraft) {
       if (used.has("aircraft")) return { kind: "invalid", reason: "FORMAT" };
       fields.aircraftType = token;
       used.add("aircraft");
       continue;
     }
-    if (/^[A-Z0-9]{1,2}$/.test(token) && !/^[APE]/.test(token) && (fltData || token.length === 2)) {
+    if (
+      /^[A-Z0-9]{1,2}$/.test(token) &&
+      (!/^[APE]/.test(token) ||
+        (fltData && hasDefiniteAircraft && /^[A-Z][A-Z0-9]$/.test(token))) &&
+      (fltData || token.length === 2)
+    ) {
       if (pendingDiscrete) return { kind: "invalid", reason: "FORMAT" };
       if (used.has("tcp")) return { kind: "invalid", reason: "FORMAT" };
       fields.tcp = token;
