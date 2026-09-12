@@ -11,6 +11,7 @@ import {
 import { datablockSourceFromWorld, formatFullDatablock } from "../datablock";
 import { buildTabFlightPlanList, getFlightPlanEntries } from "../systemLists";
 import { createScopeView } from "../scopeView";
+import { syncTrackDisplays } from "../trackDisplay";
 import { terminalStripsFromWorld } from "../../ui/strips/terminalStripsFromWorld";
 
 describe("T02-147 authoritative flight-plan display lifecycle", () => {
@@ -173,5 +174,12 @@ describe("T02-147 authoritative flight-plan display lifecycle", () => {
     });
     expect(aircraft.squawk).toBe("7052");
     expect(aircraft.callsign).toBe("1234");
+    syncTrackDisplays(view.tracks, world);
+    expect(getFlightPlanEntries(world, view)).toHaveLength(0);
+    expect(datablockSourceFromWorld(world, aircraft)).toMatchObject({
+      callsign: "UAL123",
+      assignedSquawk: "7052",
+      reportedSquawk: "7052",
+    });
   });
 });

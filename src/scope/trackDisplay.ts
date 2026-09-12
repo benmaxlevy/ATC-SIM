@@ -998,6 +998,15 @@ export function syncTrackDisplays(
       td = createTrackDisplay();
       tracks.set(ac.id, td);
     }
+    // Automatic beacon correlation is authoritative in World. The next
+    // display sync promotes that associated target to the existing FDB path;
+    // ownership remains unchanged and therefore stays separate from
+    // association.
+    if (flightPlanForAircraft(world, ac.id)) {
+      td.tracked = true;
+      td.unassociated = false;
+      td.datablockMode = "full";
+    }
     if (td.lastReport) {
       sampler.reports.set(ac.id, td.lastReport);
     }
