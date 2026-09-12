@@ -802,6 +802,12 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(lines[6]).toBe("11 JBU301  4611");
       expect(lines[7]).toBe("00 JBU393  1660");
       expect(lines).toHaveLength(8); // Title + MORE + 6 entries
+      expect(
+        lines
+          .slice(2)
+          .filter((line) => /^\d+ /.test(line))
+          .every((line) => /^\d{2,} /.test(line)),
+      ).toBe(true);
     });
 
     it("omits MORE header when entries fit within maxLines", () => {
@@ -1127,7 +1133,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(view.preview.phase).toBe("idle");
     });
 
-    it("F1 1 <click target> associates flight plan from list to target without changing leader direction", () => {
+    it("F1 01 <click target> associates scheduled flight plan from list to target without changing leader direction", () => {
       const world = createWorld();
       const view = createScopeView();
 

@@ -505,6 +505,11 @@ export function defaultDiscreteSquawk(callsign: string, salt: number = 0): strin
   return `${d1}${d2}${d3}${d4}`;
 }
 
+/** Canonical TAB identity: manual line numbers are always two digits below 10. */
+export function formatFlightPlanIndex(index: number): string {
+  return String(index).padStart(2, "0");
+}
+
 export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlanEntry[] {
   const state = ensureFlightPlanListState(view);
   const rawItems: {
@@ -972,7 +977,7 @@ export function buildTabFlightPlanList(
     entries: entries.length,
     formatLine: (idx) => {
       const entry = entries[idx]!;
-      const indexStr = String(entry.index).padStart(2, "0");
+      const indexStr = formatFlightPlanIndex(entry.index);
       const acid = entry.callsign.padEnd(7, " ");
       const bcn = String(entry.squawk).padStart(4, "0");
       return `${indexStr} ${acid} ${bcn}`;

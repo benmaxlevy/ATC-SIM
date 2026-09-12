@@ -19,7 +19,7 @@ import { type VideoMapTokenLayout } from "./dcb/dcbFunctions";
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
 import { cloneWxLevels, type WxLevels } from "./wx";
 import type { ScopeView } from "./scopeView";
-import { getFlightPlanEntries } from "./systemLists";
+import { formatFlightPlanIndex, getFlightPlanEntries } from "./systemLists";
 import {
   ensureTrackDisplay,
   isCaPairInhibited,
@@ -94,7 +94,7 @@ function planIdentityMatches(
     (!coordinationTime || plan.eta === coordinationTime || plan.ptd === coordinationTime);
   if (view && /^\d{2}$/.test(normalized)) {
     const entry = getFlightPlanEntries(world, view).find(
-      (item) => item.index === Number(normalized),
+      (item) => formatFlightPlanIndex(item.index) === normalized,
     );
     if (entry?.planId) {
       const plan = world.flightPlans.find((item) => item.id === entry.planId);
@@ -642,7 +642,7 @@ export function previewFlidMatchesSlew(
   }
   if (/^\d{2}$/.test(flid.trim()) && view) {
     const entry = getFlightPlanEntries(world, view).find(
-      (item) => item.index === Number(flid.trim()),
+      (item) => formatFlightPlanIndex(item.index) === flid.trim(),
     );
     if (entry && !entry.planId) {
       return unassociatedTrack(aircraftId, view);

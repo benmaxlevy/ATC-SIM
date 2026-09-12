@@ -305,6 +305,37 @@ test("AC4/AC5 — INIT CNTL rejects one-digit TAB and CID identities on slew", (
   }
 });
 
+test("AC4 — INIT CNTL rejects one-digit scheduled-departure TAB identity", () => {
+  const target = makeTestAircraft({
+    id: "ac-scheduled-init",
+    callsign: "UNTRK",
+    xNm: 0,
+    yNm: 0,
+    squawk: "1200",
+  });
+  const world = createWorld({ aircraft: [target] });
+  world.scheduledDepartures = [
+    {
+      callsign: "AAL123",
+      runwayId: "27",
+      sidId: "BOS1",
+      assignedSquawk: "7022",
+      scheduledSimMs: 1000,
+      index: 1,
+    },
+  ];
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const tick = nmToScreen(target.xNm, target.yNm, view.camera, VIEW);
+
+  typeKeys(view, world, ["F1", "1"], "scope");
+  handlePpiLeftClick(view, world, tick.x, tick.y, CSS, CSS);
+
+  expect(world.flightPlans).toHaveLength(0);
+  expect(view.tracks.get(target.id)?.unassociated ?? true).toBe(true);
+  expect(view.preview.rejection).toBe("INIT CNTL 1 INV");
+});
+
 test("AC2 — F4 slew drops; implied select-then-F4 still drops", () => {
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", xNm: 16, yNm: 8 });
   const aal = makeTestAircraft({ id: "ac-aal", callsign: "AAL456", xNm: -16, yNm: 0 });

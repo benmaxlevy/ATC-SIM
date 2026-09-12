@@ -46,6 +46,7 @@ import {
   canonicalSystemListId,
   dropTowerListEntry,
   dropVfrListEntry,
+  formatFlightPlanIndex,
   getFlightPlanEntries,
   isVfrAircraft,
   handleFlightPlanListClick,
@@ -89,26 +90,8 @@ function trackingFlidMatches(
     return true;
   }
   if (action.type === "initCntl") {
-    if (/^\d{1,2}$/.test(flid.trim()) && !/^\d{2}$/.test(flid.trim())) {
-      const idx = Number(flid.trim());
-      // A one-digit token cannot address a TAB flight plan. Keep the legacy
-      // VFR promotion path only when no authoritative TAB row owns that slot.
-      if (getFlightPlanEntries(world, view).some((entry) => entry.index === idx && entry.planId)) {
-        return false;
-      }
-      const droppedSet = view.vfrListDroppedCallsigns ?? new Set();
-      const vfrFlights = world.aircraft.filter(
-        (ac) =>
-          isVfrAircraft(ac, view.tracks, world) &&
-          !droppedSet.has(ac.callsign.trim().toUpperCase()),
-      );
-      const vfrIdx = idx >= 14 ? idx - 14 : idx - 1;
-      const td = view.tracks?.get(aircraftId);
-      const isUncorrelated =
-        !td ||
-        td.unassociated === true ||
-        (td.ownership !== "owned" && td.datablockMode !== "full");
-      return Boolean(vfrFlights[vfrIdx]) && isUncorrelated;
+    if (/^\d+$/.test(flid.trim()) && !/^\d{2}$/.test(flid.trim())) {
+      return false;
     }
     return previewFlidMatchesSlew(view.preview, aircraftId, world, view);
   }
@@ -208,10 +191,11 @@ function applyTrackingSlewHit(
     case "initCntl": {
       const flid = action.flid ?? view.preview.flid;
       if (flid) {
-        const isTabIdentity = /^\d{2}$/.test(flid.trim());
-        const num = /^\d{1,2}$/.test(flid.trim()) ? Number(flid.trim()) : Number.NaN;
+        const num = /^\d{2}$/.test(flid.trim()) ? Number(flid.trim()) : Number.NaN;
         const entries = getFlightPlanEntries(world, view);
-        const entryByIndex = !Number.isNaN(num) ? entries.find((e) => e.index === num) : undefined;
+        const entryByIndex = !Number.isNaN(num)
+          ? entries.find((e) => formatFlightPlanIndex(e.index) === flid.trim())
+          : undefined;
         if (entryByIndex) {
           const associated = associateFlightPlanToTrack(world, view, entryByIndex.index, id);
           if (!associated) {
@@ -233,11 +217,6 @@ function applyTrackingSlewHit(
             view.starsChordArmed = null;
             return true;
           }
-          setSelectedAircraft(world, id);
-          clearTrackingSlew(view);
-          return true;
-        }
-        if (!isTabIdentity && !Number.isNaN(num) && promoteVfrListEntry(view, world, num, id)) {
           setSelectedAircraft(world, id);
           clearTrackingSlew(view);
           return true;
