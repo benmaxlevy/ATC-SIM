@@ -1,10 +1,4 @@
-import {
-  acceptPointout,
-  createActiveFlightPlanFromTarget,
-  handoffFor,
-  setSelectedAircraft,
-  type World,
-} from "@core";
+import { acceptPointout, handoffFor, setSelectedAircraft, type World } from "@core";
 import { expireFilterEntry, inAltitudeFilter } from "./altitudeFilter";
 import {
   armPreviewSlewAction,
@@ -68,7 +62,6 @@ import { datablockLineHeightPx } from "./fonts";
 import {
   applyBeaconatorSlewToId,
   clearTrackQuery,
-  applyInitiateTrackToId,
   ensureTrackDisplay,
   pruneCaPairInhibitsForTrack,
   setLeaderDirAndLengthForId,
@@ -94,6 +87,30 @@ function trackingFlidMatches(
   const flid = action.flid ?? view.preview.flid;
   if (!flid) {
     return true;
+  }
+  if (action.type === "initCntl") {
+    if (/^\d{1,2}$/.test(flid.trim()) && !/^\d{2}$/.test(flid.trim())) {
+      const idx = Number(flid.trim());
+      // A one-digit token cannot address a TAB flight plan. Keep the legacy
+      // VFR promotion path only when no authoritative TAB row owns that slot.
+      if (getFlightPlanEntries(world, view).some((entry) => entry.index === idx && entry.planId)) {
+        return false;
+      }
+      const droppedSet = view.vfrListDroppedCallsigns ?? new Set();
+      const vfrFlights = world.aircraft.filter(
+        (ac) =>
+          isVfrAircraft(ac, view.tracks, world) &&
+          !droppedSet.has(ac.callsign.trim().toUpperCase()),
+      );
+      const vfrIdx = idx >= 14 ? idx - 14 : idx - 1;
+      const td = view.tracks?.get(aircraftId);
+      const isUncorrelated =
+        !td ||
+        td.unassociated === true ||
+        (td.ownership !== "owned" && td.datablockMode !== "full");
+      return Boolean(vfrFlights[vfrIdx]) && isUncorrelated;
+    }
+    return previewFlidMatchesSlew(view.preview, aircraftId, world, view);
   }
   if (/^\d{1,2}$/.test(flid.trim())) {
     const idx = Number(flid.trim());
@@ -157,7 +174,7 @@ function explicitPlanEntryForFlid(
   view: ScopeView,
 ): ReturnType<typeof getFlightPlanEntries>[number] | undefined {
   const normalized = flid.trim().toUpperCase();
-  if (/^\d{1,2}$/.test(normalized)) {
+  if (/^\d{2}$/.test(normalized)) {
     return undefined;
   }
   const plans = world.flightPlans.filter(
@@ -191,7 +208,8 @@ function applyTrackingSlewHit(
     case "initCntl": {
       const flid = action.flid ?? view.preview.flid;
       if (flid) {
-        const num = Number(flid.trim());
+        const isTabIdentity = /^\d{2}$/.test(flid.trim());
+        const num = /^\d{1,2}$/.test(flid.trim()) ? Number(flid.trim()) : Number.NaN;
         const entries = getFlightPlanEntries(world, view);
         const entryByIndex = !Number.isNaN(num) ? entries.find((e) => e.index === num) : undefined;
         if (entryByIndex) {
@@ -219,28 +237,15 @@ function applyTrackingSlewHit(
           clearTrackingSlew(view);
           return true;
         }
-        if (!Number.isNaN(num) && promoteVfrListEntry(view, world, num, id)) {
+        if (!isTabIdentity && !Number.isNaN(num) && promoteVfrListEntry(view, world, num, id)) {
           setSelectedAircraft(world, id);
           clearTrackingSlew(view);
           return true;
         }
       }
-      const created = createActiveFlightPlanFromTarget(world, id);
-      if (created.ok) {
-        const td = ensureTrackDisplay(view.tracks, id);
-        td.unassociated = false;
-        td.datablockMode = "full";
-        td.tracked = true;
-        // Explicit INIT CNTL also performs the existing controller-ownership
-        // action; automatic squawk correlation above never does.
-        applyInitiateTrackToId(view.tracks, world, id);
-      } else {
-        // F3 remains the ownership-color trainer stub when no usable plan can
-        // be created; INIT CNTL itself stays display-only.
-        applyInitiateTrackToId(view.tracks, world, id);
-      }
-      setSelectedAircraft(world, id);
-      clearTrackingSlew(view);
+      rejectPreviewCntl(view.preview, Date.now());
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
       return true;
     }
     case "termCntl": {

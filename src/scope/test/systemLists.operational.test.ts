@@ -795,12 +795,12 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
 
       expect(lines[0]).toBe("FLIGHT PLAN");
       expect(lines[1]).toBe("MORE: 1/2");
-      expect(lines[2]).toBe(" 1 AAL123  7022");
-      expect(lines[3]).toBe(" 2 AAL456  6412");
-      expect(lines[4]).toBe(" 4 DAL623  2374");
-      expect(lines[5]).toBe(" 9 DAL660  2374");
+      expect(lines[2]).toBe("01 AAL123  7022");
+      expect(lines[3]).toBe("02 AAL456  6412");
+      expect(lines[4]).toBe("04 DAL623  2374");
+      expect(lines[5]).toBe("09 DAL660  2374");
       expect(lines[6]).toBe("11 JBU301  4611");
-      expect(lines[7]).toBe(" 0 JBU393  1660");
+      expect(lines[7]).toBe("00 JBU393  1660");
       expect(lines).toHaveLength(8); // Title + MORE + 6 entries
     });
 
@@ -830,8 +830,8 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       const lines = buildTabFlightPlanList(world, 10, view);
       expect(lines[0]).toBe("FLIGHT PLAN");
       expect(lines.some((l) => l.startsWith("MORE:"))).toBe(false);
-      expect(lines[1]).toBe(" 1 AAL123  7022");
-      expect(lines[2]).toBe(" 2 AAL456  6412");
+      expect(lines[1]).toBe("01 AAL123  7022");
+      expect(lines[2]).toBe("02 AAL456  6412");
       expect(lines).toHaveLength(3);
     });
   });
@@ -1111,9 +1111,9 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       view.camera.centerEastNm = 0;
       view.camera.centerNorthNm = 0;
 
-      // Type +1 into preview buffer
-      beginPreviewBufferEntry(view.preview, "+1", Date.now());
-      expect(view.preview.buffer).toBe("+1");
+      // Type 01 into preview buffer
+      beginPreviewBufferEntry(view.preview, "01", Date.now());
+      expect(view.preview.buffer).toBe("01");
 
       // Click target at (500, 500)
       handlePpiLeftClick(view, world, 500, 500, 1000, 1000);
@@ -1158,11 +1158,12 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       view.camera.centerEastNm = 0;
       view.camera.centerNorthNm = 0;
 
-      // Press F1 then type 1
+      // Press F1 then type 01
       handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 1000);
       expect(view.preview.armed?.type).toBe("initCntl");
-      handleScopeKeyDown(keyEvent("1"), view, "scope", world, 1050);
-      expect(view.preview.flid).toBe("1");
+      handleScopeKeyDown(keyEvent("0"), view, "scope", world, 1050);
+      handleScopeKeyDown(keyEvent("1"), view, "scope", world, 1100);
+      expect(view.preview.flid).toBe("01");
 
       // Click target
       handlePpiLeftClick(view, world, 500, 500, 1000, 1000);

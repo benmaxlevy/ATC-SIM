@@ -134,7 +134,7 @@ read back or fly the change.
 |---|---|---|
 | `*T` | `*T` then Enter | Toggles the TAB flight-plan list. `*T 15` sets its visible row count. Use the displayed numeric row index for list operations. |
 | `ACID [fields]` | `UAL1234 2341 AT AAL B738` then Enter | Creates a pending plan. Creation accepts an ACID plus a four-digit beacon, `+` (IFR pool), `/` (VFR pool), `/1`–`/4` (general pools), TCP, flight type, scratchpads, altitude, rules, and aircraft data. |
-| `F1` / `+` | `F1`, then click a target; or `F1 UAL1234` then Enter | INIT CNTL: explicitly associates/activates a matching plan and owns the target. A pending inbound handoff can be accepted this way. `+` is the Preview Area equivalent. Association is authoritative on the flight plan; the aircraft's reported squawk is not overwritten. |
+| `F1` / `+` | `F1`, then type an ACID, beacon, or two-digit TAB identity and click a target | INIT CNTL: identity entry followed by slew/click associates the matching plan. Enter-only identity application is invalid; CID is not an identity. `+` is the Preview Area equivalent. |
 | `F3` | `F3` | Track Suspend is reserved and currently a no-op; no suspend lifecycle is simulated yet. |
 | `F4` / `TERM CNTL` / `/` | `F4`, then click a target; or `F4 UAL1234` then Enter | TERM CNTL: all three forms share one operation. The first use deletes the associated plan, removes association, clears ownership, and leaves a moving unassociated LDB (`*`). `TERM CNTL ALL` is invalid. |
 | `*M <identity> <data>` | `*M 14 5252` | Modifies one plan by ACID, beacon, or TAB-list index. Enter beacon data directly (`5252`, `+`, `/`, `/1`–`/4`, `A`) or scratchpad 1 with `Δ` / scratchpad 2 with `+`. |
@@ -295,9 +295,9 @@ The **Preview Area** is the primary typed command buffer of the STARS terminal r
 
 | Command Syntax | Operator Action | System Result |
 |---|---|---|
-| `+` then click | Type `+`, click target symbol | Arms `INIT CNTL`; click initiates track / owns target (white FDB). Pending inbound: one-click accept+own. |
-| `+ [FLID] Enter` | Type `+DAL123` or `+123` Enter | Resolves flight ID and initiates track directly with nothing selected. |
-| `+ [FLID]` then click | Type `+DAL123`, click target | Correlates that FLID directly to the clicked radar target. |
+| `+` then click | Type `+`, click target symbol | Arms `INIT CNTL`, but an identity is required before the slew/click; an unqualified click is invalid. |
+| `+ [FLID] Enter` | Unsupported for INIT CNTL | INIT CNTL requires identity entry followed by target slew/click; Enter-only application is invalid. |
+| `+ [FLID]` then click | Type `+DAL123`, `+7024`, or `+02`, click target | Correlates that ACID, discrete beacon, or two-digit TAB identity to the clicked radar target. |
 | `/` then click **symbol** | Type `/`, click target symbol | Arms `TERM CNTL`; same termination behavior as F4 and typed `TERM CNTL`. |
 | `/` then click **datablock** | Type `/`, click datablock text | Same TERM CNTL behavior as symbol click: deletes the associated plan, removes association, and leaves an unassociated `*` LDB. |
 | `/ [FLID] Enter` | Type `/DAL123` Enter | Terminates the specified flight ID. (`/ALL` or `TERM CNTL ALL` is `INV`). |
@@ -319,7 +319,7 @@ The **Preview Area** is the primary typed command buffer of the STARS terminal r
 | `*0` then click | Type `*0`, click target | Resets leader line direction to the facility default. |
 | `*` then click | Type `*`, click target | Acknowledges a pending pointout, or toggles cyan target highlight. |
 | `*B` then click | Type `*B`, click uncorrelated track | 5-second Mode 3/A beaconator readout on uncorrelated target symbol. |
-| `[Index#]` then click target | Type `1` or `02`, click target symbol | **Explicit Flight Plan Association**: Associates flight plan `Index#` from TAB List (`*T`) to the clicked radar target, setting the FDB projection and removing the entry from the TAB list. It does not overwrite the target's reported squawk; association and ownership are separate. |
+| `[Index#]` then click target | Type `02`, click target symbol | **Explicit Flight Plan Association**: Associates flight plan `Index#` from TAB List (`*T`) to the clicked radar target, setting the FDB projection and removing the entry from the TAB list. TAB identities require exactly two digits; `1` is invalid. It does not overwrite the target's reported squawk; association and ownership are separate. |
 | `[Index#]` then click target | Type `14`, click target symbol | **Promote VFR Entry**: Correlates VFR entry from VFR List (`*TV`) to clicked radar target. |
 | `*DEL [Index#] Enter` | Type `*DEL 1` or `*DEL 02` Enter | Purges and deletes flight plan entry at specified numeric index from the TAB List (`*T`). |
 
@@ -394,7 +394,7 @@ System list commands in STARS do not accept aliases and use the exact prefix syn
 |---|---|---|
 | `*DEL <index>` then `Enter` | Type `*DEL 14`, press Enter | Deletes TAB-list entry 14. |
 | `*DEL [Index#] Enter` | `*DEL 1 Enter` \| `*DEL 03 Enter` | Deletes flight plan entry at specified numeric index from TAB list (`*T`). |
-| `[Index#]` then click target | `1` then click radar target | Correlates flight plan `Index#` from TAB list (`*T`) to clicked radar target. |
+| `[Index#]` then click target | `01` then click radar target | Correlates flight plan `Index#` from TAB list (`*T`) to clicked radar target; TAB identity is exactly two digits. |
 | `Shift + Left Click` list header | Click list title bar with Shift held | Snaps list (or SSA) back to its adaptation default coordinate anchor. |
 
 ---

@@ -1160,7 +1160,7 @@ export function parseTrackingSlewBuffer(buffer: string): PreviewArmedAction | nu
   if (parsed?.kind === "action") {
     return parsed.action;
   }
-  if (/^\d{1,2}$/.test(compact)) {
+  if (/^\d{2}$/.test(compact)) {
     return { type: "associateFlightPlan", index: Number(compact) };
   }
   return null;

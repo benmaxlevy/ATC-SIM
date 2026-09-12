@@ -972,7 +972,7 @@ export function buildTabFlightPlanList(
     entries: entries.length,
     formatLine: (idx) => {
       const entry = entries[idx]!;
-      const indexStr = String(entry.index).padStart(2, " ");
+      const indexStr = String(entry.index).padStart(2, "0");
       const acid = entry.callsign.padEnd(7, " ");
       const bcn = String(entry.squawk).padStart(4, "0");
       return `${indexStr} ${acid} ${bcn}`;

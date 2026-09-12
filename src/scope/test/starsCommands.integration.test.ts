@@ -333,8 +333,8 @@ test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; 
   handleScopeKeyDown(keyEvent("F1"), hoView2, "scope", hoWorld2, 100);
   expect(hoView2.preview.armed).toEqual({ type: "initCntl" });
   clickAt(hoView2, hoWorld2, hoDal2.xNm, hoDal2.yNm);
-  expect(handoffFor(hoWorld2, hoDal2.id).kind).not.toBe("inbound");
-  expect(hoView2.tracks.get(hoDal2.id)!.ownership).toBe("owned");
+  expect(handoffFor(hoWorld2, hoDal2.id).kind).toBe("inbound");
+  expect(hoView2.tracks.get(hoDal2.id)!.ownership).toBe("unowned");
 
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", xNm: 16, yNm: 8 });
   const world = createWorld({ aircraft: [dal] });
@@ -344,7 +344,7 @@ test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; 
   typeKeys(view, world, ["+"]);
   expect(view.preview.phase).toBe("entry");
   clickAt(view, world, dal.xNm, dal.yNm);
-  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+  expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
   expect(view.preview.phase).toBe("idle");
 
   typeKeys(view, world, ["/"], "scope", 200);
