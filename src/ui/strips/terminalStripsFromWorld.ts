@@ -142,6 +142,8 @@ export function terminalStripsFromWorld(world: World): {
       }
 
       const eta = plan?.eta ?? formatSimZuluTime(world.simTimeMs, estimateArrivalMinutes(ac));
+      const arrivalAltitudeFt =
+        plan?.assignedAltitudeFt ?? requestedAltitudeFt ?? ac.intent.assignedAltitudeFt;
       const remarks =
         ac.intent.lateral?.type === "PROCEDURE" && ac.intent.lateral.starId
           ? ac.intent.lateral.starId
@@ -163,12 +165,9 @@ export function terminalStripsFromWorld(world: World): {
         previousFix,
         coordinationFix,
         estimatedTimeOfArrival: eta,
-        altitude:
-          plan?.assignedAltitudeFt === undefined && requestedAltitudeFt === undefined
-            ? undefined
-            : String(
-                Math.round((plan?.assignedAltitudeFt ?? requestedAltitudeFt ?? 0) / 100),
-              ).padStart(3, "0"),
+        altitude: Number.isFinite(arrivalAltitudeFt)
+          ? String(Math.round(arrivalAltitudeFt / 100)).padStart(3, "0")
+          : undefined,
         altitudeRemarks: plan?.remarks,
         flightRules: plan?.flightRules === "VFR" ? "VFR" : "IFR",
         minimumFuel: plan?.minimumFuel,

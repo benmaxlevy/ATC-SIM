@@ -154,6 +154,7 @@ describe("terminalStripsFromWorld", () => {
     expect(arr.rawType).toBe("A321");
     expect(arr.beaconCode).toBe("0120");
     expect(arr.flightRules).toBe("IFR");
+    expect(arr.altitude).toBe("060");
     expect(arr.destinationAirport).toBe("ATL");
     expect(arr.cid).toBe("412");
   });
