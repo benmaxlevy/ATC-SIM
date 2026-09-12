@@ -25,7 +25,7 @@ import { trackPaintColor } from "../ownership";
 import { createScopeView } from "../scopeView";
 import { syncTrackDisplays } from "../trackDisplay";
 import { createMockCtx } from "./mockCanvas";
-import { drawDatablock } from "../render/renderScopePaint";
+import { drawDatablock, drawTracks } from "../render/renderScopePaint";
 
 const CAM: ScopeCamera = DEFAULT_SCOPE_CAMERA;
 const CSS_W = 800;
@@ -46,6 +46,29 @@ function sample(callsign: string, id: string, xNm: number, yNm: number, headingD
     altitudeFt: 8000,
     speedKt: 220,
   });
+}
+
+function primeDatablockSnapshot(
+  world: ReturnType<typeof createWorld>,
+  view: ReturnType<typeof createScopeView>,
+) {
+  for (const ac of world.aircraft) {
+    const td = view.tracks.get(ac.id);
+    if (td && !td.lastReport) {
+      td.lastReport = {
+        aircraftId: ac.id,
+        xNm: ac.xNm,
+        yNm: ac.yNm,
+        headingDeg: ac.headingDeg,
+        speedKt: ac.speedKt,
+        altitudeFt: ac.altitudeFt,
+        reportedAtSimMs: world.simTimeMs,
+        sourceSiteId: null,
+        paint: "fused-puck",
+      };
+    }
+  }
+  drawTracks(createMockCtx().ctx, world, view, { widthPx: CSS_W, heightPx: CSS_H });
 }
 
 test("HIT_RADIUS_CSS_PX is the frozen 12 CSS pixel radius", () => {
@@ -130,6 +153,7 @@ test("AC6 — clicking the datablock rectangle selects that track, not a nearby 
   const world = createWorld({ aircraft: [dal] });
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
+  primeDatablockSnapshot(world, view);
   const tick = nmToScreen(dal.xNm, dal.yNm, CAM, VIEW);
   const lines = linesForDatablock(dal, "full", true);
   const rect = datablockRect(tick.x, tick.y, lines, view.datablockCellWidthPx);
@@ -182,6 +206,7 @@ test("pending outbound handoff hit-tests the renderer's full datablock geometry"
   const td = view.tracks.get(ac.id)!;
   td.ownership = "center";
   initiateCenterHandoff(ac, { world, simTimeMs: world.simTimeMs }, "C");
+  primeDatablockSnapshot(world, view);
 
   const tick = nmToScreen(ac.xNm, ac.yNm, CAM, VIEW);
   const lineHeight = datablockLineHeightPx(view.charSizePx);
@@ -244,6 +269,7 @@ test.each(["C", "TWR"] as const)(
     expect(initiateOutboundHandoff(ac, { world, simTimeMs: world.simTimeMs }, destination)).toBe(
       true,
     );
+    primeDatablockSnapshot(world, view);
 
     const rendered = createMockCtx();
     drawDatablock(rendered.ctx, ac, 400, 400, view, world);
@@ -345,12 +371,14 @@ test("owned and retained out-of-filter datablocks are pickable; ordinary selecti
   ).toBeNull();
   td.ownership = "owned";
   td.datablockMode = "full";
+  primeDatablockSnapshot(world, view);
   expect(pickAircraftAt(world, point.x, point.y, CAM, CSS_W, CSS_H, HIT_RADIUS_CSS_PX, view)).toBe(
     ac,
   );
   td.ownership = "unowned";
   td.datablockMode = "full";
   td.retainedFdbOutsideAltitudeFilter = true;
+  primeDatablockSnapshot(world, view);
   expect(pickAircraftAt(world, point.x, point.y, CAM, CSS_W, CSS_H, HIT_RADIUS_CSS_PX, view)).toBe(
     ac,
   );

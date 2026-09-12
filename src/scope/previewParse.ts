@@ -29,7 +29,7 @@ import type { VipLevel } from "./wx";
  * `setAltitudeFilterLimits` / `addBeaconCodeFilter` / `removeBeaconCodeFilter`.
  * T02-66: handoff accept, pointout ack, leader clock, beaconator slew.
  * T02-73: `saveAsPref` is the SAVE AS name commit (name on Enter only).
- * Optional `flid` on INIT/TERM is only for typed `+[Callsign]` Enter.
+ * Optional `flid` on INIT/TERM is only for typed identity entry.
  * Do not put F3-specific field names on ScopeView.
  */
 export type PreviewArmedAction =
@@ -964,9 +964,6 @@ export function parseTrackingCommand(buffer: string): PreviewCommandResult | nul
   if (compact === "**F") {
     return { kind: "action", action: { type: "clearAllForcedFdb" } };
   }
-  if (compact.startsWith("+")) {
-    return parseTrackFlidRest("initCntl", compact.slice(1));
-  }
   if (compact.startsWith("/")) {
     if (/^\/\S+(?:\/[APE])? \d{4}$/.test(spaced)) {
       return parseTrackFlidRest("termCntl", spaced.slice(1));
@@ -1160,7 +1157,7 @@ export function parseTrackingSlewBuffer(buffer: string): PreviewArmedAction | nu
   if (parsed?.kind === "action") {
     return parsed.action;
   }
-  if (/^\d{1,2}$/.test(compact)) {
+  if (/^\d{2}$/.test(compact)) {
     return { type: "associateFlightPlan", index: Number(compact) };
   }
   return null;

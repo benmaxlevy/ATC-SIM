@@ -16,6 +16,7 @@ import {
   flightPlanForAircraft,
   handoffFor,
   rejectPointout,
+  setHandoffNone,
 } from "@core";
 import { sanitizeScratchpad, type DatablockMode } from "./datablock";
 import { createHistoryBuf, recordHistoryOnReport, type HistoryBuf } from "./history";
@@ -31,6 +32,7 @@ import { applyDropTrack, applyInitiateTrack, NO_SEL_HINT, type TrackOwnership } 
 
 /** Display IDENT stroke pulse (~2 s sim). Aircraft flag may last longer (phase 1). */
 export const IDENT_DISPLAY_FLASH_MS = 2000;
+/** Legacy export retained for callers that still import the old query duration. */
 export const LDB_QUERY_DURATION_MS = 5000;
 export const OUTBOUND_ACCEPTED_FLASH_MS = 5000;
 /** `*B` slew beaconator on one uncorrelated track (R07 Table 18). */
@@ -487,9 +489,14 @@ export function ensureTrackDisplay(tracks: Map<string, TrackDisplay>, id: string
 export function queryTrack(
   td: TrackDisplay,
   simTimeMs: number,
-  durationMs = LDB_QUERY_DURATION_MS,
+  _durationMs = LDB_QUERY_DURATION_MS,
 ): void {
-  td.queriedUntilSimMs = simTimeMs + durationMs;
+  void simTimeMs;
+  td.queriedUntilSimMs = Number.POSITIVE_INFINITY;
+}
+
+export function clearTrackQuery(td: TrackDisplay): void {
+  td.queriedUntilSimMs = 0;
 }
 
 export function isTrackQueried(td: TrackDisplay, simTimeMs: number): boolean {
@@ -574,7 +581,7 @@ export function isOutboundReceiverTcpVisible(handoff: TrackHandoff, simTimeMs: n
  * - Accept pending inbound handoff if present.
  * - Handle pointouts: UN rejects, ** converts to handoff, normal click accepts or reverts.
  * - Keep an accepted outbound handoff as an accepted white FDB.
- * - If unassociated (LDB): query ground speed for 5 seconds.
+ * - If unassociated (LDB): query ground speed until an off-target slew.
  * - If unowned (PDB / forced FDB): toggle between PDB and Green FDB.
  */
 export function handleTrackClick(
@@ -586,6 +593,12 @@ export function handleTrackClick(
   const normalizedCmd = commandText?.trim().toUpperCase();
   const ho = handoffFor(world, aircraftId);
   const td = ensureTrackDisplay(tracks, aircraftId);
+
+  // LDB ground-speed readout belongs to the last slewed target only. A slew
+  // onto any other target clears the prior target before applying its action.
+  for (const [id, otherTd] of tracks) {
+    if (id !== aircraftId && otherTd.unassociated) clearTrackQuery(otherTd);
+  }
 
   // Pointout interactions
   if (ho.kind === "pointout_inbound") {
@@ -673,6 +686,7 @@ export function acceptInboundOnClick(
   const td = ensureTrackDisplay(tracks, aircraftId);
   td.ownership = applyInitiateTrack(td.ownership);
   td.datablockMode = "full";
+  td.unassociated = false;
   td.forcedFdb = false;
   return true;
 }
@@ -692,9 +706,12 @@ export function applyInitiateTrackToId(
     return { applied: false, hint: NO_SEL_HINT };
   }
   const td = ensureTrackDisplay(tracks, aircraftId);
-  acceptInboundHandoff(world, aircraftId);
+  const accepted = acceptInboundHandoff(world, aircraftId);
   td.ownership = applyInitiateTrack(td.ownership);
   td.datablockMode = "full";
+  if (accepted) {
+    td.unassociated = false;
+  }
   td.forcedFdb = false;
   return { applied: true, hint: null };
 }
@@ -760,6 +777,10 @@ export function terminateTrackWithPlan(
   const aircraft = world.aircraft.find((item) => item.id === aircraftId);
   if (!aircraft) {
     return { applied: false, hint: NO_SEL_HINT };
+  }
+  const handoff = handoffFor(world, aircraftId);
+  if (handoff.kind === "inbound" || handoff.kind === "departure") {
+    setHandoffNone(world, aircraftId);
   }
   const plan = flightPlanForAircraft(world, aircraftId);
   if (plan) {
@@ -976,6 +997,15 @@ export function syncTrackDisplays(
     if (!td) {
       td = createTrackDisplay();
       tracks.set(ac.id, td);
+    }
+    // Automatic beacon correlation is authoritative in World. The next
+    // display sync promotes that associated target to the existing FDB path;
+    // ownership remains unchanged and therefore stays separate from
+    // association.
+    if (flightPlanForAircraft(world, ac.id)) {
+      td.tracked = true;
+      td.unassociated = false;
+      td.datablockMode = "full";
     }
     if (td.lastReport) {
       sampler.reports.set(ac.id, td.lastReport);

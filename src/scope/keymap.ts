@@ -107,7 +107,7 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
       {
         id: "init",
         command: "F1 / +",
-        example: "F1, then click",
+        example: "F1, identity, then click",
         input: "PPI or Preview Area",
         result: "Initiate or associate the selected track and own it.",
       },
@@ -868,11 +868,6 @@ export function isCycleFocusKey(key: string): boolean {
  */
 export function isRadioFocusSlashKey(key: string): boolean {
   return key === "/";
-}
-
-/** Scope-focus Track Key `+`. Never always-on; radio `+` is literal. */
-export function isPreviewPlusKey(key: string): boolean {
-  return key === "+" || key === "Add";
 }
 
 /**

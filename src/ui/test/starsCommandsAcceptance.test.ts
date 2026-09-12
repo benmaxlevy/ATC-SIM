@@ -92,7 +92,7 @@ test("AC3 — radio-focus typing does not mutate preview; leftover would go to t
   expect(view.systemLists.TAB.visible).toBe(false);
 });
 
-test("AC3 — scope-focus * + / alnum never leftover for the radio line", () => {
+test("AC3 — scope-focus * / alnum never leftover for the radio line", () => {
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123" });
   const world = createWorld({ aircraft: [dal] });
   const view = createScopeView();
@@ -100,12 +100,6 @@ test("AC3 — scope-focus * + / alnum never leftover for the radio line", () => 
 
   expect(leftoverKeys(["*", "T", "Enter"], view, world, "scope")).toBe("");
   expect(view.systemLists.TAB.visible).toBe(true);
-
-  const plus = createScopeView();
-  syncTrackDisplays(plus.tracks, world);
-  expect(leftoverKeys(["+", "D", "A", "L"], plus, world, "scope")).toBe("");
-  expect(plus.preview.phase).toBe("entry");
-  expect(plus.preview.buffer.startsWith("+")).toBe(true);
 
   const slash = createScopeView();
   syncTrackDisplays(slash.tracks, world);

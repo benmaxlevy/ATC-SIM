@@ -1,4 +1,10 @@
-import { createAircraft, type Aircraft, type AircraftInit, type World } from "@core";
+import {
+  createAircraft,
+  updateAircraftSquawk,
+  type Aircraft,
+  type AircraftInit,
+  type World,
+} from "@core";
 import { allocateSquawkCode } from "./callsigns";
 
 export interface SpawnAircraftParams extends AircraftInit {
@@ -36,5 +42,12 @@ export function spawnAircraft(world: World, params: SpawnAircraftParams): Aircra
     reportedSquawk: init.reportedSquawk ?? squawk,
   });
   world.aircraft.push(aircraft);
+  // A spawned transponder report is the same runtime event as a later
+  // squawk mutation. Correlate only the reported value; assignedSquawk stays
+  // separate plan/aircraft provenance.
+  const reportedSquawk = aircraft.reportedSquawk ?? aircraft.squawk;
+  if (reportedSquawk !== undefined) {
+    updateAircraftSquawk(world, aircraft.id, reportedSquawk);
+  }
   return aircraft;
 }

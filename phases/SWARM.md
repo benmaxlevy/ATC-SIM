@@ -1,5 +1,69 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Sixty-second swarm started — 2026-09-12 (Datablock source unification)
+
+Captain executing T02-164–165 on `improvement/db-source-unification`.
+Ticket workers are sequential; each ticket is squash-merged into the
+improvement branch only. Datablock regression tests and `npm run ci` run after
+each merge. No merge or push to `master` is authorized.
+
+## Proposed sixty-second swarm — 2026-09-12 (Datablock source unification)
+
+One sequential worker will centralize the runtime datablock source and route
+paint, layout, and pick through the same projection. Datablock regression tests
+run after every ticket merge; the supplied STARS manual is used for review.
+
+| Key | Value |
+| --- | --- |
+| Goal | Make all datablock consumers use one explicit runtime source. |
+| Include | **T02-164**, **T02-165** only. |
+| Skip | New datablock semantics, new fields or alerts, TSAS scheduling, CSMM, duplicate-beacon world detection, DCB, radio, Command IR, pilot execution, speech, networking, kinematics, geometry redesign, and facility branches. |
+| Stop | After each ticket's datablock regression gate and `npm run ci`, final supplied-manual review, and phase acceptance. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges every ticket into `improvement/db-source-unification`. |
+| Merge target | `improvement/db-source-unification` |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push. Never merge or push to `master` unless separately authorized. |
+
+**Product law:** One target produces one explicit runtime datablock state.
+Paint, layout, and pick consume that same state. Plan data never overwrites
+surveillance evidence. Unsupported values stay empty. Datablock derivation
+never mutates World, aircraft, intent, kinematics, or Command IR. The feature
+remains STARS-like and preserves the existing Canvas2D/performance boundary.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-164 | `improvement/db-source-unification` clean and based on current `master` |
+| B | T02-165 | T02-164 squash merge, datablock regression tests, and `npm run ci` |
+
+**Ticket ownership:**
+
+- T02-164: runtime source contract and adapter tests.
+- T02-165: paint/layout/pick consumer migration and integration regressions.
+
+**Ticket branches:**
+
+- `ticket/T02-164-datablock-runtime-source-contract` ← `phases/02-scope/tickets/T02-164-datablock-runtime-source-contract.md`
+- `ticket/T02-165-datablock-consumer-unification` ← `phases/02-scope/tickets/T02-165-datablock-consumer-unification.md`
+
+**Manual review:** `/home/ben/Documents/stars refs/full_manual.pdf`; relevant
+anchors are §2.12 pp. 2-58–2-70, §5.4.1 pp. 5-66–5-67, and §5.6.17
+pp. 5-167–5-173. Each ticket must record manual PASS, concern, or explicit
+skip reason. No CRC substitute is required.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: Datablock source unification T02-164–165
+Merge target: improvement/db-source-unification
+Merged: T02-164, T02-165
+Tests: <datablock regression gates after each ticket, final npm run ci, and manual review>
+Notes: No master merge or push; user will open the pull request
+```
+
 ## Proposed sixty-first swarm — 2026-09-11 (FAA terminal strip alignment)
 
 One sequential worker will align happy-path terminal departure and arrival
@@ -3849,3 +3913,54 @@ scope.
 
 Wave A: `T02-163`. The worker may edit only the ticket's implementation scope,
 must preserve unrelated work, and returns `READY TO MERGE` or `BLOCKED`.
+
+## Eleventh swarm planned — strict manual INIT/TAB and beacon alignment (2026-09-12)
+
+Human approved strict alignment with `/home/ben/Documents/stars refs/full_manual.pdf`
+on the current `improvement/db-source-unification` branch. Unsupported
+datablock creation is explicitly excluded. Direct INIT CNTL identity + Enter
+is removed; manual INIT CNTL identity entry requires slew to an unassociated
+target and left-click. TAB line numbers are exactly two digits. Automatic
+association uses assigned-beacon/reported-squawk match without ACID or CID
+matching, per §5.5.9 p. 5-125.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align INIT CNTL/TAB association and beacon auto-association with the supplied manual |
+| Phase | `phases/02-scope/` |
+| Tickets | `T02-166` → `T02-167` |
+| Merge target | `improvement/db-source-unification` |
+| Worker limit | 1 ticket worker; sequential waves |
+| Model | inherit available Codex worker model |
+| Required gate | `npm run ci` after every merge |
+| Required review | `$check-stars-manual` with `/home/ben/Documents/stars refs/full_manual.pdf` after every ticket |
+| Stop | Stop after `T02-167` |
+
+Waves: A=`T02-166`, B=`T02-167`. Each worker implements exactly one ticket in
+an isolated worktree and returns `READY TO MERGE` or `BLOCKED`. The captain
+squash-merges each ticket onto the current merge target, runs CI, then performs
+the independent manual review before starting the next wave. On failed CI or
+manual review, stop the next wave and use one narrowly scoped fix worker only.
+Do not create unsupported datablocks or start another phase.
+
+## Eleventh swarm started — strict manual INIT/TAB and beacon alignment (2026-09-12)
+
+Execution authorized on the current `improvement/db-source-unification`
+branch. The captain keeps this branch as the merge target; no switch to
+`master`, push, or unrelated backlog cleanup. One isolated worker runs at a
+time: T02-166 first, then T02-167. Each squash merge requires `npm run ci` and
+an independent `$check-stars-manual` review against
+`/home/ben/Documents/stars refs/full_manual.pdf` before the next ticket.
+
+Strict manual product law: INIT CNTL identity entry accepts ACID, discrete
+beacon, or exactly two-digit TAB line number, then requires slew to an
+unassociated target and left-click (§5.4.1–5.4.2, pp. 5-66–5-68). Direct
+INIT identity + Enter is removed. CID is never a flight identity. The manual's
+active-plan/unsupported-datablock auto-association workflow is excluded; this
+run only preserves/corrects the existing pending-plan/runtime beacon-match
+trainer path using assigned beacon versus reported squawk (§5.5.9,
+pp. 5-125–5-126).
+
+Worker handoff is exactly `READY TO MERGE` or `BLOCKED`. On failed CI or manual
+review, stop the next wave and use one narrowly scoped fix worker only. Stop
+after T02-167; do not start another phase.

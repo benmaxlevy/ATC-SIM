@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { DEFAULT_INBOUND_SECTOR_ID, createWorld, handoffFor } from "@core";
+import { DEFAULT_INBOUND_SECTOR_ID, createFlightPlan, createWorld, handoffFor } from "@core";
 import {
   STAR_SPAWN_STAGGER_NM,
   assertScenario,
@@ -15,12 +15,45 @@ import {
 import { PALETTE, syncTrackDisplays } from "@scope";
 import kdemJson from "../kdem.json";
 import kdemDownwindJson from "../../../testdata/scenarios/kdem-downwind.json";
+import { spawnAircraft } from "../spawnAircraft";
 
 const SPAWN_X_NM = { min: 10, max: 22 };
 const SPAWN_Y_NM = { min: 3, max: 12 };
 const SPAWN_HEADING_DEG = { min: 80, max: 100 };
 const SPAWN_ALT_FT = { min: 6000, max: 10000 };
 const SPAWN_SPEED_KT = { min: 210, max: 250 };
+
+test("T02-167 — spawned reported beacon auto-associates a unique pending plan", () => {
+  const plan = createFlightPlan({
+    id: "fp-spawn-beacon",
+    acid: "AAL123",
+    assignedBeacon: "7022",
+    fixes: [],
+    scratchpads: [],
+  });
+  if (!plan.ok) throw new Error(plan.error.message);
+  const world = createWorld({ flightPlans: [plan.value] });
+  const aircraft = spawnAircraft(world, {
+    callsign: "1234",
+    xNm: 1,
+    yNm: 2,
+    headingDeg: 90,
+    altitudeFt: 4000,
+    speedKt: 180,
+    assignedSquawk: "7022",
+  });
+
+  expect(world.flightPlans[0]).toMatchObject({
+    status: "active",
+    acid: "AAL123",
+    assignedBeacon: "7022",
+    reportedBeacon: "7022",
+    associatedAircraftId: aircraft.id,
+  });
+  expect(aircraft.callsign).toBe("1234");
+  expect(aircraft.assignedSquawk).toBe("7022");
+  expect(aircraft.reportedSquawk).toBe("7022");
+});
 
 function spawnAssignSources(): string {
   const sources = import.meta.glob("../{spawn,starSpawn,trafficQuery}.ts", {

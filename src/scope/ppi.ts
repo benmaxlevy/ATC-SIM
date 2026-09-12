@@ -1,10 +1,4 @@
-import {
-  acceptPointout,
-  createActiveFlightPlanFromTarget,
-  handoffFor,
-  setSelectedAircraft,
-  type World,
-} from "@core";
+import { acceptPointout, handoffFor, setSelectedAircraft, type World } from "@core";
 import { expireFilterEntry, inAltitudeFilter } from "./altitudeFilter";
 import {
   armPreviewSlewAction,
@@ -52,6 +46,7 @@ import {
   canonicalSystemListId,
   dropTowerListEntry,
   dropVfrListEntry,
+  formatFlightPlanIndex,
   getFlightPlanEntries,
   isVfrAircraft,
   handleFlightPlanListClick,
@@ -59,7 +54,6 @@ import {
   hitTestSystemListEntry,
   normalizedClickAnchor,
   pointInsideRect,
-  promoteVfrListEntry,
   relocateSystemList,
   scrollSystemList,
 } from "./systemLists";
@@ -67,7 +61,7 @@ import { toggleVideoMap } from "./dcb/dcbFunctions";
 import { datablockLineHeightPx } from "./fonts";
 import {
   applyBeaconatorSlewToId,
-  applyInitiateTrackToId,
+  clearTrackQuery,
   ensureTrackDisplay,
   pruneCaPairInhibitsForTrack,
   setLeaderDirAndLengthForId,
@@ -93,6 +87,12 @@ function trackingFlidMatches(
   const flid = action.flid ?? view.preview.flid;
   if (!flid) {
     return true;
+  }
+  if (action.type === "initCntl") {
+    if (/^\d$/.test(flid.trim())) {
+      return false;
+    }
+    return previewFlidMatchesSlew(view.preview, aircraftId, world, view);
   }
   if (/^\d{1,2}$/.test(flid.trim())) {
     const idx = Number(flid.trim());
@@ -156,7 +156,7 @@ function explicitPlanEntryForFlid(
   view: ScopeView,
 ): ReturnType<typeof getFlightPlanEntries>[number] | undefined {
   const normalized = flid.trim().toUpperCase();
-  if (/^\d{1,2}$/.test(normalized)) {
+  if (/^\d{2}$/.test(normalized)) {
     return undefined;
   }
   const plans = world.flightPlans.filter(
@@ -190,9 +190,11 @@ function applyTrackingSlewHit(
     case "initCntl": {
       const flid = action.flid ?? view.preview.flid;
       if (flid) {
-        const num = Number(flid.trim());
+        const num = /^\d{2}$/.test(flid.trim()) ? Number(flid.trim()) : Number.NaN;
         const entries = getFlightPlanEntries(world, view);
-        const entryByIndex = !Number.isNaN(num) ? entries.find((e) => e.index === num) : undefined;
+        const entryByIndex = !Number.isNaN(num)
+          ? entries.find((e) => formatFlightPlanIndex(e.index) === flid.trim())
+          : undefined;
         if (entryByIndex) {
           const associated = associateFlightPlanToTrack(world, view, entryByIndex.index, id);
           if (!associated) {
@@ -218,28 +220,10 @@ function applyTrackingSlewHit(
           clearTrackingSlew(view);
           return true;
         }
-        if (!Number.isNaN(num) && promoteVfrListEntry(view, world, num, id)) {
-          setSelectedAircraft(world, id);
-          clearTrackingSlew(view);
-          return true;
-        }
       }
-      const created = createActiveFlightPlanFromTarget(world, id);
-      if (created.ok) {
-        const td = ensureTrackDisplay(view.tracks, id);
-        td.unassociated = false;
-        td.datablockMode = "full";
-        td.tracked = true;
-        // Explicit INIT CNTL also performs the existing controller-ownership
-        // action; automatic squawk correlation above never does.
-        applyInitiateTrackToId(view.tracks, world, id);
-      } else {
-        // F3 remains the ownership-color trainer stub when no usable plan can
-        // be created; INIT CNTL itself stays display-only.
-        applyInitiateTrackToId(view.tracks, world, id);
-      }
-      setSelectedAircraft(world, id);
-      clearTrackingSlew(view);
+      rejectPreviewCntl(view.preview, Date.now());
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
       return true;
     }
     case "termCntl": {
@@ -561,25 +545,6 @@ export function handlePpiLeftClick(
       }
     }
   }
-  if (view.preview.phase === "entry" && /^\d{1,2}$/.test(view.preview.buffer.trim())) {
-    const numIdx = Number(view.preview.buffer.trim());
-    const hit = pickAircraftAt(
-      world,
-      cssX,
-      cssY,
-      view.camera,
-      cssWidth,
-      cssHeight,
-      HIT_RADIUS_CSS_PX,
-      view,
-    );
-    if (hit && promoteVfrListEntry(view, world, numIdx, hit.id)) {
-      cancelPreviewArea(view.preview);
-      cancelStarsChordEntry(view.starsChordEntry);
-      view.starsChordArmed = null;
-      return;
-    }
-  }
   if (!previewAreaIsLive(view.preview) || view.preview.buffer.trim() === "") {
     const hit = pickAircraftHitAt(
       world,
@@ -593,6 +558,10 @@ export function handlePpiLeftClick(
     );
     if (hit) {
       handleImpliedCaAcknowledge(view, world, hit.aircraft.id);
+    } else {
+      for (const td of view.tracks.values()) {
+        if (td.unassociated) clearTrackQuery(td);
+      }
     }
   }
   selectOrAcceptAircraftAt(

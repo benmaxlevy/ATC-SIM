@@ -11,8 +11,16 @@
  * Never a label, nametag, or tooltip. Not NAS STARS.
  */
 
-import { flightPlanForAircraft, type Aircraft, type TrackHandoff, type World } from "@core";
+import {
+  flightPlanForAircraft,
+  handoffFor,
+  type Aircraft,
+  type TrackHandoff,
+  type World,
+} from "@core";
 import type { TrackDisplay } from "./trackDisplay";
+import type { ResolvedDatablockLayout } from "./datablockLayout";
+import { atpaInTrailDatablockReadout } from "./atpaReadout";
 import { DATABLOCK_LINE_HEIGHT_PX, DEFAULT_DATABLOCK_CELL_PX } from "./fonts";
 import {
   DEFAULT_LEADER_DIR,
@@ -83,6 +91,184 @@ export interface DatablockSource {
   isOverflight?: boolean;
 }
 
+export interface DatablockRuntimeState {
+  /** Complete source consumed by the existing FDB/PDB/LDB formatters. */
+  source: DatablockSource;
+  /** Display mode selected for this target. */
+  mode: DatablockMode;
+  /** Formatter inputs derived with the source, not reconstructed by consumers. */
+  options: DatablockRenderOpts;
+  /** Operational/display state shared by paint, layout, and hit testing. */
+  display: {
+    handoff: TrackHandoff;
+    queried: boolean;
+    beaconatorReadout: boolean;
+    scratchpads: { sp1: string; sp2: string };
+    /** Field 0/alert decisions supplied by the existing alert presentation layer. */
+    field0Indicators: string[];
+    /** Blink/acknowledgement decision remains owned by the alert presenter. */
+    alertState: { requiresBlink: boolean };
+  };
+}
+
+export interface DatablockRuntimeBuildOptions {
+  track?: Partial<
+    Pick<
+      TrackDisplay,
+      | "unassociated"
+      | "datablockMode"
+      | "forcedFdb"
+      | "queriedUntilSimMs"
+      | "beaconatorUntilSimMs"
+      | "scratchpad"
+      | "sp1"
+      | "sp2"
+      | "manualSp1"
+      | "manualSp2"
+      | "squawk"
+    >
+  > &
+    Pick<TrackDisplay, "ownership">;
+  mode?: DatablockMode;
+  modeCVisible?: boolean;
+  beaconatorActive?: boolean;
+  localTcp?: string;
+  /** Existing upstream display decisions for supported Fields 0–8. */
+  fieldInputs?: Partial<DatablockRenderOpts>;
+  /** Existing alert presenter decision; this adapter does not evaluate alerts. */
+  alertState?: { field0Indicators?: string[]; requiresBlink?: boolean };
+  /** Existing world ATPA readout settings; no pairing is recomputed here. */
+  atpa?: { enabled: boolean; trackEnabled?: boolean };
+}
+
+/** Pure scratchpad projection used by the runtime contract. */
+function runtimeScratchpads(
+  aircraft: Aircraft,
+  track: DatablockRuntimeBuildOptions["track"],
+  planScratchpads?: readonly string[],
+): { sp1: string; sp2: string } {
+  const filed = Array.isArray(planScratchpads)
+    ? planScratchpads.filter((value): value is string => typeof value === "string")
+    : [];
+  const approachId =
+    aircraft.intent?.clearedApproachId ??
+    aircraft.intent?.locInterceptApproachId ??
+    aircraft.intent?.expectedApproachId;
+  let sp1 = formatApproachShorthandForRuntime(approachId) ?? "";
+  if (filed[0] || track?.manualSp1) {
+    sp1 = sanitizeScratchpad(filed[0] ?? track?.manualSp1 ?? "");
+  } else if (
+    aircraft.intent?.controllerAssignedAltitudeFt != null &&
+    Number.isFinite(aircraft.intent.controllerAssignedAltitudeFt) &&
+    Math.abs(aircraft.intent.controllerAssignedAltitudeFt - aircraft.altitudeFt) >= 100
+  ) {
+    sp1 = formatAltitudeHundreds(aircraft.intent.controllerAssignedAltitudeFt);
+  }
+  let sp2 = "";
+  if (filed[1] || track?.manualSp2) {
+    sp2 = sanitizeScratchpad(filed[1] ?? track?.manualSp2 ?? "");
+  } else if (
+    aircraft.intent?.controllerAssignedSpeedKt != null &&
+    Number.isFinite(aircraft.intent.controllerAssignedSpeedKt) &&
+    aircraft.intent.controllerAssignedSpeedKt > 0
+  ) {
+    sp2 = `S${String(Math.max(0, Math.round(aircraft.intent.controllerAssignedSpeedKt / 10))).padStart(2, "0")}`;
+  }
+  return { sp1, sp2 };
+}
+
+function formatApproachShorthandForRuntime(
+  approachId: string | null | undefined,
+): string | undefined {
+  if (!approachId || approachId.trim().length === 0) return undefined;
+  const raw = approachId.toUpperCase().trim();
+  const match = raw.match(/(\d{1,2}\s*[RLC]?)/);
+  const runway = match?.[1].replace(/\s+/g, "") ?? "";
+  if (raw.includes("ILS")) return runway ? `I${runway}` : "ILS";
+  if (raw.includes("RNAV") || raw.includes("RNP") || raw.includes("GPS")) {
+    return runway ? `R${runway}` : "RNAV";
+  }
+  if (raw.includes("VISUAL") || raw.includes("VIS")) return runway ? `V${runway}` : "VIS";
+  if (raw.includes("LOC") || raw.includes("LOCALIZER")) return runway ? `L${runway}` : "LOC";
+  if (raw.includes("VOR")) return runway ? `O${runway}` : "VOR";
+  return sanitizeScratchpad(raw);
+}
+
+/**
+ * Build one immutable-in-practice runtime projection for a target.
+ * Analog: STARS associated-track datablock source (manual §2.12); trainer
+ * delta: only modeled state is projected, and unsupported fields stay absent.
+ * This function never writes to World, Aircraft, intent, kinematics, or IR.
+ */
+export function buildDatablockRuntimeState(
+  world: World,
+  aircraft: Aircraft,
+  options: DatablockRuntimeBuildOptions = {},
+): DatablockRuntimeState {
+  const track = options.track;
+  const plan = track?.unassociated ? undefined : flightPlanForAircraft(world, aircraft.id);
+  const handoff = handoffFor(world, aircraft.id);
+  const simTimeMs = world.simTimeMs;
+  const queried = (track?.queriedUntilSimMs ?? 0) > simTimeMs;
+  const beaconatorReadout = Boolean(
+    options.beaconatorActive || (track?.beaconatorUntilSimMs ?? 0) > simTimeMs,
+  );
+  const scratchpads = runtimeScratchpads(aircraft, track, plan?.scratchpads);
+  const mode =
+    options.mode ??
+    (track?.unassociated
+      ? "limited"
+      : track?.forcedFdb
+        ? "full"
+        : (track?.datablockMode ?? (track?.ownership === "owned" ? "full" : "partial")));
+  const reportedSquawk = track?.squawk ?? aircraft.reportedSquawk ?? aircraft.squawk;
+  const assignedSquawk = plan?.assignedBeacon ?? aircraft.assignedSquawk;
+  const callsign =
+    beaconatorReadout && reportedSquawk ? reportedSquawk : (plan?.acid ?? aircraft.callsign);
+  const source = datablockSourceFromPlan(aircraft, track, plan);
+  const atpaReadout =
+    mode === "full" && options.atpa?.enabled
+      ? atpaInTrailDatablockReadout(world.alerts.atpa, aircraft.callsign, {
+          globalEnabled: true,
+          trackEnabled: options.atpa.trackEnabled !== false,
+        })
+      : null;
+  const handoffOptions = handoffDatablockDisplay(handoff, options.localTcp ?? "", simTimeMs);
+  const fieldInputs = options.fieldInputs ?? {};
+  const field0Indicators = options.alertState?.field0Indicators ?? fieldInputs.field0Indicators;
+  const renderOptions: DatablockRenderOpts = {
+    ...fieldInputs,
+    modeCVisible: options.modeCVisible,
+    scratchpad: scratchpads.sp1,
+    sp1: scratchpads.sp1,
+    sp2: scratchpads.sp2,
+    ...handoffOptions,
+    queried,
+    beaconVisible: true,
+    field0Indicators,
+    simTimeMs,
+  };
+  return {
+    source: {
+      ...source,
+      callsign,
+      squawk: reportedSquawk,
+      assignedSquawk,
+      atpaDistance: atpaReadout?.text,
+    },
+    mode,
+    options: renderOptions,
+    display: {
+      handoff,
+      queried,
+      beaconatorReadout,
+      scratchpads,
+      field0Indicators: field0Indicators ?? [],
+      alertState: { requiresBlink: options.alertState?.requiresBlink ?? false },
+    },
+  };
+}
+
 /**
  * Build the single runtime source used by FDB/LDB formatters.
  * Analog: CRC/STARS datablock reads the operational flight data associated
@@ -92,9 +278,17 @@ export interface DatablockSource {
 export function datablockSourceFromWorld(
   world: World,
   aircraft: Aircraft,
-  track?: Pick<TrackDisplay, "squawk">,
+  track?: Pick<TrackDisplay, "squawk" | "unassociated">,
 ): DatablockSource {
-  const plan = flightPlanForAircraft(world, aircraft.id);
+  const plan = track?.unassociated ? undefined : flightPlanForAircraft(world, aircraft.id);
+  return datablockSourceFromPlan(aircraft, track, plan);
+}
+
+function datablockSourceFromPlan(
+  aircraft: Aircraft,
+  track: { squawk?: string; unassociated?: boolean } | undefined,
+  plan: ReturnType<typeof flightPlanForAircraft>,
+): DatablockSource {
   const reportedSquawk = track?.squawk ?? aircraft.reportedSquawk ?? aircraft.squawk;
   const assignedSquawk = plan?.assignedBeacon ?? aircraft.assignedSquawk;
   const assignedAltitudeFt =
@@ -315,7 +509,10 @@ function physicalFieldLine(values: string[]): string {
 export interface LimitedDatablock {
   /** Field 0 row; omitted when no SPC or supplied safety alert is active. */
   line0?: string;
+  /** Field 1: reported beacon code, when displayed. */
   line1: string;
+  /** Fields 3 and 5: Mode-C altitude, with queried ground speed to its right. */
+  line2?: string;
 }
 
 export interface DatablockRect {
@@ -726,9 +923,10 @@ export function formatPartialDatablock(
 
 /**
  * Limited datablock (LDB): Unassociated tracks.
- * Default: Beacon code + Mode C altitude in hundreds (e.g. `1200 045`).
- * When beacon code is inhibited: Mode C altitude only (e.g. `045`).
- * Queried state (when clicked): Mode C altitude + Ground speed (e.g. `045 18` or `045 180`).
+ * Default: Beacon code on line 1 and Mode C altitude on line 2.
+ * When beacon code is inhibited: Mode C altitude remains on the visible line.
+ * Queried state (when clicked): Ground speed appears to the right of the
+ * Mode-C altitude on line 2 (e.g. `045 18` or `045 180`).
  */
 export function formatLimitedDatablock(
   track: DatablockSource,
@@ -742,19 +940,24 @@ export function formatLimitedDatablock(
     .join("/")
     .slice(0, 12);
   const line0 = indicators.length > 0 ? indicators : undefined;
-  const withLine0 = (line1: string): LimitedDatablock =>
-    line0 == null ? { line1 } : { line0, line1 };
+  const withLine0 = (line1: string, line2?: string): LimitedDatablock => {
+    const lines = line2 == null ? { line1 } : { line1, line2 };
+    return line0 == null ? lines : { line0, ...lines };
+  };
   const modeC = formatAltitudeHundreds(track.altitudeFt);
   if (opts.queried) {
     const gs =
       opts.speedFormat === "knots"
         ? formatGroundSpeedKt(track.speedKt)
         : formatGroundSpeedTens(track.speedKt);
-    return withLine0(`${modeC} ${gs}`);
+    const squawk = track.squawk ?? track.beaconCode;
+    return squawk && opts.beaconVisible !== false
+      ? withLine0(squawk, `${modeC} ${gs}`)
+      : withLine0(modeC, gs);
   }
   const squawk = track.squawk ?? track.beaconCode;
   if (opts.beaconVisible !== false && squawk && squawk.length > 0) {
-    return withLine0(`${squawk} ${modeC}`);
+    return withLine0(squawk, modeC);
   }
   return withLine0(modeC);
 }
@@ -764,6 +967,24 @@ export interface DatablockLines {
   line1: string;
   line2?: string;
   line3?: string;
+}
+
+/** Immutable-per-render datablock result shared by paint, layout, and pick. */
+export interface DatablockPresentationSnapshot {
+  mode: DatablockMode;
+  lines: DatablockLines;
+  preferredRect: { x: number; y: number; width: number; height: number };
+}
+
+export interface DatablockRenderSnapshot {
+  world: World;
+  simTimeMs: number;
+  viewKey: string;
+  widthPx: number;
+  heightPx: number;
+  camera: { rangeNm: number; centerEastNm: number; centerNorthNm: number };
+  presentations: Map<string, DatablockPresentationSnapshot>;
+  layouts: Map<string, ResolvedDatablockLayout>;
 }
 
 /**

@@ -534,56 +534,6 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
       expect(view.systemLists.VL.y).toBe(0.7);
     });
 
-    it("+[Index#] [Left-Click Radar Target] promotes / associates VFR entry to radar target", () => {
-      const view = createScopeView();
-      const world = createWorld();
-
-      // Untracked radar target at (0, 0)
-      const target = makeTestAircraft({
-        id: "target-1",
-        callsign: "UNTRK",
-        xNm: 0,
-        yNm: 0,
-        squawk: "1200",
-        altitudeFt: 4500,
-      });
-
-      // VFR list entry #1 at distance
-      const vfrAc = makeTestAircraft({
-        id: "vfr-plane",
-        callsign: "N12345",
-        xNm: 50,
-        yNm: 50,
-        squawk: "1200",
-        altitudeFt: 4500,
-      });
-      world.aircraft.push(vfrAc, target);
-
-      // Type "+1" into preview buffer
-      beginPreviewBufferEntry(view.preview, "+1", Date.now());
-      expect(view.preview.buffer).toBe("+1");
-
-      // Scope view camera centered at (0, 0)
-      view.camera.centerEastNm = 0;
-      view.camera.centerNorthNm = 0;
-
-      // Click on target at center of 1000x1000 canvas (500, 500)
-      handlePpiLeftClick(view, world, 500, 500, 1000, 1000);
-
-      // Target promoted/associated to VFR entry
-      expect(target.callsign).toBe("N12345");
-      const track = view.tracks.get("target-1");
-      expect(track).toBeDefined();
-      expect(track?.datablockMode).toBe("full");
-      expect(track?.unassociated).toBe(false);
-      expect(view.preview.phase).toBe("idle");
-
-      // Entry removed from VFR list upon promotion
-      expect(view.vfrListDroppedCallsigns?.has("N12345")).toBe(true);
-      const lines = buildVfrList(world, 10, view.vfrListDroppedCallsigns, view.tracks);
-      expect(lines).not.toContain("N12345  1200  045");
-    });
-
     it("F1 then left-click list entry drops entry from the VFR list", () => {
       const view = createScopeView();
       const world = createWorld();
@@ -795,13 +745,19 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
 
       expect(lines[0]).toBe("FLIGHT PLAN");
       expect(lines[1]).toBe("MORE: 1/2");
-      expect(lines[2]).toBe(" 1 AAL123  7022");
-      expect(lines[3]).toBe(" 2 AAL456  6412");
-      expect(lines[4]).toBe(" 4 DAL623  2374");
-      expect(lines[5]).toBe(" 9 DAL660  2374");
+      expect(lines[2]).toBe("01 AAL123  7022");
+      expect(lines[3]).toBe("02 AAL456  6412");
+      expect(lines[4]).toBe("04 DAL623  2374");
+      expect(lines[5]).toBe("09 DAL660  2374");
       expect(lines[6]).toBe("11 JBU301  4611");
-      expect(lines[7]).toBe(" 0 JBU393  1660");
+      expect(lines[7]).toBe("00 JBU393  1660");
       expect(lines).toHaveLength(8); // Title + MORE + 6 entries
+      expect(
+        lines
+          .slice(2)
+          .filter((line) => /^\d+ /.test(line))
+          .every((line) => /^\d{2,} /.test(line)),
+      ).toBe(true);
     });
 
     it("omits MORE header when entries fit within maxLines", () => {
@@ -830,8 +786,8 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       const lines = buildTabFlightPlanList(world, 10, view);
       expect(lines[0]).toBe("FLIGHT PLAN");
       expect(lines.some((l) => l.startsWith("MORE:"))).toBe(false);
-      expect(lines[1]).toBe(" 1 AAL123  7022");
-      expect(lines[2]).toBe(" 2 AAL456  6412");
+      expect(lines[1]).toBe("01 AAL123  7022");
+      expect(lines[2]).toBe("02 AAL456  6412");
       expect(lines).toHaveLength(3);
     });
   });
@@ -1111,9 +1067,9 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       view.camera.centerEastNm = 0;
       view.camera.centerNorthNm = 0;
 
-      // Type +1 into preview buffer
-      beginPreviewBufferEntry(view.preview, "+1", Date.now());
-      expect(view.preview.buffer).toBe("+1");
+      // Type 01 into preview buffer
+      beginPreviewBufferEntry(view.preview, "01", Date.now());
+      expect(view.preview.buffer).toBe("01");
 
       // Click target at (500, 500)
       handlePpiLeftClick(view, world, 500, 500, 1000, 1000);
@@ -1127,7 +1083,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(view.preview.phase).toBe("idle");
     });
 
-    it("F1 1 <click target> associates flight plan from list to target without changing leader direction", () => {
+    it("F1 01 <click target> associates scheduled flight plan from list to target without changing leader direction", () => {
       const world = createWorld();
       const view = createScopeView();
 
@@ -1158,11 +1114,12 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       view.camera.centerEastNm = 0;
       view.camera.centerNorthNm = 0;
 
-      // Press F1 then type 1
+      // Press F1 then type 01
       handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 1000);
       expect(view.preview.armed?.type).toBe("initCntl");
-      handleScopeKeyDown(keyEvent("1"), view, "scope", world, 1050);
-      expect(view.preview.flid).toBe("1");
+      handleScopeKeyDown(keyEvent("0"), view, "scope", world, 1050);
+      handleScopeKeyDown(keyEvent("1"), view, "scope", world, 1100);
+      expect(view.preview.flid).toBe("01");
 
       // Click target
       handlePpiLeftClick(view, world, 500, 500, 1000, 1000);

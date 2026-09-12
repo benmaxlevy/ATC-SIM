@@ -15,6 +15,7 @@ import {
   applyHandoffToSelection,
   createScopeView,
   getDatablockVisualState,
+  handlePpiLeftClick,
   handleTrackClick,
   handleTrackMiddleClick,
   isTargetDiamondPath,
@@ -169,7 +170,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
   });
 
   describe("AC2: Datablocks (LDB, PDB, FDB)", () => {
-    test("LDB displays squawk + altitude and queries ground speed on click for 5 seconds", () => {
+    test("LDB displays squawk + altitude and keeps queried ground speed until off-target slew", () => {
       const ac = createAircraft({
         id: "ac-ldb-test",
         callsign: "N12345",
@@ -189,30 +190,34 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       td.unassociated = true;
       td.squawk = "1200";
 
-      // Initial state: squawk + Mode C hundreds (1200 045)
+      // Initial state: beacon on line 1, Mode C hundreds on line 2 (1200 / 045)
       const initial = createMockCtx();
       renderScope(initial.ctx, world, view, 800, 800);
-      expect(initial.fillTexts.some((t) => t.text === "1200 045")).toBe(true);
+      expect(initial.fillTexts.some((t) => t.text === "1200")).toBe(true);
+      expect(initial.fillTexts.some((t) => t.text === "045")).toBe(true);
 
       // Click to query ground speed
       handleTrackClick(view.tracks, world, ac.id);
 
-      // Queried state: Mode C hundreds + speed in tens (045 18)
+      // Queried state: Mode C hundreds + speed in tens on line 2 (045 18)
       const queried = createMockCtx();
       renderScope(queried.ctx, world, view, 800, 800);
+      expect(queried.fillTexts.some((t) => t.text === "1200")).toBe(true);
       expect(queried.fillTexts.some((t) => t.text === "045 18")).toBe(true);
 
-      // Advance time by 4999 ms -> still queried
-      world.simTimeMs = 1000 + 4999;
+      // Query persists across simulation time.
+      world.simTimeMs = 1000 + 60_000;
       const stillQueried = createMockCtx();
       renderScope(stillQueried.ctx, world, view, 800, 800);
       expect(stillQueried.fillTexts.some((t) => t.text === "045 18")).toBe(true);
 
-      // Advance time past 5000 ms -> query expires and reverts to 1200 045
-      world.simTimeMs = 1000 + 5001;
-      const expired = createMockCtx();
-      renderScope(expired.ctx, world, view, 800, 800);
-      expect(expired.fillTexts.some((t) => t.text === "1200 045")).toBe(true);
+      // An off-target slew clears the persistent query.
+      handlePpiLeftClick(view, world, 0, 0, 800, 800);
+      const cleared = createMockCtx();
+      renderScope(cleared.ctx, world, view, 800, 800);
+      expect(cleared.fillTexts.some((t) => t.text === "045 18")).toBe(false);
+      expect(cleared.fillTexts.some((t) => t.text === "1200")).toBe(true);
+      expect(cleared.fillTexts.some((t) => t.text === "045")).toBe(true);
     });
 
     test("PDB renders Line 2 only for unowned associated track, and clicking toggles to Green FDB", () => {
@@ -340,11 +345,13 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
 
       // Left click to accept inbound handoff
       world.simTimeMs = 1600;
+      view.tracks.get(ac.id)!.unassociated = true;
       handleTrackClick(view.tracks, world, ac.id);
 
       const td = view.tracks.get(ac.id)!;
       expect(td.ownership).toBe("owned");
       expect(td.datablockMode).toBe("full");
+      expect(td.unassociated).toBe(false);
       expect(handoffFor(world, ac.id)).toEqual({ kind: "none" });
       expect(log.byType("handoff.inbound.accepted")).toHaveLength(1);
 
@@ -645,7 +652,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       expect(ldbTd.highlighted).toBe(true);
       const ldbHlCtx = createMockCtx();
       renderScope(ldbHlCtx.ctx, world, view, 800, 800);
-      const ldbText = ldbHlCtx.fillTexts.find((t) => t.text === "1200 030");
+      const ldbText = ldbHlCtx.fillTexts.find((t) => t.text === "1200");
       expect(ldbText?.fillStyle).toBe(PALETTE.highlight); // Cyan #00FFFF
 
       // Toggle LDB highlight off

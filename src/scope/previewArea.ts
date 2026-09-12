@@ -19,7 +19,7 @@ import { type VideoMapTokenLayout } from "./dcb/dcbFunctions";
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
 import { cloneWxLevels, type WxLevels } from "./wx";
 import type { ScopeView } from "./scopeView";
-import { getFlightPlanEntries } from "./systemLists";
+import { formatFlightPlanIndex, getFlightPlanEntries } from "./systemLists";
 import {
   ensureTrackDisplay,
   isCaPairInhibited,
@@ -92,9 +92,9 @@ function planIdentityMatches(
       (flightType === "P" && plan.flightType === "VFR") ||
       (flightType === "E" && plan.flightType === "DVFR")) &&
     (!coordinationTime || plan.eta === coordinationTime || plan.ptd === coordinationTime);
-  if (view && /^\d{1,2}$/.test(normalized)) {
+  if (view && /^\d{2}$/.test(normalized)) {
     const entry = getFlightPlanEntries(world, view).find(
-      (item) => item.index === Number(normalized),
+      (item) => formatFlightPlanIndex(item.index) === normalized,
     );
     if (entry?.planId) {
       const plan = world.flightPlans.find((item) => item.id === entry.planId);
@@ -580,6 +580,11 @@ export function handlePreviewFlidKey(
       rejectPreviewCntl(state, nowMs);
       return { consumed: true };
     }
+    if (state.armed.type === "initCntl") {
+      // Manual §5.4.1–§5.4.2 requires identity entry + slew/click.
+      rejectPreviewCntl(state, nowMs);
+      return { consumed: true };
+    }
     if (!world) {
       rejectPreviewCntl(state, nowMs);
       return { consumed: true };
@@ -593,10 +598,6 @@ export function handlePreviewFlidKey(
     // An unassociated authoritative plan has no aircraft identity to apply
     // until the subsequent INIT CNTL slew/click supplies the target. TERM CNTL
     // can delete a plan-only identity directly, as required by §5.4.6.
-    if (state.armed.type === "initCntl" && plans.length === 1) {
-      state.lastKeyAtMs = nowMs;
-      return { consumed: true };
-    }
     if (state.armed.type === "termCntl" && plans.length === 1) {
       const plan = plans[0]!;
       cancelPreviewArea(state);
@@ -639,6 +640,14 @@ export function previewFlidMatchesSlew(
   if (!flid) {
     return true;
   }
+  if (/^\d{2}$/.test(flid.trim()) && view) {
+    const entry = getFlightPlanEntries(world, view).find(
+      (item) => formatFlightPlanIndex(item.index) === flid.trim(),
+    );
+    if (entry && !entry.planId) {
+      return unassociatedTrack(aircraftId, view);
+    }
+  }
   const plans = planIdentityMatches(flid, world, view);
   if (plans.length > 1) {
     return false;
@@ -649,8 +658,9 @@ export function previewFlidMatchesSlew(
       ? plan.associatedAircraftId === aircraftId
       : unassociatedTrack(aircraftId, view);
   }
-  const resolved = resolveScopeFlid(flid, world, view);
-  return resolved.ok && resolved.aircraftId === aircraftId;
+  // INIT CNTL identity is deliberately narrower than the generic FLID
+  // resolver: CID/numeric tails are not ACID, beacon, or TAB identities.
+  return false;
 }
 
 /** Enter-commit: a still-live prefix (`B`, `B4`, `B450`) is `invalid`, not a silent no-op. */

@@ -28,6 +28,7 @@ import {
   createFlightPlan,
   deleteFlightPlanFromWorld,
   disassociateFlightPlan,
+  flightPlanForAircraft,
   modifyFlightPlan,
   releaseAssignedBeacon,
   withAllocatedBeacon,
@@ -47,7 +48,6 @@ import {
   isBeaconSelectKey,
   isCycleFocusKey,
   isHelpToggleKey,
-  isPreviewPlusKey,
   isRadioFocusSlashKey,
   isScopeChordLive,
   isStarsChordPrefixKey,
@@ -145,6 +145,7 @@ import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock, type LeaderLengthPx } from
 import { resolveScopeFlid } from "./previewArea";
 import {
   canonicalSystemListId,
+  associateFlightPlanToTrack,
   cancelListDrag,
   deleteFlightPlanEntry,
   getFlightPlanEntries,
@@ -379,6 +380,25 @@ function applyPreviewArmedAction(
         return;
       }
       world.flightPlans.push(plan);
+      if (plan.assignedBeacon && plan.assignedBeacon !== "1200") {
+        const matches = world.aircraft.filter((aircraft) => {
+          const reportedSquawk = aircraft.reportedSquawk ?? aircraft.squawk;
+          const track = view.tracks.get(aircraft.id);
+          const unassociated =
+            !track ||
+            track.unassociated === true ||
+            (track.ownership !== "owned" && track.datablockMode !== "full");
+          return (
+            unassociated &&
+            reportedSquawk === plan.assignedBeacon &&
+            !flightPlanForAircraft(world, aircraft.id)
+          );
+        });
+        const entry = getFlightPlanEntries(world, view).find((item) => item.planId === plan.id);
+        if (matches.length === 1 && entry) {
+          associateFlightPlanToTrack(world, view, entry.index, matches[0]!.id);
+        }
+      }
       return;
     }
     case "toggleList":
@@ -1066,12 +1086,6 @@ export function handleScopeKeyDown(
     if (isStarsChordPrefixKey(event.key)) {
       consume(event);
       startPreviewBuffer(view, "*", nowMs);
-      ui?.onHandled?.();
-      return true;
-    }
-    if (isPreviewPlusKey(event.key)) {
-      consume(event);
-      startPreviewBuffer(view, "+", nowMs);
       ui?.onHandled?.();
       return true;
     }

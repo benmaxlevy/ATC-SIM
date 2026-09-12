@@ -5,7 +5,6 @@ import {
   caPairKey,
   caSeverityForCallsign,
   DEFAULT_TOWER_SECTOR_ID,
-  flightPlanForAircraft,
   handoffFor,
   msawSeverityForCallsign,
   type Aircraft,
@@ -15,11 +14,11 @@ import { inAltitudeFilter, shouldShowDatablockOutsideAltitudeFilter } from "../a
 import { nmToScreen, type ScopeViewSize } from "../camera";
 import {
   DATABLOCK_FIELD_GAP,
+  buildDatablockRuntimeState,
   datablockMetrics,
   datablockSourceFromWorld,
   fullDatablockLine3Parts,
   getSpecialPurposeCode,
-  handoffDatablockDisplay,
   linesForDatablock,
   withInboundHandoffCue,
   type DatablockMode,
@@ -93,11 +92,9 @@ import {
   targetStrokeColor,
 } from "./targetSymbol";
 import {
-  deriveScratchpads,
   filterActiveCaAlerts,
   isBeaconatorReadout,
   isIdentFlashing,
-  isTrackQueried,
   isCaPairInhibited,
   type TrackDisplay,
 } from "../trackDisplay";
@@ -899,36 +896,75 @@ function field0WithAlerts(staticField0: string | undefined, alertText: string): 
   return values.length > 0 ? values.join("/") : undefined;
 }
 
-export function drawDatablock(
-  ctx: CanvasRenderingContext2D,
-  ac: Aircraft,
-  targetX: number,
-  targetY: number,
+type ScopeDatablockPresentation = {
+  runtime: ReturnType<typeof buildDatablockRuntimeState>;
+  visual: DatablockVisualState;
+  mode: DatablockMode;
+  handoff: ReturnType<typeof handoffFor>;
+  datablockSource: ReturnType<typeof datablockSourceFromWorld>;
+  atpaReadout: ReturnType<typeof atpaInTrailDatablockReadout>;
+  base: ReturnType<typeof linesForDatablock>;
+  lines: ReturnType<typeof linesForDatablock>;
+  line1WithoutAlert: string;
+  alertGlyphs: AlertGlyph[];
+  field0Alerts: Field0AlertState;
+};
+
+export function datablockRenderSnapshotKey(view: ScopeView, world: World): string {
+  return JSON.stringify({
+    modeCVisible: view.modeCVisible,
+    beaconatorActive: view.beaconatorActive,
+    sectorId: view.sectorId,
+    charSizePx: view.charSizePx,
+    cellWidthPx: view.datablockCellWidthPx,
+    tracks: [...view.tracks.entries()].map(([id, track]) => [
+      id,
+      track.ownership,
+      track.unassociated,
+      track.datablockMode,
+      track.forcedFdb,
+      track.scratchpad,
+      track.sp1,
+      track.sp2,
+      track.queriedUntilSimMs,
+      track.beaconatorUntilSimMs,
+      track.leaderDir,
+      track.leaderLengthPx,
+    ]),
+    aircraftIds: world.aircraft.map((aircraft) => aircraft.id),
+    handoffs: [...world.handoffs.entries()],
+  });
+}
+
+/** One source/formatting projection shared by paint and layout. */
+export function buildScopeDatablockPresentation(
   view: ScopeView,
   world: World,
-  resolved?: ResolvedDatablockLayout,
-): void {
+  ac: Aircraft,
+  visual: DatablockVisualState = getDatablockVisualState(view, world, ac),
+): ScopeDatablockPresentation {
   const td = view.tracks.get(ac.id);
-  if (!shouldPaintDatablock(view, world, ac, td)) {
-    return;
-  }
-  const visual = getDatablockVisualState(view, world, ac);
-  if (!visual.visible) {
-    return;
-  }
-  ctx.font = datablockFontCss(view.charSizes.dataBlocks);
-  const derived = deriveScratchpads(ac, td, flightPlanForAircraft(world, ac.id)?.scratchpads);
   const mode = visual.mode;
-  const isQueried = td ? isTrackQueried(td, world.simTimeMs) : false;
-  const squawk = td?.squawk ?? ac.squawk;
-  const beaconCodeReadout = isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs);
-  const callsign =
-    beaconCodeReadout && squawk
-      ? squawk
-      : (flightPlanForAircraft(world, ac.id)?.acid ?? ac.callsign);
-
   const handoff = handoffFor(world, ac.id);
-  const handoffDisplay = handoffDatablockDisplay(handoff, view.sectorId, world.simTimeMs);
+  const field0Indicators =
+    mode === "limited" ? ldbField0Indicators(view, world, ac, td) : undefined;
+  const runtime = buildDatablockRuntimeState(world, ac, {
+    track: td,
+    mode,
+    modeCVisible: view.modeCVisible,
+    beaconatorActive: view.beaconatorActive,
+    localTcp: view.sectorId,
+    atpa: {
+      enabled: view.atpa.inTrailDistance,
+      trackEnabled: td?.atpaInTrailDistanceEnabled !== false,
+    },
+    fieldInputs: {
+      identIndicator:
+        mode === "partial" && td && isIdentFlashing(td, world.simTimeMs) ? "ID" : undefined,
+      field0Indicators,
+    },
+  });
+  const datablockSource = runtime.source;
   const atpaReadout =
     mode === "full"
       ? atpaInTrailDatablockReadout(world.alerts.atpa, ac.callsign, {
@@ -936,32 +972,7 @@ export function drawDatablock(
           trackEnabled: td?.atpaInTrailDistanceEnabled !== false,
         })
       : null;
-
-  const datablockSource = {
-    ...datablockSourceFromWorld(world, ac, td),
-    callsign,
-    squawk,
-    atpaDistance: atpaReadout?.text,
-  };
-  const base = linesForDatablock(datablockSource, mode, {
-    modeCVisible: view.modeCVisible,
-    scratchpad: derived.sp1,
-    sp1: derived.sp1,
-    sp2: derived.sp2,
-    ...handoffDisplay,
-    identIndicator:
-      mode === "partial" && td && isIdentFlashing(td, world.simTimeMs) ? "ID" : undefined,
-    queried: isQueried,
-    beaconVisible: true,
-    field0Indicators: mode === "limited" ? ldbField0Indicators(view, world, ac, td) : undefined,
-    simTimeMs: world.simTimeMs,
-  });
-  let line1WithoutAlert = base.line1;
-  if (visual.line1Tag) {
-    line1WithoutAlert = `${line1WithoutAlert} ${visual.line1Tag}`;
-  }
-  const lineH = datablockLineHeightPx(view.charSizes.dataBlocks);
-
+  const base = linesForDatablock(datablockSource, mode, runtime.options);
   const isCaInhibited = isCaInhibitedForTrack(ac, td, view);
   const isCaPairInhibited = isCaPairInhibitedForTrack(view, world, ac);
   const isMsawInhibited = Boolean(
@@ -972,8 +983,7 @@ export function drawDatablock(
     (td as { inhibitMsaw?: boolean } | undefined)?.inhibitMsaw ||
     (ac as { msawInhibited?: boolean }).msawInhibited,
   );
-  const mciActive = hasMciAlertForTrack(world, ac);
-  const mciInhibited = mciActive && view.mciEnabled === false;
+  const mciInhibited = hasMciAlertForTrack(world, ac) && view.mciEnabled === false;
   const briteCh = mode === "limited" || mode === "partial" ? view.brite.ldb : view.brite.fdb;
   const alertGlyphs =
     mode === "full" || mode === "partial"
@@ -984,13 +994,70 @@ export function drawDatablock(
           normalColor: applyBrite(PALETTE.owned, briteCh),
         })
       : [];
-  // Field 2 inhibit symbols occupy inline cells immediately after the ACID.
-  const inlineGlyphs = alertGlyphs.map((glyph) => glyph.text).join("");
-  const line1Prefix = line1WithoutAlert.startsWith(callsign) ? callsign : line1WithoutAlert;
-  const line1 = `${line1Prefix}${inlineGlyphs}${line1WithoutAlert.slice(line1Prefix.length)}`;
-  const lines = { ...base, line1 };
+  const taggedLine = visual.line1Tag ? `${base.line1} ${visual.line1Tag}` : base.line1;
+  let line1WithoutAlert = taggedLine;
+  if (!visual.line1Tag && mode !== "limited" && mode !== "partial") {
+    line1WithoutAlert = withInboundHandoffCue(line1WithoutAlert, handoff);
+  }
+  const line1 = `${line1WithoutAlert.slice(0, datablockSource.callsign.length)}${alertGlyphs
+    .map((glyph) => glyph.text)
+    .join("")}${line1WithoutAlert.slice(datablockSource.callsign.length)}`;
   const field0Alerts = field0AlertState(ac, td, view, world, mode);
-  lines.line0 = field0WithAlerts(base.line0, field0Alerts.text);
+  return {
+    runtime,
+    visual,
+    mode,
+    handoff,
+    datablockSource,
+    atpaReadout,
+    base,
+    line1WithoutAlert,
+    alertGlyphs,
+    field0Alerts,
+    lines: {
+      ...base,
+      line1,
+      line0: field0WithAlerts(base.line0, field0Alerts.text),
+    },
+  };
+}
+
+export function drawDatablock(
+  ctx: CanvasRenderingContext2D,
+  ac: Aircraft,
+  targetX: number,
+  targetY: number,
+  view: ScopeView,
+  world: World,
+  resolved?: ResolvedDatablockLayout,
+  presentation?: ScopeDatablockPresentation,
+): void {
+  const td = view.tracks.get(ac.id);
+  if (!shouldPaintDatablock(view, world, ac, td)) {
+    return;
+  }
+  const visual = getDatablockVisualState(view, world, ac);
+  if (!visual.visible) {
+    return;
+  }
+  ctx.font = datablockFontCss(view.charSizes.dataBlocks);
+  const snapshot = presentation ?? buildScopeDatablockPresentation(view, world, ac, visual);
+  const {
+    runtime,
+    mode,
+    base,
+    lines,
+    line1WithoutAlert,
+    alertGlyphs,
+    field0Alerts,
+    datablockSource,
+    atpaReadout,
+  } = snapshot;
+  const callsign = runtime.source.callsign;
+  const lineH = datablockLineHeightPx(view.charSizes.dataBlocks);
+  const briteCh = mode === "limited" || mode === "partial" ? view.brite.ldb : view.brite.fdb;
+  // Field 2 inhibit symbols occupy inline cells immediately after the ACID.
+  const line1Prefix = line1WithoutAlert.startsWith(callsign) ? callsign : line1WithoutAlert;
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
   const origin = datablockTopLeft(
     trackLeaderDir(view, ac.id),
@@ -1078,6 +1145,9 @@ export function drawTracks(
   view: ScopeView,
   size: ScopeViewSize,
 ): void {
+  // A render owns the only valid presentation/layout snapshot. Pickers must
+  // never retain results across a world/view render boundary.
+  view.datablockRenderSnapshot = undefined;
   const historyCount = view.historyEnabled ? view.historyDotCount : 0;
   if (historyCount > 0) {
     for (const ac of world.aircraft) {
@@ -1175,6 +1245,7 @@ export function drawTracks(
   ctx.textBaseline = "top";
   view.datablockCellWidthPx = measureDatablockCellWidth(ctx);
 
+  const presentationById = new Map<string, ScopeDatablockPresentation>();
   const layoutItems: DatablockLayoutInput[] = world.aircraft.flatMap((ac) => {
     const td = view.tracks.get(ac.id);
     const shown = displayAircraft(ac, td);
@@ -1183,77 +1254,9 @@ export function drawTracks(
     }
     const visual = getDatablockVisualState(view, world, ac);
     if (!visual.visible) return [];
-    const mode = visual.mode;
-    const derived = deriveScratchpads(ac, td, flightPlanForAircraft(world, ac.id)?.scratchpads);
-    const handoff = handoffFor(world, ac.id);
-    const handoffDisplay = handoffDatablockDisplay(handoff, view.sectorId, world.simTimeMs);
-    const squawk = td?.squawk ?? ac.squawk;
-    const beaconCodeReadout = isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs);
-    const callsign =
-      beaconCodeReadout && squawk
-        ? squawk
-        : (flightPlanForAircraft(world, ac.id)?.acid ?? ac.callsign);
-    const atpaReadout =
-      mode === "full"
-        ? atpaInTrailDatablockReadout(world.alerts.atpa, ac.callsign, {
-            globalEnabled: view.atpa.inTrailDistance,
-            trackEnabled: td?.atpaInTrailDistanceEnabled !== false,
-          })
-        : null;
-    const base = linesForDatablock(
-      {
-        ...datablockSourceFromWorld(world, shown, td),
-        callsign,
-        squawk,
-        atpaDistance: atpaReadout?.text,
-      },
-      mode,
-      {
-        modeCVisible: view.modeCVisible,
-        scratchpad: derived.sp1,
-        sp1: derived.sp1,
-        sp2: derived.sp2,
-        ...handoffDisplay,
-        identIndicator:
-          mode === "partial" && td && isIdentFlashing(td, world.simTimeMs) ? "ID" : undefined,
-        queried: td ? isTrackQueried(td, world.simTimeMs) : false,
-        simTimeMs: world.simTimeMs,
-        beaconVisible: true,
-        field0Indicators: mode === "limited" ? ldbField0Indicators(view, world, ac, td) : undefined,
-      },
-    );
-    const isCaInhibited = isCaInhibitedForTrack(ac, td, view);
-    const isCaPairInhibited = isCaPairInhibitedForTrack(view, world, ac);
-    const isMsawInhibited = Boolean(
-      td?.msawInhibited ||
-      td?.msawCurrentAlertInhibited ||
-      td?.msawProcessingInhibited ||
-      (td as { inhibitMSAW?: boolean } | undefined)?.inhibitMSAW ||
-      (td as { inhibitMsaw?: boolean } | undefined)?.inhibitMsaw ||
-      (ac as { msawInhibited?: boolean }).msawInhibited,
-    );
-    const mciInhibited = hasMciAlertForTrack(world, ac) && view.mciEnabled === false;
-    const inhibitGlyph =
-      mode === "full" || mode === "partial"
-        ? isMsawInhibited && (isCaInhibited || isCaPairInhibited || mciInhibited)
-          ? "+"
-          : isCaInhibited || isCaPairInhibited || mciInhibited
-            ? "Δ"
-            : isMsawInhibited
-              ? "*"
-              : ""
-        : "";
-    const line1Base = visual.line1Tag ? `${base.line1} ${visual.line1Tag}` : base.line1;
-    const line1Prefix = line1Base.startsWith(callsign) ? callsign : line1Base;
-    let line1 = `${line1Prefix}${inhibitGlyph}${line1Base.slice(line1Prefix.length)}`;
-    if (!visual.line1Tag && mode !== "limited" && mode !== "partial") {
-      line1 = withInboundHandoffCue(line1, handoff);
-    }
-    const lines = {
-      ...base,
-      line1,
-      line0: field0WithAlerts(base.line0, field0AlertState(ac, td, view, world, mode).text),
-    };
+    const presentation = buildScopeDatablockPresentation(view, world, ac, visual);
+    presentationById.set(ac.id, presentation);
+    const { mode, lines } = presentation;
     const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
     if (!pointInLayoutBounds(p, { x: 0, y: 0, width: size.widthPx, height: size.heightPx })) {
       return [];
@@ -1289,6 +1292,34 @@ export function drawTracks(
     protectedGeometry: collectDatablockProtectedGeometry(world, view, size),
   });
   const layoutById = new Map(layouts.map((layout) => [layout.aircraftId, layout]));
+  view.datablockRenderSnapshot = {
+    world,
+    simTimeMs: world.simTimeMs,
+    viewKey: datablockRenderSnapshotKey(view, world),
+    widthPx: size.widthPx,
+    heightPx: size.heightPx,
+    camera: { ...view.camera },
+    presentations: new Map(
+      layoutItems.map((item) => {
+        const presentation = presentationById.get(item.aircraftId)!;
+        const rect = item.preferredRect;
+        return [
+          item.aircraftId,
+          {
+            mode: presentation.mode,
+            lines: presentation.lines,
+            preferredRect: {
+              x: rect.x,
+              y: rect.y,
+              width: "width" in rect ? rect.width : rect.w,
+              height: "height" in rect ? rect.height : rect.h,
+            },
+          },
+        ];
+      }),
+    ),
+    layouts: layoutById,
+  };
   const preferredById = new Map(layoutItems.map((item) => [item.aircraftId, item.preferredRect]));
   const hasDensity = layouts.some((layout) => layout.unplaced);
   if (hasDensity) {
@@ -1359,7 +1390,7 @@ export function drawTracks(
     const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
     const layout = layoutById.get(ac.id);
     if (!layout || layout.unplaced) continue;
-    drawDatablock(ctx, shown, p.x, p.y, view, world, layout);
+    drawDatablock(ctx, shown, p.x, p.y, view, world, layout, presentationById.get(ac.id));
   }
 
   drawAtpaConeMileage(ctx, world, view, size);

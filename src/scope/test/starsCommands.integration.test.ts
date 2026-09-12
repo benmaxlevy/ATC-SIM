@@ -25,9 +25,11 @@ import { pickAircraftHitAt } from "../pick";
 import { handlePpiLeftClick } from "../ppi";
 import { formatPreviewReadout } from "../previewArea";
 import { PTL_MINUTE_PRESETS } from "../ptl";
+import { drawTracks } from "../render/renderScopePaint";
 import { handleScopeKeyDown } from "../scopeKeys";
 import { createScopeView } from "../scopeView";
 import { BEACONATOR_SLEW_MS, isTrackBeaconator, syncTrackDisplays } from "../trackDisplay";
+import { createMockCtx } from "./mockCanvas";
 
 const CAM: ScopeCamera = DEFAULT_SCOPE_CAMERA;
 const CSS = 800;
@@ -310,7 +312,7 @@ test("AC1 — *F flashes FILTER; *LA writes hundreds; *BCN add/DEL; incomplete I
   expect(chord.preview.buffer).toBe("F");
 });
 
-test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; / DB toggles PDB↔FDB; F3/F4 apply vs arm", () => {
+test("AC1 — F1 / * chords mutate tracks; direct slew or F3 accepts inbound HO; / DB toggles PDB↔FDB; F3/F4 apply vs arm", () => {
   const hoWorld = createWorldFromScenario(loadKdem(), 1);
   const hoDal = hoWorld.aircraft[0]!;
   const hoView = createScopeView();
@@ -331,18 +333,18 @@ test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; 
   handleScopeKeyDown(keyEvent("F1"), hoView2, "scope", hoWorld2, 100);
   expect(hoView2.preview.armed).toEqual({ type: "initCntl" });
   clickAt(hoView2, hoWorld2, hoDal2.xNm, hoDal2.yNm);
-  expect(handoffFor(hoWorld2, hoDal2.id).kind).not.toBe("inbound");
-  expect(hoView2.tracks.get(hoDal2.id)!.ownership).toBe("owned");
+  expect(handoffFor(hoWorld2, hoDal2.id).kind).toBe("inbound");
+  expect(hoView2.tracks.get(hoDal2.id)!.ownership).toBe("unowned");
 
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", xNm: 16, yNm: 8 });
   const world = createWorld({ aircraft: [dal] });
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
 
-  typeKeys(view, world, ["+"]);
-  expect(view.preview.phase).toBe("entry");
+  typeKeys(view, world, ["F1"]);
+  expect(view.preview.phase).toBe("armed");
   clickAt(view, world, dal.xNm, dal.yNm);
-  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+  expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
   expect(view.preview.phase).toBe("idle");
 
   typeKeys(view, world, ["/"], "scope", 200);
@@ -361,6 +363,18 @@ test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; 
 
   world.selectedAircraftId = null;
   typeKeys(view, world, ["/"], "scope", 500);
+  view.tracks.get(dal.id)!.lastReport = {
+    aircraftId: dal.id,
+    xNm: dal.xNm,
+    yNm: dal.yNm,
+    headingDeg: dal.headingDeg,
+    speedKt: dal.speedKt,
+    altitudeFt: dal.altitudeFt,
+    reportedAtSimMs: world.simTimeMs,
+    sourceSiteId: null,
+    paint: "fused-puck",
+  };
+  drawTracks(createMockCtx().ctx, world, view, VIEW);
   const db = datablockCenter(view, dal, tick);
   const dbHit = pickAircraftHitAt(world, db.x, db.y, CAM, CSS, CSS, 12, view);
   expect(dbHit?.region).toBe("datablock");
@@ -385,8 +399,6 @@ test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; 
   expect(view.preview.armed).toEqual({ type: "termCntl" });
   handleScopeKeyDown(keyEvent("Escape"), view, "scope", world, 1100);
 
-  typeKeys(view, world, ["+"], "scope", 1200);
-  clickAt(view, world, dal.xNm, dal.yNm);
   typeKeys(view, world, ["*"], "scope", 1400);
   clickAt(view, world, dal.xNm, dal.yNm);
   expect(view.tracks.get(dal.id)!.highlighted).toBe(true);

@@ -69,8 +69,8 @@ describe("STARS System Lists & DCB Integration Acceptance", () => {
     // 1. TAB Flight Plan list
     const tabLines = buildTabFlightPlanList(world, 10);
     expect(tabLines[0]).toBe("FLIGHT PLAN");
-    expect(tabLines[1]).toContain(" 1 AAL101");
-    expect(tabLines[2]).toContain(" 2 DAL202");
+    expect(tabLines[1]).toContain("01 AAL101");
+    expect(tabLines[2]).toContain("02 DAL202");
 
     // 2. VFR list
     const vfrLines = buildVfrList(world, 10);
