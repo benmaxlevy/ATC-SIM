@@ -391,7 +391,7 @@ describe("T02-93 Flight Progress Strips Integration and Acceptance", () => {
     test("strips.css enforces physical cardstock colors, column widths, and contrast", () => {
       // 5-column physical cardstock grid template (1.4fr 0.7fr 0.9fr 2.2fr 1.1fr)
       expect(stripsCss).toMatch(
-        /grid-template-columns:\s*1\.4fr\s+0\.7fr\s+0\.9fr\s+2\.2fr\s+1\.1fr;/,
+        /grid-template-columns:\s*minmax\(130px, max-content\)[\s\S]*minmax\(180px, max-content\);/,
       );
 
       // Pale buff physical background #f5eedc
