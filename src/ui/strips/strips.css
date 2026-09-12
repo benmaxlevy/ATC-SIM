@@ -293,6 +293,47 @@
   overflow: hidden;
 }
 
+/* Departure Box 9 is one large field.  9A/9B/9C are retained as empty
+   terminal subspaces at the corners shown on the supplied FAA layout. */
+.col-route-departure {
+  position: relative;
+  padding: 0;
+}
+
+.col-route-departure .route-text {
+  position: absolute;
+  inset: 2px 5px;
+  font-size: 0.605rem;
+  line-height: 1.15;
+  word-break: break-word;
+  white-space: normal;
+  overflow: hidden;
+}
+
+.col-route-departure [data-box="9A"],
+.col-route-departure [data-box="9B"],
+.col-route-departure [data-box="9C"] {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.col-route-departure [data-box="9A"] {
+  left: 0;
+  bottom: 0;
+}
+
+.col-route-departure [data-box="9B"] {
+  right: 0;
+  top: 0;
+}
+
+.col-route-departure [data-box="9C"] {
+  right: 0;
+  bottom: 0;
+}
+
 .col-route-arrival {
   padding: 0;
   display: flex;

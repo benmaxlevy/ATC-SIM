@@ -88,6 +88,22 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
       expect(html).toContain("KPHL");
       expect(html).toContain("RNAV / CPDLC");
     });
+
+    test("keeps departure Boxes 9A, 9B, and 9C available in the Box 9 area", () => {
+      const html = renderToStaticMarkup(createElement(DepartureStrip, { strip: mockDAL882 }));
+
+      expect(html).toContain('class="strip-col col-route col-route-departure"');
+      expect(html).toContain('data-box="9A"');
+      expect(html).toContain('data-box="9B"');
+      expect(html).toContain('data-box="9C"');
+
+      const box9a = html.match(/data-box="9A"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      const box9b = html.match(/data-box="9B"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      const box9c = html.match(/data-box="9C"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      expect(box9a).toBe("");
+      expect(box9b).toBe("");
+      expect(box9c).toBe("");
+    });
   });
 
   // --------------------------------------------------------------------------
