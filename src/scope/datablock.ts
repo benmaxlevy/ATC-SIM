@@ -19,6 +19,7 @@ import {
   type World,
 } from "@core";
 import type { TrackDisplay } from "./trackDisplay";
+import type { ResolvedDatablockLayout } from "./datablockLayout";
 import { atpaInTrailDatablockReadout } from "./atpaReadout";
 import { DATABLOCK_LINE_HEIGHT_PX, DEFAULT_DATABLOCK_CELL_PX } from "./fonts";
 import {
@@ -957,6 +958,24 @@ export interface DatablockLines {
   line1: string;
   line2?: string;
   line3?: string;
+}
+
+/** Immutable-per-render datablock result shared by paint, layout, and pick. */
+export interface DatablockPresentationSnapshot {
+  mode: DatablockMode;
+  lines: DatablockLines;
+  preferredRect: { x: number; y: number; width: number; height: number };
+}
+
+export interface DatablockRenderSnapshot {
+  world: World;
+  simTimeMs: number;
+  viewKey: string;
+  widthPx: number;
+  heightPx: number;
+  camera: { rangeNm: number; centerEastNm: number; centerNorthNm: number };
+  presentations: Map<string, DatablockPresentationSnapshot>;
+  layouts: Map<string, ResolvedDatablockLayout>;
 }
 
 /**

@@ -94,6 +94,7 @@ import {
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
 import { cloneBrite, type BriteState } from "./palette";
 import type { TrackDisplay } from "./trackDisplay";
+import type { DatablockRenderSnapshot } from "./datablock";
 import type { RadarSite } from "@scenario";
 import {
   defaultSurveillanceMode,
@@ -191,6 +192,8 @@ export interface ScopeView {
   modeCVisible: boolean;
   /** Last measured `0` cell width for datablock hit-tests. */
   datablockCellWidthPx: number;
+  /** Last rendered datablock presentation/layout; invalidated on each render. */
+  datablockRenderSnapshot?: DatablockRenderSnapshot;
   /**
    * PTL ALL (global). CRC analog; default off. F7 always-on toggles this.
    * Display only — never a Command, readback, or intent.
@@ -457,6 +460,7 @@ export function createScopeView(
     historyEnabled: true,
     modeCVisible: true,
     datablockCellWidthPx: DEFAULT_DATABLOCK_CELL_PX,
+    datablockRenderSnapshot: undefined,
     ptlOn: false,
     ptlOwn: false,
     ptlMinutes: PTL_MINUTES,

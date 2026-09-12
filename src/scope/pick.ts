@@ -12,36 +12,11 @@
  * readback — radio still goes through the pilot agent.
  */
 
-import { handoffFor, setSelectedAircraft, type Aircraft, type World } from "@core";
-import {
-  DEFAULT_ALTITUDE_FILTER,
-  inAltitudeFilter,
-  shouldShowDatablockOutsideAltitudeFilter,
-  type AltitudeFilter,
-} from "./altitudeFilter";
+import { setSelectedAircraft, type Aircraft, type World } from "@core";
 import { nmToScreen, type ScopeCamera } from "./camera";
-import {
-  datablockRect,
-  handoffDatablockDisplay,
-  linesForDatablock,
-  pointInDatablock,
-  withInboundHandoffCue,
-  type DatablockMode,
-} from "./datablock";
-import {
-  DATABLOCK_LINE_HEIGHT_PX,
-  DEFAULT_DATABLOCK_CELL_PX,
-  datablockLineHeightPx,
-} from "./fonts";
-import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
+import { pointInDatablock } from "./datablock";
 import { handleTrackClick, handleTrackMiddleClick, type TrackDisplay } from "./trackDisplay";
-import {
-  pointInLayoutBounds,
-  solveDatablockLayout,
-  type DatablockLayoutInput,
-} from "./datablockLayout";
-import { aircraftAtReport } from "./surveillance";
-import { collectDatablockProtectedGeometry } from "./render/renderScopePaint";
+import { datablockRenderSnapshotKey } from "./render/renderScopePaint";
 import type { ScopeView } from "./scopeView";
 
 /** Frozen hit radius in CSS pixels (T01-11). Pixel-space so range presets stay stable. */
@@ -51,29 +26,11 @@ export interface DatablockPickView {
   tracks: Map<
     string,
     {
-      datablockMode: DatablockMode;
-      leaderDir?: LeaderDir;
-      leaderLengthPx?: number;
-      scratchpad?: string;
-      queriedUntilSimMs?: number;
-      beaconatorUntilSimMs?: number;
       lastReport?: TrackDisplay["lastReport"];
-      squawk?: string;
-      ownership?: string;
-      unassociated?: boolean;
-      retainedFdbOutsideAltitudeFilter?: boolean;
     }
   >;
-  modeCVisible: boolean;
-  datablockCellWidthPx: number;
-  /** Out-of-filter tracks have no datablock to hit; the target still picks. */
-  altitudeFilter: AltitudeFilter;
-  associatedAltitudeFilter?: AltitudeFilter;
-  /** Local receiving TCP used for inbound handoff Field 4 display. */
-  sectorId?: string;
-  charSizePx?: number;
-  leaderLengthPx?: number;
-  beaconatorActive?: boolean;
+  /** Rendered ScopeView snapshot supplies datablock content and hit rectangles. */
+  datablockRenderSnapshot?: ScopeView["datablockRenderSnapshot"];
 }
 
 function pickDatablockAt(
@@ -85,112 +42,26 @@ function pickDatablockAt(
   cssHeight: number,
   view: DatablockPickView,
 ): Aircraft | null {
-  const size = { widthPx: cssWidth, heightPx: cssHeight };
-  const cell =
-    view.datablockCellWidthPx > 0 ? view.datablockCellWidthPx : DEFAULT_DATABLOCK_CELL_PX;
+  if (!isFullScopeView(view)) return null;
+  const snapshot = view.datablockRenderSnapshot;
+  if (
+    snapshot?.world !== world ||
+    snapshot.simTimeMs !== world.simTimeMs ||
+    snapshot.widthPx !== cssWidth ||
+    snapshot.heightPx !== cssHeight ||
+    snapshot.camera.rangeNm !== cam.rangeNm ||
+    snapshot.camera.centerEastNm !== cam.centerEastNm ||
+    snapshot.camera.centerNorthNm !== cam.centerNorthNm ||
+    snapshot.viewKey !== datablockRenderSnapshotKey(view, world)
+  )
+    return null;
   let nearest: Aircraft | null = null;
   let nearestDist = Infinity;
-  const candidates: DatablockLayoutInput[] = [];
   for (const ac of world.aircraft) {
-    const td = view.tracks.get(ac.id);
-    if (!td?.lastReport) {
-      continue;
-    }
-    const shown = aircraftAtReport(ac, td.lastReport);
-    const handoff = handoffFor(world, ac.id);
-    const emergency = Boolean(
-      ac.spc ||
-      world.alerts.ca.some(
-        (alert) => alert.callsignA === ac.callsign || alert.callsignB === ac.callsign,
-      ) ||
-      world.alerts.msaw.some((alert) => alert.callsign === ac.callsign),
-    );
+    const presentation = snapshot.presentations.get(ac.id);
+    const layout = snapshot.layouts.get(ac.id);
     if (
-      !shouldShowDatablockOutsideAltitudeFilter({
-        inFilter: inAltitudeFilter(
-          shown.altitudeFt,
-          td?.unassociated
-            ? view.altitudeFilter
-            : (view.associatedAltitudeFilter ?? DEFAULT_ALTITUDE_FILTER),
-        ),
-        ownership: td.ownership,
-        retainedFdb: td.retainedFdbOutsideAltitudeFilter,
-        emergency,
-        pendingHandoff: handoff.kind === "inbound" || handoff.kind === "departure",
-      })
-    ) {
-      continue;
-    }
-    const p = nmToScreen(shown.xNm, shown.yNm, cam, size);
-    if (!pointInLayoutBounds(p, { x: 0, y: 0, width: cssWidth, height: cssHeight })) {
-      continue;
-    }
-    const ho = handoff;
-    const receivingTcp = view.sectorId ?? "D";
-    let mode = td?.datablockMode ?? (td?.ownership === "owned" ? "full" : "partial");
-    if (ho.kind === "inbound" || ho.kind === "departure") {
-      mode = "full";
-    }
-    if (ho.kind === "outbound" && ho.status !== "accepted") {
-      mode = "full";
-    }
-    if (ho.kind === "outbound" && ho.status === "accepted" && td?.ownership !== "unowned") {
-      mode = "full";
-    }
-    if (view.beaconatorActive && mode === "partial") {
-      mode = "full";
-    }
-    const dir = td?.leaderDir ?? DEFAULT_LEADER_DIR;
-    const isQueried = (td?.queriedUntilSimMs ?? 0) > world.simTimeMs;
-    const squawk = td?.squawk ?? ac.squawk;
-    const trackBeaconator = (td?.beaconatorUntilSimMs ?? 0) > world.simTimeMs;
-    const callsign = (view.beaconatorActive || trackBeaconator) && squawk ? squawk : ac.callsign;
-    const handoffDisplay = handoffDatablockDisplay(ho, receivingTcp, world.simTimeMs);
-    const base = linesForDatablock({ ...shown, callsign, squawk }, mode, {
-      modeCVisible: view.modeCVisible,
-      scratchpad: td?.scratchpad ?? "",
-      ...handoffDisplay,
-      queried: isQueried,
-      simTimeMs: world.simTimeMs,
-    });
-    let line1 = base.line1;
-    if (ho.kind === "pointout_inbound" && ho.status === "pending") {
-      line1 = `${base.line1} PO`;
-    } else if (ho.kind === "pointout_outbound" && ho.status === "pending") {
-      line1 = `${base.line1} PO ${ho.toSectorId}`;
-    } else if (mode !== "limited" && mode !== "partial") {
-      line1 = withInboundHandoffCue(base.line1, ho);
-    }
-    const lines = { ...base, line1 };
-    const lineH = datablockLineHeightPx(view.charSizePx ?? DATABLOCK_LINE_HEIGHT_PX);
-    const leaderLen = td?.leaderLengthPx ?? view.leaderLengthPx;
-    const rect = datablockRect(p.x, p.y, lines, cell, lineH, dir, leaderLen);
-    candidates.push({
-      aircraftId: ac.id,
-      targetPoint: p,
-      preferredRect: { x: rect.x, y: rect.y, width: rect.w, height: rect.h },
-      metrics: { widthPx: rect.w, heightPx: rect.h },
-      leaderDir: dir,
-      leaderLengthPx: leaderLen ?? 36,
-      displayPriority: mode === "full" ? "full" : mode === "partial" ? "partial" : "limited",
-      selected: world.selectedAircraftId === ac.id,
-    });
-  }
-  const obstacleView = isFullScopeView(view) ? view : undefined;
-  const protectedGeometry = obstacleView
-    ? collectDatablockProtectedGeometry(world, obstacleView, {
-        widthPx: cssWidth,
-        heightPx: cssHeight,
-      })
-    : undefined;
-  const layouts = solveDatablockLayout(candidates, {
-    bounds: { x: 0, y: 0, width: cssWidth, height: cssHeight },
-    protectedGeometry,
-  });
-  const layoutById = new Map(layouts.map((layout) => [layout.aircraftId, layout]));
-  for (const ac of world.aircraft) {
-    const layout = layoutById.get(ac.id);
-    if (
+      !presentation ||
       !layout?.rect ||
       !pointInDatablock(cssX, cssY, {
         x: layout.rect.x,
@@ -198,12 +69,8 @@ function pickDatablockAt(
         w: layout.rect.width,
         h: layout.rect.height,
       })
-    ) {
+    )
       continue;
-    }
-    // Layout rectangles can be displaced from their target. Score the hit by
-    // the resolved datablock itself; using the target point makes coincident
-    // targets always select the first aircraft when displaced rectangles touch.
     const dist = Math.hypot(
       layout.rect.x + layout.rect.width / 2 - cssX,
       layout.rect.y + layout.rect.height / 2 - cssY,

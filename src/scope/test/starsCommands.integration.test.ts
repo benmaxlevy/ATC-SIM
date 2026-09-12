@@ -25,9 +25,11 @@ import { pickAircraftHitAt } from "../pick";
 import { handlePpiLeftClick } from "../ppi";
 import { formatPreviewReadout } from "../previewArea";
 import { PTL_MINUTE_PRESETS } from "../ptl";
+import { drawTracks } from "../render/renderScopePaint";
 import { handleScopeKeyDown } from "../scopeKeys";
 import { createScopeView } from "../scopeView";
 import { BEACONATOR_SLEW_MS, isTrackBeaconator, syncTrackDisplays } from "../trackDisplay";
+import { createMockCtx } from "./mockCanvas";
 
 const CAM: ScopeCamera = DEFAULT_SCOPE_CAMERA;
 const CSS = 800;
@@ -361,6 +363,18 @@ test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; 
 
   world.selectedAircraftId = null;
   typeKeys(view, world, ["/"], "scope", 500);
+  view.tracks.get(dal.id)!.lastReport = {
+    aircraftId: dal.id,
+    xNm: dal.xNm,
+    yNm: dal.yNm,
+    headingDeg: dal.headingDeg,
+    speedKt: dal.speedKt,
+    altitudeFt: dal.altitudeFt,
+    reportedAtSimMs: world.simTimeMs,
+    sourceSiteId: null,
+    paint: "fused-puck",
+  };
+  drawTracks(createMockCtx().ctx, world, view, VIEW);
   const db = datablockCenter(view, dal, tick);
   const dbHit = pickAircraftHitAt(world, db.x, db.y, CAM, CSS, CSS, 12, view);
   expect(dbHit?.region).toBe("datablock");
