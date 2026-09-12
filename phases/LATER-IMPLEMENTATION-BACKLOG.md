@@ -791,9 +791,10 @@ connect those records to the radio/pilot pipeline:
   state linking the clearance to the plan.
 - future squawk update sources not yet routed through the aircraft-scoped
   correlation hook: pilot clearance execution, live surveillance/transponder
-  input, scenario spawn/import adapters, replay, and network/controller feeds;
-  each must update reported squawk first and may not scan or associate other
-  aircraft.
+  input, remaining scenario import adapters, replay, and network/controller
+  feeds. Scheduled-departure spawning now routes an authored reported squawk
+  through the hook. Each future source must update reported squawk first and
+  may not scan or associate other aircraft.
 
 These later flows must preserve the boundary: scope plan editing does not emit
 Command IR or mutate kinematics; radio clearances do. Keep pilot execution

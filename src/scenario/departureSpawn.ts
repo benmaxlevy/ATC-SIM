@@ -7,6 +7,7 @@ import {
   createAircraft,
   normalizeHeadingDeg,
   offerDepartureHandoff,
+  updateAircraftSquawk,
   type Aircraft,
   type Intent,
   type World,
@@ -45,6 +46,10 @@ export interface DepartureSpawnConfig {
   transitionId?: string;
   assignedAltitudeFt?: number;
   aircraftType?: string;
+  /** Assigned beacon from the scheduled departure record, if present. */
+  assignedSquawk?: string;
+  /** Reported beacon to apply through the aircraft-scoped correlation hook. */
+  squawk?: string;
 }
 
 export function resolveRunwayThreshold(
@@ -194,9 +199,13 @@ export function spawnDeparture(
     altitudeFt: pose.altitudeFt,
     speedKt: pose.speedKt,
     aircraftType: config.aircraftType ?? "B738",
+    ...(config.assignedSquawk ? { assignedSquawk: config.assignedSquawk } : {}),
   });
   ac.intent = pose.intent;
   world.aircraft.push(ac);
+  if (config.squawk !== undefined) {
+    updateAircraftSquawk(world, ac.id, config.squawk);
+  }
   offerDepartureHandoff(world, ac, "TWR", {
     runwayId: config.runwayId,
     sidId: config.sidId,
