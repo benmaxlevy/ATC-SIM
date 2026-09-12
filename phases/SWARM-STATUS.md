@@ -1515,3 +1515,32 @@ Focused tests passed: **34 passed**. Final `npm run ci` passed: **193 files,
 1782 passed, 4 skipped, 0 failures**. Manual primary review passed against
 TI 6191.409 Rev. 30 §4.11.2, pp. 4-78–4-79. No independent subagent was
 available in this session for the required second manual pass.
+
+## NINTH SWARM BLOCKED — live association and manual command alignment
+
+Approved tickets T02-154 through T02-157 were executed sequentially on
+`feat/flight-plan-lifecycle` using the captain fallback because worker spawning
+was unavailable. Each ticket was isolated, committed, inspected, squash-merged,
+and followed by target-branch CI:
+
+- T02-154 → `5718bfe`: live departure squawks route through the aircraft
+  correlation hook. CI: **193 files, 1787 passed, 4 skipped**.
+- T02-155 → `3edae4e`: canonical flight-plan association and beacon projections
+  are used without stale aircraft flight-plan aliases. CI: **193 files, 1788
+  passed, 4 skipped**.
+- T02-156 → `5c19e63`: F1 INIT CNTL, F3 reserved Track Suspend/no-op, F4 TERM
+  CNTL, and F7 MULTI FUNC. CI: **193 files, 1788 passed, 4 skipped**.
+- T02-157 → `22f3c04`: bottom-right Help button directly below Voice Text,
+  overlay wiring, aligned command documentation, and UI coverage. CI: **193
+  files, 1789 passed, 4 skipped**.
+
+Primary manual review passed against `/home/ben/Documents/stars refs/full
+manual.pdf`: Appendix D Table D-1 (printed p. D-2) confirms F1 INIT CNTL,
+F3 TRK SUSP, F4 TERM CNTL, and F7 MULTI FUNC; §2.9 (pp. 2-36–2-42) supports
+the keyboard/control initiation boundary. The visible Help button is a trainer
+delta and does not alter the radio or scope command pipelines.
+
+**Phase exit blocked:** no independent verifier subagent was available in this
+Codex session for the required second manual pass. Human browser positioning
+review of Help directly below Voice Text also remains a manual leftover;
+automated UI ordering/accessibility coverage is green. No later phase started.
