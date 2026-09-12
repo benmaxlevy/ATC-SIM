@@ -3768,3 +3768,11 @@ implements one ticket in an isolated worktree and returns `READY TO MERGE` or
 `BLOCKED`. After every merge, run CI and the independent manual review before
 launching the next wave. On a failed gate, use only one narrow fix worker and
 stop subsequent waves until green.
+
+## Ninth swarm started — live association and manual command alignment (2026-09-11)
+
+Execution began after planning commit `495db39`. The captain must execute
+T02-154 through T02-157 sequentially on `feat/flight-plan-lifecycle`, with one
+isolated worker at a time. Every merge requires `npm run ci` and an independent
+`$check-stars-manual '/home/ben/Documents/stars refs/full_manual.pdf'` review
+before the next wave. Stop on unresolved CI or manual-review failures.
