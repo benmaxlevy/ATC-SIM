@@ -822,6 +822,20 @@ Direct in-place text annotations on flight progress strips, supporting double-cl
 | [T02-101](tickets/T02-101-strips-annotation-state-and-telemetry-persistence.md) | Strips annotation state and telemetry persistence | P0 | M | T02-100 | Ready |
 | [T02-102](tickets/T02-102-strips-box-annotations-acceptance-and-styling.md) | Strips box annotations acceptance, unit tests, and styling | P0 | S | T02-101 | Ready |
 
+### Phase 2 addendum (T02-158–162 FAA Terminal Strip Alignment)
+
+Happy-path terminal departure and arrival strips use the shared physical layout
+`1–4 | 5–7 | 8/8A/8B | 9/9A/9B/9C | 10–18`. Synthetic plan-backed acceptance
+coverage verifies canonical plan projection, assigned-versus-reported beacon
+separation, and numbered-box placement. Recording/RA, FDIO, overflight,
+missing-data, and facility-policy behavior remain out of scope.
+
+Manual validation after T02-162: **PASS** against [FAA JO 7110.65 §2-3-4](https://www.faa.gov/air_traffic/publications/atpubs/atc_html/chap2_section_3.html#para-2-3-4)
+and the supplied arrival/departure structure images. Both rendered strip types
+match the five-column geometry; arrival Box 9 contains altitude/remarks, arrival
+Box 9A contains destination/minimum-fuel data, departure Box 9 contains route,
+destination, and remarks, and Boxes 9A–9C plus 10–18 remain present.
+
 ## Launching an agent
 
 1. Confirm phase 1 README exit is green.

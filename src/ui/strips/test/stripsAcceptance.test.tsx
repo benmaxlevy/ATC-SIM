@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
 // @ts-expect-error tsconfig has no @types/node
 import { readFileSync } from "node:fs";
-import { createAircraft, createWorld, setSelectedAircraft } from "@core";
+import { createAircraft, createFlightPlan, createWorld, setSelectedAircraft } from "@core";
 import { loadPlayableScenario } from "@scenario";
 import { createScopeView } from "@scope";
 import { NullSpeechPort } from "@speech";
@@ -26,6 +26,20 @@ import {
   terminalStripsFromWorld,
 } from "../index";
 import type { DepartureStripData } from "../types";
+
+function makeAcceptancePlan(input: Parameters<typeof createFlightPlan>[0]) {
+  const result = createFlightPlan(input);
+  if (!result.ok) throw new Error(result.error.message);
+  return result.value;
+}
+
+function boxMarkup(html: string, box: string): string {
+  const marker = `data-box="${box}"`;
+  const start = html.indexOf(marker);
+  if (start < 0) return "";
+  const next = html.indexOf('data-box="', start + marker.length);
+  return html.slice(start, next < 0 ? html.length : next);
+}
 
 const stripsCss = readFileSync(new URL("../strips.css", import.meta.url), "utf8");
 const mainTsx = readFileSync(new URL("../../../main.tsx", import.meta.url), "utf8");
@@ -469,6 +483,203 @@ describe("T02-93 Flight Progress Strips Integration and Acceptance", () => {
       expect(stripsCss).toMatch(/\.strips-drawer-resizer\s*\{[^}]*cursor:\s*col-resize/i);
       expect(stripsCss).toMatch(/\.strips-drawer\.resizing/i);
     });
+  });
+});
+
+describe("T02-162 FAA terminal strips acceptance", () => {
+  test("projects and renders synthetic happy-path departure and arrival plans", () => {
+    const departureAircraft = createAircraft({
+      id: "synthetic-departure",
+      callsign: "OLD123",
+      xNm: 0,
+      yNm: 0,
+      headingDeg: 90,
+      altitudeFt: 2000,
+      speedKt: 180,
+      cwtWakeCategory: "B",
+    });
+    departureAircraft.intent.vertical = { type: "VIA_SID", sidId: "SYN1" };
+
+    const arrivalAircraft = createAircraft({
+      id: "synthetic-arrival",
+      callsign: "OLD456",
+      xNm: 10,
+      yNm: 10,
+      headingDeg: 270,
+      altitudeFt: 7000,
+      speedKt: 210,
+      cwtWakeCategory: "C",
+    });
+
+    const departurePlan = makeAcceptancePlan({
+      id: "synthetic-departure-plan",
+      status: "active",
+      associatedAircraftId: departureAircraft.id,
+      acid: "SYN123",
+      cid: "901",
+      assignedBeacon: "4312",
+      reportedBeacon: "4313",
+      aircraftType: "B738",
+      aircraftCount: 1,
+      equipment: "G",
+      ptd: "1030",
+      requestedAltitudeFt: 24000,
+      departureAirport: "KAAA",
+      airportId: "KBBB",
+      route: "SYN1 ALPHA KBBB",
+      remarks: "DEP REM",
+      fixes: [],
+      scratchpads: [],
+    });
+    const arrivalPlan = makeAcceptancePlan({
+      id: "synthetic-arrival-plan",
+      status: "active",
+      associatedAircraftId: arrivalAircraft.id,
+      acid: "SYN456",
+      cid: "902",
+      assignedBeacon: "4314",
+      reportedBeacon: "4315",
+      aircraftType: "A320",
+      aircraftCount: 1,
+      equipment: "L",
+      eta: "1045",
+      assignedAltitudeFt: 7000,
+      previousFix: "ALPHA",
+      coordinationFix: "BRAVO",
+      airportId: "KCCC",
+      minimumFuel: "45",
+      remarks: "ARR REM",
+      fixes: [],
+      scratchpads: [],
+    });
+    const world = createWorld({
+      aircraft: [departureAircraft, arrivalAircraft],
+      flightPlans: [departurePlan, arrivalPlan],
+    });
+    const projected = terminalStripsFromWorld(world);
+    const departure = projected.departures[0]!;
+    const arrival = projected.arrivals[0]!;
+    const departureHtml = renderToStaticMarkup(createElement(DepartureStrip, { strip: departure }));
+    const arrivalHtml = renderToStaticMarkup(createElement(ArrivalStrip, { strip: arrival }));
+    const boardHtml = renderToStaticMarkup(
+      createElement(StripsBoard, {
+        departures: projected.departures,
+        arrivals: projected.arrivals,
+      }),
+    );
+
+    expect(boardHtml).toContain('data-strip-acid="SYN123"');
+    expect(boardHtml).toContain('data-strip-acid="SYN456"');
+    expect(departure).toMatchObject({
+      acid: "SYN123",
+      rawType: "B738",
+      equipmentSuffix: "G",
+      cwtCategory: "B",
+      cid: "901",
+      beaconCode: "4312",
+      reportedSquawk: "4313",
+      proposedDepartureTime: "1030",
+      requestedAltitude: "240",
+      departureAirport: "KAAA",
+      route: "SYN1 ALPHA KBBB",
+      destinationAirport: "KBBB",
+      remarks: "DEP REM",
+    });
+    expect(arrival).toMatchObject({
+      acid: "SYN456",
+      rawType: "A320",
+      equipmentSuffix: "L",
+      cwtCategory: "C",
+      cid: "902",
+      beaconCode: "4314",
+      reportedSquawk: "4315",
+      previousFix: "ALPHA",
+      coordinationFix: "BRAVO",
+      estimatedTimeOfArrival: "1045",
+      altitude: "070",
+      destinationAirport: "KCCC",
+      minimumFuel: "45",
+      remarks: "ARR REM",
+    });
+
+    for (const [html, expectedValues] of [
+      [
+        departureHtml,
+        new Map([
+          ["1", "SYN123"],
+          ["3", "B/B738/G"],
+          ["4", "901"],
+          ["5", "4312"],
+          ["6", "P1030"],
+          ["7", "240"],
+          ["8", "KAAA"],
+          ["8A", ""],
+          ["8B", ""],
+          ["9", "SYN1 ALPHA KBBB"],
+        ]),
+      ],
+      [
+        arrivalHtml,
+        new Map([
+          ["1", "SYN456"],
+          ["3", "C/A320/L"],
+          ["4", "902"],
+          ["5", "4314"],
+          ["6", "ALPHA"],
+          ["7", "BRAVO"],
+          ["8", "A1045"],
+          ["8A", ""],
+          ["8B", ""],
+          ["9", "070"],
+          ["9A", "KCCC"],
+        ]),
+      ],
+    ] as const) {
+      expect(html).toContain('data-col="1"');
+      expect(html).toContain('data-col="2"');
+      expect(html).toContain('data-col="3"');
+      expect(html).toContain('data-col="4"');
+      expect(html).toContain('data-col="5"');
+      for (const box of [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "8A",
+        "8B",
+        "9",
+        "9A",
+        "9B",
+        "9C",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+      ]) {
+        expect(html).toContain(`data-box="${box}"`);
+      }
+      for (const [box, value] of expectedValues) {
+        expect(boxMarkup(html, box)).toContain(value);
+      }
+      expect(html).toContain('class="strip-col col-matrix annotation-grid-3x3"');
+    }
+
+    expect(boxMarkup(departureHtml, "5")).toContain("4312");
+    expect(boxMarkup(departureHtml, "5")).not.toContain("4313");
+    expect(boxMarkup(arrivalHtml, "5")).toContain("4314");
+    expect(boxMarkup(arrivalHtml, "5")).not.toContain("4315");
+    expect(boxMarkup(arrivalHtml, "9")).toContain("ARR REM");
+    expect(boxMarkup(arrivalHtml, "9A")).toContain("45");
+    expect(boxMarkup(arrivalHtml, "9A")).toContain("ARR REM");
   });
 });
 
