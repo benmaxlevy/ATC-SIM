@@ -194,7 +194,7 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
       expect(lines).not.toContain("EDV461   CRJ2");
     });
 
-    it("filters arrivals by flight plan destination (fp.destination or flightPlan.destination) and sorts ascending by distance", () => {
+    it("filters arrivals by aircraft destination and sorts ascending by distance", () => {
       const world = createWorld();
       world.aircraft.push(
         createAircraft({
@@ -206,7 +206,7 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
           headingDeg: 180,
           altitudeFt: 10000,
           speedKt: 250,
-          flightPlan: { destination: "KATL" },
+          destinationAirport: "KATL",
         }),
         createAircraft({
           id: "ac-near",
@@ -217,7 +217,7 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
           headingDeg: 180,
           altitudeFt: 5000,
           speedKt: 210,
-          fp: { destination: "KATL" },
+          destinationAirport: "KATL",
         }),
         createAircraft({
           id: "ac-mid",
@@ -239,7 +239,7 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
           headingDeg: 180,
           altitudeFt: 3000,
           speedKt: 190,
-          flightPlan: { destination: "KPDK" },
+          destinationAirport: "KPDK",
         }),
       );
 

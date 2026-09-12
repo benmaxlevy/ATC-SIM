@@ -95,8 +95,7 @@ export function datablockSourceFromWorld(
   track?: Pick<TrackDisplay, "squawk">,
 ): DatablockSource {
   const plan = flightPlanForAircraft(world, aircraft.id);
-  const reportedSquawk =
-    plan?.reportedBeacon ?? track?.squawk ?? aircraft.reportedSquawk ?? aircraft.squawk;
+  const reportedSquawk = track?.squawk ?? aircraft.reportedSquawk ?? aircraft.squawk;
   const assignedSquawk = plan?.assignedBeacon ?? aircraft.assignedSquawk;
   const assignedAltitudeFt =
     plan?.assignedAltitudeFt ?? aircraft.intent.controllerAssignedAltitudeFt;

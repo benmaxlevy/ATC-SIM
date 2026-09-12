@@ -118,7 +118,8 @@ function trackingFlidMatches(
     }
     const droppedSet = view.vfrListDroppedCallsigns ?? new Set();
     const vfrFlights = world.aircraft.filter(
-      (ac) => isVfrAircraft(ac, view.tracks) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
+      (ac) =>
+        isVfrAircraft(ac, view.tracks, world) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
     );
     const vfrIdx = idx >= 14 ? idx - 14 : idx - 1;
     if (vfrFlights[vfrIdx]) {

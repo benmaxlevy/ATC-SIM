@@ -702,7 +702,10 @@ export function correlateFlightPlanForAircraft(
     };
   }
   const existing = flightPlanForAircraft(world, aircraftId);
-  if (existing) return { ok: true, plan: existing, aircraftId };
+  if (existing) {
+    existing.reportedBeacon = reportedSquawk(aircraft);
+    return { ok: true, plan: existing, aircraftId };
+  }
   const squawk = reportedSquawk(aircraft);
   if (squawk !== undefined && !isValidBeaconCode(squawk)) {
     return {

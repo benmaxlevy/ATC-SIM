@@ -146,6 +146,23 @@ describe("T02-145 flight-plan activation and correlation", () => {
     expect(world.flightPlans[0]).toMatchObject({ status: "active", associatedAircraftId: ac.id });
   });
 
+  it("refreshes reported beacon after an associated aircraft changes squawk", () => {
+    const ac = target("ac-refresh", "1234", "7022");
+    const world = createWorld({
+      flightPlans: [plan("fp-refresh", "AAL123", "7022")],
+      aircraft: [ac],
+    });
+
+    expect(updateAircraftSquawk(world, ac.id, "7022")?.correlation.ok).toBe(true);
+    expect(updateAircraftSquawk(world, ac.id, "7023")?.correlation.ok).toBe(true);
+    expect(ac.squawk).toBe("7023");
+    expect(world.flightPlans[0]).toMatchObject({
+      assignedBeacon: "7022",
+      reportedBeacon: "7023",
+      associatedAircraftId: ac.id,
+    });
+  });
+
   it("leaves invalid reports and duplicate pending candidates unassociated", () => {
     const invalid = target("ac-invalid", "1234", "78A1");
     const invalidWorld = createWorld({ aircraft: [invalid] });

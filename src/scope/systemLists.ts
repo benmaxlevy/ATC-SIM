@@ -8,6 +8,7 @@ import {
   associateFlightPlan as associateCoreFlightPlan,
   createFlightPlan,
   deleteFlightPlanFromWorld,
+  flightPlanForAircraft,
   updateAircraftSquawk,
   type Aircraft,
   type ScheduledDeparture,
@@ -759,7 +760,9 @@ export function getSystemListTotalEntries(view: ScopeView, listId: string, world
           ? view.vfrListDroppedCallsigns
           : new Set(view.vfrListDroppedCallsigns ?? []);
       return world.aircraft.filter(
-        (ac) => isVfrAircraft(ac, view.tracks) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
+        (ac) =>
+          isVfrAircraft(ac, view.tracks, world) &&
+          !droppedSet.has(ac.callsign.trim().toUpperCase()),
       ).length;
     }
     case "TL": {
@@ -1001,11 +1004,11 @@ export function airportCodesMatch(a?: string, b?: string): boolean {
   return stripA === stripB;
 }
 
-export function getAircraftDestination(ac: Aircraft): string | undefined {
-  const fp = ac.flightPlan ?? ac.fp;
+export function getAircraftDestination(world: World, ac: Aircraft): string | undefined {
+  const fp = flightPlanForAircraft(world, ac.id);
   const fpExtra = fp as Record<string, unknown> | undefined;
   const raw =
-    fp?.destination ??
+    fp?.airportId ??
     (typeof fpExtra?.dest === "string" ? fpExtra.dest : undefined) ??
     (typeof fpExtra?.arrivalAirport === "string" ? fpExtra.arrivalAirport : undefined) ??
     ac.destinationAirport ??
@@ -1168,7 +1171,7 @@ export function getTowerArrivalEntries(
     }
 
     // Aircraft is an arrival track. Check if its flight plan indicates an arrival at cleanAirport.
-    const explicitDest = getAircraftDestination(ac);
+    const explicitDest = getAircraftDestination(world, ac);
     let isArrivalAtThisAirport = false;
 
     if (explicitDest) {
@@ -1319,11 +1322,18 @@ export function buildCoastSuspendList(
  * N982B   4215  025
  * ========================================================================= */
 
-export function isVfrAircraft(ac: Aircraft, tracks?: Map<string, TrackDisplay>): boolean {
+export function isVfrAircraft(
+  ac: Aircraft,
+  tracks?: Map<string, TrackDisplay>,
+  world?: World,
+): boolean {
   if (ac.squawk === "1200" || ac.assignedSquawk === "1200") {
     return true;
   }
-  if (ac.flightRules === "VFR" || ac.flightPlan?.rules === "VFR") {
+  if (
+    ac.flightRules === "VFR" ||
+    (world && flightPlanForAircraft(world, ac.id)?.flightRules === "VFR")
+  ) {
     return true;
   }
   const track = tracks?.get(ac.id);
@@ -1343,7 +1353,7 @@ export function buildVfrList(
   const droppedSet =
     droppedCallsigns instanceof Set ? droppedCallsigns : new Set(droppedCallsigns ?? []);
   const vfrFlights = world.aircraft.filter(
-    (ac) => isVfrAircraft(ac, tracks) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
+    (ac) => isVfrAircraft(ac, tracks, world) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
   );
 
   const formatter: ListFormatter = {
@@ -1387,7 +1397,8 @@ export function promoteVfrListEntry(
 ): boolean {
   const droppedSet = view.vfrListDroppedCallsigns ?? new Set();
   const vfrFlights = world.aircraft.filter(
-    (ac) => isVfrAircraft(ac, view.tracks) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
+    (ac) =>
+      isVfrAircraft(ac, view.tracks, world) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
   );
   const idx = index >= 14 ? index - 14 : index - 1;
   const entry = vfrFlights[idx];
