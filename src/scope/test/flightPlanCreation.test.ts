@@ -175,6 +175,25 @@ describe("T02-144 flight-plan creation", () => {
     });
   });
 
+  it("classifies F6 time after later fix data", () => {
+    expect(parseFlightPlanCreation("UAL1234 1630E KDEM*RW27*P B738", false, true)).toMatchObject({
+      kind: "action",
+      action: {
+        creationMode: "fltData",
+        fixes: ["KDEM*RW27*P"],
+        ptd: "1630E",
+      },
+    });
+    expect(parseFlightPlanCreation("UAL1234 1630E KDEM*RW27 B738", false, true)).toMatchObject({
+      kind: "action",
+      action: {
+        creationMode: "fltData",
+        fixes: ["KDEM*RW27"],
+        eta: "1630E",
+      },
+    });
+  });
+
   it("returns explicit F6 format, scratchpad, and value errors", () => {
     expect(parseFlightPlanCreation("AB", false, true)).toMatchObject({
       kind: "invalid",

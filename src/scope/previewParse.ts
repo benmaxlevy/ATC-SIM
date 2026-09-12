@@ -226,6 +226,7 @@ export function parseFlightPlanCreation(
     ...(fltData ? { creationMode: "fltData" as const } : {}),
   };
   const used = new Set<string>();
+  let etaOrPtd: string | undefined;
   for (const token of tokens.slice(1)) {
     if (/^\d{4}$/.test(token)) {
       if (!/^[0-7]{4}$/.test(token)) return { kind: "invalid", reason: "FORMAT" };
@@ -275,12 +276,7 @@ export function parseFlightPlanCreation(
     }
     if (fltData && ETA_OR_PTD.test(token)) {
       if (used.has("etaOrPtd")) return { kind: "invalid", reason: "FORMAT" };
-      const status = fields.fixes?.[0]?.split("*").at(-1);
-      if (status === "P") {
-        fields.ptd = token;
-      } else {
-        fields.eta = token;
-      }
+      etaOrPtd = token;
       used.add("etaOrPtd");
       continue;
     }
@@ -345,6 +341,11 @@ export function parseFlightPlanCreation(
       continue;
     }
     return { kind: "invalid", reason: "FORMAT" };
+  }
+  if (etaOrPtd) {
+    const status = fields.fixes?.[0]?.split("*").at(-1);
+    if (status === "P") fields.ptd = etaOrPtd;
+    else fields.eta = etaOrPtd;
   }
   if (pendingDiscrete && !fields.assignedBeacon && !fields.beaconAllocation)
     return { kind: "invalid", reason: "FORMAT" };
