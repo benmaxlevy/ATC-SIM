@@ -3741,3 +3741,30 @@ isolated worker at a time. Each completed ticket requires squash merge, full
 `npm run ci`, and independent `$check-stars-manual
 '/home/ben/Documents/stars refs/full_manual.pdf'` review before the next
 ticket. Stop on a failed gate or unresolved manual mismatch.
+
+## Ninth swarm planned — live association and manual command alignment (2026-09-11)
+
+Human approved follow-up fixes from the Eighth swarm audit. Scope: connect all
+available squawk mutation paths, preserve current reported-beacon truth, remove
+remaining aircraft-side plan projections, align function keys with STARS
+Appendix D, reserve unsupported Track Suspend safely, and move Help to a
+bottom-right button below Voice Text. The supplied manual remains authoritative
+for command meanings; event-driven squawk correlation remains a documented
+trainer delta.
+
+| Key | Value |
+| --- | --- |
+| Goal | Finish live association integration and command/UI alignment |
+| Phase | `phases/02-scope/` |
+| Tickets | `T02-154` → `T02-155` → `T02-156` → `T02-157` |
+| Merge target | `feat/flight-plan-lifecycle` |
+| Worker limit | 1 ticket worker; sequential waves |
+| Required gate | `npm run ci` after every merge |
+| Required review | `$check-stars-manual '/home/ben/Documents/stars refs/full_manual.pdf'` after every ticket |
+| Stop | Stop after T02-157 |
+
+Waves: A=`T02-154`, B=`T02-155`, C=`T02-156`, D=`T02-157`. Each worker
+implements one ticket in an isolated worktree and returns `READY TO MERGE` or
+`BLOCKED`. After every merge, run CI and the independent manual review before
+launching the next wave. On a failed gate, use only one narrow fix worker and
+stop subsequent waves until green.
