@@ -357,6 +357,18 @@ function applyPreviewArmedAction(
             plan.status !== "deleted" && plan.flightRules === "VFR" && plan.acid === action.acid,
         );
         if (existing) {
+          if (!existing.assignedBeacon) {
+            const allocated = withAllocatedBeacon(
+              existing,
+              CREATION_BEACON_POOLS.vfr,
+              world.flightPlans,
+            );
+            if (!allocated.ok || !allocated.value.assignedBeacon) {
+              view.preview.rejection = "CAPACITY — BCN";
+              return;
+            }
+            existing.assignedBeacon = allocated.value.assignedBeacon;
+          }
           const edits: Array<
             [
               "fixes" | "aircraftType" | "equipment" | "requestedAltitudeFt" | "tcp",
@@ -429,7 +441,14 @@ function applyPreviewArmedAction(
         return;
       }
       let plan: FlightPlan = result.value;
-      if (action.beaconAllocation) {
+      if (action.creationMode === "vfr" && !plan.assignedBeacon) {
+        const allocated = withAllocatedBeacon(plan, CREATION_BEACON_POOLS.vfr, world.flightPlans);
+        if (!allocated.ok || !allocated.value.assignedBeacon) {
+          view.preview.rejection = "CAPACITY — BCN";
+          return;
+        }
+        plan = allocated.value;
+      } else if (action.beaconAllocation) {
         const allocated = withAllocatedBeacon(
           plan,
           CREATION_BEACON_POOLS[action.beaconAllocation],

@@ -1,6 +1,6 @@
 import { expect, test, vi } from "vitest";
 import { createWorld, makeTestAircraft } from "@core";
-import { buildVfrList, getVfrListCallsigns } from "../systemLists";
+import { buildVfrList, getFlightPlanEntries, getVfrListCallsigns } from "../systemLists";
 import { handlePpiLeftClick } from "../ppi";
 import { handleScopeKeyDown } from "../scopeKeys";
 import { createScopeView } from "../scopeView";
@@ -33,10 +33,14 @@ test("F9 creates, modifies, lists, then deletes local VFR plan", () => {
     flightRules: "VFR",
     fixes: ["KDEM*RW27"],
     requestedAltitudeFt: 5000,
+    assignedBeacon: "1000",
   });
+  expect(getFlightPlanEntries(world, view)).toEqual(
+    expect.arrayContaining([expect.objectContaining({ callsign: "N123AB", squawk: "1000" })]),
+  );
   expect(getVfrListCallsigns(world, view)).toContain("N123AB");
   expect(buildVfrList(world, 10, undefined, view.tracks)).toEqual(
-    expect.arrayContaining([expect.stringContaining("N123AB")]),
+    expect.arrayContaining([expect.stringContaining("N123AB  1000")]),
   );
 
   typeVfr(view, world, "N123AB KDEM*RW28 C182 060");
