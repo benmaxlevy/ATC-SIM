@@ -9,7 +9,6 @@ import {
   buildTabFlightPlanList,
   buildTowerArrivalList,
   buildVfrList,
-  correlateFlightPlans,
   deleteFlightPlanEntry,
   getFlightPlanEntries,
   handleFlightPlanListClick,
@@ -30,7 +29,7 @@ import {
 } from "../dcb/dcbFunctions";
 import { ensureTrackDisplay } from "../trackDisplay";
 import { handlePpiLeftClick } from "../ppi";
-import { handleScopeKeyDown, handleScopeKeyUp } from "../scopeKeys";
+import { handleScopeKeyDown } from "../scopeKeys";
 import { parsePreviewCommand } from "../previewParse";
 import {
   beginPreviewBufferEntry,
@@ -195,7 +194,7 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
       expect(lines).not.toContain("EDV461   CRJ2");
     });
 
-    it("filters arrivals by flight plan destination (fp.destination or flightPlan.destination) and sorts ascending by distance", () => {
+    it("filters arrivals by aircraft destination and sorts ascending by distance", () => {
       const world = createWorld();
       world.aircraft.push(
         createAircraft({
@@ -207,7 +206,7 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
           headingDeg: 180,
           altitudeFt: 10000,
           speedKt: 250,
-          flightPlan: { destination: "KATL" },
+          destinationAirport: "KATL",
         }),
         createAircraft({
           id: "ac-near",
@@ -218,7 +217,7 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
           headingDeg: 180,
           altitudeFt: 5000,
           speedKt: 210,
-          fp: { destination: "KATL" },
+          destinationAirport: "KATL",
         }),
         createAircraft({
           id: "ac-mid",
@@ -240,7 +239,7 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
           headingDeg: 180,
           altitudeFt: 3000,
           speedKt: 190,
-          flightPlan: { destination: "KPDK" },
+          destinationAirport: "KPDK",
         }),
       );
 
@@ -429,12 +428,8 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
         },
       ];
 
-      // Press F1 -> arms drop mode
-      handleScopeKeyDown(keyEvent("F1"), view, "scope", world, Date.now());
-      expect(view.f1DropArmed).toBe(true);
-
-      // Release F1 (drop mode remains armed until click)
-      handleScopeKeyUp(keyEvent("F1"), view);
+      // List-drop state is exercised directly; F1 is INIT CNTL per Appendix D.
+      view.f1DropArmed = true;
       expect(view.f1DropArmed).toBe(true);
 
       // Left-click the list entry row
@@ -603,8 +598,8 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
         },
       ];
 
-      // Press F1
-      handleScopeKeyDown(keyEvent("F1"), view, "scope", world, Date.now());
+      // List-drop state is exercised directly; F1 is INIT CNTL per Appendix D.
+      view.f1DropArmed = true;
       expect(view.f1DropArmed).toBe(true);
 
       // Click list entry
@@ -841,8 +836,8 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
     });
   });
 
-  describe("3. Automated Correlation & Purge", () => {
-    it("automatically correlates uncorrelated target when discrete squawk matches pending plan", () => {
+  describe("3. Event-driven Correlation & Purge", () => {
+    it("does not correlate while building or rendering the flight-plan list", () => {
       const world = createWorld();
       const view = createScopeView();
 
@@ -875,20 +870,11 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       td.datablockMode = "partial";
       td.ownership = "unowned";
 
-      // Correlate
-      const correlated = correlateFlightPlans(world, view);
-      expect(correlated).toHaveLength(1);
-      expect(correlated[0]!.callsign).toBe("AAL123");
-
-      // Target upgrades to Full Data Block (FDB)
-      expect(td.datablockMode).toBe("full");
-      expect(td.unassociated).toBe(false);
-      expect(td.ownership).toBe("owned");
-      expect(target.callsign).toBe("AAL123");
-
-      // Corresponding entry immediately purged from FL
-      const linesAfter = buildTabFlightPlanList(world, 10, view);
-      expect(linesAfter.some((l) => l.includes("AAL123"))).toBe(false);
+      buildTabFlightPlanList(world, 10, view);
+      expect(td.datablockMode).toBe("partial");
+      expect(td.unassociated).toBe(true);
+      expect(target.callsign).toBe("1234");
+      expect(buildTabFlightPlanList(world, 10, view).some((l) => l.includes("AAL123"))).toBe(true);
     });
 
     it("does not automatically correlate non-discrete (1200 VFR) squawks", () => {
@@ -917,8 +903,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       const td = ensureTrackDisplay(view.tracks, target.id);
       td.unassociated = true;
 
-      const correlated = correlateFlightPlans(world, view);
-      expect(correlated).toHaveLength(0);
+      buildTabFlightPlanList(world, 10, view);
       expect(td.unassociated).toBe(true);
     });
   });
@@ -1084,11 +1069,11 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(success).toBe(true);
 
       // Verify target updated to FDB with plan callsign and squawk
-      expect(target.callsign).toBe("AAL123");
-      expect(target.assignedSquawk).toBe("7022");
+      expect(target.callsign).toBe("1234");
+      expect(target.assignedSquawk).toBe("1200");
       expect(td.unassociated).toBe(false);
       expect(td.datablockMode).toBe("full");
-      expect(td.ownership).toBe("owned");
+      expect(td.ownership).toBe("unowned");
 
       // Entry immediately purged from FL
       const remaining = getFlightPlanEntries(world, view);
@@ -1133,16 +1118,16 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       // Click target at (500, 500)
       handlePpiLeftClick(view, world, 500, 500, 1000, 1000);
 
-      expect(target.callsign).toBe("AAL123");
-      expect(target.assignedSquawk).toBe("7022");
+      expect(target.callsign).toBe("UNTRK");
+      expect(target.assignedSquawk).toBe("1200");
       expect(td.unassociated).toBe(false);
       expect(td.datablockMode).toBe("full");
-      expect(td.ownership).toBe("owned");
+      expect(td.ownership).toBe("unowned");
       expect(td.leaderDir).toBe(7); // Leader direction preserved!
       expect(view.preview.phase).toBe("idle");
     });
 
-    it("F3 1 <click target> associates flight plan from list to target without changing leader direction", () => {
+    it("F1 1 <click target> associates flight plan from list to target without changing leader direction", () => {
       const world = createWorld();
       const view = createScopeView();
 
@@ -1173,8 +1158,8 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       view.camera.centerEastNm = 0;
       view.camera.centerNorthNm = 0;
 
-      // Press F3 then type 1
-      handleScopeKeyDown(keyEvent("F3"), view, "scope", world, 1000);
+      // Press F1 then type 1
+      handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 1000);
       expect(view.preview.armed?.type).toBe("initCntl");
       handleScopeKeyDown(keyEvent("1"), view, "scope", world, 1050);
       expect(view.preview.flid).toBe("1");
@@ -1182,11 +1167,11 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       // Click target
       handlePpiLeftClick(view, world, 500, 500, 1000, 1000);
 
-      expect(target.callsign).toBe("AAL123");
-      expect(target.assignedSquawk).toBe("7022");
+      expect(target.callsign).toBe("UNTRK");
+      expect(target.assignedSquawk).toBe("1200");
       expect(td.unassociated).toBe(false);
       expect(td.datablockMode).toBe("full");
-      expect(td.ownership).toBe("owned");
+      expect(td.ownership).toBe("unowned");
       expect(td.leaderDir).toBe(7);
       expect(view.preview.phase).toBe("idle");
     });
@@ -1345,9 +1330,8 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
 
       buildTabFlightPlanList(world, 10, view);
 
-      // Press F1
-      handleScopeKeyDown(keyEvent("F1"), view, "scope");
-      expect(view.beaconatorActive).toBe(true);
+      // Arm list-drop state directly; F1 is INIT CNTL per Appendix D.
+      view.f1DropArmed = true;
 
       // Click row for AAL123 (Row 0: title, Row 1: AAL123)
       handleFlightPlanListClick(view, world, 1);

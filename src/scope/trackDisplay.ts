@@ -12,6 +12,8 @@ import {
   acceptInboundHandoff,
   acceptPointout,
   convertPointoutToHandoff,
+  deleteFlightPlanFromWorld,
+  flightPlanForAircraft,
   handoffFor,
   rejectPointout,
 } from "@core";
@@ -418,7 +420,11 @@ export function formatApproachShorthand(approachId: string | null | undefined): 
 export function deriveScratchpads(
   aircraft: Aircraft,
   td?: TrackDisplay,
+  planScratchpads?: readonly string[],
 ): { sp1: string; sp2: string } {
+  const filedScratchpads = Array.isArray(planScratchpads)
+    ? planScratchpads.filter((value): value is string => typeof value === "string")
+    : [];
   // Derive automatic SP1 (approach shorthand, or interim altitude if controller explicitly assigned one):
   const approachId =
     aircraft.intent?.clearedApproachId ??
@@ -438,13 +444,17 @@ export function deriveScratchpads(
   }
 
   let sp1 = autoSp1;
-  if (td?.manualSp1 != null && td.manualSp1.length > 0) {
+  if (filedScratchpads[0] != null && filedScratchpads[0].length > 0) {
+    sp1 = sanitizeScratchpad(filedScratchpads[0]);
+  } else if (td?.manualSp1 != null && td.manualSp1.length > 0) {
     sp1 = sanitizeScratchpad(td.manualSp1);
   }
 
   // Derive automatic SP2 (only if controller explicitly gave a speed, not if locked by STAR/SID or default):
   let sp2 = "";
-  if (td?.manualSp2 != null && td.manualSp2.length > 0) {
+  if (filedScratchpads[1] != null && filedScratchpads[1].length > 0) {
+    sp2 = sanitizeScratchpad(filedScratchpads[1]);
+  } else if (td?.manualSp2 != null && td.manualSp2.length > 0) {
     sp2 = sanitizeScratchpad(td.manualSp2);
   } else if (
     aircraft.intent?.controllerAssignedSpeedKt != null &&
@@ -503,6 +513,14 @@ export function isBeaconatorReadout(
  * Toggle an unowned track between PDB and Green FDB.
  */
 export function toggleTrackPdbFdb(td: TrackDisplay): DatablockMode {
+  // An unassociated target has no recoverable flight-plan callsign. Keep it
+  // partial even when a generic PDB/FDB toggle is invoked after TERM CNTL.
+  if (td.unassociated) {
+    td.datablockMode = "partial";
+    td.forcedFdb = false;
+    td.retainedFdbOutsideAltitudeFilter = false;
+    return td.datablockMode;
+  }
   if (td.datablockMode === "partial") {
     td.datablockMode = "full";
     td.forcedFdb = true;
@@ -728,6 +746,35 @@ export function applyDropTrackToSelection(
   return applyDropTrackToId(tracks, world, id, caState);
 }
 
+/**
+ * Shared TERM CNTL implementation. F4 is the keyboard alias for this same
+ * operation: remove the authoritative plan association, leave the radar
+ * target moving, and show the unassociated LDB position symbol.
+ */
+export function terminateTrackWithPlan(
+  tracks: Map<string, TrackDisplay>,
+  world: World,
+  aircraftId: string,
+  caState?: TrackDisplayState,
+): { applied: boolean; hint: string | null } {
+  const aircraft = world.aircraft.find((item) => item.id === aircraftId);
+  if (!aircraft) {
+    return { applied: false, hint: NO_SEL_HINT };
+  }
+  const plan = flightPlanForAircraft(world, aircraftId);
+  if (plan) {
+    deleteFlightPlanFromWorld(world, plan.id);
+  }
+  const result = applyDropTrackToId(tracks, world, aircraftId, caState);
+  const td = ensureTrackDisplay(tracks, aircraftId);
+  td.unassociated = true;
+  td.datablockMode = "partial";
+  td.tracked = false;
+  td.forcedFdb = false;
+  td.retainedFdbOutsideAltitudeFilter = false;
+  return result;
+}
+
 /** Capture currently full datablocks before a new altitude filter is committed. */
 export function retainFullDatablocksOutsideAltitudeFilter(tracks: Map<string, TrackDisplay>): void {
   for (const td of tracks.values()) {
@@ -750,12 +797,24 @@ export function toggleDatablockModeForSelection(
   const selected = world.selectedAircraftId;
   if (selected && world.aircraft.some((ac) => ac.id === selected)) {
     const td = ensureTrackDisplay(tracks, selected);
+    if (td.unassociated) {
+      td.datablockMode = "partial";
+      td.forcedFdb = false;
+      td.retainedFdbOutsideAltitudeFilter = false;
+      return;
+    }
     td.datablockMode = flipDatablockMode(td.datablockMode);
     if (td.datablockMode !== "full") td.retainedFdbOutsideAltitudeFilter = false;
     return;
   }
   for (const ac of world.aircraft) {
     const td = ensureTrackDisplay(tracks, ac.id);
+    if (td.unassociated) {
+      td.datablockMode = "partial";
+      td.forcedFdb = false;
+      td.retainedFdbOutsideAltitudeFilter = false;
+      continue;
+    }
     td.datablockMode = flipDatablockMode(td.datablockMode);
     if (td.datablockMode !== "full") td.retainedFdbOutsideAltitudeFilter = false;
   }

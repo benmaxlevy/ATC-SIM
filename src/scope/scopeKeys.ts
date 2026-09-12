@@ -9,7 +9,8 @@
  * Scope-focus `T` toggles full ↔ limited datablock; tap `M` toggles Mode C on
  * full blocks. `M` then a map token (`M DEM1_27`) continues a Preview Area
  * buffer and undoes that Mode C tap. F7 always-on predicted track line (PTL)
- * toggle — even with the command line focused. F1 always-on help overlay (not CRC F1 / beaconator);
+ * toggle — even with the command line focused. F1 is INIT CNTL and F3 is
+ * reserved for Track Suspend (not implemented yet); help uses `?` or the Help button;
  * Tab cycles radio ↔ PPI; `/` when scope-focused buffers into the Preview Area
  * (slew/drop prefix, not radio focus). Leader direction stays on the DCB or
  * explicit `*L` Preview commands; bare `L` is Preview text. Radio `L090` stays
@@ -23,9 +24,17 @@
  * discrete range presets — no zoom-to-cursor (R12). Not NAS STARS.
  */
 
-import type { World } from "@core";
 import {
-  beginFilterEntry,
+  createFlightPlan,
+  deleteFlightPlanFromWorld,
+  disassociateFlightPlan,
+  modifyFlightPlan,
+  releaseAssignedBeacon,
+  withAllocatedBeacon,
+  type FlightPlan,
+  type World,
+} from "@core";
+import {
   cancelFilterEntry,
   formatFilterReadout,
   handleFilterEntryKey,
@@ -37,7 +46,6 @@ import {
   beginScopeChord,
   isBeaconSelectKey,
   isCycleFocusKey,
-  isFilterChordKey,
   isHelpToggleKey,
   isPreviewPlusKey,
   isRadioFocusSlashKey,
@@ -79,6 +87,20 @@ import {
 import { retainFullDatablocksOutsideAltitudeFilter } from "./trackDisplay";
 import { browserDcbPrefStorage, cancelDcbPrefSaveAs, commitDcbPrefSaveAs } from "./dcb/dcbPref";
 import { applyDcbShift, armDcbSpinner, handleDcbEscape, openDcbMenu } from "./dcb/dcbMenu";
+
+// TI 6191.409 Tables 5-3/5-9 pool selectors; deterministic trainer pools,
+// not a NAS beacon-allocation service. T02-144 keeps selectors at Scope.
+const CREATION_BEACON_POOLS: Record<
+  "ifr" | "vfr" | "general1" | "general2" | "general3" | "general4",
+  string[]
+> = {
+  ifr: ["0000"],
+  vfr: ["1000"],
+  general1: ["2000"],
+  general2: ["3000"],
+  general3: ["4000"],
+  general4: ["5000"],
+};
 import {
   applyRrCenter,
   armPlaceCenter,
@@ -113,11 +135,10 @@ import {
   setLeaderDirAndLengthForId,
   setLeaderDirForScope,
   toggleDatablockModeForSelection,
-  applyDropTrackToId,
-  applyDropTrackToSelection,
   applyInitiateTrackToId,
   applyInitiateTrackToSelection,
   selectedTrackId,
+  terminateTrackWithPlan,
 } from "./trackDisplay";
 import { applyHandoffToSelection } from "./ownership";
 import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock, type LeaderLengthPx } from "./leader";
@@ -126,6 +147,7 @@ import {
   canonicalSystemListId,
   cancelListDrag,
   deleteFlightPlanEntry,
+  getFlightPlanEntries,
   isSystemListMultiPage,
   pointInsideRect,
   relocateSystemList,
@@ -262,7 +284,6 @@ function isReservedScopeLetterShortcut(key: string): boolean {
     isDatablockToggleKey(key) ||
     isModeCToggleKey(key) ||
     isHistoryToggleKey(key) ||
-    isFilterChordKey(key) ||
     isBeaconSelectKey(key)
   );
 }
@@ -305,6 +326,61 @@ function applyPreviewArmedAction(
     return;
   }
   switch (action.type) {
+    case "createFlightPlan": {
+      if (!world) return;
+      if (world.flightPlans.filter((plan) => plan.status !== "deleted").length >= 100) {
+        view.preview.rejection = "CAPACITY — FP";
+        return;
+      }
+      const result = createFlightPlan(
+        {
+          id: `fp-${world.simTimeMs}-${world.flightPlans.length}`,
+          status: "pending",
+          acid: action.acid,
+          assignedBeacon: action.assignedBeacon,
+          tcp: action.tcp,
+          flightType:
+            action.flightType === "A" ? "IFR" : action.flightType === "P" ? "IFR" : undefined,
+          airportId: action.airportId,
+          fixes: [],
+          scratchpads: action.scratchpads.filter((value) => value.length > 0),
+          aircraftType: action.aircraftType,
+          aircraftCount: action.aircraftCount,
+          equipment: action.equipment,
+          requestedAltitudeFt: action.requestedAltitudeFt,
+          flightRules: action.flightRules,
+        },
+        world.flightPlans,
+      );
+      if (!result.ok) {
+        view.preview.rejection =
+          result.error.code === "DUPLICATE_ACID"
+            ? "DUP ID"
+            : result.error.code === "DUPLICATE_BEACON"
+              ? "DUP BCN"
+              : "FORMAT";
+        return;
+      }
+      let plan: FlightPlan = result.value;
+      if (action.beaconAllocation) {
+        const allocated = withAllocatedBeacon(
+          plan,
+          CREATION_BEACON_POOLS[action.beaconAllocation],
+          world.flightPlans,
+        );
+        if (!allocated.ok || !allocated.value.assignedBeacon) {
+          view.preview.rejection = "CAPACITY — BCN";
+          return;
+        }
+        plan = allocated.value;
+      }
+      if (action.pendingDiscrete && !plan.assignedBeacon) {
+        view.preview.rejection = "CAPACITY — BCN";
+        return;
+      }
+      world.flightPlans.push(plan);
+      return;
+    }
     case "toggleList":
       toggleSystemList(view, action.listId);
       cancelStarsChordEntry(view.starsChordEntry);
@@ -322,6 +398,109 @@ function applyPreviewArmedAction(
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;
       return;
+    case "modifyFlightPlan": {
+      if (!world) return;
+      const plans = world.flightPlans.filter(
+        (plan) =>
+          plan.status !== "deleted" &&
+          (plan.acid === action.flid || plan.assignedBeacon === action.flid),
+      );
+      if (/^\d{1,2}$/.test(action.flid)) {
+        const entry = getFlightPlanEntries(world, view).find(
+          (item) => item.index === Number(action.flid),
+        );
+        const plan = entry?.planId
+          ? world.flightPlans.find((item) => item.id === entry.planId)
+          : undefined;
+        if (plan && plan.status !== "deleted") plans.push(plan);
+      }
+      const uniquePlans = [...new Map(plans.map((plan) => [plan.id, plan])).values()];
+      if (uniquePlans.length !== 1) {
+        view.preview.rejection = uniquePlans.length === 0 ? "NO FLIGHT" : "FORMAT";
+        return;
+      }
+      let value: string | number | string[] | undefined = action.value;
+      if (action.field === "scratchpads") {
+        const scratchpads = [...(uniquePlans[0]!.scratchpads ?? [])];
+        const slot = (action.scratchpadSlot ?? (action.value.startsWith("Δ") ? 1 : 2)) - 1;
+        scratchpads[slot] = action.value.slice(1);
+        value = scratchpads;
+      }
+      if (action.field === "requestedAltitudeFt" || action.field === "assignedAltitudeFt")
+        value = /^A?000$/.test(action.value)
+          ? undefined
+          : Number(action.value.replace(/^A/, "")) * 100;
+      if (action.field === "fixes") value = action.value;
+      if (action.field === "assignedBeacon" && /^(?:\+|\/|\/[1-4])$/.test(action.value)) {
+        const poolKey =
+          action.value === "+"
+            ? "ifr"
+            : action.value === "/"
+              ? "vfr"
+              : `general${action.value.slice(1)}`;
+        const allocated = withAllocatedBeacon(
+          uniquePlans[0]!,
+          CREATION_BEACON_POOLS[poolKey as keyof typeof CREATION_BEACON_POOLS],
+          world.flightPlans,
+        );
+        if (!allocated.ok || !allocated.value.assignedBeacon) {
+          view.preview.rejection = "CAPACITY — BCN";
+          return;
+        }
+        value = allocated.value.assignedBeacon;
+      }
+      const result = modifyFlightPlan(world, uniquePlans[0]!.id, action.field, value);
+      if (!result.ok) {
+        view.preview.rejection =
+          result.error.code === "DUPLICATE_ACID"
+            ? "DUP ID"
+            : result.error.code === "DUPLICATE_BEACON"
+              ? "DUP BCN"
+              : result.error.code === "NO_FLIGHT"
+                ? "NO FLIGHT"
+                : "FORMAT";
+      }
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      return;
+    }
+    case "releaseAssignedBeacon": {
+      if (!world) return;
+      const plans = world.flightPlans.filter(
+        (plan) =>
+          plan.status !== "deleted" &&
+          (plan.acid === action.flid || plan.assignedBeacon === action.flid),
+      );
+      if (/^\d{1,2}$/.test(action.flid)) {
+        const entry = getFlightPlanEntries(world, view).find(
+          (item) => item.index === Number(action.flid),
+        );
+        const plan = entry?.planId
+          ? world.flightPlans.find((item) => item.id === entry.planId)
+          : undefined;
+        if (plan && plan.status !== "deleted") plans.push(plan);
+      }
+      if (plans.length !== 1) {
+        view.preview.rejection = plans.length === 0 ? "NO FLIGHT" : "DUP ID";
+        return;
+      }
+      const plan = plans[0]!;
+      const associatedAircraftId = plan.associatedAircraftId;
+      const result = releaseAssignedBeacon(world, plan.id);
+      if (result.ok && associatedAircraftId && plan.status === "suspended") {
+        const aircraft = world.aircraft.find((item) => item.id === associatedAircraftId);
+        if (aircraft) {
+          const td = ensureTrackDisplay(view.tracks, associatedAircraftId);
+          delete td.squawk;
+          td.unassociated = true;
+          td.datablockMode = "partial";
+        }
+        disassociateFlightPlan(world, plan.id);
+      }
+      if (!result.ok)
+        view.preview.rejection = result.error.code === "INVALID_FIELD" ? "ILL TRK" : "FORMAT";
+      return;
+    }
     case "armRelocateList":
       cancelStarsChordEntry(view.starsChordEntry);
       view.starsChordArmed = null;
@@ -380,16 +559,30 @@ function applyPreviewArmedAction(
       setAllVideoMaps(view, action.enabled);
       return;
     case "displayFilters":
-      view.preview.rejection = formatFilterReadout(
-        view.altitudeFilter,
-        idleFilterEntry(view.altitudeFilter),
-      );
+      view.preview.rejection = `FILTER ${formatFilterReadout(view.altitudeFilter, idleFilterEntry(view.altitudeFilter)).replace("FILTER ", "")} U ${formatFilterReadout(view.associatedAltitudeFilter, idleFilterEntry(view.associatedAltitudeFilter)).replace("FILTER ", "")} A`;
       view.preview.lastKeyAtMs = nowMs;
       return;
     case "setAltitudeFilterLimits":
-      if (
+      if (action.associatedOnly) {
+        tryApplyAltitudeFilter(
+          view.associatedAltitudeFilter,
+          action.floorHundreds,
+          action.ceilingHundreds,
+        );
+        retainFullDatablocksOutsideAltitudeFilter(view.tracks);
+      } else if (
         tryApplyAltitudeFilter(view.altitudeFilter, action.floorHundreds, action.ceilingHundreds)
       ) {
+        if (
+          action.associatedFloorHundreds !== undefined &&
+          action.associatedCeilingHundreds !== undefined
+        ) {
+          tryApplyAltitudeFilter(
+            view.associatedAltitudeFilter,
+            action.associatedFloorHundreds,
+            action.associatedCeilingHundreds,
+          );
+        }
         retainFullDatablocksOutsideAltitudeFilter(view.tracks);
       }
       return;
@@ -588,12 +781,18 @@ function isVideoMapPreviewContinueKey(key: string, code?: string): boolean {
 function applyPreviewCntl(
   view: ScopeView,
   world: World,
-  apply: { type: "initCntl" | "termCntl"; aircraftId: string },
+  apply: { type: "initCntl" | "termCntl"; aircraftId: string; planId?: string },
 ): void {
   if (apply.type === "initCntl") {
     applyInitiateTrackToId(view.tracks, world, apply.aircraftId);
   } else {
-    applyDropTrackToId(view.tracks, world, apply.aircraftId);
+    if (apply.aircraftId) {
+      terminateTrackWithPlan(view.tracks, world, apply.aircraftId);
+    } else if (apply.planId) {
+      // Plan-only TERM remains a plan deletion; there is no radar target to
+      // mark unassociated.
+      deleteFlightPlanFromWorld(world, apply.planId);
+    }
   }
 }
 
@@ -683,11 +882,15 @@ export function handleScopeKeyDown(
     return true;
   }
 
-  // STARS Table 18: F1 -> <BCN CODE RD OUT> (momentary Beaconator)
+  // Manual Appendix D Table D-1: F1 -> INIT CNTL.
   if (event.key === "F1" && !event.ctrlKey && !event.altKey) {
     consume(event);
-    view.beaconatorActive = true;
-    view.f1DropArmed = true;
+    if (world && selectedTrackId(world)) {
+      applyInitiateTrackToSelection(view.tracks, world);
+      cancelPreviewArea(view.preview);
+    } else {
+      armPreviewCntl(view.preview, "initCntl", nowMs);
+    }
     ui?.onHandled?.();
     return true;
   }
@@ -887,11 +1090,6 @@ export function handleScopeKeyDown(
       ui?.onHandled?.();
       return true;
     }
-    if (isFilterChordKey(event.key)) {
-      consume(event);
-      beginFilterEntry(view.filterEntry, view.altitudeFilter, nowMs);
-      return true;
-    }
     if (
       handleFilterEntryKey(view.filterEntry, view.altitudeFilter, event.key, nowMs, () =>
         retainFullDatablocksOutsideAltitudeFilter(view.tracks),
@@ -965,6 +1163,12 @@ export function handleScopeKeyDown(
   event.preventDefault();
   event.stopPropagation();
   if (event.key === "F3") {
+    // Manual Appendix D Table D-1 reserves F3 for Track Suspend. The
+    // lifecycle is not implemented yet, so consume it without mutation.
+    ui?.onHandled?.();
+    return true;
+  }
+  if (event.key === "F1") {
     if (world && selectedTrackId(world)) {
       applyInitiateTrackToSelection(view.tracks, world);
       cancelPreviewArea(view.preview);
@@ -975,7 +1179,8 @@ export function handleScopeKeyDown(
   }
   if (event.key === "F4") {
     if (world && selectedTrackId(world)) {
-      applyDropTrackToSelection(view.tracks, world);
+      const aircraftId = selectedTrackId(world)!;
+      terminateTrackWithPlan(view.tracks, world, aircraftId);
       cancelPreviewArea(view.preview);
     } else {
       armPreviewCntl(view.preview, "termCntl", nowMs);
@@ -1064,15 +1269,12 @@ export function handleScopeWheel(event: ScopeWheelEvent, view: ScopeView): boole
 }
 
 /**
- * Scope keyup handler: deactivates momentary actions like F1 Beaconator.
+ * Scope keyup handler. F1 is not momentary; it initiates INIT CNTL.
  */
 export function handleScopeKeyUp(event: ScopeKeyEvent, view: ScopeView, ui?: ScopeKeyUi): boolean {
-  if (event.key === "F1") {
-    consume(event);
-    view.beaconatorActive = false;
-    ui?.onHandled?.();
-    return true;
-  }
+  void event;
+  void view;
+  void ui;
   return false;
 }
 

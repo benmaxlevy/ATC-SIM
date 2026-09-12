@@ -1,7 +1,8 @@
 # ATC-SIM user guide
 
-Press **`?`** (or `Shift+/`) in the app for the keyboard overlay. `F1` is the
-momentary beacon readout / list-drop control.
+Press **`?`** (or `Shift+/`) or the bottom-right **Help** button in the app for
+the keyboard overlay. **F1** is **INIT CNTL**; **F3** is reserved Track
+Suspend and currently does nothing.
 
 Voice: [`speech-api/README.md`](../speech-api/README.md) (local models).
 
@@ -54,7 +55,7 @@ Service-side env, models, and Path C: [`speech-api/README.md`](../speech-api/REA
 - **Compass Rose heading vectoring ring**: Outermost range ring overlay with 72 radial tick marks (5° minor, 10° medium, 30° major) and twelve 3-digit heading numerals (`360`, `030`, `060`, `090`, `120`, `150`, `180`, `210`, `240`, `270`, `300`, `330`) radially inward for rapid heading assignment and vectoring. Brightness is controlled via `BRITE CMP` (0% / OFF to 100%) and numeral font sizing follows `CHAR SIZE TOOLS` (11–15 px).
 - **Display Control Bar (DCB)**: Green physical button matrix with MAIN and AUX menu switching, interactive wheel spinners (RANGE, RR, LDR DIR, LDR LEN 0–7, BRITE channels including CMP and BCN, CHAR SIZE including TOOLS, H_RATE, DWELL hover brightening, CURSOR HOME, CSR SPD, VOL alert volume, MODE FSL), altitude filters, and persistent local PREF slots stored in `localStorage`.
 - **System Status Area (SSA)**: Top-left status showing UTC/sim time, altimeter setting (29.92), active altitude filter limits, and sensor mode. Relocatable via `<MULTI FUNC>S<SLEW LOCATION>` (`*S` + click) and resettable via Shift+click.
-- **On-Scope System Lists**: Movable, draggable operational data windows including TAB List (`*T`), Tower Lists (`*P1`–`*P3`), VFR List (`*TV`), Video Maps Directory (`*TX`), Alert Status Box LA/CA/MCI (`*TM`), CRDA Status (`*TN`), Coast/Suspend (`*TC`), and Sign-On (`*TS`). All lists feature click-and-drag title headers, Shift+click default reset, collision warning frames, interactive row clicks, `F1` row drops, and persistent layout retention via DCB `PREF`. STARS system list commands strictly use authorized `<MULTI FUNC>` prefix syntax without aliases.
+- **On-Scope System Lists**: Movable, draggable operational data windows including TAB List (`*T`), Tower Lists (`*P1`–`*P3`), VFR List (`*TV`), Video Maps Directory (`*TX`), Alert Status Box LA/CA/MCI (`*TM`), CRDA Status (`*TN`), Coast/Suspend (`*TC`), and Sign-On (`*TS`). All lists feature click-and-drag title headers, Shift+click default reset, collision warning frames, interactive row clicks, and persistent layout retention via DCB `PREF`. STARS system list commands strictly use authorized `<MULTI FUNC>` prefix syntax without aliases.
 
 ### Flight kinematics & FMS
 
@@ -77,9 +78,9 @@ Service-side env, models, and Path C: [`speech-api/README.md`](../speech-api/REA
   - STAR arrivals: *"Approach, Delta 123, descending via DEMO ONE arrival through one-one thousand (11000)"*.
   - SID departures: *"Departure, American 100, passing seven hundred climbing via the BAY ONE departure"*.
 - **Inbound & departure handoff workflow**:
-  - Inbound arrivals spawn in pending handoff state from Center (unowned green FDB) → Controller left-clicks the track (slew to accept) or uses `F3` (`INIT CNTL`) to accept → Track becomes owned (white FDB) → Radio frequency unlocked → Pilot checks in.
+  - Inbound arrivals spawn in pending handoff state from Center (unowned green FDB) → Controller left-clicks the track (slew to accept) or uses `F1` (`INIT CNTL`) to accept → Track becomes owned (white FDB) → Radio frequency unlocked → Pilot checks in.
   - Rolling departures spawn off the active runway (~0.8 NM, 700 ft, 180 kt) under Tower handoff → Pilot checks in on departure frequency → Flies published SID climb profile.
-- **Smart Shift+H / F5 handoff**: Context-sensitive shared outbound handoff. Eligible arrivals target Tower; eligible climbing departures target Center (`C`). Receiver TCP remains visible while pending and for five simulated seconds after acceptance. Single-position trainer auto-accepts supported destinations after five simulated seconds; Tower landing/ownership effects occur only after acceptance. F4 returns the track to unowned. No live second position or network is modeled.
+- **Smart Shift+H / F5 handoff**: Context-sensitive shared outbound handoff. Eligible arrivals target Tower; eligible climbing departures target Center (`C`). Receiver TCP remains visible while pending and for five simulated seconds after acceptance. Single-position trainer auto-accepts supported destinations after five simulated seconds; Tower landing/ownership effects occur only after acceptance. F4 terminates the track and its associated local plan. No live second position or network is modeled.
 - **Readbacks**: FAA JO 7110.65 digit grouping (e.g. "climb and maintain five thousand, Delta one twenty-three"), plus "unable" for invalid clearances.
 
 ## ATC command reference
@@ -123,9 +124,54 @@ If an aircraft is already selected on the scope, the callsign prefix is automati
 | | `SH` | `DAL123 SH` | Say current heading |
 | | `SA` | `DAL123 SA` | Say current altitude |
 
+### Flight-plan commands
+
+Flight-plan commands are scope Preview Area commands, not radio clearances.
+They update the local authoritative flight-plan list and do not make a pilot
+read back or fly the change.
+
+| Command | Example | Result |
+|---|---|---|
+| `*T` | `*T` then Enter | Toggles the TAB flight-plan list. `*T 15` sets its visible row count. Use the displayed numeric row index for list operations. |
+| `ACID [fields]` | `UAL1234 2341 AT AAL B738` then Enter | Creates a pending plan. Creation accepts an ACID plus a four-digit beacon, `+` (IFR pool), `/` (VFR pool), `/1`–`/4` (general pools), TCP, flight type, scratchpads, altitude, rules, and aircraft data. |
+| `F1` / `+` | `F1`, then click a target; or `F1 UAL1234` then Enter | INIT CNTL: explicitly associates/activates a matching plan and owns the target. A pending inbound handoff can be accepted this way. `+` is the Preview Area equivalent. Association is authoritative on the flight plan; the aircraft's reported squawk is not overwritten. |
+| `F3` | `F3` | Track Suspend is reserved and currently a no-op; no suspend lifecycle is simulated yet. |
+| `F4` / `TERM CNTL` / `/` | `F4`, then click a target; or `F4 UAL1234` then Enter | TERM CNTL: all three forms share one operation. The first use deletes the associated plan, removes association, clears ownership, and leaves a moving unassociated LDB (`*`). `TERM CNTL ALL` is invalid. |
+| `*M <identity> <data>` | `*M 14 5252` | Modifies one plan by ACID, beacon, or TAB-list index. Enter beacon data directly (`5252`, `+`, `/`, `/1`–`/4`, `A`) or scratchpad 1 with `Δ` / scratchpad 2 with `+`. |
+| `*B <identity>` | `*B UAL1234` or `*B 14` | Releases the assigned beacon for a plan when allowed. |
+| `*DEL <index>` | `*DEL 14` | Deletes the plan at TAB-list index 14. |
+
+Creation and edit examples:
+
+```text
+UAL1234 2341 AT A B738 Enter
+*M UAL1234 5252
+*M UAL1234 Δ5252
+*M UAL1234 +WEST
+*M UAL1234 RALT 350
+*M UAL1234 AALT A120
+*M UAL1234 FIXES NEMAX*MERGE
+*M UAL1234 +
+```
+
+`RALT 350` means requested altitude 35,000 feet. `AALT A120` means assigned
+altitude 12,000 feet. `FIXES` is limited to an optional four-character entry
+fix, `*`, an optional four-character exit fix, and optional `*A`, `*P`, or
+`*E`; it is not a full route editor.
+
+Flight-plan beacons use octal digits only (`0`–`7`). For example, `2341` is
+valid but `1289` is invalid. A numeric identity such as `14` is a TAB-list
+index only when used in a complete command such as `*M 14 5252`, `*B 14`,
+or `*DEL 14`; `14 5252` alone is not a flight-plan command.
+
+Routes are not executable from these plans yet. Editing `FIXES` stores plan
+data only; it does not update the aircraft FMS, route, heading, or pilot
+intent. Clearance delivery, pilot readback/execution, route conformance, and
+full route/SID/STAR amendment remain in the [later implementation backlog](../phases/LATER-IMPLEMENTATION-BACKLOG.md).
+
 > [!TIP]
 > Transponder beacon assignment and radar handoffs are handled directly via scope controls:
-> - **Inbound handoff accept**: Left-click the target symbol (slew accept) or press `F3` (`INIT CNTL`).
+> - **Inbound handoff accept**: Left-click the target symbol (slew accept) or press `F1` (`INIT CNTL`).
 > - **Outbound handoff**: Press `F5` or `Shift+H` to initiate handoff to Tower (arrivals) or Center (departures).
 > - **Beacon codes**: Correlate via Flight Plan List `[Index#]` slew-click or use STARS beacon select (`B45` / `*BCN 45`).
 
@@ -168,7 +214,7 @@ When using Push-to-Talk (PTT), speak clearances using standard FAA JO 7110.65 AT
 | **Switch Keyboard Focus** | `Tab` | Cycles keyboard focus between `#command-line-input` and the radar PPI / Preview Area. |
 | **Move System List** | `Left Click + Drag` or `Middle Click + Drag` on list header | Repositions system list window. Middle-click drag shows all list bounding frames. |
 | **Reset List Position** | `Shift + Left Click` on list title header | Snaps system list back to its adaptation default coordinate anchor. |
-| **Drop List Row Entry** | `F1` (hold or armed) + `Left Click` on list entry row | Manually drops/deletes an entry from Tower List (`*P1`–`*P3`), VFR List (`*TV`), or TAB List (`*T`). |
+| **Drop List Row Entry** | `*DEL <index>` + `Enter` | Manually deletes an entry from the TAB list. |
 | **Toggle Video Map Layer** | `Left Click` on map entry row in VIDEO MAPS list (`*TX`) | Instantly enables/disables clicked video map layer. |
 | **Page List (`MORE: X/Y`)** | `Left Click` directly on `MORE: X/Y` in list header | Cycles forward to the next page of entries, wrapping back to page 1 at the end. |
 | **Place Center (DCB)** | Click `PLACE CNTR` in DCB, then `Left Click` PPI | Sets view center to clicked world coordinate. |
@@ -187,9 +233,9 @@ Keys below are divided into **Always-On** shortcuts (which work regardless of wh
 | `Home` | Center Airport | Snaps display center to airport reference point. |
 | `End` | Center Last Click | Snaps display center to last clicked world coordinate. |
 | `?` / `Shift + /` / `Alt + F1` | Help Overlay | Toggles the in-app STARS keyboard shortcut help overlay. |
-| `F1` (hold) | `<BCN CODE RD OUT>` / Drop Mode | Momentarily displays Mode 3/A beacon code in datablock line 1 (Beaconator) and arms list row drop (`f1DropArmed`). |
-| `F3` | `<INIT CNTL>` Initiate Track | If track selected: immediately initiates track / owns target. If none selected: arms `INIT CNTL` command-then-slew. |
-| `F4` | `<TERM CNTL>` Drop Track | If track selected: immediately drops track. If none selected: arms `TERM CNTL` command-then-slew. |
+| `F1` | `<INIT CNTL>` Initiate Control | If track selected: immediately initiates track / owns target. If none selected: arms `INIT CNTL` command-then-slew. |
+| `F3` | `<TRK SUSP>` Track Suspend | Reserved/no-op until the suspend lifecycle is implemented. |
+| `F4` | `<TERM CNTL>` Terminate Track | Alias of `TERM CNTL`. If track selected: terminates immediately. If none selected: arms command-then-slew. Deletes the associated plan on first use and leaves an unassociated `*` LDB. |
 | `F5` / `Shift + H` | `<HND OFF>` Smart Handoff | Initiates shared outbound handoff: Tower for eligible arrivals, Center (`C`) for eligible climbing departures. Supported destinations auto-accept after five simulated seconds. |
 | `F7` | `<MULTI FUNC>` Multi-Function | Types or appends `*` into the STARS Preview Area buffer. |
 | `F8` | `<HIST>` History Dots | Toggles radar history trail dots (0 ↔ last non-zero dot count). |
@@ -201,9 +247,9 @@ Keys below are divided into **Always-On** shortcuts (which work regardless of wh
 | `FPL` | `<FPL>` Flight Plan List | Toggles TAB List (`*T`) visibility. |
 | `VFR` | `<VFR>` VFR List | Toggles VFR List (`*TV`) visibility. |
 
-#### STARS DCB function key shortcuts (`Ctrl + F1`–`F11`)
+#### DCB function key shortcuts (`Ctrl + F1`–`F11`)
 
-| Key Combination | STARS Analog | Action |
+| Key Combination | Control | Action |
 |---|---|---|
 | `Ctrl + F1` | `<CNTR>` Center | Snaps scope center to airport reference (`KDEM ARP`). |
 | `Ctrl + F2` | `<MAPS>` Video Maps Menu | Opens DCB `MAPS` submenu. |
@@ -252,9 +298,9 @@ The **Preview Area** is the primary typed command buffer of the STARS terminal r
 | `+` then click | Type `+`, click target symbol | Arms `INIT CNTL`; click initiates track / owns target (white FDB). Pending inbound: one-click accept+own. |
 | `+ [FLID] Enter` | Type `+DAL123` or `+123` Enter | Resolves flight ID and initiates track directly with nothing selected. |
 | `+ [FLID]` then click | Type `+DAL123`, click target | Correlates that FLID directly to the clicked radar target. |
-| `/` then click **symbol** | Type `/`, click target symbol | Arms `TERM CNTL`; drops track ownership. |
-| `/` then click **datablock** | Type `/`, click datablock text | Toggles Partial Data Block (PDB) ↔ Full Data Block (FDB). |
-| `/ [FLID] Enter` | Type `/DAL123` Enter | Drops track ownership for specified flight ID. (`/ALL` or `TERM CNTL ALL` is `INV`). |
+| `/` then click **symbol** | Type `/`, click target symbol | Arms `TERM CNTL`; same termination behavior as F4 and typed `TERM CNTL`. |
+| `/` then click **datablock** | Type `/`, click datablock text | Same TERM CNTL behavior as symbol click: deletes the associated plan, removes association, and leaves an unassociated `*` LDB. |
+| `/ [FLID] Enter` | Type `/DAL123` Enter | Terminates the specified flight ID. (`/ALL` or `TERM CNTL ALL` is `INV`). |
 | `/<0-7>` then click | Type `/2`, click target | Sets leader line length for clicked target (`0`=0px, `1`=12px, `2`=24px, `3`=36px default, `4`=48px, etc.). |
 | `/<0-7> [FLID] Enter` | Type `/2 DAL123` or `/0 123` Enter | Sets leader line length directly on specified aircraft. |
 | `<1-9>` then click | Type `8`, click target | Sets leader line direction on clicked target (1–9 numpad compass layout). |
@@ -271,13 +317,9 @@ The **Preview Area** is the primary typed command buffer of the STARS terminal r
 | `*LDR <0-7> Enter` | Type `*LDR 3` or `*LDR 4` Enter | Sets global default leader line length (`view.leaderLengthPx`). |
 | `*1`–`*8` then click | Type `*3`, click datablock | STARS leader clock direction (1 = NE clockwise through 8 = N). |
 | `*0` then click | Type `*0`, click target | Resets leader line direction to the facility default. |
-| `*F` then click | Type `*F`, click target | Toggles forced Full Data Block (FDB) display on that track. |
-| `*F [FLID] Enter` | Type `*F DAL123` Enter | Toggles forced Full Data Block (FDB) on specified aircraft. |
-| `*F Enter` | Type `*F` Enter with track selected | Toggles forced Full Data Block (FDB) on currently selected track. |
-| `**F Enter` | Type `**F` Enter | Clears all forced Full Data Blocks across the entire airspace. |
 | `*` then click | Type `*`, click target | Acknowledges a pending pointout, or toggles cyan target highlight. |
 | `*B` then click | Type `*B`, click uncorrelated track | 5-second Mode 3/A beaconator readout on uncorrelated target symbol. |
-| `[Index#]` then click target | Type `1` or `02`, click target symbol | **Manual Flight Plan Correlation**: Correlates flight plan `Index#` from TAB List (`*T`) to clicked radar target, setting FDB, owned state, and removing entry from the TAB list. |
+| `[Index#]` then click target | Type `1` or `02`, click target symbol | **Explicit Flight Plan Association**: Associates flight plan `Index#` from TAB List (`*T`) to the clicked radar target, setting the FDB projection and removing the entry from the TAB list. It does not overwrite the target's reported squawk; association and ownership are separate. |
 | `[Index#]` then click target | Type `14`, click target symbol | **Promote VFR Entry**: Correlates VFR entry from VFR List (`*TV`) to clicked radar target. |
 | `*DEL [Index#] Enter` | Type `*DEL 1` or `*DEL 02` Enter | Purges and deletes flight plan entry at specified numeric index from the TAB List (`*T`). |
 
@@ -295,11 +337,11 @@ System lists are operational data windows rendered directly on the radar scope.
 | List Name | Authorized Command Prefix | Frame Title | Purpose & Operational Features |
 |---|---|---|---|
 | System Status Area | `<MULTI FUNC>S` (`*S`) | `SYSTEM STATUS AREA (S)` | System Status Area (sim time, altimeter, filter bounds). Cannot be toggled off; relocatable via `<MULTI FUNC>S<SLEW LOCATION>`. |
-| TAB List | `<MULTI FUNC>T` (`*T`) | `TAB` / `FLIGHT PLAN (TAB)` | Departure proposals and unassociated tracks with discrete squawks. Features `MORE: X/Y` pagination. Type `[Index#]` + click target to correlate. Press `F1` + click row (or `*DEL [Index#] Enter`) to drop entry. |
+| TAB List | `<MULTI FUNC>T` (`*T`) | `TAB` / `FLIGHT PLAN (TAB)` | Pending plans and unassociated tracks with discrete squawks. Features `MORE: X/Y` pagination. List construction and redraw are read-only: they never correlate or activate a plan. Type `[Index#]` + click target for explicit association; a reported squawk update may correlate one unique pending plan. Use `*DEL [Index#] Enter` to delete an entry. |
 | Tower List 1 | `<MULTI FUNC>P1` (`*P1`) | `TOWER 1 (P1)` / `[AIRPORT] TOWER` | Primary tower inbound arrival list and staged departures. Sorted by distance (departures 0 NM first, nearest arrivals ascending). Clears automatically on landing. |
 | Tower List 2 | `<MULTI FUNC>P2` (`*P2`) | `TOWER 2 (P2)` | Auxiliary Tower List 2. |
 | Tower List 3 | `<MULTI FUNC>P3` (`*P3`) | `TOWER 3 (P3)` | Auxiliary Tower List 3. |
-| VFR List | `<MULTI FUNC>TV` (`*TV`) | `VFR LIST (TV)` | Active 1200 / VFR tracks with callsign, beacon code, and altitude. Type `[Index#]` + click target to promote. `F1` + click row drops entry. |
+| VFR List | `<MULTI FUNC>TV` (`*TV`) | `VFR LIST (TV)` | Active 1200 / VFR tracks with callsign, beacon code, and altitude. Type `[Index#]` + click target to promote. |
 | LA/CA/MCI List | `<MULTI FUNC>TM` (`*TM`) | `LA/CA/MCI (TM)` | Safety alert notifications. Displays header `LA/CA/MCI` when idle; alert rows appear in stable green (never flash). |
 | COAST/SUSPEND List | `<MULTI FUNC>TC` (`*TC`) | `COAST/SUSPEND (TC)` | Tracks in coasting or suspended surveillance state with status indicator (`C`), squawk, and altitude. |
 | SIGN ON List | `<MULTI FUNC>TS` (`*TS`) | `SIGN-ON (TS)` | Workstation sector sign-on roster and operating configuration. |
@@ -350,7 +392,7 @@ System list commands in STARS do not accept aliases and use the exact prefix syn
 
 | Command / Interaction | Example / Operator Action | System Result |
 |---|---|---|
-| `F1` then click list row | Hold `F1`, click entry row | Manually drops and removes entry from TOWER list (`*P1`–`*P3`), VFR list (`*TV`), or TAB list (`*T`). |
+| `*DEL <index>` then `Enter` | Type `*DEL 14`, press Enter | Deletes TAB-list entry 14. |
 | `*DEL [Index#] Enter` | `*DEL 1 Enter` \| `*DEL 03 Enter` | Deletes flight plan entry at specified numeric index from TAB list (`*T`). |
 | `[Index#]` then click target | `1` then click radar target | Correlates flight plan `Index#` from TAB list (`*T`) to clicked radar target. |
 | `Shift + Left Click` list header | Click list title bar with Shift held | Snaps list (or SSA) back to its adaptation default coordinate anchor. |
@@ -409,8 +451,10 @@ Video maps match adapted catalog numeric **slots** (`1`–`32`) or symbolic **ID
 
 | Command Syntax | Operator Action | System Result |
 |---|---|---|
-| `*F Enter` | Type `*F` Enter | Flashes current altitude filter bounds (`FILTER <floor> <ceiling>`) in Preview Area. Does not alter limits. |
-| `*LA <floor><ceiling> Enter` | `*LA 000 150` Enter | Sets altitude filter floor and ceiling in 3-digit Mode C hundreds (`000` to `180`, floor ≤ ceiling). E.g. `000 150` = SFC to 15,000 ft. |
+| `*F Enter` | Type `*F` Enter | Displays the unassociated and associated altitude-filter bounds in Preview Area (`FILTER <unassociated> U <associated> A`). Does not alter limits. |
+| `*F <unassociated floor><unassociated ceiling> [<associated floor><associated ceiling>] Enter` | `*F 000 150 050 120` Enter | Sets filter bounds in 3-digit Mode C hundreds. Six digits set the unassociated band; twelve digits set unassociated then associated bands. |
+| `*F C <associated floor><associated ceiling> Enter` | `*F C 100 350` Enter | Sets only the associated-track filter; the smaller entered value becomes the lower limit. |
+| `*LA <floor><ceiling> Enter` | `*LA 000 150` Enter | Legacy simulator alias: sets the unassociated altitude filter floor and ceiling. |
 | `*BCN <code> Enter` | `*BCN 45` or `*BCN 4501` Enter | Adds octal beacon code filter (2-digit block `00`–`77` or 4-digit discrete `0000`–`7777`). |
 | `*BCN DEL <code> Enter` | `*BCN DEL 45` Enter | Removes specified beacon code filter. |
 | Scope-focus `B<digits> Enter` | PPI focused, `B45` Enter | Toggles beacon code block `"45"`. Targets matching block paint □. Second entry removes it. |
@@ -443,7 +487,7 @@ To prevent operator confusion between similar keyboard inputs, the simulator adh
   - Compact `*P3` followed by **slew-click on an aircraft target** activates a 3 NM TPA cone.
   - Compact `*P` followed by a left-click on empty scope relocates Preview Area immediately. Clicking an aircraft clears its TPA cone; `*P Enter` arms cone clearing for the next aircraft click.
 - **Video Maps vs TPA**: `*D <id>` toggles video maps. Bare `*D` stays with TPA (`*D` / `*DE` / `*DI` / `*D+`).
-- **Altitude Filters**: Scope-focus `F` begins the altitude filter entry chord. `*F Enter` flashes the filter limits readout. `*F then click` toggles forced FDB.
+- **Altitude Filters**: `<MULTI FUNC>F` (`*F`) is the manual altitude-filter command. `*F Enter` displays both filter bands; append six or twelve digits and press Enter to set them. Bare `F` remains available for callsign/flight-plan entry and does not start a filter chord.
 - **Beacon Commands**: Scope-focus `B##` toggles beacon select blocks. `*BCN ##` adds beacon filters. `*B then click` activates the 5-second Beaconator.
 - **Mode C vs Video Maps**: Tap `M` toggles the Mode C altitude readout on FDBs. Typing `M` followed by a map name (e.g. `M DEM1_27`) toggles that map layer.
 - **Alert Controls**: `CA K`, `CA`, `CA P`, and `CA C [E|I]` control Conflict Alert inhibits; an empty-preview slew-click acknowledges CA. `CA E` is rejected. `*Q` then an owned active-LA track suppresses only its current alert; `*V` then an owned track toggles its persistent MSAW processing. `*LA <floor><ceiling> Enter` sets altitude filter bounds only. `*MCI Enter` toggles Mode C Intruder alerting.
@@ -451,7 +495,7 @@ To prevent operator confusion between similar keyboard inputs, the simulator adh
 ### Deferred commands backlog
 
 Commands strictly deferred to future milestones (not parsed in the current release):
-- Flight plan full edit modals: `*F [Callsign]`, `*V`, `*A`.
+- Flight plan full edit modals: `*V`, `*A`.
 - Scratchpad editing commands and assigned altitude/heading/speed direct data block amendments.
 - Multi-controller handoff chords and pointout TCP/consol/QL protocols (`+HOLD`, `+UNS`, `+R`, `/ALL`).
 - Target Demand Metering (TDM) `*G`.

@@ -4,6 +4,60 @@ This is the backlog of follow-ups implied by features that are already shipped.
 It is intentionally not a list of untouched phases or features that have never
 been started.
 
+## Priority order
+
+Priority is based on operational safety, dependency leverage, and simulator
+value. Items already shipped or limited to manual validation are excluded.
+
+### P0 — core safety and runtime truth
+
+1. Central datablock runtime field adapter.
+2. Authoritative flight-plan association.
+3. MCI evaluator, suppression state, and `CA M` command semantics.
+4. Predicted MSAW and flashing **LA** behavior.
+5. 30-second coast/suspend lifecycle, dead reckoning, and re-correlation.
+6. CSMM and duplicate-beacon world-level detection.
+7. Wake-aware live datablock output, including `NOWGT`.
+8. Manual Conflict Alert inhibit commands.
+
+### P1 — controller operations
+
+9. Departure exit-gate/fix resolution.
+10. Adapted 2.5 NM ATPA eligibility.
+11. Quicklook sector filtering and SSA status.
+12. Multi-controller networking and inter-facility handoffs.
+13. TCP sign-on/sign-off authentication and sector consolidation.
+14. Complete pointout-to-datablock binding.
+15. TSAS runtime.
+16. Flight-plan amendment modals and target-click deletion.
+17. Scratchpad and tactical altitude/heading/speed command chords.
+18. Advanced track states: `HOLD`, `UNS`, reposition, and `/ ALL`.
+
+### P2 — facility and display expansion
+
+19. Live multi-sensor radar health and beacon-bank exhaustion telemetry.
+20. CRDA ghost prediction, cones, tie lines, and keyboard grammar.
+21. Multi-airport tower slot sequencing and dynamic adaptation.
+22. Tower Display Mode and TDW-specific ATPA presentation.
+23. MOA and selected-beacon workflows.
+24. Expanded SPCs.
+25. Richer SSA/facility status, ATIS broadcasts, and weather source handling.
+26. Pilot barometric corrections and weather-driven deviation behavior.
+27. Additional PTL prediction geometry and presets.
+28. Additional catalog-backed maps, map management, and AVL restyle.
+29. Handwritten strip annotations and cross-rack/window strip movement.
+
+### P3 — procedure and voice follow-ups
+
+30. Unsupported ARINC leg flying: `RF`, holds, arcs, and vector legs.
+31. RNAV/hold/RF in-sim FMS guidance.
+32. FAA cycle update workflow; national source/index files remain local.
+33. KATL MAPS/GEO/BRITE visual operator validation.
+34. Live Path C tie salvage against real `speech-api` and Chrome PTT p50.
+
+The priority list is a planning view; detailed sections below are the source
+of truth for shipped behavior, constraints, and scope boundaries.
+
 ## Scope and display
 
 ### Authored radar sites — live SITE/SSA chrome, no live sensors (T04-45 / T02-75 / T02-76 / T02-77)
@@ -478,7 +532,6 @@ Visible now:
 
 Deliberately missing:
 - **Unsupported ARINC 424 leg types in real-world SIDs**: Heading-to-altitude vector legs (`VA`, `VI`, `VM`) and curved radius-to-fix (`RF`) legs are skipped by the CIFP importer. SIDs composed entirely of radar vectors (e.g., KATL's `ATL2`) have zero named-fix legs and are omitted from catalog packs.
-- **Scenario departure traffic for CIFP-imported airports**: Authored facilities (KDEM) include scripted departure schedules (`BAY1` to `NORMA`/`OCTTA`), but imported airports like KATL (`katl.json`) currently only script arrival streams and downwind benchmark spawns. Automated departure flows utilizing the 10+ imported KATL SIDs (`BANNG3`, `CUTTN2`, `GAIRY2`, etc.) are not yet scripted into playable scenarios.
 
 Constraints later work must keep:
 - Procedure transitions remain data-driven via catalog JSON common fixes; no facility-specific branches (no `if (icao === "KATL")`).
@@ -528,8 +581,6 @@ does not import this tool.
 
 Deliberately missing:
 
-- **Procedure-reference closure (T04-33).** Out-of-radius fixes named by a
-  selected SID/STAR/approach stay in the full source until closure pulls them.
 - **National CIFP / derived national index in git.** A full cycle or a
   nationwide source/index dump must stay on disk under gitignored `.cifp/`
   or `tools/cifp-import/out/`. Only synthetic fixtures under `testdata/cifp/`
@@ -559,9 +610,9 @@ procedure is excluded.
 
 Deliberately missing:
 
-- **Great-circle radius selection.** T04-32 owns `spatialIndex.ts`. This
-  ticket does not compute NM distance or drop points by radius. `radiusNm` on
-  the seed is metadata for later wiring.
+- **Great-circle radius selection.** T04-32 owns `spatialIndex.ts`; this
+  T04-33 closure module does not compute NM distance or select the seed.
+  The generic pack CLI already wires radius selection to closure.
 - **Radius-based deletion after closure.** Once a procedure is selected, its
   required fixes/navaids stay even when they sit outside the seed radius.
 - **Runtime national catalog or browser CIFP fetch.** Closure stays in the
@@ -636,10 +687,6 @@ Deliberately missing:
   cycle regeneration was tested.
 - **RNAV / hold / RF flying** from imported CIFP. Unsupported path
   terminators stay diagnostics, not TF legs.
-- **Scenario departure traffic on imported CIFP SIDs.** Playable KATL
-  scenarios script arrivals and downwind spawns only; automated departure
-  traffic flows on the 10+ imported KATL SIDs are not scripted. (Core FMS
-  climb-via and SID transition amendments are supported via T04-19/T04-44).
 - **Browser CIFP fetch, national dump in git, T04-11 wind, phase 5.**
 
 Constraints later work must keep:
@@ -717,3 +764,38 @@ Constraints later work must keep:
 This document does not pull in untouched phase work such as scoring/replay,
 constant-wind simulation, a licensed STARS typeface, or other
 features that have not been partially implemented in the shipped slices.
+
+### Pilot clearances and flight-plan execution remain later
+
+The flight-plan lifecycle swarm covers local scope-side plan creation,
+association, editing, deletion, and datablock projection only. Later work must
+connect those records to the radio/pilot pipeline:
+
+- controller-issued squawk assignments and amendments through radio phraseology;
+- pilot readback/validation and reported-squawk changes after a clearance;
+- controller clearances for assigned altitude, heading, speed, route, SID/STAR,
+  and approach that execute through Command IR and pilot intent;
+- full route entry and amendment in the flight-plan editor, beyond the current
+  compact entry/exit `FIXES` pair;
+- route legs, airways, direct-to segments, and generic fix/procedure
+  validation backed by the loaded catalog;
+- SID/STAR selection and transitions linked from the authoritative flight plan
+  into the aircraft FMS, including runway and common/enroute legs;
+- synchronization from amended flight-plan route data into active aircraft
+  intent/FMS state, without facility-specific route branches;
+- authoritative filed route/procedure state driving the FMS after accepted
+  amendments, including conformance and mismatch handling;
+- pilot route execution, deviation detection, and controller-visible
+  route-conformance status;
+- rejected or misunderstood clearances, explicit readback errors, and audit
+  state linking the clearance to the plan.
+- future squawk update sources not yet routed through the aircraft-scoped
+  correlation hook: pilot clearance execution, live surveillance/transponder
+  input, remaining scenario import adapters, replay, and network/controller
+  feeds. Scheduled-departure spawning now routes an authored reported squawk
+  through the hook. Each future source must update reported squawk first and
+  may not scan or associate other aircraft.
+
+These later flows must preserve the boundary: scope plan editing does not emit
+Command IR or mutate kinematics; radio clearances do. Keep pilot execution
+self-hosted and do not add metered speech services.

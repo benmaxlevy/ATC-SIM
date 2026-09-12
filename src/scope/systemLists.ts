@@ -4,7 +4,16 @@
  * drag-and-drop lifecycle, collision overlap detection, and show-all-frames preview.
  */
 
-import type { Aircraft, ScheduledDeparture, World } from "@core";
+import {
+  associateFlightPlan as associateCoreFlightPlan,
+  createFlightPlan,
+  deleteFlightPlanFromWorld,
+  flightPlanForAircraft,
+  updateAircraftSquawk,
+  type Aircraft,
+  type ScheduledDeparture,
+  type World,
+} from "@core";
 import { formatAltitudeHundreds } from "./datablock";
 import { buildSystemListLines, type ListFormatter } from "./listFormatter";
 import type { ScopeView } from "./scopeView";
@@ -456,6 +465,7 @@ export interface FlightPlanEntry {
   callsign: string;
   squawk: string;
   aircraftId?: string;
+  planId?: string;
   departureRef?: ScheduledDeparture;
 }
 
@@ -502,12 +512,25 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
     squawk: string;
     departureRef?: ScheduledDeparture;
     aircraftId?: string;
+    planId?: string;
     requestedIndex?: number;
   }[] = [];
 
   const seenCallsigns = new Set<string>();
 
-  // 1. Pending/proposed departures: world.scheduledDepartures where !spawned
+  // 1. Authoritative local plans. Deleted plans are not list entries.
+  for (const plan of world.flightPlans) {
+    if (plan.status === "deleted" || plan.associatedAircraftId || seenCallsigns.has(plan.acid))
+      continue;
+    seenCallsigns.add(plan.acid);
+    rawItems.push({
+      callsign: plan.acid,
+      squawk: plan.assignedBeacon ?? plan.reportedBeacon ?? "1200",
+      planId: plan.id,
+    });
+  }
+
+  // 2. Pending/proposed departures: world.scheduledDepartures where !spawned
   if (world.scheduledDepartures) {
     for (let i = 0; i < world.scheduledDepartures.length; i++) {
       const dep = world.scheduledDepartures[i]!;
@@ -532,7 +555,7 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
     }
   }
 
-  // 2. Unassociated tracks: td.unassociated === true or untracked non-VFR aircraft
+  // 3. Unassociated tracks: td.unassociated === true or untracked non-VFR aircraft
   if (world.aircraft) {
     for (let i = 0; i < world.aircraft.length; i++) {
       const ac = world.aircraft[i]!;
@@ -586,7 +609,7 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
     }
   }
 
-  // 3. Assign stable quick-action indices
+  // 4. Assign stable quick-action indices
   const usedIndices = new Set<number>();
   for (const item of rawItems) {
     if (item.requestedIndex !== undefined) {
@@ -620,6 +643,7 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
       callsign: item.callsign,
       squawk: item.squawk,
       aircraftId: item.aircraftId,
+      planId: item.planId,
       departureRef: item.departureRef,
     });
   }
@@ -640,45 +664,6 @@ export function purgeFlightPlanEntry(
   if (entry.departureRef) {
     entry.departureRef.spawned = true;
   }
-}
-
-export function correlateFlightPlans(world: World, view: ScopeView): FlightPlanEntry[] {
-  const entries = getFlightPlanEntries(world, view);
-  const correlated: FlightPlanEntry[] = [];
-
-  for (const entry of entries) {
-    for (const ac of world.aircraft) {
-      const td = ensureTrackDisplay(view.tracks, ac.id);
-      const isUncorrelated =
-        td.unassociated === true || (td.ownership !== "owned" && td.datablockMode !== "full");
-      if (!isUncorrelated) {
-        continue;
-      }
-
-      const acSquawk = (ac.squawk || td.squawk || "1200").padStart(4, "0");
-      const isDiscreteSquawk = acSquawk !== "1200";
-      const squawkMatches = isDiscreteSquawk && acSquawk === entry.squawk;
-      const callsignMatches = ac.callsign.toUpperCase() === entry.callsign.toUpperCase();
-
-      if (squawkMatches || (callsignMatches && isDiscreteSquawk)) {
-        // Upgrade target data block to Full Data Block (FDB) / associate
-        ac.callsign = entry.callsign;
-        ac.assignedSquawk = entry.squawk;
-        ac.squawk = entry.squawk;
-
-        td.unassociated = false;
-        td.datablockMode = "full";
-        td.ownership = "owned";
-        td.tracked = true;
-
-        purgeFlightPlanEntry(world, view, entry);
-        correlated.push(entry);
-        break;
-      }
-    }
-  }
-
-  return correlated;
 }
 
 export function associateFlightPlanToTrack(
@@ -705,15 +690,41 @@ export function associateFlightPlanToTrack(
     return false;
   }
 
-  ac.callsign = entry.callsign;
-  ac.assignedSquawk = entry.squawk;
-  ac.squawk = entry.squawk;
+  if (entry.planId) {
+    const result = associateCoreFlightPlan(world, entry.planId, aircraftId);
+    if (!result.ok) return false;
+    td.unassociated = false;
+    td.datablockMode = "full";
+    td.tracked = true;
+    purgeFlightPlanEntry(world, view, entry);
+    return true;
+  }
 
+  if (!entry.departureRef) return false;
+  const planId = `fp-departure-${entry.callsign}`;
+  let plan = world.flightPlans.find((item) => item.id === planId);
+  if (!plan) {
+    const created = createFlightPlan(
+      {
+        id: planId,
+        status: "pending",
+        acid: entry.callsign,
+        assignedBeacon: entry.squawk,
+        fixes: [],
+        scratchpads: [],
+        flightRules: "IFR",
+      },
+      world.flightPlans,
+    );
+    if (!created.ok) return false;
+    world.flightPlans.push(created.value);
+    plan = created.value;
+  }
+  const result = associateCoreFlightPlan(world, plan.id, aircraftId);
+  if (!result.ok) return false;
   td.unassociated = false;
   td.datablockMode = "full";
-  td.ownership = "owned";
   td.tracked = true;
-
   purgeFlightPlanEntry(world, view, entry);
   return true;
 }
@@ -723,6 +734,10 @@ export function deleteFlightPlanEntry(world: World, view: ScopeView, index: numb
   const entry = entries.find((e) => e.index === index);
   if (!entry) {
     return false;
+  }
+  if (entry.planId) {
+    const deleted = deleteFlightPlanFromWorld(world, entry.planId);
+    if (!deleted.ok) return false;
   }
   purgeFlightPlanEntry(world, view, entry);
   return true;
@@ -745,7 +760,9 @@ export function getSystemListTotalEntries(view: ScopeView, listId: string, world
           ? view.vfrListDroppedCallsigns
           : new Set(view.vfrListDroppedCallsigns ?? []);
       return world.aircraft.filter(
-        (ac) => isVfrAircraft(ac, view.tracks) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
+        (ac) =>
+          isVfrAircraft(ac, view.tracks, world) &&
+          !droppedSet.has(ac.callsign.trim().toUpperCase()),
       ).length;
     }
     case "TL": {
@@ -889,7 +906,7 @@ export function handleFlightPlanListClick(
 
   if (targetIdx >= 0 && targetIdx < entries.length) {
     const entry = entries[targetIdx]!;
-    if (view.beaconatorActive) {
+    if (view.f1DropArmed || view.beaconatorActive) {
       purgeFlightPlanEntry(world, view, entry);
       return true;
     }
@@ -932,9 +949,6 @@ export function buildTabFlightPlanList(
   view?: ScopeView,
   offset?: number,
 ): string[] {
-  if (view) {
-    correlateFlightPlans(world, view);
-  }
   const entries = getFlightPlanEntries(world, view);
   const state = ensureFlightPlanListState(view);
   const effectiveOffset =
@@ -990,11 +1004,11 @@ export function airportCodesMatch(a?: string, b?: string): boolean {
   return stripA === stripB;
 }
 
-export function getAircraftDestination(ac: Aircraft): string | undefined {
-  const fp = ac.flightPlan ?? ac.fp;
+export function getAircraftDestination(world: World, ac: Aircraft): string | undefined {
+  const fp = flightPlanForAircraft(world, ac.id);
   const fpExtra = fp as Record<string, unknown> | undefined;
   const raw =
-    fp?.destination ??
+    fp?.airportId ??
     (typeof fpExtra?.dest === "string" ? fpExtra.dest : undefined) ??
     (typeof fpExtra?.arrivalAirport === "string" ? fpExtra.arrivalAirport : undefined) ??
     ac.destinationAirport ??
@@ -1157,7 +1171,7 @@ export function getTowerArrivalEntries(
     }
 
     // Aircraft is an arrival track. Check if its flight plan indicates an arrival at cleanAirport.
-    const explicitDest = getAircraftDestination(ac);
+    const explicitDest = getAircraftDestination(world, ac);
     let isArrivalAtThisAirport = false;
 
     if (explicitDest) {
@@ -1308,11 +1322,18 @@ export function buildCoastSuspendList(
  * N982B   4215  025
  * ========================================================================= */
 
-export function isVfrAircraft(ac: Aircraft, tracks?: Map<string, TrackDisplay>): boolean {
+export function isVfrAircraft(
+  ac: Aircraft,
+  tracks?: Map<string, TrackDisplay>,
+  world?: World,
+): boolean {
   if (ac.squawk === "1200" || ac.assignedSquawk === "1200") {
     return true;
   }
-  if (ac.flightRules === "VFR" || ac.flightPlan?.rules === "VFR") {
+  if (
+    ac.flightRules === "VFR" ||
+    (world && flightPlanForAircraft(world, ac.id)?.flightRules === "VFR")
+  ) {
     return true;
   }
   const track = tracks?.get(ac.id);
@@ -1332,7 +1353,7 @@ export function buildVfrList(
   const droppedSet =
     droppedCallsigns instanceof Set ? droppedCallsigns : new Set(droppedCallsigns ?? []);
   const vfrFlights = world.aircraft.filter(
-    (ac) => isVfrAircraft(ac, tracks) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
+    (ac) => isVfrAircraft(ac, tracks, world) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
   );
 
   const formatter: ListFormatter = {
@@ -1376,7 +1397,8 @@ export function promoteVfrListEntry(
 ): boolean {
   const droppedSet = view.vfrListDroppedCallsigns ?? new Set();
   const vfrFlights = world.aircraft.filter(
-    (ac) => isVfrAircraft(ac, view.tracks) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
+    (ac) =>
+      isVfrAircraft(ac, view.tracks, world) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
   );
   const idx = index >= 14 ? index - 14 : index - 1;
   const entry = vfrFlights[idx];
@@ -1385,7 +1407,7 @@ export function promoteVfrListEntry(
   const target = world.aircraft.find((a) => a.id === targetAircraftId);
   if (target) {
     target.callsign = entry.callsign;
-    target.squawk = entry.squawk;
+    updateAircraftSquawk(world, targetAircraftId, entry.squawk ?? "1200");
     target.assignedSquawk = entry.assignedSquawk;
   }
   applyInitiateTrackToId(view.tracks, world, targetAircraftId);

@@ -76,7 +76,7 @@ Do not reopen these in tickets.
 9. **Unable is not a parse reject.** A grammatically valid `SPEED` the jet will not accept emits `pilot.unable`, no intent change, spoken/text `unable speed …`. Distinct from `command.rejected` (unknown callsign, out of [150, 280], etc.).
 10. **Replay is single-player, in-tab.** File is JSON. No server. Seeking uses snapshots + `stepWorld` + recorded events. Pause is mandatory. Do not require live mic during replay (mute radio).
 11. **Second position is a stub.** Same `World`, no networking, no VATSIM, no frequency change Command IR required. Ownership color + position id. Polygon is map + spawn default, **not** an automatic radar handoff when a track crosses the line.
-12. **F3 stays initiate** for the *working* position (phase 2). **Handoff is a new always-on key `F6`** (document: not a CRC clone). F4 still drops to unowned.
+12. **F3 stays initiate** for the *working* position (phase 2). **Handoff is a new always-on key `F6`** (document: not a CRC clone). F4 is the shared TERM CNTL alias: it terminates the local track/plan and leaves an unassociated target.
 13. **Hot-seat is P0; split view is P1.** Exit does not require two canvases. Exit does require two position ids, polygons, colors, and F6 handoff.
 14. **New package `src/train`.** DOM-free. Patch `phases/_shared/architecture.md` in the **same PR as T05-01** to add the folder (planning docs here must not edit `_shared`). Import rule: `@train` → `@core` + `@parse` + `@scenario` only. `@ui` / `@scope` / `@pilot` may import `@train` types. `@core` must **not** import `@train`.
 15. **Units stay glossary-frozen.** Sim ms for score/delay/replay. Wall ms only for SpeechPort latency in the debrief metrics block.
@@ -400,7 +400,7 @@ Polygons may overlap (final sits inside a larger approach in real life). **Owner
 
 - Working position: `APP` \| `FIN` (hot-seat control in the chrome).
 - F3: unowned → owned **by working position** (color = that position).
-- F4: → unowned (white).
+- F4: → terminated/unassociated `*` target; associated local plan is deleted.
 - F6: if selected is owned by working position → transfer to the **other** position, emit `handoff.position`. If selected is owned by the other position, F6 is **accept** (same event if you were the receiver in hot-seat — still one player; treat F6 as “force set owner to the non-working position” when I own it, and “take ownership” when they own it). Simpler rule for the stub:
 
 **F6 rule (normative):** selected track’s `ownerPositionId` toggles `APP` ↔ `FIN` (if unowned, F6 is no-op; use F3 first). Always emit `handoff.position`.

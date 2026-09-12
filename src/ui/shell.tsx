@@ -1,7 +1,7 @@
 /**
  * Analog: CRC/vNAS STARS TCW is a dark PPI with DCB on the glass (R07).
  * Browser ATC anti-pattern is a header banner, tutorial footer, and game HUD (R12).
- * Trainer delta: T00-01 disclaimer is first-run / F1, not a bar over the DCB.
+ * Trainer delta: T00-01 disclaimer is first-run / Help button, not a bar over the DCB.
  * Pause / 1× / 2× is a map-green corner readout (not a CRC analog).
  * DCB is a green cell grid on the PPI glass (T02-16). SSA lives on the PPI (T02-20).
  * Command line overlays the bottom of the rectangular PPI.
@@ -368,24 +368,15 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             controller={app.speechSettings}
             speechId={speechId}
             onChange={() => setSpeechId(app.speech.id)}
+            onHelpToggle={() => {
+              scopeView.helpOpen = !scopeView.helpOpen;
+              setScopeUiTick((tick) => tick + 1);
+            }}
+            stripsOpen={stripsOpen}
+            onStripsToggle={() => setStripsOpen((open) => !open)}
           />
           <Disclaimer />
           <ScopeHelpOverlay open={scopeView.helpOpen} />
-          <div className="strips-toggle-bar">
-            <button
-              type="button"
-              className={`strips-toggle-button ${stripsOpen ? "open" : ""}`}
-              data-testid="strips-toggle-btn"
-              onClick={() => setStripsOpen((open) => !open)}
-              title={
-                stripsOpen
-                  ? "Collapse flight progress strips drawer"
-                  : "Expand flight progress strips drawer"
-              }
-            >
-              Strips
-            </button>
-          </div>
         </ScopeCanvas>
         <aside
           className={`strips-drawer ${stripsOpen ? "open" : "collapsed"} ${isResizingDrawer ? "resizing" : ""}`}

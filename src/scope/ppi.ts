@@ -1,4 +1,10 @@
-import { acceptPointout, handoffFor, setSelectedAircraft, type World } from "@core";
+import {
+  acceptPointout,
+  createActiveFlightPlanFromTarget,
+  handoffFor,
+  setSelectedAircraft,
+  type World,
+} from "@core";
 import { expireFilterEntry, inAltitudeFilter } from "./altitudeFilter";
 import {
   armPreviewSlewAction,
@@ -61,7 +67,6 @@ import { toggleVideoMap } from "./dcb/dcbFunctions";
 import { datablockLineHeightPx } from "./fonts";
 import {
   applyBeaconatorSlewToId,
-  applyDropTrackToId,
   applyInitiateTrackToId,
   ensureTrackDisplay,
   pruneCaPairInhibitsForTrack,
@@ -69,7 +74,7 @@ import {
   setLeaderDirForId,
   setLeaderLengthForId,
   toggleTrackHighlight,
-  toggleTrackPdbFdb,
+  terminateTrackWithPlan,
 } from "./trackDisplay";
 
 function viewSize(widthPx: number, heightPx: number): ScopeViewSize {
@@ -113,7 +118,8 @@ function trackingFlidMatches(
     }
     const droppedSet = view.vfrListDroppedCallsigns ?? new Set();
     const vfrFlights = world.aircraft.filter(
-      (ac) => isVfrAircraft(ac, view.tracks) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
+      (ac) =>
+        isVfrAircraft(ac, view.tracks, world) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
     );
     const vfrIdx = idx >= 14 ? idx - 14 : idx - 1;
     if (vfrFlights[vfrIdx]) {
@@ -142,6 +148,25 @@ function clearTrackingSlew(view: ScopeView): void {
   cancelPreviewArea(view.preview);
   cancelStarsChordEntry(view.starsChordEntry);
   view.starsChordArmed = null;
+}
+
+function explicitPlanEntryForFlid(
+  flid: string,
+  world: World,
+  view: ScopeView,
+): ReturnType<typeof getFlightPlanEntries>[number] | undefined {
+  const normalized = flid.trim().toUpperCase();
+  if (/^\d{1,2}$/.test(normalized)) {
+    return undefined;
+  }
+  const plans = world.flightPlans.filter(
+    (plan) =>
+      plan.status !== "deleted" && (plan.acid === normalized || plan.assignedBeacon === normalized),
+  );
+  if (plans.length !== 1) {
+    return undefined;
+  }
+  return getFlightPlanEntries(world, view).find((entry) => entry.planId === plans[0]!.id);
 }
 
 /**
@@ -180,25 +205,46 @@ function applyTrackingSlewHit(
           clearTrackingSlew(view);
           return true;
         }
+        const entryByIdentity = explicitPlanEntryForFlid(flid, world, view);
+        if (entryByIdentity) {
+          const associated = associateFlightPlanToTrack(world, view, entryByIdentity.index, id);
+          if (!associated) {
+            rejectPreviewCntl(view.preview, Date.now());
+            cancelStarsChordEntry(view.starsChordEntry);
+            view.starsChordArmed = null;
+            return true;
+          }
+          setSelectedAircraft(world, id);
+          clearTrackingSlew(view);
+          return true;
+        }
         if (!Number.isNaN(num) && promoteVfrListEntry(view, world, num, id)) {
           setSelectedAircraft(world, id);
           clearTrackingSlew(view);
           return true;
         }
       }
-      applyInitiateTrackToId(view.tracks, world, id);
+      const created = createActiveFlightPlanFromTarget(world, id);
+      if (created.ok) {
+        const td = ensureTrackDisplay(view.tracks, id);
+        td.unassociated = false;
+        td.datablockMode = "full";
+        td.tracked = true;
+        // Explicit INIT CNTL also performs the existing controller-ownership
+        // action; automatic squawk correlation above never does.
+        applyInitiateTrackToId(view.tracks, world, id);
+      } else {
+        // F3 remains the ownership-color trainer stub when no usable plan can
+        // be created; INIT CNTL itself stays display-only.
+        applyInitiateTrackToId(view.tracks, world, id);
+      }
       setSelectedAircraft(world, id);
       clearTrackingSlew(view);
       return true;
     }
     case "termCntl": {
-      const td = ensureTrackDisplay(view.tracks, id);
-      if (hit.region === "datablock") {
-        toggleTrackPdbFdb(td);
-      } else {
-        applyDropTrackToId(view.tracks, world, id, view);
-        pruneCaPairInhibitsForTrack(view, id);
-      }
+      terminateTrackWithPlan(view.tracks, world, id, view);
+      pruneCaPairInhibitsForTrack(view, id);
       setSelectedAircraft(world, id);
       clearTrackingSlew(view);
       return true;
@@ -269,7 +315,10 @@ function applyTrackingSlewHit(
       return true;
     case "armPerTrackPtl": {
       const ac = hit.aircraft;
-      const altitudeFiltered = !inAltitudeFilter(ac.altitudeFt, view.altitudeFilter);
+      const altitudeFiltered = !inAltitudeFilter(
+        ac.altitudeFt,
+        view.tracks.get(id)?.unassociated ? view.altitudeFilter : view.associatedAltitudeFilter,
+      );
       const owned = (view.tracks.get(id)?.ownership ?? "unowned") === "owned";
       const currentlyDrawn = shouldDrawPtlForTrack(
         ac.speedKt,

@@ -47,6 +47,7 @@ import { locAxisForApproach } from "./nav/localizer";
 import { gsParamsForApproach } from "./nav/glidepath";
 import { performanceRegistry } from "./performance/registry";
 import { resolvePerformanceRegime } from "./performance/regime";
+import type { FlightPlan } from "./flightPlan";
 
 /** Generic world navigation context. Variation is never facility-special-cased. */
 export interface WorldNavigationContext {
@@ -66,6 +67,8 @@ export interface World {
   simRate: SimRate;
   navigation: WorldNavigationContext;
   aircraft: Aircraft[];
+  /** Authoritative local operational records; surveillance stays on Aircraft. */
+  flightPlans: FlightPlan[];
   selectedAircraftId: string | null;
   /**
    * Facility catalog when the world was spawned from a scenario.
@@ -204,6 +207,7 @@ export function createWorld(partial?: Partial<World>): World {
     simRate: partial?.simRate ?? 1,
     navigation: { magVarDeg },
     aircraft: partial?.aircraft ?? [],
+    flightPlans: partial?.flightPlans ?? [],
     selectedAircraftId: partial?.selectedAircraftId ?? null,
     catalog: partial?.catalog,
     activeRunwayId: partial?.activeRunwayId,

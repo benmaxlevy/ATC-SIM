@@ -1,5 +1,82 @@
 # Swarm status
 
+## SIXTY-FIRST SWARM COMPLETE — FAA terminal strip alignment (T02-158–162)
+
+T02-158 through T02-162 are complete on `feat/flight-plan-lifecycle`.
+Happy-path terminal departure and arrival strips now share the supplied
+five-column structure `1–4 | 5–7 | 8/8A/8B | 9/9A/9B/9C | 10–18`.
+Canonical plan projection uses plan equipment, CID, assigned beacon, PTD/ETA,
+airports, altitude, route, and remarks. Reported squawk remains separate.
+Arrival Box 9 now shows altitude/remarks rather than flight rules; departure
+Box 9 shows route/destination/remarks. Boxes 9A–9C remain present.
+
+Captain squash/import commits:
+
+- T02-158: `29daef1`
+- T02-159: `0da75c1`
+- T02-160: `6c922c3`
+- T02-161: `d33c6a7`
+- T02-162: `6387616`
+
+Focused gates passed after each ticket: T02-158 **22**, T02-159 **5**,
+T02-160 **42**, T02-161 **42**, and T02-162 **99** tests. Final `npm run ci`
+passed: **193 test files, 1,794 tests passed, 4 skipped**.
+
+FAA validation: **PASS after every ticket** against [JO 7110.65 §2-3-4](https://www.faa.gov/air_traffic/publications/atpubs/atc_html/chap2_section_3.html#para-2-3-4)
+and the supplied arrival/departure structure images. Recording/RA, FDIO,
+overflight, missing-data, and facility-policy behavior remain out of scope.
+
+No push performed. Phase boundary reached.
+
+## NINTH SWARM IMPLEMENTATION COMPLETE — manual follow-up findings
+
+T02-154 through T02-157 are implemented on `feat/flight-plan-lifecycle`:
+live squawk wiring, canonical projections, manual F1/F3/F4/F7 meanings, and
+the bottom-right Help button below Voice Text. CI passed with 193 files,
+1,789 tests passed, and 4 skipped.
+
+Independent manual review passed the key mappings and INIT CNTL slew/click
+behavior against Appendix D Table D-1 p. D-2 and §5.4.1 p. 5-66. It found
+follow-up concerns: generic creation/radar inputs still bypass the squawk hook
+(documented future sources), a possible stale `TrackDisplay.squawk` precedence
+in datablock formatting, incomplete direct `MULTI FUNC M` field grammar, and
+stale active documentation claims. Exact button placement remains a browser
+visual check. No push was performed.
+
+## EIGHTH SWARM EXIT BLOCKED — T02-149–153 canonical flight-plan association (2026-09-11)
+
+T02-149 through T02-153 are complete on `feat/flight-plan-lifecycle`. The
+flight plan's `associatedAircraftId` is now the sole plan/target relationship;
+reported aircraft squawks remain surveillance evidence; and correlation is
+aircraft-scoped, triggered only by a reported-squawk update. List construction,
+rendering, and periodic reads are association-read-only. Explicit F3/`+`,
+index, beacon, and ACID operations remain available. Lifecycle cleanup removes
+stale plan projections, while ownership remains separate from association.
+Pilot clearance execution, live transponder/surveillance input, replay/import
+adapters, and network/controller squawk feeds remain in
+`phases/LATER-IMPLEMENTATION-BACKLOG.md`.
+
+Captain fallback commits (the session had no callable worker-spawn tool, so
+these are not isolated-worker squash merges): T02-149 (`caa7ed8`, `9808f6b`,
+`85146bf`, `37e3e86`, `2868af8`), T02-150 (`0b2282c`), T02-151 (`c9851e7`),
+T02-152 (`a057a4f`), and T02-153 (`4fb906a`). Planning commits:
+`bf28c1b`, `5b2ba62`.
+
+Focused gates passed: T02-149 **46**, T02-150 **69**, T02-151 **39**,
+T02-152 **42**, and T02-153 **12** tests. Final `npm run ci` passed:
+**193 test files, 1,786 tests passed, 4 skipped**.
+
+Manual primary review: **PASS** against `/home/ben/Documents/stars refs/full_manual.pdf`:
+§2.12 pp. 2-58–2-70, §5.4.1 pp. 5-66–5-67, §5.5.7 pp. 5-116–5-119,
+§5.6.15 p. 5-164, §5.6.17 pp. 5-167–5-173, and Appendix D Table D-1 p. D-2.
+The aircraft-squawk event trigger is documented as an ATC-SIM trainer policy;
+the manual does not mandate background correlation.
+
+Independent manual verifier: **BLOCKED**. No callable subagent/independent
+verifier capability was available in this session, despite repeated attempts.
+No CRC or substitute source was used. Phase handoff remains blocked until the
+required independent verification can run.
+
 ## FIFTY-FIFTH SWARM COMPLETE — T02-140–142 ATPA status/color closeout
 
 T02-140–142 are complete on `fix/datablocks`. ATPA Alert now includes
@@ -1440,3 +1517,73 @@ Recovery resumed from `feature/session-setup`. T04-24 inventory (`93a7c10`), fre
 **Manual leftover:** Human Chrome check: open Session setup; change scenario/arrival/departure rate/seed; Cancel preserves World and focus; confirm Apply/restart warning rebuilds World; verify unavailable departure capability copy. Do not invent pass.
 
 **Notes:** Picker options derive solely from playable inventory; normal arrival count/rate remains seeded STAR inbound/VIA; `?traffic=N` remains benchmark downwind; T04-21 owns departure rate. `atc-sim.session.v1` remains separate from trainer/DCB preferences. No scoring, replay, imperfect pilots, second position, DCB PREF, live traffic editing, second airport data, or radio-frequency IR. Initial T04-25 conflict was superseded by a fresh worker from the T04-24 feature base. Preserved untracked `.cursor/rules/caveman-ultra.mdc`, `e2e/`, and user-modified `speech-api/.env.example`.
+
+## FIFTY-SIXTH SWARM COMPLETE — flight-plan lifecycle (T02-143–T02-147)
+
+All approved tickets T02-143 through T02-147 were implemented on
+`feat/flight-plan-lifecycle`, with corrective passes applied after manual
+audits. Captain `npm run ci` passed after every merge; final result: **193
+files passed, 1777 passed, 4 skipped, 0 failures**. Each ticket received a
+post-merge audit against `/home/ben/Documents/stars refs/full_manual.pdf`.
+
+**Manual audit results:** T02-143 PASS (ACID/beacon domain and lifecycle),
+T02-144 PASS (creation grammar and pending plans), T02-145 PASS (activation,
+correlation, suspended/mismatch semantics), T02-146 PASS (modification,
+deletion, beacon release), T02-147 PASS (datablock/FL-TAB integration).
+
+**Scope boundary:** Radio clearances, readbacks, pilot execution, route/FMS
+conformance, and related speech/Command IR behavior remain in
+`phases/LATER-IMPLEMENTATION-BACKLOG.md`. No later phase was started.
+
+## FIFTY-EIGHTH SWARM COMPLETE — unified TERM CNTL/F4
+
+Shared F4 and typed TERM CNTL termination through one scope helper. Both paths
+delete the associated authoritative plan on first invocation, preserve the
+moving radar target as unassociated, clear tracked display state, and produce
+the manual-aligned `*` position symbol/LDB without callsign or aircraft type.
+Focused tests and `npm run ci` passed: **193 files, 1780 passed, 4 skipped, 0
+failures**. Manual review passed against Appendix D, §5.4.6, §2.12, and Table
+2-11 of `/home/ben/Documents/stars refs/full_manual.pdf`.
+
+## FIFTY-NINTH SWARM COMPLETE — F-prefix Preview routing
+
+Scope focus now treats the initial `F` as a tentative altitude-filter chord.
+Numeric continuation preserves the existing filter entry; a nonnumeric
+continuation cancels/restores the prior filter and reprocesses the chord plus
+continuation through Preview, allowing ACIDs such as `FFT123` to create
+pending plans. Added T02-148 focused coverage for F-prefixed creation and both
+filter limits.
+
+Focused tests passed: **34 passed**. Final `npm run ci` passed: **193 files,
+1782 passed, 4 skipped, 0 failures**. Manual primary review passed against
+TI 6191.409 Rev. 30 §4.11.2, pp. 4-78–4-79. No independent subagent was
+available in this session for the required second manual pass.
+
+## NINTH SWARM BLOCKED — live association and manual command alignment
+
+Approved tickets T02-154 through T02-157 were executed sequentially on
+`feat/flight-plan-lifecycle` using the captain fallback because worker spawning
+was unavailable. Each ticket was isolated, committed, inspected, squash-merged,
+and followed by target-branch CI:
+
+- T02-154 → `5718bfe`: live departure squawks route through the aircraft
+  correlation hook. CI: **193 files, 1787 passed, 4 skipped**.
+- T02-155 → `3edae4e`: canonical flight-plan association and beacon projections
+  are used without stale aircraft flight-plan aliases. CI: **193 files, 1788
+  passed, 4 skipped**.
+- T02-156 → `5c19e63`: F1 INIT CNTL, F3 reserved Track Suspend/no-op, F4 TERM
+  CNTL, and F7 MULTI FUNC. CI: **193 files, 1788 passed, 4 skipped**.
+- T02-157 → `22f3c04`: bottom-right Help button directly below Voice Text,
+  overlay wiring, aligned command documentation, and UI coverage. CI: **193
+  files, 1789 passed, 4 skipped**.
+
+Primary manual review passed against `/home/ben/Documents/stars refs/full
+manual.pdf`: Appendix D Table D-1 (printed p. D-2) confirms F1 INIT CNTL,
+F3 TRK SUSP, F4 TERM CNTL, and F7 MULTI FUNC; §2.9 (pp. 2-36–2-42) supports
+the keyboard/control initiation boundary. The visible Help button is a trainer
+delta and does not alter the radio or scope command pipelines.
+
+**Phase exit blocked:** no independent verifier subagent was available in this
+Codex session for the required second manual pass. Human browser positioning
+review of Help directly below Voice Text also remains a manual leftover;
+automated UI ordering/accessibility coverage is green. No later phase started.

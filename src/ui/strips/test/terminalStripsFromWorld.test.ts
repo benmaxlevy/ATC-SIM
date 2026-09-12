@@ -1,8 +1,131 @@
 import { describe, expect, test } from "vitest";
-import { createAircraft, createWorld, offerDepartureHandoff } from "@core";
+import { createAircraft, createFlightPlan, createWorld, offerDepartureHandoff } from "@core";
 import { terminalStripsFromWorld } from "../terminalStripsFromWorld";
 
 describe("terminalStripsFromWorld", () => {
+  test("projects associated plan values ahead of surveillance and intent fallbacks", () => {
+    const departure = createAircraft({
+      id: "dep-plan-aircraft",
+      callsign: "OLD123",
+      xNm: 0,
+      yNm: 0,
+      headingDeg: 90,
+      altitudeFt: 2000,
+      speedKt: 180,
+      aircraftType: "C172",
+      cwtWakeCategory: "B",
+      wakeCategory: "H",
+      assignedSquawk: "1111",
+      reportedSquawk: "2222",
+      squawk: "3333",
+      requestedAltitudeFt: 5000,
+    });
+    departure.intent.lateral = {
+      type: "PROCEDURE",
+      sidId: "SID1",
+      toFixIndex: 0,
+      routeFixIds: ["OLD"],
+    };
+    const arrival = createAircraft({
+      id: "arr-plan-aircraft",
+      callsign: "OLD456",
+      xNm: 10,
+      yNm: 10,
+      headingDeg: 270,
+      altitudeFt: 7000,
+      speedKt: 210,
+      aircraftType: "C172",
+      cwtWakeCategory: "C",
+      assignedSquawk: "4444",
+      reportedSquawk: "5555",
+      squawk: "6666",
+      requestedAltitudeFt: 4000,
+    });
+    const makePlan = (input: Parameters<typeof createFlightPlan>[0]) => {
+      const result = createFlightPlan(input);
+      if (!result.ok) throw new Error(result.error.message);
+      return result.value;
+    };
+    const plans = [
+      makePlan({
+        id: "fp-dep",
+        status: "active",
+        associatedAircraftId: departure.id,
+        acid: "DAL789",
+        cid: "789",
+        assignedBeacon: "7042",
+        reportedBeacon: "7043",
+        aircraftType: "B738",
+        aircraftCount: 1,
+        equipment: "G",
+        ptd: "1430E",
+        requestedAltitudeFt: 33000,
+        departureAirport: "KATL",
+        airportId: "KPHL",
+        route: "PLIER2 PHL",
+        remarks: "CAF",
+        fixes: [],
+        scratchpads: [],
+      }),
+      makePlan({
+        id: "fp-arr",
+        status: "active",
+        associatedAircraftId: arrival.id,
+        acid: "AAL321",
+        cid: "321",
+        assignedBeacon: "7060",
+        reportedBeacon: "7061",
+        aircraftType: "A321",
+        equipment: "L",
+        eta: "1515E",
+        assignedAltitudeFt: 6000,
+        previousFix: "BOS",
+        coordinationFix: "HONIE",
+        airportId: "KATL",
+        remarks: "ILS27",
+        fixes: [],
+        scratchpads: [],
+      }),
+    ];
+    if (!plans[0] || !plans[1]) throw new Error("plan fixture failed");
+
+    const world = createWorld({ aircraft: [departure, arrival], flightPlans: plans });
+    const strips = terminalStripsFromWorld(world);
+    const dep = strips.departures[0]!;
+    const arr = strips.arrivals[0]!;
+
+    expect(dep).toMatchObject({
+      acid: "DAL789",
+      rawType: "B738",
+      equipmentSuffix: "G",
+      cwtCategory: "B",
+      beaconCode: "7042",
+      reportedSquawk: "7043",
+      cid: "789",
+      proposedDepartureTime: "1430E",
+      requestedAltitude: "330",
+      departureAirport: "KATL",
+      destinationAirport: "KPHL",
+      route: "PLIER2 PHL",
+      remarks: "CAF",
+    });
+    expect(arr).toMatchObject({
+      acid: "AAL321",
+      rawType: "A321",
+      equipmentSuffix: "L",
+      cwtCategory: "C",
+      beaconCode: "7060",
+      reportedSquawk: "7061",
+      cid: "321",
+      previousFix: "BOS",
+      coordinationFix: "HONIE",
+      estimatedTimeOfArrival: "1515E",
+      altitude: "060",
+      destinationAirport: "KATL",
+      remarks: "ILS27",
+    });
+  });
+
   test("derives strips for aircraft in world.aircraft", () => {
     const arrAc = createAircraft({
       callsign: "AAL412",
@@ -31,6 +154,7 @@ describe("terminalStripsFromWorld", () => {
     expect(arr.rawType).toBe("A321");
     expect(arr.beaconCode).toBe("0120");
     expect(arr.flightRules).toBe("IFR");
+    expect(arr.altitude).toBe("060");
     expect(arr.destinationAirport).toBe("ATL");
     expect(arr.cid).toBe("412");
   });
@@ -158,7 +282,8 @@ describe("terminalStripsFromWorld", () => {
     expect(arrivals[0]?.acid).toBe("AAL222");
     expect(arrivals[0]?.previousFix).toBe("HONIE");
     expect(arrivals[0]?.coordinationFix).toBe("CHUNK");
-    expect(arrivals[0]?.remarks).toBe("CHUNK2");
+    expect(arrivals[0]?.remarks).toBe("");
+    expect(arrivals[0]?.box9C).toBe("CHUNK2");
   });
 
   test("stably sorts departures and arrivals by callsign", () => {

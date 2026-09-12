@@ -1,3 +1,5 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test, vi } from "vitest";
 import {
   DEFAULT_BACKEND_HELP,
@@ -13,6 +15,7 @@ import {
   loadSpeechPrefs,
   saveSpeechPrefs,
   defaultSpeechPrefs,
+  SpeechSettingsPanel,
 } from "../settings-speech";
 
 function memoryStorage(): Storage {
@@ -121,6 +124,26 @@ test("PTT options include backtick + Caps Lock and omit F/R/range keys", () => {
   expect(values).not.toContain("R");
   expect(values).not.toContain("KeyF");
   expect(values).not.toContain("KeyR");
+});
+
+test("bottom-right controls render Help directly below Voice Text", () => {
+  const controller = createSpeechSettingsController({
+    prefs: defaultSpeechPrefs(),
+    storage: memoryStorage(),
+    host: { setPttKey: vi.fn() },
+  });
+  const html = renderToStaticMarkup(
+    createElement(SpeechSettingsPanel, {
+      controller,
+      speechId: "null",
+      onHelpToggle: vi.fn(),
+    }),
+  );
+
+  expect(html).toContain('class="speech-settings-actions"');
+  expect(html).toMatch(/Strips[\s\S]*Voice Text[\s\S]*data-testid="scope-help-button"[\s\S]*>Help/);
+  expect(html).toContain('aria-label="Voice Text"');
+  expect(html).toContain('aria-label="Help"');
 });
 
 test("voice copy points at speech-api; no vendor signup", () => {

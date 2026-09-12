@@ -88,6 +88,37 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
       expect(html).toContain("KPHL");
       expect(html).toContain("RNAV / CPDLC");
     });
+
+    test("keeps departure Boxes 9A, 9B, and 9C available in the Box 9 area", () => {
+      const html = renderToStaticMarkup(createElement(DepartureStrip, { strip: mockDAL882 }));
+
+      expect(html).toContain('class="strip-col col-route col-route-departure"');
+      expect(html).toContain('data-box="9A"');
+      expect(html).toContain('data-box="9B"');
+      expect(html).toContain('data-box="9C"');
+
+      const box9 = html.match(/data-box="9"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      const box9a = html.match(/data-box="9A"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      const box9b = html.match(/data-box="9B"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      const box9c = html.match(/data-box="9C"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      expect(box9).toContain("KPHL");
+      expect(box9a).toBe("");
+      expect(box9b).toBe("");
+      expect(box9c).toBe("");
+    });
+
+    test("keeps a standalone departure procedure in required Box 9", () => {
+      const procedureStrip: DepartureStripData = {
+        ...mockDAL882,
+        route: "CHPPR1",
+        destinationAirport: "KATL",
+      };
+      const html = renderToStaticMarkup(createElement(DepartureStrip, { strip: procedureStrip }));
+
+      const box9 = html.match(/data-box="9"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      expect(box9).toContain("CHPPR1");
+      expect(box9).toContain("KATL");
+    });
   });
 
   // --------------------------------------------------------------------------
@@ -129,23 +160,34 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
       expect(html).toContain("A1440"); // ETA
     });
 
-    test("renders Column 4 split into Box 9 (Flight Rules 'IFR'/'VFR') and Box 9A (Destination & remarks)", () => {
-      const ifrHtml = renderToStaticMarkup(createElement(ArrivalStrip, { strip: mockAAL412 }));
+    test("renders arrival Boxes 9/9A/9B/9C with altitude, destination, and remarks", () => {
+      const arrivalWithTerminalData: ArrivalStripData = {
+        ...mockAAL412,
+        altitude: "240",
+        altitudeRemarks: "DESCEND",
+        minimumFuel: "30",
+      };
+      const html = renderToStaticMarkup(
+        createElement(ArrivalStrip, { strip: arrivalWithTerminalData }),
+      );
 
-      expect(ifrHtml).toContain('data-box="9"');
-      expect(ifrHtml).toContain('data-box="9A"');
-      expect(ifrHtml).toContain("col-route-arrival");
-
-      // IFR renders 'IFR'
-      expect(ifrHtml).toContain("IFR");
-      expect(ifrHtml).toContain("KATL");
-      expect(ifrHtml).toContain("RNAV STAR");
-
-      // VFR renders 'VFR'
-      const vfrHtml = renderToStaticMarkup(createElement(ArrivalStrip, { strip: mockN415SP }));
-      expect(vfrHtml).toContain("VFR");
-      expect(vfrHtml).toContain("KPDK");
-      expect(vfrHtml).toContain("TOUCH AND GO");
+      expect(html).toContain('class="strip-col col-route col-route-arrival"');
+      expect(html).toContain('data-box="9"');
+      expect(html).toContain('data-box="9A"');
+      expect(html).toContain('data-box="9B"');
+      expect(html).toContain('data-box="9C"');
+      const box9 = html.match(/data-box="9"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      const box9a = html.match(/data-box="9A"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      const box9b = html.match(/data-box="9B"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      const box9c = html.match(/data-box="9C"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      expect(box9).toContain("240");
+      expect(box9).toContain("DESCEND");
+      expect(box9a).toContain("KATL");
+      expect(box9a).toContain("30");
+      expect(box9b).toBe("");
+      expect(box9c).toContain("RNAV STAR");
+      expect(html).not.toContain(">IFR<");
+      expect(html).not.toContain(">VFR<");
     });
   });
 
@@ -242,6 +284,19 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
       expect(cssContent).toMatch(/text-transform:\s*uppercase/i);
     });
 
+    test("strips.css keeps Column 3 continuous and positions Column 1 fields", () => {
+      expect(cssContent).toMatch(
+        /\.col-local \.cell,\s*\.col-local \.cell:last-child\s*\{[^}]*border-bottom:\s*none/is,
+      );
+      expect(cssContent).toMatch(
+        /\.col-ident \.acid\s*\{[^}]*left:\s*5px[^}]*top:\s*2px[^}]*font-size:\s*0\.62rem/is,
+      );
+      expect(cssContent).toMatch(/\.cid-row\s*\{[^}]*left:\s*5px[^}]*bottom:\s*2px/is);
+      expect(cssContent).toMatch(
+        /\.col-fix-data \.cell,\s*\.col-local \.cell\s*\{[^}]*justify-content:\s*center/is,
+      );
+    });
+
     test("strips.css defines dimensions height 80px and max-width 840px", () => {
       expect(cssContent).toMatch(/height:\s*80px/);
       expect(cssContent).toMatch(/max-width:\s*840px/);
@@ -249,7 +304,7 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
 
     test("strips.css defines 5-column subgrid layout matching 1.4fr 0.7fr 0.9fr 2.2fr 1.1fr", () => {
       expect(cssContent).toMatch(
-        /grid-template-columns:\s*1\.4fr\s+0\.7fr\s+0\.9fr\s+2\.2fr\s+1\.1fr/,
+        /grid-template-columns:\s*minmax\(0, 1\.4fr\)[\s\S]*minmax\(0, 1\.1fr\)/,
       );
     });
   });

@@ -33,8 +33,47 @@ import type { VipLevel } from "./wx";
  * Do not put F3-specific field names on ScopeView.
  */
 export type PreviewArmedAction =
+  | {
+      readonly type: "createFlightPlan";
+      pendingDiscrete: boolean;
+      acid: string;
+      assignedBeacon?: string;
+      beaconAllocation?: "ifr" | "vfr" | "general1" | "general2" | "general3" | "general4";
+      tcp?: string;
+      flightType?: "A" | "P" | "E";
+      airportId?: string;
+      scratchpads: string[];
+      aircraftType?: string;
+      aircraftCount?: number;
+      equipment?: string;
+      requestedAltitudeFt?: number;
+      flightRules?: string;
+    }
   | { readonly type: "initCntl"; readonly flid?: string }
-  | { readonly type: "termCntl"; readonly flid?: string }
+  | {
+      readonly type: "termCntl";
+      readonly flid?: string;
+      readonly flightType?: "A" | "P" | "E";
+      readonly coordinationTime?: string;
+    }
+  | { readonly type: "releaseAssignedBeacon"; readonly flid: string }
+  | {
+      readonly type: "modifyFlightPlan";
+      readonly flid: string;
+      readonly field:
+        | "acid"
+        | "assignedBeacon"
+        | "tcp"
+        | "fixes"
+        | "flightType"
+        | "scratchpads"
+        | "requestedAltitudeFt"
+        | "assignedAltitudeFt"
+        | "eta"
+        | "ptd";
+      readonly value: string;
+      readonly scratchpadSlot?: 1 | 2;
+    }
   | { readonly type: "beaconBlock"; readonly digits: string }
   | { readonly type: "beaconDiscrete"; readonly digits: string }
   | { readonly type: "toggleList"; readonly listId: string }
@@ -58,6 +97,9 @@ export type PreviewArmedAction =
       readonly type: "setAltitudeFilterLimits";
       readonly floorHundreds: number;
       readonly ceilingHundreds: number;
+      readonly associatedOnly?: boolean;
+      readonly associatedFloorHundreds?: number;
+      readonly associatedCeilingHundreds?: number;
     }
   | { readonly type: "addBeaconCodeFilter"; readonly code: string }
   | { readonly type: "removeBeaconCodeFilter"; readonly code: string }
@@ -143,7 +185,131 @@ const PREVIEW_TABLE: Readonly<Record<string, PreviewTableEntry>> = {
 /** Full callsign / numeric-tail / 4-digit squawk — duplicated, not `@pilot`. */
 export const FULL_CALLSIGN = /^[A-Z]{3}[0-9]{1,4}[A-Z]?$/;
 export const SUFFIX_CALLSIGN = /^[0-9]{1,4}[A-Z]?$/;
-export const SQUAWK_CODE = /^[0-9]{4}$/;
+export const SQUAWK_CODE = /^[0-7]{4}$/;
+const CREATION_ACID = /^[A-Z][A-Z0-9]{1,6}$/;
+const SCRATCHPAD = /^[A][A-Z0-9+/. *]{0,4}$/;
+const SCRATCHPAD_2 = /^\+[A-Z0-9+/. *]{0,4}$/;
+const AIRCRAFT = /^(?:(\d{1,2})\/)?([A-Z][A-Z0-9]{1,3})(?:\/([A-Z]))?$/;
+const FLIGHT_RULES = /^[A-Z]$/;
+
+export type FlightPlanCreationParse =
+  | { kind: "incomplete" }
+  | { kind: "invalid"; reason: string }
+  | { kind: "action"; action: Extract<PreviewArmedAction, { type: "createFlightPlan" }> };
+
+/** Keyboard-only abbreviated creation grammar from TI 6191.409 §§5.5.1/5.5.7. */
+export function parseFlightPlanCreation(
+  buffer: string,
+  pendingDiscrete = false,
+): FlightPlanCreationParse {
+  const tokens = buffer.trim().toUpperCase().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return { kind: "incomplete" };
+  const acid = tokens[0]!;
+  if (acid === "ALL" || !CREATION_ACID.test(acid)) return { kind: "invalid", reason: "ILL ACID" };
+  if (tokens.length === 1 && pendingDiscrete) return { kind: "incomplete" };
+  const fields: Extract<PreviewArmedAction, { type: "createFlightPlan" }> = {
+    type: "createFlightPlan",
+    pendingDiscrete,
+    acid,
+    scratchpads: [],
+  };
+  const used = new Set<string>();
+  for (const token of tokens.slice(1)) {
+    if (/^\d{4}$/.test(token)) {
+      if (!/^[0-7]{4}$/.test(token)) return { kind: "invalid", reason: "FORMAT" };
+      if (used.has("beacon")) return { kind: "invalid", reason: "FORMAT" };
+      fields.assignedBeacon = token;
+      used.add("beacon");
+      continue;
+    }
+    if (token === "+" || token === "/" || /^\/[1-4]$/.test(token)) {
+      if (used.has("beacon")) return { kind: "invalid", reason: "FORMAT" };
+      fields.beaconAllocation =
+        token === "+"
+          ? "ifr"
+          : token === "/"
+            ? "vfr"
+            : (`general${token.slice(1)}` as "general1" | "general2" | "general3" | "general4");
+      used.add("beacon");
+      continue;
+    }
+    if (/^[A-Z0-9][A-Z0-9]$/.test(token) && !/^[APE]/.test(token)) {
+      if (pendingDiscrete) return { kind: "invalid", reason: "FORMAT" };
+      if (used.has("tcp")) return { kind: "invalid", reason: "FORMAT" };
+      fields.tcp = token;
+      used.add("tcp");
+      continue;
+    }
+    if (token === "A" && used.has("type") && !used.has("beacon")) {
+      fields.beaconAllocation = undefined;
+      used.add("beacon");
+      continue;
+    }
+    // E1 is not the manual's two-character flight-type form. Reserve this
+    // otherwise ambiguous token instead of letting it become an aircraft type.
+    if (/^E[A-Z0-9]$/.test(token)) return { kind: "invalid", reason: "FORMAT" };
+    if (/^[APE]$/.test(token) || /^[AP][A-Z0-9]$/.test(token)) {
+      if (pendingDiscrete) return { kind: "invalid", reason: "FORMAT" };
+      if (used.has("type")) return { kind: "invalid", reason: "FORMAT" };
+      fields.flightType = token[0] as "A" | "P" | "E";
+      fields.airportId = token.length === 2 ? token[1] : undefined;
+      used.add("type");
+      continue;
+    }
+    if (SCRATCHPAD.test(token)) {
+      if (used.has("sp1")) return { kind: "invalid", reason: "ILL SCR" };
+      const value = token.slice(1);
+      if (/^(NAT|CST|AMB|RDR|ADB|XXX|\d{3})/.test(value))
+        return { kind: "invalid", reason: "ILL SCR" };
+      fields.scratchpads = [value, ...fields.scratchpads.slice(1)];
+      used.add("sp1");
+      continue;
+    }
+    if (SCRATCHPAD_2.test(token)) {
+      if (used.has("sp2")) return { kind: "invalid", reason: "ILL SCR" };
+      const value = token.slice(1);
+      if (/^(NAT|CST|AMB|RDR|ADB|XXX|\d{3})/.test(value))
+        return { kind: "invalid", reason: "ILL SCR" };
+      fields.scratchpads = [fields.scratchpads[0] ?? "", value];
+      used.add("sp2");
+      continue;
+    }
+    if (/^\d{3}$/.test(token)) {
+      if (pendingDiscrete) return { kind: "invalid", reason: "FORMAT" };
+      if (used.has("alt")) return { kind: "invalid", reason: "FORMAT" };
+      fields.requestedAltitudeFt = Number(token) * 100;
+      used.add("alt");
+      continue;
+    }
+    if (/^\.[A-Z]$/.test(token)) {
+      if (pendingDiscrete) return { kind: "invalid", reason: "FORMAT" };
+      if (used.has("rules")) return { kind: "invalid", reason: "ILL VALUE" };
+      if (!FLIGHT_RULES.test(token[1]!) || /[BFHLRJMX]/.test(token[1]!))
+        return { kind: "invalid", reason: "ILL VALUE" };
+      fields.flightRules = token[1];
+      used.add("rules");
+      continue;
+    }
+    const aircraft = AIRCRAFT.exec(token);
+    if (aircraft) {
+      if (used.has("aircraft")) return { kind: "invalid", reason: "FORMAT" };
+      fields.aircraftCount = aircraft[1] ? Number(aircraft[1]) : undefined;
+      if (
+        fields.aircraftCount !== undefined &&
+        (fields.aircraftCount < 2 || fields.aircraftCount > 99)
+      )
+        return { kind: "invalid", reason: "ILL NUM" };
+      fields.aircraftType = aircraft[2];
+      fields.equipment = aircraft[3];
+      used.add("aircraft");
+      continue;
+    }
+    return { kind: "invalid", reason: "FORMAT" };
+  }
+  if (pendingDiscrete && !fields.assignedBeacon && !fields.beaconAllocation)
+    return { kind: "invalid", reason: "FORMAT" };
+  return { kind: "action", action: fields };
+}
 
 function invalid(reason: string): PreviewCommandResult {
   return { kind: "invalid", reason };
@@ -329,9 +495,7 @@ function parseBeaconFilterCode(
 }
 
 /**
- * Table 29 altitude filters. Exact `*F` displays current bounds; `*LA` sets
- * 3-digit hundreds 0–180. Spaces optional (`*F` = `* F`). `*FILTER` is not
- * ours. Null when this is not our family so other `*` rows stay intact.
+ * TI 6191.409 §4.11.1–4.11.2: `*F` displays or modifies both filter bands.
  */
 export function parseAltitudeFilterCommand(buffer: string): PreviewCommandResult | null {
   if (!buffer.startsWith("*")) {
@@ -341,6 +505,61 @@ export function parseAltitudeFilterCommand(buffer: string): PreviewCommandResult
 
   if (compact === "*F") {
     return { kind: "action", action: { type: "displayFilters" } };
+  }
+
+  if (compact.startsWith("*FC")) {
+    const rest = compact.slice(3);
+    if (!/^\d*$/.test(rest)) return invalid("invalid altitude filter limits");
+    if (rest.length < 6) return { kind: "incomplete" };
+    if (rest.length !== 6) return invalid("invalid altitude filter limits");
+    const first = parseStrictFilterHundreds(rest.slice(0, 3));
+    const second = parseStrictFilterHundreds(rest.slice(3, 6));
+    if (first === null || second === null) return invalid("altitude filter out of range");
+    return {
+      kind: "action",
+      action: {
+        type: "setAltitudeFilterLimits",
+        floorHundreds: Math.min(first, second),
+        ceilingHundreds: Math.max(first, second),
+        associatedOnly: true,
+      },
+    };
+  }
+
+  if (compact.startsWith("*F")) {
+    const rest = compact.slice(2);
+    if (!/^\d*$/.test(rest)) {
+      return invalid("invalid altitude filter limits");
+    }
+    if (!/^\d{6}(?:\d{6})?$/.test(rest)) {
+      return rest.length < 6 ? { kind: "incomplete" } : invalid("invalid altitude filter limits");
+    }
+    const floorHundreds = parseStrictFilterHundreds(rest.slice(0, 3));
+    const ceilingHundreds = parseStrictFilterHundreds(rest.slice(3, 6));
+    if (floorHundreds === null || ceilingHundreds === null) {
+      return invalid("altitude filter out of range");
+    }
+    const action = {
+      type: "setAltitudeFilterLimits" as const,
+      floorHundreds: Math.min(floorHundreds, ceilingHundreds),
+      ceilingHundreds: Math.max(floorHundreds, ceilingHundreds),
+    };
+    if (rest.length === 12) {
+      const associatedFloorHundreds = parseStrictFilterHundreds(rest.slice(6, 9));
+      const associatedCeilingHundreds = parseStrictFilterHundreds(rest.slice(9, 12));
+      if (associatedFloorHundreds === null || associatedCeilingHundreds === null) {
+        return invalid("altitude filter out of range");
+      }
+      return {
+        kind: "action",
+        action: {
+          ...action,
+          associatedFloorHundreds: Math.min(associatedFloorHundreds, associatedCeilingHundreds),
+          associatedCeilingHundreds: Math.max(associatedFloorHundreds, associatedCeilingHundreds),
+        },
+      };
+    }
+    return { kind: "action", action };
   }
 
   if (compact === "*L") {
@@ -368,12 +587,13 @@ export function parseAltitudeFilterCommand(buffer: string): PreviewCommandResult
   if (floorHundreds === null || ceilingHundreds === null) {
     return invalid("altitude filter out of range");
   }
-  if (floorHundreds > ceilingHundreds) {
-    return invalid("altitude filter floor above ceiling");
-  }
   return {
     kind: "action",
-    action: { type: "setAltitudeFilterLimits", floorHundreds, ceilingHundreds },
+    action: {
+      type: "setAltitudeFilterLimits",
+      floorHundreds: Math.min(floorHundreds, ceilingHundreds),
+      ceilingHundreds: Math.max(floorHundreds, ceilingHundreds),
+    },
   };
 }
 
@@ -688,7 +908,29 @@ function isFlidPrefixToken(token: string): boolean {
 }
 
 function isCompleteFlidToken(token: string): boolean {
-  return FULL_CALLSIGN.test(token) || SUFFIX_CALLSIGN.test(token) || SQUAWK_CODE.test(token);
+  if (/^\d{4}$/.test(token)) return SQUAWK_CODE.test(token);
+  return (
+    FULL_CALLSIGN.test(token) ||
+    SUFFIX_CALLSIGN.test(token) ||
+    SQUAWK_CODE.test(token) ||
+    /^\d{1,2}$/.test(token)
+  );
+}
+
+function parseTermIdentity(rest: string): PreviewCommandResult {
+  const match = /^(\S+?)(?:\/([APE]))?(?: ((?:[01]\d|2[0-3])[0-5]\d))?$/.exec(rest);
+  if (!match || (match[3] !== undefined && /^\d{1,2}$/.test(match[1]!))) return invalid("FORMAT");
+  const flid = match[1]!;
+  if (!isCompleteFlidToken(flid) || flid === "ALL") return invalid("FORMAT");
+  return {
+    kind: "action",
+    action: {
+      type: "termCntl",
+      flid,
+      ...(match[2] ? { flightType: match[2] as "A" | "P" | "E" } : {}),
+      ...(match[3] ? { coordinationTime: match[3] } : {}),
+    },
+  };
 }
 
 function parseTrackFlidRest(kind: "initCntl" | "termCntl", rest: string): PreviewCommandResult {
@@ -697,6 +939,9 @@ function parseTrackFlidRest(kind: "initCntl" | "termCntl", rest: string): Previe
   }
   if (kind === "termCntl" && rest === "ALL") {
     return invalid("TERM CNTL ALL");
+  }
+  if (kind === "termCntl" && (rest.includes("/") || rest.includes(" "))) {
+    return parseTermIdentity(rest);
   }
   if (isCompleteFlidToken(rest)) {
     return { kind: "action", action: { type: kind, flid: rest } };
@@ -710,30 +955,22 @@ function parseTrackFlidRest(kind: "initCntl" | "termCntl", rest: string): Previe
 /**
  * T02-66 tracking / datablock chords + Table 24/25 leader line direction and length.
  * `* P1` is a tower list (parseListCommand). Bare `*` and `*B` stay incomplete.
- * `*F` / `*LA` / `*BCN` — `*F` forces Full Data Block on slewed track or target acid.
+ * `*LA` / `*BCN` tracking and display commands. `*F` is handled by the
+ * altitude-filter parser above and is never a forced-FDB command.
  */
 export function parseTrackingCommand(buffer: string): PreviewCommandResult | null {
   const compact = compactTrackingBuffer(buffer);
+  const spaced = buffer.trim().toUpperCase().replace(/\s+/g, " ");
   if (compact === "**F") {
     return { kind: "action", action: { type: "clearAllForcedFdb" } };
-  }
-  if (compact.startsWith("*F")) {
-    const rest = compact.slice(2);
-    if (rest.length === 0) {
-      return { kind: "action", action: { type: "forceFdb" } };
-    }
-    if (isCompleteFlidToken(rest)) {
-      return { kind: "action", action: { type: "forceFdb", flid: rest } };
-    }
-    if (isFlidPrefixToken(rest)) {
-      return { kind: "incomplete" };
-    }
-    return invalid("unknown FLID");
   }
   if (compact.startsWith("+")) {
     return parseTrackFlidRest("initCntl", compact.slice(1));
   }
   if (compact.startsWith("/")) {
+    if (/^\/\S+(?:\/[APE])? \d{4}$/.test(spaced)) {
+      return parseTrackFlidRest("termCntl", spaced.slice(1));
+    }
     const lenMatch = /^\/([0-7])(.*)$/.exec(compact);
     if (lenMatch) {
       const step = Number(lenMatch[1]);
@@ -951,6 +1188,102 @@ function parseDeleteCommand(buffer: string): PreviewCommandResult | null {
 }
 
 /**
+ * Analog: CRC MULTI FUNC M flight-plan field edit (TI 6191.409 §5.6.17).
+ * Trainer delta: identity + field + value are committed in one typed preview
+ * row; no radio clearance, Command IR, or pilot intent is emitted.
+ */
+function parseFlightPlanModification(buffer: string): PreviewCommandResult | null {
+  const tokens = buffer.trim().toUpperCase().split(/\s+/).filter(Boolean);
+  if (tokens[0] === "*B") {
+    if (tokens.length < 2) return { kind: "incomplete" };
+    if (tokens.length !== 2) return invalid("FORMAT");
+    return { kind: "action", action: { type: "releaseAssignedBeacon", flid: tokens[1]! } };
+  }
+  if (tokens[0] !== "*M") return null;
+  // STARS §5.6.17 enters the field data directly after the identity.
+  // Keep the labelled form below as a compatibility path.
+  if (tokens.length === 3) {
+    const identity = tokens[1]!;
+    const value = tokens[2]!;
+    if (/^(?:[0-7]{4}|\+|\/|\/[1-4]|A)$/.test(value)) {
+      return {
+        kind: "action",
+        action: { type: "modifyFlightPlan", flid: identity, field: "assignedBeacon", value },
+      };
+    }
+    if (/^Δ[A-Z0-9+/. *]{0,4}$/.test(value) || /^\+[A-Z0-9+/. *]{1,4}$/.test(value)) {
+      return {
+        kind: "action",
+        action: {
+          type: "modifyFlightPlan",
+          flid: identity,
+          field: "scratchpads",
+          value,
+          scratchpadSlot: value.startsWith("Δ") ? 1 : 2,
+        },
+      };
+    }
+    return invalid("FORMAT");
+  }
+  if (tokens.length < 4) return { kind: "incomplete" };
+  const fields = new Set(["ACID", "TCP", "FIXES", "TYPE", "SP", "RALT", "AALT", "ETA", "PTD"]);
+  if (!fields.has(tokens[2]!)) return invalid("FORMAT");
+  const aliases: Record<
+    string,
+    | "acid"
+    | "assignedBeacon"
+    | "tcp"
+    | "fixes"
+    | "flightType"
+    | "scratchpads"
+    | "requestedAltitudeFt"
+    | "assignedAltitudeFt"
+    | "eta"
+    | "ptd"
+  > = {
+    ACID: "acid",
+    TCP: "tcp",
+    FIXES: "fixes",
+    TYPE: "flightType",
+    SP: "scratchpads",
+    RALT: "requestedAltitudeFt",
+    AALT: "assignedAltitudeFt",
+    ETA: "eta",
+    PTD: "ptd",
+  };
+  const value = tokens.slice(3).join(" ");
+  if (tokens[2] === "ETA" || tokens[2] === "PTD") {
+    if (!/^(?:[01]\d|2[0-3])[0-5]\dE$/.test(value)) return invalid("FORMAT");
+  } else if (tokens[2] === "AALT") {
+    if (!/^A\d{3}$/.test(value)) return invalid("FORMAT");
+  } else if (tokens[2] === "RALT") {
+    if (!/^\d{3}$/.test(value)) return invalid("FORMAT");
+  } else if (tokens[2] === "BCN") {
+    if (!/^(?:[0-7]{4}|\+|\/|\/[1-4]|A)$/.test(value)) return invalid("FORMAT");
+  } else if (tokens[2] === "SP") {
+    const scratchpad = value.slice(1);
+    if (
+      !/^[Δ+][A-Z0-9+/. *]{0,4}$/.test(value) ||
+      /^(?:NAT|CST|AMB|RDR|ADB|XXX|\d{3})/.test(scratchpad)
+    )
+      return invalid("ILL SCR");
+  } else if (tokens[2] === "FIXES") {
+    if (!/^(?:[A-Z0-9]{1,4})?\*(?:[A-Z0-9]{1,4})?(?:\*[APE])?$/.test(value))
+      return invalid("FORMAT");
+  }
+  return {
+    kind: "action",
+    action: {
+      type: "modifyFlightPlan",
+      flid: tokens[1]!,
+      field: aliases[tokens[2]!]!,
+      value,
+      ...(tokens[2] === "SP" ? { scratchpadSlot: value.startsWith("Δ") ? 1 : 2 } : {}),
+    },
+  };
+}
+
+/**
  * Authentic Raytheon STARS Conflict Alert preview grammar (TI 6191.409 Sections 7.3, 7.9–7.12).
  * - `CA K <trk>`: Single-track inhibit toggle.
  * - `CA P <trk1> [<trk2>]`: Pair inhibit/enable toggle. If trk2 omitted, waits for slew click on track 2.
@@ -1043,6 +1376,8 @@ export function parsePreviewCommand(
   if (del) {
     return del;
   }
+  const modification = parseFlightPlanModification(buffer);
+  if (modification) return modification;
   const ca = parseCaCommand(buffer);
   if (ca) {
     return ca;
@@ -1121,6 +1456,9 @@ export function previewBufferCharFromKey(key: string, code?: string): string | n
   }
   if (key === "_") {
     return "_";
+  }
+  if (key === "`" || key === "Backquote") {
+    return "Δ";
   }
   const digit = digitFromKey(key, code);
   if (digit !== null) {

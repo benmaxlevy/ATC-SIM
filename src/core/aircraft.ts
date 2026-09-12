@@ -153,7 +153,6 @@ export interface Aircraft {
     route?: string;
     [key: string]: unknown;
   };
-  /** Optional compact flight plan alias. */
   fp?: {
     destination?: string;
     rules?: string;

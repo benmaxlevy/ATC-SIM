@@ -261,9 +261,19 @@ export interface SpeechSettingsPanelProps {
   controller: SpeechSettingsController;
   speechId: string;
   onChange?: () => void;
+  onHelpToggle?: () => void;
+  stripsOpen?: boolean;
+  onStripsToggle?: () => void;
 }
 
-export function SpeechSettingsPanel({ controller, speechId, onChange }: SpeechSettingsPanelProps) {
+export function SpeechSettingsPanel({
+  controller,
+  speechId,
+  onChange,
+  onHelpToggle,
+  stripsOpen = false,
+  onStripsToggle,
+}: SpeechSettingsPanelProps) {
   const [open, setOpen] = useState(false);
   const [, setTick] = useState(0);
 
@@ -278,22 +288,52 @@ export function SpeechSettingsPanel({ controller, speechId, onChange }: SpeechSe
 
   return (
     <div className="speech-settings">
-      <button
-        type="button"
-        className="speech-settings-toggle"
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={() => {
-          const opening = !open;
-          setOpen(opening);
-          if (opening) {
-            void controller.refreshParseHealth().then(() => refresh());
+      <div className="speech-settings-actions">
+        <button
+          type="button"
+          className="strips-toggle-button"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onStripsToggle}
+          aria-label="Strips"
+          aria-expanded={stripsOpen}
+          data-testid="strips-toggle-btn"
+          title={
+            stripsOpen
+              ? "Collapse flight progress strips drawer"
+              : "Expand flight progress strips drawer"
           }
-        }}
-        aria-expanded={open}
-        aria-controls="speech-settings-panel"
-      >
-        Voice
-      </button>
+        >
+          Strips
+        </button>
+        <button
+          type="button"
+          className="speech-settings-toggle"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => {
+            const opening = !open;
+            setOpen(opening);
+            if (opening) {
+              void controller.refreshParseHealth().then(() => refresh());
+            }
+          }}
+          aria-label="Voice Text"
+          aria-expanded={open}
+          aria-controls="speech-settings-panel"
+        >
+          Voice Text
+        </button>
+        <button
+          type="button"
+          className="scope-help-button"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onHelpToggle}
+          aria-label="Help"
+          aria-controls="scope-help-overlay"
+          data-testid="scope-help-button"
+        >
+          Help
+        </button>
+      </div>
       {open ? (
         <form
           id="speech-settings-panel"

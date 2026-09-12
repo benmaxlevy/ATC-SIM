@@ -302,7 +302,12 @@ test("T02-12 AC1/AC5 — spawnArrivals(world, 30) spreads unique tracks on a dow
     expect(ac.headingDeg).toBe(90);
     expect(ac.altitudeFt % 100).toBe(0);
     expect(ac.intent.assignedHeadingDeg).toBe(ac.headingDeg);
+    expect(ac.squawk).toMatch(/^[0-7]{4}$/);
+    expect(ac.reportedSquawk).toBe(ac.squawk);
+    expect(ac.assignedSquawk).toBe(ac.squawk);
+    expect(ac.squawk).not.toMatch(/^(7500|7600|7700)$/);
   }
+  expect(new Set(world.aircraft.map((ac) => ac.squawk)).size).toBe(30);
 });
 
 test("T02-12 AC5 — createWorldForSession keeps 6 from JSON unless ?traffic= is set", () => {

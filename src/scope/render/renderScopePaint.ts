@@ -5,6 +5,7 @@ import {
   caPairKey,
   caSeverityForCallsign,
   DEFAULT_TOWER_SECTOR_ID,
+  flightPlanForAircraft,
   handoffFor,
   msawSeverityForCallsign,
   type Aircraft,
@@ -15,6 +16,7 @@ import { nmToScreen, type ScopeViewSize } from "../camera";
 import {
   DATABLOCK_FIELD_GAP,
   datablockMetrics,
+  datablockSourceFromWorld,
   fullDatablockLine3Parts,
   getSpecialPurposeCode,
   handoffDatablockDisplay,
@@ -173,7 +175,10 @@ export function collectDatablockProtectedGeometry(
           out.push({ kind: "circle", aircraftId: ac.id, center: q, radius: 2 });
         }
     const shown = displayAircraft(ac, td)!;
-    const filtered = !inAltitudeFilter(shown.altitudeFt, view.altitudeFilter);
+    const filtered = !inAltitudeFilter(
+      shown.altitudeFt,
+      td?.unassociated ? view.altitudeFilter : view.associatedAltitudeFilter,
+    );
     if (
       shouldDrawPtlForTrack(
         shown.speedKt,
@@ -667,6 +672,12 @@ export function getDatablockVisualState(
     view: ScopeView,
     td?: TrackDisplay,
   ): "full" | "partial" | "limited" {
+    // TERM CNTL leaves the radar target alive but removes its plan. Never
+    // allow selection, forced-FDB state, or an FSL mode to restore the plan
+    // callsign on an unassociated target.
+    if (td?.unassociated) {
+      return "limited";
+    }
     if (td?.forcedFdb) {
       return "full";
     }
@@ -737,7 +748,10 @@ function isEmergencyDatablockException(world: World, ac: Aircraft): boolean {
 function shouldPaintDatablock(view: ScopeView, world: World, ac: Aircraft, td?: TrackDisplay) {
   const handoff = handoffFor(world, ac.id);
   return shouldShowDatablockOutsideAltitudeFilter({
-    inFilter: inAltitudeFilter(ac.altitudeFt, view.altitudeFilter),
+    inFilter: inAltitudeFilter(
+      ac.altitudeFt,
+      td?.unassociated ? view.altitudeFilter : view.associatedAltitudeFilter,
+    ),
     ownership: td?.ownership,
     retainedFdb: td?.retainedFdbOutsideAltitudeFilter,
     emergency: isEmergencyDatablockException(world, ac),
@@ -903,12 +917,15 @@ export function drawDatablock(
     return;
   }
   ctx.font = datablockFontCss(view.charSizes.dataBlocks);
-  const derived = deriveScratchpads(ac, td);
+  const derived = deriveScratchpads(ac, td, flightPlanForAircraft(world, ac.id)?.scratchpads);
   const mode = visual.mode;
   const isQueried = td ? isTrackQueried(td, world.simTimeMs) : false;
   const squawk = td?.squawk ?? ac.squawk;
   const beaconCodeReadout = isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs);
-  const callsign = beaconCodeReadout && squawk ? squawk : ac.callsign;
+  const callsign =
+    beaconCodeReadout && squawk
+      ? squawk
+      : (flightPlanForAircraft(world, ac.id)?.acid ?? ac.callsign);
 
   const handoff = handoffFor(world, ac.id);
   const handoffDisplay = handoffDatablockDisplay(handoff, view.sectorId, world.simTimeMs);
@@ -921,7 +938,7 @@ export function drawDatablock(
       : null;
 
   const datablockSource = {
-    ...ac,
+    ...datablockSourceFromWorld(world, ac, td),
     callsign,
     squawk,
     atpaDistance: atpaReadout?.text,
@@ -1167,12 +1184,15 @@ export function drawTracks(
     const visual = getDatablockVisualState(view, world, ac);
     if (!visual.visible) return [];
     const mode = visual.mode;
-    const derived = deriveScratchpads(ac, td);
+    const derived = deriveScratchpads(ac, td, flightPlanForAircraft(world, ac.id)?.scratchpads);
     const handoff = handoffFor(world, ac.id);
     const handoffDisplay = handoffDatablockDisplay(handoff, view.sectorId, world.simTimeMs);
     const squawk = td?.squawk ?? ac.squawk;
     const beaconCodeReadout = isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs);
-    const callsign = beaconCodeReadout && squawk ? squawk : ac.callsign;
+    const callsign =
+      beaconCodeReadout && squawk
+        ? squawk
+        : (flightPlanForAircraft(world, ac.id)?.acid ?? ac.callsign);
     const atpaReadout =
       mode === "full"
         ? atpaInTrailDatablockReadout(world.alerts.atpa, ac.callsign, {
@@ -1181,7 +1201,12 @@ export function drawTracks(
           })
         : null;
     const base = linesForDatablock(
-      { ...shown, callsign, squawk, atpaDistance: atpaReadout?.text },
+      {
+        ...datablockSourceFromWorld(world, shown, td),
+        callsign,
+        squawk,
+        atpaDistance: atpaReadout?.text,
+      },
       mode,
       {
         modeCVisible: view.modeCVisible,
@@ -1411,11 +1436,15 @@ export function drawPredictedTrackLines(
   size: ScopeViewSize,
 ): void {
   for (const ac of world.aircraft) {
-    const shown = displayAircraft(ac, view.tracks.get(ac.id));
+    const td = view.tracks.get(ac.id);
+    const shown = displayAircraft(ac, td);
     if (!shown) {
       continue;
     }
-    const altitudeFiltered = !inAltitudeFilter(shown.altitudeFt, view.altitudeFilter);
+    const altitudeFiltered = !inAltitudeFilter(
+      shown.altitudeFt,
+      td?.unassociated ? view.altitudeFilter : view.associatedAltitudeFilter,
+    );
     const owned = (view.tracks.get(ac.id)?.ownership ?? "unowned") === "owned";
     if (
       !shouldDrawPtlForTrack(
@@ -1439,7 +1468,6 @@ export function drawPredictedTrackLines(
     );
     const from = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
     const to = nmToScreen(end.eastNm, end.northNm, view.camera, size);
-    const td = view.tracks.get(ac.id);
     const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
     const capTickPx = Math.max(2, view.charSizes.tools - 8);
     drawPredictedTrackLine(
@@ -1772,6 +1800,8 @@ export function drawSsa(
     offCenter: isViewOffAirport(view),
     filter: view.altitudeFilter,
     filterEntry: view.filterEntry,
+    unassociatedFilter: view.altitudeFilter,
+    associatedFilter: view.associatedAltitudeFilter,
     visibility: view.ssaFilter,
     ptlMinutes: view.ptlMinutes,
     hasAlert: Boolean(hasAlert),

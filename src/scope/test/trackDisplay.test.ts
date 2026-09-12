@@ -32,6 +32,7 @@ import {
   syncTrackDisplays,
   toggleCaPairInhibited,
   toggleDatablockModeForSelection,
+  toggleTrackPdbFdb,
 } from "../trackDisplay";
 import { sanitizeScratchpad, SCRATCHPAD_MAX_LEN } from "../datablock";
 
@@ -204,6 +205,23 @@ test("AC4 — clicking unowned track toggles between PDB and Green FDB", () => {
   expect(td.forcedFdb).toBe(false);
 });
 
+test("post-TERM unassociated track cannot be expanded back to an FDB", () => {
+  const ac = makeTestAircraft({ id: "ac-terminated", callsign: "UAL999" });
+  const world = createWorld({ aircraft: [ac], selectedAircraftId: ac.id });
+  const tracks = new Map();
+  syncTrackDisplays(tracks, world);
+  const td = tracks.get(ac.id)!;
+  td.unassociated = true;
+  td.datablockMode = "partial";
+
+  expect(toggleTrackPdbFdb(td)).toBe("partial");
+  expect(td.forcedFdb).toBe(false);
+
+  toggleDatablockModeForSelection(tracks, world);
+  expect(td.datablockMode).toBe("partial");
+  expect(td.forcedFdb).toBe(false);
+});
+
 test("T02-39: formatApproachShorthand maps approach types to standard STARS codes", () => {
   expect(formatApproachShorthand("ILS 27")).toBe("I27");
   expect(formatApproachShorthand("ILS 04R")).toBe("I04R");
@@ -243,6 +261,14 @@ test("T02-39: deriveScratchpads auto-derives approach shorthand to SP1 and assig
   expect(td.sp1).toBe("I27");
   expect(td.sp2).toBe("S21");
   expect(td.scratchpad).toBe("I27");
+});
+
+test("plan scratchpads override derived track scratchpads after flight-plan modification", () => {
+  const ac = makeTestAircraft({ id: "ac-plan", callsign: "UAL123" });
+  ac.flightPlan = { scratchpads: ["HI", "WEST"] };
+  const td = createTrackDisplay();
+
+  expect(deriveScratchpads(ac, td, ["HI", "WEST"])).toEqual({ sp1: "HI", sp2: "WEST" });
 });
 
 test("T02-39: deriveScratchpads derives interim altitude to SP1 when no approach is set", () => {

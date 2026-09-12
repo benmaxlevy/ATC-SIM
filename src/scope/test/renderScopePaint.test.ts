@@ -20,6 +20,23 @@ import { renderScope } from "../render/renderScope";
 import { getAlertEntries } from "../systemLists";
 
 describe("Datablock inline alert glyphs", () => {
+  test("post-TERM unassociated target cannot render the plan callsign as an FDB", () => {
+    const world = createWorld();
+    const view = createScopeView();
+    const ac = makeTestAircraft({ id: "ac-terminated", callsign: "UAL999" });
+    const td = createTrackDisplay("unowned");
+    td.datablockMode = "full";
+    td.forcedFdb = true;
+    td.unassociated = true;
+    world.aircraft = [ac];
+    view.tracks.set(ac.id, td);
+
+    const mock = createMockCtx();
+    drawDatablock(mock.ctx, ac, 100, 100, view, world);
+
+    expect(mock.fillTexts.some((fill) => fill.text === "UAL999")).toBe(false);
+  });
+
   test("FDB Field 0 paints above callsign without duplicating SPC", () => {
     const world = createWorld();
     const view = createScopeView();

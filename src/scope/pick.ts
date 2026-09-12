@@ -14,6 +14,7 @@
 
 import { handoffFor, setSelectedAircraft, type Aircraft, type World } from "@core";
 import {
+  DEFAULT_ALTITUDE_FILTER,
   inAltitudeFilter,
   shouldShowDatablockOutsideAltitudeFilter,
   type AltitudeFilter,
@@ -59,6 +60,7 @@ export interface DatablockPickView {
       lastReport?: TrackDisplay["lastReport"];
       squawk?: string;
       ownership?: string;
+      unassociated?: boolean;
       retainedFdbOutsideAltitudeFilter?: boolean;
     }
   >;
@@ -66,6 +68,7 @@ export interface DatablockPickView {
   datablockCellWidthPx: number;
   /** Out-of-filter tracks have no datablock to hit; the target still picks. */
   altitudeFilter: AltitudeFilter;
+  associatedAltitudeFilter?: AltitudeFilter;
   /** Local receiving TCP used for inbound handoff Field 4 display. */
   sectorId?: string;
   charSizePx?: number;
@@ -104,7 +107,12 @@ function pickDatablockAt(
     );
     if (
       !shouldShowDatablockOutsideAltitudeFilter({
-        inFilter: inAltitudeFilter(shown.altitudeFt, view.altitudeFilter),
+        inFilter: inAltitudeFilter(
+          shown.altitudeFt,
+          td?.unassociated
+            ? view.altitudeFilter
+            : (view.associatedAltitudeFilter ?? DEFAULT_ALTITUDE_FILTER),
+        ),
         ownership: td.ownership,
         retainedFdb: td.retainedFdbOutsideAltitudeFilter,
         emergency,

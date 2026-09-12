@@ -1,15 +1,15 @@
 /**
- * Analog: CRC STARS INIT CNTL / F3 initiate track
+ * Analog: CRC STARS INIT CNTL / F1 initiate track
  * (docs.virtualnas.net/crc/stars — R07). Real CRC associates a target with a
  * flight plan (callsign + slew; beacon must match). Owned datablocks there
  * turn white. VATSIMism: auto-associate only if callsign matches the plan —
  * we do not copy that.
  * CRC STARS handoff (docs.virtualnas.net/crc/stars — R07); 7110.65 radar handoff (R01).
  *
- * Trainer delta: F3 is a color stub only (unowned green FDB → owned white FDB,
+ * Trainer delta: F1 is a color stub only (unowned green FDB → owned white FDB,
  * matching CRC INIT CNTL). Position symbol stays search-target blue. No NAS
  * associate, no second facility, no beacon pairing. Selection is a yellow box,
- * independent of ownership. F3 is initiate track, not browser find. F4 drop is
+ * independent of ownership. F1 is initiate track, not browser find. F4 drop is
  * trainer sugar, not STARS terminate / TERM CNTL. Shift+H when loc/GS along-track
  * ≤ 5 NM (still allowed until DA). Sets LANDING + tower ownership color. Not
  * NAS initiate/accept. Not a readback. Not Command IR. Not NAS STARS.
@@ -29,7 +29,7 @@ export type TrackOwnership = "unowned" | "owned" | "tower" | "center";
 
 /** CRC analog: initiate track / INIT CNTL. Color only — not NAS association. */
 export const INITIATE_TRACK_HELP =
-  "F3 INIT TRACK (color only) — CRC analog initiate track. Not NAS association. F3 is initiate track, not browser find.";
+  "F1 INIT TRACK (color only) — CRC analog initiate track. Not NAS association. F1 is initiate track, not browser find.";
 
 /** Trainer sugar: owned → unowned. Not STARS terminate. */
 export const DROP_TRACK_HELP = "F4 drop is trainer sugar, not STARS terminate.";

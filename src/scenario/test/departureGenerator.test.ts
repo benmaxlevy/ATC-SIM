@@ -1,10 +1,11 @@
 import { describe, expect, test } from "vitest";
-import { stepWorld } from "@core";
+import { createFlightPlan, createWorld, stepWorld } from "@core";
 import { loadKdem } from "../load";
 import {
   generateDepartureSchedule,
   listDepartureSlots,
   MIN_DEPARTURE_INTERVAL_S,
+  spawnDueDepartures,
 } from "../departureGenerator";
 import { createWorldForSession } from "../spawn";
 import { parseDepartureOptions } from "../trafficQuery";
@@ -158,6 +159,46 @@ describe("departureGenerator", () => {
     expect(spawnedEvents.length).toBe(1);
     expect(spawnedEvents[0]!.callsign).toBe(firstDeparture.callsign);
     expect(spawnedEvents[0]!.sidId).toBe(firstDeparture.sidId);
+  });
+
+  test("scheduled departure applies its reported squawk through aircraft-scoped correlation", () => {
+    const created = createFlightPlan({
+      id: "fp-departure",
+      acid: "UAL123",
+      assignedBeacon: "4321",
+      fixes: [],
+      scratchpads: [],
+    });
+    if (!created.ok) throw new Error(created.error.message);
+    const world = createWorld({
+      catalog: scenario.catalog,
+      flightPlans: [created.value],
+      scheduledDepartures: [
+        {
+          callsign: "UAL123",
+          runwayId: "27",
+          sidId: "BAY1",
+          transitionId: "NORMA",
+          assignedAltitudeFt: 10000,
+          aircraftType: "B738",
+          scheduledSimMs: 0,
+          assignedSquawk: "4321",
+          squawk: "4321",
+        },
+      ],
+      simTimeMs: 0,
+    });
+    const spawned = spawnDueDepartures(world);
+    expect(spawned).toHaveLength(1);
+    expect(spawned[0]).toMatchObject({
+      squawk: "4321",
+      reportedSquawk: "4321",
+      assignedSquawk: "4321",
+    });
+    expect(world.flightPlans[0]).toMatchObject({
+      status: "active",
+      associatedAircraftId: spawned[0]!.id,
+    });
   });
 
   test("Empty count returns empty schedule", () => {

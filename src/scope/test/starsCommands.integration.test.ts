@@ -266,7 +266,7 @@ test("AC1 — *F flashes FILTER; *LA writes hundreds; *BCN add/DEL; incomplete I
   typeKeys(view, world, ["*", "F", "Enter"]);
   expect(view.altitudeFilter).toEqual(DEFAULT_ALTITUDE_FILTER);
   expect(view.filterEntry.phase).toBe("idle");
-  expect(formatPreviewReadout(view.preview)).toBe("FILTER 000-180");
+  expect(formatPreviewReadout(view.preview)).toBe("FILTER 000-180 U 000-180 A");
   expect(formatFilterReadout(view.altitudeFilter, view.filterEntry)).toBe("FILTER 000-180");
 
   typeKeys(
@@ -306,8 +306,8 @@ test("AC1 — *F flashes FILTER; *LA writes hundreds; *BCN add/DEL; incomplete I
 
   const chord = createScopeView();
   handleScopeKeyDown(keyEvent("F"), chord, "scope", undefined, 0);
-  expect(chord.filterEntry.phase).toBe("min");
-  expect(chord.preview.phase).toBe("idle");
+  expect(chord.filterEntry.phase).toBe("idle");
+  expect(chord.preview.buffer).toBe("F");
 });
 
 test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; / DB toggles PDB↔FDB; F3/F4 apply vs arm", () => {
@@ -328,7 +328,7 @@ test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; 
   const hoView2 = createScopeView();
   syncTrackDisplays(hoView2.tracks, hoWorld2);
   expect(handoffFor(hoWorld2, hoDal2.id).kind).toBe("inbound");
-  handleScopeKeyDown(keyEvent("F3"), hoView2, "scope", hoWorld2, 100);
+  handleScopeKeyDown(keyEvent("F1"), hoView2, "scope", hoWorld2, 100);
   expect(hoView2.preview.armed).toEqual({ type: "initCntl" });
   clickAt(hoView2, hoWorld2, hoDal2.xNm, hoDal2.yNm);
   expect(handoffFor(hoWorld2, hoDal2.id).kind).not.toBe("inbound");
@@ -354,7 +354,7 @@ test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; 
   expect(view.preview.phase).toBe("idle");
 
   world.selectedAircraftId = dal.id;
-  handleScopeKeyDown(keyEvent("F3"), view, "scope", world, 400);
+  handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 400);
   expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
   expect(view.preview.phase).toBe("idle");
   expect(view.tracks.get(dal.id)!.datablockMode).toBe("full");
@@ -365,7 +365,7 @@ test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; 
   const dbHit = pickAircraftHitAt(world, db.x, db.y, CAM, CSS, CSS, 12, view);
   expect(dbHit?.region).toBe("datablock");
   handlePpiLeftClick(view, world, db.x, db.y, CSS, CSS);
-  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+  expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
   expect(view.tracks.get(dal.id)!.datablockMode).toBe("partial");
   expect(view.preview.phase).toBe("idle");
 
@@ -375,7 +375,7 @@ test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; 
   expect(view.preview.phase).toBe("idle");
 
   world.selectedAircraftId = null;
-  handleScopeKeyDown(keyEvent("F3"), view, "scope", world, 800);
+  handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 800);
   expect(view.preview.phase).toBe("armed");
   expect(view.preview.armed).toEqual({ type: "initCntl" });
   expect(formatPreviewReadout(view.preview)).toBe("INIT CNTL");
@@ -565,30 +565,13 @@ test("CRC STARS Table 24/25 — leader length and direction per target (slew, FL
   expect(view.leaderLengthPx).toBe(48);
 });
 
-test("T02-67 — *F and **F force Full Data Block via slew or ACID", () => {
-  const dal = makeTestAircraft({ id: "ac1", callsign: "DAL123", xNm: 10, yNm: 10 });
-  const ual = makeTestAircraft({ id: "ac2", callsign: "UAL456", xNm: -15, yNm: 5 });
-  const world = createWorld({ aircraft: [dal, ual] });
+test("T02-67 — *F is the manual altitude-filter command, not forced FDB", () => {
+  const world = createWorld();
   const view = kdemView();
-  syncTrackDisplays(view.tracks, world);
 
-  // Initial state: not forced
-  expect(view.tracks.get(dal.id)!.forcedFdb).toBe(false);
-  expect(view.tracks.get(ual.id)!.forcedFdb).toBe(false);
-
-  // 1. *F + slew (target click) forces FDB
-  typeKeys(view, world, ["*", "F"], "scope", 100);
-  clickAt(view, world, dal.xNm, dal.yNm);
-  expect(view.tracks.get(dal.id)!.forcedFdb).toBe(true);
-
-  // 2. *F <acid> Enter forces FDB for specified aircraft
-  typeKeys(view, world, ["*", "F", " ", "U", "A", "L", "4", "5", "6", "Enter"], "scope", 300);
-  expect(view.tracks.get(ual.id)!.forcedFdb).toBe(true);
-
-  // 3. **F Enter clears all forced FDBs
-  typeKeys(view, world, ["*", "*", "F", "Enter"], "scope", 500);
-  expect(view.tracks.get(dal.id)!.forcedFdb).toBe(false);
-  expect(view.tracks.get(ual.id)!.forcedFdb).toBe(false);
+  typeKeys(view, world, ["*", "F", "0", "5", "0", "1", "2", "0", "Enter"], "scope", 100);
+  expect(view.altitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 120 });
+  expect([...view.tracks.values()].every((td) => !td.forcedFdb)).toBe(true);
 });
 
 test("STARS system list commands: only authorized commands work; aliases rejected", () => {

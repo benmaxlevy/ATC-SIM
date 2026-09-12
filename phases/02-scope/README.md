@@ -46,7 +46,7 @@ When this phase exits, a controller sitting at Chrome on Windows can:
 4. Read a **full datablock** (Fields 0–8: identification, altitude, traffic data, coordination, alerts, and pointouts) tied to the target with an **8-direction leader**.
 5. Toggle **limited datablocks**, **Mode C**, **history dots**, **predicted track line**, and an **altitude filter**.
 6. Use a **documented Windows keyboard subset** (and a mouse **DCB cell grid**) without colliding with typed radio (`L090` remains a left turn to 090 when the command line is focused).
-7. **F3-initiate** a track as a color/ownership stub only — no NAS handoff.
+7. **F1-initiate** a matching local flight plan/track and take ownership; this is a local trainer projection, not a NAS handoff. F3 Track Suspend remains reserved/no-op.
 8. Work an **on-PPI flight-strip** list that mirrors intent from `World`.
 9. Hold **30 targets at 60 FPS** (measured; see T02-12).
 
@@ -61,7 +61,7 @@ Lift nothing from `phases/_shared/non-goals.md`. In addition, **do not** build:
 | Weather mosaic, precipitation, wind barbs | T02-68–72 VIP mosaic shipped (IEM N0Q fills + WXC contours, display only). Wind still later. |
 | Real STARS bitmap font or any licensed NAS typeface | Metric-similar **monospace** only. |
 | CRC-compatible full keyboard | Subset below is frozen; document every difference. Local PREF slots are T02-29, not a NAS pref host. |
-| Full NAS multi-controller handoff, interfacility point-out, quick-look, authoritative flight-plan workflows | Trainer handoff/pointout display, scratchpads, and beacon-code display are implemented; full multi-controller semantics remain out. |
+| Full NAS multi-controller handoff, interfacility point-out, quick-look, pilot-executable flight-plan workflows | Local flight-plan creation, association, modification, deletion, beacon allocation/release, TAB list, and F3/F4 scope projections are implemented; full multi-controller semantics and pilot execution remain out. |
 | Auto-deconflict of overlapping datablocks | Trainer auto-layout is enabled when viewport capacity exists; impossible density keeps higher-priority blocks and reports `DATABLOCK DENSITY`. |
 | WebGL phosphor bloom, afterglow trails | Canvas2D. History dots are discrete samples, not a phosphor sim. |
 | Map editor, CIFP maps, real coastlines | KDEM JSON only. |
@@ -96,10 +96,11 @@ One physical keyboard, two foci.
 | Range out (larger NM) | `PageDown` | Next preset. At 60 NM: no-op, no wrap. |
 | Center on airport ref | `Home` | View center = KDEM airport reference from T00-04 / T00-05. |
 | Center on last PPI click | `End` | If no click yet this session, same as `Home`. |
-| Help overlay | `F1` | **Not** CRC F1. Ours is help. Document that. |
-| Initiate track stub | `F3` | CRC analog: Initiate Track. Color only. |
-| Drop track stub | `F4` | Trainer sugar: owned → unowned. **Not** a NAS terminate. |
-| PTL toggle | `F7` | Global predicted track line. |
+| Help overlay | `?` / `Shift+/` / Help button | Trainer help; not a CRC function key. |
+| Initiate/associate track | `F1` / `INIT CNTL` | Associates a matching local plan, owns the target, and displays the local FDB. Not a NAS handoff. |
+| Track suspend | `F3` / `TRK SUSP` | Reserved/no-op; the suspend lifecycle is not simulated yet. |
+| Terminate track | `F4` / `TERM CNTL` | Shared trainer implementation: deletes the associated local plan, removes association, clears ownership, and leaves a moving unassociated `*` LDB. |
+| Multi Function | `F7` / `MULTI FUNC` | Preview Area `*` prefix. |
 | History toggle | `F8` | Global history dots. |
 | Cycle focus | `Tab` | Command line ↔ PPI. Do not steal Tab from help overlay inputs. |
 
@@ -171,7 +172,7 @@ STARS-like, not a screenshot clone. **No red in phase 2** (alerts are phase 4).
 | Map | `#8C8C8C` | Runway, loc feather, coastline (FAA dim gray maps A/B) |
 | Map dim | `#606060` | Range rings (FAA dark gray) |
 | Unowned FDB + leader | `#00FF00` | Default after spawn — CRC other-TCP / unowned green |
-| Owned FDB + leader | `#FFFFFF` | After F3 INIT CNTL — CRC owned white |
+| Owned FDB + leader | `#FFFFFF` | After F1 INIT CNTL — CRC owned white |
 | Position symbol | `#1E78FF` | Search/fusion diamond (FAA 30,120,255). Independent of FDB. |
 | History | `#1E50C8` … `#1E1E5A` | Five FAA history blues, newest brighter. Not track-tinted. |
 | PTL | `#FFFFFF` | Predicted track line (FAA white) |
@@ -315,15 +316,15 @@ interface AltitudeFilter {
 - Ring buffer per track; clear on spawn.
 - Dots are 2 px squares, no leaders.
 
-### 12. Ownership color (F3 stub)
+### 12. Ownership color (F1 stub)
 
 ```ts
 type TrackOwnership = "unowned" | "owned";
 ```
 
 - Spawn = `unowned` (green FDB; CRC other-TCP analog).
-- `F3` with a selection: `unowned` → `owned` (white FDB). Already owned: no-op.
-- `F4`: `owned` → `unowned`.
+- `F1` with a selection: `unowned` → `owned` (white FDB). Already owned: no-op.
+- `F4`: terminates the local plan/track association and leaves an unassociated `*` target.
 - **Does not** create a flight plan, does not emit Command IR, does not talk to a second position (that stub is phase 5).
 - Selected accent (yellow box) is independent of ownership.
 
@@ -411,10 +412,10 @@ Implementers will be tempted to “just copy CRC.” Freeze this delta in the he
 | RANGE via DCB presets including 6/8/12/16/24 | PageUp/Down + wheel; 8 presets 5–60 |
 | CENTER then click | `Home` / `End` / double-click / DCB PLACE CNTR then PPI click / middle-drag pan |
 | Full DCB | Green cell grid (T02-16); MAPS/RR/LDR/BRITE in T02-17; trainer MAIN/AUX/submenus in T02-22–30. Disabled WX; local PREF 1–8. Not NAS |
-| F3 Initiate Track (NAS associate) | F3 color stub |
+| F1 Initiate Track (NAS associate) | F1 color stub |
 | Leader length + direction menus | Compass-named direction readouts; LDR LEN steps **0–7**, 12 px / 1/4 in each |
 | Pref sets, brightness, charsize | T02-26 CHAR SIZE per subsystem + BRITE channels (Plex/system mono). T02-29 local PREF 1–8. Not a NAS pref host |
-| F1 as a STARS function | F1 = help |
+| F1 as a STARS function | F1 = INIT CNTL; Help uses `?` / `Shift+/` / Help button |
 | Radio is a headset | Radio is the phase 1 command line |
 
 ## Risks
@@ -493,8 +494,8 @@ Do not start phase 3 or 4 until every box is green. Phase 3 *may* overlap the ta
 - [x] Leaders L1–L9 (5 = overlay), 8 compass directions + center.
 - [x] Altitude filter suppresses datablocks outside min/max; symbols remain.
 - [x] PTL 1 min toggle.
-- [x] Unowned green FDB / owned white FDB / blue position symbol / selected yellow; F3/F4 stub only.
-- [x] F1 help lists the frozen Windows map; `TRAINER KEYS — NOT CRC`.
+- [x] Unowned green FDB / owned white FDB / blue position symbol / selected yellow; F3/F4 local plan/track lifecycle integrated.
+- [x] Help button / `?` lists the frozen Windows map; `TRAINER KEYS — NOT CRC`.
 - [x] DCB-lite: range, map layers, filter, PTL, history.
 - [x] Strips show callsign + assigned heading/alt/speed; click selects.
 - [x] Scope keys never emit `command.accepted` / readback.
@@ -584,10 +585,10 @@ Completed visual, interactive, and datablock fidelity pass matching [CRC STARS](
 - [x] FDB dynamic time-sharing: Line 2 alternates on ~2.5s cycle between Phase A (Mode C + GS) and Phase B (Scratchpad + Type / Requested Alt `R<alt>`) (T02-36).
 - [x] FDB Line 3 renders assigned altitude `A<alt>` when assigned altitude differs from Mode C altitude by >= 100 ft (T02-36).
 - [x] Inbound handoffs render as blinking white FDB; left-clicking accepts handoff to solid white FDB and sector ID (T02-37).
-- [x] Supported outbound handoffs share one destination-aware path. Pending and accepted handoffs show the receiver TCP; accepted state flashes white for 5s, the single-position trainer auto-accepts after 5 simulated seconds, and F4 explicitly returns to unowned. The old three-click green-FDB/PDB progression is not modeled (T02-134–139).
+- [x] Supported outbound handoffs share one destination-aware path. Pending and accepted handoffs show the receiver TCP; accepted state flashes white for 5s, and the single-position trainer auto-accepts after 5 simulated seconds. F4 terminates the local associated plan/track. The old three-click green-FDB/PDB progression is not modeled (T02-134–139).
 - [x] Pointout lifecycle: incoming blinking yellow FDB with `PO` tag; click accepts; `UN` click rejects; `**` click converts to handoff; rejected outbound pointout flashes `UN` tag (T02-37).
 - [x] Datablocks support standard STARS Cyan highlight (`#00FFFF`) toggled via middle-click across LDB, PDB, and FDB (T02-37).
-- [x] F4 drops track to unowned green PDB with `*` position symbol (T02-37).
+- [x] F4/TERM CNTL terminates the associated plan, clears ownership, and leaves a moving unassociated `*` target (T02-37, T02-143–147).
 - [x] Comprehensive end-to-end integration test suite in `src/scope/starsFidelity.integration.test.ts` (T02-38).
 
 ### STARS CRC Datablock & Scratchpad Fidelity Addendum (T02-39–42)
@@ -667,11 +668,11 @@ distinct from CA/MSAW red.
 | [T02-134–139](tickets/T02-134-accepted-outbound-handoff-ui.md) | Shared Center/Tower outbound initiation, five-second simulated acceptance, receiver-TCP display, and white accepted FDB behavior. |
 | [T02-140–142](tickets/T02-140-atpa-alert-threshold-and-color.md) | 24-second predicted ATPA Alert threshold/color, primary FDB SPC color, and KDEM monitor/warning/alert startup bench. |
 
-Runtime gaps remain documented in [LATER-IMPLEMENTATION-BACKLOG.md](../LATER-IMPLEMENTATION-BACKLOG.md); formatter support does not imply live TSAS, flight-plan, duplicate-beacon, pointout, or multi-controller sources.
+Runtime gaps remain documented in [LATER-IMPLEMENTATION-BACKLOG.md](../LATER-IMPLEMENTATION-BACKLOG.md); formatter support does not imply live TSAS, duplicate-beacon, pointout, or multi-controller sources. Local flight-plan records and scope projections are shipped; pilot clearance execution and executable route amendments remain backlog work.
 
 ### Preview Area addendum (T02-51–54)
 
-Completed Preview Area addendum matching [CRC STARS](https://docs.virtualnas.net/crc/stars/) Preview Area / Tracking Aircraft / Table 30, with trainer deltas stated in every ticket (F3 is color/ownership stub not NAS associate; F4 is trainer drop not NAS terminate; F1 stays beaconator; F7 stays PTL ALL; no pointouts this swarm):
+Completed Preview Area addendum matching [CRC STARS](https://docs.virtualnas.net/crc/stars/) Preview Area / Tracking Aircraft / Table 30, with trainer deltas stated in every ticket (F1 is local plan/track association, not NAS handoff; F3 Track Suspend is reserved/no-op; F4/TERM CNTL share local termination, not multi-controller NAS semantics; F7 is MULTI FUNC/`*`; F10 is PTL ALL; no pointouts this swarm):
 
 | ID | Title | Pri | Size | Depends on | Status |
 | --- | --- | --- | --- | --- | --- |
@@ -683,11 +684,11 @@ Completed Preview Area addendum matching [CRC STARS](https://docs.virtualnas.net
 ### Phase 2 Preview Area checklist (T02-51–54)
 
 - [x] Preview Area buffer (idle / entry / armed) paints CRC mnemonics in SSA/preview green under the SSA; Esc cancels to idle; invalid/unknown commit flashes `INV`; reject unknown — never parse-and-no-op; no `window.prompt`, no extra HTML `<input>` (T02-51).
-- [x] F3 INIT CNTL / F4 TERM CNTL command-then-slew, implied selected-track apply, and FLID Enter / FLID slew; empty PPI click does not consume the arm; `TERM CNTL ALL` is `INV`, not drop-all (T02-52).
+- [x] F1 INIT CNTL / F4 TERM CNTL command-then-slew, implied selected-track apply, and FLID Enter / FLID slew; empty PPI click does not consume the arm; `TERM CNTL ALL` is `INV`; F4 is the TERM CNTL alias and deletes the associated plan (T02-52, T02-143–147). F3 Track Suspend is reserved/no-op.
 - [x] Scope-focus `B##` / `B####` toggles CODE BLOCK / discrete `beaconSelectCodes`; matching unassociated paints □; unmatched stays `*`; incomplete Enter is `INV`; radio-focus `B` is a literal character (T02-53).
 - [x] Preview Area is **not** the radio command line: F3 / F4 / `B` never emit Command IR / readback / intent; `DAL123 H270` still turns; T02-49 `*` chords stay scope-only (T02-51–54).
 - [x] Comprehensive end-to-end integration and acceptance test suite in `src/scope/previewArea.integration.test.ts` (T02-54).
-- [ ] Manual player loop (F3 INIT CNTL slew → F3 DAL123 Enter → F4 slew → `B4500` □ → radio heading → `*J3`). skip-with-reason: no visual operator; Chrome player loop not watched. Automated tests prove the items above; do not invent a visual pass.
+- [ ] Manual player loop (F1 INIT CNTL slew → F1 DAL123 Enter → F4 slew → `B4500` □ → radio heading → `*J3`). skip-with-reason: no visual operator; Chrome player loop not watched. Automated tests prove the items above; do not invent a visual pass.
 
 ### Radar sites / PREF / PTL addendum (T02-73–77)
 
@@ -711,19 +712,20 @@ Completed SITE integration addendum matching [CRC STARS](https://docs.virtualnas
 - [x] Generic synthetic-site tests in `src/scope/radarSites.integration.test.ts`; no KATL production map counts or geometry.
 - [ ] Manual Chrome SITE walk. skip-with-reason: no visual operator in this swarm; Chrome SITE walk not watched. Automated tests prove boot / SITE / SSA / paint; do not invent a visual pass.
 
-**Preview Area is not the radio command line.** Scope commands never emit Command IR / readback / intent. `DAL123 H270` still turns. `*J` / `*P` (and other T02-49 `*` chords) still arm/slew. A live `*` hint still wins over idle preview. Invalid/unknown commit flashes `INV`. Reject unknown; never parse-and-no-op. No `window.prompt`, no extra HTML `<input>`. Trainer F3 is a color/ownership stub (not NAS associate). F4 is trainer drop (not NAS terminate). F1 stays beaconator. F7 stays PTL ALL.
+**Preview Area is not the radio command line.** Scope commands never emit Command IR / readback / intent. `DAL123 H270` still turns. `*J` / `*P` (and other T02-49 `*` chords) still arm/slew. A live `*` hint still wins over idle preview. Invalid/unknown commit flashes `INV`. Reject unknown; never parse-and-no-op. No `window.prompt`, no extra HTML `<input>`. F1 INIT CNTL associates/owns a matching local plan/track but is not a NAS handoff. F3 is reserved Track Suspend and is currently a no-op. F4 is the TERM CNTL alias: it terminates the target, deletes its associated local plan, and leaves an unassociated `*` LDB. F7 is MULTI FUNC and aliases `*`; F10 is PTL ALL. `*F` is altitude filtering, not forced FDB. Flight-plan route edits are record-only; they do not issue clearances or drive pilot intent.
 
 #### Shipped Preview Area commands (do not invent later CRC tables)
 
 | Command | What the operator does | What happens |
 | --- | --- | --- |
-| F3 INIT CNTL | F3 with nothing selected | Preview paints `INIT CNTL` (never the literal `"F3"`); next target click owns **that** track (white FDB). Empty PPI click does not consume the arm. Pending inbound: one click accept+own (`acceptInboundHandoff`). |
-| F3 implied | F3 with a track already selected | Applies immediately (`applyInitiateTrackToSelection`). Preview may flash `INIT CNTL` then clear. |
-| F3 + FLID + Enter | F3, type full callsign / numeric tail / unique 4-digit squawk, Enter | Owns that aircraft with nothing selected. Unknown or ambiguous → brief `INV`, no apply. |
-| F3 + FLID + slew | F3, type FLID, click a target | Applies to the clicked track only if the FLID uniquely matches that track; else `INV`. |
-| F4 TERM CNTL | F4 with nothing selected | Preview paints `TERM CNTL` (never `"F4"`); next target click drops **that** track. Empty click does not consume the arm. |
-| F4 implied | F4 with a track selected | Drops the selection now. |
-| F4 + FLID + Enter | F4, type FLID, Enter | Drops the resolved aircraft. `TERM CNTL ALL` is `INV`, not drop-all. |
+| F1 INIT CNTL | F1 with nothing selected | Preview paints `INIT CNTL` (never the literal `"F1"`); next target click owns **that** track (white FDB). Empty PPI click does not consume the arm. Pending inbound: one click accept+own (`acceptInboundHandoff`). |
+| F1 implied | F1 with a track already selected | Applies immediately (`applyInitiateTrackToSelection`). Preview may flash `INIT CNTL` then clear. |
+| F1 + FLID + Enter | F1, type full callsign / numeric tail / unique 4-digit squawk, Enter | Owns that aircraft with nothing selected. Unknown or ambiguous → brief `INV`, no apply. |
+| F1 + FLID + slew | F1, type FLID, click a target | Applies to the clicked track only if the FLID uniquely matches that track; else `INV`. |
+| F3 TRK SUSP | F3 | Reserved/no-op until the suspend lifecycle is implemented. |
+| F4 TERM CNTL | F4 with nothing selected | Preview paints `TERM CNTL` (never `"F4"`); next target click terminates **that** track, deletes its associated plan, and leaves `*`. Empty click does not consume the arm. |
+| F4 implied | F4 with a track selected | Terminates the selection now. F4 and typed TERM CNTL share the same function. |
+| F4 + FLID + Enter | F4, type FLID, Enter | Terminates the resolved aircraft/plan. `TERM CNTL ALL` is `INV`, not terminate-all. |
 | Esc | Esc while preview is live (entry or armed) | Cancels preview to idle. Precedence: live preview > live `*` chord > DCB. |
 | Backspace | Backspace while typing ACID after F3/F4 | Edits the typed ACID. |
 | Scope-focus `B` + two digits + Enter | PPI focused, `B` `4` `5` Enter | Toggles CODE BLOCK `"45"` on `beaconSelectCodes`; unassociated squawks starting with `45` paint □. Second `B45` Enter removes it. |
@@ -733,7 +735,7 @@ Completed SITE integration addendum matching [CRC STARS](https://docs.virtualnas
 
 #### Explicitly not Preview Area this swarm (out / still later)
 
-pointouts `UN` / `**` / `(ID)*` / initiate-recall PO (leave existing click / radio-buffer `UN`/`**`); `TERM CNTL ALL`; typed TCP / Δ handoffs; `BE`/`BI`; assign-code `M ####`; MULTIFUNC (F7 stays PTL ALL); scratchpad `Y`/`+`; per-track PTL `R`; highlight keyboard (stays middle-click); quicklook `Q`; CRDA; WX; list relocate; RBL / `.dot` commands.
+pointouts `UN` / `**` / `(ID)*` / initiate-recall PO (leave existing click / radio-buffer `UN`/`**`); `TERM CNTL ALL`; typed TCP / Δ handoffs; `BE`/`BI`; assign-code `M ####`; scratchpad `Y`/`+`; per-track PTL `R`; highlight keyboard (stays middle-click); quicklook `Q`; CRDA; WX; list relocate; RBL / `.dot` commands.
 
 ### Phase 2 addendum (T02-68–72 WX mosaic)
 
@@ -819,6 +821,20 @@ Direct in-place text annotations on flight progress strips, supporting double-cl
 | [T02-100](tickets/T02-100-strips-freeform-box-annotations-component.md) | Strips freeform box annotations component and inline editing | P0 | M | none | Ready |
 | [T02-101](tickets/T02-101-strips-annotation-state-and-telemetry-persistence.md) | Strips annotation state and telemetry persistence | P0 | M | T02-100 | Ready |
 | [T02-102](tickets/T02-102-strips-box-annotations-acceptance-and-styling.md) | Strips box annotations acceptance, unit tests, and styling | P0 | S | T02-101 | Ready |
+
+### Phase 2 addendum (T02-158–162 FAA Terminal Strip Alignment)
+
+Happy-path terminal departure and arrival strips use the shared physical layout
+`1–4 | 5–7 | 8/8A/8B | 9/9A/9B/9C | 10–18`. Synthetic plan-backed acceptance
+coverage verifies canonical plan projection, assigned-versus-reported beacon
+separation, and numbered-box placement. Recording/RA, FDIO, overflight,
+missing-data, and facility-policy behavior remain out of scope.
+
+Manual validation after T02-162: **PASS** against [FAA JO 7110.65 §2-3-4](https://www.faa.gov/air_traffic/publications/atpubs/atc_html/chap2_section_3.html#para-2-3-4)
+and the supplied arrival/departure structure images. Both rendered strip types
+match the five-column geometry; arrival Box 9 contains altitude/remarks, arrival
+Box 9A contains destination/minimum-fuel data, departure Box 9 contains route,
+destination, and remarks, and Boxes 9A–9C plus 10–18 remain present.
 
 ## Launching an agent
 

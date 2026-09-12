@@ -167,6 +167,8 @@ export {
   callsignNumericTail,
   usedCallsignSet,
 } from "./callsigns";
+export type { SpawnAircraftParams } from "./spawnAircraft";
+export { spawnAircraft } from "./spawnAircraft";
 export {
   DEFAULT_SPAWN_SEED,
   parseDepartureOptions,
