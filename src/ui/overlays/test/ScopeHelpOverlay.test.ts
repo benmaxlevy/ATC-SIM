@@ -20,8 +20,21 @@ test("command reference lists local command groups and frozen keys", () => {
   expect(html).toMatch(/id="scope-help-search"/);
   expect(html).toMatch(/Find a command or description/);
   expect(html).toMatch(/<details class="scope-help-section">/);
+  expect(HELP_NAVIGATION_GROUPS).toHaveLength(3);
+  expect(HELP_NAVIGATION_GROUPS.map((group) => group.title)).toEqual([
+    "Aircraft & flight plans",
+    "Scope & display",
+    "Workstation & trainer controls",
+  ]);
+  expect(html.match(/<details class="scope-help-top-section"/g)).toHaveLength(3);
+  const bindingIds = HELP_NAVIGATION_GROUPS.flatMap((group) =>
+    group.bindingSections.flatMap((section) => section.bindingIds),
+  );
+  expect(bindingIds).toHaveLength(KEY_BINDINGS.length);
+  expect(new Set(bindingIds)).toHaveLength(bindingIds.length);
+  expect(new Set(bindingIds)).toEqual(new Set(KEY_BINDINGS.map((binding) => binding.id)));
   for (const navigationGroup of HELP_NAVIGATION_GROUPS) {
-    expect(html).toContain(navigationGroup.title);
+    expect(html).toContain(navigationGroup.title.replaceAll("&", "&amp;"));
   }
   expect(html).toContain(HELP_FOOTER);
   expect(html).toContain(DISCLAIMER_COPY);
@@ -66,8 +79,8 @@ test("help copy is local-only and teaches command boundaries", () => {
   expect(html).toMatch(/leader/);
   expect(html).toMatch(/initiate or associate/i);
   expect(html).toMatch(/Radio commands/);
-  expect(html).toMatch(/Preview Area commands/);
-  expect(html).toMatch(/Scope commands/);
+  expect(html).toMatch(/Focus and Preview Area/);
+  expect(html).toMatch(/Scope &amp; display/);
   expect(html).not.toMatch(/\b(CRC|vNAS|vice)\b/);
 });
 

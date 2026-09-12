@@ -202,6 +202,14 @@ When using Push-to-Talk (PTT), speak clearances using standard FAA JO 7110.65 AT
 
 ## Controls & keybindings
 
+The in-app Help reference is organized by the task you are trying to complete:
+
+- **Aircraft & flight plans** — radio clearances, track control, flight-plan entry, and alerts.
+- **Scope & display** — view/map controls, datablocks and filters, the Display Control Bar, and PPI actions.
+- **Workstation & trainer controls** — focus and Preview Area rules, system lists, help, cancel, and navigation.
+
+Search is global across all three sections. Keyboard and mouse rows use the same binding definitions as the workstation, so the reference stays aligned with active controls.
+
 ### Scope controls & mouse interactions
 
 | Action | Shortcut / Mouse Interaction | Description |
