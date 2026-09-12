@@ -90,7 +90,7 @@ function trackingFlidMatches(
     return true;
   }
   if (action.type === "initCntl") {
-    if (/^\d+$/.test(flid.trim()) && !/^\d{2}$/.test(flid.trim())) {
+    if (/^\d$/.test(flid.trim())) {
       return false;
     }
     return previewFlidMatchesSlew(view.preview, aircraftId, world, view);
@@ -485,6 +485,26 @@ export function handlePpiLeftClick(
     }
     return;
   }
+  // `+<index>` is the separate VFR-list promotion command, not INIT CNTL.
+  if (view.preview.phase === "entry" && /^\+\d{1,2}$/.test(view.preview.buffer.trim())) {
+    const numIdx = Number(view.preview.buffer.trim().slice(1));
+    const hit = pickAircraftAt(
+      world,
+      cssX,
+      cssY,
+      view.camera,
+      cssWidth,
+      cssHeight,
+      HIT_RADIUS_CSS_PX,
+      view,
+    );
+    if (hit && promoteVfrListEntry(view, world, numIdx, hit.id)) {
+      cancelPreviewArea(view.preview);
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
+      return;
+    }
+  }
   if (view.placeCenterArmed) {
     centerOnWorld(view, nm.eastNm, nm.northNm);
     view.placeCenterArmed = false;
@@ -544,25 +564,6 @@ export function handlePpiLeftClick(
           return;
         }
       }
-    }
-  }
-  if (view.preview.phase === "entry" && /^\d{1,2}$/.test(view.preview.buffer.trim())) {
-    const numIdx = Number(view.preview.buffer.trim());
-    const hit = pickAircraftAt(
-      world,
-      cssX,
-      cssY,
-      view.camera,
-      cssWidth,
-      cssHeight,
-      HIT_RADIUS_CSS_PX,
-      view,
-    );
-    if (hit && promoteVfrListEntry(view, world, numIdx, hit.id)) {
-      cancelPreviewArea(view.preview);
-      cancelStarsChordEntry(view.starsChordEntry);
-      view.starsChordArmed = null;
-      return;
     }
   }
   if (!previewAreaIsLive(view.preview) || view.preview.buffer.trim() === "") {
