@@ -420,6 +420,7 @@ describe("T02-93 Flight Progress Strips Integration and Acceptance", () => {
 
       // Drawer toggle button and drawer components rendered in Shell
       expect(html).toContain('data-testid="strips-toggle-btn"');
+      expect(html).toContain(">Strips</button>");
       expect(html).toContain("Strips");
       expect(html).toContain('data-testid="strips-drawer"');
       expect(html).toContain('data-testid="strips-drawer-content"');
@@ -436,7 +437,8 @@ describe("T02-93 Flight Progress Strips Integration and Acceptance", () => {
     test("shell.tsx wires onSelectStrip to selectTrackFromFlightStrip and scope refresh", () => {
       expect(shellTsx).toMatch(/selectTrackFromFlightStrip\(app\.world,\s*strip\)/);
       expect(shellTsx).toMatch(/refreshScopeUi\(\)/);
-      expect(shellTsx).toMatch(/data-testid="strips-toggle-btn"/);
+      expect(shellTsx).toMatch(/stripsOpen=\{stripsOpen\}/);
+      expect(shellTsx).toMatch(/onStripsToggle=\{\(\) => setStripsOpen/);
       expect(shellTsx).toMatch(/data-testid="strips-drawer"/);
       expect(shellTsx).not.toMatch(/data-testid="strips-drawer-close"/);
       expect(shellTsx).not.toMatch(/data-testid="strips-popout-btn"/);
@@ -445,6 +447,7 @@ describe("T02-93 Flight Progress Strips Integration and Acceptance", () => {
     test("strips.css defines styles for right-side drawer layout and offset flex panel", () => {
       expect(stripsCss).toMatch(/\.strips-toggle-bar\s*\{[^}]*position:\s*absolute/i);
       expect(stripsCss).toMatch(/\.strips-toggle-button[^{]*\{/i);
+      expect(stripsCss).toMatch(/\.strips-toggle-bar\s*\{[^}]*z-index:\s*6/i);
       expect(stripsCss).toMatch(/\.strips-drawer\s*\{[^}]*display:\s*flex/i);
       expect(stripsCss).toMatch(/\.strips-drawer\.open\s*\{[^}]*flex:/i);
       expect(stripsCss).toMatch(/\.strips-drawer-content\s*\{[^}]*display:\s*flex/i);

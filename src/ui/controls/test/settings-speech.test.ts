@@ -141,7 +141,7 @@ test("bottom-right controls render Help directly below Voice Text", () => {
   );
 
   expect(html).toContain('class="speech-settings-actions"');
-  expect(html).toMatch(/Voice Text[\s\S]*data-testid="scope-help-button"[\s\S]*>Help</);
+  expect(html).toMatch(/Strips[\s\S]*Voice Text[\s\S]*data-testid="scope-help-button"[\s\S]*>Help/);
   expect(html).toContain('aria-label="Voice Text"');
   expect(html).toContain('aria-label="Help"');
 });

@@ -262,6 +262,8 @@ export interface SpeechSettingsPanelProps {
   speechId: string;
   onChange?: () => void;
   onHelpToggle?: () => void;
+  stripsOpen?: boolean;
+  onStripsToggle?: () => void;
 }
 
 export function SpeechSettingsPanel({
@@ -269,6 +271,8 @@ export function SpeechSettingsPanel({
   speechId,
   onChange,
   onHelpToggle,
+  stripsOpen = false,
+  onStripsToggle,
 }: SpeechSettingsPanelProps) {
   const [open, setOpen] = useState(false);
   const [, setTick] = useState(0);
@@ -285,6 +289,22 @@ export function SpeechSettingsPanel({
   return (
     <div className="speech-settings">
       <div className="speech-settings-actions">
+        <button
+          type="button"
+          className="strips-toggle-button"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onStripsToggle}
+          aria-label="Strips"
+          aria-expanded={stripsOpen}
+          data-testid="strips-toggle-btn"
+          title={
+            stripsOpen
+              ? "Collapse flight progress strips drawer"
+              : "Expand flight progress strips drawer"
+          }
+        >
+          Strips
+        </button>
         <button
           type="button"
           className="speech-settings-toggle"

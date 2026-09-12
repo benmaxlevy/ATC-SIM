@@ -372,24 +372,11 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
               scopeView.helpOpen = !scopeView.helpOpen;
               setScopeUiTick((tick) => tick + 1);
             }}
+            stripsOpen={stripsOpen}
+            onStripsToggle={() => setStripsOpen((open) => !open)}
           />
           <Disclaimer />
           <ScopeHelpOverlay open={scopeView.helpOpen} />
-          <div className="strips-toggle-bar">
-            <button
-              type="button"
-              className={`strips-toggle-button ${stripsOpen ? "open" : ""}`}
-              data-testid="strips-toggle-btn"
-              onClick={() => setStripsOpen((open) => !open)}
-              title={
-                stripsOpen
-                  ? "Collapse flight progress strips drawer"
-                  : "Expand flight progress strips drawer"
-              }
-            >
-              Strips
-            </button>
-          </div>
         </ScopeCanvas>
         <aside
           className={`strips-drawer ${stripsOpen ? "open" : "collapsed"} ${isResizingDrawer ? "resizing" : ""}`}
