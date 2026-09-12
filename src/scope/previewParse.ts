@@ -38,7 +38,7 @@ export type PreviewArmedAction =
       pendingDiscrete: boolean;
       acid: string;
       /** Present only when entered through the explicit FLT DATA command. */
-      creationMode?: "fltData";
+      creationMode?: "fltData" | "vfr";
       assignedBeacon?: string;
       beaconAllocation?: "ifr" | "vfr" | "general1" | "general2" | "general3" | "general4";
       tcp?: string;
@@ -53,6 +53,12 @@ export type PreviewArmedAction =
       fixes?: string[];
       eta?: string;
       ptd?: string;
+    }
+  | { readonly type: "deleteVfrFlightPlan"; readonly flid: string }
+  | {
+      readonly type: "createVfrActiveTrack";
+      readonly intermediateFix?: string;
+      readonly requestedAltitudeFt?: number;
     }
   | { readonly type: "initCntl"; readonly flid?: string }
   | {
@@ -74,6 +80,8 @@ export type PreviewArmedAction =
         | "scratchpads"
         | "requestedAltitudeFt"
         | "assignedAltitudeFt"
+        | "aircraftType"
+        | "equipment"
         | "eta"
         | "ptd";
       readonly value: string;
@@ -217,6 +225,66 @@ export type FlightPlanCreationParse =
   | { kind: "incomplete" }
   | { kind: "invalid"; reason: string }
   | { kind: "action"; action: Extract<PreviewArmedAction, { type: "createFlightPlan" }> };
+
+export function parseVfrFlightPlanCommand(buffer: string): PreviewCommandResult {
+  const tokens = buffer.trim().toUpperCase().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return { kind: "incomplete" };
+  if (tokens.length === 1) {
+    if (!/^(?:\d{1,2}|[A-Z][A-Z0-9]{1,6})$/.test(tokens[0]!)) {
+      return invalid("ILL ACID");
+    }
+    return { kind: "action", action: { type: "deleteVfrFlightPlan", flid: tokens[0]! } };
+  }
+  if (tokens[0] === "*") {
+    let altitude: number | undefined;
+    let intermediateFix: string | undefined;
+    for (const token of tokens.slice(1)) {
+      if (/^\d{3}$/.test(token)) {
+        if (altitude !== undefined) return invalid("FORMAT");
+        altitude = Number(token) * 100;
+      } else if (/^[A-Z0-9]{1,4}$/.test(token)) {
+        if (intermediateFix) return invalid("FORMAT");
+        intermediateFix = token;
+      } else return invalid("FORMAT");
+    }
+    return {
+      kind: "action",
+      action: { type: "createVfrActiveTrack", intermediateFix, requestedAltitudeFt: altitude },
+    };
+  }
+  const acid = tokens[0]!;
+  if (!/^[A-Z][A-Z0-9]{1,6}$/.test(acid) || (acid.length === 2 && !/\d$/.test(acid))) {
+    return invalid("ILL ACID");
+  }
+  const route = /^([A-Z0-9]{1,4})\*([A-Z0-9]{1,4})$/.exec(tokens[1]!);
+  if (!route) return invalid("ILL ROUTE");
+  const fields: Extract<PreviewArmedAction, { type: "createFlightPlan" }> = {
+    type: "createFlightPlan",
+    pendingDiscrete: false,
+    creationMode: "vfr",
+    acid,
+    flightRules: "VFR",
+    fixes: [tokens[1]!],
+    scratchpads: [],
+  };
+  let aircraftSeen = false;
+  for (const token of tokens.slice(2)) {
+    if (/^\d{3}$/.test(token)) {
+      if (fields.requestedAltitudeFt !== undefined) return invalid("FORMAT");
+      fields.requestedAltitudeFt = Number(token) * 100;
+    } else if (/^[A-Z][A-Z0-9]{1,3}(?:\/[A-Z])?$/.test(token)) {
+      if (aircraftSeen) return invalid("FORMAT");
+      const [aircraftType, equipment] = token.split("/");
+      fields.aircraftType = aircraftType;
+      fields.equipment = equipment;
+      aircraftSeen = true;
+    } else if (/^[A-Z0-9]{1,2}$/.test(token)) {
+      if (fields.tcp) return invalid("FORMAT");
+      fields.tcp = token;
+    } else return invalid("FORMAT");
+  }
+  return { kind: "action", action: fields };
+}
 
 /** Keyboard-only abbreviated creation grammar from TI 6191.409 §§5.5.1/5.5.7. */
 export function parseFlightPlanCreation(
@@ -959,6 +1027,7 @@ const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
   "caPairToggle",
   "msawCurrentAlertInhibit",
   "toggleMsawProcessing",
+  "createVfrActiveTrack",
 ]);
 
 function compactTrackingBuffer(buffer: string): string {

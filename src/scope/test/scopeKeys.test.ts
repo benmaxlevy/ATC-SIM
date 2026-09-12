@@ -107,6 +107,17 @@ test("Appendix D: F6 enters FLT DATA in both focus modes and consumes key", () =
   }
 });
 
+test("Appendix D: F9 enters VFR DATA in both focus modes without radio parsing", () => {
+  for (const focus of ["scope", "radio"] as const) {
+    const view = createScopeView();
+    const event = keyEvent("F9");
+    expect(handleScopeKeyDown(event, view, focus)).toBe(true);
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(view.preview.mnemonic).toBe("VFR DATA");
+    expect(view.preview.creationMode).toBe("vfr");
+  }
+});
+
 test("Help overlay toggle via ? / Shift+/ and Alt+F1; Escape closes it", () => {
   const view = createScopeView();
   expect(view.helpOpen).toBe(false);

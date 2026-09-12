@@ -1,4 +1,10 @@
-import { acceptPointout, handoffFor, setSelectedAircraft, type World } from "@core";
+import {
+  acceptPointout,
+  createFlightPlan,
+  handoffFor,
+  setSelectedAircraft,
+  type World,
+} from "@core";
 import { expireFilterEntry, inAltitudeFilter } from "./altitudeFilter";
 import {
   armPreviewSlewAction,
@@ -246,6 +252,47 @@ function applyTrackingSlewHit(
         rejectPreviewCntl(view.preview, Date.now());
         cancelStarsChordEntry(view.starsChordEntry);
         view.starsChordArmed = null;
+        return true;
+      }
+      setSelectedAircraft(world, id);
+      clearTrackingSlew(view);
+      return true;
+    }
+    case "createVfrActiveTrack": {
+      if (!isVfrAircraft(hit.aircraft, view.tracks, world)) {
+        rejectPreviewArea(view.preview, Date.now());
+        return true;
+      }
+      const existing = world.flightPlans.find(
+        (plan) => plan.status !== "deleted" && plan.acid === hit.aircraft.callsign,
+      );
+      if (existing) {
+        rejectPreviewArea(view.preview, Date.now());
+        return true;
+      }
+      const result = createFlightPlan(
+        {
+          id: `fp-vfr-${world.simTimeMs}-${world.flightPlans.length}`,
+          status: "pending",
+          acid: hit.aircraft.callsign,
+          assignedBeacon: hit.aircraft.assignedSquawk ?? hit.aircraft.squawk ?? "1200",
+          fixes: action.intermediateFix ? [`*${action.intermediateFix}`] : [],
+          scratchpads: [],
+          requestedAltitudeFt: action.requestedAltitudeFt,
+          flightRules: "VFR",
+        },
+        world.flightPlans,
+      );
+      if (!result.ok) {
+        rejectPreviewArea(view.preview, Date.now());
+        return true;
+      }
+      world.flightPlans.push(result.value);
+      const entry = getFlightPlanEntries(world, view).find(
+        (item) => item.planId === result.value.id,
+      );
+      if (!entry || !associateFlightPlanToTrack(world, view, entry.index, id)) {
+        rejectPreviewArea(view.preview, Date.now());
         return true;
       }
       setSelectedAircraft(world, id);

@@ -94,6 +94,8 @@ export type FlightPlanModificationField =
   | "scratchpads"
   | "requestedAltitudeFt"
   | "assignedAltitudeFt"
+  | "aircraftType"
+  | "equipment"
   | "eta"
   | "ptd";
 
@@ -125,7 +127,8 @@ const BEACON_PATTERN = /^[0-7]{4}$/;
 const BEACON_SELECTOR_PATTERN = /^(?:\+|\/|\/[1-4]|A)$/;
 const ETA_PTD_PATTERN = /^(?:[01]\d|2[0-3])[0-5]\dE$/;
 const TCP_PATTERN = /^[A-Z0-9]{1,2}$/;
-const FIX_PAIR_PATTERN = /^(?:[A-Z0-9]{1,4}\*|\*[A-Z0-9]{1,4})(?:\*[APE])?$/;
+const FIX_PAIR_PATTERN =
+  /^(?:[A-Z0-9]{1,4}\*[A-Z0-9]{1,4}|[A-Z0-9]{1,4}\*|\*[A-Z0-9]{1,4})(?:\*[APE])?$/;
 const SCRATCHPAD_PATTERN = /^[A-Z0-9+/. *]{0,4}$/;
 const SCRATCHPAD_FORBIDDEN = /^(?:NAT|CST|AMB|RDR|ADB|XXX|\d{3})/;
 
@@ -426,6 +429,14 @@ export function modifyFlightPlan(
       };
     }
     candidate.fixes = [values[0].trim().toUpperCase()];
+  } else if (field === "aircraftType" || field === "equipment") {
+    if (typeof value !== "string" || !/^[A-Z0-9]{1,4}$/.test(value.trim().toUpperCase())) {
+      return {
+        ok: false,
+        error: modificationError("INVALID_VALUE", field, String(value), `invalid ${field}`),
+      };
+    }
+    candidate[field] = value.trim().toUpperCase();
   } else if (field === "scratchpads") {
     if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
       return {

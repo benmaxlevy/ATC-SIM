@@ -70,6 +70,7 @@ import {
   beginPreviewBeaconEntry,
   beginPreviewBufferEntry,
   beginPreviewFltDataEntry,
+  beginPreviewVfrEntry,
   cancelPreviewArea,
   handlePreviewBufferKey,
   handlePreviewEscape,
@@ -150,6 +151,7 @@ import {
   cancelListDrag,
   deleteFlightPlanEntry,
   getFlightPlanEntries,
+  getVfrListCallsigns,
   isSystemListMultiPage,
   pointInsideRect,
   relocateSystemList,
@@ -323,6 +325,15 @@ function startFltDataEntry(view: ScopeView, nowMs: number): void {
   beginPreviewFltDataEntry(view.preview, nowMs);
 }
 
+function startVfrEntry(view: ScopeView, nowMs: number): void {
+  cancelFilterEntry(view.filterEntry, view.altitudeFilter);
+  cancelDcbPrefSaveAs(view);
+  view.pendingChord = null;
+  view.starsChordArmed = null;
+  cancelStarsChordEntry(view.starsChordEntry);
+  beginPreviewVfrEntry(view.preview, nowMs);
+}
+
 function applyPreviewArmedAction(
   view: ScopeView,
   action: PreviewArmedAction,
@@ -340,6 +351,36 @@ function applyPreviewArmedAction(
   switch (action.type) {
     case "createFlightPlan": {
       if (!world) return;
+      if (action.creationMode === "vfr") {
+        const existing = world.flightPlans.find(
+          (plan) =>
+            plan.status !== "deleted" && plan.flightRules === "VFR" && plan.acid === action.acid,
+        );
+        if (existing) {
+          const edits: Array<
+            [
+              "fixes" | "aircraftType" | "equipment" | "requestedAltitudeFt" | "tcp",
+              string | number | string[] | undefined,
+            ]
+          > = [
+            ["fixes", action.fixes],
+            ["aircraftType", action.aircraftType],
+            ["equipment", action.equipment],
+            ["requestedAltitudeFt", action.requestedAltitudeFt],
+            ["tcp", action.tcp],
+          ];
+          for (const [field, value] of edits) {
+            if (value !== undefined) {
+              const edited = modifyFlightPlan(world, existing.id, field, value);
+              if (!edited.ok) {
+                view.preview.rejection = "FORMAT";
+                return;
+              }
+            }
+          }
+          return;
+        }
+      }
       if (world.flightPlans.filter((plan) => plan.status !== "deleted").length >= 100) {
         view.preview.rejection = "CAPACITY — FP";
         return;
@@ -424,6 +465,24 @@ function applyPreviewArmedAction(
       }
       return;
     }
+    case "deleteVfrFlightPlan": {
+      if (!world) return;
+      const id = action.flid.toUpperCase();
+      const callsigns = getVfrListCallsigns(world, view);
+      const callsign = /^\d{1,2}$/.test(id) ? callsigns[Number(id) - 1] : id;
+      const plans = world.flightPlans.filter(
+        (plan) => plan.status !== "deleted" && plan.flightRules === "VFR" && plan.acid === callsign,
+      );
+      if (plans.length !== 1) {
+        view.preview.rejection = plans.length === 0 ? "NO FLIGHT" : "FORMAT";
+        return;
+      }
+      deleteFlightPlanFromWorld(world, plans[0]!.id);
+      return;
+    }
+    case "createVfrActiveTrack":
+      armPreviewSlewAction(view.preview, action, nowMs);
+      return;
     case "toggleList":
       toggleSystemList(view, action.listId);
       cancelStarsChordEntry(view.starsChordEntry);
@@ -934,6 +993,14 @@ export function handleScopeKeyDown(
     return true;
   }
 
+  // Manual Appendix D Table D-1: F9 -> VFR. Ctrl+F9 remains DCB RR.
+  if (event.key === "F9" && !event.ctrlKey && !event.altKey) {
+    consume(event);
+    startVfrEntry(view, nowMs);
+    ui?.onHandled?.();
+    return true;
+  }
+
   // Manual Appendix D Table D-1: F1 -> INIT CNTL.
   if (event.key === "F1" && !event.ctrlKey && !event.altKey) {
     consume(event);
@@ -1154,7 +1221,10 @@ export function handleScopeKeyDown(
       }
     }
   } else {
-    if (view.preview.creationMode === "fltData" && view.preview.phase === "entry") {
+    if (
+      (view.preview.creationMode === "fltData" || view.preview.creationMode === "vfr") &&
+      view.preview.phase === "entry"
+    ) {
       const preview = handlePreviewBufferKey(view.preview, event.key, nowMs, event.code);
       if (preview.consumed) {
         consume(event);

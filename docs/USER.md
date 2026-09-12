@@ -135,6 +135,7 @@ read back or fly the change.
 | `*T` | `*T` then Enter | Toggles the TAB flight-plan list. `*T 15` sets its visible row count. Use the displayed numeric row index for list operations. |
 | `ACID [fields]` | `UAL1234 2341 AT AAL B738` then Enter | Abbreviated creation: creates a pending local plan. Accepts an ACID plus beacon/pool selector, TCP, flight type, scratchpads, altitude, rules, and aircraft data. |
 | `F6 / FLT DATA` | `F6 UAL1234 2341 KDEM*RW27 B738 250 .A` then Enter | Full IFR creation: creates one pending local plan. Optional fields are space-separated and order-independent where allowed; no radio parser, Command IR, readback, pilot intent, or kinematic change. |
+| `F9 / VFR DATA` | `F9 N123AB KDEM*RW27 C172 050` then Enter | Local VFR create/modify. `F9 <VFR ACID or VL index>` then Enter deletes. `F9 * 050` then click eligible VFR track creates/associates active-track plan. No ARTCC/network exchange. |
 | `F1 / INIT CNTL` | `F1 UAL1234 2341` then click a target, or `F1` then identity/click | Pending discrete creation remains an INIT CNTL path. Identity association requires a slew/click; Enter-only identity application is invalid. CID is not an identity. |
 | `F3` | `F3` | Track Suspend is reserved and currently a no-op; no suspend lifecycle is simulated yet. |
 | `F4` / `TERM CNTL` / `/` | `F4`, then click a target; or `F4 UAL1234` then Enter | TERM CNTL: all three forms share one operation. The first use deletes the associated plan, removes association, clears ownership, and leaves a moving unassociated LDB (`*`). `TERM CNTL ALL` is invalid. |
@@ -238,6 +239,7 @@ Keys below are divided into **Always-On** shortcuts (which work regardless of wh
 | `F3` | `<TRK SUSP>` Track Suspend | Reserved/no-op until the suspend lifecycle is implemented. |
 | `F4` | `<TERM CNTL>` Terminate Track | Alias of `TERM CNTL`. If track selected: terminates immediately. If none selected: arms command-then-slew. Deletes the associated plan on first use and leaves an unassociated `*` LDB. |
 | `F6` | `<FLT DATA>` Flight Data | Enters full IFR flight-plan creation in the Preview Area. Local record only; optional fields may be entered in any supported order. |
+| `F9` | `<VFR DATA>` VFR flight plan | Enters local VFR create/modify/delete mode. `Ctrl+F9` remains the DCB range-ring command. |
 | `F5` / `Shift + H` | `<HND OFF>` Smart Handoff | Initiates shared outbound handoff: Tower for eligible arrivals, Center (`C`) for eligible climbing departures. Supported destinations auto-accept after five simulated seconds. |
 | `F7` | `<MULTI FUNC>` Multi-Function | Types or appends `*` into the STARS Preview Area buffer. |
 | `F8` | `<HIST>` History Dots | Toggles radar history trail dots (0 ↔ last non-zero dot count). |

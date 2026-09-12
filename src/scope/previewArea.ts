@@ -34,6 +34,7 @@ import {
   parseCaCommand,
   parseFlightPlanCreation,
   parsePreviewCommand,
+  parseVfrFlightPlanCommand,
   parseTrackingSlewBuffer,
   previewBufferCharFromKey,
   type PreviewArmedAction,
@@ -174,7 +175,7 @@ export type PreviewAreaState = {
   /** Generic armed-action discriminator. Null when none. */
   armed: PreviewArmedAction | null;
   /** Explicit F6 / FLT DATA creation mode; abbreviated creation leaves unset. */
-  creationMode?: "fltData";
+  creationMode?: "fltData" | "vfr";
   /** Slew action alias for armed tracking/inhibit actions. */
   slewAction?: PreviewArmedAction | null;
 };
@@ -1054,6 +1055,13 @@ export function beginPreviewFltDataEntry(state: PreviewAreaState, nowMs: number)
   state.creationMode = "fltData";
 }
 
+/** Manual Appendix D Table D-1 F9 / VFR; local trainer record only. */
+export function beginPreviewVfrEntry(state: PreviewAreaState, nowMs: number): void {
+  beginPreviewBufferEntry(state, "", nowMs);
+  state.mnemonic = "VFR DATA";
+  state.creationMode = "vfr";
+}
+
 /**
  * Unified Preview Area typer. Live `B…` still uses Table 30 auto-commit rules.
  * Other live buffers wait for Enter; incomplete prefixes INV on Enter.
@@ -1099,6 +1107,19 @@ export function handlePreviewBufferKey(
         state,
         nowMs,
         creation.kind === "invalid" ? creation.reason : "FORMAT",
+      );
+      return { consumed: true, action: null };
+    }
+    if (state.creationMode === "vfr") {
+      const parsed = parseVfrFlightPlanCommand(state.buffer);
+      if (parsed.kind === "action") {
+        cancelPreviewArea(state);
+        return { consumed: true, action: parsed.action };
+      }
+      rejectPreviewAreaWithReason(
+        state,
+        nowMs,
+        parsed.kind === "invalid" ? parsed.reason : "FORMAT",
       );
       return { consumed: true, action: null };
     }

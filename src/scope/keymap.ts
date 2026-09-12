@@ -126,6 +126,14 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         result: "Create one local full IFR flight plan; no Command IR or aircraft mutation.",
       },
       {
+        id: "vfr-data",
+        command: "F9 / VFR DATA",
+        example: "F9 N123AB KDEM*RW27 C172 050 Enter",
+        input: "Any focus, then Preview Area",
+        result:
+          "Create or modify one local VFR plan; F9 ACID/index Enter deletes; F9 * 050 then click creates from an eligible VFR track.",
+      },
+      {
         id: "terminate",
         command: "F4",
         example: "F4, then click",
