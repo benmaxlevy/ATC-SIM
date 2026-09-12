@@ -1633,3 +1633,25 @@ delta and does not alter the radio or scope command pipelines.
 Codex session for the required second manual pass. Human browser positioning
 review of Help directly below Voice Text also remains a manual leftover;
 automated UI ordering/accessibility coverage is green. No later phase started.
+
+## ELEVENTH SWARM COMPLETE — strict manual INIT/TAB and beacon alignment (T02-166, T02-167)
+
+Executed on `improvement/db-source-unification`; unsupported datablock creation
+and active-plan/unsupported-datablock acquisition remain excluded. T02-166
+enforces manual INIT CNTL identity rules: ACID, discrete beacon, or exact
+two-digit TAB only; slew/click required; direct identity + Enter rejected; CID
+not accepted. TAB rendering and lookup use canonical two-character IDs, so the
+TAB list never displays one-digit IDs. The separate `+<index>` VFR promotion
+path remains intact. T02-167 aligns the existing pending-plan runtime path to
+unique assigned-beacon/reported-squawk association, preserving beacon
+provenance and existing duplicate/1200/ineligible guards.
+
+Captain CI passed after the corrective fix and T02-167 integration: **193
+files, 1812 passed, 4 skipped, 0 failures**. Focused INIT/TAB and VFR/beacon
+tests passed. Independent manual audits against
+`/home/ben/Documents/stars refs/full_manual.pdf` passed for both tickets:
+T02-166 §§5.4.1–5.4.2, pp. 5-66–5-68; T02-167 §5.5.9, pp. 5-125–5-126, with
+the explicit unsupported-datablock boundary preserved. No later phase started.
+
+**Manual leftover:** none for the approved scope. The pre-existing modified
+`phases/LATER-IMPLEMENTATION-BACKLOG.md` was preserved unstaged.
