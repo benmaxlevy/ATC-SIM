@@ -191,13 +191,16 @@ const PREVIEW_TABLE: Readonly<Record<string, PreviewTableEntry>> = {
 export const FULL_CALLSIGN = /^[A-Z]{3}[0-9]{1,4}[A-Z]?$/;
 export const SUFFIX_CALLSIGN = /^[0-9]{1,4}[A-Z]?$/;
 export const SQUAWK_CODE = /^[0-7]{4}$/;
-const CREATION_ACID = /^[A-Z][A-Z0-9]{1,6}$/;
 const SCRATCHPAD = /^[A][A-Z0-9+/. *]{0,4}$/;
 const SCRATCHPAD_2 = /^\+[A-Z0-9+/. *]{0,4}$/;
 const AIRCRAFT = /^(?:(\d{1,2})\/)?([A-Z][A-Z0-9]{1,3})(?:\/([A-Z]))?$/;
 const FLIGHT_RULES = /^[A-Z]$/;
 const FIX_DATA = /^(?:[A-Z0-9]{1,4})?\*(?:[A-Z0-9]{1,4})?(?:\*[APE])?$/;
 const ETA_OR_PTD = /^(?:[01]\d|2[0-3])[0-5]\dE$/;
+
+function isCreationAcid(value: string): boolean {
+  return /^[A-Z][A-Z0-9]{1,6}$/.test(value) && (value.length !== 2 || /\d$/.test(value));
+}
 
 export type FlightPlanCreationParse =
   | { kind: "incomplete" }
@@ -213,7 +216,7 @@ export function parseFlightPlanCreation(
   const tokens = buffer.trim().toUpperCase().split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return { kind: "incomplete" };
   const acid = tokens[0]!;
-  if (acid === "ALL" || !CREATION_ACID.test(acid)) return { kind: "invalid", reason: "ILL ACID" };
+  if (acid === "ALL" || !isCreationAcid(acid)) return { kind: "invalid", reason: "ILL ACID" };
   if (tokens.length === 1 && pendingDiscrete) return { kind: "incomplete" };
   const fields: Extract<PreviewArmedAction, { type: "createFlightPlan" }> = {
     type: "createFlightPlan",
@@ -240,6 +243,16 @@ export function parseFlightPlanCreation(
             ? "vfr"
             : (`general${token.slice(1)}` as "general1" | "general2" | "general3" | "general4");
       used.add("beacon");
+      continue;
+    }
+    // Manual FLT DATA allows two-to-four-character aircraft types. A
+    // two-character letter/number value would otherwise be consumed by the
+    // one/two-character TCP rule. Numeric-leading two-character values stay
+    // TCPs (for example 1R); asterisk-shaped values are fix data below.
+    if (fltData && /^[A-Z][A-Z0-9]$/.test(token)) {
+      if (used.has("aircraft")) return { kind: "invalid", reason: "FORMAT" };
+      fields.aircraftType = token;
+      used.add("aircraft");
       continue;
     }
     if (/^[A-Z0-9]{1,2}$/.test(token) && !/^[APE]/.test(token) && (fltData || token.length === 2)) {

@@ -399,7 +399,11 @@ function applyPreviewArmedAction(
         return;
       }
       world.flightPlans.push(plan);
-      if (plan.assignedBeacon && plan.assignedBeacon !== "1200") {
+      if (
+        action.creationMode !== "fltData" &&
+        plan.assignedBeacon &&
+        plan.assignedBeacon !== "1200"
+      ) {
         const matches = world.aircraft.filter((aircraft) => {
           const reportedSquawk = aircraft.reportedSquawk ?? aircraft.squawk;
           const track = view.tracks.get(aircraft.id);

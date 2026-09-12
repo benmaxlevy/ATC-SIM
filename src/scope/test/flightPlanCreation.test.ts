@@ -176,6 +176,10 @@ describe("T02-144 flight-plan creation", () => {
   });
 
   it("returns explicit F6 format, scratchpad, and value errors", () => {
+    expect(parseFlightPlanCreation("AB", false, true)).toMatchObject({
+      kind: "invalid",
+      reason: "ILL ACID",
+    });
     expect(parseFlightPlanCreation("UAL1234 8888", false, true)).toMatchObject({
       kind: "invalid",
       reason: "FORMAT",
@@ -294,5 +298,24 @@ describe("T02-144 flight-plan creation", () => {
       expect(world.aircraft).toHaveLength(0);
       expect(view.preview.creationMode).toBeUndefined();
     }
+  });
+
+  it("keeps F6 pending and unassociated when beacon matches a track", () => {
+    const aircraft = makeTestAircraft({ id: "ac-f6-pending", callsign: "UNTRK", squawk: "2341" });
+    const world = createWorld({ aircraft: [aircraft] });
+    const view = createScopeView();
+    handleScopeKeyDown(key("F6"), view, "scope", world);
+    for (const ch of "UAL1234 2341 F4 250 .A") handleScopeKeyDown(key(ch), view, "scope", world);
+    handleScopeKeyDown(key("Enter"), view, "scope", world);
+
+    expect(world.flightPlans).toHaveLength(1);
+    expect(world.flightPlans[0]).toMatchObject({
+      acid: "UAL1234",
+      aircraftType: "F4",
+      assignedBeacon: "2341",
+      status: "pending",
+    });
+    expect(world.flightPlans[0]?.associatedAircraftId).toBeUndefined();
+    expect(aircraft.callsign).toBe("UNTRK");
   });
 });
