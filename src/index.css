@@ -1011,7 +1011,8 @@ html[data-dcb-cursor-trap] * {
 .scope-help-panel {
   pointer-events: auto;
   user-select: text;
-  max-width: 760px;
+  width: min(1120px, calc(100vw - 24px));
+  max-width: 1120px;
   max-height: 100%;
   overflow: auto;
   box-sizing: border-box;

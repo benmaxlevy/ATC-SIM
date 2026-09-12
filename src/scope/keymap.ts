@@ -55,13 +55,21 @@ export interface HelpNavigationGroup {
   id: string;
   title: string;
   commandGroupIds: string[];
+  /** Binding ids are projected from KEY_BINDINGS; no help rows are copied here. */
+  bindingSections: HelpBindingSection[];
+}
+
+export interface HelpBindingSection {
+  id: string;
+  title: string;
+  bindingIds: string[];
 }
 
 /** User-facing command reference shared by the Help menu and tests. */
 export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
   {
     id: "radio",
-    title: "Radio commands — command line or PTT",
+    title: "Radio clearances",
     entries: [
       {
         id: "heading",
@@ -102,7 +110,7 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
   },
   {
     id: "preview",
-    title: "Preview Area commands — display only",
+    title: "Aircraft commands",
     entries: [
       {
         id: "init",
@@ -139,18 +147,67 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         input: "Preview Area",
         result: "Set the selected track's leader direction.",
       },
+    ],
+  },
+  {
+    id: "flight-plans",
+    title: "Flight plans",
+    entries: [
       {
-        id: "lists",
-        command: "*T, *P1–*P3, *TV, *TX",
-        example: "*T15",
+        id: "flt-data",
+        command: "F6 / FLT DATA <ACID> [fields]",
+        example: "F6 UAL1234 2341 KDEM*RW27 B738 250 .A",
+        input: "Any focus, then Preview Area",
+        result: "Create one local full IFR flight plan; no Command IR or aircraft mutation.",
+      },
+      {
+        id: "vfr-data",
+        command: "F9 / VFR DATA",
+        example: "F9 N123AB KDEM*RW27 C172 050 Enter",
+        input: "Any focus, then Preview Area",
+        result:
+          "Create or modify one local VFR plan; F9 ACID/index Enter deletes; F9 * 050 then click uses an eligible associated VFR track; resend an amended exit/intermediate fix with the same ACID.",
+      },
+      {
+        id: "plan-create",
+        command: "<ACID> [fields]",
+        example: "UAL1234 2341 AT B738",
         input: "Preview Area",
-        result: "Open the matching system list.",
+        result: "Abbreviated creation: create a pending local flight plan.",
+      },
+      {
+        id: "plan-pending-discrete",
+        command: "F1 / INIT CNTL <ACID> <beacon> [fields]",
+        example: "F1 UAL1234 2341, then click",
+        input: "INIT CNTL Preview path",
+        result: "Create a pending local discrete plan; identity association remains separate.",
+      },
+      {
+        id: "plan-modify",
+        command: "*M <identity> <data>",
+        example: "*M 14 5252",
+        input: "Preview Area",
+        result: "Modify a plan by ACID, beacon, or list index.",
+      },
+      {
+        id: "plan-delete",
+        command: "*DEL <index>",
+        example: "*DEL14",
+        input: "Preview Area",
+        result: "Delete the plan at the TAB-list index.",
+      },
+      {
+        id: "plan-beacon",
+        command: "*B <identity>",
+        example: "*B UAL1234",
+        input: "Preview Area",
+        result: "Release the plan's assigned beacon.",
       },
     ],
   },
   {
     id: "scope",
-    title: "Scope commands — PPI focused",
+    title: "Datablocks and filters",
     entries: [
       {
         id: "range",
@@ -198,7 +255,7 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
   },
   {
     id: "display",
-    title: "Display and map commands — Preview Area",
+    title: "View and maps",
     entries: [
       {
         id: "scope-center",
@@ -260,8 +317,15 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
   },
   {
     id: "lists",
-    title: "System lists and flight plans — Preview Area",
+    title: "System lists",
     entries: [
+      {
+        id: "lists",
+        command: "*T, *P1–*P3, *TV, *TX",
+        example: "*T15",
+        input: "Preview Area",
+        result: "Open the matching system list.",
+      },
       {
         id: "tab-list",
         command: "*T [lines]",
@@ -325,39 +389,11 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         input: "Preview Area",
         result: "Toggle the CRDA status list.",
       },
-      {
-        id: "plan-create",
-        command: "<ACID> [fields]",
-        example: "UAL1234 2341 AT B738",
-        input: "Preview Area",
-        result: "Create a pending local flight plan.",
-      },
-      {
-        id: "plan-modify",
-        command: "*M <identity> <data>",
-        example: "*M 14 5252",
-        input: "Preview Area",
-        result: "Modify a plan by ACID, beacon, or list index.",
-      },
-      {
-        id: "plan-delete",
-        command: "*DEL <index>",
-        example: "*DEL14",
-        input: "Preview Area",
-        result: "Delete the plan at the TAB-list index.",
-      },
-      {
-        id: "plan-beacon",
-        command: "*B <identity>",
-        example: "*B UAL1234",
-        input: "Preview Area",
-        result: "Release the plan's assigned beacon.",
-      },
     ],
   },
   {
     id: "tracking-alerts",
-    title: "Tracking and alert controls — Preview Area",
+    title: "Alerts and tracking",
     entries: [
       {
         id: "force-fdb",
@@ -413,7 +449,7 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
   },
   {
     id: "focus",
-    title: "Focus and safety rules",
+    title: "Focus and Preview Area",
     entries: [
       {
         id: "tab",
@@ -436,6 +472,12 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         input: "Command line",
         result: "Radio left turn to heading 090; scope keys never submit radio commands.",
       },
+    ],
+  },
+  {
+    id: "navigation",
+    title: "Help, cancel, and navigation",
+    entries: [
       {
         id: "escape",
         command: "Escape",
@@ -447,22 +489,93 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
   },
 ];
 
-/** Top-level navigation keeps the command list scannable without hiding detail. */
+/**
+ * Task-based navigation keeps the command list scannable without hiding detail.
+ * Each binding is assigned once and rendered by looking up its id in
+ * KEY_BINDINGS, so keyboard and mouse copy cannot drift from behavior.
+ */
 export const HELP_NAVIGATION_GROUPS: HelpNavigationGroup[] = [
   {
-    id: "simulation",
-    title: "Simulation commands",
-    commandGroupIds: ["radio", "preview", "lists", "tracking-alerts"],
+    id: "aircraft",
+    title: "Aircraft & flight plans",
+    commandGroupIds: ["radio", "preview", "flight-plans", "tracking-alerts"],
+    bindingSections: [
+      {
+        id: "aircraft-keyboard",
+        title: "Aircraft keyboard controls",
+        bindingIds: ["initiate-track", "flt-data", "track-suspend", "drop-track", "tower-handoff"],
+      },
+      {
+        id: "aircraft-alerts",
+        title: "Alerts and tracking controls",
+        bindingIds: ["ca-inhibit"],
+      },
+      {
+        id: "aircraft-mouse",
+        title: "Aircraft actions on the PPI",
+        bindingIds: ["mouse-select", "mouse-accept-handoff", "mouse-deselect"],
+      },
+    ],
   },
   {
     id: "scope",
-    title: "Scope commands",
+    title: "Scope & display",
     commandGroupIds: ["scope", "display"],
+    bindingSections: [
+      {
+        id: "scope-view",
+        title: "View and map controls",
+        bindingIds: [
+          "range-in",
+          "range-out",
+          "center-airport",
+          "center-click",
+          "mouse-range",
+          "mouse-pan",
+          "mouse-center",
+          "mouse-place-cntr",
+          "mouse-place-rr",
+        ],
+      },
+      {
+        id: "scope-datablocks",
+        title: "Datablocks and filters",
+        bindingIds: ["history", "ptl", "datablock", "mode-c", "altitude-filter", "history-scope"],
+      },
+      {
+        id: "scope-dcb",
+        title: "Display Control Bar",
+        bindingIds: [
+          "dcb-maps",
+          "dcb-brite",
+          "dcb-ldr",
+          "dcb-char-size",
+          "dcb-shift",
+          "dcb-toggle",
+          "dcb-rng-ring",
+          "dcb-range",
+          "dcb-wx",
+          "dcb-pref",
+        ],
+      },
+    ],
   },
   {
-    id: "controls",
-    title: "Controls and input",
-    commandGroupIds: ["focus"],
+    id: "workstation",
+    title: "Workstation & trainer controls",
+    commandGroupIds: ["focus", "navigation", "lists"],
+    bindingSections: [
+      {
+        id: "workstation-preview",
+        title: "Focus and Preview Area",
+        bindingIds: ["cycle-focus", "radio-focus", "stars-tpa-atpa", "multi-func"],
+      },
+      {
+        id: "workstation-navigation",
+        title: "Help, cancel, and navigation",
+        bindingIds: ["help"],
+      },
+    ],
   },
 ];
 
@@ -512,6 +625,14 @@ export const KEY_BINDINGS: KeyBinding[] = [
     windowsKeys: "F1",
     action: "INIT CNTL: selected target applies now; otherwise arm command-then-slew.",
     crcAnalog: "F1 <INIT CNTL>",
+  },
+  {
+    id: "flt-data",
+    focus: "always",
+    windowsKeys: "F6",
+    action:
+      "FLT DATA: enter full IFR flight-plan data in Preview Area. Local record only; no radio parser or Command IR.",
+    crcAnalog: "F6 <FLT DATA>",
   },
   {
     id: "track-suspend",

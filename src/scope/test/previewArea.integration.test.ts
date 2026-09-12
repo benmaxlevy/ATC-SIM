@@ -620,6 +620,86 @@ test("AC5 — KEY_BINDINGS overlay text includes INIT CNTL command-then-slew", (
   expect(init.crcAnalog).toMatch(/INIT CNTL/);
   expect(bindingById("help")?.crcAnalog).toMatch(/Trainer help/);
   expect(bindingById("ptl")?.action).toMatch(/PTL ALL/);
+  expect(bindingById("flt-data")?.windowsKeys).toBe("F6");
+  expect(bindingById("flt-data")?.action).toMatch(/full IFR/);
+});
+
+test("T02-168 — F6 FLT DATA paints command mode and creates only a local record", () => {
+  const aircraft = makeTestAircraft({
+    id: "ac-f6-local",
+    callsign: "DAL123",
+    xNm: 5,
+    yNm: 6,
+  });
+  const log = new SessionLog();
+  const world = createWorld({ aircraft: [aircraft], sessionLog: log });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const intentBefore = structuredClone(aircraft.intent);
+  const positionBefore = { xNm: aircraft.xNm, yNm: aircraft.yNm };
+
+  typeKeys(view, world, ["F6"], "radio");
+  expect(formatPreviewReadout(view.preview)).toBe("FLT DATA");
+  expect(paint(world, view).fillTexts.some((item) => item.text === "FLT DATA")).toBe(true);
+  typeKeys(
+    view,
+    world,
+    [
+      "U",
+      "A",
+      "L",
+      "1",
+      "2",
+      "3",
+      "4",
+      " ",
+      "2",
+      "3",
+      "4",
+      "1",
+      " ",
+      "K",
+      "D",
+      "E",
+      "M",
+      "*",
+      "R",
+      "W",
+      "2",
+      "7",
+      " ",
+      "B",
+      "7",
+      "3",
+      "8",
+      " ",
+      "2",
+      "5",
+      "0",
+      " ",
+      ".",
+      "A",
+      "Enter",
+    ],
+    "radio",
+    100,
+  );
+
+  expect(world.flightPlans).toHaveLength(1);
+  expect(world.flightPlans[0]).toMatchObject({
+    acid: "UAL1234",
+    assignedBeacon: "2341",
+    fixes: ["KDEM*RW27"],
+    aircraftType: "B738",
+    requestedAltitudeFt: 25000,
+    flightRules: "A",
+    flightType: "IFR",
+    status: "pending",
+  });
+  expect(aircraft.intent).toEqual(intentBefore);
+  expect({ xNm: aircraft.xNm, yNm: aircraft.yNm }).toEqual(positionBefore);
+  expect(log.byType("command.accepted")).toHaveLength(0);
+  expect(formatPreviewReadout(view.preview)).toBeNull();
 });
 
 test("T02-64 — *C Enter then PPI click recenters; *OFF resets to KDEM ARP", () => {

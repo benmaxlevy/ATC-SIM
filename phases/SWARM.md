@@ -3964,3 +3964,72 @@ pp. 5-125–5-126).
 Worker handoff is exactly `READY TO MERGE` or `BLOCKED`. On failed CI or manual
 review, stop the next wave and use one narrowly scoped fix worker only. Stop
 after T02-167; do not start another phase.
+## Twelfth swarm planned — 2026-09-12 (F6/F9 flight-plan command alignment)
+
+Human approved separating abbreviated implied IFR creation from F6 FLT DATA
+creation and adding a distinct F9 VFR flight-plan command mode. The supplied
+manual remains authoritative; local trainer semantics remain explicit.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align IFR/VFR flight-plan creation and management command entry with RPO F6/F9 without changing radio or aircraft intent. |
+| Phase | `phases/02-scope/` |
+| Tickets | `T02-168` → `T02-169` |
+| Merge target | `feat/flight-plan-f6-f9` |
+| Worker limit | 1 ticket worker; sequential waves |
+| Model | inherit available Codex worker model |
+| Required gate | `npm run ci` after every merge |
+| Required review | `$check-stars-manual` with `/home/ben/Documents/stars refs/full_manual.pdf` after every ticket |
+| Stop | Stop after `T02-169`; do not start another phase |
+
+**Product law:** No-prefix ACID entry remains the abbreviated/implied IFR
+creation path. F6 owns full local `FLT DATA` IFR creation. F9 owns local VFR
+creation, modification, deletion, and active-track VFR entry. All scope command
+paths remain separate from the radio parser and never emit Command IR,
+readback, pilot intent, or kinematic changes. ARTCC/network results are
+simulated local trainer state only.
+
+**Skip:** F2 TRK RPOS, F3 suspend lifecycle, F8 TSAS/FMA, F10 IFDT, F12/F13,
+real ARTCC or IFDT messaging, multi-controller networking, unsupported
+datablocks, speech, pilot execution, kinematics, facility branches, and new
+scenario data.
+
+**Waves:** A=`T02-168`; B=`T02-169`. Wave B waits for the F6 merge, focused
+tests, `npm run ci`, and independent manual review.
+
+**Ticket ownership:** T02-168 owns F6 routing, full IFR grammar, and separation
+from abbreviated/F1 creation. T02-169 owns F9 routing, VFR grammar, VFR-list
+lifecycle, and active-track VFR creation.
+
+**Ticket branches:**
+
+- `ticket/T02-168-flt-data-f6-command-mode` ← `phases/02-scope/tickets/T02-168-flt-data-f6-command-mode.md`
+- `ticket/T02-169-vfr-f9-command-mode` ← `phases/02-scope/tickets/T02-169-vfr-f9-command-mode.md`
+
+**Manual review:** `/home/ben/Documents/stars refs/full_manual.pdf`; relevant
+anchors are Appendix D Table D-1 p. D-2, §5.5.1 pp. 5-85–5-89, §5.5.5
+pp. 5-105–5-108, §5.5.7 pp. 5-116–5-119, §5.4.7 p. 5-81, §5.5.10
+pp. 5-129–5-133, §5.5.13 p. 5-139, and §5.6.19 pp. 5-177–5-178.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: F6/F9 flight-plan command alignment T02-168–169
+Merge target: feat/flight-plan-f6-f9
+Merged: T02-168, T02-169
+Tests: <focused gates, final npm run ci, and independent manual reviews>
+Notes: Local trainer semantics; no ARTCC/network, Command IR, or master merge
+```
+
+## Twelfth swarm started — 2026-09-12 (F6/F9 flight-plan command alignment)
+
+Execution authorized on `feat/flight-plan-f6-f9`. The captain runs T02-168 then
+T02-169 sequentially with one isolated worker at a time. Every squash merge
+requires `npm run ci` and an independent `$check-stars-manual` review against
+`/home/ben/Documents/stars refs/full_manual.pdf` before the next wave.
+
+No push is authorized. Workers implement exactly one ticket, never merge or
+spawn, and return exactly `READY TO MERGE` or `BLOCKED`. Stop after T02-169 or
+on an unresolved CI/manual-review failure; use one narrowly scoped fix worker
+only if required by the swarm rules.

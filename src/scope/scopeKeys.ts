@@ -69,6 +69,8 @@ import {
   armPreviewSlewAction,
   beginPreviewBeaconEntry,
   beginPreviewBufferEntry,
+  beginPreviewFltDataEntry,
+  beginPreviewVfrEntry,
   cancelPreviewArea,
   handlePreviewBufferKey,
   handlePreviewEscape,
@@ -149,6 +151,7 @@ import {
   cancelListDrag,
   deleteFlightPlanEntry,
   getFlightPlanEntries,
+  getVfrListCallsigns,
   isSystemListMultiPage,
   pointInsideRect,
   relocateSystemList,
@@ -168,6 +171,7 @@ export const ALWAYS_ON_SCOPE_KEYS = [
   "F3",
   "F4",
   "F5",
+  "F6",
   "F7",
   "F8",
   "F9",
@@ -312,6 +316,24 @@ function startPreviewBuffer(view: ScopeView, ch: string, nowMs: number): void {
   }
 }
 
+function startFltDataEntry(view: ScopeView, nowMs: number): void {
+  cancelFilterEntry(view.filterEntry, view.altitudeFilter);
+  cancelDcbPrefSaveAs(view);
+  view.pendingChord = null;
+  view.starsChordArmed = null;
+  cancelStarsChordEntry(view.starsChordEntry);
+  beginPreviewFltDataEntry(view.preview, nowMs);
+}
+
+function startVfrEntry(view: ScopeView, nowMs: number): void {
+  cancelFilterEntry(view.filterEntry, view.altitudeFilter);
+  cancelDcbPrefSaveAs(view);
+  view.pendingChord = null;
+  view.starsChordArmed = null;
+  cancelStarsChordEntry(view.starsChordEntry);
+  beginPreviewVfrEntry(view.preview, nowMs);
+}
+
 function applyPreviewArmedAction(
   view: ScopeView,
   action: PreviewArmedAction,
@@ -329,6 +351,54 @@ function applyPreviewArmedAction(
   switch (action.type) {
     case "createFlightPlan": {
       if (!world) return;
+      if (action.creationMode === "vfr") {
+        const existing = world.flightPlans.find(
+          (plan) =>
+            plan.status !== "deleted" && plan.flightRules === "VFR" && plan.acid === action.acid,
+        );
+        if (existing) {
+          if (!existing.assignedBeacon) {
+            const allocated = withAllocatedBeacon(
+              existing,
+              CREATION_BEACON_POOLS.vfr,
+              world.flightPlans,
+            );
+            if (!allocated.ok || !allocated.value.assignedBeacon) {
+              view.preview.rejection = "CAPACITY — BCN";
+              return;
+            }
+            existing.assignedBeacon = allocated.value.assignedBeacon;
+          }
+          const edits: Array<
+            [
+              "fixes" | "aircraftType" | "equipment" | "requestedAltitudeFt" | "tcp",
+              string | number | string[] | undefined,
+            ]
+          > = [
+            ["fixes", action.fixes],
+            ["aircraftType", action.aircraftType],
+            ["equipment", action.equipment],
+            ["requestedAltitudeFt", action.requestedAltitudeFt],
+            ["tcp", action.tcp],
+          ];
+          for (const [field, value] of edits) {
+            if (value !== undefined) {
+              const edited = modifyFlightPlan(world, existing.id, field, value);
+              if (!edited.ok) {
+                view.preview.rejection = "FORMAT";
+                return;
+              }
+            }
+          }
+          if (action.fixes?.length) {
+            existing.vfrRetransmit = {
+              amendedFix: action.fixes[0]!,
+              requestedAtMs: world.simTimeMs,
+            };
+          }
+          return;
+        }
+      }
       if (world.flightPlans.filter((plan) => plan.status !== "deleted").length >= 100) {
         view.preview.rejection = "CAPACITY — FP";
         return;
@@ -340,16 +410,24 @@ function applyPreviewArmedAction(
           acid: action.acid,
           assignedBeacon: action.assignedBeacon,
           tcp: action.tcp,
-          flightType:
-            action.flightType === "A" ? "IFR" : action.flightType === "P" ? "IFR" : undefined,
           airportId: action.airportId,
-          fixes: [],
           scratchpads: action.scratchpads.filter((value) => value.length > 0),
           aircraftType: action.aircraftType,
           aircraftCount: action.aircraftCount,
           equipment: action.equipment,
+          fixes: action.fixes ?? [],
           requestedAltitudeFt: action.requestedAltitudeFt,
           flightRules: action.flightRules,
+          eta: action.eta,
+          ptd: action.ptd,
+          flightType:
+            action.flightType === "A"
+              ? "IFR"
+              : action.flightType === "P"
+                ? "IFR"
+                : action.creationMode === "fltData"
+                  ? "IFR"
+                  : undefined,
         },
         world.flightPlans,
       );
@@ -363,7 +441,14 @@ function applyPreviewArmedAction(
         return;
       }
       let plan: FlightPlan = result.value;
-      if (action.beaconAllocation) {
+      if (action.creationMode === "vfr" && !plan.assignedBeacon) {
+        const allocated = withAllocatedBeacon(plan, CREATION_BEACON_POOLS.vfr, world.flightPlans);
+        if (!allocated.ok || !allocated.value.assignedBeacon) {
+          view.preview.rejection = "CAPACITY — BCN";
+          return;
+        }
+        plan = allocated.value;
+      } else if (action.beaconAllocation) {
         const allocated = withAllocatedBeacon(
           plan,
           CREATION_BEACON_POOLS[action.beaconAllocation],
@@ -380,7 +465,11 @@ function applyPreviewArmedAction(
         return;
       }
       world.flightPlans.push(plan);
-      if (plan.assignedBeacon && plan.assignedBeacon !== "1200") {
+      if (
+        action.creationMode !== "fltData" &&
+        plan.assignedBeacon &&
+        plan.assignedBeacon !== "1200"
+      ) {
         const matches = world.aircraft.filter((aircraft) => {
           const reportedSquawk = aircraft.reportedSquawk ?? aircraft.squawk;
           const track = view.tracks.get(aircraft.id);
@@ -401,6 +490,29 @@ function applyPreviewArmedAction(
       }
       return;
     }
+    case "deleteVfrFlightPlan": {
+      if (!world) return;
+      const id = action.flid.toUpperCase();
+      const callsigns = getVfrListCallsigns(world, view);
+      const callsign = /^\d{1,2}$/.test(id) ? callsigns[Number(id) - 1] : id;
+      const plans = world.flightPlans.filter(
+        (plan) => plan.status !== "deleted" && plan.flightRules === "VFR" && plan.acid === callsign,
+      );
+      if (plans.length !== 1) {
+        view.preview.rejection = plans.length === 0 ? "NO FLIGHT" : "FORMAT";
+        return;
+      }
+      const plan = plans[0]!;
+      if (plan.associatedAircraftId) {
+        terminateTrackWithPlan(view.tracks, world, plan.associatedAircraftId, view);
+      } else {
+        deleteFlightPlanFromWorld(world, plan.id);
+      }
+      return;
+    }
+    case "createVfrActiveTrack":
+      armPreviewSlewAction(view.preview, action, nowMs);
+      return;
     case "toggleList":
       toggleSystemList(view, action.listId);
       cancelStarsChordEntry(view.starsChordEntry);
@@ -902,6 +1014,23 @@ export function handleScopeKeyDown(
     return true;
   }
 
+  // Manual Appendix D Table D-1: F6 -> FLT DATA. Always-on and scope-only;
+  // never enters the radio parser.
+  if (event.key === "F6" && !event.ctrlKey && !event.altKey) {
+    consume(event);
+    startFltDataEntry(view, nowMs);
+    ui?.onHandled?.();
+    return true;
+  }
+
+  // Manual Appendix D Table D-1: F9 -> VFR. Ctrl+F9 remains DCB RR.
+  if (event.key === "F9" && !event.ctrlKey && !event.altKey) {
+    consume(event);
+    startVfrEntry(view, nowMs);
+    ui?.onHandled?.();
+    return true;
+  }
+
   // Manual Appendix D Table D-1: F1 -> INIT CNTL.
   if (event.key === "F1" && !event.ctrlKey && !event.altKey) {
     consume(event);
@@ -1122,7 +1251,19 @@ export function handleScopeKeyDown(
       }
     }
   } else {
-    if (view.preview.phase === "entry") {
+    if (
+      (view.preview.creationMode === "fltData" || view.preview.creationMode === "vfr") &&
+      view.preview.phase === "entry"
+    ) {
+      const preview = handlePreviewBufferKey(view.preview, event.key, nowMs, event.code);
+      if (preview.consumed) {
+        consume(event);
+        applyPreviewBufferOutcome(view, world, nowMs, preview);
+        ui?.onHandled?.();
+        return true;
+      }
+    }
+    if (view.preview.phase === "entry" && view.preview.creationMode !== "fltData") {
       cancelPreviewArea(view.preview);
       cancelDcbPrefSaveAs(view);
     }

@@ -10,9 +10,7 @@ import {
   HELP_GLOSSARY_NOTE,
   HELP_OVERLAY_ID,
   RADIO_CONFLICT_WARNING,
-  alwaysOnKeyBindings,
-  mouseKeyBindings,
-  scopeFocusKeyBindings,
+  bindingById,
   type KeyBinding,
 } from "@scope";
 import { useMemo, useState } from "react";
@@ -70,6 +68,16 @@ function HelpTable({ caption, bindings }: { caption: string; bindings: KeyBindin
       </tbody>
     </table>
   );
+}
+
+function bindingsForIds(bindingIds: string[]): KeyBinding[] {
+  // The behavior selectors (alwaysOnKeyBindings, scopeFocusKeyBindings,
+  // mouseKeyBindings) remain available to scope code; Help intentionally
+  // projects rows from the navigation registry by binding id.
+  return bindingIds.flatMap((id) => {
+    const binding = bindingById(id);
+    return binding ? [binding] : [];
+  });
 }
 
 function CommandTable({
@@ -132,14 +140,22 @@ export function ScopeHelpOverlay({ open }: ScopeHelpOverlayProps) {
             normalizedQuery,
           ),
         );
-  const filteredAlwaysOnBindings = filterBindings(alwaysOnKeyBindings());
-  const filteredScopeBindings = filterBindings(scopeFocusKeyBindings());
-  const filteredMouseBindings = filterBindings(mouseKeyBindings());
-  const hasMatches =
-    filteredGroups.length > 0 ||
-    filteredAlwaysOnBindings.length > 0 ||
-    filteredScopeBindings.length > 0 ||
-    filteredMouseBindings.length > 0;
+  const filteredNavigationGroups = HELP_NAVIGATION_GROUPS.map((navigationGroup) => {
+    const groups = navigationGroup.commandGroupIds
+      .map((id) => filteredGroupById.get(id))
+      .filter((group): group is (typeof filteredGroups)[number] => group !== undefined);
+    const bindingSections = navigationGroup.bindingSections
+      .map((section) => ({
+        ...section,
+        bindings: filterBindings(bindingsForIds(section.bindingIds)),
+      }))
+      .filter((section) => section.bindings.length > 0);
+    return { ...navigationGroup, groups, bindingSections };
+  }).filter(
+    (navigationGroup) =>
+      navigationGroup.groups.length > 0 || navigationGroup.bindingSections.length > 0,
+  );
+  const hasMatches = filteredNavigationGroups.length > 0;
 
   if (!open) {
     return null;
@@ -169,25 +185,42 @@ export function ScopeHelpOverlay({ open }: ScopeHelpOverlayProps) {
         />
         <p className="scope-help-glossary">{HELP_GLOSSARY_NOTE}</p>
         <p className="scope-help-radio">{RADIO_CONFLICT_WARNING}</p>
-        {HELP_NAVIGATION_GROUPS.map((navigationGroup) => {
-          const groups = navigationGroup.commandGroupIds
-            .map((id) => filteredGroupById.get(id))
-            .filter((group): group is (typeof filteredGroups)[number] => group !== undefined);
-          if (groups.length === 0) return null;
+        {filteredNavigationGroups.map((navigationGroup) => {
           return (
             <details
               key={navigationGroup.id}
               className="scope-help-top-section"
-              open={normalizedQuery.length > 0 || navigationGroup.id === "simulation"}
+              open={normalizedQuery.length > 0 || navigationGroup.id === "aircraft"}
             >
               <summary>{navigationGroup.title}</summary>
-              {groups.map((group) => (
+              {navigationGroup.groups.map((group) => (
                 <CommandTable
                   key={group.id}
                   title={group.title}
                   entries={group.entries}
-                  open={normalizedQuery.length > 0 || navigationGroup.id === "simulation"}
+                  open={normalizedQuery.length > 0 || navigationGroup.id === "aircraft"}
                 />
+              ))}
+              {navigationGroup.bindingSections.map((section) => (
+                <details
+                  key={section.id}
+                  className="scope-help-section"
+                  open={normalizedQuery.length > 0 || navigationGroup.id === "aircraft"}
+                >
+                  <summary>{section.title}</summary>
+                  <HelpTable caption={`${section.title} shortcuts`} bindings={section.bindings} />
+                  {section.id === "scope-dcb" ? (
+                    <p className="scope-help-dcb">
+                      SHIFT swaps MAIN and AUX. AUX has HISTORY, PTL length/OWN/ALL, and DCB
+                      TOP/LEFT/RIGHT/BOTTOM. VOL is disabled. FILTER stays on MAIN. Esc closes a DCB
+                      submenu (DONE). RANGE / RR / LDR DIR / LDR LEN are spinners — click traps the
+                      cursor in that cell. An open submenu traps the cursor in the DCB boxes. PLACE
+                      CNTR then PPI click sets view center; OFF CNTR recenters the airport. PLACE RR
+                      then PPI click sets range-ring origin; RR CNTR snaps origin to the view
+                      center.
+                    </p>
+                  ) : null}
+                </details>
               ))}
             </details>
           );
@@ -195,26 +228,6 @@ export function ScopeHelpOverlay({ open }: ScopeHelpOverlayProps) {
         {normalizedQuery && !hasMatches ? (
           <p className="scope-help-empty">No matching commands.</p>
         ) : null}
-        <details className="scope-help-top-section" open={normalizedQuery.length === 0}>
-          <summary>Keyboard shortcuts, mouse, and DCB</summary>
-          {filteredAlwaysOnBindings.length > 0 ? (
-            <HelpTable caption="Additional keyboard controls" bindings={filteredAlwaysOnBindings} />
-          ) : null}
-          {filteredScopeBindings.length > 0 ? (
-            <HelpTable caption="Scope-focus shortcuts" bindings={filteredScopeBindings} />
-          ) : null}
-          {filteredMouseBindings.length > 0 ? (
-            <HelpTable caption="Mouse controls" bindings={filteredMouseBindings} />
-          ) : null}
-          <p className="scope-help-dcb">
-            SHIFT swaps MAIN and AUX. AUX has HISTORY, PTL length/OWN/ALL, and DCB
-            TOP/LEFT/RIGHT/BOTTOM. VOL is disabled. FILTER stays on MAIN. Esc closes a DCB submenu
-            (DONE). RANGE / RR / LDR DIR / LDR LEN are spinners — click traps the cursor in that
-            cell. An open submenu traps the cursor in the DCB boxes. PLACE CNTR then PPI click sets
-            view center; OFF CNTR recenters the airport. PLACE RR then PPI click sets range-ring
-            origin; RR CNTR snaps origin to the view center.
-          </p>
-        </details>
         <p className="scope-help-disclaimer">{DISCLAIMER_COPY}</p>
         <p className="scope-help-footer">{HELP_FOOTER}</p>
       </div>

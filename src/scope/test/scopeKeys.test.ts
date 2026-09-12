@@ -19,7 +19,7 @@ function keyEvent(key: string, opts?: { ctrlKey?: boolean; shiftKey?: boolean; a
   };
 }
 
-test("always-on keys include PageUp, Home, F1-F5, F7-F11, Insert, ?; H and T are not", () => {
+test("always-on keys include PageUp, Home, F1-F6, F7-F11, Insert, ?; H and T are not", () => {
   expect(isAlwaysOnScopeKey("PageUp")).toBe(true);
   expect(isAlwaysOnScopeKey("Home")).toBe(true);
   expect(isAlwaysOnScopeKey("F1")).toBe(true);
@@ -27,6 +27,7 @@ test("always-on keys include PageUp, Home, F1-F5, F7-F11, Insert, ?; H and T are
   expect(isAlwaysOnScopeKey("F3")).toBe(true);
   expect(isAlwaysOnScopeKey("F4")).toBe(true);
   expect(isAlwaysOnScopeKey("F5")).toBe(true);
+  expect(isAlwaysOnScopeKey("F6")).toBe(true);
   expect(isAlwaysOnScopeKey("F7")).toBe(true);
   expect(isAlwaysOnScopeKey("F8")).toBe(true);
   expect(isAlwaysOnScopeKey("F9")).toBe(true);
@@ -91,6 +92,30 @@ test("Appendix D: F1 arms INIT CNTL and F3 reserves Track Suspend", () => {
   handleScopeKeyDown(keyEvent("F3"), view);
   expect(view.preview.armed).toBeNull();
   expect(view.helpOpen).toBe(false);
+});
+
+test("Appendix D: F6 enters FLT DATA in both focus modes and consumes key", () => {
+  for (const focus of ["scope", "radio"] as const) {
+    const view = createScopeView();
+    const event = keyEvent("F6");
+    expect(handleScopeKeyDown(event, view, focus)).toBe(true);
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(event.stopPropagation).toHaveBeenCalledOnce();
+    expect(view.preview.phase).toBe("entry");
+    expect(view.preview.mnemonic).toBe("FLT DATA");
+    expect(view.preview.buffer).toBe("");
+  }
+});
+
+test("Appendix D: F9 enters VFR DATA in both focus modes without radio parsing", () => {
+  for (const focus of ["scope", "radio"] as const) {
+    const view = createScopeView();
+    const event = keyEvent("F9");
+    expect(handleScopeKeyDown(event, view, focus)).toBe(true);
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(view.preview.mnemonic).toBe("VFR DATA");
+    expect(view.preview.creationMode).toBe("vfr");
+  }
 });
 
 test("Help overlay toggle via ? / Shift+/ and Alt+F1; Escape closes it", () => {

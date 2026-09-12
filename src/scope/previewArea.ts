@@ -34,6 +34,7 @@ import {
   parseCaCommand,
   parseFlightPlanCreation,
   parsePreviewCommand,
+  parseVfrFlightPlanCommand,
   parseTrackingSlewBuffer,
   previewBufferCharFromKey,
   type PreviewArmedAction,
@@ -173,6 +174,8 @@ export type PreviewAreaState = {
   rejection: string | null;
   /** Generic armed-action discriminator. Null when none. */
   armed: PreviewArmedAction | null;
+  /** Explicit F6 / FLT DATA creation mode; abbreviated creation leaves unset. */
+  creationMode?: "fltData" | "vfr";
   /** Slew action alias for armed tracking/inhibit actions. */
   slewAction?: PreviewArmedAction | null;
 };
@@ -204,6 +207,7 @@ export function cancelPreviewArea(state: PreviewAreaState): void {
   state.rejection = idle.rejection;
   state.armed = idle.armed;
   state.slewAction = idle.slewAction;
+  delete state.creationMode;
 }
 
 /**
@@ -1040,7 +1044,22 @@ export function beginPreviewBufferEntry(state: PreviewAreaState, ch: string, now
   state.flid = null;
   state.rejection = null;
   state.armed = null;
+  delete state.creationMode;
   state.lastKeyAtMs = nowMs;
+}
+
+/** Manual Appendix D Table D-1 F6 / FLT DATA; local trainer record only. */
+export function beginPreviewFltDataEntry(state: PreviewAreaState, nowMs: number): void {
+  beginPreviewBufferEntry(state, "", nowMs);
+  state.mnemonic = "FLT DATA";
+  state.creationMode = "fltData";
+}
+
+/** Manual Appendix D Table D-1 F9 / VFR; local trainer record only. */
+export function beginPreviewVfrEntry(state: PreviewAreaState, nowMs: number): void {
+  beginPreviewBufferEntry(state, "", nowMs);
+  state.mnemonic = "VFR DATA";
+  state.creationMode = "vfr";
 }
 
 /**
@@ -1078,6 +1097,32 @@ export function handlePreviewBufferKey(
     return { consumed: true, action: null };
   }
   if (key === "Enter" || key === "NumpadEnter") {
+    if (state.creationMode === "fltData") {
+      const creation = parseFlightPlanCreation(state.buffer, false, true);
+      if (creation.kind === "action") {
+        cancelPreviewArea(state);
+        return { consumed: true, action: creation.action };
+      }
+      rejectPreviewAreaWithReason(
+        state,
+        nowMs,
+        creation.kind === "invalid" ? creation.reason : "FORMAT",
+      );
+      return { consumed: true, action: null };
+    }
+    if (state.creationMode === "vfr") {
+      const parsed = parseVfrFlightPlanCommand(state.buffer);
+      if (parsed.kind === "action") {
+        cancelPreviewArea(state);
+        return { consumed: true, action: parsed.action };
+      }
+      rejectPreviewAreaWithReason(
+        state,
+        nowMs,
+        parsed.kind === "invalid" ? parsed.reason : "FORMAT",
+      );
+      return { consumed: true, action: null };
+    }
     const parsed = parsePreviewCommand(state.buffer, maps, layout);
     if (parsed.kind === "action") {
       cancelPreviewArea(state);

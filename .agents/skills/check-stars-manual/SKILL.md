@@ -36,15 +36,33 @@ tests, git state, or the manual.
 4. Identify only manual sections relevant to the ticket's actual scope. Compare
    each implemented behavior and acceptance criterion against those sections.
    Separate manual facts, repository facts, supported trainer deltas, and
-   unsupported assumptions.
+   unsupported assumptions. Build an evidence matrix before writing findings:
+
+   | Ticket contract row | Manual requirement | Implementation/test evidence | Result |
+   | --- | --- | --- | --- |
+   | exact input/form | printed section/page/table | file/line and test | PASS/FAIL/CONCERN/BLOCKED |
+
+   Include positive, incomplete, malformed, ambiguous, modifier-conflict, and
+   optional-field-order cases named by the ticket. Inspect the help modal,
+   command reference, and user docs whenever syntax changes. Do not infer that
+   one happy-path parser test covers an overloaded command.
 5. Delegate one independent, read-only verification pass to a subagent. Give it
    the user-supplied ticket path, the manual path, the relevant source/test
    paths, and the instruction to independently verify functionality against the
    relevant manual sections. Do not give it the primary review's conclusions.
    Use only subagent capabilities available in the current Codex session; do
-   not request speculative model names. Wait for its terminal result.
+   not request speculative model names. The delegated reviewer performs one
+   independent pass and is not expected to spawn another reviewer. Wait for its
+   terminal result.
 6. Reconcile both reviews. Report disagreements explicitly, resolve them from
    the manual or repository evidence, and do not silently choose one result.
+
+If the delegated reviewer returns valid PASS/FAIL findings but says it could
+not spawn a child reviewer, use that result as the required independent pass
+and note the limitation. Do not convert a valid review into BLOCKED merely due
+to unavailable recursive delegation. Use BLOCKED only when the supplied manual
+cannot be read, the ticket/change cannot be inspected, or the captain’s
+delegated review returns no result.
 
 ## Scope rules
 
@@ -70,6 +88,11 @@ Return:
 - Acceptance criteria status.
 - Subagent verification result and any disagreement.
 - Explicit statement that no files or git state were changed.
+
+For every `FAIL` or `CONCERN`, state the exact input, observed result, manual
+expectation, repository file/line, and required action. For every `PASS`, cite
+the contract row and test or inspection evidence; avoid broad “looks aligned”
+claims.
 
 Do not claim full STARS or NAS compatibility. Use `STARS-like` or `manual
 alignment` unless the user explicitly asks for a narrower quotation.

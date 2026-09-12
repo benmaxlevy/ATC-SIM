@@ -1,4 +1,11 @@
-import { acceptPointout, handoffFor, setSelectedAircraft, type World } from "@core";
+import {
+  acceptPointout,
+  handoffFor,
+  flightPlanForAircraft,
+  modifyFlightPlan,
+  setSelectedAircraft,
+  type World,
+} from "@core";
 import { expireFilterEntry, inAltitudeFilter } from "./altitudeFilter";
 import {
   armPreviewSlewAction,
@@ -247,6 +254,47 @@ function applyTrackingSlewHit(
         cancelStarsChordEntry(view.starsChordEntry);
         view.starsChordArmed = null;
         return true;
+      }
+      setSelectedAircraft(world, id);
+      clearTrackingSlew(view);
+      return true;
+    }
+    case "createVfrActiveTrack": {
+      const localVfrPlan = flightPlanForAircraft(world, id);
+      const hasScratchpad = localVfrPlan?.scratchpads.some((value) => value.trim().length > 0);
+      const hasFixData = (localVfrPlan?.fixes.length ?? 0) > 0;
+      if (
+        !isVfrAircraft(hit.aircraft, view.tracks, world) ||
+        !localVfrPlan ||
+        localVfrPlan.flightRules !== "VFR" ||
+        !localVfrPlan.aircraftType ||
+        !hasScratchpad ||
+        !hasFixData
+      ) {
+        rejectPreviewArea(view.preview, Date.now());
+        return true;
+      }
+      if (action.intermediateFix) {
+        const modified = modifyFlightPlan(world, localVfrPlan.id, "fixes", [
+          ...localVfrPlan.fixes,
+          `*${action.intermediateFix}`,
+        ]);
+        if (!modified.ok) {
+          rejectPreviewArea(view.preview, Date.now());
+          return true;
+        }
+      }
+      if (action.requestedAltitudeFt !== undefined) {
+        const modified = modifyFlightPlan(
+          world,
+          localVfrPlan.id,
+          "requestedAltitudeFt",
+          action.requestedAltitudeFt,
+        );
+        if (!modified.ok) {
+          rejectPreviewArea(view.preview, Date.now());
+          return true;
+        }
       }
       setSelectedAircraft(world, id);
       clearTrackingSlew(view);
