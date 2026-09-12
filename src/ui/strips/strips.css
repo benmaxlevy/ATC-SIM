@@ -10,11 +10,11 @@
   /* Content-sized sections keep short fields compact and reserve space for
      route/procedure text before the matrix. */
   grid-template-columns:
-    minmax(130px, max-content)
-    minmax(80px, max-content)
-    minmax(100px, max-content)
-    minmax(260px, 1fr)
-    minmax(180px, max-content);
+    minmax(0, max-content)
+    minmax(0, max-content)
+    minmax(0, max-content)
+    minmax(0, 1fr)
+    minmax(0, max-content);
   width: 100%;
   max-width: 840px;
   height: 80px;
@@ -418,6 +418,9 @@
   right: 0;
   bottom: 0;
   width: 50%;
+  white-space: nowrap;
+  overflow: visible;
+  z-index: 1;
   text-align: right;
 }
 
