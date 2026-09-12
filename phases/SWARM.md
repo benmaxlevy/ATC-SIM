@@ -3828,3 +3828,24 @@ T02-154 through T02-157 sequentially on `feat/flight-plan-lifecycle`, with one
 isolated worker at a time. Every merge requires `npm run ci` and an independent
 `$check-stars-manual '/home/ben/Documents/stars refs/full_manual.pdf'` review
 before the next wave. Stop on unresolved CI or manual-review failures.
+
+## Tenth swarm planned — command reference help overhaul (2026-09-11)
+
+Human approved replacing the Help menu's external comparison material with a
+local, command-focused reference and keeping `docs/USER.md` current with the
+live command surfaces. No parser, Command IR, or scope behavior changes are in
+scope.
+
+| Key | Value |
+| --- | --- |
+| Goal | Overhaul Help and synchronize the command reference |
+| Phase | `phases/02-scope/` |
+| Tickets | `T02-163` |
+| Merge target | `ticket/T02-163-help-command-reference` |
+| Worker limit | 1 ticket worker |
+| Model | inherit available Codex worker model |
+| Required gate | `npm run ci` |
+| Stop | Stop after T02-163 |
+
+Wave A: `T02-163`. The worker may edit only the ticket's implementation scope,
+must preserve unrelated work, and returns `READY TO MERGE` or `BLOCKED`.
