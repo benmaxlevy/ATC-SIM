@@ -131,7 +131,7 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         example: "F9 N123AB KDEM*RW27 C172 050 Enter",
         input: "Any focus, then Preview Area",
         result:
-          "Create or modify one local VFR plan; F9 ACID/index Enter deletes; F9 * 050 then click creates from an eligible VFR track.",
+          "Create or modify one local VFR plan; F9 ACID/index Enter deletes; F9 * 050 then click uses an eligible associated VFR track; resend an amended exit/intermediate fix with the same ACID.",
       },
       {
         id: "terminate",

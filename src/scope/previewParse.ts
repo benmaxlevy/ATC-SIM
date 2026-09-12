@@ -256,7 +256,8 @@ export function parseVfrFlightPlanCommand(buffer: string): PreviewCommandResult 
   if (!/^[A-Z][A-Z0-9]{1,6}$/.test(acid) || (acid.length === 2 && !/\d$/.test(acid))) {
     return invalid("ILL ACID");
   }
-  const route = /^([A-Z0-9]{1,4})\*([A-Z0-9]{1,4})$/.exec(tokens[1]!);
+  // Departure may be omitted; a second star carries amended intermediate-fix data.
+  const route = /^(?:[A-Z0-9]{1,4})?\*[A-Z0-9]{1,4}(?:\*[A-Z0-9]{1,4})?$/.exec(tokens[1]!);
   if (!route) return invalid("ILL ROUTE");
   const fields: Extract<PreviewArmedAction, { type: "createFlightPlan" }> = {
     type: "createFlightPlan",

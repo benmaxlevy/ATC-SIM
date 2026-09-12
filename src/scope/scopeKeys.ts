@@ -378,6 +378,12 @@ function applyPreviewArmedAction(
               }
             }
           }
+          if (action.fixes?.length) {
+            existing.vfrRetransmit = {
+              amendedFix: action.fixes[0]!,
+              requestedAtMs: world.simTimeMs,
+            };
+          }
           return;
         }
       }
@@ -477,7 +483,12 @@ function applyPreviewArmedAction(
         view.preview.rejection = plans.length === 0 ? "NO FLIGHT" : "FORMAT";
         return;
       }
-      deleteFlightPlanFromWorld(world, plans[0]!.id);
+      const plan = plans[0]!;
+      if (plan.associatedAircraftId) {
+        terminateTrackWithPlan(view.tracks, world, plan.associatedAircraftId, view);
+      } else {
+        deleteFlightPlanFromWorld(world, plan.id);
+      }
       return;
     }
     case "createVfrActiveTrack":

@@ -49,14 +49,28 @@ test("F9 creates, modifies, lists, then deletes local VFR plan", () => {
   expect(world.flightPlans[0]?.status).toBe("deleted");
 });
 
-test("F9 active-track form associates eligible VFR track without kinematics change", () => {
+test("F9 active-track form requires associated VFR plan data and preserves kinematics", () => {
   const aircraft = makeTestAircraft({
     id: "vfr-1",
     callsign: "N456V",
     squawk: "1200",
     flightRules: "VFR",
   });
-  const world = createWorld({ aircraft: [aircraft] });
+  const world = createWorld({
+    aircraft: [aircraft],
+    flightPlans: [
+      {
+        id: "vfr-local",
+        status: "active",
+        acid: "N456V",
+        aircraftType: "C172",
+        scratchpads: ["VFR"],
+        fixes: ["*EXIT"],
+        flightRules: "VFR",
+        associatedAircraftId: aircraft.id,
+      },
+    ],
+  });
   const view = createScopeView();
   const before = { x: aircraft.xNm, y: aircraft.yNm, heading: aircraft.headingDeg };
   typeVfr(view, world, "* 040");
@@ -72,6 +86,66 @@ test("F9 active-track form associates eligible VFR track without kinematics chan
     status: "active",
   });
   expect({ x: aircraft.xNm, y: aircraft.yNm, heading: aircraft.headingDeg }).toEqual(before);
+});
+
+test("F9 active-track form rejects VFR tracks without required local plan data", () => {
+  const aircraft = makeTestAircraft({
+    id: "vfr-incomplete",
+    callsign: "N789V",
+    squawk: "1200",
+    flightRules: "VFR",
+  });
+  const world = createWorld({ aircraft: [aircraft] });
+  const view = createScopeView();
+  typeVfr(view, world, "* 040");
+  const point = nmToScreen(aircraft.xNm, aircraft.yNm, view.camera, {
+    widthPx: 800,
+    heightPx: 600,
+  });
+  handlePpiLeftClick(view, world, point.x, point.y, 800, 600);
+  expect(world.flightPlans).toHaveLength(0);
+  expect(view.preview.rejection).toBeTruthy();
+});
+
+test("F9 accepts omitted departure and records amended exit-fix retransmit", () => {
+  expect(parseVfrFlightPlanCommand("N123AB *RW27")).toMatchObject({
+    kind: "action",
+    action: { type: "createFlightPlan", fixes: ["*RW27"] },
+  });
+  expect(parseVfrFlightPlanCommand("N123AB KDEM*MID*RW27")).toMatchObject({
+    kind: "action",
+    action: { type: "createFlightPlan", fixes: ["KDEM*MID*RW27"] },
+  });
+  const world = createWorld();
+  const view = createScopeView();
+  typeVfr(view, world, "N123AB *RW27 C172 050");
+  typeVfr(view, world, "N123AB KDEM*RW28 C172 060");
+  expect(world.flightPlans[0]).toMatchObject({
+    fixes: ["KDEM*RW28"],
+    vfrRetransmit: { amendedFix: "KDEM*RW28" },
+  });
+});
+
+test("F9 deletion uses TERM CNTL completion for an FL-associated plan", () => {
+  const aircraft = makeTestAircraft({ id: "vfr-delete", callsign: "N321V", flightRules: "VFR" });
+  const world = createWorld({
+    aircraft: [aircraft],
+    flightPlans: [
+      {
+        id: "vfr-delete-plan",
+        status: "active",
+        acid: "N321V",
+        flightRules: "VFR",
+        fixes: ["*EXIT"],
+        scratchpads: ["VFR"],
+        associatedAircraftId: aircraft.id,
+      },
+    ],
+  });
+  const view = createScopeView();
+  typeVfr(view, world, "N321V");
+  expect(world.flightPlans[0]?.status).toBe("deleted");
+  expect(view.tracks.get(aircraft.id)?.unassociated).toBe(true);
 });
 
 test("F9 parser rejects invalid route and preserves Ctrl+F9 routing", () => {

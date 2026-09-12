@@ -46,6 +46,8 @@ export interface FlightPlan {
   suspensionReason?: FlightPlanSuspensionReason;
   /** Authoritative surveillance association; absent while pending/unassociated. */
   associatedAircraftId?: string;
+  /** Local trainer record of the latest VFR exit-fix retransmit. */
+  vfrRetransmit?: { amendedFix: string; requestedAtMs: number };
 }
 
 export type FlightPlanErrorCode =
