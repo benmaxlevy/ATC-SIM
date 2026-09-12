@@ -147,7 +147,7 @@ describe("T02-144 flight-plan creation", () => {
       flightPlans: [occupied.value],
     });
     const view = createScopeView();
-    handleScopeKeyDown(key("F3"), view, "scope", world);
+    handleScopeKeyDown(key("F1"), view, "scope", world);
     for (const ch of "NEW123 +") handleScopeKeyDown(key(ch), view, "scope", world);
     handleScopeKeyDown(key("Enter"), view, "scope", world);
     expect(view.preview.rejection).toBe("CAPACITY — BCN");
@@ -198,7 +198,7 @@ describe("T02-144 flight-plan creation", () => {
   it("creates a pending discrete plan from INIT CNTL ACID beacon", () => {
     const world = createWorld();
     const view = createScopeView();
-    handleScopeKeyDown(key("F3"), view, "scope", world);
+    handleScopeKeyDown(key("F1"), view, "scope", world);
     for (const ch of "UAL1234 2342 ATEST") handleScopeKeyDown(key(ch), view, "scope", world);
     handleScopeKeyDown(key("Enter"), view, "scope", world);
     expect(world.flightPlans).toHaveLength(1);

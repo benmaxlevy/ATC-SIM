@@ -13,7 +13,7 @@ const REQUIRED_BINDING_IDS = [
   "center-airport",
   "center-click",
   "help",
-  "beacon-readout",
+  "track-suspend",
   "initiate-track",
   "drop-track",
   "tower-handoff",

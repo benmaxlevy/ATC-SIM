@@ -9,7 +9,8 @@
  * Scope-focus `T` toggles full ↔ limited datablock; tap `M` toggles Mode C on
  * full blocks. `M` then a map token (`M DEM1_27`) continues a Preview Area
  * buffer and undoes that Mode C tap. F7 always-on predicted track line (PTL)
- * toggle — even with the command line focused. F1 always-on help overlay (not CRC F1 / beaconator);
+ * toggle — even with the command line focused. F1 is INIT CNTL and F3 is
+ * reserved for Track Suspend (not implemented yet); help uses `?` or the Help button;
  * Tab cycles radio ↔ PPI; `/` when scope-focused buffers into the Preview Area
  * (slew/drop prefix, not radio focus). Leader direction stays on the DCB or
  * explicit `*L` Preview commands; bare `L` is Preview text. Radio `L090` stays
@@ -881,11 +882,15 @@ export function handleScopeKeyDown(
     return true;
   }
 
-  // STARS Table 18: F1 -> <BCN CODE RD OUT> (momentary Beaconator)
+  // Manual Appendix D Table D-1: F1 -> INIT CNTL.
   if (event.key === "F1" && !event.ctrlKey && !event.altKey) {
     consume(event);
-    view.beaconatorActive = true;
-    view.f1DropArmed = true;
+    if (world && selectedTrackId(world)) {
+      applyInitiateTrackToSelection(view.tracks, world);
+      cancelPreviewArea(view.preview);
+    } else {
+      armPreviewCntl(view.preview, "initCntl", nowMs);
+    }
     ui?.onHandled?.();
     return true;
   }
@@ -1158,6 +1163,12 @@ export function handleScopeKeyDown(
   event.preventDefault();
   event.stopPropagation();
   if (event.key === "F3") {
+    // Manual Appendix D Table D-1 reserves F3 for Track Suspend. The
+    // lifecycle is not implemented yet, so consume it without mutation.
+    ui?.onHandled?.();
+    return true;
+  }
+  if (event.key === "F1") {
     if (world && selectedTrackId(world)) {
       applyInitiateTrackToSelection(view.tracks, world);
       cancelPreviewArea(view.preview);
@@ -1258,15 +1269,12 @@ export function handleScopeWheel(event: ScopeWheelEvent, view: ScopeView): boole
 }
 
 /**
- * Scope keyup handler: deactivates momentary actions like F1 Beaconator.
+ * Scope keyup handler. F1 is not momentary; it initiates INIT CNTL.
  */
 export function handleScopeKeyUp(event: ScopeKeyEvent, view: ScopeView, ui?: ScopeKeyUi): boolean {
-  if (event.key === "F1") {
-    consume(event);
-    view.beaconatorActive = false;
-    ui?.onHandled?.();
-    return true;
-  }
+  void event;
+  void view;
+  void ui;
   return false;
 }
 

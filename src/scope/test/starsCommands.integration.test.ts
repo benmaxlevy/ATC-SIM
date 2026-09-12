@@ -328,7 +328,7 @@ test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; 
   const hoView2 = createScopeView();
   syncTrackDisplays(hoView2.tracks, hoWorld2);
   expect(handoffFor(hoWorld2, hoDal2.id).kind).toBe("inbound");
-  handleScopeKeyDown(keyEvent("F3"), hoView2, "scope", hoWorld2, 100);
+  handleScopeKeyDown(keyEvent("F1"), hoView2, "scope", hoWorld2, 100);
   expect(hoView2.preview.armed).toEqual({ type: "initCntl" });
   clickAt(hoView2, hoWorld2, hoDal2.xNm, hoDal2.yNm);
   expect(handoffFor(hoWorld2, hoDal2.id).kind).not.toBe("inbound");
@@ -354,7 +354,7 @@ test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; 
   expect(view.preview.phase).toBe("idle");
 
   world.selectedAircraftId = dal.id;
-  handleScopeKeyDown(keyEvent("F3"), view, "scope", world, 400);
+  handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 400);
   expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
   expect(view.preview.phase).toBe("idle");
   expect(view.tracks.get(dal.id)!.datablockMode).toBe("full");
@@ -375,7 +375,7 @@ test("AC1 — + / * chords mutate tracks; direct slew or F3 accepts inbound HO; 
   expect(view.preview.phase).toBe("idle");
 
   world.selectedAircraftId = null;
-  handleScopeKeyDown(keyEvent("F3"), view, "scope", world, 800);
+  handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 800);
   expect(view.preview.phase).toBe("armed");
   expect(view.preview.armed).toEqual({ type: "initCntl" });
   expect(formatPreviewReadout(view.preview)).toBe("INIT CNTL");

@@ -72,19 +72,24 @@ test("wheel changes range and does not move center", () => {
   expect(view.camera.centerEastNm).toBe(centerEast);
 });
 
-test("Table 18: F1 momentary Beacon Code Readout (beaconator) without opening help", () => {
+test("Appendix D: F1 arms INIT CNTL and F3 reserves Track Suspend", () => {
   const view = createScopeView();
-  expect(view.beaconatorActive).toBe(false);
   expect(view.helpOpen).toBe(false);
 
-  // Key down activates beaconator
   handleScopeKeyDown(keyEvent("F1"), view);
-  expect(view.beaconatorActive).toBe(true);
+  expect(view.preview.armed).toEqual({ type: "initCntl" });
   expect(view.helpOpen).toBe(false);
 
-  // Key up deactivates beaconator
+  handleScopeKeyDown(keyEvent("Escape"), view);
+  handleScopeKeyDown(keyEvent("F1"), view);
+  expect(view.preview.armed).toEqual({ type: "initCntl" });
+
   handleScopeKeyUp(keyEvent("F1"), view);
-  expect(view.beaconatorActive).toBe(false);
+  expect(view.preview.armed).toEqual({ type: "initCntl" });
+
+  handleScopeKeyDown(keyEvent("Escape"), view);
+  handleScopeKeyDown(keyEvent("F3"), view);
+  expect(view.preview.armed).toBeNull();
   expect(view.helpOpen).toBe(false);
 });
 

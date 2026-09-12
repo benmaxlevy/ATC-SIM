@@ -1,10 +1,10 @@
 /**
  * Analog: CRC STARS keyboard / DCB (docs.virtualnas.net/crc/stars — R07).
- * CRC F1 = hold for beacon-code readout; F3 = INIT CNTL initiate track;
+ * CRC F1 = INIT CNTL; F3 = Track Suspend;
  * L1–L9 = leader direction; DCB RANGE spinner; PTL OWN/ALL; `/` = leader
  * length. vice (R08) is typed-radio feel, not this map.
- * Trainer delta: exported Windows subset only — F1 is help, F3 is color
- * stub, PageUp/Down range presets 5–60 (no CRC 6/8/12/16/24), `/` when
+ * Trainer delta: exported Windows subset only — Help is `?` / the Help button,
+ * F3 Track Suspend is reserved/no-op for now, PageUp/Down range presets 5–60 (no CRC 6/8/12/16/24), `/` when
  * scope-focused buffers into the Preview Area (not leader length; Tab cycles
  * radio ↔ PPI). 1.5 s L/F
  * chord window (`*` persists until Esc, commit, or a new `*`); leftover digits never go to the parser; no keyboard leader-length menu
@@ -73,25 +73,23 @@ export const KEY_BINDINGS: KeyBinding[] = [
   {
     id: "help",
     focus: "always",
-    windowsKeys: "? / Shift+/ (or Alt+F1)",
+    windowsKeys: "? / Shift+/ / Help button (or Alt+F1)",
     action: "Toggle this help overlay. Not browser help.",
-    crcAnalog: "Trainer help (? / Shift+/ / Alt+F1; plain F1 is beaconator)",
-  },
-  {
-    id: "beacon-readout",
-    focus: "always",
-    windowsKeys: "F1 (hold)",
-    action:
-      "Beacon Code Readout (Beaconator): momentary readout in place of callsign and forces PDB to FDB.",
-    crcAnalog: "F1 <BCN CODE RD OUT>",
+    crcAnalog: "Trainer help (? / Shift+/ / Help button / Alt+F1)",
   },
   {
     id: "initiate-track",
     focus: "always",
+    windowsKeys: "F1",
+    action: "INIT CNTL: selected target applies now; otherwise arm command-then-slew.",
+    crcAnalog: "F1 <INIT CNTL>",
+  },
+  {
+    id: "track-suspend",
+    focus: "always",
     windowsKeys: "F3",
-    action:
-      "INIT CNTL initiate track: selected applies now; no selection arms command-then-slew; type FLID then Enter or slew. Color stub, no NAS associate.",
-    crcAnalog: "F3 INIT CNTL / <INIT CNTL><FLID><SLEW> / <INIT CNTL><FLID><ENTER>",
+    action: "Track Suspend reserved. No-op until suspend lifecycle is implemented.",
+    crcAnalog: "F3 <TRK SUSP>",
   },
   {
     id: "drop-track",

@@ -141,7 +141,7 @@ test("T02-145 — explicit ACID slew associates the authoritative plan", () => {
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
 
-  typeKeys(view, world, ["F3", "D", "A", "L", "4", "5", "6", "Enter"], "radio");
+  typeKeys(view, world, ["F1", "D", "A", "L", "4", "5", "6", "Enter"], "radio");
   const tick = nmToScreen(target.xNm, target.yNm, view.camera, VIEW);
   handlePpiLeftClick(view, world, tick.x, tick.y, CSS, CSS);
 
@@ -168,7 +168,7 @@ test("T02-145 — explicit beacon slew associates the authoritative plan", () =>
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
 
-  typeKeys(view, world, ["F3", "7", "0", "2", "5", "Enter"], "radio");
+  typeKeys(view, world, ["F1", "7", "0", "2", "5", "Enter"], "radio");
   const tick = nmToScreen(target.xNm, target.yNm, view.camera, VIEW);
   handlePpiLeftClick(view, world, tick.x, tick.y, CSS, CSS);
 
@@ -222,7 +222,7 @@ test("F4 and TERM CNTL share termination semantics", () => {
   }
 });
 
-test("AC1 — F3 slew paints INIT CNTL; click unowned arrival owns white FDB; empty click keeps the arm", () => {
+test("AC1 — F1 slew paints INIT CNTL; click unowned arrival owns white FDB; empty click keeps the arm", () => {
   const world = createWorldFromScenario(loadKdem(), 1);
   const dal = world.aircraft[0]!;
   const view = createScopeView();
@@ -231,7 +231,7 @@ test("AC1 — F3 slew paints INIT CNTL; click unowned arrival owns white FDB; em
   expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
   expect(world.selectedAircraftId).toBeNull();
 
-  handleScopeKeyDown(keyEvent("F3"), view, "scope", world, 0);
+  handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 0);
   expect(view.preview.phase).toBe("armed");
   expect(view.preview.mnemonic).toBe("INIT CNTL");
   expect(formatPreviewReadout(view.preview)).toBe("INIT CNTL");
@@ -257,7 +257,7 @@ test("AC1 — F3 slew paints INIT CNTL; click unowned arrival owns white FDB; em
   expect(PALETTE.owned).toBe("#FFFFFF");
 });
 
-test("AC2 — F3 FLID Enter owns DAL123 with nothing selected; unknown/ambiguous INV", () => {
+test("AC2 — F1 FLID Enter owns DAL123 with nothing selected; unknown/ambiguous INV", () => {
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", xNm: 16, yNm: 8 });
   const aal = makeTestAircraft({ id: "ac-aal", callsign: "AAL123", xNm: -16, yNm: 0 });
   const world = createWorld({ aircraft: [dal, aal] });
@@ -265,18 +265,18 @@ test("AC2 — F3 FLID Enter owns DAL123 with nothing selected; unknown/ambiguous
   syncTrackDisplays(view.tracks, world);
   expect(world.selectedAircraftId).toBeNull();
 
-  typeKeys(view, world, ["F3", "D", "A", "L", "1", "2", "3", "Enter"], "radio");
+  typeKeys(view, world, ["F1", "D", "A", "L", "1", "2", "3", "Enter"], "radio");
   expect(world.selectedAircraftId).toBeNull();
   expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
   expect(view.tracks.get(aal.id)!.ownership).toBe("unowned");
   expect(view.preview.phase).toBe("idle");
 
-  handleScopeKeyDown(keyEvent("F3"), view, "radio", world, 1000);
+  handleScopeKeyDown(keyEvent("F1"), view, "radio", world, 1000);
   typeKeys(view, world, ["X", "Y", "Z", "9", "Enter"], "radio", 1100);
   expect(view.preview.rejection).toBe("INIT CNTL XYZ9 INV");
   expect(view.tracks.get(aal.id)!.ownership).toBe("unowned");
 
-  handleScopeKeyDown(keyEvent("F3"), view, "radio", world, 2000);
+  handleScopeKeyDown(keyEvent("F1"), view, "radio", world, 2000);
   typeKeys(view, world, ["1", "2", "3", "Enter"], "radio", 2100);
   expect(view.preview.rejection).toBe("INIT CNTL 123 INV");
   expect(view.tracks.get(aal.id)!.ownership).toBe("unowned");
@@ -290,7 +290,7 @@ test("AC2 — F4 slew drops; implied select-then-F4 still drops", () => {
   syncTrackDisplays(view.tracks, world);
 
   world.selectedAircraftId = dal.id;
-  handleScopeKeyDown(keyEvent("F3"), view, "scope", world, 0);
+  handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 0);
   expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
   expect(view.preview.phase).toBe("idle");
 
@@ -314,7 +314,7 @@ test("AC2 — F4 slew drops; implied select-then-F4 still drops", () => {
   expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
 
   world.selectedAircraftId = aal.id;
-  handleScopeKeyDown(keyEvent("F3"), view, "scope", world, 200);
+  handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 200);
   expect(view.tracks.get(aal.id)!.ownership).toBe("owned");
   handleScopeKeyDown(keyEvent("F4"), view, "scope", world, 300);
   expect(view.tracks.get(aal.id)!.ownership).toBe("unowned");
@@ -384,7 +384,7 @@ test("AC4 / AC5 — radio DAL123 H270 still turns; preview keys emit zero comman
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
 
-  typeKeys(view, world, ["F3"], "radio");
+  typeKeys(view, world, ["F1"], "radio");
   typeKeys(view, world, ["D", "A", "L", "1", "2", "3", "Enter"], "radio", 100);
   expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
   expect(log.byType("command.accepted")).toHaveLength(0);
@@ -413,7 +413,7 @@ test("AC4 / AC5 — radio DAL123 H270 still turns; preview keys emit zero comman
   expect(log.byType("command.accepted").length).toBeGreaterThanOrEqual(1);
 });
 
-test("AC4 — *J3 still arms/slews; live * hint wins over idle preview; F1 beaconator; F7 PTL ALL", () => {
+test("AC4 — *J3 still arms/slews; live * hint wins over idle preview; F1 INIT; F7 PTL ALL", () => {
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", xNm: 16, yNm: 8 });
   const aal = makeTestAircraft({ id: "ac-aal", callsign: "AAL456", xNm: -16, yNm: 0 });
   const world = createWorld({ aircraft: [dal, aal] });
@@ -433,7 +433,7 @@ test("AC4 — *J3 still arms/slews; live * hint wins over idle preview; F1 beaco
   expect(view.starsChordArmed).toBeNull();
 
   world.selectedAircraftId = null;
-  handleScopeKeyDown(keyEvent("F3"), view, "scope", world, 500);
+  handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 500);
   expect(formatPreviewReadout(view.preview)).toBe("INIT CNTL");
   handleScopeKeyDown(keyEvent("*"), view, "scope", world, 600);
   expect(formatStarsChordReadout(view.starsChordEntry, view.starsChordArmed)).toBe("*");
@@ -444,7 +444,7 @@ test("AC4 — *J3 still arms/slews; live * hint wins over idle preview; F1 beaco
   handleScopeKeyDown(keyEvent("Escape"), view, "scope", world, 700);
   handleScopeKeyDown(keyEvent("Escape"), view, "scope", world, 800);
   handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 900);
-  expect(view.beaconatorActive).toBe(true);
+  expect(view.preview.armed).toEqual({ type: "initCntl" });
   handleScopeKeyDown(keyEvent("F10"), view, "scope", world, 1000);
   expect(view.ptlOn).toBe(true);
 });
@@ -536,9 +536,9 @@ test("T02-54 — compact *P clears a target cone; *P3 slews a 3 NM cone while En
 test("AC5 — KEY_BINDINGS overlay text includes INIT CNTL command-then-slew", () => {
   const init = bindingById("initiate-track")!;
   expect(init.action).toMatch(/command-then-slew/);
-  expect(init.action).toMatch(/FLID/);
+  expect(init.action).toMatch(/INIT CNTL/);
   expect(init.crcAnalog).toMatch(/INIT CNTL/);
-  expect(bindingById("help")?.crcAnalog).toMatch(/beaconator/);
+  expect(bindingById("help")?.crcAnalog).toMatch(/Trainer help/);
   expect(bindingById("ptl")?.action).toMatch(/PTL ALL/);
 });
 

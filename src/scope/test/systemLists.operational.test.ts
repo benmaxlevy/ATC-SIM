@@ -29,7 +29,7 @@ import {
 } from "../dcb/dcbFunctions";
 import { ensureTrackDisplay } from "../trackDisplay";
 import { handlePpiLeftClick } from "../ppi";
-import { handleScopeKeyDown, handleScopeKeyUp } from "../scopeKeys";
+import { handleScopeKeyDown } from "../scopeKeys";
 import { parsePreviewCommand } from "../previewParse";
 import {
   beginPreviewBufferEntry,
@@ -428,12 +428,8 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
         },
       ];
 
-      // Press F1 -> arms drop mode
-      handleScopeKeyDown(keyEvent("F1"), view, "scope", world, Date.now());
-      expect(view.f1DropArmed).toBe(true);
-
-      // Release F1 (drop mode remains armed until click)
-      handleScopeKeyUp(keyEvent("F1"), view);
+      // List-drop state is exercised directly; F1 is INIT CNTL per Appendix D.
+      view.f1DropArmed = true;
       expect(view.f1DropArmed).toBe(true);
 
       // Left-click the list entry row
@@ -602,8 +598,8 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
         },
       ];
 
-      // Press F1
-      handleScopeKeyDown(keyEvent("F1"), view, "scope", world, Date.now());
+      // List-drop state is exercised directly; F1 is INIT CNTL per Appendix D.
+      view.f1DropArmed = true;
       expect(view.f1DropArmed).toBe(true);
 
       // Click list entry
@@ -1131,7 +1127,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(view.preview.phase).toBe("idle");
     });
 
-    it("F3 1 <click target> associates flight plan from list to target without changing leader direction", () => {
+    it("F1 1 <click target> associates flight plan from list to target without changing leader direction", () => {
       const world = createWorld();
       const view = createScopeView();
 
@@ -1162,8 +1158,8 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       view.camera.centerEastNm = 0;
       view.camera.centerNorthNm = 0;
 
-      // Press F3 then type 1
-      handleScopeKeyDown(keyEvent("F3"), view, "scope", world, 1000);
+      // Press F1 then type 1
+      handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 1000);
       expect(view.preview.armed?.type).toBe("initCntl");
       handleScopeKeyDown(keyEvent("1"), view, "scope", world, 1050);
       expect(view.preview.flid).toBe("1");
@@ -1334,9 +1330,8 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
 
       buildTabFlightPlanList(world, 10, view);
 
-      // Press F1
-      handleScopeKeyDown(keyEvent("F1"), view, "scope");
-      expect(view.beaconatorActive).toBe(true);
+      // Arm list-drop state directly; F1 is INIT CNTL per Appendix D.
+      view.f1DropArmed = true;
 
       // Click row for AAL123 (Row 0: title, Row 1: AAL123)
       handleFlightPlanListClick(view, world, 1);

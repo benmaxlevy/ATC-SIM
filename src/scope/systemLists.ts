@@ -906,7 +906,7 @@ export function handleFlightPlanListClick(
 
   if (targetIdx >= 0 && targetIdx < entries.length) {
     const entry = entries[targetIdx]!;
-    if (view.beaconatorActive) {
+    if (view.f1DropArmed || view.beaconatorActive) {
       purgeFlightPlanEntry(world, view, entry);
       return true;
     }
