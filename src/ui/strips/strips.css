@@ -335,24 +335,59 @@
 }
 
 .col-route-arrival {
+  position: relative;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.col-route-arrival .flight-rules {
-  padding: 2px 5px;
-  font-size: 0.62rem;
-  border-bottom: 1px solid #333;
-}
-
-.col-route-arrival .dest-remarks {
-  flex: 1;
-  padding: 2px 5px;
   font-size: 0.605rem;
   line-height: 1.15;
   word-break: break-word;
   white-space: normal;
+  overflow: hidden;
+}
+
+.col-route-arrival .arrival-box-9,
+.col-route-arrival .arrival-box-9a,
+.col-route-arrival .arrival-box-9b,
+.col-route-arrival .arrival-box-9c {
+  position: absolute;
+  padding: 2px 5px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.col-route-arrival .arrival-box-9 {
+  inset: 0;
+  padding-right: 34%;
+}
+
+.col-route-arrival .arrival-box-9a {
+  left: 0;
+  bottom: 0;
+  width: 66%;
+}
+
+.col-route-arrival .arrival-box-9b {
+  right: 0;
+  top: 0;
+  width: 34%;
+  text-align: right;
+}
+
+.col-route-arrival .arrival-box-9c {
+  right: 0;
+  bottom: 0;
+  width: 34%;
+  text-align: right;
+}
+
+.col-route-arrival .strip-altitude,
+.col-route-arrival .strip-dest {
+  font-weight: 700;
+}
+
+.col-route-arrival .strip-altitude-remarks,
+.col-route-arrival .strip-minimum-fuel,
+.col-route-arrival .strip-remarks {
+  font-weight: 400;
 }
 
 /* Col 5: 3x3 Matrix */

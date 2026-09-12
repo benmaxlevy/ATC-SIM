@@ -145,23 +145,31 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
       expect(html).toContain("A1440"); // ETA
     });
 
-    test("renders Column 4 split into Box 9 (Flight Rules 'IFR'/'VFR') and Box 9A (Destination & remarks)", () => {
-      const ifrHtml = renderToStaticMarkup(createElement(ArrivalStrip, { strip: mockAAL412 }));
+    test("renders arrival Boxes 9/9A/9B/9C with altitude, destination, and remarks", () => {
+      const arrivalWithTerminalData: ArrivalStripData = {
+        ...mockAAL412,
+        altitude: "240",
+        altitudeRemarks: "DESCEND",
+        minimumFuel: "30",
+      };
+      const html = renderToStaticMarkup(
+        createElement(ArrivalStrip, { strip: arrivalWithTerminalData }),
+      );
 
-      expect(ifrHtml).toContain('data-box="9"');
-      expect(ifrHtml).toContain('data-box="9A"');
-      expect(ifrHtml).toContain("col-route-arrival");
-
-      // IFR renders 'IFR'
-      expect(ifrHtml).toContain("IFR");
-      expect(ifrHtml).toContain("KATL");
-      expect(ifrHtml).toContain("RNAV STAR");
-
-      // VFR renders 'VFR'
-      const vfrHtml = renderToStaticMarkup(createElement(ArrivalStrip, { strip: mockN415SP }));
-      expect(vfrHtml).toContain("VFR");
-      expect(vfrHtml).toContain("KPDK");
-      expect(vfrHtml).toContain("TOUCH AND GO");
+      expect(html).toContain('class="strip-col col-route col-route-arrival"');
+      expect(html).toContain('data-box="9"');
+      expect(html).toContain('data-box="9A"');
+      expect(html).toContain('data-box="9B"');
+      expect(html).toContain('data-box="9C"');
+      const box9 = html.match(/data-box="9"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      const box9a = html.match(/data-box="9A"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      expect(box9).toContain("240");
+      expect(box9).toContain("DESCEND");
+      expect(box9a).toContain("KATL");
+      expect(box9a).toContain("30");
+      expect(box9a).toContain("RNAV STAR");
+      expect(html).not.toContain(">IFR<");
+      expect(html).not.toContain(">VFR<");
     });
   });
 

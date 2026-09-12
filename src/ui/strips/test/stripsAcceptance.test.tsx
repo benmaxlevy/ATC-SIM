@@ -357,10 +357,15 @@ describe("T02-93 Flight Progress Strips Integration and Acceptance", () => {
       expect(html).toContain("A1445");
       expect(html).toContain("21L");
 
-      // Column 4: Flight rules Box 9 ('IFR'/'VFR'), Destination Box 9A
-      expect(html).toContain("IFR");
+      // Column 4: Arrival altitude/remarks Box 9, destination Box 9A, and
+      // explicit terminal subspaces. Flight rules remain model data only.
+      expect(html).toContain('data-box="9"');
+      expect(html).toContain('data-box="9A"');
+      expect(html).toContain('data-box="9B"');
+      expect(html).toContain('data-box="9C"');
+      expect(html).not.toContain(">IFR<");
       expect(html).toContain("KATL");
-      expect(html).toContain("VFR");
+      expect(html).not.toContain(">VFR<");
       expect(html).toContain("KPDK");
 
       // Column 5: Annotation boxes 10 to 18
