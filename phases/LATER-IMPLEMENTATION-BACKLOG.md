@@ -11,49 +11,47 @@ value. Items already shipped or limited to manual validation are excluded.
 
 ### P0 — core safety and runtime truth
 
-1. Central datablock runtime field adapter.
-2. Authoritative flight-plan association.
-3. MCI evaluator, suppression state, and `CA M` command semantics.
-4. Predicted MSAW and flashing **LA** behavior.
-5. 30-second coast/suspend lifecycle, dead reckoning, and re-correlation.
-6. CSMM and duplicate-beacon world-level detection.
-7. Wake-aware live datablock output, including `NOWGT`.
-8. Manual Conflict Alert inhibit commands.
+1. MCI evaluator, suppression state, and `CA M` command semantics.
+2. Predicted MSAW and flashing **LA** behavior.
+3. 30-second coast/suspend lifecycle, dead reckoning, and re-correlation.
+4. CSMM, duplicate-beacon world-level detection, and `NO FP` datablock indicator.
+5. Wake-aware live datablock output, including `NOWGT`.
+6. Manual Conflict Alert inhibit commands.
 
 ### P1 — controller operations
 
-9. Departure exit-gate/fix resolution.
-10. Adapted 2.5 NM ATPA eligibility.
-11. Quicklook sector filtering and SSA status.
-12. Multi-controller networking and inter-facility handoffs.
-13. TCP sign-on/sign-off authentication and sector consolidation.
-14. Complete pointout-to-datablock binding.
-15. TSAS runtime.
-16. Flight-plan amendment modals and target-click deletion.
-17. Scratchpad and tactical altitude/heading/speed command chords.
-18. Advanced track states: `HOLD`, `UNS`, reposition, and `/ ALL`.
+7. Departure exit-gate/fix resolution.
+8. Adapted 2.5 NM ATPA eligibility.
+9. Quicklook sector filtering and SSA status.
+10. Multi-controller networking and inter-facility handoffs.
+11. TCP sign-on/sign-off authentication and sector consolidation.
+12. Complete pointout-to-datablock binding.
+13. TSAS runtime.
+14. Flight-plan amendment modals and target-click deletion.
+15. Scratchpad and tactical altitude/heading/speed command chords.
+16. Advanced track states: `HOLD`, `UNS`, reposition, and `/ ALL`.
 
 ### P2 — facility and display expansion
 
-19. Live multi-sensor radar health and beacon-bank exhaustion telemetry.
-20. CRDA ghost prediction, cones, tie lines, and keyboard grammar.
-21. Multi-airport tower slot sequencing and dynamic adaptation.
-22. Tower Display Mode and TDW-specific ATPA presentation.
-23. MOA and selected-beacon workflows.
-24. Expanded SPCs.
-25. Richer SSA/facility status, ATIS broadcasts, and weather source handling.
-26. Pilot barometric corrections and weather-driven deviation behavior.
-27. Additional PTL prediction geometry and presets.
-28. Additional catalog-backed maps, map management, and AVL restyle.
-29. Handwritten strip annotations and cross-rack/window strip movement.
+17. Live multi-sensor radar health and beacon-bank exhaustion telemetry.
+18. CRDA ghost prediction, cones, tie lines, and keyboard grammar.
+19. Multi-airport tower slot sequencing and dynamic adaptation.
+20. Tower Display Mode and TDW-specific ATPA presentation.
+21. MOA and selected-beacon workflows.
+22. Expanded SPCs.
+23. Richer SSA/facility status, ATIS broadcasts, and weather source handling.
+24. Pilot barometric corrections and weather-driven deviation behavior.
+25. Additional PTL prediction geometry and presets.
+26. Additional catalog-backed maps, map management, and AVL restyle.
+27. Handwritten strip annotations and cross-rack/window strip movement.
 
 ### P3 — procedure and voice follow-ups
 
-30. Unsupported ARINC leg flying: `RF`, holds, arcs, and vector legs.
-31. RNAV/hold/RF in-sim FMS guidance.
-32. FAA cycle update workflow; national source/index files remain local.
-33. KATL MAPS/GEO/BRITE visual operator validation.
-34. Live Path C tie salvage against real `speech-api` and Chrome PTT p50.
+28. Unsupported ARINC leg flying: `RF`, holds, arcs, and vector legs.
+29. RNAV/hold/RF in-sim FMS guidance.
+30. FAA cycle update workflow; national source/index files remain local.
+31. KATL MAPS/GEO/BRITE visual operator validation.
+32. Live Path C tie salvage against real `speech-api` and Chrome PTT p50.
 
 The priority list is a planning view; detailed sections below are the source
 of truth for shipped behavior, constraints, and scope boundaries.
@@ -194,12 +192,21 @@ Deliberately missing, each of which later work must keep the JSON-minima path:
   still adds a JSON row walked by `approachId`; do not special-case KDEM
   or invent an importer that silently fills unsourced sizes.
 
-### Datablock runtime sources not yet modeled
+### Datablock runtime sources not yet modeled (T02-149–155 / T02-164–165)
 
-The datablock formatter accepts explicit Figure 2-20 Fields 0–8 values, and
-the current scope already supplies basic aircraft data, alerts, handoffs,
-basic ATPA distance, TPA controls, and existing Field 5 values. The remaining
-values below are formatter-capable but have no complete live backing logic.
+Visible now: `buildDatablockRuntimeState` and `datablockSourceFromWorld`
+(T02-164–165) centralize datablock runtime fields for PPI painting, overlap
+testing, and pick hits into a single runtime structure. Canonical flight-plan
+association (T02-149–155) establishes `FlightPlan.associatedAircraftId` as
+authoritative truth via `flightPlanForAircraft(world, aircraft.id)`. Associated
+tracks project filed ACID, beacon, altitudes, equipment, and scratchpads;
+event-driven squawk updates correlate with active plans; track drop or `TERM
+CNTL` cleanly disassociates plans without mutating aircraft surveillance or
+kinematics. Terminated handoffs clear and leave targets as unassociated LDBs;
+accepted handoffs clear stale unassociated state before restoring the full
+datablock. The datablock formatter accepts explicit Figure 2-20 Fields 0–8
+values. The remaining values below are formatter-capable but have no complete
+live backing logic.
 
 Deliberately missing:
 
@@ -218,11 +225,9 @@ Deliberately missing:
   arrivals, runway assignment, sequence, target delivery time, advised speed,
   early/late calculation, sequence number, enable/inhibit state, and live
   updates. Do not imply TSAS exists merely because its literals format.
-- **Authoritative flight-plan association.** Optional flight-plan fields exist,
-  but the live track does not yet have a complete authoritative association
-  for filed aircraft ID, filed beacon, route, and flight-plan presence. This
-  blocks reliable `NO FP`, CSMM, beacon comparison, and procedure-derived
-  datablock values.
+- **`NO FP` datablock indicator.** While canonical association exists, the
+  datablock adapter does not yet dynamically evaluate and project `NO FP` for
+  unassociated or unfiled tracks in controlled airspace.
 - **CSMM detection.** Add an independent ADS-B Flight ID and compare it to the
   filed aircraft identification. Emit `CSMM` only on an exact mismatch; do
   not derive it from the displayed callsign.
@@ -236,11 +241,6 @@ Deliberately missing:
 - **Pointout-to-datablock binding.** Pointout/handoff lifecycle exists, but a
   complete adapter still needs to expose `PO`, `UN`, `RD`, and accept-count /
   inhibition state to Field 8 with documented priority.
-- **Central runtime field adapter.** Add one generic adapter that gathers
-  aircraft, world, ATPA, handoff, flight-plan, procedure, TSAS, beacon, and
-  coordination state and passes explicit values to the formatter. It must
-  preserve Field 0–8 priority and leave unsupported values empty rather than
-  guessing.
 
 Keep deferred: Field 1 ADS-B markers, ADS-B loss/duplicate-address (`DA`)
 workflow, and new Field 2 glyphs. Those remain out of scope until their
@@ -270,10 +270,10 @@ The Seventeenth Swarm (T02-61–67) implements the core single-controller STARS 
 The following specialized or multi-subsystem command sets remain deliberately deferred to later phases:
 
 1. **Flight Plan Amendments & Modals:**
-   - `* F [Callsign] <ENTER>`: Open flight plan creation / amendment modal.
-   - `* V [Callsign] <ENTER>`: Create VFR flight plan.
-   - `* A [Callsign] <ENTER>`: Create abbreviated flight plan.
-   - `* DEL <ENTER> [Click Target]`: Delete flight plan / drop flight plan association.
+   - `* F [Callsign] <ENTER>`: Open flight plan creation / amendment modal (typed `<ACID> [options]` creation is shipped).
+   - `* V [Callsign] <ENTER>`: Create VFR flight plan modal.
+   - `* A [Callsign] <ENTER>`: Create abbreviated flight plan modal (typed `*M <flid> ...` field edit and `*B <flid>` release are shipped).
+   - `* DEL <ENTER> [Click Target]`: Delete flight plan / drop flight plan association by clicking target (typed `*DEL <index>` queue deletion is shipped).
 
 2. **Scratchpads & Tactical Target Autopilot Overrides:**
    - `* [Text] <ENTER> [Click Target]`: Set Scratchpad 1 (up to 3 characters).
@@ -724,9 +724,23 @@ Constraints later work must keep:
 - do not commit local CRC cache JSON/GeoJSON;
 - `src/` never imports `tools/crc-videomap-import`; no runtime vNAS fetch.
 
-### Terminal Flight Progress Strips follow-ups (T02-90–96)
+### Terminal Flight Progress Strips follow-ups (T02-90–96 / T02-158–162)
 
-Visible now: 4-column physical flight progress strip layouts for Departures and Arrivals adhering to FAA Order 7110.65 Chapter 2 §3; pale buff cardstock styling (`#f5eedc`) with dark high-contrast text; CWT/wake formatting; route truncation; 2-column rack board (`StripsBoard`) with independent vertical scrolling; standalone URL routing (`?view=strips`); in-scope overlay modal with header toggle button (`STRIPS`); track selection synchronization to `World.selectedAircraftId` via `selectTrackFromFlightStrip`; dynamic simulation traffic derivation via `terminalStripsFromWorld`; single right-click horizontal strip indentation ("cocking", ~28px offset) with native context menu suppression; intra-section drag-and-drop reordering with visual drop indicator lines; and telemetry reconciliation preserving manual order and indentation across live ticks.
+Visible now: 5-column physical terminal flight progress strip layouts (`1–4 |
+5–7 | 8/8A/8B | 9/9A/9B/9C | 10–18`) for Departures and Arrivals adhering to
+FAA Order 7110.65 Chapter 2 §3; pale buff cardstock styling (`#f5eedc`) with dark
+high-contrast text; CWT/wake formatting; route truncation; Box 8A/8B runway and
+fix assignments; arrival Box 9 altitude/remarks; departure Box 9
+route/destination/remarks; canonical flight-plan projection (CID, equipment
+suffix, assigned beacon, PTD/ETA) keeping reported squawk separate; 2-column rack
+board (`StripsBoard`) with independent vertical scrolling; standalone URL
+routing (`?view=strips`); in-scope overlay modal with header toggle button
+(`STRIPS`); track selection synchronization to `World.selectedAircraftId` via
+`selectTrackFromFlightStrip`; dynamic simulation traffic derivation via
+`terminalStripsFromWorld`; single right-click horizontal strip indentation
+("cocking", ~28px offset) with native context menu suppression; intra-section
+drag-and-drop reordering with visual drop indicator lines; and telemetry
+reconciliation preserving manual order and indentation across live ticks.
 
 Deliberately missing:
 - **Handwritten canvas drawing / annotations**: freehand pen strokes or stylus drawings on strip annotation boxes.
@@ -734,7 +748,7 @@ Deliberately missing:
 
 Constraints later work must keep:
 - Flight progress strips remain an observational display and intent reflection; clicking or manipulating strips never emits Command IR or mutates pilot kinematics directly.
-- Dark controller cab theme (`#1a1e24`) and FAA 7110.65 box proportions (18% / 14% / 46% / 22%) must be preserved.
+- Dark controller cab theme (`#1a1e24`) and FAA 7110.65 5-column cardstock proportions must be preserved.
 - Standalone view `?view=strips` must remain decoupled from PPI WebGL/Canvas2D loops for second-monitor use.
 
 ## Voice
