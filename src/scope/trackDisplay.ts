@@ -32,6 +32,7 @@ import { applyDropTrack, applyInitiateTrack, NO_SEL_HINT, type TrackOwnership } 
 
 /** Display IDENT stroke pulse (~2 s sim). Aircraft flag may last longer (phase 1). */
 export const IDENT_DISPLAY_FLASH_MS = 2000;
+/** Legacy export retained for callers that still import the old query duration. */
 export const LDB_QUERY_DURATION_MS = 5000;
 export const OUTBOUND_ACCEPTED_FLASH_MS = 5000;
 /** `*B` slew beaconator on one uncorrelated track (R07 Table 18). */
@@ -488,9 +489,14 @@ export function ensureTrackDisplay(tracks: Map<string, TrackDisplay>, id: string
 export function queryTrack(
   td: TrackDisplay,
   simTimeMs: number,
-  durationMs = LDB_QUERY_DURATION_MS,
+  _durationMs = LDB_QUERY_DURATION_MS,
 ): void {
-  td.queriedUntilSimMs = simTimeMs + durationMs;
+  void simTimeMs;
+  td.queriedUntilSimMs = Number.POSITIVE_INFINITY;
+}
+
+export function clearTrackQuery(td: TrackDisplay): void {
+  td.queriedUntilSimMs = 0;
 }
 
 export function isTrackQueried(td: TrackDisplay, simTimeMs: number): boolean {
@@ -575,7 +581,7 @@ export function isOutboundReceiverTcpVisible(handoff: TrackHandoff, simTimeMs: n
  * - Accept pending inbound handoff if present.
  * - Handle pointouts: UN rejects, ** converts to handoff, normal click accepts or reverts.
  * - Keep an accepted outbound handoff as an accepted white FDB.
- * - If unassociated (LDB): query ground speed for 5 seconds.
+ * - If unassociated (LDB): query ground speed until an off-target slew.
  * - If unowned (PDB / forced FDB): toggle between PDB and Green FDB.
  */
 export function handleTrackClick(

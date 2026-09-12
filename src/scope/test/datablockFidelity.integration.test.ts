@@ -35,11 +35,13 @@ describe("STARS CRC Datablock & Scratchpad Fidelity Acceptance (T02-42)", () => 
 
     expect(formatLimitedDatablock(ac, { field0Indicators: ["LA", "CA"] })).toEqual({
       line0: "EM/CA",
-      line1: "1200 045",
+      line1: "1200",
+      line2: "045",
     });
     expect(formatLimitedDatablock(ac, { field0Indicators: ["MI", "LL"] })).toEqual({
       line0: "EM",
-      line1: "1200 045",
+      line1: "1200",
+      line2: "045",
     });
   });
 

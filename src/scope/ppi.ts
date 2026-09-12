@@ -67,6 +67,7 @@ import { toggleVideoMap } from "./dcb/dcbFunctions";
 import { datablockLineHeightPx } from "./fonts";
 import {
   applyBeaconatorSlewToId,
+  clearTrackQuery,
   applyInitiateTrackToId,
   ensureTrackDisplay,
   pruneCaPairInhibitsForTrack,
@@ -593,6 +594,10 @@ export function handlePpiLeftClick(
     );
     if (hit) {
       handleImpliedCaAcknowledge(view, world, hit.aircraft.id);
+    } else {
+      for (const td of view.tracks.values()) {
+        if (td.unassociated) clearTrackQuery(td);
+      }
     }
   }
   selectOrAcceptAircraftAt(

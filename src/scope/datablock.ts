@@ -509,7 +509,10 @@ function physicalFieldLine(values: string[]): string {
 export interface LimitedDatablock {
   /** Field 0 row; omitted when no SPC or supplied safety alert is active. */
   line0?: string;
+  /** Field 1: reported beacon code, when displayed. */
   line1: string;
+  /** Fields 3 and 5: Mode-C altitude, with queried ground speed to its right. */
+  line2?: string;
 }
 
 export interface DatablockRect {
@@ -920,9 +923,10 @@ export function formatPartialDatablock(
 
 /**
  * Limited datablock (LDB): Unassociated tracks.
- * Default: Beacon code + Mode C altitude in hundreds (e.g. `1200 045`).
- * When beacon code is inhibited: Mode C altitude only (e.g. `045`).
- * Queried state (when clicked): Mode C altitude + Ground speed (e.g. `045 18` or `045 180`).
+ * Default: Beacon code on line 1 and Mode C altitude on line 2.
+ * When beacon code is inhibited: Mode C altitude remains on the visible line.
+ * Queried state (when clicked): Ground speed appears to the right of the
+ * Mode-C altitude on line 2 (e.g. `045 18` or `045 180`).
  */
 export function formatLimitedDatablock(
   track: DatablockSource,
@@ -936,19 +940,24 @@ export function formatLimitedDatablock(
     .join("/")
     .slice(0, 12);
   const line0 = indicators.length > 0 ? indicators : undefined;
-  const withLine0 = (line1: string): LimitedDatablock =>
-    line0 == null ? { line1 } : { line0, line1 };
+  const withLine0 = (line1: string, line2?: string): LimitedDatablock => {
+    const lines = line2 == null ? { line1 } : { line1, line2 };
+    return line0 == null ? lines : { line0, ...lines };
+  };
   const modeC = formatAltitudeHundreds(track.altitudeFt);
   if (opts.queried) {
     const gs =
       opts.speedFormat === "knots"
         ? formatGroundSpeedKt(track.speedKt)
         : formatGroundSpeedTens(track.speedKt);
-    return withLine0(`${modeC} ${gs}`);
+    const squawk = track.squawk ?? track.beaconCode;
+    return squawk && opts.beaconVisible !== false
+      ? withLine0(squawk, `${modeC} ${gs}`)
+      : withLine0(modeC, gs);
   }
   const squawk = track.squawk ?? track.beaconCode;
   if (opts.beaconVisible !== false && squawk && squawk.length > 0) {
-    return withLine0(`${squawk} ${modeC}`);
+    return withLine0(squawk, modeC);
   }
   return withLine0(modeC);
 }

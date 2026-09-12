@@ -677,6 +677,7 @@ export {
   BEACONATOR_SLEW_MS,
   acceptInboundOnClick,
   applyBeaconatorSlewToId,
+  clearTrackQuery,
   applyDropTrackToId,
   applyDropTrackToSelection,
   applyInitiateTrackToId,

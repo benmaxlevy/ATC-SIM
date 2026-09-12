@@ -250,7 +250,7 @@ test.each(["EM", "RF", "HJ"] as const)("limited Field 0 preserves existing SPC %
   const ac = makeTestAircraft({ callsign: "LDBSPC", altitudeFt: 4500, squawk: "1200", spc });
   const ldb = formatLimitedDatablock(ac);
 
-  expect(ldb).toEqual({ line0: spc, line1: "1200 045" });
+  expect(ldb).toEqual({ line0: spc, line1: "1200", line2: "045" });
   expect(ldb.line0).not.toBe(ldb.line1);
 });
 
@@ -263,7 +263,7 @@ test("limited Field 0 omits arbitrary explicit SPC while FDB SPC projection rema
   });
 
   expect(getSpecialPurposeCode(ac)).toBe("CUSTOM");
-  expect(formatLimitedDatablock(ac)).toEqual({ line1: "1200 045" });
+  expect(formatLimitedDatablock(ac)).toEqual({ line1: "1200", line2: "045" });
   expect(formatDatablockFields(ac).field0).toBe("CUST");
 });
 
@@ -272,7 +272,8 @@ test("limited Field 0 accepts existing CA renderer state only", () => {
 
   expect(formatLimitedDatablock(ac, { field0Indicators: ["LA", "CA"] })).toEqual({
     line0: "CA",
-    line1: "1200 045",
+    line1: "1200",
+    line2: "045",
   });
   expect(formatLimitedDatablock(ac, { field0Indicators: ["MI", "LL", "CA"] }).line0).toBe("CA");
 });
@@ -287,7 +288,8 @@ test("limited Field 0 persists across queried and beacon-inhibited output", () =
 
   expect(formatLimitedDatablock(ac, { field0Indicators: ["CA"], queried: true })).toEqual({
     line0: "CA",
-    line1: "045 18",
+    line1: "1200",
+    line2: "045 18",
   });
   expect(formatLimitedDatablock(ac, { field0Indicators: ["LA"], beaconVisible: false })).toEqual({
     line1: "045",
