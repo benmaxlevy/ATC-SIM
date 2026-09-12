@@ -411,7 +411,7 @@ export function isStarsChordPrefixKey(key: string): boolean {
 }
 
 /**
- * Help overlay toggle: ? / Shift+/ (or Alt+F1). Plain F1 is Beacon Code Readout.
+ * Help overlay toggle: ? / Shift+/ (or Alt+F1). Plain F1 is INIT CNTL.
  */
 export function isHelpToggleKey(
   event: { key: string; shiftKey?: boolean; altKey?: boolean; ctrlKey?: boolean } | string,

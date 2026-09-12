@@ -9,7 +9,7 @@
  * (PTL, F7 always-on, default off), L1–L9 **leader** lines (scope-focus `L`
  * then 1–9; pixel-constant default 36 CSS px; DCB LDR LEN 0–7 at 12 px per step), altitude filter
  * (scope-focus `F`, default 000–180), F3/F4 ownership color stub (not NAS),
- * F1 help overlay (`TRAINER KEYS — NOT CRC`), Tab cycle focus, `/` radio focus.
+ * Help button / ? overlay (`TRAINER KEYS — NOT CRC`), Tab cycle focus, `/` radio focus.
  * Scope-focus `*` TPA/ATPA slew chords (R07 Table 36) parse and prompt on the PPI.
  * T04-09 CA displays static `CA` + tone (no yellow). T04-10 MSAW paints a
  * red `LA` tag when MSL is below the MVA floor; neither tints the block. CA is raised only for current conflicts. The PPI does

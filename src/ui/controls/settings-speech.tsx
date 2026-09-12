@@ -261,9 +261,15 @@ export interface SpeechSettingsPanelProps {
   controller: SpeechSettingsController;
   speechId: string;
   onChange?: () => void;
+  onHelpToggle?: () => void;
 }
 
-export function SpeechSettingsPanel({ controller, speechId, onChange }: SpeechSettingsPanelProps) {
+export function SpeechSettingsPanel({
+  controller,
+  speechId,
+  onChange,
+  onHelpToggle,
+}: SpeechSettingsPanelProps) {
   const [open, setOpen] = useState(false);
   const [, setTick] = useState(0);
 
@@ -278,22 +284,36 @@ export function SpeechSettingsPanel({ controller, speechId, onChange }: SpeechSe
 
   return (
     <div className="speech-settings">
-      <button
-        type="button"
-        className="speech-settings-toggle"
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={() => {
-          const opening = !open;
-          setOpen(opening);
-          if (opening) {
-            void controller.refreshParseHealth().then(() => refresh());
-          }
-        }}
-        aria-expanded={open}
-        aria-controls="speech-settings-panel"
-      >
-        Voice
-      </button>
+      <div className="speech-settings-actions">
+        <button
+          type="button"
+          className="speech-settings-toggle"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => {
+            const opening = !open;
+            setOpen(opening);
+            if (opening) {
+              void controller.refreshParseHealth().then(() => refresh());
+            }
+          }}
+          aria-label="Voice Text"
+          aria-expanded={open}
+          aria-controls="speech-settings-panel"
+        >
+          Voice Text
+        </button>
+        <button
+          type="button"
+          className="scope-help-button"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onHelpToggle}
+          aria-label="Help"
+          aria-controls="scope-help-overlay"
+          data-testid="scope-help-button"
+        >
+          Help
+        </button>
+      </div>
       {open ? (
         <form
           id="speech-settings-panel"
