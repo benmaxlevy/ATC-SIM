@@ -192,6 +192,8 @@ export type { AltitudeFilter, FilterEntry, FilterEntryPhase } from "./altitudeFi
 export {
   CHORD_TIMEOUT_MS,
   HELP_FOOTER,
+  HELP_COMMAND_GROUPS,
+  HELP_NAVIGATION_GROUPS,
   HELP_GLOSSARY_NOTE,
   HELP_KEYS_POINTER,
   KEY_BINDINGS,
@@ -217,7 +219,14 @@ export {
   mouseKeyBindings,
   scopeFocusKeyBindings,
 } from "./keymap";
-export type { KeyBinding, KeyFocus, ScopeChord } from "./keymap";
+export type {
+  HelpCommandEntry,
+  HelpCommandGroup,
+  HelpNavigationGroup,
+  KeyBinding,
+  KeyFocus,
+  ScopeChord,
+} from "./keymap";
 export {
   applyPreviewBeaconAction,
   applyPreviewWxAction,

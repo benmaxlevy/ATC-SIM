@@ -1032,6 +1032,58 @@ html[data-dcb-cursor-trap] * {
   color: #259925;
 }
 
+.scope-help-search-label {
+  display: block;
+  margin: 0 0 4px;
+  color: #b8d8b8;
+}
+
+.scope-help-search {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 4px 6px;
+  border: 1px solid #259925;
+  border-radius: 0;
+  background: #000;
+  color: #fff;
+  font: inherit;
+}
+
+.scope-help-search:focus-visible {
+  outline: 1px solid #ffff00;
+}
+
+.scope-help-section {
+  margin: 0 0 10px;
+}
+
+.scope-help-top-section {
+  margin: 0 0 12px;
+  border-top: 1px solid #003300;
+}
+
+.scope-help-top-section > summary {
+  padding: 6px 0 4px;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.scope-help-section summary {
+  padding: 3px 0;
+  color: #259925;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.scope-help-empty {
+  color: #ffff00;
+}
+
 .scope-help-glossary,
 .scope-help-radio {
   margin: 0 0 10px;
@@ -1062,6 +1114,12 @@ html[data-dcb-cursor-trap] * {
 
 .scope-help-key {
   color: #ffffff;
+  white-space: nowrap;
+}
+
+.scope-help-example,
+.scope-help-input {
+  color: #b8d8b8;
   white-space: nowrap;
 }
 

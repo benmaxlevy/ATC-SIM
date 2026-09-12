@@ -247,9 +247,9 @@ Keys below are divided into **Always-On** shortcuts (which work regardless of wh
 | `FPL` | `<FPL>` Flight Plan List | Toggles TAB List (`*T`) visibility. |
 | `VFR` | `<VFR>` VFR List | Toggles VFR List (`*TV`) visibility. |
 
-#### STARS DCB function key shortcuts (`Ctrl + F1`–`F11`)
+#### DCB function key shortcuts (`Ctrl + F1`–`F11`)
 
-| Key Combination | STARS Analog | Action |
+| Key Combination | Control | Action |
 |---|---|---|
 | `Ctrl + F1` | `<CNTR>` Center | Snaps scope center to airport reference (`KDEM ARP`). |
 | `Ctrl + F2` | `<MAPS>` Video Maps Menu | Opens DCB `MAPS` submenu. |
