@@ -90,7 +90,8 @@ describe("T02-147 authoritative flight-plan display lifecycle", () => {
       acid: "DAL456",
       beaconCode: "7031",
       destinationAirport: "KDEM",
-      remarks: "FIXB FIXC",
+      remarks: "",
+      box9C: "FIXB FIXC",
     });
   });
 

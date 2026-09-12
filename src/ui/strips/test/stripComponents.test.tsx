@@ -179,11 +179,14 @@ describe("T02-91 Flight Progress Strips Departure and Arrival Components", () =>
       expect(html).toContain('data-box="9C"');
       const box9 = html.match(/data-box="9"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
       const box9a = html.match(/data-box="9A"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      const box9b = html.match(/data-box="9B"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
+      const box9c = html.match(/data-box="9C"[^>]*>(.*?)<\/div>/s)?.[1] ?? "";
       expect(box9).toContain("240");
       expect(box9).toContain("DESCEND");
       expect(box9a).toContain("KATL");
       expect(box9a).toContain("30");
-      expect(box9a).toContain("RNAV STAR");
+      expect(box9b).toBe("");
+      expect(box9c).toContain("RNAV STAR");
       expect(html).not.toContain(">IFR<");
       expect(html).not.toContain(">VFR<");
     });

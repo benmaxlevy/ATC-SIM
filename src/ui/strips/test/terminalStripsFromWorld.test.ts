@@ -281,7 +281,8 @@ describe("terminalStripsFromWorld", () => {
     expect(arrivals[0]?.acid).toBe("AAL222");
     expect(arrivals[0]?.previousFix).toBe("HONIE");
     expect(arrivals[0]?.coordinationFix).toBe("CHUNK");
-    expect(arrivals[0]?.remarks).toBe("CHUNK2");
+    expect(arrivals[0]?.remarks).toBe("");
+    expect(arrivals[0]?.box9C).toBe("CHUNK2");
   });
 
   test("stably sorts departures and arrivals by callsign", () => {

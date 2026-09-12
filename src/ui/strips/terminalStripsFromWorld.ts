@@ -173,8 +173,10 @@ export function terminalStripsFromWorld(world: World): {
         flightRules: plan?.flightRules === "VFR" ? "VFR" : "IFR",
         minimumFuel: plan?.minimumFuel,
         destinationAirport: plan?.airportId ?? airportId,
-        remarks: plan?.remarks ?? plan?.route ?? remarks,
+        remarks: plan?.remarks ?? "",
         box9A: plan?.airportId ?? airportId,
+        box9B: "",
+        box9C: remarks || plan?.route || "",
         annotationBoxes: {
           box8A: activeRunway,
           box8B: "",

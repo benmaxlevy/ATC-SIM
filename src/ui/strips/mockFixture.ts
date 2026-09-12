@@ -64,7 +64,7 @@ export const mockAAL412: ArrivalStripData = {
   estimatedTimeOfArrival: "1440",
   flightRules: "IFR",
   destinationAirport: "KATL",
-  remarks: "RNAV STAR",
+  box9C: "RNAV STAR",
   annotationBoxes: {
     box8A: "26R",
     box8B: "A",
