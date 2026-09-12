@@ -37,6 +37,8 @@ export type PreviewArmedAction =
       readonly type: "createFlightPlan";
       pendingDiscrete: boolean;
       acid: string;
+      /** Present only when entered through the explicit FLT DATA command. */
+      creationMode?: "fltData";
       assignedBeacon?: string;
       beaconAllocation?: "ifr" | "vfr" | "general1" | "general2" | "general3" | "general4";
       tcp?: string;
@@ -48,6 +50,9 @@ export type PreviewArmedAction =
       equipment?: string;
       requestedAltitudeFt?: number;
       flightRules?: string;
+      fixes?: string[];
+      eta?: string;
+      ptd?: string;
     }
   | { readonly type: "initCntl"; readonly flid?: string }
   | {
@@ -191,6 +196,8 @@ const SCRATCHPAD = /^[A][A-Z0-9+/. *]{0,4}$/;
 const SCRATCHPAD_2 = /^\+[A-Z0-9+/. *]{0,4}$/;
 const AIRCRAFT = /^(?:(\d{1,2})\/)?([A-Z][A-Z0-9]{1,3})(?:\/([A-Z]))?$/;
 const FLIGHT_RULES = /^[A-Z]$/;
+const FIX_DATA = /^(?:[A-Z0-9]{1,4})?\*(?:[A-Z0-9]{1,4})?(?:\*[APE])?$/;
+const ETA_OR_PTD = /^(?:[01]\d|2[0-3])[0-5]\dE$/;
 
 export type FlightPlanCreationParse =
   | { kind: "incomplete" }
@@ -201,6 +208,7 @@ export type FlightPlanCreationParse =
 export function parseFlightPlanCreation(
   buffer: string,
   pendingDiscrete = false,
+  fltData = false,
 ): FlightPlanCreationParse {
   const tokens = buffer.trim().toUpperCase().split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return { kind: "incomplete" };
@@ -212,6 +220,7 @@ export function parseFlightPlanCreation(
     pendingDiscrete,
     acid,
     scratchpads: [],
+    ...(fltData ? { creationMode: "fltData" as const } : {}),
   };
   const used = new Set<string>();
   for (const token of tokens.slice(1)) {
@@ -233,21 +242,39 @@ export function parseFlightPlanCreation(
       used.add("beacon");
       continue;
     }
-    if (/^[A-Z0-9][A-Z0-9]$/.test(token) && !/^[APE]/.test(token)) {
+    if (/^[A-Z0-9]{1,2}$/.test(token) && !/^[APE]/.test(token) && (fltData || token.length === 2)) {
       if (pendingDiscrete) return { kind: "invalid", reason: "FORMAT" };
       if (used.has("tcp")) return { kind: "invalid", reason: "FORMAT" };
       fields.tcp = token;
       used.add("tcp");
       continue;
     }
-    if (token === "A" && used.has("type") && !used.has("beacon")) {
+    if (token === "A" && !used.has("beacon") && (fltData || used.has("type"))) {
       fields.beaconAllocation = undefined;
       used.add("beacon");
       continue;
     }
+    if (fltData && FIX_DATA.test(token)) {
+      if (used.has("fixes")) return { kind: "invalid", reason: "FORMAT" };
+      fields.fixes = [token];
+      used.add("fixes");
+      continue;
+    }
+    if (fltData && ETA_OR_PTD.test(token)) {
+      if (used.has("etaOrPtd")) return { kind: "invalid", reason: "FORMAT" };
+      const status = fields.fixes?.[0]?.split("*").at(-1);
+      if (status === "P") {
+        fields.ptd = token;
+      } else {
+        fields.eta = token;
+      }
+      used.add("etaOrPtd");
+      continue;
+    }
+    if (fltData && /^[APE]$/.test(token)) return { kind: "invalid", reason: "FORMAT" };
     // E1 is not the manual's two-character flight-type form. Reserve this
     // otherwise ambiguous token instead of letting it become an aircraft type.
-    if (/^E[A-Z0-9]$/.test(token)) return { kind: "invalid", reason: "FORMAT" };
+    if (!fltData && /^E[A-Z0-9]$/.test(token)) return { kind: "invalid", reason: "FORMAT" };
     if (/^[APE]$/.test(token) || /^[AP][A-Z0-9]$/.test(token)) {
       if (pendingDiscrete) return { kind: "invalid", reason: "FORMAT" };
       if (used.has("type")) return { kind: "invalid", reason: "FORMAT" };

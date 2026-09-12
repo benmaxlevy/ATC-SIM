@@ -134,6 +134,66 @@ describe("T02-144 flight-plan creation", () => {
     });
   });
 
+  it("parses F6 full IFR fields independently from abbreviated creation", () => {
+    expect(
+      parseFlightPlanCreation("UAL1234 .A 250 B738 ATST +ORH KDEM*RW27 1630E 1R 2341", false, true),
+    ).toEqual({
+      kind: "action",
+      action: {
+        type: "createFlightPlan",
+        pendingDiscrete: false,
+        creationMode: "fltData",
+        acid: "UAL1234",
+        assignedBeacon: "2341",
+        tcp: "1R",
+        fixes: ["KDEM*RW27"],
+        eta: "1630E",
+        scratchpads: ["TST", "ORH"],
+        aircraftType: "B738",
+        requestedAltitudeFt: 25000,
+        flightRules: "A",
+      },
+    });
+    expect(parseFlightPlanCreation("UAL1234 2341 KDEM*RW27 B738 250 .A")).not.toMatchObject({
+      action: { creationMode: "fltData" },
+    });
+  });
+
+  it("keeps F6 departure PTD and beacon/no-code forms distinct", () => {
+    expect(parseFlightPlanCreation("UAL1234 KDEM*RW27*P 1630E B738 A", false, true)).toMatchObject({
+      kind: "action",
+      action: {
+        creationMode: "fltData",
+        fixes: ["KDEM*RW27*P"],
+        ptd: "1630E",
+        aircraftType: "B738",
+      },
+    });
+    expect(parseFlightPlanCreation("UAL1234 A B738", false, true)).toMatchObject({
+      kind: "action",
+      action: { creationMode: "fltData", aircraftType: "B738" },
+    });
+  });
+
+  it("returns explicit F6 format, scratchpad, and value errors", () => {
+    expect(parseFlightPlanCreation("UAL1234 8888", false, true)).toMatchObject({
+      kind: "invalid",
+      reason: "FORMAT",
+    });
+    expect(parseFlightPlanCreation("UAL1234 ANAT", false, true)).toMatchObject({
+      kind: "invalid",
+      reason: "ILL SCR",
+    });
+    expect(parseFlightPlanCreation("UAL1234 KDEM*RW27 KDEM*RW28", false, true)).toMatchObject({
+      kind: "invalid",
+      reason: "FORMAT",
+    });
+    expect(parseFlightPlanCreation("UAL1234 .B", false, true)).toMatchObject({
+      kind: "invalid",
+      reason: "ILL VALUE",
+    });
+  });
+
   it("shows named creation errors and reaches beacon-pool capacity", () => {
     const occupied = createFlightPlan({
       id: "occupied-0",
@@ -207,5 +267,32 @@ describe("T02-144 flight-plan creation", () => {
       assignedBeacon: "2342",
       status: "pending",
     });
+  });
+
+  it("routes F6 in scope and radio focus to local full-plan creation", () => {
+    for (const focus of ["scope", "radio"] as const) {
+      const world = createWorld();
+      const view = createScopeView();
+      handleScopeKeyDown(key("F6"), view, focus, world);
+      expect(view.preview.creationMode).toBe("fltData");
+      expect(view.preview.mnemonic).toBe("FLT DATA");
+      for (const ch of "UAL1234 2341 KDEM*RW27 B738 250 .A") {
+        handleScopeKeyDown(key(ch), view, focus, world);
+      }
+      handleScopeKeyDown(key("Enter"), view, focus, world);
+      expect(world.flightPlans).toHaveLength(1);
+      expect(world.flightPlans[0]).toMatchObject({
+        acid: "UAL1234",
+        assignedBeacon: "2341",
+        fixes: ["KDEM*RW27"],
+        aircraftType: "B738",
+        requestedAltitudeFt: 25000,
+        flightRules: "A",
+        flightType: "IFR",
+        status: "pending",
+      });
+      expect(world.aircraft).toHaveLength(0);
+      expect(view.preview.creationMode).toBeUndefined();
+    }
   });
 });

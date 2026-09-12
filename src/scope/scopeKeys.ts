@@ -69,6 +69,7 @@ import {
   armPreviewSlewAction,
   beginPreviewBeaconEntry,
   beginPreviewBufferEntry,
+  beginPreviewFltDataEntry,
   cancelPreviewArea,
   handlePreviewBufferKey,
   handlePreviewEscape,
@@ -168,6 +169,7 @@ export const ALWAYS_ON_SCOPE_KEYS = [
   "F3",
   "F4",
   "F5",
+  "F6",
   "F7",
   "F8",
   "F9",
@@ -312,6 +314,15 @@ function startPreviewBuffer(view: ScopeView, ch: string, nowMs: number): void {
   }
 }
 
+function startFltDataEntry(view: ScopeView, nowMs: number): void {
+  cancelFilterEntry(view.filterEntry, view.altitudeFilter);
+  cancelDcbPrefSaveAs(view);
+  view.pendingChord = null;
+  view.starsChordArmed = null;
+  cancelStarsChordEntry(view.starsChordEntry);
+  beginPreviewFltDataEntry(view.preview, nowMs);
+}
+
 function applyPreviewArmedAction(
   view: ScopeView,
   action: PreviewArmedAction,
@@ -340,16 +351,24 @@ function applyPreviewArmedAction(
           acid: action.acid,
           assignedBeacon: action.assignedBeacon,
           tcp: action.tcp,
-          flightType:
-            action.flightType === "A" ? "IFR" : action.flightType === "P" ? "IFR" : undefined,
           airportId: action.airportId,
-          fixes: [],
           scratchpads: action.scratchpads.filter((value) => value.length > 0),
           aircraftType: action.aircraftType,
           aircraftCount: action.aircraftCount,
           equipment: action.equipment,
+          fixes: action.fixes ?? [],
           requestedAltitudeFt: action.requestedAltitudeFt,
           flightRules: action.flightRules,
+          eta: action.eta,
+          ptd: action.ptd,
+          flightType:
+            action.flightType === "A"
+              ? "IFR"
+              : action.flightType === "P"
+                ? "IFR"
+                : action.creationMode === "fltData"
+                  ? "IFR"
+                  : undefined,
         },
         world.flightPlans,
       );
@@ -902,6 +921,15 @@ export function handleScopeKeyDown(
     return true;
   }
 
+  // Manual Appendix D Table D-1: F6 -> FLT DATA. Always-on and scope-only;
+  // never enters the radio parser.
+  if (event.key === "F6" && !event.ctrlKey && !event.altKey) {
+    consume(event);
+    startFltDataEntry(view, nowMs);
+    ui?.onHandled?.();
+    return true;
+  }
+
   // Manual Appendix D Table D-1: F1 -> INIT CNTL.
   if (event.key === "F1" && !event.ctrlKey && !event.altKey) {
     consume(event);
@@ -1122,7 +1150,16 @@ export function handleScopeKeyDown(
       }
     }
   } else {
-    if (view.preview.phase === "entry") {
+    if (view.preview.creationMode === "fltData" && view.preview.phase === "entry") {
+      const preview = handlePreviewBufferKey(view.preview, event.key, nowMs, event.code);
+      if (preview.consumed) {
+        consume(event);
+        applyPreviewBufferOutcome(view, world, nowMs, preview);
+        ui?.onHandled?.();
+        return true;
+      }
+    }
+    if (view.preview.phase === "entry" && view.preview.creationMode !== "fltData") {
       cancelPreviewArea(view.preview);
       cancelDcbPrefSaveAs(view);
     }

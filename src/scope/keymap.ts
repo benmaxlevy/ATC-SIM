@@ -119,6 +119,13 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         result: "Reserved Track Suspend; currently a no-op.",
       },
       {
+        id: "flt-data",
+        command: "F6 / FLT DATA <ACID> [fields]",
+        example: "F6 UAL1234 2341 KDEM*RW27 B738 250 .A",
+        input: "Any focus, then Preview Area",
+        result: "Create one local full IFR flight plan; no Command IR or aircraft mutation.",
+      },
+      {
         id: "terminate",
         command: "F4",
         example: "F4, then click",
@@ -330,7 +337,14 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         command: "<ACID> [fields]",
         example: "UAL1234 2341 AT B738",
         input: "Preview Area",
-        result: "Create a pending local flight plan.",
+        result: "Abbreviated creation: create a pending local flight plan.",
+      },
+      {
+        id: "plan-pending-discrete",
+        command: "F1 / INIT CNTL <ACID> <beacon> [fields]",
+        example: "F1 UAL1234 2341, then click",
+        input: "INIT CNTL Preview path",
+        result: "Create a pending local discrete plan; identity association remains separate.",
       },
       {
         id: "plan-modify",
@@ -512,6 +526,14 @@ export const KEY_BINDINGS: KeyBinding[] = [
     windowsKeys: "F1",
     action: "INIT CNTL: selected target applies now; otherwise arm command-then-slew.",
     crcAnalog: "F1 <INIT CNTL>",
+  },
+  {
+    id: "flt-data",
+    focus: "always",
+    windowsKeys: "F6",
+    action:
+      "FLT DATA: enter full IFR flight-plan data in Preview Area. Local record only; no radio parser or Command IR.",
+    crcAnalog: "F6 <FLT DATA>",
   },
   {
     id: "track-suspend",

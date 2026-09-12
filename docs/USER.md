@@ -133,8 +133,9 @@ read back or fly the change.
 | Command | Example | Result |
 |---|---|---|
 | `*T` | `*T` then Enter | Toggles the TAB flight-plan list. `*T 15` sets its visible row count. Use the displayed numeric row index for list operations. |
-| `ACID [fields]` | `UAL1234 2341 AT AAL B738` then Enter | Creates a pending plan. Creation accepts an ACID plus a four-digit beacon, `+` (IFR pool), `/` (VFR pool), `/1`–`/4` (general pools), TCP, flight type, scratchpads, altitude, rules, and aircraft data. |
-| `F1` | `F1`, then type an ACID, beacon, or two-digit TAB identity and click a target | INIT CNTL: identity entry followed by slew/click associates the matching plan. Enter-only identity application is invalid; CID is not an identity. |
+| `ACID [fields]` | `UAL1234 2341 AT AAL B738` then Enter | Abbreviated creation: creates a pending local plan. Accepts an ACID plus beacon/pool selector, TCP, flight type, scratchpads, altitude, rules, and aircraft data. |
+| `F6 / FLT DATA` | `F6 UAL1234 2341 KDEM*RW27 B738 250 .A` then Enter | Full IFR creation: creates one pending local plan. Optional fields are space-separated and order-independent where allowed; no radio parser, Command IR, readback, pilot intent, or kinematic change. |
+| `F1 / INIT CNTL` | `F1 UAL1234 2341` then click a target, or `F1` then identity/click | Pending discrete creation remains an INIT CNTL path. Identity association requires a slew/click; Enter-only identity application is invalid. CID is not an identity. |
 | `F3` | `F3` | Track Suspend is reserved and currently a no-op; no suspend lifecycle is simulated yet. |
 | `F4` / `TERM CNTL` / `/` | `F4`, then click a target; or `F4 UAL1234` then Enter | TERM CNTL: all three forms share one operation. The first use deletes the associated plan, removes association, clears ownership, and leaves a moving unassociated LDB (`*`). `TERM CNTL ALL` is invalid. |
 | `*M <identity> <data>` | `*M 14 5252` | Modifies one plan by ACID, beacon, or TAB-list index. Enter beacon data directly (`5252`, `+`, `/`, `/1`–`/4`, `A`) or scratchpad 1 with `Δ` / scratchpad 2 with `+`. |
@@ -236,6 +237,7 @@ Keys below are divided into **Always-On** shortcuts (which work regardless of wh
 | `F1` | `<INIT CNTL>` Initiate Control | If track selected: immediately initiates track / owns target. If none selected: arms `INIT CNTL` command-then-slew. |
 | `F3` | `<TRK SUSP>` Track Suspend | Reserved/no-op until the suspend lifecycle is implemented. |
 | `F4` | `<TERM CNTL>` Terminate Track | Alias of `TERM CNTL`. If track selected: terminates immediately. If none selected: arms command-then-slew. Deletes the associated plan on first use and leaves an unassociated `*` LDB. |
+| `F6` | `<FLT DATA>` Flight Data | Enters full IFR flight-plan creation in the Preview Area. Local record only; optional fields may be entered in any supported order. |
 | `F5` / `Shift + H` | `<HND OFF>` Smart Handoff | Initiates shared outbound handoff: Tower for eligible arrivals, Center (`C`) for eligible climbing departures. Supported destinations auto-accept after five simulated seconds. |
 | `F7` | `<MULTI FUNC>` Multi-Function | Types or appends `*` into the STARS Preview Area buffer. |
 | `F8` | `<HIST>` History Dots | Toggles radar history trail dots (0 ↔ last non-zero dot count). |

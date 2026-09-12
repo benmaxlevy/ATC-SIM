@@ -15,6 +15,7 @@ const REQUIRED_BINDING_IDS = [
   "help",
   "track-suspend",
   "initiate-track",
+  "flt-data",
   "drop-track",
   "tower-handoff",
   "multi-func",
