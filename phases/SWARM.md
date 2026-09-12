@@ -3913,3 +3913,54 @@ scope.
 
 Wave A: `T02-163`. The worker may edit only the ticket's implementation scope,
 must preserve unrelated work, and returns `READY TO MERGE` or `BLOCKED`.
+
+## Eleventh swarm planned — strict manual INIT/TAB and beacon alignment (2026-09-12)
+
+Human approved strict alignment with `/home/ben/Documents/stars refs/full_manual.pdf`
+on the current `improvement/db-source-unification` branch. Unsupported
+datablock creation is explicitly excluded. Direct INIT CNTL identity + Enter
+is removed; manual INIT CNTL identity entry requires slew to an unassociated
+target and left-click. TAB line numbers are exactly two digits. Automatic
+association uses assigned-beacon/reported-squawk match without ACID or CID
+matching, per §5.5.9 p. 5-125.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align INIT CNTL/TAB association and beacon auto-association with the supplied manual |
+| Phase | `phases/02-scope/` |
+| Tickets | `T02-166` → `T02-167` |
+| Merge target | `improvement/db-source-unification` |
+| Worker limit | 1 ticket worker; sequential waves |
+| Model | inherit available Codex worker model |
+| Required gate | `npm run ci` after every merge |
+| Required review | `$check-stars-manual` with `/home/ben/Documents/stars refs/full_manual.pdf` after every ticket |
+| Stop | Stop after `T02-167` |
+
+Waves: A=`T02-166`, B=`T02-167`. Each worker implements exactly one ticket in
+an isolated worktree and returns `READY TO MERGE` or `BLOCKED`. The captain
+squash-merges each ticket onto the current merge target, runs CI, then performs
+the independent manual review before starting the next wave. On failed CI or
+manual review, stop the next wave and use one narrowly scoped fix worker only.
+Do not create unsupported datablocks or start another phase.
+
+## Eleventh swarm started — strict manual INIT/TAB and beacon alignment (2026-09-12)
+
+Execution authorized on the current `improvement/db-source-unification`
+branch. The captain keeps this branch as the merge target; no switch to
+`master`, push, or unrelated backlog cleanup. One isolated worker runs at a
+time: T02-166 first, then T02-167. Each squash merge requires `npm run ci` and
+an independent `$check-stars-manual` review against
+`/home/ben/Documents/stars refs/full_manual.pdf` before the next ticket.
+
+Strict manual product law: INIT CNTL identity entry accepts ACID, discrete
+beacon, or exactly two-digit TAB line number, then requires slew to an
+unassociated target and left-click (§5.4.1–5.4.2, pp. 5-66–5-68). Direct
+INIT identity + Enter is removed. CID is never a flight identity. The manual's
+active-plan/unsupported-datablock auto-association workflow is excluded; this
+run only preserves/corrects the existing pending-plan/runtime beacon-match
+trainer path using assigned beacon versus reported squawk (§5.5.9,
+pp. 5-125–5-126).
+
+Worker handoff is exactly `READY TO MERGE` or `BLOCKED`. On failed CI or manual
+review, stop the next wave and use one narrowly scoped fix worker only. Stop
+after T02-167; do not start another phase.
