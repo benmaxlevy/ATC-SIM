@@ -44,6 +44,31 @@ tickets, tests, manual leftovers, notes, and exactly `PHASE EXIT GREEN` or
 runs final required tests, appends STATUS, and stops at the configured phase
 boundary. No separate orchestrator is spawned.
 
+Before launching a worker, inspect that ticket’s contract and make a short
+preflight checklist. Do not launch a ticket whose exact forms, negative cases,
+manual citations, or help/docs obligations are missing. For overloaded keys,
+check every modifier and focus-mode route. For optional fields, check at least
+one ordering permutation and one ambiguous-token case.
+
+Before committing, each worker must walk that checklist and confirm every row
+has a focused test or an explicitly marked Manual check; parser precedence and
+incomplete/error outcomes are asserted; forbidden side effects are tested or
+inspected; help/reference and user docs match the syntax; and both focused
+tests and `npm run ci` pass.
+
+After each ticket merge, the captain runs `npm run ci`, then invokes
+`$check-stars-manual` with the exact ticket and supplied manual before starting
+the next ticket or wave. A manual `FAIL` stops new work and creates one narrowly
+scoped correction worker. The correction must address named findings, rerun
+CI, and trigger another manual review; do not batch unrelated fixes.
+
+Manual verification is a gate, not a final narrative step. Record its result,
+citations, and acceptance status in the phase handoff. A verifier is not
+required to spawn a second verifier: if the captain’s delegated independent
+pass returns findings but says recursive delegation is unavailable, use that
+result and note the limitation. Mark BLOCKED only when the captain cannot
+obtain the delegated pass or cannot read the supplied manual.
+
 ## References
 
 - `phases/SWARM.md` — contract and first-action requirement
