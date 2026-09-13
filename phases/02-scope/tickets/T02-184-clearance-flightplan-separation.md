@@ -43,6 +43,10 @@ clearance is an operational instruction, not a flight-plan edit.
 - Ensure route execution consumes the active-clearance snapshot. SID/STAR and
   fix-then-direct snapshots execute immediately; radar vectors remain pending
   until a later vector. A later flight-plan edit must not mutate the snapshot.
+- Keep airport clearance limits executable without putting airport ICAOs in
+  `FixRegistry`: provide a separate catalog-backed airport endpoint lookup
+  (with synthetic coordinates in tests) for the active-clearance FMS. Airport
+  geometry must not become eligible for tactical `DIRECT`/`CROSS` grounding.
 - Preserve current `AS FILED` validation as a check against the plan used at
   issuance; it is not a copy operation and does not bind future plan edits.
 - Preserve tactical `DIRECT`/`PROCEED DIRECT` as lateral-only instructions.
@@ -62,6 +66,9 @@ or EFC, and no new Command IR syntax.
   `assignedAltitudeFt`, `assignedBeacon`, and prior plan clearance metadata.
 - [ ] A valid clearance creates/replaces an aircraft-owned active-clearance
   route snapshot and applies the corresponding immediate route/vector intent.
+- [ ] A catalog airport limit can be executed through the separate airport
+  endpoint lookup while airport ICAOs remain absent from `FixRegistry` and
+  invalid for tactical direct/cross commands.
 - [ ] Editing a plan after issuance does not alter active-clearance route IDs,
   procedure identity, access, limit, or vector-pending state.
 - [ ] Issuing after a plan edit uses the latest plan as compiler input without
