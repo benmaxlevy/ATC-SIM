@@ -1,5 +1,70 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Sixty-seventh swarm started — 2026-09-13 (datablock altitude and rules semantics)
+
+Captain: `/root`. Merge lock: `feature/clearances`. Worker model/limit:
+`gpt-5.6-luna` high, one sequential worker. T02-185 is authorized first;
+later waves require merge, `npm run ci`, and supplied-manual review. No push is
+authorized.
+
+## Proposed sixty-seventh swarm — 2026-09-13 (datablock altitude and rules semantics)
+
+One sequential worker will remove stray IFR/requested-altitude datablock data
+while preserving the existing clearance work on `feature/clearances`.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align modeled VFR, requested-altitude, assigned-altitude, and Mode C datablock semantics with the supplied STARS manual. |
+| Include | T02-185 → T02-186 → T02-187. |
+| Merge target | `feature/clearances`. |
+| Worker limit/model | 1 sequential worker; `gpt-5.6-luna` high. |
+| Stop | T02-187 plus focused tests, `npm run ci`, supplied-manual review, and acceptance. |
+| Push | No push. |
+
+**Product law:** IFR displays no flight-rules character; VFR displays `V`;
+requested and assigned altitude display values are sourced only from flight
+plan fields as `R###` and `A###`; Mode C remains observed altitude; spawn pose
+and climb/descend intent altitude never becomes plan altitude metadata. Climb/
+descend commands never edit plan requested/assigned altitude. Internal IFR
+storage may remain unchanged. CWT category is out of scope.
+
+**Skip:** CWT/category redesign, new datablock fields, layout redesign, new
+commands, parser/radio changes, pilot behavior, kinematics changes, facility
+branches, CRC/vSTARS comparison, and unrelated clearance work.
+
+**Waves:** A T02-185 datablock projection; B T02-186 scenario altitude
+provenance; C T02-187 acceptance/docs. Each starts only after the prior ticket
+is merged, `npm run ci` passes, and the supplied-manual gate passes.
+
+**Ticket ownership:**
+
+- T02-185: `src/scope/datablock.ts`/`src/pilot/applyIntent.ts` semantic
+  projection and command-provenance tests.
+- T02-186: scenario plan/spawn altitude provenance and scenario tests.
+- T02-187: cross-source acceptance plus README/user documentation.
+
+**Ticket paths/branches:**
+
+- `ticket/T02-185-datablock-display-semantics` ← `phases/02-scope/tickets/T02-185-datablock-display-semantics.md`
+- `ticket/T02-186-scenario-altitude-provenance` ← `phases/02-scope/tickets/T02-186-scenario-altitude-provenance.md`
+- `ticket/T02-187-datablock-semantics-acceptance-and-docs` ← `phases/02-scope/tickets/T02-187-datablock-semantics-acceptance-and-docs.md`
+
+**Manual:** `C:\Users\Ben\Documents\full_manual.pdf`; §2.12 p. 2-63,
+Table 2-14 p. 2-64, Figure 2-20 pp. 2-66–67, §5.6.3 p. 5-146,
+§§6.13.23–6.13.24 pp. 6-107–108, and Appendix A p. A-5. No CRC/vSTARS
+source is used.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: datablock altitude and rules semantics T02-185–187
+Merge target: feature/clearances
+Merged: T02-185, T02-186, T02-187
+Tests: focused gates and npm run ci after each merge; supplied-manual review
+Notes: No push; IFR blank, VFR V, plan request R###, plan adjustment A###; climb/descend never edits plan altitude; CWT skipped
+```
+
 ## Sixty-sixth swarm started — 2026-09-13 (voice airport and command parity)
 
 Captain: `/root`. Merge lock: `feature/clearances`. Worker model/limit:
