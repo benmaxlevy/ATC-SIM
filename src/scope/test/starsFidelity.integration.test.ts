@@ -6,6 +6,7 @@ import {
   handoffFor,
   initiateCenterHandoff,
   acceptOutboundHandoff,
+  modifyFlightPlan,
   offerPointout,
   stepWorld,
 } from "@core";
@@ -274,10 +275,25 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
         altitudeFt: 8000,
         speedKt: 250,
         aircraftType: "A321",
+        squawk: "4324",
       });
       ac.intent.assignedAltitudeFt = 4000;
       ac.intent.controllerAssignedAltitudeFt = 4000;
-      const world = createWorld({ aircraft: [ac], simTimeMs: 0 });
+      const world = createWorld({
+        aircraft: [ac],
+        flightPlans: [
+          {
+            id: "ac-fdb-test-plan",
+            status: "active",
+            acid: "AAL777",
+            assignedBeacon: "4324",
+            assignedAltitudeFt: 4000,
+            fixes: [],
+            scratchpads: [],
+          },
+        ],
+        simTimeMs: 0,
+      });
       const view = createScopeView();
       syncTrackDisplays(view.tracks, world);
 
@@ -302,11 +318,18 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       expect(phase1.fillTexts.some((t) => t.text === "HOLD  A321")).toBe(true);
       expect(phase1.fillTexts.some((t) => t.text === "A040")).toBe(true);
 
-      // When assigned altitude matches Mode C altitude (8000 ft), Line 3 is omitted
+      // Updating intent cannot replace plan-backed assigned altitude display.
       ac.intent.assignedAltitudeFt = 8000;
       const noLine3 = createMockCtx();
       renderScope(noLine3.ctx, world, view, 800, 800);
+      expect(noLine3.fillTexts.some((t) => t.text === "A040")).toBe(true);
       expect(noLine3.fillTexts.some((t) => t.text === "A080")).toBe(false);
+      expect(modifyFlightPlan(world, "ac-fdb-test-plan", "assignedAltitudeFt", 8000)).toMatchObject(
+        { ok: true },
+      );
+      const planMatchesModeC = createMockCtx();
+      renderScope(planMatchesModeC.ctx, world, view, 800, 800);
+      expect(planMatchesModeC.fillTexts.some((t) => t.text === "A080")).toBe(false);
     });
   });
 

@@ -209,7 +209,8 @@ function applyStarTransitionLateral(
 /**
  * Analog: JO 7110.65 Climb Via / Descend Via amendments (R01); AIM phraseology
  * (R03). Trainer delta: named transition is catalog JSON, not NAS. Prove the
- * join before mutating VIA or assignedAltitudeFt.
+ * join before mutating VIA; controller altitude provenance belongs to the
+ * associated flight plan, not aircraft intent.
  */
 function applyVia(
   aircraft: Aircraft,
@@ -227,7 +228,6 @@ function applyVia(
       sense === "CLIMB"
         ? { type: "VIA_SID", sidId: normId }
         : { type: "VIA_STAR", starId: normId, sense };
-    aircraft.intent.controllerAssignedAltitudeFt = undefined;
     aircraft.intent.controllerAssignedSpeedKt = undefined;
     return;
   }
@@ -236,7 +236,6 @@ function applyVia(
     sense === "CLIMB"
       ? { type: "VIA_SID", sidId: normId }
       : { type: "VIA_STAR", starId: normId, sense };
-  aircraft.intent.controllerAssignedAltitudeFt = undefined;
   aircraft.intent.controllerAssignedSpeedKt = undefined;
   joinPublishedLateral(aircraft, procedureId, opts, transitionId);
 }
@@ -286,7 +285,6 @@ function applyOne(
       return;
     case "ALTITUDE":
       aircraft.intent.assignedAltitudeFt = instruction.altitudeFt;
-      aircraft.intent.controllerAssignedAltitudeFt = instruction.altitudeFt;
       return;
     case "SPEED":
       aircraft.intent.assignedSpeedKt = instruction.speedKt;

@@ -297,8 +297,11 @@ function datablockSourceFromPlan(
 ): DatablockSource {
   const reportedSquawk = track?.squawk ?? aircraft.reportedSquawk ?? aircraft.squawk;
   const assignedSquawk = plan?.assignedBeacon ?? aircraft.assignedSquawk;
-  const assignedAltitudeFt =
-    plan?.assignedAltitudeFt ?? aircraft.intent.controllerAssignedAltitudeFt;
+  const {
+    controllerAssignedAltitudeFt: _aircraftControllerAssignedAltitudeFt,
+    requestedAltitudeFt: _aircraftRequestedAltitudeFt,
+    ...aircraftIntent
+  } = aircraft.intent;
   return {
     ...aircraft,
     callsign: plan?.acid ?? aircraft.callsign,
@@ -306,13 +309,13 @@ function datablockSourceFromPlan(
     assignedSquawk,
     reportedSquawk,
     aircraftType: plan?.aircraftType ?? aircraft.aircraftType,
-    requestedAltitudeFt: plan?.requestedAltitudeFt ?? aircraft.requestedAltitudeFt,
+    requestedAltitudeFt: plan?.requestedAltitudeFt,
     flightRules: plan?.flightRules ?? aircraft.flightRules,
     intent: {
-      ...aircraft.intent,
-      ...(assignedAltitudeFt === undefined
+      ...aircraftIntent,
+      ...(plan?.assignedAltitudeFt === undefined
         ? {}
-        : { controllerAssignedAltitudeFt: assignedAltitudeFt }),
+        : { controllerAssignedAltitudeFt: plan.assignedAltitudeFt }),
       ...(plan?.requestedAltitudeFt === undefined
         ? {}
         : { requestedAltitudeFt: plan.requestedAltitudeFt }),
@@ -554,6 +557,15 @@ export interface GroundSpeedTensOpts {
 }
 
 /**
+ * Normalize the trainer's flight-rules marker at the datablock boundary.
+ * Analog: STARS Table 2-14 permits adapted rule characters (R02). Trainer
+ * delta: only VFR is displayed as `V`; IFR and unsupported rules are blank.
+ */
+export function normalizeFlightRulesDisplay(flightRules: string | undefined): "V" | undefined {
+  return flightRules?.trim().toUpperCase() === "VFR" ? "V" : undefined;
+}
+
+/**
  * Ground speed in tens of knots (e.g. 180 kt -> "18", 210 kt -> "21", 90 kt -> "09").
  * Optionally appends wake/RNAV category indicator (e.g. "18H", "25R"),
  * or flight category ("V" for VFR, "E" for overflights).
@@ -575,8 +587,9 @@ export function formatGroundSpeedTens(
   }
 
   if (typeof opts === "object" && opts !== null) {
-    if (opts.flightRules === "VFR") {
-      return `${base}V`;
+    const flightRules = normalizeFlightRulesDisplay(opts.flightRules);
+    if (flightRules) {
+      return `${base}${flightRules}`;
     }
     if (opts.isOverflight) {
       return `${base}E`;
@@ -727,14 +740,12 @@ export function formatDatablockFields(
           isOverflight: track.isOverflight,
         });
   const duplicateBeacon = normalizeDisplayField(opts.duplicateBeaconCode, 4) || undefined;
-  const rules = normalizeDisplayField(track.flightRules, 3) || undefined;
+  const rules = normalizeFlightRulesDisplay(track.flightRules);
   const category = formatWakeCategory(track.wakeCategory) || undefined;
   const count = formatAircraftCount(opts.aircraftCount);
   const type =
     opts.aircraftTypeVisible === false ? undefined : formatAircraftType(track.aircraftType);
-  const requested = formatRequestedAltitude(
-    track.requestedAltitudeFt ?? track.intent?.requestedAltitudeFt,
-  );
+  const requested = formatRequestedAltitude(track.requestedAltitudeFt);
 
   // Fields 6–8 are independently time-shared. Priority follows Figure 2-20;
   // this is an analog-plus-delta formatter contract, not a TSAS/coordination
