@@ -419,13 +419,15 @@ function validAltitude(value: unknown): boolean {
     (typeof value === "number" &&
       Number.isInteger(value) &&
       value >= 0 &&
-      value <= 99000 &&
+      value <= 99900 &&
       value % 100 === 0)
   );
 }
 
 const FIX_PAIR_PATTERN =
   /^(?:[A-Z0-9]{1,4}\*[A-Z0-9]{1,4}|[A-Z0-9]{1,4}\*|\*[A-Z0-9]{1,4})(?:\*[APE])?$/;
+const SCRATCHPAD_PATTERN = /^[A-Z0-9+/. *]{0,4}$/;
+const SCRATCHPAD_FORBIDDEN = /^(?:NAT|CST|AMB|RDR|ADB|XXX|\d{3})/;
 const BEACON_SELECTOR_PATTERN = /^(?:\+|\/|\/[1-4]|A)$/;
 const DRAFT_BEACON_POOLS: Record<"+" | "/" | "/1" | "/2" | "/3" | "/4", string[]> = {
   "+": ["0000"],
@@ -438,6 +440,12 @@ const DRAFT_BEACON_POOLS: Record<"+" | "/" | "/1" | "/2" | "/3" | "/4", string[]
 
 function isBeaconSelector(value: string): boolean {
   return BEACON_SELECTOR_PATTERN.test(value.trim().toUpperCase());
+}
+
+function isValidDraftScratchpad(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const text = value.trim().toUpperCase();
+  return SCRATCHPAD_PATTERN.test(text) && !SCRATCHPAD_FORBIDDEN.test(text);
 }
 
 function scalarError(
@@ -517,9 +525,13 @@ function scalarError(
     return draftError("INVALID_VALUE", "aircraftType", "invalid aircraft type");
   if (
     input.equipment !== undefined &&
-    (typeof input.equipment !== "string" || !/^[A-Z]{1,4}$/i.test(input.equipment.trim()))
+    (typeof input.equipment !== "string" || !/^[A-Z]$/i.test(input.equipment.trim()))
   )
-    return draftError("INVALID_VALUE", "equipment", "invalid equipment");
+    return draftError(
+      "INVALID_VALUE",
+      "equipment",
+      "equipment suffix must be one alphabetic character",
+    );
   if (
     input.flightRules !== undefined &&
     (typeof input.flightRules !== "string" ||
@@ -539,11 +551,70 @@ function scalarError(
     input.scratchpads !== undefined &&
     (!Array.isArray(input.scratchpads) ||
       input.scratchpads.length > 2 ||
-      input.scratchpads.some(
-        (item) => typeof item !== "string" || !/^[A-Z0-9+/. *]{0,4}$/i.test(item.trim()),
-      ))
+      input.scratchpads.some((item) => !isValidDraftScratchpad(item)))
   )
     return draftError("INVALID_VALUE", "scratchpads", "invalid scratchpad");
+  return undefined;
+}
+
+/** Validate constraints that apply to the complete, inherited draft candidate. */
+function candidateScalarError(candidate: FlightPlan): FlightPlanDraftError | undefined {
+  if (
+    candidate.aircraftCount !== undefined &&
+    (!Number.isInteger(candidate.aircraftCount) ||
+      candidate.aircraftCount < 2 ||
+      candidate.aircraftCount > 99)
+  ) {
+    return draftError(
+      "INVALID_VALUE",
+      "aircraftCount",
+      "aircraft count must be an integer from 2 through 99",
+    );
+  }
+  if (
+    candidate.equipment !== undefined &&
+    (typeof candidate.equipment !== "string" || !/^[A-Z]$/i.test(candidate.equipment.trim()))
+  ) {
+    return draftError(
+      "INVALID_VALUE",
+      "equipment",
+      "equipment suffix must be one alphabetic character",
+    );
+  }
+  if (
+    candidate.aircraftType !== undefined &&
+    (typeof candidate.aircraftType !== "string" ||
+      !/^[A-Z][A-Z0-9]{1,3}$/i.test(candidate.aircraftType.trim()))
+  ) {
+    return draftError("INVALID_VALUE", "aircraftType", "invalid aircraft type");
+  }
+  if (
+    (candidate.aircraftCount !== undefined || candidate.equipment !== undefined) &&
+    !candidate.aircraftType?.trim()
+  ) {
+    return draftError(
+      "INVALID_VALUE",
+      "aircraftType",
+      "aircraft type is required when aircraft count or equipment is supplied",
+    );
+  }
+  if (
+    !Array.isArray(candidate.scratchpads) ||
+    candidate.scratchpads.length > 2 ||
+    candidate.scratchpads.some((item) => !isValidDraftScratchpad(item))
+  ) {
+    return draftError("INVALID_VALUE", "scratchpads", "invalid scratchpad");
+  }
+  if (
+    !validAltitude(candidate.requestedAltitudeFt) ||
+    !validAltitude(candidate.assignedAltitudeFt)
+  ) {
+    return draftError(
+      "INVALID_VALUE",
+      "altitude",
+      "altitudes must be whole hundreds from 0 through 99900",
+    );
+  }
   return undefined;
 }
 
@@ -689,6 +760,8 @@ export function saveFlightPlanDraft(
   if (candidate.requestedAltitudeFt === 0) delete candidate.requestedAltitudeFt;
   if (candidate.assignedAltitudeFt === 0) delete candidate.assignedAltitudeFt;
   if (!existing) candidate.status = "pending" as FlightPlanStatus;
+  const candidateScalar = candidateScalarError(candidate);
+  if (candidateScalar) return { ok: false, error: candidateScalar };
   const created = !existing;
   if (existing) Object.assign(existing, candidate);
   else world.flightPlans.push(candidate);

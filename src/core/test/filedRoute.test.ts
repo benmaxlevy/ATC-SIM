@@ -68,6 +68,7 @@ test("saveFlightPlanDraft commits resolved metadata atomically", () => {
     acid: "aal123",
     filedRoute: "SID:SID1/N DCT FIXA",
     requestedAltitudeFt: 12000,
+    aircraftType: "B738",
     equipment: "S",
   });
   expect(result).toMatchObject({
@@ -110,6 +111,7 @@ test.each([
   [{ aircraftType: "1A" }, "aircraftType"],
   [{ aircraftType: "A" }, "aircraftType"],
   [{ equipment: "L1" }, "equipment"],
+  [{ equipment: "LG" }, "equipment"],
   [{ flightRules: "B" }, "flightRules"],
   [{ flightRules: "IFR" }, "flightRules"],
 ] as const)("draft rejects manual-invalid scalar %j", (fields, field) => {
@@ -136,6 +138,82 @@ test("draft accepts manual scalar bounds and adaptation flight rules", () => {
       fixes: ["FIXA*FIXB*P"],
     },
   });
+});
+
+test.each([
+  [{ aircraftCount: 2 }, "aircraftType"],
+  [{ equipment: "L" }, "aircraftType"],
+] as const)("draft requires aircraft type with dependent scalar %j", (fields, field) => {
+  const result = saveFlightPlanDraft(createWorld(), { acid: "AAL123", ...fields });
+  expect(result).toMatchObject({ ok: false, error: { code: "INVALID_VALUE", field } });
+});
+
+test("draft validates inherited dependent scalars on an amendment", () => {
+  const world = createWorld({
+    flightPlans: [
+      {
+        id: "fp-1",
+        status: "pending",
+        acid: "AAL123",
+        fixes: [],
+        scratchpads: [],
+        aircraftCount: 2,
+        equipment: "L",
+      },
+    ],
+  });
+  const before = structuredClone(world.flightPlans[0]);
+  const result = saveFlightPlanDraft(world, { acid: "AAL123", remarks: "NO PARTIAL UPDATE" });
+  expect(result).toMatchObject({
+    ok: false,
+    error: { code: "INVALID_VALUE", field: "aircraftType" },
+  });
+  expect(world.flightPlans[0]).toEqual(before);
+});
+
+test.each(["NAT", "CST", "AMB", "RDR", "ADB", "XXX", "123", "123A"])(
+  "draft rejects reserved or numeric-prefix scratchpad %s",
+  (scratchpad) => {
+    const result = saveFlightPlanDraft(createWorld(), {
+      acid: "AAL123",
+      scratchpads: [scratchpad],
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "INVALID_VALUE", field: "scratchpads" },
+    });
+  },
+);
+
+test("draft accepts the manual three-digit hundreds altitude ceiling", () => {
+  const world = createWorld();
+  const requested = saveFlightPlanDraft(world, {
+    acid: "AAL123",
+    aircraftType: "B738",
+    requestedAltitudeFt: 99900,
+  });
+  expect(requested).toMatchObject({ ok: true, plan: { requestedAltitudeFt: 99900 } });
+
+  world.flightPlans.push({
+    id: "fp-active",
+    status: "active",
+    acid: "DAL123",
+    aircraftType: "B738",
+    fixes: [],
+    scratchpads: [],
+  });
+  const assigned = saveFlightPlanDraft(world, {
+    acid: "DAL123",
+    assignedAltitudeFt: 99900,
+  });
+  expect(assigned).toMatchObject({ ok: true, plan: { assignedAltitudeFt: 99900 } });
+
+  const tooHigh = saveFlightPlanDraft(world, {
+    acid: "UAL123",
+    aircraftType: "B738",
+    requestedAltitudeFt: 100000,
+  });
+  expect(tooHigh).toMatchObject({ ok: false, error: { code: "INVALID_VALUE", field: "altitude" } });
 });
 
 test("draft rejects a new plan at flight-plan capacity before mutation", () => {
