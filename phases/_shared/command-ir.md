@@ -52,7 +52,22 @@ export type Instruction =
   | { type: "EXPECT_APPROACH"; approachId: string }
   | { type: "CLEARED_APPROACH"; approachId: string }
   | { type: "INTERCEPT_LOCALIZER"; approachId: string }
+  | { type: "ASSIGN_SQUAWK"; code: string; source: "DISCRETE" | "VFR" }
   | { type: "MAINTAIN_VFR" }
+  | {
+      type: "IFR_CLEARANCE";
+      limitId: string;
+      access:
+        | { type: "AS_FILED" }
+        | { type: "DIRECT" }
+        | { type: "FIX_THEN_DIRECT"; fixId: string }
+        | { type: "RADAR_VECTORS" }
+        | { type: "SID"; procedureId: string; transitionId?: string };
+      altitudeFt?: number;
+      climbVia?: boolean;
+      frequency?: string;
+      squawk?: string;
+    }
   | { type: "IDENT" }
   | { type: "SAY_HEADING" }
   | { type: "SAY_ALTITUDE" }
@@ -87,6 +102,14 @@ Suggested v1 tokens (callsign optional if a track is selected):
 | `PH` | `PRESENT_HEADING` |
 | `I` | `IDENT` |
 | `MVFR` | `MAINTAIN_VFR` — radio-only VFR instruction; not an IFR clearance, VFR-on-top authorization, route, or plan activation |
+| `SQ 2222` / `SQ VFR` | `ASSIGN_SQUAWK` (`2222` / `1200`) — aircraft transponder state only; never edits the flight plan beacon |
+| `CLR TO KATL VIA DIRECT` | `IFR_CLEARANCE` with limit `KATL` and access `DIRECT`; clearance limit and access are mandatory, other fields optional |
+
+Spoken `squad 2222` is a narrow ASR repair to `squawk 2222`; invalid or
+non-four-octal forms remain a parse miss. `cleared direct <fix>` and `proceed
+direct <fix>` are tactical `DIRECT`; `cleared to <limit> via direct` is an
+`IFR_CLEARANCE`. Airports are a clearance-limit namespace, never generic
+direct fixes.
 | `APP ILS27` | `CLEARED_APPROACH` (phase 1 may accept and no-op fly-through; phase 4 fly-through) |
 | `IL ILS27` | `INTERCEPT_LOCALIZER` — join loc, hold assigned altitude, **no GS** until `APP` |
 | `R240 A20 APP ILS27` | `FLY_HEADING 240 RIGHT` + `ALTITUDE MAINTAIN 2000 untilEstablished` + `CLEARED_APPROACH ILS27` (phase 4; same-line heading+alt+APP) |

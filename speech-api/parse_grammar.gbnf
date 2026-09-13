@@ -10,7 +10,7 @@ error-field ::= "\"error\"" ws ":" ws ("\"PARSE_MISS\"" | "\"UNAVAILABLE\"" | "\
 callsign-field ::= "\"callsignToken\"" ws ":" ws (string | "null")
 instructions-field ::= "\"instructions\"" ws ":" ws "[" ws instruction (ws "," ws instruction)* ws "]"
 
-instruction ::= fly-heading | turn-degrees | present-heading | altitude | speed | direct | expect-approach | cleared-approach | intercept-localizer | ident | say-heading | say-altitude | descend-via | climb-via | join-procedure | cross | go-around
+instruction ::= fly-heading | turn-degrees | present-heading | altitude | speed | direct | expect-approach | cleared-approach | intercept-localizer | assign-squawk | maintain-vfr | ifr-clearance | ident | say-heading | say-altitude | descend-via | climb-via | join-procedure | cross | go-around
 
 fly-heading ::= "{" ws "\"type\"" ws ":" ws "\"FLY_HEADING\"" ws "," ws "\"headingDeg\"" ws ":" ws number ws "," ws "\"turn\"" ws ":" ws turn-dir ws "}"
 turn-degrees ::= "{" ws "\"type\"" ws ":" ws "\"TURN_DEGREES\"" ws "," ws "\"direction\"" ws ":" ws lr ws "," ws "\"degrees\"" ws ":" ws number ws "}"
@@ -21,12 +21,21 @@ direct ::= "{" ws "\"type\"" ws ":" ws "\"DIRECT\"" ws "," ws "\"fixId\"" ws ":"
 expect-approach ::= "{" ws "\"type\"" ws ":" ws "\"EXPECT_APPROACH\"" ws "," ws "\"approachId\"" ws ":" ws string ws "}"
 cleared-approach ::= "{" ws "\"type\"" ws ":" ws "\"CLEARED_APPROACH\"" ws "," ws "\"approachId\"" ws ":" ws string ws "}"
 intercept-localizer ::= "{" ws "\"type\"" ws ":" ws "\"INTERCEPT_LOCALIZER\"" ws "," ws "\"approachId\"" ws ":" ws string ws "}"
+assign-squawk ::= "{" ws "\"type\"" ws ":" ws "\"ASSIGN_SQUAWK\"" ws "," ws "\"code\"" ws ":" ws octal-code ws "," ws "\"source\"" ws ":" ws squawk-source ws "}"
+maintain-vfr ::= "{" ws "\"type\"" ws ":" ws "\"MAINTAIN_VFR\"" ws "}"
+ifr-clearance ::= "{" ws "\"type\"" ws ":" ws "\"IFR_CLEARANCE\"" ws "," ws "\"limitId\"" ws ":" ws string ws "," ws "\"access\"" ws ":" ws clearance-access (ws "," ws "\"altitudeFt\"" ws ":" ws number)? (ws "," ws "\"climbVia\"" ws ":" ws boolean)? (ws "," ws "\"frequency\"" ws ":" ws string)? (ws "," ws "\"squawk\"" ws ":" ws octal-code)? ws "}"
+clearance-access ::= as-filed-access | direct-access | fix-then-direct-access | radar-vectors-access | sid-access
+as-filed-access ::= "{" ws "\"type\"" ws ":" ws "\"AS_FILED\"" ws "}"
+direct-access ::= "{" ws "\"type\"" ws ":" ws "\"DIRECT\"" ws "}"
+fix-then-direct-access ::= "{" ws "\"type\"" ws ":" ws "\"FIX_THEN_DIRECT\"" ws "," ws "\"fixId\"" ws ":" ws string ws "}"
+radar-vectors-access ::= "{" ws "\"type\"" ws ":" ws "\"RADAR_VECTORS\"" ws "}"
+sid-access ::= "{" ws "\"type\"" ws ":" ws "\"SID\"" ws "," ws "\"procedureId\"" ws ":" ws string (ws "," ws "\"transitionId\"" ws ":" ws string)? ws "}"
 ident ::= "{" ws "\"type\"" ws ":" ws "\"IDENT\"" ws "}"
 say-heading ::= "{" ws "\"type\"" ws ":" ws "\"SAY_HEADING\"" ws "}"
 say-altitude ::= "{" ws "\"type\"" ws ":" ws "\"SAY_ALTITUDE\"" ws "}"
-descend-via ::= "{" ws "\"type\"" ws ":" ws "\"DESCEND_VIA\"" ws "," ws "\"procedureId\"" ws ":" ws string ws "}"
-climb-via ::= "{" ws "\"type\"" ws ":" ws "\"CLIMB_VIA\"" ws "," ws "\"procedureId\"" ws ":" ws string ws "}"
-join-procedure ::= "{" ws "\"type\"" ws ":" ws "\"JOIN_PROCEDURE\"" ws "," ws "\"procedureId\"" ws ":" ws string ws "}"
+descend-via ::= "{" ws "\"type\"" ws ":" ws "\"DESCEND_VIA\"" ws "," ws "\"procedureId\"" ws ":" ws string (ws "," ws "\"transitionId\"" ws ":" ws string)? ws "}"
+climb-via ::= "{" ws "\"type\"" ws ":" ws "\"CLIMB_VIA\"" ws "," ws "\"procedureId\"" ws ":" ws string (ws "," ws "\"transitionId\"" ws ":" ws string)? ws "}"
+join-procedure ::= "{" ws "\"type\"" ws ":" ws "\"JOIN_PROCEDURE\"" ws "," ws "\"procedureId\"" ws ":" ws string (ws "," ws "\"transitionId\"" ws ":" ws string)? ws "}"
 cross ::= "{" ws "\"type\"" ws ":" ws "\"CROSS\"" ws "," ws "\"fixId\"" ws ":" ws string ws "," ws "\"altitudeFt\"" ws ":" ws number ws "," ws "\"restriction\"" ws ":" ws cross-restriction ws "}"
 go-around ::= "{" ws "\"type\"" ws ":" ws "\"GO_AROUND\"" ws "}"
 
@@ -35,6 +44,9 @@ lr ::= "\"LEFT\"" | "\"RIGHT\""
 alt-verb ::= "\"CLIMB\"" | "\"DESCEND\"" | "\"MAINTAIN\""
 speed-verb ::= "\"MAINTAIN\"" | "\"INCREASE\"" | "\"REDUCE\""
 cross-restriction ::= "\"AT\"" | "\"AT_OR_ABOVE\"" | "\"AT_OR_BELOW\""
+squawk-source ::= "\"DISCRETE\"" | "\"VFR\""
+octal-code ::= "\"" octal-digit octal-digit octal-digit octal-digit "\""
+octal-digit ::= [0-7]
 boolean ::= "true" | "false"
 
 number ::= "-"? [0-9]+ ("." [0-9]+)?

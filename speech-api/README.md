@@ -15,7 +15,7 @@ Paid or metered STT/TTS/LLM APIs, including: OpenAI, Deepgram, AssemblyAI, Groq,
 | `GET` | `/health` | — | `{ "ok": true, "sttModel": "<hub id>", "ttsVoice": "<id>", "parse": "off" \| "ready" }` |
 | `POST` | `/stt` | body `audio/wav` (pcm16le mono, 16 kHz preferred). Optional `X-ATC-Fixes` and `X-ATC-Procedures` headers ground Qwen transcription in catalog spellings. | `{ "text": string, "confidence": number }` |
 | `POST` | `/tts` | JSON `{ "text", "voiceId" }` | `audio/wav` (mono PCM) |
-| `POST` | `/parse` | JSON `{ "text", "source", "schemaVersion": "command-ir-v0", "context"? }` — no n-best, no confidence. Optional `context: { callsigns, selectedCallsign, fixes }` is live-strip + catalog prompt grounding. | `{ "ok": true, "callsignToken", "instructions" }` or `{ "ok": false, "error": "UNAVAILABLE" \| "PARSE_MISS" \| "SCHEMA" }` (200 or 503). Never 500-with-stack. |
+| `POST` | `/parse` | JSON `{ "text", "source", "schemaVersion": "command-ir-v0", "context"? }` — no n-best, no confidence. Optional `context: { callsigns, selectedCallsign, fixes, procedures, approaches, airports }` is live-strip + catalog prompt grounding. `airports` is only for IFR clearance limits. | `{ "ok": true, "callsignToken", "instructions" }` or `{ "ok": false, "error": "UNAVAILABLE" \| "PARSE_MISS" \| "SCHEMA" }` (200 or 503). Never 500-with-stack. |
 
 `confidence`: Qwen does not expose a calibrated confidence score; the API returns `1.0`. Command parsing remains responsible for rejecting invalid input.
 
@@ -48,7 +48,14 @@ Q4_K_M weights are several GB; **CPU OK, slow OK** — salvage only. VRAM not re
 
 Constrained decoding uses `parse_grammar.gbnf` (JSON matching Command IR v0) when llama.cpp accepts it. Prose from the model is a `SCHEMA` miss.
 
-**Roster + catalog grounding (not a vector DB):** the sim may send `context.callsigns` (on-frequency ICAO), `context.selectedCallsign`, and `context.fixes` (facility catalog ids). Those go in the **user** turn as `onFrequency=` / `fixes=` so the static system prompt stays cacheable. The model must pick an ICAO from the roster (e.g. ASR `giblet 204` → `SWA204`) and a listed fix spelling (e.g. ASR `C-Max` → `SEMAX`). Do not send kinematics — Path C is not an executor. The browser also snaps a unique flight-number suffix onto the roster, and a unique noisy `fixId` onto the catalog, when the model still returns junk.
+**Roster + catalog grounding (not a vector DB):** the sim may send `context.callsigns` (on-frequency ICAO), `context.selectedCallsign`, `context.fixes` (facility fix ids), `context.procedures`, `context.approaches`, and separate `context.airports` (ICAO/name/aliases for IFR clearance limits). Those go in the **user** turn as `onFrequency=` / `fixes=` / `procedures=` / `approaches=` / `airports=` so the static system prompt stays cacheable. The model must pick an ICAO from the roster (e.g. ASR `giblet 204` → `SWA204`) and a listed fix spelling (e.g. ASR `C-Max` → `SEMAX`). Airport candidates may ground only `IFR_CLEARANCE.limitId`, never `DIRECT` or `CROSS`. Do not send kinematics — Path C is not an executor. The browser also snaps a unique flight-number suffix onto the roster, and a unique noisy `fixId` onto the catalog, when the model still returns junk.
+
+Path-C examples include `squawk 2222` and ASR `squad 2222` →
+`ASSIGN_SQUAWK`, `squawk vfr` → `ASSIGN_SQUAWK` `1200`, `maintain vfr` →
+`MAINTAIN_VFR`, and `cleared to KATL via direct` → `IFR_CLEARANCE`. The
+phrase `cleared direct <fix>` / `proceed direct <fix>` remains tactical
+`DIRECT`; it is not an IFR clearance. The `squad` repair is accepted only
+before exactly four octal digits; invalid near-misses fail closed.
 
 ## Install (Python 3.11+)
 

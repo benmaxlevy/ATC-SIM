@@ -32,6 +32,10 @@ FACILITY: dict[str, Any] = {
         {"id": "ILS09", "name": "ILS RWY 09", "runway": "09"},
         {"id": "RNAV18", "name": "RNAV RWY 18", "runway": "18"},
     ],
+    "airports": [
+        {"icao": "KATL", "name": "Atlanta International", "aliases": ["Atlanta Airport"]},
+        {"icao": "KSEA", "name": "Seattle Tacoma International", "aliases": ["Seattle Airport"]},
+    ],
 }
 
 CS = "UAL456"
@@ -202,6 +206,100 @@ CASES: list[dict[str, Any]] = [
         "id": "dct-to-fix",
         "text": "direct to mount",
         "expect": {"instructions": [{"type": "DIRECT", "fixId": "MOUNT"}]},
+    },
+    # --- SQUAWK / VFR ---
+    {
+        "id": "squawk-discrete",
+        "text": "squawk two two two two",
+        "expect": {"instructions": [{"type": "ASSIGN_SQUAWK", "code": "2222", "source": "DISCRETE"}]},
+    },
+    {
+        "id": "squad-discrete-asr",
+        "text": "squad 2222",
+        "expect": {"instructions": [{"type": "ASSIGN_SQUAWK", "code": "2222", "source": "DISCRETE"}]},
+    },
+    {
+        "id": "squawk-vfr",
+        "text": "squawk vfr",
+        "expect": {"instructions": [{"type": "ASSIGN_SQUAWK", "code": "1200", "source": "VFR"}]},
+    },
+    {
+        "id": "maintain-vfr",
+        "text": "maintain vfr",
+        "expect": {"instructions": [{"type": "MAINTAIN_VFR"}]},
+    },
+    # --- IFR clearance forms ---
+    {
+        "id": "clearance-as-filed-airport-alias",
+        "text": "cleared to Atlanta Airport as filed",
+        "expect": {
+            "instructions": [
+                {"type": "IFR_CLEARANCE", "limitId": "KATL", "access": {"type": "AS_FILED"}}
+            ]
+        },
+    },
+    {
+        "id": "clearance-direct-airport",
+        "text": "cleared to KATL via direct",
+        "expect": {
+            "instructions": [
+                {"type": "IFR_CLEARANCE", "limitId": "KATL", "access": {"type": "DIRECT"}}
+            ]
+        },
+    },
+    {
+        "id": "clearance-fix-then-direct",
+        "text": "cleared to KATL via CEDAR then direct",
+        "expect": {
+            "instructions": [
+                {
+                    "type": "IFR_CLEARANCE",
+                    "limitId": "KATL",
+                    "access": {"type": "FIX_THEN_DIRECT", "fixId": "CEDAR"},
+                }
+            ]
+        },
+    },
+    {
+        "id": "clearance-radar-vectors",
+        "text": "cleared to Seattle Airport via radar vectors",
+        "expect": {
+            "instructions": [
+                {"type": "IFR_CLEARANCE", "limitId": "KSEA", "access": {"type": "RADAR_VECTORS"}}
+            ]
+        },
+    },
+    {
+        "id": "clearance-sid-optionals",
+        "text": "cleared to KATL via RIVR1 transition HILL2 altitude 5000 climb via frequency 119.5 squawk 2345",
+        "expect": {
+            "instructions": [
+                {
+                    "type": "IFR_CLEARANCE",
+                    "limitId": "KATL",
+                    "access": {"type": "SID", "procedureId": "RIVR1", "transitionId": "HILL2"},
+                    "altitudeFt": 5000,
+                    "climbVia": True,
+                    "frequency": "119.5",
+                    "squawk": "2345",
+                }
+            ]
+        },
+    },
+    {
+        "id": "tactical-direct-not-clearance",
+        "text": "cleared direct CEDAR",
+        "expect": {"instructions": [{"type": "DIRECT", "fixId": "CEDAR"}]},
+    },
+    {
+        "id": "clearance-unknown-airport",
+        "text": "cleared to Portland Airport via direct",
+        "expect": {"ok": False, "error": "PARSE_MISS"},
+    },
+    {
+        "id": "squad-invalid-octal",
+        "text": "squad 8921",
+        "expect": {"ok": False, "error": "PARSE_MISS"},
     },
     # --- APPROACH ---
     {

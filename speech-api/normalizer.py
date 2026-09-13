@@ -419,7 +419,9 @@ def normalize_stt_text(text: str, recognized_fixes: Collection[str] | None = Non
     5. Canonicalize ICAO spoken numbers (niner -> nine, tree -> three, fife -> five, till -> until).
     6. Canonicalize British/Commonwealth orthography (endeavour -> endeavor).
     7. Lemmatize ATC verbs with suffix protection guardrails.
-    8. Join tokens into a clean normalized string.
+    8. Repair ASR ``squad`` to ``squawk`` only before a valid four-octal-digit
+       code; no broad fuzzy replacement is allowed.
+    9. Join tokens into a clean normalized string.
     """
     if not text:
         return ""
@@ -469,4 +471,9 @@ def normalize_stt_text(text: str, recognized_fixes: Collection[str] | None = Non
 
         normalized_tokens.append(tok)
 
-    return " ".join(normalized_tokens)
+    normalized = " ".join(normalized_tokens)
+    # Qwen commonly hears the command verb as "squad". Repair only the
+    # unambiguous command shape; ``squad 8921`` must remain untouched because
+    # 8/9 cannot be an ATC octal digit and must fail closed downstream.
+    normalized = re.sub(r"\bsquad(?=\s+[0-7]{4}(?!\d)(?:\s|$))", "squawk", normalized)
+    return normalized

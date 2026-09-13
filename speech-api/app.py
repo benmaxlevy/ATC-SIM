@@ -36,6 +36,7 @@ class ParseContext(BaseModel):
     fixes: List[str] = Field(default_factory=list)
     procedures: List[dict] = Field(default_factory=list)
     approaches: List[dict] = Field(default_factory=list)
+    airports: List[dict] = Field(default_factory=list)
 
 
 class ParseRequest(BaseModel):

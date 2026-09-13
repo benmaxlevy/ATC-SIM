@@ -84,6 +84,9 @@ Optional `context` is prompt grounding, **not** a vector DB, **not** kinematics,
 
 - `callsigns` / `selectedCallsign` — live strip roster (`onFrequency=`). Unchanged on non-identifier misses.
 - `fixes` / `approaches` / `procedures` — **retrieved candidates for this transcript** (tied cluster ∪ next-best), cap **8–16** (`MAX_PATH_C_FIXES = 16`). Never `fixRegistry.ids().slice(0, 64)` file-order padding. Empty retrieve on an identifier miss omits `fixes` (or sends `[]`); do not pad with unrelated catalog ids. A non-identifier miss (`"pizza the runway"`) still runs Path C as T03-14 without dumping file-order 64.
+- `airports` — separately retrieved ICAO/name/alias candidates for an
+  `IFR_CLEARANCE` limit. An airport may ground `limitId`, but is never a
+  `DIRECT`/`CROSS` fix and must not be merged into `fixes`.
 
 **STT header is not the search index (T03-19).** `X-ATC-Fixes` is omitted or a tiny high-value prior (published STAR/SID words). It is not `ids().slice(0, 64)` and not the retrieve cluster. Retrieval from the transcript is Path C `context`, not the STT prompt.
 

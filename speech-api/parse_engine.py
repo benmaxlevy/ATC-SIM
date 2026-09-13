@@ -31,6 +31,9 @@ INSTRUCTION_TYPES = frozenset(
         "EXPECT_APPROACH",
         "CLEARED_APPROACH",
         "INTERCEPT_LOCALIZER",
+        "ASSIGN_SQUAWK",
+        "MAINTAIN_VFR",
+        "IFR_CLEARANCE",
         "IDENT",
         "SAY_HEADING",
         "SAY_ALTITUDE",
@@ -61,7 +64,9 @@ Position advisories are not commands, but never stop parsing later sentences. �
 
 Type meanings: DIRECT requires direct/proceed; EXPECT_APPROACH requires expect; CLEARED_APPROACH requires clear/cleared; INTERCEPT_LOCALIZER requires intercept plus localizer; IDENT requires ident; SAY_HEADING and SAY_ALTITUDE require say; JOIN_PROCEDURE requires join; CROSS requires cross; GO_AROUND requires go around. Emit a type when the transcript supports that clearance, including fused ASR (leftening = left heading, descent = descend). Do not invent a type with no supporting phrase.
 
-Catalog lists are authoritative. Never default a facility, procedure, approach, or fix. DIRECT/CROSS use only fixes= ids. DESCEND_VIA, CLIMB_VIA, and JOIN_PROCEDURE use only procedures= ids; JOIN is lateral-only, not VIA. EXPECT_APPROACH, CLEARED_APPROACH, and INTERCEPT_LOCALIZER use only approaches= ids. Procedures and approaches are separate namespaces. Repair a noisy name only when one listed id is unambiguous; otherwise return PARSE_MISS. source is a hint, not another schema.
+New command examples: “squawk 2222” and ASR “squad 2222” are ASSIGN_SQUAWK with code 2222 and source DISCRETE; repair squad only when exactly four octal digits follow it. “squawk vfr” is ASSIGN_SQUAWK with code 1200 and source VFR. “maintain vfr” is MAINTAIN_VFR; it is not an IFR clearance or VFR-on-top authorization. “cleared to KATL via direct”, “cleared to KATL via SIITH then direct”, “cleared to KATL via radar vectors”, and “cleared to KATL as filed” are IFR_CLEARANCE with the matching access method. A SID clearance may include optional altitude, climb via, frequency, and squawk fields. “cleared direct ATL VOR” and “proceed direct ATL VOR” are tactical DIRECT only; they must not become IFR_CLEARANCE. “cleared to ATL VOR via direct” is an IFR clearance, not tactical DIRECT. Emit only the fields supported by the transcript; clearance limit and access are required, all other clearance fields are optional.
+
+Catalog lists are authoritative. Never default a facility, procedure, approach, airport, or fix. DIRECT/CROSS use only fixes= ids. IFR_CLEARANCE limitId may use only fixes= or the separate airports= clearance-limit candidates; airport candidates must never become generic DIRECT/CROSS fixes. DESCEND_VIA, CLIMB_VIA, and JOIN_PROCEDURE use only procedures= ids; JOIN is lateral-only, not VIA. EXPECT_APPROACH, CLEARED_APPROACH, and INTERCEPT_LOCALIZER use only approaches= ids. Procedures and approaches are separate namespaces. Repair a noisy name only when one listed id is unambiguous; otherwise return PARSE_MISS. source is a hint, not another schema.
 """
 
 # Documented mock success (CI / SPEECH_API_MOCK=1). Matches parse-pipeline.md.
@@ -116,10 +121,12 @@ MAX_ROSTER = 64
 MAX_FIXES = 64
 MAX_PROCEDURES = 32
 MAX_APPROACHES = 32
+MAX_AIRPORTS = 64
 _CALLSIGN_RE = re.compile(r"^[A-Z0-9]{2,8}$")
 _FIX_RE = re.compile(r"^[A-Z]{2,6}[0-9]{0,2}$")
 _PROC_RE = re.compile(r"^[A-Z]{2,8}[0-9]{0,2}$")
 _APPROACH_RE = re.compile(r"^[A-Z0-9]{2,10}$")
+_AIRPORT_RE = re.compile(r"^[A-Z]{4}$")
 
 
 def _sanitize_id_list(raw: object, pattern: re.Pattern[str], limit: int) -> list[str]:
@@ -210,6 +217,42 @@ def _sanitize_approaches(raw: object) -> list[dict[str, str]]:
     return out
 
 
+def _sanitize_airports(raw: object) -> list[dict[str, Any]]:
+    """Sanitize the separate clearance-limit airport namespace."""
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    if not isinstance(raw, list):
+        return out
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        raw_icao = item.get("icao")
+        raw_name = item.get("name")
+        if not isinstance(raw_icao, str) or not isinstance(raw_name, str):
+            continue
+        icao = raw_icao.strip().upper()
+        name = raw_name.strip()
+        if _AIRPORT_RE.match(icao) is None or len(name) < 2 or icao in seen:
+            continue
+        aliases: list[str] = []
+        raw_aliases = item.get("aliases")
+        if isinstance(raw_aliases, list):
+            alias_seen: set[str] = set()
+            for alias in raw_aliases:
+                if not isinstance(alias, str):
+                    continue
+                clean = alias.strip()
+                key = clean.casefold()
+                if len(clean) >= 2 and key not in alias_seen:
+                    alias_seen.add(key)
+                    aliases.append(clean)
+        seen.add(icao)
+        out.append({"icao": icao, "name": name, "aliases": aliases})
+        if len(out) >= MAX_AIRPORTS:
+            break
+    return out
+
+
 def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
     """Keep live-strip + catalog grounding tiny. Drop junk; never n-best or confidence."""
     if not isinstance(raw, dict):
@@ -218,13 +261,14 @@ def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
     fixes = _sanitize_id_list(raw.get("fixes") or [], _FIX_RE, MAX_FIXES)
     procedures = _sanitize_procedures(raw.get("procedures") or [])
     approaches = _sanitize_approaches(raw.get("approaches") or [])
+    airports = _sanitize_airports(raw.get("airports") or [])
     selected_raw = raw.get("selectedCallsign")
     selected: str | None = None
     if isinstance(selected_raw, str):
         up = selected_raw.strip().upper()
         if up and _CALLSIGN_RE.match(up):
             selected = up
-    if not callsigns and not selected and not fixes and not procedures and not approaches:
+    if not callsigns and not selected and not fixes and not procedures and not approaches and not airports:
         return None
     out: dict[str, Any] = {"callsigns": callsigns}
     if selected:
@@ -235,6 +279,8 @@ def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
         out["procedures"] = procedures
     if approaches:
         out["approaches"] = approaches
+    if airports:
+        out["airports"] = airports
     return out
 
 
@@ -289,6 +335,24 @@ def build_parse_user_message(text: str, source: str, context: dict[str, Any] | N
                 lines.append(
                     "EXPECT_APPROACH/CLEARED_APPROACH/INTERCEPT_LOCALIZER approachId MUST be a listed catalog id. "
                     "Match spoken runway/approach variants to that id."
+                )
+        airports = ctx.get("airports") or []
+        if airports:
+            bits = []
+            for airport in airports:
+                if not isinstance(airport, dict):
+                    continue
+                icao = str(airport.get("icao") or "")
+                name = str(airport.get("name") or "")
+                aliases = airport.get("aliases") or []
+                alias_text = "/".join(str(alias) for alias in aliases if str(alias).strip())
+                label = f"{icao} ({name}" + (f"; {alias_text}" if alias_text else "") + ")"
+                bits.append(label)
+            if bits:
+                lines.append("airports=" + ",".join(bits))
+                lines.append(
+                    "IFR_CLEARANCE limitId MUST be a listed airport ICAO when the limit is an airport. "
+                    "Airports are clearance limits only, never DIRECT/CROSS fixes."
                 )
     lines.append(f"text={text.strip()}")
     lines.append("Output JSON only.")
@@ -397,6 +461,71 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         ):
             return None
         return {"type": "INTERCEPT_LOCALIZER", "approachId": raw["approachId"]}
+    if instr_type == "ASSIGN_SQUAWK":
+        if not _exact_keys(raw, {"type", "code", "source"}):
+            return None
+        code = raw["code"]
+        source = raw["source"]
+        if not isinstance(code, str) or re.fullmatch(r"[0-7]{4}", code) is None:
+            return None
+        if source not in {"DISCRETE", "VFR"}:
+            return None
+        if source == "VFR" and code != "1200":
+            return None
+        return {"type": "ASSIGN_SQUAWK", "code": code, "source": source}
+    if instr_type == "MAINTAIN_VFR":
+        if not _exact_keys(raw, {"type"}):
+            return None
+        return {"type": "MAINTAIN_VFR"}
+    if instr_type == "IFR_CLEARANCE":
+        optional = {"altitudeFt", "climbVia", "frequency", "squawk"}
+        if not _exact_keys(raw, {"type", "limitId", "access"}, optional):
+            return None
+        if not isinstance(raw["limitId"], str) or not raw["limitId"]:
+            return None
+        access = raw["access"]
+        if not isinstance(access, dict) or not isinstance(access.get("type"), str):
+            return None
+        access_type = access["type"]
+        if access_type in {"AS_FILED", "DIRECT", "RADAR_VECTORS"}:
+            if not _exact_keys(access, {"type"}):
+                return None
+        elif access_type == "FIX_THEN_DIRECT":
+            if (
+                not _exact_keys(access, {"type", "fixId"})
+                or not isinstance(access["fixId"], str)
+                or not access["fixId"]
+            ):
+                return None
+        elif access_type == "SID":
+            if (
+                not _exact_keys(access, {"type", "procedureId"}, {"transitionId"})
+                or not isinstance(access["procedureId"], str)
+                or not access["procedureId"]
+                or ("transitionId" in access and not isinstance(access["transitionId"], str))
+            ):
+                return None
+        else:
+            return None
+        if "altitudeFt" in raw and not _is_finite_number(raw["altitudeFt"]):
+            return None
+        if "climbVia" in raw and not isinstance(raw["climbVia"], bool):
+            return None
+        if "frequency" in raw and (not isinstance(raw["frequency"], str) or not raw["frequency"]):
+            return None
+        if "squawk" in raw and (
+            not isinstance(raw["squawk"], str) or re.fullmatch(r"[0-7]{4}", raw["squawk"]) is None
+        ):
+            return None
+        out: dict[str, Any] = {
+            "type": "IFR_CLEARANCE",
+            "limitId": raw["limitId"],
+            "access": dict(access),
+        }
+        for key in ("altitudeFt", "climbVia", "frequency", "squawk"):
+            if key in raw:
+                out[key] = _as_number(raw[key]) if key == "altitudeFt" else raw[key]
+        return out
     if instr_type == "IDENT":
         if not _exact_keys(raw, {"type"}):
             return None
@@ -415,28 +544,40 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         return {"type": "GO_AROUND"}
     if instr_type == "DESCEND_VIA":
         if (
-            not _exact_keys(raw, {"type", "procedureId"})
+            not _exact_keys(raw, {"type", "procedureId"}, {"transitionId"})
             or not isinstance(raw["procedureId"], str)
             or not raw["procedureId"]
+            or ("transitionId" in raw and not isinstance(raw["transitionId"], str))
         ):
             return None
-        return {"type": "DESCEND_VIA", "procedureId": raw["procedureId"]}
+        out = {"type": "DESCEND_VIA", "procedureId": raw["procedureId"]}
+        if "transitionId" in raw:
+            out["transitionId"] = raw["transitionId"]
+        return out
     if instr_type == "CLIMB_VIA":
         if (
-            not _exact_keys(raw, {"type", "procedureId"})
+            not _exact_keys(raw, {"type", "procedureId"}, {"transitionId"})
             or not isinstance(raw["procedureId"], str)
             or not raw["procedureId"]
+            or ("transitionId" in raw and not isinstance(raw["transitionId"], str))
         ):
             return None
-        return {"type": "CLIMB_VIA", "procedureId": raw["procedureId"]}
+        out = {"type": "CLIMB_VIA", "procedureId": raw["procedureId"]}
+        if "transitionId" in raw:
+            out["transitionId"] = raw["transitionId"]
+        return out
     if instr_type == "JOIN_PROCEDURE":
         if (
-            not _exact_keys(raw, {"type", "procedureId"})
+            not _exact_keys(raw, {"type", "procedureId"}, {"transitionId"})
             or not isinstance(raw["procedureId"], str)
             or not raw["procedureId"]
+            or ("transitionId" in raw and not isinstance(raw["transitionId"], str))
         ):
             return None
-        return {"type": "JOIN_PROCEDURE", "procedureId": raw["procedureId"]}
+        out = {"type": "JOIN_PROCEDURE", "procedureId": raw["procedureId"]}
+        if "transitionId" in raw:
+            out["transitionId"] = raw["transitionId"]
+        return out
     if instr_type == "CROSS":
         if not _exact_keys(raw, {"type", "fixId", "altitudeFt", "restriction"}):
             return None
@@ -540,7 +681,24 @@ def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str)
             return has(r"\b(reduce|slow)\b")
         return not has(r"\b(increase|reduce)\b")
     if instruction_type == "DIRECT":
+        if has(r"\b(?:cleared|clear)\s+to\b"):
+            return False
         return has(r"\b(direct|proceed)\b")
+    if instruction_type == "ASSIGN_SQUAWK":
+        if not has(r"\b(squawk|squad)\b"):
+            return False
+        if instruction.get("source") == "VFR":
+            return has(r"\bvfr\b")
+        return bool(re.search(r"\b[0-7]{4}\b", text))
+    if instruction_type == "MAINTAIN_VFR":
+        return has(r"\bmaintain\s+vfr\b")
+    if instruction_type == "IFR_CLEARANCE":
+        # Tactical "cleared/proceed direct FIX" is a DIRECT instruction. An
+        # IFR clearance has the clearance limit and an explicit access method.
+        return bool(
+            has(r"\b(?:cleared|clear)\s+to\b")
+            and has(r"\b(?:via|as\s+filed|direct|radar\s+vectors?)\b")
+        )
     if instruction_type == "EXPECT_APPROACH":
         return has(r"\bexpect\b") and has(r"\b(approach|ils|localizer|runway)\b")
     if instruction_type == "CLEARED_APPROACH":
@@ -702,6 +860,7 @@ def guard_catalog_ids(
     if not ctx:
         return outcome
     fixes = set(ctx.get("fixes") or [])
+    airports = {row["icao"] for row in ctx.get("airports") or []}
     procedures = {row["id"] for row in ctx.get("procedures") or []}
     approaches = {row["id"] for row in ctx.get("approaches") or []}
     roster = set(ctx.get("callsigns") or [])
@@ -715,6 +874,19 @@ def guard_catalog_ids(
                 return ParseOutcome(ok=False, error="PARSE_MISS")
             if fixes and instruction.get("fixId") not in fixes:
                 return ParseOutcome(ok=False, error="PARSE_MISS")
+        if kind == "IFR_CLEARANCE":
+            limit_id = instruction.get("limitId")
+            # An IFR limit can be a navaid/fix or a separately grounded
+            # airport. Airport candidates are never added to `fixes`.
+            if (fixes or airports) and limit_id not in fixes and limit_id not in airports:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+            access = instruction.get("access") or {}
+            if access.get("type") == "FIX_THEN_DIRECT":
+                if fixes and access.get("fixId") not in fixes:
+                    return ParseOutcome(ok=False, error="PARSE_MISS")
+            if access.get("type") == "SID" and procedures:
+                if access.get("procedureId") not in procedures:
+                    return ParseOutcome(ok=False, error="PARSE_MISS")
         if kind in {"DESCEND_VIA", "CLIMB_VIA", "JOIN_PROCEDURE"}:
             if roster and instruction.get("procedureId") in roster:
                 return ParseOutcome(ok=False, error="PARSE_MISS")

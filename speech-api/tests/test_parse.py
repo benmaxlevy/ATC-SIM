@@ -8,7 +8,13 @@ from fastapi.testclient import TestClient
 
 from app import ParseRequest, create_app
 from config import DEFAULT_PARSE_GGUF_FILE, DEFAULT_PARSE_MODEL_ID, Settings
-from parse_engine import MOCK_PARSE_OK, ParseOutcome, validate_instruction, validate_parse_json
+from parse_engine import (
+    INSTRUCTION_TYPES,
+    MOCK_PARSE_OK,
+    ParseOutcome,
+    validate_instruction,
+    validate_parse_json,
+)
 
 
 def _settings(*, parse_model_id: str, mock: bool = True) -> Settings:
@@ -35,6 +41,17 @@ def test_parse_request_schema_has_no_nbest_or_confidence() -> None:
     assert "nbest" not in fields
     assert "nBest" not in fields
     assert "n_best" not in fields
+
+
+def test_path_c_instruction_type_parity_with_frontend_union() -> None:
+    """Adding a frontend Command IR type must update Path C in the same change."""
+    import re
+
+    root = Path(__file__).resolve().parents[2]
+    source = (root / "src/core/command/types.ts").read_text(encoding="utf-8")
+    block = source.split("export const INSTRUCTION_TYPES = [", 1)[1].split("] as const", 1)[0]
+    frontend = set(re.findall(r'^\s+"([A-Z][A-Z_]+)",\s*$', block, flags=re.MULTILINE))
+    assert frontend == set(INSTRUCTION_TYPES)
 
 
 def test_empty_parse_model_uses_default_and_mock_is_ready() -> None:
@@ -134,6 +151,90 @@ def test_illegal_chat_instruction_is_schema() -> None:
     assert validate_instruction({"type": "CHAT"}) is None
 
 
+def test_path_c_validates_squawk_vfr_maintain_vfr_and_clearance_variants() -> None:
+    cases = [
+        {"type": "ASSIGN_SQUAWK", "code": "2222", "source": "DISCRETE"},
+        {"type": "ASSIGN_SQUAWK", "code": "1200", "source": "VFR"},
+        {"type": "MAINTAIN_VFR"},
+        {
+            "type": "IFR_CLEARANCE",
+            "limitId": "KATL",
+            "access": {"type": "AS_FILED"},
+        },
+        {
+            "type": "IFR_CLEARANCE",
+            "limitId": "KATL",
+            "access": {"type": "FIX_THEN_DIRECT", "fixId": "CEDAR"},
+            "altitudeFt": 5000,
+            "climbVia": True,
+            "frequency": "119.5",
+            "squawk": "2345",
+        },
+        {
+            "type": "IFR_CLEARANCE",
+            "limitId": "KATL",
+            "access": {"type": "SID", "procedureId": "RIVR1", "transitionId": "HILL2"},
+        },
+    ]
+    for case in cases:
+        assert validate_instruction(case) == case
+    assert validate_instruction({"type": "ASSIGN_SQUAWK", "code": "8921", "source": "DISCRETE"}) is None
+    assert validate_instruction({"type": "ASSIGN_SQUAWK", "code": "2222", "source": "VFR"}) is None
+    assert validate_instruction({"type": "MAINTAIN_VFR", "extra": True}) is None
+    assert validate_instruction(
+        {"type": "IFR_CLEARANCE", "limitId": "KATL", "access": {"type": "DIRECT"}, "squawk": "9999"}
+    ) is None
+
+
+def test_path_c_semantic_guard_distinguishes_tactical_direct_from_clearance() -> None:
+    from parse_engine import guard_instruction_semantics
+
+    tactical = ParseOutcome(ok=True, instructions=[{"type": "DIRECT", "fixId": "ATL"}])
+    assert guard_instruction_semantics("cleared direct atl vor", tactical).ok
+    assert not guard_instruction_semantics(
+        "cleared to atl via direct",
+        tactical,
+    ).ok
+
+    clearance = ParseOutcome(
+        ok=True,
+        instructions=[
+            {"type": "IFR_CLEARANCE", "limitId": "KATL", "access": {"type": "DIRECT"}}
+        ],
+    )
+    assert guard_instruction_semantics("cleared to atl via direct", clearance).ok
+    assert not guard_instruction_semantics("cleared direct atl vor", clearance).ok
+
+
+def test_path_c_catalog_guard_accepts_airport_limit_but_not_airport_direct() -> None:
+    from parse_engine import guard_catalog_ids
+
+    context = {
+        "fixes": ["CEDAR"],
+        "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+    }
+    clearance = ParseOutcome(
+        ok=True,
+        instructions=[
+            {
+                "type": "IFR_CLEARANCE",
+                "limitId": "KATL",
+                "access": {"type": "DIRECT"},
+            }
+        ],
+    )
+    assert guard_catalog_ids("cleared to atlanta international via direct", context, clearance).ok
+    direct = ParseOutcome(ok=True, instructions=[{"type": "DIRECT", "fixId": "KATL"}])
+    assert guard_catalog_ids("proceed direct atlanta international", context, direct).error == "PARSE_MISS"
+    unknown = ParseOutcome(
+        ok=True,
+        instructions=[
+            {"type": "IFR_CLEARANCE", "limitId": "KSEA", "access": {"type": "DIRECT"}}
+        ],
+    )
+    assert guard_catalog_ids("cleared to seattle via direct", context, unknown).error == "PARSE_MISS"
+
+
 def test_join_procedure_is_a_closed_instruction() -> None:
     instruction = {"type": "JOIN_PROCEDURE", "procedureId": "DEM1"}
     assert validate_instruction(instruction) == instruction
@@ -177,6 +278,7 @@ def test_parse_context_forwards_approaches_to_engine() -> None:
         "fixes": [],
         "procedures": [],
         "approaches": [{"id": "ILS27", "name": "ILS RWY 27", "runway": "27"}],
+        "airports": [],
     }
 
 
@@ -250,7 +352,34 @@ def test_user_message_includes_on_frequency_roster() -> None:
     assert "fixes=" not in bare
     assert "procedures=" not in bare
     assert "approaches=" not in bare
+    assert "airports=" not in bare
     assert "text=ident" in bare
+
+
+def test_user_message_keeps_airports_separate_from_fix_grounding() -> None:
+    from parse_engine import build_parse_user_message, sanitize_parse_context
+
+    context = {
+        "airports": [
+            {
+                "icao": "katl",
+                "name": "Atlanta International",
+                "aliases": ["Atlanta Airport"],
+            }
+        ],
+        "fixes": ["CEDAR"],
+    }
+    assert sanitize_parse_context(context) == {
+        "callsigns": [],
+        "fixes": ["CEDAR"],
+        "airports": [
+            {"icao": "KATL", "name": "Atlanta International", "aliases": ["Atlanta Airport"]}
+        ],
+    }
+    message = build_parse_user_message("cleared to atlanta airport via direct", "voice", context)
+    assert "airports=KATL (Atlanta International; Atlanta Airport)" in message
+    assert "Airports are clearance limits only, never DIRECT/CROSS fixes." in message
+    assert "fixes=CEDAR" in message
 
 
 def test_user_message_grounds_any_facility_catalog() -> None:
@@ -308,6 +437,12 @@ def test_system_prompt_guides_semantic_repair_without_schema_duplication() -> No
     assert "Never default a facility" in SYSTEM_PROMPT
     assert "one one thousand is 11000" in SYSTEM_PROMPT
     assert "never map an unmatched spoken name" in SYSTEM_PROMPT
+    assert "squad 2222" in SYSTEM_PROMPT
+    assert "squawk vfr" in SYSTEM_PROMPT
+    assert "maintain vfr" in SYSTEM_PROMPT
+    assert "cleared to KATL via direct" in SYSTEM_PROMPT
+    assert "cleared direct ATL VOR" in SYSTEM_PROMPT
+    assert "airport" in SYSTEM_PROMPT
 
 
 def test_semantic_guard_rejects_wrong_turn_and_via_instructions() -> None:
@@ -609,4 +744,3 @@ def test_catalog_guard_rejects_callsign_in_slots() -> None:
         instructions=[{"type": "CLEARED_APPROACH", "approachId": "EDV9255"}],
     )
     assert guard_catalog_ids("cleared approach two six right", ctx, bad_approach).error == "PARSE_MISS"
-
