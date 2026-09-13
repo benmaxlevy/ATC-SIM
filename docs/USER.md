@@ -45,9 +45,24 @@ Service-side env, models, and Path C: [`speech-api/README.md`](../speech-api/REA
 - **Datablocks**:
   - **Full datablocks (FDB)**: a nine-field STARS-like block (Fields 0–8). Field 0 carries alerts and sequence data; Field 1 carries the aircraft identification; Field 2 carries inhibit indicators; Field 3 carries altitude, scratchpad, or exit data; Field 4 carries the owning TCP; Field 5 carries speed and flight data; Fields 6–8 carry conditional coordination, TSAS, and pointout data.
   - **FDB physical layout**: the normal display has three data lines plus an optional Field 0 alert row. Line 1 shows the identification; line 2 shows the active altitude/data, TCP, and traffic-data fields; line 3 shows active coordination data. Values within a field time-share. Empty fields remain blank.
-  - **FDB data status**: live tracks supply identification, altitude, speed, type, requested and assigned altitude, squawk mismatch, ATPA in-trail distance, ownership, and safety alerts. Exit gate/fix, TSAS, duplicate-beacon `DB`, coordination, and pointout values are formatter inputs and remain blank without a corresponding runtime source.
+  - **FDB data status**: live tracks supply identification, observed Mode C altitude, speed, type, requested and assigned altitude, squawk mismatch, ATPA in-trail distance, ownership, and safety alerts. Requested/assigned altitude metadata is plan-backed; exit gate/fix, TSAS, duplicate-beacon `DB`, coordination, and pointout values are formatter inputs and remain blank without a corresponding runtime source.
   - **Limited datablocks (LDB)**: Compact track display for unowned or filtered targets.
   - **Leader lines**: 8 DCB compass positions (`SW`, `S`, `SE`, `W`, `E`, `NW`, `N`, `NE`); L5 remains an internal overlay mode. STARS leader clock directions (`*1`–`*8`), track-specific and fleet-wide leader direction commands (`*L(1-9)` / `*L(1-9)*` / `*L(1-9)U`), and 0–7 length steps (`/<0-7>`, `*LDR <0-7>`), each adding 1/4 in.
+
+Datablock altitude and flight-rules display follows one shared runtime contract:
+
+- IFR is blank in the flight-rules position. The datablock does not display
+  `I`, `IFR`, or raw `VFR`; VFR displays `V`.
+- Requested altitude is sourced only from the associated flight plan and is
+  shown as `R###`. Assigned altitude is sourced only from an active
+  flight-plan adjustment and is shown as `A###`; values are hundreds of feet
+  MSL.
+- Mode C is the observed aircraft altitude, separate from `R###` and `A###`.
+  Spawn altitude and climb/descend intent do not create or alter plan altitude
+  metadata; flight-plan adjustments are the source.
+- When surveillance correlation is lost, the target becomes surveillance-only:
+  an LDB does not retain stale plan-backed `R###` or `A###` data. FDB, PDB, and
+  LDB use the same source semantics, with each mode's normal field visibility.
 - **Target history & prediction**:
   - Discrete radar history dots (0–9 dots sampled at 5-second intervals, set via `F8` or `*HIST <count>`).
   - Predicted Track Line (PTL): 0.5 to 15.0 minute forward ground track lookahead vector with global toggle (`F10` / `*PTL <min>`) and per-track PTL toggle (`*R`).

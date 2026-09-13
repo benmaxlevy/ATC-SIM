@@ -269,6 +269,23 @@ distance, ownership, and safety alerts. Exit gate/fix, TSAS, duplicate beacon,
 pointout values are formatter inputs only; they remain blank without a runtime
 adapter.
 
+#### Datablock altitude and flight-rules contract (T02-187)
+
+The runtime datablock source keeps surveillance and flight-plan provenance
+separate across FDB, PDB, and LDB projections:
+
+- IFR has a blank flight-rules display. It never displays `I`, `IFR`, or raw
+  `VFR`; VFR displays only `V`.
+- Requested and assigned altitude metadata comes only from the associated
+  flight plan. Requested altitude displays as `R###`; a plan adjustment to an
+  active assigned altitude displays as `A###`, in hundreds of feet MSL.
+- Mode C remains the observed aircraft altitude and is independent of `R###`
+  and `A###`. Spawn pose altitude and climb/descend intent do not create or
+  alter plan altitude metadata; flight-plan adjustments are the source.
+- Association follows current surveillance correlation. Disassociation
+  removes plan-backed `R###` and `A###` immediately; stale plan records do not
+  leak into an unassociated LDB.
+
 ### 8. Leader directions (L1–L9 analog)
 
 Numpad compass, **including 5 = overlay**:
@@ -582,8 +599,8 @@ Completed visual, interactive, and datablock fidelity pass matching [CRC STARS](
 - [x] Fixed 8px heading tick line removed from target symbol; PTL handles vector projection (T02-34).
 - [x] LDB renders squawk + Mode C altitude; left-clicking queries ground speed for 5 seconds (e.g. `045 18` / `045 180`) (T02-35).
 - [x] PDB renders Line 2 only for unowned associated tracks; left-clicking toggles between PDB and forced Green FDB (T02-35).
-- [x] FDB dynamic time-sharing: Line 2 alternates on ~2.5s cycle between Phase A (Mode C + GS) and Phase B (Scratchpad + Type / Requested Alt `R<alt>`) (T02-36).
-- [x] FDB Line 3 renders assigned altitude `A<alt>` when assigned altitude differs from Mode C altitude by >= 100 ft (T02-36).
+- [x] FDB dynamic time-sharing: Line 2 alternates on ~2.5s cycle between Phase A (Mode C + GS) and Phase B (Scratchpad + Type / plan-backed Requested Alt `R###`) (T02-36, T02-187).
+- [x] FDB Line 3 renders plan-adjustment-backed assigned altitude `A###` when assigned altitude differs from observed Mode C altitude by >= 100 ft (T02-36, T02-187).
 - [x] Inbound handoffs render as blinking white FDB; left-clicking accepts handoff to solid white FDB and sector ID (T02-37).
 - [x] Supported outbound handoffs share one destination-aware path. Pending and accepted handoffs show the receiver TCP; accepted state flashes white for 5s, and the single-position trainer auto-accepts after 5 simulated seconds. F4 terminates the local associated plan/track. The old three-click green-FDB/PDB progression is not modeled (T02-134–139).
 - [x] Pointout lifecycle: incoming blinking yellow FDB with `PO` tag; click accepts; `UN` click rejects; `**` click converts to handoff; rejected outbound pointout flashes `UN` tag (T02-37).
@@ -609,12 +626,23 @@ Completed datablock & scratchpad fidelity addendum matching [CRC STARS Specifica
 - [x] Manual scratchpads (`manualSp1`, `manualSp2`) take precedence over auto-derivation; clearing restores auto-derivation (T02-39).
 - [x] Ground speed formatted in tens of knots (e.g. `18`, `21`, `25`) across FDB, PDB, and queried LDB (T02-40).
 - [x] Wake/RNAV category indicators (`H`, `B`, `R`, `L`, CWT `A`–`I`) appended to ground speed (e.g. `18H`, `25R`) (T02-40).
-- [x] Flight category suffixes (`V` for VFR, `E` for overflight) and PDB speed suppression support (T02-40).
+- [x] Flight category suffixes (`V` for VFR; IFR is blank; `E` for overflight) and PDB speed suppression support (T02-40, T02-187).
 - [x] Multi-phase Line 2 time-sharing: left column independently rotates `Mode C` $\leftrightarrow$ `SP1` $\leftrightarrow$ `SP2`, right column independently rotates `GS` $\leftrightarrow$ `Type` $\leftrightarrow$ `Requested Alt (R###)` every ~2.5s (T02-41).
 - [x] Unassigned/empty scratchpads or types/reqAlts skipped smoothly without dead or blank display intervals (T02-41).
 - [x] Transferring/receiving sector ID character placed in center position of Line 2 during active handoff (e.g. `080  D  25H`, `I27  D  B772`) (T02-41).
 - [x] Emergency transponder Special Purpose Codes: 7700 (`EM`), 7600 (`RF`), 7500 (`HJ`) rendered on Line 1 next to callsign (T02-41).
 - [x] Comprehensive end-to-end integration and acceptance test suite in `src/scope/datablockFidelity.integration.test.ts` (T02-42).
+
+### Phase 2 datablock altitude and rules semantics (T02-185–187)
+
+The accepted contract is surveillance-first: IFR is blank, VFR is `V`, and
+only associated flight-plan fields produce `R###` requested or `A###` assigned
+altitude metadata. Mode C is the observed altitude and remains separate from
+both plan values. Spawn altitude and climb/descend intent do not create or
+alter plan altitude metadata; flight-plan adjustments are the source. The
+generic acceptance matrix is in
+`src/scope/test/datablockSemantics.integration.test.ts` and proves FDB/PDB/LDB
+projection plus association/disassociation cleanup.
 
 ### TPA / ATPA Addendum (T02-43–50)
 
