@@ -34,7 +34,6 @@ export function flightPlanModalDraftFromPlan(
 ): FlightPlanModalDraft {
   return {
     acid: plan?.acid ?? acid,
-    cid: flightPlanCid(plan?.acid ?? acid, plan?.cid),
     assignedBeacon: plan?.assignedBeacon ?? "",
     flightType: plan?.flightType ?? flightTypeFromRules(plan?.flightRules) ?? "",
     route: plan?.filedRoute?.text ?? plan?.route ?? "",
@@ -121,7 +120,7 @@ export function FlightPlanModal({
     openerRef.current = document.activeElement as HTMLElement | null;
     setDraft(flightPlanModalDraftFromPlan(acid, plan));
     setError(null);
-    fieldRefs.current.acid?.focus();
+    fieldRefs.current.flightType?.focus();
     return () => openerRef.current?.focus();
   }, [acid, open, plan]);
 
@@ -215,11 +214,7 @@ export function FlightPlanModal({
         <form onSubmit={save}>
           <label htmlFor="flight-plan-acid">
             ACID
-            <input {...inputProps("acid")} readOnly />
-          </label>
-          <label htmlFor="flight-plan-cid">
-            CID
-            <input {...inputProps("cid")} readOnly />
+            <input {...inputProps("acid")} disabled />
           </label>
           <label htmlFor="flight-plan-flightType">
             Flight rules

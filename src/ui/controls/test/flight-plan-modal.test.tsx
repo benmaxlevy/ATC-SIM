@@ -55,9 +55,9 @@ test("create and amend modes expose one accessible filed-plan dialog", () => {
   expect(createHtml).toContain('id="flight-plan-modal-title"');
   expect(createHtml).toContain("Create flight plan");
   expect(createHtml).toContain('id="flight-plan-acid"');
-  expect(createHtml).toContain('id="flight-plan-cid"');
-  expect(createHtml).toContain('id="flight-plan-acid" name="acid" readonly="" value="AAL123"');
-  expect(createHtml).toContain('id="flight-plan-cid" name="cid" readonly="" value="123"');
+  expect(createHtml).toContain('id="flight-plan-acid" name="acid" disabled="" value="AAL123"');
+  expect(createHtml).not.toContain('id="flight-plan-cid"');
+  expect(createHtml).not.toContain(">CID<");
   expect(createHtml).toContain('for="flight-plan-route"');
   expect(createHtml).toContain("Filed route");
   expect(createHtml).toContain("ETA");
@@ -142,7 +142,6 @@ test("modal submit keeps existing ACID and CID immutable", () => {
   world.flightPlans.push(plan);
   const draft = flightPlanModalDraftFromPlan("AAL123", plan);
   draft.acid = "DAL999";
-  draft.cid = "999";
 
   const amended = submitFlightPlanModalDraft(world, plan, draft);
   expect(amended).toMatchObject({ ok: true, plan: { acid: "AAL123", cid: "123" } });
