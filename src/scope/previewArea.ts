@@ -33,6 +33,7 @@ import {
   isTrackingSlewAction,
   parseCaCommand,
   parseFlightPlanCreation,
+  parseFlightPlanModalCommand,
   parsePreviewCommand,
   parseVfrFlightPlanCommand,
   parseTrackingSlewBuffer,
@@ -318,6 +319,16 @@ export function previewTrackingSlew(state: PreviewAreaState): PreviewArmedAction
   }
   if (state.phase !== "entry") {
     return null;
+  }
+  // `*FP <SLEW>` is command-then-slew: while the exact token is live in the
+  // Preview Area, a target click applies it without an intermediate Enter.
+  const flightPlanModal = parseFlightPlanModalCommand(state.buffer);
+  if (
+    flightPlanModal?.kind === "action" &&
+    flightPlanModal.action.type === "openFlightPlanModal" &&
+    flightPlanModal.action.targetSlew
+  ) {
+    return flightPlanModal.action;
   }
   // STARS CA commands may slew directly from the live Preview Area; Enter is
   // only required when every target is supplied as a typed ACID.

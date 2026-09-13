@@ -165,7 +165,10 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             (item) => item.id === entry.planId && item.status !== "deleted",
           )
         : undefined;
-      if (!plan) {
+      // A visible TAB item remains addressable even before it has a local
+      // plan record: use its callsign to open the create form. A stale index
+      // still has no entry and returns NO FLIGHT.
+      if (!entry) {
         scopeView.preview.rejection = "NO FLIGHT";
         refreshScopeUi();
         return;
@@ -175,7 +178,13 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
         (item) => item.status !== "deleted" && item.acid === request.acid,
       );
     }
-    const acid = plan?.acid ?? request.acid;
+    const acid =
+      plan?.acid ??
+      request.acid ??
+      (request.index !== undefined
+        ? getFlightPlanEntries(app.world, scopeView).find((item) => item.index === request.index)
+            ?.callsign
+        : undefined);
     if (!acid) {
       scopeView.preview.rejection = "ILL ACID";
       refreshScopeUi();
