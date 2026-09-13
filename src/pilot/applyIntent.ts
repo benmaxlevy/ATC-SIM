@@ -4,7 +4,15 @@
  * Does not run physics; intent takes effect on the next kinematics tick.
  */
 
-import type { Aircraft, Instruction, MissedCatalog, ProcedureJoinCatalog, SessionLog } from "@core";
+import type {
+  Aircraft,
+  DirectContinuation,
+  FlightPlan,
+  Instruction,
+  MissedCatalog,
+  ProcedureJoinCatalog,
+  SessionLog,
+} from "@core";
 import {
   beginMissedApproach,
   joinNamedProcedure,
@@ -27,7 +35,7 @@ export interface ApplyIntentOpts {
   activeRunwayId?: string | null;
   squawkReportDelayMs?: number;
   /** Authoritative plan for the aircraft, when one exists. */
-  flightPlan?: { assignedBeacon?: string };
+  flightPlan?: Pick<FlightPlan, "assignedBeacon" | "routeRecord">;
 }
 
 export function applyIntent(
@@ -89,6 +97,35 @@ function publishedLateralHint(aircraft: Aircraft):
 function shouldKeepPublishedLateral(aircraft: Aircraft): boolean {
   const type = aircraft.intent.lateral?.type;
   return type === "LOC" || type === "LANDING" || type === "INTERCEPT_LOC" || type === "MISSED";
+}
+
+/**
+ * DIRECT is a lateral amendment only.  If the target is still in the active
+ * route, remember the exact remaining route position; otherwise hold the
+ * present heading after the target.  Neither path edits the route record.
+ */
+function directContinuation(
+  aircraft: Aircraft,
+  fixId: string,
+  flightPlan: ApplyIntentOpts["flightPlan"],
+): DirectContinuation {
+  const record = flightPlan?.routeRecord;
+  if (record?.lifecycle === "active") {
+    const routeFixIds = record.route.segments.flatMap((segment) => segment.fixIds);
+    const minimumIndex = Math.max(0, record.nextIndex);
+    const targetIndex = routeFixIds.findIndex(
+      (routeFixId, index) => index >= minimumIndex && routeFixId.trim().toUpperCase() === fixId,
+    );
+    if (targetIndex >= minimumIndex) {
+      return {
+        type: "RESUME_ROUTE",
+        routeFixIds: [...routeFixIds],
+        index: targetIndex + 1,
+        routeRevision: record.revision,
+      };
+    }
+  }
+  return { type: "PRESENT_HEADING", headingDeg: aircraft.headingDeg };
 }
 
 /**
@@ -284,7 +321,14 @@ function applyOne(
       aircraft.maintainVfr = true;
       return;
     case "DIRECT":
-      aircraft.intent.lateral = { type: "DIRECT", fixId: instruction.fixId.trim().toUpperCase() };
+      {
+        const fixId = instruction.fixId.trim().toUpperCase();
+        aircraft.intent.lateral = {
+          type: "DIRECT",
+          fixId,
+          continuation: directContinuation(aircraft, fixId, opts?.flightPlan),
+        };
+      }
       return;
     case "DESCEND_VIA":
       applyVia(aircraft, instruction.procedureId, "DESCEND", opts, instruction.transitionId);

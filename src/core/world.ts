@@ -47,7 +47,12 @@ import { locAxisForApproach } from "./nav/localizer";
 import { gsParamsForApproach } from "./nav/glidepath";
 import { performanceRegistry } from "./performance/registry";
 import { resolvePerformanceRegime } from "./performance/regime";
-import { synchronizeFlightPlanRoute, updateAircraftSquawk, type FlightPlan } from "./flightPlan";
+import {
+  routeFixIds,
+  synchronizeFlightPlanRoute,
+  updateAircraftSquawk,
+  type FlightPlan,
+} from "./flightPlan";
 
 /** Generic world navigation context. Variation is never facility-special-cased. */
 export interface WorldNavigationContext {
@@ -507,6 +512,42 @@ function applyDueSquawkReports(world: World): void {
   }
 }
 
+function sameRoute(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((id, index) => id === right[index]);
+}
+
+/** Keep the one route cursor aligned with the lateral FMS walker. */
+function synchronizeRouteCursor(
+  world: World,
+  aircraft: Aircraft,
+  previous: Aircraft["intent"]["lateral"],
+): void {
+  const plan = world.flightPlans.find(
+    (item) =>
+      item.status !== "deleted" &&
+      item.acid.trim().toUpperCase() === aircraft.callsign.trim().toUpperCase() &&
+      item.routeRecord?.lifecycle === "active",
+  );
+  const record = plan?.routeRecord;
+  if (!record) return;
+  const ids = routeFixIds(record.route);
+  const current = aircraft.intent.lateral;
+  if (current?.type === "PROCEDURE" && sameRoute(current.routeFixIds, ids)) {
+    record.nextIndex = Math.max(record.nextIndex, current.toFixIndex);
+    return;
+  }
+  if (current?.type !== "HEADING" && current?.type !== "INTERCEPT_LOC") return;
+  if (previous?.type === "PROCEDURE" && sameRoute(previous.routeFixIds, ids)) {
+    record.nextIndex = ids.length;
+  } else if (
+    previous?.type === "DIRECT" &&
+    previous.continuation?.type === "RESUME_ROUTE" &&
+    sameRoute(previous.continuation.routeFixIds, ids)
+  ) {
+    record.nextIndex = Math.max(record.nextIndex, previous.continuation.index);
+  }
+}
+
 /**
  * Advance sim time by `dtS` seconds, then move each aircraft toward intent.
  *
@@ -530,6 +571,7 @@ export function stepWorld(world: World, dtS: number): World {
   const locAxisFor = (approachId: string) =>
     locAxisForApproach(approachId, world.catalog, world.fixRegistry, world.navigation.magVarDeg);
   for (const ac of world.aircraft) {
+    const previousLateral = ac.intent.lateral;
     applyMissedFms(ac, {
       catalog: world.catalog,
       log: world.sessionLog,
@@ -564,6 +606,7 @@ export function stepWorld(world: World, dtS: number): World {
       world.navigation.magVarDeg,
       performance,
     );
+    synchronizeRouteCursor(world, ac, previousLateral);
     if (ac.identUntilSimMs > 0 && world.simTimeMs >= ac.identUntilSimMs) {
       ac.identUntilSimMs = 0;
     }

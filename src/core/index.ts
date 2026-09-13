@@ -188,6 +188,7 @@ export type {
   CwtWakeCategory,
   CrossConstraint,
   CrossRestriction,
+  DirectContinuation,
   Intent,
   LateralMode,
   VerticalMode,
@@ -200,6 +201,18 @@ export {
   normalizeFlightPlanAircraftType,
   normalizeCwtWakeCategory,
 } from "./aircraft";
+export type {
+  RouteExecutionAccess,
+  RouteExecutionError,
+  RouteExecutionErrorCode,
+  RouteExecutionResult,
+} from "./fms/routeExecution";
+export {
+  applyActiveRouteToAircraft,
+  executeClearedRoute,
+  startActiveFlightPlanRoute,
+  startFlightPlanRoute,
+} from "./fms/routeExecution";
 export type {
   AircraftPerformanceProfile,
   AircraftProfileDataset,

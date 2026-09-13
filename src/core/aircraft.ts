@@ -33,7 +33,18 @@ export function normalizeCwtWakeCategory(value: unknown): CwtWakeCategory | unde
  */
 export type LateralMode =
   | { type: "HEADING"; headingDeg: number }
-  | { type: "DIRECT"; fixId: string }
+  | {
+      type: "DIRECT";
+      fixId: string;
+      /** Lateral-only continuation after the direct target sequences. */
+      continuation?: DirectContinuation;
+    }
+  /** Active clearance is waiting for a controller vector; it must not turn itself. */
+  | {
+      type: "VECTOR_PENDING";
+      routeFixIds: readonly string[];
+      routeRevision: number;
+    }
   | {
       type: "PROCEDURE";
       starId?: string;
@@ -45,6 +56,19 @@ export type LateralMode =
   | { type: "LOC"; approachId: string }
   | { type: "MISSED"; approachId: string }
   | { type: "LANDING"; approachId: string };
+
+/**
+ * Result of a lateral DIRECT amendment.  The route is copied into the
+ * continuation so a later plan edit cannot silently invent a rejoin.
+ */
+export type DirectContinuation =
+  | {
+      type: "RESUME_ROUTE";
+      routeFixIds: readonly string[];
+      index: number;
+      routeRevision: number;
+    }
+  | { type: "PRESENT_HEADING"; headingDeg: number };
 
 /**
  * Phase 4 vertical FMS. MSAW inhibit keys on `GS` inside FAF.

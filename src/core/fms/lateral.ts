@@ -8,7 +8,7 @@
  * as a sensor.
  */
 
-import type { Aircraft, LateralMode } from "../aircraft";
+import type { Aircraft, DirectContinuation, LateralMode } from "../aircraft";
 import type { SessionLog } from "../events/session-log";
 import {
   shortestDeltaDeg,
@@ -89,7 +89,12 @@ export function applyLateralFms(
     return undefined;
   }
   if (lateral.type === "DIRECT") {
-    return guideDirect(ac, dtS, lateral.fixId, ctx, registry);
+    return guideDirect(ac, dtS, lateral, ctx, registry);
+  }
+  if (lateral.type === "VECTOR_PENDING") {
+    // Radar-vector access is an explicit wait state.  Never infer a turn or
+    // resume the stored route until a later controller heading is applied.
+    return undefined;
   }
   if (lateral.type === "PROCEDURE") {
     return guideProcedure(ac, dtS, lateral, ctx, registry);
@@ -139,11 +144,11 @@ export function advanceStarLeg(
 function guideDirect(
   ac: Aircraft,
   dtS: number,
-  fixId: string,
+  lateral: Extract<Aircraft["intent"]["lateral"], { type: "DIRECT" }>,
   ctx: LateralFmsContext,
   registry: FixRegistry,
 ): number {
-  const fix = registry.get(fixId);
+  const fix = registry.get(lateral.fixId);
   if (!fix) {
     return ac.intent.assignedHeadingDeg;
   }
@@ -152,7 +157,7 @@ function guideDirect(
       return trueToMagneticDeg(courseDeg(ac, fix), ctx.magVarDeg ?? 0);
     }
     emitDirectSequenced(ac, ctx, fix.id);
-    sequenceToPresentHeading(ac);
+    continueAfterDirect(ac, lateral.continuation);
     return ac.headingDeg;
   }
   return trueToMagneticDeg(courseDeg(ac, fix), ctx.magVarDeg ?? 0);
@@ -241,8 +246,25 @@ function holdFixForLocIntercept(ac: Aircraft, fix: NmPoint, magVarDeg: number): 
   return alongTrackNm(ac, fix, magneticToTrueDeg(ac.headingDeg, magVarDeg)) > 0;
 }
 
-function sequenceToPresentHeading(ac: Aircraft): void {
-  const headingDeg = ac.headingDeg;
+function continueAfterDirect(ac: Aircraft, continuation?: DirectContinuation): void {
+  if (
+    continuation?.type === "RESUME_ROUTE" &&
+    continuation.index < continuation.routeFixIds.length
+  ) {
+    ac.intent.lateral = {
+      type: "PROCEDURE",
+      toFixIndex: continuation.index,
+      routeFixIds: continuation.routeFixIds,
+    };
+    return;
+  }
+  const headingDeg =
+    continuation?.type === "PRESENT_HEADING" ? continuation.headingDeg : ac.headingDeg;
+  sequenceToPresentHeading(ac, headingDeg);
+}
+
+function sequenceToPresentHeading(ac: Aircraft, requestedHeadingDeg = ac.headingDeg): void {
+  const headingDeg = requestedHeadingDeg;
   ac.intent.assignedHeadingDeg = headingDeg;
   ac.intent.turn = "SHORTEST";
   const interceptId = ac.intent.locInterceptApproachId;
