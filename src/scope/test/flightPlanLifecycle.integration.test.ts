@@ -4,19 +4,55 @@ import {
   createFlightPlan,
   createWorld,
   deleteFlightPlanFromWorld,
+  flightPlanForAircraft,
   modifyFlightPlan,
   saveFlightPlanDraft,
+  SessionLog,
   stepWorld,
   updateAircraftSquawk,
 } from "@core";
+import {
+  createScenarioIfrFlightPlan,
+  createWorldForSession,
+  spawnDueDepartures,
+  type ProcedureCatalog,
+} from "../../scenario";
 import { loadKdem } from "../../scenario/load";
-import { createWorldForSession } from "../../scenario/spawn";
 import { parseDepartureOptions } from "../../scenario/trafficQuery";
 import { datablockSourceFromWorld, formatFullDatablock } from "../datablock";
 import { buildTabFlightPlanList, getFlightPlanEntries } from "../systemLists";
 import { createScopeView } from "../scopeView";
 import { syncTrackDisplays } from "../trackDisplay";
 import { terminalStripsFromWorld } from "../../ui/strips/terminalStripsFromWorld";
+import {
+  flightPlanModalDraftFromPlan,
+  submitFlightPlanModalDraft,
+} from "../../ui/controls/FlightPlanModal";
+
+const syntheticCatalog: ProcedureCatalog = {
+  schemaVersion: 1,
+  airportId: "KZZZ",
+  name: "Synthetic modal acceptance",
+  magVarDeg: 0,
+  fieldElevFt: 100,
+  arp: { latDeg: 0, lonDeg: 0 },
+  navaids: [],
+  fixes: [
+    { id: "RW09", kind: "THRESHOLD", xNm: 0, yNm: 0 },
+    { id: "FIX1", kind: "WAYPOINT", xNm: 4, yNm: 4 },
+  ],
+  stars: [],
+  approaches: [],
+  sids: [
+    {
+      id: "SYN1",
+      name: "SYNTHETIC ONE",
+      common: [{ fixId: "FIX1" }],
+      runwayTransitions: [{ runwayId: "09", initialHeadingDeg: 90, legs: [] }],
+    },
+  ],
+  atpaVolumes: [],
+};
 
 describe("T02-147 authoritative flight-plan display lifecycle", () => {
   it("projects plan fields into the FDB and keeps reported mismatch separate", () => {
@@ -264,5 +300,84 @@ describe("T02-147 authoritative flight-plan display lifecycle", () => {
       aircraft!.speedKt,
     ]).toEqual(beforePose);
     expect(world.sessionLog?.all()).toEqual(beforeEvents);
+  });
+
+  it("runs a synthetic pending-departure plan through the modal submit path", () => {
+    const sessionLog = new SessionLog();
+    const world = createWorld({ catalog: syntheticCatalog, sessionLog });
+    const departure = {
+      callsign: "SYN123",
+      runwayId: "09",
+      sidId: "SYN1",
+      assignedAltitudeFt: 5000,
+      aircraftType: "B738",
+      scheduledSimMs: 1000,
+      spawned: false,
+      assignedSquawk: "4312",
+      squawk: "4312",
+    };
+    const plan = createScenarioIfrFlightPlan(world, {
+      acid: departure.callsign,
+      scenario: { icao: syntheticCatalog.airportId },
+      route: { kind: "departure", sidId: departure.sidId },
+      requestedAltitudeFt: departure.assignedAltitudeFt,
+      aircraftType: departure.aircraftType,
+      assignedBeacon: departure.assignedSquawk,
+      departure: true,
+    });
+    world.scheduledDepartures = [departure];
+
+    expect(world.aircraft).toHaveLength(0);
+    expect(flightPlanForAircraft(world, "not-spawned")).toBeUndefined();
+
+    world.simTimeMs = departure.scheduledSimMs;
+    const spawned = spawnDueDepartures(world);
+    const aircraft = spawned[0];
+    expect(aircraft).toBeDefined();
+    expect(flightPlanForAircraft(world, aircraft!.id)?.id).toBe(plan.id);
+
+    const beforeIntent = structuredClone(aircraft!.intent);
+    const beforePose = [
+      aircraft!.xNm,
+      aircraft!.yNm,
+      aircraft!.headingDeg,
+      aircraft!.altitudeFt,
+      aircraft!.speedKt,
+    ];
+    // command.accepted is the persisted Command IR boundary; this UI submit
+    // must not create or rewrite a radio command.
+    const beforeCommandIr = structuredClone(sessionLog.byType("command.accepted"));
+    const beforeSessionEvents = structuredClone(sessionLog.all());
+    const draft = flightPlanModalDraftFromPlan(plan.acid, plan);
+    draft.remarks = "SYNTHETIC MODAL AMEND";
+    const amended = submitFlightPlanModalDraft(world, plan, draft);
+
+    expect(amended).toMatchObject({ ok: true, plan: { remarks: "SYNTHETIC MODAL AMEND" } });
+    expect(world.flightPlans.find((item) => item.id === plan.id)?.remarks).toBe(
+      "SYNTHETIC MODAL AMEND",
+    );
+    expect(aircraft!.intent).toEqual(beforeIntent);
+    expect([
+      aircraft!.xNm,
+      aircraft!.yNm,
+      aircraft!.headingDeg,
+      aircraft!.altitudeFt,
+      aircraft!.speedKt,
+    ]).toEqual(beforePose);
+    expect(sessionLog.byType("command.accepted")).toEqual(beforeCommandIr);
+    expect(sessionLog.all()).toEqual(beforeSessionEvents);
+
+    updateAircraftSquawk(world, aircraft!.id, "4313");
+    expect(flightPlanForAircraft(world, aircraft!.id)).toBeUndefined();
+    expect(aircraft!.intent).toEqual(beforeIntent);
+    expect([
+      aircraft!.xNm,
+      aircraft!.yNm,
+      aircraft!.headingDeg,
+      aircraft!.altitudeFt,
+      aircraft!.speedKt,
+    ]).toEqual(beforePose);
+    expect(sessionLog.byType("command.accepted")).toEqual(beforeCommandIr);
+    expect(sessionLog.all()).toEqual(beforeSessionEvents);
   });
 });

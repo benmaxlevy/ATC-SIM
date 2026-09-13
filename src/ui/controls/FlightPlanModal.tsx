@@ -10,9 +10,12 @@ export interface FlightPlanModalProps {
   onSaved: () => void;
 }
 
-type Draft = Record<string, string>;
+export type FlightPlanModalDraft = Record<string, string>;
 
-function draftFromPlan(acid: string, plan?: FlightPlan): Draft {
+export function flightPlanModalDraftFromPlan(
+  acid: string,
+  plan?: FlightPlan,
+): FlightPlanModalDraft {
   return {
     acid: plan?.acid ?? acid,
     cid: plan?.cid ?? "",
@@ -57,6 +60,45 @@ function splitList(value: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Submit the same normalized draft used by the rendered modal.  Keeping this
+ * handler exportable gives integration tests a DOM-free equivalent of the
+ * browser form submit while preserving one production save path.
+ */
+export function submitFlightPlanModalDraft(
+  world: World,
+  plan: FlightPlan | undefined,
+  draft: FlightPlanModalDraft,
+) {
+  const input: FlightPlanDraftInput = {
+    ...(plan?.id ? { id: plan.id } : {}),
+    acid: draft.acid ?? "",
+    cid: optionalText(draft.cid ?? ""),
+    assignedBeacon: optionalText(draft.assignedBeacon ?? ""),
+    tcp: optionalText(draft.tcp ?? ""),
+    flightType: optionalText(draft.flightType ?? "") as FlightPlanDraftInput["flightType"],
+    filedRoute: draft.route ?? "",
+    ...(splitList(draft.fixes ?? "").length > 0 ? { fixes: splitList(draft.fixes ?? "") } : {}),
+    scratchpads: splitList(draft.scratchpads ?? ""),
+    requestedAltitudeFt: optionalNumber(draft.requestedAltitudeFt ?? ""),
+    assignedAltitudeFt: optionalNumber(draft.assignedAltitudeFt ?? ""),
+    aircraftType: optionalText(draft.aircraftType ?? ""),
+    aircraftCount: optionalNumber(draft.aircraftCount ?? ""),
+    equipment: optionalText(draft.equipment ?? ""),
+    departureAirport: optionalText(draft.departureAirport ?? ""),
+    airportId: optionalText(draft.airportId ?? ""),
+    flightRules: optionalText(draft.flightRules ?? ""),
+    eta: optionalText(draft.eta ?? ""),
+    ptd: optionalText(draft.ptd ?? ""),
+    remarks: optionalText(draft.remarks ?? ""),
+    previousFix: optionalText(draft.previousFix ?? ""),
+    coordinationFix: optionalText(draft.coordinationFix ?? ""),
+    minimumFuel: optionalText(draft.minimumFuel ?? ""),
+    source: optionalText(draft.source ?? ""),
+  };
+  return saveFlightPlanDraft(world, input);
+}
+
 export function FlightPlanModal({
   open,
   acid,
@@ -68,7 +110,9 @@ export function FlightPlanModal({
   const openerRef = useRef<HTMLElement | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const fieldRefs = useRef<Record<string, HTMLInputElement | HTMLSelectElement | null>>({});
-  const [draft, setDraft] = useState<Draft>(() => draftFromPlan(acid, plan));
+  const [draft, setDraft] = useState<FlightPlanModalDraft>(() =>
+    flightPlanModalDraftFromPlan(acid, plan),
+  );
   const [error, setError] = useState<{ field: string; message: string } | null>(null);
 
   useEffect(() => {
@@ -77,7 +121,7 @@ export function FlightPlanModal({
     // automatic focus here: React applies it during mount, before this effect can
     // remember the command line/PPI that opened the modal.
     openerRef.current = document.activeElement as HTMLElement | null;
-    setDraft(draftFromPlan(acid, plan));
+    setDraft(flightPlanModalDraftFromPlan(acid, plan));
     setError(null);
     fieldRefs.current.acid?.focus();
     return () => openerRef.current?.focus();
@@ -107,33 +151,7 @@ export function FlightPlanModal({
 
   function save(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    const input: FlightPlanDraftInput = {
-      ...(plan?.id ? { id: plan.id } : {}),
-      acid: draft.acid ?? "",
-      cid: optionalText(draft.cid ?? ""),
-      assignedBeacon: optionalText(draft.assignedBeacon ?? ""),
-      tcp: optionalText(draft.tcp ?? ""),
-      flightType: optionalText(draft.flightType ?? "") as FlightPlanDraftInput["flightType"],
-      filedRoute: draft.route ?? "",
-      ...(splitList(draft.fixes ?? "").length > 0 ? { fixes: splitList(draft.fixes ?? "") } : {}),
-      scratchpads: splitList(draft.scratchpads ?? ""),
-      requestedAltitudeFt: optionalNumber(draft.requestedAltitudeFt ?? ""),
-      assignedAltitudeFt: optionalNumber(draft.assignedAltitudeFt ?? ""),
-      aircraftType: optionalText(draft.aircraftType ?? ""),
-      aircraftCount: optionalNumber(draft.aircraftCount ?? ""),
-      equipment: optionalText(draft.equipment ?? ""),
-      departureAirport: optionalText(draft.departureAirport ?? ""),
-      airportId: optionalText(draft.airportId ?? ""),
-      flightRules: optionalText(draft.flightRules ?? ""),
-      eta: optionalText(draft.eta ?? ""),
-      ptd: optionalText(draft.ptd ?? ""),
-      remarks: optionalText(draft.remarks ?? ""),
-      previousFix: optionalText(draft.previousFix ?? ""),
-      coordinationFix: optionalText(draft.coordinationFix ?? ""),
-      minimumFuel: optionalText(draft.minimumFuel ?? ""),
-      source: optionalText(draft.source ?? ""),
-    };
-    const result = saveFlightPlanDraft(world, input);
+    const result = submitFlightPlanModalDraft(world, plan, draft);
     if (!result.ok) {
       const field =
         result.error.field === "altitude"
