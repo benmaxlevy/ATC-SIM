@@ -27,6 +27,11 @@ import {
   type CatalogProcedure,
 } from "./catalog-ground";
 import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./telephony";
+import {
+  acceptIfrClearanceField,
+  ifrClearanceField,
+  newIfrClearanceFieldOrder,
+} from "../ifr-clearance-syntax";
 
 const PROCEDURE_TRAILING = new Set(["arrival", "star", "sid", "departure", "procedure"]);
 
@@ -735,7 +740,10 @@ function matchIfrClearance(
   j = limit.next;
   if (["airport", "fix", "waypoint", "navaid"].includes(tokens[j] ?? "")) j += 1;
   let access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"] | undefined;
-  if (tokens[j] === "as" && tokens[j + 1] === "filed") {
+  if (tokens[j] === "asfiled") {
+    access = { type: "AS_FILED" };
+    j += 1;
+  } else if (tokens[j] === "as" && tokens[j + 1] === "filed") {
     access = { type: "AS_FILED" };
     j += 2;
   } else if (tokens[j] === "via") {
@@ -747,6 +755,7 @@ function matchIfrClearance(
       access = { type: "RADAR_VECTORS" };
       j += 2;
     } else {
+      if (ifrClearanceField(tokens[j]) !== null) return null;
       const first = parseFixIdFrom(tokens, j, catalog);
       if (!first) return null;
       j = first.next;
@@ -758,7 +767,7 @@ function matchIfrClearance(
         const transition = tokens[j];
         if (
           transition &&
-          !["alt", "cvia", "freq", "sq", "maintain", "squawk"].includes(transition)
+          !["alt", "cvia", "freq", "frequency", "sq", "maintain", "squawk"].includes(transition)
         ) {
           j += 1;
           access = { type: "SID", procedureId, transitionId: transition.toUpperCase() };
@@ -774,21 +783,50 @@ function matchIfrClearance(
     Extract<Instruction, { type: "IFR_CLEARANCE" }>,
     "altitudeFt" | "climbVia" | "frequency" | "squawk"
   > = {};
-  const seen = new Set<string>();
+  const order = newIfrClearanceFieldOrder();
   while (j < tokens.length) {
     const field = tokens[j];
-    if (!field || seen.has(field)) return null;
-    seen.add(field);
-    if (field === "cvia") {
+    if (!field) return null;
+    const fieldKind = acceptIfrClearanceField(order, field);
+    if (!fieldKind) return null;
+    if (fieldKind === "CVIA") {
       optional.climbVia = true;
       j += 1;
-    } else if (field === "alt" || field === "maintain") {
+    } else if (fieldKind === "ALT") {
       j += 1;
+      if (tokens[j] === "maintain") j += 1;
       const alt = parseAltitudeFt(tokens, j);
       if (!alt) return null;
       optional.altitudeFt = alt.value < 1000 ? alt.value * 100 : alt.value;
       j = alt.next;
-    } else if (field === "squawk") {
+    } else if (fieldKind === "FREQ") {
+      j += 1;
+      const whole = tokens[j];
+      if (whole && /^\d{3}$/.test(whole)) {
+        let value = whole;
+        j += 1;
+        if (tokens[j] === "point") {
+          const fraction = tokens[j + 1];
+          if (!fraction || !/^\d{1,3}$/.test(fraction)) return null;
+          value += `.${fraction}`;
+          j += 2;
+        }
+        optional.frequency = value;
+      } else {
+        const d1 = squawkDigit(tokens[j]);
+        const d2 = squawkDigit(tokens[j + 1]);
+        const d3 = squawkDigit(tokens[j + 2]);
+        if (d1 === null || d2 === null || d3 === null) return null;
+        optional.frequency = `${d1}${d2}${d3}`;
+        j += 3;
+        if (tokens[j] === "point") {
+          const fraction = squawkDigit(tokens[j + 1]);
+          if (fraction === null) return null;
+          optional.frequency += `.${fraction}`;
+          j += 2;
+        }
+      }
+    } else if (fieldKind === "SQ") {
       const digits: number[] = [];
       for (let n = 0; n < 4; n += 1) {
         const digit = squawkDigit(tokens[j + n + 1]);

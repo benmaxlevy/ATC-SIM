@@ -28,6 +28,11 @@ import {
   type CatalogProcedure,
 } from "./catalog-ground";
 import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./telephony";
+import {
+  acceptIfrClearanceField,
+  ifrClearanceField,
+  newIfrClearanceFieldOrder,
+} from "../ifr-clearance-syntax";
 
 interface Cursor {
   tokens: readonly string[];
@@ -258,7 +263,9 @@ function tryIfrClearance(c: Cursor): Instruction | null {
     return null;
   }
   let access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"] | undefined;
-  if (take(c, "as")) {
+  if (take(c, "asfiled")) {
+    access = { type: "AS_FILED" };
+  } else if (take(c, "as")) {
     if (!take(c, "filed")) {
       c.i = start;
       return null;
@@ -278,6 +285,10 @@ function tryIfrClearance(c: Cursor): Instruction | null {
       }
       access = { type: "RADAR_VECTORS" };
     } else {
+      if (ifrClearanceField(peek(c)) !== null) {
+        c.i = start;
+        return null;
+      }
       const first = parseFixId(c);
       if (!first) {
         c.i = start;
@@ -293,7 +304,10 @@ function tryIfrClearance(c: Cursor): Instruction | null {
         const procedureId = groundProcedureToCatalog(first, c.procedures ?? []) ?? first;
         let transitionId: string | undefined;
         const next = peek(c);
-        if (next && !["alt", "cvia", "freq", "sq", "maintain", "squawk"].includes(next)) {
+        if (
+          next &&
+          !["alt", "cvia", "freq", "frequency", "sq", "squawk", "maintain"].includes(next)
+        ) {
           transitionId = parseProcedureId(c) ?? undefined;
         }
         access = { type: "SID", procedureId, ...(transitionId ? { transitionId } : {}) };
@@ -304,15 +318,16 @@ function tryIfrClearance(c: Cursor): Instruction | null {
     Extract<Instruction, { type: "IFR_CLEARANCE" }>,
     "altitudeFt" | "climbVia" | "frequency" | "squawk"
   > = {};
-  const seen = new Set<string>();
+  const order = newIfrClearanceFieldOrder();
   while (peek(c) !== undefined) {
     const field = peek(c)!;
-    if (seen.has(field)) {
+    const fieldKind = acceptIfrClearanceField(order, field);
+    if (!fieldKind) {
       c.i = start;
       return null;
     }
-    seen.add(field);
-    if (take(c, "alt")) {
+    if (fieldKind === "ALT") {
+      take(c, "alt");
       const raw = peek(c);
       const compact = raw && /^\d+$/.test(raw) ? Number(raw) : null;
       if (compact !== null) {
@@ -327,16 +342,12 @@ function tryIfrClearance(c: Cursor): Instruction | null {
         }
         optional.altitudeFt = alt;
       }
-    } else if (take(c, "maintain")) {
-      const alt = altitudeAt(c);
-      if (alt === null) {
-        c.i = start;
-        return null;
-      }
-      optional.altitudeFt = alt;
-    } else if (take(c, "cvia")) {
+    } else if (fieldKind === "CVIA") {
+      take(c, "cvia");
       optional.climbVia = true;
-    } else if (take(c, "freq") || take(c, "frequency")) {
+    } else if (fieldKind === "FREQ") {
+      take(c, "freq");
+      take(c, "frequency");
       const whole = peek(c);
       if (whole && /^\d{3}$/.test(whole)) {
         c.i += 1;
@@ -372,7 +383,9 @@ function tryIfrClearance(c: Cursor): Instruction | null {
         }
         optional.frequency = value;
       }
-    } else if (take(c, "squawk")) {
+    } else if (fieldKind === "SQ") {
+      take(c, "sq");
+      take(c, "squawk");
       const digits: number[] = [];
       for (let j = 0; j < 4; j += 1) {
         const digit = squawkDigit(peek(c));

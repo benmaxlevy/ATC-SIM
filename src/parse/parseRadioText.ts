@@ -23,6 +23,7 @@ import {
   parseUnsignedInt,
   type ParseErrorCode,
 } from "./tokens";
+import { acceptIfrClearanceField, newIfrClearanceFieldOrder } from "./ifr-clearance-syntax";
 
 export type ParseResult =
   | {
@@ -152,19 +153,35 @@ function parseIfrClearance(tokens: string[], index: number): InstructionParse {
       i += 2;
     } else {
       const first = tokens[i];
-      if (!first || !isFixIdToken(first)) {
+      const optionalAlias = new Set([
+        "ALT",
+        "MAINTAIN",
+        "CVIA",
+        "FREQ",
+        "FREQUENCY",
+        "SQ",
+        "SQUAWK",
+      ]);
+      if (!first || optionalAlias.has(first)) {
         return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "bad access" };
       }
       if (tokens[i + 1] === "THEN" && tokens[i + 2] === "DIRECT") {
+        if (!isFixIdToken(first)) {
+          return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "bad access" };
+        }
         access = { type: "FIX_THEN_DIRECT", fixId: first };
         i += 3;
       } else {
+        if (!isProcedureIdToken(first)) {
+          return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "bad SID" };
+        }
         const transition = tokens[i + 1];
         access =
-          transition && isTransitionIdToken(transition)
+          transition && !optionalAlias.has(transition) && isTransitionIdToken(transition)
             ? { type: "SID", procedureId: first, transitionId: transition }
             : { type: "SID", procedureId: first };
-        i += transition && isTransitionIdToken(transition) ? 2 : 1;
+        i +=
+          transition && !optionalAlias.has(transition) && isTransitionIdToken(transition) ? 2 : 1;
       }
     }
   }
@@ -172,14 +189,21 @@ function parseIfrClearance(tokens: string[], index: number): InstructionParse {
     Extract<Instruction, { type: "IFR_CLEARANCE" }>,
     "altitudeFt" | "climbVia" | "frequency" | "squawk"
   > = {};
-  const seen = new Set<string>();
+  const order = newIfrClearanceFieldOrder();
   while (i < tokens.length) {
     const field = tokens[i];
-    if (!field || seen.has(field)) {
+    if (!field) {
       return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "duplicate or malformed field" };
     }
-    seen.add(field);
-    if (field === "ALT") {
+    const fieldKind = acceptIfrClearanceField(order, field);
+    if (!fieldKind) {
+      return {
+        ok: false,
+        code: PARSE_ERROR.BAD_CLEARANCE,
+        detail: "duplicate or out-of-order field",
+      };
+    }
+    if (fieldKind === "ALT") {
       const raw = tokens[i + 1];
       const value = raw ? parseUnsignedInt(raw) : null;
       if (value === null || value < 10 || value > 180) {
@@ -187,17 +211,17 @@ function parseIfrClearance(tokens: string[], index: number): InstructionParse {
       }
       optional.altitudeFt = value * 100;
       i += 2;
-    } else if (field === "CVIA") {
+    } else if (fieldKind === "CVIA") {
       optional.climbVia = true;
       i += 1;
-    } else if (field === "FREQ") {
+    } else if (fieldKind === "FREQ") {
       const value = tokens[i + 1];
       if (!value || !/^\d{3}(?:\.\d{1,3})?$/.test(value)) {
         return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "bad FREQ" };
       }
       optional.frequency = value;
       i += 2;
-    } else if (field === "SQ") {
+    } else if (fieldKind === "SQ") {
       const value = tokens[i + 1];
       if (!value || !isSquawkCodeToken(value)) {
         return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "bad SQ" };

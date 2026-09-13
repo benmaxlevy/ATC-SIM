@@ -101,6 +101,32 @@ function hasApproachCue(tokens: readonly string[]): boolean {
   return tokens.some((tok) => APPROACH_CUES.has(tok.toLowerCase()));
 }
 
+function isIfrClearanceCandidate(normalized: string): boolean {
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  return (
+    tokens.includes("clr") ||
+    tokens.some(
+      (token, index) => (token === "cleared" || token === "clear") && tokens[index + 1] === "to",
+    )
+  );
+}
+
+function isSoleIfrClearance(result: Extract<ParseResult, { ok: true }>): boolean {
+  return result.instructions.length === 1 && result.instructions[0]?.type === "IFR_CLEARANCE";
+}
+
+function localIfrClearanceSyntaxIsValid(
+  normalized: string,
+  selected: string | null,
+  catalog: readonly string[],
+  procedures: readonly CatalogProcedure[],
+): boolean {
+  const typed = attachCallsign(parseRadioText(normalized), selected);
+  if (typed.ok && isSoleIfrClearance(typed)) return true;
+  const spoken = parseSpokenGrammar(normalized, selected, normalized, catalog, procedures);
+  return spoken.ok && isSoleIfrClearance(spoken);
+}
+
 const SLOT_SKIP = new Set([
   "to",
   "the",
@@ -756,6 +782,7 @@ export async function parseCommand(
   const procedures = sanitizeCatalogProcedures(opts.procedures);
   const approaches = sanitizeCatalogApproaches(opts.approaches);
   const normalized = normalizeSpoken(sourceText);
+  const ifrCandidate = isIfrClearanceCandidate(normalized);
   const extraTokens: string[] = [];
 
   const typed = tryGroundedLocal(
@@ -769,6 +796,9 @@ export async function parseCommand(
     approaches,
   );
   if (typed?.kind === "hit") {
+    if (ifrCandidate && !isSoleIfrClearance(typed.result)) {
+      return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
+    }
     return typed.result;
   }
   if (typed?.kind === "ungrounded") {
@@ -787,6 +817,9 @@ export async function parseCommand(
     approaches,
   );
   if (pathA?.kind === "hit") {
+    if (ifrCandidate && !isSoleIfrClearance(pathA.result)) {
+      return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
+    }
     return pathA.result;
   }
   if (pathA?.kind === "ungrounded") {
@@ -806,6 +839,9 @@ export async function parseCommand(
       approaches,
     );
     if (pathB?.kind === "hit") {
+      if (ifrCandidate && !isSoleIfrClearance(pathB.result)) {
+        return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
+      }
       return pathB.result;
     }
     if (pathB?.kind === "ungrounded") {
@@ -832,6 +868,9 @@ export async function parseCommand(
     approaches,
   );
   if (island?.kind === "hit") {
+    if (ifrCandidate && !isSoleIfrClearance(island.result)) {
+      return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
+    }
     return island.result;
   }
   if (island?.kind === "ungrounded") {
@@ -849,7 +888,11 @@ export async function parseCommand(
     matchedProcedures.length === 0 &&
     matchedApproaches.length === 0;
 
-  if (opts.pathC && !emptyIdentifierRetrieve) {
+  if (
+    opts.pathC &&
+    !emptyIdentifierRetrieve &&
+    (!ifrCandidate || localIfrClearanceSyntaxIsValid(normalized, selected, catalog, procedures))
+  ) {
     const run = opts.parsePathC ?? fetchParsePathC;
     const context = pathCContext(roster, selected, catalog, procedures, approaches, queryTokens);
     try {
@@ -888,7 +931,11 @@ export async function parseCommand(
           pathApproaches,
         );
         const ungrounded = salvaged.ungroundedFixes ?? [];
-        if (ungrounded.length === 0 && pathCIdentifierListed(salvaged.instructions, context)) {
+        if (
+          ungrounded.length === 0 &&
+          (!ifrCandidate || isSoleIfrClearance(salvaged)) &&
+          pathCIdentifierListed(salvaged.instructions, context)
+        ) {
           return salvaged;
         }
       }

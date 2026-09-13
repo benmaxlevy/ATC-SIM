@@ -80,3 +80,50 @@ test("unknown route rejects atomically and plain tactical direct never resets th
   expect(plan.routeRecord).toEqual(beforePlan.routeRecord);
   expect(aircraft.intent.lateral).toMatchObject({ type: "DIRECT", fixId: "VOR1" });
 });
+
+test("AS FILED rejects a limit unrelated to the filed route", async () => {
+  const { world, aircraft, plan } = setup();
+  const beforePlan = structuredClone(plan);
+  const beforeAircraft = structuredClone(aircraft);
+  const result = await handleRadioText(world, "DAL123 CLR TO KAHN ASFILED", new SessionLog());
+  expect(result).toMatchObject({ accepted: false, reason: "UNABLE_ROUTE" });
+  expect(plan).toEqual(beforePlan);
+  expect(aircraft).toEqual(beforeAircraft);
+});
+
+test("catalog airport limits are executable generic endpoints", async () => {
+  const { world, aircraft, plan } = setup();
+  const result = await handleRadioText(world, "DAL123 CLR TO TEST VIA DIRECT", new SessionLog());
+  expect(result.accepted).toBe(true);
+  expect(plan.routeRecord?.route.text).toBe("TEST");
+  expect(aircraft.intent.lateral).toMatchObject({ type: "PROCEDURE", routeFixIds: ["TEST"] });
+});
+
+test("IFR clearance rejects VFR plans without pickup or mutation", async () => {
+  const aircraft = createAircraft({
+    id: "ac-vfr",
+    callsign: "DAL123",
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 90,
+    altitudeFt: 8000,
+    speedKt: 220,
+    flightRules: "VFR",
+  });
+  const world = createWorld({
+    aircraft: [aircraft],
+    catalog: { ...catalog, airportId: "TEST", approaches: [] },
+  });
+  const created = saveFlightPlanDraft(world, {
+    acid: "DAL123",
+    filedRoute: "VOR1",
+    flightType: "VFR",
+  });
+  if (!created.ok) throw new Error(created.error.message);
+  const beforePlan = structuredClone(created.plan);
+  const beforeAircraft = structuredClone(aircraft);
+  const result = await handleRadioText(world, "DAL123 CLR TO KAHN VIA DIRECT", new SessionLog());
+  expect(result).toMatchObject({ accepted: false, reason: "CLEARANCE" });
+  expect(created.plan).toEqual(beforePlan);
+  expect(aircraft).toEqual(beforeAircraft);
+});

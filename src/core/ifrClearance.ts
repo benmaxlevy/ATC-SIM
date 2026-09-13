@@ -18,7 +18,8 @@ export type IfrClearanceErrorCode =
   | "INVALID_ALTITUDE"
   | "INVALID_FREQUENCY"
   | "INVALID_SQUAWK"
-  | "INVALID_CLIMB_VIA";
+  | "INVALID_CLIMB_VIA"
+  | "VFR_PICKUP_NOT_SUPPORTED";
 
 export interface IfrClearanceError {
   code: IfrClearanceErrorCode;
@@ -83,9 +84,53 @@ function limitKnown(
   if (!catalog) return false;
   const want = normalize(limitId);
   return (
-    want === normalize((catalog as FiledRouteCatalog & { airportId?: string }).airportId ?? "") ||
+    want === normalize(catalog.airportId ?? "") ||
     catalog.fixes.some((item) => normalize(item.id) === want) ||
     catalog.navaids.some((item) => normalize(item.id) === want)
+  );
+}
+
+function explicitVfr(value: string | undefined): boolean {
+  const rules = normalize(value ?? "");
+  return rules === "VFR" || rules === "DVFR" || rules === "SVFR";
+}
+
+function explicitIfr(value: string | undefined): boolean {
+  return normalize(value ?? "") === "IFR";
+}
+
+function rejectsVfrPickup(plan: FlightPlan, aircraft: Aircraft): boolean {
+  const planIfr = plan.flightType === "IFR" || explicitIfr(plan.flightRules);
+  const aircraftIfr = explicitIfr(aircraft.flightRules) || explicitIfr(aircraft.flightPlan?.rules);
+  const vfr =
+    plan.flightType === "VFR" ||
+    plan.flightType === "DVFR" ||
+    plan.flightType === "SVFR" ||
+    explicitVfr(plan.flightRules) ||
+    explicitVfr(aircraft.flightRules) ||
+    explicitVfr(aircraft.flightPlan?.rules) ||
+    explicitVfr(aircraft.fp?.rules) ||
+    aircraft.maintainVfr;
+  return Boolean(vfr && !(planIfr || aircraftIfr));
+}
+
+function asFiledLimitMatches(
+  plan: FlightPlan,
+  limitId: string,
+  route: FlightPlanRoute,
+  catalog: FiledRouteCatalog | null | undefined,
+): boolean {
+  const lastSegment = route.route.segments[route.route.segments.length - 1];
+  const terminal = lastSegment?.fixIds[lastSegment.fixIds.length - 1];
+  if (terminal && normalize(terminal) === limitId) return true;
+  // Airport limits are valid only when the filed destination explicitly
+  // identifies that same catalog airport; this prevents AS FILED from
+  // silently reusing an unrelated route endpoint.
+  return Boolean(
+    catalog?.airportId &&
+    normalize(catalog.airportId) === limitId &&
+    plan.airportId &&
+    normalize(plan.airportId) === limitId,
   );
 }
 
@@ -108,6 +153,12 @@ export function applyIfrClearance(
   const limitId = normalize(clearance.limitId);
   if (!limitId || !limitKnown(limitId, world.catalog, Boolean(plan.routeRecord?.route))) {
     return error("UNABLE_ROUTE", `unable route: unknown clearance limit ${limitId || ""}`);
+  }
+  if (rejectsVfrPickup(plan, aircraft)) {
+    return error(
+      "VFR_PICKUP_NOT_SUPPORTED",
+      "unable clearance: VFR-to-IFR pickup is not supported",
+    );
   }
   if (clearance.altitudeFt !== undefined) {
     if (
@@ -139,6 +190,12 @@ export function applyIfrClearance(
     return error("UNABLE_ROUTE", compiled.error.message);
   }
   const route = compiled.route;
+  if (
+    clearance.access.type === "AS_FILED" &&
+    !asFiledLimitMatches(plan, limitId, route, world.catalog)
+  ) {
+    return error("UNABLE_ROUTE", `unable route: AS FILED route does not terminate at ${limitId}`);
+  }
   const routeIds = route.route.segments.flatMap((segment) => segment.fixIds);
   if (
     routeIds.length === 0 ||

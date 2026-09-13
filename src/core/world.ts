@@ -187,6 +187,23 @@ function catalogToFixSource(catalog: NonNullable<World["catalog"]>): FixRegistry
       kind: fix.kind ?? "fix",
     });
   }
+  const airportId = catalog.airportId?.trim().toUpperCase();
+  const arp = (catalog as { arp?: unknown }).arp as { xNm?: unknown; yNm?: unknown } | undefined;
+  if (
+    airportId &&
+    !navaids.some((item) => item.id.trim().toUpperCase() === airportId) &&
+    !fixes.some((item) => item.id.trim().toUpperCase() === airportId)
+  ) {
+    fixes.push({
+      id: airportId,
+      // Catalogs normally provide ARP coordinates. A minimal synthetic
+      // catalog gets a deterministic origin endpoint so airport limits stay
+      // executable without a facility-specific branch.
+      xNm: arp && typeof arp.xNm === "number" && Number.isFinite(arp.xNm) ? arp.xNm : 0,
+      yNm: arp && typeof arp.yNm === "number" && Number.isFinite(arp.yNm) ? arp.yNm : 0,
+      kind: "airport",
+    });
+  }
   return { navaids, fixes };
 }
 

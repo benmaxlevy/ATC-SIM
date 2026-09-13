@@ -18,6 +18,9 @@ import {
 
 /** The deliberately small catalog surface needed by filed-route entry. */
 export interface FiledRouteCatalog {
+  /** Primary facility identifier and ARP endpoint when available. */
+  airportId?: string;
+  arp?: { xNm?: number; yNm?: number; latDeg?: number; lonDeg?: number };
   navaids: ReadonlyArray<{ id: string }>;
   fixes: ReadonlyArray<{ id: string }>;
   stars: ReadonlyArray<{
@@ -122,6 +125,10 @@ export function parseFiledRoute(routeText: string): FiledRouteResult<ParsedFiled
 
 function idsEqual(left: string, right: string): boolean {
   return upper(left) === upper(right);
+}
+
+function catalogAirport(catalog: FiledRouteCatalog, id: string): boolean {
+  return catalog.airportId !== undefined && idsEqual(catalog.airportId, id);
 }
 
 function legsToIds(legs: ReadonlyArray<{ fixId: string }> | undefined): string[] {
@@ -384,13 +391,14 @@ export function resolveFiledRoute(
       const target = token;
       const fixes = catalog.fixes.filter((item) => idsEqual(item.id, target));
       const navaids = catalog.navaids.filter((item) => idsEqual(item.id, target));
-      if (fixes.length + navaids.length === 0) {
+      const airport = catalogAirport(catalog, target);
+      if (fixes.length + navaids.length === 0 && !airport) {
         return {
           ok: false,
           error: routeError("UNKNOWN_FIX", `unknown fix, navaid, or procedure ${target}`, target),
         };
       }
-      if (fixes.length + navaids.length > 1) {
+      if (fixes.length + navaids.length > 1 || (airport && fixes.length + navaids.length > 0)) {
         return {
           ok: false,
           error: routeError("AMBIGUOUS_ROUTE_TOKEN", `route token ${target} is ambiguous`, target),

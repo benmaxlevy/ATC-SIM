@@ -234,9 +234,12 @@ arrives. This delayed report is a trainer delta, not NAS timing.
 IFR-clearance routing is a compact trainer grammar, not NAS-compatible input. It
 requires one clearance limit and one access method. A new executable clearance
 replaces the one canonical route and flies immediately; `VIA RADAR VECTORS`
-leaves the route vector-pending. Plain `CLEARED DIRECT` and `PROCEED DIRECT`
-remain tactical lateral amendments and never reset a flight plan. VFR-to-IFR
-pickup, holds, release/void, and full route amendments are not implemented.
+leaves the route vector-pending. `AS FILED` is accepted only when its limit is
+the filed route's terminal endpoint or the filed destination's catalog airport;
+the route is never reused for an unrelated limit. Plain `CLEARED DIRECT` and
+`PROCEED DIRECT` remain tactical lateral amendments and never reset a flight
+plan. VFR-to-IFR pickup, holds, release/void, and full route amendments are not
+implemented.
 
 ## Controls & keybindings
 
