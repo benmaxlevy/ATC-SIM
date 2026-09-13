@@ -26,16 +26,18 @@ their matching assigned/reported code is the correlation key.
 - Author route/procedure identity, altitude, type, beacon; deterministic
   defaults only for optional fields. Validate through T02-170/catalog.
 - Preserve pose, intent, handoff, RNG, and route-inactive boundary.
-- Generic synthetic tests plus one shipped-data wiring test; no facility branch.
+- Generic synthetic tests plus KDEM and KATL shipped-data wiring tests; no
+  facility branch. KATL must load through the same catalog/scenario walker.
 
 ## Acceptance criteria
 
 - [ ] Every IFR target has exactly one valid code-correlatable plan.
 - [ ] Pending departures expose plan before spawn; invalid input has no partial state.
 - [ ] No plan stores target ID or activates FMS/pilot/radio behavior.
+- [ ] KATL authored and random IFR scenario traffic produces valid plans through
+  the generic factory, with no KATL-specific runtime conditional.
 - [ ] CI/manual pass: manual §5.5.5, §5.5.9; JO §4-2-1, §5-2-1.
 
 ## Non-goals
 
 Clearance/squawk commands, FMS activation, networking, airways, facility paths.
-

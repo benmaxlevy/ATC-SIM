@@ -23,6 +23,10 @@ code-allocation service, manual association, airways, facility branches.
 resolver; C T02-174 scenario factory; D T02-175 presentation/E2E/docs. Each
 wave waits for prior merge, CI, and manual PASS.
 
+**Facility acceptance:** T02-174 validates both KDEM and KATL IFR scenario
+traffic through the shared catalog/scenario factory. No facility-specific
+runtime branch is permitted.
+
 **Manual:** `/home/ben/Documents/stars refs/full_manual.pdf`: §2.12,
 §5.4.1–5.4.6, §5.5.5, §5.5.9, §5.6.17, §5.7.1, App D. FAA JO 7110.65BB
 §4-2-1, §5-2-1–2, §5-3-3 anchor terminology; dynamic correlation/spawn is a
