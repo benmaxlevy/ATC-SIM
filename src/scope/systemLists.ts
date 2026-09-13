@@ -5,8 +5,6 @@
  */
 
 import {
-  associateFlightPlan as associateCoreFlightPlan,
-  createFlightPlan,
   deleteFlightPlanFromWorld,
   flightPlanForAircraft,
   type Aircraft,
@@ -516,10 +514,16 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
   }[] = [];
 
   const seenCallsigns = new Set<string>();
+  const correlatedPlanIds = new Set(
+    world.aircraft.flatMap((aircraft) => {
+      const plan = flightPlanForAircraft(world, aircraft.id);
+      return plan ? [plan.id] : [];
+    }),
+  );
 
   // 1. Authoritative local plans. Deleted plans are not list entries.
   for (const plan of world.flightPlans) {
-    if (plan.status === "deleted" || plan.associatedAircraftId || seenCallsigns.has(plan.acid))
+    if (plan.status === "deleted" || correlatedPlanIds.has(plan.id) || seenCallsigns.has(plan.acid))
       continue;
     seenCallsigns.add(plan.acid);
     rawItems.push({
@@ -561,6 +565,9 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
       const cleanCallsign = ac.callsign.toUpperCase();
       if (state.purgedKeys.has(cleanCallsign) || state.purgedKeys.has(ac.id)) continue;
       if (isVfr(ac)) continue;
+      // A target with a unique derived plan is already represented by that
+      // plan's operational projection, never as a second FL entry.
+      if (flightPlanForAircraft(world, ac.id)) continue;
 
       const td = view?.tracks?.get(ac.id);
       if (td) {
@@ -650,6 +657,15 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
   return entries;
 }
 
+/** Return only the entries on the currently displayed FL page. */
+export function getVisibleFlightPlanEntries(world: World, view: ScopeView): FlightPlanEntry[] {
+  const entries = getFlightPlanEntries(world, view);
+  const placement = view.systemLists?.FL;
+  const maxLines = placement?.maxLines ?? DEFAULT_ADAPTATION_ANCHORS.FL.maxLines;
+  const offset = placement?.offset ?? ensureFlightPlanListState(view).offset;
+  return entries.slice(Math.max(0, offset), Math.max(0, offset) + maxLines);
+}
+
 export function purgeFlightPlanEntry(
   _world: World,
   view: ScopeView | undefined,
@@ -690,8 +706,11 @@ export function associateFlightPlanToTrack(
   }
 
   if (entry.planId) {
-    const result = associateCoreFlightPlan(world, entry.planId, aircraftId);
-    if (!result.ok) return false;
+    // Correlation is derived from independent beacon evidence. This action
+    // may update display state only when that resolver already identifies the
+    // selected plan; it never creates or mutates a plan↔target association.
+    const result = flightPlanForAircraft(world, aircraftId);
+    if (!result || result.id !== entry.planId) return false;
     td.unassociated = false;
     td.datablockMode = "full";
     td.tracked = true;
@@ -699,33 +718,10 @@ export function associateFlightPlanToTrack(
     return true;
   }
 
-  if (!entry.departureRef) return false;
-  const planId = `fp-departure-${entry.callsign}`;
-  let plan = world.flightPlans.find((item) => item.id === planId);
-  if (!plan) {
-    const created = createFlightPlan(
-      {
-        id: planId,
-        status: "pending",
-        acid: entry.callsign,
-        assignedBeacon: entry.squawk,
-        fixes: [],
-        scratchpads: [],
-        flightRules: "IFR",
-      },
-      world.flightPlans,
-    );
-    if (!created.ok) return false;
-    world.flightPlans.push(created.value);
-    plan = created.value;
-  }
-  const result = associateCoreFlightPlan(world, plan.id, aircraftId);
-  if (!result.ok) return false;
-  td.unassociated = false;
-  td.datablockMode = "full";
-  td.tracked = true;
-  purgeFlightPlanEntry(world, view, entry);
-  return true;
+  // Scheduled departures are not silently converted into correlated plans by
+  // a list action. They must be authored as a plan first, then derive through
+  // the same unique beacon resolver.
+  return false;
 }
 
 export function deleteFlightPlanEntry(world: World, view: ScopeView, index: number): boolean {
@@ -1343,6 +1339,12 @@ export function buildVfrList(
 ): string[] {
   const droppedSet =
     droppedCallsigns instanceof Set ? droppedCallsigns : new Set(droppedCallsigns ?? []);
+  const correlatedPlanIds = new Set(
+    world.aircraft.flatMap((aircraft) => {
+      const plan = flightPlanForAircraft(world, aircraft.id);
+      return plan ? [plan.id] : [];
+    }),
+  );
   const vfrFlights = [
     ...world.aircraft.filter(
       (ac) => isVfrAircraft(ac, tracks, world) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
@@ -1352,7 +1354,7 @@ export function buildVfrList(
         (plan) =>
           plan.status !== "deleted" &&
           plan.flightRules === "VFR" &&
-          !plan.associatedAircraftId &&
+          !correlatedPlanIds.has(plan.id) &&
           !droppedSet.has(plan.acid.toUpperCase()),
       )
       .map(
@@ -1390,7 +1392,10 @@ export function getVfrListCallsigns(world: World, view?: ScopeView): string[] {
     .filter((ac) => isVfrAircraft(ac, view?.tracks, world))
     .map((ac) => ac.callsign.toUpperCase());
   for (const plan of world.flightPlans) {
-    if (plan.status !== "deleted" && plan.flightRules === "VFR" && !plan.associatedAircraftId) {
+    const correlated = world.aircraft.some(
+      (aircraft) => flightPlanForAircraft(world, aircraft.id)?.id === plan.id,
+    );
+    if (plan.status !== "deleted" && plan.flightRules === "VFR" && !correlated) {
       callsigns.push(plan.acid.toUpperCase());
     }
   }

@@ -22,6 +22,7 @@ import {
   rejectPreviewCntl,
   type PreviewArmedAction,
 } from "./previewArea";
+import type { FlightPlanModalRequest } from "./previewParse";
 import {
   applyStarsChordAction,
   cancelStarsChordEntry,
@@ -185,6 +186,7 @@ function applyTrackingSlewHit(
   world: World,
   hit: AircraftPickHit,
   action: PreviewArmedAction,
+  onOpenFlightPlanModal?: (request: FlightPlanModalRequest) => void,
 ): boolean {
   const id = hit.aircraft.id;
   if (!trackingFlidMatches(view, action, id, world)) {
@@ -194,6 +196,15 @@ function applyTrackingSlewHit(
     return true;
   }
   switch (action.type) {
+    case "openFlightPlanModal":
+      // Target slew addresses the target's local plan identity, just like an
+      // ACID or TAB entry. The UI may create a missing record; it never
+      // creates a plan↔aircraft association or changes aircraft guidance.
+      clearTrackingSlew(view);
+      // Clear the command before invoking the UI callback so a callback-side
+      // rejection (for example, a blank target ACID) remains visible.
+      onOpenFlightPlanModal?.({ targetAircraftId: id });
+      return true;
     case "initCntl": {
       const flid = action.flid ?? view.preview.flid;
       if (flid) {
@@ -401,6 +412,7 @@ export function handlePpiLeftClick(
   cssWidth: number,
   cssHeight: number,
   commandText?: string,
+  onOpenFlightPlanModal?: (request: FlightPlanModalRequest) => void,
 ): void {
   const size = viewSize(cssWidth, cssHeight);
   const nm = screenToNm(cssX, cssY, view.camera, size);
@@ -425,7 +437,7 @@ export function handlePpiLeftClick(
       HIT_RADIUS_CSS_PX,
       view,
     );
-    if (hit && applyTrackingSlewHit(view, world, hit, liveTracking)) {
+    if (hit && applyTrackingSlewHit(view, world, hit, liveTracking, onOpenFlightPlanModal)) {
       return;
     }
   }
@@ -551,7 +563,7 @@ export function handlePpiLeftClick(
         HIT_RADIUS_CSS_PX,
         view,
       );
-      if (hit && applyTrackingSlewHit(view, world, hit, tracking)) {
+      if (hit && applyTrackingSlewHit(view, world, hit, tracking, onOpenFlightPlanModal)) {
         return;
       }
     } else if (view.starsChordEntry.phase === "entry" || view.starsChordArmed) {
@@ -736,10 +748,20 @@ export function handlePpiCanvasClick(
   clientY: number,
   view: ScopeView,
   commandText?: string,
+  onOpenFlightPlanModal?: (request: FlightPlanModalRequest) => void,
 ): void {
   const rect = canvas.getBoundingClientRect();
   const { x, y } = cssPointFromClient(clientX, clientY, rect);
-  handlePpiLeftClick(view, world, x, y, rect.width, rect.height, commandText);
+  handlePpiLeftClick(
+    view,
+    world,
+    x,
+    y,
+    rect.width,
+    rect.height,
+    commandText,
+    onOpenFlightPlanModal,
+  );
 }
 
 /**

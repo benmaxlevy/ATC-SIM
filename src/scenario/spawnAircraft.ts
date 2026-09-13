@@ -1,10 +1,4 @@
-import {
-  createAircraft,
-  updateAircraftSquawk,
-  type Aircraft,
-  type AircraftInit,
-  type World,
-} from "@core";
+import { createAircraft, type Aircraft, type AircraftInit, type World } from "@core";
 import { allocateSquawkCode } from "./callsigns";
 
 export interface SpawnAircraftParams extends AircraftInit {
@@ -12,7 +6,7 @@ export interface SpawnAircraftParams extends AircraftInit {
   rng?: () => number;
 }
 
-function usedSquawks(world: World): string[] {
+export function usedSquawks(world: World): string[] {
   return world.aircraft.flatMap((aircraft) =>
     [aircraft.squawk, aircraft.assignedSquawk, aircraft.reportedSquawk].filter(
       (code): code is string => code !== undefined,
@@ -20,7 +14,7 @@ function usedSquawks(world: World): string[] {
   );
 }
 
-function defaultSquawkRng(callsign: string): () => number {
+export function defaultSquawkRng(callsign: string): () => number {
   let hash = 2166136261;
   for (const character of callsign.toUpperCase()) {
     hash ^= character.charCodeAt(0);
@@ -42,12 +36,5 @@ export function spawnAircraft(world: World, params: SpawnAircraftParams): Aircra
     reportedSquawk: init.reportedSquawk ?? squawk,
   });
   world.aircraft.push(aircraft);
-  // A spawned transponder report is the same runtime event as a later
-  // squawk mutation. Correlate only the reported value; assignedSquawk stays
-  // separate plan/aircraft provenance.
-  const reportedSquawk = aircraft.reportedSquawk ?? aircraft.squawk;
-  if (reportedSquawk !== undefined) {
-    updateAircraftSquawk(world, aircraft.id, reportedSquawk);
-  }
   return aircraft;
 }

@@ -1,5 +1,97 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Proposed sixty-fourth swarm — 2026-09-12 (derived correlation and IFR scenario plans)
+
+| Key | Value |
+| --- | --- |
+| Goal | Present validated IFR scenario plans through derived beacon correlation. |
+| Include | T02-172 → T02-173 → T02-174 → T02-175. |
+| Merge target | `feature/nas-flightplan-modal`; no new feature branch. |
+| Worker limit/model | 1 sequential worker; `gpt-5.6-luna` high. |
+| Stop | T02-175, final CI, supplied-manual review, browser/accessibility walk. |
+| Push | No push. |
+
+**Product law:** targets are surveillance; plans are filed metadata. Only a
+unique non-1200 reported-squawk/assigned-beacon equality correlates them.
+Correlation is read-only. No plan creation/edit or correlation changes FMS,
+pilot intent, kinematics, Command IR, readback, or session events.
+
+**Skip:** squawk/clearance commands, route execution, speech, networking,
+code-allocation service, manual association, airways, facility branches.
+
+**Ownership/waves:** A T02-172 modal review/docs/UI tests; B T02-173 core
+resolver; C T02-174 scenario factory; D T02-175 presentation/E2E/docs. Each
+wave waits for prior merge, CI, and manual PASS.
+
+**Facility acceptance:** T02-174 validates both KDEM and KATL IFR scenario
+traffic through the shared catalog/scenario factory. No facility-specific
+runtime branch is permitted.
+
+**Manual:** `/home/ben/Documents/stars refs/full_manual.pdf`: §2.12,
+§5.4.1–5.4.6, §5.5.5, §5.5.9, §5.6.17, §5.7.1, App D. FAA JO 7110.65BB
+§4-2-1, §5-2-1–2, §5-3-3 anchor terminology; dynamic correlation/spawn is a
+trainer extension.
+
+## Proposed sixty-third swarm — 2026-09-12 (NAS-style flight-plan modal)
+
+One sequential worker implements each ownership slice on
+`feature/nas-flightplan-modal`. This is one local browser modal opened only by
+`*FP <ACID> Enter`; it is never a radio or pilot command.
+
+| Key | Value |
+| --- | --- |
+| Goal | Add one atomic, catalog-backed filed-route flight-plan modal. |
+| Include | **T02-170**, **T02-171**, **T02-172** only. |
+| Skip | Command IR, radio, speech, readbacks, pilot execution, squawk assignments, clearance limits, route/FMS activation, direct/resume-own-navigation, descend-via, airways, networking, target-click deletion, F6/F9 replacement, and facility branches. |
+| Stop | After each ticket merge, focused tests, `npm run ci`, supplied-manual review, and the T02-172 browser/accessibility walk. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges every ticket to `feature/nas-flightplan-modal`. |
+| Merge target | `feature/nas-flightplan-modal` |
+| Model | `gpt-5.6-luna`, reasoning `high`. |
+| Push | No push. |
+
+**Product law:** `FlightPlan.filedRoute` is catalog-resolved filed metadata.
+Modal Save is atomic. Neither Save nor Cancel changes aircraft surveillance,
+association, intent, active FMS route, kinematics, Command IR, readback, or
+session events. Only a later explicit pilot clearance can activate a valid
+remaining route.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-170 | Clean merge target based on current `master`; generic catalog-only route resolver and atomic draft transaction. |
+| B | T02-171 | T02-170 squash merge, focused tests, CI, and manual review. |
+| C | T02-172 | T02-171 squash merge, focused tests, CI, and manual review. |
+
+**Ticket ownership:**
+
+- T02-170: domain draft transaction and catalog route resolution.
+- T02-171: `*FP` routing, one accessible React modal, Help/User docs.
+- T02-172: generic end-to-end acceptance and documentation reconciliation.
+
+**Ticket branches:**
+
+- `ticket/T02-170-filed-route-draft-and-catalog-validation`
+- `ticket/T02-171-flight-plan-modal-fp-command`
+- `ticket/T02-172-flight-plan-modal-acceptance-and-docs`
+
+**Manual review:** `/home/ben/Documents/stars refs/full_manual.pdf`; Appendix
+D Table D-1 p. D-2; §5.5.5 pp. 5-105–5-110; §5.6.17 pp. 5-167–5-173; and FAA
+JO 7110.65 §2-3-4. Modal syntax is an explicit trainer delta, not a manual
+claim.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: NAS-style flight-plan modal T02-170–172
+Merge target: feature/nas-flightplan-modal
+Merged: T02-170, T02-171, T02-172
+Tests: <focused gates, CI after each merge, final CI, manual review>
+Notes: Filed-route metadata only; no pilot-clearance or route execution
+```
+
 ## Sixty-second swarm started — 2026-09-12 (Datablock source unification)
 
 Captain executing T02-164–165 on `improvement/db-source-unification`.
@@ -4033,3 +4125,23 @@ No push is authorized. Workers implement exactly one ticket, never merge or
 spawn, and return exactly `READY TO MERGE` or `BLOCKED`. Stop after T02-169 or
 on an unresolved CI/manual-review failure; use one narrowly scoped fix worker
 only if required by the swarm rules.
+
+## Sixty-third swarm started — 2026-09-12 (NAS-style flight-plan modal)
+
+Captain starts the approved T02-170–172 sequence on
+`feature/nas-flightplan-modal`. Planning tickets and the proposed configuration
+are committed before workers. Workers are isolated, sequential, and use
+`gpt-5.6-luna` with high reasoning. Captain owns the merge lock; no push.
+
+Execution gate: every ticket needs its focused tests, `npm run ci`, and
+supplied-manual review before the next wave. Stop at T02-172. The product law
+above remains binding: filed route is metadata, never pilot/FMS execution.
+
+## Sixty-fourth swarm started — 2026-09-12 (derived correlation and IFR scenario plans)
+
+Execution authorized on `feature/nas-flightplan-modal`; no new feature branch
+or push. Run T02-172, T02-173, T02-174, then T02-175 in isolated worktrees,
+one Luna/high worker at a time. Captain squash-merges only after focused tests,
+`npm run ci`, and independent supplied-manual PASS. On any failure, stop later
+waves and use one narrow correction worker. The proposed sixty-fourth product
+law and skip list above are binding.

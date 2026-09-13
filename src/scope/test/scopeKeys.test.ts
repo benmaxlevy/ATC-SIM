@@ -19,6 +19,26 @@ function keyEvent(key: string, opts?: { ctrlKey?: boolean; shiftKey?: boolean; a
   };
 }
 
+test("T02-171 routes *FP from radio focus to the UI callback, not radio", () => {
+  const view = createScopeView();
+  const world = createWorld();
+  const open = vi.fn();
+  for (const key of "*FP AAL123") {
+    handleScopeKeyDown(keyEvent(key), view, "radio", world, 0, { onOpenFlightPlanModal: open });
+  }
+  handleScopeKeyDown(keyEvent("Enter"), view, "radio", world, 0, { onOpenFlightPlanModal: open });
+  expect(open).toHaveBeenCalledWith({ acid: "AAL123" });
+  expect(view.preview.phase).toBe("idle");
+});
+
+test("T02-171 bare *FP arms target slew", () => {
+  const view = createScopeView();
+  const world = createWorld();
+  for (const key of "*FP") handleScopeKeyDown(keyEvent(key), view, "scope", world, 0);
+  handleScopeKeyDown(keyEvent("Enter"), view, "scope", world, 0);
+  expect(view.preview.armed).toEqual({ type: "openFlightPlanModal", targetSlew: true });
+});
+
 test("always-on keys include PageUp, Home, F1-F6, F7-F11, Insert, ?; H and T are not", () => {
   expect(isAlwaysOnScopeKey("PageUp")).toBe(true);
   expect(isAlwaysOnScopeKey("Home")).toBe(true);

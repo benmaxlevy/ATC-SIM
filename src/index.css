@@ -1008,6 +1008,100 @@ html[data-dcb-cursor-trap] * {
   pointer-events: none;
 }
 
+.flight-plan-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.flight-plan-modal {
+  width: min(680px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 16px;
+  background: #111;
+  color: #d6ded6;
+  border: 1px solid #259925;
+  font:
+    13px/1.35 "IBM Plex Mono",
+    ui-monospace,
+    monospace;
+}
+
+.flight-plan-modal h2 {
+  margin: 0 0 6px;
+  color: #fff;
+  font-size: 16px;
+}
+
+.flight-plan-modal form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
+.flight-plan-modal label {
+  display: grid;
+  gap: 3px;
+  color: #b8d8b8;
+}
+
+.flight-plan-modal input,
+.flight-plan-modal select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 28px;
+  padding: 4px 6px;
+  border: 1px solid #4c604c;
+  border-radius: 0;
+  background: #000;
+  color: #fff;
+  font: inherit;
+}
+
+.flight-plan-modal input:focus-visible,
+.flight-plan-modal select:focus-visible,
+.flight-plan-modal button:focus-visible {
+  outline: 1px solid #ffff00;
+  outline-offset: 1px;
+}
+
+.flight-plan-modal input[aria-invalid="true"],
+.flight-plan-modal select[aria-invalid="true"] {
+  border-color: #ffff00;
+}
+
+.flight-plan-modal-error {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  color: #ffff00;
+}
+
+.flight-plan-modal-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.flight-plan-modal button {
+  min-width: 88px;
+  padding: 6px 10px;
+  border: 1px solid #259925;
+  border-radius: 0;
+  background: #003300;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
 .scope-help-panel {
   pointer-events: auto;
   user-select: text;

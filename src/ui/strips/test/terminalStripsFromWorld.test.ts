@@ -16,7 +16,7 @@ describe("terminalStripsFromWorld", () => {
       cwtWakeCategory: "B",
       wakeCategory: "H",
       assignedSquawk: "1111",
-      reportedSquawk: "2222",
+      reportedSquawk: "7042",
       squawk: "3333",
       requestedAltitudeFt: 5000,
     });
@@ -37,7 +37,7 @@ describe("terminalStripsFromWorld", () => {
       aircraftType: "C172",
       cwtWakeCategory: "C",
       assignedSquawk: "4444",
-      reportedSquawk: "5555",
+      reportedSquawk: "7060",
       squawk: "6666",
       requestedAltitudeFt: 4000,
     });
@@ -50,7 +50,6 @@ describe("terminalStripsFromWorld", () => {
       makePlan({
         id: "fp-dep",
         status: "active",
-        associatedAircraftId: departure.id,
         acid: "DAL789",
         cid: "789",
         assignedBeacon: "7042",
@@ -70,7 +69,6 @@ describe("terminalStripsFromWorld", () => {
       makePlan({
         id: "fp-arr",
         status: "active",
-        associatedAircraftId: arrival.id,
         acid: "AAL321",
         cid: "321",
         assignedBeacon: "7060",
@@ -100,7 +98,7 @@ describe("terminalStripsFromWorld", () => {
       equipmentSuffix: "G",
       cwtCategory: "B",
       beaconCode: "7042",
-      reportedSquawk: "7043",
+      reportedSquawk: "7042",
       cid: "789",
       proposedDepartureTime: "1430E",
       requestedAltitude: "330",
@@ -115,7 +113,7 @@ describe("terminalStripsFromWorld", () => {
       equipmentSuffix: "L",
       cwtCategory: "C",
       beaconCode: "7060",
-      reportedSquawk: "7061",
+      reportedSquawk: "7060",
       cid: "321",
       previousFix: "BOS",
       coordinationFix: "HONIE",

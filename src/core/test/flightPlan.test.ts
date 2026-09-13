@@ -160,7 +160,6 @@ test("modification updates the authoritative plan and associated datablock field
   if (!made.ok) return;
   const aircraft = makeTestAircraft({ id: "ac-1", callsign: "DAL123", assignedSquawk: "0701" });
   const world = createWorld({ flightPlans: [made.value], aircraft: [aircraft] });
-  made.value.associatedAircraftId = aircraft.id;
   const result = modifyFlightPlan(world, made.value.id, "acid", "UAL456");
   expect(result).toMatchObject({ ok: true, plan: { acid: "UAL456" } });
   expect(aircraft.callsign).toBe("DAL123");
@@ -197,11 +196,9 @@ test("deleting an associated plan releases identity and leaves target unassociat
     assignedSquawk: "0701",
   });
   const world = createWorld({ flightPlans: [made.value], aircraft: [aircraft] });
-  made.value.associatedAircraftId = aircraft.id;
   const pose = { x: aircraft.xNm, y: aircraft.yNm };
   const result = deleteFlightPlanFromWorld(world, made.value.id);
   expect(result).toMatchObject({ ok: true, plan: { status: "deleted" } });
-  expect(world.flightPlans[0]!.associatedAircraftId).toBeUndefined();
   expect(aircraft.assignedSquawk).toBe("0701");
   expect({ x: aircraft.xNm, y: aircraft.yNm }).toEqual(pose);
 });
@@ -240,7 +237,6 @@ test("T02-146 corrective — release beacon preserves inactive plan and disassoc
     callsign: "DAL123",
     assignedSquawk: "0701",
   });
-  made.value.associatedAircraftId = aircraft.id;
   const world = createWorld({ flightPlans: [made.value], aircraft: [aircraft] });
   expect(releaseAssignedBeacon(world, made.value.id)).toMatchObject({
     ok: true,

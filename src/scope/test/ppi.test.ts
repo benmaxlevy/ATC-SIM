@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { createAircraft, createWorld } from "@core";
+import { vi } from "vitest";
 import { DEFAULT_SCOPE_CAMERA, nmToScreen, type ScopeCamera } from "../camera";
 import { handlePpiCanvasPointerHover, handlePpiLeftClick } from "../ppi";
 import { handleScopeKeyDown } from "../scopeKeys";
@@ -51,6 +52,27 @@ test("armed *J3 click applies the ring; miss leaves the arm", () => {
   handlePpiLeftClick(view, world, tick.x, tick.y, CSS_W, CSS_H);
   expect(view.tracks.get(dal.id)?.tpaRingNm).toBe(3);
   expect(view.starsChordArmed).toBeNull();
+});
+
+test("T02-171 live *FP slew opens the target's callsign without an association", () => {
+  const dal = createAircraft({
+    id: "ac-dal",
+    callsign: "DAL123",
+    xNm: 16,
+    yNm: 8,
+    headingDeg: 100,
+    altitudeFt: 8000,
+    speedKt: 220,
+  });
+  const world = createWorld({ aircraft: [dal] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  typeChord(view, world, ["*", "F", "P"]);
+  const open = vi.fn();
+  const tick = nmToScreen(dal.xNm, dal.yNm, view.camera, VIEW);
+  handlePpiLeftClick(view, world, tick.x, tick.y, CSS_W, CSS_H, undefined, open);
+  expect(open).toHaveBeenCalledWith({ targetAircraftId: dal.id });
+  expect(view.preview.phase).toBe("idle");
 });
 
 test("handlePpiCanvasPointerHover with dwellMode ON highlights on hover and clears on miss", () => {

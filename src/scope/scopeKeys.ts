@@ -27,7 +27,6 @@
 import {
   createFlightPlan,
   deleteFlightPlanFromWorld,
-  disassociateFlightPlan,
   flightPlanForAircraft,
   modifyFlightPlan,
   releaseAssignedBeacon,
@@ -147,7 +146,6 @@ import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock, type LeaderLengthPx } from
 import { resolveScopeFlid } from "./previewArea";
 import {
   canonicalSystemListId,
-  associateFlightPlanToTrack,
   cancelListDrag,
   deleteFlightPlanEntry,
   getFlightPlanEntries,
@@ -213,6 +211,20 @@ export interface ScopeKeyUi {
   helpOverlayHasFocus?: boolean;
   /** React/DOM refresh after display-only mutations (F1 overlay). */
   onHandled?: () => void;
+  /** UI-only filed flight-plan dialog request; scope never imports React. */
+  onOpenFlightPlanModal?: (request: {
+    acid?: string;
+    index?: number;
+    targetAircraftId?: string;
+  }) => void;
+}
+
+function eventOwnedByNativeModal(target: EventTarget | null | undefined): boolean {
+  return (
+    typeof HTMLElement !== "undefined" &&
+    target instanceof HTMLElement &&
+    target.closest('[role="dialog"][aria-modal="true"]') !== null
+  );
 }
 
 export function isAlwaysOnScopeKey(key: string): boolean {
@@ -339,6 +351,7 @@ function applyPreviewArmedAction(
   action: PreviewArmedAction,
   nowMs: number,
   world?: World,
+  ui?: ScopeKeyUi,
 ): void {
   if (applyPreviewBeaconAction(view.beaconSelectCodes, action)) {
     return;
@@ -465,29 +478,6 @@ function applyPreviewArmedAction(
         return;
       }
       world.flightPlans.push(plan);
-      if (
-        action.creationMode !== "fltData" &&
-        plan.assignedBeacon &&
-        plan.assignedBeacon !== "1200"
-      ) {
-        const matches = world.aircraft.filter((aircraft) => {
-          const reportedSquawk = aircraft.reportedSquawk ?? aircraft.squawk;
-          const track = view.tracks.get(aircraft.id);
-          const unassociated =
-            !track ||
-            track.unassociated === true ||
-            (track.ownership !== "owned" && track.datablockMode !== "full");
-          return (
-            unassociated &&
-            reportedSquawk === plan.assignedBeacon &&
-            !flightPlanForAircraft(world, aircraft.id)
-          );
-        });
-        const entry = getFlightPlanEntries(world, view).find((item) => item.planId === plan.id);
-        if (matches.length === 1 && entry) {
-          associateFlightPlanToTrack(world, view, entry.index, matches[0]!.id);
-        }
-      }
       return;
     }
     case "deleteVfrFlightPlan": {
@@ -503,8 +493,11 @@ function applyPreviewArmedAction(
         return;
       }
       const plan = plans[0]!;
-      if (plan.associatedAircraftId) {
-        terminateTrackWithPlan(view.tracks, world, plan.associatedAircraftId, view);
+      const correlatedAircraft = world.aircraft.find(
+        (aircraft) => flightPlanForAircraft(world, aircraft.id)?.id === plan.id,
+      );
+      if (correlatedAircraft) {
+        terminateTrackWithPlan(view.tracks, world, correlatedAircraft.id, view);
       } else {
         deleteFlightPlanFromWorld(world, plan.id);
       }
@@ -617,17 +610,15 @@ function applyPreviewArmedAction(
         return;
       }
       const plan = plans[0]!;
-      const associatedAircraftId = plan.associatedAircraftId;
+      const correlatedAircraft = world.aircraft.find(
+        (aircraft) => flightPlanForAircraft(world, aircraft.id)?.id === plan.id,
+      );
       const result = releaseAssignedBeacon(world, plan.id);
-      if (result.ok && associatedAircraftId && plan.status === "suspended") {
-        const aircraft = world.aircraft.find((item) => item.id === associatedAircraftId);
-        if (aircraft) {
-          const td = ensureTrackDisplay(view.tracks, associatedAircraftId);
-          delete td.squawk;
-          td.unassociated = true;
-          td.datablockMode = "partial";
-        }
-        disassociateFlightPlan(world, plan.id);
+      if (result.ok && correlatedAircraft && plan.status === "suspended") {
+        const td = ensureTrackDisplay(view.tracks, correlatedAircraft.id);
+        delete td.squawk;
+        td.unassociated = true;
+        td.datablockMode = "partial";
       }
       if (!result.ok)
         view.preview.rejection = result.error.code === "INVALID_FIELD" ? "ILL TRK" : "FORMAT";
@@ -848,6 +839,13 @@ function applyPreviewArmedAction(
       // Q/V always require a target slew/click; never dispatch Command IR.
       armPreviewSlewAction(view.preview, action, nowMs);
       return;
+    case "openFlightPlanModal":
+      if (action.targetSlew) {
+        armPreviewSlewAction(view.preview, action, nowMs);
+      } else {
+        ui?.onOpenFlightPlanModal?.({ acid: action.acid, index: action.index });
+      }
+      return;
     case "toggleMci":
       view.mciEnabled = !view.mciEnabled;
       cancelStarsChordEntry(view.starsChordEntry);
@@ -868,6 +866,7 @@ function applyPreviewBufferOutcome(
   world: World | undefined,
   nowMs: number,
   outcome: PreviewKeyOutcome,
+  ui?: ScopeKeyUi,
 ): void {
   if (outcome.action) {
     if (view.stagedListAnchor && outcome.action.type === "toggleList") {
@@ -879,7 +878,7 @@ function applyPreviewBufferOutcome(
       view.starsChordArmed = null;
       return;
     }
-    applyPreviewArmedAction(view, outcome.action, nowMs, world);
+    applyPreviewArmedAction(view, outcome.action, nowMs, world, ui);
   }
   if (outcome.starsBuffer) {
     const stars = commitStarsChord(outcome.starsBuffer);
@@ -937,6 +936,9 @@ export function handleScopeKeyDown(
   nowMs: number = Date.now(),
   ui?: ScopeKeyUi,
 ): boolean {
+  if (eventOwnedByNativeModal(event.target)) {
+    return false;
+  }
   if (isHelpToggleKey(event)) {
     consume(event);
     toggleHelpOverlay(view);
@@ -1148,6 +1150,37 @@ export function handleScopeKeyDown(
     return true;
   }
 
+  // `*` is an always-on Preview prefix, including while the radio input has
+  // focus. This keeps `*FP`, `*F`, `*TV`, and other existing Preview forms out
+  // of the radio parser. Native modal controls return above and own their keys.
+  if (
+    focus !== "scope" &&
+    ui?.onOpenFlightPlanModal &&
+    view.preview.phase === "entry" &&
+    view.preview.buffer.startsWith("*")
+  ) {
+    const preview = handlePreviewBufferKey(
+      view.preview,
+      event.key,
+      nowMs,
+      event.code,
+      loadedCatalogMaps(view),
+      videoMapTokenLayout(view),
+    );
+    if (preview.consumed) {
+      consume(event);
+      applyPreviewBufferOutcome(view, world, nowMs, preview, ui);
+      ui?.onHandled?.();
+      return true;
+    }
+  }
+  if (focus !== "scope" && ui?.onOpenFlightPlanModal && event.key === "*") {
+    consume(event);
+    startPreviewBuffer(view, "*", nowMs);
+    ui?.onHandled?.();
+    return true;
+  }
+
   if (focus === "scope") {
     if (view.preview.phase === "entry") {
       const preview = handlePreviewBufferKey(
@@ -1160,7 +1193,7 @@ export function handleScopeKeyDown(
       );
       if (preview.consumed) {
         consume(event);
-        applyPreviewBufferOutcome(view, world, nowMs, preview);
+        applyPreviewBufferOutcome(view, world, nowMs, preview, ui);
         ui?.onHandled?.();
         return true;
       }
@@ -1182,7 +1215,7 @@ export function handleScopeKeyDown(
           loadedCatalogMaps(view),
           videoMapTokenLayout(view),
         );
-        applyPreviewBufferOutcome(view, world, nowMs, preview);
+        applyPreviewBufferOutcome(view, world, nowMs, preview, ui);
         ui?.onHandled?.();
         return true;
       }
@@ -1258,7 +1291,7 @@ export function handleScopeKeyDown(
       const preview = handlePreviewBufferKey(view.preview, event.key, nowMs, event.code);
       if (preview.consumed) {
         consume(event);
-        applyPreviewBufferOutcome(view, world, nowMs, preview);
+        applyPreviewBufferOutcome(view, world, nowMs, preview, ui);
         ui?.onHandled?.();
         return true;
       }

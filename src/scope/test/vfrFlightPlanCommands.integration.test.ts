@@ -53,7 +53,7 @@ test("F9 creates, modifies, lists, then deletes local VFR plan", () => {
   expect(world.flightPlans[0]?.status).toBe("deleted");
 });
 
-test("F9 active-track form requires associated VFR plan data and preserves kinematics", () => {
+test("F9 active-track form does not use a persistent VFR association", () => {
   const aircraft = makeTestAircraft({
     id: "vfr-1",
     callsign: "N456V",
@@ -71,7 +71,6 @@ test("F9 active-track form requires associated VFR plan data and preserves kinem
         scratchpads: ["VFR"],
         fixes: ["*EXIT"],
         flightRules: "VFR",
-        associatedAircraftId: aircraft.id,
       },
     ],
   });
@@ -86,7 +85,6 @@ test("F9 active-track form requires associated VFR plan data and preserves kinem
   expect(world.flightPlans[0]).toMatchObject({
     acid: "N456V",
     flightRules: "VFR",
-    requestedAltitudeFt: 4000,
     status: "active",
   });
   expect({ x: aircraft.xNm, y: aircraft.yNm, heading: aircraft.headingDeg }).toEqual(before);
@@ -130,7 +128,7 @@ test("F9 accepts omitted departure and records amended exit-fix retransmit", () 
   });
 });
 
-test("F9 deletion uses TERM CNTL completion for an FL-associated plan", () => {
+test("F9 deletion removes a VFR plan without persistent association", () => {
   const aircraft = makeTestAircraft({ id: "vfr-delete", callsign: "N321V", flightRules: "VFR" });
   const world = createWorld({
     aircraft: [aircraft],
@@ -142,14 +140,13 @@ test("F9 deletion uses TERM CNTL completion for an FL-associated plan", () => {
         flightRules: "VFR",
         fixes: ["*EXIT"],
         scratchpads: ["VFR"],
-        associatedAircraftId: aircraft.id,
       },
     ],
   });
   const view = createScopeView();
   typeVfr(view, world, "N321V");
   expect(world.flightPlans[0]?.status).toBe("deleted");
-  expect(view.tracks.get(aircraft.id)?.unassociated).toBe(true);
+  expect(view.tracks.get(aircraft.id)?.unassociated).toBeUndefined();
 });
 
 test("F9 parser rejects invalid route and preserves Ctrl+F9 routing", () => {

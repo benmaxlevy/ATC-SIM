@@ -1,4 +1,4 @@
-import { flightPlanForAircraft, handoffFor, type Aircraft, type World } from "@core";
+import { flightPlanCid, flightPlanForAircraft, handoffFor, type Aircraft, type World } from "@core";
 import { compareCallsigns } from "./FlightStrips";
 import type { ArrivalStripData, CWTCategory, DepartureStripData } from "./types";
 
@@ -65,12 +65,12 @@ export function terminalStripsFromWorld(world: World): {
     const cwtCategory: CWTCategory | undefined = ac.cwtWakeCategory;
     const isHeavy = ac.wakeCategory?.toUpperCase() === "H";
     const beaconCode = plan?.assignedBeacon ?? ac.assignedSquawk ?? ac.squawk ?? "";
-    const reportedSquawk = plan?.reportedBeacon ?? ac.reportedSquawk ?? ac.squawk;
-
-    const cidDigits = acid.replace(/\D/g, "");
+    // Reported squawk is surveillance evidence. A plan's reportedBeacon is
+    // legacy metadata and must never overwrite the live target report.
+    const reportedSquawk = ac.reportedSquawk ?? ac.squawk;
 
     if (isDeparture) {
-      const cid = plan?.cid ?? (cidDigits.length > 0 ? cidDigits.padStart(3, "0").slice(-3) : "");
+      const cid = flightPlanCid(acid, plan?.cid);
       const altFt = requestedAltitudeFt ?? ac.intent.assignedAltitudeFt;
       const requestedAltitude = String(Math.round(altFt / 100));
 
@@ -119,7 +119,7 @@ export function terminalStripsFromWorld(world: World): {
       };
       departures.push(depStrip);
     } else {
-      const cid = plan?.cid ?? (cidDigits.length > 0 ? cidDigits.padStart(3, "0").slice(-3) : "");
+      const cid = flightPlanCid(acid, plan?.cid);
 
       let previousFix: string | undefined = plan?.previousFix;
       let coordinationFix = plan?.coordinationFix ?? "";

@@ -126,7 +126,7 @@ function starNear(
   );
 }
 
-test("T02-145 — explicit ACID slew associates the authoritative plan", () => {
+test("T02-173 — explicit ACID slew does not mutate correlation", () => {
   const plan = createFlightPlan({
     id: "fp-acid-slew",
     acid: "DAL456",
@@ -135,7 +135,7 @@ test("T02-145 — explicit ACID slew associates the authoritative plan", () => {
     scratchpads: [],
   });
   if (!plan.ok) throw new Error(plan.error.message);
-  const target = makeTestAircraft({ id: "ac-acid-slew", callsign: "1234", squawk: "1200" });
+  const target = makeTestAircraft({ id: "ac-acid-slew", callsign: "1234", squawk: "7024" });
   const world = createWorld({ flightPlans: [plan.value], aircraft: [target] });
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
@@ -147,13 +147,12 @@ test("T02-145 — explicit ACID slew associates the authoritative plan", () => {
   expect(world.flightPlans).toHaveLength(1);
   expect(world.flightPlans[0]).toMatchObject({
     id: "fp-acid-slew",
-    status: "active",
-    associatedAircraftId: target.id,
+    status: "pending",
   });
   expect(target.callsign).toBe("1234");
 });
 
-test("creation auto-associates a unique already-reporting beacon", () => {
+test("creation does not auto-associate a unique already-reporting beacon", () => {
   const target = makeTestAircraft({
     id: "ac-create-beacon",
     callsign: "UNTRK",
@@ -169,17 +168,15 @@ test("creation auto-associates a unique already-reporting beacon", () => {
   expect(world.flightPlans[0]).toMatchObject({
     acid: "SWA123",
     assignedBeacon: "5066",
-    status: "active",
-    associatedAircraftId: target.id,
-    reportedBeacon: "5066",
+    status: "pending",
+    reportedBeacon: undefined,
   });
   expect(view.tracks.get(target.id)).toMatchObject({
-    unassociated: false,
-    datablockMode: "full",
+    datablockMode: "partial",
   });
 });
 
-test("T02-145 — explicit beacon slew associates the authoritative plan", () => {
+test("T02-173 — explicit beacon slew does not mutate correlation", () => {
   const plan = createFlightPlan({
     id: "fp-beacon-slew",
     acid: "AAL789",
@@ -188,7 +185,7 @@ test("T02-145 — explicit beacon slew associates the authoritative plan", () =>
     scratchpads: [],
   });
   if (!plan.ok) throw new Error(plan.error.message);
-  const target = makeTestAircraft({ id: "ac-beacon-slew", callsign: "5678", squawk: "1200" });
+  const target = makeTestAircraft({ id: "ac-beacon-slew", callsign: "5678", squawk: "7025" });
   const world = createWorld({ flightPlans: [plan.value], aircraft: [target] });
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
@@ -199,8 +196,7 @@ test("T02-145 — explicit beacon slew associates the authoritative plan", () =>
 
   expect(world.flightPlans[0]).toMatchObject({
     id: "fp-beacon-slew",
-    status: "active",
-    associatedAircraftId: target.id,
+    status: "pending",
   });
   expect(target.callsign).toBe("5678");
 });
@@ -215,9 +211,8 @@ test("F4 and TERM CNTL share termination semantics", () => {
       scratchpads: [],
     });
     if (!plan.ok) throw new Error(plan.error.message);
-    const target = makeTestAircraft({ id: `ac-term-${id}`, callsign: "DAL456" });
+    const target = makeTestAircraft({ id: `ac-term-${id}`, callsign: "DAL456", squawk: "7024" });
     plan.value.status = "active";
-    plan.value.associatedAircraftId = target.id;
     const world = createWorld({ flightPlans: [plan.value], aircraft: [target] });
     world.handoffs.set(target.id, { kind: "inbound", fromSectorId: "C" });
     return { target, world };
@@ -237,7 +232,6 @@ test("F4 and TERM CNTL share termination semantics", () => {
   for (const result of [direct, typed]) {
     const td = (result === direct ? directView : typedView).tracks.get(result.target.id)!;
     expect(result.world.flightPlans[0]?.status).toBe("deleted");
-    expect(result.world.flightPlans[0]?.associatedAircraftId).toBeUndefined();
     expect(td).toMatchObject({
       ownership: "unowned",
       datablockMode: "partial",
@@ -326,7 +320,6 @@ test("AC4/AC5 — INIT CNTL rejects one-digit TAB and CID identities on slew", (
     handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 0);
     for (const key of identity) handleScopeKeyDown(keyEvent(key), view, "scope", world, 10);
     handlePpiLeftClick(view, world, tick.x, tick.y, CSS, CSS);
-    expect(world.flightPlans[0]?.associatedAircraftId).toBeUndefined();
     expect(view.tracks.get(target.id)?.unassociated ?? true).toBe(true);
   }
 });

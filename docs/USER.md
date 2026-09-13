@@ -127,6 +127,18 @@ If an aircraft is already selected on the scope, the callsign prefix is automati
 ### Flight-plan commands
 
 Flight-plan commands are scope Preview Area commands, not radio clearances.
+
+`*FP <ACID> Enter` opens the local flight-plan dialog. A two-digit index on the current visible
+TAB page is also accepted as `*FP <TAB-index> Enter`. Bare `*FP Enter` arms a target slew; click
+a target to open its uniquely beacon-correlated plan. It creates a draft by usable ACID only when
+that target has no filed plan. A beacon mismatch, stale/off-page TAB index, or target with a blank
+ACID returns `NO FLIGHT`; use the FL list or ACID to open an uncorrelated filed record. This is an explicit ATC-SIM trainer
+extension, not a supplied STARS-manual function. Save edits filed metadata only and does not alter
+aircraft surveillance, association, intent, kinematics, or route execution. Filed route text is
+catalog-resolved with `SID:<procedureId>[/<transitionId>]`, `STAR:<procedureId>[/<transitionId>]`,
+and `DCT <fixId-or-navaidId>` segments; route entries are space-separated, `DCT` consumes exactly
+one following fix or navaid, and an empty route is valid. These are filed metadata only: the
+route is never activated in the aircraft FMS or used for clearance execution.
 They update the local authoritative flight-plan list and do not make a pilot
 read back or fly the change.
 
@@ -504,7 +516,6 @@ To prevent operator confusion between similar keyboard inputs, the simulator adh
 ### Deferred commands backlog
 
 Commands strictly deferred to future milestones (not parsed in the current release):
-- Flight plan full edit modals: `*V`, `*A`.
 - Scratchpad editing commands and assigned altitude/heading/speed direct data block amendments.
 - Multi-controller handoff chords and pointout TCP/consol/QL protocols (`+HOLD`, `+UNS`, `+R`, `/ALL`).
 - Target Demand Metering (TDM) `*G`.
