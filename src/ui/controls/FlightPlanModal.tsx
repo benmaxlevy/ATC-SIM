@@ -127,7 +127,7 @@ export function FlightPlanModal({
   if (!open) return null;
 
   function update(field: string, value: string): void {
-    setDraft((current) => ({ ...current, [field]: value }));
+    setDraft((current) => ({ ...current, [field]: value.toUpperCase() }));
     if (error?.field === field) setError(null);
   }
 
@@ -138,7 +138,7 @@ export function FlightPlanModal({
       },
       id: `flight-plan-${field}`,
       name: field,
-      value: draft[field] ?? "",
+      value: (draft[field] ?? "").toUpperCase(),
       "aria-invalid": error?.field === field ? true : undefined,
       "aria-describedby": error?.field === field ? "flight-plan-error" : undefined,
       onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>

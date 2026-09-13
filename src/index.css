@@ -1063,6 +1063,7 @@ html[data-dcb-cursor-trap] * {
   background: #000;
   color: #fff;
   font: inherit;
+  text-transform: uppercase;
 }
 
 .flight-plan-modal input:focus-visible,
