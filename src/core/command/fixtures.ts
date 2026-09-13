@@ -90,6 +90,15 @@ export const fixtureIdent = {
   source: "text",
 } satisfies Command;
 
+export const fixtureAssignSquawk = {
+  id: "cmd-assign-squawk",
+  issuedAtSimMs: 0,
+  callsign: "DAL123",
+  instructions: [{ type: "ASSIGN_SQUAWK", code: "0342", source: "DISCRETE" }],
+  sourceText: "DAL123 SQ 0342",
+  source: "text",
+} satisfies Command;
+
 export const fixtureSayHeading = {
   id: "cmd-say-heading",
   issuedAtSimMs: 0,
@@ -176,6 +185,7 @@ export const commandFixtures = [
   fixtureExpectApproach,
   fixtureClearedApproach,
   fixtureInterceptLocalizer,
+  fixtureAssignSquawk,
   fixtureIdent,
   fixtureSayHeading,
   fixtureSayAltitude,

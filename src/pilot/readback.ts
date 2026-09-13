@@ -15,6 +15,7 @@ import {
   formatCallsignSpeech,
   formatDigitString,
   formatHeadingDigits,
+  speakDigitString,
 } from "./telephony";
 
 export { formatCallsignSpeech } from "./telephony";
@@ -38,7 +39,8 @@ export type RejectReason =
   | "AMBIGUOUS_TRANSITION"
   | "NOT_ON_COURSE"
   | "UNKNOWN_APPROACH"
-  | "NOT_ON_APPROACH";
+  | "NOT_ON_APPROACH"
+  | "SQUAWK";
 
 const REJECT_FIXED: Record<string, string> = {
   UNKNOWN_CALLSIGN: "Unable, unknown callsign",
@@ -60,6 +62,7 @@ const REJECT_AFTER_CALLSIGN: Record<string, string> = {
   AMBIGUOUS_TRANSITION: "unable, ambiguous transition",
   UNKNOWN_APPROACH: "unable, unknown approach",
   NOT_ON_APPROACH: "unable, not on approach",
+  SQUAWK: "unable squawk",
 };
 
 function capitalizeFirst(text: string): string {
@@ -140,6 +143,10 @@ function formatInstructionClause(
       return formatSpeedClause(instruction);
     case "IDENT":
       return "ident";
+    case "ASSIGN_SQUAWK":
+      return instruction.source === "VFR"
+        ? "squawk VFR"
+        : `squawk ${speakDigitString(instruction.code)}`;
     case "SAY_HEADING":
       return `heading ${formatHeadingDigits(aircraft.headingDeg)}`;
     case "SAY_ALTITUDE":

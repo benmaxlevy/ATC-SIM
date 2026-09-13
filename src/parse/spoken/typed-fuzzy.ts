@@ -102,10 +102,33 @@ function rewriteOne(c: Cursor): string | null {
     rewritePresent(c) ??
     rewriteAltitude(c) ??
     rewriteSpeed(c) ??
+    rewriteSquawk(c) ??
     rewriteIdent(c) ??
     rewriteIntercept(c) ??
     rewriteGoAround(c)
   );
+}
+
+function rewriteSquawk(c: Cursor): string | null {
+  const start = c.i;
+  if (!take(c, "squawk")) {
+    return null;
+  }
+  if (take(c, "vfr")) {
+    return "SQ VFR";
+  }
+  const digits: string[] = [];
+  while (digits.length < 4) {
+    const tok = peek(c);
+    const digit = tok === undefined ? null : singleDigit(tok);
+    if (digit === null) {
+      c.i = start;
+      return null;
+    }
+    digits.push(String(digit));
+    c.i += 1;
+  }
+  return `SQ ${digits.join("")}`;
 }
 
 function rewriteIntercept(c: Cursor): string | null {

@@ -432,6 +432,27 @@ function tryIdent(c: Cursor): Instruction | null {
   return null;
 }
 
+function trySquawk(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "squawk")) {
+    return null;
+  }
+  if (take(c, "vfr")) {
+    return { type: "ASSIGN_SQUAWK", code: "1200", source: "VFR" };
+  }
+  const digits: number[] = [];
+  while (digits.length < 4) {
+    const digit = singleDigit(peek(c));
+    if (digit === null) {
+      c.i = start;
+      return null;
+    }
+    digits.push(digit);
+    c.i += 1;
+  }
+  return { type: "ASSIGN_SQUAWK", code: digits.join(""), source: "DISCRETE" };
+}
+
 function trySay(c: Cursor): Instruction | null {
   const start = c.i;
   if (!take(c, "say")) {
@@ -670,6 +691,7 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     tryJoinProcedure(c) ??
     trySpeed(c) ??
     tryDirect(c) ??
+    trySquawk(c) ??
     tryIdent(c) ??
     tryGoAround(c) ??
     trySay(c) ??

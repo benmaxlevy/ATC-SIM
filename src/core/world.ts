@@ -47,7 +47,7 @@ import { locAxisForApproach } from "./nav/localizer";
 import { gsParamsForApproach } from "./nav/glidepath";
 import { performanceRegistry } from "./performance/registry";
 import { resolvePerformanceRegime } from "./performance/regime";
-import type { FlightPlan } from "./flightPlan";
+import { updateAircraftSquawk, type FlightPlan } from "./flightPlan";
 
 /** Generic world navigation context. Variation is never facility-special-cased. */
 export interface WorldNavigationContext {
@@ -487,6 +487,18 @@ function acceptDueOutboundHandoffs(world: World): void {
   }
 }
 
+/** Apply pilot-reported beacon changes only after the simulated response delay. */
+function applyDueSquawkReports(world: World): void {
+  for (const aircraft of world.aircraft) {
+    const pending = aircraft.pendingReportedSquawk;
+    if (!pending || world.simTimeMs < pending.dueSimMs) {
+      continue;
+    }
+    updateAircraftSquawk(world, aircraft.id, pending.code);
+    aircraft.pendingReportedSquawk = undefined;
+  }
+}
+
 /**
  * Advance sim time by `dtS` seconds, then move each aircraft toward intent.
  *
@@ -503,6 +515,7 @@ export function stepWorld(world: World, dtS: number): World {
     return world;
   }
   world.simTimeMs += dtS * 1000;
+  applyDueSquawkReports(world);
   world.arrivalScheduler?.drain(world);
   world.departureSpawner?.(world);
   acceptDueOutboundHandoffs(world);

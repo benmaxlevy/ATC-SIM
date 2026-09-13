@@ -11,6 +11,7 @@ import type {
   VerticalCatalog,
 } from "@core";
 import { isOnCourseToFix, joinProcedureTransition } from "@core";
+import { isValidBeaconCode } from "@core";
 
 export const ALTITUDE_MIN_FT = 1000;
 export const ALTITUDE_MAX_FT = 18000;
@@ -32,7 +33,8 @@ export type ValidateReason =
   | "AMBIGUOUS_TRANSITION"
   | "NOT_ON_COURSE"
   | "UNKNOWN_APPROACH"
-  | "NOT_ON_APPROACH";
+  | "NOT_ON_APPROACH"
+  | "SQUAWK";
 
 export type ValidateResult = { ok: true } | { ok: false; reason: ValidateReason; detail?: string };
 
@@ -102,6 +104,14 @@ function validateOne(
       }
       if (!approachKnown(instruction.approachId, opts)) {
         return { ok: false, reason: "UNKNOWN_APPROACH" };
+      }
+      return { ok: true };
+    case "ASSIGN_SQUAWK":
+      if (
+        !isValidBeaconCode(instruction.code) ||
+        (instruction.source === "VFR" && instruction.code !== "1200")
+      ) {
+        return { ok: false, reason: "SQUAWK" };
       }
       return { ok: true };
     case "DIRECT":

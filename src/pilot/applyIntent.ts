@@ -16,6 +16,8 @@ import {
 
 /** IDENT flash duration (sim ms). PPI may read `identUntilSimMs` later (T01-10). */
 export const IDENT_FLASH_MS = 5000;
+/** Trainer delay before a pilot's assigned beacon appears in surveillance. */
+export const SQUAWK_REPORT_DELAY_MS = 1000;
 
 export interface ApplyIntentOpts {
   catalog?: (MissedCatalog & ProcedureJoinCatalog) | null;
@@ -23,6 +25,7 @@ export interface ApplyIntentOpts {
   fixXy?: ((id: string) => { xNm: number; yNm: number } | undefined) | null;
   /** Scenario active runway; runway-tagged STAR transitions must match. */
   activeRunwayId?: string | null;
+  squawkReportDelayMs?: number;
 }
 
 export function applyIntent(
@@ -263,6 +266,13 @@ function applyOne(
       return;
     case "IDENT":
       aircraft.identUntilSimMs = simTimeMs + IDENT_FLASH_MS;
+      return;
+    case "ASSIGN_SQUAWK":
+      aircraft.assignedSquawk = instruction.code;
+      aircraft.pendingReportedSquawk = {
+        code: instruction.code,
+        dueSimMs: simTimeMs + (opts?.squawkReportDelayMs ?? SQUAWK_REPORT_DELAY_MS),
+      };
       return;
     case "DIRECT":
       aircraft.intent.lateral = { type: "DIRECT", fixId: instruction.fixId.trim().toUpperCase() };

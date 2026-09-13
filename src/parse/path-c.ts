@@ -152,6 +152,15 @@ export function isLegalInstruction(value: unknown): value is Instruction {
       obj.approachId.length > 0
     );
   }
+  if (type === "ASSIGN_SQUAWK") {
+    return (
+      keysOk(obj, ["type", "code", "source"]) &&
+      typeof obj.code === "string" &&
+      /^[0-7]{4}$/.test(obj.code) &&
+      (obj.source === "DISCRETE" || obj.source === "VFR") &&
+      (obj.source === "VFR" ? obj.code === "1200" : true)
+    );
+  }
   if (type === "DESCEND_VIA" || type === "CLIMB_VIA" || type === "JOIN_PROCEDURE") {
     const trans = obj.transitionId;
     return (

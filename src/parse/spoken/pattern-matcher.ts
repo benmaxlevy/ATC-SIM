@@ -1062,6 +1062,33 @@ function matchIdent(
   return null;
 }
 
+function matchSquawk(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] !== "squawk") {
+    return null;
+  }
+  if (tokens[i + 1] === "vfr") {
+    return {
+      instruction: { type: "ASSIGN_SQUAWK", code: "1200", source: "VFR" },
+      next: i + 2,
+    };
+  }
+  const digits: number[] = [];
+  for (let offset = 1; offset <= 4; offset += 1) {
+    const digit = singleDigit(tokens[i + offset]);
+    if (digit === null) {
+      return null;
+    }
+    digits.push(digit);
+  }
+  return {
+    instruction: { type: "ASSIGN_SQUAWK", code: digits.join(""), source: "DISCRETE" },
+    next: i + 5,
+  };
+}
+
 function matchSay(
   tokens: readonly string[],
   i: number,
@@ -1119,6 +1146,7 @@ export function matchSpokenPatterns(
       matchFlyHeading(tokens, i) ??
       matchAltitude(tokens, i) ??
       matchSpeed(tokens, i) ??
+      matchSquawk(tokens, i) ??
       matchIdent(tokens, i) ??
       matchSay(tokens, i);
 

@@ -93,6 +93,14 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         result: "Sets the aircraft speed.",
       },
       {
+        id: "squawk",
+        command: "SQ <code> / SQ VFR",
+        example: "DAL123 SQ 4721 / SQ VFR",
+        input: "Radio",
+        result:
+          "Assigns a four-digit octal beacon code; VFR assigns 1200. The pilot report is delayed.",
+      },
+      {
         id: "approach",
         command: "A <approach>",
         example: "A ILS27",

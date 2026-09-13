@@ -17,6 +17,7 @@ import {
   isProcedureIdToken,
   isTransitionIdToken,
   isTurnDirLetter,
+  isSquawkCodeToken,
   PARSE_ERROR,
   parseCrossAltitudeToken,
   parseUnsignedInt,
@@ -84,7 +85,14 @@ function isTypedInstructionStart(token: string): boolean {
   if (token in ZERO_ARG_INSTRUCTIONS || token in APPROACH_INSTRUCTIONS) {
     return true;
   }
-  if (token === "DCT" || token === "VIA" || token === "CVIA" || token === "JOIN" || token === "X") {
+  if (
+    token === "DCT" ||
+    token === "VIA" ||
+    token === "CVIA" ||
+    token === "JOIN" ||
+    token === "X" ||
+    token === "SQ"
+  ) {
     return true;
   }
   return LETTER_NUMBER.test(token) || TURN_COMPACT.test(token) || TURN_NUMBER_ONLY.test(token);
@@ -130,6 +138,24 @@ function parseOneInstruction(tokens: string[], index: number): InstructionParse 
     return {
       ok: true,
       instruction: { type: approachType, approachId },
+      nextIndex: index + 2,
+    };
+  }
+  if (token === "SQ") {
+    const rawCode = tokens[index + 1];
+    if (rawCode === "VFR") {
+      return {
+        ok: true,
+        instruction: { type: "ASSIGN_SQUAWK", code: "1200", source: "VFR" },
+        nextIndex: index + 2,
+      };
+    }
+    if (!rawCode || !isSquawkCodeToken(rawCode)) {
+      return { ok: false, code: PARSE_ERROR.BAD_SQUAWK, detail: rawCode };
+    }
+    return {
+      ok: true,
+      instruction: { type: "ASSIGN_SQUAWK", code: rawCode, source: "DISCRETE" },
       nextIndex: index + 2,
     };
   }

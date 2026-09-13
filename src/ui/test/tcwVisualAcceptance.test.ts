@@ -81,7 +81,7 @@ test("AC2 — Command IR stays the frozen fields and 16 instruction types", () =
   expectTypeOf<keyof Command>().toEqualTypeOf<
     "id" | "issuedAtSimMs" | "callsign" | "instructions" | "sourceText" | "source" | "parseStage"
   >();
-  expect(INSTRUCTION_TYPES).toHaveLength(17);
+  expect(INSTRUCTION_TYPES).toHaveLength(18);
   expectTypeOf<Instruction["type"]>().toEqualTypeOf<(typeof INSTRUCTION_TYPES)[number]>();
 });
 

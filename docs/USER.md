@@ -120,6 +120,7 @@ If an aircraft is already selected on the scope, the callsign prefix is automati
 | | `EXP ILS<RWY>` | `DAL123 EXP ILS27` | Expect ILS Runway 27 approach |
 | **Compound Clearance** | `<H> <A> APP ILS<RWY>` | `DAL123 R240 A20 APP ILS27` | Fly heading 240°, maintain 2,000 ft until established, cleared ILS 27 |
 | **Transponder / Ident** | `I` | `DAL123 I` | Squawk ident (flashes target symbol for 5 seconds) |
+| **Beacon assignment** | `SQ <[0-7]{4}>` / `SQ VFR` | `DAL123 SQ 4721` / `DAL123 SQ VFR` | Assigns a discrete octal beacon or VFR code 1200; assigned and reported surveillance codes stay separate until the pilot report. |
 | **Miscellaneous** | `GA` | `DAL123 GA` | Go around / execute published missed approach |
 | | `SH` | `DAL123 SH` | Say current heading |
 | | `SA` | `DAL123 SA` | Say current altitude |
@@ -193,6 +194,12 @@ full route/SID/STAR amendment remain in the [later implementation backlog](../ph
 
 When using Push-to-Talk (PTT), speak clearances using standard FAA JO 7110.65 ATC phraseology:
 
+Beacon assignment follows JO 7110.65BB §5-2-1 and §5-2-7 (R01) with AIM digit
+pronunciation guidance (R03). This trainer accepts only four octal digits or
+`VFR`; `VFR` maps to 1200. The assigned beacon is plan/controller data, while
+the reported squawk remains surveillance data until the simulated pilot report
+arrives. This delayed report is a trainer delta, not NAS timing.
+
 | Clearance Type | Spoken Phrase Example |
 |---|---|
 | **Vector / Heading** | *"Delta one twenty-three, fly heading two four zero"* |
@@ -209,6 +216,7 @@ When using Push-to-Talk (PTT), speak clearances using standard FAA JO 7110.65 AT
 | **Approach Clearance** | *"Delta one twenty-three, turn right heading two four zero, maintain two thousand until established on the localizer, cleared ILS runway two seven approach"* |
 | **Intercept Localizer** | *"Delta one twenty-three, fly heading two four zero, intercept Runway two seven localizer"* |
 | **Ident** | *"Delta one twenty-three, squawk ident"* |
+| **Beacon assignment** | *"Delta one twenty-three, squawk four seven two one"* / *"Delta one twenty-three, squawk VFR"* |
 | **Go Around** | *"Delta one twenty-three, go around, fly published missed approach"* |
 | **Say Heading / Altitude** | *"Delta one twenty-three, say heading"* \| *"Delta one twenty-three, say altitude"* |
 

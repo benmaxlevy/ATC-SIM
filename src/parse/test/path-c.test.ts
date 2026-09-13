@@ -5,6 +5,7 @@ import {
   DEFAULT_PARSE_URL,
   PATH_C_SCHEMA_VERSION,
   fetchParsePathC,
+  isLegalInstruction,
   type ParsePathCFn,
   type PathCRequest,
   type PathCSuccess,
@@ -48,6 +49,17 @@ test("pathC false never fetches", async () => {
   expect(parsePathC).not.toHaveBeenCalled();
   expect(fetchSpy).not.toHaveBeenCalled();
   vi.unstubAllGlobals();
+});
+
+test("Path C schema accepts exact discrete/VFR squawk IR and rejects malformed codes", () => {
+  expect(isLegalInstruction({ type: "ASSIGN_SQUAWK", code: "0342", source: "DISCRETE" })).toBe(
+    true,
+  );
+  expect(isLegalInstruction({ type: "ASSIGN_SQUAWK", code: "1200", source: "VFR" })).toBe(true);
+  expect(isLegalInstruction({ type: "ASSIGN_SQUAWK", code: "1289", source: "DISCRETE" })).toBe(
+    false,
+  );
+  expect(isLegalInstruction({ type: "ASSIGN_SQUAWK", code: "4721", source: "VFR" })).toBe(false);
 });
 
 test("local miss + pathC true + legal FLY_HEADING is llm_c", async () => {

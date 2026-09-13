@@ -37,9 +37,15 @@ Preview filters, and VFR-to-IFR pickup.
 
 ## Acceptance criteria
 
-- [ ] Text/voice produce identical IR; only exact octal or VFR parses.
-- [ ] Rejects are atomic; no synchronous reported-code write.
-- [ ] Existing IDENT/direct/F6/F9/scope-B/correlation behavior remains green.
+- [x] Text/voice produce identical IR; only exact octal or VFR parses.
+- [x] Rejects are atomic; no synchronous reported-code write.
+- [x] Existing IDENT/direct/F6/F9/scope-B/correlation behavior remains green.
+
+Implementation note: the assigned beacon is written immediately, while the
+existing `updateAircraftSquawk` surveillance hook runs after a 1,000 ms
+simulated pilot-report delay. The supplied STARS manual confirms assigned and
+reported beacon codes remain distinct in a mismatch (§2.12, p. 2-60; Appendix
+A-5); the exact `SQ` syntax and delayed response are trainer deltas.
 
 ## Test plan
 

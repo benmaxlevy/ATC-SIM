@@ -36,6 +36,7 @@ export const INSTRUCTION_TYPES = [
   "EXPECT_APPROACH",
   "CLEARED_APPROACH",
   "INTERCEPT_LOCALIZER",
+  "ASSIGN_SQUAWK",
   "IDENT",
   "SAY_HEADING",
   "SAY_ALTITUDE",
@@ -72,6 +73,7 @@ export type Instruction =
   | { type: "CLEARED_APPROACH"; approachId: string }
   /** Join the loc and track inbound; do not arm GS. APP later clears the approach. */
   | { type: "INTERCEPT_LOCALIZER"; approachId: string }
+  | { type: "ASSIGN_SQUAWK"; code: string; source: "DISCRETE" | "VFR" }
   | { type: "IDENT" }
   | { type: "SAY_HEADING" }
   | { type: "SAY_ALTITUDE" }

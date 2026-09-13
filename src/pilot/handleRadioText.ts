@@ -172,7 +172,9 @@ export async function handleRadioText(
     pathC: opts?.pathC ?? false,
   });
   if (!parsed.ok) {
-    const reason = "PARSE";
+    const normalizedTokens = sourceText.trim().replace(/\s+/g, " ").toUpperCase().split(" ");
+    const reason =
+      parsed.error.startsWith("BAD_SQUAWK") || normalizedTokens.includes("SQ") ? "SQUAWK" : "PARSE";
     logRejected(log, world, atWallMs, { command: null, reason, sourceText });
     return {
       accepted: false,
