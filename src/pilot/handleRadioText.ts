@@ -8,7 +8,7 @@
  */
 
 import type { Aircraft, Command, Instruction, ParseStage, SessionLog, World } from "@core";
-import { assertHandoffOwned, handoffFor } from "@core";
+import { applyIfrClearance, assertHandoffOwned, handoffFor } from "@core";
 import { approachesFromCatalog, parseCommand, proceduresFromCatalog } from "@parse";
 import { FULL_CALLSIGN, SUFFIX_CALLSIGN } from "../parse/tokens";
 import { applyIntent } from "./applyIntent";
@@ -174,7 +174,11 @@ export async function handleRadioText(
   if (!parsed.ok) {
     const normalizedTokens = sourceText.trim().replace(/\s+/g, " ").toUpperCase().split(" ");
     const reason =
-      parsed.error.startsWith("BAD_SQUAWK") || normalizedTokens.includes("SQ") ? "SQUAWK" : "PARSE";
+      parsed.error.startsWith("BAD_CLEARANCE") || normalizedTokens.includes("CLR")
+        ? "CLEARANCE"
+        : parsed.error.startsWith("BAD_SQUAWK") || normalizedTokens.includes("SQ")
+          ? "SQUAWK"
+          : "PARSE";
     logRejected(log, world, atWallMs, { command: null, reason, sourceText });
     return {
       accepted: false,
@@ -258,6 +262,30 @@ export function handleRadioCommand(
       resolvedCommand,
       aircraft.wakeCategory === "H",
     );
+  }
+
+  const ifrClearance = resolvedCommand.instructions.find((item) => item.type === "IFR_CLEARANCE");
+  if (ifrClearance) {
+    if (resolvedCommand.instructions.length !== 1) {
+      return reject("CLEARANCE", "clearance must be the only instruction", resolvedCommand);
+    }
+    const applied = applyIfrClearance(world, aircraft, ifrClearance, atWallMs, log);
+    if (!applied.ok) {
+      const reason =
+        applied.error.code === "UNABLE_ROUTE" ||
+        applied.error.code === "PLAN_NOT_FOUND" ||
+        applied.error.code === "NO_AIRCRAFT"
+          ? "UNABLE_ROUTE"
+          : "CLEARANCE";
+      return reject(reason, applied.error.message, resolvedCommand);
+    }
+    const readback = formatReadback({
+      callsign: resolved.callsign,
+      instructions: resolvedCommand.instructions,
+      aircraft,
+    });
+    logAccepted(log, world, atWallMs, resolvedCommand);
+    return { accepted: true, readback, command: resolvedCommand };
   }
 
   applyIntent(aircraft, resolvedCommand.instructions, world.simTimeMs, {

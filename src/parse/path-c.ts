@@ -162,6 +162,45 @@ export function isLegalInstruction(value: unknown): value is Instruction {
       (obj.source === "VFR" ? obj.code === "1200" : true)
     );
   }
+  if (type === "IFR_CLEARANCE") {
+    if (
+      !keysOk(
+        obj,
+        ["type", "limitId", "access"],
+        ["altitudeFt", "climbVia", "frequency", "squawk"],
+      ) ||
+      typeof obj.limitId !== "string" ||
+      obj.limitId.length === 0
+    ) {
+      return false;
+    }
+    const access = asRecord(obj.access);
+    if (access === null || typeof access.type !== "string") return false;
+    const accessType = access.type;
+    if (accessType === "AS_FILED" || accessType === "DIRECT" || accessType === "RADAR_VECTORS") {
+      if (!keysOk(access, ["type"])) return false;
+    } else if (accessType === "FIX_THEN_DIRECT") {
+      if (!keysOk(access, ["type", "fixId"]) || typeof access.fixId !== "string") return false;
+    } else if (accessType === "SID") {
+      if (
+        !keysOk(access, ["type", "procedureId"], ["transitionId"]) ||
+        typeof access.procedureId !== "string" ||
+        (access.transitionId !== undefined && typeof access.transitionId !== "string")
+      )
+        return false;
+    } else {
+      return false;
+    }
+    if (obj.altitudeFt !== undefined && !isFiniteNumber(obj.altitudeFt)) return false;
+    if (obj.climbVia !== undefined && typeof obj.climbVia !== "boolean") return false;
+    if (obj.frequency !== undefined && typeof obj.frequency !== "string") return false;
+    if (
+      obj.squawk !== undefined &&
+      (typeof obj.squawk !== "string" || !/^[0-7]{4}$/.test(obj.squawk))
+    )
+      return false;
+    return true;
+  }
   if (type === "DESCEND_VIA" || type === "CLIMB_VIA" || type === "JOIN_PROCEDURE") {
     const trans = obj.transitionId;
     return (

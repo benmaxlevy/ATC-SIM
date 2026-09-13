@@ -17,6 +17,7 @@ test("SessionEvent includes command events, voice.latency, CA edges, MSAW edges,
     | "session.started"
     | "command.accepted"
     | "command.rejected"
+    | "clearance.ifr.issued"
     | "voice.latency"
     | "alert.ca.caution"
     | "alert.ca.alert"

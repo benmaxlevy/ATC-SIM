@@ -721,6 +721,92 @@ function matchDirect(
   };
 }
 
+function matchIfrClearance(
+  tokens: readonly string[],
+  i: number,
+  catalog: readonly string[],
+): { instruction: Instruction; next: number } | null {
+  if ((tokens[i] !== "cleared" && tokens[i] !== "clear") || tokens[i + 1] !== "to") {
+    return null;
+  }
+  let j = i + 2;
+  const limit = parseFixIdFrom(tokens, j, catalog);
+  if (!limit) return null;
+  j = limit.next;
+  if (["airport", "fix", "waypoint", "navaid"].includes(tokens[j] ?? "")) j += 1;
+  let access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"] | undefined;
+  if (tokens[j] === "as" && tokens[j + 1] === "filed") {
+    access = { type: "AS_FILED" };
+    j += 2;
+  } else if (tokens[j] === "via") {
+    j += 1;
+    if (tokens[j] === "direct") {
+      access = { type: "DIRECT" };
+      j += 1;
+    } else if (tokens[j] === "radar" && tokens[j + 1] === "vectors") {
+      access = { type: "RADAR_VECTORS" };
+      j += 2;
+    } else {
+      const first = parseFixIdFrom(tokens, j, catalog);
+      if (!first) return null;
+      j = first.next;
+      if (tokens[j] === "then" && tokens[j + 1] === "direct") {
+        access = { type: "FIX_THEN_DIRECT", fixId: first.fixId };
+        j += 2;
+      } else {
+        const procedureId = first.fixId;
+        const transition = tokens[j];
+        if (
+          transition &&
+          !["alt", "cvia", "freq", "sq", "maintain", "squawk"].includes(transition)
+        ) {
+          j += 1;
+          access = { type: "SID", procedureId, transitionId: transition.toUpperCase() };
+        } else {
+          access = { type: "SID", procedureId };
+        }
+      }
+    }
+  } else {
+    return null;
+  }
+  const optional: Pick<
+    Extract<Instruction, { type: "IFR_CLEARANCE" }>,
+    "altitudeFt" | "climbVia" | "frequency" | "squawk"
+  > = {};
+  const seen = new Set<string>();
+  while (j < tokens.length) {
+    const field = tokens[j];
+    if (!field || seen.has(field)) return null;
+    seen.add(field);
+    if (field === "cvia") {
+      optional.climbVia = true;
+      j += 1;
+    } else if (field === "alt" || field === "maintain") {
+      j += 1;
+      const alt = parseAltitudeFt(tokens, j);
+      if (!alt) return null;
+      optional.altitudeFt = alt.value < 1000 ? alt.value * 100 : alt.value;
+      j = alt.next;
+    } else if (field === "squawk") {
+      const digits: number[] = [];
+      for (let n = 0; n < 4; n += 1) {
+        const digit = squawkDigit(tokens[j + n + 1]);
+        if (digit === null) return null;
+        digits.push(digit);
+      }
+      optional.squawk = digits.join("");
+      j += 5;
+    } else {
+      return null;
+    }
+  }
+  return {
+    instruction: { type: "IFR_CLEARANCE", limitId: limit.fixId, access, ...optional },
+    next: j,
+  };
+}
+
 function matchPresentHeading(
   tokens: readonly string[],
   i: number,
@@ -1156,6 +1242,7 @@ export function matchSpokenPatterns(
       matchGoAround(tokens, i) ??
       matchVia(tokens, i, procedures) ??
       matchJoinProcedure(tokens, i, procedures) ??
+      matchIfrClearance(tokens, i, catalog) ??
       matchDirect(tokens, i, catalog) ??
       matchPresentHeading(tokens, i) ??
       matchMaintainVfr(tokens, i) ??

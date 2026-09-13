@@ -40,7 +40,9 @@ export type RejectReason =
   | "NOT_ON_COURSE"
   | "UNKNOWN_APPROACH"
   | "NOT_ON_APPROACH"
-  | "SQUAWK";
+  | "SQUAWK"
+  | "CLEARANCE"
+  | "UNABLE_ROUTE";
 
 const REJECT_FIXED: Record<string, string> = {
   UNKNOWN_CALLSIGN: "Unable, unknown callsign",
@@ -63,6 +65,8 @@ const REJECT_AFTER_CALLSIGN: Record<string, string> = {
   UNKNOWN_APPROACH: "unable, unknown approach",
   NOT_ON_APPROACH: "unable, not on approach",
   SQUAWK: "unable squawk",
+  CLEARANCE: "unable clearance",
+  UNABLE_ROUTE: "unable route",
 };
 
 function capitalizeFirst(text: string): string {
@@ -149,6 +153,27 @@ function formatInstructionClause(
         : `squawk ${speakDigitString(instruction.code)}`;
     case "MAINTAIN_VFR":
       return "maintain VFR";
+    case "IFR_CLEARANCE": {
+      const access =
+        instruction.access.type === "AS_FILED"
+          ? "as filed"
+          : instruction.access.type === "DIRECT"
+            ? "via direct"
+            : instruction.access.type === "FIX_THEN_DIRECT"
+              ? `via ${instruction.access.fixId} then direct`
+              : instruction.access.type === "RADAR_VECTORS"
+                ? "via radar vectors"
+                : `via ${instruction.access.procedureId}${instruction.access.transitionId ? ` ${instruction.access.transitionId}` : ""}`;
+      const optional = [
+        instruction.altitudeFt === undefined
+          ? null
+          : `maintain ${formatAltitude(instruction.altitudeFt)}`,
+        instruction.climbVia ? "climb via" : null,
+        instruction.frequency ? `frequency ${instruction.frequency}` : null,
+        instruction.squawk ? `squawk ${speakDigitString(instruction.squawk)}` : null,
+      ].filter((value): value is string => value !== null);
+      return [`cleared to ${instruction.limitId} ${access}`, ...optional].join(", ");
+    }
     case "SAY_HEADING":
       return `heading ${formatHeadingDigits(aircraft.headingDeg)}`;
     case "SAY_ALTITUDE":

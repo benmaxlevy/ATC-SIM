@@ -109,6 +109,14 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
           "Marks the aircraft to maintain VFR and reads back maintain VFR; no IFR clearance, route, or plan activation.",
       },
       {
+        id: "ifr-clearance",
+        command: "CLR TO <LIMIT> <ASFILED|VIA ...> [ALT] [CVIA] [FREQ] [SQ]",
+        example: "DAL123 CLR TO KAHN VIA DIRECT",
+        input: "Radio",
+        result:
+          "Issues one atomic IFR clearance; executable routes fly immediately, while radar vectors wait for a later vector. Tactical CLEARED/PROCEED DIRECT never resets the plan.",
+      },
+      {
         id: "approach",
         command: "A <approach>",
         example: "A ILS27",

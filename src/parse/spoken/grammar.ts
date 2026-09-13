@@ -245,6 +245,153 @@ function tryDirect(c: Cursor): Instruction | null {
   return { type: "DIRECT", fixId: fix };
 }
 
+/** Compact trainer IFR clearance; kept ahead of tactical cleared-direct. */
+function tryIfrClearance(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "cleared") || !take(c, "to")) {
+    c.i = start;
+    return null;
+  }
+  const limitId = parseFixId(c);
+  if (!limitId) {
+    c.i = start;
+    return null;
+  }
+  let access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"] | undefined;
+  if (take(c, "as")) {
+    if (!take(c, "filed")) {
+      c.i = start;
+      return null;
+    }
+    access = { type: "AS_FILED" };
+  } else {
+    if (!take(c, "via")) {
+      c.i = start;
+      return null;
+    }
+    if (take(c, "direct")) {
+      access = { type: "DIRECT" };
+    } else if (take(c, "radar")) {
+      if (!take(c, "vectors")) {
+        c.i = start;
+        return null;
+      }
+      access = { type: "RADAR_VECTORS" };
+    } else {
+      const first = parseFixId(c);
+      if (!first) {
+        c.i = start;
+        return null;
+      }
+      if (take(c, "then")) {
+        if (!take(c, "direct")) {
+          c.i = start;
+          return null;
+        }
+        access = { type: "FIX_THEN_DIRECT", fixId: first };
+      } else {
+        const procedureId = groundProcedureToCatalog(first, c.procedures ?? []) ?? first;
+        let transitionId: string | undefined;
+        const next = peek(c);
+        if (next && !["alt", "cvia", "freq", "sq", "maintain", "squawk"].includes(next)) {
+          transitionId = parseProcedureId(c) ?? undefined;
+        }
+        access = { type: "SID", procedureId, ...(transitionId ? { transitionId } : {}) };
+      }
+    }
+  }
+  const optional: Pick<
+    Extract<Instruction, { type: "IFR_CLEARANCE" }>,
+    "altitudeFt" | "climbVia" | "frequency" | "squawk"
+  > = {};
+  const seen = new Set<string>();
+  while (peek(c) !== undefined) {
+    const field = peek(c)!;
+    if (seen.has(field)) {
+      c.i = start;
+      return null;
+    }
+    seen.add(field);
+    if (take(c, "alt")) {
+      const raw = peek(c);
+      const compact = raw && /^\d+$/.test(raw) ? Number(raw) : null;
+      if (compact !== null) {
+        c.i += 1;
+        optional.altitudeFt = compact < 1000 ? compact * 100 : compact;
+      } else {
+        take(c, "maintain");
+        const alt = altitudeAt(c);
+        if (alt === null) {
+          c.i = start;
+          return null;
+        }
+        optional.altitudeFt = alt;
+      }
+    } else if (take(c, "maintain")) {
+      const alt = altitudeAt(c);
+      if (alt === null) {
+        c.i = start;
+        return null;
+      }
+      optional.altitudeFt = alt;
+    } else if (take(c, "cvia")) {
+      optional.climbVia = true;
+    } else if (take(c, "freq") || take(c, "frequency")) {
+      const whole = peek(c);
+      if (whole && /^\d{3}$/.test(whole)) {
+        c.i += 1;
+        let value = whole;
+        if (take(c, "point")) {
+          const fraction = peek(c);
+          if (!fraction || !/^\d{1,3}$/.test(fraction)) {
+            c.i = start;
+            return null;
+          }
+          value += `.${fraction}`;
+          c.i += 1;
+        }
+        optional.frequency = value;
+      } else {
+        const d1 = singleDigit(peek(c));
+        const d2 = singleDigit(peek(c, 1));
+        const d3 = singleDigit(peek(c, 2));
+        if (d1 === null || d2 === null || d3 === null) {
+          c.i = start;
+          return null;
+        }
+        c.i += 3;
+        let value = `${d1}${d2}${d3}`;
+        if (take(c, "point")) {
+          const fraction = singleDigit(peek(c));
+          if (fraction === null) {
+            c.i = start;
+            return null;
+          }
+          value += `.${fraction}`;
+          c.i += 1;
+        }
+        optional.frequency = value;
+      }
+    } else if (take(c, "squawk")) {
+      const digits: number[] = [];
+      for (let j = 0; j < 4; j += 1) {
+        const digit = squawkDigit(peek(c));
+        if (digit === null) {
+          c.i = start;
+          return null;
+        }
+        digits.push(digit);
+        c.i += 1;
+      }
+      optional.squawk = digits.join("");
+    } else {
+      c.i = start;
+      return null;
+    }
+  }
+  return { type: "IFR_CLEARANCE", limitId, access, ...optional };
+}
+
 const PROCEDURE_TRAILING = new Set(["arrival", "star", "sid", "procedure"]);
 
 function tryVia(c: Cursor): Instruction | null {
@@ -702,6 +849,7 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     tryVia(c) ??
     tryJoinProcedure(c) ??
     trySpeed(c) ??
+    tryIfrClearance(c) ??
     tryDirect(c) ??
     trySquawk(c) ??
     tryIdent(c) ??
@@ -791,6 +939,9 @@ export function parseSpokenGrammar(
 
   if (instructions.length === 0) {
     return { ok: false, error: formatParseError(PARSE_ERROR.PARSE_MISS), sourceText };
+  }
+  if (instructions.some((item) => item.type === "IFR_CLEARANCE") && instructions.length !== 1) {
+    return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
   }
 
   return { ok: true, callsignToken, instructions, sourceText };

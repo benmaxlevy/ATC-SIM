@@ -129,6 +129,7 @@ If an aircraft is already selected on the scope, the callsign prefix is automati
 | **Transponder / Ident** | `I` | `DAL123 I` | Squawk ident (flashes target symbol for 5 seconds) |
 | **Beacon assignment** | `SQ <[0-7]{4}>` / `SQ VFR` | `DAL123 SQ 4721` / `DAL123 SQ VFR` | Assigns a discrete octal beacon or VFR code 1200; assigned and reported surveillance codes stay separate until the pilot report. |
 | **Maintain VFR** | `MVFR` | `DAL123 MVFR` | Radio-only VFR instruction. Sets the aircraft's maintain-VFR marker and readback; it is not an IFR clearance, VFR-on-top authorization, route, or flight-plan activation. |
+| **IFR clearance** | `CLR TO <LIMIT> (ASFILED\|VIA DIRECT\|VIA <FIX> THEN DIRECT\|VIA RADAR VECTORS\|VIA <SID> [TRANS]) [ALT <hundreds>] [CVIA] [FREQ <value>] [SQ <code>]` | `DAL123 CLR TO KAHN VIA DIRECT` | One limit plus exactly one access method. Executable route/SID/as-filed methods start immediately; radar vectors remain pending. This compact syntax is an ATC-SIM trainer delta. |
 | **Miscellaneous** | `GA` | `DAL123 GA` | Go around / execute published missed approach |
 | | `SH` | `DAL123 SH` | Say current heading |
 | | `SA` | `DAL123 SA` | Say current altitude |
@@ -226,8 +227,16 @@ arrives. This delayed report is a trainer delta, not NAS timing.
 | **Ident** | *"Delta one twenty-three, squawk ident"* |
 | **Beacon assignment** | *"Delta one twenty-three, squawk four seven two one"* / *"Delta one twenty-three, squawk VFR"* |
 | **Maintain VFR** | *"Delta one twenty-three, maintain VFR"* |
+| **IFR clearance** | *"Delta one twenty-three, cleared to Kahn via direct"* / *"... via Siith then direct"* / *"... as filed"* / *"... via radar vectors"* |
 | **Go Around** | *"Delta one twenty-three, go around, fly published missed approach"* |
 | **Say Heading / Altitude** | *"Delta one twenty-three, say heading"* \| *"Delta one twenty-three, say altitude"* |
+
+IFR-clearance routing is a compact trainer grammar, not NAS-compatible input. It
+requires one clearance limit and one access method. A new executable clearance
+replaces the one canonical route and flies immediately; `VIA RADAR VECTORS`
+leaves the route vector-pending. Plain `CLEARED DIRECT` and `PROCEED DIRECT`
+remain tactical lateral amendments and never reset a flight plan. VFR-to-IFR
+pickup, holds, release/void, and full route amendments are not implemented.
 
 ## Controls & keybindings
 

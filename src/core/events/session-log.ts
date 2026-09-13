@@ -46,6 +46,16 @@ export type SessionEvent =
       sourceText?: string;
     }
   | {
+      type: "clearance.ifr.issued";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      limitId: string;
+      access: "AS_FILED" | "DIRECT" | "FIX_THEN_DIRECT" | "RADAR_VECTORS" | "SID";
+      routeRevision: number;
+      routeText: string;
+    }
+  | {
       type: "voice.latency";
       atSimMs: number;
       atWallMs: number;

@@ -38,6 +38,7 @@ export const INSTRUCTION_TYPES = [
   "INTERCEPT_LOCALIZER",
   "ASSIGN_SQUAWK",
   "MAINTAIN_VFR",
+  "IFR_CLEARANCE",
   "IDENT",
   "SAY_HEADING",
   "SAY_ALTITUDE",
@@ -76,6 +77,21 @@ export type Instruction =
   | { type: "INTERCEPT_LOCALIZER"; approachId: string }
   | { type: "ASSIGN_SQUAWK"; code: string; source: "DISCRETE" | "VFR" }
   | { type: "MAINTAIN_VFR" }
+  | {
+      type: "IFR_CLEARANCE";
+      limitId: string;
+      access:
+        | { type: "AS_FILED" }
+        | { type: "DIRECT" }
+        | { type: "FIX_THEN_DIRECT"; fixId: string }
+        | { type: "RADAR_VECTORS" }
+        | { type: "SID"; procedureId: string; transitionId?: string };
+      altitudeFt?: number;
+      /** Optional climb-via marker for the named SID route. */
+      climbVia?: boolean;
+      frequency?: string;
+      squawk?: string;
+    }
   | { type: "IDENT" }
   | { type: "SAY_HEADING" }
   | { type: "SAY_ALTITUDE" }

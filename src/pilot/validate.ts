@@ -34,7 +34,8 @@ export type ValidateReason =
   | "NOT_ON_COURSE"
   | "UNKNOWN_APPROACH"
   | "NOT_ON_APPROACH"
-  | "SQUAWK";
+  | "SQUAWK"
+  | "CLEARANCE";
 
 export type ValidateResult = { ok: true } | { ok: false; reason: ValidateReason; detail?: string };
 
@@ -115,6 +116,23 @@ function validateOne(
       }
       return { ok: true };
     case "MAINTAIN_VFR":
+      return { ok: true };
+    case "IFR_CLEARANCE":
+      if (instruction.limitId.trim() === "") {
+        return { ok: false, reason: "CLEARANCE" };
+      }
+      if (instruction.access.type === "FIX_THEN_DIRECT" && instruction.access.fixId.trim() === "") {
+        return { ok: false, reason: "CLEARANCE" };
+      }
+      if (instruction.access.type === "SID" && instruction.access.procedureId.trim() === "") {
+        return { ok: false, reason: "CLEARANCE" };
+      }
+      if (
+        instruction.altitudeFt !== undefined &&
+        (!Number.isInteger(instruction.altitudeFt) || instruction.altitudeFt % 100 !== 0)
+      ) {
+        return { ok: false, reason: "CLEARANCE" };
+      }
       return { ok: true };
     case "DIRECT":
       if (instruction.fixId.trim() === "") {

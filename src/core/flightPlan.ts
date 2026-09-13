@@ -214,6 +214,11 @@ export interface FlightPlan {
   source?: string;
   /** Why the plan is suspended; drives STARS mismatch unsuspend behavior. */
   suspensionReason?: FlightPlanSuspensionReason;
+  /** Latest accepted trainer IFR clearance limit and access method. */
+  clearanceLimit?: string;
+  clearanceAccess?: "AS_FILED" | "DIRECT" | "FIX_THEN_DIRECT" | "RADAR_VECTORS" | "SID";
+  clearanceFrequency?: string;
+  clearanceClimbVia?: boolean;
   /** Catalog-resolved filed route metadata; never an active FMS route. */
   filedRoute?: FiledRoute;
   /**

@@ -598,6 +598,14 @@ function ungroundedIdentifierTokens(
     approaches,
   );
   for (const inst of next) {
+    if (inst.type === "IFR_CLEARANCE" && inst.access.type === "SID") {
+      if (
+        procedures.length > 0 &&
+        groundProcedureToCatalog(inst.access.procedureId, procedures) === null
+      ) {
+        ungrounded.push(inst.access.procedureId);
+      }
+    }
     if (
       inst.type === "DESCEND_VIA" ||
       inst.type === "CLIMB_VIA" ||
@@ -701,6 +709,11 @@ function pathCIdentifierListed(
   const procedures = new Set((context?.procedures ?? []).map((item) => item.id));
   const approaches = new Set((context?.approaches ?? []).map((item) => item.id));
   for (const inst of instructions) {
+    if (inst.type === "IFR_CLEARANCE") {
+      if (!fixes.has(inst.limitId)) return false;
+      if (inst.access.type === "FIX_THEN_DIRECT" && !fixes.has(inst.access.fixId)) return false;
+      if (inst.access.type === "SID" && !procedures.has(inst.access.procedureId)) return false;
+    }
     if (inst.type === "DIRECT" || inst.type === "CROSS") {
       if (!fixes.has(inst.fixId)) {
         return false;

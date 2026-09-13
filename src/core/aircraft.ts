@@ -171,6 +171,10 @@ export interface Aircraft {
   pendingReportedSquawk?: { code: string; dueSimMs: number };
   /** Radio-only VFR instruction marker; does not create or mutate a flight plan. */
   maintainVfr?: boolean;
+  /** Latest accepted trainer IFR clearance limit/access projection. */
+  clearanceLimit?: string;
+  clearanceAccess?: "AS_FILED" | "DIRECT" | "FIX_THEN_DIRECT" | "RADAR_VECTORS" | "SID";
+  clearanceFrequency?: string;
   /** True if altitude is pilot-reported (displays *). */
   pilotReportedAltitude?: boolean;
   /** ATPA in-trail distance readout (Fig 38/39 two decimals, e.g. "2.40"). */
@@ -220,6 +224,9 @@ export interface AircraftInit {
   pendingReportedSquawk?: { code: string; dueSimMs: number };
   /** Seed the radio-only MAINTAIN VFR marker for authored/test traffic. */
   maintainVfr?: boolean;
+  clearanceLimit?: string;
+  clearanceAccess?: "AS_FILED" | "DIRECT" | "FIX_THEN_DIRECT" | "RADAR_VECTORS" | "SID";
+  clearanceFrequency?: string;
   pilotReportedAltitude?: boolean;
   atpaDistance?: string;
   flightPlan?: {
@@ -314,6 +321,9 @@ export function createAircraft(init: AircraftInit): Aircraft {
     ...(init.reportedSquawk ? { reportedSquawk: init.reportedSquawk } : {}),
     ...(init.pendingReportedSquawk ? { pendingReportedSquawk: init.pendingReportedSquawk } : {}),
     maintainVfr: init.maintainVfr ?? false,
+    ...(init.clearanceLimit ? { clearanceLimit: init.clearanceLimit.toUpperCase() } : {}),
+    ...(init.clearanceAccess ? { clearanceAccess: init.clearanceAccess } : {}),
+    ...(init.clearanceFrequency ? { clearanceFrequency: init.clearanceFrequency } : {}),
     ...(init.pilotReportedAltitude !== undefined
       ? { pilotReportedAltitude: init.pilotReportedAltitude }
       : {}),

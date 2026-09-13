@@ -179,6 +179,14 @@ export {
 } from "./nav/geometry";
 export type { Command, Instruction, ParseStage, TurnDir } from "./command/types";
 export { INSTRUCTION_TYPES } from "./command/types";
+export type {
+  IfrClearanceAccess,
+  IfrClearanceError,
+  IfrClearanceErrorCode,
+  IfrClearanceResult,
+  IfrClearanceWorld,
+} from "./ifrClearance";
+export { applyIfrClearance } from "./ifrClearance";
 export * from "./command/fixtures";
 export type { SessionEvent } from "./events/session-log";
 export { SessionLog } from "./events/session-log";

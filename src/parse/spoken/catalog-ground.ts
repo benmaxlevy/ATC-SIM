@@ -225,6 +225,20 @@ export function groundInstructionFixes(
   }
   const ungroundedFixes: string[] = [];
   const next = instructions.map((inst) => {
+    if (inst.type === "IFR_CLEARANCE") {
+      const limit = groundDirectOrCrossFix(inst.limitId, catalog, opts);
+      if (limit.ungrounded) ungroundedFixes.push(inst.limitId);
+      let access = inst.access;
+      if (access.type === "FIX_THEN_DIRECT") {
+        const fix = groundDirectOrCrossFix(access.fixId, catalog, opts);
+        if (fix.ungrounded) ungroundedFixes.push(access.fixId);
+        access = fix.fixId === access.fixId ? access : { ...access, fixId: fix.fixId };
+      }
+      const limitId = limit.fixId;
+      return limitId === inst.limitId && access === inst.access
+        ? inst
+        : { ...inst, limitId, access };
+    }
     if (inst.type !== "DIRECT" && inst.type !== "CROSS") {
       return inst;
     }
@@ -325,6 +339,13 @@ export function groundInstructionProcedures(
     return [...instructions];
   }
   return instructions.map((inst) => {
+    if (inst.type === "IFR_CLEARANCE" && inst.access.type === "SID") {
+      const procedureId =
+        groundProcedureToCatalog(inst.access.procedureId, catalog) ?? inst.access.procedureId;
+      return procedureId === inst.access.procedureId
+        ? inst
+        : { ...inst, access: { ...inst.access, procedureId } };
+    }
     if (
       inst.type !== "DESCEND_VIA" &&
       inst.type !== "CLIMB_VIA" &&

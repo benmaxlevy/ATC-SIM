@@ -320,6 +320,10 @@ function applyOne(
       // Radio-only VFR marker for a future pickup path; no plan, route, or intent mutation.
       aircraft.maintainVfr = true;
       return;
+    case "IFR_CLEARANCE":
+      // IFR clearance application is an atomic world transaction, never a
+      // partial intent-only mutation.
+      return;
     case "DIRECT":
       {
         const fixId = instruction.fixId.trim().toUpperCase();

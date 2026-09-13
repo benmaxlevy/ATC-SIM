@@ -69,6 +69,10 @@ export function parseRadioText(sourceText: string): ParseResult {
     index = parsed.nextIndex;
   }
 
+  if (instructions.some((item) => item.type === "IFR_CLEARANCE") && instructions.length !== 1) {
+    return fail(sourceText, PARSE_ERROR.BAD_CLEARANCE, "clearance must be the only instruction");
+  }
+
   return {
     ok: true,
     callsignToken,
@@ -92,7 +96,8 @@ function isTypedInstructionStart(token: string): boolean {
     token === "JOIN" ||
     token === "X" ||
     token === "SQ" ||
-    token === "MVFR"
+    token === "MVFR" ||
+    token === "CLR"
   ) {
     return true;
   }
@@ -119,10 +124,105 @@ type InstructionParse =
   | { ok: true; instruction: Instruction; nextIndex: number }
   | { ok: false; code: ParseErrorCode; detail?: string };
 
+function parseIfrClearance(tokens: string[], index: number): InstructionParse {
+  let i = index + 1;
+  if (tokens[i] !== "TO") {
+    return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing TO" };
+  }
+  i += 1;
+  const limitId = tokens[i];
+  if (!limitId || !isFixIdToken(limitId)) {
+    return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing limit" };
+  }
+  i += 1;
+  let access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"] | undefined;
+  if (tokens[i] === "ASFILED" || (tokens[i] === "AS" && tokens[i + 1] === "FILED")) {
+    access = { type: "AS_FILED" };
+    i += tokens[i] === "ASFILED" ? 1 : 2;
+  } else {
+    if (tokens[i] !== "VIA") {
+      return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing access" };
+    }
+    i += 1;
+    if (tokens[i] === "DIRECT") {
+      access = { type: "DIRECT" };
+      i += 1;
+    } else if (tokens[i] === "RADAR" && tokens[i + 1] === "VECTORS") {
+      access = { type: "RADAR_VECTORS" };
+      i += 2;
+    } else {
+      const first = tokens[i];
+      if (!first || !isFixIdToken(first)) {
+        return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "bad access" };
+      }
+      if (tokens[i + 1] === "THEN" && tokens[i + 2] === "DIRECT") {
+        access = { type: "FIX_THEN_DIRECT", fixId: first };
+        i += 3;
+      } else {
+        const transition = tokens[i + 1];
+        access =
+          transition && isTransitionIdToken(transition)
+            ? { type: "SID", procedureId: first, transitionId: transition }
+            : { type: "SID", procedureId: first };
+        i += transition && isTransitionIdToken(transition) ? 2 : 1;
+      }
+    }
+  }
+  const optional: Pick<
+    Extract<Instruction, { type: "IFR_CLEARANCE" }>,
+    "altitudeFt" | "climbVia" | "frequency" | "squawk"
+  > = {};
+  const seen = new Set<string>();
+  while (i < tokens.length) {
+    const field = tokens[i];
+    if (!field || seen.has(field)) {
+      return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "duplicate or malformed field" };
+    }
+    seen.add(field);
+    if (field === "ALT") {
+      const raw = tokens[i + 1];
+      const value = raw ? parseUnsignedInt(raw) : null;
+      if (value === null || value < 10 || value > 180) {
+        return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "bad ALT" };
+      }
+      optional.altitudeFt = value * 100;
+      i += 2;
+    } else if (field === "CVIA") {
+      optional.climbVia = true;
+      i += 1;
+    } else if (field === "FREQ") {
+      const value = tokens[i + 1];
+      if (!value || !/^\d{3}(?:\.\d{1,3})?$/.test(value)) {
+        return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "bad FREQ" };
+      }
+      optional.frequency = value;
+      i += 2;
+    } else if (field === "SQ") {
+      const value = tokens[i + 1];
+      if (!value || !isSquawkCodeToken(value)) {
+        return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "bad SQ" };
+      }
+      optional.squawk = value;
+      i += 2;
+    } else {
+      return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: field };
+    }
+  }
+  return {
+    ok: true,
+    instruction: { type: "IFR_CLEARANCE", limitId, access, ...optional },
+    nextIndex: i,
+  };
+}
+
 function parseOneInstruction(tokens: string[], index: number): InstructionParse {
   const token = tokens[index];
   if (token === undefined) {
     return { ok: false, code: PARSE_ERROR.EMPTY };
+  }
+
+  if (token === "CLR") {
+    return parseIfrClearance(tokens, index);
   }
 
   const zeroArg = ZERO_ARG_INSTRUCTIONS[token];
