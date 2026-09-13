@@ -39,6 +39,8 @@ R01/R03/R08. Compact `CLR` is an explicit trainer text syntax, not NAS.
   `cleared direct` matching. `CLEARED/PROCEED DIRECT` remains T02-179 lateral.
 - Resolve limits/routes generically; commit limit, route, lifecycle, optional
   altitude/code, access state, event and readback together or not at all.
+  Optional `SQ` updates aircraft transponder state only; it never writes the
+  manually edited `FlightPlan.assignedBeacon` field.
 - Update Help and `docs/USER.md` exact text/spoken forms and trainer delta.
 
 ## Non-goals

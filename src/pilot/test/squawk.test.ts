@@ -49,7 +49,7 @@ describe("T02-176 squawk assignment", () => {
     expect(ac.pendingReportedSquawk).toBeUndefined();
   });
 
-  it("correlates only after a delayed non-1200 report", async () => {
+  it("keeps radio assignment separate until a manual plan edit", async () => {
     const ac = aircraft();
     const created = createFlightPlan({
       id: "fp-dal",
@@ -62,7 +62,7 @@ describe("T02-176 squawk assignment", () => {
     if (!created.ok) throw new Error(created.error.message);
     const world = createWorld({ aircraft: [ac], flightPlans: [created.value] });
     await handleRadioText(world, "DAL123 SQ 4721", new SessionLog());
-    expect(world.flightPlans[0]?.assignedBeacon).toBe("4721");
+    expect(world.flightPlans[0]?.assignedBeacon).toBe("4700");
     expect(datablockSourceFromWorld(world, ac)).toMatchObject({
       callsign: "DAL123",
       assignedSquawk: "4721",
@@ -70,6 +70,12 @@ describe("T02-176 squawk assignment", () => {
     });
     expect(flightPlanForAircraft(world, ac.id)).toBeUndefined();
     stepWorld(world, 1);
+    expect(flightPlanForAircraft(world, ac.id)).toBeUndefined();
+    expect(world.flightPlans[0]?.assignedBeacon).toBe("4700");
+
+    // The plan beacon is a separate, manual flight-plan field. Once edited to
+    // match the reported surveillance code, normal derived correlation works.
+    world.flightPlans[0]!.assignedBeacon = "4721";
     expect(flightPlanForAircraft(world, ac.id)?.id).toBe("fp-dal");
     expect(datablockSourceFromWorld(world, ac)).toMatchObject({
       callsign: "DAL123",

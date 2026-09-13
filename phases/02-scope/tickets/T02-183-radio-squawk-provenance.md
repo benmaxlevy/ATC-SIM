@@ -35,9 +35,9 @@ changes, or surveillance timing changes.
 
 ## Acceptance criteria
 
-- [ ] `ASSIGN_SQUAWK` and clearance optional `SQ` never mutate plan beacon.
-- [ ] Aircraft delayed report behavior remains intact and mismatch is testable.
-- [ ] Manual plan beacon update remains the only plan-side path and can later
+- [x] `ASSIGN_SQUAWK` and clearance optional `SQ` never mutate plan beacon.
+- [x] Aircraft delayed report behavior remains intact and mismatch is testable.
+- [x] Manual plan beacon update remains the only plan-side path and can later
   correlate a matching report.
 
 ## Test plan
@@ -45,4 +45,3 @@ changes, or surveillance timing changes.
 Pilot/core correlation units for direct radio and clearance SQ paths; focused
 manual mismatch regression; `npm run ci`; supplied-manual review §2.12 and
 Appendix A-5.
-

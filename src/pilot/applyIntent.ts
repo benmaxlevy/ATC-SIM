@@ -35,7 +35,7 @@ export interface ApplyIntentOpts {
   activeRunwayId?: string | null;
   squawkReportDelayMs?: number;
   /** Authoritative plan for the aircraft, when one exists. */
-  flightPlan?: Pick<FlightPlan, "assignedBeacon" | "routeRecord">;
+  flightPlan?: Pick<FlightPlan, "routeRecord">;
 }
 
 export function applyIntent(
@@ -308,9 +308,6 @@ function applyOne(
       return;
     case "ASSIGN_SQUAWK":
       aircraft.assignedSquawk = instruction.code;
-      if (opts?.flightPlan) {
-        opts.flightPlan.assignedBeacon = instruction.code;
-      }
       aircraft.pendingReportedSquawk = {
         code: instruction.code,
         dueSimMs: simTimeMs + (opts?.squawkReportDelayMs ?? SQUAWK_REPORT_DELAY_MS),

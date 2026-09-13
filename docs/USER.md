@@ -127,7 +127,7 @@ If an aircraft is already selected on the scope, the callsign prefix is automati
 | | `EXP ILS<RWY>` | `DAL123 EXP ILS27` | Expect ILS Runway 27 approach |
 | **Compound Clearance** | `<H> <A> APP ILS<RWY>` | `DAL123 R240 A20 APP ILS27` | Fly heading 240°, maintain 2,000 ft until established, cleared ILS 27 |
 | **Transponder / Ident** | `I` | `DAL123 I` | Squawk ident (flashes target symbol for 5 seconds) |
-| **Beacon assignment** | `SQ <[0-7]{4}>` / `SQ VFR` | `DAL123 SQ 4721` / `DAL123 SQ VFR` | Assigns a discrete octal beacon or VFR code 1200; assigned and reported surveillance codes stay separate until the pilot report. |
+| **Beacon assignment** | `SQ <[0-7]{4}>` / `SQ VFR` | `DAL123 SQ 4721` / `DAL123 SQ VFR` | Assigns the aircraft a discrete octal beacon or VFR code 1200; it never edits the manually maintained flight-plan beacon, and assigned/reported surveillance codes stay separate until the pilot report. |
 | **Maintain VFR** | `MVFR` | `DAL123 MVFR` | Radio-only VFR instruction. Sets the aircraft's maintain-VFR marker and readback; it is not an IFR clearance, VFR-on-top authorization, route, or flight-plan activation. |
 | **IFR clearance** | `CLR TO <LIMIT> (ASFILED\|VIA DIRECT\|VIA <FIX> THEN DIRECT\|VIA RADAR VECTORS\|VIA <SID> [TRANS]) [ALT <hundreds>] [CVIA] [FREQ <value>] [SQ <code>]` | `DAL123 CLR TO KAHN VIA DIRECT` | One limit plus exactly one access method. Executable route/SID/as-filed methods start immediately; radar vectors remain pending. This compact syntax is an ATC-SIM trainer delta. |
 | **Miscellaneous** | `GA` | `DAL123 GA` | Go around / execute published missed approach |
@@ -205,9 +205,11 @@ When using Push-to-Talk (PTT), speak clearances using standard FAA JO 7110.65 AT
 
 Beacon assignment follows JO 7110.65BB §5-2-1 and §5-2-7 (R01) with AIM digit
 pronunciation guidance (R03). This trainer accepts only four octal digits or
-`VFR`; `VFR` maps to 1200. The assigned beacon is plan/controller data, while
-the reported squawk remains surveillance data until the simulated pilot report
-arrives. This delayed report is a trainer delta, not NAS timing.
+`VFR`; `VFR` maps to 1200. The aircraft's assigned transponder code and the
+flight plan's manually edited beacon are separate fields; neither radio
+assignment nor clearance `SQ` edits the plan. The reported squawk remains
+surveillance data until the simulated pilot report arrives. This delayed report
+is a trainer delta, not NAS timing.
 
 | Clearance Type | Spoken Phrase Example |
 |---|---|

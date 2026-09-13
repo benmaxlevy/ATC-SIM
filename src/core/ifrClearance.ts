@@ -230,7 +230,6 @@ export function applyIfrClearance(
   }
   if (clearance.squawk !== undefined) {
     aircraft.assignedSquawk = clearance.squawk;
-    plan.assignedBeacon = clearance.squawk;
     aircraft.pendingReportedSquawk = {
       code: clearance.squawk,
       dueSimMs: world.simTimeMs + 1000,

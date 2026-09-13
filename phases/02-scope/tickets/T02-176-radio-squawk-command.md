@@ -15,7 +15,7 @@ beacon into independently reported surveillance code.
 
 | Input/form | Expected action/result | State/side effect | Rejection/edge case | Manual evidence |
 | --- | --- | --- | --- | --- |
-| `DAL123 SQ 4721` | assign/read back 4721 | assigned beacon now; reported code only after pilot delay | `1289`, `472`, `47210` -> `unable squawk` | JO 7110.65BB §5-2-1 |
+| `DAL123 SQ 4721` | assign/read back 4721 | aircraft assigned code now; reported code only after pilot delay; plan beacon unchanged | `1289`, `472`, `47210` -> `unable squawk` | JO 7110.65BB §5-2-1 |
 | `DAL123 SQ VFR` | assign 1200 | same delayed path; never IFR-correlate | no plan activation | §5-2-7 |
 | spoken `squawk four seven two one` | same IR | source parity | malformed -> current parse reject | §2-4-17 |
 | `I` / `squawk ident` | existing IDENT | no code write | never an assignment | §5-3-3 |
@@ -41,11 +41,13 @@ Preview filters, and VFR-to-IFR pickup.
 - [x] Rejects are atomic; no synchronous reported-code write.
 - [x] Existing IDENT/direct/F6/F9/scope-B/correlation behavior remains green.
 
-Implementation note: the assigned beacon is written immediately, while the
-existing `updateAircraftSquawk` surveillance hook runs after a 1,000 ms
-simulated pilot-report delay. The supplied STARS manual confirms assigned and
-reported beacon codes remain distinct in a mismatch (§2.12, p. 2-60; Appendix
-A-5); the exact `SQ` syntax and delayed response are trainer deltas.
+Implementation note: the aircraft's assigned transponder code is written
+immediately, while the existing `updateAircraftSquawk` surveillance hook runs
+after a 1,000 ms simulated pilot-report delay. Radio assignment never writes
+`FlightPlan.assignedBeacon`; that plan field remains a manual flight-plan edit.
+The supplied STARS manual confirms assigned and reported beacon codes remain
+distinct in a mismatch (§2.12, p. 2-60; Appendix A-5); the exact `SQ` syntax
+and delayed response are trainer deltas.
 
 ## Test plan
 

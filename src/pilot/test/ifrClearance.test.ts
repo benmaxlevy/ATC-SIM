@@ -139,6 +139,21 @@ test("catalog airport limits are executable generic endpoints", async () => {
   expect(aircraft.intent.lateral).toMatchObject({ type: "PROCEDURE", routeFixIds: ["TEST"] });
 });
 
+test("optional clearance SQ changes aircraft transponder state, not plan beacon", async () => {
+  const { world, aircraft, plan } = setup();
+  plan.assignedBeacon = "4700";
+  const result = await handleRadioText(
+    world,
+    "DAL123 CLR TO KAHN VIA DIRECT SQ 4721",
+    new SessionLog(),
+  );
+
+  expect(result.accepted).toBe(true);
+  expect(aircraft.assignedSquawk).toBe("4721");
+  expect(aircraft.pendingReportedSquawk).toMatchObject({ code: "4721" });
+  expect(plan.assignedBeacon).toBe("4700");
+});
+
 test("text airport clearance grounds the listed airport with nonempty fixes", async () => {
   const { world, plan } = setupAirport(true);
   const result = await handleRadioText(
