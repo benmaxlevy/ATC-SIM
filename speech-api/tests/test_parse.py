@@ -235,6 +235,36 @@ def test_path_c_catalog_guard_accepts_airport_limit_but_not_airport_direct() -> 
     assert guard_catalog_ids("cleared to seattle via direct", context, unknown).error == "PARSE_MISS"
 
 
+def test_path_c_catalog_guard_rejects_airport_fix_then_direct_in_airport_only_and_overlap_contexts() -> None:
+    clearance = ParseOutcome(
+        ok=True,
+        instructions=[
+            {
+                "type": "IFR_CLEARANCE",
+                "limitId": "KATL",
+                "access": {"type": "FIX_THEN_DIRECT", "fixId": "KATL"},
+            }
+        ],
+    )
+    airport_only = {"airports": [{"icao": "KATL", "name": "Atlanta International"}]}
+    overlap = {
+        "fixes": ["KATL"],
+        "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+    }
+    assert (
+        guard_catalog_ids("cleared to KATL via KATL then direct", airport_only, clearance).error
+        == "PARSE_MISS"
+    )
+    assert (
+        guard_catalog_ids("cleared to KATL via KATL then direct", overlap, clearance).error
+        == "PARSE_MISS"
+    )
+
+    direct = ParseOutcome(ok=True, instructions=[{"type": "DIRECT", "fixId": "KATL"}])
+    assert guard_catalog_ids("proceed direct KATL", airport_only, direct).error == "PARSE_MISS"
+    assert guard_catalog_ids("proceed direct KATL", overlap, direct).error == "PARSE_MISS"
+
+
 def test_join_procedure_is_a_closed_instruction() -> None:
     instruction = {"type": "JOIN_PROCEDURE", "procedureId": "DEM1"}
     assert validate_instruction(instruction) == instruction

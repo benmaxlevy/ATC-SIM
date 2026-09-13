@@ -62,6 +62,55 @@ test("Path C schema accepts exact discrete/VFR squawk IR and rejects malformed c
   expect(isLegalInstruction({ type: "ASSIGN_SQUAWK", code: "4721", source: "VFR" })).toBe(false);
 });
 
+test("Path C keeps airport candidates out of DIRECT and FIX_THEN_DIRECT", async () => {
+  const airport = { icao: "KATL", name: "Atlanta International" };
+  const direct = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: null,
+    instructions: [{ type: "DIRECT", fixId: "KATL" }],
+  }));
+  await expect(
+    parseCommand("proceed direct KATL", {
+      source: "voice",
+      airports: [airport],
+      pathC: true,
+      parsePathC: direct,
+    }),
+  ).resolves.toMatchObject({ ok: false });
+
+  const fixThenDirect = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: null,
+    instructions: [
+      {
+        type: "IFR_CLEARANCE",
+        limitId: "KATL",
+        access: { type: "FIX_THEN_DIRECT", fixId: "KATL" },
+      },
+    ],
+  }));
+  await expect(
+    parseCommand("cleared to KATL via KATL then direct", {
+      source: "voice",
+      airports: [airport],
+      pathC: true,
+      parsePathC: fixThenDirect,
+    }),
+  ).resolves.toMatchObject({ ok: false });
+
+  const overlap = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: null,
+    instructions: [{ type: "DIRECT", fixId: "KATL" }],
+  }));
+  await expect(
+    parseCommand("proceed direct KATL", {
+      source: "voice",
+      fixes: ["KATL"],
+      airports: [airport],
+      pathC: true,
+      parsePathC: overlap,
+    }),
+  ).resolves.toMatchObject({ ok: false });
+});
+
 test("local miss + pathC true + legal FLY_HEADING is llm_c", async () => {
   const parsePathC = vi.fn<ParsePathCFn>(async () => HEADING);
   const result = await parseCommand("pizza the runway", {

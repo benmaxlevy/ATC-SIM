@@ -872,6 +872,8 @@ def guard_catalog_ids(
         if kind in {"DIRECT", "CROSS"}:
             if roster and instruction.get("fixId") in roster:
                 return ParseOutcome(ok=False, error="PARSE_MISS")
+            if instruction.get("fixId") in airports:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
             if fixes and instruction.get("fixId") not in fixes:
                 return ParseOutcome(ok=False, error="PARSE_MISS")
         if kind == "IFR_CLEARANCE":
@@ -882,6 +884,8 @@ def guard_catalog_ids(
                 return ParseOutcome(ok=False, error="PARSE_MISS")
             access = instruction.get("access") or {}
             if access.get("type") == "FIX_THEN_DIRECT":
+                if access.get("fixId") in airports:
+                    return ParseOutcome(ok=False, error="PARSE_MISS")
                 if fixes and access.get("fixId") not in fixes:
                     return ParseOutcome(ok=False, error="PARSE_MISS")
             if access.get("type") == "SID" and procedures:

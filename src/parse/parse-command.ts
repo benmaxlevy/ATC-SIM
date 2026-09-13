@@ -832,11 +832,15 @@ function pathCIdentifierListed(
   for (const inst of instructions) {
     if (inst.type === "IFR_CLEARANCE") {
       if (!fixes.has(inst.limitId) && !airports.has(inst.limitId)) return false;
-      if (inst.access.type === "FIX_THEN_DIRECT" && !fixes.has(inst.access.fixId)) return false;
+      if (
+        inst.access.type === "FIX_THEN_DIRECT" &&
+        (airports.has(inst.access.fixId) || !fixes.has(inst.access.fixId))
+      )
+        return false;
       if (inst.access.type === "SID" && !procedures.has(inst.access.procedureId)) return false;
     }
     if (inst.type === "DIRECT" || inst.type === "CROSS") {
-      if (!fixes.has(inst.fixId)) {
+      if (airports.has(inst.fixId) || !fixes.has(inst.fixId)) {
         return false;
       }
     }
