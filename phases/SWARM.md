@@ -1,5 +1,44 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Proposed sixty-fifth swarm — 2026-09-13 (clearance scaffolding)
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement squawk, VFR instruction, one executable cleared route, and core IFR clearance forms. |
+| Include | T02-176 → T02-177 → T02-178 → T02-179 → T02-180. |
+| Merge target | `feature/clearances`. |
+| Worker limit/model | 1 sequential worker; `gpt-5.6-luna` high. |
+| Stop | T02-180, CI and FAA/manual gates; no VFR-to-IFR pickup or final broad acceptance wave. |
+| Push | No push. |
+
+**Product law:** `SQUAWK VFR` is `1200`; assigned beacon and reported
+surveillance squawk never collapse. `MAINTAIN VFR` is not IFR clearance. A new
+IFR clearance has one limit and one route/access method. Executable route,
+direct, SID, and as-filed methods fly immediately; radar vectors wait for later
+vectoring. `CLEARED DIRECT`/`PROCEED DIRECT` are lateral-only and never reset a
+flight plan. One route only: proposed before clearance, cleared/current after.
+
+**Skip:** airborne VFR-to-IFR pickup/airfile, holds/EFC, release/void,
+weather deviations, ODP/DVA/LOA, nonradar, SVFR/VFR-on-top, advanced beacon
+modes, CPDLC, allocation/networking, and final broad E2E acceptance.
+
+**Waves:** A T02-176; B T02-177; C T02-178; D T02-179; E T02-180. Each starts
+only after predecessor squash merge, `npm run ci`, supplied-manual review, and
+FAA JO 7110.65 online review. Ticket paths are `phases/02-scope/tickets/`
+`T02-176-radio-squawk-command.md` through
+`T02-180-ifr-clearance-parser-and-application.md`.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: clearance scaffolding T02-176–180
+Merge target: feature/clearances
+Merged: T02-176, T02-177, T02-178, T02-179, T02-180
+Tests: CI after each merge; final CI; supplied-manual and FAA online review
+Notes: No VFR-to-IFR pickup or final broad acceptance
+```
+
 ## Proposed sixty-fourth swarm — 2026-09-12 (derived correlation and IFR scenario plans)
 
 | Key | Value |
