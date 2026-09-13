@@ -194,7 +194,10 @@ export function applyIfrClearance(
   const routeIds = route.route.segments.flatMap((segment) => segment.fixIds);
   if (
     routeIds.length === 0 ||
-    (world.fixRegistry && routeIds.some((id) => !world.fixRegistry!.has(id)))
+    (world.fixRegistry &&
+      routeIds.some(
+        (id) => !world.fixRegistry!.has(id) && normalize(world.catalog?.airportId ?? "") !== id,
+      ))
   ) {
     return error("UNABLE_ROUTE", "unable route: route fix is unavailable");
   }

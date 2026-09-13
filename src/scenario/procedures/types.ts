@@ -192,6 +192,8 @@ export interface ProcedureCatalog {
   schemaVersion: 1;
   airportId: string;
   name: string;
+  /** Spoken airport names accepted only in an IFR clearance-limit slot. */
+  spokenAliases?: string[];
   magVarDeg: number;
   fieldElevFt: number;
   arp: { latDeg: number; lonDeg: number };
@@ -202,6 +204,21 @@ export interface ProcedureCatalog {
   approaches: ApproachProcedure[];
   sids: SidProcedure[];
   atpaVolumes: AtpaVolume[];
+}
+
+/** Parser/voice projection of a catalog airport; separate from fixes/navaids. */
+export interface CatalogAirport {
+  icao: string;
+  name: string;
+  aliases: string[];
+}
+
+export function catalogAirport(catalog: ProcedureCatalog): CatalogAirport {
+  return {
+    icao: catalog.airportId,
+    name: catalog.name,
+    aliases: catalog.spokenAliases ?? [],
+  };
 }
 
 /** Ids a later `DCT` command may resolve: named fixes and navaids. */

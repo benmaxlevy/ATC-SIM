@@ -21,6 +21,8 @@ export interface PathCContext {
   procedures?: Array<{ id: string; name?: string }>;
   /** Approach ids + published names/runways. Optional. */
   approaches?: Array<{ id: string; name?: string; runway?: string }>;
+  /** Clearance-limit airport namespace; never a generic fix list. */
+  airports?: Array<{ icao: string; name: string; aliases?: readonly string[] }>;
 }
 
 export interface PathCRequest {
@@ -293,7 +295,8 @@ export async function fetchParsePathC(
             req.context.selectedCallsign ||
             (req.context.fixes?.length ?? 0) > 0 ||
             (req.context.procedures?.length ?? 0) > 0 ||
-            (req.context.approaches?.length ?? 0) > 0)
+            (req.context.approaches?.length ?? 0) > 0 ||
+            (req.context.airports?.length ?? 0) > 0)
             ? {
                 context: {
                   callsigns: req.context.callsigns,
@@ -308,6 +311,9 @@ export async function fetchParsePathC(
                     : {}),
                   ...(req.context.approaches && req.context.approaches.length > 0
                     ? { approaches: req.context.approaches }
+                    : {}),
+                  ...(req.context.airports && req.context.airports.length > 0
+                    ? { airports: req.context.airports }
                     : {}),
                 },
               }

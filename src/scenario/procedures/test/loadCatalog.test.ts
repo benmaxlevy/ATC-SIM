@@ -25,6 +25,7 @@ function kdemFiles(): CatalogFileSet {
 test("parseCatalogFiles accepts the committed KDEM set", () => {
   const catalog = parseCatalogFiles(kdemFiles());
   expect(catalog.airportId).toBe("KDEM");
+  expect(catalog.spokenAliases).toEqual(["DEMO FIELD", "DEMO AIRPORT"]);
   expect(catalog.sids[0]?.id).toBe("BAY1");
   expect(catalog.approaches.find((approach) => approach.id === "ILS27")).toMatchObject({
     locFullScaleHalfWidthFtAtThreshold: 350,
@@ -75,6 +76,15 @@ test("dangling STAR fixId throws", () => {
   };
   procedures.stars[0]!.transitions[0]!.legs[0]!.fixId = "NOPE";
   expect(() => parseCatalogFiles(files)).toThrow(/unknown id NOPE/);
+});
+
+test("airport identity requires a usable spoken alias set", () => {
+  const files = kdemFiles();
+  delete (files.catalog as { spokenAliases?: unknown }).spokenAliases;
+  expect(() => parseCatalogFiles(files)).toThrow(/spokenAliases/);
+  const withBlank = kdemFiles();
+  (withBlank.catalog as { spokenAliases: string[] }).spokenAliases = [" "];
+  expect(() => parseCatalogFiles(withBlank)).toThrow(/spokenAliases/);
 });
 
 test("loadCatalog has no facility-id branch", () => {

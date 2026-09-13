@@ -227,7 +227,7 @@ arrives. This delayed report is a trainer delta, not NAS timing.
 | **Ident** | *"Delta one twenty-three, squawk ident"* |
 | **Beacon assignment** | *"Delta one twenty-three, squawk four seven two one"* / *"Delta one twenty-three, squawk VFR"* |
 | **Maintain VFR** | *"Delta one twenty-three, maintain VFR"* |
-| **IFR clearance** | *"Delta one twenty-three, cleared to Kahn via direct"* / *"... via Siith then direct"* / *"... as filed"* / *"... via radar vectors"* |
+| **IFR clearance** | *"Delta one twenty-three, cleared to Kahn via direct"* / *"... cleared to KATL via direct"* / *"... cleared to Hartsfield Jackson Atlanta Airport via direct"* / *"... via Siith then direct"* / *"... as filed"* / *"... via radar vectors"* |
 | **Go Around** | *"Delta one twenty-three, go around, fly published missed approach"* |
 | **Say Heading / Altitude** | *"Delta one twenty-three, say heading"* \| *"Delta one twenty-three, say altitude"* |
 
@@ -238,7 +238,10 @@ leaves the route vector-pending. `AS FILED` is accepted only when its limit is
 the filed route's terminal endpoint or the filed destination's catalog airport;
 the route is never reused for an unrelated limit. Plain `CLEARED DIRECT` and
 `PROCEED DIRECT` remain tactical lateral amendments and never reset a flight
-plan. VFR-to-IFR pickup, holds, release/void, and full route amendments are not
+plan. Catalog airport ICAOs and listed spoken names are valid only in the IFR
+clearance-limit slot; they are not fixes, so `DIRECT KATL` remains a tactical
+direct command and is rejected unless KATL is an actual catalog fix/navaid.
+VFR-to-IFR pickup, holds, release/void, and full route amendments are not
 implemented.
 
 ## Controls & keybindings

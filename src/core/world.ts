@@ -82,6 +82,8 @@ export interface World {
    */
   catalog?: {
     airportId: string;
+    name?: string;
+    spokenAliases?: readonly string[];
     magVarDeg?: number;
     navaids: ReadonlyArray<{ id: string; xNm?: number; yNm?: number; kind?: string }>;
     fixes: ReadonlyArray<{ id: string; xNm?: number; yNm?: number; kind?: string }>;
@@ -163,8 +165,10 @@ export interface ScheduledDeparture {
 }
 
 function catalogToFixSource(catalog: NonNullable<World["catalog"]>): FixRegistrySource | null {
+  const airportId = catalog.airportId.trim().toUpperCase();
   const navaids: Array<{ id: string; xNm: number; yNm: number; kind: string }> = [];
   for (const navaid of catalog.navaids) {
+    if (navaid.id.trim().toUpperCase() === airportId) continue;
     if (typeof navaid.xNm !== "number" || typeof navaid.yNm !== "number") {
       return null;
     }
@@ -177,6 +181,7 @@ function catalogToFixSource(catalog: NonNullable<World["catalog"]>): FixRegistry
   }
   const fixes: Array<{ id: string; xNm: number; yNm: number; kind: string }> = [];
   for (const fix of catalog.fixes) {
+    if (fix.id.trim().toUpperCase() === airportId) continue;
     if (typeof fix.xNm !== "number" || typeof fix.yNm !== "number") {
       return null;
     }
@@ -185,23 +190,6 @@ function catalogToFixSource(catalog: NonNullable<World["catalog"]>): FixRegistry
       xNm: fix.xNm,
       yNm: fix.yNm,
       kind: fix.kind ?? "fix",
-    });
-  }
-  const airportId = catalog.airportId?.trim().toUpperCase();
-  const arp = (catalog as { arp?: unknown }).arp as { xNm?: unknown; yNm?: unknown } | undefined;
-  if (
-    airportId &&
-    !navaids.some((item) => item.id.trim().toUpperCase() === airportId) &&
-    !fixes.some((item) => item.id.trim().toUpperCase() === airportId)
-  ) {
-    fixes.push({
-      id: airportId,
-      // Catalogs normally provide ARP coordinates. A minimal synthetic
-      // catalog gets a deterministic origin endpoint so airport limits stay
-      // executable without a facility-specific branch.
-      xNm: arp && typeof arp.xNm === "number" && Number.isFinite(arp.xNm) ? arp.xNm : 0,
-      yNm: arp && typeof arp.yNm === "number" && Number.isFinite(arp.yNm) ? arp.yNm : 0,
-      kind: "airport",
     });
   }
   return { navaids, fixes };

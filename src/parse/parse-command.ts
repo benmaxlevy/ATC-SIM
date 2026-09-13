@@ -22,15 +22,18 @@ import { rewriteSpokenToTyped } from "./spoken/typed-fuzzy";
 import { matchSpokenPatterns } from "./spoken/pattern-matcher";
 import {
   groundApproachToCatalog,
+  groundAirportToCatalog,
   groundInstructionApproaches,
   groundInstructionFixes,
   groundInstructionProcedures,
   groundProcedureToCatalog,
+  sanitizeCatalogAirports,
   normalizeFixKey,
   sanitizeCatalogApproaches,
   sanitizeCatalogProcedures,
   sanitizeFixIds,
   type CatalogApproach,
+  type CatalogAirport,
   type CatalogProcedure,
 } from "./spoken/catalog-ground";
 import { retrieveFix } from "./spoken/catalog-retrieve";
@@ -62,6 +65,8 @@ export interface ParseCommandOpts {
    * and Path C `approaches=` grounding.
    */
   approaches?: readonly CatalogApproach[];
+  /** Airport identity vocabulary; clearance-limit namespace only. */
+  airports?: readonly CatalogAirport[];
   /** Explicit opt-in. When true, stage 4 may fetch after a local miss. */
   pathC?: boolean;
   /** Injected fetch. Default POSTs to our speech-api `/parse`. */
@@ -113,6 +118,42 @@ function isIfrClearanceCandidate(normalized: string): boolean {
 
 function isSoleIfrClearance(result: Extract<ParseResult, { ok: true }>): boolean {
   return result.instructions.length === 1 && result.instructions[0]?.type === "IFR_CLEARANCE";
+}
+
+function airportKey(raw: string): string {
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+/** Replace only the airport-limit slot; airport ids never enter fix grounding. */
+function rewriteIfrAirportLimit(normalized: string, airports: readonly CatalogAirport[]): string {
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  const start = tokens.findIndex(
+    (token, index) =>
+      (token === "clr" || token === "clear" || token === "cleared") && tokens[index + 1] === "to",
+  );
+  if (start < 0) return normalized;
+  const limitStart = start + 2;
+  const access = new Set(["via", "asfiled", "as"]);
+  const limitEnd = tokens.findIndex((token, index) => index >= limitStart && access.has(token));
+  const end = limitEnd < 0 ? tokens.length : limitEnd;
+  let winner: { icao: string; length: number } | null = null;
+  for (const airport of sanitizeCatalogAirports(airports)) {
+    for (const name of [airport.icao, airport.name, ...(airport.aliases ?? [])]) {
+      const parts = normalizeSpoken(name).split(" ").filter(Boolean);
+      if (parts.length === 0 || limitStart + parts.length > end) continue;
+      const phrase = tokens.slice(limitStart, limitStart + parts.length).join(" ");
+      if (airportKey(phrase) !== airportKey(name)) continue;
+      const hit = { icao: airport.icao, length: parts.length };
+      if (winner === null || hit.length > winner.length) winner = hit;
+      else if (hit.length === winner.length && hit.icao !== winner.icao) return normalized;
+    }
+  }
+  if (winner === null) return normalized;
+  return [
+    ...tokens.slice(0, limitStart),
+    winner.icao,
+    ...tokens.slice(limitStart + winner.length),
+  ].join(" ");
 }
 
 function localIfrClearanceSyntaxIsValid(
@@ -575,18 +616,26 @@ function pathCContext(
   catalog: readonly string[],
   procedures: readonly CatalogProcedure[],
   approaches: readonly CatalogApproach[],
+  airports: readonly CatalogAirport[],
   queryTokens: readonly string[],
 ): PathCContext | undefined {
   const retrieved = mergeRetrievedFixes(queryTokens, catalog);
   const fixes = pathCFixIds(catalog, queryTokens, retrieved);
   const pathProcedures = pathCProcedureList(procedures, queryTokens);
   const pathApproaches = pathCApproachList(approaches, queryTokens);
+  const pathAirports = airports
+    .filter((airport) =>
+      queryTokens.some((token) => groundAirportToCatalog(token, [airport]) !== null),
+    )
+    .slice(0, MAX_PATH_C_FIXES)
+    .map((item) => ({ ...item }));
   if (
     roster.length === 0 &&
     !selected &&
     fixes.length === 0 &&
     pathProcedures.length === 0 &&
-    pathApproaches.length === 0
+    pathApproaches.length === 0 &&
+    pathAirports.length === 0
   ) {
     return undefined;
   }
@@ -596,6 +645,7 @@ function pathCContext(
     ...(fixes.length > 0 ? { fixes } : {}),
     ...(pathProcedures.length > 0 ? { procedures: pathProcedures } : {}),
     ...(pathApproaches.length > 0 ? { approaches: pathApproaches } : {}),
+    ...(pathAirports.length > 0 ? { airports: pathAirports } : {}),
   };
 }
 
@@ -614,11 +664,14 @@ function ungroundedIdentifierTokens(
   catalog: readonly string[],
   procedures: readonly CatalogProcedure[],
   approaches: readonly CatalogApproach[],
+  airports: readonly CatalogAirport[],
 ): string[] {
   const groundedFixes = groundInstructionFixes(instructions, catalog, {
     rankedFor: (token) => retrieveFix(token, catalog),
   });
-  const ungrounded = [...groundedFixes.ungroundedFixes];
+  const ungrounded = groundedFixes.ungroundedFixes.filter(
+    (token) => groundAirportToCatalog(token, airports) === null,
+  );
   const next = groundInstructionApproaches(
     groundInstructionProcedures(groundedFixes.instructions, procedures),
     approaches,
@@ -666,10 +719,14 @@ function okStage(
   catalog: readonly string[],
   procedures: readonly CatalogProcedure[],
   approaches: readonly CatalogApproach[],
+  airports: readonly CatalogAirport[],
 ): Extract<ParseResult, { ok: true }> {
   const groundedFixes = groundInstructionFixes(parsed.instructions, catalog, {
     rankedFor: (token) => retrieveFix(token, catalog),
   });
+  const airportAwareUngrounded = groundedFixes.ungroundedFixes.filter(
+    (token) => groundAirportToCatalog(token, airports) === null,
+  );
   return {
     ok: true,
     callsignToken: parsed.callsignToken ?? selected,
@@ -680,9 +737,7 @@ function okStage(
     sourceText,
     parseStage,
     source,
-    ...(groundedFixes.ungroundedFixes.length > 0
-      ? { ungroundedFixes: groundedFixes.ungroundedFixes }
-      : {}),
+    ...(airportAwareUngrounded.length > 0 ? { ungroundedFixes: airportAwareUngrounded } : {}),
   };
 }
 
@@ -695,6 +750,7 @@ function tryGroundedLocal(
   catalog: readonly string[],
   procedures: readonly CatalogProcedure[],
   approaches: readonly CatalogApproach[],
+  airports: readonly CatalogAirport[],
 ):
   | { kind: "hit"; result: Extract<ParseResult, { ok: true }> }
   | { kind: "ungrounded"; tokens: string[] }
@@ -707,6 +763,7 @@ function tryGroundedLocal(
     catalog,
     procedures,
     approaches,
+    airports,
   );
   const result = okStage(
     parsed,
@@ -717,11 +774,16 @@ function tryGroundedLocal(
     catalog,
     procedures,
     approaches,
+    airports,
   );
   if (ungrounded.length === 0) {
     return { kind: "hit", result };
   }
-  if (parseStage === "typed") {
+  const unknownAirportLikeLimit =
+    airports.length > 0 &&
+    parsed.instructions.some((instruction) => instruction.type === "IFR_CLEARANCE") &&
+    ungrounded.some((token) => /^[A-Z]{4}$/.test(token));
+  if (parseStage === "typed" && !unknownAirportLikeLimit) {
     return { kind: "hit", result };
   }
   return { kind: "ungrounded", tokens: ungrounded };
@@ -734,9 +796,10 @@ function pathCIdentifierListed(
   const fixes = new Set(context?.fixes ?? []);
   const procedures = new Set((context?.procedures ?? []).map((item) => item.id));
   const approaches = new Set((context?.approaches ?? []).map((item) => item.id));
+  const airports = new Set((context?.airports ?? []).map((item) => item.icao));
   for (const inst of instructions) {
     if (inst.type === "IFR_CLEARANCE") {
-      if (!fixes.has(inst.limitId)) return false;
+      if (!fixes.has(inst.limitId) && !airports.has(inst.limitId)) return false;
       if (inst.access.type === "FIX_THEN_DIRECT" && !fixes.has(inst.access.fixId)) return false;
       if (inst.access.type === "SID" && !procedures.has(inst.access.procedureId)) return false;
     }
@@ -781,7 +844,8 @@ export async function parseCommand(
   const catalog = sanitizeFixIds(opts.fixes);
   const procedures = sanitizeCatalogProcedures(opts.procedures);
   const approaches = sanitizeCatalogApproaches(opts.approaches);
-  const normalized = normalizeSpoken(sourceText);
+  const airports = sanitizeCatalogAirports(opts.airports);
+  const normalized = rewriteIfrAirportLimit(normalizeSpoken(sourceText), airports);
   const ifrCandidate = isIfrClearanceCandidate(normalized);
   const extraTokens: string[] = [];
 
@@ -794,6 +858,7 @@ export async function parseCommand(
     catalog,
     procedures,
     approaches,
+    airports,
   );
   if (typed?.kind === "hit") {
     if (ifrCandidate && !isSoleIfrClearance(typed.result)) {
@@ -815,6 +880,7 @@ export async function parseCommand(
     catalog,
     procedures,
     approaches,
+    airports,
   );
   if (pathA?.kind === "hit") {
     if (ifrCandidate && !isSoleIfrClearance(pathA.result)) {
@@ -837,6 +903,7 @@ export async function parseCommand(
       catalog,
       procedures,
       approaches,
+      airports,
     );
     if (pathB?.kind === "hit") {
       if (ifrCandidate && !isSoleIfrClearance(pathB.result)) {
@@ -866,6 +933,7 @@ export async function parseCommand(
     catalog,
     procedures,
     approaches,
+    airports,
   );
   if (island?.kind === "hit") {
     if (ifrCandidate && !isSoleIfrClearance(island.result)) {
@@ -881,12 +949,16 @@ export async function parseCommand(
   const retrievedFixes = mergeRetrievedFixes(queryTokens, catalog);
   const matchedProcedures = matchProceduresForTokens(queryTokens, procedures);
   const matchedApproaches = matchApproachesForTokens(queryTokens, approaches);
+  const matchedAirports = airports.filter((airport) =>
+    queryTokens.some((token) => groundAirportToCatalog(token, [airport]) !== null),
+  );
   const identifierQuery = queryTokens.length > 0;
   const emptyIdentifierRetrieve =
     identifierQuery &&
     retrievedFixes.length === 0 &&
     matchedProcedures.length === 0 &&
-    matchedApproaches.length === 0;
+    matchedApproaches.length === 0 &&
+    matchedAirports.length === 0;
 
   if (
     opts.pathC &&
@@ -894,7 +966,15 @@ export async function parseCommand(
     (!ifrCandidate || localIfrClearanceSyntaxIsValid(normalized, selected, catalog, procedures))
   ) {
     const run = opts.parsePathC ?? fetchParsePathC;
-    const context = pathCContext(roster, selected, catalog, procedures, approaches, queryTokens);
+    const context = pathCContext(
+      roster,
+      selected,
+      catalog,
+      procedures,
+      approaches,
+      airports,
+      queryTokens,
+    );
     try {
       const hit = await run({
         text: sourceText,
@@ -915,6 +995,7 @@ export async function parseCommand(
         const pathFixes = context?.fixes ?? [];
         const pathProcedures = context?.procedures ?? [];
         const pathApproaches = context?.approaches ?? [];
+        const pathAirports = context?.airports ?? [];
         const salvaged = okStage(
           {
             ok: true,
@@ -929,6 +1010,7 @@ export async function parseCommand(
           pathFixes,
           pathProcedures,
           pathApproaches,
+          pathAirports,
         );
         const ungrounded = salvaged.ungroundedFixes ?? [];
         if (

@@ -4,6 +4,13 @@ import { parseCommand, parseRadioText } from "@parse";
 import type { ParsePathCFn } from "@parse";
 
 const fixes = ["KAHN", "SIITH", "VOR1"];
+const airports = [
+  {
+    icao: "KATL",
+    name: "Hartsfield/Jackson Atlanta International",
+    aliases: ["Hartsfield Jackson Atlanta Airport", "Atlanta Airport"],
+  },
+];
 
 test("typed IFR clearance compiles one limit and one direct access method", () => {
   expect(parseRadioText("DAL123 CLR TO KAHN VIA DIRECT")).toMatchObject({
@@ -54,6 +61,51 @@ test("spoken IFR forms compile like typed forms before tactical direct", async (
     pathC: false,
   });
   expect(tactical).toMatchObject({ ok: true, instructions: [{ type: "DIRECT", fixId: "KAHN" }] });
+});
+
+test("airport ICAO and listed spoken alias ground only the IFR clearance limit", async () => {
+  const byName = await parseCommand(
+    "DAL123 cleared to Hartsfield Jackson Atlanta Airport via direct",
+    { source: "voice", fixes, airports, pathC: false },
+  );
+  expect(byName).toMatchObject({
+    ok: true,
+    instructions: [{ type: "IFR_CLEARANCE", limitId: "KATL", access: { type: "DIRECT" } }],
+  });
+
+  const direct = await parseCommand("DAL123 direct KATL", {
+    source: "voice",
+    fixes,
+    airports,
+    pathC: false,
+  });
+  expect(direct).toMatchObject({ ok: true, instructions: [{ type: "DIRECT", fixId: "KATL" }] });
+});
+
+test("unknown and ambiguous airport names miss without producing a clearance", async () => {
+  const unknownIcao = await parseCommand("DAL123 CLR TO KXXX VIA DIRECT", {
+    source: "text",
+    fixes,
+    airports,
+    pathC: false,
+  });
+  expect(unknownIcao.ok).toBe(false);
+
+  const unknown = await parseCommand("DAL123 cleared to Unknown Regional Airport via direct", {
+    source: "voice",
+    fixes,
+    airports,
+    pathC: false,
+  });
+  expect(unknown.ok).toBe(false);
+
+  const ambiguous = await parseCommand("DAL123 cleared to Atlanta Airport via direct", {
+    source: "voice",
+    fixes,
+    airports: [...airports, { icao: "KXXX", name: "Example Field", aliases: ["Atlanta Airport"] }],
+    pathC: false,
+  });
+  expect(ambiguous.ok).toBe(false);
 });
 
 test("spoken optional altitude, frequency, and squawk stay in clearance order", async () => {

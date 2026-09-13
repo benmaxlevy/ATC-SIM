@@ -153,6 +153,16 @@ export function createApp(deps: AppDeps): AppHandles {
       getSttFixIds: () => highValueFixIds(world.catalog),
       getCatalogProcedures: () => proceduresFromCatalog(world.catalog),
       getCatalogApproaches: () => approachesFromCatalog(world.catalog),
+      getCatalogAirports: () =>
+        world.catalog?.name
+          ? [
+              {
+                icao: world.catalog.airportId,
+                name: world.catalog.name,
+                aliases: world.catalog.spokenAliases ?? [],
+              },
+            ]
+          : [],
       getIssuedAtSimMs: () => world.simTimeMs,
       getVoiceId: deps.getVoiceId ?? ((callsign) => voiceIdForCallsign(callsign, prefs.voiceId)),
       setTransmitLocked: (locked) => {

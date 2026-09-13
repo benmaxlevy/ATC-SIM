@@ -50,6 +50,58 @@ export interface CatalogProcedure {
   transitions?: readonly CatalogStarTransitionVocab[];
 }
 
+/** Separate clearance-limit namespace; never merge these ids into fixes. */
+export interface CatalogAirport {
+  icao: string;
+  name: string;
+  aliases?: readonly string[];
+}
+
+export function sanitizeCatalogAirports(
+  raw: readonly CatalogAirport[] | undefined | null,
+): CatalogAirport[] {
+  const out: CatalogAirport[] = [];
+  const seen = new Set<string>();
+  for (const item of raw ?? []) {
+    const icao = item.icao.trim().toUpperCase();
+    const name = item.name.trim();
+    if (!/^[A-Z]{4}$/.test(icao) || name.length < 2 || seen.has(icao)) {
+      continue;
+    }
+    const aliases = [
+      ...new Set(
+        (item.aliases ?? []).map((alias) => alias.trim()).filter((alias) => alias.length >= 2),
+      ),
+    ];
+    seen.add(icao);
+    out.push({ icao, name, aliases });
+  }
+  return out;
+}
+
+function airportKey(raw: string): string {
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+/** Exact canonical/alias match only; ambiguity and unknown names return null. */
+export function groundAirportToCatalog(
+  token: string | null | undefined,
+  airports: readonly CatalogAirport[],
+): string | null {
+  const key = airportKey(token ?? "");
+  if (key.length < 2) return null;
+  const hits = sanitizeCatalogAirports(airports).filter((airport) =>
+    [airport.icao, airport.name, ...(airport.aliases ?? [])].some(
+      (value) => airportKey(value) === key,
+    ),
+  );
+  return hits.length === 1 ? hits[0]!.icao : null;
+}
+
+export function catalogAirportAliases(airport: CatalogAirport): string[] {
+  return [airport.icao, airport.name, ...(airport.aliases ?? [])];
+}
+
 export function levenshtein(a: string, b: string): number {
   if (a === b) {
     return 0;

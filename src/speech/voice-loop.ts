@@ -66,6 +66,7 @@ export type ParseCommandFn = (
     fixes?: readonly string[];
     procedures?: ReadonlyArray<{ id: string; name?: string }>;
     approaches?: ReadonlyArray<{ id: string; name?: string; runway?: string }>;
+    airports?: ReadonlyArray<{ icao: string; name: string; aliases?: readonly string[] }>;
     pathC?: boolean;
   },
 ) => Promise<VoiceParseResult>;
@@ -103,6 +104,12 @@ export interface VoiceLoopOptions {
   getCatalogProcedures?: () => ReadonlyArray<{ id: string; name?: string }>;
   /** Approach catalog for Path C approach grounding. Default none. */
   getCatalogApproaches?: () => ReadonlyArray<{ id: string; name?: string; runway?: string }>;
+  /** Airport identity catalog for clearance-limit grounding only. */
+  getCatalogAirports?: () => ReadonlyArray<{
+    icao: string;
+    name: string;
+    aliases?: readonly string[];
+  }>;
   getIssuedAtSimMs?: () => number;
   now?: () => number;
   /** App-provided eligibility for Path C after a local parse miss. */
@@ -209,6 +216,11 @@ class VoiceLoopImpl implements VoiceLoop {
     name?: string;
     runway?: string;
   }>;
+  private readonly getCatalogAirports: () => ReadonlyArray<{
+    icao: string;
+    name: string;
+    aliases?: readonly string[];
+  }>;
   private readonly getIssuedAtSimMs: () => number;
   private readonly now: () => number;
   private pathC: boolean;
@@ -231,6 +243,7 @@ class VoiceLoopImpl implements VoiceLoop {
     this.getSttFixIds = options.getSttFixIds ?? (() => []);
     this.getCatalogProcedures = options.getCatalogProcedures ?? (() => []);
     this.getCatalogApproaches = options.getCatalogApproaches ?? (() => []);
+    this.getCatalogAirports = options.getCatalogAirports ?? (() => []);
     this.getIssuedAtSimMs = options.getIssuedAtSimMs ?? (() => 0);
     this.now = options.now ?? defaultNow;
     this.pathC = options.pathC ?? false;
@@ -399,6 +412,7 @@ class VoiceLoopImpl implements VoiceLoop {
       fixes: this.getCatalogFixIds(),
       procedures: this.getCatalogProcedures(),
       approaches: this.getCatalogApproaches(),
+      airports: this.getCatalogAirports(),
       pathC: this.pathC,
     });
     if (this.disposed) {

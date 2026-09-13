@@ -749,7 +749,10 @@ export function parseCatalogFiles(files: CatalogFileSet): ProcedureCatalog {
   if (schemaVersion !== 1) {
     throw new Error("Catalog schemaVersion must be 1");
   }
-  const airportId = assertString(files.catalog.airportId, "airportId");
+  const airportId = assertString(files.catalog.airportId, "airportId").trim().toUpperCase();
+  if (!/^[A-Z]{4}$/.test(airportId)) {
+    throw new Error(`Catalog airportId must be a four-letter ICAO code (got ${airportId})`);
+  }
   const fileMap = files.catalog.files;
   if (!isRecord(fileMap)) {
     throw new Error("Catalog files must be an object");
@@ -819,10 +822,25 @@ export function parseCatalogFiles(files: CatalogFileSet): ProcedureCatalog {
   }
 
   const originNote = optionalString(files.catalog.originNote, "originNote");
+  const name = assertString(files.catalog.name, "name").trim();
+  if (name.length < 2) {
+    throw new Error("Catalog name must be at least 2 characters");
+  }
+  const spokenAliases = assertArray(files.catalog.spokenAliases, "spokenAliases").map((item, i) => {
+    const alias = assertString(item, `spokenAliases[${i}]`).trim();
+    if (alias.length < 2) {
+      throw new Error(`Catalog spokenAliases[${i}] must be at least 2 characters`);
+    }
+    return alias;
+  });
+  if (spokenAliases.length === 0) {
+    throw new Error("Catalog spokenAliases must contain at least one alias");
+  }
   const catalog: ProcedureCatalog = {
     schemaVersion: 1,
     airportId,
-    name: assertString(files.catalog.name, "name"),
+    name,
+    spokenAliases,
     magVarDeg: assertNumber(files.catalog.magVarDeg, "magVarDeg"),
     fieldElevFt: assertNumber(files.catalog.fieldElevFt, "fieldElevFt"),
     arp: assertLatLon(files.catalog.arp, "arp"),
@@ -835,6 +853,9 @@ export function parseCatalogFiles(files: CatalogFileSet): ProcedureCatalog {
     atpaVolumes,
   };
   const ids = collectResolveIds(navaids, fixes);
+  if (ids.has(airportId)) {
+    throw new Error(`Catalog airportId ${airportId} must not also be a fix or navaid`);
+  }
   validateRefs(catalog, ids);
   return catalog;
 }

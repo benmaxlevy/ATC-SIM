@@ -161,6 +161,7 @@ function convertRecords(records: CifpLine[]): ProcedureCatalog {
     schemaVersion: 1,
     airportId: airport.airportId,
     name: airport.name,
+    spokenAliases: [airport.name],
     magVarDeg: airport.magVarDeg,
     fieldElevFt: airport.fieldElevFt,
     arp: airport.arp,
