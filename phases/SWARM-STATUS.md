@@ -1,5 +1,48 @@
 # Swarm status
 
+## SIXTY-SIXTH SWARM COMPLETE — voice airport, command parity, and clearance separation (T02-181–T02-184)
+
+Completed sequentially on `feature/clearances` with Luna-high workers/reviews
+and no push. The delivered surface grounds every shipped scenario airport as a
+separate IFR clearance-limit namespace; keeps airport ICAOs out of tactical
+DIRECT/CROSS and FixRegistry; closes self-hosted Path-C parity for squawk,
+maintain-VFR, and IFR clearance IR; repairs `squad <octal>` safely; preserves
+radio/clearance squawk provenance; and executes clearances from an independent
+aircraft-owned route snapshot without editing the flight plan.
+
+Captain commits: `c2096e9`, `85dcea6`, `05905a0`, `ac4a2a9`, `c577bf1`,
+`d0ca50a`, `4031a15`. Planning commits: `e47614f`, `b6c1cc8`.
+
+Final `npm run ci`: **205 test files passed, 1,972 tests passed, 4 skipped**.
+Focused clearance/route tests: **18 passed**; focused Path-C correction tests:
+**10 passed**. Python syntax compilation passed. The speech mock pytest gate
+was not available in the environment (`pytest` absent); the user explicitly
+deferred that gate.
+
+Independent reviews passed:
+
+- T02-181 airport grounding: FAA JO 7110.65 §§4-2-1/4-2-5 and supplied STARS
+  manual airport/fix namespace checks.
+- T02-182 Path-C correction: closed-schema parity, airport-only/overlap
+  rejection, `squad` safety, and self-hosted policy.
+- T02-183 squawk provenance: supplied STARS §§2.12/Appendix A-5 and FAA
+  §§5-2-1/5-2-7.
+- T02-184 clearance separation: FAA §§4-2-5, 4-3-2/3, 5-2-1, 5-6-2 and
+  supplied STARS §§5.5.5/5.6.17.
+
+Scope boundary: VFR-to-IFR pickup/airfile, no-plan airborne clearance creation,
+holds/EFC, release/void, weather/ODP/DVA/LOA, nonradar, SVFR/VFR-on-top,
+advanced beacon modes, CPDLC, broad route amendments, and mismatch-indicator
+UI remain deferred.
+
+## SIXTY-SIXTH SWARM EXIT — PHASE EXIT GREEN
+
+Phase: voice airport, command parity, and clearance separation T02-181–T02-184
+Merge target: `feature/clearances`
+Merged: T02-181, T02-182, T02-183, T02-184
+Tests: final CI green; focused suites green; independent FAA/STARS reviews PASS
+Notes: no push; airport remains clearance-limit-only; plan beacon remains manual; clearance issuance does not edit flight plans; speech pytest deferred by user because pytest was unavailable
+
 ## SIXTY-FIFTH SWARM COMPLETE — clearance scaffolding (T02-176–T02-180)
 
 Completed sequentially on `feature/clearances` with isolated Luna-high workers,
