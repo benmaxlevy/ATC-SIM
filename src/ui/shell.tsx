@@ -156,6 +156,11 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           (item) => item.status !== "deleted" && item.acid === targetAcid,
         );
       }
+      if (!targetAcid) {
+        scopeView.preview.rejection = "NO FLIGHT";
+        refreshScopeUi();
+        return;
+      }
     } else if (request.index !== undefined) {
       const entry = getVisibleFlightPlanEntries(app.world, scopeView).find(
         (item) => item.index === request.index,

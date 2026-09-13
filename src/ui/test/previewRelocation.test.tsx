@@ -2,9 +2,9 @@ import { createElement } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
-import { createWorld } from "@core";
+import { createAircraft, createWorld } from "@core";
 import { loadPlayableScenario } from "@scenario";
-import { createScopeView, handleScopeKeyDown } from "@scope";
+import { createScopeView, handleScopeKeyDown, nmToScreen } from "@scope";
 import { NullSpeechPort } from "@speech";
 import { createApp } from "../../app/create-app";
 import type { ScopeCanvasProps } from "../canvas/ScopeCanvas";
@@ -86,4 +86,45 @@ test("Shell click callback preserves *P3 target slew and Enter tower toggle", ()
   expect(scopeView.preview.buffer).toBe("*P3");
   handleScopeKeyDown(keyEvent("Enter"), scopeView, "scope", world, 600);
   expect(scopeView.systemLists.TOWER_3.visible).toBe(true);
+});
+
+test("Shell rejects a slewed target with a blank ACID as NO FLIGHT", () => {
+  const scenario = loadPlayableScenario("kdem");
+  const target = createAircraft({
+    id: "ac-blank-acid",
+    callsign: "   ",
+    xNm: scenario.arpNm.xNm,
+    yNm: scenario.arpNm.yNm,
+    headingDeg: 90,
+    altitudeFt: 7000,
+    speedKt: 210,
+  });
+  const world = createWorld({ aircraft: [target] });
+  const app = createApp({ speech: new NullSpeechPort(), world });
+  const scopeView = createScopeView(scenario.arpNm.xNm, scenario.arpNm.yNm);
+  const rejectionWrites: Array<string | null> = [];
+  let rejection = scopeView.preview.rejection;
+  Object.defineProperty(scopeView.preview, "rejection", {
+    configurable: true,
+    get: () => rejection,
+    set: (value: string | null) => {
+      rejectionWrites.push(value);
+      rejection = value;
+    },
+  });
+
+  renderToStaticMarkup(createElement(Shell, { app, scenario, scopeView }));
+  handleScopeKeyDown(keyEvent("*"), scopeView, "scope", world, 0);
+  handleScopeKeyDown(keyEvent("F"), scopeView, "scope", world, 100);
+  handleScopeKeyDown(keyEvent("P"), scopeView, "scope", world, 200);
+  expect(scopeView.preview.buffer).toBe("*FP");
+  const targetPoint = nmToScreen(target.xNm, target.yNm, scopeView.camera, {
+    widthPx: 800,
+    heightPx: 800,
+  });
+  canvasProps.onCanvasClick!(
+    clickEvent(targetPoint.x, targetPoint.y) as unknown as ReactMouseEvent<HTMLCanvasElement>,
+  );
+
+  expect(rejectionWrites).toContain("NO FLIGHT");
 });
