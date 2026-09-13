@@ -84,18 +84,18 @@ export function applyLateralFms(
   if (lateral.type === "MISSED") {
     return ac.intent.assignedHeadingDeg;
   }
+  if (lateral.type === "VECTOR_PENDING") {
+    // Radar-vector access is an explicit wait state. Hold the present heading
+    // captured on entry; never fall back to a stale assigned heading or resume
+    // the stored route until a later controller heading is applied.
+    return lateral.holdHeadingDeg;
+  }
   const registry = ctx.registry;
   if (!registry) {
     return undefined;
   }
   if (lateral.type === "DIRECT") {
     return guideDirect(ac, dtS, lateral, ctx, registry);
-  }
-  if (lateral.type === "VECTOR_PENDING") {
-    // Radar-vector access is an explicit wait state. Hold the present heading
-    // captured on entry; never fall back to a stale assigned heading or resume
-    // the stored route until a later controller heading is applied.
-    return lateral.holdHeadingDeg;
   }
   if (lateral.type === "PROCEDURE") {
     return guideProcedure(ac, dtS, lateral, ctx, registry);

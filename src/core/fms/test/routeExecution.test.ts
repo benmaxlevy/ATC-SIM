@@ -122,3 +122,22 @@ test("radar-vector route access is pending until a later heading", () => {
   applyIntent(aircraft, [{ type: "FLY_HEADING", headingDeg: 180, turn: "SHORTEST" }], 0);
   expect(aircraft.intent.lateral).toEqual({ type: "HEADING", headingDeg: 180 });
 });
+
+test("radar-vector pending holds present heading without a fix registry", () => {
+  const { world, aircraft, plan } = routeWorld();
+  world.fixRegistry = null;
+  aircraft.intent.assignedHeadingDeg = 270;
+  expect(startFlightPlanRoute(world, plan.id, "RADAR_VECTORS").ok).toBe(true);
+  expect(aircraft.intent.lateral).toMatchObject({
+    type: "VECTOR_PENDING",
+    holdHeadingDeg: 90,
+  });
+
+  const xBefore = aircraft.xNm;
+  const yBefore = aircraft.yNm;
+  stepWorld(world, 5);
+  expect(aircraft.headingDeg).toBe(90);
+  expect(aircraft.xNm).toBeGreaterThan(xBefore);
+  expect(aircraft.yNm).toBeCloseTo(yBefore, 10);
+  expect(aircraft.intent.lateral).toMatchObject({ type: "VECTOR_PENDING" });
+});
