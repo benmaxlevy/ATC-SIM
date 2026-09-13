@@ -1,5 +1,49 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Sixty-sixth swarm started — 2026-09-13 (voice airport and command parity)
+
+Captain: `/root`. Merge lock: `feature/clearances`. Worker model/limit:
+`gpt-5.6-luna` high, one sequential worker. T02-181 is authorized first;
+later waves require merge, `npm run ci`, speech-api mock pytest when changed,
+and independent manual/FAA audit. No push is authorized.
+
+## Proposed sixty-sixth swarm — 2026-09-13 (voice airport and command parity)
+
+| Key | Value |
+| --- | --- |
+| Goal | Ground every scenario airport for voice clearance limits; close Path-C command/prompt parity; preserve squawk provenance. |
+| Include | T02-181 → T02-182 → T02-183. |
+| Merge target | `feature/clearances`. |
+| Worker limit/model | 1 sequential worker; `gpt-5.6-luna` high. |
+| Stop | T02-183 plus CI, speech-api mock gate, and manual/FAA review. |
+| Push | No push. |
+
+**Product law:** airports are a separate clearance-limit namespace, never
+generic direct fixes. Path C remains self-hosted and closed-schema. `squad`
+repairs only to a valid four-octal-digit squawk. Radio squawk and clearance
+`SQ` change aircraft transponder state only; `FlightPlan.assignedBeacon` is
+manual and mismatch is intentional.
+
+**Skip:** arbitrary geographic/airport search, cloud inference, broad ASR
+guessing, VFR pickup, flight-plan auto-editing, beacon allocation redesign,
+and new radio commands.
+
+**Waves:** A T02-181 airport catalog/grounding; B T02-182 speech-api command
+parity/prompt/rule; C T02-183 squawk provenance. Each starts only after prior
+merge and gates. Ticket paths are T02-181 through T02-183 in
+`phases/02-scope/tickets/`.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: voice airport and command parity T02-181–T02-183
+Merge target: feature/clearances
+Merged: T02-181, T02-182, T02-183
+Tests: CI after each merge; speech-api mock pytest; supplied-manual/FAA review
+Notes: No push; airport remains clearance-limit-only; flight-plan beacon stays manual
+```
+
 ## Sixty-fifth swarm started — 2026-09-13 (clearance scaffolding)
 
 Captain: `/root`. Merge lock: `feature/clearances`. Worker model/limit:
