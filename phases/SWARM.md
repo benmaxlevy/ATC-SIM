@@ -38,6 +38,916 @@ T03-24 after T03-22 + T03-23; T03-25 after T03-22; T03-26 after T03-24 + T03-25.
 
 **Captain return:** `PHASE EXIT GREEN` or `PHASE EXIT BLOCKED`, with merged
 tickets, per-merge CI, speech-api pytest where applicable, and manual leftovers.
+## Proposed sixty-fourth swarm — 2026-09-12 (derived correlation and IFR scenario plans)
+
+| Key | Value |
+| --- | --- |
+| Goal | Present validated IFR scenario plans through derived beacon correlation. |
+| Include | T02-172 → T02-173 → T02-174 → T02-175. |
+| Merge target | `feature/nas-flightplan-modal`; no new feature branch. |
+| Worker limit/model | 1 sequential worker; `gpt-5.6-luna` high. |
+| Stop | T02-175, final CI, supplied-manual review, browser/accessibility walk. |
+| Push | No push. |
+
+**Product law:** targets are surveillance; plans are filed metadata. Only a
+unique non-1200 reported-squawk/assigned-beacon equality correlates them.
+Correlation is read-only. No plan creation/edit or correlation changes FMS,
+pilot intent, kinematics, Command IR, readback, or session events.
+
+**Skip:** squawk/clearance commands, route execution, speech, networking,
+code-allocation service, manual association, airways, facility branches.
+
+**Ownership/waves:** A T02-172 modal review/docs/UI tests; B T02-173 core
+resolver; C T02-174 scenario factory; D T02-175 presentation/E2E/docs. Each
+wave waits for prior merge, CI, and manual PASS.
+
+**Facility acceptance:** T02-174 validates both KDEM and KATL IFR scenario
+traffic through the shared catalog/scenario factory. No facility-specific
+runtime branch is permitted.
+
+**Manual:** `/home/ben/Documents/stars refs/full_manual.pdf`: §2.12,
+§5.4.1–5.4.6, §5.5.5, §5.5.9, §5.6.17, §5.7.1, App D. FAA JO 7110.65BB
+§4-2-1, §5-2-1–2, §5-3-3 anchor terminology; dynamic correlation/spawn is a
+trainer extension.
+
+## Proposed sixty-third swarm — 2026-09-12 (NAS-style flight-plan modal)
+
+One sequential worker implements each ownership slice on
+`feature/nas-flightplan-modal`. This is one local browser modal opened only by
+`*FP <ACID> Enter`; it is never a radio or pilot command.
+
+| Key | Value |
+| --- | --- |
+| Goal | Add one atomic, catalog-backed filed-route flight-plan modal. |
+| Include | **T02-170**, **T02-171**, **T02-172** only. |
+| Skip | Command IR, radio, speech, readbacks, pilot execution, squawk assignments, clearance limits, route/FMS activation, direct/resume-own-navigation, descend-via, airways, networking, target-click deletion, F6/F9 replacement, and facility branches. |
+| Stop | After each ticket merge, focused tests, `npm run ci`, supplied-manual review, and the T02-172 browser/accessibility walk. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges every ticket to `feature/nas-flightplan-modal`. |
+| Merge target | `feature/nas-flightplan-modal` |
+| Model | `gpt-5.6-luna`, reasoning `high`. |
+| Push | No push. |
+
+**Product law:** `FlightPlan.filedRoute` is catalog-resolved filed metadata.
+Modal Save is atomic. Neither Save nor Cancel changes aircraft surveillance,
+association, intent, active FMS route, kinematics, Command IR, readback, or
+session events. Only a later explicit pilot clearance can activate a valid
+remaining route.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-170 | Clean merge target based on current `master`; generic catalog-only route resolver and atomic draft transaction. |
+| B | T02-171 | T02-170 squash merge, focused tests, CI, and manual review. |
+| C | T02-172 | T02-171 squash merge, focused tests, CI, and manual review. |
+
+**Ticket ownership:**
+
+- T02-170: domain draft transaction and catalog route resolution.
+- T02-171: `*FP` routing, one accessible React modal, Help/User docs.
+- T02-172: generic end-to-end acceptance and documentation reconciliation.
+
+**Ticket branches:**
+
+- `ticket/T02-170-filed-route-draft-and-catalog-validation`
+- `ticket/T02-171-flight-plan-modal-fp-command`
+- `ticket/T02-172-flight-plan-modal-acceptance-and-docs`
+
+**Manual review:** `/home/ben/Documents/stars refs/full_manual.pdf`; Appendix
+D Table D-1 p. D-2; §5.5.5 pp. 5-105–5-110; §5.6.17 pp. 5-167–5-173; and FAA
+JO 7110.65 §2-3-4. Modal syntax is an explicit trainer delta, not a manual
+claim.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: NAS-style flight-plan modal T02-170–172
+Merge target: feature/nas-flightplan-modal
+Merged: T02-170, T02-171, T02-172
+Tests: <focused gates, CI after each merge, final CI, manual review>
+Notes: Filed-route metadata only; no pilot-clearance or route execution
+```
+
+## Sixty-second swarm started — 2026-09-12 (Datablock source unification)
+
+Captain executing T02-164–165 on `improvement/db-source-unification`.
+Ticket workers are sequential; each ticket is squash-merged into the
+improvement branch only. Datablock regression tests and `npm run ci` run after
+each merge. No merge or push to `master` is authorized.
+
+## Proposed sixty-second swarm — 2026-09-12 (Datablock source unification)
+
+One sequential worker will centralize the runtime datablock source and route
+paint, layout, and pick through the same projection. Datablock regression tests
+run after every ticket merge; the supplied STARS manual is used for review.
+
+| Key | Value |
+| --- | --- |
+| Goal | Make all datablock consumers use one explicit runtime source. |
+| Include | **T02-164**, **T02-165** only. |
+| Skip | New datablock semantics, new fields or alerts, TSAS scheduling, CSMM, duplicate-beacon world detection, DCB, radio, Command IR, pilot execution, speech, networking, kinematics, geometry redesign, and facility branches. |
+| Stop | After each ticket's datablock regression gate and `npm run ci`, final supplied-manual review, and phase acceptance. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges every ticket into `improvement/db-source-unification`. |
+| Merge target | `improvement/db-source-unification` |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push. Never merge or push to `master` unless separately authorized. |
+
+**Product law:** One target produces one explicit runtime datablock state.
+Paint, layout, and pick consume that same state. Plan data never overwrites
+surveillance evidence. Unsupported values stay empty. Datablock derivation
+never mutates World, aircraft, intent, kinematics, or Command IR. The feature
+remains STARS-like and preserves the existing Canvas2D/performance boundary.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-164 | `improvement/db-source-unification` clean and based on current `master` |
+| B | T02-165 | T02-164 squash merge, datablock regression tests, and `npm run ci` |
+
+**Ticket ownership:**
+
+- T02-164: runtime source contract and adapter tests.
+- T02-165: paint/layout/pick consumer migration and integration regressions.
+
+**Ticket branches:**
+
+- `ticket/T02-164-datablock-runtime-source-contract` ← `phases/02-scope/tickets/T02-164-datablock-runtime-source-contract.md`
+- `ticket/T02-165-datablock-consumer-unification` ← `phases/02-scope/tickets/T02-165-datablock-consumer-unification.md`
+
+**Manual review:** `/home/ben/Documents/stars refs/full_manual.pdf`; relevant
+anchors are §2.12 pp. 2-58–2-70, §5.4.1 pp. 5-66–5-67, and §5.6.17
+pp. 5-167–5-173. Each ticket must record manual PASS, concern, or explicit
+skip reason. No CRC substitute is required.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: Datablock source unification T02-164–165
+Merge target: improvement/db-source-unification
+Merged: T02-164, T02-165
+Tests: <datablock regression gates after each ticket, final npm run ci, and manual review>
+Notes: No master merge or push; user will open the pull request
+```
+
+## Proposed sixty-first swarm — 2026-09-11 (FAA terminal strip alignment)
+
+One sequential worker will align happy-path terminal departure and arrival
+strips with the supplied FAA JO 7110.65 §2-3-4 field meanings and supplied
+arrival/departure geometry. After every ticket, captain performs manual
+validation against §2-3-4 before the next wave begins.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align terminal strip data, projection, rendering, and acceptance coverage with FAA §2-3-4. |
+| Include | **T02-158**, **T02-159**, **T02-160**, **T02-161**, **T02-162** only. |
+| Skip | Recording/RA behavior, FDIO distinctions, overflight strips, manual correction workflow, missing-data handling, facility-specific optional-field policies, radio, speech, pilot execution, networking, and facility branches. |
+| Stop | After each ticket's FAA §2-3-4 validation, final acceptance, and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `feat/flight-plan-lifecycle`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Product law:** Both strip types use shared physical layout
+`1–4 | 5–7 | 8/8A/8B | 9/9A/9B/9C | 10–18`. Assigned beacon is plan data;
+reported squawk is surveillance data. Happy-path projection never fabricates
+operational values or uses airport-specific branches.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-158 | Current branch clean; T02-143–157 complete |
+| B | T02-159 | T02-158 merge, tests, FAA validation |
+| C | T02-160 | T02-159 merge, tests, FAA validation |
+| D | T02-161 | T02-159 merge, tests, FAA validation |
+| E | T02-162 | T02-160 and T02-161 merge, tests, FAA validation |
+
+**Ticket branches:**
+
+- `ticket/T02-158-terminal-strip-geometry-and-data-contract`
+- `ticket/T02-159-terminal-strip-world-projection`
+- `ticket/T02-160-departure-strip-rendering`
+- `ticket/T02-161-arrival-strip-rendering`
+- `ticket/T02-162-terminal-strips-acceptance`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 FAA terminal strips T02-158–162
+Merge target: feat/flight-plan-lifecycle
+Merged: T02-158, T02-159, T02-160, T02-161, T02-162
+Tests: <focused gates, FAA validation after each ticket, and npm run ci result>
+Notes: Happy-path terminal entries only; recording/RA and FDIO behavior remain out of scope
+```
+
+## Sixtieth swarm planned — 2026-09-11 (Manual MULTI FUNC altitude filter)
+
+One corrective worker will replace the F7-to-asterisk shortcut with a real
+MULTI FUNC arm. `F7` followed by `F` must enter the manual altitude-filter
+grammar, while existing Preview Area `*` commands remain available through
+their explicit prefix.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align F7/MULTI FUNC and altitude-filter commands with TI 6191.409. |
+| Include | Multi-function arm state, F7 → F filter entry, focused tests, and docs. |
+| Skip | New filter semantics, flight-plan semantics, radio, pilot execution, and unrelated F-key changes. |
+| Stop | After focused tests, `npm run ci`, supplied-manual review, and push. |
+| Max workers | 1 |
+| Merge target | `feat/flight-plan-lifecycle` |
+| Push | Authorized by user. |
+
+Manual anchors: Appendix D F7 = MULTI FUNC; §4.11.1–§4.11.2, pp. 4-77–4-79.
+
+## Fifty-ninth swarm started — 2026-09-11 (F-prefix Preview routing)
+
+Captain is executing the single corrective ticket on
+`feat/flight-plan-lifecycle`. The filter retains its numeric-entry behavior;
+non-numeric continuation cancels filter mode and is reprocessed by Preview.
+
+| Key | Value |
+| --- | --- |
+| Goal | Prevent bare `F` filter handling from swallowing F-prefixed ACIDs. |
+| Include | Scope key routing and focused regression tests only. |
+| Skip | New altitude-filter grammar, flight-plan semantics, radio, pilot execution, and unrelated shortcuts. |
+| Stop | After focused tests, `npm run ci`, supplied-manual review, and push. |
+| Max workers | 1 |
+| Merge target | `feat/flight-plan-lifecycle` |
+| Push | Authorized by user. |
+
+Manual anchor: TI 6191.409 Rev. 30 §4.11.2, pp. 4-78–4-79.
+
+## Fifty-ninth swarm planned — 2026-09-11 (F-prefix Preview routing)
+
+One corrective worker will preserve the altitude-filter chord while allowing
+flight-plan/callsign entry beginning with `F` (for example `FFT123`) to reach
+the Preview Area. The filter entry must commit using its existing numeric
+grammar; a non-numeric continuation must cancel the filter chord and be
+reprocessed as Preview text.
+
+| Key | Value |
+| --- | --- |
+| Goal | Prevent bare `F` filter handling from swallowing F-prefixed ACIDs. |
+| Include | Scope key routing and focused regression tests only. |
+| Skip | New altitude-filter grammar, flight-plan semantics, radio, pilot execution, and unrelated shortcuts. |
+| Stop | After focused tests, `npm run ci`, supplied-manual review, and push. |
+| Max workers | 1 |
+| Merge target | `feat/flight-plan-lifecycle` |
+| Push | Authorized by user. |
+
+Manual anchor: TI 6191.409 Rev. 30 §4.11.2, pp. 4-78–4-79.
+
+## Fifty-eighth swarm planned — 2026-09-11 (Unified TERM CNTL/F4)
+
+One corrective worker will route the F4 alias and typed TERM CNTL through the
+same termination behavior. The shared path must delete the associated flight
+plan, leave the radar track unassociated, and render the unassociated target
+symbol according to the supplied STARS manual.
+
+| Key | Value |
+| --- | --- |
+| Goal | Make F4 an alias of TERM CNTL with shared termination semantics. |
+| Include | Shared TERM handler, display-state cleanup, focused regression tests. |
+| Skip | New flight-plan semantics, pilot execution, radio, speech, kinematics, and unrelated F4 behavior. |
+| Stop | After focused tests, `npm run ci`, supplied-manual review, and push. |
+| Max workers | 1 |
+| Merge target | `feat/flight-plan-lifecycle` |
+| Push | Authorized by user. |
+
+Manual anchors: Appendix D equates F4 with TERM CNTL; §5.4.6 defines
+termination; §2.12 and Table 2-11 define the resulting unassociated LDB and
+position symbol.
+
+## Fifty-seventh swarm planned — 2026-09-11 (Post-TERM datablock display fix)
+
+One corrective worker will fix the reported regression where a terminated
+flight-plan target can be expanded from PDB to FDB with the deleted plan ACID.
+The target must remain an unassociated radar track, without a recoverable plan
+FDB, while preserving motion and aircraft bookkeeping.
+
+| Key | Value |
+| --- | --- |
+| Goal | Prevent terminated plans from reappearing as FDB/callsign displays. |
+| Include | Corrective display guard and regression tests only. |
+| Skip | New flight-plan semantics, radio, Command IR, pilot execution, speech, and kinematics. |
+| Stop | After focused tests, `npm run ci`, supplied-manual review, and push. |
+| Max workers | 1 |
+| Merge target | `feat/flight-plan-lifecycle` |
+| Push | Authorized by user. |
+
+## Fifty-sixth swarm planned — 2026-09-11 (Flight-plan lifecycle)
+
+Captain will run five sequential tickets on `feat/flight-plan-lifecycle` with
+one isolated worker at a time. This swarm adds local scope-side flight-plan
+creation, authoritative association, modification, deletion, beacon allocation,
+and datablock projection. Pilot clearance execution remains explicitly later
+backlog work.
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement the local authoritative flight-plan lifecycle and scope projections. |
+| Include | **T02-143**, **T02-144**, **T02-145**, **T02-146**, **T02-147** only. |
+| Skip | Radio, Command IR, pilot execution, speech, kinematics, TSAS, VFR/ARTCC messaging, interfacility networking, ASA, In-Out-In, Unsupported Data Blocks, and facility branches. |
+| Stop | After T02-147 acceptance, supplied-manual review, and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `feat/flight-plan-lifecycle`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Product law:** Flight plans are authoritative local operational records.
+Reported squawks are surveillance evidence used for correlation and mismatch
+detection. Association never guesses, never changes pilot kinematics, and
+never conflates plan association with controller ownership. Scope commands stay
+outside Command IR. Pilot clearance execution is a later feature.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-143 | `feat/flight-plan-lifecycle` clean and current `master` ancestry |
+| B | T02-144 | T02-143 merge and CI |
+| C | T02-145 | T02-144 merge and CI |
+| D | T02-146 | T02-145 merge and CI |
+| E | T02-147 | T02-146 merge and CI |
+
+**Ticket ownership:**
+
+- T02-143: domain model and deterministic beacon allocation.
+- T02-144: abbreviated and pending plan creation.
+- T02-145: active association and squawk correlation.
+- T02-146: plan modification and deletion.
+- T02-147: datablock adapter and lifecycle acceptance.
+
+**Ticket files / branches:**
+
+- `ticket/T02-143-flight-plan-domain-and-beacon-allocation` ← `phases/02-scope/tickets/T02-143-flight-plan-domain-and-beacon-allocation.md`
+- `ticket/T02-144-flight-plan-creation` ← `phases/02-scope/tickets/T02-144-flight-plan-creation.md`
+- `ticket/T02-145-flight-plan-activation-and-correlation` ← `phases/02-scope/tickets/T02-145-flight-plan-activation-and-correlation.md`
+- `ticket/T02-146-flight-plan-modification-and-deletion` ← `phases/02-scope/tickets/T02-146-flight-plan-modification-and-deletion.md`
+- `ticket/T02-147-flight-plan-datablock-integration` ← `phases/02-scope/tickets/T02-147-flight-plan-datablock-integration.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 flight-plan lifecycle T02-143–147
+Merge target: feat/flight-plan-lifecycle
+Merged: T02-143, T02-144, T02-145, T02-146, T02-147
+Tests: <focused gates, manual review, and npm run ci result>
+Notes: Pilot clearance execution remains backlog work
+```
+
+## Fifty-fourth swarm started — 2026-09-10 (Unified outbound handoff positions)
+
+Captain owns `fix/datablocks` and will run T02-137 through T02-139 with one
+isolated worker at a time. The swarm unifies current outbound handoff-to-C and
+handoff-to-Tower paths around one destination-aware initiation/acceptance
+function. No manual audit runs during implementation; user will audit after
+the swarm completes.
+
+| Key | Value |
+| --- | --- |
+| Goal | Unify supported outbound handoffs by receiving position and preserve shared accepted-handoff UI. |
+| Include | **T02-137**, **T02-138**, **T02-139** only. |
+| Skip | Pointouts, quicklook, inbound redesign, networking, second-sector model, new handoff types, new SPCs, new alerts, parser, Command IR, speech, DCB, and facility branches. |
+| Stop | After T02-139 acceptance and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+| Manual audit | Deferred until after swarm completion, per user instruction. |
+
+**Product law:** Supported outbound handoffs use one destination-aware path.
+The destination ID is data, not a branch-specific display convention. Center
+`C` and Tower use the same pending/accepted lifecycle; Tower-specific landing
+effects happen only after acceptance. Existing eligibility, logs, movement, and
+single-position trainer constraints remain intact.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-137 | T02-136 complete and current `fix/datablocks` clean |
+| B | T02-138 | T02-137 merge and CI |
+| C | T02-139 | T02-138 merge and CI |
+
+**Ticket ownership:**
+
+- T02-137: destination-aware outbound handoff initiation.
+- T02-138: shared five-second simulated acceptance and destination effects.
+- T02-139: shared accepted-handoff datablock UI for Center and Tower.
+
+**Ticket files / branches:**
+
+- `ticket/T02-137-unified-outbound-handoff-initiation` ← `phases/02-scope/tickets/T02-137-unified-outbound-handoff-initiation.md`
+- `ticket/T02-138-shared-outbound-handoff-acceptance` ← `phases/02-scope/tickets/T02-138-shared-outbound-handoff-acceptance.md`
+- `ticket/T02-139-shared-handoff-datablock-ui` ← `phases/02-scope/tickets/T02-139-shared-handoff-datablock-ui.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 unified outbound handoff positions T02-137–139
+Merge target: fix/datablocks
+Merged: T02-137, T02-138, T02-139
+Tests: <focused gates and npm run ci result>
+Notes: Manual audit deferred to user; C/Tower share destination-aware lifecycle
+```
+
+## Fifty-third swarm started — 2026-09-10 (Outbound handoff UI/manual alignment)
+
+Captain owns `fix/datablocks` and will create one isolated worker at a time for
+T02-135 then T02-136. The swarm strictly aligns outbound handoff datablock UI
+with the supplied TI 6191.409 Rev. 30 manual, while T02-136 adds only the
+approved trainer simulation of Center `C` accepting after five simulated
+seconds. After each ticket, captain runs `check-stars-manual` against
+`/home/ben/Documents/stars refs/full_manual.pdf` with an independent pass.
+
+| Key | Value |
+| --- | --- |
+| Goal | Remove unsupported blue outbound handoff datablock UI and simulate Center C acceptance after five seconds. |
+| Include | **T02-135**, **T02-136** only. |
+| Skip | New handoff types, second-sector/network model, pointouts, quicklook, new SPCs, new alerts, parser, Command IR, speech, DCB, and facility branches. |
+| Stop | After T02-136 acceptance, manual review, and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Product law:** Manual display semantics win. Initiated outbound handoffs
+retain a white sender FDB with receiver TCP `C`; accepted handoffs blink white
+for five seconds, retain `C` for five seconds, then remain solid white without
+automatic PDB/LDB collapse. T02-136’s five-second Center acceptance is an
+explicit trainer delta and must call existing acceptance logic exactly once.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-135 | T02-134 complete and current `fix/datablocks` clean |
+| B | T02-136 | T02-135 merge, CI, and manual review |
+
+**Ticket ownership:**
+
+- T02-135: manual-aligned pending outbound handoff datablock color.
+- T02-136: simulated Center acceptance timing and post-acceptance UI.
+
+**Ticket files / branches:**
+
+- `ticket/T02-135-manual-outbound-handoff-color` ← `phases/02-scope/tickets/T02-135-manual-outbound-handoff-color.md`
+- `ticket/T02-136-simulated-center-handoff-acceptance` ← `phases/02-scope/tickets/T02-136-simulated-center-handoff-acceptance.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 outbound handoff UI/manual alignment T02-135–136
+Merge target: fix/datablocks
+Merged: T02-135, T02-136
+Tests: <focused gates, manual reviews, and npm run ci result>
+Notes: <manual visual leftovers; C acceptance trainer delta>
+```
+
+## Fifty-third swarm planned — 2026-09-10 (Outbound handoff UI/manual alignment)
+
+User approved T02-135 and T02-136. T02-135 removes the unsupported blue sender
+datablock while preserving handoff-to-C logic. T02-136 adds only a five-second
+simulated Center acceptance using existing acceptance logic; it does not add a
+second position or network model. Captain reviews each merged ticket with
+`check-stars-manual` against
+`/home/ben/Documents/stars refs/full_manual.pdf`, including independent
+verification, before the next wave.
+
+| Key | Value |
+| --- | --- |
+| Goal | Strictly align outbound handoff UI and simulate Center C acceptance. |
+| Include | **T02-135**, **T02-136** only. |
+| Skip | New handoff types, second-sector/network model, pointouts, quicklook, new SPCs, new alerts, parser, Command IR, speech, DCB, and facility branches. |
+| Stop | After T02-136 acceptance, manual review, and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Product law:** Manual display semantics are strict. Pending outbound sender
+datablocks use white FDB presentation with receiver TCP `C`. Simulated Center
+acceptance occurs once after five simulated seconds; accepted sender UI then
+uses the manual’s white five-second flash/TCP window and remains white until
+explicit return-to-unowned control.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-135 | T02-134 complete and current `fix/datablocks` clean |
+| B | T02-136 | T02-135 merge, CI, and manual review |
+
+**Ticket ownership:**
+
+- T02-135: pending outbound handoff datablock color.
+- T02-136: simulated Center acceptance timing and post-acceptance display.
+
+**Ticket files / branches:**
+
+- `ticket/T02-135-manual-outbound-handoff-color` ← `phases/02-scope/tickets/T02-135-manual-outbound-handoff-color.md`
+- `ticket/T02-136-simulated-center-handoff-acceptance` ← `phases/02-scope/tickets/T02-136-simulated-center-handoff-acceptance.md`
+
+## Fifty-second swarm started — 2026-09-10 (Accepted outbound handoff UI)
+
+Captain owns `fix/datablocks` and will create one isolated worker for the
+approved T02-134 ticket. The ticket preserves existing handoff logic to the
+configured Center sector (`C`) and aligns only the visible accepted-handoff
+datablock UI with the supplied TI 6191.409 Rev. 30 manual. After completion,
+captain runs `check-stars-manual` against
+`/home/ben/Documents/stars refs/full_manual.pdf` with an independent
+verification pass, then runs final CI and stops.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align accepted outbound handoff datablock presentation with the supplied manual. |
+| Include | **T02-134** only. |
+| Skip | Handoff state/acceptance logic, multi-position simulation, new handoff types, pointouts, quicklook, networking, new SPCs, new alerts, parser, Command IR, speech, DCB, and facility branches. |
+| Stop | After T02-134 acceptance, manual review, and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Product law:** Existing outbound handoff logic remains authoritative. The
+UI shows the accepted handoff as a white FDB; the receiver TCP remains visible
+for five seconds after acceptance, then disappears. The UI does not invent a
+receiver position or alter ownership state.
+
+**Wave:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-134 | Current `fix/datablocks` is clean and T02-133 is complete |
+
+**Ticket ownership:**
+
+- T02-134: accepted outbound handoff datablock UI and rendering tests.
+
+**Ticket file / branch:**
+
+- `ticket/T02-134-accepted-outbound-handoff-ui` ← `phases/02-scope/tickets/T02-134-accepted-outbound-handoff-ui.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 accepted outbound handoff UI T02-134
+Merge target: fix/datablocks
+Merged: T02-134
+Tests: <focused gate, manual review, and npm run ci result>
+Notes: <manual visual leftovers; handoff logic unchanged>
+```
+
+## Fifty-second swarm planned — 2026-09-10 (Accepted outbound handoff UI)
+
+User approved T02-134 after research against the supplied TI 6191.409 Rev. 30
+manual. The ticket changes visible accepted outbound handoff datablock UI only;
+existing handoff routing to Center sector `C`, acceptance state, logs, and
+aircraft lifecycle remain unchanged. Captain reviews the completed ticket with
+`check-stars-manual` using only
+`/home/ben/Documents/stars refs/full_manual.pdf` and its independent
+verification pass before final CI.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align accepted outbound handoff datablock UI with the manual. |
+| Include | **T02-134** only. |
+| Skip | Core handoff logic, C routing, multi-position simulation, new handoff types, pointouts, quicklook, networking, new SPCs, new alerts, parser, Command IR, speech, DCB, and facility branches. |
+| Stop | After T02-134 acceptance, manual review, and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Product law:** Existing handoff state remains authoritative. Accepted
+outbound handoffs render as white FDBs; sender-side receiver TCP remains for
+five seconds after acceptance, then disappears. The UI does not create a
+receiver position or alter core ownership/acceptance logic.
+
+**Wave:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-134 | T02-133 complete and current `fix/datablocks` clean |
+
+**Ticket ownership:**
+
+- T02-134: accepted outbound handoff datablock presentation and tests.
+
+**Ticket file / branch:**
+
+- `ticket/T02-134-accepted-outbound-handoff-ui` ← `phases/02-scope/tickets/T02-134-accepted-outbound-handoff-ui.md`
+
+## Fifty-first swarm planned — 2026-09-10 (Existing datablock field alignment)
+
+User approved execution of T02-131 through T02-133 against the supplied
+TI 6191.409 Rev. 30 manual. After each ticket merge, captain must run
+`check-stars-manual` with the supplied PDF and an independent verification pass
+before starting the next ticket. No CRC or other substitute source may be used.
+No new SPCs or alert types are added.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align existing PDB, LDB, and FDB Field 0 presentation with the supplied STARS manual. |
+| Include | **T02-131**, **T02-132**, **T02-133** only. |
+| Skip | New SPCs, new alerts, MI, LL, FMA, RNP, ADS-B, pointout expansion, quicklook, TSAS runtime, networking, parser, Command IR, speech, DCB, facility branches. |
+| Stop | After T02-133 acceptance, manual review, and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Product law:** Existing datablock state maps to manual field positions.
+Formatter and renderer preserve absent values, never invent operational state,
+and add no new SPC or alert types. Field 0 renders separately above the
+callsign. PDB and LDB use their manual-defined reduced projections. Product
+remains STARS-like, not NAS-compatible.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-131 | T02-130 complete |
+| B | T02-132 | T02-131 merge, CI, and manual review |
+| C | T02-133 | T02-132 merge, CI, and manual review |
+
+**Ticket ownership:**
+
+- T02-131: PDB field projection and compatibility.
+- T02-132: existing LDB SPC/safety-alert Field 0 display.
+- T02-133: FDB Field 0 physical rendering and layout metrics.
+
+**Ticket files / branches:**
+
+- `ticket/T02-131-pdb-manual-field-projection` ← `phases/02-scope/tickets/T02-131-pdb-manual-field-projection.md`
+- `ticket/T02-132-ldb-existing-field0-display` ← `phases/02-scope/tickets/T02-132-ldb-existing-field0-display.md`
+- `ticket/T02-133-fdb-field0-physical-rendering` ← `phases/02-scope/tickets/T02-133-fdb-field0-physical-rendering.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 existing datablock field alignment T02-131–133
+Merge target: fix/datablocks
+Merged: T02-131, T02-132, T02-133
+Tests: <focused gates, manual reviews, and npm run ci result>
+Notes: <manual visual leftovers; no new SPC or alert types>
+```
+
+## Fifty-first swarm started — 2026-09-10 (Existing datablock field alignment)
+
+Captain owns `fix/datablocks`, creates one isolated worker at a time, and
+squash-merges each completed ticket after focused tests. After every merge,
+captain runs `check-stars-manual` against
+`/home/ben/Documents/stars refs/full_manual.pdf`, including its independent
+verification pass, before starting the next wave. No CRC or substitute source.
+
+## Fiftieth swarm worker started — 2026-09-10 (T02-130)
+
+Worker executes exactly T02-130 in isolated branch/worktree
+`ticket/T02-130-fdb-physical-field-alignment`, based on `fix/datablocks`. No
+merge or push. Scope is limited to logical-to-physical FDB/PDB Field 0–8
+alignment, Field 4 consistency, stable one-/two-character TCP cell positions,
+pending/accepted inbound plus outbound/pointout coverage, and the documented
+aircraft-type Line 3 delta.
+
+## Fiftieth swarm worker started — 2026-09-10 (T02-129)
+
+Worker executes exactly T02-129 in isolated branch/worktree
+`ticket/T02-129-pending-inbound-handoff-tcp-semantics`, based on the captain
+target `fix/datablocks`. No merge or push. Scope is limited to separating
+inbound origin from local receiving TCP, target-symbol control, Field 4/TCP
+origin display, removal of inbound `HO`, and synthetic coverage for preserved
+PO/blink/filter/acceptance behavior.
+
+## Fiftieth swarm planned — 2026-09-10 (Pending inbound datablock fidelity)
+
+User approved execution of the pending inbound datablock fidelity plan.
+Captain owns `fix/datablocks`, runs one isolated worker at a time, squash-merges
+each completed ticket back onto `fix/datablocks`, commits throughout, pushes only
+after the final gate, and stops at T02-130.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align pending inbound handoff TCP/origin semantics and physical FDB/PDB field presentation with TI 6191.409 Rev. 30. |
+| Include | **T02-129**, **T02-130** only. |
+| Skip | Networking, multi-user positions, redirects, TSAS runtime, ADS-B, parser, Command IR, speech, DCB, scenario data, facility branches. |
+| Stop | After T02-130 acceptance and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | Captain pushes `fix/datablocks` after final CI and STATUS update. |
+
+**Product law:** Inbound origin and receiving TCP are separate values. The
+receiving TCP controls the target symbol; the originating value occupies Field
+4. Pending inbound status uses STARS-like FDB blinking and field placement,
+not an invented `HO` suffix. No NAS compatibility claim and no facility branch.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-129 | planning commit |
+| B | T02-130 | T02-129 merge and focused gate |
+
+**Ticket ownership:**
+
+- T02-129: inbound handoff origin/receiving TCP adapter, symbol, and pending
+  FDB behavior.
+- T02-130: logical-to-physical FDB/PDB mapping, aircraft-type placement
+  decision, fidelity acceptance, and documentation.
+
+**Ticket files / branches:**
+
+- `ticket/T02-129-pending-inbound-handoff-tcp-semantics` ← `phases/02-scope/tickets/T02-129-pending-inbound-handoff-tcp-semantics.md`
+- `ticket/T02-130-fdb-physical-field-alignment` ← `phases/02-scope/tickets/T02-130-fdb-physical-field-alignment.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: 2 pending inbound datablock fidelity T02-129–130
+Merge target: fix/datablocks
+Merged: T02-129, T02-130
+Tests: <focused gates and npm run ci result>
+Notes: <aircraft-type placement decision; manual visual leftovers>
+```
+
+## Forty-ninth swarm planned — 2026-09-10 (ATPA CWT wake minima)
+
+User approved the ATPA wake-only plan. Captain owns `fix/datablocks`, spawns
+one isolated worker at a time, squash-merges each completed ticket back onto
+`fix/datablocks`, runs the required focused gate after each merge, and stops
+after final `npm run ci`. No push.
+
+| Key | Value |
+| --- | --- |
+| Goal | Add FAA JO 7110.65 CWT wake categories, data-driven ATPA minima, and explicit NOWGT/10 NM behavior. |
+| Include | **T02-125**, **T02-126**, **T02-127**, **T02-128** only. |
+| Skip | ICAO-type inference, aircraft performance changes, TSAS, CRDA, networking, per-position adaptation, aural ATPA, UI redesign, live FAA downloads. |
+| Stop | After T02-128 acceptance and `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+
+**Product law:** Operational CWT category data is separate from display
+category letters. The evaluator uses leader-row/follower-column adaptation
+data. Missing required category or blank required matrix cell produces
+`NOWGT` and `10 NM`. Wake minima never fall below applicable volume radar
+minima. No facility or ICAO-type branch.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-125 | planning commit |
+| B | T02-126 | T02-125 merge and focused gate |
+| C | T02-127 | T02-126 merge and focused gate |
+| D | T02-128 | T02-127 merge and focused gate |
+
+**Ticket ownership:**
+
+- T02-125: CWT category type and aircraft contract.
+- T02-126: FAA wake matrix data, schema, and NOWGT adaptation.
+- T02-127: pure wake-aware ATPA evaluator and world state.
+- T02-128: acceptance, regression updates, and documentation.
+
+**Ticket files / branches:**
+
+- `ticket/T02-125-atpa-cwt-category-contract` ← `phases/02-scope/tickets/T02-125-atpa-cwt-category-contract.md`
+- `ticket/T02-126-atpa-faa-wake-matrix-and-nowgt` ← `phases/02-scope/tickets/T02-126-atpa-faa-wake-matrix-and-nowgt.md`
+- `ticket/T02-127-atpa-wake-aware-evaluator` ← `phases/02-scope/tickets/T02-127-atpa-wake-aware-evaluator.md`
+- `ticket/T02-128-atpa-wake-acceptance-and-docs` ← `phases/02-scope/tickets/T02-128-atpa-wake-acceptance-and-docs.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 ATPA CWT wake minima T02-125–128
+Merge target: fix/datablocks
+Merged: T02-125, T02-126, T02-127, T02-128
+Tests: <focused gates and npm run ci result>
+Notes: <NOWGT policy; remaining manual leftovers>
+```
+
+## Fifty-fourth swarm planned — 2026-09-10 (Unified outbound handoff positions)
+
+User approved the destination-aware C/Tower handoff plan. T02-137 unifies
+outbound initiation, T02-138 unifies five-simulated-second acceptance, and
+T02-139 shares the accepted/pending datablock UI. Manual review is explicitly
+deferred until after implementation; no `check-stars-manual` run is part of
+this swarm.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align the supported outbound C/Tower handoff lifecycle around the receiving position. |
+| Include | **T02-137**, **T02-138**, **T02-139** only. |
+| Skip | Pointouts, quicklook, inbound redesign, networking, second-sector model, new handoff types, new SPCs, new alerts, parser, Command IR, speech, DCB, and facility branches. |
+| Stop | After T02-139 acceptance and `npm run ci`; manual audit remains user follow-up. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | Inherit current session model; no speculative override. |
+| Push | No push unless separately authorized. |
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-137 | T02-136 complete and current `fix/datablocks` clean |
+| B | T02-138 | T02-137 merge and CI |
+| C | T02-139 | T02-138 merge and CI |
+
+**Ticket ownership:**
+
+- T02-137: `phases/02-scope/tickets/T02-137-unified-outbound-handoff-initiation.md`
+- T02-138: `phases/02-scope/tickets/T02-138-shared-outbound-handoff-acceptance.md`
+- T02-139: `phases/02-scope/tickets/T02-139-shared-handoff-datablock-ui.md`
+
+**Branches:**
+
+- `ticket/T02-137-unified-outbound-handoff-initiation`
+- `ticket/T02-138-shared-outbound-handoff-acceptance`
+- `ticket/T02-139-shared-handoff-datablock-ui`
+
+## Forty-ninth swarm started — 2026-09-10 (ATPA CWT wake minima)
+
+Captain start/configuration confirmed after planning. This swarm runs
+T02-125 through T02-128 sequentially on `fix/datablocks`, with one isolated
+worker at a time and captain-owned squash merges. `NOWGT` plus `10 NM` is the
+approved policy for missing required categories and blank required matrix
+cells. No push.
+
+## Forty-eighth swarm started — 2026-09-10 (Datablock field-format fidelity)
+
+User authorized execution using isolated subagents after the planning addendum
+below. Captain owns `fix/datablocks`, creates one isolated worker at a time,
+implements T02-122 then T02-123/T02-124, squash-merges each completed ticket,
+and stops at the configured boundary. No push.
+
+## Forty-eighth swarm planned — 2026-09-10 (Datablock field-format fidelity)
+
+User-approved format-model work follows Figure 2-20 supplied in chat. This
+swarm defines explicit Fields 0–8, Field 5 data grammar, TSAS/exit-gate/fix
+format inputs, duplicate-beacon formatting, and one-/two-character TCPs. It
+does not implement missing simulation subsystems.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align STARS-like FDB/PDB format logic with Figure 2-20 using a generic explicit field model. |
+| Include | **T02-122**, **T02-123**, **T02-124** only. |
+| Skip | Field 1 ADS-B markers, new Field 2 glyphs, TSAS scheduling, ADS-B detection, MOA/CSMM workflows, beacon selection, parser, Command IR, DCB, networking, facility branches. |
+| Stop | After T02-123 and T02-124 focused gates plus `npm run ci`. |
+| Max workers | 1 |
+| Merge lock | Captain squash-merges to `fix/datablocks`. |
+| Model | `gpt-5.6-luna`, medium reasoning. |
+
+**Product law:** Formatter consumes explicit generic datablock fields. It
+preserves documented literals, omits absent values, never guesses missing
+operational state, and never adds facility-specific branches. Synthetic fixtures
+may populate format-only values not yet produced by runtime logic.
+
+**Waves:**
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-122 | planning commit |
+| B | T02-123, T02-124 | T02-122 merge and focused gate |
+
+**Ticket ownership:**
+
+- T02-122: explicit Fields 0–5, Field 5 alternatives, exit gate/fix input,
+  TSAS sequence input, tests.
+- T02-123: Fields 6–8, TSAS indicator inputs, duplicate-beacon distinction,
+  tests, runtime-gap documentation.
+- T02-124: one-/two-character TCP adaptation and tests.
+
+**Ticket files / branches:**
+
+- `ticket/T02-122-datablock-explicit-fields-0-5` ← `phases/02-scope/tickets/T02-122-datablock-explicit-fields-0-5.md`
+- `ticket/T02-123-datablock-fields-6-8-and-tsas` ← `phases/02-scope/tickets/T02-123-datablock-fields-6-8-and-tsas.md`
+- `ticket/T02-124-datablock-tcp-width` ← `phases/02-scope/tickets/T02-124-datablock-tcp-width.md`
+
+**Captain return:**
+
+```
+PHASE EXIT GREEN
+Phase: 2 datablock field-format fidelity T02-122–124
+Merge target: fix/datablocks
+Merged: T02-122, T02-123, T02-124
+Tests: <focused gates and npm run ci result>
+Notes: <format-only fields; runtime-backed gaps; manual leftovers>
+```
 
 ## Forty-seventh swarm planned — 2026-09-09 (Balanced random arrival packs)
 
@@ -3046,3 +3956,249 @@ started from current `master`. Implement only stage latency metrics, explicit
 soft timeouts, safe Path C output-budget/completeness validation, and duplicate
 dispatch protection. Preserve prior T03-21 through T03-25 changes and
 untracked user files. No merge, spawn, push, reset, clean, or unrelated work.
+
+## Eighth swarm planned — canonical flight-plan association (2026-09-11)
+
+Human approved implementation of the authoritative target↔flight-plan model.
+The plan-side `FlightPlan.associatedAircraftId` is the only relationship
+authority. `Aircraft.flightPlanId` must be removed. Reported aircraft squawk
+remains surveillance evidence; assigned plan beacon remains plan data. A
+squawk update may trigger aircraft-scoped correlation against pending plans,
+but list building, rendering, ticks, and redraws must never auto-associate.
+This event-driven correlation is a trainer policy, not a claim that the STARS
+manual mandates automatic correlation. Missing future squawk mutation sources
+must be recorded in the later backlog.
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement canonical flight-plan association and event-driven squawk correlation |
+| Phase | `phases/02-scope/` |
+| Tickets | `T02-149` → `T02-150` → `T02-151` → `T02-152` → `T02-153` |
+| Merge target | `feat/flight-plan-lifecycle` |
+| Worker limit | 1 ticket worker; sequential waves |
+| Model | inherit available Codex worker model |
+| Required gate | `npm run ci` after every merged ticket |
+| Required review | `$check-stars-manual '/home/ben/Documents/stars refs/full_manual.pdf'` after every ticket |
+| Stop | Stop after T02-153; do not start another phase |
+
+Waves:
+
+| Wave | Tickets | Wait for |
+| --- | --- | --- |
+| A | T02-149 | planning commit |
+| B | T02-150 | A green and manual-reviewed |
+| C | T02-151 | B green and manual-reviewed |
+| D | T02-152 | C green and manual-reviewed |
+| E | T02-153 | D green and manual-reviewed |
+
+Captain requirements: use isolated worker worktrees; workers implement one
+ticket and never merge or spawn. After each worker returns `READY TO MERGE`,
+squash-merge one commit, run `npm run ci`, then run the independent
+`check-stars-manual` review against that ticket and the final diff before the
+next wave. If CI or manual review fails, stop the next wave and use one narrow
+fix worker only. Append swarm status history; do not delete prior entries.
+
+## Eighth swarm started — canonical flight-plan association (2026-09-11)
+
+Execution started after the approved planning commit `bf28c1b`. Captain runs
+T02-149 through T02-153 sequentially on `feat/flight-plan-lifecycle`, with one
+isolated worker at a time. Each completed ticket requires squash merge, full
+`npm run ci`, and independent `$check-stars-manual
+'/home/ben/Documents/stars refs/full_manual.pdf'` review before the next
+ticket. Stop on a failed gate or unresolved manual mismatch.
+
+## Ninth swarm planned — live association and manual command alignment (2026-09-11)
+
+Human approved follow-up fixes from the Eighth swarm audit. Scope: connect all
+available squawk mutation paths, preserve current reported-beacon truth, remove
+remaining aircraft-side plan projections, align function keys with STARS
+Appendix D, reserve unsupported Track Suspend safely, and move Help to a
+bottom-right button below Voice Text. The supplied manual remains authoritative
+for command meanings; event-driven squawk correlation remains a documented
+trainer delta.
+
+| Key | Value |
+| --- | --- |
+| Goal | Finish live association integration and command/UI alignment |
+| Phase | `phases/02-scope/` |
+| Tickets | `T02-154` → `T02-155` → `T02-156` → `T02-157` |
+| Merge target | `feat/flight-plan-lifecycle` |
+| Worker limit | 1 ticket worker; sequential waves |
+| Required gate | `npm run ci` after every merge |
+| Required review | `$check-stars-manual '/home/ben/Documents/stars refs/full_manual.pdf'` after every ticket |
+| Stop | Stop after T02-157 |
+
+Waves: A=`T02-154`, B=`T02-155`, C=`T02-156`, D=`T02-157`. Each worker
+implements one ticket in an isolated worktree and returns `READY TO MERGE` or
+`BLOCKED`. After every merge, run CI and the independent manual review before
+launching the next wave. On a failed gate, use only one narrow fix worker and
+stop subsequent waves until green.
+
+## Ninth swarm started — live association and manual command alignment (2026-09-11)
+
+Execution began after planning commit `495db39`. The captain must execute
+T02-154 through T02-157 sequentially on `feat/flight-plan-lifecycle`, with one
+isolated worker at a time. Every merge requires `npm run ci` and an independent
+`$check-stars-manual '/home/ben/Documents/stars refs/full_manual.pdf'` review
+before the next wave. Stop on unresolved CI or manual-review failures.
+
+## Tenth swarm planned — command reference help overhaul (2026-09-11)
+
+Human approved replacing the Help menu's external comparison material with a
+local, command-focused reference and keeping `docs/USER.md` current with the
+live command surfaces. No parser, Command IR, or scope behavior changes are in
+scope.
+
+| Key | Value |
+| --- | --- |
+| Goal | Overhaul Help and synchronize the command reference |
+| Phase | `phases/02-scope/` |
+| Tickets | `T02-163` |
+| Merge target | `ticket/T02-163-help-command-reference` |
+| Worker limit | 1 ticket worker |
+| Model | inherit available Codex worker model |
+| Required gate | `npm run ci` |
+| Stop | Stop after T02-163 |
+
+Wave A: `T02-163`. The worker may edit only the ticket's implementation scope,
+must preserve unrelated work, and returns `READY TO MERGE` or `BLOCKED`.
+
+## Eleventh swarm planned — strict manual INIT/TAB and beacon alignment (2026-09-12)
+
+Human approved strict alignment with `/home/ben/Documents/stars refs/full_manual.pdf`
+on the current `improvement/db-source-unification` branch. Unsupported
+datablock creation is explicitly excluded. Direct INIT CNTL identity + Enter
+is removed; manual INIT CNTL identity entry requires slew to an unassociated
+target and left-click. TAB line numbers are exactly two digits. Automatic
+association uses assigned-beacon/reported-squawk match without ACID or CID
+matching, per §5.5.9 p. 5-125.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align INIT CNTL/TAB association and beacon auto-association with the supplied manual |
+| Phase | `phases/02-scope/` |
+| Tickets | `T02-166` → `T02-167` |
+| Merge target | `improvement/db-source-unification` |
+| Worker limit | 1 ticket worker; sequential waves |
+| Model | inherit available Codex worker model |
+| Required gate | `npm run ci` after every merge |
+| Required review | `$check-stars-manual` with `/home/ben/Documents/stars refs/full_manual.pdf` after every ticket |
+| Stop | Stop after `T02-167` |
+
+Waves: A=`T02-166`, B=`T02-167`. Each worker implements exactly one ticket in
+an isolated worktree and returns `READY TO MERGE` or `BLOCKED`. The captain
+squash-merges each ticket onto the current merge target, runs CI, then performs
+the independent manual review before starting the next wave. On failed CI or
+manual review, stop the next wave and use one narrowly scoped fix worker only.
+Do not create unsupported datablocks or start another phase.
+
+## Eleventh swarm started — strict manual INIT/TAB and beacon alignment (2026-09-12)
+
+Execution authorized on the current `improvement/db-source-unification`
+branch. The captain keeps this branch as the merge target; no switch to
+`master`, push, or unrelated backlog cleanup. One isolated worker runs at a
+time: T02-166 first, then T02-167. Each squash merge requires `npm run ci` and
+an independent `$check-stars-manual` review against
+`/home/ben/Documents/stars refs/full_manual.pdf` before the next ticket.
+
+Strict manual product law: INIT CNTL identity entry accepts ACID, discrete
+beacon, or exactly two-digit TAB line number, then requires slew to an
+unassociated target and left-click (§5.4.1–5.4.2, pp. 5-66–5-68). Direct
+INIT identity + Enter is removed. CID is never a flight identity. The manual's
+active-plan/unsupported-datablock auto-association workflow is excluded; this
+run only preserves/corrects the existing pending-plan/runtime beacon-match
+trainer path using assigned beacon versus reported squawk (§5.5.9,
+pp. 5-125–5-126).
+
+Worker handoff is exactly `READY TO MERGE` or `BLOCKED`. On failed CI or manual
+review, stop the next wave and use one narrowly scoped fix worker only. Stop
+after T02-167; do not start another phase.
+## Twelfth swarm planned — 2026-09-12 (F6/F9 flight-plan command alignment)
+
+Human approved separating abbreviated implied IFR creation from F6 FLT DATA
+creation and adding a distinct F9 VFR flight-plan command mode. The supplied
+manual remains authoritative; local trainer semantics remain explicit.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align IFR/VFR flight-plan creation and management command entry with RPO F6/F9 without changing radio or aircraft intent. |
+| Phase | `phases/02-scope/` |
+| Tickets | `T02-168` → `T02-169` |
+| Merge target | `feat/flight-plan-f6-f9` |
+| Worker limit | 1 ticket worker; sequential waves |
+| Model | inherit available Codex worker model |
+| Required gate | `npm run ci` after every merge |
+| Required review | `$check-stars-manual` with `/home/ben/Documents/stars refs/full_manual.pdf` after every ticket |
+| Stop | Stop after `T02-169`; do not start another phase |
+
+**Product law:** No-prefix ACID entry remains the abbreviated/implied IFR
+creation path. F6 owns full local `FLT DATA` IFR creation. F9 owns local VFR
+creation, modification, deletion, and active-track VFR entry. All scope command
+paths remain separate from the radio parser and never emit Command IR,
+readback, pilot intent, or kinematic changes. ARTCC/network results are
+simulated local trainer state only.
+
+**Skip:** F2 TRK RPOS, F3 suspend lifecycle, F8 TSAS/FMA, F10 IFDT, F12/F13,
+real ARTCC or IFDT messaging, multi-controller networking, unsupported
+datablocks, speech, pilot execution, kinematics, facility branches, and new
+scenario data.
+
+**Waves:** A=`T02-168`; B=`T02-169`. Wave B waits for the F6 merge, focused
+tests, `npm run ci`, and independent manual review.
+
+**Ticket ownership:** T02-168 owns F6 routing, full IFR grammar, and separation
+from abbreviated/F1 creation. T02-169 owns F9 routing, VFR grammar, VFR-list
+lifecycle, and active-track VFR creation.
+
+**Ticket branches:**
+
+- `ticket/T02-168-flt-data-f6-command-mode` ← `phases/02-scope/tickets/T02-168-flt-data-f6-command-mode.md`
+- `ticket/T02-169-vfr-f9-command-mode` ← `phases/02-scope/tickets/T02-169-vfr-f9-command-mode.md`
+
+**Manual review:** `/home/ben/Documents/stars refs/full_manual.pdf`; relevant
+anchors are Appendix D Table D-1 p. D-2, §5.5.1 pp. 5-85–5-89, §5.5.5
+pp. 5-105–5-108, §5.5.7 pp. 5-116–5-119, §5.4.7 p. 5-81, §5.5.10
+pp. 5-129–5-133, §5.5.13 p. 5-139, and §5.6.19 pp. 5-177–5-178.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: F6/F9 flight-plan command alignment T02-168–169
+Merge target: feat/flight-plan-f6-f9
+Merged: T02-168, T02-169
+Tests: <focused gates, final npm run ci, and independent manual reviews>
+Notes: Local trainer semantics; no ARTCC/network, Command IR, or master merge
+```
+
+## Twelfth swarm started — 2026-09-12 (F6/F9 flight-plan command alignment)
+
+Execution authorized on `feat/flight-plan-f6-f9`. The captain runs T02-168 then
+T02-169 sequentially with one isolated worker at a time. Every squash merge
+requires `npm run ci` and an independent `$check-stars-manual` review against
+`/home/ben/Documents/stars refs/full_manual.pdf` before the next wave.
+
+No push is authorized. Workers implement exactly one ticket, never merge or
+spawn, and return exactly `READY TO MERGE` or `BLOCKED`. Stop after T02-169 or
+on an unresolved CI/manual-review failure; use one narrowly scoped fix worker
+only if required by the swarm rules.
+
+## Sixty-third swarm started — 2026-09-12 (NAS-style flight-plan modal)
+
+Captain starts the approved T02-170–172 sequence on
+`feature/nas-flightplan-modal`. Planning tickets and the proposed configuration
+are committed before workers. Workers are isolated, sequential, and use
+`gpt-5.6-luna` with high reasoning. Captain owns the merge lock; no push.
+
+Execution gate: every ticket needs its focused tests, `npm run ci`, and
+supplied-manual review before the next wave. Stop at T02-172. The product law
+above remains binding: filed route is metadata, never pilot/FMS execution.
+
+## Sixty-fourth swarm started — 2026-09-12 (derived correlation and IFR scenario plans)
+
+Execution authorized on `feature/nas-flightplan-modal`; no new feature branch
+or push. Run T02-172, T02-173, T02-174, then T02-175 in isolated worktrees,
+one Luna/high worker at a time. Captain squash-merges only after focused tests,
+`npm run ci`, and independent supplied-manual PASS. On any failure, stop later
+waves and use one narrow correction worker. The proposed sixty-fourth product
+law and skip list above are binding.

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { DEFAULT_INBOUND_SECTOR_ID, createWorld, handoffFor } from "@core";
+import { DEFAULT_INBOUND_SECTOR_ID, createFlightPlan, createWorld, handoffFor } from "@core";
 import {
   STAR_SPAWN_STAGGER_NM,
   assertScenario,
@@ -7,6 +7,7 @@ import {
   createWorldFromScenario,
   loadKdem,
   loadKdemIls27,
+  loadPlayableScenario,
   parseSpawnSeed,
   parseTrafficCount,
   spawnArrivals,
@@ -14,12 +15,44 @@ import {
 import { PALETTE, syncTrackDisplays } from "@scope";
 import kdemJson from "../kdem.json";
 import kdemDownwindJson from "../../../testdata/scenarios/kdem-downwind.json";
+import { spawnAircraft } from "../spawnAircraft";
 
 const SPAWN_X_NM = { min: 10, max: 22 };
 const SPAWN_Y_NM = { min: 3, max: 12 };
 const SPAWN_HEADING_DEG = { min: 80, max: 100 };
 const SPAWN_ALT_FT = { min: 6000, max: 10000 };
 const SPAWN_SPEED_KT = { min: 210, max: 250 };
+
+test("T02-173 — spawned reported beacon remains independently derived", () => {
+  const plan = createFlightPlan({
+    id: "fp-spawn-beacon",
+    acid: "AAL123",
+    assignedBeacon: "7022",
+    fixes: [],
+    scratchpads: [],
+  });
+  if (!plan.ok) throw new Error(plan.error.message);
+  const world = createWorld({ flightPlans: [plan.value] });
+  const aircraft = spawnAircraft(world, {
+    callsign: "1234",
+    xNm: 1,
+    yNm: 2,
+    headingDeg: 90,
+    altitudeFt: 4000,
+    speedKt: 180,
+    assignedSquawk: "7022",
+  });
+
+  expect(world.flightPlans[0]).toMatchObject({
+    status: "pending",
+    acid: "AAL123",
+    assignedBeacon: "7022",
+    reportedBeacon: undefined,
+  });
+  expect(aircraft.callsign).toBe("1234");
+  expect(aircraft.assignedSquawk).toBe("7022");
+  expect(aircraft.reportedSquawk).toBe("7022");
+});
 
 function spawnAssignSources(): string {
   const sources = import.meta.glob("../{spawn,starSpawn,trafficQuery}.ts", {
@@ -179,6 +212,17 @@ test("T04-14 AC5 — ils27 authored pack ignores trafficCount and seed", () => {
   expect(second.xNm).toBe(17);
 });
 
+test("authored KDEM-CA traffic does not enter the random STAR scheduler", () => {
+  const world = createWorldForSession(loadPlayableScenario("kdem-ca"), null, 1, null, {
+    initialArrivalCount: 6,
+    arrivalsPerHour: 8,
+    seed: 1,
+  });
+
+  expect(world.aircraft).toHaveLength(6);
+  expect(world.arrivalScheduler).toBeUndefined();
+});
+
 test("T04-14 AC6 — testdata downwind fixture keeps the T01-04 box", () => {
   const scenario = assertScenario(kdemDownwindJson);
   expect(scenario.spawnPolicy).toBe("authored");
@@ -290,7 +334,12 @@ test("T02-12 AC1/AC5 — spawnArrivals(world, 30) spreads unique tracks on a dow
     expect(ac.headingDeg).toBe(90);
     expect(ac.altitudeFt % 100).toBe(0);
     expect(ac.intent.assignedHeadingDeg).toBe(ac.headingDeg);
+    expect(ac.squawk).toMatch(/^[0-7]{4}$/);
+    expect(ac.reportedSquawk).toBe(ac.squawk);
+    expect(ac.assignedSquawk).toBe(ac.squawk);
+    expect(ac.squawk).not.toMatch(/^(7500|7600|7700)$/);
   }
+  expect(new Set(world.aircraft.map((ac) => ac.squawk)).size).toBe(30);
 });
 
 test("T02-12 AC5 — createWorldForSession keeps 6 from JSON unless ?traffic= is set", () => {

@@ -31,6 +31,59 @@ export type {
   Accumulator,
   ScheduledDeparture,
 } from "./world";
+export type {
+  FlightPlan,
+  FiledRoute,
+  FiledRouteSegment,
+  FlightPlanError,
+  FlightPlanErrorCode,
+  FlightPlanCorrelationError,
+  FlightPlanCorrelationErrorCode,
+  FlightPlanCorrelationResult,
+  DerivedFlightPlanCorrelation,
+  AircraftSquawkUpdate,
+  FlightPlanResult,
+  FlightPlanModificationField,
+  FlightPlanModificationValue,
+  FlightPlanModificationResult,
+  FlightPlanStatus,
+  FlightType,
+} from "./flightPlan";
+export { FAA_AIRCRAFT_EQUIPMENT_SUFFIXES } from "./flightPlan";
+export type {
+  FiledRouteCatalog,
+  FiledRouteError,
+  FiledRouteErrorCode,
+  FiledRouteResult,
+  ParsedFiledRoute,
+  ParsedFiledRouteSegment,
+  FlightPlanDraftInput,
+  FlightPlanDraftError,
+  FlightPlanDraftErrorCode,
+  FlightPlanDraftResult,
+} from "./filedRoute";
+export {
+  allocateBeaconCode,
+  associateFlightPlan,
+  correlateFlightPlanForAircraft,
+  resolveFlightPlanCorrelation,
+  createActiveFlightPlanFromTarget,
+  createFlightPlan,
+  deleteFlightPlan,
+  deleteFlightPlanFromWorld,
+  disassociateFlightPlan,
+  flightPlanCid,
+  flightPlanForAircraft,
+  isValidAcid,
+  isValidBeaconCode,
+  modifyFlightPlan,
+  releaseAssignedBeacon,
+  transitionFlightPlan,
+  validateFlightPlan,
+  withAllocatedBeacon,
+  updateAircraftSquawk,
+} from "./flightPlan";
+export { parseFiledRoute, resolveFiledRoute, saveFlightPlanDraft } from "./filedRoute";
 export {
   TRACON_BOUNDARY_RADIUS_NM,
   createWorld,
@@ -40,8 +93,15 @@ export {
   createAccumulator,
   advanceWorld,
 } from "./world";
-export type { CenterHandoffContext, TrackHandoff } from "./handoff";
+export type {
+  CenterHandoffContext,
+  OutboundHandoffContext,
+  OutboundHandoffDestination,
+  TrackHandoff,
+} from "./handoff";
 export {
+  CENTER_HANDOFF_AUTO_ACCEPT_DELAY_MS,
+  OUTBOUND_HANDOFF_AUTO_ACCEPT_DELAY_MS,
   DEFAULT_CENTER_SECTOR_ID,
   DEFAULT_INBOUND_SECTOR_ID,
   DEFAULT_TOWER_SECTOR_ID,
@@ -54,6 +114,7 @@ export {
   convertPointoutToHandoff,
   handoffFor,
   initiateCenterHandoff,
+  initiateOutboundHandoff,
   initiatePointout,
   isCenterHandoffEligible,
   isRadioCommandAllowed,
@@ -103,13 +164,21 @@ export { SessionLog } from "./events/session-log";
 export type {
   Aircraft,
   AircraftInit,
+  CwtWakeCategory,
   CrossConstraint,
   CrossRestriction,
   Intent,
   LateralMode,
   VerticalMode,
 } from "./aircraft";
-export { createAircraft, makeTestAircraft, nextAircraftId } from "./aircraft";
+export {
+  createAircraft,
+  formatFlightPlanAircraftType,
+  makeTestAircraft,
+  nextAircraftId,
+  normalizeFlightPlanAircraftType,
+  normalizeCwtWakeCategory,
+} from "./aircraft";
 export type {
   AircraftPerformanceProfile,
   AircraftProfileDataset,

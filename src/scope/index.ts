@@ -9,7 +9,7 @@
  * (PTL, F7 always-on, default off), L1–L9 **leader** lines (scope-focus `L`
  * then 1–9; pixel-constant default 36 CSS px; DCB LDR LEN 0–7 at 12 px per step), altitude filter
  * (scope-focus `F`, default 000–180), F3/F4 ownership color stub (not NAS),
- * F1 help overlay (`TRAINER KEYS — NOT CRC`), Tab cycle focus, `/` radio focus.
+ * Help button / ? overlay (`TRAINER KEYS — NOT CRC`), Tab cycle focus, `/` radio focus.
  * Scope-focus `*` TPA/ATPA slew chords (R07 Table 36) parse and prompt on the PPI.
  * T04-09 CA displays static `CA` + tone (no yellow). T04-10 MSAW paints a
  * red `LA` tag when MSL is below the MVA floor; neither tints the block. CA is raised only for current conflicts. The PPI does
@@ -192,6 +192,8 @@ export type { AltitudeFilter, FilterEntry, FilterEntryPhase } from "./altitudeFi
 export {
   CHORD_TIMEOUT_MS,
   HELP_FOOTER,
+  HELP_COMMAND_GROUPS,
+  HELP_NAVIGATION_GROUPS,
   HELP_GLOSSARY_NOTE,
   HELP_KEYS_POINTER,
   KEY_BINDINGS,
@@ -209,7 +211,6 @@ export {
   isHelpToggleKey,
   isBeaconSelectKey,
   isMouseBinding,
-  isPreviewPlusKey,
   isRadioFocusSlashKey,
   isScopeChordLive,
   isStarsChordPrefixKey,
@@ -217,7 +218,14 @@ export {
   mouseKeyBindings,
   scopeFocusKeyBindings,
 } from "./keymap";
-export type { KeyBinding, KeyFocus, ScopeChord } from "./keymap";
+export type {
+  HelpCommandEntry,
+  HelpCommandGroup,
+  HelpNavigationGroup,
+  KeyBinding,
+  KeyFocus,
+  ScopeChord,
+} from "./keymap";
 export {
   applyPreviewBeaconAction,
   applyPreviewWxAction,
@@ -240,6 +248,7 @@ export {
   isPrefNameEntry,
   isPreviewBufferStartChar,
   parsePreviewCommand,
+  parseFlightPlanModalCommand,
   parseTrackingCommand,
   parseTrackingSlewBuffer,
   previewAreaIsLive,
@@ -318,6 +327,7 @@ export {
   scopeFocusFromDocument,
 } from "./scopeKeys";
 export type { ScopeFocus, ScopeKeyUi } from "./scopeKeys";
+export type { FlightPlanModalRequest } from "./previewParse";
 export {
   centerOnAirport,
   centerOnLastClick,
@@ -632,8 +642,11 @@ export type {
   TpaState,
 } from "./tpa";
 export {
+  ATPA_CONE_END_HEIGHT_NM,
   ATPA_CONE_HALF_ANGLE_DEG,
+  ATPA_CONE_REFERENCE_LENGTH_NM,
   atpaConeColor,
+  atpaConeHalfAngleDeg,
   atpaConePoints,
   atpaSuppressesManualTpaCone,
   selectAtpaConesToPaint,
@@ -665,6 +678,7 @@ export {
   BEACONATOR_SLEW_MS,
   acceptInboundOnClick,
   applyBeaconatorSlewToId,
+  clearTrackQuery,
   applyDropTrackToId,
   applyDropTrackToSelection,
   applyInitiateTrackToId,
@@ -765,11 +779,16 @@ export {
   datablockMetrics,
   datablockRect,
   formatAltitudeHundreds,
+  formatDatablockFields,
+  formatPartialDatablockFields,
   formatFullDatablock,
+  datablockSourceFromWorld,
   formatGroundSpeedKt,
   formatGroundSpeedTens,
+  formatTcp,
   formatLimitedDatablock,
   formatPartialDatablock,
+  physicalDatablockLines,
   fullDatablockLine3Parts,
   linesForDatablock,
   sanitizeScratchpad,
@@ -777,6 +796,8 @@ export {
 } from "./datablock";
 export type {
   DatablockLines,
+  DatablockFields,
+  DatablockFieldOptions,
   DatablockMode,
   DatablockSource,
   FullDatablock,
@@ -785,6 +806,7 @@ export type {
   LimitedDatablockOpts,
   PartialDatablock,
   PartialDatablockOpts,
+  PhysicalDatablockLines,
 } from "./datablock";
 export {
   CHAR_SIZE_STEPS_PX,
@@ -827,7 +849,6 @@ export {
   cancelListDrag,
   canonicalSystemListId,
   commitListDrag,
-  correlateFlightPlans,
   deleteFlightPlanEntry,
   dropTowerListEntry,
   dropVfrListEntry,
@@ -835,6 +856,7 @@ export {
   findOverlappingLists,
   getAircraftDestination,
   getFlightPlanEntries,
+  getVisibleFlightPlanEntries,
   handleFlightPlanListClick,
   handleListMiddleClick,
   handleListMouseMove,
@@ -849,7 +871,6 @@ export {
   resolveTowerAirport,
   normalizedClickAnchor,
   pointInsideRect,
-  promoteVfrListEntry,
   purgeFlightPlanEntry,
   rectsOverlap,
   relocateSystemList,

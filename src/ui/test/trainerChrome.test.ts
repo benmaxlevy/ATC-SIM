@@ -80,7 +80,7 @@ test("AC1 — no disclaimer banner over the DCB; T00-01 copy is first-run and F1
   expect(renderToStaticMarkup(createElement(Disclaimer, { storage: store }))).toBe("");
 });
 
-test("AC2 — persistent chrome has no tutorial sentences; F1 still lists TRAINER KEYS", () => {
+test("persistent chrome has no tutorial sentences; Help lists local commands", () => {
   const shell = shellSrc();
   const controls = uiSources["../controls/sim-controls.tsx"]!;
   const overlay = uiSources["../overlays/ScopeHelpOverlay.tsx"]!;
@@ -92,7 +92,7 @@ test("AC2 — persistent chrome has no tutorial sentences; F1 still lists TRAINE
   expect(controls).not.toMatch(/play-hint/);
   expect(controls).not.toMatch(/sim-keys/);
   expect(overlay).toMatch(/HELP_FOOTER/);
-  expect(HELP_FOOTER).toBe("TRAINER KEYS — NOT CRC");
+  expect(HELP_FOOTER).toBe("TRAINER COMMANDS — LOCAL REFERENCE");
 });
 
 test("AC3 — Pause / 1× / 2× still mutate paused and simRate", () => {

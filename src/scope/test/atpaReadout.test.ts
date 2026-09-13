@@ -93,7 +93,7 @@ test("AC3 — monitor pairs add no datablock field; warning and alert do", () =>
   });
   expect(atpaReadoutColor("warning")).toBe(PALETTE.atpaWarning);
   expect(atpaReadoutColor("alert")).toBe(PALETTE.atpaAlert);
-  expect(atpaReadoutColor("alert")).toBe(PALETTE.alert);
+  expect(atpaReadoutColor("alert")).not.toBe(PALETTE.alert);
   expect(atpaReadoutColor("monitor")).toBe(PALETTE.tools);
 });
 

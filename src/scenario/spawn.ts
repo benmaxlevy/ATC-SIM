@@ -1,5 +1,4 @@
 import {
-  createAircraft,
   createWorld,
   MSAW_FAF_DISTANCE_NM,
   mulberry32,
@@ -27,6 +26,7 @@ import {
 } from "./arrivalScheduler";
 import { resolveRunwayHeading, resolveRunwayThreshold } from "./departureSpawn";
 import { allocateTrafficPair, allocateTrafficPairForType, usedCallsignSet } from "./callsigns";
+import { createScenarioIfrFlightPlan, spawnScenarioIfrAircraft } from "./ifrFlightPlan";
 
 export { starRouteFixIds };
 
@@ -65,22 +65,36 @@ function spawnArrival(
   world: World,
   arrival: ArrivalSpawn,
   callsign: string,
+  rng: () => number,
   scenario?: Scenario,
 ): void {
-  const ac = createAircraft({
-    callsign,
-    xNm: arrival.xNm,
-    yNm: arrival.yNm,
-    headingDeg: arrival.headingDeg,
-    altitudeFt: arrival.altitudeFt,
-    speedKt: arrival.speedKt,
-    aircraftType: arrival.aircraftType,
-    destination: scenario?.icao ?? world.catalog?.airportId,
-    flightPlan: {
+  const { aircraft: ac } = spawnScenarioIfrAircraft(
+    world,
+    {
+      callsign,
+      xNm: arrival.xNm,
+      yNm: arrival.yNm,
+      headingDeg: arrival.headingDeg,
+      altitudeFt: arrival.altitudeFt,
+      speedKt: arrival.speedKt,
+      aircraftType: arrival.aircraftType,
+      cwtWakeCategory: arrival.cwtWakeCategory,
       destination: scenario?.icao ?? world.catalog?.airportId,
-      rules: "IFR",
     },
-  });
+    {
+      scenario: { icao: scenario?.icao ?? world.catalog?.airportId ?? "UNKNOWN" },
+      route:
+        arrival.starId === undefined
+          ? undefined
+          : {
+              kind: "arrival",
+              starId: arrival.starId,
+              transitionId: arrival.transitionId,
+            },
+      requestedAltitudeFt: arrival.altitudeFt,
+      rng,
+    },
+  );
   if (scenario) {
     armStarVia(ac, scenario, arrival);
   }
@@ -90,7 +104,6 @@ function spawnArrival(
   } else {
     setHandoffNone(world, ac.id);
   }
-  world.aircraft.push(ac);
 }
 
 function armStarVia(ac: Aircraft, scenario: Scenario, arrival: ArrivalSpawn): void {
@@ -141,20 +154,29 @@ function spawnStarInbound(world: World, scenario: Scenario, seed: number): void 
   for (let i = 0; i < scenario.arrivals.length; i += 1) {
     const assigned = assignments[i]!;
     const traffic = allocateTrafficPair(rng, used);
-    const ac = createAircraft({
-      callsign: traffic.callsign,
-      xNm: assigned.pose.xNm,
-      yNm: assigned.pose.yNm,
-      headingDeg: assigned.pose.headingDeg,
-      altitudeFt: assigned.pose.altitudeFt,
-      speedKt: assigned.pose.speedKt,
-      aircraftType: traffic.aircraftType,
-      destination: scenario.icao,
-      flightPlan: {
+    const { aircraft: ac } = spawnScenarioIfrAircraft(
+      world,
+      {
+        callsign: traffic.callsign,
+        xNm: assigned.pose.xNm,
+        yNm: assigned.pose.yNm,
+        headingDeg: assigned.pose.headingDeg,
+        altitudeFt: assigned.pose.altitudeFt,
+        speedKt: assigned.pose.speedKt,
+        aircraftType: traffic.aircraftType,
         destination: scenario.icao,
-        rules: "IFR",
       },
-    });
+      {
+        scenario,
+        route: {
+          kind: "arrival",
+          starId: assigned.starId,
+          transitionId: assigned.transitionId,
+        },
+        requestedAltitudeFt: assigned.pose.altitudeFt,
+        rng,
+      },
+    );
     ac.intent.lateral = {
       type: "PROCEDURE",
       starId: assigned.starId,
@@ -162,7 +184,6 @@ function spawnStarInbound(world: World, scenario: Scenario, seed: number): void 
       routeFixIds: assigned.pose.routeFixIds,
     };
     ac.intent.vertical = { type: "VIA_STAR", starId: assigned.starId, sense: "DESCEND" };
-    world.aircraft.push(ac);
     offerInboundHandoff(world, ac);
   }
 }
@@ -182,7 +203,37 @@ function spawnDownwindArc(
     const traffic = allocateTrafficPair(rng, used);
     const arrival = downwindArcArrival(i, n, scenario);
     arrival.aircraftType = traffic.aircraftType;
-    spawnArrival(world, arrival, traffic.callsign, scenario);
+    spawnArrival(world, arrival, traffic.callsign, rng, scenario);
+  }
+}
+
+/** Run an authored batch against isolated append-only state before committing it. */
+function spawnAuthoredArrivalsAtomically(world: World, scenario: Scenario, seed: number): void {
+  const staged: World = {
+    ...world,
+    aircraft: [...world.aircraft],
+    flightPlans: [...world.flightPlans],
+    handoffs: new Map(world.handoffs),
+    outboundHandoffInitiatedAtSimMs: new Map(world.outboundHandoffInitiatedAtSimMs),
+    sessionLog: world.sessionLog ? new SessionLog() : null,
+  };
+  const rng = mulberry32((seed >>> 0) ^ 0xa24baed);
+  const used = usedCallsignSet(staged.aircraft.map((aircraft) => aircraft.callsign));
+  for (const arrival of scenario.arrivals) {
+    const traffic = allocateTrafficPairForType(rng, used, arrival.aircraftType ?? "B738");
+    spawnArrival(staged, arrival, traffic.callsign, rng, scenario);
+  }
+
+  world.aircraft.push(...staged.aircraft.slice(world.aircraft.length));
+  world.flightPlans.push(...staged.flightPlans.slice(world.flightPlans.length));
+  world.handoffs.clear();
+  for (const [aircraftId, handoff] of staged.handoffs) world.handoffs.set(aircraftId, handoff);
+  world.outboundHandoffInitiatedAtSimMs.clear();
+  for (const [aircraftId, atSimMs] of staged.outboundHandoffInitiatedAtSimMs) {
+    world.outboundHandoffInitiatedAtSimMs.set(aircraftId, atSimMs);
+  }
+  if (world.sessionLog && staged.sessionLog) {
+    for (const event of staged.sessionLog.all()) world.sessionLog.append(event);
   }
 }
 
@@ -211,12 +262,7 @@ export function spawnArrivals(
   }
   const seed =
     typeof scenarioOrSeed === "number" ? scenarioOrSeed : (seedOpt ?? DEFAULT_SPAWN_SEED);
-  const rng = mulberry32((seed >>> 0) ^ 0xa24baed);
-  const used = usedCallsignSet(world.aircraft.map((a) => a.callsign));
-  for (const arrival of source.arrivals) {
-    const traffic = allocateTrafficPairForType(rng, used, arrival.aircraftType ?? "B738");
-    spawnArrival(world, arrival, traffic.callsign, source);
-  }
+  spawnAuthoredArrivalsAtomically(world, source, seed);
 }
 
 function msawInhibitFromScenario(scenario: Scenario): MsawInhibitGeom | null {
@@ -294,6 +340,28 @@ function initDepartures(
       startSimMs: world.simTimeMs,
     });
   }
+
+  // File every scheduled departure while it is still pending.  The target
+  // spawner below reuses this plan and reports its assigned beacon, so a due
+  // departure never appears before its operational record exists.
+  const stagedWorld = { ...world, flightPlans: [...world.flightPlans] };
+  for (const dep of schedule) {
+    const plan = createScenarioIfrFlightPlan(stagedWorld, {
+      acid: dep.callsign,
+      scenario,
+      route: {
+        kind: "departure",
+        sidId: dep.sidId,
+        transitionId: dep.transitionId,
+      },
+      requestedAltitudeFt: dep.assignedAltitudeFt,
+      aircraftType: dep.aircraftType,
+      assignedBeacon: dep.assignedSquawk ?? dep.squawk,
+    });
+    dep.assignedSquawk = plan.assignedBeacon;
+    dep.squawk = plan.assignedBeacon;
+  }
+  world.flightPlans.push(...stagedWorld.flightPlans.slice(world.flightPlans.length));
 
   world.scheduledDepartures = schedule;
   world.departureSpawner = spawnDueDepartures;
@@ -378,30 +446,6 @@ export function createWorldForSession(
       arrivalScheduler.drain(world);
     } else {
       spawnArrivals(world, scenario, seed);
-      if (
-        (scenario.catalog?.stars?.length ?? 0) > 0 &&
-        arrivalTraffic?.arrivalsPerHour !== undefined &&
-        arrivalTraffic.arrivalsPerHour > 0
-      ) {
-        arrivalScheduler = createArrivalScheduler(
-          scenario.catalog,
-          {
-            ...arrivalTraffic,
-            initialArrivalCount: 0,
-            seed: arrivalTraffic.seed ?? seed,
-            activeRunwayId: scenario.activeRunwayId,
-          },
-          world.aircraft.map((arrival) => arrival.callsign),
-          world.simTimeMs,
-          scenario.activeRunwayId,
-          scenario.arrivals.map((arrival) => ({
-            starId: arrival.starId!,
-            transitionId: arrival.transitionId!,
-            entryFixId: arrival.entryFixId!,
-          })),
-        );
-        world.arrivalScheduler = arrivalScheduler;
-      }
     }
   }
 

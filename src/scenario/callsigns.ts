@@ -79,6 +79,9 @@ export interface TrafficPair {
 }
 
 const MAX_ALLOCATE_ATTEMPTS = 20_000;
+const SQUAWK_MIN = 0o2000;
+const SQUAWK_MAX = 0o7777;
+const RESERVED_SQUAWKS = new Set(["7500", "7600", "7700"]);
 
 export function callsignNumericTail(callsign: string): string {
   const rest = callsign
@@ -98,6 +101,26 @@ export function usedCallsignSet(callsigns: Iterable<string> = []): Set<string> {
     }
   }
   return used;
+}
+
+/** Allocate an unused four-digit octal beacon, excluding emergency codes. */
+export function allocateSquawkCode(
+  usedCodes: Iterable<string> = [],
+  rng: () => number = () => 0,
+): string {
+  const used = new Set<string>();
+  for (const code of usedCodes) {
+    const normalized = code.trim();
+    if (normalized.length > 0) used.add(normalized);
+  }
+  const range = SQUAWK_MAX - SQUAWK_MIN + 1;
+  const start = Math.floor(Math.max(0, Math.min(0.999999, rng())) * range);
+  for (let offset = 0; offset < range; offset += 1) {
+    const value = SQUAWK_MIN + ((start + offset) % range);
+    const code = value.toString(8).padStart(4, "0");
+    if (!RESERVED_SQUAWKS.has(code) && !used.has(code)) return code;
+  }
+  throw new Error("Unable to allocate a unique squawk code");
 }
 
 function usedTails(used: ReadonlySet<string>): Set<string> {

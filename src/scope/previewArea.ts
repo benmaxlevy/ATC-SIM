@@ -12,14 +12,14 @@
  * slew apply, and key handling. Not NAS STARS.
  */
 
-import type { World } from "@core";
+import { flightPlanForAircraft, type World } from "@core";
 import type { LoadedVideoMap } from "@scenario";
 import { DCB_PREF_NAME_MAX_CHARS, parseDcbPrefName } from "./dcb/dcbPref";
 import { type VideoMapTokenLayout } from "./dcb/dcbFunctions";
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
 import { cloneWxLevels, type WxLevels } from "./wx";
 import type { ScopeView } from "./scopeView";
-import { getFlightPlanEntries } from "./systemLists";
+import { formatFlightPlanIndex, getFlightPlanEntries } from "./systemLists";
 import {
   ensureTrackDisplay,
   isCaPairInhibited,
@@ -32,7 +32,10 @@ import {
   SUFFIX_CALLSIGN,
   isTrackingSlewAction,
   parseCaCommand,
+  parseFlightPlanCreation,
+  parseFlightPlanModalCommand,
   parsePreviewCommand,
+  parseVfrFlightPlanCommand,
   parseTrackingSlewBuffer,
   previewBufferCharFromKey,
   type PreviewArmedAction,
@@ -46,6 +49,8 @@ export {
   parseAltitudeFilterCommand,
   parseBeaconFilterCommand,
   parseCaCommand,
+  parseFlightPlanCreation,
+  parseFlightPlanModalCommand,
   parsePreviewCommand,
   parseScopeDisplayCommand,
   parseTrackingCommand,
@@ -61,6 +66,52 @@ function numericTail(callsign: string): string {
 
 export type ScopeFlidResult =
   { ok: true; aircraftId: string } | { ok: false; reason: "unknown" | "ambiguous" };
+
+function unassociatedTrack(aircraftId: string, view?: ScopeView): boolean {
+  const td = view?.tracks.get(aircraftId);
+  return (
+    !td || td.unassociated === true || (td.ownership !== "owned" && td.datablockMode !== "full")
+  );
+}
+
+/**
+ * Resolve the authoritative plan identity used by INIT CNTL slew matching.
+ * A plan without a track is intentionally a plan-only result: the subsequent
+ * target click supplies the aircraft identity.
+ */
+function planIdentityMatches(
+  token: string,
+  world: World,
+  view?: ScopeView,
+  termOptions?: { flightType?: "A" | "P" | "E"; coordinationTime?: string },
+): World["flightPlans"] {
+  const identity = /^(\S+?)(?:\/([APE]))?(?:\s([0-2]\d[0-5]\d))?$/.exec(token.trim().toUpperCase());
+  const normalized = identity?.[1] ?? token.trim().toUpperCase();
+  const flightType = termOptions?.flightType ?? identity?.[2];
+  const coordinationTime = termOptions?.coordinationTime ?? identity?.[3];
+  const matchesOptions = (plan: World["flightPlans"][number]) =>
+    (!flightType ||
+      (flightType === "A" && plan.flightType === "IFR") ||
+      (flightType === "P" && plan.flightType === "VFR") ||
+      (flightType === "E" && plan.flightType === "DVFR")) &&
+    (!coordinationTime || plan.eta === coordinationTime || plan.ptd === coordinationTime);
+  if (view && /^\d{2}$/.test(normalized)) {
+    const entry = getFlightPlanEntries(world, view).find(
+      (item) => formatFlightPlanIndex(item.index) === normalized,
+    );
+    if (entry?.planId) {
+      const plan = world.flightPlans.find((item) => item.id === entry.planId);
+      return plan && plan.status !== "deleted" && matchesOptions(plan) ? [plan] : [];
+    }
+    return [];
+  }
+  return world.flightPlans.filter(
+    (plan) =>
+      plan.status !== "deleted" &&
+      (plan.acid === normalized || plan.assignedBeacon === normalized) &&
+      matchesOptions(plan),
+  );
+}
 
 /**
  * Resolve a Preview Area FLID: full callsign, numeric tail, or unique 4-digit
@@ -86,7 +137,7 @@ export function resolveScopeFlid(token: string, world: World, view?: ScopeView):
   const ids = new Set<string>();
   if (FULL_CALLSIGN.test(normalized)) {
     for (const ac of world.aircraft) {
-      if (ac.callsign === normalized) {
+      if (ac.callsign === normalized || flightPlanForAircraft(world, ac.id)?.acid === normalized) {
         ids.add(ac.id);
       }
     }
@@ -125,6 +176,8 @@ export type PreviewAreaState = {
   rejection: string | null;
   /** Generic armed-action discriminator. Null when none. */
   armed: PreviewArmedAction | null;
+  /** Explicit F6 / FLT DATA creation mode; abbreviated creation leaves unset. */
+  creationMode?: "fltData" | "vfr";
   /** Slew action alias for armed tracking/inhibit actions. */
   slewAction?: PreviewArmedAction | null;
 };
@@ -156,6 +209,7 @@ export function cancelPreviewArea(state: PreviewAreaState): void {
   state.rejection = idle.rejection;
   state.armed = idle.armed;
   state.slewAction = idle.slewAction;
+  delete state.creationMode;
 }
 
 /**
@@ -249,6 +303,13 @@ export function previewRelocateListId(state: PreviewAreaState): string | null {
 }
 /** Armed tracking chord or live `+` `/` `*` `*1`–`*8` `*0` `*B` buffer. */
 export function previewTrackingSlew(state: PreviewAreaState): PreviewArmedAction | null {
+  if (
+    state.phase === "armed" &&
+    state.armed?.type === "openFlightPlanModal" &&
+    state.armed.targetSlew
+  ) {
+    return state.armed;
+  }
   if (state.phase === "armed" && state.armed && isTrackingSlewAction(state.armed)) {
     const armed = state.armed;
     if ((armed.type === "initCntl" || armed.type === "termCntl") && state.flid) {
@@ -258,6 +319,16 @@ export function previewTrackingSlew(state: PreviewAreaState): PreviewArmedAction
   }
   if (state.phase !== "entry") {
     return null;
+  }
+  // `*FP <SLEW>` is command-then-slew: while the exact token is live in the
+  // Preview Area, a target click applies it without an intermediate Enter.
+  const flightPlanModal = parseFlightPlanModalCommand(state.buffer);
+  if (
+    flightPlanModal?.kind === "action" &&
+    flightPlanModal.action.type === "openFlightPlanModal" &&
+    flightPlanModal.action.targetSlew
+  ) {
+    return flightPlanModal.action;
   }
   // STARS CA commands may slew directly from the live Preview Area; Enter is
   // only required when every target is supplied as a typed ACID.
@@ -407,7 +478,7 @@ export function armPreviewSlewAction(
   nowMs: number,
 ): void {
   if (action.type === "initCntl" || action.type === "termCntl") {
-    armPreviewCntl(state, action.type, nowMs, action.flid);
+    armPreviewCntl(state, action.type, nowMs, action.flid, action);
     return;
   }
   state.phase = "armed";
@@ -452,14 +523,15 @@ export function armPreviewCntl(
   kind: "initCntl" | "termCntl",
   nowMs: number,
   flid?: string,
+  action?: Extract<PreviewArmedAction, { type: "initCntl" | "termCntl" }>,
 ): void {
   state.phase = "armed";
   state.mnemonic = kind === "initCntl" ? "INIT CNTL" : "TERM CNTL";
   state.buffer = "";
   state.flid = flid && flid.length > 0 ? flid : null;
   state.rejection = null;
-  state.armed = { type: kind };
-  state.slewAction = { type: kind };
+  state.armed = action ?? { type: kind };
+  state.slewAction = action ?? { type: kind };
   state.lastKeyAtMs = nowMs;
 }
 
@@ -486,7 +558,10 @@ const FLID_CHAR = /^[A-Za-z0-9]$/;
 
 export type PreviewFlidKeyResult =
   | { consumed: false }
-  | { consumed: true; apply?: { type: "initCntl" | "termCntl"; aircraftId: string } };
+  | {
+      consumed: true;
+      apply?: { type: "initCntl" | "termCntl"; aircraftId: string; planId?: string };
+    };
 
 /**
  * Typed ACID / Enter / Backspace while INIT CNTL or TERM CNTL is armed.
@@ -511,6 +586,13 @@ export function handlePreviewFlidKey(
     state.lastKeyAtMs = nowMs;
     return { consumed: true };
   }
+  if (key === " " && state.armed.type === "initCntl" && state.flid) {
+    state.phase = "entry";
+    state.buffer = `${state.flid} `;
+    state.flid = null;
+    state.lastKeyAtMs = nowMs;
+    return { consumed: true };
+  }
   if (key === "Enter") {
     const flid = state.flid;
     if (!flid) {
@@ -521,9 +603,34 @@ export function handlePreviewFlidKey(
       rejectPreviewCntl(state, nowMs);
       return { consumed: true };
     }
+    if (state.armed.type === "initCntl") {
+      // Manual §5.4.1–§5.4.2 requires identity entry + slew/click.
+      rejectPreviewCntl(state, nowMs);
+      return { consumed: true };
+    }
     if (!world) {
       rejectPreviewCntl(state, nowMs);
       return { consumed: true };
+    }
+    const plans = planIdentityMatches(
+      flid,
+      world,
+      view,
+      state.armed.type === "termCntl" ? state.armed : undefined,
+    );
+    // An unassociated authoritative plan has no aircraft identity to apply
+    // until the subsequent INIT CNTL slew/click supplies the target. TERM CNTL
+    // can delete a plan-only identity directly, as required by §5.4.6.
+    if (state.armed.type === "termCntl" && plans.length === 1) {
+      const plan = plans[0]!;
+      const correlatedAircraft = world.aircraft.find(
+        (aircraft) => flightPlanForAircraft(world, aircraft.id)?.id === plan.id,
+      );
+      cancelPreviewArea(state);
+      return {
+        consumed: true,
+        apply: { type: "termCntl", aircraftId: correlatedAircraft?.id ?? "", planId: plan.id },
+      };
     }
     const resolved = resolveScopeFlid(flid, world, view);
     if (!resolved.ok) {
@@ -534,7 +641,12 @@ export function handlePreviewFlidKey(
     cancelPreviewArea(state);
     return { consumed: true, apply: { type, aircraftId: resolved.aircraftId } };
   }
-  if (FLID_CHAR.test(key)) {
+  if (key === " " && state.armed.type === "termCntl" && state.flid) {
+    state.flid += key;
+    state.lastKeyAtMs = nowMs;
+    return { consumed: true };
+  }
+  if (FLID_CHAR.test(key) || (key === "/" && state.armed.type === "termCntl")) {
     const next = (state.flid ?? "") + key.toUpperCase();
     state.flid = next;
     state.lastKeyAtMs = nowMs;
@@ -554,8 +666,26 @@ export function previewFlidMatchesSlew(
   if (!flid) {
     return true;
   }
-  const resolved = resolveScopeFlid(flid, world, view);
-  return resolved.ok && resolved.aircraftId === aircraftId;
+  if (/^\d{2}$/.test(flid.trim()) && view) {
+    const entry = getFlightPlanEntries(world, view).find(
+      (item) => formatFlightPlanIndex(item.index) === flid.trim(),
+    );
+    if (entry && !entry.planId) {
+      return unassociatedTrack(aircraftId, view);
+    }
+  }
+  const plans = planIdentityMatches(flid, world, view);
+  if (plans.length > 1) {
+    return false;
+  }
+  if (plans.length === 1) {
+    const plan = plans[0]!;
+    const correlated = flightPlanForAircraft(world, aircraftId);
+    return correlated ? correlated.id === plan.id : unassociatedTrack(aircraftId, view);
+  }
+  // INIT CNTL identity is deliberately narrower than the generic FLID
+  // resolver: CID/numeric tails are not ACID, beacon, or TAB identities.
+  return false;
 }
 
 /** Enter-commit: a still-live prefix (`B`, `B4`, `B450`) is `invalid`, not a silent no-op. */
@@ -935,7 +1065,22 @@ export function beginPreviewBufferEntry(state: PreviewAreaState, ch: string, now
   state.flid = null;
   state.rejection = null;
   state.armed = null;
+  delete state.creationMode;
   state.lastKeyAtMs = nowMs;
+}
+
+/** Manual Appendix D Table D-1 F6 / FLT DATA; local trainer record only. */
+export function beginPreviewFltDataEntry(state: PreviewAreaState, nowMs: number): void {
+  beginPreviewBufferEntry(state, "", nowMs);
+  state.mnemonic = "FLT DATA";
+  state.creationMode = "fltData";
+}
+
+/** Manual Appendix D Table D-1 F9 / VFR; local trainer record only. */
+export function beginPreviewVfrEntry(state: PreviewAreaState, nowMs: number): void {
+  beginPreviewBufferEntry(state, "", nowMs);
+  state.mnemonic = "VFR DATA";
+  state.creationMode = "vfr";
 }
 
 /**
@@ -973,10 +1118,50 @@ export function handlePreviewBufferKey(
     return { consumed: true, action: null };
   }
   if (key === "Enter" || key === "NumpadEnter") {
+    if (state.creationMode === "fltData") {
+      const creation = parseFlightPlanCreation(state.buffer, false, true);
+      if (creation.kind === "action") {
+        cancelPreviewArea(state);
+        return { consumed: true, action: creation.action };
+      }
+      rejectPreviewAreaWithReason(
+        state,
+        nowMs,
+        creation.kind === "invalid" ? creation.reason : "FORMAT",
+      );
+      return { consumed: true, action: null };
+    }
+    if (state.creationMode === "vfr") {
+      const parsed = parseVfrFlightPlanCommand(state.buffer);
+      if (parsed.kind === "action") {
+        cancelPreviewArea(state);
+        return { consumed: true, action: parsed.action };
+      }
+      rejectPreviewAreaWithReason(
+        state,
+        nowMs,
+        parsed.kind === "invalid" ? parsed.reason : "FORMAT",
+      );
+      return { consumed: true, action: null };
+    }
     const parsed = parsePreviewCommand(state.buffer, maps, layout);
     if (parsed.kind === "action") {
       cancelPreviewArea(state);
       return { consumed: true, action: parsed.action };
+    }
+    const creation = parseFlightPlanCreation(state.buffer, state.armed?.type === "initCntl");
+    if (creation.kind === "action") {
+      cancelPreviewArea(state);
+      return { consumed: true, action: creation.action };
+    }
+    if (
+      creation.kind === "invalid" &&
+      (state.armed?.type === "initCntl" ||
+        (/^[A-Z][A-Z0-9]{1,6}(?:\s|$)/.test(state.buffer) &&
+          !/^(?:CA|B|M)(?:\s|$)/.test(state.buffer)))
+    ) {
+      rejectPreviewAreaWithReason(state, nowMs, creation.reason);
+      return { consumed: true, action: null };
     }
     if (parsed.kind === "invalid") {
       rejectPreviewArea(state, nowMs);
@@ -995,6 +1180,16 @@ export function handlePreviewBufferKey(
     return { consumed: true, action: null };
   }
   return { consumed: false, action: null };
+}
+
+function rejectPreviewAreaWithReason(state: PreviewAreaState, nowMs: number, reason: string): void {
+  state.rejection = reason;
+  state.phase = "idle";
+  state.buffer = "";
+  state.mnemonic = "";
+  state.flid = null;
+  state.armed = null;
+  state.lastKeyAtMs = nowMs;
 }
 
 /**

@@ -1,5 +1,13 @@
 import { expect, test } from "vitest";
-import { SessionLog, SIM_DT_S, createWorld, handoffFor, makeTestAircraft, stepWorld } from "@core";
+import {
+  SessionLog,
+  SIM_DT_S,
+  acceptInboundHandoff,
+  createWorld,
+  handoffFor,
+  makeTestAircraft,
+  stepWorld,
+} from "@core";
 import { applyIntent } from "@pilot";
 import { createWorldFromScenario, loadKdem } from "@scenario";
 import { nmToScreen } from "../../camera";
@@ -11,6 +19,7 @@ import { drawMapLayers } from "../renderScopePaint";
 import { createScopeView } from "../../scopeView";
 import { SELECTED_ACCENT_COLOR } from "../targetSymbol";
 import { deriveScratchpads, isIdentFlashing, syncTrackDisplays } from "../../trackDisplay";
+import { applyInitiateTrackToId } from "../../trackDisplay";
 import { DATABLOCK_FONT, datablockFontCss } from "../../fonts";
 import { formatPartialDatablock } from "../../datablock";
 import { createMockCtx, type MockPathStroke } from "../../test/mockCanvas";
@@ -59,7 +68,7 @@ test("spawned arrivals paint position symbols and datablocks", () => {
     const handoff = handoffFor(world, ac.id);
     const block = formatPartialDatablock(ac, {
       sp1: derived.sp1,
-      handoffSectorId: handoff.kind === "inbound" ? handoff.fromSectorId : undefined,
+      handoffSectorId: handoff.kind === "inbound" ? view.sectorId : undefined,
     });
     expect(fillTexts.some((t) => t.text === block.line1 && t.font === DATABLOCK_FONT)).toBe(true);
     const p = nmToScreen(ac.xNm, ac.yNm, view.camera, size);
@@ -196,6 +205,74 @@ test("altitude filter keeps the target and drops the datablock", () => {
   expect(symbolCount(fillTexts)).toBe(2);
   expect(fillTexts.some((t) => t.text === "UAL60")).toBe(false);
   expect(fillTexts.some((t) => t.text === "DAL80")).toBe(true);
+});
+
+test("pending inbound handoff keeps its flashing FDB outside the altitude filter", () => {
+  const ac = makeTestAircraft({
+    id: "ac-handoff-filtered",
+    callsign: "UAL90",
+    altitudeFt: 6000,
+    speedKt: 210,
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 90,
+  });
+  const world = createWorld({ aircraft: [ac] });
+  world.handoffs.set(ac.id, { kind: "inbound", fromSectorId: "C" });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  view.altitudeFilter = { minHundreds: 70, maxHundreds: 90 };
+  const { ctx, fillTexts } = createMockCtx();
+  renderScope(ctx, world, view, 800, 800);
+  expect(fillTexts.some((t) => t.text === "UAL90")).toBe(true);
+});
+
+test("pending inbound uses origin for symbol and local receiving TCP for Field 4", () => {
+  const ac = makeTestAircraft({
+    id: "synthetic-inbound-render",
+    callsign: "SYN129",
+    altitudeFt: 7000,
+    speedKt: 220,
+    xNm: 0,
+    yNm: 0,
+  });
+  const world = createWorld({ aircraft: [ac], simTimeMs: 0 });
+  world.handoffs.set(ac.id, { kind: "inbound", fromSectorId: "TWR" });
+  const view = createScopeView();
+  view.sectorId = "D";
+  syncTrackDisplays(view.tracks, world);
+
+  const mock = createMockCtx();
+  renderScope(mock.ctx, world, view, 800, 800);
+
+  expect(mock.fillTexts.some((t) => t.text === "T")).toBe(true);
+  expect(mock.fillTexts.some((t) => t.text === "070  D   22")).toBe(true);
+  expect(mock.fillTexts.some((t) => t.text === "SYN129 HO")).toBe(false);
+  expect(handoffFor(world, ac.id)).toEqual({ kind: "inbound", fromSectorId: "TWR" });
+});
+
+test("accepted inbound remains a solid white FDB on the local TCP symbol", () => {
+  const ac = makeTestAircraft({
+    id: "synthetic-inbound-accepted",
+    callsign: "SYN130",
+    xNm: 0,
+    yNm: 0,
+  });
+  const world = createWorld({ aircraft: [ac] });
+  world.handoffs.set(ac.id, { kind: "inbound", fromSectorId: "C" });
+  const view = createScopeView();
+  view.sectorId = "AB";
+  syncTrackDisplays(view.tracks, world);
+  expect(applyInitiateTrackToId(view.tracks, world, ac.id).applied).toBe(true);
+  expect(acceptInboundHandoff(world, ac.id)).toBe(false);
+
+  const mock = createMockCtx();
+  renderScope(mock.ctx, world, view, 800, 800);
+  expect(mock.fillTexts.some((t) => t.text === "AB")).toBe(true);
+  expect(mock.fillTexts.some((t) => t.text === "SYN130 HO")).toBe(false);
+  expect(mock.fillTexts.some((t) => t.text === "SYN130" && t.fillStyle === PALETTE.owned)).toBe(
+    true,
+  );
 });
 
 test("AC1, AC2, AC3 — compass rose ticks and heading labels render with BRITE CMP and CHAR SIZE TOOLS", () => {

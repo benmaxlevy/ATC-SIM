@@ -21,7 +21,77 @@ import {
   mockN415SP,
   mockSWA1902,
 } from "../mockFixture";
-import type { ArrivalStripData, CWTCategory, DepartureStripData, FlightStrip } from "../types";
+import {
+  TERMINAL_STRIP_LAYOUT,
+  type ArrivalStripData,
+  type CWTCategory,
+  type DepartureStripData,
+  type FlightStrip,
+} from "../types";
+
+describe("terminal strip data contract", () => {
+  test("AC1 — exposes the shared FAA terminal five-column geometry", () => {
+    expect(TERMINAL_STRIP_LAYOUT).toEqual([
+      ["1", "2", "3", "4"],
+      ["5", "6", "7"],
+      ["8", "8A", "8B"],
+      ["9", "9A", "9B", "9C"],
+      ["10", "11", "12", "13", "14", "15", "16", "17", "18"],
+    ]);
+  });
+
+  test("AC2 — models happy-path departure and arrival terminal data", () => {
+    const departure: DepartureStripData = {
+      id: "dep-contract",
+      stripType: "DEPARTURE",
+      acid: "DAL123",
+      rawType: "B738",
+      aircraftCount: 1,
+      equipmentSuffix: "L",
+      cid: "123",
+      beaconCode: "4215",
+      proposedDepartureTime: "1430",
+      requestedAltitude: "330",
+      departureAirport: "KATL",
+      route: "PLIER2 PHL",
+      destinationAirport: "KPHL",
+      remarks: "CAF",
+      box9A: "",
+      box9B: "",
+      box9C: "",
+    };
+    const arrival: ArrivalStripData = {
+      id: "arr-contract",
+      stripType: "ARRIVAL",
+      acid: "AAL412",
+      rawType: "A321",
+      aircraftCount: 1,
+      equipmentSuffix: "L",
+      cid: "412",
+      beaconCode: "0120",
+      reportedSquawk: "0121",
+      previousFix: "BOS",
+      coordinationFix: "HONIE",
+      estimatedTimeOfArrival: "1440",
+      altitude: "060",
+      altitudeRemarks: "DESCEND",
+      flightRules: "IFR",
+      minimumFuel: "30",
+      destinationAirport: "KATL",
+      remarks: "ILS",
+      box9A: "KATL",
+      box9B: "",
+      box9C: "",
+    };
+
+    const strips: FlightStrip[] = [departure, arrival];
+    expect(strips[0]?.beaconCode).not.toBe(strips[1]?.reportedSquawk);
+    expect(departure.destinationAirport).toBe("KPHL");
+    expect(arrival.altitude).toBe("060");
+    expect(arrival.box9B).toBe("");
+    expect(arrival.box9C).toBe("");
+  });
+});
 
 describe("formatEquipment", () => {
   test("AC2 — produces correct prefixes for CWT, Heavy, and standard aircraft", () => {

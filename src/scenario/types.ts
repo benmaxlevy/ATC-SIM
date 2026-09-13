@@ -1,4 +1,5 @@
-import type { LatLon, NmEastNorth } from "@core";
+import type { CwtWakeCategory, LatLon, NmEastNorth } from "@core";
+export type { CwtWakeCategory } from "@core";
 import type { MvaChart } from "./mva";
 import type { ProcedureCatalog } from "./procedures/types";
 import type { LoadedVideoMap, VideoMapGroupSet } from "./loadVideoMaps";
@@ -108,6 +109,8 @@ export interface ArrivalSpawn {
   speedKt: number;
   /** ICAO type stub for FDB line 3. Display-only; omitted types skip line 3. */
   aircraftType?: string;
+  /** Explicit FAA CWT wake category; never inferred from display/type data. */
+  cwtWakeCategory?: CwtWakeCategory;
   /**
    * Spawn on this STAR with VIA armed (T04-12). Positions stay in JSON.
    * Requires `transitionId`. Ignored when `spawnPolicy` is `random`.
@@ -201,6 +204,8 @@ export interface Scenario {
   maps: ScenarioMaps;
   spawns: Spawn[];
   arrivals: ArrivalSpawn[];
+  /** Optional scenario-local ATPA wake adaptation for its active volumes. */
+  atpaWakeAdaptation?: import("./procedures/types").AtpaWakeAdaptation;
   /** Optional departure traffic configuration. */
   departureConfig?: DepartureConfig;
   /**

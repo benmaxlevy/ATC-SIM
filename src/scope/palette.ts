@@ -71,7 +71,7 @@ export const PALETTE = {
    * TLS / tools — TPA J-rings and ATPA monitor geometry (CRC analog). Not CA red.
    * Distinct from PTL white so rings read as tools, not predicted track.
    */
-  tools: "#134767",
+  tools: "#6C6CD9",
   /**
    * CA caution (yellow). Predicted CA leftover in the tint helper; live CA
    * is alert-only. Do not label “STARS CA.”
@@ -86,11 +86,11 @@ export const PALETTE = {
    */
   atpaWarning: "#636300",
   /**
-   * ATPA alert cone and in-trail readout (R07 Alert Cone). Distinct from
-   * CA/MSAW red (`alert`) and from caution yellow. R07 names the color, not
-   * the RGB.
+   * ATPA alert cone and in-trail readout. Known trainer divergence: use the
+   * adapted dark red `#760A00`, not the manual's orange, and keep it distinct
+   * from CA/MSAW red (`alert`).
    */
-  atpaAlert: "#BF0000",
+  atpaAlert: "#760A00",
   /** SSA and list text — FAA list/preview green. Not map gray. */
   ssa: "#259925",
   /**

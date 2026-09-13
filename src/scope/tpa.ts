@@ -48,6 +48,7 @@ import {
 } from "./atpaCone";
 import { atpaConeMileagePlacement, formatAtpaConeMileage } from "./atpaReadout";
 import { pxPerNm, type ScopeCamera, type ScopeViewSize } from "./camera";
+import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
 import { PALETTE } from "./palette";
 import type { TrackOwnership } from "./ownership";
 import type { TrackDisplay } from "./trackDisplay";
@@ -67,13 +68,8 @@ export const TPA_STROKE_PX = 1;
 /** TLS/tools analog. Never CA/MSAW red. */
 export const TPA_STROKE_COLOR = PALETTE.tools;
 
-/**
- * Fig 36: radius digit sits inside the ring at lower-left (~7–8 o'clock).
- * 225° is 7:30 — southwest in the sin-east / cos-north convention.
- */
-export const TPA_RING_DIGIT_CLOCK_DEG = 225;
-/** Fraction of ring radius so the digit stays inside the circle. */
-export const TPA_RING_DIGIT_RADIUS_FRAC = 0.72;
+/** Near-circumference fraction; keeps the mileage immediately inside the ring. */
+export const TPA_RING_DIGIT_RADIUS_FRAC = 0.75;
 
 export interface TpaState {
   on: boolean;
@@ -199,8 +195,8 @@ export function groundTrackPointNm(
 
 /**
  * Manual `*P` cone along ground track. Projects a point along velocity heading
- * and reuses T02-45 `atpaConePoints` — same named half-angle
- * (`ATPA_CONE_HALF_ANGLE_DEG`) and flat end cap. Not a second wedge.
+ * and reuses T02-45 `atpaConePoints` — the same fixed-height end cap and
+ * length-derived angle. Not a second wedge.
  */
 export function manualTpaConePoints(
   eastNm: number,
@@ -224,12 +220,28 @@ export function tpaRingDigitPlacement(
   eastNm: number,
   northNm: number,
   radiusNm: number,
+  datablockDir: LeaderDir = DEFAULT_LEADER_DIR,
+  radiusFrac = TPA_RING_DIGIT_RADIUS_FRAC,
 ): TpaSizeDigitPlacement {
-  const rad = (TPA_RING_DIGIT_CLOCK_DEG * Math.PI) / 180;
-  const r = radiusNm * TPA_RING_DIGIT_RADIUS_FRAC;
+  const r = radiusNm * Math.max(0, Math.min(1, radiusFrac));
+  const datablockOffset = {
+    1: { east: -1, north: -1 },
+    2: { east: 0, north: -1 },
+    3: { east: 1, north: -1 },
+    4: { east: -1, north: 0 },
+    // Overlay datablocks sit northeast/southeast of the target in practice;
+    // use the opposite angle for the ring distance.
+    5: { east: 1, north: -1 },
+    6: { east: 1, north: 0 },
+    7: { east: -1, north: 1 },
+    8: { east: 0, north: 1 },
+    9: { east: 1, north: 1 },
+  }[datablockDir];
+  const datablockAngle = Math.atan2(datablockOffset.east, datablockOffset.north);
+  const acrossAngle = datablockAngle + Math.PI;
   return {
-    eastNm: eastNm + r * Math.sin(rad),
-    northNm: northNm + r * Math.cos(rad),
+    eastNm: eastNm + r * Math.sin(acrossAngle),
+    northNm: northNm + r * Math.cos(acrossAngle),
     text: formatTpaSizeReadout(radiusNm),
   };
 }

@@ -4,6 +4,58 @@ This is the backlog of follow-ups implied by features that are already shipped.
 It is intentionally not a list of untouched phases or features that have never
 been started.
 
+## Priority order
+
+Priority is based on operational safety, dependency leverage, and simulator
+value. Items already shipped or limited to manual validation are excluded.
+
+### P0 — core safety and runtime truth
+
+1. MCI evaluator, suppression state, and `CA M` command semantics.
+2. Predicted MSAW and flashing **LA** behavior.
+3. 30-second coast/suspend lifecycle, dead reckoning, and re-correlation.
+4. CSMM, duplicate-beacon world-level detection, and `NO FP` datablock indicator.
+5. Wake-aware live datablock output, including `NOWGT`.
+6. Manual Conflict Alert inhibit commands.
+
+### P1 — controller operations
+
+7. Departure exit-gate/fix resolution.
+8. Adapted 2.5 NM ATPA eligibility.
+9. Quicklook sector filtering and SSA status.
+10. Multi-controller networking and inter-facility handoffs.
+11. TCP sign-on/sign-off authentication and sector consolidation.
+12. Complete pointout-to-datablock binding.
+13. TSAS runtime.
+14. Flight-plan amendment modals and target-click deletion.
+15. Scratchpad and tactical altitude/heading/speed command chords.
+16. Advanced track states: `HOLD`, `UNS`, reposition, and `/ ALL`.
+
+### P2 — facility and display expansion
+
+17. Live multi-sensor radar health and beacon-bank exhaustion telemetry.
+18. CRDA ghost prediction, cones, tie lines, and keyboard grammar.
+19. Multi-airport tower slot sequencing and dynamic adaptation.
+20. Tower Display Mode and TDW-specific ATPA presentation.
+21. MOA and selected-beacon workflows.
+22. Expanded SPCs.
+23. Richer SSA/facility status, ATIS broadcasts, and weather source handling.
+24. Pilot barometric corrections and weather-driven deviation behavior.
+25. Additional PTL prediction geometry and presets.
+26. Additional catalog-backed maps, map management, and AVL restyle.
+27. Handwritten strip annotations and cross-rack/window strip movement.
+
+### P3 — procedure and voice follow-ups
+
+28. Unsupported ARINC leg flying: `RF`, holds, arcs, and vector legs.
+29. RNAV/hold/RF in-sim FMS guidance.
+30. FAA cycle update workflow; national source/index files remain local.
+31. KATL MAPS/GEO/BRITE visual operator validation.
+32. Live Path C tie salvage against real `speech-api` and Chrome PTT p50.
+
+The priority list is a planning view; detailed sections below are the source
+of truth for shipped behavior, constraints, and scope boundaries.
+
 ## Scope and display
 
 ### Authored radar sites — live SITE/SSA chrome, no live sensors (T04-45 / T02-75 / T02-76 / T02-77)
@@ -93,33 +145,32 @@ Later work must keep:
 - no aural ATPA tone (CA remains the only conflict audio);
 - TPA J-rings and the `TPA_MI` spinner frozen as T02-28 (2 / 3 / 5 / 10 NM).
 
-Wake-category minima, adapted 2.5 NM extras, per-position adaptation, TDW
-white monitor, and authored-vs-NAS volumes stay in **ATPA separation
-criteria not yet modeled** below.
+Wake-category minima are now shipped by T02-125–128. Adapted 2.5 NM extras,
+per-position adaptation, TDW white monitor, and authored-vs-NAS volumes stay in
+**ATPA separation criteria not yet modeled** below.
 
 ### ATPA separation criteria not yet modeled
 
 T02-44 ships in-trail pairing and predicted monitor/warning/alert status
-(`world.alerts.atpa`) using **basic radar separation only**. Visible now:
+(`world.alerts.atpa`). Visible now:
 `evaluateAtpa` reads `basicSeparationNm` / `reducedSeparationNm` /
 `reducedWithinNm` from each catalog volume, pairs eligible tracks inside an
 enabled volume, and classifies status from current distance plus linear
-closure. Warning is predicted violation within **45 s** (R07). Alert is
-**only** `distanceNm < requiredNm` (actual in-trail / lateral radar loss).
-R07 also paints Alert for a predicted violation within **24 s**; that band
-stays Warning here so a still-legal pair does not go ATPA-red. Cone length
-is therefore identical for a heavy leader and a light leader.
+closure. Wake-enabled volumes optionally apply explicit FAA CWT adaptation.
+Warning is predicted violation within **45 s** (R07). Alert is actual
+`distanceNm < requiredNm` or a predicted loss within **24 s** (T02-140).
+Cone length
+when wake adaptation is enabled, cone length follows the explicit
+leader-row/follower-column matrix; otherwise it follows the authored radar
+minimum.
 
-Deliberately missing, each of which later work must keep the JSON-minima
-path and must **not** invent numbers from model recall:
+Shipped wake contract: `cwtWakeCategory` is separate from the display-only
+`wakeCategory`; reviewed JO 7110.65 §5-5-4 adaptation data is loaded from JSON,
+and missing categories or blank relationships produce `NOWGT` with a 10 NM
+minimum. Later work must keep the JSON-minima path and must **not** infer
+categories from aircraft type or display text.
 
-- **Wake-category in-trail minima.** R07 says cone length is "the distance
-  required by wake category or basic radar separation" but publishes no
-  matrix — its CWT A–I table is only the datablock category letter with a
-  weight range. `Aircraft.wakeCategory` is already the FDB letter; do not
-  let `requiredSeparationNm` read it until a cited table (JO 7110.65 or
-  facility adaptation) is in-repo. T02-50 greps `src/core/alerts/atpa.ts`
-  and live ATPA paths for `wakeCategory`; keep that gate.
+Deliberately missing, each of which later work must keep the JSON-minima path:
 - **Adapted 2.5 NM eligibility** beyond "both tracks inside
   `reducedWithinNm` of the threshold along the final." Real STARS reduces
   only under extra conditions (leader type, runway occupancy, facility
@@ -131,16 +182,69 @@ path and must **not** invent numbers from model recall:
 - **TDW white monitor variant.** The tower display workstation paints the
   monitor cone white; this trainer has no TDW. Scope ATPA monitor stays
   TPA blue until a TDW surface exists.
-- **R07 24 s predicted Alert.** CRC paints the Alert cone when already
-  inside the required NM **or** predicted to lose it within 24 s. This
-  trainer keeps 24 s as Warning. Restoring predicted Alert must keep Alert
-  as actual loss plus that timer — do not invent a third color.
+- **R07 24 s predicted Alert.** Shipped in T02-140: ATPA Alert applies when
+  already inside the required NM or predicted to lose it within 24 s; 24–45 s
+  remains Warning. Do not invent a third color.
 - **Aural ATPA alerting.** No ATPA tone. CA (T04-09) remains the only
   conflict audio; do not reuse the CA tone for in-trail ATPA.
 - **Volumes as authored trainer geometry** rather than imported NAS
   adaptation. KDEM `atpa-volumes.json` is hand-authored. A second airport
   still adds a JSON row walked by `approachId`; do not special-case KDEM
   or invent an importer that silently fills unsourced sizes.
+
+### Datablock runtime sources not yet modeled (T02-149–155 / T02-164–165)
+
+Visible now: `buildDatablockRuntimeState` and `datablockSourceFromWorld`
+(T02-164–165) centralize datablock runtime fields for PPI painting, overlap
+testing, and pick hits into a single runtime structure. Canonical flight-plan
+association (T02-149–155) establishes `FlightPlan.associatedAircraftId` as
+authoritative truth via `flightPlanForAircraft(world, aircraft.id)`. Associated
+tracks project filed ACID, beacon, altitudes, equipment, and scratchpads;
+event-driven squawk updates correlate with active plans; track drop or `TERM
+CNTL` cleanly disassociates plans without mutating aircraft surveillance or
+kinematics. Terminated handoffs clear and leave targets as unassociated LDBs;
+accepted handoffs clear stale unassociated state before restoring the full
+datablock. The datablock formatter accepts explicit Figure 2-20 Fields 0–8
+values. The remaining values below are formatter-capable but have no complete
+live backing logic.
+
+Deliberately missing:
+
+- **Wake-aware ATPA datablock output.** The evaluator now exposes explicit
+  wake/`NOWGT` source state and required spacing, but the live Field 6 adapter
+  does not yet render `NOWGT` or recompute a complete datablock source model on
+  sequence, approach, or category changes. Preserve the explicit
+  `cwtWakeCategory`/display `wakeCategory` boundary and the JO 7110.65-backed
+  matrix; do not parse display text or infer categories.
+- **Departure exit gate/fix.** Field 3 accepts an explicit `exitGate` or
+  `exitFix`, but no runtime adapter resolves the value from the departure,
+  SID/route, facility adaptation, and excluded-fix rules. Keep procedure and
+  fix lookup generic and data-first.
+- **TSAS runtime.** Field 6/7/8 formatting accepts TSAS values, but there is
+  no Terminal Sequencing and Spacing scheduler. Later work would need eligible
+  arrivals, runway assignment, sequence, target delivery time, advised speed,
+  early/late calculation, sequence number, enable/inhibit state, and live
+  updates. Do not imply TSAS exists merely because its literals format.
+- **`NO FP` datablock indicator.** While canonical association exists, the
+  datablock adapter does not yet dynamically evaluate and project `NO FP` for
+  unassociated or unfiled tracks in controlled airspace.
+- **CSMM detection.** Add an independent ADS-B Flight ID and compare it to the
+  filed aircraft identification. Emit `CSMM` only on an exact mismatch; do
+  not derive it from the displayed callsign.
+- **Duplicate beacon detection.** Existing beacon mismatch formatting is not
+  duplicate-code detection. Add world-level detection of two tracks using the
+  same Mode 3/A code, identify affected tracks, and provide `DB` plus the
+  reported code. Keep this separate from assigned-versus-reported mismatch.
+- **MOA and selected-beacon sources.** Field 6 accepts `MOA` and selected
+  beacon values, but no live MOA assignment or selected-beacon workflow feeds
+  them.
+- **Pointout-to-datablock binding.** Pointout/handoff lifecycle exists, but a
+  complete adapter still needs to expose `PO`, `UN`, `RD`, and accept-count /
+  inhibition state to Field 8 with documented priority.
+
+Keep deferred: Field 1 ADS-B markers, ADS-B loss/duplicate-address (`DA`)
+workflow, and new Field 2 glyphs. Those remain out of scope until their
+underlying surveillance services exist.
 
 ### Richer TPA controls
 
@@ -166,10 +270,10 @@ The Seventeenth Swarm (T02-61–67) implements the core single-controller STARS 
 The following specialized or multi-subsystem command sets remain deliberately deferred to later phases:
 
 1. **Flight Plan Amendments & Modals:**
-   - `* F [Callsign] <ENTER>`: Open flight plan creation / amendment modal.
-   - `* V [Callsign] <ENTER>`: Create VFR flight plan.
-   - `* A [Callsign] <ENTER>`: Create abbreviated flight plan.
-   - `* DEL <ENTER> [Click Target]`: Delete flight plan / drop flight plan association.
+   - `* F [Callsign] <ENTER>`: Open flight plan creation / amendment modal (typed `<ACID> [options]` creation is shipped).
+   - `* V [Callsign] <ENTER>`: Create VFR flight plan modal.
+   - `* A [Callsign] <ENTER>`: Create abbreviated flight plan modal (typed `*M <flid> ...` field edit and `*B <flid>` release are shipped).
+   - `* DEL <ENTER> [Click Target]`: Delete flight plan / drop flight plan association by clicking target (typed `*DEL <index>` queue deletion is shipped).
 
 2. **Scratchpads & Tactical Target Autopilot Overrides:**
    - `* [Text] <ENTER> [Click Target]`: Set Scratchpad 1 (up to 3 characters).
@@ -221,13 +325,41 @@ The STARS CRC Scope Fidelity Addendum (T02-34–38) shipped the complete radar
 display fidelity model: target symbol shapes (`◇`, `*`, `V`, `□`, Sector IDs),
 LDB with 5s ground speed queries, PDB for unowned associated tracks, FDB
 dynamic time-sharing (~2.5s cycle) and Line 3 assigned altitudes `A<alt>`,
-inbound/outbound handoff blinking and 3-click progression, pointout lifecycle
-(offer, accept, `UN` reject, `**` convert), and cyan track highlight.
+inbound/outbound handoff blinking, pointout lifecycle (offer, accept, `UN`
+reject, `**` convert), and cyan track highlight. T02-134–139 replaced the old
+outbound three-click progression with shared Center/Tower destination handling,
+five-second receiver-TCP retention, single-position auto-accept, and explicit
+F4 return-to-unowned.
 
 Possible future follow-ups:
 - multi-controller peer networking / live inter-facility handoffs across multiple browser sessions;
 - quick-look multi-facility track filters;
 - host automated flight-plan amendments and route conformance monitoring.
+
+#### Post-acceptance handoff ownership cue
+
+The supplied STARS manual (TI 6191.409 Rev. 30, General Rules p. 5-9;
+§§5.1.3–5.1.4 pp. 5-10–5-11; datablock colors p. 2-70) says that the
+former owner’s accepted handoff remains a white **Owned / Previously Owned**
+FDB until the controller explicitly uses **Return data block to Unowned color**.
+The position symbol identifies the controlling position; white alone does not
+mean the track is still controlled locally. CRC documents a different,
+VATSIM-oriented memory aid: after acceptance, clicks stop the white flash,
+turn the FDB green, and then change it to a PDB. vice separates track ownership
+from aircraft control and uses explicit `FC` to transfer communications, then
+turns the sender’s datablock green.
+
+ATC-SIM currently follows the manual’s white-FDB rule for accepted Center and
+Tower handoffs, retains the receiver TCP for five simulated seconds,
+auto-accepts supported destinations in the single-position trainer after five
+simulated seconds, and offers F4 as the explicit return-to-unowned action. It
+does not model a live receiving position,
+`FC`, or a separate communications-transfer state. Revisit whether the trainer
+needs a clearer persistent “transferred to Center” cue or a documented CRC-like
+confirmation interaction. Preserve the manual distinction between owned and
+previously owned, avoid implying that white proves local control, and do not
+claim real multi-controller or interfacility behavior without adding the
+underlying state model.
 
 ### SSA and GI data beyond trainer stubs
 
@@ -400,7 +532,6 @@ Visible now:
 
 Deliberately missing:
 - **Unsupported ARINC 424 leg types in real-world SIDs**: Heading-to-altitude vector legs (`VA`, `VI`, `VM`) and curved radius-to-fix (`RF`) legs are skipped by the CIFP importer. SIDs composed entirely of radar vectors (e.g., KATL's `ATL2`) have zero named-fix legs and are omitted from catalog packs.
-- **Scenario departure traffic for CIFP-imported airports**: Authored facilities (KDEM) include scripted departure schedules (`BAY1` to `NORMA`/`OCTTA`), but imported airports like KATL (`katl.json`) currently only script arrival streams and downwind benchmark spawns. Automated departure flows utilizing the 10+ imported KATL SIDs (`BANNG3`, `CUTTN2`, `GAIRY2`, etc.) are not yet scripted into playable scenarios.
 
 Constraints later work must keep:
 - Procedure transitions remain data-driven via catalog JSON common fixes; no facility-specific branches (no `if (icao === "KATL")`).
@@ -450,8 +581,6 @@ does not import this tool.
 
 Deliberately missing:
 
-- **Procedure-reference closure (T04-33).** Out-of-radius fixes named by a
-  selected SID/STAR/approach stay in the full source until closure pulls them.
 - **National CIFP / derived national index in git.** A full cycle or a
   nationwide source/index dump must stay on disk under gitignored `.cifp/`
   or `tools/cifp-import/out/`. Only synthetic fixtures under `testdata/cifp/`
@@ -481,9 +610,9 @@ procedure is excluded.
 
 Deliberately missing:
 
-- **Great-circle radius selection.** T04-32 owns `spatialIndex.ts`. This
-  ticket does not compute NM distance or drop points by radius. `radiusNm` on
-  the seed is metadata for later wiring.
+- **Great-circle radius selection.** T04-32 owns `spatialIndex.ts`; this
+  T04-33 closure module does not compute NM distance or select the seed.
+  The generic pack CLI already wires radius selection to closure.
 - **Radius-based deletion after closure.** Once a procedure is selected, its
   required fixes/navaids stay even when they sit outside the seed radius.
 - **Runtime national catalog or browser CIFP fetch.** Closure stays in the
@@ -558,10 +687,6 @@ Deliberately missing:
   cycle regeneration was tested.
 - **RNAV / hold / RF flying** from imported CIFP. Unsupported path
   terminators stay diagnostics, not TF legs.
-- **Scenario departure traffic on imported CIFP SIDs.** Playable KATL
-  scenarios script arrivals and downwind spawns only; automated departure
-  traffic flows on the 10+ imported KATL SIDs are not scripted. (Core FMS
-  climb-via and SID transition amendments are supported via T04-19/T04-44).
 - **Browser CIFP fetch, national dump in git, T04-11 wind, phase 5.**
 
 Constraints later work must keep:
@@ -599,9 +724,23 @@ Constraints later work must keep:
 - do not commit local CRC cache JSON/GeoJSON;
 - `src/` never imports `tools/crc-videomap-import`; no runtime vNAS fetch.
 
-### Terminal Flight Progress Strips follow-ups (T02-90–96)
+### Terminal Flight Progress Strips follow-ups (T02-90–96 / T02-158–162)
 
-Visible now: 4-column physical flight progress strip layouts for Departures and Arrivals adhering to FAA Order 7110.65 Chapter 2 §3; pale buff cardstock styling (`#f5eedc`) with dark high-contrast text; CWT/wake formatting; route truncation; 2-column rack board (`StripsBoard`) with independent vertical scrolling; standalone URL routing (`?view=strips`); in-scope overlay modal with header toggle button (`STRIPS`); track selection synchronization to `World.selectedAircraftId` via `selectTrackFromFlightStrip`; dynamic simulation traffic derivation via `terminalStripsFromWorld`; single right-click horizontal strip indentation ("cocking", ~28px offset) with native context menu suppression; intra-section drag-and-drop reordering with visual drop indicator lines; and telemetry reconciliation preserving manual order and indentation across live ticks.
+Visible now: 5-column physical terminal flight progress strip layouts (`1–4 |
+5–7 | 8/8A/8B | 9/9A/9B/9C | 10–18`) for Departures and Arrivals adhering to
+FAA Order 7110.65 Chapter 2 §3; pale buff cardstock styling (`#f5eedc`) with dark
+high-contrast text; CWT/wake formatting; route truncation; Box 8A/8B runway and
+fix assignments; arrival Box 9 altitude/remarks; departure Box 9
+route/destination/remarks; canonical flight-plan projection (CID, equipment
+suffix, assigned beacon, PTD/ETA) keeping reported squawk separate; 2-column rack
+board (`StripsBoard`) with independent vertical scrolling; standalone URL
+routing (`?view=strips`); in-scope overlay modal with header toggle button
+(`STRIPS`); track selection synchronization to `World.selectedAircraftId` via
+`selectTrackFromFlightStrip`; dynamic simulation traffic derivation via
+`terminalStripsFromWorld`; single right-click horizontal strip indentation
+("cocking", ~28px offset) with native context menu suppression; intra-section
+drag-and-drop reordering with visual drop indicator lines; and telemetry
+reconciliation preserving manual order and indentation across live ticks.
 
 Deliberately missing:
 - **Handwritten canvas drawing / annotations**: freehand pen strokes or stylus drawings on strip annotation boxes.
@@ -609,7 +748,7 @@ Deliberately missing:
 
 Constraints later work must keep:
 - Flight progress strips remain an observational display and intent reflection; clicking or manipulating strips never emits Command IR or mutates pilot kinematics directly.
-- Dark controller cab theme (`#1a1e24`) and FAA 7110.65 box proportions (18% / 14% / 46% / 22%) must be preserved.
+- Dark controller cab theme (`#1a1e24`) and FAA 7110.65 5-column cardstock proportions must be preserved.
 - Standalone view `?view=strips` must remain decoupled from PPI WebGL/Canvas2D loops for second-monitor use.
 
 ## Voice
@@ -639,3 +778,38 @@ Constraints later work must keep:
 This document does not pull in untouched phase work such as scoring/replay,
 constant-wind simulation, a licensed STARS typeface, or other
 features that have not been partially implemented in the shipped slices.
+
+### Pilot clearances and flight-plan execution remain later
+
+The flight-plan lifecycle swarm covers local scope-side plan creation,
+association, editing, deletion, and datablock projection only. Later work must
+connect those records to the radio/pilot pipeline:
+
+- controller-issued squawk assignments and amendments through radio phraseology;
+- pilot readback/validation and reported-squawk changes after a clearance;
+- controller clearances for assigned altitude, heading, speed, route, SID/STAR,
+  and approach that execute through Command IR and pilot intent;
+- full route entry and amendment in the flight-plan editor, beyond the current
+  compact entry/exit `FIXES` pair;
+- route legs, airways, direct-to segments, and generic fix/procedure
+  validation backed by the loaded catalog;
+- SID/STAR selection and transitions linked from the authoritative flight plan
+  into the aircraft FMS, including runway and common/enroute legs;
+- synchronization from amended flight-plan route data into active aircraft
+  intent/FMS state, without facility-specific route branches;
+- authoritative filed route/procedure state driving the FMS after accepted
+  amendments, including conformance and mismatch handling;
+- pilot route execution, deviation detection, and controller-visible
+  route-conformance status;
+- rejected or misunderstood clearances, explicit readback errors, and audit
+  state linking the clearance to the plan.
+- future squawk update sources not yet routed through the aircraft-scoped
+  correlation hook: pilot clearance execution, live surveillance/transponder
+  input, remaining scenario import adapters, replay, and network/controller
+  feeds. Scheduled-departure spawning now routes an authored reported squawk
+  through the hook. Each future source must update reported squawk first and
+  may not scan or associate other aircraft.
+
+These later flows must preserve the boundary: scope plan editing does not emit
+Command IR or mutate kinematics; radio clearances do. Keep pilot execution
+self-hosted and do not add metered speech services.

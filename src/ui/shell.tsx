@@ -1,7 +1,7 @@
 /**
  * Analog: CRC/vNAS STARS TCW is a dark PPI with DCB on the glass (R07).
  * Browser ATC anti-pattern is a header banner, tutorial footer, and game HUD (R12).
- * Trainer delta: T00-01 disclaimer is first-run / F1, not a bar over the DCB.
+ * Trainer delta: T00-01 disclaimer is first-run / Help button, not a bar over the DCB.
  * Pause / 1× / 2× is a map-green corner readout (not a CRC analog).
  * DCB is a green cell grid on the PPI glass (T02-16). SSA lives on the PPI (T02-20).
  * Command line overlays the bottom of the rectangular PPI.
@@ -42,8 +42,11 @@ import {
   clearPerTrackPtl,
   parseDigitalMap,
   applyRadarSites,
+  getVisibleFlightPlanEntries,
   type ScopeView,
+  type FlightPlanModalRequest,
 } from "@scope";
+import { flightPlanForAircraft, handoffFor, type FlightPlan } from "@core";
 import type { AppHandles } from "../app/create-app";
 import { CommandLine, submitCommand } from "./command/command-line";
 import { Disclaimer } from "./overlays/disclaimer";
@@ -55,6 +58,7 @@ import { ScopeHelpOverlay } from "./overlays/ScopeHelpOverlay";
 import { SpeechSettingsPanel } from "./controls/settings-speech";
 import { SimControls } from "./controls/sim-controls";
 import { SessionSetup as SessionSetupDialog } from "./controls/session-setup";
+import { FlightPlanModal } from "./controls/FlightPlanModal";
 
 export interface ShellProps {
   app: AppHandles;
@@ -85,6 +89,11 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [, setScopeUiTick] = useState(0);
   const [selectionToken, setSelectionToken] = useState(0);
+  const [flightPlanModal, setFlightPlanModal] = useState<{
+    acid: string;
+    plan?: FlightPlan;
+    operation: "arrival" | "departure";
+  } | null>(null);
   const panRef = useRef<{ lastX: number; lastY: number } | null>(null);
   const didListDragRef = useRef(false);
 
@@ -134,6 +143,83 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
     setScopeUiTick((n) => n + 1);
   }
 
+  function openFlightPlanModal(request: FlightPlanModalRequest): void {
+    let plan: FlightPlan | undefined;
+    let targetAcid: string | undefined;
+    let operation: "arrival" | "departure" | undefined;
+    if (request.targetAircraftId) {
+      plan = flightPlanForAircraft(app.world, request.targetAircraftId);
+      const target = app.world.aircraft.find(
+        (aircraft) => aircraft.id === request.targetAircraftId,
+      );
+      targetAcid = target?.callsign.trim().toUpperCase();
+      operation =
+        handoffFor(app.world, request.targetAircraftId).kind === "departure" ||
+        target?.intent.vertical?.type === "VIA_SID" ||
+        Boolean(target?.intent.lateral?.type === "PROCEDURE" && target.intent.lateral.sidId)
+          ? "departure"
+          : "arrival";
+      if (!plan && targetAcid) {
+        const sameAcidPlan = app.world.flightPlans.find(
+          (item) => item.status !== "deleted" && item.acid === targetAcid,
+        );
+        // A target slew addresses only a uniquely beacon-correlated plan.
+        // Do not let surveillance callsign text bypass a mismatch and open
+        // the wrong filed record; the plan remains available from FL/ACID.
+        if (sameAcidPlan) {
+          scopeView.preview.rejection = "NO FLIGHT";
+          refreshScopeUi();
+          return;
+        }
+      }
+      if (!targetAcid) {
+        scopeView.preview.rejection = "NO FLIGHT";
+        refreshScopeUi();
+        return;
+      }
+    } else if (request.index !== undefined) {
+      const entry = getVisibleFlightPlanEntries(app.world, scopeView).find(
+        (item) => item.index === request.index,
+      );
+      plan = entry?.planId
+        ? app.world.flightPlans.find(
+            (item) => item.id === entry.planId && item.status !== "deleted",
+          )
+        : undefined;
+      // A visible TAB item remains addressable even before it has a local
+      // plan record: use its callsign to open the create form. A stale index
+      // still has no entry and returns NO FLIGHT.
+      if (!entry) {
+        scopeView.preview.rejection = "NO FLIGHT";
+        refreshScopeUi();
+        return;
+      }
+    } else if (request.acid) {
+      plan = app.world.flightPlans.find(
+        (item) => item.status !== "deleted" && item.acid === request.acid,
+      );
+    }
+    const acid =
+      plan?.acid ??
+      request.acid ??
+      targetAcid ??
+      (request.index !== undefined
+        ? getVisibleFlightPlanEntries(app.world, scopeView).find(
+            (item) => item.index === request.index,
+          )?.callsign
+        : undefined);
+    if (!acid) {
+      scopeView.preview.rejection = "ILL ACID";
+      refreshScopeUi();
+      return;
+    }
+    setFlightPlanModal({
+      acid,
+      ...(plan ? { plan } : {}),
+      operation: operation ?? (plan?.departureAirport || plan?.ptd ? "departure" : "arrival"),
+    });
+  }
+
   useEffect(() => {
     return app.subscribeVoiceStatus((status) => {
       setVoiceStatus(status);
@@ -146,6 +232,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   useEffect(() => {
     return installAlwaysOnScopeKeys(scopeView, app.world, {
       onHandled: () => setScopeUiTick((n) => n + 1),
+      onOpenFlightPlanModal: openFlightPlanModal,
       focusRadio: focusRadioCommandLine,
       cycleFocus() {
         if (scopeFocusFromDocument(document) === "scope") {
@@ -192,6 +279,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
               event.clientY,
               scopeView,
               cmdText,
+              openFlightPlanModal,
             );
             if (
               cmdText === "UN" ||
@@ -368,24 +456,15 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             controller={app.speechSettings}
             speechId={speechId}
             onChange={() => setSpeechId(app.speech.id)}
+            onHelpToggle={() => {
+              scopeView.helpOpen = !scopeView.helpOpen;
+              setScopeUiTick((tick) => tick + 1);
+            }}
+            stripsOpen={stripsOpen}
+            onStripsToggle={() => setStripsOpen((open) => !open)}
           />
           <Disclaimer />
           <ScopeHelpOverlay open={scopeView.helpOpen} />
-          <div className="strips-toggle-bar">
-            <button
-              type="button"
-              className={`strips-toggle-button ${stripsOpen ? "open" : ""}`}
-              data-testid="strips-toggle-btn"
-              onClick={() => setStripsOpen((open) => !open)}
-              title={
-                stripsOpen
-                  ? "Collapse flight progress strips drawer"
-                  : "Expand flight progress strips drawer"
-              }
-            >
-              Strips
-            </button>
-          </div>
         </ScopeCanvas>
         <aside
           className={`strips-drawer ${stripsOpen ? "open" : "collapsed"} ${isResizingDrawer ? "resizing" : ""}`}
@@ -463,6 +542,18 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           setSetup(next);
           setActiveScenario(nextScenario);
           setSetupOpen(false);
+          refreshScopeUi();
+        }}
+      />
+      <FlightPlanModal
+        open={flightPlanModal !== null}
+        acid={flightPlanModal?.acid ?? ""}
+        plan={flightPlanModal?.plan}
+        operation={flightPlanModal?.operation}
+        world={app.world}
+        onCancel={() => setFlightPlanModal(null)}
+        onSaved={() => {
+          setFlightPlanModal(null);
           refreshScopeUi();
         }}
       />

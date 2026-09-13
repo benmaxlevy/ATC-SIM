@@ -274,7 +274,8 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
       expect(alerted.status).toBe("alert");
       expect(alerted.trailingCallsign).toBe("DAL123");
       expect(world.alerts.atpa).toHaveLength(1);
-      expect(alerted.distanceNm).toBeLessThan(alerted.requiredNm);
+      expect(alerted.distanceNm).toBeGreaterThanOrEqual(alerted.requiredNm);
+      expect(alerted.closureKt).toBeGreaterThan(0);
 
       const inside = stepUntil(
         world,
@@ -287,7 +288,7 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
       const mixed = paint(world, view);
       expect(mixed.fillTexts.find((t) => t.text === "CA")?.fillStyle).toBe(PALETTE.alert);
       expect(atpaConeStrokes(mixed.pathStrokes)[0]?.strokeStyle).toBe(PALETTE.atpaAlert);
-      expect(mixed.pathStrokes.some((s) => s.strokeStyle === PALETTE.alert)).toBe(true);
+      expect(mixed.pathStrokes.some((s) => s.strokeStyle === PALETTE.alert)).toBe(false);
     });
 
     test("an opening or parallel pair never warns", () => {
@@ -354,7 +355,7 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
         expect(cones[0]!.strokeStyle).toBe(color);
         expect(cones[0]!.strokeStyle).toBe(atpaConeColor(status));
         if (status === "alert") {
-          expect(cones[0]!.strokeStyle).toBe(PALETTE.alert);
+          expect(cones[0]!.strokeStyle).toBe(PALETTE.atpaAlert);
         } else {
           expect(cones[0]!.strokeStyle).not.toBe(PALETTE.alert);
         }
@@ -370,7 +371,7 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
         expect(on.fills.count).toBe(offPaint.fills.count);
         expect(atpaConeStrokes(offPaint.pathStrokes)).toHaveLength(0);
         if (status === "alert") {
-          expect(on.pathStrokes.some((s) => s.strokeStyle === PALETTE.alert)).toBe(true);
+          expect(on.pathStrokes.some((s) => s.strokeStyle === PALETTE.alert)).toBe(false);
         } else {
           expect(on.pathStrokes.every((s) => s.strokeStyle !== PALETTE.alert)).toBe(true);
         }
@@ -439,7 +440,6 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
       expect(alertPaint.fillTexts.find((t) => t.text === alertText)?.fillStyle).toBe(
         PALETTE.atpaAlert,
       );
-      expect(alertPaint.fillTexts.find((t) => t.text === alertText)?.fillStyle).toBe(PALETTE.alert);
 
       const monitor = finalPairWorld({
         volumeId: "ATPA27",

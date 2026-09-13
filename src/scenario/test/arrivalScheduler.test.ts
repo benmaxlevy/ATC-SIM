@@ -17,6 +17,10 @@ describe("T04-25 configurable arrival traffic", () => {
     });
 
     expect(world.aircraft).toHaveLength(4);
+    expect(world.aircraft.every((aircraft) => /^[0-7]{4}$/.test(aircraft.squawk ?? ""))).toBe(true);
+    expect(world.aircraft.every((aircraft) => aircraft.assignedSquawk === aircraft.squawk)).toBe(
+      true,
+    );
     expect(new Set(world.aircraft.map((aircraft) => aircraft.callsign)).size).toBe(4);
     expect(world.aircraft.every((aircraft) => aircraft.intent.lateral?.type === "PROCEDURE")).toBe(
       true,
@@ -41,6 +45,7 @@ describe("T04-25 configurable arrival traffic", () => {
     expect(world.aircraft).toHaveLength(4);
     stepWorld(world, 1);
     expect(world.aircraft).toHaveLength(5);
+    expect(world.aircraft.every((aircraft) => aircraft.squawk !== undefined)).toBe(true);
     stepWorld(world, 0.01);
     expect(world.aircraft).toHaveLength(5);
   });

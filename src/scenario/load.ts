@@ -23,7 +23,7 @@ import type {
 } from "./types";
 import { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN, GI_TEXT_LINE_COUNT } from "./types";
 import { loadCatalog } from "./procedures/loadCatalog";
-import { sidRouteFixIds } from "./procedures/loadCatalog";
+import { parseAtpaWakeAdaptation, sidRouteFixIds } from "./procedures/loadCatalog";
 import { starRouteFixIds } from "./starSpawn";
 import { loadMva } from "./mva";
 import { parseRadarSites } from "./radarSites";
@@ -263,6 +263,15 @@ function assertArrival(value: unknown, index: number): ArrivalSpawn {
     value.aircraftType,
     `arrivals[${index}].aircraftType`,
   );
+  const cwtWakeCategory =
+    value.cwtWakeCategory === undefined
+      ? undefined
+      : assertString(value.cwtWakeCategory, `arrivals[${index}].cwtWakeCategory`, "Scenario", {
+          nonEmpty: true,
+        }).toUpperCase();
+  if (cwtWakeCategory !== undefined && !/^[A-I]$/.test(cwtWakeCategory)) {
+    throw new Error(`Scenario arrivals[${index}].cwtWakeCategory must be A-I`);
+  }
   const star = parseOptionalStarSpawn(value, index);
   const entryFixId =
     value.entryFixId === undefined
@@ -277,6 +286,9 @@ function assertArrival(value: unknown, index: number): ArrivalSpawn {
     altitudeFt: assertNumber(value.altitudeFt, `arrivals[${index}].altitudeFt`),
     speedKt: assertNumber(value.speedKt, `arrivals[${index}].speedKt`),
     ...(aircraftType ? { aircraftType } : {}),
+    ...(cwtWakeCategory !== undefined
+      ? { cwtWakeCategory: cwtWakeCategory as ArrivalSpawn["cwtWakeCategory"] }
+      : {}),
     ...star,
     ...(entryFixId !== undefined ? { entryFixId } : {}),
   };
@@ -548,6 +560,10 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
   }
 
   const catalog = loadCatalog(icao.toLowerCase());
+  const atpaWakeAdaptation =
+    s.atpaWakeAdaptation === undefined
+      ? undefined
+      : parseAtpaWakeAdaptation(s.atpaWakeAdaptation, "atpaWakeAdaptation", "Scenario");
   const departureConfig = parseDepartureConfig(s.departureConfig);
   const spawnPolicy = parseSpawnPolicy(s.spawnPolicy);
   const arrivals = assertArrivals(s.arrivals, {
@@ -561,6 +577,23 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
     catalog,
     assertString(s.activeRunwayId, "activeRunwayId"),
   );
+
+  const scenarioApproachIds = new Set(
+    assertArray(s.approaches, "approaches").map((value, index) =>
+      assertApproach(value, index).id.toUpperCase(),
+    ),
+  );
+  const scenarioCatalog =
+    atpaWakeAdaptation === undefined
+      ? catalog
+      : {
+          ...catalog,
+          atpaVolumes: catalog.atpaVolumes.map((volume) =>
+            scenarioApproachIds.has(volume.approachId.toUpperCase())
+              ? { ...volume, wakeAdaptation: atpaWakeAdaptation }
+              : volume,
+          ),
+        };
 
   return {
     id: assertString(s.id, "id"),
@@ -589,7 +622,8 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
       ? { ssaWeatherGiSlot: parseSsaWeatherGiSlot(s.ssaWeatherGiSlot) }
       : {}),
     ...(departureConfig ? { departureConfig } : {}),
-    catalog,
+    ...(atpaWakeAdaptation !== undefined ? { atpaWakeAdaptation } : {}),
+    catalog: scenarioCatalog,
     mva: loadMva(icao),
     radarSites: parseRadarSites(s.radarSites, arp),
   };

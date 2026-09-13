@@ -1,10 +1,10 @@
 /**
  * Analog: CRC STARS keyboard / DCB (docs.virtualnas.net/crc/stars — R07).
- * CRC F1 = hold for beacon-code readout; F3 = INIT CNTL initiate track;
+ * CRC F1 = INIT CNTL; F3 = Track Suspend;
  * L1–L9 = leader direction; DCB RANGE spinner; PTL OWN/ALL; `/` = leader
  * length. vice (R08) is typed-radio feel, not this map.
- * Trainer delta: exported Windows subset only — F1 is help, F3 is color
- * stub, PageUp/Down range presets 5–60 (no CRC 6/8/12/16/24), `/` when
+ * Trainer delta: exported Windows subset only — Help is `?` / the Help button,
+ * F3 Track Suspend is reserved/no-op for now, PageUp/Down range presets 5–60 (no CRC 6/8/12/16/24), `/` when
  * scope-focused buffers into the Preview Area (not leader length; Tab cycles
  * radio ↔ PPI). 1.5 s L/F
  * chord window (`*` persists until Esc, commit, or a new `*`); leftover digits never go to the parser; no keyboard leader-length menu
@@ -23,8 +23,8 @@ export interface KeyBinding {
   crcAnalog: string;
 }
 
-/** Help overlay footer — phase README keyboard-feel freeze. */
-export const HELP_FOOTER = "TRAINER KEYS — NOT CRC";
+/** Help overlay footer. */
+export const HELP_FOOTER = "TRAINER COMMANDS — LOCAL REFERENCE";
 
 /** One-line in-app pointer (T02-13). Overlay is ? / Shift+/ (or Alt+F1); this is how you find it. */
 export const HELP_KEYS_POINTER = "? lists keys.";
@@ -35,7 +35,554 @@ export const RADIO_CONFLICT_WARNING =
 
 /** Glossary terms the overlay must teach (range, datablock, leader, initiate track). */
 export const HELP_GLOSSARY_NOTE =
-  "Trainer names: range, datablock, leader, initiate track. CRC keys are a reference, not a 1:1 spec.";
+  "Use this reference for the trainer's active commands. Radio commands use the command line; display commands use the PPI, Preview Area, DCB, or mouse.";
+
+export interface HelpCommandEntry {
+  id: string;
+  command: string;
+  example: string;
+  input: string;
+  result: string;
+}
+
+export interface HelpCommandGroup {
+  id: string;
+  title: string;
+  entries: HelpCommandEntry[];
+}
+
+export interface HelpNavigationGroup {
+  id: string;
+  title: string;
+  commandGroupIds: string[];
+  /** Binding ids are projected from KEY_BINDINGS; no help rows are copied here. */
+  bindingSections: HelpBindingSection[];
+}
+
+export interface HelpBindingSection {
+  id: string;
+  title: string;
+  bindingIds: string[];
+}
+
+/** User-facing command reference shared by the Help menu and tests. */
+export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
+  {
+    id: "radio",
+    title: "Radio clearances",
+    entries: [
+      {
+        id: "heading",
+        command: "H <heading>",
+        example: "H270",
+        input: "Radio",
+        result: "Turns left or right to the heading.",
+      },
+      {
+        id: "altitude",
+        command: "C <altitude>",
+        example: "C30",
+        input: "Radio",
+        result: "Climbs or descends to the altitude.",
+      },
+      {
+        id: "speed",
+        command: "S <knots>",
+        example: "S210",
+        input: "Radio",
+        result: "Sets the aircraft speed.",
+      },
+      {
+        id: "approach",
+        command: "A <approach>",
+        example: "A ILS27",
+        input: "Radio",
+        result: "Issues a supported approach clearance.",
+      },
+      {
+        id: "callsign",
+        command: "<callsign> <instructions>",
+        example: "DAL123 H270",
+        input: "Radio",
+        result: "Applies instructions to one aircraft.",
+      },
+    ],
+  },
+  {
+    id: "preview",
+    title: "Aircraft commands",
+    entries: [
+      {
+        id: "init",
+        command: "F1 / +",
+        example: "F1, identity, then click",
+        input: "PPI or Preview Area",
+        result: "Initiates or associates the selected track.",
+      },
+      {
+        id: "suspend",
+        command: "F3",
+        example: "F3",
+        input: "Always-on key",
+        result: "Does nothing.",
+      },
+      {
+        id: "terminate",
+        command: "F4",
+        example: "F4, then click",
+        input: "PPI or Preview Area",
+        result: "Terminates the selected track.",
+      },
+      {
+        id: "multi",
+        command: "F7 / *",
+        example: "*T",
+        input: "PPI or Preview Area",
+        result: "Starts a Preview command.",
+      },
+      {
+        id: "tracking",
+        command: "*L1–*L9",
+        example: "*L8, then click",
+        input: "Preview Area",
+        result: "Sets the selected track's leader direction.",
+      },
+    ],
+  },
+  {
+    id: "flight-plans",
+    title: "Flight plans",
+    entries: [
+      {
+        id: "flt-data",
+        command: "F6 / FLT DATA <ACID> [fields]",
+        example: "F6 UAL1234 2341 KDEM*RW27 B738 250 .A",
+        input: "Any focus, then Preview Area",
+        result: "Creates a local IFR flight plan.",
+      },
+      {
+        id: "vfr-data",
+        command: "F9 / VFR DATA",
+        example: "F9 N123AB KDEM*RW27 C172 050 Enter",
+        input: "Any focus, then Preview Area",
+        result: "Creates, edits, or deletes a local VFR plan.",
+      },
+      {
+        id: "plan-create",
+        command: "<ACID> [fields]",
+        example: "UAL1234 2341 AT B738",
+        input: "Preview Area",
+        result: "Creates a pending local flight plan.",
+      },
+      {
+        id: "plan-pending-discrete",
+        command: "F1 / INIT CNTL <ACID> <beacon> [fields]",
+        example: "F1 UAL1234 2341, then click",
+        input: "INIT CNTL Preview path",
+        result: "Creates a pending discrete flight plan.",
+      },
+      {
+        id: "plan-modify",
+        command: "*M <identity> <data>",
+        example: "*M 14 5252",
+        input: "Preview Area",
+        result: "Modifies a flight plan.",
+      },
+      {
+        id: "plan-delete",
+        command: "*DEL <index>",
+        example: "*DEL14",
+        input: "Preview Area",
+        result: "Deletes a flight plan.",
+      },
+      {
+        id: "plan-beacon",
+        command: "*B <identity>",
+        example: "*B UAL1234",
+        input: "Preview Area",
+        result: "Releases the assigned beacon.",
+      },
+      {
+        id: "plan-modal",
+        command: "*FP <ACID> Enter",
+        example: "*FP AAL123 Enter or *FP Enter, then click",
+        input: "Any focus → Preview Area",
+        result: "Opens a filed flight-plan dialog.",
+      },
+    ],
+  },
+  {
+    id: "scope",
+    title: "Datablocks and filters",
+    entries: [
+      {
+        id: "range",
+        command: "PageUp / PageDown",
+        example: "PageUp",
+        input: "Any focus",
+        result: "Changes the range preset.",
+      },
+      {
+        id: "center",
+        command: "Home / End",
+        example: "Home",
+        input: "Any focus",
+        result: "Centers on the airport or last PPI click.",
+      },
+      {
+        id: "datablock",
+        command: "T",
+        example: "T",
+        input: "PPI",
+        result: "Toggles full or limited datablocks.",
+      },
+      {
+        id: "mode-c",
+        command: "M",
+        example: "M",
+        input: "PPI",
+        result: "Toggles Mode C.",
+      },
+      {
+        id: "filter",
+        command: "F <min> Enter <max> Enter",
+        example: "F030 Enter 180 Enter",
+        input: "PPI",
+        result: "Sets the altitude filter.",
+      },
+      {
+        id: "history",
+        command: "H / F8",
+        example: "H",
+        input: "PPI or any focus",
+        result: "Toggles history dots.",
+      },
+    ],
+  },
+  {
+    id: "display",
+    title: "View and maps",
+    entries: [
+      {
+        id: "scope-center",
+        command: "*C / *OFF",
+        example: "*C, then click",
+        input: "Preview Area",
+        result: "Places or resets the view center.",
+      },
+      {
+        id: "range-rings",
+        command: "*RR <NM> / *RR CNTR",
+        example: "*RR10",
+        input: "Preview Area",
+        result: "Sets or centers the range rings.",
+      },
+      {
+        id: "ptl",
+        command: "*PTL <minutes> / *R",
+        example: "*PTL5",
+        input: "Preview Area",
+        result: "Sets PTL or arms per-track PTL.",
+      },
+      {
+        id: "hist",
+        command: "*HIST <count>",
+        example: "*HIST5",
+        input: "Preview Area",
+        result: "Sets the history-dot count.",
+      },
+      {
+        id: "weather",
+        command: "*WX <level> / *WX ALL / *WX OFF",
+        example: "*WX3",
+        input: "Preview Area",
+        result: "Toggles a weather level.",
+      },
+      {
+        id: "maps",
+        command: "*D <map> / *D ALL / *D NONE",
+        example: "*D DEM1_27",
+        input: "Preview Area",
+        result: "Toggles a video map or all maps.",
+      },
+      {
+        id: "altitude",
+        command: "*F / *FC / *LA <floor><ceiling>",
+        example: "*F030180 or *LA030180",
+        input: "Preview Area",
+        result: "Displays or sets altitude filters.",
+      },
+      {
+        id: "beacon-filter",
+        command: "*BCN <code>",
+        example: "*BCN45",
+        input: "Preview Area",
+        result: "Adds or removes a beacon filter.",
+      },
+    ],
+  },
+  {
+    id: "lists",
+    title: "System lists",
+    entries: [
+      {
+        id: "lists",
+        command: "*S, *T, *TV, *TM, *TC, *TS, *TX, *TN, *P1–*P3",
+        example: "*T15",
+        input: "Preview Area",
+        result: "Opens or manages system lists.",
+      },
+      {
+        id: "tab-list",
+        command: "*T [lines]",
+        example: "*T15",
+        input: "Preview Area",
+        result: "Toggles or resizes the TAB list.",
+      },
+      {
+        id: "tower-list",
+        command: "*P1–*P3 [lines]",
+        example: "*P1",
+        input: "Preview Area",
+        result: "Toggles or resizes a tower list.",
+      },
+      {
+        id: "vfr-list",
+        command: "*TV [lines]",
+        example: "*TV",
+        input: "Preview Area",
+        result: "Toggles or resizes the VFR list.",
+      },
+      {
+        id: "maps-list",
+        command: "*TX",
+        example: "*TX",
+        input: "Preview Area",
+        result: "Toggles or relocates the video-map list.",
+      },
+      {
+        id: "alert-list",
+        command: "*TM",
+        example: "*TM",
+        input: "Preview Area",
+        result: "Toggles or relocates the alert list.",
+      },
+      {
+        id: "coast-list",
+        command: "*TC [lines]",
+        example: "*TC",
+        input: "Preview Area",
+        result: "Toggles or resizes the coast list.",
+      },
+      {
+        id: "sign-on-list",
+        command: "*TS",
+        example: "*TS",
+        input: "Preview Area",
+        result: "Toggles or relocates the sign-on list.",
+      },
+      {
+        id: "ssa-list",
+        command: "*S",
+        example: "*S, then click",
+        input: "Preview Area",
+        result: "Relocates the system status list.",
+      },
+      {
+        id: "crda-list",
+        command: "*TN",
+        example: "*TN",
+        input: "Preview Area",
+        result: "Toggles or relocates the CRDA list.",
+      },
+    ],
+  },
+  {
+    id: "tracking-alerts",
+    title: "Alerts and tracking",
+    entries: [
+      {
+        id: "force-fdb",
+        command: "*F / **F",
+        example: "*F, then click; **F",
+        input: "Preview Area",
+        result: "Forces or clears full datablocks.",
+      },
+      {
+        id: "leader",
+        command: "+ / /<FLID> / *L1–*L9 / *0 / *1–*8",
+        example: "+, then click; *L8, then click",
+        input: "Preview Area",
+        result: "Initiates, terminates, or sets leader direction.",
+      },
+      {
+        id: "leader-length",
+        command: "*LDR <0–7>",
+        example: "*LDR4",
+        input: "Preview Area",
+        result: "Sets the default leader length.",
+      },
+      {
+        id: "ca",
+        command: "CA / CA K / CA P / CA C",
+        example: "CA K 14; CA P 14 18; CA C I",
+        input: "Preview Area",
+        result: "Runs conflict-alert controls.",
+      },
+      {
+        id: "msaw",
+        command: "*Q / *V",
+        example: "*Q, then click",
+        input: "Preview Area",
+        result: "Inhibits the current alert or toggles MSAW.",
+      },
+      {
+        id: "mci",
+        command: "*MCI",
+        example: "*MCI",
+        input: "Preview Area",
+        result: "Toggles beacon-code mismatch inhibit.",
+      },
+      {
+        id: "beacon-select",
+        command: "B<2 or 4 octal digits>",
+        example: "B45 or B4501",
+        input: "PPI or Preview Area",
+        result: "Selects a beacon block or discrete code.",
+      },
+    ],
+  },
+  {
+    id: "focus",
+    title: "Focus and Preview Area",
+    entries: [
+      {
+        id: "tab",
+        command: "Tab",
+        example: "Tab",
+        input: "Any focus",
+        result: "Cycles command-line and PPI focus.",
+      },
+      {
+        id: "slash",
+        command: "/",
+        example: "/",
+        input: "PPI",
+        result: "Starts a Preview Area slew or drop command.",
+      },
+      {
+        id: "radio-conflict",
+        command: "L090",
+        example: "L090",
+        input: "Command line",
+        result: "Turns left to heading 090.",
+      },
+    ],
+  },
+  {
+    id: "navigation",
+    title: "Help, cancel, and navigation",
+    entries: [
+      {
+        id: "escape",
+        command: "Escape",
+        example: "Esc",
+        input: "Any focus",
+        result: "Cancels active input or closes Help.",
+      },
+    ],
+  },
+];
+
+/**
+ * Task-based navigation keeps the command list scannable without hiding detail.
+ * Each binding is assigned once and rendered by looking up its id in
+ * KEY_BINDINGS, so keyboard and mouse copy cannot drift from behavior.
+ */
+export const HELP_NAVIGATION_GROUPS: HelpNavigationGroup[] = [
+  {
+    id: "aircraft",
+    title: "Aircraft & flight plans",
+    commandGroupIds: ["radio", "preview", "flight-plans", "tracking-alerts"],
+    bindingSections: [
+      {
+        id: "aircraft-keyboard",
+        title: "Aircraft keyboard controls",
+        bindingIds: ["initiate-track", "flt-data", "track-suspend", "drop-track", "tower-handoff"],
+      },
+      {
+        id: "aircraft-alerts",
+        title: "Alerts and tracking controls",
+        bindingIds: ["ca-inhibit"],
+      },
+      {
+        id: "aircraft-mouse",
+        title: "Aircraft actions on the PPI",
+        bindingIds: ["mouse-select", "mouse-accept-handoff", "mouse-deselect"],
+      },
+    ],
+  },
+  {
+    id: "scope",
+    title: "Scope & display",
+    commandGroupIds: ["scope", "display"],
+    bindingSections: [
+      {
+        id: "scope-view",
+        title: "View and map controls",
+        bindingIds: [
+          "range-in",
+          "range-out",
+          "center-airport",
+          "center-click",
+          "mouse-range",
+          "mouse-pan",
+          "mouse-center",
+          "mouse-place-cntr",
+          "mouse-place-rr",
+        ],
+      },
+      {
+        id: "scope-datablocks",
+        title: "Datablocks and filters",
+        bindingIds: ["history", "ptl", "datablock", "mode-c", "altitude-filter", "history-scope"],
+      },
+      {
+        id: "scope-dcb",
+        title: "Display Control Bar",
+        bindingIds: [
+          "dcb-maps",
+          "dcb-brite",
+          "dcb-ldr",
+          "dcb-char-size",
+          "dcb-shift",
+          "dcb-toggle",
+          "dcb-rng-ring",
+          "dcb-range",
+          "dcb-wx",
+          "dcb-pref",
+        ],
+      },
+    ],
+  },
+  {
+    id: "workstation",
+    title: "Workstation & trainer controls",
+    commandGroupIds: ["focus", "navigation", "lists"],
+    bindingSections: [
+      {
+        id: "workstation-preview",
+        title: "Focus and Preview Area",
+        bindingIds: ["cycle-focus", "radio-focus", "stars-tpa-atpa", "multi-func"],
+      },
+      {
+        id: "workstation-navigation",
+        title: "Help, cancel, and navigation",
+        bindingIds: ["help"],
+      },
+    ],
+  },
+];
 
 /**
  * Frozen Windows subset from phases/02-scope/README.md.
@@ -46,185 +593,189 @@ export const KEY_BINDINGS: KeyBinding[] = [
     id: "range-in",
     focus: "always",
     windowsKeys: "PageUp",
-    action: "Range in (smaller NM preset). At 5 NM: no-op, no wrap.",
+    action: "Moves to a smaller range.",
     crcAnalog: "DCB RANGE spinner / Ctrl+F10 RANGE",
   },
   {
     id: "range-out",
     focus: "always",
     windowsKeys: "PageDown",
-    action: "Range out (larger NM preset). At 60 NM: no-op, no wrap.",
+    action: "Moves to a larger range.",
     crcAnalog: "DCB RANGE spinner / Ctrl+F10 RANGE",
   },
   {
     id: "center-airport",
     focus: "always",
     windowsKeys: "Home",
-    action: "Center on airport ref (KDEM ARP).",
+    action: "Centers on the airport.",
     crcAnalog: "CENTER then click / Ctrl+F1 re-center",
   },
   {
     id: "center-click",
     focus: "always",
     windowsKeys: "End",
-    action: "Center on last PPI click (or airport if none this session).",
+    action: "Centers on the last PPI click.",
     crcAnalog: "CENTER then click",
   },
   {
     id: "help",
     focus: "always",
-    windowsKeys: "? / Shift+/ (or Alt+F1)",
-    action: "Toggle this help overlay. Not browser help.",
-    crcAnalog: "Trainer help (? / Shift+/ / Alt+F1; plain F1 is beaconator)",
-  },
-  {
-    id: "beacon-readout",
-    focus: "always",
-    windowsKeys: "F1 (hold)",
-    action:
-      "Beacon Code Readout (Beaconator): momentary readout in place of callsign and forces PDB to FDB.",
-    crcAnalog: "F1 <BCN CODE RD OUT>",
+    windowsKeys: "? / Shift+/ / Help button (or Alt+F1)",
+    action: "Opens or closes Help.",
+    crcAnalog: "Trainer help (? / Shift+/ / Help button / Alt+F1)",
   },
   {
     id: "initiate-track",
     focus: "always",
+    windowsKeys: "F1",
+    action: "INIT CNTL initiates selected target or arms command-then-slew.",
+    crcAnalog: "F1 <INIT CNTL>",
+  },
+  {
+    id: "flt-data",
+    focus: "always",
+    windowsKeys: "F6",
+    action: "Opens full IFR FLT DATA entry.",
+    crcAnalog: "F6 <FLT DATA>",
+  },
+  {
+    id: "track-suspend",
+    focus: "always",
     windowsKeys: "F3",
-    action:
-      "INIT CNTL initiate track: selected applies now; no selection arms command-then-slew; type FLID then Enter or slew. Color stub, no NAS associate.",
-    crcAnalog: "F3 INIT CNTL / <INIT CNTL><FLID><SLEW> / <INIT CNTL><FLID><ENTER>",
+    action: "Does nothing.",
+    crcAnalog: "F3 <TRK SUSP>",
   },
   {
     id: "drop-track",
     focus: "always",
     windowsKeys: "F4",
-    action:
-      "TERM CNTL drop track: selected drops now; no selection arms command-then-slew; type FLID then Enter or slew. Trainer drop, not TERM CNTL ALL.",
+    action: "Terminates the selected or armed track.",
     crcAnalog: "F4 TERM CNTL / <TERM CNTL><SLEW> / <TERM CNTL><FLID><ENTER>",
   },
   {
     id: "tower-handoff",
     focus: "always",
     windowsKeys: "F5 (or Shift+H)",
-    action: "Initiate handoff: Tower (if on approach) or Center (if climbing outbound)",
+    action: "Starts a handoff.",
     crcAnalog: "F5 <HND OFF> (or Shift+H)",
   },
   {
     id: "multi-func",
     focus: "always",
     windowsKeys: "F7",
-    action: "STARS multi-func preview buffer: inputs * into preview buffer or appends to buffer.",
+    action: "Starts a Preview command.",
     crcAnalog: "F7 <MULTI FUNC>",
   },
   {
     id: "history",
     focus: "always",
     windowsKeys: "F8",
-    action: "Toggle history dots (0 ↔ last non-zero count).",
+    action: "Toggles history dots.",
     crcAnalog: "F8 <HIST>",
   },
   {
     id: "ptl",
     focus: "always",
     windowsKeys: "F10",
-    action: "Toggle PTL ALL (predicted track line).",
+    action: "Toggles PTL ALL.",
     crcAnalog: "F10 <PTL>",
   },
   {
     id: "ca-inhibit",
     focus: "always",
     windowsKeys: "F11",
-    action: 'Input "CA " into preview area (STARS Table 18 <CA>)',
+    action: "Starts a CA command.",
     crcAnalog: "F11 <CA>",
   },
   {
     id: "dcb-maps",
     focus: "always",
     windowsKeys: "Ctrl+F2",
-    action: "Open DCB MAPS submenu.",
+    action: "Opens DCB MAPS.",
     crcAnalog: "Ctrl+F2 <MAPS>",
   },
   {
     id: "dcb-brite",
     focus: "always",
     windowsKeys: "Ctrl+F3",
-    action: "Open DCB BRITE submenu.",
+    action: "Opens DCB BRITE.",
     crcAnalog: "Ctrl+F3 <BRITE>",
   },
   {
     id: "dcb-ldr",
     focus: "always",
     windowsKeys: "Ctrl+F4",
-    action: "Open DCB LDR submenu.",
+    action: "Opens DCB LDR.",
     crcAnalog: "Ctrl+F4 <LDR>",
   },
   {
     id: "dcb-char-size",
     focus: "always",
     windowsKeys: "Ctrl+F5",
-    action: "Open DCB CHAR SIZE submenu.",
+    action: "Opens DCB CHAR SIZE.",
     crcAnalog: "Ctrl+F5 <CHAR SIZE>",
   },
   {
     id: "dcb-shift",
     focus: "always",
     windowsKeys: "Ctrl+F7",
-    action: "Toggle DCB MAIN and AUX menus.",
+    action: "Toggles DCB MAIN and AUX.",
     crcAnalog: "Ctrl+F7 <SHIFT>",
   },
   {
     id: "dcb-toggle",
     focus: "always",
     windowsKeys: "Ctrl+F8",
-    action: "Toggle DCB display visibility.",
+    action: "Toggles DCB visibility.",
     crcAnalog: "Ctrl+F8 <DCB>",
   },
   {
     id: "dcb-rng-ring",
     focus: "always",
     windowsKeys: "Ctrl+F9",
-    action: "Arm DCB range ring (RR) spinner.",
+    action: "Opens the DCB range-ring spinner.",
     crcAnalog: "Ctrl+F9 <RNG RING>",
   },
   {
     id: "dcb-range",
     focus: "always",
     windowsKeys: "Ctrl+F10",
-    action: "Arm DCB RANGE spinner.",
+    action: "Opens the DCB range spinner.",
     crcAnalog: "Ctrl+F10 <RANGE>",
   },
   {
     id: "dcb-wx",
     focus: "always",
     windowsKeys: "Ctrl+F11",
-    action: "Toggle WX layers on/off.",
+    action: "Toggles weather layers.",
     crcAnalog: "Ctrl+F11 <WX>",
   },
   {
     id: "dcb-pref",
     focus: "always",
     windowsKeys: "Insert (Ins)",
-    action: "Initiate DCB PREF submenu.",
+    action: "Opens DCB PREF.",
     crcAnalog: "Ins <PREF SET>",
   },
   {
     id: "cycle-focus",
     focus: "always",
     windowsKeys: "Tab",
-    action: "Cycle focus: command line ↔ PPI. Does not steal Tab from help overlay inputs.",
+    action: "Cycles command-line and PPI focus.",
     crcAnalog: "Not CRC — trainer radio vs scope focus",
   },
   {
     id: "mouse-range",
     focus: "always",
     windowsKeys: "Wheel up / down",
-    action: "Range in / out (same presets as PageUp/PageDown). No zoom-to-cursor.",
+    action: "Changes the range.",
     crcAnalog: "DCB RANGE spinner wheel",
   },
   {
     id: "mouse-pan",
     focus: "always",
     windowsKeys: "Right-button drag (middle-button still works)",
-    action: "Slew view center (trainer sugar). Not CRC.",
+    action: "Moves the view center.",
     crcAnalog: "Not CRC — CRC is CENTER then click",
   },
   {
@@ -238,7 +789,7 @@ export const KEY_BINDINGS: KeyBinding[] = [
     id: "mouse-accept-handoff",
     focus: "always",
     windowsKeys: "Left click pending inbound track",
-    action: "CLICK accept inbound handoff (CRC slew analog)",
+    action: "Accepts the inbound handoff.",
     crcAnalog: "CRC STARS: slew the track to accept the handoff",
   },
   {
@@ -259,51 +810,49 @@ export const KEY_BINDINGS: KeyBinding[] = [
     id: "mouse-place-cntr",
     focus: "always",
     windowsKeys: "DCB PLACE CNTR, then PPI click",
-    action:
-      "Set view center to that world point. DCB OFF CNTR (or Home) recenters the airport. End uses last click. No zoom-to-cursor.",
+    action: "Sets the view center.",
     crcAnalog: "DCB PLACE CNTR then click",
   },
   {
     id: "mouse-place-rr",
     focus: "always",
     windowsKeys: "DCB PLACE RR, then PPI click",
-    action: "Set range-ring origin to that world point. RR CNTR snaps origin to the view center.",
+    action: "Sets the range-ring origin.",
     crcAnalog: "DCB PLACE RR then click",
   },
   {
     id: "datablock",
     focus: "scope",
     windowsKeys: "T",
-    action: "Full ↔ limited datablock. Selected track, or all if none selected.",
+    action: "Toggles full or limited datablocks.",
     crcAnalog: "Tag/untag analog (FDB / LDB)",
   },
   {
     id: "mode-c",
     focus: "scope",
     windowsKeys: "M",
-    action: "Mode C field on/off on full datablocks.",
+    action: "Toggles Mode C.",
     crcAnalog: "CRC Mode C field toggle",
   },
   {
     id: "altitude-filter",
     focus: "scope",
     windowsKeys: "F then 3-digit min, Enter, 3-digit max, Enter",
-    action: "Altitude filter in Mode C hundreds. Esc cancels.",
+    action: "Sets the altitude filter.",
     crcAnalog: "CRC altitude filter",
   },
   {
     id: "history-scope",
     focus: "scope",
     windowsKeys: "H",
-    action: "History dots (same as F8: 0 ↔ last non-zero) when the PPI is focused.",
+    action: "Toggles history dots.",
     crcAnalog: "DCB history (always-on duplicate is F8)",
   },
   {
     id: "radio-focus",
     focus: "scope",
     windowsKeys: "/",
-    action:
-      "Preview Area slew/drop prefix (buffers `/`). Tab cycles PPI ↔ command line. Radio-focused / types as phase 1.",
+    action: "Starts a Preview Area slew or drop command.",
     crcAnalog:
       "CRC / is leader length — we do not bind that; CRC <SLEW> analog is / or canvas click",
   },
@@ -311,8 +860,7 @@ export const KEY_BINDINGS: KeyBinding[] = [
     id: "stars-tpa-atpa",
     focus: "scope",
     windowsKeys: "* then J/P/D+/AE/BE/DE, Enter commits",
-    action:
-      "TPA/ATPA slew chord on the selected track (J-ring, cone, size/ATPA flags). Display only — never Command IR.",
+    action: "Runs a TPA or ATPA command.",
     crcAnalog: "CRC STARS TPA/ATPA Table 36 (*J *P **J **P *D+ *AE *BE *DE)",
   },
 ];
@@ -413,7 +961,7 @@ export function isStarsChordPrefixKey(key: string): boolean {
 }
 
 /**
- * Help overlay toggle: ? / Shift+/ (or Alt+F1). Plain F1 is Beacon Code Readout.
+ * Help overlay toggle: ? / Shift+/ (or Alt+F1). Plain F1 is INIT CNTL.
  */
 export function isHelpToggleKey(
   event: { key: string; shiftKey?: boolean; altKey?: boolean; ctrlKey?: boolean } | string,
@@ -441,11 +989,6 @@ export function isCycleFocusKey(key: string): boolean {
  */
 export function isRadioFocusSlashKey(key: string): boolean {
   return key === "/";
-}
-
-/** Scope-focus Track Key `+`. Never always-on; radio `+` is literal. */
-export function isPreviewPlusKey(key: string): boolean {
-  return key === "+" || key === "Add";
 }
 
 /**

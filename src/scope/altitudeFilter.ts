@@ -20,13 +20,33 @@ export interface AltitudeFilter {
   maxHundreds: number; // 0–180, >= min
 }
 
+/** Common datablock exception gate; ordinary slew/selection never qualifies. */
+export function shouldShowDatablockOutsideAltitudeFilter(args: {
+  inFilter: boolean;
+  ownership?: string;
+  retainedFdb?: boolean;
+  emergency?: boolean;
+  pendingHandoff?: boolean;
+}): boolean {
+  return (
+    args.inFilter ||
+    args.ownership === "owned" ||
+    args.ownership === "tower" ||
+    args.ownership === "center" ||
+    args.retainedFdb === true ||
+    args.emergency === true ||
+    args.pendingHandoff === true
+  );
+}
+
 export const FILTER_HUNDREDS_MIN = 0;
-export const FILTER_HUNDREDS_MAX = 180;
+// STARS Mode C filter limits are three-digit hundreds values, through 999.
+export const FILTER_HUNDREDS_MAX = 999;
 
 /** Default altitude filter: 000–180, i.e. show all v1 Mode C. */
 export const DEFAULT_ALTITUDE_FILTER: AltitudeFilter = {
   minHundreds: FILTER_HUNDREDS_MIN,
-  maxHundreds: FILTER_HUNDREDS_MAX,
+  maxHundreds: 180,
 };
 
 export type FilterEntryPhase = "idle" | "min" | "max";
@@ -63,7 +83,7 @@ export function clampFilterHundreds(n: number): number {
   return Math.max(FILTER_HUNDREDS_MIN, Math.min(FILTER_HUNDREDS_MAX, Math.round(n)));
 }
 
-/** 1–3 digits (`50` → 050). Invalid / empty → null. Clamps 0–180. */
+/** 1–3 digits (`50` → 050). Invalid / empty → null. Clamps 0–999. */
 export function parseFilterHundreds(digits: string): number | null {
   if (!/^\d{1,3}$/.test(digits)) {
     return null;
@@ -72,7 +92,7 @@ export function parseFilterHundreds(digits: string): number | null {
 }
 
 /**
- * Preview `*LA` hundreds: exactly 3 digits, 0–180 inclusive.
+ * Preview `*LA` hundreds: exactly 3 digits, 0–999 inclusive.
  * Out of range is null (no clamp) so `*LA 000 999` can INV.
  */
 export function parseStrictFilterHundreds(digits: string): number | null {
@@ -234,6 +254,7 @@ export function handleFilterEntryKey(
   filter: AltitudeFilter,
   key: string,
   nowMs: number,
+  onCommit?: () => void,
 ): boolean {
   if (expireFilterEntry(entry, filter, nowMs)) {
     return false;
@@ -251,7 +272,13 @@ export function handleFilterEntryKey(
     return true;
   }
   if (key === "Enter" || key === "NumpadEnter") {
+    const wasMax = entry.phase === "max";
+    const previousMin = filter.minHundreds;
+    const previousMax = filter.maxHundreds;
     commitFilterField(entry, filter, nowMs);
+    if (wasMax && (filter.minHundreds !== previousMin || filter.maxHundreds !== previousMax)) {
+      onCommit?.();
+    }
     return true;
   }
   const digit = digitFromKey(key);

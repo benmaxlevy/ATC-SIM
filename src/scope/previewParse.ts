@@ -29,12 +29,66 @@ import type { VipLevel } from "./wx";
  * `setAltitudeFilterLimits` / `addBeaconCodeFilter` / `removeBeaconCodeFilter`.
  * T02-66: handoff accept, pointout ack, leader clock, beaconator slew.
  * T02-73: `saveAsPref` is the SAVE AS name commit (name on Enter only).
- * Optional `flid` on INIT/TERM is only for typed `+[Callsign]` Enter.
+ * Optional `flid` on INIT/TERM is only for typed identity entry.
+ * T02-171: `*FP` is a UI-only flight-plan modal request; it never enters
+ * Command IR or the radio parser.
  * Do not put F3-specific field names on ScopeView.
  */
 export type PreviewArmedAction =
+  | {
+      readonly type: "createFlightPlan";
+      pendingDiscrete: boolean;
+      acid: string;
+      /** Present only when entered through the explicit FLT DATA command. */
+      creationMode?: "fltData" | "vfr";
+      assignedBeacon?: string;
+      beaconAllocation?: "ifr" | "vfr" | "general1" | "general2" | "general3" | "general4";
+      tcp?: string;
+      flightType?: "A" | "P" | "E";
+      airportId?: string;
+      scratchpads: string[];
+      aircraftType?: string;
+      aircraftCount?: number;
+      equipment?: string;
+      requestedAltitudeFt?: number;
+      flightRules?: string;
+      fixes?: string[];
+      eta?: string;
+      ptd?: string;
+    }
+  | { readonly type: "deleteVfrFlightPlan"; readonly flid: string }
+  | {
+      readonly type: "createVfrActiveTrack";
+      readonly intermediateFix?: string;
+      readonly requestedAltitudeFt?: number;
+    }
   | { readonly type: "initCntl"; readonly flid?: string }
-  | { readonly type: "termCntl"; readonly flid?: string }
+  | {
+      readonly type: "termCntl";
+      readonly flid?: string;
+      readonly flightType?: "A" | "P" | "E";
+      readonly coordinationTime?: string;
+    }
+  | { readonly type: "releaseAssignedBeacon"; readonly flid: string }
+  | {
+      readonly type: "modifyFlightPlan";
+      readonly flid: string;
+      readonly field:
+        | "acid"
+        | "assignedBeacon"
+        | "tcp"
+        | "fixes"
+        | "flightType"
+        | "scratchpads"
+        | "requestedAltitudeFt"
+        | "assignedAltitudeFt"
+        | "aircraftType"
+        | "equipment"
+        | "eta"
+        | "ptd";
+      readonly value: string;
+      readonly scratchpadSlot?: 1 | 2;
+    }
   | { readonly type: "beaconBlock"; readonly digits: string }
   | { readonly type: "beaconDiscrete"; readonly digits: string }
   | { readonly type: "toggleList"; readonly listId: string }
@@ -58,6 +112,9 @@ export type PreviewArmedAction =
       readonly type: "setAltitudeFilterLimits";
       readonly floorHundreds: number;
       readonly ceilingHundreds: number;
+      readonly associatedOnly?: boolean;
+      readonly associatedFloorHundreds?: number;
+      readonly associatedCeilingHundreds?: number;
     }
   | { readonly type: "addBeaconCodeFilter"; readonly code: string }
   | { readonly type: "removeBeaconCodeFilter"; readonly code: string }
@@ -110,12 +167,25 @@ export type PreviewArmedAction =
   | { readonly type: "msawCurrentAlertInhibit" }
   /** `<MULTI FUNC> V <SLEW>`: toggle selected-track MSAW processing. */
   | { readonly type: "toggleMsawProcessing" }
+  | {
+      /** Opens the local filed flight-plan dialog; not a radio/pilot action. */
+      readonly type: "openFlightPlanModal";
+      readonly acid?: string;
+      readonly index?: number;
+      readonly targetSlew?: boolean;
+    }
   | { readonly type: "saveAsPref"; readonly name?: string };
 
 export type PreviewCommandResult =
   | { kind: "incomplete" }
   | { kind: "invalid"; reason: string }
   | { kind: "action"; action: PreviewArmedAction };
+
+export interface FlightPlanModalRequest {
+  acid?: string;
+  index?: number;
+  targetAircraftId?: string;
+}
 
 /**
  * Extension table for `parsePreviewCommand`. Complete commands map to
@@ -143,10 +213,275 @@ const PREVIEW_TABLE: Readonly<Record<string, PreviewTableEntry>> = {
 /** Full callsign / numeric-tail / 4-digit squawk — duplicated, not `@pilot`. */
 export const FULL_CALLSIGN = /^[A-Z]{3}[0-9]{1,4}[A-Z]?$/;
 export const SUFFIX_CALLSIGN = /^[0-9]{1,4}[A-Z]?$/;
-export const SQUAWK_CODE = /^[0-9]{4}$/;
+export const SQUAWK_CODE = /^[0-7]{4}$/;
+const SCRATCHPAD = /^[A][A-Z0-9+/. *]{0,4}$/;
+const SCRATCHPAD_2 = /^\+[A-Z0-9+/. *]{0,4}$/;
+const AIRCRAFT = /^(?:(\d{1,2})\/)?([A-Z][A-Z0-9]{1,3})(?:\/([A-Z]))?$/;
+const FLIGHT_RULES = /^[A-Z]$/;
+const FIX_DATA = /^(?:[A-Z0-9]{1,4})?\*(?:[A-Z0-9]{1,4})?(?:\*[APE])?$/;
+const ETA_OR_PTD = /^(?:[01]\d|2[0-3])[0-5]\dE$/;
+
+function isCreationAcid(value: string): boolean {
+  return /^[A-Z][A-Z0-9]{1,6}$/.test(value) && (value.length !== 2 || /\d$/.test(value));
+}
+
+function isDefiniteFltDataAircraft(token: string): boolean {
+  return (
+    token.length >= 3 &&
+    token.length <= 4 &&
+    AIRCRAFT.test(token) &&
+    !SCRATCHPAD.test(token) &&
+    !FIX_DATA.test(token) &&
+    !ETA_OR_PTD.test(token)
+  );
+}
+
+export type FlightPlanCreationParse =
+  | { kind: "incomplete" }
+  | { kind: "invalid"; reason: string }
+  | { kind: "action"; action: Extract<PreviewArmedAction, { type: "createFlightPlan" }> };
+
+export function parseVfrFlightPlanCommand(buffer: string): PreviewCommandResult {
+  const tokens = buffer.trim().toUpperCase().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return { kind: "incomplete" };
+  if (tokens.length === 1) {
+    if (!/^(?:\d{1,2}|[A-Z][A-Z0-9]{1,6})$/.test(tokens[0]!)) {
+      return invalid("ILL ACID");
+    }
+    return { kind: "action", action: { type: "deleteVfrFlightPlan", flid: tokens[0]! } };
+  }
+  if (tokens[0] === "*") {
+    let altitude: number | undefined;
+    let intermediateFix: string | undefined;
+    for (const token of tokens.slice(1)) {
+      if (/^\d{3}$/.test(token)) {
+        if (altitude !== undefined) return invalid("FORMAT");
+        altitude = Number(token) * 100;
+      } else if (/^[A-Z0-9]{1,4}$/.test(token)) {
+        if (intermediateFix) return invalid("FORMAT");
+        intermediateFix = token;
+      } else return invalid("FORMAT");
+    }
+    return {
+      kind: "action",
+      action: { type: "createVfrActiveTrack", intermediateFix, requestedAltitudeFt: altitude },
+    };
+  }
+  const acid = tokens[0]!;
+  if (!/^[A-Z][A-Z0-9]{1,6}$/.test(acid) || (acid.length === 2 && !/\d$/.test(acid))) {
+    return invalid("ILL ACID");
+  }
+  // Departure may be omitted; a second star carries amended intermediate-fix data.
+  const route = /^(?:[A-Z0-9]{1,4})?\*[A-Z0-9]{1,4}(?:\*[A-Z0-9]{1,4})?$/.exec(tokens[1]!);
+  if (!route) return invalid("ILL ROUTE");
+  const fields: Extract<PreviewArmedAction, { type: "createFlightPlan" }> = {
+    type: "createFlightPlan",
+    pendingDiscrete: false,
+    creationMode: "vfr",
+    acid,
+    flightRules: "VFR",
+    fixes: [tokens[1]!],
+    scratchpads: [],
+  };
+  let aircraftSeen = false;
+  for (const token of tokens.slice(2)) {
+    if (/^\d{3}$/.test(token)) {
+      if (fields.requestedAltitudeFt !== undefined) return invalid("FORMAT");
+      fields.requestedAltitudeFt = Number(token) * 100;
+    } else if (/^[A-Z][A-Z0-9]{1,3}(?:\/[A-Z])?$/.test(token)) {
+      if (aircraftSeen) return invalid("FORMAT");
+      const [aircraftType, equipment] = token.split("/");
+      fields.aircraftType = aircraftType;
+      fields.equipment = equipment;
+      aircraftSeen = true;
+    } else if (/^[A-Z0-9]{1,2}$/.test(token)) {
+      if (fields.tcp) return invalid("FORMAT");
+      fields.tcp = token;
+    } else return invalid("FORMAT");
+  }
+  return { kind: "action", action: fields };
+}
+
+/** Keyboard-only abbreviated creation grammar from TI 6191.409 §§5.5.1/5.5.7. */
+export function parseFlightPlanCreation(
+  buffer: string,
+  pendingDiscrete = false,
+  fltData = false,
+): FlightPlanCreationParse {
+  const tokens = buffer.trim().toUpperCase().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return { kind: "incomplete" };
+  const acid = tokens[0]!;
+  if (acid === "ALL" || !isCreationAcid(acid)) return { kind: "invalid", reason: "ILL ACID" };
+  if (tokens.length === 1 && pendingDiscrete) return { kind: "incomplete" };
+  const fields: Extract<PreviewArmedAction, { type: "createFlightPlan" }> = {
+    type: "createFlightPlan",
+    pendingDiscrete,
+    acid,
+    scratchpads: [],
+    ...(fltData ? { creationMode: "fltData" as const } : {}),
+  };
+  const used = new Set<string>();
+  let etaOrPtd: string | undefined;
+  // Table 5-7 permits both one/two-character TCPs and two-to-four-character
+  // aircraft types. A two-character token is unambiguous only in context:
+  // once a definite aircraft field is present, it is the TCP field; otherwise
+  // it remains a valid two-character aircraft type.
+  const hasDefiniteAircraft = fltData && tokens.slice(1).some(isDefiniteFltDataAircraft);
+  for (const token of tokens.slice(1)) {
+    if (/^\d{4}$/.test(token)) {
+      if (!/^[0-7]{4}$/.test(token)) return { kind: "invalid", reason: "FORMAT" };
+      if (used.has("beacon")) return { kind: "invalid", reason: "FORMAT" };
+      fields.assignedBeacon = token;
+      used.add("beacon");
+      continue;
+    }
+    if (token === "+" || token === "/" || /^\/[1-4]$/.test(token)) {
+      if (used.has("beacon")) return { kind: "invalid", reason: "FORMAT" };
+      fields.beaconAllocation =
+        token === "+"
+          ? "ifr"
+          : token === "/"
+            ? "vfr"
+            : (`general${token.slice(1)}` as "general1" | "general2" | "general3" | "general4");
+      used.add("beacon");
+      continue;
+    }
+    // Manual FLT DATA allows two-to-four-character aircraft types. A
+    // two-character letter/number value would otherwise be consumed by the
+    // one/two-character TCP rule. Numeric-leading two-character values stay
+    // TCPs (for example 1R); asterisk-shaped values are fix data below.
+    if (fltData && /^[A-Z][A-Z0-9]$/.test(token) && !hasDefiniteAircraft) {
+      if (used.has("aircraft")) return { kind: "invalid", reason: "FORMAT" };
+      fields.aircraftType = token;
+      used.add("aircraft");
+      continue;
+    }
+    if (
+      /^[A-Z0-9]{1,2}$/.test(token) &&
+      (!/^[APE]/.test(token) ||
+        (fltData && hasDefiniteAircraft && /^[A-Z][A-Z0-9]$/.test(token))) &&
+      (fltData || token.length === 2)
+    ) {
+      if (pendingDiscrete) return { kind: "invalid", reason: "FORMAT" };
+      if (used.has("tcp")) return { kind: "invalid", reason: "FORMAT" };
+      fields.tcp = token;
+      used.add("tcp");
+      continue;
+    }
+    if (token === "A" && !used.has("beacon") && (fltData || used.has("type"))) {
+      fields.beaconAllocation = undefined;
+      used.add("beacon");
+      continue;
+    }
+    if (fltData && FIX_DATA.test(token)) {
+      if (used.has("fixes")) return { kind: "invalid", reason: "FORMAT" };
+      fields.fixes = [token];
+      used.add("fixes");
+      continue;
+    }
+    if (fltData && ETA_OR_PTD.test(token)) {
+      if (used.has("etaOrPtd")) return { kind: "invalid", reason: "FORMAT" };
+      etaOrPtd = token;
+      used.add("etaOrPtd");
+      continue;
+    }
+    if (fltData && /^[APE]$/.test(token)) return { kind: "invalid", reason: "FORMAT" };
+    // E1 is not the manual's two-character flight-type form. Reserve this
+    // otherwise ambiguous token instead of letting it become an aircraft type.
+    if (!fltData && /^E[A-Z0-9]$/.test(token)) return { kind: "invalid", reason: "FORMAT" };
+    if (/^[APE]$/.test(token) || /^[AP][A-Z0-9]$/.test(token)) {
+      if (pendingDiscrete) return { kind: "invalid", reason: "FORMAT" };
+      if (used.has("type")) return { kind: "invalid", reason: "FORMAT" };
+      fields.flightType = token[0] as "A" | "P" | "E";
+      fields.airportId = token.length === 2 ? token[1] : undefined;
+      used.add("type");
+      continue;
+    }
+    if (SCRATCHPAD.test(token)) {
+      if (used.has("sp1")) return { kind: "invalid", reason: "ILL SCR" };
+      const value = token.slice(1);
+      if (/^(NAT|CST|AMB|RDR|ADB|XXX|\d{3})/.test(value))
+        return { kind: "invalid", reason: "ILL SCR" };
+      fields.scratchpads = [value, ...fields.scratchpads.slice(1)];
+      used.add("sp1");
+      continue;
+    }
+    if (SCRATCHPAD_2.test(token)) {
+      if (used.has("sp2")) return { kind: "invalid", reason: "ILL SCR" };
+      const value = token.slice(1);
+      if (/^(NAT|CST|AMB|RDR|ADB|XXX|\d{3})/.test(value))
+        return { kind: "invalid", reason: "ILL SCR" };
+      fields.scratchpads = [fields.scratchpads[0] ?? "", value];
+      used.add("sp2");
+      continue;
+    }
+    if (/^\d{3}$/.test(token)) {
+      if (pendingDiscrete) return { kind: "invalid", reason: "FORMAT" };
+      if (used.has("alt")) return { kind: "invalid", reason: "FORMAT" };
+      fields.requestedAltitudeFt = Number(token) * 100;
+      used.add("alt");
+      continue;
+    }
+    if (/^\.[A-Z]$/.test(token)) {
+      if (pendingDiscrete) return { kind: "invalid", reason: "FORMAT" };
+      if (used.has("rules")) return { kind: "invalid", reason: "ILL VALUE" };
+      if (!FLIGHT_RULES.test(token[1]!) || /[BFHLRJMX]/.test(token[1]!))
+        return { kind: "invalid", reason: "ILL VALUE" };
+      fields.flightRules = token[1];
+      used.add("rules");
+      continue;
+    }
+    const aircraft = AIRCRAFT.exec(token);
+    if (aircraft) {
+      if (used.has("aircraft")) return { kind: "invalid", reason: "FORMAT" };
+      fields.aircraftCount = aircraft[1] ? Number(aircraft[1]) : undefined;
+      if (
+        fields.aircraftCount !== undefined &&
+        (fields.aircraftCount < 2 || fields.aircraftCount > 99)
+      )
+        return { kind: "invalid", reason: "ILL NUM" };
+      fields.aircraftType = aircraft[2];
+      fields.equipment = aircraft[3];
+      used.add("aircraft");
+      continue;
+    }
+    return { kind: "invalid", reason: "FORMAT" };
+  }
+  if (etaOrPtd) {
+    const status = fields.fixes?.[0]?.split("*").at(-1);
+    if (status === "P") fields.ptd = etaOrPtd;
+    else fields.eta = etaOrPtd;
+  }
+  if (pendingDiscrete && !fields.assignedBeacon && !fields.beaconAllocation)
+    return { kind: "invalid", reason: "FORMAT" };
+  return { kind: "action", action: fields };
+}
 
 function invalid(reason: string): PreviewCommandResult {
   return { kind: "invalid", reason };
+}
+
+/** T02-171 trainer delta: exact `*FP` token, with optional ACID or 2-digit TAB index. */
+export function parseFlightPlanModalCommand(buffer: string): PreviewCommandResult | null {
+  // Do not compact this family: `* FP` is not the `*FP` token and must not
+  // steal the existing `* F` altitude-filter grammar.
+  if (!/^\*FP(?:$|\s)/i.test(buffer)) return null;
+  const upper = buffer.trim().toUpperCase();
+  if (upper === "*FP") {
+    return { kind: "action", action: { type: "openFlightPlanModal", targetSlew: true } };
+  }
+  const rest = upper.slice(3).trim();
+  if (!rest || /\s/.test(rest)) return invalid("ILL ACID");
+  if (/^\d{2}$/.test(rest)) {
+    return {
+      kind: "action",
+      action: { type: "openFlightPlanModal", index: Number(rest) },
+    };
+  }
+  if (!/^[A-Z][A-Z0-9]{1,6}$/.test(rest) || (rest.length === 2 && !/\d$/.test(rest))) {
+    return invalid("ILL ACID");
+  }
+  return { kind: "action", action: { type: "openFlightPlanModal", acid: rest } };
 }
 
 /** Keyboard RR spacing. DCB spinner stays `RR_INTERVALS_NM` `[2, 5, 10]`. */
@@ -329,9 +664,7 @@ function parseBeaconFilterCode(
 }
 
 /**
- * Table 29 altitude filters. Exact `*F` displays current bounds; `*LA` sets
- * 3-digit hundreds 0–180. Spaces optional (`*F` = `* F`). `*FILTER` is not
- * ours. Null when this is not our family so other `*` rows stay intact.
+ * TI 6191.409 §4.11.1–4.11.2: `*F` displays or modifies both filter bands.
  */
 export function parseAltitudeFilterCommand(buffer: string): PreviewCommandResult | null {
   if (!buffer.startsWith("*")) {
@@ -341,6 +674,61 @@ export function parseAltitudeFilterCommand(buffer: string): PreviewCommandResult
 
   if (compact === "*F") {
     return { kind: "action", action: { type: "displayFilters" } };
+  }
+
+  if (compact.startsWith("*FC")) {
+    const rest = compact.slice(3);
+    if (!/^\d*$/.test(rest)) return invalid("invalid altitude filter limits");
+    if (rest.length < 6) return { kind: "incomplete" };
+    if (rest.length !== 6) return invalid("invalid altitude filter limits");
+    const first = parseStrictFilterHundreds(rest.slice(0, 3));
+    const second = parseStrictFilterHundreds(rest.slice(3, 6));
+    if (first === null || second === null) return invalid("altitude filter out of range");
+    return {
+      kind: "action",
+      action: {
+        type: "setAltitudeFilterLimits",
+        floorHundreds: Math.min(first, second),
+        ceilingHundreds: Math.max(first, second),
+        associatedOnly: true,
+      },
+    };
+  }
+
+  if (compact.startsWith("*F")) {
+    const rest = compact.slice(2);
+    if (!/^\d*$/.test(rest)) {
+      return invalid("invalid altitude filter limits");
+    }
+    if (!/^\d{6}(?:\d{6})?$/.test(rest)) {
+      return rest.length < 6 ? { kind: "incomplete" } : invalid("invalid altitude filter limits");
+    }
+    const floorHundreds = parseStrictFilterHundreds(rest.slice(0, 3));
+    const ceilingHundreds = parseStrictFilterHundreds(rest.slice(3, 6));
+    if (floorHundreds === null || ceilingHundreds === null) {
+      return invalid("altitude filter out of range");
+    }
+    const action = {
+      type: "setAltitudeFilterLimits" as const,
+      floorHundreds: Math.min(floorHundreds, ceilingHundreds),
+      ceilingHundreds: Math.max(floorHundreds, ceilingHundreds),
+    };
+    if (rest.length === 12) {
+      const associatedFloorHundreds = parseStrictFilterHundreds(rest.slice(6, 9));
+      const associatedCeilingHundreds = parseStrictFilterHundreds(rest.slice(9, 12));
+      if (associatedFloorHundreds === null || associatedCeilingHundreds === null) {
+        return invalid("altitude filter out of range");
+      }
+      return {
+        kind: "action",
+        action: {
+          ...action,
+          associatedFloorHundreds: Math.min(associatedFloorHundreds, associatedCeilingHundreds),
+          associatedCeilingHundreds: Math.max(associatedFloorHundreds, associatedCeilingHundreds),
+        },
+      };
+    }
+    return { kind: "action", action };
   }
 
   if (compact === "*L") {
@@ -368,12 +756,13 @@ export function parseAltitudeFilterCommand(buffer: string): PreviewCommandResult
   if (floorHundreds === null || ceilingHundreds === null) {
     return invalid("altitude filter out of range");
   }
-  if (floorHundreds > ceilingHundreds) {
-    return invalid("altitude filter floor above ceiling");
-  }
   return {
     kind: "action",
-    action: { type: "setAltitudeFilterLimits", floorHundreds, ceilingHundreds },
+    action: {
+      type: "setAltitudeFilterLimits",
+      floorHundreds: Math.min(floorHundreds, ceilingHundreds),
+      ceilingHundreds: Math.max(floorHundreds, ceilingHundreds),
+    },
   };
 }
 
@@ -677,6 +1066,7 @@ const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
   "caPairToggle",
   "msawCurrentAlertInhibit",
   "toggleMsawProcessing",
+  "createVfrActiveTrack",
 ]);
 
 function compactTrackingBuffer(buffer: string): string {
@@ -688,7 +1078,29 @@ function isFlidPrefixToken(token: string): boolean {
 }
 
 function isCompleteFlidToken(token: string): boolean {
-  return FULL_CALLSIGN.test(token) || SUFFIX_CALLSIGN.test(token) || SQUAWK_CODE.test(token);
+  if (/^\d{4}$/.test(token)) return SQUAWK_CODE.test(token);
+  return (
+    FULL_CALLSIGN.test(token) ||
+    SUFFIX_CALLSIGN.test(token) ||
+    SQUAWK_CODE.test(token) ||
+    /^\d{1,2}$/.test(token)
+  );
+}
+
+function parseTermIdentity(rest: string): PreviewCommandResult {
+  const match = /^(\S+?)(?:\/([APE]))?(?: ((?:[01]\d|2[0-3])[0-5]\d))?$/.exec(rest);
+  if (!match || (match[3] !== undefined && /^\d{1,2}$/.test(match[1]!))) return invalid("FORMAT");
+  const flid = match[1]!;
+  if (!isCompleteFlidToken(flid) || flid === "ALL") return invalid("FORMAT");
+  return {
+    kind: "action",
+    action: {
+      type: "termCntl",
+      flid,
+      ...(match[2] ? { flightType: match[2] as "A" | "P" | "E" } : {}),
+      ...(match[3] ? { coordinationTime: match[3] } : {}),
+    },
+  };
 }
 
 function parseTrackFlidRest(kind: "initCntl" | "termCntl", rest: string): PreviewCommandResult {
@@ -697,6 +1109,9 @@ function parseTrackFlidRest(kind: "initCntl" | "termCntl", rest: string): Previe
   }
   if (kind === "termCntl" && rest === "ALL") {
     return invalid("TERM CNTL ALL");
+  }
+  if (kind === "termCntl" && (rest.includes("/") || rest.includes(" "))) {
+    return parseTermIdentity(rest);
   }
   if (isCompleteFlidToken(rest)) {
     return { kind: "action", action: { type: kind, flid: rest } };
@@ -710,30 +1125,19 @@ function parseTrackFlidRest(kind: "initCntl" | "termCntl", rest: string): Previe
 /**
  * T02-66 tracking / datablock chords + Table 24/25 leader line direction and length.
  * `* P1` is a tower list (parseListCommand). Bare `*` and `*B` stay incomplete.
- * `*F` / `*LA` / `*BCN` — `*F` forces Full Data Block on slewed track or target acid.
+ * `*LA` / `*BCN` tracking and display commands. `*F` is handled by the
+ * altitude-filter parser above and is never a forced-FDB command.
  */
 export function parseTrackingCommand(buffer: string): PreviewCommandResult | null {
   const compact = compactTrackingBuffer(buffer);
+  const spaced = buffer.trim().toUpperCase().replace(/\s+/g, " ");
   if (compact === "**F") {
     return { kind: "action", action: { type: "clearAllForcedFdb" } };
   }
-  if (compact.startsWith("*F")) {
-    const rest = compact.slice(2);
-    if (rest.length === 0) {
-      return { kind: "action", action: { type: "forceFdb" } };
-    }
-    if (isCompleteFlidToken(rest)) {
-      return { kind: "action", action: { type: "forceFdb", flid: rest } };
-    }
-    if (isFlidPrefixToken(rest)) {
-      return { kind: "incomplete" };
-    }
-    return invalid("unknown FLID");
-  }
-  if (compact.startsWith("+")) {
-    return parseTrackFlidRest("initCntl", compact.slice(1));
-  }
   if (compact.startsWith("/")) {
+    if (/^\/\S+(?:\/[APE])? \d{4}$/.test(spaced)) {
+      return parseTrackFlidRest("termCntl", spaced.slice(1));
+    }
     const lenMatch = /^\/([0-7])(.*)$/.exec(compact);
     if (lenMatch) {
       const step = Number(lenMatch[1]);
@@ -923,7 +1327,7 @@ export function parseTrackingSlewBuffer(buffer: string): PreviewArmedAction | nu
   if (parsed?.kind === "action") {
     return parsed.action;
   }
-  if (/^\d{1,2}$/.test(compact)) {
+  if (/^\d{2}$/.test(compact)) {
     return { type: "associateFlightPlan", index: Number(compact) };
   }
   return null;
@@ -948,6 +1352,102 @@ function parseDeleteCommand(buffer: string): PreviewCommandResult | null {
     return { kind: "action", action: { type: "deleteFlightPlanEntry", index: idx } };
   }
   return invalid("invalid flight plan delete command");
+}
+
+/**
+ * Analog: CRC MULTI FUNC M flight-plan field edit (TI 6191.409 §5.6.17).
+ * Trainer delta: identity + field + value are committed in one typed preview
+ * row; no radio clearance, Command IR, or pilot intent is emitted.
+ */
+function parseFlightPlanModification(buffer: string): PreviewCommandResult | null {
+  const tokens = buffer.trim().toUpperCase().split(/\s+/).filter(Boolean);
+  if (tokens[0] === "*B") {
+    if (tokens.length < 2) return { kind: "incomplete" };
+    if (tokens.length !== 2) return invalid("FORMAT");
+    return { kind: "action", action: { type: "releaseAssignedBeacon", flid: tokens[1]! } };
+  }
+  if (tokens[0] !== "*M") return null;
+  // STARS §5.6.17 enters the field data directly after the identity.
+  // Keep the labelled form below as a compatibility path.
+  if (tokens.length === 3) {
+    const identity = tokens[1]!;
+    const value = tokens[2]!;
+    if (/^(?:[0-7]{4}|\+|\/|\/[1-4]|A)$/.test(value)) {
+      return {
+        kind: "action",
+        action: { type: "modifyFlightPlan", flid: identity, field: "assignedBeacon", value },
+      };
+    }
+    if (/^Δ[A-Z0-9+/. *]{0,4}$/.test(value) || /^\+[A-Z0-9+/. *]{1,4}$/.test(value)) {
+      return {
+        kind: "action",
+        action: {
+          type: "modifyFlightPlan",
+          flid: identity,
+          field: "scratchpads",
+          value,
+          scratchpadSlot: value.startsWith("Δ") ? 1 : 2,
+        },
+      };
+    }
+    return invalid("FORMAT");
+  }
+  if (tokens.length < 4) return { kind: "incomplete" };
+  const fields = new Set(["ACID", "TCP", "FIXES", "TYPE", "SP", "RALT", "AALT", "ETA", "PTD"]);
+  if (!fields.has(tokens[2]!)) return invalid("FORMAT");
+  const aliases: Record<
+    string,
+    | "acid"
+    | "assignedBeacon"
+    | "tcp"
+    | "fixes"
+    | "flightType"
+    | "scratchpads"
+    | "requestedAltitudeFt"
+    | "assignedAltitudeFt"
+    | "eta"
+    | "ptd"
+  > = {
+    ACID: "acid",
+    TCP: "tcp",
+    FIXES: "fixes",
+    TYPE: "flightType",
+    SP: "scratchpads",
+    RALT: "requestedAltitudeFt",
+    AALT: "assignedAltitudeFt",
+    ETA: "eta",
+    PTD: "ptd",
+  };
+  const value = tokens.slice(3).join(" ");
+  if (tokens[2] === "ETA" || tokens[2] === "PTD") {
+    if (!/^(?:[01]\d|2[0-3])[0-5]\dE$/.test(value)) return invalid("FORMAT");
+  } else if (tokens[2] === "AALT") {
+    if (!/^A\d{3}$/.test(value)) return invalid("FORMAT");
+  } else if (tokens[2] === "RALT") {
+    if (!/^\d{3}$/.test(value)) return invalid("FORMAT");
+  } else if (tokens[2] === "BCN") {
+    if (!/^(?:[0-7]{4}|\+|\/|\/[1-4]|A)$/.test(value)) return invalid("FORMAT");
+  } else if (tokens[2] === "SP") {
+    const scratchpad = value.slice(1);
+    if (
+      !/^[Δ+][A-Z0-9+/. *]{0,4}$/.test(value) ||
+      /^(?:NAT|CST|AMB|RDR|ADB|XXX|\d{3})/.test(scratchpad)
+    )
+      return invalid("ILL SCR");
+  } else if (tokens[2] === "FIXES") {
+    if (!/^(?:[A-Z0-9]{1,4})?\*(?:[A-Z0-9]{1,4})?(?:\*[APE])?$/.test(value))
+      return invalid("FORMAT");
+  }
+  return {
+    kind: "action",
+    action: {
+      type: "modifyFlightPlan",
+      flid: tokens[1]!,
+      field: aliases[tokens[2]!]!,
+      value,
+      ...(tokens[2] === "SP" ? { scratchpadSlot: value.startsWith("Δ") ? 1 : 2 } : {}),
+    },
+  };
 }
 
 /**
@@ -1039,10 +1539,14 @@ export function parsePreviewCommand(
   if (buffer === "") {
     return { kind: "incomplete" };
   }
+  const flightPlanModal = parseFlightPlanModalCommand(buffer);
+  if (flightPlanModal) return flightPlanModal;
   const del = parseDeleteCommand(buffer);
   if (del) {
     return del;
   }
+  const modification = parseFlightPlanModification(buffer);
+  if (modification) return modification;
   const ca = parseCaCommand(buffer);
   if (ca) {
     return ca;
@@ -1121,6 +1625,9 @@ export function previewBufferCharFromKey(key: string, code?: string): string | n
   }
   if (key === "_") {
     return "_";
+  }
+  if (key === "`" || key === "Backquote") {
+    return "Δ";
   }
   const digit = digitFromKey(key, code);
   if (digit !== null) {

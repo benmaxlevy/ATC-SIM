@@ -1,0 +1,4 @@
+interface:
+  display_name: ATC-SIM Plan Tickets
+  short_description: Create approved tickets and SWARM configuration
+  default_prompt: Using the approved ATC-SIM plan, create ticket files and update phases/SWARM.md. Do not implement code or run the swarm.

@@ -20,7 +20,9 @@ End-to-end integration and acceptance for the whole TPA / ATPA addendum (T02-43�
 
 This ticket adds **no features**. It is the fourteenth-swarm gate.
 
-*(Wake-category in-trail minima stay deferred in `phases/LATER-IMPLEMENTATION-BACKLOG.md`. Do not invent a matrix.)*
+*(Wake-category in-trail minima are supplied by T02-125–128; this historical
+acceptance remains basic-only unless a volume opts into explicit wake
+adaptation. Do not infer categories from display text or aircraft type.)*
 
 ## Context
 
@@ -28,10 +30,10 @@ This is the capstone integration ticket for the Fourteenth Swarm (T02-43–50). 
 
 Frozen product law from `phases/SWARM.md` ("Fourteenth swarm planned") is the acceptance bar, not a suggestion:
 
-- **Separation minima are basic radar only.** 3 NM, reduced to 2.5 NM when both tracks of a pair are established on the same final inside 10 NM of the threshold. Cone length never varies by aircraft type. Minima live in volume JSON (`basicSeparationNm`, `reducedSeparationNm`, `reducedWithinNm`), not literals on a live path.
+- **Separation minima are data-driven.** Basic radar minima remain 3 NM, reduced to 2.5 NM under the authored volume predicate. Volumes may opt into explicit FAA JO 7110.65 CWT leader-row/follower-column wake adaptation; wake minima never fall below the applicable radar minimum, and unavailable/blank wake data yields `NOWGT`/10 NM. Categories are explicit `cwtWakeCategory`, never display text or aircraft-type inference.
 - **Volumes are data, walked by `approachId`.** `ATPA27` / `ATPA09` are rows. A third runway adds JSON, never an `if`.
 - **Frozen ATPA grammar (R07):** cone vertex on the trailing target, oriented toward its leader, length equal to the required in-trail minimum, tenths for non-whole values. Monitor cone in TPA blue (`PALETTE.tools`). Warning cone yellow (`PALETTE.caution`) when predicted to violate within **45 s**. Alert cone orange (`PALETTE.atpaAlert`) when already violating or predicted within **24 s**. Alert supersedes warning supersedes monitor supersedes a manual TPA cone. J-rings are not cones and are never suppressed.
-- **Trainer deltas:** single TCP (no per-position adapted-to-display matrix). No TDW white monitor variant. No aural ATPA tone. Volumes are authored trainer geometry.
+- **Trainer deltas:** single TCP (no per-position adapted-to-display matrix). No TDW white monitor variant. No aural ATPA tone. Volumes are authored trainer geometry. 2.5 NM authorization details beyond the existing predicate are not modeled.
 - **CA is untouched.** T04-09 stays `CA` datablock text plus tone. Still **no** 3 NM CA halo. Circles on this scope are TPA J-rings only.
 - **Chords are scope-only.** `*J` / `*P` / `*A` / `*B` / `*D` never produce Command IR; `DAL123 H270` still turns.
 
@@ -57,7 +59,7 @@ Read **R07** `docs.virtualnas.net/crc/stars` — ATPA overview, Monitor / Warnin
   - `src/core/alerts/conflictAlert.test.ts`;
   - dual-runway integration (`src/scenario/dualRunwayIntegration.test.ts`).
 - **Data-first proof:** the same test helper run against `ATPA09` rather than `ATPA27` produces identical pairing, status progression, cone strokes, and datablock readout on the RW09 final. No runway-specific code path.
-- **Minima proof:** cone length is unchanged when the leader's `wakeCategory` changes. A grep gate proves `wakeCategory` does not appear in the ATPA engine (`src/core/alerts/atpa.ts`) and is not read on any ATPA live path.
+- **Minima proof:** wake-enabled fixtures prove leader-row/follower-column lookup, `NOWGT`/10 NM, and wake precedence over 2.5 NM. Display-only `wakeCategory` remains ignored; explicit `cwtWakeCategory` is the only operational category input.
 - Documentation:
   - `phases/02-scope/README.md` gains a **"TPA / ATPA Addendum (T02-43–50)"** section with the ticket table and a phase checklist in the same style as the existing STARS CRC addendum sections (T02-34–38, T02-39–42). Add a Launching-an-agent step for this addendum. Leave prior addendum boxes as they are.
   - `phases/SWARM-STATUS.md` gains the fourteenth-swarm completion note (do not delete prior history).
@@ -68,7 +70,7 @@ Read **R07** `docs.virtualnas.net/crc/stars` — ATPA overview, Monitor / Warnin
 - New features of any kind.
 - Multi-controller networking / per-position ATPA adaptation.
 - Phase 5 scoring and evaluation.
-- Wake-category minima (deliberately deferred; already documented in the backlog by T02-44). Do not fill a matrix from recall.
+- ICAO-type category inference, per-position adaptation, TDW white monitor, aural ATPA, and additional 2.5 NM authorization semantics. The reviewed matrix remains explicit adaptation data; do not infer categories or silently import later FAA cycles.
 
 ## Implementation notes
 
@@ -84,7 +86,7 @@ Read **R07** `docs.virtualnas.net/crc/stars` — ATPA overview, Monitor / Warnin
 - [ ] **AC3 —** Datablock in-trail distance: the trailing FDB line 3 shows two-decimal in-trail mileage (Fig 38/39); warning paints that field caution yellow and alert paints ATPA orange; the rest of the block (and CA `CA` / MSAW tint) is unchanged; monitor pairs and the frontmost track omit the field.
 - [ ] **AC4 —** DCB cells and PREF persistence: the four AUX TPA/ATPA toggles (`atpa-mileage`, `atpa-intrail`, `atpa-alert`, `atpa-monitor`) plus master ATPA each gate only their piece (`effective = atpa.on && atpa[feature]`; Alert Cones gates warning and alert); PREF SAVE/reload round-trips all five `AtpaState` fields at schema `v: 2`; a `v: 1` slot migrates without throwing; no DCB click emits Command IR.
 - [ ] **AC5 —** Manual chord J-ring still works alongside ATPA: `*J3` on a slewed track draws a 3 NM J-ring that still paints when an ATPA cone is showing; ATPA never suppresses J-rings; a manual `*P` cone is suppressed only on warning/alert (`atpaSuppressesManualTpaCone`); conflict alert still has no 3 NM halo and still renders `CA` datablock text with its tone.
-- [ ] **AC6 —** RW09 data-first parity plus wake-independence: the same helper against `ATPA09` (volume row only) matches RW27 pairing, status, cones, and datablock readout; cone length is unchanged when the leader's `wakeCategory` changes; a grep proves `wakeCategory` does not appear in `src/core/alerts/atpa.ts` and is not read on any ATPA live path.
+- [ ] **AC6 —** RW09 data-first parity plus wake contract: the same helper against `ATPA09` (volume row only) matches RW27 pairing, status, cones, and datablock readout; wake-enabled synthetic coverage proves explicit CWT lookup and `NOWGT`/10 NM; display-only `wakeCategory` is not read on any ATPA live path.
 - [ ] **AC7 —** `npm test`, `npm run build`, and `npm run ci` are clean; `tpa.test.ts`, `dcbPref.test.ts`, `DisplayControlBar.test.ts`, `datablock.test.ts`, `conflictAlert.test.ts`, and `dualRunwayIntegration.test.ts` stay green; `phases/02-scope/README.md` has the TPA / ATPA Addendum (T02-43–50) table and checklist; `phases/SWARM-STATUS.md` has the fourteenth-swarm completion note.
 
 ## Notes

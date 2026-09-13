@@ -7,13 +7,16 @@
  * or intent. Not NAS STARS.
  */
 
-import type { Aircraft, CaAlert, World } from "@core";
+import type { Aircraft, CaAlert, TrackHandoff, World } from "@core";
 import {
   acceptInboundHandoff,
   acceptPointout,
   convertPointoutToHandoff,
+  deleteFlightPlanFromWorld,
+  flightPlanForAircraft,
   handoffFor,
   rejectPointout,
+  setHandoffNone,
 } from "@core";
 import { sanitizeScratchpad, type DatablockMode } from "./datablock";
 import { createHistoryBuf, recordHistoryOnReport, type HistoryBuf } from "./history";
@@ -29,6 +32,7 @@ import { applyDropTrack, applyInitiateTrack, NO_SEL_HINT, type TrackOwnership } 
 
 /** Display IDENT stroke pulse (~2 s sim). Aircraft flag may last longer (phase 1). */
 export const IDENT_DISPLAY_FLASH_MS = 2000;
+/** Legacy export retained for callers that still import the old query duration. */
 export const LDB_QUERY_DURATION_MS = 5000;
 export const OUTBOUND_ACCEPTED_FLASH_MS = 5000;
 /** `*B` slew beaconator on one uncorrelated track (R07 Table 18). */
@@ -58,11 +62,14 @@ export interface TrackDisplay {
   tracked?: boolean;
   queriedUntilSimMs?: number;
   forcedFdb?: boolean;
+  /** Retains an FDB captured when altitude-filter limits changed. */
+  retainedFdbOutsideAltitudeFilter?: boolean;
   unassociated?: boolean;
+  /** Plan id last supplied by derived beacon correlation; display state only. */
+  derivedPlanId?: string;
   highlighted?: boolean;
   outboundFlashUntilSimMs?: number;
   beaconatorUntilSimMs?: number;
-  outboundClickStep?: number;
   flightRules?: string;
   pointoutAccepted?: boolean;
   pointoutRejected?: boolean;
@@ -417,7 +424,11 @@ export function formatApproachShorthand(approachId: string | null | undefined): 
 export function deriveScratchpads(
   aircraft: Aircraft,
   td?: TrackDisplay,
+  planScratchpads?: readonly string[],
 ): { sp1: string; sp2: string } {
+  const filedScratchpads = Array.isArray(planScratchpads)
+    ? planScratchpads.filter((value): value is string => typeof value === "string")
+    : [];
   // Derive automatic SP1 (approach shorthand, or interim altitude if controller explicitly assigned one):
   const approachId =
     aircraft.intent?.clearedApproachId ??
@@ -437,13 +448,17 @@ export function deriveScratchpads(
   }
 
   let sp1 = autoSp1;
-  if (td?.manualSp1 != null && td.manualSp1.length > 0) {
+  if (filedScratchpads[0] != null && filedScratchpads[0].length > 0) {
+    sp1 = sanitizeScratchpad(filedScratchpads[0]);
+  } else if (td?.manualSp1 != null && td.manualSp1.length > 0) {
     sp1 = sanitizeScratchpad(td.manualSp1);
   }
 
   // Derive automatic SP2 (only if controller explicitly gave a speed, not if locked by STAR/SID or default):
   let sp2 = "";
-  if (td?.manualSp2 != null && td.manualSp2.length > 0) {
+  if (filedScratchpads[1] != null && filedScratchpads[1].length > 0) {
+    sp2 = sanitizeScratchpad(filedScratchpads[1]);
+  } else if (td?.manualSp2 != null && td.manualSp2.length > 0) {
     sp2 = sanitizeScratchpad(td.manualSp2);
   } else if (
     aircraft.intent?.controllerAssignedSpeedKt != null &&
@@ -476,9 +491,14 @@ export function ensureTrackDisplay(tracks: Map<string, TrackDisplay>, id: string
 export function queryTrack(
   td: TrackDisplay,
   simTimeMs: number,
-  durationMs = LDB_QUERY_DURATION_MS,
+  _durationMs = LDB_QUERY_DURATION_MS,
 ): void {
-  td.queriedUntilSimMs = simTimeMs + durationMs;
+  void simTimeMs;
+  td.queriedUntilSimMs = Number.POSITIVE_INFINITY;
+}
+
+export function clearTrackQuery(td: TrackDisplay): void {
+  td.queriedUntilSimMs = 0;
 }
 
 export function isTrackQueried(td: TrackDisplay, simTimeMs: number): boolean {
@@ -502,12 +522,21 @@ export function isBeaconatorReadout(
  * Toggle an unowned track between PDB and Green FDB.
  */
 export function toggleTrackPdbFdb(td: TrackDisplay): DatablockMode {
+  // An unassociated target has no recoverable flight-plan callsign. Keep it
+  // partial even when a generic PDB/FDB toggle is invoked after TERM CNTL.
+  if (td.unassociated) {
+    td.datablockMode = "partial";
+    td.forcedFdb = false;
+    td.retainedFdbOutsideAltitudeFilter = false;
+    return td.datablockMode;
+  }
   if (td.datablockMode === "partial") {
     td.datablockMode = "full";
     td.forcedFdb = true;
   } else if (td.datablockMode === "full") {
     td.datablockMode = "partial";
     td.forcedFdb = false;
+    td.retainedFdbOutsideAltitudeFilter = false;
   }
   return td.datablockMode;
 }
@@ -533,11 +562,28 @@ export function handleTrackMiddleClick(
 }
 
 /**
+ * The sender keeps an accepted handoff receiver TCP in Field 4 for five
+ * seconds, then removes it while retaining the accepted white FDB.
+ */
+export function isOutboundReceiverTcpVisible(handoff: TrackHandoff, simTimeMs: number): boolean {
+  if (handoff.kind !== "outbound") {
+    return false;
+  }
+  if (handoff.status !== "accepted") {
+    return true;
+  }
+  return (
+    handoff.acceptedAtSimMs != null &&
+    simTimeMs < handoff.acceptedAtSimMs + OUTBOUND_ACCEPTED_FLASH_MS
+  );
+}
+
+/**
  * Handle clicking a track on the scope:
  * - Accept pending inbound handoff if present.
  * - Handle pointouts: UN rejects, ** converts to handoff, normal click accepts or reverts.
- * - Handle outbound accepted 3-click progression: 1) stop blinking, 2) green FDB, 3) PDB.
- * - If unassociated (LDB): query ground speed for 5 seconds.
+ * - Keep an accepted outbound handoff as an accepted white FDB.
+ * - If unassociated (LDB): query ground speed until an off-target slew.
  * - If unowned (PDB / forced FDB): toggle between PDB and Green FDB.
  */
 export function handleTrackClick(
@@ -549,6 +595,12 @@ export function handleTrackClick(
   const normalizedCmd = commandText?.trim().toUpperCase();
   const ho = handoffFor(world, aircraftId);
   const td = ensureTrackDisplay(tracks, aircraftId);
+
+  // LDB ground-speed readout belongs to the last slewed target only. A slew
+  // onto any other target clears the prior target before applying its action.
+  for (const [id, otherTd] of tracks) {
+    if (id !== aircraftId && otherTd.unassociated) clearTrackQuery(otherTd);
+  }
 
   // Pointout interactions
   if (ho.kind === "pointout_inbound") {
@@ -595,31 +647,10 @@ export function handleTrackClick(
     }
   }
 
-  // Outbound accepted handoff 3-click progression
-  const isOutboundAccepted =
-    (ho.kind === "outbound" && ho.status === "accepted") ||
-    (td.outboundFlashUntilSimMs != null && td.outboundFlashUntilSimMs > 0) ||
-    td.outboundClickStep != null;
-
-  if (isOutboundAccepted) {
-    const step = td.outboundClickStep ?? 0;
-    if (step === 0) {
-      td.outboundFlashUntilSimMs = 0;
-      td.outboundClickStep = 1;
-      return;
-    }
-    if (step === 1) {
-      td.ownership = "unowned";
-      td.datablockMode = "full";
-      td.outboundClickStep = 2;
-      return;
-    }
-    if (step === 2) {
-      td.datablockMode = "partial";
-      td.outboundClickStep = 3;
-      world.handoffs.set(aircraftId, { kind: "none" });
-      return;
-    }
+  // Accepted outbound handoffs stay white until an explicit trainer control
+  // changes display ownership; normal selection does not progress them.
+  if (ho.kind === "outbound" && ho.status === "accepted") {
+    return;
   }
 
   if (td.datablockMode === "limited" || td.unassociated) {
@@ -657,6 +688,7 @@ export function acceptInboundOnClick(
   const td = ensureTrackDisplay(tracks, aircraftId);
   td.ownership = applyInitiateTrack(td.ownership);
   td.datablockMode = "full";
+  td.unassociated = false;
   td.forcedFdb = false;
   return true;
 }
@@ -676,9 +708,12 @@ export function applyInitiateTrackToId(
     return { applied: false, hint: NO_SEL_HINT };
   }
   const td = ensureTrackDisplay(tracks, aircraftId);
-  acceptInboundHandoff(world, aircraftId);
+  const accepted = acceptInboundHandoff(world, aircraftId);
   td.ownership = applyInitiateTrack(td.ownership);
   td.datablockMode = "full";
+  if (accepted) {
+    td.unassociated = false;
+  }
   td.forcedFdb = false;
   return { applied: true, hint: null };
 }
@@ -711,6 +746,7 @@ export function applyDropTrackToId(
   td.ownership = applyDropTrack(td.ownership);
   td.datablockMode = "partial";
   td.forcedFdb = false;
+  td.retainedFdbOutsideAltitudeFilter = false;
   if (caState) {
     pruneCaPairInhibitsForTrack(caState, aircraftId);
   }
@@ -729,6 +765,47 @@ export function applyDropTrackToSelection(
   return applyDropTrackToId(tracks, world, id, caState);
 }
 
+/**
+ * Shared TERM CNTL implementation. F4 is the keyboard alias for this same
+ * operation: remove the derived plan presentation, leave the radar target
+ * moving, and show the unassociated LDB position symbol.
+ */
+export function terminateTrackWithPlan(
+  tracks: Map<string, TrackDisplay>,
+  world: World,
+  aircraftId: string,
+  caState?: TrackDisplayState,
+): { applied: boolean; hint: string | null } {
+  const aircraft = world.aircraft.find((item) => item.id === aircraftId);
+  if (!aircraft) {
+    return { applied: false, hint: NO_SEL_HINT };
+  }
+  const handoff = handoffFor(world, aircraftId);
+  if (handoff.kind === "inbound" || handoff.kind === "departure") {
+    setHandoffNone(world, aircraftId);
+  }
+  const plan = flightPlanForAircraft(world, aircraftId);
+  if (plan) {
+    deleteFlightPlanFromWorld(world, plan.id);
+  }
+  const result = applyDropTrackToId(tracks, world, aircraftId, caState);
+  const td = ensureTrackDisplay(tracks, aircraftId);
+  td.unassociated = true;
+  delete td.derivedPlanId;
+  td.datablockMode = "partial";
+  td.tracked = false;
+  td.forcedFdb = false;
+  td.retainedFdbOutsideAltitudeFilter = false;
+  return result;
+}
+
+/** Capture currently full datablocks before a new altitude filter is committed. */
+export function retainFullDatablocksOutsideAltitudeFilter(tracks: Map<string, TrackDisplay>): void {
+  for (const td of tracks.values()) {
+    td.retainedFdbOutsideAltitudeFilter = td.datablockMode === "full";
+  }
+}
+
 function flipDatablockMode(mode: DatablockMode): DatablockMode {
   return mode === "full" ? "limited" : "full";
 }
@@ -744,12 +821,26 @@ export function toggleDatablockModeForSelection(
   const selected = world.selectedAircraftId;
   if (selected && world.aircraft.some((ac) => ac.id === selected)) {
     const td = ensureTrackDisplay(tracks, selected);
+    if (td.unassociated) {
+      td.datablockMode = "partial";
+      td.forcedFdb = false;
+      td.retainedFdbOutsideAltitudeFilter = false;
+      return;
+    }
     td.datablockMode = flipDatablockMode(td.datablockMode);
+    if (td.datablockMode !== "full") td.retainedFdbOutsideAltitudeFilter = false;
     return;
   }
   for (const ac of world.aircraft) {
     const td = ensureTrackDisplay(tracks, ac.id);
+    if (td.unassociated) {
+      td.datablockMode = "partial";
+      td.forcedFdb = false;
+      td.retainedFdbOutsideAltitudeFilter = false;
+      continue;
+    }
     td.datablockMode = flipDatablockMode(td.datablockMode);
+    if (td.datablockMode !== "full") td.retainedFdbOutsideAltitudeFilter = false;
   }
 }
 
@@ -910,6 +1001,23 @@ export function syncTrackDisplays(
       td = createTrackDisplay();
       tracks.set(ac.id, td);
     }
+    // Derived beacon correlation promotes the target to the existing FDB
+    // path. It is display state only; ownership remains separate. When the
+    // reported code changes, remove only the state this derivation created.
+    const derivedPlan = flightPlanForAircraft(world, ac.id);
+    if (derivedPlan) {
+      td.derivedPlanId = derivedPlan.id;
+      td.tracked = true;
+      td.unassociated = false;
+      td.datablockMode = "full";
+    } else if (td.derivedPlanId) {
+      delete td.derivedPlanId;
+      if (td.ownership !== "owned") {
+        td.tracked = false;
+        td.unassociated = true;
+        td.datablockMode = "partial";
+      }
+    }
     if (td.lastReport) {
       sampler.reports.set(ac.id, td.lastReport);
     }
@@ -949,7 +1057,6 @@ export function syncTrackDisplays(
     ) {
       td.outboundFlashUntilSimMs =
         (ho.acceptedAtSimMs ?? world.simTimeMs) + OUTBOUND_ACCEPTED_FLASH_MS;
-      td.outboundClickStep = td.outboundClickStep ?? 0;
     }
   }
 }

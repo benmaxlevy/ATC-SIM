@@ -1,5 +1,311 @@
 # Swarm status
 
+## SIXTY-SECOND SWARM COMPLETE — Datablock source unification (T02-164–165)
+
+T02-164 and T02-165 are complete on `improvement/db-source-unification`.
+Datablock runtime state now centralizes supported plan, aircraft,
+TrackDisplay, handoff, ATPA, alert, scratchpad, and display inputs. Paint and
+layout share the exact per-target presentation; picking uses the rendered
+snapshot and resolved rectangle, rejecting missing/stale snapshots instead of
+rebuilding raw datablock state.
+
+Ticket squash commits:
+
+- T02-164: `a739e24`
+- T02-165: `c7a5488`
+
+Planning commit: `e04331f`. No push or merge to `master` performed; the user
+will open the pull request from `improvement/db-source-unification`.
+
+Datablock regression gates passed after every stage:
+
+- T02-164 worker/fix: **77** focused tests; CI **1,803 passed, 4 skipped**.
+- T02-164 integration squash: **77** focused tests; CI **1,803 passed, 4 skipped**.
+- T02-165 initial migration: **95** focused tests; CI **1,804 passed, 4 skipped**.
+- T02-165 presentation fix: **99** focused tests; CI **1,808 passed, 4 skipped**.
+- T02-165 rendered-pick snapshot fix: **100** focused tests; CI **1,809 passed, 4 skipped**.
+- T02-165 fallback removal: **111** focused tests; CI **1,809 passed, 4 skipped**.
+- Final post-squash gate: **115** focused tests; CI **1,809 passed, 4 skipped**.
+
+The final focused suite covered datablock formatting/fidelity, flight-plan
+lifecycle, overlap/layout, render paint, pick, and STARS command integration.
+
+Manual review: **PASS** against the supplied
+`/home/ben/Documents/stars refs/full_manual.pdf`, §2.12 pp. 2-58–2-70,
+§5.4.1 pp. 5-66–5-67, and §5.6.17 pp. 5-167–5-173. Independent review found
+no remaining FAIL. Non-blocking concerns: snapshot invalidation does not list
+every possible in-place mutable input, and no new dedicated 30-target
+benchmark was added; the existing Phase 2 render benchmark passed in CI.
+Unsupported NAS semantics remain out of scope.
+
+## SIXTY-SECOND SWARM EXIT — PHASE EXIT GREEN
+
+Phase: Datablock source unification T02-164–165
+Merge target: `improvement/db-source-unification`
+Merged: T02-164, T02-165
+Tests: Focused datablock regressions and final `npm run ci` green
+Notes: No `master` merge or push; user will open the pull request
+
+## SIXTY-FIRST SWARM COMPLETE — FAA terminal strip alignment (T02-158–162)
+
+T02-158 through T02-162 are complete on `feat/flight-plan-lifecycle`.
+Happy-path terminal departure and arrival strips now share the supplied
+five-column structure `1–4 | 5–7 | 8/8A/8B | 9/9A/9B/9C | 10–18`.
+Canonical plan projection uses plan equipment, CID, assigned beacon, PTD/ETA,
+airports, altitude, route, and remarks. Reported squawk remains separate.
+Arrival Box 9 now shows altitude/remarks rather than flight rules; departure
+Box 9 shows route/destination/remarks. Boxes 9A–9C remain present.
+
+Captain squash/import commits:
+
+- T02-158: `29daef1`
+- T02-159: `0da75c1`
+- T02-160: `6c922c3`
+- T02-161: `d33c6a7`
+- T02-162: `6387616`
+
+Focused gates passed after each ticket: T02-158 **22**, T02-159 **5**,
+T02-160 **42**, T02-161 **42**, and T02-162 **99** tests. Final `npm run ci`
+passed: **193 test files, 1,794 tests passed, 4 skipped**.
+
+FAA validation: **PASS after every ticket** against [JO 7110.65 §2-3-4](https://www.faa.gov/air_traffic/publications/atpubs/atc_html/chap2_section_3.html#para-2-3-4)
+and the supplied arrival/departure structure images. Recording/RA, FDIO,
+overflight, missing-data, and facility-policy behavior remain out of scope.
+
+No push performed. Phase boundary reached.
+
+## NINTH SWARM IMPLEMENTATION COMPLETE — manual follow-up findings
+
+T02-154 through T02-157 are implemented on `feat/flight-plan-lifecycle`:
+live squawk wiring, canonical projections, manual F1/F3/F4/F7 meanings, and
+the bottom-right Help button below Voice Text. CI passed with 193 files,
+1,789 tests passed, and 4 skipped.
+
+Independent manual review passed the key mappings and INIT CNTL slew/click
+behavior against Appendix D Table D-1 p. D-2 and §5.4.1 p. 5-66. It found
+follow-up concerns: generic creation/radar inputs still bypass the squawk hook
+(documented future sources), a possible stale `TrackDisplay.squawk` precedence
+in datablock formatting, incomplete direct `MULTI FUNC M` field grammar, and
+stale active documentation claims. Exact button placement remains a browser
+visual check. No push was performed.
+
+## EIGHTH SWARM EXIT BLOCKED — T02-149–153 canonical flight-plan association (2026-09-11)
+
+T02-149 through T02-153 are complete on `feat/flight-plan-lifecycle`. The
+flight plan's `associatedAircraftId` is now the sole plan/target relationship;
+reported aircraft squawks remain surveillance evidence; and correlation is
+aircraft-scoped, triggered only by a reported-squawk update. List construction,
+rendering, and periodic reads are association-read-only. Explicit F3/`+`,
+index, beacon, and ACID operations remain available. Lifecycle cleanup removes
+stale plan projections, while ownership remains separate from association.
+Pilot clearance execution, live transponder/surveillance input, replay/import
+adapters, and network/controller squawk feeds remain in
+`phases/LATER-IMPLEMENTATION-BACKLOG.md`.
+
+Captain fallback commits (the session had no callable worker-spawn tool, so
+these are not isolated-worker squash merges): T02-149 (`caa7ed8`, `9808f6b`,
+`85146bf`, `37e3e86`, `2868af8`), T02-150 (`0b2282c`), T02-151 (`c9851e7`),
+T02-152 (`a057a4f`), and T02-153 (`4fb906a`). Planning commits:
+`bf28c1b`, `5b2ba62`.
+
+Focused gates passed: T02-149 **46**, T02-150 **69**, T02-151 **39**,
+T02-152 **42**, and T02-153 **12** tests. Final `npm run ci` passed:
+**193 test files, 1,786 tests passed, 4 skipped**.
+
+Manual primary review: **PASS** against `/home/ben/Documents/stars refs/full_manual.pdf`:
+§2.12 pp. 2-58–2-70, §5.4.1 pp. 5-66–5-67, §5.5.7 pp. 5-116–5-119,
+§5.6.15 p. 5-164, §5.6.17 pp. 5-167–5-173, and Appendix D Table D-1 p. D-2.
+The aircraft-squawk event trigger is documented as an ATC-SIM trainer policy;
+the manual does not mandate background correlation.
+
+Independent manual verifier: **BLOCKED**. No callable subagent/independent
+verifier capability was available in this session, despite repeated attempts.
+No CRC or substitute source was used. Phase handoff remains blocked until the
+required independent verification can run.
+
+## FIFTY-FIFTH SWARM COMPLETE — T02-140–142 ATPA status/color closeout
+
+T02-140–142 are complete on `fix/datablocks`. ATPA Alert now includes
+predicted loss within 24 seconds and uses adapted `#760A00`; 24–45 seconds
+remains Warning. Primary FDB SPCs use CA/MSAW alert red while caution text
+remains yellow. The committed KDEM ATPA bench starts with monitor, warning, and
+alert pairs using wake-derived minima and leaves off-final arrivals outside the
+volume.
+
+Commits: T02-140 (`f10e72d`, `0a6c6e3`), T02-141 (`f10e72d`), and T02-142
+(`2887eaa`). Final branch gate remains `npm run ci`; the latest recorded gate
+passed with 189 test files, 1,733 tests, and 4 skipped.
+
+## FIFTY-FOURTH SWARM COMPLETE — T02-137–139 unified outbound handoff positions
+
+T02-137 through T02-139 are complete on `fix/datablocks`. Supported outbound
+handoffs to Center `C` and Tower now share destination-aware initiation,
+five-simulated-second acceptance, and pending/accepted datablock projection.
+Tower landing/ownership effects occur only after acceptance. Destination IDs
+remain data-driven; no new sector/network model, SPC, alert, or unrelated
+handoff type was added.
+
+Captain merge commits: T02-137 (`31c4997`, `8b68d92`), T02-138
+(`4893895`, `cd06b7f`, `e7b76c7`), and T02-139 squash (`60e7619`). Planning
+commit: `5ed9bf5`; swarm-start commit: `42403de`.
+
+Final gate: `npm run ci` passed — **189 test files, 1,733 tests passed, 4
+skipped**. Worker focused gates: T02-137 **22 passed**, T02-138 **17 passed**,
+and T02-139 **36 passed**.
+
+Manual audit: intentionally deferred per user instruction. No
+`check-stars-manual` review was run in this swarm.
+
+## FIFTY-THIRD SWARM COMPLETE — T02-135–136 outbound handoff alignment
+
+T02-135 and T02-136 are complete on `fix/datablocks`. Pending outbound
+handoffs to Center `C` now render a white FDB with `C` in Field 4; the blue
+center stub remains separate. Center `C` auto-accepts once after five
+simulated seconds using the existing acceptance path. Accepted sender FDBs
+blink white for five seconds, retain `C` for five seconds, then remain solid
+white. Explicit return-to-unowned remains available. No second sector or
+network model was added.
+
+Captain commits: T02-135 (`85358b8`) and T02-136 (`2323605`).
+
+Final gate: `npm run ci` passed — **189 test files, 1,729 tests passed, 4
+skipped**. T02-135 post-fix focused gate: **27 passed**. T02-136 focused gate:
+**38 passed**.
+
+Manual review: supplied `full_manual.pdf`, General Rules p. 5-4, §5.1.9
+pp. 5-18–19, and §5.1.10 p. 5-20. T02-135 initial review found a render/pick
+geometry mismatch; the fix was added before merge and primary re-review found
+no remaining FAIL. T02-136 primary review found no FAIL. Independent review
+attempts were made as required, but the available subagent verifier did not
+return a terminal result. No CRC or substitute source used.
+
+## FIFTY-SECOND SWARM COMPLETE — T02-134 accepted outbound handoff UI
+
+T02-134 is squash-merged on `fix/datablocks` as `3d392e2`. Existing outbound
+handoff routing to Center sector `C`, acceptance state, logs, and aircraft
+lifecycle remain unchanged. Accepted outbound handoffs now keep a white FDB;
+the receiver TCP remains visible for five seconds after acceptance, then
+disappears. Normal selection no longer performs the old automatic green FDB /
+PDB progression; explicit trainer return control remains available.
+
+Final gate: `npm run ci` passed — **189 test files, 1,724 tests passed, 4
+skipped**. Focused gate: **18 passed**.
+
+Manual review: supplied `full_manual.pdf`, General Rules p. 5-4, §5.1.9
+pp. 5-18–19, and §5.1.10 p. 5-20. Initial review found and fixed an override
+of explicit return-to-unowned control. Re-review primary PASS; independent
+review reported the same PASS findings but its required nested verifier was
+unavailable. No core handoff logic changed. No new SPCs or alerts added.
+
+## FIFTY-FIRST SWARM COMPLETE — T02-131–133 datablock field alignment
+
+T02-131 through T02-133 are complete on `fix/datablocks`: PDB, LDB, and FDB
+now expose existing Field 0 content as a separate optional row above the
+callsign. FDB Field 2 inhibit glyphs remain inline after the callsign; empty
+FDB Field 0 keeps the existing three-row geometry. No new SPC or alert values
+were added, and no deferred feature area was expanded.
+
+Captain commits: T02-131 (`128960b`), T02-132 (`1390592`), and T02-133
+(`9d3b073`).
+
+Final gate: `npm run ci` passed — **189 test files, 1,724 tests passed, 4
+skipped**.
+
+Manual review: supplied `full_manual.pdf`, Figure 2-20, pp. 2-66–67. Primary
+review PASS. Independent review PASS; its required nested verifier was
+unavailable. Direct manual check confirms Field 0 above Field 1, Fields 3–5
+on line 2, and Fields 6–8 on line 3. No CRC or substitute source used.
+
+## FIFTY-FIRST SWARM — T02-131 COMPLETE / T02-132 READY
+
+T02-131 is squash-merged onto `fix/datablocks` as `128960b`. PDB formatting
+now projects manual Figure 2-22 Fields 0–4: supported cautions, Mode C or
+existing SP1/status values, TCP, ground speed/category, and existing IDENT.
+Aircraft type, requested altitude, exit gate, and exit fix remain excluded
+from PDB output. Optional Field 0 row participates in rendering geometry;
+absent runtime caution sources remain empty. No new SPC or alert values were
+added.
+
+Captain gate: `npm run ci` passed — **189 test files, 1,713 tests passed, 4
+skipped**. Worker focused gate: **55 passed**; typecheck, lint, and format
+checks passed.
+
+Manual review: supplied `full_manual.pdf`, §2.12 and Figure 2-22, pp. 2-58–60
+and 2-69. Primary review PASS after fixes. Independent review attempt returned
+the same PASS findings but reported its required nested verifier unavailable;
+no conflicting FAIL remained. No CRC or substitute source used.
+
+T02-132 is captain-committed on `fix/datablocks` as `1390592` after worker
+`.git` permissions blocked a worker commit. LDB now renders a separate Field 0
+row for existing `EM`, `RF`, `HJ`, and `CA` only; arbitrary SPC, `LA`, `MI`, and
+`LL` remain excluded. Normal beacon/Mode C, queried Mode C/speed, beacon
+inhibition, and Field 0 geometry remain intact.
+
+Captain gate: `npm run ci` passed — **189 test files, 1,720 tests passed, 4
+skipped**. Worker focused gate: **48 passed** after the final fix; typecheck,
+lint, and format checks passed.
+
+Manual review: supplied `full_manual.pdf`, §2.12, pp. 2-59–60 and Figure 2-23,
+p. 2-70. Primary review PASS after removing unsupported `LA` and arbitrary
+SPC leakage. Independent review attempt returned no further conflict but
+reported its nested verifier unavailable. No CRC or substitute source used.
+
+## FIFTIETH SWARM COMPLETE — Pending inbound datablock fidelity (T02-129–130)
+
+Pending inbound handoffs now separate originating facility/sector from the
+local receiving TCP. The receiving TCP controls the target symbol; the origin
+renders through Field 4. Inbound FDBs no longer add an invented `HO` suffix.
+FDB/PDB physical lines now derive from logical Fields 0–8, preserve stable
+one-/two-character TCP cells, keep Field 0 on the alert line, and place
+aircraft type in strict Field 5 / Line 2 position. Pointout, blink, filter,
+and acceptance behavior remain intact.
+
+Captain commits: T02-129 (`40289fd`), T02-130 (`8f3b873`). Planning commit:
+`ac5a304`.
+
+Final gate: `npm run ci` passed — **189 test files, 1,707 tests passed, 4 skipped**.
+Focused T02-129 gate: **61 tests passed**. T02-130 focused gate: **35 tests
+passed**. No push occurred before this STATUS update.
+
+Manual leftover: browser visual inspection of pending inbound origin `C` on a
+local receiving TCP remains recommended; no manual browser assertion was
+claimed.
+
+## FORTY-NINTH SWARM COMPLETE — ATPA CWT wake minima (T02-125–128)
+
+ATPA now carries an explicit `cwtWakeCategory` (`A`–`I`) separate from the
+display-only `wakeCategory`. Catalog ATPA volumes can opt into the FAA JO
+7110.65 §5-5-4 leader-row/follower-column wake matrix. Missing categories and
+blank required relationships produce `NOWGT` with a 10 NM minimum. Wake
+minimums never fall below the applicable authored radar minimum; existing
+pairing, 45-second Warning, current Alert policy, generic volume loading, and
+single-TCP trainer boundaries remain intact.
+
+Captain commits: T02-125 (`060d43a`), T02-126 (`6efab79`, `9dd44ae`,
+`4665e4b`), T02-127 (`46d7a34`, `a7810e2`), and T02-128 (`06bf308`). Planning
+commit: `7872fc3`.
+
+Final gate: `npm run ci` passed — **188 files, 1,692 tests passed, 4 skipped**.
+Remaining manual/future work: ICAO-type-to-CWT mapping, additional 2.5 NM
+authorization semantics, per-position adaptation, TDW monitor color, and
+aural ATPA remain deferred.
+
+## FORTY-EIGHTH SWARM COMPLETE — Datablock field-format fidelity (T02-122–124)
+
+T02-122 through T02-124 completed on `fix/datablocks`. Datablock format logic
+now exposes explicit Fields 0–8, formats SPC/TSAS/exit-gate/exit-fix/Field 5
+alternatives, represents Fields 6–8 with optional generic inputs, distinguishes
+duplicate beacon state from squawk mismatch, and preserves one-/two-character
+TCPs. ADS-B markers, new Field 2 glyphs, TSAS scheduling, and missing runtime
+workflows remain excluded.
+
+Captain commits: T02-122 (`4c5c8e5`), T02-123 (`3cc2aed`), T02-124
+(`1da7b83`). Planning commit: `95ac1e1`.
+
+Final gate: `npm run ci` passed — **187 files, 1,673 tests passed, 4 skipped**.
+Manual leftover: format-only optional fields still require future runtime
+adapters; no live TSAS scheduler or indicator workflow was added.
+
 ## FORTY-SEVENTH SWARM COMPLETE — Balanced random arrival packs (T04-59)
 
 T04-59 is merged on `feature/aircraft-performance` as `f6762e0`. A seeded
@@ -1289,3 +1595,116 @@ capability. Per swarm law, the captain did not implement application work
 inline, create unowned worktrees, or substitute an unavailable model. No
 tickets merged; no application gates ran. Resume requires worker spawn
 capability. Stop boundary remains after T03-26 CI and this STATUS update.
+## FIFTY-SIXTH SWARM COMPLETE — flight-plan lifecycle (T02-143–T02-147)
+
+All approved tickets T02-143 through T02-147 were implemented on
+`feat/flight-plan-lifecycle`, with corrective passes applied after manual
+audits. Captain `npm run ci` passed after every merge; final result: **193
+files passed, 1777 passed, 4 skipped, 0 failures**. Each ticket received a
+post-merge audit against `/home/ben/Documents/stars refs/full_manual.pdf`.
+
+**Manual audit results:** T02-143 PASS (ACID/beacon domain and lifecycle),
+T02-144 PASS (creation grammar and pending plans), T02-145 PASS (activation,
+correlation, suspended/mismatch semantics), T02-146 PASS (modification,
+deletion, beacon release), T02-147 PASS (datablock/FL-TAB integration).
+
+**Scope boundary:** Radio clearances, readbacks, pilot execution, route/FMS
+conformance, and related speech/Command IR behavior remain in
+`phases/LATER-IMPLEMENTATION-BACKLOG.md`. No later phase was started.
+
+## FIFTY-EIGHTH SWARM COMPLETE — unified TERM CNTL/F4
+
+Shared F4 and typed TERM CNTL termination through one scope helper. Both paths
+delete the associated authoritative plan on first invocation, preserve the
+moving radar target as unassociated, clear tracked display state, and produce
+the manual-aligned `*` position symbol/LDB without callsign or aircraft type.
+Focused tests and `npm run ci` passed: **193 files, 1780 passed, 4 skipped, 0
+failures**. Manual review passed against Appendix D, §5.4.6, §2.12, and Table
+2-11 of `/home/ben/Documents/stars refs/full_manual.pdf`.
+
+## FIFTY-NINTH SWARM COMPLETE — F-prefix Preview routing
+
+Scope focus now treats the initial `F` as a tentative altitude-filter chord.
+Numeric continuation preserves the existing filter entry; a nonnumeric
+continuation cancels/restores the prior filter and reprocesses the chord plus
+continuation through Preview, allowing ACIDs such as `FFT123` to create
+pending plans. Added T02-148 focused coverage for F-prefixed creation and both
+filter limits.
+
+Focused tests passed: **34 passed**. Final `npm run ci` passed: **193 files,
+1782 passed, 4 skipped, 0 failures**. Manual primary review passed against
+TI 6191.409 Rev. 30 §4.11.2, pp. 4-78–4-79. No independent subagent was
+available in this session for the required second manual pass.
+
+## NINTH SWARM BLOCKED — live association and manual command alignment
+
+Approved tickets T02-154 through T02-157 were executed sequentially on
+`feat/flight-plan-lifecycle` using the captain fallback because worker spawning
+was unavailable. Each ticket was isolated, committed, inspected, squash-merged,
+and followed by target-branch CI:
+
+- T02-154 → `5718bfe`: live departure squawks route through the aircraft
+  correlation hook. CI: **193 files, 1787 passed, 4 skipped**.
+- T02-155 → `3edae4e`: canonical flight-plan association and beacon projections
+  are used without stale aircraft flight-plan aliases. CI: **193 files, 1788
+  passed, 4 skipped**.
+- T02-156 → `5c19e63`: F1 INIT CNTL, F3 reserved Track Suspend/no-op, F4 TERM
+  CNTL, and F7 MULTI FUNC. CI: **193 files, 1788 passed, 4 skipped**.
+- T02-157 → `22f3c04`: bottom-right Help button directly below Voice Text,
+  overlay wiring, aligned command documentation, and UI coverage. CI: **193
+  files, 1789 passed, 4 skipped**.
+
+Primary manual review passed against `/home/ben/Documents/stars refs/full
+manual.pdf`: Appendix D Table D-1 (printed p. D-2) confirms F1 INIT CNTL,
+F3 TRK SUSP, F4 TERM CNTL, and F7 MULTI FUNC; §2.9 (pp. 2-36–2-42) supports
+the keyboard/control initiation boundary. The visible Help button is a trainer
+delta and does not alter the radio or scope command pipelines.
+
+**Phase exit blocked:** no independent verifier subagent was available in this
+Codex session for the required second manual pass. Human browser positioning
+review of Help directly below Voice Text also remains a manual leftover;
+automated UI ordering/accessibility coverage is green. No later phase started.
+
+## ELEVENTH SWARM COMPLETE — strict manual INIT/TAB and beacon alignment (T02-166, T02-167)
+
+Executed on `improvement/db-source-unification`; unsupported datablock creation
+and active-plan/unsupported-datablock acquisition remain excluded. T02-166
+enforces manual INIT CNTL identity rules: ACID, discrete beacon, or exact
+two-digit TAB only; slew/click required; direct identity + Enter rejected; CID
+not accepted. TAB rendering and lookup use canonical two-character IDs, so the
+TAB list never displays one-digit IDs. The separate `+<index>` VFR promotion
+path remains intact. T02-167 aligns the existing pending-plan runtime path to
+unique assigned-beacon/reported-squawk association, preserving beacon
+provenance and existing duplicate/1200/ineligible guards.
+
+Captain CI passed after the corrective fix and T02-167 integration: **193
+files, 1812 passed, 4 skipped, 0 failures**. Focused INIT/TAB and VFR/beacon
+tests passed. Independent manual audits against
+`/home/ben/Documents/stars refs/full_manual.pdf` passed for both tickets:
+T02-166 §§5.4.1–5.4.2, pp. 5-66–5-68; T02-167 §5.5.9, pp. 5-125–5-126, with
+the explicit unsupported-datablock boundary preserved. No later phase started.
+
+**Manual leftover:** none for the approved scope. The pre-existing modified
+`phases/LATER-IMPLEMENTATION-BACKLOG.md` was preserved unstaged.
+
+## SIXTY-FOURTH SWARM COMPLETE — derived correlation and IFR scenario plans (T02-172–T02-175)
+
+Completed sequentially on `feature/nas-flightplan-modal` with isolated Luna/high
+workers and captain squash merges. T02-173 derives correlation only from a
+unique non-deleted, non-1200 assigned-beacon/reported-squawk match; T02-174
+files validated IFR metadata before authored, random, bench, scheduled,
+KDEM, and KATL targets; T02-175 routes presentation through that resolver and
+documents the `*FP` mismatch behavior. Targets remain surveillance-only;
+plans remain metadata-only with no target IDs, FMS, pilot intent, kinematics,
+radio, Command IR, or readback mutation.
+
+Captain commits: `0c90bd8`, `27f534d`, `d507712`, `87c9916`, `4e79cd3`,
+`b654d01`, `8b15672`. Final `npm run ci`: **197 files passed, 1,895 passed,
+4 skipped, 0 failures**. Focused correlation, scenario, modal, lifecycle, and
+presentation tests passed. Independent supplied-manual reviews passed for all
+three tickets after corrective passes, including STARS §§2.12, 5.5.5, 5.5.9,
+5.6.17, 5.7.1 and Appendix D anchors.
+
+**Manual leftover:** human Chrome/browser positioning and accessibility walk
+(TAB, slew, focus/error, F6/F9/*F/*TV) was not run in this session; automated
+coverage is green. No later phase started; no push performed.

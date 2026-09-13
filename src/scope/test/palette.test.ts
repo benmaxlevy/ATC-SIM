@@ -48,20 +48,20 @@ test("TCW palette follows FAA/CRC/vice grammar, not a green CRT game map", () =>
   expect(PALETTE.caution).toBe("#FFFF00");
   expect(PALETTE.alert).toBe("#BF0000");
   expect(PALETTE.atpaWarning).toBe("#636300");
-  expect(PALETTE.atpaAlert).toBe("#BF0000");
-  expect(PALETTE.atpaAlert.toLowerCase()).toBe(PALETTE.alert.toLowerCase());
+  expect(PALETTE.atpaAlert).toBe("#760A00");
+  expect(PALETTE.atpaAlert.toLowerCase()).not.toBe(PALETTE.alert.toLowerCase());
   expect(PALETTE.owned.toLowerCase()).not.toBe("#ff0000");
   expect(PALETTE.unowned.toLowerCase()).not.toBe("#ff0000");
 });
 
 test("ATPA owns its warning and alert hues; CA/MSAW caution and alert are untouched", () => {
-  expect(PALETTE.atpaAlert).toBe("#BF0000");
+  expect(PALETTE.atpaAlert).toBe("#760A00");
   expect(PALETTE.atpaWarning).toBe("#636300");
-  expect(PALETTE.atpaAlert).toBe(PALETTE.alert);
+  expect(PALETTE.atpaAlert).not.toBe(PALETTE.alert);
   expect(PALETTE.atpaWarning).not.toBe(PALETTE.caution);
   expect(PALETTE.alert).toBe("#BF0000");
   expect(PALETTE.caution).toBe("#FFFF00");
-  expect(PALETTE.tools).toBe("#134767");
+  expect(PALETTE.tools).toBe("#6C6CD9");
 });
 
 test("history trail is independent blue, newest brighter than oldest", () => {
@@ -130,8 +130,8 @@ test("AC5 — predicted CA is not yellow; CA and MSAW do not paint block/target"
   expect(alertOrOwnershipColor("unowned", null)).toBe(PALETTE.unowned);
   expect(PALETTE.caution).toBe("#FFFF00");
   expect(PALETTE.alert).toBe("#BF0000");
-  expect(PALETTE.atpaAlert).toBe("#BF0000");
-  expect(PALETTE.atpaAlert).toBe(PALETTE.alert);
+  expect(PALETTE.atpaAlert).toBe("#760A00");
+  expect(PALETTE.atpaAlert).not.toBe(PALETTE.alert);
 });
 
 test("CA and MSAW alert blinking follows authentic 800ms cadence; acknowledged is steady", () => {

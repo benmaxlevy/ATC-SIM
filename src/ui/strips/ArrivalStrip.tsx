@@ -1,12 +1,7 @@
 import * as React from "react";
 import { useEffect, useRef, useState } from "react";
 import type { ArrivalStripData } from "./types";
-import {
-  formatArrivalTime,
-  formatBeaconCode,
-  formatEquipment,
-  formatFlightRules,
-} from "./stripFormatter";
+import { formatArrivalTime, formatBeaconCode, formatEquipment } from "./stripFormatter";
 import "./strips.css";
 
 function useSafeState<T>(initialValue: T | (() => T)): [T, (action: T | ((prev: T) => T)) => void] {
@@ -291,14 +286,26 @@ export function ArrivalStrip({
         </div>
       </div>
 
-      {/* Column 4 (~36%): Flight Rules, Destination, Remarks */}
+      {/* Column 4 (~36%): FAA arrival Boxes 9/9A/9B/9C */}
       <div className="strip-col col-route col-route-arrival" data-col="4">
-        <div className="cell flight-rules strip-flight-rules" data-box="9">
-          {formatFlightRules(strip.flightRules)}
+        <div className="arrival-box-9" data-box="9" aria-label="Arrival box 9">
+          {strip.altitude ? <span className="strip-altitude">{strip.altitude}</span> : null}
+          {strip.altitudeRemarks ? (
+            <span className="strip-altitude-remarks"> {strip.altitudeRemarks}</span>
+          ) : null}
         </div>
-        <div className="cell dest-remarks" data-box="9A">
+        <div className="arrival-box-9a" data-box="9A" aria-label="Arrival box 9A">
           <span className="strip-dest">{strip.destinationAirport}</span>
+          {strip.minimumFuel ? (
+            <span className="strip-minimum-fuel"> {strip.minimumFuel}</span>
+          ) : null}
           {strip.remarks ? <span className="strip-remarks"> {strip.remarks}</span> : null}
+        </div>
+        <div className="arrival-box-9b" data-box="9B" aria-label="Arrival box 9B">
+          {strip.box9B ?? ""}
+        </div>
+        <div className="arrival-box-9c" data-box="9C" aria-label="Arrival box 9C">
+          {strip.box9C ?? ""}
         </div>
       </div>
 

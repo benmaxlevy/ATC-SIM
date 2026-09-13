@@ -754,6 +754,13 @@ html[data-dcb-cursor-trap] * {
   box-shadow: none;
 }
 
+.speech-settings-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
 .speech-settings-toggle {
   border: 0;
   background: transparent;
@@ -766,15 +773,28 @@ html[data-dcb-cursor-trap] * {
 }
 
 .speech-settings-toggle:hover,
-.speech-settings-toggle:focus-visible {
+.speech-settings-toggle:focus-visible,
+.scope-help-button:hover,
+.scope-help-button:focus-visible {
   outline: none;
   color: #ffff00;
+}
+
+.scope-help-button {
+  border: 0;
+  background: transparent;
+  color: #259925;
+  font: inherit;
+  padding: 0 2px;
+  cursor: pointer;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .speech-settings-panel {
   position: absolute;
   right: 0;
-  bottom: 22px;
+  bottom: calc(100% + 2px);
   width: 320px;
   max-height: 70vh;
   overflow: auto;
@@ -988,10 +1008,106 @@ html[data-dcb-cursor-trap] * {
   pointer-events: none;
 }
 
+.flight-plan-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.flight-plan-modal {
+  width: min(680px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 16px;
+  background: #111;
+  color: #d6ded6;
+  border: 1px solid #259925;
+  font:
+    13px/1.35 "IBM Plex Mono",
+    ui-monospace,
+    monospace;
+}
+
+.flight-plan-modal h2 {
+  margin: 0 0 6px;
+  color: #fff;
+  font-size: 16px;
+}
+
+.flight-plan-modal form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
+.flight-plan-modal label {
+  display: grid;
+  gap: 3px;
+  color: #b8d8b8;
+}
+
+.flight-plan-modal input,
+.flight-plan-modal select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 28px;
+  padding: 4px 6px;
+  border: 1px solid #4c604c;
+  border-radius: 0;
+  background: #000;
+  color: #fff;
+  font: inherit;
+  text-transform: uppercase;
+}
+
+.flight-plan-modal input:focus-visible,
+.flight-plan-modal select:focus-visible,
+.flight-plan-modal button:focus-visible {
+  outline: 1px solid #ffff00;
+  outline-offset: 1px;
+}
+
+.flight-plan-modal input[aria-invalid="true"],
+.flight-plan-modal select[aria-invalid="true"] {
+  border-color: #ffff00;
+}
+
+.flight-plan-modal-error {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  color: #ffff00;
+}
+
+.flight-plan-modal-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.flight-plan-modal button {
+  min-width: 88px;
+  padding: 6px 10px;
+  border: 1px solid #259925;
+  border-radius: 0;
+  background: #003300;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
 .scope-help-panel {
   pointer-events: auto;
   user-select: text;
-  max-width: 760px;
+  width: min(1120px, calc(100vw - 24px));
+  max-width: 1120px;
   max-height: 100%;
   overflow: auto;
   box-sizing: border-box;
@@ -1010,6 +1126,58 @@ html[data-dcb-cursor-trap] * {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #259925;
+}
+
+.scope-help-search-label {
+  display: block;
+  margin: 0 0 4px;
+  color: #b8d8b8;
+}
+
+.scope-help-search {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 4px 6px;
+  border: 1px solid #259925;
+  border-radius: 0;
+  background: #000;
+  color: #fff;
+  font: inherit;
+}
+
+.scope-help-search:focus-visible {
+  outline: 1px solid #ffff00;
+}
+
+.scope-help-section {
+  margin: 0 0 10px;
+}
+
+.scope-help-top-section {
+  margin: 0 0 12px;
+  border-top: 1px solid #003300;
+}
+
+.scope-help-top-section > summary {
+  padding: 6px 0 4px;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.scope-help-section summary {
+  padding: 3px 0;
+  color: #259925;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.scope-help-empty {
+  color: #ffff00;
 }
 
 .scope-help-glossary,
@@ -1042,6 +1210,12 @@ html[data-dcb-cursor-trap] * {
 
 .scope-help-key {
   color: #ffffff;
+  white-space: nowrap;
+}
+
+.scope-help-example,
+.scope-help-input {
+  color: #b8d8b8;
   white-space: nowrap;
 }
 

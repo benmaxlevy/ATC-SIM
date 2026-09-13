@@ -2,7 +2,9 @@ import { expect, expectTypeOf, test } from "vitest";
 import {
   createAircraft,
   makeTestAircraft,
+  normalizeCwtWakeCategory,
   type Aircraft,
+  type CwtWakeCategory,
   type Intent,
   type LateralMode,
   type TurnDir,
@@ -88,6 +90,28 @@ test("aircraftType is copied from spawn and does not change kinematics fields", 
 test("B789 is classified as heavy", () => {
   const ac = createAircraft(sampleInit({ aircraftType: "B789" }));
   expect(ac.wakeCategory).toBe("H");
+});
+
+test("CWT categories normalize only at the aircraft boundary", () => {
+  expect(normalizeCwtWakeCategory(" c ")).toBe("C");
+  expect(normalizeCwtWakeCategory(3)).toBeUndefined();
+  expect(normalizeCwtWakeCategory("J")).toBeUndefined();
+  expect(normalizeCwtWakeCategory(" ")).toBeUndefined();
+  expectTypeOf<CwtWakeCategory>().toEqualTypeOf<
+    "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I"
+  >();
+});
+
+test("CWT category is independent from the display wake category", () => {
+  const ac = createAircraft(sampleInit({ wakeCategory: "R", cwtWakeCategory: "h" }));
+  expect(ac.wakeCategory).toBe("R");
+  expect(ac.cwtWakeCategory).toBe("H");
+});
+
+test("invalid CWT input remains unavailable and does not infer from aircraft type", () => {
+  const ac = createAircraft(sampleInit({ aircraftType: "B789", cwtWakeCategory: "J" }));
+  expect(ac.wakeCategory).toBe("H");
+  expect(ac.cwtWakeCategory).toBeUndefined();
 });
 
 test("makeTestAircraft ids are stable only when passed in (AC5)", () => {

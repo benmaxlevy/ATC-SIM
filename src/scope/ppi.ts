@@ -1,4 +1,11 @@
-import { acceptPointout, handoffFor, setSelectedAircraft, type World } from "@core";
+import {
+  acceptPointout,
+  handoffFor,
+  flightPlanForAircraft,
+  modifyFlightPlan,
+  setSelectedAircraft,
+  type World,
+} from "@core";
 import { expireFilterEntry, inAltitudeFilter } from "./altitudeFilter";
 import {
   armPreviewSlewAction,
@@ -15,6 +22,7 @@ import {
   rejectPreviewCntl,
   type PreviewArmedAction,
 } from "./previewArea";
+import type { FlightPlanModalRequest } from "./previewParse";
 import {
   applyStarsChordAction,
   cancelStarsChordEntry,
@@ -46,6 +54,7 @@ import {
   canonicalSystemListId,
   dropTowerListEntry,
   dropVfrListEntry,
+  formatFlightPlanIndex,
   getFlightPlanEntries,
   isVfrAircraft,
   handleFlightPlanListClick,
@@ -53,7 +62,6 @@ import {
   hitTestSystemListEntry,
   normalizedClickAnchor,
   pointInsideRect,
-  promoteVfrListEntry,
   relocateSystemList,
   scrollSystemList,
 } from "./systemLists";
@@ -61,15 +69,14 @@ import { toggleVideoMap } from "./dcb/dcbFunctions";
 import { datablockLineHeightPx } from "./fonts";
 import {
   applyBeaconatorSlewToId,
-  applyDropTrackToId,
-  applyInitiateTrackToId,
+  clearTrackQuery,
   ensureTrackDisplay,
   pruneCaPairInhibitsForTrack,
   setLeaderDirAndLengthForId,
   setLeaderDirForId,
   setLeaderLengthForId,
   toggleTrackHighlight,
-  toggleTrackPdbFdb,
+  terminateTrackWithPlan,
 } from "./trackDisplay";
 
 function viewSize(widthPx: number, heightPx: number): ScopeViewSize {
@@ -88,6 +95,12 @@ function trackingFlidMatches(
   const flid = action.flid ?? view.preview.flid;
   if (!flid) {
     return true;
+  }
+  if (action.type === "initCntl") {
+    if (/^\d$/.test(flid.trim())) {
+      return false;
+    }
+    return previewFlidMatchesSlew(view.preview, aircraftId, world, view);
   }
   if (/^\d{1,2}$/.test(flid.trim())) {
     const idx = Number(flid.trim());
@@ -113,7 +126,8 @@ function trackingFlidMatches(
     }
     const droppedSet = view.vfrListDroppedCallsigns ?? new Set();
     const vfrFlights = world.aircraft.filter(
-      (ac) => isVfrAircraft(ac, view.tracks) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
+      (ac) =>
+        isVfrAircraft(ac, view.tracks, world) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
     );
     const vfrIdx = idx >= 14 ? idx - 14 : idx - 1;
     if (vfrFlights[vfrIdx]) {
@@ -144,6 +158,25 @@ function clearTrackingSlew(view: ScopeView): void {
   view.starsChordArmed = null;
 }
 
+function explicitPlanEntryForFlid(
+  flid: string,
+  world: World,
+  view: ScopeView,
+): ReturnType<typeof getFlightPlanEntries>[number] | undefined {
+  const normalized = flid.trim().toUpperCase();
+  if (/^\d{2}$/.test(normalized)) {
+    return undefined;
+  }
+  const plans = world.flightPlans.filter(
+    (plan) =>
+      plan.status !== "deleted" && (plan.acid === normalized || plan.assignedBeacon === normalized),
+  );
+  if (plans.length !== 1) {
+    return undefined;
+  }
+  return getFlightPlanEntries(world, view).find((entry) => entry.planId === plans[0]!.id);
+}
+
 /**
  * Command-then-slew apply. Empty click does not call this. Returns true when
  * the arm/buffer is consumed (applied or INV). False keeps the arm.
@@ -153,6 +186,7 @@ function applyTrackingSlewHit(
   world: World,
   hit: AircraftPickHit,
   action: PreviewArmedAction,
+  onOpenFlightPlanModal?: (request: FlightPlanModalRequest) => void,
 ): boolean {
   const id = hit.aircraft.id;
   if (!trackingFlidMatches(view, action, id, world)) {
@@ -162,12 +196,23 @@ function applyTrackingSlewHit(
     return true;
   }
   switch (action.type) {
+    case "openFlightPlanModal":
+      // Target slew addresses the target's local plan identity, just like an
+      // ACID or TAB entry. The UI may create a missing record; it never
+      // creates a plan↔aircraft association or changes aircraft guidance.
+      clearTrackingSlew(view);
+      // Clear the command before invoking the UI callback so a callback-side
+      // rejection (for example, a blank target ACID) remains visible.
+      onOpenFlightPlanModal?.({ targetAircraftId: id });
+      return true;
     case "initCntl": {
       const flid = action.flid ?? view.preview.flid;
       if (flid) {
-        const num = Number(flid.trim());
+        const num = /^\d{2}$/.test(flid.trim()) ? Number(flid.trim()) : Number.NaN;
         const entries = getFlightPlanEntries(world, view);
-        const entryByIndex = !Number.isNaN(num) ? entries.find((e) => e.index === num) : undefined;
+        const entryByIndex = !Number.isNaN(num)
+          ? entries.find((e) => formatFlightPlanIndex(e.index) === flid.trim())
+          : undefined;
         if (entryByIndex) {
           const associated = associateFlightPlanToTrack(world, view, entryByIndex.index, id);
           if (!associated) {
@@ -180,25 +225,28 @@ function applyTrackingSlewHit(
           clearTrackingSlew(view);
           return true;
         }
-        if (!Number.isNaN(num) && promoteVfrListEntry(view, world, num, id)) {
+        const entryByIdentity = explicitPlanEntryForFlid(flid, world, view);
+        if (entryByIdentity) {
+          const associated = associateFlightPlanToTrack(world, view, entryByIdentity.index, id);
+          if (!associated) {
+            rejectPreviewCntl(view.preview, Date.now());
+            cancelStarsChordEntry(view.starsChordEntry);
+            view.starsChordArmed = null;
+            return true;
+          }
           setSelectedAircraft(world, id);
           clearTrackingSlew(view);
           return true;
         }
       }
-      applyInitiateTrackToId(view.tracks, world, id);
-      setSelectedAircraft(world, id);
-      clearTrackingSlew(view);
+      rejectPreviewCntl(view.preview, Date.now());
+      cancelStarsChordEntry(view.starsChordEntry);
+      view.starsChordArmed = null;
       return true;
     }
     case "termCntl": {
-      const td = ensureTrackDisplay(view.tracks, id);
-      if (hit.region === "datablock") {
-        toggleTrackPdbFdb(td);
-      } else {
-        applyDropTrackToId(view.tracks, world, id, view);
-        pruneCaPairInhibitsForTrack(view, id);
-      }
+      terminateTrackWithPlan(view.tracks, world, id, view);
+      pruneCaPairInhibitsForTrack(view, id);
       setSelectedAircraft(world, id);
       clearTrackingSlew(view);
       return true;
@@ -217,6 +265,47 @@ function applyTrackingSlewHit(
         cancelStarsChordEntry(view.starsChordEntry);
         view.starsChordArmed = null;
         return true;
+      }
+      setSelectedAircraft(world, id);
+      clearTrackingSlew(view);
+      return true;
+    }
+    case "createVfrActiveTrack": {
+      const localVfrPlan = flightPlanForAircraft(world, id);
+      const hasScratchpad = localVfrPlan?.scratchpads.some((value) => value.trim().length > 0);
+      const hasFixData = (localVfrPlan?.fixes.length ?? 0) > 0;
+      if (
+        !isVfrAircraft(hit.aircraft, view.tracks, world) ||
+        !localVfrPlan ||
+        localVfrPlan.flightRules !== "VFR" ||
+        !localVfrPlan.aircraftType ||
+        !hasScratchpad ||
+        !hasFixData
+      ) {
+        rejectPreviewArea(view.preview, Date.now());
+        return true;
+      }
+      if (action.intermediateFix) {
+        const modified = modifyFlightPlan(world, localVfrPlan.id, "fixes", [
+          ...localVfrPlan.fixes,
+          `*${action.intermediateFix}`,
+        ]);
+        if (!modified.ok) {
+          rejectPreviewArea(view.preview, Date.now());
+          return true;
+        }
+      }
+      if (action.requestedAltitudeFt !== undefined) {
+        const modified = modifyFlightPlan(
+          world,
+          localVfrPlan.id,
+          "requestedAltitudeFt",
+          action.requestedAltitudeFt,
+        );
+        if (!modified.ok) {
+          rejectPreviewArea(view.preview, Date.now());
+          return true;
+        }
       }
       setSelectedAircraft(world, id);
       clearTrackingSlew(view);
@@ -269,7 +358,10 @@ function applyTrackingSlewHit(
       return true;
     case "armPerTrackPtl": {
       const ac = hit.aircraft;
-      const altitudeFiltered = !inAltitudeFilter(ac.altitudeFt, view.altitudeFilter);
+      const altitudeFiltered = !inAltitudeFilter(
+        ac.altitudeFt,
+        view.tracks.get(id)?.unassociated ? view.altitudeFilter : view.associatedAltitudeFilter,
+      );
       const owned = (view.tracks.get(id)?.ownership ?? "unowned") === "owned";
       const currentlyDrawn = shouldDrawPtlForTrack(
         ac.speedKt,
@@ -320,6 +412,7 @@ export function handlePpiLeftClick(
   cssWidth: number,
   cssHeight: number,
   commandText?: string,
+  onOpenFlightPlanModal?: (request: FlightPlanModalRequest) => void,
 ): void {
   const size = viewSize(cssWidth, cssHeight);
   const nm = screenToNm(cssX, cssY, view.camera, size);
@@ -344,7 +437,7 @@ export function handlePpiLeftClick(
       HIT_RADIUS_CSS_PX,
       view,
     );
-    if (hit && applyTrackingSlewHit(view, world, hit, liveTracking)) {
+    if (hit && applyTrackingSlewHit(view, world, hit, liveTracking, onOpenFlightPlanModal)) {
       return;
     }
   }
@@ -470,7 +563,7 @@ export function handlePpiLeftClick(
         HIT_RADIUS_CSS_PX,
         view,
       );
-      if (hit && applyTrackingSlewHit(view, world, hit, tracking)) {
+      if (hit && applyTrackingSlewHit(view, world, hit, tracking, onOpenFlightPlanModal)) {
         return;
       }
     } else if (view.starsChordEntry.phase === "entry" || view.starsChordArmed) {
@@ -512,25 +605,6 @@ export function handlePpiLeftClick(
       }
     }
   }
-  if (view.preview.phase === "entry" && /^\d{1,2}$/.test(view.preview.buffer.trim())) {
-    const numIdx = Number(view.preview.buffer.trim());
-    const hit = pickAircraftAt(
-      world,
-      cssX,
-      cssY,
-      view.camera,
-      cssWidth,
-      cssHeight,
-      HIT_RADIUS_CSS_PX,
-      view,
-    );
-    if (hit && promoteVfrListEntry(view, world, numIdx, hit.id)) {
-      cancelPreviewArea(view.preview);
-      cancelStarsChordEntry(view.starsChordEntry);
-      view.starsChordArmed = null;
-      return;
-    }
-  }
   if (!previewAreaIsLive(view.preview) || view.preview.buffer.trim() === "") {
     const hit = pickAircraftHitAt(
       world,
@@ -544,6 +618,10 @@ export function handlePpiLeftClick(
     );
     if (hit) {
       handleImpliedCaAcknowledge(view, world, hit.aircraft.id);
+    } else {
+      for (const td of view.tracks.values()) {
+        if (td.unassociated) clearTrackQuery(td);
+      }
     }
   }
   selectOrAcceptAircraftAt(
@@ -670,10 +748,20 @@ export function handlePpiCanvasClick(
   clientY: number,
   view: ScopeView,
   commandText?: string,
+  onOpenFlightPlanModal?: (request: FlightPlanModalRequest) => void,
 ): void {
   const rect = canvas.getBoundingClientRect();
   const { x, y } = cssPointFromClient(clientX, clientY, rect);
-  handlePpiLeftClick(view, world, x, y, rect.width, rect.height, commandText);
+  handlePpiLeftClick(
+    view,
+    world,
+    x,
+    y,
+    rect.width,
+    rect.height,
+    commandText,
+    onOpenFlightPlanModal,
+  );
 }
 
 /**

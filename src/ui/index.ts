@@ -1,7 +1,7 @@
 /**
  * Public API for `@ui`.
  *
- * Legal now: Scope shell (DCB cell grid on the PPI, F1 help overlay with T00-01 disclaimer,
+ * Legal now: Scope shell (DCB cell grid on the PPI, Help overlay with T00-01 disclaimer,
  * first-run disclaimer, on-PPI flight-strip list, command strip, pause / 1× / 2× corner
  * readout). Canvas click selects a track and focuses the PPI (scope keys).
  * DCB clicks call the same `src/scope` functions as the keyboard and

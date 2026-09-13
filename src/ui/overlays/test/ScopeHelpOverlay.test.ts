@@ -1,12 +1,41 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
-import { HELP_FOOTER, HELP_GLOSSARY_NOTE, KEY_BINDINGS, RADIO_CONFLICT_WARNING } from "@scope";
+import {
+  HELP_COMMAND_GROUPS,
+  HELP_FOOTER,
+  HELP_NAVIGATION_GROUPS,
+  KEY_BINDINGS,
+  RADIO_CONFLICT_WARNING,
+} from "@scope";
 import { DISCLAIMER_COPY } from "../disclaimer";
-import { ScopeHelpOverlay } from "../ScopeHelpOverlay";
+import { normalizeHelpSearchText, ScopeHelpOverlay } from "../ScopeHelpOverlay";
 
-test("AC2 — overlay footer is exactly TRAINER KEYS — NOT CRC and lists frozen keys", () => {
+test("search normalization lowercases text and preserves internal spaces", () => {
+  expect(normalizeHelpSearchText("  *M 14 5252  ")).toBe("  *m 14 5252  ");
+});
+
+test("command reference lists local command groups and frozen keys", () => {
   const html = renderToStaticMarkup(createElement(ScopeHelpOverlay, { open: true }));
+  expect(html).toMatch(/id="scope-help-search"/);
+  expect(html).toMatch(/Find a command or description/);
+  expect(html).toMatch(/<details class="scope-help-section">/);
+  expect(HELP_NAVIGATION_GROUPS).toHaveLength(3);
+  expect(HELP_NAVIGATION_GROUPS.map((group) => group.title)).toEqual([
+    "Aircraft & flight plans",
+    "Scope & display",
+    "Workstation & trainer controls",
+  ]);
+  expect(html.match(/<details class="scope-help-top-section"/g)).toHaveLength(3);
+  const bindingIds = HELP_NAVIGATION_GROUPS.flatMap((group) =>
+    group.bindingSections.flatMap((section) => section.bindingIds),
+  );
+  expect(bindingIds).toHaveLength(KEY_BINDINGS.length);
+  expect(new Set(bindingIds)).toHaveLength(bindingIds.length);
+  expect(new Set(bindingIds)).toEqual(new Set(KEY_BINDINGS.map((binding) => binding.id)));
+  for (const navigationGroup of HELP_NAVIGATION_GROUPS) {
+    expect(html).toContain(navigationGroup.title.replaceAll("&", "&amp;"));
+  }
   expect(html).toContain(HELP_FOOTER);
   expect(html).toContain(DISCLAIMER_COPY);
   expect(html).toMatch(/PageUp/);
@@ -22,7 +51,13 @@ test("AC2 — overlay footer is exactly TRAINER KEYS — NOT CRC and lists froze
   expect(html).toMatch(/>M</);
   expect(html).toMatch(/F then 3-digit min/);
   expect(html).toMatch(/Tab/);
-  expect(html).toMatch(/CLICK accept inbound handoff/);
+  expect(html).toMatch(/Click to accept the pending inbound handoff/);
+  for (const group of HELP_COMMAND_GROUPS) {
+    expect(html).toContain(group.title);
+    for (const entry of group.entries) {
+      expect(html).toContain(entry.example);
+    }
+  }
 });
 
 test("closed overlay renders nothing", () => {
@@ -36,18 +71,17 @@ test("AC8 — help copy says radio commands stay on the command line", () => {
   expect(html).toMatch(/never come from scope keys/);
 });
 
-test("AC9 — glossary terms and CRC analog → our key; no CRC-only cheat sheet", () => {
+test("help copy is local-only and teaches command boundaries", () => {
   const html = renderToStaticMarkup(createElement(ScopeHelpOverlay, { open: true }));
-  expect(html).toContain(HELP_GLOSSARY_NOTE);
+  expect(html).toMatch(/Use this reference for the trainer/);
   expect(html).toMatch(/range/);
   expect(html).toMatch(/datablock/);
   expect(html).toMatch(/leader/);
-  expect(html).toMatch(/initiate track/);
-  expect(html).toMatch(/CRC analog/);
-  expect(html).toMatch(/→/);
-  expect(html).toMatch(/Our key/);
-  expect(html).not.toMatch(/beaconator cheat/i);
-  expect(html).not.toMatch(/paste a CRC/i);
+  expect(html).toMatch(/initiates or associates/i);
+  expect(html).toMatch(/Radio commands/);
+  expect(html).toMatch(/Focus and Preview Area/);
+  expect(html).toMatch(/Scope &amp; display/);
+  expect(html).not.toMatch(/\b(CRC|vNAS|vice)\b/);
 });
 
 test("shell mounts the F1 overlay from KEY_BINDINGS and installs always-on keys", () => {

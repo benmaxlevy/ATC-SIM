@@ -5,6 +5,7 @@ import {
   IDENT_DISPLAY_FLASH_MS,
   acknowledgeAlert,
   applyDropTrackToId,
+  clearTrackQuery,
   clearAcknowledgedAlert,
   clearScratchpad1,
   clearScratchpad2,
@@ -32,6 +33,7 @@ import {
   syncTrackDisplays,
   toggleCaPairInhibited,
   toggleDatablockModeForSelection,
+  toggleTrackPdbFdb,
 } from "../trackDisplay";
 import { sanitizeScratchpad, SCRATCHPAD_MAX_LEN } from "../datablock";
 
@@ -169,19 +171,28 @@ test("leader dir applies to the selected track only; with no selection it applie
   expect(tracks.get("ac-aal")!.leaderDir).toBe(1);
 });
 
-test("AC2 — clicking unassociated target queries ground speed for 5 seconds", () => {
+test("AC2 — clicking unassociated target keeps ground speed until an off-target slew", () => {
   const ac = makeTestAircraft({ id: "ac-ldb", callsign: "VFR12" });
-  const world = createWorld({ aircraft: [ac], simTimeMs: 1000 });
+  const other = makeTestAircraft({ id: "ac-ldb-other", callsign: "VFR13" });
+  const world = createWorld({ aircraft: [ac, other], simTimeMs: 1000 });
   const tracks = new Map();
   syncTrackDisplays(tracks, world);
   const td = tracks.get(ac.id)!;
+  const otherTd = tracks.get(other.id)!;
   td.datablockMode = "limited";
   td.unassociated = true;
+  otherTd.datablockMode = "limited";
+  otherTd.unassociated = true;
 
   expect(isTrackQueried(td, world.simTimeMs)).toBe(false);
   handleTrackClick(tracks, world, ac.id);
   expect(isTrackQueried(td, world.simTimeMs)).toBe(true);
   expect(isTrackQueried(td, 1000 + 4999)).toBe(true);
+  expect(isTrackQueried(td, 1000 + 5000)).toBe(true);
+  handleTrackClick(tracks, world, other.id);
+  expect(isTrackQueried(td, 1000 + 5000)).toBe(false);
+  expect(isTrackQueried(otherTd, world.simTimeMs)).toBe(true);
+  clearTrackQuery(td);
   expect(isTrackQueried(td, 1000 + 5000)).toBe(false);
 });
 
@@ -200,6 +211,23 @@ test("AC4 — clicking unowned track toggles between PDB and Green FDB", () => {
   expect(td.forcedFdb).toBe(true);
 
   handleTrackClick(tracks, world, ac.id);
+  expect(td.datablockMode).toBe("partial");
+  expect(td.forcedFdb).toBe(false);
+});
+
+test("post-TERM unassociated track cannot be expanded back to an FDB", () => {
+  const ac = makeTestAircraft({ id: "ac-terminated", callsign: "UAL999" });
+  const world = createWorld({ aircraft: [ac], selectedAircraftId: ac.id });
+  const tracks = new Map();
+  syncTrackDisplays(tracks, world);
+  const td = tracks.get(ac.id)!;
+  td.unassociated = true;
+  td.datablockMode = "partial";
+
+  expect(toggleTrackPdbFdb(td)).toBe("partial");
+  expect(td.forcedFdb).toBe(false);
+
+  toggleDatablockModeForSelection(tracks, world);
   expect(td.datablockMode).toBe("partial");
   expect(td.forcedFdb).toBe(false);
 });
@@ -243,6 +271,14 @@ test("T02-39: deriveScratchpads auto-derives approach shorthand to SP1 and assig
   expect(td.sp1).toBe("I27");
   expect(td.sp2).toBe("S21");
   expect(td.scratchpad).toBe("I27");
+});
+
+test("plan scratchpads override derived track scratchpads after flight-plan modification", () => {
+  const ac = makeTestAircraft({ id: "ac-plan", callsign: "UAL123" });
+  ac.flightPlan = { scratchpads: ["HI", "WEST"] };
+  const td = createTrackDisplay();
+
+  expect(deriveScratchpads(ac, td, ["HI", "WEST"])).toEqual({ sp1: "HI", sp2: "WEST" });
 });
 
 test("T02-39: deriveScratchpads derives interim altitude to SP1 when no approach is set", () => {

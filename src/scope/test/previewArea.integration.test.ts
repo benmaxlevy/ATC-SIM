@@ -6,13 +6,19 @@
  * shipped helpers; this file does not re-derive them.
  */
 import { expect, test } from "vitest";
-import { SessionLog, createWorld, handoffFor, makeTestAircraft, type World } from "@core";
+import {
+  SessionLog,
+  createFlightPlan,
+  createWorld,
+  handoffFor,
+  makeTestAircraft,
+  type World,
+} from "@core";
 import { handleRadioText } from "@pilot";
 import { createWorldFromScenario, loadKdem } from "@scenario";
 import { DEFAULT_ALTITUDE_FILTER, formatFilterReadout } from "../altitudeFilter";
 import { DEFAULT_SCOPE_CAMERA, nmToScreen, type ScopeCamera } from "../camera";
 import { bindingById } from "../keymap";
-import { PALETTE } from "../palette";
 import { handlePpiLeftClick } from "../ppi";
 import { formatPreviewReadout } from "../previewArea";
 import { renderScope } from "../render/renderScope";
@@ -120,7 +126,125 @@ function starNear(
   );
 }
 
-test("AC1 — F3 slew paints INIT CNTL; click unowned arrival owns white FDB; empty click keeps the arm", () => {
+test("T02-173 — explicit ACID slew does not mutate correlation", () => {
+  const plan = createFlightPlan({
+    id: "fp-acid-slew",
+    acid: "DAL456",
+    assignedBeacon: "7024",
+    fixes: [],
+    scratchpads: [],
+  });
+  if (!plan.ok) throw new Error(plan.error.message);
+  const target = makeTestAircraft({ id: "ac-acid-slew", callsign: "1234", squawk: "7024" });
+  const world = createWorld({ flightPlans: [plan.value], aircraft: [target] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  typeKeys(view, world, ["F1", "D", "A", "L", "4", "5", "6"], "radio");
+  const tick = nmToScreen(target.xNm, target.yNm, view.camera, VIEW);
+  handlePpiLeftClick(view, world, tick.x, tick.y, CSS, CSS);
+
+  expect(world.flightPlans).toHaveLength(1);
+  expect(world.flightPlans[0]).toMatchObject({
+    id: "fp-acid-slew",
+    status: "pending",
+  });
+  expect(target.callsign).toBe("1234");
+});
+
+test("creation does not auto-associate a unique already-reporting beacon", () => {
+  const target = makeTestAircraft({
+    id: "ac-create-beacon",
+    callsign: "UNTRK",
+    squawk: "5066",
+  });
+  const world = createWorld({ aircraft: [target] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  typeKeys(view, world, ["S", "W", "A", "1", "2", "3", " ", "5", "0", "6", "6", "Enter"]);
+
+  expect(world.flightPlans).toHaveLength(1);
+  expect(world.flightPlans[0]).toMatchObject({
+    acid: "SWA123",
+    assignedBeacon: "5066",
+    status: "pending",
+    reportedBeacon: undefined,
+  });
+  expect(view.tracks.get(target.id)).toMatchObject({
+    datablockMode: "partial",
+  });
+});
+
+test("T02-173 — explicit beacon slew does not mutate correlation", () => {
+  const plan = createFlightPlan({
+    id: "fp-beacon-slew",
+    acid: "AAL789",
+    assignedBeacon: "7025",
+    fixes: [],
+    scratchpads: [],
+  });
+  if (!plan.ok) throw new Error(plan.error.message);
+  const target = makeTestAircraft({ id: "ac-beacon-slew", callsign: "5678", squawk: "7025" });
+  const world = createWorld({ flightPlans: [plan.value], aircraft: [target] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  typeKeys(view, world, ["F1", "7", "0", "2", "5"], "radio");
+  const tick = nmToScreen(target.xNm, target.yNm, view.camera, VIEW);
+  handlePpiLeftClick(view, world, tick.x, tick.y, CSS, CSS);
+
+  expect(world.flightPlans[0]).toMatchObject({
+    id: "fp-beacon-slew",
+    status: "pending",
+  });
+  expect(target.callsign).toBe("5678");
+});
+
+test("F4 and TERM CNTL share termination semantics", () => {
+  const makeCase = (id: string) => {
+    const plan = createFlightPlan({
+      id: `fp-term-${id}`,
+      acid: "DAL456",
+      assignedBeacon: "7024",
+      fixes: [],
+      scratchpads: [],
+    });
+    if (!plan.ok) throw new Error(plan.error.message);
+    const target = makeTestAircraft({ id: `ac-term-${id}`, callsign: "DAL456", squawk: "7024" });
+    plan.value.status = "active";
+    const world = createWorld({ flightPlans: [plan.value], aircraft: [target] });
+    world.handoffs.set(target.id, { kind: "inbound", fromSectorId: "C" });
+    return { target, world };
+  };
+  const direct = makeCase("direct");
+  const directView = createScopeView();
+  syncTrackDisplays(directView.tracks, direct.world);
+  direct.world.selectedAircraftId = direct.target.id;
+  handleScopeKeyDown(keyEvent("F4"), directView, "scope", direct.world, 0);
+
+  const typed = makeCase("typed");
+  const typedView = createScopeView();
+  syncTrackDisplays(typedView.tracks, typed.world);
+  handleScopeKeyDown(keyEvent("F4"), typedView, "scope", typed.world, 0);
+  typeKeys(typedView, typed.world, ["D", "A", "L", "4", "5", "6", "Enter"]);
+
+  for (const result of [direct, typed]) {
+    const td = (result === direct ? directView : typedView).tracks.get(result.target.id)!;
+    expect(result.world.flightPlans[0]?.status).toBe("deleted");
+    expect(td).toMatchObject({
+      ownership: "unowned",
+      datablockMode: "partial",
+      unassociated: true,
+      tracked: false,
+      forcedFdb: false,
+    });
+    expect(handoffFor(result.world, result.target.id)).toEqual({ kind: "none" });
+    expect(result.target.callsign).toBe("DAL456");
+  }
+});
+
+test("AC1 — F1 without an identity rejects an unqualified click", () => {
   const world = createWorldFromScenario(loadKdem(), 1);
   const dal = world.aircraft[0]!;
   const view = createScopeView();
@@ -129,7 +253,7 @@ test("AC1 — F3 slew paints INIT CNTL; click unowned arrival owns white FDB; em
   expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
   expect(world.selectedAircraftId).toBeNull();
 
-  handleScopeKeyDown(keyEvent("F3"), view, "scope", world, 0);
+  handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 0);
   expect(view.preview.phase).toBe("armed");
   expect(view.preview.mnemonic).toBe("INIT CNTL");
   expect(formatPreviewReadout(view.preview)).toBe("INIT CNTL");
@@ -146,16 +270,12 @@ test("AC1 — F3 slew paints INIT CNTL; click unowned arrival owns white FDB; em
   const tick = nmToScreen(dal.xNm, dal.yNm, view.camera, VIEW);
   handlePpiLeftClick(view, world, tick.x, tick.y, CSS, CSS);
   expect(view.preview.phase).toBe("idle");
-  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
-  expect(handoffFor(world, dal.id).kind).not.toBe("inbound");
-  expect(world.selectedAircraftId).toBe(dal.id);
-
-  const ownedPaint = paint(world, view);
-  expect(ownedPaint.fillTexts.find((t) => t.text === dal.callsign)?.fillStyle).toBe(PALETTE.owned);
-  expect(PALETTE.owned).toBe("#FFFFFF");
+  expect(view.preview.rejection).toBe("INIT CNTL INV");
+  expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
+  expect(handoffFor(world, dal.id).kind).toBe("inbound");
 });
 
-test("AC2 — F3 FLID Enter owns DAL123 with nothing selected; unknown/ambiguous INV", () => {
+test("AC2 — F1 FLID Enter rejects without changing the target", () => {
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", xNm: 16, yNm: 8 });
   const aal = makeTestAircraft({ id: "ac-aal", callsign: "AAL123", xNm: -16, yNm: 0 });
   const world = createWorld({ aircraft: [dal, aal] });
@@ -163,21 +283,76 @@ test("AC2 — F3 FLID Enter owns DAL123 with nothing selected; unknown/ambiguous
   syncTrackDisplays(view.tracks, world);
   expect(world.selectedAircraftId).toBeNull();
 
-  typeKeys(view, world, ["F3", "D", "A", "L", "1", "2", "3", "Enter"], "radio");
+  typeKeys(view, world, ["F1", "D", "A", "L", "1", "2", "3", "Enter"], "radio");
   expect(world.selectedAircraftId).toBeNull();
-  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+  expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
   expect(view.tracks.get(aal.id)!.ownership).toBe("unowned");
   expect(view.preview.phase).toBe("idle");
+  expect(view.preview.rejection).toBe("INIT CNTL DAL123 INV");
 
-  handleScopeKeyDown(keyEvent("F3"), view, "radio", world, 1000);
+  handleScopeKeyDown(keyEvent("F1"), view, "radio", world, 1000);
   typeKeys(view, world, ["X", "Y", "Z", "9", "Enter"], "radio", 1100);
   expect(view.preview.rejection).toBe("INIT CNTL XYZ9 INV");
   expect(view.tracks.get(aal.id)!.ownership).toBe("unowned");
 
-  handleScopeKeyDown(keyEvent("F3"), view, "radio", world, 2000);
+  handleScopeKeyDown(keyEvent("F1"), view, "radio", world, 2000);
   typeKeys(view, world, ["1", "2", "3", "Enter"], "radio", 2100);
   expect(view.preview.rejection).toBe("INIT CNTL 123 INV");
   expect(view.tracks.get(aal.id)!.ownership).toBe("unowned");
+});
+
+test("AC4/AC5 — INIT CNTL rejects one-digit TAB and CID identities on slew", () => {
+  const plan = createFlightPlan({
+    id: "fp-strict-init",
+    acid: "DAL123",
+    assignedBeacon: "7024",
+    fixes: [],
+    scratchpads: [],
+  });
+  if (!plan.ok) throw new Error(plan.error.message);
+  const target = makeTestAircraft({ id: "ac-strict-init", callsign: "UNTRK", squawk: "1200" });
+  const world = createWorld({ flightPlans: [plan.value], aircraft: [target] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+
+  const tick = nmToScreen(target.xNm, target.yNm, view.camera, VIEW);
+  for (const identity of ["1", "123"]) {
+    handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 0);
+    for (const key of identity) handleScopeKeyDown(keyEvent(key), view, "scope", world, 10);
+    handlePpiLeftClick(view, world, tick.x, tick.y, CSS, CSS);
+    expect(view.tracks.get(target.id)?.unassociated ?? true).toBe(true);
+  }
+});
+
+test("AC4 — INIT CNTL rejects one-digit scheduled-departure TAB identity", () => {
+  const target = makeTestAircraft({
+    id: "ac-scheduled-init",
+    callsign: "UNTRK",
+    xNm: 0,
+    yNm: 0,
+    squawk: "1200",
+  });
+  const world = createWorld({ aircraft: [target] });
+  world.scheduledDepartures = [
+    {
+      callsign: "AAL123",
+      runwayId: "27",
+      sidId: "BOS1",
+      assignedSquawk: "7022",
+      scheduledSimMs: 1000,
+      index: 1,
+    },
+  ];
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const tick = nmToScreen(target.xNm, target.yNm, view.camera, VIEW);
+
+  typeKeys(view, world, ["F1", "1"], "scope");
+  handlePpiLeftClick(view, world, tick.x, tick.y, CSS, CSS);
+
+  expect(world.flightPlans).toHaveLength(0);
+  expect(view.tracks.get(target.id)?.unassociated ?? true).toBe(true);
+  expect(view.preview.rejection).toBe("INIT CNTL 1 INV");
 });
 
 test("AC2 — F4 slew drops; implied select-then-F4 still drops", () => {
@@ -188,7 +363,7 @@ test("AC2 — F4 slew drops; implied select-then-F4 still drops", () => {
   syncTrackDisplays(view.tracks, world);
 
   world.selectedAircraftId = dal.id;
-  handleScopeKeyDown(keyEvent("F3"), view, "scope", world, 0);
+  handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 0);
   expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
   expect(view.preview.phase).toBe("idle");
 
@@ -212,7 +387,7 @@ test("AC2 — F4 slew drops; implied select-then-F4 still drops", () => {
   expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
 
   world.selectedAircraftId = aal.id;
-  handleScopeKeyDown(keyEvent("F3"), view, "scope", world, 200);
+  handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 200);
   expect(view.tracks.get(aal.id)!.ownership).toBe("owned");
   handleScopeKeyDown(keyEvent("F4"), view, "scope", world, 300);
   expect(view.tracks.get(aal.id)!.ownership).toBe("unowned");
@@ -282,9 +457,9 @@ test("AC4 / AC5 — radio DAL123 H270 still turns; preview keys emit zero comman
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
 
-  typeKeys(view, world, ["F3"], "radio");
+  typeKeys(view, world, ["F1"], "radio");
   typeKeys(view, world, ["D", "A", "L", "1", "2", "3", "Enter"], "radio", 100);
-  expect(view.tracks.get(dal.id)!.ownership).toBe("owned");
+  expect(view.tracks.get(dal.id)!.ownership).toBe("unowned");
   expect(log.byType("command.accepted")).toHaveLength(0);
 
   world.selectedAircraftId = dal.id;
@@ -311,7 +486,7 @@ test("AC4 / AC5 — radio DAL123 H270 still turns; preview keys emit zero comman
   expect(log.byType("command.accepted").length).toBeGreaterThanOrEqual(1);
 });
 
-test("AC4 — *J3 still arms/slews; live * hint wins over idle preview; F1 beaconator; F7 PTL ALL", () => {
+test("AC4 — *J3 still arms/slews; live * hint wins over idle preview; F1 INIT; F7 PTL ALL", () => {
   const dal = makeTestAircraft({ id: "ac-dal", callsign: "DAL123", xNm: 16, yNm: 8 });
   const aal = makeTestAircraft({ id: "ac-aal", callsign: "AAL456", xNm: -16, yNm: 0 });
   const world = createWorld({ aircraft: [dal, aal] });
@@ -331,7 +506,7 @@ test("AC4 — *J3 still arms/slews; live * hint wins over idle preview; F1 beaco
   expect(view.starsChordArmed).toBeNull();
 
   world.selectedAircraftId = null;
-  handleScopeKeyDown(keyEvent("F3"), view, "scope", world, 500);
+  handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 500);
   expect(formatPreviewReadout(view.preview)).toBe("INIT CNTL");
   handleScopeKeyDown(keyEvent("*"), view, "scope", world, 600);
   expect(formatStarsChordReadout(view.starsChordEntry, view.starsChordArmed)).toBe("*");
@@ -342,7 +517,7 @@ test("AC4 — *J3 still arms/slews; live * hint wins over idle preview; F1 beaco
   handleScopeKeyDown(keyEvent("Escape"), view, "scope", world, 700);
   handleScopeKeyDown(keyEvent("Escape"), view, "scope", world, 800);
   handleScopeKeyDown(keyEvent("F1"), view, "scope", world, 900);
-  expect(view.beaconatorActive).toBe(true);
+  expect(view.preview.armed).toEqual({ type: "initCntl" });
   handleScopeKeyDown(keyEvent("F10"), view, "scope", world, 1000);
   expect(view.ptlOn).toBe(true);
 });
@@ -434,10 +609,90 @@ test("T02-54 — compact *P clears a target cone; *P3 slews a 3 NM cone while En
 test("AC5 — KEY_BINDINGS overlay text includes INIT CNTL command-then-slew", () => {
   const init = bindingById("initiate-track")!;
   expect(init.action).toMatch(/command-then-slew/);
-  expect(init.action).toMatch(/FLID/);
+  expect(init.action).toMatch(/INIT CNTL/);
   expect(init.crcAnalog).toMatch(/INIT CNTL/);
-  expect(bindingById("help")?.crcAnalog).toMatch(/beaconator/);
+  expect(bindingById("help")?.crcAnalog).toMatch(/Trainer help/);
   expect(bindingById("ptl")?.action).toMatch(/PTL ALL/);
+  expect(bindingById("flt-data")?.windowsKeys).toBe("F6");
+  expect(bindingById("flt-data")?.action).toMatch(/full IFR/);
+});
+
+test("T02-168 — F6 FLT DATA paints command mode and creates only a local record", () => {
+  const aircraft = makeTestAircraft({
+    id: "ac-f6-local",
+    callsign: "DAL123",
+    xNm: 5,
+    yNm: 6,
+  });
+  const log = new SessionLog();
+  const world = createWorld({ aircraft: [aircraft], sessionLog: log });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const intentBefore = structuredClone(aircraft.intent);
+  const positionBefore = { xNm: aircraft.xNm, yNm: aircraft.yNm };
+
+  typeKeys(view, world, ["F6"], "radio");
+  expect(formatPreviewReadout(view.preview)).toBe("FLT DATA");
+  expect(paint(world, view).fillTexts.some((item) => item.text === "FLT DATA")).toBe(true);
+  typeKeys(
+    view,
+    world,
+    [
+      "U",
+      "A",
+      "L",
+      "1",
+      "2",
+      "3",
+      "4",
+      " ",
+      "2",
+      "3",
+      "4",
+      "1",
+      " ",
+      "K",
+      "D",
+      "E",
+      "M",
+      "*",
+      "R",
+      "W",
+      "2",
+      "7",
+      " ",
+      "B",
+      "7",
+      "3",
+      "8",
+      " ",
+      "2",
+      "5",
+      "0",
+      " ",
+      ".",
+      "A",
+      "Enter",
+    ],
+    "radio",
+    100,
+  );
+
+  expect(world.flightPlans).toHaveLength(1);
+  expect(world.flightPlans[0]).toMatchObject({
+    acid: "UAL1234",
+    assignedBeacon: "2341",
+    fixes: ["KDEM*RW27"],
+    aircraftType: "B738",
+    requestedAltitudeFt: 25000,
+    flightRules: "A",
+    flightType: "IFR",
+    status: "pending",
+  });
+  expect(aircraft.intent).toEqual(intentBefore);
+  expect({ xNm: aircraft.xNm, yNm: aircraft.yNm }).toEqual(positionBefore);
+  expect(log.byType("command.accepted")).toHaveLength(0);
+  expect(formatPreviewReadout(view.preview)).toBeNull();
 });
 
 test("T02-64 — *C Enter then PPI click recenters; *OFF resets to KDEM ARP", () => {
@@ -556,7 +811,7 @@ test("T02-65 — *F readout, *LA bounds, *BCN □ paint; *B / idle F / B45 uncha
 
   typeKeys(view, world, ["*", "F", "Enter"], "scope");
   expect(view.altitudeFilter).toEqual(DEFAULT_ALTITUDE_FILTER);
-  expect(formatPreviewReadout(view.preview)).toBe("FILTER 000-180");
+  expect(formatPreviewReadout(view.preview)).toBe("FILTER 000-180 U 000-180 A");
 
   typeKeys(view, world, ["*", "L", "A", "0", "0", "0", "1", "2", "0", "Enter"], "scope", 200);
   expect(view.altitudeFilter).toEqual({ minHundreds: 0, maxHundreds: 120 });
@@ -587,8 +842,8 @@ test("T02-65 — *F readout, *LA bounds, *BCN □ paint; *B / idle F / B45 uncha
 
   const filterView = createScopeView();
   typeKeys(filterView, world, ["F"], "scope");
-  expect(filterView.filterEntry.phase).toBe("min");
-  expect(filterView.preview.phase).toBe("idle");
+  expect(filterView.filterEntry.phase).toBe("idle");
+  expect(filterView.preview.buffer).toBe("F");
 
   const tpa = createScopeView();
   tpa.atpa.monitorCones = false;
@@ -596,6 +851,34 @@ test("T02-65 — *F readout, *LA bounds, *BCN □ paint; *B / idle F / B45 uncha
   expect(tpa.atpa.monitorCones).toBe(true);
   expect(tpa.beaconSelectCodes).toEqual([]);
   expect(tpa.preview.rejection).toBeNull();
+});
+
+test("T02-148 — F-prefixed ACID cancels filter chord and reaches Preview", () => {
+  const view = createScopeView();
+  const world = createWorld();
+
+  typeKeys(view, world, ["F", "F", "T", "1", "2", "3", " ", "2", "3", "4", "1", "Enter"], "scope");
+
+  expect(view.filterEntry.phase).toBe("idle");
+  expect(view.preview.buffer).toBe("");
+  expect(world.flightPlans).toHaveLength(1);
+  expect(world.flightPlans[0]).toMatchObject({ acid: "FFT123", assignedBeacon: "2341" });
+});
+
+test("T02-148 — manual *F command commits both filter bands", () => {
+  const view = createScopeView();
+  const world = createWorld();
+
+  typeKeys(
+    view,
+    world,
+    ["*", "F", "0", "5", "0", "1", "2", "0", "0", "5", "0", "0", "9", "0", "Enter"],
+    "scope",
+  );
+
+  expect(view.filterEntry.phase).toBe("idle");
+  expect(view.altitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 120 });
+  expect(view.associatedAltitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 90 });
 });
 
 test("T02-74 — *R Enter plus click toggles one track; miss keeps arm; *RR and F7 stay global", () => {

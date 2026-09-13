@@ -149,7 +149,7 @@ test("AC4 — T00-01 disclaimer is first-run and inside F1; HELP_KEYS_POINTER st
 
   const overlay = renderToStaticMarkup(createElement(ScopeHelpOverlay, { open: true }));
   expect(overlay).toContain(DISCLAIMER_COPY);
-  expect(overlay).toContain("TRAINER KEYS — NOT CRC");
+  expect(overlay).toContain("TRAINER COMMANDS — LOCAL REFERENCE");
 
   const firstRun = renderToStaticMarkup(createElement(Disclaimer));
   expect(firstRun).toContain(DISCLAIMER_COPY);

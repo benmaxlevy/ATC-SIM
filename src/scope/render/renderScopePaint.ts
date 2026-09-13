@@ -4,17 +4,21 @@
 import {
   caPairKey,
   caSeverityForCallsign,
+  DEFAULT_TOWER_SECTOR_ID,
   handoffFor,
   msawSeverityForCallsign,
   type Aircraft,
   type World,
 } from "@core";
-import { inAltitudeFilter } from "../altitudeFilter";
+import { inAltitudeFilter, shouldShowDatablockOutsideAltitudeFilter } from "../altitudeFilter";
 import { nmToScreen, type ScopeViewSize } from "../camera";
 import {
   DATABLOCK_FIELD_GAP,
+  buildDatablockRuntimeState,
   datablockMetrics,
+  datablockSourceFromWorld,
   fullDatablockLine3Parts,
+  getSpecialPurposeCode,
   linesForDatablock,
   withInboundHandoffCue,
   type DatablockMode,
@@ -55,12 +59,14 @@ import {
 import {
   TPA_STROKE_COLOR,
   TPA_STROKE_PX,
+  TPA_RING_DIGIT_RADIUS_FRAC,
   manualTpaConePoints,
   tpaConeDigitPlacement,
   tpaConesToPaint,
   tpaRingDigitPlacement,
   tpaRingPoints,
   tpaRingsToPaint,
+  tpaScreenRadiusPx,
   tpaSizeReadoutEnabled,
 } from "../tpa";
 import {
@@ -86,11 +92,9 @@ import {
   targetStrokeColor,
 } from "./targetSymbol";
 import {
-  deriveScratchpads,
   filterActiveCaAlerts,
   isBeaconatorReadout,
   isIdentFlashing,
-  isTrackQueried,
   isCaPairInhibited,
   type TrackDisplay,
 } from "../trackDisplay";
@@ -168,7 +172,10 @@ export function collectDatablockProtectedGeometry(
           out.push({ kind: "circle", aircraftId: ac.id, center: q, radius: 2 });
         }
     const shown = displayAircraft(ac, td)!;
-    const filtered = !inAltitudeFilter(shown.altitudeFt, view.altitudeFilter);
+    const filtered = !inAltitudeFilter(
+      shown.altitudeFt,
+      td?.unassociated ? view.altitudeFilter : view.associatedAltitudeFilter,
+    );
     if (
       shouldDrawPtlForTrack(
         shown.speedKt,
@@ -436,7 +443,7 @@ export function isTrackedTarget(view: ScopeView, world: World, ac: Aircraft): bo
     td?.tracked === true ||
     ho.kind === "inbound" ||
     ho.kind === "departure" ||
-    (ho.kind === "outbound" && ho.status === "accepted") ||
+    (ho.kind === "outbound" && ho.status === "accepted" && ownership !== "unowned") ||
     ho.kind === "pointout_inbound" ||
     ho.kind === "pointout_outbound"
   );
@@ -580,50 +587,30 @@ export function getDatablockVisualState(
     };
   }
 
-  // 3. Outbound accepted handoff: Blinking white for 5s, settles to solid white
-  const isOutboundAccepted =
-    (ho.kind === "outbound" && ho.status === "accepted") ||
-    (td?.outboundFlashUntilSimMs != null && td.outboundFlashUntilSimMs > 0) ||
-    td?.outboundClickStep !== undefined;
-  if (isOutboundAccepted) {
-    const step = td?.outboundClickStep ?? 0;
-    if (step === 0) {
-      const flashDeadline =
-        td?.outboundFlashUntilSimMs ??
-        (ho.kind === "outbound" ? (ho.acceptedAtSimMs ?? 0) + 5000 : 0);
-      const isFlashing = world.simTimeMs < flashDeadline;
-      const isBlinkOn = isAlertBlinkOn(world.simTimeMs);
-      return {
-        color: PALETTE.owned,
-        visible: isFlashing ? isBlinkOn : true,
-        mode: "full",
-        leaderColor: PALETTE.owned,
-      };
-    }
-    if (step === 1) {
-      return {
-        color: PALETTE.owned,
-        visible: true,
-        mode: "full",
-        leaderColor: PALETTE.owned,
-      };
-    }
-    if (step === 2) {
-      return {
-        color: PALETTE.targetGreen,
-        visible: true,
-        mode: "full",
-        leaderColor: PALETTE.targetGreen,
-      };
-    }
-    if (step === 3) {
-      return {
-        color: PALETTE.targetGreen,
-        visible: true,
-        mode: "partial",
-        leaderColor: PALETTE.targetGreen,
-      };
-    }
+  // 3. Outbound accepted handoff: blink white for 5s, then stay solid white.
+  if (ho.kind === "outbound" && ho.status === "accepted" && td?.ownership !== "unowned") {
+    const flashDeadline =
+      td?.outboundFlashUntilSimMs ??
+      (ho.acceptedAtSimMs != null ? ho.acceptedAtSimMs + 5000 : undefined);
+    const isFlashing = flashDeadline != null && world.simTimeMs < flashDeadline;
+    const isBlinkOn = isAlertBlinkOn(world.simTimeMs);
+    return {
+      color: PALETTE.owned,
+      visible: isFlashing ? isBlinkOn : true,
+      mode: "full",
+      leaderColor: PALETTE.owned,
+    };
+  }
+
+  // Manual §5.1.9 pp. 5-18–19: initiated handoff shows receiver TCP and uses
+  // Handoff Attention white; trainer Center ownership stub stays separate.
+  if (ho.kind === "outbound" && ho.status !== "accepted") {
+    return {
+      color: PALETTE.owned,
+      visible: true,
+      mode: "full",
+      leaderColor: PALETTE.owned,
+    };
   }
 
   // 4. Pointout inbound pending: Blinking yellow FDB with PO tag
@@ -682,6 +669,12 @@ export function getDatablockVisualState(
     view: ScopeView,
     td?: TrackDisplay,
   ): "full" | "partial" | "limited" {
+    // TERM CNTL leaves the radar target alive but removes its plan. Never
+    // allow selection, forced-FDB state, or an FSL mode to restore the plan
+    // callsign on an unassociated target.
+    if (td?.unassociated) {
+      return "limited";
+    }
     if (td?.forcedFdb) {
       return "full";
     }
@@ -739,6 +732,30 @@ export function getDatablockVisualState(
   };
 }
 
+function isEmergencyDatablockException(world: World, ac: Aircraft): boolean {
+  return Boolean(
+    ac.spc ||
+    world.alerts.ca.some(
+      (alert) => alert.callsignA === ac.callsign || alert.callsignB === ac.callsign,
+    ) ||
+    world.alerts.msaw.some((alert) => alert.callsign === ac.callsign),
+  );
+}
+
+function shouldPaintDatablock(view: ScopeView, world: World, ac: Aircraft, td?: TrackDisplay) {
+  const handoff = handoffFor(world, ac.id);
+  return shouldShowDatablockOutsideAltitudeFilter({
+    inFilter: inAltitudeFilter(
+      ac.altitudeFt,
+      td?.unassociated ? view.altitudeFilter : view.associatedAltitudeFilter,
+    ),
+    ownership: td?.ownership,
+    retainedFdb: td?.retainedFdbOutsideAltitudeFilter,
+    emergency: isEmergencyDatablockException(world, ac),
+    pendingHandoff: handoff.kind === "inbound" || handoff.kind === "departure",
+  });
+}
+
 function trackLeaderDir(view: ScopeView, aircraftId: string): LeaderDir {
   return view.tracks.get(aircraftId)?.leaderDir ?? DEFAULT_LEADER_DIR;
 }
@@ -789,10 +806,30 @@ function hasMciAlertForTrack(world: World, ac: Aircraft): boolean {
   );
 }
 
+/** Project only existing CA renderer state into limited Field 0. */
+function ldbField0Indicators(
+  view: ScopeView,
+  world: World,
+  ac: Aircraft,
+  td: TrackDisplay | undefined,
+): string[] {
+  const caInhibited = isCaInhibitedForTrack(ac, td, view);
+  const caPairInhibited = isCaPairInhibitedForTrack(view, world, ac);
+  const mciActive = hasMciAlertForTrack(world, ac);
+  const mciInhibited = mciActive && view.mciEnabled === false;
+  const hasCa =
+    (!caInhibited &&
+      !caPairInhibited &&
+      caSeverityForVisibleTrack(view, world, ac.callsign) != null) ||
+    (mciActive && !mciInhibited);
+  return hasCa ? ["CA"] : [];
+}
+
 /**
  * STARS Field 2 inhibit symbols sit immediately after the ACID. `*` is MSAW,
  * `Δ` is CA/MCI, and `+` is both inhibited. Field 0 above the datablock shows
- * active `LA`, `CA`, or slash-separated `LA/CA` indicators.
+ * active `LA`, `CA`, or slash-separated `LA/CA` indicators on full/partial blocks.
+ * Limited blocks project only the existing `CA` state per Figure 2-23.
  */
 function alertGlyphsForTrack(args: {
   caInhibited: boolean;
@@ -812,42 +849,122 @@ function alertGlyphsForTrack(args: {
   return glyphs;
 }
 
-export function drawDatablock(
-  ctx: CanvasRenderingContext2D,
+interface Field0AlertState {
+  text: string;
+  requiresBlink: boolean;
+}
+
+/** Existing renderer alert state projected into physical Field 0. */
+function field0AlertState(
   ac: Aircraft,
-  targetX: number,
-  targetY: number,
+  td: TrackDisplay | undefined,
   view: ScopeView,
   world: World,
-  resolved?: ResolvedDatablockLayout,
-): void {
-  const visual = getDatablockVisualState(view, world, ac);
-  if (!visual.visible) {
-    return;
-  }
-  ctx.font = datablockFontCss(view.charSizes.dataBlocks);
+  mode: DatablockMode,
+): Field0AlertState {
+  if (mode !== "full" && mode !== "partial") return { text: "", requiresBlink: false };
+  const caInhibited = isCaInhibitedForTrack(ac, td, view);
+  const caSeverity = !caInhibited ? caSeverityForVisibleTrack(view, world, ac.callsign) : null;
+  const msawInhibited = Boolean(
+    td?.msawInhibited ||
+    td?.msawCurrentAlertInhibited ||
+    td?.msawProcessingInhibited ||
+    (td as { inhibitMSAW?: boolean } | undefined)?.inhibitMSAW ||
+    (td as { inhibitMsaw?: boolean } | undefined)?.inhibitMsaw ||
+    (ac as { msawInhibited?: boolean }).msawInhibited,
+  );
+  const msawSeverity = !msawInhibited
+    ? msawSeverityForCallsign(world.alerts.msaw, ac.callsign)
+    : null;
+  const mciActive = hasMciAlertForTrack(world, ac);
+  const mciInhibited = mciActive && view.mciEnabled === false;
+  const hasLa = msawSeverity != null;
+  const hasCa = caSeverity != null || (mciActive && !mciInhibited);
+  return {
+    text: [hasLa ? "LA" : null, hasCa ? "CA" : null].filter(Boolean).join("/"),
+    requiresBlink:
+      (hasLa && !isMsawAlertAcknowledged(ac, td, view, world)) ||
+      (caSeverity != null && !isCaAlertAcknowledged(ac, td, view, world)) ||
+      (mciActive && !mciInhibited),
+  };
+}
+
+function field0WithAlerts(staticField0: string | undefined, alertText: string): string | undefined {
+  const values = [staticField0, alertText].filter(
+    (value): value is string => value != null && value.length > 0,
+  );
+  return values.length > 0 ? values.join("/") : undefined;
+}
+
+type ScopeDatablockPresentation = {
+  runtime: ReturnType<typeof buildDatablockRuntimeState>;
+  visual: DatablockVisualState;
+  mode: DatablockMode;
+  handoff: ReturnType<typeof handoffFor>;
+  datablockSource: ReturnType<typeof datablockSourceFromWorld>;
+  atpaReadout: ReturnType<typeof atpaInTrailDatablockReadout>;
+  base: ReturnType<typeof linesForDatablock>;
+  lines: ReturnType<typeof linesForDatablock>;
+  line1WithoutAlert: string;
+  alertGlyphs: AlertGlyph[];
+  field0Alerts: Field0AlertState;
+};
+
+export function datablockRenderSnapshotKey(view: ScopeView, world: World): string {
+  return JSON.stringify({
+    modeCVisible: view.modeCVisible,
+    beaconatorActive: view.beaconatorActive,
+    sectorId: view.sectorId,
+    charSizePx: view.charSizePx,
+    cellWidthPx: view.datablockCellWidthPx,
+    tracks: [...view.tracks.entries()].map(([id, track]) => [
+      id,
+      track.ownership,
+      track.unassociated,
+      track.datablockMode,
+      track.forcedFdb,
+      track.scratchpad,
+      track.sp1,
+      track.sp2,
+      track.queriedUntilSimMs,
+      track.beaconatorUntilSimMs,
+      track.leaderDir,
+      track.leaderLengthPx,
+    ]),
+    aircraftIds: world.aircraft.map((aircraft) => aircraft.id),
+    handoffs: [...world.handoffs.entries()],
+  });
+}
+
+/** One source/formatting projection shared by paint and layout. */
+export function buildScopeDatablockPresentation(
+  view: ScopeView,
+  world: World,
+  ac: Aircraft,
+  visual: DatablockVisualState = getDatablockVisualState(view, world, ac),
+): ScopeDatablockPresentation {
   const td = view.tracks.get(ac.id);
-  const derived = deriveScratchpads(ac, td);
   const mode = visual.mode;
-  const isQueried = td ? isTrackQueried(td, world.simTimeMs) : false;
-  const squawk = td?.squawk ?? ac.squawk;
-  const beaconCodeReadout = isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs);
-  const callsign = beaconCodeReadout && squawk ? squawk : ac.callsign;
-
   const handoff = handoffFor(world, ac.id);
-  let handoffSectorId: string | undefined;
-  if (handoff.kind === "inbound") {
-    handoffSectorId = handoff.fromSectorId;
-  } else if (handoff.kind === "departure") {
-    handoffSectorId = handoff.fromSectorId === "TWR" ? "T" : handoff.fromSectorId;
-  } else if (handoff.kind === "outbound") {
-    handoffSectorId = handoff.toSectorId;
-  } else if (handoff.kind === "pointout_inbound") {
-    handoffSectorId = handoff.fromSectorId;
-  } else if (handoff.kind === "pointout_outbound") {
-    handoffSectorId = handoff.toSectorId;
-  }
-
+  const field0Indicators =
+    mode === "limited" ? ldbField0Indicators(view, world, ac, td) : undefined;
+  const runtime = buildDatablockRuntimeState(world, ac, {
+    track: td,
+    mode,
+    modeCVisible: view.modeCVisible,
+    beaconatorActive: view.beaconatorActive,
+    localTcp: view.sectorId,
+    atpa: {
+      enabled: view.atpa.inTrailDistance,
+      trackEnabled: td?.atpaInTrailDistanceEnabled !== false,
+    },
+    fieldInputs: {
+      identIndicator:
+        mode === "partial" && td && isIdentFlashing(td, world.simTimeMs) ? "ID" : undefined,
+      field0Indicators,
+    },
+  });
+  const datablockSource = runtime.source;
   const atpaReadout =
     mode === "full"
       ? atpaInTrailDatablockReadout(world.alerts.atpa, ac.callsign, {
@@ -855,32 +972,9 @@ export function drawDatablock(
           trackEnabled: td?.atpaInTrailDistanceEnabled !== false,
         })
       : null;
-
-  const datablockSource = {
-    ...ac,
-    callsign,
-    squawk,
-    atpaDistance: atpaReadout?.text,
-  };
-  const base = linesForDatablock(datablockSource, mode, {
-    modeCVisible: view.modeCVisible,
-    scratchpad: derived.sp1,
-    sp1: derived.sp1,
-    sp2: derived.sp2,
-    handoffSectorId,
-    queried: isQueried,
-    beaconVisible: true,
-    simTimeMs: world.simTimeMs,
-  });
-  let line1WithoutAlert = base.line1;
-  if (visual.line1Tag) {
-    line1WithoutAlert = `${line1WithoutAlert} ${visual.line1Tag}`;
-  }
-  const lineH = datablockLineHeightPx(view.charSizes.dataBlocks);
-
+  const base = linesForDatablock(datablockSource, mode, runtime.options);
   const isCaInhibited = isCaInhibitedForTrack(ac, td, view);
   const isCaPairInhibited = isCaPairInhibitedForTrack(view, world, ac);
-  const caSeverity = !isCaInhibited ? caSeverityForVisibleTrack(view, world, ac.callsign) : null;
   const isMsawInhibited = Boolean(
     td?.msawInhibited ||
     td?.msawCurrentAlertInhibited ||
@@ -889,11 +983,7 @@ export function drawDatablock(
     (td as { inhibitMsaw?: boolean } | undefined)?.inhibitMsaw ||
     (ac as { msawInhibited?: boolean }).msawInhibited,
   );
-  const msawSeverity = !isMsawInhibited
-    ? msawSeverityForCallsign(world.alerts.msaw, ac.callsign)
-    : null;
-  const mciActive = hasMciAlertForTrack(world, ac);
-  const mciInhibited = mciActive && view.mciEnabled === false;
+  const mciInhibited = hasMciAlertForTrack(world, ac) && view.mciEnabled === false;
   const briteCh = mode === "limited" || mode === "partial" ? view.brite.ldb : view.brite.fdb;
   const alertGlyphs =
     mode === "full" || mode === "partial"
@@ -904,11 +994,70 @@ export function drawDatablock(
           normalColor: applyBrite(PALETTE.owned, briteCh),
         })
       : [];
+  const taggedLine = visual.line1Tag ? `${base.line1} ${visual.line1Tag}` : base.line1;
+  let line1WithoutAlert = taggedLine;
+  if (!visual.line1Tag && mode !== "limited" && mode !== "partial") {
+    line1WithoutAlert = withInboundHandoffCue(line1WithoutAlert, handoff);
+  }
+  const line1 = `${line1WithoutAlert.slice(0, datablockSource.callsign.length)}${alertGlyphs
+    .map((glyph) => glyph.text)
+    .join("")}${line1WithoutAlert.slice(datablockSource.callsign.length)}`;
+  const field0Alerts = field0AlertState(ac, td, view, world, mode);
+  return {
+    runtime,
+    visual,
+    mode,
+    handoff,
+    datablockSource,
+    atpaReadout,
+    base,
+    line1WithoutAlert,
+    alertGlyphs,
+    field0Alerts,
+    lines: {
+      ...base,
+      line1,
+      line0: field0WithAlerts(base.line0, field0Alerts.text),
+    },
+  };
+}
+
+export function drawDatablock(
+  ctx: CanvasRenderingContext2D,
+  ac: Aircraft,
+  targetX: number,
+  targetY: number,
+  view: ScopeView,
+  world: World,
+  resolved?: ResolvedDatablockLayout,
+  presentation?: ScopeDatablockPresentation,
+): void {
+  const td = view.tracks.get(ac.id);
+  if (!shouldPaintDatablock(view, world, ac, td)) {
+    return;
+  }
+  const visual = getDatablockVisualState(view, world, ac);
+  if (!visual.visible) {
+    return;
+  }
+  ctx.font = datablockFontCss(view.charSizes.dataBlocks);
+  const snapshot = presentation ?? buildScopeDatablockPresentation(view, world, ac, visual);
+  const {
+    runtime,
+    mode,
+    base,
+    lines,
+    line1WithoutAlert,
+    alertGlyphs,
+    field0Alerts,
+    datablockSource,
+    atpaReadout,
+  } = snapshot;
+  const callsign = runtime.source.callsign;
+  const lineH = datablockLineHeightPx(view.charSizes.dataBlocks);
+  const briteCh = mode === "limited" || mode === "partial" ? view.brite.ldb : view.brite.fdb;
   // Field 2 inhibit symbols occupy inline cells immediately after the ACID.
-  const inlineGlyphs = alertGlyphs.map((glyph) => glyph.text).join("");
   const line1Prefix = line1WithoutAlert.startsWith(callsign) ? callsign : line1WithoutAlert;
-  const line1 = `${line1Prefix}${inlineGlyphs}${line1WithoutAlert.slice(line1Prefix.length)}`;
-  const lines = { ...base, line1 };
   const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
   const origin = datablockTopLeft(
     trackLeaderDir(view, ac.id),
@@ -916,7 +1065,8 @@ export function drawDatablock(
     trackLeaderLength(view, ac.id),
   );
   const textX = resolved?.rect ? resolved.rect.x : targetX + origin.x;
-  const textY = resolved?.rect ? resolved.rect.y : targetY + origin.y;
+  const textY =
+    (resolved?.rect ? resolved.rect.y : targetY + origin.y) + (lines.line0 != null ? lineH : 0);
 
   ctx.fillStyle = applyBrite(visual.color, briteCh);
   let alertGlyphX: number;
@@ -936,25 +1086,31 @@ export function drawDatablock(
     }
     ctx.fillText(line1Suffix, alertGlyphX, textY);
   }
-  if (mode === "full" || mode === "partial") {
-    const caAcknowledged = isCaAlertAcknowledged(ac, td, view, world);
-    const msawAcknowledged = isMsawAlertAcknowledged(ac, td, view, world);
-    const blinkOn = isAlertBlinkOn(world.simTimeMs);
-    const hasLa = msawSeverity != null;
-    const hasCa = caSeverity != null || (mciActive && !mciInhibited);
-    const requiresBlink =
-      (hasLa && !msawAcknowledged) ||
-      (caSeverity != null && !caAcknowledged) ||
-      (mciActive && !mciInhibited);
-    const line0 = [hasLa ? "LA" : null, hasCa ? "CA" : null].filter(Boolean).join("/");
-    // LA/CA is one Field 0 indication. If either condition remains unacknowledged,
-    // blink the complete indication rather than alternating LA/CA and CA.
-    if (line0.length > 0 && (!requiresBlink || blinkOn)) {
-      ctx.fillStyle = applyBrite(PALETTE.alert, briteCh);
-      ctx.fillText(line0, textX, textY - lineH);
+  if (lines.line0 != null) {
+    const line0Y = textY - lineH;
+    const staticField0 = base.line0;
+    if (staticField0 != null) {
+      const primarySpc = getSpecialPurposeCode(datablockSource);
+      const field0Color =
+        mode === "limited" ||
+        primarySpc === "EM" ||
+        primarySpc === "RF" ||
+        primarySpc === "HJ" ||
+        primarySpc === "LL"
+          ? PALETTE.alert
+          : PALETTE.caution;
+      ctx.fillStyle = applyBrite(field0Color, briteCh);
+      ctx.fillText(staticField0, textX, line0Y);
     }
-    // Line 0 is the only red safety-alert field. Restore the normal datablock
-    // color before painting Lines 2–3 so canvas state cannot bleed downward.
+    const showAlerts =
+      field0Alerts.text.length > 0 &&
+      (!field0Alerts.requiresBlink || isAlertBlinkOn(world.simTimeMs));
+    if (showAlerts) {
+      ctx.fillStyle = applyBrite(PALETTE.alert, briteCh);
+      const separator = staticField0 == null ? "" : "/";
+      const alertX = textX + ctx.measureText(`${staticField0 ?? ""}${separator}`).width;
+      ctx.fillText(`${separator}${field0Alerts.text}`, alertX, line0Y);
+    }
     ctx.fillStyle = applyBrite(visual.color, briteCh);
   }
   if (lines.line2 != null) {
@@ -989,6 +1145,9 @@ export function drawTracks(
   view: ScopeView,
   size: ScopeViewSize,
 ): void {
+  // A render owns the only valid presentation/layout snapshot. Pickers must
+  // never retain results across a world/view render boundary.
+  view.datablockRenderSnapshot = undefined;
   const historyCount = view.historyEnabled ? view.historyDotCount : 0;
   if (historyCount > 0) {
     for (const ac of world.aircraft) {
@@ -1036,10 +1195,12 @@ export function drawTracks(
     let sectorId = td?.sectorId;
     if (!sectorId) {
       if (ho.kind === "inbound") {
-        sectorId = ho.fromSectorId;
+        // Pending inbound target keeps transferring owner symbol; Field 4
+        // separately shows local receiving TCP.
+        sectorId = ho.fromSectorId === DEFAULT_TOWER_SECTOR_ID ? "T" : ho.fromSectorId;
       } else if (ho.kind === "departure") {
         sectorId = ho.fromSectorId === "TWR" ? "T" : ho.fromSectorId;
-      } else if (ho.kind === "outbound" && ho.status === "accepted") {
+      } else if (ho.kind === "outbound" && ho.status === "accepted" && ownership !== "unowned") {
         sectorId = ho.toSectorId;
       } else if (ownership === "tower") {
         sectorId = "T";
@@ -1084,83 +1245,18 @@ export function drawTracks(
   ctx.textBaseline = "top";
   view.datablockCellWidthPx = measureDatablockCellWidth(ctx);
 
+  const presentationById = new Map<string, ScopeDatablockPresentation>();
   const layoutItems: DatablockLayoutInput[] = world.aircraft.flatMap((ac) => {
     const td = view.tracks.get(ac.id);
     const shown = displayAircraft(ac, td);
-    if (
-      !shown ||
-      isPrimaryTarget(ac, td) ||
-      !inAltitudeFilter(shown.altitudeFt, view.altitudeFilter)
-    ) {
+    if (!shown || isPrimaryTarget(ac, td) || !shouldPaintDatablock(view, world, ac, td)) {
       return [];
     }
     const visual = getDatablockVisualState(view, world, ac);
     if (!visual.visible) return [];
-    const mode = visual.mode;
-    const derived = deriveScratchpads(ac, td);
-    const handoff = handoffFor(world, ac.id);
-    const handoffSectorId =
-      handoff.kind === "inbound" || handoff.kind === "departure"
-        ? handoff.kind === "departure" && handoff.fromSectorId === "TWR"
-          ? "T"
-          : handoff.fromSectorId
-        : handoff.kind === "outbound" || handoff.kind === "pointout_outbound"
-          ? handoff.toSectorId
-          : handoff.kind === "pointout_inbound"
-            ? handoff.fromSectorId
-            : undefined;
-    const squawk = td?.squawk ?? ac.squawk;
-    const beaconCodeReadout = isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs);
-    const callsign = beaconCodeReadout && squawk ? squawk : ac.callsign;
-    const atpaReadout =
-      mode === "full"
-        ? atpaInTrailDatablockReadout(world.alerts.atpa, ac.callsign, {
-            globalEnabled: view.atpa.inTrailDistance,
-            trackEnabled: td?.atpaInTrailDistanceEnabled !== false,
-          })
-        : null;
-    const base = linesForDatablock(
-      { ...shown, callsign, squawk, atpaDistance: atpaReadout?.text },
-      mode,
-      {
-        modeCVisible: view.modeCVisible,
-        scratchpad: derived.sp1,
-        sp1: derived.sp1,
-        sp2: derived.sp2,
-        handoffSectorId,
-        queried: td ? isTrackQueried(td, world.simTimeMs) : false,
-        simTimeMs: world.simTimeMs,
-        beaconVisible: true,
-      },
-    );
-    const isCaInhibited = isCaInhibitedForTrack(ac, td, view);
-    const isCaPairInhibited = isCaPairInhibitedForTrack(view, world, ac);
-    const isMsawInhibited = Boolean(
-      td?.msawInhibited ||
-      td?.msawCurrentAlertInhibited ||
-      td?.msawProcessingInhibited ||
-      (td as { inhibitMSAW?: boolean } | undefined)?.inhibitMSAW ||
-      (td as { inhibitMsaw?: boolean } | undefined)?.inhibitMsaw ||
-      (ac as { msawInhibited?: boolean }).msawInhibited,
-    );
-    const mciInhibited = hasMciAlertForTrack(world, ac) && view.mciEnabled === false;
-    const inhibitGlyph =
-      mode === "full" || mode === "partial"
-        ? isMsawInhibited && (isCaInhibited || isCaPairInhibited || mciInhibited)
-          ? "+"
-          : isCaInhibited || isCaPairInhibited || mciInhibited
-            ? "Δ"
-            : isMsawInhibited
-              ? "*"
-              : ""
-        : "";
-    const line1Base = visual.line1Tag ? `${base.line1} ${visual.line1Tag}` : base.line1;
-    const line1Prefix = line1Base.startsWith(callsign) ? callsign : line1Base;
-    let line1 = `${line1Prefix}${inhibitGlyph}${line1Base.slice(line1Prefix.length)}`;
-    if (!visual.line1Tag && mode !== "limited" && mode !== "partial") {
-      line1 = withInboundHandoffCue(line1, handoff);
-    }
-    const lines = { ...base, line1 };
+    const presentation = buildScopeDatablockPresentation(view, world, ac, visual);
+    presentationById.set(ac.id, presentation);
+    const { mode, lines } = presentation;
     const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
     if (!pointInLayoutBounds(p, { x: 0, y: 0, width: size.widthPx, height: size.heightPx })) {
       return [];
@@ -1196,6 +1292,34 @@ export function drawTracks(
     protectedGeometry: collectDatablockProtectedGeometry(world, view, size),
   });
   const layoutById = new Map(layouts.map((layout) => [layout.aircraftId, layout]));
+  view.datablockRenderSnapshot = {
+    world,
+    simTimeMs: world.simTimeMs,
+    viewKey: datablockRenderSnapshotKey(view, world),
+    widthPx: size.widthPx,
+    heightPx: size.heightPx,
+    camera: { ...view.camera },
+    presentations: new Map(
+      layoutItems.map((item) => {
+        const presentation = presentationById.get(item.aircraftId)!;
+        const rect = item.preferredRect;
+        return [
+          item.aircraftId,
+          {
+            mode: presentation.mode,
+            lines: presentation.lines,
+            preferredRect: {
+              x: rect.x,
+              y: rect.y,
+              width: "width" in rect ? rect.width : rect.w,
+              height: "height" in rect ? rect.height : rect.h,
+            },
+          },
+        ];
+      }),
+    ),
+    layouts: layoutById,
+  };
   const preferredById = new Map(layoutItems.map((item) => [item.aircraftId, item.preferredRect]));
   const hasDensity = layouts.some((layout) => layout.unplaced);
   if (hasDensity) {
@@ -1214,7 +1338,7 @@ export function drawTracks(
     }
     // Outside the altitude filter: keep the target (and history above);
     // suppress datablock and leader. T02-05 draws the leader behind this same gate.
-    if (!inAltitudeFilter(shown.altitudeFt, view.altitudeFilter)) {
+    if (!shouldPaintDatablock(view, world, ac, td)) {
       continue;
     }
     const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
@@ -1260,13 +1384,13 @@ export function drawTracks(
     if (!shown || isPrimaryTarget(ac, td)) {
       continue;
     }
-    if (!inAltitudeFilter(shown.altitudeFt, view.altitudeFilter)) {
+    if (!shouldPaintDatablock(view, world, ac, td)) {
       continue;
     }
     const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
     const layout = layoutById.get(ac.id);
     if (!layout || layout.unplaced) continue;
-    drawDatablock(ctx, shown, p.x, p.y, view, world, layout);
+    drawDatablock(ctx, shown, p.x, p.y, view, world, layout, presentationById.get(ac.id));
   }
 
   drawAtpaConeMileage(ctx, world, view, size);
@@ -1343,11 +1467,15 @@ export function drawPredictedTrackLines(
   size: ScopeViewSize,
 ): void {
   for (const ac of world.aircraft) {
-    const shown = displayAircraft(ac, view.tracks.get(ac.id));
+    const td = view.tracks.get(ac.id);
+    const shown = displayAircraft(ac, td);
     if (!shown) {
       continue;
     }
-    const altitudeFiltered = !inAltitudeFilter(shown.altitudeFt, view.altitudeFilter);
+    const altitudeFiltered = !inAltitudeFilter(
+      shown.altitudeFt,
+      td?.unassociated ? view.altitudeFilter : view.associatedAltitudeFilter,
+    );
     const owned = (view.tracks.get(ac.id)?.ownership ?? "unowned") === "owned";
     if (
       !shouldDrawPtlForTrack(
@@ -1371,7 +1499,6 @@ export function drawPredictedTrackLines(
     );
     const from = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
     const to = nmToScreen(end.eastNm, end.northNm, view.camera, size);
-    const td = view.tracks.get(ac.id);
     const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
     const capTickPx = Math.max(2, view.charSizes.tools - 8);
     drawPredictedTrackLine(
@@ -1389,7 +1516,7 @@ export function drawPredictedTrackLines(
 /**
  * CRC TPA J-rings: world-NM mileage circles about selected (or owned) tracks
  * plus per-track `*J` rings. Stroke is TLS/tools (`TPA_STROKE_COLOR`), not CA
- * red. Radius digits sit inside the ring at lower-left unless inhibited.
+ * red. Radius digits sit inside the ring across both axes from the datablock unless inhibited.
  * Canvas bounds clip like range rings (no extra clip call). Manual `*P` cones
  * are `drawManualTpaCones`; ATPA cones are `drawAtpaCones`. CA remains
  * datablock text — not a 3 NM halo. Display only — never a Command.
@@ -1426,7 +1553,35 @@ export function drawTpaRings(
     tracePolyline(ctx, pts, false);
     ctx.stroke();
     if (tpaSizeReadoutEnabled(view.tracks.get(ac.id))) {
-      const digit = tpaRingDigitPlacement(shown.xNm, shown.yNm, radiusNm);
+      const datablockDir = trackLeaderDir(view, ac.id);
+      const initialDigit = tpaRingDigitPlacement(shown.xNm, shown.yNm, radiusNm, datablockDir);
+      const ringRadiusPx = tpaScreenRadiusPx(radiusNm, view.camera, size);
+      const halfTextWidthPx = ctx.measureText(initialDigit.text).width / 2;
+      const halfTextHeightPx = view.charSizes.tools / 2;
+      const radialEastPx = initialDigit.eastNm - shown.xNm;
+      const radialNorthPx = initialDigit.northNm - shown.yNm;
+      const radialLengthNm = Math.hypot(radialEastPx, radialNorthPx) || 1;
+      const radialEastUnit = radialEastPx / radialLengthNm;
+      const radialNorthUnit = radialNorthPx / radialLengthNm;
+      const halfTextRadialExtentPx =
+        Math.abs(radialEastUnit) * halfTextWidthPx + Math.abs(radialNorthUnit) * halfTextHeightPx;
+      if (ringRadiusPx <= halfTextRadialExtentPx + 1) {
+        continue;
+      }
+      const safeRadiusFrac =
+        ringRadiusPx > 0
+          ? Math.min(
+              TPA_RING_DIGIT_RADIUS_FRAC,
+              Math.max(0, (ringRadiusPx - halfTextRadialExtentPx - 1) / ringRadiusPx),
+            )
+          : 0;
+      const digit = tpaRingDigitPlacement(
+        shown.xNm,
+        shown.yNm,
+        radiusNm,
+        datablockDir,
+        safeRadiusFrac,
+      );
       const p = nmToScreen(digit.eastNm, digit.northNm, view.camera, size);
       ctx.fillText(digit.text, p.x, p.y);
     }
@@ -1521,9 +1676,9 @@ function coneDigitGapBox(
 }
 
 /**
- * Stroke a cone so its lines stop at the mileage digits and pick up again on
- * the far side (Fig 38/39), instead of running through the numerals. The gap
- * is an even-odd clip hole, so the wedge stays one path and one stroke.
+ * Stroke either cone type so its lines stop at the mileage digits and pick up
+ * again on the far side (Fig 38/39), instead of running through the numerals.
+ * Both manual TPA and ATPA use this one path/stroke implementation.
  */
 function strokeConeAroundDigits(
   ctx: CanvasRenderingContext2D,
@@ -1539,8 +1694,12 @@ function strokeConeAroundDigits(
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, 0, size.widthPx, size.heightPx);
-  ctx.rect(gap.x, gap.y, gap.width, gap.height);
-  ctx.clip("evenodd");
+  ctx.moveTo(gap.x, gap.y);
+  ctx.lineTo(gap.x, gap.y + gap.height);
+  ctx.lineTo(gap.x + gap.width, gap.y + gap.height);
+  ctx.lineTo(gap.x + gap.width, gap.y);
+  ctx.closePath();
+  ctx.clip();
   tracePolyline(ctx, pts, false);
   ctx.stroke();
   ctx.restore();
@@ -1672,6 +1831,8 @@ export function drawSsa(
     offCenter: isViewOffAirport(view),
     filter: view.altitudeFilter,
     filterEntry: view.filterEntry,
+    unassociatedFilter: view.altitudeFilter,
+    associatedFilter: view.associatedAltitudeFilter,
     visibility: view.ssaFilter,
     ptlMinutes: view.ptlMinutes,
     hasAlert: Boolean(hasAlert),

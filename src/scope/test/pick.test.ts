@@ -1,8 +1,18 @@
 import { expect, test } from "vitest";
-import { createAircraft, createWorld, handoffFor, setSelectedAircraft, type Intent } from "@core";
+import {
+  acceptOutboundHandoff,
+  createAircraft,
+  createWorld,
+  handoffFor,
+  initiateOutboundHandoff,
+  initiateCenterHandoff,
+  setSelectedAircraft,
+  type Intent,
+} from "@core";
 import { createWorldFromScenario, loadKdem, loadKdemIls27 } from "@scenario";
 import { DEFAULT_SCOPE_CAMERA, nmToScreen, type ScopeCamera } from "../camera";
-import { datablockRect, linesForDatablock } from "../datablock";
+import { datablockRect, formatTcp, linesForDatablock, pointInDatablock } from "../datablock";
+import { datablockLineHeightPx } from "../fonts";
 import { PALETTE } from "../palette";
 import {
   HIT_RADIUS_CSS_PX,
@@ -14,6 +24,8 @@ import { handlePpiLeftClick } from "../ppi";
 import { trackPaintColor } from "../ownership";
 import { createScopeView } from "../scopeView";
 import { syncTrackDisplays } from "../trackDisplay";
+import { createMockCtx } from "./mockCanvas";
+import { drawDatablock, drawTracks } from "../render/renderScopePaint";
 
 const CAM: ScopeCamera = DEFAULT_SCOPE_CAMERA;
 const CSS_W = 800;
@@ -34,6 +46,29 @@ function sample(callsign: string, id: string, xNm: number, yNm: number, headingD
     altitudeFt: 8000,
     speedKt: 220,
   });
+}
+
+function primeDatablockSnapshot(
+  world: ReturnType<typeof createWorld>,
+  view: ReturnType<typeof createScopeView>,
+) {
+  for (const ac of world.aircraft) {
+    const td = view.tracks.get(ac.id);
+    if (td && !td.lastReport) {
+      td.lastReport = {
+        aircraftId: ac.id,
+        xNm: ac.xNm,
+        yNm: ac.yNm,
+        headingDeg: ac.headingDeg,
+        speedKt: ac.speedKt,
+        altitudeFt: ac.altitudeFt,
+        reportedAtSimMs: world.simTimeMs,
+        sourceSiteId: null,
+        paint: "fused-puck",
+      };
+    }
+  }
+  drawTracks(createMockCtx().ctx, world, view, { widthPx: CSS_W, heightPx: CSS_H });
 }
 
 test("HIT_RADIUS_CSS_PX is the frozen 12 CSS pixel radius", () => {
@@ -118,6 +153,7 @@ test("AC6 — clicking the datablock rectangle selects that track, not a nearby 
   const world = createWorld({ aircraft: [dal] });
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
+  primeDatablockSnapshot(world, view);
   const tick = nmToScreen(dal.xNm, dal.yNm, CAM, VIEW);
   const lines = linesForDatablock(dal, "full", true);
   const rect = datablockRect(tick.x, tick.y, lines, view.datablockCellWidthPx);
@@ -162,6 +198,115 @@ test("AC6 — clicking the datablock rectangle selects that track, not a nearby 
   expect(dal.intent.assignedHeadingDeg).toBe(100);
 });
 
+test("pending outbound handoff hit-tests the renderer's full datablock geometry", () => {
+  const ac = sample("DAL456", "ac-pending-outbound", 0, 0);
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  const td = view.tracks.get(ac.id)!;
+  td.ownership = "center";
+  initiateCenterHandoff(ac, { world, simTimeMs: world.simTimeMs }, "C");
+  primeDatablockSnapshot(world, view);
+
+  const tick = nmToScreen(ac.xNm, ac.yNm, CAM, VIEW);
+  const lineHeight = datablockLineHeightPx(view.charSizePx);
+  const fullLines = linesForDatablock(ac, "full", {
+    modeCVisible: view.modeCVisible,
+    handoffSectorId: "C",
+    simTimeMs: world.simTimeMs,
+  });
+  const partialLines = linesForDatablock(ac, "partial", {
+    modeCVisible: view.modeCVisible,
+    handoffSectorId: "C",
+    simTimeMs: world.simTimeMs,
+  });
+  const fullRect = datablockRect(
+    tick.x,
+    tick.y,
+    fullLines,
+    view.datablockCellWidthPx,
+    lineHeight,
+    td.leaderDir,
+    td.leaderLengthPx ?? view.leaderLengthPx,
+  );
+  const partialRect = datablockRect(
+    tick.x,
+    tick.y,
+    partialLines,
+    view.datablockCellWidthPx,
+    lineHeight,
+    td.leaderDir,
+    td.leaderLengthPx ?? view.leaderLengthPx,
+  );
+  const fullOnlyPoint = { x: fullRect.x + 1, y: fullRect.y + lineHeight / 2 };
+
+  expect(pointInDatablock(fullOnlyPoint.x, fullOnlyPoint.y, fullRect)).toBe(true);
+  expect(pointInDatablock(fullOnlyPoint.x, fullOnlyPoint.y, partialRect)).toBe(false);
+  expect(
+    pickAircraftAt(
+      world,
+      fullOnlyPoint.x,
+      fullOnlyPoint.y,
+      CAM,
+      CSS_W,
+      CSS_H,
+      HIT_RADIUS_CSS_PX,
+      view,
+    ),
+  ).toBe(ac);
+});
+
+test.each(["C", "TWR"] as const)(
+  "outbound %s handoff shares Field 4 rendering and hit-test geometry",
+  (destination) => {
+    const displayedDestination = formatTcp(destination)!;
+    const ac = sample("DAL139", `ac-${destination}`, 0, 0);
+    const world = createWorld({ aircraft: [ac] });
+    const view = createScopeView();
+    syncTrackDisplays(view.tracks, world);
+    const td = view.tracks.get(ac.id)!;
+    td.ownership = destination === "TWR" ? "tower" : "center";
+    expect(initiateOutboundHandoff(ac, { world, simTimeMs: world.simTimeMs }, destination)).toBe(
+      true,
+    );
+    primeDatablockSnapshot(world, view);
+
+    const rendered = createMockCtx();
+    drawDatablock(rendered.ctx, ac, 400, 400, view, world);
+    expect(rendered.fillTexts.some((fill) => fill.text.includes(displayedDestination))).toBe(true);
+
+    const tick = nmToScreen(ac.xNm, ac.yNm, CAM, VIEW);
+    const lines = linesForDatablock(ac, "full", {
+      modeCVisible: view.modeCVisible,
+      handoffSectorId: displayedDestination,
+      simTimeMs: world.simTimeMs,
+    });
+    const rect = datablockRect(
+      tick.x,
+      tick.y,
+      lines,
+      view.datablockCellWidthPx,
+      datablockLineHeightPx(view.charSizePx),
+      td.leaderDir,
+      td.leaderLengthPx ?? view.leaderLengthPx,
+    );
+    const point = { x: rect.x + 1, y: rect.y + datablockLineHeightPx(view.charSizePx) / 2 };
+    expect(
+      pickAircraftAt(world, point.x, point.y, CAM, CSS_W, CSS_H, HIT_RADIUS_CSS_PX, view),
+    ).toBe(ac);
+
+    expect(acceptOutboundHandoff(world, ac.id)).toBe(true);
+    const accepted = createMockCtx();
+    drawDatablock(accepted.ctx, ac, 400, 400, view, world);
+    expect(accepted.fillTexts.some((fill) => fill.text.includes(displayedDestination))).toBe(true);
+
+    world.simTimeMs += 5000;
+    const settled = createMockCtx();
+    drawDatablock(settled.ctx, ac, 400, 400, view, world);
+    expect(settled.fillTexts.some((fill) => fill.text.includes(displayedDestination))).toBe(false);
+  },
+);
+
 test("filtered track: datablock rectangle is not pickable; the target still selects", () => {
   const dal = sample("DAL123", "ac-dal", 0, 0);
   dal.altitudeFt = 6000;
@@ -169,6 +314,7 @@ test("filtered track: datablock rectangle is not pickable; the target still sele
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
   view.altitudeFilter = { minHundreds: 70, maxHundreds: 90 };
+  view.associatedAltitudeFilter = { minHundreds: 70, maxHundreds: 90 };
   const tick = nmToScreen(dal.xNm, dal.yNm, CAM, VIEW);
   const onBlock = { x: tick.x + 16, y: tick.y - 18 };
   expect(Math.hypot(onBlock.x - tick.x, onBlock.y - tick.y)).toBeGreaterThan(HIT_RADIUS_CSS_PX);
@@ -200,6 +346,47 @@ test("filtered track: datablock rectangle is not pickable; the target still sele
   );
   expect(selected).toBe(dal);
   expect(world.selectedAircraftId).toBe("ac-dal");
+});
+
+test("owned and retained out-of-filter datablocks are pickable; ordinary selection is not", () => {
+  const ac = sample("DAL123", "ac-dal", 0, 0);
+  ac.altitudeFt = 6000;
+  const world = createWorld({ aircraft: [ac] });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  view.altitudeFilter = { minHundreds: 70, maxHundreds: 90 };
+  view.associatedAltitudeFilter = { minHundreds: 70, maxHundreds: 90 };
+  const td = view.tracks.get(ac.id)!;
+  const tick = nmToScreen(ac.xNm, ac.yNm, CAM, VIEW);
+  const block = datablockRect(
+    tick.x,
+    tick.y,
+    linesForDatablock(ac, "full", true),
+    view.datablockCellWidthPx,
+  );
+  const point = { x: block.x + block.w / 2, y: block.y + block.h / 2 };
+
+  expect(
+    pickAircraftAt(world, point.x, point.y, CAM, CSS_W, CSS_H, HIT_RADIUS_CSS_PX, view),
+  ).toBeNull();
+  td.ownership = "owned";
+  td.datablockMode = "full";
+  primeDatablockSnapshot(world, view);
+  expect(pickAircraftAt(world, point.x, point.y, CAM, CSS_W, CSS_H, HIT_RADIUS_CSS_PX, view)).toBe(
+    ac,
+  );
+  td.ownership = "unowned";
+  td.datablockMode = "full";
+  td.retainedFdbOutsideAltitudeFilter = true;
+  primeDatablockSnapshot(world, view);
+  expect(pickAircraftAt(world, point.x, point.y, CAM, CSS_W, CSS_H, HIT_RADIUS_CSS_PX, view)).toBe(
+    ac,
+  );
+  td.datablockMode = "partial";
+  td.retainedFdbOutsideAltitudeFilter = false;
+  expect(
+    pickAircraftAt(world, point.x, point.y, CAM, CSS_W, CSS_H, HIT_RADIUS_CSS_PX, view),
+  ).toBeNull();
 });
 
 test("AC5 — selectAircraftAt does not import the radio pipeline or write intent", () => {

@@ -174,6 +174,8 @@ export function spawnDueDepartures(world: World): Aircraft[] {
         transitionId: dep.transitionId || undefined,
         assignedAltitudeFt: dep.assignedAltitudeFt,
         aircraftType: dep.aircraftType,
+        assignedSquawk: dep.assignedSquawk,
+        squawk: dep.squawk,
       });
       world.sessionLog?.append({
         type: "departure.spawned",

@@ -12,7 +12,8 @@
  * paint; BKC is a stored no-op. History records on each surveillance report, cap 5 dots, no
  * phosphor; AUX HISTORY spinner shows 0–5 of those dots (F8 / H
  * toggles 0 ↔ last non-zero). Default SITE mode is FUSED. PTL is a straight predicted track line (default
- * 1.0 min; AUX spinner 0.5/1/2/4). F7 toggles PTL ALL. PTL OWN is F3-owned
+ * 1.0 min; AUX spinner 0.5/1/2/4). F10 toggles PTL ALL. F7 is MULTI FUNC and
+ * inserts `*` into Preview. PTL OWN is F3-owned
  * tracks; ALL wins if both are on. Per-track PTL is `*R` plus click
  * (`ptlByAircraftId`, session, not PREF). TPA J-rings: DCB 2/3/5/10 NM about the
  * selected track (or owned tracks if none selected), plus per-track `*J` /
@@ -93,6 +94,7 @@ import {
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
 import { cloneBrite, type BriteState } from "./palette";
 import type { TrackDisplay } from "./trackDisplay";
+import type { DatablockRenderSnapshot } from "./datablock";
 import type { RadarSite } from "@scenario";
 import {
   defaultSurveillanceMode,
@@ -190,6 +192,8 @@ export interface ScopeView {
   modeCVisible: boolean;
   /** Last measured `0` cell width for datablock hit-tests. */
   datablockCellWidthPx: number;
+  /** Last rendered datablock presentation/layout; invalidated on each render. */
+  datablockRenderSnapshot?: DatablockRenderSnapshot;
   /**
    * PTL ALL (global). CRC analog; default off. F7 always-on toggles this.
    * Display only — never a Command, readback, or intent.
@@ -216,6 +220,8 @@ export interface ScopeView {
    * Scope command only — never a Command, readback, or intent.
    */
   altitudeFilter: AltitudeFilter;
+  /** Associated-track altitude filter; altitudeFilter is unassociated. */
+  associatedAltitudeFilter: AltitudeFilter;
   /** Scope-focus `F` chord. Idle when not entering hundreds. */
   filterEntry: FilterEntry;
   /** Scope-focus `*` TPA/ATPA chord. Idle when not entering. Display only. */
@@ -454,6 +460,7 @@ export function createScopeView(
     historyEnabled: true,
     modeCVisible: true,
     datablockCellWidthPx: DEFAULT_DATABLOCK_CELL_PX,
+    datablockRenderSnapshot: undefined,
     ptlOn: false,
     ptlOwn: false,
     ptlMinutes: PTL_MINUTES,
@@ -461,6 +468,7 @@ export function createScopeView(
     tpa: { ...DEFAULT_TPA_STATE },
     atpa: { ...DEFAULT_ATPA_STATE },
     altitudeFilter: { ...DEFAULT_ALTITUDE_FILTER },
+    associatedAltitudeFilter: { ...DEFAULT_ALTITUDE_FILTER },
     filterEntry: idleFilterEntry(DEFAULT_ALTITUDE_FILTER),
     starsChordEntry: idleStarsChordEntry(),
     starsChordArmed: null,
@@ -601,7 +609,7 @@ export function toggleModeCVisible(view: ScopeView): void {
   view.modeCVisible = !view.modeCVisible;
 }
 
-/** F7 always-on: toggle PTL ALL. If OWN and ALL were off, this turns ALL on. Never a Command. */
+/** F10 always-on: toggle PTL ALL. If OWN and ALL were off, this turns ALL on. Never a Command. */
 export function togglePtlOn(view: ScopeView): void {
   view.ptlOn = !view.ptlOn;
 }

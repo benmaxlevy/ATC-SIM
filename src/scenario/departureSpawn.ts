@@ -4,7 +4,6 @@
  */
 
 import {
-  createAircraft,
   normalizeHeadingDeg,
   offerDepartureHandoff,
   type Aircraft,
@@ -13,6 +12,7 @@ import {
 } from "@core";
 import type { ProcedureCatalog } from "./procedures/types";
 import { findSidProcedure, sidRouteFixIds } from "./procedures/sidHelpers";
+import { spawnScenarioIfrAircraft } from "./ifrFlightPlan";
 
 /** Distance past the threshold along runway centerline for rolling departure spawn. */
 export const DEPARTURE_SPAWN_ROLL_OFFSET_NM = 0.8;
@@ -45,6 +45,12 @@ export interface DepartureSpawnConfig {
   transitionId?: string;
   assignedAltitudeFt?: number;
   aircraftType?: string;
+  /** Assigned beacon from the scheduled departure record, if present. */
+  assignedSquawk?: string;
+  /** Reported beacon observed by the spawned aircraft. */
+  squawk?: string;
+  /** Optional seeded source for generated beacon allocation. */
+  rng?: () => number;
 }
 
 export function resolveRunwayThreshold(
@@ -186,17 +192,32 @@ export function spawnDeparture(
     config.transitionId,
     config.assignedAltitudeFt,
   );
-  const ac = createAircraft({
-    callsign: config.callsign,
-    xNm: pose.xNm,
-    yNm: pose.yNm,
-    headingDeg: pose.headingDeg,
-    altitudeFt: pose.altitudeFt,
-    speedKt: pose.speedKt,
-    aircraftType: config.aircraftType ?? "B738",
-  });
+  const { aircraft: ac } = spawnScenarioIfrAircraft(
+    world,
+    {
+      callsign: config.callsign,
+      xNm: pose.xNm,
+      yNm: pose.yNm,
+      headingDeg: pose.headingDeg,
+      altitudeFt: pose.altitudeFt,
+      speedKt: pose.speedKt,
+      aircraftType: config.aircraftType ?? "B738",
+    },
+    {
+      scenario: { icao: cat.airportId },
+      route: {
+        kind: "departure",
+        sidId: config.sidId,
+        transitionId: config.transitionId,
+      },
+      requestedAltitudeFt: pose.assignedAltitudeFt,
+      assignedBeacon: config.assignedSquawk ?? config.squawk,
+      rng: config.rng,
+      departure: true,
+      catalog: cat,
+    },
+  );
   ac.intent = pose.intent;
-  world.aircraft.push(ac);
   offerDepartureHandoff(world, ac, "TWR", {
     runwayId: config.runwayId,
     sidId: config.sidId,

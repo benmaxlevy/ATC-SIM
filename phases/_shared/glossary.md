@@ -7,9 +7,14 @@ Use these terms in tickets, UI, and code. Do not invent synonyms. Definitions fo
 | **STARS-like** | Visual/UX analog of an FAA terminal radar workstation. Not the Raytheon STARS product. | R04, T00-01 |
 | **Scope** | The plan-view PPI plus datablocks, maps, and command line. | R07 (CRC “STARS display”) |
 | **PPI** | North-up (unless noted) 2D radar picture. Distances in nautical miles. | Radar convention; R07 |
-| **Datablock** | Full or limited data block: callsign / altitude / speed attached to a **track** by a **leader**. Never “label.” | R02 PCG; R07 FDB/LDB |
-| **Full datablock (FDB)** | Two-line block (v1: callsign + Mode C / assigned / GS). | R07 |
-| **Limited datablock (LDB)** | Mode C hundreds only. | R07 |
+| **Datablock** | STARS Fields 0–8 displayed beside a **track** by a **leader**. | STARS FDB/LDB |
+| **Full datablock (FDB)** | Three-line STARS presentation of Fields 0–8, with values time-sharing within each field. | STARS |
+| **Limited datablock (LDB)** | Mode C hundreds only. | STARS |
+| **Partial datablock (PDB)** | Reduced STARS datablock presentation for a tracked target. | STARS |
+| **Field** | One logical STARS datablock position. A field may appear on different physical lines as values time-share. | STARS |
+| **TSAS** | Terminal sequencing and spacing data shown in Fields 0, 6, and 7 when supplied. | STARS |
+| **TCP** | One- or two-character owning or receiving position identifier in Field 4. | STARS |
+| **DB** | Duplicate beacon-code condition shown in the datablock. | STARS |
 | **Leader** | Line from target symbol to datablock. Directions L1–L9 analog. | R07 |
 | **Track** | Displayed target from simulated position. v1: 1:1 with aircraft, no sensor error. | R05 / R07 |
 | **Mode C** | Reported pressure altitude (here: kinematics altitude) shown in **hundreds of feet**. | R02; R01 beacon/Mode C |
