@@ -186,11 +186,13 @@ export function ScopeHelpOverlay({ open }: ScopeHelpOverlayProps) {
         <p className="scope-help-glossary">{HELP_GLOSSARY_NOTE}</p>
         <p className="scope-help-radio">{RADIO_CONFLICT_WARNING}</p>
         <p className="scope-help-radio">
-          <code>*FP &lt;ACID&gt; Enter</code> opens one local flight-plan dialog. A two-digit
-          visible TAB index is also accepted as <code>*FP &lt;TAB-index&gt; Enter</code>. Bare{" "}
-          <code>*FP Enter</code>
-          then click opens the associated target&apos;s plan. Save changes filed metadata only;
-          Cancel/Escape is a no-op. Filed route text is catalog-resolved with the compact grammar
+          <strong>ATC-SIM trainer extension (not a supplied STARS-manual function):</strong>{" "}
+          <code>*FP &lt;ACID&gt; Enter</code> opens a local flight-plan dialog. A two-digit index on
+          the current visible TAB page is also accepted as <code>*FP &lt;TAB-index&gt; Enter</code>.
+          Bare <code>*FP Enter</code> then click opens an existing plan or creates a draft by the
+          target&apos;s usable ACID; a stale/off-page TAB index or target with a blank ACID returns{" "}
+          <code>NO FLIGHT</code>. Save changes filed metadata only; Cancel/Escape closes the dialog
+          and restores opener focus. Filed route text is catalog-resolved with the compact grammar
           <code>SID:id[/transition] STAR:id[/transition] DCT fix</code>; <code>DCT</code> must be
           followed by one fix or navaid.
         </p>

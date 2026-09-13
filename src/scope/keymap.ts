@@ -209,7 +209,7 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         example: "*FP AAL123 Enter or *FP Enter, then click",
         input: "Any focus → Preview Area",
         result:
-          "Open the local filed flight-plan dialog to create/amend metadata; an absent or stale TAB index and an unassociated target return NO FLIGHT.",
+          "ATC-SIM trainer extension (not a supplied STARS-manual function): open a local filed flight-plan dialog by ACID, current visible TAB index, or bare *FP target slew; target slew opens an existing plan or creates a draft by usable ACID, while stale/off-page TAB or blank-ACID targets return NO FLIGHT.",
       },
     ],
   },
