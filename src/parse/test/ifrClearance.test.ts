@@ -79,7 +79,7 @@ test("airport ICAO and listed spoken alias ground only the IFR clearance limit",
     airports,
     pathC: false,
   });
-  expect(direct).toMatchObject({ ok: true, instructions: [{ type: "DIRECT", fixId: "KATL" }] });
+  expect(direct.ok).toBe(false);
 });
 
 test("unknown and ambiguous airport names miss without producing a clearance", async () => {

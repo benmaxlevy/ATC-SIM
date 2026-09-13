@@ -270,6 +270,8 @@ export function groundInstructionFixes(
   opts?: {
     preferIds?: ReadonlySet<string>;
     rankedFor?: (token: string) => readonly RankedCatalogHit[];
+    /** Airport ids exempt only when used as an IFR clearance limit. */
+    clearanceLimitIds?: ReadonlySet<string>;
   },
 ): GroundedFixInstructions {
   if (catalog.length === 0) {
@@ -279,7 +281,9 @@ export function groundInstructionFixes(
   const next = instructions.map((inst) => {
     if (inst.type === "IFR_CLEARANCE") {
       const limit = groundDirectOrCrossFix(inst.limitId, catalog, opts);
-      if (limit.ungrounded) ungroundedFixes.push(inst.limitId);
+      if (limit.ungrounded && !opts?.clearanceLimitIds?.has(inst.limitId)) {
+        ungroundedFixes.push(inst.limitId);
+      }
       let access = inst.access;
       if (access.type === "FIX_THEN_DIRECT") {
         const fix = groundDirectOrCrossFix(access.fixId, catalog, opts);

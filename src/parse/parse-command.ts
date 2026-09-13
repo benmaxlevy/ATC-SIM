@@ -659,6 +659,26 @@ function attachCallsign(parsed: ParseResult, selected: string | null): ParseResu
   };
 }
 
+function airportFixSlotTokens(
+  instructions: readonly Instruction[],
+  airports: readonly CatalogAirport[],
+): string[] {
+  const ids = new Set(airports.map((airport) => airport.icao));
+  const tokens: string[] = [];
+  for (const instruction of instructions) {
+    if (
+      (instruction.type === "DIRECT" || instruction.type === "CROSS") &&
+      ids.has(instruction.fixId)
+    ) {
+      tokens.push(instruction.fixId);
+    }
+    if (instruction.type === "IFR_CLEARANCE" && instruction.access.type === "FIX_THEN_DIRECT") {
+      if (ids.has(instruction.access.fixId)) tokens.push(instruction.access.fixId);
+    }
+  }
+  return tokens;
+}
+
 function ungroundedIdentifierTokens(
   instructions: readonly Instruction[],
   catalog: readonly string[],
@@ -668,10 +688,11 @@ function ungroundedIdentifierTokens(
 ): string[] {
   const groundedFixes = groundInstructionFixes(instructions, catalog, {
     rankedFor: (token) => retrieveFix(token, catalog),
+    clearanceLimitIds: new Set(airports.map((airport) => airport.icao)),
   });
-  const ungrounded = groundedFixes.ungroundedFixes.filter(
-    (token) => groundAirportToCatalog(token, airports) === null,
-  );
+  const ungrounded = [
+    ...new Set([...groundedFixes.ungroundedFixes, ...airportFixSlotTokens(instructions, airports)]),
+  ];
   const next = groundInstructionApproaches(
     groundInstructionProcedures(groundedFixes.instructions, procedures),
     approaches,
@@ -723,10 +744,14 @@ function okStage(
 ): Extract<ParseResult, { ok: true }> {
   const groundedFixes = groundInstructionFixes(parsed.instructions, catalog, {
     rankedFor: (token) => retrieveFix(token, catalog),
+    clearanceLimitIds: new Set(airports.map((airport) => airport.icao)),
   });
-  const airportAwareUngrounded = groundedFixes.ungroundedFixes.filter(
-    (token) => groundAirportToCatalog(token, airports) === null,
-  );
+  const ungroundedFixes = [
+    ...new Set([
+      ...groundedFixes.ungroundedFixes,
+      ...airportFixSlotTokens(parsed.instructions, airports),
+    ]),
+  ];
   return {
     ok: true,
     callsignToken: parsed.callsignToken ?? selected,
@@ -737,7 +762,7 @@ function okStage(
     sourceText,
     parseStage,
     source,
-    ...(airportAwareUngrounded.length > 0 ? { ungroundedFixes: airportAwareUngrounded } : {}),
+    ...(ungroundedFixes.length > 0 ? { ungroundedFixes } : {}),
   };
 }
 
@@ -783,7 +808,14 @@ function tryGroundedLocal(
     airports.length > 0 &&
     parsed.instructions.some((instruction) => instruction.type === "IFR_CLEARANCE") &&
     ungrounded.some((token) => /^[A-Z]{4}$/.test(token));
-  if (parseStage === "typed" && !unknownAirportLikeLimit) {
+  const airportUsedOutsideLimit =
+    airports.length > 0 &&
+    parsed.instructions.some(
+      (instruction) =>
+        (instruction.type === "DIRECT" || instruction.type === "CROSS") &&
+        airports.some((airport) => airport.icao === instruction.fixId),
+    );
+  if (parseStage === "typed" && !unknownAirportLikeLimit && !airportUsedOutsideLimit) {
     return { kind: "hit", result };
   }
   return { kind: "ungrounded", tokens: ungrounded };
