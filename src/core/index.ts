@@ -173,8 +173,10 @@ export type {
 } from "./aircraft";
 export {
   createAircraft,
+  formatFlightPlanAircraftType,
   makeTestAircraft,
   nextAircraftId,
+  normalizeFlightPlanAircraftType,
   normalizeCwtWakeCategory,
 } from "./aircraft";
 export type {

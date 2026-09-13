@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
   FAA_AIRCRAFT_EQUIPMENT_SUFFIXES,
+  formatFlightPlanAircraftType,
   flightPlanCid,
+  normalizeFlightPlanAircraftType,
   saveFlightPlanDraft,
   type FlightPlan,
   type FlightPlanDraftInput,
@@ -39,7 +41,7 @@ export function flightPlanModalDraftFromPlan(
     flightType: plan?.flightType ?? flightTypeFromRules(plan?.flightRules) ?? "",
     route: plan?.filedRoute?.text ?? plan?.route ?? "",
     requestedAltitudeFt: plan?.requestedAltitudeFt?.toString() ?? "",
-    aircraftType: plan?.aircraftType ?? "",
+    aircraftType: formatFlightPlanAircraftType(plan?.aircraftType),
     equipment: plan?.equipment ?? "",
     departureAirport: plan?.departureAirport ?? "",
     airportId: plan?.airportId ?? "",
@@ -84,7 +86,7 @@ export function submitFlightPlanModalDraft(
     flightType: optionalText(draft.flightType ?? "") as FlightPlanDraftInput["flightType"],
     filedRoute: draft.route ?? "",
     requestedAltitudeFt: optionalNumber(draft.requestedAltitudeFt ?? ""),
-    aircraftType: optionalText(draft.aircraftType ?? ""),
+    aircraftType: normalizeFlightPlanAircraftType(draft.aircraftType),
     equipment: optionalText(draft.equipment ?? ""),
     departureAirport: optionalText(draft.departureAirport ?? ""),
     airportId: optionalText(draft.airportId ?? ""),

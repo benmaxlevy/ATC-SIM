@@ -77,9 +77,12 @@ test("create and amend modes expose one accessible filed-plan dialog", () => {
     fixes: [],
     scratchpads: [],
     route: "FIXA",
+    aircraftType: "B744",
   };
-  expect(modalHtml(plan)).toContain("Amend flight plan");
-  expect(modalHtml(plan)).toContain('value="FIXA"');
+  const amendedHtml = modalHtml(plan);
+  expect(amendedHtml).toContain("Amend flight plan");
+  expect(amendedHtml).toContain('value="FIXA"');
+  expect(amendedHtml).toContain('id="flight-plan-aircraftType" name="aircraftType" value="H/B744"');
 
   const departurePlan: FlightPlan = {
     ...plan,
@@ -147,6 +150,15 @@ test("modal submit keeps existing ACID and CID immutable", () => {
 
   const amended = submitFlightPlanModalDraft(world, plan, draft);
   expect(amended).toMatchObject({ ok: true, plan: { acid: "AAL123", cid: "123" } });
+});
+
+test("modal accepts FAA heavy prefix but stores the canonical aircraft type", () => {
+  const world = createWorld({ catalog: { ...catalog, airportId: "TEST", approaches: [] } });
+  const draft = flightPlanModalDraftFromPlan("AAL123");
+  draft.aircraftType = "H/B744";
+
+  const saved = submitFlightPlanModalDraft(world, undefined, draft);
+  expect(saved).toMatchObject({ ok: true, plan: { aircraftType: "B744" } });
 });
 
 test("current visible FL page is the only TAB index resolution surface", () => {
