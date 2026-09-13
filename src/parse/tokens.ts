@@ -31,8 +31,8 @@ export const SUFFIX_CALLSIGN = /^[0-9]{1,4}[A-Z]?$/;
 
 const UNSIGNED_INT = /^\d+$/;
 const TURN_DIR_LETTER = /^[LR]$/;
-/** Typed DCT fix: 2–5 letters after uppercase (`NEMAX`, `DEM`). */
-const FIX_ID_TOKEN = /^[A-Z]{2,5}$/;
+/** Typed DCT fix: catalog-compatible 2–6 letters plus optional 1–2 digits (`NEMAX`, `DEM1`). */
+const FIX_ID_TOKEN = /^[A-Z]{2,6}[0-9]{0,2}$/;
 /** STAR / SID id: letters plus optional digits (`DEM1`). `D` stays descend. */
 const PROCEDURE_ID_TOKEN = /^[A-Z]{2,8}[0-9]{0,2}$/;
 /** STAR/SID transition id (`WN`, `N`, `NORMA`, `RW09`). Shorter than a procedure id. */

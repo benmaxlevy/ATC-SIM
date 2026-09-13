@@ -35,13 +35,18 @@ function normalized(value: string): string {
   return value.trim().toUpperCase();
 }
 
-function routeLateral(route: FlightPlanRoute, access: RouteExecutionAccess): LateralMode {
+function routeLateral(
+  route: FlightPlanRoute,
+  access: RouteExecutionAccess,
+  holdHeadingDeg: number,
+): LateralMode {
   const fixIds = routeFixIds(route);
   if (access === "RADAR_VECTORS") {
     return {
       type: "VECTOR_PENDING",
       routeFixIds: fixIds,
       routeRevision: route.revision,
+      holdHeadingDeg,
     };
   }
   const firstProcedure = route.route.segments.find(
@@ -66,7 +71,7 @@ export function applyActiveRouteToAircraft(
   if (fixIds.length === 0 || route.nextIndex < 0 || route.nextIndex > fixIds.length) {
     return;
   }
-  aircraft.intent.lateral = routeLateral(route, access);
+  aircraft.intent.lateral = routeLateral(route, access, aircraft.headingDeg);
 }
 
 /**
@@ -114,7 +119,7 @@ export function startFlightPlanRoute(
       error: { code: "NO_AIRCRAFT", message: `no aircraft for flight plan ${plan.acid}` },
     };
   }
-  aircraft.intent.lateral = routeLateral(route, access);
+  aircraft.intent.lateral = routeLateral(route, access, aircraft.headingDeg);
   return { ok: true, plan, aircraft, route };
 }
 

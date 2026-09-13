@@ -92,9 +92,10 @@ export function applyLateralFms(
     return guideDirect(ac, dtS, lateral, ctx, registry);
   }
   if (lateral.type === "VECTOR_PENDING") {
-    // Radar-vector access is an explicit wait state.  Never infer a turn or
-    // resume the stored route until a later controller heading is applied.
-    return undefined;
+    // Radar-vector access is an explicit wait state. Hold the present heading
+    // captured on entry; never fall back to a stale assigned heading or resume
+    // the stored route until a later controller heading is applied.
+    return lateral.holdHeadingDeg;
   }
   if (lateral.type === "PROCEDURE") {
     return guideProcedure(ac, dtS, lateral, ctx, registry);

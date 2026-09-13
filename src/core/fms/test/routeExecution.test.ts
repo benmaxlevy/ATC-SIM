@@ -109,8 +109,12 @@ test("DIRECT off-route holds the present heading and keeps the route cursor inta
 
 test("radar-vector route access is pending until a later heading", () => {
   const { world, aircraft, plan } = routeWorld();
+  aircraft.intent.assignedHeadingDeg = 270;
   expect(startFlightPlanRoute(world, plan.id, "RADAR_VECTORS").ok).toBe(true);
-  expect(aircraft.intent.lateral).toMatchObject({ type: "VECTOR_PENDING" });
+  expect(aircraft.intent.lateral).toMatchObject({
+    type: "VECTOR_PENDING",
+    holdHeadingDeg: 90,
+  });
   const headingBefore = aircraft.headingDeg;
   stepWorld(world, 5);
   expect(aircraft.headingDeg).toBe(headingBefore);

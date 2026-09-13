@@ -44,6 +44,8 @@ export type LateralMode =
       type: "VECTOR_PENDING";
       routeFixIds: readonly string[];
       routeRevision: number;
+      /** Present heading captured when radar-vector access starts. */
+      holdHeadingDeg: number;
     }
   | {
       type: "PROCEDURE";
