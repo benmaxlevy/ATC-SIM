@@ -197,17 +197,9 @@ function applyTrackingSlewHit(
   }
   switch (action.type) {
     case "openFlightPlanModal":
-      if (!flightPlanForAircraft(world, id)) {
-        view.preview.phase = "idle";
-        view.preview.buffer = "";
-        view.preview.mnemonic = "";
-        view.preview.flid = null;
-        view.preview.armed = null;
-        view.preview.slewAction = null;
-        view.preview.rejection = "NO FLIGHT";
-        view.preview.lastKeyAtMs = Date.now();
-        return true;
-      }
+      // Target slew addresses the target's local plan identity, just like an
+      // ACID or TAB entry. The UI may create a missing record; it never
+      // creates a plan↔aircraft association or changes aircraft guidance.
       onOpenFlightPlanModal?.({ targetAircraftId: id });
       clearTrackingSlew(view);
       return true;

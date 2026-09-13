@@ -144,17 +144,17 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
 
   function openFlightPlanModal(request: FlightPlanModalRequest): void {
     let plan: FlightPlan | undefined;
+    let targetAcid: string | undefined;
     if (request.targetAircraftId) {
       plan = flightPlanForAircraft(app.world, request.targetAircraftId);
-      if (!plan) {
-        scopeView.preview.phase = "idle";
-        scopeView.preview.buffer = "";
-        scopeView.preview.mnemonic = "";
-        scopeView.preview.armed = null;
-        scopeView.preview.slewAction = null;
-        scopeView.preview.rejection = "NO FLIGHT";
-        refreshScopeUi();
-        return;
+      targetAcid = app.world.aircraft
+        .find((aircraft) => aircraft.id === request.targetAircraftId)
+        ?.callsign.trim()
+        .toUpperCase();
+      if (!plan && targetAcid) {
+        plan = app.world.flightPlans.find(
+          (item) => item.status !== "deleted" && item.acid === targetAcid,
+        );
       }
     } else if (request.index !== undefined) {
       const entry = getFlightPlanEntries(app.world, scopeView).find(
@@ -181,6 +181,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
     const acid =
       plan?.acid ??
       request.acid ??
+      targetAcid ??
       (request.index !== undefined
         ? getFlightPlanEntries(app.world, scopeView).find((item) => item.index === request.index)
             ?.callsign
