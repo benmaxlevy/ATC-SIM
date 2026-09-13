@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import {
   createWorld,
+  createFlightPlan,
   makeTestAircraft,
   parseFiledRoute,
   resolveFiledRoute,
@@ -102,4 +103,106 @@ test("parseFiledRoute is catalog-free and accepts an empty route", () => {
     ok: true,
     value: { segments: [{ kind: "DCT", fixId: "FIXA" }] },
   });
+});
+
+test.each([
+  [{ aircraftCount: 1 }, "aircraftCount"],
+  [{ aircraftType: "1A" }, "aircraftType"],
+  [{ aircraftType: "A" }, "aircraftType"],
+  [{ equipment: "L1" }, "equipment"],
+  [{ flightRules: "B" }, "flightRules"],
+  [{ flightRules: "IFR" }, "flightRules"],
+] as const)("draft rejects manual-invalid scalar %j", (fields, field) => {
+  const result = saveFlightPlanDraft(createWorld(), { acid: "AAL123", ...fields });
+  expect(result).toMatchObject({ ok: false, error: { code: "INVALID_VALUE", field } });
+});
+
+test("draft accepts manual scalar bounds and adaptation flight rules", () => {
+  const result = saveFlightPlanDraft(createWorld(), {
+    acid: "AAL123",
+    aircraftCount: 2,
+    aircraftType: "A1",
+    equipment: "L",
+    flightRules: "I",
+    fixes: ["FIXA*FIXB*P"],
+  });
+  expect(result).toMatchObject({
+    ok: true,
+    plan: {
+      aircraftCount: 2,
+      aircraftType: "A1",
+      equipment: "L",
+      flightRules: "I",
+      fixes: ["FIXA*FIXB*P"],
+    },
+  });
+});
+
+test("draft rejects a new plan at flight-plan capacity before mutation", () => {
+  const flightPlans = Array.from({ length: 100 }, (_, index) => ({
+    id: `fp-${index}`,
+    status: "pending" as const,
+    acid: `A${String(index).padStart(2, "0")}`,
+    fixes: [],
+    scratchpads: [],
+  }));
+  const world = createWorld({ flightPlans });
+  const before = structuredClone(world.flightPlans);
+  const result = saveFlightPlanDraft(world, { acid: "AAL123" });
+  expect(result).toMatchObject({
+    ok: false,
+    error: { code: "CAPACITY", message: "CAPACITY — FP" },
+  });
+  expect(world.flightPlans).toEqual(before);
+});
+
+test.each([
+  ["+", "0000"],
+  ["/", "1000"],
+  ["/1", "2000"],
+  ["/2", "3000"],
+  ["/3", "4000"],
+  ["/4", "5000"],
+] as const)("draft resolves assigned beacon selector %s", (selector, assignedBeacon) => {
+  const result = saveFlightPlanDraft(createWorld(), { acid: "AAL123", assignedBeacon: selector });
+  expect(result).toMatchObject({ ok: true, plan: { assignedBeacon } });
+});
+
+test("draft accepts A beacon selector as no assigned beacon", () => {
+  const result = saveFlightPlanDraft(createWorld(), { acid: "AAL123", assignedBeacon: "A" });
+  expect(result).toMatchObject({ ok: true, plan: { assignedBeacon: undefined } });
+});
+
+test("draft rejects reported beacon and preserves existing surveillance value", () => {
+  const created = createFlightPlan({
+    id: "fp-1",
+    status: "pending",
+    acid: "AAL123",
+    reportedBeacon: "4321",
+    fixes: [],
+    scratchpads: [],
+  });
+  if (!created.ok) throw new Error("test fixture should be valid");
+  const world = createWorld({ flightPlans: [created.value] });
+  const amended = saveFlightPlanDraft(world, { acid: "AAL123", remarks: "UPDATED" });
+  expect(amended).toMatchObject({ ok: true, plan: { remarks: "UPDATED", reportedBeacon: "4321" } });
+  const rejected = saveFlightPlanDraft(world, {
+    acid: "AAL123",
+    reportedBeacon: "7777",
+  } as never);
+  expect(rejected).toMatchObject({
+    ok: false,
+    error: { code: "INVALID_FIELD", field: "reportedBeacon" },
+  });
+  expect(world.flightPlans[0]?.reportedBeacon).toBe("4321");
+});
+
+test("draft validates entry/exit fixes before amendment mutation", () => {
+  const world = createWorld();
+  const created = saveFlightPlanDraft(world, { acid: "AAL123", fixes: ["FIXA*FIXB"] });
+  expect(created.ok).toBe(true);
+  const before = structuredClone(world.flightPlans[0]);
+  const rejected = saveFlightPlanDraft(world, { acid: "AAL123", fixes: ["NOT-A-FIX"] });
+  expect(rejected).toMatchObject({ ok: false, error: { code: "INVALID_VALUE", field: "fixes" } });
+  expect(world.flightPlans[0]).toEqual(before);
 });

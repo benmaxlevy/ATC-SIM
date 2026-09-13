@@ -5,7 +5,12 @@ import type {
   FlightPlanStatus,
   FlightPlanErrorCode,
 } from "./flightPlan";
-import { isValidAcid, isValidBeaconCode, validateFlightPlan } from "./flightPlan";
+import {
+  allocateBeaconCode,
+  isValidAcid,
+  isValidBeaconCode,
+  validateFlightPlan,
+} from "./flightPlan";
 
 /** The deliberately small catalog surface needed by filed-route entry. */
 export interface FiledRouteCatalog {
@@ -376,7 +381,7 @@ export function resolveFiledRoute(
 
 export type FlightPlanDraftInput = Omit<
   Partial<FlightPlan>,
-  "id" | "status" | "associatedAircraftId" | "filedRoute"
+  "id" | "status" | "associatedAircraftId" | "filedRoute" | "reportedBeacon"
 > & {
   acid: string;
   id?: string;
@@ -386,7 +391,7 @@ export type FlightPlanDraftInput = Omit<
 };
 
 export type FlightPlanDraftErrorCode =
-  FiledRouteErrorCode | "PLAN_NOT_FOUND" | "INVALID_VALUE" | "INVALID_FIELD";
+  FiledRouteErrorCode | "PLAN_NOT_FOUND" | "INVALID_VALUE" | "INVALID_FIELD" | "CAPACITY";
 
 export interface FlightPlanDraftError {
   code: FlightPlanDraftErrorCode | FlightPlanErrorCode;
@@ -419,26 +424,45 @@ function validAltitude(value: unknown): boolean {
   );
 }
 
+const FIX_PAIR_PATTERN =
+  /^(?:[A-Z0-9]{1,4}\*[A-Z0-9]{1,4}|[A-Z0-9]{1,4}\*|\*[A-Z0-9]{1,4})(?:\*[APE])?$/;
+const BEACON_SELECTOR_PATTERN = /^(?:\+|\/|\/[1-4]|A)$/;
+const DRAFT_BEACON_POOLS: Record<"+" | "/" | "/1" | "/2" | "/3" | "/4", string[]> = {
+  "+": ["0000"],
+  "/": ["1000"],
+  "/1": ["2000"],
+  "/2": ["3000"],
+  "/3": ["4000"],
+  "/4": ["5000"],
+};
+
+function isBeaconSelector(value: string): boolean {
+  return BEACON_SELECTOR_PATTERN.test(value.trim().toUpperCase());
+}
+
 function scalarError(
   input: FlightPlanDraftInput,
   existing: FlightPlan | undefined,
 ): FlightPlanDraftError | undefined {
   if (!isValidAcid(input.acid))
     return draftError("INVALID_ACID", "acid", "invalid ACID", input.acid);
-  if (input.assignedBeacon !== undefined && !isValidBeaconCode(input.assignedBeacon)) {
+  if (Object.prototype.hasOwnProperty.call(input, "reportedBeacon")) {
+    return draftError(
+      "INVALID_FIELD",
+      "reportedBeacon",
+      "reported beacon is surveillance data and cannot be filed",
+    );
+  }
+  if (
+    input.assignedBeacon !== undefined &&
+    (typeof input.assignedBeacon !== "string" ||
+      (!isValidBeaconCode(input.assignedBeacon) && !isBeaconSelector(input.assignedBeacon)))
+  ) {
     return draftError(
       "INVALID_BEACON",
       "assignedBeacon",
       "assigned beacon must be four octal digits",
       String(input.assignedBeacon),
-    );
-  }
-  if (input.reportedBeacon !== undefined && !isValidBeaconCode(input.reportedBeacon)) {
-    return draftError(
-      "INVALID_BEACON",
-      "reportedBeacon",
-      "reported beacon must be four octal digits",
-      String(input.reportedBeacon),
     );
   }
   if (!validAltitude(input.requestedAltitudeFt) || !validAltitude(input.assignedAltitudeFt)) {
@@ -464,12 +488,12 @@ function scalarError(
   }
   if (
     input.aircraftCount !== undefined &&
-    (!Number.isInteger(input.aircraftCount) || input.aircraftCount < 1 || input.aircraftCount > 99)
+    (!Number.isInteger(input.aircraftCount) || input.aircraftCount < 2 || input.aircraftCount > 99)
   ) {
     return draftError(
       "INVALID_VALUE",
       "aircraftCount",
-      "aircraft count must be an integer from 1 through 99",
+      "aircraft count must be an integer from 2 through 99",
     );
   }
   if (input.cid !== undefined && !/^[A-Z0-9]{1,4}$/i.test(input.cid.trim()))
@@ -485,10 +509,32 @@ function scalarError(
     !["IFR", "VFR", "DVFR", "SVFR", "A", "P", "E"].includes(input.flightType)
   )
     return draftError("INVALID_VALUE", "flightType", "invalid flight type");
-  if (input.aircraftType !== undefined && !/^[A-Z0-9]{1,4}$/i.test(input.aircraftType.trim()))
+  if (
+    input.aircraftType !== undefined &&
+    (typeof input.aircraftType !== "string" ||
+      !/^[A-Z][A-Z0-9]{1,3}$/i.test(input.aircraftType.trim()))
+  )
     return draftError("INVALID_VALUE", "aircraftType", "invalid aircraft type");
-  if (input.equipment !== undefined && !/^[A-Z0-9]{1,4}$/i.test(input.equipment.trim()))
+  if (
+    input.equipment !== undefined &&
+    (typeof input.equipment !== "string" || !/^[A-Z]{1,4}$/i.test(input.equipment.trim()))
+  )
     return draftError("INVALID_VALUE", "equipment", "invalid equipment");
+  if (
+    input.flightRules !== undefined &&
+    (typeof input.flightRules !== "string" ||
+      !/^[A-Z]$/i.test(input.flightRules.trim()) ||
+      /[BFHLRJMX]/i.test(input.flightRules.trim()))
+  )
+    return draftError("INVALID_VALUE", "flightRules", "invalid flight rules");
+  if (
+    input.fixes !== undefined &&
+    (!Array.isArray(input.fixes) ||
+      input.fixes.length !== 1 ||
+      typeof input.fixes[0] !== "string" ||
+      !FIX_PAIR_PATTERN.test(input.fixes[0].trim().toUpperCase()))
+  )
+    return draftError("INVALID_VALUE", "fixes", "invalid entry/exit fixes");
   if (
     input.scratchpads !== undefined &&
     (!Array.isArray(input.scratchpads) ||
@@ -506,7 +552,6 @@ function normalizeInput(input: FlightPlanDraftInput): Partial<FlightPlan> {
   for (const key of [
     "cid",
     "assignedBeacon",
-    "reportedBeacon",
     "tcp",
     "fixes",
     "flightType",
@@ -551,8 +596,8 @@ function normalizeInput(input: FlightPlanDraftInput): Partial<FlightPlan> {
   }
   if (input.assignedBeacon !== undefined)
     result.assignedBeacon = input.assignedBeacon.trim().toUpperCase();
-  if (input.reportedBeacon !== undefined)
-    result.reportedBeacon = input.reportedBeacon.trim().toUpperCase();
+  if (input.fixes !== undefined)
+    result.fixes = input.fixes.map((item) => item.trim().toUpperCase());
   if (input.scratchpads)
     result.scratchpads = input.scratchpads.map((item) => item.trim().toUpperCase());
   const flightType = (input as { flightType?: string }).flightType;
@@ -578,9 +623,34 @@ export function saveFlightPlanDraft(
       ok: false,
       error: draftError("PLAN_NOT_FOUND", "plan", `flight plan ${input.id} not found`, input.id),
     };
-  const candidateInput = normalizeInput(input);
+  if (!existing && world.flightPlans.filter((item) => item.status !== "deleted").length >= 100) {
+    return {
+      ok: false,
+      error: draftError("CAPACITY", "plan", "CAPACITY — FP"),
+    };
+  }
   const scalar = scalarError(input, existing);
   if (scalar) return { ok: false, error: scalar };
+  const candidateInput = normalizeInput(input);
+  if (input.assignedBeacon !== undefined && isBeaconSelector(input.assignedBeacon)) {
+    const selector = input.assignedBeacon.trim().toUpperCase();
+    if (selector === "A") {
+      candidateInput.assignedBeacon = undefined;
+    } else {
+      const pool = DRAFT_BEACON_POOLS[selector as keyof typeof DRAFT_BEACON_POOLS];
+      const occupied = world.flightPlans
+        .filter((item) => item.status !== "deleted" && item.id !== existing?.id)
+        .flatMap((item) => (item.assignedBeacon ? [item.assignedBeacon] : []));
+      const allocation = allocateBeaconCode(pool, occupied);
+      if (!allocation.ok || !allocation.value) {
+        return {
+          ok: false,
+          error: draftError("NO_BEACON_AVAILABLE", "assignedBeacon", "CAPACITY — BCN"),
+        };
+      }
+      candidateInput.assignedBeacon = allocation.value;
+    }
+  }
   const route = resolveFiledRoute(input.filedRoute ?? input.route ?? "", world.catalog);
   if (!route.ok) return { ok: false, error: route.error };
   const otherPlans = world.flightPlans.filter(
@@ -590,7 +660,6 @@ export function saveFlightPlanDraft(
     {
       acid: candidateInput.acid!,
       assignedBeacon: candidateInput.assignedBeacon,
-      reportedBeacon: candidateInput.reportedBeacon,
     },
     otherPlans,
   )[0];
