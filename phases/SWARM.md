@@ -1,5 +1,57 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Proposed sixty-eighth swarm — Flight Plan modal assigned altitude — 2026-09-13
+
+Add the missing UI path for the already-shipped plan-backed assigned-altitude
+field while preserving the completed T02-185–187 datablock provenance work.
+
+| Key | Value |
+| --- | --- |
+| Goal | Let the Flight Plan modal edit active-plan assigned altitude so `A###` has a user-facing flight-plan adjustment source. |
+| Include | T02-188. |
+| Merge target | `feature/clearances`. |
+| Worker limit/model | 1 sequential worker; `gpt-5.6-luna` high. |
+| Stop | T02-188 plus focused tests, `npm run ci`, supplied-manual review, and acceptance. |
+| Push | No push. |
+
+**Product law:** the modal may edit only `FlightPlan.assignedAltitudeFt` for
+an active plan; the existing core transaction remains authoritative for
+whole-hundreds validation and the exact non-active rejection. `0` clears the
+field. Requested altitude remains separate. Saving changes no aircraft intent,
+Mode C, position, velocity, association, event log, clearance, parser, or
+Command IR state. Climb/descend commands never write plan altitude metadata.
+
+**Skip:** new core schema, parser/radio/scope commands, shortcuts, readback,
+pilot/FMS/kinematics behavior, automatic altitude inference, CWT/category,
+CRC/vSTARS, visual redesign, and unrelated modal fields.
+
+**Wave:** A T02-188 modal draft/render/submit wiring, focused acceptance tests,
+and user documentation. Start only after the ticket and start configuration
+are committed; run CI and supplied-manual review after the merge.
+
+**Ticket ownership:** T02-188 owns `src/ui/controls/FlightPlanModal.tsx`, its
+existing test file, and the scoped `docs/USER.md` update. Core validation and
+datablock projection are dependencies, not rewrite targets.
+
+**Ticket path/branch:**
+
+- `ticket/T02-188-flight-plan-modal-assigned-altitude` → `phases/02-scope/tickets/T02-188-flight-plan-modal-assigned-altitude.md`
+
+**Manual:** `C:\Users\Ben\Documents\full_manual.pdf`; §2.12 p. 2-63,
+Figure 2-20 pp. 2-66–67, §5.6.3 p. 5-146, and §5.6.17 pp. 5-167–168. CRC is
+ignored.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: Flight Plan modal assigned altitude T02-188
+Merge target: feature/clearances
+Merged: T02-188
+Tests: focused modal/core tests and npm run ci; supplied-manual review
+Notes: active-plan assigned altitude only; 0 clears; no command/intent/kinematics changes; no push
+```
+
 ## Sixty-seventh swarm started — 2026-09-13 (datablock altitude and rules semantics)
 
 Captain: `/root`. Merge lock: `feature/clearances`. Worker model/limit:
