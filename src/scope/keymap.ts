@@ -101,6 +101,14 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
           "Assigns a four-digit octal beacon code; VFR assigns 1200. The pilot report is delayed.",
       },
       {
+        id: "maintain-vfr",
+        command: "MVFR",
+        example: "DAL123 MVFR",
+        input: "Radio",
+        result:
+          "Marks the aircraft to maintain VFR and reads back maintain VFR; no IFR clearance, route, or plan activation.",
+      },
+      {
         id: "approach",
         command: "A <approach>",
         example: "A ILS27",

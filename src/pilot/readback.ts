@@ -147,6 +147,8 @@ function formatInstructionClause(
       return instruction.source === "VFR"
         ? "squawk VFR"
         : `squawk ${speakDigitString(instruction.code)}`;
+    case "MAINTAIN_VFR":
+      return "maintain VFR";
     case "SAY_HEADING":
       return `heading ${formatHeadingDigits(aircraft.headingDeg)}`;
     case "SAY_ALTITUDE":

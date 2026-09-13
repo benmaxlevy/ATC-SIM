@@ -99,6 +99,15 @@ export const fixtureAssignSquawk = {
   source: "text",
 } satisfies Command;
 
+export const fixtureMaintainVfr = {
+  id: "cmd-maintain-vfr",
+  issuedAtSimMs: 0,
+  callsign: "DAL123",
+  instructions: [{ type: "MAINTAIN_VFR" }],
+  sourceText: "DAL123 MVFR",
+  source: "text",
+} satisfies Command;
+
 export const fixtureSayHeading = {
   id: "cmd-say-heading",
   issuedAtSimMs: 0,

@@ -91,7 +91,8 @@ function isTypedInstructionStart(token: string): boolean {
     token === "CVIA" ||
     token === "JOIN" ||
     token === "X" ||
-    token === "SQ"
+    token === "SQ" ||
+    token === "MVFR"
   ) {
     return true;
   }
@@ -157,6 +158,13 @@ function parseOneInstruction(tokens: string[], index: number): InstructionParse 
       ok: true,
       instruction: { type: "ASSIGN_SQUAWK", code: rawCode, source: "DISCRETE" },
       nextIndex: index + 2,
+    };
+  }
+  if (token === "MVFR") {
+    return {
+      ok: true,
+      instruction: { type: "MAINTAIN_VFR" },
+      nextIndex: index + 1,
     };
   }
   if (token === "DCT") {

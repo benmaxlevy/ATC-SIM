@@ -101,6 +101,7 @@ function rewriteOne(c: Cursor): string | null {
     rewriteFlyHeading(c) ??
     rewriteBareHeading(c) ??
     rewritePresent(c) ??
+    rewriteMaintainVfr(c) ??
     rewriteAltitude(c) ??
     rewriteSpeed(c) ??
     rewriteSquawk(c) ??
@@ -108,6 +109,15 @@ function rewriteOne(c: Cursor): string | null {
     rewriteIntercept(c) ??
     rewriteGoAround(c)
   );
+}
+
+function rewriteMaintainVfr(c: Cursor): string | null {
+  const start = c.i;
+  if (take(c, "maintain") && take(c, "vfr")) {
+    return "MVFR";
+  }
+  c.i = start;
+  return null;
 }
 
 function rewriteSquawk(c: Cursor): string | null {

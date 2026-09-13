@@ -738,6 +738,21 @@ function matchPresentHeading(
   return null;
 }
 
+function matchMaintainVfr(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] !== "maintain" || tokens[i + 1] !== "vfr") {
+    return null;
+  }
+  // Keep the exact command closed: "VFR ON TOP" must not become MAINTAIN_VFR.
+  const next = tokens[i + 2];
+  if (next !== undefined && next !== "and" && next !== "then" && !COMMAND_TRIGGERS.has(next)) {
+    return null;
+  }
+  return { instruction: { type: "MAINTAIN_VFR" }, next: i + 2 };
+}
+
 function matchTurnDegrees(
   tokens: readonly string[],
   i: number,
@@ -1143,6 +1158,7 @@ export function matchSpokenPatterns(
       matchJoinProcedure(tokens, i, procedures) ??
       matchDirect(tokens, i, catalog) ??
       matchPresentHeading(tokens, i) ??
+      matchMaintainVfr(tokens, i) ??
       matchTurnDegrees(tokens, i) ??
       matchFlyHeading(tokens, i) ??
       matchAltitude(tokens, i) ??

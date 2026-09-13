@@ -161,6 +161,16 @@ function tryPresentHeading(c: Cursor): Instruction | null {
   return null;
 }
 
+/** Exact spoken MAINTAIN VFR instruction; VFR ON TOP is intentionally separate. */
+function tryMaintainVfr(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "maintain") && take(c, "vfr")) {
+    return { type: "MAINTAIN_VFR" };
+  }
+  c.i = start;
+  return null;
+}
+
 function tryAltitude(c: Cursor): Instruction | null {
   const start = c.i;
   let verb: "CLIMB" | "DESCEND" | "MAINTAIN" | null = null;
@@ -687,6 +697,7 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     tryTurnDegrees(c) ??
     tryFlyHeading(c) ??
     tryPresentHeading(c) ??
+    tryMaintainVfr(c) ??
     tryAltitude(c) ??
     tryVia(c) ??
     tryJoinProcedure(c) ??

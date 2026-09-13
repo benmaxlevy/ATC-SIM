@@ -279,6 +279,10 @@ function applyOne(
         dueSimMs: simTimeMs + (opts?.squawkReportDelayMs ?? SQUAWK_REPORT_DELAY_MS),
       };
       return;
+    case "MAINTAIN_VFR":
+      // Radio-only VFR marker for a future pickup path; no plan, route, or intent mutation.
+      aircraft.maintainVfr = true;
+      return;
     case "DIRECT":
       aircraft.intent.lateral = { type: "DIRECT", fixId: instruction.fixId.trim().toUpperCase() };
       return;

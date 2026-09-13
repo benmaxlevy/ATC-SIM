@@ -73,6 +73,7 @@ test("AC5 — stepWorld does not attach a history buffer to Aircraft", () => {
       "id",
       "identUntilSimMs",
       "intent",
+      "maintainVfr",
       "speedKt",
       "xNm",
       "yNm",

@@ -92,6 +92,13 @@ Pressing `Tab` toggles focus between the command line and the radar scope (PPI /
 > Radio commands stay strictly on the command line or PTT audio channel and issue pilot instructions.
 > Scope keys and STARS Preview Area commands stay on the radar display and never issue radio transmissions.
 
+`MVFR` / "maintain VFR" is a radio-only trainer instruction. It sets only an
+aircraft marker for a future VFR-to-IFR pickup path and produces a deterministic
+readback/log entry. It does not change altitude, route, procedure, correlation,
+flight-plan lifecycle, or clearance state. `VFR ON TOP`, SVFR, flight following,
+airspace authorization, and airborne VFR-to-IFR pickup are not accepted by this
+command.
+
 ### Typed command syntax
 
 Spaces between command letters and numeric parameters are optional (e.g. `H 240` or `H240`, `C 50` or `C50`).
@@ -121,6 +128,7 @@ If an aircraft is already selected on the scope, the callsign prefix is automati
 | **Compound Clearance** | `<H> <A> APP ILS<RWY>` | `DAL123 R240 A20 APP ILS27` | Fly heading 240°, maintain 2,000 ft until established, cleared ILS 27 |
 | **Transponder / Ident** | `I` | `DAL123 I` | Squawk ident (flashes target symbol for 5 seconds) |
 | **Beacon assignment** | `SQ <[0-7]{4}>` / `SQ VFR` | `DAL123 SQ 4721` / `DAL123 SQ VFR` | Assigns a discrete octal beacon or VFR code 1200; assigned and reported surveillance codes stay separate until the pilot report. |
+| **Maintain VFR** | `MVFR` | `DAL123 MVFR` | Radio-only VFR instruction. Sets the aircraft's maintain-VFR marker and readback; it is not an IFR clearance, VFR-on-top authorization, route, or flight-plan activation. |
 | **Miscellaneous** | `GA` | `DAL123 GA` | Go around / execute published missed approach |
 | | `SH` | `DAL123 SH` | Say current heading |
 | | `SA` | `DAL123 SA` | Say current altitude |
@@ -217,6 +225,7 @@ arrives. This delayed report is a trainer delta, not NAS timing.
 | **Intercept Localizer** | *"Delta one twenty-three, fly heading two four zero, intercept Runway two seven localizer"* |
 | **Ident** | *"Delta one twenty-three, squawk ident"* |
 | **Beacon assignment** | *"Delta one twenty-three, squawk four seven two one"* / *"Delta one twenty-three, squawk VFR"* |
+| **Maintain VFR** | *"Delta one twenty-three, maintain VFR"* |
 | **Go Around** | *"Delta one twenty-three, go around, fly published missed approach"* |
 | **Say Heading / Altitude** | *"Delta one twenty-three, say heading"* \| *"Delta one twenty-three, say altitude"* |
 

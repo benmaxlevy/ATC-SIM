@@ -52,6 +52,7 @@ export type Instruction =
   | { type: "EXPECT_APPROACH"; approachId: string }
   | { type: "CLEARED_APPROACH"; approachId: string }
   | { type: "INTERCEPT_LOCALIZER"; approachId: string }
+  | { type: "MAINTAIN_VFR" }
   | { type: "IDENT" }
   | { type: "SAY_HEADING" }
   | { type: "SAY_ALTITUDE" }
@@ -85,6 +86,7 @@ Suggested v1 tokens (callsign optional if a track is selected):
 | `S210` | `SPEED MAINTAIN 210` |
 | `PH` | `PRESENT_HEADING` |
 | `I` | `IDENT` |
+| `MVFR` | `MAINTAIN_VFR` — radio-only VFR instruction; not an IFR clearance, VFR-on-top authorization, route, or plan activation |
 | `APP ILS27` | `CLEARED_APPROACH` (phase 1 may accept and no-op fly-through; phase 4 fly-through) |
 | `IL ILS27` | `INTERCEPT_LOCALIZER` — join loc, hold assigned altitude, **no GS** until `APP` |
 | `R240 A20 APP ILS27` | `FLY_HEADING 240 RIGHT` + `ALTITUDE MAINTAIN 2000 untilEstablished` + `CLEARED_APPROACH ILS27` (phase 4; same-line heading+alt+APP) |

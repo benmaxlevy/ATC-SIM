@@ -113,7 +113,8 @@ export function isLegalInstruction(value: unknown): value is Instruction {
     type === "IDENT" ||
     type === "SAY_HEADING" ||
     type === "SAY_ALTITUDE" ||
-    type === "GO_AROUND"
+    type === "GO_AROUND" ||
+    type === "MAINTAIN_VFR"
   ) {
     return keysOk(obj, ["type"]);
   }

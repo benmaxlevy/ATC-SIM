@@ -143,6 +143,8 @@ export interface Aircraft {
   reportedSquawk?: string;
   /** Pending pilot response to a controller squawk assignment. */
   pendingReportedSquawk?: { code: string; dueSimMs: number };
+  /** Radio-only VFR instruction marker; does not create or mutate a flight plan. */
+  maintainVfr?: boolean;
   /** True if altitude is pilot-reported (displays *). */
   pilotReportedAltitude?: boolean;
   /** ATPA in-trail distance readout (Fig 38/39 two decimals, e.g. "2.40"). */
@@ -190,6 +192,8 @@ export interface AircraftInit {
   assignedSquawk?: string;
   reportedSquawk?: string;
   pendingReportedSquawk?: { code: string; dueSimMs: number };
+  /** Seed the radio-only MAINTAIN VFR marker for authored/test traffic. */
+  maintainVfr?: boolean;
   pilotReportedAltitude?: boolean;
   atpaDistance?: string;
   flightPlan?: {
@@ -283,6 +287,7 @@ export function createAircraft(init: AircraftInit): Aircraft {
     ...(init.assignedSquawk ? { assignedSquawk: init.assignedSquawk } : {}),
     ...(init.reportedSquawk ? { reportedSquawk: init.reportedSquawk } : {}),
     ...(init.pendingReportedSquawk ? { pendingReportedSquawk: init.pendingReportedSquawk } : {}),
+    maintainVfr: init.maintainVfr ?? false,
     ...(init.pilotReportedAltitude !== undefined
       ? { pilotReportedAltitude: init.pilotReportedAltitude }
       : {}),

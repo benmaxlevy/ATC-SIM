@@ -114,6 +114,8 @@ function validateOne(
         return { ok: false, reason: "SQUAWK" };
       }
       return { ok: true };
+    case "MAINTAIN_VFR":
+      return { ok: true };
     case "DIRECT":
       if (instruction.fixId.trim() === "") {
         return { ok: false, reason: "EMPTY" };
