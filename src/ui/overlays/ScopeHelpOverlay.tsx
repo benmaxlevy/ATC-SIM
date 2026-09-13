@@ -194,10 +194,13 @@ export function ScopeHelpOverlay({ open }: ScopeHelpOverlayProps) {
           whose reported beacon mismatches its filed plan, a stale/off-page TAB index, or a target
           with a blank ACID returns <code>NO FLIGHT</code>; use the FL list or ACID to open the
           uncorrelated filed record. Save changes filed metadata only; Cancel/Escape closes the
-          dialog and restores opener focus. Filed route text is catalog-resolved with the compact
-          grammar <code>procedure[/transition] fix-or-navaid</code>; enter each procedure, fix, or
-          navaid as a bare token separated by spaces. Prefixes such as <code>SID:</code>,{" "}
-          <code>STAR:</code>, and <code>DCT</code> are invalid.
+          dialog and restores opener focus. ACID is immutable when amending, editable text is
+          uppercased automatically, and the aircraft type shows the FAA heavy marker as{" "}
+          <code>H/&lt;TYPE&gt;</code> for known heavy types. Filed route text is catalog-resolved
+          with the compact grammar <code>procedure[/transition] fix-or-navaid</code>; enter each
+          procedure, fix, or navaid as a bare token separated by spaces. Prefixes such as{" "}
+          <code>SID:</code>, <code>STAR:</code>, and <code>DCT</code> are invalid. The route remains
+          filed metadata and never activates aircraft guidance.
         </p>
         {filteredNavigationGroups.map((navigationGroup) => {
           return (

@@ -134,11 +134,14 @@ a target to open its uniquely beacon-correlated plan. It creates a draft by usab
 that target has no filed plan. A beacon mismatch, stale/off-page TAB index, or target with a blank
 ACID returns `NO FLIGHT`; use the FL list or ACID to open an uncorrelated filed record. This is an explicit ATC-SIM trainer
 extension, not a supplied STARS-manual function. Save edits filed metadata only and does not alter
-aircraft surveillance, association, intent, kinematics, or route execution. Filed route text is
+aircraft surveillance, association, intent, kinematics, or route execution. The ACID is immutable
+when amending a plan, and editable text is uppercased automatically. Filed route text is
 catalog-resolved with bare procedure, fix, and navaid tokens separated by spaces; procedures may
 include an optional `/transition` suffix, and prefixes such as `SID:`, `STAR:`, and `DCT` are
-invalid. An empty route is valid. These are filed metadata only: the
-route is never activated in the aircraft FMS or used for clearance execution.
+invalid. An empty route is valid. The aircraft-type field displays the FAA heavy marker (`H/`) for
+known heavy types and stores the type without that display prefix. Equipment uses the FAA suffix
+dropdown. ETA is shown for arrivals; PTD is shown for departures. Filed route metadata is never
+activated in the aircraft FMS or used for clearance execution.
 They update the local authoritative flight-plan list and do not make a pilot
 read back or fly the change.
 
@@ -178,10 +181,11 @@ valid but `1289` is invalid. A numeric identity such as `14` is a TAB-list
 index only when used in a complete command such as `*M 14 5252`, `*B 14`,
 or `*DEL 14`; `14 5252` alone is not a flight-plan command.
 
-Routes are not executable from these plans yet. Editing `FIXES` stores plan
-data only; it does not update the aircraft FMS, route, heading, or pilot
-intent. Clearance delivery, pilot readback/execution, route conformance, and
-full route/SID/STAR amendment remain in the [later implementation backlog](../phases/LATER-IMPLEMENTATION-BACKLOG.md).
+Routes are not executable from these plans yet. Editing `FIXES` stores legacy
+entry/exit-fix data only; the modal's `Filed route` field is the full
+catalog-validated route editor. Neither path updates the aircraft FMS, route,
+heading, or pilot intent. Clearance delivery, pilot readback/execution, and
+route conformance remain in the [later implementation backlog](../phases/LATER-IMPLEMENTATION-BACKLOG.md).
 
 > [!TIP]
 > Transponder beacon assignment and radar handoffs are handled directly via scope controls:
