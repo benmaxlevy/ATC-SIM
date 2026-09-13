@@ -248,6 +248,7 @@ export {
   isPrefNameEntry,
   isPreviewBufferStartChar,
   parsePreviewCommand,
+  parseFlightPlanModalCommand,
   parseTrackingCommand,
   parseTrackingSlewBuffer,
   previewAreaIsLive,
@@ -326,6 +327,7 @@ export {
   scopeFocusFromDocument,
 } from "./scopeKeys";
 export type { ScopeFocus, ScopeKeyUi } from "./scopeKeys";
+export type { FlightPlanModalRequest } from "./previewParse";
 export {
   centerOnAirport,
   centerOnLastClick,
@@ -854,6 +856,7 @@ export {
   findOverlappingLists,
   getAircraftDestination,
   getFlightPlanEntries,
+  getVisibleFlightPlanEntries,
   handleFlightPlanListClick,
   handleListMiddleClick,
   handleListMouseMove,

@@ -65,6 +65,8 @@ export interface TrackDisplay {
   /** Retains an FDB captured when altitude-filter limits changed. */
   retainedFdbOutsideAltitudeFilter?: boolean;
   unassociated?: boolean;
+  /** Plan id last supplied by derived beacon correlation; display state only. */
+  derivedPlanId?: string;
   highlighted?: boolean;
   outboundFlashUntilSimMs?: number;
   beaconatorUntilSimMs?: number;
@@ -765,8 +767,8 @@ export function applyDropTrackToSelection(
 
 /**
  * Shared TERM CNTL implementation. F4 is the keyboard alias for this same
- * operation: remove the authoritative plan association, leave the radar
- * target moving, and show the unassociated LDB position symbol.
+ * operation: remove the derived plan presentation, leave the radar target
+ * moving, and show the unassociated LDB position symbol.
  */
 export function terminateTrackWithPlan(
   tracks: Map<string, TrackDisplay>,
@@ -789,6 +791,7 @@ export function terminateTrackWithPlan(
   const result = applyDropTrackToId(tracks, world, aircraftId, caState);
   const td = ensureTrackDisplay(tracks, aircraftId);
   td.unassociated = true;
+  delete td.derivedPlanId;
   td.datablockMode = "partial";
   td.tracked = false;
   td.forcedFdb = false;
@@ -998,14 +1001,22 @@ export function syncTrackDisplays(
       td = createTrackDisplay();
       tracks.set(ac.id, td);
     }
-    // Automatic beacon correlation is authoritative in World. The next
-    // display sync promotes that associated target to the existing FDB path;
-    // ownership remains unchanged and therefore stays separate from
-    // association.
-    if (flightPlanForAircraft(world, ac.id)) {
+    // Derived beacon correlation promotes the target to the existing FDB
+    // path. It is display state only; ownership remains separate. When the
+    // reported code changes, remove only the state this derivation created.
+    const derivedPlan = flightPlanForAircraft(world, ac.id);
+    if (derivedPlan) {
+      td.derivedPlanId = derivedPlan.id;
       td.tracked = true;
       td.unassociated = false;
       td.datablockMode = "full";
+    } else if (td.derivedPlanId) {
+      delete td.derivedPlanId;
+      if (td.ownership !== "owned") {
+        td.tracked = false;
+        td.unassociated = true;
+        td.datablockMode = "partial";
+      }
     }
     if (td.lastReport) {
       sampler.reports.set(ac.id, td.lastReport);

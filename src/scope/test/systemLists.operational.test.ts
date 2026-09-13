@@ -992,7 +992,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(lines[2]).toContain("AAL101");
     });
 
-    it("direct track association: associateFlightPlanToTrack associates flight plan to target", () => {
+    it("direct track association cannot bypass derived correlation", () => {
       const world = createWorld();
       const view = createScopeView();
       toggleSystemList(view, "FL");
@@ -1022,21 +1022,21 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
 
       // Associate with target directly
       const success = associateFlightPlanToTrack(world, view, 1, target.id);
-      expect(success).toBe(true);
+      expect(success).toBe(false);
 
       // Verify target updated to FDB with plan callsign and squawk
       expect(target.callsign).toBe("1234");
       expect(target.assignedSquawk).toBe("1200");
-      expect(td.unassociated).toBe(false);
-      expect(td.datablockMode).toBe("full");
+      expect(td.unassociated).toBe(true);
+      expect(td.datablockMode).not.toBe("full");
       expect(td.ownership).toBe("unowned");
 
       // Entry immediately purged from FL
       const remaining = getFlightPlanEntries(world, view);
-      expect(remaining.some((e) => e.callsign === "AAL123")).toBe(false);
+      expect(remaining.some((e) => e.callsign === "AAL123")).toBe(true);
     });
 
-    it("+1 <click target> associates flight plan from list to target without changing leader direction", () => {
+    it("+1 <click target> does not mutate list/target correlation", () => {
       const world = createWorld();
       const view = createScopeView();
 
@@ -1076,14 +1076,14 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
 
       expect(target.callsign).toBe("UNTRK");
       expect(target.assignedSquawk).toBe("1200");
-      expect(td.unassociated).toBe(false);
-      expect(td.datablockMode).toBe("full");
+      expect(td.unassociated).toBe(true);
+      expect(td.datablockMode).not.toBe("full");
       expect(td.ownership).toBe("unowned");
       expect(td.leaderDir).toBe(7); // Leader direction preserved!
       expect(view.preview.phase).toBe("idle");
     });
 
-    it("F1 01 <click target> associates scheduled flight plan from list to target without changing leader direction", () => {
+    it("F1 01 <click target> does not create a plan association", () => {
       const world = createWorld();
       const view = createScopeView();
 
@@ -1126,8 +1126,8 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
 
       expect(target.callsign).toBe("UNTRK");
       expect(target.assignedSquawk).toBe("1200");
-      expect(td.unassociated).toBe(false);
-      expect(td.datablockMode).toBe("full");
+      expect(td.unassociated).toBe(true);
+      expect(td.datablockMode).not.toBe("full");
       expect(td.ownership).toBe("unowned");
       expect(td.leaderDir).toBe(7);
       expect(view.preview.phase).toBe("idle");

@@ -30,6 +30,8 @@ import type { VipLevel } from "./wx";
  * T02-66: handoff accept, pointout ack, leader clock, beaconator slew.
  * T02-73: `saveAsPref` is the SAVE AS name commit (name on Enter only).
  * Optional `flid` on INIT/TERM is only for typed identity entry.
+ * T02-171: `*FP` is a UI-only flight-plan modal request; it never enters
+ * Command IR or the radio parser.
  * Do not put F3-specific field names on ScopeView.
  */
 export type PreviewArmedAction =
@@ -165,12 +167,25 @@ export type PreviewArmedAction =
   | { readonly type: "msawCurrentAlertInhibit" }
   /** `<MULTI FUNC> V <SLEW>`: toggle selected-track MSAW processing. */
   | { readonly type: "toggleMsawProcessing" }
+  | {
+      /** Opens the local filed flight-plan dialog; not a radio/pilot action. */
+      readonly type: "openFlightPlanModal";
+      readonly acid?: string;
+      readonly index?: number;
+      readonly targetSlew?: boolean;
+    }
   | { readonly type: "saveAsPref"; readonly name?: string };
 
 export type PreviewCommandResult =
   | { kind: "incomplete" }
   | { kind: "invalid"; reason: string }
   | { kind: "action"; action: PreviewArmedAction };
+
+export interface FlightPlanModalRequest {
+  acid?: string;
+  index?: number;
+  targetAircraftId?: string;
+}
 
 /**
  * Extension table for `parsePreviewCommand`. Complete commands map to
@@ -444,6 +459,29 @@ export function parseFlightPlanCreation(
 
 function invalid(reason: string): PreviewCommandResult {
   return { kind: "invalid", reason };
+}
+
+/** T02-171 trainer delta: exact `*FP` token, with optional ACID or 2-digit TAB index. */
+export function parseFlightPlanModalCommand(buffer: string): PreviewCommandResult | null {
+  // Do not compact this family: `* FP` is not the `*FP` token and must not
+  // steal the existing `* F` altitude-filter grammar.
+  if (!/^\*FP(?:$|\s)/i.test(buffer)) return null;
+  const upper = buffer.trim().toUpperCase();
+  if (upper === "*FP") {
+    return { kind: "action", action: { type: "openFlightPlanModal", targetSlew: true } };
+  }
+  const rest = upper.slice(3).trim();
+  if (!rest || /\s/.test(rest)) return invalid("ILL ACID");
+  if (/^\d{2}$/.test(rest)) {
+    return {
+      kind: "action",
+      action: { type: "openFlightPlanModal", index: Number(rest) },
+    };
+  }
+  if (!/^[A-Z][A-Z0-9]{1,6}$/.test(rest) || (rest.length === 2 && !/\d$/.test(rest))) {
+    return invalid("ILL ACID");
+  }
+  return { kind: "action", action: { type: "openFlightPlanModal", acid: rest } };
 }
 
 /** Keyboard RR spacing. DCB spinner stays `RR_INTERVALS_NM` `[2, 5, 10]`. */
@@ -1501,6 +1539,8 @@ export function parsePreviewCommand(
   if (buffer === "") {
     return { kind: "incomplete" };
   }
+  const flightPlanModal = parseFlightPlanModalCommand(buffer);
+  if (flightPlanModal) return flightPlanModal;
   const del = parseDeleteCommand(buffer);
   if (del) {
     return del;

@@ -23,7 +23,7 @@ const SPAWN_HEADING_DEG = { min: 80, max: 100 };
 const SPAWN_ALT_FT = { min: 6000, max: 10000 };
 const SPAWN_SPEED_KT = { min: 210, max: 250 };
 
-test("T02-167 — spawned reported beacon auto-associates a unique pending plan", () => {
+test("T02-173 — spawned reported beacon remains independently derived", () => {
   const plan = createFlightPlan({
     id: "fp-spawn-beacon",
     acid: "AAL123",
@@ -44,11 +44,10 @@ test("T02-167 — spawned reported beacon auto-associates a unique pending plan"
   });
 
   expect(world.flightPlans[0]).toMatchObject({
-    status: "active",
+    status: "pending",
     acid: "AAL123",
     assignedBeacon: "7022",
-    reportedBeacon: "7022",
-    associatedAircraftId: aircraft.id,
+    reportedBeacon: undefined,
   });
   expect(aircraft.callsign).toBe("1234");
   expect(aircraft.assignedSquawk).toBe("7022");

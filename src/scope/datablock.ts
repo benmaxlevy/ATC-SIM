@@ -206,7 +206,11 @@ export function buildDatablockRuntimeState(
   options: DatablockRuntimeBuildOptions = {},
 ): DatablockRuntimeState {
   const track = options.track;
-  const plan = track?.unassociated ? undefined : flightPlanForAircraft(world, aircraft.id);
+  // Plan visibility is derived from the live beacon evidence, not from a
+  // cached display flag.  The track flag is presentation state and can lag a
+  // squawk report by one paint; letting it hide a uniquely correlated plan
+  // makes the datablock disagree with TAB, strips, and the flight-plan modal.
+  const plan = flightPlanForAircraft(world, aircraft.id);
   const handoff = handoffFor(world, aircraft.id);
   const simTimeMs = world.simTimeMs;
   const queried = (track?.queriedUntilSimMs ?? 0) > simTimeMs;
@@ -280,7 +284,9 @@ export function datablockSourceFromWorld(
   aircraft: Aircraft,
   track?: Pick<TrackDisplay, "squawk" | "unassociated">,
 ): DatablockSource {
-  const plan = track?.unassociated ? undefined : flightPlanForAircraft(world, aircraft.id);
+  // Correlation is read-only and authoritative here.  `unassociated` is a
+  // cached LDB presentation hint, not a second association relationship.
+  const plan = flightPlanForAircraft(world, aircraft.id);
   return datablockSourceFromPlan(aircraft, track, plan);
 }
 

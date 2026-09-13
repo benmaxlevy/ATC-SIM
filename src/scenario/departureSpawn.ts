@@ -6,14 +6,13 @@
 import {
   normalizeHeadingDeg,
   offerDepartureHandoff,
-  updateAircraftSquawk,
   type Aircraft,
   type Intent,
   type World,
 } from "@core";
 import type { ProcedureCatalog } from "./procedures/types";
 import { findSidProcedure, sidRouteFixIds } from "./procedures/sidHelpers";
-import { spawnAircraft } from "./spawnAircraft";
+import { spawnScenarioIfrAircraft } from "./ifrFlightPlan";
 
 /** Distance past the threshold along runway centerline for rolling departure spawn. */
 export const DEPARTURE_SPAWN_ROLL_OFFSET_NM = 0.8;
@@ -48,8 +47,10 @@ export interface DepartureSpawnConfig {
   aircraftType?: string;
   /** Assigned beacon from the scheduled departure record, if present. */
   assignedSquawk?: string;
-  /** Reported beacon to apply through the aircraft-scoped correlation hook. */
+  /** Reported beacon observed by the spawned aircraft. */
   squawk?: string;
+  /** Optional seeded source for generated beacon allocation. */
+  rng?: () => number;
 }
 
 export function resolveRunwayThreshold(
@@ -191,21 +192,32 @@ export function spawnDeparture(
     config.transitionId,
     config.assignedAltitudeFt,
   );
-  const ac = spawnAircraft(world, {
-    callsign: config.callsign,
-    xNm: pose.xNm,
-    yNm: pose.yNm,
-    headingDeg: pose.headingDeg,
-    altitudeFt: pose.altitudeFt,
-    speedKt: pose.speedKt,
-    aircraftType: config.aircraftType ?? "B738",
-    assignedSquawk: config.assignedSquawk,
-    squawk: config.squawk,
-  });
+  const { aircraft: ac } = spawnScenarioIfrAircraft(
+    world,
+    {
+      callsign: config.callsign,
+      xNm: pose.xNm,
+      yNm: pose.yNm,
+      headingDeg: pose.headingDeg,
+      altitudeFt: pose.altitudeFt,
+      speedKt: pose.speedKt,
+      aircraftType: config.aircraftType ?? "B738",
+    },
+    {
+      scenario: { icao: cat.airportId },
+      route: {
+        kind: "departure",
+        sidId: config.sidId,
+        transitionId: config.transitionId,
+      },
+      requestedAltitudeFt: pose.assignedAltitudeFt,
+      assignedBeacon: config.assignedSquawk ?? config.squawk,
+      rng: config.rng,
+      departure: true,
+      catalog: cat,
+    },
+  );
   ac.intent = pose.intent;
-  if (config.squawk !== undefined) {
-    updateAircraftSquawk(world, ac.id, config.squawk);
-  }
   offerDepartureHandoff(world, ac, "TWR", {
     runwayId: config.runwayId,
     sidId: config.sidId,

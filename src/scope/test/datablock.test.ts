@@ -24,6 +24,7 @@ test("runtime adapter projects associated plan and preserves beacon provenance",
     id: "runtime-associated",
     callsign: "RAW123",
     squawk: "4321",
+    reportedSquawk: "1234",
     altitudeFt: 6000,
     speedKt: 180,
     aircraftType: "C172",
@@ -41,7 +42,6 @@ test("runtime adapter projects associated plan and preserves beacon provenance",
         aircraftType: "B738",
         scratchpads: ["ILS 27", "S21"],
         fixes: [],
-        associatedAircraftId: ac.id,
       },
     ],
   });
@@ -70,6 +70,31 @@ test("runtime adapter projects associated plan and preserves beacon provenance",
   expect(state.display.scratchpads).toEqual({ sp1: "ILS2", sp2: "S21" });
   expect(state.options.field0Indicators).toEqual(["CA"]);
   expect(ac.intent).toEqual(beforeIntent);
+});
+
+test("runtime adapter uses derived beacon correlation even when LDB state is stale", () => {
+  const ac = makeTestAircraft({ id: "runtime-stale-ldb", callsign: "RAW789", squawk: "4321" });
+  const world = createWorld({
+    aircraft: [ac],
+    flightPlans: [
+      {
+        id: "runtime-stale-plan",
+        status: "pending",
+        acid: "FILED789",
+        assignedBeacon: "4321",
+        aircraftType: "B738",
+        fixes: [],
+        scratchpads: [],
+      },
+    ],
+  });
+
+  const state = buildDatablockRuntimeState(world, ac, {
+    track: { ownership: "unowned", unassociated: true, squawk: "4321" },
+  });
+
+  expect(state.source.callsign).toBe("FILED789");
+  expect(state.source.assignedSquawk).toBe("4321");
 });
 
 test.each(["pending", "suspended"] as const)(

@@ -215,6 +215,19 @@ export function isHeavyAircraftType(aircraftType?: string): boolean {
   );
 }
 
+/** Remove the FAA heavy-aircraft marker while keeping the stored type canonical. */
+export function normalizeFlightPlanAircraftType(value?: string): string | undefined {
+  const normalized = value?.trim().toUpperCase().replace(/^H\//, "");
+  return normalized || undefined;
+}
+
+/** Format an aircraft type for FAA flight-plan Item 3 display. */
+export function formatFlightPlanAircraftType(value?: string): string {
+  const normalized = normalizeFlightPlanAircraftType(value);
+  if (!normalized) return "";
+  return isHeavyAircraftType(normalized) ? `H/${normalized}` : normalized;
+}
+
 let aircraftSeq = 0;
 
 /** Deterministic `ac-n` ids so Vitest does not depend on `crypto.randomUUID`. */

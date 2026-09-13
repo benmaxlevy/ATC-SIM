@@ -79,8 +79,11 @@ export interface SimControlsProps {
   world: World;
 }
 
-function isCommandLineTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement && target.closest(".command-line") !== null;
+function isTextEntryTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    target.closest('.command-line, [role="dialog"][aria-modal="true"]') !== null
+  );
 }
 
 /**
@@ -98,7 +101,7 @@ export function SimControls({ world }: SimControlsProps) {
       }
       const consumed = applySimControlKey(world, {
         key: event.key,
-        commandLineFocused: isCommandLineTarget(event.target),
+        commandLineFocused: isTextEntryTarget(event.target),
       });
       if (consumed) {
         event.preventDefault();

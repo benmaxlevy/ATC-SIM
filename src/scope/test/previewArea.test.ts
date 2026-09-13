@@ -109,7 +109,7 @@ test("T02-145: INIT CNTL identity matches an unassociated authoritative plan", (
   expect(previewFlidMatchesSlew(state, aircraft.id, world)).toBe(true);
 });
 
-test("T02-145: FL/TAB removes an associated plan but keeps pending plans", () => {
+test("T02-173: FL/TAB does not mutate a plan or target association", () => {
   const pending = createFlightPlan({
     id: "fp-list",
     acid: "DAL456",
@@ -120,11 +120,11 @@ test("T02-145: FL/TAB removes an associated plan but keeps pending plans", () =>
   if (!pending.ok) throw new Error(pending.error.message);
   const world = createWorld({ flightPlans: [pending.value] });
   const view = createScopeView();
-  const aircraft = makeTestAircraft({ id: "target-list", callsign: "1234", squawk: "1200" });
+  const aircraft = makeTestAircraft({ id: "target-list", callsign: "1234", squawk: "7023" });
   world.aircraft.push(aircraft);
 
-  expect(getFlightPlanEntries(world, view).map((entry) => entry.callsign)).toContain("DAL456");
-  expect(associateFlightPlanToTrack(world, view, 1, aircraft.id)).toBe(true);
+  expect(getFlightPlanEntries(world, view).map((entry) => entry.callsign)).not.toContain("DAL456");
+  expect(associateFlightPlanToTrack(world, view, 1, aircraft.id)).toBe(false);
   expect(getFlightPlanEntries(world, view).map((entry) => entry.callsign)).not.toContain("DAL456");
 });
 

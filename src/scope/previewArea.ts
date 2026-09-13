@@ -33,6 +33,7 @@ import {
   isTrackingSlewAction,
   parseCaCommand,
   parseFlightPlanCreation,
+  parseFlightPlanModalCommand,
   parsePreviewCommand,
   parseVfrFlightPlanCommand,
   parseTrackingSlewBuffer,
@@ -49,6 +50,7 @@ export {
   parseBeaconFilterCommand,
   parseCaCommand,
   parseFlightPlanCreation,
+  parseFlightPlanModalCommand,
   parsePreviewCommand,
   parseScopeDisplayCommand,
   parseTrackingCommand,
@@ -301,6 +303,13 @@ export function previewRelocateListId(state: PreviewAreaState): string | null {
 }
 /** Armed tracking chord or live `+` `/` `*` `*1`–`*8` `*0` `*B` buffer. */
 export function previewTrackingSlew(state: PreviewAreaState): PreviewArmedAction | null {
+  if (
+    state.phase === "armed" &&
+    state.armed?.type === "openFlightPlanModal" &&
+    state.armed.targetSlew
+  ) {
+    return state.armed;
+  }
   if (state.phase === "armed" && state.armed && isTrackingSlewAction(state.armed)) {
     const armed = state.armed;
     if ((armed.type === "initCntl" || armed.type === "termCntl") && state.flid) {
@@ -310,6 +319,16 @@ export function previewTrackingSlew(state: PreviewAreaState): PreviewArmedAction
   }
   if (state.phase !== "entry") {
     return null;
+  }
+  // `*FP <SLEW>` is command-then-slew: while the exact token is live in the
+  // Preview Area, a target click applies it without an intermediate Enter.
+  const flightPlanModal = parseFlightPlanModalCommand(state.buffer);
+  if (
+    flightPlanModal?.kind === "action" &&
+    flightPlanModal.action.type === "openFlightPlanModal" &&
+    flightPlanModal.action.targetSlew
+  ) {
+    return flightPlanModal.action;
   }
   // STARS CA commands may slew directly from the live Preview Area; Enter is
   // only required when every target is supplied as a typed ACID.
@@ -604,10 +623,13 @@ export function handlePreviewFlidKey(
     // can delete a plan-only identity directly, as required by §5.4.6.
     if (state.armed.type === "termCntl" && plans.length === 1) {
       const plan = plans[0]!;
+      const correlatedAircraft = world.aircraft.find(
+        (aircraft) => flightPlanForAircraft(world, aircraft.id)?.id === plan.id,
+      );
       cancelPreviewArea(state);
       return {
         consumed: true,
-        apply: { type: "termCntl", aircraftId: plan.associatedAircraftId ?? "", planId: plan.id },
+        apply: { type: "termCntl", aircraftId: correlatedAircraft?.id ?? "", planId: plan.id },
       };
     }
     const resolved = resolveScopeFlid(flid, world, view);
@@ -658,9 +680,8 @@ export function previewFlidMatchesSlew(
   }
   if (plans.length === 1) {
     const plan = plans[0]!;
-    return plan.associatedAircraftId
-      ? plan.associatedAircraftId === aircraftId
-      : unassociatedTrack(aircraftId, view);
+    const correlated = flightPlanForAircraft(world, aircraftId);
+    return correlated ? correlated.id === plan.id : unassociatedTrack(aircraftId, view);
   }
   // INIT CNTL identity is deliberately narrower than the generic FLID
   // resolver: CID/numeric tails are not ACID, beacon, or TAB identities.

@@ -1,8 +1,36 @@
 import { describe, expect, it } from "vitest";
 import { parseCaCommand, parsePreviewCommand, parseTrackingSlewBuffer } from "../previewParse";
-import { commitPreviewCommand } from "../previewArea";
+import { commitPreviewCommand, previewTrackingSlew } from "../previewArea";
+import { idlePreviewArea } from "../previewArea";
 
 describe("T02-114: Preview Grammar for Conflict Alert (CA) & Purge Invented Aliases", () => {
+  it("T02-171 parses exact *FP forms without compacting * F", () => {
+    expect(parsePreviewCommand("*FP AAL123")).toEqual({
+      kind: "action",
+      action: { type: "openFlightPlanModal", acid: "AAL123" },
+    });
+    expect(parsePreviewCommand("*fp 07")).toEqual({
+      kind: "action",
+      action: { type: "openFlightPlanModal", index: 7 },
+    });
+    expect(parsePreviewCommand("*FP")).toEqual({
+      kind: "action",
+      action: { type: "openFlightPlanModal", targetSlew: true },
+    });
+    expect(parsePreviewCommand("*FP !")).toEqual({ kind: "invalid", reason: "ILL ACID" });
+    expect(parsePreviewCommand("* FP").kind).toBe("invalid");
+  });
+
+  it("T02-171 exposes a live bare *FP as a command-then-slew action", () => {
+    const preview = idlePreviewArea();
+    preview.phase = "entry";
+    preview.buffer = "*FP";
+    expect(previewTrackingSlew(preview)).toEqual({
+      type: "openFlightPlanModal",
+      targetSlew: true,
+    });
+  });
+
   describe("1. Purged Invented Aliases (*CA, *LA)", () => {
     it("strictly rejects *CA in parsePreviewCommand and commitPreviewCommand", () => {
       expect(parsePreviewCommand("*CA").kind).toBe("invalid");
