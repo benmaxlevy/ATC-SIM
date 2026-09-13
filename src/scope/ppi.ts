@@ -200,8 +200,10 @@ function applyTrackingSlewHit(
       // Target slew addresses the target's local plan identity, just like an
       // ACID or TAB entry. The UI may create a missing record; it never
       // creates a plan↔aircraft association or changes aircraft guidance.
-      onOpenFlightPlanModal?.({ targetAircraftId: id });
       clearTrackingSlew(view);
+      // Clear the command before invoking the UI callback so a callback-side
+      // rejection (for example, a blank target ACID) remains visible.
+      onOpenFlightPlanModal?.({ targetAircraftId: id });
       return true;
     case "initCntl": {
       const flid = action.flid ?? view.preview.flid;

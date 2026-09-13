@@ -127,4 +127,5 @@ test("Shell rejects a slewed target with a blank ACID as NO FLIGHT", () => {
   );
 
   expect(rejectionWrites).toContain("NO FLIGHT");
+  expect(scopeView.preview.rejection).toBe("NO FLIGHT");
 });
