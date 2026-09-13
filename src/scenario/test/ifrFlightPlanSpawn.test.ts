@@ -159,9 +159,9 @@ test("scenario IFR creation validates a requested route before reusing a plan", 
     createScenarioIfrFlightPlan(world, {
       acid: "AAL127",
       scenario,
-      route: { kind: "arrival", starId: "NOT_A_REAL_STAR" },
+      route: { kind: "arrival", starId: "NOTAREALSTAR" },
     }),
-  ).toThrow(/Unable to create IFR scenario plan .*invalid procedure token/);
+  ).toThrow(/Unable to create IFR scenario plan .*unknown fix, navaid, or procedure/);
 });
 
 test("scenario IFR spawning rejects explicit VFR 1200 before creating plan or target", () => {

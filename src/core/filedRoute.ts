@@ -56,15 +56,19 @@ export interface FiledRouteError {
 export type FiledRouteResult<T> = { ok: true; value: T } | { ok: false; error: FiledRouteError };
 
 export interface ParsedFiledRouteSegment {
-  kind: "SID" | "STAR" | "DCT";
-  procedureId?: string;
-  transitionId?: string;
-  fixId?: string;
+  kind: "TOKEN";
+  token: string;
 }
 
 export interface ParsedFiledRoute {
   text: string;
   segments: ParsedFiledRouteSegment[];
+}
+
+interface ProcedureRouteSegment {
+  kind: "SID" | "STAR";
+  procedureId: string;
+  transitionId?: string;
 }
 
 function upper(value: string): string {
@@ -83,7 +87,7 @@ function canonicalRouteText(value: string): string {
     .replace(/\s+/g, " ");
 }
 
-/** Parse only the compact trainer grammar. No catalog is consulted here. */
+/** Parse only the bare-token filed-route grammar. No catalog is consulted here. */
 export function parseFiledRoute(routeText: string): FiledRouteResult<ParsedFiledRoute> {
   const text = canonicalRouteText(routeText);
   if (!text) return { ok: true, value: { text: "", segments: [] } };
@@ -91,45 +95,23 @@ export function parseFiledRoute(routeText: string): FiledRouteResult<ParsedFiled
   const segments: ParsedFiledRouteSegment[] = [];
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index]!;
-    const match = /^(SID|STAR):([A-Z0-9]+)(?:\/([A-Z0-9]+))?$/.exec(token);
-    if (match) {
-      segments.push({
-        kind: match[1] as "SID" | "STAR",
-        procedureId: match[2],
-        ...(match[3] === undefined ? {} : { transitionId: match[3] }),
-      });
-      continue;
-    }
-    if (token === "DCT") {
-      const target = tokens[index + 1];
-      if (!target || target === "DCT" || /^(?:SID|STAR):/.test(target)) {
-        return {
-          ok: false,
-          error: routeError(
-            "INCOMPLETE_ROUTE",
-            "DCT must be followed by one catalog fix or navaid",
-            token,
-          ),
-        };
-      }
-      segments.push({ kind: "DCT", fixId: target });
-      index += 1;
-      continue;
-    }
-    if (/^(?:SID|STAR):/.test(token)) {
+    if (token === "DCT" || token.includes(":")) {
       return {
         ok: false,
-        error: routeError("UNSUPPORTED_ROUTE_TOKEN", `invalid procedure token ${token}`, token),
+        error: routeError(
+          "UNSUPPORTED_ROUTE_TOKEN",
+          `invalid filed-route token ${token}; enter bare procedures and fixes separated by spaces`,
+          token,
+        ),
       };
     }
-    return {
-      ok: false,
-      error: routeError(
-        "UNSUPPORTED_ROUTE_TOKEN",
-        `unsupported route token ${token}; use SID:, STAR:, or DCT`,
-        token,
-      ),
-    };
+    if (!/^[A-Z0-9]+(?:\/[A-Z0-9]+)?$/.test(token)) {
+      return {
+        ok: false,
+        error: routeError("UNSUPPORTED_ROUTE_TOKEN", `invalid filed-route token ${token}`, token),
+      };
+    }
+    segments.push({ kind: "TOKEN", token });
   }
   return { ok: true, value: { text, segments } };
 }
@@ -185,7 +167,7 @@ function sidRoutes(
 }
 
 function resolveProcedure(
-  segment: ParsedFiledRouteSegment,
+  segment: ProcedureRouteSegment,
   catalog: FiledRouteCatalog,
 ): FiledRouteResult<FiledRouteSegment> {
   const procedureId = segment.procedureId!;
@@ -323,6 +305,29 @@ function resolveProcedure(
   };
 }
 
+function procedureMatches(
+  token: string,
+  catalog: FiledRouteCatalog,
+): Array<{ kind: "SID" | "STAR"; procedureId: string; transitionId?: string }> {
+  const [procedureId, transitionId] = token.split("/");
+  const matches: Array<{ kind: "SID" | "STAR"; procedureId: string; transitionId?: string }> = [];
+  if (catalog.sids.some((item) => idsEqual(item.id, procedureId!))) {
+    matches.push({
+      kind: "SID",
+      procedureId: procedureId!,
+      ...(transitionId ? { transitionId } : {}),
+    });
+  }
+  if (catalog.stars.some((item) => idsEqual(item.id, procedureId!))) {
+    matches.push({
+      kind: "STAR",
+      procedureId: procedureId!,
+      ...(transitionId ? { transitionId } : {}),
+    });
+  }
+  return matches;
+}
+
 /** Parse and resolve filed route entries against the loaded facility catalog. */
 export function resolveFiledRoute(
   routeText: string,
@@ -336,44 +341,64 @@ export function resolveFiledRoute(
   }
   const segments: FiledRouteSegment[] = [];
   for (const parsedSegment of parsed.value.segments) {
-    if (parsedSegment.kind === "DCT") {
-      const target = parsedSegment.fixId!;
+    const token = parsedSegment.token;
+    const procedures = procedureMatches(token, catalog);
+    if (procedures.length > 1) {
+      return {
+        ok: false,
+        error: routeError(
+          "AMBIGUOUS_ROUTE_TOKEN",
+          `route token ${token} matches multiple procedures`,
+          token,
+        ),
+      };
+    }
+    if (procedures.length === 1) {
+      const resolved = resolveProcedure(procedures[0]!, catalog);
+      if (!resolved.ok) return resolved;
+      for (const fixId of resolved.value.fixIds) {
+        const known =
+          catalog.fixes.some((item) => idsEqual(item.id, fixId)) ||
+          catalog.navaids.some((item) => idsEqual(item.id, fixId));
+        if (!known) {
+          return {
+            ok: false,
+            error: routeError("UNKNOWN_FIX", `unknown procedure fix ${fixId}`, fixId),
+          };
+        }
+      }
+      segments.push(resolved.value);
+      continue;
+    }
+    if (token.includes("/")) {
+      return {
+        ok: false,
+        error: routeError("UNKNOWN_PROCEDURE", `unknown procedure ${token.split("/")[0]}`, token),
+      };
+    }
+    {
+      const target = token;
       const fixes = catalog.fixes.filter((item) => idsEqual(item.id, target));
       const navaids = catalog.navaids.filter((item) => idsEqual(item.id, target));
       if (fixes.length + navaids.length === 0) {
         return {
           ok: false,
-          error: routeError("UNKNOWN_FIX", `unknown fix or navaid ${target}`, target),
+          error: routeError("UNKNOWN_FIX", `unknown fix, navaid, or procedure ${target}`, target),
         };
       }
       if (fixes.length + navaids.length > 1) {
         return {
           ok: false,
-          error: routeError("AMBIGUOUS_ROUTE_TOKEN", `DCT target ${target} is ambiguous`, target),
+          error: routeError("AMBIGUOUS_ROUTE_TOKEN", `route token ${target} is ambiguous`, target),
         };
       }
       segments.push({ kind: "DCT", fixId: upper(target), fixIds: [upper(target)] });
-      continue;
     }
-    const resolved = resolveProcedure(parsedSegment, catalog);
-    if (!resolved.ok) return resolved;
-    for (const fixId of resolved.value.fixIds) {
-      const known =
-        catalog.fixes.some((item) => idsEqual(item.id, fixId)) ||
-        catalog.navaids.some((item) => idsEqual(item.id, fixId));
-      if (!known) {
-        return {
-          ok: false,
-          error: routeError("UNKNOWN_FIX", `unknown procedure fix ${fixId}`, fixId),
-        };
-      }
-    }
-    segments.push(resolved.value);
   }
   const normalized = segments
     .map((segment) => {
-      if (segment.kind === "DCT") return `DCT ${segment.fixId}`;
-      return `${segment.kind}:${segment.procedureId}${segment.transitionId ? `/${segment.transitionId}` : ""}`;
+      if (segment.kind === "DCT") return segment.fixId;
+      return `${segment.procedureId}${segment.transitionId ? `/${segment.transitionId}` : ""}`;
     })
     .join(" ");
   return { ok: true, value: { text: normalized, segments } };

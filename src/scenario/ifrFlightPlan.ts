@@ -39,7 +39,7 @@ export interface ScenarioIfrFlightPlanInput {
 
 function routeText(route: ScenarioIfrRoute): string {
   if (!route) return "";
-  const procedure = route.kind === "arrival" ? `STAR:${route.starId}` : `SID:${route.sidId}`;
+  const procedure = route.kind === "arrival" ? route.starId : route.sidId;
   return route.transitionId ? `${procedure}/${route.transitionId}` : procedure;
 }
 

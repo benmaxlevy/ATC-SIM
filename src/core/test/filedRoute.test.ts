@@ -29,28 +29,28 @@ const catalog: FiledRouteCatalog = {
 };
 
 test.each([
-  ["sid: sid1 / n   dct fixa", "SID:SID1/N DCT FIXA"],
-  ["DCT vor1", "DCT VOR1"],
-  ["STAR:STAR1/S DCT NDB1", "STAR:STAR1/S DCT NDB1"],
+  ["sid1 / n   fixa", "SID1/N FIXA"],
+  ["vor1", "VOR1"],
+  ["STAR1/S NDB1", "STAR1/S NDB1"],
 ])("normalizes filed route %s", (text, normalized) => {
   const result = resolveFiledRoute(text, catalog);
   expect(result).toMatchObject({ ok: true, value: { text: normalized } });
 });
 
 test.each([
-  ["DCT", "INCOMPLETE_ROUTE"],
-  ["FIXA", "UNSUPPORTED_ROUTE_TOKEN"],
-  ["J60", "UNSUPPORTED_ROUTE_TOKEN"],
-  ["SID1", "UNSUPPORTED_ROUTE_TOKEN"],
-  ["SID:SID1/NOPE", "UNKNOWN_TRANSITION"],
-  ["STAR:SID1", "WRONG_PROCEDURE_KIND"],
+  ["DCT", "UNSUPPORTED_ROUTE_TOKEN"],
+  ["DCT FIXA", "UNSUPPORTED_ROUTE_TOKEN"],
+  ["SID:SID1", "UNSUPPORTED_ROUTE_TOKEN"],
+  ["STAR:STAR1", "UNSUPPORTED_ROUTE_TOKEN"],
+  ["J60", "UNKNOWN_FIX"],
+  ["SID1/NOPE", "UNKNOWN_TRANSITION"],
 ] as const)("rejects filed route %s", (text, code) => {
   const result = resolveFiledRoute(text, catalog);
   expect(result).toMatchObject({ ok: false, error: { code } });
 });
 
-test("DCT rejects a same-name fix and navaid as ambiguous", () => {
-  const result = resolveFiledRoute("DCT SAME", {
+test("bare route token rejects a same-name fix and navaid as ambiguous", () => {
+  const result = resolveFiledRoute("SAME", {
     ...catalog,
     fixes: [...catalog.fixes, { id: "SAME" }],
     navaids: [...catalog.navaids, { id: "SAME" }],
@@ -66,7 +66,7 @@ test("saveFlightPlanDraft commits resolved metadata atomically", () => {
   const aircraftBefore = structuredClone(world.aircraft[0]);
   const result = saveFlightPlanDraft(world, {
     acid: "aal123",
-    filedRoute: "SID:SID1/N DCT FIXA",
+    filedRoute: "SID1/N FIXA",
     requestedAltitudeFt: 12000,
     aircraftType: "B738",
     equipment: "S",
@@ -74,7 +74,7 @@ test("saveFlightPlanDraft commits resolved metadata atomically", () => {
   expect(result).toMatchObject({
     ok: true,
     created: true,
-    plan: { acid: "AAL123", route: "SID:SID1/N DCT FIXA" },
+    plan: { acid: "AAL123", route: "SID1/N FIXA" },
   });
   if (!result.ok) return;
   expect(result.plan.filedRoute?.segments.map((segment) => segment.fixIds)).toEqual([
@@ -86,12 +86,12 @@ test("saveFlightPlanDraft commits resolved metadata atomically", () => {
 
 test("failed amendment leaves the existing plan byte-for-byte unchanged", () => {
   const world = createWorld({ catalog: { ...catalog, airportId: "TEST", approaches: [] } });
-  const created = saveFlightPlanDraft(world, { acid: "AAL123", filedRoute: "DCT FIXA" });
+  const created = saveFlightPlanDraft(world, { acid: "AAL123", filedRoute: "FIXA" });
   expect(created.ok).toBe(true);
   const before = structuredClone(world.flightPlans[0]);
   const failed = saveFlightPlanDraft(world, {
     acid: "AAL123",
-    filedRoute: "SID:SID1/NOPE",
+    filedRoute: "SID1/NOPE",
     remarks: "MUTATE",
   });
   expect(failed).toMatchObject({ ok: false, error: { code: "UNKNOWN_TRANSITION" } });
@@ -100,9 +100,14 @@ test("failed amendment leaves the existing plan byte-for-byte unchanged", () => 
 
 test("parseFiledRoute is catalog-free and accepts an empty route", () => {
   expect(parseFiledRoute(" ")).toEqual({ ok: true, value: { text: "", segments: [] } });
-  expect(parseFiledRoute("DCT FIXA")).toMatchObject({
+  expect(parseFiledRoute("SID1 FIXA")).toMatchObject({
     ok: true,
-    value: { segments: [{ kind: "DCT", fixId: "FIXA" }] },
+    value: {
+      segments: [
+        { kind: "TOKEN", token: "SID1" },
+        { kind: "TOKEN", token: "FIXA" },
+      ],
+    },
   });
 });
 

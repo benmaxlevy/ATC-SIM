@@ -135,9 +135,9 @@ that target has no filed plan. A beacon mismatch, stale/off-page TAB index, or t
 ACID returns `NO FLIGHT`; use the FL list or ACID to open an uncorrelated filed record. This is an explicit ATC-SIM trainer
 extension, not a supplied STARS-manual function. Save edits filed metadata only and does not alter
 aircraft surveillance, association, intent, kinematics, or route execution. Filed route text is
-catalog-resolved with `SID:<procedureId>[/<transitionId>]`, `STAR:<procedureId>[/<transitionId>]`,
-and `DCT <fixId-or-navaidId>` segments; route entries are space-separated, `DCT` consumes exactly
-one following fix or navaid, and an empty route is valid. These are filed metadata only: the
+catalog-resolved with bare procedure, fix, and navaid tokens separated by spaces; procedures may
+include an optional `/transition` suffix, and prefixes such as `SID:`, `STAR:`, and `DCT` are
+invalid. An empty route is valid. These are filed metadata only: the
 route is never activated in the aircraft FMS or used for clearance execution.
 They update the local authoritative flight-plan list and do not make a pilot
 read back or fly the change.

@@ -74,10 +74,10 @@ test("create and amend modes expose one accessible filed-plan dialog", () => {
     acid: "AAL123",
     fixes: [],
     scratchpads: [],
-    route: "DCT FIXA",
+    route: "FIXA",
   };
   expect(modalHtml(plan)).toContain("Amend flight plan");
-  expect(modalHtml(plan)).toContain('value="DCT FIXA"');
+  expect(modalHtml(plan)).toContain('value="FIXA"');
 
   const departurePlan: FlightPlan = {
     ...plan,
@@ -104,14 +104,14 @@ test("invalid Save is atomic and preserves aircraft surveillance state", () => {
     catalog: { ...catalog, airportId: "TEST", approaches: [] },
     aircraft: [aircraft],
   });
-  const created = saveFlightPlanDraft(world, { acid: "AAL123", filedRoute: "DCT FIXA" });
+  const created = saveFlightPlanDraft(world, { acid: "AAL123", filedRoute: "FIXA" });
   expect(created.ok).toBe(true);
   const beforePlan = structuredClone(world.flightPlans[0]);
   const beforeAircraft = structuredClone(aircraft);
 
   const failed = saveFlightPlanDraft(world, {
     acid: "AAL123",
-    filedRoute: "SID:SID1/NOPE",
+    filedRoute: "SID1/NOPE",
     remarks: "must not partially apply",
   });
   expect(failed).toMatchObject({ ok: false, error: { code: "UNKNOWN_TRANSITION" } });
@@ -122,7 +122,7 @@ test("invalid Save is atomic and preserves aircraft surveillance state", () => {
 test("modal submit keeps filed-route catalog validation", () => {
   const world = createWorld({ catalog: { ...catalog, airportId: "TEST", approaches: [] } });
   const draft = flightPlanModalDraftFromPlan("AAL123");
-  draft.route = "DCT NOT_IN_CATALOG";
+  draft.route = "NOTINCAT";
 
   const failed = submitFlightPlanModalDraft(world, undefined, draft);
   expect(failed).toMatchObject({ ok: false, error: { code: "UNKNOWN_FIX" } });

@@ -195,9 +195,9 @@ export function ScopeHelpOverlay({ open }: ScopeHelpOverlayProps) {
           with a blank ACID returns <code>NO FLIGHT</code>; use the FL list or ACID to open the
           uncorrelated filed record. Save changes filed metadata only; Cancel/Escape closes the
           dialog and restores opener focus. Filed route text is catalog-resolved with the compact
-          grammar
-          <code>SID:id[/transition] STAR:id[/transition] DCT fix</code>; <code>DCT</code> must be
-          followed by one fix or navaid.
+          grammar <code>procedure[/transition] fix-or-navaid</code>; enter each procedure, fix, or
+          navaid as a bare token separated by spaces. Prefixes such as <code>SID:</code>,{" "}
+          <code>STAR:</code>, and <code>DCT</code> are invalid.
         </p>
         {filteredNavigationGroups.map((navigationGroup) => {
           return (
