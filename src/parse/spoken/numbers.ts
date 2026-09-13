@@ -60,6 +60,12 @@ export function singleDigit(tok: string | undefined): number | null {
   return null;
 }
 
+/** Mode 3/A beacon digits are octal; spoken 8/9 must never form a squawk. */
+export function squawkDigit(tok: string | undefined): number | null {
+  const digit = singleDigit(tok);
+  return digit !== null && digit <= 7 ? digit : null;
+}
+
 function groupedNumberToken(tok: string | undefined): number | null {
   if (tok === undefined) {
     return null;

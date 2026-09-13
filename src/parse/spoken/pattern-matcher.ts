@@ -15,6 +15,7 @@ import {
   parseSpeedKt,
   parseTurnDegreesValue,
   singleDigit,
+  squawkDigit,
 } from "./numbers";
 import {
   groundApproachToCatalog,
@@ -1077,7 +1078,7 @@ function matchSquawk(
   }
   const digits: number[] = [];
   for (let offset = 1; offset <= 4; offset += 1) {
-    const digit = singleDigit(tokens[i + offset]);
+    const digit = squawkDigit(tokens[i + offset]);
     if (digit === null) {
       return null;
     }

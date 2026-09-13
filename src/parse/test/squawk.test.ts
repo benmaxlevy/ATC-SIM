@@ -28,4 +28,13 @@ describe("T02-176 squawk parsing", () => {
       instructions: [{ type: "ASSIGN_SQUAWK", code, source }],
     });
   });
+
+  it.each(["squawk eight nine two one", "squawk niner two one zero"])(
+    "rejects spoken non-octal form %s in every local spoken path",
+    async (text) => {
+      expect(await parseCommand(text, { source: "voice", pathC: false })).toMatchObject({
+        ok: false,
+      });
+    },
+  );
 });

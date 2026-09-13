@@ -16,6 +16,7 @@ import {
   parseSpeedKt,
   parseTurnDegreesValue,
   singleDigit,
+  squawkDigit,
   TEENS,
   TENS,
 } from "./numbers";
@@ -442,7 +443,7 @@ function trySquawk(c: Cursor): Instruction | null {
   }
   const digits: number[] = [];
   while (digits.length < 4) {
-    const digit = singleDigit(peek(c));
+    const digit = squawkDigit(peek(c));
     if (digit === null) {
       c.i = start;
       return null;

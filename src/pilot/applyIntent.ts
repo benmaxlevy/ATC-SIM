@@ -26,6 +26,8 @@ export interface ApplyIntentOpts {
   /** Scenario active runway; runway-tagged STAR transitions must match. */
   activeRunwayId?: string | null;
   squawkReportDelayMs?: number;
+  /** Authoritative plan for the aircraft, when one exists. */
+  flightPlan?: { assignedBeacon?: string };
 }
 
 export function applyIntent(
@@ -269,6 +271,9 @@ function applyOne(
       return;
     case "ASSIGN_SQUAWK":
       aircraft.assignedSquawk = instruction.code;
+      if (opts?.flightPlan) {
+        opts.flightPlan.assignedBeacon = instruction.code;
+      }
       aircraft.pendingReportedSquawk = {
         code: instruction.code,
         dueSimMs: simTimeMs + (opts?.squawkReportDelayMs ?? SQUAWK_REPORT_DELAY_MS),

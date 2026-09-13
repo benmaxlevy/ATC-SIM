@@ -10,6 +10,7 @@ import {
   parseSpeedKt,
   parseTurnDegreesValue,
   singleDigit,
+  squawkDigit,
 } from "./numbers";
 import { parseSpokenCallsign } from "./telephony";
 import { takePositionAdvisory } from "./grammar";
@@ -120,7 +121,7 @@ function rewriteSquawk(c: Cursor): string | null {
   const digits: string[] = [];
   while (digits.length < 4) {
     const tok = peek(c);
-    const digit = tok === undefined ? null : singleDigit(tok);
+    const digit = tok === undefined ? null : squawkDigit(tok);
     if (digit === null) {
       c.i = start;
       return null;

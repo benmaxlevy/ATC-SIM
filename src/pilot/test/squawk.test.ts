@@ -4,6 +4,7 @@ import { flightPlanForAircraft } from "@core";
 import { formatReadback } from "../readback";
 import { handleRadioText } from "../handleRadioText";
 import { validateInstructions } from "../validate";
+import { datablockSourceFromWorld } from "../../scope/datablock";
 
 function aircraft() {
   return createAircraft({
@@ -53,7 +54,7 @@ describe("T02-176 squawk assignment", () => {
     const created = createFlightPlan({
       id: "fp-dal",
       acid: "DAL123",
-      assignedBeacon: "4721",
+      assignedBeacon: "4700",
       status: "pending",
       fixes: [],
       scratchpads: [],
@@ -61,9 +62,20 @@ describe("T02-176 squawk assignment", () => {
     if (!created.ok) throw new Error(created.error.message);
     const world = createWorld({ aircraft: [ac], flightPlans: [created.value] });
     await handleRadioText(world, "DAL123 SQ 4721", new SessionLog());
+    expect(world.flightPlans[0]?.assignedBeacon).toBe("4721");
+    expect(datablockSourceFromWorld(world, ac)).toMatchObject({
+      callsign: "DAL123",
+      assignedSquawk: "4721",
+      reportedSquawk: undefined,
+    });
     expect(flightPlanForAircraft(world, ac.id)).toBeUndefined();
     stepWorld(world, 1);
     expect(flightPlanForAircraft(world, ac.id)?.id).toBe("fp-dal");
+    expect(datablockSourceFromWorld(world, ac)).toMatchObject({
+      callsign: "DAL123",
+      assignedSquawk: "4721",
+      reportedSquawk: "4721",
+    });
   });
 
   it("rejects invalid assignment atomically", async () => {

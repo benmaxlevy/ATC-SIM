@@ -265,6 +265,9 @@ export function handleRadioCommand(
     log,
     fixXy: world.fixRegistry ? (id) => world.fixRegistry?.get(id) : undefined,
     activeRunwayId: world.activeRunwayId,
+    flightPlan: world.flightPlans.find(
+      (plan) => plan.status !== "deleted" && plan.acid === aircraft.callsign,
+    ),
   });
   const procedureNames = Object.fromEntries([
     ...(world.catalog?.stars ?? []).map((star) => [star.id, star.name ?? star.id] as const),
