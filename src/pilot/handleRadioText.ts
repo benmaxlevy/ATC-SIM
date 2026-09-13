@@ -105,6 +105,22 @@ function catalogFixIdsFromWorld(world: World): string[] {
   return world.fixRegistry ? [...world.fixRegistry.ids()] : [];
 }
 
+function catalogAirportsFromWorld(world: World): Array<{
+  icao: string;
+  name: string;
+  aliases: string[];
+}> {
+  const catalog = world.catalog;
+  if (!catalog?.name) return [];
+  return [
+    {
+      icao: catalog.airportId,
+      name: catalog.name,
+      aliases: [...(catalog.spokenAliases ?? [])],
+    },
+  ];
+}
+
 function buildCommand(args: {
   callsign: string;
   instructions: Instruction[];
@@ -169,6 +185,7 @@ export async function handleRadioText(
     fixes: catalogFixIdsFromWorld(world),
     procedures: proceduresFromCatalog(world.catalog),
     approaches: approachesFromCatalog(world.catalog),
+    airports: catalogAirportsFromWorld(world),
     pathC: opts?.pathC ?? false,
   });
   if (!parsed.ok) {

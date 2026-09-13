@@ -39,6 +39,35 @@ function setup(route = "VOR1") {
   return { world, aircraft, plan: created.plan };
 }
 
+function setupAirport(withFixes: boolean) {
+  const aircraft = createAircraft({
+    id: "ac-dal-airport",
+    callsign: "DAL123",
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 90,
+    altitudeFt: 8000,
+    speedKt: 220,
+  });
+  const world = createWorld({
+    aircraft: [aircraft],
+    catalog: {
+      ...catalog,
+      airportId: "KATL",
+      name: "Hartsfield/Jackson Atlanta International",
+      spokenAliases: ["Atlanta Airport"],
+      fixes: withFixes ? [{ id: "VOR1", xNm: 2, yNm: 0 }] : [],
+      approaches: [],
+    },
+  });
+  const created = saveFlightPlanDraft(world, {
+    acid: "DAL123",
+    filedRoute: withFixes ? "VOR1" : "KATL",
+  });
+  if (!created.ok) throw new Error(created.error.message);
+  return { world, plan: created.plan };
+}
+
 test("new executable IFR clearance activates the canonical route immediately", async () => {
   const { world, aircraft, plan } = setup();
   const log = new SessionLog();
@@ -108,6 +137,30 @@ test("catalog airport limits are executable generic endpoints", async () => {
   expect(result.accepted).toBe(true);
   expect(plan.routeRecord?.route.text).toBe("TEST");
   expect(aircraft.intent.lateral).toMatchObject({ type: "PROCEDURE", routeFixIds: ["TEST"] });
+});
+
+test("text airport clearance grounds the listed airport with nonempty fixes", async () => {
+  const { world, plan } = setupAirport(true);
+  const result = await handleRadioText(
+    world,
+    "DAL123 CLR TO Atlanta Airport VIA DIRECT",
+    new SessionLog(),
+  );
+  expect(result.accepted).toBe(true);
+  expect(plan.clearanceLimit).toBe("KATL");
+});
+
+test("text airport clearance grounds the listed airport with empty fixes", async () => {
+  const { world, plan } = setupAirport(false);
+  const result = await handleRadioText(world, "DAL123 CLR TO KATL VIA DIRECT", new SessionLog());
+  expect(result.accepted).toBe(true);
+  expect(plan.clearanceLimit).toBe("KATL");
+});
+
+test("text clearance rejects an unknown airport with empty fixes", async () => {
+  const { world } = setupAirport(false);
+  const result = await handleRadioText(world, "DAL123 CLR TO KXXX VIA DIRECT", new SessionLog());
+  expect(result.accepted).toBe(false);
 });
 
 test("IFR clearance rejects VFR plans without pickup or mutation", async () => {

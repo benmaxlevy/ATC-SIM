@@ -274,7 +274,7 @@ export function groundInstructionFixes(
     clearanceLimitIds?: ReadonlySet<string>;
   },
 ): GroundedFixInstructions {
-  if (catalog.length === 0) {
+  if (catalog.length === 0 && (opts?.clearanceLimitIds?.size ?? 0) === 0) {
     return { instructions: [...instructions], ungroundedFixes: [] };
   }
   const ungroundedFixes: string[] = [];
