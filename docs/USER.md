@@ -167,6 +167,14 @@ route is never activated in the aircraft FMS or used for clearance execution.
 They update the local authoritative flight-plan list and do not make a pilot
 read back or fly the change.
 
+The Flight Plan modal exposes **Assigned altitude (ft)** only when amending an
+active plan. Saving this field changes only `FlightPlan.assignedAltitudeFt`;
+requested altitude remains separate, and aircraft surveillance, Mode C,
+association, intent, kinematics, and route execution do not change. Enter `0`
+to clear assigned altitude. Create and non-active plan forms keep this control
+unavailable; direct invalid submissions retain the core error
+`assigned altitude requires an active flight`.
+
 | Command | Example | Result |
 |---|---|---|
 | `*T` | `*T` then Enter | Toggles the TAB flight-plan list. `*T 15` sets its visible row count. Use the displayed numeric row index for list operations. |

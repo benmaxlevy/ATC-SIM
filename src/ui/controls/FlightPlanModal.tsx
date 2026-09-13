@@ -41,6 +41,7 @@ export function flightPlanModalDraftFromPlan(
     flightType: plan?.flightType ?? flightTypeFromRules(plan?.flightRules) ?? "",
     route: plan?.filedRoute?.text ?? plan?.route ?? "",
     requestedAltitudeFt: plan?.requestedAltitudeFt?.toString() ?? "",
+    assignedAltitudeFt: plan?.assignedAltitudeFt?.toString() ?? "",
     aircraftType: formatFlightPlanAircraftType(plan?.aircraftType),
     equipment: plan?.equipment ?? "",
     departureAirport: plan?.departureAirport ?? "",
@@ -86,6 +87,7 @@ export function submitFlightPlanModalDraft(
     flightType: optionalText(draft.flightType ?? "") as FlightPlanDraftInput["flightType"],
     filedRoute: draft.route ?? "",
     requestedAltitudeFt: optionalNumber(draft.requestedAltitudeFt ?? ""),
+    assignedAltitudeFt: optionalNumber(draft.assignedAltitudeFt ?? ""),
     aircraftType: normalizeFlightPlanAircraftType(draft.aircraftType),
     equipment: optionalText(draft.equipment ?? ""),
     departureAirport: optionalText(draft.departureAirport ?? ""),
@@ -95,7 +97,11 @@ export function submitFlightPlanModalDraft(
       : { ptd: optionalText(draft.ptd ?? "") }),
     remarks: optionalText(draft.remarks ?? ""),
   };
-  return saveFlightPlanDraft(world, input);
+  const result = saveFlightPlanDraft(world, input);
+  if (result.ok && input.assignedAltitudeFt === 0) {
+    delete result.plan.assignedAltitudeFt;
+  }
+  return result;
 }
 
 export function FlightPlanModal({
@@ -155,7 +161,9 @@ export function FlightPlanModal({
     if (!result.ok) {
       const field =
         result.error.field === "altitude"
-          ? "requestedAltitudeFt"
+          ? draft.assignedAltitudeFt?.trim()
+            ? "assignedAltitudeFt"
+            : "requestedAltitudeFt"
           : result.error.field === "plan"
             ? "route"
             : result.error.field;
@@ -195,11 +203,13 @@ export function FlightPlanModal({
     ["assignedBeacon", "Assigned beacon"],
     ["route", "Filed route"],
     ["requestedAltitudeFt", "Requested altitude (ft)"],
+    ["assignedAltitudeFt", "Assigned altitude (ft)"],
     ["aircraftType", "Aircraft type"],
     ["departureAirport", "Origin"],
     ["airportId", "Destination"],
   ] as const;
   const mode = operationForPlan(plan, operation);
+  const assignedAltitudeAvailable = plan?.status === "active";
 
   return (
     <div className="flight-plan-modal-backdrop" role="presentation">
@@ -231,7 +241,10 @@ export function FlightPlanModal({
           {textFields.map(([field, label]) => (
             <label key={field} htmlFor={`flight-plan-${field}`}>
               {label}
-              <input {...inputProps(field)} />
+              <input
+                {...inputProps(field)}
+                disabled={field === "assignedAltitudeFt" && !assignedAltitudeAvailable}
+              />
             </label>
           ))}
           <label htmlFor="flight-plan-equipment">
