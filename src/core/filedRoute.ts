@@ -2,13 +2,17 @@ import type {
   FiledRoute,
   FiledRouteSegment,
   FlightPlan,
+  FlightPlanRoute,
+  FlightPlanRouteLifecycle,
   FlightPlanStatus,
   FlightPlanErrorCode,
 } from "./flightPlan";
 import {
   allocateBeaconCode,
+  createFlightPlanRoute,
   isValidAcid,
   isValidBeaconCode,
+  routeFixIds,
   validateFlightPlan,
 } from "./flightPlan";
 
@@ -404,6 +408,127 @@ export function resolveFiledRoute(
   return { ok: true, value: { text: normalized, segments } };
 }
 
+export type FlightPlanRouteTransactionLifecycle = Exclude<FlightPlanRouteLifecycle, "none">;
+
+export interface FlightPlanRouteTransactionInput {
+  /** New catalog route text. Omit only when `source` is `AS_FILED`. */
+  routeText?: string;
+  /** Reuse the plan's current proposal without parsing clearance syntax. */
+  source?: "AS_FILED";
+  lifecycle?: FlightPlanRouteTransactionLifecycle;
+  nextIndex?: number;
+}
+
+export type FlightPlanRouteTransactionErrorCode =
+  "PLAN_NOT_FOUND" | "UNABLE_ROUTE" | "INVALID_ROUTE_INDEX" | "INVALID_ROUTE_LIFECYCLE";
+
+export interface FlightPlanRouteTransactionError {
+  code: FlightPlanRouteTransactionErrorCode;
+  field: "plan" | "route" | "nextIndex" | "lifecycle";
+  message: string;
+}
+
+export type FlightPlanRouteTransactionResult<T> =
+  { ok: true; route: T; plan?: FlightPlan } | { ok: false; error: FlightPlanRouteTransactionError };
+
+function unableRoute(message: string): FlightPlanRouteTransactionError {
+  return {
+    code: "UNABLE_ROUTE",
+    field: "route",
+    message: `unable route${message ? `: ${message}` : ""}`,
+  };
+}
+
+function routeSourceForPlan(
+  plan: Pick<FlightPlan, "filedRoute" | "routeRecord">,
+  input: FlightPlanRouteTransactionInput,
+): FiledRoute | undefined {
+  if (input.source !== "AS_FILED") return undefined;
+  return plan.routeRecord?.route ?? plan.filedRoute;
+}
+
+/**
+ * Purely validate and compile a proposed/current route transaction. No plan,
+ * world, aircraft, or intent is touched on either success or failure.
+ */
+export function validateFlightPlanRouteTransaction(
+  plan: Pick<FlightPlan, "filedRoute" | "routeRecord">,
+  input: FlightPlanRouteTransactionInput,
+  catalog: FiledRouteCatalog | null | undefined,
+): FlightPlanRouteTransactionResult<FlightPlanRoute> {
+  const source = routeSourceForPlan(plan, input);
+  let resolved: FiledRouteResult<FiledRoute>;
+  if (source !== undefined) {
+    resolved = { ok: true, value: source };
+  } else if (input.routeText?.trim()) {
+    resolved = resolveFiledRoute(input.routeText, catalog);
+  } else {
+    return { ok: false, error: unableRoute("route is blank") };
+  }
+  if (!resolved.ok) return { ok: false, error: unableRoute(resolved.error.message) };
+  if (resolved.value.segments.length === 0 || routeFixIds(resolved.value).length === 0) {
+    return { ok: false, error: unableRoute("route is blank") };
+  }
+
+  const nextIndex = input.nextIndex ?? 0;
+  const fixCount = routeFixIds(resolved.value).length;
+  if (!Number.isInteger(nextIndex) || nextIndex < 0 || nextIndex > fixCount) {
+    return {
+      ok: false,
+      error: {
+        code: "INVALID_ROUTE_INDEX",
+        field: "nextIndex",
+        message: `route nextIndex must be an integer from 0 through ${fixCount}`,
+      },
+    };
+  }
+  const lifecycle = input.lifecycle ?? "active";
+  const revision = (plan.routeRecord?.revision ?? 0) + 1;
+  return {
+    ok: true,
+    route: createFlightPlanRoute(resolved.value, { nextIndex, revision, lifecycle }),
+  };
+}
+
+/**
+ * Atomically replace the one plan route record. The compatibility `filedRoute`
+ * and display `route` fields are updated to the same resolved route object;
+ * they are never independent active/current route sources.
+ */
+export function applyFlightPlanRouteTransaction(
+  world: { flightPlans: FlightPlan[]; catalog?: FiledRouteCatalog | null },
+  planId: string,
+  input: FlightPlanRouteTransactionInput,
+): FlightPlanRouteTransactionResult<FlightPlanRoute> {
+  const plan = world.flightPlans.find((item) => item.id === planId && item.status !== "deleted");
+  if (!plan) {
+    return {
+      ok: false,
+      error: { code: "PLAN_NOT_FOUND", field: "plan", message: `flight plan ${planId} not found` },
+    };
+  }
+  const compiled = validateFlightPlanRouteTransaction(plan, input, world.catalog);
+  if (!compiled.ok) return compiled;
+  const next = compiled.route;
+  Object.assign(plan, {
+    routeRecord: next,
+    filedRoute: next.route,
+    route: next.route.text,
+  });
+  return { ok: true, route: next, plan };
+}
+
+/** Cancel the current route without inventing a second route or changing aircraft state. */
+export function cancelFlightPlanRoute(
+  world: { flightPlans: FlightPlan[]; catalog?: FiledRouteCatalog | null },
+  planId: string,
+): FlightPlanRouteTransactionResult<FlightPlanRoute> {
+  return applyFlightPlanRouteTransaction(world, planId, {
+    source: "AS_FILED",
+    lifecycle: "cancelled",
+  });
+}
+
 export type FlightPlanDraftInput = Omit<
   Partial<FlightPlan>,
   "id" | "status" | "filedRoute" | "reportedBeacon"
@@ -747,7 +872,13 @@ export function saveFlightPlanDraft(
       candidateInput.assignedBeacon = allocation.value;
     }
   }
-  const route = resolveFiledRoute(input.filedRoute ?? input.route ?? "", world.catalog);
+  const hasRouteInput =
+    Object.prototype.hasOwnProperty.call(input, "filedRoute") ||
+    Object.prototype.hasOwnProperty.call(input, "route");
+  const routeText = hasRouteInput
+    ? (input.filedRoute ?? input.route ?? "")
+    : (existing?.filedRoute?.text ?? existing?.route ?? "");
+  const route = resolveFiledRoute(routeText, world.catalog);
   if (!route.ok) return { ok: false, error: route.error };
   const otherPlans = world.flightPlans.filter(
     (item) => item.status !== "deleted" && item.id !== existing?.id,
@@ -775,11 +906,22 @@ export function saveFlightPlanDraft(
     status: base.status,
   };
   if (route.value.segments.length > 0) {
-    candidate.filedRoute = route.value;
     candidate.route = route.value.text;
+    const currentRecord = existing?.routeRecord;
+    const fixCount = routeFixIds(route.value).length;
+    candidate.routeRecord = createFlightPlanRoute(route.value, {
+      nextIndex:
+        currentRecord?.lifecycle === "active" && currentRecord.nextIndex <= fixCount
+          ? currentRecord.nextIndex
+          : 0,
+      revision: currentRecord?.revision ?? 0,
+      lifecycle: currentRecord?.lifecycle === "active" ? "active" : "none",
+    });
+    candidate.filedRoute = candidate.routeRecord.route;
   } else {
     delete candidate.filedRoute;
     delete candidate.route;
+    delete candidate.routeRecord;
   }
   if (candidate.requestedAltitudeFt === 0) delete candidate.requestedAltitudeFt;
   if (candidate.assignedAltitudeFt === 0) delete candidate.assignedAltitudeFt;

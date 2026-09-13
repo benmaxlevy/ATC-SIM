@@ -35,6 +35,9 @@ export type {
   FlightPlan,
   FiledRoute,
   FiledRouteSegment,
+  ClearedRoute,
+  FlightPlanRoute,
+  FlightPlanRouteLifecycle,
   FlightPlanError,
   FlightPlanErrorCode,
   FlightPlanCorrelationError,
@@ -49,7 +52,12 @@ export type {
   FlightPlanStatus,
   FlightType,
 } from "./flightPlan";
-export { FAA_AIRCRAFT_EQUIPMENT_SUFFIXES } from "./flightPlan";
+export {
+  FAA_AIRCRAFT_EQUIPMENT_SUFFIXES,
+  createFlightPlanRoute,
+  routeFixIds,
+  transitionFlightPlanRoute,
+} from "./flightPlan";
 export type {
   FiledRouteCatalog,
   FiledRouteError,
@@ -61,6 +69,11 @@ export type {
   FlightPlanDraftError,
   FlightPlanDraftErrorCode,
   FlightPlanDraftResult,
+  FlightPlanRouteTransactionError,
+  FlightPlanRouteTransactionErrorCode,
+  FlightPlanRouteTransactionInput,
+  FlightPlanRouteTransactionLifecycle,
+  FlightPlanRouteTransactionResult,
 } from "./filedRoute";
 export {
   allocateBeaconCode,
@@ -83,7 +96,14 @@ export {
   withAllocatedBeacon,
   updateAircraftSquawk,
 } from "./flightPlan";
-export { parseFiledRoute, resolveFiledRoute, saveFlightPlanDraft } from "./filedRoute";
+export {
+  applyFlightPlanRouteTransaction,
+  cancelFlightPlanRoute,
+  parseFiledRoute,
+  resolveFiledRoute,
+  saveFlightPlanDraft,
+  validateFlightPlanRouteTransaction,
+} from "./filedRoute";
 export {
   TRACON_BOUNDARY_RADIUS_NM,
   createWorld,

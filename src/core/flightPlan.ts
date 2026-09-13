@@ -22,6 +22,90 @@ export interface FiledRoute {
   segments: FiledRouteSegment[];
 }
 
+/**
+ * Route lifecycle owned by the flight-plan domain.  `filedRoute` remains a
+ * compatibility projection for the modal and strip code; it is not a second
+ * live route.  A route proposal is `none` until a clearance issues it.
+ */
+export type FlightPlanRouteLifecycle = "none" | "issued" | "acknowledged" | "active" | "cancelled";
+
+/**
+ * The one proposed/current route record for a plan.
+ *
+ * `nextIndex` is an index into the flattened catalog-resolved fix sequence.
+ * Route execution is deliberately owned by a later ticket; this domain only
+ * carries the cursor needed by that executor.
+ */
+export interface FlightPlanRoute {
+  route: FiledRoute;
+  nextIndex: number;
+  revision: number;
+  lifecycle: FlightPlanRouteLifecycle;
+}
+
+/** Short name for callers that model the record as the cleared route. */
+export type ClearedRoute = FlightPlanRoute;
+
+export function routeFixIds(route: FiledRoute): string[] {
+  return route.segments.flatMap((segment) => segment.fixIds);
+}
+
+export function createFlightPlanRoute(
+  route: FiledRoute,
+  options: Partial<Pick<FlightPlanRoute, "nextIndex" | "revision" | "lifecycle">> = {},
+): FlightPlanRoute {
+  const fixIds = routeFixIds(route);
+  const nextIndex = options.nextIndex ?? 0;
+  if (!Number.isInteger(nextIndex) || nextIndex < 0 || nextIndex > fixIds.length) {
+    throw new Error(`route nextIndex must be an integer from 0 through ${fixIds.length}`);
+  }
+  const revision = options.revision ?? 0;
+  if (!Number.isInteger(revision) || revision < 0) {
+    throw new Error("route revision must be a non-negative integer");
+  }
+  return {
+    route: {
+      text: route.text,
+      segments: route.segments.map((segment) => ({ ...segment, fixIds: [...segment.fixIds] })),
+    },
+    nextIndex,
+    revision,
+    lifecycle: options.lifecycle ?? "none",
+  };
+}
+
+const ROUTE_LIFECYCLE_TRANSITIONS: Record<
+  FlightPlanRouteLifecycle,
+  readonly FlightPlanRouteLifecycle[]
+> = {
+  none: ["issued", "cancelled"],
+  issued: ["acknowledged", "active", "cancelled"],
+  acknowledged: ["active", "cancelled"],
+  active: ["cancelled"],
+  cancelled: [],
+};
+
+/** Pure lifecycle transition; replacement transactions may activate directly. */
+export function transitionFlightPlanRoute(
+  record: FlightPlanRoute,
+  lifecycle: FlightPlanRouteLifecycle,
+): FlightPlanResult<FlightPlanRoute> {
+  if (record.lifecycle === lifecycle)
+    return { ok: true, value: createFlightPlanRoute(record.route, record) };
+  if (!ROUTE_LIFECYCLE_TRANSITIONS[record.lifecycle].includes(lifecycle)) {
+    return {
+      ok: false,
+      error: error(
+        "INVALID_STATUS_TRANSITION",
+        "status",
+        `${record.lifecycle}->${lifecycle}`,
+        `unsupported route lifecycle transition ${record.lifecycle}->${lifecycle}`,
+      ),
+    };
+  }
+  return { ok: true, value: { ...createFlightPlanRoute(record.route, record), lifecycle } };
+}
+
 export type FlightType = "IFR" | "VFR" | "DVFR" | "SVFR";
 
 /** FAA JO 7110.65, TBL 2-3-10 aircraft equipment suffixes. */
@@ -86,6 +170,11 @@ export interface FlightPlan {
   suspensionReason?: FlightPlanSuspensionReason;
   /** Catalog-resolved filed route metadata; never an active FMS route. */
   filedRoute?: FiledRoute;
+  /**
+   * Sole authoritative proposed/current route record. `filedRoute` and
+   * `route` are retained as read/display compatibility projections.
+   */
+  routeRecord?: FlightPlanRoute;
   /** Local trainer record of the latest VFR exit-fix retransmit. */
   vfrRetransmit?: { amendedFix: string; requestedAtMs: number };
 }
@@ -287,6 +376,10 @@ export function createFlightPlan(
     fixes: [...input.fixes],
     scratchpads: [...input.scratchpads],
   };
+  if (plan.filedRoute && !plan.routeRecord) {
+    plan.routeRecord = createFlightPlanRoute(plan.filedRoute);
+    plan.filedRoute = plan.routeRecord.route;
+  }
   const firstError = validateFlightPlan(plan, existing)[0];
   return firstError ? { ok: false, error: firstError } : { ok: true, value: plan };
 }
