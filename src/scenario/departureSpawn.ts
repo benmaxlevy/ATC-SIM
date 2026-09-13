@@ -6,7 +6,6 @@
 import {
   normalizeHeadingDeg,
   offerDepartureHandoff,
-  updateAircraftSquawk,
   type Aircraft,
   type Intent,
   type World,
@@ -48,7 +47,7 @@ export interface DepartureSpawnConfig {
   aircraftType?: string;
   /** Assigned beacon from the scheduled departure record, if present. */
   assignedSquawk?: string;
-  /** Reported beacon to apply through the aircraft-scoped correlation hook. */
+  /** Reported beacon observed by the spawned aircraft. */
   squawk?: string;
 }
 
@@ -203,9 +202,6 @@ export function spawnDeparture(
     squawk: config.squawk,
   });
   ac.intent = pose.intent;
-  if (config.squawk !== undefined) {
-    updateAircraftSquawk(world, ac.id, config.squawk);
-  }
   offerDepartureHandoff(world, ac, "TWR", {
     runwayId: config.runwayId,
     sidId: config.sidId,

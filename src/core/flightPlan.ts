@@ -59,8 +59,6 @@ export interface FlightPlan {
   source?: string;
   /** Why the plan is suspended; drives STARS mismatch unsuspend behavior. */
   suspensionReason?: FlightPlanSuspensionReason;
-  /** Authoritative surveillance association; absent while pending/unassociated. */
-  associatedAircraftId?: string;
   /** Catalog-resolved filed route metadata; never an active FMS route. */
   filedRoute?: FiledRoute;
   /** Local trainer record of the latest VFR exit-fix retransmit. */
@@ -331,7 +329,12 @@ export function transitionFlightPlan(
 }
 
 export function deleteFlightPlan(plan: FlightPlan): FlightPlan {
-  return { ...plan, status: "deleted", assignedBeacon: undefined, reportedBeacon: undefined };
+  return {
+    ...plan,
+    status: "deleted",
+    assignedBeacon: undefined,
+    reportedBeacon: undefined,
+  };
 }
 
 function modificationError(
@@ -580,7 +583,7 @@ export function releaseAssignedBeacon(
   return { ok: true, plan };
 }
 
-/** Delete an authoritative plan and unassociate its track without changing kinematics. */
+/** Delete an authoritative plan without changing surveillance or kinematics. */
 export function deleteFlightPlanFromWorld(
   world: {
     flightPlans: FlightPlan[];
@@ -595,12 +598,11 @@ export function deleteFlightPlanFromWorld(
       error: modificationError("PLAN_NOT_FOUND", "plan", planId, `flight plan ${planId} not found`),
     };
   }
-  plan.associatedAircraftId = undefined;
   Object.assign(plan, deleteFlightPlan(plan));
   return { ok: true, plan };
 }
 
-/** Remove a plan association without deleting or changing the plan state. */
+/** @deprecated Correlation is derived; retained as a compatibility no-op. */
 export function disassociateFlightPlan(
   world: { flightPlans: FlightPlan[] },
   planId: string,
@@ -612,25 +614,89 @@ export function disassociateFlightPlan(
       error: modificationError("PLAN_NOT_FOUND", "plan", planId, `flight plan ${planId} not found`),
     };
   }
-  plan.associatedAircraftId = undefined;
   return { ok: true, plan };
 }
 
-/** Resolve the only authoritative plan↔aircraft relationship. */
+export interface DerivedFlightPlanCorrelation {
+  aircraftId: string;
+  reportedSquawk?: string;
+  candidates: readonly FlightPlan[];
+  reason: "unique" | "no-target" | "no-squawk" | "vfr" | "no-match" | "ambiguous";
+  plan?: FlightPlan;
+}
+
+function normalizedReportedSquawk(aircraft: {
+  reportedSquawk?: string;
+  squawk?: string;
+}): string | undefined {
+  return (aircraft.reportedSquawk ?? aircraft.squawk)?.trim().toUpperCase();
+}
+
+/**
+ * Derive correlation from independent surveillance and plan provenance.
+ * This function is pure with respect to World: it never activates, edits, or
+ * associates a plan and never mutates the target.
+ */
+export function resolveFlightPlanCorrelation(
+  world: {
+    flightPlans: readonly FlightPlan[];
+    aircraft: ReadonlyArray<{ id: string; reportedSquawk?: string; squawk?: string }>;
+  },
+  aircraftId: string,
+): DerivedFlightPlanCorrelation {
+  const aircraft = world.aircraft?.find((item) => item.id === aircraftId);
+  if (!aircraft) {
+    return { aircraftId, candidates: [], reason: "no-target" };
+  }
+  const reportedSquawk = normalizedReportedSquawk(aircraft);
+  if (!reportedSquawk || reportedSquawk === "1200") {
+    return {
+      aircraftId,
+      ...(reportedSquawk ? { reportedSquawk } : {}),
+      candidates: [],
+      reason: reportedSquawk === "1200" ? "vfr" : "no-squawk",
+    };
+  }
+  if (!isValidBeaconCode(reportedSquawk)) {
+    return { aircraftId, reportedSquawk, candidates: [], reason: "no-match" };
+  }
+  const candidates = world.flightPlans.filter((plan) => {
+    const assignedBeacon = normalized(plan.assignedBeacon);
+    return (
+      plan.status !== "deleted" &&
+      assignedBeacon !== undefined &&
+      isValidBeaconCode(assignedBeacon) &&
+      assignedBeacon !== "1200" &&
+      assignedBeacon === reportedSquawk
+    );
+  });
+  if (candidates.length === 1) {
+    return { aircraftId, reportedSquawk, candidates, reason: "unique", plan: candidates[0] };
+  }
+  return {
+    aircraftId,
+    reportedSquawk,
+    candidates,
+    reason: candidates.length > 1 ? "ambiguous" : "no-match",
+  };
+}
+
+/** Resolve the unique derived plan for a target, if one exists. */
 export function flightPlanForAircraft(
-  world: { flightPlans: readonly FlightPlan[] },
+  world: {
+    flightPlans: readonly FlightPlan[];
+    aircraft: ReadonlyArray<{ id: string; reportedSquawk?: string; squawk?: string }>;
+  },
   aircraftId: string,
 ): FlightPlan | undefined {
-  return world.flightPlans.find(
-    (plan) => plan.status !== "deleted" && plan.associatedAircraftId === aircraftId,
-  );
+  return resolveFlightPlanCorrelation(world, aircraftId).plan;
 }
 
 function reportedSquawk(aircraft: {
   reportedSquawk?: string;
   squawk?: string;
 }): string | undefined {
-  return (aircraft.reportedSquawk ?? aircraft.squawk)?.trim();
+  return normalizedReportedSquawk(aircraft);
 }
 
 function correlationError(
@@ -642,7 +708,10 @@ function correlationError(
   return { code, planId, message, ...(aircraftIds ? { aircraftIds } : {}) };
 }
 
-/** Associate an existing plan to one explicitly selected track. No kinematics change. */
+/**
+ * @deprecated Explicit association is no longer a mutation. Return success
+ * only when the requested plan is already uniquely derived for the target.
+ */
 export function associateFlightPlan(
   world: {
     flightPlans: FlightPlan[];
@@ -671,51 +740,18 @@ export function associateFlightPlan(
       error: correlationError("TARGET_NOT_FOUND", planId, `aircraft ${aircraftId} not found`),
     };
   }
-  if (plan.associatedAircraftId && plan.associatedAircraftId !== aircraftId) {
+  const resolved = resolveFlightPlanCorrelation(world, aircraftId);
+  if (resolved.plan?.id !== plan.id) {
     return {
       ok: false,
       error: correlationError(
-        "PLAN_ALREADY_ASSOCIATED",
+        resolved.reason === "ambiguous" ? "AMBIGUOUS_MATCH" : "NO_MATCH",
         planId,
-        `flight plan ${planId} is associated to ${plan.associatedAircraftId}`,
-        [plan.associatedAircraftId],
+        `flight plan ${planId} does not uniquely correlate to aircraft ${aircraftId}`,
+        resolved.candidates.map((item) => item.id),
       ),
     };
   }
-  const other = world.flightPlans.find(
-    (item) =>
-      item.id !== planId && item.status !== "deleted" && item.associatedAircraftId === aircraftId,
-  );
-  if (other) {
-    return {
-      ok: false,
-      error: correlationError(
-        "TARGET_ALREADY_ASSOCIATED",
-        planId,
-        `aircraft ${aircraftId} is associated to ${other.id}`,
-      ),
-    };
-  }
-  // Manual §5.4.1: pending plans activate when associated. A plan suspended
-  // while inactive or without beacon mismatch remains suspended when the
-  // Manual §5.4.1: beacon-mismatch suspensions unsuspend on association;
-  // ordinary inactive suspensions remain suspended until explicitly unsuspended.
-  if (
-    plan.status === "pending" ||
-    (plan.status === "suspended" && plan.suspensionReason === "beacon-mismatch")
-  ) {
-    const transitioned = transitionFlightPlan(plan, "active");
-    if (!transitioned.ok) {
-      return {
-        ok: false,
-        error: correlationError("PLAN_NOT_FOUND", planId, transitioned.error.message),
-      };
-    }
-    plan.status = transitioned.value.status;
-    if (plan.status !== "suspended") delete plan.suspensionReason;
-  }
-  plan.associatedAircraftId = aircraftId;
-  plan.reportedBeacon = reportedSquawk(target);
   return { ok: true, plan, aircraftId };
 }
 
@@ -741,44 +777,21 @@ export function correlateFlightPlanForAircraft(
       error: correlationError("TARGET_NOT_FOUND", planId, `aircraft ${aircraftId} not found`),
     };
   }
-  const existing = flightPlanForAircraft(world, aircraftId);
-  if (existing) {
-    existing.reportedBeacon = reportedSquawk(aircraft);
-    return { ok: true, plan: existing, aircraftId };
-  }
-  const squawk = reportedSquawk(aircraft);
-  if (squawk !== undefined && !isValidBeaconCode(squawk)) {
+  const resolved = resolveFlightPlanCorrelation(world, aircraftId);
+  if (!resolved.plan) {
     return {
       ok: false,
       error: correlationError(
-        "INVALID_SQUAWK",
-        planId,
-        `aircraft ${aircraftId} reports invalid squawk ${squawk}`,
+        resolved.reason === "ambiguous" ? "AMBIGUOUS_MATCH" : "NO_MATCH",
+        resolved.candidates[0]?.id ?? planId,
+        resolved.reason === "ambiguous"
+          ? `multiple flight plans match aircraft ${aircraftId} squawk ${resolved.reportedSquawk ?? ""}`
+          : `no flight plan uniquely matches aircraft ${aircraftId} squawk ${resolved.reportedSquawk ?? ""}`,
+        resolved.candidates.map((plan) => plan.id),
       ),
     };
   }
-  const candidates = world.flightPlans.filter(
-    (plan) =>
-      plan.status === "pending" &&
-      isValidBeaconCode(plan.assignedBeacon ?? "") &&
-      plan.assignedBeacon !== "1200" &&
-      plan.assignedBeacon === squawk &&
-      plan.associatedAircraftId === undefined,
-  );
-  if (candidates.length !== 1) {
-    return {
-      ok: false,
-      error: correlationError(
-        candidates.length === 0 ? "NO_MATCH" : "AMBIGUOUS_MATCH",
-        candidates[0]?.id ?? planId,
-        candidates.length === 0
-          ? `no pending plan matches aircraft ${aircraftId} squawk ${squawk ?? ""}`
-          : `multiple pending plans match aircraft ${aircraftId} squawk ${squawk}`,
-        candidates.map((plan) => plan.id),
-      ),
-    };
-  }
-  return associateFlightPlan(world, candidates[0]!.id, aircraftId);
+  return { ok: true, plan: resolved.plan, aircraftId };
 }
 
 export interface AircraftSquawkUpdate {
@@ -787,7 +800,7 @@ export interface AircraftSquawkUpdate {
   correlation: FlightPlanCorrelationResult;
 }
 
-/** Set reported squawk and run correlation only for this aircraft. */
+/** Set surveillance squawk and return the derived correlation without mutating any plan. */
 export function updateAircraftSquawk(
   world: {
     flightPlans: FlightPlan[];
@@ -844,7 +857,6 @@ export function createActiveFlightPlanFromTarget(
       status: "active",
       acid: target.callsign,
       assignedBeacon: target.assignedSquawk ?? reportedSquawk(target),
-      reportedBeacon: reportedSquawk(target),
       fixes: [],
       scratchpads: [],
     },
@@ -857,5 +869,5 @@ export function createActiveFlightPlanFromTarget(
     };
   }
   world.flightPlans.push(created.value);
-  return associateFlightPlan(world, id, target.id);
+  return { ok: true, plan: created.value, aircraftId: target.id };
 }

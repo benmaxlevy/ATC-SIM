@@ -27,7 +27,6 @@
 import {
   createFlightPlan,
   deleteFlightPlanFromWorld,
-  disassociateFlightPlan,
   flightPlanForAircraft,
   modifyFlightPlan,
   releaseAssignedBeacon,
@@ -147,7 +146,6 @@ import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock, type LeaderLengthPx } from
 import { resolveScopeFlid } from "./previewArea";
 import {
   canonicalSystemListId,
-  associateFlightPlanToTrack,
   cancelListDrag,
   deleteFlightPlanEntry,
   getFlightPlanEntries,
@@ -480,29 +478,6 @@ function applyPreviewArmedAction(
         return;
       }
       world.flightPlans.push(plan);
-      if (
-        action.creationMode !== "fltData" &&
-        plan.assignedBeacon &&
-        plan.assignedBeacon !== "1200"
-      ) {
-        const matches = world.aircraft.filter((aircraft) => {
-          const reportedSquawk = aircraft.reportedSquawk ?? aircraft.squawk;
-          const track = view.tracks.get(aircraft.id);
-          const unassociated =
-            !track ||
-            track.unassociated === true ||
-            (track.ownership !== "owned" && track.datablockMode !== "full");
-          return (
-            unassociated &&
-            reportedSquawk === plan.assignedBeacon &&
-            !flightPlanForAircraft(world, aircraft.id)
-          );
-        });
-        const entry = getFlightPlanEntries(world, view).find((item) => item.planId === plan.id);
-        if (matches.length === 1 && entry) {
-          associateFlightPlanToTrack(world, view, entry.index, matches[0]!.id);
-        }
-      }
       return;
     }
     case "deleteVfrFlightPlan": {
@@ -518,8 +493,11 @@ function applyPreviewArmedAction(
         return;
       }
       const plan = plans[0]!;
-      if (plan.associatedAircraftId) {
-        terminateTrackWithPlan(view.tracks, world, plan.associatedAircraftId, view);
+      const correlatedAircraft = world.aircraft.find(
+        (aircraft) => flightPlanForAircraft(world, aircraft.id)?.id === plan.id,
+      );
+      if (correlatedAircraft) {
+        terminateTrackWithPlan(view.tracks, world, correlatedAircraft.id, view);
       } else {
         deleteFlightPlanFromWorld(world, plan.id);
       }
@@ -632,17 +610,15 @@ function applyPreviewArmedAction(
         return;
       }
       const plan = plans[0]!;
-      const associatedAircraftId = plan.associatedAircraftId;
+      const correlatedAircraft = world.aircraft.find(
+        (aircraft) => flightPlanForAircraft(world, aircraft.id)?.id === plan.id,
+      );
       const result = releaseAssignedBeacon(world, plan.id);
-      if (result.ok && associatedAircraftId && plan.status === "suspended") {
-        const aircraft = world.aircraft.find((item) => item.id === associatedAircraftId);
-        if (aircraft) {
-          const td = ensureTrackDisplay(view.tracks, associatedAircraftId);
-          delete td.squawk;
-          td.unassociated = true;
-          td.datablockMode = "partial";
-        }
-        disassociateFlightPlan(world, plan.id);
+      if (result.ok && correlatedAircraft && plan.status === "suspended") {
+        const td = ensureTrackDisplay(view.tracks, correlatedAircraft.id);
+        delete td.squawk;
+        td.unassociated = true;
+        td.datablockMode = "partial";
       }
       if (!result.ok)
         view.preview.rejection = result.error.code === "INVALID_FIELD" ? "ILL TRK" : "FORMAT";

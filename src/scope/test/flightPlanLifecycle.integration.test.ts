@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  associateFlightPlan,
   createAircraft,
   createFlightPlan,
   createWorld,
@@ -35,22 +34,19 @@ describe("T02-147 authoritative flight-plan display lifecycle", () => {
       xNm: 1,
       yNm: 2,
       headingDeg: 90,
-      squawk: "7023",
+      squawk: "7022",
       altitudeFt: 6000,
       speedKt: 210,
       aircraftType: "C172",
     });
     const world = createWorld({ flightPlans: [made.value], aircraft: [aircraft] });
-    expect(associateFlightPlan(world, made.value.id, aircraft.id).ok).toBe(true);
-
     const source = datablockSourceFromWorld(world, aircraft);
     expect(source.callsign).toBe("AAL123");
     expect(source.assignedSquawk).toBe("7022");
-    expect(source.reportedSquawk).toBe("7023");
+    expect(source.reportedSquawk).toBe("7022");
     expect(source.aircraftType).toBe("B738");
     expect(source.requestedAltitudeFt).toBe(12000);
     expect(formatFullDatablock(source).line1).toBe("AAL123");
-    expect(formatFullDatablock(source, { timeSharePhase: 1 }).line3).toContain("7023");
   });
 
   it("keeps FL/TAB and strips aligned through edit and association", () => {
@@ -71,21 +67,18 @@ describe("T02-147 authoritative flight-plan display lifecycle", () => {
       xNm: 1,
       yNm: 2,
       headingDeg: 90,
-      squawk: "1200",
+      squawk: "7031",
       altitudeFt: 4000,
       speedKt: 180,
     });
     const world = createWorld({ flightPlans: [made.value], aircraft: [aircraft] });
     const view = createScopeView();
-    expect(getFlightPlanEntries(world, view)).toMatchObject([
-      { callsign: "DAL456", squawk: "7031", planId: "fp-list", index: 1 },
-    ]);
+    expect(getFlightPlanEntries(world, view)).toHaveLength(0);
     expect(modifyFlightPlan(world, "fp-list", "requestedAltitudeFt", 11000).ok).toBe(true);
     expect(terminalStripsFromWorld(world).arrivals[0]).toMatchObject({
-      acid: "5678",
-      beaconCode: "1200",
+      acid: "DAL456",
+      beaconCode: "7031",
     });
-    expect(associateFlightPlan(world, "fp-list", "ac-list").ok).toBe(true);
     expect(getFlightPlanEntries(world, view)).toHaveLength(0);
     expect(terminalStripsFromWorld(world).arrivals[0]).toMatchObject({
       acid: "DAL456",
@@ -116,7 +109,6 @@ describe("T02-147 authoritative flight-plan display lifecycle", () => {
       squawk: "7042",
     });
     const world = createWorld({ flightPlans: [made.value], aircraft: [aircraft] });
-    expect(associateFlightPlan(world, made.value.id, aircraft.id).ok).toBe(true);
     const pose = [
       aircraft.xNm,
       aircraft.yNm,
@@ -126,7 +118,6 @@ describe("T02-147 authoritative flight-plan display lifecycle", () => {
     ];
     expect(deleteFlightPlanFromWorld(world, made.value.id).ok).toBe(true);
     expect(world.flightPlans[0]?.status).toBe("deleted");
-    expect(world.flightPlans[0]?.associatedAircraftId).toBeUndefined();
     expect([
       aircraft.xNm,
       aircraft.yNm,
@@ -163,15 +154,11 @@ describe("T02-147 authoritative flight-plan display lifecycle", () => {
     expect(world.flightPlans[0]).toMatchObject({
       status: "pending",
     });
-    expect(world.flightPlans[0].associatedAircraftId).toBeUndefined();
     expect(aircraft.callsign).toBe("1234");
 
     const update = updateAircraftSquawk(world, aircraft.id, "7052");
     expect(update?.correlation).toMatchObject({ ok: true, aircraftId: aircraft.id });
-    expect(world.flightPlans[0]).toMatchObject({
-      status: "active",
-      associatedAircraftId: aircraft.id,
-    });
+    expect(world.flightPlans[0]).toMatchObject({ status: "pending" });
     expect(aircraft.squawk).toBe("7052");
     expect(aircraft.callsign).toBe("1234");
     syncTrackDisplays(view.tracks, world);
@@ -180,6 +167,12 @@ describe("T02-147 authoritative flight-plan display lifecycle", () => {
       callsign: "UAL123",
       assignedSquawk: "7052",
       reportedSquawk: "7052",
+    });
+    updateAircraftSquawk(world, aircraft.id, "7053");
+    syncTrackDisplays(view.tracks, world);
+    expect(view.tracks.get(aircraft.id)).toMatchObject({
+      unassociated: true,
+      datablockMode: "partial",
     });
   });
 });

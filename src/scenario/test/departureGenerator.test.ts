@@ -161,7 +161,7 @@ describe("departureGenerator", () => {
     expect(spawnedEvents[0]!.sidId).toBe(firstDeparture.sidId);
   });
 
-  test("scheduled departure applies its reported squawk through aircraft-scoped correlation", () => {
+  test("scheduled departure preserves independent reported squawk data", () => {
     const created = createFlightPlan({
       id: "fp-departure",
       acid: "UAL123",
@@ -196,8 +196,7 @@ describe("departureGenerator", () => {
       assignedSquawk: "4321",
     });
     expect(world.flightPlans[0]).toMatchObject({
-      status: "active",
-      associatedAircraftId: spawned[0]!.id,
+      status: "pending",
     });
   });
 

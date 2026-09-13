@@ -623,10 +623,13 @@ export function handlePreviewFlidKey(
     // can delete a plan-only identity directly, as required by §5.4.6.
     if (state.armed.type === "termCntl" && plans.length === 1) {
       const plan = plans[0]!;
+      const correlatedAircraft = world.aircraft.find(
+        (aircraft) => flightPlanForAircraft(world, aircraft.id)?.id === plan.id,
+      );
       cancelPreviewArea(state);
       return {
         consumed: true,
-        apply: { type: "termCntl", aircraftId: plan.associatedAircraftId ?? "", planId: plan.id },
+        apply: { type: "termCntl", aircraftId: correlatedAircraft?.id ?? "", planId: plan.id },
       };
     }
     const resolved = resolveScopeFlid(flid, world, view);
@@ -677,9 +680,8 @@ export function previewFlidMatchesSlew(
   }
   if (plans.length === 1) {
     const plan = plans[0]!;
-    return plan.associatedAircraftId
-      ? plan.associatedAircraftId === aircraftId
-      : unassociatedTrack(aircraftId, view);
+    const correlated = flightPlanForAircraft(world, aircraftId);
+    return correlated ? correlated.id === plan.id : unassociatedTrack(aircraftId, view);
   }
   // INIT CNTL identity is deliberately narrower than the generic FLID
   // resolver: CID/numeric tails are not ACID, beacon, or TAB identities.

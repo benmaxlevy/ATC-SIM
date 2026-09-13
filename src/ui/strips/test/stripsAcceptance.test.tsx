@@ -497,6 +497,7 @@ describe("T02-162 FAA terminal strips acceptance", () => {
       altitudeFt: 2000,
       speedKt: 180,
       cwtWakeCategory: "B",
+      reportedSquawk: "4312",
     });
     departureAircraft.intent.vertical = { type: "VIA_SID", sidId: "SYN1" };
 
@@ -509,12 +510,12 @@ describe("T02-162 FAA terminal strips acceptance", () => {
       altitudeFt: 7000,
       speedKt: 210,
       cwtWakeCategory: "C",
+      reportedSquawk: "4314",
     });
 
     const departurePlan = makeAcceptancePlan({
       id: "synthetic-departure-plan",
       status: "active",
-      associatedAircraftId: departureAircraft.id,
       acid: "SYN123",
       cid: "901",
       assignedBeacon: "4312",
@@ -534,7 +535,6 @@ describe("T02-162 FAA terminal strips acceptance", () => {
     const arrivalPlan = makeAcceptancePlan({
       id: "synthetic-arrival-plan",
       status: "active",
-      associatedAircraftId: arrivalAircraft.id,
       acid: "SYN456",
       cid: "902",
       assignedBeacon: "4314",
@@ -577,7 +577,7 @@ describe("T02-162 FAA terminal strips acceptance", () => {
       cwtCategory: "B",
       cid: "901",
       beaconCode: "4312",
-      reportedSquawk: "4313",
+      reportedSquawk: "4312",
       proposedDepartureTime: "1030",
       requestedAltitude: "240",
       departureAirport: "KAAA",
@@ -592,7 +592,7 @@ describe("T02-162 FAA terminal strips acceptance", () => {
       cwtCategory: "C",
       cid: "902",
       beaconCode: "4314",
-      reportedSquawk: "4315",
+      reportedSquawk: "4314",
       previousFix: "ALPHA",
       coordinationFix: "BRAVO",
       estimatedTimeOfArrival: "1045",

@@ -381,7 +381,7 @@ export function resolveFiledRoute(
 
 export type FlightPlanDraftInput = Omit<
   Partial<FlightPlan>,
-  "id" | "status" | "associatedAircraftId" | "filedRoute" | "reportedBeacon"
+  "id" | "status" | "filedRoute" | "reportedBeacon"
 > & {
   acid: string;
   id?: string;
@@ -748,7 +748,6 @@ export function saveFlightPlanDraft(
     ...candidateInput,
     id: base.id,
     status: base.status,
-    associatedAircraftId: base.associatedAircraftId,
   };
   if (route.value.segments.length > 0) {
     candidate.filedRoute = route.value;

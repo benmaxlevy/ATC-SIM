@@ -98,7 +98,6 @@ test("invalid Save is atomic and preserves aircraft surveillance state", () => {
   expect(failed).toMatchObject({ ok: false, error: { code: "UNKNOWN_TRANSITION" } });
   expect(world.flightPlans[0]).toEqual(beforePlan);
   expect(aircraft).toEqual(beforeAircraft);
-  expect(world.flightPlans[0]?.associatedAircraftId).toBeUndefined();
 });
 
 test("current visible FL page is the only TAB index resolution surface", () => {

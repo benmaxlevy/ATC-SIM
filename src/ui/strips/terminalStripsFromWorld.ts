@@ -65,7 +65,9 @@ export function terminalStripsFromWorld(world: World): {
     const cwtCategory: CWTCategory | undefined = ac.cwtWakeCategory;
     const isHeavy = ac.wakeCategory?.toUpperCase() === "H";
     const beaconCode = plan?.assignedBeacon ?? ac.assignedSquawk ?? ac.squawk ?? "";
-    const reportedSquawk = plan?.reportedBeacon ?? ac.reportedSquawk ?? ac.squawk;
+    // Reported squawk is surveillance evidence. A plan's reportedBeacon is
+    // legacy metadata and must never overwrite the live target report.
+    const reportedSquawk = ac.reportedSquawk ?? ac.squawk;
 
     const cidDigits = acid.replace(/\D/g, "");
 

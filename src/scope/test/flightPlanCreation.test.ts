@@ -14,7 +14,7 @@ const key = (key: string) => ({
 });
 
 describe("T02-144 flight-plan creation", () => {
-  it("T02-145 associates an authoritative plan and removes it from FL/TAB", () => {
+  it("T02-173 derives a matching plan without mutating it", () => {
     const planResult = createFlightPlan({
       id: "fp-associate",
       acid: "DAL456",
@@ -23,20 +23,19 @@ describe("T02-144 flight-plan creation", () => {
       scratchpads: [],
     });
     if (!planResult.ok) throw new Error("test fixture should be valid");
-    const target = makeTestAircraft({ id: "ac-associate", callsign: "1234", squawk: "1200" });
+    const target = makeTestAircraft({ id: "ac-associate", callsign: "1234", squawk: "7024" });
     const world = createWorld({ flightPlans: [planResult.value], aircraft: [target] });
     const view = createScopeView();
-    expect(associateFlightPlanToTrack(world, view, 1, target.id)).toBe(true);
+    expect(associateFlightPlanToTrack(world, view, 1, target.id)).toBe(false);
     expect(world.flightPlans[0]).toMatchObject({
-      status: "active",
-      associatedAircraftId: target.id,
+      status: "pending",
     });
     expect(getFlightPlanEntries(world, view).some((entry) => entry.callsign === "DAL456")).toBe(
       false,
     );
   });
 
-  it("T02-145 removes an associated suspended plan from FL/TAB", () => {
+  it("T02-173 derives a suspended plan without mutating it", () => {
     const planResult = createFlightPlan({
       id: "fp-suspended-associate",
       acid: "DAL457",
@@ -49,15 +48,14 @@ describe("T02-144 flight-plan creation", () => {
     const target = makeTestAircraft({
       id: "ac-suspended-associate",
       callsign: "1235",
-      squawk: "1200",
+      squawk: "7025",
     });
     const world = createWorld({ flightPlans: [planResult.value], aircraft: [target] });
     const view = createScopeView();
 
-    expect(associateFlightPlanToTrack(world, view, 1, target.id)).toBe(true);
+    expect(associateFlightPlanToTrack(world, view, 1, target.id)).toBe(false);
     expect(world.flightPlans[0]).toMatchObject({
       status: "suspended",
-      associatedAircraftId: target.id,
     });
     expect(getFlightPlanEntries(world, view).some((entry) => entry.callsign === "DAL457")).toBe(
       false,
@@ -353,7 +351,6 @@ describe("T02-144 flight-plan creation", () => {
       assignedBeacon: "2341",
       status: "pending",
     });
-    expect(world.flightPlans[0]?.associatedAircraftId).toBeUndefined();
     expect(aircraft.callsign).toBe("UNTRK");
   });
 });
