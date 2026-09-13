@@ -152,9 +152,17 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
         ?.callsign.trim()
         .toUpperCase();
       if (!plan && targetAcid) {
-        plan = app.world.flightPlans.find(
+        const sameAcidPlan = app.world.flightPlans.find(
           (item) => item.status !== "deleted" && item.acid === targetAcid,
         );
+        // A target slew addresses only a uniquely beacon-correlated plan.
+        // Do not let surveillance callsign text bypass a mismatch and open
+        // the wrong filed record; the plan remains available from FL/ACID.
+        if (sameAcidPlan) {
+          scopeView.preview.rejection = "NO FLIGHT";
+          refreshScopeUi();
+          return;
+        }
       }
       if (!targetAcid) {
         scopeView.preview.rejection = "NO FLIGHT";

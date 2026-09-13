@@ -189,10 +189,13 @@ export function ScopeHelpOverlay({ open }: ScopeHelpOverlayProps) {
           <strong>ATC-SIM trainer extension (not a supplied STARS-manual function):</strong>{" "}
           <code>*FP &lt;ACID&gt; Enter</code> opens a local flight-plan dialog. A two-digit index on
           the current visible TAB page is also accepted as <code>*FP &lt;TAB-index&gt; Enter</code>.
-          Bare <code>*FP Enter</code> then click opens an existing plan or creates a draft by the
-          target&apos;s usable ACID; a stale/off-page TAB index or target with a blank ACID returns{" "}
-          <code>NO FLIGHT</code>. Save changes filed metadata only; Cancel/Escape closes the dialog
-          and restores opener focus. Filed route text is catalog-resolved with the compact grammar
+          Bare <code>*FP Enter</code> then click opens the uniquely beacon-correlated plan, or
+          creates a draft only when the target has a usable ACID and no filed plan exists. A target
+          whose reported beacon mismatches its filed plan, a stale/off-page TAB index, or a target
+          with a blank ACID returns <code>NO FLIGHT</code>; use the FL list or ACID to open the
+          uncorrelated filed record. Save changes filed metadata only; Cancel/Escape closes the
+          dialog and restores opener focus. Filed route text is catalog-resolved with the compact
+          grammar
           <code>SID:id[/transition] STAR:id[/transition] DCT fix</code>; <code>DCT</code> must be
           followed by one fix or navaid.
         </p>

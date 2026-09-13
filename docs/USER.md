@@ -130,8 +130,9 @@ Flight-plan commands are scope Preview Area commands, not radio clearances.
 
 `*FP <ACID> Enter` opens the local flight-plan dialog. A two-digit index on the current visible
 TAB page is also accepted as `*FP <TAB-index> Enter`. Bare `*FP Enter` arms a target slew; click
-a target to open its existing plan or create a draft by its usable ACID. A stale/off-page TAB
-index or a target with a blank ACID returns `NO FLIGHT`. This is an explicit ATC-SIM trainer
+a target to open its uniquely beacon-correlated plan. It creates a draft by usable ACID only when
+that target has no filed plan. A beacon mismatch, stale/off-page TAB index, or target with a blank
+ACID returns `NO FLIGHT`; use the FL list or ACID to open an uncorrelated filed record. This is an explicit ATC-SIM trainer
 extension, not a supplied STARS-manual function. Save edits filed metadata only and does not alter
 aircraft surveillance, association, intent, kinematics, or route execution. Filed route text is
 catalog-resolved with `SID:<procedureId>[/<transitionId>]`, `STAR:<procedureId>[/<transitionId>]`,

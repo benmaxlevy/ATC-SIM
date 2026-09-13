@@ -5,8 +5,13 @@ import {
   createWorld,
   deleteFlightPlanFromWorld,
   modifyFlightPlan,
+  saveFlightPlanDraft,
+  stepWorld,
   updateAircraftSquawk,
 } from "@core";
+import { loadKdem } from "../../scenario/load";
+import { createWorldForSession } from "../../scenario/spawn";
+import { parseDepartureOptions } from "../../scenario/trafficQuery";
 import { datablockSourceFromWorld, formatFullDatablock } from "../datablock";
 import { buildTabFlightPlanList, getFlightPlanEntries } from "../systemLists";
 import { createScopeView } from "../scopeView";
@@ -174,5 +179,90 @@ describe("T02-147 authoritative flight-plan display lifecycle", () => {
       unassociated: true,
       datablockMode: "partial",
     });
+  });
+
+  it("presents one spawned IFR plan, amends metadata, then removes it on beacon mismatch", () => {
+    const scenario = loadKdem();
+    const world = createWorldForSession(
+      scenario,
+      null,
+      1,
+      parseDepartureOptions("?departures=random&dep_count=1&seed=7"),
+    );
+    const pending = world.scheduledDepartures?.[0];
+    expect(pending).toBeDefined();
+    expect(world.flightPlans.some((plan) => plan.acid === pending?.callsign)).toBe(true);
+    expect(world.aircraft.some((aircraft) => aircraft.callsign === pending?.callsign)).toBe(false);
+
+    // The normal simulation spawn consumes the pending departure, after its
+    // catalog-validated filed plan already exists.
+    stepWorld(world, Math.ceil((pending!.scheduledSimMs + 1) / 1000));
+    const aircraft = world.aircraft.find((item) => item.callsign === pending!.callsign);
+    expect(aircraft).toBeDefined();
+    const plan = world.flightPlans.find((item) => item.acid === pending!.callsign);
+    expect(plan).toBeDefined();
+    expect(aircraft!.reportedSquawk).toBe(plan!.assignedBeacon);
+
+    const view = createScopeView();
+    syncTrackDisplays(view.tracks, world);
+    expect(getFlightPlanEntries(world, view)).not.toContainEqual(
+      expect.objectContaining({ planId: plan!.id }),
+    );
+    expect(datablockSourceFromWorld(world, aircraft!)).toMatchObject({
+      callsign: plan!.acid,
+      assignedSquawk: plan!.assignedBeacon,
+    });
+    expect(terminalStripsFromWorld(world).departures).toContainEqual(
+      expect.objectContaining({ acid: plan!.acid, beaconCode: plan!.assignedBeacon }),
+    );
+
+    const beforeIntent = structuredClone(aircraft!.intent);
+    const beforePose = [
+      aircraft!.xNm,
+      aircraft!.yNm,
+      aircraft!.headingDeg,
+      aircraft!.altitudeFt,
+      aircraft!.speedKt,
+    ];
+    const beforeEvents = world.sessionLog?.all();
+    const amended = saveFlightPlanDraft(world, {
+      id: plan!.id,
+      acid: plan!.acid,
+      assignedBeacon: plan!.assignedBeacon,
+      filedRoute: plan!.filedRoute?.text ?? plan!.route ?? "",
+      remarks: "TRAINER AMEND",
+    });
+    expect(amended).toMatchObject({ ok: true, plan: { remarks: "TRAINER AMEND" } });
+    expect(aircraft!.intent).toEqual(beforeIntent);
+    expect([
+      aircraft!.xNm,
+      aircraft!.yNm,
+      aircraft!.headingDeg,
+      aircraft!.altitudeFt,
+      aircraft!.speedKt,
+    ]).toEqual(beforePose);
+    expect(world.sessionLog?.all()).toEqual(beforeEvents);
+
+    updateAircraftSquawk(world, aircraft!.id, "7023");
+    syncTrackDisplays(view.tracks, world);
+    expect(datablockSourceFromWorld(world, aircraft!)).toMatchObject({
+      callsign: aircraft!.callsign,
+      reportedSquawk: "7023",
+    });
+    expect(getFlightPlanEntries(world, view)).toContainEqual(
+      expect.objectContaining({ planId: plan!.id, callsign: plan!.acid }),
+    );
+    expect(terminalStripsFromWorld(world).departures).toContainEqual(
+      expect.objectContaining({ acid: aircraft!.callsign, reportedSquawk: "7023" }),
+    );
+    expect(aircraft!.intent).toEqual(beforeIntent);
+    expect([
+      aircraft!.xNm,
+      aircraft!.yNm,
+      aircraft!.headingDeg,
+      aircraft!.altitudeFt,
+      aircraft!.speedKt,
+    ]).toEqual(beforePose);
+    expect(world.sessionLog?.all()).toEqual(beforeEvents);
   });
 });

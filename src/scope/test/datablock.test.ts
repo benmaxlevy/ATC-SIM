@@ -72,6 +72,31 @@ test("runtime adapter projects associated plan and preserves beacon provenance",
   expect(ac.intent).toEqual(beforeIntent);
 });
 
+test("runtime adapter uses derived beacon correlation even when LDB state is stale", () => {
+  const ac = makeTestAircraft({ id: "runtime-stale-ldb", callsign: "RAW789", squawk: "4321" });
+  const world = createWorld({
+    aircraft: [ac],
+    flightPlans: [
+      {
+        id: "runtime-stale-plan",
+        status: "pending",
+        acid: "FILED789",
+        assignedBeacon: "4321",
+        aircraftType: "B738",
+        fixes: [],
+        scratchpads: [],
+      },
+    ],
+  });
+
+  const state = buildDatablockRuntimeState(world, ac, {
+    track: { ownership: "unowned", unassociated: true, squawk: "4321" },
+  });
+
+  expect(state.source.callsign).toBe("FILED789");
+  expect(state.source.assignedSquawk).toBe("4321");
+});
+
 test.each(["pending", "suspended"] as const)(
   "runtime adapter does not project a non-associated %s plan",
   (status) => {
