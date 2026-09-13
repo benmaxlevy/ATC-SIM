@@ -203,6 +203,14 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         input: "Preview Area",
         result: "Release the plan's assigned beacon.",
       },
+      {
+        id: "plan-modal",
+        command: "*FP [ACID / TAB index]",
+        example: "*FP AAL123 Enter or *FP Enter, then click",
+        input: "Any focus → Preview Area",
+        result:
+          "Open the local filed flight-plan dialog to create/amend metadata; an absent or stale TAB index and an unassociated target return NO FLIGHT.",
+      },
     ],
   },
   {

@@ -127,6 +127,13 @@ If an aircraft is already selected on the scope, the callsign prefix is automati
 ### Flight-plan commands
 
 Flight-plan commands are scope Preview Area commands, not radio clearances.
+
+`*FP <ACID-or-TAB-index> Enter` opens the local flight-plan dialog. `*FP Enter` arms a target
+slew; click an associated target to open its plan. An absent or stale TAB index, or an
+unassociated target, returns `NO FLIGHT`. Save edits filed metadata only and does not alter
+aircraft surveillance, association, intent, kinematics, or route execution. Filed route text is
+catalog-resolved with `SID:<procedureId>[/<transitionId>]`, `STAR:<procedureId>[/<transitionId>]`,
+and `DCT <fixId-or-navaidId>` segments; empty route is valid.
 They update the local authoritative flight-plan list and do not make a pilot
 read back or fly the change.
 

@@ -42,8 +42,11 @@ import {
   clearPerTrackPtl,
   parseDigitalMap,
   applyRadarSites,
+  getFlightPlanEntries,
   type ScopeView,
+  type FlightPlanModalRequest,
 } from "@scope";
+import { flightPlanForAircraft, type FlightPlan } from "@core";
 import type { AppHandles } from "../app/create-app";
 import { CommandLine, submitCommand } from "./command/command-line";
 import { Disclaimer } from "./overlays/disclaimer";
@@ -55,6 +58,7 @@ import { ScopeHelpOverlay } from "./overlays/ScopeHelpOverlay";
 import { SpeechSettingsPanel } from "./controls/settings-speech";
 import { SimControls } from "./controls/sim-controls";
 import { SessionSetup as SessionSetupDialog } from "./controls/session-setup";
+import { FlightPlanModal } from "./controls/FlightPlanModal";
 
 export interface ShellProps {
   app: AppHandles;
@@ -85,6 +89,10 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [, setScopeUiTick] = useState(0);
   const [selectionToken, setSelectionToken] = useState(0);
+  const [flightPlanModal, setFlightPlanModal] = useState<{
+    acid: string;
+    plan?: FlightPlan;
+  } | null>(null);
   const panRef = useRef<{ lastX: number; lastY: number } | null>(null);
   const didListDragRef = useRef(false);
 
@@ -134,6 +142,48 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
     setScopeUiTick((n) => n + 1);
   }
 
+  function openFlightPlanModal(request: FlightPlanModalRequest): void {
+    let plan: FlightPlan | undefined;
+    if (request.targetAircraftId) {
+      plan = flightPlanForAircraft(app.world, request.targetAircraftId);
+      if (!plan) {
+        scopeView.preview.phase = "idle";
+        scopeView.preview.buffer = "";
+        scopeView.preview.mnemonic = "";
+        scopeView.preview.armed = null;
+        scopeView.preview.slewAction = null;
+        scopeView.preview.rejection = "NO FLIGHT";
+        refreshScopeUi();
+        return;
+      }
+    } else if (request.index !== undefined) {
+      const entry = getFlightPlanEntries(app.world, scopeView).find(
+        (item) => item.index === request.index,
+      );
+      plan = entry?.planId
+        ? app.world.flightPlans.find(
+            (item) => item.id === entry.planId && item.status !== "deleted",
+          )
+        : undefined;
+      if (!plan) {
+        scopeView.preview.rejection = "NO FLIGHT";
+        refreshScopeUi();
+        return;
+      }
+    } else if (request.acid) {
+      plan = app.world.flightPlans.find(
+        (item) => item.status !== "deleted" && item.acid === request.acid,
+      );
+    }
+    const acid = plan?.acid ?? request.acid;
+    if (!acid) {
+      scopeView.preview.rejection = "ILL ACID";
+      refreshScopeUi();
+      return;
+    }
+    setFlightPlanModal({ acid, ...(plan ? { plan } : {}) });
+  }
+
   useEffect(() => {
     return app.subscribeVoiceStatus((status) => {
       setVoiceStatus(status);
@@ -146,6 +196,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   useEffect(() => {
     return installAlwaysOnScopeKeys(scopeView, app.world, {
       onHandled: () => setScopeUiTick((n) => n + 1),
+      onOpenFlightPlanModal: openFlightPlanModal,
       focusRadio: focusRadioCommandLine,
       cycleFocus() {
         if (scopeFocusFromDocument(document) === "scope") {
@@ -192,6 +243,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
               event.clientY,
               scopeView,
               cmdText,
+              openFlightPlanModal,
             );
             if (
               cmdText === "UN" ||
@@ -454,6 +506,17 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           setSetup(next);
           setActiveScenario(nextScenario);
           setSetupOpen(false);
+          refreshScopeUi();
+        }}
+      />
+      <FlightPlanModal
+        open={flightPlanModal !== null}
+        acid={flightPlanModal?.acid ?? ""}
+        plan={flightPlanModal?.plan}
+        world={app.world}
+        onCancel={() => setFlightPlanModal(null)}
+        onSaved={() => {
+          setFlightPlanModal(null);
           refreshScopeUi();
         }}
       />

@@ -49,6 +49,7 @@ export {
   parseBeaconFilterCommand,
   parseCaCommand,
   parseFlightPlanCreation,
+  parseFlightPlanModalCommand,
   parsePreviewCommand,
   parseScopeDisplayCommand,
   parseTrackingCommand,
@@ -301,6 +302,13 @@ export function previewRelocateListId(state: PreviewAreaState): string | null {
 }
 /** Armed tracking chord or live `+` `/` `*` `*1`–`*8` `*0` `*B` buffer. */
 export function previewTrackingSlew(state: PreviewAreaState): PreviewArmedAction | null {
+  if (
+    state.phase === "armed" &&
+    state.armed?.type === "openFlightPlanModal" &&
+    state.armed.targetSlew
+  ) {
+    return state.armed;
+  }
   if (state.phase === "armed" && state.armed && isTrackingSlewAction(state.armed)) {
     const armed = state.armed;
     if ((armed.type === "initCntl" || armed.type === "termCntl") && state.flid) {
