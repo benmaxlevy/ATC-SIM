@@ -1753,3 +1753,25 @@ three tickets after corrective passes, including STARS §§2.12, 5.5.5, 5.5.9,
 **Manual leftover:** human Chrome/browser positioning and accessibility walk
 (TAB, slew, focus/error, F6/F9/*F/*TV) was not run in this session; automated
 coverage is green. No later phase started; no push performed.
+
+## SIXTY-SEVENTH SWARM COMPLETE — datablock altitude and flight-rules provenance (T02-185–T02-187)
+
+Completed sequentially on `feature/clearances` with isolated Luna workers and
+captain squash merges. T02-185 normalizes datablock flight rules to `V`/blank,
+makes `R###` and `A###` plan-backed only, and prevents climb/descend commands
+from creating controller-altitude display provenance. T02-186 removes
+spawn-pose and scheduled-altitude fallbacks while preserving explicit plan
+requests. T02-187 adds FDB/PDB/LDB association/provenance acceptance coverage
+and updates the phase and user documentation.
+
+Captain commits: `b55dd42`, `ac6ab37`, `316d261`. Final `npm run ci`: **206
+files passed, 2000 passed, 3 skipped, 0 failures**. Supplied-manual reviews
+found no in-scope FAIL: §2.12 pp. 2-63–2-64, Figure 2-20 pp. 2-66–2-67,
+§5.6.3 p. 5-146, and Appendix A Table A-1 p. A-5. CRC was ignored. Reviewers
+noted no independent child reviewer was available; their independent evidence
+passes were used per the skill fallback. No browser visual walk was needed for
+the docs/acceptance-only final ticket.
+
+**Manual leftover:** none for the approved scope. Assigned-altitude editing in
+the Flight Plan modal is not included; it requires a follow-up UI ticket. No
+push performed.
