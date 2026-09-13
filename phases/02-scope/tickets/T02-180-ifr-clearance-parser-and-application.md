@@ -48,13 +48,13 @@ ODP/DVA/LOA, nonradar, SVFR/VFR-on-top, CPDLC, and final broad E2E/manual wave.
 
 ## Acceptance criteria
 
-- [ ] Limit plus exactly one access method is valid; altitude/frequency/beacon/
+- [x] Limit plus exactly one access method is valid; altitude/frequency/beacon/
   SID climb-via remain optional.
-- [ ] Executable methods fly now; radar vectors wait; tactical direct never
+- [x] Executable methods fly now; radar vectors wait; tactical direct never
   creates a clearance.
-- [ ] Text/spoken parity, precedence, incomplete/malformed/duplicate fields,
+- [x] Text/spoken parity, precedence, incomplete/malformed/duplicate fields,
   atomic rollback, readback, Help, and User docs are covered.
-- [ ] No pickup/airfile or facility branch ships.
+- [x] No pickup/airfile or facility branch ships.
 
 ## Test plan
 

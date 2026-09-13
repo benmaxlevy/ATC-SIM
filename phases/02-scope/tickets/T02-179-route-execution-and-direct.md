@@ -36,10 +36,10 @@ after vectors, weather deviation, and pickup.
 
 ## Acceptance criteria
 
-- [ ] On-route direct resumes after named segment exactly.
-- [ ] Off-route direct retains plan route/index/revision; never guesses rejoin.
-- [ ] Vector pending never turns/follows route before a later vector.
-- [ ] Existing direct/STAR/SID/approach/kinematic suites stay green.
+- [x] On-route direct resumes after named segment exactly.
+- [x] Off-route direct retains plan route/index/revision; never guesses rejoin.
+- [x] Vector pending never turns/follows route before a later vector.
+- [x] Existing direct/STAR/SID/approach/kinematic suites stay green.
 
 ## Test plan
 

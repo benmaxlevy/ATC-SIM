@@ -1,5 +1,38 @@
 # Swarm status
 
+## SIXTY-FIFTH SWARM COMPLETE — clearance scaffolding (T02-176–T02-180)
+
+Completed sequentially on `feature/clearances` with isolated Luna-high workers,
+captain squash merges, corrective audit passes, and no push. The delivered
+surface is `SQUAWK <octal>`/`SQUAWK VFR` (`1200`), `MAINTAIN VFR`, one
+authoritative executable route, tactical direct/resume/vector handling, and
+the compact IFR-clearance forms `CLR TO <limit> ASFILED`, `VIA DIRECT`, `VIA
+<fix> THEN DIRECT`, `VIA RADAR VECTORS`, and SID access with ordered optional
+`ALT`, `CVIA`, `FREQ`, and `SQ` fields.
+
+Captain commits: `9cbe68e`, `e6d31cf`, `835762c`, `7c43bed`, `027d39d`,
+`3d8818c`, `de679cd`, `b198817`, `b2fa186`, `c8db5a2`, `278b4a4`.
+
+Final `npm run ci`: **205 test files passed, 1,958 tests passed, 4 skipped**.
+Focused clearance tests: **17 passed**. Independent audits against the
+supplied `/home/ben/Documents/stars refs/full_manual.pdf` and current FAA JO
+7110.65 §§4-2-1, 4-2-5, 4-3-2–3, 5-2-1/7, and 5-6-2 passed after all
+corrective passes.
+
+**Scope boundary:** VFR-to-IFR pickup/airfile remains explicitly rejected;
+hold/release/void, weather, ODP/DVA/LOA, nonradar, SVFR/VFR-on-top, advanced
+beacon modes, CPDLC, and broad final E2E work remain deferred. `CLEARED
+DIRECT`/`PROCEED DIRECT` remain lateral-only and never reset the canonical
+route. No facility-specific route branch was added.
+
+## SIXTY-FIFTH SWARM EXIT — PHASE EXIT GREEN
+
+Phase: clearance scaffolding T02-176–T02-180
+Merge target: `feature/clearances`
+Merged: T02-176, T02-177, T02-178, T02-179, T02-180
+Tests: CI after each merge; final CI; supplied-manual and FAA online review
+Notes: No push; VFR-to-IFR pickup and final broad acceptance remain deferred
+
 ## SIXTY-SECOND SWARM COMPLETE — Datablock source unification (T02-164–165)
 
 T02-164 and T02-165 are complete on `improvement/db-source-unification`.

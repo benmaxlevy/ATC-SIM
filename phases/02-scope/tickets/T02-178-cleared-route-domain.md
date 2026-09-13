@@ -35,10 +35,10 @@ or route amendment phraseology.
 
 ## Acceptance criteria
 
-- [ ] One data-first route model supports all current catalog shapes.
-- [ ] Unknown route/fix/procedure/transition returns `unable route` with world,
+- [x] One data-first route model supports all current catalog shapes.
+- [x] Unknown route/fix/procedure/transition returns `unable route` with world,
   plan, and aircraft unchanged.
-- [ ] Existing modal/scenario/correlation contracts survive; no route runs yet.
+- [x] Existing modal/scenario/correlation contracts survive; no route runs yet.
 
 ## Test plan
 

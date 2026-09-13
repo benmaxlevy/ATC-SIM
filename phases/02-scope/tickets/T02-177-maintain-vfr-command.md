@@ -32,9 +32,9 @@ or VFR-to-IFR pickup.
 
 ## Acceptance criteria
 
-- [ ] Text/spoken parity and deterministic readback.
-- [ ] No plan, route, altitude, procedure, correlation, or clearance mutation.
-- [ ] `VFR ON TOP` never silently maps to this command; docs say not clearance.
+- [x] Text/spoken parity and deterministic readback.
+- [x] No plan, route, altitude, procedure, correlation, or clearance mutation.
+- [x] `VFR ON TOP` never silently maps to this command; docs say not clearance.
 
 ## Test plan
 
