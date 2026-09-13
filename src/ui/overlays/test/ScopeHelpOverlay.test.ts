@@ -77,7 +77,7 @@ test("help copy is local-only and teaches command boundaries", () => {
   expect(html).toMatch(/range/);
   expect(html).toMatch(/datablock/);
   expect(html).toMatch(/leader/);
-  expect(html).toMatch(/initiate or associate/i);
+  expect(html).toMatch(/initiates or associates/i);
   expect(html).toMatch(/Radio commands/);
   expect(html).toMatch(/Focus and Preview Area/);
   expect(html).toMatch(/Scope &amp; display/);

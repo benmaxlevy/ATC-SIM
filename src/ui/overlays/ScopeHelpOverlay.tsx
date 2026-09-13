@@ -26,9 +26,9 @@ export function normalizeHelpSearchText(value: string): string {
 
 function localBindingAction(binding: KeyBinding): string {
   const overrides: Record<string, string> = {
-    "mouse-pan": "Pan the view center (trainer control).",
+    "mouse-pan": "Moves the view center.",
     "mouse-accept-handoff": "Click to accept the pending inbound handoff.",
-    "radio-focus": "Focus the command line; `/` is a Preview Area prefix when used there.",
+    "radio-focus": "Starts a Preview Area slew or drop command.",
   };
   const action = overrides[binding.id] ?? binding.action;
   return action
@@ -185,20 +185,6 @@ export function ScopeHelpOverlay({ open }: ScopeHelpOverlayProps) {
         />
         <p className="scope-help-glossary">{HELP_GLOSSARY_NOTE}</p>
         <p className="scope-help-radio">{RADIO_CONFLICT_WARNING}</p>
-        <p className="scope-help-radio">
-          <strong>ATC-SIM trainer extension (not a supplied STARS-manual function):</strong>{" "}
-          <code>*FP &lt;ACID&gt; Enter</code> opens a local flight-plan dialog. A two-digit index on
-          the current visible TAB page is also accepted as <code>*FP &lt;TAB-index&gt; Enter</code>.
-          Bare <code>*FP Enter</code> then click opens the uniquely beacon-correlated plan, or
-          creates a draft only when the target has a usable ACID and no filed plan exists. A target
-          whose reported beacon mismatches its filed plan, a stale/off-page TAB index, or a target
-          with a blank ACID returns <code>NO FLIGHT</code>; use the FL list or ACID to open the
-          uncorrelated filed record. Save changes filed metadata only; Cancel/Escape closes the
-          dialog and restores opener focus. Filed route text is catalog-resolved with the compact
-          grammar <code>procedure[/transition] fix-or-navaid</code>; enter each procedure, fix, or
-          navaid as a bare token separated by spaces. Prefixes such as <code>SID:</code>,{" "}
-          <code>STAR:</code>, and <code>DCT</code> are invalid.
-        </p>
         {filteredNavigationGroups.map((navigationGroup) => {
           return (
             <details
