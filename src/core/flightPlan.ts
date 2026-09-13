@@ -7,6 +7,21 @@
 export type FlightPlanStatus = "pending" | "active" | "suspended" | "deleted";
 export type FlightPlanSuspensionReason = "beacon-mismatch" | "inactive";
 
+export interface FiledRouteSegment {
+  kind: "SID" | "STAR" | "DCT";
+  procedureId?: string;
+  transitionId?: string;
+  fixId?: string;
+  /** Published legs resolved from the loaded catalog, in route order. */
+  fixIds: string[];
+}
+
+export interface FiledRoute {
+  /** Canonical, upper-case route text suitable for strip display. */
+  text: string;
+  segments: FiledRouteSegment[];
+}
+
 export type FlightType = "IFR" | "VFR" | "DVFR" | "SVFR";
 
 export interface FlightPlan {
@@ -46,6 +61,8 @@ export interface FlightPlan {
   suspensionReason?: FlightPlanSuspensionReason;
   /** Authoritative surveillance association; absent while pending/unassociated. */
   associatedAircraftId?: string;
+  /** Catalog-resolved filed route metadata; never an active FMS route. */
+  filedRoute?: FiledRoute;
   /** Local trainer record of the latest VFR exit-fix retransmit. */
   vfrRetransmit?: { amendedFix: string; requestedAtMs: number };
 }
