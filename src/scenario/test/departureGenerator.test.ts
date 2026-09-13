@@ -166,6 +166,8 @@ describe("departureGenerator", () => {
       id: "fp-departure",
       acid: "UAL123",
       assignedBeacon: "4321",
+      flightType: "IFR",
+      flightRules: "I",
       fixes: [],
       scratchpads: [],
     });
