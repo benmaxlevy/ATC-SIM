@@ -31,6 +31,8 @@ export interface ScenarioIfrFlightPlanInput {
   route?: ScenarioIfrRoute;
   requestedAltitudeFt?: number;
   aircraftType?: string;
+  /** FAA aircraft equipment suffix; defaults to /L (GNSS with RVSM). */
+  equipment?: string;
   assignedBeacon?: string;
   /** Same seeded stream used by the target's normal beacon allocation. */
   rng?: () => number;
@@ -105,10 +107,13 @@ export function createScenarioIfrFlightPlan(
     assignedBeacon,
     flightType: "IFR",
     flightRules: "I",
+    equipment: input.equipment ?? "L",
     requestedAltitudeFt: planAltitude(input.requestedAltitudeFt),
     aircraftType: input.aircraftType,
     airportId: input.scenario.icao,
-    ...(input.departure ? { departureAirport: input.scenario.icao } : {}),
+    ...(input.departure || input.route?.kind === "departure"
+      ? { departureAirport: input.scenario.icao }
+      : {}),
     source: "SCENARIO",
     filedRoute: routeText(input.route),
   });

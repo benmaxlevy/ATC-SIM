@@ -24,6 +24,31 @@ export interface FiledRoute {
 
 export type FlightType = "IFR" | "VFR" | "DVFR" | "SVFR";
 
+/** FAA JO 7110.65, TBL 2-3-10 aircraft equipment suffixes. */
+export const FAA_AIRCRAFT_EQUIPMENT_SUFFIXES = [
+  { code: "X", meaning: "No DME; no transponder" },
+  { code: "T", meaning: "No DME; transponder without Mode C" },
+  { code: "U", meaning: "No DME; transponder with Mode C" },
+  { code: "D", meaning: "DME; no transponder" },
+  { code: "B", meaning: "DME; transponder without Mode C" },
+  { code: "A", meaning: "DME; transponder with Mode C" },
+  { code: "M", meaning: "TACAN only; no transponder" },
+  { code: "N", meaning: "TACAN only; transponder without Mode C" },
+  { code: "P", meaning: "TACAN only; transponder with Mode C" },
+  { code: "Y", meaning: "RNAV (LORAN/VOR-DME/INS); no transponder" },
+  { code: "C", meaning: "RNAV; transponder without Mode C" },
+  { code: "I", meaning: "RNAV; transponder with Mode C" },
+  { code: "E", meaning: "FMS with DME/DME and IRU updating" },
+  { code: "F", meaning: "FMS with DME/DME updating" },
+  { code: "G", meaning: "GNSS (GPS/WAAS), en route and terminal" },
+  { code: "R", meaning: "Required navigation performance (RNP)" },
+  { code: "J", meaning: "/E with RVSM" },
+  { code: "K", meaning: "/F with RVSM" },
+  { code: "L", meaning: "/G with RVSM" },
+  { code: "Q", meaning: "/R with RVSM" },
+  { code: "W", meaning: "RVSM" },
+] as const;
+
 export interface FlightPlan {
   id: string;
   status: FlightPlanStatus;

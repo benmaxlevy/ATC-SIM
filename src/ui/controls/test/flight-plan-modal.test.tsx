@@ -60,6 +60,8 @@ test("create and amend modes expose one accessible filed-plan dialog", () => {
   expect(createHtml).not.toContain(">CID<");
   expect(createHtml).toContain('for="flight-plan-route"');
   expect(createHtml).toContain("Filed route");
+  expect(createHtml).toContain("Equipment code");
+  expect(createHtml).toContain("/L — /G with RVSM");
   expect(createHtml).toContain("ETA");
   expect(createHtml).not.toContain(">PTD<");
   for (const removed of ["Fixes", "Scratchpads", "Source", "Minimum fuel", "Owning TCP"]) {

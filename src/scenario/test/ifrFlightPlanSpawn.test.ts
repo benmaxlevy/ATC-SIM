@@ -22,6 +22,7 @@ function expectCorrelatableIfrPlans(world: ReturnType<typeof createWorldFromScen
   for (const plan of targetPlans) {
     expect(plan.status).toBe("pending");
     expect(plan.flightType).toBe("IFR");
+    expect(plan.equipment).toBe("L");
     expect(plan.assignedBeacon).toMatch(/^[0-7]{4}$/);
     expect(plan.filedRoute).toBeDefined();
     expect(plan.filedRoute?.segments.length).toBeGreaterThan(0);
@@ -71,6 +72,8 @@ test("scheduled departure plans are pending and visible before their targets are
   expect(plan).toMatchObject({
     status: "pending",
     flightType: "IFR",
+    equipment: "L",
+    departureAirport: "KATL",
     assignedBeacon: departure.assignedSquawk,
   });
   expect(plan?.filedRoute?.segments[0]?.kind).toBe("SID");

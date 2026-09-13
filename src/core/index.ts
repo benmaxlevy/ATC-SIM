@@ -49,6 +49,7 @@ export type {
   FlightPlanStatus,
   FlightType,
 } from "./flightPlan";
+export { FAA_AIRCRAFT_EQUIPMENT_SUFFIXES } from "./flightPlan";
 export type {
   FiledRouteCatalog,
   FiledRouteError,

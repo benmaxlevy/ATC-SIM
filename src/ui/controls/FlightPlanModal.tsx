@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
+  FAA_AIRCRAFT_EQUIPMENT_SUFFIXES,
   flightPlanCid,
   saveFlightPlanDraft,
   type FlightPlan,
@@ -193,7 +194,6 @@ export function FlightPlanModal({
     ["route", "Filed route"],
     ["requestedAltitudeFt", "Requested altitude (ft)"],
     ["aircraftType", "Aircraft type"],
-    ["equipment", "Equipment"],
     ["departureAirport", "Origin"],
     ["airportId", "Destination"],
   ] as const;
@@ -232,6 +232,17 @@ export function FlightPlanModal({
               <input {...inputProps(field)} />
             </label>
           ))}
+          <label htmlFor="flight-plan-equipment">
+            Equipment code
+            <select {...inputProps("equipment")}>
+              <option value="">Unspecified</option>
+              {FAA_AIRCRAFT_EQUIPMENT_SUFFIXES.map(({ code, meaning }) => (
+                <option key={code} value={code}>
+                  /{code} — {meaning}
+                </option>
+              ))}
+            </select>
+          </label>
           <label htmlFor={`flight-plan-${mode === "arrival" ? "eta" : "ptd"}`}>
             {mode === "arrival" ? "ETA" : "PTD"}
             <input {...inputProps(mode === "arrival" ? "eta" : "ptd")} />
