@@ -1,9 +1,12 @@
 import { expect, test } from "vitest";
 import {
+  applyIfrClearance,
+  applyFlightPlanRouteTransaction,
   createAircraft,
   createWorld,
   saveFlightPlanDraft,
   SessionLog,
+  stepWorld,
   type FiledRouteCatalog,
 } from "@core";
 import { handleRadioText } from "../handleRadioText";
@@ -65,7 +68,7 @@ function setupAirport(withFixes: boolean) {
     filedRoute: withFixes ? "VOR1" : "KATL",
   });
   if (!created.ok) throw new Error(created.error.message);
-  return { world, plan: created.plan };
+  return { world, aircraft, plan: created.plan };
 }
 
 test("new executable IFR clearance activates the canonical route immediately", async () => {
@@ -74,9 +77,12 @@ test("new executable IFR clearance activates the canonical route immediately", a
   const result = await handleRadioText(world, "DAL123 CLR TO KAHN VIA DIRECT", log);
 
   expect(result.accepted).toBe(true);
-  expect(plan.routeRecord).toMatchObject({ lifecycle: "active", revision: 1 });
-  expect(plan.routeRecord?.route.text).toBe("KAHN");
-  expect(plan.clearanceLimit).toBe("KAHN");
+  expect(plan.routeRecord?.route.text).toBe("VOR1");
+  expect(aircraft.activeClearance).toMatchObject({
+    limitId: "KAHN",
+    access: "DIRECT",
+    route: { lifecycle: "active", revision: 1 },
+  });
   expect(aircraft.clearanceAccess).toBe("DIRECT");
   expect(aircraft.intent.lateral).toMatchObject({ type: "PROCEDURE", routeFixIds: ["KAHN"] });
   expect(log.byType("clearance.ifr.issued")).toHaveLength(1);
@@ -91,7 +97,8 @@ test("radar-vector access is active but leaves vector pending", async () => {
   );
 
   expect(result.accepted).toBe(true);
-  expect(plan.routeRecord?.lifecycle).toBe("active");
+  expect(plan.routeRecord?.lifecycle).toBe("none");
+  expect(aircraft.activeClearance?.route.lifecycle).toBe("active");
   expect(aircraft.intent.lateral).toMatchObject({ type: "VECTOR_PENDING", holdHeadingDeg: 90 });
 });
 
@@ -135,8 +142,23 @@ test("catalog airport limits are executable generic endpoints", async () => {
   const { world, aircraft, plan } = setup();
   const result = await handleRadioText(world, "DAL123 CLR TO TEST VIA DIRECT", new SessionLog());
   expect(result.accepted).toBe(true);
-  expect(plan.routeRecord?.route.text).toBe("TEST");
+  expect(plan.routeRecord?.route.text).toBe("VOR1");
+  expect(aircraft.activeClearance?.route.route.text).toBe("TEST");
   expect(aircraft.intent.lateral).toMatchObject({ type: "PROCEDURE", routeFixIds: ["TEST"] });
+});
+
+test("airport clearance endpoint executes without entering the tactical fix registry", async () => {
+  const { world, aircraft } = setupAirport(false);
+  world.catalog!.airportEndpoint = { xNm: 0, yNm: 0 };
+  aircraft.xNm = 5;
+  aircraft.headingDeg = 270;
+  const result = await handleRadioText(world, "DAL123 CLR TO KATL VIA DIRECT", new SessionLog());
+
+  expect(result.accepted).toBe(true);
+  expect(world.fixRegistry?.has("KATL")).toBe(false);
+  expect(aircraft.activeClearance?.route.route.text).toBe("KATL");
+  stepWorld(world, 1);
+  expect(aircraft.intent.lateral).toMatchObject({ type: "PROCEDURE", routeFixIds: ["KATL"] });
 });
 
 test("optional clearance SQ changes aircraft transponder state, not plan beacon", async () => {
@@ -156,20 +178,39 @@ test("optional clearance SQ changes aircraft transponder state, not plan beacon"
 
 test("text airport clearance grounds the listed airport with nonempty fixes", async () => {
   const { world, plan } = setupAirport(true);
+  const aircraft = world.aircraft[0]!;
   const result = await handleRadioText(
     world,
     "DAL123 CLR TO Atlanta Airport VIA DIRECT",
     new SessionLog(),
   );
   expect(result.accepted).toBe(true);
-  expect(plan.clearanceLimit).toBe("KATL");
+  expect(plan.clearanceLimit).toBeUndefined();
+  expect(aircraft.activeClearance?.limitId).toBe("KATL");
 });
 
 test("text airport clearance grounds the listed airport with empty fixes", async () => {
   const { world, plan } = setupAirport(false);
+  const aircraft = world.aircraft[0]!;
   const result = await handleRadioText(world, "DAL123 CLR TO KATL VIA DIRECT", new SessionLog());
   expect(result.accepted).toBe(true);
-  expect(plan.clearanceLimit).toBe("KATL");
+  expect(plan.clearanceLimit).toBeUndefined();
+  expect(aircraft.activeClearance?.limitId).toBe("KATL");
+  expect(world.fixRegistry?.has("KATL")).toBe(false);
+});
+
+test("airport clearance executes through a separate endpoint registry", async () => {
+  const { world, aircraft } = setupAirport(false);
+  world.catalog!.airportEndpoint = { xNm: 1, yNm: 0 };
+  const result = await handleRadioText(world, "DAL123 CLR TO KATL VIA DIRECT", new SessionLog());
+  expect(result.accepted).toBe(true);
+  expect(world.fixRegistry?.has("KATL")).toBe(false);
+  expect(aircraft.activeClearance?.route.route.text).toBe("KATL");
+
+  const xBefore = aircraft.xNm;
+  for (let i = 0; i < 20; i += 1) stepWorld(world, 1);
+  expect(aircraft.xNm).toBeGreaterThan(xBefore);
+  expect(aircraft.intent.lateral).toMatchObject({ type: "HEADING", headingDeg: 90 });
 });
 
 test("text clearance rejects an unknown airport with empty fixes", async () => {
@@ -226,4 +267,73 @@ test("IFR clearance rejects conflicting VFR markers without inferring a pickup",
   expect(marked).toMatchObject({ accepted: false, reason: "CLEARANCE" });
   expect(plan).toEqual(markedPlan);
   expect(aircraft).toEqual(markedAircraft);
+});
+
+test("clearance route snapshot survives a later plan edit", async () => {
+  const { world, aircraft, plan } = setup();
+  const issued = await handleRadioText(world, "DAL123 CLR TO KAHN VIA DIRECT", new SessionLog());
+  expect(issued.accepted).toBe(true);
+  const activeBefore = structuredClone(aircraft.activeClearance);
+  const edited = applyFlightPlanRouteTransaction(world, plan.id, {
+    routeText: "SIITH",
+    lifecycle: "active",
+  });
+  expect(edited.ok).toBe(true);
+  expect(plan.routeRecord?.route.text).toBe("SIITH");
+  expect(aircraft.activeClearance).toEqual(activeBefore);
+  expect(aircraft.intent.lateral).toMatchObject({ routeFixIds: ["KAHN"] });
+});
+
+test("clearance issuance after a plan edit leaves every plan field unchanged", async () => {
+  const { world, aircraft, plan } = setup();
+  const edited = applyFlightPlanRouteTransaction(world, plan.id, {
+    routeText: "SIITH",
+    lifecycle: "active",
+  });
+  expect(edited.ok).toBe(true);
+  plan.assignedAltitudeFt = 7000;
+  plan.assignedBeacon = "4700";
+  plan.clearanceLimit = "OLD";
+  plan.clearanceAccess = "AS_FILED";
+  plan.clearanceFrequency = "118.1";
+  plan.clearanceClimbVia = true;
+  const before = structuredClone(plan);
+  const result = applyIfrClearance(world, aircraft, {
+    type: "IFR_CLEARANCE",
+    limitId: "KAHN",
+    access: { type: "DIRECT" },
+    altitudeFt: 9000,
+    frequency: "119.5",
+    squawk: "4721",
+  });
+  expect(result.ok).toBe(true);
+  expect(plan).toEqual(before);
+  expect(aircraft.intent.assignedAltitudeFt).toBe(9000);
+  expect(aircraft.assignedSquawk).toBe("4721");
+  expect(aircraft.activeClearance?.route.route.text).toBe("KAHN");
+});
+
+test("invalid replacement keeps the existing active clearance and plan unchanged", async () => {
+  const { world, aircraft, plan } = setup();
+  const first = await handleRadioText(world, "DAL123 CLR TO KAHN VIA DIRECT", new SessionLog());
+  expect(first.accepted).toBe(true);
+  const beforePlan = structuredClone(plan);
+  const beforeClearance = structuredClone(aircraft.activeClearance);
+  const rejected = await handleRadioText(world, "DAL123 CLR TO NOPE VIA DIRECT", new SessionLog());
+  expect(rejected.accepted).toBe(false);
+  expect(plan).toEqual(beforePlan);
+  expect(aircraft.activeClearance).toEqual(beforeClearance);
+});
+
+test("a later valid clearance replaces only the active snapshot", async () => {
+  const { world, aircraft, plan } = setup();
+  const first = await handleRadioText(world, "DAL123 CLR TO KAHN VIA DIRECT", new SessionLog());
+  expect(first.accepted).toBe(true);
+  const beforePlan = structuredClone(plan);
+  const second = await handleRadioText(world, "DAL123 CLR TO SIITH VIA DIRECT", new SessionLog());
+  expect(second.accepted).toBe(true);
+  expect(plan).toEqual(beforePlan);
+  expect(aircraft.activeClearance?.limitId).toBe("SIITH");
+  expect(aircraft.activeClearance?.route.route.text).toBe("SIITH");
+  expect(aircraft.intent.lateral).toMatchObject({ routeFixIds: ["SIITH"] });
 });

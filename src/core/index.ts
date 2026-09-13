@@ -191,8 +191,10 @@ export * from "./command/fixtures";
 export type { SessionEvent } from "./events/session-log";
 export { SessionLog } from "./events/session-log";
 export type {
+  ActiveIfrClearance,
   Aircraft,
   AircraftInit,
+  ClearanceAccess,
   CwtWakeCategory,
   CrossConstraint,
   CrossRestriction,

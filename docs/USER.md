@@ -129,7 +129,7 @@ If an aircraft is already selected on the scope, the callsign prefix is automati
 | **Transponder / Ident** | `I` | `DAL123 I` | Squawk ident (flashes target symbol for 5 seconds) |
 | **Beacon assignment** | `SQ <[0-7]{4}>` / `SQ VFR` | `DAL123 SQ 4721` / `DAL123 SQ VFR` | Assigns the aircraft a discrete octal beacon or VFR code 1200; it never edits the manually maintained flight-plan beacon, and assigned/reported surveillance codes stay separate until the pilot report. |
 | **Maintain VFR** | `MVFR` | `DAL123 MVFR` | Radio-only VFR instruction. Sets the aircraft's maintain-VFR marker and readback; it is not an IFR clearance, VFR-on-top authorization, route, or flight-plan activation. |
-| **IFR clearance** | `CLR TO <LIMIT> (ASFILED\|VIA DIRECT\|VIA <FIX> THEN DIRECT\|VIA RADAR VECTORS\|VIA <SID> [TRANS]) [ALT <hundreds>] [CVIA] [FREQ <value>] [SQ <code>]` | `DAL123 CLR TO KAHN VIA DIRECT` | One limit plus exactly one access method. Executable route/SID/as-filed methods start immediately; radar vectors remain pending. This compact syntax is an ATC-SIM trainer delta. |
+| **IFR clearance** | `CLR TO <LIMIT> (ASFILED\|VIA DIRECT\|VIA <FIX> THEN DIRECT\|VIA RADAR VECTORS\|VIA <SID> [TRANS]) [ALT <hundreds>] [CVIA] [FREQ <value>] [SQ <code>]` | `DAL123 CLR TO KAHN VIA DIRECT` | One limit plus exactly one access method. The aircraft follows an independent active-clearance snapshot immediately; radar vectors remain pending. Issuance never edits the flight plan. This compact syntax is an ATC-SIM trainer delta. |
 | **Miscellaneous** | `GA` | `DAL123 GA` | Go around / execute published missed approach |
 | | `SH` | `DAL123 SH` | Say current heading |
 | | `SA` | `DAL123 SA` | Say current altitude |
@@ -235,8 +235,10 @@ is a trainer delta, not NAS timing.
 
 IFR-clearance routing is a compact trainer grammar, not NAS-compatible input. It
 requires one clearance limit and one access method. A new executable clearance
-replaces the one canonical route and flies immediately; `VIA RADAR VECTORS`
-leaves the route vector-pending. `AS FILED` is accepted only when its limit is
+creates or replaces the aircraft's active-clearance snapshot and flies
+immediately; `VIA RADAR VECTORS` leaves the route vector-pending. The editable
+filed plan is unchanged, and later plan edits do not retarget an issued
+clearance. `AS FILED` is accepted only when its limit is
 the filed route's terminal endpoint or the filed destination's catalog airport;
 the route is never reused for an unrelated limit. Plain `CLEARED DIRECT` and
 `PROCEED DIRECT` remain tactical lateral amendments and never reset a flight

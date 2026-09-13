@@ -25,7 +25,7 @@ import {
 import { MAX_PHYSICS_STEPS_PER_FRAME, SIM_DT_S } from "./clock";
 import type { SessionLog } from "./events/session-log";
 import { stepAircraft } from "./kinematics";
-import type { FixRegistry, FixRegistrySource } from "./nav/fixRegistry";
+import type { FixRegistry, FixRegistrySource, RegisteredFix } from "./nav/fixRegistry";
 import { buildFixRegistry } from "./nav/fixRegistry";
 import {
   acceptOutboundHandoff,
@@ -84,6 +84,8 @@ export interface World {
     airportId: string;
     name?: string;
     spokenAliases?: readonly string[];
+    /** Separate clearance-endpoint geometry; never registered as a tactical fix. */
+    airportEndpoint?: { xNm: number; yNm: number };
     magVarDeg?: number;
     navaids: ReadonlyArray<{ id: string; xNm?: number; yNm?: number; kind?: string }>;
     fixes: ReadonlyArray<{ id: string; xNm?: number; yNm?: number; kind?: string }>;
@@ -207,6 +209,45 @@ function fixRegistryFromPartial(partial?: Partial<World>): FixRegistry | null {
     return null;
   }
   return buildFixRegistry(source);
+}
+
+/**
+ * FMS-only navigation view. Airport ARP is executable as a clearance limit,
+ * but stays absent from World.fixRegistry so DIRECT/CROSS cannot ground it.
+ */
+function clearanceRouteRegistry(world: World): FixRegistry | null {
+  const base = world.fixRegistry;
+  const airportId = world.catalog?.airportId.trim().toUpperCase();
+  const activeAirport = world.aircraft.some((aircraft) =>
+    aircraft.activeClearance?.route.route.segments.some((segment) =>
+      segment.fixIds.some((id) => id.trim().toUpperCase() === airportId),
+    ),
+  );
+  if (!activeAirport || !airportId) return base;
+  const endpoint = world.catalog?.airportEndpoint ?? { xNm: 0, yNm: 0 };
+  const airport: RegisteredFix = Object.freeze({
+    id: airportId,
+    xNm: endpoint.xNm,
+    yNm: endpoint.yNm,
+    kind: "airport-endpoint",
+  });
+  return {
+    get(id: string) {
+      const normalized = id.trim().toUpperCase();
+      return normalized === airportId ? airport : base?.get(id);
+    },
+    require(id: string) {
+      const found = this.get(id);
+      if (!found) throw new Error(`Unknown fix ${id.trim().toUpperCase()}`);
+      return found;
+    },
+    has(id: string) {
+      return this.get(id) !== undefined;
+    },
+    ids() {
+      return base?.ids() ?? [];
+    },
+  };
 }
 
 export function createWorld(partial?: Partial<World>): World {
@@ -533,7 +574,7 @@ function synchronizeRouteCursor(
       item.acid.trim().toUpperCase() === aircraft.callsign.trim().toUpperCase() &&
       item.routeRecord?.lifecycle === "active",
   );
-  const record = plan?.routeRecord;
+  const record = aircraft.activeClearance?.route ?? plan?.routeRecord;
   if (!record) return;
   const ids = routeFixIds(record.route);
   const current = aircraft.intent.lateral;
@@ -586,7 +627,7 @@ export function stepWorld(world: World, dtS: number): World {
     const regime = profile.regimes ? resolvePerformanceRegime(ac) : undefined;
     const performance = regime && profile.regimes ? profile.regimes[regime] : undefined;
     const commandedHeadingDeg = applyLateralFms(ac, dtS, {
-      registry: world.fixRegistry,
+      registry: clearanceRouteRegistry(world),
       log: world.sessionLog,
       simTimeMs: world.simTimeMs,
       catalog: world.catalog,

@@ -1,8 +1,22 @@
 import type { TurnDir } from "./command/types";
+import type { FlightPlanRoute } from "./flightPlan";
 import { normalizeHeadingDeg } from "./nav/geometry";
 
 /** FAA JO 7110.65BB terminal CWT categories used by later ATPA adaptation. */
 export type CwtWakeCategory = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I";
+
+export type ClearanceAccess = "AS_FILED" | "DIRECT" | "FIX_THEN_DIRECT" | "RADAR_VECTORS" | "SID";
+
+/** Operational clearance state. It is deliberately not a FlightPlan field. */
+export interface ActiveIfrClearance {
+  /** Deep-owned route snapshot; later plan edits cannot change this route. */
+  route: FlightPlanRoute;
+  limitId: string;
+  access: ClearanceAccess;
+  frequency?: string;
+  climbVia?: boolean;
+  issuedAtSimMs: number;
+}
 
 const CWT_WAKE_CATEGORIES = new Set<CwtWakeCategory>(["A", "B", "C", "D", "E", "F", "G", "H", "I"]);
 
@@ -173,8 +187,10 @@ export interface Aircraft {
   maintainVfr?: boolean;
   /** Latest accepted trainer IFR clearance limit/access projection. */
   clearanceLimit?: string;
-  clearanceAccess?: "AS_FILED" | "DIRECT" | "FIX_THEN_DIRECT" | "RADAR_VECTORS" | "SID";
+  clearanceAccess?: ClearanceAccess;
   clearanceFrequency?: string;
+  /** Latest issued IFR clearance, independent of editable flight-plan state. */
+  activeClearance?: ActiveIfrClearance;
   /** True if altitude is pilot-reported (displays *). */
   pilotReportedAltitude?: boolean;
   /** ATPA in-trail distance readout (Fig 38/39 two decimals, e.g. "2.40"). */
@@ -225,8 +241,9 @@ export interface AircraftInit {
   /** Seed the radio-only MAINTAIN VFR marker for authored/test traffic. */
   maintainVfr?: boolean;
   clearanceLimit?: string;
-  clearanceAccess?: "AS_FILED" | "DIRECT" | "FIX_THEN_DIRECT" | "RADAR_VECTORS" | "SID";
+  clearanceAccess?: ClearanceAccess;
   clearanceFrequency?: string;
+  activeClearance?: ActiveIfrClearance;
   pilotReportedAltitude?: boolean;
   atpaDistance?: string;
   flightPlan?: {
@@ -324,6 +341,7 @@ export function createAircraft(init: AircraftInit): Aircraft {
     ...(init.clearanceLimit ? { clearanceLimit: init.clearanceLimit.toUpperCase() } : {}),
     ...(init.clearanceAccess ? { clearanceAccess: init.clearanceAccess } : {}),
     ...(init.clearanceFrequency ? { clearanceFrequency: init.clearanceFrequency } : {}),
+    ...(init.activeClearance ? { activeClearance: init.activeClearance } : {}),
     ...(init.pilotReportedAltitude !== undefined
       ? { pilotReportedAltitude: init.pilotReportedAltitude }
       : {}),

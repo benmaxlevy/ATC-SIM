@@ -25,6 +25,7 @@ interface RouteExecutionWorld {
   aircraft: Aircraft[];
   flightPlans: FlightPlan[];
   fixRegistry?: { has(id: string): boolean } | null;
+  catalog?: { airportId?: string } | null;
 }
 
 function routeFixIds(route: FlightPlanRoute): string[] {
@@ -33,6 +34,20 @@ function routeFixIds(route: FlightPlanRoute): string[] {
 
 function normalized(value: string): string {
   return value.trim().toUpperCase();
+}
+
+function routeHasUnavailableFix(
+  route: FlightPlanRoute,
+  world: RouteExecutionWorld,
+  allowAirport: boolean,
+): boolean {
+  const airportId = normalized(world.catalog?.airportId ?? "");
+  return Boolean(
+    world.fixRegistry &&
+    routeFixIds(route).some(
+      (id) => !world.fixRegistry!.has(id) && !(allowAirport && normalized(id) === airportId),
+    ),
+  );
 }
 
 function routeLateral(
@@ -91,7 +106,19 @@ export function startFlightPlanRoute(
       error: { code: "PLAN_NOT_FOUND", message: `flight plan ${planId} not found` },
     };
   }
-  const route = plan.routeRecord;
+  const aircraft = aircraftId
+    ? world.aircraft.find((item) => item.id === aircraftId)
+    : world.aircraft.find((item) => normalized(item.callsign) === normalized(plan.acid));
+  if (!aircraft) {
+    return {
+      ok: false,
+      error: { code: "NO_AIRCRAFT", message: `no aircraft for flight plan ${plan.acid}` },
+    };
+  }
+  // Issued clearances own execution. The plan route remains a separate
+  // editable proposal and is only the compatibility fallback for legacy
+  // callers that explicitly start a plan route.
+  const route = aircraft.activeClearance?.route ?? plan.routeRecord;
   if (!route || route.lifecycle !== "active") {
     return {
       ok: false,
@@ -103,20 +130,11 @@ export function startFlightPlanRoute(
     fixIds.length === 0 ||
     route.nextIndex < 0 ||
     route.nextIndex > fixIds.length ||
-    (world.fixRegistry && fixIds.some((id) => !world.fixRegistry!.has(id)))
+    routeHasUnavailableFix(route, world, Boolean(aircraft.activeClearance))
   ) {
     return {
       ok: false,
       error: { code: "UNABLE_ROUTE", message: "unable route: route fix is unavailable" },
-    };
-  }
-  const aircraft = aircraftId
-    ? world.aircraft.find((item) => item.id === aircraftId)
-    : world.aircraft.find((item) => normalized(item.callsign) === normalized(plan.acid));
-  if (!aircraft) {
-    return {
-      ok: false,
-      error: { code: "NO_AIRCRAFT", message: `no aircraft for flight plan ${plan.acid}` },
     };
   }
   aircraft.intent.lateral = routeLateral(route, access, aircraft.headingDeg);

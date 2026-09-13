@@ -61,21 +61,21 @@ or EFC, and no new Command IR syntax.
 
 ## Acceptance criteria
 
-- [ ] Issuing any valid IFR clearance leaves a deep snapshot of the editable
+- [x] Issuing any valid IFR clearance leaves a deep snapshot of the editable
   flight plan unchanged, including `routeRecord`, `filedRoute`, `route`,
   `assignedAltitudeFt`, `assignedBeacon`, and prior plan clearance metadata.
-- [ ] A valid clearance creates/replaces an aircraft-owned active-clearance
+- [x] A valid clearance creates/replaces an aircraft-owned active-clearance
   route snapshot and applies the corresponding immediate route/vector intent.
-- [ ] A catalog airport limit can be executed through the separate airport
+- [x] A catalog airport limit can be executed through the separate airport
   endpoint lookup while airport ICAOs remain absent from `FixRegistry` and
   invalid for tactical direct/cross commands.
-- [ ] Editing a plan after issuance does not alter active-clearance route IDs,
+- [x] Editing a plan after issuance does not alter active-clearance route IDs,
   procedure identity, access, limit, or vector-pending state.
-- [ ] Issuing after a plan edit uses the latest plan as compiler input without
+- [x] Issuing after a plan edit uses the latest plan as compiler input without
   requiring a prior clearance or mutating the plan during issuance.
-- [ ] Invalid clearance remains atomic and does not replace an existing active
+- [x] Invalid clearance remains atomic and does not replace an existing active
   clearance or mutate plan/aircraft state.
-- [ ] Existing tactical direct, SID, STAR, AS FILED, vector, optional-field,
+- [x] Existing tactical direct, SID, STAR, AS FILED, vector, optional-field,
   and squawk provenance behavior remains green.
 
 ## Test plan

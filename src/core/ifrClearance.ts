@@ -1,4 +1,4 @@
-import type { Aircraft } from "./aircraft";
+import type { Aircraft, ClearanceAccess } from "./aircraft";
 import type { Instruction } from "./command/types";
 import type { FiledRouteCatalog } from "./filedRoute";
 import { validateFlightPlanRouteTransaction } from "./filedRoute";
@@ -7,8 +7,7 @@ import { isValidBeaconCode } from "./flightPlan";
 import { applyActiveRouteToAircraft, type RouteExecutionAccess } from "./fms/routeExecution";
 import type { SessionLog } from "./events/session-log";
 
-export type IfrClearanceAccess =
-  "AS_FILED" | "DIRECT" | "FIX_THEN_DIRECT" | "RADAR_VECTORS" | "SID";
+export type IfrClearanceAccess = ClearanceAccess;
 
 export type IfrClearanceErrorCode =
   | "PLAN_NOT_FOUND"
@@ -131,7 +130,8 @@ function asFiledLimitMatches(
 
 /**
  * Compile and commit one IFR clearance. Every route and optional field is
- * checked before the mutable plan/aircraft transaction begins.
+ * checked before the mutable aircraft transaction begins. The editable
+ * flight plan is compiler input only: issuance never changes any plan field.
  */
 export function applyIfrClearance(
   world: IfrClearanceWorld,
@@ -204,49 +204,54 @@ export function applyIfrClearance(
   const matchingAircraft = world.aircraft.find((item) => item.id === aircraft.id);
   if (!matchingAircraft) return error("NO_AIRCRAFT", `no aircraft for flight plan ${plan.acid}`);
 
-  // All checks are complete. Route and plan compatibility projections update
-  // together, then the same route is applied to the aircraft exactly once.
+  // All checks are complete. Own a fresh route snapshot on the aircraft, then
+  // apply it exactly once. Never project clearance state back into the plan:
+  // plan edits and clearance issuance are intentionally independent actions.
   const access: RouteExecutionAccess =
     clearance.access.type === "RADAR_VECTORS" ? "RADAR_VECTORS" : "ROUTE";
-  Object.assign(plan, {
-    routeRecord: route,
-    filedRoute: route.route,
-    route: route.route.text,
-  });
-  Object.assign(plan, {
-    clearanceLimit: limitId,
-    clearanceAccess: clearance.access.type,
-    ...(clearance.frequency === undefined
-      ? { clearanceFrequency: undefined }
-      : { clearanceFrequency: clearance.frequency.trim() }),
-    ...(clearance.climbVia === undefined
-      ? { clearanceClimbVia: undefined }
-      : { clearanceClimbVia: clearance.climbVia }),
-  });
+  const activeRoute = {
+    route: {
+      text: route.route.text,
+      segments: route.route.segments.map((segment) => ({
+        ...segment,
+        fixIds: [...segment.fixIds],
+      })),
+    },
+    nextIndex: route.nextIndex,
+    revision: route.revision,
+    lifecycle: route.lifecycle,
+  } satisfies FlightPlanRoute;
+  matchingAircraft.activeClearance = {
+    route: activeRoute,
+    limitId,
+    access: clearance.access.type,
+    ...(clearance.frequency === undefined ? {} : { frequency: clearance.frequency.trim() }),
+    ...(clearance.climbVia === undefined ? {} : { climbVia: clearance.climbVia }),
+    issuedAtSimMs: world.simTimeMs,
+  };
   if (clearance.altitudeFt !== undefined) {
-    plan.assignedAltitudeFt = clearance.altitudeFt;
-    aircraft.intent.assignedAltitudeFt = clearance.altitudeFt;
-    aircraft.intent.controllerAssignedAltitudeFt = clearance.altitudeFt;
+    matchingAircraft.intent.assignedAltitudeFt = clearance.altitudeFt;
+    matchingAircraft.intent.controllerAssignedAltitudeFt = clearance.altitudeFt;
   }
   if (clearance.squawk !== undefined) {
-    aircraft.assignedSquawk = clearance.squawk;
-    aircraft.pendingReportedSquawk = {
+    matchingAircraft.assignedSquawk = clearance.squawk;
+    matchingAircraft.pendingReportedSquawk = {
       code: clearance.squawk,
       dueSimMs: world.simTimeMs + 1000,
     };
   }
-  aircraft.clearanceLimit = limitId;
-  aircraft.clearanceAccess = clearance.access.type;
-  aircraft.clearanceFrequency = clearance.frequency?.trim();
+  matchingAircraft.clearanceLimit = limitId;
+  matchingAircraft.clearanceAccess = clearance.access.type;
+  matchingAircraft.clearanceFrequency = clearance.frequency?.trim();
   if (clearance.climbVia && clearance.access.type === "SID") {
-    aircraft.intent.vertical = { type: "VIA_SID", sidId: clearance.access.procedureId };
+    matchingAircraft.intent.vertical = { type: "VIA_SID", sidId: clearance.access.procedureId };
   } else if (
-    aircraft.intent.vertical?.type === "VIA_SID" ||
-    aircraft.intent.vertical?.type === "VIA_STAR"
+    matchingAircraft.intent.vertical?.type === "VIA_SID" ||
+    matchingAircraft.intent.vertical?.type === "VIA_STAR"
   ) {
-    aircraft.intent.vertical = { type: "ASSIGNED" };
+    matchingAircraft.intent.vertical = { type: "ASSIGNED" };
   }
-  applyActiveRouteToAircraft(aircraft, route, access);
+  applyActiveRouteToAircraft(matchingAircraft, activeRoute, access);
   (log ?? world.sessionLog)?.append({
     type: "clearance.ifr.issued",
     atSimMs: world.simTimeMs,
@@ -254,8 +259,8 @@ export function applyIfrClearance(
     callsign: aircraft.callsign,
     limitId,
     access: clearance.access.type,
-    routeRevision: route.revision,
+    routeRevision: activeRoute.revision,
     routeText: route.route.text,
   });
-  return { ok: true, plan, aircraft, route };
+  return { ok: true, plan, aircraft: matchingAircraft, route: activeRoute };
 }

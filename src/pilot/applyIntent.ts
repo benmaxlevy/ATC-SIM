@@ -109,7 +109,10 @@ function directContinuation(
   fixId: string,
   flightPlan: ApplyIntentOpts["flightPlan"],
 ): DirectContinuation {
-  const record = flightPlan?.routeRecord;
+  // Tactical DIRECT is lateral-only. When an IFR clearance is active, its
+  // immutable execution snapshot is the route to resume; never consult a
+  // later-edited plan and silently retarget the aircraft.
+  const record = aircraft.activeClearance?.route ?? flightPlan?.routeRecord;
   if (record?.lifecycle === "active") {
     const routeFixIds = record.route.segments.flatMap((segment) => segment.fixIds);
     const minimumIndex = Math.max(0, record.nextIndex);
