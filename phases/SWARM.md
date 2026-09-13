@@ -1,5 +1,11 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Sixty-eighth swarm started — 2026-09-13 (Flight Plan modal assigned altitude)
+
+Captain: `/root`. Merge lock: `feature/clearances`. Worker model/limit:
+`gpt-5.6-luna` high, one sequential worker. T02-188 is authorized; post-merge
+CI and supplied-manual review are required. No push is authorized.
+
 ## Proposed sixty-eighth swarm — Flight Plan modal assigned altitude — 2026-09-13
 
 Add the missing UI path for the already-shipped plan-backed assigned-altitude
