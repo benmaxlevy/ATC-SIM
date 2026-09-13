@@ -214,6 +214,7 @@ export function spawnDeparture(
       assignedBeacon: config.assignedSquawk ?? config.squawk,
       rng: config.rng,
       departure: true,
+      catalog: cat,
     },
   );
   ac.intent = pose.intent;

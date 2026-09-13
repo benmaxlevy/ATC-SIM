@@ -9,6 +9,7 @@
 
 import {
   saveFlightPlanDraft,
+  isValidBeaconCode,
   type Aircraft,
   type AircraftInit,
   type FlightPlan,
@@ -54,12 +55,27 @@ export function createScenarioIfrFlightPlan(
   world: World,
   input: ScenarioIfrFlightPlanInput,
 ): FlightPlan {
+  const requestedBeacon = input.assignedBeacon?.trim().toUpperCase();
+  if (requestedBeacon === "1200") {
+    throw new Error(
+      `Cannot create IFR scenario plan for ${input.acid}: assigned beacon 1200 is non-correlatable`,
+    );
+  }
   const existing = world.flightPlans.find(
     (plan) => plan.status !== "deleted" && plan.acid === input.acid.trim().toUpperCase(),
   );
   if (existing) {
-    if (!existing.assignedBeacon) {
-      throw new Error(`IFR scenario plan ${existing.id} has no assigned beacon`);
+    const beacon = existing.assignedBeacon?.trim().toUpperCase();
+    if (
+      existing.status !== "pending" ||
+      (existing.flightType !== undefined && existing.flightType !== "IFR") ||
+      !beacon ||
+      !isValidBeaconCode(beacon) ||
+      beacon === "1200"
+    ) {
+      throw new Error(
+        `Cannot create IFR scenario plan for ${input.acid}: existing plan ${existing.id} is not a valid pending IFR plan`,
+      );
     }
     return existing;
   }
@@ -107,10 +123,14 @@ export function spawnScenarioIfrAircraft(
   params: AircraftInit,
   input: Omit<ScenarioIfrFlightPlanInput, "acid" | "aircraftType"> & {
     route?: ScenarioIfrRoute;
+    /** Optional catalog override for callers that spawn from an external catalog. */
+    catalog?: NonNullable<World["catalog"]>;
   },
 ): { aircraft: Aircraft; plan: FlightPlan } {
-  const plan = createScenarioIfrFlightPlan(world, {
-    ...input,
+  const { catalog, ...planInput } = input;
+  const planWorld = catalog === undefined ? world : { ...world, catalog };
+  const plan = createScenarioIfrFlightPlan(planWorld, {
+    ...planInput,
     acid: params.callsign,
     aircraftType: params.aircraftType,
   });

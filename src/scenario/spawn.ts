@@ -207,6 +207,36 @@ function spawnDownwindArc(
   }
 }
 
+/** Run an authored batch against isolated append-only state before committing it. */
+function spawnAuthoredArrivalsAtomically(world: World, scenario: Scenario, seed: number): void {
+  const staged: World = {
+    ...world,
+    aircraft: [...world.aircraft],
+    flightPlans: [...world.flightPlans],
+    handoffs: new Map(world.handoffs),
+    outboundHandoffInitiatedAtSimMs: new Map(world.outboundHandoffInitiatedAtSimMs),
+    sessionLog: world.sessionLog ? new SessionLog() : null,
+  };
+  const rng = mulberry32((seed >>> 0) ^ 0xa24baed);
+  const used = usedCallsignSet(staged.aircraft.map((aircraft) => aircraft.callsign));
+  for (const arrival of scenario.arrivals) {
+    const traffic = allocateTrafficPairForType(rng, used, arrival.aircraftType ?? "B738");
+    spawnArrival(staged, arrival, traffic.callsign, rng, scenario);
+  }
+
+  world.aircraft.push(...staged.aircraft.slice(world.aircraft.length));
+  world.flightPlans.push(...staged.flightPlans.slice(world.flightPlans.length));
+  world.handoffs.clear();
+  for (const [aircraftId, handoff] of staged.handoffs) world.handoffs.set(aircraftId, handoff);
+  world.outboundHandoffInitiatedAtSimMs.clear();
+  for (const [aircraftId, atSimMs] of staged.outboundHandoffInitiatedAtSimMs) {
+    world.outboundHandoffInitiatedAtSimMs.set(aircraftId, atSimMs);
+  }
+  if (world.sessionLog && staged.sessionLog) {
+    for (const event of staged.sessionLog.all()) world.sessionLog.append(event);
+  }
+}
+
 /**
  * Create each arrival with `createAircraft` and push onto `world.aircraft`.
  * Intent defaults to hold-present so they fly straight until a command.
@@ -232,12 +262,7 @@ export function spawnArrivals(
   }
   const seed =
     typeof scenarioOrSeed === "number" ? scenarioOrSeed : (seedOpt ?? DEFAULT_SPAWN_SEED);
-  const rng = mulberry32((seed >>> 0) ^ 0xa24baed);
-  const used = usedCallsignSet(world.aircraft.map((a) => a.callsign));
-  for (const arrival of source.arrivals) {
-    const traffic = allocateTrafficPairForType(rng, used, arrival.aircraftType ?? "B738");
-    spawnArrival(world, arrival, traffic.callsign, rng, source);
-  }
+  spawnAuthoredArrivalsAtomically(world, source, seed);
 }
 
 function msawInhibitFromScenario(scenario: Scenario): MsawInhibitGeom | null {
