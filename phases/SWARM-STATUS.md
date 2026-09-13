@@ -1775,3 +1775,25 @@ the docs/acceptance-only final ticket.
 **Manual leftover:** none for the approved scope. Assigned-altitude editing in
 the Flight Plan modal is not included; it requires a follow-up UI ticket. No
 push performed.
+
+## SIXTY-EIGHTH SWARM COMPLETE — Flight Plan modal assigned altitude (T02-188)
+
+Completed on `feature/clearances` with one sequential Luna worker and captain
+squash merge. T02-188 adds an assigned-altitude field to the Flight Plan modal,
+prefills active plans, disables the control for create/non-active plans, routes
+updates through the existing atomic core transaction, and preserves the
+plan-only altitude provenance contract. `0` clears assigned altitude; no
+command, intent, kinematics, association, or datablock formatter changes were
+made.
+
+Captain commit: `fc635dc`. Final `npm run ci`: **206 files passed, 2006
+passed, 3 skipped, 0 failures**. Supplied-manual review passed against §2.12
+p. 2-63, Figure 2-20 pp. 2-66–67, §§5.6.3/5.6.17 pp. 5-146 and 5-167–168,
+and Table 5-16 p. 5-173. CRC was ignored. Independent evidence agreed; the
+reviewer could not obtain a recursive child report, so the permitted fallback
+was recorded. A pre-existing `99900` validation-message inconsistency was
+noted but not changed.
+
+**Manual leftover:** Chrome walkthrough of active-plan edit, `A###` display,
+`0` clearing, and disabled create/non-active controls was not run. No push
+performed.
