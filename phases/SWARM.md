@@ -1,5 +1,33 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Proposed sixty-fourth swarm — 2026-09-12 (derived correlation and IFR scenario plans)
+
+| Key | Value |
+| --- | --- |
+| Goal | Present validated IFR scenario plans through derived beacon correlation. |
+| Include | T02-172 → T02-173 → T02-174 → T02-175. |
+| Merge target | `feature/nas-flightplan-modal`; no new feature branch. |
+| Worker limit/model | 1 sequential worker; `gpt-5.6-luna` high. |
+| Stop | T02-175, final CI, supplied-manual review, browser/accessibility walk. |
+| Push | No push. |
+
+**Product law:** targets are surveillance; plans are filed metadata. Only a
+unique non-1200 reported-squawk/assigned-beacon equality correlates them.
+Correlation is read-only. No plan creation/edit or correlation changes FMS,
+pilot intent, kinematics, Command IR, readback, or session events.
+
+**Skip:** squawk/clearance commands, route execution, speech, networking,
+code-allocation service, manual association, airways, facility branches.
+
+**Ownership/waves:** A T02-172 modal review/docs/UI tests; B T02-173 core
+resolver; C T02-174 scenario factory; D T02-175 presentation/E2E/docs. Each
+wave waits for prior merge, CI, and manual PASS.
+
+**Manual:** `/home/ben/Documents/stars refs/full_manual.pdf`: §2.12,
+§5.4.1–5.4.6, §5.5.5, §5.5.9, §5.6.17, §5.7.1, App D. FAA JO 7110.65BB
+§4-2-1, §5-2-1–2, §5-3-3 anchor terminology; dynamic correlation/spawn is a
+trainer extension.
+
 ## Proposed sixty-third swarm — 2026-09-12 (NAS-style flight-plan modal)
 
 One sequential worker implements each ownership slice on
@@ -4104,3 +4132,12 @@ are committed before workers. Workers are isolated, sequential, and use
 Execution gate: every ticket needs its focused tests, `npm run ci`, and
 supplied-manual review before the next wave. Stop at T02-172. The product law
 above remains binding: filed route is metadata, never pilot/FMS execution.
+
+## Sixty-fourth swarm started — 2026-09-12 (derived correlation and IFR scenario plans)
+
+Execution authorized on `feature/nas-flightplan-modal`; no new feature branch
+or push. Run T02-172, T02-173, T02-174, then T02-175 in isolated worktrees,
+one Luna/high worker at a time. Captain squash-merges only after focused tests,
+`npm run ci`, and independent supplied-manual PASS. On any failure, stop later
+waves and use one narrow correction worker. The proposed sixty-fourth product
+law and skip list above are binding.
