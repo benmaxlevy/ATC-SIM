@@ -1,0 +1,400 @@
+{
+  "schemaVersion": "command-ir-v0",
+  "contexts": {
+    "roster": {
+      "callsigns": ["UPS2509", "GTI2777", "UAL8431", "GTI7908", "EDV7114", "SWA9855", "EDV1155"]
+    },
+    "selected-gti": {
+      "callsigns": ["UPS2509", "GTI2777", "UAL8431", "GTI7908", "EDV7114", "SWA9855", "EDV1155"],
+      "selectedCallsign": "GTI7908"
+    },
+    "approach-roster": {
+      "callsigns": [
+        "UPS2509",
+        "GTI2777",
+        "UAL8431",
+        "GTI7908",
+        "EDV7114",
+        "SWA9855",
+        "EDV1155",
+        "ASA7647"
+      ],
+      "approaches": [
+        { "id": "H26RZ", "name": "RNAV RWY 26R", "runway": "26R", "type": "RNAV" },
+        { "id": "I26R", "name": "ILS RWY 26R", "runway": "26R", "type": "ILS" },
+        { "id": "L26R", "name": "LOC RWY 26R", "runway": "26R", "type": "LOC" },
+        { "id": "R26RY", "name": "RNAV RWY 26R", "runway": "26R", "type": "RNAV" }
+      ]
+    },
+    "approach-selected": {
+      "callsigns": [
+        "UPS2509",
+        "GTI2777",
+        "UAL8431",
+        "GTI7908",
+        "EDV7114",
+        "SWA9855",
+        "EDV1155",
+        "ASA7647"
+      ],
+      "selectedCallsign": "GTI7908",
+      "fixes": ["TYRNN", "RIGGZ", "RIVTT", "VPGHT"],
+      "approaches": [
+        { "id": "H26RZ", "name": "RNAV RWY 26R", "runway": "26R", "type": "RNAV" },
+        { "id": "I26R", "name": "ILS RWY 26R", "runway": "26R", "type": "ILS" },
+        { "id": "L26R", "name": "LOC RWY 26R", "runway": "26R", "type": "LOC" },
+        { "id": "R26RY", "name": "RNAV RWY 26R", "runway": "26R", "type": "RNAV" }
+      ]
+    },
+    "fix-kimmy": {
+      "callsigns": ["UPS2509", "GTI2777", "UAL8431", "GTI7908", "EDV7114", "SWA9855", "EDV1155"],
+      "fixes": ["KYMMY", "TIMMY", "GIMLY"]
+    },
+    "fix-bluff": {
+      "callsigns": ["UPS2509", "GTI2777", "UAL8431", "GTI7908", "EDV7114", "SWA9855", "EDV1155"],
+      "fixes": ["BLUFF"]
+    },
+    "fix-zel": {
+      "callsigns": ["UPS2509", "GTI2777", "UAL8431", "GTI7908", "EDV7114", "SWA9855", "EDV1155"],
+      "fixes": ["REELL", "YELLL"]
+    },
+    "roster-2": { "callsigns": ["UPS2509", "GTI7908", "ASA7647", "GTI2787", "UAL9687"] },
+    "approach-roster-2": {
+      "callsigns": ["ASA7647", "GTI2787", "UAL9687"],
+      "fixes": ["RIGGZ", "RIVTT", "VPGHT"],
+      "approaches": [
+        { "id": "H26RZ", "name": "RNAV RWY 26R", "runway": "26R", "type": "RNAV" },
+        { "id": "I26R", "name": "ILS RWY 26R", "runway": "26R", "type": "ILS" },
+        { "id": "L26R", "name": "LOC RWY 26R", "runway": "26R", "type": "LOC" },
+        { "id": "R26RY", "name": "RNAV RWY 26R", "runway": "26R", "type": "RNAV" }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "id": "p01",
+      "text": "southwest ninety eight fifty five presiderate kiwi",
+      "context": "roster",
+      "response": { "ok": false, "error": "PARSE_MISS" },
+      "classification": "expected_miss"
+    },
+    {
+      "id": "p02",
+      "text": "never eleven fifty five climber maintain flight level one eight zero",
+      "context": "roster",
+      "response": {
+        "ok": true,
+        "callsignToken": "EDV7114",
+        "instructions": [{ "type": "ALTITUDE", "altitudeFt": 18000, "verb": "MAINTAIN" }]
+      },
+      "classification": "accepted"
+    },
+    {
+      "id": "p03",
+      "text": "endeavor seventy one fourteen descend via the chipper one arrival",
+      "context": "roster",
+      "response": {
+        "ok": true,
+        "callsignToken": "EDV7114",
+        "instructions": [{ "type": "DESCEND_VIA", "procedureId": "CHPPR" }]
+      },
+      "classification": "accepted"
+    },
+    {
+      "id": "p04",
+      "text": "endeavor seventy one fourteen descend by the arrival",
+      "context": "roster",
+      "response": { "ok": false, "error": "PARSE_MISS" },
+      "classification": "expected_miss"
+    },
+    {
+      "id": "p05",
+      "text": "southwest ninety eight fifty five cross kimmy and maintain four thousand",
+      "context": "fix-kimmy",
+      "response": {
+        "ok": true,
+        "callsignToken": "SWA9855",
+        "instructions": [
+          { "type": "CROSS", "fixId": "KYMMY", "altitudeFt": 4000, "restriction": "AT" }
+        ]
+      },
+      "classification": "accepted"
+    },
+    {
+      "id": "p06",
+      "text": "at eighty four thirty one cross bluff and maintain four thousand",
+      "context": "fix-bluff",
+      "response": {
+        "ok": true,
+        "callsignToken": "UAL8431",
+        "instructions": [
+          { "type": "CROSS", "fixId": "BLUFF", "altitudeFt": 4000, "restriction": "AT" }
+        ]
+      },
+      "classification": "accepted"
+    },
+    {
+      "id": "p07",
+      "text": "giant twenty seven seventy seven heavy proceed direct zel",
+      "context": "fix-zel",
+      "response": {
+        "ok": true,
+        "callsignToken": "GTI2777",
+        "instructions": [{ "type": "DIRECT", "fixId": "YELLL" }]
+      },
+      "classification": "accepted"
+    },
+    {
+      "id": "p08",
+      "text": "jet 2777 descend and maintain five thousand",
+      "context": "roster",
+      "response": {
+        "ok": true,
+        "callsignToken": "GTI2777",
+        "instructions": [
+          { "type": "ALTITUDE", "altitudeFt": 5000, "verb": "DESCEND", "untilEstablished": true }
+        ]
+      },
+      "classification": "accepted"
+    },
+    {
+      "id": "p09",
+      "text": "giant seventy nine zero eight does seven maintain five thousand",
+      "context": "roster",
+      "response": {
+        "ok": true,
+        "callsignToken": "GTI7908",
+        "instructions": [{ "type": "ALTITUDE", "altitudeFt": 5000, "verb": "MAINTAIN" }]
+      },
+      "classification": "accepted"
+    },
+    {
+      "id": "p10",
+      "text": "jet 7908 say altitude",
+      "context": "roster",
+      "response": {
+        "ok": true,
+        "callsignToken": "GTI7908",
+        "instructions": [{ "type": "SAY_ALTITUDE" }]
+      },
+      "classification": "accepted"
+    },
+    {
+      "id": "p11",
+      "text": "chine seven nine zero eight heavy disregard",
+      "context": "selected-gti",
+      "response": { "ok": false, "error": "PARSE_MISS" },
+      "classification": "expected_miss"
+    },
+    {
+      "id": "p12",
+      "text": "status 9855 maintain two one zero knots",
+      "context": "selected-gti",
+      "response": {
+        "ok": true,
+        "callsignToken": "SWA9855",
+        "instructions": [{ "type": "SPEED", "speedKt": 210, "verb": "MAINTAIN" }]
+      },
+      "classification": "accepted"
+    },
+    {
+      "id": "p13",
+      "text": "jet seven nine zero eight say altitude",
+      "context": "selected-gti",
+      "response": {
+        "ok": true,
+        "callsignToken": "GTI7908",
+        "instructions": [{ "type": "SAY_ALTITUDE" }]
+      },
+      "classification": "accepted"
+    },
+    {
+      "id": "p14",
+      "text": "at twenty four thirty one flight heading two zero zero",
+      "context": "approach-roster",
+      "response": {
+        "ok": true,
+        "callsignToken": "GTI7908",
+        "instructions": [{ "type": "FLY_HEADING", "headingDeg": 200, "turn": "LEFT" }]
+      },
+      "classification": "unsafe_acceptance"
+    },
+    {
+      "id": "p15",
+      "text": "southwest 9855 you are one four miles from the airport turn right to five zero maintain three thousand until established on the localizer clear ils runway two six right approach",
+      "context": "approach-selected",
+      "response": {
+        "ok": true,
+        "callsignToken": "SWA9855",
+        "instructions": [
+          { "type": "FLY_HEADING", "headingDeg": 50, "turn": "RIGHT" },
+          { "type": "ALTITUDE", "altitudeFt": 3000, "verb": "MAINTAIN", "untilEstablished": true },
+          { "type": "CLEARED_APPROACH", "approachId": "I26R" }
+        ]
+      },
+      "classification": "accepted"
+    },
+    {
+      "id": "p16",
+      "text": "southwest ninety eight fifty five fly heading two five zero clear ils from two six right approach",
+      "context": "approach-roster",
+      "response": {
+        "ok": true,
+        "callsignToken": "SWA9855",
+        "instructions": [
+          { "type": "FLY_HEADING", "headingDeg": 250, "turn": "LEFT" },
+          { "type": "CLEARED_APPROACH", "approachId": "I26R" }
+        ]
+      },
+      "classification": "unsafe_acceptance"
+    },
+    {
+      "id": "p17",
+      "text": "giant seven nine zero eight heavy procedure swept",
+      "context": "approach-roster",
+      "response": { "ok": false, "error": "PARSE_MISS" },
+      "classification": "expected_miss"
+    },
+    {
+      "id": "p18",
+      "text": "united eighty four thirty one turn right heading two nine zero intercept there on a two six right localizer",
+      "context": "approach-roster",
+      "response": {
+        "ok": true,
+        "callsignToken": "UAL8431",
+        "instructions": [{ "type": "INTERCEPT_LOCALIZER", "approachId": "T26R" }]
+      },
+      "classification": "unsafe_acceptance"
+    },
+    {
+      "id": "p19",
+      "text": "try twenty seven seventy seven have you turn five degrees right",
+      "context": "approach-roster",
+      "response": {
+        "ok": true,
+        "callsignToken": "GTI2777",
+        "instructions": [{ "type": "TURN_DEGREES", "direction": "RIGHT", "degrees": 5 }]
+      },
+      "classification": "accepted"
+    },
+    {
+      "id": "p20",
+      "text": "eighty four thirty one maintain two five zero knots",
+      "context": "approach-roster",
+      "response": {
+        "ok": true,
+        "callsignToken": "UAL8431",
+        "instructions": [{ "type": "SPEED", "speedKt": 250, "verb": "MAINTAIN" }]
+      },
+      "classification": "accepted"
+    },
+    {
+      "id": "p21",
+      "text": "giant twenty seven seventy seven heavy turn left heading two nine zero intercept only two six right localizer",
+      "context": "approach-roster",
+      "response": {
+        "ok": true,
+        "callsignToken": "GTI2777",
+        "instructions": [
+          { "type": "FLY_HEADING", "headingDeg": 290, "turn": "LEFT" },
+          { "type": "INTERCEPT_LOCALIZER", "approachId": "ONLY26" }
+        ]
+      },
+      "classification": "unsafe_acceptance"
+    },
+    {
+      "id": "p22",
+      "text": "giant twenty seven seventy seven heavy u r one zero miles from the airport maintain three thousand until established on the localizer clear ils runway two six right approach",
+      "context": "approach-roster",
+      "response": {
+        "ok": true,
+        "callsignToken": "GTI2777",
+        "instructions": [
+          { "type": "ALTITUDE", "altitudeFt": 3000, "verb": "MAINTAIN", "untilEstablished": true },
+          { "type": "CLEARED_APPROACH", "approachId": "I26R" }
+        ]
+      },
+      "classification": "accepted"
+    },
+    {
+      "id": "p23",
+      "text": "jet seven nine zero eight heavy maintain one eight zero knots",
+      "context": "roster-2",
+      "response": {
+        "ok": true,
+        "callsignToken": "GTI7908",
+        "instructions": [{ "type": "SPEED", "speedKt": 180, "verb": "MAINTAIN" }]
+      },
+      "classification": "accepted"
+    },
+    {
+      "id": "p24",
+      "text": "ups twenty five zero nine heavy turn right heading one eight zero maintain one ninety knots",
+      "context": "roster-2",
+      "response": {
+        "ok": true,
+        "callsignToken": "UPS2509",
+        "instructions": [{ "type": "FLY_HEADING", "headingDeg": 180, "turn": "RIGHT" }]
+      },
+      "classification": "incomplete_acceptance"
+    },
+    {
+      "id": "p25",
+      "text": "nine seven nine zero eight have you maintain two zero zero knots",
+      "context": "roster-2",
+      "response": {
+        "ok": true,
+        "callsignToken": "UPS2509",
+        "instructions": [{ "type": "SPEED", "speedKt": 200, "verb": "MAINTAIN" }]
+      },
+      "classification": "accepted"
+    },
+    {
+      "id": "p26",
+      "text": "alaska seventy six forty seven procedure to fager",
+      "context": "roster-2",
+      "response": { "ok": false, "error": "PARSE_MISS" },
+      "classification": "expected_miss"
+    },
+    {
+      "id": "p27",
+      "text": "united ninety six eighty seven climb maintain flight level one eight zero",
+      "context": "roster-2",
+      "response": { "ok": false, "error": "PARSE_MISS" },
+      "classification": "expected_miss"
+    },
+    {
+      "id": "p28",
+      "text": "united ninety six eighty seven climb maintain flight level one eight zero",
+      "context": "roster-2",
+      "response": { "ok": false, "error": "PARSE_MISS" },
+      "classification": "expected_miss"
+    },
+    {
+      "id": "p29",
+      "text": "alaska seventy six forty seven you are five miles from the airport turn left heading two nine zero maintain three thousand until established on the localizer clear ils for a two six right approach",
+      "context": "approach-roster-2",
+      "response": {
+        "ok": true,
+        "callsignToken": "ASA7647",
+        "instructions": [
+          { "type": "FLY_HEADING", "headingDeg": 270, "turn": "LEFT" },
+          { "type": "ALTITUDE", "altitudeFt": 3000, "verb": "MAINTAIN", "untilEstablished": true },
+          { "type": "CLEARED_APPROACH", "approachId": "RUNWAY_26R" }
+        ]
+      },
+      "classification": "unsafe_acceptance"
+    },
+    {
+      "id": "p30",
+      "text": "alaska seventy six forty seven turn left ninety two nine zero clear ils runway two six right approach",
+      "context": "approach-roster-2",
+      "response": {
+        "ok": true,
+        "callsignToken": "ASA7647",
+        "instructions": [{ "type": "CLEARED_APPROACH", "approachId": "I26R" }]
+      },
+      "classification": "incomplete_acceptance"
+    }
+  ]
+}

@@ -12,8 +12,17 @@ export interface AudioClip {
 
 export interface Transcript {
   text: string;
-  confidence: number;
+  /** Measurable adapter/model facts; no uncalibrated score is exposed. */
+  metadata?: TranscriptMetadata;
   latencyMs: number;
+}
+
+export interface TranscriptMetadata {
+  model?: string;
+  audioDurationMs?: number;
+  inferenceLatencyMs?: number;
+  noSpeechProbability?: number;
+  emptySignal?: boolean;
 }
 
 export interface SpeechPort {
@@ -55,7 +64,6 @@ export const VOICE_ERROR_CODES = [
   "empty_clip",
   "stt_failed",
   "voice_backend_unavailable",
-  "low_confidence",
   "parse_miss",
   "tts_failed",
   "ptt_locked",
@@ -66,7 +74,6 @@ export type VoiceErrorCode = (typeof VOICE_ERROR_CODES)[number];
 
 export interface VoiceStatusEvent {
   code: VoiceErrorCode;
-  confidence?: number;
   sourceText?: string;
 }
 

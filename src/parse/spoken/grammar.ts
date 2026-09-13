@@ -61,6 +61,15 @@ function headingAt(c: Cursor): number | null {
 }
 
 function altitudeAt(c: Cursor): number | null {
+  if (peek(c) === "flight" && peek(c, 1) === "level") {
+    const a = singleDigit(peek(c, 2));
+    const b = singleDigit(peek(c, 3));
+    const d = singleDigit(peek(c, 4));
+    if (a !== null && b !== null && d !== null) {
+      c.i += 5;
+      return (a * 100 + b * 10 + d) * 100;
+    }
+  }
   const parsed = parseAltitudeFt(c.tokens, c.i);
   if (!parsed) {
     return null;
@@ -70,6 +79,12 @@ function altitudeAt(c: Cursor): number | null {
 }
 
 function speedAt(c: Cursor): number | null {
+  const hundreds = singleDigit(peek(c));
+  const tens = TENS[peek(c, 1) ?? ""];
+  if (hundreds !== null && tens !== undefined) {
+    c.i += 2;
+    return hundreds * 100 + tens;
+  }
   const parsed = parseSpeedKt(c.tokens, c.i);
   if (!parsed) {
     return null;
@@ -82,6 +97,8 @@ function skipToAfterClimbDescend(c: Cursor): void {
   take(c, "to");
   if (peek(c) === "and" && peek(c, 1) === "maintain") {
     c.i += 2;
+  } else {
+    take(c, "maintain");
   }
 }
 
@@ -107,7 +124,7 @@ function tryTurnHeading(c: Cursor): Instruction | null {
     c.i = start;
     return null;
   }
-  return { type: "FLY_HEADING", headingDeg, turn };
+  return { type: "FLY_HEADING", headingDeg, turn: turn ?? "SHORTEST" };
 }
 
 function tryTurnDegrees(c: Cursor): Instruction | null {
@@ -242,7 +259,8 @@ function tryVia(c: Cursor): Instruction | null {
   if (!climb) {
     take(c, "descend");
   }
-  if (!take(c, "via")) {
+  const via = take(c, "via") || (take(c, "by") && climb === false);
+  if (!via) {
     c.i = start;
     return null;
   }

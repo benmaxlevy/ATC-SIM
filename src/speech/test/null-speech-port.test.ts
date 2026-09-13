@@ -33,10 +33,9 @@ test("AudioClip and Transcript field names match the SpeechPort contract", () =>
   const clip: AudioClip = silentClip();
   const transcript: Transcript = {
     text: "",
-    confidence: 0,
     latencyMs: 0,
   };
   expect(clip.channels).toBe(1);
   expect(clip.pcm16).toBeInstanceOf(Int16Array);
-  expect(transcript).toEqual({ text: "", confidence: 0, latencyMs: 0 });
+  expect(transcript).toEqual({ text: "", latencyMs: 0 });
 });

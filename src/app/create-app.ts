@@ -109,7 +109,7 @@ function logVoiceLatency(
     pttUpToTranscriptMs: metrics.pttUpToTranscriptMs,
     pttUpToAudioStartMs: metrics.pttUpToAudioStartMs,
     backendId,
-    sttConfidence: metrics.sttConfidence,
+    sttMetadata: metrics.sttMetadata,
   };
   log.append(event);
 }

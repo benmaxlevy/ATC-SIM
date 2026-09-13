@@ -16,7 +16,7 @@ function fakePort(text: string): SpeechPort {
   return {
     id: "fake",
     async transcribe(): Promise<Transcript> {
-      return { text, confidence: 1, latencyMs: 4 };
+      return { text, latencyMs: 4 };
     },
     async synthesize(): Promise<AudioClip> {
       return nonEmptyClip();

@@ -16,7 +16,7 @@ from config import Settings
 from engines import SttEngine, TtsEngine, build_stt, build_tts, sanitize_stt_fixes, sanitize_stt_procedures
 from logconfig import configure_logging
 from normalizer import normalize_stt_text
-from parse_engine import ParseEngine, build_parse
+from parse_engine import PARSE_CONTRACT_VERSION, ParseEngine, build_parse
 from wavutil import is_wave
 
 configure_logging()
@@ -104,6 +104,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "sttModel": cfg.stt_model_id,
             "ttsVoice": cfg.tts_voice,
             "parse": parse_status,
+            "parseContract": PARSE_CONTRACT_VERSION,
         }
 
     @app.post("/stt")
@@ -119,14 +120,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         fixes = sanitize_stt_fixes(request.headers.get("x-atc-fixes"))
         procedures = sanitize_stt_procedures(request.headers.get("x-atc-procedures"))
         try:
-            text, confidence = engine.transcribe(body, fixes, procedures)
+            result = engine.transcribe(body, fixes, procedures)
         except Exception:
             log.exception("stt inference failed")
             raise HTTPException(status_code=503, detail="STT_FAILED") from None
-        if not isinstance(confidence, (int, float)) or confidence != confidence:
-            confidence = 1.0
-        text = normalize_stt_text(str(text), recognized_fixes=fixes)
-        return {"text": text, "confidence": float(confidence)}
+        text = normalize_stt_text(str(result["text"]), recognized_fixes=fixes)
+        metadata = {
+            "model": str(result["model"]),
+            "audioDurationMs": max(0.0, float(result["audioDurationMs"])),
+            "inferenceLatencyMs": max(0.0, float(result["inferenceLatencyMs"])),
+            "emptySignal": bool(result["emptySignal"]),
+        }
+        no_speech = result.get("noSpeechProbability")
+        if isinstance(no_speech, (int, float)) and no_speech == no_speech:
+            metadata["noSpeechProbability"] = float(no_speech)
+        return {"text": text, "metadata": metadata}
 
     @app.post("/tts")
     async def tts(payload: TtsRequest, request: Request) -> Response:

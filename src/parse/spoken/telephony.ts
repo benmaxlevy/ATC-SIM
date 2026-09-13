@@ -444,13 +444,10 @@ export function groundCallsignToRoster(
   token: string | null,
   normalized: string,
   roster: readonly string[],
-  selectedCallsign?: string | null,
 ): string | null {
   const list = [
     ...new Set(roster.map((cs) => cs.trim().toUpperCase()).filter((cs) => cs.length > 0)),
   ];
-  const selected = selectedCallsign?.trim().toUpperCase() || null;
-
   function uniqueSuffix(hint: string | null): string | null {
     if (!hint) {
       return null;
@@ -459,9 +456,8 @@ export function groundCallsignToRoster(
     if (hits.length === 1) {
       return hits[0]!;
     }
-    if (hits.length > 1 && selected && hits.includes(selected)) {
-      return selected;
-    }
+    // A selected aircraft is not evidence that an explicit spoken callsign
+    // refers to it. Ambiguous suffixes must remain unresolved.
     return null;
   }
 

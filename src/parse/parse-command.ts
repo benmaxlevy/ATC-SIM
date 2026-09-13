@@ -17,6 +17,7 @@ import { parseRadioText, type ParseResult } from "./parseRadioText";
 import { formatParseError, PARSE_ERROR } from "./tokens";
 import { parseSpokenGrammar, repairHeadingVsTurnDegrees } from "./spoken/grammar";
 import { normalizeSpoken } from "./spoken/normalizer";
+import { repairSpokenLexemes } from "./spoken/lexical-repair";
 import { groundCallsignToRoster, spokenCallsignToken } from "./spoken/telephony";
 import { rewriteSpokenToTyped } from "./spoken/typed-fuzzy";
 import { matchSpokenPatterns } from "./spoken/pattern-matcher";
@@ -38,6 +39,7 @@ import {
   MAX_PATH_C_FIXES,
   PATH_C_SCHEMA_VERSION,
   fetchParsePathC,
+  pathCResultIsComplete,
   type ParsePathCFn,
   type PathCContext,
 } from "./path-c";
@@ -573,14 +575,27 @@ function pathCContext(
   };
 }
 
-function attachCallsign(parsed: ParseResult, selected: string | null): ParseResult {
-  if (!parsed.ok) {
+function groundLocalCallsign(
+  parsed: ParseResult,
+  normalized: string,
+  roster: readonly string[],
+  selected: string | null,
+): ParseResult {
+  if (!parsed.ok || !parsed.callsignToken) {
+    return parsed.ok ? { ...parsed, callsignToken: selected } : parsed;
+  }
+  if (roster.length === 0) {
     return parsed;
   }
-  return {
-    ...parsed,
-    callsignToken: parsed.callsignToken ?? selected,
-  };
+  const grounded = groundCallsignToRoster(parsed.callsignToken, normalized, roster);
+  if (grounded === null) {
+    return {
+      ok: false,
+      error: formatParseError(PARSE_ERROR.PARSE_MISS),
+      sourceText: parsed.sourceText,
+    };
+  }
+  return { ...parsed, callsignToken: grounded };
 }
 
 function ungroundedIdentifierTokens(
@@ -742,11 +757,11 @@ export async function parseCommand(
   const catalog = sanitizeFixIds(opts.fixes);
   const procedures = sanitizeCatalogProcedures(opts.procedures);
   const approaches = sanitizeCatalogApproaches(opts.approaches);
-  const normalized = normalizeSpoken(sourceText);
+  const normalized = repairSpokenLexemes(normalizeSpoken(sourceText));
   const extraTokens: string[] = [];
 
   const typed = tryGroundedLocal(
-    attachCallsign(parseRadioText(normalized), selected),
+    groundLocalCallsign(parseRadioText(normalized), normalized, roster, selected),
     sourceText,
     "typed",
     opts.source,
@@ -762,9 +777,9 @@ export async function parseCommand(
     extraTokens.push(...typed.tokens);
   }
 
-  const spoken = parseSpokenGrammar(normalized, selected, sourceText, catalog, procedures);
+  const spoken = parseSpokenGrammar(normalized, null, sourceText, catalog, procedures);
   const pathA = tryGroundedLocal(
-    spoken,
+    groundLocalCallsign(spoken, normalized, roster, selected),
     sourceText,
     "spoken_a",
     opts.source,
@@ -783,7 +798,7 @@ export async function parseCommand(
   const rewritten = rewriteSpokenToTyped(normalized);
   if (rewritten !== null) {
     const pathB = tryGroundedLocal(
-      attachCallsign(parseRadioText(rewritten), selected),
+      groundLocalCallsign(parseRadioText(rewritten), normalized, roster, selected),
       sourceText,
       "spoken_b",
       opts.source,
@@ -802,14 +817,14 @@ export async function parseCommand(
 
   const islandParsed = matchSpokenPatterns(
     normalized,
-    selected,
+    null,
     sourceText,
     catalog,
     procedures,
     approaches,
   );
   const island = tryGroundedLocal(
-    islandParsed,
+    groundLocalCallsign(islandParsed, normalized, roster, selected),
     sourceText,
     "spoken_b",
     opts.source,
@@ -846,37 +861,40 @@ export async function parseCommand(
         schemaVersion: PATH_C_SCHEMA_VERSION,
         context,
       });
-      if (hit !== null && hit.instructions.length > 0) {
-        const grounded =
-          groundCallsignToRoster(
-            hit.callsignToken ?? spokenCallsignToken(normalized),
-            normalized,
-            roster,
-            selected,
-          ) ??
-          hit.callsignToken ??
-          spokenCallsignToken(normalized);
-        const pathFixes = context?.fixes ?? [];
-        const pathProcedures = context?.procedures ?? [];
-        const pathApproaches = context?.approaches ?? [];
-        const salvaged = okStage(
-          {
-            ok: true,
-            callsignToken: grounded,
-            instructions: repairHeadingVsTurnDegrees(normalized, hit.instructions),
+      if (
+        hit !== null &&
+        hit.instructions.length > 0 &&
+        pathCResultIsComplete(sourceText, hit.instructions)
+      ) {
+        const rawCallsign = hit.callsignToken ?? spokenCallsignToken(normalized) ?? selected;
+        const grounded = groundCallsignToRoster(rawCallsign, normalized, roster);
+        const callsignSafe =
+          roster.length === 0 ||
+          (grounded !== null && roster.includes(grounded)) ||
+          (rawCallsign === null && selected === null);
+        if (callsignSafe) {
+          const pathFixes = context?.fixes ?? [];
+          const pathProcedures = context?.procedures ?? [];
+          const pathApproaches = context?.approaches ?? [];
+          const salvaged = okStage(
+            {
+              ok: true,
+              callsignToken: grounded,
+              instructions: repairHeadingVsTurnDegrees(normalized, hit.instructions),
+              sourceText,
+            },
             sourceText,
-          },
-          sourceText,
-          "llm_c",
-          opts.source,
-          selected,
-          pathFixes,
-          pathProcedures,
-          pathApproaches,
-        );
-        const ungrounded = salvaged.ungroundedFixes ?? [];
-        if (ungrounded.length === 0 && pathCIdentifierListed(salvaged.instructions, context)) {
-          return salvaged;
+            "llm_c",
+            opts.source,
+            selected,
+            pathFixes,
+            pathProcedures,
+            pathApproaches,
+          );
+          const ungrounded = salvaged.ungroundedFixes ?? [];
+          if (ungrounded.length === 0 && pathCIdentifierListed(salvaged.instructions, context)) {
+            return salvaged;
+          }
         }
       }
     } catch {

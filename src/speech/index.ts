@@ -17,6 +17,7 @@ export type {
   SpeechPort,
   SpeechPortErrorKind,
   Transcript,
+  TranscriptMetadata,
   TranscribeOpts,
   VoiceErrorCode,
   VoiceStatusEvent,
@@ -90,12 +91,20 @@ export {
   markPttUp,
   markTranscript,
   percentile50,
+  percentile95,
   recordAudioStart,
-  recordSttConfidence,
+  recordTranscriptMetadata,
   recordTranscriptLatency,
   snapshot,
 } from "./metrics";
-export type { VoiceSessionSnapshot, VoiceUtteranceMetrics } from "./metrics";
+export type {
+  LatencyPercentiles,
+  VoiceLatencyStage,
+  VoiceSessionSnapshot,
+  VoiceStageLatencySnapshot,
+  VoiceStageLatencyStats,
+  VoiceUtteranceMetrics,
+} from "./metrics";
 export {
   PLAYBACK_TAIL_MS,
   TransmitGate,

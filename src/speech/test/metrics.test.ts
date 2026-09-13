@@ -5,8 +5,9 @@ import {
   markPttUp,
   markTranscript,
   percentile50,
+  percentile95,
   recordAudioStart,
-  recordSttConfidence,
+  recordTranscriptMetadata,
   recordTranscriptLatency,
   snapshot,
 } from "../metrics";
@@ -17,7 +18,7 @@ test("markPttUp stores t0 with null latencies until transcript", () => {
     t0: 10,
     pttUpToTranscriptMs: null,
     pttUpToAudioStartMs: null,
-    sttConfidence: null,
+    sttMetadata: null,
   });
   recordTranscriptLatency(metrics, 55);
   expect(metrics.pttUpToTranscriptMs).toBe(45);
@@ -42,14 +43,14 @@ test("AC5 — even-length p50 is the mean of the two middle values", () => {
   expect(percentile50([9])).toBe(9);
 });
 
-test("recordSttConfidence logs ASR score without aliasing on snapshot (T03-15)", () => {
+test("recordTranscriptMetadata logs measurable STT facts without aliasing", () => {
   const metrics = markPttUp(10);
-  recordSttConfidence(metrics, 0.5);
-  expect(metrics.sttConfidence).toBe(0.5);
+  recordTranscriptMetadata(metrics, { model: "mock", audioDurationMs: 100 });
+  expect(metrics.sttMetadata).toEqual({ model: "mock", audioDurationMs: 100 });
   const copy = snapshot(metrics);
-  expect(copy.sttConfidence).toBe(0.5);
-  metrics.sttConfidence = 0.9;
-  expect(copy.sttConfidence).toBe(0.5);
+  expect(copy.sttMetadata).toEqual({ model: "mock", audioDurationMs: 100 });
+  metrics.sttMetadata = { model: "other" };
+  expect(copy.sttMetadata).toEqual({ model: "mock", audioDurationMs: 100 });
 });
 
 test("snapshot copies utterance marks without aliasing", () => {
@@ -61,7 +62,7 @@ test("snapshot copies utterance marks without aliasing", () => {
     t0: 100,
     pttUpToTranscriptMs: 40,
     pttUpToAudioStartMs: 80,
-    sttConfidence: null,
+    sttMetadata: null,
   });
   expect(copy.pttUpToAudioStartMs).toBeGreaterThanOrEqual(copy.pttUpToTranscriptMs!);
   metrics.pttUpToTranscriptMs = 0;
@@ -97,4 +98,14 @@ test("VoiceLatencyTracker p50 uses successful audio-start samples only", () => {
   expect(tracker.snapshot().p50AudioStartMs).toBe(140);
   expect(tracker.snapshot().lastTranscriptMs).toBe(10);
   expect(tracker.snapshot().lastAudioStartMs).toBe(100);
+});
+
+test("VoiceLatencyTracker separates cold and warm stage percentiles", () => {
+  const tracker = new VoiceLatencyTracker("http");
+  tracker.recordStage("stt", 900);
+  tracker.recordStage("stt", 100);
+  tracker.recordStage("stt", 200);
+  expect(tracker.stageSnapshot().stt.cold).toEqual({ sampleCount: 1, p50Ms: 900, p95Ms: 900 });
+  expect(tracker.stageSnapshot().stt.warm).toEqual({ sampleCount: 2, p50Ms: 150, p95Ms: 200 });
+  expect(percentile95([100, 200, 300, 400])).toBe(400);
 });

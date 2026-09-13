@@ -294,6 +294,33 @@ _NON_ALPHANUM_RE = re.compile(r"[^a-zA-Z0-9\s]")
 _OUR_RE = re.compile(r"[a-z]{2,}our(s|ed|ing)?$", re.IGNORECASE)
 
 
+def repair_spoken_lexemes(tokens: list[str]) -> list[str]:
+    """Repair high-confidence ASR phrase noise without touching identifiers/numbers."""
+    number_words = NUMBER_WORDS
+    out: list[str] = []
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        following = tokens[i + 1 : i + 4]
+        if tok == "climber" and out and out[-1] not in {"direct", "proceed", "cross"} and tokens[i + 1 : i + 2] and tokens[i + 1] in {"maintain", "and", "to"}:
+            out.append("climb")
+        elif tok == "interceptor" and "localizer" in tokens[i + 1 : i + 10]:
+            out.append("intercept")
+        elif tok == "by" and out and out[-1] in {"climb", "descend"}:
+            out.append("via")
+        elif i == 0 and tok in {"chine", "try"} and i + 1 < len(tokens) and (
+            tokens[i + 1] in number_words or tokens[i + 1].isdigit()
+        ):
+            out.append("giant")
+        elif tok == "u" and i + 2 < len(tokens) and tokens[i + 1] == "r" and tokens[i + 2] == "one":
+            out.extend(["you", "are"])
+            i += 1
+        else:
+            out.append(tok)
+        i += 1
+    return out
+
+
 def normalize_orthography(token: str) -> str:
     """UK/Commonwealth to US spelling canonicalization.
 
@@ -469,4 +496,4 @@ def normalize_stt_text(text: str, recognized_fixes: Collection[str] | None = Non
 
         normalized_tokens.append(tok)
 
-    return " ".join(normalized_tokens)
+    return " ".join(repair_spoken_lexemes(normalized_tokens))

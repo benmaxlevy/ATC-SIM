@@ -10,7 +10,7 @@ import tempfile
 import time
 import wave
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, TypedDict
 
 from config import Settings
 from hub import model_weights_source, resolve_hub_file
@@ -125,8 +125,29 @@ class SttEngine(Protocol):
         wav_bytes: bytes,
         fixes: list[str] | None = None,
         procedures: list[str] | None = None,
-    ) -> tuple[str, float]:
-        """Return (text, confidence 0–1). Missing engine score → 1.0."""
+    ) -> "SttResult":
+        """Return transcript text and measurable quality metadata."""
+
+
+class SttResult(TypedDict):
+    text: str
+    model: str
+    audioDurationMs: float
+    inferenceLatencyMs: float
+    emptySignal: bool
+    noSpeechProbability: float | None
+
+
+def wav_quality_metadata(wav_bytes: bytes) -> tuple[float, bool]:
+    """Return duration and a conservative empty-signal flag without logging audio."""
+    try:
+        with wave.open(io.BytesIO(wav_bytes), "rb") as handle:
+            frames = handle.readframes(handle.getnframes())
+            duration_ms = handle.getnframes() / max(1, handle.getframerate()) * 1000.0
+            empty = not frames or all(byte == 0 for byte in frames)
+            return duration_ms, empty
+    except (wave.Error, EOFError, ValueError):
+        return 0.0, True
 
 
 class TtsEngine(Protocol):
@@ -137,9 +158,17 @@ class TtsEngine(Protocol):
 class MockStt:
     def transcribe(
         self, wav_bytes: bytes, fixes: list[str] | None = None, procedures: list[str] | None = None
-    ) -> tuple[str, float]:
-        del wav_bytes, fixes, procedures
-        return MOCK_TRANSCRIPT, 1.0
+    ) -> SttResult:
+        del fixes, procedures
+        duration_ms, empty = wav_quality_metadata(wav_bytes)
+        return {
+            "text": MOCK_TRANSCRIPT,
+            "model": "mock",
+            "audioDurationMs": duration_ms,
+            "inferenceLatencyMs": 0.0,
+            "emptySignal": empty,
+            "noSpeechProbability": None,
+        }
 
     def describe(self) -> str:
         return "mock"
@@ -287,7 +316,9 @@ class QwenAsrStt:
 
     def transcribe(
         self, wav_bytes: bytes, fixes: list[str] | None = None, procedures: list[str] | None = None
-    ) -> tuple[str, float]:
+    ) -> SttResult:
+        duration_ms, empty = wav_quality_metadata(wav_bytes)
+        started = time.perf_counter()
         fd, path = tempfile.mkstemp(suffix=".wav")
         os.close(fd)
         try:
@@ -300,7 +331,14 @@ class QwenAsrStt:
                 language="English",
             )
             text = discard_qwen_context_echo(str(results[0].text).strip(), prompt)
-            return text, 1.0
+            return {
+                "text": text,
+                "model": self._model_id,
+                "audioDurationMs": duration_ms,
+                "inferenceLatencyMs": elapsed_ms(started),
+                "emptySignal": empty,
+                "noSpeechProbability": None,
+            }
         finally:
             try:
                 os.unlink(path)

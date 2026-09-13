@@ -167,3 +167,36 @@ def test_spoken_icao_numbers() -> None:
     assert normalize_stt_text("fly heading tree fife zero") == "fly heading three five zero"
     assert normalize_stt_text("descend to niner thousand") == "descend to nine thousand"
     assert normalize_stt_text("maintain four thousand till established") == "maintain four thousand until established"
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (
+            "never eleven fifty five climber maintain flight level one eight zero",
+            "never eleven fifty five climb maintain flight level one eight zero",
+        ),
+        (
+            "united eighty four thirty one interceptor there on a two six right localizer",
+            "united eighty four thirty one intercept there on a two six right localizer",
+        ),
+        ("descend by the arrival", "descend via the arrival"),
+    ],
+)
+def test_har_phrase_repairs_are_slot_limited(raw: str, expected: str) -> None:
+    assert normalize_stt_text(raw) == expected
+
+
+def test_har_carrier_repair_requires_callsign_number_slot() -> None:
+    assert normalize_stt_text("chine seven nine zero eight maintain two thousand") == (
+        "giant seven nine zero eight maintain two thousand"
+    )
+    assert normalize_stt_text("turn try heading two seven zero") == (
+        "turn try heading two seven zero"
+    )
+
+
+def test_lexical_repair_does_not_change_numbers_or_catalog_words() -> None:
+    assert normalize_stt_text("direct climber maintain two one zero knots") == (
+        "direct climber maintain two one zero knots"
+    )
