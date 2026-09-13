@@ -813,14 +813,15 @@ function matchIfrClearance(
         }
         optional.frequency = value;
       } else {
-        const d1 = squawkDigit(tokens[j]);
-        const d2 = squawkDigit(tokens[j + 1]);
-        const d3 = squawkDigit(tokens[j + 2]);
+        // Frequencies are decimal, unlike Mode 3/A squawk codes.
+        const d1 = singleDigit(tokens[j]);
+        const d2 = singleDigit(tokens[j + 1]);
+        const d3 = singleDigit(tokens[j + 2]);
         if (d1 === null || d2 === null || d3 === null) return null;
         optional.frequency = `${d1}${d2}${d3}`;
         j += 3;
         if (tokens[j] === "point") {
-          const fraction = squawkDigit(tokens[j + 1]);
+          const fraction = singleDigit(tokens[j + 1]);
           if (fraction === null) return null;
           optional.frequency += `.${fraction}`;
           j += 2;

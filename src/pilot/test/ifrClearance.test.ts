@@ -91,6 +91,17 @@ test("AS FILED rejects a limit unrelated to the filed route", async () => {
   expect(aircraft).toEqual(beforeAircraft);
 });
 
+test("AS FILED rejects an airport limit that conflicts with plan destination metadata", async () => {
+  const { world, aircraft, plan } = setup("TEST");
+  plan.airportId = "OTHER";
+  const beforePlan = structuredClone(plan);
+  const beforeAircraft = structuredClone(aircraft);
+  const result = await handleRadioText(world, "DAL123 CLR TO TEST ASFILED", new SessionLog());
+  expect(result).toMatchObject({ accepted: false, reason: "UNABLE_ROUTE" });
+  expect(plan).toEqual(beforePlan);
+  expect(aircraft).toEqual(beforeAircraft);
+});
+
 test("catalog airport limits are executable generic endpoints", async () => {
   const { world, aircraft, plan } = setup();
   const result = await handleRadioText(world, "DAL123 CLR TO TEST VIA DIRECT", new SessionLog());
@@ -126,4 +137,25 @@ test("IFR clearance rejects VFR plans without pickup or mutation", async () => {
   expect(result).toMatchObject({ accepted: false, reason: "CLEARANCE" });
   expect(created.plan).toEqual(beforePlan);
   expect(aircraft).toEqual(beforeAircraft);
+});
+
+test("IFR clearance rejects conflicting VFR markers without inferring a pickup", async () => {
+  const { world, aircraft, plan } = setup();
+  plan.flightType = "VFR";
+  aircraft.flightRules = "IFR";
+  const beforePlan = structuredClone(plan);
+  const beforeAircraft = structuredClone(aircraft);
+  const result = await handleRadioText(world, "DAL123 CLR TO KAHN VIA DIRECT", new SessionLog());
+  expect(result).toMatchObject({ accepted: false, reason: "CLEARANCE" });
+  expect(plan).toEqual(beforePlan);
+  expect(aircraft).toEqual(beforeAircraft);
+
+  plan.flightType = "IFR";
+  aircraft.maintainVfr = true;
+  const markedPlan = structuredClone(plan);
+  const markedAircraft = structuredClone(aircraft);
+  const marked = await handleRadioText(world, "DAL123 CLR TO KAHN VIA DIRECT", new SessionLog());
+  expect(marked).toMatchObject({ accepted: false, reason: "CLEARANCE" });
+  expect(plan).toEqual(markedPlan);
+  expect(aircraft).toEqual(markedAircraft);
 });

@@ -83,10 +83,10 @@ function limitKnown(
   if (existingRoute && !catalog) return true;
   if (!catalog) return false;
   const want = normalize(limitId);
-  return (
+  return Boolean(
     want === normalize(catalog.airportId ?? "") ||
     catalog.fixes.some((item) => normalize(item.id) === want) ||
-    catalog.navaids.some((item) => normalize(item.id) === want)
+    catalog.navaids.some((item) => normalize(item.id) === want),
   );
 }
 
@@ -95,14 +95,10 @@ function explicitVfr(value: string | undefined): boolean {
   return rules === "VFR" || rules === "DVFR" || rules === "SVFR";
 }
 
-function explicitIfr(value: string | undefined): boolean {
-  return normalize(value ?? "") === "IFR";
-}
-
 function rejectsVfrPickup(plan: FlightPlan, aircraft: Aircraft): boolean {
-  const planIfr = plan.flightType === "IFR" || explicitIfr(plan.flightRules);
-  const aircraftIfr = explicitIfr(aircraft.flightRules) || explicitIfr(aircraft.flightPlan?.rules);
-  const vfr =
+  // Pickup is deferred. Any explicit VFR signal wins over conflicting IFR
+  // metadata; accepting it would silently implement the deferred transition.
+  return Boolean(
     plan.flightType === "VFR" ||
     plan.flightType === "DVFR" ||
     plan.flightType === "SVFR" ||
@@ -110,8 +106,8 @@ function rejectsVfrPickup(plan: FlightPlan, aircraft: Aircraft): boolean {
     explicitVfr(aircraft.flightRules) ||
     explicitVfr(aircraft.flightPlan?.rules) ||
     explicitVfr(aircraft.fp?.rules) ||
-    aircraft.maintainVfr;
-  return Boolean(vfr && !(planIfr || aircraftIfr));
+    aircraft.maintainVfr,
+  );
 }
 
 function asFiledLimitMatches(
@@ -120,18 +116,17 @@ function asFiledLimitMatches(
   route: FlightPlanRoute,
   catalog: FiledRouteCatalog | null | undefined,
 ): boolean {
+  const isAirportLimit = Boolean(catalog?.airportId && normalize(catalog.airportId) === limitId);
+  // If destination metadata exists, an airport AS FILED clearance must name
+  // that destination even when a stale/mismatched route token says otherwise.
+  if (isAirportLimit && plan.airportId && normalize(plan.airportId) !== limitId) return false;
   const lastSegment = route.route.segments[route.route.segments.length - 1];
   const terminal = lastSegment?.fixIds[lastSegment.fixIds.length - 1];
   if (terminal && normalize(terminal) === limitId) return true;
   // Airport limits are valid only when the filed destination explicitly
   // identifies that same catalog airport; this prevents AS FILED from
   // silently reusing an unrelated route endpoint.
-  return Boolean(
-    catalog?.airportId &&
-    normalize(catalog.airportId) === limitId &&
-    plan.airportId &&
-    normalize(plan.airportId) === limitId,
-  );
+  return Boolean(isAirportLimit && plan.airportId && normalize(plan.airportId) === limitId);
 }
 
 /**

@@ -74,6 +74,17 @@ test("spoken optional altitude, frequency, and squawk stay in clearance order", 
   });
 });
 
+test("spoken matcher preserves decimal frequency digits including niner", async () => {
+  const spoken = await parseCommand(
+    "DAL123 clear to KAHN via direct frequency one one niner point five",
+    { source: "voice", fixes, pathC: false },
+  );
+  expect(spoken).toMatchObject({
+    ok: true,
+    instructions: [{ type: "IFR_CLEARANCE", frequency: "119.5" }],
+  });
+});
+
 test("malformed or duplicate IFR fields reject instead of falling through", () => {
   expect(parseRadioText("DAL123 CLR TO KAHN").ok).toBe(false);
   expect(parseRadioText("DAL123 CLR TO KAHN VIA DIRECT ALT 50 ALT 60").ok).toBe(false);
