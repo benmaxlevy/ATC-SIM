@@ -650,6 +650,15 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
   return entries;
 }
 
+/** Return only the entries on the currently displayed FL page. */
+export function getVisibleFlightPlanEntries(world: World, view: ScopeView): FlightPlanEntry[] {
+  const entries = getFlightPlanEntries(world, view);
+  const placement = view.systemLists?.FL;
+  const maxLines = placement?.maxLines ?? DEFAULT_ADAPTATION_ANCHORS.FL.maxLines;
+  const offset = placement?.offset ?? ensureFlightPlanListState(view).offset;
+  return entries.slice(Math.max(0, offset), Math.max(0, offset) + maxLines);
+}
+
 export function purgeFlightPlanEntry(
   _world: World,
   view: ScopeView | undefined,

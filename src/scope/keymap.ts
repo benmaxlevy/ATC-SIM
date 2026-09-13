@@ -205,7 +205,7 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
       },
       {
         id: "plan-modal",
-        command: "*FP [ACID / TAB index]",
+        command: "*FP <ACID> Enter",
         example: "*FP AAL123 Enter or *FP Enter, then click",
         input: "Any focus → Preview Area",
         result:

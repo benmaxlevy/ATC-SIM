@@ -186,10 +186,13 @@ export function ScopeHelpOverlay({ open }: ScopeHelpOverlayProps) {
         <p className="scope-help-glossary">{HELP_GLOSSARY_NOTE}</p>
         <p className="scope-help-radio">{RADIO_CONFLICT_WARNING}</p>
         <p className="scope-help-radio">
-          <code>*FP &lt;ACID-or-TAB-index&gt; Enter</code> opens one local flight-plan dialog. Bare
-          <code>*FP Enter</code> then click opens the associated target&apos;s plan. Save changes
-          filed metadata only; Cancel/Escape is a no-op. Route text uses the compact catalog grammar
-          <code>SID:id[/transition] STAR:id[/transition] DCT fix</code>.
+          <code>*FP &lt;ACID&gt; Enter</code> opens one local flight-plan dialog. A two-digit
+          visible TAB index is also accepted as <code>*FP &lt;TAB-index&gt; Enter</code>. Bare{" "}
+          <code>*FP Enter</code>
+          then click opens the associated target&apos;s plan. Save changes filed metadata only;
+          Cancel/Escape is a no-op. Filed route text is catalog-resolved with the compact grammar
+          <code>SID:id[/transition] STAR:id[/transition] DCT fix</code>; <code>DCT</code> must be
+          followed by one fix or navaid.
         </p>
         {filteredNavigationGroups.map((navigationGroup) => {
           return (

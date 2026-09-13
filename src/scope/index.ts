@@ -856,6 +856,7 @@ export {
   findOverlappingLists,
   getAircraftDestination,
   getFlightPlanEntries,
+  getVisibleFlightPlanEntries,
   handleFlightPlanListClick,
   handleListMiddleClick,
   handleListMouseMove,

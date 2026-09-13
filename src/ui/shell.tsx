@@ -42,7 +42,7 @@ import {
   clearPerTrackPtl,
   parseDigitalMap,
   applyRadarSites,
-  getFlightPlanEntries,
+  getVisibleFlightPlanEntries,
   type ScopeView,
   type FlightPlanModalRequest,
 } from "@scope";
@@ -157,7 +157,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
         );
       }
     } else if (request.index !== undefined) {
-      const entry = getFlightPlanEntries(app.world, scopeView).find(
+      const entry = getVisibleFlightPlanEntries(app.world, scopeView).find(
         (item) => item.index === request.index,
       );
       plan = entry?.planId
@@ -183,8 +183,9 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
       request.acid ??
       targetAcid ??
       (request.index !== undefined
-        ? getFlightPlanEntries(app.world, scopeView).find((item) => item.index === request.index)
-            ?.callsign
+        ? getVisibleFlightPlanEntries(app.world, scopeView).find(
+            (item) => item.index === request.index,
+          )?.callsign
         : undefined);
     if (!acid) {
       scopeView.preview.rejection = "ILL ACID";

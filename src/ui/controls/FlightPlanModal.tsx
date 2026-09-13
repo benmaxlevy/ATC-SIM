@@ -73,10 +73,13 @@ export function FlightPlanModal({
 
   useEffect(() => {
     if (!open) return;
+    // Capture the opener before moving focus into the dialog.  Do not use
+    // automatic focus here: React applies it during mount, before this effect can
+    // remember the command line/PPI that opened the modal.
     openerRef.current = document.activeElement as HTMLElement | null;
     setDraft(draftFromPlan(acid, plan));
     setError(null);
-    dialogRef.current?.focus();
+    fieldRefs.current.acid?.focus();
     return () => openerRef.current?.focus();
   }, [acid, open, plan]);
 
@@ -202,19 +205,20 @@ export function FlightPlanModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="flight-plan-modal-title"
+        aria-describedby="flight-plan-modal-note"
         tabIndex={-1}
         onKeyDown={trapFocus}
       >
         <h2 id="flight-plan-modal-title">{plan ? "Amend flight plan" : "Create flight plan"}</h2>
-        <p className="flight-plan-modal-note">
+        <p id="flight-plan-modal-note" className="flight-plan-modal-note">
           Filed metadata only; it does not activate aircraft guidance.
         </p>
         <form onSubmit={save}>
-          <label>
+          <label htmlFor="flight-plan-acid">
             ACID
-            <input autoFocus {...inputProps("acid")} />
+            <input {...inputProps("acid")} />
           </label>
-          <label>
+          <label htmlFor="flight-plan-flightType">
             Flight type
             <select {...inputProps("flightType")}>
               <option value="">Unspecified</option>
@@ -225,7 +229,7 @@ export function FlightPlanModal({
             </select>
           </label>
           {textFields.map(([field, label]) => (
-            <label key={field}>
+            <label key={field} htmlFor={`flight-plan-${field}`}>
               {label}
               <input {...inputProps(field)} />
             </label>
