@@ -74,6 +74,41 @@ export function createFlightPlanRoute(
   };
 }
 
+function legacyFiledRouteFromText(routeText: string): FiledRoute | undefined {
+  const text = routeText.trim().toUpperCase().replace(/\s+/g, " ");
+  if (!text) return undefined;
+  return {
+    text,
+    segments: text.split(" ").map((token) => ({
+      kind: "DCT",
+      fixId: token,
+      fixIds: [token],
+    })),
+  };
+}
+
+/**
+ * Synchronize legacy route projections at a mutable-world compatibility
+ * boundary. The route record is authoritative; every route object is cloned
+ * so callers cannot mutate a world through their input reference.
+ */
+export function synchronizeFlightPlanRoute(plan: FlightPlan): FlightPlan {
+  const value: FlightPlan = {
+    ...plan,
+    fixes: [...plan.fixes],
+    scratchpads: [...plan.scratchpads],
+  };
+  const source =
+    plan.routeRecord?.route ?? plan.filedRoute ?? legacyFiledRouteFromText(plan.route ?? "");
+  if (!source) return value;
+
+  const record = createFlightPlanRoute(source, plan.routeRecord ?? {});
+  value.routeRecord = record;
+  value.filedRoute = record.route;
+  value.route = record.route.text;
+  return value;
+}
+
 const ROUTE_LIFECYCLE_TRANSITIONS: Record<
   FlightPlanRouteLifecycle,
   readonly FlightPlanRouteLifecycle[]
@@ -90,6 +125,17 @@ export function transitionFlightPlanRoute(
   record: FlightPlanRoute,
   lifecycle: FlightPlanRouteLifecycle,
 ): FlightPlanResult<FlightPlanRoute> {
+  if (record.lifecycle === "cancelled") {
+    return {
+      ok: false,
+      error: error(
+        "INVALID_STATUS_TRANSITION",
+        "status",
+        `${record.lifecycle}->${lifecycle}`,
+        "cancelled route lifecycle is terminal",
+      ),
+    };
+  }
   if (record.lifecycle === lifecycle)
     return { ok: true, value: createFlightPlanRoute(record.route, record) };
   if (!ROUTE_LIFECYCLE_TRANSITIONS[record.lifecycle].includes(lifecycle)) {
@@ -376,12 +422,9 @@ export function createFlightPlan(
     fixes: [...input.fixes],
     scratchpads: [...input.scratchpads],
   };
-  if (plan.filedRoute && !plan.routeRecord) {
-    plan.routeRecord = createFlightPlanRoute(plan.filedRoute);
-    plan.filedRoute = plan.routeRecord.route;
-  }
-  const firstError = validateFlightPlan(plan, existing)[0];
-  return firstError ? { ok: false, error: firstError } : { ok: true, value: plan };
+  const synchronized = synchronizeFlightPlanRoute(plan);
+  const firstError = validateFlightPlan(synchronized, existing)[0];
+  return firstError ? { ok: false, error: firstError } : { ok: true, value: synchronized };
 }
 
 /** Allocate the first free code in the supplied deterministic trainer pool. */

@@ -135,6 +135,79 @@ test("route lifecycle is explicit and cancellation is terminal", () => {
   });
   const cancelled = cancelFlightPlanRoute(world, "fp-AAL123");
   expect(cancelled).toMatchObject({ ok: true, route: { lifecycle: "cancelled", revision: 1 } });
+
+  const repeated = cancelFlightPlanRoute(world, "fp-AAL123");
+  expect(repeated).toMatchObject({
+    ok: false,
+    error: { code: "INVALID_ROUTE_LIFECYCLE", field: "lifecycle" },
+  });
+  const replacement = applyFlightPlanRouteTransaction(world, "fp-AAL123", {
+    routeText: "FIXA",
+    lifecycle: "active",
+  });
+  expect(replacement).toMatchObject({
+    ok: false,
+    error: { code: "INVALID_ROUTE_LIFECYCLE", field: "lifecycle" },
+  });
+  expect(
+    transitionFlightPlanRoute(cancelled.ok ? cancelled.route : proposal, "cancelled"),
+  ).toMatchObject({
+    ok: false,
+    error: { code: "INVALID_STATUS_TRANSITION" },
+  });
+});
+
+test("createWorld migrates legacy route projections without input aliasing", () => {
+  const legacyRoute = {
+    text: "FIXA FIXB",
+    segments: [
+      { kind: "DCT" as const, fixId: "FIXA", fixIds: ["FIXA"] },
+      { kind: "DCT" as const, fixId: "FIXB", fixIds: ["FIXB"] },
+    ],
+  };
+  const legacyPlan = {
+    id: "fp-legacy",
+    status: "pending" as const,
+    acid: "AAL123",
+    route: legacyRoute.text,
+    filedRoute: legacyRoute,
+    fixes: [],
+    scratchpads: [],
+  };
+  const routeOnlyPlan = {
+    id: "fp-route-only",
+    status: "pending" as const,
+    acid: "DAL456",
+    route: "FIXC FIXD",
+    fixes: [],
+    scratchpads: [],
+  };
+  const world = createWorld({ flightPlans: [legacyPlan, routeOnlyPlan] });
+  const migrated = world.flightPlans[0]!;
+  expect(migrated.routeRecord).toMatchObject({
+    route: legacyRoute,
+    nextIndex: 0,
+    revision: 0,
+    lifecycle: "none",
+  });
+  expect(migrated.filedRoute).toBe(migrated.routeRecord?.route);
+  expect(migrated.route).toBe("FIXA FIXB");
+  expect(migrated.routeRecord?.route).not.toBe(legacyRoute);
+  expect(migrated.routeRecord?.route.segments).not.toBe(legacyRoute.segments);
+
+  legacyRoute.segments[0]!.fixIds.push("MUTATED");
+  expect(migrated.routeRecord?.route.segments[0]?.fixIds).toEqual(["FIXA"]);
+
+  expect(world.flightPlans[1]?.routeRecord).toMatchObject({
+    route: {
+      text: "FIXC FIXD",
+      segments: [
+        { kind: "DCT", fixId: "FIXC", fixIds: ["FIXC"] },
+        { kind: "DCT", fixId: "FIXD", fixIds: ["FIXD"] },
+      ],
+    },
+    lifecycle: "none",
+  });
 });
 
 test("route transaction validation is pure", () => {
@@ -147,4 +220,23 @@ test("route transaction validation is pure", () => {
   );
   expect(result).toMatchObject({ ok: true, route: { lifecycle: "acknowledged", revision: 1 } });
   expect(world.flightPlans[0]).toEqual(before);
+});
+
+test("draft amendments preserve cancelled routes and reject route replacement", () => {
+  const world = routeWorld();
+  expect(cancelFlightPlanRoute(world, "fp-AAL123")).toMatchObject({
+    ok: true,
+    route: { lifecycle: "cancelled" },
+  });
+
+  const metadata = saveFlightPlanDraft(world, { acid: "AAL123", remarks: "KEEP CANCELLED" });
+  expect(metadata).toMatchObject({ ok: true, plan: { remarks: "KEEP CANCELLED" } });
+  expect(world.flightPlans[0]?.routeRecord).toMatchObject({ lifecycle: "cancelled", revision: 1 });
+
+  const replacement = saveFlightPlanDraft(world, { acid: "AAL123", filedRoute: "FIXA" });
+  expect(replacement).toMatchObject({
+    ok: false,
+    error: { code: "INVALID_ROUTE_LIFECYCLE", field: "route" },
+  });
+  expect(world.flightPlans[0]?.routeRecord).toMatchObject({ lifecycle: "cancelled", revision: 1 });
 });

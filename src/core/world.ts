@@ -47,7 +47,7 @@ import { locAxisForApproach } from "./nav/localizer";
 import { gsParamsForApproach } from "./nav/glidepath";
 import { performanceRegistry } from "./performance/registry";
 import { resolvePerformanceRegime } from "./performance/regime";
-import { updateAircraftSquawk, type FlightPlan } from "./flightPlan";
+import { synchronizeFlightPlanRoute, updateAircraftSquawk, type FlightPlan } from "./flightPlan";
 
 /** Generic world navigation context. Variation is never facility-special-cased. */
 export interface WorldNavigationContext {
@@ -201,13 +201,21 @@ function fixRegistryFromPartial(partial?: Partial<World>): FixRegistry | null {
 
 export function createWorld(partial?: Partial<World>): World {
   const magVarDeg = partial?.navigation?.magVarDeg ?? partial?.catalog?.magVarDeg ?? 0;
+  const flightPlans =
+    partial?.flightPlans?.map((plan) => {
+      const synchronized = synchronizeFlightPlanRoute(plan);
+      // Preserve the existing mutable-world contract: callers holding a plan
+      // reference continue to observe edits made through the world.
+      Object.assign(plan, synchronized);
+      return plan;
+    }) ?? [];
   return {
     simTimeMs: partial?.simTimeMs ?? 0,
     paused: partial?.paused ?? false,
     simRate: partial?.simRate ?? 1,
     navigation: { magVarDeg },
     aircraft: partial?.aircraft ?? [],
-    flightPlans: partial?.flightPlans ?? [],
+    flightPlans,
     selectedAircraftId: partial?.selectedAircraftId ?? null,
     catalog: partial?.catalog,
     activeRunwayId: partial?.activeRunwayId,

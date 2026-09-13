@@ -456,6 +456,16 @@ export function validateFlightPlanRouteTransaction(
   input: FlightPlanRouteTransactionInput,
   catalog: FiledRouteCatalog | null | undefined,
 ): FlightPlanRouteTransactionResult<FlightPlanRoute> {
+  if (plan.routeRecord?.lifecycle === "cancelled") {
+    return {
+      ok: false,
+      error: {
+        code: "INVALID_ROUTE_LIFECYCLE",
+        field: "lifecycle",
+        message: "cancelled route lifecycle is terminal",
+      },
+    };
+  }
   const source = routeSourceForPlan(plan, input);
   let resolved: FiledRouteResult<FiledRoute>;
   if (source !== undefined) {
@@ -541,7 +551,12 @@ export type FlightPlanDraftInput = Omit<
 };
 
 export type FlightPlanDraftErrorCode =
-  FiledRouteErrorCode | "PLAN_NOT_FOUND" | "INVALID_VALUE" | "INVALID_FIELD" | "CAPACITY";
+  | FiledRouteErrorCode
+  | "PLAN_NOT_FOUND"
+  | "INVALID_VALUE"
+  | "INVALID_FIELD"
+  | "INVALID_ROUTE_LIFECYCLE"
+  | "CAPACITY";
 
 export interface FlightPlanDraftError {
   code: FlightPlanDraftErrorCode | FlightPlanErrorCode;
@@ -875,6 +890,16 @@ export function saveFlightPlanDraft(
   const hasRouteInput =
     Object.prototype.hasOwnProperty.call(input, "filedRoute") ||
     Object.prototype.hasOwnProperty.call(input, "route");
+  if (existing?.routeRecord?.lifecycle === "cancelled" && hasRouteInput) {
+    return {
+      ok: false,
+      error: draftError(
+        "INVALID_ROUTE_LIFECYCLE",
+        "route",
+        "cancelled route lifecycle is terminal",
+      ),
+    };
+  }
   const routeText = hasRouteInput
     ? (input.filedRoute ?? input.route ?? "")
     : (existing?.filedRoute?.text ?? existing?.route ?? "");
@@ -911,11 +936,15 @@ export function saveFlightPlanDraft(
     const fixCount = routeFixIds(route.value).length;
     candidate.routeRecord = createFlightPlanRoute(route.value, {
       nextIndex:
-        currentRecord?.lifecycle === "active" && currentRecord.nextIndex <= fixCount
+        (currentRecord?.lifecycle === "active" || currentRecord?.lifecycle === "cancelled") &&
+        currentRecord.nextIndex <= fixCount
           ? currentRecord.nextIndex
           : 0,
       revision: currentRecord?.revision ?? 0,
-      lifecycle: currentRecord?.lifecycle === "active" ? "active" : "none",
+      lifecycle:
+        currentRecord?.lifecycle === "active" || currentRecord?.lifecycle === "cancelled"
+          ? currentRecord.lifecycle
+          : "none",
     });
     candidate.filedRoute = candidate.routeRecord.route;
   } else {

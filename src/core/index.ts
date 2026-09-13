@@ -56,6 +56,7 @@ export {
   FAA_AIRCRAFT_EQUIPMENT_SUFFIXES,
   createFlightPlanRoute,
   routeFixIds,
+  synchronizeFlightPlanRoute,
   transitionFlightPlanRoute,
 } from "./flightPlan";
 export type {
