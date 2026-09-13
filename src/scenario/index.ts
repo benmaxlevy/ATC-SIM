@@ -168,7 +168,13 @@ export {
   usedCallsignSet,
 } from "./callsigns";
 export type { SpawnAircraftParams } from "./spawnAircraft";
-export { spawnAircraft } from "./spawnAircraft";
+export { defaultSquawkRng, spawnAircraft, usedSquawks } from "./spawnAircraft";
+export type { ScenarioIfrFlightPlanInput, ScenarioIfrRoute } from "./ifrFlightPlan";
+export {
+  createScenarioIfrFlightPlan,
+  scenarioIfrRouteText,
+  spawnScenarioIfrAircraft,
+} from "./ifrFlightPlan";
 export {
   DEFAULT_SPAWN_SEED,
   parseDepartureOptions,

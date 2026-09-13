@@ -6,7 +6,7 @@ export interface SpawnAircraftParams extends AircraftInit {
   rng?: () => number;
 }
 
-function usedSquawks(world: World): string[] {
+export function usedSquawks(world: World): string[] {
   return world.aircraft.flatMap((aircraft) =>
     [aircraft.squawk, aircraft.assignedSquawk, aircraft.reportedSquawk].filter(
       (code): code is string => code !== undefined,
@@ -14,7 +14,7 @@ function usedSquawks(world: World): string[] {
   );
 }
 
-function defaultSquawkRng(callsign: string): () => number {
+export function defaultSquawkRng(callsign: string): () => number {
   let hash = 2166136261;
   for (const character of callsign.toUpperCase()) {
     hash ^= character.charCodeAt(0);

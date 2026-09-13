@@ -26,7 +26,7 @@ import {
 } from "./arrivalScheduler";
 import { resolveRunwayHeading, resolveRunwayThreshold } from "./departureSpawn";
 import { allocateTrafficPair, allocateTrafficPairForType, usedCallsignSet } from "./callsigns";
-import { spawnAircraft } from "./spawnAircraft";
+import { createScenarioIfrFlightPlan, spawnScenarioIfrAircraft } from "./ifrFlightPlan";
 
 export { starRouteFixIds };
 
@@ -68,22 +68,33 @@ function spawnArrival(
   rng: () => number,
   scenario?: Scenario,
 ): void {
-  const ac = spawnAircraft(world, {
-    rng,
-    callsign,
-    xNm: arrival.xNm,
-    yNm: arrival.yNm,
-    headingDeg: arrival.headingDeg,
-    altitudeFt: arrival.altitudeFt,
-    speedKt: arrival.speedKt,
-    aircraftType: arrival.aircraftType,
-    cwtWakeCategory: arrival.cwtWakeCategory,
-    destination: scenario?.icao ?? world.catalog?.airportId,
-    flightPlan: {
+  const { aircraft: ac } = spawnScenarioIfrAircraft(
+    world,
+    {
+      callsign,
+      xNm: arrival.xNm,
+      yNm: arrival.yNm,
+      headingDeg: arrival.headingDeg,
+      altitudeFt: arrival.altitudeFt,
+      speedKt: arrival.speedKt,
+      aircraftType: arrival.aircraftType,
+      cwtWakeCategory: arrival.cwtWakeCategory,
       destination: scenario?.icao ?? world.catalog?.airportId,
-      rules: "IFR",
     },
-  });
+    {
+      scenario: { icao: scenario?.icao ?? world.catalog?.airportId ?? "UNKNOWN" },
+      route:
+        arrival.starId === undefined
+          ? undefined
+          : {
+              kind: "arrival",
+              starId: arrival.starId,
+              transitionId: arrival.transitionId,
+            },
+      requestedAltitudeFt: arrival.altitudeFt,
+      rng,
+    },
+  );
   if (scenario) {
     armStarVia(ac, scenario, arrival);
   }
@@ -143,21 +154,29 @@ function spawnStarInbound(world: World, scenario: Scenario, seed: number): void 
   for (let i = 0; i < scenario.arrivals.length; i += 1) {
     const assigned = assignments[i]!;
     const traffic = allocateTrafficPair(rng, used);
-    const ac = spawnAircraft(world, {
-      rng,
-      callsign: traffic.callsign,
-      xNm: assigned.pose.xNm,
-      yNm: assigned.pose.yNm,
-      headingDeg: assigned.pose.headingDeg,
-      altitudeFt: assigned.pose.altitudeFt,
-      speedKt: assigned.pose.speedKt,
-      aircraftType: traffic.aircraftType,
-      destination: scenario.icao,
-      flightPlan: {
+    const { aircraft: ac } = spawnScenarioIfrAircraft(
+      world,
+      {
+        callsign: traffic.callsign,
+        xNm: assigned.pose.xNm,
+        yNm: assigned.pose.yNm,
+        headingDeg: assigned.pose.headingDeg,
+        altitudeFt: assigned.pose.altitudeFt,
+        speedKt: assigned.pose.speedKt,
+        aircraftType: traffic.aircraftType,
         destination: scenario.icao,
-        rules: "IFR",
       },
-    });
+      {
+        scenario,
+        route: {
+          kind: "arrival",
+          starId: assigned.starId,
+          transitionId: assigned.transitionId,
+        },
+        requestedAltitudeFt: assigned.pose.altitudeFt,
+        rng,
+      },
+    );
     ac.intent.lateral = {
       type: "PROCEDURE",
       starId: assigned.starId,
@@ -296,6 +315,28 @@ function initDepartures(
       startSimMs: world.simTimeMs,
     });
   }
+
+  // File every scheduled departure while it is still pending.  The target
+  // spawner below reuses this plan and reports its assigned beacon, so a due
+  // departure never appears before its operational record exists.
+  const stagedWorld = { ...world, flightPlans: [...world.flightPlans] };
+  for (const dep of schedule) {
+    const plan = createScenarioIfrFlightPlan(stagedWorld, {
+      acid: dep.callsign,
+      scenario,
+      route: {
+        kind: "departure",
+        sidId: dep.sidId,
+        transitionId: dep.transitionId,
+      },
+      requestedAltitudeFt: dep.assignedAltitudeFt,
+      aircraftType: dep.aircraftType,
+      assignedBeacon: dep.assignedSquawk ?? dep.squawk,
+    });
+    dep.assignedSquawk = plan.assignedBeacon;
+    dep.squawk = plan.assignedBeacon;
+  }
+  world.flightPlans.push(...stagedWorld.flightPlans.slice(world.flightPlans.length));
 
   world.scheduledDepartures = schedule;
   world.departureSpawner = spawnDueDepartures;
