@@ -7,15 +7,15 @@ Captain: `/root`. Merge lock: `feature/clearances`. Worker model/limit:
 later waves require merge, `npm run ci`, speech-api mock pytest when changed,
 and independent manual/FAA audit. No push is authorized.
 
-## Proposed sixty-sixth swarm — 2026-09-13 (voice airport and command parity)
+## Proposed sixty-sixth swarm — 2026-09-13 (voice airport, command parity, and clearance separation)
 
 | Key | Value |
 | --- | --- |
-| Goal | Ground every scenario airport for voice clearance limits; close Path-C command/prompt parity; preserve squawk provenance. |
-| Include | T02-181 → T02-182 → T02-183. |
+| Goal | Ground every scenario airport for voice clearance limits; close Path-C command/prompt parity; preserve squawk provenance; separate issued clearances from editable flight plans. |
+| Include | T02-181 → T02-182 → T02-183 → T02-184. |
 | Merge target | `feature/clearances`. |
 | Worker limit/model | 1 sequential worker; `gpt-5.6-luna` high. |
-| Stop | T02-183 plus CI, speech-api mock gate, and manual/FAA review. |
+| Stop | T02-184 plus CI, speech-api mock gate, and manual/FAA review. |
 | Push | No push. |
 
 **Product law:** airports are a separate clearance-limit namespace, never
@@ -25,23 +25,31 @@ repairs only to a valid four-octal-digit squawk. Radio squawk and clearance
 manual and mismatch is intentional.
 
 **Skip:** arbitrary geographic/airport search, cloud inference, broad ASR
-guessing, VFR pickup, flight-plan auto-editing, beacon allocation redesign,
-and new radio commands.
+guessing, VFR pickup/airfile, automatic flight-plan creation, flight-plan
+auto-editing on clearance issuance, beacon allocation redesign, and new radio
+commands.
+
+**Product law addendum:** issuing a clearance may compile from the current
+flight plan but never mutates that plan. Active clearance route/access/limit
+state is aircraft-owned and stable across later plan edits; the next clearance
+may compile from a later plan revision. Plan edits and clearances are valid in
+either order, with no sequencing check.
 
 **Waves:** A T02-181 airport catalog/grounding; B T02-182 speech-api command
-parity/prompt/rule; C T02-183 squawk provenance. Each starts only after prior
-merge and gates. Ticket paths are T02-181 through T02-183 in
+parity/prompt/rule; C T02-183 squawk provenance; D T02-184
+clearance/flight-plan separation. Each starts only after prior merge and gates.
+Ticket paths are T02-181 through T02-184 in
 `phases/02-scope/tickets/`.
 
 **Captain return:**
 
 ```text
 PHASE EXIT GREEN
-Phase: voice airport and command parity T02-181–T02-183
+Phase: voice airport, command parity, and clearance separation T02-181–T02-184
 Merge target: feature/clearances
-Merged: T02-181, T02-182, T02-183
+Merged: T02-181, T02-182, T02-183, T02-184
 Tests: CI after each merge; speech-api mock pytest; supplied-manual/FAA review
-Notes: No push; airport remains clearance-limit-only; flight-plan beacon stays manual
+Notes: No push; airport remains clearance-limit-only; flight-plan beacon stays manual; clearance issuance does not edit flight plans
 ```
 
 ## Sixty-fifth swarm started — 2026-09-13 (clearance scaffolding)
