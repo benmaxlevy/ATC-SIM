@@ -1655,3 +1655,25 @@ the explicit unsupported-datablock boundary preserved. No later phase started.
 
 **Manual leftover:** none for the approved scope. The pre-existing modified
 `phases/LATER-IMPLEMENTATION-BACKLOG.md` was preserved unstaged.
+
+## SIXTY-FOURTH SWARM COMPLETE — derived correlation and IFR scenario plans (T02-172–T02-175)
+
+Completed sequentially on `feature/nas-flightplan-modal` with isolated Luna/high
+workers and captain squash merges. T02-173 derives correlation only from a
+unique non-deleted, non-1200 assigned-beacon/reported-squawk match; T02-174
+files validated IFR metadata before authored, random, bench, scheduled,
+KDEM, and KATL targets; T02-175 routes presentation through that resolver and
+documents the `*FP` mismatch behavior. Targets remain surveillance-only;
+plans remain metadata-only with no target IDs, FMS, pilot intent, kinematics,
+radio, Command IR, or readback mutation.
+
+Captain commits: `0c90bd8`, `27f534d`, `d507712`, `87c9916`, `4e79cd3`,
+`b654d01`, `8b15672`. Final `npm run ci`: **197 files passed, 1,895 passed,
+4 skipped, 0 failures**. Focused correlation, scenario, modal, lifecycle, and
+presentation tests passed. Independent supplied-manual reviews passed for all
+three tickets after corrective passes, including STARS §§2.12, 5.5.5, 5.5.9,
+5.6.17, 5.7.1 and Appendix D anchors.
+
+**Manual leftover:** human Chrome/browser positioning and accessibility walk
+(TAB, slew, focus/error, F6/F9/*F/*TV) was not run in this session; automated
+coverage is green. No later phase started; no push performed.
