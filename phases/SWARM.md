@@ -1,5 +1,12 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Sixty-fifth swarm started — 2026-09-13 (clearance scaffolding)
+
+Captain: `/root`. Merge lock: `feature/clearances`. Worker model/limit:
+`gpt-5.6-luna` high, one sequential worker. T02-176 is authorized first;
+later waves require its squash merge, `npm run ci`, supplied-manual review, and
+FAA JO 7110.65 online review. No push and no VFR-to-IFR pickup are authorized.
+
 ## Proposed sixty-fifth swarm — 2026-09-13 (clearance scaffolding)
 
 | Key | Value |
