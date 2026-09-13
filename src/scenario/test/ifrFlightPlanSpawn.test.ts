@@ -127,6 +127,43 @@ test("scenario IFR creation rejects an existing same-ACID non-IFR plan", () => {
   expect(world.flightPlans[0]?.flightType).toBe("VFR");
 });
 
+test("scenario IFR creation requires an existing plan to declare IFR", () => {
+  const scenario = loadKdem();
+  const world = createWorld({ catalog: scenario.catalog });
+  const existing = saveFlightPlanDraft(world, {
+    acid: "AAL126",
+    assignedBeacon: "4322",
+  });
+  expect(existing.ok).toBe(true);
+
+  expect(() =>
+    createScenarioIfrFlightPlan(world, {
+      acid: "AAL126",
+      scenario,
+    }),
+  ).toThrow(/existing plan .*not a valid pending IFR plan/);
+});
+
+test("scenario IFR creation validates a requested route before reusing a plan", () => {
+  const scenario = loadKdem();
+  const world = createWorld({ catalog: scenario.catalog });
+  const existing = saveFlightPlanDraft(world, {
+    acid: "AAL127",
+    assignedBeacon: "4323",
+    flightType: "IFR",
+    flightRules: "I",
+  });
+  expect(existing.ok).toBe(true);
+
+  expect(() =>
+    createScenarioIfrFlightPlan(world, {
+      acid: "AAL127",
+      scenario,
+      route: { kind: "arrival", starId: "NOT_A_REAL_STAR" },
+    }),
+  ).toThrow(/Unable to create IFR scenario plan .*invalid procedure token/);
+});
+
 test("scenario IFR spawning rejects explicit VFR 1200 before creating plan or target", () => {
   const scenario = loadKdem();
   const world = createWorld({ catalog: scenario.catalog });

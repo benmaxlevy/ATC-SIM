@@ -10,6 +10,7 @@
 import {
   saveFlightPlanDraft,
   isValidBeaconCode,
+  resolveFiledRoute,
   type Aircraft,
   type AircraftInit,
   type FlightPlan,
@@ -65,10 +66,19 @@ export function createScenarioIfrFlightPlan(
     (plan) => plan.status !== "deleted" && plan.acid === input.acid.trim().toUpperCase(),
   );
   if (existing) {
+    const requestedRoute = routeText(input.route);
+    if (requestedRoute) {
+      const route = resolveFiledRoute(requestedRoute, world.catalog);
+      if (!route.ok) {
+        throw new Error(
+          `Unable to create IFR scenario plan for ${input.acid}: ${route.error.message}`,
+        );
+      }
+    }
     const beacon = existing.assignedBeacon?.trim().toUpperCase();
     if (
       existing.status !== "pending" ||
-      (existing.flightType !== undefined && existing.flightType !== "IFR") ||
+      existing.flightType !== "IFR" ||
       !beacon ||
       !isValidBeaconCode(beacon) ||
       beacon === "1200"
