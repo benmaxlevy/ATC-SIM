@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { applyIntent } from "@pilot";
 import { createWorld, saveFlightPlanDraft, stepWorld } from "@core";
 import {
   assertScenario,
@@ -6,6 +7,7 @@ import {
   createWorldFromScenario,
   createWorldForSession,
   loadKdem,
+  loadKdemIls27,
   spawnDueDepartures,
   spawnArrivals,
   spawnScenarioIfrAircraft,
@@ -13,6 +15,164 @@ import {
 import katlJson from "../katl.json";
 import { loadCatalog } from "../procedures/loadCatalog";
 import { spawnDeparture } from "../departureSpawn";
+import { datablockSourceFromWorld } from "@scope";
+
+type ScenarioSpawnCase = {
+  world: ReturnType<typeof createWorld>;
+  callsign: string;
+  aircraft?: ReturnType<typeof createWorld>["aircraft"][number];
+};
+
+const scenarioSpawnCases: Array<[string, () => ScenarioSpawnCase]> = [
+  [
+    "authored arrival",
+    () => {
+      const world = createWorldFromScenario(loadKdemIls27(), 7);
+      const aircraft = world.aircraft[0]!;
+      return { world, callsign: aircraft.callsign, aircraft };
+    },
+  ],
+  [
+    "random STAR arrival",
+    () => {
+      const world = createWorldFromScenario(loadKdem(), 7);
+      const aircraft = world.aircraft[0]!;
+      return { world, callsign: aircraft.callsign, aircraft };
+    },
+  ],
+  [
+    "scheduled arrival",
+    () => {
+      const world = createWorldForSession(
+        loadKdem(),
+        null,
+        7,
+        { enabled: false },
+        {
+          initialArrivalCount: 1,
+          arrivalsPerHour: 0,
+          seed: 7,
+        },
+      );
+      const aircraft = world.aircraft[0]!;
+      return { world, callsign: aircraft.callsign, aircraft };
+    },
+  ],
+  [
+    "bench arrival",
+    () => {
+      const world = createWorldForSession(loadKdem(), 1, 7);
+      const aircraft = world.aircraft[0]!;
+      return { world, callsign: aircraft.callsign, aircraft };
+    },
+  ],
+  [
+    "scheduled departure",
+    () => {
+      const scenario = assertScenario(katlJson);
+      const world = createWorldForSession(scenario, null, 7, {
+        enabled: true,
+        ratePerHour: 0,
+        count: 1,
+      });
+      const departure = world.scheduledDepartures![0]!;
+      return { world, callsign: departure.callsign };
+    },
+  ],
+  [
+    "direct departure",
+    () => {
+      const scenario = loadKdem();
+      const world = createWorld({ catalog: scenario.catalog });
+      const aircraft = spawnDeparture(
+        world,
+        {
+          callsign: "DEP186",
+          runwayId: "27",
+          sidId: "BAY1",
+          transitionId: "NORMA",
+          assignedAltitudeFt: 12000,
+        },
+        scenario.catalog,
+      );
+      return { world, callsign: aircraft.callsign, aircraft };
+    },
+  ],
+];
+
+test.each(scenarioSpawnCases)(
+  "%s does not derive plan altitude metadata from spawn state",
+  (_name, makeCase) => {
+    const { world, callsign } = makeCase();
+    const plan = world.flightPlans.find((item) => item.acid === callsign);
+
+    expect(plan).toBeDefined();
+    expect(plan?.requestedAltitudeFt).toBeUndefined();
+    expect(plan?.assignedAltitudeFt).toBeUndefined();
+  },
+);
+
+test.each([
+  [undefined, undefined],
+  [12000, 12000],
+] as const)("scenario plan preserves explicit request %j", (input, expected) => {
+  const scenario = loadKdem();
+  const world = createWorld({ catalog: scenario.catalog });
+  const plan = createScenarioIfrFlightPlan(world, {
+    acid: "EXP186",
+    scenario,
+    aircraftType: "B738",
+    requestedAltitudeFt: input,
+  });
+
+  expect(plan.requestedAltitudeFt).toBe(expected);
+});
+
+test("explicit scenario request remains available after target correlation", () => {
+  const scenario = loadKdem();
+  const world = createWorld({ catalog: scenario.catalog });
+  const { aircraft } = spawnScenarioIfrAircraft(
+    world,
+    {
+      callsign: "COR186",
+      xNm: 1,
+      yNm: 2,
+      headingDeg: 90,
+      altitudeFt: 6000,
+      speedKt: 210,
+      aircraftType: "B738",
+    },
+    { scenario, requestedAltitudeFt: 12000 },
+  );
+
+  expect(datablockSourceFromWorld(world, aircraft).requestedAltitudeFt).toBe(12000);
+});
+
+test("climb and descend intent never edits scenario plan altitude fields", () => {
+  const scenario = loadKdem();
+  const world = createWorld({ catalog: scenario.catalog });
+  const { aircraft, plan } = spawnScenarioIfrAircraft(
+    world,
+    {
+      callsign: "VRT186",
+      xNm: 1,
+      yNm: 2,
+      headingDeg: 90,
+      altitudeFt: 12000,
+      speedKt: 210,
+      aircraftType: "B738",
+    },
+    { scenario },
+  );
+  const before = structuredClone(plan);
+
+  applyIntent(aircraft, [{ type: "ALTITUDE", altitudeFt: 10000, verb: "DESCEND" }], 0);
+
+  expect(plan).toEqual(before);
+  expect(plan.requestedAltitudeFt).toBeUndefined();
+  expect(plan.assignedAltitudeFt).toBeUndefined();
+  expect(aircraft.intent.assignedAltitudeFt).toBe(10000);
+});
 
 function expectCorrelatableIfrPlans(world: ReturnType<typeof createWorldFromScenario>): void {
   const targetCallsigns = new Set(world.aircraft.map((aircraft) => aircraft.callsign));

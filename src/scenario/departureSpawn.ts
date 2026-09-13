@@ -210,7 +210,6 @@ export function spawnDeparture(
         sidId: config.sidId,
         transitionId: config.transitionId,
       },
-      requestedAltitudeFt: pose.assignedAltitudeFt,
       assignedBeacon: config.assignedSquawk ?? config.squawk,
       rng: config.rng,
       departure: true,

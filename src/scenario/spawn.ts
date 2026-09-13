@@ -91,7 +91,6 @@ function spawnArrival(
               starId: arrival.starId,
               transitionId: arrival.transitionId,
             },
-      requestedAltitudeFt: arrival.altitudeFt,
       rng,
     },
   );
@@ -173,7 +172,6 @@ function spawnStarInbound(world: World, scenario: Scenario, seed: number): void 
           starId: assigned.starId,
           transitionId: assigned.transitionId,
         },
-        requestedAltitudeFt: assigned.pose.altitudeFt,
         rng,
       },
     );
@@ -354,7 +352,6 @@ function initDepartures(
         sidId: dep.sidId,
         transitionId: dep.transitionId,
       },
-      requestedAltitudeFt: dep.assignedAltitudeFt,
       aircraftType: dep.aircraftType,
       assignedBeacon: dep.assignedSquawk ?? dep.squawk,
     });
