@@ -31,12 +31,16 @@ syntax. It is not an FAA/STARS command claim.
 key. It is captured before the radio line in both radio and scope focus.
 
 ```text
-*FP <ACID> Enter
+*FP <ACID-or-TAB-index> Enter
+*FP Enter, then slew/click a target
 ```
 
 `*FP` is one token: no space is allowed between `*` and `FP`. The required
-ACID follows after one or more spaces. ASCII case folds to uppercase and
-internal whitespace collapses.
+ACID follows after one or more spaces. A two-digit TAB flight-plan list index
+resolves through the current visible list entry; an ACID wins over a numeric
+index except an exact two-digit token. ASCII case folds to uppercase and
+internal whitespace collapses. Bare `*FP Enter` arms one target slew/click:
+an associated target opens its plan; an unassociated target rejects `NO FLIGHT`.
 
 `* F`, `*F`, and existing `*F ...` behavior remain altitude-filter grammar;
 they never open the modal. Existing `*TV`, `*P`, `*B`, F6, F9, F7 and radio
@@ -58,6 +62,8 @@ initial focus, Tab/Shift+Tab containment, labeled controls, Save and Cancel.
 | --- | --- | --- | --- | --- |
 | `*FP AAL123 Enter`, plan exists | Open amendment dialog | Draft only | — | manual Preview/modify refs |
 | `*FP AAL123 Enter`, no plan | Open create dialog with ACID | Draft only | — | manual creation refs |
+| `*FP 07 Enter` | Open plan at visible TAB index 07 | Draft only | absent/stale index → `NO FLIGHT` | existing TAB semantics |
+| `*FP Enter`, click associated target | Open that target's plan | Draft only | unassociated target → `NO FLIGHT` | trainer delta |
 | `*FP Enter` / `*FP ! Enter` | No dialog | None | `ILL ACID` Preview rejection | trainer grammar |
 | Save valid resolved route | Dialog closes and projections refresh | Only FlightPlan changes | — | T02-170 |
 | Save invalid route | Dialog remains open | No plan mutation | inline exact error | T02-170 |
@@ -79,7 +85,7 @@ initial focus, Tab/Shift+Tab containment, labeled controls, Save and Cancel.
 
 ## Acceptance criteria
 
-- [ ] `*FP AAL123 Enter` opens exactly one modal from radio and scope focus,
+- [ ] `*FP <ACID-or-TAB-index> Enter` and bare `*FP` target slew open exactly one modal from radio and scope focus,
   without entering the radio parser.
 - [ ] Existing ACID edits and absent ACID creates use the same dialog.
 - [ ] Modal Save is atomic through T02-170; Cancel/Escape is a strict no-op.
