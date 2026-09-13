@@ -46,7 +46,7 @@ import {
   type ScopeView,
   type FlightPlanModalRequest,
 } from "@scope";
-import { flightPlanForAircraft, type FlightPlan } from "@core";
+import { flightPlanForAircraft, handoffFor, type FlightPlan } from "@core";
 import type { AppHandles } from "../app/create-app";
 import { CommandLine, submitCommand } from "./command/command-line";
 import { Disclaimer } from "./overlays/disclaimer";
@@ -92,6 +92,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   const [flightPlanModal, setFlightPlanModal] = useState<{
     acid: string;
     plan?: FlightPlan;
+    operation: "arrival" | "departure";
   } | null>(null);
   const panRef = useRef<{ lastX: number; lastY: number } | null>(null);
   const didListDragRef = useRef(false);
@@ -145,12 +146,19 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   function openFlightPlanModal(request: FlightPlanModalRequest): void {
     let plan: FlightPlan | undefined;
     let targetAcid: string | undefined;
+    let operation: "arrival" | "departure" | undefined;
     if (request.targetAircraftId) {
       plan = flightPlanForAircraft(app.world, request.targetAircraftId);
-      targetAcid = app.world.aircraft
-        .find((aircraft) => aircraft.id === request.targetAircraftId)
-        ?.callsign.trim()
-        .toUpperCase();
+      const target = app.world.aircraft.find(
+        (aircraft) => aircraft.id === request.targetAircraftId,
+      );
+      targetAcid = target?.callsign.trim().toUpperCase();
+      operation =
+        handoffFor(app.world, request.targetAircraftId).kind === "departure" ||
+        target?.intent.vertical?.type === "VIA_SID" ||
+        Boolean(target?.intent.lateral?.type === "PROCEDURE" && target.intent.lateral.sidId)
+          ? "departure"
+          : "arrival";
       if (!plan && targetAcid) {
         const sameAcidPlan = app.world.flightPlans.find(
           (item) => item.status !== "deleted" && item.acid === targetAcid,
@@ -205,7 +213,11 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
       refreshScopeUi();
       return;
     }
-    setFlightPlanModal({ acid, ...(plan ? { plan } : {}) });
+    setFlightPlanModal({
+      acid,
+      ...(plan ? { plan } : {}),
+      operation: operation ?? (plan?.departureAirport || plan?.ptd ? "departure" : "arrival"),
+    });
   }
 
   useEffect(() => {
@@ -537,6 +549,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
         open={flightPlanModal !== null}
         acid={flightPlanModal?.acid ?? ""}
         plan={flightPlanModal?.plan}
+        operation={flightPlanModal?.operation}
         world={app.world}
         onCancel={() => setFlightPlanModal(null)}
         onSaved={() => {

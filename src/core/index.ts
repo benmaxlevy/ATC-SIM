@@ -71,6 +71,7 @@ export {
   deleteFlightPlan,
   deleteFlightPlanFromWorld,
   disassociateFlightPlan,
+  flightPlanCid,
   flightPlanForAircraft,
   isValidAcid,
   isValidBeaconCode,

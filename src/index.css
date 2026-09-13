@@ -1040,11 +1040,6 @@ html[data-dcb-cursor-trap] * {
   font-size: 16px;
 }
 
-.flight-plan-modal-note {
-  margin: 0 0 12px;
-  color: #9aa0a6;
-}
-
 .flight-plan-modal form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

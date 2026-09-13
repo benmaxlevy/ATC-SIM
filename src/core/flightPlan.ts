@@ -158,6 +158,14 @@ export function isValidAcid(value: string): boolean {
   return acid !== "ALL" && ACID_PATTERN.test(acid) && (acid.length !== 2 || /[0-9]$/.test(acid));
 }
 
+/** Canonical CID display used by flight plans and terminal strips. */
+export function flightPlanCid(acid: string, cid?: string): string {
+  const explicit = cid?.trim().toUpperCase();
+  if (explicit) return explicit;
+  const digits = acid.replace(/\D/g, "");
+  return digits.length > 0 ? digits.padStart(3, "0").slice(-3) : "";
+}
+
 export function isValidBeaconCode(value: string): boolean {
   return BEACON_PATTERN.test(value.trim());
 }

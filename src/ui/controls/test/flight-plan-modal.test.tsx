@@ -9,7 +9,11 @@ import {
   type FlightPlan,
 } from "@core";
 import { createScopeView, getVisibleFlightPlanEntries } from "@scope";
-import { FlightPlanModal } from "../FlightPlanModal";
+import {
+  FlightPlanModal,
+  flightPlanModalDraftFromPlan,
+  submitFlightPlanModalDraft,
+} from "../FlightPlanModal";
 
 const catalog: FiledRouteCatalog = {
   fixes: [{ id: "FIXA" }, { id: "FIXB" }],
@@ -48,13 +52,19 @@ test("create and amend modes expose one accessible filed-plan dialog", () => {
   expect(createHtml).toContain('role="dialog"');
   expect(createHtml).toContain('aria-modal="true"');
   expect(createHtml).toContain('aria-labelledby="flight-plan-modal-title"');
-  expect(createHtml).toContain('aria-describedby="flight-plan-modal-note"');
   expect(createHtml).toContain('id="flight-plan-modal-title"');
   expect(createHtml).toContain("Create flight plan");
-  expect(createHtml).toContain("Filed metadata only; it does not activate aircraft guidance.");
   expect(createHtml).toContain('id="flight-plan-acid"');
+  expect(createHtml).toContain('id="flight-plan-cid"');
+  expect(createHtml).toContain('id="flight-plan-acid" name="acid" readonly="" value="AAL123"');
+  expect(createHtml).toContain('id="flight-plan-cid" name="cid" readonly="" value="123"');
   expect(createHtml).toContain('for="flight-plan-route"');
   expect(createHtml).toContain("Filed route");
+  expect(createHtml).toContain("ETA");
+  expect(createHtml).not.toContain(">PTD<");
+  for (const removed of ["Fixes", "Scratchpads", "Source", "Minimum fuel", "Owning TCP"]) {
+    expect(createHtml).not.toContain(removed);
+  }
   expect(createHtml).toContain("Save");
   expect(createHtml).toContain("Cancel");
 
@@ -68,6 +78,15 @@ test("create and amend modes expose one accessible filed-plan dialog", () => {
   };
   expect(modalHtml(plan)).toContain("Amend flight plan");
   expect(modalHtml(plan)).toContain('value="DCT FIXA"');
+
+  const departurePlan: FlightPlan = {
+    ...plan,
+    departureAirport: "KATL",
+    ptd: "1430E",
+  };
+  const departureHtml = modalHtml(departurePlan);
+  expect(departureHtml).toContain(">PTD<");
+  expect(departureHtml).not.toContain(">ETA<");
 });
 
 test("invalid Save is atomic and preserves aircraft surveillance state", () => {
@@ -98,6 +117,35 @@ test("invalid Save is atomic and preserves aircraft surveillance state", () => {
   expect(failed).toMatchObject({ ok: false, error: { code: "UNKNOWN_TRANSITION" } });
   expect(world.flightPlans[0]).toEqual(beforePlan);
   expect(aircraft).toEqual(beforeAircraft);
+});
+
+test("modal submit keeps filed-route catalog validation", () => {
+  const world = createWorld({ catalog: { ...catalog, airportId: "TEST", approaches: [] } });
+  const draft = flightPlanModalDraftFromPlan("AAL123");
+  draft.route = "DCT NOT_IN_CATALOG";
+
+  const failed = submitFlightPlanModalDraft(world, undefined, draft);
+  expect(failed).toMatchObject({ ok: false, error: { code: "UNKNOWN_FIX" } });
+  expect(world.flightPlans).toHaveLength(0);
+});
+
+test("modal submit keeps existing ACID and CID immutable", () => {
+  const world = createWorld({ catalog: { ...catalog, airportId: "TEST", approaches: [] } });
+  const plan: FlightPlan = {
+    id: "fp-aal123",
+    status: "pending",
+    acid: "AAL123",
+    cid: "123",
+    fixes: [],
+    scratchpads: [],
+  };
+  world.flightPlans.push(plan);
+  const draft = flightPlanModalDraftFromPlan("AAL123", plan);
+  draft.acid = "DAL999";
+  draft.cid = "999";
+
+  const amended = submitFlightPlanModalDraft(world, plan, draft);
+  expect(amended).toMatchObject({ ok: true, plan: { acid: "AAL123", cid: "123" } });
 });
 
 test("current visible FL page is the only TAB index resolution surface", () => {

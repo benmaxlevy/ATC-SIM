@@ -1,16 +1,32 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { saveFlightPlanDraft, type FlightPlan, type FlightPlanDraftInput, type World } from "@core";
+import {
+  flightPlanCid,
+  saveFlightPlanDraft,
+  type FlightPlan,
+  type FlightPlanDraftInput,
+  type World,
+} from "@core";
+
+export type FlightPlanOperation = "arrival" | "departure";
 
 export interface FlightPlanModalProps {
   open: boolean;
   acid: string;
   plan?: FlightPlan;
   world: World;
+  operation?: FlightPlanOperation;
   onCancel: () => void;
   onSaved: () => void;
 }
 
 export type FlightPlanModalDraft = Record<string, string>;
+
+function flightTypeFromRules(flightRules?: string): FlightPlan["flightType"] | undefined {
+  const rules = flightRules?.trim().toUpperCase();
+  if (rules === "VFR") return "VFR";
+  if (rules === "IFR" || rules === "I") return "IFR";
+  return undefined;
+}
 
 export function flightPlanModalDraftFromPlan(
   acid: string,
@@ -18,29 +34,23 @@ export function flightPlanModalDraftFromPlan(
 ): FlightPlanModalDraft {
   return {
     acid: plan?.acid ?? acid,
-    cid: plan?.cid ?? "",
+    cid: flightPlanCid(plan?.acid ?? acid, plan?.cid),
     assignedBeacon: plan?.assignedBeacon ?? "",
-    tcp: plan?.tcp ?? "",
-    flightType: plan?.flightType ?? "",
+    flightType: plan?.flightType ?? flightTypeFromRules(plan?.flightRules) ?? "",
     route: plan?.filedRoute?.text ?? plan?.route ?? "",
-    fixes: plan?.fixes.join(", ") ?? "",
-    scratchpads: plan?.scratchpads.join(", ") ?? "",
     requestedAltitudeFt: plan?.requestedAltitudeFt?.toString() ?? "",
-    assignedAltitudeFt: plan?.assignedAltitudeFt?.toString() ?? "",
     aircraftType: plan?.aircraftType ?? "",
-    aircraftCount: plan?.aircraftCount?.toString() ?? "",
     equipment: plan?.equipment ?? "",
     departureAirport: plan?.departureAirport ?? "",
     airportId: plan?.airportId ?? "",
-    flightRules: plan?.flightRules ?? "",
     eta: plan?.eta ?? "",
     ptd: plan?.ptd ?? "",
     remarks: plan?.remarks ?? "",
-    previousFix: plan?.previousFix ?? "",
-    coordinationFix: plan?.coordinationFix ?? "",
-    minimumFuel: plan?.minimumFuel ?? "",
-    source: plan?.source ?? "",
   };
+}
+
+function operationForPlan(plan?: FlightPlan, operation?: FlightPlanOperation): FlightPlanOperation {
+  return operation ?? (plan?.departureAirport || plan?.ptd ? "departure" : "arrival");
 }
 
 function optionalText(value: string): string | undefined {
@@ -53,13 +63,6 @@ function optionalNumber(value: string): number | undefined {
   return trimmed.length > 0 ? Number(trimmed) : undefined;
 }
 
-function splitList(value: string): string[] {
-  return value
-    .split(/[,\n]/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
 /**
  * Submit the same normalized draft used by the rendered modal.  Keeping this
  * handler exportable gives integration tests a DOM-free equivalent of the
@@ -69,32 +72,26 @@ export function submitFlightPlanModalDraft(
   world: World,
   plan: FlightPlan | undefined,
   draft: FlightPlanModalDraft,
+  operation?: FlightPlanOperation,
 ) {
+  const acid = plan?.acid ?? draft.acid ?? "";
+  const mode = operationForPlan(plan, operation);
   const input: FlightPlanDraftInput = {
     ...(plan?.id ? { id: plan.id } : {}),
-    acid: draft.acid ?? "",
-    cid: optionalText(draft.cid ?? ""),
+    acid,
+    cid: flightPlanCid(acid, plan?.cid),
     assignedBeacon: optionalText(draft.assignedBeacon ?? ""),
-    tcp: optionalText(draft.tcp ?? ""),
     flightType: optionalText(draft.flightType ?? "") as FlightPlanDraftInput["flightType"],
     filedRoute: draft.route ?? "",
-    ...(splitList(draft.fixes ?? "").length > 0 ? { fixes: splitList(draft.fixes ?? "") } : {}),
-    scratchpads: splitList(draft.scratchpads ?? ""),
     requestedAltitudeFt: optionalNumber(draft.requestedAltitudeFt ?? ""),
-    assignedAltitudeFt: optionalNumber(draft.assignedAltitudeFt ?? ""),
     aircraftType: optionalText(draft.aircraftType ?? ""),
-    aircraftCount: optionalNumber(draft.aircraftCount ?? ""),
     equipment: optionalText(draft.equipment ?? ""),
     departureAirport: optionalText(draft.departureAirport ?? ""),
     airportId: optionalText(draft.airportId ?? ""),
-    flightRules: optionalText(draft.flightRules ?? ""),
-    eta: optionalText(draft.eta ?? ""),
-    ptd: optionalText(draft.ptd ?? ""),
+    ...(mode === "arrival"
+      ? { eta: optionalText(draft.eta ?? "") }
+      : { ptd: optionalText(draft.ptd ?? "") }),
     remarks: optionalText(draft.remarks ?? ""),
-    previousFix: optionalText(draft.previousFix ?? ""),
-    coordinationFix: optionalText(draft.coordinationFix ?? ""),
-    minimumFuel: optionalText(draft.minimumFuel ?? ""),
-    source: optionalText(draft.source ?? ""),
   };
   return saveFlightPlanDraft(world, input);
 }
@@ -104,6 +101,7 @@ export function FlightPlanModal({
   acid,
   plan,
   world,
+  operation,
   onCancel,
   onSaved,
 }: FlightPlanModalProps) {
@@ -151,7 +149,7 @@ export function FlightPlanModal({
 
   function save(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    const result = submitFlightPlanModalDraft(world, plan, draft);
+    const result = submitFlightPlanModalDraft(world, plan, draft, operation);
     if (!result.ok) {
       const field =
         result.error.field === "altitude"
@@ -192,28 +190,15 @@ export function FlightPlanModal({
   }
 
   const textFields = [
-    ["cid", "CID"],
     ["assignedBeacon", "Assigned beacon"],
-    ["tcp", "Owning TCP"],
     ["route", "Filed route"],
-    ["fixes", "Fixes"],
-    ["scratchpads", "Scratchpads"],
     ["requestedAltitudeFt", "Requested altitude (ft)"],
-    ["assignedAltitudeFt", "Assigned altitude (ft)"],
     ["aircraftType", "Aircraft type"],
-    ["aircraftCount", "Aircraft count"],
     ["equipment", "Equipment"],
-    ["departureAirport", "Departure airport"],
-    ["airportId", "Airport ID"],
-    ["flightRules", "Flight rules"],
-    ["eta", "ETA"],
-    ["ptd", "PTD"],
-    ["remarks", "Remarks"],
-    ["previousFix", "Previous fix"],
-    ["coordinationFix", "Coordination fix"],
-    ["minimumFuel", "Minimum fuel"],
-    ["source", "Source"],
+    ["departureAirport", "Origin"],
+    ["airportId", "Destination"],
   ] as const;
+  const mode = operationForPlan(plan, operation);
 
   return (
     <div className="flight-plan-modal-backdrop" role="presentation">
@@ -223,21 +208,21 @@ export function FlightPlanModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="flight-plan-modal-title"
-        aria-describedby="flight-plan-modal-note"
         tabIndex={-1}
         onKeyDown={trapFocus}
       >
         <h2 id="flight-plan-modal-title">{plan ? "Amend flight plan" : "Create flight plan"}</h2>
-        <p id="flight-plan-modal-note" className="flight-plan-modal-note">
-          Filed metadata only; it does not activate aircraft guidance.
-        </p>
         <form onSubmit={save}>
           <label htmlFor="flight-plan-acid">
             ACID
-            <input {...inputProps("acid")} />
+            <input {...inputProps("acid")} readOnly />
+          </label>
+          <label htmlFor="flight-plan-cid">
+            CID
+            <input {...inputProps("cid")} readOnly />
           </label>
           <label htmlFor="flight-plan-flightType">
-            Flight type
+            Flight rules
             <select {...inputProps("flightType")}>
               <option value="">Unspecified</option>
               <option value="IFR">IFR</option>
@@ -252,6 +237,14 @@ export function FlightPlanModal({
               <input {...inputProps(field)} />
             </label>
           ))}
+          <label htmlFor={`flight-plan-${mode === "arrival" ? "eta" : "ptd"}`}>
+            {mode === "arrival" ? "ETA" : "PTD"}
+            <input {...inputProps(mode === "arrival" ? "eta" : "ptd")} />
+          </label>
+          <label htmlFor="flight-plan-remarks">
+            Remarks
+            <input {...inputProps("remarks")} />
+          </label>
           {error ? (
             <p id="flight-plan-error" className="flight-plan-modal-error" role="alert">
               {error.message}
