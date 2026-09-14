@@ -716,6 +716,22 @@ export function modifyFlightPlan(
         ),
       };
     }
+    if (field === "assignedBeacon" && candidate.assignedBeacon !== plan.assignedBeacon) {
+      const aircraftWithBeacon = world.aircraft.find(
+        (aircraft) => aircraft.assignedSquawk?.trim().toUpperCase() === candidate.assignedBeacon,
+      );
+      if (aircraftWithBeacon) {
+        return {
+          ok: false,
+          error: modificationError(
+            "DUPLICATE_BEACON",
+            field,
+            candidate.assignedBeacon,
+            `beacon ${candidate.assignedBeacon} is assigned to aircraft ${aircraftWithBeacon.id}`,
+          ),
+        };
+      }
+    }
   }
   Object.assign(plan, candidate);
   if (field === "requestedAltitudeFt" || field === "assignedAltitudeFt") {

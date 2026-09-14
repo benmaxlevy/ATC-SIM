@@ -198,7 +198,8 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         command: "<ACID> [fields]",
         example: "UAL1234 2341 AT B738",
         input: "Preview Area",
-        result: "Creates a pending local flight plan.",
+        result:
+          "Creates a pending local flight plan. An omitted beacon uses the configured default pool or no code; A explicitly means no assigned beacon; +, /, and /1-/4 select configured pools.",
       },
       {
         id: "plan-pending-discrete",

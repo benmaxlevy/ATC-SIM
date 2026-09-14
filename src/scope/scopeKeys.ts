@@ -90,13 +90,8 @@ import { retainFullDatablocksOutsideAltitudeFilter } from "./trackDisplay";
 import { browserDcbPrefStorage, cancelDcbPrefSaveAs, commitDcbPrefSaveAs } from "./dcb/dcbPref";
 import { applyDcbShift, armDcbSpinner, handleDcbEscape, openDcbMenu } from "./dcb/dcbMenu";
 
-// F9's existing local VFR workflow predates configurable plan defaults. Keep
-// its trainer placeholder stable until T02-199 wires all remaining consumers.
-const LEGACY_VFR_CREATION_POOL = ["1000"] as const;
-
 function vfrCreationPool(world: World): readonly string[] {
-  const configured = beaconPoolFor(world.beaconPools, "vfr");
-  return configured.length > 0 ? configured : LEGACY_VFR_CREATION_POOL;
+  return beaconPoolFor(world.beaconPools, "vfr");
 }
 
 import {

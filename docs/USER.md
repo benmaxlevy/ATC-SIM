@@ -219,6 +219,15 @@ valid but `1289` is invalid. A numeric identity such as `14` is a TAB-list
 index only when used in a complete command such as `*M 14 5252`, `*B 14`,
 or `*DEL 14`; `14 5252` alone is not a flight-plan command.
 
+Scenario JSON may provide a generic `beaconPools` adaptation with `ifr`,
+`vfr`, and `general1`–`general4` arrays plus a `defaultPool` key. Codes are
+four octal digits and allocation is deterministic first-free trainer behavior;
+these are not official NAS/STARS bank values. Missing adaptation means no
+assigned plan beacon. An omitted creation beacon uses the configured default;
+explicit `A` always means no assigned beacon. A released plan beacon can be
+reused when it is not occupied by an assigned aircraft squawk. An aircraft's
+reported squawk remains surveillance data and never rewrites the plan beacon.
+
 Routes are not executable from these plans yet. Editing `FIXES` stores plan
 data only; it does not update the aircraft FMS, route, heading, or pilot
 intent. Clearance delivery, pilot readback/execution, route conformance, and
@@ -449,7 +458,7 @@ System lists are operational data windows rendered directly on the radar scope.
 | List Name | Authorized Command Prefix | Frame Title | Purpose & Operational Features |
 |---|---|---|---|
 | System Status Area | `<MULTI FUNC>S` (`*S`) | `SYSTEM STATUS AREA (S)` | System Status Area (sim time, altimeter, filter bounds). Cannot be toggled off; relocatable via `<MULTI FUNC>S<SLEW LOCATION>`. |
-| TAB List | `<MULTI FUNC>T` (`*T`) | `TAB` / `FLIGHT PLAN (TAB)` | Pending plans and unassociated tracks with discrete squawks. Features `MORE: X/Y` pagination. List construction and redraw are read-only: they never correlate or activate a plan. Type `[Index#]` + click target for explicit association; a reported squawk update may correlate one unique pending plan. Use `*DEL [Index#] Enter` to delete an entry. |
+| TAB List | `<MULTI FUNC>T` (`*T`) | `TAB` / `FLIGHT PLAN (TAB)` | Pending plans, including plans with no assigned beacon, and unassociated tracks. Features `MORE: X/Y` pagination. List construction and redraw are read-only: they never correlate or activate a plan. Type `[Index#]` + click target for explicit association; a reported squawk update may correlate one unique pending plan. Use `*DEL [Index#] Enter` to delete an entry. |
 | Tower List 1 | `<MULTI FUNC>P1` (`*P1`) | `TOWER 1 (P1)` / `[AIRPORT] TOWER` | Primary tower inbound arrival list and staged departures. Sorted by distance (departures 0 NM first, nearest arrivals ascending). Clears automatically on landing. |
 | Tower List 2 | `<MULTI FUNC>P2` (`*P2`) | `TOWER 2 (P2)` | Auxiliary Tower List 2. |
 | Tower List 3 | `<MULTI FUNC>P3` (`*P3`) | `TOWER 3 (P3)` | Auxiliary Tower List 3. |

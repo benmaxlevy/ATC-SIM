@@ -1,5 +1,6 @@
 import {
   createWorld,
+  DEFAULT_BEACON_POOL_CONFIG,
   MSAW_FAF_DISTANCE_NM,
   mulberry32,
   normalizeHeadingDeg,
@@ -25,8 +26,14 @@ import {
   type ArrivalTrafficConfig,
 } from "./arrivalScheduler";
 import { resolveRunwayHeading, resolveRunwayThreshold } from "./departureSpawn";
-import { allocateTrafficPair, allocateTrafficPairForType, usedCallsignSet } from "./callsigns";
+import {
+  allocateSquawkCode,
+  allocateTrafficPair,
+  allocateTrafficPairForType,
+  usedCallsignSet,
+} from "./callsigns";
 import { createScenarioIfrFlightPlan, spawnScenarioIfrAircraft } from "./ifrFlightPlan";
+import { usedSquawks } from "./spawnAircraft";
 
 export { starRouteFixIds };
 
@@ -68,6 +75,10 @@ function spawnArrival(
   rng: () => number,
   scenario?: Scenario,
 ): void {
+  // The numeric traffic bench has no scenario adaptation and is an
+  // unplanned generated-aircraft path. Keep its separate random allocator;
+  // scenario-backed IFR plans use beaconPools/defaultPool instead.
+  const assignedBeacon = scenario ? undefined : allocateSquawkCode(usedSquawks(world), rng);
   const { aircraft: ac } = spawnScenarioIfrAircraft(
     world,
     {
@@ -92,6 +103,7 @@ function spawnArrival(
               transitionId: arrival.transitionId,
             },
       rng,
+      ...(assignedBeacon === undefined ? {} : { assignedBeacon }),
     },
   );
   if (scenario) {
@@ -280,6 +292,7 @@ function worldFromScenario(scenario: Scenario): World {
   return createWorld({
     catalog: scenario.catalog,
     activeRunwayId: scenario.activeRunwayId,
+    beaconPools: scenario.beaconPools ?? DEFAULT_BEACON_POOL_CONFIG,
     mvaChart: scenario.mva,
     msawInhibit: msawInhibitFromScenario(scenario),
     sessionLog: new SessionLog(),

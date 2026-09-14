@@ -51,7 +51,8 @@ export function truncateField(text: string, maxLength: number): string {
  * Formats Box 5 beacon squawk code to 4 zero-padded digits.
  */
 export function formatBeaconCode(code: string): string {
-  return (code ?? "").trim().padStart(4, "0");
+  const trimmed = (code ?? "").trim();
+  return trimmed ? trimmed.padStart(4, "0") : "";
 }
 
 /**
