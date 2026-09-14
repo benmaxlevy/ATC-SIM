@@ -95,7 +95,10 @@ function speakApproachNav(approachId: string): string {
     return id;
   }
   const [, kind, runway, suffix] = match;
-  return `${kind} runway ${runway}${suffix}`.trim();
+  // CIFP uses the compact `I26R` form for an ILS. Read back the published
+  // approach type, not the internal one-letter identifier.
+  const spokenKind = kind === "I" ? "ILS" : kind;
+  return `${spokenKind} runway ${runway}${suffix}`.trim();
 }
 
 function formatSpeedClause(instruction: Extract<Instruction, { type: "SPEED" }>): string {

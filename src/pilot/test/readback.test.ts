@@ -18,6 +18,12 @@ test("shortest heading 270 has no turn word", () => {
   expect(text).not.toMatch(/turn left|turn right/);
 });
 
+test("compact CIFP ILS identifiers read back as ILS", () => {
+  expect(readback([{ type: "CLEARED_APPROACH", approachId: "I26R" }])).toBe(
+    "Delta 123 cleared ILS runway 26R approach",
+  );
+});
+
 test("ambiguous callsign reject", () => {
   expect(formatRejectReadback({ reason: "AMBIGUOUS_CALLSIGN" })).toMatch(/ambiguous callsign/i);
 });
