@@ -20,6 +20,7 @@ ROOT = HERE.parents[1]
 DEFAULT_OUT = ROOT / "src/core/performance/aircraft-profiles.json"
 SI_TO_KT = 1.9438444924406048
 SI_TO_FPM = 196.8503937007874
+M_TO_FT = 3.280839895013123
 
 
 def parse_types(values: list[str]) -> list[str]:
@@ -35,13 +36,15 @@ def parse_types(values: list[str]) -> list[str]:
     return result
 
 
-def finite_number(value: Any, label: str) -> float | int:
+def finite_number(value: Any, label: str = "") -> float | int:
     try:
         number = float(value)
     except (TypeError, ValueError) as exc:
-        raise ValueError(f"{label} must be numeric") from exc
+        msg = f"{label} must be numeric" if label else "value must be numeric"
+        raise ValueError(msg) from exc
     if not math.isfinite(number):
-        raise ValueError(f"{label} must be finite")
+        msg = f"{label} must be finite" if label else "value must be finite"
+        raise ValueError(msg)
     if isinstance(value, int):
         return value
     return number
@@ -81,70 +84,102 @@ def extract_openap_profile(icao: str, metadata: dict[str, Any], wrap: Any) -> di
     limits: dict[str, Any] = {}
     vmo = metadata.get("vmo")
     if vmo is not None:
-        limits["maxControlledSpeedKt"] = finite_number(vmo, f"{icao}.vmo")
+        try:
+            limits["maxControlledSpeedKt"] = finite_number(vmo, f"{icao}.vmo")
+        except Exception:
+            pass
     ceiling = metadata.get("ceiling")
     if ceiling is not None:
-        limits["serviceCeilingFt"] = finite_number(ceiling, f"{icao}.ceiling")
+        try:
+            limits["serviceCeilingFt"] = round(finite_number(ceiling, f"{icao}.ceiling") * M_TO_FT)
+        except Exception:
+            pass
 
     regimes: dict[str, Any] = {}
 
-    # initialClimb: nominalClimbFpm from wrap.initclimb_vs() default, converted m/s -> fpm
-    init_fn = getattr(wrap, "initclimb_vs", None)
-    if callable(init_fn):
+    def _extract_vs(fn_name: str, regime_names: list[str], key: str) -> None:
+        fn = getattr(wrap, fn_name, None)
+        if not callable(fn):
+            return
         try:
-            init_res = init_fn()
-            val = init_res.get("default") if isinstance(init_res, dict) else init_res
+            res = fn()
+            val = res.get("default") if isinstance(res, dict) else res
             if val is not None:
-                regimes.setdefault("initialClimb", {})["nominalClimbFpm"] = (
-                    finite_number(val, f"{icao}.initclimb_vs") * SI_TO_FPM
-                )
+                fpm = abs(finite_number(val, f"{icao}.{fn_name}")) * SI_TO_FPM
+                for regime in regime_names:
+                    regimes.setdefault(regime, {})[key] = fpm
         except Exception:
             pass
 
-    # climb: nominalClimbFpm from wrap.climb_vs_concas() default, converted m/s -> fpm
-    climb_fn = getattr(wrap, "climb_vs_concas", None)
-    if callable(climb_fn):
+    def _extract_accel(fn_name: str, regime_names: list[str], key: str) -> None:
+        fn = getattr(wrap, fn_name, None)
+        if not callable(fn):
+            return
         try:
-            climb_res = climb_fn()
-            val = climb_res.get("default") if isinstance(climb_res, dict) else climb_res
+            res = fn()
+            val = res.get("default") if isinstance(res, dict) else res
             if val is not None:
-                regimes.setdefault("climb", {})["nominalClimbFpm"] = (
-                    finite_number(val, f"{icao}.climb_vs_concas") * SI_TO_FPM
-                )
+                accel = abs(finite_number(val, f"{icao}.{fn_name}")) * SI_TO_KT
+                for regime in regime_names:
+                    regimes.setdefault(regime, {})[key] = accel
         except Exception:
             pass
 
-    # approach: minSpeedKt / maxSpeedKt from wrap.finalapp_vcas() min/max or default, converted m/s -> kt
-    app_fn = getattr(wrap, "finalapp_vcas", None)
-    if callable(app_fn):
+    def _extract_speeds(fn_name: str, regime_name: str) -> None:
+        fn = getattr(wrap, fn_name, None)
+        if not callable(fn):
+            return
         try:
-            app_res = app_fn()
-            if isinstance(app_res, dict):
-                min_val = app_res.get("minimum", app_res.get("default"))
-                max_val = app_res.get("maximum", app_res.get("default"))
+            res = fn()
+            if isinstance(res, dict):
+                min_val = res.get("minimum", res.get("default"))
+                max_val = res.get("maximum", res.get("default"))
             else:
-                min_val = app_res
-                max_val = app_res
-
-            app_dict: dict[str, Any] = {}
+                min_val = res
+                max_val = res
             if min_val is not None:
-                app_dict["minSpeedKt"] = (
-                    finite_number(min_val, f"{icao}.finalapp_vcas.min") * SI_TO_KT
+                regimes.setdefault(regime_name, {})["minSpeedKt"] = (
+                    finite_number(min_val, f"{icao}.{fn_name}.min") * SI_TO_KT
                 )
             if max_val is not None:
-                app_dict["maxSpeedKt"] = (
-                    finite_number(max_val, f"{icao}.finalapp_vcas.max") * SI_TO_KT
+                regimes.setdefault(regime_name, {})["maxSpeedKt"] = (
+                    finite_number(max_val, f"{icao}.{fn_name}.max") * SI_TO_KT
                 )
-            if app_dict:
-                regimes["approach"] = app_dict
         except Exception:
             pass
+
+    # Vertical speeds (m/s -> fpm, using abs(val) for descent)
+    _extract_vs("initclimb_vs", ["initialClimb"], "nominalClimbFpm")
+    _extract_vs("climb_vs_concas", ["climb"], "nominalClimbFpm")
+    _extract_vs("descent_vs_concas", ["arrival", "enroute"], "nominalDescentFpm")
+    _extract_vs("finalapp_vs", ["approach", "landing"], "nominalDescentFpm")
+
+    # Accelerations (m/s² -> kt/s, using abs(val) for deceleration)
+    _extract_accel("takeoff_acceleration", ["initialClimb", "climb"], "accelKtPerS")
+    _extract_accel("landing_acceleration", ["approach", "landing"], "decelKtPerS")
+
+    # Speeds (m/s -> kt)
+    _extract_speeds("initclimb_vcas", "initialClimb")
+    _extract_speeds("climb_const_vcas", "climb")
+    _extract_speeds("descent_const_vcas", "arrival")
+    _extract_speeds("finalapp_vcas", "approach")
+    _extract_speeds("landing_speed", "landing")
+
+    # Sort regimes deterministically
+    canonical_regimes = ["initialClimb", "climb", "enroute", "arrival", "approach", "landing"]
+    ordered_regimes: dict[str, Any] = {}
+    for r in canonical_regimes:
+        if r in regimes and regimes[r]:
+            ordered_regimes[r] = regimes[r]
+    for r, v in regimes.items():
+        if r not in ordered_regimes and v:
+            ordered_regimes[r] = v
 
     override: dict[str, Any] = {"source": "openap"}
     if limits:
         override["limits"] = limits
-    if regimes:
-        override["regimes"] = regimes
+    if ordered_regimes:
+        override["regimes"] = ordered_regimes
     return override
 
 
