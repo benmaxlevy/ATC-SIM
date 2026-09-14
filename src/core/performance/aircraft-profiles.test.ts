@@ -38,9 +38,9 @@ describe("unified aircraft profiles dataset contract", () => {
     }
   });
 
-  test("contains exactly 33 aircraft keys with valid override shapes", () => {
+  test("contains valid aircraft keys with valid override shapes", () => {
     const aircraftKeys = Object.keys(dataset.aircraft);
-    expect(aircraftKeys.length).toBe(33);
+    expect(aircraftKeys.length).toBeGreaterThanOrEqual(33);
 
     for (const icao of aircraftKeys) {
       expect(icao).toMatch(/^[A-Z0-9]+$/);

@@ -47,6 +47,12 @@ def finite_number(value: Any, label: str) -> float | int:
     return number
 
 
+OPENAP_ALIASES: dict[str, str] = {
+    "E175": "E75L",
+    "B77F": "B77W",
+}
+
+
 def query_openap(icao: str) -> tuple[dict[str, Any] | None, Any | None]:
     """Query OpenAP prop and WRAP directly for an aircraft type."""
     try:
@@ -60,12 +66,14 @@ def query_openap(icao: str) -> tuple[dict[str, Any] | None, Any | None]:
     if not callable(aircraft_fn) or not callable(wrap_fn):
         return None, None
 
+    lookup = OPENAP_ALIASES.get(icao, icao)
     try:
-        metadata = aircraft_fn(icao)
-        wrap = wrap_fn(icao)
+        metadata = aircraft_fn(lookup)
+        wrap = wrap_fn(lookup)
         return metadata, wrap
     except Exception:
         return None, None
+
 
 
 def extract_openap_profile(icao: str, metadata: dict[str, Any], wrap: Any) -> dict[str, Any]:
