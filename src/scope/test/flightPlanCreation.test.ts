@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createFlightPlan, createWorld } from "@core";
+import { createBeaconPoolConfig, createFlightPlan, createWorld } from "@core";
 import { getFlightPlanEntries } from "../systemLists";
 import { createScopeView } from "../scopeView";
 import { handleScopeKeyDown } from "../scopeKeys";
@@ -69,6 +69,7 @@ describe("T02-144 flight-plan creation", () => {
         type: "createFlightPlan",
         pendingDiscrete: false,
         acid: "UAL1234",
+        beacon: { kind: "code", code: "2341" },
         assignedBeacon: "2341",
         tcp: "1R",
         airportId: "D",
@@ -91,6 +92,27 @@ describe("T02-144 flight-plan creation", () => {
     });
   });
 
+  it("distinguishes omitted, selected-pool, explicit-code, and no-code beacons", () => {
+    expect(parseFlightPlanCreation("UAL1234")).toMatchObject({
+      action: { beacon: { kind: "default" } },
+    });
+    expect(parseFlightPlanCreation("UAL1234", false, true)).toMatchObject({
+      action: { beacon: { kind: "default" } },
+    });
+    expect(parseFlightPlanCreation("UAL1234 +")).toMatchObject({
+      action: { beacon: { kind: "pool", pool: "ifr" } },
+    });
+    expect(parseFlightPlanCreation("UAL1234 /4")).toMatchObject({
+      action: { beacon: { kind: "pool", pool: "general4" } },
+    });
+    expect(parseFlightPlanCreation("UAL1234 4721")).toMatchObject({
+      action: { beacon: { kind: "code", code: "4721" }, assignedBeacon: "4721" },
+    });
+    expect(parseFlightPlanCreation("UAL1234 A B738", false, true)).toMatchObject({
+      action: { beacon: { kind: "none" } },
+    });
+  });
+
   it("keeps *F as altitude filtering, not creation", () => {
     expect(parsePreviewCommand("*F")).toMatchObject({ kind: "action" });
     expect(parseFlightPlanCreation("*F").kind).toBe("invalid");
@@ -109,7 +131,7 @@ describe("T02-144 flight-plan creation", () => {
     expect(parseFlightPlanCreation("UAL1234 A")).toMatchObject({ kind: "action" });
     expect(parseFlightPlanCreation("UAL1234 A A")).toMatchObject({
       kind: "action",
-      action: { beaconAllocation: undefined },
+      action: { beacon: { kind: "none" } },
     });
     expect(parseFlightPlanCreation("UAL1234 A")).not.toMatchObject({
       action: { aircraftType: "A" },
@@ -120,11 +142,11 @@ describe("T02-144 flight-plan creation", () => {
     });
     expect(parseFlightPlanCreation("UAL1234 +")).toMatchObject({
       kind: "action",
-      action: { beaconAllocation: "ifr" },
+      action: { beacon: { kind: "pool", pool: "ifr" } },
     });
     expect(parseFlightPlanCreation("UAL1234 /3")).toMatchObject({
       kind: "action",
-      action: { beaconAllocation: "general3" },
+      action: { beacon: { kind: "pool", pool: "general3" } },
     });
     expect(parseFlightPlanCreation("UAL1234 .B")).toMatchObject({
       kind: "invalid",
@@ -142,6 +164,7 @@ describe("T02-144 flight-plan creation", () => {
         pendingDiscrete: false,
         creationMode: "fltData",
         acid: "UAL1234",
+        beacon: { kind: "code", code: "2341" },
         assignedBeacon: "2341",
         tcp: "1R",
         fixes: ["KDEM*RW27"],
@@ -250,7 +273,7 @@ describe("T02-144 flight-plan creation", () => {
     handleScopeKeyDown(key("F1"), view, "scope", world);
     for (const ch of "NEW123 +") handleScopeKeyDown(key(ch), view, "scope", world);
     handleScopeKeyDown(key("Enter"), view, "scope", world);
-    expect(view.preview.rejection).toBe("CAPACITY — BCN");
+    expect(view.preview.rejection).toBe("FORMAT");
 
     const invalidView = createScopeView();
     for (const ch of "ALL") handleScopeKeyDown(key(ch), invalidView, "scope", world);
@@ -276,6 +299,46 @@ describe("T02-144 flight-plan creation", () => {
     handleScopeKeyDown(key("Enter"), view, "scope", world);
 
     expect(view.preview.rejection).toBe("CAPACITY — BCN");
+  });
+
+  it("uses the configured default pool and reserves assigned aircraft squawks", () => {
+    const config = createBeaconPoolConfig({
+      defaultPool: "ifr",
+      pools: { ifr: ["7001", "7002"] },
+    });
+    if (!config.ok) throw new Error("test fixture should be valid");
+    const aircraft = makeTestAircraft({
+      id: "ac-default-pool",
+      callsign: "UNTRK",
+      assignedSquawk: "7001",
+    });
+    const world = createWorld({ beaconPools: config.value, aircraft: [aircraft] });
+    const view = createScopeView();
+
+    handleScopeKeyDown(key("F6"), view, "scope", world);
+    for (const ch of "AAL123 ") handleScopeKeyDown(key(ch), view, "scope", world);
+    handleScopeKeyDown(key("Enter"), view, "scope", world);
+
+    expect(world.flightPlans).toHaveLength(1);
+    expect(world.flightPlans[0]).toMatchObject({ acid: "AAL123", assignedBeacon: "7002" });
+    expect(aircraft.assignedSquawk).toBe("7001");
+
+    const explicitNoneView = createScopeView();
+    handleScopeKeyDown(key("F6"), explicitNoneView, "scope", world);
+    for (const ch of "AAL124 A") handleScopeKeyDown(key(ch), explicitNoneView, "scope", world);
+    handleScopeKeyDown(key("Enter"), explicitNoneView, "scope", world);
+    expect(world.flightPlans).toHaveLength(2);
+    expect(world.flightPlans[1]).toMatchObject({ acid: "AAL124", assignedBeacon: undefined });
+  });
+
+  it("reports FORMAT for F1 creation without a discrete beacon", () => {
+    const world = createWorld();
+    const view = createScopeView();
+    handleScopeKeyDown(key("F1"), view, "scope", world);
+    for (const ch of "AAL123 ") handleScopeKeyDown(key(ch), view, "scope", world);
+    handleScopeKeyDown(key("Enter"), view, "scope", world);
+    expect(view.preview.rejection).toBe("FORMAT");
+    expect(world.flightPlans).toHaveLength(0);
   });
 
   it("creates pending plans through scope Preview without mutating aircraft", () => {

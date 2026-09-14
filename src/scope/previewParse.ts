@@ -3,6 +3,7 @@
  * Preview never emits Command, readback, or intent. Not NAS STARS.
  */
 
+import type { BeaconPoolKey } from "@core";
 import type { LoadedVideoMap } from "@scenario";
 import { parseStrictFilterHundreds } from "./altitudeFilter";
 import { resolveVideoMapToken, type VideoMapTokenLayout } from "./dcb/dcbFunctions";
@@ -42,7 +43,12 @@ export type PreviewArmedAction =
       /** Present only when entered through the explicit FLT DATA command. */
       creationMode?: "fltData" | "vfr";
       assignedBeacon?: string;
-      beaconAllocation?: "ifr" | "vfr" | "general1" | "general2" | "general3" | "general4";
+      /** Explicit parser discriminator: omitted/default, pool, code, or no-code. */
+      beacon:
+        | { readonly kind: "default" }
+        | { readonly kind: "pool"; readonly pool: BeaconPoolKey }
+        | { readonly kind: "code"; readonly code: string }
+        | { readonly kind: "none" };
       tcp?: string;
       flightType?: "A" | "P" | "E";
       airportId?: string;
@@ -282,6 +288,7 @@ export function parseVfrFlightPlanCommand(buffer: string): PreviewCommandResult 
     flightRules: "VFR",
     fixes: [tokens[1]!],
     scratchpads: [],
+    beacon: { kind: "pool", pool: "vfr" },
   };
   let aircraftSeen = false;
   let scratchpad1Seen = false;
@@ -332,6 +339,7 @@ export function parseFlightPlanCreation(
     pendingDiscrete,
     acid,
     scratchpads: [],
+    beacon: { kind: "default" },
     ...(fltData ? { creationMode: "fltData" as const } : {}),
   };
   const used = new Set<string>();
@@ -346,17 +354,21 @@ export function parseFlightPlanCreation(
       if (!/^[0-7]{4}$/.test(token)) return { kind: "invalid", reason: "FORMAT" };
       if (used.has("beacon")) return { kind: "invalid", reason: "FORMAT" };
       fields.assignedBeacon = token;
+      fields.beacon = { kind: "code", code: token };
       used.add("beacon");
       continue;
     }
     if (token === "+" || token === "/" || /^\/[1-4]$/.test(token)) {
       if (used.has("beacon")) return { kind: "invalid", reason: "FORMAT" };
-      fields.beaconAllocation =
-        token === "+"
-          ? "ifr"
-          : token === "/"
-            ? "vfr"
-            : (`general${token.slice(1)}` as "general1" | "general2" | "general3" | "general4");
+      fields.beacon = {
+        kind: "pool",
+        pool:
+          token === "+"
+            ? "ifr"
+            : token === "/"
+              ? "vfr"
+              : (`general${token.slice(1)}` as "general1" | "general2" | "general3" | "general4"),
+      };
       used.add("beacon");
       continue;
     }
@@ -383,7 +395,7 @@ export function parseFlightPlanCreation(
       continue;
     }
     if (token === "A" && !used.has("beacon") && (fltData || used.has("type"))) {
-      fields.beaconAllocation = undefined;
+      fields.beacon = { kind: "none" };
       used.add("beacon");
       continue;
     }
@@ -466,7 +478,7 @@ export function parseFlightPlanCreation(
     if (status === "P") fields.ptd = etaOrPtd;
     else fields.eta = etaOrPtd;
   }
-  if (pendingDiscrete && !fields.assignedBeacon && !fields.beaconAllocation)
+  if (pendingDiscrete && fields.beacon.kind !== "code")
     return { kind: "invalid", reason: "FORMAT" };
   return { kind: "action", action: fields };
 }

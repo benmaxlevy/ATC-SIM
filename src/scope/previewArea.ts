@@ -1163,6 +1163,10 @@ export function handlePreviewBufferKey(
       rejectPreviewAreaWithReason(state, nowMs, creation.reason);
       return { consumed: true, action: null };
     }
+    if (creation.kind === "incomplete" && state.armed?.type === "initCntl") {
+      rejectPreviewAreaWithReason(state, nowMs, "FORMAT");
+      return { consumed: true, action: null };
+    }
     if (parsed.kind === "invalid") {
       rejectPreviewArea(state, nowMs);
       return { consumed: true, action: null };

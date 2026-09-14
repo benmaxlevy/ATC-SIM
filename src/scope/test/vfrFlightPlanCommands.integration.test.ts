@@ -143,6 +143,7 @@ test("F9 accepts delta-prefixed scratchpad 1 and plus-prefixed scratchpad 2", ()
       flightRules: "VFR",
       fixes: ["KDEM*RW27"],
       scratchpads: ["WEST", "S21"],
+      beacon: { kind: "pool", pool: "vfr" },
       aircraftType: "C172",
       requestedAltitudeFt: 5000,
     },
