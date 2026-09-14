@@ -145,7 +145,16 @@ function parseIfrClearance(tokens: string[], index: number): InstructionParse {
       return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing access" };
     }
     i += 1;
-    if (tokens[i] === "DIRECT") {
+    if (
+      tokens[i] === "DIRECT" &&
+      tokens[i + 2] === "DIRECT" &&
+      tokens[i + 1] !== undefined &&
+      isFixIdToken(tokens[i + 1]!)
+    ) {
+      // Spoken route form: `via direct SWEPT direct`.
+      access = { type: "FIX_THEN_DIRECT", fixId: tokens[i + 1]! };
+      i += 3;
+    } else if (tokens[i] === "DIRECT") {
       access = { type: "DIRECT" };
       i += 1;
     } else if (tokens[i] === "RADAR" && tokens[i + 1] === "VECTORS") {

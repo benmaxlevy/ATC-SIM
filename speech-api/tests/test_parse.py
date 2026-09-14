@@ -12,6 +12,8 @@ from parse_engine import (
     INSTRUCTION_TYPES,
     MOCK_PARSE_OK,
     ParseOutcome,
+    guard_catalog_ids,
+    guard_instruction_semantics,
     validate_instruction,
     validate_parse_json,
 )
@@ -224,6 +226,19 @@ def test_path_c_catalog_guard_accepts_airport_limit_but_not_airport_direct() -> 
         ],
     )
     assert guard_catalog_ids("cleared to atlanta international via direct", context, clearance).ok
+    route = ParseOutcome(
+        ok=True,
+        instructions=[
+            {
+                "type": "IFR_CLEARANCE",
+                "limitId": "KATL",
+                "access": {"type": "FIX_THEN_DIRECT", "fixId": "CEDAR"},
+            }
+        ],
+    )
+    route_text = "cleared to atlanta international via direct cedar direct"
+    assert guard_instruction_semantics(route_text, route).ok
+    assert guard_catalog_ids(route_text, context, route).ok
     direct = ParseOutcome(ok=True, instructions=[{"type": "DIRECT", "fixId": "KATL"}])
     assert guard_catalog_ids("proceed direct atlanta international", context, direct).error == "PARSE_MISS"
     unknown = ParseOutcome(
@@ -471,6 +486,7 @@ def test_system_prompt_guides_semantic_repair_without_schema_duplication() -> No
     assert "squawk vfr" in SYSTEM_PROMPT
     assert "maintain vfr" in SYSTEM_PROMPT
     assert "cleared to KATL via direct" in SYSTEM_PROMPT
+    assert "cleared to KATL via direct CEDAR direct" in SYSTEM_PROMPT
     assert "cleared direct ATL VOR" in SYSTEM_PROMPT
     assert "airport" in SYSTEM_PROMPT
 

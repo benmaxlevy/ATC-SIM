@@ -749,8 +749,15 @@ function matchIfrClearance(
   } else if (tokens[j] === "via") {
     j += 1;
     if (tokens[j] === "direct") {
-      access = { type: "DIRECT" };
-      j += 1;
+      const routeFix = parseFixIdFrom(tokens, j + 1, catalog);
+      if (routeFix && tokens[routeFix.next] === "direct") {
+        // Spoken route form: `via direct SWEPT direct`.
+        access = { type: "FIX_THEN_DIRECT", fixId: routeFix.fixId };
+        j = routeFix.next + 1;
+      } else {
+        access = { type: "DIRECT" };
+        j += 1;
+      }
     } else if (tokens[j] === "radar" && tokens[j + 1] === "vectors") {
       access = { type: "RADAR_VECTORS" };
       j += 2;

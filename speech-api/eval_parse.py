@@ -261,6 +261,19 @@ CASES: list[dict[str, Any]] = [
         },
     },
     {
+        "id": "clearance-direct-fix-direct",
+        "text": "cleared to KATL via direct CEDAR direct",
+        "expect": {
+            "instructions": [
+                {
+                    "type": "IFR_CLEARANCE",
+                    "limitId": "KATL",
+                    "access": {"type": "FIX_THEN_DIRECT", "fixId": "CEDAR"},
+                }
+            ]
+        },
+    },
+    {
         "id": "clearance-radar-vectors",
         "text": "cleared to Seattle Airport via radar vectors",
         "expect": {
