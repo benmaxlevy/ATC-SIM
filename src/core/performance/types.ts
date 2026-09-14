@@ -49,7 +49,43 @@ export interface AircraftPerformanceProfile {
   readonly provenance?: Readonly<Record<string, PerformanceProvenance>>;
 }
 
+export interface AircraftProfileDefaultsLimits {
+  readonly minControlledSpeedKt: number;
+  readonly maxControlledSpeedKt: number;
+  readonly serviceCeilingFt?: number;
+}
+
+export interface AircraftProfileDefaultsRegime {
+  readonly nominalClimbFpm: number;
+  readonly nominalDescentFpm: number;
+  readonly maxBankDeg: number;
+  readonly accelKtPerS: number;
+  readonly decelKtPerS: number;
+  readonly minSpeedKt?: number;
+  readonly maxSpeedKt?: number;
+  readonly turnRateDegPerS?: number;
+}
+
+export interface AircraftProfileDefaults {
+  readonly limits: AircraftProfileDefaultsLimits;
+  readonly regimes: Readonly<Record<PerformanceRegime, AircraftProfileDefaultsRegime>>;
+}
+
+export interface AircraftProfileOverride {
+  readonly source?: string;
+  readonly representativeVariant?: string;
+  readonly representativeEngine?: string;
+  readonly limits?: Readonly<Partial<AircraftProfileDefaultsLimits>>;
+  readonly regimes?: Readonly<Partial<Record<PerformanceRegime, Partial<PerformanceRegimeLimits>>>>;
+}
+
 export interface AircraftProfileDataset {
+  readonly defaults: AircraftProfileDefaults;
+  readonly aircraft: Readonly<Record<string, AircraftProfileOverride>>;
+}
+
+/** Legacy shape retained for aircraft-profiles.generated.json until T04-62. */
+export interface LegacyAircraftProfileDataset {
   readonly schemaVersion: number;
   readonly generator: Readonly<Record<string, string>>;
   readonly profiles: readonly AircraftPerformanceProfile[];
