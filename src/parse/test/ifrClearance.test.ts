@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import { vi } from "vitest";
 import { parseCommand, parseRadioText } from "@parse";
 import type { ParsePathCFn } from "@parse";
+import { scanIfrClearanceRouteWindow } from "../ifr-clearance-route-window";
 
 const fixes = ["KAHN", "SIITH", "VOR1"];
 const airports = [
@@ -228,6 +229,84 @@ test("route windows support implicit and explicit arbitrary direct chains", asyn
   };
   expect(implicit).toMatchObject({ ok: true, instructions: [expected] });
   expect(explicit).toMatchObject({ ok: true, instructions: [expected] });
+});
+
+test("typed route windows accept many ordered direct legs and stop at optionals", () => {
+  const fixIds = ["FIX01", "FIX02", "FIX03", "FIX04", "FIX05", "FIX06", "FIX07", "FIX08"];
+  const result = parseRadioText(
+    "DAL123 CLR TO KAHN VIA FIX01 DIRECT FIX02 FIX03 DIRECT FIX04 FIX05 FIX06 DIRECT FIX07 FIX08 ALT 70",
+    { fixes: ["KAHN", ...fixIds] },
+  );
+
+  expect(result).toMatchObject({
+    ok: true,
+    instructions: [
+      {
+        type: "IFR_CLEARANCE",
+        limitId: "KAHN",
+        access: {
+          type: "EXPLICIT_ROUTE",
+          segments: fixIds.map((fixId) => ({ type: "DIRECT", fixId })),
+        },
+        altitudeFt: 7000,
+      },
+    ],
+  });
+});
+
+test("route windows choose a complete longest exact multi-word catalog alias", () => {
+  const result = parseRadioText("DAL123 CLR TO KAHN VIA SEE MAX HOUND", {
+    fixes: ["KAHN", "SEE", "SEMAX", "HOUND"],
+  });
+
+  expect(result).toMatchObject({
+    ok: true,
+    instructions: [
+      {
+        type: "IFR_CLEARANCE",
+        access: {
+          type: "EXPLICIT_ROUTE",
+          segments: [
+            { type: "DIRECT", fixId: "SEMAX" },
+            { type: "DIRECT", fixId: "HOUND" },
+          ],
+        },
+      },
+    ],
+  });
+});
+
+test("ambiguous complete route segmentations reject with PARSE_MISS", async () => {
+  const result = await parseCommand("DAL123 cleared to KAHN via AB CD", {
+    source: "text",
+    fixes: ["KAHN", "AB", "CD", "ABCD"],
+    pathC: false,
+  });
+
+  expect(result).toMatchObject({ ok: false, error: "PARSE_MISS" });
+});
+
+test("route-window parsing is pure and does not mutate caller inputs", () => {
+  const tokens = ["FIX01", "THEN", "SEE", "MAX", "ALT"];
+  const options = {
+    fixes: ["FIX01", "SEMAX"],
+    procedures: [
+      {
+        id: "SID1",
+        name: "Sierra One",
+        transitions: [{ id: "NORTH", name: "North Transition" }],
+      },
+    ],
+  } as const;
+  const tokensBefore = [...tokens];
+  const optionsBefore = structuredClone(options);
+
+  const first = scanIfrClearanceRouteWindow(tokens, 0, options);
+  const second = scanIfrClearanceRouteWindow(tokens, 0, options);
+
+  expect(first).toEqual(second);
+  expect(tokens).toEqual(tokensBefore);
+  expect(options).toEqual(optionsBefore);
 });
 
 test("procedure transitions and exact Atlanta/SWEPT route regression ground in order", async () => {

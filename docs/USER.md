@@ -144,7 +144,7 @@ If an aircraft is already selected on the scope, the callsign prefix is automati
 | **Transponder / Ident** | `I` | `DAL123 I` | Squawk ident (flashes target symbol for 5 seconds) |
 | **Beacon assignment** | `SQ <[0-7]{4}>` / `SQ VFR` | `DAL123 SQ 4721` / `DAL123 SQ VFR` | Assigns the aircraft a discrete octal beacon or VFR code 1200; it never edits the manually maintained flight-plan beacon, and assigned/reported surveillance codes stay separate until the pilot report. |
 | **Maintain VFR** | `MVFR` | `DAL123 MVFR` | Radio-only VFR instruction. Sets the aircraft's maintain-VFR marker and readback; it is not an IFR clearance, VFR-on-top authorization, route, or flight-plan activation. |
-| **IFR clearance** | `CLR TO <LIMIT> (ASFILED\|VIA DIRECT\|VIA <FIX> THEN DIRECT\|VIA RADAR VECTORS\|VIA <SID> [TRANS]) [ALT <hundreds>] [CVIA] [FREQ <value>] [SQ <code>]` | `DAL123 CLR TO KAHN VIA DIRECT` | One limit plus exactly one access method. The aircraft follows an independent active-clearance snapshot immediately; radar vectors remain pending. Issuance never edits the flight plan. This compact syntax is an ATC-SIM trainer delta. |
+| **IFR clearance** | `CLR TO <LIMIT> (ASFILED\|VIA <ROUTE-WINDOW>\|VIA RADAR VECTORS) [ALT <hundreds>] [CVIA] [FREQ <value>] [SQ <code>]` | `DAL123 CLR TO KAHN VIA SIITH DIRECT VOR1 ALT 50` | One limit plus exactly one access method. A route window may contain any number of catalog-grounded fixes, navaids, or procedures/transitions; `DIRECT` is optional between elements. The aircraft follows an independent active-clearance snapshot immediately; radar vectors remain pending. Issuance never edits the flight plan. This compact route grammar is an ATC-SIM trainer extension. |
 | **Miscellaneous** | `GA` | `DAL123 GA` | Go around / execute published missed approach |
 | | `SH` | `DAL123 SH` | Say current heading |
 | | `SA` | `DAL123 SA` | Say current altitude |
@@ -252,16 +252,27 @@ is a trainer delta, not NAS timing.
 | **Ident** | *"Delta one twenty-three, squawk ident"* |
 | **Beacon assignment** | *"Delta one twenty-three, squawk four seven two one"* / *"Delta one twenty-three, squawk VFR"* |
 | **Maintain VFR** | *"Delta one twenty-three, maintain VFR"* |
-| **IFR clearance** | *"Delta one twenty-three, cleared to Kahn via direct"* / *"... cleared to KATL via direct"* / *"... cleared to Hartsfield Jackson Atlanta Airport via direct"* / *"... via Siith then direct"* / *"... as filed"* / *"... via radar vectors"* |
+| **IFR clearance** | *"Delta one twenty-three, cleared to Kahn via direct"* / *"... cleared to KATL via direct"* / *"... cleared to Hartsfield Jackson Atlanta Airport via direct"* / *"... via Siith then direct"* / *"... via Siith, direct VOR1, then Hound"* / *"... via the DEMO ONE arrival, north transition, then Hound"* / *"... as filed"* / *"... via radar vectors"* |
 | **Go Around** | *"Delta one twenty-three, go around, fly published missed approach"* |
 | **Say Heading / Altitude** | *"Delta one twenty-three, say heading"* \| *"Delta one twenty-three, say altitude"* |
 
 IFR-clearance routing is a compact trainer grammar, not NAS-compatible input. It
-requires one clearance limit and one access method. A new executable clearance
-creates or replaces the aircraft's active-clearance snapshot and flies
-immediately; `VIA RADAR VECTORS` leaves the route vector-pending. The editable
-filed plan is unchanged, and later plan edits do not retarget an issued
-clearance. `AS FILED` is accepted only when its limit is
+requires one clearance limit and one access method. After `VIA`, the parser
+scans an arbitrary-length route window until the next clearance boundary:
+`ALT`/`MAINTAIN`, `CVIA`, `FREQ`/`FREQUENCY`, `SQ`/`SQUAWK`, `CLIMB VIA`,
+`DESCEND VIA`, `CONTACT`, or `EXPECT`. Route elements are catalog-grounded
+fixes or navaids, or a catalog-grounded procedure with an optional valid
+transition. `DIRECT` may precede an element; without it, a fix/navaid is an
+implicit direct segment. A terminal `DIRECT` means direct to the clearance
+limit, and `THEN` is only a separator. Unknown, incomplete, ambiguous, or
+airport-name route elements return `PARSE_MISS`; airports remain valid only as
+clearance limits. These route-window and implicit-direct forms are an
+ATC-SIM trainer extension, not a claim of complete FAA phraseology.
+
+Examples: `VIA DIRECT`; `VIA SIITH VOR1 HOUND ALT 50`; `VIA DIRECT SIITH
+DIRECT VOR1`; and `VIA SID1 NORTH TRANSITION HOUND`. The editable filed plan
+is unchanged, and later plan edits do not retarget an issued clearance.
+`AS FILED` is accepted only when its limit is
 the filed route's terminal endpoint or the filed destination's catalog airport;
 the route is never reused for an unrelated limit. Plain `CLEARED DIRECT` and
 `PROCEED DIRECT` remain tactical lateral amendments and never reset a flight
