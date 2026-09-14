@@ -29,10 +29,10 @@ const catalog: FiledRouteCatalog = {
   ],
 };
 
-function setup() {
+function setup(routeCatalog: FiledRouteCatalog = catalog) {
   const aircraft = makeTestAircraft({ id: "ac-1", callsign: "AAL123" });
   const world = createWorld({
-    catalog: { ...catalog, airportId: "TEST", approaches: [] },
+    catalog: { ...routeCatalog, airportId: "TEST", approaches: [] },
     aircraft: [aircraft],
   });
   const created = saveFlightPlanDraft(world, { acid: "AAL123", filedRoute: "FIXA" });
@@ -79,6 +79,36 @@ test("applies an ordered direct chain to an owned active snapshot", () => {
   expect(aircraft.intent.lateral).toMatchObject({
     type: "PROCEDURE",
     routeFixIds: ["FIXA", "VOR1", "FIXB", "LIMIT"],
+  });
+});
+
+test("applies every segment in a larger direct chain without a length cap", () => {
+  const chainFixIds = Array.from({ length: 12 }, (_, index) => `CHAIN${index + 1}`);
+  const { world, aircraft } = setup({
+    ...catalog,
+    fixes: [...catalog.fixes, ...chainFixIds.map((id) => ({ id }))],
+  });
+  const segments = chainFixIds.map((fixId) => ({ type: "DIRECT" as const, fixId }));
+
+  const result = applyIfrClearance(
+    world,
+    aircraft,
+    clearance({
+      type: "EXPLICIT_ROUTE",
+      segments,
+    }),
+  );
+
+  expect(result).toMatchObject({ ok: true, route: { lifecycle: "active", revision: 1 } });
+  expect(aircraft.activeClearance?.access).toEqual({ type: "EXPLICIT_ROUTE", segments });
+  expect(aircraft.activeClearance?.route.route.text).toBe([...chainFixIds, "LIMIT"].join(" "));
+  expect(aircraft.activeClearance?.route.route.segments.map((segment) => segment.fixIds)).toEqual([
+    ...chainFixIds.map((fixId) => [fixId]),
+    ["LIMIT"],
+  ]);
+  expect(aircraft.intent.lateral).toMatchObject({
+    type: "PROCEDURE",
+    routeFixIds: [...chainFixIds, "LIMIT"],
   });
 });
 
