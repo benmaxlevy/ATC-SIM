@@ -4588,3 +4588,75 @@ one Luna/high worker at a time. Captain squash-merges only after focused tests,
 `npm run ci`, and independent supplied-manual PASS. On any failure, stop later
 waves and use one narrow correction worker. The proposed sixty-fourth product
 law and skip list above are binding.
+
+## Sixty-fifth swarm planned — 2026-09-14 (Simplified OpenAP Profile Pipeline)
+
+Consolidate the multi-file performance profile structure (`simulator-policies.json`,
+`type-mappings.json`, `aircraft-profiles.generated.json`) into a single
+`src/core/performance/aircraft-profiles.json` dataset with runtime defaults
+cascading, and simplify the Python builder script to directly populate OpenAP
+values without policy recipe indirection.
+
+| Key | Value |
+| --- | --- |
+| Goal | Consolidate aircraft performance profiles into a single JSON dataset with runtime defaults cascading and direct OpenAP population. |
+| Phase | `phases/04-procedures/` |
+| Tickets | `T04-60` → `T04-61` → `T04-62` |
+| Merge target | `feature/better-openap-usage` |
+| Worker limit | 1 ticket worker; sequential waves |
+| Model | inherit available Codex worker model |
+| Required gate | `npm run ci` after every merge |
+| Stop | Stop after `T04-62`; do not start another phase |
+
+**Product law:**
+
+- Single unified file `src/core/performance/aircraft-profiles.json` contains a top-level `"defaults"` block and a sparse `"aircraft"` dictionary.
+- Runtime registry (`AircraftPerformanceRegistry`) cascades default values when an aircraft entry is empty `{}` or omits specific regime fields.
+- Python builder script operates directly on `aircraft-profiles.json` without policy recipes or mapping tables.
+- Browser runtime never imports Python, OpenAP, or network dependencies.
+- Existing `AircraftPerformanceProfile` interface remains intact; `src/core/world.ts` and `src/core/kinematics.ts` require no changes.
+
+**Skip:**
+
+- Flight dynamics/kinematics model overhauls, wake turbulence separation calculations, live weather integration, display/radar changes, speech changes, and scenario changes.
+
+**Waves:**
+
+- **Wave A:** `T04-60` (Unified schema and runtime default cascade)
+- **Wave B:** `T04-61` (Direct OpenAP profile populator; waits for T04-60)
+- **Wave C:** `T04-62` (Legacy file cleanup, docs, and integration acceptance; waits for T04-61)
+
+**Ticket ownership:**
+
+- **T04-60:** `src/core/performance/aircraft-profiles.json` schema, `registry.ts` cascade merging, `types.ts`, and `registry.test.ts`.
+- **T04-61:** `tools/aircraft-profiles/build_profiles.py` simplification, direct OpenAP calls, SI conversions, and `test_build_profiles.py`.
+- **T04-62:** Deletion of `type-mappings.json`, `simulator-policies.json`, and `aircraft-profiles.generated.json`; `package.json` script alignment; `README.md`; and full integration acceptance.
+
+**Ticket branches:**
+
+- `ticket/T04-60-unified-aircraft-profiles-schema-and-default-cascade` ← `phases/04-procedures/tickets/T04-60-unified-aircraft-profiles-schema-and-default-cascade.md`
+- `ticket/T04-61-direct-openap-aircraft-profile-populator` ← `phases/04-procedures/tickets/T04-61-direct-openap-aircraft-profile-populator.md`
+- `ticket/T04-62-profile-pipeline-cleanup-and-integration-acceptance` ← `phases/04-procedures/tickets/T04-62-profile-pipeline-cleanup-and-integration-acceptance.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: Simplified OpenAP Profile Pipeline T04-60–62
+Merge target: feature/better-openap-usage
+Merged: T04-60, T04-61, T04-62
+Tests: npm run ci exit 0
+Notes: Single-file profile dataset with runtime cascade; legacy indirection removed
+```
+
+## Sixty-fifth swarm started — 2026-09-14 (Simplified OpenAP Profile Pipeline)
+
+Execution authorized on `feature/better-openap-usage`. The captain runs T04-60,
+T04-61, then T04-62 sequentially with one isolated worker at a time. Every
+squash merge onto `feature/better-openap-usage` requires `npm run ci` before the
+next wave.
+
+No push is authorized. Workers implement exactly one ticket, never merge or
+spawn, and return exactly `READY TO MERGE` or `BLOCKED`. Stop after T04-62.
+
+
