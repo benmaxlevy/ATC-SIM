@@ -43,6 +43,25 @@ const TENS = [
   "ninety",
 ] as const;
 
+/**
+ * Raw uppercase aviation identifiers are ambiguous to general-purpose TTS.
+ * Keep the display readback canonical, but give the speech engine a spelling
+ * that cannot turn `KATL` into a guessed word or `ILS` into just `I`.
+ */
+const TTS_IDENTIFIER_ALIASES: Readonly<Record<string, string>> = {
+  ILS: "I L S",
+};
+
+function expandTtsIdentifiers(text: string): string {
+  return text.replace(/\b[A-Z]{3,4}\b/g, (token) => {
+    const alias = TTS_IDENTIFIER_ALIASES[token];
+    if (alias) {
+      return alias;
+    }
+    return token.length === 4 ? [...token].join(" ") : token;
+  });
+}
+
 /** Last two digits as English (`23` → `twenty three`, `07` → `seven`). */
 function speakTwoDigit(n: number): string {
   if (n < 10) {
@@ -87,7 +106,7 @@ export function speakGroupedNumber(raw: string | number): string {
 }
 
 export function readbackForTts(text: string): string {
-  return text
+  return expandTtsIdentifiers(text)
     .replace(/\s*\(\d+\)/g, "")
     .replace(/\d+/g, (digits) => speakGroupedNumber(digits))
     .replace(/\s+/g, " ")
