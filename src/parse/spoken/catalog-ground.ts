@@ -290,6 +290,18 @@ export function groundInstructionFixes(
         if (fix.ungrounded) ungroundedFixes.push(access.fixId);
         access = fix.fixId === access.fixId ? access : { ...access, fixId: fix.fixId };
       }
+      if (access.type === "EXPLICIT_ROUTE") {
+        let changed = false;
+        const segments = access.segments.map((segment) => {
+          if (segment.type !== "DIRECT") return segment;
+          const fix = groundDirectOrCrossFix(segment.fixId, catalog, opts);
+          if (fix.ungrounded) ungroundedFixes.push(segment.fixId);
+          if (fix.fixId === segment.fixId) return segment;
+          changed = true;
+          return { ...segment, fixId: fix.fixId };
+        });
+        if (changed) access = { ...access, segments };
+      }
       const limitId = limit.fixId;
       return limitId === inst.limitId && access === inst.access
         ? inst
@@ -401,6 +413,18 @@ export function groundInstructionProcedures(
       return procedureId === inst.access.procedureId
         ? inst
         : { ...inst, access: { ...inst.access, procedureId } };
+    }
+    if (inst.type === "IFR_CLEARANCE" && inst.access.type === "EXPLICIT_ROUTE") {
+      let changed = false;
+      const segments = inst.access.segments.map((segment) => {
+        if (segment.type !== "PROCEDURE") return segment;
+        const procedureId =
+          groundProcedureToCatalog(segment.procedureId, catalog) ?? segment.procedureId;
+        if (procedureId === segment.procedureId) return segment;
+        changed = true;
+        return { ...segment, procedureId };
+      });
+      return changed ? { ...inst, access: { ...inst.access, segments } } : inst;
     }
     if (
       inst.type !== "DESCEND_VIA" &&

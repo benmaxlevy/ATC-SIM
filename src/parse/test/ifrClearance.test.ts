@@ -16,10 +16,12 @@ const airports = [
   },
 ];
 
-test("typed IFR clearance compiles one limit and one direct access method", () => {
+test("typed IFR clearance compiles an empty explicit route as direct to limit", () => {
   expect(parseRadioText("DAL123 CLR TO KAHN VIA DIRECT")).toMatchObject({
     ok: true,
-    instructions: [{ type: "IFR_CLEARANCE", limitId: "KAHN", access: { type: "DIRECT" } }],
+    instructions: [
+      { type: "IFR_CLEARANCE", limitId: "KAHN", access: { type: "EXPLICIT_ROUTE", segments: [] } },
+    ],
   });
 });
 
@@ -32,7 +34,7 @@ test("typed route access and optional fields preserve order", () => {
       {
         type: "IFR_CLEARANCE",
         limitId: "KAHN",
-        access: { type: "FIX_THEN_DIRECT", fixId: "SIITH" },
+        access: { type: "EXPLICIT_ROUTE", segments: [{ type: "DIRECT", fixId: "SIITH" }] },
         altitudeFt: 5000,
         climbVia: true,
         frequency: "118.5",
@@ -54,7 +56,7 @@ test("spoken IFR forms compile like typed forms before tactical direct", async (
       {
         type: "IFR_CLEARANCE",
         limitId: "KAHN",
-        access: { type: "FIX_THEN_DIRECT", fixId: "SIITH" },
+        access: { type: "EXPLICIT_ROUTE", segments: [{ type: "DIRECT", fixId: "SIITH" }] },
       },
     ],
   });
@@ -74,7 +76,9 @@ test("airport ICAO and listed spoken alias ground only the IFR clearance limit",
   );
   expect(byName).toMatchObject({
     ok: true,
-    instructions: [{ type: "IFR_CLEARANCE", limitId: "KATL", access: { type: "DIRECT" } }],
+    instructions: [
+      { type: "IFR_CLEARANCE", limitId: "KATL", access: { type: "EXPLICIT_ROUTE", segments: [] } },
+    ],
   });
 
   const direct = await parseCommand("DAL123 direct KATL", {
@@ -94,7 +98,9 @@ test("Endeavor spoken clearance accepts Atlanta International Airport", async ()
   expect(result).toMatchObject({
     ok: true,
     callsignToken: "EDV7114",
-    instructions: [{ type: "IFR_CLEARANCE", limitId: "KATL", access: { type: "DIRECT" } }],
+    instructions: [
+      { type: "IFR_CLEARANCE", limitId: "KATL", access: { type: "EXPLICIT_ROUTE", segments: [] } },
+    ],
   });
 });
 
@@ -182,12 +188,111 @@ test("optional aliases share strict ALT, CVIA, FREQ, SQ semantic order", async (
 });
 
 test("SID access reserves optional words instead of treating ALT as a transition", () => {
-  expect(parseRadioText("DAL123 CLR TO KAHN VIA DEM12 ALT 50")).toMatchObject({
+  expect(
+    parseRadioText("DAL123 CLR TO KAHN VIA DEM12 ALT 50", {
+      procedures: [{ id: "DEM12" }],
+    }),
+  ).toMatchObject({
     ok: true,
     instructions: [
-      { type: "IFR_CLEARANCE", access: { type: "SID", procedureId: "DEM12" }, altitudeFt: 5000 },
+      {
+        type: "IFR_CLEARANCE",
+        access: { type: "EXPLICIT_ROUTE", segments: [{ type: "PROCEDURE", procedureId: "DEM12" }] },
+        altitudeFt: 5000,
+      },
     ],
   });
+});
+
+test("route windows support implicit and explicit arbitrary direct chains", async () => {
+  const implicit = await parseCommand("DAL123 cleared to KAHN via SIITH VOR1 ALT 50", {
+    source: "voice",
+    fixes,
+    pathC: false,
+  });
+  const explicit = await parseCommand(
+    "DAL123 cleared to KAHN via direct SIITH direct VOR1 ALT 50",
+    { source: "voice", fixes, pathC: false },
+  );
+  const expected = {
+    type: "IFR_CLEARANCE",
+    limitId: "KAHN",
+    access: {
+      type: "EXPLICIT_ROUTE",
+      segments: [
+        { type: "DIRECT", fixId: "SIITH" },
+        { type: "DIRECT", fixId: "VOR1" },
+      ],
+    },
+    altitudeFt: 5000,
+  };
+  expect(implicit).toMatchObject({ ok: true, instructions: [expected] });
+  expect(explicit).toMatchObject({ ok: true, instructions: [expected] });
+});
+
+test("procedure transitions and exact Atlanta/SWEPT route regression ground in order", async () => {
+  const procedure = await parseCommand("DAL123 cleared to KAHN via SID1 NORTH transition HOUND", {
+    source: "voice",
+    fixes: ["KAHN", "HOUND"],
+    procedures: [{ id: "SID1", transitions: [{ id: "NORTH" }] }],
+    pathC: false,
+  });
+  expect(procedure).toMatchObject({
+    ok: true,
+    instructions: [
+      {
+        type: "IFR_CLEARANCE",
+        access: {
+          type: "EXPLICIT_ROUTE",
+          segments: [
+            { type: "PROCEDURE", procedureId: "SID1", transitionId: "NORTH" },
+            { type: "DIRECT", fixId: "HOUND" },
+          ],
+        },
+      },
+    ],
+  });
+
+  const atlanta = await parseCommand(
+    "endeavor seventy one fourteen clear to atlanta international airport via direct swept direct",
+    {
+      source: "voice",
+      fixes: ["SWEPT"],
+      airports,
+      pathC: false,
+    },
+  );
+  expect(atlanta).toMatchObject({
+    ok: true,
+    callsignToken: "EDV7114",
+    instructions: [
+      {
+        type: "IFR_CLEARANCE",
+        limitId: "KATL",
+        access: {
+          type: "EXPLICIT_ROUTE",
+          segments: [{ type: "DIRECT", fixId: "SWEPT" }],
+        },
+      },
+    ],
+  });
+});
+
+test("unknown, duplicate, and airport route tokens return PARSE_MISS", async () => {
+  for (const text of [
+    "DAL123 cleared to KAHN via SIITH NOPE",
+    "DAL123 cleared to KAHN via direct direct SIITH",
+    "DAL123 cleared to KAHN via SIITH then",
+    "DAL123 cleared to KAHN via KATL",
+  ]) {
+    const result = await parseCommand(text, {
+      source: "voice",
+      fixes: ["SIITH"],
+      airports,
+      pathC: false,
+    });
+    expect(result).toMatchObject({ ok: false, error: "PARSE_MISS" });
+  }
 });
 
 test("Path C cannot bypass malformed clearance grammar", async () => {

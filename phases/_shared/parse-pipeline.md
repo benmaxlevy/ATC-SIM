@@ -31,6 +31,33 @@ normalizeSpoken
 
 An **ungrounded or tied** catalog token on `DIRECT` / `CROSS` / `DESCEND_VIA` / `CLIMB_VIA` / `JOIN_PROCEDURE` / `CLEARED_APPROACH` / `INTERCEPT_LOCALIZER` / `EXPECT_APPROACH` converts a would-be local hit into a **miss**. Unique T03-17 floor+margin snap still counts as grounded and wins at that stage. Heading / altitude / speed / ident / say-\* / go-around hits are unchanged: they stay a local win and do not fetch Path C.
 
+## IFR clearance route windows
+
+After an IFR clearance `VIA`, deterministic parsing scans one route window until
+the next known clearance section (`ALT` / `MAINTAIN`, `CVIA`, `FREQ`, or `SQ`,
+plus recognized section starters). The scanner preserves token order and
+accepts arbitrarily many catalog-grounded fixes, navaids, and procedures.
+`DIRECT` is an optional connector before a fix/navaid; without it, the matched
+fix/navaid is an implicit direct segment. A terminal `DIRECT` means direct to
+the separately grounded clearance limit. `AS FILED` and `RADAR VECTORS` remain
+exclusive access modes. Unknown, ambiguous, malformed, incomplete, or
+airport-only route tokens are a `PARSE_MISS`; the parser never mutates world
+state.
+
+Examples:
+
+```text
+VIA DIRECT
+VIA SWEPT HOUND ALT 50
+VIA DIRECT SWEPT DIRECT HOUND DIRECT
+VIA SID1 NORTH TRANSITION HOUND
+```
+
+The first form has an empty explicit route. The next two forms produce direct
+segments in order. The last form produces a catalog-grounded procedure and a
+direct segment. This implicit-direct grammar is an ATC-SIM trainer extension;
+it is not claimed as complete FAA phraseology.
+
 **First local grounded hit still wins.** Path C is **miss-only**: it never overrides a unique snap (`spoken_a` / `spoken_b` / `typed`).
 
 Why this is the smallest design:

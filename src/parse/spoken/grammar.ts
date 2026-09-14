@@ -28,11 +28,8 @@ import {
   type CatalogProcedure,
 } from "./catalog-ground";
 import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./telephony";
-import {
-  acceptIfrClearanceField,
-  ifrClearanceField,
-  newIfrClearanceFieldOrder,
-} from "../ifr-clearance-syntax";
+import { acceptIfrClearanceField, newIfrClearanceFieldOrder } from "../ifr-clearance-syntax";
+import { scanIfrClearanceRouteWindow } from "../ifr-clearance-route-window";
 
 interface Cursor {
   tokens: readonly string[];
@@ -276,42 +273,23 @@ function tryIfrClearance(c: Cursor): Instruction | null {
       c.i = start;
       return null;
     }
-    if (take(c, "direct")) {
-      access = { type: "DIRECT" };
-    } else if (take(c, "radar")) {
+    if (take(c, "radar")) {
       if (!take(c, "vectors")) {
         c.i = start;
         return null;
       }
       access = { type: "RADAR_VECTORS" };
     } else {
-      if (ifrClearanceField(peek(c)) !== null) {
+      const route = scanIfrClearanceRouteWindow(c.tokens, c.i, {
+        fixes: c.catalog,
+        procedures: c.procedures,
+      });
+      if (!route) {
         c.i = start;
         return null;
       }
-      const first = parseFixId(c);
-      if (!first) {
-        c.i = start;
-        return null;
-      }
-      if (take(c, "then")) {
-        if (!take(c, "direct")) {
-          c.i = start;
-          return null;
-        }
-        access = { type: "FIX_THEN_DIRECT", fixId: first };
-      } else {
-        const procedureId = groundProcedureToCatalog(first, c.procedures ?? []) ?? first;
-        let transitionId: string | undefined;
-        const next = peek(c);
-        if (
-          next &&
-          !["alt", "cvia", "freq", "frequency", "sq", "squawk", "maintain"].includes(next)
-        ) {
-          transitionId = parseProcedureId(c) ?? undefined;
-        }
-        access = { type: "SID", procedureId, ...(transitionId ? { transitionId } : {}) };
-      }
+      access = { type: "EXPLICIT_ROUTE", segments: route.segments };
+      c.i = route.nextIndex;
     }
   }
   const optional: Pick<

@@ -24,6 +24,10 @@ import {
   type ParseErrorCode,
 } from "./tokens";
 import { acceptIfrClearanceField, newIfrClearanceFieldOrder } from "./ifr-clearance-syntax";
+import {
+  scanIfrClearanceRouteWindow,
+  type IfrClearanceRouteWindowOptions,
+} from "./ifr-clearance-route-window";
 
 export type ParseResult =
   | {
@@ -44,7 +48,10 @@ const TURN_NUMBER_ONLY = /^T(\d+)$/;
 const TURN_NUMBER_AND_DIR = /^(\d+)([LR])$/;
 const BARE_LETTER = /^[HLRCDAS]$/;
 
-export function parseRadioText(sourceText: string): ParseResult {
+export function parseRadioText(
+  sourceText: string,
+  routeOptions: IfrClearanceRouteWindowOptions = {},
+): ParseResult {
   const normalized = sourceText.trim().replace(/\s+/g, " ").toUpperCase();
   if (normalized === "") {
     return fail(sourceText, PARSE_ERROR.EMPTY);
@@ -62,7 +69,7 @@ export function parseRadioText(sourceText: string): ParseResult {
 
   const instructions: Instruction[] = [];
   while (index < tokens.length) {
-    const parsed = parseOneInstruction(tokens, index);
+    const parsed = parseOneInstruction(tokens, index, routeOptions);
     if (!parsed.ok) {
       return fail(sourceText, parsed.code, parsed.detail);
     }
@@ -125,7 +132,11 @@ type InstructionParse =
   | { ok: true; instruction: Instruction; nextIndex: number }
   | { ok: false; code: ParseErrorCode; detail?: string };
 
-function parseIfrClearance(tokens: string[], index: number): InstructionParse {
+function parseIfrClearance(
+  tokens: string[],
+  index: number,
+  routeOptions: IfrClearanceRouteWindowOptions,
+): InstructionParse {
   let i = index + 1;
   if (tokens[i] !== "TO") {
     return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing TO" };
@@ -145,44 +156,16 @@ function parseIfrClearance(tokens: string[], index: number): InstructionParse {
       return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing access" };
     }
     i += 1;
-    if (tokens[i] === "DIRECT") {
-      access = { type: "DIRECT" };
-      i += 1;
-    } else if (tokens[i] === "RADAR" && tokens[i + 1] === "VECTORS") {
+    if (tokens[i] === "RADAR" && tokens[i + 1] === "VECTORS") {
       access = { type: "RADAR_VECTORS" };
       i += 2;
     } else {
-      const first = tokens[i];
-      const optionalAlias = new Set([
-        "ALT",
-        "MAINTAIN",
-        "CVIA",
-        "FREQ",
-        "FREQUENCY",
-        "SQ",
-        "SQUAWK",
-      ]);
-      if (!first || optionalAlias.has(first)) {
+      const route = scanIfrClearanceRouteWindow(tokens, i, routeOptions);
+      if (!route) {
         return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "bad access" };
       }
-      if (tokens[i + 1] === "THEN" && tokens[i + 2] === "DIRECT") {
-        if (!isFixIdToken(first)) {
-          return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "bad access" };
-        }
-        access = { type: "FIX_THEN_DIRECT", fixId: first };
-        i += 3;
-      } else {
-        if (!isProcedureIdToken(first)) {
-          return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "bad SID" };
-        }
-        const transition = tokens[i + 1];
-        access =
-          transition && !optionalAlias.has(transition) && isTransitionIdToken(transition)
-            ? { type: "SID", procedureId: first, transitionId: transition }
-            : { type: "SID", procedureId: first };
-        i +=
-          transition && !optionalAlias.has(transition) && isTransitionIdToken(transition) ? 2 : 1;
-      }
+      access = { type: "EXPLICIT_ROUTE", segments: route.segments };
+      i = route.nextIndex;
     }
   }
   const optional: Pick<
@@ -239,14 +222,18 @@ function parseIfrClearance(tokens: string[], index: number): InstructionParse {
   };
 }
 
-function parseOneInstruction(tokens: string[], index: number): InstructionParse {
+function parseOneInstruction(
+  tokens: string[],
+  index: number,
+  routeOptions: IfrClearanceRouteWindowOptions,
+): InstructionParse {
   const token = tokens[index];
   if (token === undefined) {
     return { ok: false, code: PARSE_ERROR.EMPTY };
   }
 
   if (token === "CLR") {
-    return parseIfrClearance(tokens, index);
+    return parseIfrClearance(tokens, index, routeOptions);
   }
 
   const zeroArg = ZERO_ARG_INSTRUCTIONS[token];

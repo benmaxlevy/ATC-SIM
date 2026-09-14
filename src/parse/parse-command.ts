@@ -162,7 +162,10 @@ function localIfrClearanceSyntaxIsValid(
   catalog: readonly string[],
   procedures: readonly CatalogProcedure[],
 ): boolean {
-  const typed = attachCallsign(parseRadioText(normalized), selected);
+  const typed = attachCallsign(
+    parseRadioText(normalized, { fixes: catalog, procedures }),
+    selected,
+  );
   if (typed.ok && isSoleIfrClearance(typed)) return true;
   const spoken = parseSpokenGrammar(normalized, selected, normalized, catalog, procedures);
   return spoken.ok && isSoleIfrClearance(spoken);
@@ -672,8 +675,17 @@ function airportFixSlotTokens(
     ) {
       tokens.push(instruction.fixId);
     }
-    if (instruction.type === "IFR_CLEARANCE" && instruction.access.type === "FIX_THEN_DIRECT") {
-      if (ids.has(instruction.access.fixId)) tokens.push(instruction.access.fixId);
+    if (instruction.type === "IFR_CLEARANCE") {
+      if (instruction.access.type === "FIX_THEN_DIRECT" && ids.has(instruction.access.fixId)) {
+        tokens.push(instruction.access.fixId);
+      }
+      if (instruction.access.type === "EXPLICIT_ROUTE") {
+        for (const segment of instruction.access.segments) {
+          if (segment.type === "DIRECT" && ids.has(segment.fixId)) {
+            tokens.push(segment.fixId);
+          }
+        }
+      }
     }
   }
   return tokens;
@@ -704,6 +716,17 @@ function ungroundedIdentifierTokens(
         groundProcedureToCatalog(inst.access.procedureId, procedures) === null
       ) {
         ungrounded.push(inst.access.procedureId);
+      }
+    }
+    if (inst.type === "IFR_CLEARANCE" && inst.access.type === "EXPLICIT_ROUTE") {
+      for (const segment of inst.access.segments) {
+        if (
+          segment.type === "PROCEDURE" &&
+          procedures.length > 0 &&
+          groundProcedureToCatalog(segment.procedureId, procedures) === null
+        ) {
+          ungrounded.push(segment.procedureId);
+        }
       }
     }
     if (
@@ -886,7 +909,7 @@ export async function parseCommand(
   const extraTokens: string[] = [];
 
   const typed = tryGroundedLocal(
-    attachCallsign(parseRadioText(normalized), selected),
+    attachCallsign(parseRadioText(normalized, { fixes: catalog, procedures }), selected),
     sourceText,
     "typed",
     opts.source,
@@ -931,7 +954,7 @@ export async function parseCommand(
   const rewritten = rewriteSpokenToTyped(normalized);
   if (rewritten !== null) {
     const pathB = tryGroundedLocal(
-      attachCallsign(parseRadioText(rewritten), selected),
+      attachCallsign(parseRadioText(rewritten, { fixes: catalog, procedures }), selected),
       sourceText,
       "spoken_b",
       opts.source,

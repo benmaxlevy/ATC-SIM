@@ -27,11 +27,8 @@ import {
   type CatalogProcedure,
 } from "./catalog-ground";
 import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./telephony";
-import {
-  acceptIfrClearanceField,
-  ifrClearanceField,
-  newIfrClearanceFieldOrder,
-} from "../ifr-clearance-syntax";
+import { acceptIfrClearanceField, newIfrClearanceFieldOrder } from "../ifr-clearance-syntax";
+import { scanIfrClearanceRouteWindow } from "../ifr-clearance-route-window";
 
 const PROCEDURE_TRAILING = new Set(["arrival", "star", "sid", "departure", "procedure"]);
 
@@ -730,6 +727,7 @@ function matchIfrClearance(
   tokens: readonly string[],
   i: number,
   catalog: readonly string[],
+  procedures: readonly CatalogProcedure[],
 ): { instruction: Instruction; next: number } | null {
   if ((tokens[i] !== "cleared" && tokens[i] !== "clear") || tokens[i + 1] !== "to") {
     return null;
@@ -748,33 +746,17 @@ function matchIfrClearance(
     j += 2;
   } else if (tokens[j] === "via") {
     j += 1;
-    if (tokens[j] === "direct") {
-      access = { type: "DIRECT" };
-      j += 1;
-    } else if (tokens[j] === "radar" && tokens[j + 1] === "vectors") {
+    if (tokens[j] === "radar" && tokens[j + 1] === "vectors") {
       access = { type: "RADAR_VECTORS" };
       j += 2;
     } else {
-      if (ifrClearanceField(tokens[j]) !== null) return null;
-      const first = parseFixIdFrom(tokens, j, catalog);
-      if (!first) return null;
-      j = first.next;
-      if (tokens[j] === "then" && tokens[j + 1] === "direct") {
-        access = { type: "FIX_THEN_DIRECT", fixId: first.fixId };
-        j += 2;
-      } else {
-        const procedureId = first.fixId;
-        const transition = tokens[j];
-        if (
-          transition &&
-          !["alt", "cvia", "freq", "frequency", "sq", "maintain", "squawk"].includes(transition)
-        ) {
-          j += 1;
-          access = { type: "SID", procedureId, transitionId: transition.toUpperCase() };
-        } else {
-          access = { type: "SID", procedureId };
-        }
-      }
+      const route = scanIfrClearanceRouteWindow(tokens, j, {
+        fixes: catalog,
+        procedures,
+      });
+      if (!route) return null;
+      access = { type: "EXPLICIT_ROUTE", segments: route.segments };
+      j = route.nextIndex;
     }
   } else {
     return null;
@@ -1281,7 +1263,7 @@ export function matchSpokenPatterns(
       matchGoAround(tokens, i) ??
       matchVia(tokens, i, procedures) ??
       matchJoinProcedure(tokens, i, procedures) ??
-      matchIfrClearance(tokens, i, catalog) ??
+      matchIfrClearance(tokens, i, catalog, procedures) ??
       matchDirect(tokens, i, catalog) ??
       matchPresentHeading(tokens, i) ??
       matchMaintainVfr(tokens, i) ??
